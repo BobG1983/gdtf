@@ -5,8 +5,8 @@
 //! `OnEnter`, tears it down on `OnExit`, and runs its live detection + press-routing systems.
 //! They cover the contract:
 //!
-//! - **Scaffold** — on entering `BattleRunning` the bare `ContextualPanelRoot` box and all three
-//!   buttons (Execute / Stabilize / Open Door) exist; the box + buttons spawn `Visibility::Hidden`;
+//! - **Scaffold** — on entering `BattleRunning` the bare `ContextualPanelRoot` box and one button
+//!   per registered contextual act exist; the box + buttons spawn `Visibility::Hidden`;
 //!   the box carries a `GlobalZIndex` above the bottom bar so it draws on top of it (the GTW-294
 //!   occlusion fix); on exiting `BattleRunning` the whole subtree (box → buttons) is despawned
 //!   (battle-scoped lifecycle).
@@ -16,8 +16,10 @@
 //! - **Reactive, no respawn** — moving the actor away (or clearing selection) hides the panel
 //!   while the SAME button entities persist (a `Visibility` toggle, never a despawn/respawn).
 //! - **Press → intent** — with an Execute target offered, pressing the Execute button drives
-//!   the REAL seam (button → 222a intent → the ONE drain) to emit one `ExecuteDownedRequested`
-//!   for the selection as actor over the carried downed target.
+//!   the REAL GTW-571 seam (button → the act's generic press router → the act's buffered
+//!   `PendingContextualIntents` queue → the act's generic drain) to emit one
+//!   `ExecuteDownedRequested` for the selection as actor over the carried downed target,
+//!   the SAME update (the Q5 same-frame guarantee).
 
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
 use gdtf_app::test_support::{
@@ -25,13 +27,17 @@ use gdtf_app::test_support::{
     ExitEmplacementButton, MeleeButton, OpenDoorButton, RunningState, ShoveButton, StabilizeButton,
     ThrowGrenadeButton,
 };
-use gdtf_battle_input::{InspectTarget, SelectedShooter};
+use gdtf_battle_input::{
+    InspectTarget, SelectedShooter,
+    contextual::{ContextualActSystems, PendingContextualIntents, ShoveAct},
+};
 use gdtf_battle_sim::{
     Cell, CellLevel, Direction, EmplacementOccupant, EmplacementState, Facing, Faction, HeightBand,
     Level, LifeState, OpenState, OpenableBlocking, Position, Stabilized, Stance, StanceKind,
     TrajectoryStyle, WieldedBy,
     acts::{
-        ExecuteDownedRequested, MeleeRequested, MeleeTarget, ShoveRequested, ThrowGrenadeRequested,
+        ExecuteDownedRequested, ExitEmplacementRequested, MeleeRequested, MeleeTarget,
+        ShoveRequested, StabilizeDownedRequested, ThrowGrenadeRequested,
     },
     entity::TerrainCell,
     injuries::InjuryRegistry,
@@ -137,7 +143,7 @@ fn parent_of(app: &App, child: Entity) -> Option<Entity> {
 }
 
 // ---------------------------------------------------------------------------------
-// Scaffold AC — the panel root + all three buttons spawn in BattleRunning, each with
+// Scaffold AC — the panel root + the per-act buttons spawn in BattleRunning, each with
 // its marker and `Visibility::Hidden`; they despawn outside BattleRunning.
 // ---------------------------------------------------------------------------------
 
@@ -380,10 +386,10 @@ fn door_state(app: &App, door: Entity) -> Option<OpenState> {
     app.world().get::<OpenState>(door).copied()
 }
 
-/// The current [`ContextualTargets`] offers via the END message they route to is not directly
-/// readable across the crate boundary (the seam's contents are private), so detection coverage
-/// reads the panel's observable effects — the per-button [`Visibility`] — and the press test
-/// reads the emitted [`ExecuteDownedRequested`]. This helper reads the Execute button visibility.
+/// The per-act `ContextualOffer` seams are not directly readable across the crate boundary
+/// (their contents are private), so detection coverage reads the panel's observable effects —
+/// the per-button [`Visibility`] — and the press tests read the emitted `*Requested` (e.g.
+/// [`ExecuteDownedRequested`]). This helper reads the Execute button visibility.
 fn execute_visible(app: &mut App) -> bool {
     visibility::<ExecuteButton>(app) == Some(Visibility::Visible)
 }
@@ -412,10 +418,10 @@ fn root_visible(app: &mut App) -> bool {
 #[derive(Resource, Default)]
 struct ExecuteProbe(Vec<ExecuteDownedRequested>);
 
-/// Adds the [`ExecuteDownedRequested`] probe, running AFTER the intent drain so it observes the
-/// SAME update's emitted message (the `action_bar.rs` `add_probes` idiom — its own
-/// `MessageReader` cursor is independent of the sim's dispatch, so it reads every drained
-/// message).
+/// Adds the [`ExecuteDownedRequested`] probe, running AFTER the GTW-571 contextual drain set
+/// so it observes the SAME update's emitted message (the `action_bar.rs` `add_probes` idiom —
+/// its own `MessageReader` cursor is independent of the sim's dispatch, so it reads every
+/// drained message).
 fn add_execute_probe(app: &mut App) {
     app.world_mut().insert_resource(ExecuteProbe::default());
     app.add_systems(
@@ -423,7 +429,7 @@ fn add_execute_probe(app: &mut App) {
         (|mut r: MessageReader<ExecuteDownedRequested>, mut p: ResMut<ExecuteProbe>| {
             p.0.extend(r.read().copied());
         })
-        .after(gdtf_battle_input::dispatch_act_intents),
+        .after(ContextualActSystems::Drain),
     );
 }
 
@@ -435,12 +441,39 @@ fn executes(app: &App) -> Vec<ExecuteDownedRequested> {
         .unwrap_or_default()
 }
 
+/// Collected [`StabilizeDownedRequested`] messages (the press-test probe).
+#[derive(Resource, Default)]
+struct StabilizeProbe(Vec<StabilizeDownedRequested>);
+
+/// Adds the [`StabilizeDownedRequested`] probe, running AFTER the contextual drain set so it
+/// observes the SAME update's emitted message (the `add_execute_probe` idiom — its own
+/// `MessageReader` cursor is independent of the sim's `dispatch_stabilize_downed`, so it reads
+/// every drained message even though the sim consumes it too).
+fn add_stabilize_probe(app: &mut App) {
+    app.world_mut().insert_resource(StabilizeProbe::default());
+    app.add_systems(
+        Update,
+        (|mut r: MessageReader<StabilizeDownedRequested>, mut p: ResMut<StabilizeProbe>| {
+            p.0.extend(r.read().copied());
+        })
+        .after(ContextualActSystems::Drain),
+    );
+}
+
+/// The collected [`StabilizeDownedRequested`] messages.
+fn stabilizes(app: &App) -> Vec<StabilizeDownedRequested> {
+    app.world()
+        .get_resource::<StabilizeProbe>()
+        .map(|p| p.0.clone())
+        .unwrap_or_default()
+}
+
 /// Collected [`MeleeRequested`] messages (the GTW-507 press-test probe).
 #[derive(Resource, Default)]
 struct MeleeProbe(Vec<MeleeRequested>);
 
-/// Adds the [`MeleeRequested`] probe, running AFTER the intent drain so it observes the SAME
-/// update's emitted message (the `add_execute_probe` idiom — its own `MessageReader` cursor is
+/// Adds the [`MeleeRequested`] probe, running AFTER the contextual drain set so it observes the
+/// SAME update's emitted message (the `add_execute_probe` idiom — its own `MessageReader` cursor is
 /// independent of the sim's `dispatch_melee`, so it reads every drained message even though the
 /// sim consumes it too).
 fn add_melee_probe(app: &mut App) {
@@ -450,7 +483,7 @@ fn add_melee_probe(app: &mut App) {
         (|mut r: MessageReader<MeleeRequested>, mut p: ResMut<MeleeProbe>| {
             p.0.extend(r.read().copied());
         })
-        .after(gdtf_battle_input::dispatch_act_intents),
+        .after(ContextualActSystems::Drain),
     );
 }
 
@@ -466,8 +499,8 @@ fn melees(app: &App) -> Vec<MeleeRequested> {
 #[derive(Resource, Default)]
 struct ShoveProbe(Vec<ShoveRequested>);
 
-/// Adds the [`ShoveRequested`] probe, running AFTER the intent drain so it observes the SAME
-/// update's emitted message (the `add_melee_probe` idiom — its own `MessageReader` cursor is
+/// Adds the [`ShoveRequested`] probe, running AFTER the contextual drain set so it observes the
+/// SAME update's emitted message (the `add_melee_probe` idiom — its own `MessageReader` cursor is
 /// independent of the sim's `dispatch_shove`, so it reads every drained message even though the
 /// sim consumes it too).
 fn add_shove_probe(app: &mut App) {
@@ -477,7 +510,7 @@ fn add_shove_probe(app: &mut App) {
         (|mut r: MessageReader<ShoveRequested>, mut p: ResMut<ShoveProbe>| {
             p.0.extend(r.read().copied());
         })
-        .after(gdtf_battle_input::dispatch_act_intents),
+        .after(ContextualActSystems::Drain),
     );
 }
 
@@ -553,7 +586,7 @@ fn adjacent_downed_ally_offers_stabilize() {
 }
 
 /// HIDDEN condition: a selected actor with NO adjacent downed neighbour hides the panel root +
-/// all three buttons (no act offered).
+/// the act buttons (no act offered).
 #[test]
 fn no_adjacent_downed_hides_panel() {
     let mut app = battle_running_app();
@@ -635,19 +668,19 @@ fn moving_actor_away_hides_panel_without_respawn() {
 
 // ---------------------------------------------------------------------------------
 // Press → intent AC — a contextual button press routes the carried target through the
-// REAL 222a seam (button -> intent -> the ONE drain).
+// REAL GTW-571 per-act seam (button -> generic press router -> the act's buffered queue
+// -> the act's generic drain, all the same update).
 // ---------------------------------------------------------------------------------
 
 /// PRESS → INTENT: with an Execute target offered (an 8-adjacent downed enemy), pressing the
-/// Execute button drives the REAL stack (button -> `ActIntent::Execute(target)` -> the ONE
-/// `dispatch_act_intents` drain) to emit exactly one `ExecuteDownedRequested` for the
-/// `SelectedShooter` as actor over the carried downed target. The shared `PendingActIntent` seam
-/// is private (contents unreadable across the crate boundary) and the drain empties it each
-/// update, so the load-bearing assertion is the END message the press produces — the same parity
-/// idiom the action-bar end-turn test uses, and strictly stronger than reading the queue.
+/// Execute button drives the REAL GTW-571 stack (button -> the generic press router ->
+/// `PendingContextualIntents<ExecuteAct>` -> the act's generic drain) to emit exactly one
+/// `ExecuteDownedRequested` for the `SelectedShooter` as actor over the carried downed target.
+/// The load-bearing assertion is the END message the press produces — the same parity idiom the
+/// action-bar end-turn test uses, and strictly stronger than reading the queue.
 ///
-/// Pin-discriminating: dropping the Execute arm in `contextual_button_intents` (or the detection
-/// that fills the target) leaves the queue empty and emits zero messages, failing the asserts.
+/// Pin-discriminating: dropping the act's press registration (or the offer scan that fills the
+/// target) leaves the queue empty and emits zero messages, failing the asserts.
 #[test]
 fn pressing_execute_emits_execute_downed_requested_for_target() {
     let mut app = battle_running_app();
@@ -667,8 +700,9 @@ fn pressing_execute_emits_execute_downed_requested_for_target() {
         return;
     };
 
-    // Drive the press, then update: contextual_button_intents pushes Execute(target) and the ONE
-    // drain (ordered after it) emits ExecuteDownedRequested the SAME update.
+    // Drive the press, then update: the generic press router pushes the offered target and the
+    // act's generic drain (the Press set is ordered before the Drain set) emits
+    // ExecuteDownedRequested the SAME update.
     press_button(&mut app, execute_btn);
     app.update();
 
@@ -682,6 +716,53 @@ fn pressing_execute_emits_execute_downed_requested_for_target() {
     assert_eq!(
         emitted[0].target, target,
         "the target is the carried downed neighbour",
+    );
+}
+
+/// PRESS → INTENT: with a Stabilize target offered (an 8-adjacent unstabilized downed ALLY),
+/// pressing the Stabilize button drives the REAL GTW-571 stack (button -> the generic press
+/// router -> `PendingContextualIntents<StabilizeAct>` -> the act's generic drain) to emit exactly
+/// one `StabilizeDownedRequested` for the `SelectedShooter` as actor over the carried downed ally,
+/// the SAME update (the `pressing_execute_...` mirror over the ALLY arm — the GTW-571 AC-3
+/// end-to-end leg for the rewired `press_contextual_button::<StabilizeAct>` instantiation).
+///
+/// Pin-discriminating: dropping the act's press registration (or the offer scan that fills the
+/// target) leaves the queue empty and emits zero messages, failing the asserts.
+#[test]
+fn pressing_stabilize_emits_stabilize_downed_requested_for_target() {
+    let mut app = battle_running_app();
+    add_stabilize_probe(&mut app);
+    let actor = spawn_actor(&mut app, 5, 5, 0);
+    // A downed, not-yet-stabilized ALLY (gang 0) orthogonally adjacent — the Stabilize offer.
+    let target = spawn_downed(&mut app, 5, 6, 0, Some(false));
+
+    // First update: detection reveals the Stabilize button + fills the target offer.
+    app.update();
+    assert!(
+        stabilize_visible(&mut app),
+        "sanity: the Stabilize button is offered before the press",
+    );
+    let Some(stabilize_btn) = single_with::<StabilizeButton>(&mut app) else {
+        // The button must exist by construction; bail without a panic (restriction lints deny
+        // `panic!` even in tests). A missing button trips the `stabilize_visible` assert above.
+        return;
+    };
+
+    // Drive the press, then update: the generic press router pushes the offered target and the
+    // act's generic drain emits StabilizeDownedRequested the SAME update.
+    press_button(&mut app, stabilize_btn);
+    app.update();
+
+    let emitted = stabilizes(&app);
+    assert_eq!(
+        emitted.len(),
+        1,
+        "pressing Stabilize with a target offered must emit exactly one StabilizeDownedRequested",
+    );
+    assert_eq!(emitted[0].actor, actor, "the actor is the SelectedShooter");
+    assert_eq!(
+        emitted[0].target, target,
+        "the target is the carried downed ally",
     );
 }
 
@@ -752,13 +833,14 @@ fn non_adjacent_or_ally_does_not_offer_melee() {
 }
 
 /// PRESS → INTENT: with a Melee target offered (an 8-adjacent alive in-LOS enemy), pressing the
-/// Melee button drives the REAL stack (button -> `ActIntent::Melee(target)` -> the ONE
-/// `dispatch_act_intents` drain) to emit exactly one `MeleeRequested` for the `SelectedShooter`
-/// as attacker over the carried target (GTW-507) — driven THROUGH the button/intent path, NOT a
-/// synthetic `MeleeRequested` emit.
+/// Melee button drives the REAL GTW-571 stack (button -> the generic press router ->
+/// `PendingContextualIntents<MeleeAct>` carrying a `MeleeTarget::Ganger` -> the act's generic
+/// drain) to emit exactly one `MeleeRequested` for the `SelectedShooter` as attacker over the
+/// carried target (GTW-507) — driven THROUGH the button/press path, NOT a synthetic
+/// `MeleeRequested` emit.
 ///
-/// Pin-discriminating: dropping the Melee arm in `contextual_button_intents` (or the detection
-/// that fills the target) leaves the queue empty and emits zero messages, failing the asserts.
+/// Pin-discriminating: dropping the act's press registration (or the offer scan that fills the
+/// target) leaves the queue empty and emits zero messages, failing the asserts.
 #[test]
 fn pressing_melee_emits_melee_requested_for_target() {
     let mut app = battle_running_app();
@@ -778,8 +860,8 @@ fn pressing_melee_emits_melee_requested_for_target() {
         return;
     };
 
-    // Drive the press, then update: contextual_button_intents pushes Melee(target) and the ONE
-    // drain (ordered after it) emits MeleeRequested the SAME update.
+    // Drive the press, then update: the generic press router pushes the offered ganger target
+    // and the act's generic drain emits MeleeRequested the SAME update.
     press_button(&mut app, melee_btn);
     app.update();
 
@@ -876,14 +958,14 @@ fn non_adjacent_ally_or_downed_does_not_offer_shove() {
 }
 
 /// PRESS → INTENT: with a Shove target offered (an 8-adjacent alive opposing ganger), pressing the
-/// Shove button drives the REAL stack (button -> `ActIntent::Shove(target)` -> the ONE
-/// `dispatch_act_intents` drain) to emit exactly one `ShoveRequested` for the `SelectedShooter`
-/// as shover over the carried target (GTW-525) — driven THROUGH the button/intent path, NOT a
-/// synthetic `ShoveRequested` emit. The emitted request is the DELIBERATE form
-/// (`ShoveSource::Deliberate`).
+/// Shove button drives the REAL GTW-571 stack (button -> the generic press router ->
+/// `PendingContextualIntents<ShoveAct>` -> the act's generic drain) to emit exactly one
+/// `ShoveRequested` for the `SelectedShooter` as shover over the carried target (GTW-525) —
+/// driven THROUGH the button/press path, NOT a synthetic `ShoveRequested` emit. The emitted
+/// request is the DELIBERATE form (`ShoveSource::Deliberate`).
 ///
-/// Pin-discriminating: dropping the Shove arm in `contextual_button_intents` (or the detection
-/// that fills the target) leaves the queue empty and emits zero messages, failing the asserts.
+/// Pin-discriminating: dropping the act's press registration (or the offer scan that fills the
+/// target) leaves the queue empty and emits zero messages, failing the asserts.
 #[test]
 fn pressing_shove_emits_shove_requested_for_target() {
     let mut app = battle_running_app();
@@ -903,8 +985,8 @@ fn pressing_shove_emits_shove_requested_for_target() {
         return;
     };
 
-    // Drive the press, then update: contextual_button_intents pushes Shove(target) and the ONE
-    // drain (ordered after it) emits ShoveRequested the SAME update.
+    // Drive the press, then update: the generic press router pushes the offered target and the
+    // act's generic drain emits ShoveRequested the SAME update.
     press_button(&mut app, shove_btn);
     app.update();
 
@@ -921,6 +1003,61 @@ fn pressing_shove_emits_shove_requested_for_target() {
     assert_eq!(
         emitted[0].target, target,
         "the target is the carried opposing neighbour",
+    );
+}
+
+/// GTW-571 AC-4 — the SAME-FRAME pin after the drain split: a contextual press queued this
+/// update is drained THIS update (press -> the act's generic press router -> the buffered
+/// `PendingContextualIntents<ShoveAct>` queue -> the act's generic drain -> `ShoveRequested`),
+/// because the panel's Press set is EXPLICITLY ordered `.before` the input crate's
+/// `ContextualActSystems::Drain` set (which itself precedes `dispatch_act_intents` and the sim
+/// band — no ambiguous orderings anywhere on the path, `bevy-traps.md` #3).
+///
+/// One press + ONE `app.update()` observes EXACTLY one `ShoveRequested` AND an EMPTIED per-act
+/// queue. Pin-discriminating: a drain lagging one frame (a missing/reversed set edge) would
+/// leave the queue non-empty and the probe at zero after the single update.
+#[test]
+fn contextual_press_drains_the_same_update_it_was_queued() {
+    let mut app = battle_running_app();
+    add_shove_probe(&mut app);
+    let shover = spawn_actor(&mut app, 5, 5, 0);
+    let target = spawn_alive_enemy(&mut app, 6, 6, 1);
+
+    // First update: the offer scan reveals the Shove button + fills the offer.
+    app.update();
+    assert!(
+        shove_visible(&mut app),
+        "sanity: the Shove button is offered before the press",
+    );
+    let Some(shove_btn) = single_with::<ShoveButton>(&mut app) else {
+        // The button must exist by construction; bail without a panic (restriction lints deny
+        // `panic!` even in tests). A missing button trips the `shove_visible` assert above.
+        return;
+    };
+
+    // ONE press, ONE update — the same-frame contract under test.
+    press_button(&mut app, shove_btn);
+    app.update();
+
+    let emitted = shoves(&app);
+    assert_eq!(
+        emitted.len(),
+        1,
+        "the press queued this update must be drained to its *Requested THIS update",
+    );
+    assert_eq!(
+        emitted[0].shover, shover,
+        "the shover is the SelectedShooter"
+    );
+    assert_eq!(
+        emitted[0].target, target,
+        "the target is the offered opposing neighbour",
+    );
+    assert!(
+        app.world()
+            .resource::<PendingContextualIntents<ShoveAct>>()
+            .is_empty(),
+        "the per-act queue is EMPTIED by the same-update drain (acted on exactly once)",
     );
 }
 
@@ -1005,8 +1142,9 @@ fn open_or_non_adjacent_door_does_not_offer_open_door() {
 }
 
 /// PRESS → OPEN: with an Open Door target offered (an 8-adjacent CLOSED door), pressing the Open
-/// Door button drives the REAL stack (button -> `ActIntent::OpenDoor(door)` -> the ONE
-/// `dispatch_act_intents` drain -> `OpenDoorRequested` -> the app-wired sim `dispatch_open_door` ->
+/// Door button drives the REAL stack (button -> the generic press router ->
+/// `PendingContextualIntents<OpenDoorAct>` -> the act's generic drain -> `OpenDoorRequested` ->
+/// the app-wired sim `dispatch_open_door` ->
 /// `SetOpenable::toggle` -> `apply_openable_toggle`) so the SPECIFIC carried door's `OpenState`
 /// flips CLOSED -> Open (GTW-315). Driven THROUGH the button/intent/sim path end to end — never a
 /// synthetic `SetOpenable` emit — proving the correct door entity was carried across the seam.
@@ -1015,9 +1153,9 @@ fn open_or_non_adjacent_door_does_not_offer_open_door() {
 /// settle: `dispatch_open_door` writes `SetOpenable`, `apply_openable_toggle` flips `OpenState` and
 /// removes the blocking components), so the assertion advances a couple of updates.
 ///
-/// Pin-discriminating: dropping the Open Door arm in `contextual_button_intents` (or the detection
-/// that fills the target) leaves the queue empty, no `OpenDoorRequested` is emitted, and the door
-/// stays CLOSED, failing the assert.
+/// Pin-discriminating: dropping the act's press registration (or the offer scan that fills the
+/// target) leaves the queue empty, no `OpenDoorRequested` is emitted, and the door stays CLOSED,
+/// failing the assert.
 #[test]
 fn pressing_open_door_toggles_the_door_open() {
     let mut app = battle_running_app();
@@ -1041,7 +1179,7 @@ fn pressing_open_door_toggles_the_door_open() {
         return;
     };
 
-    // Drive the press, then advance: contextual_button_intents pushes OpenDoor(door), the drain
+    // Drive the press, then advance: the generic press router pushes the offered door, the drain
     // emits OpenDoorRequested + the sim dispatch writes SetOpenable::toggle the SAME update, and
     // apply_openable_toggle flips OpenState one frame later (the GTW-503 one-frame settle).
     press_button(&mut app, open_door_btn);
@@ -1228,7 +1366,8 @@ fn exit_offered_only_to_the_occupant() {
 }
 
 /// PRESS → ENTER: with an Enter target offered (an 8-adjacent VACANT emplacement), pressing the
-/// Enter button drives the REAL stack (button -> `ActIntent::EnterEmplacement(emplacement)` -> the
+/// Enter button drives the REAL stack (button -> the generic press router ->
+/// `PendingContextualIntents<EnterEmplacementAct>` -> the
 /// ONE `dispatch_act_intents` drain -> `EnterEmplacementRequested` -> the app-wired sim
 /// `dispatch_enter_emplacement` -> `SetEmplacement::occupy` -> `apply_emplacement_toggle`) so the
 /// SPECIFIC carried emplacement's `EmplacementState` flips VACANT -> Occupied (GTW-543). Driven
@@ -1239,7 +1378,7 @@ fn exit_offered_only_to_the_occupant() {
 /// `dispatch_enter_emplacement` writes `SetEmplacement`, `apply_emplacement_toggle` flips
 /// `EmplacementState`), so the assertion advances a few updates.
 ///
-/// Pin-discriminating: dropping the Enter arm in `contextual_button_intents` (or the detection that
+/// Pin-discriminating: dropping the act's press registration (or the offer scan that
 /// fills the target) leaves the queue empty, no `EnterEmplacementRequested` is emitted, and the
 /// emplacement stays VACANT, failing the assert.
 #[test]
@@ -1265,7 +1404,7 @@ fn pressing_enter_mans_the_emplacement() {
         return;
     };
 
-    // Drive the press, then advance: contextual_button_intents pushes EnterEmplacement(emplacement),
+    // Drive the press, then advance: the generic press router pushes the offered emplacement,
     // the drain emits EnterEmplacementRequested + the sim dispatch writes SetEmplacement::occupy the
     // SAME update, and apply_emplacement_toggle flips EmplacementState one frame later.
     press_button(&mut app, enter_btn);
@@ -1294,6 +1433,80 @@ fn pressing_enter_mans_the_emplacement() {
     assert_eq!(
         occupant, selected,
         "the recorded EmplacementOccupant is the acting selection",
+    );
+}
+
+/// Collected [`ExitEmplacementRequested`] messages (the GTW-543 exit press-test probe).
+#[derive(Resource, Default)]
+struct ExitProbe(Vec<ExitEmplacementRequested>);
+
+/// Adds the [`ExitEmplacementRequested`] probe, running AFTER the contextual drain set so it
+/// observes the SAME update's emitted message (the `add_execute_probe` idiom — its own
+/// `MessageReader` cursor is independent of the sim's `dispatch_exit_emplacement`, so it reads
+/// every drained message even though the sim consumes it too).
+fn add_exit_probe(app: &mut App) {
+    app.world_mut().insert_resource(ExitProbe::default());
+    app.add_systems(
+        Update,
+        (|mut r: MessageReader<ExitEmplacementRequested>, mut p: ResMut<ExitProbe>| {
+            p.0.extend(r.read().copied());
+        })
+        .after(ContextualActSystems::Drain),
+    );
+}
+
+/// The collected [`ExitEmplacementRequested`] messages.
+fn exit_requests(app: &App) -> Vec<ExitEmplacementRequested> {
+    app.world()
+        .get_resource::<ExitProbe>()
+        .map(|p| p.0.clone())
+        .unwrap_or_default()
+}
+
+/// PRESS → INTENT: with an Exit target offered (the selection recorded as an emplacement's
+/// [`EmplacementOccupant`]), pressing the Exit button drives the REAL GTW-571 stack (button ->
+/// the generic press router -> `PendingContextualIntents<ExitEmplacementAct>` -> the act's
+/// generic drain) to emit exactly one `ExitEmplacementRequested` for the `SelectedShooter` as
+/// actor dismounting the carried emplacement, the SAME update (the GTW-571 AC-3 end-to-end leg
+/// for the rewired `press_contextual_button::<ExitEmplacementAct>` instantiation).
+///
+/// Pin-discriminating: dropping the act's press registration (or the occupant scan that fills the
+/// target) leaves the queue empty and emits zero messages, failing the asserts.
+#[test]
+fn pressing_exit_emits_exit_emplacement_requested_for_manned_mount() {
+    let mut app = battle_running_app();
+    add_exit_probe(&mut app);
+    let actor = spawn_emplacement_actor(&mut app, 5, 5, 0);
+    // The selection IS the recorded occupant of this co-located emplacement — the Exit offer.
+    let emplacement = spawn_emplacement(&mut app, 5, 5, EmplacementState::Occupied, Some(actor));
+
+    // First update: detection reveals the Exit button + fills the emplacement offer.
+    app.update();
+    assert!(
+        exit_emplacement_visible(&mut app),
+        "sanity: the Exit button is offered before the press",
+    );
+    let Some(exit_btn) = single_with::<ExitEmplacementButton>(&mut app) else {
+        // The button must exist by construction; bail without a panic (restriction lints deny
+        // `panic!` even in tests). A missing button trips the `exit_emplacement_visible` assert.
+        return;
+    };
+
+    // Drive the press, then update: the generic press router pushes the offered emplacement and
+    // the act's generic drain emits ExitEmplacementRequested the SAME update.
+    press_button(&mut app, exit_btn);
+    app.update();
+
+    let emitted = exit_requests(&app);
+    assert_eq!(
+        emitted.len(),
+        1,
+        "pressing Exit while manning must emit exactly one ExitEmplacementRequested",
+    );
+    assert_eq!(emitted[0].actor, actor, "the actor is the SelectedShooter");
+    assert_eq!(
+        emitted[0].emplacement, emplacement,
+        "the emplacement is the carried manned mount",
     );
 }
 
@@ -1342,8 +1555,8 @@ fn throw_visible(app: &mut App) -> bool {
 #[derive(Resource, Default)]
 struct ThrowProbe(Vec<ThrowGrenadeRequested>);
 
-/// Adds the [`ThrowGrenadeRequested`] probe, running AFTER the intent drain so it observes the
-/// SAME update's emitted message (the `add_execute_probe` idiom — its own `MessageReader` cursor is
+/// Adds the [`ThrowGrenadeRequested`] probe, running AFTER the contextual drain set so it
+/// observes the SAME update's emitted message (the `add_execute_probe` idiom — its own `MessageReader` cursor is
 /// independent of the sim's `dispatch_throw_grenade`, so it reads every drained message even though
 /// the sim consumes it too).
 fn add_throw_probe(app: &mut App) {
@@ -1353,7 +1566,7 @@ fn add_throw_probe(app: &mut App) {
         (|mut r: MessageReader<ThrowGrenadeRequested>, mut p: ResMut<ThrowProbe>| {
             p.0.extend(r.read().copied());
         })
-        .after(gdtf_battle_input::dispatch_act_intents),
+        .after(ContextualActSystems::Drain),
     );
 }
 
@@ -1431,13 +1644,13 @@ fn straight_weapon_or_no_hover_does_not_offer_throw() {
 }
 
 /// PRESS → INTENT: with a Throw target offered (an `Arc` weapon + a hovered cell), pressing the
-/// Throw button drives the REAL stack (button -> `ActIntent::ThrowGrenade(at)` -> the ONE
-/// `dispatch_act_intents` drain) to emit exactly one `ThrowGrenadeRequested` for the
-/// `SelectedShooter` as thrower over the carried HOVERED cell (GTW-546) — driven THROUGH the
-/// button/intent path, NOT a synthetic emit.
+/// Throw button drives the REAL stack (button -> the generic press router ->
+/// `PendingContextualIntents<ThrowGrenadeAct>` -> the act's generic drain) to emit exactly one
+/// `ThrowGrenadeRequested` for the `SelectedShooter` as thrower over the carried HOVERED cell
+/// (GTW-546) — driven THROUGH the button/press path, NOT a synthetic emit.
 ///
-/// Pin-discriminating: dropping the Throw arm in `contextual_button_intents` (or the detection that
-/// fills the target) leaves the queue empty and emits zero messages, failing the asserts.
+/// Pin-discriminating: dropping the act's press registration (or the offer scan that fills the
+/// target) leaves the queue empty and emits zero messages, failing the asserts.
 #[test]
 fn pressing_throw_emits_throw_grenade_requested_for_hovered_cell() {
     let mut app = battle_running_app();
@@ -1459,9 +1672,9 @@ fn pressing_throw_emits_throw_grenade_requested_for_hovered_cell() {
     };
 
     // Re-seed the hovered cell (the headless picker overwrites InspectTarget each update with no
-    // live cursor), then drive the press + update: detection (ordered first) re-fills the throw
-    // target from this hover, contextual_button_intents pushes ThrowGrenade(at), and the ONE drain
-    // (ordered after it) emits ThrowGrenadeRequested the SAME update.
+    // live cursor), then drive the press + update: the offer scan (the Offer set precedes the
+    // picker) re-fills the throw target from this hover, the generic press router pushes it, and
+    // the act's generic drain emits ThrowGrenadeRequested the SAME update.
     hover_cell(&mut app, 15, 15);
     press_button(&mut app, throw_btn);
     app.update();

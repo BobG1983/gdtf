@@ -1,80 +1,70 @@
-//! Spawns + despawns the battlescape CONTEXTUAL PANEL (GTW-294).
+//! Spawns + despawns the battlescape CONTEXTUAL PANEL's root box (GTW-294; the per-act
+//! buttons are spawned generically since GTW-571).
 //!
-//! [`spawn_contextual_panel`] runs `OnEnter(BattleScapeState::BattleRunning)` and builds the
-//! bottom-RIGHT contextual cluster (per the `docs/ui_mockups/battlescape_mockup.png`
-//! bottom-right corner — "Contextual Buttons go Here", to the right of the Stance column). It
-//! spawns a BARE themed [`spawn_panel`] box ([`ContextualPanelRoot`]) anchored to the window's
-//! bottom-right corner with responsive units, holding themed [`spawn_button`] buttons stacked in
-//! a column — **Execute**, **Stabilize**, **Melee** (GTW-507), **Shove** (GTW-525), **Open Door**
-//! — each carrying its marker. The panel box AND every button spawn
-//! [`Visibility::Hidden`](bevy::render::view::Visibility): this system only builds the tree. The
-//! live `detect_contextual_targets` system (registered by the plugin) fills [`ContextualTargets`]
-//! each update and toggles the box + each button's `Visibility` IN PLACE when a valid neighbour
-//! is in reach, and `contextual_button_intents` routes a press to the shared act-intent seam.
-//! Execute + Stabilize + Melee are live; Open Door stays hidden (no sim verb yet — see below).
+//! [`spawn_contextual_panel`] runs `OnEnter(BattleScapeState::BattleRunning)` (in the
+//! spawn band's `Root` set) and builds the bottom-RIGHT panel BOX only — a BARE themed
+//! [`spawn_panel`] node ([`ContextualPanelRoot`]) anchored to the window's bottom-right
+//! corner with responsive units. Each registered act's generic
+//! [`spawn_contextual_button`](super::spawn_contextual_button) then parents its themed
+//! button under this root (the `Buttons` set), and the deterministic
+//! [`order_contextual_buttons`](super::order_contextual_buttons) pass sorts the column
+//! (the `Order` set). The box spawns
+//! [`Visibility::Hidden`](bevy::camera::visibility::Visibility): the act-agnostic
+//! `sync_panel_root_visibility` pass reveals it iff ANY act button is visible.
 //!
 //! ## Why a `GlobalZIndex` above the bottom bar (the GTW-294 occlusion fix)
 //!
-//! The contextual panel is anchored bottom-RIGHT, which lands INSIDE the bottom bar's full-width
-//! opaque footprint. The bottom bar is a `GlobalZIndex(10)` opaque panel; with NO `GlobalZIndex`
-//! (default `0`) this panel drew BEHIND it and rendered zero pixels — the GTW-294 occlusion bug,
-//! proven by a runtime probe (the panel resolved the SAME UI camera as the bar, was parented,
-//! on-screen, sized, and `Visible`, yet nothing rendered because the opaque bar painted over it).
-//! The fix mirrors the bottom-bar / weapon-panel precedent: a BARE absolute root carrying a
-//! [`GlobalZIndex`](bevy::ui::GlobalZIndex) — here
-//! [`CONTEXTUAL_PANEL_Z`] (`20`), strictly above the bar (`10`) and the on-bar weapon + stance
-//! cluster (`11`) — so the whole panel subtree (root box + buttons) stacks on top of the bar. A
-//! bare visible root resolves the UI camera fine (the bottom bar proves it), so NO wrapper is
-//! needed.
+//! The contextual panel is anchored bottom-RIGHT, which lands INSIDE the bottom bar's
+//! full-width opaque footprint. The bottom bar is a `GlobalZIndex(10)` opaque panel;
+//! with NO `GlobalZIndex` (default `0`) this panel drew BEHIND it and rendered zero
+//! pixels — the GTW-294 occlusion bug, proven by a runtime probe (the panel resolved
+//! the SAME UI camera as the bar, was parented, on-screen, sized, and `Visible`, yet
+//! nothing rendered because the opaque bar painted over it). The fix mirrors the
+//! bottom-bar / weapon-panel precedent: a BARE absolute root carrying
+//! [`GlobalZIndex`](bevy::ui::GlobalZIndex)`(`[`CONTEXTUAL_PANEL_Z`]`)` (`20`), strictly
+//! above the bar (`10`) and the on-bar weapon + stance cluster (`11`), so the whole
+//! panel subtree stacks on top of the bar. A bare visible root resolves the UI camera
+//! fine (the bottom bar proves it), so NO wrapper is needed.
 //!
-//! [`despawn_contextual_panel`] runs `OnExit(BattleScapeState::BattleRunning)` and recursively
-//! despawns the whole subtree by the [`ContextualPanelRoot`] marker (the root owns the three
-//! buttons) — battle-scoped, mirroring the sibling action-bar / bottom-bar / weapon-panel
-//! lifecycle (the battlescape neighborhood uses explicit `OnExit` cleanup, not `DespawnOnExit`
-//! state-scoping).
+//! [`despawn_contextual_panel`] runs `OnExit(BattleScapeState::BattleRunning)` and
+//! recursively despawns the whole subtree by the [`ContextualPanelRoot`] marker (the
+//! root owns the act buttons) — battle-scoped, mirroring the sibling action-bar /
+//! bottom-bar / weapon-panel lifecycle (the battlescape neighborhood uses explicit
+//! `OnExit` cleanup, not `DespawnOnExit` state-scoping).
 //!
-//! The panel renders on the GTW-120 UI camera for free: a `bevy_ui` [`Node`] / [`Button`] tree
-//! with NO [`RenderLayers`](bevy::camera::visibility::RenderLayers) is routed by `bevy_ui` to
-//! the highest-order camera = the UI camera (`bevy-traps.md` #6).
+//! The panel renders on the GTW-120 UI camera for free: a `bevy_ui` [`Node`] /
+//! [`Button`] tree with NO [`RenderLayers`](bevy::camera::visibility::RenderLayers) is
+//! routed by `bevy_ui` to the highest-order camera = the UI camera (`bevy-traps.md` #6).
 
 use bevy::{
     prelude::*,
     ui::{GlobalZIndex, Node, PositionType, Val},
 };
-use gdtf_ui::{ButtonLabel, spawn_button, spawn_panel, theme::GdtfTheme};
+use gdtf_ui::{spawn_panel, theme::GdtfTheme};
 
 use crate::states::running::game::battlescape::contextual_panel::components::{
     CONTEXTUAL_PANEL_BOTTOM_VH, CONTEXTUAL_PANEL_RIGHT_VW, CONTEXTUAL_PANEL_ROW_GAP_VH,
-    CONTEXTUAL_PANEL_WIDTH_VW, CONTEXTUAL_PANEL_Z, ContextualPanelRoot, EnterEmplacementButton,
-    ExecuteButton, ExitEmplacementButton, MeleeButton, OpenDoorButton, ShoveButton,
-    StabilizeButton, ThrowGrenadeButton,
+    CONTEXTUAL_PANEL_WIDTH_VW, CONTEXTUAL_PANEL_Z, ContextualPanelRoot,
 };
 
-/// Builds the contextual-panel tree on `OnEnter(BattleScapeState::BattleRunning)`.
+/// Builds the contextual panel's ROOT box on `OnEnter(BattleScapeState::BattleRunning)`
+/// — the spawn band's `Root` stage; the per-act generic button spawns follow it.
 ///
 /// Reads the live [`GdtfTheme`] as `Option<Res<GdtfTheme>>` and no-ops if it is absent
-/// (`bevy-traps.md` #1 — in the running app the theme is present by the time a battle starts;
-/// the action-bar / bottom-bar precedent). With the theme present it:
+/// (`bevy-traps.md` #1 — in the running app the theme is present by the time a battle
+/// starts; the action-bar / bottom-bar precedent). With the theme present it spawns the
+/// panel BOX via [`spawn_panel`] (a `Themed(Panel)` box) as the BARE root, tags it
+/// [`ContextualPanelRoot`], and mutates its [`Node`] (via `entry::<Node>().and_modify`,
+/// so the `spawn_panel` box border / padding survive) into the bottom-RIGHT anchor: a
+/// [`PositionType::Absolute`] column inset off the WINDOW's right + bottom edges by the
+/// responsive [`CONTEXTUAL_PANEL_RIGHT_VW`] / [`CONTEXTUAL_PANEL_BOTTOM_VH`], at the
+/// responsive width [`CONTEXTUAL_PANEL_WIDTH_VW`] with `height: Auto` (fits its
+/// buttons) and a [`CONTEXTUAL_PANEL_ROW_GAP_VH`] inter-button gap. It carries
+/// [`GlobalZIndex`](bevy::ui::GlobalZIndex)`(`[`CONTEXTUAL_PANEL_Z`]`)` (the GTW-294
+/// occlusion fix — see the module doc) and spawns
+/// [`Visibility::Hidden`](bevy::camera::visibility::Visibility).
 ///
-/// 1. Spawns the panel BOX via [`spawn_panel`] (a `Themed(Panel)` box) as the BARE root, tags it
-///    [`ContextualPanelRoot`], and mutates its [`Node`] (via `entry::<Node>().and_modify`, so the
-///    `spawn_panel` box border / padding survive) into the bottom-RIGHT anchor: a
-///    [`PositionType::Absolute`] column inset off the WINDOW's right + bottom edges by the
-///    responsive [`CONTEXTUAL_PANEL_RIGHT_VW`] / [`CONTEXTUAL_PANEL_BOTTOM_VH`], at the responsive
-///    width [`CONTEXTUAL_PANEL_WIDTH_VW`] with `height: Auto` (fits its buttons) and a
-///    [`CONTEXTUAL_PANEL_ROW_GAP_VH`] inter-button gap. It carries
-///    [`GlobalZIndex`](bevy::ui::GlobalZIndex)`(`[`CONTEXTUAL_PANEL_Z`]`)` so the whole panel
-///    subtree stacks ABOVE the opaque bottom bar it overlaps (the GTW-294 occlusion fix — see the
-///    module doc). It is spawned [`Visibility::Hidden`](bevy::render::view::Visibility) — the live
-///    `detect_contextual_targets` system reveals it when a downed neighbour is in reach.
-/// 2. Spawns the themed buttons — Execute / Stabilize / Melee / Shove / Open Door — each carrying
-///    its marker and each [`Visibility::Hidden`](bevy::render::view::Visibility). The live
-///    `detect_contextual_targets` system reveals Execute / Stabilize / Melee / Shove each only when
-///    its [`ContextualTargets`](super::super::components::ContextualTargets) field is `Some`; Open
-///    Door stays hidden (no sim verb yet — see the in-line note).
-/// 3. Parents the buttons under the panel box (the box is the root).
-///
-/// Param-only (`bevy-traps.md` #7): [`Commands`] for the spawns + the theme read.
+/// Param-only (`bevy-traps.md` #7): [`Commands`] for the spawn + the theme read.
 pub(in crate::states::running::game::battlescape) fn spawn_contextual_panel(
     mut commands: Commands,
     theme: Option<Res<GdtfTheme>>,
@@ -93,7 +83,7 @@ pub(in crate::states::running::game::battlescape) fn spawn_contextual_panel(
     // preserved and only the positioning / layout fields are set. The layout fields survive
     // `apply_theme` (it overrides only the theme-owned border / radius / padding for the Panel
     // role — the action-bar / bottom-bar precedent). Spawned Visibility::Hidden —
-    // `detect_contextual_targets` reveals it when a downed neighbour is in reach.
+    // `sync_panel_root_visibility` reveals it when any act button is visible.
     let panel = spawn_panel(&mut commands, &theme);
     commands
         .entity(panel)
@@ -103,17 +93,17 @@ pub(in crate::states::running::game::battlescape) fn spawn_contextual_panel(
             node.right = Val::Vw(CONTEXTUAL_PANEL_RIGHT_VW);
             node.bottom = Val::Vh(CONTEXTUAL_PANEL_BOTTOM_VH);
             node.width = Val::Vw(CONTEXTUAL_PANEL_WIDTH_VW);
-            // FIT the stacked buttons vertically — the panel is exactly as tall as its three
+            // FIT the stacked buttons vertically — the panel is exactly as tall as its
             // buttons + the inter-button gaps.
             node.height = Val::Auto;
-            // Stack the three buttons in a column with a responsive inter-button gap.
+            // Stack the act buttons in a column with a responsive inter-button gap.
             node.flex_direction = FlexDirection::Column;
             node.row_gap = Val::Vh(CONTEXTUAL_PANEL_ROW_GAP_VH);
         });
     commands.entity(panel).insert((
         ContextualPanelRoot,
-        // Hidden by default — `detect_contextual_targets` reveals the panel only when a downed
-        // neighbour is in reach (`ui-mutate-not-respawn`: it toggles Visibility in place).
+        // Hidden by default — the root visibility pass reveals the panel only when at
+        // least one act is offered (`ui-mutate-not-respawn`: a Visibility toggle in place).
         Visibility::Hidden,
         // Stack the whole panel subtree ABOVE the opaque bottom bar (GlobalZIndex 10) it overlaps,
         // and above the on-bar weapon + stance cluster (GlobalZIndex 11). Without this the panel
@@ -121,101 +111,15 @@ pub(in crate::states::running::game::battlescape) fn spawn_contextual_panel(
         // it (the GTW-294 occlusion bug). GlobalZIndex propagates to the button children.
         GlobalZIndex(CONTEXTUAL_PANEL_Z),
     ));
-
-    // The three contextual buttons — each carries its marker and is hidden by default;
-    // `detect_contextual_targets` reveals Execute / Stabilize when its `ContextualTargets` field
-    // is `Some` (Open Door stays hidden — see the in-line note below).
-    let execute = spawn_button(
-        &mut commands,
-        &theme,
-        ButtonLabel::new("Execute"),
-        (ExecuteButton, Visibility::Hidden),
-    );
-    let stabilize = spawn_button(
-        &mut commands,
-        &theme,
-        ButtonLabel::new("Stabilize"),
-        (StabilizeButton, Visibility::Hidden),
-    );
-    // GTW-507: the DEDICATED Melee button (the D1 ruling — NOT a left-click overload),
-    // mirroring Execute / Stabilize. Spawned Visibility::Hidden; `detect_contextual_targets`
-    // reveals it when an 8-adjacent, alive, in-LOS ENEMY is offered on `ContextualTargets::melee`.
-    let melee = spawn_button(
-        &mut commands,
-        &theme,
-        ButtonLabel::new("Melee"),
-        (MeleeButton, Visibility::Hidden),
-    );
-    // GTW-525: the DEDICATED, UNIVERSAL Shove button (any ganger can shove — NO weapon
-    // requirement), mirroring Melee / Execute / Stabilize. Spawned Visibility::Hidden;
-    // `detect_contextual_targets` reveals it when an 8-adjacent, alive, opposing ganger is offered
-    // on `ContextualTargets::shove` (a WEAKER gate than Melee's — no LOS required).
-    let shove = spawn_button(
-        &mut commands,
-        &theme,
-        ButtonLabel::new("Shove"),
-        (ShoveButton, Visibility::Hidden),
-    );
-    // The Open-Door button is spawned but DELIBERATELY stays hidden and inert: the Open-Door
-    // act has no sim verb yet because the model has no door / interactable-object concept (the
-    // sim's `downed_acts` ships only Execute + Stabilize). `detect_contextual_targets` therefore
-    // never offers an Open-Door target, so this button is never revealed and never routes an
-    // intent. Delivering the door/interactable model + its act is out of scope for GTW-294.
-    // TODO(GTW-315): Open-Door act needs door/interactable objects; button stays hidden until then.
-    let open_door = spawn_button(
-        &mut commands,
-        &theme,
-        ButtonLabel::new("Open Door"),
-        (OpenDoorButton, Visibility::Hidden),
-    );
-    // GTW-543: the DEDICATED Enter / Exit Emplacement buttons, mirroring Open Door. Spawned
-    // Visibility::Hidden; `detect_contextual_targets` reveals Enter when an 8-adjacent VACANT
-    // emplacement is offered on `ContextualTargets::enter_emplacement`, and Exit ONLY when the
-    // selection is the occupant of an emplacement (`ContextualTargets::exit_emplacement`).
-    let enter_emplacement = spawn_button(
-        &mut commands,
-        &theme,
-        ButtonLabel::new("Enter"),
-        (EnterEmplacementButton, Visibility::Hidden),
-    );
-    let exit_emplacement = spawn_button(
-        &mut commands,
-        &theme,
-        ButtonLabel::new("Exit"),
-        (ExitEmplacementButton, Visibility::Hidden),
-    );
-    // GTW-546: the DEDICATED Throw button, mirroring the Enter / Exit buttons. Spawned
-    // Visibility::Hidden; `detect_contextual_targets` reveals it when the selection wields a
-    // `TrajectoryStyle::Arc` weapon and a target cell is hovered (a BLIND lob — no adjacency / LOS
-    // gate) on `ContextualTargets::throw_grenade`.
-    let throw_grenade = spawn_button(
-        &mut commands,
-        &theme,
-        ButtonLabel::new("Throw"),
-        (ThrowGrenadeButton, Visibility::Hidden),
-    );
-
-    // Parent the buttons under the panel BOX (the root) — they inherit its resolved
-    // UI-camera target and its `GlobalZIndex`, so the whole subtree draws above the bottom bar.
-    commands.entity(panel).add_children(&[
-        execute,
-        stabilize,
-        melee,
-        shove,
-        open_door,
-        enter_emplacement,
-        exit_emplacement,
-        throw_grenade,
-    ]);
 }
 
 /// Despawns the contextual panel on `OnExit(BattleScapeState::BattleRunning)`.
 ///
-/// Recursively despawns the [`ContextualPanelRoot`] entity (and so its three button children) so
-/// the whole subtree is gone the moment the battle leaves `BattleRunning` — battle-scoped
-/// lifecycle. The battlescape neighborhood cleans up explicitly on `OnExit` rather than via
-/// `DespawnOnExit` markers, so this mirrors that. Param-only (`bevy-traps.md` #7): [`Commands`] +
-/// a `Query<Entity, With<ContextualPanelRoot>>`.
+/// Recursively despawns the [`ContextualPanelRoot`] entity (and so its act-button
+/// children) so the whole subtree is gone the moment the battle leaves `BattleRunning`
+/// — battle-scoped lifecycle. The battlescape neighborhood cleans up explicitly on
+/// `OnExit` rather than via `DespawnOnExit` markers, so this mirrors that. Param-only
+/// (`bevy-traps.md` #7): [`Commands`] + a `Query<Entity, With<ContextualPanelRoot>>`.
 pub(in crate::states::running::game::battlescape) fn despawn_contextual_panel(
     mut commands: Commands,
     roots: Query<Entity, With<ContextualPanelRoot>>,

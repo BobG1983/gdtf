@@ -36,7 +36,12 @@ use bevy::{
 };
 use gdtf_battle_input::{
     ActIntent, BoundKey, GdtfBattleInputPlugin, InspectTarget, Keybinds, PathPreviewTarget,
-    PendingActIntent, SelectedFireMode, SelectedShooter, next_facing, next_stance,
+    PendingActIntent, SelectedFireMode, SelectedShooter,
+    contextual::{
+        EnterEmplacementAct, ExecuteAct, ExitEmplacementAct, OpenDoorAct, PendingContextualIntents,
+        StabilizeAct,
+    },
+    next_facing, next_stance,
 };
 use gdtf_battle_presenter::{ActiveLevel, ViewMode, WorldCamera};
 use gdtf_battle_sim::{
@@ -894,16 +899,19 @@ fn reload_intent_emits_one_reload_requested_for_the_selection() {
 }
 
 // ---------------------------------------------------------------------------------
-// GTW-294 — pushing ActIntent::Execute / ActIntent::Stabilize emits exactly one
+// GTW-294 / GTW-571 — pushing a target onto the per-act contextual queues
+// (PendingContextualIntents<ExecuteAct> / <StabilizeAct>) emits exactly one
 // ExecuteDownedRequested / StabilizeDownedRequested for the SelectedShooter as the actor
 // over the carried downed target; with the selection cleared, nothing is written.
 // ---------------------------------------------------------------------------------
 
-/// GTW-294 — pushing `ActIntent::Execute(target)` and `ActIntent::Stabilize(target)` with
-/// a selected shooter emits EXACTLY one `ExecuteDownedRequested { actor, target }` and one
-/// `StabilizeDownedRequested { actor, target }` through the `dispatch_act_intents` drain,
-/// the actor being the `*SelectedShooter` and the target the carried downed entity (the
-/// downed-target affordance surrogate, over the SAME seam the other intents use).
+/// GTW-294 / GTW-571 — pushing `target` onto `PendingContextualIntents<ExecuteAct>` and
+/// `<StabilizeAct>` with a selected shooter emits EXACTLY one
+/// `ExecuteDownedRequested { actor, target }` and one
+/// `StabilizeDownedRequested { actor, target }` through the per-act generic
+/// `drain_contextual_intents` drains, the actor being the `*SelectedShooter` and the
+/// target the carried downed entity (the downed-target affordance surrogate, over the
+/// GTW-571 per-act contextual seam).
 #[test]
 fn downed_intents_emit_requests_for_selection_over_carried_target() {
     let mut app = acts_app();
@@ -920,11 +928,11 @@ fn downed_intents_emit_requests_for_selection_over_carried_target() {
     let target = app.world_mut().spawn(ENEMY_FACTION).id();
 
     app.world_mut()
-        .resource_mut::<PendingActIntent>()
-        .push(ActIntent::Execute(target));
+        .resource_mut::<PendingContextualIntents<ExecuteAct>>()
+        .push(target);
     app.world_mut()
-        .resource_mut::<PendingActIntent>()
-        .push(ActIntent::Stabilize(target));
+        .resource_mut::<PendingContextualIntents<StabilizeAct>>()
+        .push(target);
     app.update();
 
     let executes = app
@@ -970,11 +978,11 @@ fn downed_intents_emit_nothing_without_selection() {
     app.world_mut().insert_resource(SelectedShooter::cleared());
 
     app.world_mut()
-        .resource_mut::<PendingActIntent>()
-        .push(ActIntent::Execute(target));
+        .resource_mut::<PendingContextualIntents<ExecuteAct>>()
+        .push(target);
     app.world_mut()
-        .resource_mut::<PendingActIntent>()
-        .push(ActIntent::Stabilize(target));
+        .resource_mut::<PendingContextualIntents<StabilizeAct>>()
+        .push(target);
     app.update();
 
     assert!(
@@ -992,17 +1000,18 @@ fn downed_intents_emit_nothing_without_selection() {
 }
 
 // ---------------------------------------------------------------------------------
-// GTW-315 — pushing ActIntent::OpenDoor emits exactly one OpenDoorRequested for the
-// SelectedShooter as the actor over the carried door; with no selection, nothing is
-// written (the drain resolves the actor from the selection).
+// GTW-315 / GTW-571 — pushing a door onto PendingContextualIntents<OpenDoorAct> emits
+// exactly one OpenDoorRequested for the SelectedShooter as the actor over the carried
+// door; with no selection, nothing is written (the drain resolves the actor from the
+// selection).
 // ---------------------------------------------------------------------------------
 
-/// GTW-315 — pushing `ActIntent::OpenDoor(door)` with a selected player actor emits EXACTLY
-/// one `OpenDoorRequested { actor, door }` through the `dispatch_act_intents` drain, the actor
-/// being the `*SelectedShooter` and the door the carried openable entity (the Open-Door
-/// affordance surrogate, over the SAME seam the other contextual intents use). The sim's
-/// `dispatch_open_door` gate (CLOSED + 8-adjacent + affords `OpenDoorTu`) is the authoritative
-/// check, not this seam.
+/// GTW-315 / GTW-571 — pushing `door` onto `PendingContextualIntents<OpenDoorAct>` with a
+/// selected player actor emits EXACTLY one `OpenDoorRequested { actor, door }` through the
+/// act's generic `drain_contextual_intents` drain, the actor being the `*SelectedShooter`
+/// and the door the carried openable entity (the Open-Door affordance surrogate, over the
+/// GTW-571 per-act contextual seam). The sim's `dispatch_open_door` gate (CLOSED +
+/// 8-adjacent + affords `OpenDoorTu`) is the authoritative check, not this seam.
 #[test]
 fn open_door_intent_emits_request_for_selection_over_carried_door() {
     let mut app = acts_app();
@@ -1019,8 +1028,8 @@ fn open_door_intent_emits_request_for_selection_over_carried_door() {
     let door = app.world_mut().spawn_empty().id();
 
     app.world_mut()
-        .resource_mut::<PendingActIntent>()
-        .push(ActIntent::OpenDoor(door));
+        .resource_mut::<PendingContextualIntents<OpenDoorAct>>()
+        .push(door);
     app.update();
 
     let opens = app
@@ -1051,8 +1060,8 @@ fn open_door_intent_emits_nothing_without_selection() {
     app.world_mut().insert_resource(SelectedShooter::cleared());
 
     app.world_mut()
-        .resource_mut::<PendingActIntent>()
-        .push(ActIntent::OpenDoor(door));
+        .resource_mut::<PendingContextualIntents<OpenDoorAct>>()
+        .push(door);
     app.update();
 
     assert!(
@@ -1064,18 +1073,20 @@ fn open_door_intent_emits_nothing_without_selection() {
 }
 
 // ---------------------------------------------------------------------------------
-// GTW-543 — pushing ActIntent::EnterEmplacement / ActIntent::ExitEmplacement emits
-// exactly one EnterEmplacementRequested / ExitEmplacementRequested for the
-// SelectedShooter as the actor over the carried emplacement; with no selection nothing
-// is written (the drain resolves the actor from the selection).
+// GTW-543 / GTW-571 — pushing an emplacement onto the per-act contextual queues
+// (PendingContextualIntents<EnterEmplacementAct> / <ExitEmplacementAct>) emits exactly
+// one EnterEmplacementRequested / ExitEmplacementRequested for the SelectedShooter as
+// the actor over the carried emplacement; with no selection nothing is written (the
+// drain resolves the actor from the selection).
 // ---------------------------------------------------------------------------------
 
-/// GTW-543 — pushing `ActIntent::EnterEmplacement(emplacement)` with a selected player actor emits
-/// EXACTLY one `EnterEmplacementRequested { actor, emplacement }` through the `dispatch_act_intents`
-/// drain, the actor being the `*SelectedShooter` and the emplacement the carried terrain entity (the
-/// Enter affordance surrogate, over the SAME seam the other contextual intents use). The sim's
-/// `dispatch_enter_emplacement` gate (VACANT + 8-adjacent + affords `EnterEmplacementTu`) is the
-/// authoritative check, not this seam.
+/// GTW-543 / GTW-571 — pushing `emplacement` onto
+/// `PendingContextualIntents<EnterEmplacementAct>` with a selected player actor emits
+/// EXACTLY one `EnterEmplacementRequested { actor, emplacement }` through the act's generic
+/// `drain_contextual_intents` drain, the actor being the `*SelectedShooter` and the
+/// emplacement the carried terrain entity (the Enter affordance surrogate, over the GTW-571
+/// per-act contextual seam). The sim's `dispatch_enter_emplacement` gate (VACANT +
+/// 8-adjacent + affords `EnterEmplacementTu`) is the authoritative check, not this seam.
 #[test]
 fn enter_emplacement_intent_emits_request_for_selection_over_carried_emplacement() {
     let mut app = acts_app();
@@ -1092,8 +1103,8 @@ fn enter_emplacement_intent_emits_request_for_selection_over_carried_emplacement
     let emplacement = app.world_mut().spawn_empty().id();
 
     app.world_mut()
-        .resource_mut::<PendingActIntent>()
-        .push(ActIntent::EnterEmplacement(emplacement));
+        .resource_mut::<PendingContextualIntents<EnterEmplacementAct>>()
+        .push(emplacement);
     app.update();
 
     let enters = app
@@ -1124,8 +1135,8 @@ fn enter_emplacement_intent_emits_nothing_without_selection() {
     app.world_mut().insert_resource(SelectedShooter::cleared());
 
     app.world_mut()
-        .resource_mut::<PendingActIntent>()
-        .push(ActIntent::EnterEmplacement(emplacement));
+        .resource_mut::<PendingContextualIntents<EnterEmplacementAct>>()
+        .push(emplacement);
     app.update();
 
     assert!(
@@ -1136,12 +1147,14 @@ fn enter_emplacement_intent_emits_nothing_without_selection() {
     );
 }
 
-/// GTW-543 — pushing `ActIntent::ExitEmplacement(emplacement)` with a selected player actor emits
-/// EXACTLY one `ExitEmplacementRequested { actor, emplacement }` through the `dispatch_act_intents`
-/// drain, the actor being the `*SelectedShooter` and the emplacement the carried terrain entity (the
-/// Exit affordance surrogate, over the SAME seam). The sim's `dispatch_exit_emplacement` gate (the
-/// recorded occupant IS the actor + affords `ExitEmplacementTu`) is the authoritative check, not
-/// this seam.
+/// GTW-543 / GTW-571 — pushing `emplacement` onto
+/// `PendingContextualIntents<ExitEmplacementAct>` with a selected player actor emits EXACTLY
+/// one `ExitEmplacementRequested { actor, emplacement }` through the act's generic
+/// `drain_contextual_intents` drain, the actor being the `*SelectedShooter` and the
+/// emplacement the carried terrain entity (the Exit affordance surrogate, over the GTW-571
+/// per-act contextual seam). The sim's `dispatch_exit_emplacement` gate (the recorded
+/// occupant IS the actor + affords `ExitEmplacementTu`) is the authoritative check, not this
+/// seam.
 #[test]
 fn exit_emplacement_intent_emits_request_for_selection_over_carried_emplacement() {
     let mut app = acts_app();
@@ -1156,8 +1169,8 @@ fn exit_emplacement_intent_emits_request_for_selection_over_carried_emplacement(
     let emplacement = app.world_mut().spawn_empty().id();
 
     app.world_mut()
-        .resource_mut::<PendingActIntent>()
-        .push(ActIntent::ExitEmplacement(emplacement));
+        .resource_mut::<PendingContextualIntents<ExitEmplacementAct>>()
+        .push(emplacement);
     app.update();
 
     let exits = app
@@ -1186,8 +1199,8 @@ fn exit_emplacement_intent_emits_nothing_without_selection() {
     app.world_mut().insert_resource(SelectedShooter::cleared());
 
     app.world_mut()
-        .resource_mut::<PendingActIntent>()
-        .push(ActIntent::ExitEmplacement(emplacement));
+        .resource_mut::<PendingContextualIntents<ExitEmplacementAct>>()
+        .push(emplacement);
     app.update();
 
     assert!(

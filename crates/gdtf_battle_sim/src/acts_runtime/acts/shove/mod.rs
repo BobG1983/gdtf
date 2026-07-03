@@ -7,7 +7,7 @@
 //! §Falls; the GTW-525 settled design):
 //!
 //! - **The deliberate SHOVE act** (any ganger — NOT weapon-gated): the input seam's
-//!   `ActIntent::Shove` writes a [`ShoveRequested`](crate::acts::request::ShoveRequested)
+//!   contextual Shove press writes a [`ShoveRequested`](crate::acts::request::ShoveRequested)
 //!   `{ shover, target, Deliberate }`; [`dispatch_shove`] gates 8-adjacency + opposing + alive
 //!   and spends the [`ShoveTu`](crate::tuning::ShoveTu) leaf.
 //! - **The `shove` WEAPON-TAG auto-shove** (any weapon, MELEE or RANGED): a CONNECTING attack

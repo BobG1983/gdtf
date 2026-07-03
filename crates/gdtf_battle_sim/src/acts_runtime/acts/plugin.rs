@@ -118,7 +118,7 @@ fn register_messages(app: &mut App) {
         .add_message::<MoveRequested>()
         .add_message::<ReloadRequested>()
         // GTW-315: the OPEN-DOOR act's input message — drained by dispatch_open_door. The
-        // player-only contextual Open-Door button writes it (input seam -> ActIntent::OpenDoor).
+        // player-only contextual Open-Door button writes it (the input seam's per-act queue).
         // Registering the buffer here makes dispatch_open_door's MessageReader<OpenDoorRequested>
         // param valid (bevy-traps.md #4 / #5).
         .add_message::<OpenDoorRequested>()
@@ -137,8 +137,8 @@ fn register_messages(app: &mut App) {
         .add_message::<EnterEmplacementRequested>()
         .add_message::<ExitEmplacementRequested>()
         // GTW-546: the THROW-GRENADE act's input message — drained by dispatch_throw_grenade.
-        // The player-only contextual Throw button writes it (input seam -> ActIntent::ThrowGrenade,
-        // the SeamApp phase). Registering the buffer here makes dispatch_throw_grenade's
+        // The player-only contextual Throw button writes it (the input seam's per-act queue).
+        // Registering the buffer here makes dispatch_throw_grenade's
         // MessageReader<ThrowGrenadeRequested> param valid (bevy-traps.md #4 / #5).
         .add_message::<ThrowGrenadeRequested>()
         // GTW-546: dispatch_throw_grenade emits ThrowResolved per resolved throw (the presenter's
@@ -163,7 +163,7 @@ fn register_messages(app: &mut App) {
         .add_message::<MeleeRequested>()
         .add_message::<MeleeResolved>()
         // GTW-525: the SHOVE act's input message — drained by dispatch_shove. Carries the
-        // deliberate act (input seam -> ActIntent::Shove) AND the weapon-tag auto-shove the
+        // deliberate act (the input seam's contextual Shove press) AND the weapon-tag auto-shove the
         // melee / fire connect hooks write internally. Registering the buffer here makes
         // dispatch_shove's MessageReader<ShoveRequested> param valid (bevy-traps.md #4/#5).
         .add_message::<ShoveRequested>()

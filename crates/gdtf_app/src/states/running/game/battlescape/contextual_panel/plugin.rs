@@ -1,75 +1,107 @@
-//! The contextual-panel scene-plugin (GTW-294).
+//! The contextual-panel scene-plugin (GTW-294; generic per-act registration since
+//! GTW-571).
 //!
-//! Registers the battle-scoped contextual cluster in the battlescape neighborhood, beside the
-//! action-bar / bottom-bar / weapon-panel plugins:
+//! Registers the battle-scoped contextual cluster in the battlescape neighborhood,
+//! beside the action-bar / bottom-bar / weapon-panel plugins:
 //!
-//! - **Lifecycle** (mirrors the sibling action bar / bottom bar) — `spawn_contextual_panel`
-//!   `OnEnter(BattleScapeState::BattleRunning)`, `despawn_contextual_panel`
-//!   `OnExit(BattleScapeState::BattleRunning)`, so the panel exists only during the live
-//!   tactical layer (NOT the whole `GameState::BattleScape`).
-//! - **Target resource** — `init_resource::<ContextualTargets>` inserts the
-//!   [`ContextualTargets`] seam the detection system writes each update (its default is the
-//!   `None` / `None` no-offer state).
-//! - **Detection** — `detect_contextual_targets` runs in `Update` gated
-//!   `run_if(resource_exists::<BattleInProgress>)` (the SAME live-battle witness the input +
-//!   presenter gate on, `bevy-traps.md` #1). It reads the selection, finds the actionable
-//!   downed neighbours, writes [`ContextualTargets`], and toggles the panel root + each
-//!   button's `Visibility` IN PLACE (never despawning the scaffold — `ui-mutate-not-respawn`).
-//! - **Press routing** — `contextual_button_intents` runs in `Update` under the same gate and
-//!   ordered `.before(dispatch_act_intents)` (the action-bar precedent, `bevy-traps.md` #3): a
-//!   press queued this update is drained this update. It pushes a target-carrying
-//!   `ActIntent::Execute` / `ActIntent::Stabilize` onto the shared 222a
-//!   [`PendingActIntent`](gdtf_battle_input::PendingActIntent) seam — the ONE
-//!   `dispatch_act_intents` drain interprets it (the bar / keys' parallel-surface, single-drain
-//!   contract). It is ordered `.after(detect_contextual_targets)` so a press reads the SAME
-//!   update's freshly-detected target.
+//! - **Set vocabulary** — [`configure_contextual_panel_sets`] configures the panel's
+//!   `SystemSet`s ONCE (P5): the Update chain `Offer -> Toggle -> Press` (a press reads
+//!   the SAME update's freshly-scanned offer), `Offer.before(pick_hovered_cell)` (the
+//!   consumers-read-the-hover-before-the-picker-rewrites-it idiom), `Press.before(`the
+//!   input layer's [`ContextualActSystems::Drain`](gdtf_battle_input::contextual::ContextualActSystems)`)`
+//!   (the Q5 same-frame press -> `*Requested` edge), and the `OnEnter` chain
+//!   `Root -> Buttons -> Order`.
+//! - **Lifecycle** (mirrors the sibling action bar / bottom bar) —
+//!   `spawn_contextual_panel` (the root box) `OnEnter(BattleScapeState::BattleRunning)`,
+//!   the per-act generic button spawns after it, the deterministic
+//!   `order_contextual_buttons` re-parent last, and `despawn_contextual_panel`
+//!   `OnExit(BattleScapeState::BattleRunning)` — the panel exists only during the live
+//!   tactical layer.
+//! - **Per-act registration** — ONE
+//!   [`add_contextual_act_button`](ContextualPanelActAppExt::add_contextual_act_button)
+//!   line per contextual act stamps the act's offer resource + generic spawn / toggle /
+//!   press systems over its descriptor (GTW-571 C1; see
+//!   `docs/authoring/contextual-act-recipe.md` for the add-an-act recipe).
+//! - **Root visibility** — the act-agnostic `sync_panel_root_visibility` pass shows the
+//!   panel box iff ANY act button is visible, ordered `.after` the per-act toggles.
 //!
-//! View-only — it owns no sim/input state; it reads the input selection + writes the shared
-//! intent seam, never a sim component directly.
+//! View-only — it owns no sim/input state; it reads the input selection + writes the
+//! per-act [`PendingContextualIntents`](gdtf_battle_input::contextual::PendingContextualIntents)
+//! queues, never a sim component directly (P8 — dispatch is sim-side).
 
 use bevy::prelude::*;
-use gdtf_battle_input::dispatch_act_intents;
+use gdtf_battle_input::contextual::{
+    EnterEmplacementAct, ExecuteAct, ExitEmplacementAct, MeleeAct, OpenDoorAct, ShoveAct,
+    StabilizeAct, ThrowGrenadeAct,
+};
 use gdtf_battle_sim::BattleInProgress;
 
 use crate::states::{
     BattleScapeState,
     running::game::battlescape::contextual_panel::{
-        components::ContextualTargets,
+        acts,
+        registrar::{
+            ContextualPanelActAppExt, ContextualPanelSpawnSystems, ContextualPanelSystems,
+            configure_contextual_panel_sets,
+        },
         systems::{
-            contextual_button_intents, despawn_contextual_panel, detect_contextual_targets,
-            spawn_contextual_panel,
+            despawn_contextual_panel, order_contextual_buttons, spawn_contextual_panel,
+            sync_panel_root_visibility,
         },
     },
 };
 
-/// The contextual-panel scene-plugin — inits the [`ContextualTargets`] seam, spawns / despawns
-/// the bottom-right contextual cluster on the `BattleRunning` boundary, and runs the live
-/// detection + press-routing systems gated on the live-battle witness (GTW-294).
+/// The contextual-panel scene-plugin — configures the panel's set vocabulary, spawns /
+/// despawns the bottom-right cluster on the `BattleRunning` boundary, registers each
+/// contextual act's button slice through the compile-time registrar (ONE line per act),
+/// and runs the act-agnostic root-visibility pass gated on the live-battle witness
+/// (GTW-294 / GTW-571).
 pub(in crate::states::running::game::battlescape) struct ContextualPanelPlugin;
 
 impl Plugin for ContextualPanelPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<ContextualTargets>()
-            .add_systems(
-                OnEnter(BattleScapeState::BattleRunning),
-                spawn_contextual_panel,
+        // The SystemSet vocabulary — configured ONCE (bevy-traps.md #5 / GTW-571 P5).
+        configure_contextual_panel_sets(app);
+
+        app.add_systems(
+            OnEnter(BattleScapeState::BattleRunning),
+            (
+                spawn_contextual_panel.in_set(ContextualPanelSpawnSystems::Root),
+                // The deterministic slot-order re-parent — after every per-act button
+                // spawn (the set chain), so the column order never depends on system
+                // scheduling (bevy-traps.md #3).
+                order_contextual_buttons.in_set(ContextualPanelSpawnSystems::Order),
+            ),
+        )
+        .add_systems(
+            OnExit(BattleScapeState::BattleRunning),
+            despawn_contextual_panel,
+        )
+        .add_systems(
+            Update,
+            // The panel root shows iff ANY act button is visible — ordered after the
+            // per-act toggles so it reads the SAME update's visibility writes.
+            sync_panel_root_visibility
+                .after(ContextualPanelSystems::Toggle)
+                .run_if(resource_exists::<BattleInProgress>),
+        );
+
+        // ONE registration line per contextual act (GTW-571 C1) — each stamps the
+        // generic spawn / toggle / press systems over the act's descriptor and wires
+        // its bespoke offer scan into the Offer set.
+        app.add_contextual_act_button::<ExecuteAct, _>(acts::execute::offer_execute)
+            .add_contextual_act_button::<StabilizeAct, _>(acts::stabilize::offer_stabilize)
+            .add_contextual_act_button::<MeleeAct, _>(acts::melee::offer_melee)
+            .add_contextual_act_button::<ShoveAct, _>(acts::shove::offer_shove)
+            .add_contextual_act_button::<OpenDoorAct, _>(acts::open_door::offer_open_door)
+            .add_contextual_act_button::<EnterEmplacementAct, _>(
+                acts::enter_emplacement::offer_enter_emplacement,
             )
-            .add_systems(
-                OnExit(BattleScapeState::BattleRunning),
-                despawn_contextual_panel,
+            .add_contextual_act_button::<ExitEmplacementAct, _>(
+                acts::exit_emplacement::offer_exit_emplacement,
             )
-            .add_systems(
-                Update,
-                (
-                    detect_contextual_targets,
-                    // Ordered `.after` detection so the press reads the SAME update's target,
-                    // and `.before` the ONE intent drain so a press queued this update is
-                    // drained this update (`bevy-traps.md` #3 — the action-bar precedent).
-                    contextual_button_intents
-                        .after(detect_contextual_targets)
-                        .before(dispatch_act_intents),
-                )
-                    .run_if(resource_exists::<BattleInProgress>),
+            .add_contextual_act_button::<ThrowGrenadeAct, _>(
+                acts::throw_grenade::offer_throw_grenade,
             );
     }
 }

@@ -16,10 +16,8 @@ use gdtf_battle_sim::FloorCostGrid;
 use gdtf_battle_sim::{
     BattleInProgress, OccupancyGrid, PlayerFaction, SquadVisibility, VerticalLinkGraph,
     acts::{
-        EndTurnRequested, EnterEmplacementRequested, ExecuteDownedRequested,
-        ExitEmplacementRequested, FireRequested, MeleeRequested, MoveRequested, OpenDoorRequested,
-        ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
-        ShoveRequested, StabilizeDownedRequested, ThrowGrenadeRequested,
+        EndTurnRequested, FireRequested, MoveRequested, ReloadRequested, SetAimingRequested,
+        SetFacingRequested, SetStanceRequested,
     },
     occupancy_sync::SimSystems,
     setup_battle_on_request,
@@ -32,6 +30,10 @@ use gdtf_battle_sim::{
 use crate::selection::populate_reachable_overlay;
 use crate::{
     InputSystems,
+    contextual::{
+        ContextualActAppExt, EnterEmplacementAct, ExecuteAct, ExitEmplacementAct, MeleeAct,
+        OpenDoorAct, ShoveAct, StabilizeAct, ThrowGrenadeAct, configure_contextual_act_drains,
+    },
     fire_mode::{SelectedFireMode, sync_fire_mode_on_select},
     gamepad::{
         ActivePointer, GamepadCursor, emit_gamepad_cursor_move, gamepad_click_act, gamepad_turn,
@@ -116,10 +118,6 @@ fn battle_act_gate() -> impl SystemCondition<()> {
 }
 
 impl Plugin for GdtfBattleInputPlugin {
-    #[expect(
-        clippy::too_many_lines,
-        reason = "plugin build: each line registers a system; extracting further improves nothing"
-    )]
     fn build(&self, app: &mut App) {
         // GTW-245 — anchor the whole input band BEFORE the sim band, realizing the
         // one-way `input -> sim -> presenter` loop (ADR-0001) inside one `Update`.
@@ -179,35 +177,9 @@ impl Plugin for GdtfBattleInputPlugin {
         // into, so the drain's `MessageWriter<EndTurnRequested>` passes param validation
         // whether or not `SimActsPlugin` is present (`add_message` is IDEMPOTENT).
         .add_message::<EndTurnRequested>()
-        // GTW-294 — the downed-act buffers the Execute / Stabilize intents drain into, so
-        // the drain's `MessageWriter<ExecuteDownedRequested>` / `<StabilizeDownedRequested>`
-        // pass param validation whether or not `SimActsPlugin` is present (`add_message` is
-        // IDEMPOTENT, so this coexists with the sim's registration).
-        .add_message::<ExecuteDownedRequested>()
-        .add_message::<StabilizeDownedRequested>()
-        // GTW-507 — the melee buffer the Melee intent drains into, so the drain's
-        // `MessageWriter<MeleeRequested>` passes param validation whether or not `SimActsPlugin`
-        // is present (`add_message` is IDEMPOTENT, so this coexists with the sim's registration).
-        .add_message::<MeleeRequested>()
-        // GTW-525 — the shove buffer the Shove intent drains into, so the drain's
-        // `MessageWriter<ShoveRequested>` passes param validation whether or not `SimActsPlugin`
-        // is present (`add_message` is IDEMPOTENT, so this coexists with the sim's registration).
-        .add_message::<ShoveRequested>()
-        // GTW-315 — the open-door buffer the OpenDoor intent drains into, so the drain's
-        // `MessageWriter<OpenDoorRequested>` passes param validation whether or not `SimActsPlugin`
-        // is present (`add_message` is IDEMPOTENT, so this coexists with the sim's registration).
-        .add_message::<OpenDoorRequested>()
-        // GTW-543 — the enter/exit-emplacement buffers the EnterEmplacement / ExitEmplacement
-        // intents drain into, so the drain's `MessageWriter<EnterEmplacementRequested>` /
-        // `<ExitEmplacementRequested>` pass param validation whether or not `SimActsPlugin` is
-        // present (`add_message` is IDEMPOTENT, so this coexists with the sim's registration).
-        .add_message::<EnterEmplacementRequested>()
-        .add_message::<ExitEmplacementRequested>()
-        // GTW-546 — the throw-grenade buffer the ThrowGrenade intent drains into, so the drain's
-        // `MessageWriter<ThrowGrenadeRequested>` passes param validation whether or not
-        // `SimActsPlugin` is present (`add_message` is IDEMPOTENT, so this coexists with the sim's
-        // registration).
-        .add_message::<ThrowGrenadeRequested>()
+        // GTW-571 — the CONTEXTUAL acts' `*Requested` buffers are registered by the
+        // per-act `add_contextual_act::<A>()` registrar (see `register_contextual_acts`
+        // below), never listed here one by one.
         // GTW-251 — register the presenter-defined `HighlightRequest` buffer so the
         // emitter's `MessageWriter<HighlightRequest>` passes param validation even
         // headlessly (`bevy-traps.md` #4). `add_message` is IDEMPOTENT.
@@ -318,6 +290,11 @@ impl Plugin for GdtfBattleInputPlugin {
                 .run_if(resource_exists::<BattleInProgress>),
         );
 
+        // GTW-571 — the CONTEXTUAL acts: configure the ONE explicitly-ordered drain set,
+        // then one compile-time registration line per act (the descriptor/registrar seam;
+        // extracted to keep `build` under the `too_many_lines` lint).
+        register_contextual_acts(app);
+
         // GTW-259 — the gamepad software cursor + act surfaces + edge-pan emitter. Extracted
         // into a helper to keep `build` under the `too_many_lines` lint (the presenter's
         // `register_*` extraction precedent). System-ordering edges by fn reference compose
@@ -348,6 +325,30 @@ impl Plugin for GdtfBattleInputPlugin {
         // (no load, no panic — `bevy-traps.md` #1).
         register_keybinds_hot_ron(app);
     }
+}
+
+/// Registers the GTW-571 CONTEXTUAL acts: the ONE explicitly-ordered
+/// [`ContextualActSystems::Drain`](crate::contextual::ContextualActSystems) set
+/// (configured ONCE — inside [`InputSystems::Gather`] and `.before(dispatch_act_intents)`,
+/// the Q5 invariant's explicit ordering) plus one compile-time
+/// [`add_contextual_act::<A>()`](ContextualActAppExt::add_contextual_act) line per act.
+///
+/// Each line wires the act's whole input-layer slice — the `*Requested` buffer (IDEMPOTENT
+/// with the sim's own registration, `bevy-traps.md` #4), the per-act pending queue, and the
+/// per-act generic drain. Adding a contextual act adds exactly ONE line here (plus its
+/// descriptor module — see `docs/authoring/contextual-act-recipe.md`). Extracted from
+/// [`GdtfBattleInputPlugin::build`](GdtfBattleInputPlugin) to keep `build` under the
+/// `too_many_lines` lint (the `register_gamepad_systems` precedent).
+fn register_contextual_acts(app: &mut App) {
+    configure_contextual_act_drains(app);
+    app.add_contextual_act::<ExecuteAct>()
+        .add_contextual_act::<StabilizeAct>()
+        .add_contextual_act::<MeleeAct>()
+        .add_contextual_act::<ShoveAct>()
+        .add_contextual_act::<OpenDoorAct>()
+        .add_contextual_act::<EnterEmplacementAct>()
+        .add_contextual_act::<ExitEmplacementAct>()
+        .add_contextual_act::<ThrowGrenadeAct>();
 }
 
 /// Registers the GTW-259 gamepad systems into [`InputSystems::Gather`]: the software-cursor

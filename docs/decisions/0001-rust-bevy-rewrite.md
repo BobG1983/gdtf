@@ -106,7 +106,15 @@ behind that same enum — GTW-49 / GTW-10). Alongside it the `gdtf_battle_input`
 crate is the head of a one-way `gdtf_battle_input → gdtf_battle_presenter →
 gdtf_battle_sim` chain (the sim depends on neither; the presenter depends only on
 the sim), and the `gdtf_app` action-bar is a parallel button surface over the
-same act-intent seam (`PendingActIntent`, drained by one `dispatch_act_intents`).
+same act-intent seam. The documented drain invariant (re-worded in GTW-571, Q5-approved)
+is: **per-act generic drains in one explicitly-ordered SystemSet, same-frame semantics
+preserved** — the classic keyboard/bar/click intents stay buffered on `PendingActIntent`
+and drained by `dispatch_act_intents`, while each CONTEXTUAL act (Execute / Stabilize /
+Melee / Shove / Open Door / Enter / Exit Emplacement / Throw Grenade) is a compile-time
+descriptor with its own buffered `PendingContextualIntents<A>` queue and generic
+`drain_contextual_intents::<A>` drain, all in the one explicitly-ordered
+`ContextualActSystems::Drain` set that precedes `dispatch_act_intents` and the sim band
+(see `docs/authoring/contextual-act-recipe.md`).
 That render/input stack is GTW-48 work, NOT E10 — and it READS the running E10
 battle, adding zero sim plumbing. The E10 seam below is unchanged by it. The
 shape:

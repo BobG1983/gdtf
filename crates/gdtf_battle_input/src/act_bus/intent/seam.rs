@@ -1,14 +1,30 @@
-//! The buffered intent queue + the ONE drain system both input surfaces feed.
+//! The buffered intent queue + the classic-intent drain system both input surfaces feed.
+//!
+//! # The drain invariant (GTW-571, Q5)
+//!
+//! The documented single-drain invariant is: **per-act generic drains in one
+//! explicitly-ordered `SystemSet`, same-frame semantics preserved.** This file owns the
+//! CLASSIC (non-contextual) half: every keyboard / bar / click intent is buffered onto
+//! the ONE [`PendingActIntent`] queue and interpreted by the ONE
+//! [`dispatch_act_intents`] drain. The CONTEXTUAL acts (Execute / Stabilize / Melee /
+//! Shove / Open Door / Enter / Exit Emplacement / Throw Grenade) ride the GTW-571
+//! generic seam instead — one buffered [`PendingContextualIntents<A>`] queue and one
+//! generic [`drain_contextual_intents::<A>`] per act, all in the explicitly-ordered
+//! [`ContextualActSystems::Drain`] set, which runs `.before` this drain (see
+//! [`crate::contextual`]). Both halves preserve the same-frame press -> `*Requested`
+//! guarantee inside [`InputSystems::Gather`](crate::InputSystems).
+//!
+//! [`PendingContextualIntents<A>`]: crate::contextual::PendingContextualIntents
+//! [`drain_contextual_intents::<A>`]: crate::contextual::drain_contextual_intents
+//! [`ContextualActSystems::Drain`]: crate::contextual::ContextualActSystems
 
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
-    Aiming, CellLevel, Facing, Faction, PlayerFaction, Position, Stance, StanceKind,
+    Aiming, Facing, Faction, PlayerFaction, Position, Stance, StanceKind,
     acts::{
-        AimRequest, EndTurnRequested, EnterEmplacementRequested, ExecuteDownedRequested,
-        ExitEmplacementRequested, FireRequested, MeleeRequested, MoveRequested, OpenDoorRequested,
-        ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
-        ShoveRequested, StabilizeDownedRequested, ThrowGrenadeRequested,
+        AimRequest, EndTurnRequested, FireRequested, MoveRequested, ReloadRequested,
+        SetAimingRequested, SetFacingRequested, SetStanceRequested,
     },
 };
 
@@ -18,11 +34,16 @@ use crate::{
     selection::{CycleDirection, cell_order_key, cycle_player_selection},
 };
 
-/// One queued battle intent — the act a press (key OR button) asked for.
+/// One queued battle intent — the CLASSIC (non-contextual) act a press (key OR button)
+/// asked for.
 ///
 /// A domain enum (no-bare-types: a queued intent is a named act request, not a bare
 /// discriminant). Both input surfaces [`push`](PendingActIntent::push) these; the
-/// single [`dispatch_act_intents`] drain interprets them. The no-act variants
+/// single [`dispatch_act_intents`] drain interprets them. The CONTEXTUAL acts (Execute
+/// / Stabilize / Melee / Shove / Open Door / Enter / Exit Emplacement / Throw Grenade)
+/// do NOT ride this enum — each is a [`ContextualAct`](crate::contextual::ContextualAct)
+/// descriptor with its own buffered queue + generic drain (GTW-571; see
+/// [`crate::contextual`]), so adding one never edits this vocabulary. The no-act variants
 /// ([`SelectionClear`](Self::SelectionClear) / [`LevelUp`](Self::LevelUp) /
 /// [`LevelDown`](Self::LevelDown)) are 222a's; the act-bearing variants
 /// ([`StanceCycle`](Self::StanceCycle) / [`SetStance`](Self::SetStance) /
@@ -107,118 +128,6 @@ pub enum ActIntent {
     /// sim's [`dispatch_end_turn`](gdtf_battle_sim::dispatch_end_turn) advances the cycle
     /// and runs the next team's turn-start TU regen).
     EndTurn,
-    /// EXECUTE the carried downed `target` — drained to [`ExecuteDownedRequested`] for the
-    /// [`SelectedShooter`] as the actor (GTW-294). The carried [`Entity`] is the downed
-    /// TARGET; the actor is always the selection. The drain emits
-    /// [`ExecuteDownedRequested::new(actor, target)`](ExecuteDownedRequested::new) ONLY when
-    /// a shooter is selected (a no-op with no selection); the sim's
-    /// [`execute_downed`](gdtf_battle_sim::execute_downed) faction gate (an 8-adjacent alive
-    /// ENEMY) is the authoritative check, not this layer's.
-    Execute(Entity),
-    /// STABILIZE the carried downed `target` — drained to [`StabilizeDownedRequested`] for
-    /// the [`SelectedShooter`] as the actor (GTW-294). The carried [`Entity`] is the downed
-    /// TARGET; the actor is always the selection. The drain emits
-    /// [`StabilizeDownedRequested::new(actor, target)`](StabilizeDownedRequested::new) ONLY
-    /// when a shooter is selected (a no-op with no selection); the sim's
-    /// [`stabilize_downed`](gdtf_battle_sim::stabilize_downed) faction gate (an 8-adjacent
-    /// alive ALLY) is the authoritative check, not this layer's.
-    Stabilize(Entity),
-    /// MELEE-strike the carried `target` — drained to [`MeleeRequested`] for the
-    /// [`SelectedShooter`] as the attacker (GTW-507). The carried [`Entity`] is the opposing
-    /// TARGET ganger; the attacker is always the selection. The drain emits
-    /// [`MeleeRequested::new(attacker, target)`](MeleeRequested::new) ONLY when a shooter is
-    /// selected (a no-op with no selection); the sim's
-    /// [`dispatch_melee`](gdtf_battle_sim::dispatch_melee) gate (8-adjacent + clear LOS + an
-    /// alive opposing target) is the authoritative check, not this layer's. Bound to the
-    /// DEDICATED contextual MELEE button (NOT a left-click overload — the GTW-507 D1 ruling),
-    /// mirroring the [`Execute`](Self::Execute) / [`Stabilize`](Self::Stabilize) contextual acts.
-    Melee(Entity),
-    /// MELEE-SMASH the carried adjacent STRUCTURE cell — drained to
-    /// [`MeleeRequested::new_structural`] for the [`SelectedShooter`] as the attacker (GTW-508,
-    /// child GTW-37d). The carried [`CellLevel`] is the adjacent Cover / Wall cell the player
-    /// aimed the strike at; the attacker is always the selection. The drain emits
-    /// [`MeleeRequested::new_structural(attacker, at)`](MeleeRequested::new_structural) ONLY when
-    /// a shooter is selected (a no-op with no selection); the sim's
-    /// [`dispatch_melee`](gdtf_battle_sim::dispatch_melee) gate (8-adjacency to the cell) is the
-    /// authoritative check. The shared act-intent seam routes this structural target the SAME
-    /// way it routes a ganger [`Melee`](Self::Melee) target — one melee button, two target kinds.
-    /// Bound to the SAME dedicated contextual MELEE button (the GTW-508 C3 extension), which
-    /// offers a structure target when no meleeable ganger is in reach but an adjacent structure
-    /// is.
-    MeleeStructure(CellLevel),
-    /// SHOVE the carried `target` — drained to [`ShoveRequested`] for the [`SelectedShooter`] as
-    /// the shover (GTW-525). The carried [`Entity`] is the opposing TARGET ganger; the shover is
-    /// always the selection. The drain emits
-    /// [`ShoveRequested::new(shover, target)`](ShoveRequested::new) — the DELIBERATE, gated,
-    /// TU-costed form — ONLY when a shooter is selected (a no-op with no selection); the sim's
-    /// [`dispatch_shove`](gdtf_battle_sim::dispatch_shove) gate (8-adjacent + opposing + alive) is
-    /// the authoritative check, not this layer's. A DELIBERATE, PURE-DISPLACEMENT act available to
-    /// ANY ganger (NO weapon requirement) — it does not roll a strike / deal a wound; the fall, if
-    /// any, does the harm. Bound to the DEDICATED contextual SHOVE button (mirroring the
-    /// [`Melee`](Self::Melee) / [`Execute`](Self::Execute) / [`Stabilize`](Self::Stabilize)
-    /// contextual acts).
-    Shove(Entity),
-    /// OPEN the carried adjacent CLOSED `door` — drained to [`OpenDoorRequested`] for the
-    /// [`SelectedShooter`] as the actor (GTW-315). The carried [`Entity`] is the openable
-    /// TARGET door (a door / hatch entity, a raw Bevy handle — framework plumbing, the same
-    /// bare-`Entity` payload the [`Execute`](Self::Execute) / [`Stabilize`](Self::Stabilize) /
-    /// [`Melee`](Self::Melee) / [`Shove`](Self::Shove) contextual acts carry); the actor is
-    /// always the selection. The drain emits
-    /// [`OpenDoorRequested::new(actor, door)`](OpenDoorRequested::new) ONLY when a shooter is
-    /// selected (a no-op with no selection); the sim's
-    /// [`dispatch_open_door`](gdtf_battle_sim::dispatch_open_door) gate (door carries an
-    /// [`OpenState`](gdtf_battle_sim::OpenState) that is CLOSED + 8-adjacent to the actor +
-    /// affords the [`OpenDoorTu`](gdtf_battle_sim::tuning::OpenDoorTu) leaf) is the authoritative
-    /// check, not this layer's, and the SIM spends the TU (one-way `input -> sim` boundary).
-    /// F4 PLAYER-ONLY (no enemy door-open this ticket). Bound to the DEDICATED contextual
-    /// Open-Door button, which offers a CLOSED door only (the button always OPENS — closing is
-    /// not offered), mirroring the other contextual acts.
-    OpenDoor(Entity),
-    /// ENTER (man) the carried adjacent VACANT `emplacement` — drained to
-    /// [`EnterEmplacementRequested`] for the [`SelectedShooter`] as the actor (GTW-543). The carried
-    /// [`Entity`] is the weapon-emplacement TARGET (a terrain-piece entity, a raw Bevy handle —
-    /// framework plumbing, the same bare-`Entity` payload the [`Execute`](Self::Execute) /
-    /// [`OpenDoor`](Self::OpenDoor) contextual acts carry); the actor is always the selection. The
-    /// drain emits
-    /// [`EnterEmplacementRequested::new(actor, emplacement)`](EnterEmplacementRequested::new) ONLY
-    /// when a shooter is selected (a no-op with no selection); the sim's
-    /// [`dispatch_enter_emplacement`](gdtf_battle_sim::acts::dispatch_enter_emplacement) gate (the
-    /// `emplacement` carries an
-    /// [`EmplacementState`](gdtf_battle_sim::EmplacementState) that is VACANT + 8-adjacent to the
-    /// actor + affords the [`EnterEmplacementTu`](gdtf_battle_sim::tuning::EnterEmplacementTu) leaf)
-    /// is the authoritative check, not this layer's, and the SIM spends the TU (one-way
-    /// `input -> sim` boundary). Bound to the DEDICATED contextual Enter button, which offers a
-    /// VACANT emplacement only, mirroring the other contextual acts.
-    EnterEmplacement(Entity),
-    /// EXIT (dismount) the carried `emplacement` the actor is manning — drained to
-    /// [`ExitEmplacementRequested`] for the [`SelectedShooter`] as the actor (GTW-543). The carried
-    /// [`Entity`] is the weapon-emplacement the actor occupies; the actor is always the selection.
-    /// The drain emits
-    /// [`ExitEmplacementRequested::new(actor, emplacement)`](ExitEmplacementRequested::new) ONLY when
-    /// a shooter is selected (a no-op with no selection); the sim's
-    /// [`dispatch_exit_emplacement`](gdtf_battle_sim::acts::dispatch_exit_emplacement) gate (the
-    /// `emplacement`'s recorded
-    /// [`EmplacementOccupant`](gdtf_battle_sim::EmplacementOccupant) IS the actor + affords the
-    /// [`ExitEmplacementTu`](gdtf_battle_sim::tuning::ExitEmplacementTu) leaf) is the authoritative
-    /// check. Exit is a SEPARATE TU-costed context action — there is NO force-eject. Bound to the
-    /// DEDICATED contextual Exit button, which offers ONLY the emplacement the selection occupies.
-    ExitEmplacement(Entity),
-    /// THROW (lob) a grenade at the carried `target` CELL — drained to [`ThrowGrenadeRequested`]
-    /// for the [`SelectedShooter`] as the thrower (GTW-546, child GTW-41d). The carried
-    /// [`CellLevel`] is the cell the grenade is LOBBED at — a cell AT RANGE, not an 8-adjacent
-    /// entity, so it mirrors the [`MeleeStructure`](Self::MeleeStructure) `CellLevel` payload
-    /// rather than the bare-`Entity` contextual acts. The thrower is always the selection. The
-    /// drain emits [`ThrowGrenadeRequested::new(thrower, at)`](ThrowGrenadeRequested::new) ONLY
-    /// when a shooter is selected (a no-op with no selection); the sim's
-    /// [`dispatch_throw_grenade`](gdtf_battle_sim::acts::dispatch_throw_grenade) gate (the thrower
-    /// wields a [`TrajectoryStyle::Arc`](gdtf_battle_sim::TrajectoryStyle) weapon with a loaded
-    /// round + affords the [`ThrowTu`](gdtf_battle_sim::tuning::ThrowTu) leaf) is the authoritative
-    /// check, not this layer's, and the SIM spends the TU + magazine round (one-way
-    /// `input -> sim` boundary). The throw is BLIND — there is NO line-of-sight / facing / arc
-    /// gate (a lob need not see its target), so no arc / turn-to-fire runs. Bound to the DEDICATED
-    /// contextual Throw button, which is offered when the selection wields an `Arc` weapon and a
-    /// target cell is hovered, mirroring the other contextual acts.
-    ThrowGrenade(CellLevel),
     /// CYCLE the [`SelectedShooter`] to the NEXT player ganger in `(z, y, x)` order, wrapping
     /// (GTW-458). A SELECTION-layer intent (no sim act), drained directly in
     /// [`dispatch_act_intents`] via [`cycle_player_selection`]: it collects the player-faction
@@ -254,7 +163,10 @@ impl PendingActIntent {
     ///
     /// The single write-point both surfaces call — a key system or a `gdtf_app`
     /// button system pushes the intent the press maps to. Buffered (not applied
-    /// inline) so the ONE drain system is the only place an intent takes effect.
+    /// inline) so this queue's ONE drain is the only place a classic intent takes
+    /// effect (the Q5 invariant: per-act generic drains in one explicitly-ordered
+    /// `SystemSet`, same-frame semantics preserved — the contextual acts' per-act
+    /// queues live in [`crate::contextual`]).
     pub fn push(&mut self, intent: ActIntent) {
         self.0.push(intent);
     }
@@ -283,65 +195,31 @@ impl PendingActIntent {
 /// [`dispatch_act_intents`] at five parameters; the drain arms call
 /// `acts.fire.write(..)` / `acts.stance.write(..)` etc. A transparent system-param
 /// bundle of framework [`MessageWriter`]s — not itself a wrapped domain scalar. The
+/// CONTEXTUAL acts' writers are NOT here — each per-act generic drain in
+/// [`crate::contextual`] holds its own `MessageWriter<A::Requested>` (GTW-571), so
+/// adding a contextual act never widens this bundle. The
 /// [`SetFacingRequested`] writer ([`facing`](Self::facing)) is REUSED by BOTH the
 /// keyboard [`ActIntent::FacingCycle`] arm and the right-click
 /// [`ActIntent::Turn`] arm (one set-facing message type, one sim dispatch).
 #[derive(SystemParam)]
 pub struct ActWriters<'w> {
     /// The FIRE-act writer — the left-click FIRE surface's drained message.
-    fire:              MessageWriter<'w, FireRequested>,
+    fire:     MessageWriter<'w, FireRequested>,
     /// The MOVE-act writer — the left-click MOVE branch's drained message (GTW-238).
-    movement:          MessageWriter<'w, MoveRequested>,
+    movement: MessageWriter<'w, MoveRequested>,
     /// The set-stance writer — the stance-cycle key's drained message.
-    stance:            MessageWriter<'w, SetStanceRequested>,
+    stance:   MessageWriter<'w, SetStanceRequested>,
     /// The set-aiming writer — the aim-toggle key's drained message.
-    aiming:            MessageWriter<'w, SetAimingRequested>,
+    aiming:   MessageWriter<'w, SetAimingRequested>,
     /// The set-facing writer — the facing-cycle key's AND the right-click turn-to-face
     /// surface's drained message (GTW-238 reuses it for [`ActIntent::Turn`]).
-    facing:            MessageWriter<'w, SetFacingRequested>,
+    facing:   MessageWriter<'w, SetFacingRequested>,
     /// The reload-act writer — the weapon panel Reload button's drained message
     /// (GTW-275).
-    reload:            MessageWriter<'w, ReloadRequested>,
+    reload:   MessageWriter<'w, ReloadRequested>,
     /// The end-turn writer — the action-bar End-Turn button's drained message (GTW-309).
     /// A fieldless turn signal: the drain emits the unit [`EndTurnRequested`] verbatim.
-    end_turn:          MessageWriter<'w, EndTurnRequested>,
-    /// The execute-downed writer — the downed-target Execute affordance's drained message
-    /// (GTW-294). Emitted only for a selected actor over the carried downed target.
-    execute:           MessageWriter<'w, ExecuteDownedRequested>,
-    /// The stabilize-downed writer — the downed-target Stabilize affordance's drained
-    /// message (GTW-294). Emitted only for a selected actor over the carried downed target.
-    stabilize:         MessageWriter<'w, StabilizeDownedRequested>,
-    /// The melee writer — the contextual Melee button's drained message (GTW-507). Emitted
-    /// only for a selected attacker over the carried opposing target; the sim's `dispatch_melee`
-    /// gate (8-adjacent + LOS + alive + opposing) is the authoritative check.
-    melee:             MessageWriter<'w, MeleeRequested>,
-    /// The shove writer — the contextual Shove button's drained message (GTW-525). Emitted only
-    /// for a selected shover over the carried opposing target; the sim's `dispatch_shove` gate
-    /// (8-adjacent + opposing + alive) is the authoritative check.
-    shove:             MessageWriter<'w, ShoveRequested>,
-    /// The open-door writer — the contextual Open-Door button's drained message (GTW-315).
-    /// Emitted only for a selected actor over the carried adjacent CLOSED door; the sim's
-    /// `dispatch_open_door` gate (CLOSED `OpenState` + 8-adjacent + affords `OpenDoorTu`) is
-    /// the authoritative check, and the SIM spends the TU (one-way `input -> sim` boundary).
-    open_door:         MessageWriter<'w, OpenDoorRequested>,
-    /// The enter-emplacement writer — the contextual Enter button's drained message (GTW-543).
-    /// Emitted only for a selected actor over the carried adjacent VACANT emplacement; the sim's
-    /// `dispatch_enter_emplacement` gate (VACANT `EmplacementState` + 8-adjacent + affords
-    /// `EnterEmplacementTu`) is the authoritative check, and the SIM spends the TU (one-way
-    /// `input -> sim` boundary).
-    enter_emplacement: MessageWriter<'w, EnterEmplacementRequested>,
-    /// The exit-emplacement writer — the contextual Exit button's drained message (GTW-543).
-    /// Emitted only for a selected actor over the emplacement it occupies; the sim's
-    /// `dispatch_exit_emplacement` gate (the emplacement's recorded `EmplacementOccupant` IS the
-    /// actor + affords `ExitEmplacementTu`) is the authoritative check, and the SIM spends the TU
-    /// (one-way `input -> sim` boundary). Exit is a SEPARATE TU-costed action (NO force-eject).
-    exit_emplacement:  MessageWriter<'w, ExitEmplacementRequested>,
-    /// The throw-grenade writer — the contextual Throw button's drained message (GTW-546). Emitted
-    /// only for a selected thrower over the carried target CELL; the sim's `dispatch_throw_grenade`
-    /// gate (wields a `TrajectoryStyle::Arc` weapon + a loaded round + affords `ThrowTu`) is the
-    /// authoritative check, and the SIM spends the TU + magazine round (one-way `input -> sim`
-    /// boundary). The throw is BLIND — no LOS / facing / arc gate (a lob need not see its target).
-    throw:             MessageWriter<'w, ThrowGrenadeRequested>,
+    end_turn: MessageWriter<'w, EndTurnRequested>,
 }
 
 /// The READ-ONLY world the [`ActIntent::SelectNext`] / [`ActIntent::SelectPrev`] cycle arms
@@ -387,7 +265,11 @@ impl SelectionCycleReads<'_, '_> {
     }
 }
 
-/// **Dispatch** the queued [`ActIntent`]s — the ONE drain system over the shared seam.
+/// **Dispatch** the queued [`ActIntent`]s — the CLASSIC-intent drain over the shared
+/// [`PendingActIntent`] seam (the Q5 invariant: per-act generic drains in one
+/// explicitly-ordered `SystemSet`, same-frame semantics preserved — this drain is the
+/// classic half; the contextual acts' per-act generic drains live in
+/// [`crate::contextual`] and run `.before` this one).
 ///
 /// Drains the [`PendingActIntent`] queue every update (gated on `BattleInProgress` by
 /// the plugin) and interprets each intent. The no-act intents are handled directly:
@@ -427,42 +309,6 @@ impl SelectionCycleReads<'_, '_> {
 /// - [`ActIntent::EndTurn`] emits the fieldless [`EndTurnRequested`] unconditionally
 ///   (GTW-309) — a GLOBAL turn signal needing no selection; the sim's `dispatch_end_turn`
 ///   advances the turn cycle and runs the next team's turn-start TU regen.
-/// - [`ActIntent::Execute`] emits [`ExecuteDownedRequested`] with the [`SelectedShooter`] as
-///   the actor and the carried downed target (GTW-294) — a no-op with no selection; the
-///   sim's `execute_downed` faction gate (an 8-adjacent alive ENEMY) is authoritative.
-/// - [`ActIntent::Stabilize`] emits [`StabilizeDownedRequested`] with the [`SelectedShooter`]
-///   as the actor and the carried downed target (GTW-294) — a no-op with no selection; the
-///   sim's `stabilize_downed` faction gate (an 8-adjacent alive ALLY) is authoritative.
-/// - [`ActIntent::Melee`] emits [`MeleeRequested`] with the [`SelectedShooter`] as the
-///   attacker and the carried opposing target (GTW-507) — a no-op with no selection; the sim's
-///   `dispatch_melee` gate (8-adjacent + clear LOS + an alive opposing target) is authoritative.
-/// - [`ActIntent::MeleeStructure`] emits [`MeleeRequested::new_structural`] with the
-///   [`SelectedShooter`] as the attacker and the carried adjacent structure cell (GTW-508) —
-///   onto the SAME melee writer; a no-op with no selection; the sim's `dispatch_melee`
-///   8-adjacency-to-the-cell gate is authoritative.
-/// - [`ActIntent::Shove`] emits [`ShoveRequested::new`] (the DELIBERATE form) with the
-///   [`SelectedShooter`] as the shover and the carried opposing target (GTW-525) — a no-op with
-///   no selection; the sim's `dispatch_shove` gate (8-adjacent + opposing + alive) is
-///   authoritative.
-/// - [`ActIntent::OpenDoor`] emits [`OpenDoorRequested::new`] with the [`SelectedShooter`] as
-///   the actor and the carried adjacent CLOSED door (GTW-315) — a no-op with no selection; the
-///   sim's `dispatch_open_door` gate (CLOSED `OpenState` + 8-adjacent + affords `OpenDoorTu`) is
-///   authoritative and the SIM spends the TU (F4 player-only; the button offers CLOSED doors only).
-/// - [`ActIntent::EnterEmplacement`] emits [`EnterEmplacementRequested::new`] with the
-///   [`SelectedShooter`] as the actor and the carried adjacent VACANT emplacement (GTW-543) — a
-///   no-op with no selection; the sim's `dispatch_enter_emplacement` gate (VACANT
-///   `EmplacementState` + 8-adjacent + affords `EnterEmplacementTu`) is authoritative and the SIM
-///   spends the TU.
-/// - [`ActIntent::ExitEmplacement`] emits [`ExitEmplacementRequested::new`] with the
-///   [`SelectedShooter`] as the actor and the carried occupied emplacement (GTW-543) — a no-op with
-///   no selection; the sim's `dispatch_exit_emplacement` gate (the recorded `EmplacementOccupant` IS
-///   the actor + affords `ExitEmplacementTu`) is authoritative and the SIM spends the TU (a SEPARATE
-///   TU-costed action — NO force-eject).
-/// - [`ActIntent::ThrowGrenade`] emits [`ThrowGrenadeRequested::new`] with the [`SelectedShooter`]
-///   as the thrower and the carried target CELL (GTW-546) — a no-op with no selection; the sim's
-///   `dispatch_throw_grenade` gate (the thrower wields a `TrajectoryStyle::Arc` weapon with a loaded
-///   round + affords `ThrowTu`) is authoritative and the SIM spends the TU + magazine round. The
-///   throw is BLIND — no LOS / facing / arc gate.
 ///
 /// The GTW-458 SELECTION-CYCLE intents step the [`SelectedShooter`] through the player gang
 /// in the shared `(z, y, x)` order ([`cell_order_key`] — the exact order the auto-select
@@ -579,21 +425,6 @@ pub fn dispatch_act_intents(
                 // is ending, so the drain just writes the unit message unconditionally.
                 acts.end_turn.write(EndTurnRequested);
             }
-            ActIntent::Execute(_)
-            | ActIntent::Stabilize(_)
-            | ActIntent::Melee(_)
-            | ActIntent::MeleeStructure(_)
-            | ActIntent::Shove(_)
-            | ActIntent::OpenDoor(_)
-            | ActIntent::EnterEmplacement(_)
-            | ActIntent::ExitEmplacement(_)
-            | ActIntent::ThrowGrenade(_) => {
-                // The target-carrying contextual acts share ONE shape — resolve the selected
-                // actor then write one `*Requested` (a no-op with no selection); each arm's doc
-                // records the sim gate that is the authoritative check. Factored into
-                // `emit_selected_act` so this drain stays under clippy's line gate.
-                emit_selected_act(&intent, **selected, &mut acts);
-            }
             ActIntent::SelectNext => {
                 cycle_selection(&mut selected, &cycle_reads, CycleDirection::Next);
             }
@@ -601,68 +432,6 @@ pub fn dispatch_act_intents(
                 cycle_selection(&mut selected, &cycle_reads, CycleDirection::Prev);
             }
         }
-    }
-}
-
-/// Emits the `*Requested` for a TARGET-carrying contextual act, using `selected` as the
-/// acting ganger — a no-op when there is no selection (the fail-closed shape shared by every
-/// contextual arm).
-///
-/// The one shape behind [`ActIntent::Execute`] / [`ActIntent::Stabilize`] /
-/// [`ActIntent::Melee`] / [`ActIntent::MeleeStructure`] / [`ActIntent::Shove`] /
-/// [`ActIntent::OpenDoor`] / [`ActIntent::EnterEmplacement`] / [`ActIntent::ExitEmplacement`] /
-/// [`ActIntent::ThrowGrenade`]:
-/// resolve the actor from the `SelectedShooter`, then write ONE act
-/// message carrying `(actor, carried-target)`. Each arm's variant doc records the SIM gate that
-/// is the authoritative check (this layer's offer is advisory). Factored out of
-/// [`dispatch_act_intents`] so the drain stays under clippy's function-length gate; any
-/// non-target-carrying intent is unreachable here and left untouched.
-fn emit_selected_act(intent: &ActIntent, selected: Option<Entity>, acts: &mut ActWriters) {
-    let Some(actor) = selected else { return };
-    match *intent {
-        // GTW-294 — an 8-adjacent alive ENEMY faction gate is the sim's authoritative check.
-        ActIntent::Execute(target) => {
-            acts.execute
-                .write(ExecuteDownedRequested::new(actor, target));
-        }
-        // GTW-294 — an 8-adjacent alive ALLY faction gate is the sim's authoritative check.
-        ActIntent::Stabilize(target) => {
-            acts.stabilize
-                .write(StabilizeDownedRequested::new(actor, target));
-        }
-        // GTW-507 — 8-adjacent + clear LOS + an alive opposing target is the sim's check.
-        ActIntent::Melee(target) => {
-            acts.melee.write(MeleeRequested::new(actor, target));
-        }
-        // GTW-508 — the SAME melee writer for a structure cell; 8-adjacency-to-the-cell is the check.
-        ActIntent::MeleeStructure(at) => {
-            acts.melee.write(MeleeRequested::new_structural(actor, at));
-        }
-        // GTW-525 — the DELIBERATE, TU-costed form; 8-adjacent + opposing + alive is the sim's check.
-        ActIntent::Shove(target) => {
-            acts.shove.write(ShoveRequested::new(actor, target));
-        }
-        // GTW-315 — CLOSED `OpenState` + 8-adjacent + affords `OpenDoorTu` is the sim's check.
-        ActIntent::OpenDoor(door) => {
-            acts.open_door.write(OpenDoorRequested::new(actor, door));
-        }
-        // GTW-543 — VACANT `EmplacementState` + 8-adjacent + affords `EnterEmplacementTu` is the check.
-        ActIntent::EnterEmplacement(emplacement) => {
-            acts.enter_emplacement
-                .write(EnterEmplacementRequested::new(actor, emplacement));
-        }
-        // GTW-543 — the recorded `EmplacementOccupant` IS the actor + affords `ExitEmplacementTu`.
-        ActIntent::ExitEmplacement(emplacement) => {
-            acts.exit_emplacement
-                .write(ExitEmplacementRequested::new(actor, emplacement));
-        }
-        // GTW-546 — wields a `TrajectoryStyle::Arc` weapon + a loaded round + affords `ThrowTu`;
-        // BLIND (no LOS / facing / arc gate) — the sim re-gates authoritatively.
-        ActIntent::ThrowGrenade(at) => {
-            acts.throw.write(ThrowGrenadeRequested::new(actor, at));
-        }
-        // Not a target-carrying act — the caller only routes the nine variants above here.
-        _ => {}
     }
 }
 

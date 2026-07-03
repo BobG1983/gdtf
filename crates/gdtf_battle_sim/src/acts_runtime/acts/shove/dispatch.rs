@@ -5,7 +5,7 @@
 //! It handles BOTH shove sources uniformly through the one shared verb
 //! ([`resolve_shove`](super::verb::resolve_shove)) + apply helper ([`apply_shove`]):
 //!
-//! - a [`ShoveSource::Deliberate`] shove (the input-seam `ActIntent::Shove` act, any ganger)
+//! - a [`ShoveSource::Deliberate`] shove (the input seam's contextual Shove act, any ganger)
 //!   re-gates 8-adjacency + opposing faction + alive and spends the
 //!   [`ShoveTu`](crate::tuning::ShoveTu) leaf, then displaces (pure — no wound);
 //! - a [`ShoveSource::Weapon`] auto-shove (a connecting melee strike OR ranged shot with the

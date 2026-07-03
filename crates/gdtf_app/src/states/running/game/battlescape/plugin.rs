@@ -121,14 +121,16 @@ fn add_plugins(app: &mut App) {
         // `gdtf_ui` (spawn helpers) + `gdtf_battle_input` (the intent seam), both already on
         // the app's edge; the chain stays acyclic.
         .add_plugins(GameBattleScapeSelectCycleScenePlugin)
-        // The GTW-294 CONTEXTUAL PANEL (bottom-right): the cluster of situational acts on a
-        // downed neighbour (Execute / Stabilize / Open Door). Same `BattleRunning` lifecycle as
-        // the panels; it inits the `ContextualTargets` seam, runs `detect_contextual_targets`
-        // (fills the targets + toggles each button's `Visibility` IN PLACE when a valid downed
-        // neighbour is in reach) and `contextual_button_intents` (routes a press onto the shared
-        // act-intent seam → the sim's `dispatch_act_intents`), both in `Update` gated on the
-        // `BattleInProgress` witness. Execute + Stabilize are live; Open Door stays hidden (no
-        // sim verb yet). View-only — it reads the input selection + writes the intent seam.
+        // The GTW-294 CONTEXTUAL PANEL (bottom-right): one themed button per registered
+        // contextual act (Execute / Stabilize / Melee / Shove / Open Door / Enter / Exit
+        // Emplacement / Throw). Same `BattleRunning` lifecycle as the panels. Since GTW-571
+        // each act is a descriptor registered with ONE `add_contextual_act_button` line: its
+        // bespoke OFFER scan fills a per-act `ContextualOffer<A>`, the generic toggle flips
+        // the button's `Visibility` IN PLACE, and the generic press router pushes the target
+        // onto the act's buffered `PendingContextualIntents<A>` queue (drained same-frame by
+        // the input crate's generic per-act drain — the Q5 invariant), all in `Update` gated
+        // on the `BattleInProgress` witness. View-only — it reads the input selection +
+        // writes the per-act intent queues.
         .add_plugins(ContextualPanelPlugin)
         // The GTW-328 COMBAT-TEXT LOG (bottom-left, ABOVE the weapon panel): the scroll-up-and-
         // fade strip of recent combat events. Same `BattleRunning` lifecycle as the panels; it

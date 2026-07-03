@@ -318,7 +318,8 @@ impl MeleeResolved {
 /// A buffered [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`) carrying the
 /// shoving ganger [`Entity`] + the shoved target [`Entity`]. The deliberate SHOVE act (any
 /// ganger, adjacent to an opposing alive target) writes this from the input seam
-/// (`ActIntent::Shove` -> `ShoveRequested`, GTW-525 C4); the WEAPON-TAG auto-shove hooks
+/// (the GTW-571 per-act contextual seam: `PendingContextualIntents<ShoveAct>` ->
+/// `ShoveRequested`, GTW-525 C4); the WEAPON-TAG auto-shove hooks
 /// write it internally on a connecting attack (a melee strike OR a ranged shot connect,
 /// GTW-525 C3). [`dispatch_shove`](super::shove::dispatch_shove) drains it, and — per the
 /// [`ShoveSource`] — either gates the deliberate act (8-adjacency + opposing + alive) and
@@ -363,8 +364,8 @@ pub enum ShoveSource {
 }
 
 impl ShoveRequested {
-    /// Build a DELIBERATE shove request for `shover` knocking `target` back (the input-seam /
-    /// `ActIntent::Shove` form) — the gated, TU-costed act.
+    /// Build a DELIBERATE shove request for `shover` knocking `target` back (the input-seam
+    /// contextual-act form) — the gated, TU-costed act.
     #[must_use]
     pub const fn new(shover: Entity, target: Entity) -> Self {
         Self {
@@ -508,8 +509,8 @@ impl ExitEmplacementRequested {
 ///
 /// A buffered [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`) carrying the
 /// throwing ganger [`Entity`] + the target [`CellLevel`] the grenade is lobbed at. The
-/// player-only contextual Throw button writes this from the input seam (`ActIntent::ThrowGrenade`
-/// -> `ThrowGrenadeRequested`, the seam/app wiring phase) when the selected ganger wields an
+/// player-only contextual Throw button writes this from the input seam (the GTW-571 per-act
+/// contextual queue -> `ThrowGrenadeRequested`) when the selected ganger wields an
 /// `Arc` weapon. The throw is BLIND — there is NO line-of-sight / facing / arc gate (a lob
 /// need not see its target), so the target payload is a CELL AT RANGE (a [`CellLevel`], like
 /// [`MoveRequested::dest`]), never an 8-adjacent entity.

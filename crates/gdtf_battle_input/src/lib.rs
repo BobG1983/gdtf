@@ -21,7 +21,8 @@
 //!
 //! - [`plugin`] — the [`GdtfBattleInputPlugin`] wiring (the `add_systems` ordering) + its marker.
 //! - [`act_bus`] — the act-intent data bus and the key/binding surfaces that feed it:
-//!   [`sets`], [`intent`], [`keyboard`], [`keybinds`], [`cycle`].
+//!   [`sets`], [`intent`], [`contextual`] (the GTW-571 generic contextual-act seam),
+//!   [`keyboard`], [`keybinds`], [`cycle`].
 //! - [`mod@pointer`] — the cursor->cell->selection control surface and the fire decision pair:
 //!   [`picking`], [`selection`], [`gamepad`], [`fire_mode`], [`fire_surface`].
 
@@ -43,6 +44,9 @@ mod plugin;
 // `crate::selection::...`, etc. as sub-module paths.  These re-exports preserve every
 // `crate::<child>::...` reference without touching the moved source files.
 
+/// Re-export of [`act_bus::contextual`] — the GTW-571 generic contextual-act seam —
+/// for `crate::contextual::...` paths.
+pub use act_bus::contextual;
 /// Re-export of [`act_bus::cycle`] for intra-crate `crate::cycle::...` paths.
 pub use act_bus::cycle;
 // ---- flat item re-exports (unchanged public API surface) ------------------------
@@ -56,6 +60,11 @@ pub use act_bus::keyboard;
 /// Re-export of [`act_bus::sets`] for intra-crate `crate::sets::...` paths.
 pub use act_bus::sets;
 pub use act_bus::{
+    contextual::{
+        ContextualAct, ContextualActAppExt, ContextualActSystems, EnterEmplacementAct, ExecuteAct,
+        ExitEmplacementAct, MeleeAct, OpenDoorAct, PendingContextualIntents, ShoveAct,
+        StabilizeAct, ThrowGrenadeAct, drain_contextual_intents,
+    },
     intent::{
         ActIntent, ActWriters, LevelStep, PendingActIntent, SelectionCycleReads,
         dispatch_act_intents, step_level,
