@@ -1,5 +1,14 @@
 # Terrain / theme / prefab content migration — reconciliation ruling (GTW-490)
 
+> **SUPERSEDED — historical record.** This note describes the GTW-490
+> migration as it stood WHEN IT LANDED; it is retained as history, and its
+> claims about what is "live" or "in place" no longer hold. The old flat
+> `*.terrain.ron` / `*.theme.ron` files and their loaders are GONE (loaders
+> retired GTW-494, types deleted GTW-496, dead files removed GTW-562 / GTW-578),
+> and the game runs on the UUID-keyed model this migration produced. For the
+> current, authoritative terrain model and authoring workflow, see
+> [terrain-authoring.md](terrain-authoring.md).
+
 This note is the durable in-repo record (C1-RECORD) of the reconciliation ruling
 applied when migrating the shipped content to the NEW per-theme, UUID-keyed
 terrain / theme / prefab model. It lives in `docs/` (NOT beside the migrated
@@ -139,6 +148,10 @@ prefab / skirmish MUST match the theme file's key.
 | sw waste_drum                    | `00000000-0000-0000-0000-01840a930004` |
 
 ## Scope boundary
+
+*(Historical — see the banner at the top. None of the "stays live" claims
+below still hold: the old files and loaders were retired in GTW-494/496 and
+the dead data deleted in GTW-562/578; consumers switched in GTW-491/492+.)*
 
 ADDITIVE only. The OLD flat `content/terrain/*.terrain.ron`, the OLD
 `content/themes/*.theme.ron`, the OLD `content/maps/**/*.prefab.ron`, and their

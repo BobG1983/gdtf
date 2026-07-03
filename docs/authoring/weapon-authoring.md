@@ -3,8 +3,9 @@
 How to create, extend, and maintain the weapon roster — from a new
 `.weapon.ron` file to adding a brand-new field to `WeaponSpec` end-to-end.
 This guide documents the **current, landed state** of the weapon system
-(GTW-257 / GTW-260 / GTW-374 / GTW-443) and is the primary reference for
-content authors and engineers extending weapon mechanics.
+(GTW-257 / GTW-260 / GTW-374 / GTW-443, plus the optional-field additions
+GTW-525 / GTW-544 / GTW-546 / GTW-547 / GTW-549 / GTW-554) and is the primary
+reference for content authors and engineers extending weapon mechanics.
 
 ---
 
@@ -54,10 +55,18 @@ Follow the per-line-comment convention (`.ron-files-commented` project rule):
     ],
     stable:        false,   // true = brace bonus unconditional (bipod/heavy piece); false = normal
     handedness:    OneHanded, // OneHanded (pistol) | TwoHanded (long-arm/heavy); default OneHanded
+    // ---- optional fields (all #[serde(default)]; omit them for a plain gun) ----
+    // shove:       true,                          // knockback tag (GTW-525)
+    // trajectory:  Arc,                           // lobbed grenade parabola (GTW-546)
+    // slots:       [(Muzzle, 1), (Sight, 1)],     // offered attachment slots (GTW-554)
+    // attachments: ["suppressor"],                // fitted attachment item keys (GTW-549)
+    // dot:         Some((damage: 4, damage_type: Plasma, turns: 3)),          // GTW-544
+    // on_death:    Some(Explode(hit_type: Blast(radius: 1), damage: 8, damage_type: Blast)), // GTW-547
 )
 ```
 
-**Field reference:**
+**Field reference** (one row per `WeaponSpec` field, in declaration order —
+`crates/gdtf_battle_sim/src/equipment/weapon/spec.rs`):
 
 | Field | Rust type | RON form | Notes |
 |-------|-----------|----------|-------|
@@ -72,7 +81,13 @@ Follow the per-line-comment convention (`.ron-files-commented` project rule):
 | `magazine` | `Magazine` | `(size: u16, reload_tu: u8)` | Capacity + reload cost (see below) |
 | `fire_mode` | `FireMode` | list of `FireModeSpec` | The offered modes in selector order (see below) |
 | `stable` | `Stable` | bare `bool` | `true` = unconditional brace bonus |
+| `shove` | `Shove` | bare `bool`, optional | GTW-525 knockback tag; omitted = `false` (see 1h) |
 | `handedness` | `Handedness` | enum variant | `OneHanded` or `TwoHanded` |
+| `trajectory` | `TrajectoryStyle` | enum variant, optional | `Straight` (default) or `Arc` (see 1i) |
+| `slots` | `WeaponSlots` | pair list, optional | Offered attachment slots + capacities; omitted = none fit (see 1j) |
+| `attachments` | `Vec<AttachmentName>` | string list, optional | Fitted attachment ITEM keys; omitted = `[]` (see 1j) |
+| `dot` | `Option<DotProfile>` | `Some((…))`, optional | Damage-over-time profile; omitted = `None` (see 1k) |
+| `on_death` | `Option<OnDeathEffect>` | `Some(…)`, optional | Wielder-death effect; omitted = `None` (see 1l) |
 
 ### 1c. Magazine authoring
 
@@ -145,6 +160,67 @@ are `false`.
 
 A ganger with a `DisableHand` injury cannot fire a `TwoHanded` weapon. Omitting
 the field is NOT supported — it must be authored explicitly.
+
+### 1h. `shove` — knockback tag (GTW-525, optional)
+
+`shove: true` knocks the target back one cell on a connecting shot, in
+addition to the shot's damage. `#[serde(default)]` — an omitted field is a
+non-shove weapon (`false`).
+
+### 1i. `trajectory` — flat ray or lobbed arc (GTW-546, optional)
+
+`trajectory:` is the `TrajectoryStyle` enum: `Straight` (a flat ray — the
+default when omitted) or `Arc` (a lobbed grenade parabola with no LOS gate).
+Grenades and grenade launchers author `trajectory: Arc`.
+
+### 1j. `slots` and `attachments` — the attachment seam (GTW-554 / GTW-549, optional)
+
+`slots:` declares WHICH attachment slots the weapon offers and how many
+attachments each holds, as a `(slot, capacity)` pair list, e.g.
+`slots: [(Muzzle, 1), (Sight, 1), (Rail, 3)]`. The slot vocabulary is the
+closed `AttachmentSlot` enum: `Muzzle` / `Sight` / `Rail` (ranged) and
+`Counterweight` / `Pommel` (melee) — class gating EMERGES from the declared
+slots, never from a tag on the item. An omitted `slots:` field is the EMPTY
+declaration: NO attachment fits (fail-closed — a thrown charge takes no
+fittings).
+
+`attachments:` lists the fitted attachment ITEM keys (each a
+`assets/content/attachments/<key>.attachment.ron` file stem, e.g.
+`attachments: ["suppressor"]`). At battle setup each key is resolved against
+the `AttachmentRegistry` and admitted only into a declared slot with free
+capacity; a non-fitting item is cleanly skipped. Attachment ITEMS themselves
+(the `AttachmentSpec` + its typed effect list) are authored in
+`assets/content/attachments/` and their effect behaviors live in the
+attachments palette (`crates/gdtf_battle_sim/src/effects/attachments/`,
+GTW-558 — one file per effect).
+
+### 1k. `dot` — damage-over-time profile (GTW-544, optional)
+
+`dot:` gives the weapon a damage-over-time profile a PENETRATING hit seeds on
+the struck ganger:
+
+```ron
+dot: Some((
+    damage:      4,       // HP per turn, bypasses armor
+    damage_type: Plasma,  // presentation flavour only (no soak lookup)
+    turns:       3,       // duration; a second penetrating hit REFRESHES, never stacks
+)),
+```
+
+### 1l. `on_death` — wielder-death effect (GTW-547, optional)
+
+`on_death:` names the `OnDeathEffect` the WIELDING ganger's death fans (a live
+satchel charge, an unstable power cell): `Explode(hit_type: …, damage: …,
+damage_type: …)` or `LeaveField(field: "<field key>")`. Example
+(`assets/content/weapons/ranged/volatile_charge.weapon.ron`):
+
+```ron
+on_death: Some(Explode(
+    hit_type:    Blast(radius: 1),  // AoE template (Blast / Cone / Line / Single)
+    damage:      8,                 // flat HP drained per affected ganger (no RNG)
+    damage_type: Blast,             // wheel-node flavour (the drain bypasses armor)
+)),
+```
 
 ---
 
