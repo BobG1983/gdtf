@@ -1,32 +1,30 @@
 //! The **unified theme-definition registry** — the [`ThemeUuid`]→[`UuidThemeDef`] map
 //! (GTW-485), the sole theme registry after GTW-496.
 
-use bevy::{platform::collections::HashMap, prelude::Resource};
+use bevy::prelude::Resource;
 
 use super::{ThemeUuid, UuidThemeDef};
-use crate::terrain::def::TerrainUuid;
+use crate::{registry::Registry, terrain::def::TerrainUuid};
 
 /// The **unified theme-definition registry** — a [`ThemeUuid`]→[`UuidThemeDef`] map
 /// (GTW-485), keyed by the stable theme UUID.
 ///
-/// A named newtype [`Resource`] over a [`HashMap`]`<`[`ThemeUuid`]`, `[`UuidThemeDef`]`>`
-/// (no-bare-types: a registry is a domain value, not a bare `HashMap`), the theme mirror of
-/// [`TerrainDefRegistry`](crate::terrain::def::TerrainDefRegistry). The sim OWNS the theme
-/// model, so the type lives here. It holds the definitions BY VALUE ([`UuidThemeDef`] is
+/// A named [`Resource`] newtype over the foundation [`Registry`]`<`[`ThemeUuid`]`,
+/// `[`UuidThemeDef`]`>` catalog map — see [`Registry`] for the shared name→def surface
+/// these one-line wrappers delegate to — plus the theme-specific
+/// [`default_floor`](UuidThemeRegistry::default_floor) /
+/// [`terrain`](UuidThemeRegistry::terrain) resolvers. The sim OWNS the theme model, so
+/// the type lives here. It holds the definitions BY VALUE ([`UuidThemeDef`] is
 /// `Clone`), so they survive even if the source asset handle is dropped.
-///
-/// Private inner with small accessors (a registry answers a theme LOOKUP / resolve /
-/// enumeration, not a raw-map question — so no derived [`Deref`](bevy::prelude::Deref), the
-/// [`TerrainDefRegistry`](crate::terrain::def::TerrainDefRegistry) no-`Deref` precedent).
 #[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
-pub struct UuidThemeRegistry(HashMap<ThemeUuid, UuidThemeDef>);
+pub struct UuidThemeRegistry(Registry<ThemeUuid, UuidThemeDef>);
 
 impl UuidThemeRegistry {
     /// Build a registry from a `(key, def)` iterator — the shape a loader (and tests) key
     /// by [`ThemeUuid`].
     #[must_use]
     pub fn new(defs: impl IntoIterator<Item = (ThemeUuid, UuidThemeDef)>) -> Self {
-        Self(defs.into_iter().collect())
+        Self(Registry::new(defs))
     }
 
     /// Insert one definition under its [`ThemeUuid`] key, returning the previous definition

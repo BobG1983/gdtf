@@ -12,7 +12,7 @@ use bevy::{
 use serde::{Deserialize, Serialize};
 
 use super::{FieldDef, FieldDuration, FieldTurns};
-use crate::metric::CellLevel;
+use crate::{metric::CellLevel, registry::Registry};
 
 /// A field type's **catalog KEY** — its human-facing identity (an authored field's filename
 /// stem). The loader keys the [`FieldDefRegistry`] by it; a situation's authored
@@ -39,26 +39,23 @@ impl FieldKey {
 /// situation's authored `FieldSpawn` (and the GTW-547 spawn effect) resolve a
 /// [`FieldKey`] against (GTW-545), mirroring the [`ArmorRegistry`](crate::armor::ArmorRegistry).
 ///
-/// A named newtype [`Resource`] over a [`HashMap`]`<`[`FieldKey`]`, `[`FieldDef`]`>`
-/// (no-bare-types: a registry is a domain value, not a bare `HashMap`). The sim OWNS the
-/// field model, so the type lives here; the app's `Load` flow POPULATES it from the loaded
-/// `assets/content/fields/*.field.ron` folder (keyed by each file's stem) and inserts it as a
-/// PERSISTENT resource (it survives past `Load`, like the [`ArmorRegistry`](crate::armor::ArmorRegistry)).
-/// It holds the defs BY VALUE (cloned in, so they survive the loaded-folder handle being
-/// dropped).
-///
-/// Private inner with small accessors (the registry answers a field LOOKUP, not a raw-map
-/// question — so no derived [`Deref`](bevy::prelude::Deref)). A situation's seed loop resolves
-/// a [`FieldKey`] through [`def`](FieldDefRegistry::def).
+/// A named [`Resource`] newtype over the foundation [`Registry`]`<`[`FieldKey`]`,
+/// `[`FieldDef`]`>` catalog map — see [`Registry`] for the shared name→def surface these
+/// one-line wrappers delegate to. The sim OWNS the field model, so the type lives here; the
+/// app's `Load` flow POPULATES it from the loaded `assets/content/fields/*.field.ron` folder
+/// (keyed by each file's stem) and inserts it as a PERSISTENT resource (it survives past
+/// `Load`, like the [`ArmorRegistry`](crate::armor::ArmorRegistry)). It holds the defs BY
+/// VALUE (cloned in, so they survive the loaded-folder handle being dropped). A situation's
+/// seed loop resolves a [`FieldKey`] through [`def`](FieldDefRegistry::def).
 #[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
-pub struct FieldDefRegistry(HashMap<FieldKey, FieldDef>);
+pub struct FieldDefRegistry(Registry<FieldKey, FieldDef>);
 
 impl FieldDefRegistry {
     /// Build a field-def registry from a `(key, def)` iterator — the shape the folder loader
     /// (and a test) keys by filename stem.
     #[must_use]
     pub fn new(defs: impl IntoIterator<Item = (FieldKey, FieldDef)>) -> Self {
-        Self(defs.into_iter().collect())
+        Self(Registry::new(defs))
     }
 
     /// Insert one field def under its [`FieldKey`], returning the previous def at that key

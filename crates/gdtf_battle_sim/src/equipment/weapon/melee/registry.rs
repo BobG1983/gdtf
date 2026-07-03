@@ -2,10 +2,10 @@
 //! battle setup resolves ganger melee weapon keys against (GTW-505), the melee mirror
 //! of the ranged [`WeaponRegistry`](super::super::WeaponRegistry).
 
-use bevy::{platform::collections::HashMap, prelude::Resource};
+use bevy::prelude::Resource;
 
 use super::MeleeWeaponSpec;
-use crate::weapon::WeaponName;
+use crate::{registry::Registry, weapon::WeaponName};
 
 /// The key the [`fists` default](MeleeWeaponRegistry::fists) resolves under — the
 /// filename stem of the shipped `assets/content/weapons/melee/fists.melee_weapon.ron`
@@ -17,27 +17,25 @@ pub const FISTS_KEY: &str = "fists";
 /// battle setup resolves ganger melee weapon keys against (GTW-505), the melee mirror
 /// of the ranged [`WeaponRegistry`](super::super::WeaponRegistry).
 ///
-/// A named newtype [`Resource`] over a [`HashMap`]`<`[`WeaponName`]`,
-/// `[`MeleeWeaponSpec`]`>` (no-bare-types: a registry is a domain value, not a bare
-/// `HashMap`). The sim OWNS the weapon model, so the type lives here; the app's `Load`
-/// flow POPULATES it from the loaded `assets/content/weapons/melee/*.melee_weapon.ron`
-/// folder (keyed by each file's stem) and inserts it as a resource. It holds the specs
-/// BY VALUE ([`MeleeWeaponSpec`] is `Clone`), so they survive even if the loaded-folder
-/// asset handle is dropped.
-///
-/// Private inner with small accessors (the registry answers a weapon LOOKUP, not a
-/// raw-map question — so no derived [`Deref`](bevy::prelude::Deref)). The setup
-/// resolves a ganger's melee weapon (`Some(key)` → that entry, `None` → the
-/// [`fists`](MeleeWeaponRegistry::fists) default) through [`spec`](MeleeWeaponRegistry::spec).
+/// A named [`Resource`] newtype over the foundation [`Registry`]`<`[`WeaponName`]`,
+/// `[`MeleeWeaponSpec`]`>` catalog map — see [`Registry`] for the shared name→def
+/// surface these one-line wrappers delegate to. The sim OWNS the weapon model, so the
+/// type lives here; the app's `Load` flow POPULATES it from the loaded
+/// `assets/content/weapons/melee/*.melee_weapon.ron` folder (keyed by each file's
+/// stem) and inserts it as a resource. It holds the specs BY VALUE
+/// ([`MeleeWeaponSpec`] is `Clone`), so they survive even if the loaded-folder asset
+/// handle is dropped. The setup resolves a ganger's melee weapon (`Some(key)` → that
+/// entry, `None` → the [`fists`](MeleeWeaponRegistry::fists) default) through
+/// [`spec`](MeleeWeaponRegistry::spec).
 #[derive(Resource, Debug, Clone, Default, PartialEq)]
-pub struct MeleeWeaponRegistry(HashMap<WeaponName, MeleeWeaponSpec>);
+pub struct MeleeWeaponRegistry(Registry<WeaponName, MeleeWeaponSpec>);
 
 impl MeleeWeaponRegistry {
     /// Build a melee weapon registry from a `(name, spec)` iterator — the shape the
     /// folder loader (and a test) keys by filename stem.
     #[must_use]
     pub fn new(weapons: impl IntoIterator<Item = (WeaponName, MeleeWeaponSpec)>) -> Self {
-        Self(weapons.into_iter().collect())
+        Self(Registry::new(weapons))
     }
 
     /// Insert one melee weapon spec under its [`WeaponName`] key, returning the previous
@@ -80,8 +78,8 @@ impl MeleeWeaponRegistry {
     /// precedent), so a melee-weapon-selector UI can list all loaded melee weapons
     /// without exposing the inner map.
     ///
-    /// [`HashMap`] iteration order is unspecified; callers that need a stable order must
-    /// collect and sort.
+    /// Iteration order is unspecified (see [`Registry`]); callers that need a stable
+    /// order must collect and sort.
     pub fn keys(&self) -> impl Iterator<Item = &WeaponName> {
         self.0.keys()
     }
@@ -90,8 +88,8 @@ impl MeleeWeaponRegistry {
     /// registry — for editor dropdown enumeration (the ranged
     /// [`WeaponRegistry::iter`](super::super::WeaponRegistry) precedent).
     ///
-    /// [`HashMap`] iteration order is unspecified; callers that need a stable order must
-    /// collect and sort by name.
+    /// Iteration order is unspecified (see [`Registry`]); callers that need a stable
+    /// order must collect and sort by name.
     pub fn iter(&self) -> impl Iterator<Item = (&WeaponName, &MeleeWeaponSpec)> {
         self.0.iter()
     }
@@ -104,7 +102,7 @@ impl<'a> IntoIterator for &'a MeleeWeaponRegistry {
     /// Iterate over `(`[`WeaponName`]`,` [`MeleeWeaponSpec`]`)` pairs via the
     /// [`IntoIterator`] trait — satisfies the `iter_without_into_iter` pedantic lint
     /// that requires a matching trait impl alongside an inherent `iter(&self)`. Delegates
-    /// to the inner [`HashMap`]'s owned iterator; order is unspecified.
+    /// to the inner [`Registry`]'s borrowed iterator; order is unspecified.
     fn into_iter(self) -> Self::IntoIter {
         (&self.0).into_iter()
     }

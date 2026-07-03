@@ -4,9 +4,10 @@
 //! attachment mirror of the [`MeleeWeaponRegistry`](crate::weapon::MeleeWeaponRegistry) /
 //! ranged [`WeaponRegistry`](crate::weapon::WeaponRegistry).
 
-use bevy::{platform::collections::HashMap, prelude::Resource};
+use bevy::prelude::Resource;
 
 use super::{AttachmentName, AttachmentSpec};
+use crate::registry::Registry;
 
 /// The **attachment registry** — a key→spec map the folder loader builds from
 /// `assets/content/attachments/*.attachment.ron` (keyed by each file's stem) and the battle
@@ -14,28 +15,25 @@ use super::{AttachmentName, AttachmentSpec};
 /// [`attachments`](crate::weapon::WeaponSpec::attachments) keys against (GTW-549),
 /// the attachment mirror of the [`MeleeWeaponRegistry`](crate::weapon::MeleeWeaponRegistry).
 ///
-/// A named newtype [`Resource`] over a [`HashMap`]`<`[`AttachmentName`]`,
-/// `[`AttachmentSpec`]`>` (no-bare-types: a registry is a domain value, not a bare
-/// `HashMap`). The sim OWNS the attachment model, so the type lives here; the app's `Load`
-/// flow POPULATES it from the loaded `assets/content/attachments/*.attachment.ron` folder
-/// (keyed by each file's stem) and inserts it as a resource. It holds the specs BY VALUE
+/// A named [`Resource`] newtype over the foundation
+/// [`Registry`]`<`[`AttachmentName`]`, `[`AttachmentSpec`]`>` catalog map — see
+/// [`Registry`] for the shared name→def surface these one-line wrappers delegate to. The
+/// sim OWNS the attachment model, so the type lives here; the app's `Load` flow POPULATES
+/// it from the loaded `assets/content/attachments/*.attachment.ron` folder (keyed by each
+/// file's stem) and inserts it as a resource. It holds the specs BY VALUE
 /// ([`AttachmentSpec`] is `Clone`), so they survive even if the loaded-folder asset handle
-/// is dropped.
-///
-/// Private inner with small accessors (the registry answers an attachment LOOKUP, not a
-/// raw-map question — so no derived [`Deref`](bevy::prelude::Deref)). Setup resolves a
-/// weapon's authored slot keys through [`spec`](AttachmentRegistry::spec) at setup time. A
-/// missing key fails closed (nothing applied), the fail-safe the melee/weapon registries
-/// share.
+/// is dropped. Setup resolves a weapon's authored slot keys through
+/// [`spec`](AttachmentRegistry::spec) at setup time. A missing key fails closed (nothing
+/// applied), the fail-safe the melee/weapon registries share.
 #[derive(Resource, Debug, Clone, Default, PartialEq)]
-pub struct AttachmentRegistry(HashMap<AttachmentName, AttachmentSpec>);
+pub struct AttachmentRegistry(Registry<AttachmentName, AttachmentSpec>);
 
 impl AttachmentRegistry {
     /// Build an attachment registry from a `(name, spec)` iterator — the shape the folder
     /// loader (and a test) keys by filename stem.
     #[must_use]
     pub fn new(items: impl IntoIterator<Item = (AttachmentName, AttachmentSpec)>) -> Self {
-        Self(items.into_iter().collect())
+        Self(Registry::new(items))
     }
 
     /// Insert one attachment spec under its [`AttachmentName`] key, returning the previous
@@ -70,8 +68,8 @@ impl AttachmentRegistry {
     /// so an attachment-selector UI can list all loaded attachments without exposing the
     /// inner map.
     ///
-    /// [`HashMap`] iteration order is unspecified; callers that need a stable order must
-    /// collect and sort.
+    /// Iteration order is unspecified (see [`Registry`]); callers that need a stable
+    /// order must collect and sort.
     pub fn keys(&self) -> impl Iterator<Item = &AttachmentName> {
         self.0.keys()
     }
@@ -79,8 +77,8 @@ impl AttachmentRegistry {
     /// Iterate over every `(`[`AttachmentName`]`,` [`AttachmentSpec`]`)` pair in the
     /// registry — for editor dropdown enumeration (the melee/ranged registry precedent).
     ///
-    /// [`HashMap`] iteration order is unspecified; callers that need a stable order must
-    /// collect and sort by name.
+    /// Iteration order is unspecified (see [`Registry`]); callers that need a stable
+    /// order must collect and sort by name.
     pub fn iter(&self) -> impl Iterator<Item = (&AttachmentName, &AttachmentSpec)> {
         self.0.iter()
     }
@@ -93,7 +91,7 @@ impl<'a> IntoIterator for &'a AttachmentRegistry {
     /// Iterate over `(`[`AttachmentName`]`,` [`AttachmentSpec`]`)` pairs via the
     /// [`IntoIterator`] trait — satisfies the `iter_without_into_iter` pedantic lint that
     /// requires a matching trait impl alongside an inherent `iter(&self)`. Delegates to the
-    /// inner [`HashMap`]'s owned iterator; order is unspecified.
+    /// inner [`Registry`]'s borrowed iterator; order is unspecified.
     fn into_iter(self) -> Self::IntoIter {
         (&self.0).into_iter()
     }

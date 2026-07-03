@@ -381,6 +381,8 @@ pub use falls::{DropLanding, FallOccurred, FallsPlugin, StoreysFallen, apply_fal
 pub use foundation::{
     metric,
     metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell},
+    registry,
+    registry::Registry,
     rng,
     rng::{
         BattleSeed, FightRng, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng,

@@ -23,7 +23,6 @@
 //!   [`PlacedGanger`](crate::situation::PlacedGanger) gang/member refs against.
 
 use bevy::{
-    platform::collections::HashMap,
     prelude::{Deref, Resource},
     reflect::TypePath,
 };
@@ -33,7 +32,7 @@ use super::{
     attributes::{Aim, Cool, Grit, Reflexes, Speed, Strength},
     vitals::{GangerName, Luck, Toughness},
 };
-use crate::{armor::ArmorName, weapon::WeaponName};
+use crate::{armor::ArmorName, registry::Registry, weapon::WeaponName};
 
 /// A **gang** identity — the name of a faction-agnostic reusable roster (GTW-414).
 ///
@@ -48,7 +47,7 @@ use crate::{armor::ArmorName, weapon::WeaponName};
 /// `String`), the [`GangerName`] / [`WeaponName`] precedent. Private inner + derived
 /// [`Deref`] (house style — never a hand-written `impl Deref`). `#[serde(transparent)]`
 /// lets an authored situation `.ron`'s `gang` ref parse as a bare string. `Eq` + `Hash`
-/// so it keys the [`GangRegistry`]'s [`HashMap`].
+/// so it keys the [`GangRegistry`]'s inner [`Registry`].
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct GangName(String);
@@ -210,26 +209,24 @@ impl GangRoster {
 /// [`setup_battle`](crate::situation::setup_battle) resolves
 /// [`PlacedGanger`](crate::situation::PlacedGanger) gang refs against (GTW-415).
 ///
-/// A named newtype [`Resource`] over a [`HashMap`]`<`[`GangName`]`, `[`GangRoster`]`>`
-/// (no-bare-types: a registry is a domain value, not a bare `HashMap`), the
-/// [`WeaponRegistry`](crate::weapon::WeaponRegistry) precedent. The sim OWNS the gang
-/// model, so the type lives here; the app's `Load` flow POPULATES it from the loaded
+/// A named [`Resource`] newtype over the foundation [`Registry`]`<`[`GangName`]`,
+/// `[`GangRoster`]`>` catalog map — see [`Registry`] for the shared name→def surface
+/// these one-line wrappers delegate to. The sim OWNS the gang model, so the type lives
+/// here; the app's `Load` flow POPULATES it from the loaded
 /// `assets/content/gangs/*.gang.ron` folder (keyed by each file's stem) and inserts it as
 /// a resource. It holds the rosters BY VALUE ([`GangRoster`] is `Clone`), so they survive
 /// the loaded-folder asset handle being dropped on `OnExit(Load)`.
-///
-/// Private inner with small accessors (the registry answers a roster LOOKUP, not a
-/// raw-map question — so no derived [`Deref`]). [`setup_battle`](crate::situation::setup_battle)
-/// resolves a gang ref through [`roster`](GangRegistry::roster).
+/// [`setup_battle`](crate::situation::setup_battle) resolves a gang ref through
+/// [`roster`](GangRegistry::roster).
 #[derive(Resource, Debug, Clone, Default, PartialEq)]
-pub struct GangRegistry(HashMap<GangName, GangRoster>);
+pub struct GangRegistry(Registry<GangName, GangRoster>);
 
 impl GangRegistry {
     /// Build a gang registry from a `(name, roster)` iterator — the shape the folder
     /// loader (keyed by filename stem) and a test build.
     #[must_use]
     pub fn new(gangs: impl IntoIterator<Item = (GangName, GangRoster)>) -> Self {
-        Self(gangs.into_iter().collect())
+        Self(Registry::new(gangs))
     }
 
     /// Insert one roster under its [`GangName`] key, returning the previous roster at
@@ -262,8 +259,8 @@ impl GangRegistry {
     /// enumeration (the [`WeaponRegistry::keys`](crate::weapon::WeaponRegistry) precedent),
     /// so a roster UI can list every loaded gang without exposing the inner map.
     ///
-    /// [`HashMap`] iteration order is unspecified; callers that need a stable order must
-    /// collect and sort.
+    /// Iteration order is unspecified (see [`Registry`]); callers that need a stable
+    /// order must collect and sort.
     pub fn keys(&self) -> impl Iterator<Item = &GangName> {
         self.0.keys()
     }

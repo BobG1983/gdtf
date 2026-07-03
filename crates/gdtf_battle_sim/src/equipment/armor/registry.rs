@@ -2,13 +2,11 @@
 //! battle setup resolves ganger armor keys against (GTW-269), the armor mirror of
 //! the [`WeaponRegistry`](crate::weapon::WeaponRegistry).
 
-use bevy::{
-    platform::collections::HashMap,
-    prelude::{Deref, Resource},
-};
+use bevy::prelude::{Deref, Resource};
 use serde::{Deserialize, Serialize};
 
 use super::ArmorSpec;
+use crate::registry::Registry;
 
 /// An armor suit's **name** — its human-facing identity (an authored armor's
 /// display name). The loader keys the [`ArmorRegistry`] by it (the armor file's
@@ -33,30 +31,28 @@ impl ArmorName {
 /// battle setup resolves ganger armor keys against (GTW-269), mirroring the
 /// [`WeaponRegistry`](crate::weapon::WeaponRegistry).
 ///
-/// A named newtype [`Resource`] over a [`HashMap`]`<`[`ArmorName`]`, `[`ArmorSpec`]`>`
-/// (no-bare-types: a registry is a domain value, not a bare `HashMap`). The sim OWNS
-/// the armor model, so the type lives here; the app's `Load` flow POPULATES it from
-/// the loaded `assets/content/armor/*.ron` folder (keyed by each file's stem) and inserts it
-/// as a resource. It holds the specs BY VALUE ([`ArmorSpec`] is `Copy`), so they
-/// survive even if the loaded-folder asset handle is dropped.
-///
-/// Private inner with small accessors (the registry answers an armor LOOKUP, not a
-/// raw-map question — so no derived [`Deref`](bevy::prelude::Deref)). The setup
-/// resolves a ganger's armor key through [`spec`](ArmorRegistry::spec).
+/// A named [`Resource`] newtype over the foundation
+/// [`Registry`]`<`[`ArmorName`]`, `[`ArmorSpec`]`>` catalog map — see [`Registry`]
+/// for the shared name→def surface these one-line wrappers delegate to. The sim
+/// OWNS the armor model, so the type lives here; the app's `Load` flow POPULATES
+/// it from the loaded `assets/content/armor/*.ron` folder (keyed by each file's
+/// stem) and inserts it as a resource. It holds the specs BY VALUE ([`ArmorSpec`]
+/// is `Copy`), so they survive even if the loaded-folder asset handle is dropped.
+/// The setup resolves a ganger's armor key through [`spec`](ArmorRegistry::spec).
 ///
 /// Mirrors [`WeaponRegistry`](crate::weapon::WeaponRegistry)'s derive set, plus
 /// [`Eq`] — an [`ArmorSpec`] is fully `Eq` (only `i32`/enum leaves, no floats,
 /// unlike a [`WeaponSpec`](crate::weapon::WeaponSpec)), so the map is `Eq` and the
 /// `clippy::derive_partial_eq_without_eq` lint requires it.
 #[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
-pub struct ArmorRegistry(HashMap<ArmorName, ArmorSpec>);
+pub struct ArmorRegistry(Registry<ArmorName, ArmorSpec>);
 
 impl ArmorRegistry {
     /// Build an armor registry from a `(name, spec)` iterator — the shape the
     /// folder loader (and a test) keys by filename stem.
     #[must_use]
     pub fn new(armors: impl IntoIterator<Item = (ArmorName, ArmorSpec)>) -> Self {
-        Self(armors.into_iter().collect())
+        Self(Registry::new(armors))
     }
 
     /// Insert one armor spec under its [`ArmorName`] key, returning the previous
@@ -90,8 +86,8 @@ impl ArmorRegistry {
     /// dropdown enumeration (GTW-413/GTW-425)**, so the armor-selector UI can
     /// list all loaded armor suits without exposing the inner map.
     ///
-    /// [`HashMap`] iteration order is unspecified; callers that need a stable,
-    /// reproducible order (e.g. a sorted dropdown) must collect and sort.
+    /// Iteration order is unspecified (see [`Registry`]); callers that need a
+    /// stable, reproducible order (e.g. a sorted dropdown) must collect and sort.
     pub fn keys(&self) -> impl Iterator<Item = &ArmorName> {
         self.0.keys()
     }
@@ -100,8 +96,8 @@ impl ArmorRegistry {
     /// registry — **for editor dropdown enumeration (GTW-413/GTW-425)**, so the
     /// armor-selector UI can display each armor suit's name alongside its spec.
     ///
-    /// [`HashMap`] iteration order is unspecified; callers that need a stable,
-    /// reproducible order must collect and sort by name.
+    /// Iteration order is unspecified (see [`Registry`]); callers that need a
+    /// stable, reproducible order must collect and sort by name.
     pub fn iter(&self) -> impl Iterator<Item = (&ArmorName, &ArmorSpec)> {
         self.0.iter()
     }
@@ -114,7 +110,7 @@ impl<'a> IntoIterator for &'a ArmorRegistry {
     /// Iterate over `(`[`ArmorName`]`,` [`ArmorSpec`]`)` pairs via the
     /// [`IntoIterator`] trait — satisfies the `iter_without_into_iter` pedantic
     /// lint that requires a matching trait impl alongside an inherent `iter(&self)`.
-    /// Delegates to the inner [`HashMap`]'s owned iterator; order is unspecified.
+    /// Delegates to the inner [`Registry`]'s borrowed iterator; order is unspecified.
     fn into_iter(self) -> Self::IntoIter {
         (&self.0).into_iter()
     }

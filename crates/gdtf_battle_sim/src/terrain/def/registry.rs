@@ -1,34 +1,31 @@
 //! The **unified terrain-definition registry** — the [`TerrainUuid`]→[`TerrainDef`]
 //! map (GTW-484), the sole terrain registry after GTW-496.
 
-use bevy::{platform::collections::HashMap, prelude::Resource};
+use bevy::prelude::Resource;
 
 use super::{TerrainDef, TerrainUuid};
+use crate::registry::Registry;
 
 /// The **unified terrain-definition registry** — a [`TerrainUuid`]→[`TerrainDef`]
 /// map (GTW-484), keyed by the stable terrain UUID.
 ///
-/// A named newtype [`Resource`] over a [`HashMap`]`<`[`TerrainUuid`]`,
-/// `[`TerrainDef`]`>` (no-bare-types: a registry is a domain value, not a bare
-/// `HashMap`). The sim OWNS the terrain model, so the type lives here. It holds the
-/// definitions BY VALUE ([`TerrainDef`] is `Clone`), so they survive even if the
-/// source asset handle is dropped.
-///
-/// Private inner with small accessors (a registry answers a terrain LOOKUP, not a
-/// raw-map question — so no derived [`Deref`](bevy::prelude::Deref), the
-/// `WeaponRegistry` / `ArmorRegistry` pattern).
+/// A named [`Resource`] newtype over the foundation [`Registry`]`<`[`TerrainUuid`]`,
+/// `[`TerrainDef`]`>` catalog map — see [`Registry`] for the shared name→def
+/// surface these one-line wrappers delegate to. The sim OWNS the terrain model, so
+/// the type lives here. It holds the definitions BY VALUE ([`TerrainDef`] is
+/// `Clone`), so they survive even if the source asset handle is dropped.
 // NOT `Eq` (GTW-547): its `TerrainDef` values carry an optional `on_death` effect whose
 // `Explode` `HitType::Cone` half-angle is an `f32` (not `Eq`). `PartialEq` is enough — the
 // registry is compared with `==` in tests, never keyed in a set.
 #[derive(Resource, Debug, Clone, Default, PartialEq)]
-pub struct TerrainDefRegistry(HashMap<TerrainUuid, TerrainDef>);
+pub struct TerrainDefRegistry(Registry<TerrainUuid, TerrainDef>);
 
 impl TerrainDefRegistry {
     /// Build a registry from a `(key, def)` iterator — the shape a loader (and tests)
     /// key by [`TerrainUuid`].
     #[must_use]
     pub fn new(defs: impl IntoIterator<Item = (TerrainUuid, TerrainDef)>) -> Self {
-        Self(defs.into_iter().collect())
+        Self(Registry::new(defs))
     }
 
     /// Insert one definition under its [`TerrainUuid`] key, returning the previous

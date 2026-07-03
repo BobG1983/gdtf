@@ -1,35 +1,34 @@
 //! The **weapon registry** — the name→spec map the folder loader builds and the
 //! battle setup resolves ganger weapon keys against (GTW-257).
 
-use bevy::{platform::collections::HashMap, prelude::Resource};
+use bevy::prelude::Resource;
 
 use super::{WeaponName, WeaponSpec};
+use crate::registry::Registry;
 
 /// The **weapon registry** — a name→spec map the folder loader builds and the
 /// battle setup resolves [`GangerSpawn`](crate::situation::GangerSpawn) weapon keys
 /// against (GTW-257).
 ///
-/// A named newtype [`Resource`] over a [`HashMap`]`<`[`WeaponName`]`,
-/// `[`WeaponSpec`]`>` (no-bare-types: a registry is a domain value, not a bare
-/// `HashMap`). The sim OWNS the weapon model, so the type lives here; the app's
-/// `Load` flow POPULATES it from the loaded `assets/content/weapons/ranged/*.ron` folder (keyed by
-/// each file's stem) and inserts it as a resource. It holds the specs BY VALUE
-/// ([`WeaponSpec`] is `Clone`), so they survive even if the loaded-folder asset
-/// handle is dropped.
-///
-/// Private inner with small accessors (the registry answers a weapon LOOKUP, not a
-/// raw-map question — so no derived [`Deref`](bevy::prelude::Deref)). The setup
-/// resolves [`GangerSpawn::weapon`](crate::situation::GangerSpawn) through
+/// A named [`Resource`] newtype over the foundation
+/// [`Registry`]`<`[`WeaponName`]`, `[`WeaponSpec`]`>` catalog map — see
+/// [`Registry`] for the shared name→def surface these one-line wrappers delegate
+/// to. The sim OWNS the weapon model, so the type lives here; the app's `Load`
+/// flow POPULATES it from the loaded `assets/content/weapons/ranged/*.ron` folder
+/// (keyed by each file's stem) and inserts it as a resource. It holds the specs BY
+/// VALUE ([`WeaponSpec`] is `Clone`), so they survive even if the loaded-folder
+/// asset handle is dropped. The setup resolves
+/// [`GangerSpawn::weapon`](crate::situation::GangerSpawn) through
 /// [`spec`](WeaponRegistry::spec).
 #[derive(Resource, Debug, Clone, Default, PartialEq)]
-pub struct WeaponRegistry(HashMap<WeaponName, WeaponSpec>);
+pub struct WeaponRegistry(Registry<WeaponName, WeaponSpec>);
 
 impl WeaponRegistry {
     /// Build a weapon registry from a `(name, spec)` iterator — the shape the
     /// folder loader (and a test) keys by filename stem.
     #[must_use]
     pub fn new(weapons: impl IntoIterator<Item = (WeaponName, WeaponSpec)>) -> Self {
-        Self(weapons.into_iter().collect())
+        Self(Registry::new(weapons))
     }
 
     /// Insert one weapon spec under its [`WeaponName`] key, returning the previous
@@ -62,8 +61,8 @@ impl WeaponRegistry {
     /// dropdown enumeration (GTW-413/GTW-425)**, so the weapon-selector UI can
     /// list all loaded weapons without exposing the inner map.
     ///
-    /// [`HashMap`] iteration order is unspecified; callers that need a stable,
-    /// reproducible order (e.g. a sorted dropdown) must collect and sort.
+    /// Iteration order is unspecified (see [`Registry`]); callers that need a
+    /// stable, reproducible order (e.g. a sorted dropdown) must collect and sort.
     pub fn keys(&self) -> impl Iterator<Item = &WeaponName> {
         self.0.keys()
     }
@@ -72,8 +71,8 @@ impl WeaponRegistry {
     /// registry — **for editor dropdown enumeration (GTW-413/GTW-425)**, so the
     /// weapon-selector UI can display each weapon's name alongside its spec.
     ///
-    /// [`HashMap`] iteration order is unspecified; callers that need a stable,
-    /// reproducible order must collect and sort by name.
+    /// Iteration order is unspecified (see [`Registry`]); callers that need a
+    /// stable, reproducible order must collect and sort by name.
     pub fn iter(&self) -> impl Iterator<Item = (&WeaponName, &WeaponSpec)> {
         self.0.iter()
     }
@@ -86,7 +85,7 @@ impl<'a> IntoIterator for &'a WeaponRegistry {
     /// Iterate over `(`[`WeaponName`]`,` [`WeaponSpec`]`)` pairs via the
     /// [`IntoIterator`] trait — satisfies the `iter_without_into_iter` pedantic
     /// lint that requires a matching trait impl alongside an inherent `iter(&self)`.
-    /// Delegates to the inner [`HashMap`]'s owned iterator; order is unspecified.
+    /// Delegates to the inner [`Registry`]'s borrowed iterator; order is unspecified.
     fn into_iter(self) -> Self::IntoIter {
         (&self.0).into_iter()
     }
