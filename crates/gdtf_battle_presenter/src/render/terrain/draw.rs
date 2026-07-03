@@ -20,7 +20,7 @@ use gdtf_battle_sim::{
 
 use super::{
     active_level::{ActiveLevel, ViewMode},
-    roles::{TileIndex, TileRoles},
+    roles::{TileIndex, TileRole, TileRoles},
 };
 use crate::{Brightness, CELL_PX, SheetRole, TerrainFogMaterial, TopDownAtlases, cell_to_world};
 
@@ -36,38 +36,6 @@ use crate::{Brightness, CELL_PX, SheetRole, TerrainFogMaterial, TopDownAtlases, 
 pub struct TerrainSprite {
     /// The `(cell, level)` this terrain sprite was drawn for.
     pub at: CellLevel,
-}
-
-/// The role a sim fact maps a `(cell, level)` to — the presenter-owned mapping from sim
-/// state to a [`TileRoles`] role.
-///
-/// This slice owns WHICH role each sim fact maps to; the INDEX a role resolves to is
-/// read from the [`TileRoles`] resource via [`TileRole::index`], never a hardcoded
-/// literal. A cell with no terrain fact and no slab is [`None`] (no sprite); an
-/// in-range cell with nothing on it is the [`Floor`](TileRole::Floor) default.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum TileRole {
-    /// Default walkable ground — in-range, [`TerrainKind::Open`], no present slab.
-    Floor,
-    /// A wall — [`TerrainKind::Wall`].
-    Wall,
-    /// A piece of cover — [`TerrainKind::Cover`] (corroborated by a [`CoverLedger`]
-    /// peek where present).
-    Cover,
-    /// A present slab — [`SurfaceGrid`] `Present` on the active level.
-    Slab,
-}
-
-impl TileRole {
-    /// The [`TileIndex`] this role resolves to, read from the [`TileRoles`] resource.
-    const fn index(self, roles: &TileRoles) -> TileIndex {
-        match self {
-            Self::Floor => roles.floor,
-            Self::Wall => roles.wall,
-            Self::Cover => roles.cover,
-            Self::Slab => roles.slab,
-        }
-    }
 }
 
 /// The sim-owned static-map state the terrain draw reads, bundled so the draw system
@@ -108,8 +76,11 @@ pub struct StaticMap<'w, 's> {
 impl StaticMap<'_, '_> {
     /// The [`TileRole`] for the in-range `key` on the active level.
     ///
-    /// The presenter-owned mapping (`docs/combat/resolution.md` §3 cover / slab
-    /// semantics): a `Present` slab is [`TileRole::Slab`]; a [`TerrainKind::Wall`] is
+    /// The presenter-owned sim-fact → role mapping (`docs/combat/resolution.md` §3
+    /// cover / slab semantics) over the shared GTW-566 [`TileRole`] vocabulary (this
+    /// mapping is the one place the fallback CHOICE lives; the INDEX a role resolves to
+    /// is read from [`TileRoles`] via [`TileRole::index_in`], never a hardcoded
+    /// literal): a `Present` slab is [`TileRole::Slab`]; a [`TerrainKind::Wall`] is
     /// [`TileRole::Wall`]; a [`TerrainKind::Cover`] (corroborated by a [`CoverLedger`]
     /// `peek`, NEVER a seeding accessor) is [`TileRole::Cover`]; an open cell with no
     /// present slab is the [`TileRole::Floor`] default. Every in-range cell is at least
@@ -119,7 +90,7 @@ impl StaticMap<'_, '_> {
     ///
     /// This is the FALLBACK keyed only on [`TerrainKind`] — the GTW-493 per-def
     /// graphic-key resolution (the private `resolve_index` helper →
-    /// [`TileRoles::index_for_key`]) is tried FIRST; this role default applies only to a
+    /// [`TileRole::from_key`]) is tried FIRST; this role default applies only to a
     /// cell with no spawned terrain entity (the floor field) or an out-of-vocabulary
     /// graphic key.
     fn role_at(&self, key: &CellLevel) -> TileRole {
@@ -199,13 +170,15 @@ fn terrain_material(
 ///
 /// The GTW-493 seam: the sim spawns a [`TerrainGraphicKey`] on every terrain entity (ALL
 /// kinds incl. `Wall`), keyed in the [`TileRoles`] vocabulary. If a terrain entity sits at
-/// `key`, its graphic key resolves through [`TileRoles::index_for_key`] — so two `Cover`
-/// defs whose `graphic_name`s differ (e.g. `"cover"` vs `"rubble"`) draw DISTINCT sprites
-/// (the per-def graphic the ticket requires; the role-table default, keyed only on the
-/// shared [`TerrainKind::Cover`], could not). A cell with no spawned terrain entity (the
-/// floor field) or an out-of-vocabulary graphic key falls back to the
-/// [`StaticMap::role_at`] default keyed on [`TerrainKind`] / slab presence — so an
-/// unrecognized key still draws (no panic) rather than vanishing.
+/// `key`, its graphic key classifies through [`TileRole::from_key`] and resolves via
+/// [`TileRole::index_in`] — so two `Cover` defs whose `graphic_name`s differ (e.g.
+/// `"cover"` vs `"rubble"`) draw DISTINCT sprites (the per-def graphic the ticket
+/// requires; the role-table default, keyed only on the shared [`TerrainKind::Cover`],
+/// could not). A cell with no spawned terrain entity (the floor field) falls back
+/// silently to the [`StaticMap::role_at`] default keyed on [`TerrainKind`] / slab
+/// presence; an OUT-OF-VOCABULARY graphic key takes the same no-panic fallback but is
+/// LOUD about it (GTW-566 C4) — a `warn!` names the unresolvable key and the cell, so an
+/// authored typo surfaces in the log instead of silently drawing the role default.
 fn resolve_index(
     key: &CellLevel,
     facts: &HashMap<CellLevel, (&TerrainGraphicKey, Option<&FootfallSound>)>,
@@ -213,15 +186,23 @@ fn resolve_index(
     roles: &TileRoles,
 ) -> TileIndex {
     // GTW-493: per-def graphic FIRST. A spawned terrain entity carries the def's
-    // graphic_name; resolve it against the TileRoles vocabulary. Falls through to the
+    // graphic_name; classify it against the TileRole vocabulary. Falls through to the
     // TerrainKind-keyed role default for the floor field (no entity) or an
-    // out-of-vocabulary key (index_for_key -> None).
-    if let Some((graphic, _footfall)) = facts.get(key)
-        && let Some(index) = roles.index_for_key(graphic)
-    {
-        return index;
+    // out-of-vocabulary key (from_key -> None — warned, GTW-566 C4).
+    if let Some((graphic, _footfall)) = facts.get(key) {
+        if let Some(role) = TileRole::from_key(graphic) {
+            return role.index_in(roles);
+        }
+        // GTW-566 C4: a spawned key that fails classification is an authored typo (or
+        // a def authored against a newer vocabulary) — say so loudly, naming the key
+        // and the cell, then keep the no-panic role-default fallback draw.
+        let unresolvable: &str = graphic;
+        warn!(
+            "terrain draw: unresolvable graphic key `{unresolvable}` at {key:?} — not in \
+             the TileRoles vocabulary; drawing the TerrainKind role-default tile instead",
+        );
     }
-    map.role_at(key).index(roles)
+    map.role_at(key).index_in(roles)
 }
 
 /// Whether `key`'s storey has REAL terrain the multi-level draw emits a sprite for (GTW-519
@@ -338,9 +319,9 @@ pub(super) fn drawn_band(active: ActiveLevel, view: ViewMode) -> RangeInclusive<
 ///
 /// GTW-493 (T07c — the per-def presenter seam): each cell's atlas index is resolved from
 /// the SIM-SPAWNED terrain entity's per-def [`TerrainGraphicKey`] FIRST (via the private
-/// `resolve_index` helper → [`TileRoles::index_for_key`]), falling back to the
-/// `TileRole`-table default keyed on [`TerrainKind`] only for the floor field (no spawned
-/// entity) or an out-of-vocabulary key. So two `Cover` defs whose `graphic_name`s differ
+/// `resolve_index` helper → [`TileRole::from_key`]), falling back to the
+/// [`TileRole`]-table default keyed on [`TerrainKind`] only for the floor field (no
+/// spawned entity) or an out-of-vocabulary key (warned loudly — GTW-566 C4). So two `Cover` defs whose `graphic_name`s differ
 /// (e.g. `"cover"` vs `"rubble"`) draw DISTINCT sprites — the per-def graphic the role
 /// table (keyed only on the shared [`TerrainKind`]) cannot express. The slab-only OPTIONAL
 /// [`FootfallSound`] is also read here from the def's presenter facts; an absent footfall is

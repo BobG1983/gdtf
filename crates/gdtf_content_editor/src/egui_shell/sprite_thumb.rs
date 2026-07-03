@@ -61,13 +61,15 @@ pub(crate) fn draw_thumb(
     }
 }
 
-/// The UV sub-rect of a terrain-sheet atlas `index` — the sheet is a
-/// [`SHEET_COLUMNS`](crate::tile_atlas::SHEET_COLUMNS) × [`SHEET_ROWS`](crate::tile_atlas::SHEET_ROWS)
-/// grid, so cell `index` sits at column `index % cols`, row `index / cols` and spans one cell in
+/// The UV sub-rect of a terrain-sheet atlas `index` — the sheet grid is read straight off the
+/// presenter's [`SheetRole::Terrain`](gdtf_battle_presenter::SheetRole) spec
+/// ([`grid`](gdtf_battle_presenter::SheetRole::grid), GTW-566 C7 — no editor mirror consts), so
+/// cell `index` sits at column `index % cols`, row `index / cols` and spans one cell in
 /// UV space. Shared by every sprite-thumbnail draw (GTW-516 C3).
 fn sheet_uv(index: usize) -> egui::Rect {
-    let cols = crate::tile_atlas::SHEET_COLUMNS as usize;
-    let rows = crate::tile_atlas::SHEET_ROWS as usize;
+    let (columns, rows) = gdtf_battle_presenter::SheetRole::Terrain.grid();
+    let cols = columns as usize;
+    let rows = rows as usize;
     let col = index % cols;
     let row = index / cols;
     #[expect(

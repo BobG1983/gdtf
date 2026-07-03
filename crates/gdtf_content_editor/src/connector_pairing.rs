@@ -9,7 +9,7 @@
 //! convenience — it does NOT change the sim terrain model or any runtime logic (the sim still sees
 //! two independent placed terrains, exactly as if the author had painted both by hand).
 //!
-//! ## The up↔down map — how it is resolved (C1), and the FORK it forks on
+//! ## The up↔down map — how it is resolved (C1), TYPED through the role vocabulary (GTW-566 C6)
 //!
 //! The unified terrain model ([`TerrainDef`](gdtf_battle_sim::terrain::def::TerrainDef)) does NOT
 //! cleanly express an up↔down pairing: a stair's [`sim_kind`](gdtf_battle_sim::terrain::def::TerrainSimKind)
@@ -18,19 +18,20 @@
 //! (e.g. `stair_ns_up` / `stair_ns_down`, `stair_ew_up` / `stair_ew_down`, and the generic
 //! `stair_up` / `stair_down`). So the pairing CANNOT be read from a model field.
 //!
-//! **The fork (logged on GTW-531):** rather than adding a direction field to the sim model (out of
-//! scope — this is a prefab-editor rule only), we ship a DEFENSIBLE **graphic-name suffix pairing**:
-//! a terrain whose graphic name's final `_`-separated segment is `up` is an UP connector, and its
-//! DOWN counterpart is the terrain whose graphic name is the SAME string with that final `up`
-//! swapped to `down`. Resolved against the loaded
-//! [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) at placement time (find
-//! the def whose graphic name equals the swapped string). This matches the shipped convention
-//! exactly — `stair_ns_up`↔`stair_ns_down`, `stair_ew_up`↔`stair_ew_down`, `stair_up`↔`stair_down`,
-//! and any future `ladder_up`↔`ladder_down` — and is symmetric by kind AND direction, keyed off the
-//! typed [`TerrainGraphicKey`](gdtf_battle_sim::terrain::piece::TerrainGraphicKey) (no bare string
-//! escapes the recognition boundary). It is data-driven (any theme adding an `_up`/`_down` graphic
-//! pair is recognised, not bound to specific UUIDs) and consistent with the presenter's own
-//! `stair_up`/`stair_down` role split.
+//! GTW-531 shipped a graphic-name SUFFIX pairing (`…_up` string-swapped to `…_down`); GTW-566 C6
+//! replaces that string surgery with the presenter's TYPED role vocabulary: a def's graphic name
+//! classifies through [`TileRole::from_key`], [`TileRole::is_up_connector`] recognises the ASCEND
+//! end, and [`TileRole::counterpart`] names the DOWN role, whose
+//! [`as_key`](TileRole::as_key) is then resolved against the loaded
+//! [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) at placement time
+//! (find the def whose graphic name equals the counterpart key). Behaviour is identical for every
+//! in-vocabulary name — `stair_ns_up`↔`stair_ns_down`, `stair_ew_up`↔`stair_ew_down`,
+//! `stair_up`↔`stair_down` — and stays keyed off the typed
+//! [`TerrainGraphicKey`](gdtf_battle_sim::terrain::piece::TerrainGraphicKey) (no bare string
+//! escapes the recognition boundary). **FAIL-CLOSED:** an OUT-OF-VOCABULARY graphic name ending in
+//! `_up` (a typo, or a theme inventing e.g. `ladder_up` outside the vocabulary) no longer
+//! phantom-pairs — it classifies to no role and places as a plain single tile; extending the
+//! pairing means extending the [`TileRole`] vocabulary, not naming files.
 //!
 //! ## The placement behaviour (C2 / C4)
 //!
@@ -52,6 +53,7 @@
 //! removal is a possible later refinement; shipped default is one-way.)
 
 use bevy::prelude::*;
+use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::{
     Cell,
     level::{GridSize, ThemeUuid},
@@ -63,17 +65,6 @@ use crate::{
     editor_map::EditorMap,
     placement::{ProposedPlacement, apply_placement},
 };
-
-/// The `_`-separated graphic-name segment that marks the UPWARD end of a vertical connector
-/// (`stair_ns_UP`, `stair_ew_UP`, `stair_UP`, a future `ladder_UP`). A documented framework
-/// convention token for the graphic-name pairing (the plumbing carve-out — it is the inner text of
-/// the typed [`TerrainGraphicKey`](gdtf_battle_sim::terrain::piece::TerrainGraphicKey), not a
-/// free-floating domain value), not a magic literal at the call site.
-const UP_SUFFIX: &str = "up";
-
-/// The `_`-separated graphic-name segment that marks the DOWNWARD end of a vertical connector — the
-/// counterpart of [`UP_SUFFIX`] the pairing swaps to.
-const DOWN_SUFFIX: &str = "down";
 
 /// The outcome of an auto-paired placement (GTW-531 C2) — whether the requested placement landed and
 /// whether its paired DOWN connector was also placed.
@@ -113,38 +104,44 @@ impl PairingOutcome {
     }
 }
 
-/// Whether `tile`'s graphic name marks it as an UPWARD vertical connector (C1) — its final
-/// `_`-separated graphic-name segment is `up` (`stair_ns_up`, `stair_ew_up`, `stair_up`, a
-/// future `ladder_up`).
+/// Whether `tile`'s graphic name marks it as an UPWARD vertical connector (C1) — it classifies
+/// to a [`TileRole`] whose [`is_up_connector`](TileRole::is_up_connector) holds (`stair_up`,
+/// `stair_ns_up`, `stair_ew_up` — the typed GTW-566 C6 recognition).
 ///
-/// Resolved from the terrain model at call time: looks the def up in the `registry` and reads its
-/// [`presenter_kind`](gdtf_battle_sim::terrain::def::TerrainPresenterKind) graphic name. An unknown
-/// tile (a stale key) is not a connector.
+/// Resolved from the terrain model at call time: looks the def up in the `registry`, reads its
+/// [`presenter_kind`](gdtf_battle_sim::terrain::def::TerrainPresenterKind) graphic name, and
+/// classifies it through [`TileRole::from_key`]. An unknown tile (a stale key) or an
+/// out-of-vocabulary graphic name is NOT a connector (fail-closed — see the module doc).
 #[must_use]
 pub fn is_up_connector(registry: &TerrainDefRegistry, tile: &TerrainUuid) -> bool {
-    graphic_name(registry, tile).is_some_and(|name| ends_with_segment(name, UP_SUFFIX))
+    graphic_name(registry, tile)
+        .and_then(TileRole::from_key)
+        .is_some_and(TileRole::is_up_connector)
 }
 
 /// Resolve the paired DOWN counterpart of an UP connector `up_tile` (C1) — the terrain the pairing
 /// auto-places one storey up.
 ///
-/// Returns [`None`] when `up_tile` is not an up connector, or when NO def in the `registry` carries
-/// the swapped-suffix graphic name (the `up`→`down` counterpart). Otherwise returns the
-/// [`TerrainUuid`] of the first def whose graphic name equals the counterpart string.
+/// Returns [`None`] when `up_tile` is not an up connector (including an out-of-vocabulary
+/// graphic name — fail-closed, GTW-566 C6), or when NO def in the `registry` carries the
+/// counterpart role's graphic name. Otherwise returns the [`TerrainUuid`] of the first def whose
+/// graphic name equals the counterpart key.
 ///
-/// This is the up↔down MAP, resolved from the loaded registry: it derives the counterpart graphic
-/// name (`stair_ns_up`→`stair_ns_down`, etc.) and finds the def carrying it, so the pairing follows
-/// the shipped naming convention without hardcoding any UUID.
+/// This is the up↔down MAP, typed through the vocabulary and resolved from the loaded registry:
+/// the up role's [`TileRole::counterpart`] names the DOWN role
+/// (`stair_ns_up`→`stair_ns_down`, etc.), and the def carrying that role's
+/// [`as_key`](TileRole::as_key) is found — so the pairing follows the shipped vocabulary without
+/// hardcoding any UUID and without string-suffix surgery.
 #[must_use]
 pub fn resolve_down_counterpart(
     registry: &TerrainDefRegistry,
     up_tile: &TerrainUuid,
 ) -> Option<TerrainUuid> {
-    let up_name = graphic_name(registry, up_tile)?;
-    if !ends_with_segment(up_name, UP_SUFFIX) {
+    let up_role = TileRole::from_key(graphic_name(registry, up_tile)?)?;
+    if !up_role.is_up_connector() {
         return None;
     }
-    let down_name = swap_final_segment(up_name, UP_SUFFIX, DOWN_SUFFIX)?;
+    let down_name = up_role.counterpart()?.as_key();
     registry
         .defs()
         .find(|(_, def)| graphic_key_str(def) == down_name)
@@ -244,33 +241,6 @@ fn graphic_key_str(def: &gdtf_battle_sim::terrain::def::TerrainDef) -> &str {
     }
 }
 
-/// Whether `name`'s final `_`-separated segment equals `segment` (case-insensitive) — the
-/// up/down-suffix test. `stair_ns_up` ends with the `up` segment; `stir_up_ns` does NOT (its final
-/// segment is `ns`), so a substring match would over-fire where this does not.
-#[must_use]
-fn ends_with_segment(name: &str, segment: &str) -> bool {
-    name.rsplit('_')
-        .next()
-        .is_some_and(|last| last.eq_ignore_ascii_case(segment))
-}
-
-/// Swap `name`'s final `_`-separated segment from `from` to `to`, or [`None`] if the final segment
-/// is not `from` — `stair_ns_up` + (`up`→`down`) = `stair_ns_down`. Preserves the case of the rest
-/// of the name; emits the `to` segment verbatim (the shipped convention is lowercase).
-#[must_use]
-fn swap_final_segment(name: &str, from: &str, to: &str) -> Option<String> {
-    let (head, last) = name
-        .rsplit_once('_')
-        .map_or((None, name), |(h, l)| (Some(h), l));
-    if !last.eq_ignore_ascii_case(from) {
-        return None;
-    }
-    Some(match head {
-        Some(head) => format!("{head}_{to}"),
-        None => to.to_owned(),
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use gdtf_battle_sim::{
@@ -358,8 +328,10 @@ mod tests {
         CellLevel::new(cell, Level::new(level))
     }
 
-    /// C1: an `_up` graphic classifies as an up connector; its `_down` counterpart does NOT, and
-    /// the counterpart resolves symmetrically by direction.
+    /// C1: an up-stair graphic classifies as an up connector; its down counterpart does NOT, and
+    /// the counterpart resolves symmetrically by direction. (GTW-566 C6: the assertions are
+    /// unchanged from the GTW-531 suffix-surgery era — same names, same outcomes — but the path
+    /// under test is now typed: `TileRole::from_key` → `is_up_connector` / `counterpart`.)
     #[test]
     fn up_connector_recognition_and_counterpart_resolution() {
         let reg = registry();
@@ -390,6 +362,35 @@ mod tests {
             resolve_down_counterpart(&reg, &STAIR_NS_DOWN),
             None,
             "a down connector has no up→down counterpart (one-way pairing)",
+        );
+    }
+
+    /// GTW-566 C6 (fail-closed): an OUT-OF-VOCABULARY `*_up` graphic name no longer
+    /// phantom-pairs — under the retired suffix surgery a `ladder_up`/`ladder_down` def pair
+    /// WOULD have paired; through the typed vocabulary it classifies to no role, so it is not a
+    /// connector and resolves no counterpart.
+    #[test]
+    fn out_of_vocabulary_up_name_does_not_pair() {
+        const LADDER_UP: TerrainUuid = tu(0x20);
+        const LADDER_DOWN: TerrainUuid = tu(0x21);
+        let reg = TerrainDefRegistry::new([
+            (
+                LADDER_UP,
+                stair_def(LADDER_UP, "Custom Ladder Up", "ladder_up"),
+            ),
+            (
+                LADDER_DOWN,
+                stair_def(LADDER_DOWN, "Custom Ladder Down", "ladder_down"),
+            ),
+        ]);
+        assert!(
+            !is_up_connector(&reg, &LADDER_UP),
+            "an out-of-vocabulary `ladder_up` graphic is NOT an up connector (fail-closed)",
+        );
+        assert_eq!(
+            resolve_down_counterpart(&reg, &LADDER_UP),
+            None,
+            "an out-of-vocabulary `*_up` name resolves no counterpart (no phantom pairing)",
         );
     }
 

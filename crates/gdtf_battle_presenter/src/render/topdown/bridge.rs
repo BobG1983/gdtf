@@ -249,9 +249,12 @@ impl SheetRole {
     ///
     /// terrain 16×22 (352 tiles), characters 16×18 (288), effects 16×8 (128) — all of
     /// 16×16 px — and the GTW-278 portraits 10×10 (100 faces) of 32×32 px; the
-    /// `from_grid` dimensions for [`load_topdown_atlases`]. `pub(super)` so the sibling
-    /// `topdown::test` module can pin the per-sheet grid without an app harness.
-    pub(super) const fn grid(self) -> (u32, u32) {
+    /// `from_grid` dimensions for [`load_topdown_atlases`]. `pub` (GTW-566 C7) so the
+    /// content editor's terrain tile atlas reads the SAME sheet spec the presenter
+    /// draws with instead of mirroring these dimensions as its own consts; the sibling
+    /// `topdown::test` module pins the per-sheet grid through it too.
+    #[must_use]
+    pub const fn grid(self) -> (u32, u32) {
         match self {
             Self::Terrain => (16, 22),
             Self::Characters => (16, 18),
@@ -269,9 +272,12 @@ impl SheetRole {
     /// would carve each 32-px face into four wrong sub-tiles). A `const`, NOT a domain
     /// newtype — the `CELL_PX`-class framework-plumbing carve-out
     /// (`.claude/rules/no-bare-types.md` clause 4): it is a layout dimension fed
-    /// straight to `from_grid`, not a domain quantity. `pub(super)` so the sibling
-    /// `topdown::test` module can pin the per-sheet tile size without an app harness.
-    pub(super) const fn tile_px(self) -> u32 {
+    /// straight to `from_grid`, not a domain quantity. `pub` (GTW-566 C7) so the
+    /// content editor's terrain tile atlas reads the SAME per-cell size the presenter
+    /// draws with instead of mirroring it as its own const; the sibling
+    /// `topdown::test` module pins the per-sheet tile size through it too.
+    #[must_use]
+    pub const fn tile_px(self) -> u32 {
         match self {
             Self::Terrain | Self::Characters | Self::Effects => 16,
             Self::Portraits => 32,

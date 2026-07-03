@@ -109,7 +109,7 @@ pub use plugin::{
 };
 pub use render::{
     terrain::{
-        ActiveLevel, PresenterSystems, StaticMap, TerrainSprite, TileIndex, TileRoles,
+        ActiveLevel, PresenterSystems, StaticMap, TerrainSprite, TileIndex, TileRole, TileRoles,
         VerticalLinkSprite, ViewMode, draw_static_battlefield, draw_vertical_links,
         indicate_emplacement_occupied, swap_destroyed_cover, swap_destroyed_slab,
         tile_roles_hot_ron_chain,

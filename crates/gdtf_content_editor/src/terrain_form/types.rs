@@ -1,23 +1,27 @@
 //! The TERRAIN-mode form's **type vocabulary** (GTW-474): the in-progress
 //! [`TerrainDraft`] resource, the closed pick enums the form's controls are generic over
-//! (kind / graphic-role / footfall), the field/widget identity markers, and the
-//! [`SaveTerrainError`] failure enum.
+//! (kind / footfall), the graphic-role pick over the presenter's [`TileRole`] vocabulary,
+//! and the [`SaveTerrainError`] failure enum.
 //!
 //! Every pick enum is a NAMED closed enum (no-bare-types) so the GTW-410 dropdown / GTW-280
-//! segmented control can be generic over it. The kind/graphic/footfall choices map onto the
+//! segmented control can be generic over it. The kind/footfall choices map onto the
 //! sim's real [`TerrainSimKind`](gdtf_battle_sim::terrain::def::TerrainSimKind) /
-//! [`TerrainGraphicKey`](gdtf_battle_sim::terrain::piece::TerrainGraphicKey) /
 //! [`FootfallSound`](gdtf_battle_sim::terrain::piece::FootfallSound) when the draft projects to a
-//! [`TerrainDef`].
+//! [`TerrainDef`]. The graphic pick is the presenter's [`TileRole`] DIRECTLY (GTW-566 C5)
+//! — the editor no longer maintains a hand-mirrored role enum with its own key strings;
+//! the picker offers [`offered_graphic_roles`] (the vocabulary filtered by
+//! [`TileRole::def_authorable`]), and the draft projects the chosen role's
+//! [`as_key`](TileRole::as_key) into the def's `graphic_name`.
 
 use bevy::prelude::*;
+use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
     slab::SlabHp,
     terrain::{
         def::{TerrainTag, TerrainUuid},
-        piece::{FootfallSound, TerrainGraphicKey},
+        piece::FootfallSound,
     },
 };
 
@@ -84,78 +88,21 @@ impl TerrainKindChoice {
     }
 }
 
-/// A graphic-role KEY the form offers for `presenter_kind.graphic_name` — a closed pick over the
-/// presenter's `TileRoles` vocabulary (NOT a raw atlas index).
+/// The graphic roles the TERRAIN form's picker OFFERS, in [`TileRole::ALL`] order —
+/// the presenter's vocabulary filtered by [`TileRole::def_authorable`] (GTW-566 C5).
 ///
-/// A named closed enum (no-bare-types) so the picker is generic over it. Each variant's
-/// [`key`](TerrainGraphicChoice::key) is the exact `tile_roles.ron` role string the presenter's
-/// [`TileRoles::index_for_key`](gdtf_battle_presenter::TileRoles::index_for_key) resolves, so an
-/// authored def draws the same sprite the battlescape does. The set mirrors the resolvable role
-/// keys.
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-pub enum TerrainGraphicChoice {
-    /// The default walkable-ground tile (`"floor"`).
-    #[default]
-    Floor,
-    /// The bolted-panel floor alternate (`"floor_alt_panel"`).
-    FloorAltPanel,
-    /// The north-south wall tile (`"wall"`).
-    Wall,
-    /// The east-west wall tile (`"wall_ew"`).
-    WallEw,
-    /// The chest-high cover tile (`"cover"`).
-    Cover,
-    /// The elevated-deck slab tile (`"slab"`).
-    Slab,
-    /// The broken-debris rubble tile (`"rubble"`).
-    Rubble,
-    /// The north-south door tile (`"door_ns"`).
-    DoorNs,
-    /// The east-west door tile (`"door_ew"`).
-    DoorEw,
-    /// The ladder cell tile (`"ladder"`).
-    Ladder,
-}
-
-impl TerrainGraphicChoice {
-    /// Every graphic-role choice the picker offers, in display order.
-    pub const ALL: [Self; 10] = [
-        Self::Floor,
-        Self::FloorAltPanel,
-        Self::Wall,
-        Self::WallEw,
-        Self::Cover,
-        Self::Slab,
-        Self::Rubble,
-        Self::DoorNs,
-        Self::DoorEw,
-        Self::Ladder,
-    ];
-
-    /// The `tile_roles.ron` role-key STRING this choice resolves to — the exact key the
-    /// presenter's `index_for_key` matches (so the editor + battlescape draw the same sprite).
-    #[must_use]
-    pub const fn key(self) -> &'static str {
-        match self {
-            Self::Floor => "floor",
-            Self::FloorAltPanel => "floor_alt_panel",
-            Self::Wall => "wall",
-            Self::WallEw => "wall_ew",
-            Self::Cover => "cover",
-            Self::Slab => "slab",
-            Self::Rubble => "rubble",
-            Self::DoorNs => "door_ns",
-            Self::DoorEw => "door_ew",
-            Self::Ladder => "ladder",
-        }
-    }
-
-    /// This choice's [`TerrainGraphicKey`] (the sim newtype the projected
-    /// [`TerrainDef`](gdtf_battle_sim::terrain::def::TerrainDef) carries).
-    #[must_use]
-    pub fn graphic_key(self) -> TerrainGraphicKey {
-        TerrainGraphicKey::new(self.key().to_owned())
-    }
+/// This DERIVES the pick list from the one shared vocabulary instead of a hand-mirrored
+/// editor enum, so a def-authorable role added to the presenter (the GTW-543
+/// emplacement, the four GTW-470 oriented stairs) is offered here with NO editor change
+/// — and the runtime-swap / link-direction roles the presenter picks itself
+/// (`emplacement_occupied`, `slab_destroyed`, `stair_up`, `stair_down`) plus the
+/// unoffered plain `door` are excluded by their flags.
+#[must_use]
+pub fn offered_graphic_roles() -> Vec<TileRole> {
+    TileRole::ALL
+        .into_iter()
+        .filter(|role| role.def_authorable())
+        .collect()
 }
 
 /// A footfall-sound choice the form offers for a slab's `presenter_kind.footfall` — a closed
@@ -208,7 +155,8 @@ impl FootfallChoice {
 /// A state-scoped [`Resource`] (inserted `OnEnter(Editing)`, removed `OnExit(Editing)` —
 /// bevy-traps #1). Every field is a domain value (no-bare-types): the stats reuse the sim
 /// newtypes ([`CoverHp`] / [`SlabHp`] / [`ArmorProtection`] / [`ArmorHardness`] / [`HeightBand`]),
-/// the kind / graphic / footfall are the form's closed pick enums, the tags are sim
+/// the kind / footfall are the form's closed pick enums, the graphic is the presenter's
+/// [`TileRole`] directly (GTW-566 C5), the tags are sim
 /// [`TerrainTag`]s, and the UUID is a [`TerrainUuid`] (generated on first save — [`uuid`]).
 ///
 /// [`uuid`]: TerrainDraft::uuid
@@ -228,8 +176,8 @@ pub struct TerrainDraft {
     armor_hardness:   ArmorHardness,
     /// The clearance band (Wall / Cover only; a Slab carries none).
     height_band:      HeightBand,
-    /// The chosen graphic-role key (the sprite picker).
-    graphic:          TerrainGraphicChoice,
+    /// The chosen graphic role (the sprite picker) — a def-authorable [`TileRole`].
+    graphic:          TileRole,
     /// The chosen footfall sound — OFFERED only for a Slab kind; forced to
     /// [`None`](FootfallChoice::None) otherwise (C2).
     footfall:         FootfallChoice,
@@ -267,14 +215,14 @@ impl TerrainDraft {
         }
     }
 
-    /// The chosen graphic-role choice.
+    /// The chosen graphic role.
     #[must_use]
-    pub const fn graphic(&self) -> TerrainGraphicChoice {
+    pub const fn graphic(&self) -> TileRole {
         self.graphic
     }
 
-    /// Set the chosen graphic-role choice (from the sprite picker).
-    pub const fn set_graphic(&mut self, graphic: TerrainGraphicChoice) {
+    /// Set the chosen graphic role (from the sprite picker).
+    pub const fn set_graphic(&mut self, graphic: TileRole) {
         self.graphic = graphic;
     }
 
@@ -394,7 +342,7 @@ impl Default for TerrainDraft {
             armor_protection: ArmorProtection::new(4),
             armor_hardness:   ArmorHardness::new(2),
             height_band:      HeightBand::High,
-            graphic:          TerrainGraphicChoice::default(),
+            graphic:          TileRole::Floor,
             footfall:         FootfallChoice::default(),
             tags:             Vec::new(),
             uuid:             Option::None,
