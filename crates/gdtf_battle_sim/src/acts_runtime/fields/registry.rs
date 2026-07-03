@@ -11,8 +11,12 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{FieldDef, FieldDuration, FieldTurns};
-use crate::{metric::CellLevel, registry::Registry};
+use super::FieldDef;
+use crate::{
+    effects::fields::{ApplyFieldEffect, FieldEffect, FieldTurns},
+    metric::CellLevel,
+    registry::Registry,
+};
 
 /// A field type's **catalog KEY** — its human-facing identity (an authored field's filename
 /// stem). The loader keys the [`FieldDefRegistry`] by it; a situation's authored
@@ -89,9 +93,12 @@ impl FieldDefRegistry {
 ///
 /// The battle-state entry the [`FieldRegistry`] holds per `(cell, level)`: the immutable
 /// [`def`](PlacedField::def) it was placed from, plus the [`remaining`](PlacedField::remaining)
-/// turns for a [`FieldDuration::Turns`] field (a [`FieldDuration::Permanent`] field carries no
-/// countdown and never expires). Cloned by value from the catalog def at placement, so it
-/// survives the catalog registry being dropped.
+/// turns for a [`FieldDuration::Turns`](crate::effects::fields::FieldDuration::Turns) field (a
+/// [`FieldDuration::Permanent`](crate::effects::fields::FieldDuration::Permanent) field carries
+/// no countdown and never expires). Cloned by value from the catalog def at placement, so it
+/// survives the catalog registry being dropped. Both lifetime steps (the countdown seed and
+/// the per-round expiry) are the GTW-553 palette's Duration consequence — invoked generically
+/// through [`ApplyFieldEffect`], never matched here.
 ///
 /// A named value object (no bare fields): the def is the domain [`FieldDef`], the remaining
 /// count the domain [`FieldTurns`]. Not a [`Component`](bevy::prelude::Component) — a placed
@@ -100,22 +107,25 @@ impl FieldDefRegistry {
 pub struct PlacedField {
     /// The immutable field definition this placement was made from.
     def:       FieldDef,
-    /// The remaining turns for a [`FieldDuration::Turns`] field — decremented one per
-    /// [`tick_fields`](super::tick_fields) round; ignored for a
-    /// [`FieldDuration::Permanent`] field (which never expires).
+    /// The remaining turns for a finite-lifetime field — decremented one per
+    /// [`tick_fields`](super::tick_fields) round by the palette's Duration consequence;
+    /// ignored for a permanent field (which never expires).
     remaining: FieldTurns,
 }
 
 impl PlacedField {
-    /// Place a field from its catalog [`FieldDef`] — the remaining countdown starts at the
-    /// def's [`FieldDuration::Turns`] count (or zero for a
-    /// [`FieldDuration::Permanent`] field, which never reads it).
+    /// Place a field from its catalog [`FieldDef`] — the remaining countdown is SEEDED by
+    /// the def's consequences, invoked generically through the GTW-553 palette (only the
+    /// lifetime consequence answers; every other consequence contributes the zero
+    /// default, so the fold's `max` picks the lifetime's seed — zero for a permanent
+    /// field, which never reads it).
     #[must_use]
-    pub const fn from_def(def: FieldDef) -> Self {
-        let remaining = match def.duration {
-            FieldDuration::Turns(turns) => turns,
-            FieldDuration::Permanent => FieldTurns::new(0),
-        };
+    pub fn from_def(def: FieldDef) -> Self {
+        let remaining = FieldEffect::consequences_of(&def)
+            .iter()
+            .map(ApplyFieldEffect::initial_countdown)
+            .max()
+            .unwrap_or_default();
         Self { def, remaining }
     }
 
@@ -126,25 +136,22 @@ impl PlacedField {
         &self.def
     }
 
-    /// The remaining-turns countdown (meaningful only for a [`FieldDuration::Turns`] field).
+    /// The remaining-turns countdown (meaningful only for a finite-lifetime field).
     #[must_use]
     pub const fn remaining(&self) -> FieldTurns {
         self.remaining
     }
 
-    /// Decrement the countdown one turn (saturating at zero — no underflow) for a
-    /// [`FieldDuration::Turns`] field; a [`FieldDuration::Permanent`] field is left untouched.
-    /// Returns `true` iff this placement is now EXPIRED (a `Turns` field whose countdown
-    /// reached zero); a `Permanent` field always returns `false`.
+    /// Count this placement's lifetime down one turn and report `true` iff it is now
+    /// EXPIRED — the per-round lifetime step, invoked generically through the GTW-553
+    /// palette's [`ApplyFieldEffect::count_down_one_turn`] verb (never a duration match
+    /// here). At most ONE consequence owns the lifetime (the def's Duration); the others
+    /// answer the defaulted never-expires and never touch the countdown, so `any` is
+    /// exact — it cannot short-circuit past a decrement.
     pub fn tick_down(&mut self) -> bool {
-        match self.def.duration {
-            FieldDuration::Turns(_) => {
-                self.remaining = FieldTurns::new(self.remaining.saturating_sub(1));
-                *self.remaining == 0
-            }
-            // A Permanent field never counts down and never expires.
-            FieldDuration::Permanent => false,
-        }
+        FieldEffect::consequences_of(&self.def)
+            .iter()
+            .any(|consequence| consequence.count_down_one_turn(&mut self.remaining))
     }
 }
 
@@ -202,8 +209,11 @@ impl FieldRegistry {
 
     /// Decrement every placed field's countdown one turn and REMOVE the ones that expired —
     /// the GTW-545 per-round lifetime step [`tick_fields`](super::tick_fields) runs after it
-    /// drains occupants. A [`FieldDuration::Turns`] field whose countdown reaches zero is
-    /// removed; a [`FieldDuration::Permanent`] field never counts down and never expires.
+    /// drains occupants. A [`FieldDuration::Turns`](crate::effects::fields::FieldDuration::Turns)
+    /// field whose countdown reaches zero is removed; a
+    /// [`FieldDuration::Permanent`](crate::effects::fields::FieldDuration::Permanent) field
+    /// never counts down and never expires (each placement's step is the palette's Duration
+    /// consequence, via [`PlacedField::tick_down`]).
     pub fn tick_down_and_expire(&mut self) {
         self.0.retain(|_cell, placed| !placed.tick_down());
     }

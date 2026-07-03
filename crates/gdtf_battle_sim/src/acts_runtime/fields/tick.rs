@@ -1,11 +1,14 @@
 //! The [`FieldTicked`] signal + the per-round [`tick_fields`] drain — the area-damage-field
-//! clock's message and system (GTW-545, child GTW-41f).
+//! clock's message and system (GTW-545, child GTW-41f; GTW-553 moves the per-consequence
+//! behaviours into the [`effects::fields`](crate::effects::fields) palette, which this clock
+//! invokes generically).
 
 use bevy::prelude::{Entity, Message, MessageWriter, Query, Res, ResMut, With};
 
-use super::{FieldDamage, FieldRegistry, ImmuneArmorTypes};
+use super::{FieldDamage, FieldDef, FieldRegistry};
 use crate::{
     armor::{ArmorType, Wears, WornBy},
+    effects::fields::{ApplyFieldEffect, FieldEffect, OccupantArmor, OccupantDrain},
     ganger::{Hp, LifeState},
     metric::CellLevel,
     occupancy::OccupancyGrid,
@@ -15,10 +18,10 @@ use crate::{
 /// A ganger **took an area-damage-field tick** this round — a field it stood in drained a flat
 /// [`amount`](FieldTicked::amount) of its [`Hp`](crate::ganger::Hp) (GTW-545).
 ///
-/// Emitted by [`tick_fields`] **once per draining tick** for each non-immune occupant standing
-/// on a live field cell (including the lethal tick that empties the HP pool); an empty cell, a
-/// dead occupant, or a whole-source-immune occupant drains nothing and emits nothing. The
-/// presenter reads this to surface the field damage on screen (the
+/// Emitted by the palette's Drain consequence **once per draining tick** for each non-immune
+/// occupant standing on a live field cell (including the lethal tick that empties the HP
+/// pool); an empty cell, a dead occupant, or a whole-source-immune occupant drains nothing and
+/// emits nothing. The presenter reads this to surface the field damage on screen (the
 /// [`DotTicked`](crate::dot::DotTicked) FCT-pop precedent).
 ///
 /// A buffered Bevy **message** (`bevy-traps.md` #4 — NOT the observer `Event`), written with
@@ -60,22 +63,21 @@ impl FieldTicked {
 ///    at the field cell. An empty cell drains nothing.
 /// 2. **Skip a corpse** — a [`LifeState::Dead`] occupant is already a corpse (mutates nothing,
 ///    emits nothing).
-/// 3. **Whole-source immunity (the GTW-545 NEW mechanism)** — if ANY of the occupant's worn
-///    armor pieces carries an [`ArmorType`] in the field def's
-///    [`immune_armor_types`](crate::acts_runtime::fields::FieldDef::immune_armor_types), the
-///    occupant takes ZERO damage (the sealed suit protects you). No per-hit matchup, no injury
-///    roll, no RNG.
-/// 4. **Drain Hp DIRECTLY** — otherwise subtract the field's per-turn damage from the
-///    occupant's [`Hp`](crate::ganger::Hp) (`saturating_sub`, floors at `0` — no underflow),
-///    with NO armor matchup, NO injury roll, and NO RNG (the deterministic field tick), and
-///    emit one [`FieldTicked`] carrying the occupant + the `(cell, level)` + the amount.
-/// 5. **Terminal gate — a field drain that empties HP KILLS** — if the drain emptied the
-///    occupant's [`Hp`](crate::ganger::Hp) to `0`, flip it to [`LifeState::Dead`] (the
-///    GTW-544 DOT-kills precedent: a persistent-zone drain that brings HP to `0` is lethal,
-///    NOT a down).
+/// 3. **Invoke the GTW-553 consequence palette GENERICALLY** — project the placement's def
+///    into its consequence vocabulary
+///    ([`FieldEffect::consequences_of`](crate::effects::fields::FieldEffect::consequences_of))
+///    and drive the shared [`ApplyFieldEffect`] trait DIRECTLY (synchronous, never a deferred
+///    command — the pre-palette drain timing): first the exemption gate (ANY consequence may
+///    exempt — the whole-source-immunity skip, over the borrowed [`OccupantArmor`] surface),
+///    then the per-turn drain verbs (over the borrowed [`OccupantDrain`] surface — the flat
+///    armor-bypassing, RNG-free HP drain, its [`FieldTicked`] signal, and the lethal terminal
+///    gate that flips [`LifeState::Dead`] + emits [`OnDeathOccurred`], the GTW-544 DOT-kills
+///    precedent). NO per-consequence match lives here — the ONE match over the vocabulary is
+///    the palette's own delegation.
 ///
-/// Then, ONCE (after every cell is drained), the [`FieldRegistry`] counts every `Turns` field
-/// down one turn and removes the ones that expired; a `Permanent` field never counts down.
+/// Then, ONCE (after every cell is drained), the [`FieldRegistry`] counts every placement's
+/// lifetime down one turn and removes the expired ones (the palette's Duration consequence,
+/// via [`PlacedField::tick_down`](super::PlacedField::tick_down)).
 ///
 /// `writer` buffers each [`FieldTicked`]. Pure, render-free, saturating arithmetic — no
 /// underflow, no `unwrap`, no pixel. Param-only (`bevy-traps.md` #7): a [`Res<OccupancyGrid>`],
@@ -85,28 +87,25 @@ pub fn tick_fields(
     grid: Res<OccupancyGrid>,
     mut fields: ResMut<FieldRegistry>,
     mut occupants: Query<(&mut Hp, &mut LifeState, &Wears)>,
-    worn: Query<&ArmorType, With<WornBy>>,
+    // The QueryData is spelled `&'static` so `&worn` can be lent into the palette's
+    // borrowed `OccupantArmor` surface (Query is invariant over its data — the
+    // `DeathFanOut` / `VictimRow` precedent); the runtime borrows stay world-scoped.
+    worn: Query<&'static ArmorType, With<WornBy>>,
     mut writer: MessageWriter<FieldTicked>,
     // GTW-547: the terminal-death signal — a field tick that KILLS (Hp → 0 → Dead) emits one
     // OnDeathOccurred at the field cell so `resolve_on_death` fans the dead ganger's on-death
     // effect (a field-kill must not silently skip it — the ticket's scope-completeness rule).
     mut deaths: MessageWriter<OnDeathOccurred>,
 ) {
-    // Drain each fielded cell's occupant. Read the placements into an owned buffer first (the
-    // cell, its per-turn damage, and its immune set) so the `&FieldRegistry` borrow is released
-    // before the countdown step's `&mut` reborrow below.
-    let placements: Vec<(CellLevel, FieldDamage, ImmuneArmorTypes)> = fields
+    // Drain each fielded cell's occupant. Snapshot the placements (each cell + a clone of its
+    // def) into an owned buffer first so the `&FieldRegistry` borrow is released before the
+    // countdown step's `&mut` reborrow below.
+    let placements: Vec<(CellLevel, FieldDef)> = fields
         .iter()
-        .map(|(cell, placed)| {
-            (
-                *cell,
-                placed.def().damage,
-                placed.def().immune_armor_types.clone(),
-            )
-        })
+        .map(|(cell, placed)| (*cell, placed.def().clone()))
         .collect();
 
-    for (cell, amount, immune) in placements {
+    for (cell, def) in placements {
         // (1) The occupant standing on this field cell (None for an empty cell).
         let Some(occupant) = grid.occupant(&cell) else {
             continue;
@@ -120,33 +119,31 @@ pub fn tick_fields(
         if *life == LifeState::Dead {
             continue;
         }
-        // (3) Whole-source immunity — the GTW-545 NEW mechanism. If ANY worn piece's
-        // ArmorType is in the field's immune set, the occupant takes zero damage. Look up each
-        // piece's ArmorType through the worn-piece query (the melee resolve precedent).
-        let is_immune = wears.pieces().any(|piece| {
-            worn.get(piece)
-                .is_ok_and(|armor_type| immune.contains(armor_type))
-        });
-        if is_immune {
+        // (3) Project the def into its consequence vocabulary ONCE for this cell, then invoke
+        // the palette generically — exemption gate first (ANY consequence may exempt), the
+        // per-turn drain verbs after. The behaviours live in `effects::fields`, never here.
+        let consequences = FieldEffect::consequences_of(&def);
+        let armor = OccupantArmor { wears, worn: &worn };
+        if consequences
+            .iter()
+            .any(|consequence| consequence.exempts_occupant(&armor))
+        {
             continue;
         }
-        // (4) Drain Hp DIRECTLY — saturating at 0 (Hp is unsigned; a lethal tick floors it,
-        // never underflows). NO armor matchup, NO injury roll, NO RNG (the deterministic field
-        // tick). Emit one FieldTicked carrying the occupant, the cell, and the amount.
-        *hp = Hp::new(hp.saturating_sub(*amount));
-        writer.write(FieldTicked::new(occupant, cell, amount));
-        // (5) Terminal gate — a field drain that empties Hp KILLS (flip to Dead, the GTW-544
-        // DOT-kills precedent for a persistent-zone drain).
-        if *hp == Hp::new(0) {
-            *life = LifeState::Dead;
-            // GTW-547: emit the terminal-death signal at the field cell (the occupant stood
-            // here) so the dead ganger's authored on-death effect fans.
-            deaths.write(OnDeathOccurred::new(occupant, cell));
+        let mut drain = OccupantDrain {
+            hp:     &mut hp,
+            life:   &mut life,
+            ticks:  &mut writer,
+            deaths: &mut deaths,
+        };
+        for consequence in &consequences {
+            consequence.drain_occupant(cell, occupant, &mut drain);
         }
     }
 
-    // Count every Turns field down one turn and remove the expired ones (a Permanent field
-    // never counts down). Runs ONCE per round, after the drain — so a field that ticked this
-    // round still counts against its lifetime this round.
+    // Count every placement's lifetime down one turn and remove the expired ones (the
+    // palette's Duration consequence — a Permanent field never counts down). Runs ONCE per
+    // round, after the drain — so a field that ticked this round still counts against its
+    // lifetime this round.
     fields.tick_down_and_expire();
 }

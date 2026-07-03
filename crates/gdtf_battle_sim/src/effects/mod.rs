@@ -25,6 +25,14 @@
 /// [`equipment::attachments`](crate::equipment::attachments).
 pub mod attachments;
 
+/// The **field-consequence palette** — the closed
+/// [`FieldEffect`](crate::effects::fields::FieldEffect) vocabulary + one isolated
+/// behaviour per consequence of standing in (or placing) an area-damage field (GTW-553;
+/// the palette that replaces the inline tick/spawn logic). The MECHANICS that invoke it —
+/// the per-round clock, the placement registry + lifetime, and the situation seeding —
+/// live under [`acts_runtime::fields`](crate::acts_runtime::fields).
+pub mod fields;
+
 /// The **injury effect palette** — the closed
 /// [`InjuryEffect`](crate::effects::injuries::InjuryEffect) vocabulary + one isolated
 /// behaviour per effect (GTW-550; the palette that replaces the central ledger match).
