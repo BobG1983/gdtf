@@ -1,7 +1,8 @@
-//! The authored key vocabulary, the resolved keybind table, and its RON loader.
+//! The authored key vocabulary, the resolved keybind table, and its hot-RON
+//! chain registration (the GTW-564 generic seam).
 
-use bevy::{asset::AssetEvent, prelude::*};
-use gdtf_assets::RonAsset;
+use bevy::prelude::*;
+use gdtf_assets::HotRonAppExt;
 use serde::Deserialize;
 
 /// The path of the loose keybind RON, relative to the asset source root.
@@ -70,16 +71,16 @@ impl BoundKey {
 
 /// The DATA-DRIVEN keybind table — every bound act → the [`BoundKey`] it is on.
 ///
-/// Loaded from the loose `assets/core_tuning/keybinds.tuning.ron` through the generic GTW-136
-/// [`RonAsset<T>`](gdtf_assets::RonAsset) loader and resolved into a presenter-side
-/// resident [`Keybinds`] resource before battle time (see [`resolve_keybinds`]).
+/// Loaded from the loose `assets/core_tuning/keybinds.tuning.ron` through the GTW-564
+/// generic hot-RON chain ([`register_keybinds_hot_ron`]) and resolved into a
+/// resident [`Keybinds`] resource before battle time.
 /// Every binding is data the engineer edits — nothing about the key choices is
 /// hardcoded in Rust; this struct only names the bound ACTS. Each act resolves to
 /// a [`KeyCode`] via [`BoundKey::key_code`], the no-hardcoded-literal accessor the
 /// keyboard systems call.
 ///
 /// Derives [`Resource`] (the resolved runtime form), [`Deserialize`] (the authored
-/// `.ron` shape), and [`TypePath`] (the bound [`RonAsset<Keybinds>`] requires of
+/// `.ron` shape), and [`TypePath`] (the bound [`RonAsset<Keybinds>`](gdtf_assets::RonAsset) requires of
 /// its payload).
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Deserialize, TypePath)]
 pub struct Keybinds {
@@ -170,125 +171,19 @@ impl Keybinds {
     }
 }
 
-/// The in-flight handle to the keybind RON, held until it resolves into [`Keybinds`].
+/// Registers the [`Keybinds`] hot-RON chain — ONE ext call onto the GTW-564
+/// generic seam (kick-off / gated resolve / live redrive, keyed by the generic
+/// [`HotRonHandle`](gdtf_assets::HotRonHandle)`<Keybinds>`), replacing the
+/// per-site handle newtype + load/resolve/redrive triple. Self-gates on the
+/// [`AssetServer`](bevy::asset::AssetServer) (`bevy-traps.md` #1), so a
+/// `MinimalPlugins` headless app stays a no-op ([`Keybinds`] is then absent and
+/// every keyboard system stays gated on its presence).
 ///
-/// A named newtype over the bevy [`Handle`] (no-bare-types: a bare handle carries
-/// no domain meaning; this name says "the keybind table being loaded"). Inserted by
-/// [`load_keybinds`] and read by [`resolve_keybinds`] — the `TileRolesHandle`
-/// precedent.
-#[derive(Resource, Deref, Debug, Clone)]
-pub struct KeybindsHandle(Handle<RonAsset<Keybinds>>);
-
-impl KeybindsHandle {
-    /// Wrap the in-flight `keybinds.tuning.ron` handle.
-    #[must_use]
-    pub const fn new(handle: Handle<RonAsset<Keybinds>>) -> Self {
-        Self(handle)
-    }
-}
-
-/// `Startup`: kick off the `keybinds.tuning.ron` load, storing its typed handle.
-///
-/// Loads `core_tuning/keybinds.tuning.ron` as a [`RonAsset<Keybinds>`](gdtf_assets::RonAsset)
-/// through the generic GTW-136 loader and inserts the [`KeybindsHandle`] the
-/// [`resolve_keybinds`] poll system reads. Takes `Option<Res<AssetServer>>` so a
-/// `MinimalPlugins` headless app with no [`AssetServer`] no-ops rather than
-/// panicking (`bevy-traps.md` #1); under `DefaultPlugins` (the app + the
-/// `AssetServer` harness) the load fires for real and the resolve runs.
-///
-/// Param-only (`bevy-traps.md` #7): [`Commands`] for the handle insert, the
-/// optional [`Res<AssetServer>`] for the load.
-pub fn load_keybinds(mut commands: Commands, asset_server: Option<Res<AssetServer>>) {
-    let Some(asset_server) = asset_server else {
-        return;
-    };
-    let handle = asset_server.load::<RonAsset<Keybinds>>(KEYBINDS_RON_PATH);
-    commands.insert_resource(KeybindsHandle::new(handle));
-}
-
-/// `Update` (gated until [`Keybinds`] is resolved): resolve the loaded RON into the
-/// resident [`Keybinds`] resource.
-///
-/// Once the [`RonAsset<Keybinds>`](gdtf_assets::RonAsset) has settled into
-/// `Assets<RonAsset<Keybinds>>` (a transient one-frame "loaded but not yet in the
-/// collection" state simply leaves it un-inserted this pass — retried next frame),
-/// it copies the deserialized [`Keybinds`] out and inserts it as the resident
-/// resource so the keyboard systems read it. Run only while [`KeybindsHandle`]
-/// exists AND [`Keybinds`] does NOT (the plugin's run-condition), so it inserts
-/// once — the `resolve_tile_roles` precedent.
-///
-/// Param-only (`bevy-traps.md` #7): [`Commands`] for the insert,
-/// [`Res<KeybindsHandle>`] for the handle, [`Res<Assets<RonAsset<Keybinds>>>`] for
-/// the loaded asset.
-pub fn resolve_keybinds(
-    mut commands: Commands,
-    handle: Res<KeybindsHandle>,
-    keybind_assets: Res<Assets<RonAsset<Keybinds>>>,
-) {
-    let Some(loaded) = keybind_assets.get(&**handle) else {
-        // Loaded-but-not-yet-in-collection (or still loading) — retry next frame;
-        // the run-condition keeps this system alive until Keybinds is resolved.
-        return;
-    };
-    commands.insert_resource(**loaded);
-}
-
-/// `Update` (ungated): overwrite the resident [`Keybinds`] resource in place on a
-/// matching [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for
-/// `core_tuning/keybinds.tuning.ron` — the GTW-533 LIVE keybind hot-reload, modelled
-/// on the combat-tuning redrive (`redrive_combat_tuning_on_asset_event`) and the FX
-/// tuning redrive: [`Keybinds`] IS both the `Deserialize` payload AND the runtime
-/// `Resource`, so there is no `resolve()` step.
-///
-/// Reads the [`MessageReader`] of
-/// [`AssetEvent`](bevy::asset::AssetEvent)`<`[`RonAsset`]`<`[`Keybinds`]`>>` — asset
-/// events are MESSAGES in Bevy 0.19, so this is a [`MessageReader`], not an
-/// `EventReader` (`bevy-traps.md` #4) — and acts only on a
-/// [`Modified`](bevy::asset::AssetEvent::Modified) event whose `id` matches the
-/// persistent [`KeybindsHandle`] (inserted at [`load_keybinds`] and never removed, so
-/// it survives as the hot-reload filter). Events for any other handle are ignored. On
-/// a match it copies the refreshed [`Keybinds`] out of the `Assets` collection and
-/// overwrites the resident resource through [`ResMut`], so the keyboard systems read
-/// the new bindings the very next frame — WITHOUT a rebuild or restart.
-///
-/// Guarded so it never panics before the load chain has resolved (pre-resolve): it
-/// takes the handle / the `Assets` collection / the [`Keybinds`] resource as
-/// [`Option`]al borrows, draining the reader and returning early if any is missing
-/// (`bevy-traps.md` #1) so a pre-resolve event does not linger and re-fire later.
-///
-/// Param-only (`bevy-traps.md` #7): the [`MessageReader`], the optional handle /
-/// `Assets` / [`Keybinds`] borrows.
-pub fn redrive_keybinds_on_asset_event(
-    mut events: MessageReader<AssetEvent<RonAsset<Keybinds>>>,
-    handle: Option<Res<KeybindsHandle>>,
-    keybind_assets: Option<Res<Assets<RonAsset<Keybinds>>>>,
-    keybinds: Option<ResMut<Keybinds>>,
-) {
-    let (Some(handle), Some(keybind_assets), Some(mut keybinds)) =
-        (handle, keybind_assets, keybinds)
-    else {
-        // Drain the reader so a pre-resolve event does not linger and re-fire once the
-        // resources arrive; there is nothing to re-derive yet.
-        events.clear();
-        return;
-    };
-
-    let active_id = handle.id();
-    // Act once per frame even if several Modified events arrive: a single overwrite
-    // from the latest in-memory value covers them all.
-    let modified = events
-        .read()
-        .any(|event| matches!(event, AssetEvent::Modified { id } if *id == active_id));
-    if !modified {
-        return;
-    }
-
-    let Some(updated) = keybind_assets.get(&**handle) else {
-        // Modified but not currently in the collection (a transient reload state) —
-        // leave the existing bindings until it settles; the next event re-fires.
-        return;
-    };
-    *keybinds = **updated;
-    // GTW-374 Part C convention: log EVERY hot-reload path naming what reloaded.
-    info!("keybind hot-reload: reloaded Keybinds from `core_tuning/keybinds.tuning.ron`");
+/// On a live `core_tuning/keybinds.tuning.ron` edit the generic redrive
+/// overwrites the resident [`Keybinds`] through `ResMut` ([`Keybinds`] IS both
+/// the `Deserialize` payload AND the runtime `Resource` — no `resolve()` step),
+/// so the keyboard systems read the new bindings the very next frame — WITHOUT
+/// a rebuild or restart (the GTW-533 live keybind hot-reload, preserved).
+pub(crate) fn register_keybinds_hot_ron(app: &mut App) {
+    app.init_hot_ron_resource::<Keybinds>(KEYBINDS_RON_PATH);
 }

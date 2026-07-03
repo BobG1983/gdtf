@@ -14,12 +14,15 @@ mod resolve;
 mod transition;
 
 use bevy::{asset::AssetServer, prelude::*};
-use gdtf_assets::RonAssetAppExt;
-use gdtf_battle_presenter::{TileRoles, redrive_tile_roles_on_asset_event};
+use gdtf_assets::{RonAssetAppExt, redrive_hot_ron_resource};
+use gdtf_battle_presenter::{TileRoles, tile_roles_hot_ron_chain};
 use gdtf_battle_sim::{
     armor::ArmorSpec, level::UuidThemeDef, terrain::def::TerrainDef, weapon::WeaponSpec,
 };
-use gdtf_ui::{redrive_theme_on_asset_event, theme::GdtfThemeSpec};
+use gdtf_ui::{
+    theme::{GdtfTheme, GdtfThemeSpec},
+    theme_hot_ron_chain,
+};
 pub(crate) use transition::transition_to_editing;
 
 use crate::{
@@ -44,12 +47,12 @@ use crate::{
 ///   hot-reload handlers, so a live `.ron` edit refreshes the editor's resolved resources
 ///   with NO restart — the editor half of the "hot-reload in-app (game AND editor)" contract.
 ///   All SIX editor-hosted asset types are covered through the SAME shared Bevy `file_watcher`
-///   mechanism (NO second mechanism): the [`GdtfTheme`](gdtf_ui::theme::GdtfTheme) reuses
-///   `gdtf_ui`'s published [`redrive_theme_on_asset_event`] verbatim (the editor's
-///   `resolve_theme` already inserts the [`ActiveThemeHandle`](gdtf_ui::theme::ActiveThemeHandle)
-///   it filters on); the presenter [`TileRoles`] table reuses `gdtf_battle_presenter`'s
-///   published [`redrive_tile_roles_on_asset_event`] verbatim (the editor's `resolve_tile_roles`
-///   now inserts the presenter's [`TileRolesHandle`](gdtf_battle_presenter::TileRolesHandle)); and
+///   mechanism (NO second mechanism): the [`GdtfTheme`](gdtf_ui::theme::GdtfTheme) and the
+///   presenter [`TileRoles`] table each reuse the GTW-564 GENERIC hot-RON redrive
+///   ([`redrive_hot_ron_resource`]) with the chain owner's exported config
+///   ([`theme_hot_ron_chain`] / [`tile_roles_hot_ron_chain`]) — the editor's `resolve_theme`
+///   / `resolve_tile_roles` insert the generic
+///   [`HotRonHandle`](gdtf_assets::HotRonHandle) the redrive filters on; and
 ///   the four FOLDER registries (ranged weapons, armor, the UUID-keyed terrain / theme defs)
 ///   reuse the editor's own [`redrive`] handlers, which rebuild from the persistent
 ///   [`EditorLoadHandles`](crate::load::handles::EditorLoadHandles) via the SAME `build_*_registry`
@@ -74,12 +77,19 @@ pub(crate) fn register_load(app: &mut App) {
         // NO restart" contract. All SIX editor-hosted asset types reload through the SAME
         // shared file_watcher mechanism (NO second mechanism). Ungated `Update` so they fire
         // once the editor is `Editing`; each self-guards on its `Option`al borrows.
+        //
+        // GTW-564: the theme + tile-role halves are the GENERIC hot-RON redrive, run with
+        // the chain owners' exported configs (inserted here — the editor registers only
+        // the REDRIVE half of each chain; its own bespoke Load pass above owns the
+        // kick-off/resolve halves and stores the generic handles the redrives filter on).
+        app.insert_resource(theme_hot_ron_chain());
+        app.insert_resource(tile_roles_hot_ron_chain());
         app.add_systems(
             Update,
             (
-                // Reused verbatim from gdtf_ui / gdtf_battle_presenter (no editor copy).
-                redrive_theme_on_asset_event,
-                redrive_tile_roles_on_asset_event,
+                // The one generic drain body, reused from gdtf_assets (no editor copy).
+                redrive_hot_ron_resource::<GdtfThemeSpec, GdtfTheme>,
+                redrive_hot_ron_resource::<TileRoles, TileRoles>,
                 // The editor's own folder-registry redrives (mirror the game's per-type ones).
                 redrive::redrive_weapons_on_asset_event,
                 redrive::redrive_armor_on_asset_event,

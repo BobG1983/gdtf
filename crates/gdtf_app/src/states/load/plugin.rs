@@ -1,5 +1,5 @@
 use bevy::{asset::AssetServer, prelude::*};
-use gdtf_assets::RonAssetAppExt;
+use gdtf_assets::{HotRonAppExt, RonAssetAppExt};
 use gdtf_battle_sim::{
     FieldDef, FieldDefRegistry,
     armor::{ArmorRegistry, ArmorSpec},
@@ -24,6 +24,40 @@ use crate::states::{
         systems::*,
     },
 };
+
+/// Path of the loose authored-situation RON, relative to the asset source root
+/// (GTW-205 / E10.3 — the canonical authored battlefield the Generation slice reads).
+const SITUATION_RON_PATH: &str = "content/situations/skirmish.ron";
+
+/// Path of the loose combat-tuning RON, relative to the asset source root
+/// (GTW-206 / E10.4 — the shipped balance coefficients the sim marches with).
+const TUNING_RON_PATH: &str = "core_tuning/combat.tuning.ron";
+
+/// Path of the loose ganger stat-tuning RON, relative to the asset source root
+/// (GTW-384 — the attribute → computed-stat derivation weights, a SEPARATE file
+/// from `core_tuning/combat.tuning.ron`).
+const STAT_TUNING_RON_PATH: &str = "core_tuning/stat.tuning.ron";
+
+/// Path of the loose procgen fill-tuning RON, relative to the asset source root
+/// (GTW-533 — the OQ-6 procgen fill knobs the space-packing fill pass reads).
+const PROCGEN_TUNING_RON_PATH: &str = "core_tuning/procgen.tuning.ron";
+
+/// The situation chain's [`HotRonMapFn`](gdtf_assets::HotRonMapFn): wrap the
+/// deserialized authored [`Situation`] as the persistent [`LoadedSituation`]
+/// resource (the mapped hot-RON variant — the payload and the resource are
+/// DIFFERENT types; the server goes unused here).
+fn map_loaded_situation(situation: &Situation, _asset_server: &AssetServer) -> LoadedSituation {
+    LoadedSituation::new(situation.clone())
+}
+
+/// The situation chain's `Failed -> default` hook: the EMPTY battlefield, so a
+/// bad/missing `content/situations/skirmish.ron` never strands `Load` (the
+/// battle then has zero gangers rather than hanging the machine) — inserted
+/// ONLY on a genuine `Failed`, never while still loading (the GTW-261
+/// empty-battle-race guarantee, preserved by the generic resolve).
+fn fallback_loaded_situation() -> LoadedSituation {
+    LoadedSituation::new(Situation::default())
+}
 
 pub(in crate::states) struct LoadScenePlugin;
 
@@ -62,18 +96,39 @@ impl Plugin for LoadScenePlugin {
         // extension-dispatch needs the loader registered first.
         if app.world().get_resource::<AssetServer>().is_some() {
             app.init_ron_asset::<GdtfThemeSpec>();
-            app.init_ron_asset::<Situation>();
-            app.init_ron_asset::<CombatTuning>();
-            // GTW-384: the shipped GangerStatTuning loads through the SAME generic RON
-            // loader (a SEPARATE file from core_tuning/combat.tuning.ron — the user-directed split),
-            // registered here behind the one AssetServer guard alongside the others.
-            app.init_ron_asset::<GangerStatTuning>();
-            // GTW-533: the shipped ProcgenTuning loads through the SAME generic RON loader
-            // (a SEPARATE `core_tuning/procgen.tuning.ron` file — the OQ-6 fill knobs),
-            // registered here behind the one AssetServer guard alongside the others. Closes
-            // the audit gap: the file was documented as hot-reloadable but was never
-            // asset-loaded (the consumer used `ProcgenTuning::default()`).
-            app.init_ron_asset::<ProcgenTuning>();
+            // GTW-564: the four SINGLE-FILE gate-blocking chains register through the
+            // generic hot-RON seam — ONE ext call each wires the `Startup` kick-off (the
+            // persistent generic handle), the gated resolve (inserts the resource ONCE, on
+            // Loaded — or the fallback on a genuine Failed, so Load never strands), and
+            // the ungated live redrive (the GTW-374/GTW-533 hot-reloads, preserved). The
+            // `transition_to_intro` gate below still requires every resolved resource, so
+            // the Load-gating semantics are unchanged.
+            //
+            // GTW-261: the situation is the MAPPED variant (Situation payload ->
+            // LoadedSituation resource); its Failed fallback is the EMPTY battlefield.
+            app.init_hot_ron_resource_mapped_with_fallback::<Situation, LoadedSituation>(
+                SITUATION_RON_PATH,
+                map_loaded_situation,
+                fallback_loaded_situation,
+            );
+            // GTW-206 (E10.4): the shipped combat tuning (payload IS the resource).
+            app.init_hot_ron_resource_with_fallback::<CombatTuning>(
+                TUNING_RON_PATH,
+                CombatTuning::default,
+            );
+            // GTW-384: the shipped GangerStatTuning (a SEPARATE file from
+            // core_tuning/combat.tuning.ron — the user-directed split). Its redrive's
+            // ResMut overwrite trips the sim's `rederive_stats_on_tuning_change`.
+            app.init_hot_ron_resource_with_fallback::<GangerStatTuning>(
+                STAT_TUNING_RON_PATH,
+                GangerStatTuning::default,
+            );
+            // GTW-533: the shipped ProcgenTuning (the OQ-6 fill knobs), so the next
+            // battle GENERATION packs with hot-edited knobs with NO restart.
+            app.init_hot_ron_resource_with_fallback::<ProcgenTuning>(
+                PROCGEN_TUNING_RON_PATH,
+                ProcgenTuning::default,
+            );
             app.init_ron_asset_with_extensions::<WeaponSpec>(vec!["weapon.ron"]);
             // GTW-505: the MELEE weapon files mirror the ranged scheme — each loads as a
             // `RonAsset<MeleeWeaponSpec>` via `load_folder`, so it claims its OWN dedicated
@@ -175,16 +230,12 @@ fn add_systems(app: &mut App) {
                 in_state(AppState::Load)
                     .and_then(resource_exists::<LoadHandles>)
                     .and_then(
+                        // GTW-564: the situation + the three single-file tunings left this
+                        // or-chain — their generic resolves poll themselves (each gated on
+                        // its own handle-present + resource-absent), so the orchestrator
+                        // only keeps running for the theme + the FOLDER registries. The
+                        // transition gate below still requires ALL of them.
                         not(resource_exists::<GdtfTheme>)
-                            .or_else(not(resource_exists::<CombatTuning>))
-                            // GTW-384: the GangerStatTuning is a gate-blocking resource too
-                            // (the sim derives every ganger's stats from it).
-                            .or_else(not(resource_exists::<GangerStatTuning>))
-                            // GTW-533: the ProcgenTuning is a gate-blocking resource too (the
-                            // Generation procgen trigger reads it; the shipped file must be
-                            // verified loaded before Load exits, else the first battle packs
-                            // with the default before the loaded knobs land).
-                            .or_else(not(resource_exists::<ProcgenTuning>))
                             .or_else(not(resource_exists::<WeaponRegistry>))
                             // GTW-505: the MeleeWeaponRegistry is a gate-blocking resource too
                             // (every ganger gets a melee weapon; the melee folder must be
@@ -196,7 +247,6 @@ fn add_systems(app: &mut App) {
                             // strand). PHASE 2 resolves each weapon's `attachment_slots` keys
                             // against it.
                             .or_else(not(resource_exists::<AttachmentRegistry>))
-                            .or_else(not(resource_exists::<LoadedSituation>))
                             .or_else(not(resource_exists::<ArmorRegistry>))
                             // GTW-545: the FieldDefRegistry (area-damage-field catalog) is a
                             // gate-blocking resource too — the setup seeds a situation's fields
@@ -311,16 +361,9 @@ fn add_hot_reload_systems(app: &mut App) {
     app.add_systems(
         Update,
         (
-            redrive_combat_tuning_on_asset_event,
-            // GTW-384: the ganger stat-tuning hot-reload — overwrites the GangerStatTuning
-            // resource on a `core_tuning/stat.tuning.ron` edit, whose Changed<GangerStatTuning>
-            // trips the sim's `rederive_stats_on_tuning_change`.
-            redrive_stat_tuning_on_asset_event,
-            // GTW-533: the procgen fill-tuning hot-reload — overwrites the ProcgenTuning
-            // resource on a `core_tuning/procgen.tuning.ron` edit, so the next battle
-            // GENERATION packs with the new fill knobs with NO restart. Mirrors the
-            // combat-tuning redrive.
-            redrive_procgen_tuning_on_asset_event,
+            // GTW-564: the situation + combat / stat / procgen tuning redrives moved
+            // onto the generic hot-RON seam (registered by the ext calls in `build`);
+            // this set now carries the FOLDER-registry redrives only.
             redrive_weapons_on_asset_event,
             // GTW-505: the melee weapon hot-reload — rebuilds the MeleeWeaponRegistry on a
             // `weapons/melee/*.melee_weapon.ron` edit, mirroring the ranged hot-reload.
@@ -351,10 +394,6 @@ fn add_hot_reload_systems(app: &mut App) {
             // terrain/theme hot-reload pattern (one folder, two registries).
             redrive_terrain_defs_on_asset_event,
             redrive_theme_defs_on_asset_event,
-            // GTW-533: the situation hot-reload — overwrites the LoadedSituation resource on a
-            // `content/situations/skirmish.ron` edit, so the next battle GENERATION reads the edited
-            // battlefield with NO restart. Mirrors the combat-tuning redrive.
-            redrive_situation_on_asset_event,
         ),
     );
 }

@@ -79,10 +79,8 @@ mod tween;
 mod test;
 
 pub use frame::{FacingFrame, facing_frame};
-pub use roles::{
-    CharacterRoles, CharacterRolesHandle, load_character_roles,
-    redrive_character_roles_on_asset_event, resolve_character_roles,
-};
+pub use roles::CharacterRoles;
+pub(crate) use roles::register_character_roles_hot_ron;
 pub use sprite_map::{GangerSprite, GangerSprites};
 pub use systems::{
     apply_active_level_filter, despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites,

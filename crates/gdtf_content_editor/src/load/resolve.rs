@@ -18,15 +18,18 @@ use bevy::{
     ecs::system::SystemParam,
     prelude::*,
 };
-use gdtf_assets::RonAsset;
-use gdtf_battle_presenter::{TileRoles, TileRolesHandle};
+use gdtf_assets::{HotRonHandle, RonAsset};
+use gdtf_battle_presenter::TileRoles;
 use gdtf_battle_sim::{
     armor::{ArmorName, ArmorRegistry, ArmorSpec},
     level::{UuidThemeDef, UuidThemeRegistry},
     terrain::def::{TerrainDef, TerrainDefRegistry},
     weapon::{WeaponName, WeaponRegistry, WeaponSpec},
 };
-use gdtf_ui::theme::{ActiveThemeHandle, GdtfTheme, GdtfThemeSpec, default_theme};
+use gdtf_ui::{
+    resolve_theme_spec,
+    theme::{GdtfTheme, GdtfThemeSpec, default_theme},
+};
 
 use crate::load::handles::EditorLoadHandles;
 
@@ -176,8 +179,9 @@ pub(crate) fn poll_and_resolve_editor(
 
 /// Resolve the loaded theme RON into a [`GdtfTheme`], or fall back to the const default
 /// theme on a failed load — mirrors the game's `poll_and_resolve` theme branch. Inserts
-/// the persistent [`ActiveThemeHandle`] on both paths so a later file-watcher reload can
-/// recover (the editor reuses the same theming seam as the game).
+/// the persistent generic [`HotRonHandle`]`<GdtfThemeSpec>` on both paths so a later
+/// file-watcher reload can recover (the editor reuses the same GTW-564 theming seam as
+/// the game: the generic redrive it registers filters against this handle).
 fn resolve_theme(
     commands: &mut Commands,
     asset_server: &AssetServer,
@@ -192,7 +196,7 @@ fn resolve_theme(
              back to the const default theme",
         );
         commands.insert_resource(default_theme());
-        commands.insert_resource(ActiveThemeHandle::new((*handles.theme).clone()));
+        commands.insert_resource(HotRonHandle::new((*handles.theme).clone()));
         return;
     }
 
@@ -201,14 +205,13 @@ fn resolve_theme(
             // Loaded-but-not-yet-in-collection: a transient one-frame state; retry next frame.
             return;
         };
-        // Resolve each font key on demand (idempotent). The editor does not preload a fonts
-        // folder like the game — `load::<Font>` returns the same handle whether or not it was
-        // preloaded, so the theme's fonts load lazily here.
-        let theme: GdtfTheme = (**spec)
-            .clone()
-            .resolve(|key| asset_server.load::<Font>(key.to_owned()));
+        // Resolve through the ONE shared map hook (gdtf_ui::resolve_theme_spec) — each
+        // font key loads on demand (idempotent; the editor does not preload a fonts
+        // folder like the game), and the generic redrive re-runs the SAME hook on a hot
+        // edit.
+        let theme: GdtfTheme = resolve_theme_spec(spec, asset_server);
         commands.insert_resource(theme);
-        commands.insert_resource(ActiveThemeHandle::new((*handles.theme).clone()));
+        commands.insert_resource(HotRonHandle::new((*handles.theme).clone()));
     }
 }
 
@@ -481,10 +484,10 @@ pub(crate) fn build_theme_def_registry(
 /// terrain def's `presenter_kind.graphic_name` to an atlas index through this table
 /// ([`TileRoles::index_for_key`]), so its palette / canvas sprites match the battlescape.
 ///
-/// GTW-533: on success it also inserts the presenter's PERSISTENT [`TileRolesHandle`] (the
-/// SAME newtype the presenter's `resolve_tile_roles` inserts), so the presenter's
-/// [`redrive_tile_roles_on_asset_event`](gdtf_battle_presenter::redrive_tile_roles_on_asset_event)
-/// — REUSED verbatim in the editor's `Update` (no second mechanism) — can filter incoming
+/// GTW-533: on success it also inserts the PERSISTENT generic
+/// [`HotRonHandle`]`<TileRoles>` (the SAME generic handle the presenter's GTW-564 chain
+/// stores), so the generic hot-RON redrive — REUSED in the editor's `Update` with the
+/// presenter's exported chain config (no second mechanism) — can filter incoming
 /// `AssetEvent` ids against it and re-resolve the resident `TileRoles` on a live
 /// `sprites/tile_roles.spritedef.ron` edit. The handle persists past `Load` (nothing removes
 /// it) and keeps the tile-role asset loaded for the file-watcher.
@@ -505,7 +508,7 @@ fn resolve_tile_roles(
         // Insert the persistent handle even on the failure path so a later file-watcher
         // reload of a fixed `tile_roles.ron` can still re-resolve (mirrors the theme
         // failure-path handle insert).
-        commands.insert_resource(TileRolesHandle::new((*handles.tile_roles).clone()));
+        commands.insert_resource(HotRonHandle::new((*handles.tile_roles).clone()));
         return;
     }
 
@@ -515,7 +518,7 @@ fn resolve_tile_roles(
             return;
         };
         commands.insert_resource((**loaded).clone());
-        commands.insert_resource(TileRolesHandle::new((*handles.tile_roles).clone()));
+        commands.insert_resource(HotRonHandle::new((*handles.tile_roles).clone()));
     }
 }
 

@@ -1,6 +1,7 @@
-//! The resolved, runtime theme: a runtime struct per widget role, the
-//! [`GdtfTheme`] resource, and the [`ActiveThemeHandle`] that drives the
-//! live-retheme layer.
+//! The resolved, runtime theme: a runtime struct per widget role and the
+//! [`GdtfTheme`] resource. (The live-retheme layer keys off the GTW-564 generic
+//! [`HotRonHandle`](gdtf_assets::HotRonHandle)`<GdtfThemeSpec>` — the former
+//! per-site `ActiveThemeHandle` newtype collapsed onto it.)
 //!
 //! Every field is a typed newtype over a resolved value (a [`Color`], a
 //! relative-length scalar, a loaded [`Handle<Font>`]); these structs carry
@@ -8,15 +9,11 @@
 //! [`GdtfThemeSpec::resolve`](super::spec::GdtfThemeSpec::resolve).
 
 use bevy::prelude::*;
-use gdtf_assets::RonAsset;
 
-use super::{
-    newtypes::{
-        ActiveColor, BorderColor, BorderWidthVw, ButtonColor, ContentMargin, CornerRadiusVw,
-        DisabledColor, FontKey, FontSizePt, HoverColor, PanelColor, PressedColor, ScreenColor,
-        TextColor,
-    },
-    spec::GdtfThemeSpec,
+use super::newtypes::{
+    ActiveColor, BorderColor, BorderWidthVw, ButtonColor, ContentMargin, CornerRadiusVw,
+    DisabledColor, FontKey, FontSizePt, HoverColor, PanelColor, PressedColor, ScreenColor,
+    TextColor,
 };
 
 /// Runtime backdrop sub-theme — the full-screen fill behind all UI.
@@ -119,33 +116,4 @@ pub struct GdtfTheme {
     pub title:        TitleTheme,
     /// The body-text sub-theme.
     pub text:         TextTheme,
-}
-
-/// The handle to the **active** theme RON asset (`core_tuning/ui_theme.tuning.ron`), held as a
-/// persistent resource so the live-retheme layer can react to its changes.
-///
-/// A named [`Deref`] newtype over the `RonAsset<GdtfThemeSpec>` handle rather than
-/// a bare `Handle` (no-bare-types rule): the name says "the theme asset currently
-/// driving [`GdtfTheme`]". The retheme system
-/// ([`redrive_theme_on_asset_event`](crate::theming::retheme::redrive_theme_on_asset_event))
-/// filters incoming [`AssetEvent`](bevy::asset::AssetEvent) ids against this
-/// handle's id, ignoring events for any other asset.
-///
-/// Inserted alongside [`GdtfTheme`] during `AppState::Load` (on **both** the
-/// success and the const-fallback paths — the handle is valid even when the load
-/// failed, so a later file-watcher reload can recover) and, like [`GdtfTheme`], it
-/// **persists** past `OnExit(Load)`. Holding the handle keeps a **strong**
-/// reference to the asset so it stays loaded for that future watcher.
-///
-/// It is **not** inserted at startup; readers guard for its absence per the
-/// state-scoped-resource convention (bevy-traps rule 1).
-#[derive(Resource, Deref, Clone, Debug)]
-pub struct ActiveThemeHandle(Handle<RonAsset<GdtfThemeSpec>>);
-
-impl ActiveThemeHandle {
-    /// Wrap the strong [`Handle`] to the active theme RON asset.
-    #[must_use]
-    pub const fn new(handle: Handle<RonAsset<GdtfThemeSpec>>) -> Self {
-        Self(handle)
-    }
 }

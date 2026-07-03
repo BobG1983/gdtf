@@ -3,7 +3,6 @@
 //! data-driven keybinds, the shared act-intent seam, and the gamepad software cursor.
 
 use bevy::{ecs::message::Messages, prelude::*, window::CursorMoved};
-use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_presenter::{
     FireTargetHighlight, GamepadCursorMoved, HighlightRequest, PathPreview,
 };
@@ -39,9 +38,7 @@ use crate::{
         mouse_reclaims_pointer, move_gamepad_cursor,
     },
     intent::{PendingActIntent, dispatch_act_intents},
-    keybinds::{
-        Keybinds, KeybindsHandle, load_keybinds, redrive_keybinds_on_asset_event, resolve_keybinds,
-    },
+    keybinds::{Keybinds, register_keybinds_hot_ron},
     keyboard::{cycle_selection_keys, full_view_key, level_keys, posture_keys, select_clear_key},
     picking::{InspectTarget, emit_highlight_request, pick_hovered_cell},
     selection::{
@@ -77,9 +74,10 @@ pub struct GdtfBattleInputActive;
 ///   ([`update_selection_highlight`]), the 222b fire-mode default-on-select
 ///   ([`sync_fire_mode_on_select`]), the keyboard press surface, and the ONE intent drain
 ///   ([`dispatch_act_intents`]); and
-/// - loads the data-driven keybind table ([`load_keybinds`] / [`resolve_keybinds`]) via the
-///   GTW-136 `RonAsset<T>` path, gated on an [`AssetServer`] so a `MinimalPlugins` headless
-///   app no-ops (`bevy-traps.md` #1).
+/// - loads the data-driven keybind table through the GTW-564 generic hot-RON seam
+///   ([`register_keybinds_hot_ron`](crate::keybinds)), self-gated on an
+///   [`AssetServer`](bevy::asset::AssetServer) so a `MinimalPlugins` headless app no-ops
+///   (`bevy-traps.md` #1).
 ///
 /// All live-battle systems are gated `run_if(resource_exists::<BattleInProgress>)` so the
 /// input layer is inert pre-battle (AC11). The GTW-238 click decision additionally gates on
@@ -344,29 +342,11 @@ impl Plugin for GdtfBattleInputPlugin {
         // `too_many_lines` lint).
         register_fire_target_population(app);
 
-        // The data-driven keybind table loads the GTW-136 RON way. `init_ron_asset` PANICS at
-        // registration without an `AssetServer`, so it — and the load/resolve chain — is gated
-        // on the asset stack being present (`bevy-traps.md` #1). Under `DefaultPlugins` it runs
-        // for real; under `MinimalPlugins` it is skipped (no load, no panic).
-        if app.world().get_resource::<AssetServer>().is_some() {
-            app.init_ron_asset::<Keybinds>()
-                .add_systems(Startup, load_keybinds)
-                .add_systems(
-                    Update,
-                    resolve_keybinds.run_if(
-                        resource_exists::<KeybindsHandle>
-                            .and_then(not(resource_exists::<Keybinds>)),
-                    ),
-                )
-                // GTW-533: the LIVE keybind hot-reload — overwrites the resident Keybinds
-                // resource on a `core_tuning/keybinds.tuning.ron` edit, mirroring the game's
-                // combat-tuning redrive. Ungated (it self-guards on its Optional borrows,
-                // `bevy-traps.md` #1), so a live `.ron` edit re-binds keys with NO restart. Its
-                // `Messages<AssetEvent<RonAsset<Keybinds>>>` buffer is registered by the
-                // `init_ron_asset::<Keybinds>()` above, so the MessageReader validates
-                // (`bevy-traps.md` #4).
-                .add_systems(Update, redrive_keybinds_on_asset_event);
-        }
+        // The data-driven keybind table loads through the GTW-564 generic hot-RON seam —
+        // ONE ext call at its owning module (kick-off / gated resolve / live GTW-533
+        // redrive), self-gated on the `AssetServer` so a `MinimalPlugins` app skips it
+        // (no load, no panic — `bevy-traps.md` #1).
+        register_keybinds_hot_ron(app);
     }
 }
 

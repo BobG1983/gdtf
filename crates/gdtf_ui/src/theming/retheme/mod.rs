@@ -5,10 +5,16 @@
 //! loose `assets/core_tuning/ui_theme.tuning.ron` asset is modified — by the OS file-watcher
 //! in dev (GTW-138), or by a test injecting the message — Bevy emits an
 //! [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for the theme
-//! `RonAsset`. [`redrive_theme_on_asset_event`] reacts to that message,
-//! re-derives the resolved [`GdtfTheme`](crate::theme::GdtfTheme) from the
-//! **updated** in-memory spec, and overwrites the
+//! `RonAsset`. The GTW-564 GENERIC hot-RON redrive
+//! ([`redrive_hot_ron_resource`](gdtf_assets::redrive_hot_ron_resource)
+//! `::<GdtfThemeSpec, GdtfTheme>`, configured by [`theme_hot_ron_chain`] with
+//! the [`resolve_theme_spec`] map hook) reacts to that message, re-derives the
+//! resolved [`GdtfTheme`](crate::theme::GdtfTheme) from the **updated**
+//! in-memory spec — re-resolving fonts through the
+//! [`AssetServer`](bevy::asset::AssetServer) — and overwrites the
 //! [`GdtfTheme`](crate::theme::GdtfTheme) resource in place.
+//!
+//! [`GdtfThemeSpec`]: crate::theme::GdtfThemeSpec
 //!
 //! ## Why this is all it does (the cadence lives elsewhere)
 //!
@@ -33,4 +39,4 @@ mod system;
 #[cfg(test)]
 mod test;
 
-pub use system::redrive_theme_on_asset_event;
+pub use system::{resolve_theme_spec, theme_hot_ron_chain};

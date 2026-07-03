@@ -9,7 +9,7 @@ use crate::states::load::resources::{LoadFailed, LoadHandles};
 /// Drops [`LoadHandles`] and [`LoadFailed`] (per bevy-traps rule 1, a non-built-in
 /// state-scoped resource is removed in the `OnExit` system). It deliberately does
 /// **not** remove the resolved [`GdtfTheme`](gdtf_ui::theme::GdtfTheme), the
-/// [`ActiveThemeHandle`](gdtf_ui::theme::ActiveThemeHandle), **nor** the GTW-205
+/// theme's persistent [`HotRonHandle`](gdtf_assets::HotRonHandle), **nor** the GTW-205
 /// [`LoadedSituation`](crate::states::load::LoadedSituation): all three are the
 /// exception that *persists* past `Load` — the theme so every later scene can read
 /// it and the GTW-137 retheme system can keep filtering asset events against the

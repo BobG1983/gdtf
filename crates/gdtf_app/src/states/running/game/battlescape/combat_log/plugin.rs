@@ -6,14 +6,13 @@
 //! reloads, turn boundaries) as lines that scroll up and fade — UI/view only (it READS the sim's
 //! combat-event messages + the ganger names, and writes nothing back into the sim/input).
 //!
-//! - **RON tuning** — the hot-reloadable [`CombatLogTuning`] table loads through the generic
-//!   [`RonAsset<T>`](gdtf_assets::RonAsset) loader the FX-tuning / pan-tuning tables use: a
-//!   `Startup` [`load_combat_log_tuning`], an `Update` [`resolve_combat_log_tuning`] gated until
-//!   it resolves once, and an unguarded `Update` [`redrive_combat_log_tuning_on_asset_event`] so
-//!   a `combat_log.tuning.ron` edit re-tunes the log live. The whole RON block is gated on an
-//!   [`AssetServer`] existing — `init_ron_asset` PANICS at registration without the asset stack,
-//!   so a `MinimalPlugins` headless app skips it (`bevy-traps.md` #1), falling back to
-//!   [`CombatLogTuning::default`].
+//! - **RON tuning** — the hot-reloadable [`CombatLogTuning`](super::tuning::CombatLogTuning) table registers through the
+//!   GTW-564 generic hot-RON seam ([`register_combat_log_hot_ron`](super::tuning::register_combat_log_hot_ron)): one ext call
+//!   wires the kick-off / gated resolve / live redrive, so a `combat_log.tuning.ron` edit
+//!   re-tunes the log live. The registration self-gates on an
+//!   [`AssetServer`](bevy::asset::AssetServer) existing, so a `MinimalPlugins` headless app
+//!   skips it (`bevy-traps.md` #1), falling back to
+//!   [`CombatLogTuning::default`](super::tuning::CombatLogTuning).
 //! - **Lifecycle** (mirrors the sibling weapon panel) — [`spawn_combat_log`]
 //!   `OnEnter(BattleScapeState::BattleRunning)`, [`despawn_combat_log`]
 //!   `OnExit(BattleScapeState::BattleRunning)`, so the log exists only during the live tactical
@@ -33,8 +32,7 @@
 //! names), and `gdtf_assets` (the RON loader) — all already on the app's edge; the chain stays
 //! acyclic.
 
-use bevy::{asset::AssetServer, prelude::*};
-use gdtf_assets::RonAssetAppExt;
+use bevy::prelude::*;
 use gdtf_battle_presenter::ShotImpactResolved;
 use gdtf_battle_sim::{BattleInProgress, InjuryInflicted};
 
@@ -45,10 +43,7 @@ use crate::states::{
             animate_combat_log_height, despawn_combat_log, fade_combat_log_lines,
             slide_combat_log_lines, spawn_combat_log, update_combat_log,
         },
-        tuning::{
-            CombatLogTuning, CombatLogTuningHandle, load_combat_log_tuning,
-            redrive_combat_log_tuning_on_asset_event, resolve_combat_log_tuning,
-        },
+        tuning::register_combat_log_hot_ron,
     },
 };
 
@@ -58,31 +53,14 @@ pub(in crate::states::running::game::battlescape) struct GameBattleScapeCombatLo
 
 impl Plugin for GameBattleScapeCombatLogScenePlugin {
     fn build(&self, app: &mut App) {
-        register_ron_tuning(app);
+        // The hot-reloadable combat-log tuning registers through the GTW-564 generic
+        // hot-RON seam — ONE ext call at its owning module (kick-off / gated resolve /
+        // live redrive), self-gated on the `AssetServer` so a `MinimalPlugins` headless
+        // app skips it (no load, no panic — `bevy-traps.md` #1; the log then runs on
+        // `CombatLogTuning::default`).
+        register_combat_log_hot_ron(app);
         add_systems(app);
     }
-}
-
-/// Register the hot-reloadable combat-log RON tuning chain (load / resolve / redrive).
-///
-/// Gated on an [`AssetServer`] existing: `init_ron_asset` PANICS at registration without the
-/// `Assets<T>` machinery, so a `MinimalPlugins` headless app (no asset stack) skips the chain —
-/// no load, no panic (`bevy-traps.md` #1); it then runs on [`CombatLogTuning::default`]. Under
-/// `DefaultPlugins` the table loads for real. Mirrors the presenter's `register_ron_tables`.
-fn register_ron_tuning(app: &mut App) {
-    if app.world().get_resource::<AssetServer>().is_none() {
-        return;
-    }
-    app.init_ron_asset::<CombatLogTuning>()
-        .add_systems(Startup, load_combat_log_tuning)
-        .add_systems(
-            Update,
-            resolve_combat_log_tuning.run_if(
-                resource_exists::<CombatLogTuningHandle>
-                    .and_then(not(resource_exists::<CombatLogTuning>)),
-            ),
-        )
-        .add_systems(Update, redrive_combat_log_tuning_on_asset_event);
 }
 
 /// Register the combat-log lifecycle + per-frame systems.

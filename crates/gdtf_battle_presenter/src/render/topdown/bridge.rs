@@ -521,6 +521,18 @@ pub fn redrive_sheet_images_on_asset_event(
     }
 }
 
+/// Registers the sheet-IMAGE hot-reload reaction ([`redrive_sheet_images_on_asset_event`])
+/// in an ungated `Update` — the one NON-RON hot-reload registration, relocated here with
+/// its owning module when GTW-564 erased the presenter's `register_ron_tables` wall (the
+/// RON chains now register through the generic hot-RON seam at their own modules).
+///
+/// Needs no `AssetServer` gate: the system self-guards on its `Option`al
+/// `MessageReader<AssetEvent<Image>>` (the buffer only exists with the image-asset stack)
+/// and its `Option`al resource borrows, so a headless app is a harmless no-op.
+pub(crate) fn register_sheet_image_redrive(app: &mut App) {
+    app.add_systems(Update, redrive_sheet_images_on_asset_event);
+}
+
 #[cfg(test)]
 mod test {
     use std::sync::{Arc, Mutex};

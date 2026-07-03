@@ -44,7 +44,5 @@ pub use pan::{
     mouse_edge_dir, pan_camera, pan_camera_on_gamepad_cursor_edge, pan_velocity, stick_pan_dir,
     viewport_edge_dir,
 };
-pub use tuning::{
-    BoundsMarginWorld, DwellDelaySeconds, PanTuning, PanTuningHandle, load_pan_tuning,
-    redrive_pan_tuning_on_asset_event, resolve_pan_tuning,
-};
+pub(crate) use tuning::register_pan_tuning_hot_ron;
+pub use tuning::{BoundsMarginWorld, DwellDelaySeconds, PanTuning};

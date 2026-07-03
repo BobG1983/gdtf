@@ -79,13 +79,13 @@ pub use projectile::{
     PendingImpact, ProjectileTravel, ShotProjectile, advance_projectiles, spawn_shot_projectiles,
 };
 pub use readers::{read_armor_broken, read_bleeding, read_cover_destroyed};
+pub(crate) use roles::register_effect_roles_hot_ron;
 pub use roles::{
-    COMPASS_DIRECTIONS, DIRECTION_COUNT, DamageTypeFx, EffectRoles, EffectRolesHandle,
-    IMPACT_FRAME_COUNT, load_effect_roles, nearest_direction_index,
-    redrive_effect_roles_on_asset_event, resolve_effect_roles,
+    COMPASS_DIRECTIONS, DIRECTION_COUNT, DamageTypeFx, EffectRoles, IMPACT_FRAME_COUNT,
+    nearest_direction_index,
 };
+pub(crate) use tuning::register_fx_tuning_hot_ron;
 pub use tuning::{
-    FctRiseRate, FctTtlSeconds, FxTuning, FxTuningHandle, ImpactFrameSeconds, InterShotSeconds,
-    ProjectileDrawScale, ProjectileVelocity, load_fx_tuning, redrive_fx_tuning_on_asset_event,
-    resolve_fx_tuning,
+    FctRiseRate, FctTtlSeconds, FxTuning, ImpactFrameSeconds, InterShotSeconds,
+    ProjectileDrawScale, ProjectileVelocity,
 };

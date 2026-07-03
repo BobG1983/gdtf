@@ -45,7 +45,5 @@ pub use draw::{
     swap_destroyed_cover, swap_destroyed_slab,
 };
 pub use link_draw::{VerticalLinkSprite, draw_vertical_links};
-pub use roles::{
-    TileIndex, TileRoles, TileRolesHandle, load_tile_roles, redrive_tile_roles_on_asset_event,
-    resolve_tile_roles,
-};
+pub(crate) use roles::register_tile_roles_hot_ron;
+pub use roles::{TileIndex, TileRoles, tile_roles_hot_ron_chain};

@@ -2,7 +2,6 @@
 //! full system wiring.
 
 use bevy::{ecs::message::Messages, prelude::*, sprite_render::Material2dPlugin};
-use gdtf_assets::RonAssetAppExt;
 use gdtf_battle_sim::{
     ArmorBroken, BattleInProgress, Bleeding, CombatTuning, CoverDestroyed, CoverLedger, DotTicked,
     FallOccurred, FieldRegistry, FieldTicked, InjuryInflicted, OccupancyGrid, OnDeathOccurred,
@@ -13,25 +12,27 @@ use gdtf_battle_sim::{
 };
 
 use crate::{
-    ActiveLevel, CharacterRoles, CharacterRolesHandle, EffectRoles, EffectRolesHandle,
-    FireTargetHighlight, FxTuning, FxTuningHandle, GamepadCursorMoved, GangerSprites,
-    HighlightRequest, PanEdgeDwellState, PanTuning, PanTuningHandle, PathPreview, PresenterSystems,
-    ShotImpactResolved, TerrainFogMaterial, TileRoles, TileRolesHandle, TopDownAtlases, ViewMode,
+    ActiveLevel, CharacterRoles, EffectRoles, FireTargetHighlight, FxTuning, GamepadCursorMoved,
+    GangerSprites, HighlightRequest, PanEdgeDwellState, PathPreview, PresenterSystems,
+    ShotImpactResolved, TerrainFogMaterial, TileRoles, TopDownAtlases, ViewMode,
+    actors::{
+        fx::{register_effect_roles_hot_ron, register_fx_tuning_hot_ron},
+        ganger::register_character_roles_hot_ron,
+    },
     advance_projectiles, advance_sprite_tweens, animate_floating_text, animate_impact,
     apply_active_level_filter, clamp_camera_to_bounds, despawn_killed_ganger_on_impact,
     despawn_removed_ganger_sprites, draw_field_overlay, draw_fire_target,
     draw_highlight_on_request, draw_path_preview, draw_static_battlefield, draw_vertical_links,
-    expire_flashes, frame_camera_on_units, indicate_emplacement_occupied, load_character_roles,
-    load_effect_roles, load_fx_tuning, load_pan_tuning, load_tile_roles, load_topdown_atlases,
+    expire_flashes, frame_camera_on_units, indicate_emplacement_occupied, load_topdown_atlases,
     move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge, present_fog,
     read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed, read_dot_fct,
     read_fall_occurred, read_field_fct, read_injury_fct, read_melee_resolved, read_on_death_fct,
-    read_suppression_fct, read_throw_resolved, redrive_character_roles_on_asset_event,
-    redrive_effect_roles_on_asset_event, redrive_fx_tuning_on_asset_event,
-    redrive_pan_tuning_on_asset_event, redrive_sheet_images_on_asset_event,
-    redrive_tile_roles_on_asset_event, reframe_ganger_sprites,
-    reindex_ganger_sprites_on_character_roles_change, resolve_character_roles,
-    resolve_effect_roles, resolve_fx_tuning, resolve_pan_tuning, resolve_tile_roles,
+    read_suppression_fct, read_throw_resolved, reframe_ganger_sprites,
+    reindex_ganger_sprites_on_character_roles_change,
+    render::{
+        terrain::register_tile_roles_hot_ron, topdown::register_sheet_image_redrive,
+        world_camera::register_pan_tuning_hot_ron,
+    },
     spawn_ganger_sprites, spawn_shot_projectiles, swap_destroyed_cover, swap_destroyed_slab,
     update_ganger_life_state,
 };
@@ -124,9 +125,8 @@ pub struct TopDownRendererActive;
 /// (the app and the AC4 load harness) `SpritePlugin`'s `TextureAtlasPlugin` provides
 /// it, so the load runs for real.
 ///
-/// GTW-218 (S4) adds the static terrain draw here: it registers the
-/// [`RonAsset<TileRoles>`](gdtf_assets::RonAsset) loader + the
-/// [`load_tile_roles`] / [`resolve_tile_roles`] load chain (BOTH gated on an
+/// GTW-218 (S4) adds the static terrain draw here: it registers the [`TileRoles`]
+/// hot-RON chain through the GTW-564 generic seam (self-gated on an
 /// [`AssetServer`] so a `MinimalPlugins` app no-ops rather than panicking on the asset
 /// registration), inserts the [`ActiveLevel`] default (level 0), defines the
 /// [`PresenterSystems::Draw`] set `.after(SimSystems::Simulate)`, and registers the
@@ -144,7 +144,7 @@ impl Plugin for TopDownRendererPlugin {
         // per-channel multiply tint cannot desaturate. `Material2dPlugin` registers the
         // `Assets<TerrainFogMaterial>` store + (when a `RenderApp` is present) the render
         // pipeline; `DefaultPlugins` registers the built-in materials but NOT a custom one.
-        // It is gated on an `AssetServer` (like `register_ron_tables` below): `init_asset`
+        // It is gated on an `AssetServer` (like the hot-RON chains below): `init_asset`
         // needs the asset machinery, so a `MinimalPlugins` headless app (no asset stack)
         // skips it — and there the draw / fog systems never run anyway (they are gated on
         // `TopDownAtlases`, which only loads with an `AssetServer`), so the absent
@@ -180,13 +180,12 @@ impl Plugin for TopDownRendererPlugin {
                     .run_if(resource_exists::<Assets<bevy::image::TextureAtlasLayout>>),
             );
 
-        // The RON-asset registration (`init_ron_asset` / `init_asset`) PANICS at
-        // registration without an `AssetServer` (no `Assets<T>` machinery), so the whole
-        // table-load chain is gated on the asset stack being present and lives in
-        // `register_ron_tables` (extracted to keep this `build` under the `too_many_lines`
-        // lint). Under `DefaultPlugins` it runs for real; under `MinimalPlugins` it is
-        // skipped entirely (no draw, no panic).
-        register_ron_tables(app);
+        // GTW-564: each hot-RON table registers through the generic seam at its OWNING
+        // module — one ext call per chain, gathered by `register_hot_ron_chains` below
+        // (which replaced the old `register_ron_tables` wall of per-site
+        // load/resolve/redrive registrations; extracted to keep `build` under the
+        // `too_many_lines` lint).
+        register_hot_ron_chains(app);
 
         // The shared presenter draw band (S5's ganger draw joins this set). Defined
         // ONCE via `configure_sets` (`bevy-traps.md` #5), ordered after the sim's
@@ -403,115 +402,27 @@ impl Plugin for TopDownRendererPlugin {
     }
 }
 
-/// Registers the AssetServer-gated RON-table load chains: the S4 [`TileRoles`], the S5
-/// [`CharacterRoles`], the S6 [`EffectRoles`], the GTW-306 firing-FX [`FxTuning`], and the
-/// GTW-299 edge-pan [`PanTuning`] — each loaded through the generic
-/// [`RonAsset<T>`](gdtf_assets::RonAsset) loader (extracted from `build` to keep it under the
+/// Gathers the per-module hot-RON chain registrations (GTW-564): one generic-seam
+/// ext call per table — [`TileRoles`], [`CharacterRoles`], [`EffectRoles`],
+/// [`FxTuning`], [`PanTuning`] — plus the one NON-RON reaction (the sheet-image
+/// redrive owned by `render/topdown/bridge.rs`). Each ext call wires the chain's
+/// kick-off / gated resolve / live redrive and SELF-gates on the
+/// [`AssetServer`](bevy::asset::AssetServer), so a `MinimalPlugins` headless app
+/// skips every chain (no load, no panic — `bevy-traps.md` #1). This replaced the
+/// `register_ron_tables` wall (extracted from `build` to keep it under the
 /// `too_many_lines` lint).
-///
-/// The whole block is gated on an [`AssetServer`] existing: `init_ron_asset` PANICS at
-/// registration without the `Assets<T>` machinery, so a `MinimalPlugins` headless app (no asset
-/// stack) skips the entire chain — no load, no panic (`bevy-traps.md` #1). Under `DefaultPlugins`
-/// (the app + the `AssetServer` harness) every table loads for real.
-///
-/// Each table follows the SAME load / resolve / (for the two hot-reloadable tuning tables)
-/// redrive shape: a `Startup` load that stores the typed handle, an `Update` resolve gated
-/// `run_if(handle present AND resource not yet resolved)` so it inserts the resolved resource
-/// ONCE, and — for [`FxTuning`] / [`PanTuning`] — an unguarded `Update` redrive that re-derives
-/// the resource LIVE on a matching asset `Modified` event so an `.ron` edit hot-reloads without a
-/// rebuild (the redrive self-gates on its resources being present, taking them as `Option`s).
-fn register_ron_tables(app: &mut App) {
-    if app.world().get_resource::<AssetServer>().is_none() {
-        return;
-    }
-    app.init_ron_asset::<TileRoles>()
-        .init_ron_asset::<CharacterRoles>()
-        // GTW-220 (S6): the FX-flash effect-role table loads the same RON way.
-        .init_ron_asset::<EffectRoles>()
-        // GTW-306 (TUNING): the hot-reloadable firing-FX tuning table loads the same way.
-        .init_ron_asset::<FxTuning>()
-        // GTW-299 (TUNING): the hot-reloadable edge-pan tuning table loads the same way.
-        .init_ron_asset::<PanTuning>()
-        .add_systems(
-            Startup,
-            (
-                load_tile_roles,
-                load_character_roles,
-                load_effect_roles,
-                load_fx_tuning,
-                load_pan_tuning,
-            ),
-        )
-        .add_systems(
-            Update,
-            resolve_tile_roles.run_if(
-                resource_exists::<TileRolesHandle>.and_then(not(resource_exists::<TileRoles>)),
-            ),
-        )
-        .add_systems(
-            Update,
-            resolve_character_roles.run_if(
-                resource_exists::<CharacterRolesHandle>
-                    .and_then(not(resource_exists::<CharacterRoles>)),
-            ),
-        )
-        .add_systems(
-            Update,
-            resolve_effect_roles.run_if(
-                resource_exists::<EffectRolesHandle>.and_then(not(resource_exists::<EffectRoles>)),
-            ),
-        )
-        // GTW-306 (TUNING): resolve the FX tuning ONCE, then re-derive it LIVE on every matching
-        // asset Modified event so an `fx.tuning.ron` edit hot-reloads without a rebuild (mirrors
-        // the UI theme's redrive-on-AssetEvent). The resolve is gated like the others (handle
-        // present, resource not yet resolved); the redrive runs every frame and self-gates on the
-        // resources being present (it Options them).
-        .add_systems(
-            Update,
-            resolve_fx_tuning.run_if(
-                resource_exists::<FxTuningHandle>.and_then(not(resource_exists::<FxTuning>)),
-            ),
-        )
-        .add_systems(Update, redrive_fx_tuning_on_asset_event)
-        // GTW-375 (PRESENTER): hot-reload EVERY battle tile/sprite sheet on BOTH axes — its
-        // role `.ron` AND its sheet `.png`. Three role-`.ron` redrives re-resolve their resident
-        // resource LIVE on a re-save (mutating the resource): TileRoles (tile_roles.ron),
-        // CharacterRoles (character_roles.ron), and EffectRoles (effect_roles.ron). The
-        // sheet-image redrive reacts to a re-save of ANY sheet PNG (terrain, characters, effects,
-        // portraits, or any future sheet): it maps the reloaded image id back to its sheet, logs
-        // each, and `set_changed()`s TileRoles ONLY for the terrain sheet (the custom
-        // TerrainFogMaterial bind group is a snapshot and must be re-prepared via
-        // draw_static_battlefield's despawn+respawn) — the other sheets are atlas sprites that the
-        // sprite pipeline refreshes on its own.
-        //
-        // The re-render arm per axis:
-        // - tile-role + terrain-image → draw_static_battlefield's `roles.is_changed()` trigger
-        //   (despawn+respawn the terrain mesh tiles); stair/ladder link sprites rebuild from
-        //   TileRoles every frame (draw_vertical_links) and sample the same terrain handle, so
-        //   they pick up both reloads with no dedicated system.
-        // - character-role → reindex_ganger_sprites_on_character_roles_change (re-indexes each
-        //   mapped ganger sprite, registered in the PresenterSystems::Draw band below);
-        //   character-image → the sprite pipeline refreshes the texture on its own.
-        // - effect-role → future FX flashes/projectiles read the re-resolved EffectRoles on spawn
-        //   (flashes are TRANSIENT, so no existing-flash re-index is needed); effect-image → the
-        //   sprite pipeline refreshes on its own.
-        //
-        // All four redrives run every frame and self-gate on their resources being present (they
-        // Option them) so a headless app never panics.
-        .add_systems(Update, redrive_tile_roles_on_asset_event)
-        .add_systems(Update, redrive_character_roles_on_asset_event)
-        .add_systems(Update, redrive_effect_roles_on_asset_event)
-        .add_systems(Update, redrive_sheet_images_on_asset_event)
-        // GTW-299 (TUNING): resolve the pan tuning ONCE, then re-derive it LIVE on every matching
-        // asset Modified event so a `pan.tuning.ron` edit hot-reloads without a rebuild — the
-        // exact load/resolve/redrive shape the FX tuning above uses.
-        .add_systems(
-            Update,
-            resolve_pan_tuning.run_if(
-                resource_exists::<PanTuningHandle>.and_then(not(resource_exists::<PanTuning>)),
-            ),
-        )
-        .add_systems(Update, redrive_pan_tuning_on_asset_event);
+fn register_hot_ron_chains(app: &mut App) {
+    register_tile_roles_hot_ron(app);
+    register_character_roles_hot_ron(app);
+    // GTW-220 (S6): the FX-flash effect-role table.
+    register_effect_roles_hot_ron(app);
+    // GTW-306 (TUNING): the hot-reloadable firing-FX tuning table.
+    register_fx_tuning_hot_ron(app);
+    // GTW-299 (TUNING): the hot-reloadable edge-pan tuning table.
+    register_pan_tuning_hot_ron(app);
+    // GTW-375: the sheet-IMAGE (`.png`) redrive — the one non-RON hot-reload
+    // reaction, registered by its owning module (render/topdown/bridge.rs).
+    register_sheet_image_redrive(app);
 }
 
 /// Registers the GTW-367 terrain destruction-swap reactions: the S4 [`swap_destroyed_cover`]
