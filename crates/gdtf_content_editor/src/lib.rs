@@ -143,9 +143,11 @@ pub use save::{
 };
 pub use session::MapEditorSession;
 pub use state::EditorState;
+// GTW-566 C5: `TerrainGraphicChoice` is GONE — the graphic pick is the presenter's
+// `TileRole` vocabulary directly, filtered through `offered_graphic_roles`.
 pub use terrain_form::{
-    ArmorInput, FootfallChoice, HpInput, SaveTerrainError, TerrainDraft, TerrainGraphicChoice,
-    TerrainKindChoice, draft_to_terrain_def, serialize_terrain_def,
+    ArmorInput, FootfallChoice, HpInput, SaveTerrainError, TerrainDraft, TerrainKindChoice,
+    draft_to_terrain_def, offered_graphic_roles, serialize_terrain_def,
 };
 // The debug-only TERRAIN / THEME fs-write surface — kept for the C2 / C3 egui save-press re-point.
 // `write_terrain_in` is the root-parameterized core: tests call it with a `tempfile::TempDir` root

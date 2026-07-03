@@ -5,6 +5,8 @@ use bevy::prelude::*;
 use gdtf_assets::{HotRonAppExt, HotRonChain};
 use serde::{Deserialize, Serialize};
 
+use super::vocab::TileRole;
+
 /// An index into the terrain sheet's atlas layout — WHICH 16x16 tile a role draws.
 ///
 /// A named newtype over `usize` (no-bare-types: an atlas index is a domain value, not
@@ -34,11 +36,13 @@ impl TileRoles {
     /// [`TerrainGraphicKey`](gdtf_battle_sim::TerrainGraphicKey) on every terrain entity,
     /// keyed in THIS `TileRoles` vocabulary; the presenter resolves it here).
     ///
-    /// The authored `graphic_name` follows the `tile_roles.ron` vocabulary
-    /// (`"floor"` / `"wall"` / `"wall_ew"` / `"cover"` / `"slab"` / `"rubble"` / …), so this
-    /// maps the key string onto the matching role field. Returns [`None`] for an unrecognized key
-    /// — the caller then FALLS BACK to its presenter-owned `TileRole`-table default keyed on
-    /// the cell's [`TerrainKind`](gdtf_battle_sim::TerrainKind), so an out-of-vocabulary
+    /// The authored `graphic_name` follows the `tile_roles.ron` vocabulary, so this
+    /// classifies the key string through [`TileRole::from_key`] and reads the matching
+    /// role field via [`TileRole::index_in`] — the ONE key↔role site (GTW-566 C2; the
+    /// key strings themselves are spelled only in [`TileRole::as_key`]). Returns
+    /// [`None`] for an unrecognized key — the caller then FALLS BACK to its
+    /// presenter-owned [`TileRole`]-table default keyed on the cell's
+    /// [`TerrainKind`](gdtf_battle_sim::TerrainKind), so an out-of-vocabulary
     /// def still draws (no panic) rather than vanishing.
     ///
     /// Two `Cover` defs whose `graphic_name`s differ (e.g. `"cover"` vs `"rubble"`)
@@ -47,30 +51,7 @@ impl TileRoles {
     /// [`TerrainKind::Cover`](gdtf_battle_sim::TerrainKind)) cannot express.
     #[must_use]
     pub fn index_for_key(&self, key: &str) -> Option<TileIndex> {
-        let index = match key {
-            "floor" => self.floor,
-            "floor_alt_panel" => self.floor_alt_panel,
-            "wall" => self.wall,
-            "wall_ew" => self.wall_ew,
-            "cover" => self.cover,
-            "emplacement" => self.emplacement,
-            "emplacement_occupied" => self.emplacement_occupied,
-            "slab" => self.slab,
-            "rubble" => self.rubble,
-            "slab_destroyed" => self.slab_destroyed,
-            "door" => self.door,
-            "door_ns" => self.door_ns,
-            "door_ew" => self.door_ew,
-            "stair_up" => self.stair_up,
-            "stair_down" => self.stair_down,
-            "stair_ns_up" => self.stair_ns_up,
-            "stair_ns_down" => self.stair_ns_down,
-            "stair_ew_up" => self.stair_ew_up,
-            "stair_ew_down" => self.stair_ew_down,
-            "ladder" => self.ladder,
-            _ => return None,
-        };
-        Some(index)
+        TileRole::from_key(key).map(|role| role.index_in(self))
     }
 }
 
@@ -88,7 +69,9 @@ impl TileRoles {
 /// table), and [`TypePath`] (the bound [`RonAsset<TileRoles>`](gdtf_assets::RonAsset) requires
 /// of its payload).
 /// The `floor_alt_*` / `door` fields are authored for future variety; the default S4 draw
-/// uses `floor` / `wall` / `cover` / `slab` / `rubble`.
+/// uses `floor` / `wall` / `cover` / `slab` / `rubble`. The Rust-side vocabulary over
+/// these fields is [`TileRole`] — one variant per field (GTW-566), which the
+/// vocabulary-completeness test keeps in lockstep with this serde shape.
 #[derive(Resource, Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TypePath)]
 pub struct TileRoles {
     /// The default walkable-ground tile — in-range cells with no wall / cover / slab.

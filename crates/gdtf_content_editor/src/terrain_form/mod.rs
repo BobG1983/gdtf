@@ -25,9 +25,9 @@
 //!
 //! | Submodule | Concern |
 //! |-----------|---------|
-//! | [`types`] | The [`TerrainDraft`](types::TerrainDraft), the kind / graphic / footfall pick enums, the field markers, the numeric-input newtypes, and [`SaveTerrainError`](types::SaveTerrainError) |
+//! | [`types`] | The [`TerrainDraft`](types::TerrainDraft), the kind / footfall pick enums, the [`offered_graphic_roles`](types::offered_graphic_roles) pick over the presenter's `TileRole` vocabulary (GTW-566 C5), the numeric-input newtypes, and [`SaveTerrainError`](types::SaveTerrainError) |
 //! | [`save`]  | The pure projection + serialization + the debug-only fs write |
-//! | [`tests`] | In-crate tests (the C2 footfall gate + the C3 round-trip) |
+//! | [`tests`] | In-crate tests (the C2 footfall gate + the C3 round-trip + the GTW-566 picker derivation) |
 
 mod save;
 mod types;
@@ -43,6 +43,6 @@ pub use save::{draft_to_terrain_def, serialize_terrain_def};
 #[cfg(debug_assertions)]
 pub use save::{write_terrain, write_terrain_in};
 pub use types::{
-    ArmorInput, FootfallChoice, HpInput, SaveTerrainError, TerrainDraft, TerrainGraphicChoice,
-    TerrainKindChoice,
+    ArmorInput, FootfallChoice, HpInput, SaveTerrainError, TerrainDraft, TerrainKindChoice,
+    offered_graphic_roles,
 };

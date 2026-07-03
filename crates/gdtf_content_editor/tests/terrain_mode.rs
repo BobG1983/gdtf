@@ -20,13 +20,14 @@
 #![cfg(debug_assertions)]
 
 use bevy::prelude::*;
+use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::{
     level::UuidThemeRegistry,
     terrain::def::{TerrainDef, TerrainPresenterKind, TerrainSimKind, TerrainTag, TerrainUuid},
 };
 use gdtf_content_editor::{
-    EditorMode, EditorState, MapEditorPlugin, MapEditorSession, TerrainDraft, TerrainGraphicChoice,
-    TerrainKindChoice, draft_to_terrain_def, serialize_terrain_def, write_terrain_in,
+    EditorMode, EditorState, MapEditorPlugin, MapEditorSession, TerrainDraft, TerrainKindChoice,
+    draft_to_terrain_def, serialize_terrain_def, write_terrain_in,
 };
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
@@ -88,7 +89,7 @@ fn terrain_save_round_trips_through_the_loader() {
     };
     draft.set_display_name("GTW513 Roundtrip Probe".to_owned());
     draft.set_kind(TerrainKindChoice::Cover);
-    draft.set_graphic(TerrainGraphicChoice::Cover);
+    draft.set_graphic(TileRole::Cover);
     draft.toggle_tag(TerrainTag::BlocksVision);
     draft.toggle_tag(TerrainTag::Indestructible);
     let _ = draft.ensure_uuid();
@@ -174,7 +175,7 @@ fn terrain_tab_rework_keeps_stat_picker_and_preview_wired() {
     };
     draft.set_display_name("GTW534 Rework Probe".to_owned());
     draft.set_kind(TerrainKindChoice::Cover);
-    draft.set_graphic(TerrainGraphicChoice::Cover);
+    draft.set_graphic(TileRole::Cover);
     draft.set_cover_hp(gdtf_battle_sim::cover::CoverHp::new(77));
 
     // Re-read the live draft and project + serialize it EXACTLY as the relocated `ron_preview` does
@@ -190,7 +191,7 @@ fn terrain_tab_rework_keeps_stat_picker_and_preview_wired() {
     };
     assert_eq!(
         &**graphic_name,
-        TerrainGraphicChoice::Cover.key(),
+        TileRole::Cover.as_key(),
         "the sprite-picker selection must reach the projected def's graphic_name (C3)",
     );
 
@@ -213,7 +214,7 @@ fn terrain_tab_rework_keeps_stat_picker_and_preview_wired() {
         "the demoted RON preview must still re-serialize the edited display name (C3):\n{preview}",
     );
     assert!(
-        preview.contains(TerrainGraphicChoice::Cover.key()),
+        preview.contains(TileRole::Cover.as_key()),
         "the demoted RON preview must still re-serialize the picked graphic role (C3):\n{preview}",
     );
 }

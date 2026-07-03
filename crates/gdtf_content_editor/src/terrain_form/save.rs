@@ -89,7 +89,10 @@ pub(crate) fn theme_dir(display_name: &str) -> String {
 /// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry).
 #[must_use]
 pub fn draft_to_terrain_def(draft: &TerrainDraft, uuid: TerrainUuid) -> TerrainDef {
-    let graphic_name: TerrainGraphicKey = draft.graphic().graphic_key();
+    // GTW-566 C5: the draft's graphic is the presenter's TileRole; its `as_key` is the
+    // exact authored role string, minted here into the sim's opaque key newtype (the
+    // TileRole itself never crosses into the sim).
+    let graphic_name = TerrainGraphicKey::new(draft.graphic().as_key().to_owned());
     let (sim_kind, presenter_kind) = match draft.kind() {
         TerrainKindChoice::Wall => (
             TerrainSimKind::Wall {

@@ -46,4 +46,4 @@ pub use draw::{
 };
 pub use link_draw::{VerticalLinkSprite, draw_vertical_links};
 pub(crate) use roles::register_tile_roles_hot_ron;
-pub use roles::{TileIndex, TileRoles, tile_roles_hot_ron_chain};
+pub use roles::{TileIndex, TileRole, TileRoles, tile_roles_hot_ron_chain};

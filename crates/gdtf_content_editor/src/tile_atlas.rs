@@ -9,35 +9,15 @@
 //! [`TileRoles`](gdtf_battle_presenter::TileRoles) table. The editor mirrors that resolution (see
 //! [`terrain_graphics`](crate::terrain_graphics)) and draws the resolved index over this sheet.
 //!
-//! This loads the SAME terrain sheet the presenter draws
-//! — `sprites/alt_tileset_terrain.png`, a 16×22 grid of 16-px cells (the
-//! `gdtf_battle_presenter` `SheetRole::Terrain` shape) — via [`AssetServer::load`] +
-//! [`TextureAtlasLayout::from_grid`], the `load_topdown_atlases` recipe. A palette / canvas cell
-//! then builds an [`ImageNode::from_atlas_image`] over this sheet at the resolved atlas index (a
-//! UI atlas image node, NOT a world sprite).
+//! This loads the SAME terrain sheet the presenter draws — reading the sheet's path, grid,
+//! and per-cell size STRAIGHT off the presenter's [`SheetRole::Terrain`] spec (GTW-566 C7;
+//! the editor previously mirrored those dimensions as its own consts, which could drift) —
+//! via [`AssetServer::load`] + [`TextureAtlasLayout::from_grid`], the `load_topdown_atlases`
+//! recipe. A palette / canvas cell then builds an [`ImageNode::from_atlas_image`] over this
+//! sheet at the resolved atlas index (a UI atlas image node, NOT a world sprite).
 
 use bevy::{image::TextureAtlasLayout, prelude::*};
-
-/// Loose-file path of the terrain sprite sheet, relative to the asset source root.
-///
-/// The SAME sheet the presenter's `SheetRole::Terrain` loads
-/// (`gdtf_battle_presenter::SheetRole::asset_path`), so the editor palette draws the tiles
-/// from the identical art the battlescape renders.
-const TERRAIN_SHEET_PATH: &str = "sprites/alt_tileset_terrain.png";
-
-/// The terrain sheet's grid COLUMN count — the `gdtf_battle_presenter` `SheetRole::Terrain`
-/// grid is 16×22 (352 cells). A framework layout dimension fed straight to
-/// [`TextureAtlasLayout::from_grid`] (the `no-bare-types` clause-4 plumbing carve-out, the
-/// presenter's `grid()` precedent), not a domain quantity.
-const TERRAIN_COLUMNS: u32 = 16;
-
-/// The terrain sheet's grid ROW count (16×22 — see [`TERRAIN_COLUMNS`]).
-const TERRAIN_ROWS: u32 = 22;
-
-/// One terrain atlas cell's square edge, in source pixels — the presenter's
-/// `SheetRole::Terrain` `tile_px` (16). A framework layout dimension (the clause-4 plumbing
-/// carve-out), not a domain quantity.
-const TERRAIN_TILE_PX: u32 = 16;
+use gdtf_battle_presenter::SheetRole;
 
 /// The editor's loaded **terrain tile atlas** — the sheet image + the grid layout over it the
 /// palette rows draw their sprites from (GTW-422 C1).
@@ -52,7 +32,8 @@ const TERRAIN_TILE_PX: u32 = 16;
 pub(crate) struct TileAtlas {
     /// The terrain sheet image handle (loaded via [`AssetServer::load`]).
     image:  Handle<Image>,
-    /// The 16×22 grid layout over [`image`](TileAtlas::image), one entry per 16-px cell.
+    /// The grid layout over [`image`](TileAtlas::image), one entry per
+    /// [`SheetRole::tile_px`]-sized cell of the [`SheetRole::Terrain`] grid.
     layout: Handle<TextureAtlasLayout>,
 }
 
@@ -68,19 +49,13 @@ impl TileAtlas {
     }
 }
 
-/// The terrain sheet's grid COLUMN count as read by the egui palette (GTW-515 C4.2) — mirrors
-/// [`TERRAIN_COLUMNS`] so a palette row can compute an atlas index's UV sub-rect over the sheet.
-pub(crate) const SHEET_COLUMNS: u32 = TERRAIN_COLUMNS;
-
-/// The terrain sheet's grid ROW count as read by the egui palette (GTW-515 C4.2) — mirrors
-/// [`TERRAIN_ROWS`].
-pub(crate) const SHEET_ROWS: u32 = TERRAIN_ROWS;
-
 /// `OnEnter(Editing)`: load the terrain sheet + register its grid layout, register the sheet image
 /// with egui (for the palette rows' sprite thumbnails — C4.2), and insert the [`TileAtlas`]
 /// resource (GTW-422 C1; egui-registered in GTW-515).
 ///
-/// Mirrors the presenter's `load_topdown_atlases` recipe for the terrain sheet only:
+/// Mirrors the presenter's `load_topdown_atlases` recipe for the terrain sheet only, reading
+/// the sheet spec — [`SheetRole::asset_path`] / [`SheetRole::grid`] / [`SheetRole::tile_px`] —
+/// straight off [`SheetRole::Terrain`] (GTW-566 C7, no duplicated dimensions):
 /// [`AssetServer::load`] the PNG (the RON loader is `.ron`-only) + one
 /// [`TextureAtlasLayout::from_grid`] at the sheet's `(columns, rows)` and tile size, added to
 /// [`Assets<TextureAtlasLayout>`]. It ALSO registers the sheet image with egui via
@@ -94,14 +69,17 @@ pub(crate) fn load_tile_atlas(
     mut layouts: ResMut<Assets<TextureAtlasLayout>>,
     egui_user_textures: Option<ResMut<bevy_egui::EguiUserTextures>>,
 ) {
+    // GTW-566 C7: the ONE sheet spec — the presenter's SheetRole::Terrain — supplies the
+    // grid, cell size, and path; the editor holds no mirror consts to drift.
+    let (columns, rows) = SheetRole::Terrain.grid();
     let layout = TextureAtlasLayout::from_grid(
-        UVec2::splat(TERRAIN_TILE_PX),
-        TERRAIN_COLUMNS,
-        TERRAIN_ROWS,
+        UVec2::splat(SheetRole::Terrain.tile_px()),
+        columns,
+        rows,
         None,
         None,
     );
-    let image = asset_server.load(TERRAIN_SHEET_PATH);
+    let image = asset_server.load(SheetRole::Terrain.asset_path());
     // Register the sheet with egui for the palette thumbnails. Absent under the headless harness
     // (no EguiPlugin) — the atlas still loads; only the egui registration is skipped there.
     if let Some(mut egui_user_textures) = egui_user_textures {
