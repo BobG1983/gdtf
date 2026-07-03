@@ -24,7 +24,7 @@
 // the procgen step fills them in.
 (
     // The level THEME (GTW-491) — now the UUID-keyed reference to the migrated IndustrialHive
-    // UuidThemeDef (assets/terrain/industrial_hive/industrial_hive.terrain_theme.ron), resolvable
+    // UuidThemeDef (assets/content/terrain/industrial_hive/industrial_hive.terrain_theme.ron), resolvable
     // in the UuidThemeRegistry. GTW-491 reconciled the GTW-490 additive `theme_uuid` field into
     // this canonical `theme` (the sim theme is now this one ThemeUuid; the legacy LevelTheme enum
     // is no longer authored here). IndustrialHive = the manufactorum decking / bulkheads of the

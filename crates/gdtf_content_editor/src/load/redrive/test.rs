@@ -191,7 +191,7 @@ fn modified_member_rebuilds_editor_terrain_def_registry() {
     let handle = app
         .world()
         .resource::<AssetServer>()
-        .load::<RonAsset<TerrainDef>>("terrain/industrial_hive/crate.terrain_def.ron");
+        .load::<RonAsset<TerrainDef>>("content/terrain/industrial_hive/crate.terrain_def.ron");
     let inserted = app
         .world_mut()
         .resource_mut::<Assets<RonAsset<TerrainDef>>>()
@@ -295,7 +295,7 @@ fn editor_terrain_def_hot_reload_logs_an_info_line() {
     let handle = app
         .world()
         .resource::<AssetServer>()
-        .load::<RonAsset<TerrainDef>>("terrain/industrial_hive/crate.terrain_def.ron");
+        .load::<RonAsset<TerrainDef>>("content/terrain/industrial_hive/crate.terrain_def.ron");
     let inserted = app
         .world_mut()
         .resource_mut::<Assets<RonAsset<TerrainDef>>>()

@@ -62,10 +62,10 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
     /// The loaded per-prefab RON collection (`content/maps/**/*.prefab.ron`, GTW-489).
     pub(super) prefab_specs:     Option<Res<'w, Assets<RonAsset<PrefabSpec>>>>,
     /// The loaded NEW per-theme terrain-def RON collection
-    /// (`terrain/<theme>/*.terrain_def.ron`, GTW-487).
+    /// (`content/terrain/<theme>/*.terrain_def.ron`, GTW-487).
     pub(super) terrain_defs:     Option<Res<'w, Assets<RonAsset<TerrainDef>>>>,
     /// The loaded NEW per-theme theme-def RON collection
-    /// (`terrain/<theme>/*.terrain_theme.ron`, GTW-487).
+    /// (`content/terrain/<theme>/*.terrain_theme.ron`, GTW-487).
     pub(super) theme_defs:       Option<Res<'w, Assets<RonAsset<UuidThemeDef>>>>,
 }
 

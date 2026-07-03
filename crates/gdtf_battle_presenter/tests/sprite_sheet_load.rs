@@ -2,8 +2,8 @@
 //! [`SheetRole`] sprite-sheet PNGs resolve to [`LoadState::Loaded`] (NOT `Failed`)
 //! at their NEW `sprites/` paths after the GTW-447 folder move.
 //!
-//! The 6 battle sprite PNGs and the 3 spritedef RON files moved from `assets/tiles/`
-//! to `assets/sprites/` (the 4 [`SheetRole`] PNGs are the runtime-loaded ones in
+//! The 6 battle sprite PNGs and the 3 spritedef RON files moved from the old
+//! `tiles/` asset folder to `assets/sprites/` (the 4 [`SheetRole`] PNGs are the runtime-loaded ones in
 //! scope: Terrain, Characters, Effects, Portraits). The RON files are already covered
 //! by `include_str!` compile-time guards + existing parse tests; the PNGs have NO
 //! compile-time safety net — only a runtime `AssetServer.load` with the new path.

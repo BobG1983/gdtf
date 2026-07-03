@@ -210,7 +210,7 @@ crate::support_item! {
     /// the theme / tuning with the shipped assets (the real theme + tuning), and — crucially —
     /// its `poll_and_resolve` only RESOLVES the registries / situation from
     /// `assets/content/weapons/ranged/*.weapon.ron` + `assets/content/armor/*.armor.ron` +
-    /// `assets/terrain/<theme>/*.terrain_def.ron` + `content/situations/skirmish.ron` while those
+    /// `assets/content/terrain/<theme>/*.terrain_def.ron` + `content/situations/skirmish.ron` while those
     /// resources are still ABSENT, so the empty seeds must NOT be present for the real assets
     /// to win.
     /// Runs once in `Startup` (before the first `Update`, hence before `Load` resolves), so
@@ -311,7 +311,7 @@ crate::support_item! {
             // GTW-487: the UUID-keyed TerrainDefRegistry + UuidThemeRegistry are gate-blocking
             // too; seed the empty fallbacks when there is no AssetServer so headless walks still
             // reach Intro (the A1 / AC3b pattern). With an AssetServer present the real
-            // per-theme `terrain/` resolve must win — so this is gated on `is_none()` exactly
+            // per-theme `content/terrain/` resolve must win — so this is gated on `is_none()` exactly
             // like the other registries (else the empty seed would shadow resolve_terrain_defs /
             // resolve_theme_defs, which only run while their registry is ABSENT). GTW-494: these
             // are the ONLY terrain / theme registries (the legacy terrain / theme registry

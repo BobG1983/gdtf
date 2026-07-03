@@ -1,7 +1,7 @@
 //! `OnEnter(EditorState::Load)`: start the editor's async asset loads.
 //!
 //! A slim mirror of `gdtf_app`'s `kick_off_loads`, trimmed to the editor's needs: the
-//! theme RON, the weapon / armor content folders, the NEW UUID-keyed per-theme `terrain/`
+//! theme RON, the weapon / armor content folders, the NEW UUID-keyed per-theme `content/terrain/`
 //! folder (GTW-487), and the presenter's tile-role RON (GTW-495 — the per-def graphic
 //! resolution table). The editor does NOT load the situation, combat/stat tuning,
 //! injuries, or gangs — those drive the GAME's battle sim, which the editor does not run.
@@ -39,8 +39,9 @@ const ARMOR_DIR: &str = "content/armor";
 /// `*.terrain_theme.ron` (`RonAsset<UuidThemeDef>`) the resolve pass builds the UUID-keyed
 /// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
 /// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) from — the editor's SOLE
-/// terrain/theme source after GTW-495 (the legacy `content/themes` catalog is retired).
-const TERRAIN_MODEL_DIR: &str = "terrain";
+/// terrain/theme source after GTW-495 (the legacy theme catalog is retired; the root moved
+/// under `content/` in GTW-562).
+const TERRAIN_MODEL_DIR: &str = "content/terrain";
 
 /// Path of the loose tile-role RON, relative to the asset source root (GTW-495) — the SAME
 /// `sprites/tile_roles.spritedef.ron` the presenter loads. The editor resolves a terrain

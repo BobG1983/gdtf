@@ -1,12 +1,12 @@
 //! GTW-494 (child T08 of the GTW-476 refactor): `AppState::Load` loads the per-theme
-//! `terrain/<theme>/*.terrain_theme.ron` files through the GTW-487 `resolve_theme_defs`
+//! `content/terrain/<theme>/*.terrain_theme.ron` files through the GTW-487 `resolve_theme_defs`
 //! loader, builds the UUID-keyed [`UuidThemeRegistry`] from them, and gates the Load→Intro
 //! transition on it.
 //!
 //! This file was MIGRATED off the retired flat-dir `resolve_themes` per-file theme model
 //! (GTW-409) onto the UUID model: GTW-494 removed the old game-side loader, so the
 //! `UuidThemeRegistry` is now the ONLY theme resolver in the Load flow. It does NOT seed the
-//! registry — it drives the REAL Load branch over the shipped `assets/terrain/` content and
+//! registry — it drives the REAL Load branch over the shipped `assets/content/terrain/` content and
 //! asserts the registry POPULATES (not-empty) and a KNOWN authored [`ThemeUuid`] resolves
 //! (the C2 contract: not-empty + a known UUID resolves, via the real Load branch, not a
 //! seeded default).
@@ -28,14 +28,14 @@ use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resou
 use gdtf_ui::theme::GdtfTheme;
 
 /// Generous SAFETY-NET cap for the real-asset Tier (b) `advance_until` waits gated on an
-/// async asset load resolving. The per-theme `terrain/` folder load shares the `AssetServer`
+/// async asset load resolving. The per-theme `content/terrain/` folder load shares the `AssetServer`
 /// with every other loaded folder, so under parallel `cargo` contention the async resolve has
 /// NO fixed frame count. These waits key off the resolved SIGNAL; the cap is a safety net
 /// against a genuine never-resolve hang, not a timing budget (GTW-305).
 const LOAD_SAFETY_NET: u32 = 10_000;
 
 /// The migrated `IndustrialHive` [`ThemeUuid`] authored in
-/// `terrain/industrial_hive/industrial_hive.terrain_theme.ron` (`Uuid::from_u128(0x0184_0a90_0001)`).
+/// `content/terrain/industrial_hive/industrial_hive.terrain_theme.ron` (`Uuid::from_u128(0x0184_0a90_0001)`).
 const fn industrial_hive_theme() -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a90_0001))
 }
@@ -55,7 +55,7 @@ fn app_state(app: &bevy::app::App) -> AppState {
 }
 
 /// GTW-494 C2 — with a real `AssetServer` rooted at the workspace `assets/`, entering `Load`
-/// loads `terrain/<theme>/*.terrain_theme.ron` and builds the UUID-keyed
+/// loads `content/terrain/<theme>/*.terrain_theme.ron` and builds the UUID-keyed
 /// [`UuidThemeRegistry`] through the ACTUAL `resolve_theme_defs` branch. Proves:
 ///
 /// - The registry RESOLVES POPULATED (non-empty).
@@ -74,10 +74,10 @@ fn real_asset_resolves_uuid_theme_registry() {
         .starting_in(AppState::Load)
         .build();
 
-    // Signal-poll the async per-theme `terrain/` folder load: wait until resolve_theme_defs
+    // Signal-poll the async per-theme `content/terrain/` folder load: wait until resolve_theme_defs
     // inserts the UuidThemeRegistry, not a fixed frame count. Cap is a safety net (GTW-305).
     // DELIBERATELY do NOT seed UuidThemeRegistry::default() — existence here proves the REAL
-    // resolve_theme_defs published it from the assets/terrain/ folder.
+    // resolve_theme_defs published it from the assets/content/terrain/ folder.
     advance_until_resource_exists::<UuidThemeRegistry>(&mut app, LOAD_SAFETY_NET);
 
     if let Some(registry) = app.world().get_resource::<UuidThemeRegistry>() {

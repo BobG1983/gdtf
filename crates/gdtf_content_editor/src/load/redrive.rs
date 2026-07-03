@@ -136,7 +136,7 @@ pub(crate) fn redrive_armor_on_asset_event(
 }
 
 /// `Update`: rebuild the editor's UUID-keyed [`TerrainDefRegistry`] in place on a matching
-/// [`AssetEvent::Modified`] for any member `terrain/**/*.terrain_def.ron` — the GTW-533
+/// [`AssetEvent::Modified`] for any member `content/terrain/**/*.terrain_def.ron` — the GTW-533
 /// editor mirror of the game's `redrive_terrain_defs_on_asset_event`.
 ///
 /// Reacts to ANY `AssetEvent<RonAsset<TerrainDef>>::Modified` and rebuilds the whole registry
@@ -169,13 +169,13 @@ pub(crate) fn redrive_terrain_defs_on_asset_event(
     };
     *registry = rebuilt;
     info!(
-        "editor terrain-def hot-reload: rebuilt TerrainDefRegistry from `terrain/` ({} defs)",
+        "editor terrain-def hot-reload: rebuilt TerrainDefRegistry from `content/terrain/` ({} defs)",
         registry.len(),
     );
 }
 
 /// `Update`: rebuild the editor's UUID-keyed [`UuidThemeRegistry`] in place on a matching
-/// [`AssetEvent::Modified`] for any member `terrain/**/*.terrain_theme.ron` — the GTW-533
+/// [`AssetEvent::Modified`] for any member `content/terrain/**/*.terrain_theme.ron` — the GTW-533
 /// editor mirror of the game's `redrive_theme_defs_on_asset_event`, the theme companion of
 /// [`redrive_terrain_defs_on_asset_event`].
 ///
@@ -209,7 +209,7 @@ pub(crate) fn redrive_theme_defs_on_asset_event(
     };
     *registry = rebuilt;
     info!(
-        "editor theme-def hot-reload: rebuilt UuidThemeRegistry from `terrain/` ({} themes)",
+        "editor theme-def hot-reload: rebuilt UuidThemeRegistry from `content/terrain/` ({} themes)",
         registry.len(),
     );
 }

@@ -5,7 +5,7 @@
 //! [`GdtfTheme`], the legacy [`WeaponRegistry`] / [`ArmorRegistry`], the (GTW-487) NEW
 //! UUID-keyed [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
 //! [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) built from the per-theme
-//! `terrain/` folder, and the (GTW-495) presenter [`TileRoles`] table. Each branch re-gates on
+//! `content/terrain/` folder, and the (GTW-495) presenter [`TileRoles`] table. Each branch re-gates on
 //! its OWN resource's absence so none starves another (`bevy-traps.md` #3), and EVERY branch is
 //! fail-safe: a failed asset falls back to a const default (the ADR-0003 error-path safety-net)
 //! so the editor never hangs in `Load`. Once all the resources exist, the plugin's transition
@@ -51,10 +51,10 @@ pub(crate) struct EditorLoadCollections<'w> {
     /// The loaded per-armor RON collection (`content/armor/*.armor.ron`).
     armor_specs:  Option<Res<'w, Assets<RonAsset<ArmorSpec>>>>,
     /// The loaded NEW per-theme terrain-def RON collection
-    /// (`terrain/<theme>/*.terrain_def.ron`, GTW-487).
+    /// (`content/terrain/<theme>/*.terrain_def.ron`, GTW-487).
     terrain_defs: Option<Res<'w, Assets<RonAsset<TerrainDef>>>>,
     /// The loaded NEW per-theme theme-def RON collection
-    /// (`terrain/<theme>/*.terrain_theme.ron`, GTW-487).
+    /// (`content/terrain/<theme>/*.terrain_theme.ron`, GTW-487).
     theme_defs:   Option<Res<'w, Assets<RonAsset<UuidThemeDef>>>>,
     /// The loaded tile-role RON collection (`sprites/tile_roles.spritedef.ron`, GTW-495).
     tile_roles:   Option<Res<'w, Assets<RonAsset<TileRoles>>>>,
@@ -152,7 +152,7 @@ pub(crate) fn poll_and_resolve_editor(
         );
     }
     // GTW-487: the NEW UUID-keyed terrain + theme registries, built from the per-theme
-    // `terrain/` folder. EMPTY against un-migrated content is the designed fail-closed state.
+    // `content/terrain/` folder. EMPTY against un-migrated content is the designed fail-closed state.
     if !terrain_defs_done {
         resolve_terrain_defs(
             &mut commands,
@@ -345,7 +345,7 @@ pub(crate) fn build_armor_registry(
     Some(registry)
 }
 
-/// Resolve the loaded NEW per-theme `terrain/` folder into the UUID-keyed
+/// Resolve the loaded NEW per-theme `content/terrain/` folder into the UUID-keyed
 /// [`TerrainDefRegistry`], or fall back to an empty registry on a failed folder — the editor
 /// mirror of the game's `resolve_terrain_defs` (GTW-487). Keyed by each def's OWN
 /// [`TerrainUuid`](gdtf_battle_sim::terrain::def::TerrainUuid). A folder member that is NOT a
@@ -380,7 +380,7 @@ fn resolve_terrain_defs(
     }
 }
 
-/// Build the UUID-keyed [`TerrainDefRegistry`] from a loaded per-theme `terrain/`
+/// Build the UUID-keyed [`TerrainDefRegistry`] from a loaded per-theme `content/terrain/`
 /// [`LoadedFolder`], or [`None`] if the folder (or any `RonAsset<TerrainDef>` member) is
 /// not yet in its collection.
 ///
@@ -415,7 +415,7 @@ pub(crate) fn build_terrain_def_registry(
     Some(registry)
 }
 
-/// Resolve the loaded NEW per-theme `terrain/` folder into the UUID-keyed
+/// Resolve the loaded NEW per-theme `content/terrain/` folder into the UUID-keyed
 /// [`UuidThemeRegistry`], or fall back to an empty registry on a failed folder — the editor
 /// mirror of the game's `resolve_theme_defs` (GTW-487). Keyed by each def's OWN
 /// [`ThemeUuid`](gdtf_battle_sim::level::ThemeUuid). A non-theme member (a terrain def) is
@@ -448,7 +448,7 @@ fn resolve_theme_defs(
     }
 }
 
-/// Build the UUID-keyed [`UuidThemeRegistry`] from a loaded per-theme `terrain/`
+/// Build the UUID-keyed [`UuidThemeRegistry`] from a loaded per-theme `content/terrain/`
 /// [`LoadedFolder`], or [`None`] if the folder (or any `RonAsset<UuidThemeDef>` member) is
 /// not yet in its collection — the theme mirror of [`build_terrain_def_registry`].
 ///

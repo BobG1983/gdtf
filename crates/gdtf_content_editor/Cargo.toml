@@ -50,7 +50,7 @@ gdtf_screenshot = { path = "../gdtf_screenshot" }
 gdtf_test_utils = { path = "../gdtf_test_utils" }
 # GTW-555: the terrain save round-trip test writes into a unique TempDir (NOT into
 # the version-controlled assets/ tree) so concurrent `cargo test --workspace` runs
-# don't race with tests that glob-scan assets/terrain/**. TempDir auto-cleans on drop.
+# don't race with tests that glob-scan assets/content/terrain/**. TempDir auto-cleans on drop.
 tempfile = "3"
 
 [features]

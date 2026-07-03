@@ -1,6 +1,6 @@
 //! The THEME-mode form's **projection + serialization + write** (GTW-475): turn the in-progress
 //! [`ThemeDraft`] into a real [`UuidThemeDef`], serialize it to a `.terrain_theme.ron`, and write
-//! it to `assets/terrain/<slug>/<slug>.terrain_theme.ron` so the GTW-487 theme loader
+//! it to `assets/content/terrain/<slug>/<slug>.terrain_theme.ron` so the GTW-487 theme loader
 //! (`resolve_theme_defs`) resolves it into the
 //! [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry).
 //!
@@ -19,14 +19,15 @@ use super::types::{SaveThemeError, ThemeDraft};
 /// The workspace `assets/` root — byte-identical to the editor's `AssetPlugin.file_path`
 /// (`crates/gdtf_content_editor` → up two levels → `assets`), computed at compile time. So a
 /// theme def the editor SAVES lands exactly where the GTW-487 theme loader READS from —
-/// `assets/terrain/<slug>/`.
+/// `assets/content/terrain/<slug>/`.
 #[cfg(debug_assertions)]
 const WORKSPACE_ASSETS_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
 
-/// The per-theme terrain root the GTW-487 loader scans — `assets/terrain/<slug>/`. The SOLE
-/// terrain/theme root after GTW-490, shared with the per-theme `.terrain_def.ron` files.
+/// The per-theme terrain root the GTW-487 loader scans — `assets/content/terrain/<slug>/`.
+/// The SOLE terrain/theme root after GTW-490 (moved under `content/` in GTW-562), shared
+/// with the per-theme `.terrain_def.ron` files.
 #[cfg(debug_assertions)]
-const TERRAIN_SUBDIR: &str = "terrain";
+const TERRAIN_SUBDIR: &str = "content/terrain";
 
 /// The compound file extension the GTW-487 theme loader keys on — a saved theme MUST use it or
 /// the loader never picks the file up (the filename STEM is cosmetic; the `key` field is the
@@ -37,7 +38,7 @@ const THEME_DEF_EXTENSION: &str = "terrain_theme.ron";
 /// The `snake_case` slug for a theme, derived from its human display name — the TERRAIN form's
 /// `theme_dir` sibling. Both the per-theme DIRECTORY and the file STEM key on this slug
 /// (`"Industrial Hive"` → `industrial_hive`), matching the shipped per-theme layout
-/// (`assets/terrain/underhive/underhive.terrain_theme.ron`).
+/// (`assets/content/terrain/underhive/underhive.terrain_theme.ron`).
 ///
 /// Returns the empty string for a name that slugifies to nothing (the caller treats it as
 /// [`SaveThemeError::EmptyName`]).
@@ -53,7 +54,7 @@ pub(crate) fn slugify(raw: &str) -> String {
 }
 
 /// The full on-disk PATH a saved theme def is written to:
-/// `<workspace assets>/terrain/<slug>/<slug>.terrain_theme.ron` (GTW-475 C5).
+/// `<workspace assets>/content/terrain/<slug>/<slug>.terrain_theme.ron` (GTW-475 C5).
 ///
 /// Pure (no IO) so a test can assert the resolved location without writing. `slug` is the
 /// slugified display name (the same value names both the dir and the file stem).
@@ -95,7 +96,7 @@ pub fn draft_to_theme_def(draft: &ThemeDraft, key: ThemeUuid) -> UuidThemeDef {
 
 /// Serialize a built [`UuidThemeDef`] to its `.terrain_theme.ron`-shaped RON text — the SAME
 /// schema the GTW-487 theme loader (`resolve_theme_defs`) deserializes (C3/C5). Pretty-printed so
-/// a saved def stays human-editable like the shipped `assets/terrain/**/*.terrain_theme.ron`.
+/// a saved def stays human-editable like the shipped `assets/content/terrain/**/*.terrain_theme.ron`.
 ///
 /// # Errors
 ///
@@ -130,7 +131,7 @@ pub fn validate_for_save(draft: &ThemeDraft) -> Result<(), SaveThemeError> {
     }
 }
 
-/// Build + serialize + WRITE a theme def to `assets/terrain/<slug>/<slug>.terrain_theme.ron`
+/// Build + serialize + WRITE a theme def to `assets/content/terrain/<slug>/<slug>.terrain_theme.ron`
 /// (GTW-475 C5), or return the typed [`SaveThemeError`] (never a panic).
 ///
 /// Validates the draft (the C6 default-floor rule + a non-empty name + a non-empty palette),

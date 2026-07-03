@@ -22,14 +22,14 @@ use super::types::{SaveTerrainError, TerrainDraft, TerrainKindChoice};
 /// The workspace `assets/` root — byte-identical to the editor's `AssetPlugin.file_path`
 /// (`crates/gdtf_content_editor` → up two levels → `assets`), computed at compile time. So a
 /// terrain def the editor SAVES lands exactly where the GTW-487 terrain loader READS from —
-/// `assets/terrain/<theme>/`.
+/// `assets/content/terrain/<theme>/`.
 #[cfg(debug_assertions)]
 const WORKSPACE_ASSETS_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
 
-/// The per-theme terrain root the GTW-487 loader scans — `assets/terrain/<theme>/`. The SOLE
-/// terrain root after GTW-490.
+/// The per-theme terrain root the GTW-487 loader scans — `assets/content/terrain/<theme>/`.
+/// The SOLE terrain root after GTW-490 (moved under `content/` in GTW-562).
 #[cfg(debug_assertions)]
-const TERRAIN_SUBDIR: &str = "terrain";
+const TERRAIN_SUBDIR: &str = "content/terrain";
 
 /// The compound file extension the GTW-487 terrain loader keys on
 /// (`init_ron_asset_with_extensions::<TerrainDef>(vec!["terrain_def.ron"])`) — a saved def MUST
@@ -55,7 +55,7 @@ pub(crate) fn sanitize_stem(raw: &str) -> String {
 }
 
 /// The `snake_case` directory name for a theme, derived from its human label — the prefab
-/// `theme_dir` sibling. `assets/terrain/<theme>/` keys on the slugified theme DISPLAY NAME
+/// `theme_dir` sibling. `assets/content/terrain/<theme>/` keys on the slugified theme DISPLAY NAME
 /// (`"Industrial Hive"` → `industrial_hive`), matching the shipped per-theme layout.
 #[cfg(debug_assertions)]
 #[must_use]
@@ -139,7 +139,7 @@ pub fn draft_to_terrain_def(draft: &TerrainDraft, uuid: TerrainUuid) -> TerrainD
 
 /// Serialize a built [`TerrainDef`] to its `.terrain_def.ron`-shaped RON text — the SAME schema
 /// the GTW-487 terrain loader deserializes (C3). Pretty-printed so a saved def stays
-/// human-editable like the shipped `assets/terrain/**/*.terrain_def.ron`.
+/// human-editable like the shipped `assets/content/terrain/**/*.terrain_def.ron`.
 ///
 /// # Errors
 ///
@@ -149,11 +149,11 @@ pub fn serialize_terrain_def(def: &TerrainDef) -> Result<String, SaveTerrainErro
         .map_err(|err| SaveTerrainError::Serialize(err.to_string()))
 }
 
-/// Build + serialize + WRITE a terrain def to `<assets_root>/terrain/<theme>/<stem>.terrain_def.ron`,
+/// Build + serialize + WRITE a terrain def to `<assets_root>/content/terrain/<theme>/<stem>.terrain_def.ron`,
 /// or return the typed [`SaveTerrainError`] (never a panic).
 ///
 /// This is the **root-parameterized core** — all path-building, serialization, and `fs` writes go
-/// through here. `assets_root` is the on-disk parent of the `terrain/` subtree: production passes
+/// through here. `assets_root` is the on-disk parent of the `content/terrain/` subtree: production passes
 /// [`WORKSPACE_ASSETS_ROOT`] (via [`write_terrain`]); tests pass a unique `tempfile::TempDir` root
 /// so no test ever writes into the version-controlled `assets/` tree.
 ///
@@ -188,7 +188,7 @@ pub fn write_terrain_in(
     Ok(path)
 }
 
-/// Build + serialize + WRITE a terrain def to `assets/terrain/<theme>/<stem>.terrain_def.ron`
+/// Build + serialize + WRITE a terrain def to `assets/content/terrain/<theme>/<stem>.terrain_def.ron`
 /// (GTW-474 C3), or return the typed [`SaveTerrainError`] (never a panic).
 ///
 /// Thin wrapper around [`write_terrain_in`] that supplies the workspace `assets/` root

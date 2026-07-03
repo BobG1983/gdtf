@@ -73,12 +73,14 @@ const MAPS_DIR: &str = "content/maps";
 
 /// Path of the loose per-theme terrain-model folder, relative to the asset source root
 /// (GTW-487 — the GTW-484/485 UUID-keyed terrain + theme defs under the per-theme layout
-/// `terrain/<theme>/<tile>.terrain_def.ron` + `terrain/<theme>/<theme>.terrain_theme.ron`).
+/// `content/terrain/<theme>/<tile>.terrain_def.ron` +
+/// `content/terrain/<theme>/<theme>.terrain_theme.ron`; GTW-562 moved the root under
+/// `content/` so every authored terrain file lives in the canonical content tree).
 /// One recursive `load_folder` walks every `<theme>/` subfolder, and the dedicated compound
 /// extensions (`terrain_def.ron` / `terrain_theme.ron`) keep the `.ron` loader dispatch
-/// unambiguous. GTW-494 retired the legacy flat-dir `content/terrain` / `content/themes`
-/// loaders, so this is the ONLY terrain / theme load in the Load flow.
-const TERRAIN_MODEL_DIR: &str = "terrain";
+/// unambiguous. GTW-494 retired the legacy flat-dir loaders, so this is the ONLY
+/// terrain / theme load in the Load flow.
+const TERRAIN_MODEL_DIR: &str = "content/terrain";
 
 /// Kicks off the theme-RON load and the fonts-folder preload, storing their typed
 /// handles.
@@ -95,8 +97,8 @@ const TERRAIN_MODEL_DIR: &str = "terrain";
 /// AND preloads the entire `content/armor` folder via `load_folder` (GTW-269 — every
 /// `assets/content/armor/*.ron`, each a `RonAsset<ArmorSpec>`, so the poll/resolve
 /// system can build the name-keyed [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry))
-/// AND preloads the per-theme `terrain` folder via `load_folder` (GTW-487 — every
-/// `terrain/<theme>/*.terrain_def.ron` + `*.terrain_theme.ron`, the UUID-keyed
+/// AND preloads the per-theme `content/terrain` folder via `load_folder` (GTW-487 — every
+/// `content/terrain/<theme>/*.terrain_def.ron` + `*.terrain_theme.ron`, the UUID-keyed
 /// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
 /// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) the sim + procgen +
 /// presenter consume) AND preloads the `content/maps` folder via `load_folder` (GTW-489 — every
@@ -114,9 +116,9 @@ const TERRAIN_MODEL_DIR: &str = "terrain";
 /// kick-off stays bespoke because its resolve pairs with the fonts folder (the
 /// C7 record); it now mints the generic [`HotRonHandle`] directly.
 ///
-/// GTW-494 (child T08 of GTW-476): the OLD flat-dir `content/terrain` / `content/themes` /
-/// `content/maps` folder loads were RETIRED — the per-theme `terrain` model + the `maps`
-/// prefab loads above are the ONLY terrain / theme / prefab loads in the Load flow.
+/// GTW-494 (child T08 of GTW-476): the OLD FLAT-DIR terrain / theme / map folder loads were
+/// RETIRED — the per-theme `content/terrain` model + the `content/maps` prefab loads above
+/// are the ONLY terrain / theme / prefab loads in the Load flow.
 ///
 /// It takes `Option<Res<AssetServer>>`: a `MinimalPlugins` headless app has **no**
 /// [`AssetServer`], so the system must no-op rather than panic when it is absent

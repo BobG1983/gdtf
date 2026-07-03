@@ -8,7 +8,7 @@
 //! editor-generated on the first save.
 //!
 //! SAVE projects the in-progress [`TerrainDraft`](types::TerrainDraft) into a real `TerrainDef`,
-//! serializes it to RON, and writes it to `assets/terrain/<theme>/<name>.terrain_def.ron` so the
+//! serializes it to RON, and writes it to `assets/content/terrain/<theme>/<name>.terrain_def.ron` so the
 //! GTW-487 terrain loader resolves it into the
 //! [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) (hot-reload).
 //!

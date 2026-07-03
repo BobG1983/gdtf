@@ -145,7 +145,7 @@ fn modified_member_rebuilds_terrain_def_registry() {
     let key = terrain_uuid(0x0184_0a3e_0701);
     let member = add_terrain_member(
         &mut app,
-        "terrain/industrial_hive/crate.terrain_def.ron",
+        "content/terrain/industrial_hive/crate.terrain_def.ron",
         cover_def(key, "Old Crate"),
     );
     let folder = add_folder(&mut app, vec![member.clone().untyped()]);
@@ -189,7 +189,7 @@ fn terrain_def_hot_reload_logs_an_info_line() {
     let key = terrain_uuid(0x0184_0a3e_0702);
     let member = add_terrain_member(
         &mut app,
-        "terrain/industrial_hive/crate.terrain_def.ron",
+        "content/terrain/industrial_hive/crate.terrain_def.ron",
         cover_def(key, "Crate"),
     );
     let folder = add_folder(&mut app, vec![member.clone().untyped()]);
@@ -231,7 +231,7 @@ fn modified_member_rebuilds_theme_def_registry() {
     let original_floor = terrain_uuid(0x0184_0a3e_07b1);
     let member = add_theme_member(
         &mut app,
-        "terrain/industrial_hive/industrial_hive.terrain_theme.ron",
+        "content/terrain/industrial_hive/industrial_hive.terrain_theme.ron",
         theme_def(key, "Industrial Hive", original_floor),
     );
     let folder = add_folder(&mut app, vec![member.clone().untyped()]);
@@ -275,7 +275,7 @@ fn theme_def_hot_reload_logs_an_info_line() {
     let floor = terrain_uuid(0x0184_0a3e_07b3);
     let member = add_theme_member(
         &mut app,
-        "terrain/industrial_hive/industrial_hive.terrain_theme.ron",
+        "content/terrain/industrial_hive/industrial_hive.terrain_theme.ron",
         theme_def(key, "Industrial Hive", floor),
     );
     let folder = add_folder(&mut app, vec![member.clone().untyped()]);
