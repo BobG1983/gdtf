@@ -8,8 +8,7 @@ use bevy::{
     scene::{CommandsSceneExt, bsn, template_value},
 };
 use gdtf_battle_sim::{
-    Aiming, Facing, Faction, HitReport, LifeState, Position, ShotFired, ShotKind, Stance,
-    Suppressed,
+    Aiming, Facing, Faction, HitReport, LifeState, Position, ShotFired, Stance, Suppressed,
 };
 
 use super::{
@@ -370,7 +369,7 @@ fn reframe_one(
 ///
 /// So a [`Dead`](LifeState::Dead) ganger is despawned here ONLY when NO killing shot for it
 /// arrived this frame — i.e. no drained [`ShotFired`] whose threaded
-/// [`HitReport`](gdtf_battle_sim::HitReport) names this ganger ([`ShotKind::Ganger`]) and left it
+/// [`HitReport`](gdtf_battle_sim::HitReport) names this ganger (a [`HitVerdict::Ganger`](gdtf_battle_sim::HitVerdict::Ganger) verdict) and left it
 /// [`Dead`](LifeState::Dead). That is a NON-shot death (a bleed-out, a directly-set state — no
 /// tracer is coming), so it despawns promptly. When a killing shot DID arrive, the despawn is
 /// DEFERRED to [`despawn_killed_ganger_on_impact`], which drains the bolt's
@@ -431,7 +430,7 @@ pub fn update_ganger_life_state(
 }
 
 /// The sim ganger [`Entity`] a [`ShotFired`](gdtf_battle_sim::ShotFired) KILLED, if it struck a
-/// ganger ([`ShotKind::Ganger`]) AND left it [`Dead`](LifeState::Dead) (GTW-331) — else [`None`]
+/// ganger (a [`HitVerdict::Ganger`](gdtf_battle_sim::HitVerdict::Ganger) verdict) AND left it [`Dead`](LifeState::Dead) (GTW-331) — else [`None`]
 /// (a non-ganger hit, a non-lethal hit, a clean miss, or a geometry-only round).
 ///
 /// [`update_ganger_life_state`]'s discriminator reads it over this frame's `ShotFired` to find
@@ -442,7 +441,7 @@ fn shot_kill_victim(shot: &ShotFired) -> Option<Entity> {
 }
 
 /// The sim ganger [`Entity`] a shot's [`HitReport`](gdtf_battle_sim::HitReport) KILLED, if it
-/// struck a ganger ([`ShotKind::Ganger`]) AND left it [`Dead`](LifeState::Dead) (GTW-331) — else
+/// struck a ganger (a [`HitVerdict::Ganger`](gdtf_battle_sim::HitVerdict::Ganger) verdict) AND left it [`Dead`](LifeState::Dead) (GTW-331) — else
 /// [`None`].
 ///
 /// The shared kill-classifier both death-despawn halves use over the SAME sim verdict: the
@@ -453,14 +452,12 @@ fn shot_kill_victim(shot: &ShotFired) -> Option<Entity> {
 /// plumbing (the no-bare-types carve-out).
 fn report_kill_victim(report: Option<&HitReport>) -> Option<Entity> {
     let report = report?;
-    let ShotKind::Ganger(victim) = report.kind else {
+    // The GTW-573 per-kind verdict: only a landed ganger verdict can carry a kill (a
+    // corpse-skip / miss folds to no-effect and names no victim).
+    let gdtf_battle_sim::HitVerdict::Ganger(verdict) = &report.verdict else {
         return None;
     };
-    matches!(
-        report.applied.map(|applied| applied.life_after),
-        Some(LifeState::Dead)
-    )
-    .then_some(victim)
+    (verdict.applied.life_after == LifeState::Dead).then_some(verdict.target)
 }
 
 /// `Update` (`PresenterSystems::Draw`): despawn the presenter sprite of a ganger killed by a
@@ -469,7 +466,7 @@ fn report_kill_victim(report: Option<&HitReport>) -> Option<Entity> {
 /// Drains [`MessageReader<ShotImpactResolved>`](crate::ShotImpactResolved) — the shared per-shot
 /// impact-resolved signal [`animate_impact`](crate::animate_impact) emits at each staggered impact
 /// (GTW-328). For every signal whose threaded
-/// [`HitReport`](gdtf_battle_sim::HitReport) struck a ganger ([`ShotKind::Ganger`]) AND left it
+/// [`HitReport`](gdtf_battle_sim::HitReport) struck a ganger (a [`HitVerdict::Ganger`](gdtf_battle_sim::HitVerdict::Ganger) verdict) AND left it
 /// [`Dead`](LifeState::Dead) ([`life_after`](gdtf_battle_sim::AppliedDamage::life_after)), it
 /// despawns that ganger's mapped presenter sprite and drops its [`GangerSprites`] entry — so the
 /// body vanishes the instant its killing bolt arrives, not at sim-drain time.

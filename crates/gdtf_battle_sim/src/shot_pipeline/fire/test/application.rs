@@ -101,7 +101,7 @@ fn fire_at_in_line_target_applies_damage() {
         "the in-line shot must strike the target ganger",
     );
     assert!(
-        report.applied.is_some(),
+        applied_of(report).is_some(),
         "a ganger hit must carry an `AppliedDamage` block",
     );
     // The target's pools changed in the world (the fold mutated in place).
@@ -112,11 +112,10 @@ fn fire_at_in_line_target_applies_damage() {
     );
 
     // GTW-279 — the InflictedWounds record the fire path wrote must match the
-    // resolution's OWN values (the report it returned), NOT a hand-set fixture:
+    // resolution's OWN values (the verdict it returned), NOT a hand-set fixture:
     // a non-graze hit appends exactly one InflictedWound carrying the rolled tier
-    // (report.applied.severity) + the struck part (report.part); a graze appends
-    // nothing.
-    let Some(applied) = report.applied else {
+    // (the verdict's severity) + the struck part; a graze appends nothing.
+    let Some(applied) = applied_of(report) else {
         return;
     };
     let recorded = world
@@ -129,7 +128,7 @@ fn fire_at_in_line_target_applies_damage() {
             "a graze (Severity::None) must record NO InflictedWound, got {recorded:?}",
         );
     } else {
-        let Some(part) = report.part else {
+        let Some(part) = ganger_verdict(report).map(|v| v.part) else {
             return;
         };
         assert_eq!(
@@ -207,5 +206,9 @@ fn fire_into_empty_space_is_a_clean_miss() {
     let Some(report) = volley.reports.first() else {
         return;
     };
-    assert_eq!(report.applied, None, "a clean miss applies no damage");
+    assert_eq!(
+        report.verdict,
+        HitVerdict::NoEffect,
+        "a clean miss applies no damage"
+    );
 }

@@ -47,25 +47,17 @@ fn ground_hit_accrues_weapon_damage_on_the_correct_cell() {
         &mut injury_rng(),
     );
 
-    // The fold must record a ground-accrual verdict (the Some-arm carries the cell +
-    // amount); a None here would mean the Ground arm did not accrue (the test fails loudly).
-    assert!(
-        report.ground_accrued.is_some(),
-        "a ground hit must record a ground-accrual verdict on the report",
-    );
-    let accrual = report
-        .ground_accrued
-        .unwrap_or(GroundAccrual::new(Cell::new(0, 0), GroundDamage::new(0)));
+    // The fold must record a ground-accrual verdict — C4: the accrued amount IS the
+    // round's weapon_damage, keyed to the ground-plane cell (read relative to the
+    // weapon the test built — the inner u32 of the damage value, never a shipped
+    // magnitude). Any other verdict variant means the Ground arm did not accrue.
     assert_eq!(
-        accrual.cell, expected_cell,
-        "the accrual must be keyed to the ground-plane cell the round exited through",
-    );
-    // C4: the accrued amount IS the round's weapon_damage — read relative to the weapon
-    // the test built (the inner u32 of the damage value), never a shipped magnitude.
-    assert_eq!(
-        *accrual.amount,
-        u32::try_from(weapon_damage).unwrap_or(0),
-        "the accrued amount must equal the round's weapon_damage (the strike's damage)",
+        report.verdict,
+        HitVerdict::Ground(GroundAccrual::new(
+            expected_cell,
+            GroundDamage::new(u32::try_from(weapon_damage).unwrap_or(0)),
+        )),
+        "a ground hit must record the round's weapon_damage against the struck cell",
     );
 }
 
@@ -103,19 +95,13 @@ fn ground_hit_touches_no_ganger_cover_or_slab_state() {
         &mut injury_rng(),
     );
 
-    // The report carries ONLY the accrual — no applied damage, no struck part, no
-    // destruction of any structural surface.
+    // The verdict carries ONLY the accrual — an applied ganger wound / a cover / slab
+    // destruction is structurally impossible on a Ground verdict (GTW-573).
     assert!(
-        report.ground_accrued.is_some(),
-        "a ground hit must record the accrual",
+        matches!(report.verdict, HitVerdict::Ground(_)),
+        "a ground hit must fold to a Ground accrual verdict, got {:?}",
+        report.verdict,
     );
-    assert_eq!(report.applied, None, "a ground hit wounds no ganger");
-    assert_eq!(report.part, None, "a ground hit has no struck body part");
-    assert_eq!(
-        report.cover_destroyed, None,
-        "a ground hit destroys no cover",
-    );
-    assert_eq!(report.slab_destroyed, None, "a ground hit destroys no slab");
 
     // Neither structural ledger was touched — both read EXACTLY as seeded (the fold
     // never spent their HP). The cover / slab entries are `Copy`, so an unchanged
@@ -155,7 +141,7 @@ fn ground_hit_takes_no_rng_draw_and_is_deterministic() {
             &injury_registry(),
             &mut injury_rng(),
         );
-        report.ground_accrued
+        report.verdict
     };
 
     // Same seed + inputs reproduce the same accrual.

@@ -51,30 +51,28 @@ fn wearing_hit_surfaces_armor_worn_with_the_delta_and_no_break() {
     );
 
     assert!(
-        report.applied.is_some(),
+        applied_of(&report).is_some(),
         "a ganger hit must carry an applied-damage block",
     );
-    let Some(applied) = report.applied else {
+    let Some(applied) = applied_of(&report) else {
         return;
     };
     assert!(
         *integrity > 0,
         "fixture: a non-breaking hit must leave the piece still protecting",
     );
-    // The Worn signal carries the EXACT delta the hit's wear computed (the report's
-    // own HitResult::wear), proving the surfaced delta == the removed integrity.
+    // The Worn outcome carries the EXACT delta the hit's wear computed (the report's
+    // own HitResult::wear), proving the surfaced delta == the removed integrity. The
+    // closed ArmorWearOutcome makes a simultaneous Broke structurally impossible
+    // (GTW-573 C2 — the exclusivity is the enum, not prose).
     assert_eq!(
-        applied.worn,
-        Some(ArmorWorn::new(entity, part, applied.hit.wear)),
-        "a wearing-not-breaking hit must surface ArmorWorn carrying the hit's wear delta",
+        applied.wear,
+        ArmorWearOutcome::Worn(ArmorWorn::new(entity, part, applied.hit.wear)),
+        "a wearing-not-breaking hit must surface Worn carrying the hit's wear delta",
     );
     assert!(
         *applied.hit.wear > 0,
         "fixture: the hit must actually have worn the piece (wear > 0)",
-    );
-    assert_eq!(
-        applied.broken, None,
-        "a wearing-not-breaking hit must NOT surface ArmorBroken (mutually exclusive)",
     );
 }
 
@@ -122,24 +120,21 @@ fn breaking_hit_surfaces_armor_broken_and_not_armor_worn() {
     );
 
     assert!(
-        report.applied.is_some(),
+        applied_of(&report).is_some(),
         "a ganger hit must carry an applied-damage block",
     );
-    let Some(applied) = report.applied else {
+    let Some(applied) = applied_of(&report) else {
         return;
     };
     assert!(
         *integrity <= 0,
         "fixture: the breaking hit must leave the piece worn through (≤ 0)",
     );
+    // The closed ArmorWearOutcome makes a simultaneous Worn structurally impossible.
     assert_eq!(
-        applied.broken,
-        Some(ArmorBroken::new(entity, part)),
-        "a breaking hit must surface ArmorBroken for the struck ganger + part",
-    );
-    assert_eq!(
-        applied.worn, None,
-        "a breaking hit must NOT surface ArmorWorn (mutually exclusive with broken)",
+        applied.wear,
+        ArmorWearOutcome::Broke(ArmorBroken::new(entity, part)),
+        "a breaking hit must surface Broke for the struck ganger + part",
     );
 }
 
@@ -186,18 +181,16 @@ fn bare_flesh_hit_surfaces_neither_armor_signal() {
     );
 
     assert!(
-        report.applied.is_some(),
+        applied_of(&report).is_some(),
         "a ganger hit must carry an applied-damage block",
     );
-    let Some(applied) = report.applied else {
+    let Some(applied) = applied_of(&report) else {
         return;
     };
     assert_eq!(
-        applied.broken, None,
-        "a bare-flesh hit breaks no piece — broken must be None",
-    );
-    assert_eq!(
-        applied.worn, None,
-        "a bare-flesh hit wears no piece — worn must be None (surfaces NEITHER signal)",
+        applied.wear,
+        ArmorWearOutcome::Unaffected,
+        "a bare-flesh hit wears no piece — the wear outcome must be Unaffected \
+         (neither the Broke nor the Worn signal)",
     );
 }

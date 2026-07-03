@@ -1,10 +1,13 @@
 use super::support::*;
 
-/// AC6 (no-bare-types / frozen) — the report and its block are frozen records of
+/// AC6 (no-bare-types / frozen) — the report and its verdict are frozen records of
 /// named domain newtypes (no bare primitive). The report is [`Clone`] + `PartialEq`
-/// (NOT `Copy` since GTW-438: it carries the rolled `Option<RolledInjury>`, an owned
-/// `Vec` + texts); its [`AppliedDamage`] block stays `Copy`. Pins the frozen-record
-/// shape (mechanism), never a tuning magnitude.
+/// (NOT `Copy` since GTW-438: a ganger verdict carries the rolled
+/// `Option<RolledInjury>`, an owned `Vec` + texts — boxed inside
+/// [`HitVerdict::Ganger`] since GTW-573); its [`AppliedDamage`] block stays `Copy`,
+/// carrying the closed [`ArmorWearOutcome`] directly (GTW-573 C2 — never a
+/// prose-exclusive `broken`/`worn` Option pair). Pins the frozen-record shape
+/// (mechanism), never a tuning magnitude.
 #[test]
 fn report_is_a_frozen_record_of_named_newtypes() {
     let entity = an_entity();
@@ -12,12 +15,12 @@ fn report_is_a_frozen_record_of_named_newtypes() {
     let report = HitReport::no_effect(ShotKind::Miss);
     let cloned = report.clone();
     assert_eq!(report, cloned, "HitReport must be Clone + PartialEq");
-    assert_eq!(report.applied, None);
-    assert_eq!(report.part, None);
-    // GTW-438: a no-effect report rolled no injury.
-    assert_eq!(report.injury, None, "a no-effect report carries no injury");
+    // The no-effect verdict is the closed enum's inert variant — no parallel per-kind
+    // Options exist to zero out (GTW-573 C1).
+    assert_eq!(report.verdict, HitVerdict::NoEffect);
 
-    // An applied block is a Copy record of named newtypes.
+    // An applied block is a Copy record of named newtypes, its wear outcome the CLOSED
+    // ArmorWearOutcome enum (a Broke-AND-Worn state is unrepresentable).
     let applied = AppliedDamage {
         matchup:    Matchup::Favorable,
         hit:        HitResult {
@@ -27,8 +30,7 @@ fn report_is_a_frozen_record_of_named_newtypes() {
         },
         severity:   Severity::Major,
         life_after: LifeState::Downed,
-        broken:     Some(ArmorBroken::new(entity, BodyPart::Torso)),
-        worn:       None,
+        wear:       ArmorWearOutcome::Broke(ArmorBroken::new(entity, BodyPart::Torso)),
     };
     let applied_copy = applied; // Copy
     assert_eq!(
@@ -39,4 +41,19 @@ fn report_is_a_frozen_record_of_named_newtypes() {
     assert_eq!(*applied.hit.hp_damage, 8i32);
     assert_eq!(applied.severity, Severity::Major);
     assert_eq!(applied.matchup, Matchup::Favorable);
+
+    // A ganger verdict freezes the whole wound payload behind one box; equality is
+    // by-value (the seeded-replay comparison shape).
+    let verdict = HitVerdict::Ganger(Box::new(GangerVerdict {
+        target: entity,
+        part: BodyPart::Torso,
+        applied,
+        injury: None,
+        dot_applied: None,
+    }));
+    assert_eq!(
+        verdict.clone(),
+        verdict,
+        "a ganger verdict must be Clone + PartialEq"
+    );
 }

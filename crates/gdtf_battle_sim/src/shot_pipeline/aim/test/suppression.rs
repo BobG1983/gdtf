@@ -17,9 +17,9 @@ use crate::{
     faced_cell::faced_cell,
     ganger::{Direction, StanceKind},
     metric::CellLevel,
-    stability::{EmplacementStability, SuppressionStability, TerrainBraced, stability},
+    stability::{StabilityTerms, SuppressionStability, stability},
     tuning::CombatTuning,
-    weapon::{Stable, WeaponBraceBonus},
+    weapon::Stable,
 };
 
 /// C4a — a SUPPRESSED shooter's `stability_for` yields a LOWER stability (a strictly
@@ -44,24 +44,8 @@ fn suppressed_shooter_is_shakier_and_wider() {
     let plain = plain_state.as_shooter();
     let pinned = pinned_state.as_shooter();
 
-    let (plain_mult, plain_recoil) = stability_for(
-        &plain,
-        wpn.stable,
-        TerrainBraced::new(false),
-        WeaponBraceBonus::none(),
-        EmplacementStability::none(),
-        &empty,
-        &tuning,
-    );
-    let (pinned_mult, pinned_recoil) = stability_for(
-        &pinned,
-        wpn.stable,
-        TerrainBraced::new(false),
-        WeaponBraceBonus::none(),
-        EmplacementStability::none(),
-        &empty,
-        &tuning,
-    );
+    let (plain_mult, plain_recoil) = stability_for(&plain, weapon_terms(&wpn), &empty, &tuning);
+    let (pinned_mult, pinned_recoil) = stability_for(&pinned, weapon_terms(&wpn), &empty, &tuning);
 
     // A suppressed shooter is SHAKIER: a lower stability score reads a HIGHER cone-mult
     // (wider) and (with the default steadier-is-less-climb curve) a higher recoil-growth.
@@ -85,8 +69,7 @@ fn suppressed_shooter_is_shakier_and_wider() {
         &mode,
         prior,
         &empty,
-        TerrainBraced::new(false),
-        EmplacementStability::none(),
+        weapon_terms(&wpn),
         &tuning,
     );
     let pinned_theta = cone_for(
@@ -95,8 +78,7 @@ fn suppressed_shooter_is_shakier_and_wider() {
         &mode,
         prior,
         &empty,
-        TerrainBraced::new(false),
-        EmplacementStability::none(),
+        weapon_terms(&wpn),
         &tuning,
     );
     assert!(
@@ -126,10 +108,10 @@ fn unsuppressed_shooter_is_byte_identical_to_the_no_seam_path() {
 
     let (composer_cone, composer_recoil) = stability_for(
         &shooter,
-        stable,
-        TerrainBraced::new(false),
-        WeaponBraceBonus::none(),
-        EmplacementStability::none(),
+        StabilityTerms {
+            stable,
+            ..StabilityTerms::default()
+        },
         &ledger,
         &tuning,
     );
@@ -139,14 +121,13 @@ fn unsuppressed_shooter_is_byte_identical_to_the_no_seam_path() {
     let (cell, level) = faced_cell(shooter.position, shooter.facing);
     let faced = ledger.peek(&CellLevel::new(cell, level));
     let (no_seam_cone, no_seam_recoil) = stability(
-        stable,
-        TerrainBraced::new(false),
+        StabilityTerms {
+            stable,
+            ..StabilityTerms::default()
+        },
         *shooter.stance,
         faced,
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        // Un-scoped weapon — the identity sight term, matching the composer's zero-addend path.
-        WeaponBraceBonus::none(),
         &tuning.cone_stability,
     );
 
@@ -186,24 +167,8 @@ fn first_round_cone_widening_traces_only_to_cone_mult_not_recoil() {
     let pinned = pinned_state.as_shooter();
 
     // The stability read (cone_mult is the only stability factor entering the round-0 cone).
-    let (plain_mult, _) = stability_for(
-        &plain,
-        wpn.stable,
-        TerrainBraced::new(false),
-        WeaponBraceBonus::none(),
-        EmplacementStability::none(),
-        &empty,
-        &tuning,
-    );
-    let (pinned_mult, _) = stability_for(
-        &pinned,
-        wpn.stable,
-        TerrainBraced::new(false),
-        WeaponBraceBonus::none(),
-        EmplacementStability::none(),
-        &empty,
-        &tuning,
-    );
+    let (plain_mult, _) = stability_for(&plain, weapon_terms(&wpn), &empty, &tuning);
+    let (pinned_mult, _) = stability_for(&pinned, weapon_terms(&wpn), &empty, &tuning);
 
     let plain_theta = cone_for(
         &plain,
@@ -211,8 +176,7 @@ fn first_round_cone_widening_traces_only_to_cone_mult_not_recoil() {
         &mode,
         round0,
         &empty,
-        TerrainBraced::new(false),
-        EmplacementStability::none(),
+        weapon_terms(&wpn),
         &tuning,
     );
     let pinned_theta = cone_for(
@@ -221,8 +185,7 @@ fn first_round_cone_widening_traces_only_to_cone_mult_not_recoil() {
         &mode,
         round0,
         &empty,
-        TerrainBraced::new(false),
-        EmplacementStability::none(),
+        weapon_terms(&wpn),
         &tuning,
     );
 

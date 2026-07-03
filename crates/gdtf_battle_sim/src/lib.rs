@@ -338,7 +338,8 @@ pub use damage_resolution::{
     matchup::{Matchup, MatchupMultiplier, WheelNode, matchup, matchup_multiplier},
     resolve_and_apply,
     resolve_and_apply::{
-        AppliedDamage, GroundAccrual, HitReport, StruckSurfaces, TargetGanger, resolve_and_apply,
+        AppliedDamage, CoverVerdict, GangerVerdict, GroundAccrual, HitReport, HitVerdict,
+        SlabVerdict, StruckSurfaces, TargetGanger, resolve_and_apply,
     },
     resolve_hit,
     resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage, resolve_hit},
@@ -462,8 +463,8 @@ pub use shot_pipeline::{
     shot_fired::ShotFired,
     stability,
     stability::{
-        ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, SuppressionStability,
-        TerrainBraced, stability,
+        ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, StabilityTerms,
+        SuppressionStability, TerrainBraced, stability,
     },
 };
 pub use terrain::{

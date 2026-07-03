@@ -426,16 +426,11 @@ fn landed_ganger_hit_carries_some_report_matching_the_round() {
         report.kind, shot.kind,
         "the report's kind must equal the round's kind (same resolved round, no recompute)",
     );
-    // A Ganger hit carries the applied-damage block AND the struck part (the FCT reads
-    // the severity tier, HP damage, life-after, and armor-broken from `applied`; the
-    // struck part from `part`).
+    // A landed Ganger hit carries the boxed ganger verdict (the FCT reads the severity
+    // tier, HP damage, life-after, wear outcome, and struck part from it).
     assert!(
-        report.applied.is_some(),
-        "a ganger hit must carry the applied-damage block (Some): {report:?}",
-    );
-    assert!(
-        report.part.is_some(),
-        "a ganger hit must carry the struck body part (Some): {report:?}",
+        matches!(report.verdict, HitVerdict::Ganger(_)),
+        "a ganger hit must carry the ganger wound verdict: {report:?}",
     );
 }
 
@@ -479,19 +474,15 @@ fn clean_miss_carries_some_report_with_no_applied_damage() {
     let Some(report) = shot.report.clone() else {
         return;
     };
-    // The report reflects the miss: same non-ganger kind as the message, and NO applied
-    // damage (resolve_and_apply folds a non-ganger round to a no-effect report).
+    // The report reflects the miss: same non-ganger kind as the message, and NO ganger
+    // wound verdict (resolve_and_apply folds a non-ganger round without one).
     assert_eq!(
         report.kind, shot.kind,
         "the miss report's kind must equal the round's non-ganger kind (no recompute)",
     );
     assert!(
-        report.applied.is_none(),
-        "a non-ganger (miss) round applies no damage — its report's applied is None: {report:?}",
-    );
-    assert!(
-        report.part.is_none(),
-        "a non-ganger (miss) round struck no body part — its report's part is None: {report:?}",
+        !matches!(report.verdict, HitVerdict::Ganger(_)),
+        "a non-ganger (miss) round applies no ganger damage: {report:?}",
     );
 }
 

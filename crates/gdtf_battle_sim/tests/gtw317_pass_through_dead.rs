@@ -249,6 +249,20 @@ fn report_struck(volley: &Volley, entity: Entity) -> bool {
         .any(|r| r.kind == ShotKind::Ganger(entity))
 }
 
+/// The applied-damage block of the first report in `volley` whose GEOMETRY struck
+/// `entity`, else `None` — read through the GTW-573 per-kind verdict (a corpse-skip /
+/// defensive fold carries no ganger verdict, so it reads `None` here).
+fn applied_on(volley: &Volley, entity: Entity) -> Option<gdtf_battle_sim::AppliedDamage> {
+    volley
+        .reports
+        .iter()
+        .find(|r| r.kind == ShotKind::Ganger(entity))
+        .and_then(|r| match &r.verdict {
+            gdtf_battle_sim::HitVerdict::Ganger(verdict) => Some(verdict.applied),
+            _ => None,
+        })
+}
+
 /// The number of rounds in `volley` that struck the given ganger entity.
 fn struck_count(volley: &Volley, entity: Entity) -> usize {
     volley
@@ -303,12 +317,8 @@ fn burst_kills_front_then_passes_through_to_live_behind() {
 
         // Did round 1 actually kill the front? (Its first report on the front carries
         // life_after == Dead.) Only then is this seed a valid pass-through witness.
-        let front_died_round_one = volley
-            .reports
-            .iter()
-            .find(|r| r.kind == ShotKind::Ganger(front))
-            .and_then(|r| r.applied)
-            .is_some_and(|a| a.life_after == LifeState::Dead);
+        let front_died_round_one =
+            applied_on(&volley, front).is_some_and(|a| a.life_after == LifeState::Dead);
         if !front_died_round_one {
             continue;
         }
@@ -332,11 +342,7 @@ fn burst_kills_front_then_passes_through_to_live_behind() {
             volley.reports,
         );
         assert!(
-            behind_wounds_after < behind_wounds_before
-                || volley
-                    .reports
-                    .iter()
-                    .any(|r| r.kind == ShotKind::Ganger(behind) && r.applied.is_some()),
+            behind_wounds_after < behind_wounds_before || applied_on(&volley, behind).is_some(),
             "seed {seed:#x}: the behind ganger must take an effect (wounds drop / applied damage)",
         );
         proved = true;
@@ -383,12 +389,8 @@ fn burst_kills_front_with_nothing_behind_does_not_re_wound_corpse() {
 
         let volley = fire_volley(&mut world, shooter, mode, &occupancy, seed);
 
-        let front_died_round_one = volley
-            .reports
-            .iter()
-            .find(|r| r.kind == ShotKind::Ganger(front))
-            .and_then(|r| r.applied)
-            .is_some_and(|a| a.life_after == LifeState::Dead);
+        let front_died_round_one =
+            applied_on(&volley, front).is_some_and(|a| a.life_after == LifeState::Dead);
         if !front_died_round_one {
             continue;
         }
@@ -458,10 +460,7 @@ fn single_shot_passes_through_preexisting_corpse_to_live_target() {
         volley.reports,
     );
     let live_wounds_after = world.get::<Wounds>(live).map_or(0, |w| **w);
-    let applied = volley
-        .reports
-        .iter()
-        .any(|r| r.kind == ShotKind::Ganger(live) && r.applied.is_some());
+    let applied = applied_on(&volley, live).is_some();
     assert!(
         live_wounds_after < live_wounds_before || applied,
         "the live target behind the corpse must take an effect (wounds drop / applied damage)",

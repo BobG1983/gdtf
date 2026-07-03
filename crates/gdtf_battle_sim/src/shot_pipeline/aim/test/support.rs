@@ -9,6 +9,7 @@ use crate::{
     ganger::{Aiming, Direction, Facing, Position, Stance, StanceKind, Suppressed, SuppressorCell},
     magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
+    stability::StabilityTerms,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
         Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
@@ -120,6 +121,16 @@ pub(super) fn weapon_tagged(base: f32, kick: f32, stable: bool) -> WeaponBundle 
 /// not exercise the `stable` tag.
 pub(super) fn weapon(base: f32, kick: f32) -> WeaponBundle {
     weapon_tagged(base, kick, false)
+}
+
+/// The [`StabilityTerms`] a caller sources off `wpn` with NO terrain brace and NO
+/// emplacement — the weapon-side half of the bundle (the fire path's own recipe:
+/// the `stable` tag off the weapon, everything else at its zero identity). GTW-573 C7.
+pub(super) fn weapon_terms(wpn: &WeaponBundle) -> StabilityTerms {
+    StabilityTerms {
+        stable: wpn.stable,
+        ..StabilityTerms::default()
+    }
 }
 
 /// Insert `entry` into a fresh ledger at the cell `shooter` faces, so the

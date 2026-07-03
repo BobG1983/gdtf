@@ -31,6 +31,7 @@ pub(super) use crate::{
     metric::{Cell, CellLevel, Level, MAX_LEVELS},
     occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid},
     occupancy_sync::OccupancyMaintenancePlugin,
+    resolve_and_apply::HitVerdict,
     resolve_coarse::ShotKind,
     rng::{BattleSeed, InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng},
     shot_fired::ShotFired,

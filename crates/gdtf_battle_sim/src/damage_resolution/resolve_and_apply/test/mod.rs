@@ -10,6 +10,7 @@ mod compose;
 mod corpse;
 mod cover;
 mod determinism;
+mod draw_discipline;
 mod frozen;
 mod ground;
 mod injury_draw;

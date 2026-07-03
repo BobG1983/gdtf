@@ -32,6 +32,7 @@ pub(super) use crate::{
     magazine::{Magazine, ReloadTu, mode_tu_cost},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
+    resolve_and_apply::{AppliedDamage, GangerVerdict, HitReport, HitVerdict},
     resolve_coarse::ShotKind,
     rng::{BattleSeed, InjuryRng, SeverityRng, ShotRng},
     severity::Severity,
@@ -67,6 +68,24 @@ pub(super) type FireQueries = (
 
 /// A fixed seed for the per-test RNG streams (an arbitrary value, not tuned).
 pub(super) const SEED: u64 = 0xF12E_5EED;
+
+/// The boxed [`GangerVerdict`] of a report that LANDED on a live ganger, else `None` —
+/// the shared assertion accessor the fire tests read the wound verdict through (a
+/// test-side convenience over the closed [`HitVerdict`], not a production probe).
+pub(super) fn ganger_verdict(report: &HitReport) -> Option<&GangerVerdict> {
+    match &report.verdict {
+        HitVerdict::Ganger(verdict) => Some(verdict),
+        HitVerdict::Cover(_)
+        | HitVerdict::Slab(_)
+        | HitVerdict::Ground(_)
+        | HitVerdict::NoEffect => None,
+    }
+}
+
+/// The [`AppliedDamage`] block of a report that LANDED on a live ganger, else `None`.
+pub(super) fn applied_of(report: &HitReport) -> Option<AppliedDamage> {
+    ganger_verdict(report).map(|verdict| verdict.applied)
+}
 
 /// Build a [`ShotRng`] from the shared fixed seed (a fresh stream per call).
 ///

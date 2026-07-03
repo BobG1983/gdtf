@@ -460,10 +460,11 @@ fn turn_line(now_active: Faction, player: PlayerFaction) -> LogLine {
 mod test {
     use bevy::prelude::Entity;
     use gdtf_battle_sim::{
-        AppliedDamage, ArmorHardness, ArmorProtection, BodyPart, Cell, CellLevel, CoverEntry,
-        CoverHp, Faction, HeightBand, HitReport, HitResult, HpDamage, IntegrityWear, Level,
-        LifeState, Matchup, ModeKind, MoveRejection, PenetratingDamage, PlayerFaction,
-        ReloadOutcome, Severity, ShotKind,
+        AppliedDamage, ArmorHardness, ArmorProtection, ArmorWearOutcome, BodyPart, Cell, CellLevel,
+        CoverEntry, CoverHp, CoverVerdict, Faction, GangerVerdict, HeightBand, HitReport,
+        HitResult, HitVerdict, HpDamage, IntegrityWear, Level, LifeState, Matchup, ModeKind,
+        MoveRejection, PenetratingDamage, PlayerFaction, ReloadOutcome, Severity, ShotKind,
+        SlabVerdict,
     };
 
     use super::{
@@ -496,26 +497,25 @@ mod test {
         life_after: LifeState,
     ) -> HitReport {
         HitReport {
-            // classify_report only matches the Ganger variant, never derefs the entity.
-            kind:            ShotKind::Ganger(Entity::PLACEHOLDER),
-            part:            Some(part),
-            applied:         Some(AppliedDamage {
-                matchup: Matchup::Neutral,
-                hit: HitResult {
-                    penetrating: PenetratingDamage::new(pen),
-                    hp_damage:   HpDamage::new(hp),
-                    wear:        IntegrityWear::new(0),
+            // classify_report only matches the Ganger verdict, never derefs the entity.
+            kind:    ShotKind::Ganger(Entity::PLACEHOLDER),
+            verdict: HitVerdict::Ganger(Box::new(GangerVerdict {
+                target: Entity::PLACEHOLDER,
+                part,
+                applied: AppliedDamage {
+                    matchup: Matchup::Neutral,
+                    hit: HitResult {
+                        penetrating: PenetratingDamage::new(pen),
+                        hp_damage:   HpDamage::new(hp),
+                        wear:        IntegrityWear::new(0),
+                    },
+                    severity,
+                    life_after,
+                    wear: ArmorWearOutcome::Unaffected,
                 },
-                severity,
-                life_after,
-                broken: None,
-                worn: None,
-            }),
-            cover_destroyed: None,
-            slab_destroyed:  None,
-            ground_accrued:  None,
-            injury:          None,
-            dot_applied:     None,
+                injury: None,
+                dot_applied: None,
+            })),
         }
     }
 
@@ -638,12 +638,14 @@ mod test {
     /// pop list) `shot_outcome_lines` would fall through to `"Vex missed"` and BOTH asserts fail.
     #[test]
     fn a_cover_hit_logs_a_structural_line_not_a_miss() {
-        // Damaged (not destroyed) — a "Cover hit" chip line, never the miss line.
+        // Damaged (not destroyed) — a "Cover hit" chip line, never the miss line. A REAL
+        // cover verdict with destroyed: None (GTW-573 — no longer a no-effect fold).
         let damaged = CombatLogEvent::ShotOutcome {
             actor:  LogName::new("Vex"),
-            report: Some(Box::new(HitReport::no_effect(ShotKind::Cover(
-                cover_entry(),
-            )))),
+            report: Some(Box::new(HitReport {
+                kind:    ShotKind::Cover(cover_entry()),
+                verdict: HitVerdict::Cover(CoverVerdict { destroyed: None }),
+            })),
         };
         let lines = classify_log_event(&damaged);
         assert!(
@@ -660,8 +662,10 @@ mod test {
 
         // Destroyed — the emphatic lethal-RED BOLD "Cover Destroyed" line.
         let destroyed_report = HitReport {
-            cover_destroyed: Some(struck_key()),
-            ..HitReport::no_effect(ShotKind::Cover(cover_entry()))
+            kind:    ShotKind::Cover(cover_entry()),
+            verdict: HitVerdict::Cover(CoverVerdict {
+                destroyed: Some(struck_key()),
+            }),
         };
         let destroyed = CombatLogEvent::ShotOutcome {
             actor:  LogName::new("Vex"),
@@ -684,8 +688,10 @@ mod test {
     #[test]
     fn a_slab_destroyed_hit_logs_the_destroyed_line_not_a_miss() {
         let report = HitReport {
-            slab_destroyed: Some(struck_key()),
-            ..HitReport::no_effect(ShotKind::Slab(struck_key()))
+            kind:    ShotKind::Slab(struck_key()),
+            verdict: HitVerdict::Slab(SlabVerdict {
+                destroyed: Some(struck_key()),
+            }),
         };
         let event = CombatLogEvent::ShotOutcome {
             actor:  LogName::new("Vex"),

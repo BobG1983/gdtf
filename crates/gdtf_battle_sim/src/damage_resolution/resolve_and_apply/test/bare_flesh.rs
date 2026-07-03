@@ -6,12 +6,6 @@ use super::support::*;
 /// AND the HP-loss equals the FULL weapon damage (zeroed soak) — distinct from
 /// the armored case on the same weapon, where protection soaks.
 #[test]
-#[expect(
-    clippy::too_many_lines,
-    reason = "the two-call armored-vs-bare comparison + the GTW-438 injury-arg threading \
-              push this single integration test one line over the 100 gate; splitting it \
-              would obscure the side-by-side comparison it exists to make"
-)]
 fn bare_flesh_uses_no_protection_or_hardness() {
     let tuning = CombatTuning::default();
     let entity = an_entity();
@@ -56,10 +50,10 @@ fn bare_flesh_uses_no_protection_or_hardness() {
     );
 
     assert!(
-        report.applied.is_some(),
+        applied_of(&report).is_some(),
         "a ganger hit must carry an applied-damage block",
     );
-    let Some(applied) = report.applied else {
+    let Some(applied) = applied_of(&report) else {
         return;
     };
     assert_eq!(
@@ -72,15 +66,13 @@ fn bare_flesh_uses_no_protection_or_hardness() {
         *applied.hit.hp_damage, *weapon.damage,
         "bare flesh deals full weapon damage (no protection / hardness)",
     );
-    // Bare flesh wears no piece — there is nothing to break OR to wear, so the report
-    // surfaces NEITHER armor signal (GTW-313: a hit on an unarmored part emits neither).
+    // Bare flesh wears no piece — there is nothing to break OR to wear, so the wear
+    // outcome is Unaffected (GTW-313: a hit on an unarmored part emits neither signal;
+    // the closed ArmorWearOutcome carries that as ONE variant — GTW-573 C2).
     assert_eq!(
-        applied.broken, None,
-        "bare flesh wears no piece — there is nothing to break",
-    );
-    assert_eq!(
-        applied.worn, None,
-        "bare flesh wears no piece — there is nothing to wear (no ArmorWorn either)",
+        applied.wear,
+        ArmorWearOutcome::Unaffected,
+        "bare flesh wears no piece — the wear outcome must be Unaffected",
     );
 
     // --- Armored counterpart: the same weapon vs a protecting piece soaks. ---
@@ -116,10 +108,10 @@ fn bare_flesh_uses_no_protection_or_hardness() {
         &mut injury_rng(),
     );
     assert!(
-        report2.applied.is_some(),
+        applied_of(&report2).is_some(),
         "the armored hit must carry an applied-damage block",
     );
-    let Some(applied2) = report2.applied else {
+    let Some(applied2) = applied_of(&report2) else {
         return;
     };
     // The armored HP-loss is strictly below the bare-flesh full damage: real

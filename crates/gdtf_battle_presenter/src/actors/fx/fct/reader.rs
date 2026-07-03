@@ -17,19 +17,21 @@
 //! up GTW-328's shared event → text layer (the classification is a clean, reusable seam).
 //!
 //! For each round [`classify_report`] CLASSIFIES its [`report`](gdtf_battle_sim::ShotFired::report)
-//! into the Phase-1 combat events this slice covers, one pop per event:
+//! — dispatching on the per-kind [`HitVerdict`](gdtf_battle_sim::HitVerdict) (GTW-573) —
+//! into the Phase-1 combat events this slice covers, one pop per event. A ganger verdict
+//! (its `applied` block + struck `part`) yields the FLESH family:
 //!
-//! - **HP damage** (`report.applied.hit.hp_damage > 0`) — the numeric loss, e.g. `-7`, drawn
+//! - **HP damage** (`applied.hit.hp_damage > 0`) — the numeric loss, e.g. `-7`, drawn
 //!   the damage RED ([`FctValence::Damage`](super::palette::FctValence::Damage)).
-//! - **Wound gained** (`report.applied.severity` is a real wounding tier AND `report.part`
-//!   names a struck part) — `"<Part> <Tier>"`, e.g. `"Torso Major"`, drawn the AMBER ramp
+//! - **Wound gained** (`applied.severity` is a real wounding tier) — `"<Part> <Tier>"`,
+//!   e.g. `"Torso Major"`, drawn the AMBER ramp
 //!   ([`severity_color`](super::palette::severity_color)).
-//! - **Graze** (`report.applied.severity == Severity::None` on a ganger hit) — `"Grazed"`,
+//! - **Graze** (`applied.severity == Severity::None`) — `"Grazed"`,
 //!   drawn GREY ([`FctValence::Neutral`](super::palette::FctValence::Neutral)): HP loss but no
 //!   Wound spent (resolution.md §6).
-//! - **Penetration verdict** (`report.applied.hit.penetrating`) — `"Armor pierced"` (GREY, it
+//! - **Penetration verdict** (`applied.hit.penetrating`) — `"Armor pierced"` (GREY, it
 //!   went through the armor) when `> 0`, else `"Armor held"` (AMBER, the armor soaked it).
-//! - **DOWN / DEAD** (`report.applied.life_after`) — `"DOWN"` / `"DEAD"` drawn the lethal RED
+//! - **DOWN / DEAD** (`applied.life_after`) — `"DOWN"` / `"DEAD"` drawn the lethal RED
 //!   in [`FctEmphasis::Bold`](super::text::FctEmphasis::Bold) (the heaviest pop in the blood
 //!   family — bold weight + a larger size, the contract's "RED bold"; the all-caps tag is a
 //!   complementary cue, not a substitute).
@@ -37,15 +39,15 @@
 //! A round that struck the WORLD rather than a ganger (GTW-386) reads the STRUCTURAL family
 //! instead of the flesh family above — qualitative structural feedback, never flesh damage:
 //!
-//! - **Cover / slab hit** (`ShotKind::Cover` / `ShotKind::Slab`) — `"Cover hit"` / `"Slab hit"`
+//! - **Cover / slab hit** (a cover / slab verdict) — `"Cover hit"` / `"Slab hit"`
 //!   drawn neutral GREY (a chip indicator: the round struck and chipped the structure). The
-//!   report carries no per-hit structural DAMAGE NUMBER, so the feedback is qualitative.
-//! - **Cover / slab DESTROYED** (`report.cover_destroyed` / `report.slab_destroyed` is `Some`)
+//!   verdict carries no per-hit structural DAMAGE NUMBER, so the feedback is qualitative.
+//! - **Cover / slab DESTROYED** (the verdict's `destroyed` is `Some`)
 //!   — `"Cover Destroyed"` / `"Slab Destroyed"` drawn the lethal RED in
 //!   [`FctEmphasis::Bold`](super::text::FctEmphasis::Bold), the structural mirror of the
 //!   ganger DOWN / DEAD tag (same heaviest-pop weight, but the word reads structural).
-//! - **Ground** (`ShotKind::Ground`) — a minor neutral-GREY `"Dust"` impact cue (the ground is
-//!   damaged, never destroyed — purely cosmetic, `docs/combat/resolution.md` §3.2).
+//! - **Ground** (a ground-accrual verdict) — a minor neutral-GREY `"Dust"` impact cue (the
+//!   ground is damaged, never destroyed — purely cosmetic, `docs/combat/resolution.md` §3.2).
 //!
 //! The AUX slice (4) covers the rest of the contract's Phase-1 list that is NOT derivable from
 //! [`ShotFired`] alone — armor `"Armor -N"` / `"Armor Broken"`, reload `"Reloaded"` / `"Empty"`
@@ -60,7 +62,8 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    BodyPart, Cell, CellLevel, HitReport, Level, LifeState, Position, Severity, ShotFired, ShotKind,
+    BodyPart, Cell, CellLevel, GangerVerdict, HitReport, HitVerdict, Level, LifeState, Position,
+    Severity, ShotFired, ShotKind,
 };
 
 use super::{
@@ -162,13 +165,16 @@ pub(in crate::actors::fx) fn anchor_cell(
 
 /// Classify one round's [`HitReport`] into the ordered list of pops it yields.
 ///
-/// Dispatches on the report's [`ShotKind`]: a ganger hit yields the FLESH family (HP number,
-/// wound / graze tag, penetration verdict, DOWN / DEAD tag — in that fixed severity order, the
-/// lethal tag lowest so it reads last), a cover / slab / ground hit yields the STRUCTURAL family
-/// (a `"<Noun> hit"` chip indicator, a bold `"<Noun> Destroyed"` tag, or a cosmetic `"Dust"`
-/// cue — GTW-386), and ONLY a genuine clean miss — a non-connecting shot (or a `None` report) —
-/// yields NO pops at all. A graze (severity `None` on a ganger hit) is a CONNECTING shot and
-/// still yields a GREY `"Grazed"` instead of a wound tag.
+/// The presenter's ONE exhaustive view-side dispatch over the report's per-kind
+/// [`HitVerdict`] (GTW-573 C5 — a new struck kind is a compile error here until it is
+/// given a pop family): a ganger verdict yields the FLESH family (HP number, wound /
+/// graze tag, penetration verdict, DOWN / DEAD tag — in that fixed severity order, the
+/// lethal tag lowest so it reads last), a cover / slab / ground verdict yields the
+/// STRUCTURAL family (a `"<Noun> hit"` chip indicator, a bold `"<Noun> Destroyed"` tag,
+/// or a cosmetic `"Dust"` cue — GTW-386), and ONLY a no-effect verdict — a clean miss,
+/// a corpse-skip (or a `None` report) — yields NO pops at all. A graze (severity `None`
+/// on a ganger verdict) is a CONNECTING shot and still yields a GREY `"Grazed"` instead
+/// of a wound tag.
 ///
 /// Split out so the event-to-pop mapping is unit-testable without an [`App`] (the test feeds a
 /// synthesized [`HitReport`] and asserts the exact pop list) AND reusable: it is the SHARED
@@ -183,31 +189,31 @@ pub(in crate::actors::fx) fn classify_report(report: Option<&HitReport>) -> Vec<
     let Some(report) = report else {
         return Vec::new();
     };
-    // Each outcome KIND yields its own family of pops. A ganger hit reads the flesh family
-    // (HP / wound / penetration / DOWN-DEAD); a structural hit (cover / slab / ground) reads
-    // the STRUCTURAL family — a "hit" / "Destroyed" / "Dust" indicator, NOT flesh — so a shot
-    // that struck the world still pops feedback instead of falling through to a phantom miss
-    // (GTW-386). Only a genuine clean miss yields NO pops.
-    match report.kind {
-        ShotKind::Ganger(_) => ganger_pops(report),
-        ShotKind::Cover(_) => structural_pops(StructuralKind::Cover, report.cover_destroyed),
-        ShotKind::Slab(_) => structural_pops(StructuralKind::Slab, report.slab_destroyed),
-        ShotKind::Ground(_) => ground_pops(),
-        ShotKind::Miss => Vec::new(),
+    // Each VERDICT yields its own family of pops. A ganger verdict reads the flesh family
+    // (HP / wound / penetration / DOWN-DEAD); a structural verdict (cover / slab / ground)
+    // reads the STRUCTURAL family — a "hit" / "Destroyed" / "Dust" indicator, NOT flesh — so
+    // a shot that struck the world still pops feedback instead of falling through to a
+    // phantom miss (GTW-386). Only a no-effect verdict (a genuine clean miss / corpse-skip)
+    // yields NO pops.
+    match &report.verdict {
+        HitVerdict::Ganger(verdict) => ganger_pops(verdict),
+        HitVerdict::Cover(cover) => structural_pops(StructuralKind::Cover, cover.destroyed),
+        HitVerdict::Slab(slab) => structural_pops(StructuralKind::Slab, slab.destroyed),
+        HitVerdict::Ground(_) => ground_pops(),
+        HitVerdict::NoEffect => Vec::new(),
     }
 }
 
-/// The flesh-family pops for a [`ShotKind::Ganger`] hit — the HP-loss number, the wound /
-/// graze tag, the penetration verdict, and the DOWN / DEAD lethal tag, in that fixed order.
+/// The flesh-family pops for a landed ganger hit's [`GangerVerdict`] — the HP-loss
+/// number, the wound / graze tag, the penetration verdict, and the DOWN / DEAD lethal
+/// tag, in that fixed order.
 ///
-/// A ganger hit that applied NOTHING (a corpse-skip / no-part `applied: None` report) did not
-/// connect — it yields no pops (a clean miss). Split out of [`classify_report`] so the
+/// A ganger verdict ALWAYS means the hit connected (GTW-573: a corpse-skip / no-part
+/// round folds to [`HitVerdict::NoEffect`], which [`classify_report`] already dropped),
+/// so there is no not-connected branch here. Split out of [`classify_report`] so the
 /// per-kind dispatch reads as one branch each.
-fn ganger_pops(report: &HitReport) -> Vec<ClassifiedPop> {
-    // A ganger outcome that applied nothing did NOT connect — a clean miss yields no text.
-    let Some(applied) = report.applied.as_ref() else {
-        return Vec::new();
-    };
+fn ganger_pops(verdict: &GangerVerdict) -> Vec<ClassifiedPop> {
+    let applied = &verdict.applied;
 
     let mut pops = Vec::new();
 
@@ -220,9 +226,9 @@ fn ganger_pops(report: &HitReport) -> Vec<ClassifiedPop> {
         ));
     }
 
-    // 2. Wound gained (AMBER ramp) when a real wounding tier landed on a named part; else a
-    //    graze (severity None) reads GREY "Grazed" (HP loss, no Wound spent — resolution.md §6).
-    pops.push(wound_or_graze_pop(applied.severity, report.part));
+    // 2. Wound gained (AMBER ramp) when a real wounding tier landed; else a graze
+    //    (severity None) reads GREY "Grazed" (HP loss, no Wound spent — resolution.md §6).
+    pops.push(wound_or_graze_pop(applied.severity, verdict.part));
 
     // 3. Penetration verdict — "Armor pierced" (GREY, it went through) vs "Armor held" (AMBER,
     //    the armor soaked it). penetrating > 0 = the hit punched through.
@@ -303,17 +309,18 @@ fn ground_pops() -> Vec<ClassifiedPop> {
 
 /// The wound / graze pop for a ganger hit's [`Severity`] + struck [`BodyPart`].
 ///
-/// A real wounding tier ([`Minor`](Severity::Minor) → [`Fatal`](Severity::Fatal)) with a named
-/// part reads `"<Part> <Tier>"` in the [`severity_color`] amber-to-lethal ramp. A
-/// [`Severity::None`] graze (or a wounding tier with no part named, defensively) reads a GREY
-/// `"Grazed"` — HP loss but no Wound spent.
-fn wound_or_graze_pop(severity: Severity, part: Option<BodyPart>) -> ClassifiedPop {
-    match (severity, part) {
-        (Severity::None, _) | (_, None) => ClassifiedPop::new(
+/// A real wounding tier ([`Minor`](Severity::Minor) → [`Fatal`](Severity::Fatal)) reads
+/// `"<Part> <Tier>"` in the [`severity_color`] amber-to-lethal ramp. A
+/// [`Severity::None`] graze reads a GREY `"Grazed"` — HP loss but no Wound spent. (The
+/// old part-less defensive arm is gone: a [`GangerVerdict`] always names its struck
+/// part — GTW-573 made the part-less applied state unrepresentable.)
+fn wound_or_graze_pop(severity: Severity, part: BodyPart) -> ClassifiedPop {
+    match severity {
+        Severity::None => ClassifiedPop::new(
             CombatText::new("Grazed"),
             valence_color(FctValence::Neutral),
         ),
-        (tier, Some(part)) => ClassifiedPop::new(
+        tier => ClassifiedPop::new(
             CombatText::new(format!(
                 "{} {}",
                 body_part_label(part),
@@ -395,9 +402,10 @@ const fn severity_label(tier: Severity) -> &'static str {
 mod test {
     use bevy::ecs::entity::Entity;
     use gdtf_battle_sim::{
-        AppliedDamage, ArmorHardness, ArmorProtection, BodyPart, Cell, CellLevel, CoverEntry,
-        CoverHp, HeightBand, HitReport, HitResult, HpDamage, IntegrityWear, Level, LifeState,
-        Matchup, PenetratingDamage, Severity, ShotKind,
+        AppliedDamage, ArmorHardness, ArmorProtection, ArmorWearOutcome, BodyPart, Cell, CellLevel,
+        CoverEntry, CoverHp, CoverVerdict, GangerVerdict, HeightBand, HitReport, HitResult,
+        HitVerdict, HpDamage, IntegrityWear, Level, LifeState, Matchup, PenetratingDamage,
+        Severity, ShotKind, SlabVerdict,
     };
 
     use super::{
@@ -405,13 +413,13 @@ mod test {
     };
 
     /// An arbitrary `(cell, level)` key for a structural-hit report (the classifier reads the
-    /// `ShotKind` / the destruction flag, never the key's coords, so any value drives the path).
+    /// verdict / the destruction flag, never the key's coords, so any value drives the path).
     fn struck_key() -> CellLevel {
         CellLevel::new(Cell::new(4, 5), Level::new(2))
     }
 
     /// An arbitrary intact `CoverEntry` for a `ShotKind::Cover` outcome — the classifier only
-    /// matches the variant, never reads the entry's HP, so a seeded prototype is enough.
+    /// matches the verdict, never reads the entry's HP, so a seeded prototype is enough.
     fn cover_entry() -> CoverEntry {
         CoverEntry::seeded(
             CoverHp::new(10),
@@ -421,26 +429,33 @@ mod test {
         )
     }
 
-    /// A `ShotKind::Cover` report that DAMAGED but did not destroy the cover
-    /// (`cover_destroyed: None`) — the structural-hit (not-destroyed) path.
+    /// A cover report that DAMAGED but did not destroy the cover (a REAL cover verdict
+    /// with `destroyed: None` — GTW-573) — the structural-hit (not-destroyed) path.
     fn cover_damaged_report() -> HitReport {
-        HitReport::no_effect(ShotKind::Cover(cover_entry()))
-    }
-
-    /// A `ShotKind::Cover` report that DESTROYED the cover (`cover_destroyed: Some`) — the
-    /// structural-destruction path.
-    fn cover_destroyed_report() -> HitReport {
         HitReport {
-            cover_destroyed: Some(struck_key()),
-            ..HitReport::no_effect(ShotKind::Cover(cover_entry()))
+            kind:    ShotKind::Cover(cover_entry()),
+            verdict: HitVerdict::Cover(CoverVerdict { destroyed: None }),
         }
     }
 
-    /// A `ShotKind::Slab` report that DESTROYED the slab (`slab_destroyed: Some`).
+    /// A cover report that DESTROYED the cover (the verdict's `destroyed` is `Some`) — the
+    /// structural-destruction path.
+    fn cover_destroyed_report() -> HitReport {
+        HitReport {
+            kind:    ShotKind::Cover(cover_entry()),
+            verdict: HitVerdict::Cover(CoverVerdict {
+                destroyed: Some(struck_key()),
+            }),
+        }
+    }
+
+    /// A slab report that DESTROYED the slab (the verdict's `destroyed` is `Some`).
     fn slab_destroyed_report() -> HitReport {
         HitReport {
-            slab_destroyed: Some(struck_key()),
-            ..HitReport::no_effect(ShotKind::Slab(struck_key()))
+            kind:    ShotKind::Slab(struck_key()),
+            verdict: HitVerdict::Slab(SlabVerdict {
+                destroyed: Some(struck_key()),
+            }),
         }
     }
 
@@ -464,23 +479,22 @@ mod test {
         life_after: LifeState,
     ) -> HitReport {
         HitReport {
-            // The classifier only matches on the Ganger variant — it never dereferences the
+            // The classifier only matches on the Ganger verdict — it never dereferences the
             // entity — so a placeholder handle is enough to drive the Ganger branch.
-            kind:            ShotKind::Ganger(Entity::PLACEHOLDER),
-            part:            Some(part),
-            applied:         Some(AppliedDamage {
-                matchup: Matchup::Neutral,
-                hit: hit_result(hp, pen),
-                severity,
-                life_after,
-                broken: None,
-                worn: None,
-            }),
-            cover_destroyed: None,
-            slab_destroyed:  None,
-            ground_accrued:  None,
-            injury:          None,
-            dot_applied:     None,
+            kind:    ShotKind::Ganger(Entity::PLACEHOLDER),
+            verdict: HitVerdict::Ganger(Box::new(GangerVerdict {
+                target: Entity::PLACEHOLDER,
+                part,
+                applied: AppliedDamage {
+                    matchup: Matchup::Neutral,
+                    hit: hit_result(hp, pen),
+                    severity,
+                    life_after,
+                    wear: ArmorWearOutcome::Unaffected,
+                },
+                injury: None,
+                dot_applied: None,
+            })),
         }
     }
 
@@ -712,7 +726,15 @@ mod test {
     /// indicator, never a damage number — the ground is damaged, never destroyed), NOT a miss.
     #[test]
     fn a_ground_hit_yields_the_dust_cue_not_a_miss() {
-        let report = HitReport::no_effect(ShotKind::Ground(struck_key()));
+        // The GTW-573 ground verdict — the sim's Ground arm ALWAYS accrues (an arbitrary
+        // amount here; the classifier reads only the variant).
+        let report = HitReport {
+            kind:    ShotKind::Ground(struck_key()),
+            verdict: gdtf_battle_sim::HitVerdict::Ground(gdtf_battle_sim::GroundAccrual::new(
+                Cell::new(4, 5),
+                gdtf_battle_sim::GroundDamage::new(3),
+            )),
+        };
         let pairs = pop_pairs(Some(&report));
         assert!(
             has_pop(Some(&report), "Dust", valence_color(FctValence::Neutral)),

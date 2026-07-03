@@ -1,9 +1,66 @@
-//! The §1a stability layer's **named values** — the emplacement-contribution
-//! input, the normalised [`StabilityScore`], the two distinct curve outputs
-//! ([`ConeMult`] / [`RecoilGrowth`]), and the axis-agnostic [`CurveOutput`] the
-//! curve read returns before it is given an axis meaning.
+//! The §1a stability layer's **named values** — the [`StabilityTerms`] bundle of
+//! per-shot zero-identity terms, the emplacement-contribution input, the normalised
+//! [`StabilityScore`], the two distinct curve outputs ([`ConeMult`] /
+//! [`RecoilGrowth`]), and the axis-agnostic [`CurveOutput`] the curve read returns
+//! before it is given an axis meaning.
 
 use bevy::prelude::Deref;
+
+use crate::{
+    stability::terrain_brace::TerrainBraced,
+    weapon::{Stable, WeaponBraceBonus},
+};
+
+/// The **per-shot stability terms** — the four zero-identity inputs a caller
+/// resolves before the §1a score is read (GTW-573 C7): the weapon's [`Stable`]
+/// brace tag, the GTW-392 [`TerrainBraced`] stair-brace decision, the GTW-549
+/// per-item [`WeaponBraceBonus`] attachment term, and the GTW-543
+/// [`EmplacementStability`] mounted-gun term.
+///
+/// One named bundle instead of four positional zero-identity parameters, so the
+/// NEXT additive stability term is ONE new field here (with its zero-identity
+/// [`Default`]) instead of a ~50-call-site positional sweep. Every field's
+/// [`default`](Self::default) is its **zero identity** — the value under which the
+/// score is byte-identical to a shot with no such term — so call sites spell only
+/// the terms that are actually engaged, via struct-update:
+///
+/// ```ignore
+/// StabilityTerms { stable: Stable::new(true), ..StabilityTerms::default() }
+/// ```
+///
+/// The GTW-526 suppression term is NOT a field: it is resolved INSIDE
+/// [`stability_for`](crate::aim::stability_for) from the shooter's own
+/// [`Suppressed`](crate::ganger::Suppressed) state (a shooter property, not a
+/// caller-resolved shot term). `Copy` — the fire path builds one value per round
+/// and hands it to both `cone_for` and `stability_for`, keeping the cone width and
+/// its recoil damping consistent by construction.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct StabilityTerms {
+    /// The weapon's unconditional-brace tag — zero identity `false`.
+    pub stable:         Stable,
+    /// The GTW-392 stair-brace decision — zero identity `false` (not braced).
+    pub terrain_braced: TerrainBraced,
+    /// The GTW-549 per-item attachment brace points — zero identity
+    /// [`WeaponBraceBonus::none`] (no brace attachment).
+    pub brace_bonus:    WeaponBraceBonus,
+    /// The GTW-543 emplacement points — zero identity [`EmplacementStability::none`]
+    /// (not manning a mounted gun).
+    pub emplacement:    EmplacementStability,
+}
+
+impl Default for StabilityTerms {
+    /// Every term at its **zero identity** — the all-identity bundle under which the
+    /// §1a score is byte-identical to a shot that predates every seam (pinned by the
+    /// `stability` tests' zero-identity-default case).
+    fn default() -> Self {
+        Self {
+            stable:         Stable::new(false),
+            terrain_braced: TerrainBraced::new(false),
+            brace_bonus:    WeaponBraceBonus::none(),
+            emplacement:    EmplacementStability::none(),
+        }
+    }
+}
 
 /// The **emplacement stability contribution** — the points a fixed emplacement
 /// (bipod / tripod / mounted position) adds to the score (resolution.md §1a:

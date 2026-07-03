@@ -8,52 +8,39 @@ use crate::{
     faced_cell::faced_cell,
     ganger::{Direction, StanceKind},
     metric::CellLevel,
-    stability::{EmplacementStability, SuppressionStability, TerrainBraced, stability},
+    stability::{StabilityTerms, SuppressionStability, stability},
     tuning::CombatTuning,
-    weapon::{Stable, WeaponBraceBonus},
 };
 
 /// AC1 — `stability_for` returns the SAME `(ConeMult, RecoilGrowth)` as a
-/// direct [`stability`] call with the same `(stable, stance, faced cover,
-/// emplacement, tuning)`: bit-equality proving it WRAPS (does not re-derive) the
-/// landed verb. A `CoverEntry` is inserted at the faced cell so the direct
-/// call's `faced` argument is exactly what the composer peeks.
+/// direct [`stability`] call with the same `(terms, stance, faced cover,
+/// tuning)`: bit-equality proving it WRAPS (does not re-derive) the landed verb.
+/// A `CoverEntry` is inserted at the faced cell so the direct call's `faced`
+/// argument is exactly what the composer peeks.
 #[test]
 fn stability_for_bit_equals_a_direct_stability_call() {
     let tuning = CombatTuning::default();
     let state = ShooterState::new(20, 20, 2, StanceKind::Standing, false, Direction::East);
     let shooter = state.as_shooter();
-    let stable = Stable::new(false);
+    // Every GTW-573 term at its zero identity — the un-braced / un-mounted baseline.
+    let terms = StabilityTerms::default();
 
     // Cover at the faced cell so the composer's peek returns Some(entry).
     let entry = cover_entry(HeightBand::High);
     let ledger = ledger_with_faced_cover(&shooter, entry);
 
-    let (via_composer_cone, via_composer_recoil) = stability_for(
-        &shooter,
-        stable,
-        TerrainBraced::new(false),
-        WeaponBraceBonus::none(),
-        EmplacementStability::none(),
-        &ledger,
-        &tuning,
-    );
+    let (via_composer_cone, via_composer_recoil) = stability_for(&shooter, terms, &ledger, &tuning);
 
     // The direct call with the EXACT same inputs the composer fed the verb.
     let (cell, level) = faced_cell(shooter.position, shooter.facing);
     let faced = ledger.peek(&CellLevel::new(cell, level));
     let (direct_cone, direct_recoil) = stability(
-        stable,
-        TerrainBraced::new(false),
+        terms,
         *shooter.stance,
         faced,
-        EmplacementStability::none(),
         // The shooter (via `ShooterState::new`) is un-suppressed, so the composer feeds the
         // identity suppression term — match it here for the bit-equality.
         SuppressionStability::none(),
-        // The weapon carries no sight attachment (an un-scoped WeaponStats::stats view), so
-        // the composer feeds the identity sight term — match it here for the bit-equality.
-        WeaponBraceBonus::none(),
         &tuning.cone_stability,
     );
 
@@ -81,31 +68,15 @@ fn brace_at_faced_cell_is_steadier_than_an_empty_cell() {
     let tuning = CombatTuning::default();
     let state = ShooterState::new(15, 15, 1, StanceKind::Standing, false, Direction::South);
     let shooter = state.as_shooter();
-    let stable = Stable::new(false);
 
     // Braced: a HIGH wall at the faced cell satisfies the standing gate.
     let braced_ledger = ledger_with_faced_cover(&shooter, cover_entry(HeightBand::High));
-    let (braced_cone, _) = stability_for(
-        &shooter,
-        stable,
-        TerrainBraced::new(false),
-        WeaponBraceBonus::none(),
-        EmplacementStability::none(),
-        &braced_ledger,
-        &tuning,
-    );
+    let (braced_cone, _) =
+        stability_for(&shooter, StabilityTerms::default(), &braced_ledger, &tuning);
 
     // Unbraced: an empty ledger — no cover at the faced cell.
     let empty = CoverLedger::new();
-    let (empty_cone, _) = stability_for(
-        &shooter,
-        stable,
-        TerrainBraced::new(false),
-        WeaponBraceBonus::none(),
-        EmplacementStability::none(),
-        &empty,
-        &tuning,
-    );
+    let (empty_cone, _) = stability_for(&shooter, StabilityTerms::default(), &empty, &tuning);
 
     assert!(
         *braced_cone < *empty_cone,

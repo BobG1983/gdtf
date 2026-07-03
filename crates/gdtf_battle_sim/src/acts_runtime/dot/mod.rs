@@ -7,7 +7,7 @@
 //!
 //! - The DECISION is PURE + in-fold: [`resolve_and_apply`](crate::resolve_and_apply::resolve_and_apply)
 //!   freezes the [`Dot`](crate::weapon::Dot) to attach onto
-//!   [`HitReport::dot_applied`](crate::resolve_and_apply::HitReport::dot_applied) when a hit
+//!   [`GangerVerdict::dot_applied`](crate::resolve_and_apply::GangerVerdict::dot_applied) when a hit
 //!   PENETRATES armor ([`PenetratingDamage`](crate::resolve_hit::PenetratingDamage) `> 0`)
 //!   from a weapon carrying a [`DotProfile`](crate::weapon::DotProfile). It owns no attach.
 //! - The SIDE EFFECTS live HERE, at the message boundary

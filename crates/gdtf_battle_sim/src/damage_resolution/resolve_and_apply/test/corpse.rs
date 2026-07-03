@@ -45,9 +45,12 @@ fn corpse_skip_is_inert_and_draws_nothing() {
         &mut injury_rng(),
     );
 
-    // No-effect report.
-    assert_eq!(report.applied, None, "a corpse-skip must apply no damage");
-    assert_eq!(report.part, None, "a corpse-skip report carries no part");
+    // No-effect verdict — the fold did NOTHING (no applied damage, no part, no injury).
+    assert_eq!(
+        report.verdict,
+        HitVerdict::NoEffect,
+        "a corpse-skip must fold to a no-effect verdict",
+    );
     assert_eq!(
         report.kind,
         ShotKind::Ganger(entity),

@@ -94,11 +94,12 @@ pub struct ShotFired {
     /// never a sprite / pixel — the sim stays render-free).
     pub damage:       DamageType,
     /// The round's already-computed damage / wound / severity / armor verdict (GTW-302) —
-    /// the [`HitReport`] the floating-combat-text presenter reads (HP damage, the
-    /// [`Severity`](crate::severity::Severity) tier, the struck
-    /// [`BodyPart`](crate::armor::BodyPart), the [`LifeState`](crate::ganger::LifeState)
-    /// after, and the `Some(`[`ArmorBroken`](crate::armor_wear::ArmorBroken)`)` on a
-    /// destroyed piece). It is PURE EXPOSURE of the parallel
+    /// the [`HitReport`] the floating-combat-text presenter reads (its per-kind
+    /// [`HitVerdict`](crate::resolve_and_apply::HitVerdict): the ganger verdict's HP
+    /// damage / [`Severity`](crate::severity::Severity) tier / struck
+    /// [`BodyPart`](crate::armor::BodyPart) / [`LifeState`](crate::ganger::LifeState)
+    /// after / [`ArmorWearOutcome`](crate::armor_wear::ArmorWearOutcome), or the
+    /// structural destruction / accrual verdicts). It is PURE EXPOSURE of the parallel
     /// [`Volley::reports`](crate::fire::Volley::reports) entry — the same `reports[i]` the
     /// volley already produced — never a recompute (no fire-result / RNG / severity logic).
     ///
@@ -107,9 +108,9 @@ pub struct ShotFired {
     /// the GTW-290 geometry-only callers). In `dispatch_fire`'s zip, every fired round has
     /// its `reports[i]`, so the report is always `Some` for a real volley round (a clean
     /// MISS still carries `Some` — a [`HitReport`] whose [`kind`](HitReport::kind) is
-    /// [`ShotKind::Miss`](crate::resolve_coarse::ShotKind::Miss) and whose
-    /// [`applied`](HitReport::applied) is `None`). A non-ganger / corpse-skip round carries
-    /// `Some` with a no-effect report (`applied: None`).
+    /// [`ShotKind::Miss`](crate::resolve_coarse::ShotKind::Miss) and whose verdict is
+    /// no-effect). A non-ganger / corpse-skip round carries `Some` with a no-effect
+    /// verdict.
     pub report:       Option<HitReport>,
 }
 
