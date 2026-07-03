@@ -15,8 +15,9 @@ use crate::metric::CellLevel;
 /// area-damage-field clocks, and both cover-destroy sites. The
 /// [`resolve_on_death`](super::resolve_on_death) system drains this buffer, looks up the
 /// dead source's authored [`OnDeathEffect`](super::OnDeathEffect) (from the ganger's wielded
-/// weapon / gear, or the destroyed cover cell's authored def), and fans the matching
-/// per-variant folder function at [`at`](OnDeathOccurred::at). A CHAIN reaction (an
+/// weapon / gear, or the destroyed cover cell's authored def), and fans it generically
+/// through the GTW-552 palette ([`crate::effects::on_death`]) at
+/// [`at`](OnDeathOccurred::at). A CHAIN reaction (an
 /// [`Explode`](super::OnDeathEffect::Explode) that kills MORE) re-emits this message; the
 /// resolver drains it to a visited-set fixpoint so every death is processed exactly once and
 /// the cascade terminates same-frame (see [`resolve_on_death`](super::resolve_on_death)).
@@ -39,7 +40,7 @@ pub struct OnDeathOccurred {
     /// a cover on-death off [`at`](OnDeathOccurred::at)).
     pub entity: Entity,
     /// The `(cell, level)` the death / cover-destruction happened at — the fan-out origin the
-    /// per-variant folder function centres its effect on.
+    /// palette behaviour centres its effect on.
     pub at:     CellLevel,
 }
 
