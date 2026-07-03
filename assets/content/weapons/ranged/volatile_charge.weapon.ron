@@ -25,6 +25,8 @@
     ],
     stable: false,
     handedness:    TwoHanded,
+    // GTW-554: a jury-rigged satchel charge takes NO fittings — `slots:` is deliberately
+    // omitted (the empty default), so no attachment fits it (fail-closed).
     // GTW-547: the unstable payload — the wielder's death detonates a radius-1 fragmentation
     // blast at their body (flat 8 HP per cell, Blast wheel node). A `LeaveField` variant is the
     // alternative (a burning / toxic zone); this weapon carries the explosive one.

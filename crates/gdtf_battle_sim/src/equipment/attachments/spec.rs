@@ -7,6 +7,7 @@
 use bevy::reflect::TypePath;
 use serde::Deserialize;
 
+use super::AttachmentSlot;
 use crate::{effects::attachments::AttachmentEffect, weapon::WeaponName};
 
 /// The **authoring struct** an `assets/content/attachments/*.attachment.ron`
@@ -15,7 +16,9 @@ use crate::{effects::attachments::AttachmentEffect, weapon::WeaponName};
 /// file stem) in its [`attachments`](crate::weapon::WeaponSpec::attachments).
 ///
 /// It carries a human-facing `display_name` (the weapon/melee/armor spec precedent — a
-/// picker / HUD label) + `effects`, a typed
+/// picker / HUD label), the SINGLE [`AttachmentSlot`] the item occupies (`slot`, GTW-554 —
+/// the fit gate admits it only into a weapon declaring that slot with free capacity),
+/// plus `effects`, a typed
 /// `Vec<`[`AttachmentEffect`](crate::effects::attachments::AttachmentEffect)`>` where EACH
 /// effect carries its OWN magnitude/payload (the headline GTW-549 fix: magnitudes live on the
 /// item, never in global tuning). An EMPTY `effects:` list is the identity (a cosmetic
@@ -37,6 +40,13 @@ pub struct AttachmentSpec {
     /// no-bare-types rule); it is NOT the item KEY (the key is the file stem, supplied by
     /// the loader).
     pub display_name: WeaponName,
+    /// The SINGLE [`AttachmentSlot`] this item occupies (`slot`, GTW-554) — authored as the
+    /// bare variant name (`slot: Muzzle`). REQUIRED (no serde default): every item must
+    /// declare its mount point, because the fit gate
+    /// ([`attachment_fits`](super::attachment_fits)) admits an item only into a weapon that
+    /// declares this slot with free capacity. There is deliberately NO ranged/melee class
+    /// tag — class gating EMERGES from which slots a weapon offers.
+    pub slot:         AttachmentSlot,
     /// The typed list of
     /// [`AttachmentEffect`](crate::effects::attachments::AttachmentEffect)s this item applies
     /// to its weapon (`effects`), each carrying its per-item magnitude. An EMPTY list is the

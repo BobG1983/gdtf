@@ -40,10 +40,10 @@ use gdtf_battle_sim::{
     },
     tuning::{CombatTuning, ViewRange},
     weapon::{
-        AimDelta, AttachmentEffect, AttachmentName, AttachmentRegistry, AttachmentSpec, FireMode,
-        FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, ReloadTimeScale,
-        TrajectoryStyle, WeaponBraceBonus, WeaponDamage, WeaponName, WeaponRegistry, WeaponShred,
-        WeaponSpec, shooter_weapon_silenced,
+        AimDelta, AttachmentEffect, AttachmentName, AttachmentRegistry, AttachmentSlot,
+        AttachmentSpec, FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+        ReloadTimeScale, SlotCapacity, TrajectoryStyle, WeaponBraceBonus, WeaponDamage, WeaponName,
+        WeaponRegistry, WeaponShred, WeaponSlots, WeaponSpec, shooter_weapon_silenced,
     },
 };
 
@@ -89,6 +89,9 @@ fn ranged_spec(attachment_keys: Vec<AttachmentName>) -> WeaponSpec {
         shove:       Shove::new(false),
         handedness:  Handedness::OneHanded,
         trajectory:  TrajectoryStyle::Straight,
+        // GTW-554: declare the Rail slot the shared fixture item occupies, so the
+        // referenced key still FITS under the slot gate (capacity 1 — one fixture item).
+        slots:       WeaponSlots::new(vec![(AttachmentSlot::Rail, SlotCapacity::new(1))]),
         attachments: attachment_keys,
         dot:         None,
         on_death:    None,
@@ -109,6 +112,8 @@ fn attachment_registry(effects: Vec<AttachmentEffect>) -> AttachmentRegistry {
         AttachmentName::new(ATTACHMENT_KEY.to_owned()),
         AttachmentSpec {
             display_name: WeaponName::new("Test Attachment".to_owned()),
+            // GTW-554: the fixture item occupies the Rail slot the fixture weapon declares.
+            slot: AttachmentSlot::Rail,
             effects,
         },
     )])
@@ -232,11 +237,17 @@ fn attachment_spec_parses_effects_from_ron() {
     // An attachment item's `effects:` list round-trips by variant name, each with its payload.
     let ron = r#"(
         display_name: "Bionic Sight",
+        slot: Sight,
         effects: [ Aim(0.4), Silence, Penetration(6) ],
     )"#;
     let Ok(spec) = ron::from_str::<AttachmentSpec>(ron) else {
         unreachable!("an AttachmentSpec must parse its effects list from RON");
     };
+    assert_eq!(
+        spec.slot,
+        AttachmentSlot::Sight,
+        "the GTW-554 slot the item occupies parses from RON",
+    );
     assert_eq!(
         spec.effects.len(),
         3,
@@ -263,6 +274,7 @@ fn weapon_attachments_and_omitted_field_parse_from_ron() {
         magazine: (size: 20, reload_tu: 20),
         fire_mode: [(kind: Single, cone_mult: 1.0, tu_percent: 0.2, shots: 1)],
         stable: false, handedness: OneHanded,
+        slots: [(Sight, 1), (Muzzle, 1)],
         attachments: ["bionic_sight", "suppressor"],
     )"#;
     let Ok(spec) = ron::from_str::<WeaponSpec>(with) else {
@@ -272,6 +284,11 @@ fn weapon_attachments_and_omitted_field_parse_from_ron() {
         spec.attachments.len(),
         2,
         "the authored two-key list round-trips"
+    );
+    assert_eq!(
+        spec.slots.capacity(AttachmentSlot::Sight),
+        Some(SlotCapacity::new(1)),
+        "the GTW-554 slots pair-list parses from the weapon RON",
     );
     assert_eq!(
         spec.attachments[0],

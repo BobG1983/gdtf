@@ -43,4 +43,11 @@
     ],
     stable:        false,     // NOT intrinsically stable — the EMPLACEMENT provides the steadying (Phase 2)
     handedness:    TwoHanded, // a heavy piece — both hands on the grips
+    // GTW-554: the attachment SLOTS the mount offers — the shipped MULTI-capacity Rail example
+    // (a long receiver rail hosting THREE utility mods at once; contract form `(Rail, 3)`).
+    slots: [
+        (Muzzle, 1),  // one muzzle thread (a choke / bore device)
+        (Sight,  1),  // one sight dovetail (an optic)
+        (Rail,   3),  // the long utility rail — capacity 3 (drums, braces, feeds together)
+    ],
 )

@@ -5,6 +5,7 @@
 // HERE on the item; applied post-spawn.
 (
     display_name: "Dead Man's Brace",
+    slot: Rail,  // GTW-554: an under-rail rigid brace / foregrip — the Rail slot
     effects: [
         Stability(20.0),  // +20 stability-score points (graduated brace) — tunable
     ],

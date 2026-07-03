@@ -203,7 +203,8 @@ mod test {
     /// does not hand-assemble the effect list. Returns `None` (assert-fail) on a parse error
     /// rather than a denied `unwrap`. Proves the attachment spec parses (folder-load path).
     fn attachment_spec(display_name: &str) -> Option<AttachmentSpec> {
-        let ron = format!("(display_name: \"{display_name}\", effects: [Aim(0.4)])");
+        // GTW-554: `slot:` is REQUIRED on every item (the mount point the fit gate reads).
+        let ron = format!("(display_name: \"{display_name}\", slot: Sight, effects: [Aim(0.4)])");
         let parsed = ron::de::from_str::<AttachmentSpec>(&ron);
         assert!(
             parsed.is_ok(),

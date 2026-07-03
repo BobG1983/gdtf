@@ -43,9 +43,10 @@ use gdtf_battle_sim::{
     },
     tuning::{CombatTuning, ViewRange},
     weapon::{
-        AimDelta, AttachmentEffect, AttachmentName, AttachmentRegistry, AttachmentSpec, FireMode,
-        FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, TrajectoryStyle,
-        WeaponDamage, WeaponName, WeaponRegistry, WeaponShred, WeaponSpec,
+        AimDelta, AttachmentEffect, AttachmentName, AttachmentRegistry, AttachmentSlot,
+        AttachmentSpec, FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+        SlotCapacity, TrajectoryStyle, WeaponDamage, WeaponName, WeaponRegistry, WeaponShred,
+        WeaponSlots, WeaponSpec,
     },
 };
 
@@ -96,6 +97,9 @@ fn ranged_spec(attachment_keys: Vec<AttachmentName>) -> WeaponSpec {
         shove:       Shove::new(false),
         handedness:  Handedness::OneHanded,
         trajectory:  TrajectoryStyle::Straight,
+        // GTW-554: declare the Rail slot the shared fixture item occupies, so the
+        // referenced key still FITS under the slot gate (capacity 1 — one fixture item).
+        slots:       WeaponSlots::new(vec![(AttachmentSlot::Rail, SlotCapacity::new(1))]),
         attachments: attachment_keys,
         dot:         None,
         on_death:    None,
@@ -116,6 +120,8 @@ fn attachment_registry(effects: Vec<AttachmentEffect>) -> AttachmentRegistry {
         AttachmentName::new(ATTACHMENT_KEY.to_owned()),
         AttachmentSpec {
             display_name: WeaponName::new("Test Attachment".to_owned()),
+            // GTW-554: the fixture item occupies the Rail slot the fixture weapon declares.
+            slot: AttachmentSlot::Rail,
             effects,
         },
     )])
@@ -438,6 +444,8 @@ fn editing_the_attachment_registry_changes_the_next_spawn() {
             AttachmentName::new(ATTACHMENT_KEY.to_owned()),
             AttachmentSpec {
                 display_name: WeaponName::new("Edited".to_owned()),
+                // GTW-554: the edited item keeps the Rail slot the fixture weapon declares.
+                slot:         AttachmentSlot::Rail,
                 effects:      vec![AttachmentEffect::Aim(AimDelta::new(0.8))],
             },
         );

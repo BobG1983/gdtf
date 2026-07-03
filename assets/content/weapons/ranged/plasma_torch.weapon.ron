@@ -26,6 +26,10 @@
     ],
     stable: false,
     handedness:    TwoHanded, // GTW-443: a two-handed torch — refused below two working hands
+    // GTW-554: a cutting torch has no muzzle thread and no sight dovetail — only a body rail.
+    slots: [
+        (Rail, 1),  // one utility mount on the torch body
+    ],
     // GTW-544: the damage-over-time burn a PENETRATING hit seeds — 4 HP/turn for 3 turns,
     // bypassing armour (the per-turn tick has no matchup soak). `damage_type` here is the
     // burn's presentation flavour (Plasma), not a soak lookup.

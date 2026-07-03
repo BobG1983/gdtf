@@ -50,7 +50,7 @@ use crate::{
         Accuracy, AttachmentRegistry, BaseSpread, FISTS_KEY, FatalBias, FightMode, FireMode,
         Kickback, MeleeWeapon, MeleeWeaponBundle, MeleeWeaponRegistry, PendingAttachments, Reach,
         Shove, Stable, Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
-        WeaponShred, WeaponSpawnSiblings, Wields,
+        WeaponShred, WeaponSpawnSiblings, Wields, resolve_pending_attachments,
     },
 };
 
@@ -187,35 +187,6 @@ impl<'a> BattleRegistries<'a> {
         self.attachments = Some(attachments);
         self
     }
-}
-
-/// Resolve a weapon's authored attachment KEYS against the
-/// [`AttachmentRegistry`](crate::weapon::AttachmentRegistry) into the flat list of
-/// [`AttachmentEffect`](crate::weapon::AttachmentEffect)s to apply, wrapped in a
-/// [`PendingAttachments`] marker for the spawned weapon entity (GTW-549).
-///
-/// Each key is looked up; a resolved item contributes its `effects` list (cloned, in authored
-/// slot order). A missing registry (`registry == None` — a test fixture without the loaded
-/// catalog) OR an unresolved key contributes NO effects: the fail-safe every content-registry
-/// resolution shares (a missing attachment applies nothing, never fails a battle). An empty
-/// result is the identity — the post-spawn application system no-ops. The returned marker rides
-/// onto the weapon entity via the scene, and
-/// [`apply_pending_attachments`](crate::apply_pending_attachments) applies each
-/// effect via the [`attach_to_weapon`](crate::weapon::AttachToWeaponExt::attach_to_weapon)
-/// commands extension once the weapon materializes.
-fn resolve_pending_attachments(
-    keys: &[crate::weapon::AttachmentName],
-    registry: Option<&AttachmentRegistry>,
-) -> PendingAttachments {
-    let Some(registry) = registry else {
-        return PendingAttachments::default();
-    };
-    let effects = keys
-        .iter()
-        .filter_map(|key| registry.spec(key))
-        .flat_map(|spec| spec.effects.iter().cloned())
-        .collect();
-    PendingAttachments::new(effects)
 }
 
 /// Compose ONE ganger as a Bevy `bsn!` [`Scene`] — the per-field component tree
@@ -588,9 +559,13 @@ fn wielded_weapon_scene(
 /// [`Wields`] collection the ranged weapon is in. The melee entity carries the GTW-505
 /// [`MeleeWeapon`] marker, so the ranged-firing path EXCLUDES it (GTW-505 C5). The list
 /// holds ONE entry (a ganger wields a single melee weapon), wrapped in a one-element
-/// `bsn_list!` like the ranged side.
-fn wielded_melee_weapon_scenes(weapon: &MeleeWeaponBundle) -> impl SceneList {
-    bsn_list! { wielded_melee_weapon_scene(weapon) }
+/// `bsn_list!` like the ranged side. GTW-554: `pending` carries the melee weapon's
+/// slot-gated resolved attachment effects (the ranged `pending` mirror).
+fn wielded_melee_weapon_scenes(
+    weapon: &MeleeWeaponBundle,
+    pending: PendingAttachments,
+) -> impl SceneList {
+    bsn_list! { wielded_melee_weapon_scene(weapon, pending) }
 }
 
 /// Compose ONE wielded MELEE-weapon entity as a `bsn!` [`Scene`] — the [`MeleeWeapon`]
@@ -605,7 +580,17 @@ fn wielded_melee_weapon_scenes(weapon: &MeleeWeaponBundle) -> impl SceneList {
 /// onto the same melee weapon entity (the GTW-322 runtime-value path). The
 /// [`WieldedBy`](crate::weapon::WieldedBy) back-reference is inserted by the framework's
 /// `queue_spawn_related_scenes::<Wields>` wiring, NOT here.
-fn wielded_melee_weapon_scene(weapon: &MeleeWeaponBundle) -> impl Scene {
+///
+/// GTW-554: `pending` — the melee weapon's slot-gated resolved attachment effects — is
+/// composed as a [`PendingAttachments`] component via [`template_value`] (an EMPTY marker
+/// for a melee weapon with no attachments; the post-spawn
+/// [`apply_pending_attachments`](crate::apply_pending_attachments) system applies each
+/// effect and removes the marker — the exact ranged-weapon path, so melee attachments are
+/// FULLY supported).
+fn wielded_melee_weapon_scene(
+    weapon: &MeleeWeaponBundle,
+    pending: PendingAttachments,
+) -> impl Scene {
     // bsn! `Type::new(expr)` stores a DEFERRED constructor, so every captured value must
     // be OWNED (the GTW-322 `'static` finding). Read each stat by value out of the bundle
     // FIRST, then let the macro capture the owned locals (never the `&` param).
@@ -625,6 +610,11 @@ fn wielded_melee_weapon_scene(weapon: &MeleeWeaponBundle) -> impl Scene {
     // `template_value` tuple-composition tail (the GTW-322 runtime-value path).
     let damage_type = weapon.damage_type;
     let handedness = weapon.handedness;
+    // GTW-554: the melee PendingAttachments marker (empty for a melee weapon with no
+    // attachments — the application system then no-ops), applied post-spawn via
+    // `attach_to_weapon` (the ranged-weapon `pending` precedent; Clone + Default so
+    // `template_value` applies, moved in — not `Copy`).
+    let pending = template_value(pending);
     (
         bsn! {
             MeleeWeapon
@@ -641,6 +631,8 @@ fn wielded_melee_weapon_scene(weapon: &MeleeWeaponBundle) -> impl Scene {
         // `template_value` and tuple-composed onto the SAME melee weapon entity.
         template_value(damage_type),
         template_value(handedness),
+        // GTW-554: the melee weapon's slot-gated pending attachment effects.
+        pending,
     )
 }
 
@@ -803,11 +795,13 @@ pub fn setup_battle(
             });
         };
         // GTW-549: resolve the weapon's authored attachment KEYS against the registry into the
-        // flat list of AttachmentEffects to apply. A missing registry (`None`) or an unresolved
-        // key contributes NO effects (the fail-safe — a missing attachment applies nothing,
-        // never fails a battle). The effects ride onto the spawned weapon as a
-        // PendingAttachments marker the post-spawn `apply_pending_attachments` system applies.
-        let pending = resolve_pending_attachments(&spec.attachments, attachments);
+        // flat list of AttachmentEffects to apply — GATED by the GTW-554 slot fit (an item
+        // whose slot the weapon never declares, or whose slot is at capacity, is CLEANLY
+        // rejected). A missing registry (`None`) or an unresolved key contributes NO effects
+        // (the fail-safe — a missing attachment applies nothing, never fails a battle). The
+        // effects ride onto the spawned weapon as a PendingAttachments marker the post-spawn
+        // `apply_pending_attachments` system applies.
+        let pending = resolve_pending_attachments(&spec.slots, &spec.attachments, attachments);
         // GTW-544/547: `into_bundle` returns the resolved WeaponBundle + the optional `dot` /
         // `on_death` siblings; attachment effects are NO LONGER folded here (they apply
         // post-spawn via the commands extension).
@@ -832,7 +826,13 @@ pub fn setup_battle(
         let Some(spec) = melee_weapons.spec(&melee_key) else {
             return Err(BattleSetupError::MeleeWeaponNotFound { weapon: melee_key });
         };
-        melee_bundles.push(spec.clone().into_bundle(melee_key));
+        // GTW-554: melee weapons gain FULL attachment support — resolve the melee spec's
+        // authored attachment keys through the SAME slot-gated seam as the ranged path (a
+        // Counterweight/Pommel item fits only a melee weapon declaring that slot; ranged-style
+        // items find no slot and are cleanly rejected). The resolved effects ride onto the
+        // spawned MELEE weapon entity as its own PendingAttachments marker.
+        let pending = resolve_pending_attachments(&spec.slots, &spec.attachments, attachments);
+        melee_bundles.push((spec.clone().into_bundle(melee_key), pending));
     }
 
     // Resolve every ganger's armor key against the armor registry the same way —
@@ -913,7 +913,10 @@ pub fn setup_battle(
     //    value + the reserved id, never off the deferred `Position` component.
     let mut occupants = Vec::with_capacity(resolved_members.len());
     for (
-        (((placed, member), (weapon_bundle, weapon_siblings, weapon_pending)), melee_bundle),
+        (
+            ((placed, member), (weapon_bundle, weapon_siblings, weapon_pending)),
+            (melee_bundle, melee_pending),
+        ),
         armor_spec,
     ) in resolved_members
         .iter()
@@ -971,10 +974,14 @@ pub fn setup_battle(
         // `MeleeWeapon` marker, so the ranged-firing path resolves the GUN via
         // `Wields::ranged_weapon` (which excludes it) — relating it never regresses ranged
         // firing (GTW-505 C5). RESULT: every spawned ganger wields BOTH a ranged and a
-        // melee weapon (the GTW-37 D3 ruling — any ganger can melee).
+        // melee weapon (the GTW-37 D3 ruling — any ganger can melee). GTW-554: the melee
+        // weapon's slot-gated attachment effects ride as its own PendingAttachments marker.
         commands
             .entity(entity)
-            .queue_spawn_related_scenes::<Wields>(wielded_melee_weapon_scenes(&melee_bundle));
+            .queue_spawn_related_scenes::<Wields>(wielded_melee_weapon_scenes(
+                &melee_bundle,
+                melee_pending,
+            ));
         // The occupant's silhouette band is derived from its authored stance
         // (standing → HIGH, kneeling → MID, prone → LOW) so the grid pour places the
         // occupant AND its band together (GTW-304). Keyed off the authored `at` value

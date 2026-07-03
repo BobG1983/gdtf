@@ -88,6 +88,9 @@ fn melee_spec(shove: bool) -> MeleeWeaponSpec {
             gdtf_battle_sim::weapon::Strikes::new(1),
         )]),
         shove:       Shove::new(shove),
+        // GTW-554: no slots declared / no attachments fitted (the empty defaults).
+        slots:       gdtf_battle_sim::WeaponSlots::default(),
+        attachments: Vec::new(),
     }
 }
 
@@ -114,6 +117,8 @@ fn ranged_spec(shove: bool) -> WeaponSpec {
         shove:       Shove::new(shove),
         handedness:  Handedness::OneHanded,
         trajectory:  TrajectoryStyle::Straight,
+        // GTW-554: no slots declared / no attachments fitted (the empty defaults).
+        slots:       gdtf_battle_sim::WeaponSlots::default(),
         attachments: Vec::new(),
         dot:         None,
         on_death:    None,

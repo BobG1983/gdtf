@@ -21,9 +21,16 @@
     ],
     stable: false,
     handedness:    OneHanded,  // GTW-443: a one-handed sidearm - usable with a single working hand
+    // GTW-554: the attachment SLOTS this pistol offers — an item fits only a declared slot
+    // with free capacity (melee Counterweight/Pommel fittings find no slot here).
+    slots: [
+        (Muzzle, 1),  // one muzzle thread (the fitted suppressor occupies it)
+        (Sight,  1),  // one sight dovetail (an optic)
+        (Rail,   1),  // a short pistol rail — one utility mod
+    ],
     // GTW-549: a threaded suppressor — references the `suppressor` attachment ITEM BY KEY. Its
     // effect (fit the Silenced tag so the shot propagates no suppression / reaction-reveal) is
-    // applied to the spawned weapon post-spawn. Authored once in
-    // assets/content/attachments/suppressor.attachment.ron, referenced here.
+    // applied to the spawned weapon post-spawn (GTW-554: it occupies the Muzzle slot declared
+    // above). Authored once in assets/content/attachments/suppressor.attachment.ron.
     attachments:   ["suppressor"],
 )

@@ -13,7 +13,7 @@
 use bevy::prelude::{App, Entity, Update, World};
 
 use super::{
-    AttachToWeaponExt, AttachmentName, AttachmentRegistry, AttachmentSpec,
+    AttachToWeaponExt, AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec,
     apply_pending_attachments,
 };
 use crate::{
@@ -24,19 +24,24 @@ use crate::{
 
 // --- schema round-trip (loader-facing) ---------------------------------------------------
 
-/// An [`AttachmentSpec`] parses from a RON item carrying a `display_name` + an `effects`
-/// list of mixed variants. Pin-discriminating: a schema mismatch fails to parse. Asserts
-/// the list is populated (mechanism), not the magnitudes.
+/// An [`AttachmentSpec`] parses from a RON item carrying a `display_name` + a `slot` + an
+/// `effects` list of mixed variants. Pin-discriminating: a schema mismatch fails to parse.
+/// Asserts the list is populated (mechanism), not the magnitudes.
 #[test]
 fn attachment_spec_parses_with_effect_list() {
-    let ron = "(display_name: \"Whisper Bore\", effects: [Silence, Aim(0.2)])";
+    let ron = "(display_name: \"Whisper Bore\", slot: Muzzle, effects: [Silence, Aim(0.2)])";
     let Ok(spec) = ron::de::from_str::<AttachmentSpec>(ron) else {
-        unreachable!("an AttachmentSpec with a display_name + effects list must parse");
+        unreachable!("an AttachmentSpec with a display_name + slot + effects list must parse");
     };
     assert_eq!(
         spec.display_name,
         WeaponName::new("Whisper Bore".to_owned()),
         "the display_name round-trips"
+    );
+    assert_eq!(
+        spec.slot,
+        AttachmentSlot::Muzzle,
+        "the GTW-554 slot the item occupies round-trips"
     );
     assert_eq!(
         spec.effects.len(),
@@ -50,15 +55,22 @@ fn attachment_spec_parses_with_effect_list() {
 }
 
 /// A cosmetic [`AttachmentSpec`] that authors NO `effects:` field parses to an EMPTY list
-/// (the `#[serde(default)]` identity) — a weapon fitting it applies nothing.
+/// (the `#[serde(default)]` identity) — a weapon fitting it applies nothing. The `slot`
+/// field stays REQUIRED (GTW-554): an item that omits it must FAIL to parse (every item
+/// declares its mount point).
 #[test]
 fn attachment_spec_defaults_to_empty_effects() {
-    let Ok(spec) = ron::de::from_str::<AttachmentSpec>("(display_name: \"Bare Rail\")") else {
+    let Ok(spec) = ron::de::from_str::<AttachmentSpec>("(display_name: \"Bare Rail\", slot: Rail)")
+    else {
         unreachable!("an AttachmentSpec omitting `effects:` must parse (serde default)");
     };
     assert!(
         spec.effects.is_empty(),
         "an omitted effects list defaults to empty (identity)"
+    );
+    assert!(
+        ron::de::from_str::<AttachmentSpec>("(display_name: \"No Slot\")").is_err(),
+        "an item omitting the REQUIRED `slot:` field fails to parse (GTW-554)"
     );
 }
 
@@ -68,7 +80,7 @@ fn attachment_spec_defaults_to_empty_effects() {
 #[test]
 fn registry_keys_and_looks_up_by_name() {
     let Ok(spec) = ron::de::from_str::<AttachmentSpec>(
-        "(display_name: \"Scoped Sight\", effects: [Aim(0.4)])",
+        "(display_name: \"Scoped Sight\", slot: Sight, effects: [Aim(0.4)])",
     ) else {
         unreachable!("the fixture spec must parse");
     };

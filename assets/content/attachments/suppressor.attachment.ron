@@ -4,6 +4,7 @@
 // Referenced by a weapon BY KEY (`suppressor`) in its `attachments:` list; applied post-spawn.
 (
     display_name: "Suppressor",
+    slot: Muzzle,  // GTW-554: threads onto the muzzle — fits only a weapon declaring a Muzzle slot
     effects: [
         Silence,  // the shot propagates neither suppression nor reaction/reveal
     ],

@@ -19,4 +19,8 @@
     ],
     stable: false,
     handedness:    TwoHanded,  // GTW-443: a two-handed long-arm - refused below two working hands
+    // GTW-554: a pressure hose has no muzzle thread and no sight dovetail — only a tank rail.
+    slots: [
+        (Rail, 1),  // one utility mount on the tank harness
+    ],
 )

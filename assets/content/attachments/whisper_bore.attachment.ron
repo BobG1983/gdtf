@@ -5,6 +5,7 @@
 // post-spawn. Referenced by a weapon BY KEY in its `attachments:` list.
 (
     display_name: "Whisper Bore",
+    slot: Muzzle,  // GTW-554: a machined bore device — occupies the Muzzle slot
     effects: [
         Silence,    // the shot propagates neither suppression nor reaction/reveal
         Aim(0.2),   // a modest Accuracy bump (smaller than a full Scoped Sight) — tunable

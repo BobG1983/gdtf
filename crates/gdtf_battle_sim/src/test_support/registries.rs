@@ -28,7 +28,7 @@ use crate::{
         FightModeSpec, FireMode, FireModeSpec, Handedness, Kickback, MagazineSize,
         MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
         Reach, Shove, Stable, Strikes, TrajectoryStyle, TuCost, WeaponDamage, WeaponName,
-        WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
+        WeaponPunch, WeaponRegistry, WeaponShred, WeaponSlots, WeaponSpec,
     },
 };
 
@@ -81,8 +81,11 @@ pub fn test_weapon_spec() -> WeaponSpec {
         shove:       Shove::new(false),
         handedness:  Handedness::OneHanded,
         // GTW-542: no attachments on the shared test weapon (an attachment-bearing variant
-        // is built per-test); the empty list folds to the identity.
+        // is built per-test); the empty list folds to the identity. GTW-554: no declared
+        // slots either — the empty default offers no mounts (attachment-slot fixtures are
+        // built per-test).
         trajectory:  TrajectoryStyle::Straight,
+        slots:       WeaponSlots::default(),
         attachments: Vec::new(),
         // GTW-544: no DOT profile on the shared test weapon (a DOT-bearing variant is built
         // per-test); `None` is a non-DOT weapon, byte-identical to before this slice.
@@ -124,6 +127,10 @@ pub fn test_melee_weapon_spec() -> MeleeWeaponSpec {
         // The shared test melee weapon does not knock back; a shove-tagged melee
         // weapon is built per-test where the auto-shove-on-connect is exercised.
         shove:       Shove::new(false),
+        // GTW-554: no declared slots / fitted attachments on the shared test melee weapon
+        // (slot-bearing melee fixtures are built per-test); the empty defaults fit nothing.
+        slots:       WeaponSlots::default(),
+        attachments: Vec::new(),
     }
 }
 

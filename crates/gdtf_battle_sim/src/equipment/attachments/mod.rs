@@ -9,8 +9,18 @@
 //!
 //! - `key` — the [`AttachmentName`](crate::equipment::attachments::AttachmentName) item key
 //!   (a weapon references an attachment by it).
+//! - `slot` — the GTW-554 slot vocabulary: the closed
+//!   [`AttachmentSlot`](crate::equipment::attachments::AttachmentSlot) enum, the
+//!   [`SlotCapacity`](crate::equipment::attachments::SlotCapacity) count, and the
+//!   [`WeaponSlots`](crate::equipment::attachments::WeaponSlots) declaration a weapon authors.
+//! - `fit` — the GTW-554 fit gate
+//!   ([`attachment_fits`](crate::equipment::attachments::attachment_fits)) and the shared
+//!   setup-time resolution
+//!   ([`resolve_pending_attachments`](crate::equipment::attachments::resolve_pending_attachments))
+//!   both weapon-spawn paths call: an item fits ONLY into a declared slot with free capacity
+//!   (fit IS mechanics, so it lives here).
 //! - `spec` — the [`AttachmentSpec`](crate::equipment::attachments::AttachmentSpec) authoring
-//!   item (`display_name` + `Vec<AttachmentEffect>`).
+//!   item (`display_name` + `slot` + `Vec<AttachmentEffect>`).
 //! - `registry` — the [`AttachmentRegistry`](crate::equipment::attachments::AttachmentRegistry)
 //!   key→spec map the folder loader builds and setup resolves against.
 //! - `commands` — the [`AttachToWeaponExt`](crate::equipment::attachments::AttachToWeaponExt)
@@ -32,8 +42,10 @@
 
 mod apply;
 mod commands;
+mod fit;
 mod key;
 mod registry;
+mod slot;
 mod spec;
 
 #[cfg(test)]
@@ -41,6 +53,8 @@ mod tests;
 
 pub use apply::apply_pending_attachments;
 pub use commands::AttachToWeaponExt;
+pub use fit::{FitRejection, attachment_fits, resolve_pending_attachments};
 pub use key::AttachmentName;
 pub use registry::AttachmentRegistry;
+pub use slot::{AttachmentSlot, SlotCapacity, WeaponSlots};
 pub use spec::AttachmentSpec;

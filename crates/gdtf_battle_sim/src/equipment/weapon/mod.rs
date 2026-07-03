@@ -108,6 +108,7 @@ pub use crate::{
         AttachmentEffect, ReloadTimeScale, WeaponBraceBonus,
     },
     equipment::attachments::{
-        AttachToWeaponExt, AttachmentName, AttachmentRegistry, AttachmentSpec,
+        AttachToWeaponExt, AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec,
+        FitRejection, SlotCapacity, WeaponSlots, attachment_fits, resolve_pending_attachments,
     },
 };

@@ -19,4 +19,6 @@
         // will consume the TU cost + strike count.
         (kind: Swing, tu_cost: 20, strikes: 1),
     ],
+    // GTW-554: bare hands take NO fittings — `slots:` is deliberately omitted (the empty
+    // default), so no attachment fits the unarmed fallback (fail-closed).
 )

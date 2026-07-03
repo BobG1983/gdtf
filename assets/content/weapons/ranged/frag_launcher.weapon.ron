@@ -27,4 +27,9 @@
     ],
     stable: false,
     handedness:    TwoHanded, // GTW-443: a two-handed launcher — refused below two working hands
+    // GTW-554: a launcher tube has no muzzle thread (nothing to suppress on a launched charge).
+    slots: [
+        (Sight, 1),  // one sight dovetail (a lobbing optic)
+        (Rail,  1),  // one utility rail mod
+    ],
 )

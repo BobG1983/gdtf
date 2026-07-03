@@ -17,4 +17,15 @@
         // ONE fight mode this first slice (the GTW-37 first-slice ruling) — a heavy swing.
         (kind: Swing, tu_cost: 30, strikes: 1),
     ],
+    // GTW-554: MELEE weapons get FULL attachment support — the slots a hilted blade offers.
+    // A ranged-style item (Muzzle/Sight/Rail) finds no slot here and is cleanly rejected;
+    // class gating emerges from these declarations, never from a class tag on the item.
+    slots: [
+        (Counterweight, 1),  // one balance socket at the blade's spine
+        (Pommel,        1),  // one grip-end pommel fitting
+    ],
+    // GTW-554: a fitted counterweight — references the `butchers_weight` attachment ITEM BY KEY
+    // (occupies the Counterweight socket declared above; +damage, applied post-spawn). Authored
+    // once in assets/content/attachments/butchers_weight.attachment.ron, referenced here.
+    attachments: ["butchers_weight"],
 )

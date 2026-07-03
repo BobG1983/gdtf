@@ -19,4 +19,10 @@
     ],
     stable: false,
     handedness:    TwoHanded,  // GTW-443: a two-handed long-arm - refused below two working hands
+    // GTW-554: the attachment SLOTS a long-arm offers (no item fitted by default).
+    slots: [
+        (Muzzle, 1),  // one muzzle thread
+        (Sight,  1),  // one sight dovetail
+        (Rail,   1),  // one utility rail mod
+    ],
 )

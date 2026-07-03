@@ -6,6 +6,7 @@
 // is the reload speed-up alone.)
 (
     display_name: "Sump-Slick Action",
+    slot: Rail,  // GTW-554: a jury-rigged action kit bolted to the utility rail — the Rail slot
     effects: [
         ReloadTime(0.7),  // ×0.7 the weapon's reload_tu (< 1 = faster) — tunable
     ],

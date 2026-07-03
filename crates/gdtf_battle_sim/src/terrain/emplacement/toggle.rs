@@ -66,7 +66,9 @@ use crate::{
     occupancy::OccupancyGrid,
     occupancy_sync::{SimSystems, sync_moved_gangers},
     terrain::entity::TerrainCell,
-    weapon::{AttachmentRegistry, MountedWeapon, PendingAttachments, WeaponRegistry, WieldedBy},
+    weapon::{
+        AttachmentRegistry, MountedWeapon, WeaponRegistry, WieldedBy, resolve_pending_attachments,
+    },
 };
 
 /// A request to set a **weapon emplacement**'s [`EmplacementState`] — the toggle message the
@@ -252,11 +254,14 @@ pub fn apply_emplacement_toggle(
 /// PREFERS it while the ganger mans the mount.
 ///
 /// GTW-549: the mounted weapon's authored `attachments` keys are resolved against the
-/// [`AttachmentRegistry`] into a [`PendingAttachments`] marker spawned onto the weapon (an EMPTY
-/// marker when it authors none / the registry is absent), which the post-spawn
+/// [`AttachmentRegistry`] into a
+/// [`PendingAttachments`](crate::weapon::PendingAttachments) marker spawned onto the weapon (an
+/// EMPTY marker when it authors none / the registry is absent), which the post-spawn
 /// [`apply_pending_attachments`](crate::apply_pending_attachments) system applies via
 /// the [`attach_to_weapon`](crate::weapon::AttachToWeaponExt::attach_to_weapon) extension — the
-/// SAME path the `setup_battle` spawn uses.
+/// SAME path the `setup_battle` spawn uses. GTW-554: the resolution is slot-gated
+/// ([`resolve_pending_attachments`] — the ONE shared seam): an item only fits a slot the
+/// mounted weapon's spec declares, with free capacity.
 fn spawn_mounted_weapon(
     commands: &mut Commands,
     occupant: Entity,
@@ -267,17 +272,12 @@ fn spawn_mounted_weapon(
     let key = mounted_key?;
     let spec = weapons?.spec(key)?;
     // GTW-549: resolve the mounted weapon's authored attachment keys into a PendingAttachments
-    // marker (empty when it authors none / the registry is absent — the fail-safe). The
+    // marker (empty when it authors none / the registry is absent — the fail-safe). GTW-554:
+    // through the shared SLOT-GATED seam (`resolve_pending_attachments`), so a mount rejects a
+    // wrong-slot / over-capacity item exactly like the setup_battle spawn. The
     // WeaponSpawnSiblings (dot / on_death) are carried into the scene by setup_battle only; a
     // directly-spawned mount composes just the bundle + relationship + pending marker.
-    let effects = attachments.map_or_else(Vec::new, |registry| {
-        spec.attachments
-            .iter()
-            .filter_map(|k| registry.spec(k))
-            .flat_map(|item| item.effects.iter().cloned())
-            .collect()
-    });
-    let pending = PendingAttachments::new(effects);
+    let pending = resolve_pending_attachments(&spec.slots, &spec.attachments, attachments);
     let (bundle, _siblings) = spec.clone().into_bundle((**key).clone());
     // Spawn the mounted weapon related to the occupant (the WieldedBy hook adds it to the
     // occupant's Wields collection) + the MountedWeapon marker the ranged-firing read prefers +

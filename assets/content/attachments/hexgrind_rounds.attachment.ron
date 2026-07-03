@@ -4,6 +4,7 @@
 // by a weapon BY KEY in its `attachments:` list; applied to the weapon post-spawn.
 (
     display_name: "Hexgrind Rounds",
+    slot: Rail,  // GTW-554: a cursed-ammo feed clamped to the utility rail — the Rail slot
     effects: [
         Penetration(6),  // +6 to the weapon's punch (armour ignored) — tunable
     ],

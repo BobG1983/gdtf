@@ -5,6 +5,7 @@
 // its `attachments:` list; the effect is applied to the spawned weapon post-spawn.
 (
     display_name: "Red-Dot Sight",
+    slot: Sight,  // GTW-554: occupies the sight dovetail — fits only a weapon declaring a Sight slot
     effects: [
         Aim(0.25),  // +0.25 to the weapon's Accuracy concentration exponent (tunable)
     ],

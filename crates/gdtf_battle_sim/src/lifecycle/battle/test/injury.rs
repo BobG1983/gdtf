@@ -152,6 +152,8 @@ fn penetrating_weapon_registry() -> crate::weapon::WeaponRegistry {
         shove:       crate::weapon::Shove::new(false),
         handedness:  crate::weapon::Handedness::OneHanded,
         trajectory:  TrajectoryStyle::Straight,
+        // GTW-554: no slots declared / no attachments fitted — the empty defaults.
+        slots:       crate::weapon::WeaponSlots::default(),
         attachments: Vec::new(),
         dot:         None,
         on_death:    None,

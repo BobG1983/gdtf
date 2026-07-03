@@ -5,6 +5,7 @@
 // multiplier, so > 1.0 makes the swap slower — the drum's bulk; < 1.0 would speed it).
 (
     display_name: "Gore-Sump Drum",
+    slot: Rail,  // GTW-554: the oversized drum hangs off the utility rail — the Rail slot
     effects: [
         ExtraAmmo(15),      // +15 magazine capacity — tunable
         ReloadTime(1.5),    // ×1.5 the reload_tu (> 1 = slower swap, the drum's bulk) — tunable

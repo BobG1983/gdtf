@@ -19,4 +19,10 @@
     ],
     stable: false,
     handedness:    OneHanded,  // GTW-443: a one-handed sidearm - usable with a single working hand
+    // GTW-554: the attachment SLOTS a sidearm offers (no item fitted by default).
+    slots: [
+        (Muzzle, 1),  // one muzzle thread
+        (Sight,  1),  // one sight dovetail
+        (Rail,   1),  // a short pistol rail — one utility mod
+    ],
 )

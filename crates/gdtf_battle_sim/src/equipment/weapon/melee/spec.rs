@@ -8,7 +8,8 @@ use serde::Deserialize;
 
 use super::{FightMode, MeleeDamageProfile, MeleeWeaponBundle, Reach};
 use crate::weapon::{
-    DamageType, FatalBias, Handedness, Shove, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+    AttachmentName, DamageType, FatalBias, Handedness, Shove, WeaponDamage, WeaponName,
+    WeaponPunch, WeaponShred, WeaponSlots,
 };
 
 /// The **authoring struct** an `assets/content/weapons/melee/*.melee_weapon.ron`
@@ -22,7 +23,10 @@ use crate::weapon::{
 /// [`Handedness`]) and adds the melee-only fields — the [`Reach`] and the
 /// [`FightMode`] selector — plus the shared GTW-525 [`Shove`] knockback tag, DROPPING
 /// every ranged-only cone/handling field (`base_spread` / `accuracy` / `kickback` /
-/// `magazine` / `stable`).
+/// `magazine` / `stable`). GTW-554 adds FULL attachment support — the [`slots`](Self::slots)
+/// declaration + the [`attachments`](Self::attachments) key list, the ranged mirror —
+/// resolved at setup through the same slot-gated seam (not folded in
+/// [`into_bundle`](Self::into_bundle)).
 ///
 /// Every shared field is its existing weapon-number newtype authored as its
 /// `#[serde(transparent)]` bare RON scalar (the [`crate::tuning`] / GTW-200 house
@@ -66,6 +70,24 @@ pub struct MeleeWeaponSpec {
     /// knockback OFF.
     #[serde(default)]
     pub shove:       Shove,
+    /// The melee weapon's declared **attachment slots** (GTW-554 — melee weapons gain FULL
+    /// attachment support): the [`WeaponSlots`] pair list authored as the `slots:`
+    /// `.melee_weapon.ron` field, e.g. `slots: [(Counterweight, 1), (Pommel, 1)]`.
+    /// `#[serde(default)]` — an omitted field is the EMPTY declaration (bare fists take no
+    /// fittings; fail-closed). Class gating EMERGES from the declarations: a melee weapon
+    /// simply never declares `Muzzle`/`Sight`/`Rail`, so ranged-style items find no slot.
+    #[serde(default)]
+    pub slots:       WeaponSlots,
+    /// The melee weapon's fitted **attachments** (GTW-554) — the [`AttachmentName`] KEYS it
+    /// references, the exact ranged
+    /// [`attachments`](crate::weapon::WeaponSpec::attachments) mirror. `#[serde(default)]`
+    /// (an omitted field fits nothing). At battle setup the keys resolve through the SAME
+    /// slot-gated [`resolve_pending_attachments`](crate::weapon::resolve_pending_attachments)
+    /// seam as the ranged path and ride onto the spawned MELEE weapon entity as a
+    /// [`PendingAttachments`](crate::weapon::PendingAttachments) marker the post-spawn
+    /// applier consumes.
+    #[serde(default)]
+    pub attachments: Vec<AttachmentName>,
 }
 
 impl MeleeWeaponSpec {

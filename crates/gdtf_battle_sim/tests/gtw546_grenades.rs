@@ -236,6 +236,8 @@ fn grenade_spec(radius: u8) -> WeaponSpec {
         shove:       Shove::new(false),
         handedness:  Handedness::OneHanded,
         trajectory:  TrajectoryStyle::Arc,
+        // GTW-554: a thrown grenade offers no attachment slots (the empty defaults).
+        slots:       gdtf_battle_sim::WeaponSlots::default(),
         attachments: Vec::new(),
         dot:         None,
         on_death:    None,

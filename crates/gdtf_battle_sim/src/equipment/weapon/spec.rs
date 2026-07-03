@@ -10,7 +10,7 @@ use serde::Deserialize;
 use super::{
     Accuracy, AttachmentEffect, AttachmentName, BaseSpread, DamageProfile, DamageType, DotProfile,
     FatalBias, FireMode, Handedness, HandlingProfile, Kickback, Shove, Stable, TrajectoryStyle,
-    WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+    WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WeaponSlots,
 };
 use crate::magazine::Magazine;
 
@@ -90,6 +90,18 @@ pub struct WeaponSpec {
     /// lob the round via [`march_arc`](crate::march::march_arc) with no LOS gate.
     #[serde(default)]
     pub trajectory:  TrajectoryStyle,
+    /// The weapon's declared **attachment slots** (GTW-554) — the
+    /// [`WeaponSlots`] pair list authored as the `slots:` `.weapon.ron` field, e.g.
+    /// `slots: [(Muzzle, 1), (Sight, 1), (Rail, 3)]`: WHICH
+    /// [`AttachmentSlot`](super::AttachmentSlot)s this weapon offers and how many
+    /// attachments each holds. `#[serde(default)]` so an omitted field is the EMPTY
+    /// declaration — the weapon offers NO slots, so no attachment fits it (fail-closed; a
+    /// thrown grenade authors none). The fit gate
+    /// ([`attachment_fits`](super::attachment_fits)) admits each `attachments` key's item
+    /// only into a declared slot with free capacity; class gating EMERGES from these
+    /// declarations (no ranged/melee tag exists on an item).
+    #[serde(default)]
+    pub slots:       WeaponSlots,
     /// The weapon's fitted **attachments** (GTW-549, child GTW-551) — the list of
     /// [`AttachmentName`] KEYS the weapon references (authored once in
     /// `assets/content/attachments/*.attachment.ron`, referenced by many weapons), authored as
@@ -97,8 +109,11 @@ pub struct WeaponSpec {
     /// back to an EMPTY list (a weapon with no attachments): the field is OPT-IN (the
     /// [`Shove`] `#[serde(default)]` precedent), so EVERY existing weapon `.ron` — none of which
     /// author it — deserializes and spawns BYTE-IDENTICAL. At battle setup each key is resolved
-    /// against the [`AttachmentRegistry`](super::AttachmentRegistry) and each resolved item's
-    /// [`AttachmentEffect`]s are applied to the spawned weapon entity via the
+    /// against the [`AttachmentRegistry`](super::AttachmentRegistry) — GATED by the GTW-554
+    /// slot fit ([`resolve_pending_attachments`](super::resolve_pending_attachments)): an item
+    /// whose [`slot`](super::AttachmentSpec::slot) is undeclared in [`slots`](Self::slots) or
+    /// already at capacity is CLEANLY REJECTED (skipped, never evicted) — and each FITTING
+    /// item's [`AttachmentEffect`]s are applied to the spawned weapon entity via the
     /// [`attach_to_weapon`](super::AttachToWeaponExt::attach_to_weapon) commands extension
     /// (SUPERSEDES the GTW-542 `attachment_slots: Vec<AttachTag>` inline-enum model). The empty
     /// default applies NO effects.

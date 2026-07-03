@@ -100,6 +100,8 @@ fn explode_weapon_spec() -> WeaponSpec {
         shove:       Shove::new(false),
         handedness:  Handedness::OneHanded,
         trajectory:  TrajectoryStyle::Straight,
+        // GTW-554: no slots declared / no attachments fitted (the empty defaults).
+        slots:       gdtf_battle_sim::WeaponSlots::default(),
         attachments: Vec::new(),
         dot:         None,
         // GTW-547: the killed ganger detonates a radius-1 blast dealing a flat 50 HP per cell.
@@ -408,6 +410,9 @@ fn lethal_melee_spec() -> MeleeWeaponSpec {
             Strikes::new(1),
         )]),
         shove:       Shove::new(false),
+        // GTW-554: no slots declared / no attachments fitted (the empty defaults).
+        slots:       gdtf_battle_sim::WeaponSlots::default(),
+        attachments: Vec::new(),
     }
 }
 

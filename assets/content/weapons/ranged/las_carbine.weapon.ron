@@ -19,9 +19,16 @@
     ],
     stable: false,
     handedness:    TwoHanded,  // GTW-443: a two-handed long-arm - refused below two working hands
+    // GTW-554: the attachment SLOTS this carbine offers — an item fits only a declared slot
+    // with free capacity (a Counterweight/Pommel melee fitting finds no slot here).
+    slots: [
+        (Muzzle, 1),  // one muzzle thread (a suppressor / choke / bore device)
+        (Sight,  1),  // one sight dovetail (an optic)
+        (Rail,   2),  // a MULTI-capacity utility rail — hosts two rail mods at once
+    ],
     // GTW-549: a fitted precision optic — references the `scoped_sight` attachment ITEM BY KEY.
     // Its effect (raise the weapon's Accuracy — a sight boosts AIM, not stability) is applied
-    // to the spawned weapon post-spawn. Authored once in
-    // assets/content/attachments/scoped_sight.attachment.ron, referenced here.
+    // to the spawned weapon post-spawn (GTW-554: it occupies the Sight slot declared above).
+    // Authored once in assets/content/attachments/scoped_sight.attachment.ron, referenced here.
     attachments:   ["scoped_sight"],
 )

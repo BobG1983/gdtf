@@ -24,7 +24,10 @@
 
 use bevy::state::state::State;
 use gdtf_app::test_support::AppState;
-use gdtf_battle_sim::weapon::{AttachmentName, AttachmentRegistry, WeaponName, WeaponRegistry};
+use gdtf_battle_sim::weapon::{
+    AttachmentName, AttachmentRegistry, MeleeWeaponRegistry, WeaponName, WeaponRegistry,
+    attachment_fits,
+};
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 
 /// Generous SAFETY-NET cap for the real-asset `advance_until_resource_exists` wait gated on the
@@ -65,8 +68,10 @@ fn real_asset_resolves_attachment_registry_and_shipped_weapon_keys() {
     // attachments parsed and are present), not a fixed frame count. Cap is a safety net (GTW-305).
     advance_until_resource_exists::<AttachmentRegistry>(&mut app, LOAD_SAFETY_NET);
 
-    // Also wait for the WeaponRegistry so the shipped weapon slot keys are available to resolve.
+    // Also wait for the WeaponRegistry so the shipped weapon slot keys are available to resolve,
+    // and (GTW-554) the MeleeWeaponRegistry for the shipped melee fitting.
     advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<MeleeWeaponRegistry>(&mut app, LOAD_SAFETY_NET);
 
     // Both registries must have resolved from the workspace assets/. Assert PRESENCE loudly
     // first (pin-discriminating), THEN bind without a panic (restriction lints deny `panic!`
@@ -123,5 +128,44 @@ fn real_asset_resolves_attachment_registry_and_shipped_weapon_keys() {
             "the `{attachment_key}` key authored on `{weapon_key}` must resolve to a loaded \
              attachment spec with a non-empty effect list (not resolve to nothing at runtime)",
         );
+
+        // GTW-554: the shipped weapon's declared `slots:` must FIT the item it authors — a
+        // content mistake (fitted item whose slot the weapon never declares) would make the
+        // live reference resolve to nothing under the slot gate. Value-agnostic: it asserts
+        // the FIT, never a capacity magnitude.
+        let item_fits = match (
+            weapons.spec(&WeaponName::new(weapon_key.to_owned())),
+            attachments.spec(&name),
+        ) {
+            (Some(weapon), Some(item)) => attachment_fits(&weapon.slots, &[], item.slot).is_ok(),
+            _ => false,
+        };
+        assert!(
+            item_fits,
+            "the shipped `{weapon_key}` must declare a slot the fitted `{attachment_key}` \
+             occupies (the GTW-554 slot gate would otherwise cleanly reject the live fitting)",
+        );
     }
+
+    // GTW-554: the shipped MELEE pair — `chainsword` fits the `butchers_weight` counterweight
+    // through the same slot gate (melee weapons gained FULL attachment support).
+    let Some(melee) = app.world().get_resource::<MeleeWeaponRegistry>() else {
+        unreachable!("the MeleeWeaponRegistry resolved with the Load gate");
+    };
+    let weight = AttachmentName::new("butchers_weight".to_owned());
+    let melee_pair_fits = match (
+        melee.spec(&WeaponName::new("chainsword".to_owned())),
+        attachments.spec(&weight),
+    ) {
+        (Some(sword), Some(item)) => {
+            sword.attachments.contains(&weight)
+                && attachment_fits(&sword.slots, &[], item.slot).is_ok()
+        }
+        _ => false,
+    };
+    assert!(
+        melee_pair_fits,
+        "the shipped `chainsword` must author the `butchers_weight` key AND declare the \
+         Counterweight slot it occupies (the GTW-554 melee attachment support, live)",
+    );
 }

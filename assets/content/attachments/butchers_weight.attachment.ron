@@ -5,6 +5,10 @@
 // default is the damage bump alone.)
 (
     display_name: "Butcher's Weight",
+    // GTW-554: the MELEE counterweight example — occupies the Counterweight socket, so it fits
+    // only a melee weapon declaring one (a ranged weapon declares Muzzle/Sight/Rail and REJECTS
+    // it; class gating emerges from the slots, never from a class tag).
+    slot: Counterweight,
     effects: [
         Damage(4),  // +4 to the weapon's base damage — tunable
     ],

@@ -5,6 +5,7 @@
 // bump alone, using the existing closed vocabulary rather than a net-new effect variant.)
 (
     display_name: "Executioner's Choke",
+    slot: Muzzle,  // GTW-554: a savage muzzle choke — occupies the Muzzle slot
     effects: [
         FatalBias(2.0),  // +2.0 to the weapon's severity-score addend — tunable
     ],

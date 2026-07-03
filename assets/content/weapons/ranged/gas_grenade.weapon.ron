@@ -28,4 +28,6 @@
     ],
     stable: false,
     handedness:    OneHanded, // a one-handed thrown grenade
+    // GTW-554: a thrown explosive takes NO fittings — `slots:` is deliberately omitted (the
+    // empty default), so no attachment fits it (fail-closed).
 )
