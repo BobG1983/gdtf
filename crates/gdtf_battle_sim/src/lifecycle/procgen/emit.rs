@@ -96,7 +96,10 @@ use crate::{
     metric::{Cell, CellLevel, Level},
     rng::ProcgenRng,
     situation::{CoverSpawn, FloorSpawn, Situation, SlabSpawn},
-    terrain::def::{TerrainDefRegistry, TerrainSimKind, TerrainUuid},
+    terrain::{
+        def::{TerrainDefRegistry, TerrainUuid},
+        entity::TerrainPieceKind,
+    },
 };
 
 /// Run the WHOLE space-packing pipeline from one injected seed and emit the assembled
@@ -256,23 +259,23 @@ enum PlacedKind {
     Slab,
 }
 
-/// Classify a placed piece by its [`TerrainSimKind`] in `terrain_defs` — `Slab` defs route to
-/// the slabs list, everything else (incl. an UNRESOLVABLE UUID) routes to the walls list.
+/// Classify a placed piece by its canonical [`TerrainPieceKind`] (projected from its
+/// [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) in `terrain_defs` — GTW-574) —
+/// `Slab` defs route to the slabs list, everything else (incl. an UNRESOLVABLE UUID)
+/// routes to the walls list.
 ///
 /// The fail-OPEN fallback for an unresolved UUID keeps the piece in the emitted level (poured
 /// into `walls`) so it surfaces as a
 /// [`BattleSetupError::TerrainNotFound`](crate::situation::BattleSetupError) at setup, rather
 /// than being silently dropped from the procgen-generated terrain.
 fn classify(piece: TerrainUuid, terrain_defs: &TerrainDefRegistry) -> PlacedKind {
-    match terrain_defs.def(&piece).map(|def| &def.sim_kind) {
-        Some(TerrainSimKind::Slab { .. }) => PlacedKind::Slab,
+    // A kind-IDENTITY decision (no per-variant payload), so it classifies over the
+    // canonical `TerrainPieceKind` projection (GTW-574 C2) — exhaustive, no wildcard.
+    match terrain_defs.def(&piece).map(|def| def.sim_kind.kind()) {
+        Some(TerrainPieceKind::Slab) => PlacedKind::Slab,
         // Wall / Cover / Emplacement (a cover-like smashable structure resolved via the
         // cover path) — and the fail-open unresolved fallback — route to the walls list.
-        Some(
-            TerrainSimKind::Wall { .. }
-            | TerrainSimKind::Cover { .. }
-            | TerrainSimKind::Emplacement { .. },
-        )
+        Some(TerrainPieceKind::Wall | TerrainPieceKind::Cover | TerrainPieceKind::Emplacement)
         | None => PlacedKind::Cover,
     }
 }

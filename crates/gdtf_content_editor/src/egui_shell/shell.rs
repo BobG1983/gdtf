@@ -35,6 +35,7 @@ use gdtf_battle_presenter::{TileRoles, ViewMode};
 use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeRegistry},
     terrain::def::TerrainDefRegistry,
+    weapon::WeaponRegistry,
 };
 
 use crate::{
@@ -67,8 +68,9 @@ const NO_THEME: &str = "—";
 ///
 /// Every editor resource is state-scoped (inserted `OnEnter(Editing)`, removed `OnExit(Editing)` —
 /// bevy-traps #1), so the mode + session + the TERRAIN draft are taken as `Option<ResMut<…>>` and
-/// the system no-ops until they exist; the theme registry + the presenter tile-role table are
-/// likewise `Option<Res<…>>` (the empty-registry `ComboBox` then offers nothing; an unresolved
+/// the system no-ops until they exist; the theme registry + the presenter tile-role table + the
+/// weapon registry (the GTW-574 Emplacement mounted-weapon combo's option source) are likewise
+/// `Option<Res<…>>` (the empty-registry `ComboBox` then offers nothing; an unresolved
 /// `TileRoles` leaves the graphic picker fully enabled). Returns a `Result` so a missing primary
 /// egui context (`ctx_mut()?`) is handled, never unwrapped (the workspace lints deny
 /// `unwrap`/`expect`).
@@ -100,6 +102,7 @@ pub(crate) fn editor_egui_ui(
     theme_draft: Option<ResMut<ThemeDraft>>,
     terrain_registry: Option<Res<TerrainDefRegistry>>,
     roles: Option<Res<TileRoles>>,
+    weapons: Option<Res<WeaponRegistry>>,
     prefab: PrefabParams,
 ) -> Result {
     let (Some(mut mode), Some(mut session), Some(mut terrain_draft), Some(mut theme_draft)) =
@@ -245,6 +248,7 @@ pub(crate) fn editor_egui_ui(
                 &session,
                 themes.as_deref(),
                 roles.as_deref(),
+                weapons.as_deref(),
                 sheet_id,
             );
         }

@@ -13,7 +13,9 @@
 //! ## Components on each entity
 //!
 //! - [`TerrainCell`] — the `(cell, level)` position (the queryable cell key).
-//! - [`TerrainPieceKind`] — `Wall` / `Cover` / `Slab` (the queryable kind tag).
+//! - [`TerrainPieceKind`] — `Wall` / `Cover` / `Slab` / `Emplacement` (the queryable
+//!   kind tag, and since GTW-574 the CANONICAL terrain-kind discriminant the payload
+//!   enums project onto via their `kind()` projections).
 //! - Cover entities additionally carry [`CoverHp`](crate::cover::CoverHp) (max),
 //!   [`HeightBand`](crate::cover::HeightBand), [`ArmorProtection`](crate::armor::ArmorProtection),
 //!   [`ArmorHardness`](crate::armor::ArmorHardness) — static stats copied from the

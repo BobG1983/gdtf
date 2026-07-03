@@ -8,11 +8,15 @@
 //!   readout (proves the theme stores references, not inlined stats),
 //! - [`floor_candidates`] — the default-floor candidate list for a draft (Slab-kind FIRST — C6),
 //! - [`slab_floor_candidates`] — the Slab-ONLY default-floor candidate list (GTW-530 C3),
-//! - [`sim_kind_label`] — the short Wall / Cover / Slab label.
+//! - [`sim_kind_label`] — the short Wall / Cover / Slab / Emplacement label (the ONE
+//!   label fn since GTW-574 C7 — the egui theme form imports it instead of mirroring it).
 //!
 //! All three are pure (sim types + std only), so the C7 tests pin them without an app.
 
-use gdtf_battle_sim::terrain::def::{TerrainDef, TerrainDefRegistry, TerrainSimKind, TerrainUuid};
+use gdtf_battle_sim::terrain::{
+    def::{TerrainDef, TerrainDefRegistry, TerrainSimKind, TerrainUuid},
+    entity::TerrainPieceKind,
+};
 
 use super::types::ThemeDraft;
 
@@ -106,7 +110,8 @@ pub fn floor_candidates(
             continue;
         };
         let label = format!("{}  [{}]", *def.display_name, sim_kind_label(&def.sim_kind));
-        if matches!(def.sim_kind, TerrainSimKind::Slab { .. }) {
+        // A kind-IDENTITY decision (no payload) — read the canonical projection (GTW-574 C2).
+        if def.sim_kind.kind() == TerrainPieceKind::Slab {
             slabs.push((*key, label));
         } else {
             others.push((*key, label));
@@ -134,7 +139,8 @@ pub fn slab_floor_candidates(
         .iter()
         .filter_map(|key| {
             let def = terrain.def(key)?;
-            if matches!(def.sim_kind, TerrainSimKind::Slab { .. }) {
+            // A kind-IDENTITY decision (no payload) — the canonical projection (GTW-574 C2).
+            if def.sim_kind.kind() == TerrainPieceKind::Slab {
                 let label = format!("{}  [{}]", *def.display_name, sim_kind_label(&def.sim_kind));
                 Some((*key, label))
             } else {
@@ -146,12 +152,16 @@ pub fn slab_floor_candidates(
 
 /// The short human label for a terrain sim kind (Wall / Cover / Slab / Emplacement) — shown
 /// beside each library row's name so the author sees the structural kind at a glance (C2).
+///
+/// The ONE label fn (GTW-574 C7 — the verbatim copy `theme_form_ui` carried is gone), a
+/// kind-identity decision matched EXHAUSTIVELY over the canonical [`TerrainPieceKind`]
+/// projection: a new terrain kind is a compile error here, never a missing label.
 #[must_use]
 pub(crate) const fn sim_kind_label(kind: &TerrainSimKind) -> &'static str {
-    match kind {
-        TerrainSimKind::Wall { .. } => "Wall",
-        TerrainSimKind::Cover { .. } => "Cover",
-        TerrainSimKind::Slab { .. } => "Slab",
-        TerrainSimKind::Emplacement { .. } => "Emplacement",
+    match kind.kind() {
+        TerrainPieceKind::Wall => "Wall",
+        TerrainPieceKind::Cover => "Cover",
+        TerrainPieceKind::Slab => "Slab",
+        TerrainPieceKind::Emplacement => "Emplacement",
     }
 }

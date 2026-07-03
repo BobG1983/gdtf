@@ -10,9 +10,13 @@
 //!   default, Slab does not, an explicit `BlocksPathfinding` tag adds blocking).
 //! - [`derive_vision`] — GTW-502: the vision-occlusion DERIVATION rule (Wall/Cover occlude at
 //!   their band by default, Slab does not, an explicit `BlocksVision` tag adds occlusion).
+//! - [`kind_projection`] — GTW-574: the canonical [`TerrainPieceKind`](crate::terrain::entity::TerrainPieceKind)
+//!   projections (every sim/presenter variant projects onto its piece kind) + the
+//!   `ALL` inventory completeness pin.
 
 mod derive_blocking;
 mod derive_vision;
+mod kind_projection;
 mod parse;
 mod registry;
 mod round_trip;

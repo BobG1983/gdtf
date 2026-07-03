@@ -37,6 +37,9 @@ mod types;
 #[cfg(test)]
 mod tests;
 
+// The ONE sim-kind label fn (GTW-574 C7) — crate-visible so the egui shell's theme form renders
+// the same `name [Kind]` rows without a hand-mirrored copy.
+pub(crate) use resolve::sim_kind_label;
 pub use resolve::{floor_candidates, resolved_stats, slab_floor_candidates};
 // The debug-only fs write (validates + projects + serializes + writes the `.terrain_theme.ron`) —
 // kept for the C3 child's egui save-press re-point (GTW-512). Re-exporting it keeps its path helpers
