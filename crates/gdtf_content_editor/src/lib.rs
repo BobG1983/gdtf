@@ -52,9 +52,9 @@
 //!   [`PrefabSpec`](gdtf_battle_sim::level::PrefabSpec) schema + the RON serialize + the path resolution (the egui save controls + the
 //!   fs-write press are deferred to the C4 child); the projection re-checks every painted cell through
 //!   [`evaluate_placement`] so a saved prefab never contains an illegal cell.
-//! - The `right_panel` module keeps the size-selector / theme-dropdown model TYPES
-//!   ([`GridSpanInput`] / [`SizeFieldAxis`] / [`ThemeDropdown`]) + [`seed_default_theme`](right_panel)
-//!   for the children to rebuild the controls in egui.
+//! - The `right_panel` module keeps the LIVE size-field value newtype ([`GridSpanInput`] — the
+//!   GTW-464 [`SizeFieldSpans`] view model is built over it) + [`seed_default_theme`](right_panel);
+//!   the dead `bevy_ui` marker types (`SizeFieldAxis` / `ThemeDropdown`) were deleted in GTW-577 C7.
 //! - The GTW-495 `terrain_graphics` module resolves a `TerrainDef`'s `presenter_kind.graphic_name`
 //!   to a terrain atlas index THE WAY THE PRESENTER DOES (through the presenter's `TileRoles` table).
 
@@ -84,8 +84,10 @@ mod plugin;
 // change-driven tile redraw + the set-to-target zoom/pan apply. The egui PREFAB mode draws this
 // registered image as its central-panel viewport.
 mod preview;
-// GTW-421 size-selector / theme-dropdown model TYPES + the `seed_default_theme` drive, kept across
-// the egui swap (GTW-512); the `bevy_ui` spawn + the gdtf_ui-widget commit drives were dropped.
+// GTW-421 `GridSpanInput` (LIVE — the GTW-464 size-field view model builds on it) + the
+// `seed_default_theme` drive, kept across the egui swap (GTW-512); the `bevy_ui` spawn, the
+// gdtf_ui-widget commit drives (GTW-512), and the dead `SizeFieldAxis` / `ThemeDropdown`
+// markers (GTW-577 C7) were dropped.
 mod right_panel;
 // The GTW-432 save-prefab path is debug-only (the GTW-429 gang-save precedent): the whole module
 // — the EditorMap → PrefabSpec projection, the RON serialize, the fs-write, and the press trigger
@@ -133,7 +135,7 @@ pub use plugin::MapEditorPlugin;
 // GTW-515: the prefab preview render-target resource + the owned pan-offset target (the zoom target
 // is the kept `CanvasZoom`). Exported so the headless test asserts the state-scoped lifecycle.
 pub use preview::{target::PreviewTarget, view::PreviewPan};
-pub use right_panel::{GridSpanInput, SizeFieldAxis, ThemeDropdown};
+pub use right_panel::GridSpanInput;
 // GTW-512: the save PROJECTION surface (debug-only, the v2 save path) — kept for the C4 save-control
 // re-point + the in-crate save tests. The `bevy_ui` save controls themselves are the C4 child.
 #[cfg(debug_assertions)]

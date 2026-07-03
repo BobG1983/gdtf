@@ -7,6 +7,7 @@
 
 use std::path::{Path, PathBuf};
 
+use gdtf_assets::{FileStem, sanitize_file_stem, serialize_ron_pretty};
 use gdtf_battle_sim::{
     level::{GridSize, PrefabSpec, TerrainPlacementEntry, ThemeUuid},
     terrain::def::TerrainDefRegistry,
@@ -22,19 +23,15 @@ use crate::{
     session::MapEditorSession,
 };
 
-/// Sanitize the entered prefab name into a file-name STEM — trimmed, lowercased, spaces →
-/// underscores, and any character outside `[a-z0-9_]` dropped (GTW-432).
+/// Sanitize the entered prefab name into a file-name STEM (GTW-432) — since GTW-577 a thin
+/// delegation to the shared [`sanitize_file_stem`] seam (trimmed, lowercased, separators →
+/// underscores, anything outside `[a-z0-9_]` dropped).
 ///
-/// Returns the empty string for a name that sanitizes to nothing, which the caller treats as
-/// [`SavePrefabError::EmptyName`].
+/// Returns an empty [`FileStem`] for a name that sanitizes to nothing, which the caller
+/// treats as [`SavePrefabError::EmptyName`].
 #[must_use]
-pub fn sanitize_name(raw: &str) -> String {
-    raw.trim()
-        .to_ascii_lowercase()
-        .chars()
-        .map(|c| if c == ' ' || c == '-' { '_' } else { c })
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '_')
-        .collect()
+pub fn sanitize_name(raw: &str) -> FileStem {
+    sanitize_file_stem(raw)
 }
 
 /// The full on-disk PATH a saved prefab is written to:
@@ -98,28 +95,30 @@ pub fn editor_map_to_prefab(
 }
 
 /// Serialize a built [`PrefabSpec`] to its `.prefab.ron`-shaped RON text — the SAME schema
-/// the GTW-489 loader deserializes (C2). A pretty-printed record so a saved prefab stays
-/// human-editable like the shipped `assets/content/maps/**/*.prefab.ron`.
+/// the GTW-489 loader deserializes (C2). Delegates to the shared
+/// [`serialize_ron_pretty`] seam (GTW-577 C2), so a saved prefab stays human-editable like
+/// the shipped `assets/content/maps/**/*.prefab.ron`.
 ///
 /// # Errors
 ///
-/// [`SavePrefabError::Serialize`] wrapping the underlying RON serialization error.
+/// [`SavePrefabError::Save`] wrapping the seam's serialize failure.
 pub fn serialize_prefab(spec: &PrefabSpec) -> Result<String, SavePrefabError> {
-    ron::ser::to_string_pretty(spec, ron::ser::PrettyConfig::default())
-        .map_err(|err| SavePrefabError::Serialize(err.to_string()))
+    serialize_ron_pretty(spec).map_err(SavePrefabError::Save)
 }
 
 /// Project + serialize + WRITE the [`EditorMap`] to
 /// `assets/content/maps/<theme>/<size>/<stem>.prefab.ron` (GTW-515 C4.9 / C4.10), or return the typed
 /// [`SavePrefabError`] (never a panic).
 ///
-/// Sanitizes the entered prefab name to a file stem, projects the map to a [`PrefabSpec`] via
-/// [`editor_map_to_prefab`] (which re-checks every painted cell through the shared
-/// [`evaluate_placement`] — C3 illegal-cell guard, reused verbatim), serializes it via
-/// [`serialize_prefab`], resolves the themed/sized path via [`prefab_save_path`], creates the
-/// directory if absent, and writes the file. Returns the resolved [`PathBuf`] on success so the
-/// caller can log it. Debug-only — the whole save path is gated `#[cfg(debug_assertions)]` (the
-/// GTW-429 gang-save precedent), so it never compiles into a release binary.
+/// Sanitizes the entered prefab name to a file stem (the shared [`sanitize_file_stem`] seam),
+/// projects the map to a [`PrefabSpec`] via [`editor_map_to_prefab`] (which re-checks every
+/// painted cell through the shared [`evaluate_placement`] — C3 illegal-cell guard, reused
+/// verbatim), resolves the themed/sized path via [`prefab_save_path`], and hands the
+/// serialize → mkdir → write chain to the shared
+/// [`write_ron_pretty`](gdtf_assets::write_ron_pretty) seam (GTW-577 C2). Returns the resolved
+/// [`PathBuf`] on success so the caller can log it. Debug-only — the whole save path is gated
+/// `#[cfg(debug_assertions)]` (the GTW-429 gang-save precedent), so it never compiles into a
+/// release binary.
 ///
 /// The pure projection/serialize halves ([`editor_map_to_prefab`] / [`serialize_prefab`]) are the
 /// SAME ones the in-crate round-trip test exercises; this wraps them with the name-validation + the
@@ -128,8 +127,8 @@ pub fn serialize_prefab(spec: &PrefabSpec) -> Result<String, SavePrefabError> {
 /// # Errors
 ///
 /// [`SavePrefabError::EmptyName`] if the sanitized name is empty; [`SavePrefabError::IllegalCell`]
-/// if a painted cell is illegal; [`SavePrefabError::Serialize`] / [`SavePrefabError::Write`] from
-/// serialization / the file write.
+/// if a painted cell is illegal; [`SavePrefabError::Save`] from the seam's serialization / file
+/// write.
 #[cfg(debug_assertions)]
 pub fn write_prefab(
     map: &EditorMap,
@@ -143,11 +142,7 @@ pub fn write_prefab(
         return Err(SavePrefabError::EmptyName);
     }
     let spec = editor_map_to_prefab(map, registry, session)?;
-    let serialized = serialize_prefab(&spec)?;
     let path = prefab_save_path(theme_display, session.grid_size(), &stem);
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir).map_err(|err| SavePrefabError::Write(err.to_string()))?;
-    }
-    std::fs::write(&path, serialized).map_err(|err| SavePrefabError::Write(err.to_string()))?;
+    gdtf_assets::write_ron_pretty(&path, &spec)?;
     Ok(path)
 }

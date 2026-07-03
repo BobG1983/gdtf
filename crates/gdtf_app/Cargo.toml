@@ -32,17 +32,19 @@ gdtf_battle_input = { path = "../gdtf_battle_input" }
 # loaded through the generic `gdtf_assets` loader, so the payload derives `serde::Deserialize`
 # (the FX-tuning / pan-tuning `RonAsset` payload precedent).
 serde = { workspace = true }
-# The GTW-429 gang-editor SAVE path serializes the edited `EditableGang` into the GTW-415
-# `GangRoster` schema via `ron::ser::to_string_pretty` — a normal-dependency use, NOT test-only —
-# so `ron` is a regular dependency. (It is ALSO the parser the GTW-328 combat-log tuning test + the
-# GTW-429 round-trip test use, via `ron::de::from_str`.) The save fs-write itself is
-# `cfg(debug_assertions)`-gated (C3); the serialize helper compiles in any build.
+# `ron` is the PARSER the in-crate tests deserialize with (`ron::de::from_str` — the GTW-328
+# combat-log tuning pin, the GTW-429 gang round-trip, the injury/attachment schema pins). The
+# GTW-429 gang-editor SAVE serialization itself moved onto the shared `gdtf_assets`
+# serialize/write seam in GTW-577, so no non-test code here calls `ron::ser` anymore; the dep
+# stays normal because the `#[cfg(test)]` modules ride the lib target.
 ron = { workspace = true }
 # GTW-510: the reusable in-engine self-capture crate. OPTIONAL — pulled in ONLY by the `dev_capture`
-# feature (below), matching the existing `crate::app::capture` gating discipline: the game's capture
-# hooks delegate their PNG-path gate to `gdtf_screenshot::parse_shot_path` and the game adds the
-# crate's F10 debug keybind, all under `cfg!(all(debug_assertions, feature = "dev_capture"))`, so a
-# release binary never links it.
+# feature (below), matching the existing `crate::app::capture` gating discipline. Since GTW-577 the
+# three scene capture hooks (gang editor / procgen visualizer / loading screen) run ON its
+# primitives — `parse_shot_path` for the env-var path gate and `settle_then_capture` for the
+# settle-then-`Screenshot` spawn — keeping only their per-scene env vars + drive; the game also adds
+# the crate's F10 debug keybind. All under `cfg!(all(debug_assertions, feature = "dev_capture"))`,
+# so a release binary never links it.
 gdtf_screenshot = { path = "../gdtf_screenshot", optional = true }
 
 [dev-dependencies]
@@ -57,6 +59,11 @@ gdtf_test_utils = { path = "../gdtf_test_utils" }
 # `test-support` on for the sim across the workspace test build — fine: it is test/dev
 # only and the binary build enables it nowhere.)
 gdtf_battle_sim = { path = "../gdtf_battle_sim", features = ["test-support"] }
+# The GTW-577 `poll_then_quit` headless pin (`tests/capture_quit.rs`, `dev_capture`-gated)
+# names the capture-primitive types (`CapturePath` / `CaptureProgress` / `SettleFrames` /
+# `PollCap`) and chains the REAL `settle_then_capture` — the SAME path-dep instance the
+# optional normal dependency resolves to, so the test drives the exact production pipeline.
+gdtf_screenshot = { path = "../gdtf_screenshot" }
 
 [features]
 # Enable Bevy dynamic linking for fast dev builds. Opt-in only — never enabled
@@ -77,8 +84,9 @@ test-support = []
 # capture code is NOT compiled by the default green suite — it is built + linted
 # separately with this feature on (see GTW-297's verification note).
 #
-# GTW-510: this feature ALSO pulls in the reusable `gdtf_screenshot` crate, so the game's capture
-# hooks delegate their path gate to it and the game gains the F10 debug keybind — all still
+# GTW-510/GTW-577: this feature ALSO pulls in the reusable `gdtf_screenshot` crate — the three
+# scene capture hooks delegate their path gate (`parse_shot_path`) and their settle-then-capture
+# pipeline (`settle_then_capture`) to it, and the game gains the F10 debug keybind — all still
 # double-gated on `cfg!(debug_assertions)` at their wiring sites.
 dev_capture = ["dep:gdtf_screenshot"]
 # DEV / LOCAL-only asset hot-reload. Enables Bevy's asset file watcher: with the

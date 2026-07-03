@@ -123,11 +123,13 @@ fn session() -> MapEditorSession {
     MapEditorSession::new(theme(), Some(FLOOR), size())
 }
 
-/// `sanitize_name` folds a free-form name to the file-stem convention and rejects an empty name.
+/// `sanitize_name` folds a free-form name to the file-stem convention (via the shared
+/// GTW-577 [`gdtf_assets::sanitize_file_stem`] seam) and yields the empty stem for a blank
+/// name (the `EmptyName` rejection input).
 #[test]
 fn sanitize_name_folds_to_stem() {
-    assert_eq!(sanitize_name("  Entry Room  "), "entry_room");
-    assert_eq!(sanitize_name("Sump-Waste 2!"), "sump_waste_2");
+    assert_eq!(sanitize_name("  Entry Room  ").as_str(), "entry_room");
+    assert_eq!(sanitize_name("Sump-Waste 2!").as_str(), "sump_waste_2");
     assert!(
         sanitize_name("   ").is_empty(),
         "a blank name sanitizes to empty"

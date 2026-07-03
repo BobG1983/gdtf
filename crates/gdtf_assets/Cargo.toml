@@ -15,6 +15,9 @@ serde = { workspace = true }
 # No cycle: gdtf_test_utils -> gdtf_app -> gdtf_ui, and none depend on
 # gdtf_assets, so this dev-only edge is acyclic.
 gdtf_test_utils = { path = "../gdtf_test_utils" }
+# The GTW-577 `write_ron_pretty` round-trip test writes into an isolated TempDir
+# (the GTW-555 no-assets-tree-pollution discipline).
+tempfile = "3"
 
 [lints]
 workspace = true

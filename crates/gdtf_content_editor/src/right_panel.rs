@@ -1,13 +1,14 @@
 //! The map-editor **session-drive helpers** kept across the egui swap (GTW-421 right panel;
-//! egui-swept GTW-512).
+//! egui-swept GTW-512; dead `bevy_ui` remnants deleted GTW-577 C7).
 //!
 //! GTW-421 stood up a `bevy_ui` right panel: a theme dropdown + a three-field prefab SIZE selector,
 //! each driving the shared [`MapEditorSession`]. The GTW-512 egui swap DELETED that `bevy_ui` spawn
-//! (`spawn_right_panel_controls`) and the `gdtf_ui`-widget commit drives (`apply_size_commit`); the
-//! egui shell will grow the size selector back in C4 (the PREFAB form). This module retains:
+//! (`spawn_right_panel_controls`) and the `gdtf_ui`-widget commit drives (`apply_size_commit`);
+//! GTW-577 then deleted the two never-reconsumed `bevy_ui` marker types (`SizeFieldAxis` /
+//! `ThemeDropdown` — the egui rebuild needed neither). This module retains:
 //!
-//! - the model TYPES the size selector + theme dropdown are built over ([`GridSpanInput`] /
-//!   [`SizeFieldAxis`] / [`ThemeDropdown`]) — re-exported for the children that rebuild the controls,
+//! - [`GridSpanInput`] — the size-field VALUE newtype, LIVE: the GTW-464
+//!   [`SizeFieldSpans`](crate::SizeFieldSpans) view model is built over it,
 //! - [`seed_default_theme`] — the UI-agnostic `Update` system that seeds the session theme to the
 //!   registry's first theme once it resolves (still wired).
 //!
@@ -23,13 +24,13 @@ use gdtf_battle_sim::level::{ThemeUuid, UuidThemeRegistry};
 use crate::session::MapEditorSession;
 
 /// One drawable-area dimension's edited span, in cells — the numeric-field value the size fields
-/// edit, clamp, and commit (GTW-421).
+/// edit, clamp, and commit (GTW-421; LIVE via the GTW-464
+/// [`SizeFieldSpans`](crate::SizeFieldSpans) view model).
 ///
 /// A named newtype over [`u8`] (no-bare-types rule 1). Private inner + derived [`Deref`]; built
-/// through [`new`](GridSpanInput::new). It implements the
-/// [`NumericValue`](gdtf_ui::NumericValue) bound set (`Copy + PartialOrd + FromStr + Display`) so the
-/// children's size fields can be `spawn_numeric_field::<GridSpanInput>` once they rebuild the
-/// selector. Converted into the axis newtypes ([`GridWidth`](gdtf_battle_sim::level::GridWidth) /
+/// through [`new`](GridSpanInput::new). `Copy + PartialOrd + FromStr + Display` so both the old
+/// numeric-field widgets and the egui `DragValue` locals can carry it. Converted into the axis
+/// newtypes ([`GridWidth`](gdtf_battle_sim::level::GridWidth) /
 /// [`GridHeight`](gdtf_battle_sim::level::GridHeight) /
 /// [`GridLevels`](gdtf_battle_sim::level::GridLevels)) when a commit is folded into the session's
 /// [`GridSize`](gdtf_battle_sim::level::GridSize).
@@ -57,26 +58,6 @@ impl core::str::FromStr for GridSpanInput {
         s.parse::<u8>().map(Self)
     }
 }
-
-/// Which drawable-area axis a size field drives — the identity marker the children attach to each
-/// size field so the commit drive maps a commit to the right
-/// [`GridSize`](gdtf_battle_sim::level::GridSize) axis (GTW-421).
-///
-/// A named marker enum (no-bare-types) rather than three separate unit markers.
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub enum SizeFieldAxis {
-    /// The width field (x span).
-    Width,
-    /// The height field (y span).
-    Height,
-    /// The levels field (z span, clamped to the sim's `MAX_LEVELS` storey ceiling).
-    Levels,
-}
-
-/// Marker on a theme dropdown's closed-control root — the identity marker a child's theme-selection
-/// drive uses to filter a selection back to THIS editor's theme control (no-bare-types unit marker).
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
-pub struct ThemeDropdown;
 
 /// `Update` (in `Editing`): seed the session theme to the registry's first theme (by display name)
 /// once the [`UuidThemeRegistry`] resolves (C1).

@@ -1,4 +1,5 @@
-//! DEV-ONLY gang-editor self-screenshot QA hook (GTW-420, C6).
+//! DEV-ONLY gang-editor self-screenshot QA hook (GTW-420, C6; ported onto the
+//! `gdtf_screenshot` primitives in GTW-577 C4).
 //!
 //! This is **not shipping behavior**. It exists so QA (or a coding agent) can drive the app into
 //! the gang editor and capture the rendered editor screen — proving C6 visually, which the
@@ -13,32 +14,39 @@
 //! 2. **Opt-in env var.** Even when compiled in it is inert until `GDTF_EDITOR_SCREEN_SHOT=/abs/out.png`
 //!    is set: with it unset the hook registers nothing.
 //!
-//! ## How it drives + captures
+//! ## How it drives + captures (GTW-577: the shared primitives)
 //!
-//! When active it (a) drives the menu into [`RunningState::DebugEditor`] the moment the menu
-//! rests (the only non-automatic transition from launch — the editor screen then spawns
-//! `OnEnter`), (b) once in `DebugEditor` presses "Add member" (a populated row), then EXPANDS that
-//! row's pip + commits a Grit attribute edit (so the GTW-428 stat table is open via the accordion
-//! lerp and the readonly derived stats have visibly recomputed), (c) waits a settle so the
-//! accordion has fully lerped open + the layout flushed, captures the editor screen, and (d) rides
-//! the shared shutdown cascade by setting [`RunningState::Quit`] (NOT writing `AppExit` — the macOS
-//! winit hang, Bevy #23313). The captured PNG shows the expanded per-member stat table: the eight
-//! editable attribute fields + the readonly derived displays recomputed off the edited Grit.
+//! The per-scene ENV VAR and the per-scene DRIVE stay bespoke here (P9); the settle counter,
+//! the `Screenshot` + `save_to_disk` spawn, and the exit poll delegate to the shared pieces:
+//! [`parse_shot_path`] (the path gate), [`settle_then_capture`] (the settle-then-spawn, with
+//! this scene's calibrated [`SettleFrames`]), and the game-side
+//! [`poll_then_quit`](crate::states::running::capture_exit::poll_then_quit) (PNG-on-disk →
+//! [`RunningState::Quit`], the shared cascade — NEVER a direct `AppExit`, the macOS winit
+//! hang Bevy #23313). When active it (a) drives the menu into [`RunningState::DebugEditor`]
+//! the moment the menu rests (the editor screen then spawns `OnEnter`), (b) once in
+//! `DebugEditor` presses "Add member" (a populated row), then EXPANDS that row's pip + commits
+//! a Grit attribute edit (so the GTW-428 stat table is open via the accordion lerp and the
+//! readonly derived stats have visibly recomputed), then (c) the chained shared systems
+//! settle, capture, and quit. The captured PNG shows the expanded per-member stat table: the
+//! eight editable attribute fields + the readonly derived displays recomputed off the edited
+//! Grit. The capture is gated on the editor root being present, so it retries until the
+//! screen exists instead of silently skipping (the GTW-577 retirement of the old
+//! `!= SETTLE_FRAMES` exact-match skip).
 
-use std::path::PathBuf;
-
-use bevy::{
-    prelude::*,
-    render::view::window::screenshot::{Screenshot, ScreenshotCaptured, save_to_disk},
-    ui::Interaction,
+use bevy::{prelude::*, ui::Interaction};
+use gdtf_screenshot::{
+    CapturePath, CaptureProgress, PollCap, SettleFrames, parse_shot_path, settle_then_capture,
 };
 use gdtf_ui::{AccordionAnim, CommittedNumericValue, NumericFieldCommitted};
 
 use crate::states::{
     RunningState,
-    running::editor::components::{
-        AddMemberButton, AttributeField, BaseAttribute, EditorScreenRoot, ExpandPip, MemberRow,
-        MemberRowIndex, MemberStatPanel, PipExpanded,
+    running::{
+        capture_exit::poll_then_quit,
+        editor::components::{
+            AddMemberButton, AttributeField, BaseAttribute, EditorScreenRoot, ExpandPip, MemberRow,
+            MemberRowIndex, MemberStatPanel, PipExpanded,
+        },
     },
 };
 
@@ -46,13 +54,12 @@ use crate::states::{
 /// `dev_capture` debug build) opts into the editor capture hook.
 const EDITOR_SHOT_ENV: &str = "GDTF_EDITOR_SCREEN_SHOT";
 
-/// How many `DebugEditor` frames to wait before capturing, so the UI layout has flushed and the
-/// editor screen is settled rather than mid-layout (the GTW-419 settle precedent). Bumped well over
-/// the GTW-425 row-only capture so the full GTW-428 drive applies before the shot — the "Add
-/// member" press, then the pip-expand + attribute-edit (so the accordion has FULLY LERPED open and
-/// the live derived recompute has run), are all settled by the captured frame (GTW-428 C4). The
-/// accordion full open is `~0.25 s` at the default frame rate, so a generous margin is used.
-const SETTLE_FRAMES: u32 = 90;
+/// This scene's calibrated settle window: 90 `DebugEditor` frames, well over the GTW-425
+/// row-only capture so the full GTW-428 drive applies before the shot — the "Add member"
+/// press, then the pip-expand + attribute-edit (the accordion FULLY LERPS open, `~0.25 s` at
+/// the default frame rate, and the live derived recompute runs) are all settled by the
+/// captured frame (GTW-428 C4). The per-scene magnitude stays bespoke (GTW-577 P9).
+const EDITOR_SETTLE: SettleFrames = SettleFrames::new(90);
 
 /// The Grit value the capture drive commits into the expanded panel, so the shot's readonly derived
 /// stats (HP / Wounds / Morale …) visibly move off their all-default values — proving the live
@@ -67,48 +74,17 @@ const EXPANDED_PIP_GLYPH: &str = "-";
 /// Whether the editor capture hook is enabled, and where it writes.
 ///
 /// `Some(path)` when [`EDITOR_SHOT_ENV`] is set to a non-empty (trimmed) value; `None` (the hook
-/// stays inert) otherwise. The path is framework plumbing handed straight to
-/// [`save_to_disk`](bevy::render::view::window::screenshot::save_to_disk) — not a domain value.
-///
-/// Pure (no `World`); delegates the gate to [`parse_editor_shot_path`] so the config test can
-/// drive the SAME logic without mutating the process-global env var.
+/// stays inert) otherwise. Pure aside from the env read: the trim/empty gate is the shared
+/// [`parse_shot_path`] (GTW-577 C4 — the ONE path gate, asserted once in `gdtf_screenshot`).
 #[must_use]
-pub(in crate::states::running::editor) fn editor_shot_path() -> Option<PathBuf> {
-    parse_editor_shot_path(std::env::var(EDITOR_SHOT_ENV).ok().as_deref())
-}
-
-/// Apply the path gate to a raw env-var value: `Some(path)` when non-empty (trimmed), `None`
-/// (hook inert) when absent / empty / all-whitespace. The pure core of [`editor_shot_path`].
-#[must_use]
-fn parse_editor_shot_path(value: Option<&str>) -> Option<PathBuf> {
-    value
-        .map(|raw| raw.trim().to_owned())
-        .filter(|trimmed| !trimmed.is_empty())
-        .map(PathBuf::from)
-}
-
-/// The resolved editor-shot configuration: where to write the captured PNG.
-///
-/// Inserted as a [`Resource`] when the hook is enabled, so the capture system can read its path.
-/// Framework-plumbing config (a path), not a domain value.
-#[derive(Resource, Debug, Clone)]
-pub(in crate::states::running::editor) struct EditorShotConfig {
-    /// Absolute path of the output PNG, handed to
-    /// [`save_to_disk`](bevy::render::view::window::screenshot::save_to_disk).
-    path: PathBuf,
-}
-
-impl EditorShotConfig {
-    /// Build the config from the resolved output path.
-    pub(in crate::states::running::editor) const fn new(path: PathBuf) -> Self {
-        Self { path }
-    }
+pub(in crate::states::running::editor) fn editor_shot_path() -> Option<CapturePath> {
+    parse_shot_path(std::env::var(EDITOR_SHOT_ENV).ok().as_deref())
 }
 
 /// Drives the menu into [`RunningState::DebugEditor`] once the menu rests (the only non-automatic
 /// launch transition), so the capture run reaches the editor unattended.
 ///
-/// Runs in `Update`, gated `run_if(in_state(RunningState::Menu))` + the config resource existing.
+/// Runs in `Update`, gated `run_if(in_state(RunningState::Menu))` + the [`CapturePath`] existing.
 /// Param-only (`bevy-traps.md` #7).
 fn drive_into_editor(mut next: ResMut<NextState<RunningState>>) {
     next.set(RunningState::DebugEditor);
@@ -123,8 +99,8 @@ fn drive_into_editor(mut next: ResMut<NextState<RunningState>>) {
 /// Sets the interaction directly (not via a synthesized pointer) because the windowed
 /// `ui_focus_system` would clear a synthesized `Pressed` before the driver reads it (the GTW-422
 /// `drive_capture_selection` precedent — bevy-traps #6). A [`Local<bool>`] makes it fire ONCE, so
-/// it does not spam members every frame. Runs in `Update`, gated on `DebugEditor` + the config
-/// resource. Param-only (`bevy-traps.md` #7).
+/// it does not spam members every frame. Runs in `Update`, gated on `DebugEditor` + the
+/// [`CapturePath`]. Param-only (`bevy-traps.md` #7).
 fn drive_capture_add_member(
     rows: Query<(), With<MemberRow>>,
     mut buttons: Query<&mut Interaction, With<AddMemberButton>>,
@@ -143,7 +119,7 @@ fn drive_capture_add_member(
 /// Expands the first member's stat panel AND commits a Grit attribute edit, so the captured frame
 /// shows the EXPANDED stat table + the LIVE derived recompute + an open accordion (GTW-428 C4).
 ///
-/// Runs in `Update`, gated on `DebugEditor` + the config resource, ordered AFTER
+/// Runs in `Update`, gated on `DebugEditor` + the [`CapturePath`], ordered AFTER
 /// [`drive_capture_add_member`]. The member row is spawned by a DEFERRED `commands.queue` in
 /// [`add_member_on_press`](super::systems::add_member_on_press), so the row + its pip + its
 /// [`MemberStatPanel`] do NOT exist the same frame the add-member press fires — this driver GATES on
@@ -206,89 +182,57 @@ fn drive_capture_expand_and_edit(
     *done = true;
 }
 
-/// Captures the rendered editor-screen frame to disk after a brief settle, then exits the app via
-/// the shared shutdown cascade.
-///
-/// Runs in `Update`, gated `run_if(in_state(RunningState::DebugEditor))` + the config resource
-/// existing. Its [`Local<u32>`] counter increments each `DebugEditor` frame; on the settle frame
-/// ([`SETTLE_FRAMES`]) it spawns a [`Screenshot::primary_window`] entity with an observer that
-/// saves the PNG synchronously and then sets [`RunningState::Quit`] (the shared cascade — NOT
-/// `AppExit`, the macOS hang #23313). Guards on the editor root being present so it never captures
-/// a blank screen if the theme was absent. Param-only (`bevy-traps.md` #7).
-///
-/// The actual screenshot needs a real render device, so it CANNOT be headless-tested — it is
-/// verified by RUNNING the app (QA), then `Read`ing the PNG.
-fn capture_editor_screen(
-    mut commands: Commands,
-    config: Res<EditorShotConfig>,
-    screens: Query<(), With<EditorScreenRoot>>,
-    mut frames: Local<u32>,
-) {
-    *frames += 1;
-    if *frames != SETTLE_FRAMES {
-        // Before the settle frame: wait. After it: already captured, do nothing.
-        return;
-    }
-    if screens.iter().next().is_none() {
-        // No editor screen yet (theme absent at spawn) — skip rather than capture a blank frame.
-        return;
-    }
-    let path = config.path.clone();
-    commands.spawn(Screenshot::primary_window()).observe(
-        move |captured: On<ScreenshotCaptured>, mut next: ResMut<NextState<RunningState>>| {
-            // Flush the PNG synchronously, then ride the shared shutdown cascade (Quit ->
-            // AppState::Teardown), not a direct AppExit (Bevy #23313 macOS hang).
-            save_to_disk(&path)(captured);
-            next.set(RunningState::Quit);
-        },
-    );
-}
-
 /// Register the editor capture hook IF its env-var gate is set.
 ///
 /// Called by [`EditorScenePlugin`](super::plugin::EditorScenePlugin) only under
 /// `cfg!(all(debug_assertions, feature = "dev_capture"))`. When [`editor_shot_path`] returns
 /// `None` it registers nothing (the hook is fully inert).
+///
+/// The per-scene DRIVE (the GTW-428 add-member → expand → edit demo) is chained AHEAD of the
+/// shared [`settle_then_capture`] → [`poll_then_quit`] tail (GTW-577 C4/C5), so each step's
+/// effect is applied before the next reads it and the capture frame is fully settled. The
+/// capture is additionally gated on the [`EditorScreenRoot`] being present, so it never
+/// captures a blank screen — and retries until the screen exists. NOTE: the shared
+/// [`CapturePath`] / [`SettleFrames`] resources mean ONE scene-capture env var per run (the
+/// QA workflow's existing shape — each scene's capture is a separate app run anyway).
 pub(in crate::states::running::editor) fn register_editor_capture(app: &mut App) {
     let Some(path) = editor_shot_path() else {
         return;
     };
     info!("gang-editor capture: ON (dev) -> {}", path.display());
-    app.insert_resource(EditorShotConfig::new(path))
+    app.insert_resource(path)
+        .insert_resource(EDITOR_SETTLE)
+        .insert_resource(PollCap::DEFAULT)
+        .init_resource::<CaptureProgress>()
         .add_systems(
             Update,
             drive_into_editor
-                .run_if(in_state(RunningState::Menu).and_then(resource_exists::<EditorShotConfig>)),
+                .run_if(in_state(RunningState::Menu).and_then(resource_exists::<CapturePath>)),
         )
         .add_systems(
             Update,
-            // Drive the full GTW-428 demo before the settle-capture: press "Add member" (a
-            // populated row), then expand its pip + commit a Grit edit (the open accordion stat
-            // table + the live recompute), THEN capture. Chained so each step's effect is applied
-            // before the next reads it and the capture frame is fully settled.
             (
                 drive_capture_add_member,
                 drive_capture_expand_and_edit,
-                capture_editor_screen,
+                settle_then_capture.run_if(any_with_component::<EditorScreenRoot>),
+                poll_then_quit,
             )
                 .chain()
                 .run_if(
-                    in_state(RunningState::DebugEditor)
-                        .and_then(resource_exists::<EditorShotConfig>),
+                    in_state(RunningState::DebugEditor).and_then(resource_exists::<CapturePath>),
                 ),
         );
 }
 
 #[cfg(test)]
 mod tests {
-    use super::parse_editor_shot_path;
+    use super::EDITOR_SHOT_ENV;
 
+    /// The thin per-scene pin (GTW-577 C6): the scene KEEPS its own env var — the QA-facing
+    /// activation contract — while the trim/empty gate logic is asserted ONCE in
+    /// `gdtf_screenshot` (`parse_shot_path`'s own tests), which `editor_shot_path` delegates to.
     #[test]
-    fn path_gate_accepts_non_empty_and_rejects_blank() {
-        assert!(parse_editor_shot_path(Some("/abs/out.png")).is_some());
-        assert!(parse_editor_shot_path(Some("  /trim/out.png  ")).is_some());
-        assert!(parse_editor_shot_path(Some("")).is_none());
-        assert!(parse_editor_shot_path(Some("   ")).is_none());
-        assert!(parse_editor_shot_path(None).is_none());
+    fn env_var_name_is_the_scene_contract() {
+        assert_eq!(EDITOR_SHOT_ENV, "GDTF_EDITOR_SCREEN_SHOT");
     }
 }

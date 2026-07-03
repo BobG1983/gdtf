@@ -12,6 +12,9 @@
 #[cfg(debug_assertions)]
 use std::path::{Path, PathBuf};
 
+#[cfg(debug_assertions)]
+use gdtf_assets::FileStem;
+use gdtf_assets::serialize_ron_pretty;
 use gdtf_battle_sim::terrain::{
     def::{TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind, TerrainUuid},
     piece::TerrainGraphicKey,
@@ -37,40 +40,31 @@ const TERRAIN_SUBDIR: &str = "content/terrain";
 #[cfg(debug_assertions)]
 const TERRAIN_DEF_EXTENSION: &str = "terrain_def.ron";
 
-/// Sanitize the entered display name into a file-name STEM — trimmed, lowercased, spaces /
-/// dashes → underscores, anything outside `[a-z0-9_]` dropped (the prefab `sanitize_name`
-/// sibling).
+/// Sanitize the entered display name into a file-name STEM — since GTW-577 a thin
+/// delegation to the shared [`gdtf_assets::sanitize_file_stem`] seam (the prefab
+/// `sanitize_name` sibling).
 ///
-/// Returns the empty string for a name that sanitizes to nothing (the caller treats it as
-/// [`SaveTerrainError::EmptyName`]).
+/// Returns an empty [`FileStem`] for a name that sanitizes to nothing (the caller treats it
+/// as [`SaveTerrainError::EmptyName`]).
 #[cfg(debug_assertions)]
 #[must_use]
-pub(crate) fn sanitize_stem(raw: &str) -> String {
-    raw.trim()
-        .to_ascii_lowercase()
-        .chars()
-        .map(|c| if c == ' ' || c == '-' { '_' } else { c })
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '_')
-        .collect()
+pub(crate) fn sanitize_stem(raw: &str) -> FileStem {
+    gdtf_assets::sanitize_file_stem(raw)
 }
 
 /// The `snake_case` directory name for a theme, derived from its human label — the prefab
-/// `theme_dir` sibling. `assets/content/terrain/<theme>/` keys on the slugified theme DISPLAY NAME
-/// (`"Industrial Hive"` → `industrial_hive`), matching the shipped per-theme layout.
+/// `theme_dir` sibling, delegating the slug filter to the shared
+/// [`gdtf_assets::sanitize_file_stem`] seam (GTW-577 C1). `assets/content/terrain/<theme>/`
+/// keys on the slugified theme DISPLAY NAME (`"Industrial Hive"` → `industrial_hive`),
+/// matching the shipped per-theme layout; the empty-slug fallback stays per-type (P9).
 #[cfg(debug_assertions)]
 #[must_use]
 pub(crate) fn theme_dir(display_name: &str) -> String {
-    let slug: String = display_name
-        .trim()
-        .to_ascii_lowercase()
-        .chars()
-        .map(|c| if c == ' ' || c == '-' { '_' } else { c })
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '_')
-        .collect();
+    let slug = gdtf_assets::sanitize_file_stem(display_name);
     if slug.is_empty() {
         "unknown_theme".to_owned()
     } else {
-        slug
+        slug.to_string()
     }
 }
 
@@ -138,15 +132,15 @@ pub fn draft_to_terrain_def(draft: &TerrainDraft, uuid: TerrainUuid) -> TerrainD
 }
 
 /// Serialize a built [`TerrainDef`] to its `.terrain_def.ron`-shaped RON text — the SAME schema
-/// the GTW-487 terrain loader deserializes (C3). Pretty-printed so a saved def stays
-/// human-editable like the shipped `assets/content/terrain/**/*.terrain_def.ron`.
+/// the GTW-487 terrain loader deserializes (C3). Delegates to the shared
+/// [`serialize_ron_pretty`] seam (GTW-577 C2), so a saved def stays human-editable like the
+/// shipped `assets/content/terrain/**/*.terrain_def.ron`.
 ///
 /// # Errors
 ///
-/// [`SaveTerrainError::Serialize`] wrapping the underlying RON serialization error.
+/// [`SaveTerrainError::Save`] wrapping the seam's serialize failure.
 pub fn serialize_terrain_def(def: &TerrainDef) -> Result<String, SaveTerrainError> {
-    ron::ser::to_string_pretty(def, ron::ser::PrettyConfig::default())
-        .map_err(|err| SaveTerrainError::Serialize(err.to_string()))
+    serialize_ron_pretty(def).map_err(SaveTerrainError::Save)
 }
 
 /// Build + serialize + WRITE a terrain def to `<assets_root>/content/terrain/<theme>/<stem>.terrain_def.ron`,
@@ -157,13 +151,14 @@ pub fn serialize_terrain_def(def: &TerrainDef) -> Result<String, SaveTerrainErro
 /// [`WORKSPACE_ASSETS_ROOT`] (via [`write_terrain`]); tests pass a unique `tempfile::TempDir` root
 /// so no test ever writes into the version-controlled `assets/` tree.
 ///
-/// Sanitizes the entered name to a file stem, projects the draft to a [`TerrainDef`] keyed by
-/// `uuid`, serializes it, creates the themed directory if absent, and writes the file. Returns the
-/// resolved [`PathBuf`] on success so the caller can log it or read it back.
+/// Sanitizes the entered name to a file stem (the shared seam), projects the draft to a
+/// [`TerrainDef`] keyed by `uuid`, and hands the serialize → mkdir → write chain to the shared
+/// [`gdtf_assets::write_ron_pretty`] seam (GTW-577 C2). Returns the resolved [`PathBuf`] on
+/// success so the caller can log it or read it back.
 ///
 /// # Errors
 ///
-/// Any [`SaveTerrainError`] from name validation, serialization, or the file write.
+/// Any [`SaveTerrainError`] from name validation or the seam's serialization / file write.
 #[cfg(debug_assertions)]
 pub fn write_terrain_in(
     assets_root: &Path,
@@ -176,15 +171,11 @@ pub fn write_terrain_in(
         return Err(SaveTerrainError::EmptyName);
     }
     let def = draft_to_terrain_def(draft, uuid);
-    let serialized = serialize_terrain_def(&def)?;
     let path = assets_root
         .join(TERRAIN_SUBDIR)
         .join(theme_dir(theme_display))
         .join(format!("{stem}.{TERRAIN_DEF_EXTENSION}"));
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir).map_err(|err| SaveTerrainError::Write(err.to_string()))?;
-    }
-    std::fs::write(&path, serialized).map_err(|err| SaveTerrainError::Write(err.to_string()))?;
+    gdtf_assets::write_ron_pretty(&path, &def)?;
     Ok(path)
 }
 

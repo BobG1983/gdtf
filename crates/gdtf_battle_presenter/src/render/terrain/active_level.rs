@@ -35,6 +35,24 @@ pub enum ViewMode {
     FullView,
 }
 
+impl ViewMode {
+    /// The OTHER mode — the ONE pure flip every toggle surface applies (GTW-577 C8, hoisted
+    /// from the editor's local helper and the input drain's inline match): the GTW-521
+    /// battlescape `ToggleFullView` intent drain, the GTW-532 editor toggle button, and the
+    /// editor's `F` hotkey all delegate here, so the flip cannot drift between surfaces.
+    ///
+    /// Owned by the presenter beside [`ActiveLevel::draws_storey`] because the presenter owns
+    /// the type (the `input -> presenter` direction holds: consumers flip the presenter's
+    /// resource through this method, never a re-derived local copy of the rule).
+    #[must_use]
+    pub const fn toggled(self) -> Self {
+        match self {
+            Self::DownToActive => Self::FullView,
+            Self::FullView => Self::DownToActive,
+        }
+    }
+}
+
 /// The presenter-owned ACTIVE storey — the single [`Level`] the terrain draw renders.
 ///
 /// A named newtype over [`Level`] (no-bare-types) that [`Deref`]s to it. OWNED BY THE
@@ -109,4 +127,22 @@ pub enum PresenterSystems {
     /// The band holding the presenter's per-`(cell, level)` draw systems — ordered
     /// after the sim's world mutations so it observes a settled sim state.
     Draw,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ViewMode;
+
+    /// GTW-577 C8 — the ONE pure flip: each mode toggles to the other, and a double toggle
+    /// is the identity (the two-state contract every toggle surface delegates to).
+    #[test]
+    fn toggled_flips_between_the_two_modes() {
+        assert_eq!(ViewMode::DownToActive.toggled(), ViewMode::FullView);
+        assert_eq!(ViewMode::FullView.toggled(), ViewMode::DownToActive);
+        assert_eq!(
+            ViewMode::DownToActive.toggled().toggled(),
+            ViewMode::DownToActive,
+            "double toggle is the identity",
+        );
+    }
 }

@@ -12,6 +12,9 @@
 #[cfg(debug_assertions)]
 use std::path::{Path, PathBuf};
 
+#[cfg(debug_assertions)]
+use gdtf_assets::FileStem;
+use gdtf_assets::serialize_ron_pretty;
 use gdtf_battle_sim::level::{ThemeDisplayName, ThemeUuid, UuidThemeDef};
 
 use super::types::{SaveThemeError, ThemeDraft};
@@ -36,21 +39,17 @@ const TERRAIN_SUBDIR: &str = "content/terrain";
 const THEME_DEF_EXTENSION: &str = "terrain_theme.ron";
 
 /// The `snake_case` slug for a theme, derived from its human display name — the TERRAIN form's
-/// `theme_dir` sibling. Both the per-theme DIRECTORY and the file STEM key on this slug
-/// (`"Industrial Hive"` → `industrial_hive`), matching the shipped per-theme layout
-/// (`assets/content/terrain/underhive/underhive.terrain_theme.ron`).
+/// `theme_dir` sibling, since GTW-577 a thin delegation to the shared
+/// [`gdtf_assets::sanitize_file_stem`] seam. Both the per-theme DIRECTORY and the file STEM
+/// key on this slug (`"Industrial Hive"` → `industrial_hive`), matching the shipped per-theme
+/// layout (`assets/content/terrain/underhive/underhive.terrain_theme.ron`).
 ///
-/// Returns the empty string for a name that slugifies to nothing (the caller treats it as
+/// Returns an empty [`FileStem`] for a name that slugifies to nothing (the caller treats it as
 /// [`SaveThemeError::EmptyName`]).
 #[cfg(debug_assertions)]
 #[must_use]
-pub(crate) fn slugify(raw: &str) -> String {
-    raw.trim()
-        .to_ascii_lowercase()
-        .chars()
-        .map(|c| if c == ' ' || c == '-' { '_' } else { c })
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '_')
-        .collect()
+pub(crate) fn slugify(raw: &str) -> FileStem {
+    gdtf_assets::sanitize_file_stem(raw)
 }
 
 /// The full on-disk PATH a saved theme def is written to:
@@ -95,15 +94,15 @@ pub fn draft_to_theme_def(draft: &ThemeDraft, key: ThemeUuid) -> UuidThemeDef {
 }
 
 /// Serialize a built [`UuidThemeDef`] to its `.terrain_theme.ron`-shaped RON text — the SAME
-/// schema the GTW-487 theme loader (`resolve_theme_defs`) deserializes (C3/C5). Pretty-printed so
-/// a saved def stays human-editable like the shipped `assets/content/terrain/**/*.terrain_theme.ron`.
+/// schema the GTW-487 theme loader (`resolve_theme_defs`) deserializes (C3/C5). Delegates to
+/// the shared [`serialize_ron_pretty`] seam (GTW-577 C2), so a saved def stays human-editable
+/// like the shipped `assets/content/terrain/**/*.terrain_theme.ron`.
 ///
 /// # Errors
 ///
-/// [`SaveThemeError::Serialize`] wrapping the underlying RON serialization error.
+/// [`SaveThemeError::Save`] wrapping the seam's serialize failure.
 pub fn serialize_theme_def(def: &UuidThemeDef) -> Result<String, SaveThemeError> {
-    ron::ser::to_string_pretty(def, ron::ser::PrettyConfig::default())
-        .map_err(|err| SaveThemeError::Serialize(err.to_string()))
+    serialize_ron_pretty(def).map_err(SaveThemeError::Save)
 }
 
 /// Validate a draft for SAVE — the C6 default-floor rule (the loader honors a default floor that
@@ -135,14 +134,14 @@ pub fn validate_for_save(draft: &ThemeDraft) -> Result<(), SaveThemeError> {
 /// (GTW-475 C5), or return the typed [`SaveThemeError`] (never a panic).
 ///
 /// Validates the draft (the C6 default-floor rule + a non-empty name + a non-empty palette),
-/// slugifies the display name to the dir + file stem, projects the draft to a [`UuidThemeDef`]
-/// keyed by `key`, serializes it, creates the themed directory if absent, and writes the file.
-/// Returns the resolved [`PathBuf`] on success so the caller can log it; the C7 tests reuse the
-/// pure halves.
+/// slugifies the display name to the dir + file stem (the shared seam), projects the draft to
+/// a [`UuidThemeDef`] keyed by `key`, and hands the serialize → mkdir → write chain to the
+/// shared [`gdtf_assets::write_ron_pretty`] seam (GTW-577 C2). Returns the resolved
+/// [`PathBuf`] on success so the caller can log it; the C7 tests reuse the pure halves.
 ///
 /// # Errors
 ///
-/// Any [`SaveThemeError`] from validation, serialization, or the file write.
+/// Any [`SaveThemeError`] from validation or the seam's serialization / file write.
 #[cfg(debug_assertions)]
 pub fn write_theme(draft: &ThemeDraft, key: ThemeUuid) -> Result<PathBuf, SaveThemeError> {
     validate_for_save(draft)?;
@@ -151,11 +150,7 @@ pub fn write_theme(draft: &ThemeDraft, key: ThemeUuid) -> Result<PathBuf, SaveTh
         return Err(SaveThemeError::EmptyName);
     }
     let def = draft_to_theme_def(draft, key);
-    let serialized = serialize_theme_def(&def)?;
     let path = theme_save_path(&slug);
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir).map_err(|err| SaveThemeError::Write(err.to_string()))?;
-    }
-    std::fs::write(&path, serialized).map_err(|err| SaveThemeError::Write(err.to_string()))?;
+    gdtf_assets::write_ron_pretty(&path, &def)?;
     Ok(path)
 }

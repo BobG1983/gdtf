@@ -517,15 +517,15 @@ pub fn dispatch_act_intents(
                 }
             }
             ActIntent::ToggleFullView => {
-                // GTW-521: flip the presenter-owned ViewMode between DownToActive and FullView.
-                // A no-act presenter-view intent like LevelUp/LevelDown — it does NOT touch
-                // ActiveLevel (C5). Assigning through the ResMut marks it changed, so the
-                // presenter's terrain draw + ganger visibility re-run on the flip (C3). Always a
-                // real change (the two variants differ), so no change-guard is needed.
-                *view_mode = match *view_mode {
-                    ViewMode::DownToActive => ViewMode::FullView,
-                    ViewMode::FullView => ViewMode::DownToActive,
-                };
+                // GTW-521: flip the presenter-owned ViewMode between DownToActive and FullView,
+                // via the presenter's own ViewMode::toggled (GTW-577 C8 — the ONE flip, shared
+                // with the editor's toggle surfaces). A no-act presenter-view intent like
+                // LevelUp/LevelDown — it does NOT touch ActiveLevel (C5). Assigning through the
+                // ResMut marks it changed, so the presenter's terrain draw + ganger visibility
+                // re-run on the flip (C3). Always a real change (the two variants differ), so no
+                // change-guard is needed.
+                let flipped = view_mode.toggled();
+                *view_mode = flipped;
             }
             ActIntent::StanceCycle => {
                 let Some(actor) = **selected else { continue };

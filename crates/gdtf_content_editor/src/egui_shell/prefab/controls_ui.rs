@@ -99,7 +99,8 @@ pub(crate) fn controls_panel(
 
 /// The prefab-viewport VIEW toggle (GTW-532 C3) — a labelled button that flips the [`ViewMode`]
 /// between [`DownToActive`](ViewMode::DownToActive) (draw `0..=CurrentEditLevel`) and
-/// [`FullView`](ViewMode::FullView) (draw the whole storey stack). Set-to-target (an explicit
+/// [`FullView`](ViewMode::FullView) (draw the whole storey stack) via the presenter-owned
+/// [`ViewMode::toggled`] (GTW-577 C8 — the ONE flip, no local copy). Set-to-target (an explicit
 /// assignment to the toggled mode), so it is idempotent under the egui multipass re-run
 /// (bevy-traps #8 (b)). The `F` hotkey ([`view_mode_hotkey`](super::nav::view_mode_hotkey)) flips the SAME resource.
 fn view_toggle(ui: &mut egui::Ui, view: &mut ViewMode) {
@@ -112,23 +113,13 @@ fn view_toggle(ui: &mut egui::Ui, view: &mut ViewMode) {
             ViewMode::FullView => "Full view ▸ Down-to-active",
         };
         if ui.button(label).clicked() {
-            *view = toggled(*view);
+            *view = view.toggled();
         }
     });
     ui.label(match *view {
         ViewMode::DownToActive => "Drawing storeys 0..=active (F to toggle)",
         ViewMode::FullView => "Drawing ALL storeys (F to toggle)",
     });
-}
-
-/// The OTHER [`ViewMode`] — the pure flip the toggle button and the `F` hotkey both apply. Pure so
-/// the toggle is unit-tested on the real path (GTW-532 C4).
-#[must_use]
-pub(crate) const fn toggled(view: ViewMode) -> ViewMode {
-    match view {
-        ViewMode::DownToActive => ViewMode::FullView,
-        ViewMode::FullView => ViewMode::DownToActive,
-    }
 }
 
 /// The level-nav readout + step buttons (C4.5) — a `Level n / m` readout (1-based for the reader)

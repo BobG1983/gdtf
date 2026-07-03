@@ -42,6 +42,14 @@ pub(crate) mod procgen_viz;
 #[cfg(debug_assertions)]
 pub(in crate::states::running) use procgen_viz::ProcgenVizScenePlugin;
 
+// The shared capture EXIT (GTW-577 C5): the ONE `poll_then_quit` the gang-editor and
+// procgen-visualizer capture hooks chain after `gdtf_screenshot::settle_then_capture` —
+// PNG-on-disk (or poll-cap) → `RunningState::Quit`, never a direct `AppExit`. Dev-capture
+// gated exactly like its two consumers; `pub(crate)` so the crate-root test-support ledger
+// can name `poll_then_quit` for the headless pin test.
+#[cfg(all(debug_assertions, feature = "dev_capture"))]
+pub(crate) mod capture_exit;
+
 mod options;
 pub(in crate::states::running) use options::OptionsScenePlugin;
 

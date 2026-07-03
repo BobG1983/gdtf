@@ -156,11 +156,17 @@ pub enum SaveThemeError {
     /// No default floor is chosen, or the chosen one is not in the theme's own terrain palette
     /// (C6 — a saved theme's default floor MUST be one of its terrain UUIDs).
     DefaultFloorNotInTerrain,
-    /// Serializing the built [`UuidThemeDef`](gdtf_battle_sim::level::UuidThemeDef) to RON
-    /// failed.
-    Serialize(String),
-    /// Writing the serialized def to disk failed (a missing dir / permissions error / io).
-    Write(String),
+    /// The shared serialize/write tail failed (GTW-577 C3) — wraps the seam's
+    /// [`RonSaveError`](gdtf_assets::RonSaveError), whose `Display` names the failed stage.
+    Save(gdtf_assets::RonSaveError),
+}
+
+impl From<gdtf_assets::RonSaveError> for SaveThemeError {
+    /// The per-type conversion off the shared seam error (GTW-577 C3) — lets the save path
+    /// `?` a seam failure straight into the form's error.
+    fn from(err: gdtf_assets::RonSaveError) -> Self {
+        Self::Save(err)
+    }
 }
 
 impl std::fmt::Display for SaveThemeError {
@@ -177,8 +183,7 @@ impl std::fmt::Display for SaveThemeError {
                     "the default floor must be one of the theme's own terrain (C6)"
                 )
             }
-            Self::Serialize(err) => write!(f, "failed to serialize the theme def: {err}"),
-            Self::Write(err) => write!(f, "failed to write the theme-def file: {err}"),
+            Self::Save(err) => write!(f, "{err}"),
         }
     }
 }

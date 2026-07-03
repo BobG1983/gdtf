@@ -1,7 +1,8 @@
 //! The gang SAVE system: a press on the "Save gang" button serializes the edited
 //! [`EditableGang`](super::super::model::EditableGang) into the GTW-415
 //! [`GangRoster`](gdtf_battle_sim::GangRoster) schema and WRITES it to
-//! `assets/content/gangs/<gang_name>.ron` (GTW-429).
+//! `assets/content/gangs/<sanitized_gang_name>.ron` (GTW-429; the stem is sanitized through
+//! the shared GTW-577 [`sanitize_file_stem`](gdtf_assets::sanitize_file_stem) seam).
 //!
 //! The save action's live-play trigger (C4): the editor toolbar's [`SaveGangButton`]. A press
 //! projects the model to its sim `(`[`GangName`](gdtf_battle_sim::GangName)`,
@@ -23,6 +24,9 @@
 use std::path::{Path, PathBuf};
 
 use bevy::{prelude::*, ui::Interaction};
+#[cfg(test)]
+use gdtf_assets::serialize_ron_pretty;
+use gdtf_assets::{sanitize_file_stem, write_ron_pretty};
 use gdtf_battle_sim::{GangName, GangRoster};
 
 use crate::states::running::editor::{components::SaveGangButton, model::EditableGang};
@@ -37,24 +41,37 @@ const WORKSPACE_ASSETS_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../
 /// directory the saved gang `.ron` is written into.
 const GANGS_SUBDIR: &str = "content/gangs";
 
-/// The on-disk FILE NAME for a saved gang — `<gang_name>.ron` (the RESOLVED save path, user
-/// 2026-06-26), a pure function of the [`GangName`] so a test can assert it WITHOUT touching the
-/// filesystem.
+/// The on-disk FILE NAME for a saved gang — `<sanitized_gang_name>.ron` (the RESOLVED save
+/// path, user 2026-06-26; sanitized through the shared seam since GTW-577 C1), a pure function
+/// of the [`GangName`] so a test can assert it WITHOUT touching the filesystem.
+///
+/// The stem is built through [`sanitize_file_stem`], so a path-hostile gang name (`"../../X"`,
+/// spaces, uppercase) can never reach the filesystem raw — before GTW-577 the raw name went
+/// straight into the file name. A name that sanitizes to NOTHING falls back to the documented
+/// `unnamed_gang` stem (minted through the SAME seam), so a save never targets a bare `.ron`.
 ///
 /// NOTE: the GTW-415 loader keys a gang by its file STEM with a trailing `.gang` infix stripped
-/// (`gang_0.gang.ron` keys `gang_0`), so a plain `<name>.ron` file keys back to exactly `<name>`
-/// — the editor's save target deliberately omits the `.gang` infix, and the loader's
-/// `strip_suffix(".gang")` is a no-op on it, so the round-trip key is the gang name unchanged.
+/// (`gang_0.gang.ron` keys `gang_0`), so a `<stem>.ron` file keys back to exactly `<stem>` —
+/// the editor's save target deliberately omits the `.gang` infix. Since the stem is the
+/// SANITIZED name, a gang whose name needed sanitizing reloads keyed by the sanitized stem
+/// (the loader's own slug convention).
 #[must_use]
 pub(in crate::states::running::editor) fn gang_file_name(name: &GangName) -> String {
-    format!("{}.ron", name.as_str())
+    let stem = sanitize_file_stem(name.as_str());
+    let stem = if stem.is_empty() {
+        sanitize_file_stem("unnamed gang")
+    } else {
+        stem
+    };
+    format!("{stem}.ron")
 }
 
 /// The full on-disk PATH a saved gang is written to:
-/// `<workspace assets>/content/gangs/<gang_name>.ron`.
+/// `<workspace assets>/content/gangs/<sanitized_gang_name>.ron` (the stem via
+/// [`gang_file_name`] → the shared GTW-577 sanitize seam).
 ///
 /// Pure (no IO) so a test can assert the resolved location ends in the expected
-/// `content/gangs/<name>.ron` without writing anything.
+/// `content/gangs/<stem>.ron` without writing anything.
 #[must_use]
 pub(in crate::states::running::editor) fn gang_save_path(name: &GangName) -> PathBuf {
     Path::new(WORKSPACE_ASSETS_ROOT)
@@ -63,46 +80,33 @@ pub(in crate::states::running::editor) fn gang_save_path(name: &GangName) -> Pat
 }
 
 /// Serialize the gang roster to its `*.gang.ron`-shaped RON text — the SAME schema the GTW-415
-/// loader deserializes (C1). A pretty-printed record so a saved gang stays human-editable like
-/// the shipped `assets/content/gangs/*.gang.ron`.
+/// loader deserializes (C1), through the SAME shared [`serialize_ron_pretty`] seam the
+/// production write ([`write_ron_pretty`] inside [`write_gang_roster`]) serializes with
+/// (GTW-577 C2).
 ///
-/// Returns the serialization [`Result`](std::result::Result) so the caller logs (never panics) on
-/// a failure; the round-trip test reuses it to produce the bytes it reloads through the loader (C2).
-pub(in crate::states::running::editor) fn serialize_roster(
-    roster: &GangRoster,
-) -> Result<String, ron::Error> {
-    ron::ser::to_string_pretty(roster, ron::ser::PrettyConfig::default())
+/// Test-only since GTW-577: the production chain runs entirely inside the seam, so this thin
+/// delegation exists for the round-trip test to produce the exact bytes the save would write
+/// WITHOUT touching the filesystem (C2).
+#[cfg(test)]
+fn serialize_roster(roster: &GangRoster) -> Result<String, gdtf_assets::RonSaveError> {
+    serialize_ron_pretty(roster)
 }
 
-/// Write the edited gang to `assets/content/gangs/<gang_name>.ron` (C1).
+/// Write the edited gang to `assets/content/gangs/<sanitized_gang_name>.ron` (C1).
 ///
-/// Serializes the roster into the GTW-415 schema, creates the `content/gangs/` directory if it is
-/// absent, and writes the file. Every fallible step is handled by LOGGING an `error!` and returning
-/// early — it NEVER `unwrap`/`expect`/`panic`s (the no-panic rule). A success logs an `info!`
-/// naming the written path.
+/// Resolves the sanitized save path ([`gang_save_path`], which builds its stem through the
+/// shared [`sanitize_file_stem`] seam) and hands the serialize → mkdir → write chain to the
+/// shared [`write_ron_pretty`] seam (GTW-577 C2). The fallible write is handled by LOGGING an
+/// `error!` — it NEVER `unwrap`/`expect`/`panic`s (the no-panic rule); the seam error's
+/// `Display` names the failed stage (serialize vs write). A success logs an `info!` naming the
+/// written path.
 ///
 /// The whole module is `#[cfg(debug_assertions)]`-gated (C3), so this filesystem write is never
 /// compiled into a release binary.
 fn write_gang_roster(name: &GangName, roster: &GangRoster) {
-    let serialized = match serialize_roster(roster) {
-        Ok(serialized) => serialized,
-        Err(err) => {
-            error!(
-                "gang save: failed to serialize gang `{}`: {err}",
-                name.as_str()
-            );
-            return;
-        }
-    };
     let path = gang_save_path(name);
-    if let Some(dir) = path.parent()
-        && let Err(err) = std::fs::create_dir_all(dir)
-    {
-        error!("gang save: failed to create `{}`: {err}", dir.display());
-        return;
-    }
-    if let Err(err) = std::fs::write(&path, serialized) {
-        error!("gang save: failed to write `{}`: {err}", path.display());
+    if let Err(err) = write_ron_pretty(&path, roster) {
+        error!("gang save: gang `{}`: {err}", name.as_str());
         return;
     }
     info!(
@@ -147,7 +151,7 @@ mod tests {
         Reflexes, Speed, Strength, Toughness, WeaponName, ganger::Luck,
     };
 
-    use super::{gang_file_name, serialize_roster};
+    use super::{gang_file_name, gang_save_path, serialize_roster};
     use crate::states::running::editor::model::EditableGang;
 
     /// A two-member edited gang's REGISTRY fixture — built from the fully-public sim
@@ -253,9 +257,44 @@ mod tests {
 
     /// The save FILE NAME is `<gang_name>.ron` (the RESOLVED save path, user 2026-06-26) — and the
     /// loader's stem-keying recovers exactly the gang name from it (no `.gang` infix to strip).
+    /// An already-slug-shaped name passes through the GTW-577 sanitize seam unchanged.
     #[test]
     fn save_file_name_is_gang_name_dot_ron() {
         let name = GangName::new("goliaths".to_owned());
         assert_eq!(gang_file_name(&name), "goliaths.ron");
+    }
+
+    /// GTW-577 acceptance (2) — a PATH-HOSTILE [`GangName`] saves to a SANITIZED filename via
+    /// the REAL [`gang_file_name`] / [`gang_save_path`]: the traversal-shaped `../../` and the
+    /// `!` are dropped by the shared seam, spaces/uppercase fold to the slug convention, and
+    /// the resolved path stays INSIDE `content/gangs/` (no `..` component survives). Before
+    /// GTW-577 the raw name went straight into the filename.
+    #[test]
+    fn path_hostile_gang_name_saves_to_a_sanitized_filename() {
+        let hostile = GangName::new("../../Evil Gang!".to_owned());
+        assert_eq!(
+            gang_file_name(&hostile),
+            "evil_gang.ron",
+            "the seam drops path separators/dots and folds the name to the slug convention",
+        );
+
+        // The resolved path's TAIL is exactly `content/gangs/<sanitized>.ron` — the hostile
+        // name contributed a single, separator-free FILE component, so it cannot have escaped
+        // the gangs directory. (The workspace root itself contains `../..` by construction —
+        // `CARGO_MANIFEST_DIR/../../assets` — so the assertion pins the name-derived tail.)
+        let path = gang_save_path(&hostile);
+        assert!(
+            path.ends_with("content/gangs/evil_gang.ron"),
+            "the sanitized file lands under content/gangs/: {path:?}",
+        );
+        assert_eq!(
+            path.file_name().and_then(|f| f.to_str()),
+            Some("evil_gang.ron"),
+            "the whole hostile name collapsed into ONE sanitized file component",
+        );
+
+        // A name that sanitizes to NOTHING falls back to the documented stem — never `.ron`.
+        let unnameable = GangName::new("!!!///".to_owned());
+        assert_eq!(gang_file_name(&unnameable), "unnamed_gang.ron");
     }
 }

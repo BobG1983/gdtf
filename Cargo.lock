@@ -2828,6 +2828,7 @@ dependencies = [
  "gdtf_test_utils",
  "ron",
  "serde",
+ "tempfile",
 ]
 
 [[package]]

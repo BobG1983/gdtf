@@ -11,7 +11,6 @@ use gdtf_battle_presenter::ViewMode;
 
 use crate::{
     canvas::{CurrentEditLevel, LevelStep},
-    egui_shell::prefab::controls_ui::toggled,
     mode::EditorMode,
     session::MapEditorSession,
 };
@@ -64,7 +63,9 @@ pub(crate) fn view_mode_hotkey(
         return;
     }
     if keys.just_pressed(KeyCode::KeyF) {
-        let next = toggled(*view);
+        // GTW-577 C8: the presenter-owned ViewMode::toggled — the SAME flip the toggle
+        // button and the battlescape intent drain apply.
+        let next = view.toggled();
         view.set_if_neq(next);
     }
 }

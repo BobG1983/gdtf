@@ -3,6 +3,7 @@
 //! directory helpers. (GTW-512: the `bevy_ui` save-widget markers were dropped — the egui save
 //! controls are the C4 child.)
 
+use gdtf_assets::{RonSaveError, sanitize_file_stem};
 use gdtf_battle_sim::{
     level::{GridSize, SpawnRole},
     metric::CellLevel,
@@ -42,8 +43,10 @@ pub(super) const SAVED_SPAWN_ROLE: SpawnRole = SpawnRole::Fill;
 /// the old zero-opening rejection variant was DROPPED in GTW-495, the schema authors no
 /// openings).
 ///
-/// A named domain enum (no-bare-types: the rejection reason is a domain value). Each variant names
-/// what was wrong so the `error!` line is precise.
+/// A named domain enum (no-bare-types: the rejection reason is a domain value). The
+/// domain-validation variants stay bespoke here (GTW-577 P9); the duplicated serialize/write
+/// tail collapsed onto the shared [`RonSaveError`] seam error, wrapped by
+/// [`Save`](Self::Save) (GTW-577 C3).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SavePrefabError {
     /// The author entered no prefab name (an empty / whitespace-only field) — there is no file
@@ -53,10 +56,19 @@ pub enum SavePrefabError {
     /// (C3) — the save is rejected so a written prefab never contains an illegal cell. Names the
     /// offending slot.
     IllegalCell(CellLevel),
-    /// Serializing the built [`PrefabSpec`](gdtf_battle_sim::level::PrefabSpec) to RON failed.
-    Serialize(String),
-    /// Writing the serialized prefab to disk failed (a missing dir / permissions error / io).
-    Write(String),
+    /// The shared serialize/write tail failed (GTW-577 C3) — wraps the seam's
+    /// [`RonSaveError`], whose `Display` names the failed stage exactly once.
+    Save(RonSaveError),
+}
+
+impl From<RonSaveError> for SavePrefabError {
+    /// The per-type conversion off the shared seam error (GTW-577 C3) — lets the save path
+    /// `?` a [`write_ron_pretty`](gdtf_assets::write_ron_pretty) /
+    /// [`serialize_ron_pretty`](gdtf_assets::serialize_ron_pretty) failure straight into the
+    /// form's error.
+    fn from(err: RonSaveError) -> Self {
+        Self::Save(err)
+    }
 }
 
 impl std::fmt::Display for SavePrefabError {
@@ -69,8 +81,7 @@ impl std::fmt::Display for SavePrefabError {
                     "painted cell {slot:?} is an illegal placement; refusing to save"
                 )
             }
-            Self::Serialize(err) => write!(f, "failed to serialize the prefab: {err}"),
-            Self::Write(err) => write!(f, "failed to write the prefab file: {err}"),
+            Self::Save(err) => write!(f, "{err}"),
         }
     }
 }
@@ -84,22 +95,16 @@ impl std::error::Error for SavePrefabError {}
 /// per-theme layout. The save path resolves the theme's display name from the
 /// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry); this folds it to the
 /// directory convention. NOT a closed-enum match (the UUID model has no closed theme enum):
-/// lowercase, spaces / dashes → underscores, anything outside `[a-z0-9_]` dropped. An empty
+/// the slug policy is the shared [`sanitize_file_stem`] seam (GTW-577 C1). An empty
 /// result falls back to the (still-unique) nil/unknown bucket name so a save never targets the
-/// assets root.
+/// assets root — the fallback POLICY stays per-type (P9); only the filter delegated.
 #[must_use]
 pub(super) fn theme_dir(display_name: &str) -> String {
-    let slug: String = display_name
-        .trim()
-        .to_ascii_lowercase()
-        .chars()
-        .map(|c| if c == ' ' || c == '-' { '_' } else { c })
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '_')
-        .collect();
+    let slug = sanitize_file_stem(display_name);
     if slug.is_empty() {
         "unknown_theme".to_owned()
     } else {
-        slug
+        slug.to_string()
     }
 }
 

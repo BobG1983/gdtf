@@ -31,9 +31,12 @@
 //! ## Three triggers, all dev-gated by the consumer
 //!
 //! 1. **Env-var capture-then-exit** (unattended QA / CI-able): set the opt-in env var to a path;
-//!    [`ScreenshotCapturePlugin::from_env`] captures after settle and exits. (The scene hooks in
-//!    `gdtf_app` keep their own env vars + drive but delegate to [`parse_shot_path`] /
-//!    [`settle_then_capture`].)
+//!    [`ScreenshotCapturePlugin::from_env`] captures after settle and exits. The scene hooks in
+//!    `gdtf_app` (gang editor / procgen visualizer / loading screen, since GTW-577) keep their
+//!    own env vars + drive but delegate the path gate to [`parse_shot_path`] and the
+//!    settle-then-`Screenshot` spawn to [`settle_then_capture`]; their EXIT is the game's own
+//!    `RunningState::Quit` cascade (`gdtf_app`'s `poll_then_quit`), NOT [`poll_then_exit`] —
+//!    and the loading-screen hook deliberately does not exit at all (capture-and-continue).
 //! 2. **Debug keybind** (interactive): [`KeyboardCapturePlugin`] on F10, no exit.
 //! 3. **Programmatic** (harness): [`ScreenshotCapturePlugin::with_path`] / inserting a
 //!    [`CapturePath`] resource + advancing the app drives the same pipeline.

@@ -35,6 +35,10 @@
 //!   call turns a whole folder of `.ron` files into a live registry
 //!   [`Resource`](bevy::prelude::Resource), hot-reloading on member edits,
 //!   keyed by the one generic persistent [`ContentFolderHandle`].
+//! - [`sanitize_file_stem`] / [`FileStem`] + [`serialize_ron_pretty`] /
+//!   `write_ron_pretty` / [`RonSaveError`] (GTW-577) — the shared RON **save**
+//!   seam: the ONE file-stem slug policy and the ONE serialize → mkdir → write
+//!   chain (dev-only) every editor-side saver delegates to.
 //!
 //! # Where the asset source root is
 //!
@@ -63,6 +67,7 @@ mod ext;
 mod family;
 mod hot;
 mod loader;
+mod save;
 
 pub use asset::RonAsset;
 pub use error::{ReadError, RonDeError, RonLoadError};
@@ -76,3 +81,6 @@ pub use hot::{
     kick_off_hot_ron_resource, redrive_hot_ron_resource, resolve_hot_ron_resource,
 };
 pub use loader::RonAssetLoader;
+#[cfg(debug_assertions)]
+pub use save::write_ron_pretty;
+pub use save::{FileStem, RonSaveError, sanitize_file_stem, serialize_ron_pretty};

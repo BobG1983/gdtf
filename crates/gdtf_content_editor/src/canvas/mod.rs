@@ -18,11 +18,6 @@
 use bevy::prelude::*;
 use gdtf_battle_sim::{level::GridSize, metric::Level};
 
-/// One drawable cell's square edge, in logical pixels, at the base (unzoomed) scale — the GTW-423
-/// canvas scale the egui viewport (C4) re-applies. A documented framework layout const (the
-/// no-bare-types clause-4 plumbing carve-out), not a domain value.
-pub(crate) const CANVAS_CELL_PX: f32 = 24.0;
-
 /// The minimum canvas zoom factor — cells shrink to a quarter of their base edge. A framework
 /// layout const.
 const MIN_ZOOM: f32 = 0.25;
@@ -116,8 +111,9 @@ impl LevelStep {
     }
 }
 
-/// The canvas **zoom factor** (GTW-500 C3) — the multiplier on the base cell edge
-/// [`CANVAS_CELL_PX`] the egui viewport (C4) re-applies.
+/// The canvas **zoom factor** (GTW-500 C3) — the multiplier the GTW-515 preview reuses as the
+/// preview camera's `OrthographicProjection::scale` (the `bevy_ui` fixed-px cell edge it once
+/// multiplied — `CANVAS_CELL_PX` — died with the `bevy_ui` canvas; GTW-577 C7 deleted it).
 ///
 /// A named newtype over the bare `f32` factor (no-bare-types: a zoom factor is a domain value).
 /// PRIVATE inner, derived [`Deref`]; mutated through [`scaled`](CanvasZoom::scaled) /
@@ -129,7 +125,7 @@ impl LevelStep {
 pub struct CanvasZoom(f32);
 
 impl CanvasZoom {
-    /// The unzoomed factor — cells at their base [`CANVAS_CELL_PX`] edge (the editor's open state).
+    /// The unzoomed factor — the editor's open state.
     #[must_use]
     pub const fn identity() -> Self {
         Self(1.0)
@@ -146,11 +142,5 @@ impl CanvasZoom {
     #[must_use]
     pub const fn reset() -> Self {
         Self::identity()
-    }
-
-    /// The cell EDGE in logical pixels at this zoom — [`CANVAS_CELL_PX`] times the factor.
-    #[must_use]
-    pub fn cell_px(self) -> f32 {
-        CANVAS_CELL_PX * self.0
     }
 }

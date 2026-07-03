@@ -40,6 +40,12 @@ use bevy::{
 };
 pub use gdtf_ui::UiPlugin;
 
+// The GTW-577 shared capture EXIT — gated exactly like its module (`dev_capture` debug
+// builds only), so the headless pin test (`tests/capture_quit.rs`, itself
+// `dev_capture`-gated) can chain the REAL `poll_then_quit` after the crate's
+// `settle_then_capture` and assert the Quit-cascade exit (never a direct `AppExit`).
+#[cfg(all(debug_assertions, feature = "dev_capture"))]
+pub use crate::states::running::capture_exit::poll_then_quit;
 // The GTW-434/GTW-498 procgen-visualizer model + markers — `debug_assertions`-gated because
 // the whole visualizer module compiles out of release (C4), so these items only exist in a
 // debug build.

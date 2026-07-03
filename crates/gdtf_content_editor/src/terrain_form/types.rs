@@ -424,25 +424,32 @@ impl core::str::FromStr for ArmorInput {
 /// Why a terrain save was REJECTED — the handled, no-panic failure of the terrain save path
 /// (GTW-474). A named domain enum (no-bare-types). `pub` because the `pub`
 /// [`serialize_terrain_def`](crate::serialize_terrain_def) returns it (the C4 test reuses the
-/// projection + serialization seam).
+/// projection + serialization seam). The domain-validation variant stays bespoke (GTW-577
+/// P9); the serialize/write tail collapsed onto the shared
+/// [`RonSaveError`](gdtf_assets::RonSaveError), wrapped by [`Save`](Self::Save).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SaveTerrainError {
     /// The author entered no display name (an empty / whitespace-only field) — there is no file
     /// stem to write to.
     EmptyName,
-    /// Serializing the built [`TerrainDef`](gdtf_battle_sim::terrain::def::TerrainDef) to RON
-    /// failed.
-    Serialize(String),
-    /// Writing the serialized def to disk failed (a missing dir / permissions error / io).
-    Write(String),
+    /// The shared serialize/write tail failed (GTW-577 C3) — wraps the seam's
+    /// [`RonSaveError`](gdtf_assets::RonSaveError), whose `Display` names the failed stage.
+    Save(gdtf_assets::RonSaveError),
+}
+
+impl From<gdtf_assets::RonSaveError> for SaveTerrainError {
+    /// The per-type conversion off the shared seam error (GTW-577 C3) — lets the save path
+    /// `?` a seam failure straight into the form's error.
+    fn from(err: gdtf_assets::RonSaveError) -> Self {
+        Self::Save(err)
+    }
 }
 
 impl std::fmt::Display for SaveTerrainError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::EmptyName => write!(f, "no terrain name entered — nothing to save"),
-            Self::Serialize(err) => write!(f, "failed to serialize the terrain def: {err}"),
-            Self::Write(err) => write!(f, "failed to write the terrain-def file: {err}"),
+            Self::Save(err) => write!(f, "{err}"),
         }
     }
 }
