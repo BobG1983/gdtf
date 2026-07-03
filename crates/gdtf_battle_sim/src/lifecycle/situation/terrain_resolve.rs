@@ -146,34 +146,20 @@ pub(super) struct ResolvedSlabPiece {
 /// was authored in a cover list), which is treated as an authoring error at the call site (the
 /// piece is re-validated as the correct kind there).
 pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<ResolvedCoverPiece> {
-    let (max_hp, armor_protection, armor_hardness, height_band, piece_kind, mounted_weapon) =
+    let (max_hp, armor_protection, armor_hardness, height_band, mounted_weapon) =
         match &def.sim_kind {
             TerrainSimKind::Wall {
                 hp,
                 armor_protection,
                 armor_hardness,
                 height_band,
-            } => (
-                *hp,
-                *armor_protection,
-                *armor_hardness,
-                *height_band,
-                TerrainPieceKind::Wall,
-                None,
-            ),
-            TerrainSimKind::Cover {
+            }
+            | TerrainSimKind::Cover {
                 hp,
                 armor_protection,
                 armor_hardness,
                 height_band,
-            } => (
-                *hp,
-                *armor_protection,
-                *armor_hardness,
-                *height_band,
-                TerrainPieceKind::Cover,
-                None,
-            ),
+            } => (*hp, *armor_protection, *armor_hardness, *height_band, None),
             // GTW-543: an emplacement is a cover-like smashable structure resolved through this
             // same cover path — same CoverHp pool, same armor model, same band-carrying
             // occluder. It differs only in carrying the mounted-weapon key + the enter/exit
@@ -189,7 +175,6 @@ pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<R
                 *armor_protection,
                 *armor_hardness,
                 *height_band,
-                TerrainPieceKind::Emplacement,
                 Some(mounted_weapon.clone()),
             ),
             TerrainSimKind::Slab { .. } => {
@@ -208,7 +193,10 @@ pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<R
         height_band,
         armor_protection,
         armor_hardness,
-        piece_kind,
+        // The entity's kind tag is a kind-IDENTITY value (no payload), so it comes from
+        // the canonical `TerrainPieceKind` projection (GTW-574 C2) — the Slab arm above
+        // has already bailed, so this is always Wall / Cover / Emplacement here.
+        piece_kind: def.sim_kind.kind(),
         emplacement: mounted_weapon,
         // NET-NEW (GTW-491): the graphic comes from the def's presenter_kind for ALL kinds,
         // INCLUDING Wall — a wall entity now carries a TerrainGraphicKey (the fact GTW-493

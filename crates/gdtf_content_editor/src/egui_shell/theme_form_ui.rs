@@ -41,13 +41,13 @@ use bevy_egui::egui;
 use gdtf_battle_presenter::TileRoles;
 use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeDef, UuidThemeRegistry},
-    terrain::def::{TerrainDefRegistry, TerrainSimKind, TerrainUuid},
+    terrain::def::{TerrainDefRegistry, TerrainUuid},
 };
 
 use crate::{
     egui_shell::sprite_thumb,
     terrain_graphics::terrain_atlas_index,
-    theme_form::{ThemeDraft, resolved_stats, slab_floor_candidates},
+    theme_form::{ThemeDraft, resolved_stats, sim_kind_label, slab_floor_candidates},
 };
 
 /// The placeholder text shown in the left stats panel when no default-floor terrain is selected
@@ -134,7 +134,8 @@ fn name_field(ui: &mut egui::Ui, draft: &mut ThemeDraft) {
 /// the SPRITE via the SHARED [`sprite_thumb`] helper (GTW-516) over the terrain's
 /// [`terrain_atlas_index`](crate::terrain_graphics::terrain_atlas_index) — the SAME resolution the
 /// battlescape + the TERRAIN picker use, NO hardcoded index — then a selectable multi-select
-/// checkbox carrying `"name [Kind]"` (Kind = Wall / Cover / Slab). A check / uncheck routes through
+/// checkbox carrying `"name [Kind]"` (Kind = Wall / Cover / Slab / Emplacement). A check / uncheck
+/// routes through
 /// [`ThemeDraft::toggle_terrain`], which fail-closes the default floor if the toggled terrain was
 /// the chosen floor (the C6 rule) — the multi-select behavior is PRESERVED across the relocation.
 ///
@@ -303,19 +304,9 @@ pub(crate) fn load_theme_into_form(draft: &mut ThemeDraft, def: &UuidThemeDef) {
     );
 }
 
-/// The short human label for a terrain sim kind (Wall / Cover / Slab / Emplacement) — shown
-/// beside each library row's name so the author sees the structural kind at a glance (C3.1).
-/// Mirrors the private [`sim_kind_label`](crate::theme_form::resolve::sim_kind_label) in
-/// `resolve.rs` (used here in the library renderer; this copy avoids reaching into the private
-/// submodule).
-const fn sim_kind_label(kind: &TerrainSimKind) -> &'static str {
-    match kind {
-        TerrainSimKind::Wall { .. } => "Wall",
-        TerrainSimKind::Cover { .. } => "Cover",
-        TerrainSimKind::Slab { .. } => "Slab",
-        TerrainSimKind::Emplacement { .. } => "Emplacement",
-    }
-}
+// GTW-574 C7: the verbatim `sim_kind_label` copy this file carried is GONE — the library rows
+// import the ONE label fn from `crate::theme_form` (re-exported from its `resolve` submodule),
+// which since GTW-574 matches exhaustively over the canonical `TerrainPieceKind` projection.
 
 /// Resolve which [`ThemeUuid`] to auto-load into the form when entering THEME mode — the session's
 /// selected theme if it is not the nil sentinel and the registry resolves it, else [`None`].

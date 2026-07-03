@@ -9,7 +9,7 @@
 //! loop, the tests, and any future reader all agree on one definition.
 
 use super::{TerrainDef, TerrainSimKind, TerrainTag};
-use crate::cover::HeightBand;
+use crate::{cover::HeightBand, terrain::entity::TerrainPieceKind};
 
 /// Whether a [`TerrainDef`] derives **path-blocking** — the rule that decides whether a
 /// spawned terrain entity gets the
@@ -52,13 +52,14 @@ pub fn derives_path_blocking(def: &TerrainDef) -> bool {
 /// same-storey obstruction, so it does not block by default — only an explicit
 /// [`BlocksPathfinding`](TerrainTag::BlocksPathfinding) tag makes one block (the C1
 /// opt-in).
+///
+/// A kind-IDENTITY decision (no per-variant payload), so it reads the canonical
+/// [`TerrainPieceKind`] projection ([`TerrainSimKind::kind`] — GTW-574 C2).
 #[must_use]
 pub const fn sim_kind_blocks_path(sim_kind: &TerrainSimKind) -> bool {
     matches!(
-        sim_kind,
-        TerrainSimKind::Wall { .. }
-            | TerrainSimKind::Cover { .. }
-            | TerrainSimKind::Emplacement { .. }
+        sim_kind.kind(),
+        TerrainPieceKind::Wall | TerrainPieceKind::Cover | TerrainPieceKind::Emplacement
     )
 }
 
@@ -127,13 +128,14 @@ pub fn derives_vision_occlusion(def: &TerrainDef) -> Option<HeightBand> {
 /// reproduces the existing `LoS` exactly, zero regression). A slab is a horizontal z-boundary
 /// the slab march already handles, not a same-storey occluder, so it does not occlude by
 /// default — only an explicit [`BlocksVision`](TerrainTag::BlocksVision) tag makes one.
+///
+/// A kind-IDENTITY decision (no per-variant payload), so it reads the canonical
+/// [`TerrainPieceKind`] projection ([`TerrainSimKind::kind`] — GTW-574 C2).
 #[must_use]
 pub const fn sim_kind_occludes_vision(sim_kind: &TerrainSimKind) -> bool {
     matches!(
-        sim_kind,
-        TerrainSimKind::Wall { .. }
-            | TerrainSimKind::Cover { .. }
-            | TerrainSimKind::Emplacement { .. }
+        sim_kind.kind(),
+        TerrainPieceKind::Wall | TerrainPieceKind::Cover | TerrainPieceKind::Emplacement
     )
 }
 

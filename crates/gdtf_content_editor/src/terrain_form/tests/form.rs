@@ -1,24 +1,14 @@
-//! In-crate tests for the TERRAIN form's pure projection + the C2 footfall gate (GTW-474).
-//!
-//! The C4 in-engine / loader round-trip lives in the crate's integration test
-//! (`tests/terrain_mode.rs`); these unit-test the pure draft → def projection, the C3 RON
-//! round-trip on the loader's parser, and the C2 footfall-gate rule on the draft. Panic /
-//! expect-free per the workspace lints (`assert!` + `let … else`).
+//! The TERRAIN form's projection / round-trip / footfall-gate / picker-derivation tests
+//! (GTW-474 / GTW-513 / GTW-516 / GTW-566).
 
 use gdtf_battle_presenter::TileRole;
-use gdtf_battle_sim::terrain::def::{
-    TerrainDef, TerrainPresenterKind, TerrainSimKind, TerrainTag, TerrainUuid,
-};
+use gdtf_battle_sim::terrain::def::{TerrainDef, TerrainPresenterKind, TerrainSimKind, TerrainTag};
 
-use super::{
-    save::{draft_to_terrain_def, serialize_terrain_def},
-    types::{FootfallChoice, TerrainDraft, TerrainKindChoice, offered_graphic_roles},
+use super::support::key;
+use crate::terrain_form::{
+    FootfallChoice, TerrainDraft, TerrainKindChoice, draft_to_terrain_def, offered_graphic_roles,
+    serialize_terrain_def,
 };
-
-/// A terrain UUID from a small constant (the test's minted key).
-fn key() -> TerrainUuid {
-    TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0bcd_0001))
-}
 
 /// GTW-566 C5 (AC3) — the picker's offered list is DERIVED from the shared vocabulary:
 /// it equals [`TileRole::ALL`] filtered by [`TileRole::def_authorable`], and it now
@@ -90,7 +80,9 @@ fn graphic_picker_selection_updates_the_draft_graphic_name() {
             "set_graphic updates the draft's active graphic choice (the highlighted cell)",
         );
 
-        let def = draft_to_terrain_def(&draft, key());
+        let Ok(def) = draft_to_terrain_def(&draft, key()) else {
+            unreachable!("a Wall draft always projects (no fail-closed gate applies)")
+        };
         let TerrainPresenterKind::Wall { graphic_name } = &def.presenter_kind else {
             unreachable!("a Wall draft projects to a Wall presenter kind");
         };
@@ -111,13 +103,15 @@ fn graphic_picker_selection_updates_the_draft_graphic_name() {
 }
 
 /// C2 — the footfall field is OFFERED only for the Slab kind: a Slab draft keeps a set footfall,
-/// while a Wall / Cover draft forces it to `None` (the fail-closed gate in `set_kind`).
+/// while a Wall / Cover / Emplacement draft forces it to `None` (the fail-closed gate in
+/// `set_kind`).
 #[test]
 fn footfall_offered_only_for_slab() {
     // Only Slab offers footfall.
     assert!(TerrainKindChoice::Slab.offers_footfall());
     assert!(!TerrainKindChoice::Wall.offers_footfall());
     assert!(!TerrainKindChoice::Cover.offers_footfall());
+    assert!(!TerrainKindChoice::Emplacement.offers_footfall());
 
     // A Slab draft KEEPS a chosen footfall.
     let mut draft = TerrainDraft::default();
@@ -146,21 +140,6 @@ fn footfall_offered_only_for_slab() {
     );
 }
 
-/// C2 — the kind picker offers ONLY Wall / Cover / Slab (no Floor / Scatter, retired on the UUID
-/// model). A structural pin on the closed kind set.
-#[test]
-fn kind_picker_offers_only_wall_cover_slab() {
-    assert_eq!(
-        TerrainKindChoice::SEGMENT_ORDER,
-        [
-            TerrainKindChoice::Wall,
-            TerrainKindChoice::Cover,
-            TerrainKindChoice::Slab,
-        ],
-        "the kind picker offers EXACTLY Wall / Cover / Slab (Floor + Scatter retired — C2/C6)",
-    );
-}
-
 /// C2/C3 — a Wall draft projects to the right `TerrainDef` shape: a `Wall` sim kind with the
 /// draft's HP / armor / band, a `Wall` presenter kind with the graphic role, and the selected
 /// tags.
@@ -172,7 +151,9 @@ fn wall_draft_projects_to_wall_def() {
     draft.set_graphic(TileRole::Wall);
     draft.toggle_tag(TerrainTag::BlocksVision);
 
-    let def = draft_to_terrain_def(&draft, key());
+    let Ok(def) = draft_to_terrain_def(&draft, key()) else {
+        unreachable!("a Wall draft always projects (no fail-closed gate applies)")
+    };
     assert_eq!(def.key, key());
     assert!(
         matches!(def.sim_kind, TerrainSimKind::Wall { .. }),
@@ -201,7 +182,9 @@ fn slab_draft_projects_with_footfall() {
     draft.set_graphic(TileRole::Slab);
     draft.set_footfall(FootfallChoice::Metal);
 
-    let def = draft_to_terrain_def(&draft, key());
+    let Ok(def) = draft_to_terrain_def(&draft, key()) else {
+        unreachable!("a Slab draft always projects (no fail-closed gate applies)")
+    };
     assert!(
         matches!(def.sim_kind, TerrainSimKind::Slab { .. }),
         "a Slab draft projects to a Slab sim kind",
@@ -226,7 +209,9 @@ fn terrain_def_round_trips_through_the_loader_parser() {
     draft.set_graphic(TileRole::Cover);
     draft.toggle_tag(TerrainTag::Indestructible);
 
-    let def = draft_to_terrain_def(&draft, key());
+    let Ok(def) = draft_to_terrain_def(&draft, key()) else {
+        unreachable!("a Cover draft always projects (no fail-closed gate applies)")
+    };
     let serialized = serialize_terrain_def(&def);
     assert!(
         serialized.is_ok(),

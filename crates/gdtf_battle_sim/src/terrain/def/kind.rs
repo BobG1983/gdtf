@@ -10,7 +10,10 @@ use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
     slab::SlabHp,
-    terrain::piece::{FootfallSound, TerrainGraphicKey},
+    terrain::{
+        entity::TerrainPieceKind,
+        piece::{FootfallSound, TerrainGraphicKey},
+    },
     weapon::WeaponName,
 };
 
@@ -112,6 +115,27 @@ pub enum TerrainSimKind {
     },
 }
 
+impl TerrainSimKind {
+    /// Project this payload-carrying sim kind onto the CANONICAL fieldless
+    /// [`TerrainPieceKind`] discriminant (GTW-574 C1).
+    ///
+    /// EXHAUSTIVE by design — no wildcard arm — so adding a `TerrainSimKind` variant is
+    /// a compile error HERE, forcing a `TerrainPieceKind` variant (or an explicit
+    /// mapping decision), which in turn breaks every `From<TerrainPieceKind>` bridge
+    /// (the occupancy grid, the editor pick list) at compile time. Kind-identity
+    /// decisions that need no per-variant payload go through this projection; payload
+    /// folds (stat extraction, `resolve_cover_def`) keep their own exhaustive matches.
+    #[must_use]
+    pub const fn kind(&self) -> TerrainPieceKind {
+        match self {
+            Self::Wall { .. } => TerrainPieceKind::Wall,
+            Self::Cover { .. } => TerrainPieceKind::Cover,
+            Self::Slab { .. } => TerrainPieceKind::Slab,
+            Self::Emplacement { .. } => TerrainPieceKind::Emplacement,
+        }
+    }
+}
+
 /// The **PRESENTER half** of a terrain definition — strictly the presentation hooks
 /// the presenter resolves, mirroring the sim kinds.
 ///
@@ -159,6 +183,25 @@ pub enum TerrainPresenterKind {
         /// (REUSE [`TerrainGraphicKey`]).
         graphic_name: TerrainGraphicKey,
     },
+}
+
+impl TerrainPresenterKind {
+    /// Project this payload-carrying presenter kind onto the CANONICAL fieldless
+    /// [`TerrainPieceKind`] discriminant (GTW-574 C1) — the presenter-half mirror of
+    /// [`TerrainSimKind::kind`].
+    ///
+    /// EXHAUSTIVE by design — no wildcard arm — so adding a `TerrainPresenterKind`
+    /// variant is a compile error HERE, keeping the presenter half in canonical-kind
+    /// lockstep with the sim half without hand-mirroring.
+    #[must_use]
+    pub const fn kind(&self) -> TerrainPieceKind {
+        match self {
+            Self::Wall { .. } => TerrainPieceKind::Wall,
+            Self::Cover { .. } => TerrainPieceKind::Cover,
+            Self::Slab { .. } => TerrainPieceKind::Slab,
+            Self::Emplacement { .. } => TerrainPieceKind::Emplacement,
+        }
+    }
 }
 
 /// A **sim-owned terrain tag** — a closed set of structural traits that drive the

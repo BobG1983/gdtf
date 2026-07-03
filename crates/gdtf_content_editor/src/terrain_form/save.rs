@@ -20,7 +20,7 @@ use gdtf_battle_sim::terrain::{
     piece::TerrainGraphicKey,
 };
 
-use super::types::{SaveTerrainError, TerrainDraft, TerrainKindChoice};
+use super::{draft::TerrainDraft, error::SaveTerrainError, picks::TerrainKindChoice};
 
 /// The workspace `assets/` root — byte-identical to the editor's `AssetPlugin.file_path`
 /// (`crates/gdtf_content_editor` → up two levels → `assets`), computed at compile time. So a
@@ -72,7 +72,8 @@ pub(crate) fn theme_dir(display_name: &str) -> String {
 /// C2) — the conversion at the heart of the terrain save.
 ///
 /// Builds the [`sim_kind`](TerrainDef::sim_kind) from the chosen [`TerrainKindChoice`] (the right
-/// stat fields per kind — Wall / Cover carry HP + armor + band; Slab carries HP + armor only),
+/// stat fields per kind — Wall / Cover carry HP + armor + band; Slab carries HP + armor only;
+/// Emplacement carries HP + armor + band + the selected mounted-weapon key — GTW-574 C6),
 /// the [`presenter_kind`](TerrainDef::presenter_kind) from the chosen graphic role + (Slab-only,
 /// C2) footfall, and copies the selected tags. Pure — the caller supplies the (already-minted)
 /// `uuid`.
@@ -81,8 +82,16 @@ pub(crate) fn theme_dir(display_name: &str) -> String {
 /// C4 integration test can project the live draft through the SAME conversion the save button runs
 /// and assert the produced def round-trips through the GTW-487 loader into a
 /// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry).
-#[must_use]
-pub fn draft_to_terrain_def(draft: &TerrainDraft, uuid: TerrainUuid) -> TerrainDef {
+///
+/// # Errors
+///
+/// [`SaveTerrainError::MissingMountedWeapon`] for an Emplacement draft with NO selected
+/// mounted weapon (GTW-574 C6) — an `Emplacement` sim kind REQUIRES its weapon key, so
+/// the projection fails closed: no panic, no silent default, no def produced.
+pub fn draft_to_terrain_def(
+    draft: &TerrainDraft,
+    uuid: TerrainUuid,
+) -> Result<TerrainDef, SaveTerrainError> {
     // GTW-566 C5: the draft's graphic is the presenter's TileRole; its `as_key` is the
     // exact authored role string, minted here into the sim's opaque key newtype (the
     // TileRole itself never crosses into the sim).
@@ -120,15 +129,34 @@ pub fn draft_to_terrain_def(draft: &TerrainDraft, uuid: TerrainUuid) -> TerrainD
                 footfall: draft.footfall().footfall(),
             },
         ),
+        // GTW-574 C6: an Emplacement is cover-like (CoverHp pool + armor + band) PLUS the
+        // mounted-weapon registry key. FAIL-CLOSED: no selected weapon means no def — the
+        // sim variant's `mounted_weapon` field is REQUIRED, and defaulting it silently
+        // would author a gun out of thin air.
+        TerrainKindChoice::Emplacement => {
+            let Some(mounted_weapon) = draft.mounted_weapon().cloned() else {
+                return Err(SaveTerrainError::MissingMountedWeapon);
+            };
+            (
+                TerrainSimKind::Emplacement {
+                    hp: draft.cover_hp(),
+                    armor_protection: draft.armor_protection(),
+                    armor_hardness: draft.armor_hardness(),
+                    height_band: draft.height_band(),
+                    mounted_weapon,
+                },
+                TerrainPresenterKind::Emplacement { graphic_name },
+            )
+        }
     };
-    TerrainDef {
+    Ok(TerrainDef {
         key: uuid,
         display_name: TerrainDisplayName::new(draft.display_name().trim().to_owned()),
         sim_kind,
         presenter_kind,
         tags: draft.tags().to_vec(),
         on_death: None,
-    }
+    })
 }
 
 /// Serialize a built [`TerrainDef`] to its `.terrain_def.ron`-shaped RON text — the SAME schema
@@ -158,7 +186,9 @@ pub fn serialize_terrain_def(def: &TerrainDef) -> Result<String, SaveTerrainErro
 ///
 /// # Errors
 ///
-/// Any [`SaveTerrainError`] from name validation or the seam's serialization / file write.
+/// Any [`SaveTerrainError`] from name validation, the fail-closed Emplacement projection
+/// (GTW-574 C6 — a missing mounted weapon writes NOTHING), or the seam's serialization /
+/// file write.
 #[cfg(debug_assertions)]
 pub fn write_terrain_in(
     assets_root: &Path,
@@ -170,7 +200,7 @@ pub fn write_terrain_in(
     if stem.is_empty() {
         return Err(SaveTerrainError::EmptyName);
     }
-    let def = draft_to_terrain_def(draft, uuid);
+    let def = draft_to_terrain_def(draft, uuid)?;
     let path = assets_root
         .join(TERRAIN_SUBDIR)
         .join(theme_dir(theme_display))

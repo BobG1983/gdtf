@@ -123,14 +123,21 @@ impl BlocksVision {
 }
 
 /// The kind of terrain piece this entity represents — `Wall`, `Cover` (scatter prop),
-/// or `Slab` (floor / roof).
+/// `Slab` (floor / roof), or `Emplacement` (a mounted-weapon position).
 ///
 /// A named domain enum (no-bare-types: a terrain kind is not a bare discriminant
 /// integer). The queryable kind tag on every terrain entity, recoverable from the
 /// source list the setup loop iterated: walls come from `situation.walls`, scatter
-/// props from `situation.scatter`, and slabs from `situation.slabs`. The `Floor`
-/// variant is reserved for GTW-396 (walkable-floor entities with `MoveCost`) and is
-/// not spawned by this ticket.
+/// props from `situation.scatter`, and slabs from `situation.slabs`.
+///
+/// **The CANONICAL terrain-kind discriminant (GTW-574 C1).** The payload-carrying
+/// [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) /
+/// [`TerrainPresenterKind`](crate::terrain::def::TerrainPresenterKind) each project onto
+/// this fieldless enum via their exhaustive `kind()` projections, and every
+/// kind-identity decision that needs no per-variant payload (the editor pick list, the
+/// occupancy bridge, the procgen classifier, the blocking defaults) is compiler-tied to
+/// it — so adding a terrain kind is a compile error at every decision point, including
+/// the editor.
 ///
 /// A Bevy [`Component`]: one `TerrainPieceKind` per terrain entity, queryable alongside
 /// [`TerrainCell`] for the kind+cell lookup path (C4).
@@ -154,4 +161,15 @@ pub enum TerrainPieceKind {
     /// [`EmplacementState`](crate::terrain::emplacement::EmplacementState) + a
     /// [`MountedWeaponKey`](crate::terrain::emplacement::MountedWeaponKey).
     Emplacement,
+}
+
+impl TerrainPieceKind {
+    /// Every terrain piece kind, in declaration order — the CLOSED inventory of the
+    /// canonical terrain-kind discriminant (GTW-574 C1).
+    ///
+    /// The one enumerable list completeness tests pin the derived vocabularies against
+    /// (the editor pick list, the kind projections): a new variant added here without
+    /// growing the array is caught by the in-crate inventory test's exhaustive match,
+    /// and every `From<TerrainPieceKind>` bridge breaks at compile time.
+    pub const ALL: [Self; 4] = [Self::Wall, Self::Cover, Self::Slab, Self::Emplacement];
 }
