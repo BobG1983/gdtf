@@ -1,6 +1,6 @@
-//! The terrain-piece **identity newtypes** — [`TerrainName`] (a terrain file's
-//! filename stem), [`TerrainGraphicKey`] (the opaque presenter-resolved graphic role),
-//! and [`FootfallSound`] (the opaque presenter-resolved footfall sound key).
+//! The terrain-piece **identity newtypes** — [`TerrainName`] (the LEGACY flat-model
+//! filename-stem key), [`TerrainGraphicKey`] (the opaque presenter-resolved graphic
+//! role), and [`FootfallSound`] (the opaque presenter-resolved footfall sound key).
 //!
 //! Every newtype here is a `String`-newtype (no-bare-types rule 1 covers `String`
 //! domain values): private inner, derived [`Deref`], `#[serde(transparent)]`, and
@@ -11,20 +11,23 @@
 use bevy::prelude::{Component, Deref};
 use serde::{Deserialize, Serialize};
 
-/// A terrain piece's **name** — a terrain file's filename stem.
+/// A terrain piece's **LEGACY name** — the filename-stem key of the RETIRED flat
+/// terrain model.
 ///
-/// A terrain file's filename stem, e.g. `"deck_floor"` from `deck_floor.terrain.ron`;
-/// the combat path never reads it. Mirrors [`WeaponName`](crate::weapon::WeaponName) /
-/// [`ArmorName`](crate::armor::ArmorName) exactly.
+/// Under the flat model a piece was keyed by its file's stem (e.g. `"deck_floor"`
+/// from the old `deck_floor.terrain.ron` files — loaders retired GTW-494, files
+/// deleted GTW-562); the combat path never read it. Mirrors
+/// [`WeaponName`](crate::weapon::WeaponName) / [`ArmorName`](crate::armor::ArmorName)
+/// in shape. The LIVE terrain identity is the UUID key
+/// ([`TerrainUuid`](crate::terrain::def::TerrainUuid)) of the unified
+/// [`TerrainDef`](crate::terrain::def::TerrainDef) model, which superseded this type
+/// everywhere (GTW-491+; e.g. `Situation::default_floor` is `TerrainUuid`-keyed with
+/// a nil-UUID sentinel, the successor to this type's empty-string sentinel).
 ///
 /// A terrain-identity newtype over [`String`] (no-bare-types: a name is a domain
 /// value). Private inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare
-/// RON string.
-///
-/// Implements [`Default`] (empty string sentinel) so [`Situation`](crate::situation::Situation)
-/// can use `#[serde(default)]` on its [`default_floor`](crate::situation::Situation::default_floor)
-/// field — an omitted field parses as an empty name, which the setup treats as
-/// "no authored floor piece; fall back to `CombatTuning::move_costs.open`".
+/// RON string. Implements [`Default`] (the empty-string "no authored floor piece"
+/// sentinel of the legacy model).
 #[derive(Deref, Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct TerrainName(String);
@@ -79,8 +82,9 @@ impl TerrainGraphicKey {
 /// resolves to an audio clip.
 ///
 /// No audio system is built yet (memory: *guns-only-no-melee-thrown-yet*); this
-/// key is carried now so authored `.terrain.ron` files can specify it and the
-/// future footfall-audio pass can consume it without a schema change.
+/// key is carried now so authored terrain content (a `.terrain_def.ron` slab's
+/// optional `footfall:`) can specify it and the future footfall-audio pass can
+/// consume it without a schema change.
 ///
 /// Derives [`Component`] so it can be attached to a terrain entity at setup
 /// (GTW-396, Decision E: presentation-hook seam). The future footfall-audio

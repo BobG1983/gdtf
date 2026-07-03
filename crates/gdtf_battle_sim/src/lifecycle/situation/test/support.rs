@@ -172,9 +172,6 @@ pub(super) fn shipped_field_registry() -> Option<crate::fields::FieldDefRegistry
     )]))
 }
 
-/// The three shipped terrain `.terrain.ron` files for the migrated
-/// `skirmish.ron` (GTW-396) — the REAL on-disk authored terrain pieces, so a
-/// regression in any of these files turns the shipped-setup test red.
 /// The UUID-keyed terrain-definition registry the shipped-`skirmish.ron` setup resolves
 /// cover/slab UUIDs against (GTW-491).
 ///

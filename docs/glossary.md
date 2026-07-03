@@ -1,6 +1,6 @@
 # Glossary (game vocabulary)
 
-Necromunda vocabulary is the house style. **Code identifiers must follow it** — no generic terms (no "paddle"/"ball"/"unit"/"soldier") where a glossary term exists. In Rust these terms become `snake_case` for fields/functions/modules and `CamelCase` for types/components/enums (e.g. `Ganger`, `GangId`, `bottle_check`) — the *word* is fixed, the casing follows Rust convention.
+Necromunda vocabulary is the house style. **Code identifiers must follow it** — no generic terms (no "paddle"/"ball"/"unit"/"soldier") where a glossary term exists. In Rust these terms become `snake_case` for fields/functions/modules and `CamelCase` for types/components/enums (e.g. `Ganger`, `GangName`, `bottle_check`) — the *word* is fixed, the casing follows Rust convention.
 
 | Term | Meaning |
 | ------ | --------- |
@@ -18,9 +18,9 @@ Necromunda vocabulary is the house style. **Code identifiers must follow it** �
 | **ModeKind** | A fire mode's closed kind — `Single` / `Burst` / `Full`. Its `Display` is the human label ("single"/"burst"/"full-auto"); there is no stored name string (see [combat/weapons-and-armor.md](combat/weapons-and-armor.md)). |
 | **WeaponRegistry** | The name-keyed set of all authored weapons, loaded from `assets/content/weapons/ranged/` at battle setup; `setup_battle` resolves each ganger's weapon key against it (see [combat/weapons-and-armor.md](combat/weapons-and-armor.md)). |
 | **WeaponSpec** | The authored form of a weapon — the fields a `.weapon.ron` carries (stats + `fire_mode` list), deserialised and resolved into a `WeaponBundle` at setup (see [combat/weapons-and-armor.md](combat/weapons-and-armor.md)). |
-| **TerrainName** | A terrain piece's registry key — the filename stem of its `.terrain.ron` file (e.g. `"deck_floor"` from `deck_floor.terrain.ron`). The `TerrainRegistry` keys specs by it; the combat path never reads it. Mirrors `WeaponName` / `ArmorName`. |
-| **TerrainRegistry** | The name-keyed set of all authored terrain pieces, loaded from `assets/content/terrain/` at battle setup; future battle-grid setup will resolve each cell's `TerrainName` against it (GTW-394; dormant until a downstream consumption ticket). Mirrors `WeaponRegistry` / `ArmorRegistry`. |
-| **TerrainSpec** | The authored form of a terrain piece — the fields a `.terrain.ron` carries: a graphic key, a footfall sound key, and a `kind` payload (`Floor` / `Wall` / `Cover` / `Scatter` / `Slab`) carrying the kind-specific stats (move cost for floors; HP + armor + height band for Wall/Cover/Scatter; HP + armor for Slab). Deserialised into the `TerrainRegistry` by the `Load` flow (GTW-394). |
+| **TerrainDef** | The authored form of a terrain piece — the fields a `.terrain_def.ron` carries: a stable `TerrainUuid` key, a display name, a SIM half (`sim_kind`: `Wall` / `Cover` / `Slab` / `Emplacement` structural stats), a PRESENTER half (`presenter_kind`: graphic role key + optional slab footfall), optional sim-owned `tags`, and an optional `on_death` effect (see [authoring/terrain-authoring.md](authoring/terrain-authoring.md)). |
+| **TerrainUuid** | A terrain def's stable UUID key — what themes, prefabs, and the registry reference a piece by (the file is payload-keyed; its filename is NOT the key). The theme mirror is **ThemeUuid**. |
+| **TerrainDefRegistry** | The UUID-keyed set of all authored terrain defs (`TerrainUuid` → `TerrainDef`), folder-loaded from `assets/content/terrain/<theme>/` and resolved at battle setup. Mirrors `WeaponRegistry` / `ArmorRegistry`; its theme sibling is the `UuidThemeRegistry` (`ThemeUuid` → `UuidThemeDef`, the per-theme palette + `default_floor`). |
 | **Visible** | A (cell, level) some conscious squad fighter currently sees — the union of the squad's eyes, the only tier the player may target into (see [combat/visibility.md](combat/visibility.md)). |
 | **Explored** | A (cell, level) seen at some point this mission but not currently — mission memory, rendered as live terrain dimmed; never shrinks. |
 | **Unseen** | A (cell, level) never seen this mission — fully hidden, reveals nothing (not even walkability). |
