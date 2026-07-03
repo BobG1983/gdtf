@@ -1950,8 +1950,9 @@ fn sprites_at(app: &mut App, at: bevy::math::Vec3) -> usize {
 /// `AoE` hit FX the fire path draws, with no new blast infrastructure.
 ///
 /// A blast is a multi-ganger fan with no single per-shot verdict, so the seeded impact carries a
-/// `PLACEHOLDER` shooter + a `None` report — the emitted `ShotImpactResolved` is classified as a
-/// miss (no phantom shot line). Pin-discriminates that: exactly ONE impact resolves, its shooter
+/// `PLACEHOLDER` shooter + a `None` report — the emitted `ShotImpactResolved` carries no verdict
+/// and the combat log renders NO outcome line for it (GTW-559, no phantom miss).
+/// Pin-discriminates that: exactly ONE impact resolves, its shooter
 /// is the placeholder, its report is `None`, and a sprite drew at `cell_to_world(landing)`.
 #[test]
 fn throw_resolved_draws_the_blast_impact_at_the_landing_cell() {
@@ -2001,9 +2002,9 @@ fn throw_resolved_draws_the_blast_impact_at_the_landing_cell() {
 }
 
 /// GTW-546 (presenter blast FX) — the emitted blast `ShotImpactResolved` carries a PLACEHOLDER
-/// shooter + a `None` report, so the combat log classifies it as a MISS (no phantom shot line):
-/// a blast's numbers / downs ride the per-ganger wound / injury / bleed FCT signals, not this
-/// detonation moment. Pin-discriminates the seed's no-verdict contract.
+/// shooter + a `None` report, so the combat log renders NO outcome line for it (GTW-559, no
+/// phantom miss): a blast's numbers / downs ride the per-ganger wound / injury / bleed FCT
+/// signals, not this detonation moment. Pin-discriminates the seed's no-verdict contract.
 #[test]
 fn throw_resolved_blast_impact_carries_no_shot_verdict() {
     let mut app = headless_renderer_app();
@@ -2045,6 +2046,6 @@ fn throw_resolved_blast_impact_carries_no_shot_verdict() {
     assert!(
         impact.report.is_none(),
         "a blast's numbers ride the per-ganger wound/injury signals — the impact report is None \
-         (classified as a miss, no phantom shot line)",
+         (no verdict; the combat log renders no outcome line for it, GTW-559)",
     );
 }

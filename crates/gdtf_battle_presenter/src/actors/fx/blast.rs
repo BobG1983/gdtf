@@ -69,8 +69,8 @@ use crate::cell_to_world;
 /// glyph (the GTW-547 on-death-marker precedent).
 /// [`animate_impact`](super::impact::animate_impact) still emits its
 /// [`ShotImpactResolved`](super::impact::ShotImpactResolved) with the placeholder shooter + `None`
-/// report; the combat log classifies that as a miss (no shot line), so the blast adds no phantom
-/// shot outcome.
+/// report; the combat log renders NO outcome line for a verdict-less `None` report (GTW-559), so
+/// the blast adds no phantom shot outcome.
 ///
 /// A [`PendingImpact`] is seeded whether or not the effects sheet is loaded (it is spawned
 /// unconditionally); [`animate_impact`](super::impact::animate_impact) itself fails the impact

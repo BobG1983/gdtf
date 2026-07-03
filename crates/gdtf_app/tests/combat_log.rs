@@ -177,7 +177,8 @@ fn spawn_named(app: &mut App, name: &str) -> Entity {
 
 /// A connecting ganger-hit `HitReport` dealing `hp` HP to `struck`'s torso — the verdict a
 /// `ShotImpactResolved` (or `ShotFired`) carries for a shot that landed (classifies to a
-/// damage line). A no-effect / `None` report would read as a miss; this proves the connecting path.
+/// damage line). A no-effect report would read as a miss, and a `None` report yields no line
+/// at all (GTW-559); this proves the connecting path.
 const fn connecting_report(struck: Entity, hp: i32) -> HitReport {
     HitReport {
         kind:            ShotKind::Ganger(struck),

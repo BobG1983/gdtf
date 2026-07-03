@@ -63,8 +63,10 @@ pub struct ShotImpactResolved {
     /// The firing entity whose shot just impacted — the consumer resolves it to a display name.
     pub shooter: Entity,
     /// The sim's already-computed verdict for this shot ([`HitReport`]: damage / wound / DOWN /
-    /// DEAD, or a no-effect miss). [`None`] for a geometry-only round (read as a miss). Reused
-    /// through the shared classifier — never recomputed.
+    /// DEAD, or a no-effect miss). [`None`] means NO ganger-shot verdict exists — the grenade
+    /// blast's detonation seed (GTW-546) — and the combat log renders NO outcome line for it
+    /// (GTW-559: a blast is not a miss). Reused through the shared classifier — never
+    /// recomputed.
     pub report:  Option<HitReport>,
 }
 

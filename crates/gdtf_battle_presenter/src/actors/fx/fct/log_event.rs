@@ -22,9 +22,11 @@
 //! [`CombatLogEvent::ShotOutcome`] feeds the same report through it and renders those classified
 //! pops as log lines — the outcome → text mapping lives in ONE place, never duplicated (its FCT
 //! callers are untouched). So a structural hit logs a real line (`"Cover hit"` / `"Slab
-//! Destroyed"` / `"Dust"` …), NOT a phantom miss. Only a GENUINE clean miss (a report that
-//! yields no pops) reads `"<name> missed"`: the user explicitly wants misses in the log, so a
-//! miss is NEVER suppressed here (unlike the floating-combat-text, which drops a clean miss).
+//! Destroyed"` / `"Dust"` …), NOT a phantom miss. Only a GENUINE clean miss (a CARRIED report
+//! that yields no pops) reads `"<name> missed"`: the user explicitly wants misses in the log, so
+//! a miss is NEVER suppressed here (unlike the floating-combat-text, which drops a clean miss).
+//! A `None` report yields NO line (GTW-559): it carries no ganger-shot verdict at all — the
+//! grenade blast's detonation seed — so there is no hit-or-miss outcome to phrase.
 //!
 //! Pure VIEW (ADR-0001): these are presenter-owned phrasing + palette decisions over resolved
 //! data; they read no sim state and write nothing.
@@ -119,10 +121,11 @@ pub enum CombatLogEvent {
         /// connecting hit's lines come straight from [`classify_report`], no name).
         actor:  LogName,
         /// The round's already-computed hit report (the sim's verdict) — reused through
-        /// [`classify_report`]; [`None`] (a geometry-only round) reads as a miss. BOXED
-        /// (GTW-438): the [`HitReport`] grew to carry the rolled injury (an owned `Vec` +
-        /// texts), so it is the heaviest variant payload — boxing keeps the enum small
-        /// (clippy `large_enum_variant`), the report living behind one heap pointer.
+        /// [`classify_report`]; [`None`] (no ganger-shot verdict — a blast detonation seed)
+        /// yields NO line (GTW-559, a blast is not a miss). BOXED (GTW-438): the [`HitReport`]
+        /// grew to carry the rolled injury (an owned `Vec` + texts), so it is the heaviest
+        /// variant payload — boxing keeps the enum small (clippy `large_enum_variant`), the
+        /// report living behind one heap pointer.
         report: Option<Box<HitReport>>,
     },
     /// A reload RESOLVED — `"<actor> reloaded"` / `"<actor>: no TU"`; an already-full reload
@@ -283,8 +286,9 @@ impl LogLine {
 /// - **Shot outcome** → the [`classify_report`] lines (REUSED — the flesh AND structural
 ///   outcome mapping is not duplicated), carrying each pop's color + emphasis; a structural
 ///   cover / slab / ground hit logs its real `"Cover hit"` / `"Slab Destroyed"` / `"Dust"` line
-///   (GTW-386), and only a genuine clean MISS (no pops) reads `"<actor> missed"` in neutral GREY
-///   (misses are NEVER suppressed).
+///   (GTW-386), and only a genuine clean MISS (a carried report with no pops) reads
+///   `"<actor> missed"` in neutral GREY (misses are NEVER suppressed). A `None` report — no
+///   ganger-shot verdict (a blast detonation) — yields NO line (GTW-559).
 /// - **Reload** → `"<actor> reloaded"` (neutral GREY) / `"<actor>: no TU"` (a denied act —
 ///   AMBER); [`AlreadyFull`](ReloadOutcome::AlreadyFull) → no line.
 /// - **Turn** → `"— Player turn —"` / `"— Enemy turn —"`, neutral GREY.
@@ -386,11 +390,21 @@ fn movement_line(actor: &LogName, from: Cell, to: Cell) -> LogLine {
 /// A connecting hit's lines come verbatim from [`classify_report`] (each pop's text + color +
 /// emphasis), so the outcome → text mapping is shared with the floating-combat-text and never
 /// duplicated — a structural hit therefore logs its real `"Cover hit"` / `"Slab Destroyed"` /
-/// `"Dust"` line (GTW-386), not a phantom miss. ONLY when the report yields NO pops (a genuine
-/// clean miss, or a geometry-only `None` report) does the log instead show the explicit miss
-/// line the user asked for.
+/// `"Dust"` line (GTW-386), not a phantom miss. ONLY when a CARRIED report yields NO pops (a
+/// genuine clean miss — [`ShotKind::Miss`](gdtf_battle_sim::ShotKind), `applied: None`) does the
+/// log instead show the explicit miss line the user asked for. A `None` report yields NO line at
+/// all (GTW-559): "missed" is a ganger-shot VERDICT, and a verdict-less impact — the grenade
+/// blast's detonation seed, whose consequences ride the per-ganger wound / injury signals — has
+/// no hit-OR-miss outcome to log, so rendering it as a miss was the phantom `"Someone missed"`
+/// bug.
 fn shot_outcome_lines(actor: &LogName, report: Option<&HitReport>) -> Vec<LogLine> {
-    let pops = classify_report(report);
+    // GTW-559: no report ⇒ no ganger-shot verdict ⇒ no outcome line. Only the blast's
+    // detonation seed produces a None report on this path (every fired volley round carries
+    // Some — a clean miss included), so this never suppresses a real miss.
+    let Some(report) = report else {
+        return Vec::new();
+    };
+    let pops = classify_report(Some(report));
     if pops.is_empty() {
         return vec![LogLine::new(
             CombatText::new(format!("{} missed", **actor)),
@@ -597,15 +611,25 @@ mod test {
         assert_eq!(lines.len(), 1, "a clean miss is exactly one log line");
         assert_eq!(&**lines[0].text(), "Vex missed");
         assert_eq!(lines[0].color(), valence_color(FctValence::Neutral));
+    }
 
-        // A geometry-only None report is likewise a miss.
+    /// GTW-559 — a `None` report is NOT a miss: it carries no ganger-shot verdict (the grenade
+    /// blast's detonation seed rides the impact seam with a placeholder shooter + `None`
+    /// report), so it yields NO log line at all. PIN-DISCRIMINATING: the old classifier rendered
+    /// it as `"<actor> missed"` — the phantom `"Someone missed"` every detonation appended.
+    /// A REAL clean miss keeps its line (it always carries `Some(HitReport)` with
+    /// `ShotKind::Miss` — pinned by [`a_clean_miss_yields_the_explicit_missed_line`] above).
+    #[test]
+    fn a_verdict_less_none_report_yields_no_line_not_a_phantom_miss() {
         let none_event = CombatLogEvent::ShotOutcome {
-            actor:  LogName::new("Vex"),
+            actor:  LogName::new("Someone"),
             report: None,
         };
-        let none_lines = classify_log_event(&none_event);
-        assert_eq!(none_lines.len(), 1);
-        assert_eq!(&**none_lines[0].text(), "Vex missed");
+        assert!(
+            classify_log_event(&none_event).is_empty(),
+            "a None-report shot outcome (a blast detonation — no ganger-shot verdict) must \
+             yield NO log line, never a phantom miss",
+        );
     }
 
     /// GTW-386 — a COVER hit logs a real structural line, NOT `"<actor> missed"`: a damaging hit

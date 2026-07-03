@@ -131,7 +131,8 @@ pub struct ProjectileTravel {
     shooter:  Entity,
     /// This shot's already-computed hit report (GTW-328) — the sim's verdict, threaded through to
     /// the arrival [`PendingImpact`] so the impact-resolved signal carries the data the combat log
-    /// classifies a shot outcome from. [`None`] for a geometry-only round (read as a miss).
+    /// classifies a shot outcome from. [`None`] carries no verdict — the log renders no outcome
+    /// line for it (GTW-559); every fired volley round carries `Some`, a clean miss included.
     report:   Option<HitReport>,
 }
 
@@ -330,7 +331,8 @@ pub struct PendingImpact {
     pub(in crate::actors::fx) shooter: Entity,
     /// This shot's hit report (GTW-328) — the sim's verdict, carried into the
     /// [`ShotImpactResolved`](super::impact::ShotImpactResolved) signal so the combat log
-    /// classifies the shot outcome at THIS shot's staggered impact. [`None`] reads as a miss.
+    /// classifies the shot outcome at THIS shot's staggered impact. [`None`] carries no
+    /// verdict (the blast seed) — the log renders no outcome line for it (GTW-559).
     pub(in crate::actors::fx) report:  Option<HitReport>,
 }
 
@@ -345,7 +347,8 @@ impl PendingImpact {
     /// per-ganger wound / injury / bleed FCT signals the sim's blast fold already drives. So this
     /// seed carries an EMPTY pop list, a [`None`] report, and a
     /// [`PLACEHOLDER`](bevy::ecs::entity::Entity::PLACEHOLDER) shooter — [`animate_impact`]'s
-    /// emitted `ShotImpactResolved` then classifies as a miss (no phantom shot line). Kept
+    /// emitted `ShotImpactResolved` then carries no verdict, and the combat log renders NO
+    /// outcome line for it (GTW-559 — no phantom miss). Kept
     /// `pub(in crate::actors::fx)` so only the sibling blast reader
     /// ([`read_throw_resolved`](super::blast::read_throw_resolved)) constructs it (the FX layer
     /// owns the seam).
