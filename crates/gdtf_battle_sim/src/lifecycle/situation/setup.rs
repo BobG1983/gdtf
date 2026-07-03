@@ -127,7 +127,7 @@ pub struct BattleRegistries<'a> {
     /// [`attachments`](crate::weapon::WeaponSpec::attachments) keys resolve against; each
     /// resolved item's [`AttachmentEffect`](crate::weapon::AttachmentEffect)s ride onto the
     /// spawned weapon as its [`PendingAttachments`] marker and are applied post-spawn by
-    /// [`apply_pending_attachments`](crate::acts_runtime::attachments::apply_pending_attachments). `None`
+    /// [`apply_pending_attachments`](crate::apply_pending_attachments). `None`
     /// ([`new`](Self::new)) skips attachment resolution — the fail-safe every content
     /// registry ref shares (a missing registry applies nothing, never fails a battle). The
     /// real app path passes the loaded value via [`with_attachments`](Self::with_attachments).
@@ -200,7 +200,7 @@ impl<'a> BattleRegistries<'a> {
 /// resolution shares (a missing attachment applies nothing, never fails a battle). An empty
 /// result is the identity — the post-spawn application system no-ops. The returned marker rides
 /// onto the weapon entity via the scene, and
-/// [`apply_pending_attachments`](crate::acts_runtime::attachments::apply_pending_attachments) applies each
+/// [`apply_pending_attachments`](crate::apply_pending_attachments) applies each
 /// effect via the [`attach_to_weapon`](crate::weapon::AttachToWeaponExt::attach_to_weapon)
 /// commands extension once the weapon materializes.
 fn resolve_pending_attachments(
@@ -451,7 +451,7 @@ fn worn_piece_scene(part: BodyPart, piece: crate::armor::ArmorPiece) -> impl Sce
 /// ([`WeaponSpawnSiblings`]). GTW-549: `pending` carries the resolved
 /// [`AttachmentEffect`](crate::weapon::AttachmentEffect)s of the weapon's fitted attachment
 /// items, composed onto the weapon entity as a [`PendingAttachments`] marker the post-spawn
-/// [`apply_pending_attachments`](crate::acts_runtime::attachments::apply_pending_attachments) system applies
+/// [`apply_pending_attachments`](crate::apply_pending_attachments) system applies
 /// via the [`attach_to_weapon`](crate::weapon::AttachToWeaponExt::attach_to_weapon) extension.
 fn wielded_weapon_scenes(
     weapon: &WeaponBundle,
@@ -481,7 +481,7 @@ fn wielded_weapon_scenes(
 /// no-op, per `bevy_scene`'s `impl Scene for Option<S>`). GTW-549: `pending` is composed as a
 /// [`PendingAttachments`] component (an EMPTY marker for a weapon with no attachments — the
 /// application system then no-ops), which the post-spawn
-/// [`apply_pending_attachments`](crate::acts_runtime::attachments::apply_pending_attachments) system reads
+/// [`apply_pending_attachments`](crate::apply_pending_attachments) system reads
 /// to apply each attachment effect via the
 /// [`attach_to_weapon`](crate::weapon::AttachToWeaponExt::attach_to_weapon) extension — the
 /// mandated post-spawn `EntityCommand` path (the weapon entity's stat components exist once the

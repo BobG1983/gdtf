@@ -1,7 +1,8 @@
 //! The closed **attachment-effect vocabulary** — the [`AttachmentEffect`] a
-//! [`AttachmentSpec`](super::AttachmentSpec) lists, one entry per fitted effect, each
-//! carrying its OWN magnitude/payload (GTW-549 — the data-driven rework that SUPERSEDES the
-//! GTW-542 closed `AttachTag` enum + global-tuning model, removed).
+//! [`AttachmentSpec`](crate::equipment::attachments::AttachmentSpec) lists, one entry per
+//! fitted effect, each carrying its OWN magnitude/payload (GTW-549 — the data-driven rework
+//! that SUPERSEDES the GTW-542 closed `AttachTag` enum + global-tuning model, removed; GTW-558
+//! re-homes it into the [`effects`](crate::effects) palette).
 //!
 //! ## The corrected design (GTW-549)
 //!
@@ -13,20 +14,21 @@
 //!    concentration lever), NOT stability — [`Aim`](AttachmentEffect::Aim). Distinct from
 //!    the graduated [`Stability`](AttachmentEffect::Stability) brace contribution.
 //! 2. Every magnitude lives ON the effect (its named-newtype payload), NOT in global tuning.
-//! 3. Attachments are DATA-DRIVEN RON items (a [`AttachmentSpec`](super::AttachmentSpec)
-//!    holding a `Vec<AttachmentEffect>`), NOT a closed code enum baked into folder-functions.
+//! 3. Attachments are DATA-DRIVEN RON items (an
+//!    [`AttachmentSpec`](crate::equipment::attachments::AttachmentSpec) holding a
+//!    `Vec<AttachmentEffect>`), NOT a closed code enum baked into folder-functions.
 //!
 //! ## The serde name↔type bridge + effect isolation
 //!
 //! This vocabulary is a closed, serde-deserializable enum (RON cannot deserialize trait
 //! objects, so the on-disk shape is this closed enum keyed by variant name). Each variant's
-//! BEHAVIOUR is a CONCEPTUALLY-ISOLATED type in the private `apply` module impl-ing the
-//! [`ApplyAttachmentEffect`] trait (its method IS its behaviour — no central logic `match`, no
-//! folder-fn), and this enum's own [`ApplyAttachmentEffect`] impl is a THIN delegation `match`
-//! that constructs the isolated type and calls it. Adding a new effect means adding ONE
-//! variant here, ONE isolated type, ONE `impl`, and ONE mechanical delegation arm — all in
-//! this module. The [`attach_to_weapon`](super::AttachToWeaponExt::attach_to_weapon) commands
-//! extension invokes the trait as a post-spawn
+//! BEHAVIOUR is a CONCEPTUALLY-ISOLATED type in its OWN sibling file impl-ing the
+//! [`ApplyAttachmentEffect`] trait (its method IS its behaviour — no central logic `match`,
+//! no folder-fn), and this enum's own [`ApplyAttachmentEffect`] impl is a THIN delegation
+//! `match` that constructs the isolated type and calls it. Adding a new effect means adding
+//! ONE variant here, ONE per-effect file, and ONE mechanical delegation arm. The
+//! [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon)
+//! commands extension invokes the trait as a post-spawn
 //! [`EntityCommand`](bevy::ecs::system::EntityCommand) against the (already-spawned) weapon
 //! entity.
 //!
@@ -40,20 +42,17 @@ use bevy::prelude::EntityWorldMut;
 use serde::Deserialize;
 
 use super::{
-    apply::{
-        ApplyAim, ApplyAttachmentEffect, ApplyBrace, ApplyDamage, ApplyDamageTypeOverride,
-        ApplyExtraAmmo, ApplyFastReload, ApplyFatalBias, ApplyGainFireMode, ApplyPenetration,
-        ApplyShove, ApplyShred, ApplySilence, ApplyStability,
-    },
-    magnitude::{AimDelta, ReloadScale, WeaponBraceBonus},
+    AimDelta, ApplyAim, ApplyAttachmentEffect, ApplyBrace, ApplyDamage, ApplyDamageTypeOverride,
+    ApplyExtraAmmo, ApplyFatalBias, ApplyGainFireMode, ApplyPenetration, ApplyReloadTime,
+    ApplyShove, ApplyShred, ApplySilence, ApplyStability, ReloadTimeScale, WeaponBraceBonus,
 };
 use crate::weapon::{
     DamageType, FatalBias, FireModeSpec, MagazineSize, WeaponDamage, WeaponPunch, WeaponShred,
 };
 
 /// One **effect** a data-driven attachment item applies to its weapon — the closed,
-/// serde-deserializable vocabulary an [`AttachmentSpec`](super::AttachmentSpec) lists
-/// (GTW-549, PHASE 1).
+/// serde-deserializable vocabulary an [`AttachmentSpec`](crate::equipment::attachments::AttachmentSpec)
+/// lists (GTW-549 / GTW-558).
 ///
 /// A weapon references an attachment item BY KEY in its
 /// [`attachments`](crate::weapon::WeaponSpec::attachments); the resolved item
@@ -62,10 +61,10 @@ use crate::weapon::{
 /// variant name (the serde name↔type bridge — RON cannot deserialize trait objects, so
 /// the on-disk form is this closed enum). NOT a `Component` — it is authoring DATA.
 ///
-/// It impls [`ApplyAttachmentEffect`] (PHASE 2) by DELEGATING each variant to its
-/// isolated behaviour type in the private `apply` module; the
-/// [`attach_to_weapon`](super::AttachToWeaponExt::attach_to_weapon) commands extension
-/// applies it to the weapon entity post-spawn.
+/// It impls [`ApplyAttachmentEffect`] by DELEGATING each variant to its isolated behaviour
+/// type in a sibling per-effect file; the
+/// [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon)
+/// commands extension applies it to the weapon entity post-spawn.
 ///
 /// Each magnitude-carrying variant's payload is a NAMED newtype (no-bare-types), and the
 /// magnitude lives HERE (on the item), never in global tuning — the headline GTW-549 fix.
@@ -92,12 +91,13 @@ pub enum AttachmentEffect {
     /// [`MagazineSize`](crate::weapon::MagazineSize) capacity to the weapon's magazine
     /// (more rounds before a reload).
     ExtraAmmo(MagazineSize),
-    /// **`FastReload`** — a speed-loader that SCALES the weapon's
+    /// **`ReloadTime`** — a speed-loader (or a bulky drum) that SCALES the weapon's
     /// [`ReloadTu`](crate::magazine::ReloadTu) reload cost by its per-item
-    /// [`ReloadScale`] (`< 1.0` → a faster reload). GTW-549 re-homes the magnitude ONTO
-    /// the item (the GTW-542 model read a GLOBAL tuning factor — the exact defect this
-    /// rework fixes).
-    FastReload(ReloadScale),
+    /// [`ReloadTimeScale`] — a BIDIRECTIONAL multiplier (`< 1.0` → a faster reload, `> 1.0`
+    /// → a slower one). GTW-549 re-homes the magnitude ONTO the item (the GTW-542 model read
+    /// a GLOBAL tuning factor — the exact defect this rework fixes); GTW-558 renames it from
+    /// the GTW-549 speed-up-only misnomer (the scale is bidirectional, not a speed-up only).
+    ReloadTime(ReloadTimeScale),
     /// **Silence** — a suppressor (no payload): fits the
     /// [`Silenced`](crate::weapon::Silenced)`(true)` tag so the weapon's shots propagate
     /// neither SUPPRESSION nor REACTION/REVEAL (both producer gates read the tag). PRESERVES
@@ -146,20 +146,20 @@ pub enum AttachmentEffect {
 
 impl ApplyAttachmentEffect for AttachmentEffect {
     /// Apply this effect to its `weapon` entity by DELEGATING to the isolated behaviour type
-    /// in the private `apply` module (GTW-549 PHASE 2 — the effect-isolation architecture).
+    /// in its sibling per-effect file (the effect-isolation architecture).
     ///
     /// This `match` carries NO logic — every arm is a one-line mechanical delegation that
     /// constructs the variant's isolated [`ApplyAttachmentEffect`] type from its payload and
     /// forwards the call. The BEHAVIOUR (which component, additive vs override, the rebuild)
     /// lives entirely in that isolated type, so adding an effect touches ONE variant + ONE
-    /// isolated type + this ONE delegation line — never a central logic branch.
+    /// per-effect file + this ONE delegation line — never a central logic branch.
     fn apply_to_weapon(&self, weapon: &mut EntityWorldMut<'_>) {
         match self {
             Self::Aim(delta) => ApplyAim::new(*delta).apply_to_weapon(weapon),
             Self::Stability(bonus) => ApplyStability::new(*bonus).apply_to_weapon(weapon),
             Self::GainFireMode(mode) => ApplyGainFireMode::new(*mode).apply_to_weapon(weapon),
             Self::ExtraAmmo(size) => ApplyExtraAmmo::new(*size).apply_to_weapon(weapon),
-            Self::FastReload(scale) => ApplyFastReload::new(*scale).apply_to_weapon(weapon),
+            Self::ReloadTime(scale) => ApplyReloadTime::new(*scale).apply_to_weapon(weapon),
             Self::Silence => ApplySilence.apply_to_weapon(weapon),
             Self::Penetration(punch) => ApplyPenetration::new(*punch).apply_to_weapon(weapon),
             Self::DamageTypeOverride(ty) => {

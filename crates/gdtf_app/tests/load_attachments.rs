@@ -18,7 +18,8 @@
 //! tuning/magnitude edit never reddens it, but a malformed shipped attachment RON, a
 //! variant-name typo in a shipped file, a stem-strip regression, or a bad weapon slot key does.
 //! The effect-to-stat application MECHANISM is covered by the sim apply/spawn tests
-//! (`attachment_item::apply::test` + `gtw549_attachments`); this harness proves the REAL
+//! (the `effects::attachments` per-effect + `equipment::attachments` mechanics tests +
+//! `gtw549_attachments`); this harness proves the REAL
 //! `assets/content/attachments/` folder loads through the Load code path.
 
 use bevy::state::state::State;

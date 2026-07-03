@@ -1,7 +1,7 @@
 //! GTW-549 (child GTW-551 → GTW-17) — DATA-DRIVEN WEAPON ATTACHMENTS, the PHASE-5 example /
 //! liveness sweep, proven on the REAL `setup_battle_on_request` → `BattleSimPlugin` spawn +
 //! `apply_pending_attachments` post-spawn path. Complements `gtw542_weapon_attachments.rs`
-//! (which covers Aim / Stability / `ExtraAmmo` / `FastReload` / Silence / identity / the
+//! (which covers Aim / Stability / `ExtraAmmo` / `ReloadTime` / Silence / identity / the
 //! Silenced dual-producer gate); this file pins the remaining ticket clauses:
 //!
 //! - **`GainFireMode` adds a mode** — a `GainFireMode` attachment appends its `FireModeSpec` to

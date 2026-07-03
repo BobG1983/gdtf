@@ -27,7 +27,7 @@ use crate::{
         throw_grenade::dispatch_throw_grenade,
     },
     ai::enemy_ai_turn,
-    attachments::apply_pending_attachments,
+    apply_pending_attachments,
     bleed::{Bleeding, enemy_phase_started, tick_bleed},
     dot::{DotApplied, DotTicked, apply_dot, tick_dot},
     falls::{FallOccurred, apply_falls},

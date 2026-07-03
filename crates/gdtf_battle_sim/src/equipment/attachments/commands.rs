@@ -1,23 +1,24 @@
 //! The **`commands.attach_to_weapon` extension** (GTW-549, PHASE 2 — child of GTW-551 →
-//! GTW-17): the [`AttachToWeaponExt`] trait that adds an
-//! [`attach_to_weapon`](AttachToWeaponExt::attach_to_weapon) method to Bevy's
-//! [`Commands`], queuing an attachment effect as a deferred
+//! GTW-17; GTW-558 re-homed into the attachment MECHANICS module): the [`AttachToWeaponExt`]
+//! trait that adds an [`attach_to_weapon`](AttachToWeaponExt::attach_to_weapon) method to
+//! Bevy's [`Commands`], queuing an attachment effect as a deferred
 //! [`EntityCommand`](bevy::ecs::system::EntityCommand) against a (post-spawn) weapon entity.
 //!
 //! ## Why a commands extension (the user ruling, 2026-07-02)
 //!
-//! An [`AttachmentEffect`](super::AttachmentEffect) is applied to a weapon that already
-//! exists (spawned by the BSN wielded-weapon scene). The natural seam is therefore a
-//! DEFERRED command against that entity — `commands.attach_to_weapon(weapon, effect)` —
-//! which Bevy runs at the next command flush with exclusive access to the entity via an
-//! [`EntityWorldMut`](bevy::prelude::EntityWorldMut). The effect's
-//! [`apply_to_weapon`](super::ApplyAttachmentEffect::apply_to_weapon) IS the command body;
-//! the extension is a thin, ergonomic wrapper so a caller never writes the closure or the
-//! `entity(..).queue(..)` plumbing by hand.
+//! An [`AttachmentEffect`](crate::effects::attachments::AttachmentEffect) is applied to a
+//! weapon that already exists (spawned by the BSN wielded-weapon scene). The natural seam is
+//! therefore a DEFERRED command against that entity — `commands.attach_to_weapon(weapon,
+//! effect)` — which Bevy runs at the next command flush with exclusive access to the entity
+//! via an [`EntityWorldMut`](bevy::prelude::EntityWorldMut). The effect's
+//! [`apply_to_weapon`](crate::effects::attachments::ApplyAttachmentEffect::apply_to_weapon) IS
+//! the command body; the extension is a thin, ergonomic wrapper so a caller never writes the
+//! closure or the `entity(..).queue(..)` plumbing by hand. It applies an item GENERICALLY,
+//! via the shared trait — it NEVER matches on the effect enum.
 
 use bevy::prelude::{Commands, Entity, EntityWorldMut};
 
-use super::ApplyAttachmentEffect;
+use crate::effects::attachments::ApplyAttachmentEffect;
 
 /// The **`commands.attach_to_weapon`** extension (GTW-549 PHASE 2) — adds
 /// [`attach_to_weapon`](Self::attach_to_weapon) to Bevy's [`Commands`] so a caller can fit
@@ -37,10 +38,10 @@ pub trait AttachToWeaponExt {
     /// exclusive access to the `weapon` entity (an
     /// [`EntityWorldMut`](bevy::prelude::EntityWorldMut) — the ticket's sanctioned
     /// carve-out); the closure just forwards to the effect's
-    /// [`apply_to_weapon`](super::ApplyAttachmentEffect::apply_to_weapon). Because it is
-    /// DEFERRED, the caller may spawn the weapon and attach its effects in the same system —
-    /// the effects land after the spawn is flushed. Returns `&mut Self` so calls chain
-    /// (one per effect in the resolved item).
+    /// [`apply_to_weapon`](crate::effects::attachments::ApplyAttachmentEffect::apply_to_weapon).
+    /// Because it is DEFERRED, the caller may spawn the weapon and attach its effects in the
+    /// same system — the effects land after the spawn is flushed. Returns `&mut Self` so calls
+    /// chain (one per effect in the resolved item).
     fn attach_to_weapon(
         &mut self,
         weapon: Entity,

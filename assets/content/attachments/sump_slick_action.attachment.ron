@@ -7,6 +7,6 @@
 (
     display_name: "Sump-Slick Action",
     effects: [
-        FastReload(0.7),  // ×0.7 the weapon's reload_tu (< 1 = faster) — tunable
+        ReloadTime(0.7),  // ×0.7 the weapon's reload_tu (< 1 = faster) — tunable
     ],
 )

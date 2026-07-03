@@ -240,7 +240,7 @@ impl WeaponSpawnSiblings {
 /// whose components materialize deferred (on the `SpawnScene` schedule), so the setup path
 /// has no live weapon [`Entity`](bevy::prelude::Entity) to `attach_to_weapon` inline. Instead
 /// the resolved item effects ride onto the weapon as THIS component (composed into the scene),
-/// and the [`apply_pending_attachments`](crate::acts_runtime::attachments::apply_pending_attachments) system
+/// and the [`apply_pending_attachments`](crate::apply_pending_attachments) system
 /// — running AFTER the weapon materializes — reads it and calls `attach_to_weapon(weapon,
 /// effect)` for each effect (the mandated post-spawn `EntityCommand`), then removes the marker.
 ///

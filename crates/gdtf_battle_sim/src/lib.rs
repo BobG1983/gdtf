@@ -238,6 +238,7 @@
 pub mod acts_runtime;
 pub mod combatants;
 pub mod damage_resolution;
+pub mod effects;
 pub mod equipment;
 pub mod falls;
 pub mod foundation;
@@ -271,8 +272,6 @@ pub use acts_runtime::{
         ActCadence, ActPacing, AiTarget, EnemyActCooldown, enemy_ai_turn, pick_nearest,
         plan_advance,
     },
-    attachments,
-    attachments::apply_pending_attachments,
     bleed,
     bleed::{Bleeding, enemy_phase_started, tick_bleed},
     dot,
@@ -355,6 +354,7 @@ pub use equipment::{
     },
     armor_wear,
     armor_wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn, wear_armor},
+    attachments::apply_pending_attachments,
     magazine,
     magazine::{
         FireActor, LoadedRounds, Magazine, ReloadTu, can_fire, clamp_burst, in_bounds, mode_tu_cost,
@@ -362,15 +362,15 @@ pub use equipment::{
     weapon,
     weapon::{
         Accuracy, AimDelta, AoeRange, ApplyAim, ApplyAttachmentEffect, ApplyBrace, ApplyDamage,
-        ApplyDamageTypeOverride, ApplyExtraAmmo, ApplyFastReload, ApplyFatalBias,
-        ApplyGainFireMode, ApplyPenetration, ApplyShove, ApplyShred, ApplySilence, ApplyStability,
+        ApplyDamageTypeOverride, ApplyExtraAmmo, ApplyFatalBias, ApplyGainFireMode,
+        ApplyPenetration, ApplyReloadTime, ApplyShove, ApplyShred, ApplySilence, ApplyStability,
         AttachToWeaponExt, AttachmentEffect, AttachmentName, AttachmentRegistry, AttachmentSpec,
         BaseSpread, BlastRadius, ConeHalfAngle, DamageProfile, DamageType, Dot, DotDamage,
         DotProfile, DotTurns, FISTS_KEY, FatalBias, FightMode, FightModeKind, FightModeSpec,
         FireMode, FireModeSpec, Handedness, HandlingProfile, HitType, Kickback, MagazineSize,
         MeleeDamageProfile, MeleeWeapon, MeleeWeaponBundle, MeleeWeaponRegistry, MeleeWeaponSpec,
         ModeConeMult, ModeKind, ModeShots, ModeTuPercent, MountedWeapon, PendingAttachments, Reach,
-        ReloadScale, Shove, Silenced, Stable, Strikes, TrajectoryStyle, TuCost, Weapon,
+        ReloadTimeScale, Shove, Silenced, Stable, Strikes, TrajectoryStyle, TuCost, Weapon,
         WeaponBraceBonus, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
         WeaponShred, WeaponSpawnSiblings, WeaponSpec, WeaponStats, WieldedBy, Wields,
         shooter_weapon_silenced,

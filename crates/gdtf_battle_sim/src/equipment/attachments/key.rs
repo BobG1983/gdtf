@@ -1,7 +1,8 @@
 //! The **attachment-item key** — the [`AttachmentName`] a weapon references in its
 //! [`attachments`](crate::weapon::WeaponSpec::attachments) and the
 //! [`AttachmentRegistry`](super::AttachmentRegistry) keys each loaded item by (GTW-549,
-//! PHASE 1). The attachment mirror of the ranged [`WeaponName`](crate::weapon::WeaponName).
+//! PHASE 1; GTW-558 re-homed into the attachment MECHANICS module). The attachment mirror of
+//! the ranged [`WeaponName`](crate::weapon::WeaponName).
 
 use bevy::prelude::Deref;
 use serde::Deserialize;

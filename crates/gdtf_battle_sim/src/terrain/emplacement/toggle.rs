@@ -254,7 +254,7 @@ pub fn apply_emplacement_toggle(
 /// GTW-549: the mounted weapon's authored `attachments` keys are resolved against the
 /// [`AttachmentRegistry`] into a [`PendingAttachments`] marker spawned onto the weapon (an EMPTY
 /// marker when it authors none / the registry is absent), which the post-spawn
-/// [`apply_pending_attachments`](crate::acts_runtime::attachments::apply_pending_attachments) system applies via
+/// [`apply_pending_attachments`](crate::apply_pending_attachments) system applies via
 /// the [`attach_to_weapon`](crate::weapon::AttachToWeaponExt::attach_to_weapon) extension — the
 /// SAME path the `setup_battle` spawn uses.
 fn spawn_mounted_weapon(

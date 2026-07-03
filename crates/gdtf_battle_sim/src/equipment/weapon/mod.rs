@@ -47,7 +47,6 @@
 //! the registry ([`registry`]). This `mod.rs` is wiring-only; every public path is
 //! preserved via the re-exports below.
 
-mod attachment_item;
 mod bundle;
 mod components;
 mod dot;
@@ -62,17 +61,13 @@ mod trajectory;
 #[cfg(test)]
 mod test;
 
-// GTW-549 (child of GTW-551): the DATA-DRIVEN attachment ITEM model — a folder-loaded RON
-// item carrying a typed `AttachmentEffect` list with per-item magnitudes, applied to a
-// weapon entity via the `attach_to_weapon` commands extension. SUPERSEDES the GTW-542
-// `AttachTag` enum + folder-fn + global-tuning model (ripped out in PHASE 3+4). See the
-// `attachment_item` module doc.
-pub use attachment_item::{
-    AimDelta, ApplyAim, ApplyAttachmentEffect, ApplyBrace, ApplyDamage, ApplyDamageTypeOverride,
-    ApplyExtraAmmo, ApplyFastReload, ApplyFatalBias, ApplyGainFireMode, ApplyPenetration,
-    ApplyShove, ApplyShred, ApplySilence, ApplyStability, AttachToWeaponExt, AttachmentEffect,
-    AttachmentName, AttachmentRegistry, AttachmentSpec, ReloadScale, WeaponBraceBonus,
-};
+// GTW-549 (child of GTW-551): the DATA-DRIVEN attachment model — a folder-loaded RON item
+// carrying a typed `AttachmentEffect` list with per-item magnitudes, applied to a weapon
+// entity via the `attach_to_weapon` commands extension. GTW-558 re-homed the effect PALETTE
+// into `crate::effects::attachments` (the enum + isolated `ApplyX` behaviours + magnitudes)
+// and the MECHANICS into `crate::equipment::attachments` (the registry / spec / key /
+// commands extension). These re-exports preserve the historical `crate::weapon::Attachment*`
+// paths so external call-sites keep compiling.
 pub use bundle::{DamageProfile, HandlingProfile, WeaponBundle, WeaponStats};
 pub use components::{
     Accuracy, BaseSpread, DamageType, FatalBias, Handedness, Kickback, MagazineSize, MountedWeapon,
@@ -104,3 +99,15 @@ pub use spec::{PendingAttachments, WeaponSpawnSiblings, WeaponSpec};
 // default, every existing weapon) or a lobbed `Arc` (a grenade / grenade launcher). The
 // fire path reads it to pick the straight `march_vector` or the parabolic `march_arc`.
 pub use trajectory::TrajectoryStyle;
+
+pub use crate::{
+    effects::attachments::{
+        AimDelta, ApplyAim, ApplyAttachmentEffect, ApplyBrace, ApplyDamage,
+        ApplyDamageTypeOverride, ApplyExtraAmmo, ApplyFatalBias, ApplyGainFireMode,
+        ApplyPenetration, ApplyReloadTime, ApplyShove, ApplyShred, ApplySilence, ApplyStability,
+        AttachmentEffect, ReloadTimeScale, WeaponBraceBonus,
+    },
+    equipment::attachments::{
+        AttachToWeaponExt, AttachmentName, AttachmentRegistry, AttachmentSpec,
+    },
+};

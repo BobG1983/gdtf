@@ -1,16 +1,16 @@
-//! The **attachment registry** — the key→spec map the folder loader builds and (PHASE 2)
-//! the battle setup resolves a weapon's [`attachments`](crate::weapon::WeaponSpec::attachments)
-//! keys against (GTW-549, PHASE 1), the attachment mirror of the
-//! [`MeleeWeaponRegistry`](crate::weapon::MeleeWeaponRegistry) / ranged
-//! [`WeaponRegistry`](crate::weapon::WeaponRegistry).
+//! The **attachment registry** — the key→spec map the folder loader builds and the battle
+//! setup resolves a weapon's [`attachments`](crate::weapon::WeaponSpec::attachments) keys
+//! against (GTW-549, PHASE 1; GTW-558 re-homed into the attachment MECHANICS module), the
+//! attachment mirror of the [`MeleeWeaponRegistry`](crate::weapon::MeleeWeaponRegistry) /
+//! ranged [`WeaponRegistry`](crate::weapon::WeaponRegistry).
 
 use bevy::{platform::collections::HashMap, prelude::Resource};
 
 use super::{AttachmentName, AttachmentSpec};
 
 /// The **attachment registry** — a key→spec map the folder loader builds from
-/// `assets/content/attachments/*.attachment.ron` (keyed by each file's stem) and (PHASE 2)
-/// the battle setup resolves a weapon's
+/// `assets/content/attachments/*.attachment.ron` (keyed by each file's stem) and the battle
+/// setup resolves a weapon's
 /// [`attachments`](crate::weapon::WeaponSpec::attachments) keys against (GTW-549),
 /// the attachment mirror of the [`MeleeWeaponRegistry`](crate::weapon::MeleeWeaponRegistry).
 ///
@@ -23,7 +23,7 @@ use super::{AttachmentName, AttachmentSpec};
 /// is dropped.
 ///
 /// Private inner with small accessors (the registry answers an attachment LOOKUP, not a
-/// raw-map question — so no derived [`Deref`](bevy::prelude::Deref)). PHASE 2 resolves a
+/// raw-map question — so no derived [`Deref`](bevy::prelude::Deref)). Setup resolves a
 /// weapon's authored slot keys through [`spec`](AttachmentRegistry::spec) at setup time. A
 /// missing key fails closed (nothing applied), the fail-safe the melee/weapon registries
 /// share.
@@ -46,8 +46,8 @@ impl AttachmentRegistry {
     }
 
     /// Look up the [`AttachmentSpec`] for an attachment KEY, or [`None`] if no attachment
-    /// file with that stem was loaded — the (PHASE 2) setup-time resolution the battle
-    /// reads to fold each authored slot's effects.
+    /// file with that stem was loaded — the setup-time resolution the battle reads to fold
+    /// each authored slot's effects.
     #[must_use]
     pub fn spec(&self, name: &AttachmentName) -> Option<&AttachmentSpec> {
         self.0.get(name)

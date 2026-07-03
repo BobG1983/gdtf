@@ -9,7 +9,7 @@
 //!   attachment-bearing weapon has, after the post-spawn application: `Silenced` present
 //!   (`Silence`), `Accuracy` RAISED (`Aim` → the HEADLINE fix, a sight boosts AIM not
 //!   stability), `WeaponBraceBonus` present (`Stability` → the brace seam), `Magazine.size`
-//!   grown (`ExtraAmmo`), `Magazine.reload_tu` lowered (`FastReload`).
+//!   grown (`ExtraAmmo`), `Magazine.reload_tu` lowered (`ReloadTime`).
 //! - **The Silenced dual-producer gate** — a `Silence` attachment yields NO `SuppressionApplied`
 //!   where an identical un-silenced shot does; the shared `shooter_weapon_silenced` gate reads
 //!   the wielded ranged weapon's tag.
@@ -41,7 +41,7 @@ use gdtf_battle_sim::{
     tuning::{CombatTuning, ViewRange},
     weapon::{
         AimDelta, AttachmentEffect, AttachmentName, AttachmentRegistry, AttachmentSpec, FireMode,
-        FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, ReloadScale,
+        FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, ReloadTimeScale,
         TrajectoryStyle, WeaponBraceBonus, WeaponDamage, WeaponName, WeaponRegistry, WeaponShred,
         WeaponSpec, shooter_weapon_silenced,
     },
@@ -368,14 +368,15 @@ fn extra_ammo_effect_grows_the_magazine_size() {
 }
 
 #[test]
-fn fast_reload_effect_lowers_the_magazine_reload_tu() {
+fn reload_time_effect_lowers_the_magazine_reload_tu() {
     let (base_app, base_weapon) = spawn_lone_player_weapon(Vec::new());
     let base = base_app
         .world()
         .get::<Magazine>(base_weapon)
         .map(|m| *m.reload_tu());
-    let (fast_app, fast_weapon) =
-        spawn_lone_player_weapon(vec![AttachmentEffect::FastReload(ReloadScale::new(0.5))]);
+    let (fast_app, fast_weapon) = spawn_lone_player_weapon(vec![AttachmentEffect::ReloadTime(
+        ReloadTimeScale::new(0.5),
+    )]);
     let fast = fast_app
         .world()
         .get::<Magazine>(fast_weapon)
@@ -385,7 +386,7 @@ fn fast_reload_effect_lowers_the_magazine_reload_tu() {
     };
     assert!(
         fast < base,
-        "a FastReload attachment lowers the weapon's reload_tu (fast {fast} < baseline {base})",
+        "a ReloadTime attachment lowers the weapon's reload_tu (fast {fast} < baseline {base})",
     );
 }
 

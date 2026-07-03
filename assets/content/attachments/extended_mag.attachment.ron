@@ -7,6 +7,6 @@
     display_name: "Extended Magazine",
     effects: [
         ExtraAmmo(8),      // +8 magazine capacity — tunable
-        FastReload(0.8),   // ×0.8 the weapon's reload_tu (< 1 = faster) — tunable
+        ReloadTime(0.8),   // ×0.8 the weapon's reload_tu (< 1 = faster) — tunable
     ],
 )
