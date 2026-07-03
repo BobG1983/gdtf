@@ -8,7 +8,7 @@
 
 use bevy::{prelude::*, ui::Val};
 use gdtf_battle_sim::{
-    GangRegistry, ProcgenTuning, UuidThemeRegistry, level::PrefabRegistry2, rng::BattleSeed,
+    GangRegistry, ProcgenTuning, UuidThemeRegistry, level::PrefabRegistry, rng::BattleSeed,
 };
 use gdtf_ui::{
     ButtonLabel, spawn_button, spawn_panel,
@@ -48,7 +48,7 @@ const BOARD_COLOR: Color = Color::srgb(0.08, 0.08, 0.10);
 const BAR_GAP_VH: f32 = 1.388_89;
 
 /// Insert the [`ProcgenViz`] model `OnEnter(DebugProcgenVisualizer)` — built by running the
-/// sim space-packing pipeline against the loaded UUID-keyed [`PrefabRegistry2`] for the
+/// sim space-packing pipeline against the loaded UUID-keyed [`PrefabRegistry`] for the
 /// loaded situation's theme ([`ThemeUuid`](gdtf_battle_sim::level::ThemeUuid)) + grid-size + a
 /// seed (the [`BattleSeed`] override resource if a test injected one, else the deterministic
 /// [`default_viz_seed`]).
@@ -58,7 +58,7 @@ const BAR_GAP_VH: f32 = 1.388_89;
 /// panic (fail-open). Param-only (`bevy-traps.md` #7). Ordered BEFORE [`spawn_viz_screen`].
 pub(in crate::states::running::procgen_viz) fn insert_viz_model(
     mut commands: Commands,
-    registry: Option<Res<PrefabRegistry2>>,
+    registry: Option<Res<PrefabRegistry>>,
     situation: Option<Res<LoadedSituation>>,
     seed_override: Option<Res<BattleSeed>>,
     // GTW-533: the LIVE, hot-reloaded procgen fill tuning (the Load-resolved resident

@@ -11,8 +11,8 @@ use bevy::asset::uuid::Uuid;
 
 use crate::{
     level::{
-        GridHeight, GridLevels, GridSize, GridWidth, Prefab2, PrefabName, PrefabRegistry2,
-        PrefabSpecV2, SpawnRole, ThemeUuid,
+        GridHeight, GridLevels, GridSize, GridWidth, Prefab, PrefabName, PrefabRegistry,
+        PrefabSpec, SpawnRole, ThemeUuid,
     },
     procgen::{
         DeadRectScatterCount, FilledPlacement, LargePrefabAreaThreshold, MinDensityFloor,
@@ -34,10 +34,10 @@ fn theme() -> ThemeUuid {
 
 /// A v2 prefab of `role` at footprint `fp` under `theme`, authoring no placements (the fill
 /// pass cares only about footprint + role + theme — the geometry is the emit step's concern).
-fn prefab(theme: ThemeUuid, fp: GridSize, role: SpawnRole, stem: &str) -> Prefab2 {
-    Prefab2::new(
+fn prefab(theme: ThemeUuid, fp: GridSize, role: SpawnRole, stem: &str) -> Prefab {
+    Prefab::new(
         PrefabName::new(stem.to_owned()),
-        PrefabSpecV2::new(theme, fp, role, Vec::new()),
+        PrefabSpec::new(theme, fp, role, Vec::new()),
     )
 }
 
@@ -48,8 +48,8 @@ fn registry_with_fill(
     player_fp: GridSize,
     enemy_fp: GridSize,
     fills: &[(&str, u8, u8)],
-) -> Option<PrefabRegistry2> {
-    let mut r = PrefabRegistry2::default();
+) -> Option<PrefabRegistry> {
+    let mut r = PrefabRegistry::default();
     r.insert(prefab(theme, player_fp, SpawnRole::Player, "player_pad"));
     r.insert(prefab(theme, enemy_fp, SpawnRole::Enemy, "enemy_pad"));
     for (stem, w, h) in fills {

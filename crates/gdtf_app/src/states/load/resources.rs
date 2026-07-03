@@ -236,30 +236,30 @@ impl TerrainModelFolderHandle {
     }
 }
 
-/// Typed handle to the in-flight **v2 maps (prefab) folder** load (`maps/`).
+/// Typed handle to the in-flight **maps (prefab) folder** load (`maps/`).
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
 /// mirroring [`GangsFolderHandle`] (GTW-489 — child T05c of the GTW-476 data-model
-/// refactor). The UUID-keyed [`PrefabSpecV2`](gdtf_battle_sim::level::PrefabSpecV2)
-/// fragments (GTW-486) live under the nested `assets/content/maps/<theme>/<size>/` tree. Each v2
-/// fragment carries the dedicated `prefab_v2.ron` compound extension so the recursive
-/// `load_folder` dispatches it to the
-/// [`RonAsset<PrefabSpecV2>`](gdtf_assets::RonAsset) loader. The poll/resolve system gates
+/// refactor). The UUID-keyed [`PrefabSpec`](gdtf_battle_sim::level::PrefabSpec)
+/// fragments (GTW-486) live under the nested `assets/content/maps/<theme>/<size>/` tree.
+/// Each fragment carries the dedicated `prefab.ron` compound extension (de-versioned
+/// in GTW-557) so the recursive `load_folder` dispatches it to the
+/// [`RonAsset<PrefabSpec>`](gdtf_assets::RonAsset) loader. The poll/resolve system gates
 /// on this folder's recursive load state, then builds the
-/// [`PrefabRegistry2`](gdtf_battle_sim::level::PrefabRegistry2) from the loaded
-/// `RonAsset<PrefabSpecV2>` members (bucketed by each spec's `(theme, size, role)`, with NO
-/// edge-opening validation — the v2 schema has none). Holding this handle keeps a strong
-/// reference to every v2 prefab asset while the registry is built; the registry then holds
+/// [`PrefabRegistry`](gdtf_battle_sim::level::PrefabRegistry) from the loaded
+/// `RonAsset<PrefabSpec>` members (bucketed by each spec's `(theme, size, role)`, with NO
+/// edge-opening validation — the schema has none). Holding this handle keeps a strong
+/// reference to every prefab asset while the registry is built; the registry then holds
 /// the prefabs BY VALUE, so they survive the handle being dropped on `OnExit(Load)`.
 ///
 /// **GTW-494** — this is the ONLY prefab loader in the Load flow: the legacy flat-dir
 /// `content/maps/*.prefab.ron` loader was retired (the procgen pipeline consumes
-/// [`PrefabRegistry2`](gdtf_battle_sim::level::PrefabRegistry2) as of GTW-492).
+/// [`PrefabRegistry`](gdtf_battle_sim::level::PrefabRegistry) as of GTW-492).
 #[derive(Deref, Clone, Debug)]
-pub(in crate::states::load) struct PrefabsV2FolderHandle(Handle<LoadedFolder>);
+pub(in crate::states::load) struct PrefabsFolderHandle(Handle<LoadedFolder>);
 
-impl PrefabsV2FolderHandle {
-    /// Wrap an in-flight maps (v2 prefab) folder load handle.
+impl PrefabsFolderHandle {
+    /// Wrap an in-flight maps (prefab) folder load handle.
     pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
         Self(handle)
     }
@@ -342,7 +342,7 @@ impl ProcgenTuningHandle {
 /// Holds the typed [`ThemeHandle`], [`FontFolderHandle`], [`SituationHandle`],
 /// [`TuningHandle`], [`StatTuningHandle`], [`ProcgenTuningHandle`], [`WeaponsFolderHandle`],
 /// [`ArmorsFolderHandle`], [`InjuriesFolderHandle`], [`GangsFolderHandle`],
-/// [`PrefabsV2FolderHandle`], and [`TerrainModelFolderHandle`] the poll/resolve system
+/// [`PrefabsFolderHandle`], and [`TerrainModelFolderHandle`] the poll/resolve system
 /// reads each frame to check load progress. Inserted `OnEnter(Load)` and removed
 /// `OnExit(Load)` (it has no meaning outside `Load`).
 #[derive(Resource, Clone, Debug)]
@@ -378,11 +378,11 @@ pub(in crate::states::load) struct LoadHandles {
     pub injuries:      InjuriesFolderHandle,
     /// The gangs folder being preloaded (all `*.gang.ron` rosters up front, GTW-415).
     pub gangs:         GangsFolderHandle,
-    /// The maps (v2 prefab) folder being preloaded (all `*.prefab_v2.ron` fragments up
-    /// front, recursively under `<theme>/<size>/`, GTW-489 — the UUID-keyed
-    /// [`PrefabSpecV2`](gdtf_battle_sim::level::PrefabSpecV2); the ONLY prefab loader after
-    /// GTW-494 retired the legacy flat-dir `*.prefab.ron` load).
-    pub prefabs_v2:    PrefabsV2FolderHandle,
+    /// The maps (prefab) folder being preloaded (all `*.prefab.ron` fragments up front,
+    /// recursively under `<theme>/<size>/`, GTW-489 — the UUID-keyed
+    /// [`PrefabSpec`](gdtf_battle_sim::level::PrefabSpec); the ONLY prefab loader after
+    /// GTW-494 retired the legacy flat-dir load.).
+    pub prefabs:       PrefabsFolderHandle,
     /// The per-theme terrain-model folder being preloaded (all `*.terrain_def.ron`
     /// and `*.terrain_theme.ron` files up front, recursively under `terrain/<theme>/`,
     /// GTW-487 — the GTW-484/485 UUID-keyed models; the ONLY terrain / theme loader after
@@ -673,22 +673,23 @@ impl ActiveGangsFolderHandle {
     }
 }
 
-/// The PERSISTENT handle to the loaded **v2 maps (prefab) folder** (`maps/`).
+/// The PERSISTENT handle to the loaded **maps (prefab) folder** (`maps/`).
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that — unlike the
-/// Load-scoped [`PrefabsV2FolderHandle`] inside [`LoadHandles`], which is dropped
-/// `OnExit(Load)` — **persists** past `Load` (GTW-489), the v2-prefab mirror of
+/// Load-scoped [`PrefabsFolderHandle`] inside [`LoadHandles`], which is dropped
+/// `OnExit(Load)` — **persists** past `Load` (GTW-489), the prefab mirror of
 /// [`ActiveGangsFolderHandle`]. It is inserted alongside the resolved
-/// [`PrefabRegistry2`](gdtf_battle_sim::level::PrefabRegistry2) and kept alive so the GTW-489
-/// live hot-reload handler (`redrive_prefabs_v2_on_asset_event`) can re-enumerate the
+/// [`PrefabRegistry`](gdtf_battle_sim::level::PrefabRegistry) and kept alive so the GTW-489
+/// live hot-reload handler (`redrive_prefabs_on_asset_event`) can re-enumerate the
 /// folder's member handles to rebuild the registry on a hot edit to ANY
-/// `assets/content/maps/**/*.prefab_v2.ron`. Holding the folder handle keeps every member v2 prefab
-/// asset loaded for the file-watcher. Like the registry, it is **not** removed in `cleanup`.
+/// `assets/content/maps/**/*.prefab.ron`. Holding the folder handle keeps every member
+/// prefab asset loaded for the file-watcher. Like the registry, it is **not** removed
+/// in `cleanup`.
 #[derive(Resource, Deref, Clone, Debug)]
-pub(in crate::states::load) struct ActivePrefabsV2FolderHandle(Handle<LoadedFolder>);
+pub(in crate::states::load) struct ActivePrefabsFolderHandle(Handle<LoadedFolder>);
 
-impl ActivePrefabsV2FolderHandle {
-    /// Wrap the loaded maps (v2 prefab) folder handle as the persistent hot-reload handle.
+impl ActivePrefabsFolderHandle {
+    /// Wrap the loaded maps (prefab) folder handle as the persistent hot-reload handle.
     pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
         Self(handle)
     }

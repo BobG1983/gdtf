@@ -8,7 +8,7 @@
 //! 3. Project + serialize the map through the REAL save path
 //!    ([`editor_map_to_prefab`](gdtf_content_editor::editor_map_to_prefab) +
 //!    [`serialize_prefab`](gdtf_content_editor::serialize_prefab)) and reload it through the SAME
-//!    `PrefabSpecV2` deserializer the GTW-489 loader uses — asserting BOTH endpoints survive (C3 /
+//!    `PrefabSpec` deserializer the GTW-489 loader uses — asserting BOTH endpoints survive (C3 /
 //!    C5).
 //!
 //! A green build alone does NOT prove the pairing — this asserts the auto-placement FIRES and both
@@ -18,7 +18,7 @@ use gdtf_battle_sim::{
     Cell,
     armor::{ArmorHardness, ArmorProtection},
     level::{
-        GridHeight, GridLevels, GridSize, GridWidth, Prefab2, PrefabName, PrefabSpecV2, ThemeUuid,
+        GridHeight, GridLevels, GridSize, GridWidth, Prefab, PrefabName, PrefabSpec, ThemeUuid,
     },
     metric::{CellLevel, Level},
     slab::SlabHp,
@@ -139,7 +139,7 @@ fn up_connector_pairs_down_above_and_round_trips_both_endpoints() {
     let built = editor_map_to_prefab(&map, &reg, &session);
     assert!(
         built.is_ok(),
-        "the paired map must project to a v2 prefab: {:?}",
+        "the paired map must project to a prefab: {:?}",
         built.as_ref().err(),
     );
     let Ok(saved) = built else { return };
@@ -152,14 +152,14 @@ fn up_connector_pairs_down_above_and_round_trips_both_endpoints() {
     let Ok(serialized) = serialized else { return };
 
     // ── RELOAD via the SAME parser + (infallible) builder the GTW-489 loader uses. ───────────────
-    let reloaded = ron::de::from_str::<PrefabSpecV2>(&serialized);
+    let reloaded = ron::de::from_str::<PrefabSpec>(&serialized);
     assert!(
         reloaded.is_ok(),
-        "the serialized prefab must round-trip through the PrefabSpecV2 deserializer: {:?}",
+        "the serialized prefab must round-trip through the PrefabSpec deserializer: {:?}",
         reloaded.as_ref().err(),
     );
     let Ok(reloaded) = reloaded else { return };
-    let _validated = Prefab2::new(PrefabName::new("stair_room".to_owned()), reloaded.clone());
+    let _validated = Prefab::new(PrefabName::new("stair_room".to_owned()), reloaded.clone());
 
     // load(save(grid)) == grid: both endpoints survive the .ron round-trip (C3).
     assert_eq!(

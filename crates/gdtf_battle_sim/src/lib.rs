@@ -21,7 +21,7 @@
 //!   [`level::GridSize`] dimension newtypes (each axis validated against
 //!   [`metric::MAX_LEVELS`] / [`level::MAX_GRID_SPAN`]), the UUID-keyed theme model
 //!   ([`level::UuidThemeDef`] keyed in [`level::UuidThemeRegistry`]), and the UUID-keyed
-//!   level-fragment model ([`level::PrefabSpecV2`] / [`level::PrefabRegistry2`]) the
+//!   level-fragment model ([`level::PrefabSpec`] / [`level::PrefabRegistry`]) the
 //!   app's `Load` flow builds. Render-free.
 //! - [`tu`] — the TU-economy primitives the E4 acts spend through:
 //!   [`tu::can_spend_tu`] / [`tu::spend_tu`] (saturating) / [`tu::reset_tu`] over a
@@ -386,8 +386,8 @@ pub use foundation::{
     },
 };
 pub use level::{
-    GridHeight, GridLevels, GridSize, GridSizeError, GridWidth, MAX_GRID_SPAN, Prefab2, PrefabKey2,
-    PrefabName, PrefabRegistry2, PrefabSpecV2, SpawnRole, TerrainPlacementEntry, ThemeDisplayName,
+    GridHeight, GridLevels, GridSize, GridSizeError, GridWidth, MAX_GRID_SPAN, Prefab, PrefabKey,
+    PrefabName, PrefabRegistry, PrefabSpec, SpawnRole, TerrainPlacementEntry, ThemeDisplayName,
     ThemeUuid, UuidThemeDef, UuidThemeRegistry,
 };
 pub use lifecycle::{

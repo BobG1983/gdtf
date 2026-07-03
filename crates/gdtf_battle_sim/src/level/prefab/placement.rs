@@ -1,4 +1,4 @@
-//! One **placed terrain piece** in a [`PrefabSpecV2`](super::PrefabSpecV2) — the
+//! One **placed terrain piece** in a [`PrefabSpec`](super::PrefabSpec) — the
 //! [`TerrainPlacementEntry`], a `(piece, at)` pair (GTW-486).
 
 use bevy::reflect::TypePath;
@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{metric::CellLevel, terrain::def::TerrainUuid};
 
-/// One **placed terrain piece** in a v2 prefab — *which* terrain definition goes *where*.
+/// One **placed terrain piece** in a prefab — *which* terrain definition goes *where*.
 ///
-/// The single entry shape the v2 [`placements`](super::PrefabSpecV2::placements) list is
+/// The single entry shape the [`placements`](super::PrefabSpec::placements) list is
 /// built from: a stable [`TerrainUuid`] reference to a
 /// [`TerrainDef`](crate::terrain::def::TerrainDef) (the [`piece`](TerrainPlacementEntry::piece))
 /// at a `(cell, level)` footprint position (the [`at`](TerrainPlacementEntry::at)). It

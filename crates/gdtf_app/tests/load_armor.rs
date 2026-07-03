@@ -116,9 +116,9 @@ fn armor_loader_no_ops_cleanly_without_asset_server() {
     // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-489: the NEW gate-blocking PrefabRegistry2; empty clears it.
+    // GTW-489: the NEW gate-blocking PrefabRegistry; empty clears it.
     app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry2::default());
+        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
     // GTW-487: the NEW gate-blocking TerrainDefRegistry + UuidThemeRegistry.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());
@@ -170,9 +170,9 @@ fn load_does_not_leave_without_an_armor_registry() {
     // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-489: the NEW gate-blocking PrefabRegistry2; empty clears it.
+    // GTW-489: the NEW gate-blocking PrefabRegistry; empty clears it.
     app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry2::default());
+        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
     // GTW-487: the NEW gate-blocking TerrainDefRegistry + UuidThemeRegistry.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());

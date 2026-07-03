@@ -12,7 +12,7 @@ use gdtf_ui::theme::GdtfThemeSpec;
 use crate::states::load::resources::{
     ArmorsFolderHandle, AttachmentsFolderHandle, FieldsFolderHandle, FontFolderHandle,
     GangsFolderHandle, InjuriesFolderHandle, LoadHandles, MeleeWeaponsFolderHandle,
-    PrefabsV2FolderHandle, ProcgenTuningHandle, SituationHandle, StatTuningHandle,
+    PrefabsFolderHandle, ProcgenTuningHandle, SituationHandle, StatTuningHandle,
     TerrainModelFolderHandle, ThemeHandle, TuningHandle, WeaponsFolderHandle,
 };
 
@@ -89,14 +89,14 @@ const INJURIES_DIR: &str = "content/injuries";
 /// loader dispatch unambiguous (gangs only) — the weapons/armor/terrain precedent.
 const GANGS_DIR: &str = "content/gangs";
 
-/// Path of the loose v2 maps (prefab) folder, relative to the asset source root (GTW-489 —
-/// child T05c of the GTW-476 data-model refactor; the per-prefab
-/// `assets/content/maps/<theme>/<size>/*.prefab_v2.ron` fragments the `PrefabRegistry2` is built
-/// from). One recursive `load_folder` walks the whole `<theme>/<size>/` tree, and the
-/// dedicated `prefab_v2.ron` compound extension keeps the `.ron` loader dispatch
-/// unambiguous (v2 prefabs only). GTW-494 retired the legacy `content/maps/*.prefab.ron`
-/// loader, so this is the ONLY prefab load in the Load flow.
-const MAPS_V2_DIR: &str = "content/maps";
+/// Path of the maps (prefab) folder, relative to the asset source root (GTW-489 — child
+/// T05c of the GTW-476 data-model refactor; the per-prefab
+/// `assets/content/maps/<theme>/<size>/*.prefab.ron` fragments the `PrefabRegistry` is
+/// built from). One recursive `load_folder` walks the whole `<theme>/<size>/` tree, and
+/// the dedicated `prefab.ron` compound extension
+/// keeps the `.ron` loader dispatch unambiguous. GTW-494 retired the legacy
+/// `content/maps/*.prefab.ron` loader, so this is the ONLY prefab load in the Load flow.
+const MAPS_DIR: &str = "content/maps";
 
 /// Path of the loose per-theme terrain-model folder, relative to the asset source root
 /// (GTW-487 — the GTW-484/485 UUID-keyed terrain + theme defs under the per-theme layout
@@ -131,13 +131,13 @@ const TERRAIN_MODEL_DIR: &str = "terrain";
 /// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
 /// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) the sim + procgen +
 /// presenter consume) AND preloads the `content/maps` folder via `load_folder` (GTW-489 — every
-/// `content/maps/<theme>/<size>/*.prefab_v2.ron`, the UUID-keyed
-/// [`PrefabRegistry2`](gdtf_battle_sim::level::PrefabRegistry2) the procgen pipeline packs),
+/// `content/maps/<theme>/<size>/*.prefab.ron`, the UUID-keyed
+/// [`PrefabRegistry`](gdtf_battle_sim::level::PrefabRegistry) the procgen pipeline packs),
 /// then inserts the Load-scoped [`LoadHandles`] resource the poll/resolve system
 /// reads.
 ///
 /// GTW-494 (child T08 of GTW-476): the OLD flat-dir `content/terrain` / `content/themes` /
-/// `content/maps` folder loads were RETIRED — the per-theme `terrain` model + the `maps` v2
+/// `content/maps` folder loads were RETIRED — the per-theme `terrain` model + the `maps`
 /// prefab loads above are the ONLY terrain / theme / prefab loads in the Load flow.
 ///
 /// It takes `Option<Res<AssetServer>>`: a `MinimalPlugins` headless app has **no**
@@ -178,11 +178,11 @@ pub(in crate::states::load) fn kick_off_loads(
     let fields = FieldsFolderHandle::new(asset_server.load_folder(FIELDS_DIR));
     let injuries = InjuriesFolderHandle::new(asset_server.load_folder(INJURIES_DIR));
     let gangs = GangsFolderHandle::new(asset_server.load_folder(GANGS_DIR));
-    // GTW-489 / GTW-494: the UUID-keyed v2 prefab fragments live under the `maps/` root. One
-    // recursive `load_folder` fans every `*.prefab_v2.ron` member to the dedicated-extension
-    // `RonAsset<PrefabSpecV2>` loader. This is the ONLY prefab load (the legacy flat-dir
+    // GTW-489 / GTW-494: the UUID-keyed prefab fragments live under the `maps/` root. One
+    // recursive `load_folder` fans every `*.prefab.ron` member to the dedicated-extension
+    // `RonAsset<PrefabSpec>` loader. This is the ONLY prefab load (the legacy flat-dir
     // `content/maps/*.prefab.ron` loader was retired).
-    let prefabs_v2 = PrefabsV2FolderHandle::new(asset_server.load_folder(MAPS_V2_DIR));
+    let prefabs = PrefabsFolderHandle::new(asset_server.load_folder(MAPS_DIR));
     let terrain_model = TerrainModelFolderHandle::new(asset_server.load_folder(TERRAIN_MODEL_DIR));
 
     commands.insert_resource(LoadHandles {
@@ -199,7 +199,7 @@ pub(in crate::states::load) fn kick_off_loads(
         fields,
         injuries,
         gangs,
-        prefabs_v2,
+        prefabs,
         terrain_model,
     });
 }

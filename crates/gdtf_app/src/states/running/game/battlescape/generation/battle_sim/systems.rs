@@ -28,7 +28,7 @@
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     battle::{BattleReady, SetupBattleRequested, TeardownBattleRequested},
-    level::{PrefabRegistry2, UuidThemeRegistry},
+    level::{PrefabRegistry, UuidThemeRegistry},
     procgen::ProcgenTuning,
     rng::BattleSeed,
     situation::Situation,
@@ -54,7 +54,7 @@ use crate::states::{
 /// [`procgen_battle_situation`](super::procgen::procgen_battle_situation): generate the
 /// terrain from the authored `theme` ([`ThemeUuid`](gdtf_battle_sim::level::ThemeUuid)) +
 /// `grid_size` against the loaded UUID-keyed registries
-/// ([`PrefabRegistry2`] + [`UuidThemeRegistry`] + [`TerrainDefRegistry`], GTW-492) using a
+/// ([`PrefabRegistry`] + [`UuidThemeRegistry`] + [`TerrainDefRegistry`], GTW-492) using a
 /// [`ProcgenRng`](gdtf_battle_sim::rng::ProcgenRng) derived from
 /// the resolved [`BattleSeed`], and merge that terrain over the authored gangers. The merged
 /// [`Situation`] (`{authored gangers/spawn} + {procgen terrain}`) is written in a
@@ -89,7 +89,7 @@ use crate::states::{
 pub(in crate::states::running::game::battlescape::generation::battle_sim) fn request_battle_setup(
     loaded: Option<Res<LoadedSituation>>,
     seed_override: Option<Res<BattleSeed>>,
-    prefabs: Option<Res<PrefabRegistry2>>,
+    prefabs: Option<Res<PrefabRegistry>>,
     themes: Option<Res<UuidThemeRegistry>>,
     def_registry: Option<Res<TerrainDefRegistry>>,
     procgen_tuning: Option<Res<ProcgenTuning>>,
@@ -112,7 +112,7 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn req
         "battle setup: resolved BattleSeed (RNG replay handle)"
     );
     // GTW-433 / GTW-492: RUN PROCGEN. Generate the terrain from the authored theme
-    // (ThemeUuid) + grid_size against the loaded UUID-keyed registries (PrefabRegistry2 +
+    // (ThemeUuid) + grid_size against the loaded UUID-keyed registries (PrefabRegistry +
     // UuidThemeRegistry + TerrainDefRegistry — populated by the GTW-489 Load resolve from the
     // GTW-490 migrated content, deterministic in `seed`) and merge it over the authored
     // gangers; falls back to the authored terrain when any registry is absent or procgen

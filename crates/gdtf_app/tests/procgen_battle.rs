@@ -13,17 +13,17 @@
 //!    real asset file directly (no app).
 //! 2. [`procgen_battle_reaches_running_with_populated_terrain`] — the full REAL app walk
 //!    (`GdtfLoadTestAppBuilder` → live `AssetServer` rooted at the workspace `assets/`) drives
-//!    `Load` to completion, asserts the v2 [`PrefabRegistry2`] was POPULATED via the resolve
+//!    `Load` to completion, asserts the v2 [`PrefabRegistry`] was POPULATED via the resolve
 //!    branch (not-empty BEFORE the battle generates), then drives into the battle, REACHES
 //!    `BattleRunning`, and asserts the battle's `TerrainIndex` is NON-EMPTY — terrain the
 //!    authored situation did NOT contain, so it can only have come from the live procgen path
-//!    on the v2 model (GTW-492 C4). Explicitly NOT a hand-seeded `PrefabRegistry2`: the registry
+//!    on the v2 model (GTW-492 C4). Explicitly NOT a hand-seeded `PrefabRegistry`: the registry
 //!    is what the real Load resolve produced from shipped content.
 
 use bevy::{app::App, prelude::NextState, state::state::State};
 use gdtf_app::test_support::{AppState, BattleScapeState, RunningState};
 use gdtf_battle_sim::{
-    level::{PrefabRegistry2, ThemeUuid},
+    level::{PrefabRegistry, ThemeUuid},
     situation::Situation,
     terrain::entity::TerrainIndex,
 };
@@ -111,20 +111,20 @@ fn skirmish_ron_authors_no_terrain() {
     );
 }
 
-/// The number of prefabs the loaded v2 registry holds — `None` if the registry is absent.
-fn prefab_v2_len(app: &App) -> Option<usize> {
+/// The number of prefabs the loaded registry holds — `None` if the registry is absent.
+fn prefab_len(app: &App) -> Option<usize> {
     app.world()
-        .get_resource::<PrefabRegistry2>()
-        .map(PrefabRegistry2::len)
+        .get_resource::<PrefabRegistry>()
+        .map(PrefabRegistry::len)
 }
 
-/// C4 (GTW-492): the REAL Load flow POPULATES the v2 prefab registry from shipped content, and
+/// C4 (GTW-492): the REAL Load flow POPULATES the prefab registry from shipped content, and
 /// a theme+size-only situation then procgen-generates its terrain at Generation and REACHES
 /// `BattleScapeState::BattleRunning` with a POPULATED `TerrainIndex`.
 ///
 /// Drives `GdtfLoadTestAppBuilder` (a live `AssetServer` rooted at the workspace `assets/`, the
-/// REAL Load scene) — so the [`PrefabRegistry2`] is built by the GTW-489 resolve from the
-/// GTW-490 migrated `maps/industrial_hive/12x12/*.prefab_v2.ron` content, the
+/// REAL Load scene) — so the [`PrefabRegistry`] is built by the GTW-489 resolve from the
+/// GTW-490 migrated `maps/industrial_hive/12x12/*.prefab.ron` content, the
 /// `UuidThemeRegistry` from `terrain/industrial_hive/*.terrain_theme.ron`, and the
 /// `TerrainDefRegistry` from `terrain/industrial_hive/*.terrain_def.ron`. This is EXPLICITLY
 /// NOT a hand-seeded registry: the assertion below proves the registry was populated via the
@@ -132,9 +132,9 @@ fn prefab_v2_len(app: &App) -> Option<usize> {
 /// populated registry.
 ///
 /// Pin: the shipped `skirmish.ron` has ZERO inline terrain, so a non-empty `TerrainIndex` proves
-/// the terrain came from the LIVE procgen path on the v2 model (`generate_level` → merge →
+/// the terrain came from the LIVE procgen path (`generate_level` → merge →
 /// `setup_battle`), not from the authored situation. If procgen still read the old per-file
-/// prefab / theme model, or the v2 registry resolved empty, the battle would build
+/// prefab / theme model, or the registry resolved empty, the battle would build
 /// empty terrain and the count assertion would fail.
 #[test]
 fn procgen_battle_reaches_running_with_populated_terrain() {
@@ -143,7 +143,7 @@ fn procgen_battle_reaches_running_with_populated_terrain() {
         .build();
 
     // Drive the REAL Load flow to completion (the menu rests once Load has resolved every
-    // gate-blocking resource, including the v2 prefab + theme + terrain registries).
+    // gate-blocking resource, including the prefab + theme + terrain registries).
     let reached_menu = advance_until(
         &mut app,
         |app| running_state(app) == Some(RunningState::Menu),
@@ -156,19 +156,19 @@ fn procgen_battle_reaches_running_with_populated_terrain() {
         running_state(&app),
     );
 
-    // C4: the v2 prefab registry was POPULATED by the Load RESOLVE branch — NON-EMPTY BEFORE the
+    // C4: the prefab registry was POPULATED by the Load RESOLVE branch — NON-EMPTY BEFORE the
     // battle generates (the migrated player + enemy IndustrialHive deployment fragments + any
     // fill). This is the not-hand-seeded proof: the registry is purely what the real resolve
     // produced from shipped content. (`generate_level` has not run yet — we are still at Menu.)
-    let before = prefab_v2_len(&app);
+    let before = prefab_len(&app);
     assert!(
         matches!(before, Some(n) if n > 0),
-        "the REAL Load resolve must POPULATE a non-empty PrefabRegistry2 from shipped content \
+        "the REAL Load resolve must POPULATE a non-empty PrefabRegistry from shipped content \
          BEFORE the battle generates (it must NOT be a hand-seeded registry); registry len was \
          {before:?}",
     );
 
-    // Drive into the battle: the Generation system runs the v2 procgen against the populated
+    // Drive into the battle: the Generation system runs procgen against the populated
     // registries and the merged situation reaches BattleRunning.
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
@@ -180,7 +180,7 @@ fn procgen_battle_reaches_running_with_populated_terrain() {
     );
     assert!(
         reached_running,
-        "a theme+size-only situation should procgen its terrain on the v2 model and reach \
+        "a theme+size-only situation should procgen its terrain and reach \
          BattleRunning within {BUDGET} updates; last observed BattleScapeState was {:?}",
         battlescape_state(&app),
     );
@@ -199,7 +199,7 @@ fn procgen_battle_reaches_running_with_populated_terrain() {
     assert!(
         !terrain.is_empty(),
         "the procgen-generated battle must have a POPULATED TerrainIndex (the authored \
-         situation had zero terrain, so a non-empty index proves the v2 procgen path ran \
-         against the real-resolved PrefabRegistry2); the index was empty",
+         situation had zero terrain, so a non-empty index proves the procgen path ran \
+         against the real-resolved PrefabRegistry); the index was empty",
     );
 }

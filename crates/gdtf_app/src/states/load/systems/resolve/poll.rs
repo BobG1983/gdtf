@@ -16,7 +16,7 @@ use crate::states::load::{
         injuries::resolve_injuries,
         melee_weapons::resolve_melee_weapons,
         params::{LoadAssetCollections, ResolvedResources},
-        prefab_v2::resolve_prefabs_v2,
+        prefab::resolve_prefabs,
         procgen_tuning::resolve_procgen_tuning,
         situation::resolve_situation,
         stat_tuning::resolve_stat_tuning,
@@ -80,7 +80,7 @@ use crate::states::load::{
 /// `warn!`s naming `core_tuning/combat.tuning.ron` and inserts `CombatTuning::default`, so
 /// `Load` always exits with a tuning present. A `GdtfTheme`, a `CombatTuning`, a
 /// `WeaponRegistry`, a `LoadedSituation`, an `ArmorRegistry`, AND the UUID-keyed
-/// `TerrainDefRegistry` / `UuidThemeRegistry` / `PrefabRegistry2` must ALL be present
+/// `TerrainDefRegistry` / `UuidThemeRegistry` / `PrefabRegistry` must ALL be present
 /// before the plugin's transition leaves `Load` (see the plugin wiring); this branch
 /// makes the tuning one of those required resources.
 ///
@@ -97,9 +97,9 @@ use crate::states::load::{
 /// GTW-487 / GTW-489 / GTW-494: it ALSO resolves the per-theme `terrain/` folder into the
 /// UUID-keyed [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
 /// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry), and the `maps/` folder
-/// into the UUID-keyed [`PrefabRegistry2`](gdtf_battle_sim::level::PrefabRegistry2), each on
+/// into the UUID-keyed [`PrefabRegistry`](gdtf_battle_sim::level::PrefabRegistry), each on
 /// its OWN absence guard ([`resolve_terrain_defs`] / [`resolve_theme_defs`] /
-/// [`resolve_prefabs_v2`]), so none starves another. GTW-494 RETIRED the old flat-dir
+/// [`resolve_prefabs`]), so none starves another. GTW-494 RETIRED the old flat-dir
 /// `terrain` / `themes` / `maps` resolvers — these UUID-model loaders are now the ONLY
 /// terrain / theme / prefab resolvers (the sim + procgen + presenter consume the new
 /// registries as of GTW-491/492/493). Each is resolved and gated on so the folder is
@@ -144,7 +144,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         fields_present,
         injuries_present,
         gangs_present,
-        prefabs_v2_present,
+        prefabs_present,
         terrain_defs_present,
         theme_defs_present,
     ) = (
@@ -160,7 +160,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         resolved.fields.is_some(),
         resolved.injuries.is_some(),
         resolved.gangs.is_some(),
-        resolved.prefabs_v2.is_some(),
+        resolved.prefabs.is_some(),
         resolved.terrain_defs.is_some(),
         resolved.theme_defs.is_some(),
     );
@@ -180,7 +180,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         Some(injury_defs),
         Some(weightings),
         Some(gang_rosters),
-        Some(prefab_v2_specs),
+        Some(prefab_specs),
         Some(terrain_defs),
         Some(theme_defs),
         Some(handles),
@@ -200,7 +200,7 @@ pub(in crate::states::load) fn poll_and_resolve(
         collections.injury_defs,
         collections.weightings,
         collections.gang_rosters,
-        collections.prefab_v2_specs,
+        collections.prefab_specs,
         collections.terrain_defs,
         collections.theme_defs,
         handles,
@@ -345,20 +345,21 @@ pub(in crate::states::load) fn poll_and_resolve(
         );
     }
 
-    // GTW-489: resolve the nested `assets/content/maps/` folder into the bucketed PrefabRegistry2
+    // GTW-489: resolve the nested `assets/content/maps/` folder into the bucketed PrefabRegistry
     // on its OWN absence guard, independently of all other branches (the gangs-branch precedent).
-    // The v2 fragments load from the `content/maps/<theme>/<size>/` tree via the dedicated
-    // `prefab_v2.ron` extension. UNLIKE the retired flat-dir prefab resolve, the v2 build runs
-    // NO C6 edge-opening validation — an openingless (zero-placement) v2 prefab is INCLUDED
-    // (the GTW-488 design). The procgen pipeline consumes the registry (GTW-492); it is
-    // resolved and gated on so the folder is verified loaded before `Load` exits. A failed
-    // folder resolve falls back to an empty registry, preserving the no-strand guarantee.
-    if !prefabs_v2_present {
-        resolve_prefabs_v2(
+    // Fragments load from the `content/maps/<theme>/<size>/` tree via the dedicated `prefab.ron`
+    // extension. UNLIKE the retired flat-dir prefab
+    // resolve, this build runs NO C6 edge-opening validation — an openingless (zero-placement)
+    // prefab is INCLUDED (the GTW-488 design). The procgen pipeline consumes the registry
+    // (GTW-492); it is resolved and gated on so the folder is verified loaded before `Load`
+    // exits. A failed folder resolve falls back to an empty registry, preserving the no-strand
+    // guarantee.
+    if !prefabs_present {
+        resolve_prefabs(
             &mut commands,
             &asset_server,
             &folders,
-            &prefab_v2_specs,
+            &prefab_specs,
             &handles,
         );
     }

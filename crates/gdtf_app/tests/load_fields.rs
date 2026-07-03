@@ -74,7 +74,7 @@ fn seed_gate_except_fields(app: &mut bevy::app::App) {
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
     app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry2::default());
+        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());
     app.world_mut()

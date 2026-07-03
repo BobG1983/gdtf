@@ -1,6 +1,6 @@
 //! End-to-end assembler tests (GTW-424 C1/C2/C3; GTW-492 v2 model): anchor selection,
 //! opposite-side fit, determinism, the OQ-5 minimum size, and the fail-closed errors — all
-//! over the UUID-keyed [`PrefabRegistry2`] of [`Prefab2`], keyed by a stable [`ThemeUuid`]
+//! over the UUID-keyed [`PrefabRegistry`] of [`Prefab`], keyed by a stable [`ThemeUuid`]
 //! (GTW-492 C2/C5). Connectivity is by-construction via the 1-cell `default_floor` seam
 //! (GTW-497 removed the old connectivity flood / fail-closed assertion), so the
 //! by-construction invariant is exercised end-to-end by the emit test
@@ -10,8 +10,8 @@ use bevy::asset::uuid::Uuid;
 
 use crate::{
     level::{
-        GridHeight, GridLevels, GridSize, GridWidth, Prefab2, PrefabName, PrefabRegistry2,
-        PrefabSpecV2, SpawnRole, ThemeUuid,
+        GridHeight, GridLevels, GridSize, GridWidth, Prefab, PrefabName, PrefabRegistry,
+        PrefabSpec, SpawnRole, ThemeUuid,
     },
     procgen::{
         Anchor, Footprint, MinPlayerSide, PackingError, SplitMode, assemble_placement,
@@ -34,17 +34,17 @@ fn theme() -> ThemeUuid {
 /// A v2 prefab of `role` at footprint `fp` authoring NO placements (the assembler cares only
 /// about footprint + role + theme — the geometry is the emit step's concern). `None` if the
 /// size is invalid (it cannot be, but the no-panic contract is honoured upstream).
-fn prefab(theme: ThemeUuid, fp: GridSize, role: SpawnRole, stem: &str) -> Prefab2 {
-    Prefab2::new(
+fn prefab(theme: ThemeUuid, fp: GridSize, role: SpawnRole, stem: &str) -> Prefab {
+    Prefab::new(
         PrefabName::new(stem.to_owned()),
-        PrefabSpecV2::new(theme, fp, role, Vec::new()),
+        PrefabSpec::new(theme, fp, role, Vec::new()),
     )
 }
 
 /// A registry with one player + one enemy prefab at the given fragment footprints under
 /// `theme`. `None` if any size is invalid.
-fn registry(theme: ThemeUuid, player_fp: GridSize, enemy_fp: GridSize) -> PrefabRegistry2 {
-    let mut r = PrefabRegistry2::default();
+fn registry(theme: ThemeUuid, player_fp: GridSize, enemy_fp: GridSize) -> PrefabRegistry {
+    let mut r = PrefabRegistry::default();
     r.insert(prefab(theme, player_fp, SpawnRole::Player, "player_pad"));
     r.insert(prefab(theme, enemy_fp, SpawnRole::Enemy, "enemy_pad"));
     r
@@ -193,7 +193,7 @@ fn missing_prefab_is_rejected_fail_closed() {
     let Some(board) = size(40, 40) else {
         return;
     };
-    let registry = PrefabRegistry2::default();
+    let registry = PrefabRegistry::default();
     let mut rng = ProcgenRng::from_root(BattleSeed::new(99));
     let result = assemble_placement(&registry, theme, board, &mut rng);
     assert!(

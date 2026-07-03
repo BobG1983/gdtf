@@ -10,7 +10,7 @@
 //! that feeds the same flood helper an abutting (seam-less) layout and asserts it splits the
 //! board — so the invariant would FAIL if the packer's `Margin::DEFAULT` seam were removed.
 //! The REAL pipeline is driven with an injected seeded RNG over the UUID-keyed v2 prefab
-//! model ([`PrefabRegistry2`] of [`Prefab2`]) + the [`UuidThemeRegistry`] (for the theme's
+//! model ([`PrefabRegistry`] of [`Prefab`]) + the [`UuidThemeRegistry`] (for the theme's
 //! default floor) + the [`TerrainDefRegistry`] (classifying each placed piece); the
 //! assertions are on the EMITTED output, never on a reimplementation.
 
@@ -20,8 +20,8 @@ use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
     level::{
-        GridHeight, GridLevels, GridSize, GridWidth, Prefab2, PrefabName, PrefabRegistry2,
-        PrefabSpecV2, SpawnRole, TerrainPlacementEntry, ThemeDisplayName, ThemeUuid, UuidThemeDef,
+        GridHeight, GridLevels, GridSize, GridWidth, Prefab, PrefabName, PrefabRegistry,
+        PrefabSpec, SpawnRole, TerrainPlacementEntry, ThemeDisplayName, ThemeUuid, UuidThemeDef,
         UuidThemeRegistry,
     },
     metric::{Cell, CellLevel, Level},
@@ -73,10 +73,10 @@ fn floor_piece() -> TerrainUuid {
 /// footprint-local cell `(1, 1)` — so the emit has real terrain to translate (and so
 /// different anchors, i.e. different placed origins, produce different translated cells: the
 /// determinism pin is then discriminating).
-fn prefab(theme: ThemeUuid, fp: GridSize, role: SpawnRole, stem: &str) -> Prefab2 {
-    Prefab2::new(
+fn prefab(theme: ThemeUuid, fp: GridSize, role: SpawnRole, stem: &str) -> Prefab {
+    Prefab::new(
         PrefabName::new(stem.to_owned()),
-        PrefabSpecV2::new(
+        PrefabSpec::new(
             theme,
             fp,
             role,
@@ -92,8 +92,8 @@ fn registry_with_fill(
     player_fp: GridSize,
     enemy_fp: GridSize,
     fills: &[(&str, u8, u8)],
-) -> Option<PrefabRegistry2> {
-    let mut r = PrefabRegistry2::default();
+) -> Option<PrefabRegistry> {
+    let mut r = PrefabRegistry::default();
     r.insert(prefab(theme, player_fp, SpawnRole::Player, "player_pad"));
     r.insert(prefab(theme, enemy_fp, SpawnRole::Enemy, "enemy_pad"));
     for (stem, w, h) in fills {
@@ -409,7 +409,7 @@ fn seam_separated_regions_stay_connected() {
 /// [`MinPlayerSide::DEFAULT`]) so the placement matches `generate_level`'s. Returns `None` on
 /// any packing error (the caller returns early — no panic).
 fn run_pipeline(
-    prefabs: &PrefabRegistry2,
+    prefabs: &PrefabRegistry,
     theme: ThemeUuid,
     board: GridSize,
     seed: BattleSeed,
@@ -583,13 +583,13 @@ fn orientation_terrain_defs() -> TerrainDefRegistry {
     ])
 }
 
-/// A `PrefabRegistry2` whose player + enemy prefabs (footprint `fp`) each place ONE NS wall and
+/// A `PrefabRegistry` whose player + enemy prefabs (footprint `fp`) each place ONE NS wall and
 /// ONE EW wall at distinct footprint-local cells, so the emit must translate + classify each.
-fn orientation_prefabs(theme: ThemeUuid, fp: GridSize) -> PrefabRegistry2 {
+fn orientation_prefabs(theme: ThemeUuid, fp: GridSize) -> PrefabRegistry {
     let both_walls = |role: SpawnRole, stem: &str| {
-        Prefab2::new(
+        Prefab::new(
             PrefabName::new(stem.to_owned()),
-            PrefabSpecV2::new(
+            PrefabSpec::new(
                 theme,
                 fp,
                 role,
@@ -600,13 +600,13 @@ fn orientation_prefabs(theme: ThemeUuid, fp: GridSize) -> PrefabRegistry2 {
             ),
         )
     };
-    let mut prefabs = PrefabRegistry2::default();
+    let mut prefabs = PrefabRegistry::default();
     prefabs.insert(both_walls(SpawnRole::Player, "player_pad"));
     prefabs.insert(both_walls(SpawnRole::Enemy, "enemy_pad"));
     prefabs
 }
 
-/// GTW-469 C4 / C5 — an NS-wall and an EW-wall `TerrainUuid` placed in a [`PrefabSpecV2`] BOTH
+/// GTW-469 C4 / C5 — an NS-wall and an EW-wall `TerrainUuid` placed in a [`PrefabSpec`] BOTH
 /// resolve through the REAL `generate_level` loader/emit path and emit into the
 /// [`walls`](Situation::walls) list, classified identically.
 ///
@@ -775,14 +775,14 @@ fn door_stair_terrain_defs() -> TerrainDefRegistry {
     ])
 }
 
-/// A `PrefabRegistry2` whose player + enemy prefabs (footprint `fp`) each place all 6 GTW-470
+/// A `PrefabRegistry` whose player + enemy prefabs (footprint `fp`) each place all 6 GTW-470
 /// orientation/direction tiles at distinct footprint-local cells, so the emit must translate +
 /// classify each.
-fn door_stair_prefabs(theme: ThemeUuid, fp: GridSize) -> PrefabRegistry2 {
+fn door_stair_prefabs(theme: ThemeUuid, fp: GridSize) -> PrefabRegistry {
     let all_six = |role: SpawnRole, stem: &str| {
-        Prefab2::new(
+        Prefab::new(
             PrefabName::new(stem.to_owned()),
-            PrefabSpecV2::new(
+            PrefabSpec::new(
                 theme,
                 fp,
                 role,
@@ -797,14 +797,14 @@ fn door_stair_prefabs(theme: ThemeUuid, fp: GridSize) -> PrefabRegistry2 {
             ),
         )
     };
-    let mut prefabs = PrefabRegistry2::default();
+    let mut prefabs = PrefabRegistry::default();
     prefabs.insert(all_six(SpawnRole::Player, "player_pad"));
     prefabs.insert(all_six(SpawnRole::Enemy, "enemy_pad"));
     prefabs
 }
 
 /// GTW-470 C4 / C5 — all 6 orientation/direction door + stair `TerrainUuid`s placed in a
-/// [`PrefabSpecV2`] resolve through the REAL `generate_level` loader/emit path: the 2 doors
+/// [`PrefabSpec`] resolve through the REAL `generate_level` loader/emit path: the 2 doors
 /// (`sim_kind = Wall`) classify into the [`walls`](Situation::walls) list and the 4 stairs
 /// (`sim_kind = Slab`) into the [`slabs`](Situation::slabs) list.
 ///

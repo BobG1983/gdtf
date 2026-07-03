@@ -1,11 +1,11 @@
-//! GTW-494 (child T08 of the GTW-476 refactor): `AppState::Load` loads the v2 prefab
-//! fragments from `assets/content/maps/<theme>/<size>/*.prefab_v2.ron` through the GTW-489
-//! `resolve_prefabs_v2` loader, builds the UUID-keyed [`PrefabRegistry2`] from them, and
+//! GTW-494 (child T08 of the GTW-476 refactor): `AppState::Load` loads the prefab
+//! fragments from `assets/content/maps/<theme>/<size>/*.prefab.ron` through the GTW-489
+//! `resolve_prefabs` loader, builds the UUID-keyed [`PrefabRegistry`] from them, and
 //! gates the Load→Intro transition on it.
 //!
 //! This file was MIGRATED off the retired flat-dir `resolve_prefabs` per-file prefab model
 //! (GTW-418) onto the
-//! UUID v2 model: GTW-494 removed the old game-side loader, so the `PrefabRegistry2` is now
+//! UUID model: GTW-494 removed the old game-side loader, so the `PrefabRegistry` is now
 //! the ONLY prefab resolver in the Load flow (the procgen pipeline consumes it, GTW-492). It
 //! does NOT seed the registry — it drives the REAL Load branch over the shipped
 //! `assets/content/maps/` content and asserts the registry POPULATES (not-empty) and a KNOWN
@@ -17,7 +17,7 @@
 
 use gdtf_app::test_support::AppState;
 use gdtf_battle_sim::level::{
-    GridHeight, GridLevels, GridSize, GridWidth, PrefabKey2, PrefabRegistry2, SpawnRole, ThemeUuid,
+    GridHeight, GridLevels, GridSize, GridWidth, PrefabKey, PrefabRegistry, SpawnRole, ThemeUuid,
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
@@ -28,7 +28,7 @@ use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resou
 /// against a genuine never-resolve hang, not a timing budget (GTW-305).
 const LOAD_SAFETY_NET: u32 = 10_000;
 
-/// The migrated `IndustrialHive` [`ThemeUuid`] every shipped v2 prefab draws from (matches
+/// The migrated `IndustrialHive` [`ThemeUuid`] every shipped prefab draws from (matches
 /// the migrated `industrial_hive.terrain_theme.ron` key).
 const fn industrial_hive_theme() -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a90_0001))
@@ -43,9 +43,9 @@ fn app_state(app: &bevy::app::App) -> AppState {
 }
 
 /// GTW-494 C2 — with a real `AssetServer` rooted at the workspace `assets/`, entering `Load`
-/// loads `assets/content/maps/<theme>/<size>/*.prefab_v2.ron` and builds the UUID-keyed
-/// [`PrefabRegistry2`] bucketed by each fragment's `(theme, size, role)` through the ACTUAL
-/// `resolve_prefabs_v2` branch. Proves:
+/// loads `assets/content/maps/<theme>/<size>/*.prefab.ron` and builds the UUID-keyed
+/// [`PrefabRegistry`] bucketed by each fragment's `(theme, size, role)` through the ACTUAL
+/// `resolve_prefabs` branch. Proves:
 ///
 /// - The registry RESOLVES POPULATED (non-empty).
 /// - A KNOWN `(IndustrialHive, 12x12, Player)` bucket resolves the migrated player-deployment
@@ -53,26 +53,26 @@ fn app_state(app: &bevy::app::App) -> AppState {
 /// - The Load gate WAITED for the registry: the machine reaches Intro with the registry
 ///   present, proving the gate clause fired on a real registry.
 ///
-/// Does NOT seed [`PrefabRegistry2::default()`] — seeding would mask the very regression
-/// under test. Existence of the resource here proves `resolve_prefabs_v2` published it from
+/// Does NOT seed [`PrefabRegistry::default()`] — seeding would mask the very regression
+/// under test. Existence of the resource here proves `resolve_prefabs` published it from
 /// the real folder (not a hand-seeded default).
 #[test]
-fn real_asset_resolves_v2_prefab_registry() {
+fn real_asset_resolves_prefab_registry() {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
 
-    // Signal-poll the async maps folder load: wait until resolve_prefabs_v2 inserts the
-    // PrefabRegistry2, not a fixed frame count. Cap is a safety net (GTW-305). DELIBERATELY
-    // do NOT seed PrefabRegistry2::default() — existence here proves the REAL
-    // resolve_prefabs_v2 published it from the assets/content/maps/ folder.
-    advance_until_resource_exists::<PrefabRegistry2>(&mut app, LOAD_SAFETY_NET);
+    // Signal-poll the async maps folder load: wait until resolve_prefabs inserts the
+    // PrefabRegistry, not a fixed frame count. Cap is a safety net (GTW-305). DELIBERATELY
+    // do NOT seed PrefabRegistry::default() — existence here proves the REAL
+    // resolve_prefabs published it from the assets/content/maps/ folder.
+    advance_until_resource_exists::<PrefabRegistry>(&mut app, LOAD_SAFETY_NET);
 
-    if let Some(registry) = app.world().get_resource::<PrefabRegistry2>() {
+    if let Some(registry) = app.world().get_resource::<PrefabRegistry>() {
         assert!(
             !registry.is_empty(),
-            "the resolved PrefabRegistry2 must carry the migrated (non-empty) v2 prefabs — an \
-             empty registry means resolve_prefabs_v2 is broken (fell back to the empty default)",
+            "the resolved PrefabRegistry must carry the migrated (non-empty) prefabs — an \
+             empty registry means resolve_prefabs is broken (fell back to the empty default)",
         );
 
         // --- Enumeration by (theme, size, role) returns the migrated player deployment -----
@@ -82,12 +82,12 @@ fn real_asset_resolves_v2_prefab_registry() {
             "the 12x12x1 deployment footprint must be a valid GridSize"
         );
         let Some(size) = size.ok() else { return };
-        let key = PrefabKey2::new(industrial_hive_theme(), size, SpawnRole::Player);
+        let key = PrefabKey::new(industrial_hive_theme(), size, SpawnRole::Player);
         let bucket = registry.prefabs_for(&key);
         assert!(
             !bucket.is_empty(),
             "the (IndustrialHive, 12x12, Player) bucket must hold the migrated player-deployment \
-             v2 prefab — enumeration by (theme, size, role) is the C2 contract",
+             prefab — enumeration by (theme, size, role) is the C2 contract",
         );
         // Every prefab in the bucket carries >= 1 placement (the migrated walls/scatter refs).
         for prefab in bucket {
@@ -106,13 +106,13 @@ fn real_asset_resolves_v2_prefab_registry() {
     );
     assert!(
         reached_intro,
-        "with a real AssetServer, Load must reach Intro once all folders (incl. the v2 maps) \
+        "with a real AssetServer, Load must reach Intro once all folders (incl. the maps) \
          resolve; last AppState was {:?}",
         app_state(&app),
     );
     assert!(
-        app.world().get_resource::<PrefabRegistry2>().is_some(),
-        "a PrefabRegistry2 must be present when Load reaches Intro (the gate clause waited \
+        app.world().get_resource::<PrefabRegistry>().is_some(),
+        "a PrefabRegistry must be present when Load reaches Intro (the gate clause waited \
          for it — not a hand-seeded default)",
     );
 }

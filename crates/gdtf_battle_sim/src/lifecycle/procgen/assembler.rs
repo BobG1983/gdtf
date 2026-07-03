@@ -12,7 +12,7 @@
 //! on top. NOTHING here wires `BattleScapeState` (a later ticket).
 //!
 //! GTW-492 (child T07b of the GTW-476 data-model refactor): the assembler reads the
-//! UUID-keyed [`PrefabRegistry2`] of [`Prefab2`] fragments, keyed by a stable
+//! UUID-keyed [`PrefabRegistry`] of [`Prefab`] fragments, keyed by a stable
 //! [`ThemeUuid`] (GTW-485 / GTW-488).
 
 use super::{
@@ -22,13 +22,13 @@ use super::{
     packer::{MaxRectsPacker, SplitMode},
 };
 use crate::{
-    level::{GridSize, Prefab2, PrefabKey2, PrefabRegistry2, SpawnRole, ThemeUuid},
+    level::{GridSize, Prefab, PrefabKey, PrefabRegistry, SpawnRole, ThemeUuid},
     rng::ProcgenRng,
 };
 
-/// One prefab the assembler has PLACED — the chosen [`Prefab2`], the [`Anchor`] it sits at,
+/// One prefab the assembler has PLACED — the chosen [`Prefab`], the [`Anchor`] it sits at,
 /// and its placed [`RegionRect`] on the board (GTW-424; GTW-492 switched it onto the
-/// UUID-keyed [`Prefab2`]).
+/// UUID-keyed [`Prefab`]).
 ///
 /// A named struct (no-bare-types: a placement is a domain value, not a bare tuple). The
 /// GTW-427 fill pass reads the region to stamp interior fill; the GTW-431 emit step reads
@@ -38,7 +38,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlacedPrefab {
     /// The chosen prefab (player-spawn or enemy-spawn fragment).
-    prefab: Prefab2,
+    prefab: Prefab,
     /// The anchor it was placed flush against.
     anchor: Anchor,
     /// Its placed footprint on the board (min-corner origin + extent).
@@ -48,7 +48,7 @@ pub struct PlacedPrefab {
 impl PlacedPrefab {
     /// Build a placed-prefab record.
     #[must_use]
-    pub const fn new(prefab: Prefab2, anchor: Anchor, region: RegionRect) -> Self {
+    pub const fn new(prefab: Prefab, anchor: Anchor, region: RegionRect) -> Self {
         Self {
             prefab,
             anchor,
@@ -58,7 +58,7 @@ impl PlacedPrefab {
 
     /// The chosen prefab.
     #[must_use]
-    pub const fn prefab(&self) -> &Prefab2 {
+    pub const fn prefab(&self) -> &Prefab {
         &self.prefab
     }
 
@@ -125,7 +125,7 @@ impl Placement {
 ///   not fit its region (C2 — the player anchor region, or the strict-opposite enemy
 ///   region).
 pub fn assemble_placement(
-    registry: &PrefabRegistry2,
+    registry: &PrefabRegistry,
     theme: ThemeUuid,
     grid_size: GridSize,
     rng: &mut ProcgenRng,
@@ -150,7 +150,7 @@ pub fn assemble_placement(
 ///
 /// Same as [`assemble_placement`].
 pub fn assemble_placement_with(
-    registry: &PrefabRegistry2,
+    registry: &PrefabRegistry,
     theme: ThemeUuid,
     grid_size: GridSize,
     rng: &mut ProcgenRng,
@@ -226,19 +226,19 @@ pub fn assemble_placement_with(
 /// fragment footprint, NOT the board. So the assembler enumerates ACROSS sizes for a
 /// `(theme, role)` and picks a FITTING one — it never assumes a fragment fills the board.
 ///
-/// GTW-492: keyed on the stable [`ThemeUuid`] (the [`PrefabKey2::theme`] field) and the
-/// [`PrefabKey2::role`] field. An absent `theme` (no key matches) yields an EMPTY list — the
+/// GTW-492: keyed on the stable [`ThemeUuid`] (the [`PrefabKey::theme`] field) and the
+/// [`PrefabKey::role`] field. An absent `theme` (no key matches) yields an EMPTY list — the
 /// pickers turn that into a fail-closed [`PackingError::NoPrefabForRole`].
-fn candidates(registry: &PrefabRegistry2, theme: ThemeUuid, role: SpawnRole) -> Vec<Prefab2> {
-    let mut out: Vec<Prefab2> = registry
+fn candidates(registry: &PrefabRegistry, theme: ThemeUuid, role: SpawnRole) -> Vec<Prefab> {
+    let mut out: Vec<Prefab> = registry
         .keys()
         .filter(|k| k.theme == theme && k.role == role)
-        .flat_map(|k: &PrefabKey2| registry.prefabs_for(k).iter().cloned())
+        .flat_map(|k: &PrefabKey| registry.prefabs_for(k).iter().cloned())
         .collect();
     // Deterministic order: largest fragment first (prefer the densest deployment zone that
     // fits), ties broken by name so the order is total and seed-independent.
     out.sort_by(|a, b| {
-        let area = |p: &Prefab2| {
+        let area = |p: &Prefab| {
             let f = Footprint::of(p.spec().size);
             i64::from(f.width()) * i64::from(f.height())
         };
@@ -259,13 +259,13 @@ fn candidates(registry: &PrefabRegistry2, theme: ThemeUuid, role: SpawnRole) -> 
 /// or [`PackingError::FootprintDoesNotFit`] if every (large-enough) candidate is too large
 /// to fit the board with its seam.
 fn pick_player_prefab(
-    registry: &PrefabRegistry2,
+    registry: &PrefabRegistry,
     theme: ThemeUuid,
     packer: &MaxRectsPacker,
     board: RegionRect,
     anchor: Anchor,
     min_player_side: MinPlayerSide,
-) -> Result<Prefab2, PackingError> {
+) -> Result<Prefab, PackingError> {
     let candidates = candidates(registry, theme, SpawnRole::Player);
     if candidates.is_empty() {
         return Err(PackingError::NoPrefabForRole {
@@ -314,13 +314,13 @@ fn pick_player_prefab(
 /// [`PackingError::FootprintDoesNotFit`] if every candidate is too large for the remaining
 /// space at the opposite anchor.
 fn pick_fitting_prefab(
-    registry: &PrefabRegistry2,
+    registry: &PrefabRegistry,
     theme: ThemeUuid,
     role: SpawnRole,
     packer: &MaxRectsPacker,
     board: RegionRect,
     anchor: Anchor,
-) -> Result<Prefab2, PackingError> {
+) -> Result<Prefab, PackingError> {
     let candidates = candidates(registry, theme, role);
     if candidates.is_empty() {
         return Err(PackingError::NoPrefabForRole { theme, role });

@@ -1,5 +1,5 @@
 //! Pure **projection and serialization** functions — convert the in-memory [`EditorMap`] into
-//! the v2 [`PrefabSpecV2`] schema and serialize it to RON (GTW-432; swept onto the v2 UUID schema
+//! the [`PrefabSpec`] schema and serialize it to RON (GTW-432; swept onto the UUID schema
 //! in GTW-495).
 //!
 //! No Bevy systems here — only pure data-transformation functions and their helpers. All
@@ -8,7 +8,7 @@
 use std::path::{Path, PathBuf};
 
 use gdtf_battle_sim::{
-    level::{GridSize, PrefabSpecV2, TerrainPlacementEntry, ThemeUuid},
+    level::{GridSize, PrefabSpec, TerrainPlacementEntry, ThemeUuid},
     terrain::def::TerrainDefRegistry,
 };
 
@@ -38,7 +38,7 @@ pub fn sanitize_name(raw: &str) -> String {
 }
 
 /// The full on-disk PATH a saved prefab is written to:
-/// `<workspace assets>/maps/<theme>/<size>/<stem>.prefab_v2.ron` (GTW-432; v2 root in GTW-495).
+/// `<workspace assets>/maps/<theme>/<size>/<stem>.prefab.ron` (GTW-432; root in GTW-495).
 ///
 /// Pure (no IO) so a test can assert the resolved location without writing anything. The
 /// `theme_display` is the slugified theme directory's source (the theme's display name), `size`
@@ -52,16 +52,16 @@ pub fn prefab_save_path(theme_display: &str, size: GridSize, stem: &str) -> Path
         .join(format!("{stem}.{PREFAB_EXTENSION}"))
 }
 
-/// Project the in-memory [`EditorMap`] (incl. multi-level cells) into the v2 [`PrefabSpecV2`]
+/// Project the in-memory [`EditorMap`] (incl. multi-level cells) into the [`PrefabSpec`]
 /// schema — the conversion at the heart of the save (C2 / C3).
 ///
 /// Iterates every painted `(slot, tile)` of the map, re-checks each through the GTW-430 shared
 /// [`evaluate_placement`] predicate (C3 — an illegal cell rejects the whole save), and collapses
-/// them into ONE [`placements`](PrefabSpecV2::placements) list of [`TerrainPlacementEntry`] (the
-/// v2 schema's single list — the per-piece behaviour now lives in the referenced
+/// them into ONE [`placements`](PrefabSpec::placements) list of [`TerrainPlacementEntry`] (the
+/// schema's single list — the per-piece behaviour now lives in the referenced
 /// [`TerrainDef`](gdtf_battle_sim::terrain::def::TerrainDef)). The prefab's theme / size come from
 /// the `session`; the spawn role is the [`SAVED_SPAWN_ROLE`] default. There is NO authored-opening
-/// derivation — the v2 schema carries none (connectivity is by-construction in the v2 assembler:
+/// derivation — the schema carries none (connectivity is by-construction in the assembler:
 /// the 1-cell `default_floor` seam every placement reserves).
 ///
 /// # Errors
@@ -71,7 +71,7 @@ pub fn editor_map_to_prefab(
     map: &EditorMap,
     registry: &TerrainDefRegistry,
     session: &MapEditorSession,
-) -> Result<PrefabSpecV2, SavePrefabError> {
+) -> Result<PrefabSpec, SavePrefabError> {
     let theme: ThemeUuid = session.theme();
     let size = session.grid_size();
 
@@ -94,26 +94,26 @@ pub fn editor_map_to_prefab(
         (a.at.x, a.at.y, a.at.z, *a.piece).cmp(&(b.at.x, b.at.y, b.at.z, *b.piece))
     });
 
-    Ok(PrefabSpecV2::new(theme, size, SAVED_SPAWN_ROLE, placements))
+    Ok(PrefabSpec::new(theme, size, SAVED_SPAWN_ROLE, placements))
 }
 
-/// Serialize a built [`PrefabSpecV2`] to its `.prefab_v2.ron`-shaped RON text — the SAME schema
+/// Serialize a built [`PrefabSpec`] to its `.prefab.ron`-shaped RON text — the SAME schema
 /// the GTW-489 loader deserializes (C2). A pretty-printed record so a saved prefab stays
-/// human-editable like the shipped `assets/content/maps/**/*.prefab_v2.ron`.
+/// human-editable like the shipped `assets/content/maps/**/*.prefab.ron`.
 ///
 /// # Errors
 ///
 /// [`SavePrefabError::Serialize`] wrapping the underlying RON serialization error.
-pub fn serialize_prefab(spec: &PrefabSpecV2) -> Result<String, SavePrefabError> {
+pub fn serialize_prefab(spec: &PrefabSpec) -> Result<String, SavePrefabError> {
     ron::ser::to_string_pretty(spec, ron::ser::PrettyConfig::default())
         .map_err(|err| SavePrefabError::Serialize(err.to_string()))
 }
 
 /// Project + serialize + WRITE the [`EditorMap`] to
-/// `assets/content/maps/<theme>/<size>/<stem>.prefab_v2.ron` (GTW-515 C4.9 / C4.10), or return the typed
+/// `assets/content/maps/<theme>/<size>/<stem>.prefab.ron` (GTW-515 C4.9 / C4.10), or return the typed
 /// [`SavePrefabError`] (never a panic).
 ///
-/// Sanitizes the entered prefab name to a file stem, projects the map to a [`PrefabSpecV2`] via
+/// Sanitizes the entered prefab name to a file stem, projects the map to a [`PrefabSpec`] via
 /// [`editor_map_to_prefab`] (which re-checks every painted cell through the shared
 /// [`evaluate_placement`] — C3 illegal-cell guard, reused verbatim), serializes it via
 /// [`serialize_prefab`], resolves the themed/sized path via [`prefab_save_path`], creates the

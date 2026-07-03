@@ -1,34 +1,34 @@
-//! The editor **SAVE-PREFAB path** (GTW-432; swept onto the v2 UUID schema in GTW-495): project
-//! the in-memory [`EditorMap`](crate::EditorMap) into the v2
-//! [`PrefabSpecV2`](gdtf_battle_sim::level::PrefabSpecV2) schema, serialize it to RON, and WRITE
-//! it to `assets/content/maps/<theme>/<size>/<prefab_name>.prefab_v2.ron`.
+//! The editor **SAVE-PREFAB path** (GTW-432; swept onto the UUID schema in GTW-495): project
+//! the in-memory [`EditorMap`](crate::EditorMap) into the
+//! [`PrefabSpec`](gdtf_battle_sim::level::PrefabSpec) schema, serialize it to RON, and WRITE
+//! it to `assets/content/maps/<theme>/<size>/<prefab_name>.prefab.ron`.
 //!
 //! ## The schema the saver writes (C2)
 //!
-//! The saver builds a real [`PrefabSpecV2`](gdtf_battle_sim::level::PrefabSpecV2) — the SAME type
-//! the GTW-489 v2 folder loader deserializes — so a saved prefab round-trips through that loader
+//! The saver builds a real [`PrefabSpec`](gdtf_battle_sim::level::PrefabSpec) — the SAME type
+//! the GTW-489 folder loader deserializes — so a saved prefab round-trips through that loader
 //! with no data loss (`load(save(grid)) == grid`). Every painted cell of the
 //! [`EditorMap`](crate::EditorMap) (including multi-level cells) collapses into ONE
-//! [`placements`](gdtf_battle_sim::level::PrefabSpecV2::placements) list of
+//! [`placements`](gdtf_battle_sim::level::PrefabSpec::placements) list of
 //! [`TerrainPlacementEntry`](gdtf_battle_sim::level::TerrainPlacementEntry) — `(piece, at)` pairs
 //! referencing the painted [`TerrainUuid`](gdtf_battle_sim::terrain::def::TerrainUuid) — because
 //! the per-piece behaviour (wall / cover / slab) now lives in the referenced
 //! [`TerrainDef`](gdtf_battle_sim::terrain::def::TerrainDef), not in split lists.
 //!
-//! The prefab's [`theme`](gdtf_battle_sim::level::PrefabSpecV2::theme) (a
-//! [`ThemeUuid`](gdtf_battle_sim::level::ThemeUuid)) + [`size`](gdtf_battle_sim::level::PrefabSpecV2::size)
+//! The prefab's [`theme`](gdtf_battle_sim::level::PrefabSpec::theme) (a
+//! [`ThemeUuid`](gdtf_battle_sim::level::ThemeUuid)) + [`size`](gdtf_battle_sim::level::PrefabSpec::size)
 //! come from the authoring [`MapEditorSession`](crate::MapEditorSession), and the
-//! [`role`](gdtf_battle_sim::level::PrefabSpecV2::role) defaults to
+//! [`role`](gdtf_battle_sim::level::PrefabSpec::role) defaults to
 //! [`SpawnRole::Fill`](gdtf_battle_sim::level::SpawnRole::Fill) — the connective default (the
 //! editor has no spawn-role control yet).
 //!
 //! ## No authored openings (GTW-495)
 //!
-//! The v2 schema carries NO authored-opening field — inter-fragment connectivity is
-//! by-construction in the v2 assembler (the 1-cell `default_floor` seam every placement reserves),
+//! The schema carries NO authored-opening field — inter-fragment connectivity is
+//! by-construction in the assembler (the 1-cell `default_floor` seam every placement reserves),
 //! not authored per-prefab — so the saver derives NONE (the legacy opening-derivation + zero-opening
 //! rejection are GONE; the underlying machinery was removed in GTW-497). A zero-placement prefab is
-//! a valid v2 prefab (the infallible `Prefab2::new`).
+//! a valid prefab (the infallible `Prefab::new`).
 //!
 //! ## Illegal-cell guard (C3)
 //!
@@ -47,7 +47,7 @@
 //! ## GTW-512: the egui swap — projection kept, the `bevy_ui` controls deferred to C4
 //!
 //! The egui migration (GTW-512 C1) keeps the pure PROJECTION + serialization (the [`types`] consts /
-//! markers / errors + [`project`]'s `EditorMap` → `PrefabSpecV2` projection + RON serialize + path
+//! markers / errors + [`project`]'s `EditorMap` → `PrefabSpec` projection + RON serialize + path
 //! resolution) — the contract the C4 child builds on — and DROPS the `bevy_ui` save controls: the
 //! `systems` module (the filesystem writer + the prefab-name field / "Save prefab" button spawn +
 //! the press trigger) is GONE from the module tree. The egui save controls + the fs-write press

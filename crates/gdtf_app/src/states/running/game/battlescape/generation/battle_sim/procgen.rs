@@ -12,7 +12,7 @@
 //!
 //! GTW-492 (child T07b of the GTW-476 data-model refactor) switched the sim's procgen onto
 //! the UUID-keyed v2 prefab model. The app-side glue now drives [`generate_level`] with the
-//! UUID-keyed [`PrefabRegistry2`] of [`Prefab2`](gdtf_battle_sim::level::Prefab2) fragments
+//! UUID-keyed [`PrefabRegistry`] of [`Prefab`](gdtf_battle_sim::level::Prefab) fragments
 //! (populated by the GTW-489 Load resolve from the GTW-490 migrated content), the
 //! [`UuidThemeRegistry`] (the theme's default floor), the [`TerrainDefRegistry`] (classifying
 //! each placed piece), and the authored situation's [`ThemeUuid`] theme directly — no
@@ -50,9 +50,9 @@
 //!
 //! # Fallback (C4)
 //!
-//! [`generate_level`] fails closed ([`PackingError`]) when the [`PrefabRegistry2`] has no
+//! [`generate_level`] fails closed ([`PackingError`]) when the [`PrefabRegistry`] has no
 //! player / enemy prefab for the theme (e.g. an EMPTY registry, the headless deep-walk
-//! case). On a failure — OR when no [`PrefabRegistry2`] is present at all — this returns the
+//! case). On a failure — OR when no [`PrefabRegistry`] is present at all — this returns the
 //! AUTHORED situation UNCHANGED, so a battle with authored (or empty) terrain still sets up
 //! and reaches `BattleRunning`. The real GUI path always has the loaded registries + a
 //! theme+size situation, so procgen runs and produces a playable level; the fallback only
@@ -60,7 +60,7 @@
 
 use bevy::prelude::warn;
 use gdtf_battle_sim::{
-    level::{PrefabRegistry2, UuidThemeRegistry},
+    level::{PrefabRegistry, UuidThemeRegistry},
     procgen::{ProcgenTuning, generate_level},
     rng::{BattleSeed, ProcgenRng},
     situation::Situation,
@@ -80,9 +80,9 @@ use gdtf_battle_sim::{
 pub(in crate::states::running::game::battlescape::generation::battle_sim) struct ProcgenRegistries<
     'a,
 > {
-    /// The UUID-keyed v2 prefab library (the GTW-489 Load resolve populates it from the
-    /// migrated `maps/<theme>/<size>/*.prefab_v2.ron` content).
-    pub prefabs: Option<&'a PrefabRegistry2>,
+    /// The UUID-keyed prefab library (the GTW-489 Load resolve populates it from the
+    /// `maps/<theme>/<size>/*.prefab.ron` content).
+    pub prefabs: Option<&'a PrefabRegistry>,
     /// The UUID-keyed theme registry (the theme's default floor — the seam-lattice floor).
     pub themes:  Option<&'a UuidThemeRegistry>,
     /// The UUID-keyed terrain-definition registry (classifies each placed piece's sim-kind).

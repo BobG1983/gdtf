@@ -11,25 +11,25 @@ use gdtf_battle_sim::{
 /// The workspace `assets/` root — byte-identical to the editor's `AssetPlugin.file_path`
 /// (`crates/gdtf_content_editor` → up two levels → `assets`), computed at compile time relative to THIS
 /// crate's manifest. So a prefab the editor SAVES lands exactly where the running game (and the
-/// GTW-489 v2 folder loader) READS v2 prefabs from — `assets/content/maps/<theme>/<size>/`.
+/// GTW-489 folder loader) READS prefabs from — `assets/content/maps/<theme>/<size>/`.
 pub(super) const WORKSPACE_ASSETS_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
 
-/// The folder under the assets root the GTW-489 v2 loader scans for `*.prefab_v2.ron` fragments
+/// The folder under the assets root the GTW-489 loader scans for `*.prefab.ron` fragments
 /// — the `<theme>/<size>/` subfolders are nested under this. Lives under `content/maps/`,
 /// the SOLE prefab root after GTW-494 (GTW-556 moved it from the top-level `maps/`).
 pub(super) const MAPS_SUBDIR: &str = "content/maps";
 
-/// The compound file extension the GTW-489 v2 prefab loader keys on
-/// (`init_ron_asset_with_extensions::<PrefabSpecV2>(vec!["prefab_v2.ron"])`) — a saved prefab MUST
-/// use it or the loader never picks the file up. The loader strips a trailing `.prefab_v2` from
-/// the file stem to recover the prefab NAME, so `entry_room.prefab_v2.ron` keys `entry_room`.
-pub(super) const PREFAB_EXTENSION: &str = "prefab_v2.ron";
+/// The compound file extension the GTW-489 prefab loader keys on
+/// (`init_ron_asset_with_extensions::<PrefabSpec>(vec!["prefab.ron"])`) — a saved prefab MUST
+/// use it or the loader never picks the file up. The loader strips a trailing `.prefab` from
+/// the file stem to recover the prefab NAME, so `entry_room.prefab.ron` keys `entry_room`.
+pub(super) const PREFAB_EXTENSION: &str = "prefab.ron";
 
 /// The spawn role a saved prefab is authored with (GTW-432) — the connective
 /// [`Fill`](SpawnRole::Fill) default.
 ///
 /// The editor has no spawn-role control, so every saved fragment is a generic FILL fragment (the
-/// v2 schema's serde-default role) — the assembler buckets it under the connective interior. A
+/// schema's serde-default role) — the assembler buckets it under the connective interior. A
 /// future spawn-role selector would override this; until then Fill is the safe, documented
 /// default.
 pub(super) const SAVED_SPAWN_ROLE: SpawnRole = SpawnRole::Fill;
@@ -39,7 +39,7 @@ pub(super) const SAVED_SPAWN_ROLE: SpawnRole = SpawnRole::Fill;
 // + their markers when it re-points the save trigger.
 
 /// Why a prefab save was REJECTED — the handled, no-panic failure of the save path (GTW-432;
-/// the old zero-opening rejection variant was DROPPED in GTW-495, the v2 schema authors no
+/// the old zero-opening rejection variant was DROPPED in GTW-495, the schema authors no
 /// openings).
 ///
 /// A named domain enum (no-bare-types: the rejection reason is a domain value). Each variant names
@@ -53,7 +53,7 @@ pub enum SavePrefabError {
     /// (C3) — the save is rejected so a written prefab never contains an illegal cell. Names the
     /// offending slot.
     IllegalCell(CellLevel),
-    /// Serializing the built [`PrefabSpecV2`](gdtf_battle_sim::level::PrefabSpecV2) to RON failed.
+    /// Serializing the built [`PrefabSpec`](gdtf_battle_sim::level::PrefabSpec) to RON failed.
     Serialize(String),
     /// Writing the serialized prefab to disk failed (a missing dir / permissions error / io).
     Write(String),
@@ -79,7 +79,7 @@ impl std::error::Error for SavePrefabError {}
 
 /// The `snake_case` directory name for a theme, derived from its human label (GTW-495).
 ///
-/// The v2 maps tree is `assets/content/maps/<theme>/<size>/`; the `<theme>` segment is the slugified
+/// The maps tree is `assets/content/maps/<theme>/<size>/`; the `<theme>` segment is the slugified
 /// theme DISPLAY NAME (e.g. `"Industrial Hive"` → `industrial_hive`), matching the shipped
 /// per-theme layout. The save path resolves the theme's display name from the
 /// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry); this folds it to the

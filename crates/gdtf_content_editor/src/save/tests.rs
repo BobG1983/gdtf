@@ -1,12 +1,12 @@
-//! In-crate tests for the save path (GTW-432; swept onto the v2 UUID schema in GTW-495) —
-//! sanitize, path resolution, the v2 round-trip (C2), and the illegal-cell guard (C3).
+//! In-crate tests for the save path (GTW-432; swept onto the UUID schema in GTW-495) —
+//! sanitize, path resolution, the round-trip (C2), and the illegal-cell guard (C3).
 
 use gdtf_battle_sim::{
     Cell,
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
     level::{
-        GridHeight, GridLevels, GridSize, GridWidth, Prefab2, PrefabName, PrefabSpecV2, SpawnRole,
+        GridHeight, GridLevels, GridSize, GridWidth, Prefab, PrefabName, PrefabSpec, SpawnRole,
         ThemeUuid,
     },
     metric::{CellLevel, Level},
@@ -134,11 +134,11 @@ fn sanitize_name_folds_to_stem() {
     );
 }
 
-/// The save path is `assets/content/maps/<theme>/<size>/<stem>.prefab_v2.ron` — the layout the GTW-489
-/// v2 loader scans (the `.prefab_v2` infix is required so the loader keys it). The theme dir is
+/// The save path is `assets/content/maps/<theme>/<size>/<stem>.prefab.ron` — the layout the GTW-489
+/// loader scans (the `.prefab` infix is required so the loader keys it). The theme dir is
 /// the slugified theme display name (NOT a closed-enum match).
 #[test]
-fn save_path_is_themed_sized_and_dot_prefab_v2_ron() {
+fn save_path_is_themed_sized_and_dot_prefab_ron() {
     let path = prefab_save_path("Industrial Hive", size(), "entry_room");
     let tail: Vec<_> = path
         .components()
@@ -148,22 +148,22 @@ fn save_path_is_themed_sized_and_dot_prefab_v2_ron() {
         .collect();
     // Reversed: file, size dir, theme dir, maps dir.
     assert_eq!(
-        tail[0], "entry_room.prefab_v2.ron",
-        "the .prefab_v2.ron extension"
+        tail[0], "entry_room.prefab.ron",
+        "the .prefab.ron extension"
     );
     assert_eq!(tail[1], "4x4", "the <width>x<height> size dir");
     assert_eq!(
         tail[2], "industrial_hive",
         "the slugified theme display-name dir (not a closed-enum match)",
     );
-    assert_eq!(tail[3], "maps", "under the v2 maps root");
+    assert_eq!(tail[3], "maps", "under the maps root");
 }
 
 /// GTW-495 C2 — the IDENTITY round-trip on the REAL code path: build an [`EditorMap`] with a
 /// boundary floor, a wall, a slab, AND a MULTI-LEVEL ladder cell, project it via the real
 /// [`editor_map_to_prefab`] + [`serialize_prefab`], deserialize via the SAME parser the GTW-489
-/// loader uses (`ron::de::from_str::<PrefabSpecV2>`), validate via the SAME (infallible)
-/// [`Prefab2::new`] the loader runs, and assert the reloaded spec EQUALS the saved one — every
+/// loader uses (`ron::de::from_str::<PrefabSpec>`), validate via the SAME (infallible)
+/// [`Prefab::new`] the loader runs, and assert the reloaded spec EQUALS the saved one — every
 /// cell, level, theme, and size survives, with NO authored openings in the schema.
 ///
 /// Pin-discriminating: if a placement were dropped (a level, a cell, theme, or size) the reloaded
@@ -192,7 +192,7 @@ fn editor_map_round_trips_through_the_loader() {
     let built = editor_map_to_prefab(&map, &reg, &session);
     assert!(
         built.is_ok(),
-        "the map must project to a v2 prefab: {:?}",
+        "the map must project to a prefab: {:?}",
         built.as_ref().err(),
     );
     let Ok(saved) = built else { return };
@@ -204,32 +204,32 @@ fn editor_map_round_trips_through_the_loader() {
     );
     let Ok(serialized) = serialized else { return };
 
-    // RELOAD via the loader path: deserialize with the SAME parser RonAsset<PrefabSpecV2> uses …
-    let reloaded = ron::de::from_str::<PrefabSpecV2>(&serialized);
+    // RELOAD via the loader path: deserialize with the SAME parser RonAsset<PrefabSpec> uses …
+    let reloaded = ron::de::from_str::<PrefabSpec>(&serialized);
     assert!(
         reloaded.is_ok(),
-        "the serialized prefab must round-trip through the PrefabSpecV2 deserializer: {:?}",
+        "the serialized prefab must round-trip through the PrefabSpec deserializer: {:?}",
         reloaded.as_ref().err(),
     );
     let Ok(reloaded) = reloaded else { return };
 
-    // … and BUILD via the SAME (infallible) Prefab2::new the loader runs (no C6 edge-opening
-    // check in the v2 schema) — so the round-trip exercises the loader's real build path.
-    let validated = Prefab2::new(PrefabName::new("entry_room".to_owned()), reloaded.clone());
+    // … and BUILD via the SAME (infallible) Prefab::new the loader runs (no C6 edge-opening
+    // check in the schema) — so the round-trip exercises the loader's real build path.
+    let validated = Prefab::new(PrefabName::new("entry_room".to_owned()), reloaded.clone());
     assert_eq!(
         validated.spec(),
         &reloaded,
-        "the built v2 prefab carries the reloaded spec unchanged (no validation drops data)",
+        "the built prefab carries the reloaded spec unchanged (no validation drops data)",
     );
 
-    // load(save(grid)) == grid: the reloaded spec equals the saved one (PrefabSpecV2: PartialEq).
+    // load(save(grid)) == grid: the reloaded spec equals the saved one (PrefabSpec: PartialEq).
     assert_eq!(
         reloaded, saved,
         "the reloaded prefab must equal the saved one — every cell, level, theme, and size \
-         survives the v2 round-trip (C2)",
+         survives the round-trip (C2)",
     );
     // Every painted cell appears as a placement (4 painted cells -> 4 placements), and there are
-    // no authored openings to lose (the v2 schema has none).
+    // no authored openings to lose (the schema has none).
     assert_eq!(
         saved.placements.len(),
         4,
@@ -249,7 +249,7 @@ fn editor_map_round_trips_through_the_loader() {
     assert_eq!(
         reloaded.role,
         SpawnRole::Fill,
-        "the connective Fill role survives the v2 round-trip (C2)",
+        "the connective Fill role survives the round-trip (C2)",
     );
 }
 

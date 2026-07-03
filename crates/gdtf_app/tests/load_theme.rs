@@ -131,10 +131,10 @@ fn theme_present_transitions_to_intro_and_persists() {
     // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-489: the gate-blocking UUID-keyed PrefabRegistry2; empty clears it (GTW-494 retired
+    // GTW-489: the gate-blocking UUID-keyed PrefabRegistry; empty clears it (GTW-494 retired
     // the legacy prefab-registry gate).
     app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry2::default());
+        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
     // GTW-487: the gate-blocking UUID-keyed TerrainDefRegistry + UuidThemeRegistry (GTW-494
     // retired the legacy terrain / theme registry gates).
     app.world_mut()

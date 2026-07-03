@@ -49,7 +49,7 @@
 //!   ([`evaluate_placement`]) the preview + the commit run, plus the multi-level auto-handling
 //!   ([`PlacementVerdict`] / [`ProposedPlacement`]).
 //! - The GTW-432 `save` module (debug-only) keeps the pure PROJECTION of the [`EditorMap`] into the
-//!   v2 `PrefabSpecV2` schema + the RON serialize + the path resolution (the egui save controls + the
+//!   [`PrefabSpec`](gdtf_battle_sim::level::PrefabSpec) schema + the RON serialize + the path resolution (the egui save controls + the
 //!   fs-write press are deferred to the C4 child); the projection re-checks every painted cell through
 //!   [`evaluate_placement`] so a saved prefab never contains an illegal cell.
 //! - The `right_panel` module keeps the size-selector / theme-dropdown model TYPES
@@ -88,7 +88,7 @@ mod preview;
 // the egui swap (GTW-512); the `bevy_ui` spawn + the gdtf_ui-widget commit drives were dropped.
 mod right_panel;
 // The GTW-432 save-prefab path is debug-only (the GTW-429 gang-save precedent): the whole module
-// — the EditorMap → PrefabSpecV2 projection, the RON serialize, the fs-write, and the press trigger
+// — the EditorMap → PrefabSpec projection, the RON serialize, the fs-write, and the press trigger
 // — is gated `#[cfg(debug_assertions)]` so it never compiles into a release binary.
 #[cfg(debug_assertions)]
 mod save;

@@ -5,7 +5,7 @@
 //! sim→presenter boundary): it RUNS the sim's
 //! [`assemble_placement`](gdtf_battle_sim::procgen::assemble_placement) and
 //! [`fill_placement`](gdtf_battle_sim::procgen::fill_placement) against the loaded UUID-keyed
-//! [`PrefabRegistry2`](gdtf_battle_sim::PrefabRegistry2) for a theme + grid-size + seed, then
+//! [`PrefabRegistry`](gdtf_battle_sim::PrefabRegistry) for a theme + grid-size + seed, then
 //! projects the resulting [`FilledPlacement`](gdtf_battle_sim::FilledPlacement) into an
 //! ORDERED list of [`VizQuad`]s — player, enemy, then every fill prefab in placement order.
 //! It never mutates combat/sim state; it only reads the placement.
@@ -21,7 +21,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    FilledPlacement, GangName, GangRegistry, GridSize, PlacedPrefab, PrefabName, PrefabRegistry2,
+    FilledPlacement, GangName, GangRegistry, GridSize, PlacedPrefab, PrefabName, PrefabRegistry,
     ProcgenRng, ProcgenTuning, SpawnRole, ThemeUuid, assemble_placement, fill_placement,
     rng::BattleSeed,
 };
@@ -569,7 +569,7 @@ impl ProcgenViz {
     /// const default.
     #[must_use]
     pub(in crate::states::running::procgen_viz) fn build(
-        registry: Option<&PrefabRegistry2>,
+        registry: Option<&PrefabRegistry>,
         theme: ThemeUuid,
         grid_size: GridSize,
         seed: BattleSeed,
@@ -600,7 +600,7 @@ impl ProcgenViz {
                   bundling them would obscure more than it saves"
     )]
     pub(in crate::states::running::procgen_viz) fn build_with_gangs(
-        registry: Option<&PrefabRegistry2>,
+        registry: Option<&PrefabRegistry>,
         theme: ThemeUuid,
         grid_size: GridSize,
         seed: BattleSeed,
@@ -670,7 +670,7 @@ fn board_extent(grid_size: GridSize) -> BoardExtent {
 /// `core_tuning/procgen.tuning.ron` re-tunes the visualizer's fill on the next Generate, matching
 /// the live battle path.
 fn assemble_filled(
-    registry: Option<&PrefabRegistry2>,
+    registry: Option<&PrefabRegistry>,
     theme: ThemeUuid,
     grid_size: GridSize,
     seed: BattleSeed,

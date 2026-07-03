@@ -3,14 +3,14 @@
 //! These run on the `MinimalPlugins` [`GdtfTestAppBuilder`] (the real state stack, `UiPlugin`,
 //! and — in a debug build — the real `ProcgenVizScenePlugin` wired through `ScenesPlugin`).
 //! They seed the persistent `Load` resources the visualizer reads (a theme, a theme+size-only
-//! `LoadedSituation`, a [`PrefabRegistry2`] with a player + enemy v2 prefab under the
+//! `LoadedSituation`, a [`PrefabRegistry`] with a player + enemy v2 prefab under the
 //! situation's [`ThemeUuid`], and a FIXED `BattleSeed` so the assembled level is reproducible),
 //! drive into [`RunningState::DebugProcgenVisualizer`](gdtf_app::test_support::RunningState), and
 //! assert on the WORLD + the real visualizer model / entities — never on rendering (the
 //! screenshot, C5, is the QA stage).
 //!
 //! GTW-492 (T07b): the visualizer drives the UUID-keyed v2 procgen pipeline, so the fixture
-//! seeds a [`PrefabRegistry2`] of [`Prefab2`] (keyed by the situation's [`ThemeUuid`]).
+//! seeds a [`PrefabRegistry`] of [`Prefab`] (keyed by the situation's [`ThemeUuid`]).
 //!
 //! Coverage (C1/C2/C3):
 //!
@@ -42,8 +42,8 @@ use gdtf_battle_sim::{
     Reflexes, Speed, Strength, TerrainUuid, ThemeDisplayName, Toughness, UuidThemeDef,
     UuidThemeRegistry, WeaponName,
     level::{
-        GridHeight, GridLevels, GridSize, GridWidth, Prefab2, PrefabName, PrefabRegistry2,
-        PrefabSpecV2, SpawnRole, ThemeUuid,
+        GridHeight, GridLevels, GridSize, GridWidth, Prefab, PrefabName, PrefabRegistry,
+        PrefabSpec, SpawnRole, ThemeUuid,
     },
     rng::BattleSeed,
     situation::Situation,
@@ -78,23 +78,23 @@ fn fragment() -> GridSize {
     GridSize::new(GridWidth::new(12), GridHeight::new(12), GridLevels::new(1)).unwrap_or_default()
 }
 
-/// Build a [`PrefabRegistry2`] with a player + enemy v2 prefab (each a 12x12 fragment, authoring
+/// Build a [`PrefabRegistry`] with a player + enemy v2 prefab (each a 12x12 fragment, authoring
 /// no placements — the visualizer reads only the placement-quad SEQUENCE, never the per-piece
 /// geometry) under BOTH test themes (keyed by `(theme, size, role)`), so the visualizer's
 /// `assemble_placement` has a real player- and enemy-role prefab to place WHICHEVER theme is
 /// selected (C1 — a theme switch still places). An empty registry would show zero quads and
 /// redden the assertions loudly.
-fn viz_prefab_registry() -> PrefabRegistry2 {
+fn viz_prefab_registry() -> PrefabRegistry {
     let fp = fragment();
-    let mut registry = PrefabRegistry2::default();
+    let mut registry = PrefabRegistry::default();
     for theme in [viz_theme(), other_theme()] {
-        registry.insert(Prefab2::new(
+        registry.insert(Prefab::new(
             PrefabName::new("player_deployment".to_owned()),
-            PrefabSpecV2::new(theme, fp, SpawnRole::Player, Vec::new()),
+            PrefabSpec::new(theme, fp, SpawnRole::Player, Vec::new()),
         ));
-        registry.insert(Prefab2::new(
+        registry.insert(Prefab::new(
             PrefabName::new("enemy_deployment".to_owned()),
-            PrefabSpecV2::new(theme, fp, SpawnRole::Enemy, Vec::new()),
+            PrefabSpec::new(theme, fp, SpawnRole::Enemy, Vec::new()),
         ));
     }
     registry

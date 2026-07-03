@@ -13,8 +13,8 @@ The migrated content is shipped under:
   `TerrainDef` files.
 - `assets/terrain/<theme>/<theme>.terrain_theme.ron` — the GTW-487 `UuidThemeDef`
   files.
-- `assets/content/maps/<theme>/<size>/<name>.prefab_v2.ron` — the GTW-489
-  `PrefabSpecV2` files.
+- `assets/content/maps/<theme>/<size>/<name>.prefab.ron` — the GTW-489
+  `PrefabSpec` files.
 
 ## The dual-catalog conflict (industrial_hive)
 
@@ -87,7 +87,7 @@ UUIDs. Their `default_floor` is the migrated floor def of that theme.
 ## Prefab migration sub-decisions
 
 - **`role` omitted (serde-default `Fill`).** The migrated v2 prefabs
-  (`content/maps/industrial_hive/{3x3,12x12}/*.prefab_v2.ron`) OMIT the `role` field, so it
+  (`content/maps/industrial_hive/{3x3,12x12}/*.prefab.ron`) OMIT the `role` field, so it
   deserializes as `SpawnRole::Fill` (the GTW-490 recipe step 3 + C3 "role defaults
   applied"). The legacy `Player` / `Enemy` role intent is not yet meaningful — the
   v2 assembler (T07b) does not consume these prefabs and will re-key role then.

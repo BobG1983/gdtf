@@ -27,9 +27,9 @@
 //!
 //! GTW-492 (child T07b of the GTW-476 data-model refactor) switches the procgen pipeline onto
 //! the UUID-keyed v2 prefab model: the assembler / fill read the
-//! [`PrefabRegistry2`](crate::level::PrefabRegistry2) of [`Prefab2`](crate::level::Prefab2)
+//! [`PrefabRegistry`](crate::level::PrefabRegistry) of [`Prefab`](crate::level::Prefab)
 //! fragments, and each fragment carries ONE
-//! [`placements`](crate::level::PrefabSpecV2::placements) list of
+//! [`placements`](crate::level::PrefabSpec::placements) list of
 //! [`TerrainPlacementEntry`](crate::level::TerrainPlacementEntry) (a `(piece: TerrainUuid, at:
 //! CellLevel)` pair) in place of the legacy schema's FOUR split lists
 //! (walls / scatter / slabs / floors). The emit therefore iterates that SINGLE list and
@@ -47,7 +47,7 @@
 //!
 //! # The translation (footprint-local -> board cells)
 //!
-//! A [`Prefab2`](crate::level::Prefab2) authors its geometry in FOOTPRINT-LOCAL cells (origin
+//! A [`Prefab`](crate::level::Prefab) authors its geometry in FOOTPRINT-LOCAL cells (origin
 //! at `(0, 0)`); the packer placed it at a [`RegionRect`] whose [`origin`](RegionRect::origin)
 //! is its min-corner on the board. So every authored placement cell — each
 //! [`TerrainPlacementEntry`](crate::level::TerrainPlacementEntry), poured into a
@@ -92,7 +92,7 @@ use super::{
     tuning::ProcgenTuning,
 };
 use crate::{
-    level::{GridSize, PrefabRegistry2, ThemeUuid, UuidThemeRegistry},
+    level::{GridSize, PrefabRegistry, ThemeUuid, UuidThemeRegistry},
     metric::{Cell, CellLevel, Level},
     rng::ProcgenRng,
     situation::{CoverSpawn, FloorSpawn, Situation, SlabSpawn},
@@ -111,7 +111,7 @@ use crate::{
 /// are used; the unit tests drive the explicit-split form via the staged functions directly
 /// when they need to.
 ///
-/// GTW-492: `prefabs` is the UUID-keyed [`PrefabRegistry2`], `theme` the stable
+/// GTW-492: `prefabs` is the UUID-keyed [`PrefabRegistry`], `theme` the stable
 /// [`ThemeUuid`]; `themes` ([`UuidThemeRegistry`]) supplies the theme's `default_floor`, and
 /// `terrain_defs` ([`TerrainDefRegistry`]) classifies each placed piece's
 /// [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) so [`emit_level`] routes it into
@@ -124,7 +124,7 @@ use crate::{
 /// itself is infallible (connectivity is by-construction — GTW-497). It NEVER
 /// `unwrap`/`expect`/`panic`s.
 pub fn generate_level(
-    prefabs: &PrefabRegistry2,
+    prefabs: &PrefabRegistry,
     themes: &UuidThemeRegistry,
     terrain_defs: &TerrainDefRegistry,
     theme: ThemeUuid,
@@ -168,7 +168,7 @@ pub fn generate_level(
 /// infallible — it returns a `Situation` directly, never a `Result`.
 ///
 /// GTW-492: iterates each fragment's SINGLE
-/// [`placements`](crate::level::PrefabSpecV2::placements) list (not four split lists) and
+/// [`placements`](crate::level::PrefabSpec::placements) list (not four split lists) and
 /// CLASSIFIES each placement by its referenced
 /// [`TerrainDef`](crate::terrain::def::TerrainDef)'s
 /// [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) (resolved against `terrain_defs`):
@@ -217,7 +217,7 @@ pub fn emit_level(
 }
 
 /// Translate one placed prefab's footprint-local geometry onto the board and append it to
-/// `situation` — the SINGLE GTW-486 [`placements`](crate::level::PrefabSpecV2::placements)
+/// `situation` — the SINGLE GTW-486 [`placements`](crate::level::PrefabSpec::placements)
 /// list, each cell shifted by the prefab's placed region origin and CLASSIFIED by kind.
 ///
 /// GTW-492: a v2 fragment carries ONE placements list (not four split lists). Each placement

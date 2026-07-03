@@ -98,9 +98,9 @@ fn seed_gate_resources(app: &mut bevy::app::App, seed_terrain: bool) {
     app.world_mut().insert_resource(InjuryRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-489: the gate-blocking UUID-keyed PrefabRegistry2.
+    // GTW-489: the gate-blocking UUID-keyed PrefabRegistry.
     app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry2::default());
+        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
     // GTW-487: the gate-blocking UUID-keyed UuidThemeRegistry.
     app.world_mut()
         .insert_resource(UuidThemeRegistry::default());

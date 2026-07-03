@@ -12,7 +12,7 @@
 //! newtype (no-bare-types: the cell key is a domain coordinate) makes the model speak the SAME
 //! coordinate vocabulary the procgen assembly and the save/emit paths read, and valuing it by
 //! [`TerrainUuid`] (the new model's stable terrain key) makes a painted cell carry the same
-//! reference a [`PrefabSpecV2`](gdtf_battle_sim::level::PrefabSpecV2) placement does.
+//! reference a [`PrefabSpec`](gdtf_battle_sim::level::PrefabSpec) placement does.
 //!
 //! ## Ground-plane (`L0`) conveniences
 //!
@@ -57,7 +57,7 @@ pub(crate) const GROUND_LEVEL: Level = Level::new(0);
 /// A state-scoped [`Resource`] (inserted `OnEnter(Editing)`, removed `OnExit(Editing)` —
 /// bevy-traps #1). Sparse: only PAINTED cells hold an entry (an unpainted cell renders the
 /// theme default-floor). The authoritative editor paintable map — the FOUNDATION the save path
-/// (GTW-432) reads to write the `.prefab_v2.ron`.
+/// (GTW-432) reads to write the `.prefab.ron`.
 ///
 /// The inner map is PRIVATE (no-bare-types rule 5): paints flow through [`EditorMap::paint_at`]
 /// (which clamps to the drawable extent — C3) and are read through [`EditorMap::tile_at_level`] /
