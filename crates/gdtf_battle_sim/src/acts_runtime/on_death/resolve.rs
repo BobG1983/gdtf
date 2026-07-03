@@ -1,5 +1,6 @@
-//! The [`CoverOnDeathRegistry`] resource + the [`resolve_on_death`] system + the two
-//! per-variant folder functions ([`explode`] / [`leave_field`]) (GTW-547, child GTW-41g).
+//! The [`CoverOnDeathRegistry`] resource + the [`resolve_on_death`] system — the on-death
+//! MECHANICS resolver that fans each buffered death's authored effect generically through
+//! the GTW-552 palette ([`crate::effects::on_death`]) (GTW-547, child GTW-41g).
 
 use bevy::{
     platform::collections::{HashMap, HashSet},
@@ -8,12 +9,11 @@ use bevy::{
 
 use super::{OnDeath, OnDeathEffect, OnDeathOccurred};
 use crate::{
+    effects::on_death::{ApplyOnDeathEffect, DeathFanOut, VictimRow},
     fields::{FieldDefRegistry, FieldRegistry},
-    ganger::{Hp, LifeState},
     metric::CellLevel,
     occupancy::OccupancyGrid,
-    shot_pipeline::aoe::aoe_affected,
-    weapon::{HitType, MeleeWeapon, MountedWeapon, Wields},
+    weapon::{MeleeWeapon, MountedWeapon, Wields},
 };
 
 /// The **cover-cell → on-death-effect** map — the authored [`OnDeathEffect`] a destroyed piece
@@ -71,12 +71,6 @@ impl CoverOnDeathRegistry {
     }
 }
 
-/// The victim-surface query row [`resolve_on_death`]'s [`explode`] drain mutates — the struck
-/// ganger's `(`[`Hp`]`, `[`LifeState`]`)` bundled into one `QueryData` tuple alias so the
-/// `Query` stays under clippy's type-complexity gate. Mutable on both (the blast drains
-/// [`Hp`] and flips [`LifeState`] to [`LifeState::Dead`] on a lethal blast).
-type VictimRow = (&'static mut Hp, &'static mut LifeState);
-
 /// **Resolve** every buffered [`OnDeathOccurred`] — the GTW-547 on-death-effect applier
 /// (the GTW-41 advanced-effects epic, child GTW-41g — a ticket-defined feature not yet
 /// written into `docs/combat/resolution.md`).
@@ -92,26 +86,29 @@ type VictimRow = (&'static mut Hp, &'static mut LifeState);
 ///    spec's [`on_death`](crate::weapon::WeaponSpec) field); a COVER death (an
 ///    [`Entity::PLACEHOLDER`]) looks up the [`CoverOnDeathRegistry`] by the death
 ///    [`at`](OnDeathOccurred::at) cell. A source with no authored effect fans nothing.
-/// 2. **Run the matching per-variant folder function** at the death cell —
-///    [`explode`] fans a GTW-541 [`aoe_affected`] blast (a flat, deterministic,
-///    armor-bypassing, RNG-free [`Hp`] drain per ganger in the radius), and
-///    [`leave_field`] spawns the referenced GTW-545 field.
+/// 2. **Fan the effect at the death cell through the palette** — the effect enum's thin
+///    delegation ([`ApplyOnDeathEffect`]) routes to the isolated per-effect behaviour in
+///    [`crate::effects::on_death`] over the borrowed [`DeathFanOut`] surface. This resolver
+///    NEVER matches the effect vocabulary (GTW-552) — the mechanics stay a work-queue + a
+///    generic trait invocation.
 ///
 /// # Chain-reaction cadence (the GTW-547 termination guarantee)
 ///
-/// An [`explode`] blast can KILL more gangers (emptying their [`Hp`]), which must themselves
-/// fan their on-death effects — a cascading explosion. This is resolved to a FIXPOINT WITHIN
-/// ONE system run: the buffered deaths seed a local work-queue, and each blast that kills a
-/// ganger pushes that fresh death onto the SAME queue (NOT back through the message buffer,
-/// which the reader's cursor would not re-observe this frame). A [`HashSet`] of already-processed
-/// death CELLS guards re-entry, so each death is fanned exactly once and the cascade TERMINATES
-/// (bounded by the finite live gangers / cover cells; a cover cell is destroyed once — its
+/// An [`OnDeathEffect::Explode`] fan can KILL more gangers (emptying their
+/// [`Hp`](crate::ganger::Hp)), which must themselves fan their on-death effects — a cascading
+/// explosion. This is resolved to a FIXPOINT WITHIN ONE system run: the buffered deaths seed a
+/// local work-queue, and each fan that kills a ganger pushes that fresh death — a typed
+/// [`OnDeathOccurred`] work item — onto the SAME queue via the surface's
+/// [`cascade`](DeathFanOut::cascade) (NOT back through the message buffer, which the reader's
+/// cursor would not re-observe this frame). A [`HashSet`] of already-processed death CELLS
+/// guards re-entry, so each death is fanned exactly once and the cascade TERMINATES (bounded
+/// by the finite live gangers / cover cells; a cover cell is destroyed once — its
 /// [`deplete_cover`](crate::cover::CoverLedger::deplete_cover) `destroyed` flag is monotonic —
-/// and a ganger flips [`LifeState::Dead`] once). No infinite loop, no double-apply, all
-/// same-frame.
+/// and a ganger flips [`LifeState::Dead`](crate::ganger::LifeState) once). No infinite loop,
+/// no double-apply, all same-frame.
 ///
 /// Param-only (`bevy-traps.md` #7 — no `&mut World`): a [`MessageReader`], the disjoint
-/// [`Wields`] / [`OnDeath`] / [`Hp`]+[`LifeState`] queries, and the
+/// [`Wields`] / [`OnDeath`] / [`VictimRow`] queries, and the
 /// [`Res<OccupancyGrid>`] / [`ResMut<FieldRegistry>`] / [`Res<CoverOnDeathRegistry>`] world
 /// reads plus an `Option<`[`Res<FieldDefRegistry>`]`>` (the field CATALOG is app/Load-owned, NOT
 /// sim-`setup_battle`-inserted — a battle with no field content has none, so it is taken
@@ -138,7 +135,7 @@ pub fn resolve_on_death(
     field_defs: Option<Res<FieldDefRegistry>>,
     cover_on_death: Res<CoverOnDeathRegistry>,
 ) {
-    // Seed the local work-queue from this frame's buffered deaths. Cascade deaths (a blast that
+    // Seed the local work-queue from this frame's buffered deaths. Cascade deaths (a fan that
     // kills more) are pushed onto THIS queue, not re-emitted through the message buffer — the
     // reader's cursor would not re-observe them this frame. `visited` (keyed by death cell) is
     // the termination guard: a cell is fanned exactly once.
@@ -175,87 +172,18 @@ pub fn resolve_on_death(
             continue;
         };
 
-        // (2) Run the matching per-variant folder function at the death cell.
-        match effect {
-            OnDeathEffect::Explode {
-                hit_type, damage, ..
-            } => explode(death.at, hit_type, damage, &grid, &mut victims, &mut queue),
-            OnDeathEffect::LeaveField { field } => {
-                // The field catalog is app/Load-owned; with it absent a LeaveField fans nothing
-                // (fail-closed, the tick_fields Option-resource precedent).
-                if let Some(defs) = field_defs.as_deref() {
-                    leave_field(death.at, &field, defs, &mut fields);
-                }
-            }
-        }
-    }
-}
-
-/// **Fan an `AoE` blast** at `at` — the [`OnDeathEffect::Explode`] folder function (GTW-547).
-///
-/// Enumerates the GTW-541 [`aoe_affected`] template's cell set (centred at `at`, which is also
-/// its notional shooter origin so a cone degenerates to the full disc — a corpse has no fire
-/// direction), reads each cell's [`OccupancyGrid::occupant`], and drains a flat, deterministic
-/// [`ExplodeDamage`](super::ExplodeDamage) from each LIVE ganger's [`Hp`]
-/// (`saturating_sub`, armor-bypassing, NO RNG — the [`tick_dot`](crate::dot::tick_dot) /
-/// [`tick_fields`](crate::fields::tick_fields) direct-drain model). A blast that empties a
-/// victim's [`Hp`] flips it to [`LifeState::Dead`] and pushes a fresh
-/// [`OnDeathOccurred`] onto `queue` (the same-frame cascade — the caller's fixpoint loop
-/// processes it, guarded by the visited-set). A corpse in the radius is skipped (already Dead).
-///
-/// Faction-BLIND (the GTW-541 friendly-fire property `resolution.md` §2): the blast strikes
-/// EVERY occupant in the radius, including allies. Deterministic — [`aoe_affected`] returns a
-/// canonically-sorted set and the drain takes no RNG, so a demo explosion is byte-stable.
-fn explode(
-    at: CellLevel,
-    hit_type: HitType,
-    damage: super::ExplodeDamage,
-    grid: &OccupancyGrid,
-    victims: &mut Query<VictimRow>,
-    queue: &mut Vec<OnDeathOccurred>,
-) {
-    // The blast centre is BOTH the impact and the notional shooter (a corpse has no fire
-    // direction), so a Cone falls back to the full disc — the documented degenerate fallback.
-    for cell in aoe_affected(at, hit_type, at) {
-        let Some(occupant) = grid.occupant(&cell) else {
-            continue;
+        // (2) Fan the effect at the death cell generically through the palette trait (the
+        //     GTW-552 seam): the enum's thin delegation routes to the isolated per-effect
+        //     behaviour over this borrowed surface — DIRECT, same-frame invocation (never a
+        //     deferred command), so a lethal fan's kills land on `queue` before the next pop
+        //     and the cascade cadence is unchanged. NO effect logic lives here.
+        let mut fan_out = DeathFanOut {
+            grid:       &grid,
+            victims:    &mut victims,
+            fields:     &mut fields,
+            field_defs: field_defs.as_deref(),
+            cascade:    &mut queue,
         };
-        let Ok((mut hp, mut life)) = victims.get_mut(occupant) else {
-            continue;
-        };
-        // Skip a corpse (already Dead) — it neither takes damage nor re-fans (the once-only
-        // property the visited-set also enforces at the death-cell level).
-        if *life == LifeState::Dead {
-            continue;
-        }
-        // Flat, armor-bypassing, RNG-free drain (saturating at 0 — Hp is unsigned).
-        *hp = Hp::new(hp.saturating_sub(*damage));
-        // A blast that empties Hp KILLS (the DOT / field-kill precedent) and re-emits the
-        // cascade death onto the caller's work-queue (same-frame, visited-set-guarded).
-        if *hp == Hp::new(0) {
-            *life = LifeState::Dead;
-            queue.push(OnDeathOccurred::new(occupant, cell));
-        }
+        effect.fan_at(death.at, &mut fan_out);
     }
-}
-
-/// **Leave a persistent field** at `at` — the [`OnDeathEffect::LeaveField`] folder function
-/// (GTW-547).
-///
-/// Resolves the authored [`FieldKey`](crate::fields::FieldKey) against the
-/// [`FieldDefRegistry`] to its [`FieldDef`](crate::fields::FieldDef) and calls the GTW-545
-/// [`FieldRegistry::spawn`] placement API at `at`, so the cell becomes a live hazard that
-/// persists + ticks per GTW-545 rules. An unresolvable key (no field file with that stem
-/// loaded) fans nothing (fail-closed — no panic), the setup-time
-/// [`FieldNotFound`](crate::situation::BattleSetupError) abort's runtime counterpart.
-fn leave_field(
-    at: CellLevel,
-    field: &crate::fields::FieldKey,
-    field_defs: &FieldDefRegistry,
-    fields: &mut FieldRegistry,
-) {
-    let Some(def) = field_defs.def(field) else {
-        return; // no such field loaded — fail closed, no panic
-    };
-    fields.spawn(at, def.clone());
 }

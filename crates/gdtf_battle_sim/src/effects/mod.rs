@@ -32,3 +32,12 @@ pub mod attachments;
 /// [`damage_resolution::injuries`](crate::damage_resolution::injuries) and
 /// [`apply_injury`](crate::acts::apply_injury).
 pub mod injuries;
+
+/// The **on-death effect palette** — the closed
+/// [`OnDeathEffect`](crate::effects::on_death::OnDeathEffect) vocabulary + one isolated
+/// behaviour per effect (GTW-552; the palette that replaces the resolver's per-variant
+/// folder functions). The MECHANICS that invoke it — the cascade work-queue resolver, the
+/// terminal-gate [`OnDeathOccurred`](crate::on_death::OnDeathOccurred) emission, and the
+/// [`OnDeath`](crate::on_death::OnDeath) / cover-registry authoring carriers — live under
+/// [`acts_runtime::on_death`](crate::acts_runtime::on_death).
+pub mod on_death;

@@ -1,6 +1,7 @@
-//! Unit tests for the GTW-547 on-death runtime — the [`resolve_on_death`] applier's two
-//! per-variant folder functions (Explode fans an `AoE` blast; `LeaveField` spawns a GTW-545
-//! field), the chain-reaction fixpoint termination, and the terminal-gate emission from the
+//! Unit tests for the GTW-547 on-death runtime MECHANICS — the [`resolve_on_death`] applier
+//! fanning both shipped palette effects end-to-end (Explode fans an `AoE` blast; `LeaveField`
+//! spawns a GTW-545 field — behaviours isolated in [`crate::effects::on_death`] per GTW-552),
+//! the chain-reaction fixpoint termination, and the terminal-gate emission from the
 //! per-round DOT / field / bleed clocks. Driven headlessly on a `MinimalPlugins` app (the sim
 //! crate cannot dev-dep `gdtf_test_utils` — a cycle; the DOT / fields test bare-`App`
 //! precedent). NO `unwrap`/`expect`/`panic` in a test body (the workspace-denied idiom holds
