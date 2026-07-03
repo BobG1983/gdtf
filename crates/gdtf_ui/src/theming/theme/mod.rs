@@ -35,8 +35,8 @@
 //!
 //! The module is split by layer: `newtypes` (the typed leaves + wire-shaped
 //! `Srgba4`/`MarginSpec`), `spec` (the `*Spec` mirror + resolution), `runtime`
-//! (the resolved sub-themes + [`GdtfTheme`]/[`ActiveThemeHandle`]), and `fallback`
-//! (the error-path [`default_theme`]).
+//! (the resolved sub-themes + [`GdtfTheme`]), and `fallback` (the error-path
+//! [`default_theme`]).
 
 mod fallback;
 mod newtypes;
@@ -53,9 +53,7 @@ pub use newtypes::{
     DisabledColor, FontKey, FontSizePt, HoverColor, MarginSpec, MarginVh, MarginVw, PanelColor,
     PressedColor, ScreenColor, Srgba4, TextColor,
 };
-pub use runtime::{
-    ActiveThemeHandle, BackgroundTheme, ButtonTheme, GdtfTheme, PanelTheme, TextTheme, TitleTheme,
-};
+pub use runtime::{BackgroundTheme, ButtonTheme, GdtfTheme, PanelTheme, TextTheme, TitleTheme};
 pub use spec::{
     BackgroundThemeSpec, ButtonThemeSpec, GdtfThemeSpec, PanelThemeSpec, TextThemeSpec,
     TitleThemeSpec,

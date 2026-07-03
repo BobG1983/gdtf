@@ -587,9 +587,9 @@ pub fn apply_active_level_filter(
 /// `Update` (`PresenterSystems::Draw`, runs only on a [`CharacterRoles`] change):
 /// RE-INDEX every mapped ganger sprite to the freshly-reloaded atlas indices (GTW-375 C4).
 ///
-/// When the GTW-375 [`redrive_character_roles_on_asset_event`](crate::redrive_character_roles_on_asset_event)
-/// hot-reloads `character_roles.ron` it overwrites the resident [`CharacterRoles`] resource
-/// (marking it changed). The atlas index a ganger draws is `faction_base + facing_frame`
+/// When the GTW-375 hot-reload (now the GTW-564 generic hot-RON redrive of the
+/// [`CharacterRoles`] chain) re-resolves `character_roles.ron` it overwrites the resident
+/// [`CharacterRoles`] resource (marking it changed). The atlas index a ganger draws is `faction_base + facing_frame`
 /// ([`atlas_index`]) — the `faction_base` term is read STRUCTURALLY from [`CharacterRoles`],
 /// so a re-saved table moves a faction's whole 4-frame actor run to a new base. The
 /// per-field draw systems ([`spawn_ganger_sprites`] / [`reframe_ganger_sprites`]) only

@@ -26,7 +26,5 @@ mod table;
 #[cfg(test)]
 mod test;
 
-pub use table::{
-    BoundKey, Keybinds, KeybindsHandle, load_keybinds, redrive_keybinds_on_asset_event,
-    resolve_keybinds,
-};
+pub(crate) use table::register_keybinds_hot_ron;
+pub use table::{BoundKey, Keybinds};

@@ -22,9 +22,11 @@
 //! paints theme-derived visuals onto themed entities from the live
 //! [`GdtfTheme`](theme::GdtfTheme).
 //!
-//! The [`theming::retheme`] module owns the live-reapply logic
-//! ([`redrive_theme_on_asset_event`](theming::retheme::redrive_theme_on_asset_event)): on
-//! an [`AssetEvent`](bevy::asset::AssetEvent)`::Modified` for the active theme
+//! The [`theming::retheme`] module owns the live-reapply configuration (the
+//! [`resolve_theme_spec`](theming::retheme::resolve_theme_spec) map hook + the
+//! [`theme_hot_ron_chain`](theming::retheme::theme_hot_ron_chain) config the
+//! GTW-564 generic hot-RON redrive runs with): on an
+//! [`AssetEvent`](bevy::asset::AssetEvent)`::Modified` for the active theme
 //! asset it re-derives [`GdtfTheme`](theme::GdtfTheme) in place, and the
 //! change-driven [`apply_theme`](themed::apply_theme) repaints every
 //! [`Themed`](themed::Themed) entity the same frame — no restart (GTW-137).
@@ -59,7 +61,11 @@ mod plugin;
 // sub-paths for the 27+ external callers that reach `GdtfTheme`, `default_theme`,
 // `UiSystems`, etc. via the old root-level module path (GTW-385).
 pub use plugin::{UiPlugin, register_dropdown};
-pub use theming::{retheme::redrive_theme_on_asset_event, theme, themed, themed::any_themed_added};
+pub use theming::{
+    retheme::{resolve_theme_spec, theme_hot_ron_chain},
+    theme, themed,
+    themed::any_themed_added,
+};
 pub use widgets::{
     core::{
         Accordion, AccordionAnim, AccordionColors, AccordionContent, AccordionContentFit,

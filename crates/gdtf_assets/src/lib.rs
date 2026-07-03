@@ -24,6 +24,11 @@
 //! - [`RonAssetAppExt`] — a one-call registration extension: `app
 //!   .init_ron_asset::<T>()` registers `Assets<RonAsset<T>>` and the loader for
 //!   `T` in a single step.
+//! - [`HotRonAppExt`] (GTW-564) — the HOT-RELOADABLE layer on top: one call
+//!   registers a whole kick-off / resolve / redrive chain turning a loose
+//!   `.ron` into a live runtime [`Resource`](bevy::prelude::Resource), keyed by
+//!   the one generic [`HotRonHandle`] and configured by a per-chain
+//!   [`HotRonChain`].
 //!
 //! # Where the asset source root is
 //!
@@ -49,9 +54,14 @@
 mod asset;
 mod error;
 mod ext;
+mod hot;
 mod loader;
 
 pub use asset::RonAsset;
 pub use error::{ReadError, RonDeError, RonLoadError};
 pub use ext::RonAssetAppExt;
+pub use hot::{
+    HotRonAppExt, HotRonChain, HotRonFallbackFn, HotRonHandle, HotRonMapFn, HotRonPath,
+    kick_off_hot_ron_resource, redrive_hot_ron_resource, resolve_hot_ron_resource,
+};
 pub use loader::RonAssetLoader;

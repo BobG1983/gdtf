@@ -1,19 +1,13 @@
 //! `OnEnter(AppState::Load)`: start the real async asset loads.
 
 use bevy::prelude::*;
-use gdtf_assets::RonAsset;
-use gdtf_battle_sim::{
-    procgen::ProcgenTuning,
-    situation::Situation,
-    tuning::{CombatTuning, GangerStatTuning},
-};
+use gdtf_assets::{HotRonHandle, RonAsset};
 use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::states::load::resources::{
     ArmorsFolderHandle, AttachmentsFolderHandle, FieldsFolderHandle, FontFolderHandle,
     GangsFolderHandle, InjuriesFolderHandle, LoadHandles, MeleeWeaponsFolderHandle,
-    PrefabsFolderHandle, ProcgenTuningHandle, SituationHandle, StatTuningHandle,
-    TerrainModelFolderHandle, ThemeHandle, TuningHandle, WeaponsFolderHandle,
+    PrefabsFolderHandle, TerrainModelFolderHandle, WeaponsFolderHandle,
 };
 
 /// Path of the loose theme RON, relative to the asset source root.
@@ -21,27 +15,6 @@ const THEME_RON_PATH: &str = "core_tuning/ui_theme.tuning.ron";
 
 /// Path of the loose fonts folder, relative to the asset source root.
 const FONTS_FOLDER_PATH: &str = "fonts";
-
-/// Path of the loose authored-situation RON, relative to the asset source root
-/// (GTW-205 / E10.3 — the canonical authored battlefield the Generation slice reads).
-const SITUATION_RON_PATH: &str = "content/situations/skirmish.ron";
-
-/// Path of the loose combat-tuning RON, relative to the asset source root
-/// (GTW-206 / E10.4 — the shipped balance coefficients the sim marches with;
-/// `core_tuning/combat.tuning.ron`).
-const TUNING_RON_PATH: &str = "core_tuning/combat.tuning.ron";
-
-/// Path of the loose ganger stat-tuning RON, relative to the asset source root
-/// (GTW-384 — the attribute → computed-stat derivation weights, a SEPARATE file from
-/// `core_tuning/combat.tuning.ron`).
-const STAT_TUNING_RON_PATH: &str = "core_tuning/stat.tuning.ron";
-
-/// Path of the loose procgen fill-tuning RON, relative to the asset source root
-/// (GTW-533 — the OQ-6 procgen fill knobs the space-packing fill pass reads; a SEPARATE
-/// file from `core_tuning/combat.tuning.ron`. Loaded so the shipped
-/// `core_tuning/procgen.tuning.ron` actually hot-reloads, rather than the consumer using
-/// `ProcgenTuning::default()`).
-const PROCGEN_TUNING_RON_PATH: &str = "core_tuning/procgen.tuning.ron";
 
 /// Path of the loose RANGED-weapons folder, relative to the asset source root (GTW-257;
 /// GTW-505 split it into `ranged/`) — the per-weapon
@@ -114,11 +87,7 @@ const TERRAIN_MODEL_DIR: &str = "terrain";
 /// the GTW-136 loader) and preloads the entire `fonts` folder via
 /// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder) (GTW-149 —
 /// loads ALL fonts up front so any font a sub-theme selects, override or default,
-/// is resident), AND loads `content/situations/skirmish.ron` as a `RonAsset<Situation>`
-/// (GTW-205 / E10.3 — through the same generic loader) AND
-/// `core_tuning/combat.tuning.ron` as a `RonAsset<CombatTuning>` (GTW-206 / E10.4
-/// — through the same generic loader)
-/// AND preloads the `content/weapons/ranged` leaf folder via `load_folder` (GTW-257; GTW-505
+/// is resident), AND preloads the `content/weapons/ranged` leaf folder via `load_folder` (GTW-257; GTW-505
 /// split the tree into `ranged/` + `melee/` — every
 /// `assets/content/weapons/ranged/*.weapon.ron`, each a `RonAsset<WeaponSpec>`, so the poll/resolve
 /// system can build the name-keyed
@@ -136,6 +105,15 @@ const TERRAIN_MODEL_DIR: &str = "terrain";
 /// then inserts the Load-scoped [`LoadHandles`] resource the poll/resolve system
 /// reads.
 ///
+/// GTW-564: the four single-file RON chains (`content/situations/skirmish.ron`,
+/// `core_tuning/combat.tuning.ron`, `core_tuning/stat.tuning.ron`,
+/// `core_tuning/procgen.tuning.ron`) no longer kick off here — each is one
+/// generic hot-RON ext call in the Load plugin (its `Startup` kick-off stores
+/// the persistent [`HotRonHandle`], its gated resolve publishes the resource
+/// the Load gate still requires, and its redrive hot-reloads it). The THEME
+/// kick-off stays bespoke because its resolve pairs with the fonts folder (the
+/// C7 record); it now mints the generic [`HotRonHandle`] directly.
+///
 /// GTW-494 (child T08 of GTW-476): the OLD flat-dir `content/terrain` / `content/themes` /
 /// `content/maps` folder loads were RETIRED — the per-theme `terrain` model + the `maps`
 /// prefab loads above are the ONLY terrain / theme / prefab loads in the Load flow.
@@ -152,19 +130,8 @@ pub(in crate::states::load) fn kick_off_loads(
         return;
     };
 
-    let theme = ThemeHandle::new(asset_server.load::<RonAsset<GdtfThemeSpec>>(THEME_RON_PATH));
+    let theme = HotRonHandle::new(asset_server.load::<RonAsset<GdtfThemeSpec>>(THEME_RON_PATH));
     let fonts = FontFolderHandle::new(asset_server.load_folder(FONTS_FOLDER_PATH));
-    let situation =
-        SituationHandle::new(asset_server.load::<RonAsset<Situation>>(SITUATION_RON_PATH));
-    let tuning = TuningHandle::new(asset_server.load::<RonAsset<CombatTuning>>(TUNING_RON_PATH));
-    let stat_tuning = StatTuningHandle::new(
-        asset_server.load::<RonAsset<GangerStatTuning>>(STAT_TUNING_RON_PATH),
-    );
-    // GTW-533: load the procgen fill tuning so its shipped knobs hot-reload (the
-    // CombatTuning single-asset precedent — the payload IS the runtime resource, no folder).
-    let procgen = ProcgenTuningHandle::new(
-        asset_server.load::<RonAsset<ProcgenTuning>>(PROCGEN_TUNING_RON_PATH),
-    );
     let weapons = WeaponsFolderHandle::new(asset_server.load_folder(WEAPONS_DIR));
     // GTW-505: the sibling melee-weapons folder loads through its OWN folder handle so the
     // `MeleeWeaponRegistry` builds from the `.melee_weapon.ron` members only.
@@ -188,10 +155,6 @@ pub(in crate::states::load) fn kick_off_loads(
     commands.insert_resource(LoadHandles {
         theme,
         fonts,
-        situation,
-        tuning,
-        stat_tuning,
-        procgen,
         weapons,
         melee_weapons,
         attachments,

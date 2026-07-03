@@ -46,6 +46,7 @@ mod bridge;
 #[cfg(test)]
 mod test;
 
+pub(crate) use bridge::register_sheet_image_redrive;
 pub use bridge::{
     CELL_PX, GANGER_Z_BIAS, Layer, SheetAtlas, SheetRole, TopDownAtlases, cell_to_world,
     cell_to_world_layered, load_topdown_atlases, redrive_sheet_images_on_asset_event,

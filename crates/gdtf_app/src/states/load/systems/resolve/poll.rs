@@ -4,7 +4,10 @@ use bevy::{
     asset::{LoadState, RecursiveDependencyLoadState},
     prelude::*,
 };
-use gdtf_ui::theme::{ActiveThemeHandle, GdtfTheme, default_theme};
+use gdtf_ui::{
+    resolve_theme_spec,
+    theme::{GdtfTheme, default_theme},
+};
 
 use crate::states::load::{
     resources::{FailedAssetPath, LoadFailed, LoadHandles},
@@ -17,11 +20,7 @@ use crate::states::load::{
         melee_weapons::resolve_melee_weapons,
         params::{LoadAssetCollections, ResolvedResources},
         prefab::resolve_prefabs,
-        procgen_tuning::resolve_procgen_tuning,
-        situation::resolve_situation,
-        stat_tuning::resolve_stat_tuning,
         terrain_model::{resolve_terrain_defs, resolve_theme_defs},
-        tuning::resolve_tuning,
         weapons::resolve_weapons,
     },
 };
@@ -46,43 +45,22 @@ use crate::states::load::{
 ///   already-preloaded handle.
 /// - Else (still loading) it does nothing and runs again next frame.
 ///
-/// On **both** the success and the failure paths it also inserts the persistent
-/// [`ActiveThemeHandle`] (the theme RON handle from [`LoadHandles`]) alongside the
-/// [`GdtfTheme`] — the handle is valid even when the load failed, so GTW-138's
-/// later file-watcher reload can recover, and the GTW-137 live-retheme system
-/// filters incoming asset events against it. Holding it keeps a strong reference
-/// so the asset stays loaded for that watcher. Like [`GdtfTheme`], it persists
-/// past `OnExit(Load)` (it is **not** removed in `cleanup`).
+/// On **both** the success and the failure paths it also inserts the theme's
+/// persistent generic [`HotRonHandle`](gdtf_assets::HotRonHandle) (the theme RON
+/// handle from [`LoadHandles`]) alongside the [`GdtfTheme`] — the handle is valid
+/// even when the load failed, so GTW-138's later file-watcher reload can recover,
+/// and the GTW-137 live-retheme redrive (the GTW-564 generic one `UiPlugin`
+/// registers) filters incoming asset events against it. Holding it keeps a strong
+/// reference so the asset stays loaded for that watcher. Like [`GdtfTheme`], it
+/// persists past `OnExit(Load)` (it is **not** removed in `cleanup`).
 ///
-/// GTW-205 (E10.3) / GTW-261: it ALSO resolves the authored
-/// [`Situation`](gdtf_battle_sim::situation::Situation) into a persistent
-/// [`LoadedSituation`](crate::states::load::resources::LoadedSituation) — the source
-/// the Generation slice (E10.5) reads. As of GTW-261 the situation is a
-/// **gate-blocking** resource (the
-/// [empty-battle-race fix](resolve_situation)): the Load→Intro transition now
-/// requires a `LoadedSituation` too, so a battle never starts before its real
-/// situation loads. The situation branch runs on its OWN `LoadedSituation`-absence
-/// guard ([`resolve_situation`]), exactly like the tuning and weapons branches, so a
-/// slow theme never blocks the situation and vice-versa. On the failure path it
-/// `warn!`s and inserts an empty
-/// [`Situation::default`](gdtf_battle_sim::situation::Situation::default), preserving
-/// the no-strand guarantee (a slow/failed situation still always lets `Load` exit),
-/// while a success resolves the real authored battlefield.
-///
-/// GTW-206 (E10.4): it ALSO resolves the shipped
-/// [`CombatTuning`](gdtf_battle_sim::tuning::CombatTuning) into a persistent
-/// `CombatTuning` resource — the balance store the sim marches with. The tuning
-/// branch runs on its OWN `CombatTuning`-absence guard ([`resolve_tuning`]), so it
-/// neither starves nor is starved by the theme branch: a slow tuning never blocks
-/// the theme and a slow theme never blocks the tuning. Unlike the theme it has no
-/// `resolve()` step (`CombatTuning` IS both the `Deserialize` payload and the
-/// `Resource`), so the loaded payload is inserted directly. On the failure path it
-/// `warn!`s naming `core_tuning/combat.tuning.ron` and inserts `CombatTuning::default`, so
-/// `Load` always exits with a tuning present. A `GdtfTheme`, a `CombatTuning`, a
-/// `WeaponRegistry`, a `LoadedSituation`, an `ArmorRegistry`, AND the UUID-keyed
-/// `TerrainDefRegistry` / `UuidThemeRegistry` / `PrefabRegistry` must ALL be present
-/// before the plugin's transition leaves `Load` (see the plugin wiring); this branch
-/// makes the tuning one of those required resources.
+/// GTW-564: the SITUATION and the COMBAT / STAT / PROCGEN tuning branches left
+/// this orchestrator — each is now a generic hot-RON chain (one ext call in the
+/// Load plugin) whose gated resolve publishes the SAME gate-blocking resource
+/// (`LoadedSituation` / `CombatTuning` / `GangerStatTuning` / `ProcgenTuning`)
+/// with the SAME never-publish-partial + genuine-`Failed`-only fallback
+/// semantics; the `transition_to_intro` gate chain still requires every one of
+/// them, unchanged.
 ///
 /// GTW-269: it ALSO resolves the loaded `assets/content/armor/` folder into a persistent
 /// [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry) (the armor mirror of the
@@ -133,13 +111,9 @@ pub(in crate::states::load) fn poll_and_resolve(
 ) {
     let (
         theme_present,
-        tuning_present,
-        stat_tuning_present,
-        procgen_present,
         weapons_present,
         melee_weapons_present,
         attachments_present,
-        situation_present,
         armor_present,
         fields_present,
         injuries_present,
@@ -149,13 +123,9 @@ pub(in crate::states::load) fn poll_and_resolve(
         theme_defs_present,
     ) = (
         resolved.theme.is_some(),
-        resolved.tuning.is_some(),
-        resolved.stat_tuning.is_some(),
-        resolved.procgen.is_some(),
         resolved.weapons.is_some(),
         resolved.melee_weapons.is_some(),
         resolved.attachments.is_some(),
-        resolved.situation.is_some(),
         resolved.armor.is_some(),
         resolved.fields.is_some(),
         resolved.injuries.is_some(),
@@ -167,10 +137,6 @@ pub(in crate::states::load) fn poll_and_resolve(
     let (
         Some(asset_server),
         Some(theme_assets),
-        Some(situation_assets),
-        Some(tuning_assets),
-        Some(stat_tuning_assets),
-        Some(procgen_assets),
         Some(folders),
         Some(weapon_specs),
         Some(melee_specs),
@@ -187,10 +153,6 @@ pub(in crate::states::load) fn poll_and_resolve(
     ) = (
         asset_server,
         collections.theme,
-        collections.situation,
-        collections.tuning,
-        collections.stat_tuning,
-        collections.procgen,
         collections.folders,
         collections.weapon_specs,
         collections.melee_specs,
@@ -208,34 +170,6 @@ pub(in crate::states::load) fn poll_and_resolve(
     else {
         return;
     };
-
-    // GTW-206 (E10.4): resolve the shipped combat tuning on its OWN absence guard,
-    // independently of the theme branch below — so a slow theme never blocks the
-    // tuning and a slow tuning never blocks the theme. Done FIRST so it always gets
-    // a poll even once the theme has resolved (the system keeps running while
-    // ANY required resource is missing).
-    if !tuning_present {
-        resolve_tuning(&mut commands, &asset_server, &tuning_assets, &handles);
-    }
-
-    // GTW-384: resolve the shipped ganger stat tuning on its OWN absence guard, the
-    // CombatTuning mirror — so a slow theme/tuning never blocks it and vice-versa. The
-    // sim's setup + re-derive read it to derive each ganger's computed stats; it is a
-    // gate-blocking resource (see the plugin wiring) so a battle never starts before its
-    // derivation tuning loads. On failure it falls back to the const default (no strand).
-    if !stat_tuning_present {
-        resolve_stat_tuning(&mut commands, &asset_server, &stat_tuning_assets, &handles);
-    }
-
-    // GTW-533: resolve the shipped procgen fill tuning on its OWN absence guard, the
-    // CombatTuning mirror — so no branch starves it and vice-versa. The Generation procgen
-    // trigger reads it (the fill density / large-prefab threshold / dead-rect scatter cap);
-    // it is a gate-blocking resource (see the plugin wiring) so a battle never generates
-    // before its fill tuning loads. On failure it falls back to the const default (the same
-    // RULED default the pass used before GTW-533 wired the load — no strand).
-    if !procgen_present {
-        resolve_procgen_tuning(&mut commands, &asset_server, &procgen_assets, &handles);
-    }
 
     // GTW-257: resolve the weapons folder into the name-keyed WeaponRegistry on its
     // OWN absence guard, independently of the theme/tuning branches — so a slow
@@ -394,16 +328,6 @@ pub(in crate::states::load) fn poll_and_resolve(
         );
     }
 
-    // GTW-261: resolve the authored situation into the persistent LoadedSituation on
-    // its OWN absence guard, independently of the theme/tuning/weapons branches — so a
-    // slow theme never blocks the situation and vice-versa (the tuning-branch
-    // precedent). This is the empty-battle-race fix: the situation is now a
-    // gate-blocking resource (see the plugin wiring), resolved here on success and
-    // falling back to an empty default on failure (so Load never strands).
-    if !situation_present {
-        resolve_situation(&mut commands, &asset_server, &situation_assets, &handles);
-    }
-
     // Once a GdtfTheme exists, the theme branch is done — only the branches above
     // still need polling. Skip the theme work to avoid re-resolving it.
     if theme_present {
@@ -441,22 +365,24 @@ pub(in crate::states::load) fn poll_and_resolve(
             // try again next frame rather than failing.
             return;
         };
-        let theme: GdtfTheme = (**spec)
-            .clone()
-            .resolve(|key| asset_server.load::<Font>(key.to_owned()));
+        // Resolve through the ONE shared map hook (gdtf_ui::resolve_theme_spec) —
+        // the same fn the generic redrive re-runs on a hot edit, so a live retheme
+        // yields exactly what this first resolve did.
+        let theme: GdtfTheme = resolve_theme_spec(spec, &asset_server);
         commands.insert_resource(theme);
-        // The persistent handle the GTW-137 retheme system filters against and
-        // GTW-138's watcher keeps loaded; survives OnExit(Load) like GdtfTheme.
-        commands.insert_resource(ActiveThemeHandle::new((*handles.theme).clone()));
+        // The persistent generic handle the GTW-137 retheme redrive filters against
+        // and GTW-138's watcher keeps loaded; survives OnExit(Load) like GdtfTheme.
+        commands.insert_resource(handles.theme.clone());
     }
 }
 
 /// Records the failed asset path, warns naming it, and inserts the const-fallback
-/// [`GdtfTheme`] plus the persistent [`ActiveThemeHandle`].
+/// [`GdtfTheme`] plus the theme's persistent generic
+/// [`HotRonHandle`](gdtf_assets::HotRonHandle).
 ///
 /// Shared by both failure branches so the warn-and-fallback is written once. The
-/// [`ActiveThemeHandle`] is inserted on this path too: the handle is valid even
-/// though the load failed, so GTW-138's file-watcher reload can recover from it.
+/// handle is inserted on this path too: it is valid even though the load failed,
+/// so GTW-138's file-watcher reload can recover from it.
 fn fall_back(commands: &mut Commands, path: FailedAssetPath, handles: &LoadHandles) {
     warn!(
         "GDTF Load: asset `{}` failed to load; falling back to the const default theme",
@@ -464,5 +390,5 @@ fn fall_back(commands: &mut Commands, path: FailedAssetPath, handles: &LoadHandl
     );
     commands.insert_resource(LoadFailed::new(path));
     commands.insert_resource(default_theme());
-    commands.insert_resource(ActiveThemeHandle::new((*handles.theme).clone()));
+    commands.insert_resource(handles.theme.clone());
 }

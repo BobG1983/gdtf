@@ -15,18 +15,13 @@ use gdtf_battle_sim::{
     ganger::{GangRegistry, GangRoster},
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
     level::{PrefabRegistry, PrefabSpec, UuidThemeDef, UuidThemeRegistry},
-    procgen::ProcgenTuning,
-    situation::Situation,
     terrain::def::{TerrainDef, TerrainDefRegistry},
-    tuning::{CombatTuning, GangerStatTuning},
     weapon::{
         AttachmentRegistry, AttachmentSpec, MeleeWeaponRegistry, MeleeWeaponSpec, WeaponRegistry,
         WeaponSpec,
     },
 };
 use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
-
-use crate::states::load::resources::LoadedSituation;
 
 /// The loaded RON asset collections [`poll_and_resolve`](super::poll_and_resolve)
 /// reads, bundled into one [`SystemParam`] so the system's parameter list stays under
@@ -42,15 +37,6 @@ use crate::states::load::resources::LoadedSituation;
 pub(in crate::states::load) struct LoadAssetCollections<'w> {
     /// The loaded theme-spec RON collection (`core_tuning/ui_theme.tuning.ron`).
     pub(super) theme:            Option<Res<'w, Assets<RonAsset<GdtfThemeSpec>>>>,
-    /// The loaded authored-situation RON collection (`content/situations/skirmish.ron`).
-    pub(super) situation:        Option<Res<'w, Assets<RonAsset<Situation>>>>,
-    /// The loaded combat-tuning RON collection (`core_tuning/combat.tuning.ron`, GTW-206).
-    pub(super) tuning:           Option<Res<'w, Assets<RonAsset<CombatTuning>>>>,
-    /// The loaded ganger stat-tuning RON collection (`core_tuning/stat.tuning.ron`, GTW-384).
-    pub(super) stat_tuning:      Option<Res<'w, Assets<RonAsset<GangerStatTuning>>>>,
-    /// The loaded procgen fill-tuning RON collection (`core_tuning/procgen.tuning.ron`,
-    /// GTW-533).
-    pub(super) procgen:          Option<Res<'w, Assets<RonAsset<ProcgenTuning>>>>,
     /// The loaded `LoadedFolder` collection — used to read the weapons folder's
     /// member handles when building the [`WeaponRegistry`] (GTW-257).
     pub(super) folders:          Option<Res<'w, Assets<LoadedFolder>>>,
@@ -83,7 +69,7 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
     pub(super) theme_defs:       Option<Res<'w, Assets<RonAsset<UuidThemeDef>>>>,
 }
 
-/// The four persistent resources [`poll_and_resolve`](super::poll_and_resolve) resolves,
+/// The persistent resources [`poll_and_resolve`](super::poll_and_resolve) resolves,
 /// each as an `Option<Res<…>>` presence-probe, bundled into one [`SystemParam`] so the
 /// system's parameter list stays under clippy's argument-count gate (the
 /// [`LoadAssetCollections`] grouping precedent — a transparent bundle of existing
@@ -95,20 +81,12 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
 pub(in crate::states::load) struct ResolvedResources<'w> {
     /// Whether the resolved [`GdtfTheme`] is already inserted.
     pub(super) theme:         Option<Res<'w, GdtfTheme>>,
-    /// Whether the resolved [`CombatTuning`] is already inserted (GTW-206).
-    pub(super) tuning:        Option<Res<'w, CombatTuning>>,
-    /// Whether the resolved [`GangerStatTuning`] is already inserted (GTW-384).
-    pub(super) stat_tuning:   Option<Res<'w, GangerStatTuning>>,
-    /// Whether the resolved [`ProcgenTuning`] is already inserted (GTW-533).
-    pub(super) procgen:       Option<Res<'w, ProcgenTuning>>,
     /// Whether the resolved [`WeaponRegistry`] is already inserted (GTW-257).
     pub(super) weapons:       Option<Res<'w, WeaponRegistry>>,
     /// Whether the resolved [`MeleeWeaponRegistry`] is already inserted (GTW-505).
     pub(super) melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
     /// Whether the resolved [`AttachmentRegistry`] is already inserted (GTW-549 PHASE 1).
     pub(super) attachments:   Option<Res<'w, AttachmentRegistry>>,
-    /// Whether the resolved [`LoadedSituation`] is already inserted (GTW-261).
-    pub(super) situation:     Option<Res<'w, LoadedSituation>>,
     /// Whether the resolved [`ArmorRegistry`] is already inserted (GTW-269).
     pub(super) armor:         Option<Res<'w, ArmorRegistry>>,
     /// Whether the resolved [`FieldDefRegistry`] is already inserted (GTW-545).

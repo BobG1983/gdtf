@@ -13,11 +13,11 @@
 //! new `0.3` s choice), so a missing `.ron` field degrades to the prior behaviour rather than a
 //! parse error. The three resolve into one presenter-owned [`PanTuning`] resource the pan systems
 //! READ (never a `const`), so an edit to the `.ron` re-derives [`PanTuning`] live
-//! ([`redrive_pan_tuning_on_asset_event`]) — mirroring the FX table's
-//! [`redrive_fx_tuning_on_asset_event`](crate::redrive_fx_tuning_on_asset_event) hot-reload.
+//! through the GTW-564 generic hot-RON seam ([`register_pan_tuning_hot_ron`]) —
+//! mirroring the FX table's [`FxTuning`](crate::FxTuning) hot-reload.
 
-use bevy::{asset::AssetEvent, prelude::*};
-use gdtf_assets::RonAsset;
+use bevy::prelude::*;
+use gdtf_assets::HotRonAppExt;
 use serde::Deserialize;
 
 use super::pan::{EdgeBandPx, PanSpeed};
@@ -102,12 +102,11 @@ impl Default for BoundsMarginWorld {
 /// The HOT-RELOADABLE edge-pan tuning table — the GTW-250 pan speed + edge band plus the GTW-299
 /// dwell delay, loaded from `assets/core_tuning/pan.tuning.ron` and read live by the pan systems.
 ///
-/// Loaded from the loose `assets/core_tuning/pan.tuning.ron` through the generic
-/// [`RonAsset<T>`](gdtf_assets::RonAsset) loader and resolved into a presenter-owned [`PanTuning`]
-/// resource ([`resolve_pan_tuning`]), then re-derived in place on a hot edit
-/// ([`redrive_pan_tuning_on_asset_event`]) — the SAME dual-role spec-IS-the-resolved-resource
-/// shape [`FxTuning`](crate::FxTuning) uses (the value clones straight out of the `RonAsset`, no
-/// extra resolve step).
+/// Loaded from the loose `assets/core_tuning/pan.tuning.ron` through the GTW-564 generic
+/// hot-RON chain ([`register_pan_tuning_hot_ron`]) and resolved into a presenter-owned
+/// [`PanTuning`] resource, then re-derived in place on a hot edit — the SAME dual-role
+/// spec-IS-the-resolved-resource shape [`FxTuning`](crate::FxTuning) uses (the value
+/// clones straight out of the `RonAsset`, no extra resolve step).
 ///
 /// Each field is `#[serde(default)]` so a `.ron` that omits a field falls back to the shipped
 /// value rather than failing to parse — an author can tune one number without restating the rest.
@@ -131,118 +130,17 @@ pub struct PanTuning {
 /// The path of the loose pan-tuning RON, relative to the asset source root.
 const PAN_TUNING_RON_PATH: &str = "core_tuning/pan.tuning.ron";
 
-/// The in-flight handle to the pan-tuning RON, held until it resolves into [`PanTuning`].
-///
-/// A named newtype over the bevy [`Handle`] (`.claude/rules/no-bare-types.md`: a bare handle
-/// carries no domain meaning; this name says "the pan-tuning table being loaded"). Inserted by
-/// [`load_pan_tuning`] and read by [`resolve_pan_tuning`] / [`redrive_pan_tuning_on_asset_event`],
-/// mirroring the [`FxTuningHandle`](crate::FxTuningHandle).
-#[derive(Resource, Deref, Debug, Clone)]
-pub struct PanTuningHandle(Handle<RonAsset<PanTuning>>);
-
-impl PanTuningHandle {
-    /// Wrap the in-flight pan-tuning RON handle.
-    #[must_use]
-    pub const fn new(handle: Handle<RonAsset<PanTuning>>) -> Self {
-        Self(handle)
-    }
-}
-
-/// `Startup`: kick off the `pan.tuning.ron` load, storing its typed handle.
-///
-/// Loads `core_tuning/pan.tuning.ron` as a [`RonAsset<PanTuning>`](gdtf_assets::RonAsset) through the
-/// generic loader and inserts the [`PanTuningHandle`] the [`resolve_pan_tuning`] poll +
-/// [`redrive_pan_tuning_on_asset_event`] hot-reload systems read. Takes `Option<Res<AssetServer>>`
-/// so a `MinimalPlugins` headless app with no [`AssetServer`] no-ops rather than panicking
-/// (`bevy-traps.md` #1); under `DefaultPlugins` the load fires for real.
-///
-/// Param-only (`bevy-traps.md` #7): [`Commands`] for the handle insert, the optional
-/// [`Res<AssetServer>`] for the load.
-pub fn load_pan_tuning(mut commands: Commands, asset_server: Option<Res<AssetServer>>) {
-    let Some(asset_server) = asset_server else {
-        return;
-    };
-    let handle = asset_server.load::<RonAsset<PanTuning>>(PAN_TUNING_RON_PATH);
-    commands.insert_resource(PanTuningHandle::new(handle));
-}
-
-/// `Update` (gated until [`PanTuning`] is resolved): resolve the loaded RON into the
-/// presenter-owned [`PanTuning`] resource.
-///
-/// Once the [`RonAsset<PanTuning>`](gdtf_assets::RonAsset) has settled into
-/// `Assets<RonAsset<PanTuning>>`, it clones the deserialized [`PanTuning`] out and inserts it as
-/// the resident resource so it is present before the first pan. Run only while [`PanTuningHandle`]
-/// exists AND [`PanTuning`] does NOT (the plugin's run-condition), so it inserts once; the live
-/// re-derive is [`redrive_pan_tuning_on_asset_event`]. Mirrors
-/// [`resolve_fx_tuning`](crate::resolve_fx_tuning).
-///
-/// Param-only (`bevy-traps.md` #7): [`Commands`] for the insert, [`Res<PanTuningHandle>`] for the
-/// handle, [`Res<Assets<RonAsset<PanTuning>>>`] for the loaded asset.
-pub fn resolve_pan_tuning(
-    mut commands: Commands,
-    handle: Res<PanTuningHandle>,
-    tuning_assets: Res<Assets<RonAsset<PanTuning>>>,
-) {
-    let Some(loaded) = tuning_assets.get(&**handle) else {
-        // Loaded-but-not-yet-in-collection (or still loading) — retry next frame; the
-        // run-condition keeps this system alive until PanTuning is resolved.
-        return;
-    };
-    commands.insert_resource(**loaded);
-}
-
-/// `Update`: re-derive [`PanTuning`] in place on a matching
-/// [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) — the LIVE hot-reload.
-///
-/// Reads the [`MessageReader`] of
-/// [`AssetEvent`](bevy::asset::AssetEvent)`<`[`RonAsset`]`<`[`PanTuning`]`>>` — asset events are
-/// MESSAGES in Bevy 0.18, so this is a `MessageReader`, not an `EventReader` (`bevy-traps.md` #4) —
-/// and acts only on a [`Modified`](bevy::asset::AssetEvent::Modified) event whose `id` matches the
-/// in-flight [`PanTuningHandle`]; events for any other handle are ignored. On a match it clones the
-/// refreshed [`PanTuning`] out of the `Assets` collection and overwrites the resident resource
-/// through [`ResMut`], so the pan systems read the new speed / edge band / dwell delay the very next
-/// frame — WITHOUT a rebuild. Mirrors [`redrive_fx_tuning_on_asset_event`](crate::redrive_fx_tuning_on_asset_event).
-///
-/// Guarded so it never panics before the load chain has run (pre-resolve): it takes the handle /
-/// the `Assets` collection / the [`PanTuning`] resource as [`Option`]al borrows, draining the
-/// reader and returning early if any is missing (`bevy-traps.md` #1) so a pre-resolve event does
-/// not linger and re-fire later.
-///
-/// Param-only (`bevy-traps.md` #7): the [`MessageReader`], the optional handle / `Assets` /
-/// [`PanTuning`] borrows.
-pub fn redrive_pan_tuning_on_asset_event(
-    mut events: MessageReader<AssetEvent<RonAsset<PanTuning>>>,
-    handle: Option<Res<PanTuningHandle>>,
-    tuning_assets: Option<Res<Assets<RonAsset<PanTuning>>>>,
-    tuning: Option<ResMut<PanTuning>>,
-) {
-    let (Some(handle), Some(tuning_assets), Some(mut tuning)) = (handle, tuning_assets, tuning)
-    else {
-        // Drain the reader so a pre-resolve event does not linger and re-fire once the
-        // resources arrive; there is nothing to re-derive yet.
-        events.clear();
-        return;
-    };
-
-    let active_id = handle.id();
-    // Act once per frame even if several Modified events arrive: a single re-derive from
-    // the latest in-memory value covers them all.
-    let modified = events
-        .read()
-        .any(|event| matches!(event, AssetEvent::Modified { id } if *id == active_id));
-    if !modified {
-        return;
-    }
-
-    let Some(updated) = tuning_assets.get(&**handle) else {
-        // Modified but not currently in the collection (a transient reload state) — leave
-        // the existing tuning until it settles; the next event re-fires.
-        return;
-    };
-    *tuning = **updated;
-    // GTW-374 Part C: log EVERY hot-reload path naming what reloaded, so a live edit can
-    // be traced (mirrors the theme / combat-log / B1-B3 handlers).
-    info!("pan hot-reload: re-derived PanTuning from `core_tuning/pan.tuning.ron`");
+/// Registers the [`PanTuning`] hot-RON chain — ONE ext call onto the GTW-564
+/// generic seam (kick-off / gated resolve / live redrive, keyed by the generic
+/// [`HotRonHandle`](gdtf_assets::HotRonHandle)`<PanTuning>`), replacing the
+/// per-site handle newtype + load/resolve/redrive triple. Self-gates on the
+/// [`AssetServer`](bevy::asset::AssetServer) (`bevy-traps.md` #1), so a
+/// `MinimalPlugins` headless app stays a no-op. On a live `.ron` edit the
+/// generic redrive overwrites [`PanTuning`] through `ResMut`, so the pan
+/// systems read the new speed / edge band / dwell delay the very next frame —
+/// WITHOUT a rebuild.
+pub(crate) fn register_pan_tuning_hot_ron(app: &mut App) {
+    app.init_hot_ron_resource::<PanTuning>(PAN_TUNING_RON_PATH);
 }
 
 #[cfg(test)]

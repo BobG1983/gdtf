@@ -4,12 +4,12 @@ use bevy::{
     prelude::*,
     ui_widgets::{ScrollAreaPlugin, ScrollbarPlugin},
 };
-use gdtf_assets::RonAsset;
+use gdtf_assets::{RonAsset, redrive_hot_ron_resource};
 
 use crate::{
     focus_nav::{FocusNavPlugin, FocusNavSystems},
     theming::{
-        retheme::redrive_theme_on_asset_event,
+        retheme::theme_hot_ron_chain,
         theme::{GdtfTheme, GdtfThemeSpec},
         themed::{UiSystems, any_themed_added, apply_theme},
     },
@@ -50,7 +50,8 @@ type ThemeAssetMessages = Messages<AssetEvent<RonAsset<GdtfThemeSpec>>>;
 /// It currently installs the focus-navigation layer
 /// ([`FocusNavPlugin`](crate::focus_nav::FocusNavPlugin)), the central theming pass
 /// ([`apply_theme`](crate::theming::themed::apply_theme)), the GTW-137 live-retheme trigger
-/// ([`redrive_theme_on_asset_event`](crate::theming::retheme::redrive_theme_on_asset_event)),
+/// (the GTW-564 generic [`redrive_hot_ron_resource`]`::<GdtfThemeSpec, GdtfTheme>`,
+/// configured by [`theme_hot_ron_chain`](crate::theming::retheme::theme_hot_ron_chain)),
 /// the GTW-118 widget interaction layer
 /// ([`theme_interaction`](crate::widgets::interaction::theme_interaction) +
 /// [`paint_disabled_buttons`](crate::widgets::core::paint_disabled_buttons)), and the
@@ -92,8 +93,8 @@ impl Plugin for UiPlugin {
     /// panic-free before the theme is populated (bevy-traps rule 1). The named set
     /// is the deterministic ordering anchor (bevy-traps rule 3).
     ///
-    /// The GTW-137 live-retheme trigger
-    /// ([`redrive_theme_on_asset_event`](crate::theming::retheme::redrive_theme_on_asset_event))
+    /// The GTW-137 live-retheme trigger (the GTW-564 generic
+    /// [`redrive_hot_ron_resource`]`::<GdtfThemeSpec, GdtfTheme>`)
     /// runs in [`Update`] `.before(`[`UiSystems::ApplyTheme`](crate::theming::themed::UiSystems::ApplyTheme)`)`
     /// so a re-derived theme repaints the same frame (bevy-traps rule 3). It
     /// reads the [`AssetEvent`](bevy::asset::AssetEvent) **message** stream
@@ -218,11 +219,18 @@ impl Plugin for UiPlugin {
                     position_dropdown_popups,
                 ),
             );
+        // GTW-564: the theme's HotRonChain config (the canonical path + the
+        // font-resolving `resolve_theme_spec` map hook) the generic redrive below
+        // reads. Plain data — headless-safe to insert unconditionally.
+        app.insert_resource(theme_hot_ron_chain());
         app.add_plugins(FocusNavPlugin).add_systems(
             Update,
             (
                 // GTW-137: on a theme-asset `AssetEvent::Modified` for the active
-                // handle, re-derive and overwrite `GdtfTheme`. Ordered BEFORE the
+                // handle, re-derive and overwrite `GdtfTheme` — via the GTW-564
+                // GENERIC hot-RON redrive (the theme is its MAPPED chain:
+                // `GdtfThemeSpec` payload -> `GdtfTheme` resource, fonts resolved
+                // through the `AssetServer` map hook). Ordered BEFORE the
                 // ApplyTheme set so the resulting theme-changed marks repaint the
                 // same frame (bevy-traps rule 3). Gated on `GdtfTheme` existing AND
                 // the asset-event message buffer existing: the latter is only
@@ -230,7 +238,7 @@ impl Plugin for UiPlugin {
                 // the system's `MessageReader` from failing param validation under
                 // a `MinimalPlugins` harness with no asset support (bevy-traps rule
                 // 1).
-                redrive_theme_on_asset_event
+                redrive_hot_ron_resource::<GdtfThemeSpec, GdtfTheme>
                     .before(UiSystems::ApplyTheme)
                     .run_if(
                         resource_exists::<GdtfTheme>

@@ -11,11 +11,12 @@
 //! through [`Deref`] and a [`Default`] carrying the shipped value, so a missing `.ron` field
 //! degrades to the default rather than a parse error. The four resolve into one
 //! [`CombatLogTuning`] resource the spawn + update systems READ (never a `const`), re-derived
-//! in place on a hot edit ([`redrive_combat_log_tuning_on_asset_event`]) — mirroring the
-//! presenter's [`FxTuning`](gdtf_battle_presenter::FxTuning) hot-reload and the UI theme's.
+//! in place on a hot edit through the GTW-564 generic hot-RON seam
+//! ([`register_combat_log_hot_ron`]) — mirroring the presenter's
+//! [`FxTuning`](gdtf_battle_presenter::FxTuning) hot-reload and the UI theme's.
 
-use bevy::{asset::AssetEvent, prelude::*};
-use gdtf_assets::RonAsset;
+use bevy::prelude::*;
+use gdtf_assets::HotRonAppExt;
 use serde::Deserialize;
 
 /// How many combat-log lines stay visible at once before the OLDEST is FIFO-despawned.
@@ -306,11 +307,10 @@ impl Default for PanelWidthVw {
 /// The HOT-RELOADABLE combat-log tuning table — the four feel numbers, loaded from
 /// `assets/core_tuning/combat_log.tuning.ron` and read live by the combat-log spawn + update systems.
 ///
-/// Loaded from the loose `assets/core_tuning/combat_log.tuning.ron` through the generic
-/// [`RonAsset<T>`](gdtf_assets::RonAsset) loader and resolved into this
-/// [`CombatLogTuning`] resource ([`resolve_combat_log_tuning`]), then re-derived in place on a
-/// hot edit ([`redrive_combat_log_tuning_on_asset_event`]) — the SAME dual-role
-/// spec-IS-the-resolved-resource shape the presenter's
+/// Loaded from the loose `assets/core_tuning/combat_log.tuning.ron` through the GTW-564
+/// generic hot-RON chain ([`register_combat_log_hot_ron`]) and resolved into this
+/// [`CombatLogTuning`] resource, then re-derived in place on a hot edit — the SAME
+/// dual-role spec-IS-the-resolved-resource shape the presenter's
 /// [`FxTuning`](gdtf_battle_presenter::FxTuning) uses (the value clones straight out of the
 /// `RonAsset`, no extra resolve step).
 ///
@@ -351,122 +351,17 @@ pub(crate) struct CombatLogTuning {
 /// The path of the loose combat-log RON, relative to the asset source root.
 const COMBAT_LOG_RON_PATH: &str = "core_tuning/combat_log.tuning.ron";
 
-/// The in-flight handle to the combat-log RON, held until it resolves into [`CombatLogTuning`].
-///
-/// A named newtype over the bevy [`Handle`] (`.claude/rules/no-bare-types.md`: a bare handle
-/// carries no domain meaning; this name says "the combat-log table being loaded"). Inserted by
-/// [`load_combat_log_tuning`] and read by [`resolve_combat_log_tuning`] /
-/// [`redrive_combat_log_tuning_on_asset_event`], mirroring the presenter's
-/// [`FxTuningHandle`](gdtf_battle_presenter::FxTuningHandle).
-#[derive(Resource, Deref, Debug, Clone)]
-pub(crate) struct CombatLogTuningHandle(Handle<RonAsset<CombatLogTuning>>);
-
-impl CombatLogTuningHandle {
-    /// Wrap the in-flight combat-log RON handle.
-    #[must_use]
-    pub(crate) const fn new(handle: Handle<RonAsset<CombatLogTuning>>) -> Self {
-        Self(handle)
-    }
-}
-
-/// `Startup`: kick off the `combat_log.tuning.ron` load, storing its typed handle.
-///
-/// Loads `core_tuning/combat_log.tuning.ron` as a [`RonAsset<CombatLogTuning>`](gdtf_assets::RonAsset)
-/// through the generic loader and inserts the [`CombatLogTuningHandle`] the
-/// [`resolve_combat_log_tuning`] poll + [`redrive_combat_log_tuning_on_asset_event`] hot-reload
-/// systems read. Takes `Option<Res<AssetServer>>` so a `MinimalPlugins` headless app with no
-/// [`AssetServer`] no-ops rather than panicking (`bevy-traps.md` #1); under `DefaultPlugins`
-/// the load fires for real.
-///
-/// Param-only (`bevy-traps.md` #7): [`Commands`] for the handle insert, the optional
-/// [`Res<AssetServer>`] for the load.
-pub(crate) fn load_combat_log_tuning(
-    mut commands: Commands,
-    asset_server: Option<Res<AssetServer>>,
-) {
-    let Some(asset_server) = asset_server else {
-        return;
-    };
-    let handle = asset_server.load::<RonAsset<CombatLogTuning>>(COMBAT_LOG_RON_PATH);
-    commands.insert_resource(CombatLogTuningHandle::new(handle));
-}
-
-/// `Update` (gated until [`CombatLogTuning`] is resolved): resolve the loaded RON into the
-/// [`CombatLogTuning`] resource.
-///
-/// Once the [`RonAsset<CombatLogTuning>`](gdtf_assets::RonAsset) has settled into
-/// `Assets<RonAsset<CombatLogTuning>>`, it clones the deserialized [`CombatLogTuning`] out and
-/// inserts it as the resident resource so it is present before the first log line. Run only
-/// while [`CombatLogTuningHandle`] exists AND [`CombatLogTuning`] does NOT (the plugin's
-/// run-condition), so it inserts once; the live re-derive is
-/// [`redrive_combat_log_tuning_on_asset_event`]. Mirrors the presenter's `resolve_fx_tuning`.
-///
-/// Param-only (`bevy-traps.md` #7): [`Commands`] for the insert,
-/// [`Res<CombatLogTuningHandle>`] for the handle,
-/// [`Res<Assets<RonAsset<CombatLogTuning>>>`] for the loaded asset.
-pub(crate) fn resolve_combat_log_tuning(
-    mut commands: Commands,
-    handle: Res<CombatLogTuningHandle>,
-    tuning_assets: Res<Assets<RonAsset<CombatLogTuning>>>,
-) {
-    let Some(loaded) = tuning_assets.get(&**handle) else {
-        // Loaded-but-not-yet-in-collection (or still loading) — retry next frame; the
-        // run-condition keeps this system alive until CombatLogTuning is resolved.
-        return;
-    };
-    commands.insert_resource(**loaded);
-}
-
-/// `Update`: re-derive [`CombatLogTuning`] in place on a matching
-/// [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) — the LIVE hot-reload.
-///
-/// Reads the [`MessageReader`] of [`AssetEvent<RonAsset<CombatLogTuning>>`] and, on a `Modified`
-/// event for the loaded handle, overwrites the resident [`CombatLogTuning`] with the latest
-/// in-memory value so a `combat_log.tuning.ron` edit re-tunes the log THIS frame — WITHOUT a rebuild.
-/// Mirrors the presenter's `redrive_fx_tuning_on_asset_event`.
-///
-/// Guarded so it never panics before the load chain has run (pre-resolve): it takes the handle
-/// / the `Assets` collection / the [`CombatLogTuning`] resource as [`Option`]al borrows,
-/// draining the reader and returning early if any is missing (`bevy-traps.md` #1) so a
-/// pre-resolve event does not linger and re-fire later.
-///
-/// Param-only (`bevy-traps.md` #7): the [`MessageReader`], the optional handle / `Assets` /
-/// [`CombatLogTuning`] borrows.
-pub(crate) fn redrive_combat_log_tuning_on_asset_event(
-    mut events: MessageReader<AssetEvent<RonAsset<CombatLogTuning>>>,
-    handle: Option<Res<CombatLogTuningHandle>>,
-    tuning_assets: Option<Res<Assets<RonAsset<CombatLogTuning>>>>,
-    tuning: Option<ResMut<CombatLogTuning>>,
-) {
-    let (Some(handle), Some(tuning_assets), Some(mut tuning)) = (handle, tuning_assets, tuning)
-    else {
-        // Drain the reader so a pre-resolve event does not linger and re-fire once the
-        // resources arrive; there is nothing to re-derive yet.
-        events.clear();
-        return;
-    };
-
-    let active_id = handle.id();
-    // Act once per frame even if several Modified events arrive: a single re-derive from the
-    // latest in-memory value covers them all.
-    let modified = events
-        .read()
-        .any(|event| matches!(event, AssetEvent::Modified { id } if *id == active_id));
-    if !modified {
-        return;
-    }
-
-    let Some(updated) = tuning_assets.get(&**handle) else {
-        // Modified but not currently in the collection (a transient reload state) — leave the
-        // existing tuning until it settles; the next event re-fires.
-        return;
-    };
-    *tuning = **updated;
-    // GTW-374 Part C: log EVERY hot-reload path naming what reloaded, so a live edit can be
-    // traced (mirrors the theme / FX / pan / B1-B3 handlers).
-    info!(
-        "combat-log hot-reload: re-derived CombatLogTuning from `core_tuning/combat_log.tuning.ron`"
-    );
+/// Registers the [`CombatLogTuning`] hot-RON chain — ONE ext call onto the
+/// GTW-564 generic seam (kick-off / gated resolve / live redrive, keyed by the
+/// generic [`HotRonHandle`](gdtf_assets::HotRonHandle)`<CombatLogTuning>`),
+/// replacing the per-site handle newtype + load/resolve/redrive triple.
+/// Self-gates on the [`AssetServer`](bevy::asset::AssetServer)
+/// (`bevy-traps.md` #1), so a `MinimalPlugins` headless app stays a no-op (the
+/// log then runs on [`CombatLogTuning::default`]). On a live `.ron` edit the
+/// generic redrive overwrites [`CombatLogTuning`] through `ResMut`, so a
+/// `combat_log.tuning.ron` edit re-tunes the log THIS frame — WITHOUT a rebuild.
+pub(crate) fn register_combat_log_hot_ron(app: &mut App) {
+    app.init_hot_ron_resource::<CombatLogTuning>(COMBAT_LOG_RON_PATH);
 }
 
 #[cfg(test)]

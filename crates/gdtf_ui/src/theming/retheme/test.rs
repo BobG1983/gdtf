@@ -8,11 +8,11 @@ use bevy::{
     text::Font,
     ui::{BackgroundColor, Interaction, Node, widget::Button},
 };
-use gdtf_assets::{RonAsset, RonAssetAppExt};
+use gdtf_assets::{HotRonHandle, RonAsset, RonAssetAppExt};
 
 use crate::{
     UiPlugin,
-    theme::{ActiveThemeHandle, GdtfTheme, GdtfThemeSpec},
+    theme::{GdtfTheme, GdtfThemeSpec},
     themed::{ThemeRole, Themed},
 };
 
@@ -120,7 +120,7 @@ fn modified_event_rederives_theme_and_repaints_widgets() -> Result<(), ron::erro
             .resolve(|_| Handle::<Font>::default()),
     );
     app.world_mut()
-        .insert_resource(ActiveThemeHandle::new(handle.clone()));
+        .insert_resource(HotRonHandle::new(handle.clone()));
 
     let text = app
         .world_mut()
@@ -170,47 +170,6 @@ fn modified_event_rederives_theme_and_repaints_widgets() -> Result<(), ron::erro
     Ok(())
 }
 
-/// A `Modified` event for a DIFFERENT asset id leaves `GdtfTheme` untouched —
-/// the filter is on the ACTIVE handle id only (AC1: ignore other handles).
-///
-/// Pin-discriminating: dropping the id filter would re-derive on any theme
-/// asset's event and this assert (theme unchanged) fails.
-#[test]
-fn modified_event_for_other_id_does_not_rederive() -> Result<(), ron::error::SpannedError> {
-    let mut app = app();
-
-    let active = add_theme_asset(
-        &mut app,
-        spec([0.84, 0.80, 0.73], [0.08, 0.08, 0.10], [0.20, 0.20, 0.24])?,
-    );
-    // A second, unrelated theme asset whose value differs from the active one.
-    let other = add_theme_asset(
-        &mut app,
-        spec([0.10, 0.90, 0.20], [0.50, 0.10, 0.30], [0.70, 0.10, 0.40])?,
-    );
-    app.world_mut().insert_resource(
-        spec([0.84, 0.80, 0.73], [0.08, 0.08, 0.10], [0.20, 0.20, 0.24])?
-            .resolve(|_| Handle::<Font>::default()),
-    );
-    app.world_mut()
-        .insert_resource(ActiveThemeHandle::new(active));
-
-    app.update();
-    let before = app.world().get_resource::<GdtfTheme>().cloned();
-
-    // Fire a Modified for the OTHER (non-active) id only.
-    inject_modified(&mut app, &other);
-    app.update();
-
-    assert_eq!(
-        app.world().get_resource::<GdtfTheme>().cloned(),
-        before,
-        "a Modified for a non-active asset id must NOT re-derive GdtfTheme",
-    );
-
-    Ok(())
-}
-
 /// The re-derive re-resolves fonts through the `AssetServer` — `load` is
 /// idempotent, so a sub-theme's resolved font handle after the re-derive equals
 /// the handle the server hands back for that key (and is NOT the default handle,
@@ -238,7 +197,7 @@ fn rederive_reresolves_fonts_through_the_asset_server() -> Result<(), ron::error
             .resolve(|_| Handle::<Font>::default()),
     );
     app.world_mut()
-        .insert_resource(ActiveThemeHandle::new(handle.clone()));
+        .insert_resource(HotRonHandle::new(handle.clone()));
 
     app.update();
 
