@@ -72,7 +72,7 @@ use crate::states::load::{
 /// [`resolve_armor`] `warn!`s and inserts an empty registry, preserving the
 /// no-strand guarantee.
 ///
-/// GTW-487 / GTW-489 / GTW-494: it ALSO resolves the per-theme `terrain/` folder into the
+/// GTW-487 / GTW-489 / GTW-494: it ALSO resolves the per-theme `content/terrain/` folder into the
 /// UUID-keyed [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
 /// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry), and the `maps/` folder
 /// into the UUID-keyed [`PrefabRegistry`](gdtf_battle_sim::level::PrefabRegistry), each on
@@ -298,11 +298,11 @@ pub(in crate::states::load) fn poll_and_resolve(
         );
     }
 
-    // GTW-487: resolve the NEW per-theme `terrain/` folder into the UUID-keyed
+    // GTW-487: resolve the NEW per-theme `content/terrain/` folder into the UUID-keyed
     // TerrainDefRegistry + UuidThemeRegistry, each on its OWN absence guard, independently
     // of all other branches (the terrain/themes-branch precedent). These run BESIDE the
     // legacy terrain/themes branches above — the new model loads from a DISTINCT
-    // `terrain/<theme>/` layout via dedicated `terrain_def.ron` / `terrain_theme.ron`
+    // `content/terrain/<theme>/` layout via dedicated `terrain_def.ron` / `terrain_theme.ron`
     // extensions, so neither collides with the legacy `terrain.ron` / `theme.ron` loaders.
     // Both registries are DORMANT after this slice — nothing consumes them yet (later
     // GTW-476 switch tickets do); they are resolved and gated on purely so the new folder

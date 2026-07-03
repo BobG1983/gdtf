@@ -2,7 +2,7 @@
 //!
 //! Mirrors `gdtf_app`'s `LoadHandles` shape, trimmed to exactly what the editor shell
 //! needs: the theme RON, the weapon / armor folders, the NEW UUID-keyed per-theme
-//! `terrain/` folder (GTW-487), and the presenter's tile-role RON (GTW-495 — the per-def
+//! `content/terrain/` folder (GTW-487), and the presenter's tile-role RON (GTW-495 — the per-def
 //! graphic resolution the editor mirrors). Each is a named newtype over its Bevy handle
 //! (no-bare-types rule 5: private inner, derived [`Deref`], a `new` constructor). The
 //! GTW-533: the resource PERSISTS for the whole session — `register_load` registers NO
@@ -62,12 +62,12 @@ impl EditorArmorFolderHandle {
     }
 }
 
-/// Typed handle to the loaded NEW per-theme `terrain/` folder (GTW-487) — its members are
+/// Typed handle to the loaded NEW per-theme `content/terrain/` folder (GTW-487) — its members are
 /// `RonAsset<TerrainDef>` (`*.terrain_def.ron`) + `RonAsset<UuidThemeDef>`
 /// (`*.terrain_theme.ron`) the poll/resolve pass builds the UUID-keyed
 /// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
 /// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) from. ONE recursive
-/// `load_folder` of `terrain/` feeds both — the UUID-keyed models are the editor's SOLE
+/// `load_folder` of `content/terrain/` feeds both — the UUID-keyed models are the editor's SOLE
 /// terrain/theme source after GTW-495 (the legacy `content/themes` catalog is retired).
 #[derive(Resource, Deref, Clone, Debug)]
 pub(crate) struct EditorTerrainModelFolderHandle(Handle<LoadedFolder>);
@@ -113,7 +113,7 @@ pub(crate) struct EditorLoadHandles {
     /// The armor-folder handle (resolves to the
     /// [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry)).
     pub(crate) armor:         EditorArmorFolderHandle,
-    /// The NEW per-theme `terrain/` folder handle (GTW-487 — resolves to the UUID-keyed
+    /// The NEW per-theme `content/terrain/` folder handle (GTW-487 — resolves to the UUID-keyed
     /// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
     /// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry)).
     pub(crate) terrain_model: EditorTerrainModelFolderHandle,

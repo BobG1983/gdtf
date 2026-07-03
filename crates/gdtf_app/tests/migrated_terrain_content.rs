@@ -1,6 +1,6 @@
 //! GTW-490 C2 / C4: with a REAL `AssetServer` rooted at the SHIPPED workspace `assets/`,
 //! entering `AppState::Load` loads the MIGRATED per-theme terrain + theme content from
-//! `assets/terrain/<theme>/*.terrain_def.ron` + `*.terrain_theme.ron` THROUGH the actual
+//! `assets/content/terrain/<theme>/*.terrain_def.ron` + `*.terrain_theme.ron` THROUGH the actual
 //! GTW-487 `resolve_terrain_defs` / `resolve_theme_defs` loader (not a hand-inserted
 //! resource) and builds the
 //! [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
@@ -8,7 +8,7 @@
 //! UUID.
 //!
 //! Unlike the GTW-487 C1 test (which pointed at a TEST fixture because the shipped content
-//! was empty), THIS migration ticket fills the real `assets/terrain/` tree, so the test loads
+//! was empty), THIS migration ticket fills the real `assets/content/terrain/` tree, so the test loads
 //! the SHIPPED dirs directly via [`GdtfLoadTestAppBuilder::new`] (workspace `assets/` root).
 //!
 //! - **C2**: the [`TerrainDefRegistry`] is not-empty with the EXPECTED COUNT (all migrated

@@ -183,7 +183,8 @@ pub(super) fn shipped_field_registry() -> Option<crate::fields::FieldDefRegistry
 /// UUID; an EMPTY registry is therefore correct and faithful (it satisfies the
 /// `run_setup_with` signature without inventing terrain the shipped file does not author).
 /// When procgen drives real terrain (GTW-492+) the registry comes from the shipped UUID-keyed
-/// `assets/terrain/<theme>/*.terrain_def.ron` content (GTW-490), resolved by the loader.
+/// `assets/content/terrain/<theme>/*.terrain_def.ron` content (GTW-490; root moved under
+/// `content/` in GTW-562), resolved by the loader.
 #[must_use]
 pub(super) fn shipped_terrain_registry() -> TerrainDefRegistry {
     TerrainDefRegistry::default()

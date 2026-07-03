@@ -169,7 +169,7 @@ impl TextThemeSpec {
 
 /// The on-disk RON shape of a GDTF theme.
 ///
-/// The deserialization mirror of `assets/theme/*.ron`: a `default_font` path plus
+/// The deserialization mirror of `assets/core_tuning/ui_theme.tuning.ron`: a `default_font` path plus
 /// one nested `*Spec` per widget role. It carries nothing Bevy-asset-bound, so
 /// `ron::from_str` into it needs no `World` and no `AssetServer`.
 ///

@@ -1,5 +1,5 @@
 //! GTW-494 (child T08 of the GTW-476 refactor): `AppState::Load` preloads the per-theme
-//! `assets/terrain/<theme>/` folder through the GTW-487 `RonAsset<TerrainDef>` loader
+//! `assets/content/terrain/<theme>/` folder through the GTW-487 `RonAsset<TerrainDef>` loader
 //! (guarded for headless), builds the UUID-keyed [`TerrainDefRegistry`] from the loaded
 //! `*.terrain_def.ron` files (keyed by each def's OWN UUID), and gates the Load→Intro
 //! transition on it — so the machine never leaves `Load` before the per-theme terrain
@@ -19,7 +19,7 @@
 //!   it is a genuine gate-blocking resource.
 //! - **Tier (b)** — `DefaultPlugins` (headless, `backends: None`) via
 //!   [`GdtfLoadTestAppBuilder`]: a real `AssetServer` pointed at the workspace `assets/`. The
-//!   good path loads `assets/terrain/<theme>/*.terrain_def.ron` into a [`TerrainDefRegistry`]
+//!   good path loads `assets/content/terrain/<theme>/*.terrain_def.ron` into a [`TerrainDefRegistry`]
 //!   keyed by each def's OWN UUID, and a KNOWN authored UUID resolves.
 //!
 //! VALUE-AGNOSTIC (gate 4a): asserts presence / known-UUID resolution / gate-blocking ONLY —
@@ -47,7 +47,7 @@ use gdtf_ui::theme::{GdtfTheme, default_theme};
 const TRANSITION_BUDGET: u32 = 32;
 
 /// Generous SAFETY-NET cap for the real-asset (Tier b) `advance_until` waits gated
-/// on an async asset load resolving. The per-theme `terrain/` folder load shares the
+/// on an async asset load resolving. The per-theme `content/terrain/` folder load shares the
 /// `AssetServer` with the theme / situation / tuning / weapons / armor + the presenter's
 /// startup tile-sheet loads (the full scene stack is registered in this harness), so under
 /// parallel `cargo` contention the async resolve has NO fixed frame count. These waits key
@@ -115,7 +115,7 @@ fn seed_gate_resources(app: &mut bevy::app::App, seed_terrain: bool) {
 
 /// AC (tier a) — under `MinimalPlugins` there is no `AssetServer`, so entering `Load` must
 /// not panic: the loader registration (`init_ron_asset_with_extensions::<TerrainDef>`) and
-/// the `load_folder("terrain")` kick-off both guard on a missing server and no-op. The
+/// the `load_folder("content/terrain")` kick-off both guard on a missing server and no-op. The
 /// machine still advances past `Load` once all gate resources are injected (standing in for
 /// all resolves completing), proving the guard holds.
 ///
@@ -191,7 +191,7 @@ fn load_does_not_leave_without_a_terrain_def_registry() {
 }
 
 /// AC (tier b) / GTW-494 C2 — with a real `AssetServer` rooted at the workspace `assets/`,
-/// entering `Load` loads `assets/terrain/<theme>/*.terrain_def.ron` and builds a
+/// entering `Load` loads `assets/content/terrain/<theme>/*.terrain_def.ron` and builds a
 /// [`TerrainDefRegistry`] keyed by each def's OWN UUID through the ACTUAL `resolve_terrain_defs`
 /// branch. Proves the folder loaded into the registry (non-empty + known authored UUIDs
 /// resolve), and that the Load gate waited for it (the machine reaches Intro with a registry

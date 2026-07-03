@@ -1,6 +1,6 @@
 //! GTW-487 (child T05a of the GTW-476 data-model refactor): builds the UUID-keyed
 //! [`TerrainDefRegistry`] + [`UuidThemeRegistry`] from the per-theme directory layout
-//! `assets/terrain/<theme>/`, plus the LIVE hot-reload that rebuilds each on a
+//! `assets/content/terrain/<theme>/`, plus the LIVE hot-reload that rebuilds each on a
 //! `*.terrain_def.ron` / `*.terrain_theme.ron` edit.
 //!
 //! **GTW-494 (child T08): the SOLE terrain / theme loaders.** These loaders were introduced
@@ -9,14 +9,14 @@
 //! RETIRED those legacy loaders (GTW-496 deleted their types), so these are now the ONLY
 //! terrain / theme resolvers in the Load flow (the sim + procgen + presenter consume the new
 //! registries as of GTW-491/492/493). The per-theme folder carries BOTH new asset types (one recursive
-//! `load_folder` of `terrain/` fans every member out to the matching dedicated-extension
+//! `load_folder` of `content/terrain/` fans every member out to the matching dedicated-extension
 //! loader), so a single [`TerrainModelFolderHandle`] feeds both resolves and both redrives.
 //!
 //! **The dedicated `terrain_def.ron` / `terrain_theme.ron` extensions + the `TypeId` filter:**
 //! Bevy 0.19 dispatches a `load_folder` member PURELY by extension
 //! (`bevy_asset::server::loaders::get_by_path` → last loader registered for that extension,
 //! directory-agnostic). The dedicated extensions keep dispatch unambiguous; ONE recursive
-//! `load_folder("terrain")` fans out BOTH `RonAsset<TerrainDef>` and `RonAsset<UuidThemeDef>`
+//! `load_folder("content/terrain")` fans out BOTH `RonAsset<TerrainDef>` and `RonAsset<UuidThemeDef>`
 //! members, so each build helper filters by [`TypeId`] before typing the member.
 //!
 //! Each def carries its OWN UUID inside ([`TerrainDef::key`] / [`UuidThemeDef::key`]), so the
@@ -37,7 +37,7 @@ use gdtf_battle_sim::{
 use crate::states::load::resources::{ActiveTerrainModelFolderHandle, LoadHandles};
 
 /// GTW-487: builds the UUID-keyed [`TerrainDefRegistry`] from the loaded per-theme
-/// `assets/terrain/` folder, keying by each def's OWN
+/// `assets/content/terrain/` folder, keying by each def's OWN
 /// [`TerrainUuid`](gdtf_battle_sim::terrain::def::TerrainUuid) (the filename is irrelevant).
 /// GTW-494: the SOLE terrain resolve (the legacy flat-dir `resolve_terrain` was retired).
 ///
@@ -72,7 +72,7 @@ pub(super) fn resolve_terrain_defs(
 
     if matches!(folder_state, RecursiveDependencyLoadState::Failed(_)) {
         warn!(
-            "GDTF Load: the new per-theme `terrain/` folder failed to load; inserting an empty \
+            "GDTF Load: the new per-theme `content/terrain/` folder failed to load; inserting an empty \
              TerrainDefRegistry (consumers fail closed on a missing terrain UUID)",
         );
         commands.insert_resource(TerrainDefRegistry::default());
@@ -103,7 +103,7 @@ pub(super) fn resolve_terrain_defs(
 }
 
 /// GTW-487: builds the UUID-keyed [`UuidThemeRegistry`] from the loaded per-theme
-/// `assets/terrain/` folder, the theme mirror of [`resolve_terrain_defs`] — keying by each
+/// `assets/content/terrain/` folder, the theme mirror of [`resolve_terrain_defs`] — keying by each
 /// def's OWN [`ThemeUuid`](gdtf_battle_sim::level::ThemeUuid).
 ///
 /// Called only while no [`UuidThemeRegistry`] resource exists yet (the caller's own-absence
@@ -124,7 +124,7 @@ pub(super) fn resolve_theme_defs(
 
     if matches!(folder_state, RecursiveDependencyLoadState::Failed(_)) {
         warn!(
-            "GDTF Load: the new per-theme `terrain/` folder failed to load; inserting an empty \
+            "GDTF Load: the new per-theme `content/terrain/` folder failed to load; inserting an empty \
              UuidThemeRegistry (consumers fail closed on a missing theme UUID)",
         );
         commands.insert_resource(UuidThemeRegistry::default());
@@ -145,7 +145,7 @@ pub(super) fn resolve_theme_defs(
     }
 }
 
-/// Build the UUID-keyed [`TerrainDefRegistry`] from a loaded per-theme `terrain/`
+/// Build the UUID-keyed [`TerrainDefRegistry`] from a loaded per-theme `content/terrain/`
 /// [`LoadedFolder`], or [`None`] if the folder (or any `RonAsset<TerrainDef>` member) is not
 /// yet in its collection.
 ///
@@ -190,7 +190,7 @@ fn build_terrain_def_registry(
     Some(registry)
 }
 
-/// Build the UUID-keyed [`UuidThemeRegistry`] from a loaded per-theme `terrain/`
+/// Build the UUID-keyed [`UuidThemeRegistry`] from a loaded per-theme `content/terrain/`
 /// [`LoadedFolder`], or [`None`] if the folder is not yet in its collection — the theme
 /// mirror of [`build_terrain_def_registry`].
 ///
@@ -228,7 +228,7 @@ fn build_theme_def_registry(
 
 /// `Update`: rebuild the [`TerrainDefRegistry`] in place on a matching
 /// [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for any member
-/// `assets/terrain/**/*.terrain_def.ron` — the GTW-487 LIVE terrain-def hot-reload, mirroring
+/// `assets/content/terrain/**/*.terrain_def.ron` — the GTW-487 LIVE terrain-def hot-reload, mirroring
 /// the gang hot-reload pattern ([`redrive_gangs_on_asset_event`](super::gangs::redrive_gangs_on_asset_event)).
 ///
 /// A folder load fans out into one `RonAsset<TerrainDef>` asset PER def file, and a hot edit
@@ -271,14 +271,14 @@ pub(in crate::states::load) fn redrive_terrain_defs_on_asset_event(
     };
     *registry = rebuilt;
     info!(
-        "terrain-def hot-reload: rebuilt TerrainDefRegistry from `assets/terrain/` ({} defs)",
+        "terrain-def hot-reload: rebuilt TerrainDefRegistry from `assets/content/terrain/` ({} defs)",
         registry.len(),
     );
 }
 
 /// `Update`: rebuild the [`UuidThemeRegistry`] in place on a matching
 /// [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for any member
-/// `assets/terrain/**/*.terrain_theme.ron` — the GTW-487 LIVE new-theme-def hot-reload, the
+/// `assets/content/terrain/**/*.terrain_theme.ron` — the GTW-487 LIVE new-theme-def hot-reload, the
 /// theme mirror of [`redrive_terrain_defs_on_asset_event`].
 ///
 /// Reacts to ANY `AssetEvent<RonAsset<UuidThemeDef>>::Modified` and rebuilds the whole
@@ -311,7 +311,7 @@ pub(in crate::states::load) fn redrive_theme_defs_on_asset_event(
     };
     *registry = rebuilt;
     info!(
-        "theme-def hot-reload: rebuilt UuidThemeRegistry from `assets/terrain/` ({} themes)",
+        "theme-def hot-reload: rebuilt UuidThemeRegistry from `assets/content/terrain/` ({} themes)",
         registry.len(),
     );
 }

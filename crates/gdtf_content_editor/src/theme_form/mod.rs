@@ -7,7 +7,7 @@
 //! those terrain as the `default_floor`. The theme stores references ONLY — never inlined stats.
 //!
 //! SAVE projects the in-progress [`ThemeDraft`](types::ThemeDraft) into a real `UuidThemeDef`,
-//! serializes it to RON, and writes it to `assets/terrain/<slug>/<slug>.terrain_theme.ron` so the
+//! serializes it to RON, and writes it to `assets/content/terrain/<slug>/<slug>.terrain_theme.ron` so the
 //! GTW-487 theme loader resolves it into the
 //! [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) (hot-reload). The save honors the
 //! default-floor-must-be-own-terrain rule.

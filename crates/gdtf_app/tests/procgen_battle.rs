@@ -2,7 +2,7 @@
 //! procgen-generates its terrain at `BattleScapeState::Generation` and reaches
 //! `BattleScapeState::BattleRunning` with a PLAYABLE (terrain-populated) level — driven by the
 //! REAL Load flow so the v2 prefab + theme + terrain registries are POPULATED from shipped
-//! content (the GTW-489 resolve over the GTW-490 migrated `content/maps/` + `terrain/`), NOT
+//! content (the GTW-489 resolve over the GTW-490 migrated `content/maps/` + `content/terrain/`), NOT
 //! hand-seeded.
 //!
 //! Two tests:
@@ -125,8 +125,8 @@ fn prefab_len(app: &App) -> Option<usize> {
 /// Drives `GdtfLoadTestAppBuilder` (a live `AssetServer` rooted at the workspace `assets/`, the
 /// REAL Load scene) — so the [`PrefabRegistry`] is built by the GTW-489 resolve from the
 /// GTW-490 migrated `maps/industrial_hive/12x12/*.prefab.ron` content, the
-/// `UuidThemeRegistry` from `terrain/industrial_hive/*.terrain_theme.ron`, and the
-/// `TerrainDefRegistry` from `terrain/industrial_hive/*.terrain_def.ron`. This is EXPLICITLY
+/// `UuidThemeRegistry` from `content/terrain/industrial_hive/*.terrain_theme.ron`, and the
+/// `TerrainDefRegistry` from `content/terrain/industrial_hive/*.terrain_def.ron`. This is EXPLICITLY
 /// NOT a hand-seeded registry: the assertion below proves the registry was populated via the
 /// resolve branch (NON-EMPTY before the battle generates), so the procgen path reaches the real
 /// populated registry.

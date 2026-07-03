@@ -258,7 +258,8 @@ links are clean.
 ## Part 3 — Hot-reload
 
 The terrain system supports **live hot-reload** (GTW-394 pattern): editing any
-`assets/content/terrain/*.terrain.ron` file while the game is running triggers
+flat `*.terrain.ron` file under `assets/content/terrain/` while the game is
+running triggers
 `redrive_terrain_on_asset_event` in
 `crates/gdtf_app/src/states/load/systems/resolve/terrain.rs`, which rebuilds
 the entire `TerrainRegistry` from the persistent `ActiveTerrainFolderHandle`.

@@ -1,20 +1,19 @@
 //! GTW-487 (child T05a of the GTW-476 refactor) C1: with a REAL `AssetServer` rooted at a
 //! per-theme TEST fixture folder, entering `AppState::Load` loads the NEW UUID-keyed
-//! terrain + theme models from `terrain/<theme>/*.terrain_def.ron` +
-//! `*.terrain_theme.ron` THROUGH the actual `resolve_terrain_defs` / `resolve_theme_defs`
+//! terrain + theme models from `content/terrain/<theme>/*.terrain_def.ron` +
+//! `*.terrain_theme.ron` (the GTW-562 canonical root) THROUGH the actual
+//! `resolve_terrain_defs` / `resolve_theme_defs`
 //! branch (not a hand-inserted resource) and builds the
 //! [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
 //! [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry), keyed by each def's OWN
 //! UUID.
 //!
-//! These NEW loaders run BESIDE the legacy `resolve_terrain` / `resolve_themes` (which stay
-//! live + unchanged — C5); the shipped game `assets/` carries NO per-theme layout yet, so
-//! the registries resolve EMPTY there (the designed fail-closed state until the T06 content
-//! migration). This test therefore points a real `AssetServer` at a TEST fixture root
-//! (`tests/fixtures/new_terrain_root/`) whose `terrain/industrial_hive/` holds one
-//! `*.terrain_def.ron` + one `*.terrain_theme.ron`, with the OTHER shipped content dirs
-//! symlinked to the real `assets/` so the rest of the Load gate still clears and the new
-//! resolve branch actually runs end-to-end.
+//! This test points a real `AssetServer` at a TEST fixture root
+//! (`tests/fixtures/terrain_model_root/`) whose `content/terrain/industrial_hive/` holds one
+//! `*.terrain_def.ron` + one `*.terrain_theme.ron` (isolated from the SHIPPED per-theme
+//! content, so the known-fixture-UUID asserts stay meaningful), with the OTHER shipped
+//! content dirs symlinked to the real `assets/` so the rest of the Load gate still clears
+//! and the new resolve branch actually runs end-to-end.
 //!
 //! VALUE-AGNOSTIC (gate 4a): asserts the registries POPULATE and resolve the KNOWN authored
 //! UUIDs only — no authored magnitudes pinned. Mirrors `load_terrain.rs` /
@@ -30,7 +29,7 @@ use gdtf_battle_sim::{
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
 /// Generous SAFETY-NET cap for the real-asset `advance_until` waits gated on an async load
-/// resolving. The per-theme `terrain/` folder load shares the `AssetServer` with every other
+/// resolving. The per-theme `content/terrain/` folder load shares the `AssetServer` with every other
 /// loaded folder, so under parallel `cargo` contention the async resolve has NO fixed frame
 /// count. These waits key off the resolved SIGNAL; the cap is a safety net against a genuine
 /// never-resolve hang, not a timing budget (GTW-305).
@@ -49,13 +48,13 @@ const fn known_theme_uuid() -> ThemeUuid {
 }
 
 /// The absolute path of the per-theme TEST fixture root (this crate's
-/// `tests/fixtures/new_terrain_root/`), computed lexically from the manifest dir so it is
+/// `tests/fixtures/terrain_model_root/`), computed lexically from the manifest dir so it is
 /// independent of the cwd.
 fn fixture_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
         .join("fixtures")
-        .join("new_terrain_root")
+        .join("terrain_model_root")
 }
 
 /// Reads the current [`AppState`].
@@ -67,7 +66,7 @@ fn app_state(app: &bevy::app::App) -> AppState {
 }
 
 /// GTW-487 C1 — with a real `AssetServer` rooted at the per-theme TEST fixture, entering
-/// `Load` loads `terrain/industrial_hive/*.terrain_def.ron` + `*.terrain_theme.ron` through
+/// `Load` loads `content/terrain/industrial_hive/*.terrain_def.ron` + `*.terrain_theme.ron` through
 /// the ACTUAL `resolve_terrain_defs` / `resolve_theme_defs` branch and builds the UUID-keyed
 /// registries. Proves:
 ///
@@ -87,7 +86,7 @@ fn real_asset_resolves_new_terrain_and_theme_registries_by_uuid() {
         .starting_in(AppState::Load)
         .build();
 
-    // Signal-poll the async per-theme `terrain/` folder load until BOTH new registries are
+    // Signal-poll the async per-theme `content/terrain/` folder load until BOTH new registries are
     // inserted by the real resolve branch. Cap is a safety net (GTW-305).
     advance_until_resource_exists::<TerrainDefRegistry>(&mut app, LOAD_SAFETY_NET);
     advance_until_resource_exists::<UuidThemeRegistry>(&mut app, LOAD_SAFETY_NET);

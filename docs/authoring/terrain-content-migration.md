@@ -3,15 +3,15 @@
 This note is the durable in-repo record (C1-RECORD) of the reconciliation ruling
 applied when migrating the shipped content to the NEW per-theme, UUID-keyed
 terrain / theme / prefab model. It lives in `docs/` (NOT beside the migrated
-`.ron` content under `assets/terrain/` or `assets/content/maps/`, because those are the
+`.ron` content under `assets/content/terrain/` or `assets/content/maps/`, because those are the
 recursively-loaded asset folders — a stray non-asset file there fails the
 `load_folder` walk).
 
 The migrated content is shipped under:
 
-- `assets/terrain/<theme>/<tile>.terrain_def.ron` — the GTW-487 UUID-keyed
+- `assets/content/terrain/<theme>/<tile>.terrain_def.ron` — the GTW-487 UUID-keyed
   `TerrainDef` files.
-- `assets/terrain/<theme>/<theme>.terrain_theme.ron` — the GTW-487 `UuidThemeDef`
+- `assets/content/terrain/<theme>/<theme>.terrain_theme.ron` — the GTW-487 `UuidThemeDef`
   files.
 - `assets/content/maps/<theme>/<size>/<name>.prefab.ron` — the GTW-489
   `PrefabSpec` files.
@@ -21,8 +21,9 @@ The migrated content is shipped under:
 Before this migration two divergent catalogs described the *industrial_hive*
 terrain:
 
-- The **flat `TerrainRegistry`** (`assets/content/terrain/*.terrain.ron`, keyed by
-  file stem) — the catalog the LIVE battle path, the prefabs, and `skirmish.ron`
+- The **flat `TerrainRegistry`** (flat `*.terrain.ron` files under
+  `assets/content/terrain/`, keyed by file stem; the dead flat files were
+  removed in GTW-562) — the catalog the LIVE battle path, the prefabs, and `skirmish.ron`
   actually reference. **8 pieces:** `barricade`, `bulkhead_wall`, `debris_pile`,
   `deck_floor`, `deck_slab`, `gantry_slab`, `heavy_bulkhead`, `supply_crate`.
 - The **parallel `ThemeTileCatalog`** (`assets/content/themes/industrial_hive.theme.ron`,
@@ -79,7 +80,7 @@ The new `TerrainSimKind` is `Wall` / `Cover` / `Slab` ONLY (no `Floor`, no
 ## The other two themes (underhive, sump_waste)
 
 These have no flat counterpart (only their own `ThemeTileCatalog` tiles). They
-migrate their OWN tiles to per-theme `TerrainDef`s under `terrain/<theme>/`,
+migrate their OWN tiles to per-theme `TerrainDef`s under `content/terrain/<theme>/`,
 dropping `atlas_index` the same way (mapping each old index to its matching
 `TileRoles` graphic key), folding `Scatter` into `Cover`, and generating stable
 UUIDs. Their `default_floor` is the migrated floor def of that theme.

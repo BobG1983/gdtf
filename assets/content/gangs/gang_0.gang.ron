@@ -1,7 +1,7 @@
 // GDTF gang roster — "gang_0" (GTW-414/415). A faction-agnostic, reusable roster: a
 // list of MEMBERS, each carrying identity + the eight direct attributes + a weapon KEY +
 // an armor KEY. NO faction, NO placement — those are assigned per-battle by the situation
-// (assets/situations/*.ron), so this roster can be fielded on any side at any position.
+// (assets/content/situations/*.ron), so this roster can be fielded on any side at any position.
 //
 // The gang's NAME is the file STEM (gang_0), NOT a field — exactly as a weapon's name is
 // its file stem. It loads as a loose `.gang.ron` through the RonAsset<GangRoster> folder

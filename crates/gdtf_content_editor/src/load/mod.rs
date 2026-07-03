@@ -39,7 +39,7 @@ use crate::{
 ///   (each loaded by path), the weapon / armor specs (each via `load_folder` of its OWN
 ///   dedicated compound extension), and the GTW-487 UUID-keyed terrain-def / theme-def types
 ///   (each via its OWN dedicated `terrain_def.ron` / `terrain_theme.ron` extension so the
-///   per-theme `terrain/` folder dispatch is unambiguous — the game's loader scheme).
+///   per-theme `content/terrain/` folder dispatch is unambiguous — the game's loader scheme).
 /// - `OnEnter(Load)`: kick off the loads.
 /// - `Update` (while `Load` and any target resource is still absent): poll + resolve.
 /// - `Update` (while `Load` and all resources exist): transition to `Editing`.
@@ -65,7 +65,7 @@ pub(crate) fn register_load(app: &mut App) {
         app.init_ron_asset_with_extensions::<WeaponSpec>(vec!["weapon.ron"]);
         app.init_ron_asset_with_extensions::<ArmorSpec>(vec!["armor.ron"]);
         // GTW-487: the NEW UUID-keyed terrain + theme models, each via its OWN dedicated
-        // compound extension so the per-theme `terrain/` folder dispatch is unambiguous.
+        // compound extension so the per-theme `content/terrain/` folder dispatch is unambiguous.
         app.init_ron_asset_with_extensions::<TerrainDef>(vec!["terrain_def.ron"]);
         app.init_ron_asset_with_extensions::<UuidThemeDef>(vec!["terrain_theme.ron"]);
         // GTW-495: the presenter's tile-role table (the per-def graphic resolution seam). Its

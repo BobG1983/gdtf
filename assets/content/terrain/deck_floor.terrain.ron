@@ -1,9 +1,0 @@
-// Deck floor — default walkable plating. A floor piece: it carries only a terrain
-// move cost (no HP/armor — you do not shoot the floor you stand on).
-(
-    graphic:  "floor",           // presenter TileRoles key -> alt_tileset_terrain atlas (sim never resolves it)
-    footfall: "footfall_metal",  // footfall sound key (no audio system yet; carried for the future pass)
-    kind: Floor((
-        move_cost: 4,            // TU to step onto this floor (REUSE MoveCost; starting point, tunable)
-    )),
-)

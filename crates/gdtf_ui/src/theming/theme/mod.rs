@@ -2,7 +2,7 @@
 //! pure spec-to-resource resolution that bridges them.
 //!
 //! The theme is **data-driven** (ADR 0003): visual constants live in a loose
-//! `assets/theme/*.ron` file, not in code. As of GTW-149 the theme is **nested**
+//! `assets/core_tuning/ui_theme.tuning.ron` file, not in code. As of GTW-149 the theme is **nested**
 //! into per-widget sub-themes rather than one flat record: a top-level
 //! [`GdtfTheme`] holds a [`BackgroundTheme`], a [`PanelTheme`], a [`ButtonTheme`],
 //! a [`TitleTheme`], and a [`TextTheme`], each painting one role of the UI.
