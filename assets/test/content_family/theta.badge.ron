@@ -1,0 +1,7 @@
+// GTW-570 content-family test fixture (PAYLOAD-KEYED member) — deliberately in
+// the SAME folder as the swatches: the mixed-folder walk must skip it for the
+// swatch family (TypeId filter) and key it by the id INSIDE the payload here.
+(
+    key: "brand_theta", // the payload-owned registry key (the filename stem is irrelevant)
+    glyph: "θ",         // a payload field the tests read back
+)

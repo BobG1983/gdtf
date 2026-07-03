@@ -154,9 +154,8 @@ Armor stats that change per-hit flow through:
 ### Step 5 — Update test fixtures
 
 Test fixtures that build `ArmorSpec` inline will need the new field. Update
-the `armor_spec` fixture helpers in
-`crates/gdtf_app/src/states/load/systems/resolve/armor.rs` (the test submodule)
-and any sim-side test support.
+any sim-side test support (the bespoke per-family loader test submodule was
+retired with the GTW-570 generic content-family seam).
 
 ### Step 6 — Update authoring docs
 
@@ -170,9 +169,10 @@ are clean.
 
 The armor system supports **live hot-reload** (GTW-374 pattern): editing any
 `assets/content/armor/*.armor.ron` file while the game is running triggers
-`redrive_armor_on_asset_event` in
-`crates/gdtf_app/src/states/load/systems/resolve/armor.rs`, which rebuilds
-the entire `ArmorRegistry` from the persistent `ActiveArmorFolderHandle`.
+the generic `redrive_content_family::<ArmorFamily>` system (GTW-570) in
+`crates/gdtf_assets/src/family/systems.rs`, which rebuilds the entire
+`ArmorRegistry` from the persistent generic `ContentFolderHandle<ArmorFamily>`
+(the family marker lives in `crates/gdtf_content_families/src/armor.rs`).
 
 The rebuilt registry is written via `ResMut<ArmorRegistry>`, marking it
 changed. The next battle setup resolves against the edited specs without a
@@ -182,7 +182,10 @@ restart. An `info!` line is emitted naming the reload.
 
 ## Part 4 — Loader and key resolution
 
-Loader: `crates/gdtf_app/src/states/load/systems/resolve/armor.rs`
+Loader: the generic content-family resolve (GTW-570) in
+`crates/gdtf_assets/src/family/systems.rs`, instantiated by the `ArmorFamily`
+marker in `crates/gdtf_content_families/src/armor.rs` and registered with one
+`register_content_family::<ArmorFamily>()` call in the Load plugin.
 
 The loader:
 

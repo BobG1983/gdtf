@@ -13,8 +13,8 @@ use gdtf_battle_sim::weapon::{AttachmentName, AttachmentRegistry, AttachmentSpec
 use crate::states::load::resources::{ActiveAttachmentsFolderHandle, LoadHandles};
 
 /// GTW-549 (PHASE 1): builds the name-keyed [`AttachmentRegistry`] from the loaded
-/// `assets/content/attachments/` folder, the attachment mirror of
-/// [`resolve_melee_weapons`](super::melee_weapons::resolve_melee_weapons).
+/// `assets/content/attachments/` folder — the GTW-505 melee-weapons resolve shape
+/// (that family now rides the GTW-570 generic content-family seam).
 ///
 /// Called only while no [`AttachmentRegistry`] resource exists yet (the caller's own-absence
 /// guard), independently of the other resolve branches:
@@ -113,9 +113,9 @@ fn build_attachment_registry(
 
 /// `Update`: rebuild the [`AttachmentRegistry`] in place on a matching
 /// [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for any member
-/// `assets/content/attachments/*.attachment.ron` — the LIVE attachment hot-reload, the
-/// [`redrive_melee_weapons_on_asset_event`](super::melee_weapons::redrive_melee_weapons_on_asset_event)
-/// mirror.
+/// `assets/content/attachments/*.attachment.ron` — the LIVE attachment hot-reload
+/// (the GTW-505 melee-weapons redrive shape; that family now rides the GTW-570
+/// generic content-family seam).
 ///
 /// Guarded so it never panics before the load chain has resolved (pre-`Load`): it takes the
 /// folder handle / the `Assets` collections / the [`AttachmentRegistry`] resource as

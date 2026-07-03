@@ -31,8 +31,8 @@ use gdtf_battle_sim::{
 use crate::states::load::resources::{ActiveInjuriesFolderHandle, LoadHandles};
 
 /// GTW-437: builds the [`InjuryRegistry`] + [`InjuryTables`] from the loaded
-/// `assets/content/injuries/` folder, mirroring the GTW-257 weapons resolve shape
-/// ([`resolve_weapons`](super::weapons::resolve_weapons)) — one folder, two resources.
+/// `assets/content/injuries/` folder — the GTW-257 weapons resolve shape (that family
+/// now rides the GTW-570 generic content-family seam) — one folder, two resources.
 ///
 /// Called only while no [`InjuryRegistry`] resource exists yet (the caller's
 /// own-absence guard), independently of the other resolve branches:
@@ -253,8 +253,8 @@ fn audit_unweighted_injuries(registry: &InjuryRegistry, tables: &InjuryTables) {
 /// `Update`: rebuild BOTH the [`InjuryRegistry`] and the [`InjuryTables`] in place on a
 /// matching [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for ANY member
 /// `*.injury.ron` OR `*.weighting.ron` — the GTW-374 LIVE injury hot-reload, the
-/// injuries analogue of `redrive_weapons_on_asset_event` (in the sibling `weapons`
-/// module), generalised to one folder → two resources / two asset types.
+/// injuries analogue of the GTW-257 weapons redrive (that family now rides the
+/// GTW-570 generic seam), generalised to one folder → two resources / two asset types.
 ///
 /// A folder load fans out into one `RonAsset<InjuryDef>` / `RonAsset<InjuryWeighting>`
 /// asset PER file, and a hot edit fires an [`AssetEvent`](bevy::asset::AssetEvent)`::Modified`

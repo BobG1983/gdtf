@@ -10,16 +10,9 @@ use bevy::{
 };
 use gdtf_assets::RonAsset;
 use gdtf_battle_sim::{
-    FieldDef, FieldDefRegistry,
-    armor::{ArmorRegistry, ArmorSpec},
-    ganger::{GangRegistry, GangRoster},
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
-    level::{PrefabRegistry, PrefabSpec, UuidThemeDef, UuidThemeRegistry},
-    terrain::def::{TerrainDef, TerrainDefRegistry},
-    weapon::{
-        AttachmentRegistry, AttachmentSpec, MeleeWeaponRegistry, MeleeWeaponSpec, WeaponRegistry,
-        WeaponSpec,
-    },
+    level::{PrefabRegistry, PrefabSpec},
+    weapon::{AttachmentRegistry, AttachmentSpec},
 };
 use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 
@@ -29,6 +22,10 @@ use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 /// precedent — a transparent bundle of existing world-state resources, not a
 /// wrapped domain scalar).
 ///
+/// GTW-570 shrank this bundle to the BESPOKE branches (attachments / injuries /
+/// prefabs — the declared exclusions): the seven generic content families read
+/// their collections through their own generic resolve systems now.
+///
 /// Each is `Option<Res<…>>` because a `MinimalPlugins` headless app has no
 /// `AssetServer` (and so no `Assets<…>` collections); the system early-returns
 /// when any is absent, so it never panics on a missing collection (bevy-traps
@@ -37,36 +34,19 @@ use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 pub(in crate::states::load) struct LoadAssetCollections<'w> {
     /// The loaded theme-spec RON collection (`core_tuning/ui_theme.tuning.ron`).
     pub(super) theme:            Option<Res<'w, Assets<RonAsset<GdtfThemeSpec>>>>,
-    /// The loaded `LoadedFolder` collection — used to read the weapons folder's
-    /// member handles when building the [`WeaponRegistry`] (GTW-257).
+    /// The loaded `LoadedFolder` collection — used to read each folder's
+    /// member handles when building a registry (GTW-257).
     pub(super) folders:          Option<Res<'w, Assets<LoadedFolder>>>,
-    /// The loaded per-RANGED-weapon RON collection (`weapons/ranged/*.weapon.ron`, GTW-257).
-    pub(super) weapon_specs:     Option<Res<'w, Assets<RonAsset<WeaponSpec>>>>,
-    /// The loaded per-MELEE-weapon RON collection (`weapons/melee/*.melee_weapon.ron`,
-    /// GTW-505).
-    pub(super) melee_specs:      Option<Res<'w, Assets<RonAsset<MeleeWeaponSpec>>>>,
     /// The loaded per-attachment RON collection (`content/attachments/*.attachment.ron`,
     /// GTW-549 PHASE 1).
     pub(super) attachment_specs: Option<Res<'w, Assets<RonAsset<AttachmentSpec>>>>,
-    /// The loaded per-armor RON collection (`armor/*.ron`, GTW-269).
-    pub(super) armor_specs:      Option<Res<'w, Assets<RonAsset<ArmorSpec>>>>,
-    /// The loaded per-field-type RON collection (`fields/*.field.ron`, GTW-545).
-    pub(super) field_defs:       Option<Res<'w, Assets<RonAsset<FieldDef>>>>,
     /// The loaded per-injury RON collection (`injuries/**/*.injury.ron`, GTW-437).
     pub(super) injury_defs:      Option<Res<'w, Assets<RonAsset<InjuryDef>>>>,
     /// The loaded per-part injury-weighting RON collection
     /// (`injuries/weighting/*.weighting.ron`, GTW-437).
     pub(super) weightings:       Option<Res<'w, Assets<RonAsset<InjuryWeighting>>>>,
-    /// The loaded per-gang roster RON collection (`gangs/*.gang.ron`, GTW-415).
-    pub(super) gang_rosters:     Option<Res<'w, Assets<RonAsset<GangRoster>>>>,
     /// The loaded per-prefab RON collection (`content/maps/**/*.prefab.ron`, GTW-489).
     pub(super) prefab_specs:     Option<Res<'w, Assets<RonAsset<PrefabSpec>>>>,
-    /// The loaded NEW per-theme terrain-def RON collection
-    /// (`content/terrain/<theme>/*.terrain_def.ron`, GTW-487).
-    pub(super) terrain_defs:     Option<Res<'w, Assets<RonAsset<TerrainDef>>>>,
-    /// The loaded NEW per-theme theme-def RON collection
-    /// (`content/terrain/<theme>/*.terrain_theme.ron`, GTW-487).
-    pub(super) theme_defs:       Option<Res<'w, Assets<RonAsset<UuidThemeDef>>>>,
 }
 
 /// The persistent resources [`poll_and_resolve`](super::poll_and_resolve) resolves,
@@ -77,30 +57,17 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
 ///
 /// Each branch resolves on its OWN resource's absence (so none starves another,
 /// bevy-traps rule 3); the bundle exposes that per-branch "already present?" probe.
+/// Like [`LoadAssetCollections`], GTW-570 shrank it to the bespoke branches.
 #[derive(SystemParam)]
 pub(in crate::states::load) struct ResolvedResources<'w> {
     /// Whether the resolved [`GdtfTheme`] is already inserted.
-    pub(super) theme:         Option<Res<'w, GdtfTheme>>,
-    /// Whether the resolved [`WeaponRegistry`] is already inserted (GTW-257).
-    pub(super) weapons:       Option<Res<'w, WeaponRegistry>>,
-    /// Whether the resolved [`MeleeWeaponRegistry`] is already inserted (GTW-505).
-    pub(super) melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
+    pub(super) theme:       Option<Res<'w, GdtfTheme>>,
     /// Whether the resolved [`AttachmentRegistry`] is already inserted (GTW-549 PHASE 1).
-    pub(super) attachments:   Option<Res<'w, AttachmentRegistry>>,
-    /// Whether the resolved [`ArmorRegistry`] is already inserted (GTW-269).
-    pub(super) armor:         Option<Res<'w, ArmorRegistry>>,
-    /// Whether the resolved [`FieldDefRegistry`] is already inserted (GTW-545).
-    pub(super) fields:        Option<Res<'w, FieldDefRegistry>>,
+    pub(super) attachments: Option<Res<'w, AttachmentRegistry>>,
     /// Whether the resolved [`InjuryRegistry`] is already inserted (GTW-437). The
     /// [`InjuryTables`](gdtf_battle_sim::injuries::InjuryTables) is built and inserted
     /// in the SAME branch, so the registry's presence is the branch's done-probe.
-    pub(super) injuries:      Option<Res<'w, InjuryRegistry>>,
-    /// Whether the resolved [`GangRegistry`] is already inserted (GTW-415).
-    pub(super) gangs:         Option<Res<'w, GangRegistry>>,
+    pub(super) injuries:    Option<Res<'w, InjuryRegistry>>,
     /// Whether the resolved [`PrefabRegistry`] is already inserted (GTW-489).
-    pub(super) prefabs:       Option<Res<'w, PrefabRegistry>>,
-    /// Whether the resolved [`TerrainDefRegistry`] is already inserted (GTW-487).
-    pub(super) terrain_defs:  Option<Res<'w, TerrainDefRegistry>>,
-    /// Whether the resolved [`UuidThemeRegistry`] is already inserted (GTW-487).
-    pub(super) theme_defs:    Option<Res<'w, UuidThemeRegistry>>,
+    pub(super) prefabs:     Option<Res<'w, PrefabRegistry>>,
 }

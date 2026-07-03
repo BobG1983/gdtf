@@ -184,8 +184,9 @@ pub fn redrive_hot_ron_resource<Spec, T>(
 }
 
 /// The unqualified name of `T` (`a::b::CombatTuning` -> `CombatTuning`) for the
-/// reload / fallback log lines.
-fn short_type_name<T>() -> &'static str {
+/// reload / fallback log lines — shared with the GTW-570 content-family
+/// triplet (`crate::family`), which names registries the same way.
+pub(crate) fn short_type_name<T>() -> &'static str {
     let full = core::any::type_name::<T>();
     full.rsplit("::").next().unwrap_or(full)
 }

@@ -8,6 +8,11 @@ bevy = { workspace = true }
 # The loose-file RON asset loader (GTW-136): `Load` registers
 # `init_ron_asset::<GdtfThemeSpec>()` and loads `core_tuning/ui_theme.tuning.ron` through it.
 gdtf_assets = { path = "../gdtf_assets" }
+# The GTW-570 content-family glue: the per-family `ContentFamily` marker impls
+# (weapons / melee / armor / fields / gangs / terrain defs / theme defs) the Load
+# plugin registers through `register_content_family` — shared with the editor so
+# neither host hand-stamps a folder-resolve ritual.
+gdtf_content_families = { path = "../gdtf_content_families" }
 gdtf_ui = { path = "../gdtf_ui" }
 # The E10 sim-wiring edge (GTW-203): opens the compile-time boundary so later E10
 # slices can name `gdtf_battle_sim` types. Unused here by design — this slice only

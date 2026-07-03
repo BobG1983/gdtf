@@ -31,54 +31,10 @@ impl FontFolderHandle {
     }
 }
 
-/// Typed handle to the in-flight **weapons folder** load (`weapons/`).
-///
-/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
-/// mirroring [`FontFolderHandle`] (GTW-257). The `Load` scene preloads the whole
-/// `assets/content/weapons/ranged/` folder up front via
-/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the
-/// poll/resolve system gates on its recursive load state, then builds the
-/// [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry) from the loaded
-/// `RonAsset<WeaponSpec>` files (keyed by filename stem). Holding this handle keeps
-/// a strong reference to every weapon asset while the registry is built; the
-/// registry then holds the specs BY VALUE, so they survive the handle being dropped
-/// on `OnExit(Load)`.
-#[derive(Deref, Clone, Debug)]
-pub(in crate::states::load) struct WeaponsFolderHandle(Handle<LoadedFolder>);
-
-impl WeaponsFolderHandle {
-    /// Wrap an in-flight weapons-folder load handle.
-    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
-        Self(handle)
-    }
-}
-
-/// Typed handle to the in-flight **melee-weapons folder** load (`weapons/melee/`).
-///
-/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
-/// mirroring [`WeaponsFolderHandle`] (GTW-505). The `Load` scene preloads the whole
-/// `assets/content/weapons/melee/` folder up front via
-/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the
-/// poll/resolve system gates on its recursive load state, then builds the
-/// [`MeleeWeaponRegistry`](gdtf_battle_sim::weapon::MeleeWeaponRegistry) from the loaded
-/// `RonAsset<MeleeWeaponSpec>` files (keyed by filename stem). Holding this handle keeps a
-/// strong reference to every melee weapon asset while the registry is built; the registry
-/// then holds the specs BY VALUE, so they survive the handle being dropped on
-/// `OnExit(Load)`.
-#[derive(Deref, Clone, Debug)]
-pub(in crate::states::load) struct MeleeWeaponsFolderHandle(Handle<LoadedFolder>);
-
-impl MeleeWeaponsFolderHandle {
-    /// Wrap an in-flight melee-weapons-folder load handle.
-    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
-        Self(handle)
-    }
-}
-
 /// Typed handle to the in-flight **attachments folder** load (`content/attachments/`).
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule), mirroring
-/// [`MeleeWeaponsFolderHandle`] (GTW-549, PHASE 1). The `Load` scene preloads the whole
+/// [`FontFolderHandle`] (GTW-549, PHASE 1). The `Load` scene preloads the whole
 /// `assets/content/attachments/` folder up front via
 /// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the poll/resolve
 /// system gates on its recursive load state, then builds the
@@ -96,53 +52,10 @@ impl AttachmentsFolderHandle {
     }
 }
 
-/// Typed handle to the in-flight **armor folder** load (`armor/`).
-///
-/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
-/// mirroring [`WeaponsFolderHandle`] (GTW-269). The `Load` scene preloads the whole
-/// `assets/content/armor/` folder up front via
-/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the
-/// poll/resolve system gates on its recursive load state, then builds the
-/// [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry) from the loaded
-/// `RonAsset<ArmorSpec>` files (keyed by filename stem). Holding this handle keeps a
-/// strong reference to every armor asset while the registry is built; the registry
-/// then holds the specs BY VALUE, so they survive the handle being dropped on
-/// `OnExit(Load)`.
-#[derive(Deref, Clone, Debug)]
-pub(in crate::states::load) struct ArmorsFolderHandle(Handle<LoadedFolder>);
-
-impl ArmorsFolderHandle {
-    /// Wrap an in-flight armor-folder load handle.
-    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
-        Self(handle)
-    }
-}
-
-/// Typed handle to the in-flight **area-damage-fields folder** load (`fields/`).
-///
-/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule), mirroring
-/// [`ArmorsFolderHandle`] (GTW-545). The `Load` scene preloads the whole
-/// `assets/content/fields/` folder up front via
-/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the poll/resolve
-/// system gates on its recursive load state, then builds the
-/// [`FieldDefRegistry`](gdtf_battle_sim::FieldDefRegistry) from the loaded
-/// `RonAsset<FieldDef>` files (keyed by filename stem). Holding this handle keeps a strong
-/// reference to every field asset while the registry is built; the registry then holds the
-/// defs BY VALUE, so they survive the handle being dropped on `OnExit(Load)`.
-#[derive(Deref, Clone, Debug)]
-pub(in crate::states::load) struct FieldsFolderHandle(Handle<LoadedFolder>);
-
-impl FieldsFolderHandle {
-    /// Wrap an in-flight fields-folder load handle.
-    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
-        Self(handle)
-    }
-}
-
 /// Typed handle to the in-flight **injuries folder** load (`injuries/`).
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
-/// mirroring [`WeaponsFolderHandle`] (GTW-437). The `Load` scene preloads the whole
+/// mirroring [`FontFolderHandle`] (GTW-437). The `Load` scene preloads the whole
 /// `assets/content/injuries/` folder up front via
 /// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder) (recursive,
 /// so the per-part subfolders + the `weighting/` subfolder are all covered); the
@@ -163,64 +76,10 @@ impl InjuriesFolderHandle {
     }
 }
 
-/// Typed handle to the in-flight **gangs folder** load (`gangs/`).
-///
-/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
-/// mirroring [`WeaponsFolderHandle`] (GTW-415). The `Load` scene preloads the whole
-/// `assets/content/gangs/` folder up front via
-/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the
-/// poll/resolve system gates on its recursive load state, then builds the
-/// [`GangRegistry`](gdtf_battle_sim::ganger::GangRegistry) from the loaded
-/// `RonAsset<GangRoster>` files (keyed by each file's stem, minus the `.gang` infix).
-/// Holding this handle keeps a strong reference to every gang asset while the registry
-/// is built; the registry then holds the rosters BY VALUE, so they survive the handle
-/// being dropped on `OnExit(Load)`.
-#[derive(Deref, Clone, Debug)]
-pub(in crate::states::load) struct GangsFolderHandle(Handle<LoadedFolder>);
-
-impl GangsFolderHandle {
-    /// Wrap an in-flight gangs-folder load handle.
-    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
-        Self(handle)
-    }
-}
-
-/// Typed handle to the in-flight **per-theme terrain-model folder** load (`content/terrain/`).
-///
-/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
-/// mirroring [`ArmorsFolderHandle`] (GTW-487). The UUID-keyed terrain + theme models
-/// ([`TerrainDef`](gdtf_battle_sim::terrain::def::TerrainDef), GTW-484, and
-/// [`UuidThemeDef`](gdtf_battle_sim::level::UuidThemeDef), GTW-485) live under ONE per-theme
-/// directory layout — `content/terrain/<theme>/<tile>.terrain_def.ron` (defs) +
-/// `content/terrain/<theme>/<theme>.terrain_theme.ron` (themes) — so a single recursive
-/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder) of `content/terrain/` fans out
-/// every member to the matching dedicated-extension loader (`terrain_def.ron` →
-/// `RonAsset<TerrainDef>`, `terrain_theme.ron` → `RonAsset<UuidThemeDef>`). The poll/resolve
-/// systems gate on this folder's recursive load state, then build BOTH the
-/// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) (keyed by each
-/// def's OWN [`TerrainUuid`]) and the
-/// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) (keyed by each def's OWN
-/// [`ThemeUuid`]) from its members. Holding this handle keeps a strong reference to every
-/// member asset while the registries are built; the registries then hold the defs BY VALUE,
-/// so they survive the handle being dropped on `OnExit(Load)`.
-///
-/// **GTW-494** — this is the ONLY terrain / theme loader in the Load flow: the legacy
-/// legacy FLAT-DIR terrain / theme loaders were retired (the sim + procgen
-/// + presenter consume the UUID-keyed registries as of GTW-491/492/493).
-#[derive(Deref, Clone, Debug)]
-pub(in crate::states::load) struct TerrainModelFolderHandle(Handle<LoadedFolder>);
-
-impl TerrainModelFolderHandle {
-    /// Wrap an in-flight new per-theme terrain-model-folder load handle.
-    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
-        Self(handle)
-    }
-}
-
 /// Typed handle to the in-flight **maps (prefab) folder** load (`maps/`).
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
-/// mirroring [`GangsFolderHandle`] (GTW-489 — child T05c of the GTW-476 data-model
+/// mirroring [`InjuriesFolderHandle`] (GTW-489 — child T05c of the GTW-476 data-model
 /// refactor). The UUID-keyed [`PrefabSpec`](gdtf_battle_sim::level::PrefabSpec)
 /// fragments (GTW-486) live under the nested `assets/content/maps/<theme>/<size>/` tree.
 /// Each fragment carries the dedicated `prefab.ron` compound extension (de-versioned
@@ -250,56 +109,42 @@ impl PrefabsFolderHandle {
 /// kick-off started loading.
 ///
 /// Holds the theme's generic [`HotRonHandle`] plus the typed [`FontFolderHandle`],
-/// [`WeaponsFolderHandle`], [`ArmorsFolderHandle`], [`InjuriesFolderHandle`],
-/// [`GangsFolderHandle`], [`PrefabsFolderHandle`], and [`TerrainModelFolderHandle`]
+/// [`AttachmentsFolderHandle`], [`InjuriesFolderHandle`], and
+/// [`PrefabsFolderHandle`]
 /// the poll/resolve system reads each frame to check load progress. Inserted
 /// `OnEnter(Load)` and removed `OnExit(Load)` (it has no meaning outside `Load`).
 ///
 /// GTW-564 moved the four single-file RON chains (situation, combat / stat /
-/// procgen tuning) onto the generic hot-RON seam — their kick-off / resolve /
-/// redrive now live in `gdtf_assets`, registered by one ext call each in the
-/// Load plugin, so their Load-scoped handles left this set. The THEME stays
-/// (its kick-off/resolve remain bespoke: the resolve pairs with the fonts
+/// procgen tuning) onto the generic hot-RON seam, and GTW-570 moved the seven
+/// folder content families (ranged/melee weapons, armor, fields, gangs,
+/// terrain + theme defs) onto the generic content-family seam — their kick-off /
+/// resolve / redrive now live in `gdtf_assets`, registered by one ext call each
+/// in the Load plugin, so their Load-scoped handles left this set. The THEME
+/// stays (its kick-off/resolve remain bespoke: the resolve pairs with the fonts
 /// folder's recursive load state — the GTW-564 C7 record) but its handle is the
 /// generic [`HotRonHandle`]`<GdtfThemeSpec>`, inserted as the PERSISTENT
 /// resource by the theme resolve so the UI's generic redrive filters against
-/// it.
+/// it. The attachments / injuries / prefabs folders stay bespoke — the declared
+/// GTW-570 exclusions (attachments adoption belongs to the GTW-579 rider;
+/// injuries is one folder → two resources; prefabs is a UUID multimap).
 #[derive(Resource, Clone, Debug)]
 pub(in crate::states::load) struct LoadHandles {
     /// The theme RON asset being loaded — the generic hot-RON handle the theme
     /// resolve later re-inserts as the PERSISTENT redrive filter.
-    pub theme:         HotRonHandle<GdtfThemeSpec>,
+    pub theme:       HotRonHandle<GdtfThemeSpec>,
     /// The fonts folder being preloaded (all fonts up front).
-    pub fonts:         FontFolderHandle,
-    /// The RANGED-weapons folder being preloaded (all `ranged/*.weapon.ron`s up front,
-    /// GTW-257; GTW-505 moved them under `ranged/`).
-    pub weapons:       WeaponsFolderHandle,
-    /// The MELEE-weapons folder being preloaded (all `melee/*.melee_weapon.ron`s up front,
-    /// GTW-505).
-    pub melee_weapons: MeleeWeaponsFolderHandle,
+    pub fonts:       FontFolderHandle,
     /// The attachments folder being preloaded (all `content/attachments/*.attachment.ron`s up
     /// front, GTW-549 PHASE 1).
-    pub attachments:   AttachmentsFolderHandle,
-    /// The armor folder being preloaded (all armor `.ron`s up front, GTW-269).
-    pub armor:         ArmorsFolderHandle,
-    /// The area-damage-fields folder being preloaded (all `*.field.ron` catalog entries up
-    /// front, GTW-545).
-    pub fields:        FieldsFolderHandle,
+    pub attachments: AttachmentsFolderHandle,
     /// The injuries folder being preloaded (all `*.injury.ron` + `*.weighting.ron`
     /// up front, GTW-437).
-    pub injuries:      InjuriesFolderHandle,
-    /// The gangs folder being preloaded (all `*.gang.ron` rosters up front, GTW-415).
-    pub gangs:         GangsFolderHandle,
+    pub injuries:    InjuriesFolderHandle,
     /// The maps (prefab) folder being preloaded (all `*.prefab.ron` fragments up front,
     /// recursively under `<theme>/<size>/`, GTW-489 — the UUID-keyed
     /// [`PrefabSpec`](gdtf_battle_sim::level::PrefabSpec); the ONLY prefab loader after
     /// GTW-494 retired the legacy flat-dir load.).
-    pub prefabs:       PrefabsFolderHandle,
-    /// The per-theme terrain-model folder being preloaded (all `*.terrain_def.ron`
-    /// and `*.terrain_theme.ron` files up front, recursively under `content/terrain/<theme>/`,
-    /// GTW-487 — the GTW-484/485 UUID-keyed models; the ONLY terrain / theme loader after
-    /// GTW-494 retired the legacy flat-dir terrain / theme loads).
-    pub terrain_model: TerrainModelFolderHandle,
+    pub prefabs:     PrefabsFolderHandle,
 }
 
 crate::support_item! {
@@ -335,56 +180,11 @@ impl LoadedSituation {
     }
 }
 
-/// The PERSISTENT handle to the loaded **weapons folder** (`weapons/`).
-///
-/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that —
-/// unlike the Load-scoped [`WeaponsFolderHandle`] inside [`LoadHandles`], which is
-/// dropped `OnExit(Load)` — **persists** past `Load` (GTW-374). It is inserted
-/// alongside the resolved [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry)
-/// and kept alive so the GTW-374 live hot-reload handler
-/// (`redrive_weapons_on_asset_event`)
-/// can re-enumerate the folder's member handles to rebuild the registry on a hot edit
-/// to ANY `assets/content/weapons/ranged/*.weapon.ron`. Holding the folder handle keeps every member
-/// weapon asset loaded for the file-watcher. Like the registry, it is **not** removed
-/// in `cleanup`.
-#[derive(Resource, Deref, Clone, Debug)]
-pub(in crate::states::load) struct ActiveWeaponsFolderHandle(Handle<LoadedFolder>);
-
-impl ActiveWeaponsFolderHandle {
-    /// Wrap the loaded weapons-folder handle as the persistent hot-reload handle.
-    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
-        Self(handle)
-    }
-}
-
-/// The PERSISTENT handle to the loaded **melee-weapons folder** (`weapons/melee/`).
-///
-/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that — unlike
-/// the Load-scoped [`MeleeWeaponsFolderHandle`] inside [`LoadHandles`], which is dropped
-/// `OnExit(Load)` — **persists** past `Load` (GTW-505), the melee mirror of
-/// [`ActiveWeaponsFolderHandle`]. It is inserted alongside the resolved
-/// [`MeleeWeaponRegistry`](gdtf_battle_sim::weapon::MeleeWeaponRegistry) and kept alive so
-/// the live hot-reload handler (`redrive_melee_weapons_on_asset_event`) can re-enumerate
-/// the folder's member handles to rebuild the registry on a hot edit to ANY
-/// `assets/content/weapons/melee/*.melee_weapon.ron`. Holding the folder handle keeps every
-/// member melee weapon asset loaded for the file-watcher. Like the registry, it is **not**
-/// removed in `cleanup`.
-#[derive(Resource, Deref, Clone, Debug)]
-pub(in crate::states::load) struct ActiveMeleeWeaponsFolderHandle(Handle<LoadedFolder>);
-
-impl ActiveMeleeWeaponsFolderHandle {
-    /// Wrap the loaded melee-weapons-folder handle as the persistent hot-reload handle.
-    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
-        Self(handle)
-    }
-}
-
 /// The PERSISTENT handle to the loaded **attachments folder** (`content/attachments/`).
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that — unlike the
 /// Load-scoped [`AttachmentsFolderHandle`] inside [`LoadHandles`], which is dropped
-/// `OnExit(Load)` — **persists** past `Load` (GTW-549, PHASE 1), the attachment mirror of
-/// [`ActiveMeleeWeaponsFolderHandle`]. It is inserted alongside the resolved
+/// `OnExit(Load)` — **persists** past `Load` (GTW-549, PHASE 1). It is inserted alongside the resolved
 /// [`AttachmentRegistry`](gdtf_battle_sim::weapon::AttachmentRegistry) and kept alive so the
 /// live hot-reload handler (`redrive_attachments_on_asset_event`) can re-enumerate the
 /// folder's member handles to rebuild the registry on a hot edit to ANY
@@ -401,56 +201,12 @@ impl ActiveAttachmentsFolderHandle {
     }
 }
 
-/// The PERSISTENT handle to the loaded **armor folder** (`armor/`).
-///
-/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that —
-/// unlike the Load-scoped [`ArmorsFolderHandle`] inside [`LoadHandles`], which is
-/// dropped `OnExit(Load)` — **persists** past `Load` (GTW-374), the armor mirror of
-/// [`ActiveWeaponsFolderHandle`]. It is inserted alongside the resolved
-/// [`ArmorRegistry`](gdtf_battle_sim::armor::ArmorRegistry) and kept alive so the
-/// GTW-374 live hot-reload handler
-/// (`redrive_armor_on_asset_event`)
-/// can re-enumerate the folder's member handles to rebuild the registry on a hot edit
-/// to ANY `assets/content/armor/*.armor.ron`. Holding the folder handle keeps every member
-/// armor asset loaded for the file-watcher. Like the registry, it is **not** removed
-/// in `cleanup`.
-#[derive(Resource, Deref, Clone, Debug)]
-pub(in crate::states::load) struct ActiveArmorFolderHandle(Handle<LoadedFolder>);
-
-impl ActiveArmorFolderHandle {
-    /// Wrap the loaded armor-folder handle as the persistent hot-reload handle.
-    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
-        Self(handle)
-    }
-}
-
-/// The PERSISTENT handle to the loaded **area-damage-fields folder** (`fields/`).
-///
-/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that — unlike the
-/// Load-scoped [`FieldsFolderHandle`] inside [`LoadHandles`], which is dropped
-/// `OnExit(Load)` — **persists** past `Load` (GTW-545), the field mirror of
-/// [`ActiveArmorFolderHandle`]. It is inserted alongside the resolved
-/// [`FieldDefRegistry`](gdtf_battle_sim::FieldDefRegistry) and kept alive so the live
-/// hot-reload handler (`redrive_fields_on_asset_event`) can re-enumerate the folder's member
-/// handles to rebuild the catalog on a hot edit to ANY `assets/content/fields/*.field.ron`.
-/// Holding the folder handle keeps every member field asset loaded for the file-watcher. Like
-/// the registry, it is **not** removed in `cleanup`.
-#[derive(Resource, Deref, Clone, Debug)]
-pub(in crate::states::load) struct ActiveFieldsFolderHandle(Handle<LoadedFolder>);
-
-impl ActiveFieldsFolderHandle {
-    /// Wrap the loaded fields-folder handle as the persistent hot-reload handle.
-    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
-        Self(handle)
-    }
-}
-
 /// The PERSISTENT handle to the loaded **injuries folder** (`injuries/`).
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that —
 /// unlike the Load-scoped [`InjuriesFolderHandle`] inside [`LoadHandles`], which is
 /// dropped `OnExit(Load)` — **persists** past `Load` (GTW-437), the injuries mirror of
-/// [`ActiveWeaponsFolderHandle`]. It is inserted alongside the resolved
+/// [`ActiveAttachmentsFolderHandle`]. It is inserted alongside the resolved
 /// [`InjuryRegistry`](gdtf_battle_sim::injuries::InjuryRegistry) and
 /// [`InjuryTables`](gdtf_battle_sim::injuries::InjuryTables) and kept alive so the
 /// GTW-437 live hot-reload handler
@@ -469,35 +225,12 @@ impl ActiveInjuriesFolderHandle {
     }
 }
 
-/// The PERSISTENT handle to the loaded **gangs folder** (`gangs/`).
-///
-/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that —
-/// unlike the Load-scoped [`GangsFolderHandle`] inside [`LoadHandles`], which is
-/// dropped `OnExit(Load)` — **persists** past `Load` (GTW-415), the gang mirror of
-/// [`ActiveWeaponsFolderHandle`]. It is inserted alongside the resolved
-/// [`GangRegistry`](gdtf_battle_sim::ganger::GangRegistry) and kept alive so the GTW-415
-/// live hot-reload handler
-/// (`redrive_gangs_on_asset_event`)
-/// can re-enumerate the folder's member handles to rebuild the registry on a hot edit
-/// to ANY `assets/content/gangs/*.gang.ron`. Holding the folder handle keeps every member
-/// gang asset loaded for the file-watcher. Like the registry, it is **not** removed
-/// in `cleanup`.
-#[derive(Resource, Deref, Clone, Debug)]
-pub(in crate::states::load) struct ActiveGangsFolderHandle(Handle<LoadedFolder>);
-
-impl ActiveGangsFolderHandle {
-    /// Wrap the loaded gangs-folder handle as the persistent hot-reload handle.
-    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
-        Self(handle)
-    }
-}
-
 /// The PERSISTENT handle to the loaded **maps (prefab) folder** (`maps/`).
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that — unlike the
 /// Load-scoped [`PrefabsFolderHandle`] inside [`LoadHandles`], which is dropped
 /// `OnExit(Load)` — **persists** past `Load` (GTW-489), the prefab mirror of
-/// [`ActiveGangsFolderHandle`]. It is inserted alongside the resolved
+/// [`ActiveInjuriesFolderHandle`]. It is inserted alongside the resolved
 /// [`PrefabRegistry`](gdtf_battle_sim::level::PrefabRegistry) and kept alive so the GTW-489
 /// live hot-reload handler (`redrive_prefabs_on_asset_event`) can re-enumerate the
 /// folder's member handles to rebuild the registry on a hot edit to ANY
@@ -509,31 +242,6 @@ pub(in crate::states::load) struct ActivePrefabsFolderHandle(Handle<LoadedFolder
 
 impl ActivePrefabsFolderHandle {
     /// Wrap the loaded maps (prefab) folder handle as the persistent hot-reload handle.
-    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
-        Self(handle)
-    }
-}
-
-/// The PERSISTENT handle to the loaded **new per-theme terrain-model folder**
-/// (`content/terrain/`).
-///
-/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that — unlike the
-/// Load-scoped [`TerrainModelFolderHandle`] inside [`LoadHandles`], which is dropped
-/// `OnExit(Load)` — **persists** past `Load` (GTW-487), the new-model mirror of
-/// [`ActiveArmorFolderHandle`]. It is inserted alongside the resolved
-/// [`TerrainDefRegistry`](gdtf_battle_sim::terrain::def::TerrainDefRegistry) +
-/// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry) and kept alive so the
-/// GTW-487 live hot-reload handlers (`redrive_terrain_defs_on_asset_event` /
-/// `redrive_theme_defs_on_asset_event`) can re-enumerate the folder's member handles to
-/// rebuild each registry on a hot edit to ANY `assets/content/terrain/**/*.terrain_def.ron` OR
-/// `*.terrain_theme.ron`. Holding the folder handle keeps every member asset loaded for the
-/// file-watcher. Like the registries, it is **not** removed in `cleanup`.
-#[derive(Resource, Deref, Clone, Debug)]
-pub(in crate::states::load) struct ActiveTerrainModelFolderHandle(Handle<LoadedFolder>);
-
-impl ActiveTerrainModelFolderHandle {
-    /// Wrap the loaded new per-theme terrain-model-folder handle as the persistent
-    /// hot-reload handle.
     pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
         Self(handle)
     }

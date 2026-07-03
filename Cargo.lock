@@ -2812,6 +2812,7 @@ dependencies = [
  "gdtf_battle_input",
  "gdtf_battle_presenter",
  "gdtf_battle_sim",
+ "gdtf_content_families",
  "gdtf_screenshot",
  "gdtf_test_utils",
  "gdtf_ui",
@@ -2890,6 +2891,14 @@ name = "gdtf_content_editor_bin"
 version = "0.1.0"
 dependencies = [
  "gdtf_content_editor",
+]
+
+[[package]]
+name = "gdtf_content_families"
+version = "0.1.0"
+dependencies = [
+ "gdtf_assets",
+ "gdtf_battle_sim",
 ]
 
 [[package]]

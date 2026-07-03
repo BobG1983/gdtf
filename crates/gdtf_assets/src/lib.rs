@@ -29,6 +29,12 @@
 //!   `.ron` into a live runtime [`Resource`](bevy::prelude::Resource), keyed by
 //!   the one generic [`HotRonHandle`] and configured by a per-chain
 //!   [`HotRonChain`].
+//! - [`ContentFamily`] + [`ContentFamilyAppExt`] (GTW-570) — the FOLDER
+//!   counterpart: one marker impl + one
+//!   [`register_content_family`](ContentFamilyAppExt::register_content_family)
+//!   call turns a whole folder of `.ron` files into a live registry
+//!   [`Resource`](bevy::prelude::Resource), hot-reloading on member edits,
+//!   keyed by the one generic persistent [`ContentFolderHandle`].
 //!
 //! # Where the asset source root is
 //!
@@ -54,12 +60,17 @@
 mod asset;
 mod error;
 mod ext;
+mod family;
 mod hot;
 mod loader;
 
 pub use asset::RonAsset;
 pub use error::{ReadError, RonDeError, RonLoadError};
 pub use ext::RonAssetAppExt;
+pub use family::{
+    ContentFamily, ContentFamilyAppExt, ContentFileStem, ContentFolderHandle,
+    kick_off_content_family, redrive_content_family, resolve_content_family,
+};
 pub use hot::{
     HotRonAppExt, HotRonChain, HotRonFallbackFn, HotRonHandle, HotRonMapFn, HotRonPath,
     kick_off_hot_ron_resource, redrive_hot_ron_resource, resolve_hot_ron_resource,

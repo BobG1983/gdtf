@@ -1,0 +1,233 @@
+//! The ONE kick-off / resolve / redrive system triplet every content family
+//! runs, plus the ONE folder-walk builder both resolve and redrive share.
+//!
+//! Before GTW-570 this triplet (plus two handle newtypes and a poll branch)
+//! was hand-stamped once per folder family, each copy re-encoding the same
+//! shared behaviors. They now live here exactly once — see
+//! [`ContentFamily`](crate::ContentFamily) for the guarantee list.
+
+use core::any::TypeId;
+
+use bevy::{
+    asset::{AssetEvent, AssetServer, Assets, LoadedFolder, RecursiveDependencyLoadState},
+    prelude::*,
+};
+
+use crate::{
+    asset::RonAsset,
+    family::{
+        def::{ContentFamily, ContentFileStem},
+        handle::ContentFolderHandle,
+    },
+    hot::short_type_name,
+};
+
+/// `Startup`: kick off a content family's folder load, storing its persistent
+/// [`ContentFolderHandle`].
+///
+/// Loads the family's [`FOLDER`](ContentFamily::FOLDER) recursively via
+/// [`AssetServer::load_folder`] — every member dispatches to the family's
+/// dedicated-extension [`RonAsset`] loader — and inserts the handle the
+/// resolve polls and the redrive re-enumerates. Takes
+/// `Option<Res<AssetServer>>` so a headless app with no [`AssetServer`] no-ops
+/// rather than panicking (GTW-570 C2(a), `bevy-traps.md` #1) — belt-and-braces
+/// on top of the registration self-gate.
+pub fn kick_off_content_family<F: ContentFamily>(
+    mut commands: Commands,
+    asset_server: Option<Res<AssetServer>>,
+) {
+    let Some(asset_server) = asset_server else {
+        return;
+    };
+    commands.insert_resource(ContentFolderHandle::<F>::new(
+        asset_server.load_folder(F::FOLDER),
+    ));
+}
+
+/// `Update` (gated until the registry is resolved): resolve the loaded folder
+/// into the family's registry resource — inserting it exactly ONCE.
+///
+/// Registered
+/// `run_if(resource_exists::<ContentFolderHandle<F>> AND not(resource_exists::<F::Registry>))`
+/// so it inserts once and NEVER re-publishes over live data (the own-absence
+/// shadow semantics headless seeds rely on); the live re-derive is
+/// [`redrive_content_family`].
+///
+/// - Gates on the folder's [`RecursiveDependencyLoadState`]`::Loaded`
+///   (recursive, so every member IN the folder is loaded). On
+///   [`RecursiveDependencyLoadState::Failed`] it `warn!`s naming the folder and
+///   inserts an EMPTY registry (GTW-570 C2(b), the ADR-0003 error-path
+///   safety-net) so a presence-gated `Load` flow never hangs on a bad folder —
+///   consumers then fail closed on a missing key rather than crashing.
+/// - On success it walks the folder through the ONE shared builder
+///   (`build_family_registry`, private — the redrive shares it); a member
+///   still absent from its `Assets` collection returns WITHOUT inserting and
+///   retries next frame (C2(c), never-publish-partial), so a partial registry
+///   is never published.
+/// - Else (still loading) it does nothing and is polled again next frame.
+pub fn resolve_content_family<F: ContentFamily>(
+    mut commands: Commands,
+    asset_server: Option<Res<AssetServer>>,
+    folders: Option<Res<Assets<LoadedFolder>>>,
+    specs: Option<Res<Assets<RonAsset<F::Spec>>>>,
+    handle: Option<Res<ContentFolderHandle<F>>>,
+) {
+    let (Some(asset_server), Some(folders), Some(specs), Some(handle)) =
+        (asset_server, folders, specs, handle)
+    else {
+        return;
+    };
+
+    let folder_state = asset_server.recursive_dependency_load_state(&**handle);
+
+    // Failure path: a bad/missing folder must not hang a presence-gated flow.
+    // Warn and insert the EMPTY registry (consumers fail closed on a missing
+    // key rather than crashing) — the ADR-0003 safety-net, once for every family.
+    if matches!(folder_state, RecursiveDependencyLoadState::Failed(_)) {
+        warn!(
+            "GDTF Load: the `{}` content folder failed to load; inserting an empty {} \
+             (consumers fail closed on a missing key)",
+            F::FOLDER,
+            short_type_name::<F::Registry>(),
+        );
+        commands.insert_resource(F::Registry::default());
+        return;
+    }
+
+    // Success path: once every member in the folder is loaded, walk it and
+    // publish the registry. The persistent ContentFolderHandle was already
+    // inserted by the kick-off and is never removed, so it sits beside the
+    // registry for the redrive + the file-watcher.
+    if matches!(folder_state, RecursiveDependencyLoadState::Loaded) {
+        let Some(registry) = build_family_registry::<F>(&asset_server, &folders, &specs, &handle)
+        else {
+            // Loaded-but-not-yet-in-collection (the folder, or a member spec) —
+            // retry next frame (the run-condition keeps this system alive while
+            // the registry is absent).
+            return;
+        };
+        commands.insert_resource(registry);
+    }
+}
+
+/// `Update` (ungated; self-gates on its [`Option`] borrows): rebuild the
+/// family's registry in place on a member
+/// [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) — the LIVE
+/// hot-reload (GTW-570 C2(e), the GTW-374 Part C convention).
+///
+/// A folder load fans out into one `RonAsset<F::Spec>` asset PER file, and a
+/// hot edit fires a `Modified` for THAT member asset (not the [`LoadedFolder`]
+/// handle), so this reacts to ANY `AssetEvent<RonAsset<F::Spec>>::Modified` —
+/// the family's dedicated extension makes the spec type family-unique, so every
+/// such event IS a member edit — and rebuilds the whole registry from the
+/// persistent [`ContentFolderHandle`]'s members via the SAME builder the
+/// one-time resolve uses, so a live edit yields the registry a restart would.
+/// However many member events arrive in a frame it rebuilds at most ONCE.
+/// Overwriting through [`ResMut`] marks the registry CHANGED so change-driven
+/// consumers re-derive the same frame, then `info!`s naming the concrete
+/// registry type + folder (matching the GTW-564 reload-log wording).
+///
+/// While any needed resource is still absent (pre-resolve) it DRAINS the
+/// reader via `events.clear()` so a stale event never lingers and re-fires
+/// once the resources arrive. A rebuild that hits a mid-reload member (absent
+/// from its collection) keeps the existing registry until it settles — the
+/// next event rebuilds.
+pub fn redrive_content_family<F: ContentFamily>(
+    mut events: MessageReader<AssetEvent<RonAsset<F::Spec>>>,
+    asset_server: Option<Res<AssetServer>>,
+    folders: Option<Res<Assets<LoadedFolder>>>,
+    specs: Option<Res<Assets<RonAsset<F::Spec>>>>,
+    handle: Option<Res<ContentFolderHandle<F>>>,
+    registry: Option<ResMut<F::Registry>>,
+) {
+    let (Some(asset_server), Some(folders), Some(specs), Some(handle), Some(mut registry)) =
+        (asset_server, folders, specs, handle, registry)
+    else {
+        // Drain the reader so a pre-resolve event does not linger and re-fire
+        // once the resources arrive; there is nothing to rebuild yet.
+        events.clear();
+        return;
+    };
+
+    // Rebuild on ANY modified member — a single rebuild from the latest
+    // in-memory specs covers however many member events arrived this frame.
+    let modified = events
+        .read()
+        .any(|event| matches!(event, AssetEvent::Modified { .. }));
+    if !modified {
+        return;
+    }
+
+    let Some(rebuilt) = build_family_registry::<F>(&asset_server, &folders, &specs, &handle) else {
+        // A member is mid-reload (not yet back in its collection) — leave the
+        // existing registry until it settles; the next event rebuilds.
+        return;
+    };
+    *registry = rebuilt;
+    info!(
+        "hot-reload: rebuilt {} from `{}`",
+        short_type_name::<F::Registry>(),
+        F::FOLDER,
+    );
+}
+
+/// Build a family's registry from its loaded [`LoadedFolder`], or [`None`] if
+/// the folder (or any matching-type member) is not yet in its collection.
+///
+/// The ONE folder walk both [`resolve_content_family`] (the one-time build)
+/// and [`redrive_content_family`] (the live rebuild) share, so both build
+/// IDENTICALLY:
+///
+/// - each member is FIRST filtered by its asset [`TypeId`] — UNCONDITIONALLY
+///   (GTW-570 C1): a member whose type is not `RonAsset<F::Spec>` is SKIPPED
+///   (a mixed folder's other family handles it), never blindly typed — a
+///   wrong-type `typed_debug_checked` would trip its debug assert;
+/// - a matching-type member absent from its `Assets` collection forces the
+///   [`None`] one-frame retry (never-publish-partial, C2(c));
+/// - each present member folds into the registry through the family's
+///   [`insert_member`](ContentFamily::insert_member), handed the
+///   infix-stripped file stem (or [`None`] for a path-less handle) so both
+///   keying shapes resolve without a mode flag.
+fn build_family_registry<F: ContentFamily>(
+    asset_server: &AssetServer,
+    folders: &Assets<LoadedFolder>,
+    specs: &Assets<RonAsset<F::Spec>>,
+    handle: &ContentFolderHandle<F>,
+) -> Option<F::Registry> {
+    let folder = folders.get(&**handle)?;
+
+    let mut registry = F::Registry::default();
+    for untyped in &folder.handles {
+        // The UNCONDITIONAL TypeId filter: skip members of another family's
+        // asset type (mixed folders — the terrain/theme tree).
+        if untyped.type_id() != TypeId::of::<RonAsset<F::Spec>>() {
+            continue;
+        }
+        let typed = untyped.clone().typed_debug_checked::<RonAsset<F::Spec>>();
+        // A matching-type member whose load has not yet landed — bail (do NOT
+        // publish a partial registry) so the caller re-polls next frame.
+        let spec = specs.get(&typed)?;
+        F::insert_member(&mut registry, member_stem::<F>(asset_server, untyped), spec);
+    }
+    Some(registry)
+}
+
+/// A member's [`ContentFileStem`]: its file stem with the family's dedicated
+/// infix stripped, or [`None`] when the handle carries no resolvable path.
+///
+/// The infix is derived from [`EXTENSION`](ContentFamily::EXTENSION)
+/// (`weapon.ron` → `.weapon`): `stub_pistol.weapon.ron`'s `file_stem()` is
+/// `stub_pistol.weapon`, whose key stem is `stub_pistol`. A stem without the
+/// infix is passed through unchanged (defensive — a mis-named file keys by its
+/// plain stem, the per-family precedent).
+fn member_stem<F: ContentFamily>(
+    asset_server: &AssetServer,
+    untyped: &bevy::asset::UntypedHandle,
+) -> Option<ContentFileStem> {
+    let path = asset_server.get_path(untyped.id())?;
+    let stem = path.path().file_stem()?.to_string_lossy().into_owned();
+    let infix = F::EXTENSION.strip_suffix(".ron").unwrap_or(F::EXTENSION);
+    let suffix = format!(".{infix}");
+    let key = stem.strip_suffix(suffix.as_str()).unwrap_or(stem.as_str());
+    Some(ContentFileStem::new(key.to_owned()))
+}

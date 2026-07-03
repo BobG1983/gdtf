@@ -1,19 +1,20 @@
 use bevy::{asset::AssetServer, prelude::*};
-use gdtf_assets::{HotRonAppExt, RonAssetAppExt};
+use gdtf_assets::{ContentFamilyAppExt, HotRonAppExt, RonAssetAppExt};
 use gdtf_battle_sim::{
-    FieldDef, FieldDefRegistry,
-    armor::{ArmorRegistry, ArmorSpec},
-    ganger::{GangRegistry, GangRoster},
+    FieldDefRegistry,
+    armor::ArmorRegistry,
+    ganger::GangRegistry,
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
-    level::{PrefabRegistry, PrefabSpec, UuidThemeDef, UuidThemeRegistry},
+    level::{PrefabRegistry, PrefabSpec, UuidThemeRegistry},
     procgen::ProcgenTuning,
     situation::Situation,
-    terrain::def::{TerrainDef, TerrainDefRegistry},
+    terrain::def::TerrainDefRegistry,
     tuning::{CombatTuning, GangerStatTuning},
-    weapon::{
-        AttachmentRegistry, AttachmentSpec, MeleeWeaponRegistry, MeleeWeaponSpec, WeaponRegistry,
-        WeaponSpec,
-    },
+    weapon::{AttachmentRegistry, AttachmentSpec, MeleeWeaponRegistry, WeaponRegistry},
+};
+use gdtf_content_families::{
+    ArmorFamily, FieldsFamily, GangsFamily, MeleeWeaponsFamily, TerrainDefsFamily, ThemeDefsFamily,
+    WeaponsFamily,
 };
 use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 
@@ -83,17 +84,14 @@ impl Plugin for LoadScenePlugin {
         // inside this one guard alongside the theme and situation (one guard, three
         // registrations, each registered exactly once).
         //
-        // GTW-257: each weapon file loads through the SAME generic RON loader as a
-        // `RonAsset<WeaponSpec>`, but via `load_folder` (an UNTYPED, extension-based
-        // load) — which Bevy dispatches to the LAST-registered loader for the file's
-        // extension. GDTF registers many `ron` loaders (theme / situation / tuning /
-        // keybinds / tile-roles / …), so a `load_folder` of plain `.ron` weapon files
-        // would be typed non-deterministically. The weapon loader therefore claims a
-        // DEDICATED `weapon.ron` extension (the files are `assets/content/weapons/ranged/*.weapon.ron`),
-        // making the folder dispatch unambiguous regardless of registration order (the
-        // contract's "unambiguous .ron loader dispatch" goal). Registered here in
-        // `build` BEFORE the `kick_off_loads` `load_folder("weapons")` runs — 0.18
-        // extension-dispatch needs the loader registered first.
+        // GTW-257 (folder-dispatch rationale): a `load_folder` is an UNTYPED,
+        // extension-based load — Bevy dispatches each member to the LAST-registered
+        // loader for its extension. GDTF registers many `ron` loaders, so every
+        // folder-loaded content type claims a DEDICATED compound extension (e.g.
+        // `weapon.ron`), making the dispatch unambiguous regardless of registration
+        // order. GTW-570: for the seven generic content families that dedicated
+        // extension now rides the `register_content_family` call (each family names
+        // its own); the bespoke folder loaders below still register theirs by hand.
         if app.world().get_resource::<AssetServer>().is_some() {
             app.init_ron_asset::<GdtfThemeSpec>();
             // GTW-564: the four SINGLE-FILE gate-blocking chains register through the
@@ -129,14 +127,24 @@ impl Plugin for LoadScenePlugin {
                 PROCGEN_TUNING_RON_PATH,
                 ProcgenTuning::default,
             );
-            app.init_ron_asset_with_extensions::<WeaponSpec>(vec!["weapon.ron"]);
-            // GTW-505: the MELEE weapon files mirror the ranged scheme — each loads as a
-            // `RonAsset<MeleeWeaponSpec>` via `load_folder`, so it claims its OWN dedicated
-            // `melee_weapon.ron` compound extension (files are
-            // `assets/content/weapons/melee/*.melee_weapon.ron`), keeping the folder dispatch
-            // unambiguous among GDTF's many `.ron` loaders. Registered here in `build` BEFORE the
-            // kick-off's `load_folder("content/weapons/melee")` runs.
-            app.init_ron_asset_with_extensions::<MeleeWeaponSpec>(vec!["melee_weapon.ron"]);
+            // GTW-570: the FOLDER-loaded content families register through the generic
+            // content-family seam — ONE ext call each wires the dedicated-extension
+            // loader, the `Startup` folder kick-off (the persistent generic
+            // `ContentFolderHandle`), the gated resolve (inserts the registry ONCE, on
+            // Loaded — or the EMPTY registry on a genuine Failed, so Load never
+            // strands), and the ungated live redrive (the GTW-374 hot-reloads,
+            // preserved). The `transition_to_intro` gate below still requires every
+            // resolved registry, so the Load-gating semantics are unchanged (C3).
+            app.register_content_family::<WeaponsFamily>();
+            app.register_content_family::<MeleeWeaponsFamily>();
+            app.register_content_family::<ArmorFamily>();
+            app.register_content_family::<FieldsFamily>();
+            app.register_content_family::<GangsFamily>();
+            // The terrain + theme defs are the PAYLOAD-KEYED families sharing the ONE
+            // MIXED `content/terrain/` tree — each walk skips the other family's
+            // members via the seam's unconditional TypeId filter (GTW-487 precedent).
+            app.register_content_family::<TerrainDefsFamily>();
+            app.register_content_family::<ThemeDefsFamily>();
             // GTW-549 PHASE 1: the data-driven attachment items mirror the weapon scheme —
             // each loads as a `RonAsset<AttachmentSpec>` via `load_folder`, so it claims its
             // OWN dedicated `attachment.ron` compound extension (files are
@@ -144,27 +152,6 @@ impl Plugin for LoadScenePlugin {
             // unambiguous among GDTF's many `.ron` loaders. Registered here in `build` BEFORE
             // the kick-off's `load_folder("content/attachments")` runs.
             app.init_ron_asset_with_extensions::<AttachmentSpec>(vec!["attachment.ron"]);
-            // GTW-269: armor files mirror the weapon scheme — each loads as a
-            // `RonAsset<ArmorSpec>` via `load_folder`, so it claims its OWN dedicated
-            // `armor.ron` extension (files are `assets/content/armor/*.armor.ron`) to keep the
-            // folder dispatch unambiguous among GDTF's many `.ron` loaders, exactly as
-            // the weapon loader does. Registered here in `build` BEFORE the kick-off's
-            // `load_folder("armor")` runs.
-            app.init_ron_asset_with_extensions::<ArmorSpec>(vec!["armor.ron"]);
-            // GTW-545: the area-damage-field catalog files mirror the armor scheme — each loads
-            // as a `RonAsset<FieldDef>` via `load_folder`, so it claims its OWN dedicated
-            // `field.ron` compound extension (files are `assets/content/fields/*.field.ron`) to
-            // keep the folder dispatch unambiguous among GDTF's many `.ron` loaders, exactly as
-            // the armor loader does. Registered here in `build` BEFORE the kick-off's
-            // `load_folder("content/fields")` runs.
-            app.init_ron_asset_with_extensions::<FieldDef>(vec!["field.ron"]);
-            // GTW-494 (child T08 of GTW-476): the OLD flat-dir per-file `terrain.ron`
-            // and `theme.ron` loaders are RETIRED (and GTW-496 deleted their types). The
-            // UUID-model successors — the GTW-487 `TerrainDef` (`terrain_def.ron`) +
-            // `UuidThemeDef` (`terrain_theme.ron`) loaders registered below — are now the ONLY
-            // terrain / theme resolvers in the Load flow (the sim + procgen + presenter consume
-            // the new registries as of GTW-491/492/493). The legacy `terrain.ron` / `theme.ron`
-            // extensions are now free for the new model to reclaim in a later slice.
             // GTW-437: the injuries folder carries TWO asset types, each via the SAME
             // generic RON loader but loaded by `load_folder` (extension dispatch). Each
             // claims its OWN dedicated compound extension — `injury.ron` for the per-injury
@@ -175,12 +162,6 @@ impl Plugin for LoadScenePlugin {
             // `load_folder("injuries")` runs.
             app.init_ron_asset_with_extensions::<InjuryDef>(vec!["injury.ron"]);
             app.init_ron_asset_with_extensions::<InjuryWeighting>(vec!["weighting.ron"]);
-            // GTW-415: gang rosters mirror the weapon/armor/terrain scheme — each loads as
-            // a `RonAsset<GangRoster>` via `load_folder`, claiming its OWN dedicated
-            // `gang.ron` compound extension (files are `assets/content/gangs/*.gang.ron`) to
-            // keep the folder dispatch unambiguous among GDTF's many `.ron` loaders.
-            // Registered here in `build` BEFORE the kick-off's `load_folder("gangs")` runs.
-            app.init_ron_asset_with_extensions::<GangRoster>(vec!["gang.ron"]);
             // GTW-489 (child T05c of GTW-476): the UUID-keyed prefab fragments load through the
             // SAME generic RON loader via `load_folder` of the `content/maps/<theme>/<size>/`
             // tree, claiming the dedicated `prefab.ron` compound extension (files are
@@ -190,19 +171,6 @@ impl Plugin for LoadScenePlugin {
             // procgen pipeline consumes `PrefabRegistry` as of GTW-492). Registered here in
             // `build` BEFORE the kick-off's `load_folder("content/maps")` runs.
             app.init_ron_asset_with_extensions::<PrefabSpec>(vec!["prefab.ron"]);
-            // GTW-487 (child T05a of GTW-476): the NEW UUID-keyed terrain + theme models load
-            // through the SAME generic RON loader via `load_folder` of the per-theme `content/terrain/`
-            // tree, each claiming its OWN dedicated compound extension — `terrain_def.ron` for
-            // a `RonAsset<TerrainDef>` (files `content/terrain/<theme>/<tile>.terrain_def.ron`) and
-            // `terrain_theme.ron` for a `RonAsset<UuidThemeDef>` (files
-            // `content/terrain/<theme>/<theme>.terrain_theme.ron`). DISTINCT from the legacy
-            // `terrain.ron` / `theme.ron` extensions so a second loader on either does NOT
-            // clobber the still-live legacy `content/terrain` / `content/themes` folder loads
-            // (Bevy dispatches a `load_folder` member by extension alone — see terrain_model's
-            // module doc + the C5 constraint). Registered here in `build` BEFORE the kick-off's
-            // `load_folder("content/terrain")` runs.
-            app.init_ron_asset_with_extensions::<TerrainDef>(vec!["terrain_def.ron"]);
-            app.init_ron_asset_with_extensions::<UuidThemeDef>(vec!["terrain_theme.ron"]);
             add_hot_reload_systems(app);
         }
         add_systems(app);
@@ -217,64 +185,42 @@ fn add_systems(app: &mut App) {
     .add_systems(
         Update,
         (
-            // poll/resolve runs until a GdtfTheme, a CombatTuning, a WeaponRegistry, a
-            // LoadedSituation, AND an ArmorRegistry are all inserted (success path
-            // resolves the loaded spec/payload/folder/situation; failure path inserts
-            // the const default). It runs while ANY required resource is still missing —
-            // the theme branch, the GTW-206 tuning branch, the GTW-257 weapons branch,
-            // the GTW-261 situation branch, and the GTW-269 armor branch each re-gate
-            // internally on their own resource's absence, so none starves another
-            // (bevy-traps rule 3). Ordered BEFORE the transition so all five are present
-            // when the transition checks for them.
+            // poll/resolve runs until the theme + the BESPOKE folder registries
+            // (attachments / injuries / prefabs) are all inserted (success path
+            // resolves the loaded spec/folder; failure path inserts the const
+            // default / empty registry). It runs while ANY of those is still
+            // missing — each branch re-gates internally on its own resource's
+            // absence, so none starves another (bevy-traps rule 3). Ordered BEFORE
+            // the transition so all are present when the transition checks. The
+            // GTW-564 single-file chains and the GTW-570 content families poll
+            // themselves through their generic resolves.
             poll_and_resolve.run_if(
                 in_state(AppState::Load)
                     .and_then(resource_exists::<LoadHandles>)
                     .and_then(
                         // GTW-564: the situation + the three single-file tunings left this
                         // or-chain — their generic resolves poll themselves (each gated on
-                        // its own handle-present + resource-absent), so the orchestrator
-                        // only keeps running for the theme + the FOLDER registries. The
-                        // transition gate below still requires ALL of them.
+                        // its own handle-present + resource-absent). GTW-570 moved the
+                        // seven folder families out the same way, so the orchestrator
+                        // only keeps running for the theme + the BESPOKE folder
+                        // registries (attachments / injuries / prefabs). The transition
+                        // gate below still requires ALL of them.
                         not(resource_exists::<GdtfTheme>)
-                            .or_else(not(resource_exists::<WeaponRegistry>))
-                            // GTW-505: the MeleeWeaponRegistry is a gate-blocking resource too
-                            // (every ganger gets a melee weapon; the melee folder must be
-                            // verified loaded before Load exits, or a battle fails closed).
-                            .or_else(not(resource_exists::<MeleeWeaponRegistry>))
                             // GTW-549 PHASE 1: the AttachmentRegistry is a gate-blocking
                             // resource too — the `content/attachments/` folder must be verified
                             // loaded before Load exits (inserted on success OR failure — no
                             // strand). PHASE 2 resolves each weapon's `attachment_slots` keys
                             // against it.
                             .or_else(not(resource_exists::<AttachmentRegistry>))
-                            .or_else(not(resource_exists::<ArmorRegistry>))
-                            // GTW-545: the FieldDefRegistry (area-damage-field catalog) is a
-                            // gate-blocking resource too — the setup seeds a situation's fields
-                            // against it; the `content/fields/` folder must be verified loaded
-                            // before Load exits (inserted on success OR failure — no strand).
-                            .or_else(not(resource_exists::<FieldDefRegistry>))
                             // GTW-437: the InjuryRegistry is a gate-blocking resource too
                             // (the GTW-438 roll uses it + the InjuryTables; the injuries
                             // folder must be verified loaded before Load exits).
                             .or_else(not(resource_exists::<InjuryRegistry>))
-                            // GTW-415: the GangRegistry is a gate-blocking resource too
-                            // (the v2 setup_battle resolves every placed ganger's
-                            // (gang, member) ref against it; the gangs folder must be
-                            // verified loaded before Load exits, or a real battle fails
-                            // closed with GangNotFound).
-                            .or_else(not(resource_exists::<GangRegistry>))
                             // GTW-489: the UUID-keyed PrefabRegistry is gate-blocking — the v2
                             // prefab fragments must be verified loaded before Load exits. The
                             // procgen pipeline consumes it (GTW-492). The gate only verifies the
                             // folder was walked (the registry is inserted on success OR failure).
-                            .or_else(not(resource_exists::<PrefabRegistry>))
-                            // GTW-487: the UUID-keyed TerrainDefRegistry + UuidThemeRegistry are
-                            // gate-blocking — the per-theme `content/terrain/` folder must be verified
-                            // loaded before Load exits. The sim + procgen + presenter consume
-                            // them (GTW-491/492/493). The gate only verifies the folder was
-                            // walked (the registries are inserted on success OR failure).
-                            .or_else(not(resource_exists::<TerrainDefRegistry>))
-                            .or_else(not(resource_exists::<UuidThemeRegistry>)),
+                            .or_else(not(resource_exists::<PrefabRegistry>)),
                     ),
             ),
             // Once a GdtfTheme, a CombatTuning, a WeaponRegistry, a LoadedSituation, an
@@ -362,38 +308,20 @@ fn add_hot_reload_systems(app: &mut App) {
         Update,
         (
             // GTW-564: the situation + combat / stat / procgen tuning redrives moved
-            // onto the generic hot-RON seam (registered by the ext calls in `build`);
-            // this set now carries the FOLDER-registry redrives only.
-            redrive_weapons_on_asset_event,
-            // GTW-505: the melee weapon hot-reload — rebuilds the MeleeWeaponRegistry on a
-            // `weapons/melee/*.melee_weapon.ron` edit, mirroring the ranged hot-reload.
-            redrive_melee_weapons_on_asset_event,
+            // onto the generic hot-RON seam; GTW-570 moved the seven folder-family
+            // redrives (weapons / melee / armor / fields / gangs / terrain + theme
+            // defs) onto the generic content-family seam (both registered by the ext
+            // calls in `build`). This set now carries the BESPOKE folder redrives only.
             // GTW-549 PHASE 1: the attachment hot-reload — rebuilds the AttachmentRegistry on a
-            // `content/attachments/*.attachment.ron` edit, mirroring the melee/weapon
-            // hot-reload pattern (one folder, one registry).
+            // `content/attachments/*.attachment.ron` edit (one folder, one registry).
             redrive_attachments_on_asset_event,
-            redrive_armor_on_asset_event,
-            // GTW-545: the area-damage-field hot-reload — rebuilds the FieldDefRegistry catalog
-            // on a `content/fields/*.field.ron` edit, mirroring the weapon/armor hot-reload
-            // pattern (one folder, one registry).
-            redrive_fields_on_asset_event,
             // GTW-437: the injury hot-reload — rebuilds BOTH the InjuryRegistry and the
-            // InjuryTables on an edit to ANY `injuries/**/*.injury.ron` OR `*.weighting.ron`,
-            // mirroring the weapon/armor hot-reload pattern (one folder, two resources).
+            // InjuryTables on an edit to ANY `injuries/**/*.injury.ron` OR `*.weighting.ron`
+            // (one folder, two resources).
             redrive_injuries_on_asset_event,
-            // GTW-415: the gang hot-reload — rebuilds the GangRegistry on a
-            // `gangs/*.gang.ron` edit, mirroring the weapon/armor hot-reload pattern.
-            redrive_gangs_on_asset_event,
             // GTW-489: the prefab hot-reload — rebuilds the UUID-keyed PrefabRegistry on a
-            // `maps/**/*.prefab.ron` edit (NO edge-opening validation — the schema has none),
-            // mirroring the gang hot-reload pattern.
+            // `maps/**/*.prefab.ron` edit (NO edge-opening validation — the schema has none).
             redrive_prefabs_on_asset_event,
-            // GTW-487: the terrain-def + theme-def hot-reloads — rebuild the UUID-keyed
-            // TerrainDefRegistry / UuidThemeRegistry on an edit to ANY
-            // `content/terrain/**/*.terrain_def.ron` / `*.terrain_theme.ron`, mirroring the legacy
-            // terrain/theme hot-reload pattern (one folder, two registries).
-            redrive_terrain_defs_on_asset_event,
-            redrive_theme_defs_on_asset_event,
         ),
     );
 }

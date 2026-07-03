@@ -176,8 +176,8 @@ fn build_prefab_registry(
 /// `Update`: rebuild the [`PrefabRegistry`] in place on a matching
 /// [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for any member
 /// `assets/content/maps/**/*.prefab.ron` — the GTW-489 LIVE prefab hot-reload, mirroring
-/// the gang hot-reload pattern
-/// ([`redrive_gangs_on_asset_event`](super::gangs::redrive_gangs_on_asset_event)).
+/// the GTW-415 gang hot-reload pattern (that family now rides the GTW-570 generic
+/// content-family seam).
 ///
 /// A folder load fans out into one `RonAsset<PrefabSpec>` asset PER file, and a hot edit
 /// fires an [`AssetEvent`](bevy::asset::AssetEvent)`::Modified` for THAT member asset (not

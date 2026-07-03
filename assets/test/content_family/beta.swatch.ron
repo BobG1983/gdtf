@@ -1,0 +1,5 @@
+// GTW-570 content-family test fixture (STEM-KEYED member): keys `beta`; its
+// tone differs from alpha's so a mis-keyed walk is detectable.
+(
+    tone: 7, // distinct from alpha.swatch.ron's tone on purpose
+)

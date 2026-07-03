@@ -205,9 +205,10 @@ Add the new field to the field table and the RON example in this guide. Run
 
 The weapon system supports **live hot-reload** (GTW-374 pattern): editing any
 `assets/content/weapons/ranged/*.weapon.ron` file while the game is running triggers
-`redrive_weapons_on_asset_event` in
-`crates/gdtf_app/src/states/load/systems/resolve/weapons.rs`, which rebuilds
-the entire `WeaponRegistry` from the persistent `ActiveWeaponsFolderHandle`.
+the generic `redrive_content_family::<WeaponsFamily>` system (GTW-570) in
+`crates/gdtf_assets/src/family/systems.rs`, which rebuilds the entire
+`WeaponRegistry` from the persistent generic `ContentFolderHandle<WeaponsFamily>`
+(the family marker lives in `crates/gdtf_content_families/src/weapons.rs`).
 
 The rebuilt registry is written via `ResMut<WeaponRegistry>`, marking it
 changed. The next battle setup resolves against the edited specs without a
@@ -217,7 +218,10 @@ restart. An `info!` line is emitted naming the reload.
 
 ## Part 4 — Loader and key resolution
 
-Loader: `crates/gdtf_app/src/states/load/systems/resolve/weapons.rs`
+Loader: the generic content-family resolve (GTW-570) in
+`crates/gdtf_assets/src/family/systems.rs`, instantiated by the `WeaponsFamily`
+marker in `crates/gdtf_content_families/src/weapons.rs` and registered with one
+`register_content_family::<WeaponsFamily>()` call in the Load plugin.
 
 The loader:
 
