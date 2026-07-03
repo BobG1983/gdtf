@@ -176,10 +176,7 @@ fn end_to_end_highlight_lands_at_the_hovered_cell() {
     );
     assert_eq!(
         highlight_state(&mut app),
-        Some((
-            cell_to_world(Cell::new(cell.x, cell.y), level),
-            Visibility::Visible,
-        )),
+        Some((cell_to_world(cell.cell(), level), Visibility::Visible,)),
         "the highlight must be Visible at cell_to_world(the hovered cell)",
     );
 
@@ -283,10 +280,7 @@ fn highlight_only_on_occupied_or_blocking_cells() {
     app.update();
     assert_eq!(
         highlight_state(&mut app),
-        Some((
-            cell_to_world(Cell::new(cell.x, cell.y), level),
-            Visibility::Visible,
-        )),
+        Some((cell_to_world(cell.cell(), level), Visibility::Visible,)),
         "a squad-VISIBLE cell holding a ganger (occupant) MUST highlight at that cell (GTW-378)",
     );
 

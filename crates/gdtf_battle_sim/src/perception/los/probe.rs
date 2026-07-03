@@ -16,7 +16,7 @@ use crate::{
     cover::CoverLedger,
     ganger::{Facing, Position, Stance, StanceKind},
     march::{MarchKind, march_vector},
-    metric::{Cell, CellLevel, Level, SimPos, cell_center},
+    metric::{CellLevel, SimPos, cell_center},
     occupancy::{OccupancyGrid, StairEyeOffset},
     surface::SurfaceGrid,
     tuning::CombatTuning,
@@ -267,7 +267,9 @@ pub fn has_los_peeking(
 /// directly (rotating `facing` leaves the eye unchanged), the stair-offset
 /// invariants (GTW-390), and the peek clamp invariants (GTW-393).
 pub(super) fn eye_anchor(observer: &Observer, tuning: &CombatTuning) -> SimPos {
-    let (cell, level) = cell_and_level(observer.position);
+    // Position derefs to CellLevel; split() is the canonical (Cell, Level)
+    // decompose (GTW-565) for the cell_center eye datum.
+    let (cell, level) = observer.position.split();
     let center = cell_center(cell, level);
     // Base eye height: per-stance muzzle level-fraction (shared with the shot
     // pipeline; facing-neutral — no forward XY offset applied here).
@@ -327,20 +329,6 @@ pub(super) fn aim_anchor(
 /// The `(cell, level)` grid key a [`Position`] occupies.
 fn cell_level_of(position: &Position) -> CellLevel {
     **position
-}
-
-/// The `(`[`Cell`]`, `[`Level`]`)` pair a [`Position`] occupies — the x/y cell and the
-/// storey index, decomposed for the [`cell_center`] eye datum.
-fn cell_and_level(position: &Position) -> (Cell, Level) {
-    let key = **position;
-    let cell = Cell::new(key.x, key.y);
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "a Position's z is a storey index in 0..MAX_LEVELS (8), so this u8 cast cannot truncate or wrap"
-    )]
-    let level = Level::new(key.z as u8);
-    (cell, level)
 }
 
 /// Decide CLEAR vs BLOCKED from the march result (GTW-337 clause 5).

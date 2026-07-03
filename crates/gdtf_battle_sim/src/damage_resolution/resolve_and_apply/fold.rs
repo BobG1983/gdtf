@@ -11,7 +11,7 @@ use crate::{
     ganger::Luck,
     injuries::{InjuryRegistry, InjuryTables},
     matchup::{Matchup, matchup},
-    metric::{Cell, CellLevel},
+    metric::CellLevel,
     resolve_and_apply::{
         report::{
             AppliedDamage, GroundAccrual, HitReport, StruckPiece, StruckSurfaces, TargetGanger,
@@ -259,9 +259,8 @@ fn apply_slab_hit(
 /// NOTHING (no ledger, no grid, no ganger) — purely a frozen verdict.
 fn apply_ground_hit(at: CellLevel, weapon: WeaponStats<'_>) -> GroundAccrual {
     // The ground-plane (x, y) the round exited through — the accumulator key (a Cell,
-    // never the storey z). CellLevel derefs to its inner IVec3 (the `actor_cell` split
-    // precedent).
-    let cell = Cell::new(at.x, at.y);
+    // never the storey z), via the canonical CellLevel::cell accessor (GTW-565).
+    let cell = at.cell();
     // C4: the accrued amount is the round's weapon_damage — NOT a hardcoded constant and
     // NOT a tuning leaf. WeaponDamage is a signed i32; a negative / sentinel value clamps
     // to zero (ground damage is a non-negative pool), the same conversion the cover / slab
@@ -301,7 +300,8 @@ fn apply_ground_hit(at: CellLevel, weapon: WeaponStats<'_>) -> GroundAccrual {
 /// - **[`ShotKind::Ground`]** — the ground-accrual path (GTW-366, resolution.md §3.2,
 ///   user-ruled 2026-06-22): a round that exits the bottom of the voxel column strikes the
 ///   ground, which is **damaged, never destroyed** — so this records the round's
-///   `weapon_damage` against the struck [`Cell`] in [`HitReport::ground_accrued`] (the fire
+///   `weapon_damage` against the struck [`Cell`](crate::metric::Cell) in
+///   [`HitReport::ground_accrued`] (the fire
 ///   path bridges it to a buffered
 ///   [`GroundAccrued`](crate::occupancy_sync::GroundAccrued) message that accrues
 ///   monotonically onto the [`SurfaceGrid`](crate::surface::SurfaceGrid)). Mutates NOTHING

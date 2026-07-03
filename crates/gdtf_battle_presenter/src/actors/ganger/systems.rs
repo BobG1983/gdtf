@@ -8,8 +8,8 @@ use bevy::{
     scene::{CommandsSceneExt, bsn, template_value},
 };
 use gdtf_battle_sim::{
-    Aiming, Cell, Facing, Faction, HitReport, Level, LifeState, Position, ShotFired, ShotKind,
-    Stance, Suppressed,
+    Aiming, Facing, Faction, HitReport, LifeState, Position, ShotFired, ShotKind, Stance,
+    Suppressed,
 };
 
 use super::{
@@ -24,18 +24,6 @@ use crate::{
     cell_to_world_layered,
 };
 
-/// The world `(cell, level)` a ganger's [`Position`] projects to — reconstruct the typed
-/// [`Cell`] / [`Level`] from the position's `IVec3` components (the S4 idiom), since
-/// [`Position`] Derefs to [`CellLevel`](gdtf_battle_sim::CellLevel) Derefs to `IVec3`.
-///
-/// `pos.z` is a storey index in `0..MAX_LEVELS`; clamping the (impossible-in-practice)
-/// negative / over-`u8` case keeps the reconstruction panic-free.
-fn cell_and_level(pos: &Position) -> (Cell, Level) {
-    let cell = Cell::new(pos.x, pos.y);
-    let storey = u8::try_from(pos.z).unwrap_or(0);
-    (cell, Level::new(storey))
-}
-
 /// Whether a ganger at `pos` is DRAWN — i.e. its storey lies within the drawn band under the
 /// current [`ViewMode`] (GTW-520 C4, widened for the GTW-521 view toggle).
 ///
@@ -49,15 +37,16 @@ fn cell_and_level(pos: &Position) -> (Cell, Level) {
 /// cannot drift.
 ///
 /// The [`ViewMode`] chooses the band CEILING (GTW-521 C2): [`ViewMode::DownToActive`] caps at
-/// the active level (unchanged GTW-520); [`ViewMode::FullView`] draws every storey. It
-/// reconstructs the typed [`Level`] from the position's `z` (the S4 idiom — clamping the
-/// impossible negative / over-`u8` case keeps it panic-free) and asks the [`ActiveLevel`]
-/// whether that storey is drawn under `view`. The move / filter systems have the
-/// [`ActiveLevel`] + [`ViewMode`] as [`Res`]; the actor fog arm holds the dereferenced values
-/// and rebuilds one via [`ActiveLevel::new`] — both reach the same predicate.
+/// the active level (unchanged GTW-520); [`ViewMode::FullView`] draws every storey. It reads
+/// the typed [`Level`] via the canonical
+/// [`CellLevel::level`](gdtf_battle_sim::CellLevel::level) accessor (GTW-565 — [`Position`]
+/// Derefs to [`CellLevel`](gdtf_battle_sim::CellLevel); the accessor owns the one storey
+/// clamp, a no-op on every real key) and asks the [`ActiveLevel`] whether that storey is
+/// drawn under `view`. The move / filter systems have the [`ActiveLevel`] + [`ViewMode`] as
+/// [`Res`]; the actor fog arm holds the dereferenced values and rebuilds one via
+/// [`ActiveLevel::new`] — both reach the same predicate.
 fn ganger_in_drawn_band(pos: &Position, active: ActiveLevel, view: ViewMode) -> bool {
-    let (_cell, level) = cell_and_level(pos);
-    active.draws_storey(level, view)
+    active.draws_storey(pos.level(), view)
 }
 
 /// Build one ganger [`Sprite`] on the character sheet at `index`, tinted `tint`, via the
@@ -87,7 +76,8 @@ fn ganger_sprite(index: usize, tint: Color, atlases: &TopDownAtlases) -> Option<
 /// For every ganger whose [`Position`] was [`Added`] this update, build a [`Sprite`] (atlas
 /// index `faction_base + facing_frame`, the faction tint) at the [`Layer::Actor`](crate::Layer)
 /// projection ([`cell_to_world_layered`](crate::cell_to_world_layered) — the cell's world
-/// position at the ganger's OWN [`Level`], lifted by [`GANGER_Z_BIAS`](crate::GANGER_Z_BIAS)
+/// position at the ganger's OWN [`Level`](gdtf_battle_sim::Level), lifted by
+/// [`GANGER_Z_BIAS`](crate::GANGER_Z_BIAS)
 /// so it draws over its own floor tile, GTW-283), on the
 /// [`WORLD_RENDER_LAYER`](crate::WORLD_RENDER_LAYER), with the [`GangerSprite`] marker; record
 /// `sim Entity -> presenter Entity` in [`GangerSprites`].
@@ -122,7 +112,8 @@ pub fn spawn_ganger_sprites(
         let Some(sprite) = ganger_sprite(index, tint, &atlases) else {
             continue;
         };
-        let (cell, level) = cell_and_level(pos);
+        // The canonical CellLevel::split decompose through Position's deref (GTW-565).
+        let (cell, level) = pos.split();
         // GTW-520 C1/C2: a ganger anywhere in the DRAWN band (`0..=active`) spawns shown so it
         // peeks through floor-gaps on a lower storey; one strictly above the active level
         // spawns HIDDEN (later shown without a respawn by `apply_active_level_filter`). The
@@ -226,7 +217,7 @@ pub fn move_ganger_sprites(
         let Ok((transform, mut tween, mut visibility)) = presenters.get_mut(presenter) else {
             continue;
         };
-        let (cell, level) = cell_and_level(pos);
+        let (cell, level) = pos.split();
         // The Actor-layer lift (GANGER_Z_BIAS) must hold across moves too, so the moved
         // ganger keeps drawing over the floor tile at its new cell (GTW-283).
         let target = cell_to_world_layered(cell, level, Layer::Actor);

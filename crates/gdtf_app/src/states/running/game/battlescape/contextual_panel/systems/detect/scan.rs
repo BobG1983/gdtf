@@ -21,7 +21,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    Cell, CellLevel, Level,
+    Cell, CellLevel,
     downed_acts::is_8_adjacent,
     ganger::{Facing, Faction, LifeState, Position, Stance, StanceKind},
     los::{Observer, PeekOffset, Target, has_los},
@@ -153,10 +153,10 @@ pub(super) fn scan_melee_structure(actor_pos: Position, grids: &LosGrids) -> Opt
     // The smash offer needs the live cover ledger; absent (pre-battle) → offer nothing.
     let cover = grids.cover.as_ref()?;
 
-    // The actor's `(cell, level)` — x/y are the ground cell, z the storey index.
-    let key = **actor_pos;
-    let storey = u8::try_from(key.z).unwrap_or(0);
-    let level = Level::new(storey);
+    // The actor's `(cell, level)` — the canonical CellLevel accessors through
+    // Position's deref (GTW-565); the Moore-8 ring offsets from the key's x/y below.
+    let key = *actor_pos;
+    let level = key.level();
 
     // Scan the 8 same-storey Moore-neighbour cells in a deterministic (dy, dx) order; offer the
     // first that holds an intact (not-destroyed) REGISTERED cover entry.

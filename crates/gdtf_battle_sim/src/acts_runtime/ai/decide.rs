@@ -123,12 +123,11 @@ pub fn plan_advance(
     goal: Cell,
     reachable: &[(CellLevel, Tu)],
 ) -> Option<CellLevel> {
-    let start_cell = Cell::new(start.x, start.y);
-    let start_distance = chebyshev_xy(start_cell, goal);
+    // The canonical CellLevel::cell accessor (GTW-565) for every ground-plane read.
+    let start_distance = chebyshev_xy(start.cell(), goal);
     let best = reachable.iter().copied().min_by_key(|(cell, cost)| {
-        let cell_xy = Cell::new(cell.x, cell.y);
         (
-            chebyshev_xy(cell_xy, goal),
+            chebyshev_xy(cell.cell(), goal),
             u32::from(**cost),
             cell.z,
             cell.y,
@@ -136,7 +135,7 @@ pub fn plan_advance(
         )
     })?;
     let (best_cell, _) = best;
-    let best_distance = chebyshev_xy(Cell::new(best_cell.x, best_cell.y), goal);
+    let best_distance = chebyshev_xy(best_cell.cell(), goal);
     if best_distance < start_distance {
         Some(best_cell)
     } else {

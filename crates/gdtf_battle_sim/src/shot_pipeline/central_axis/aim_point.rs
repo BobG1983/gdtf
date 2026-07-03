@@ -5,7 +5,7 @@
 use crate::{
     cover::HeightBand,
     ganger::{Position, Stance, StanceKind},
-    metric::{Cell, Level, SimPos, cell_center},
+    metric::{SimPos, cell_center},
     tuning::{AimHeightFrac, CombatTuning, ProjectileBandEdges, SilhouetteTop},
 };
 
@@ -92,14 +92,8 @@ pub fn target_aim_point(
     cover_band: Option<HeightBand>,
     tuning: &CombatTuning,
 ) -> SimPos {
-    let key = *position;
-    let cell = Cell::new(key.x, key.y);
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "a Position's z is a storey index in 0..MAX_LEVELS (8), so this u8 cast cannot truncate or wrap"
-    )]
-    let level = Level::new(key.z as u8);
+    // The canonical CellLevel::split decompose through Position's deref (GTW-565).
+    let (cell, level) = position.split();
 
     let center = cell_center(cell, level);
     let edges = tuning.projectile_band_edges;

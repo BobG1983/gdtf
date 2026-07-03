@@ -39,7 +39,7 @@ use std::f32::consts::SQRT_2;
 use crate::{
     ganger::Tu,
     injuries::MovementCostFactor,
-    metric::{Cell, CellLevel, Level},
+    metric::{Cell, CellLevel},
     occupancy::OccupancyGrid,
     terrain::floor::FloorCostGrid,
     tuning::MoveCost,
@@ -118,10 +118,8 @@ pub fn pathable_neighbors<'a>(
     floor_costs: &'a FloorCostGrid,
     factor: MovementCostFactor,
 ) -> impl Iterator<Item = (CellLevel, Tu)> + 'a {
-    // The origin's storey — every planar neighbour shares it (same-storey, dz = 0).
-    let level = origin.z;
     PLANAR_OFFSETS.into_iter().filter_map(move |(dx, dy)| {
-        let neighbour = planar_neighbour(origin, level, dx, dy);
+        let neighbour = planar_neighbour(origin, dx, dy);
         // C4: in-bounds AND not PATH-blocked (GTW-501 D1/C2). `slot` is `None` for an
         // out-of-bounds cell (so the cell is dropped); `is_path_blocked` reads the
         // TAG-DERIVED path-blocking surface — NOT the kind-based `is_blocked` vision reads
@@ -133,7 +131,7 @@ pub fn pathable_neighbors<'a>(
         let diagonal = dx != 0 && dy != 0;
         // C3 (no corner-cutting): a diagonal is illegal when BOTH its shared-edge
         // orthogonal neighbours are blocked. Orthogonal steps are never corner-cut.
-        if diagonal && corner_is_cut(origin, level, dx, dy, grid) {
+        if diagonal && corner_is_cut(origin, dx, dy, grid) {
             return None;
         }
         // C2 (GTW-396): the entered cell's floor cost from FloorCostGrid;
@@ -146,22 +144,13 @@ pub fn pathable_neighbors<'a>(
 }
 
 /// The `(cell, level)` of the planar neighbour at offset `(dx, dy)` on the origin's
-/// storey `level`.
+/// own storey.
 ///
 /// A small helper so the offset → `CellLevel` construction reads once. Same-storey
-/// (`dz = 0`), so the storey is `level` unchanged; the cell is `origin`'s cell
-/// shifted by `(dx, dy)`. Reads `origin.x`/`origin.y` through [`CellLevel`]'s
-/// [`Deref`](std::ops::Deref) to its inner `IVec3`.
-fn planar_neighbour(origin: CellLevel, level: i32, dx: i32, dy: i32) -> CellLevel {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "level is origin.z, a storey index in 0..MAX_LEVELS (8) by the grid's own \
-                  construction (an out-of-range origin is filtered by the bounds check at the \
-                  call site), so the i32 -> u8 narrowing cannot truncate or sign-flip"
-    )]
-    let level = Level::new(level as u8);
-    CellLevel::new(Cell::new(origin.x + dx, origin.y + dy), level)
+/// (`dz = 0`), so the storey is the origin's [`CellLevel::level`] unchanged (the
+/// canonical accessor, GTW-565); the cell is `origin`'s cell shifted by `(dx, dy)`.
+fn planar_neighbour(origin: CellLevel, dx: i32, dy: i32) -> CellLevel {
+    CellLevel::new(Cell::new(origin.x + dx, origin.y + dy), origin.level())
 }
 
 /// Whether the diagonal step `(dx, dy)` from `origin` would CUT a corner — the
@@ -175,9 +164,9 @@ fn planar_neighbour(origin: CellLevel, level: i32, dx: i32, dy: i32) -> CellLeve
 /// above (GTW-501 D1/C2), not the kind-based `is_blocked` vision reads. If at least one is
 /// path-walkable the diagonal is fine. Only called for true diagonals
 /// (`dx != 0 && dy != 0`).
-fn corner_is_cut(origin: CellLevel, level: i32, dx: i32, dy: i32, grid: &OccupancyGrid) -> bool {
-    let side_a = planar_neighbour(origin, level, dx, 0);
-    let side_b = planar_neighbour(origin, level, 0, dy);
+fn corner_is_cut(origin: CellLevel, dx: i32, dy: i32, grid: &OccupancyGrid) -> bool {
+    let side_a = planar_neighbour(origin, dx, 0);
+    let side_b = planar_neighbour(origin, 0, dy);
     grid.is_path_blocked(&side_a) && grid.is_path_blocked(&side_b)
 }
 

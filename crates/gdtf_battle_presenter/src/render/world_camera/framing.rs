@@ -190,7 +190,9 @@ pub fn frame_camera_on_units(
         .iter()
         .filter(|(faction, _)| **faction == player_faction)
         .map(|(_, pos)| {
-            let world = cell_to_world(Cell::new(pos.x, pos.y), Level::new(0));
+            // The ganger's ground cell via the canonical CellLevel::cell accessor
+            // (GTW-565); framing is planar, so the storey is pinned to 0.
+            let world = cell_to_world(pos.cell(), Level::new(0));
             Vec2::new(world.x, world.y)
         });
     let Some(focus) = camera_focus(centers) else {

@@ -165,20 +165,15 @@ fn spawn_faller(world: &mut World, level: u8) -> Entity {
         .id()
 }
 
-/// Read a faller's current `Position` level (its storey index).
+/// Read a faller's current `Position` level (its storey index) — via the canonical
+/// `CellLevel::level` accessor (GTW-565).
 fn level_of(app: &App, entity: Entity) -> u8 {
     let pos = app
         .world()
         .get::<Position>(entity)
         .copied()
         .unwrap_or_else(Position::default);
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "z is a storey index in 0..MAX_LEVELS, so the i32 -> u8 narrowing cannot wrap"
-    )]
-    let z = pos.z as u8;
-    z
+    *pos.level()
 }
 
 /// Read a faller's current `Hp`.

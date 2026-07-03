@@ -27,7 +27,7 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Cell, Level, SuppressionApplied};
+use gdtf_battle_sim::SuppressionApplied;
 
 use super::{
     super::FxTuning,
@@ -78,9 +78,8 @@ pub(in crate::actors::fx) fn suppression_pop() -> SuppressionPop {
 ///    cowed [`FctValence::Suppressed`](super::palette::FctValence::Suppressed) blue-grey.
 /// 2. Reads the pinned `(cell, level)` straight off the message's
 ///    [`at`](gdtf_battle_sim::SuppressionApplied::at) [`CellLevel`](gdtf_battle_sim::CellLevel),
-///    reconstructing the typed [`Cell`] / [`Level`] from its `IVec3` (the readers.rs
-///    `cell_and_level` idiom — the message already carries the cell, so no `Position` lookup is
-///    needed).
+///    via the canonical [`CellLevel::split`](gdtf_battle_sim::CellLevel::split) decompose
+///    (GTW-565 — the message already carries the cell, so no `Position` lookup is needed).
 /// 3. Spawns the pop via [`spawn_floating_text`] at the next per-cell [`FctStackIndex`] (so two
 ///    suppressions on one cell this tick fan out vertically), at body weight
 ///    ([`FctEmphasis::Normal`] — bold is reserved for the lethal DOWN / DEAD tag), with the
@@ -110,12 +109,9 @@ pub fn read_suppression_fct(
         let pop = suppression_pop();
 
         // The pinned cell is carried directly on the message (suppression is anchored at a cell,
-        // not an entity), so reconstruct the typed Cell / Level from its IVec3 — no Position
+        // not an entity) — the canonical CellLevel::split decompose (GTW-565); no Position
         // lookup, and no fail-closed branch (the message always carries a valid key).
-        let at = message.at;
-        let cell = Cell::new(at.x, at.y);
-        let storey = u8::try_from(at.z).unwrap_or(0);
-        let level = Level::new(storey);
+        let (cell, level) = message.at.split();
 
         let slot = stacks.entry((cell.x, cell.y, *level)).or_insert(0);
         spawn_floating_text(

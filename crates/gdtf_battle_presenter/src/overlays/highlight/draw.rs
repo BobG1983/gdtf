@@ -6,7 +6,7 @@ use bevy::{
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
 };
-use gdtf_battle_sim::{Cell, CellLevel, Level};
+use gdtf_battle_sim::CellLevel;
 
 use crate::{CELL_PX, CellVisibility, WORLD_RENDER_LAYER, cell_to_world};
 
@@ -142,9 +142,12 @@ pub fn draw_highlight_on_request(
         return;
     };
 
-    // The world position the one highlight should take, or `None` to hide it.
-    let target = (*request)
-        .map(|cell| cell_to_world(Cell::new(cell.x, cell.y), Level::new(level_index(cell))));
+    // The world position the one highlight should take, or `None` to hide it — the
+    // canonical CellLevel::split decompose (GTW-565).
+    let target = (*request).map(|cell| {
+        let (cell, level) = cell.split();
+        cell_to_world(cell, level)
+    });
     // The tint for this request's squad-visible verdict (warm = VISIBLE, cold-grey =
     // non-VISIBLE — the "unseen — hold your fire" recolour).
     let tint = tint_for(request.visibility());
@@ -198,15 +201,4 @@ pub fn draw_highlight_on_request(
             }
         }
     }
-}
-
-/// The storey index of a [`CellLevel`]'s `z`, narrowed to the [`Level`]'s `u8`.
-///
-/// A [`CellLevel`] [`Deref`]s to an `IVec3` whose `z` is a storey index built from a
-/// [`Level`] (always `0..`[`gdtf_battle_sim::MAX_LEVELS`], well within `u8`). The
-/// clamped [`u8::try_from`] is the no-`unwrap` narrow — a (impossible) out-of-range
-/// `z` saturates to [`u8::MAX`] rather than panicking. MIGRATED from
-/// `gdtf_battle_input` (GTW-251) so the highlight redraws on the requested level.
-pub(super) fn level_index(cell: CellLevel) -> u8 {
-    u8::try_from(cell.z).unwrap_or(u8::MAX)
 }

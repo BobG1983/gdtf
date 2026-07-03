@@ -1349,14 +1349,11 @@ fn first_stacked_cell(situation: &Situation) -> Option<crate::metric::CellLevel>
 /// is a brace slab only when the cell at `(x, y, z − 1)` is a brace-eligible stair
 /// cell. Level-0 slabs never become brace slabs (their `z − 1` would be negative).
 fn cell_below(cell: crate::metric::CellLevel) -> Option<crate::metric::CellLevel> {
-    let below_z = cell.z.checked_sub(1)?;
-    // below_z >= 0 (checked_sub returned Some) and below_z <= MAX_LEVELS, so the
-    // u8 conversion is lossless. If it somehow overflows (impossible in a valid grid),
-    // try_from returns Err and we return None — fail-safe.
-    let storey = u8::try_from(below_z).ok()?;
-    let level = crate::metric::Level::new(storey);
+    // The storey via the canonical CellLevel::level accessor (GTW-565), then a
+    // checked u8 subtract — a level-0 cell has nothing below (checked_sub is None).
+    let storey = (*cell.level()).checked_sub(1)?;
     Some(crate::metric::CellLevel::new(
-        crate::metric::Cell::new(cell.x, cell.y),
-        level,
+        cell.cell(),
+        crate::metric::Level::new(storey),
     ))
 }

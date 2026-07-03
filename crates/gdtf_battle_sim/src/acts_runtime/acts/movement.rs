@@ -56,7 +56,7 @@ use crate::{
     cover::CoverLedger,
     ganger::{Direction, Faction, Position, Suppressed, Tu},
     injuries::{InflictedInjuries, MovementCostFactor},
-    metric::{Cell, CellLevel, Level},
+    metric::{Cell, CellLevel},
     move_acts::WalkInProgress,
     occupancy::OccupancyGrid,
     pathfinder::{PlanningView, find_path},
@@ -219,22 +219,16 @@ fn chebyshev_xy(a: &CellLevel, b: &CellLevel) -> u32 {
 /// destination and the suppressor share a ground cell (no direction — `from_cells` is `None`),
 /// which is also not "farther", so such a destination is rejected on the distance clause too.
 fn ends_behind_cover(dest: &CellLevel, suppressor: &CellLevel, cover: &CoverLedger) -> bool {
-    let dest_cell = Cell::new(dest.x, dest.y);
-    let suppressor_cell = Cell::new(suppressor.x, suppressor.y);
+    // The canonical CellLevel accessors (GTW-565): the two ground cells and the
+    // destination's own storey.
+    let dest_cell = dest.cell();
+    let suppressor_cell = suppressor.cell();
     let Some(dir) = Direction::from_cells(dest_cell, suppressor_cell) else {
         return false;
     };
     let step = dir.cell_step();
     let toward = Cell::new(dest_cell.x + step.x, dest_cell.y + step.y);
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "the destination's z is a storey index in 0..MAX_LEVELS (8) by construction, so \
-                  the i32 -> u8 narrowing cannot truncate or sign-flip (the stance.rs pos_level \
-                  precedent)"
-    )]
-    let level = Level::new(dest.z as u8);
-    cover.peek(&CellLevel::new(toward, level)).is_some()
+    cover.peek(&CellLevel::new(toward, dest.level())).is_some()
 }
 
 /// Whether a [`Suppressed`] mover may legally step from `start` to `dest` (GTW-537) — the

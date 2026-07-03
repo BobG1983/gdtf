@@ -133,18 +133,10 @@ pub(crate) fn apply_shove(
 
         // A push off a ledge — move to the destination, then fall via the shared GTW-523 fork.
         ShoveOutcome::Fell { dest, landing } => {
-            let start = crate::metric::Level::new(
-                #[expect(
-                    clippy::cast_possible_truncation,
-                    clippy::cast_sign_loss,
-                    reason = "dest.z is the target's storey index in 0..MAX_LEVELS (8), so the \
-                              i32 -> u8 narrowing cannot truncate or sign-flip"
-                )]
-                {
-                    dest.z as u8
-                },
-            );
-            let dest_cell = crate::metric::Cell::new(dest.x, dest.y);
+            // The canonical CellLevel accessors (GTW-565): the storey the target fell
+            // FROM and the ground cell it was pushed onto.
+            let start = dest.level();
+            let dest_cell = dest.cell();
 
             // ONE involuntary write to the LANDING storey — Changed<Position> drives the
             // occupancy re-sync (the apply_falls precedent — the grid is never hand-edited).

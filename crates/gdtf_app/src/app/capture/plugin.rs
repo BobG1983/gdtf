@@ -84,7 +84,7 @@ use bevy::{
 };
 use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
 use gdtf_battle_sim::{
-    Cell, CellLevel, Faction, FireMode, FireModeSpec, Level, ModeKind, PlayerFaction, Position,
+    CellLevel, Faction, FireMode, FireModeSpec, Level, ModeKind, PlayerFaction, Position,
     SlabDestroyed, acts::FireRequested, apply_falls,
 };
 
@@ -727,7 +727,8 @@ pub(crate) fn trigger_fire_at_frame(
     let Ok((_, _, shooter_pos, shooter_modes)) = gangers.get(shooter) else {
         return;
     };
-    let shooter_cell = Cell::new(shooter_pos.x, shooter_pos.y);
+    // The canonical CellLevel accessors through Position's deref (GTW-565).
+    let shooter_cell = shooter_pos.cell();
     // The mode the shot fires in: the resident SelectedFireMode by default, or — when
     // GDTF_FIRE_MODE is set — the matching authored mode off the shooter's FireMode selector
     // (so a `full` override yields a multi-round volley the FX stagger can spread out). An
@@ -742,7 +743,7 @@ pub(crate) fn trigger_fire_at_frame(
         .iter()
         .filter(|(entity, faction, ..)| *entity != shooter && **faction != player_faction)
         .map(|(_, _, pos, _)| {
-            let delta = Cell::new(pos.x, pos.y);
+            let delta = pos.cell();
             let dx = delta.x - shooter_cell.x;
             let dy = delta.y - shooter_cell.y;
             (dx * dx + dy * dy, pos)
@@ -751,8 +752,7 @@ pub(crate) fn trigger_fire_at_frame(
     else {
         return;
     };
-    let target_cell = Cell::new(enemy_pos.x, enemy_pos.y);
-    let target_level = Level::new(level_from_z(enemy_pos.z));
+    let (target_cell, target_level) = enemy_pos.split();
     fires.write(FireRequested::new(shooter, mode, target_cell, target_level));
 }
 
@@ -854,21 +854,11 @@ pub(crate) fn trigger_fall_at_frame(
     };
     // 1. Elevate: stand the ganger on the lowest upper storey (same cell), so there is a floor
     //    beneath it to smash. ONE involuntary write; `apply_falls` reads the live query this
-    //    frame (we run `.before` it), so it sees the elevated position.
-    let ground = ***position;
-    let elevated_cell = Cell::new(ground.x, ground.y);
-    let elevated = CellLevel::new(elevated_cell, FALL_TRIGGER_STOREY);
+    //    frame (we run `.before` it), so it sees the elevated position. The ground cell is
+    //    the canonical CellLevel::cell accessor through Position's deref (GTW-565).
+    let elevated = CellLevel::new(position.cell(), FALL_TRIGGER_STOREY);
     *position = Position::new(elevated);
     // 2. Smash: destroy the slab the ganger now stands on. `apply_falls` (ordered after) reads
     //    this same-frame message + the elevated position and drops the ganger to the ground.
     destroyed.write(SlabDestroyed::new(elevated));
-}
-
-/// Narrow a `(cell, level)` key's storey-index `z` (an `i32` in the inner `IVec3`) to the
-/// [`Level`]'s `u8`, saturating into range — a non-negative storey index is small, so
-/// this never realistically clamps. `as`-cast trips `cast_possible_truncation` (`-D`);
-/// `u8::try_from` is the no-`unwrap` narrow, saturating an out-of-range value to a valid
-/// storey rather than panicking.
-fn level_from_z(z: i32) -> u8 {
-    u8::try_from(z.clamp(0, i32::from(u8::MAX))).unwrap_or(0)
 }

@@ -123,7 +123,8 @@ fn settle_steps(app: &mut App) -> bool {
 /// presenter's drawn-step witness (matches on the planar `(x, y)`; the layer-z is not part of
 /// cell identity).
 fn step_visible_at(app: &mut App, cell: CellLevel) -> bool {
-    let want = cell_to_world(Cell::new(cell.x, cell.y), Level::new(level_u8(cell)));
+    let (want_cell, want_level) = cell.split();
+    let want = cell_to_world(want_cell, want_level);
     let mut q = app
         .world_mut()
         .query::<(&Transform, &Visibility, &PathStepSprite)>();
@@ -159,7 +160,8 @@ fn settle_label(app: &mut App) -> bool {
 /// exists — the GTW-368 cost-on-target witness (the label is lifted ABOVE the cell, so it
 /// matches the target's planar `x` and a `y` above the cell centre).
 fn target_label_state(app: &mut App, target: CellLevel) -> Option<(String, bool, bool)> {
-    let want = cell_to_world(Cell::new(target.x, target.y), Level::new(level_u8(target)));
+    let (want_cell, want_level) = target.split();
+    let want = cell_to_world(want_cell, want_level);
     let mut q = app
         .world_mut()
         .query::<(&Text2d, &Transform, &Visibility, &PathTargetLabel)>();
@@ -175,11 +177,6 @@ fn visible_label_count(app: &mut App) -> usize {
     q.iter(app.world())
         .filter(|(vis, _)| **vis == Visibility::Visible)
         .count()
-}
-
-/// The storey index narrowed to the `u8` a `Level` carries (the cells under test are within `u8`).
-fn level_u8(cell: CellLevel) -> u8 {
-    u8::try_from(cell.z).unwrap_or(u8::MAX)
 }
 
 /// Planar-position equality within float noise (world positions are exact `CELL_PX` multiples).

@@ -106,11 +106,6 @@ fn settle_tile(app: &mut App) -> bool {
     q.iter(app.world()).next().is_some()
 }
 
-/// The storey index narrowed to the `u8` a `Level` carries (the cells under test are within `u8`).
-fn level_u8(cell: CellLevel) -> u8 {
-    u8::try_from(cell.z).unwrap_or(u8::MAX)
-}
-
 /// Planar-position equality within float noise (world positions are exact `CELL_PX` multiples).
 fn planar_eq(a: f32, b: f32) -> bool {
     (a - b).abs() < 0.01
@@ -118,7 +113,8 @@ fn planar_eq(a: f32, b: f32) -> bool {
 
 /// The `(planar-matches-cell, draw-z, visible)` of the SINGLE fire-target tile, if it exists.
 fn tile_state(app: &mut App, cell: CellLevel) -> Option<(bool, f32, bool)> {
-    let want = cell_to_world(Cell::new(cell.x, cell.y), Level::new(level_u8(cell)));
+    let (want_cell, want_level) = cell.split();
+    let want = cell_to_world(want_cell, want_level);
     let mut q = app
         .world_mut()
         .query::<(&Transform, &Visibility, &FireTargetTile)>();
@@ -139,7 +135,8 @@ fn visible_tile_count(app: &mut App) -> usize {
 /// The `(text, planar-matches-cell, above-cell, opaque, visible)` of the SINGLE cost label, if it
 /// exists — the cost-on-target witness (the label is lifted ABOVE the cell, OPAQUE).
 fn label_state(app: &mut App, cell: CellLevel) -> Option<(String, bool, bool, bool, bool)> {
-    let want = cell_to_world(Cell::new(cell.x, cell.y), Level::new(level_u8(cell)));
+    let (want_cell, want_level) = cell.split();
+    let want = cell_to_world(want_cell, want_level);
     let mut q = app.world_mut().query::<(
         &Text2d,
         &Transform,
@@ -202,14 +199,14 @@ fn fire_target_tile_under_actor_and_opaque_cost_label() {
         "the red tile is positioned at the NAMED enemy cell (13,9,L0)"
     );
     // UNDER the actor: the tile's draw-z is strictly below the Actor band's z at the same cell.
-    let actor_z = cell_to_world_layered(Cell::new(cell.x, cell.y), l0, Layer::Actor).z;
+    let actor_z = cell_to_world_layered(cell.cell(), l0, Layer::Actor).z;
     assert!(
         z < actor_z,
         "the fire-target tile draws UNDER the actor band (z {z} < actor z {actor_z}) so it \
          renders BELOW the enemy sprite",
     );
     // Sanity: it is exactly the FireTarget band z (the under-actor band, 0.075 over level z).
-    let want_z = cell_to_world_layered(Cell::new(cell.x, cell.y), l0, Layer::FireTarget).z;
+    let want_z = cell_to_world_layered(cell.cell(), l0, Layer::FireTarget).z;
     assert!(
         (z - want_z).abs() < 0.001,
         "the tile is at the FireTarget band (z {z} == FireTarget band z {want_z})",

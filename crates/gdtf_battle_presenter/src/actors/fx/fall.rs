@@ -42,7 +42,7 @@
 //! draws sprites; NEVER writes the sim.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Cell, FallOccurred, Level, Position};
+use gdtf_battle_sim::{FallOccurred, Position};
 
 use super::{
     fct::{CombatText, FctEmphasis, FctStackIndex, FctValence, spawn_floating_text, valence_color},
@@ -62,8 +62,9 @@ use crate::{FxTuning, TopDownAtlases, cell_to_world, fx::readers::fx_sprite};
 /// `storeys` is a structural relation recomputed from the live [`FallOccurred`] payload.
 ///
 /// `storeys: u8` is the INNER of [`StoreysFallen`](gdtf_battle_sim::StoreysFallen) (via
-/// `Deref`), carried here as a framework-plumbing scalar — it is the raw count
-/// `cell_and_level` reconstructs, the same idiom every other FX reader uses for `pos.z`.
+/// `Deref`), carried here as a framework-plumbing scalar — the same raw storey count the
+/// canonical [`CellLevel::level`](gdtf_battle_sim::CellLevel::level) accessor recovers
+/// from a key's `z` (GTW-565).
 #[must_use]
 fn fall_tint(storeys: u8) -> Color {
     // Alpha is a strictly-increasing relation to storeys: more storeys => a harder, more
@@ -116,9 +117,8 @@ pub fn read_fall_occurred(
         let Ok(pos) = positions.get(msg.ganger) else {
             continue;
         };
-        let cell = Cell::new(pos.x, pos.y);
-        let storey = u8::try_from(pos.z).unwrap_or(0);
-        let level = Level::new(storey);
+        // The canonical CellLevel::split decompose through Position's deref (GTW-565).
+        let (cell, level) = pos.split();
         let world = cell_to_world(cell, level);
 
         // C1 — the impact flash. Data-driven `fall_impact` tile, no literal index.

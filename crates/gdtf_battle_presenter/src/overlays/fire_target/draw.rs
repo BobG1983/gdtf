@@ -34,7 +34,7 @@
 //! the helper owns the `set_if_neq` visibility flips.
 
 use bevy::{camera::visibility::RenderLayers, prelude::*, text::TextColor};
-use gdtf_battle_sim::{Cell, CellLevel, Level, Tu};
+use gdtf_battle_sim::{CellLevel, Level, Tu};
 
 use crate::{
     ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered,
@@ -238,9 +238,8 @@ fn draw_tile(
     tile_query: &mut TileQuery,
 ) {
     // The 0/1-length draw list: the drawable cell's world position at the FireTarget band.
-    let draws = drawable.map(|(cell, _cost)| {
-        cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::FireTarget)
-    });
+    let draws = drawable
+        .map(|(cell, _cost)| cell_to_world_layered(cell.cell(), active_level, Layer::FireTarget));
     draw_pool(
         tile_query.iter_mut(),
         draws,
@@ -266,8 +265,7 @@ fn draw_cost_label(
 ) {
     // Above the target cell (the move-cost-label / FCT "above the cell" treatment).
     let world_at = |cell: CellLevel| {
-        let mut world =
-            cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::FireTarget);
+        let mut world = cell_to_world_layered(cell.cell(), active_level, Layer::FireTarget);
         world.y += COST_LABEL_LIFT_PX;
         world
     };

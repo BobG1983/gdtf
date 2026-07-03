@@ -188,17 +188,6 @@ pub struct ShotInputs {
     pub recoil_growth:    RecoilGrowth,
 }
 
-/// Decompose a march `at` [`CellLevel`] into the [`Cell`] + [`Level`] the
-/// [`ShotOutcome`] carries.
-///
-/// The march keeps `at.z` in `0..MAX_LEVELS`, so the `u8` conversion always
-/// succeeds; a `try_from` failure (a can't-happen out-of-range storey) degrades to
-/// level `0` rather than panicking, keeping the resolver panic-free.
-fn split_cell_level(at: CellLevel) -> (Cell, Level) {
-    let storey = u8::try_from(at.z).unwrap_or(0);
-    (Cell::new(at.x, at.y), Level::new(storey))
-}
-
 /// Resolve **one coarse shot** end to end and return its [`ShotOutcome`]
 /// (`docs/combat/resolution.md` line 158).
 ///
@@ -324,7 +313,7 @@ fn outcome_from_march(
     tuning: &CombatTuning,
     rng: &mut ShotRng,
 ) -> ShotOutcome {
-    let (cell, level) = split_cell_level(march.at);
+    let (cell, level) = march.at.split();
 
     // 5. The §4 part roll runs ONLY when the march stops on a ganger; every other
     //    kind carries no body part (AC #5). The struck surface cell rides along on a

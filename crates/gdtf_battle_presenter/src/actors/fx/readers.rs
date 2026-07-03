@@ -6,26 +6,13 @@ use bevy::{
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
 };
-use gdtf_battle_sim::{ArmorBroken, Bleeding, Cell, CoverDestroyed, Level, Position, Wounds};
+use gdtf_battle_sim::{ArmorBroken, Bleeding, CoverDestroyed, Position, Wounds};
 
 use super::{
     flash::{FlashTtl, FxFlash},
     roles::EffectRoles,
 };
 use crate::{CELL_PX, SheetRole, TileIndex, TopDownAtlases, cell_to_world};
-
-/// The world `(cell, level)` a ganger's [`Position`] projects to — reconstruct the typed
-/// [`Cell`] / [`Level`] from the position's `IVec3` components (the S4/S5 `cell_and_level`
-/// idiom), since [`Position`] Derefs to [`CellLevel`](gdtf_battle_sim::CellLevel) Derefs to
-/// `IVec3`.
-///
-/// `pos.z` is a storey index in `0..MAX_LEVELS`; clamping the (impossible-in-practice)
-/// negative / over-`u8` case keeps the reconstruction panic-free.
-fn cell_and_level(pos: &Position) -> (Cell, Level) {
-    let cell = Cell::new(pos.x, pos.y);
-    let storey = u8::try_from(pos.z).unwrap_or(0);
-    (cell, Level::new(storey))
-}
 
 /// The bleed-flash tint, as a relation to the bleeding ganger's remaining [`Wounds`].
 ///
@@ -125,8 +112,8 @@ pub(super) fn spawn_flash(commands: &mut Commands, sprite: Sprite, world: Vec3) 
 /// `Update` (`PresenterSystems::Draw`): spawn a blood/hit FX flash per [`Bleeding`] message.
 ///
 /// Drains [`MessageReader<Bleeding>`](gdtf_battle_sim::Bleeding); for each `Bleeding { ganger }`
-/// it looks up the ganger's cell via `Query<&Position>.get(msg.ganger)` (reconstructing the
-/// typed [`Cell`] / [`Level`] via [`cell_and_level`]) and its remaining
+/// it looks up the ganger's cell via `Query<&Position>.get(msg.ganger)` (decomposed via the
+/// canonical [`CellLevel::split`](gdtf_battle_sim::CellLevel::split), GTW-565) and its remaining
 /// [`Wounds`](gdtf_battle_sim::Wounds) via `Query<&Wounds>.get(msg.ganger)`, then spawns ONE
 /// FX flash at [`cell_to_world`](crate::cell_to_world) carrying [`FlashTtl`] + [`FxFlash`].
 /// The flash's index is the table's `bleed` [`TileIndex`] (never a literal); its tint is a
@@ -150,7 +137,7 @@ pub fn read_bleeding(
         let (Ok(pos), Ok(wound)) = (positions.get(msg.ganger), wounds.get(msg.ganger)) else {
             continue;
         };
-        let (cell, level) = cell_and_level(pos);
+        let (cell, level) = pos.split();
         let Some(sprite) = fx_sprite(roles.bleed, bleed_tint(*wound), &atlases) else {
             continue;
         };
@@ -182,7 +169,7 @@ pub fn read_armor_broken(
             // Fail-closed: a ganger with no Position spawns no flash, no panic.
             continue;
         };
-        let (cell, level) = cell_and_level(pos);
+        let (cell, level) = pos.split();
         // A bright opaque spark (the worn piece shattering) — no Wounds relation here.
         let Some(sprite) = fx_sprite(roles.armor_break, Color::WHITE, &atlases) else {
             continue;
@@ -195,7 +182,8 @@ pub fn read_armor_broken(
 /// [`CoverDestroyed`].
 ///
 /// Drains [`MessageReader<CoverDestroyed>`](gdtf_battle_sim::CoverDestroyed); for each
-/// `CoverDestroyed { at }` it reconstructs the typed [`Cell`] / [`Level`] from `at`
+/// `CoverDestroyed { at }` it reconstructs the typed [`Cell`](gdtf_battle_sim::Cell) /
+/// [`Level`](gdtf_battle_sim::Level) from `at`
 /// ([`CellLevel`](gdtf_battle_sim::CellLevel) Derefs to `IVec3`) and spawns ONE FX flash at
 /// `cell_to_world(at)` carrying [`FlashTtl`] + [`FxFlash`], with the table's `cover_destroyed`
 /// [`TileIndex`] (never a literal). This is ADDITIVE to the S4 `swap_destroyed_cover` (which
@@ -212,11 +200,9 @@ pub fn read_cover_destroyed(
     mut destroyed: MessageReader<CoverDestroyed>,
 ) {
     for msg in destroyed.read() {
-        // CoverDestroyed.at is a CellLevel; reconstruct its typed Cell / Level (the z is a
-        // storey index, clamped panic-free if impossibly out of range).
-        let cell = Cell::new(msg.at.x, msg.at.y);
-        let storey = u8::try_from(msg.at.z).unwrap_or(0);
-        let level = Level::new(storey);
+        // CoverDestroyed.at is a CellLevel; its typed Cell / Level via the canonical
+        // CellLevel::split decompose (GTW-565).
+        let (cell, level) = msg.at.split();
         let Some(sprite) = fx_sprite(roles.cover_destroyed, Color::WHITE, &atlases) else {
             continue;
         };

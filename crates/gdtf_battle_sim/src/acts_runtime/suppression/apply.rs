@@ -49,26 +49,6 @@ impl SuppressionApplied {
     }
 }
 
-/// The ground cell `(x, y)` of a [`Position`] (the z storey dropped — the `trigger.rs`
-/// `row_cell` precedent).
-fn pos_cell(position: &Position) -> Cell {
-    let key = ***position;
-    Cell::new(key.x, key.y)
-}
-
-/// The storey [`Level`] of a [`Position`].
-fn pos_level(position: &Position) -> Level {
-    let key = ***position;
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "z is a storey index in 0..MAX_LEVELS (8) by construction, so the i32 -> \
-                  u8 narrowing cannot truncate or sign-flip (the trigger.rs row_level precedent)"
-    )]
-    let storey = key.z as u8;
-    Level::new(storey)
-}
-
 /// Whether the ganger at `(cell, level)` is within the suppression `radius` of the
 /// shot's `(target_cell, target_level)` — a Chebyshev disc on the ground plane, gated to
 /// the SAME storey.
@@ -187,9 +167,10 @@ pub fn apply_suppression(
             if *faction == *shooter_faction || entity == fire.shooter {
                 continue;
             }
+            // The canonical CellLevel accessors through Position's deref (GTW-565).
             if !within_radius(
-                pos_cell(position),
-                pos_level(position),
+                position.cell(),
+                position.level(),
                 fire.target_cell,
                 fire.target_level,
                 radius,

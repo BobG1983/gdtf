@@ -19,7 +19,7 @@
 
 use bevy::prelude::{Entity, MessageWriter, Query, With};
 
-use super::{MeleeGeomQuery, MeleeGrids, MeleeTargetQuery, ganger_cell, ganger_level};
+use super::{MeleeGeomQuery, MeleeGrids, MeleeTargetQuery};
 use crate::{
     acts::request::{MeleeResolved, ShoveRequested},
     armor::{PieceArmorMut, Wears, WornBy},
@@ -228,7 +228,9 @@ pub(super) fn resolve_ganger_melee(
     // On a connect, emit the presenter strike-glyph signal at the target's cell. A miss deals
     // no damage and emits nothing (the §7 connect gate).
     if strike.connect {
-        let at = CellLevel::new(ganger_cell(&tgt_pos), ganger_level(&tgt_pos));
+        // The target's own (cell, level) key — Position derefs to CellLevel (the
+        // old decompose-then-recompose was the identity on every real key).
+        let at: CellLevel = *tgt_pos;
         resolved.write(MeleeResolved::new(at, attacker.strike_damage_type));
 
         // GTW-547: a CONNECTING strike that KILLED the target (its post-fold LifeState is Dead)

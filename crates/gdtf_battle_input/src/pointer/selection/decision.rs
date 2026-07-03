@@ -5,8 +5,8 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::cell_squad_visible;
 use gdtf_battle_sim::{
-    Cell, CellLevel, Direction, Faction, FactionRelation, MeleeWeapon, OccupancyGrid,
-    PlayerFaction, Position, SquadVisibility, VerticalLinkGraph, WieldedBy, Wields,
+    CellLevel, Direction, Faction, FactionRelation, MeleeWeapon, OccupancyGrid, PlayerFaction,
+    Position, SquadVisibility, VerticalLinkGraph, WieldedBy, Wields,
     acts::{FireRequested, MoveRequested, SetFacingRequested},
     tuning::CombatTuning,
 };
@@ -587,8 +587,9 @@ pub fn decide_turn(
     let target = hovered.hovered()?;
     // The actor's grid cell (fail-closed if it has no Position component).
     let position = positions.get(actor).ok()?;
-    let actor_cell = Cell::new(position.x, position.y);
-    let hovered_cell = Cell::new(target.x, target.y);
+    // The canonical CellLevel::cell accessor (GTW-565; Position derefs to CellLevel).
+    let actor_cell = position.cell();
+    let hovered_cell = target.cell();
     // Hovering the actor's OWN cell yields no direction -> no-op (None).
     let facing = Direction::from_cells(actor_cell, hovered_cell)?;
     Some(SetFacingRequested::new(actor, facing))

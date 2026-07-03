@@ -25,15 +25,11 @@ use crate::{
 /// (`0.0 + 0.707 → floor 0`) would not. **Zero pixels** — sim-unit voxel coords only.
 #[must_use]
 pub fn faced_cell(position: &Position, facing: &Facing) -> (Cell, Level) {
-    // (1) Split the shooter's (cell, level) key. Position derefs to CellLevel, whose
-    //     z is the storey index; the cell is its x/y.
-    let key = **position;
-    let cell = Cell::new(key.x, key.y);
-    // The shooter's own storey — preserved unchanged in the return (AC3): the step is
-    // horizontal (z = 0), so the faced cell is on the same level. The march keeps z in
-    // 0..MAX_LEVELS, so the u8 conversion always succeeds; a can't-happen out-of-range
-    // storey degrades to level 0 rather than panicking.
-    let level = Level::new(u8::try_from(key.z).unwrap_or(0));
+    // (1) Split the shooter's (cell, level) key — the canonical CellLevel::split
+    //     (GTW-565; Position derefs to CellLevel). The shooter's own storey is
+    //     preserved unchanged in the return (AC3): the step is horizontal (z = 0),
+    //     so the faced cell is on the same level.
+    let (cell, level) = position.split();
 
     // (2)-(4) Step from the cell CENTER by the facing's UNIT forward step, then floor
     //         back to a cell. Stepping from the center (not the corner) is what makes a

@@ -3,7 +3,7 @@
 
 use crate::{
     ganger::{Facing, Position, Stance, StanceKind},
-    metric::{Cell, Level, SimPos, cell_center},
+    metric::{SimPos, cell_center},
     tuning::{CombatTuning, MuzzleHeight},
 };
 
@@ -44,7 +44,8 @@ pub(crate) fn clamp_within_cell(coord: f32, corner: f32) -> f32 {
 /// forward offset — the tunable [`crate::tuning::MuzzleForwardOffset`] cell-fraction
 /// times the facing's [`crate::ganger::Direction::forward_step`] unit step —
 /// **clamped** so the muzzle's x/y can never leave the shooter's own cell (AC #2). The
-/// z is the storey floor (the [`Level`] cast to `f32`) plus the per-stance muzzle
+/// z is the storey floor (the [`Level`](crate::metric::Level) cast to `f32`) plus the
+/// per-stance muzzle
 /// **level-fraction** ([`crate::tuning::MuzzleHeights`]). "Up" is `+z`.
 ///
 /// `position` and `stance` decompose the spec's "shooter" into the per-field ECS
@@ -58,14 +59,8 @@ pub fn muzzle_position(
     stance: Stance,
     tuning: &CombatTuning,
 ) -> SimPos {
-    let key = *position;
-    let cell = Cell::new(key.x, key.y);
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "a Position's z is a storey index in 0..MAX_LEVELS (8), so this u8 cast cannot truncate or wrap"
-    )]
-    let level = Level::new(key.z as u8);
+    // The canonical CellLevel::split decompose through Position's deref (GTW-565).
+    let (cell, level) = position.split();
 
     let center = cell_center(cell, level);
     let offset = *tuning.cone_stability.muzzle_forward_offset;

@@ -100,7 +100,7 @@ fn march_mid_round_through(app: &App, cell: CellLevel) -> MarchKind {
         *tuning.projectile_band_edges.low_mid,
         *tuning.projectile_band_edges.mid_high,
     );
-    let center = cell_center(Cell::new(cell.x, cell.y), Level::new(0));
+    let center = cell_center(cell.cell(), Level::new(0));
     // Muzzle: same y, same MID z, a few cells west (lower x) so the flat +x ray
     // crosses `cell`'s column. Off-grid-x is avoided by keeping x >= 0.
     let muzzle = SimPos::new(center.x - 4.0, center.y, mid_frac);

@@ -124,10 +124,7 @@ fn presenter_draws_highlight_from_the_request() {
     );
     assert_eq!(
         highlight_state(&mut app),
-        Some((
-            cell_to_world(Cell::new(cell_a.x, cell_a.y), level),
-            Visibility::Visible,
-        )),
+        Some((cell_to_world(cell_a.cell(), level), Visibility::Visible,)),
         "the highlight must be visible at cell_to_world(requested cell A)",
     );
     assert!(
@@ -146,10 +143,7 @@ fn presenter_draws_highlight_from_the_request() {
     );
     assert_eq!(
         highlight_state(&mut app),
-        Some((
-            cell_to_world(Cell::new(cell_b.x, cell_b.y), level),
-            Visibility::Visible,
-        )),
+        Some((cell_to_world(cell_b.cell(), level), Visibility::Visible,)),
         "the highlight must have MOVED to cell_to_world(requested cell B)",
     );
 
@@ -172,10 +166,7 @@ fn presenter_draws_highlight_from_the_request() {
     app.update();
     assert_eq!(
         highlight_state(&mut app),
-        Some((
-            cell_to_world(Cell::new(cell_a.x, cell_a.y), level),
-            Visibility::Visible,
-        )),
+        Some((cell_to_world(cell_a.cell(), level), Visibility::Visible,)),
         "a Some request after a None must re-show the highlight at the new cell",
     );
 }

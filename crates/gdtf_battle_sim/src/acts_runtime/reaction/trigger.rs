@@ -25,7 +25,7 @@ use crate::{
     injuries::HandsAvailable,
     los::{Observer, PeekOffset, Target, can_see},
     magazine::{FireActor, Magazine, can_fire, mode_tu_cost},
-    metric::{Cell, CellLevel, Level},
+    metric::CellLevel,
     move_acts::ReactionShotFired,
     occupancy::OccupancyGrid,
     rng::ReactionRng,
@@ -68,26 +68,6 @@ struct ReactionRow {
     faction:   Faction,
     /// Its derived `Reactions` stat — the §8 score numerator + the cap input.
     reactions: Reactions,
-}
-
-/// The ground cell `(x, y)` of a [`Position`] — the z storey dropped (the `fire.rs`
-/// `actor_cell` / `brain.rs` `row_cell` split precedent).
-fn row_cell(position: &Position) -> Cell {
-    let key = ***position;
-    Cell::new(key.x, key.y)
-}
-
-/// The storey [`Level`] of a [`Position`].
-fn row_level(position: &Position) -> Level {
-    let key = ***position;
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "z is a storey index in 0..MAX_LEVELS (8) by construction, so the i32 -> \
-                  u8 narrowing cannot truncate or sign-flip (the brain.rs row_level precedent)"
-    )]
-    let storey = key.z as u8;
-    Level::new(storey)
 }
 
 /// The `(cell, level)` key of a [`Position`].
@@ -344,8 +324,9 @@ pub fn reaction_trigger(
         if !actor.life.is_active() {
             continue;
         }
-        let actor_cell = row_cell(&actor.position);
-        let actor_level = row_level(&actor.position);
+        // The canonical CellLevel accessors through Position's deref (GTW-565).
+        let actor_cell = actor.position.cell();
+        let actor_level = actor.position.level();
 
         // The candidate REACTORS for this actor, in deterministic (level, y, x) order.
         let mut reactors: Vec<ReactionRow> = rows
@@ -437,7 +418,7 @@ pub fn reaction_trigger(
             // can afford turn + shot, else the interrupt would be rejected (so don't emit it).
             if !can_engage(
                 *reactor.facing,
-                row_cell(&reactor.position),
+                reactor.position.cell(),
                 actor_cell,
                 reactor.tu,
                 fire_cost,

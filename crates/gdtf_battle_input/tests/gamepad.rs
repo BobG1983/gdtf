@@ -872,7 +872,7 @@ fn highlight_follows_the_gamepad_cursor() {
     );
     // Sanity: that cell really is `cell_to_world`-projectable (the highlight will draw there).
     if let Some(cell) = cell {
-        let _ = cell_to_world(Cell::new(cell.x, cell.y), LEVEL);
+        let _ = cell_to_world(cell.cell(), LEVEL);
     }
 }
 

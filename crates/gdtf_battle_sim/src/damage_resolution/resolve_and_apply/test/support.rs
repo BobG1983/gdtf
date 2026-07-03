@@ -230,13 +230,14 @@ pub(super) fn cover_entry(max_hp: u32, protection: i32, hardness: i32) -> CoverE
 /// §4 roll never runs on cover); the muzzle / trajectory are arbitrary (zero px).
 pub(super) fn cover_outcome(entry: CoverEntry) -> ShotOutcome {
     let at = cover_cell_level();
+    let (cell, level) = at.split();
     ShotOutcome {
-        kind:       ShotKind::Cover(entry),
-        cell:       Cell::new(at.x, at.y),
-        level:      Level::new(u8::try_from(at.z).unwrap_or(0)),
-        body_part:  None,
-        band:       HeightBand::Mid,
-        muzzle:     SimPos::new(0.5, 0.5, 0.5),
+        kind: ShotKind::Cover(entry),
+        cell,
+        level,
+        body_part: None,
+        band: HeightBand::Mid,
+        muzzle: SimPos::new(0.5, 0.5, 0.5),
         trajectory: a_trajectory(),
     }
 }
@@ -282,13 +283,14 @@ pub(super) fn slab_entry(max_hp: u32, protection: i32, hardness: i32) -> SlabEnt
 /// directly (not the entry — slabs lazily seed from tuning); no body part.
 pub(super) fn slab_outcome() -> ShotOutcome {
     let at = slab_cell_level();
+    let (cell, level) = at.split();
     ShotOutcome {
-        kind:       ShotKind::Slab(at),
-        cell:       Cell::new(at.x, at.y),
-        level:      Level::new(u8::try_from(at.z).unwrap_or(0)),
-        body_part:  None,
-        band:       HeightBand::Low,
-        muzzle:     SimPos::new(0.5, 0.5, 0.5),
+        kind: ShotKind::Slab(at),
+        cell,
+        level,
+        body_part: None,
+        band: HeightBand::Low,
+        muzzle: SimPos::new(0.5, 0.5, 0.5),
         trajectory: a_trajectory(),
     }
 }
@@ -296,7 +298,7 @@ pub(super) fn slab_outcome() -> ShotOutcome {
 /// The `(cell, level)` a ground-hit fixture exits the bottom of the column through
 /// (GTW-366) — a fixed arbitrary surface key. The ground accumulator keys on the
 /// ground-plane [`Cell`] (its `x`/`y`), so the test reads the accrued total at
-/// `Cell::new(at.x, at.y)`.
+/// `at.cell()`.
 pub(super) fn ground_cell_level() -> CellLevel {
     CellLevel::new(Cell::new(2, 9), Level::new(0))
 }
@@ -307,13 +309,14 @@ pub(super) fn ground_cell_level() -> CellLevel {
 /// runs on the ground).
 pub(super) fn ground_outcome() -> ShotOutcome {
     let at = ground_cell_level();
+    let (cell, level) = at.split();
     ShotOutcome {
-        kind:       ShotKind::Ground(at),
-        cell:       Cell::new(at.x, at.y),
-        level:      Level::new(u8::try_from(at.z).unwrap_or(0)),
-        body_part:  None,
-        band:       HeightBand::Low,
-        muzzle:     SimPos::new(0.5, 0.5, 0.5),
+        kind: ShotKind::Ground(at),
+        cell,
+        level,
+        body_part: None,
+        band: HeightBand::Low,
+        muzzle: SimPos::new(0.5, 0.5, 0.5),
         trajectory: a_trajectory(),
     }
 }

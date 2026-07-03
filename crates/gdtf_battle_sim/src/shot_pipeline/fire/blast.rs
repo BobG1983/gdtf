@@ -95,7 +95,8 @@ pub fn resolve_blast(
     registry: &InjuryRegistry,
     injury_rng: &mut InjuryRng,
 ) -> Vec<HitReport> {
-    let level = Level::new(u8::try_from(landing.z).unwrap_or(0));
+    // The landing storey via the canonical CellLevel::level accessor (GTW-565).
+    let level = landing.level();
     let affected = aoe_affected(landing, hit, thrower_cell);
     let mut reports = Vec::new();
     for cell in affected {
@@ -114,7 +115,7 @@ pub fn resolve_blast(
         // Roll the §4 body part (the ONE ShotRng draw per struck ganger — a blast has no
         // march-computed part), then synthesize a Ganger outcome AT the covered cell.
         let part = crate::hit_location::roll_body_part(&tuning.body_part_weights, shot_rng.rng());
-        let struck_cell = Cell::new(cell.x, cell.y);
+        let struck_cell = cell.cell();
         let outcome = ShotOutcome {
             kind: ShotKind::Ganger(occupant),
             cell: struck_cell,

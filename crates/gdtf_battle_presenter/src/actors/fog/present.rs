@@ -258,9 +258,8 @@ fn present_actor_fog(
         // GTW-520 C1/C2: the STOREY axis widened from the on-active-storey hard cut to
         // drawn-band membership — a ganger on a LOWER drawn storey passes the storey test (and,
         // if shown by fog, is drawn), while one strictly ABOVE the active level is culled. The
-        // storey index is reconstructed from `pos.z` (the S4 idiom; the impossible negative /
-        // over-`u8` case clamps rather than panics).
-        let storey = Level::new(u8::try_from(pos.z).unwrap_or(0));
+        // storey is the canonical CellLevel::level accessor through Position's deref (GTW-565).
+        let storey = pos.level();
         let in_drawn_band = active.draws_storey(storey, view);
         let key: CellLevel = **pos;
         // GTW-520 C3: the FOG hard-cut is PRESERVED unchanged — an enemy / corpse is still shown

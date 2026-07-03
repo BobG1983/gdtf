@@ -299,9 +299,7 @@ fn floor_region(rect: RegionRect, default_floor: TerrainUuid, situation: &mut Si
 /// unchanged (the packer space-packs on the ground plane only).
 fn translate(local: CellLevel, origin: Cell) -> CellLevel {
     let cell = Cell::new(local.x + origin.x, local.y + origin.y);
-    // `local.z` is the prefab's authored storey index (`0..MAX_LEVELS`), built through the
-    // `CellLevel` constructor, so it is always a small non-negative storey — clamp the i32
-    // -> u8 cast fail-closed (a real authored storey can never exceed `u8`).
-    let storey = u8::try_from(local.z).unwrap_or(0);
-    CellLevel::new(cell, Level::new(storey))
+    // The authored storey rides along unchanged, via the canonical
+    // CellLevel::level accessor (GTW-565).
+    CellLevel::new(cell, local.level())
 }

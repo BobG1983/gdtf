@@ -173,14 +173,9 @@ fn disc_cells(
 ) -> impl Iterator<Item = (Level, Cell)> {
     let radius = i32::from(view_range);
     // The observer's own storey is always in the scan (a flat all-Open floor has no
-    // authored content, yet the squad still sees its own level — clause 1 / 4).
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "an observer's z is a storey index in 0..MAX_LEVELS (8) by construction, \
-                  so the i32 -> u8 narrowing cannot truncate or sign-flip"
-    )]
-    let observer_level = Level::new(observer.z as u8);
+    // authored content, yet the squad still sees its own level — clause 1 / 4). The
+    // canonical CellLevel::level accessor through Position's deref (GTW-565).
+    let observer_level = observer.level();
     let (lo, hi) = match authored {
         None => (observer_level, observer_level),
         Some((lo, hi)) => (lo.min(observer_level), hi.max(observer_level)),

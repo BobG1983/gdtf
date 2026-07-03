@@ -45,7 +45,7 @@
 //! (no spawn while the terrain sheet is still loading).
 
 use bevy::{camera::visibility::RenderLayers, prelude::*};
-use gdtf_battle_sim::{Cell, CellLevel, Level, LinkKind, VerticalLinkGraph};
+use gdtf_battle_sim::{CellLevel, Level, LinkKind, VerticalLinkGraph};
 
 use super::{
     active_level::ActiveLevel,
@@ -173,9 +173,8 @@ pub fn draw_vertical_links(
     }
 
     // The world position of a link-tile sprite (shared by the reuse + grow paths).
-    let world_at = |cell: CellLevel| {
-        cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::VerticalLink)
-    };
+    let world_at =
+        |cell: CellLevel| cell_to_world_layered(cell.cell(), active_level, Layer::VerticalLink);
     // The shared pooled-draw walk (GTW-568): reuse the pooled link sprites in iteration
     // order (re-index + move), lazily spawn past the pool, hide the surplus — the helper
     // owns the set_if_neq visibility flips (mutate, not respawn — C5).

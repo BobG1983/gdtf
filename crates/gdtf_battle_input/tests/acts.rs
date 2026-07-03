@@ -579,7 +579,7 @@ fn left_click_emits_one_fire_requested() {
     // fire/select systems (ordering-independent).
     select_ganger(&mut app, ganger);
     let target = hover_at(&mut app, TARGET_CURSOR_OFFSET);
-    let target_cell = Cell::new(target.x, target.y);
+    let target_cell = target.cell();
     let target_level = Level::new(0);
     // GTW-238 FIRE requires an ENEMY occupant at the target — place one there.
     place_enemy(&mut app, target);
@@ -1499,8 +1499,8 @@ fn click_on_a_link_tile_is_not_a_move_target() {
     // so `VerticalLinkGraph::links_from(target)` reports it as a link tile. The active level is
     // storey 0 here (no switch), so the up endpoint is storey 1.
     let target = hover_at(&mut app, TARGET_CURSOR_OFFSET);
-    let up_storey = u8::try_from(target.z.saturating_add(1)).unwrap_or(1);
-    let up = CellLevel::new(Cell::new(target.x, target.y), Level::new(up_storey));
+    let up_storey = (*target.level()).saturating_add(1);
+    let up = CellLevel::new(target.cell(), Level::new(up_storey));
     let link = VerticalLink::new(target, up, LinkKind::stair());
     let graph = SituationBuilder::new()
         .slab_at(target)

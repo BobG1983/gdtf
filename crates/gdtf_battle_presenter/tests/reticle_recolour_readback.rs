@@ -120,7 +120,7 @@ fn render_reticle(cell: CellLevel, verdict: CellVisibility) -> Option<[u8; 4]> {
 
     // A camera on the WORLD render layer (the reticle draws there), framing the reticle's
     // world position. The reticle sits at `cell_to_world(cell)`, so centre the camera on it.
-    let centre = cell_to_world(Cell::new(cell.x, cell.y), Level::new(0));
+    let centre = cell_to_world(cell.cell(), Level::new(0));
     app.world_mut().spawn((
         Camera2d,
         Camera {

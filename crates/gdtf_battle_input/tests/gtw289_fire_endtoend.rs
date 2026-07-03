@@ -361,11 +361,8 @@ fn click_on_enemy_produces_a_shot_endtoend() {
 
     // Place the shooter facing TOWARD the target (in-arc) so the simplest fire path runs;
     // ample TU also covers the out-of-arc turn-then-fire branch if the facing is off.
-    let facing = Direction::from_cells(
-        Cell::new(shooter_cell.x, shooter_cell.y),
-        Cell::new(target_cell.x, target_cell.y),
-    )
-    .unwrap_or(Direction::East);
+    let facing =
+        Direction::from_cells(shooter_cell.cell(), target_cell.cell()).unwrap_or(Direction::East);
     let shooter = spawn_armed_shooter(&mut app, shooter_cell, facing);
     // Register the shooter in the occupancy grid at its own cell (so the SELECT click finds it)
     if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
@@ -435,11 +432,8 @@ fn click_on_enemy_fires_the_ranged_weapon_even_with_a_melee_weapon_related_first
     let shooter_cell = hover_at(&mut app, SHOOTER_CURSOR_OFFSET);
     let target_cell = hover_at(&mut app, TARGET_CURSOR_OFFSET);
 
-    let facing = Direction::from_cells(
-        Cell::new(shooter_cell.x, shooter_cell.y),
-        Cell::new(target_cell.x, target_cell.y),
-    )
-    .unwrap_or(Direction::East);
+    let facing =
+        Direction::from_cells(shooter_cell.cell(), target_cell.cell()).unwrap_or(Direction::East);
     // The MELEE weapon is related FIRST (so it is first in `Wields`), the ranged gun second.
     let shooter = spawn_armed_shooter_melee_first(&mut app, shooter_cell, facing);
     if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {

@@ -18,7 +18,7 @@
 //! throughout (`bevy-traps.md` #7).
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Cell, DamageType, Level, acts::MeleeResolved};
+use gdtf_battle_sim::{DamageType, acts::MeleeResolved};
 
 use super::{readers::spawn_flash, roles::EffectRoles};
 use crate::{TopDownAtlases, cell_to_world, fx::readers::fx_sprite};
@@ -51,7 +51,8 @@ const fn strike_tint(damage: DamageType) -> Color {
 /// [`MeleeResolved`](gdtf_battle_sim::acts::MeleeResolved) (GTW-507).
 ///
 /// Drains [`MessageReader<MeleeResolved>`](gdtf_battle_sim::acts::MeleeResolved); for each
-/// `MeleeResolved { at, damage }` it reconstructs the typed [`Cell`] / [`Level`] from `at`
+/// `MeleeResolved { at, damage }` it reconstructs the typed [`Cell`](gdtf_battle_sim::Cell) /
+/// [`Level`](gdtf_battle_sim::Level) from `at`
 /// ([`CellLevel`](gdtf_battle_sim::CellLevel) Derefs to `IVec3`) and spawns ONE FX flash at
 /// [`cell_to_world`](crate::cell_to_world)`(cell, level)` carrying
 /// [`FlashTtl`](super::flash::FlashTtl) + [`FxFlash`](super::flash::FxFlash), with the table's
@@ -76,12 +77,9 @@ pub fn read_melee_resolved(
     mut resolved: MessageReader<MeleeResolved>,
 ) {
     for msg in resolved.read() {
-        // MeleeResolved.at is a CellLevel; reconstruct its typed Cell / Level (the z is a
-        // storey index, clamped panic-free if impossibly out of range — the read_cover_destroyed
-        // idiom).
-        let cell = Cell::new(msg.at.x, msg.at.y);
-        let storey = u8::try_from(msg.at.z).unwrap_or(0);
-        let level = Level::new(storey);
+        // MeleeResolved.at is a CellLevel; its typed Cell / Level via the canonical
+        // CellLevel::split decompose (GTW-565).
+        let (cell, level) = msg.at.split();
         let Some(sprite) = fx_sprite(roles.melee_strike, strike_tint(msg.damage), &atlases) else {
             // Fail-closed: no effects sheet -> no glyph, no panic.
             continue;

@@ -16,7 +16,7 @@ use bevy::prelude::{Added, Query, Res};
 use crate::{
     cover::{CoverLedger, HeightBand},
     ganger::{Direction, Position, Stance, StanceKind, Suppressed},
-    metric::{Cell, CellLevel, Level},
+    metric::{Cell, CellLevel},
 };
 
 /// Map a cover [`HeightBand`] to the [`StanceKind`] a suppressed unit drops to behind it
@@ -40,25 +40,6 @@ pub const fn stance_for_cover_band(band: HeightBand) -> StanceKind {
     }
 }
 
-/// The ground cell `(x, y)` of a [`Position`] (the z storey dropped).
-fn pos_cell(position: &Position) -> Cell {
-    let key = ***position;
-    Cell::new(key.x, key.y)
-}
-
-/// The storey [`Level`] of a [`Position`].
-fn pos_level(position: &Position) -> Level {
-    let key = ***position;
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "z is a storey index in 0..MAX_LEVELS (8) by construction, so the i32 -> \
-                  u8 narrowing cannot truncate or sign-flip (the trigger.rs row_level precedent)"
-    )]
-    let storey = key.z as u8;
-    Level::new(storey)
-}
-
 /// The `(cell, level)` one Moore-8 step from `unit` TOWARD `suppressor` (same storey), or
 /// `None` when the unit and the suppressor share the same ground cell (no direction —
 /// `Direction::from_cells` returns `None`).
@@ -67,12 +48,12 @@ fn pos_level(position: &Position) -> Level {
 /// threat. The step stays on the unit's own storey (the cover it ducks behind is at its
 /// level, not the suppressor's).
 fn cover_cell_toward(unit: &Position, suppressor: &CellLevel) -> Option<CellLevel> {
-    let unit_cell = pos_cell(unit);
-    let suppressor_cell = Cell::new(suppressor.x, suppressor.y);
-    let dir = Direction::from_cells(unit_cell, suppressor_cell)?;
+    // The canonical CellLevel accessors (GTW-565; Position derefs to CellLevel).
+    let unit_cell = unit.cell();
+    let dir = Direction::from_cells(unit_cell, suppressor.cell())?;
     let step = dir.cell_step();
     let toward = Cell::new(unit_cell.x + step.x, unit_cell.y + step.y);
-    Some(CellLevel::new(toward, pos_level(unit)))
+    Some(CellLevel::new(toward, unit.level()))
 }
 
 /// The **auto-stance drop** — on a FRESH [`Suppressed`], duck the ganger behind its

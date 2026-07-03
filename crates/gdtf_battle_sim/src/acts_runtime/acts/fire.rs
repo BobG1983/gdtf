@@ -474,7 +474,8 @@ pub fn dispatch_fire(
         else {
             continue;
         };
-        let actor_cell = actor_cell(position);
+        // The canonical CellLevel::cell accessor through Position's deref (GTW-565).
+        let actor_cell = position.cell();
         let facing: Direction = **facing;
         let tu: Tu = *tu;
         let tu_max: TuMax = *tu_max;
@@ -746,13 +747,4 @@ fn emit_on_death(report: &crate::resolve_and_apply::HitReport, signals: &mut Fir
     signals
         .deaths
         .write(crate::on_death::OnDeathOccurred::new(target, **position));
-}
-
-/// The ground-plane [`Cell`] of a shooter's [`Position`] — its `(x, y)` (the `z` storey is
-/// irrelevant to a ground facing). [`Position`] derefs to [`CellLevel`](crate::metric::CellLevel),
-/// which derefs to the inner `IVec3`; the cell is its `x`/`y` (the [`crate::faced_cell`]
-/// split precedent).
-fn actor_cell(position: &Position) -> Cell {
-    let key = ***position;
-    Cell::new(key.x, key.y)
 }

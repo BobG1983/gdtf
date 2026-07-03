@@ -22,8 +22,8 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    Aiming, Cell, CellLevel, FireActor, Handedness, HandsAvailable, InflictedInjuries, Level,
-    LifeState, Magazine, MeleeWeapon, Tu, TuMax, WieldedBy, Wields, acts::FireRequested, can_fire,
+    Aiming, CellLevel, FireActor, Handedness, HandsAvailable, InflictedInjuries, LifeState,
+    Magazine, MeleeWeapon, Tu, TuMax, WieldedBy, Wields, acts::FireRequested, can_fire,
     tuning::CombatTuning,
 };
 
@@ -135,7 +135,12 @@ pub(crate) fn try_fire_request(
         handedness: *handedness,
         hands_available,
     };
-    let (target_cell, target_level) = cell_and_level(target);
+    // The canonical CellLevel::split decompose (GTW-565) for the FireRequested
+    // payload. The storey narrow rides the accessor's single clamp — an (impossible)
+    // out-of-range `z` clamps into `0..=u8::MAX` instead of panicking; every real
+    // key's storey is `0..MAX_LEVELS`, where the shared `can_fire` `in_bounds` check
+    // remains the authoritative range gate.
+    let (target_cell, target_level) = target.split();
 
     // The SHARED guard set — the same `can_fire` the 222c button and the sim `fire()`
     // consult (resolution.md §9). LOS/fog is presenter policy, not a `can_fire` input.
@@ -153,20 +158,4 @@ pub(crate) fn try_fire_request(
         target_cell,
         target_level,
     ))
-}
-
-/// Splits a [`CellLevel`] into its ground-plane [`Cell`] and storey [`Level`] for the
-/// [`FireRequested`] payload.
-///
-/// A [`CellLevel`] `Deref`s to an `IVec3` whose `x`/`y` are the cell and `z` is the
-/// storey index; this reconstructs the typed [`Cell`] / [`Level`] (the same
-/// decomposition the hover highlight's `level_index` uses). The storey `z` is always
-/// `0..`[`MAX_LEVELS`](gdtf_battle_sim::MAX_LEVELS) (well within `u8`); the clamped
-/// [`u8::try_from`] is the no-`unwrap` narrow — an (impossible) out-of-range `z`
-/// saturates to [`u8::MAX`], which the shared `can_fire` `in_bounds` check then
-/// rejects.
-fn cell_and_level(target: CellLevel) -> (Cell, Level) {
-    let cell = Cell::new(target.x, target.y);
-    let level = Level::new(u8::try_from(target.z).unwrap_or(u8::MAX));
-    (cell, level)
 }

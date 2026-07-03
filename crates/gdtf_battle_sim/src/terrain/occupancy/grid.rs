@@ -502,23 +502,13 @@ impl OccupancyGrid {
     /// Private: only [`register_stair_presence`](OccupancyGrid::register_stair_presence)
     /// calls this. The arithmetic is `level + 1` checked against `MAX_LEVELS`.
     fn upper_cell(lower: &CellLevel) -> Option<CellLevel> {
-        // `lower.z` is a storey index stored as `i32` in `CellLevel`'s `IVec3`; cast to
-        // `u8` for the checked add (the storey index is always in `0..MAX_LEVELS`).
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "lower.z is a storey index in 0..MAX_LEVELS (8) by construction, \
-                      so the i32 -> u8 narrowing cannot truncate or sign-flip"
-        )]
-        let z = lower.z as u8;
-        let next = z.checked_add(1)?;
+        // The storey via the canonical `CellLevel::level` accessor (GTW-565), then a
+        // checked u8 add against the ceiling.
+        let next = (*lower.level()).checked_add(1)?;
         if next >= MAX_LEVELS {
             return None;
         }
-        Some(CellLevel::new(
-            Cell::new(lower.x, lower.y),
-            Level::new(next),
-        ))
+        Some(CellLevel::new(lower.cell(), Level::new(next)))
     }
 
     /// Mark the cover at `cell_level` **destroyed**, inserting it into the
@@ -720,16 +710,8 @@ impl OccupancyGrid {
     #[must_use]
     pub fn authored_level_range(&self) -> Option<(Level, Level)> {
         self.authored_or_occupied_cells().fold(None, |range, key| {
-            // `CellLevel` derefs `IVec3`; its `z` is the storey index, 0..MAX_LEVELS by
-            // construction (the slot buffer never holds an out-of-range level).
-            #[expect(
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss,
-                reason = "key.z is a storey index in 0..MAX_LEVELS (8) by the slot buffer's \
-                          own construction, so the i32 -> u8 narrowing cannot truncate or \
-                          sign-flip"
-            )]
-            let level = Level::new(key.z as u8);
+            // The storey via the canonical `CellLevel::level` accessor (GTW-565).
+            let level = key.level();
             Some(match range {
                 None => (level, level),
                 Some((lo, hi)) => (lo.min(level), hi.max(level)),

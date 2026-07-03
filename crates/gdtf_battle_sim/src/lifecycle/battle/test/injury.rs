@@ -203,7 +203,7 @@ fn run_battle(seed: u64) -> BattleRun {
     let target_cell = app
         .world()
         .get::<Position>(target)
-        .map_or(Cell::new(10, 5), |p| Cell::new(p.x, p.y));
+        .map_or(Cell::new(10, 5), |p| p.cell());
     let shooting_before = app.world().get::<Shooting>(target).map_or(0.0, |s| **s);
 
     let mode = FireModeSpec::new(

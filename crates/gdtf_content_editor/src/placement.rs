@@ -236,16 +236,13 @@ fn is_slab(
 /// slab-above to consider (and a placement there is never illegal for that reason).
 #[must_use]
 fn level_above(slot: CellLevel) -> Option<CellLevel> {
-    // `slot.z` is a storey index (0-based); the cell x/y are the same. Rebuild the slot one storey
-    // up via the typed constructor (never the raw IVec3).
-    let next = u8::try_from(slot.z).ok()?.checked_add(1)?;
+    // The storey via the canonical `CellLevel::level` accessor (GTW-565); rebuild the
+    // slot one storey up via the typed constructor (never the raw IVec3).
+    let next = (*slot.level()).checked_add(1)?;
     if next >= gdtf_battle_sim::metric::MAX_LEVELS {
         return None;
     }
-    Some(CellLevel::new(
-        gdtf_battle_sim::Cell::new(slot.x, slot.y),
-        Level::new(next),
-    ))
+    Some(CellLevel::new(slot.cell(), Level::new(next)))
 }
 
 /// The SINGLE SHARED placement-legality predicate (GTW-430 C3) — the one function the hover-ghost
@@ -304,11 +301,10 @@ pub fn evaluate_placement(
 /// The C2 slab rule checks the cell directly below for an existing ladder.
 #[must_use]
 fn level_below(slot: CellLevel) -> Option<CellLevel> {
-    let below = u8::try_from(slot.z).ok()?.checked_sub(1)?;
-    Some(CellLevel::new(
-        gdtf_battle_sim::Cell::new(slot.x, slot.y),
-        Level::new(below),
-    ))
+    // The storey via the canonical `CellLevel::level` accessor (GTW-565); a ground
+    // (L0) slot has nothing below (checked_sub is None).
+    let below = (*slot.level()).checked_sub(1)?;
+    Some(CellLevel::new(slot.cell(), Level::new(below)))
 }
 
 /// Whether `slot` falls inside the drawable volume — the legality predicate's bounds check, kept in

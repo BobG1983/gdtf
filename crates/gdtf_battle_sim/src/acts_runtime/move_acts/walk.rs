@@ -13,7 +13,7 @@ use bevy::{
 use crate::{
     acts::MovementOccurred,
     ganger::{Faction, LifeState, Position, Tu},
-    metric::{Cell, CellLevel},
+    metric::CellLevel,
     occupancy::OccupancyGrid,
     tu::spend_tu,
     visibility::{FactionRelation, SquadVisibility, is_ganger_visible},
@@ -198,12 +198,6 @@ fn visible_enemy_cells(
         .collect()
 }
 
-/// The ground-plane [`Cell`] of a [`CellLevel`] — its `(x, y)` (the `z` storey dropped),
-/// for the [`MovementOccurred`] log (the `dispatch_move` `position_cell` precedent).
-fn ground_cell(cell: CellLevel) -> Cell {
-    Cell::new(cell.x, cell.y)
-}
-
 /// **Advance** every [`WalkInProgress`] by ONE step this tick — the committed-walk engine
 /// (E7 · GTW-12g / GTW-355).
 ///
@@ -342,10 +336,12 @@ pub fn advance_walk(
         // atomically, announce the move from the pre-step ground cell to the entered one,
         // consume the step. The `from` is the live pre-write Position (each step logs its
         // own real pre/post cells, the GTW-328 MovementOccurred contract).
-        let from = ground_cell(**position);
+        // The canonical CellLevel::cell accessor (GTW-565) for the movement log's
+        // ground cells.
+        let from = position.cell();
         *position = Position::new(next);
         spend_tu(&mut tu, cost);
-        moves.write(MovementOccurred::new(mover, from, ground_cell(next)));
+        moves.write(MovementOccurred::new(mover, from, next.cell()));
         walk.pop_next();
 
         // Route exhausted → the destination is reached; remove the walk.

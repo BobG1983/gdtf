@@ -26,7 +26,7 @@
 use crate::{
     falls::{DropLanding, resolve_drop},
     ganger::{Direction, Position},
-    metric::{Cell, CellLevel, Level},
+    metric::{Cell, CellLevel},
     occupancy::OccupancyGrid,
     surface::SurfaceGrid,
 };
@@ -66,27 +66,6 @@ pub enum ShoveOutcome {
         /// the SHARED [`resolve_drop`](crate::falls::resolve_drop) (never a reimplemented scan).
         landing: DropLanding,
     },
-}
-
-/// The ground-plane [`Cell`] of a [`Position`] — its `(x, y)` (the `apply_falls` /
-/// `dispatch_melee` `ganger_cell` precedent).
-fn position_cell(position: Position) -> Cell {
-    let key = **position;
-    Cell::new(key.x, key.y)
-}
-
-/// The storey [`Level`] of a [`Position`] — its `z` storey index (the `apply_falls`
-/// `faller_level` precedent).
-fn position_level(position: Position) -> Level {
-    let key = **position;
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "z is a storey index in 0..MAX_LEVELS (8) by construction, so the i32 -> u8 \
-                  narrowing cannot truncate or sign-flip (the apply_falls faller_level precedent)"
-    )]
-    let storey = key.z as u8;
-    Level::new(storey)
 }
 
 /// The cell one step in `direction` from `cell` — the destination a shove pushes the target
@@ -147,9 +126,10 @@ pub fn resolve_shove(
     surface: &SurfaceGrid,
     occupancy: &OccupancyGrid,
 ) -> ShoveOutcome {
-    let attacker_cell = position_cell(attacker);
-    let target_cell = position_cell(target);
-    let level = position_level(target);
+    // The canonical CellLevel accessors through Position's deref (GTW-565).
+    let attacker_cell = attacker.cell();
+    let target_cell = target.cell();
+    let level = target.level();
 
     // (1) The push direction — attacker -> target (away from the attacker). A co-located pair
     // has no direction (defensive: a real target is 8-adjacent) => no shove.

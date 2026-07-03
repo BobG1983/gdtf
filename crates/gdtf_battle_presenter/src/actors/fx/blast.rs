@@ -42,7 +42,7 @@ use bevy::{
     prelude::*,
     scene::{CommandsSceneExt, bsn},
 };
-use gdtf_battle_sim::{Cell, Level, acts::ThrowResolved};
+use gdtf_battle_sim::acts::ThrowResolved;
 
 use super::projectile::PendingImpact;
 use crate::cell_to_world;
@@ -51,7 +51,8 @@ use crate::cell_to_world;
 /// [`ThrowResolved`](gdtf_battle_sim::acts::ThrowResolved) (GTW-546).
 ///
 /// Drains [`MessageReader<ThrowResolved>`](gdtf_battle_sim::acts::ThrowResolved); for each
-/// `ThrowResolved { at, damage }` it reconstructs the typed [`Cell`] / [`Level`] from the landing
+/// `ThrowResolved { at, damage }` it reconstructs the typed [`Cell`](gdtf_battle_sim::Cell) /
+/// [`Level`](gdtf_battle_sim::Level) from the landing
 /// [`CellLevel`](gdtf_battle_sim::CellLevel) (the `read_melee_resolved` idiom — `at` Derefs to
 /// `IVec3`; the storey clamps panic-free if impossibly out of range) and SEEDS a
 /// [`PendingImpact`](super::projectile::PendingImpact) at
@@ -84,11 +85,9 @@ use crate::cell_to_world;
 /// [`MessageReader<ThrowResolved>`](gdtf_battle_sim::acts::ThrowResolved).
 pub fn read_throw_resolved(mut commands: Commands, mut resolved: MessageReader<ThrowResolved>) {
     for msg in resolved.read() {
-        // ThrowResolved.at is a CellLevel; reconstruct its typed Cell / Level (the z is a storey
-        // index, clamped panic-free if impossibly out of range — the read_melee_resolved idiom).
-        let cell = Cell::new(msg.at.x, msg.at.y);
-        let storey = u8::try_from(msg.at.z).unwrap_or(0);
-        let level = Level::new(storey);
+        // ThrowResolved.at is a CellLevel; its typed Cell / Level via the canonical
+        // CellLevel::split decompose (GTW-565).
+        let (cell, level) = msg.at.split();
         let at = cell_to_world(cell, level);
         // Seed the SHARED impact seam at the landing so `animate_impact` plays the grenade's
         // damage-type 3-frame expanding-shockwave strip there — the existing AoE hit FX, reused.

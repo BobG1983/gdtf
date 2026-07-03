@@ -39,7 +39,6 @@ use crate::{
     inflicted_wound::InflictedWounds,
     injuries::InflictedInjuries,
     melee::MeleeWeaponHit,
-    metric::{Cell, Level},
     occupancy::OccupancyGrid,
     occupancy_sync::CoverDestroyed,
     rng::{FightRng, SeverityRng, ShotRng},
@@ -171,27 +170,6 @@ pub struct MeleeRngs<'w> {
     shot:     Option<ResMut<'w, ShotRng>>,
     /// The §6 severity-roll stream — one draw per CONNECTING resolve (zero on a miss).
     severity: Option<ResMut<'w, SeverityRng>>,
-}
-
-/// The ground-plane [`Cell`] of a [`Position`] — its `(x, y)` (the `actor_cell` / `row_cell`
-/// split precedent in `fire.rs` / `trigger.rs`).
-fn ganger_cell(position: &Position) -> Cell {
-    let key = ***position;
-    Cell::new(key.x, key.y)
-}
-
-/// The storey [`Level`] of a [`Position`] — its `z` storey index (the `trigger.rs` `row_level`
-/// precedent).
-fn ganger_level(position: &Position) -> Level {
-    let key = ***position;
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "z is a storey index in 0..MAX_LEVELS (8) by construction, so the i32 -> u8 \
-                  narrowing cannot truncate or sign-flip (the trigger.rs row_level precedent)"
-    )]
-    let storey = key.z as u8;
-    Level::new(storey)
 }
 
 /// **Dispatch** buffered [`MeleeRequested`] messages — the LIVE melee act (GTW-507).

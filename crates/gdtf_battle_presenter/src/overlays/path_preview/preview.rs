@@ -54,7 +54,7 @@
 //! `set_if_neq` visibility flips.
 
 use bevy::{camera::visibility::RenderLayers, prelude::*, text::TextColor};
-use gdtf_battle_sim::{Cell, CellLevel, Level, SquadVisibility, Tu};
+use gdtf_battle_sim::{CellLevel, Level, SquadVisibility, Tu};
 
 use crate::{
     ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered,
@@ -275,9 +275,8 @@ pub fn draw_path_preview(
     let draws = preview_draws(&preview, active_level, &squad);
 
     // The world position of a route-step sprite (shared by the reuse + grow paths).
-    let world_at = |cell: CellLevel| {
-        cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::PathPreview)
-    };
+    let world_at =
+        |cell: CellLevel| cell_to_world_layered(cell.cell(), active_level, Layer::PathPreview);
     // The shared pooled-draw walk (GTW-568): reuse the pooled step sprites in iteration
     // order (move + re-tint), lazily spawn past the pool, hide the surplus — the helper
     // owns the set_if_neq visibility flips (mutate, not respawn).
@@ -323,8 +322,7 @@ fn draw_target_label(
 
     // Above the target cell (the FCT / reticle-label "above the cell" treatment).
     let world_at = |cell: CellLevel| {
-        let mut world =
-            cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::PathPreview);
+        let mut world = cell_to_world_layered(cell.cell(), active_level, Layer::PathPreview);
         world.y += LABEL_LIFT_PX;
         world
     };

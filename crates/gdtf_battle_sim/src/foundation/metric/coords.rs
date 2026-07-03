@@ -130,6 +130,52 @@ impl CellLevel {
     pub fn new(cell: Cell, level: Level) -> Self {
         Self(IVec3::new(cell.x, cell.y, i32::from(*level)))
     }
+
+    /// The ground-plane [`Cell`] of this key — its `x`/`y`, the storey `z`
+    /// dropped.
+    ///
+    /// The inverse of [`CellLevel::new`]'s cell half: recovering the typed
+    /// [`Cell`] lives HERE, with the family type, so call sites never hand-roll
+    /// `Cell::new(key.x, key.y)` (GTW-565 — the decompose belongs beside the
+    /// compose).
+    #[must_use]
+    pub const fn cell(&self) -> Cell {
+        Cell::new(self.0.x, self.0.y)
+    }
+
+    /// The storey [`Level`] of this key — its `z` narrowed back to the
+    /// [`Level`]'s `u8`.
+    ///
+    /// This is the ONE place in the workspace a key's storey-index `z` (`i32`
+    /// in the inner `IVec3`) narrows to `u8` (GTW-565). Every constructed key's
+    /// `z` came from a [`Level`] via [`CellLevel::new`], so it is already in
+    /// `0..=u8::MAX` and the clamp is a no-op on every reachable key; an
+    /// out-of-range `z` (impossible by construction) clamps into range rather
+    /// than panicking (the no-panic contract). The continuous-height narrow in
+    /// [`pos_to_cell`] converts a DIFFERENT value (a floored `f32` height) and
+    /// deliberately stays separate.
+    #[must_use]
+    pub fn level(&self) -> Level {
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "z is a storey index constructed from a Level's u8; clamped to \
+                      0..=u8::MAX here so the cast cannot wrap or sign-flip"
+        )]
+        let storey = self.0.z.clamp(0, i32::from(u8::MAX)) as u8;
+        Level::new(storey)
+    }
+
+    /// Decompose this key into its `(`[`Cell`]`, `[`Level`]`)` pair — the
+    /// exact inverse of [`CellLevel::new`] for every constructed key.
+    ///
+    /// The one-call decompose for the many call sites that need both halves
+    /// (GTW-565 replaced six hand-rolled per-crate copies with this); the
+    /// storey narrow rides [`CellLevel::level`], the single canonical clamp.
+    #[must_use]
+    pub fn split(&self) -> (Cell, Level) {
+        (self.cell(), self.level())
+    }
 }
 
 /// The authored RON shape a [`CellLevel`] deserializes from — a typed [`Cell`]
@@ -158,22 +204,12 @@ impl From<CellLevelDef> for CellLevel {
 
 impl From<CellLevel> for CellLevelDef {
     fn from(key: CellLevel) -> Self {
-        // The inner `IVec3` carries `(cell.x, cell.y, storey)`; recover the typed
-        // `(Cell, Level)` pair the authoring shape names. The `z` is a 0-based storey
-        // index (`0..MAX_LEVELS`), so the `u8` conversion is in range for every
-        // constructed key; an out-of-`u8` value (impossible for a real key) clamps
-        // rather than panicking (the no-panic contract).
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "z is a 0-based storey index in 0..MAX_LEVELS; clamped to u8 below so the \
-                      cast cannot wrap or sign-flip"
-        )]
-        let storey = key.z.clamp(0, i32::from(u8::MAX)) as u8;
-        Self {
-            cell:  Cell::new(key.x, key.y),
-            level: Level::new(storey),
-        }
+        // Recover the typed `(Cell, Level)` pair through the key's own accessors
+        // (GTW-565): the serde write rides the SAME decompose (and the same
+        // canonical clamp, inside `CellLevel::level`) every caller uses, so the
+        // GTW-432 editor-saver round-trip and the call sites can never drift.
+        let (cell, level) = key.split();
+        Self { cell, level }
     }
 }
 

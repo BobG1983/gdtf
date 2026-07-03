@@ -103,6 +103,53 @@ fn pos_to_cell_levels_floor_within_a_storey() {
     assert_eq!(high_in_storey, Level::new(2));
 }
 
+/// GTW-565 — `split()` is the exact inverse of `new()` on the real type, across
+/// representative AND boundary storeys (0 and `MAX_LEVELS - 1`), with the
+/// per-half accessors agreeing with the pair.
+#[test]
+fn cell_level_split_inverts_new_across_storeys() {
+    for storey in [0, 3, MAX_LEVELS - 1] {
+        let cell = Cell::new(11, -4);
+        let level = Level::new(storey);
+        let key = CellLevel::new(cell, level);
+        assert_eq!(
+            key.split(),
+            (cell, level),
+            "split() must invert new() at storey {storey}",
+        );
+        assert_eq!(key.cell(), cell, "cell() must recover the composed cell");
+        assert_eq!(
+            key.level(),
+            level,
+            "level() must recover the composed storey",
+        );
+    }
+}
+
+/// GTW-565 — the canonical storey clamp (inside `CellLevel::level`) is pinned
+/// through the PUBLIC serde path: serialize → `CellLevelDef` → deserialize is the
+/// identity for every constructed key, including the boundary storeys. The clamp
+/// arm itself is unreachable through public constructors (a key's `z` always
+/// comes from a `Level`'s `u8`), so identity-on-reachable-keys IS the pinnable
+/// behavior — no raw constructor is invented to reach the unreachable arm.
+#[test]
+fn cell_level_serde_round_trip_rides_the_accessors() {
+    for storey in [0, MAX_LEVELS - 1] {
+        let key = CellLevel::new(Cell::new(59, 42), Level::new(storey));
+        let written = ron::to_string(&key);
+        assert!(written.is_ok(), "CellLevel must serialize: {written:?}");
+        let Ok(text) = written else {
+            return;
+        };
+        let back = ron::from_str::<CellLevel>(&text);
+        assert_eq!(
+            back.ok(),
+            Some(key),
+            "serialize -> deserialize must be the identity at storey {storey}",
+        );
+    }
+}
+
 /// GTW-205 AC2 — a `CellLevel` authored in RON as a `(cell, level)` pair
 /// deserializes to a value bit-equal to the result of
 /// `CellLevel::new(Cell::new(x, y), Level::new(l))` for the same authored

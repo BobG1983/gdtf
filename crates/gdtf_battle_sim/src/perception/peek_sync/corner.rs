@@ -20,7 +20,7 @@ use bevy::math::Vec2;
 
 use crate::{
     los::PeekOffset,
-    metric::{Cell, CellLevel, Level},
+    metric::{Cell, CellLevel},
     occupancy::OccupancyGrid,
 };
 
@@ -94,12 +94,6 @@ pub(super) fn corner_lean(cell: CellLevel, grid: &OccupancyGrid) -> PeekOffset {
 /// planar wall relationship; slabs live in the `SurfaceGrid` and never affect the
 /// planar [`OccupancyGrid::is_blocked`]).
 fn offset_in_plane(at: CellLevel, dx: i32, dy: i32) -> CellLevel {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "a CellLevel's z is a storey index in 0..MAX_LEVELS (8), so this u8 cast \
-                  cannot truncate or wrap"
-    )]
-    let level = Level::new(at.z as u8);
-    CellLevel::new(Cell::new(at.x + dx, at.y + dy), level)
+    // The storey via the canonical CellLevel::level accessor (GTW-565).
+    CellLevel::new(Cell::new(at.x + dx, at.y + dy), at.level())
 }

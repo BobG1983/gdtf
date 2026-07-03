@@ -15,7 +15,7 @@ use bevy::prelude::Deref;
 
 use crate::{
     ganger::{Position, StanceKind},
-    metric::{Cell, CellLevel, Level, MAX_LEVELS},
+    metric::{CellLevel, Level, MAX_LEVELS},
     slab::BraceStairCells,
     surface::{SlabState, SurfaceGrid},
 };
@@ -71,18 +71,14 @@ pub fn terrain_braces(
 /// at storey 8 would be out of range, so a top-storey stair cell has no overhead slab.
 #[must_use]
 pub(crate) fn cell_above(cell: CellLevel) -> Option<CellLevel> {
-    let above_z = cell.z.checked_add(1)?;
-    if above_z >= i32::from(MAX_LEVELS) {
+    // The storey via the canonical CellLevel::level accessor (GTW-565), then a
+    // checked u8 add against the storey ceiling — same x/y (the slab sits directly
+    // above), storey + 1.
+    let storey = (*cell.level()).checked_add(1)?;
+    if storey >= MAX_LEVELS {
         return None;
     }
-    // above_z >= 0 (checked_add returned Some and we guarded < MAX_LEVELS) and
-    // above_z < MAX_LEVELS (8), well within u8. Try-from is lossless; Err is unreachable
-    // but fail-safe (returns None rather than panicking).
-    let storey = u8::try_from(above_z).ok()?;
-    let level = Level::new(storey);
-    // Re-use x/y from the CellLevel's IVec3 (the cell.x, cell.y are the ground-plane
-    // coordinates; the slab sits directly above — same x/y, storey + 1).
-    Some(CellLevel::new(Cell::new(cell.x, cell.y), level))
+    Some(CellLevel::new(cell.cell(), Level::new(storey)))
 }
 
 /// Whether a shooter's **terrain-brace** engages — `true` iff a kneeling occupant on

@@ -38,7 +38,7 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Cell, Level, OnDeathOccurred};
+use gdtf_battle_sim::OnDeathOccurred;
 
 use super::{
     super::FxTuning,
@@ -96,7 +96,8 @@ pub(in crate::actors::fx) fn on_death_pop() -> OnDeathPop {
 ///    lethal [`FctValence::Lethal`](super::palette::FctValence::Lethal) blood-red.
 /// 2. Reads the death `(cell, level)` straight off the message's
 ///    [`at`](gdtf_battle_sim::OnDeathOccurred::at)
-///    [`CellLevel`](gdtf_battle_sim::CellLevel), reconstructing the typed [`Cell`] / [`Level`] from
+///    [`CellLevel`](gdtf_battle_sim::CellLevel), reconstructing the typed
+///    [`Cell`](gdtf_battle_sim::Cell) / [`Level`](gdtf_battle_sim::Level) from
 ///    its `IVec3` (the DOT / field reader idiom — the message already carries the cell, so no
 ///    `Position` lookup is needed; a cover death carries [`Entity::PLACEHOLDER`] and still has a
 ///    valid cell).
@@ -130,12 +131,9 @@ pub fn read_on_death_fct(
         let pop = on_death_pop();
 
         // The death cell is carried directly on the message (the sim resolved it at the terminal
-        // gate), so reconstruct the typed Cell / Level from its IVec3 — no Position lookup, and no
+        // gate) — the canonical CellLevel::split decompose (GTW-565); no Position lookup, and no
         // fail-closed branch (the message always carries a valid key, cover deaths included).
-        let at = message.at;
-        let cell = Cell::new(at.x, at.y);
-        let storey = u8::try_from(at.z).unwrap_or(0);
-        let level = Level::new(storey);
+        let (cell, level) = message.at.split();
 
         let slot = stacks.entry((cell.x, cell.y, *level)).or_insert(0);
         spawn_floating_text(

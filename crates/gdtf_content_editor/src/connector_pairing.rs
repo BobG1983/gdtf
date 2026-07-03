@@ -55,7 +55,6 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::{
-    Cell,
     level::{GridSize, ThemeUuid},
     metric::{CellLevel, Level, MAX_LEVELS},
     terrain::def::{TerrainDefRegistry, TerrainUuid},
@@ -214,11 +213,13 @@ pub fn apply_placement_with_pairing(
 /// past the authored volume.
 #[must_use]
 fn level_above(slot: CellLevel, size: GridSize) -> Option<CellLevel> {
-    let next = u8::try_from(slot.z).ok()?.checked_add(1)?;
+    // The storey via the canonical `CellLevel::level` accessor (GTW-565), then a
+    // checked u8 add against BOTH ceilings.
+    let next = (*slot.level()).checked_add(1)?;
     if next >= MAX_LEVELS || next >= *size.levels() {
         return None;
     }
-    Some(CellLevel::new(Cell::new(slot.x, slot.y), Level::new(next)))
+    Some(CellLevel::new(slot.cell(), Level::new(next)))
 }
 
 /// The graphic name (as `&str`) of the def keyed `tile` in the `registry`, or [`None`] if the tile

@@ -37,7 +37,7 @@ use crate::{
         geom::{key_of, key_of_clamped, xy_in_grid, z_in_grid},
         result::{MarchKind, MarchResult},
     },
-    metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell},
+    metric::{CellLevel, MAX_LEVELS, SimPos, cell_center, pos_to_cell},
     surface::{SlabState, SurfaceGrid},
     tuning::CombatTuning,
 };
@@ -64,16 +64,6 @@ const BASE_APEX: f32 = 0.5;
 /// cross-map lob apexes ~half a storey higher, still not punching a same-level roof at short
 /// range).
 const APEX_PER_CELL: f32 = 0.02;
-
-/// The `(Cell, Level)` a [`CellLevel`] key names — the typed coordinate pair recovered from
-/// the key's `x`/`y`/`z` (the [`aoe`](crate::aoe) extraction idiom). A negative / oversized
-/// `z` (impossible for a real key) buckets to level 0, never a panic.
-fn cell_level_parts(key: CellLevel) -> (Cell, Level) {
-    (
-        Cell::new(key.x, key.y),
-        Level::new(u8::try_from(key.z).unwrap_or(0)),
-    )
-}
 
 /// The parabolic z of the lob at horizontal fraction `u` in `0..=1` — a straight-line
 /// interpolation from `z0` (muzzle) to `z1` (target) PLUS a symmetric parabolic bump peaking
@@ -116,8 +106,8 @@ pub fn march_arc(
     surface: &SurfaceGrid,
     tuning: &CombatTuning,
 ) -> MarchResult {
-    let (thrower_cell, thrower_level) = cell_level_parts(thrower);
-    let (target_cell, target_level) = cell_level_parts(target);
+    let (thrower_cell, thrower_level) = thrower.split();
+    let (target_cell, target_level) = target.split();
     let muzzle = cell_center(thrower_cell, thrower_level);
     let landing = cell_center(target_cell, target_level);
 

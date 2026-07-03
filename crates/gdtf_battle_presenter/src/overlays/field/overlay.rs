@@ -30,7 +30,7 @@
 //! visibility flips.
 
 use bevy::{camera::visibility::RenderLayers, prelude::*};
-use gdtf_battle_sim::{Cell, CellLevel, DamageType, FieldRegistry, Level};
+use gdtf_battle_sim::{CellLevel, DamageType, FieldRegistry, Level};
 
 use crate::{
     ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered,
@@ -162,9 +162,7 @@ pub fn draw_field_overlay(
     let draws = field_draws(&fields, active_level);
 
     // The world position of a field-cell sprite (shared by the reuse + grow paths).
-    let world_at = |cell: CellLevel| {
-        cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::Field)
-    };
+    let world_at = |cell: CellLevel| cell_to_world_layered(cell.cell(), active_level, Layer::Field);
     // The shared pooled-draw walk (GTW-568): reuse the pooled sprites in iteration order
     // (move + tint), lazily spawn past the pool, hide the surplus — the helper owns the
     // set_if_neq visibility flips (mutate, not respawn).

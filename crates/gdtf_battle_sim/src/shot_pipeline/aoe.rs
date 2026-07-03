@@ -106,9 +106,10 @@ fn ground_centre(cell: Cell, level: Level) -> Vec2 {
 ///   degenerate shooter==impact direction yields just `[impact]` (no line to draw).
 #[must_use]
 pub fn aoe_affected(impact: CellLevel, hit: HitType, shooter: CellLevel) -> Vec<CellLevel> {
-    let level = Level::new(u8::try_from(impact.z).unwrap_or(0));
-    let impact_cell = Cell::new(impact.x, impact.y);
-    let shooter_cell = Cell::new(shooter.x, shooter.y);
+    // The canonical CellLevel accessors (GTW-565): the impact's (cell, level) and
+    // the shooter's ground cell.
+    let (impact_cell, level) = impact.split();
+    let shooter_cell = shooter.cell();
 
     let cells: Vec<Cell> = match hit {
         HitType::Single => vec![impact_cell],

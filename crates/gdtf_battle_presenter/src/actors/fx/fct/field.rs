@@ -28,7 +28,7 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Cell, FieldDamage, FieldTicked, Level};
+use gdtf_battle_sim::{FieldDamage, FieldTicked};
 
 use super::{
     super::FxTuning,
@@ -76,10 +76,9 @@ pub(in crate::actors::fx) fn field_tick_pop(amount: FieldDamage) -> FieldTickPop
 /// 1. Classifies the pop via [`field_tick_pop`] — the drained HP as a `"-N"` number drawn in the
 ///    hazard [`FctValence::Field`](super::palette::FctValence::Field) orange.
 /// 2. Reads the drained `(cell, level)` straight off the message's
-///    [`at`](gdtf_battle_sim::FieldTicked::at) [`CellLevel`](gdtf_battle_sim::CellLevel),
-///    reconstructing the typed [`Cell`] / [`Level`] from its `IVec3` (the readers.rs
-///    `cell_and_level` idiom — the message already carries the cell, so no `Position` lookup is
-///    needed).
+///    [`at`](gdtf_battle_sim::FieldTicked::at) [`CellLevel`](gdtf_battle_sim::CellLevel), via
+///    the canonical [`CellLevel::split`](gdtf_battle_sim::CellLevel::split) decompose (GTW-565
+///    — the message already carries the cell, so no `Position` lookup is needed).
 /// 3. Spawns the pop via [`spawn_floating_text`] at the next per-cell [`FctStackIndex`] (so two
 ///    field ticks on one cell this round fan out vertically), at body weight
 ///    ([`FctEmphasis::Normal`] — bold is reserved for the lethal DOWN / DEAD tag), with the
@@ -109,12 +108,9 @@ pub fn read_field_fct(
         let pop = field_tick_pop(message.amount);
 
         // The drained cell is carried directly on the message (the sim resolved the occupant's
-        // cell at tick time), so reconstruct the typed Cell / Level from its IVec3 — no Position
+        // cell at tick time) — the canonical CellLevel::split decompose (GTW-565); no Position
         // lookup, and no fail-closed branch (the message always carries a valid key).
-        let at = message.at;
-        let cell = Cell::new(at.x, at.y);
-        let storey = u8::try_from(at.z).unwrap_or(0);
-        let level = Level::new(storey);
+        let (cell, level) = message.at.split();
 
         let slot = stacks.entry((cell.x, cell.y, *level)).or_insert(0);
         spawn_floating_text(

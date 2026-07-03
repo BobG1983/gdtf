@@ -32,7 +32,7 @@
 //! the `set_if_neq` visibility flips.
 
 use bevy::{camera::visibility::RenderLayers, prelude::*};
-use gdtf_battle_sim::{Cell, CellLevel, Level, Tu};
+use gdtf_battle_sim::{CellLevel, Level, Tu};
 
 use crate::{
     ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered,
@@ -220,13 +220,8 @@ pub fn draw_reachable_overlay(
     let draws = reachable_draws(&reachable, active_level);
 
     // The world position of a reachable-cell sprite (shared by the reuse + grow paths).
-    let world_at = |cell: CellLevel| {
-        cell_to_world_layered(
-            Cell::new(cell.x, cell.y),
-            active_level,
-            Layer::ReachableRange,
-        )
-    };
+    let world_at =
+        |cell: CellLevel| cell_to_world_layered(cell.cell(), active_level, Layer::ReachableRange);
     // The shared pooled-draw walk (GTW-568): reuse the pooled sprites in iteration order
     // (move), lazily spawn past the pool, hide the surplus — the helper owns the
     // set_if_neq visibility flips (mutate, not respawn).

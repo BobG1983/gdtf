@@ -38,7 +38,7 @@ use crate::{
     injuries::{HandsAvailable, InflictedInjuries, MovementCostFactor},
     los::{Observer, PeekOffset, Target, can_see},
     magazine::{FireActor, Magazine, can_fire, mode_tu_cost},
-    metric::{Cell, CellLevel, Level},
+    metric::CellLevel,
     move_acts::WalkInProgress,
     occupancy::OccupancyGrid,
     pathfinder::{PlanningView, reachable_within},
@@ -112,26 +112,6 @@ struct GangerRow {
     /// fed to [`reachable_within`] so a Hampered enemy's advance plan respects the SAME
     /// per-step slowdown the move dispatch will charge it.
     factor:   MovementCostFactor,
-}
-
-/// The ground cell `(x, y)` of a [`Position`] — the z storey dropped (the `fire.rs`
-/// `actor_cell` split precedent).
-fn row_cell(position: &Position) -> Cell {
-    let key = ***position;
-    Cell::new(key.x, key.y)
-}
-
-/// The storey [`Level`] of a [`Position`].
-fn row_level(position: &Position) -> Level {
-    let key = ***position;
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "z is a storey index in 0..MAX_LEVELS (8) by construction, so the i32 -> \
-                  u8 narrowing cannot truncate or sign-flip"
-    )]
-    let storey = key.z as u8;
-    Level::new(storey)
 }
 
 /// The `(cell, level)` key of a [`Position`] — one [`Position`]→[`CellLevel`] deref.
@@ -343,11 +323,8 @@ pub fn enemy_ai_turn(
     let all_targets: Vec<AiTarget> = targets
         .iter()
         .map(|row| {
-            AiTarget::new(
-                row.entity,
-                row_cell(&row.position),
-                row_level(&row.position),
-            )
+            // The canonical CellLevel accessors through Position's deref (GTW-565).
+            AiTarget::new(row.entity, row.position.cell(), row.position.level())
         })
         .collect();
 
@@ -370,8 +347,8 @@ pub fn enemy_ai_turn(
             continue;
         }
 
-        let enemy_cell = row_cell(&enemy.position);
-        let enemy_level = row_level(&enemy.position);
+        let enemy_cell = enemy.position.cell();
+        let enemy_level = enemy.position.level();
         let enemy_cell_level = row_cell_level(&enemy.position);
 
         // (1) ENGAGE — resolve the enemy's weapon (Magazine + single-shot FireModeSpec +
@@ -396,8 +373,8 @@ pub fn enemy_ai_turn(
             };
             let mut engageable: Vec<AiTarget> = Vec::new();
             for target_row in &targets {
-                let target_cell = row_cell(&target_row.position);
-                let target_level = row_level(&target_row.position);
+                let target_cell = target_row.position.cell();
+                let target_level = target_row.position.level();
                 let target = Target {
                     position: &target_row.position,
                     stance:   &target_row.stance,

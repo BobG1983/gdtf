@@ -26,7 +26,7 @@ fn ground_hit_accrues_weapon_damage_on_the_correct_cell() {
     let weapon_damage = 37_i32;
     let weapon = a_weapon(weapon_damage, 10, 4, DamageType::Kinetic);
     let at = ground_cell_level();
-    let expected_cell = Cell::new(at.x, at.y);
+    let expected_cell = at.cell();
 
     let mut cover = ledger();
     let mut slab = slab_ledger();

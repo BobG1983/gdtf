@@ -127,11 +127,8 @@ fn settle_sprites(app: &mut App) -> bool {
 /// storey — the presenter's drawn-cell witness (matches the full layered world position the
 /// draw system computes via `cell_to_world_layered` at the `ReachableRange` band).
 fn sprite_visible_at(app: &mut App, cell: CellLevel) -> bool {
-    let want = cell_to_world_layered(
-        Cell::new(cell.x, cell.y),
-        Level::new(level_u8(cell)),
-        Layer::ReachableRange,
-    );
+    let (want_cell, want_level) = cell.split();
+    let want = cell_to_world_layered(want_cell, want_level, Layer::ReachableRange);
     let mut q = app
         .world_mut()
         .query::<(&Transform, &Visibility, &ReachableCellSprite)>();
@@ -151,11 +148,6 @@ fn visible_sprite_count(app: &mut App) -> usize {
     q.iter(app.world())
         .filter(|(vis, _)| **vis == Visibility::Visible)
         .count()
-}
-
-/// The storey index narrowed to the `u8` a `Level` carries (the cells under test are within `u8`).
-fn level_u8(cell: CellLevel) -> u8 {
-    u8::try_from(cell.z).unwrap_or(u8::MAX)
 }
 
 /// World-position equality within float noise (world positions are exact multiples).

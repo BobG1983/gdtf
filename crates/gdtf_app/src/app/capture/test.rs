@@ -427,13 +427,8 @@ fn ganger_level(app: &bevy::app::App, entity: bevy::ecs::entity::Entity) -> u8 {
         .get::<Position>(entity)
         .copied()
         .unwrap_or_else(Position::default);
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "z is a storey index in 0..MAX_LEVELS, so the i32 -> u8 narrowing cannot wrap"
-    )]
-    let z = pos.z as u8;
-    z
+    // The canonical CellLevel::level accessor through Position's deref (GTW-565).
+    *pos.level()
 }
 
 /// Every `FallOccurred` observed across the GTW-529 end-to-end run (a `MessageReader` sees

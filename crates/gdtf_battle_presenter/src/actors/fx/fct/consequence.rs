@@ -36,7 +36,7 @@
 //! cell, then SPAWNS presenter pops; it never polls raw sim state and never writes the sim.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{ArmorBroken, Bleeding, Cell, Level, Position};
+use gdtf_battle_sim::{ArmorBroken, Bleeding, Position};
 
 use super::{
     super::FxTuning,
@@ -53,9 +53,9 @@ use super::{
 /// blood/spark flash readers drain (a buffered Bevy message survives the frame, so the flash
 /// reader and this pop reader see every message independently). For each message it:
 ///
-/// 1. Looks up the ganger's cell via `Query<&Position>.get(msg.ganger)`, reconstructing the
-///    typed [`Cell`] / [`Level`] from the position's `IVec3` (the readers.rs `cell_and_level`
-///    idiom). A ganger with no [`Position`] is skipped FAIL-CLOSED (no panic, no pop).
+/// 1. Looks up the ganger's cell via `Query<&Position>.get(msg.ganger)`, decomposed via the
+///    canonical [`CellLevel::split`](gdtf_battle_sim::CellLevel::split) (GTW-565). A ganger
+///    with no [`Position`] is skipped FAIL-CLOSED (no panic, no pop).
 /// 2. Spawns one pop via [`spawn_floating_text`]: a `Bleeding` pops a `"Bleeding"` tag in the
 ///    AMBER wound/status valence; an `ArmorBroken` pops an `"Armor Broken"` tag in the damage
 ///    RED (the destroy crossing reads heavier than wear).
@@ -169,9 +169,8 @@ fn spawn_aux_pop(
     let Ok(pos) = positions.get(ganger) else {
         return;
     };
-    let cell = Cell::new(pos.x, pos.y);
-    let storey = u8::try_from(pos.z).unwrap_or(0);
-    let level = Level::new(storey);
+    // The canonical CellLevel::split decompose through Position's deref (GTW-565).
+    let (cell, level) = pos.split();
 
     let slot = stacks.entry((cell.x, cell.y, *level)).or_insert(0);
     // Auxiliary status tags (bleeding, armor-broken) are body-weight — bold is reserved for

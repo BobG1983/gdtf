@@ -20,7 +20,7 @@ use crate::{
     ganger::{Hp, LifeState, Luck, Position, Toughness, Wounds},
     inflicted_wound::InflictedWounds,
     injuries::{InjuryRegistry, InjuryTables},
-    metric::{Cell, CellLevel, Level},
+    metric::{CellLevel, Level},
     occupancy::OccupancyGrid,
     occupancy_sync::SlabDestroyed,
     on_death::OnDeathOccurred,
@@ -139,27 +139,6 @@ pub struct FallSignals<'w> {
     deaths:   MessageWriter<'w, OnDeathOccurred>,
 }
 
-/// The ground-plane [`Cell`] of a [`Position`] — its `(x, y)` (the
-/// [`dispatch_melee`](crate::acts::dispatch_melee) `ganger_cell` precedent).
-fn faller_cell(position: &Position) -> Cell {
-    let key = ***position;
-    Cell::new(key.x, key.y)
-}
-
-/// The storey [`Level`] of a [`Position`] — its `z` storey index (the `dispatch_melee`
-/// `ganger_level` precedent).
-fn faller_level(position: &Position) -> Level {
-    let key = ***position;
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "z is a storey index in 0..MAX_LEVELS (8) by construction, so the i32 -> u8 \
-                  narrowing cannot truncate or sign-flip (the dispatch_melee ganger_level precedent)"
-    )]
-    let storey = key.z as u8;
-    Level::new(storey)
-}
-
 /// **Apply falls** for every buffered [`SlabDestroyed`] — the GTW-523 authoritative fall
 /// mechanic for trigger (a): a slab destroyed under a standing ganger.
 ///
@@ -242,15 +221,8 @@ pub fn apply_falls(
     };
 
     for event in destroyed.read() {
-        let destroyed_at = event.at;
-        let destroyed_cell = Cell::new(destroyed_at.x, destroyed_at.y);
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "z is a storey index in 0..MAX_LEVELS (8), so the i32 -> u8 narrowing cannot \
-                      truncate or sign-flip (the faller_level precedent)"
-        )]
-        let destroyed_level = Level::new(destroyed_at.z as u8);
+        // The canonical CellLevel::split decompose (GTW-565).
+        let (destroyed_cell, destroyed_level) = event.at.split();
 
         // C1: iterate ALL gangers; a faller is any LIVE ganger keyed to the SAME (cell, level)
         // as the destroyed slab (level == the slab's floor storey, NOT level + 1). C7: every
@@ -264,10 +236,9 @@ pub fn apply_falls(
             if !life.is_active() {
                 continue;
             }
-            // The C1 key match: SAME cell AND SAME level as the destroyed slab.
-            if faller_cell(&position) != destroyed_cell
-                || faller_level(&position) != destroyed_level
-            {
+            // The C1 key match: SAME cell AND SAME level as the destroyed slab (the
+            // canonical CellLevel accessors through Position's deref, GTW-565).
+            if position.cell() != destroyed_cell || position.level() != destroyed_level {
                 continue;
             }
 
@@ -279,7 +250,7 @@ pub fn apply_falls(
 
             // C2: resolve the drop — scan down for the highest supported storey. A start on the
             // ground (level 0) returns None (nothing to fall to) — fail-closed, no drop.
-            let start = faller_level(&position);
+            let start = position.level();
             let Some(landing) = resolve_drop(destroyed_cell, start, &surface) else {
                 continue;
             };

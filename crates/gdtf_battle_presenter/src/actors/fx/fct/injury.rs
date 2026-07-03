@@ -28,7 +28,7 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Cell, InjuryInflicted, Level, Position, Severity};
+use gdtf_battle_sim::{InjuryInflicted, Position, Severity};
 
 use super::{
     super::FxTuning,
@@ -89,8 +89,8 @@ pub(in crate::actors::fx) fn injury_pop(popup_text: &str, severity: Severity) ->
 ///    [`severity_color`](super::palette::severity_color) ramp scaled by the rolled
 ///    [`severity`](gdtf_battle_sim::InjuryInflicted::severity).
 /// 2. Looks up the wounded [`target`](gdtf_battle_sim::InjuryInflicted::target) ganger's cell
-///    via `Query<&Position>.get(target)`, reconstructing the typed [`Cell`] / [`Level`] from
-///    the position's `IVec3` (the readers.rs `cell_and_level` idiom). A ganger with no
+///    via `Query<&Position>.get(target)`, decomposed via the canonical
+///    [`CellLevel::split`](gdtf_battle_sim::CellLevel::split) (GTW-565). A ganger with no
 ///    [`Position`] is skipped FAIL-CLOSED (no panic, no pop).
 /// 3. Spawns the pop via [`spawn_floating_text`] at the next per-cell [`FctStackIndex`] (so
 ///    two injuries inflicted on one cell this tick fan out vertically), at body weight
@@ -124,9 +124,8 @@ pub fn read_injury_fct(
         let Ok(position) = positions.get(message.target) else {
             continue;
         };
-        let cell = Cell::new(position.x, position.y);
-        let storey = u8::try_from(position.z).unwrap_or(0);
-        let level = Level::new(storey);
+        // The canonical CellLevel::split decompose through Position's deref (GTW-565).
+        let (cell, level) = position.split();
 
         let slot = stacks.entry((cell.x, cell.y, *level)).or_insert(0);
         spawn_floating_text(

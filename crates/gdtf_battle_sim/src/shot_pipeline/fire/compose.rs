@@ -745,7 +745,7 @@ fn apply_aoe_splash(
         // splash has no march-computed part), then synthesize a Ganger outcome AT the
         // splashed cell and fold it through the SAME per-round ganger path.
         let part = crate::hit_location::roll_body_part(&tuning.body_part_weights, shot_rng.rng());
-        let (splash_cell, splash_level) = (Cell::new(cell.x, cell.y), outcome.level);
+        let (splash_cell, splash_level) = (cell.cell(), outcome.level);
         let splash_outcome = crate::resolve_coarse::ShotOutcome {
             kind:       ShotKind::Ganger(occupant),
             cell:       splash_cell,
