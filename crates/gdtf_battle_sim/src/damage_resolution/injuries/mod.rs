@@ -13,8 +13,10 @@
 //! - [`StatTarget`] / [`StatKind`] ([`stat_target`]) — the fresh sim stat
 //!   discriminant (the eight direct attributes + the eight derived stats) and its
 //!   attribute-vs-derived split.
-//! - [`InjuryEffect`] / [`StatDelta`] / [`BleedAmount`] ([`effect`]) — one authored
-//!   effect of an injury and its two payload newtypes.
+//! - [`InjuryEffect`] + its payload newtypes and per-effect behaviours — RE-HOMED
+//!   into the [`crate::effects::injuries`] palette (GTW-550: one file per effect,
+//!   each impl-ing [`ApplyInjuryEffect`]); re-exported here so `crate::injuries::*`
+//!   paths keep resolving.
 //! - [`InjuryName`] / [`PopupText`] / [`LogText`] / [`InspectText`] ([`text`]) — the
 //!   name identity and the three routed display texts.
 //! - [`InjuryDef`] / [`PostHeal`] ([`def`]) — the authored per-injury record and its
@@ -26,7 +28,8 @@
 //!   the persistent ledger entry.
 //! - [`InflictedInjuries`] / [`StatDeltaLedger`] / [`StatDeltaSum`] /
 //!   [`BleedAfflicted`] ([`ledger`]) — the per-ganger ledger (the SOLE delta source),
-//!   its per-stat summed-delta store, and its bleed accrual.
+//!   its per-stat summed-delta store, and its bleed accrual; [`HandsAvailable`]
+//!   ([`hands`]) — the read-derived hand count its hand projection folds.
 //! - [`InjuryRegistry`] ([`registry`]) — the name→[`InjuryDef`] map the GTW-437 loader
 //!   builds from the loaded `*.injury.ron` files.
 //! - [`InjuryTables`] ([`tables`]) — the per-`(category, severity)`
@@ -41,7 +44,7 @@
 //! construction rather than wiping them.
 
 pub mod def;
-pub mod effect;
+pub mod hands;
 pub mod ledger;
 pub mod registry;
 pub mod roll;
@@ -51,11 +54,12 @@ pub mod tables;
 pub mod text;
 pub mod weighting;
 
+// The effect vocabulary + per-effect behaviours live in the GTW-550 palette
+// (`crate::effects::injuries`); re-exported here so `crate::injuries::*` and
+// `super::*` paths keep resolving unchanged.
 pub use def::{InjuryDef, PostHeal};
-pub use effect::{BleedAmount, InjuryEffect, MovementCostFactor, StatDelta};
-pub use ledger::{
-    BleedAfflicted, HandsAvailable, InflictedInjuries, StatDeltaLedger, StatDeltaSum,
-};
+pub use hands::HandsAvailable;
+pub use ledger::{BleedAfflicted, InflictedInjuries, StatDeltaLedger, StatDeltaSum};
 pub use registry::InjuryRegistry;
 pub use roll::roll_injury;
 pub use rolled::{GainedInjury, RolledInjury};
@@ -63,6 +67,11 @@ pub use stat_target::{StatKind, StatTarget};
 pub use tables::InjuryTables;
 pub use text::{InjuryName, InspectText, LogText, PopupText};
 pub use weighting::{InjuryWeight, InjuryWeighting, WeightedInjuryEntry, WeightedInjuryTable};
+
+pub use crate::effects::injuries::{
+    ApplyBleeding, ApplyDisableHand, ApplyInjuryEffect, ApplyModify, ApplyMovementCostMul,
+    BleedAmount, HealError, InjuryEffect, LedgerAccumulators, MovementCostFactor, StatDelta,
+};
 
 #[cfg(test)]
 mod test;

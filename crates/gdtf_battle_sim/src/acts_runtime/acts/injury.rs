@@ -116,13 +116,17 @@ impl InjuryInflicted {
 /// For each drained message:
 ///
 /// 1. **Gain** — append the [`GainedInjury`] to the target's [`InflictedInjuries`] via
-///    [`gain`](InflictedInjuries::gain), which folds each effect through the SINGLE
-///    exhaustive match (a [`Modify`](crate::injuries::InjuryEffect::Modify) sums into the
+///    [`gain`](InflictedInjuries::gain), which delegates each effect DIRECTLY through the
+///    [`ApplyInjuryEffect`](crate::injuries::ApplyInjuryEffect) palette trait (GTW-550 —
+///    each effect's isolated behaviour in `crate::effects::injuries` decides its
+///    accumulator: a [`Modify`](crate::injuries::InjuryEffect::Modify) sums into the
 ///    per-stat delta the GTW-436 projector reads; a
 ///    [`Bleeding`](crate::injuries::InjuryEffect::Bleeding) accrues into the ledger's
-///    bleed total). The append trips `Changed<InflictedInjuries>`, which the GTW-436
-///    `rederive_stats_on_injury_change` projector reacts to — so the stat deltas land on
-///    the derived stats the same tick (it is ordered `.after(SimSystems::Simulate)`).
+///    bleed total). The delegation is SYNCHRONOUS on this drain path — never a deferred
+///    `Commands` extension — so the gain trips `Changed<InflictedInjuries>` THIS tick,
+///    and the GTW-436 `rederive_stats_on_injury_change` projector (ordered
+///    `.after(SimSystems::Simulate)`) lands the stat deltas on the derived stats the
+///    SAME tick (a deferred gain would push the re-derive a tick late).
 /// 2. **Ensure the ledger exists** — a ganger MUST carry [`InflictedInjuries`] to
 ///    [`gain`](InflictedInjuries::gain) into. The spawn seeds it (the `bsn!` sentinel
 ///    `Default`, GTW-438); this system ALSO inserts-if-absent via [`Commands`] as a
@@ -154,7 +158,8 @@ pub fn apply_injury(
         // (1) + (2) Gain into the EXISTING ledger if present; else build a fresh ledger
         //     from this entry and insert it (the no-panic backstop for a ganger spawned
         //     without the sentinel-seeded component). Either path folds the effects via
-        //     the ledger's single exhaustive `gain` match.
+        //     `gain`'s GTW-550 palette-trait delegation — synchronously, on this drain
+        //     path, so the Changed<InflictedInjuries> projection lands the same tick.
         let bleed = if let Ok(mut ledger) = ledgers.get_mut(target) {
             ledger.gain(message.gained.clone());
             ledger.bleed()
