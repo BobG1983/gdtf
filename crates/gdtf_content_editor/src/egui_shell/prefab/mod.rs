@@ -19,8 +19,10 @@
 //! - CENTRAL viewport panel — [`viewport_ui::viewport_panel`]: the render-to-texture
 //!   [`egui::Image`](bevy_egui::egui::Image) + click-to-paint + hover ghost + wheel-zoom +
 //!   right-drag pan (C4.3 / C4.4 / C4.7 / C4.8).
-//! - RIGHT controls panel — [`controls_ui::controls_panel`]: the grid-size fields, the level-nav
-//!   readout + buttons, and the debug-only Save-prefab control (C4.5 / C4.6 / C4.9).
+//! - RIGHT controls panel — [`controls_ui::controls_panel`]: the grid-size fields (drawn +
+//!   two-way-synced by [`size_fields`] over its [`SizeFieldSpans`](size_fields::SizeFieldSpans)
+//!   view model — GTW-464), the level-nav readout + buttons, and the debug-only Save-prefab
+//!   control (C4.5 / C4.6 / C4.9).
 //!
 //! The `]`/`[`/PageUp/PageDown level-nav HOTKEYS are a UI-agnostic `Update` system
 //! ([`nav::level_nav_hotkeys`]), like the kept mode hotkeys.
@@ -28,4 +30,7 @@
 pub(crate) mod controls_ui;
 pub(crate) mod nav;
 pub(crate) mod palette_ui;
+// GTW-464: the grid-size fields + their explicit SizeFieldSpans view model (session → fields
+// reverse sync; the kept clamp commit).
+pub(crate) mod size_fields;
 pub(crate) mod viewport_ui;
