@@ -4,46 +4,11 @@
 
 use bevy::prelude::{Component, Deref};
 
-use super::{BleedAmount, GainedInjury, InjuryEffect, MovementCostFactor, StatDelta, StatTarget};
-use crate::armor::BodyPart;
-
-/// A ganger's **available hand count** — how many working hands it currently has
-/// (`0..=2`), the read-derived input the shared `can_fire` guard checks a
-/// [`TwoHanded`](crate::weapon::Handedness::TwoHanded) weapon against (GTW-443).
-///
-/// DERIVED-ON-READ from the [`InflictedInjuries`] ledger via
-/// [`hands_available`](InflictedInjuries::hands_available) — NOT a stored component and
-/// NOT a [`StatTarget`] slot: a hand-disabling injury surfaces here by folding the
-/// ledger's [`gained`](InflictedInjuries::gained) entries (the single-source-of-truth,
-/// so a content hot-edit re-derives it rather than wiping an applied-once counter).
-/// Default = `HandsAvailable(2)` (no injuries, both hands working).
-///
-/// A no-bare-types newtype (a hand count is a domain value): private inner + derived
-/// [`Deref`]; the constructor [`new`](HandsAvailable::new) clamps into `0..=2`, so an
-/// out-of-range count can never exist. Derives [`Hash`] / [`Eq`] / [`Copy`] so it can be
-/// a value field of the [`FireActor`](crate::magazine::FireActor) read-bundle.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct HandsAvailable(u8);
-
-impl HandsAvailable {
-    /// The maximum hand count — a ganger has two hands. Reused by the `can_fire`
-    /// hand-count clause as the [`TwoHanded`](crate::weapon::Handedness::TwoHanded) need.
-    pub(crate) const MAX: u8 = 2;
-
-    /// Build a hand count, **clamping** into `0..=2` (a ganger can never have more than
-    /// two working hands, nor a negative count).
-    #[must_use]
-    pub const fn new(hands: u8) -> Self {
-        Self(if hands > Self::MAX { Self::MAX } else { hands })
-    }
-}
-
-impl Default for HandsAvailable {
-    /// Two working hands — the uninjured default (no ledger / no arm injury).
-    fn default() -> Self {
-        Self(Self::MAX)
-    }
-}
+use super::{BleedAmount, GainedInjury, HandsAvailable, MovementCostFactor, StatDelta, StatTarget};
+use crate::{
+    armor::BodyPart,
+    effects::injuries::{ApplyInjuryEffect, LedgerAccumulators},
+};
 
 /// The running **summed delta** for one [`StatTarget`] across every injury on a
 /// ganger's ledger — the modifier-layer total the GTW-436 projector adds to that
@@ -72,6 +37,14 @@ impl StatDeltaSum {
     pub const fn add(self, delta: StatDelta) -> Self {
         Self(self.0.saturating_add(delta.raw() as i16))
     }
+
+    /// Fold one [`StatDelta`] back OUT of this running sum (the GTW-550 heal seam's
+    /// exact inverse of [`add`](StatDeltaSum::add)), saturating — exact unless the
+    /// sum ever saturated, which takes 256+ worst-case same-sign stacked deltas.
+    #[must_use]
+    pub const fn subtract(self, delta: StatDelta) -> Self {
+        Self(self.0.saturating_sub(delta.raw() as i16))
+    }
 }
 
 /// The per-[`StatTarget`] **summed-delta store** of a ledger — the sixteen running
@@ -82,8 +55,9 @@ impl StatDeltaSum {
 /// for the eight attributes PRE-derivation, one for the eight derived stats
 /// POST-derivation). A no-bare-types newtype over the fixed `[StatDeltaSum; 16]`
 /// array (the store is a domain value; each element is a typed sum, keyed by index):
-/// private inner + derived [`Deref`] (read the slice); the only mutation is
-/// [`add_delta`](StatDeltaLedger::add_delta). Defaults to all-zero.
+/// private inner + derived [`Deref`] (read the slice); the only mutations are
+/// [`add_delta`](StatDeltaLedger::add_delta) and its heal-seam inverse
+/// [`remove_delta`](StatDeltaLedger::remove_delta). Defaults to all-zero.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StatDeltaLedger([StatDeltaSum; StatTarget::COUNT]);
 
@@ -100,6 +74,13 @@ impl StatDeltaLedger {
         self.0[i] = self.0[i].add(delta);
     }
 
+    /// Fold one [`StatDelta`] back OUT of the running sum for `stat` (saturating) —
+    /// the GTW-550 heal seam's exact inverse of [`add_delta`](StatDeltaLedger::add_delta).
+    pub const fn remove_delta(&mut self, stat: StatTarget, delta: StatDelta) {
+        let i = stat.index();
+        self.0[i] = self.0[i].subtract(delta);
+    }
+
     /// The running summed delta for `stat` — the value the GTW-436 projector adds to
     /// that stat.
     #[must_use]
@@ -109,8 +90,8 @@ impl StatDeltaLedger {
 }
 
 /// A ganger's **accrued per-turn bleed** — the summed [`BleedAmount`] of every
-/// [`InjuryEffect::Bleeding`] on its ledger, drained each turn by the existing bleed
-/// runtime (`docs/combat/resolution.md` §9; GTW-405).
+/// [`Bleeding`](crate::injuries::InjuryEffect::Bleeding) on its ledger, drained each
+/// turn by the existing bleed runtime (`docs/combat/resolution.md` §9; GTW-405).
 ///
 /// Widened to **`u16`** deliberately: a single [`BleedAmount`] is `u8`
 /// (`0..=255`), and several bleeding injuries can stack, so the accrual needs
@@ -142,6 +123,13 @@ impl BleedAfflicted {
     pub const fn accumulate(self, amount: BleedAmount) -> Self {
         Self(self.0.saturating_add(amount.raw() as u16))
     }
+
+    /// Fold one [`BleedAmount`] back OUT of the accrued per-turn bleed (saturating) —
+    /// the GTW-550 heal seam's exact inverse of [`accumulate`](BleedAfflicted::accumulate).
+    #[must_use]
+    pub const fn relieve(self, amount: BleedAmount) -> Self {
+        Self(self.0.saturating_sub(amount.raw() as u16))
+    }
 }
 
 /// A ganger's **inflicted-injury ledger** — the ordered named-condition list AND
@@ -157,6 +145,12 @@ impl BleedAfflicted {
 /// every injury delta lives in exactly ONE place — this ledger — and is RE-SUMMED on
 /// every projection, never applied-once, so a `stat.tuning.ron` hot-reload re-applies
 /// deltas by construction rather than wiping them.
+///
+/// STORAGE LIVES HERE, behaviour lives in the palette (GTW-550): each effect folds
+/// itself into the borrowed [`LedgerAccumulators`] view through the
+/// [`ApplyInjuryEffect`] trait, and this ledger stays the single
+/// `Changed<InflictedInjuries>` source the GTW-436 projector filters on — never an
+/// effect-owned accumulator component.
 ///
 /// Private fields with named accessors (the sole mutator is
 /// [`gain`](InflictedInjuries::gain)); seeded empty ([`Default`]) on every spawned
@@ -178,47 +172,38 @@ pub struct InflictedInjuries {
     /// The accrued per-turn HP bleed.
     bleed:    BleedAfflicted,
     /// The accumulated MULTIPLICATIVE movement-cost factor (GTW-444) — the PRODUCT of
-    /// every [`MovementCostMul`](InjuryEffect::MovementCostMul) gained, defaulting to
-    /// [`MovementCostFactor::IDENTITY`] (`1.0`). DEDICATED + MULTIPLICATIVE: separate from
-    /// the summed `deltas` arrays and the summed `bleed` accrual because it MULTIPLIES, it
-    /// does not sum (two `MovementCostMul` factors of `1.5` and `2.0` fold to `3.0`).
+    /// every [`MovementCostMul`](crate::injuries::InjuryEffect::MovementCostMul) gained,
+    /// defaulting to [`MovementCostFactor::IDENTITY`] (`1.0`). DEDICATED + MULTIPLICATIVE:
+    /// separate from the summed `deltas` arrays and the summed `bleed` accrual because it
+    /// MULTIPLIES, it does not sum (two factors of `1.5` and `2.0` fold to `3.0`).
     movement: MovementCostFactor,
 }
 
 impl InflictedInjuries {
     /// **Gain** one injury: append its [`GainedInjury`] to the ordered ledger AND
-    /// fold each of its effects into the accumulators — a [`Modify`](InjuryEffect::Modify)
-    /// adds its [`StatDelta`] to the named stat's running sum, a
-    /// [`Bleeding`](InjuryEffect::Bleeding) adds its [`BleedAmount`] to the bleed accrual,
-    /// and a [`MovementCostMul`](InjuryEffect::MovementCostMul) MULTIPLIES its
-    /// [`MovementCostFactor`] into the dedicated `movement`
-    /// accumulator (GTW-444 C2 — multiplicative, not additive).
+    /// fold each of its effects into the accumulators by DELEGATING through the
+    /// [`ApplyInjuryEffect`] palette trait (GTW-550): each effect's isolated
+    /// behaviour (its own file under `crate::effects::injuries`) decides which
+    /// accumulator moves and how — a summed stat delta, a summed bleed accrual, a
+    /// multiplicative movement factor, or nothing (a read-projected effect). This fn
+    /// only lends out the [`LedgerAccumulators`] fold surface; adding a new effect
+    /// kind never touches it (the palette's one delegation match is exhaustive, so
+    /// the compile-check lives there).
     ///
     /// The sole mutator of the ledger (the GTW-437 apply boundary calls this once per
-    /// inflicted injury). Folding the effects here keeps the summed-delta store
-    /// consistent with the named-condition list at all times, so the projector never
-    /// re-walks the list. The match is EXHAUSTIVE — a new [`InjuryEffect`] variant
-    /// forces a new arm here (compile-checked, never a silent no-op).
+    /// inflicted injury, SYNCHRONOUSLY on the message-drain path — never a deferred
+    /// command — so the gain trips `Changed<InflictedInjuries>` the same tick the
+    /// GTW-436 projector re-derives on). Folding the effects here keeps the
+    /// summed-delta store consistent with the named-condition list at all times, so
+    /// the projector never re-walks the list.
     pub fn gain(&mut self, record: GainedInjury) {
+        let mut accumulators = LedgerAccumulators {
+            deltas:   &mut self.deltas,
+            bleed:    &mut self.bleed,
+            movement: &mut self.movement,
+        };
         for effect in &record.effects {
-            match *effect {
-                InjuryEffect::Modify { stat, amount } => self.deltas.add_delta(stat, amount),
-                InjuryEffect::Bleeding { amount } => self.bleed = self.bleed.accumulate(amount),
-                // GTW-443: DisableHand is INERT at gain — it accumulates NO stat delta and
-                // NO bleed. The disabled hand is surfaced by folding `gained` on demand
-                // (`hands_available`), keyed on each entry's struck `part`, NOT by docking a
-                // stored counter. Read-fold (not stored) because the count is a SET over
-                // distinct arm-sides: two same-side DisableHand injuries must still disable
-                // exactly one hand, which a per-injury counter could not give without
-                // de-duping — folding the parts into a set is the single-source-of-truth.
-                InjuryEffect::DisableHand => {}
-                // GTW-444: MovementCostMul folds MULTIPLICATIVELY into the dedicated
-                // `movement` accumulator — NOT into the summed `deltas`/`bleed`. Two
-                // stacked factors MULTIPLY (1.5 × 2.0 = 3.0), the locked stacking rule (C4).
-                InjuryEffect::MovementCostMul(factor) => {
-                    self.movement = self.movement.times(factor);
-                }
-            }
+            effect.fold_on_gain(&mut accumulators);
         }
         self.gained.push(record);
     }
@@ -244,7 +229,8 @@ impl InflictedInjuries {
     }
 
     /// The ganger's accumulated **movement-cost factor** ([`MovementCostFactor`], GTW-444)
-    /// — the PRODUCT of every [`MovementCostMul`](InjuryEffect::MovementCostMul) gained,
+    /// — the PRODUCT of every
+    /// [`MovementCostMul`](crate::injuries::InjuryEffect::MovementCostMul) gained,
     /// or [`MovementCostFactor::IDENTITY`] (`1.0`) when none.
     ///
     /// The per-step movement TU cost = the GTW-396 terrain per-step floor cost MULTIPLIED
@@ -262,16 +248,18 @@ impl InflictedInjuries {
     /// The ganger's **available hand count** ([`HandsAvailable`]), DERIVED on read by
     /// folding the ledger's [`gained`](InflictedInjuries::gained) entries (GTW-443).
     ///
-    /// Folds every [`GainedInjury`] carrying an [`InjuryEffect::DisableHand`] effect into
-    /// a SET of distinct disabled arm-sides — its struck
-    /// [`part`](GainedInjury::part) maps [`LeftArm`](crate::armor::BodyPart::LeftArm) → the
-    /// left side and [`RightArm`](crate::armor::BodyPart::RightArm) → the right side; a
-    /// `DisableHand` carried by a Head / Torso / Leg injury is INERT (no arm to disable).
-    /// The count is `2 − (left disabled) − (right disabled)`, so:
+    /// Folds every [`GainedInjury`] whose effects project
+    /// [`disables_hand`](ApplyInjuryEffect::disables_hand) (the palette's read-side
+    /// verb — this fold never matches on the effect vocabulary) into a SET of distinct
+    /// disabled arm-sides — its struck [`part`](GainedInjury::part) maps
+    /// [`LeftArm`](crate::armor::BodyPart::LeftArm) → the left side and
+    /// [`RightArm`](crate::armor::BodyPart::RightArm) → the right side; a
+    /// hand-disabling effect carried by a Head / Torso / Leg injury is INERT (no hand
+    /// to disable). The count is `2 − (left disabled) − (right disabled)`, so:
     /// - no arm injury → `2`;
     /// - one arm side disabled → `1`;
-    /// - TWO same-side `DisableHand` injuries → still `1` (the set holds one side), never
-    ///   `0` — the property a per-injury counter could not give without de-duping;
+    /// - TWO same-side hand-disabling injuries → still `1` (the set holds one side),
+    ///   never `0` — the property a per-injury counter could not give without de-duping;
     /// - both sides disabled → `0`.
     ///
     /// Order-independent and deterministic (set membership over sides, not a count over
@@ -281,17 +269,14 @@ impl InflictedInjuries {
         let mut left_disabled = false;
         let mut right_disabled = false;
         for record in &self.gained {
-            let disables = record
-                .effects
-                .iter()
-                .any(|effect| matches!(effect, InjuryEffect::DisableHand));
+            let disables = record.effects.iter().any(ApplyInjuryEffect::disables_hand);
             if !disables {
                 continue;
             }
             match record.part {
                 BodyPart::LeftArm => left_disabled = true,
                 BodyPart::RightArm => right_disabled = true,
-                // A DisableHand on a non-arm part is inert (no hand to disable).
+                // A hand-disabling effect on a non-arm part is inert (no hand to disable).
                 BodyPart::Head | BodyPart::Torso | BodyPart::LeftLeg | BodyPart::RightLeg => {}
             }
         }

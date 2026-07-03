@@ -24,3 +24,11 @@
 /// `AttachTag` model). The mechanics that resolve + apply it live under
 /// [`equipment::attachments`](crate::equipment::attachments).
 pub mod attachments;
+
+/// The **injury effect palette** — the closed
+/// [`InjuryEffect`](crate::effects::injuries::InjuryEffect) vocabulary + one isolated
+/// behaviour per effect (GTW-550; the palette that replaces the central ledger match).
+/// The ledger STORAGE + roll/apply mechanics that invoke it live under
+/// [`damage_resolution::injuries`](crate::damage_resolution::injuries) and
+/// [`apply_injury`](crate::acts::apply_injury).
+pub mod injuries;

@@ -3,8 +3,8 @@
 How to create, extend, and maintain the injury table — from a new `.injury.ron` file
 to adding a brand-new `InjuryEffect` variant end-to-end. This guide documents the
 **current, landed state** of the injury system (GTW-405 / GTW-437 / GTW-438 / GTW-440 /
-GTW-443 / GTW-444 / GTW-436) and is the primary reference for content authors and
-engineers extending injury mechanics.
+GTW-443 / GTW-444 / GTW-436 / GTW-550) and is the primary reference for content authors
+and engineers extending injury mechanics.
 
 ---
 
@@ -137,95 +137,93 @@ per-side `BodyPart` is needed in the authored schema.
 
 ---
 
-## Part 2 — Adding a new `InjuryEffect` variant end-to-end
+## Part 2 — Adding a new `InjuryEffect` end-to-end
 
-This section is for engineers adding a new *kind* of mechanical effect. The effect
-vocabulary is an exhaustive match — adding a variant is compile-checked at every use
-site. Follow these steps exactly.
+This section is for engineers adding a new *kind* of mechanical effect. Injury-effect
+behaviour lives in the **injury-effect palette** at
+`crates/gdtf_battle_sim/src/effects/injuries/` (GTW-550): one self-contained file per
+effect implementing the shared `ApplyInjuryEffect` trait (gain-time fold / read-side
+projection / heal), plus the closed serde enum in
+`crates/gdtf_battle_sim/src/effects/injuries/effect.rs` whose trait impl is a single
+mechanical delegation match. STORAGE stays on the ledger
+(`crates/gdtf_battle_sim/src/damage_resolution/injuries/ledger.rs`) — the single
+`Changed<InflictedInjuries>` source the projector filters on — lent to each effect as
+the borrowed `LedgerAccumulators` fold surface. Never give an effect its own
+accumulator component.
 
-### Step 1 — Extend `InjuryEffect` in `effect.rs`
+For an effect that folds into the **existing** accumulators (a summed stat delta, a
+summed bleed accrual, the multiplicative movement factor) or is **read-projected**
+(like `DisableHand`), the whole job is three steps:
 
-File: `crates/gdtf_battle_sim/src/damage_resolution/injuries/effect.rs`
+### Step 1 — one palette file
 
-Add a new variant to `InjuryEffect`. If the payload is a domain value (e.g. a
-duration, a percentage), wrap it in a newtype first (no-bare-types rule):
+Create `crates/gdtf_battle_sim/src/effects/injuries/<your_effect>.rs` holding:
 
-```rust
-/// Your new effect — one sentence describing what it does.
-///
-/// Mechanics: describe how the accumulator works (summed / multiplicative / inert).
-/// `post_heal` semantics: if the effect is reversible on heal, note it here (GTW-23).
-YourEffect(YourPayloadNewtype),
-```
+- the payload newtype, if it has one (no-bare-types rule; `#[serde(transparent)]` so
+  it authors as a bare RON scalar),
+- the isolated `ApplyYourEffect` behaviour type,
+- its `impl ApplyInjuryEffect` — `fold_on_gain` (which accumulator moves, and how:
+  summed / multiplicative / documented no-op for a read-projected effect) and `heal`
+  (the exact inverse fold, a documented no-op `Ok` when nothing was accumulated, or
+  `Err(HealError::NeedsRefold)` when the fold is non-invertible — never a
+  `todo!`/`unimplemented!`), plus a projection override (like `disables_hand`) if the
+  effect is read-projected,
+- a `#[cfg(test)]` unit test asserting the fold/heal semantics.
 
-Derive the minimum required: `Clone, Copy, PartialEq, Debug, Deserialize`. If the
-payload contains an `f32`, the enum CANNOT derive `Eq` — update the derives on the
-affected types (see `MovementCostMul` and the `injury-effect-f32-eq-cascade` memory
-entry for the cascade rules).
+If the payload contains an `f32`, the enum cannot derive `Eq` — and the drop
+**cascades**: every type that transitively carries `InjuryEffect` must also drop `Eq`
+(keep `PartialEq`) — `GainedInjury`/`RolledInjury`, `InjuryDef`, `InjuryRegistry`,
+`InflictedInjuries`, `InjuryInflicted`, `HitReport`, and the presenter types wrapping
+`HitReport`. The compiler surfaces them one crate at a time; note the reason on each
+derive's doc-comment. This is safe because the ledger is read via `Changed<>` queries
+(tick-based, not `Eq`-based) and none of these types key a `HashSet`/`BTreeMap`. See
+`MovementCostMul` (Example B below) for the landed precedent.
 
-If you need a new `StatTarget` variant (a stat that does not exist yet), add it to
-`StatTarget` in `crates/gdtf_battle_sim/src/damage_resolution/injuries/stat_target.rs`,
-extending `ALL`, `COUNT`, `index()`, and `kind()`.
+### Step 2 — one variant + one delegation arm + one mod line
 
-### Step 2 — Add the gain arm in `ledger.rs`
+- `crates/gdtf_battle_sim/src/effects/injuries/effect.rs`: add the `InjuryEffect`
+  variant (document its authored RON form: fieldless variants author as
+  `VariantName`, tuple variants as `VariantName(payload)`, struct variants as
+  `VariantName(field: value, ...)`), and add its one-line arm to the
+  `with_behaviour` delegation match — the match is exhaustive, so the compiler
+  forces the arm (never a silent no-op).
+- `crates/gdtf_battle_sim/src/effects/injuries/mod.rs`: add the `mod <your_effect>;`
+  line (and its `pub use` re-export on the same wiring pass).
 
-File: `crates/gdtf_battle_sim/src/damage_resolution/injuries/ledger.rs`
+### Step 3 — author the content
 
-The `InflictedInjuries::gain` method has an exhaustive match over `InjuryEffect`. The
-compiler will now error on the missing arm — add it. Decide the accumulation strategy:
+Reference the new variant from an `.injury.ron` `effects:` list and weight the injury
+into a bucket (Part 1). Add a ledger-level folding test in
+`crates/gdtf_battle_sim/src/damage_resolution/injuries/test.rs`, and — if the effect
+flows through the projector — a projection test in
+`crates/gdtf_battle_sim/src/combatants/ganger/test/injury.rs`.
 
-| Strategy | When to use | Implementation |
-|----------|-------------|----------------|
-| **Summed delta** | A signed stat shift (like `Modify`) | Add a `StatDeltaLedger::add_delta` call |
-| **Summed accrual** | A running total (like `Bleeding`) | Widen to `u16`/`i16` and `saturating_add` |
-| **Multiplicative** | A factor (like `MovementCostMul`) | Add a dedicated `f32` field; call `.times()` |
-| **Inert at gain** | Set-over-parts (like `DisableHand`) | `=> {}` — fold on read, not on gain |
+### When it is honestly MORE than three steps
 
-If you add a dedicated field to `InflictedInjuries`, add a public accessor for it (no
-bare field access from outside the module).
+The palette isolates the effect's *own* behaviour; it does not (and cannot) absorb
+the READ side, which stays distributed by design. Budget for these when they apply:
 
-### Step 3 — Add the effect-application logic / accessor
-
-For **inert-at-gain** effects (like `DisableHand`): add a read method that folds
-`self.gained` on demand — the single-source-of-truth pattern. See
-`InflictedInjuries::hands_available()` as the canonical example.
-
-For **accumulated** effects: the accessor is just the field reader (e.g.
-`movement_cost_factor()` returns `self.movement`).
-
-For effects that need a runtime trigger (e.g. a per-turn drain like `Bleeding`):
-wire the runtime in the appropriate system in the sim. The `BleedAfflicted` component
-mirrors the ledger's `bleed` field so the bleed runtime can query it without
-carrying the whole ledger.
-
-### Step 4 — Wire into the projector (if it modifies a stat)
-
-If your effect changes a derived stat, the re-derive path must apply it. The projector
-lives in `crates/gdtf_battle_sim/src/combatants/ganger/rederive.rs` and calls
-`derive_stats_with_injuries` in `combatants/ganger/injury_projection.rs`. If the new
-effect docks a stat MAX or shifts a derived value, add the fold there.
-
-### Step 5 — Update `can_fire` and other gates (if it gates an action)
-
-If the effect gates an action (like `DisableHand` gating two-handed fire), add the
-gate in the relevant system. For `DisableHand`, the gate lives in the fire-eligibility
-check (`can_fire`) which calls `InflictedInjuries::hands_available()`.
-
-### Step 6 — Author the RON variant name (serde)
-
-The RON authoring form is the enum variant's serde name. Fieldless variants author as
-`VariantName`; tuple variants as `VariantName(payload)`; struct variants as
-`VariantName(field: value, ...)`. Document the authored form in the doc comment.
-
-### Step 7 — Add tests
-
-Add at minimum:
-
-- A unit test in `crates/gdtf_battle_sim/src/damage_resolution/injuries/test.rs` that
-  gains an injury carrying your new effect and asserts the accessor returns the expected
-  accumulated value.
-- If the effect flows through the projector, add a projection test in
-  `crates/gdtf_battle_sim/src/combatants/ganger/test/injury.rs`.
+- **A genuinely new accumulator kind** (a mutation the existing summed-delta /
+  bleed-accrual / movement-product surface cannot express): add the private field +
+  public accessor to `InflictedInjuries` in
+  `crates/gdtf_battle_sim/src/damage_resolution/injuries/ledger.rs` and surface it as
+  one new field on the `LedgerAccumulators` view in
+  `crates/gdtf_battle_sim/src/effects/injuries/apply_effect.rs`. Storage stays on the
+  ledger — the single `Changed<>` source — never on an effect-owned component.
+- **A new `StatTarget`** (a stat that does not exist yet): extend `ALL`, `COUNT`,
+  `index()` and `kind()` in
+  `crates/gdtf_battle_sim/src/damage_resolution/injuries/stat_target.rs`.
+- **A new read-side consumer.** The existing consumers stay where they are under any
+  palette shape: the projector
+  (`crates/gdtf_battle_sim/src/combatants/ganger/rederive.rs` calling
+  `derive_stats_with_injuries` in
+  `crates/gdtf_battle_sim/src/combatants/ganger/injury_projection.rs`), the
+  pathfinder cost-scale + committed-walk charge (both read
+  `movement_cost_factor()`), the `can_fire` hand-count clause (reads
+  `hands_available()`), and the bleed runtime (`tick_bleed` queries the
+  `BleedAfflicted` mirror). An effect that needs a genuinely NEW runtime — e.g. a
+  `Bleeding`-like per-turn drain subtree — will ALWAYS touch that runtime; no
+  authoring shape can collapse that, and this guide does not pretend otherwise.
 
 ---
 
@@ -244,8 +242,10 @@ Storing it twice would create a consistency hazard. Two same-side `DisableHand`
 injuries must still disable exactly ONE hand — a stored counter could not give that
 without de-duping; a set over distinct arm-sides can.
 
-**Gain arm (`ledger.rs`):** `InjuryEffect::DisableHand => {}` — nothing accumulated at
-gain time.
+**Fold (`crates/gdtf_battle_sim/src/effects/injuries/disable_hand.rs`):**
+`ApplyDisableHand::fold_on_gain` is a documented no-op — nothing accumulated at gain
+time. The behaviour is the `disables_hand()` read-side projection the ledger's
+`hands_available()` asks of each effect.
 
 **Accessor (`InflictedInjuries::hands_available()`):** folds `self.gained` on demand,
 collecting a boolean per arm-side:
@@ -283,10 +283,14 @@ It slows movement by multiplying the terrain per-step floor TU cost.
 **RON form:** `MovementCostMul(1.5)` — a bare `f32` in parentheses, parsed via
 `#[serde(transparent)]` on `MovementCostFactor`.
 
-**Payload newtype:** `MovementCostFactor(f32)` in `effect.rs`. `>= 1.0` means slower;
-`1.0` is the identity (no slowdown). CANNOT derive `Eq` (inner is `f32`).
+**Payload newtype:** `MovementCostFactor(f32)` in
+`crates/gdtf_battle_sim/src/effects/injuries/movement_cost_mul.rs`. `>= 1.0` means
+slower; `1.0` is the identity (no slowdown). CANNOT derive `Eq` (inner is `f32`).
 
-**Gain arm (`ledger.rs`):** `InjuryEffect::MovementCostMul(factor) => { self.movement = self.movement.times(factor); }`
+**Fold (`crates/gdtf_battle_sim/src/effects/injuries/movement_cost_mul.rs`):**
+`ApplyMovementCostMul::fold_on_gain` runs
+`*accumulators.movement = accumulators.movement.times(factor);` — multiplicative,
+into the ledger's dedicated accumulator.
 
 **Accumulator field:** `movement: MovementCostFactor` on `InflictedInjuries`,
 defaulting to `MovementCostFactor::IDENTITY` (`1.0`). Multiplication is commutative

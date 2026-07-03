@@ -7,6 +7,7 @@ mod support;
 mod coschedule;
 mod downed;
 mod fire;
+mod injury;
 mod movement;
 mod plugin;
 mod posture;
