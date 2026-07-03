@@ -1,5 +1,5 @@
 //! The [`InjuryInflicted`] message + the [`apply_injury`] boundary system — the GTW-438
-//! seam that turns a frozen [`HitReport::injury`](crate::resolve_and_apply::HitReport::injury)
+//! seam that turns a frozen [`GangerVerdict::injury`](crate::resolve_and_apply::GangerVerdict::injury)
 //! roll into a persistent injury on the wounded ganger.
 //!
 //! The roll itself is PURE + in-fold ([`roll_injury`](crate::injuries::roll_injury), frozen
@@ -8,7 +8,7 @@
 //! World`):
 //!
 //! 1. [`dispatch_fire`](crate::acts::dispatch_fire) emits one [`InjuryInflicted`] per
-//!    fired round whose [`HitReport::injury`](crate::resolve_and_apply::HitReport::injury)
+//!    fired round whose [`GangerVerdict::injury`](crate::resolve_and_apply::GangerVerdict::injury)
 //!    is `Some`, carrying the wounded target [`Entity`] + the rolled [`GainedInjury`] (the
 //!    durable ledger entry) + the three transient texts the presenter (GTW-439) routes.
 //! 2. [`apply_injury`] drains that buffer and, for each message, appends the
@@ -29,7 +29,7 @@ use crate::{
 };
 
 /// One **injury was inflicted** — the GTW-438 boundary message bridging a frozen
-/// [`HitReport::injury`](crate::resolve_and_apply::HitReport::injury) roll into the
+/// [`GangerVerdict::injury`](crate::resolve_and_apply::GangerVerdict::injury) roll into the
 /// [`apply_injury`] applier + the presenter's transient flash (GTW-439).
 ///
 /// Emitted once per fired round whose report rolled a named injury, by

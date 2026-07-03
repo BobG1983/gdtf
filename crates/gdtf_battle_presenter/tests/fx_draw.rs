@@ -762,7 +762,8 @@ fn has_fct_pop(
 
 /// A ganger-hit `HitReport` for `part` with `hp` HP loss / `pen` penetration / `severity` tier
 /// / `life_after` state, struck on `struck` — the report the FCT reader classifies.
-const fn ganger_hit_report(
+/// (Not `const`: the GTW-573 ganger verdict is boxed, and `Box::new` is not const.)
+fn ganger_hit_report(
     struck: bevy::ecs::entity::Entity,
     part: BodyPart,
     hp: i32,
@@ -771,25 +772,24 @@ const fn ganger_hit_report(
     life_after: LifeState,
 ) -> HitReport {
     HitReport {
-        kind:            ShotKind::Ganger(struck),
-        part:            Some(part),
-        applied:         Some(AppliedDamage {
-            matchup: Matchup::Neutral,
-            hit: HitResult {
-                penetrating: PenetratingDamage::new(pen),
-                hp_damage:   HpDamage::new(hp),
-                wear:        IntegrityWear::new(0),
+        kind:    ShotKind::Ganger(struck),
+        verdict: gdtf_battle_sim::HitVerdict::Ganger(Box::new(gdtf_battle_sim::GangerVerdict {
+            target: struck,
+            part,
+            applied: AppliedDamage {
+                matchup: Matchup::Neutral,
+                hit: HitResult {
+                    penetrating: PenetratingDamage::new(pen),
+                    hp_damage:   HpDamage::new(hp),
+                    wear:        IntegrityWear::new(0),
+                },
+                severity,
+                life_after,
+                wear: gdtf_battle_sim::ArmorWearOutcome::Unaffected,
             },
-            severity,
-            life_after,
-            broken: None,
-            worn: None,
-        }),
-        cover_destroyed: None,
-        slab_destroyed:  None,
-        ground_accrued:  None,
-        injury:          None,
-        dot_applied:     None,
+            injury: None,
+            dot_applied: None,
+        })),
     }
 }
 

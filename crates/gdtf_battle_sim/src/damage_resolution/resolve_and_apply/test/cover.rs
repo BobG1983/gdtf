@@ -48,15 +48,16 @@ fn sufficient_hit_destroys_cover_and_records_the_cell() {
         &mut injury_rng(),
     );
 
-    // The report records the destroyed cell (the bridge dispatch_fire turns into a
-    // CoverDestroyed message).
+    // The verdict IS the cover kind's record (a ganger wound / any other payload is
+    // structurally impossible on it — GTW-573), carrying the destroyed cell the bridge
+    // dispatch_fire turns into a CoverDestroyed message.
     assert_eq!(
-        report.cover_destroyed,
-        Some(at),
-        "a sufficient cover hit must record the destroyed (cell, level) on the report",
+        report.verdict,
+        HitVerdict::Cover(CoverVerdict {
+            destroyed: Some(at),
+        }),
+        "a sufficient cover hit must record the destroyed (cell, level) on the verdict",
     );
-    assert_eq!(report.applied, None, "a cover hit wounds no ganger");
-    assert_eq!(report.part, None, "a cover hit has no struck body part");
 
     // The ledger spent the HP to destruction (the EXISTING deplete_cover did the
     // bookkeeping — we only read its result, never re-pin a magnitude).
@@ -119,12 +120,13 @@ fn insufficient_hit_reduces_hp_without_destroying() {
         &mut injury_rng(),
     );
 
-    // No destroyed cell recorded — the piece still stands.
+    // A REAL cover verdict with no destroyed cell — the piece still stands (and a
+    // ganger wound is structurally impossible on a cover verdict).
     assert_eq!(
-        report.cover_destroyed, None,
+        report.verdict,
+        HitVerdict::Cover(CoverVerdict { destroyed: None }),
         "an insufficient cover hit must record NO destroyed cell",
     );
-    assert_eq!(report.applied, None, "a cover hit wounds no ganger");
 
     let after = cover.peek(&at).copied();
     assert!(

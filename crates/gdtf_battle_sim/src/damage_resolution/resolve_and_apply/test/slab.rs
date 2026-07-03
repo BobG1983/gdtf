@@ -49,18 +49,15 @@ fn sufficient_hit_destroys_slab_and_records_the_cell() {
         &mut injury_rng(),
     );
 
-    // The report records the destroyed slab (the bridge dispatch_fire turns into a
-    // SlabDestroyed message).
+    // The verdict IS the slab kind's record (a ganger wound / cover destruction is
+    // structurally impossible on it — GTW-573), carrying the destroyed slab the bridge
+    // dispatch_fire turns into a SlabDestroyed message.
     assert_eq!(
-        report.slab_destroyed,
-        Some(at),
-        "a sufficient slab hit must record the destroyed (cell, level) on the report",
-    );
-    assert_eq!(report.applied, None, "a slab hit wounds no ganger");
-    assert_eq!(report.part, None, "a slab hit has no struck body part");
-    assert_eq!(
-        report.cover_destroyed, None,
-        "a slab hit destroys no cover (the cover ledger is untouched)",
+        report.verdict,
+        HitVerdict::Slab(SlabVerdict {
+            destroyed: Some(at),
+        }),
+        "a sufficient slab hit must record the destroyed (cell, level) on the verdict",
     );
 
     // The ledger spent the HP to destruction (the EXISTING deplete_slab did the
@@ -110,12 +107,13 @@ fn insufficient_hit_reduces_hp_without_destroying() {
         &mut injury_rng(),
     );
 
-    // No destroyed cell recorded — the slab still stands.
+    // A REAL slab verdict with no destroyed cell — the slab still stands (and a ganger
+    // wound is structurally impossible on a slab verdict).
     assert_eq!(
-        report.slab_destroyed, None,
+        report.verdict,
+        HitVerdict::Slab(SlabVerdict { destroyed: None }),
         "an insufficient slab hit must record NO destroyed cell",
     );
-    assert_eq!(report.applied, None, "a slab hit wounds no ganger");
 
     let after = slab.peek(&at).copied();
     // HP fell (the hit breached the low armor) but the pool is not empty — the reduction

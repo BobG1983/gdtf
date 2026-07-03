@@ -1,9 +1,9 @@
 //! The **attacker-agnostic wound-synthesis core** (GTW-523 remediation) —
-//! [`synthesize_wound`], the ONE shared §5 → §6 → §8 fold that BOTH the
-//! weapon/cover/slab ganger path ([`fold_ganger`](super::fold::resolve_and_apply)) and
-//! the no-attacker fall path ([`resolve_fall_hit`](crate::falls::resolve_fall_hit)) route
-//! through, so the wound-math orchestration lives in exactly ONE place and the two paths
-//! cannot drift (`docs/combat/resolution.md` §5 / §6 / §8).
+//! [`synthesize_wound`], the ONE shared §5 → §6 → §8 fold that BOTH the weapon path's
+//! ganger kind module ([`kinds::ganger`](super::kinds::ganger)) and the no-attacker
+//! fall path ([`resolve_fall_hit`](crate::falls::resolve_fall_hit)) route through, so
+//! the wound-math orchestration lives in exactly ONE place and the two paths cannot
+//! drift (`docs/combat/resolution.md` §5 / §6 / §8).
 //!
 //! Both paths reduce to the SAME sequence once the per-path armor resolution is done:
 //! `resolve_hit` → `roll_severity` (one [`SeverityRng`](crate::rng::SeverityRng) draw) →
@@ -109,12 +109,14 @@ pub(crate) struct WoundCoreInputs<'a> {
 ///
 /// A `Copy`-where-possible record of named newtypes (the [`RolledInjury`] carries an owned
 /// `Vec`, so the struct is `Clone` not `Copy`). Both callers build their own report from
-/// these fields: the weapon path assembles the [`AppliedDamage`](super::report::AppliedDamage)
-/// (matchup / hit / severity / life-after + the mutually-exclusive broken/worn split off
-/// [`wear`](WoundSynthesis::wear)) + the [`HitReport`](super::report::HitReport); the fall
-/// path takes only [`injury`](WoundSynthesis::injury) to bridge into the existing
-/// `InjuryInflicted` message. Returned inside a [`Some`] — a corpse-skip returns [`None`]
-/// (no draw, no mutation, so nothing to freeze).
+/// these fields: the weapon path's ganger kind module assembles the
+/// [`AppliedDamage`](super::kinds::ganger::AppliedDamage) (matchup / hit / severity /
+/// life-after + [`wear`](WoundSynthesis::wear) carried DIRECTLY as the closed
+/// [`ArmorWearOutcome`] — GTW-573 C2) inside its boxed
+/// [`GangerVerdict`](super::kinds::ganger::GangerVerdict); the fall path takes only
+/// [`injury`](WoundSynthesis::injury) to bridge into the existing `InjuryInflicted`
+/// message. Returned inside a [`Some`] — a corpse-skip returns [`None`] (no draw, no
+/// mutation, so nothing to freeze).
 pub(crate) struct WoundSynthesis {
     /// The resolved weapon×armor [`Matchup`] the hit landed under (echoed back so the
     /// weapon path can freeze it into `AppliedDamage` without re-deriving it).

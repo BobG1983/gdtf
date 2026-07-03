@@ -1,22 +1,26 @@
 //! The frozen value types of the E3.9 fold — the [`TargetGanger`] borrow-view the
-//! fold mutates, and the `Copy` [`HitReport`] / [`AppliedDamage`] records it
-//! returns. No-bare-types, no pixel: every field is a named domain newtype.
+//! fold mutates, the [`HitVerdict`] per-kind verdict enum, and the [`HitReport`]
+//! record it returns. No-bare-types, no pixel: every field is a named domain newtype.
+//!
+//! GTW-573: the report's old parallel per-kind `Option` bag (`part` / `applied` /
+//! `cover_destroyed` / `slab_destroyed` / `ground_accrued` / `injury` / `dot_applied`,
+//! whose mutual exclusivity lived only in prose) is replaced by the ONE closed
+//! [`HitVerdict`] enum — exactly one per-kind payload per report, illegal
+//! combinations unrepresentable. Each variant's payload type lives in its own
+//! [`kinds`](super::kinds) module.
+
+use bevy::prelude::Entity;
 
 use crate::{
-    armor::{ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType, BodyPart},
-    armor_wear::{ArmorBroken, ArmorWorn},
+    armor::{ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType},
     cover::CoverLedger,
     ganger::{Hp, LifeState, Luck, Toughness, Wounds},
     inflicted_wound::InflictedWounds,
-    injuries::RolledInjury,
-    matchup::Matchup,
-    metric::{Cell, CellLevel},
+    resolve_and_apply::kinds::{
+        cover::CoverVerdict, ganger::GangerVerdict, ground::GroundAccrual, slab::SlabVerdict,
+    },
     resolve_coarse::ShotKind,
-    resolve_hit::HitResult,
-    severity::Severity,
     slab::SlabLedger,
-    surface::GroundDamage,
-    weapon::Dot,
 };
 
 /// The **bundle of one target ganger's battle state** [`resolve_and_apply`](super::resolve_and_apply)
@@ -121,70 +125,69 @@ pub struct StruckSurfaces<'a> {
     pub slab:  &'a mut SlabLedger,
 }
 
-/// The **ground-accrual verdict** of a [`HitReport`] — the [`Cell`] a round struck the
-/// ground at and the [`GroundDamage`] it dealt there (GTW-366,
-/// `docs/combat/resolution.md` §3.2; user-ruled 2026-06-22).
+/// The **per-kind verdict** of one folded round — WHAT the fold did, one closed
+/// variant per struck kind (GTW-573 C1).
 ///
-/// A frozen `Copy` record of two named domain newtypes (no bare primitive, no pixel): the
-/// ground-plane [`Cell`] the round exited the bottom of the voxel column at, and the
-/// round's [`GroundDamage`] (its `weapon_damage`, NOT a constant — GTW-366 C4). The fire
-/// path's [`dispatch_fire`](crate::acts::dispatch_fire) bridges it into a buffered
-/// [`GroundAccrued`](crate::occupancy_sync::GroundAccrued) message, which
-/// [`sync_accrued_ground`](crate::occupancy_sync::sync_accrued_ground) ACCRUES
-/// (monotonically) onto the [`SurfaceGrid`](crate::surface::SurfaceGrid). Present
-/// (`Some` in [`HitReport::ground_accrued`]) only on a
-/// [`ShotKind::Ground`](crate::resolve_coarse::ShotKind::Ground) outcome — the ground is
-/// **damaged, never destroyed**, so this records accrual, never destruction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct GroundAccrual {
-    /// The ground-plane [`Cell`] the round struck — the accumulator key.
-    pub cell:   Cell,
-    /// The [`GroundDamage`] the round dealt — its `weapon_damage`, accrued onto the cell.
-    pub amount: GroundDamage,
+/// Exactly one variant per report: the old parallel `Option` bag (whose "at most one
+/// of these is `Some`" rule lived in prose) is structurally impossible here. Each
+/// variant carries its kind's whole payload, owned by that kind's
+/// [`kinds`](super::kinds) module (P10):
+///
+/// - [`Ganger`](HitVerdict::Ganger) — a hit that LANDED on a live ganger: the boxed
+///   [`GangerVerdict`] (target / part / applied damage incl. the closed
+///   [`ArmorWearOutcome`](crate::armor_wear::ArmorWearOutcome) / rolled injury / DOT
+///   decision). Boxed: the injury payload owns a `Vec` + texts, far larger than every
+///   other variant (clippy `large_enum_variant`).
+/// - [`Cover`](HitVerdict::Cover) — a cover hit: the [`CoverVerdict`] (destroyed
+///   `(cell, level)`, `None` when merely chipped). GTW-364.
+/// - [`Slab`](HitVerdict::Slab) — a floor/roof-slab hit: the [`SlabVerdict`] (the
+///   slab mirror). GTW-365.
+/// - [`Ground`](HitVerdict::Ground) — a ground strike: the [`GroundAccrual`]
+///   (damaged-never-destroyed cosmetic accrual). GTW-366.
+/// - [`NoEffect`](HitVerdict::NoEffect) — the fold did NOTHING: a clean miss, the
+///   corpse-skip, the defensive no-part / non-queryable-target ganger folds. (What
+///   the round GEOMETRICALLY struck still rides [`HitReport::kind`] — a corpse-skip
+///   is `kind: Ganger` + `NoEffect`, distinct from a `kind: Miss`.)
+///
+/// Every downstream reader is an EXHAUSTIVE match over this enum — the fire bridge
+/// ([`emit_round_signals`](crate::acts::dispatch_fire)), the weapon-shove probe
+/// ([`struck_ganger`](HitVerdict::struck_ganger)), and the presenter's FCT classifier
+/// — so adding a struck kind is a compile error at every boundary until it is
+/// bridged (GTW-573 C4 / C5).
+///
+/// [`Clone`] + [`PartialEq`] but NOT `Copy`/`Eq` (the ganger injury payload owns a
+/// `Vec`, and its effects may carry an `f32`). Compared with `==` in seeded-replay
+/// tests, never keyed in a set.
+#[derive(Debug, Clone, PartialEq)]
+pub enum HitVerdict {
+    /// A hit LANDED on a live ganger — the boxed wound verdict.
+    Ganger(Box<GangerVerdict>),
+    /// A cover hit — chipped or destroyed (GTW-364).
+    Cover(CoverVerdict),
+    /// A floor/roof-slab hit — chipped or destroyed (GTW-365).
+    Slab(SlabVerdict),
+    /// A ground strike — the cosmetic damage accrual (GTW-366).
+    Ground(GroundAccrual),
+    /// The fold did nothing — a miss, a corpse-skip, or a defensive ganger fold.
+    NoEffect,
 }
 
-impl GroundAccrual {
-    /// Build a ground-accrual verdict for the `cell` the round struck and the `amount`
-    /// of [`GroundDamage`] it dealt (the round's `weapon_damage`).
+impl HitVerdict {
+    /// The LIVE ganger this round's fold CONNECTED with, else [`None`] — the
+    /// weapon-shove probe's read (GTW-525 via GTW-573 C4).
+    ///
+    /// An EXHAUSTIVE match (no `_` arm): a new struck kind fails to compile here
+    /// until it declares whether it counts as a connecting ganger hit. Only a
+    /// [`Ganger`](HitVerdict::Ganger) verdict names a target — a corpse-skip /
+    /// defensive fold is [`NoEffect`](HitVerdict::NoEffect) and shoves nobody (the
+    /// fold explicitly did nothing to it).
     #[must_use]
-    pub const fn new(cell: Cell, amount: GroundDamage) -> Self {
-        Self { cell, amount }
+    pub fn struck_ganger(&self) -> Option<Entity> {
+        match self {
+            Self::Ganger(verdict) => Some(verdict.target),
+            Self::Cover(_) | Self::Slab(_) | Self::Ground(_) | Self::NoEffect => None,
+        }
     }
-}
-
-/// The **applied-damage block** of a [`HitReport`] — the resolved damage of a hit
-/// that landed on a ganger (`docs/combat/resolution.md` §5 / §6).
-///
-/// A frozen `Copy` record of named newtypes (no bare primitive, no pixel): the
-/// resolved [`Matchup`], the per-hit [`HitResult`], the rolled [`Severity`], the
-/// ganger's [`LifeState`] **after** application, and the **mutually-exclusive**
-/// armor signals — the `Some(`[`ArmorBroken`]`)` iff this hit broke the struck
-/// piece, OR the `Some(`[`ArmorWorn`]`)` iff it reduced the piece short of breaking
-/// it (GTW-313). The presenter reads it for FX; it is never mutated after
-/// [`resolve_and_apply`](super::resolve_and_apply) returns. Present only when the
-/// hit actually landed on a ganger — a non-ganger / corpse-skip / no-part report
-/// carries `None` in [`HitReport::applied`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AppliedDamage {
-    /// The resolved weapon×armor matchup (E3.2) — [`Matchup::Neutral`] on bare flesh.
-    pub matchup:    Matchup,
-    /// The resolved per-hit damage / penetration / wear (E3.3).
-    pub hit:        HitResult,
-    /// The rolled wound severity bucket (E3.4) — the ONE RNG draw's outcome.
-    pub severity:   Severity,
-    /// The target's [`LifeState`] **after** the hit was applied (E3.6's terminal gates).
-    pub life_after: LifeState,
-    /// The armor-broken signal iff this hit broke the struck piece (E3.6) — else `None`.
-    ///
-    /// **Mutually exclusive** with [`worn`](AppliedDamage::worn): at most one of the
-    /// two is `Some` per hit (the breaking hit sets `broken`, a wearing hit sets
-    /// `worn`, an unaffected hit leaves both `None`).
-    pub broken:     Option<ArmorBroken>,
-    /// The armor-worn signal iff this hit reduced the struck piece **without**
-    /// breaking it (GTW-313) — carries the per-hit integrity `delta`; else `None`.
-    ///
-    /// **Mutually exclusive** with [`broken`](AppliedDamage::broken) (see above).
-    pub worn:       Option<ArmorWorn>,
 }
 
 /// The **frozen per-hit report** [`resolve_and_apply`](super::resolve_and_apply)
@@ -192,125 +195,50 @@ pub struct AppliedDamage {
 /// authoritative model hands the view; ADR-0001,
 /// `docs/decisions/0001-rust-bevy-rewrite.md`).
 ///
-/// A `Copy` value object of named domain types (no bare primitive, **no pixel** —
-/// it carries only damage / wound math, never a screen coordinate). The presenter
-/// reads it for FX staging; [`resolve_and_apply`](super::resolve_and_apply) owns no
+/// Two fields, two questions:
+///
+/// - [`kind`](HitReport::kind) — what the shot GEOMETRICALLY struck (the
+///   [`ShotOutcome`](crate::resolve_coarse::ShotOutcome)'s [`ShotKind`], carrying
+///   the struck ganger / cover-entry / surface-cell payload the coarse pipeline
+///   resolved). Echoed verbatim off the outcome — the trajectory's answer.
+/// - [`verdict`](HitReport::verdict) — what the fold DID about it (the closed
+///   per-kind [`HitVerdict`]). The two differ exactly where the fold declined to
+///   act: a corpse-skip reads `kind: Ganger` + `NoEffect` ("the report still names
+///   what the shot struck"). Both are written by the ONE
+///   [`resolve_and_apply`](super::resolve_and_apply) dispatch, never assembled
+///   independently.
+///
+/// A value object of named domain types (no bare primitive, **no pixel** — it
+/// carries only damage / wound math, never a screen coordinate). The presenter reads
+/// it for FX staging; [`resolve_and_apply`](super::resolve_and_apply) owns no
 /// mutation after it is returned.
 ///
-/// - [`kind`](HitReport::kind) — what the shot struck (the
-///   [`ShotOutcome`](crate::resolve_coarse::ShotOutcome)'s [`ShotKind`], carrying
-///   the struck ganger / cover / surface-cell payload).
-/// - [`part`](HitReport::part) — the struck [`BodyPart`], `Some` only for a hit
-///   that landed on a ganger.
-/// - [`applied`](HitReport::applied) — the [`AppliedDamage`] block, `Some` only
-///   for a hit that landed on a ganger; `None` for a non-ganger outcome, a
-///   corpse-skip, or a defensively-missing part (a **no-effect** report).
-/// - [`cover_destroyed`](HitReport::cover_destroyed) — `Some(cell, level)` ONLY
-///   when this round depleted a piece of cover's HP to zero (GTW-364); the fire
-///   path's [`dispatch_fire`](crate::acts::dispatch_fire) bridges it into a buffered
-///   [`CoverDestroyed`](crate::occupancy_sync::CoverDestroyed) message (the
-///   fire→deplete→message bridge). `None` for every non-destroying outcome (a ganger
-///   hit, a non-destroying cover hit, a slab / ground / miss).
-/// - [`slab_destroyed`](HitReport::slab_destroyed) — `Some(cell, level)` ONLY when this
-///   round depleted a floor/roof slab's HP to zero (GTW-365); the fire path bridges it
-///   into a buffered [`SlabDestroyed`](crate::occupancy_sync::SlabDestroyed) message
-///   (the slab mirror of `cover_destroyed`). `None` for every non-destroying or
-///   non-slab outcome.
-/// - [`ground_accrued`](HitReport::ground_accrued) — `Some(`[`GroundAccrual`]`)` ONLY when
-///   this round struck the ground (GTW-366); the fire path bridges it into a buffered
-///   [`GroundAccrued`](crate::occupancy_sync::GroundAccrued) message that
-///   [`sync_accrued_ground`](crate::occupancy_sync::sync_accrued_ground) accrues
-///   (monotonically) onto the [`SurfaceGrid`](crate::surface::SurfaceGrid). The ground is
-///   **damaged, never destroyed**, so this records accrual, never destruction. `None`
-///   for every non-ground outcome.
-/// - [`injury`](HitReport::injury) — `Some(`[`RolledInjury`]`)` ONLY when this round
-///   wounded a ganger with a non-graze, non-fatal [`Severity`] AND the
-///   `(part, severity)` injury table rolled a named injury (GTW-438); the fire path
-///   bridges it into an [`InjuryInflicted`](crate::acts::InjuryInflicted) message the
-///   [`apply_injury`](crate::acts::apply_injury) boundary system drains. `None` for a
-///   graze / `Fatal` / corpse-skip / non-ganger outcome, or an empty/missing table (the
-///   roll still took its one [`InjuryRng`](crate::rng::InjuryRng) draw — see
-///   [`roll_injury`](crate::injuries::roll_injury)).
-///
-/// NOTE — [`HitReport`] is [`Clone`] but NOT `Copy`: the [`injury`](HitReport::injury)
-/// field carries a [`RolledInjury`] (an owned `Vec` of effects + three texts), so the
-/// report is cloned (not bit-copied) where it is forwarded (the fire path's per-round
-/// emission clones it once into `InjuryInflicted` / `ShotFired`).
-///
-/// Derives [`PartialEq`] but NOT [`Eq`] (GTW-444): the [`injury`](HitReport::injury)
-/// [`RolledInjury`] effects may carry a
-/// [`MovementCostMul`](crate::injuries::InjuryEffect::MovementCostMul) whose `f32` payload
-/// is not `Eq`. A report is compared with `==` in tests, never keyed in a set.
+/// [`Clone`] but NOT `Copy` (the ganger verdict owns the rolled injury), and
+/// [`PartialEq`] but NOT `Eq` (GTW-444: an injury effect may carry a
+/// [`MovementCostMul`](crate::injuries::InjuryEffect::MovementCostMul) `f32`). A
+/// report is cloned where it is forwarded (the fire path's per-round `ShotFired`
+/// emission) and compared with `==` in seeded-replay tests, never keyed in a set.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HitReport {
     /// What the shot struck — the [`ShotOutcome`](crate::resolve_coarse::ShotOutcome)'s [`ShotKind`].
-    pub kind:            ShotKind,
-    /// The struck [`BodyPart`] — `Some` only when the hit landed on a ganger.
-    pub part:            Option<BodyPart>,
-    /// The applied-damage block — `Some` only when the hit landed on a ganger;
-    /// `None` is a no-effect report (non-ganger / corpse-skip / no-part).
-    pub applied:         Option<AppliedDamage>,
-    /// The `(cell, level)` of a piece of cover this round DESTROYED (GTW-364) — `Some`
-    /// only when the cover-hit pipeline depleted that cell's structural HP to zero;
-    /// the fire path bridges it to a [`CoverDestroyed`](crate::occupancy_sync::CoverDestroyed)
-    /// message. `None` for a non-destroying or non-cover outcome.
-    pub cover_destroyed: Option<CellLevel>,
-    /// The `(cell, level)` of a floor/roof slab this round DESTROYED (GTW-365) — `Some`
-    /// only when the slab-hit pipeline depleted that slab's structural HP to zero; the
-    /// fire path bridges it to a [`SlabDestroyed`](crate::occupancy_sync::SlabDestroyed)
-    /// message. `None` for a non-destroying or non-slab outcome.
-    pub slab_destroyed:  Option<CellLevel>,
-    /// The ground-accrual verdict of a round that struck the GROUND (GTW-366) — `Some`
-    /// only on a [`ShotKind::Ground`](crate::resolve_coarse::ShotKind::Ground) outcome,
-    /// carrying the struck [`Cell`] + the round's [`GroundDamage`]; the fire path bridges
-    /// it to a [`GroundAccrued`](crate::occupancy_sync::GroundAccrued) message that accrues
-    /// (monotonically) onto the [`SurfaceGrid`](crate::surface::SurfaceGrid). `None` for a
-    /// non-ground outcome. The ground is damaged, never destroyed (purely cosmetic).
-    pub ground_accrued:  Option<GroundAccrual>,
-    /// The injury this round rolled (GTW-438) — `Some(`[`RolledInjury`]`)` ONLY on a
-    /// ganger wound whose non-graze, non-fatal [`Severity`] rolled a named injury from
-    /// the `(part, severity)` table; the fire path bridges it to an
-    /// [`InjuryInflicted`](crate::acts::InjuryInflicted) message. `None` for a graze /
-    /// `Fatal` / corpse-skip / non-ganger outcome, or an empty/missing table (where the
-    /// roll still took its one [`InjuryRng`](crate::rng::InjuryRng) draw, then discarded
-    /// it — the content-independent stream-alignment property).
-    pub injury:          Option<RolledInjury>,
-    /// The DOT this round attached (GTW-544) — `Some(`[`Dot`]`)` ONLY when this round wounded
-    /// a ganger, the firing weapon carries a [`DotProfile`](crate::weapon::DotProfile), AND
-    /// the hit PENETRATED armor
-    /// ([`PenetratingDamage`](crate::resolve_hit::PenetratingDamage) `> 0`). The fire path
-    /// bridges it to an [`DotApplied`](crate::acts_runtime::dot::DotApplied) message the
-    /// [`apply_dot`](crate::acts_runtime::dot::apply_dot) boundary attaches (or REFRESHES —
-    /// DOTs do not stack) onto the struck ganger. `None` for a fully-soaked hit
-    /// (penetrating `0`, even though HP may still bruise), a non-DOT weapon, a graze that did
-    /// not penetrate, a corpse-skip, or a non-ganger outcome. Threaded from the weapon's
-    /// [`DotProfile`](crate::weapon::DotProfile) the same way the injury verdict rides — it is
-    /// a frozen decision, not a live mutation (the fold owns no component attach; the boundary
-    /// system does).
-    pub dot_applied:     Option<Dot>,
+    pub kind:    ShotKind,
+    /// What the fold did about it — the closed per-kind [`HitVerdict`].
+    pub verdict: HitVerdict,
 }
 
 impl HitReport {
-    /// Build a **no-effect** report for `kind` — no part struck, no damage applied,
-    /// no cover / slab destroyed, no ground accrued, no injury rolled, and no DOT attached
-    /// (the non-ganger non-cover non-slab non-ground, corpse-skip, and defensive-no-part
-    /// folds).
+    /// Build a **no-effect** report for `kind` — the fold did nothing (a clean miss,
+    /// the corpse-skip, and the defensive no-part / non-queryable-target ganger
+    /// folds). The `kind` still names what the shot geometrically struck.
     ///
-    /// `pub` so the E4.5 `fire()` act (GTW-198) can fold a non-ganger / corpse-skip
-    /// round to a no-effect report cross-module without re-deriving the shape. Stays
-    /// `const` (every field is a `None` / the `Copy` `kind`), even though the struct now
-    /// carries the non-`Copy` [`injury`](HitReport::injury) (a `None` literal is const-OK).
+    /// `pub` so the E4.5 `fire()` act (GTW-198) can fold a miss / defensive round to
+    /// a no-effect report cross-module without re-deriving the shape. `const` (the
+    /// variant is a unit; `kind` is `Copy`).
     #[must_use]
     pub const fn no_effect(kind: ShotKind) -> Self {
         Self {
             kind,
-            part: None,
-            applied: None,
-            cover_destroyed: None,
-            slab_destroyed: None,
-            ground_accrued: None,
-            injury: None,
-            dot_applied: None,
+            verdict: HitVerdict::NoEffect,
         }
     }
 }

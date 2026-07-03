@@ -7,67 +7,31 @@
 //! applies the result as ONE model-side act (armor → severity → application, with
 //! corpse-skip draw discipline) and returns the frozen per-round reports — the
 //! authoritative-model role this crate plays in the model/view split (ADR-0001,
-//! `docs/decisions/0001-rust-bevy-rewrite.md`). It **composes the already-built E3
-//! verbs** — it rebuilds none of them:
+//! `docs/decisions/0001-rust-bevy-rewrite.md`).
 //!
-//! 1. **Kind gate** — only a [`ShotKind::Ganger`](crate::resolve_coarse::ShotKind::Ganger)
-//!    outcome can WOUND. A [`ShotKind::Cover`](crate::resolve_coarse::ShotKind::Cover)
-//!    (GTW-364) or [`ShotKind::Slab`](crate::resolve_coarse::ShotKind::Slab) (GTW-365)
-//!    outcome instead spends the struck structural surface's OWN HP through the SAME
-//!    [`resolve_hit`](crate::resolve_hit::resolve_hit) damage formula (against its own
-//!    armor) and records a destroyed `(cell, level)` on depletion to zero — **no wound
-//!    and no RNG draw**. A [`ShotKind::Ground`](crate::resolve_coarse::ShotKind::Ground)
-//!    / [`ShotKind::Miss`](crate::resolve_coarse::ShotKind::Miss) outcome folds to a
-//!    **no-effect** report (no wound, no HP spent, no draw).
-//! 2. **Corpse-skip — BEFORE any draw** — a target already at
-//!    [`LifeState::Dead`](crate::ganger::LifeState::Dead) yields a **no-effect**
-//!    report: nothing mutates and **no draw is taken**, so a corpse can never
-//!    consume an RNG draw (determinism is preserved) and a later round in a burst
-//!    cannot re-wound a corpse (resolution.md §9's corpse-skip discipline).
-//! 3. **Part** — the struck [`BodyPart`](crate::armor::BodyPart) is the outcome's
-//!    [`ShotOutcome::body_part`](crate::resolve_coarse::ShotOutcome::body_part)
-//!    (the §4 location roll already drawn upstream). A `Ganger` outcome carries
-//!    `Some`; a defensive `None` folds to a no-damage report.
-//! 4. **Armor lookup (or bare flesh)** — if the struck part's worn piece entity
-//!    still protects (its [`ArmorIntegrity`](crate::armor::ArmorIntegrity) `> 0`), the
-//!    hit resolves against that [`ArmorPiece`](crate::armor::ArmorPiece) under the E3.2
-//!    [`matchup`](crate::matchup::matchup) of the weapon's
-//!    [`DamageType`](crate::weapon::DamageType) vs the piece's
-//!    [`ArmorType`](crate::armor::ArmorType). Otherwise it resolves as **bare
-//!    flesh**: a zeroed soak (floor / protection / hardness all `0`) under
-//!    [`Matchup::Neutral`](crate::matchup::Matchup::Neutral) (there is no armor
-//!    type to match against, so no wheel advantage —
-//!    `weapons-and-armor.md` §"Per-hit resolution": "later hits on that location
-//!    resolve as bare flesh").
-//! 5. **Damage** — E3.3 [`resolve_hit`](crate::resolve_hit::resolve_hit) →
-//!    [`HitResult`](crate::resolve_hit::HitResult) against that piece + matchup.
-//! 6. **Severity — the ONE draw** — E3.4
-//!    [`roll_severity`](crate::severity::roll_severity) over the
-//!    [`SeverityInputs`](crate::severity::SeverityInputs) assembled from the hit's
-//!    penetrating damage, the defender's [`Toughness`](crate::ganger::Toughness),
-//!    the struck part's [`part_severity_mod`](crate::severity::part_severity_mod),
-//!    the weapon's [`FatalBias`](crate::weapon::FatalBias), and **both** gangers'
-//!    [`Luck`](crate::ganger::Luck). The injected [`ShotRng`](crate::rng::ShotRng)/[`SeverityRng`](crate::rng::SeverityRng) is
-//!    the **single draw point** — no `thread_rng`, no ad-hoc entropy.
-//! 7. **Apply** — E3.6 [`apply_hit`](crate::apply_hit::apply_hit) folds HP loss +
-//!    Wounds-by-tier + the GTW-279 [`InflictedWounds`](crate::inflicted_wound::InflictedWounds)
-//!    record + armor wear + the terminal gates onto the target in place, surfacing
-//!    the `Some(`[`ArmorBroken`](crate::armor_wear::ArmorBroken)`)` on a
-//!    protecting→broken crossing.
-//! 8. **Freeze** — the returned [`HitReport`] is a `Copy` record of named newtypes
-//!    (the matchup, the [`HitResult`](crate::resolve_hit::HitResult), the
-//!    [`Severity`](crate::severity::Severity), the resulting
-//!    [`LifeState`](crate::ganger::LifeState), the optional
-//!    [`ArmorBroken`](crate::armor_wear::ArmorBroken), the struck
-//!    [`BodyPart`](crate::armor::BodyPart)) for the presenter's FX.
-//!    [`resolve_and_apply`] owns **no** mutation after return.
+//! GTW-573 shape — one dispatch, one module per struck kind:
 //!
-//! [`resolve_and_apply`] is the MODEL-side integrator. It does **not** charge TU or
-//! loop the burst — that is the E4 `fire()` act (resolution.md §"What's pure math
-//! vs sim"). Pure, render-free model logic: it carries **no pixel** — the report
-//! holds only damage / wound math, never a screen coordinate.
+//! - [`fold`] holds [`resolve_and_apply`], the sim's ONE logic-free delegation
+//!   dispatch over [`ShotKind`](crate::resolve_coarse::ShotKind);
+//! - [`kinds`] holds one module per struck kind (ganger / cover / slab / ground),
+//!   each owning its whole fold AND its per-kind verdict payload type;
+//! - [`report`] holds the frozen value types: the closed [`HitVerdict`] enum (one
+//!   variant per kind — the old parallel per-kind `Option` bag is gone) and the
+//!   [`HitReport`] (`kind` = what the round struck, `verdict` = what the fold did);
+//! - [`wound_core`] holds the attacker-agnostic §5 → §6 → §8 wound-synthesis core
+//!   the ganger kind and the no-attacker fall path share (GTW-523).
+//!
+//! The composed E3 verbs (matchup → `resolve_hit` → `roll_severity` → `apply_hit` →
+//! `roll_injury`) are REUSED by the kind modules, never rebuilt. The severity-gated
+//! draw discipline (one [`SeverityRng`](crate::rng::SeverityRng) draw per live ganger
+//! hit; one severity-gated [`InjuryRng`](crate::rng::InjuryRng) draw on a tabled
+//! wound only; zero draws everywhere else) is documented at the dispatch and pinned
+//! by `test::draw_discipline`. [`resolve_and_apply`] is MODEL-side: it does **not**
+//! charge TU or loop the burst (the E4 `fire()` act does), and it carries **no
+//! pixel** — the report holds only damage / wound math, never a screen coordinate.
 
 mod fold;
+mod kinds;
 mod report;
 mod wound_core;
 
@@ -77,15 +41,20 @@ mod test;
 pub use fold::resolve_and_apply;
 /// The two shared cover-hit primitives the §7 melee cover-smash path reuses (GTW-508 C1):
 /// the cover armor-piece shape and the HP-loss → cover-HP conversion. `pub(crate)` re-export
-/// (the private `fold` module owns them) so [`resolve_structural_melee`](crate::melee::resolve_structural_melee)
-/// imports the ONE definition instead of copying the ranged `apply_cover_hit` glue.
-pub(crate) use fold::{cover_armor_piece, cover_damage_from_hp};
-pub use report::{
-    AppliedDamage, GroundAccrual, HitReport, StruckPiece, StruckSurfaces, TargetGanger,
+/// (the `kinds::cover` module owns them) so [`resolve_structural_melee`](crate::melee::resolve_structural_melee)
+/// imports the ONE definition instead of copying the ranged cover-fold glue.
+pub(crate) use kinds::cover::{cover_armor_piece, cover_damage_from_hp};
+/// The per-kind verdict payload types, each owned by its struck-kind module (GTW-573
+/// P10): the ganger wound verdict + applied-damage block, the cover / slab
+/// destruction verdicts, and the ground accrual.
+pub use kinds::{
+    cover::CoverVerdict, ganger::AppliedDamage, ganger::GangerVerdict, ground::GroundAccrual,
+    slab::SlabVerdict,
 };
+pub use report::{HitReport, HitVerdict, StruckPiece, StruckSurfaces, TargetGanger};
 /// The **attacker-agnostic wound-synthesis core** (GTW-523 remediation): the ONE shared
-/// §5 → §6 → §8 fold both [`resolve_and_apply`]'s ganger path and the no-attacker fall
-/// path ([`resolve_fall_hit`](crate::falls::resolve_fall_hit)) route through, plus its
+/// §5 → §6 → §8 fold both the ganger kind module and the no-attacker fall path
+/// ([`resolve_fall_hit`](crate::falls::resolve_fall_hit)) route through, plus its
 /// input bundle + blow value types. `pub(crate)` re-export (the private `wound_core` module
 /// owns them) so the falls fork imports the ONE definition instead of re-running the
 /// `resolve_hit` → `roll_severity` → `apply_hit` → `roll_injury` orchestration — the two

@@ -22,8 +22,8 @@ pub(super) use crate::{
     matchup::{Matchup, matchup},
     metric::{Cell, CellLevel, Level, SimPos},
     resolve_and_apply::{
-        AppliedDamage, GroundAccrual, HitReport, StruckPiece, StruckSurfaces, TargetGanger,
-        resolve_and_apply,
+        AppliedDamage, CoverVerdict, GangerVerdict, GroundAccrual, HitReport, HitVerdict,
+        SlabVerdict, StruckPiece, StruckSurfaces, TargetGanger, resolve_and_apply,
     },
     resolve_coarse::{ShotKind, ShotOutcome},
     resolve_hit::{HitResult, resolve_hit},
@@ -82,6 +82,25 @@ pub(super) fn injury_registry() -> InjuryRegistry {
 /// throwaway [`World`] so the tests never hand-craft a raw id (no `unwrap`).
 pub(super) fn an_entity() -> Entity {
     World::new().spawn_empty().id()
+}
+
+/// The boxed [`GangerVerdict`] of a report that LANDED on a live ganger, else `None` —
+/// the shared assertion accessor the fold tests read the wound verdict through
+/// (a test-side convenience over the closed [`HitVerdict`], not a production probe).
+pub(super) fn ganger_verdict(report: &HitReport) -> Option<&GangerVerdict> {
+    match &report.verdict {
+        HitVerdict::Ganger(verdict) => Some(verdict),
+        HitVerdict::Cover(_)
+        | HitVerdict::Slab(_)
+        | HitVerdict::Ground(_)
+        | HitVerdict::NoEffect => None,
+    }
+}
+
+/// The [`AppliedDamage`] block of a report that LANDED on a live ganger, else `None` —
+/// the copyable shape most fold assertions compare.
+pub(super) fn applied_of(report: &HitReport) -> Option<AppliedDamage> {
+    ganger_verdict(report).map(|verdict| verdict.applied)
 }
 
 /// An armed-entity bundle built from arbitrary (NOT shipped-tuning) magnitudes

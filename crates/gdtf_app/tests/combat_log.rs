@@ -25,10 +25,10 @@ use gdtf_app::test_support::{
 };
 use gdtf_battle_presenter::{ShotImpactResolved, severity_color};
 use gdtf_battle_sim::{
-    AppliedDamage, BodyPart, Cell, GainedInjury, GangerName, HitReport, HitResult, HpDamage,
-    InjuryInflicted, InjuryName, InspectText, IntegrityWear, LifeState, LogText, Matchup,
-    MovementOccurred, PenetratingDamage, PopupText, Severity, ShotFired, ShotKind, TurnStarted,
-    injuries::InjuryRegistry, tuning::CombatTuning,
+    AppliedDamage, ArmorWearOutcome, BodyPart, Cell, GainedInjury, GangerName, GangerVerdict,
+    HitReport, HitResult, HitVerdict, HpDamage, InjuryInflicted, InjuryName, InspectText,
+    IntegrityWear, LifeState, LogText, Matchup, MovementOccurred, PenetratingDamage, PopupText,
+    Severity, ShotFired, ShotKind, TurnStarted, injuries::InjuryRegistry, tuning::CombatTuning,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -178,28 +178,28 @@ fn spawn_named(app: &mut App, name: &str) -> Entity {
 /// A connecting ganger-hit `HitReport` dealing `hp` HP to `struck`'s torso — the verdict a
 /// `ShotImpactResolved` (or `ShotFired`) carries for a shot that landed (classifies to a
 /// damage line). A no-effect report would read as a miss, and a `None` report yields no line
-/// at all (GTW-559); this proves the connecting path.
-const fn connecting_report(struck: Entity, hp: i32) -> HitReport {
+/// at all (GTW-559); this proves the connecting path. (Not `const`: the GTW-573 ganger
+/// verdict is boxed, and `Box::new` is not const.)
+fn connecting_report(struck: Entity, hp: i32) -> HitReport {
     HitReport {
-        kind:            ShotKind::Ganger(struck),
-        part:            Some(BodyPart::Torso),
-        applied:         Some(AppliedDamage {
-            matchup:    Matchup::Neutral,
-            hit:        HitResult {
-                penetrating: PenetratingDamage::new(0),
-                hp_damage:   HpDamage::new(hp),
-                wear:        IntegrityWear::new(0),
+        kind:    ShotKind::Ganger(struck),
+        verdict: HitVerdict::Ganger(Box::new(GangerVerdict {
+            target:      struck,
+            part:        BodyPart::Torso,
+            applied:     AppliedDamage {
+                matchup:    Matchup::Neutral,
+                hit:        HitResult {
+                    penetrating: PenetratingDamage::new(0),
+                    hp_damage:   HpDamage::new(hp),
+                    wear:        IntegrityWear::new(0),
+                },
+                severity:   Severity::None,
+                life_after: LifeState::Alive,
+                wear:       ArmorWearOutcome::Unaffected,
             },
-            severity:   Severity::None,
-            life_after: LifeState::Alive,
-            broken:     None,
-            worn:       None,
-        }),
-        cover_destroyed: None,
-        slab_destroyed:  None,
-        ground_accrued:  None,
-        injury:          None,
-        dot_applied:     None,
+            injury:      None,
+            dot_applied: None,
+        })),
     }
 }
 

@@ -40,7 +40,7 @@ fn compose_by_hand(
         defender_luck,
     );
     let severity = roll_severity(&inputs, &tuning.severity_scaling, &mut rng_b);
-    let wear_outcome = apply_hit(
+    let wear = apply_hit(
         GangerHitTarget {
             hp:        &mut hp,
             wounds:    &mut wounds,
@@ -54,19 +54,13 @@ fn compose_by_hand(
         entity,
         tuning,
     );
-    // Map the ArmorWearOutcome onto the two report fields the SAME way the fold does.
-    let (broken, worn) = match wear_outcome {
-        ArmorWearOutcome::Broke(broken) => (Some(broken), None),
-        ArmorWearOutcome::Worn(worn) => (None, Some(worn)),
-        ArmorWearOutcome::Unaffected => (None, None),
-    };
+    // The ArmorWearOutcome rides the block DIRECTLY (GTW-573 C2) — no Option split.
     let applied = AppliedDamage {
         matchup: m,
         hit,
         severity,
         life_after: life,
-        broken,
-        worn,
+        wear,
     };
     (applied, (hp, wounds, life, integrity, inflicted))
 }
@@ -143,16 +137,16 @@ fn fold_equals_the_composed_steps() {
         entity,
     );
 
-    // The report's damage block matches the hand-composed steps.
+    // The verdict's damage block matches the hand-composed steps.
     assert_eq!(
-        report.applied,
+        applied_of(&report),
         Some(applied_b),
         "the folded report must equal the composed matchup/hit/severity/state",
     );
     assert_eq!(
-        report.part,
+        ganger_verdict(&report).map(|v| v.part),
         Some(part),
-        "the report carries the struck part"
+        "the verdict carries the struck part"
     );
 
     // The resulting ganger state matches the hand-composed steps, every mutated
@@ -215,10 +209,10 @@ fn armored_report_carries_the_real_matchup() {
     let res = resolve(weapon, ArmorType::Plated);
 
     assert!(
-        fav.applied.is_some() && res.applied.is_some(),
+        applied_of(&fav).is_some() && applied_of(&res).is_some(),
         "both armored hits must carry an applied block",
     );
-    let (Some(fav_a), Some(res_a)) = (fav.applied, res.applied) else {
+    let (Some(fav_a), Some(res_a)) = (applied_of(&fav), applied_of(&res)) else {
         return;
     };
     assert_eq!(

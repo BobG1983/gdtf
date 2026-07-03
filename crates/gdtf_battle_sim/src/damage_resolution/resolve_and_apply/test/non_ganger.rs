@@ -56,20 +56,15 @@ fn non_ganger_outcomes_are_inert() {
             &mut injury_rng(),
         );
 
-        assert_eq!(
-            report.applied, None,
+        assert!(
+            !matches!(report.verdict, HitVerdict::Ganger(_)),
             "a {kind:?} outcome must apply no damage to a ganger",
         );
-        assert_eq!(report.part, None, "a {kind:?} report carries no part");
+        assert!(
+            !matches!(report.verdict, HitVerdict::Cover(_) | HitVerdict::Slab(_)),
+            "a {kind:?} (non-cover, non-slab) outcome touches no structural ledger",
+        );
         assert_eq!(report.kind, kind, "the report still names the struck kind");
-        assert_eq!(
-            report.cover_destroyed, None,
-            "a {kind:?} (non-cover) outcome destroys no cover",
-        );
-        assert_eq!(
-            report.slab_destroyed, None,
-            "a {kind:?} (non-slab) outcome destroys no slab",
-        );
 
         assert_eq!(hp, hp_before, "{kind:?} must not change Hp");
         assert_eq!(wounds, wounds_before, "{kind:?} must not change Wounds");

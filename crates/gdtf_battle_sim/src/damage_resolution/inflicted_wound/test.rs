@@ -15,7 +15,7 @@ use crate::{
     injuries::{InjuryRegistry, InjuryTables},
     magazine::{Magazine, ReloadTu},
     metric::{Cell, Level, SimPos},
-    resolve_and_apply::{StruckSurfaces, TargetGanger, resolve_and_apply},
+    resolve_and_apply::{HitVerdict, StruckSurfaces, TargetGanger, resolve_and_apply},
     resolve_coarse::{ShotKind, ShotOutcome},
     rng::{BattleSeed, InjuryRng, SeverityRng},
     sample_cone::{ConcentrationP, ShotDir, sample_cone_vector},
@@ -180,12 +180,12 @@ fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
             &mut InjuryRng::from_root(BattleSeed::new(SEED)),
         );
 
-        let Some(applied) = report.applied else {
-            // A ganger hit on a live target always carries an applied block; if it
+        let HitVerdict::Ganger(verdict) = &report.verdict else {
+            // A ganger hit on a live target always carries the wound verdict; if it
             // somehow did not, there is nothing to assert for this round.
             continue;
         };
-        if applied.severity == Severity::None {
+        if verdict.applied.severity == Severity::None {
             // A graze records nothing — the list must not have grown this round.
             assert_eq!(
                 inflicted.len(),
@@ -193,17 +193,14 @@ fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
                 "a graze (Severity::None) must NOT grow the InflictedWounds list",
             );
         } else {
-            // A real wound appends exactly one entry carrying the report's OWN
+            // A real wound appends exactly one entry carrying the verdict's OWN
             // rolled tier + the part it names.
             assert_eq!(
                 inflicted.len(),
                 before + 1,
                 "a non-graze hit must grow the InflictedWounds list by exactly one",
             );
-            let Some(struck) = report.part else {
-                continue;
-            };
-            expected.push(InflictedWound::new(applied.severity, struck));
+            expected.push(InflictedWound::new(verdict.applied.severity, verdict.part));
         }
     }
 

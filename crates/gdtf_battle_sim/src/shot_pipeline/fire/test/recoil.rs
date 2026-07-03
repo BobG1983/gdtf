@@ -140,7 +140,7 @@ fn recoil_climbs_across_burst_and_resets_between_calls() {
         "round 0 (zero tilt) must strike the in-line LOW target",
     );
     assert!(
-        first.applied.is_some(),
+        applied_of(first).is_some(),
         "round 0's ganger hit must carry an AppliedDamage block",
     );
 

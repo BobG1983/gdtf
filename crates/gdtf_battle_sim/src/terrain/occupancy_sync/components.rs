@@ -156,7 +156,7 @@ impl SlabDestroyed {
 /// A round that exits the bottom of the voxel column strikes the ground — **damaged,
 /// never destroyed** (`docs/combat/resolution.md` §3.2; user-ruled 2026-06-22). The
 /// E3.9 fold records the struck [`Cell`] and the round's [`GroundDamage`] on
-/// [`HitReport::ground_accrued`](crate::resolve_and_apply::HitReport::ground_accrued), and
+/// [`GroundAccrual`](crate::resolve_and_apply::GroundAccrual), and
 /// the fire path's [`dispatch_fire`](crate::acts::dispatch_fire) bridges it into THIS
 /// buffered message — the same fire→message→sync shape the cover / slab destruction
 /// bridges use, except the consumer ACCRUES (monotonically, never lowers) onto the

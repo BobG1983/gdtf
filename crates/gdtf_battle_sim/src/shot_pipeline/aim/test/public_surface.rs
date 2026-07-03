@@ -8,9 +8,9 @@ use crate::{
     cone::PriorShots,
     cover::{CoverLedger, HeightBand},
     ganger::{Direction, StanceKind},
-    stability::{EmplacementStability, TerrainBraced},
+    stability::StabilityTerms,
     tuning::CombatTuning,
-    weapon::WeaponBraceBonus,
+    weapon::Stable,
 };
 
 /// AC6 — both composers are the public model methods (the HUD-shared callable
@@ -41,23 +41,15 @@ fn composers_are_the_public_library_surface_with_zero_pixels() {
     let mode = wpn.fire_mode.single();
     let ledger = CoverLedger::new();
 
-    let (cone_mult, recoil_growth) = pub_stab(
-        &shooter,
-        wpn.stable,
-        TerrainBraced::new(false),
-        WeaponBraceBonus::none(),
-        EmplacementStability::none(),
-        &ledger,
-        &tuning,
-    );
+    // The GTW-573 StabilityTerms bundle, reached through the public re-export too.
+    let (cone_mult, recoil_growth) = pub_stab(&shooter, weapon_terms(&wpn), &ledger, &tuning);
     let theta = pub_cone_for(
         &shooter,
         wpn.stats(),
         &mode,
         PriorShots::first(),
         &ledger,
-        TerrainBraced::new(false),
-        EmplacementStability::none(),
+        weapon_terms(&wpn),
         &tuning,
     );
 
@@ -89,16 +81,16 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
     let plain_wpn = weapon_tagged(0.2, 0.1, false);
     let mode = stable_wpn.fire_mode.single();
     let prior = PriorShots::first();
-    // The un-scoped / un-terrain-braced stability read this test repeats four times — a local
-    // closure keeps the call sites terse (the added GTW-542 `sight` arg is always the identity
-    // here, since no fixture weapon is scoped).
-    let stab = |stable, cover: &CoverLedger| {
+    // The un-terrain-braced stability read this test repeats four times — a local
+    // closure keeps the call sites terse (every non-`stable` term stays at its
+    // GTW-573 zero-identity default, since no fixture weapon carries one).
+    let stab = |stable: Stable, cover: &CoverLedger| {
         stability_for(
             &shooter,
-            stable,
-            TerrainBraced::new(false),
-            WeaponBraceBonus::none(),
-            EmplacementStability::none(),
+            StabilityTerms {
+                stable,
+                ..StabilityTerms::default()
+            },
             cover,
             &tuning,
         )
@@ -123,8 +115,7 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
         &mode,
         prior,
         &empty,
-        TerrainBraced::new(false),
-        EmplacementStability::none(),
+        weapon_terms(&stable_wpn),
         &tuning,
     );
     let plain_theta = cone_for(
@@ -133,8 +124,7 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
         &mode,
         prior,
         &empty,
-        TerrainBraced::new(false),
-        EmplacementStability::none(),
+        weapon_terms(&plain_wpn),
         &tuning,
     );
     assert!(
@@ -162,8 +152,7 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
         &mode,
         prior,
         &under_cover,
-        TerrainBraced::new(false),
-        EmplacementStability::none(),
+        weapon_terms(&stable_wpn),
         &tuning,
     );
     let plain_under = cone_for(
@@ -172,8 +161,7 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
         &mode,
         prior,
         &under_cover,
-        TerrainBraced::new(false),
-        EmplacementStability::none(),
+        weapon_terms(&plain_wpn),
         &tuning,
     );
     assert_eq!(

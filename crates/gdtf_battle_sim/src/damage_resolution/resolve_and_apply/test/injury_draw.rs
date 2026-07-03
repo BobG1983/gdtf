@@ -184,7 +184,7 @@ fn ganger_wound_takes_one_injury_draw() {
 
     // Confirm the precondition the draw is gated on actually held this seed (a non-graze,
     // non-fatal wound) — else the test would assert nothing meaningful.
-    let severity = report.applied.map(|a| a.severity);
+    let severity = applied_of(&report).map(|a| a.severity);
     let is_tabled = matches!(
         severity,
         Some(Severity::Minor | Severity::Major | Severity::Critical)

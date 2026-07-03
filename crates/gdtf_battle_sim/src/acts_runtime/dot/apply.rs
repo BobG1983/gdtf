@@ -1,5 +1,5 @@
 //! The [`DotApplied`] boundary message + the [`apply_dot`] applier — the GTW-544 seam that
-//! turns a frozen [`HitReport::dot_applied`](crate::resolve_and_apply::HitReport::dot_applied)
+//! turns a frozen [`GangerVerdict::dot_applied`](crate::resolve_and_apply::GangerVerdict::dot_applied)
 //! attach decision into a persistent [`Dot`](crate::weapon::Dot) on the struck ganger.
 //!
 //! The DECISION is PURE + in-fold ([`resolve_and_apply`](crate::resolve_and_apply::resolve_and_apply),
@@ -8,7 +8,7 @@
 //! `bevy-traps.md` #7 — no `&mut World`):
 //!
 //! 1. [`dispatch_fire`](crate::acts::dispatch_fire) emits one [`DotApplied`] per fired round
-//!    whose [`HitReport::dot_applied`](crate::resolve_and_apply::HitReport::dot_applied) is
+//!    whose [`GangerVerdict::dot_applied`](crate::resolve_and_apply::GangerVerdict::dot_applied) is
 //!    `Some`, carrying the struck target [`Entity`] + the [`Dot`](crate::weapon::Dot) to
 //!    attach.
 //! 2. [`apply_dot`] drains that buffer and, for each message, ATTACHES the
@@ -22,7 +22,7 @@ use bevy::prelude::{Commands, Entity, Message, MessageReader, Query};
 use crate::weapon::Dot;
 
 /// One **DOT was applied** — the GTW-544 boundary message bridging a frozen
-/// [`HitReport::dot_applied`](crate::resolve_and_apply::HitReport::dot_applied) attach
+/// [`GangerVerdict::dot_applied`](crate::resolve_and_apply::GangerVerdict::dot_applied) attach
 /// decision into the [`apply_dot`] applier.
 ///
 /// Emitted once per fired round whose report attached a DOT (a penetrating hit from a DOT

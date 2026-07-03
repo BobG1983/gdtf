@@ -29,7 +29,7 @@ use crate::{
     resolve_coarse::{ShotInputs, ShotKind, resolve_coarse},
     rng::{InjuryRng, SeverityRng, ShotRng},
     sample_cone::concentration_p,
-    stability::{EmplacementStability, terrain_brace::terrain_braces},
+    stability::{EmplacementStability, StabilityTerms, terrain_brace::terrain_braces},
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageType, FatalBias, FireModeSpec, Handedness, Kickback, Stable,
@@ -394,14 +394,14 @@ pub(super) struct RoundSetup<'a> {
 /// Composes every [`ShotInputs`] field (AC5 / AC8): the shooter's pos/facing/stance,
 /// the target geometry, `cone` = [`cone_for`] at `prior_shots`, `p` =
 /// [`concentration_p`], `recoil_climb` = the `tuning.cone_stability.recoil_climb`
-/// leaf, and `recoil_growth` from [`stability_for`]. A [`ShotKind::Ganger`] outcome
-/// folds via [`resolve_and_apply`] onto the struck target (got from the TARGET query
-/// — a struck entity that is not a queryable target folds to [`HitReport::no_effect`],
+/// leaf, and `recoil_growth` from [`stability_for`]. EVERY outcome folds through the
+/// ONE [`resolve_and_apply`] delegation dispatch (GTW-573): a [`ShotKind::Ganger`]
+/// outcome first resolves the struck target's borrowed views off the TARGET query (a
+/// struck entity that is not a queryable target folds to [`HitReport::no_effect`],
 /// never a panic); a [`ShotKind::Cover`] / [`ShotKind::Slab`] / [`ShotKind::Ground`]
-/// outcome ALSO folds through [`resolve_and_apply`] (the cover/slab arms spend their
-/// ledger HP, the ground arm — GTW-366 — records the round's `weapon_damage` accrual in
-/// the report); only a clean [`ShotKind::Miss`] short-circuits to
-/// [`HitReport::no_effect`]. Shot draws come from the injected [`ShotRng`](crate::rng::ShotRng);
+/// outcome spends its ledger HP / records the round's `weapon_damage` accrual
+/// (GTW-364/365/366); a clean [`ShotKind::Miss`] folds to no effect inside the same
+/// dispatch. Shot draws come from the injected [`ShotRng`](crate::rng::ShotRng);
 /// severity draws from the injected [`SeverityRng`](crate::rng::SeverityRng).
 ///
 /// Returns the frozen primary [`HitReport`], the `AoE` **splash** reports (GTW-541 —
@@ -464,32 +464,28 @@ pub(super) fn resolve_round(
         grids.brace_cells,
         grids.surface,
     );
-    // GTW-543: resolve the emplacement stability term ONCE (mounted → the tunable bonus, else the
-    // zero identity) so cone_for AND the recoil-recompute stability_for below feed the SAME term.
-    let emplacement = snapshot.emplacement_stability(tuning);
+    // GTW-573 C7: build the FOUR zero-identity stability terms ONCE per round — the weapon's
+    // stable tag, the GTW-392 terrain brace, the GTW-549 per-item brace attachment (`None` =
+    // the zero identity), and the GTW-543 emplacement term (mounted → the tunable bonus, else
+    // the zero identity) — and feed the SAME bundle to cone_for AND the recoil-recompute
+    // stability_for below, so cone width and recoil damping are consistent by construction.
+    let stability_terms = StabilityTerms {
+        stable: snapshot.stable,
+        terrain_braced,
+        brace_bonus: snapshot.brace_bonus.unwrap_or_else(WeaponBraceBonus::none),
+        emplacement: snapshot.emplacement_stability(tuning),
+    };
     let cone = cone_for(
         &shooter_view,
         snapshot.weapon_stats(),
         setup.mode,
         prior_shots,
         grids.cover,
-        terrain_braced,
-        emplacement,
+        stability_terms,
         tuning,
     );
-    // GTW-549: resolve the SAME per-item brace term cone_for used above (off the snapshot's
-    // WeaponBraceBonus attachment) so this recoil-growth-only recompute stays consistent with
-    // the cone width. `None` (no brace attachment) resolves the zero identity.
-    let brace_bonus = snapshot.brace_bonus.unwrap_or_else(WeaponBraceBonus::none);
-    let (_cone_mult, recoil_growth) = stability_for(
-        &shooter_view,
-        snapshot.stable,
-        terrain_braced,
-        brace_bonus,
-        emplacement,
-        grids.cover,
-        tuning,
-    );
+    let (_cone_mult, recoil_growth) =
+        stability_for(&shooter_view, stability_terms, grids.cover, tuning);
     let p = concentration_p(
         snapshot.shooting,
         snapshot.accuracy,
@@ -580,17 +576,19 @@ pub(super) fn resolve_round(
 }
 
 /// Fold the round's PRIMARY (direct-impact) outcome into its [`HitReport`] — the
-/// ganger / cover / slab / ground / miss dispatch [`resolve_round`] ran inline before
-/// GTW-541 (extracted so the per-round verb stays under clippy's line cap once the splash
-/// pass joined it). No behavior change — the same match, verbatim.
+/// CALL-BOUNDARY half of the fold (GTW-573 C3): the per-kind dispatch itself lives in
+/// exactly ONE place, [`resolve_and_apply`]'s delegation match — this verb no longer
+/// stacks a second copy of it. All that remains here is TARGET RESOLUTION, which is
+/// query work and therefore stays at the boundary (the GTW-323 disjointness rationale
+/// — queries are never bundled into the fold):
 ///
-/// - [`ShotKind::Ganger`] → [`fold_ganger_round`] (the wound arm; the ONE severity +
-///   injury draw).
-/// - [`ShotKind::Cover`] / [`ShotKind::Slab`] / [`ShotKind::Ground`] → the shared
-///   [`resolve_and_apply`] structural path (GTW-364/365/366): a cover / slab hit spends its
-///   ledger HP (RNG-free), a ground hit records the accrual — the `None` target /
-///   [`Entity::PLACEHOLDER`] short-circuits the wound path (no severity / injury draw).
-/// - [`ShotKind::Miss`] → a no-effect report (no draw, no mutation).
+/// - a [`ShotKind::Ganger`] outcome needs the struck ganger's borrowed views resolved
+///   off the disjoint queries first → [`fold_ganger_round`] (which assembles the
+///   [`TargetGanger`] and calls [`resolve_and_apply`]);
+/// - every other outcome (cover / slab / ground / miss) has no ganger to resolve →
+///   [`resolve_and_apply`] directly with a `None` target ([`Entity::PLACEHOLDER`]).
+///   The structural arms spend their [`StruckSurfaces`] ledger HP (RNG-free); a miss
+///   folds to no effect inside the ONE dispatch (no draw, no mutation).
 #[expect(
     clippy::too_many_arguments,
     reason = "this is the exact irreducible fold set resolve_round passed inline before \
@@ -612,8 +610,11 @@ fn resolve_primary_report(
     registry: &InjuryRegistry,
     injury_rng: &mut InjuryRng,
 ) -> HitReport {
-    match outcome.kind {
-        ShotKind::Ganger(struck) => fold_ganger_round(
+    // Target resolution ONLY (not a kind dispatch — resolve_and_apply owns that): a
+    // struck ganger's mutable views must be borrowed off the disjoint queries before
+    // the fold runs; nothing else needs a query.
+    if let ShotKind::Ganger(struck) = outcome.kind {
+        fold_ganger_round(
             outcome,
             struck,
             snapshot,
@@ -626,23 +627,13 @@ fn resolve_primary_report(
             tables,
             registry,
             injury_rng,
-        ),
-        // GTW-364: a round that strikes COVER folds through the SAME resolve_and_apply,
-        // which reuses the ganger damage formula against the cover's own armor, spends
-        // the ledger's HP via deplete_cover, and records a destroyed (cell, level) in
-        // the report (bridged to a CoverDestroyed message by dispatch_fire). There is no
-        // struck ganger (`None` target); the cover ledger is reborrowed `&mut` here (its
-        // earlier `&` reborrow by resolve_coarse / cone_for / stability_for has ended).
-        // GTW-365: a round that strikes a SLAB takes the same path — it spends the SLAB
-        // ledger's HP instead (the StruckSurfaces bundle carries both; the fold's
-        // ShotKind selects which one is touched).
-        // GTW-366: a round that strikes the GROUND ALSO folds through resolve_and_apply —
-        // its Ground arm records the round's weapon_damage in the report's `ground_accrued`
-        // (bridged to a GroundAccrued message by dispatch_fire). It touches NEITHER ledger,
-        // but routing it through the fold is the production seam the accrual lives on.
-        // Cover/Slab/Ground arms are RNG-free (no severity draw on a structural hit) so
-        // we pass severity_rng but it will not advance the cursor for these arms.
-        ShotKind::Cover(_) | ShotKind::Slab(_) | ShotKind::Ground(_) => resolve_and_apply(
+        )
+    } else {
+        // No struck ganger to resolve (cover / slab / ground / miss): hand straight to
+        // the ONE delegation dispatch. The cover ledger is reborrowed `&mut` here (its
+        // earlier `&` reborrow by resolve_coarse / cone_for / stability_for has ended);
+        // the structural arms are RNG-free, so the streams' cursors never advance.
+        resolve_and_apply(
             outcome,
             snapshot.weapon_stats(),
             snapshot.luck,
@@ -654,15 +645,12 @@ fn resolve_primary_report(
             },
             tuning,
             severity_rng,
-            // GTW-438: a structural (cover/slab/ground) hit rolls NO injury — the
-            // tables/registry are unread and the InjuryRng cursor never advances for
-            // these arms (the `None` target short-circuits the wound path).
+            // GTW-438: a structural / miss round rolls NO injury — the tables/registry
+            // are unread and the InjuryRng cursor never advances on these arms.
             tables,
             registry,
             injury_rng,
-        ),
-        // A clean miss strikes nothing — no effect.
-        ShotKind::Miss => HitReport::no_effect(outcome.kind),
+        )
     }
 }
 

@@ -52,5 +52,6 @@ mod test;
 pub use score::stability;
 pub use terrain_brace::TerrainBraced;
 pub use types::{
-    ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, SuppressionStability,
+    ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, StabilityTerms,
+    SuppressionStability,
 };

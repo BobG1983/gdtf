@@ -23,16 +23,16 @@ use gdtf_app::test_support::{AppState, BattleScapeState, RunningState, Stability
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     Aiming, ArmorHardness, ArmorProtection, Cell, CellLevel, ConeMult, CoverEntry, CoverHp,
-    CoverLedger, Direction, EmplacementStability, Facing, Faction, FireMode, FireModeSpec,
-    HeightBand, Level, LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, Position, ReloadTu, Shooter, Shove, Stable, Stance, StanceKind, TerrainBraced,
-    Tu, TuMax, WeaponBundle, WieldedBy, faced_cell,
+    CoverLedger, Direction, Facing, Faction, FireMode, FireModeSpec, HeightBand, Level, LifeState,
+    Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Position, ReloadTu,
+    Shooter, Shove, StabilityTerms, Stable, Stance, StanceKind, Tu, TuMax, WeaponBundle, WieldedBy,
+    faced_cell,
     injuries::InjuryRegistry,
     stability_for,
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, Handedness, HandlingProfile,
-        Kickback, WeaponBraceBonus, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        Kickback, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
     },
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
@@ -283,16 +283,9 @@ fn stability_readout_shows_the_stability_for_value() {
         l
     };
     let tuning = CombatTuning::default();
-    // GTW-392: no stair-brace in this scenario (standard cover test — not a stair cell).
-    let (cone_mult, _recoil) = stability_for(
-        &shooter,
-        Stable::new(false),
-        TerrainBraced::new(false),
-        WeaponBraceBonus::none(),
-        EmplacementStability::none(),
-        &ledger,
-        &tuning,
-    );
+    // GTW-392: no stair-brace in this scenario (standard cover test — not a stair cell);
+    // every GTW-573 term at its zero-identity default.
+    let (cone_mult, _recoil) = stability_for(&shooter, StabilityTerms::default(), &ledger, &tuning);
     let expected = expected_fill_percent(cone_mult);
 
     let fill = stability_fill(&mut app).unwrap_or(-1.0);

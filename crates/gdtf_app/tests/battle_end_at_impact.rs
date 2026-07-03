@@ -111,27 +111,27 @@ fn battle_running_app() -> Option<App> {
 
 /// A lethal ganger-hit [`HitReport`] on `struck` — `life_after == Dead`, the verdict a deciding
 /// shot carries (the shot that wins / loses the battle). Mirrors `fx_draw.rs::ganger_hit_report`.
-const fn lethal_ganger_hit(struck: Entity) -> HitReport {
+/// (Not `const`: the GTW-573 ganger verdict is boxed, and `Box::new` is not const.)
+fn lethal_ganger_hit(struck: Entity) -> HitReport {
     HitReport {
-        kind:            ShotKind::Ganger(struck),
-        part:            Some(BodyPart::Torso),
-        applied:         Some(AppliedDamage {
-            matchup:    Matchup::Neutral,
-            hit:        HitResult {
-                penetrating: PenetratingDamage::new(8),
-                hp_damage:   HpDamage::new(12),
-                wear:        IntegrityWear::new(0),
+        kind:    ShotKind::Ganger(struck),
+        verdict: gdtf_battle_sim::HitVerdict::Ganger(Box::new(gdtf_battle_sim::GangerVerdict {
+            target:      struck,
+            part:        BodyPart::Torso,
+            applied:     AppliedDamage {
+                matchup:    Matchup::Neutral,
+                hit:        HitResult {
+                    penetrating: PenetratingDamage::new(8),
+                    hp_damage:   HpDamage::new(12),
+                    wear:        IntegrityWear::new(0),
+                },
+                severity:   Severity::Critical,
+                life_after: LifeState::Dead,
+                wear:       gdtf_battle_sim::ArmorWearOutcome::Unaffected,
             },
-            severity:   Severity::Critical,
-            life_after: LifeState::Dead,
-            broken:     None,
-            worn:       None,
-        }),
-        cover_destroyed: None,
-        slab_destroyed:  None,
-        ground_accrued:  None,
-        injury:          None,
-        dot_applied:     None,
+            injury:      None,
+            dot_applied: None,
+        })),
     }
 }
 

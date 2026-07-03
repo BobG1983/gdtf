@@ -25,7 +25,6 @@ use crate::{
     metric::{Cell, CellLevel},
     occupancy::OccupancyGrid,
     occupancy_sync::{CoverDestroyed, GroundAccrued, SlabDestroyed},
-    resolve_coarse::ShotKind,
     rng::{InjuryRng, SeverityRng, ShotRng},
     shot_fired::ShotFired,
     slab::{BraceStairCells, SlabLedger},
@@ -160,22 +159,22 @@ pub struct FireSignals<'w, 's> {
     /// <mode> at <target>".
     declarations:     MessageWriter<'w, FireDeclaration>,
     /// The per-ROUND cover-destroyed signal (GTW-364) — emitted for each round whose
-    /// [`HitReport::cover_destroyed`](crate::resolve_and_apply::HitReport::cover_destroyed)
-    /// is `Some`, bridging the ledger's `deplete_cover` destruction into the buffered
+    /// [`CoverVerdict`](crate::resolve_and_apply::CoverVerdict) records a destroyed
+    /// cell, bridging the ledger's `deplete_cover` destruction into the buffered
     /// [`CoverDestroyed`] message that `sync_destroyed_cover` + `should_recompute_visibility`
     /// consume to free the cell + reopen LOS.
     cover_destroyed:  MessageWriter<'w, CoverDestroyed>,
     /// The per-ROUND slab-destroyed signal (GTW-365) — emitted for each round whose
-    /// [`HitReport::slab_destroyed`](crate::resolve_and_apply::HitReport::slab_destroyed)
-    /// is `Some`, bridging the ledger's `deplete_slab` destruction into the buffered
+    /// [`SlabVerdict`](crate::resolve_and_apply::SlabVerdict) records a destroyed
+    /// cell, bridging the ledger's `deplete_slab` destruction into the buffered
     /// [`SlabDestroyed`] message that `sync_destroyed_slab` (sets the slab
     /// [`SlabState::Destroyed`](crate::surface::SlabState) on the surface grid) +
     /// `should_recompute_visibility` consume to stop blocking rounds + reopen LOS
     /// through the hole. The slab mirror of `cover_destroyed`.
     slab_destroyed:   MessageWriter<'w, SlabDestroyed>,
     /// The per-ROUND ground-accrued signal (GTW-366) — emitted for each round whose
-    /// [`HitReport::ground_accrued`](crate::resolve_and_apply::HitReport::ground_accrued)
-    /// is `Some`, bridging the round's `weapon_damage` into the buffered
+    /// verdict is a [`GroundAccrual`](crate::resolve_and_apply::GroundAccrual),
+    /// bridging the round's `weapon_damage` into the buffered
     /// [`GroundAccrued`] message that `sync_accrued_ground` accrues (monotonically) onto
     /// the [`SurfaceGrid`](crate::surface::SurfaceGrid)'s per-cell ground accumulator. The
     /// ground-accrual mirror of `slab_destroyed`: the ground is damaged-never-destroyed, so
@@ -183,14 +182,14 @@ pub struct FireSignals<'w, 's> {
     /// later ticket).
     ground_accrued:   MessageWriter<'w, GroundAccrued>,
     /// The per-ROUND injury signal (GTW-438) — emitted for each round whose
-    /// [`HitReport::injury`](crate::resolve_and_apply::HitReport::injury) is `Some`,
-    /// bridging the in-fold injury roll into the buffered [`InjuryInflicted`] message
+    /// [`GangerVerdict::injury`](crate::resolve_and_apply::GangerVerdict::injury) is
+    /// `Some`, bridging the in-fold injury roll into the buffered [`InjuryInflicted`] message
     /// [`apply_injury`](crate::acts::apply_injury) drains (and the presenter — GTW-439 —
     /// reads for the FCT / log flash). The injury-table mirror of the cover/slab/ground
     /// bridges: a structural hit destroys/accrues, a ganger wound INJURES.
     injuries:         MessageWriter<'w, InjuryInflicted>,
     /// The per-ROUND DOT-applied signal (GTW-544) — emitted for each round whose
-    /// [`HitReport::dot_applied`](crate::resolve_and_apply::HitReport::dot_applied) is
+    /// [`GangerVerdict::dot_applied`](crate::resolve_and_apply::GangerVerdict::dot_applied) is
     /// `Some` (a penetrating hit from a DOT weapon), bridging the in-fold attach decision
     /// into the buffered [`DotApplied`](crate::acts_runtime::dot::DotApplied) message
     /// [`apply_dot`](crate::acts_runtime::dot::apply_dot) drains (attaching or REFRESHING the
@@ -211,8 +210,8 @@ pub struct FireSignals<'w, 's> {
     /// magazine queries (a read on a different component set).
     shove_tags:       Query<'w, 's, &'static crate::weapon::Shove>,
     /// The GTW-547 terminal-death signal (`resolve_on_death` drains it) — emitted per ROUND
-    /// (primary or splash) that KILLED a ganger (`report.applied.life_after == Dead`), at the
-    /// struck ganger's own cell (read via [`ganger_positions`](FireSignals::ganger_positions)).
+    /// (primary or splash) that KILLED a ganger (the ganger verdict's `life_after == Dead`),
+    /// at the struck ganger's own cell (read via [`ganger_positions`](FireSignals::ganger_positions)).
     deaths:           MessageWriter<'w, crate::on_death::OnDeathOccurred>,
     /// The struck gangers' [`Position`] read (GTW-547) — the on-death signal needs the DEAD
     /// ganger's own `(cell, level)`, which a splash round's [`HitReport`] does not carry
@@ -594,13 +593,17 @@ pub fn dispatch_fire(
         //     (ShoveSource::Weapon) for the FIRST connecting-ganger round — the connect already
         //     gated + the fire TU was charged, so dispatch_shove resolves it un-gated / TU-free;
         //     it is ordered `.after(dispatch_fire)`, so this same-frame message is consumed this
-        //     tick. A MISS (no ShotKind::Ganger round) shoves nothing; a non-`shove` weapon
-        //     shoves nothing. One shove per fire act (a burst does not multiply the knock-back).
+        //     tick. The probe is the EXHAUSTIVE verdict read (GTW-573 C4 —
+        //     `HitVerdict::struck_ganger`, a compile error for an unbridged new kind): a MISS
+        //     shoves nothing, a non-`shove` weapon shoves nothing, and a round whose fold DID
+        //     NOTHING (corpse-skip / defensive no-effect) shoves nothing — only a verdict that
+        //     actually landed on a live ganger counts as a connect. One shove per fire act (a
+        //     burst does not multiply the knock-back).
         let weapon_shoves = signals.shove_tags.get(weapon_entity).is_ok_and(|tag| **tag);
-        let struck_ganger = volley.shots.iter().find_map(|outcome| match outcome.kind {
-            ShotKind::Ganger(target) => Some(target),
-            _ => None,
-        });
+        let struck_ganger = volley
+            .reports
+            .iter()
+            .find_map(|report| report.verdict.struck_ganger());
         if let (true, Some(struck)) = (weapon_shoves, struck_ganger) {
             signals
                 .shoves
@@ -613,15 +616,18 @@ pub fn dispatch_fire(
 }
 
 /// Emit the per-ROUND output signals for a resolved `volley` — the GTW-290/302 [`ShotFired`]
-/// FX/FCT, the GTW-438 injury bridge, and the GTW-364/365/366 cover/slab/ground bridges.
+/// FX/FCT plus the ONE exhaustive per-kind boundary bridge ([`emit_report_signals`]).
 ///
 /// One signal set per fired round, zipping the parallel
 /// [`Volley::shots`](crate::fire::Volley::shots) geometry with the
 /// [`Volley::reports`](crate::fire::Volley::reports) verdicts (`shots[i]`/`reports[i]` are
-/// the same round). Every emission is PURE EXPOSURE of what the volley already computed —
-/// no recompute, no fire-result change, no extra RNG draw (the injury roll happened in-fold,
-/// frozen on `report.injury`). Extracted from [`dispatch_fire`] so that system stays under
-/// clippy's line-count gate; takes the writer bundle by `&mut` (the [`MessageWriter`]s).
+/// the same round); every SPLASH report (GTW-541 — the blast / cone / line's other
+/// occupants, EMPTY for a Single volley) rides the SAME bridge, so the primary and splash
+/// loops cannot drift. Every emission is PURE EXPOSURE of what the volley already computed
+/// — no recompute, no fire-result change, no extra RNG draw (the injury roll happened
+/// in-fold, frozen on the verdict). Extracted from [`dispatch_fire`] so that system stays
+/// under clippy's line-count gate; takes the writer bundle by `&mut` (the
+/// [`MessageWriter`]s).
 fn emit_round_signals(
     shooter: Entity,
     damage: DamageType,
@@ -629,122 +635,121 @@ fn emit_round_signals(
     signals: &mut FireSignals,
 ) {
     for (outcome, report) in volley.shots.iter().zip(volley.reports.iter()) {
-        // (5a) GTW-438: the injury bridge — a round that wounded a ganger with a non-graze,
-        //      non-fatal severity AND rolled a named injury carries it on `report.injury`
-        //      (the in-fold `roll_injury` already took its ONE InjuryRng draw); emit ONE
-        //      InjuryInflicted per such round, addressed to the struck ganger entity on
-        //      `report.kind`. `apply_injury` drains it (folds the GainedInjury into the
-        //      target's InflictedInjuries + syncs the bleed); the presenter (GTW-439) reads
-        //      it for the FCT/log flash. Cloned out BEFORE the ShotFired clone below.
-        if let (Some(rolled), ShotKind::Ganger(target)) = (&report.injury, report.kind) {
-            signals
-                .injuries
-                .write(InjuryInflicted::from_rolled(target, rolled.clone()));
-        }
-        // (5a2) GTW-544: the DOT bridge — a round that PENETRATED armor from a DOT weapon
-        //       carries the Dot to attach on `report.dot_applied`; emit ONE DotApplied per
-        //       such round, addressed to the struck ganger on `report.kind`. `apply_dot`
-        //       attaches (or REFRESHES — refresh-not-stack) it. A fully-soaked hit / non-DOT
-        //       weapon carries None → no message (the identity property).
-        if let (Some(dot), ShotKind::Ganger(target)) = (report.dot_applied, report.kind) {
-            signals
-                .dots
-                .write(crate::acts_runtime::dot::DotApplied::new(target, dot));
-        }
-        // (5a3) GTW-547: the on-death bridge — a round that KILLED a ganger (its applied
-        //       LifeState is Dead) emits ONE OnDeathOccurred so `resolve_on_death` fans the
-        //       dead ganger's authored on-death effect. Keyed off the FROZEN post-fold verdict
-        //       (report.applied.life_after == Dead), addressed to the struck ganger, at the
-        //       ganger's OWN cell (read off its Position — a splash round's report carries no
-        //       cell). No RNG draw, no recompute — pure exposure of the fold's kill verdict.
-        emit_on_death(report, signals);
-        // The HitReport is non-`Copy` (it carries the rolled injury); clone it into the
-        // per-round ShotFired (the FCT presenter reads the damage/wound/severity verdict —
-        // the injury rides the separate InjuryInflicted).
+        // (5a) The ONE exhaustive per-kind bridge — injury / DOT / on-death for a ganger
+        //      verdict, CoverDestroyed(+cover on-death) / SlabDestroyed / GroundAccrued
+        //      for the structural verdicts (GTW-573 C4).
+        emit_report_signals(report, signals);
+        // (5b) The HitReport is non-`Copy` (it carries the rolled injury); clone it into
+        //      the per-round ShotFired (the FCT presenter reads the damage/wound/severity
+        //      verdict — the injury rides the separate InjuryInflicted).
         signals.shots.write(ShotFired::from_round(
             shooter,
             damage,
             outcome,
             report.clone(),
         ));
-        // (5b) GTW-364: the cover fire→deplete→message bridge — a round that depleted cover
-        //      to zero carries the destroyed (cell, level); emit one CoverDestroyed.
-        if let Some(at) = report.cover_destroyed {
-            signals.cover_destroyed.write(CoverDestroyed::new(at));
-            // GTW-547: a destroyed piece of cover ALSO emits a terminal-death signal (keyed by
-            // its cell — cover is not an entity, so Entity::PLACEHOLDER) so `resolve_on_death`
-            // fans the cover tile's authored on-death effect (a fuel barrel leaving a field).
-            signals
-                .deaths
-                .write(crate::on_death::OnDeathOccurred::cover(at));
-        }
-        // (5c) GTW-365: the slab mirror — a round that depleted a slab to zero carries the
-        //      destroyed (cell, level); emit one SlabDestroyed.
-        if let Some(at) = report.slab_destroyed {
-            signals.slab_destroyed.write(SlabDestroyed::new(at));
-        }
-        // (5d) GTW-366: the ground-accrual bridge — a round that struck the ground carries
-        //      its cell + weapon_damage; emit one GroundAccrued (the ground is
-        //      damaged-never-destroyed — accrual, not destruction).
-        if let Some(accrual) = report.ground_accrued {
-            signals
-                .ground_accrued
-                .write(GroundAccrued::new(accrual.cell, accrual.amount));
-        }
     }
-    // (5e) GTW-541 (`AoE` CORE of GTW-41): the SPLASH injury bridge. A non-Single round's
-    //      template covers OTHER occupants (its blast / cone / line); each was applied to
-    //      the world through the SAME resolve_and_apply path in-fold (HP / wounds already
-    //      mutated). Bridge each splashed ganger's rolled named injury exactly as the
-    //      primary report is bridged above (mirroring 5a) so the splash victim's injury
-    //      lands too. `volley.splash` is EMPTY for a Single volley, so this loop is a no-op
-    //      on the unchanged single-target path (the identity property). No RNG draw / no
-    //      recompute — pure exposure of the frozen splash reports.
+    // (5c) GTW-541 (`AoE` CORE of GTW-41): the SPLASH bridge. A non-Single round's
+    //      template covers OTHER occupants; each was applied to the world through the
+    //      SAME resolve_and_apply path in-fold (HP / wounds already mutated). Each splash
+    //      report rides the SAME exhaustive bridge as the primary loop (GTW-573 C4 — one
+    //      bridge, not a repeated per-kind probe set), so a splash victim's injury / DOT /
+    //      on-death lands identically. `volley.splash` is EMPTY for a Single volley, so
+    //      this loop is a no-op on the unchanged single-target path (the identity
+    //      property); a splash verdict is always ganger-or-no-effect, so the structural
+    //      arms are dead here by construction. No RNG draw / no recompute.
     for round_splash in &volley.splash {
         for report in round_splash {
-            if let (Some(rolled), ShotKind::Ganger(target)) = (&report.injury, report.kind) {
-                signals
-                    .injuries
-                    .write(InjuryInflicted::from_rolled(target, rolled.clone()));
-            }
-            // GTW-544: bridge each splashed ganger's DOT attach exactly as the primary
-            // report is bridged above — a penetrating AoE splash from a DOT weapon afflicts
-            // its splash victims too. Empty for a Single volley (the identity property).
-            if let (Some(dot), ShotKind::Ganger(target)) = (report.dot_applied, report.kind) {
-                signals
-                    .dots
-                    .write(crate::acts_runtime::dot::DotApplied::new(target, dot));
-            }
-            // GTW-547: bridge each splashed ganger's KILL exactly as the primary report is
-            // bridged above — a blast splash that kills a splash victim fans ITS on-death
-            // effect too (the friendly-fire / chain-reaction property). Empty for a Single
-            // volley (the identity property).
-            emit_on_death(report, signals);
+            emit_report_signals(report, signals);
         }
     }
 }
 
-/// Bridge ONE resolved [`HitReport`](crate::resolve_and_apply::HitReport) that KILLED a ganger
-/// into a [`OnDeathOccurred`](crate::on_death::OnDeathOccurred) signal (GTW-547) — the shared
-/// primary/splash emit the two loops in [`emit_round_signals`] both call.
+/// Bridge ONE frozen [`HitReport`](crate::resolve_and_apply::HitReport) into its per-kind
+/// boundary messages — the ONE **exhaustive** verdict match of the fire boundary
+/// (GTW-573 C4): a new struck kind is a COMPILE ERROR here until it is bridged.
 ///
-/// Emits ONLY when the round struck a ganger AND the frozen post-fold verdict is
-/// [`LifeState::Dead`] (`report.applied.life_after`). Addressed to the struck ganger, at the
-/// ganger's OWN `(cell, level)` (read off its [`Position`]); a splash report carries no cell,
-/// so the ganger's live position is the death anchor. A round that missed, wounded-but-did-not-
-/// kill, or downed (Hp → 0) emits nothing. No RNG draw, no recompute — pure exposure of the
-/// fold's kill verdict.
-fn emit_on_death(report: &crate::resolve_and_apply::HitReport, signals: &mut FireSignals) {
-    let (Some(applied), ShotKind::Ganger(target)) = (report.applied.as_ref(), report.kind) else {
-        return;
-    };
-    if applied.life_after != crate::ganger::LifeState::Dead {
-        return;
+/// The per-kind message TYPES and their focused drains are unchanged (the Bevy idiom —
+/// this changes emission, not consumers):
+///
+/// - a **ganger** verdict emits the GTW-438 [`InjuryInflicted`] (a rolled named injury),
+///   the GTW-544 [`DotApplied`](crate::acts_runtime::dot::DotApplied) (a penetrating DOT
+///   hit), and the GTW-547 [`OnDeathOccurred`](crate::on_death::OnDeathOccurred) (the
+///   frozen `life_after == Dead` kill verdict, at the ganger's OWN cell read off its
+///   [`Position`] — a splash report carries no cell); each is addressed to the verdict's
+///   own struck target;
+/// - a **cover** verdict whose HP depleted to zero emits [`CoverDestroyed`] PLUS the
+///   GTW-547 cover terminal-death signal (keyed by cell — cover is not an entity);
+/// - a **slab** verdict whose HP depleted to zero emits [`SlabDestroyed`];
+/// - a **ground** verdict emits [`GroundAccrued`] (damaged-never-destroyed — accrual,
+///   not destruction);
+/// - a **no-effect** verdict (miss / corpse-skip / defensive fold) emits nothing.
+///
+/// No RNG draw, no recompute — pure exposure of the fold's frozen verdict.
+fn emit_report_signals(report: &crate::resolve_and_apply::HitReport, signals: &mut FireSignals) {
+    use crate::resolve_and_apply::HitVerdict;
+    match &report.verdict {
+        HitVerdict::Ganger(verdict) => {
+            // GTW-438: the injury bridge — the in-fold `roll_injury` already took its ONE
+            // severity-gated InjuryRng draw; `apply_injury` drains the message (folds the
+            // GainedInjury into the target's InflictedInjuries + syncs the bleed); the
+            // presenter (GTW-439) reads it for the FCT/log flash.
+            if let Some(rolled) = &verdict.injury {
+                signals
+                    .injuries
+                    .write(InjuryInflicted::from_rolled(verdict.target, rolled.clone()));
+            }
+            // GTW-544: the DOT bridge — `apply_dot` attaches (or REFRESHES —
+            // refresh-not-stack) the frozen Dot on the struck ganger.
+            if let Some(dot) = verdict.dot_applied {
+                signals
+                    .dots
+                    .write(crate::acts_runtime::dot::DotApplied::new(
+                        verdict.target,
+                        dot,
+                    ));
+            }
+            // GTW-547: the on-death bridge — a KILL verdict fans the dead ganger's
+            // authored on-death effect via `resolve_on_death`. A round that missed,
+            // wounded-but-did-not-kill, or downed (Hp → 0) emits nothing.
+            if verdict.applied.life_after == crate::ganger::LifeState::Dead
+                && let Ok(position) = signals.ganger_positions.get(verdict.target)
+            {
+                signals.deaths.write(crate::on_death::OnDeathOccurred::new(
+                    verdict.target,
+                    **position,
+                ));
+            }
+        }
+        HitVerdict::Cover(cover) => {
+            // GTW-364: the cover fire→deplete→message bridge — a round that depleted
+            // cover to zero carries the destroyed (cell, level).
+            if let Some(at) = cover.destroyed {
+                signals.cover_destroyed.write(CoverDestroyed::new(at));
+                // GTW-547: a destroyed piece of cover ALSO emits a terminal-death signal
+                // (keyed by its cell — cover is not an entity, so Entity::PLACEHOLDER) so
+                // `resolve_on_death` fans the cover tile's authored on-death effect (a
+                // fuel barrel leaving a field).
+                signals
+                    .deaths
+                    .write(crate::on_death::OnDeathOccurred::cover(at));
+            }
+        }
+        HitVerdict::Slab(slab) => {
+            // GTW-365: the slab mirror — a round that depleted a slab to zero carries the
+            // destroyed (cell, level).
+            if let Some(at) = slab.destroyed {
+                signals.slab_destroyed.write(SlabDestroyed::new(at));
+            }
+        }
+        HitVerdict::Ground(accrual) => {
+            // GTW-366: the ground-accrual bridge (the ground is damaged-never-destroyed —
+            // accrual, not destruction).
+            signals
+                .ground_accrued
+                .write(GroundAccrued::new(accrual.cell, accrual.amount));
+        }
+        // A no-effect fold (miss / corpse-skip / defensive) crossed no boundary.
+        HitVerdict::NoEffect => {}
     }
-    let Ok(position) = signals.ganger_positions.get(target) else {
-        return;
-    };
-    signals
-        .deaths
-        .write(crate::on_death::OnDeathOccurred::new(target, **position));
 }

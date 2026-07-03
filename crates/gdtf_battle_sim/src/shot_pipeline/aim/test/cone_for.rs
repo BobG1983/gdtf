@@ -7,9 +7,7 @@ use crate::{
     cone::{PriorShots, aim_cone_mult, cone_angle},
     cover::{CoverLedger, HeightBand},
     ganger::{Direction, StanceKind},
-    stability::{EmplacementStability, TerrainBraced},
     tuning::CombatTuning,
-    weapon::WeaponBraceBonus,
 };
 
 /// AC3 — `cone_for` returns a `ConeAngle` bit-equal to a hand-composed
@@ -36,22 +34,14 @@ fn cone_for_bit_equals_a_hand_composed_cone_angle() {
         &mode,
         prior,
         &ledger,
-        TerrainBraced::new(false),
-        EmplacementStability::none(),
+        weapon_terms(&wpn),
         &tuning,
     );
 
     // Hand-compose: the same stability_for pair + the same aim term + cone_angle.
-    // The weapon's `stable` tag is its only stability contribution.
-    let (cone_mult, recoil_growth) = stability_for(
-        &shooter,
-        wpn.stable,
-        TerrainBraced::new(false),
-        WeaponBraceBonus::none(),
-        EmplacementStability::none(),
-        &ledger,
-        &tuning,
-    );
+    // The weapon's `stable` tag is its only stability contribution (the same
+    // weapon-sourced StabilityTerms the composer received — GTW-573 C7).
+    let (cone_mult, recoil_growth) = stability_for(&shooter, weapon_terms(&wpn), &ledger, &tuning);
     let aim = aim_cone_mult(*shooter.aiming, &tuning.cone_stability);
     let hand = cone_angle(
         wpn.base_spread,
@@ -96,8 +86,7 @@ fn aimed_cone_for_is_strictly_narrower_than_hip_fire() {
         &mode,
         prior,
         &ledger,
-        TerrainBraced::new(false),
-        EmplacementStability::none(),
+        weapon_terms(&wpn),
         &tuning,
     );
     let hip_cone = cone_for(
@@ -106,8 +95,7 @@ fn aimed_cone_for_is_strictly_narrower_than_hip_fire() {
         &mode,
         prior,
         &ledger,
-        TerrainBraced::new(false),
-        EmplacementStability::none(),
+        weapon_terms(&wpn),
         &tuning,
     );
 
@@ -140,8 +128,7 @@ fn each_prior_shot_widens_cone_for_monotonically() {
             &mode,
             PriorShots::new(shots),
             &ledger,
-            TerrainBraced::new(false),
-            EmplacementStability::none(),
+            weapon_terms(&wpn),
             &tuning,
         );
         assert!(

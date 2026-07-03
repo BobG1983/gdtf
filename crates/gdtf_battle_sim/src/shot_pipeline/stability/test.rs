@@ -8,7 +8,8 @@ use crate::{
         gate::brace_engages,
         score::stability,
         types::{
-            ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, SuppressionStability,
+            ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, StabilityTerms,
+            SuppressionStability,
         },
     },
     tuning::{ConeStabilityTuning, StabilityCurve},
@@ -39,24 +40,18 @@ fn stability_produces_both_named_outputs() {
 
     // Steadiest: prone, braced on a HIGH wall (satisfies the prone gate, LOW+).
     let (steady_cone, steady_recoil) = stability(
-        Stable::new(false),
-        TerrainBraced::new(false),
+        StabilityTerms::default(),
         Stance::new(StanceKind::Prone),
         Some(&wall),
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
     // Shakiest: standing, no cover faced (no brace), no emplacement help.
     let (shaky_cone, shaky_recoil) = stability(
-        Stable::new(false),
-        TerrainBraced::new(false),
+        StabilityTerms::default(),
         Stance::new(StanceKind::Standing),
         None,
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
 
@@ -98,23 +93,17 @@ fn brace_applied_exactly_when_faced_band_satisfies_gate() {
         let sat = faced_cover(satisfying);
         let fail = faced_cover(failing);
         let (braced, _) = stability(
-            Stable::new(false),
-            TerrainBraced::new(false),
+            StabilityTerms::default(),
             Stance::new(kind),
             Some(&sat),
-            EmplacementStability::none(),
             SuppressionStability::none(),
-            WeaponBraceBonus::none(),
             &tuning,
         );
         let (unbraced, _) = stability(
-            Stable::new(false),
-            TerrainBraced::new(false),
+            StabilityTerms::default(),
             Stance::new(kind),
             Some(&fail),
-            EmplacementStability::none(),
             SuppressionStability::none(),
-            WeaponBraceBonus::none(),
             &tuning,
         );
         assert!(
@@ -126,23 +115,17 @@ fn brace_applied_exactly_when_faced_band_satisfies_gate() {
     // Prone's gate is LOW+, so a LOW wall satisfies it; no cover faced does not.
     let low = faced_cover(HeightBand::Low);
     let (prone_braced, _) = stability(
-        Stable::new(false),
-        TerrainBraced::new(false),
+        StabilityTerms::default(),
         Stance::new(StanceKind::Prone),
         Some(&low),
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
     let (prone_unbraced, _) = stability(
-        Stable::new(false),
-        TerrainBraced::new(false),
+        StabilityTerms::default(),
         Stance::new(StanceKind::Prone),
         None,
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
     assert!(
@@ -160,13 +143,10 @@ fn steadier_stance_yields_narrower_cone() {
     let tuning = ConeStabilityTuning::default();
     let cone = |kind| {
         stability(
-            Stable::new(false),
-            TerrainBraced::new(false),
+            StabilityTerms::default(),
             Stance::new(kind),
             None,
-            EmplacementStability::none(),
             SuppressionStability::none(),
-            WeaponBraceBonus::none(),
             &tuning,
         )
         .0
@@ -189,23 +169,17 @@ fn steadier_score_yields_strictly_less_recoil_growth() {
     let wall = faced_cover(HeightBand::High);
 
     let (_, braced_prone) = stability(
-        Stable::new(false),
-        TerrainBraced::new(false),
+        StabilityTerms::default(),
         Stance::new(StanceKind::Prone),
         Some(&wall),
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
     let (_, standing_unbraced) = stability(
-        Stable::new(false),
-        TerrainBraced::new(false),
+        StabilityTerms::default(),
         Stance::new(StanceKind::Standing),
         None,
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
     assert!(
@@ -227,24 +201,21 @@ fn a_positive_brace_bonus_yields_a_strictly_tighter_cone() {
 
     // Baseline: a weapon with no brace attachment (the zero-identity term) facing an empty cell.
     let (baseline_cone, _) = stability(
-        Stable::new(false),
-        TerrainBraced::new(false),
+        StabilityTerms::default(),
         Stance::new(StanceKind::Standing),
         None,
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
     // Braced: a POSITIVE per-item brace bonus — a steadier score → a tighter cone.
     let (braced_cone, _) = stability(
-        Stable::new(false),
-        TerrainBraced::new(false),
+        StabilityTerms {
+            brace_bonus: WeaponBraceBonus::new(20.0),
+            ..StabilityTerms::default()
+        },
         Stance::new(StanceKind::Standing),
         None,
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        WeaponBraceBonus::new(20.0),
         &tuning,
     );
     assert!(
@@ -258,13 +229,10 @@ fn a_positive_brace_bonus_yields_a_strictly_tighter_cone() {
     // IDENTITY: WeaponBraceBonus::none() is byte-identical to a run without the seam — proven
     // by re-computing the baseline with the same identity term and asserting bit-equality.
     let (identity_cone, _) = stability(
-        Stable::new(false),
-        TerrainBraced::new(false),
+        StabilityTerms::default(),
         Stance::new(StanceKind::Standing),
         None,
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
     assert_eq!(
@@ -288,25 +256,25 @@ fn over_100_sum_clamps_and_does_not_run_off_the_curve() {
 
     // A wildly over-100 raw sum: prone + braced + a huge emplacement term.
     let (over_cone, over_recoil) = stability(
-        Stable::new(false),
-        TerrainBraced::new(false),
+        StabilityTerms {
+            emplacement: EmplacementStability::new(10_000.0),
+            ..StabilityTerms::default()
+        },
         Stance::new(StanceKind::Prone),
         Some(&wall),
-        EmplacementStability::new(10_000.0),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
     // A DIFFERENT over-100 raw sum (standing, no brace) — also driven over the
     // ceiling by a huge emplacement term, so it too clamps to 100.
     let (ceil_cone, ceil_recoil) = stability(
-        Stable::new(false),
-        TerrainBraced::new(false),
+        StabilityTerms {
+            emplacement: EmplacementStability::new(10_000.0),
+            ..StabilityTerms::default()
+        },
         Stance::new(StanceKind::Standing),
         None,
-        EmplacementStability::new(10_000.0),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
 
@@ -464,23 +432,20 @@ fn stable_difference_traces_to_the_brace_no_weapon_points_term() {
 
     // Empty cell: only the stable weapon braces.
     let (stable_empty, _) = stability(
-        Stable::new(true),
-        TerrainBraced::new(false),
+        StabilityTerms {
+            stable: Stable::new(true),
+            ..StabilityTerms::default()
+        },
         stance,
         None,
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
     let (plain_empty, _) = stability(
-        Stable::new(false),
-        TerrainBraced::new(false),
+        StabilityTerms::default(),
         stance,
         None,
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
     assert!(
@@ -495,23 +460,20 @@ fn stable_difference_traces_to_the_brace_no_weapon_points_term() {
     // so stable adds nothing beyond it — the two are EQUAL.
     let wall = faced_cover(HeightBand::High);
     let (stable_braced, _) = stability(
-        Stable::new(true),
-        TerrainBraced::new(false),
+        StabilityTerms {
+            stable: Stable::new(true),
+            ..StabilityTerms::default()
+        },
         stance,
         Some(&wall),
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
     let (plain_braced, _) = stability(
-        Stable::new(false),
-        TerrainBraced::new(false),
+        StabilityTerms::default(),
         stance,
         Some(&wall),
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
     assert_eq!(
@@ -541,24 +503,24 @@ fn terrain_brace_and_stable_yield_identical_stability_output() {
 
     // stable=true, terrain_braced=false.
     let (stable_cone, stable_recoil) = stability(
-        Stable::new(true),
-        TerrainBraced::new(false),
+        StabilityTerms {
+            stable: Stable::new(true),
+            ..StabilityTerms::default()
+        },
         stance,
         None,
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
     // stable=false, terrain_braced=true — every other input identical.
     let (terrain_cone, terrain_recoil) = stability(
-        Stable::new(false),
-        TerrainBraced::new(true),
+        StabilityTerms {
+            terrain_braced: TerrainBraced::new(true),
+            ..StabilityTerms::default()
+        },
         stance,
         None,
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
 
@@ -583,13 +545,10 @@ fn terrain_brace_and_stable_yield_identical_stability_output() {
     // No-brace baseline (neither source on): the brace withheld, so the output must
     // DIFFER from the braced result — pinning that the brace actually moves the score.
     let (baseline_cone, baseline_recoil) = stability(
-        Stable::new(false),
-        TerrainBraced::new(false),
+        StabilityTerms::default(),
         stance,
         None,
-        EmplacementStability::none(),
         SuppressionStability::none(),
-        WeaponBraceBonus::none(),
         &tuning,
     );
     assert_ne!(
@@ -607,4 +566,50 @@ fn terrain_brace_and_stable_yield_identical_stability_output() {
         *baseline_recoil,
         *terrain_recoil,
     );
+}
+
+/// GTW-573 C7 — the zero-identity DEFAULT: `StabilityTerms::default()` reads a
+/// byte-identical `(cone_mult, recoil_growth)` to the same call with every term
+/// spelled at its explicit zero identity, across all three stances — so a defaulted
+/// bundle IS the no-seam baseline, and a future additive term (one new field with a
+/// zero-identity default) cannot shift any existing score.
+#[test]
+fn default_terms_are_the_byte_identical_zero_identity() {
+    let tuning = ConeStabilityTuning::default();
+    let explicit = StabilityTerms {
+        stable:         Stable::new(false),
+        terrain_braced: TerrainBraced::new(false),
+        brace_bonus:    WeaponBraceBonus::none(),
+        emplacement:    EmplacementStability::none(),
+    };
+    for kind in [
+        StanceKind::Standing,
+        StanceKind::Crouching,
+        StanceKind::Prone,
+    ] {
+        let (default_cone, default_recoil) = stability(
+            StabilityTerms::default(),
+            Stance::new(kind),
+            None,
+            SuppressionStability::none(),
+            &tuning,
+        );
+        let (explicit_cone, explicit_recoil) = stability(
+            explicit,
+            Stance::new(kind),
+            None,
+            SuppressionStability::none(),
+            &tuning,
+        );
+        assert_eq!(
+            (*default_cone).to_bits(),
+            (*explicit_cone).to_bits(),
+            "{kind:?}: the defaulted terms must read a byte-identical cone_mult",
+        );
+        assert_eq!(
+            (*default_recoil).to_bits(),
+            (*explicit_recoil).to_bits(),
+            "{kind:?}: the defaulted terms must read a byte-identical recoil_growth",
+        );
+    }
 }

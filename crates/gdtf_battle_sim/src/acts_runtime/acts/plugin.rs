@@ -228,7 +228,7 @@ fn register_messages(app: &mut App) {
         .add_message::<InjuryInflicted>()
         // GTW-544: the DOT-applied boundary signal `dispatch_fire` emits per round whose
         // penetrating hit from a DOT weapon attached a Dot (the in-fold decision froze it
-        // onto the report's `dot_applied`). Registering the buffer here makes
+        // onto the ganger verdict's `dot_applied`). Registering the buffer here makes
         // `dispatch_fire`'s MessageWriter<DotApplied> + `apply_dot`'s MessageReader valid
         // (bevy-traps.md #4 / #5).
         .add_message::<DotApplied>()
