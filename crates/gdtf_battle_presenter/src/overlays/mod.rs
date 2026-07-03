@@ -9,6 +9,12 @@ pub mod field;
 pub mod fire_target;
 pub mod highlight;
 pub mod path_preview;
+/// The GTW-568 shared pooled-draw walk — the ONE take-first-N / lazily-grow /
+/// hide-surplus loop ([`draw_pool`](pool::draw_pool)) every pooled overlay draw (and the
+/// terrain vertical-link draw) reuses, with the `set_if_neq` visibility flips owned by
+/// the helper. The message-driven `highlight` overlay is deliberately excluded (retention
+/// semantics — see the helper doc).
+pub mod pool;
 /// The reachable-range DEBUG overlay (GTW-450) — render-only, so the whole module
 /// compiles ONLY in a debug build (`#[cfg(debug_assertions)]`, C1). In a release
 /// build none of [`ReachableCells`](reachable::ReachableCells) /

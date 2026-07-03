@@ -36,11 +36,13 @@
 //!
 //! # Mutate, never respawn (C5)
 //!
-//! Like [`present_fog`](crate::present_fog), it maintains a POOL of
-//! cell-keyed [`VerticalLinkSprite`] entities: it reuses an existing sprite (re-indexing
-//! its atlas tile, moving its [`Transform`], showing it) for each link cell it now needs
-//! and HIDES surplus pooled sprites it no longer needs — it never despawn-then-respawns
-//! the set each frame (the mirror of [`present_fog`](crate::present_fog)).
+//! It maintains a POOL of cell-keyed [`VerticalLinkSprite`] entities: it reuses an
+//! existing sprite (re-indexing its atlas tile, moving its [`Transform`], showing it)
+//! for each link cell it now needs and HIDES surplus pooled sprites it no longer needs —
+//! it never despawn-then-respawns the set each frame. The walk itself is the shared
+//! [`draw_pool`](crate::overlays::pool::draw_pool) helper (GTW-568), which owns the
+//! `set_if_neq` visibility flips; the grow closure keeps this draw's MAY-DECLINE guard
+//! (no spawn while the terrain sheet is still loading).
 
 use bevy::{camera::visibility::RenderLayers, prelude::*};
 use gdtf_battle_sim::{Cell, CellLevel, Level, LinkKind, VerticalLinkGraph};
@@ -49,7 +51,10 @@ use super::{
     active_level::ActiveLevel,
     roles::{TileIndex, TileRoles},
 };
-use crate::{CELL_PX, Layer, SheetRole, TopDownAtlases, WORLD_RENDER_LAYER, cell_to_world_layered};
+use crate::{
+    CELL_PX, Layer, SheetRole, TopDownAtlases, WORLD_RENDER_LAYER, cell_to_world_layered,
+    overlays::pool::draw_pool,
+};
 
 /// Marker for a pooled vertical-link (stair / ladder) tile [`Sprite`].
 ///
@@ -167,26 +172,31 @@ pub fn draw_vertical_links(
         }
     }
 
-    // Reuse the pooled link sprites in iteration order: re-index + move + show the first
-    // `to_draw.len()`, hide the rest (mutate, not respawn — C5).
-    let mut pooled = sprites.iter_mut();
-    for (cell, index) in &to_draw {
-        let world =
-            cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::VerticalLink);
-        if let Some((mut sprite, mut transform, mut visibility)) = pooled.next() {
+    // The world position of a link-tile sprite (shared by the reuse + grow paths).
+    let world_at = |cell: CellLevel| {
+        cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::VerticalLink)
+    };
+    // The shared pooled-draw walk (GTW-568): reuse the pooled link sprites in iteration
+    // order (re-index + move), lazily spawn past the pool, hide the surplus — the helper
+    // owns the set_if_neq visibility flips (mutate, not respawn — C5).
+    draw_pool(
+        sprites.iter_mut(),
+        to_draw,
+        |(cell, index), (sprite, transform, _)| {
             if let Some(atlas) = sprite.texture_atlas.as_mut() {
-                atlas.index = *index;
+                atlas.index = index;
             }
-            transform.translation = world;
-            *visibility = Visibility::Visible;
-        } else if let Some(sprite) = link_sprite(*index, &atlases) {
-            spawn_link_sprite(&mut commands, sprite, world);
-        }
-    }
-    // Hide every surplus pooled sprite the current set no longer needs.
-    for (_, _, mut visibility) in pooled {
-        *visibility = Visibility::Hidden;
-    }
+            transform.translation = world_at(cell);
+        },
+        |(cell, index)| {
+            // MAY-DECLINE grow: when the terrain sheet is not loaded yet, skip the spawn
+            // rather than panic — the pooled set simply stays smaller this frame.
+            if let Some(sprite) = link_sprite(index, &atlases) {
+                spawn_link_sprite(&mut commands, sprite, world_at(cell));
+            }
+        },
+        |(_, _, visibility)| visibility,
+    );
 }
 
 /// Lazily spawn ONE pooled vertical-link tile sprite at `world`.

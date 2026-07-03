@@ -49,12 +49,17 @@
 //! The system maintains a POOL of cell-keyed sprites (and ONE pooled target-cost label): it
 //! reuses an existing entity for each route step it now needs (moving its [`Transform`],
 //! re-tinting it, showing it) and HIDES surplus pooled entities it no longer needs — it never
-//! despawn-then-respawns the set each frame (the [`present_fog`](crate::present_fog) precedent).
+//! despawn-then-respawns the set each frame. The walk itself is the shared
+//! [`draw_pool`](crate::overlays::pool::draw_pool) helper (GTW-568), which owns the
+//! `set_if_neq` visibility flips.
 
 use bevy::{camera::visibility::RenderLayers, prelude::*, text::TextColor};
 use gdtf_battle_sim::{Cell, CellLevel, Level, SquadVisibility, Tu};
 
-use crate::{ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered};
+use crate::{
+    ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered,
+    overlays::pool::draw_pool,
+};
 
 /// The presenter-owned route path-preview read-seam — the cells of the
 /// [`find_path`](gdtf_battle_sim::find_path) route from the SELECTED ganger to the target,
@@ -234,8 +239,7 @@ const LINK_MARKER_TINT: Color = Color::srgba(0.3, 0.7, 1.0, 0.7);
 ///   draws ONE extra pooled sprite at the LAST active-storey cell tinted [`LINK_MARKER_TINT`]
 ///   — the C5 minimal off-storey-continuation marker (GTW-359 soft dep);
 /// - every surplus pooled sprite is [`Visibility::Hidden`] — NEVER despawned (the
-///   UI-mutate-not-respawn convention, the [`present_fog`](crate::present_fog)
-///   precedent).
+///   UI-mutate-not-respawn convention, owned by the shared [`draw_pool`] walk).
 ///
 /// # The GTW-368 target-cell cost label (C2)
 ///
@@ -270,27 +274,23 @@ pub fn draw_path_preview(
     let active_level: Level = **active;
     let draws = preview_draws(&preview, active_level, &squad);
 
-    // Reuse the pooled step sprites in iteration order: move + re-tint + show the first
-    // `draws.len()`, hide the rest (mutate, not respawn — the present_fog precedent).
-    let mut pooled = steps.iter_mut();
-    for draw in &draws {
-        let world = cell_to_world_layered(
-            Cell::new(draw.cell.x, draw.cell.y),
-            active_level,
-            Layer::PathPreview,
-        );
-        if let Some((mut transform, mut sprite, mut visibility)) = pooled.next() {
-            transform.translation = world;
+    // The world position of a route-step sprite (shared by the reuse + grow paths).
+    let world_at = |cell: CellLevel| {
+        cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::PathPreview)
+    };
+    // The shared pooled-draw walk (GTW-568): reuse the pooled step sprites in iteration
+    // order (move + re-tint), lazily spawn past the pool, hide the surplus — the helper
+    // owns the set_if_neq visibility flips (mutate, not respawn).
+    draw_pool(
+        steps.iter_mut(),
+        draws,
+        |draw, (transform, sprite, _)| {
+            transform.translation = world_at(draw.cell);
             sprite.color = draw.tint;
-            *visibility = Visibility::Visible;
-        } else {
-            spawn_step(&mut commands, world, draw.tint);
-        }
-    }
-    // Hide every surplus pooled sprite the current route no longer needs.
-    for (_, _, mut visibility) in pooled {
-        *visibility = Visibility::Hidden;
-    }
+        },
+        |draw| spawn_step(&mut commands, world_at(draw.cell), draw.tint),
+        |(_, _, visibility)| visibility,
+    );
 
     // GTW-368 (C2) — the SINGLE target-cell TU-cost label.
     draw_target_label(&mut commands, &preview, active_level, &mut label);
@@ -303,7 +303,9 @@ pub fn draw_path_preview(
 /// [`PathTargetLabel`] is moved over it (lifted [`LABEL_LIFT_PX`] ABOVE the cell), its text
 /// rewritten to [`label_text`]`(`[`PathPreview::cost`]`)`, and shown — mutated in place (lazily
 /// spawned on first need). Otherwise (empty preview / no target, OR a target on a different
-/// storey) the label is HIDDEN. Exactly one label entity ever exists.
+/// storey) the label is HIDDEN. Exactly one label entity ever exists — the singleton is the
+/// shared [`draw_pool`] walk over a 0/1-length draw list (GTW-568): [`None`] hides the one
+/// pooled label via the helper's surplus sweep.
 fn draw_target_label(
     commands: &mut Commands,
     preview: &PathPreview,
@@ -319,30 +321,25 @@ fn draw_target_label(
         .copied()
         .filter(|cell| cell.z == active_z);
 
-    let mut existing = label_query.iter_mut();
-    match target {
-        Some(cell) => {
-            let mut world =
-                cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::PathPreview);
-            // Above the target cell (the FCT / reticle-label "above the cell" treatment).
-            world.y += LABEL_LIFT_PX;
-            let text = label_text(preview.cost());
-            if let Some((mut label, mut transform, mut visibility)) = existing.next() {
-                // Mutate the one pooled label in place (rewrite text, move, show).
-                **label = text;
-                transform.translation = world;
-                *visibility = Visibility::Visible;
-            } else {
-                spawn_target_label(commands, text, world);
-            }
-        }
-        // No target on the active storey → hide the pooled label (never despawn).
-        None => {
-            if let Some((_, _, mut visibility)) = existing.next() {
-                *visibility = Visibility::Hidden;
-            }
-        }
-    }
+    // Above the target cell (the FCT / reticle-label "above the cell" treatment).
+    let world_at = |cell: CellLevel| {
+        let mut world =
+            cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::PathPreview);
+        world.y += LABEL_LIFT_PX;
+        world
+    };
+    draw_pool(
+        label_query.iter_mut(),
+        target,
+        |cell, (label, transform, _)| {
+            // Mutate the one pooled label in place (rewrite text, move; the helper shows it).
+            let label: &mut Text2d = label;
+            **label = label_text(preview.cost());
+            transform.translation = world_at(cell);
+        },
+        |cell| spawn_target_label(commands, label_text(preview.cost()), world_at(cell)),
+        |(_, _, visibility)| visibility,
+    );
 }
 
 /// The target-cell cost label text — the bare TU count followed by `" TU"` (the firemode /

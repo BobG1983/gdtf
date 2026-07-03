@@ -27,14 +27,17 @@
 //! The system maintains a POOL of [`ReachableCellSprite`]-marked sprites: it reuses an
 //! existing entity for each reachable cell to draw (moving its [`Transform`], showing it)
 //! and HIDES surplus pooled entities it no longer needs — it never despawn-then-respawns
-//! the set each frame (the UI-mutate-not-respawn convention, the
-//! [`present_fog`](crate::present_fog) / [`draw_path_preview`](crate::draw_path_preview)
-//! precedent).
+//! the set each frame (the UI-mutate-not-respawn convention). The walk itself is the
+//! shared [`draw_pool`](crate::overlays::pool::draw_pool) helper (GTW-568), which owns
+//! the `set_if_neq` visibility flips.
 
 use bevy::{camera::visibility::RenderLayers, prelude::*};
 use gdtf_battle_sim::{Cell, CellLevel, Level, Tu};
 
-use crate::{ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered};
+use crate::{
+    ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered,
+    overlays::pool::draw_pool,
+};
 
 /// The environment variable that opts the reachable-range debug overlay IN
 /// (GTW-450 C3): set truthy (`1` / `true` / `yes` / `on`, case-insensitive) to
@@ -216,26 +219,24 @@ pub fn draw_reachable_overlay(
     let active_level: Level = **active;
     let draws = reachable_draws(&reachable, active_level);
 
-    // Reuse the pooled sprites in iteration order: move + show the first `draws.len()`,
-    // hide the rest (mutate, not respawn — the present_fog / draw_path_preview precedent).
-    let mut pooled = sprites.iter_mut();
-    for cell in &draws {
-        let world = cell_to_world_layered(
+    // The world position of a reachable-cell sprite (shared by the reuse + grow paths).
+    let world_at = |cell: CellLevel| {
+        cell_to_world_layered(
             Cell::new(cell.x, cell.y),
             active_level,
             Layer::ReachableRange,
-        );
-        if let Some((mut transform, mut visibility)) = pooled.next() {
-            transform.translation = world;
-            *visibility = Visibility::Visible;
-        } else {
-            spawn_reachable_sprite(&mut commands, world);
-        }
-    }
-    // Hide every surplus pooled sprite the current set no longer needs.
-    for (_, mut visibility) in pooled {
-        *visibility = Visibility::Hidden;
-    }
+        )
+    };
+    // The shared pooled-draw walk (GTW-568): reuse the pooled sprites in iteration order
+    // (move), lazily spawn past the pool, hide the surplus — the helper owns the
+    // set_if_neq visibility flips (mutate, not respawn).
+    draw_pool(
+        sprites.iter_mut(),
+        draws,
+        |cell, (transform, _)| transform.translation = world_at(cell),
+        |cell| spawn_reachable_sprite(&mut commands, world_at(cell)),
+        |(_, visibility)| visibility,
+    );
 }
 
 /// Lazily spawn ONE pooled reachable-range step sprite at `world`.

@@ -29,13 +29,17 @@
 //!
 //! The affordance is a SINGLE cell, so the system maintains ONE pooled tile [`Sprite`] and ONE
 //! pooled label [`Text2d`]: it moves / re-shows them on a fireable hover and HIDES them
-//! otherwise — it never despawn-then-respawns (the [`draw_path_preview`](crate::draw_path_preview)
-//! precedent).
+//! otherwise — it never despawn-then-respawns. Each singleton is the shared
+//! [`draw_pool`](crate::overlays::pool::draw_pool) walk (GTW-568) over a 0/1-length draw list;
+//! the helper owns the `set_if_neq` visibility flips.
 
 use bevy::{camera::visibility::RenderLayers, prelude::*, text::TextColor};
 use gdtf_battle_sim::{Cell, CellLevel, Level, Tu};
 
-use crate::{ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered};
+use crate::{
+    ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered,
+    overlays::pool::draw_pool,
+};
 
 /// The presenter-owned fire-target highlight read-seam — the hovered fireable-enemy cell the
 /// SELECTED shooter could fire on, plus the fire TU cost (C2).
@@ -188,8 +192,7 @@ const COST_LABEL_LIFT_PX: f32 = CELL_PX * 0.55;
 ///   cell, its text rewritten to [`cost_label_text`]`(cost)`, shown OPAQUE;
 /// - otherwise (empty highlight / no fireable hover, OR a target off the active storey — the
 ///   hard cut, C5) BOTH pooled entities are [`Visibility::Hidden`] — NEVER despawned (the
-///   UI-mutate-not-respawn convention, the [`draw_path_preview`](crate::draw_path_preview)
-///   precedent).
+///   UI-mutate-not-respawn convention, owned by the shared [`draw_pool`] walk).
 ///
 /// Off-[`ActiveLevel`] cells are NOT drawn — the hard cut to the active storey (the GTW-347 fog /
 /// GTW-358 preview precedent). Sized to one cell and drawn on
@@ -225,32 +228,26 @@ pub fn draw_fire_target(
 ///
 /// When `drawable` is [`Some`]`((cell, _))` the one pooled [`FireTargetTile`] is moved to the
 /// cell at the [`Layer::FireTarget`] band (under the actor) and shown; otherwise it is HIDDEN.
-/// Mutated in place (lazily spawned on first need). Exactly one tile entity ever exists.
+/// Mutated in place (lazily spawned on first need). Exactly one tile entity ever exists — the
+/// singleton is the shared [`draw_pool`] walk over a 0/1-length draw list (GTW-568): [`None`]
+/// hides the one pooled tile via the helper's surplus sweep.
 fn draw_tile(
     commands: &mut Commands,
     drawable: Option<(CellLevel, Tu)>,
     active_level: Level,
     tile_query: &mut TileQuery,
 ) {
-    let mut existing = tile_query.iter_mut();
-    match drawable {
-        Some((cell, _cost)) => {
-            let world =
-                cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::FireTarget);
-            if let Some((mut transform, mut visibility)) = existing.next() {
-                transform.translation = world;
-                *visibility = Visibility::Visible;
-            } else {
-                spawn_tile(commands, world);
-            }
-        }
-        // No fireable target on the active storey → hide the pooled tile (never despawn).
-        None => {
-            if let Some((_, mut visibility)) = existing.next() {
-                *visibility = Visibility::Hidden;
-            }
-        }
-    }
+    // The 0/1-length draw list: the drawable cell's world position at the FireTarget band.
+    let draws = drawable.map(|(cell, _cost)| {
+        cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::FireTarget)
+    });
+    draw_pool(
+        tile_query.iter_mut(),
+        draws,
+        |world, (transform, _)| transform.translation = world,
+        |world| spawn_tile(commands, world),
+        |(_, visibility)| visibility,
+    );
 }
 
 /// Draw (or hide) the SINGLE OPAQUE fire-cost label for the current highlight (C2).
@@ -258,36 +255,34 @@ fn draw_tile(
 /// When `drawable` is [`Some`]`((cell, cost))` the one pooled [`FireTargetLabel`] is moved over
 /// the cell (lifted [`COST_LABEL_LIFT_PX`] ABOVE it), its text rewritten to
 /// [`cost_label_text`]`(cost)`, and shown; otherwise it is HIDDEN. Mutated in place (lazily
-/// spawned on first need). Exactly one label entity ever exists.
+/// spawned on first need). Exactly one label entity ever exists — the singleton is the shared
+/// [`draw_pool`] walk over a 0/1-length draw list (GTW-568): [`None`] hides the one pooled
+/// label via the helper's surplus sweep.
 fn draw_cost_label(
     commands: &mut Commands,
     drawable: Option<(CellLevel, Tu)>,
     active_level: Level,
     label_query: &mut LabelQuery,
 ) {
-    let mut existing = label_query.iter_mut();
-    match drawable {
-        Some((cell, cost)) => {
-            let mut world =
-                cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::FireTarget);
-            // Above the target cell (the move-cost-label / FCT "above the cell" treatment).
-            world.y += COST_LABEL_LIFT_PX;
-            let text = cost_label_text(cost);
-            if let Some((mut label, mut transform, mut visibility)) = existing.next() {
-                **label = text;
-                transform.translation = world;
-                *visibility = Visibility::Visible;
-            } else {
-                spawn_cost_label(commands, text, world);
-            }
-        }
-        // No fireable target on the active storey → hide the pooled label (never despawn).
-        None => {
-            if let Some((_, _, mut visibility)) = existing.next() {
-                *visibility = Visibility::Hidden;
-            }
-        }
-    }
+    // Above the target cell (the move-cost-label / FCT "above the cell" treatment).
+    let world_at = |cell: CellLevel| {
+        let mut world =
+            cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::FireTarget);
+        world.y += COST_LABEL_LIFT_PX;
+        world
+    };
+    draw_pool(
+        label_query.iter_mut(),
+        drawable,
+        |(cell, cost), (label, transform, _)| {
+            // Mutate the one pooled label in place (rewrite text, move; the helper shows it).
+            let label: &mut Text2d = label;
+            **label = cost_label_text(cost);
+            transform.translation = world_at(cell);
+        },
+        |(cell, cost)| spawn_cost_label(commands, cost_label_text(cost), world_at(cell)),
+        |(_, _, visibility)| visibility,
+    );
 }
 
 /// The fire-cost label text — the bare TU count followed by `" TU"` (the firemode / move-cost /

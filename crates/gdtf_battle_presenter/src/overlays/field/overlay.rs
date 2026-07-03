@@ -25,12 +25,17 @@
 //! The system maintains a POOL of [`FieldCellSprite`]-marked sprites: it reuses an existing entity
 //! for each field cell to draw (moving its [`Transform`], setting its tint, showing it) and HIDES
 //! surplus pooled entities it no longer needs — it never despawn-then-respawns the set each frame
-//! (the UI-mutate-not-respawn convention, the `draw_reachable_overlay` precedent).
+//! (the UI-mutate-not-respawn convention). The walk itself is the shared
+//! [`draw_pool`](crate::overlays::pool::draw_pool) helper (GTW-568), which owns the `set_if_neq`
+//! visibility flips.
 
 use bevy::{camera::visibility::RenderLayers, prelude::*};
 use gdtf_battle_sim::{Cell, CellLevel, DamageType, FieldRegistry, Level};
 
-use crate::{ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered};
+use crate::{
+    ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered,
+    overlays::pool::draw_pool,
+};
 
 /// Marker for a pooled area-damage-field cell [`Sprite`].
 ///
@@ -156,28 +161,29 @@ pub fn draw_field_overlay(
     let active_level: Level = **active;
     let draws = field_draws(&fields, active_level);
 
-    // Reuse the pooled sprites in iteration order: move + tint + show the first `draws.len()`,
-    // hide the rest (mutate, not respawn — the draw_reachable_overlay precedent).
-    let mut pooled = sprites.iter_mut();
-    for draw in &draws {
-        let world = cell_to_world_layered(
-            Cell::new(draw.cell.x, draw.cell.y),
-            active_level,
-            Layer::Field,
-        );
-        let tint = field_tint(draw.damage_type);
-        if let Some((mut transform, mut sprite, mut visibility)) = pooled.next() {
-            transform.translation = world;
-            sprite.color = tint;
-            *visibility = Visibility::Visible;
-        } else {
-            spawn_field_sprite(&mut commands, world, tint);
-        }
-    }
-    // Hide every surplus pooled sprite the current set no longer needs.
-    for (_, _, mut visibility) in pooled {
-        *visibility = Visibility::Hidden;
-    }
+    // The world position of a field-cell sprite (shared by the reuse + grow paths).
+    let world_at = |cell: CellLevel| {
+        cell_to_world_layered(Cell::new(cell.x, cell.y), active_level, Layer::Field)
+    };
+    // The shared pooled-draw walk (GTW-568): reuse the pooled sprites in iteration order
+    // (move + tint), lazily spawn past the pool, hide the surplus — the helper owns the
+    // set_if_neq visibility flips (mutate, not respawn).
+    draw_pool(
+        sprites.iter_mut(),
+        draws,
+        |draw, (transform, sprite, _)| {
+            transform.translation = world_at(draw.cell);
+            sprite.color = field_tint(draw.damage_type);
+        },
+        |draw| {
+            spawn_field_sprite(
+                &mut commands,
+                world_at(draw.cell),
+                field_tint(draw.damage_type),
+            );
+        },
+        |(_, _, visibility)| visibility,
+    );
 }
 
 /// Lazily spawn ONE pooled field-cell sprite at `world` with the hazard `tint`.
