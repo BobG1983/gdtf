@@ -138,4 +138,11 @@ impl PrefabRegistry {
     pub fn keys(&self) -> impl Iterator<Item = &PrefabKey> {
         self.0.keys()
     }
+
+    /// Iterate over every registered [`Prefab`] across every bucket — the GTW-582
+    /// reference-integrity walk reads each fragment's theme + placed terrain UUIDs
+    /// through this. Iteration order is unspecified (hash-map buckets).
+    pub fn iter(&self) -> impl Iterator<Item = &Prefab> {
+        self.0.values().flatten()
+    }
 }

@@ -264,4 +264,12 @@ impl GangRegistry {
     pub fn keys(&self) -> impl Iterator<Item = &GangName> {
         self.0.keys()
     }
+
+    /// Iterate over every `(name, roster)` pair — the GTW-582 reference-integrity
+    /// walk reads every roster member's equipment keys through this (the
+    /// [`WeaponRegistry::iter`](crate::weapon::WeaponRegistry) precedent). Iteration
+    /// order is unspecified (see [`Registry`]).
+    pub fn iter(&self) -> impl Iterator<Item = (&GangName, &GangRoster)> {
+        self.0.iter()
+    }
 }

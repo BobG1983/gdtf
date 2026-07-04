@@ -1,0 +1,7 @@
+// GTW-582 fixture weapon — DELIBERATELY MALFORMED RON (the closing paren and half the
+// required fields are missing), so the folder's load_folder walk FAILS and the C4
+// per-file salvage engages: BOTH good siblings must still load and THIS file alone must
+// be reported as a MalformedFile finding (NOT shipped content).
+(
+    base_spread:   0.10,
+    accuracy:      "this is not a number",

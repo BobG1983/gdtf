@@ -1,0 +1,19 @@
+// GTW-582 fixture emplacement — a registry-PRESENT terrain def whose Emplacement
+// `mounted_weapon` key names a weapon this root never defines, so the terrain→weapon edge
+// dangles ON PURPOSE (the C1 walk's emplacement edge; NOT shipped content; loaded only by
+// tests/load_ref_integrity.rs). Structural magnitudes are arbitrary schema-valid values.
+(
+    key: "00000000-0000-0000-0000-0582000000a2",  // this def IS in the registry
+    display_name: "Ghost Mount",
+    sim_kind: Emplacement(
+        hp:               30,
+        armor_protection: 3,
+        armor_hardness:   1,
+        height_band:      High,
+        mounted_weapon:   "ghost_cannon",  // DANGLING weapon key — no ghost_cannon.weapon.ron
+    ),
+    presenter_kind: Emplacement(
+        graphic_name: "emplacement",
+    ),
+    tags: [],
+)

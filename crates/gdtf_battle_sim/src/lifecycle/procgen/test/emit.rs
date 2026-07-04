@@ -185,6 +185,7 @@ fn pipeline_emit_is_deterministic_under_a_seed() {
             &knobs,
         )
         .ok()
+        .map(|emitted| emitted.situation)
     };
 
     let seed = BattleSeed::new(0x5EED_4311);
@@ -293,9 +294,10 @@ fn emitted_level_is_in_bounds_and_fully_connected() {
         "the generate must succeed (a valid placement): {:?}",
         result.as_ref().err(),
     );
-    let Ok(situation) = result else {
+    let Ok(emitted) = result else {
         return;
     };
+    let situation = emitted.situation;
 
     // GTW-492: the theme is the UUID-keyed key directly (no shim), and the default_floor
     // resolved from the theme registry (the test FLOOR piece).
@@ -669,9 +671,10 @@ fn ns_and_ew_walls_both_emit_as_walls_through_the_loader() {
         "the generate must succeed for a prefab placing NS + EW walls: {:?}",
         result.as_ref().err(),
     );
-    let Ok(situation) = result else {
+    let Ok(emitted) = result else {
         return;
     };
+    let situation = emitted.situation;
 
     // C4 / C5: BOTH the NS and the EW wall TerrainUuid resolved through the loader/emit path and
     // were classified into the walls list (the EW wall is bucketed exactly like the NS wall).
@@ -883,9 +886,10 @@ fn door_and_stair_tiles_emit_through_the_loader_classified_by_kind() {
         "the generate must succeed for a prefab placing all 6 door/stair tiles: {:?}",
         result.as_ref().err(),
     );
-    let Ok(situation) = result else {
+    let Ok(emitted) = result else {
         return;
     };
+    let situation = emitted.situation;
 
     // C4 / C5: the 2 doors (Wall) resolved through the loader/emit path into the WALLS list.
     for door in [DOOR_NS, DOOR_EW] {

@@ -1,0 +1,22 @@
+// GTW-582 fixture weapon — a WELL-FORMED sibling of the deliberately-malformed
+// broken.weapon.ron in this folder: the C4 per-file salvage must still load it (NOT
+// shipped content; loaded only by tests/load_ref_salvage.rs). Stats arbitrary.
+(
+    base_spread:   0.10,
+    accuracy:      1.0,
+    kickback:      0.05,
+    fatal_bias:    0.0,
+    damage:        6,
+    punch:         2,
+    shred:         1,
+    damage_type:   Kinetic,
+    magazine: (
+        size:      12,
+        reload_tu: 12,
+    ),
+    fire_mode: [
+        (kind: Single, cone_mult: 1.0, tu_percent: 0.30, shots: 1),
+    ],
+    stable: false,
+    handedness:    OneHanded,
+)

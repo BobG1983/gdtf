@@ -19,7 +19,7 @@ use bevy::{
     asset::{AssetEvent, AssetServer, Assets, LoadedFolder, RecursiveDependencyLoadState},
     prelude::{Commands, MessageReader, Res, ResMut, info, warn},
 };
-use gdtf_assets::RonAsset;
+use gdtf_assets::{ContentIntegrityReport, RonAsset, RonFolderSalvage};
 use gdtf_battle_sim::{
     injuries::{
         InjuryDef, InjuryName, InjuryRegistry, InjuryTables, InjuryWeighting, WeightedInjuryEntry,
@@ -40,7 +40,12 @@ use crate::states::load::resources::{ActiveInjuriesFolderHandle, LoadHandles};
 /// - Gates on the injuries folder's
 ///   [`RecursiveDependencyLoadState`]`::Loaded` (recursive, so every injury / weighting
 ///   `.ron` in the per-part + `weighting/` subfolders is loaded). On
-///   [`RecursiveDependencyLoadState::Failed`] it `warn!`s and inserts an EMPTY
+///   [`RecursiveDependencyLoadState::Failed`] it `warn!`s and begins a PER-FILE SALVAGE
+///   (GTW-582 C4, through the ONE shared `gdtf_assets` salvage seam) — one salvage per
+///   asset type (defs + weightings), settled together — so one malformed injury file no
+///   longer vanishes every sibling; each malformed member is recorded as a loud
+///   [`MalformedFile`](gdtf_assets::ContentFinding::MalformedFile) finding. A folder that
+///   cannot be enumerated at all (missing directory) still fails closed to the EMPTY
 ///   [`InjuryRegistry`] + [`InjuryTables`] so `Load` always exits with both present and
 ///   never hangs on a bad folder (the ADR-0003 error-path safety-net; the roll then
 ///   fails closed — no injury rolled — rather than crashing).
@@ -51,6 +56,12 @@ use crate::states::load::resources::{ActiveInjuriesFolderHandle, LoadHandles};
 ///   published while the folder is non-empty. The resources hold their data BY VALUE,
 ///   so they survive the folder handle being dropped on `OnExit(Load)`.
 /// - Else (still loading) it does nothing and is polled again next frame.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one folder carries two asset types, so the resolve reads two Assets \
+              collections AND (GTW-582) two per-type salvage states + the shared report; \
+              the single-type resolvers need only one of each"
+)]
 pub(super) fn resolve_injuries(
     commands: &mut Commands,
     asset_server: &AssetServer,
@@ -58,20 +69,38 @@ pub(super) fn resolve_injuries(
     injury_defs: &Assets<RonAsset<InjuryDef>>,
     weightings: &Assets<RonAsset<InjuryWeighting>>,
     handles: &LoadHandles,
+    salvage: (
+        Option<&RonFolderSalvage<InjuryDef>>,
+        Option<&RonFolderSalvage<InjuryWeighting>>,
+    ),
+    report: Option<&mut ContentIntegrityReport>,
 ) {
+    // Salvage-poll path (GTW-582 C4): a prior frame's `Failed` began the per-file
+    // salvages — settle BOTH (defs + weightings) before building either resource, so
+    // the pair is still built atomically (see `injuries/salvage.rs`).
+    let (def_salvage, weighting_salvage) = salvage;
+    if let (Some(def_salvage), Some(weighting_salvage)) = (def_salvage, weighting_salvage) {
+        salvage::settle_injuries_salvage(
+            commands,
+            asset_server,
+            injury_defs,
+            weightings,
+            def_salvage,
+            weighting_salvage,
+            report,
+        );
+        return;
+    }
+
     let folder_state = asset_server.recursive_dependency_load_state(&*handles.injuries);
 
-    // Failure path: a bad/missing injuries folder must not hang the app. Warn and
-    // insert EMPTY resources so Load always exits with both present (the roll then
-    // fails closed — no injury rolled — rather than crashing).
+    // Failure path (GTW-582 C4): a Failed folder walk no longer empties the family —
+    // salvage the members per-file (one salvage per asset type) so one malformed file
+    // cannot vanish its siblings. Only a folder that cannot be enumerated at all still
+    // fails closed to the EMPTY resources (the roll then fails closed — no injury
+    // rolled — rather than crashing).
     if matches!(folder_state, RecursiveDependencyLoadState::Failed(_)) {
-        warn!(
-            "GDTF Load: the `injuries` folder failed to load; inserting an empty \
-             InjuryRegistry + InjuryTables (the injury roll will find no table and \
-             inflict no injury)",
-        );
-        commands.insert_resource(InjuryRegistry::default());
-        commands.insert_resource(InjuryTables::default());
+        salvage::begin_injuries_salvage(commands, asset_server);
         return;
     }
 
@@ -104,7 +133,10 @@ pub(super) fn resolve_injuries(
 
 /// Build BOTH the [`InjuryRegistry`] and the [`InjuryTables`] from a loaded
 /// `injuries/` [`LoadedFolder`], or [`None`] if the folder (or any member asset) is
-/// not yet in its collection — the injuries analogue of `build_weapon_registry`.
+/// not yet in its collection — the bespoke two-resource counterpart of the shared
+/// folder walk the GTW-570 content-family seam runs for its single-registry
+/// families (injuries stay off the seam by design: one folder resolves into TWO
+/// resources).
 ///
 /// Shared by [`resolve_injuries`] (the one-time `Load`-state build) and the GTW-374
 /// [`redrive_injuries_on_asset_event`] (the live rebuild on a hot edit), so both build
@@ -344,63 +376,10 @@ pub(in crate::states::load) fn redrive_injuries_on_asset_event(
     );
 }
 
-/// The injury KEY for a loaded injury file's stem — the stem with the dedicated
-/// `.injury` infix stripped (GTW-437).
-///
-/// An injury file is `<key>.injury.ron`; Bevy's `file_stem()` yields `<key>.injury`,
-/// so the KEY (the [`InjuryName`] a
-/// [`WeightedInjuryEntry`](gdtf_battle_sim::injuries::WeightedInjuryEntry) references)
-/// is that stem minus a trailing `.injury`. A stem without the infix is returned
-/// unchanged (defensive — keeps a mis-named file's key its plain stem).
-fn injury_key_from_stem(stem: &str) -> String {
-    stem.strip_suffix(".injury").unwrap_or(stem).to_owned()
-}
+mod keying;
+mod salvage;
 
-/// `warn!` if a loaded injury's authored [`category`](InjuryDef::category) differs from
-/// the [`InjuryCategory`](gdtf_battle_sim::armor::InjuryCategory) the per-category
-/// subfolder it lives in names (`injuries/<category>/<key>.injury.ron`, GTW-440 / GTW-453).
-///
-/// The subfolder is ORGANIZATIONAL only — the def's own `category` field is authoritative
-/// (design fork #10) — so a mismatch is a content-authoring smell worth a warning, NEVER a
-/// load failure: the injury is still loaded under its own field. Since GTW-440 the folders
-/// are per-CATEGORY (`head` / `torso` / `arm` / `leg`); GTW-453 authors the category
-/// DIRECTLY, so the comparison is the def's `category` against the subfolder's — an
-/// `Arm`-declared injury under `arm/` is consistent, only a cross-category misfile WARNs.
-fn warn_on_subfolder_mismatch(path_str: &str, key: &str, def: &InjuryDef) {
-    let Some(subfolder) = subfolder_injury_category(path_str) else {
-        // No recognised per-category subfolder (e.g. a flat layout) — nothing to compare.
-        return;
-    };
-    if subfolder != def.category {
-        warn!(
-            "GDTF Load: injury {key:?} declares category {:?} but lives in the {:?} \
-             subfolder; loading it under its authoritative field ({:?})",
-            def.category, subfolder, def.category,
-        );
-    }
-}
-
-/// The [`InjuryCategory`](gdtf_battle_sim::armor::InjuryCategory) a
-/// `injuries/<category>/…` path's per-category subfolder names, or [`None`] if the path
-/// names no recognised category subfolder (GTW-440).
-///
-/// Maps the canonical per-category subfolder names (`head` / `torso` / `arm` / `leg`) to
-/// their [`InjuryCategory`](gdtf_battle_sim::armor::InjuryCategory). The two arms / the
-/// two legs share ONE folder each (the shared-pool restructure), so there is no
-/// per-side subfolder anymore.
-fn subfolder_injury_category(path_str: &str) -> Option<gdtf_battle_sim::armor::InjuryCategory> {
-    use gdtf_battle_sim::armor::InjuryCategory;
-    // Normalise to forward slashes so the match works on every platform.
-    let normalised = path_str.replace('\\', "/");
-    [
-        ("/head/", InjuryCategory::Head),
-        ("/torso/", InjuryCategory::Torso),
-        ("/arm/", InjuryCategory::Arm),
-        ("/leg/", InjuryCategory::Leg),
-    ]
-    .into_iter()
-    .find_map(|(needle, category)| normalised.contains(needle).then_some(category))
-}
+use keying::{injury_key_from_stem, warn_on_subfolder_mismatch};
 
 #[cfg(test)]
 mod test;

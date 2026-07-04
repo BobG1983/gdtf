@@ -139,7 +139,7 @@ impl<S: Subscriber> Layer<S> for CaptureLayer {
 /// install re-evaluates already-registered callsites so a pre-install `NoSubscriber` emission
 /// can't leave one cached `never` either. Both halves close the empty-capture flake without any
 /// lock, sleep, or retry. The assertion is UNCHANGED — it still proves the real `info!` fired.
-pub(in crate::states::load) fn capture_logs(body: impl FnOnce()) -> Vec<String> {
+pub(crate) fn capture_logs(body: impl FnOnce()) -> Vec<String> {
     install_global_capture();
     // Arm this thread's buffer, capturing any value it already held (always `None` in practice,
     // since `capture_logs` calls are not nested) to restore on the way out.

@@ -5,13 +5,17 @@
 //! OQ-6 [`ProcgenTuning`](crate::procgen::ProcgenTuning) knobs ([`tuning`]); plus the
 //! GTW-431 emit step ([`emit`]: the deterministic seed harness emits a terrain-equal level
 //! for the same seed and a terrain-different level for different seeds (C2), and the emitted
-//! [`Situation`](crate::situation::Situation) is in-bounds + connected (C3)). Wiring only:
-//! `mod` declarations, no test bodies.
+//! [`Situation`](crate::situation::Situation) is in-bounds + connected (C3)); plus the
+//! GTW-582 C3(d) engagement-time finding pins ([`findings`]: the nil-sentinel theme pour and
+//! the fail-open unresolved-piece pour each ride back on
+//! [`EmittedLevel::findings`](crate::procgen::EmittedLevel), deduplicated — never silent).
+//! Wiring only: `mod` declarations, no test bodies.
 
 mod anchor;
 mod assembler;
 mod emit;
 mod fill;
+mod findings;
 mod packer;
 mod seam;
 mod tuning;

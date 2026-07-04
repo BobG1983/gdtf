@@ -6,9 +6,9 @@
 use bevy::{
     asset::LoadedFolder,
     ecs::system::SystemParam,
-    prelude::{Assets, Res},
+    prelude::{Assets, Res, ResMut},
 };
-use gdtf_assets::RonAsset;
+use gdtf_assets::{ContentIntegrityReport, RonAsset, RonFolderSalvage};
 use gdtf_battle_sim::{
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
     level::{PrefabRegistry, PrefabSpec},
@@ -70,4 +70,29 @@ pub(in crate::states::load) struct ResolvedResources<'w> {
     pub(super) injuries:    Option<Res<'w, InjuryRegistry>>,
     /// Whether the resolved [`PrefabRegistry`] is already inserted (GTW-489).
     pub(super) prefabs:     Option<Res<'w, PrefabRegistry>>,
+}
+
+/// The GTW-582 per-file salvage states of the three BESPOKE folder branches, plus
+/// the shared content-integrity report — bundled into one [`SystemParam`] so
+/// [`poll_and_resolve`](super::poll_and_resolve)'s parameter list stays under
+/// clippy's argument-count gate (the [`LoadAssetCollections`] grouping precedent).
+///
+/// Each salvage is `Option<Res<…>>`: absent until that branch's folder walk
+/// FAILED and the branch began salvaging its members per-file (the C4
+/// fail-closed-per-file contract, shared with the generic seam through
+/// `gdtf_assets`). The report is `Option<ResMut<…>>` (bevy-traps rule 1) — the
+/// Load plugin init's it unconditionally, but a bespoke harness might not.
+#[derive(SystemParam)]
+pub(in crate::states::load) struct SalvageStates<'w> {
+    /// The attachments branch's per-file salvage (GTW-549 folder).
+    pub(super) attachments:       Option<Res<'w, RonFolderSalvage<AttachmentSpec>>>,
+    /// The injuries branch's per-injury-def salvage (GTW-437 folder, defs half).
+    pub(super) injury_defs:       Option<Res<'w, RonFolderSalvage<InjuryDef>>>,
+    /// The injuries branch's per-weighting salvage (GTW-437 folder, tables half).
+    pub(super) injury_weightings: Option<Res<'w, RonFolderSalvage<InjuryWeighting>>>,
+    /// The prefabs branch's per-fragment salvage (GTW-489 folder).
+    pub(super) prefabs:           Option<Res<'w, RonFolderSalvage<PrefabSpec>>>,
+    /// The shared content-integrity report the salvages record malformed
+    /// members into (GTW-582 C2/C4).
+    pub(super) report:            Option<ResMut<'w, ContentIntegrityReport>>,
 }

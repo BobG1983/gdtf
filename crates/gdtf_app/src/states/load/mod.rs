@@ -1,6 +1,11 @@
 mod plugin;
 mod systems;
+// GTW-582: re-export the cfg(test) tracing-capture scaffold one hop up so
+// sibling scene modules (`crate::states::load::hot_reload_test_support`) can
+// drive log-capture assertions through the ONE shared, poison-proof path.
 pub(in crate::states) use plugin::LoadScenePlugin;
+#[cfg(test)]
+pub(crate) use systems::hot_reload_test_support;
 mod resources;
 // The resolved authored battlefield resource the Generation slice (E10.5) reads;
 // it persists past `OnExit(Load)`, so it is the load scene's outward-facing

@@ -404,10 +404,11 @@ pub use lifecycle::{
     },
     procgen,
     procgen::{
-        Anchor, DeadRectScatterCount, FilledPlacement, Footprint, LargePrefabAreaThreshold, Margin,
-        MaxRectsPacker, MinDensityFloor, MinPlayerSide, PackingError, PlacedPrefab,
-        Placement as PrefabPlacement, ProcgenTuning, RegionRect, SplitMode, assemble_placement,
-        assemble_placement_with, emit_level, fill_placement, fill_placement_with, generate_level,
+        Anchor, DeadRectScatterCount, EmittedLevel, FilledPlacement, Footprint,
+        LargePrefabAreaThreshold, Margin, MaxRectsPacker, MinDensityFloor, MinPlayerSide,
+        PackingError, PlacedPrefab, Placement as PrefabPlacement, ProcgenFinding, ProcgenTuning,
+        RegionRect, SplitMode, assemble_placement, assemble_placement_with, emit_level,
+        fill_placement, fill_placement_with, generate_level,
     },
     situation,
     situation::{

@@ -1,0 +1,58 @@
+// GTW-582 fixture — a situation whose OUTBOUND references dangle ON PURPOSE, one per
+// situation edge class, so the end-of-Load reference-integrity pass can be asserted to
+// report each (NOT shipped content; loaded only by tests/load_ref_integrity.rs).
+//
+// Dangling here: the theme UUID, one gang ref (file-stem scheme), one member ref
+// (display-name scheme), one wall terrain UUID, and one field key. The third placed
+// ganger resolves CLEANLY (gang + member exist) so the pass is proven discriminating,
+// and ITS equipment keys (authored in fixture_gang.gang.ron) dangle the gang-side edges.
+(
+    theme: "00000000-0000-0000-0000-058200000001",  // DANGLING ThemeUuid — in no UuidThemeRegistry
+    grid_size: (width: 12, height: 12, levels: 2),  // small board (schema-valid, unused by the pass)
+    gangers: [
+        // A placed ganger whose GANG file stem does not exist (the FileStem scheme finding).
+        (
+            gang:       "ghost_gang",     // DANGLING gang ref — no ghost_gang.gang.ron
+            member:     "Nobody",         // member is irrelevant: the gang itself is missing
+            at:         (cell: (x: 1, y: 1), level: 0),
+            faction:    0,
+            facing:     East,
+            stance:     Standing,
+            aiming:     false,
+            life_state: Alive,
+        ),
+        // A placed ganger whose gang EXISTS but whose MEMBER display-name does not
+        // (the DisplayName scheme finding).
+        (
+            gang:       "fixture_gang",   // resolves — content/gangs/fixture_gang.gang.ron
+            member:     "Missing Member", // DANGLING member ref — not in fixture_gang's roster
+            at:         (cell: (x: 2, y: 1), level: 0),
+            faction:    0,
+            facing:     East,
+            stance:     Standing,
+            aiming:     false,
+            life_state: Alive,
+        ),
+        // A placed ganger that resolves CLEANLY (gang + member both exist) — proves the
+        // pass reports only genuine danglers.
+        (
+            gang:       "fixture_gang",
+            member:     "Real Member",
+            at:         (cell: (x: 3, y: 1), level: 0),
+            faction:    1,
+            facing:     West,
+            stance:     Standing,
+            aiming:     false,
+            life_state: Alive,
+        ),
+    ],
+    // One authored wall whose terrain-def UUID dangles (the situation→terrain edge).
+    walls: [
+        (at: (cell: (x: 5, y: 5), level: 0), piece: "00000000-0000-0000-0000-058200000002"),
+    ],
+    // One authored field placement whose key dangles (the situation→field edge; the
+    // fields folder is deliberately NOT materialized in this root, so the catalog is empty).
+    fields: [
+        (at: (cell: (x: 6, y: 6), level: 0), field: "ghost_field"),
+    ],
+)

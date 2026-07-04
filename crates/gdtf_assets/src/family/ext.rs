@@ -7,6 +7,7 @@ use crate::{
     family::{
         def::ContentFamily,
         handle::ContentFolderHandle,
+        report::ContentIntegrityReport,
         systems::{kick_off_content_family, redrive_content_family, resolve_content_family},
     },
 };
@@ -47,6 +48,11 @@ impl ContentFamilyAppExt for App {
         // The DEDICATED compound extension keeps the untyped `load_folder`
         // dispatch unambiguous among GDTF's many `.ron` loaders (GTW-257).
         self.init_ron_asset_with_extensions::<F::Spec>(vec![F::EXTENSION]);
+        // GTW-582 C4: the per-file salvage records each malformed member into
+        // the content-integrity report, so every seam host carries one
+        // (idempotent init — the game's Load plugin installs the full
+        // validation pass on top; the editor gets the report alone).
+        self.init_resource::<ContentIntegrityReport>();
         self.add_systems(Startup, kick_off_content_family::<F>)
             .add_systems(
                 Update,

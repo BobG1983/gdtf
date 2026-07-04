@@ -7,7 +7,10 @@ use bevy::{
     asset::{AssetEvent, AssetServer, Assets, LoadedFolder, RecursiveDependencyLoadState},
     prelude::{Commands, MessageReader, Res, ResMut, info, warn},
 };
-use gdtf_assets::RonAsset;
+use gdtf_assets::{
+    ContentIntegrityReport, FindingFamily, RonAsset, RonFolderSalvage, RonSalvagePoll,
+    begin_ron_folder_salvage, poll_ron_folder_salvage, report_malformed_members,
+};
 use gdtf_battle_sim::weapon::{AttachmentName, AttachmentRegistry, AttachmentSpec};
 
 use crate::states::load::resources::{ActiveAttachmentsFolderHandle, LoadHandles};
@@ -20,8 +23,13 @@ use crate::states::load::resources::{ActiveAttachmentsFolderHandle, LoadHandles}
 /// guard), independently of the other resolve branches:
 ///
 /// - Gates on the attachments folder's [`RecursiveDependencyLoadState`]`::Loaded`. On
-///   [`RecursiveDependencyLoadState::Failed`] (or a missing folder) it `warn!`s and inserts
-///   an EMPTY [`AttachmentRegistry`] so `Load` always exits with one present (the ADR-0003
+///   [`RecursiveDependencyLoadState::Failed`] it `warn!`s and begins a PER-FILE SALVAGE
+///   (GTW-582 C4, through the ONE shared `gdtf_assets` salvage seam): every matching member
+///   loads individually, well-formed siblings still fold into the registry, and each
+///   malformed member is recorded as a loud
+///   [`MalformedFile`](gdtf_assets::ContentFinding::MalformedFile) finding. A folder that
+///   cannot be enumerated at all (missing directory) still fails closed to the EMPTY
+///   [`AttachmentRegistry`] so `Load` always exits with one present (the ADR-0003
 ///   fail-safe; a weapon's authored attachment key then resolves to nothing rather than
 ///   crashing).
 /// - On success it reads the [`LoadedFolder`]'s member handles, types each as a
@@ -37,15 +45,62 @@ pub(super) fn resolve_attachments(
     folders: &Assets<LoadedFolder>,
     attachment_specs: &Assets<RonAsset<AttachmentSpec>>,
     handles: &LoadHandles,
+    salvage: Option<&RonFolderSalvage<AttachmentSpec>>,
+    report: Option<&mut ContentIntegrityReport>,
 ) {
+    // Salvage-poll path: a prior frame's `Failed` began a per-file salvage — settle it
+    // (fold the loaded members, report the malformed ones) before re-reading the folder.
+    if let Some(salvage) = salvage {
+        if let RonSalvagePoll::Settled { loaded, malformed } =
+            poll_ron_folder_salvage(salvage, asset_server, attachment_specs)
+        {
+            let mut registry = AttachmentRegistry::default();
+            for member in &loaded {
+                let Some(stem) = std::path::Path::new(member.path.as_str())
+                    .file_stem()
+                    .map(|stem| attachment_key_from_stem(&stem.to_string_lossy()))
+                else {
+                    continue;
+                };
+                registry.insert(AttachmentName::new(stem), (**member.spec).clone());
+            }
+            report_malformed_members(
+                report,
+                &FindingFamily::new("AttachmentRegistry".to_owned()),
+                malformed,
+            );
+            commands.insert_resource(registry);
+        }
+        return;
+    }
+
     let folder_state = asset_server.recursive_dependency_load_state(&*handles.attachments);
 
     if matches!(folder_state, RecursiveDependencyLoadState::Failed(_)) {
-        warn!(
-            "GDTF Load: the `content/attachments` folder failed to load; inserting an empty \
-             AttachmentRegistry (a weapon's authored attachment key will resolve to nothing)",
-        );
-        commands.insert_resource(AttachmentRegistry::default());
+        // GTW-582 C4: a Failed folder walk no longer empties the family — salvage the
+        // members per-file so one malformed item cannot vanish its siblings. Only a
+        // folder that cannot be enumerated at all still fails closed to EMPTY.
+        match begin_ron_folder_salvage::<AttachmentSpec>(
+            asset_server,
+            "content/attachments",
+            "attachment.ron",
+        ) {
+            Ok(salvage) if !salvage.is_empty() => {
+                warn!(
+                    "GDTF Load: the `content/attachments` folder failed to load; salvaging \
+                     its members per-file into the AttachmentRegistry",
+                );
+                commands.insert_resource(salvage);
+            }
+            _ => {
+                warn!(
+                    "GDTF Load: the `content/attachments` folder failed to load; inserting an \
+                     empty AttachmentRegistry (a weapon's authored attachment key will resolve \
+                     to nothing)",
+                );
+                commands.insert_resource(AttachmentRegistry::default());
+            }
+        }
         return;
     }
 
@@ -183,164 +238,4 @@ fn attachment_key_from_stem(stem: &str) -> String {
 }
 
 #[cfg(test)]
-mod test {
-    use bevy::{
-        MinimalPlugins,
-        asset::{AssetEvent, AssetPlugin, AssetServer, Assets, Handle, LoadedFolder},
-        ecs::system::RunSystemOnce,
-        prelude::*,
-    };
-    use gdtf_assets::{RonAsset, RonAssetAppExt};
-    use gdtf_battle_sim::weapon::{AttachmentName, AttachmentRegistry, AttachmentSpec};
-
-    use super::redrive_attachments_on_asset_event;
-    use crate::states::load::{
-        resources::ActiveAttachmentsFolderHandle,
-        systems::resolve::hot_reload_test_support::capture_logs,
-    };
-
-    /// An attachment spec with the given display name — parsed from inline RON so the test
-    /// does not hand-assemble the effect list. Returns `None` (assert-fail) on a parse error
-    /// rather than a denied `unwrap`. Proves the attachment spec parses (folder-load path).
-    fn attachment_spec(display_name: &str) -> Option<AttachmentSpec> {
-        // GTW-554: `slot:` is REQUIRED on every item (the mount point the fit gate reads).
-        let ron = format!("(display_name: \"{display_name}\", slot: Sight, effects: [Aim(0.4)])");
-        let parsed = ron::de::from_str::<AttachmentSpec>(&ron);
-        assert!(
-            parsed.is_ok(),
-            "attachment fixture must parse: {:?}",
-            parsed.as_ref().err()
-        );
-        parsed.ok()
-    }
-
-    /// A headless app with the real attachment hot-reload wiring.
-    fn app() -> App {
-        let mut app = App::new();
-        app.add_plugins(MinimalPlugins)
-            .add_plugins(AssetPlugin::default())
-            .init_ron_asset_with_extensions::<AttachmentSpec>(vec!["attachment.ron"])
-            .add_systems(Update, redrive_attachments_on_asset_event);
-        app
-    }
-
-    /// Register a member attachment asset at `path` carrying `spec`, returning its typed
-    /// handle (the melee `add_member` mirror).
-    fn add_member(
-        app: &mut App,
-        path: &'static str,
-        spec: AttachmentSpec,
-    ) -> Handle<RonAsset<AttachmentSpec>> {
-        let handle = app
-            .world()
-            .resource::<AssetServer>()
-            .load::<RonAsset<AttachmentSpec>>(path);
-        let inserted = app
-            .world_mut()
-            .resource_mut::<Assets<RonAsset<AttachmentSpec>>>()
-            .insert(handle.id(), RonAsset::new(spec));
-        assert!(inserted.is_ok(), "member spec insert must succeed");
-        handle
-    }
-
-    /// Build a `LoadedFolder` over the given member handles, add it, return its handle.
-    fn add_folder(
-        app: &mut App,
-        members: &[Handle<RonAsset<AttachmentSpec>>],
-    ) -> Handle<LoadedFolder> {
-        let folder = LoadedFolder {
-            handles: members.iter().map(|h| h.clone().untyped()).collect(),
-        };
-        app.world_mut()
-            .resource_mut::<Assets<LoadedFolder>>()
-            .add(folder)
-    }
-
-    /// A `Modified` for a member `*.attachment.ron` REBUILDS the `AttachmentRegistry` from the
-    /// folder's members — keyed by file stem (minus the `.attachment` infix) — reflecting the
-    /// edited spec. Pin-discriminating: dropping the rebuild leaves the OLD display name;
-    /// mis-keying drops the `scoped_sight` entry. Asserts the KEY + rebuild mechanism, not a
-    /// magnitude.
-    #[test]
-    fn modified_member_rebuilds_attachment_registry() {
-        let mut app = app();
-        let Some(original) = attachment_spec("Scoped Sight") else {
-            return;
-        };
-        let member = add_member(
-            &mut app,
-            "content/attachments/scoped_sight.attachment.ron",
-            original,
-        );
-        let folder = add_folder(&mut app, std::slice::from_ref(&member));
-        app.world_mut()
-            .insert_resource(ActiveAttachmentsFolderHandle::new(folder));
-        app.world_mut()
-            .insert_resource(AttachmentRegistry::default());
-        app.update();
-
-        let Some(edited) = attachment_spec("Long Scope") else {
-            return;
-        };
-        if let Some(mut asset) = app
-            .world_mut()
-            .resource_mut::<Assets<RonAsset<AttachmentSpec>>>()
-            .get_mut(&member)
-        {
-            **asset = edited;
-        }
-        app.world_mut()
-            .write_message(AssetEvent::Modified { id: member.id() });
-        app.update();
-
-        let key = AttachmentName::new("scoped_sight".to_owned());
-        let name = app
-            .world()
-            .get_resource::<AttachmentRegistry>()
-            .and_then(|r| r.spec(&key).map(|s| (*s.display_name).clone()));
-        assert_eq!(
-            name,
-            Some("Long Scope".to_owned()),
-            "the hot-reload must rebuild the registry, keyed by stem, with the edited spec",
-        );
-    }
-
-    /// A hot-reload of an attachment member fires the `info!` line naming what reloaded. Run
-    /// via `run_system_once` so the thread-local `tracing` capture sees the emission.
-    /// Pin-discriminating: removing the `info!` leaves the capture empty.
-    #[test]
-    fn attachment_hot_reload_logs_an_info_line() {
-        let mut app = app();
-        let Some(spec) = attachment_spec("Scoped Sight") else {
-            return;
-        };
-        let member = add_member(
-            &mut app,
-            "content/attachments/scoped_sight.attachment.ron",
-            spec,
-        );
-        let folder = add_folder(&mut app, std::slice::from_ref(&member));
-        app.world_mut()
-            .insert_resource(ActiveAttachmentsFolderHandle::new(folder));
-        app.world_mut()
-            .insert_resource(AttachmentRegistry::default());
-        app.world_mut()
-            .write_message(AssetEvent::Modified { id: member.id() });
-
-        let captured = capture_logs(|| {
-            let result = app
-                .world_mut()
-                .run_system_once(redrive_attachments_on_asset_event);
-            assert!(result.is_ok(), "the redrive system must run cleanly");
-        });
-
-        assert!(
-            captured
-                .iter()
-                .any(|line| line.contains("attachment hot-reload")
-                    && line.contains("AttachmentRegistry")),
-            "the attachment hot-reload must emit an info! line naming what reloaded; \
-             captured: {captured:?}",
-        );
-    }
-}
+mod test;

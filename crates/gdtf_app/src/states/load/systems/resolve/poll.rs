@@ -14,7 +14,7 @@ use crate::states::load::{
     systems::resolve::{
         attachments::resolve_attachments,
         injuries::resolve_injuries,
-        params::{LoadAssetCollections, ResolvedResources},
+        params::{LoadAssetCollections, ResolvedResources, SalvageStates},
         prefab::resolve_prefabs,
     },
 };
@@ -69,8 +69,11 @@ use crate::states::load::{
 /// - GTW-489: [`resolve_prefabs`] builds the UUID-keyed
 ///   [`PrefabRegistry`](gdtf_battle_sim::level::PrefabRegistry) multimap.
 ///
-/// On each failure path the branch `warn!`s and inserts an empty registry,
-/// preserving the no-strand guarantee.
+/// On each failure path the branch `warn!`s and — GTW-582 C4 — SALVAGES the
+/// folder per-file through the shared `gdtf_assets` salvage seam (well-formed
+/// siblings still load; each malformed member is reported), falling back to an
+/// empty registry only when the folder cannot be enumerated at all, preserving
+/// the no-strand guarantee either way.
 ///
 /// Guarded by `run_if(resource_exists::<LoadHandles>)` plus the per-resource
 /// `not(resource_exists::<…>)` or-chain in the plugin wiring (run while ANY required
@@ -87,6 +90,7 @@ pub(in crate::states::load) fn poll_and_resolve(
     collections: LoadAssetCollections,
     resolved: ResolvedResources,
     handles: Option<Res<LoadHandles>>,
+    mut salvage: SalvageStates,
 ) {
     let (theme_present, attachments_present, injuries_present, prefabs_present) = (
         resolved.theme.is_some(),
@@ -128,6 +132,8 @@ pub(in crate::states::load) fn poll_and_resolve(
             &folders,
             &attachment_specs,
             &handles,
+            salvage.attachments.as_deref(),
+            salvage.report.as_deref_mut(),
         );
     }
 
@@ -143,6 +149,11 @@ pub(in crate::states::load) fn poll_and_resolve(
             &injury_defs,
             &weightings,
             &handles,
+            (
+                salvage.injury_defs.as_deref(),
+                salvage.injury_weightings.as_deref(),
+            ),
+            salvage.report.as_deref_mut(),
         );
     }
 
@@ -159,6 +170,8 @@ pub(in crate::states::load) fn poll_and_resolve(
             &folders,
             &prefab_specs,
             &handles,
+            salvage.prefabs.as_deref(),
+            salvage.report.as_deref_mut(),
         );
     }
 

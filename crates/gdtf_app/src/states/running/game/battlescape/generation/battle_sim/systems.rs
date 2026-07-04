@@ -26,6 +26,7 @@
 //!   the battle boundary (NOT the Generation sub-state boundary).
 
 use bevy::prelude::*;
+use gdtf_assets::ContentIntegrityReport;
 use gdtf_battle_sim::{
     battle::{BattleReady, SetupBattleRequested, TeardownBattleRequested},
     level::{PrefabRegistry, UuidThemeRegistry},
@@ -86,6 +87,13 @@ use crate::states::{
 /// The `Situation::default()` fallback keeps the headless `MinimalPlugins` deep-walk
 /// (which inserts no [`LoadedSituation`]) triggering a valid empty setup and
 /// advancing rather than hanging in Generation (AC8).
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the params are the authored situation + seed override + the three UUID-keyed \
+              procgen registries + the live tuning + the GTW-582 integrity report + the \
+              setup writer — each a distinct Bevy SystemParam (Option<Res<_>> for the \
+              Load-state resources); the sim's setup_battle_on_request precedent"
+)]
 pub(in crate::states::running::game::battlescape::generation::battle_sim) fn request_battle_setup(
     loaded: Option<Res<LoadedSituation>>,
     seed_override: Option<Res<BattleSeed>>,
@@ -93,6 +101,7 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn req
     themes: Option<Res<UuidThemeRegistry>>,
     def_registry: Option<Res<TerrainDefRegistry>>,
     procgen_tuning: Option<Res<ProcgenTuning>>,
+    report: Option<ResMut<ContentIntegrityReport>>,
     mut setup: MessageWriter<SetupBattleRequested>,
 ) {
     // The loaded authored battlefield if the Load scene resolved one, else the empty
@@ -129,8 +138,19 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn req
         // only on the no-content headless harness, where procgen falls back to the default.
         tuning:  procgen_tuning.as_deref(),
     };
-    let situation = procgen_battle_situation(authored, registries, seed);
-    setup.write(SetupBattleRequested::new(situation, seed));
+    let outcome = procgen_battle_situation(authored, registries, seed);
+    // GTW-582 C3(d)/C5: every degraded resolution / last-resort fallback the
+    // generation took was already warn!ed at its site; append it to the
+    // persistent ContentIntegrityReport so the degradation is ON THE RECORD
+    // beside the end-of-Load findings. `Option` because a bespoke harness may
+    // not install the Load plugin's report (bevy-traps #1); the real app always
+    // carries it.
+    if let Some(mut report) = report {
+        for finding in outcome.findings {
+            report.record(finding);
+        }
+    }
+    setup.write(SetupBattleRequested::new(outcome.situation, seed));
 }
 
 /// `Update` (presence-gated): insert [`GenerationComplete`] on a [`BattleReady`] from

@@ -27,4 +27,4 @@ pub(in crate::states::load) use poll::poll_and_resolve;
 pub(in crate::states::load) use prefab::redrive_prefabs_on_asset_event;
 
 #[cfg(test)]
-pub(super) mod hot_reload_test_support;
+pub(crate) mod hot_reload_test_support;

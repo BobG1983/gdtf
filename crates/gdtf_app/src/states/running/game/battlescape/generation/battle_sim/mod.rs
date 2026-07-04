@@ -8,3 +8,6 @@ pub(in crate::states::running::game::battlescape::generation) use plugin::Battle
 mod procgen;
 mod seed;
 mod systems;
+
+#[cfg(test)]
+mod test;

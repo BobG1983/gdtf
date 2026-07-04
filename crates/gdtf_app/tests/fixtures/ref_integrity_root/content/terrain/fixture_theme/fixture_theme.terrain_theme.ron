@@ -1,0 +1,11 @@
+// GTW-582 fixture theme — a registry-PRESENT theme whose default_floor and palette entry
+// both reference terrain UUIDs this root never defines, so the theme→terrain edges dangle
+// ON PURPOSE (NOT shipped content; loaded only by tests/load_ref_integrity.rs).
+(
+    key: "00000000-0000-0000-0000-0582000000a1",  // this theme IS in the registry
+    display_name: "Fixture Theme",
+    default_floor: "00000000-0000-0000-0000-058200000005",  // DANGLING terrain UUID
+    terrain: [
+        "00000000-0000-0000-0000-058200000006",  // DANGLING terrain UUID (palette entry)
+    ],
+)

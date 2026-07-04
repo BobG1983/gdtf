@@ -87,6 +87,7 @@ use super::{
     assembler::{PlacedPrefab, assemble_placement_with},
     error::PackingError,
     fill::{FilledPlacement, fill_placement_with},
+    findings::{EmittedLevel, ProcgenFinding},
     geometry::{MinPlayerSide, RegionRect},
     packer::SplitMode,
     tuning::ProcgenTuning,
@@ -125,7 +126,9 @@ use crate::{
 /// Propagates every [`PackingError`] the assembler / fill can raise (no prefab for a role at
 /// the theme, a footprint that does not fit, or a too-small player footprint). The emit step
 /// itself is infallible (connectivity is by-construction — GTW-497). It NEVER
-/// `unwrap`/`expect`/`panic`s.
+/// `unwrap`/`expect`/`panic`s. GTW-582: degraded resolutions (a theme with no registry
+/// default floor, an unresolvable placed piece) are NOT errors — they ride back as the
+/// [`EmittedLevel::findings`] the app-side driver reports.
 pub fn generate_level(
     prefabs: &PrefabRegistry,
     themes: &UuidThemeRegistry,
@@ -134,7 +137,7 @@ pub fn generate_level(
     grid_size: GridSize,
     rng: &mut ProcgenRng,
     tuning: &ProcgenTuning,
-) -> Result<Situation, PackingError> {
+) -> Result<EmittedLevel, PackingError> {
     let placement = assemble_placement_with(
         prefabs,
         theme,
@@ -162,13 +165,24 @@ pub fn generate_level(
 /// placed region origin), resolves the level-wide `default_floor` from the `themes` registry
 /// (the theme nominates its ground terrain), and floors the
 /// [`dead_space`](FilledPlacement::dead_space) cells with that `default_floor`. The returned
-/// `Situation` has empty `gangers` (rosters are placed by GTW-433, not by this terrain emit);
-/// its `theme` is the UUID-keyed [`ThemeUuid`] directly, its `grid_size` the assembled
-/// level's.
+/// [`EmittedLevel::situation`] has empty `gangers` (rosters are placed by GTW-433, not by
+/// this terrain emit); its `theme` is the UUID-keyed [`ThemeUuid`] directly, its `grid_size`
+/// the assembled level's.
 ///
 /// Connectivity is by-construction via the 1-cell `default_floor` seam every placement
 /// reserves (GTW-497 removed the old fail-closed connectivity flood), so the emit is
-/// infallible — it returns a `Situation` directly, never a `Result`.
+/// infallible — it returns an [`EmittedLevel`] directly, never a `Result`. GTW-582: every
+/// DEGRADED resolution it takes rides back as an [`EmittedLevel::findings`] entry (never
+/// silent):
+///
+/// - a `theme` absent from `themes` (or one nominating no floor) pours the NIL-sentinel
+///   `default_floor` (setup then skips registry floor resolution — playable but degraded)
+///   and records [`ProcgenFinding::MissingThemeDefaultFloor`];
+/// - a placed piece whose UUID is NOT in `terrain_defs` pours FAIL-OPEN into `walls` (so it
+///   surfaces as a
+///   [`BattleSetupError::TerrainNotFound`](crate::situation::BattleSetupError) at setup
+///   rather than being silently dropped) and records
+///   [`ProcgenFinding::UnresolvedTerrainPiece`] once per unique UUID.
 ///
 /// GTW-492: iterates each fragment's SINGLE
 /// [`placements`](crate::level::PrefabSpec::placements) list (not four split lists) and
@@ -176,10 +190,7 @@ pub fn generate_level(
 /// [`TerrainDef`](crate::terrain::def::TerrainDef)'s
 /// [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) (resolved against `terrain_defs`):
 /// a `Wall`/`Cover` piece pours into [`walls`](crate::situation::Situation::walls), a `Slab`
-/// piece into [`slabs`](crate::situation::Situation::slabs). A piece whose UUID is NOT in
-/// `terrain_defs` is poured into `walls` as a fail-OPEN fallback so it surfaces as a
-/// [`BattleSetupError::TerrainNotFound`](crate::situation::BattleSetupError) at setup rather
-/// than being silently dropped.
+/// piece into [`slabs`](crate::situation::Situation::slabs).
 #[must_use]
 pub fn emit_level(
     filled: &FilledPlacement,
@@ -187,14 +198,19 @@ pub fn emit_level(
     grid_size: GridSize,
     themes: &UuidThemeRegistry,
     terrain_defs: &TerrainDefRegistry,
-) -> Situation {
+) -> EmittedLevel {
     let placement = filled.placement();
+    let mut findings: Vec<ProcgenFinding> = Vec::new();
 
     // The level-wide default floor: the THEME's nominated ground terrain (GTW-492 — the seam
     // lattice is this floor). Every open cell — incl. the floored dead space — is this. A
-    // theme absent from `themes` (the headless empty-registry harness) yields the nil
-    // sentinel, which skips registry floor resolution at setup (the documented fallback).
-    let default_floor = themes.default_floor(&theme).unwrap_or_default();
+    // theme absent from `themes` (the headless empty-registry harness, or a dangling authored
+    // theme) yields the nil sentinel, which skips registry floor resolution at setup — the
+    // LAST-RESORT degraded pour, recorded as a finding so it is never silent (GTW-582 C3(d)).
+    let default_floor = themes.default_floor(&theme).unwrap_or_else(|| {
+        findings.push(ProcgenFinding::MissingThemeDefaultFloor { theme });
+        crate::terrain::def::TerrainUuid::default()
+    });
 
     let mut situation = Situation::new();
     situation.theme = theme;
@@ -203,11 +219,22 @@ pub fn emit_level(
 
     // Pour every placed prefab (player, enemy, then fill in placement order) — a FIXED
     // order, so the emit is deterministic (C1/C2). Each prefab's footprint-local placements
-    // are translated by its placed region origin onto the board and classified by kind.
-    pour_prefab(placement.player(), &mut situation, terrain_defs);
-    pour_prefab(placement.enemy(), &mut situation, terrain_defs);
+    // are translated by its placed region origin onto the board and classified by kind; a
+    // fail-open unresolved pour records its finding (deduplicated, first-encounter order).
+    pour_prefab(
+        placement.player(),
+        &mut situation,
+        terrain_defs,
+        &mut findings,
+    );
+    pour_prefab(
+        placement.enemy(),
+        &mut situation,
+        terrain_defs,
+        &mut findings,
+    );
     for placed in filled.fill() {
-        pour_prefab(placed, &mut situation, terrain_defs);
+        pour_prefab(placed, &mut situation, terrain_defs, &mut findings);
     }
 
     // Floor the dead space (C3): each leftover free-rect cell is emitted as an explicit
@@ -216,7 +243,10 @@ pub fn emit_level(
         floor_region(*rect, default_floor, &mut situation);
     }
 
-    situation
+    EmittedLevel {
+        situation,
+        findings,
+    }
 }
 
 /// Translate one placed prefab's footprint-local geometry onto the board and append it to
@@ -229,11 +259,13 @@ pub fn emit_level(
 /// [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) (resolved against `terrain_defs`):
 /// `Wall`/`Cover` → [`walls`](crate::situation::Situation::walls), `Slab` →
 /// [`slabs`](crate::situation::Situation::slabs). An UNRESOLVABLE piece falls open into
-/// `walls` (so it surfaces at setup, never silently dropped — see [`emit_level`]).
+/// `walls` (so it surfaces at setup, never silently dropped — see [`emit_level`]) and is
+/// recorded in `findings` once per unique UUID (GTW-582 C3(d)).
 fn pour_prefab(
     placed: &PlacedPrefab,
     situation: &mut Situation,
     terrain_defs: &TerrainDefRegistry,
+    findings: &mut Vec<ProcgenFinding>,
 ) {
     let origin = placed.region().origin();
     let spec = placed.prefab().spec();
@@ -243,8 +275,19 @@ fn pour_prefab(
         match classify(placement.piece, terrain_defs) {
             // Slab → the slabs list (the per-slab structural HP resolves from the def).
             PlacedKind::Slab => situation.slabs.push(SlabSpawn::new(at, placement.piece)),
-            // Wall / Cover (and the fail-open unresolved fallback) → the walls list.
+            // Wall / Cover → the walls list.
             PlacedKind::Cover => situation.walls.push(CoverSpawn::new(at, placement.piece)),
+            // The fail-open unresolved fallback → the walls list, PLUS a deduplicated
+            // finding so the degraded pour is on the record (never silent).
+            PlacedKind::Unresolved => {
+                situation.walls.push(CoverSpawn::new(at, placement.piece));
+                let finding = ProcgenFinding::UnresolvedTerrainPiece {
+                    piece: placement.piece,
+                };
+                if !findings.contains(&finding) {
+                    findings.push(finding);
+                }
+            }
         }
     }
 }
@@ -257,26 +300,32 @@ enum PlacedKind {
     Cover,
     /// A `Slab` piece — pours into [`Situation::slabs`](crate::situation::Situation).
     Slab,
+    /// A piece whose UUID resolves NO definition — poured fail-OPEN into the walls list
+    /// AND recorded as a [`ProcgenFinding::UnresolvedTerrainPiece`] (GTW-582 C3(d)).
+    Unresolved,
 }
 
 /// Classify a placed piece by its canonical [`TerrainPieceKind`] (projected from its
 /// [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) in `terrain_defs` — GTW-574) —
-/// `Slab` defs route to the slabs list, everything else (incl. an UNRESOLVABLE UUID)
-/// routes to the walls list.
+/// `Slab` defs route to the slabs list, everything else routes to the walls list.
 ///
 /// The fail-OPEN fallback for an unresolved UUID keeps the piece in the emitted level (poured
 /// into `walls`) so it surfaces as a
 /// [`BattleSetupError::TerrainNotFound`](crate::situation::BattleSetupError) at setup, rather
-/// than being silently dropped from the procgen-generated terrain.
+/// than being silently dropped from the procgen-generated terrain — distinguished as
+/// [`PlacedKind::Unresolved`] so the pour records the GTW-582 finding.
 fn classify(piece: TerrainUuid, terrain_defs: &TerrainDefRegistry) -> PlacedKind {
     // A kind-IDENTITY decision (no per-variant payload), so it classifies over the
     // canonical `TerrainPieceKind` projection (GTW-574 C2) — exhaustive, no wildcard.
     match terrain_defs.def(&piece).map(|def| def.sim_kind.kind()) {
         Some(TerrainPieceKind::Slab) => PlacedKind::Slab,
         // Wall / Cover / Emplacement (a cover-like smashable structure resolved via the
-        // cover path) — and the fail-open unresolved fallback — route to the walls list.
-        Some(TerrainPieceKind::Wall | TerrainPieceKind::Cover | TerrainPieceKind::Emplacement)
-        | None => PlacedKind::Cover,
+        // cover path) route to the walls list.
+        Some(TerrainPieceKind::Wall | TerrainPieceKind::Cover | TerrainPieceKind::Emplacement) => {
+            PlacedKind::Cover
+        }
+        // The fail-open unresolved fallback — walls list + finding.
+        None => PlacedKind::Unresolved,
     }
 }
 

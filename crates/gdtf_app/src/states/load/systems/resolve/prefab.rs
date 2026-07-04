@@ -32,7 +32,10 @@ use bevy::{
     asset::{AssetEvent, AssetServer, Assets, LoadedFolder, RecursiveDependencyLoadState},
     prelude::{Commands, MessageReader, Res, ResMut, info, warn},
 };
-use gdtf_assets::RonAsset;
+use gdtf_assets::{
+    ContentIntegrityReport, FindingFamily, RonAsset, RonFolderSalvage, RonSalvagePoll,
+    begin_ron_folder_salvage, poll_ron_folder_salvage, report_malformed_members,
+};
 use gdtf_battle_sim::level::{Prefab, PrefabName, PrefabRegistry, PrefabSpec};
 
 use crate::states::load::resources::{ActivePrefabsFolderHandle, LoadHandles};
@@ -76,18 +79,59 @@ pub(super) fn resolve_prefabs(
     folders: &Assets<LoadedFolder>,
     prefab_specs: &Assets<RonAsset<PrefabSpec>>,
     handles: &LoadHandles,
+    salvage: Option<&RonFolderSalvage<PrefabSpec>>,
+    report: Option<&mut ContentIntegrityReport>,
 ) {
+    // Salvage-poll path (GTW-582 C4): a prior frame's `Failed` began a per-file salvage —
+    // settle it (bucket the loaded members, report the malformed ones).
+    if let Some(salvage) = salvage {
+        if let RonSalvagePoll::Settled { loaded, malformed } =
+            poll_ron_folder_salvage(salvage, asset_server, prefab_specs)
+        {
+            let mut registry = PrefabRegistry::default();
+            for member in &loaded {
+                let Some(stem) = std::path::Path::new(member.path.as_str())
+                    .file_stem()
+                    .map(|stem| prefab_name_from_stem(&stem.to_string_lossy()))
+                else {
+                    continue;
+                };
+                registry.insert(Prefab::new(PrefabName::new(stem), (**member.spec).clone()));
+            }
+            report_malformed_members(
+                report,
+                &FindingFamily::new("PrefabRegistry".to_owned()),
+                malformed,
+            );
+            commands.insert_resource(registry);
+        }
+        return;
+    }
+
     let folder_state = asset_server.recursive_dependency_load_state(&*handles.prefabs);
 
-    // Failure path: a bad/missing maps folder must not hang the app. Warn and insert an EMPTY
-    // registry so Load always exits with one present (the assembler then has no fragments
-    // rather than crashing).
+    // Failure path (GTW-582 C4): a Failed folder walk no longer empties the family — salvage
+    // the members per-file so one malformed fragment cannot vanish its siblings. Only a
+    // folder that cannot be enumerated at all still fails closed to the EMPTY registry, so
+    // Load always exits with one present (the assembler then has no fragments rather than
+    // crashing).
     if matches!(folder_state, RecursiveDependencyLoadState::Failed(_)) {
-        warn!(
-            "GDTF Load: the `maps` folder failed to load; inserting an empty PrefabRegistry \
-             (the assembler will have no fragments to pack)",
-        );
-        commands.insert_resource(PrefabRegistry::default());
+        match begin_ron_folder_salvage::<PrefabSpec>(asset_server, "content/maps", "prefab.ron") {
+            Ok(salvage) if !salvage.is_empty() => {
+                warn!(
+                    "GDTF Load: the `maps` folder failed to load; salvaging its fragments \
+                     per-file into the PrefabRegistry",
+                );
+                commands.insert_resource(salvage);
+            }
+            _ => {
+                warn!(
+                    "GDTF Load: the `maps` folder failed to load; inserting an empty \
+                     PrefabRegistry (the assembler will have no fragments to pack)",
+                );
+                commands.insert_resource(PrefabRegistry::default());
+            }
+        }
         return;
     }
 

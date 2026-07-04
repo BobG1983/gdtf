@@ -59,9 +59,10 @@
 //! covers the no-content harnesses.
 
 use bevy::prelude::warn;
+use gdtf_assets::{ContentFinding, FindingDetail, FindingReferrer};
 use gdtf_battle_sim::{
     level::{PrefabRegistry, UuidThemeRegistry},
-    procgen::{ProcgenTuning, generate_level},
+    procgen::{ProcgenFinding, ProcgenTuning, generate_level},
     rng::{BattleSeed, ProcgenRng},
     situation::Situation,
     terrain::def::TerrainDefRegistry,
@@ -94,6 +95,21 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) struct
     pub tuning:  Option<&'a ProcgenTuning>,
 }
 
+/// The procgen driver's full outcome: the situation the battle is built from
+/// plus every GTW-582 content-integrity finding the generation surfaced (a
+/// named result struct per the no-bare-types rule, the sim's `EmittedLevel`
+/// mirror). `findings` is EMPTY on a fully-resolved generation; the caller
+/// (`request_battle_setup`) records each into the
+/// [`ContentIntegrityReport`](gdtf_assets::ContentIntegrityReport).
+pub(in crate::states::running::game::battlescape::generation::battle_sim) struct ProcgenOutcome {
+    /// The situation the battle is built from (generated terrain merged over
+    /// the authored gangers, or the authored situation on the C4 fallback).
+    pub situation: Situation,
+    /// The degraded resolutions / last-resort fallbacks the generation took
+    /// (GTW-582 C3(d)/C5) — already `warn!`ed here; the caller reports them.
+    pub findings:  Vec<ContentFinding>,
+}
+
 /// Build the battle's situation by running procgen terrain over the authored situation's
 /// gangers / spawn data (GTW-433 C2/C3; GTW-492 UUID model), or returning the authored
 /// situation unchanged on a procgen failure / missing registry (C4 fallback).
@@ -107,18 +123,34 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) struct
 /// generated terrain with the authored
 /// gangers via [`merge_procgen_terrain`]; on `Err` (or any registry `None`) it logs and
 /// returns `authored` unchanged.
+///
+/// GTW-582: every degraded path is LOUD and lands in [`ProcgenOutcome::findings`]:
+///
+/// - the sim's [`ProcgenFinding`]s (a theme with no registry default floor — the
+///   nil-sentinel pour; an unresolvable placed piece — the fail-open pour) are
+///   `warn!`ed here and converted to report findings (C3(d));
+/// - the `Err` empty-board fallback (the authored — often empty — terrain is used
+///   as-is) survives SOLELY as this last resort: it `warn!`s (as before) AND
+///   records a `DegradedFallback` finding, never silently (C5).
+///
+/// The missing-REGISTRY early-out stays a silent fallback by design: it is the
+/// no-content HARNESS path (a load-ordering guard, not an authored dangling
+/// reference — the C1 catalog keeps the two distinct).
 #[must_use]
 pub(in crate::states::running::game::battlescape::generation::battle_sim) fn procgen_battle_situation(
     authored: Situation,
     registries: ProcgenRegistries<'_>,
     seed: BattleSeed,
-) -> Situation {
+) -> ProcgenOutcome {
     // Any registry absent (a no-content harness) → nothing to generate against; use the
     // authored situation as-is (fail-open to the authored terrain, never panic).
     let (Some(prefabs), Some(themes), Some(terrain)) =
         (registries.prefabs, registries.themes, registries.terrain)
     else {
-        return authored;
+        return ProcgenOutcome {
+            situation: authored,
+            findings:  Vec::new(),
+        };
     };
 
     // The procgen RNG is derived from the SAME injected per-battle seed the rest of the
@@ -144,17 +176,82 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn pro
         &mut rng,
         &tuning,
     ) {
-        Ok(generated) => merge_procgen_terrain(authored, generated),
+        Ok(emitted) => {
+            // GTW-582 C3(d): every degraded resolution the emit took is loud —
+            // warn! here (the generation site) and hand the converted findings
+            // to the caller for the ContentIntegrityReport.
+            let findings = emitted
+                .findings
+                .iter()
+                .map(|finding| convert_procgen_finding(*finding))
+                .collect();
+            ProcgenOutcome {
+                situation: merge_procgen_terrain(authored, emitted.situation),
+                findings,
+            }
+        }
         Err(err) => {
-            // Fail closed to the authored terrain (C4): the headless deep-walk seeds EMPTY
-            // registries, so procgen cannot assemble a level — the authored (often empty)
-            // situation still sets up and reaches BattleRunning. The real GUI path always has
-            // the loaded prefabs, so this never fires there.
+            // Fail closed to the authored terrain: the LAST-RESORT empty-board fallback
+            // (GTW-582 C5) — the headless deep-walk seeds EMPTY registries, so procgen
+            // cannot assemble a level; the authored (often empty) situation still sets up
+            // and reaches BattleRunning. Never silent: warn! AND a report finding.
             warn!(
                 "procgen could not assemble a level ({err}); using the authored situation's \
                  terrain instead"
             );
-            authored
+            let finding = ContentFinding::DegradedFallback {
+                context: FindingReferrer::new(format!(
+                    "procgen for theme {} (empty-board fallback)",
+                    *authored.theme,
+                )),
+                detail:  FindingDetail::new(format!(
+                    "could not assemble a level ({err}); the authored situation's terrain \
+                     was used instead"
+                )),
+            };
+            ProcgenOutcome {
+                situation: authored,
+                findings:  vec![finding],
+            }
+        }
+    }
+}
+
+/// Convert one sim-side [`ProcgenFinding`] into its report record, `warn!`ing
+/// it at this (the generation) site — the sim is render-free and cannot write
+/// the report itself, so the app-side driver is where the degradation gets
+/// loud (GTW-582 C3(d)/C5).
+fn convert_procgen_finding(finding: ProcgenFinding) -> ContentFinding {
+    match finding {
+        ProcgenFinding::MissingThemeDefaultFloor { theme } => {
+            warn!(
+                "procgen: theme {} resolves no default floor in the UuidThemeRegistry; the \
+                 level was poured with the nil-sentinel floor (playable but degraded)",
+                *theme,
+            );
+            ContentFinding::DegradedFallback {
+                context: FindingReferrer::new(format!("procgen for theme {}", *theme)),
+                detail:  FindingDetail::new(
+                    "the theme resolves no default floor; the level was poured with the \
+                     nil-sentinel floor"
+                        .to_owned(),
+                ),
+            }
+        }
+        ProcgenFinding::UnresolvedTerrainPiece { piece } => {
+            warn!(
+                "procgen: placed terrain piece {} resolves no TerrainDef; poured fail-open \
+                 into the walls list (it will surface as TerrainNotFound at setup)",
+                *piece,
+            );
+            ContentFinding::DegradedFallback {
+                context: FindingReferrer::new(format!("procgen placed terrain piece {}", *piece)),
+                detail:  FindingDetail::new(
+                    "the piece resolves no TerrainDef; poured fail-open into the walls list \
+                     (it will surface as TerrainNotFound at setup)"
+                        .to_owned(),
+                ),
+            }
         }
     }
 }

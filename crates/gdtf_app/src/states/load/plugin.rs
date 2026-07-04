@@ -1,5 +1,5 @@
 use bevy::{asset::AssetServer, prelude::*};
-use gdtf_assets::{ContentFamilyAppExt, HotRonAppExt, RonAssetAppExt};
+use gdtf_assets::{ContentFamilyAppExt, ContentValidationDone, HotRonAppExt, RonAssetAppExt};
 use gdtf_battle_sim::{
     FieldDefRegistry,
     armor::ArmorRegistry,
@@ -28,8 +28,11 @@ use crate::states::{
 };
 
 /// Path of the loose authored-situation RON, relative to the asset source root
-/// (GTW-205 / E10.3 — the canonical authored battlefield the Generation slice reads).
-const SITUATION_RON_PATH: &str = "content/situations/skirmish.ron";
+/// (GTW-205 / E10.3 — the canonical authored battlefield the Generation slice
+/// reads). `pub(in crate::states::load)` so the GTW-582 reference-integrity
+/// checks can name the situation file in their findings without duplicating the
+/// literal.
+pub(in crate::states::load) const SITUATION_RON_PATH: &str = "content/situations/skirmish.ron";
 
 /// Path of the loose combat-tuning RON, relative to the asset source root
 /// (GTW-206 / E10.4 — the shipped balance coefficients the sim marches with).
@@ -180,6 +183,13 @@ impl Plugin for LoadScenePlugin {
 
 fn add_systems(app: &mut App) {
     let label = SceneLabel::new("Load");
+    // GTW-582: install the unified end-of-Load reference-integrity pass — the
+    // per-edge check hooks, the seam's Check→Publish plumbing, and the window
+    // condition that opens it once every graph registry has resolved. Registered
+    // UNCONDITIONALLY (not inside the AssetServer guard): under MinimalPlugins
+    // the seeded gate resources open the window, so the ContentValidationDone
+    // gate below still releases every headless walk.
+    add_content_validation(app);
     app.add_systems(
         OnEnter(AppState::Load),
         (log_scene_enter(label), kick_off_loads).chain(),
@@ -278,7 +288,13 @@ fn add_systems(app: &mut App) {
                     // Load exits, so the per-theme `content/terrain/` folder is verified loaded before
                     // the GTW-491/492/493 consumers read them.
                     .and_then(resource_exists::<TerrainDefRegistry>)
-                    .and_then(resource_exists::<UuidThemeRegistry>),
+                    .and_then(resource_exists::<UuidThemeRegistry>)
+                    // GTW-582: the unified reference-integrity pass must have PUBLISHED its
+                    // consolidated report before Load exits — the pass's done-marker is the
+                    // explicit ordering that puts validation strictly before this transition.
+                    // The publish stamps it UNCONDITIONALLY (findings are loud, never fatal),
+                    // so validation can never strand Load (the no-strand guarantee holds).
+                    .and_then(resource_exists::<ContentValidationDone>),
             ),
         )
             .chain(),
