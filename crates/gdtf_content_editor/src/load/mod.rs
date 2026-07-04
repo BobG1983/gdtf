@@ -1,109 +1,110 @@
-//! The editor's slim `Load` pass: kick off the asset loads, poll/resolve them into the
-//! theme + registries + tile-role table, then transition to
-//! [`Editing`](crate::EditorState::Editing).
+//! The editor's `Load` pass: register the SAME generic asset seams the game
+//! registers, then transition to [`Editing`](crate::EditorState::Editing) once
+//! every resolved resource exists.
 //!
-//! Wiring-only module. The kick-off / resolve / transition logic lives in focused
-//! submodules; this file registers them on the [`EditorState::Load`](crate::EditorState)
-//! schedule and owns the RON-loader registration (so `asset_server.load::<RonAsset<T>>`
-//! and `load_folder` of the dedicated compound extensions are dispatched correctly).
+//! Wiring-only module: [`register_load`] does the registration; the transition
+//! gate lives in [`transition`] and the editor-owned tile-role fallback in
+//! [`fallback`].
+//!
+//! # One source, two hosts (GTW-579)
+//!
+//! The editor is a SECOND in-app asset host beside the game, but it no longer
+//! re-implements the game's Load pass: every asset it hosts loads through the
+//! generic seams in `gdtf_assets`, with the SAME definitions the game
+//! registers, so an authored file resolves IDENTICALLY in game and editor:
+//!
+//! - The four FOLDER families — ranged weapons, armor, the UUID-keyed terrain
+//!   defs + theme defs — register through the GTW-570
+//!   [`register_content_family`](gdtf_assets::ContentFamilyAppExt) seam using
+//!   the SAME `gdtf_content_families` glue impls the game registers. Each
+//!   family's registry-build logic therefore has exactly ONE definition
+//!   workspace-wide (the seam's shared folder walk).
+//! - The two SINGLE-ASSET chains — the [`GdtfTheme`](gdtf_ui::theme::GdtfTheme)
+//!   and the presenter [`TileRoles`](gdtf_battle_presenter::TileRoles) table —
+//!   install the GTW-564 generic hot-RON chain from the chain OWNERS' published
+//!   configs ([`theme_hot_ron_chain`] / [`tile_roles_hot_ron_chain`], which
+//!   single-source each path + map hook), re-configured with the editor's
+//!   ADR-0003 fallback (see below).
+//!
+//! **Adding an editor-consumed family** costs at most two edits: ONE
+//! `register_content_family::<F>()` line in [`register_load`], plus a
+//! `ContentFamily` glue impl in `gdtf_content_families` ONLY if the game does
+//! not already define the family.
+//!
+//! # Editor-specific load policy (stays editor-owned — GTW-579 C4)
+//!
+//! - **Whole-session handle persistence (GTW-533):** the seam's persistent
+//!   [`ContentFolderHandle`](gdtf_assets::ContentFolderHandle) /
+//!   [`HotRonHandle`](gdtf_assets::HotRonHandle) resources are inserted at
+//!   `Startup` and NEVER removed — `register_load` registers no
+//!   `OnExit(EditorState::Load)` cleanup — so a live `.ron` edit re-enumerates
+//!   folder members and refreshes the resolved resources with NO restart (the
+//!   editor half of the "hot-reload in-app, game AND editor" contract, through
+//!   the ONE shared Bevy `file_watcher` mechanism).
+//! - **ADR-0003 fail-safe:** a `Failed` asset falls back to a const default so
+//!   the editor never hangs in `Load` — the folder families fail closed to the
+//!   seam's EMPTY registry; the theme falls back to the published
+//!   [`default_theme`](gdtf_ui::theme::default_theme) and the tile roles to the
+//!   editor-owned zero table ([`fallback`]), each attached HERE via
+//!   [`HotRonChain::with_fallback`](gdtf_assets::HotRonChain::with_fallback)
+//!   (the game's registrations of the same chains stay fallback-less — the
+//!   policy rides the host's registration, never a seam mode flag).
+//! - **Headless inertness:** every seam ext call self-gates on an
+//!   [`AssetServer`](bevy::asset::AssetServer) being present (`bevy-traps.md`
+//!   #1), so a `MinimalPlugins` harness registers no loaders and no systems.
+//! - **Own-absence gating (`bevy-traps.md` #3):** each generic resolve is
+//!   registered `run_if(handle-present AND not(resource_exists::<Registry>))`,
+//!   so every branch gates on its OWN resource's absence and none starves
+//!   another.
+//! - **The transition is unchanged:** [`transition_to_editing`] still fires
+//!   only when ALL six resolved resources exist.
 
-mod handles;
-mod kick_off;
-mod redrive;
-mod resolve;
+mod fallback;
 mod transition;
 
-use bevy::{asset::AssetServer, prelude::*};
-use gdtf_assets::{RonAssetAppExt, redrive_hot_ron_resource};
-use gdtf_battle_presenter::{TileRoles, tile_roles_hot_ron_chain};
-use gdtf_battle_sim::{
-    armor::ArmorSpec, level::UuidThemeDef, terrain::def::TerrainDef, weapon::WeaponSpec,
-};
-use gdtf_ui::{
-    theme::{GdtfTheme, GdtfThemeSpec},
-    theme_hot_ron_chain,
-};
-pub(crate) use transition::transition_to_editing;
+use bevy::prelude::*;
+use gdtf_assets::{ContentFamilyAppExt, HotRonAppExt};
+use gdtf_battle_presenter::tile_roles_hot_ron_chain;
+use gdtf_content_families::{ArmorFamily, TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily};
+use gdtf_ui::{theme::default_theme, theme_hot_ron_chain};
 
 use crate::{
     EditorState,
-    load::{kick_off::kick_off_editor_loads, resolve::poll_and_resolve_editor},
+    load::{fallback::default_tile_roles, transition::transition_to_editing},
 };
 
-/// Registers the editor's `Load` asset pass onto `app`.
+/// Registers the editor's `Load` asset pass onto `app` — six seam registrations
+/// plus the transition gate (see the [module docs](self) for the seam-vs-policy
+/// split).
 ///
-/// Mirrors the game's `LoadScenePlugin`, trimmed to the editor's loads:
-///
-/// - Registers the generic RON loader for each editor asset type behind an
-///   `AssetServer`-present guard (`bevy-traps.md` #1): the theme spec + the tile-role table
-///   (each loaded by path), the weapon / armor specs (each via `load_folder` of its OWN
-///   dedicated compound extension), and the GTW-487 UUID-keyed terrain-def / theme-def types
-///   (each via its OWN dedicated `terrain_def.ron` / `terrain_theme.ron` extension so the
-///   per-theme `content/terrain/` folder dispatch is unambiguous — the game's loader scheme).
-/// - `OnEnter(Load)`: kick off the loads.
-/// - `Update` (while `Load` and any target resource is still absent): poll + resolve.
-/// - `Update` (while `Load` and all resources exist): transition to `Editing`.
-/// - `Update` (UNGATED — these fire AFTER `Load` exits, once `Editing`): the GTW-533 LIVE
-///   hot-reload handlers, so a live `.ron` edit refreshes the editor's resolved resources
-///   with NO restart — the editor half of the "hot-reload in-app (game AND editor)" contract.
-///   All SIX editor-hosted asset types are covered through the SAME shared Bevy `file_watcher`
-///   mechanism (NO second mechanism): the [`GdtfTheme`](gdtf_ui::theme::GdtfTheme) and the
-///   presenter [`TileRoles`] table each reuse the GTW-564 GENERIC hot-RON redrive
-///   ([`redrive_hot_ron_resource`]) with the chain owner's exported config
-///   ([`theme_hot_ron_chain`] / [`tile_roles_hot_ron_chain`]) — the editor's `resolve_theme`
-///   / `resolve_tile_roles` insert the generic
-///   [`HotRonHandle`](gdtf_assets::HotRonHandle) the redrive filters on; and
-///   the four FOLDER registries (ranged weapons, armor, the UUID-keyed terrain / theme defs)
-///   reuse the editor's own [`redrive`] handlers, which rebuild from the persistent
-///   [`EditorLoadHandles`](crate::load::handles::EditorLoadHandles) via the SAME `build_*_registry`
-///   helpers the one-time resolve uses. Registered inside the `AssetServer`-present guard: the
-///   `Messages<AssetEvent<…>>` buffers these `MessageReader`s need are registered by
-///   `init_ron_asset` (`bevy-traps.md` #4).
+/// Each ext call wires its family's/chain's WHOLE generic kick-off (`Startup`,
+/// storing the persistent handle), gated resolve (inserts the resource exactly
+/// once — or its fallback/empty default on a genuine `Failed`), and ungated
+/// live redrive (the GTW-533 hot-reload, which keeps firing AFTER `Load` exits
+/// because the handles persist). The transition runs in `Update` while `Load`
+/// and leaves for [`Editing`](EditorState::Editing) once every resolved
+/// resource exists — reached even on an all-failed asset root (the no-strand
+/// guarantee).
 pub(crate) fn register_load(app: &mut App) {
-    if app.world().get_resource::<AssetServer>().is_some() {
-        app.init_ron_asset::<GdtfThemeSpec>();
-        app.init_ron_asset_with_extensions::<WeaponSpec>(vec!["weapon.ron"]);
-        app.init_ron_asset_with_extensions::<ArmorSpec>(vec!["armor.ron"]);
-        // GTW-487: the NEW UUID-keyed terrain + theme models, each via its OWN dedicated
-        // compound extension so the per-theme `content/terrain/` folder dispatch is unambiguous.
-        app.init_ron_asset_with_extensions::<TerrainDef>(vec!["terrain_def.ron"]);
-        app.init_ron_asset_with_extensions::<UuidThemeDef>(vec!["terrain_theme.ron"]);
-        // GTW-495: the presenter's tile-role table (the per-def graphic resolution seam). Its
-        // `.spritedef.ron` extension is registered by the generic `.ron` loader; the editor does
-        // not wire the presenter's render runtime, only resolves graphics through this table.
-        app.init_ron_asset::<TileRoles>();
+    // The two single-asset chains (GTW-564 seam), installed from the chain
+    // owners' PUBLISHED configs — path + map hook stay single-sourced in
+    // gdtf_ui / gdtf_battle_presenter — with the editor's ADR-0003 fallback
+    // attached at THIS registration (editor-owned policy, GTW-579 C4b).
+    app.init_hot_ron_chain(theme_hot_ron_chain().with_fallback(default_theme));
+    app.init_hot_ron_chain(tile_roles_hot_ron_chain().with_fallback(default_tile_roles));
 
-        // GTW-533: the editor's LIVE hot-reload — the editor half of the "game AND editor,
-        // NO restart" contract. All SIX editor-hosted asset types reload through the SAME
-        // shared file_watcher mechanism (NO second mechanism). Ungated `Update` so they fire
-        // once the editor is `Editing`; each self-guards on its `Option`al borrows.
-        //
-        // GTW-564: the theme + tile-role halves are the GENERIC hot-RON redrive, run with
-        // the chain owners' exported configs (inserted here — the editor registers only
-        // the REDRIVE half of each chain; its own bespoke Load pass above owns the
-        // kick-off/resolve halves and stores the generic handles the redrives filter on).
-        app.insert_resource(theme_hot_ron_chain());
-        app.insert_resource(tile_roles_hot_ron_chain());
-        app.add_systems(
-            Update,
-            (
-                // The one generic drain body, reused from gdtf_assets (no editor copy).
-                redrive_hot_ron_resource::<GdtfThemeSpec, GdtfTheme>,
-                redrive_hot_ron_resource::<TileRoles, TileRoles>,
-                // The editor's own folder-registry redrives (mirror the game's per-type ones).
-                redrive::redrive_weapons_on_asset_event,
-                redrive::redrive_armor_on_asset_event,
-                redrive::redrive_terrain_defs_on_asset_event,
-                redrive::redrive_theme_defs_on_asset_event,
-            ),
-        );
-    }
+    // The four folder families (GTW-570 seam) — the SAME glue-crate family
+    // definitions the game registers, so game and editor build each registry
+    // through literally one function. The terrain + theme defs share the ONE
+    // MIXED `content/terrain/` tree; the seam's unconditional TypeId filter
+    // keeps each walk to its own members.
+    app.register_content_family::<WeaponsFamily>();
+    app.register_content_family::<ArmorFamily>();
+    app.register_content_family::<TerrainDefsFamily>();
+    app.register_content_family::<ThemeDefsFamily>();
 
-    app.add_systems(OnEnter(EditorState::Load), kick_off_editor_loads);
     app.add_systems(
         Update,
-        (poll_and_resolve_editor, transition_to_editing)
-            .chain()
-            .run_if(in_state(EditorState::Load)),
+        transition_to_editing.run_if(in_state(EditorState::Load)),
     );
 }

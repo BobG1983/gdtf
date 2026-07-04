@@ -13,11 +13,11 @@ use crate::EditorState;
 
 /// Transitions [`EditorState::Load`] → [`EditorState::Editing`] once the [`GdtfTheme`], the
 /// legacy [`WeaponRegistry`] / [`ArmorRegistry`], the (GTW-487) NEW [`TerrainDefRegistry`] /
-/// [`UuidThemeRegistry`], and the (GTW-495) [`TileRoles`] are all inserted (the resolve pass
-/// inserts each on success OR on its const-default / empty failure fallback, so this is reached
-/// even on a bad asset folder — the no-strand guarantee). Takes them as `Option<Res<…>>` and
-/// only sets the next state when all are present, so it never panics on an absent resource
-/// (`bevy-traps.md` #1).
+/// [`UuidThemeRegistry`], and the (GTW-495) [`TileRoles`] are all inserted (each generic seam
+/// resolve inserts its resource on success OR on its const-default / empty failure fallback —
+/// GTW-579 C4b — so this is reached even on a bad asset folder: the no-strand guarantee).
+/// Takes them as `Option<Res<…>>` and only sets the next state when all are present, so it
+/// never panics on an absent resource (`bevy-traps.md` #1).
 pub(crate) fn transition_to_editing(
     theme: Option<Res<GdtfTheme>>,
     weapons: Option<Res<WeaponRegistry>>,

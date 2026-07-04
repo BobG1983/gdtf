@@ -54,9 +54,9 @@ use crate::{
 /// already has `DefaultPlugins` + the [`EguiPlugin`](bevy_egui::EguiPlugin). It owns:
 ///
 /// - `init_state::<EditorState>()` — the editor's own two-state lifecycle.
-/// - the slim `Load` pass (theme + weapon/armor + the UUID-keyed terrain/theme registries + the
-///   presenter tile-role table) — mirrors the game's `resolve_*` loaders WITHOUT pulling the game
-///   scene graph.
+/// - the `Load` pass (theme + weapon/armor + the UUID-keyed terrain/theme registries + the
+///   presenter tile-role table) — registered through the SAME generic content-family / hot-RON
+///   seams the game uses (GTW-579), WITHOUT pulling the game scene graph.
 /// - `OnEnter(Editing)` → the standalone editor camera + the tile atlas, plus the FULL
 ///   state-scoped model/resource lifecycle — the Workbench mode, the authoring session, the
 ///   paintable map, the level / zoom selectors, the terrain / theme drafts, the hovered-cell

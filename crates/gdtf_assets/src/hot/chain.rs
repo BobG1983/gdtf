@@ -46,9 +46,11 @@ impl HotRonPath {
 /// typed per-chain resource, NOT a runtime descriptor table (registration stays
 /// compile-time generic per type). Inserted by the
 /// [`HotRonAppExt`](crate::HotRonAppExt) registration; a host that registers
-/// only a HALF of a chain (the UI theme's redrive, the editor's reuse of the
-/// theme / tile-role redrives against its own Load-side resolve) inserts it
-/// directly from the chain owner's exported constructor.
+/// only a HALF of a chain (the UI theme's redrive) inserts it directly from
+/// the chain owner's exported constructor, while a full second host — the
+/// editor (GTW-579) — installs the whole chain via
+/// [`init_hot_ron_chain`](crate::HotRonAppExt::init_hot_ron_chain), attaching
+/// its own policy with [`Self::with_fallback`].
 #[derive(Resource, Debug, Clone)]
 pub struct HotRonChain<Spec, T>
 where
@@ -99,6 +101,21 @@ where
     #[must_use]
     pub const fn fallback(&self) -> Option<HotRonFallbackFn<T>> {
         self.fallback
+    }
+
+    /// Opt this chain into the `Failed -> default` hook, replacing any
+    /// previously configured fallback.
+    ///
+    /// The builder a SECOND host uses to attach its OWN failure policy to a
+    /// chain owner's published config (GTW-579): the editor installs the
+    /// ui/presenter theme / tile-role chains re-configured with its ADR-0003
+    /// const-default fallback (the editor must never hang in `Load`), while the
+    /// game's registrations of the SAME chains stay fallback-less — the policy
+    /// rides each host's registration, never a mode flag in the shared config.
+    #[must_use]
+    pub const fn with_fallback(mut self, fallback: HotRonFallbackFn<T>) -> Self {
+        self.fallback = Some(fallback);
+        self
     }
 }
 

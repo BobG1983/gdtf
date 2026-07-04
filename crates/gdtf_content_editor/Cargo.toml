@@ -16,10 +16,16 @@ bevy_egui = "0.41"
 # The egui swap (GTW-512) DROPPED the gdtf_ui `UiPlugin` + every `spawn_panel` / `spawn_scroll_list`
 # / dropdown / numeric-field widget the old bevy_ui shell drove.
 gdtf_ui = { path = "../gdtf_ui" }
-# The generic loose-file RON asset loader (RonAsset<T> + init_ron_asset). The editor's
-# slim Load pass registers + loads the theme spec, the theme-tile catalogs, and the
-# weapon/armor specs through it, exactly as gdtf_app's game Load does.
+# The generic asset seams (GTW-564 hot-RON chains + GTW-570 content families). The editor's
+# Load pass registers its four folder families and its two single-asset chains through the
+# SAME generic kick-off / resolve / redrive machinery gdtf_app's game Load does (GTW-579 —
+# no editor-local mirror of the load pass survives).
 gdtf_assets = { path = "../gdtf_assets" }
+# GTW-579: the SHARED content-family marker impls (WeaponsFamily / ArmorFamily /
+# TerrainDefsFamily / ThemeDefsFamily) the game registers — the editor registers the SAME
+# glue-crate definitions, so each family's registry-build logic has exactly ONE definition
+# workspace-wide.
+gdtf_content_families = { path = "../gdtf_content_families" }
 # The authoritative sim owns the registry domain types the editor loads + holds:
 # WeaponRegistry / ArmorRegistry / TerrainDefRegistry / UuidThemeRegistry (+ their
 # defs). The editor depends on the sim ONLY for these data types — it wires NONE of the

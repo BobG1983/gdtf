@@ -3,10 +3,10 @@
 //! The editor is a SEPARATE binary from the game (GTW-417 housing constraint), so it
 //! runs its OWN small lifecycle rather than the game's `AppState` (Init/Load/Intro/
 //! Running/Teardown) and its full scene graph. Two states suffice for the shell:
-//! a [`Load`](EditorState::Load) asset pass that mirrors the game's `resolve_*`
-//! loaders (theme + theme-tile catalog + weapon/armor registries), then
-//! [`Editing`](EditorState::Editing) where the four layout regions render and later
-//! children (the right panel, the left palette, the canvas) populate them.
+//! a [`Load`](EditorState::Load) asset pass that registers the SAME generic asset
+//! seams the game does (GTW-579 — theme + tile roles + the weapon/armor/terrain/theme
+//! registries), then [`Editing`](EditorState::Editing) where the authoring scene
+//! lives.
 
 use bevy::prelude::*;
 
@@ -18,8 +18,9 @@ use bevy::prelude::*;
 /// authoring scene where the empty themed regions live (later children fill them).
 #[derive(States, Default, Debug, Clone, Eq, PartialEq, Hash)]
 pub enum EditorState {
-    /// One-shot asset load: resolve the [`GdtfTheme`](gdtf_ui::theme::GdtfTheme) and
-    /// the theme-tile-catalog / weapon / armor registries before the editor opens.
+    /// The asset pass: the generic seams resolve the
+    /// [`GdtfTheme`](gdtf_ui::theme::GdtfTheme), the tile-role table, and the
+    /// weapon / armor / terrain-def / theme-def registries before the editor opens.
     /// The default so the editor boots straight into loading.
     #[default]
     Load,
