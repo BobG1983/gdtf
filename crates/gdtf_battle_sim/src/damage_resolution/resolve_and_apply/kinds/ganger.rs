@@ -51,7 +51,7 @@ const BARE_FLESH: ArmorPiece = ArmorPiece::new(
 /// A frozen `Copy` record of named newtypes (no bare primitive, no pixel): the
 /// resolved [`Matchup`], the per-hit [`HitResult`], the rolled [`Severity`], the
 /// ganger's [`LifeState`] **after** application, and the per-hit armor-wear
-/// [`ArmorWearOutcome`] — the CLOSED broke / worn / unaffected verdict `apply_hit`
+/// [`ArmorWearOutcome`] — the CLOSED broke / damaged / unaffected verdict `apply_hit`
 /// produced, carried directly (GTW-573 un-flattened it from the old prose-exclusive
 /// `broken` / `worn` `Option` pair, so a both-`Some` state is unrepresentable). The
 /// presenter reads it for FX; it is never mutated after
@@ -69,7 +69,7 @@ pub struct AppliedDamage {
     /// The target's [`LifeState`] **after** the hit was applied (E3.6's terminal gates).
     pub life_after: LifeState,
     /// The per-hit armor-wear outcome (E3.6 / GTW-313): [`Broke`](ArmorWearOutcome::Broke)
-    /// on the protecting→broken crossing, [`Worn`](ArmorWearOutcome::Worn) on a reduction
+    /// on the protecting→broken crossing, [`Damaged`](ArmorWearOutcome::Damaged) on a reduction
     /// short of breaking (carrying the integrity delta), [`Unaffected`](ArmorWearOutcome::Unaffected)
     /// on a bare-flesh / zero-wear hit. One closed enum — the mutual exclusivity is
     /// structural, not prose.

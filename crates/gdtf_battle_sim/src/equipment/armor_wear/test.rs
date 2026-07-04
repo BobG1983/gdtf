@@ -5,7 +5,7 @@ use bevy::prelude::{App, Entity, MessageReader, MessageWriter, MinimalPlugins, U
 
 use crate::{
     armor::{ArmorIntegrity, BodyPart},
-    armor_wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn, wear_armor},
+    armor_wear::{ArmorBroken, ArmorDamaged, ArmorWearOutcome, wear_armor},
     resolve_hit::IntegrityWear,
 };
 
@@ -69,7 +69,7 @@ fn emits_exactly_once_on_the_crossing() {
     );
 
     // Second hit re-wears an already-broken piece (-1 → -7): no re-emit (Unaffected,
-    // NOT Worn — an already-broken piece is not protecting, so it surfaces nothing).
+    // NOT Damaged — an already-broken piece is not protecting, so it surfaces nothing).
     let second = wear_armor(
         &mut integrity,
         BodyPart::LeftArm,
@@ -84,7 +84,7 @@ fn emits_exactly_once_on_the_crossing() {
 }
 
 /// A wear that does NOT cross zero (stays protecting) emits no [`ArmorBroken`] — but
-/// it DOES surface the GTW-313 [`ArmorWorn`] reduction carrying the exact delta (the
+/// it DOES surface the GTW-313 [`ArmorDamaged`] reduction carrying the exact delta (the
 /// wear signal is per reduction, the break signal is only the crossing).
 #[test]
 fn worn_not_broken_when_still_protecting() {
@@ -100,12 +100,12 @@ fn worn_not_broken_when_still_protecting() {
 
     assert_eq!(
         result,
-        ArmorWearOutcome::Worn(ArmorWorn::new(
+        ArmorWearOutcome::Damaged(ArmorDamaged::new(
             ganger,
             BodyPart::RightLeg,
             IntegrityWear::new(4)
         )),
-        "a hit that leaves integrity > 0 must surface Worn(delta=4), never Broke",
+        "a hit that leaves integrity > 0 must surface Damaged(delta=4), never Broke",
     );
     assert!(
         *integrity > 0,
@@ -167,7 +167,7 @@ fn armor_broken_is_a_buffered_message_read_in_a_headless_app() {
     let produce = move |mut writer: MessageWriter<ArmorBroken>| {
         let mut integrity = piece_integrity(1);
         // The breaking wear yields Broke(ArmorBroken) — write its payload to the buffer
-        // (a Worn/Unaffected outcome would write nothing, as the old `if let Some` did).
+        // (a Damaged/Unaffected outcome would write nothing, as the old `if let Some` did).
         if let ArmorWearOutcome::Broke(broke) =
             wear_armor(&mut integrity, part, IntegrityWear::new(2), ganger)
         {

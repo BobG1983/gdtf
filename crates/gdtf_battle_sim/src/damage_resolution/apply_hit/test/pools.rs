@@ -44,16 +44,16 @@ fn graze_subtracts_hp_and_spends_no_wound() {
         LifeState::Alive,
         "a non-lethal graze must leave the ganger Alive"
     );
-    // A low-wear hit on a fresh suit wears the piece (GTW-313 Worn(delta=1)) but must
-    // NOT break it — it surfaces Worn, never Broke.
+    // A low-wear hit on a fresh suit wears the piece (GTW-313 Damaged(delta=1)) but must
+    // NOT break it — it surfaces Damaged, never Broke.
     assert_eq!(
         outcome,
-        ArmorWearOutcome::Worn(ArmorWorn::new(
+        ArmorWearOutcome::Damaged(ArmorDamaged::new(
             ganger,
             BodyPart::Torso,
             IntegrityWear::new(1)
         )),
-        "a low-wear hit on a fresh suit must wear (Worn), never break (Broke)"
+        "a low-wear hit on a fresh suit must wear (Damaged), never break (Broke)"
     );
 }
 

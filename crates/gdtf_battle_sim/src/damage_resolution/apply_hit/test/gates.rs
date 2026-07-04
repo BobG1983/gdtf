@@ -160,7 +160,7 @@ fn corpse_skip_changes_nothing() {
     assert_eq!(
         outcome,
         ArmorWearOutcome::Unaffected,
-        "a corpse-skip must emit no ArmorBroken / ArmorWorn (Unaffected)"
+        "a corpse-skip must emit no ArmorBroken / ArmorDamaged (Unaffected)"
     );
     assert_eq!(hp, hp_before, "a corpse's Hp must not change");
     assert_eq!(wounds, wounds_before, "a corpse's Wounds must not change");

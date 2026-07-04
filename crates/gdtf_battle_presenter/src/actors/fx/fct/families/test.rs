@@ -20,7 +20,7 @@ fn palette_swatches() -> Vec<(&'static str, Color)> {
             "blood red (Damage / Lethal — armor-broken, on-death)",
             valence_color(FctValence::Damage),
         ),
-        ("wound amber (bleeding)", valence_color(FctValence::Wound)),
+        ("wound amber (bleeding)", valence_color(FctValence::Status)),
         (
             "neutral grey (miss / graze)",
             valence_color(FctValence::Neutral),

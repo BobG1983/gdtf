@@ -3,7 +3,7 @@
 //! [`ArmorBroken`](crate::armor_wear::ArmorBroken) fact **exactly once** per round whose
 //! ganger verdict's §6 wear crossed the struck worn piece protecting→broken
 //! ([`ArmorWearOutcome::Broke`]), and writes **nothing** for a
-//! [`Worn`](ArmorWearOutcome::Worn) reduction or an
+//! [`Damaged`](ArmorWearOutcome::Damaged) reduction or an
 //! [`Unaffected`](ArmorWearOutcome::Unaffected) (already-broken / bare-flesh) hit —
 //! driven end-to-end on the REAL `FireRequested` dispatch path (the same seeded in-line
 //! scenario the landed-hit report tests pin as a guaranteed ganger hit).
@@ -94,7 +94,7 @@ fn broke_crossing_writes_exactly_one_armor_broken() {
     fire_once(&mut app, shooter);
 
     // Precondition: the seeded in-line round LANDED on the dressed ganger and its §6
-    // wear verdict is the Broke crossing (discriminating — a Worn/Unaffected fold here
+    // wear verdict is the Broke crossing (discriminating — a Damaged/Unaffected fold here
     // would invalidate the case, not vacuously pass it).
     let shots = drain_shots_fired(&mut app);
     let Some(ArmorWearOutcome::Broke(expected)) = wear_verdict_of(&shots) else {
@@ -123,7 +123,7 @@ fn broke_crossing_writes_exactly_one_armor_broken() {
 }
 
 // A STURDY worn piece (integrity far above any per-hit wear): the landed round REDUCES
-// the piece (a Worn verdict — a real reduction happened, so this discriminates from a
+// the piece (a Damaged verdict — a real reduction happened, so this discriminates from a
 // bare-flesh no-op) and the bridge writes NO ArmorBroken.
 #[test]
 fn worn_reduction_writes_no_armor_broken() {
@@ -134,13 +134,13 @@ fn worn_reduction_writes_no_armor_broken() {
 
     let shots = drain_shots_fired(&mut app);
     assert!(
-        matches!(wear_verdict_of(&shots), Some(ArmorWearOutcome::Worn(_))),
+        matches!(wear_verdict_of(&shots), Some(ArmorWearOutcome::Damaged(_))),
         "precondition: the landed round WEARS the sturdy piece without breaking it \
          (a real reduction, not a bare-flesh no-op), got {shots:?}",
     );
     assert!(
         drain_armor_broken(&mut app).is_empty(),
-        "a Worn (reduced, still protecting) verdict writes NO ArmorBroken",
+        "a Damaged (reduced, still protecting) verdict writes NO ArmorBroken",
     );
 }
 

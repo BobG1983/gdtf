@@ -61,7 +61,7 @@ mod test {
         );
         assert_ne!(
             pop.color(),
-            valence_color(FctValence::Wound),
+            valence_color(FctValence::Status),
             "the armor-broken RED valence must differ from the wound AMBER",
         );
         assert_eq!(

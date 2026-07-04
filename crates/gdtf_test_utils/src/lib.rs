@@ -73,7 +73,7 @@ pub use gpu_probe::{
 pub use input::{clear_keys, clear_mouse, press_key, press_left, press_mouse, press_ui_button};
 pub use minimal_harness::{
     builder::{GdtfTestAppBuilder, NoState, WithState},
-    builders::BattleAppBuilder,
+    scenarios::BattleAppBuilder,
 };
 pub use probe::{MessageProbe, MessageProbePlugin, drain_message_probe, probed};
 pub use state::current_state;

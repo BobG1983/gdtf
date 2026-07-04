@@ -14,7 +14,7 @@
 //! 1. **Corpse-skip** — a ganger already at [`LifeState::Dead`](crate::ganger::LifeState::Dead)
 //!    is **skipped entirely**: nothing mutates and no
 //!    [`ArmorBroken`](crate::armor_wear::ArmorBroken) /
-//!    [`ArmorWorn`](crate::armor_wear::ArmorWorn) fires (the "corpse-skip
+//!    [`ArmorDamaged`](crate::armor_wear::ArmorDamaged) fires (the "corpse-skip
 //!    discipline" of resolution.md §9's `resolve_and_apply`). Death is final; a
 //!    later round in a burst cannot re-kill a corpse.
 //! 2. **HP loss — ALWAYS** — the [`HitResult`](crate::resolve_hit::HitResult)'s
@@ -41,7 +41,7 @@
 //!    [`wear_armor`](crate::armor_wear::wear_armor) path, surfacing the per-hit
 //!    [`ArmorWearOutcome`](crate::armor_wear::ArmorWearOutcome): the
 //!    [`ArmorBroken`](crate::armor_wear::ArmorBroken) crossing, the GTW-313
-//!    [`ArmorWorn`](crate::armor_wear::ArmorWorn) reduction, or nothing — for the
+//!    [`ArmorDamaged`](crate::armor_wear::ArmorDamaged) reduction, or nothing — for the
 //!    caller to write to the matching message buffer.
 //! 5. **Terminal gates, in order** (resolution.md §9: "`Wounds ≤ 0` → **Dead**
 //!    (trumps Downed …), else `HP ≤ 0` → **Downed**"). Because the pools are
@@ -56,7 +56,7 @@
 //! ganger state in place through the borrowed [`GangerHitTarget`] bundle and
 //! returns the per-hit [`ArmorWearOutcome`](crate::armor_wear::ArmorWearOutcome);
 //! the caller writes its [`ArmorBroken`](crate::armor_wear::ArmorBroken) /
-//! [`ArmorWorn`](crate::armor_wear::ArmorWorn) payload to the matching
+//! [`ArmorDamaged`](crate::armor_wear::ArmorDamaged) payload to the matching
 //! [`bevy::prelude::MessageWriter`](bevy::prelude::MessageWriter) at the system
 //! boundary (the same pure-helper / message-at-the-boundary split as
 //! [`wear_armor`](crate::armor_wear::wear_armor)).

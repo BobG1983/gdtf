@@ -26,7 +26,7 @@ fn a_fall_logs_the_storey_count_in_wound_amber() {
     assert_eq!(&**lines[0].text(), "Vex fell 2 storeys");
     assert_eq!(
         lines[0].color(),
-        valence_color(FctValence::Wound),
+        valence_color(FctValence::Status),
         "the fall line is drawn the wound AMBER (a harm event)",
     );
 
@@ -167,7 +167,7 @@ fn a_bleed_span_start_logs_the_bleeding_line_in_wound_amber() {
     assert_eq!(&**lines[0].text(), "Vex is bleeding");
     assert_eq!(
         lines[0].color(),
-        valence_color(FctValence::Wound),
+        valence_color(FctValence::Status),
         "the bleeding line is drawn the wound AMBER (the FCT tag's family)",
     );
 }

@@ -1,16 +1,18 @@
 //! GTW-313 — the report's mutually-exclusive armor signals through the REAL fold
 //! ([`resolve_and_apply`](super::super::resolve_and_apply)): a wearing-not-breaking
-//! hit surfaces `worn` (carrying the integrity delta) and NOT `broken`; a breaking
-//! hit surfaces `broken` and NOT `worn`; and a hit on a bare / worn-through piece
-//! surfaces NEITHER. Asserts on the frozen report, never a copy of the unit.
+//! hit surfaces `ArmorWearOutcome::Damaged` (carrying the integrity delta), a
+//! breaking hit surfaces `ArmorWearOutcome::Broke`, and a hit on a bare /
+//! worn-through piece surfaces `ArmorWearOutcome::Unaffected` — the closed enum
+//! (GTW-573) makes the exclusivity structural. Asserts on the frozen report, never
+//! a copy of the unit.
 
 use super::support::*;
 
-/// A wearing-but-not-breaking hit on an intact piece surfaces `ArmorWorn` carrying
-/// the per-hit integrity delta and leaves `broken` `None` — the GTW-313 reduction
-/// signal, mutually exclusive with the break signal.
+/// A wearing-but-not-breaking hit on an intact piece surfaces
+/// `ArmorWearOutcome::Damaged` carrying the per-hit integrity delta — the GTW-313
+/// reduction signal; the closed enum precludes a simultaneous break signal.
 #[test]
-fn wearing_hit_surfaces_armor_worn_with_the_delta_and_no_break() {
+fn wearing_hit_surfaces_armor_damaged_with_the_delta_and_no_break() {
     let tuning = CombatTuning::default();
     let entity = an_entity();
     let part = BodyPart::Torso;
@@ -61,14 +63,14 @@ fn wearing_hit_surfaces_armor_worn_with_the_delta_and_no_break() {
         *integrity > 0,
         "fixture: a non-breaking hit must leave the piece still protecting",
     );
-    // The Worn outcome carries the EXACT delta the hit's wear computed (the report's
+    // The Damaged outcome carries the EXACT delta the hit's wear computed (the report's
     // own HitResult::wear), proving the surfaced delta == the removed integrity. The
     // closed ArmorWearOutcome makes a simultaneous Broke structurally impossible
     // (GTW-573 C2 — the exclusivity is the enum, not prose).
     assert_eq!(
         applied.wear,
-        ArmorWearOutcome::Worn(ArmorWorn::new(entity, part, applied.hit.wear)),
-        "a wearing-not-breaking hit must surface Worn carrying the hit's wear delta",
+        ArmorWearOutcome::Damaged(ArmorDamaged::new(entity, part, applied.hit.wear)),
+        "a wearing-not-breaking hit must surface Damaged carrying the hit's wear delta",
     );
     assert!(
         *applied.hit.wear > 0,
@@ -76,10 +78,11 @@ fn wearing_hit_surfaces_armor_worn_with_the_delta_and_no_break() {
     );
 }
 
-/// A breaking hit (wears a near-broken piece past zero) surfaces `ArmorBroken` and
-/// leaves `worn` `None` — the break signal, mutually exclusive with the wear signal.
+/// A breaking hit (wears a near-broken piece past zero) surfaces
+/// `ArmorWearOutcome::Broke` — the break signal; the closed enum precludes a
+/// simultaneous wear signal.
 #[test]
-fn breaking_hit_surfaces_armor_broken_and_not_armor_worn() {
+fn breaking_hit_surfaces_armor_broken_and_not_armor_damaged() {
     let tuning = CombatTuning::default();
     let entity = an_entity();
     let part = BodyPart::Torso;
@@ -130,7 +133,7 @@ fn breaking_hit_surfaces_armor_broken_and_not_armor_worn() {
         *integrity <= 0,
         "fixture: the breaking hit must leave the piece worn through (≤ 0)",
     );
-    // The closed ArmorWearOutcome makes a simultaneous Worn structurally impossible.
+    // The closed ArmorWearOutcome makes a simultaneous Damaged structurally impossible.
     assert_eq!(
         applied.wear,
         ArmorWearOutcome::Broke(ArmorBroken::new(entity, part)),
@@ -191,6 +194,6 @@ fn bare_flesh_hit_surfaces_neither_armor_signal() {
         applied.wear,
         ArmorWearOutcome::Unaffected,
         "a bare-flesh hit wears no piece — the wear outcome must be Unaffected \
-         (neither the Broke nor the Worn signal)",
+         (neither the Broke nor the Damaged signal)",
     );
 }

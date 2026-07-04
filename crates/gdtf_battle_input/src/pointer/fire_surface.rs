@@ -23,7 +23,7 @@
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     Aiming, CellLevel, FireActor, Handedness, HandsAvailable, InflictedInjuries, LifeState,
-    Magazine, MeleeWeapon, Tu, TuMax, WieldedBy, Wields, acts::FireRequested, can_fire,
+    Magazine, MeleeQuery, Tu, TuMax, WieldedBy, Wields, acts::FireRequested, can_fire,
     tuning::CombatTuning,
 };
 
@@ -56,17 +56,6 @@ pub type ShooterFireData<'a> = (
 /// [`Handedness`] added GTW-443). Read-only; a `QueryData` borrow filtered to weapon
 /// entities so it never collides with the ganger-vitals [`ShooterFireData`] query.
 pub type WeaponMagazine<'a> = (&'a Magazine, &'a Handedness);
-
-/// The [`MeleeWeapon`]-marker probe query (GTW-505 C5) — a marker-only
-/// `Query<(), With<MeleeWeapon>>` the FIRE surface uses to EXCLUDE the melee weapon a
-/// ganger also wields when resolving its RANGED weapon. Mirrors the sim's `MeleeQuery`:
-/// every ganger wields BOTH a ranged AND a melee weapon entity (GTW-37 D3), so the FIRST
-/// related entity is no longer guaranteed ranged. The `can_fire` guard MUST read the
-/// magazine off the RANGED weapon, so `try_fire_request` resolves through
-/// [`Wields::ranged_weapon`](gdtf_battle_sim::Wields::ranged_weapon) backed by this probe
-/// (`|e| melee.get(e).is_ok()`) — never `Wields::weapon` (the spawn-order-fragile first
-/// entity). `QueryFilter` plumbing, not a domain value.
-pub type MeleeWeaponMarker<'a> = ();
 
 /// Assemble a [`FireRequested`] for `shooter` against `target`, or [`None`] when the
 /// shared `can_fire` guard fails (GTW-227's guard, folded verbatim for GTW-238).
@@ -102,7 +91,7 @@ pub(crate) fn try_fire_request(
     shooters: &Query<ShooterFireData>,
     wields: &Query<&Wields>,
     weapons: &Query<WeaponMagazine, With<WieldedBy>>,
-    melee: &Query<MeleeWeaponMarker, With<MeleeWeapon>>,
+    melee: &MeleeQuery,
 ) -> Option<FireRequested> {
     // The shooter must carry the firing VITALS, else fail-closed (no fire).
     let Ok((life, tu, tu_max, aiming, injuries)) = shooters.get(shooter) else {

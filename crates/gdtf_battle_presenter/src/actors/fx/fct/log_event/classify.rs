@@ -100,7 +100,7 @@ fn move_rejected_lines(actor: &LogName, reason: MoveRejection) -> Vec<LogLine> {
     match reason {
         MoveRejection::Suppressed => vec![LogLine::new(
             CombatText::new(format!("{} is pinned", **actor)),
-            valence_color(FctValence::Wound),
+            valence_color(FctValence::Status),
         )],
         // The pre-existing reasons stay silent (unsurfaced today) — no line.
         MoveRejection::Unreachable | MoveRejection::Unaffordable => Vec::new(),
@@ -122,7 +122,7 @@ fn fall_line(actor: &LogName, storeys: StoreysFallen) -> LogLine {
     let noun = if count == 1 { "storey" } else { "storeys" };
     LogLine::new(
         CombatText::new(format!("{} fell {count} {noun}", **actor)),
-        valence_color(FctValence::Wound),
+        valence_color(FctValence::Status),
     )
 }
 
@@ -189,7 +189,7 @@ fn field_afflicted_line(actor: &LogName) -> LogLine {
 fn bleed_started_line(actor: &LogName) -> LogLine {
     LogLine::new(
         CombatText::new(format!("{} is bleeding", **actor)),
-        valence_color(FctValence::Wound),
+        valence_color(FctValence::Status),
     )
 }
 
@@ -275,7 +275,7 @@ fn reload_lines(actor: &LogName, outcome: ReloadOutcome) -> Vec<LogLine> {
         )],
         ReloadOutcome::NoTu => vec![LogLine::new(
             CombatText::new(format!("{}: no TU", **actor)),
-            valence_color(FctValence::Wound),
+            valence_color(FctValence::Status),
         )],
         // An already-full magazine is a no-op (acts/reload.rs charges nothing) — no log line.
         ReloadOutcome::AlreadyFull => Vec::new(),

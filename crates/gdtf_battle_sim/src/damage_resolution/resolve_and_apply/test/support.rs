@@ -11,7 +11,7 @@ pub(super) use crate::{
     armor::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType, BodyPart,
     },
-    armor_wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn},
+    armor_wear::{ArmorBroken, ArmorDamaged, ArmorWearOutcome},
     central_axis::climb_aim_dir,
     cone::{ConeAngle, PriorShots},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},

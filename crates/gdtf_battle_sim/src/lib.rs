@@ -355,7 +355,7 @@ pub use equipment::{
         Wears, WornBy,
     },
     armor_wear,
-    armor_wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn, wear_armor},
+    armor_wear::{ArmorBroken, ArmorDamaged, ArmorWearOutcome, wear_armor},
     attachments::apply_pending_attachments,
     magazine,
     magazine::{

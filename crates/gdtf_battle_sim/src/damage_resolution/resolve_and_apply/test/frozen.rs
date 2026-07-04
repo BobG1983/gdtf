@@ -20,7 +20,7 @@ fn report_is_a_frozen_record_of_named_newtypes() {
     assert_eq!(report.verdict, HitVerdict::NoEffect);
 
     // An applied block is a Copy record of named newtypes, its wear outcome the CLOSED
-    // ArmorWearOutcome enum (a Broke-AND-Worn state is unrepresentable).
+    // ArmorWearOutcome enum (a Broke-AND-Damaged state is unrepresentable).
     let applied = AppliedDamage {
         matchup:    Matchup::Favorable,
         hit:        HitResult {

@@ -720,7 +720,7 @@ fn emit_report_signals(report: &crate::resolve_and_apply::HitReport, signals: &m
             }
             // GTW-572: the armor-broken bridge — a §6 wear that crossed the struck worn
             // piece from protecting to broken emits the buffered ArmorBroken fact (the
-            // presenter spark/tag + the combat log's armor-broken line drain it). Worn /
+            // presenter spark/tag + the combat log's armor-broken line drain it). Damaged /
             // Unaffected outcomes emit nothing (the "emit only on the crossing" rule).
             if let crate::armor_wear::ArmorWearOutcome::Broke(broken) = verdict.applied.wear {
                 signals.armor_breaks.write(broken);

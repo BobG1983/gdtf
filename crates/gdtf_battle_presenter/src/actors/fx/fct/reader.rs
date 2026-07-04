@@ -346,7 +346,7 @@ fn penetration_pop(penetrating: i32) -> ClassifiedPop {
     } else {
         ClassifiedPop::new(
             CombatText::new("Armor held"),
-            valence_color(FctValence::Wound),
+            valence_color(FctValence::Status),
         )
     }
 }
@@ -644,7 +644,7 @@ mod test {
             has_pop(
                 Some(&soaked),
                 "Armor held",
-                valence_color(FctValence::Wound)
+                valence_color(FctValence::Status)
             ),
             "pen == 0 must yield an AMBER \"Armor held\" pop, got {:?}",
             pop_pairs(Some(&soaked)),

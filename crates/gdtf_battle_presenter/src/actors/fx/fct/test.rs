@@ -321,7 +321,7 @@ fn valence_color_maps_each_valence_to_its_family() {
     );
     // The three families are mutually DISTINCT swatches.
     let damage = valence_color(FctValence::Damage);
-    let wound = valence_color(FctValence::Wound);
+    let wound = valence_color(FctValence::Status);
     let neutral = valence_color(FctValence::Neutral);
     assert_ne!(damage, wound, "damage red must differ from wound amber");
     assert_ne!(wound, neutral, "wound amber must differ from neutral grey");
