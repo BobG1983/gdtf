@@ -1,7 +1,11 @@
 use bevy::prelude::*;
 use gdtf_ui::focus_nav::FocusNavSystems;
 
-use crate::states::{RunningState, running::menu::systems::*};
+use crate::states::{
+    RunningState,
+    running::menu::systems::*,
+    scaffold::{SceneLabel, log_scene_enter, log_scene_exit},
+};
 
 pub(in crate::states) struct MenuScenePlugin;
 
@@ -16,8 +20,15 @@ fn add_systems(app: &mut App) {
     // a menu button transition is player-driven (wired in GTW-122). On exit, the
     // menu's tree is despawned by its `DespawnOnExit(RunningState::Menu)` markers
     // (state-scoped), and `clear_nav_map` drops the now-stale nav edges.
-    app.add_systems(OnEnter(RunningState::Menu), (print_on_enter, spawn_menu))
-        .add_systems(OnExit(RunningState::Menu), (print_on_exit, clear_nav_map));
+    let label = SceneLabel::new("Running::Menu");
+    app.add_systems(
+        OnEnter(RunningState::Menu),
+        (log_scene_enter(label), spawn_menu),
+    )
+    .add_systems(
+        OnExit(RunningState::Menu),
+        (log_scene_exit(label), clear_nav_map),
+    );
 
     // GTW-122: map an ENABLED menu button's activation to a RunningState change.
     // Both run only while the menu is active. `focus_activated_actions` is ordered

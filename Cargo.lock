@@ -2814,6 +2814,7 @@ dependencies = [
  "gdtf_battle_sim",
  "gdtf_content_families",
  "gdtf_screenshot",
+ "gdtf_state_scoped",
  "gdtf_test_utils",
  "gdtf_ui",
  "ron",
@@ -2881,6 +2882,7 @@ dependencies = [
  "gdtf_battle_presenter",
  "gdtf_battle_sim",
  "gdtf_screenshot",
+ "gdtf_state_scoped",
  "gdtf_test_utils",
  "gdtf_ui",
  "ron",
@@ -2920,6 +2922,13 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "gdtf_test_utils",
+]
+
+[[package]]
+name = "gdtf_state_scoped"
+version = "0.1.0"
+dependencies = [
+ "bevy",
 ]
 
 [[package]]

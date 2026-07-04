@@ -14,6 +14,11 @@ use bevy::{input_focus::directional_navigation::DirectionalNavigationMap, prelud
 /// does not need the (about-to-be-despawned) entities to still be alive when this
 /// runs (the state-scoped despawn shares the same exit transition, so their
 /// relative order is not guaranteed; clearing sidesteps that entirely).
+///
+/// SCAFFOLD DIVERGENCE (GTW-575): this exit system stays BESPOKE — it is not a
+/// `remove_resource` of a per-scene scoped resource (the scaffold's
+/// `remove_scoped_resource` shape) but an in-place `clear()` of a GLOBAL,
+/// engine-owned map that must keep existing across states (P9).
 pub(in crate::states::running::menu) fn clear_nav_map(
     mut nav_map: ResMut<DirectionalNavigationMap>,
 ) {

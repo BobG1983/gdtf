@@ -69,7 +69,6 @@ mod capture;
 mod connector_pairing;
 // GTW-512 C1: the egui Workbench shell — the CLEAN SWAP off the hand-rolled `bevy_ui` shell.
 mod editor_map;
-mod editor_resources;
 mod egui_shell;
 // GTW-512 C1.5: the hovered-cell model the live egui hover + the QA capture both write.
 mod hovered_cell;

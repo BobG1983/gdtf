@@ -2,8 +2,10 @@ use bevy::prelude::*;
 
 use crate::states::{
     AfterMathState,
-    running::game::battlescape::aftermath::animate_in::{
-        resources::AfterMathAnimateInComplete, systems::*,
+    running::game::battlescape::aftermath::animate_in::resources::AfterMathAnimateInComplete,
+    scaffold::{
+        SceneLabel, advance_state_to, insert_completion_marker, log_scene_enter, log_scene_exit,
+        remove_scoped_resource,
     },
 };
 
@@ -16,20 +18,27 @@ impl Plugin for GameBattleScapeAfterMathAnimateInScenePlugin {
 }
 
 fn add_systems(app: &mut App) {
-    app.add_systems(OnEnter(AfterMathState::AnimateIn), print_on_enter)
+    let label = SceneLabel::new("Game::BattleScape::AfterMath::AnimateIn");
+    app.add_systems(OnEnter(AfterMathState::AnimateIn), log_scene_enter(label))
         .add_systems(
             FixedUpdate,
-            game_battlescape_aftermath_animate_in_complete.run_if(
+            insert_completion_marker::<AfterMathAnimateInComplete>().run_if(
                 in_state(AfterMathState::AnimateIn)
                     .and_then(not(resource_exists::<AfterMathAnimateInComplete>)),
             ),
         )
         .add_systems(
             FixedUpdate,
-            move_on.run_if(
+            advance_state_to(AfterMathState::DisplayAftermath).run_if(
                 in_state(AfterMathState::AnimateIn)
                     .and_then(resource_exists::<AfterMathAnimateInComplete>),
             ),
         )
-        .add_systems(OnExit(AfterMathState::AnimateIn), (print_on_exit, cleanup));
+        .add_systems(
+            OnExit(AfterMathState::AnimateIn),
+            (
+                log_scene_exit(label),
+                remove_scoped_resource::<AfterMathAnimateInComplete>(),
+            ),
+        );
 }

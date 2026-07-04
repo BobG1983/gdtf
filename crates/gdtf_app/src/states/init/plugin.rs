@@ -2,7 +2,11 @@ use bevy::prelude::*;
 
 use crate::states::{
     AppState,
-    init::{resources::InitComplete, systems::*},
+    init::resources::InitComplete,
+    scaffold::{
+        SceneLabel, advance_state_to, insert_completion_marker, log_scene_enter, log_scene_exit,
+        remove_scoped_resource,
+    },
 };
 
 // Initialization plugin for the GDTF app.
@@ -15,15 +19,23 @@ impl Plugin for InitScenePlugin {
 }
 
 fn add_systems(app: &mut App) {
-    app.add_systems(OnEnter(AppState::Init), print_on_enter)
+    let label = SceneLabel::new("Init");
+    app.add_systems(OnEnter(AppState::Init), log_scene_enter(label))
         .add_systems(
             FixedUpdate,
-            init_complete
+            insert_completion_marker::<InitComplete>()
                 .run_if(in_state(AppState::Init).and_then(not(resource_exists::<InitComplete>))),
         )
         .add_systems(
             FixedUpdate,
-            move_on.run_if(in_state(AppState::Init).and_then(resource_exists::<InitComplete>)),
+            advance_state_to(AppState::Load)
+                .run_if(in_state(AppState::Init).and_then(resource_exists::<InitComplete>)),
         )
-        .add_systems(OnExit(AppState::Init), (print_on_exit, cleanup));
+        .add_systems(
+            OnExit(AppState::Init),
+            (
+                log_scene_exit(label),
+                remove_scoped_resource::<InitComplete>(),
+            ),
+        );
 }

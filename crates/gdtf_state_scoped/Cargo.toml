@@ -1,0 +1,16 @@
+# GTW-575: the tiny shared state-scoped-RESOURCE util crate. Bevy 0.19 scopes only
+# ENTITIES to a state (`DespawnOnExit<S>`); a state-scoped resource must be hand-wired
+# as an `OnEnter(state)` insert + `OnExit(state)` remove pair (bevy-traps #1). This
+# crate owns that ONE seam so neither `gdtf_app`'s scenes nor the content editor
+# hand-stamp the pair per resource. Kept dependency-free beyond bevy on purpose — it
+# sits below every app-side crate.
+[package]
+name = "gdtf_state_scoped"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { workspace = true }
+
+[lints]
+workspace = true

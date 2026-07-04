@@ -5,8 +5,9 @@ use crate::states::{
     running::game::battlescape::aftermath::{
         GameBattleScapeAfterMathAnimateInScenePlugin,
         GameBattleScapeAfterMathAnimateOutScenePlugin,
-        GameBattleScapeAfterMathDisplayAftermathScenePlugin, systems::*,
+        GameBattleScapeAfterMathDisplayAftermathScenePlugin,
     },
+    scaffold::{SceneLabel, log_scene_enter, log_scene_exit},
 };
 
 pub(in crate::states) struct GameBattleScapeAfterMathScenePlugin;
@@ -20,8 +21,9 @@ impl Plugin for GameBattleScapeAfterMathScenePlugin {
 }
 
 fn add_systems(app: &mut App) {
-    app.add_systems(OnEnter(BattleScapeState::AfterMath), print_on_enter)
-        .add_systems(OnExit(BattleScapeState::AfterMath), print_on_exit);
+    let label = SceneLabel::new("Game::BattleScape::AfterMath");
+    app.add_systems(OnEnter(BattleScapeState::AfterMath), log_scene_enter(label))
+        .add_systems(OnExit(BattleScapeState::AfterMath), log_scene_exit(label));
 }
 
 fn add_plugins(app: &mut App) {

@@ -2,7 +2,9 @@
 //!
 //! Wires the editor's own [`EditorState`] machine, its slim `Load` asset pass
 //! ([`register_load`](crate::load::register_load)), the [`Editing`](EditorState::Editing) scene's
-//! state-scoped model/resource lifecycle ([`editor_resources`](crate::editor_resources)), the
+//! state-scoped model/resource lifecycle (one
+//! [`init_state_scoped_resource`](gdtf_state_scoped::StateScopedResourceAppExt) call per model
+//! resource — GTW-575), the
 //! standalone editor camera ([`spawn_editor_camera`](crate::camera::spawn_editor_camera)), and —
 //! since the GTW-512 egui swap — the single egui Workbench-shell UI system
 //! ([`editor_egui_ui`](crate::egui_shell::editor_egui_ui)) in the
@@ -26,22 +28,23 @@
 
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
+use gdtf_battle_presenter::ViewMode;
+use gdtf_state_scoped::StateScopedResourceAppExt as _;
 
 use crate::{
     EditorState,
     camera::{disable_egui_auto_context, spawn_editor_camera},
-    editor_resources::{
-        insert_canvas_zoom, insert_edit_level, insert_hovered_cell, insert_map, insert_mode,
-        insert_preview_pan, insert_session, insert_terrain_draft, insert_theme_draft,
-        insert_view_mode, remove_canvas_zoom, remove_edit_level, remove_hovered_cell, remove_map,
-        remove_mode, remove_preview_pan, remove_session, remove_terrain_draft, remove_theme_draft,
-        remove_view_mode,
-    },
+    canvas::{CanvasZoom, CurrentEditLevel},
+    editor_map::EditorMap,
     egui_shell::{editor_egui_ui, level_nav_hotkeys, view_mode_hotkey},
+    hovered_cell::HoveredCell,
     load::register_load,
-    mode::mode_hotkeys,
-    preview::register_preview,
+    mode::{EditorMode, mode_hotkeys},
+    preview::{register_preview, view::PreviewPan},
     right_panel::seed_default_theme,
+    session::MapEditorSession,
+    terrain_form::TerrainDraft,
+    theme_form::ThemeDraft,
     tile_atlas::load_tile_atlas,
 };
 
@@ -54,10 +57,13 @@ use crate::{
 /// - the slim `Load` pass (theme + weapon/armor + the UUID-keyed terrain/theme registries + the
 ///   presenter tile-role table) — mirrors the game's `resolve_*` loaders WITHOUT pulling the game
 ///   scene graph.
-/// - `OnEnter(Editing)` → the standalone editor camera + the FULL state-scoped model/resource
-///   insert chain (the Workbench mode + the authoring session + the paintable map + the level / zoom
-///   selectors + the terrain / theme drafts + the new hovered-cell model + the tile atlas).
-/// - `OnExit(Editing)` → the matching removes (the state-scoped-resource pattern — bevy-traps #1).
+/// - `OnEnter(Editing)` → the standalone editor camera + the tile atlas, plus the FULL
+///   state-scoped model/resource lifecycle — the Workbench mode, the authoring session, the
+///   paintable map, the level / zoom selectors, the terrain / theme drafts, the hovered-cell
+///   model, the preview pan, and the prefab-viewport view mode each register their
+///   `OnEnter(Editing)` insert + `OnExit(Editing)` remove through ONE
+///   [`init_state_scoped_resource`](gdtf_state_scoped::StateScopedResourceAppExt) call
+///   (GTW-575; the state-scoped-resource pattern — bevy-traps #1).
 /// - `EguiPrimaryContextPass` (in `Editing`) → [`editor_egui_ui`] draws the whole shell (mode tabs,
 ///   global theme `ComboBox`, status line, palette/stats placeholder, the active mode's stubbed form,
 ///   the viewport placeholder). egui systems live in `EguiPrimaryContextPass`, NOT `Update`
@@ -84,40 +90,45 @@ impl Plugin for MapEditorPlugin {
 
         app.add_systems(
             OnEnter(EditorState::Editing),
-            (
-                spawn_editor_camera,
-                insert_mode,
-                insert_session,
-                insert_map,
-                insert_edit_level,
-                insert_canvas_zoom,
-                insert_terrain_draft,
-                insert_theme_draft,
-                // GTW-512 C1.5: the hovered-cell model the live egui hover + the QA capture write.
-                insert_hovered_cell,
-                // GTW-515 C4.8: the owned pan-offset target (the zoom target is the kept CanvasZoom).
-                insert_preview_pan,
-                // GTW-532: the prefab-viewport ViewMode (REUSED from the presenter — the SAME type
-                // the GTW-521 battlescape full-view toggle drives), default DownToActive.
-                insert_view_mode,
-                load_tile_atlas,
-            ),
+            (spawn_editor_camera, load_tile_atlas),
         );
-        app.add_systems(
-            OnExit(EditorState::Editing),
-            (
-                remove_mode,
-                remove_session,
-                remove_map,
-                remove_edit_level,
-                remove_canvas_zoom,
-                remove_terrain_draft,
-                remove_theme_draft,
-                remove_hovered_cell,
-                remove_preview_pan,
-                remove_view_mode,
-            ),
-        );
+
+        // GTW-575: the ten `Editing`-scoped MODEL resources register their whole
+        // OnEnter-insert + OnExit-remove lifecycle through ONE
+        // `init_state_scoped_resource` call each (bevy-traps #1 via the shared
+        // `gdtf_state_scoped` seam) — same `OnEnter(Editing)` / `OnExit(Editing)`
+        // placement, same seed values the hand-stamped `editor_resources.rs` pairs had.
+        //
+        // The state-scoped Workbench mode, seeded to the default `Prefab` mode so the
+        // editor opens in the existing painter (GTW-474).
+        app.init_state_scoped_resource(EditorState::Editing, EditorMode::default);
+        // The shared selection state, seeded to the default theme + the full `60×60×8`
+        // grid; `seed_default_theme` re-seeds the theme once the registry resolves.
+        app.init_state_scoped_resource(EditorState::Editing, MapEditorSession::default);
+        // The empty paintable model (GTW-426) — nothing painted; the click-to-paint
+        // flow writes it.
+        app.init_state_scoped_resource(EditorState::Editing, EditorMap::new);
+        // The storey selector (GTW-500 C1), seeded to the ground storey so the editor
+        // opens on the same plane the GTW-423 canvas drew.
+        app.init_state_scoped_resource(EditorState::Editing, CurrentEditLevel::ground);
+        // The zoom factor (GTW-500 C3), seeded to the unzoomed `1.0` (the GTW-423 base
+        // cell scale).
+        app.init_state_scoped_resource(EditorState::Editing, CanvasZoom::identity);
+        // The TERRAIN-mode authoring draft (GTW-474), a fresh default the form's
+        // controls seed their initial values from.
+        app.init_state_scoped_resource(EditorState::Editing, TerrainDraft::default);
+        // The THEME-mode authoring draft (GTW-475), a fresh NEW-theme draft (a minted
+        // key, an empty form).
+        app.init_state_scoped_resource(EditorState::Editing, ThemeDraft::default);
+        // GTW-512 C1.5: the hovered-cell model the live egui hover + the QA capture
+        // write, seeded empty (nothing hovered).
+        app.init_state_scoped_resource(EditorState::Editing, HoveredCell::new);
+        // GTW-515 C4.8: the owned pan-offset target, seeded to the origin (the zoom
+        // target is the kept CanvasZoom above).
+        app.init_state_scoped_resource(EditorState::Editing, PreviewPan::origin);
+        // GTW-532: the prefab-viewport ViewMode (REUSED from the presenter — the SAME
+        // type the GTW-521 battlescape full-view toggle drives), default DownToActive.
+        app.init_state_scoped_resource(EditorState::Editing, ViewMode::default);
 
         // GTW-515 C4.3: the prefab preview render machinery — the offscreen render-target image +
         // the dedicated isolated-render-layer camera (OnEnter/OnExit), the change-driven tile

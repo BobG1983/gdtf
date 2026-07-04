@@ -1,7 +1,0 @@
-use bevy::prelude::*;
-
-use crate::states::AppState;
-
-pub(in crate::states::intro) fn move_on(mut state: ResMut<NextState<AppState>>) {
-    state.set(AppState::Running);
-}

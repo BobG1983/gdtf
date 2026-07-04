@@ -17,6 +17,12 @@ use bevy::{prelude::*, window::PrimaryWindow};
 /// `PrimaryWindow` access is panic-free: a [`Query`] yields zero entities headlessly
 /// (the `despawn` loop simply does nothing) — a bare `Single` would panic on zero
 /// matches.
+///
+/// SCAFFOLD DIVERGENCE (GTW-575): this `move_on` stays BESPOKE rather than collapsing
+/// into `scaffold::advance_state_to` because it is not a `NextState::set` at all — it is
+/// the app's TERMINAL exit, and it needs BOTH exit paths above (the windowed
+/// window-despawn and the headless `AppExit` message), which the one-shape scaffold
+/// deliberately does not grow flags for (P9).
 pub(in crate::states::teardown) fn move_on(
     mut commands: Commands,
     windows: Query<Entity, With<PrimaryWindow>>,

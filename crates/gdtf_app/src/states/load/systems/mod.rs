@@ -1,6 +1,3 @@
-mod print_state;
-pub(in crate::states::load) use print_state::{print_on_enter, print_on_exit};
-
 mod cleanup;
 pub(in crate::states::load) use cleanup::cleanup;
 

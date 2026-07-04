@@ -24,6 +24,7 @@ use crate::states::{
         resources::{LoadHandles, LoadedSituation},
         systems::*,
     },
+    scaffold::{SceneLabel, log_scene_enter, log_scene_exit},
 };
 
 /// Path of the loose authored-situation RON, relative to the asset source root
@@ -178,9 +179,10 @@ impl Plugin for LoadScenePlugin {
 }
 
 fn add_systems(app: &mut App) {
+    let label = SceneLabel::new("Load");
     app.add_systems(
         OnEnter(AppState::Load),
-        (print_on_enter, kick_off_loads).chain(),
+        (log_scene_enter(label), kick_off_loads).chain(),
     )
     .add_systems(
         Update,
@@ -281,7 +283,10 @@ fn add_systems(app: &mut App) {
         )
             .chain(),
     )
-    .add_systems(OnExit(AppState::Load), (print_on_exit, cleanup).chain());
+    .add_systems(
+        OnExit(AppState::Load),
+        (log_scene_exit(label), cleanup).chain(),
+    );
 }
 
 /// GTW-374: register the LIVE content/tuning hot-reload handlers in an UNGATED `Update` so

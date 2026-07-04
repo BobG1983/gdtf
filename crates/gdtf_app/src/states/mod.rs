@@ -16,6 +16,11 @@
 mod app_state;
 crate::support_use!(app_state::AppState;);
 
+// The GTW-575 scene-scaffold helpers: the four stamped system shapes (enter/exit
+// loggers, completion-marker insert, scoped-resource remove, move-on transition)
+// every scene plugin below registers instead of hand-stamped one-file systems.
+mod scaffold;
+
 mod plugin;
 crate::support_use!(plugin::ScenesPlugin;);
 
