@@ -12,7 +12,7 @@
 //!
 //! VALUE-AGNOSTIC (gate 4a / C6): identity / resolution / consistency only — no magnitude pinned.
 
-use gdtf_app::test_support::{AppState, LoadedSituation, app_state};
+use gdtf_app::test_support::{AppState, LoadedSituation, app_state, load_released};
 use gdtf_battle_sim::level::{ThemeUuid, UuidThemeRegistry};
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
@@ -62,15 +62,12 @@ fn shipped_skirmish_names_a_migrated_theme_uuid_that_resolves() {
         );
     }
 
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        LOAD_SAFETY_NET,
-    );
+    // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
     assert!(
-        reached_intro,
-        "with a real AssetServer, Load must reach Intro once the situation + theme registry \
-         resolve; last AppState was {:?}",
+        released,
+        "with a real AssetServer, Load must release to Intro (or beyond) once the situation + \
+         theme registry resolve; last AppState was {:?}",
         app_state(&app),
     );
 }

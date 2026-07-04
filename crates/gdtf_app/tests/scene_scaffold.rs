@@ -22,7 +22,7 @@
 //! slice.
 
 use bevy::{app::App, ecs::resource::Resource};
-use gdtf_app::test_support::{AppState, LoadedSituation, app_state};
+use gdtf_app::test_support::{AppState, LoadedSituation, app_state, load_released};
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
     situation::Situation,
@@ -129,16 +129,15 @@ fn state_scoped_probe_lives_exactly_across_the_load_span() {
         "the probe must be PRESENT with its exact seeded value while in Load",
     );
 
-    // (c) AFTER EXIT: with every gate resource pre-seeded, Load transitions to
-    // Intro; the OnExit(Load) remove must have dropped the probe.
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        WALK_BUDGET,
-    );
+    // (c) AFTER EXIT: with every gate resource pre-seeded, Load releases to Intro
+    // (a TRANSIENT stop the walk may already have moved past — probe via
+    // `load_released`, GTW-589/GTW-601); the OnExit(Load) remove must have
+    // dropped the probe either way, and leg (d) below still pins that the walk
+    // continued through Intro's own scaffold.
+    let released = advance_until(&mut app, load_released, WALK_BUDGET);
     assert!(
-        reached_intro,
-        "the seeded gates must let Load advance to Intro"
+        released,
+        "the seeded gates must let Load release to Intro (or beyond)"
     );
     assert!(
         app.world().get_resource::<LoadScopedProbe>().is_none(),

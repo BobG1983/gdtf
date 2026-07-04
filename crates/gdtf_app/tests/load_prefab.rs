@@ -21,7 +21,7 @@
 
 use std::path::PathBuf;
 
-use gdtf_app::test_support::{AppState, app_state};
+use gdtf_app::test_support::{AppState, app_state, load_released};
 use gdtf_battle_sim::level::{
     GridHeight, GridLevels, GridSize, GridWidth, PrefabKey, PrefabRegistry, SpawnRole, ThemeUuid,
 };
@@ -111,15 +111,12 @@ fn real_asset_resolves_prefab_registry_by_theme_uuid() {
     }
 
     // --- Load gate WAITED for the new registry --------------------------------------------
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        LOAD_SAFETY_NET,
-    );
+    // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
     assert!(
-        reached_intro,
-        "with a real AssetServer, Load must reach Intro once every folder (incl. the \
-         prefabs) resolves; last AppState was {:?}",
+        released,
+        "with a real AssetServer, Load must release to Intro (or beyond) once every folder \
+         (incl. the prefabs) resolves; last AppState was {:?}",
         app_state(&app),
     );
     assert!(

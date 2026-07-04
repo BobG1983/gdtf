@@ -28,7 +28,7 @@ mod gate;
 
 use std::path::PathBuf;
 
-use gdtf_app::test_support::{AppState, LoadedSituation, app_state};
+use gdtf_app::test_support::{AppState, LoadedSituation, app_state, load_released};
 use gdtf_test_utils::{
     GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
 };
@@ -80,15 +80,13 @@ fn situation_loader_no_ops_cleanly_without_asset_server() {
     // GTW-261 gate, symmetric with the other stand-ins.
     gate::seed_full_load_gate(&mut app);
 
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        TRANSITION_BUDGET,
-    );
+    // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, TRANSITION_BUDGET);
     assert!(
-        reached_intro,
+        released,
         "with a GdtfTheme + CombatTuning + WeaponRegistry + LoadedSituation present, Load must \
-         advance to Intro within {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
+         release to Intro (or beyond) within {TRANSITION_BUDGET} updates; last observed \
+         AppState was {:?}",
         app_state(&app),
     );
 
@@ -171,15 +169,12 @@ fn real_asset_gate_waits_for_the_real_situation() {
         .starting_in(AppState::Load)
         .build();
 
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        LOAD_SAFETY_NET,
-    );
+    // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
     assert!(
-        reached_intro,
-        "with a real AssetServer, Load must reach Intro once theme + situation resolve; last \
-         AppState was {:?}",
+        released,
+        "with a real AssetServer, Load must release to Intro (or beyond) once theme + situation \
+         resolve; last AppState was {:?}",
         app_state(&app),
     );
     assert!(
@@ -240,17 +235,14 @@ fn load_does_not_leave_without_a_situation() {
     );
 
     // The flip: re-seeding the full gate (situation included) releases the SAME
-    // machine, proving the situation was the one withheld gate condition.
+    // machine, proving the situation was the one withheld gate condition. Intro is
+    // TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
     gate::seed_full_load_gate(&mut app);
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        TRANSITION_BUDGET,
-    );
+    let released = advance_until(&mut app, load_released, TRANSITION_BUDGET);
     assert!(
-        reached_intro,
-        "once a LoadedSituation is inserted, Load must advance to Intro within {TRANSITION_BUDGET} \
-         updates; last observed AppState was {:?}",
+        released,
+        "once a LoadedSituation is inserted, Load must release to Intro (or beyond) within \
+         {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
         app_state(&app),
     );
 }
@@ -305,15 +297,12 @@ fn real_asset_failed_situation_falls_back_and_does_not_strand() {
     // The machine still leaves Load for Intro — a failed situation does not strand it
     // (the valid theme/tuning/weapons resolve and the empty-default situation clears
     // the situation gate, so all four gate resources are satisfied).
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        LOAD_SAFETY_NET,
-    );
+    // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
     assert!(
-        reached_intro,
-        "even on a failed situation, Load must transition to Intro with the empty-default \
-         situation; last AppState was {:?}",
+        released,
+        "even on a failed situation, Load must release to Intro (or beyond) with the \
+         empty-default situation; last AppState was {:?}",
         app_state(&app),
     );
 }

@@ -14,7 +14,7 @@
 mod load_suite;
 
 use bevy::app::Startup;
-use gdtf_app::test_support::{AppState, app_state, seed_load_fallbacks};
+use gdtf_app::test_support::{AppState, app_state, load_released, seed_load_fallbacks};
 use gdtf_battle_sim::armor::{ArmorName, ArmorRegistry};
 use gdtf_content_families::ArmorFamily;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
@@ -115,16 +115,13 @@ fn seeded_startup_does_not_shadow_real_armor_resolution() {
         );
     }
 
-    // The gate waited for the REAL registry: the machine reaches Intro with it present.
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        LOAD_SAFETY_NET,
-    );
+    // The gate waited for the REAL registry: the machine releases past Load with it
+    // present (Intro is TRANSIENT — probe via `load_released`, GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
     assert!(
-        reached_intro,
-        "with the Startup seed present, Load must still reach Intro once the real armor resolves; \
-         last AppState was {:?}",
+        released,
+        "with the Startup seed present, Load must still release to Intro (or beyond) once the \
+         real armor resolves; last AppState was {:?}",
         app_state(&app),
     );
 }

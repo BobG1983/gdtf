@@ -24,7 +24,7 @@
 //! VALUE-AGNOSTIC (gate 4a / C6): NO authored magnitude is pinned — presence + count +
 //! known-UUID resolution + cross-reference consistency only.
 
-use gdtf_app::test_support::{AppState, app_state};
+use gdtf_app::test_support::{AppState, app_state, load_released};
 use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeRegistry},
     terrain::def::{TerrainDefRegistry, TerrainSimKind, TerrainTag, TerrainUuid},
@@ -176,15 +176,12 @@ fn shipped_migrated_terrain_and_theme_content_resolves_by_uuid() {
     }
 
     // --- Load gate WAITED for both new registries (real resolve, not seeded) -----------------
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        LOAD_SAFETY_NET,
-    );
+    // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
     assert!(
-        reached_intro,
-        "with a real AssetServer, Load must reach Intro once every folder (incl. the migrated \
-         per-theme terrain/) resolves; last AppState was {:?}",
+        released,
+        "with a real AssetServer, Load must release to Intro (or beyond) once every folder \
+         (incl. the migrated per-theme terrain/) resolves; last AppState was {:?}",
         app_state(&app),
     );
 }

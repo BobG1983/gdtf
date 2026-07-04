@@ -28,7 +28,7 @@ mod gate;
 use std::path::PathBuf;
 
 use bevy::{asset::Handle, text::Font};
-use gdtf_app::test_support::{AppState, app_state};
+use gdtf_app::test_support::{AppState, app_state, load_released};
 use gdtf_test_utils::{
     GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
 };
@@ -103,15 +103,12 @@ fn theme_present_transitions_to_intro_and_persists() {
     // cleanup path is driven with every gate resource present.
     gate::seed_full_load_gate(&mut app);
 
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        TRANSITION_BUDGET,
-    );
+    // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, TRANSITION_BUDGET);
     assert!(
-        reached_intro,
-        "with a GdtfTheme present, Load must transition to Intro within {TRANSITION_BUDGET} \
-         updates; last observed AppState was {:?}",
+        released,
+        "with a GdtfTheme present, Load must release to Intro (or beyond) within \
+         {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
         app_state(&app),
     );
 
@@ -211,14 +208,12 @@ fn real_asset_good_path_resolves_shipped_theme_and_transitions() {
     // And the machine leaves Load for Intro once ALL gate resources resolve. That
     // transition is itself gated on the remaining async loads (tuning / weapons /
     // situation), so it gets the generous safety-net cap, not a frame budget.
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        LOAD_SAFETY_NET,
-    );
+    // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
     assert!(
-        reached_intro,
-        "with a resolved GdtfTheme, Load must transition to Intro; last AppState was {:?}",
+        released,
+        "with a resolved GdtfTheme, Load must release to Intro (or beyond); last AppState \
+         was {:?}",
         app_state(&app),
     );
 }
@@ -291,15 +286,12 @@ fn real_asset_failure_path_does_not_hang_and_uses_default_theme() {
 
     // The machine still leaves Load — a bad asset does not strand it themeless. The
     // transition is gated on the remaining async loads, so it gets the safety-net cap.
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        LOAD_SAFETY_NET,
-    );
+    // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
     assert!(
-        reached_intro,
-        "even on a failed asset, Load must transition to Intro with the default theme; \
-         last AppState was {:?}",
+        released,
+        "even on a failed asset, Load must release to Intro (or beyond) with the default \
+         theme; last AppState was {:?}",
         app_state(&app),
     );
 }

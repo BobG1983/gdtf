@@ -39,7 +39,7 @@
 //!    no test file changes. Forgetting that edit turns every tier-(a) walk
 //!    red (the machine rests in `Load`), so the recipe is self-enforcing.
 
-use gdtf_app::test_support::{AppState, app_state};
+use gdtf_app::test_support::{AppState, app_state, load_released};
 use gdtf_assets::ContentFamily;
 use gdtf_test_utils::{
     GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
@@ -105,15 +105,12 @@ pub(crate) fn loader_no_ops_without_asset_server<F: FamilyLoadContract>() {
     // Stand in for every resolve completing: the ONE gate-seed source.
     gate::seed_full_load_gate(&mut app);
 
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        TRANSITION_BUDGET,
-    );
+    // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, TRANSITION_BUDGET);
     assert!(
-        reached_intro,
-        "with the full gate set seeded, Load must advance to Intro within {TRANSITION_BUDGET} \
-         updates; last observed AppState was {:?}",
+        released,
+        "with the full gate set seeded, Load must release to Intro (or beyond) within \
+         {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
         app_state(&app),
     );
 }
@@ -156,15 +153,12 @@ pub(crate) fn load_gates_on_registry<F: FamilyLoadContract>() {
     // The flip: with the registry seeded too, the SAME machine advances —
     // proving the registry was the one withheld gate condition.
     gate::seed_full_load_gate(&mut app);
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        TRANSITION_BUDGET,
-    );
+    // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, TRANSITION_BUDGET);
     assert!(
-        reached_intro,
-        "once the {} is seeded, Load must advance to Intro within {TRANSITION_BUDGET} updates; \
-         last observed AppState was {:?}",
+        released,
+        "once the {} is seeded, Load must release to Intro (or beyond) within \
+         {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
         registry_name::<F>(),
         app_state(&app),
     );
@@ -215,16 +209,12 @@ pub(crate) fn real_asset_resolves_registry<F: FamilyLoadContract>() {
         }
     }
 
-    // The Load gate WAITED for the registry. Intro is a TRANSIENT stop: one
-    // long asset-I/O frame can carry the machine through Intro before this
-    // probe samples again, so accept Intro OR the state past it (GTW-589).
-    let load_released = advance_until(
-        &mut app,
-        |app| matches!(app_state(app), AppState::Intro | AppState::Running),
-        LOAD_SAFETY_NET,
-    );
+    // The Load gate WAITED for the registry. Intro is a TRANSIENT stop, so
+    // probe via `load_released` — accept Intro OR the state past it
+    // (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
     assert!(
-        load_released,
+        released,
         "with a real AssetServer, Load must release to Intro (or beyond) once every folder \
          (incl. `{}`) resolves; last AppState was {:?}",
         F::FOLDER,

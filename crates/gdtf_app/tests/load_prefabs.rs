@@ -15,7 +15,7 @@
 //! VALUE-AGNOSTIC (gate 4a): asserts presence / bucketing / placement-count ONLY — no
 //! authored terrain magnitudes pinned.
 
-use gdtf_app::test_support::{AppState, app_state};
+use gdtf_app::test_support::{AppState, app_state, load_released};
 use gdtf_battle_sim::level::{
     GridHeight, GridLevels, GridSize, GridWidth, PrefabKey, PrefabRegistry, SpawnRole, ThemeUuid,
 };
@@ -91,15 +91,12 @@ fn real_asset_resolves_prefab_registry() {
     }
 
     // --- Load gate WAITED for the registry -----------------------------------------------
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        LOAD_SAFETY_NET,
-    );
+    // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
     assert!(
-        reached_intro,
-        "with a real AssetServer, Load must reach Intro once all folders (incl. the maps) \
-         resolve; last AppState was {:?}",
+        released,
+        "with a real AssetServer, Load must release to Intro (or beyond) once all folders \
+         (incl. the maps) resolve; last AppState was {:?}",
         app_state(&app),
     );
     assert!(

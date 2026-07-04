@@ -44,7 +44,7 @@
 #[path = "load_suite/gate.rs"]
 mod gate;
 
-use gdtf_app::test_support::{AppState, app_state};
+use gdtf_app::test_support::{AppState, app_state, load_released};
 use gdtf_battle_sim::{
     armor::BodyPart,
     injuries::{InjuryName, InjuryRegistry, InjuryTables},
@@ -98,16 +98,13 @@ fn injuries_loader_no_ops_cleanly_without_asset_server() {
     // GTW-437 InjuryRegistry rides the same seeded set as every other gate resource.
     gate::seed_full_load_gate(&mut app);
 
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        TRANSITION_BUDGET,
-    );
+    // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, TRANSITION_BUDGET);
     assert!(
-        reached_intro,
+        released,
         "with a GdtfTheme + CombatTuning + GangerStatTuning + WeaponRegistry + ArmorRegistry \
-         + InjuryRegistry + LoadedSituation present, Load must advance to \
-         Intro within {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
+         + InjuryRegistry + LoadedSituation present, Load must release to \
+         Intro (or beyond) within {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
         app_state(&app),
     );
 }
@@ -263,18 +260,15 @@ fn real_asset_resolves_injury_registry_and_tables() {
         );
     }
 
-    // The Load gate WAITED for the registry: the machine reaches Intro, and an
-    // InjuryRegistry is present when it does (GTW-437 gate clause). Both injury resources
-    // were built through the production `resolve_injuries` path, end-to-end.
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        LOAD_SAFETY_NET,
-    );
+    // The Load gate WAITED for the registry: the machine releases past Load (Intro is
+    // TRANSIENT — probe via `load_released`, GTW-589/GTW-601), and an InjuryRegistry is
+    // present when it does (GTW-437 gate clause). Both injury resources were built
+    // through the production `resolve_injuries` path, end-to-end.
+    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
     assert!(
-        reached_intro,
-        "with a real AssetServer, Load must reach Intro once every folder (incl. injuries) \
-         resolves; last AppState was {:?}",
+        released,
+        "with a real AssetServer, Load must release to Intro (or beyond) once every folder \
+         (incl. injuries) resolves; last AppState was {:?}",
         app_state(&app),
     );
     assert!(

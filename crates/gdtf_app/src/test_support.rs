@@ -55,6 +55,28 @@ pub fn app_state(app: &App) -> AppState {
     app.world().resource::<State<AppState>>().get().clone()
 }
 
+/// True once `Load` has RELEASED — the machine reached [`AppState::Intro`] or the
+/// state past it ([`AppState::Running`]). The ONLY sanctioned "did Load release"
+/// probe (GTW-601).
+///
+/// [`AppState::Intro`] is a TRANSIENT stop: its `FixedUpdate` marker+advance
+/// scaffold queues Intro's own move-on as soon as it runs, and one long
+/// asset-I/O frame can accumulate >= 2 fixed timesteps, so a single
+/// `App::update` can traverse Intro entirely. Worse, the update-THEN-check
+/// advance helpers (`advance_until_resource_exists`) consume one update even
+/// when their signal already fired — when the awaited registry is the LAST
+/// Load-gate resource, that throwaway update is exactly the frame `Load`
+/// releases. An `app_state(app) == AppState::Intro` equality probe therefore
+/// races a window that can be ZERO frames wide and only ever observes
+/// `Running` (the GTW-589 flake, measured at 50% on one test under parallel
+/// cargo load — GTW-601). The state machine is linear
+/// (`Init -> Load -> Intro -> Running`), so accepting `Running` still proves
+/// Intro was traversed and the Load gate held until it released.
+#[must_use]
+pub fn load_released(app: &App) -> bool {
+    matches!(app_state(app), AppState::Intro | AppState::Running)
+}
+
 /// The ONE test-side Load-gate seed source (GTW-580): the production
 /// [`seed_load_fallbacks`] plus the [`GangerStatTuning`] delta, so the seeded set
 /// truly covers the WHOLE `transition_to_intro` gate.

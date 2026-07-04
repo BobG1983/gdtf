@@ -32,7 +32,7 @@ mod gate;
 
 use std::path::PathBuf;
 
-use gdtf_app::test_support::{AppState, app_state};
+use gdtf_app::test_support::{AppState, app_state, load_released};
 use gdtf_battle_sim::tuning::CombatTuning;
 use gdtf_test_utils::{
     GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
@@ -102,15 +102,13 @@ fn tuning_loader_no_ops_cleanly_without_asset_server() {
     // driving the real transition: the ONE gate-seed source (GTW-580).
     gate::seed_full_load_gate(&mut app);
 
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        TRANSITION_BUDGET,
-    );
+    // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, TRANSITION_BUDGET);
     assert!(
-        reached_intro,
+        released,
         "with a GdtfTheme + CombatTuning + WeaponRegistry + LoadedSituation present, Load must \
-         advance to Intro within {TRANSITION_BUDGET} updates; last observed AppState was {:?}",
+         release to Intro (or beyond) within {TRANSITION_BUDGET} updates; last observed \
+         AppState was {:?}",
         app_state(&app),
     );
 }
@@ -219,14 +217,12 @@ fn real_asset_resolves_persistent_combat_tuning() {
     // the persistent exception the BattleScape consumer reads — AND that the tuning
     // branch did not starve / was not starved by the theme branch (both present
     // before Load left, GTW-206 AC5).
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        LOAD_SAFETY_NET,
-    );
+    // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
     assert!(
-        reached_intro,
-        "with a resolved theme + tuning, Load must transition to Intro; last AppState was {:?}",
+        released,
+        "with a resolved theme + tuning, Load must release to Intro (or beyond); last AppState \
+         was {:?}",
         app_state(&app),
     );
     assert!(
@@ -269,15 +265,12 @@ fn real_asset_failure_path_does_not_hang_and_uses_default_tuning() {
     // The machine still leaves Load for Intro — a bad tuning does not strand it
     // (the valid theme resolves and the default tuning is present, so both gates
     // are satisfied).
-    let reached_intro = advance_until(
-        &mut app,
-        |app| app_state(app) == AppState::Intro,
-        LOAD_SAFETY_NET,
-    );
+    // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
+    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
     assert!(
-        reached_intro,
-        "even on a failed tuning, Load must transition to Intro with the default tuning; \
-         last AppState was {:?}",
+        released,
+        "even on a failed tuning, Load must release to Intro (or beyond) with the default \
+         tuning; last AppState was {:?}",
         app_state(&app),
     );
 }

@@ -24,7 +24,7 @@
 
 use std::path::PathBuf;
 
-use gdtf_app::test_support::{AppState, app_state};
+use gdtf_app::test_support::{AppState, app_state, load_released};
 use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeRegistry},
     terrain::def::{TerrainDefRegistry, TerrainUuid},
@@ -120,18 +120,12 @@ fn real_asset_resolves_new_terrain_and_theme_registries_by_uuid() {
     }
 
     // --- Load gate WAITED for both new registries -----------------------------------------
-    // Intro is a TRANSIENT stop: when the registries are the last gate condition, the
-    // resource-wait loops above can consume the exact frame Load releases, and one long
-    // asset-I/O frame runs enough FixedUpdate steps for Intro to queue its own move-on
-    // before this probe samples again — so the probe must accept Intro OR the state past
-    // it; equality with Intro races a window that can be zero frames wide (GTW-589).
-    let load_released = advance_until(
-        &mut app,
-        |app| matches!(app_state(app), AppState::Intro | AppState::Running),
-        LOAD_SAFETY_NET,
-    );
+    // Intro is a TRANSIENT stop the resource-wait loops above can race past — probe via
+    // `load_released` (the ONE sanctioned "did Load release" probe; see its doc for the
+    // full GTW-589/GTW-601 race anatomy), never `== Intro`.
+    let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
     assert!(
-        load_released,
+        released,
         "with a real AssetServer, Load must release to Intro (or beyond) once every folder \
          (incl. the new per-theme terrain/) resolves; last AppState was {:?}",
         app_state(&app),
