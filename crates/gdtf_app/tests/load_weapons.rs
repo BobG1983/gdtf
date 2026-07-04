@@ -28,8 +28,8 @@
 //! harness proves the REAL `assets/content/weapons/ranged/` folder loads through the Load code path
 //! and that its authored KEYS resolve.
 
-use bevy::{app::Startup, state::state::State};
-use gdtf_app::test_support::{AppState, LoadedSituation, seed_load_fallbacks};
+use bevy::app::Startup;
+use gdtf_app::test_support::{AppState, LoadedSituation, app_state, seed_load_fallbacks};
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
     injuries::InjuryRegistry,
@@ -56,11 +56,6 @@ const TRANSITION_BUDGET: u32 = 32;
 /// waits key off the resolved SIGNAL; the cap is a safety net against a genuine
 /// never-resolve hang, not a timing budget (GTW-305).
 const LOAD_SAFETY_NET: u32 = 10_000;
-
-/// Reads the current [`AppState`].
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world().resource::<State<AppState>>().get().clone()
-}
 
 /// AC4 (tier a) — under `MinimalPlugins` there is no `AssetServer`, so entering
 /// `Load` must not panic: the weapons-loader registration (`init_ron_asset::<WeaponSpec>()`)

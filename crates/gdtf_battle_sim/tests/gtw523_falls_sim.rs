@@ -27,15 +27,14 @@
 use bevy::{
     app::{App, Update},
     math::Vec3,
-    prelude::{Entity, MessageReader, MinimalPlugins, ResMut, Resource, World},
+    prelude::{Entity, MessageReader, ResMut, Resource, World},
 };
 use gdtf_battle_sim::{
-    BattleSeed, Cell, CellLevel, CombatTuning, CoverLedger, Faction, FallOccurred, Hp,
-    InflictedWounds, InjuryRng, Level, LifeState, LootRng, Luck, MarchKind, OccupancyGrid,
-    OccupancyMaintenancePlugin, PerStoreyDamage, PlayerFaction, Position, ProcgenRng, SeverityRng,
-    ShotRng, SimPos, SlabState, SquadVisibility, Stance, StanceKind, SurfaceGrid, Toughness, Tu,
-    TuMax, VerticalLinkGraph, Wounds, acts::InjuryInflicted, falls::FallsPlugin, march_vector,
-    occupancy_sync::SlabDestroyed,
+    Cell, CellLevel, CombatTuning, CoverLedger, Faction, FallOccurred, Hp, InflictedWounds, Level,
+    LifeState, Luck, MarchKind, OccupancyGrid, OccupancyMaintenancePlugin, PerStoreyDamage,
+    Position, SimPos, SlabState, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax,
+    VerticalLinkGraph, Wounds, acts::InjuryInflicted, falls::FallsPlugin, march_vector,
+    occupancy_sync::SlabDestroyed, test_support::SimAppBuilder,
 };
 
 /// The SHIPPED combat tuning parsed from the real `assets/core_tuning/combat.tuning.ron` (the
@@ -102,40 +101,21 @@ fn record_injuries(mut reader: MessageReader<InjuryInflicted>, mut log: ResMut<I
 /// `BattleSimPlugin`), so `apply_falls` runs unconditionally over the inserted resources —
 /// the focused-harness pattern the fire/slab bridge tests use.
 fn falls_app(seed: u64, per_storey: PerStoreyDamage) -> App {
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins)
-        .add_plugins(gdtf_battle_sim::acts::SimActsPlugin)
-        .add_plugins(OccupancyMaintenancePlugin)
-        .add_plugins(FallsPlugin);
-    let root = BattleSeed::new(seed);
-    // The two streams the fall fold draws (SeverityRng + InjuryRng) + the others the sibling
-    // Simulate-band systems read (ShotRng / LootRng / ProcgenRng).
-    app.insert_resource(ShotRng::from_root(root));
-    app.insert_resource(SeverityRng::from_root(root));
-    app.insert_resource(InjuryRng::from_root(root));
-    app.insert_resource(LootRng::from_root(root));
-    app.insert_resource(ProcgenRng::from_root(root));
-    app.insert_resource(gdtf_battle_sim::InjuryTables::default());
-    app.insert_resource(gdtf_battle_sim::InjuryRegistry::default());
-    // The SHIPPED combat tuning (the real severity edges / scaling — the `CombatTuning::default()`
-    // is a low placeholder ladder that turns even a shallow fall Fatal), with the per-storey
-    // magnitude under test overlaid (QA(7) varies it). Parsed from the same real file the app
-    // loads (the tuning-test `include_str!` precedent) so the fall's severity bucketing is
-    // realistic; a parse failure falls back to the default (the test still runs).
+    // The canonical `with_acts` litany (GTW-576) seeds the grids + five RNG streams + empty
+    // injury content the whole Simulate band validates against. Overlaid here: the SHIPPED
+    // combat tuning (the real severity edges / scaling — the `CombatTuning::default()` is a
+    // low placeholder ladder that turns even a shallow fall Fatal) with the per-storey
+    // magnitude under test (QA(7) varies it), and a non-player PlayerFaction.
     let mut tuning = shipped_tuning();
     tuning.per_storey_damage = per_storey;
-    app.insert_resource(tuning);
-    app.insert_resource(PlayerFaction::new(Faction::new(1)));
-    app.insert_resource(CoverLedger::new());
-    app.insert_resource(VerticalLinkGraph::default());
-    app.insert_resource(SquadVisibility::default());
-    // The other Simulate-band dispatch systems (dispatch_fire / dispatch_move) read these —
-    // the band runs unconditionally here (no BattleInProgress gate outside BattleSimPlugin),
-    // so every member's Res must exist even though this test only exercises apply_falls.
-    app.insert_resource(gdtf_battle_sim::SlabLedger::new());
-    app.insert_resource(gdtf_battle_sim::BraceStairCells::empty());
-    let default_open = CombatTuning::default().move_costs.open;
-    app.insert_resource(gdtf_battle_sim::FloorCostGrid::new(default_open, []));
+    let mut app = SimAppBuilder::new()
+        .with_seed(seed)
+        .with_acts()
+        .with_player_faction(1)
+        .with_tuning(tuning)
+        .build();
+    app.add_plugins(OccupancyMaintenancePlugin)
+        .add_plugins(FallsPlugin);
     // The signal recorders — added after the plugins so the FallOccurred / InjuryInflicted
     // buffers exist, so the run's full history is queryable after the app.update()s.
     app.init_resource::<FallLog>();

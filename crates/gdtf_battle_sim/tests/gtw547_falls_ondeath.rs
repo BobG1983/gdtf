@@ -19,14 +19,13 @@
 
 use bevy::{
     app::{App, Update},
-    prelude::{Entity, MessageReader, MinimalPlugins, ResMut, Resource},
+    prelude::{Entity, MessageReader, ResMut, Resource},
 };
 use gdtf_battle_sim::{
-    BattleSeed, Cell, CellLevel, CombatTuning, CoverLedger, Faction, Hp, InflictedWounds,
-    InjuryRng, Level, LifeState, LootRng, Luck, OccupancyGrid, OccupancyMaintenancePlugin,
-    PerStoreyDamage, PlayerFaction, Position, ProcgenRng, SeverityRng, ShotRng, SquadVisibility,
-    Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, VerticalLinkGraph, Wounds,
-    falls::FallsPlugin, occupancy_sync::SlabDestroyed, on_death::OnDeathOccurred,
+    Cell, CellLevel, CombatTuning, Faction, Hp, InflictedWounds, Level, LifeState, Luck,
+    OccupancyGrid, OccupancyMaintenancePlugin, PerStoreyDamage, Position, Stance, StanceKind,
+    SurfaceGrid, Toughness, Tu, TuMax, Wounds, falls::FallsPlugin, occupancy_sync::SlabDestroyed,
+    on_death::OnDeathOccurred, test_support::SimAppBuilder,
 };
 
 /// An arbitrary fixed seed — determinism is the property, the value is irrelevant.
@@ -61,38 +60,22 @@ fn record_deaths(mut reader: MessageReader<OnDeathOccurred>, mut log: ResMut<Dea
 /// LOW `CombatTuning::default()` severity ladder (which turns even a shallow fall Fatal — the
 /// gtw523 harness note) + a large per-storey magnitude so a multi-storey fall reliably KILLS.
 fn falls_app(seed: u64, per_storey: PerStoreyDamage) -> App {
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins)
-        .add_plugins(gdtf_battle_sim::acts::SimActsPlugin)
-        .add_plugins(OccupancyMaintenancePlugin)
+    // The canonical `with_acts` litany (GTW-576) seeds the grids + five RNG streams + empty
+    // injury content the whole Simulate band validates against. Overlaid here: the LOW default
+    // ladder (which makes even a shallow fall Fatal — the gtw523 harness note) with a large
+    // per-storey magnitude, so the multi-storey fall is unambiguously lethal; and a non-player
+    // PlayerFaction.
+    let mut app = SimAppBuilder::new()
+        .with_seed(seed)
+        .with_acts()
+        .with_player_faction(1)
+        .with_tuning(CombatTuning {
+            per_storey_damage: per_storey,
+            ..Default::default()
+        })
+        .build();
+    app.add_plugins(OccupancyMaintenancePlugin)
         .add_plugins(FallsPlugin);
-    let root = BattleSeed::new(seed);
-    // The two streams the fall fold draws (SeverityRng + InjuryRng) + the others the sibling
-    // Simulate-band systems read (ShotRng / LootRng / ProcgenRng).
-    app.insert_resource(ShotRng::from_root(root));
-    app.insert_resource(SeverityRng::from_root(root));
-    app.insert_resource(InjuryRng::from_root(root));
-    app.insert_resource(LootRng::from_root(root));
-    app.insert_resource(ProcgenRng::from_root(root));
-    app.insert_resource(gdtf_battle_sim::InjuryTables::default());
-    app.insert_resource(gdtf_battle_sim::InjuryRegistry::default());
-    // The LOW default ladder makes even a shallow fall Fatal (the gtw523 harness note), with a
-    // large per-storey magnitude overlaid so the multi-storey fall is unambiguously lethal.
-    app.insert_resource(CombatTuning {
-        per_storey_damage: per_storey,
-        ..Default::default()
-    });
-    app.insert_resource(PlayerFaction::new(Faction::new(1)));
-    app.insert_resource(CoverLedger::new());
-    app.insert_resource(VerticalLinkGraph::default());
-    app.insert_resource(SquadVisibility::default());
-    // The sibling Simulate-band dispatch systems (dispatch_fire / dispatch_move) read these —
-    // the band runs unconditionally here (no BattleInProgress gate outside BattleSimPlugin),
-    // so every member's Res must exist even though this test only exercises apply_falls.
-    app.insert_resource(gdtf_battle_sim::SlabLedger::new());
-    app.insert_resource(gdtf_battle_sim::BraceStairCells::empty());
-    let default_open = CombatTuning::default().move_costs.open;
-    app.insert_resource(gdtf_battle_sim::FloorCostGrid::new(default_open, []));
     app.init_resource::<DeathLog>();
     app.add_systems(Update, record_deaths);
     app

@@ -8,14 +8,10 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{BattleInProgress, acts::ShoveRequested};
+use gdtf_test_utils::{MessageProbePlugin, probed};
 
-use super::{ContextualActAppExt, PendingContextualIntents, ShoveAct, drain_contextual_intents};
+use super::{ContextualActAppExt, PendingContextualIntents, ShoveAct};
 use crate::SelectedShooter;
-
-/// Collected [`ShoveRequested`] messages (probe) — read AFTER the act's drain so the
-/// assert observes the SAME update's emission.
-#[derive(Resource, Default)]
-struct ShoveProbe(Vec<ShoveRequested>);
 
 /// A minimal app with the REAL `add_contextual_act::<ShoveAct>()` registration, the
 /// live-battle witness, and the shove probe ordered after the act's drain.
@@ -24,24 +20,16 @@ fn shove_app() -> App {
     app.add_plugins(MinimalPlugins);
     app.add_contextual_act::<ShoveAct>();
     app.init_resource::<SelectedShooter>();
-    app.init_resource::<ShoveProbe>();
     app.world_mut().insert_resource(BattleInProgress);
-    app.add_systems(
-        Update,
-        (|mut reader: MessageReader<ShoveRequested>, mut probe: ResMut<ShoveProbe>| {
-            probe.0.extend(reader.read().copied());
-        })
-        .after(drain_contextual_intents::<ShoveAct>),
-    );
+    // The generic GTW-576 message probe — its `Last`-schedule drain observes the same
+    // update's emission with its own reader cursor.
+    app.add_plugins(MessageProbePlugin::<ShoveRequested>::default());
     app
 }
 
 /// The collected [`ShoveRequested`] messages.
 fn shoves(app: &App) -> Vec<ShoveRequested> {
-    app.world()
-        .get_resource::<ShoveProbe>()
-        .map(|probe| probe.0.clone())
-        .unwrap_or_default()
+    probed::<ShoveRequested>(app)
 }
 
 /// With a selection, a pushed target is drained the SAME update into exactly one

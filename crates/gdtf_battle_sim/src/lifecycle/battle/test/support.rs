@@ -5,28 +5,23 @@
 //! [`crate::test_support`]; this file re-exports them and keeps only the
 //! battle-lifecycle-specific harness.
 
-pub(super) use bevy::{
-    asset::AssetPlugin,
-    ecs::message::Messages,
-    prelude::{App, MinimalPlugins},
-    scene::ScenePlugin,
-};
+pub(super) use bevy::{ecs::message::Messages, prelude::App};
 
 // The canonical shared builders + registries + fixtures (consolidated out of this
 // file's former local copies). The lifecycle fixtures below build over them, and the
 // registry helpers keep their historical `weapon_registry` / `armor_registry` names
 // for the concern files via the alias re-exports.
 pub(super) use crate::test_support::{
-    SituationBuilder, fixtures, ganger_at, key, test_armor_registry as armor_registry,
-    test_gang_registry, test_melee_weapon_registry as melee_weapon_registry, test_terrain_registry,
-    test_weapon_registry as weapon_registry,
+    SimAppBuilder, SituationBuilder, fixtures, ganger_at, key,
+    test_armor_registry as armor_registry, test_gang_registry,
+    test_melee_weapon_registry as melee_weapon_registry, test_weapon_registry as weapon_registry,
 };
 pub(super) use crate::{
     acts::FireRequested,
     armor::Wears,
     battle::{
-        BattleInProgress, BattleLost, BattleReady, BattleRoster, BattleSimPlugin, BattleWon,
-        PlayerFaction, SetupBattleRequested, TeardownBattleRequested,
+        BattleInProgress, BattleLost, BattleReady, BattleRoster, BattleWon, PlayerFaction,
+        SetupBattleRequested, TeardownBattleRequested,
     },
     cover::CoverLedger,
     ganger::{Faction, LifeState},
@@ -104,28 +99,12 @@ pub(super) fn dangling_link_situation() -> (Situation, VerticalLink) {
 /// battle, and `setup_battle_on_request` reads both to arm + armor each ganger. The
 /// fixture gangers reference the central test weapon + armor keys, which the registries
 /// hold, so a setup succeeds.
+///
+/// GTW-576: the composition IS the canonical `with_battle().with_registries()` builder
+/// (asset/scene plugins + [`BattleSimPlugin`] + the tuning stand-ins + the five test
+/// registries) — this wrapper keeps the module's historical entry-point name.
 pub(super) fn headless_app() -> App {
-    let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
-    app.add_plugins(BattleSimPlugin);
-    app.insert_resource(CombatTuning::default());
-    // GTW-384: the GangerStatTuning is PERSISTENT `Load` state like CombatTuning; the
-    // setup reads it to derive each ganger's computed stats.
-    app.insert_resource(GangerStatTuning::default());
-    app.insert_resource(weapon_registry());
-    // GTW-505: the MELEE weapon registry is PERSISTENT `Load` state like the ranged
-    // registry; `setup_battle_on_request` reads it to arm each ganger's melee weapon
-    // (`None`-authored fixture gangers resolve to the `fists` default it holds).
-    app.insert_resource(melee_weapon_registry());
-    app.insert_resource(armor_registry());
-    // GTW-414: the GangRegistry is PERSISTENT `Load` state like the weapon/armor
-    // registries; `setup_battle_on_request` reads it to resolve each PlacedGanger's
-    // (gang, member) ref. The canonical test registry covers every fixture ganger.
-    app.insert_resource(test_gang_registry());
-    // GTW-396: the terrain registry so SituationBuilder's wall_at / slab_at piece
-    // keys resolve at setup_battle_on_request.
-    app.insert_resource(test_terrain_registry());
-    app
+    SimAppBuilder::new().with_battle().with_registries().build()
 }
 
 /// Drain the `BattleReady` buffer and return how many were emitted this run — the

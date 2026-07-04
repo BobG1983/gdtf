@@ -12,16 +12,11 @@
 //! - **Test 7**: Typed-key no-collision — a cover and a slab at the same [`CellLevel`]
 //!   produce TWO distinct index entries (major-4 fix).
 
-use bevy::{
-    asset::AssetPlugin,
-    ecs::message::Messages,
-    prelude::{App, MinimalPlugins},
-    scene::ScenePlugin,
-};
+use bevy::{ecs::message::Messages, prelude::App};
 
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
-    battle::{BattleReady, BattleSimPlugin, SetupBattleRequested, TeardownBattleRequested},
+    battle::{BattleReady, SetupBattleRequested, TeardownBattleRequested},
     cover::{CoverHp, CoverLedger, HeightBand},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
@@ -29,11 +24,7 @@ use crate::{
     terrain::entity::{
         BlocksPathfinding, TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind,
     },
-    test_support::{
-        SituationBuilder, ganger_at, test_armor_registry, test_gang_registry,
-        test_melee_weapon_registry, test_terrain_registry, test_weapon_registry,
-    },
-    tuning::{CombatTuning, GangerStatTuning},
+    test_support::{SimAppBuilder, SituationBuilder, ganger_at},
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -42,24 +33,10 @@ use crate::{
 /// tests use ([`MinimalPlugins`] + [`AssetPlugin`] + [`ScenePlugin`] + [`BattleSimPlugin`]
 /// + the persistent-Load-style resources).
 fn headless_app() -> App {
-    let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
-    app.add_plugins(BattleSimPlugin);
-    app.insert_resource(CombatTuning::default());
-    app.insert_resource(GangerStatTuning::default());
-    app.insert_resource(test_weapon_registry());
-    // GTW-505: the melee registry (with the `fists` default) so each ganger's melee
-    // weapon resolves at setup (fixture gangers author none -> `fists`).
-    app.insert_resource(test_melee_weapon_registry());
-    app.insert_resource(test_armor_registry());
-    // GTW-396: the terrain registry so SituationBuilder's wall_at / slab_at piece
-    // keys ("test-wall", "test-slab") resolve at setup_battle_on_request.
-    app.insert_resource(test_terrain_registry());
-    // GTW-414/415: the GangRegistry the v2 setup_battle resolves each placed ganger's
-    // (gang, member) ref against (the fixtures use `ganger_at`, whose members the canonical
-    // `test_gang_registry` holds); without it setup fails closed and no ganger spawns.
-    app.insert_resource(test_gang_registry());
-    app
+    // GTW-576: the composition IS the canonical `with_battle().with_registries()` builder
+    // (asset/scene plugins + BattleSimPlugin + the tuning stand-ins + the five test
+    // registries the v2 setup_battle resolves against).
+    SimAppBuilder::new().with_battle().with_registries().build()
 }
 
 /// A helper `(cell, level)` at grid coordinates `(x, y, level)`.

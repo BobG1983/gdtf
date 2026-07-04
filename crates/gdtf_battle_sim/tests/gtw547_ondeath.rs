@@ -39,7 +39,6 @@ use gdtf_battle_sim::{
         FieldTurns, ImmuneArmorTypes,
     },
     ganger::{Aim, Aiming, Direction, Facing, GangRegistry},
-    magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     on_death::OnDeathEffect,
     rng::BattleSeed,
@@ -49,16 +48,15 @@ use gdtf_battle_sim::{
         TerrainUuid,
     },
     test_support::{
-        GangerSpawnBuilder, SituationBuilder, TEST_MELEE_WEAPON_KEY, TEST_WEAPON_KEY,
-        test_armor_registry, test_melee_weapon_registry,
+        GangerSpawnBuilder, SituationBuilder, TEST_MELEE_WEAPON_KEY, TEST_WEAPON_KEY, single_mode,
+        test_armor_registry, test_melee_weapon_registry, test_melee_weapon_spec, test_weapon_spec,
     },
     tuning::{CombatTuning, ViewRange},
     weapon::{
-        Accuracy, BaseSpread, BlastRadius, DamageType, FatalBias, FightMode, FightModeKind,
-        FightModeSpec, FireMode, FireModeSpec, Handedness, HitType, Kickback, MagazineSize,
-        MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Reach, Shove, Stable, Strikes, TrajectoryStyle, TuCost, WeaponDamage, WeaponName,
-        WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
+        Accuracy, BaseSpread, BlastRadius, DamageType, FatalBias, FireMode, FireModeSpec, HitType,
+        Kickback, MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent, Stable, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
+        WeaponSpec,
     },
 };
 
@@ -82,36 +80,22 @@ fn ground(x: i32, y: i32) -> CellLevel {
 fn explode_weapon_spec() -> WeaponSpec {
     WeaponSpec {
         base_spread: BaseSpread::new(0.0),
-        accuracy:    Accuracy::new(5.0),
-        kickback:    Kickback::new(0.0),
-        fatal_bias:  FatalBias::new(50.0),
-        damage:      WeaponDamage::new(500),
-        punch:       WeaponPunch::new(500),
-        shred:       WeaponShred::new(3),
-        damage_type: DamageType::Kinetic,
-        magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-        fire_mode:   FireMode::new(vec![FireModeSpec::new(
-            ModeKind::Single,
-            ModeConeMult::new(1.0),
-            ModeTuPercent::new(0.2),
-            ModeShots::new(1),
-        )]),
-        stable:      Stable::new(true),
-        shove:       Shove::new(false),
-        handedness:  Handedness::OneHanded,
-        trajectory:  TrajectoryStyle::Straight,
-        // GTW-554: no slots declared / no attachments fitted (the empty defaults).
-        slots:       gdtf_battle_sim::WeaponSlots::default(),
-        attachments: Vec::new(),
-        dot:         None,
+        accuracy: Accuracy::new(5.0),
+        kickback: Kickback::new(0.0),
+        fatal_bias: FatalBias::new(50.0),
+        damage: WeaponDamage::new(500),
+        punch: WeaponPunch::new(500),
+        fire_mode: FireMode::new(vec![single_mode(0.2, 1)]),
+        stable: Stable::new(true),
         // GTW-547: the killed ganger detonates a radius-1 blast dealing a flat 50 HP per cell.
-        on_death:    Some(OnDeathEffect::Explode {
+        on_death: Some(OnDeathEffect::Explode {
             hit_type:    HitType::Blast {
                 radius: BlastRadius::new(1),
             },
             damage:      gdtf_battle_sim::on_death::ExplodeDamage::new(50),
             damage_type: DamageType::Blast,
         }),
+        ..test_weapon_spec()
     }
 }
 
@@ -275,16 +259,6 @@ const fn took_damage(before: (Option<u16>, Option<u8>), after: (Option<u16>, Opt
         || matches!((before.1, after.1), (Some(b), Some(a)) if a < b)
 }
 
-/// A plain single-target fire mode (the mode `FireRequested` carries).
-const fn single_mode() -> FireModeSpec {
-    FireModeSpec::new(
-        ModeKind::Single,
-        ModeConeMult::new(1.0),
-        ModeTuPercent::new(0.2),
-        ModeShots::new(1),
-    )
-}
-
 /// Step `app` a fixed number of ticks so a written `FireRequested` dispatches + resolves +
 /// `resolve_on_death` fans the effect.
 fn step(app: &mut App, ticks: u32) {
@@ -324,7 +298,7 @@ fn a_killed_ganger_with_explode_on_death_damages_an_adjacent_ganger() {
     // (or next-tick) resolve_on_death fans the victim's Explode at (8,5), striking (8,4).
     app.world_mut().write_message(FireRequested::new(
         shooter_e,
-        single_mode(),
+        single_mode(0.2, 1),
         Cell::new(8, 5),
         Level::new(0),
     ));
@@ -370,7 +344,7 @@ fn destroyed_cover_with_leave_field_spawns_the_field_at_that_cell() {
     // OnDeathOccurred(cover); resolve_on_death then spawns the `burning` field there.
     app.world_mut().write_message(FireRequested::new(
         shooter_e,
-        single_mode(),
+        single_mode(0.2, 1),
         Cell::new(8, 5),
         Level::new(0),
     ));
@@ -397,22 +371,11 @@ fn field_present(app: &App, at: CellLevel) -> bool {
 /// (mechanism only, not shipped tuning).
 fn lethal_melee_spec() -> MeleeWeaponSpec {
     MeleeWeaponSpec {
-        damage:      WeaponDamage::new(500),
-        punch:       WeaponPunch::new(500),
-        shred:       WeaponShred::new(3),
-        damage_type: DamageType::Rend,
-        fatal_bias:  FatalBias::new(50.0),
-        handedness:  Handedness::OneHanded,
-        reach:       Reach::new(1),
-        fight_mode:  FightMode::new(vec![FightModeSpec::new(
-            FightModeKind::Swing,
-            TuCost::new(20),
-            Strikes::new(1),
-        )]),
-        shove:       Shove::new(false),
-        // GTW-554: no slots declared / no attachments fitted (the empty defaults).
-        slots:       gdtf_battle_sim::WeaponSlots::default(),
-        attachments: Vec::new(),
+        damage: WeaponDamage::new(500),
+        punch: WeaponPunch::new(500),
+        shred: WeaponShred::new(3),
+        fatal_bias: FatalBias::new(50.0),
+        ..test_melee_weapon_spec()
     }
 }
 

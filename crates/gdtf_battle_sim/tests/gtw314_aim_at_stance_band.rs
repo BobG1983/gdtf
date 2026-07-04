@@ -37,15 +37,16 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType,
-    BaseSpread, BattleGrids, BattleSeed, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning,
-    CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
-    Handedness, HandlingProfile, Hp, InflictedWounds, InjuryRegistry, InjuryRng, InjuryTables,
-    Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MeleeQuery, ModeConeMult, ModeKind,
-    ModeShots, ModeTuPercent, MountedQuery, OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery,
-    Position, ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotKind, ShotRng, Shove, SlabLedger,
-    Stable, Stance, StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley,
-    WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery,
-    WieldedBy, WieldsQuery, WornBy, Wounds, fire::FireOrder,
+    BaseSpread, BattleGrids, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning, CoverLedger,
+    DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, Handedness, HandlingProfile,
+    Hp, InflictedWounds, InjuryRegistry, InjuryTables, Kickback, Level, LifeState, Luck, Magazine,
+    MagazineSize, MeleeQuery, MountedQuery, OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery,
+    Position, ReloadTu, ShooterQuery, Shooting, ShotKind, Shove, SlabLedger, Stable, Stance,
+    StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, Volley, WeaponBundle, WeaponDamage,
+    WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy,
+    Wounds,
+    fire::FireOrder,
+    test_support::{injury_rng, severity_rng, shot_rng, single_mode},
 };
 
 /// The shooter's cell.
@@ -56,17 +57,6 @@ fn shooter_cell() -> CellLevel {
 /// The target's cell — a flat East shot from the shooter, same storey.
 fn target_cell() -> CellLevel {
     CellLevel::new(Cell::new(12, 6), Level::new(0))
-}
-
-/// One single-shot fire-mode spec with a unit cone multiplier (so it does not widen
-/// the ZERO base spread — the cone stays ≈ 0 and the trajectory is the central axis).
-const fn single_mode() -> FireModeSpec {
-    FireModeSpec::new(
-        ModeKind::Single,
-        ModeConeMult::new(1.0),
-        ModeTuPercent::new(0.2),
-        ModeShots::new(1),
-    )
 }
 
 /// Equip a ganger's six worn-armor-piece entities (GTW-323 / ADR-0004) at the thin
@@ -122,7 +112,7 @@ fn spawn_standing_shooter(app: &mut App, facing: Direction) -> Entity {
         ),
         HandlingProfile::new(
             Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
-            FireMode::new(vec![single_mode()]),
+            FireMode::new(vec![single_mode(0.2, 1)]),
             // `stable` so the brace engages unconditionally — keeps the cone tight,
             // though the ZERO base spread already collapses it to the axis.
             Stable::new(true),
@@ -194,10 +184,10 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         MountedQuery<'w, 's>,
     );
     let tuning = CombatTuning::default();
-    let mut rng = ShotRng::from_root(BattleSeed::new(seed));
-    let mut sev_rng = SeverityRng::from_root(BattleSeed::new(seed));
-    let mut injury_rng = InjuryRng::from_root(BattleSeed::new(seed));
-    let mode = single_mode();
+    let mut rng = shot_rng(seed);
+    let mut sev_rng = severity_rng(seed);
+    let mut injury_rng = injury_rng(seed);
+    let mode = single_mode(0.2, 1);
 
     let occupancy = app
         .world()

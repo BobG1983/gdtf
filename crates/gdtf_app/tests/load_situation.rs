@@ -22,8 +22,7 @@
 
 use std::path::PathBuf;
 
-use bevy::state::state::State;
-use gdtf_app::test_support::{AppState, LoadedSituation};
+use gdtf_app::test_support::{AppState, LoadedSituation, app_state};
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
     procgen::ProcgenTuning,
@@ -49,11 +48,6 @@ const TRANSITION_BUDGET: u32 = 32;
 /// proved flaky). These waits key off the resolved SIGNAL; the cap is a safety net
 /// against a genuine never-resolve hang, not a timing budget (GTW-305).
 const LOAD_SAFETY_NET: u32 = 10_000;
-
-/// Reads the current [`AppState`].
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world().resource::<State<AppState>>().get().clone()
-}
 
 /// AC6 / GTW-261 — tier (a): under `MinimalPlugins` there is no `AssetServer`, so
 /// entering `Load` must not panic — the situation-loader registration and the kick-off

@@ -23,7 +23,7 @@ use crate::{
     metric::CellLevel,
     severity::Severity,
     situation::Situation,
-    test_support::GangerSpawnBuilder,
+    test_support::{GangerSpawnBuilder, single_mode, test_weapon_spec},
 };
 
 /// Build a one-injury catalog covering EVERY `(InjuryCategory, Minor/Major/Critical)` bucket
@@ -124,39 +124,20 @@ struct BattleRun {
 /// and the §6 edges (e0=1 … e3=15), the score `12 − 15 + part_mod + roll(0..10)` lands
 /// mostly Minor/Major across parts + seeds — a tabled (rollable) wound.
 fn penetrating_weapon_registry() -> crate::weapon::WeaponRegistry {
-    use crate::{
-        magazine::{Magazine, ReloadTu},
-        weapon::{
-            Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Kickback,
-            MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, TrajectoryStyle,
-            WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
-        },
+    use crate::weapon::{
+        Accuracy, BaseSpread, FatalBias, FireMode, Kickback, WeaponName, WeaponPunch,
+        WeaponRegistry, WeaponShred, WeaponSpec,
     };
     let spec = WeaponSpec {
         base_spread: BaseSpread::new(0.05),
-        accuracy:    Accuracy::new(2.0),
-        kickback:    Kickback::new(0.1),
-        fatal_bias:  FatalBias::new(0.0), // NOT Fatal-skewed → wounds stay tabled
-        damage:      WeaponDamage::new(12),
-        punch:       WeaponPunch::new(20),
-        shred:       WeaponShred::new(10),
-        damage_type: DamageType::Kinetic,
-        magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-        fire_mode:   FireMode::new(vec![FireModeSpec::new(
-            ModeKind::Single,
-            ModeConeMult::new(1.0),
-            ModeTuPercent::new(0.2),
-            ModeShots::new(1),
-        )]),
-        stable:      crate::weapon::Stable::new(true),
-        shove:       crate::weapon::Shove::new(false),
-        handedness:  crate::weapon::Handedness::OneHanded,
-        trajectory:  TrajectoryStyle::Straight,
-        // GTW-554: no slots declared / no attachments fitted — the empty defaults.
-        slots:       crate::weapon::WeaponSlots::default(),
-        attachments: Vec::new(),
-        dot:         None,
-        on_death:    None,
+        accuracy: Accuracy::new(2.0),
+        kickback: Kickback::new(0.1),
+        fatal_bias: FatalBias::new(0.0), // NOT Fatal-skewed -> wounds stay tabled
+        punch: WeaponPunch::new(20),
+        shred: WeaponShred::new(10),
+        fire_mode: FireMode::new(vec![single_mode(0.2, 1)]),
+        stable: crate::weapon::Stable::new(true),
+        ..test_weapon_spec()
     };
     WeaponRegistry::new([(WeaponName::new("test-weapon".to_owned()), spec)])
 }

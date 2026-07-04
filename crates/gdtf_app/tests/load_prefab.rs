@@ -19,7 +19,7 @@
 
 use std::path::PathBuf;
 
-use gdtf_app::test_support::AppState;
+use gdtf_app::test_support::{AppState, app_state};
 use gdtf_battle_sim::level::{
     GridHeight, GridLevels, GridSize, GridWidth, PrefabKey, PrefabRegistry, SpawnRole, ThemeUuid,
 };
@@ -51,14 +51,6 @@ fn fixture_root() -> PathBuf {
 /// The 3x3x1 footprint the fixture prefab authors, or `None` (assert-fail) on a bad span.
 fn fixture_size() -> Option<GridSize> {
     GridSize::new(GridWidth::new(3), GridHeight::new(3), GridLevels::new(1)).ok()
-}
-
-/// Reads the current [`AppState`].
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world()
-        .resource::<bevy::state::state::State<AppState>>()
-        .get()
-        .clone()
 }
 
 /// GTW-489 C1 — with a real `AssetServer` rooted at the TEST fixture, entering `Load` loads

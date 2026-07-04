@@ -19,7 +19,7 @@
 //! VALUE-AGNOSTIC (gate 4a): asserts presence / known-UUID resolution / `default_floor`
 //! cross-reference ONLY — no authored magnitudes pinned.
 
-use gdtf_app::test_support::AppState;
+use gdtf_app::test_support::{AppState, app_state};
 use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeRegistry},
     terrain::def::TerrainUuid,
@@ -44,14 +44,6 @@ const fn industrial_hive_theme() -> ThemeUuid {
 /// `default_floor` (`Uuid::from_u128(0x0184_0a91_0004)`).
 const fn industrial_hive_default_floor() -> TerrainUuid {
     TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a91_0004))
-}
-
-/// Reads the current [`AppState`].
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world()
-        .resource::<bevy::state::state::State<AppState>>()
-        .get()
-        .clone()
 }
 
 /// GTW-494 C2 — with a real `AssetServer` rooted at the workspace `assets/`, entering `Load`

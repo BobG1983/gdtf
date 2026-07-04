@@ -11,9 +11,12 @@
 // types, the public `fire` surface, and every crate component the tests touch.
 pub(super) use bevy::{
     ecs::system::SystemState,
-    prelude::{Bundle, Entity, World},
+    prelude::{Entity, World},
 };
 
+// The canonical fire-mode + target fixtures (GTW-576), consolidated out of this file's
+// former local copies.
+pub(super) use crate::test_support::{single_mode, target_bundle};
 pub(super) use crate::{
     armor::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType, BodyPart, WornBy,
@@ -34,7 +37,7 @@ pub(super) use crate::{
     occupancy::OccupancyGrid,
     resolve_and_apply::{AppliedDamage, GangerVerdict, HitReport, HitVerdict},
     resolve_coarse::ShotKind,
-    rng::{BattleSeed, InjuryRng, SeverityRng, ShotRng},
+    rng::{InjuryRng, SeverityRng, ShotRng},
     severity::Severity,
     slab::{BraceStairCells, SlabLedger},
     surface::SurfaceGrid,
@@ -42,9 +45,8 @@ pub(super) use crate::{
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FightMode, FightModeKind,
         FightModeSpec, FireMode, FireModeSpec, Handedness, HandlingProfile, Kickback, MagazineSize,
-        MeleeDamageProfile, MeleeWeaponBundle, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        Reach, Shove, Stable, Strikes, TuCost, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
-        WeaponShred, WieldedBy,
+        MeleeDamageProfile, MeleeWeaponBundle, Reach, Shove, Stable, Strikes, TuCost, WeaponBundle,
+        WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy,
     },
 };
 
@@ -87,23 +89,24 @@ pub(super) fn applied_of(report: &HitReport) -> Option<AppliedDamage> {
     ganger_verdict(report).map(|verdict| verdict.applied)
 }
 
-/// Build a [`ShotRng`] from the shared fixed seed (a fresh stream per call).
+/// Build a [`ShotRng`] from the shared fixed seed (a fresh stream per call) — composes
+/// the canonical [`crate::test_support::shot_rng`] knob (GTW-576).
 ///
 /// The `fire()` path draws from `ShotRng` for cone-sample + body-part-roll; the
 /// severity stream is `severity_rng()`. Tests that call `fire()` need both.
 pub(super) fn rng() -> ShotRng {
-    ShotRng::from_root(BattleSeed::new(SEED))
+    crate::test_support::shot_rng(SEED)
 }
 
 /// Build a [`SeverityRng`] from the shared fixed seed (a fresh stream per call).
 pub(super) fn severity_rng() -> SeverityRng {
-    SeverityRng::from_root(BattleSeed::new(SEED))
+    crate::test_support::severity_rng(SEED)
 }
 
 /// Build an [`InjuryRng`] from the shared fixed seed (a fresh stream per call) — the
 /// GTW-438 injury-roll draw stream the `fire()` path threads to `roll_injury`.
 pub(super) fn injury_rng() -> InjuryRng {
-    InjuryRng::from_root(BattleSeed::new(SEED))
+    crate::test_support::injury_rng(SEED)
 }
 
 /// An EMPTY [`InjuryTables`] — the default for `fire()` tests that do not assert an
@@ -117,31 +120,6 @@ pub(super) fn injury_tables() -> InjuryTables {
 /// injury. A test that pins an injury builds a populated registry instead.
 pub(super) fn injury_registry() -> InjuryRegistry {
     InjuryRegistry::default()
-}
-
-/// A single-shot fire-mode spec from arbitrary (non-pinned) per-mode numbers.
-pub(super) const fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
-    FireModeSpec::new(
-        ModeKind::Single,
-        ModeConeMult::new(1.0),
-        ModeTuPercent::new(tu_percent),
-        ModeShots::new(shots),
-    )
-}
-
-/// The full per-ganger battle-state bundle a target carries (the target query's
-/// component set) — arbitrary magnitudes. Since GTW-323 (ADR-0004) the combat armor
-/// lives on related piece entities (spawned via [`equip_uniform_armor`]), NOT on the
-/// ganger, so this bundle carries NO armor (GTW-323 slice 3 removed the on-ganger copy).
-pub(super) fn target_bundle(hp: u16, wounds: u8) -> impl Bundle {
-    (
-        Hp::new(hp),
-        Wounds::new(wounds),
-        LifeState::Alive,
-        InflictedWounds::default(),
-        Toughness::new(1.0),
-        Luck::new(0.0),
-    )
 }
 
 /// Spawn + relate a ganger's six worn-armor-piece entities (one per [`BodyPart`]),

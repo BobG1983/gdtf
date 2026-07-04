@@ -39,20 +39,18 @@ use gdtf_battle_sim::{
     acts::FireRequested,
     battle::{BattleSimPlugin, SetupBattleRequested},
     ganger::{Aim, Aiming, Direction, Facing, GangRegistry},
-    magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
     test_support::{
-        GangerSpawnBuilder, SituationBuilder, TEST_WEAPON_KEY, test_armor_registry,
-        test_melee_weapon_registry,
+        GangerSpawnBuilder, SituationBuilder, TEST_WEAPON_KEY, single_mode, test_armor_registry,
+        test_melee_weapon_registry, test_weapon_spec,
     },
     tuning::{CombatTuning, ViewRange},
     weapon::{
         Accuracy, BaseSpread, DamageType, Dot, DotDamage, DotProfile, DotTurns, FatalBias,
-        FireMode, FireModeSpec, Handedness, Kickback, MagazineSize, ModeConeMult, ModeKind,
-        ModeShots, ModeTuPercent, Shove, Stable, TrajectoryStyle, WeaponDamage, WeaponName,
-        WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
+        FireMode, FireModeSpec, Kickback, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Stable,
+        WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
     },
 };
 
@@ -97,24 +95,11 @@ fn dot_weapon_spec(dot: Option<DotProfile>) -> WeaponSpec {
         fatal_bias: FatalBias::new(0.0),
         damage: WeaponDamage::new(20),
         punch: WeaponPunch::new(30),
-        shred: WeaponShred::new(3),
         damage_type: DamageType::Plasma,
-        magazine: Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-        fire_mode: FireMode::new(vec![FireModeSpec::new(
-            ModeKind::Single,
-            ModeConeMult::new(1.0),
-            ModeTuPercent::new(0.2),
-            ModeShots::new(1),
-        )]),
+        fire_mode: FireMode::new(vec![single_mode(0.2, 1)]),
         stable: Stable::new(true),
-        shove: Shove::new(false),
-        handedness: Handedness::OneHanded,
-        trajectory: TrajectoryStyle::Straight,
-        // GTW-554: no slots declared / no attachments fitted (the empty defaults).
-        slots: gdtf_battle_sim::WeaponSlots::default(),
-        attachments: Vec::new(),
         dot,
-        on_death: None,
+        ..test_weapon_spec()
     }
 }
 

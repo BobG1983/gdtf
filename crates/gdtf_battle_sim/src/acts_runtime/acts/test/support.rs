@@ -9,38 +9,32 @@
 
 // Re-exported so each concern file's `use super::support::*` reaches the Bevy harness
 // types + every `acts` dispatch/message item + the crate components the tests touch.
-pub(super) use bevy::{
-    platform::collections::HashSet,
-    prelude::{App, Entity, Messages, MinimalPlugins, Update, World},
-};
+pub(super) use bevy::prelude::{App, Entity, Messages, Update, World};
 
+// The canonical shared harness/fixture halves (GTW-576): the ONE seeding litany +
+// the knobbed app builder + the fire-mode/target fixtures, consolidated out of this
+// file's former local copies.
+pub(super) use crate::test_support::{SimAppBuilder, TEST_PLAYER_GANG, single_mode, target_bundle};
 pub(super) use crate::{
     acts::*,
     // `ArmorProtection` / `ArmorHardness` are reused for cover `CoverEntry`s in the
     // co-schedule test (terrain armor), not ganger-worn armor — kept for that glob use.
     armor::{ArmorHardness, ArmorProtection},
-    battle::PlayerFaction,
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{
         Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stabilized,
         Stance, StanceKind, Suppressed, SuppressorCell, Toughness, Tu, TuMax, Wounds,
     },
     inflicted_wound::InflictedWounds,
-    injuries::{InjuryRegistry, InjuryTables},
     magazine::{Magazine, ReloadTu, mode_tu_cost},
-    metric::{Cell, CellLevel, Level, MAX_LEVELS},
-    occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid},
+    metric::{Cell, CellLevel, Level},
+    occupancy::OccupancyGrid,
     occupancy_sync::OccupancyMaintenancePlugin,
     resolve_and_apply::HitVerdict,
     resolve_coarse::ShotKind,
-    rng::{BattleSeed, InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng},
     shot_fired::ShotFired,
-    slab::{BraceStairCells, SlabLedger},
-    surface::SurfaceGrid,
     terrain::floor::FloorCostGrid,
     tuning::CombatTuning,
-    vertical::VerticalLinkGraph,
-    visibility::SquadVisibility,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
         Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
@@ -49,98 +43,11 @@ pub(super) use crate::{
     },
 };
 
-/// A fixed seed for the per-test RNG stream (arbitrary, not tuned).
-const SEED: u64 = 0x5A1C_AC75;
-
-/// The player gang the move-dispatch harness seeds (arbitrary; gang `0`).
-pub(super) const TEST_PLAYER_GANG: u8 = 0;
-
-/// A [`SquadVisibility`] with the ENTIRE grid extent both VISIBLE and EXPLORED — the
-/// "full vision" fog the GTW-354 move-dispatch tests route under (every cell routable, so
-/// the GTW-353 visibility gate is a no-op and the route depends only on geometry +
-/// occupancy). Mirrors the pathfinder-test `full_vision` fixture.
-pub(super) fn full_vision() -> SquadVisibility {
-    let mut all = HashSet::default();
-    for level in 0..MAX_LEVELS {
-        for y in 0..GRID_HEIGHT {
-            for x in 0..GRID_WIDTH {
-                #[expect(
-                    clippy::cast_possible_truncation,
-                    clippy::cast_possible_wrap,
-                    reason = "x/y are 0..60 and level is 0..MAX_LEVELS (8) by the loop bounds, so \
-                              the usize/u8 -> i32/u8 narrowing cannot truncate or wrap"
-                )]
-                let c = CellLevel::new(Cell::new(x as i32, y as i32), Level::new(level));
-                all.insert(c);
-            }
-        }
-    }
-    SquadVisibility::new(all.clone(), all)
-}
-
-/// Insert the shared sim resources a dispatch system reads — the three grids, the empty
-/// [`VerticalLinkGraph`], a full-vision [`SquadVisibility`], the [`PlayerFaction`] seed,
-/// the five seeded per-subsystem RNG streams (GTW-14), [`CombatTuning::default`], and the [`FloorCostGrid`] (GTW-396
-/// Decision B — seeded uniform at the default open cost so the adjacent-cell move tests
-/// keep their existing cost semantics). The grids are inserted EMPTY by default; a test
-/// mutates them via `app.world_mut()` before the run.
-///
-/// GTW-354: the move dispatch now reads `Res<VerticalLinkGraph>` / `Res<SquadVisibility>`
-/// / `Res<PlayerFaction>` for its route gate, so the harness seeds them — a full-vision
-/// fog and an empty link graph keep the planar adjacent-cell move tests routing on
-/// geometry/occupancy alone.
-pub(super) fn insert_sim_resources(app: &mut App) {
-    let tuning = CombatTuning::default();
-    // GTW-396: seed a uniform FloorCostGrid at the default open cost; the test harness
-    // resolves no terrain registry, so we build the grid directly with the same move
-    // cost the pre-GTW-396 tests expected. The dispatch system reads `Res<FloorCostGrid>`.
-    let floor_costs = FloorCostGrid::new(tuning.move_costs.open, []);
-    app.insert_resource(OccupancyGrid::new());
-    app.insert_resource(SurfaceGrid::new());
-    app.insert_resource(CoverLedger::new());
-    // GTW-365: `dispatch_fire` reads `ResMut<SlabLedger>` — seed an empty ledger.
-    app.insert_resource(SlabLedger::new());
-    // GTW-392: `dispatch_fire` reads `Res<BraceStairCells>` — seed an empty set (no
-    // stair links in the test arena, so no brace-stair cells are authored).
-    app.insert_resource(BraceStairCells::empty());
-    app.insert_resource(VerticalLinkGraph::default());
-    app.insert_resource(full_vision());
-    app.insert_resource(PlayerFaction::new(Faction::new(TEST_PLAYER_GANG)));
-    // GTW-14: insert the five per-subsystem RNG streams derived from the test seed.
-    let seed = BattleSeed::new(SEED);
-    app.insert_resource(ShotRng::from_root(seed));
-    app.insert_resource(SeverityRng::from_root(seed));
-    app.insert_resource(LootRng::from_root(seed));
-    app.insert_resource(InjuryRng::from_root(seed));
-    app.insert_resource(ProcgenRng::from_root(seed));
-    // GTW-438: `dispatch_fire` reads `Res<InjuryTables>` + `Res<InjuryRegistry>` (the
-    // `roll_injury` inputs). Seed EMPTY ones so the fire path runs (the roll finds no
-    // bucket and takes-then-discards its one InjuryRng draw); a test that pins an injury
-    // overwrites them with populated resources before its run.
-    app.insert_resource(InjuryTables::default());
-    app.insert_resource(InjuryRegistry::default());
-    app.insert_resource(tuning);
-    app.insert_resource(floor_costs);
-}
-
-/// Build a headless app: [`MinimalPlugins`] (no window / renderer) + [`SimActsPlugin`]
-/// + the shared sim resources — the `apply_hit` / `occupancy_sync` test precedent.
+/// Build a headless app: [`MinimalPlugins`] (no window / renderer) + [`SimActsPlugin`] +
+/// the canonical sim-resource litany with a FULL-VISION fog (the GTW-354 move-dispatch
+/// precondition) — this module's bespoke composition of the shared GTW-576 builder.
 pub(super) fn headless_app() -> App {
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
-    app.add_plugins(SimActsPlugin);
-    insert_sim_resources(&mut app);
-    app
-}
-
-/// A single-shot fire-mode spec from arbitrary (non-pinned) per-mode numbers.
-pub(super) const fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
-    FireModeSpec::new(
-        ModeKind::Single,
-        ModeConeMult::new(1.0),
-        ModeTuPercent::new(tu_percent),
-        ModeShots::new(shots),
-    )
+    SimAppBuilder::new().with_acts().with_full_vision().build()
 }
 
 /// Spawn an armed shooter facing East at `(x, y, 0)` — carries the full shooter-query
@@ -207,20 +114,6 @@ pub(super) fn spawn_shooter(
     // in a bare `World` spawn so the very next dispatch resolves it.
     world.spawn((WieldedBy::new(shooter), bundle));
     shooter
-}
-
-/// The per-ganger battle-state bundle a fire target carries (the target query set) —
-/// arbitrary magnitudes. Since GTW-323 the armor lives on related piece entities, NOT
-/// the ganger, so this bundle carries no armor.
-pub(super) fn target_bundle(hp: u16, wounds: u8) -> impl bevy::prelude::Bundle {
-    (
-        Hp::new(hp),
-        Wounds::new(wounds),
-        LifeState::Alive,
-        InflictedWounds::default(),
-        Toughness::new(1.0),
-        Luck::new(0.0),
-    )
 }
 
 /// Build the FIRE scenario in a fresh app: a shooter at (2,5) + a HIGH-band ganger

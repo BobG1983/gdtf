@@ -58,19 +58,19 @@ use gdtf_battle_presenter::{ActiveLevel, WORLD_RENDER_LAYER};
 use gdtf_battle_sim::{
     Aim, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
     ArmorRegistry, ArmorSpec, ArmorType, BattleInProgress, Cell, CellLevel, Direction, Facing,
-    Faction, FireMode, FireModeSpec, GangerName, Level, MAX_LEVELS, Magazine, ModeConeMult,
-    ModeKind, ModeShots, ModeTuPercent, ReloadTu, Situation, Stance, StanceKind, TuMax, WieldedBy,
+    Faction, FireMode, FireModeSpec, GangerName, Level, MAX_LEVELS, ModeConeMult, ModeKind,
+    ModeShots, ModeTuPercent, Situation, Stance, StanceKind, TuMax, WieldedBy,
     acts::{EndTurnRequested, SetAimingRequested, SetStanceRequested},
     injuries::InjuryRegistry,
     mode_tu_cost,
+    test_support::test_weapon_spec,
     tuning::CombatTuning,
-    weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, Handedness, Kickback, MagazineSize, Shove,
-        Stable, TrajectoryStyle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
-        WeaponShred, WeaponSpec,
-    },
+    weapon::{FatalBias, WeaponName, WeaponRegistry, WeaponSpec},
 };
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
+use gdtf_test_utils::{
+    GdtfTestAppBuilder, MessageProbe, MessageProbePlugin, advance_until, drain_message_probe,
+    press_ui_button, probed,
+};
 use gdtf_ui::{ActiveSegment, DisabledButton, SegmentIndex, SegmentSubText, theme::default_theme};
 
 /// A budget large enough to drive the deep walk into the battlescape (each leaf scene
@@ -239,16 +239,6 @@ fn require_button<M: Component>(app: &mut App) -> Option<Entity> {
     found
 }
 
-/// Synthesizes a fresh mouse press on `button` by setting its [`Interaction`] to
-/// [`Pressed`] (the swap `ui_focus_system` drives for a real click). A direct write to
-/// the component marks it `Changed` this update, so the `Changed<Interaction>` action
-/// query fires.
-fn press_button(app: &mut App, button: Entity) {
-    if let Some(mut interaction) = app.world_mut().get_mut::<Interaction>(button) {
-        *interaction = Interaction::Pressed;
-    }
-}
-
 /// One fire-mode spec of an explicit [`ModeKind`] — the kind is what a toggle / the cycle
 /// identifies a mode by (magnitudes arbitrary, not pinned tuning — the `acts.rs`
 /// precedent).
@@ -275,74 +265,42 @@ fn sbf_selector() -> FireMode {
 // test body (each probe runs after the drain, so it sees the same update's emission).
 // ---------------------------------------------------------------------------------
 
-/// Collected `SetStanceRequested` messages (probe).
-#[derive(Resource, Default)]
-struct StanceProbe(Vec<SetStanceRequested>);
-/// Collected `SetAimingRequested` messages (probe).
-#[derive(Resource, Default)]
-struct AimProbe(Vec<SetAimingRequested>);
-
-/// Adds the two posture-message probes, each running AFTER the intent drain so it
-/// observes the same update's emitted messages (the `acts.rs` `add_probes` idiom). The
-/// probes have their own `MessageReader` cursors (independent of the sim's `dispatch_*`),
-/// so they read every message the drain wrote.
+/// Adds the two posture-message probes (GTW-576 `MessageProbePlugin<M>`) — the
+/// `Last`-schedule drain observes the same update's emitted messages with its own
+/// `MessageReader` cursor (independent of the sim's `dispatch_*`).
 fn add_probes(app: &mut App) {
-    app.world_mut().insert_resource(StanceProbe::default());
-    app.world_mut().insert_resource(AimProbe::default());
-    app.add_systems(
-        Update,
-        (
-            |mut r: MessageReader<SetStanceRequested>, mut p: ResMut<StanceProbe>| {
-                p.0.extend(r.read().copied());
-            },
-            |mut r: MessageReader<SetAimingRequested>, mut p: ResMut<AimProbe>| {
-                p.0.extend(r.read().copied());
-            },
-        )
-            .after(gdtf_battle_input::dispatch_act_intents),
-    );
+    app.add_plugins((
+        MessageProbePlugin::<SetStanceRequested>::default(),
+        MessageProbePlugin::<SetAimingRequested>::default(),
+    ));
 }
 
 /// The collected `SetStanceRequested` messages.
 fn stances(app: &App) -> Vec<SetStanceRequested> {
-    app.world()
-        .get_resource::<StanceProbe>()
-        .map(|p| p.0.clone())
-        .unwrap_or_default()
+    probed::<SetStanceRequested>(app)
 }
 
 /// The collected `SetAimingRequested` messages.
 fn aims(app: &App) -> Vec<SetAimingRequested> {
-    app.world()
-        .get_resource::<AimProbe>()
-        .map(|p| p.0.clone())
-        .unwrap_or_default()
+    probed::<SetAimingRequested>(app)
 }
 
-/// Collected `EndTurnRequested` messages (GTW-309 probe).
-#[derive(Resource, Default)]
-struct EndTurnProbe(Vec<EndTurnRequested>);
-
-/// Adds the `EndTurnRequested` probe, running AFTER the intent drain so it observes the same
-/// update's emitted message (the `add_probes` idiom). Its own `MessageReader` cursor is
-/// independent of the sim's `dispatch_end_turn`, so it reads every message the drain wrote.
+/// Adds the `EndTurnRequested` probe — the generic GTW-576 `MessageProbe<M>` resource
+/// with its drain registered at the ORIGINAL observation point (Update, AFTER the intent
+/// drain): this harness runs the full battle runtime, whose enemy brain auto-passes an
+/// empty enemy turn with a SECOND same-frame `EndTurnRequested`, so a `Last`-schedule
+/// drain would count the brain's message too. The button test pins the DRAIN's emission.
 fn add_end_turn_probe(app: &mut App) {
-    app.world_mut().insert_resource(EndTurnProbe::default());
+    app.init_resource::<MessageProbe<EndTurnRequested>>();
     app.add_systems(
         Update,
-        (|mut r: MessageReader<EndTurnRequested>, mut p: ResMut<EndTurnProbe>| {
-            p.0.extend(r.read().copied());
-        })
-        .after(gdtf_battle_input::dispatch_act_intents),
+        drain_message_probe::<EndTurnRequested>.after(gdtf_battle_input::dispatch_act_intents),
     );
 }
 
 /// The collected `EndTurnRequested` messages.
 fn end_turns(app: &App) -> Vec<EndTurnRequested> {
-    app.world()
-        .get_resource::<EndTurnProbe>()
-        .map(|p| p.0.clone())
-        .unwrap_or_default()
+    probed::<EndTurnRequested>(app)
 }
 
 /// Spawns a ganger carrying exactly the GANGER components the act / panel systems read
@@ -544,7 +502,7 @@ fn aim_button_toggles_and_matches_direct_intent() {
     let Some(button) = require_button::<AimToggleButton>(&mut app) else {
         return;
     };
-    press_button(&mut app, button);
+    press_ui_button(&mut app, button);
     app.update();
 
     let via_button = aims(&app);
@@ -588,7 +546,7 @@ fn level_buttons_step_active_level_like_the_intent() {
     let Some(up) = require_button::<LevelUpButton>(&mut app) else {
         return;
     };
-    press_button(&mut app, up);
+    press_ui_button(&mut app, up);
     app.update();
     assert_eq!(
         active_level(&app),
@@ -599,7 +557,7 @@ fn level_buttons_step_active_level_like_the_intent() {
     let Some(down) = require_button::<LevelDownButton>(&mut app) else {
         return;
     };
-    press_button(&mut app, down);
+    press_ui_button(&mut app, down);
     app.update();
     assert_eq!(
         active_level(&app),
@@ -764,7 +722,7 @@ fn prone_toggle_sets_stance_prone_directly() {
     let Some(prone) = require_button::<StanceProneButton>(&mut app) else {
         return;
     };
-    press_button(&mut app, prone);
+    press_ui_button(&mut app, prone);
     app.update();
 
     let via_button = stances(&app);
@@ -842,7 +800,7 @@ fn each_stance_segment_sets_its_stance() {
         let Some(segment) = marker_press.entity(&mut app) else {
             return;
         };
-        press_button(&mut app, segment);
+        press_ui_button(&mut app, segment);
         app.update();
 
         let pushed = stances(&app);
@@ -977,7 +935,7 @@ fn clicking_burst_toggle_sets_mode_and_moves_active_mark() {
     let Some(burst_segment) = require_button::<ModeBurstButton>(&mut app) else {
         return;
     };
-    press_button(&mut app, burst_segment);
+    press_ui_button(&mut app, burst_segment);
     app.update();
 
     assert_eq!(
@@ -1342,7 +1300,7 @@ fn end_turn_button_emits_one_end_turn_requested_without_selection() {
     let Some(end_turn) = require_button::<EndTurnButton>(&mut app) else {
         return;
     };
-    press_button(&mut app, end_turn);
+    press_ui_button(&mut app, end_turn);
     app.update();
 
     let via_button = end_turns(&app);
@@ -1395,7 +1353,7 @@ fn no_selection_makes_act_buttons_a_no_op() {
         single_with::<AimToggleButton>(&mut app),
     ];
     for button in act_buttons.into_iter().flatten() {
-        press_button(&mut app, button);
+        press_ui_button(&mut app, button);
     }
     // Several updates to prove no deferred panic / late emission.
     for _ in 0..3 {
@@ -1520,7 +1478,7 @@ fn flee_button_press_ends_battle() {
     let Some(flee) = require_button::<FleeButton>(&mut app) else {
         return;
     };
-    press_button(&mut app, flee);
+    press_ui_button(&mut app, flee);
 
     // Let `flee_button_pressed` insert the marker (Update) and `move_on` run (FixedUpdate),
     // then walk until the state leaves BattleRunning.
@@ -1560,7 +1518,7 @@ fn flee_button_inert_without_battle_in_progress() {
     // Remove the live-battle witness so the flee system's gate excludes it.
     app.world_mut().remove_resource::<BattleInProgress>();
 
-    press_button(&mut app, flee);
+    press_ui_button(&mut app, flee);
     // Several updates to prove no late insertion.
     for _ in 0..3 {
         app.update();
@@ -1592,7 +1550,7 @@ fn flee_button_despawns_on_exit_battle_running() {
     let Some(flee) = require_button::<FleeButton>(&mut app) else {
         return;
     };
-    press_button(&mut app, flee);
+    press_ui_button(&mut app, flee);
 
     let left_battle_running = advance_until(
         &mut app,
@@ -1677,25 +1635,10 @@ fn armed_registry() -> WeaponRegistry {
     WeaponRegistry::new([(
         WeaponName::new(PLAYER_WEAPON_KEY.to_owned()),
         WeaponSpec {
-            base_spread: BaseSpread::new(0.25),
-            accuracy:    Accuracy::new(1.0),
-            kickback:    Kickback::new(0.4),
-            fatal_bias:  FatalBias::new(0.0),
-            damage:      WeaponDamage::new(12),
-            punch:       WeaponPunch::new(5),
-            shred:       WeaponShred::new(3),
-            damage_type: DamageType::Kinetic,
-            magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-            fire_mode:   FireMode::new(vec![spec(ModeKind::Single, 0.5, 1)]),
-            stable:      Stable::new(false),
-            shove:       Shove::new(false),
-            handedness:  Handedness::OneHanded,
-            trajectory:  TrajectoryStyle::Straight,
-            // GTW-554: no slots declared / no attachments fitted (the empty defaults).
-            slots:       gdtf_battle_sim::WeaponSlots::default(),
-            attachments: Vec::new(),
-            dot:         None,
-            on_death:    None,
+            // Not Fatal-skewed (the action bar never resolves a wound) — the only
+            // divergence from the canonical fixture.
+            fatal_bias: FatalBias::new(0.0),
+            ..test_weapon_spec()
         },
     )])
 }

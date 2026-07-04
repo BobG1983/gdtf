@@ -54,14 +54,13 @@ use gdtf_battle_sim::{
     surface::{SlabState, SurfaceGrid},
     test_support::{
         GangerSpawnBuilder, SituationBuilder, TEST_WEAPON_KEY, test_armor_registry,
-        test_melee_weapon_registry,
+        test_melee_weapon_registry, test_weapon_spec,
     },
     tuning::{CombatTuning, ViewRange},
     weapon::{
-        Accuracy, BaseSpread, BlastRadius, DamageType, FatalBias, FireMode, FireModeSpec,
-        Handedness, HitType, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, Shove, Stable, TrajectoryStyle, WeaponDamage, WeaponName, WeaponPunch,
-        WeaponRegistry, WeaponShred, WeaponSpec,
+        Accuracy, BaseSpread, BlastRadius, DamageType, FatalBias, FireMode, FireModeSpec, HitType,
+        Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, TrajectoryStyle,
+        WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponSpec,
     },
 };
 
@@ -215,15 +214,14 @@ fn authored_arc_trajectory_parses() {
 fn grenade_spec(radius: u8) -> WeaponSpec {
     WeaponSpec {
         base_spread: BaseSpread::new(0.2),
-        accuracy:    Accuracy::new(0.8),
-        kickback:    Kickback::new(0.0),
-        fatal_bias:  FatalBias::new(2.0),
-        damage:      WeaponDamage::new(20),
-        punch:       WeaponPunch::new(30),
-        shred:       WeaponShred::new(3),
+        accuracy: Accuracy::new(0.8),
+        kickback: Kickback::new(0.0),
+        fatal_bias: FatalBias::new(2.0),
+        damage: WeaponDamage::new(20),
+        punch: WeaponPunch::new(30),
         damage_type: DamageType::Blast,
-        magazine:    Magazine::loaded(MagazineSize::new(4), ReloadTu::new(18)),
-        fire_mode:   FireMode::new(vec![FireModeSpec::with_hit_type(
+        magazine: Magazine::loaded(MagazineSize::new(4), ReloadTu::new(18)),
+        fire_mode: FireMode::new(vec![FireModeSpec::with_hit_type(
             ModeKind::Single,
             ModeConeMult::new(1.0),
             ModeTuPercent::new(0.35),
@@ -232,15 +230,8 @@ fn grenade_spec(radius: u8) -> WeaponSpec {
                 radius: BlastRadius::new(radius),
             },
         )]),
-        stable:      Stable::new(false),
-        shove:       Shove::new(false),
-        handedness:  Handedness::OneHanded,
-        trajectory:  TrajectoryStyle::Arc,
-        // GTW-554: a thrown grenade offers no attachment slots (the empty defaults).
-        slots:       gdtf_battle_sim::WeaponSlots::default(),
-        attachments: Vec::new(),
-        dot:         None,
-        on_death:    None,
+        trajectory: TrajectoryStyle::Arc,
+        ..test_weapon_spec()
     }
 }
 

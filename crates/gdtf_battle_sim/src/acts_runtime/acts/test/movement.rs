@@ -135,13 +135,11 @@ fn move_dispatch_steps_the_actor_and_spends_the_dest_terrain_cost() {
 
 #[test]
 fn move_dispatch_and_occupancy_co_schedule_fills_dest_and_frees_source() {
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
-    // BOTH plugins tag into SimSystems::Simulate; OccupancyMaintenancePlugin owns the
-    // set's configure_sets, SimActsPlugin only `.in_set`s into it.
+    // The canonical acts harness (SimActsPlugin + litany + full vision) plus the live
+    // maintenance layer: OccupancyMaintenancePlugin owns SimSystems::Simulate's
+    // configure_sets, SimActsPlugin only `.in_set`s into it.
+    let mut app = headless_app();
     app.add_plugins(OccupancyMaintenancePlugin);
-    app.add_plugins(SimActsPlugin);
-    insert_sim_resources(&mut app);
 
     let source = CellLevel::new(Cell::new(10, 10), Level::new(0));
     let dest = CellLevel::new(Cell::new(11, 10), Level::new(0)); // Open, empty, in-bounds
@@ -240,14 +238,11 @@ fn enemy_never_routes_through_a_downed_friendly() {
 
     const ENEMY_GANG: u8 = 9; // any gang != TEST_PLAYER_GANG (the player/friendly gang)
 
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
-    // The live maintenance layer (owns the SimSystems::Simulate set + sync_dead_gangers,
-    // the system under test) + the act dispatch (dispatch_move / advance_walk). Both tag
-    // into SimSystems::Simulate; OccupancyMaintenancePlugin owns its configure_sets.
+    // The canonical acts harness (SimActsPlugin + litany + full vision) plus the live
+    // maintenance layer (owns the SimSystems::Simulate set + sync_dead_gangers, the
+    // system under test); OccupancyMaintenancePlugin owns its configure_sets.
+    let mut app = headless_app();
     app.add_plugins(OccupancyMaintenancePlugin);
-    app.add_plugins(SimActsPlugin);
-    insert_sim_resources(&mut app);
 
     let downed_cell = CellLevel::new(Cell::new(11, 10), Level::new(0));
     let dest = CellLevel::new(Cell::new(12, 10), Level::new(0));
@@ -520,7 +515,6 @@ fn walk_bump_stop_halts_on_a_tag_only_path_block_added_mid_walk() {
     // The live maintenance layer owns the SimSystems::Simulate set + project_path_blocking;
     // SimActsPlugin only `.in_set`s `advance_walk` into it (ordered .after(project_path_blocking)).
     app.add_plugins(OccupancyMaintenancePlugin);
-    insert_sim_resources(&mut app);
 
     // A straight, fully-OPEN east route (10,10)->(14,10): every route cell is Open, so the
     // kind-based `is_blocked` is FALSE on ALL of them — the bump-stop reading kind would

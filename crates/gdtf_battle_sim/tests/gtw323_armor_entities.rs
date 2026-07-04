@@ -24,29 +24,18 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Aim, Aiming, ArmorIntegrity, BattleGrids, BattleRegistries, BattleSeed, BattleSetup,
-    BraceStairCells, Cell, CombatTuning, CoverLedger, Direction, Facing, Faction, FireModeSpec,
-    GangerStatTuning, InjuryRegistry, InjuryRng, InjuryTables, Level, MeleeQuery, ModeConeMult,
-    ModeKind, ModeShots, ModeTuPercent, MountedQuery, OccupancyGrid, PieceQuery, SeverityRng,
-    ShooterQuery, ShotKind, ShotRng, SlabLedger, Stance, StanceKind, SurfaceGrid, TargetQuery,
-    Volley, WeaponQuery, Wears, WearsQuery, WieldsQuery,
+    Aim, Aiming, ArmorIntegrity, BattleGrids, BattleRegistries, BattleSetup, BraceStairCells, Cell,
+    CombatTuning, CoverLedger, Direction, Facing, Faction, GangerStatTuning, InjuryRegistry,
+    InjuryTables, Level, MeleeQuery, MountedQuery, OccupancyGrid, PieceQuery, ShooterQuery,
+    ShotKind, SlabLedger, Stance, StanceKind, SurfaceGrid, TargetQuery, Volley, WeaponQuery, Wears,
+    WearsQuery, WieldsQuery,
     fire::FireOrder,
     setup_battle,
     test_support::{
-        GangerSpawnBuilder, SituationBuilder, key, test_armor_registry, test_melee_weapon_registry,
-        test_weapon_registry,
+        GangerSpawnBuilder, SituationBuilder, injury_rng, key, severity_rng, shot_rng, single_mode,
+        test_armor_registry, test_melee_weapon_registry, test_weapon_registry,
     },
 };
-
-/// One single-shot fire-mode spec (arbitrary, non-pinned per-mode numbers).
-const fn single_mode() -> FireModeSpec {
-    FireModeSpec::new(
-        ModeKind::Single,
-        ModeConeMult::new(1.0),
-        ModeTuPercent::new(0.2),
-        ModeShots::new(1),
-    )
-}
 
 /// The shooter's cell and the enemy's cell — a few cells apart, enemy due East.
 const fn shooter_at() -> bevy::math::IVec2 {
@@ -147,9 +136,9 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         MountedQuery<'w, 's>,
     );
     let tuning = CombatTuning::default();
-    let mut rng = ShotRng::from_root(BattleSeed::new(seed));
-    let mut sev_rng = SeverityRng::from_root(BattleSeed::new(seed));
-    let mut injury_rng = InjuryRng::from_root(BattleSeed::new(seed));
+    let mut rng = shot_rng(seed);
+    let mut sev_rng = severity_rng(seed);
+    let mut injury_rng = injury_rng(seed);
     let occupancy = app
         .world()
         .get_resource::<OccupancyGrid>()
@@ -170,7 +159,7 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         .get_resource::<SlabLedger>()
         .cloned()
         .unwrap_or_default();
-    let mode = single_mode();
+    let mode = single_mode(0.2, 1);
 
     let mut state: SystemState<FireQueries> = SystemState::new(app.world_mut());
     let volley = {

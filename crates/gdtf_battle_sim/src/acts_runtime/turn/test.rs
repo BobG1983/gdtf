@@ -9,18 +9,10 @@ use bevy::prelude::{App, Entity, Messages, MinimalPlugins, World};
 
 use crate::{
     acts::{EndTurnRequested, SimActsPlugin},
-    battle::PlayerFaction,
-    cover::CoverLedger,
     ganger::{Faction, Tu, TuMax},
-    occupancy::OccupancyGrid,
-    rng::{BattleSeed, InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng},
-    slab::{BraceStairCells, SlabLedger},
-    surface::SurfaceGrid,
-    terrain::floor::FloorCostGrid,
-    tuning::CombatTuning,
+    rng::BattleSeed,
+    test_support::insert_sim_resources,
     turn::{ActiveFaction, TurnStarted, regen_team_tu},
-    vertical::VerticalLinkGraph,
-    visibility::SquadVisibility,
 };
 
 /// A fixed seed for the per-test RNG stream (arbitrary, not tuned).
@@ -52,34 +44,11 @@ fn turn_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(SimActsPlugin);
-    app.insert_resource(OccupancyGrid::new());
-    app.insert_resource(SurfaceGrid::new());
-    app.insert_resource(CoverLedger::new());
-    // GTW-365: `dispatch_fire` reads `ResMut<SlabLedger>` — seed an empty ledger.
-    app.insert_resource(SlabLedger::new());
-    // GTW-392: `dispatch_fire` reads `Res<BraceStairCells>` — seed an empty set.
-    app.insert_resource(BraceStairCells::empty());
-    // GTW-354: this harness has no `BattleInProgress` gate (it omits the
-    // `OccupancyMaintenancePlugin` that owns the Simulate `configure_sets`), so the bundled
-    // `dispatch_move` runs ungated and its route-gate reads must validate — seed an empty
-    // `VerticalLinkGraph` + `SquadVisibility` (these turn-cycle tests never move).
-    app.insert_resource(VerticalLinkGraph::default());
-    app.insert_resource(SquadVisibility::default());
-    // GTW-14: five per-subsystem streams from the test seed.
-    let seed = BattleSeed::new(SEED);
-    app.insert_resource(ShotRng::from_root(seed));
-    app.insert_resource(SeverityRng::from_root(seed));
-    app.insert_resource(LootRng::from_root(seed));
-    app.insert_resource(InjuryRng::from_root(seed));
-    app.insert_resource(ProcgenRng::from_root(seed));
-    let tuning = CombatTuning::default();
-    // GTW-396: `dispatch_move` reads `Res<FloorCostGrid>` — seed a uniform grid at the
-    // default open cost so the turn-cycle tests (which never move) don't panic on a
-    // missing resource.
-    app.insert_resource(FloorCostGrid::new(tuning.move_costs.open, []));
-    app.insert_resource(tuning);
+    // The canonical seeding litany (GTW-576) — grids, ledgers, five RNG streams, empty
+    // injury content, default tuning + uniform floor costs, PlayerFaction on gang 0
+    // (== PLAYER here) — plus the turn engine's ActiveFaction seed.
+    insert_sim_resources(&mut app, BattleSeed::new(SEED));
     app.insert_resource(ActiveFaction::new(PLAYER));
-    app.insert_resource(PlayerFaction::new(PLAYER));
     app
 }
 

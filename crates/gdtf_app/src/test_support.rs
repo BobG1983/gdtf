@@ -36,9 +36,21 @@
 use bevy::{
     app::App,
     input::InputPlugin,
-    state::app::{AppExtStates, StatesPlugin},
+    state::{
+        app::{AppExtStates, StatesPlugin},
+        state::State,
+    },
 };
 pub use gdtf_ui::UiPlugin;
+
+/// Reads the current [`AppState`] — the ONE read-back helper the integration-test
+/// files share (GTW-576), replacing the per-file `app_state` copies. Panics only if
+/// the app never registered [`AppState`], which for a GDTF harness is a broken
+/// fixture, not a runtime condition.
+#[must_use]
+pub fn app_state(app: &App) -> AppState {
+    app.world().resource::<State<AppState>>().get().clone()
+}
 
 // The GTW-577 shared capture EXIT — gated exactly like its module (`dev_capture` debug
 // builds only), so the headless pin test (`tests/capture_quit.rs`, itself

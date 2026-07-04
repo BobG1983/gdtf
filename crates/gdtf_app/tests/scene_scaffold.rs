@@ -21,8 +21,8 @@
 //! pop-out) stay in `tests/state_walk.rs`; this file is the scaffold-shaped
 //! slice.
 
-use bevy::{app::App, ecs::resource::Resource, state::state::State};
-use gdtf_app::test_support::{AppState, LoadedSituation};
+use bevy::{app::App, ecs::resource::Resource};
+use gdtf_app::test_support::{AppState, LoadedSituation, app_state};
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
     situation::Situation,
@@ -89,11 +89,6 @@ fn scaffold_walk_app() -> App {
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
     app
-}
-
-/// Reads the current [`AppState`] (`Clone` but not `Copy`).
-fn app_state(app: &App) -> AppState {
-    app.world().resource::<State<AppState>>().get().clone()
 }
 
 /// The scoped probe is absent before `Load`, present with its seeded value in

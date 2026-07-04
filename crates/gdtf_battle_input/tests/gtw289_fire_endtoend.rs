@@ -42,19 +42,19 @@ use bevy::{
 use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, ViewMode, WorldCamera};
 use gdtf_battle_sim::{
-    Accuracy, Aiming, BaseSpread, BattleInProgress, BattleSeed, BraceStairCells, Cell, CellLevel,
-    CoverLedger, DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FightMode,
-    FightModeKind, FightModeSpec, FireMode, FireModeSpec, FloorCostGrid, Handedness,
-    HandlingProfile, HeightBand, Hp, InflictedWounds, InjuryRng, Kickback, Level, LifeState,
-    LootRng, Luck, Magazine, MagazineSize, MeleeDamageProfile, MeleeWeaponBundle, ModeConeMult,
-    ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction,
-    Position, ProcgenRng, Reach, ReloadTu, SeverityRng, Shooting, ShotRng, Shove, SlabLedger,
-    SquadVisibility, Stable, Stance, StanceKind, Strikes, SurfaceGrid, Toughness, Tu, TuCost,
-    TuMax, VerticalLinkGraph, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
-    WieldedBy, Wounds, acts::SimActsPlugin, tuning::CombatTuning,
+    Accuracy, Aiming, BaseSpread, BattleInProgress, BattleSeed, Cell, CellLevel, DamageProfile,
+    DamageType, Direction, Facing, Faction, FatalBias, FightMode, FightModeKind, FightModeSpec,
+    FireMode, Handedness, HandlingProfile, HeightBand, Hp, InflictedWounds, Kickback, Level,
+    LifeState, Luck, Magazine, MagazineSize, MeleeDamageProfile, MeleeWeaponBundle, OccupancyGrid,
+    OccupancyMaintenancePlugin, Position, Reach, ReloadTu, Shooting, Shove, SquadVisibility,
+    Stable, Stance, StanceKind, Strikes, Toughness, Tu, TuCost, TuMax, WeaponBundle, WeaponDamage,
+    WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds,
+    acts::SimActsPlugin,
+    test_support::{TEST_SEED, insert_sim_resources, single_mode},
 };
+use gdtf_test_utils::{clear_mouse, press_left};
 
-/// The faction the player controls (matches `PlayerFaction`).
+/// The faction the player controls (matches the litany's gang-0 `PlayerFaction` seed).
 const PLAYER_FACTION: Faction = Faction::new(0);
 /// An ENEMY faction (distinct from the player) — the FIRE target.
 const ENEMY_FACTION: Faction = Faction::new(1);
@@ -65,16 +65,6 @@ const TARGET_SIZE: Vec2 = Vec2::new(1280.0, 720.0);
 const SHOOTER_CURSOR_OFFSET: Vec2 = Vec2::new(40.0, 32.0);
 /// A second, distinct cursor offset resolving to a different in-grid TARGET cell.
 const TARGET_CURSOR_OFFSET: Vec2 = Vec2::new(200.0, 160.0);
-
-/// One single-shot fire-mode spec (arbitrary, non-pinned per-mode numbers).
-const fn single_mode() -> FireModeSpec {
-    FireModeSpec::new(
-        ModeKind::Single,
-        ModeConeMult::new(1.0),
-        ModeTuPercent::new(0.2),
-        ModeShots::new(1),
-    )
-}
 
 /// A deterministic `Camera` whose `viewport_to_world_2d` succeeds with no render pipeline
 /// (the `picking.rs` synthetic-camera recipe).
@@ -114,43 +104,18 @@ fn endtoend_app() -> App {
         .add_plugins(GdtfBattleInputPlugin)
         .add_plugins(SimActsPlugin)
         .add_plugins(OccupancyMaintenancePlugin);
+    // The canonical sim-resource litany (GTW-576) the `SimActsPlugin` dispatch band
+    // reads — the empty grids/ledgers, fog + link graph, the five RNG streams derived
+    // from `TEST_SEED` (this suite's historical seed), empty injury content,
+    // `CombatTuning::default`, a uniform `FloorCostGrid`, and `PlayerFaction` on gang 0
+    // (== `PLAYER_FACTION`). COMPOSED from `gdtf_battle_sim::test_support` instead of
+    // mirroring the litany line-by-line; the suite-specific resources follow.
+    insert_sim_resources(&mut app, BattleSeed::new(TEST_SEED));
     app.world_mut()
         .insert_resource(ActiveLevel::new(Level::new(0)));
     // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
     app.world_mut().insert_resource(ViewMode::default());
     app.world_mut().insert_resource(BattleInProgress);
-    app.world_mut().insert_resource(OccupancyGrid::default());
-    app.world_mut().insert_resource(SurfaceGrid::new());
-    app.world_mut().insert_resource(CoverLedger::new());
-    // GTW-365: `dispatch_fire` reads `ResMut<SlabLedger>` — seed an empty ledger so the
-    // dispatch param validates.
-    app.world_mut().insert_resource(SlabLedger::new());
-    // GTW-392: `dispatch_fire` reads `Res<BraceStairCells>` — seed an empty set (no stair
-    // cells in this harness) so the terrain-brace gate param validates.
-    app.world_mut().insert_resource(BraceStairCells::empty());
-    // GTW-354: the constrained `dispatch_move` reads `Res<VerticalLinkGraph>` +
-    // `Res<SquadVisibility>` for its route gate, so seed them (empty graph + empty fog —
-    // this fire-path test never moves, so the route gate result is irrelevant; the
-    // resources need only exist so `dispatch_move`'s params validate).
-    app.world_mut()
-        .insert_resource(VerticalLinkGraph::default());
-    app.world_mut().insert_resource(SquadVisibility::default());
-    // GTW-396: `dispatch_move` reads `Res<FloorCostGrid>` — seed a uniform grid at the
-    // default open cost so the dispatch params validate (this test fires, never moves).
-    let default_open = CombatTuning::default().move_costs.open;
-    app.world_mut()
-        .insert_resource(FloorCostGrid::new(default_open, []));
-    app.world_mut().insert_resource(CombatTuning::default());
-    app.world_mut()
-        .insert_resource(PlayerFaction::new(PLAYER_FACTION));
-    // GTW-14: five per-subsystem RNG streams from the test seed.
-    let seed = BattleSeed::new(0x5A1C_AC75);
-    app.world_mut().insert_resource(ShotRng::from_root(seed));
-    app.world_mut()
-        .insert_resource(SeverityRng::from_root(seed));
-    app.world_mut().insert_resource(LootRng::from_root(seed));
-    app.world_mut().insert_resource(InjuryRng::from_root(seed));
-    app.world_mut().insert_resource(ProcgenRng::from_root(seed));
     app.world_mut()
         .insert_resource(ButtonInput::<KeyCode>::default());
     app.world_mut()
@@ -214,7 +179,7 @@ fn spawn_armed_shooter_inner(
         ),
         HandlingProfile::new(
             Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
-            FireMode::new(vec![single_mode()]),
+            FireMode::new(vec![single_mode(0.2, 1)]),
             Stable::new(true),
             Shove::new(false),
             Handedness::OneHanded,
@@ -331,20 +296,6 @@ fn set_cursor(app: &mut App, position: Option<Vec2>) {
     for mut window in windows.iter_mut(app.world_mut()) {
         window.set_cursor_position(position);
     }
-}
-
-/// Press the just-pressed edge of the left mouse button.
-fn press_left(app: &mut App) {
-    app.world_mut()
-        .resource_mut::<ButtonInput<MouseButton>>()
-        .press(MouseButton::Left);
-}
-
-/// Release + clear the mouse edges so a later press is a fresh just-pressed.
-fn clear_mouse(app: &mut App) {
-    let mut mouse = app.world_mut().resource_mut::<ButtonInput<MouseButton>>();
-    mouse.release(MouseButton::Left);
-    mouse.clear();
 }
 
 /// GTW-289 — a left-click on an ENEMY in a LEGITIMATE firing situation produces a SHOT

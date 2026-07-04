@@ -26,6 +26,7 @@ use crate::{
         CoverOnDeathRegistry, ExplodeDamage, OnDeath, OnDeathEffect, OnDeathOccurred,
         resolve_on_death,
     },
+    test_support::{GangerEntityBuilder, wield},
     tuning::CombatTuning,
     weapon::{BlastRadius, DamageType, Dot, DotDamage, DotTurns, HitType, Weapon, WieldedBy},
 };
@@ -58,14 +59,14 @@ fn life_of(app: &App, ganger: Entity) -> LifeState {
 /// A minimal weapon bundle spawned as a ganger's wielded RANGED weapon (no `MeleeWeapon` /
 /// `MountedWeapon` marker), carrying an `OnDeath` component — so `resolve_on_death` reads its
 /// effect off the ganger's `Wields` when the ganger dies.
-fn spawn_ganger_with_on_death(app: &mut App, effect: OnDeathEffect) -> Entity {
-    let ganger = app
-        .world_mut()
-        .spawn((Hp::new(1), LifeState::Dead, Position::new(ground(5, 5))))
-        .id();
+fn dead_ganger_with_on_death(app: &mut App, effect: OnDeathEffect) -> Entity {
+    let ganger = GangerEntityBuilder::new()
+        .hp(1)
+        .life_state(LifeState::Dead)
+        .at(ground(5, 5))
+        .spawn(app.world_mut());
     // A ranged weapon entity (no melee/mounted marker) related via WieldedBy, carrying OnDeath.
-    app.world_mut()
-        .spawn((Weapon, WieldedBy::new(ganger), OnDeath::new(effect)));
+    wield(app.world_mut(), ganger, (Weapon, OnDeath::new(effect)));
     ganger
 }
 
@@ -88,7 +89,7 @@ fn resolver_app() -> App {
 fn explode_on_death_damages_an_adjacent_ganger() {
     let mut app = resolver_app();
     // A dead ganger at (5,5) whose wielded weapon carries a radius-1 Blast on-death effect.
-    let dead = spawn_ganger_with_on_death(
+    let dead = dead_ganger_with_on_death(
         &mut app,
         OnDeathEffect::Explode {
             hit_type:    HitType::Blast {
@@ -126,7 +127,7 @@ fn explode_on_death_damages_an_adjacent_ganger() {
 #[test]
 fn explode_out_of_radius_ganger_is_untouched() {
     let mut app = resolver_app();
-    let dead = spawn_ganger_with_on_death(
+    let dead = dead_ganger_with_on_death(
         &mut app,
         OnDeathEffect::Explode {
             hit_type:    HitType::Blast {
@@ -195,7 +196,7 @@ fn leave_field_spawns_the_referenced_field_at_the_death_cell() {
 fn explode_chain_reaction_kills_then_terminates() {
     let mut app = resolver_app();
     // A dead ganger A at (5,5) with a radius-1 Blast dealing 100 (lethal).
-    let a = spawn_ganger_with_on_death(
+    let a = dead_ganger_with_on_death(
         &mut app,
         OnDeathEffect::Explode {
             hit_type:    HitType::Blast {

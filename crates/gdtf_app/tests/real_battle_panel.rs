@@ -24,6 +24,7 @@
 use bevy::{app::App, prelude::*, state::state::State, ui::Val};
 use gdtf_app::test_support::{
     AppState, BattleScapeState, InspectPanelRoot, RunningState, StatName, StatStance, StatTuBar,
+    app_state,
 };
 use gdtf_battle_input::SelectedShooter;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
@@ -36,11 +37,6 @@ const BUDGET: u32 = 512;
 /// The stat block's no-target empty-state copy (`stat_block/.../update.rs` `NO_TARGET`) —
 /// the string the name line is painted when there is no selection.
 const NO_TARGET: &str = "No ganger selected";
-
-/// Reads the current [`AppState`].
-fn app_state(app: &App) -> AppState {
-    app.world().resource::<State<AppState>>().get().clone()
-}
 
 /// Reads the current [`RunningState`] if it is active.
 fn running_state(app: &App) -> Option<RunningState> {

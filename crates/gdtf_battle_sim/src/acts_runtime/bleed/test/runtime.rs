@@ -15,19 +15,13 @@ use bevy::prelude::{App, Entity, Messages, MinimalPlugins};
 
 use crate::{
     acts::EndTurnRequested,
-    battle::{BattleInProgress, BattleRoster, BattleSimPlugin, PlayerFaction},
+    battle::{BattleInProgress, BattleRoster, BattleSimPlugin},
     bleed::Bleeding,
-    cover::CoverLedger,
-    ganger::{Faction, LifeState, Stabilized, Tu, TuMax, Wounds},
-    occupancy::OccupancyGrid,
-    rng::{BattleSeed, InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng},
-    slab::{BraceStairCells, SlabLedger},
-    surface::SurfaceGrid,
-    terrain::floor::FloorCostGrid,
+    ganger::{Faction, LifeState, Stabilized, Wounds},
+    rng::BattleSeed,
+    test_support::{GangerEntityBuilder, insert_sim_resources},
     tuning::CombatTuning,
     turn::ActiveFaction,
-    vertical::VerticalLinkGraph,
-    visibility::SquadVisibility,
 };
 
 /// Seed the shared battle-lifetime resources a live battle has (everything BUT the
@@ -41,35 +35,13 @@ use crate::{
 /// gate on the `SimSystems::Simulate` band — so these tests drive the exact production
 /// registration, gate included.
 fn seed_battle_resources(app: &mut App) {
-    app.insert_resource(OccupancyGrid::new());
-    app.insert_resource(SurfaceGrid::new());
-    app.insert_resource(CoverLedger::new());
-    // GTW-365: `dispatch_fire` reads `ResMut<SlabLedger>` — seed an empty ledger.
-    app.insert_resource(SlabLedger::new());
-    // GTW-392: `dispatch_fire` reads `Res<BraceStairCells>` — seed an empty set.
-    app.insert_resource(BraceStairCells::empty());
-    // GTW-354: the GTW-354 constrained `dispatch_move` (bundled by `SimActsPlugin`) reads
-    // `Res<VerticalLinkGraph>` + `Res<SquadVisibility>` for its route gate, so the live
-    // harness seeds them (empty graph + empty fog — these bleed-clock tests never move, so
-    // the route gate result is irrelevant; the resources need only exist so the band's
-    // `dispatch_move` params validate when the Simulate band runs).
-    app.insert_resource(VerticalLinkGraph::default());
-    app.insert_resource(SquadVisibility::default());
-    // GTW-14: five per-subsystem streams from the test seed.
-    let seed = BattleSeed::new(SEED);
-    app.insert_resource(ShotRng::from_root(seed));
-    app.insert_resource(SeverityRng::from_root(seed));
-    app.insert_resource(LootRng::from_root(seed));
-    app.insert_resource(InjuryRng::from_root(seed));
-    app.insert_resource(ProcgenRng::from_root(seed));
-    let tuning = CombatTuning::default();
-    // GTW-396: `dispatch_move` reads `Res<FloorCostGrid>` — seed a uniform grid at
-    // the default open cost so the bleed-clock tests (which never move) don't panic on
-    // a missing resource when the Simulate band runs.
-    app.insert_resource(FloorCostGrid::new(tuning.move_costs.open, []));
-    app.insert_resource(tuning);
+    // The canonical seeding litany (GTW-576) — grids, ledgers, five RNG streams, empty
+    // injury content, default tuning + uniform floor costs, PlayerFaction on gang 0
+    // (== PLAYER here).
+    insert_sim_resources(app, BattleSeed::new(SEED));
+    // The live-runtime extras on top of the litany: the BattleRoster the `check_outcome`
+    // census reads, and ActiveFaction on the player (the player acts first).
     app.insert_resource(BattleRoster::new([PLAYER, ENEMY]));
-    app.insert_resource(PlayerFaction::new(PLAYER));
     app.insert_resource(ActiveFaction::new(PLAYER));
 }
 
@@ -107,16 +79,14 @@ fn bleed_rate() -> u8 {
 
 /// Spawn a ganger of `faction` in the given [`LifeState`] with a Wounds pool, plus a full
 /// TU pool (so the turn engine's regen has something to act on, matching a real ganger).
-fn spawn_ganger(app: &mut App, faction: Faction, life: LifeState, wounds: u8) -> Entity {
-    app.world_mut()
-        .spawn((
-            faction,
-            life,
-            Wounds::new(wounds),
-            Tu::new(0),
-            TuMax::new(100),
-        ))
-        .id()
+fn bleeding_ganger(app: &mut App, faction: Faction, life: LifeState, wounds: u8) -> Entity {
+    GangerEntityBuilder::new()
+        .faction(faction)
+        .life_state(life)
+        .wounds(wounds)
+        .tu(0)
+        .tu_max(100)
+        .spawn(app.world_mut())
 }
 
 /// Read a ganger's current Wounds back out (0 if somehow absent — no `unwrap`).
@@ -158,7 +128,7 @@ fn a_full_round_bleeds_a_live_downed_ganger() {
     let start = rate.saturating_add(10);
 
     let mut app = live_app();
-    let downed = spawn_ganger(&mut app, PLAYER, LifeState::Downed, start);
+    let downed = bleeding_ganger(&mut app, PLAYER, LifeState::Downed, start);
 
     end_turn(&mut app);
 
@@ -194,7 +164,7 @@ fn the_clock_ticks_once_per_full_round_not_per_turn_boundary() {
     let start = rate.saturating_mul(2).saturating_add(10);
 
     let mut app = live_app();
-    let downed = spawn_ganger(&mut app, PLAYER, LifeState::Downed, start);
+    let downed = bleeding_ganger(&mut app, PLAYER, LifeState::Downed, start);
 
     end_turn(&mut app); // round 1
     assert_eq!(
@@ -222,7 +192,7 @@ fn the_live_clock_depletes_a_downed_ganger_to_dead() {
     let start = rate.saturating_mul(2);
 
     let mut app = live_app();
-    let downed = spawn_ganger(&mut app, PLAYER, LifeState::Downed, start);
+    let downed = bleeding_ganger(&mut app, PLAYER, LifeState::Downed, start);
 
     end_turn(&mut app);
     assert_eq!(
@@ -255,11 +225,11 @@ fn the_live_clock_skips_alive_dead_and_stabilized_gangers() {
     let start = rate.saturating_add(10);
 
     let mut app = live_app();
-    let alive = spawn_ganger(&mut app, PLAYER, LifeState::Alive, start);
-    let dead = spawn_ganger(&mut app, PLAYER, LifeState::Dead, start);
-    let downed = spawn_ganger(&mut app, ENEMY, LifeState::Downed, start);
+    let alive = bleeding_ganger(&mut app, PLAYER, LifeState::Alive, start);
+    let dead = bleeding_ganger(&mut app, PLAYER, LifeState::Dead, start);
+    let downed = bleeding_ganger(&mut app, ENEMY, LifeState::Downed, start);
     // A stabilized Downed ganger — an ally dressed the wound; the clock is halted.
-    let stabilized = spawn_ganger(&mut app, PLAYER, LifeState::Downed, start);
+    let stabilized = bleeding_ganger(&mut app, PLAYER, LifeState::Downed, start);
     app.world_mut()
         .entity_mut(stabilized)
         .insert(Stabilized::new(true));
@@ -324,7 +294,7 @@ fn no_battle_in_progress_means_no_bleed() {
     app.add_plugins(BattleSimPlugin);
     seed_battle_resources(&mut app);
 
-    let downed = spawn_ganger(&mut app, PLAYER, LifeState::Downed, start);
+    let downed = bleeding_ganger(&mut app, PLAYER, LifeState::Downed, start);
 
     end_turn(&mut app);
 

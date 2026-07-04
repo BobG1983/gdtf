@@ -46,13 +46,11 @@ use gdtf_app::test_support::{
     MemberNameField, MemberRow, MemberRowIndex, MemberWeaponDropdown, RunningState,
 };
 use gdtf_battle_sim::{
-    Accuracy, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
-    ArmorRegistry, ArmorSpec, ArmorType, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec,
-    Kickback, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, ReloadTu,
-    Shove, Stable, TrajectoryStyle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry,
-    WeaponShred, WeaponSpec, weapon::Handedness,
+    ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
+    ArmorRegistry, ArmorSpec, ArmorType, FatalBias, WeaponName, WeaponRegistry, WeaponSpec,
+    test_support::test_weapon_spec,
 };
-use gdtf_test_utils::GdtfTestAppBuilder;
+use gdtf_test_utils::{GdtfTestAppBuilder, press_ui_button};
 use gdtf_ui::{
     CommittedTextValue, DropdownSelectionChanged, ScrollListArea, TextFieldCommitted,
     theme::default_theme,
@@ -73,30 +71,10 @@ const ARMOR_B: &str = "Mesh";
 /// are immaterial. Mirrors `action_bar.rs`'s `armed_registry` shape.
 fn arbitrary_weapon() -> WeaponSpec {
     WeaponSpec {
-        base_spread: BaseSpread::new(0.25),
-        accuracy:    Accuracy::new(1.0),
-        kickback:    Kickback::new(0.4),
-        fatal_bias:  FatalBias::new(0.0),
-        damage:      WeaponDamage::new(12),
-        punch:       WeaponPunch::new(5),
-        shred:       WeaponShred::new(3),
-        damage_type: DamageType::Kinetic,
-        magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-        fire_mode:   FireMode::new(vec![FireModeSpec::new(
-            ModeKind::Single,
-            ModeConeMult::new(1.0),
-            ModeTuPercent::new(0.5),
-            ModeShots::new(1),
-        )]),
-        stable:      Stable::new(false),
-        shove:       Shove::new(false),
-        handedness:  Handedness::OneHanded,
-        trajectory:  TrajectoryStyle::Straight,
-        // GTW-554: no slots declared / no attachments fitted (the empty defaults).
-        slots:       gdtf_battle_sim::WeaponSlots::default(),
-        attachments: Vec::new(),
-        dot:         None,
-        on_death:    None,
+        // Not Fatal-skewed (the editor never resolves a wound) — the only divergence
+        // from the canonical fixture.
+        fatal_bias: FatalBias::new(0.0),
+        ..test_weapon_spec()
     }
 }
 
@@ -167,9 +145,7 @@ fn press_add_member(app: &mut App) {
         .world_mut()
         .query_filtered::<Entity, With<AddMemberButton>>();
     let button = q.iter(app.world()).next().unwrap_or(Entity::PLACEHOLDER);
-    if let Some(mut interaction) = app.world_mut().get_mut::<Interaction>(button) {
-        *interaction = Interaction::Pressed;
-    }
+    press_ui_button(app, button);
     app.update();
     // Flush the deferred parent-into-area command + let the new row settle.
     app.update();

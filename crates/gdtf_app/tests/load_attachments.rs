@@ -22,8 +22,7 @@
 //! `gtw549_attachments`); this harness proves the REAL
 //! `assets/content/attachments/` folder loads through the Load code path.
 
-use bevy::state::state::State;
-use gdtf_app::test_support::AppState;
+use gdtf_app::test_support::{AppState, app_state};
 use gdtf_battle_sim::weapon::{
     AttachmentName, AttachmentRegistry, MeleeWeaponRegistry, WeaponName, WeaponRegistry,
     attachment_fits,
@@ -37,11 +36,6 @@ use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 /// has NO fixed frame count. The wait keys off the resolved SIGNAL; the cap is a safety net
 /// against a genuine never-resolve hang, not a timing budget (GTW-305, mirroring `load_weapons`).
 const LOAD_SAFETY_NET: u32 = 10_000;
-
-/// Reads the current [`AppState`].
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world().resource::<State<AppState>>().get().clone()
-}
 
 /// GTW-549 (tier b) — with a real `AssetServer` rooted at the workspace `assets/`, entering
 /// `Load` loads `assets/content/attachments/*.attachment.ron` and builds an

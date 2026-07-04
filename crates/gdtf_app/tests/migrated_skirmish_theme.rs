@@ -12,7 +12,7 @@
 //!
 //! VALUE-AGNOSTIC (gate 4a / C6): identity / resolution / consistency only — no magnitude pinned.
 
-use gdtf_app::test_support::{AppState, LoadedSituation};
+use gdtf_app::test_support::{AppState, LoadedSituation, app_state};
 use gdtf_battle_sim::level::{ThemeUuid, UuidThemeRegistry};
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
@@ -23,14 +23,6 @@ const LOAD_SAFETY_NET: u32 = 10_000;
 /// (matches the migrated `industrial_hive.terrain_theme.ron` key).
 const fn industrial_hive_theme() -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a90_0001))
-}
-
-/// Reads the current [`AppState`].
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world()
-        .resource::<bevy::state::state::State<AppState>>()
-        .get()
-        .clone()
 }
 
 /// GTW-490 C5 — `skirmish.ron` resolves through the situation loader, names the migrated

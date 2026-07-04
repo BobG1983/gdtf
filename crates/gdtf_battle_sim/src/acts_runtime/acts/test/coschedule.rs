@@ -72,13 +72,11 @@ fn no_messages_means_no_mutation() {
 
 #[test]
 fn dispatch_and_occupancy_co_schedule_and_a_kill_frees_the_slot() {
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
-    // BOTH plugins tag their systems into SimSystems::Simulate. OccupancyMaintenancePlugin
-    // owns the set's configure_sets (E10.0); SimActsPlugin only `.in_set`s into it.
+    // The canonical acts harness (SimActsPlugin + litany + full vision) plus the live
+    // maintenance layer: OccupancyMaintenancePlugin owns SimSystems::Simulate's
+    // configure_sets (E10.0), SimActsPlugin only `.in_set`s into it.
+    let mut app = headless_app();
     app.add_plugins(OccupancyMaintenancePlugin);
-    app.add_plugins(SimActsPlugin);
-    insert_sim_resources(&mut app);
 
     // A shooter aiming at a LOW-HP in-line target so the volley downs/kills it.
     let mode = single_mode(0.2, 1);

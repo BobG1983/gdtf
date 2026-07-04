@@ -16,12 +16,13 @@ use bevy::prelude::{App, Entity, MinimalPlugins};
 use super::{EmplacementOccupant, EmplacementState, EmplacementTogglePlugin, SetEmplacement};
 use crate::{
     cover::HeightBand,
-    ganger::{Stance, StanceKind},
+    ganger::StanceKind,
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     occupancy_sync::OccupancyMaintenancePlugin,
     surface::SurfaceGrid,
     terrain::entity::TerrainCell,
+    test_support::GangerEntityBuilder,
 };
 
 /// A `(x, y, level)` cell-key helper.
@@ -52,8 +53,10 @@ fn spawn_vacant_emplacement(app: &mut App, at: CellLevel) -> Entity {
 }
 
 /// Spawn a ganger-stand-in carrying `stance` (the occupant whose band the vacate path restores).
-fn spawn_ganger(app: &mut App, stance: StanceKind) -> Entity {
-    app.world_mut().spawn(Stance::new(stance)).id()
+fn stanced_ganger(app: &mut App, stance: StanceKind) -> Entity {
+    GangerEntityBuilder::new()
+        .stance(stance)
+        .spawn(app.world_mut())
 }
 
 /// The emplacement's current [`EmplacementState`], if it still carries one.
@@ -94,7 +97,7 @@ fn occupy_forces_high_band_and_vacate_restores_from_stance() {
     // A CROUCHING occupant — its stance silhouette is MID, so a correct restore lands on MID
     // (distinct from the forced HIGH, so the restore-from-stance is discriminating, not a
     // coincidental HIGH).
-    let ganger = spawn_ganger(&mut app, StanceKind::Crouching);
+    let ganger = stanced_ganger(&mut app, StanceKind::Crouching);
     app.update();
 
     assert_eq!(
@@ -152,7 +155,7 @@ fn vacate_restores_standing_band() {
     let at = key(7, 2, 0);
     let mut app = headless_app();
     let emplacement = spawn_vacant_emplacement(&mut app, at);
-    let ganger = spawn_ganger(&mut app, StanceKind::Standing);
+    let ganger = stanced_ganger(&mut app, StanceKind::Standing);
     app.update();
 
     toggle_and_settle(&mut app, SetEmplacement::occupy(emplacement, ganger));
@@ -172,8 +175,8 @@ fn occupy_on_occupied_is_rejected_no_force_eject() {
     let at = key(5, 5, 0);
     let mut app = headless_app();
     let emplacement = spawn_vacant_emplacement(&mut app, at);
-    let first = spawn_ganger(&mut app, StanceKind::Standing);
-    let second = spawn_ganger(&mut app, StanceKind::Prone);
+    let first = stanced_ganger(&mut app, StanceKind::Standing);
+    let second = stanced_ganger(&mut app, StanceKind::Prone);
     app.update();
 
     toggle_and_settle(&mut app, SetEmplacement::occupy(emplacement, first));
@@ -209,7 +212,7 @@ fn occupy_on_occupied_is_rejected_no_force_eject() {
 fn toggle_panic_free_on_non_emplacement() {
     let mut app = headless_app();
     let plain: Entity = app.world_mut().spawn(TerrainCell::new(key(9, 9, 0))).id();
-    let ganger = spawn_ganger(&mut app, StanceKind::Standing);
+    let ganger = stanced_ganger(&mut app, StanceKind::Standing);
     app.update();
 
     toggle_and_settle(&mut app, SetEmplacement::occupy(plain, ganger));
@@ -227,7 +230,7 @@ fn toggle_is_deterministic() {
     let run = || {
         let mut app = headless_app();
         let emplacement = spawn_vacant_emplacement(&mut app, at);
-        let ganger = spawn_ganger(&mut app, StanceKind::Standing);
+        let ganger = stanced_ganger(&mut app, StanceKind::Standing);
         app.update();
         toggle_and_settle(&mut app, SetEmplacement::occupy(emplacement, ganger));
         toggle_and_settle(&mut app, SetEmplacement::vacate(emplacement, ganger));

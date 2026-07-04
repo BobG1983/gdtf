@@ -43,15 +43,17 @@ use bevy::{
 };
 use gdtf_app::test_support::{AppState, GameState, RunningState};
 use gdtf_battle_input::{
-    GdtfBattleInputActive, GdtfBattleInputPlugin, InspectTarget, emit_highlight_request,
-    world_to_cell,
+    GdtfBattleInputActive, GdtfBattleInputPlugin, InspectTarget, world_to_cell,
 };
 use gdtf_battle_presenter::{ActiveLevel, CellVisibility, HighlightRequest, ViewMode, WorldCamera};
 use gdtf_battle_sim::{
     BattleInProgress, CellLevel, Faction, Level, OccupancyGrid, PlayerFaction, SquadVisibility,
     TerrainKind, VerticalLinkGraph, acts::MoveRequested, tuning::CombatTuning,
 };
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
+use gdtf_test_utils::{
+    GdtfTestAppBuilder, MessageProbe, MessageProbePlugin, advance_until, clear_mouse, press_left,
+    probed,
+};
 use gdtf_ui::theme::default_theme;
 
 /// A budget large enough to drive the deep walk into the battlescape, bounded so a
@@ -389,7 +391,9 @@ fn fog_hidden_enemy_occupant_does_not_light_the_reticle() {
     // FOG case — the occupant's cell is NOT squad-VISIBLE: the reticle must stay hidden (None),
     // never betraying where the fog hides the enemy.
     make_cells_visible(&mut app, &[]);
-    app.world_mut().resource_mut::<HighlightProbe>().0.clear();
+    app.world_mut()
+        .resource_mut::<MessageProbe<HighlightRequest>>()
+        .clear();
     app.update();
     assert_eq!(
         requests(&app),
@@ -400,7 +404,9 @@ fn fog_hidden_enemy_occupant_does_not_light_the_reticle() {
     // VISIBLE case (positive control) — the SAME cell is now squad-VISIBLE: the reticle lights
     // on it, carrying the SquadVisible verdict.
     make_cells_visible(&mut app, &[resolved]);
-    app.world_mut().resource_mut::<HighlightProbe>().0.clear();
+    app.world_mut()
+        .resource_mut::<MessageProbe<HighlightRequest>>()
+        .clear();
     app.update();
     assert_eq!(
         requests(&app),
@@ -416,32 +422,19 @@ fn fog_hidden_enemy_occupant_does_not_light_the_reticle() {
 // GTW-251 AC1 — the picker EMITS a `HighlightRequest` matching `InspectTarget`.
 // ---------------------------------------------------------------------------------
 
-/// The `HighlightRequest`s the probe drained this run (test-only framework plumbing —
-/// a `Vec` collector so the assert reads exactly what `emit_highlight_request` wrote).
-#[derive(Resource, Default)]
-struct HighlightProbe(Vec<HighlightRequest>);
-
 /// Adds a probe that drains `Messages<HighlightRequest>` AFTER `emit_highlight_request`
 /// so it collects every request the emitter wrote this update (its own `MessageReader`
 /// cursor, independent of the presenter's `draw_highlight_on_request` reader).
 fn add_highlight_probe(app: &mut App) {
-    app.insert_resource(HighlightProbe::default());
-    app.add_systems(
-        Update,
-        (|mut r: MessageReader<HighlightRequest>, mut p: ResMut<HighlightProbe>| {
-            p.0.extend(r.read().copied());
-        })
-        .after(emit_highlight_request),
-    );
+    // The generic GTW-576 message probe — its `Last`-schedule drain observes the same
+    // update's `emit_highlight_request` write with its own reader cursor.
+    app.add_plugins(MessageProbePlugin::<HighlightRequest>::default());
 }
 
 /// The requests the probe collected on the latest update (cleared each update because
 /// the probe `extend`s — the test reads them right after the relevant `update()`).
 fn requests(app: &App) -> Vec<HighlightRequest> {
-    app.world()
-        .get_resource::<HighlightProbe>()
-        .map(|p| p.0.clone())
-        .unwrap_or_default()
+    probed::<HighlightRequest>(app)
 }
 
 /// GTW-251 AC1 + GTW-268 — the picker emits a `HighlightRequest` matching `InspectTarget`,
@@ -480,7 +473,9 @@ fn picker_emits_highlight_request_matching_hovered_cell() {
     if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
         grid.set_terrain(resolved, TerrainKind::Cover);
     }
-    app.world_mut().resource_mut::<HighlightProbe>().0.clear();
+    app.world_mut()
+        .resource_mut::<MessageProbe<HighlightRequest>>()
+        .clear();
     app.update();
     assert_eq!(
         requests(&app),
@@ -494,7 +489,9 @@ fn picker_emits_highlight_request_matching_hovered_cell() {
     let cursor_off = TARGET_SIZE * 0.5 - Vec2::new(64.0, 0.0);
     set_cursor(&mut app, Some(cursor_off));
     // Reset the probe so we read only THIS update's emit.
-    app.world_mut().resource_mut::<HighlightProbe>().0.clear();
+    app.world_mut()
+        .resource_mut::<MessageProbe<HighlightRequest>>()
+        .clear();
     app.update();
 
     assert_eq!(
@@ -568,51 +565,15 @@ fn move_path_app(active_level: Level) -> App {
     app.world_mut()
         .insert_resource(gdtf_battle_input::SelectedShooter::new(ganger));
 
-    app.insert_resource(MoveProbe::default());
-    app.add_systems(
-        Update,
-        (|mut r: MessageReader<MoveRequested>, mut p: ResMut<MoveProbe>| {
-            p.0.extend(r.read().copied());
-        })
-        // After the drain so the probe sees the SAME update's emitted `MoveRequested`.
-        .after(gdtf_battle_input::dispatch_act_intents),
-    );
+    // The generic GTW-576 message probe — its `Last`-schedule drain observes the same
+    // update's emitted `MoveRequested` with its own reader cursor.
+    app.add_plugins(MessageProbePlugin::<MoveRequested>::default());
     app
 }
 
-/// The `MoveRequested` messages the probe drained (test-only framework plumbing).
-#[derive(Resource, Default)]
-struct MoveProbe(Vec<MoveRequested>);
-
 /// The move requests the probe collected so far.
 fn move_requests(app: &App) -> Vec<MoveRequested> {
-    app.world()
-        .get_resource::<MoveProbe>()
-        .map(|p| p.0.clone())
-        .unwrap_or_default()
-}
-
-/// Presses (just-pressed edge) the left mouse button.
-fn press_left(app: &mut App) {
-    if let Some(mut mouse) = app
-        .world_mut()
-        .get_resource_mut::<ButtonInput<MouseButton>>()
-    {
-        mouse.press(MouseButton::Left);
-    }
-}
-
-/// Releases + clears the mouse edges so the NEXT `press_left` is a fresh just-pressed (under
-/// the headless harness no `InputPlugin` clears the edges per frame, so a two-click sequence —
-/// the GTW-356 target-then-commit flow — must clear between presses).
-fn clear_mouse(app: &mut App) {
-    if let Some(mut mouse) = app
-        .world_mut()
-        .get_resource_mut::<ButtonInput<MouseButton>>()
-    {
-        mouse.release(MouseButton::Left);
-        mouse.clear();
-    }
+    probed::<MoveRequested>(app)
 }
 
 /// GTW-286 INSIDE — a cursor INSIDE the viewport sub-rect over a valid in-grid cell

@@ -38,7 +38,7 @@
 //! exact injury COUNT or bucket COUNT — so GTW-440 adding the per-part content floor
 //! cannot redden it.
 
-use gdtf_app::test_support::{AppState, LoadedSituation};
+use gdtf_app::test_support::{AppState, LoadedSituation, app_state};
 use gdtf_battle_sim::{
     armor::{ArmorRegistry, BodyPart},
     injuries::{InjuryName, InjuryRegistry, InjuryTables},
@@ -66,14 +66,6 @@ const TRANSITION_BUDGET: u32 = 32;
 /// off the resolved SIGNAL; the cap is a safety net against a genuine never-resolve hang,
 /// not a timing budget (GTW-305).
 const LOAD_SAFETY_NET: u32 = 10_000;
-
-/// Reads the current [`AppState`].
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world()
-        .resource::<bevy::state::state::State<AppState>>()
-        .get()
-        .clone()
-}
 
 /// AC (tier a) — under `MinimalPlugins` there is no `AssetServer`, so entering `Load`
 /// must not panic: the injuries-loader registration (the `RonAsset<InjuryDef>` /

@@ -21,7 +21,7 @@
 //! VALUE-AGNOSTIC (gate 4a / C6): presence + bucketing + placement-count + role only — no
 //! authored magnitude pinned.
 
-use gdtf_app::test_support::AppState;
+use gdtf_app::test_support::{AppState, app_state};
 use gdtf_battle_sim::level::{
     GridHeight, GridLevels, GridSize, GridWidth, PrefabKey, PrefabRegistry, SpawnRole, ThemeUuid,
 };
@@ -44,14 +44,6 @@ fn footprint(width: u8, height: u8) -> Option<GridSize> {
         GridLevels::new(1),
     )
     .ok()
-}
-
-/// Reads the current [`AppState`].
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world()
-        .resource::<bevy::state::state::State<AppState>>()
-        .get()
-        .clone()
 }
 
 /// GTW-490 C3 / GTW-492 — the SHIPPED migrated prefabs resolve through the real GTW-489

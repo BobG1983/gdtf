@@ -42,6 +42,7 @@ use gdtf_battle_sim::{
     occupancy_sync::{CoverDestroyed, sync_destroyed_cover},
     peek_sync::{peek_population_needed, sync_peek_offsets},
     surface::SurfaceGrid,
+    test_support::GangerEntityBuilder,
     tuning::CombatTuning,
 };
 
@@ -107,16 +108,18 @@ fn populator_app(grid: OccupancyGrid) -> App {
 
 /// Spawn a ganger with the five components the populator + the LOS bridge need; return
 /// its `Entity` handle.
-fn spawn_ganger(app: &mut App, at: CellLevel) -> bevy::prelude::Entity {
+fn peeking_ganger(app: &mut App, at: CellLevel) -> bevy::prelude::Entity {
+    let ganger = GangerEntityBuilder::new()
+        .at(at)
+        .stance(StanceKind::Standing)
+        .facing(Direction::North)
+        .faction(Faction::new(0))
+        .spawn(app.world_mut());
+    // The suite-specific peek substrate (not a common ganger knob) rides a direct insert.
     app.world_mut()
-        .spawn((
-            Position::new(at),
-            Stance::new(StanceKind::Standing),
-            Facing::new(Direction::North),
-            Faction::new(0),
-            PeekOffset::default(),
-        ))
-        .id()
+        .entity_mut(ganger)
+        .insert(PeekOffset::default());
+    ganger
 }
 
 /// The entity's current `PeekOffset` (copied), if present.
@@ -138,7 +141,7 @@ fn move_ganger(app: &mut App, entity: bevy::prelude::Entity, to: CellLevel) {
 #[test]
 fn populates_corner_peek_and_enables_around_corner_los() {
     let mut app = populator_app(corner_grid(TerrainKind::Wall));
-    let entity = spawn_ganger(&mut app, ganger_cell());
+    let entity = peeking_ganger(&mut app, ganger_cell());
 
     // First update: the freshly-spawned Position reads Changed (Bevy first-run), so
     // peek_population_needed fires and sync_peek_offsets derives the corner peek.
@@ -219,7 +222,7 @@ fn populates_corner_peek_and_enables_around_corner_los() {
 #[test]
 fn moving_away_clears_the_peek() {
     let mut app = populator_app(corner_grid(TerrainKind::Wall));
-    let entity = spawn_ganger(&mut app, ganger_cell());
+    let entity = peeking_ganger(&mut app, ganger_cell());
     app.update();
     // Precondition: the corner peek was populated.
     assert_eq!(
@@ -245,7 +248,7 @@ fn moving_away_clears_the_peek() {
 fn open_ground_gets_no_peek() {
     let mut app = populator_app(corner_grid(TerrainKind::Wall));
     // Spawn far from the corner — open ground in every cardinal.
-    let entity = spawn_ganger(&mut app, key(20, 20));
+    let entity = peeking_ganger(&mut app, key(20, 20));
     app.update();
 
     assert_eq!(
@@ -273,7 +276,7 @@ fn cover_destroyed_clears_a_stationary_peek() {
         )
             .chain(),
     );
-    let entity = spawn_ganger(&mut app, ganger_cell());
+    let entity = peeking_ganger(&mut app, ganger_cell());
     app.update();
     assert_eq!(
         peek_of(&app, entity),

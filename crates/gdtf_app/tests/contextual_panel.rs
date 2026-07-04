@@ -44,7 +44,9 @@ use gdtf_battle_sim::{
     tuning::CombatTuning,
     weapon::WeaponRegistry,
 };
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
+use gdtf_test_utils::{
+    GdtfTestAppBuilder, MessageProbe, advance_until, drain_message_probe, press_ui_button, probed,
+};
 use gdtf_ui::theme::default_theme;
 
 /// A budget large enough to drive the deep walk into the battlescape, bounded so a machine that
@@ -414,121 +416,68 @@ fn root_visible(app: &mut App) -> bool {
     visibility::<ContextualPanelRoot>(app) == Some(Visibility::Visible)
 }
 
-/// Collected [`ExecuteDownedRequested`] messages (the press-test probe).
-#[derive(Resource, Default)]
-struct ExecuteProbe(Vec<ExecuteDownedRequested>);
-
-/// Adds the [`ExecuteDownedRequested`] probe, running AFTER the GTW-571 contextual drain set
-/// so it observes the SAME update's emitted message (the `action_bar.rs` `add_probes` idiom —
-/// its own `MessageReader` cursor is independent of the sim's dispatch, so it reads every
-/// drained message).
+/// Adds the [`ExecuteDownedRequested`] probe — the generic GTW-576 `MessageProbe<M>` with its drain
+/// at the ORIGINAL observation point (Update, AFTER the GTW-571 contextual drain set),
+/// so it pins the DRAIN's same-update emission, not any later sim re-emission.
 fn add_execute_probe(app: &mut App) {
-    app.world_mut().insert_resource(ExecuteProbe::default());
+    app.init_resource::<MessageProbe<ExecuteDownedRequested>>();
     app.add_systems(
         Update,
-        (|mut r: MessageReader<ExecuteDownedRequested>, mut p: ResMut<ExecuteProbe>| {
-            p.0.extend(r.read().copied());
-        })
-        .after(ContextualActSystems::Drain),
+        drain_message_probe::<ExecuteDownedRequested>.after(ContextualActSystems::Drain),
     );
 }
 
 /// The collected [`ExecuteDownedRequested`] messages.
 fn executes(app: &App) -> Vec<ExecuteDownedRequested> {
-    app.world()
-        .get_resource::<ExecuteProbe>()
-        .map(|p| p.0.clone())
-        .unwrap_or_default()
+    probed::<ExecuteDownedRequested>(app)
 }
 
-/// Collected [`StabilizeDownedRequested`] messages (the press-test probe).
-#[derive(Resource, Default)]
-struct StabilizeProbe(Vec<StabilizeDownedRequested>);
-
-/// Adds the [`StabilizeDownedRequested`] probe, running AFTER the contextual drain set so it
-/// observes the SAME update's emitted message (the `add_execute_probe` idiom — its own
-/// `MessageReader` cursor is independent of the sim's `dispatch_stabilize_downed`, so it reads
-/// every drained message even though the sim consumes it too).
+/// Adds the [`StabilizeDownedRequested`] probe — the generic GTW-576 `MessageProbe<M>` with its drain
+/// at the ORIGINAL observation point (Update, AFTER the GTW-571 contextual drain set),
+/// so it pins the DRAIN's same-update emission, not any later sim re-emission.
 fn add_stabilize_probe(app: &mut App) {
-    app.world_mut().insert_resource(StabilizeProbe::default());
+    app.init_resource::<MessageProbe<StabilizeDownedRequested>>();
     app.add_systems(
         Update,
-        (|mut r: MessageReader<StabilizeDownedRequested>, mut p: ResMut<StabilizeProbe>| {
-            p.0.extend(r.read().copied());
-        })
-        .after(ContextualActSystems::Drain),
+        drain_message_probe::<StabilizeDownedRequested>.after(ContextualActSystems::Drain),
     );
 }
 
 /// The collected [`StabilizeDownedRequested`] messages.
 fn stabilizes(app: &App) -> Vec<StabilizeDownedRequested> {
-    app.world()
-        .get_resource::<StabilizeProbe>()
-        .map(|p| p.0.clone())
-        .unwrap_or_default()
+    probed::<StabilizeDownedRequested>(app)
 }
 
-/// Collected [`MeleeRequested`] messages (the GTW-507 press-test probe).
-#[derive(Resource, Default)]
-struct MeleeProbe(Vec<MeleeRequested>);
-
-/// Adds the [`MeleeRequested`] probe, running AFTER the contextual drain set so it observes the
-/// SAME update's emitted message (the `add_execute_probe` idiom — its own `MessageReader` cursor is
-/// independent of the sim's `dispatch_melee`, so it reads every drained message even though the
-/// sim consumes it too).
+/// Adds the [`MeleeRequested`] probe — the generic GTW-576 `MessageProbe<M>` with its drain
+/// at the ORIGINAL observation point (Update, AFTER the GTW-571 contextual drain set),
+/// so it pins the DRAIN's same-update emission, not any later sim re-emission.
 fn add_melee_probe(app: &mut App) {
-    app.world_mut().insert_resource(MeleeProbe::default());
+    app.init_resource::<MessageProbe<MeleeRequested>>();
     app.add_systems(
         Update,
-        (|mut r: MessageReader<MeleeRequested>, mut p: ResMut<MeleeProbe>| {
-            p.0.extend(r.read().copied());
-        })
-        .after(ContextualActSystems::Drain),
+        drain_message_probe::<MeleeRequested>.after(ContextualActSystems::Drain),
     );
 }
 
 /// The collected [`MeleeRequested`] messages.
 fn melees(app: &App) -> Vec<MeleeRequested> {
-    app.world()
-        .get_resource::<MeleeProbe>()
-        .map(|p| p.0.clone())
-        .unwrap_or_default()
+    probed::<MeleeRequested>(app)
 }
 
-/// Collected [`ShoveRequested`] messages (the GTW-525 press-test probe).
-#[derive(Resource, Default)]
-struct ShoveProbe(Vec<ShoveRequested>);
-
-/// Adds the [`ShoveRequested`] probe, running AFTER the contextual drain set so it observes the
-/// SAME update's emitted message (the `add_melee_probe` idiom — its own `MessageReader` cursor is
-/// independent of the sim's `dispatch_shove`, so it reads every drained message even though the
-/// sim consumes it too).
+/// Adds the [`ShoveRequested`] probe — the generic GTW-576 `MessageProbe<M>` with its drain
+/// at the ORIGINAL observation point (Update, AFTER the GTW-571 contextual drain set),
+/// so it pins the DRAIN's same-update emission, not any later sim re-emission.
 fn add_shove_probe(app: &mut App) {
-    app.world_mut().insert_resource(ShoveProbe::default());
+    app.init_resource::<MessageProbe<ShoveRequested>>();
     app.add_systems(
         Update,
-        (|mut r: MessageReader<ShoveRequested>, mut p: ResMut<ShoveProbe>| {
-            p.0.extend(r.read().copied());
-        })
-        .after(ContextualActSystems::Drain),
+        drain_message_probe::<ShoveRequested>.after(ContextualActSystems::Drain),
     );
 }
 
 /// The collected [`ShoveRequested`] messages.
 fn shoves(app: &App) -> Vec<ShoveRequested> {
-    app.world()
-        .get_resource::<ShoveProbe>()
-        .map(|p| p.0.clone())
-        .unwrap_or_default()
-}
-
-/// Synthesizes a fresh mouse press on `button` (the `action_bar.rs` `press_button` idiom): a
-/// direct write of [`Interaction::Pressed`] marks the component `Changed` this update, so the
-/// `Changed<Interaction>` press query fires.
-fn press_button(app: &mut App, button: Entity) {
-    if let Some(mut interaction) = app.world_mut().get_mut::<Interaction>(button) {
-        *interaction = Interaction::Pressed;
-    }
+    probed::<ShoveRequested>(app)
 }
 
 // ---------------------------------------------------------------------------------
@@ -703,7 +652,7 @@ fn pressing_execute_emits_execute_downed_requested_for_target() {
     // Drive the press, then update: the generic press router pushes the offered target and the
     // act's generic drain (the Press set is ordered before the Drain set) emits
     // ExecuteDownedRequested the SAME update.
-    press_button(&mut app, execute_btn);
+    press_ui_button(&mut app, execute_btn);
     app.update();
 
     let emitted = executes(&app);
@@ -750,7 +699,7 @@ fn pressing_stabilize_emits_stabilize_downed_requested_for_target() {
 
     // Drive the press, then update: the generic press router pushes the offered target and the
     // act's generic drain emits StabilizeDownedRequested the SAME update.
-    press_button(&mut app, stabilize_btn);
+    press_ui_button(&mut app, stabilize_btn);
     app.update();
 
     let emitted = stabilizes(&app);
@@ -862,7 +811,7 @@ fn pressing_melee_emits_melee_requested_for_target() {
 
     // Drive the press, then update: the generic press router pushes the offered ganger target
     // and the act's generic drain emits MeleeRequested the SAME update.
-    press_button(&mut app, melee_btn);
+    press_ui_button(&mut app, melee_btn);
     app.update();
 
     let emitted = melees(&app);
@@ -987,7 +936,7 @@ fn pressing_shove_emits_shove_requested_for_target() {
 
     // Drive the press, then update: the generic press router pushes the offered target and the
     // act's generic drain emits ShoveRequested the SAME update.
-    press_button(&mut app, shove_btn);
+    press_ui_button(&mut app, shove_btn);
     app.update();
 
     let emitted = shoves(&app);
@@ -1036,7 +985,7 @@ fn contextual_press_drains_the_same_update_it_was_queued() {
     };
 
     // ONE press, ONE update — the same-frame contract under test.
-    press_button(&mut app, shove_btn);
+    press_ui_button(&mut app, shove_btn);
     app.update();
 
     let emitted = shoves(&app);
@@ -1182,7 +1131,7 @@ fn pressing_open_door_toggles_the_door_open() {
     // Drive the press, then advance: the generic press router pushes the offered door, the drain
     // emits OpenDoorRequested + the sim dispatch writes SetOpenable::toggle the SAME update, and
     // apply_openable_toggle flips OpenState one frame later (the GTW-503 one-frame settle).
-    press_button(&mut app, open_door_btn);
+    press_ui_button(&mut app, open_door_btn);
     let opened = advance_until(
         &mut app,
         |app| door_state(app, door) == Some(OpenState::Open),
@@ -1407,7 +1356,7 @@ fn pressing_enter_mans_the_emplacement() {
     // Drive the press, then advance: the generic press router pushes the offered emplacement,
     // the drain emits EnterEmplacementRequested + the sim dispatch writes SetEmplacement::occupy the
     // SAME update, and apply_emplacement_toggle flips EmplacementState one frame later.
-    press_button(&mut app, enter_btn);
+    press_ui_button(&mut app, enter_btn);
     let manned = advance_until(
         &mut app,
         |app| emplacement_state(app, emplacement) == Some(EmplacementState::Occupied),
@@ -1436,31 +1385,20 @@ fn pressing_enter_mans_the_emplacement() {
     );
 }
 
-/// Collected [`ExitEmplacementRequested`] messages (the GTW-543 exit press-test probe).
-#[derive(Resource, Default)]
-struct ExitProbe(Vec<ExitEmplacementRequested>);
-
-/// Adds the [`ExitEmplacementRequested`] probe, running AFTER the contextual drain set so it
-/// observes the SAME update's emitted message (the `add_execute_probe` idiom — its own
-/// `MessageReader` cursor is independent of the sim's `dispatch_exit_emplacement`, so it reads
-/// every drained message even though the sim consumes it too).
+/// Adds the [`ExitEmplacementRequested`] probe — the generic GTW-576 `MessageProbe<M>` with its drain
+/// at the ORIGINAL observation point (Update, AFTER the GTW-571 contextual drain set),
+/// so it pins the DRAIN's same-update emission, not any later sim re-emission.
 fn add_exit_probe(app: &mut App) {
-    app.world_mut().insert_resource(ExitProbe::default());
+    app.init_resource::<MessageProbe<ExitEmplacementRequested>>();
     app.add_systems(
         Update,
-        (|mut r: MessageReader<ExitEmplacementRequested>, mut p: ResMut<ExitProbe>| {
-            p.0.extend(r.read().copied());
-        })
-        .after(ContextualActSystems::Drain),
+        drain_message_probe::<ExitEmplacementRequested>.after(ContextualActSystems::Drain),
     );
 }
 
 /// The collected [`ExitEmplacementRequested`] messages.
 fn exit_requests(app: &App) -> Vec<ExitEmplacementRequested> {
-    app.world()
-        .get_resource::<ExitProbe>()
-        .map(|p| p.0.clone())
-        .unwrap_or_default()
+    probed::<ExitEmplacementRequested>(app)
 }
 
 /// PRESS → INTENT: with an Exit target offered (the selection recorded as an emplacement's
@@ -1494,7 +1432,7 @@ fn pressing_exit_emits_exit_emplacement_requested_for_manned_mount() {
 
     // Drive the press, then update: the generic press router pushes the offered emplacement and
     // the act's generic drain emits ExitEmplacementRequested the SAME update.
-    press_button(&mut app, exit_btn);
+    press_ui_button(&mut app, exit_btn);
     app.update();
 
     let emitted = exit_requests(&app);
@@ -1551,31 +1489,20 @@ fn throw_visible(app: &mut App) -> bool {
     visibility::<ThrowGrenadeButton>(app) == Some(Visibility::Visible)
 }
 
-/// Collected [`ThrowGrenadeRequested`] messages (the GTW-546 press-test probe).
-#[derive(Resource, Default)]
-struct ThrowProbe(Vec<ThrowGrenadeRequested>);
-
-/// Adds the [`ThrowGrenadeRequested`] probe, running AFTER the contextual drain set so it
-/// observes the SAME update's emitted message (the `add_execute_probe` idiom — its own `MessageReader` cursor is
-/// independent of the sim's `dispatch_throw_grenade`, so it reads every drained message even though
-/// the sim consumes it too).
+/// Adds the [`ThrowGrenadeRequested`] probe — the generic GTW-576 `MessageProbe<M>` with its drain
+/// at the ORIGINAL observation point (Update, AFTER the GTW-571 contextual drain set),
+/// so it pins the DRAIN's same-update emission, not any later sim re-emission.
 fn add_throw_probe(app: &mut App) {
-    app.world_mut().insert_resource(ThrowProbe::default());
+    app.init_resource::<MessageProbe<ThrowGrenadeRequested>>();
     app.add_systems(
         Update,
-        (|mut r: MessageReader<ThrowGrenadeRequested>, mut p: ResMut<ThrowProbe>| {
-            p.0.extend(r.read().copied());
-        })
-        .after(ContextualActSystems::Drain),
+        drain_message_probe::<ThrowGrenadeRequested>.after(ContextualActSystems::Drain),
     );
 }
 
 /// The collected [`ThrowGrenadeRequested`] messages.
 fn throws(app: &App) -> Vec<ThrowGrenadeRequested> {
-    app.world()
-        .get_resource::<ThrowProbe>()
-        .map(|p| p.0.clone())
-        .unwrap_or_default()
+    probed::<ThrowGrenadeRequested>(app)
 }
 
 /// THROW detection: a selected actor wielding a [`TrajectoryStyle::Arc`] weapon with a target cell
@@ -1676,7 +1603,7 @@ fn pressing_throw_emits_throw_grenade_requested_for_hovered_cell() {
     // picker) re-fills the throw target from this hover, the generic press router pushes it, and
     // the act's generic drain emits ThrowGrenadeRequested the SAME update.
     hover_cell(&mut app, 15, 15);
-    press_button(&mut app, throw_btn);
+    press_ui_button(&mut app, throw_btn);
     app.update();
 
     let emitted = throws(&app);

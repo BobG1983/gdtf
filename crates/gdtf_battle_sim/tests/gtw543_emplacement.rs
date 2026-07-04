@@ -38,10 +38,9 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Accuracy, BaseSpread, Cool, DamageType, Faction, FatalBias, FireMode, FireModeSpec, Grit,
-    Handedness, Kickback, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    ReloadTu, Shove, Speed, Stable, Stance, StanceKind, Strength, Toughness, Tu, WeaponDamage,
-    WeaponPunch, WeaponShred,
+    BaseSpread, Cool, DamageType, Faction, FatalBias, FireMode, FireModeSpec, Grit, Kickback,
+    ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Speed, Stance, StanceKind, Strength,
+    Toughness, Tu,
     acts::{EnterEmplacementRequested, ExitEmplacementRequested, FireRequested},
     armor::{ArmorHardness, ArmorProtection},
     battle::{BattleSimPlugin, SetupBattleRequested},
@@ -59,10 +58,11 @@ use gdtf_battle_sim::{
         entity::TerrainCell,
     },
     test_support::{
-        GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_melee_weapon_registry,
+        GangerSpawnBuilder, SituationBuilder, single_mode, test_armor_registry,
+        test_melee_weapon_registry, test_weapon_spec,
     },
     tuning::{CombatTuning, ViewRange},
-    weapon::{MountedWeapon, TrajectoryStyle, WeaponName, WeaponRegistry, WeaponSpec, WieldedBy},
+    weapon::{MountedWeapon, WeaponName, WeaponRegistry, WeaponSpec, WieldedBy},
 };
 
 /// Gang `0` is the player.
@@ -96,29 +96,11 @@ fn ground(x: i32, y: i32) -> CellLevel {
 fn gun_spec(damage_type: DamageType) -> WeaponSpec {
     WeaponSpec {
         base_spread: BaseSpread::new(0.2),
-        accuracy: Accuracy::new(1.0),
         kickback: Kickback::new(0.2),
         fatal_bias: FatalBias::new(0.0),
-        damage: WeaponDamage::new(12),
-        punch: WeaponPunch::new(5),
-        shred: WeaponShred::new(3),
         damage_type,
-        magazine: Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-        fire_mode: FireMode::new(vec![FireModeSpec::new(
-            ModeKind::Single,
-            ModeConeMult::new(1.0),
-            ModeTuPercent::new(0.3),
-            ModeShots::new(1),
-        )]),
-        stable: Stable::new(false),
-        shove: Shove::new(false),
-        handedness: Handedness::OneHanded,
-        trajectory: TrajectoryStyle::Straight,
-        // GTW-554: no slots declared / no attachments fitted (the empty defaults).
-        slots: gdtf_battle_sim::WeaponSlots::default(),
-        attachments: Vec::new(),
-        dot: None,
-        on_death: None,
+        fire_mode: FireMode::new(vec![single_mode(0.3, 1)]),
+        ..test_weapon_spec()
     }
 }
 

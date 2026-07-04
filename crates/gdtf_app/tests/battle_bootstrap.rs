@@ -40,14 +40,13 @@ use gdtf_battle_sim::{
     rng::{BattleSeed, ShotRng},
     situation::Situation,
     surface::SurfaceGrid,
-    test_support::{GangerSpawnBuilder, SituationBuilder, key},
+    test_support::{GangerSpawnBuilder, SituationBuilder, key, single_mode},
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-        Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, Shove, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
-        WeaponShred,
+        Handedness, HandlingProfile, Kickback, MagazineSize, Shove, Stable, WeaponBundle,
+        WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
     },
 };
 use gdtf_test_utils::BattleAppBuilder;
@@ -122,17 +121,6 @@ fn bootstrap_app() -> Option<bevy::app::App> {
         .with_situation(bootstrap_situation())
         .with_seed(BOOTSTRAP_SEED)
         .build()
-}
-
-/// A single-shot fire-mode spec from arbitrary (non-pinned) per-mode numbers — the
-/// `acts.rs` fire-test precedent.
-const fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
-    FireModeSpec::new(
-        ModeKind::Single,
-        ModeConeMult::new(1.0),
-        ModeTuPercent::new(tu_percent),
-        ModeShots::new(shots),
-    )
 }
 
 /// The DETERMINISTIC weapon-state bundle the drive proof RE-ARMS the shooter with —

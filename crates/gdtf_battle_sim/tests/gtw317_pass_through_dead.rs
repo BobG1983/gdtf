@@ -24,15 +24,16 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType,
-    BaseSpread, BattleGrids, BattleSeed, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning,
-    CoverLedger, DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec,
-    Handedness, HandlingProfile, HeightBand, Hp, InflictedWounds, InjuryRegistry, InjuryRng,
-    InjuryTables, Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MeleeQuery,
-    ModeConeMult, ModeKind, ModeShots, ModeTuPercent, MountedQuery, OccupancyGrid, PieceQuery,
-    Position, ReloadTu, SeverityRng, ShooterQuery, Shooting, ShotKind, ShotRng, Shove, SlabLedger,
-    Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, Volley, WeaponBundle,
-    WeaponDamage, WeaponName, WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy,
-    WieldsQuery, WornBy, Wounds, fire::FireOrder,
+    BaseSpread, BattleGrids, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning, CoverLedger,
+    DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec, Handedness,
+    HandlingProfile, HeightBand, Hp, InflictedWounds, InjuryRegistry, InjuryTables, Kickback,
+    Level, LifeState, Luck, Magazine, MagazineSize, MeleeQuery, ModeConeMult, ModeKind, ModeShots,
+    ModeTuPercent, MountedQuery, OccupancyGrid, PieceQuery, Position, ReloadTu, ShooterQuery,
+    Shooting, ShotKind, Shove, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax,
+    Volley, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponQuery, WeaponShred,
+    WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds,
+    fire::FireOrder,
+    test_support::{GangerEntityBuilder, empty_slab_ledger, injury_rng, severity_rng, shot_rng},
 };
 
 /// The shooter cell — well to the West so the East-facing line of occupants lies
@@ -138,19 +139,13 @@ fn spawn_shooter(world: &mut World, mode: FireModeSpec) -> Entity {
 
 /// Spawn a standing ganger at `cell` with the given starting `wounds` and life
 /// `state`, carrying the full `TargetQuery` battle-surface set. Returns its entity.
-fn spawn_ganger(world: &mut World, cell: CellLevel, wounds: u8, state: LifeState) -> Entity {
-    let ganger = world
-        .spawn((
-            Position::new(cell),
-            Stance::new(StanceKind::Standing),
-            Hp::new(40),
-            Wounds::new(wounds),
-            state,
-            InflictedWounds::default(),
-            Toughness::new(1.0),
-            Luck::new(0.0),
-        ))
-        .id();
+fn line_ganger(world: &mut World, cell: CellLevel, wounds: u8, state: LifeState) -> Entity {
+    let ganger = GangerEntityBuilder::new()
+        .at(cell)
+        .stance(StanceKind::Standing)
+        .combat_vitals(40, wounds)
+        .life_state(state)
+        .spawn(world);
     // GTW-323: equip the ganger's worn-armor PIECE entities (the `fire()` armor path).
     equip_thin_armor(world, ganger);
     ganger
@@ -186,12 +181,12 @@ fn fire_volley(
         MountedQuery<'w, 's>,
     );
     let tuning = CombatTuning::default();
-    let mut rng = ShotRng::from_root(BattleSeed::new(seed));
-    let mut sev_rng = SeverityRng::from_root(BattleSeed::new(seed));
-    let mut injury_rng = InjuryRng::from_root(BattleSeed::new(seed));
+    let mut rng = shot_rng(seed);
+    let mut sev_rng = severity_rng(seed);
+    let mut injury_rng = injury_rng(seed);
     let surface = SurfaceGrid::new();
     let mut cover = CoverLedger::new();
-    let mut slab = SlabLedger::new();
+    let mut slab = empty_slab_ledger();
 
     let mut state: SystemState<FireQueries> = SystemState::new(world);
     // `get_mut` now returns a `Result` (Bevy 0.19); the params always validate
@@ -303,9 +298,9 @@ fn burst_kills_front_then_passes_through_to_live_behind() {
         let mode = burst_mode(3);
         let shooter = spawn_shooter(&mut world, mode);
         // Front: 1 Wound, so a single non-graze round 1 kills it.
-        let front = spawn_ganger(&mut world, front_cell(), 1, LifeState::Alive);
+        let front = line_ganger(&mut world, front_cell(), 1, LifeState::Alive);
         // Behind: healthy and alive, directly behind on the same ray.
-        let behind = spawn_ganger(&mut world, behind_cell(), 6, LifeState::Alive);
+        let behind = line_ganger(&mut world, behind_cell(), 6, LifeState::Alive);
 
         let mut occupancy = OccupancyGrid::new();
         place_occupant(&mut occupancy, front_cell(), front);
@@ -381,7 +376,7 @@ fn burst_kills_front_with_nothing_behind_does_not_re_wound_corpse() {
         let mut world = World::new();
         let mode = burst_mode(3);
         let shooter = spawn_shooter(&mut world, mode);
-        let front = spawn_ganger(&mut world, front_cell(), 1, LifeState::Alive);
+        let front = line_ganger(&mut world, front_cell(), 1, LifeState::Alive);
 
         let mut occupancy = OccupancyGrid::new();
         place_occupant(&mut occupancy, front_cell(), front);
@@ -432,9 +427,9 @@ fn single_shot_passes_through_preexisting_corpse_to_live_target() {
     let mode = burst_mode(1); // a single round
     let shooter = spawn_shooter(&mut world, mode);
     // Front: spawned already DEAD (a pre-existing corpse), Wounds already 0.
-    let corpse = spawn_ganger(&mut world, front_cell(), 0, LifeState::Dead);
+    let corpse = line_ganger(&mut world, front_cell(), 0, LifeState::Dead);
     // Behind: a live target directly behind the corpse on the same ray.
-    let live = spawn_ganger(&mut world, behind_cell(), 6, LifeState::Alive);
+    let live = line_ganger(&mut world, behind_cell(), 6, LifeState::Alive);
 
     let mut occupancy = OccupancyGrid::new();
     place_occupant(&mut occupancy, front_cell(), corpse);
@@ -487,8 +482,8 @@ fn same_seed_reproduces_byte_equal_volley_with_corpse_skip() {
         let mut world = World::new();
         let mode = burst_mode(3);
         let shooter = spawn_shooter(&mut world, mode);
-        let front = spawn_ganger(&mut world, front_cell(), 1, LifeState::Alive);
-        let behind = spawn_ganger(&mut world, behind_cell(), 6, LifeState::Alive);
+        let front = line_ganger(&mut world, front_cell(), 1, LifeState::Alive);
+        let behind = line_ganger(&mut world, behind_cell(), 6, LifeState::Alive);
         let mut occupancy = OccupancyGrid::new();
         place_occupant(&mut occupancy, front_cell(), front);
         place_occupant(&mut occupancy, behind_cell(), behind);
@@ -511,9 +506,9 @@ fn downed_occupant_still_stops_the_round() {
     let mode = burst_mode(1); // a single round
     let shooter = spawn_shooter(&mut world, mode);
     // Front: DOWNED (alive, incapacitated) — must still block the round.
-    let downed = spawn_ganger(&mut world, front_cell(), 4, LifeState::Downed);
+    let downed = line_ganger(&mut world, front_cell(), 4, LifeState::Downed);
     // Behind: a live target — it must NOT be reached (the round stops on the downed).
-    let behind = spawn_ganger(&mut world, behind_cell(), 6, LifeState::Alive);
+    let behind = line_ganger(&mut world, behind_cell(), 6, LifeState::Alive);
 
     let mut occupancy = OccupancyGrid::new();
     place_occupant(&mut occupancy, front_cell(), downed);

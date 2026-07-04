@@ -29,7 +29,7 @@
 //! proves the REAL `assets/content/armor/` folder loads through the Load code path and that its
 //! authored KEYS resolve.
 
-use gdtf_app::test_support::{AppState, LoadedSituation, seed_load_fallbacks};
+use gdtf_app::test_support::{AppState, LoadedSituation, app_state, seed_load_fallbacks};
 use gdtf_battle_sim::{
     armor::{ArmorName, ArmorRegistry},
     injuries::InjuryRegistry,
@@ -56,14 +56,6 @@ const TRANSITION_BUDGET: u32 = 32;
 /// the resolved SIGNAL; the cap is a safety net against a genuine never-resolve hang,
 /// not a timing budget (GTW-305).
 const LOAD_SAFETY_NET: u32 = 10_000;
-
-/// Reads the current [`AppState`].
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world()
-        .resource::<bevy::state::state::State<AppState>>()
-        .get()
-        .clone()
-}
 
 /// AC (tier a) — under `MinimalPlugins` there is no `AssetServer`, so entering `Load`
 /// must not panic: the armor-loader registration (`init_ron_asset_with_extensions::<ArmorSpec>`)

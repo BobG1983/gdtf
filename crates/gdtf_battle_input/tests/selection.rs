@@ -34,8 +34,9 @@ use gdtf_battle_input::{
 use gdtf_battle_presenter::{ActiveLevel, CELL_PX, ViewMode, WORLD_RENDER_LAYER, cell_to_world};
 use gdtf_battle_sim::{
     BattleInProgress, BattleSimPlugin, Cell, CellLevel, Faction, Level, MAX_LEVELS, OccupancyGrid,
-    PlayerFaction, Position, VerticalLinkGraph,
+    PlayerFaction, VerticalLinkGraph, test_support::GangerEntityBuilder,
 };
+use gdtf_test_utils::{clear_mouse, press_key, press_left};
 
 /// The faction the player controls in these tests (matches `PlayerFaction`).
 const PLAYER_FACTION: Faction = Faction::new(0);
@@ -127,36 +128,10 @@ const fn test_keybinds() -> Keybinds {
     }
 }
 
-/// Presses (just-pressed edge) a key in the `ButtonInput<KeyCode>` buffer.
-fn press_key(app: &mut App, key: KeyCode) {
-    let mut keys = app
-        .world_mut()
-        .get_resource_or_insert_with(ButtonInput::<KeyCode>::default);
-    keys.press(key);
-}
-
 /// Sets the `InspectTarget`'s live hovered cell to a given cell (or clears it).
 fn set_hovered(app: &mut App, cell: Option<CellLevel>) {
     use gdtf_battle_input::InspectTarget;
     app.world_mut().insert_resource(InspectTarget::new(cell));
-}
-
-/// Presses (just-pressed edge) the left mouse button in the input resource.
-fn press_left(app: &mut App) {
-    let mut mouse = app
-        .world_mut()
-        .get_resource_or_insert_with(ButtonInput::<MouseButton>::default);
-    mouse.press(MouseButton::Left);
-}
-
-/// Releases the button + clears the edges, so a later `press` is a fresh
-/// just-pressed (a held button never re-fires `just_pressed`).
-fn clear_mouse(app: &mut App) {
-    let mut mouse = app
-        .world_mut()
-        .get_resource_or_insert_with(ButtonInput::<MouseButton>::default);
-    mouse.release(MouseButton::Left);
-    mouse.clear();
 }
 
 /// The current `SelectedShooter` value.
@@ -741,8 +716,11 @@ fn inert_without_battle_in_progress() {
 /// `auto_select_first_player_ganger` query reads) and returns its entity. Distinct from
 /// `place_player_ganger` (which seeds occupancy for the click path) — the auto-select
 /// reasons off `Position`, not the occupancy grid.
-fn spawn_ganger(app: &mut App, faction: Faction, cell: CellLevel) -> Entity {
-    app.world_mut().spawn((faction, Position::new(cell))).id()
+fn placed_ganger(app: &mut App, faction: Faction, cell: CellLevel) -> Entity {
+    GangerEntityBuilder::new()
+        .faction(faction)
+        .at(cell)
+        .spawn(app.world_mut())
 }
 
 /// AC1 — with no selection + player gangers present, one update auto-selects the
@@ -771,27 +749,27 @@ fn auto_selects_deterministic_first_player_ganger() {
     let mut app = selection_app(level);
 
     // First spawned (first in query iteration) — higher cell `(x=2, y=3)` → key `(0,3,2)`.
-    let first = spawn_ganger(
+    let first = placed_ganger(
         &mut app,
         PLAYER_FACTION,
         CellLevel::new(Cell::new(2, 3), level),
     );
     // An enemy at the globally-lowest cell — must NEVER be auto-selected.
-    let enemy = spawn_ganger(
+    let enemy = placed_ganger(
         &mut app,
         ENEMY_FACTION,
         CellLevel::new(Cell::new(0, 0), level),
     );
     // The deterministic cell-winner — lowest player `(level, y, x)` cell `(x=1, y=1)` →
     // key `(0,1,1)`. Spawned in the MIDDLE: not first-found, not the Entity-Ord min.
-    let mid = spawn_ganger(
+    let mid = placed_ganger(
         &mut app,
         PLAYER_FACTION,
         CellLevel::new(Cell::new(1, 1), level),
     );
     // Last spawned — highest cell `(x=9, y=9)` → key `(0,9,9)`; in Bevy 0.18 this is the
     // `Entity`-`Ord` minimum, so it is what a forbidden `min_by_key(entity)` would pick.
-    let _last = spawn_ganger(
+    let _last = placed_ganger(
         &mut app,
         PLAYER_FACTION,
         CellLevel::new(Cell::new(9, 9), level),
@@ -841,21 +819,21 @@ fn auto_select_orders_level_major() {
     let mut app = selection_app(Level::new(0));
 
     // Higher storey, smaller (y, x) — spawned FIRST / first in iteration, must LOSE.
-    let _high_first = spawn_ganger(
+    let _high_first = placed_ganger(
         &mut app,
         PLAYER_FACTION,
         CellLevel::new(Cell::new(0, 0), Level::new(2)),
     );
     // Lower storey, larger (y, x) — spawned MIDDLE (neither first-found nor Entity-Ord
     // min), must WIN on the level-major ordering.
-    let lower_storey = spawn_ganger(
+    let lower_storey = placed_ganger(
         &mut app,
         PLAYER_FACTION,
         CellLevel::new(Cell::new(50, 50), Level::new(0)),
     );
     // Higher storey still — spawned LAST, so in Bevy 0.18 it is the `Entity`-`Ord` minimum
     // (what a forbidden `min_by_key(entity)` would pick), yet must LOSE on storey.
-    let _high_last = spawn_ganger(
+    let _high_last = placed_ganger(
         &mut app,
         PLAYER_FACTION,
         CellLevel::new(Cell::new(0, 0), Level::new(3)),
@@ -881,12 +859,12 @@ fn auto_select_does_not_override_existing_selection() {
     let mut app = selection_app(level);
 
     // A higher-ordered player ganger is pre-selected; a lower-ordered one also exists.
-    let chosen = spawn_ganger(
+    let chosen = placed_ganger(
         &mut app,
         PLAYER_FACTION,
         CellLevel::new(Cell::new(9, 9), level),
     );
-    let _lower = spawn_ganger(
+    let _lower = placed_ganger(
         &mut app,
         PLAYER_FACTION,
         CellLevel::new(Cell::new(0, 0), level),
@@ -912,12 +890,12 @@ fn auto_select_enemy_only_stays_none() {
     let level = Level::new(0);
     let mut app = selection_app(level);
 
-    spawn_ganger(
+    placed_ganger(
         &mut app,
         ENEMY_FACTION,
         CellLevel::new(Cell::new(0, 0), level),
     );
-    spawn_ganger(
+    placed_ganger(
         &mut app,
         ENEMY_FACTION,
         CellLevel::new(Cell::new(1, 1), level),
@@ -952,7 +930,7 @@ fn auto_select_inert_without_battle_in_progress() {
         .insert_resource(PlayerFaction::new(PLAYER_FACTION));
 
     // A player ganger that WOULD be auto-selected if the system ran.
-    spawn_ganger(
+    placed_ganger(
         &mut app,
         PLAYER_FACTION,
         CellLevel::new(Cell::new(0, 0), level),
@@ -989,16 +967,11 @@ use gdtf_battle_sim::{
         ArmorRegistry, ArmorSpec, ArmorType,
     },
     ganger::{Aim, Aiming, Direction, Facing, GangerName, Luck, Stance, StanceKind, Toughness},
-    magazine::{Magazine, ReloadTu},
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
+    test_support::test_weapon_spec,
     tuning::CombatTuning,
-    weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, FireMode, FireModeSpec, Handedness, Kickback,
-        MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Shove, Stable,
-        TrajectoryStyle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
-        WeaponSpec,
-    },
+    weapon::{WeaponName, WeaponRegistry},
 };
 
 /// The weapon KEY every fixture ganger references — present in [`real_flow_registry`] so
@@ -1010,43 +983,12 @@ const REAL_FLOW_WEAPON_KEY: &str = "test-weapon";
 /// ganger (GTW-269).
 const REAL_FLOW_ARMOR_KEY: &str = "test-armor";
 
-/// An arbitrary [`WeaponSpec`] (mechanism only, not shipped magnitudes) for the one
-/// [`REAL_FLOW_WEAPON_KEY`] the fixture gangers reference.
-fn real_flow_weapon_spec() -> WeaponSpec {
-    WeaponSpec {
-        base_spread: BaseSpread::new(0.25),
-        accuracy:    Accuracy::new(1.0),
-        kickback:    Kickback::new(0.4),
-        fatal_bias:  FatalBias::new(7.0),
-        damage:      WeaponDamage::new(12),
-        punch:       WeaponPunch::new(5),
-        shred:       WeaponShred::new(3),
-        damage_type: DamageType::Kinetic,
-        magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-        fire_mode:   FireMode::new(vec![FireModeSpec::new(
-            ModeKind::Single,
-            ModeConeMult::new(1.0),
-            ModeTuPercent::new(0.5),
-            ModeShots::new(1),
-        )]),
-        stable:      Stable::new(false),
-        shove:       Shove::new(false),
-        handedness:  Handedness::OneHanded,
-        trajectory:  TrajectoryStyle::Straight,
-        // GTW-554: no slots declared / no attachments fitted (the empty defaults).
-        slots:       gdtf_battle_sim::WeaponSlots::default(),
-        attachments: Vec::new(),
-        dot:         None,
-        on_death:    None,
-    }
-}
-
 /// The test [`WeaponRegistry`] — the one [`REAL_FLOW_WEAPON_KEY`] weapon the fixture
 /// gangers reference, standing in for the app's `Load`-built registry.
 fn real_flow_registry() -> WeaponRegistry {
     WeaponRegistry::new([(
         WeaponName::new(REAL_FLOW_WEAPON_KEY.to_owned()),
-        real_flow_weapon_spec(),
+        test_weapon_spec(),
     )])
 }
 

@@ -13,20 +13,19 @@
 
 use bevy::{
     app::App,
-    prelude::{Entity, MinimalPlugins, World},
+    prelude::{Entity, World},
 };
 use gdtf_battle_sim::{
-    Accuracy, Aiming, ArmorHardness, ArmorProtection, BaseSpread, BattleSeed, BraceStairCells,
-    Cell, CellLevel, CombatTuning, CoverEntry, CoverHp, CoverLedger, DamageProfile, DamageType,
-    Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec, Handedness, HandlingProfile,
-    HeightBand, Hp, InflictedWounds, InjuryRng, Kickback, Level, LifeState, LootRng, Luck,
-    Magazine, MagazineSize, MarchKind, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction, Position, ProcgenRng, ReloadTu,
-    SeverityRng, Shooting, ShotRng, Shove, SimPos, SlabLedger, SquadVisibility, Stable, Stance,
-    StanceKind, SurfaceGrid, TerrainKind, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle,
-    WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds,
-    acts::{FireRequested, SimActsPlugin},
+    Accuracy, Aiming, ArmorHardness, ArmorProtection, BaseSpread, Cell, CellLevel, CombatTuning,
+    CoverEntry, CoverHp, CoverLedger, DamageProfile, DamageType, Direction, Facing, Faction,
+    FatalBias, FireMode, Handedness, HandlingProfile, HeightBand, Hp, InflictedWounds, Kickback,
+    Level, LifeState, Luck, Magazine, MagazineSize, MarchKind, OccupancyGrid,
+    OccupancyMaintenancePlugin, Position, ReloadTu, Shooting, Shove, SimPos, Stable, Stance,
+    StanceKind, SurfaceGrid, TerrainKind, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage,
+    WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds,
+    acts::FireRequested,
     march_vector,
+    test_support::{SimAppBuilder, single_mode},
 };
 
 /// The shooter cell — West of the cover, on the ground storey.
@@ -40,53 +39,21 @@ fn cover_cell() -> CellLevel {
     CellLevel::new(Cell::new(8, 5), Level::new(0))
 }
 
-/// A single-shot fire-mode (one round per shot — enough to breach a low-HP piece).
-const fn single_mode() -> FireModeSpec {
-    FireModeSpec::new(
-        ModeKind::Single,
-        ModeConeMult::new(1.0),
-        ModeTuPercent::new(0.2),
-        ModeShots::new(1),
-    )
-}
-
 /// Build the real-path app: `MinimalPlugins` + `SimActsPlugin` (the production
 /// `dispatch_fire` — the message PRODUCER) + `OccupancyMaintenancePlugin` (the production
 /// `sync_destroyed_cover` — the message CONSUMER that frees the cell), plus the sim
 /// resources `fire()` reads. The `CoverDestroyed` buffer is registered by BOTH plugins
 /// (idempotent), so the bridge's message reaches the maintenance system.
 fn bridge_app() -> App {
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins)
-        .add_plugins(SimActsPlugin)
-        .add_plugins(OccupancyMaintenancePlugin);
-    app.insert_resource(SurfaceGrid::new());
-    // GTW-14: five per-subsystem RNG streams from the battle seed.
-    let seed = BattleSeed::new(0xC0BA_17C0);
-    app.insert_resource(ShotRng::from_root(seed));
-    app.insert_resource(SeverityRng::from_root(seed));
-    app.insert_resource(LootRng::from_root(seed));
-    app.insert_resource(InjuryRng::from_root(seed));
-    app.insert_resource(gdtf_battle_sim::InjuryTables::default());
-    app.insert_resource(gdtf_battle_sim::InjuryRegistry::default());
-    app.insert_resource(ProcgenRng::from_root(seed));
-    app.insert_resource(CombatTuning::default());
-    app.insert_resource(PlayerFaction::new(Faction::new(1)));
-    // GTW-392: `dispatch_fire` reads `Res<BraceStairCells>` — seed an empty set.
-    app.insert_resource(BraceStairCells::empty());
-    // GTW-365: `dispatch_fire` reads `ResMut<SlabLedger>` (the slab-hit depletion path) —
-    // seed an empty ledger so its param validates (this test fires at cover, not a slab).
-    app.insert_resource(SlabLedger::new());
-    // The other Simulate-band dispatch systems (move / walk) read these; seed them so the
-    // whole band validates (an empty graph + empty fog — this test fires, it does not move).
-    app.insert_resource(VerticalLinkGraph::default());
-    app.insert_resource(SquadVisibility::default());
-    // GTW-396: `dispatch_move` reads `Res<FloorCostGrid>` — seed a uniform grid at the
-    // default open cost so the band validates (this test fires, it does not move).
-    let default_open = gdtf_battle_sim::tuning::CombatTuning::default()
-        .move_costs
-        .open;
-    app.insert_resource(gdtf_battle_sim::FloorCostGrid::new(default_open, []));
+    // The canonical `with_acts` litany (GTW-576) seeds the grids + RNG streams + tuning the
+    // whole Simulate band validates against; only the seed + the non-player PlayerFaction
+    // differ from the defaults here.
+    let mut app = SimAppBuilder::new()
+        .with_seed(0xC0BA_17C0)
+        .with_acts()
+        .with_player_faction(1)
+        .build();
+    app.add_plugins(OccupancyMaintenancePlugin);
     app
 }
 
@@ -111,7 +78,7 @@ fn spawn_shooter(world: &mut World) -> Entity {
         ),
         HandlingProfile::new(
             Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
-            FireMode::new(vec![single_mode()]),
+            FireMode::new(vec![single_mode(0.2, 1)]),
             Stable::new(true),
             Shove::new(false),
             Handedness::OneHanded,
@@ -223,7 +190,7 @@ fn fired_round_destroys_cover_and_the_bridge_frees_the_cell() {
     // of updates settle the producer→consumer hand-off regardless of intra-frame order.
     app.world_mut().write_message(FireRequested::new(
         shooter,
-        single_mode(),
+        single_mode(0.2, 1),
         Cell::new(cover_cell().x, cover_cell().y),
         Level::new(0),
     ));

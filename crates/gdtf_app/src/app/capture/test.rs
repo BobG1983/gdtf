@@ -171,17 +171,16 @@ fn trigger_fires_in_the_overridden_full_mode() {
         Cell, CellLevel, Faction, FireMode, FireModeSpec, Level, ModeConeMult, ModeKind, ModeShots,
         ModeTuPercent, PlayerFaction, Position, acts::FireRequested,
     };
+    use gdtf_test_utils::{MessageProbePlugin, probed};
 
     use super::plugin::FireAtFrame;
-
-    /// Collected `FireRequested` messages, so the test asserts on the real emission.
-    #[derive(Resource, Default)]
-    struct FireProbe(Vec<FireRequested>);
 
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .add_message::<FireRequested>()
-        .init_resource::<FireProbe>();
+        // The generic GTW-576 probe — its `Last`-schedule drain captures the same
+        // update's emission.
+        .add_plugins(MessageProbePlugin::<FireRequested>::default());
 
     let player = Faction::new(0);
     let enemy_faction = Faction::new(1);
@@ -221,22 +220,11 @@ fn trigger_fires_in_the_overridden_full_mode() {
         FireAtFrame::new(2),
         Some(FireModeOverride::new(ModeKind::Full)),
     ));
-    app.add_systems(
-        Update,
-        (
-            trigger_fire_at_frame,
-            |mut reader: MessageReader<FireRequested>, mut probe: ResMut<FireProbe>| {
-                for msg in reader.read() {
-                    probe.0.push(msg.clone());
-                }
-            },
-        )
-            .chain(),
-    );
+    app.add_systems(Update, trigger_fire_at_frame);
 
     app.update();
     app.update();
-    let fires = &app.world().resource::<FireProbe>().0;
+    let fires = probed::<FireRequested>(&app);
     assert_eq!(
         fires.len(),
         1,
@@ -325,17 +313,16 @@ fn trigger_fire_at_frame_emits_on_the_real_path() {
     use gdtf_battle_sim::{
         Cell, CellLevel, Faction, Level, PlayerFaction, Position, acts::FireRequested,
     };
+    use gdtf_test_utils::{MessageProbePlugin, probed};
 
     use super::plugin::FireAtFrame;
-
-    /// Collected `FireRequested` messages, so the test asserts on the real emission.
-    #[derive(Resource, Default)]
-    struct FireProbe(Vec<FireRequested>);
 
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .add_message::<FireRequested>()
-        .init_resource::<FireProbe>();
+        // The generic GTW-576 probe — its `Last`-schedule drain captures the same
+        // update's emission.
+        .add_plugins(MessageProbePlugin::<FireRequested>::default());
 
     let player = Faction::new(0);
     let enemy_faction = Faction::new(1);
@@ -363,30 +350,19 @@ fn trigger_fire_at_frame_emits_on_the_real_path() {
 
     // Fire on the 3rd BattleRunning frame (no mode override — uses SelectedFireMode).
     app.insert_resource(FireConfig::new(FireAtFrame::new(3), None));
-    app.add_systems(
-        Update,
-        (
-            trigger_fire_at_frame,
-            |mut reader: MessageReader<FireRequested>, mut probe: ResMut<FireProbe>| {
-                for msg in reader.read() {
-                    probe.0.push(msg.clone());
-                }
-            },
-        )
-            .chain(),
-    );
+    app.add_systems(Update, trigger_fire_at_frame);
 
     // Frames 1 + 2 must NOT fire.
     app.update();
     app.update();
     assert!(
-        app.world().resource::<FireProbe>().0.is_empty(),
+        probed::<FireRequested>(&app).is_empty(),
         "the trigger must be silent before the target frame",
     );
 
     // Frame 3 fires exactly one FireRequested at the near enemy.
     app.update();
-    let fires = &app.world().resource::<FireProbe>().0;
+    let fires = probed::<FireRequested>(&app);
     assert_eq!(
         fires.len(),
         1,
@@ -409,7 +385,7 @@ fn trigger_fire_at_frame_emits_on_the_real_path() {
     app.update();
     app.update();
     assert_eq!(
-        app.world().resource::<FireProbe>().0.len(),
+        probed::<FireRequested>(&app).len(),
         1,
         "the trigger fires exactly once",
     );

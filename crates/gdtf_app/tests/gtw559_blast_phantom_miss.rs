@@ -29,14 +29,14 @@ use gdtf_battle_sim::{
     acts::ThrowGrenadeRequested,
     ganger::{Luck, Tu},
     magazine::{Magazine, ReloadTu},
+    test_support::test_weapon_spec,
     weapon::{
-        Accuracy, BaseSpread, BlastRadius, DamageType, FatalBias, FireMode, FireModeSpec,
-        Handedness, HitType, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, Shove, Stable, TrajectoryStyle, WeaponDamage, WeaponName, WeaponPunch,
-        WeaponShred, WeaponSpec, WieldedBy,
+        Accuracy, BaseSpread, BlastRadius, DamageType, FatalBias, FireMode, FireModeSpec, HitType,
+        Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, TrajectoryStyle,
+        WeaponDamage, WeaponName, WeaponPunch, WeaponSpec, WieldedBy,
     },
 };
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
+use gdtf_test_utils::{GdtfLoadTestAppBuilder, MessageProbe, MessageProbePlugin, advance_until};
 
 /// A generous budget for the real `DefaultPlugins` async asset loads + the full state descent
 /// under contention (the `battle_end_at_impact.rs` precedent).
@@ -96,15 +96,14 @@ fn battle_running_app() -> Option<App> {
 fn grenade_spec() -> WeaponSpec {
     WeaponSpec {
         base_spread: BaseSpread::new(0.2),
-        accuracy:    Accuracy::new(0.8),
-        kickback:    Kickback::new(0.0),
-        fatal_bias:  FatalBias::new(2.0),
-        damage:      WeaponDamage::new(20),
-        punch:       WeaponPunch::new(30),
-        shred:       WeaponShred::new(3),
+        accuracy: Accuracy::new(0.8),
+        kickback: Kickback::new(0.0),
+        fatal_bias: FatalBias::new(2.0),
+        damage: WeaponDamage::new(20),
+        punch: WeaponPunch::new(30),
         damage_type: DamageType::Blast,
-        magazine:    Magazine::loaded(MagazineSize::new(4), ReloadTu::new(18)),
-        fire_mode:   FireMode::new(vec![FireModeSpec::with_hit_type(
+        magazine: Magazine::loaded(MagazineSize::new(4), ReloadTu::new(18)),
+        fire_mode: FireMode::new(vec![FireModeSpec::with_hit_type(
             ModeKind::Single,
             ModeConeMult::new(1.0),
             ModeTuPercent::new(0.35),
@@ -113,14 +112,8 @@ fn grenade_spec() -> WeaponSpec {
                 radius: BlastRadius::new(1),
             },
         )]),
-        stable:      Stable::new(false),
-        shove:       Shove::new(false),
-        handedness:  Handedness::OneHanded,
-        trajectory:  TrajectoryStyle::Arc,
-        slots:       gdtf_battle_sim::WeaponSlots::default(),
-        attachments: Vec::new(),
-        dot:         None,
-        on_death:    None,
+        trajectory: TrajectoryStyle::Arc,
+        ..test_weapon_spec()
     }
 }
 
@@ -139,21 +132,11 @@ fn spawn_armed_thrower(app: &mut App, at: CellLevel) -> Entity {
     thrower
 }
 
-/// Collected [`ShotImpactResolved`] signals — the probe proving the REAL detonation rode the
-/// presenter impact pipeline into the combat log's drain (its own `MessageReader` cursor is
-/// independent of the log's, so both observe every signal).
-#[derive(Resource, Default)]
-struct ImpactProbe(Vec<ShotImpactResolved>);
-
-/// Adds the [`ImpactProbe`] and its collector system (the `contextual_panel.rs` probe idiom).
+/// Adds the impact probe — the generic GTW-576 `MessageProbePlugin<M>` proving the REAL
+/// detonation rode the presenter impact pipeline into the combat log's drain (its own
+/// `MessageReader` cursor is independent of the log's, so both observe every signal).
 fn add_impact_probe(app: &mut App) {
-    app.world_mut().insert_resource(ImpactProbe::default());
-    app.add_systems(
-        Update,
-        |mut reader: MessageReader<ShotImpactResolved>, mut probe: ResMut<ImpactProbe>| {
-            probe.0.extend(reader.read().cloned());
-        },
-    );
+    app.add_plugins(MessageProbePlugin::<ShotImpactResolved>::default());
 }
 
 /// Whether the probe has seen the BLAST's impact signal — the placeholder-shooter, `None`-report
@@ -161,10 +144,10 @@ fn add_impact_probe(app: &mut App) {
 /// `Some(report)`, even a clean miss).
 fn blast_signal_seen(app: &App) -> bool {
     app.world()
-        .get_resource::<ImpactProbe>()
+        .get_resource::<MessageProbe<ShotImpactResolved>>()
         .is_some_and(|probe| {
             probe
-                .0
+                .seen()
                 .iter()
                 .any(|impact| impact.report.is_none() && impact.shooter == Entity::PLACEHOLDER)
         })

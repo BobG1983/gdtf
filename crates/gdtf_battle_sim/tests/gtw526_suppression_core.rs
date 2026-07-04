@@ -38,8 +38,8 @@ use gdtf_battle_sim::{
     rng::{BattleSeed, ReactionRng},
     situation::Situation,
     test_support::{
-        GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_melee_weapon_registry,
-        test_weapon_registry,
+        GangerSpawnBuilder, SituationBuilder, reaction_rng, test_armor_registry,
+        test_melee_weapon_registry, test_weapon_registry,
     },
     weapon::{FireMode, Wields},
 };
@@ -163,8 +163,9 @@ fn tu_of(app: &App, entity: Entity) -> Option<u8> {
 }
 
 /// The `single`-mode `FireModeSpec` of `shooter` (resolved off its wielded RANGED weapon),
-/// so a test can emit a real `FireRequested`.
-fn single_mode(app: &mut App, shooter: Entity) -> gdtf_battle_sim::weapon::FireModeSpec {
+/// so a test can emit a real `FireRequested`. NOT the canonical `test_support::single_mode`
+/// fixture — this READS the mode the setup armed the shooter with (a resolver, not a builder).
+fn wielded_single_mode(app: &mut App, shooter: Entity) -> gdtf_battle_sim::weapon::FireModeSpec {
     use bevy::ecs::relationship::RelationshipTarget as _;
     // Resolve shooter → the wielded entity carrying a FireMode (the ranged weapon; the melee
     // `fists` entity has none) → its single spec. A hand-rolled traversal via the world (the
@@ -339,7 +340,7 @@ fn producer_suppresses_in_radius_opposing_ganger_only() {
     };
 
     // Emit a real enemy FireRequested aimed at the target cell.
-    let mode = single_mode(&mut app, shooter);
+    let mode = wielded_single_mode(&mut app, shooter);
     app.world_mut().write_message(FireRequested::new(
         shooter,
         mode,
@@ -381,7 +382,7 @@ fn producer_suppresses_in_radius_opposing_ganger_only() {
 fn suppressed_reactor_consumes_zero_reaction_rng_draws() {
     // The first draw of a FRESH ReactionRng from this seed — the position the world's
     // stream must still sit at when the suppressed reactor draws nothing.
-    let fresh_first_draw = ReactionRng::from_root(BattleSeed::new(SEED)).next_u64();
+    let fresh_first_draw = reaction_rng(SEED).next_u64();
 
     // Build a scenario where a ganger FIRING trips the FireDeclaration act-in-LOS surface,
     // and an opposing watcher in LOS would interrupt (forced p == 1.0). One reactor, one
@@ -417,7 +418,7 @@ fn suppressed_reactor_consumes_zero_reaction_rng_draws() {
         }
         // The actor FIRES (a real FireRequested at a far cell, away from the watcher) — this
         // trips the FireDeclaration surface reaction_trigger reads next tick.
-        let mode = single_mode(&mut app, actor);
+        let mode = wielded_single_mode(&mut app, actor);
         app.world_mut().write_message(FireRequested::new(
             actor,
             mode,
@@ -496,7 +497,7 @@ fn suppression_clears_at_the_suppressed_units_own_turn_start() {
     };
 
     // Suppress the PLAYER via a real enemy fire on its cell.
-    let mode = single_mode(&mut app, enemy);
+    let mode = wielded_single_mode(&mut app, enemy);
     app.world_mut().write_message(FireRequested::new(
         enemy,
         mode,
@@ -566,7 +567,7 @@ fn auto_stance_drops_behind_cover_without_charging_tu() {
         };
         let tu_before = tu_of(&app, player);
         // Enemy fires on the player's cell → suppresses it (radius 0 = the target cell).
-        let mode = single_mode(&mut app, enemy);
+        let mode = wielded_single_mode(&mut app, enemy);
         app.world_mut().write_message(FireRequested::new(
             enemy,
             mode,
@@ -636,7 +637,7 @@ fn idempotent_refresh_emits_suppression_applied_once() {
     };
 
     // First shot: a FRESH suppression → one SuppressionApplied for the player's cell.
-    let mode1 = single_mode(&mut app, first_shooter);
+    let mode1 = wielded_single_mode(&mut app, first_shooter);
     app.world_mut().write_message(FireRequested::new(
         first_shooter,
         mode1,
@@ -651,7 +652,7 @@ fn idempotent_refresh_emits_suppression_applied_once() {
 
     // Second shot (a DIFFERENT shooter, so it is not de-duplicated as the same fire): the
     // player is ALREADY suppressed → an idempotent REFRESH → NO second SuppressionApplied.
-    let mode2 = single_mode(&mut app, second_shooter);
+    let mode2 = wielded_single_mode(&mut app, second_shooter);
     app.world_mut().write_message(FireRequested::new(
         second_shooter,
         mode2,

@@ -43,8 +43,9 @@ use gdtf_battle_sim::{
     FieldDamage, FieldDef, FieldDuration, FieldRegistry, FieldTicked, GainedInjury, HitReport,
     HitResult, HpDamage, ImmuneArmorTypes, InjuryInflicted, InjuryName, InspectText, IntegrityWear,
     Level, LifeState, LogText, Matchup, OnDeathOccurred, PenetratingDamage, PopupText, Position,
-    Severity, ShotDir, ShotFired, ShotKind, SimPos, StoreysFallen, SuppressionApplied, Wounds,
+    Severity, ShotDir, ShotFired, ShotKind, SimPos, StoreysFallen, SuppressionApplied,
     acts::{MeleeResolved, ThrowResolved},
+    test_support::GangerEntityBuilder,
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
@@ -152,11 +153,16 @@ fn effect_roles(app: &App) -> Option<EffectRoles> {
 
 /// Spawns a ganger entity carrying a `Position` at `cell`/`level` plus `Wounds(wounds)`, and
 /// returns its `Entity` (the readers look it up by that entity).
-fn spawn_ganger(app: &mut App, cell: Cell, level: Level, wounds: u8) -> bevy::ecs::entity::Entity {
-    let at = CellLevel::new(cell, level);
-    app.world_mut()
-        .spawn((Position::new(at), Wounds::new(wounds)))
-        .id()
+fn wounded_ganger(
+    app: &mut App,
+    cell: Cell,
+    level: Level,
+    wounds: u8,
+) -> bevy::ecs::entity::Entity {
+    GangerEntityBuilder::new()
+        .at(CellLevel::new(cell, level))
+        .wounds(wounds)
+        .spawn(app.world_mut())
 }
 
 /// Counts the `FxFlash` entities currently in the world.
@@ -239,7 +245,7 @@ fn bleeding_spawns_one_flash_at_the_ganger_cell_with_the_bleed_index() {
 
     let cell = Cell::new(5, 6);
     let level = Level::new(0);
-    let ganger = spawn_ganger(&mut app, cell, level, 3);
+    let ganger = wounded_ganger(&mut app, cell, level, 3);
 
     app.world_mut()
         .resource_mut::<Messages<Bleeding>>()
@@ -293,7 +299,7 @@ fn armor_broken_spawns_one_flash_at_the_armor_break_index() {
 
     let cell = Cell::new(9, 2);
     let level = Level::new(0);
-    let ganger = spawn_ganger(&mut app, cell, level, 4);
+    let ganger = wounded_ganger(&mut app, cell, level, 4);
 
     app.world_mut()
         .resource_mut::<Messages<ArmorBroken>>()
@@ -678,7 +684,7 @@ fn flash_expires_after_its_ttl_and_nothing_lingers() {
     settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
-    let ganger = spawn_ganger(&mut app, Cell::new(1, 1), Level::new(0), 2);
+    let ganger = wounded_ganger(&mut app, Cell::new(1, 1), Level::new(0), 2);
     app.world_mut()
         .resource_mut::<Messages<Bleeding>>()
         .write(Bleeding::new(ganger));
@@ -710,7 +716,7 @@ fn two_bleeding_messages_spawn_two_independent_flashes() {
     settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
-    let ganger = spawn_ganger(&mut app, Cell::new(7, 7), Level::new(0), 1);
+    let ganger = wounded_ganger(&mut app, Cell::new(7, 7), Level::new(0), 1);
     {
         let mut buf = app.world_mut().resource_mut::<Messages<Bleeding>>();
         buf.write(Bleeding::new(ganger));
@@ -1352,7 +1358,7 @@ fn bleeding_pops_the_amber_bleeding_fct_tag() {
 
     let cell = Cell::new(4, 7);
     let level = Level::new(0);
-    let ganger = spawn_ganger(&mut app, cell, level, 2);
+    let ganger = wounded_ganger(&mut app, cell, level, 2);
 
     app.world_mut()
         .resource_mut::<Messages<Bleeding>>()
@@ -1392,7 +1398,7 @@ fn armor_broken_pops_the_red_armor_broken_fct_tag() {
 
     let cell = Cell::new(9, 3);
     let level = Level::new(0);
-    let ganger = spawn_ganger(&mut app, cell, level, 5);
+    let ganger = wounded_ganger(&mut app, cell, level, 5);
 
     app.world_mut()
         .resource_mut::<Messages<ArmorBroken>>()
@@ -1425,7 +1431,7 @@ fn suppression_applied_pops_the_suppressed_fct_tag_at_the_cell() {
     let cell = Cell::new(11, 4);
     let level = Level::new(0);
     let at = CellLevel::new(cell, level);
-    let pinned = spawn_ganger(&mut app, cell, level, 2);
+    let pinned = wounded_ganger(&mut app, cell, level, 2);
 
     app.world_mut()
         .resource_mut::<Messages<SuppressionApplied>>()
@@ -1467,7 +1473,7 @@ fn dot_ticked_pops_the_toxic_minus_amount_fct_tag_at_the_cell() {
     let cell = Cell::new(7, 9);
     let level = Level::new(0);
     let at = CellLevel::new(cell, level);
-    let ganger = spawn_ganger(&mut app, cell, level, 3);
+    let ganger = wounded_ganger(&mut app, cell, level, 3);
 
     app.world_mut()
         .resource_mut::<Messages<DotTicked>>()
@@ -1513,7 +1519,7 @@ fn field_ticked_pops_the_hazard_minus_amount_fct_tag_at_the_cell() {
     let cell = Cell::new(8, 5);
     let level = Level::new(0);
     let at = CellLevel::new(cell, level);
-    let occupant = spawn_ganger(&mut app, cell, level, 2);
+    let occupant = wounded_ganger(&mut app, cell, level, 2);
 
     app.world_mut()
         .resource_mut::<Messages<FieldTicked>>()
@@ -1623,7 +1629,7 @@ fn on_death_occurred_pops_the_lethal_boom_marker_at_the_cell() {
     let cell = Cell::new(11, 4);
     let level = Level::new(0);
     let at = CellLevel::new(cell, level);
-    let ganger = spawn_ganger(&mut app, cell, level, 0);
+    let ganger = wounded_ganger(&mut app, cell, level, 0);
 
     app.world_mut()
         .resource_mut::<Messages<OnDeathOccurred>>()
@@ -2079,7 +2085,7 @@ fn two_families_on_one_cell_in_one_frame_take_distinct_stack_slots() {
     let cell = Cell::new(9, 9);
     let level = Level::new(0);
     let at = CellLevel::new(cell, level);
-    let pinned = spawn_ganger(&mut app, cell, level, 2);
+    let pinned = wounded_ganger(&mut app, cell, level, 2);
 
     // TWO different families, ONE cell, ONE frame: suppression (carried-cell anchor) + DOT
     // (carried-cell anchor). Both buffers are in the shared harness.

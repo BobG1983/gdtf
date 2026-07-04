@@ -23,9 +23,10 @@ use gdtf_battle_input::{
 };
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
-    BattleInProgress, Cell, CellLevel, Faction, Level, OccupancyGrid, PlayerFaction, Position,
-    VerticalLinkGraph,
+    BattleInProgress, Cell, CellLevel, Faction, Level, OccupancyGrid, PlayerFaction,
+    VerticalLinkGraph, test_support::GangerEntityBuilder,
 };
+use gdtf_test_utils::{clear_keys, press_key};
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).
 const PLAYER_FACTION: Faction = Faction::new(0);
@@ -83,9 +84,11 @@ fn cycle_app() -> App {
 
 /// Spawns a ganger of `faction` at the cell `(x, y)` on [`LEVEL`] and returns its entity. The
 /// cycle reads only `(Entity, &Faction, &Position)`.
-fn spawn_ganger(app: &mut App, faction: Faction, x: i32, y: i32) -> Entity {
-    let cell = CellLevel::new(Cell::new(x, y), LEVEL);
-    app.world_mut().spawn((faction, Position::new(cell))).id()
+fn placed_ganger(app: &mut App, faction: Faction, x: i32, y: i32) -> Entity {
+    GangerEntityBuilder::new()
+        .faction(faction)
+        .at(CellLevel::new(Cell::new(x, y), LEVEL))
+        .spawn(app.world_mut())
 }
 
 /// Pushes a cycle [`ActIntent`] onto the shared seam (the keyboard / button write-point).
@@ -100,23 +103,6 @@ fn selection(app: &App) -> Option<Entity> {
     **app.world().resource::<SelectedShooter>()
 }
 
-/// Presses (just-pressed edge) a key.
-fn press_key(app: &mut App, key: KeyCode) {
-    app.world_mut()
-        .resource_mut::<ButtonInput<KeyCode>>()
-        .press(key);
-}
-
-/// Releases all held keys + clears the keyboard edges so the NEXT `press_key` is a fresh
-/// just-pressed. Under `MinimalPlugins` no `InputPlugin` ticks the edges per frame, AND a still-
-/// HELD key makes a re-`press` a no-op (no new just-pressed) — so a looped press must
-/// `release_all()` THEN `clear()` (the documented two-step).
-fn clear_keys(app: &mut App) {
-    let mut keys = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
-    keys.release_all();
-    keys.clear();
-}
-
 /// C2 — `SelectNext` advances through the player gang in `(z, y, x)` order and WRAPS.
 ///
 /// Three player gangers placed so their cell order is first, second, third. Starting selected
@@ -125,9 +111,9 @@ fn clear_keys(app: &mut App) {
 fn select_next_advances_and_wraps_in_cell_order() {
     let mut app = cycle_app();
     // Ascending (z, y, x): g_a (0,0) < g_b (1,0) < g_c (0,1).
-    let g_a = spawn_ganger(&mut app, PLAYER_FACTION, 0, 0);
-    let g_b = spawn_ganger(&mut app, PLAYER_FACTION, 1, 0);
-    let g_c = spawn_ganger(&mut app, PLAYER_FACTION, 0, 1);
+    let g_a = placed_ganger(&mut app, PLAYER_FACTION, 0, 0);
+    let g_b = placed_ganger(&mut app, PLAYER_FACTION, 1, 0);
+    let g_c = placed_ganger(&mut app, PLAYER_FACTION, 0, 1);
     // Start on the first (the auto-select would also pick it); assert the wrapping walk.
     app.world_mut().insert_resource(SelectedShooter::new(g_a));
 
@@ -148,9 +134,9 @@ fn select_next_advances_and_wraps_in_cell_order() {
 #[test]
 fn select_prev_advances_and_wraps_in_cell_order() {
     let mut app = cycle_app();
-    let g_a = spawn_ganger(&mut app, PLAYER_FACTION, 0, 0);
-    let g_b = spawn_ganger(&mut app, PLAYER_FACTION, 1, 0);
-    let g_c = spawn_ganger(&mut app, PLAYER_FACTION, 0, 1);
+    let g_a = placed_ganger(&mut app, PLAYER_FACTION, 0, 0);
+    let g_b = placed_ganger(&mut app, PLAYER_FACTION, 1, 0);
+    let g_c = placed_ganger(&mut app, PLAYER_FACTION, 0, 1);
     app.world_mut().insert_resource(SelectedShooter::new(g_a));
 
     push(&mut app, ActIntent::SelectPrev);
@@ -189,9 +175,9 @@ fn cycle_steps_cell_order_not_spawn_or_entity_id_order() {
     let mut app = cycle_app();
     // Spawn OUT of cell order so spawn / iteration / Entity-id order all diverge from cell order.
     // `mid` spawned FIRST (first in query iteration) but is the cell-order MIDDLE.
-    let mid = spawn_ganger(&mut app, PLAYER_FACTION, 1, 1); // key (0, 1, 1)
-    let lo = spawn_ganger(&mut app, PLAYER_FACTION, 0, 0); // key (0, 0, 0) — cell-order FIRST
-    let hi = spawn_ganger(&mut app, PLAYER_FACTION, 9, 9); // key (0, 9, 9) — cell-order LAST
+    let mid = placed_ganger(&mut app, PLAYER_FACTION, 1, 1); // key (0, 1, 1)
+    let lo = placed_ganger(&mut app, PLAYER_FACTION, 0, 0); // key (0, 0, 0) — cell-order FIRST
+    let hi = placed_ganger(&mut app, PLAYER_FACTION, 9, 9); // key (0, 9, 9) — cell-order LAST
     // Start on the cell-order FIRST; one `Next` must reach the cell-order SECOND (`mid`).
     app.world_mut().insert_resource(SelectedShooter::new(lo));
 
@@ -234,10 +220,10 @@ fn cycle_steps_cell_order_not_spawn_or_entity_id_order() {
 fn cycle_ignores_enemy_gangers() {
     let mut app = cycle_app();
     // Two player gangers interleaved with enemies in cell order.
-    let p_a = spawn_ganger(&mut app, PLAYER_FACTION, 0, 0);
-    let _enemy_low = spawn_ganger(&mut app, ENEMY_FACTION, 1, 0);
-    let p_b = spawn_ganger(&mut app, PLAYER_FACTION, 2, 0);
-    let _enemy_high = spawn_ganger(&mut app, ENEMY_FACTION, 3, 0);
+    let p_a = placed_ganger(&mut app, PLAYER_FACTION, 0, 0);
+    let _enemy_low = placed_ganger(&mut app, ENEMY_FACTION, 1, 0);
+    let p_b = placed_ganger(&mut app, PLAYER_FACTION, 2, 0);
+    let _enemy_high = placed_ganger(&mut app, ENEMY_FACTION, 3, 0);
     app.world_mut().insert_resource(SelectedShooter::new(p_a));
 
     // Next steps only between the two PLAYER gangers, wrapping (never an enemy).
@@ -266,7 +252,7 @@ fn cycle_ignores_enemy_gangers() {
 fn empty_player_gang_cycle_is_noop() {
     let mut app = cycle_app();
     // Only an enemy exists — no player ganger to cycle to.
-    let _enemy = spawn_ganger(&mut app, ENEMY_FACTION, 0, 0);
+    let _enemy = placed_ganger(&mut app, ENEMY_FACTION, 0, 0);
     app.world_mut().insert_resource(SelectedShooter::cleared());
 
     push(&mut app, ActIntent::SelectNext);
@@ -293,10 +279,10 @@ fn empty_player_gang_cycle_is_noop() {
 fn tab_cycles_next_and_shift_tab_cycles_prev() {
     let mut app = cycle_app();
     app.world_mut().insert_resource(test_keybinds());
-    let g_a = spawn_ganger(&mut app, PLAYER_FACTION, 0, 0);
-    let g_b = spawn_ganger(&mut app, PLAYER_FACTION, 1, 0);
+    let g_a = placed_ganger(&mut app, PLAYER_FACTION, 0, 0);
+    let g_b = placed_ganger(&mut app, PLAYER_FACTION, 1, 0);
     // A third ganger so the cell-order walk is non-trivial (its entity is not asserted here).
-    spawn_ganger(&mut app, PLAYER_FACTION, 0, 1);
+    placed_ganger(&mut app, PLAYER_FACTION, 0, 1);
     app.world_mut().insert_resource(SelectedShooter::new(g_a));
 
     // Plain Tab -> SelectNext.

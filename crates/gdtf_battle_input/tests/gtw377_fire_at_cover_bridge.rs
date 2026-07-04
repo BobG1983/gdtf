@@ -18,15 +18,15 @@ use bevy::{input::ButtonInput, platform::collections::HashSet, prelude::*, scene
 use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedFireMode, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight, ViewMode};
 use gdtf_battle_sim::{
-    Accuracy, Aiming, ArmorHardness, ArmorProtection, BaseSpread, BattleSeed, BraceStairCells,
-    Cell, CellLevel, CombatTuning, CoverEntry, CoverHp, CoverLedger, DamageProfile, DamageType,
-    Direction, Facing, Faction, FatalBias, FireMode, FireModeSpec, FloorCostGrid, Handedness,
-    HandlingProfile, HeightBand, Hp, InflictedWounds, InjuryRng, Kickback, Level, LifeState,
-    LootRng, Luck, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction, Position, ProcgenRng, ReloadTu,
-    SeverityRng, Shooting, ShotRng, Shove, SlabLedger, SquadVisibility, Stable, Stance, StanceKind,
-    SurfaceGrid, TerrainKind, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle, WeaponDamage,
-    WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds, acts::SimActsPlugin,
+    Accuracy, Aiming, ArmorHardness, ArmorProtection, BaseSpread, BattleSeed, Cell, CellLevel,
+    CoverEntry, CoverHp, CoverLedger, DamageProfile, DamageType, Direction, Facing, Faction,
+    FatalBias, FireMode, Handedness, HandlingProfile, HeightBand, Hp, InflictedWounds, Kickback,
+    Level, LifeState, Luck, Magazine, MagazineSize, OccupancyGrid, OccupancyMaintenancePlugin,
+    PlayerFaction, Position, ReloadTu, Shooting, Shove, SquadVisibility, Stable, Stance,
+    StanceKind, TerrainKind, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage, WeaponName,
+    WeaponPunch, WeaponShred, WieldedBy, Wounds,
+    acts::SimActsPlugin,
+    test_support::{insert_sim_resources, single_mode},
 };
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).
@@ -45,17 +45,6 @@ fn cover_cell() -> CellLevel {
     CellLevel::new(Cell::new(8, 5), LEVEL)
 }
 
-/// A single-shot fire-mode (one round per shot — enough to breach a low-HP piece). A marker
-/// `tu_percent` (not a pinned tuning magnitude).
-const fn single_mode() -> FireModeSpec {
-    FireModeSpec::new(
-        ModeKind::Single,
-        ModeConeMult::new(1.0),
-        ModeTuPercent::new(0.2),
-        ModeShots::new(1),
-    )
-}
-
 /// Build the real-path app: `MinimalPlugins` + `AssetPlugin` + `ScenePlugin` (the input plugin's
 /// `update_selection_highlight` spawns its reticle via `spawn_scene`, the GTW-322 requirement) +
 /// `GdtfBattleInputPlugin` (the production click decision — the FIRE-AT-COVER rung) +
@@ -69,36 +58,24 @@ fn bridge_app() -> App {
         .add_plugins(GdtfBattleInputPlugin)
         .add_plugins(SimActsPlugin)
         .add_plugins(OccupancyMaintenancePlugin);
+    // The canonical sim-resource litany (GTW-576) the fire path + dispatch band read —
+    // the empty grids/ledgers, fog + link graph, the five RNG streams (this suite's own
+    // seed: the shot geometry the breach assertions ride), empty injury content,
+    // `CombatTuning::default`, and a uniform `FloorCostGrid`. COMPOSED from
+    // `gdtf_battle_sim::test_support` instead of mirroring the litany line-by-line; the
+    // suite-specific reads + overrides follow.
+    insert_sim_resources(&mut app, BattleSeed::new(0xC0BA_17C0));
     // The battle-live gate witness + the click-decision reads.
     app.insert_resource(gdtf_battle_sim::BattleInProgress);
     app.insert_resource(ActiveLevel::new(LEVEL));
     // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
     app.insert_resource(ViewMode::default());
-    app.insert_resource(CombatTuning::default());
+    // OVERRIDE the litany's gang-0 `PlayerFaction` seed: this suite's player gang is 1
+    // (`insert_resource` replaces).
     app.insert_resource(PlayerFaction::new(PLAYER_FACTION));
     app.insert_resource(ButtonInput::<MouseButton>::default());
-    app.insert_resource(VerticalLinkGraph::default());
-    // GTW-396: `dispatch_move` reads `Res<FloorCostGrid>` — seed a uniform grid so the
-    // dispatch params validate (this test fires at cover, never moves).
-    {
-        let open = CombatTuning::default().move_costs.open;
-        app.insert_resource(FloorCostGrid::new(open, []));
-    }
     // The presenter-owned highlight seam the input populate gates on (no renderer plugin here).
     app.insert_resource(FireTargetHighlight::cleared());
-    // The sim resources the fire path reads.
-    app.insert_resource(SurfaceGrid::new());
-    app.insert_resource(SlabLedger::new());
-    // GTW-392: `dispatch_fire` reads `Res<BraceStairCells>` — seed an empty set (no stair
-    // cells in this harness) so the terrain-brace gate param validates.
-    app.insert_resource(BraceStairCells::empty());
-    // GTW-14: five per-subsystem RNG streams from the battle seed.
-    let seed = BattleSeed::new(0xC0BA_17C0);
-    app.insert_resource(ShotRng::from_root(seed));
-    app.insert_resource(SeverityRng::from_root(seed));
-    app.insert_resource(LootRng::from_root(seed));
-    app.insert_resource(InjuryRng::from_root(seed));
-    app.insert_resource(ProcgenRng::from_root(seed));
     app
 }
 
@@ -122,7 +99,7 @@ fn spawn_shooter(app: &mut App) -> Entity {
         ),
         HandlingProfile::new(
             Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
-            FireMode::new(vec![single_mode()]),
+            FireMode::new(vec![single_mode(0.2, 1)]),
             Stable::new(true),
             Shove::new(false),
             Handedness::OneHanded,
@@ -203,7 +180,7 @@ fn clicking_cover_fires_and_the_sim_depletes_it() {
     app.world_mut()
         .insert_resource(SelectedShooter::new(shooter));
     app.world_mut()
-        .insert_resource(SelectedFireMode::new(single_mode()));
+        .insert_resource(SelectedFireMode::new(single_mode(0.2, 1)));
     mark_visible(&mut app, cover_cell());
 
     // BEFORE: the cover blocks (intact), not yet destroyed.

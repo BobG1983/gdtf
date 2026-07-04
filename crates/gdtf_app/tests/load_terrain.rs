@@ -25,7 +25,7 @@
 //! VALUE-AGNOSTIC (gate 4a): asserts presence / known-UUID resolution / gate-blocking ONLY —
 //! no authored terrain magnitudes pinned.
 
-use gdtf_app::test_support::{AppState, LoadedSituation};
+use gdtf_app::test_support::{AppState, LoadedSituation, app_state};
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
     injuries::InjuryRegistry,
@@ -64,14 +64,6 @@ const fn deck_floor_uuid() -> TerrainUuid {
 /// (`Uuid::from_u128(0x0184_0a91_0002)`).
 const fn bulkhead_wall_uuid() -> TerrainUuid {
     TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a91_0002))
-}
-
-/// Reads the current [`AppState`].
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world()
-        .resource::<bevy::state::state::State<AppState>>()
-        .get()
-        .clone()
 }
 
 /// Seeds every gate-blocking resource EXCEPT the one the caller withholds via `seed_terrain`

@@ -21,8 +21,8 @@
 
 use std::path::PathBuf;
 
-use bevy::{asset::Handle, state::state::State, text::Font};
-use gdtf_app::test_support::{AppState, LoadedSituation};
+use bevy::{asset::Handle, text::Font};
+use gdtf_app::test_support::{AppState, LoadedSituation, app_state};
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
     procgen::ProcgenTuning,
@@ -49,11 +49,6 @@ const TRANSITION_BUDGET: u32 = 32;
 /// the resolved SIGNAL and merely caps the worst case high enough to absorb any
 /// variance (GTW-305).
 const LOAD_SAFETY_NET: u32 = 10_000;
-
-/// Reads the current [`AppState`].
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world().resource::<State<AppState>>().get().clone()
-}
 
 /// Tier (a): under `MinimalPlugins` there is no `AssetServer`, so entering
 /// `Load` must not panic — the kick-off guards on a missing server and no-ops.

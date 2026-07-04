@@ -38,6 +38,7 @@ use gdtf_battle_sim::{
     acts::{FireRequested, MoveRequested, SetFacingRequested},
     tuning::CombatTuning,
 };
+use gdtf_test_utils::{MessageProbePlugin, clear_mouse, press_mouse, probed};
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).
 const PLAYER_FACTION: Faction = Faction::new(0);
@@ -193,22 +194,6 @@ fn set_fire_mode(app: &mut App, mode: FireModeSpec) {
     app.world_mut().insert_resource(SelectedFireMode::new(mode));
 }
 
-/// Presses (just-pressed edge) a mouse button.
-fn press(app: &mut App, button: MouseButton) {
-    app.world_mut()
-        .resource_mut::<ButtonInput<MouseButton>>()
-        .press(button);
-}
-
-/// Releases + clears the mouse edges so the NEXT `press` is a fresh just-pressed (under
-/// `MinimalPlugins` no `InputPlugin` clears the edges per frame, so a two-click sequence must
-/// clear between presses).
-fn clear_mouse(app: &mut App) {
-    let mut mouse = app.world_mut().resource_mut::<ButtonInput<MouseButton>>();
-    mouse.release(MouseButton::Left);
-    mouse.clear();
-}
-
 /// The current `PathPreviewTarget` (the GTW-356 two-click move target the preview previews TO).
 fn move_target(app: &App) -> Option<CellLevel> {
     app.world()
@@ -227,59 +212,30 @@ fn selected(app: &App) -> Option<Entity> {
 // Message probes — each runs AFTER the drain, so it sees the same update's emission.
 // ---------------------------------------------------------------------------------
 
-/// Collected `FireRequested` messages (probe).
-#[derive(Resource, Default)]
-struct FireProbe(Vec<FireRequested>);
-/// Collected `MoveRequested` messages (probe).
-#[derive(Resource, Default)]
-struct MoveProbe(Vec<MoveRequested>);
-/// Collected `SetFacingRequested` messages (probe).
-#[derive(Resource, Default)]
-struct FacingProbe(Vec<SetFacingRequested>);
-
-/// Adds the three message-collecting probe systems, each running AFTER the drain so it
-/// observes the same update's emitted messages (its own `MessageReader` cursor).
+/// Adds the generic message probes (GTW-576 `MessageProbePlugin<M>`) for the three act
+/// `*Requested` messages these tests assert on — the `Last`-schedule drain observes the
+/// same update's emissions with its own `MessageReader` cursor.
 fn add_probes(app: &mut App) {
-    app.insert_resource(FireProbe::default())
-        .insert_resource(MoveProbe::default())
-        .insert_resource(FacingProbe::default());
-    app.add_systems(
-        Update,
-        (
-            |mut r: MessageReader<FireRequested>, mut p: ResMut<FireProbe>| {
-                // `FireRequested` is no longer `Copy` (it owns a `FireModeSpec`) — clone.
-                p.0.extend(r.read().cloned());
-            },
-            |mut r: MessageReader<MoveRequested>, mut p: ResMut<MoveProbe>| {
-                p.0.extend(r.read().copied());
-            },
-            |mut r: MessageReader<SetFacingRequested>, mut p: ResMut<FacingProbe>| {
-                p.0.extend(r.read().copied());
-            },
-        )
-            .after(gdtf_battle_input::dispatch_act_intents),
-    );
+    app.add_plugins((
+        MessageProbePlugin::<FireRequested>::default(),
+        MessageProbePlugin::<MoveRequested>::default(),
+        MessageProbePlugin::<SetFacingRequested>::default(),
+    ));
 }
 
 /// The collected `FireRequested` messages.
 fn fires(app: &App) -> Vec<FireRequested> {
-    app.world()
-        .get_resource::<FireProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone())
+    probed::<FireRequested>(app)
 }
 
 /// The collected `MoveRequested` messages.
 fn moves(app: &App) -> Vec<MoveRequested> {
-    app.world()
-        .get_resource::<MoveProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone())
+    probed::<MoveRequested>(app)
 }
 
 /// The collected `SetFacingRequested` messages.
 fn facings(app: &App) -> Vec<SetFacingRequested> {
-    app.world()
-        .get_resource::<FacingProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone())
+    probed::<SetFacingRequested>(app)
 }
 
 // ---------------------------------------------------------------------------------
@@ -296,7 +252,7 @@ fn left_click_selects_only_a_player_ganger() {
         let cell = CellLevel::new(Cell::new(5, 5), LEVEL);
         let ganger = spawn_player_shooter(&mut app, cell);
         set_hovered(&mut app, Some(cell));
-        press(&mut app, MouseButton::Left);
+        press_mouse(&mut app, MouseButton::Left);
         app.update();
         assert_eq!(
             selected(&app),
@@ -311,7 +267,7 @@ fn left_click_selects_only_a_player_ganger() {
         let cell = CellLevel::new(Cell::new(7, 7), LEVEL);
         let enemy = place_enemy(&mut app, cell);
         set_hovered(&mut app, Some(cell));
-        press(&mut app, MouseButton::Left);
+        press_mouse(&mut app, MouseButton::Left);
         app.update();
         assert_ne!(
             selected(&app),
@@ -323,7 +279,7 @@ fn left_click_selects_only_a_player_ganger() {
     {
         let mut app = control_app();
         set_hovered(&mut app, Some(CellLevel::new(Cell::new(9, 9), LEVEL)));
-        press(&mut app, MouseButton::Left);
+        press_mouse(&mut app, MouseButton::Left);
         app.update();
         assert_eq!(
             selected(&app),
@@ -354,7 +310,7 @@ fn two_click_empty_with_selection_targets_then_moves() {
     set_hovered(&mut app, Some(dest));
 
     // Click-1: SET the target, dispatch NOTHING.
-    press(&mut app, MouseButton::Left);
+    press_mouse(&mut app, MouseButton::Left);
     app.update();
     assert!(
         moves(&app).is_empty(),
@@ -369,7 +325,7 @@ fn two_click_empty_with_selection_targets_then_moves() {
     // Click-2 on the SAME cell: COMMIT.
     clear_mouse(&mut app);
     set_hovered(&mut app, Some(dest));
-    press(&mut app, MouseButton::Left);
+    press_mouse(&mut app, MouseButton::Left);
     app.update();
 
     let emitted = moves(&app);
@@ -403,7 +359,7 @@ fn click_on_a_different_cell_retargets_without_committing() {
 
     let first = CellLevel::new(Cell::new(4, 3), LEVEL);
     set_hovered(&mut app, Some(first));
-    press(&mut app, MouseButton::Left);
+    press_mouse(&mut app, MouseButton::Left);
     app.update();
     assert_eq!(
         move_target(&app),
@@ -415,7 +371,7 @@ fn click_on_a_different_cell_retargets_without_committing() {
     clear_mouse(&mut app);
     let second = CellLevel::new(Cell::new(5, 3), LEVEL);
     set_hovered(&mut app, Some(second));
-    press(&mut app, MouseButton::Left);
+    press_mouse(&mut app, MouseButton::Left);
     app.update();
 
     assert!(
@@ -448,7 +404,7 @@ fn left_click_enemy_with_fire_mode_fires_and_is_mutually_exclusive() {
     let _enemy = place_enemy(&mut app, target);
     set_hovered(&mut app, Some(target));
 
-    press(&mut app, MouseButton::Left);
+    press_mouse(&mut app, MouseButton::Left);
     app.update();
 
     assert_eq!(
@@ -499,7 +455,7 @@ fn left_click_cover_with_fire_mode_fires_at_the_cover_cell() {
     place_cover(&mut app, cover);
     set_hovered(&mut app, Some(cover));
 
-    press(&mut app, MouseButton::Left);
+    press_mouse(&mut app, MouseButton::Left);
     app.update();
 
     let fire = fires(&app);
@@ -552,7 +508,7 @@ fn empty_with_fire_mode_falls_through_to_two_click_move() {
     set_hovered(&mut app, Some(dest));
 
     // Click-1: falls through FIRE (empty cell) to SET the move target — no fire, no move.
-    press(&mut app, MouseButton::Left);
+    press_mouse(&mut app, MouseButton::Left);
     app.update();
     assert!(
         fires(&app).is_empty(),
@@ -571,7 +527,7 @@ fn empty_with_fire_mode_falls_through_to_two_click_move() {
     // Click-2 on the SAME cell: COMMIT the move.
     clear_mouse(&mut app);
     set_hovered(&mut app, Some(dest));
-    press(&mut app, MouseButton::Left);
+    press_mouse(&mut app, MouseButton::Left);
     app.update();
     assert_eq!(
         moves(&app).len(),
@@ -603,7 +559,7 @@ fn right_click_turns_to_face_the_hovered_cell() {
         set_selection(&mut app, ganger);
         set_hovered(&mut app, Some(CellLevel::new(Cell::new(8, 5), LEVEL)));
 
-        press(&mut app, MouseButton::Right);
+        press_mouse(&mut app, MouseButton::Right);
         app.update();
 
         let emitted = facings(&app);
@@ -627,7 +583,7 @@ fn right_click_turns_to_face_the_hovered_cell() {
         set_selection(&mut app, ganger);
         set_hovered(&mut app, Some(actor_cell));
 
-        press(&mut app, MouseButton::Right);
+        press_mouse(&mut app, MouseButton::Right);
         app.update();
 
         assert!(
@@ -659,7 +615,7 @@ fn forced_enemy_selection_emits_nothing_on_left_or_right() {
         set_selection(&mut app, enemy);
         set_hovered(&mut app, Some(CellLevel::new(Cell::new(21, 20), LEVEL)));
 
-        press(&mut app, MouseButton::Left);
+        press_mouse(&mut app, MouseButton::Left);
         app.update();
         assert!(
             moves(&app).is_empty() && fires(&app).is_empty(),
@@ -668,7 +624,7 @@ fn forced_enemy_selection_emits_nothing_on_left_or_right() {
 
         // Right press over a distinct cell — no turn either.
         set_hovered(&mut app, Some(CellLevel::new(Cell::new(25, 20), LEVEL)));
-        press(&mut app, MouseButton::Right);
+        press_mouse(&mut app, MouseButton::Right);
         app.update();
         assert!(
             facings(&app).is_empty(),

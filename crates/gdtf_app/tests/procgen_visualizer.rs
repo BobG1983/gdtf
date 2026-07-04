@@ -30,7 +30,6 @@ use bevy::{
     ecs::{component::Component, entity::Entity},
     prelude::With,
     state::state::NextState,
-    ui::Interaction,
 };
 use gdtf_app::test_support::{
     AppState, AutoButton, BoardQuad, EnemyGangDropdown, GenerateButton, HeightField, LevelsField,
@@ -48,7 +47,7 @@ use gdtf_battle_sim::{
     rng::BattleSeed,
     situation::Situation,
 };
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
+use gdtf_test_utils::{GdtfTestAppBuilder, advance_until, press_ui_button};
 use gdtf_ui::{
     CommittedNumericValue, DropdownSelectionChanged, NumericFieldCommitted, theme::default_theme,
 };
@@ -265,9 +264,7 @@ fn total(app: &bevy::app::App) -> usize {
 /// reader the same frame).
 fn press_button<M: Component>(app: &mut bevy::app::App) {
     let button = single_with::<M>(app).unwrap_or(Entity::PLACEHOLDER);
-    if let Some(mut interaction) = app.world_mut().get_mut::<Interaction>(button) {
-        *interaction = Interaction::Pressed;
-    }
+    press_ui_button(app, button);
     app.update();
 }
 

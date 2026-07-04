@@ -40,12 +40,11 @@ use gdtf_battle_sim::{
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     situation::{GangerSpawn, Situation},
-    test_support::{GangerSpawnBuilder, SituationBuilder, key},
+    test_support::{GangerSpawnBuilder, SituationBuilder, key, single_mode},
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
-        Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, Shove, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
-        WeaponShred,
+        Handedness, HandlingProfile, Kickback, MagazineSize, Shove, Stable, WeaponBundle,
+        WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
     },
 };
 use gdtf_test_utils::{BattleAppBuilder, advance_until};
@@ -96,17 +95,6 @@ fn two_ganger_situation() -> Situation {
             ganger_at(key(tx, ty, tl), TARGET_FACTION),
         ])
         .build()
-}
-
-/// A single-shot fire-mode spec from arbitrary (non-pinned) per-mode numbers — the
-/// `acts.rs` fire-test precedent.
-const fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
-    FireModeSpec::new(
-        ModeKind::Single,
-        ModeConeMult::new(1.0),
-        ModeTuPercent::new(tu_percent),
-        ModeShots::new(shots),
-    )
 }
 
 /// The DETERMINISTIC weapon-state bundle the drive proof RE-ARMS the shooter with —

@@ -15,7 +15,7 @@
 //! VALUE-AGNOSTIC (gate 4a): asserts presence / bucketing / placement-count ONLY — no
 //! authored terrain magnitudes pinned.
 
-use gdtf_app::test_support::AppState;
+use gdtf_app::test_support::{AppState, app_state};
 use gdtf_battle_sim::level::{
     GridHeight, GridLevels, GridSize, GridWidth, PrefabKey, PrefabRegistry, SpawnRole, ThemeUuid,
 };
@@ -32,14 +32,6 @@ const LOAD_SAFETY_NET: u32 = 10_000;
 /// the migrated `industrial_hive.terrain_theme.ron` key).
 const fn industrial_hive_theme() -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a90_0001))
-}
-
-/// Reads the current [`AppState`].
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world()
-        .resource::<bevy::state::state::State<AppState>>()
-        .get()
-        .clone()
 }
 
 /// GTW-494 C2 — with a real `AssetServer` rooted at the workspace `assets/`, entering `Load`

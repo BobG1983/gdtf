@@ -8,10 +8,9 @@
 //! message, the shown-label mutation, or the dismiss-without-change broke.
 
 use bevy::{
-    input::ButtonInput,
     input_focus::InputFocus,
     prelude::*,
-    ui::{BackgroundColor, ComputedNode, ComputedStackIndex, GlobalZIndex, Interaction},
+    ui::{BackgroundColor, ComputedNode, ComputedStackIndex, GlobalZIndex},
 };
 use gdtf_test_utils::GdtfUiTestAppBuilder;
 use gdtf_ui::{
@@ -85,9 +84,7 @@ fn spawn_test_dropdown(app: &mut App) -> Entity {
 /// BEFORE the dropdown driver reads it. Running only `Update` (where every dropdown driver
 /// lives) reads the edge we set; [`settle`] then runs full updates for layout.
 fn press(app: &mut App, entity: Entity) {
-    if let Some(mut interaction) = app.world_mut().get_mut::<Interaction>(entity) {
-        *interaction = Interaction::Pressed;
-    }
+    gdtf_test_utils::press_ui_button(app, entity);
     app.world_mut().run_schedule(Update);
 }
 
@@ -358,9 +355,7 @@ fn opening_focuses_the_first_option() {
 /// `DropdownDismissRequest` the first system writes is still buffered for the consumer
 /// regardless of their (unordered) same-frame run order (the message survives one extra frame).
 fn press_key(app: &mut App, key: KeyCode) {
-    if let Some(mut keys) = app.world_mut().get_resource_mut::<ButtonInput<KeyCode>>() {
-        keys.press(key);
-    }
+    gdtf_test_utils::press_key(app, key);
     app.world_mut().run_schedule(Update);
     app.world_mut().run_schedule(Update);
 }

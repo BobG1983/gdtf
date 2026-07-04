@@ -33,23 +33,22 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Cell, CellLevel, Cool, DamageType, Faction, FatalBias, FightMode, FightModeKind, FightModeSpec,
-    Grit, Handedness, Position, Reach, Shove, Speed, Stance, StanceKind, Strength, Toughness,
+    Cell, CellLevel, Cool, Faction, Grit, Position, Shove, Speed, Stance, StanceKind, Strength,
+    Toughness,
     acts::MeleeRequested,
     battle::{BattleSimPlugin, SetupBattleRequested},
     ganger::{Direction, Facing, GangRegistry},
-    magazine::{Magazine, ReloadTu},
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
     test_support::{
-        GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_terrain_registry,
+        GangerSpawnBuilder, SituationBuilder, single_mode, test_armor_registry,
+        test_melee_weapon_spec, test_terrain_registry, test_weapon_spec,
     },
     tuning::{CombatTuning, ViewRange},
     weapon::{
-        Accuracy, BaseSpread, FISTS_KEY, FireMode, FireModeSpec, Kickback, MagazineSize,
-        MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        TrajectoryStyle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
-        WeaponSpec,
+        Accuracy, BaseSpread, FISTS_KEY, FireMode, FireModeSpec, Kickback, MeleeWeaponRegistry,
+        MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, WeaponName, WeaponPunch,
+        WeaponRegistry, WeaponSpec,
     },
 };
 
@@ -75,22 +74,10 @@ fn ground(x: i32, y: i32) -> CellLevel {
 /// enough to penetrate the test armor on a forced connect.
 fn melee_spec(shove: bool) -> MeleeWeaponSpec {
     MeleeWeaponSpec {
-        damage:      WeaponDamage::new(9),
-        punch:       WeaponPunch::new(9),
-        shred:       WeaponShred::new(2),
-        damage_type: DamageType::Rend,
-        fatal_bias:  FatalBias::new(4.0),
-        handedness:  Handedness::OneHanded,
-        reach:       Reach::new(1),
-        fight_mode:  FightMode::new(vec![FightModeSpec::new(
-            FightModeKind::Swing,
-            gdtf_battle_sim::weapon::TuCost::new(20),
-            gdtf_battle_sim::weapon::Strikes::new(1),
-        )]),
-        shove:       Shove::new(shove),
-        // GTW-554: no slots declared / no attachments fitted (the empty defaults).
-        slots:       gdtf_battle_sim::WeaponSlots::default(),
-        attachments: Vec::new(),
+        // Punch big enough to penetrate the test armor on a forced connect.
+        punch: WeaponPunch::new(9),
+        shove: Shove::new(shove),
+        ..test_melee_weapon_spec()
     }
 }
 
@@ -98,30 +85,15 @@ fn melee_spec(shove: bool) -> MeleeWeaponSpec {
 /// so the point-blank shot resolves ONE connecting round.
 fn ranged_spec(shove: bool) -> WeaponSpec {
     WeaponSpec {
+        // A near-zero cone + high accuracy + zero kickback so the point-blank shot
+        // resolves ONE connecting round; punch big enough to penetrate the test armor.
         base_spread: BaseSpread::new(0.01),
-        accuracy:    Accuracy::new(5.0),
-        kickback:    Kickback::new(0.0),
-        fatal_bias:  FatalBias::new(7.0),
-        damage:      WeaponDamage::new(12),
-        punch:       WeaponPunch::new(20),
-        shred:       WeaponShred::new(3),
-        damage_type: DamageType::Kinetic,
-        magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-        fire_mode:   FireMode::new(vec![FireModeSpec::new(
-            ModeKind::Single,
-            ModeConeMult::new(1.0),
-            ModeTuPercent::new(0.2),
-            ModeShots::new(1),
-        )]),
-        stable:      gdtf_battle_sim::weapon::Stable::new(false),
-        shove:       Shove::new(shove),
-        handedness:  Handedness::OneHanded,
-        trajectory:  TrajectoryStyle::Straight,
-        // GTW-554: no slots declared / no attachments fitted (the empty defaults).
-        slots:       gdtf_battle_sim::WeaponSlots::default(),
-        attachments: Vec::new(),
-        dot:         None,
-        on_death:    None,
+        accuracy: Accuracy::new(5.0),
+        kickback: Kickback::new(0.0),
+        punch: WeaponPunch::new(20),
+        fire_mode: FireMode::new(vec![single_mode(0.2, 1)]),
+        shove: Shove::new(shove),
+        ..test_weapon_spec()
     }
 }
 

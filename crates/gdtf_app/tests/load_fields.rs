@@ -23,7 +23,7 @@
 //! in-crate sim tests + the `gtw545_fields` integration test; this harness proves the REAL
 //! folder loads through the Load code path and that its authored KEYS resolve.
 
-use gdtf_app::test_support::{AppState, LoadedSituation};
+use gdtf_app::test_support::{AppState, LoadedSituation, app_state};
 use gdtf_battle_sim::{
     FieldDefRegistry, FieldKey,
     armor::ArmorRegistry,
@@ -47,14 +47,6 @@ const TRANSITION_BUDGET: u32 = 32;
 /// stack). These waits key off the resolved SIGNAL; the cap is a safety net against a genuine
 /// never-resolve hang, not a timing budget (the GTW-305 idiom).
 const LOAD_SAFETY_NET: u32 = 10_000;
-
-/// Reads the current [`AppState`].
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world()
-        .resource::<bevy::state::state::State<AppState>>()
-        .get()
-        .clone()
-}
 
 /// Seed the full Load gate resource set EXCEPT the [`FieldDefRegistry`] — the other
 /// gate-blocking resources stand in for their asset-less resolves, so the ONLY thing that can

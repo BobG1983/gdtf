@@ -46,7 +46,7 @@ use bevy::{
 };
 use gdtf_app::test_support::{
     AfterMathState, AppState, BattleRunningComplete, BattleScapeState, GameState, LoadedSituation,
-    RunningState,
+    RunningState, app_state,
 };
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
@@ -117,12 +117,6 @@ fn walk_app_with_theme() -> App {
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
     app
-}
-
-/// Reads the current [`AppState`]. `AppState` is `Clone` but not `Copy`, so this
-/// clones the resting value out of the `State<AppState>` resource.
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world().resource::<State<AppState>>().get().clone()
 }
 
 /// Reads the current [`RunningState`] if [`AppState::Running`] is active.

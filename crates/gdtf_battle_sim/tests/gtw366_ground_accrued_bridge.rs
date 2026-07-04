@@ -26,19 +26,18 @@
 use bevy::{
     app::App,
     math::Vec3,
-    prelude::{Entity, MinimalPlugins, World},
+    prelude::{Entity, World},
 };
 use gdtf_battle_sim::{
-    Accuracy, Aiming, BaseSpread, BattleSeed, BraceStairCells, Cell, CellLevel, CombatTuning,
-    CoverLedger, DamageProfile, DamageType, Direction, Facing, Faction, FatalBias, FireMode,
-    FireModeSpec, Handedness, HandlingProfile, Hp, InflictedWounds, InjuryRng, Kickback, Level,
-    LifeState, LootRng, Luck, Magazine, MagazineSize, MarchKind, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, OccupancyGrid, OccupancyMaintenancePlugin, PlayerFaction, Position, ProcgenRng,
-    ReloadTu, SeverityRng, Shooting, ShotRng, Shove, SimPos, SlabLedger, SquadVisibility, Stable,
-    Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, VerticalLinkGraph, WeaponBundle,
+    Accuracy, Aiming, BaseSpread, Cell, CellLevel, CombatTuning, CoverLedger, DamageProfile,
+    DamageType, Direction, Facing, Faction, FatalBias, FireMode, Handedness, HandlingProfile, Hp,
+    InflictedWounds, Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MarchKind,
+    OccupancyGrid, OccupancyMaintenancePlugin, Position, ReloadTu, Shooting, Shove, SimPos,
+    SlabLedger, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, WeaponBundle,
     WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds,
-    acts::{FireRequested, SimActsPlugin},
+    acts::FireRequested,
     march_vector,
+    test_support::{SimAppBuilder, single_mode},
 };
 
 /// The per-round weapon damage the shooter deals to the ground — an arbitrary (NOT
@@ -68,54 +67,21 @@ const fn aim_cell() -> Cell {
     Cell::new(4, 4)
 }
 
-/// A single-shot fire-mode (one round per shot) — so each `FireRequested` lands exactly one
-/// round on the ground, letting the test SUM the per-round accrual (C7(b)).
-const fn single_mode() -> FireModeSpec {
-    FireModeSpec::new(
-        ModeKind::Single,
-        ModeConeMult::new(1.0),
-        ModeTuPercent::new(0.2),
-        ModeShots::new(1),
-    )
-}
-
 /// Build the real-path app: `MinimalPlugins` + `SimActsPlugin` (the production
 /// `dispatch_fire` — the `GroundAccrued` PRODUCER) + `OccupancyMaintenancePlugin` (the
 /// production `sync_accrued_ground` — the CONSUMER that accrues onto the surface grid),
 /// plus the sim resources `fire()` reads. The `GroundAccrued` buffer is registered by BOTH
 /// plugins (idempotent), so the bridge's message reaches the maintenance system.
 fn bridge_app() -> App {
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins)
-        .add_plugins(SimActsPlugin)
-        .add_plugins(OccupancyMaintenancePlugin);
-    // GTW-14: five per-subsystem RNG streams from the battle seed.
-    let seed = BattleSeed::new(0x0660_0366);
-    app.insert_resource(ShotRng::from_root(seed));
-    app.insert_resource(SeverityRng::from_root(seed));
-    app.insert_resource(LootRng::from_root(seed));
-    app.insert_resource(InjuryRng::from_root(seed));
-    app.insert_resource(gdtf_battle_sim::InjuryTables::default());
-    app.insert_resource(gdtf_battle_sim::InjuryRegistry::default());
-    app.insert_resource(ProcgenRng::from_root(seed));
-    app.insert_resource(CombatTuning::default());
-    app.insert_resource(PlayerFaction::new(Faction::new(1)));
-    // The cover ledger the shared aim / fire path reads (no cover here — the round strikes
-    // the ground, not cover). Seeded empty; asserted UNTOUCHED (C7(c)).
-    app.insert_resource(CoverLedger::new());
-    // The slab ledger (empty — no slab in the open column). Asserted UNTOUCHED (C7(c)).
-    app.insert_resource(SlabLedger::new());
-    // GTW-392: `dispatch_fire` reads `Res<BraceStairCells>` — seed an empty set.
-    app.insert_resource(BraceStairCells::empty());
-    // The other Simulate-band dispatch systems (move / walk) read these.
-    app.insert_resource(VerticalLinkGraph::default());
-    app.insert_resource(SquadVisibility::default());
-    // GTW-396: `dispatch_move` reads `Res<FloorCostGrid>` — seed a uniform grid at the
-    // default open cost so the band validates (this test fires at the ground, never moves).
-    let default_open = gdtf_battle_sim::tuning::CombatTuning::default()
-        .move_costs
-        .open;
-    app.insert_resource(gdtf_battle_sim::FloorCostGrid::new(default_open, []));
+    // The canonical `with_acts` litany (GTW-576) seeds the grids + RNG streams + tuning the
+    // whole Simulate band validates against; only the seed + the non-player PlayerFaction
+    // differ from the defaults here.
+    let mut app = SimAppBuilder::new()
+        .with_seed(0x0660_0366)
+        .with_acts()
+        .with_player_faction(1)
+        .build();
+    app.add_plugins(OccupancyMaintenancePlugin);
     app
 }
 
@@ -142,7 +108,7 @@ fn spawn_shooter(world: &mut World) -> Entity {
         ),
         HandlingProfile::new(
             Magazine::new(30, MagazineSize::new(30), ReloadTu::new(12)),
-            FireMode::new(vec![single_mode()]),
+            FireMode::new(vec![single_mode(0.2, 1)]),
             Stable::new(true),
             Shove::new(false),
             Handedness::OneHanded,
@@ -216,7 +182,7 @@ fn fire_one_round(app: &mut App, shooter: Entity) {
     }
     app.world_mut().write_message(FireRequested::new(
         shooter,
-        single_mode(),
+        single_mode(0.2, 1),
         aim_cell(),
         Level::new(0),
     ));

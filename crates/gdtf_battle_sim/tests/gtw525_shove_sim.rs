@@ -30,14 +30,15 @@
 
 use bevy::{
     app::{App, Update},
-    prelude::{Entity, MessageReader, MinimalPlugins, ResMut, Resource, World},
+    prelude::{Entity, MessageReader, ResMut, Resource, World},
 };
 use gdtf_battle_sim::{
-    BattleSeed, Cell, CellLevel, CombatTuning, CoverLedger, Direction, Faction, FallOccurred, Hp,
-    InflictedWounds, InjuryRng, Level, LifeState, LootRng, Luck, OccupancyGrid,
-    OccupancyMaintenancePlugin, Position, ProcgenRng, SeverityRng, ShotRng, ShoveOutcome,
-    ShoveRequested, SlabState, SquadVisibility, Stance, StanceKind, SurfaceGrid, Toughness, Tu,
-    TuMax, VerticalLinkGraph, Wounds, falls::FallsPlugin, resolve_shove,
+    Cell, CellLevel, CombatTuning, Direction, Faction, FallOccurred, Hp, Level, OccupancyGrid,
+    OccupancyMaintenancePlugin, Position, ShoveOutcome, ShoveRequested, SlabState, StanceKind,
+    SurfaceGrid, Tu, Wounds,
+    falls::FallsPlugin,
+    resolve_shove,
+    test_support::{GangerEntityBuilder, SimAppBuilder},
 };
 
 /// An arbitrary fixed seed — determinism is the property, the value is irrelevant.
@@ -73,30 +74,17 @@ fn record_falls(mut reader: MessageReader<FallOccurred>, mut log: ResMut<FallLog
 /// `BattleInProgress` gate (that lives in `BattleSimPlugin`), so `dispatch_shove` runs
 /// unconditionally over the inserted resources — the gtw523 focused-harness pattern.
 fn shove_app() -> App {
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins)
-        .add_plugins(gdtf_battle_sim::acts::SimActsPlugin)
-        .add_plugins(OccupancyMaintenancePlugin)
+    // The canonical `with_acts` litany (GTW-576) seeds the grids + five RNG streams + empty
+    // injury content the whole Simulate band validates against. Overlaid here: the SHIPPED
+    // tuning (real severity edges + real shove_tu) so the shove TU spend + any fall bucket
+    // are realistic (a parse failure falls back to the default — the test still runs).
+    let mut app = SimAppBuilder::new()
+        .with_seed(SEED)
+        .with_acts()
+        .with_tuning(shipped_tuning())
+        .build();
+    app.add_plugins(OccupancyMaintenancePlugin)
         .add_plugins(FallsPlugin);
-    let root = BattleSeed::new(SEED);
-    app.insert_resource(ShotRng::from_root(root));
-    app.insert_resource(SeverityRng::from_root(root));
-    app.insert_resource(InjuryRng::from_root(root));
-    app.insert_resource(LootRng::from_root(root));
-    app.insert_resource(ProcgenRng::from_root(root));
-    app.insert_resource(gdtf_battle_sim::InjuryTables::default());
-    app.insert_resource(gdtf_battle_sim::InjuryRegistry::default());
-    // The SHIPPED tuning (real severity edges + real shove_tu) so the shove TU spend + any fall
-    // bucket are realistic. A parse failure falls back to the default (the test still runs).
-    app.insert_resource(shipped_tuning());
-    app.insert_resource(gdtf_battle_sim::PlayerFaction::new(Faction::new(0)));
-    app.insert_resource(CoverLedger::new());
-    app.insert_resource(VerticalLinkGraph::default());
-    app.insert_resource(SquadVisibility::default());
-    app.insert_resource(gdtf_battle_sim::SlabLedger::new());
-    app.insert_resource(gdtf_battle_sim::BraceStairCells::empty());
-    let default_open = CombatTuning::default().move_costs.open;
-    app.insert_resource(gdtf_battle_sim::FloorCostGrid::new(default_open, []));
     app.init_resource::<FallLog>();
     app.add_systems(Update, record_falls);
     app
@@ -105,22 +93,17 @@ fn shove_app() -> App {
 /// Spawn a standing, alive ganger of `faction` at `(cell, level)` with the shove-relevant
 /// component set (a large HP/Wounds pool so a fall wounds but rarely kills — a clean HP read).
 /// Bare flesh (no worn armor). Returns its entity.
-fn spawn_ganger(world: &mut World, at: CellLevel, faction: u8) -> Entity {
-    world
-        .spawn((
-            Position::new(at),
-            Stance::new(StanceKind::Standing),
-            Faction::new(faction),
-            Tu::new(100),
-            TuMax::new(100),
-            Hp::new(1000),
-            Wounds::new(200),
-            LifeState::Alive,
-            InflictedWounds::default(),
-            Toughness::new(0.0),
-            Luck::new(0.0),
-        ))
-        .id()
+fn shove_ganger(world: &mut World, at: CellLevel, faction: u8) -> Entity {
+    GangerEntityBuilder::new()
+        .at(at)
+        .stance(StanceKind::Standing)
+        .faction(Faction::new(faction))
+        .tu(100)
+        .tu_max(100)
+        .combat_vitals(1000, 200)
+        .toughness(0.0)
+        .luck(0.0)
+        .spawn(world)
 }
 
 /// Read a ganger's current `(cell, level)`.
@@ -184,8 +167,8 @@ fn shove_pushes_target_one_cell_away_from_shover() {
     let mut app = shove_app();
     app.insert_resource(SurfaceGrid::new());
     app.insert_resource(OccupancyGrid::new());
-    let shover = spawn_ganger(app.world_mut(), ground(5, 5), 0);
-    let target = spawn_ganger(app.world_mut(), ground(6, 5), 1);
+    let shover = shove_ganger(app.world_mut(), ground(5, 5), 0);
+    let target = shove_ganger(app.world_mut(), ground(6, 5), 1);
     app.update();
 
     // The pure verb (C1): attacker (5,5) -> target (6,5) is East, so the destination is (7,5),
@@ -235,8 +218,8 @@ fn shove_off_a_ledge_falls_via_523_and_fires_falloccurred() {
     // (7,5,2) is left Absent — the ledge edge.
     app.insert_resource(surface);
     app.insert_resource(OccupancyGrid::new());
-    let shover = spawn_ganger(app.world_mut(), upper(5, 5, 2), 0);
-    let target = spawn_ganger(app.world_mut(), upper(6, 5, 2), 1);
+    let shover = shove_ganger(app.world_mut(), upper(5, 5, 2), 0);
+    let target = shove_ganger(app.world_mut(), upper(6, 5, 2), 1);
     app.update();
     let hp_before = hp_of(&app, target);
 
@@ -282,8 +265,8 @@ fn shove_onto_supported_cell_moves_without_falling() {
     surface.set_slab(upper(7, 5, 2), SlabState::Present);
     app.insert_resource(surface);
     app.insert_resource(OccupancyGrid::new());
-    let shover = spawn_ganger(app.world_mut(), upper(5, 5, 2), 0);
-    let target = spawn_ganger(app.world_mut(), upper(6, 5, 2), 1);
+    let shover = shove_ganger(app.world_mut(), upper(5, 5, 2), 0);
+    let target = shove_ganger(app.world_mut(), upper(6, 5, 2), 1);
     app.update();
     let hp_before = hp_of(&app, target);
 
@@ -313,10 +296,10 @@ fn shove_into_an_occupied_cell_is_a_noop() {
     let mut app = shove_app();
     app.insert_resource(SurfaceGrid::new());
     app.insert_resource(OccupancyGrid::new());
-    let shover = spawn_ganger(app.world_mut(), ground(5, 5), 0);
-    let target = spawn_ganger(app.world_mut(), ground(6, 5), 1);
+    let shover = shove_ganger(app.world_mut(), ground(5, 5), 0);
+    let target = shove_ganger(app.world_mut(), ground(6, 5), 1);
     // A blocker standing on the destination cell (7,5) — the shove would push the target into it.
-    let _blocker = spawn_ganger(app.world_mut(), ground(7, 5), 1);
+    let _blocker = shove_ganger(app.world_mut(), ground(7, 5), 1);
     // Settle so occupancy maintenance publishes the blocker's slot before the shove resolves.
     app.update();
     app.update();
@@ -343,8 +326,8 @@ fn deliberate_shove_spends_tu_and_deals_no_wound() {
     let mut app = shove_app();
     app.insert_resource(SurfaceGrid::new());
     app.insert_resource(OccupancyGrid::new());
-    let shover = spawn_ganger(app.world_mut(), ground(5, 5), 0);
-    let target = spawn_ganger(app.world_mut(), ground(6, 5), 1);
+    let shover = shove_ganger(app.world_mut(), ground(5, 5), 0);
+    let target = shove_ganger(app.world_mut(), ground(6, 5), 1);
     app.update();
     let tu_before = tu_of(&app, shover);
     let (hp_before, wounds_before) = (hp_of(&app, target), wounds_of(&app, target));
@@ -375,8 +358,8 @@ fn deliberate_shove_gates_adjacency_and_faction() {
     let mut app = shove_app();
     app.insert_resource(SurfaceGrid::new());
     app.insert_resource(OccupancyGrid::new());
-    let shover = spawn_ganger(app.world_mut(), ground(5, 5), 0);
-    let far = spawn_ganger(app.world_mut(), ground(8, 5), 1);
+    let shover = shove_ganger(app.world_mut(), ground(5, 5), 0);
+    let far = shove_ganger(app.world_mut(), ground(8, 5), 1);
     app.update();
     let tu_before = tu_of(&app, shover);
     shove_and_settle(&mut app, shover, far);
@@ -395,8 +378,8 @@ fn deliberate_shove_gates_adjacency_and_faction() {
     let mut app = shove_app();
     app.insert_resource(SurfaceGrid::new());
     app.insert_resource(OccupancyGrid::new());
-    let shover = spawn_ganger(app.world_mut(), ground(5, 5), 0);
-    let ally = spawn_ganger(app.world_mut(), ground(6, 5), 0);
+    let shover = shove_ganger(app.world_mut(), ground(5, 5), 0);
+    let ally = shove_ganger(app.world_mut(), ground(6, 5), 0);
     app.update();
     let tu_before = tu_of(&app, shover);
     shove_and_settle(&mut app, shover, ally);
@@ -426,8 +409,8 @@ fn shove_outcomes_are_deterministic_under_same_seed() {
         surface.set_slab(upper(7, 5, 1), SlabState::Present); // the fall lands on level 1
         app.insert_resource(surface);
         app.insert_resource(OccupancyGrid::new());
-        let shover = spawn_ganger(app.world_mut(), upper(5, 5, 3), 0);
-        let target = spawn_ganger(app.world_mut(), upper(6, 5, 3), 1);
+        let shover = shove_ganger(app.world_mut(), upper(5, 5, 3), 0);
+        let target = shove_ganger(app.world_mut(), upper(6, 5, 3), 1);
         app.update();
         let before = hp_of(&app, target);
         shove_and_settle(&mut app, shover, target);

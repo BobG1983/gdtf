@@ -26,8 +26,7 @@
 
 use std::path::PathBuf;
 
-use bevy::state::state::State;
-use gdtf_app::test_support::{AppState, LoadedSituation};
+use gdtf_app::test_support::{AppState, LoadedSituation, app_state};
 use gdtf_battle_sim::{
     injuries::InjuryRegistry,
     procgen::ProcgenTuning,
@@ -52,11 +51,6 @@ const TRANSITION_BUDGET: u32 = 32;
 /// and merely cap the worst case high enough to absorb parallel-load variance
 /// (GTW-305).
 const LOAD_SAFETY_NET: u32 = 10_000;
-
-/// Reads the current [`AppState`].
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world().resource::<State<AppState>>().get().clone()
-}
 
 /// Absolute path to the malformed-tuning fixtures root
 /// (`tests/fixtures/bad_tuning_root`), whose `core_tuning/combat.tuning.ron` is deliberately

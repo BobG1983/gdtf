@@ -21,7 +21,7 @@
 
 use std::path::PathBuf;
 
-use gdtf_app::test_support::AppState;
+use gdtf_app::test_support::{AppState, app_state};
 use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeRegistry},
     terrain::def::{TerrainDefRegistry, TerrainUuid},
@@ -55,14 +55,6 @@ fn fixture_root() -> PathBuf {
         .join("tests")
         .join("fixtures")
         .join("terrain_model_root")
-}
-
-/// Reads the current [`AppState`].
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world()
-        .resource::<bevy::state::state::State<AppState>>()
-        .get()
-        .clone()
 }
 
 /// GTW-487 C1 — with a real `AssetServer` rooted at the per-theme TEST fixture, entering

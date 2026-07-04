@@ -34,14 +34,12 @@ use gdtf_app::test_support::{
     EditableGang, ExpandPip, MemberRowIndex, MemberStatPanel, PipExpanded, RunningState,
 };
 use gdtf_battle_sim::{
-    Accuracy, Aim, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece,
-    ArmorProtection, ArmorRegistry, ArmorSpec, ArmorType, BaseSpread, Cool, DamageType,
-    DerivedStats, FatalBias, FireMode, FireModeSpec, GangerAttributes, GangerStatTuning, Grit,
-    Kickback, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Reflexes,
-    ReloadTu, Shove, Speed, Stable, Strength, Toughness, TrajectoryStyle, WeaponDamage, WeaponName,
-    WeaponPunch, WeaponShred, WeaponSpec, derive_stats, ganger::Luck, weapon::Handedness,
+    Aim, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
+    ArmorRegistry, ArmorSpec, ArmorType, Cool, DerivedStats, FatalBias, GangerAttributes,
+    GangerStatTuning, Grit, Reflexes, Speed, Strength, Toughness, WeaponName, WeaponSpec,
+    derive_stats, ganger::Luck, test_support::test_weapon_spec,
 };
-use gdtf_test_utils::GdtfTestAppBuilder;
+use gdtf_test_utils::{GdtfTestAppBuilder, press_ui_button};
 use gdtf_ui::{
     AccordionAnim, AccordionProgress, CommittedNumericValue, NumericFieldCommitted, NumericRange,
     theme::default_theme,
@@ -55,30 +53,10 @@ const ARMOR_A: &str = "Flak";
 /// An arbitrary weapon spec (NOT shipped tuning) — the editor only reads the KEY.
 fn arbitrary_weapon() -> WeaponSpec {
     WeaponSpec {
-        base_spread: BaseSpread::new(0.25),
-        accuracy:    Accuracy::new(1.0),
-        kickback:    Kickback::new(0.4),
-        fatal_bias:  FatalBias::new(0.0),
-        damage:      WeaponDamage::new(12),
-        punch:       WeaponPunch::new(5),
-        shred:       WeaponShred::new(3),
-        damage_type: DamageType::Kinetic,
-        magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-        fire_mode:   FireMode::new(vec![FireModeSpec::new(
-            ModeKind::Single,
-            ModeConeMult::new(1.0),
-            ModeTuPercent::new(0.5),
-            ModeShots::new(1),
-        )]),
-        stable:      Stable::new(false),
-        shove:       Shove::new(false),
-        handedness:  Handedness::OneHanded,
-        trajectory:  TrajectoryStyle::Straight,
-        // GTW-554: no slots declared / no attachments fitted (the empty defaults).
-        slots:       gdtf_battle_sim::WeaponSlots::default(),
-        attachments: Vec::new(),
-        dot:         None,
-        on_death:    None,
+        // Not Fatal-skewed (the editor never resolves a wound) — the only divergence
+        // from the canonical fixture.
+        fatal_bias: FatalBias::new(0.0),
+        ..test_weapon_spec()
     }
 }
 
@@ -143,9 +121,7 @@ fn press_add_member(app: &mut App) {
         .world_mut()
         .query_filtered::<Entity, With<AddMemberButton>>();
     let button = q.iter(app.world()).next().unwrap_or(Entity::PLACEHOLDER);
-    if let Some(mut interaction) = app.world_mut().get_mut::<Interaction>(button) {
-        *interaction = Interaction::Pressed;
-    }
+    press_ui_button(app, button);
     app.update();
     app.update();
 }

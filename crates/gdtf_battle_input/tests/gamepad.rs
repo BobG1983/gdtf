@@ -50,6 +50,7 @@ use gdtf_battle_sim::{
     test_support::SituationBuilder,
     tuning::CombatTuning,
 };
+use gdtf_test_utils::{MessageProbe, MessageProbePlugin, probed};
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).
 const PLAYER_FACTION: Faction = Faction::new(0);
@@ -810,11 +811,6 @@ fn picker_honors_active_pointer() {
     );
 }
 
-/// The `HighlightRequest`s a probe drained this run (so the test reads exactly what the
-/// landed `emit_highlight_request` wrote — proving the highlight follows the gamepad cursor).
-#[derive(Resource, Default)]
-struct HighlightProbe(Vec<HighlightRequest>);
-
 /// AC3 — the landed GTW-251 `emit_highlight_request` makes the highlight follow the gamepad
 /// cursor for free: in Gamepad mode the emitted `HighlightRequest` equals `Some(the gamepad
 /// cell)` — so the cell-highlight IS the cursor (no separate reticle).
@@ -824,14 +820,9 @@ fn highlight_follows_the_gamepad_cursor() {
     // GTW-268 — the emit now gates on the `OccupancyGrid`; `picking_app` does not seed one,
     // so insert an empty grid here and (below) mark the resolved cell blocking.
     app.world_mut().insert_resource(OccupancyGrid::default());
-    app.insert_resource(HighlightProbe::default());
-    app.add_systems(
-        Update,
-        (|mut r: MessageReader<HighlightRequest>, mut p: ResMut<HighlightProbe>| {
-            p.0.extend(r.read().copied());
-        })
-        .after(gdtf_battle_input::emit_highlight_request),
-    );
+    // The generic GTW-576 message probe — its `Last`-schedule drain observes the same
+    // update's `emit_highlight_request` write with its own reader cursor.
+    app.add_plugins(MessageProbePlugin::<HighlightRequest>::default());
 
     // OS cursor off-window; gamepad is the active pointer over a known cell.
     set_os_cursor(&mut app, None);
@@ -854,16 +845,15 @@ fn highlight_follows_the_gamepad_cursor() {
     if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
         grid.set_terrain(resolved, TerrainKind::Cover);
     }
-    if let Some(mut probe) = app.world_mut().get_resource_mut::<HighlightProbe>() {
-        probe.0.clear();
+    if let Some(mut probe) = app
+        .world_mut()
+        .get_resource_mut::<MessageProbe<HighlightRequest>>()
+    {
+        probe.clear();
     }
     app.update();
 
-    let emitted = app
-        .world()
-        .get_resource::<HighlightProbe>()
-        .map(|p| p.0.clone())
-        .unwrap_or_default();
+    let emitted = probed::<HighlightRequest>(&app);
     assert_eq!(
         emitted,
         vec![HighlightRequest::new(cell, CellVisibility::NotSquadVisible)],

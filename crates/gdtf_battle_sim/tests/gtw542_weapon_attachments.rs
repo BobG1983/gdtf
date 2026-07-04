@@ -26,24 +26,24 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Accuracy, BaseSpread, Cell, CellLevel, Cool, DamageType, Faction, FatalBias, Grit, Handedness,
-    Kickback, MagazineSize, Shove, Silenced, Speed, Stable, Stance, StanceKind, Strength,
-    SuppressionApplied, Toughness, WeaponPunch,
+    Accuracy, BaseSpread, Cell, CellLevel, Cool, DamageType, Faction, FatalBias, Grit, Kickback,
+    MagazineSize, Silenced, Speed, Stable, Stance, StanceKind, Strength, SuppressionApplied,
+    Toughness, WeaponPunch,
     battle::{BattleSimPlugin, SetupBattleRequested},
     ganger::{Direction, Facing, GangRegistry},
     magazine::{Magazine, ReloadTu},
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
     test_support::{
-        GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_melee_weapon_registry,
-        test_terrain_registry,
+        GangerSpawnBuilder, SituationBuilder, single_mode, test_armor_registry,
+        test_melee_weapon_registry, test_terrain_registry, test_weapon_spec,
     },
     tuning::{CombatTuning, ViewRange},
     weapon::{
         AimDelta, AttachmentEffect, AttachmentName, AttachmentRegistry, AttachmentSlot,
         AttachmentSpec, FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        ReloadTimeScale, SlotCapacity, TrajectoryStyle, WeaponBraceBonus, WeaponDamage, WeaponName,
-        WeaponRegistry, WeaponShred, WeaponSlots, WeaponSpec, shooter_weapon_silenced,
+        ReloadTimeScale, SlotCapacity, WeaponBraceBonus, WeaponName, WeaponRegistry, WeaponSlots,
+        WeaponSpec, shooter_weapon_silenced,
     },
 };
 
@@ -71,30 +71,17 @@ fn ground(x: i32, y: i32) -> CellLevel {
 fn ranged_spec(attachment_keys: Vec<AttachmentName>) -> WeaponSpec {
     WeaponSpec {
         base_spread: BaseSpread::new(0.05),
-        accuracy:    Accuracy::new(5.0),
-        kickback:    Kickback::new(0.0),
-        fatal_bias:  FatalBias::new(3.0),
-        damage:      WeaponDamage::new(12),
-        punch:       WeaponPunch::new(10),
-        shred:       WeaponShred::new(3),
-        damage_type: DamageType::Kinetic,
-        magazine:    Magazine::loaded(MagazineSize::new(20), ReloadTu::new(20)),
-        fire_mode:   FireMode::new(vec![FireModeSpec::new(
-            ModeKind::Single,
-            ModeConeMult::new(1.0),
-            ModeTuPercent::new(0.2),
-            ModeShots::new(1),
-        )]),
-        stable:      Stable::new(false),
-        shove:       Shove::new(false),
-        handedness:  Handedness::OneHanded,
-        trajectory:  TrajectoryStyle::Straight,
+        accuracy: Accuracy::new(5.0),
+        kickback: Kickback::new(0.0),
+        fatal_bias: FatalBias::new(3.0),
+        punch: WeaponPunch::new(10),
+        magazine: Magazine::loaded(MagazineSize::new(20), ReloadTu::new(20)),
+        fire_mode: FireMode::new(vec![single_mode(0.2, 1)]),
         // GTW-554: declare the Rail slot the shared fixture item occupies, so the
         // referenced key still FITS under the slot gate (capacity 1 — one fixture item).
-        slots:       WeaponSlots::new(vec![(AttachmentSlot::Rail, SlotCapacity::new(1))]),
+        slots: WeaponSlots::new(vec![(AttachmentSlot::Rail, SlotCapacity::new(1))]),
         attachments: attachment_keys,
-        dot:         None,
-        on_death:    None,
+        ..test_weapon_spec()
     }
 }
 

@@ -23,24 +23,22 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Accuracy, BaseSpread, Cell, CellLevel, Cool, DamageType, Faction, FatalBias, Grit, Handedness,
-    Kickback, MagazineSize, Shove, Silenced, Speed, Stable, Stance, StanceKind, Strength,
-    WeaponPunch,
+    Accuracy, BaseSpread, Cell, CellLevel, Cool, Faction, FatalBias, Grit, Kickback, MagazineSize,
+    Silenced, Speed, Stance, StanceKind, Strength, WeaponPunch,
     battle::{BattleSimPlugin, SetupBattleRequested},
     ganger::{Direction, Facing},
     magazine::{Magazine, ReloadTu},
     rng::BattleSeed,
     situation::GangerSpawn,
     test_support::{
-        GangerSpawnBuilder, SituationBuilder, test_armor_registry, test_terrain_registry,
+        GangerSpawnBuilder, SituationBuilder, single_mode, test_armor_registry,
+        test_melee_weapon_spec, test_terrain_registry, test_weapon_spec,
     },
     tuning::{CombatTuning, ViewRange},
     weapon::{
         AimDelta, AttachmentEffect, AttachmentName, AttachmentRegistry, AttachmentSlot,
-        AttachmentSpec, FISTS_KEY, FightMode, FightModeKind, FightModeSpec, FireMode, FireModeSpec,
-        MeleeWeapon, MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, Reach, SlotCapacity, Strikes, TrajectoryStyle, TuCost, WeaponDamage,
-        WeaponName, WeaponRegistry, WeaponShred, WeaponSlots, WeaponSpec,
+        AttachmentSpec, FISTS_KEY, FireMode, MeleeWeapon, MeleeWeaponRegistry, MeleeWeaponSpec,
+        SlotCapacity, WeaponDamage, WeaponName, WeaponRegistry, WeaponSlots, WeaponSpec,
     },
 };
 
@@ -119,25 +117,12 @@ fn ranged_spec(slots: WeaponSlots, keys: Vec<AttachmentName>) -> WeaponSpec {
         accuracy: Accuracy::new(BASE_ACCURACY),
         kickback: Kickback::new(0.0),
         fatal_bias: FatalBias::new(3.0),
-        damage: WeaponDamage::new(12),
         punch: WeaponPunch::new(10),
-        shred: WeaponShred::new(3),
-        damage_type: DamageType::Kinetic,
         magazine: Magazine::loaded(MagazineSize::new(BASE_MAG), ReloadTu::new(20)),
-        fire_mode: FireMode::new(vec![FireModeSpec::new(
-            ModeKind::Single,
-            ModeConeMult::new(1.0),
-            ModeTuPercent::new(0.2),
-            ModeShots::new(1),
-        )]),
-        stable: Stable::new(false),
-        shove: Shove::new(false),
-        handedness: Handedness::OneHanded,
-        trajectory: TrajectoryStyle::Straight,
+        fire_mode: FireMode::new(vec![single_mode(0.2, 1)]),
         slots,
         attachments: keys,
-        dot: None,
-        on_death: None,
+        ..test_weapon_spec()
     }
 }
 
@@ -145,20 +130,9 @@ fn ranged_spec(slots: WeaponSlots, keys: Vec<AttachmentName>) -> WeaponSpec {
 fn melee_spec(slots: WeaponSlots, keys: Vec<AttachmentName>) -> MeleeWeaponSpec {
     MeleeWeaponSpec {
         damage: WeaponDamage::new(BASE_MELEE_DAMAGE),
-        punch: WeaponPunch::new(3),
-        shred: WeaponShred::new(2),
-        damage_type: DamageType::Rend,
-        fatal_bias: FatalBias::new(4.0),
-        handedness: Handedness::OneHanded,
-        reach: Reach::new(1),
-        fight_mode: FightMode::new(vec![FightModeSpec::new(
-            FightModeKind::Swing,
-            TuCost::new(20),
-            Strikes::new(1),
-        )]),
-        shove: Shove::new(false),
         slots,
         attachments: keys,
+        ..test_melee_weapon_spec()
     }
 }
 

@@ -43,7 +43,9 @@ use gdtf_battle_sim::{
         Kickback, Shove, Stable, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
     },
 };
-use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
+use gdtf_test_utils::{
+    GdtfTestAppBuilder, MessageProbe, advance_until, drain_message_probe, press_ui_button, probed,
+};
 use gdtf_ui::{
     theme::default_theme,
     themed::{ThemeRole, Themed},
@@ -367,20 +369,15 @@ fn no_selection_hides_the_weapon_content() {
 // AC6 — pressing Reload emits ActIntent::Reload → ReloadRequested through the seam.
 // ---------------------------------------------------------------------------------
 
-/// Collected `ReloadRequested` messages (probe), read after the drain.
-#[derive(Resource, Default)]
-struct ReloadProbe(Vec<ReloadRequested>);
-
 #[test]
 fn pressing_reload_emits_a_reload_requested_for_the_selection() {
     let mut app = battle_running_app();
-    app.insert_resource(ReloadProbe::default());
+    // The generic GTW-576 probe, drained at the ORIGINAL observation point (Update,
+    // after the intent drain) so it pins the drain's same-update emission.
+    app.init_resource::<MessageProbe<ReloadRequested>>();
     app.add_systems(
         Update,
-        (|mut r: MessageReader<ReloadRequested>, mut p: ResMut<ReloadProbe>| {
-            p.0.extend(r.read().copied());
-        })
-        .after(dispatch_act_intents),
+        drain_message_probe::<ReloadRequested>.after(dispatch_act_intents),
     );
 
     let ganger = spawn_armed_and_select(
@@ -406,15 +403,10 @@ fn pressing_reload_emits_a_reload_requested_for_the_selection() {
         app.world().get::<Button>(reload).is_some(),
         "the Reload control is a real Button (interactive, not a label)",
     );
-    if let Some(mut interaction) = app.world_mut().get_mut::<bevy::ui::Interaction>(reload) {
-        *interaction = bevy::ui::Interaction::Pressed;
-    }
+    press_ui_button(&mut app, reload);
     app.update();
 
-    let reloads = app
-        .world()
-        .get_resource::<ReloadProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone());
+    let reloads = probed::<ReloadRequested>(&app);
     assert_eq!(
         reloads.len(),
         1,

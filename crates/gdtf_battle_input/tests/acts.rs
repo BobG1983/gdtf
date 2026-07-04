@@ -45,12 +45,10 @@ use gdtf_battle_input::{
 };
 use gdtf_battle_presenter::{ActiveLevel, ViewMode, WorldCamera};
 use gdtf_battle_sim::{
-    Aiming, BattleInProgress, BattleSeed, BraceStairCells, Cell, CellLevel, CoverLedger, Direction,
-    Facing, Faction, FightRng, FireMode, FireModeSpec, FloorCostGrid, Handedness, InjuryRng, Level,
-    LifeState, LinkKind, LootRng, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, OccupancyGrid, PlayerFaction, ProcgenRng, ReloadTu, SeverityRng, ShotRng,
-    SlabLedger, SquadVisibility, Stance, StanceKind, SurfaceGrid, Tu, TuMax, VerticalLink,
-    VerticalLinkGraph, WieldedBy,
+    Aiming, BattleInProgress, BattleSeed, Cell, CellLevel, Direction, Faction, FireMode,
+    FireModeSpec, Handedness, Level, LifeState, LinkKind, Magazine, MagazineSize, ModeConeMult,
+    ModeKind, ModeShots, ModeTuPercent, OccupancyGrid, ReloadTu, SquadVisibility, StanceKind, Tu,
+    TuMax, VerticalLink,
     acts::{
         AimRequest, EndTurnRequested, EnterEmplacementRequested, ExecuteDownedRequested,
         ExitEmplacementRequested, FireRequested, MoveRequested, OpenDoorRequested, ReloadRequested,
@@ -58,9 +56,12 @@ use gdtf_battle_sim::{
         StabilizeDownedRequested,
     },
     build_vertical_link_graph,
-    test_support::SituationBuilder,
+    test_support::{
+        GangerEntityBuilder, SituationBuilder, TEST_SEED, fight_rng, insert_sim_resources, wield,
+    },
     tuning::CombatTuning,
 };
+use gdtf_test_utils::{MessageProbePlugin, clear_keys, clear_mouse, press_key, press_left, probed};
 
 /// The faction the player controls in these tests (matches `PlayerFaction`).
 const PLAYER_FACTION: Faction = Faction::new(0);
@@ -164,60 +165,24 @@ fn acts_app() -> App {
         .add_plugins(bevy::scene::ScenePlugin)
         .add_plugins(GdtfBattleInputPlugin)
         .add_plugins(SimActsPlugin);
+    // The canonical sim-resource litany (GTW-576) `SimActsPlugin`'s dispatch systems
+    // read (so they pass param validation): the grids/ledgers empty, an empty fog + link
+    // graph, the five seeded RNG streams, empty injury content, `CombatTuning::default`,
+    // a uniform `FloorCostGrid`, and `PlayerFaction` on gang 0 (== PLAYER_FACTION — the
+    // GTW-238 unified left-click decision gates on it). An unarmed shooter (no `Weapon`
+    // marker) makes `fire()` a no-op, so none of this affects the asserted `*Requested`
+    // MESSAGE — the buffers/dispatch must merely validate. COMPOSED from
+    // `gdtf_battle_sim::test_support` instead of mirroring the litany line-by-line.
+    insert_sim_resources(&mut app, BattleSeed::new(TEST_SEED));
     let level = Level::new(0);
     app.world_mut().insert_resource(ActiveLevel::new(level));
     // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
     app.world_mut().insert_resource(ViewMode::default());
     app.world_mut().insert_resource(BattleInProgress);
-    app.world_mut().insert_resource(OccupancyGrid::default());
-    app.world_mut().insert_resource(CombatTuning::default());
-    // GTW-238: the unified left-click decision gates on (and reads) PlayerFaction.
-    app.world_mut()
-        .insert_resource(PlayerFaction::new(PLAYER_FACTION));
-    // The sim resources `SimActsPlugin`'s dispatch systems read (so they pass param
-    // validation). The grids are empty defaults + a seeded RNG; an unarmed shooter
-    // (no `Weapon` marker) makes `fire()` a no-op, so they never affect the asserted
-    // `*Requested` MESSAGE — only its registered buffers / dispatch must validate.
-    app.world_mut().insert_resource(SurfaceGrid::new());
-    app.world_mut().insert_resource(CoverLedger::new());
-    // GTW-365: `dispatch_fire` reads `ResMut<SlabLedger>` (the slab-hit depletion path),
-    // so the harness seeds an empty ledger for the dispatch param to validate.
-    app.world_mut().insert_resource(SlabLedger::new());
-    // GTW-392: `dispatch_fire` reads `Res<BraceStairCells>` — seed an empty set (no
-    // stair entities in this harness) so the terrain-brace gate param validates.
-    app.world_mut().insert_resource(BraceStairCells::empty());
-    // GTW-354: the constrained `dispatch_move` reads `Res<VerticalLinkGraph>` +
-    // `Res<SquadVisibility>` for its route gate, so the harness seeds them (empty link
-    // graph + empty fog — these AC tests assert the input `*Requested` MESSAGE, never a
-    // move outcome, so the route gate result is irrelevant; they need only validate).
-    app.world_mut()
-        .insert_resource(VerticalLinkGraph::default());
-    app.world_mut().insert_resource(SquadVisibility::default());
-    // GTW-396: `dispatch_move` reads `Res<FloorCostGrid>` — seed a uniform grid at the
-    // default open cost so the dispatch params validate (these tests assert the input
-    // *Requested MESSAGE, never a move outcome).
-    {
-        let open = CombatTuning::default().move_costs.open;
-        app.world_mut()
-            .insert_resource(FloorCostGrid::new(open, []));
-    }
-    // GTW-14: five per-subsystem RNG streams from the test seed.
-    let sim_seed = BattleSeed::new(0x5A1C_AC75);
-    app.world_mut()
-        .insert_resource(ShotRng::from_root(sim_seed));
-    app.world_mut()
-        .insert_resource(SeverityRng::from_root(sim_seed));
     // GTW-507: the melee opposed-Fight stream `dispatch_melee` (in SimActsPlugin's Simulate
-    // band) takes as `ResMut<FightRng>`; insert it so the system's param validation passes in
-    // this BattleInProgress-gated harness (the other sim streams are inserted alongside).
-    app.world_mut()
-        .insert_resource(FightRng::from_root(sim_seed));
-    app.world_mut()
-        .insert_resource(LootRng::from_root(sim_seed));
-    app.world_mut()
-        .insert_resource(InjuryRng::from_root(sim_seed));
-    app.world_mut()
-        .insert_resource(ProcgenRng::from_root(sim_seed));
+    // band) takes as `ResMut<FightRng>` — NOT part of the five-stream litany; insert it so
+    // the system's param validation passes in this BattleInProgress-gated harness.
+    app.world_mut().insert_resource(fight_rng(TEST_SEED));
     app.world_mut().insert_resource(test_keybinds());
     app.world_mut()
         .insert_resource(ButtonInput::<KeyCode>::default());
@@ -253,34 +218,33 @@ fn acts_app() -> App {
 /// `can_fire` magazine read both resolve through `ganger → Wields → weapon` now). The
 /// `WieldedBy` insert hook populates the ganger's `Wields` synchronously in a bare
 /// `World` spawn.
-fn spawn_ganger(
+fn armed_ganger(
     app: &mut App,
     selector: FireMode,
     stance: StanceKind,
     facing: Direction,
 ) -> Entity {
-    let size = MagazineSize::new(30);
-    let ganger = app
-        .world_mut()
-        .spawn((
-            PLAYER_FACTION,
-            Stance::new(stance),
-            Facing::new(facing),
-            Aiming::new(false),
-            LifeState::Alive,
-            Tu::new(255),
-            TuMax::new(100),
-        ))
-        .id();
-    app.world_mut().spawn((
-        WieldedBy::new(ganger),
-        selector,
-        Magazine::new(10, size, ReloadTu::new(12)),
-        // GTW-443: the wielded-weapon entity carries Handedness — the fire surface's
-        // WeaponMagazine query reads `(&Magazine, &Handedness)`, so without it the query
-        // would not match and the click would fire nothing.
-        Handedness::OneHanded,
-    ));
+    let ganger = GangerEntityBuilder::new()
+        .faction(PLAYER_FACTION)
+        .stance(stance)
+        .facing(facing)
+        .aiming(false)
+        .life_state(LifeState::Alive)
+        .tu(255)
+        .tu_max(100)
+        .spawn(app.world_mut());
+    wield(
+        app.world_mut(),
+        ganger,
+        (
+            selector,
+            Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+            // GTW-443: the wielded-weapon entity carries Handedness — the fire surface's
+            // WeaponMagazine query reads `(&Magazine, &Handedness)`, so without it the query
+            // would not match and the click would fire nothing.
+            Handedness::OneHanded,
+        ),
+    );
     ganger
 }
 
@@ -367,27 +331,6 @@ fn select_ganger(app: &mut App, ganger: Entity) -> CellLevel {
     shooter_cell
 }
 
-/// Presses (just-pressed edge) a key.
-fn press_key(app: &mut App, key: KeyCode) {
-    app.world_mut()
-        .resource_mut::<ButtonInput<KeyCode>>()
-        .press(key);
-}
-
-/// Presses (just-pressed edge) the left mouse button.
-fn press_left(app: &mut App) {
-    app.world_mut()
-        .resource_mut::<ButtonInput<MouseButton>>()
-        .press(MouseButton::Left);
-}
-
-/// Releases + clears the mouse edges so a later press is a fresh just-pressed.
-fn clear_mouse(app: &mut App) {
-    let mut mouse = app.world_mut().resource_mut::<ButtonInput<MouseButton>>();
-    mouse.release(MouseButton::Left);
-    mouse.clear();
-}
-
 /// The current `SelectedFireMode`.
 fn fire_mode(app: &App) -> Option<FireModeSpec> {
     app.world().get_resource::<SelectedFireMode>().map(|m| **m)
@@ -398,121 +341,35 @@ fn fire_mode(app: &App) -> Option<FireModeSpec> {
 // test body (each probe runs after the drain, so it sees the same update's emission).
 // ---------------------------------------------------------------------------------
 
-/// Collected `FireRequested` messages (probe).
-#[derive(Resource, Default)]
-struct FireProbe(Vec<FireRequested>);
-/// Collected `MoveRequested` messages (probe, GTW-356 two-click move target).
-#[derive(Resource, Default)]
-struct MoveProbe(Vec<MoveRequested>);
-/// Collected `SetStanceRequested` messages (probe).
-#[derive(Resource, Default)]
-struct StanceProbe(Vec<SetStanceRequested>);
-/// Collected `SetAimingRequested` messages (probe).
-#[derive(Resource, Default)]
-struct AimProbe(Vec<SetAimingRequested>);
-/// Collected `SetFacingRequested` messages (probe).
-#[derive(Resource, Default)]
-struct FacingProbe(Vec<SetFacingRequested>);
-/// Collected `ReloadRequested` messages (probe, GTW-275).
-#[derive(Resource, Default)]
-struct ReloadProbe(Vec<ReloadRequested>);
-/// Collected `EndTurnRequested` messages (probe, GTW-309).
-#[derive(Resource, Default)]
-struct EndTurnProbe(Vec<EndTurnRequested>);
-/// Collected `ExecuteDownedRequested` messages (probe, GTW-294).
-#[derive(Resource, Default)]
-struct ExecuteProbe(Vec<ExecuteDownedRequested>);
-/// Collected `StabilizeDownedRequested` messages (probe, GTW-294).
-#[derive(Resource, Default)]
-struct StabilizeProbe(Vec<StabilizeDownedRequested>);
-/// Collected `OpenDoorRequested` messages (probe, GTW-315).
-#[derive(Resource, Default)]
-struct OpenDoorProbe(Vec<OpenDoorRequested>);
-/// Collected `EnterEmplacementRequested` messages (probe, GTW-543).
-#[derive(Resource, Default)]
-struct EnterEmplacementProbe(Vec<EnterEmplacementRequested>);
-/// Collected `ExitEmplacementRequested` messages (probe, GTW-543).
-#[derive(Resource, Default)]
-struct ExitEmplacementProbe(Vec<ExitEmplacementRequested>);
-
-/// Adds the message-collecting probe systems, each running AFTER the drain so it
-/// observes the same update's emitted messages. The probes have their own
-/// `MessageReader` cursors (independent of the sim's `dispatch_*`), so they read every
-/// message the drain wrote.
+/// Adds the generic message probes (GTW-576 `MessageProbePlugin<M>`) for every act
+/// `*Requested` the tests assert on. The drain runs in `Last`, so it observes the same
+/// update's emissions regardless of where in `Update` the drain/dispatch wrote them; each
+/// probe has its own `MessageReader` cursor, independent of the sim's `dispatch_*`.
 fn add_probes(app: &mut App) {
-    app.insert_resource(FireProbe::default())
-        .insert_resource(MoveProbe::default())
-        .insert_resource(StanceProbe::default())
-        .insert_resource(AimProbe::default())
-        .insert_resource(FacingProbe::default())
-        .insert_resource(ReloadProbe::default())
-        .insert_resource(EndTurnProbe::default())
-        .insert_resource(ExecuteProbe::default())
-        .insert_resource(StabilizeProbe::default())
-        .insert_resource(OpenDoorProbe::default())
-        .insert_resource(EnterEmplacementProbe::default())
-        .insert_resource(ExitEmplacementProbe::default());
-    app.add_systems(
-        Update,
-        (
-            |mut r: MessageReader<FireRequested>, mut p: ResMut<FireProbe>| {
-                // `FireRequested` is no longer `Copy` (it owns a `FireModeSpec`) — clone.
-                p.0.extend(r.read().cloned());
-            },
-            |mut r: MessageReader<MoveRequested>, mut p: ResMut<MoveProbe>| {
-                p.0.extend(r.read().copied());
-            },
-            |mut r: MessageReader<SetStanceRequested>, mut p: ResMut<StanceProbe>| {
-                p.0.extend(r.read().copied());
-            },
-            |mut r: MessageReader<SetAimingRequested>, mut p: ResMut<AimProbe>| {
-                p.0.extend(r.read().copied());
-            },
-            |mut r: MessageReader<SetFacingRequested>, mut p: ResMut<FacingProbe>| {
-                p.0.extend(r.read().copied());
-            },
-            |mut r: MessageReader<ReloadRequested>, mut p: ResMut<ReloadProbe>| {
-                p.0.extend(r.read().copied());
-            },
-            |mut r: MessageReader<EndTurnRequested>, mut p: ResMut<EndTurnProbe>| {
-                p.0.extend(r.read().copied());
-            },
-            |mut r: MessageReader<ExecuteDownedRequested>, mut p: ResMut<ExecuteProbe>| {
-                p.0.extend(r.read().copied());
-            },
-            |mut r: MessageReader<StabilizeDownedRequested>, mut p: ResMut<StabilizeProbe>| {
-                p.0.extend(r.read().copied());
-            },
-            |mut r: MessageReader<OpenDoorRequested>, mut p: ResMut<OpenDoorProbe>| {
-                p.0.extend(r.read().copied());
-            },
-            |mut r: MessageReader<EnterEmplacementRequested>,
-             mut p: ResMut<EnterEmplacementProbe>| {
-                p.0.extend(r.read().copied());
-            },
-            |mut r: MessageReader<ExitEmplacementRequested>,
-             mut p: ResMut<ExitEmplacementProbe>| {
-                p.0.extend(r.read().copied());
-            },
-        )
-            .after(gdtf_battle_input::dispatch_act_intents),
-    );
+    app.add_plugins((
+        MessageProbePlugin::<FireRequested>::default(),
+        MessageProbePlugin::<MoveRequested>::default(),
+        MessageProbePlugin::<SetStanceRequested>::default(),
+        MessageProbePlugin::<SetAimingRequested>::default(),
+        MessageProbePlugin::<SetFacingRequested>::default(),
+        MessageProbePlugin::<ReloadRequested>::default(),
+        MessageProbePlugin::<EndTurnRequested>::default(),
+        MessageProbePlugin::<ExecuteDownedRequested>::default(),
+        MessageProbePlugin::<StabilizeDownedRequested>::default(),
+        MessageProbePlugin::<OpenDoorRequested>::default(),
+        MessageProbePlugin::<EnterEmplacementRequested>::default(),
+        MessageProbePlugin::<ExitEmplacementRequested>::default(),
+    ));
 }
 
 /// The collected `FireRequested` messages.
 fn fires(app: &App) -> Vec<FireRequested> {
-    app.world()
-        .get_resource::<FireProbe>()
-        .map(|p| p.0.clone())
-        .unwrap_or_default()
+    probed::<FireRequested>(app)
 }
 
 /// The collected `MoveRequested` messages (GTW-356 two-click move target).
 fn moves(app: &App) -> Vec<MoveRequested> {
-    app.world()
-        .get_resource::<MoveProbe>()
-        .map(|p| p.0.clone())
-        .unwrap_or_default()
+    probed::<MoveRequested>(app)
 }
 
 /// The current `PathPreviewTarget` (the GTW-356 two-click move target the preview previews TO).
@@ -533,7 +390,7 @@ fn move_target(app: &App) -> Option<CellLevel> {
 fn selecting_armed_ganger_defaults_fire_mode_to_single() {
     let mut app = acts_app();
     let selector = sbf_selector();
-    let ganger = spawn_ganger(
+    let ganger = armed_ganger(
         &mut app,
         selector.clone(),
         StanceKind::Standing,
@@ -571,7 +428,7 @@ fn left_click_emits_one_fire_requested() {
     let mut app = acts_app();
     add_probes(&mut app);
     let selector = sbf_selector();
-    let ganger = spawn_ganger(
+    let ganger = armed_ganger(
         &mut app,
         selector.clone(),
         StanceKind::Standing,
@@ -632,7 +489,7 @@ fn can_fire_failure_blocks_fire_requested() {
     {
         let mut app = acts_app();
         add_probes(&mut app);
-        let ganger = spawn_ganger(
+        let ganger = armed_ganger(
             &mut app,
             sbf_selector(),
             StanceKind::Standing,
@@ -654,7 +511,7 @@ fn can_fire_failure_blocks_fire_requested() {
     {
         let mut app = acts_app();
         add_probes(&mut app);
-        let ganger = spawn_ganger(
+        let ganger = armed_ganger(
             &mut app,
             sbf_selector(),
             StanceKind::Standing,
@@ -678,7 +535,7 @@ fn can_fire_failure_blocks_fire_requested() {
     {
         let mut app = acts_app();
         add_probes(&mut app);
-        let ganger = spawn_ganger(
+        let ganger = armed_ganger(
             &mut app,
             sbf_selector(),
             StanceKind::Standing,
@@ -712,7 +569,7 @@ fn can_fire_failure_blocks_fire_requested() {
     {
         let mut app = acts_app();
         add_probes(&mut app);
-        let ganger = spawn_ganger(
+        let ganger = armed_ganger(
             &mut app,
             sbf_selector(),
             StanceKind::Standing,
@@ -759,7 +616,7 @@ enum Drive {
 fn drive_one_act(drive: Drive) -> (App, Entity) {
     let mut app = acts_app();
     add_probes(&mut app);
-    let ganger = spawn_ganger(
+    let ganger = armed_ganger(
         &mut app,
         sbf_selector(),
         StanceKind::Standing,
@@ -785,10 +642,7 @@ fn drive_one_act(drive: Drive) -> (App, Entity) {
 fn stance_key_emits_next_of_cycle_and_matches_direct_intent() {
     let key = test_keybinds().stance_cycle();
     let (app, ganger) = drive_one_act(Drive::Key(key));
-    let via_key = app
-        .world()
-        .get_resource::<StanceProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone());
+    let via_key = probed::<SetStanceRequested>(&app);
     assert_eq!(
         via_key.len(),
         1,
@@ -802,10 +656,7 @@ fn stance_key_emits_next_of_cycle_and_matches_direct_intent() {
     );
 
     let (app2, _) = drive_one_act(Drive::Intent(ActIntent::StanceCycle));
-    let via_intent = app2
-        .world()
-        .get_resource::<StanceProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone());
+    let via_intent = probed::<SetStanceRequested>(&app2);
     assert_eq!(via_intent.len(), 1, "one SetStanceRequested via the intent");
     assert_eq!(
         via_key[0], via_intent[0],
@@ -819,10 +670,7 @@ fn stance_key_emits_next_of_cycle_and_matches_direct_intent() {
 fn aim_key_toggles_and_matches_direct_intent() {
     let key = test_keybinds().aim_toggle();
     let (app, ganger) = drive_one_act(Drive::Key(key));
-    let via_key = app
-        .world()
-        .get_resource::<AimProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone());
+    let via_key = probed::<SetAimingRequested>(&app);
     assert_eq!(via_key.len(), 1, "one SetAimingRequested via the aim key");
     assert_eq!(via_key[0].actor, ganger, "actor = *SelectedShooter");
     assert_eq!(
@@ -832,10 +680,7 @@ fn aim_key_toggles_and_matches_direct_intent() {
     );
 
     let (app2, _) = drive_one_act(Drive::Intent(ActIntent::AimToggle));
-    let via_intent = app2
-        .world()
-        .get_resource::<AimProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone());
+    let via_intent = probed::<SetAimingRequested>(&app2);
     assert_eq!(via_intent.len(), 1, "one SetAimingRequested via the intent");
     assert_eq!(
         via_key[0], via_intent[0],
@@ -849,10 +694,7 @@ fn aim_key_toggles_and_matches_direct_intent() {
 fn facing_key_emits_next_of_cycle_and_matches_direct_intent() {
     let key = test_keybinds().facing_cycle();
     let (app, ganger) = drive_one_act(Drive::Key(key));
-    let via_key = app
-        .world()
-        .get_resource::<FacingProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone());
+    let via_key = probed::<SetFacingRequested>(&app);
     assert_eq!(
         via_key.len(),
         1,
@@ -866,10 +708,7 @@ fn facing_key_emits_next_of_cycle_and_matches_direct_intent() {
     );
 
     let (app2, _) = drive_one_act(Drive::Intent(ActIntent::FacingCycle));
-    let via_intent = app2
-        .world()
-        .get_resource::<FacingProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone());
+    let via_intent = probed::<SetFacingRequested>(&app2);
     assert_eq!(via_intent.len(), 1, "one SetFacingRequested via the intent");
     assert_eq!(
         via_key[0], via_intent[0],
@@ -883,10 +722,7 @@ fn facing_key_emits_next_of_cycle_and_matches_direct_intent() {
 #[test]
 fn reload_intent_emits_one_reload_requested_for_the_selection() {
     let (app, ganger) = drive_one_act(Drive::Intent(ActIntent::Reload));
-    let reloads = app
-        .world()
-        .get_resource::<ReloadProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone());
+    let reloads = probed::<ReloadRequested>(&app);
     assert_eq!(
         reloads.len(),
         1,
@@ -916,7 +752,7 @@ fn reload_intent_emits_one_reload_requested_for_the_selection() {
 fn downed_intents_emit_requests_for_selection_over_carried_target() {
     let mut app = acts_app();
     add_probes(&mut app);
-    let actor = spawn_ganger(
+    let actor = armed_ganger(
         &mut app,
         sbf_selector(),
         StanceKind::Standing,
@@ -935,10 +771,7 @@ fn downed_intents_emit_requests_for_selection_over_carried_target() {
         .push(target);
     app.update();
 
-    let executes = app
-        .world()
-        .get_resource::<ExecuteProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone());
+    let executes = probed::<ExecuteDownedRequested>(&app);
     assert_eq!(
         executes.len(),
         1,
@@ -950,10 +783,7 @@ fn downed_intents_emit_requests_for_selection_over_carried_target() {
         "ExecuteDownedRequested has actor = *SelectedShooter and target = carried",
     );
 
-    let stabilizes = app
-        .world()
-        .get_resource::<StabilizeProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone());
+    let stabilizes = probed::<StabilizeDownedRequested>(&app);
     assert_eq!(
         stabilizes.len(),
         1,
@@ -986,15 +816,11 @@ fn downed_intents_emit_nothing_without_selection() {
     app.update();
 
     assert!(
-        app.world()
-            .get_resource::<ExecuteProbe>()
-            .is_none_or(|p| p.0.is_empty()),
+        probed::<ExecuteDownedRequested>(&app).is_empty(),
         "no ExecuteDownedRequested without a selection",
     );
     assert!(
-        app.world()
-            .get_resource::<StabilizeProbe>()
-            .is_none_or(|p| p.0.is_empty()),
+        probed::<StabilizeDownedRequested>(&app).is_empty(),
         "no StabilizeDownedRequested without a selection",
     );
 }
@@ -1016,7 +842,7 @@ fn downed_intents_emit_nothing_without_selection() {
 fn open_door_intent_emits_request_for_selection_over_carried_door() {
     let mut app = acts_app();
     add_probes(&mut app);
-    let actor = spawn_ganger(
+    let actor = armed_ganger(
         &mut app,
         sbf_selector(),
         StanceKind::Standing,
@@ -1032,10 +858,7 @@ fn open_door_intent_emits_request_for_selection_over_carried_door() {
         .push(door);
     app.update();
 
-    let opens = app
-        .world()
-        .get_resource::<OpenDoorProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone());
+    let opens = probed::<OpenDoorRequested>(&app);
     assert_eq!(
         opens.len(),
         1,
@@ -1065,9 +888,7 @@ fn open_door_intent_emits_nothing_without_selection() {
     app.update();
 
     assert!(
-        app.world()
-            .get_resource::<OpenDoorProbe>()
-            .is_none_or(|p| p.0.is_empty()),
+        probed::<OpenDoorRequested>(&app).is_empty(),
         "no OpenDoorRequested without a selection",
     );
 }
@@ -1091,7 +912,7 @@ fn open_door_intent_emits_nothing_without_selection() {
 fn enter_emplacement_intent_emits_request_for_selection_over_carried_emplacement() {
     let mut app = acts_app();
     add_probes(&mut app);
-    let actor = spawn_ganger(
+    let actor = armed_ganger(
         &mut app,
         sbf_selector(),
         StanceKind::Standing,
@@ -1107,10 +928,7 @@ fn enter_emplacement_intent_emits_request_for_selection_over_carried_emplacement
         .push(emplacement);
     app.update();
 
-    let enters = app
-        .world()
-        .get_resource::<EnterEmplacementProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone());
+    let enters = probed::<EnterEmplacementRequested>(&app);
     assert_eq!(
         enters.len(),
         1,
@@ -1140,9 +958,7 @@ fn enter_emplacement_intent_emits_nothing_without_selection() {
     app.update();
 
     assert!(
-        app.world()
-            .get_resource::<EnterEmplacementProbe>()
-            .is_none_or(|p| p.0.is_empty()),
+        probed::<EnterEmplacementRequested>(&app).is_empty(),
         "no EnterEmplacementRequested without a selection",
     );
 }
@@ -1159,7 +975,7 @@ fn enter_emplacement_intent_emits_nothing_without_selection() {
 fn exit_emplacement_intent_emits_request_for_selection_over_carried_emplacement() {
     let mut app = acts_app();
     add_probes(&mut app);
-    let actor = spawn_ganger(
+    let actor = armed_ganger(
         &mut app,
         sbf_selector(),
         StanceKind::Standing,
@@ -1173,10 +989,7 @@ fn exit_emplacement_intent_emits_request_for_selection_over_carried_emplacement(
         .push(emplacement);
     app.update();
 
-    let exits = app
-        .world()
-        .get_resource::<ExitEmplacementProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone());
+    let exits = probed::<ExitEmplacementRequested>(&app);
     assert_eq!(
         exits.len(),
         1,
@@ -1204,9 +1017,7 @@ fn exit_emplacement_intent_emits_nothing_without_selection() {
     app.update();
 
     assert!(
-        app.world()
-            .get_resource::<ExitEmplacementProbe>()
-            .is_none_or(|p| p.0.is_empty()),
+        probed::<ExitEmplacementRequested>(&app).is_empty(),
         "no ExitEmplacementRequested without a selection",
     );
 }
@@ -1232,10 +1043,7 @@ fn end_turn_intent_emits_one_end_turn_requested_without_selection() {
         .push(ActIntent::EndTurn);
     app.update();
 
-    let ends = app
-        .world()
-        .get_resource::<EndTurnProbe>()
-        .map_or_else(Vec::new, |p| p.0.clone());
+    let ends = probed::<EndTurnRequested>(&app);
     assert_eq!(
         ends.len(),
         1,
@@ -1260,7 +1068,7 @@ fn no_selection_makes_every_act_a_no_op() {
     let binds = test_keybinds();
 
     // An armed ganger EXISTS in the world but is NOT selected.
-    let _ganger = spawn_ganger(
+    let _ganger = armed_ganger(
         &mut app,
         sbf_selector(),
         StanceKind::Standing,
@@ -1294,27 +1102,19 @@ fn no_selection_makes_every_act_a_no_op() {
         "no FireRequested without a selection"
     );
     assert!(
-        app.world()
-            .get_resource::<StanceProbe>()
-            .is_none_or(|p| p.0.is_empty()),
+        probed::<SetStanceRequested>(&app).is_empty(),
         "no SetStanceRequested without a selection",
     );
     assert!(
-        app.world()
-            .get_resource::<AimProbe>()
-            .is_none_or(|p| p.0.is_empty()),
+        probed::<SetAimingRequested>(&app).is_empty(),
         "no SetAimingRequested without a selection",
     );
     assert!(
-        app.world()
-            .get_resource::<FacingProbe>()
-            .is_none_or(|p| p.0.is_empty()),
+        probed::<SetFacingRequested>(&app).is_empty(),
         "no SetFacingRequested without a selection",
     );
     assert!(
-        app.world()
-            .get_resource::<ReloadProbe>()
-            .is_none_or(|p| p.0.is_empty()),
+        probed::<ReloadRequested>(&app).is_empty(),
         "no ReloadRequested without a selection",
     );
 }
@@ -1325,14 +1125,6 @@ fn no_selection_makes_every_act_a_no_op() {
 // commit), AC4 (cross-storey via the level keys), AC5 (default = ActiveLevel), AC6
 // (a vertical-link tile is NOT a move target).
 // =================================================================================
-
-/// Releases + clears the KEY edges so a later press is a fresh just-pressed (under
-/// `MinimalPlugins` no `InputPlugin` clears the edges per frame).
-fn clear_keys(app: &mut App) {
-    let mut keys = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
-    keys.release_all();
-    keys.clear();
-}
 
 /// Presses Left + `update()`s once (resolving the click on the stable cursor cell), then
 /// clears the mouse edge so the NEXT press is a fresh just-pressed — one left-click of the
@@ -1373,7 +1165,7 @@ fn two_click_sets_target_then_commits_move() {
     add_probes(&mut app);
     // A player ganger with NO firing components fails FIRE closed, so a click on an empty cell
     // is a MOVE (the `move_path_app` precedent). Select it over the real cursor chain.
-    let ganger = spawn_ganger(
+    let ganger = armed_ganger(
         &mut app,
         sbf_selector(),
         StanceKind::Standing,
@@ -1420,7 +1212,7 @@ fn two_click_sets_target_then_commits_move() {
 fn two_click_default_targets_active_level() {
     let mut app = acts_app();
     add_probes(&mut app);
-    let ganger = spawn_ganger(
+    let ganger = armed_ganger(
         &mut app,
         sbf_selector(),
         StanceKind::Standing,
@@ -1457,7 +1249,7 @@ fn two_click_default_targets_active_level() {
 fn two_click_after_level_switch_targets_switched_storey() {
     let mut app = acts_app();
     add_probes(&mut app);
-    let ganger = spawn_ganger(
+    let ganger = armed_ganger(
         &mut app,
         sbf_selector(),
         StanceKind::Standing,
@@ -1500,7 +1292,7 @@ fn two_click_after_level_switch_targets_switched_storey() {
 fn click_on_a_link_tile_is_not_a_move_target() {
     let mut app = acts_app();
     add_probes(&mut app);
-    let ganger = spawn_ganger(
+    let ganger = armed_ganger(
         &mut app,
         sbf_selector(),
         StanceKind::Standing,

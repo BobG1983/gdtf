@@ -29,6 +29,7 @@ use gdtf_battle_sim::{
     PlayerFaction, Position, ReloadTu, TerrainKind, Tu, TuMax, VerticalLinkGraph,
     tuning::CombatTuning,
 };
+use gdtf_test_utils::{clear_mouse, press_left};
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).
 const PLAYER_FACTION: Faction = Faction::new(0);
@@ -148,22 +149,6 @@ fn set_selection(app: &mut App, entity: Entity) {
 fn set_fire_mode(app: &mut App) {
     app.world_mut()
         .insert_resource(SelectedFireMode::new(spec()));
-}
-
-/// Presses (just-pressed edge) the left mouse button.
-fn press_left(app: &mut App) {
-    app.world_mut()
-        .resource_mut::<ButtonInput<MouseButton>>()
-        .press(MouseButton::Left);
-}
-
-/// Releases the button + clears the edges (under `MinimalPlugins` there is no `InputPlugin` to
-/// tick `ButtonInput`, so `just_pressed` would otherwise stay true across updates and re-fire the
-/// click). Call after a precondition click so a later update is NOT another click.
-fn clear_mouse(app: &mut App) {
-    let mut mouse = app.world_mut().resource_mut::<ButtonInput<MouseButton>>();
-    mouse.release(MouseButton::Left);
-    mouse.clear();
 }
 
 /// The current pin on the `InspectTarget`.

@@ -21,14 +21,14 @@
 
 use bevy::{
     app::App,
-    prelude::{Entity, MinimalPlugins, World},
+    prelude::{Entity, World},
 };
 use gdtf_battle_sim::{
-    BattleSeed, Cell, CellLevel, CombatTuning, CoverLedger, Faction, HeightBand, InjuryRng, Level,
-    LootRng, OccupancyGrid, OccupancyMaintenancePlugin, OpenDoorRequested, OpenState,
-    OpenableBlocking, OpenableTogglePlugin, PlayerFaction, Position, ProcgenRng, SeverityRng,
-    ShotRng, SquadVisibility, SurfaceGrid, Tu, TuMax, VerticalLinkGraph,
+    Cell, CellLevel, CombatTuning, Faction, HeightBand, Level, OccupancyGrid,
+    OccupancyMaintenancePlugin, OpenDoorRequested, OpenState, OpenableBlocking,
+    OpenableTogglePlugin, Position, Tu, TuMax,
     entity::{BlocksPathfinding, BlocksVision, TerrainCell},
+    test_support::SimAppBuilder,
 };
 
 /// An arbitrary fixed seed — the open-door act is RNG-free, so the value is irrelevant; it only
@@ -50,39 +50,18 @@ fn shipped_tuning() -> CombatTuning {
 ///
 /// The `Simulate` band here has NO `BattleInProgress` gate (that lives in `BattleSimPlugin`), so
 /// `dispatch_open_door` runs unconditionally over the inserted resources (the gtw525
-/// focused-harness pattern). The grid resources are seeded so the projection and the open-door
-/// gate read valid state.
+/// focused-harness pattern). The canonical `with_acts` litany seeds the grids + the sibling
+/// dispatchers' battle-lifetime resources (GTW-576) so the projection and the open-door gate
+/// read valid state and no sibling trips param validation; the SHIPPED tuning is overlaid so
+/// the TU-charge assert reads the REAL `open_door_tu` leaf.
 fn open_door_app() -> App {
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins)
-        .add_plugins(gdtf_battle_sim::acts::SimActsPlugin)
-        .add_plugins(OpenableTogglePlugin)
+    let mut app = SimAppBuilder::new()
+        .with_seed(SEED)
+        .with_acts()
+        .with_tuning(shipped_tuning())
+        .build();
+    app.add_plugins(OpenableTogglePlugin)
         .add_plugins(OccupancyMaintenancePlugin);
-    app.insert_resource(shipped_tuning());
-    app.insert_resource(OccupancyGrid::new());
-    app.insert_resource(SurfaceGrid::new());
-    app.insert_resource(CoverLedger::new());
-    app.insert_resource(VerticalLinkGraph::default());
-    app.insert_resource(SquadVisibility::default());
-    app.insert_resource(gdtf_battle_sim::SlabLedger::new());
-    // The sibling `Simulate`-band dispatchers (`dispatch_fire`, `dispatch_move`) also run in this
-    // harness (SimActsPlugin registers them all) and panic-validate their OWN battle-lifetime
-    // resources on every tick; seed the full complement the gtw525 focused-harness proved so no
-    // sibling trips param validation. NONE of these are read by `dispatch_open_door` (which only
-    // reads CombatTuning + the actor/door queries + the SetOpenable writer) — the open-door act
-    // is RNG-free; these exist purely to keep the co-registered siblings valid.
-    let root = BattleSeed::new(SEED);
-    app.insert_resource(ShotRng::from_root(root));
-    app.insert_resource(SeverityRng::from_root(root));
-    app.insert_resource(InjuryRng::from_root(root));
-    app.insert_resource(LootRng::from_root(root));
-    app.insert_resource(ProcgenRng::from_root(root));
-    app.insert_resource(gdtf_battle_sim::InjuryTables::default());
-    app.insert_resource(gdtf_battle_sim::InjuryRegistry::default());
-    app.insert_resource(PlayerFaction::new(Faction::new(0)));
-    app.insert_resource(gdtf_battle_sim::BraceStairCells::empty());
-    let default_open = CombatTuning::default().move_costs.open;
-    app.insert_resource(gdtf_battle_sim::FloorCostGrid::new(default_open, []));
     app
 }
 

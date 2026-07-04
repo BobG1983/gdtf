@@ -37,20 +37,18 @@ use gdtf_battle_sim::{
     acts::FireRequested,
     battle::{BattleSimPlugin, SetupBattleRequested},
     ganger::{Aim, Aiming, Direction, Facing, GangRegistry},
-    magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
     test_support::{
         GangerSpawnBuilder, SituationBuilder, TEST_WEAPON_KEY, test_armor_registry,
-        test_melee_weapon_registry,
+        test_melee_weapon_registry, test_weapon_spec,
     },
     tuning::{CombatTuning, ViewRange},
     weapon::{
-        Accuracy, BaseSpread, BlastRadius, DamageType, FatalBias, FireMode, FireModeSpec,
-        Handedness, HitType, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, Shove, Stable, TrajectoryStyle, WeaponDamage, WeaponName, WeaponPunch,
-        WeaponRegistry, WeaponShred, WeaponSpec,
+        Accuracy, BaseSpread, BlastRadius, DamageType, FatalBias, FireMode, FireModeSpec, HitType,
+        Kickback, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Stable, WeaponDamage,
+        WeaponName, WeaponPunch, WeaponRegistry, WeaponSpec,
     },
 };
 
@@ -75,30 +73,21 @@ fn ground(x: i32, y: i32) -> CellLevel {
 fn aoe_weapon_spec(hit_type: HitType) -> WeaponSpec {
     WeaponSpec {
         base_spread: BaseSpread::new(0.0),
-        accuracy:    Accuracy::new(5.0),
-        kickback:    Kickback::new(0.0),
-        fatal_bias:  FatalBias::new(2.0),
-        damage:      WeaponDamage::new(20),
-        punch:       WeaponPunch::new(30),
-        shred:       WeaponShred::new(3),
+        accuracy: Accuracy::new(5.0),
+        kickback: Kickback::new(0.0),
+        fatal_bias: FatalBias::new(2.0),
+        damage: WeaponDamage::new(20),
+        punch: WeaponPunch::new(30),
         damage_type: DamageType::Blast,
-        magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
-        fire_mode:   FireMode::new(vec![FireModeSpec::with_hit_type(
+        fire_mode: FireMode::new(vec![FireModeSpec::with_hit_type(
             ModeKind::Single,
             ModeConeMult::new(1.0),
             ModeTuPercent::new(0.2),
             ModeShots::new(1),
             hit_type,
         )]),
-        stable:      Stable::new(true),
-        shove:       Shove::new(false),
-        handedness:  Handedness::OneHanded,
-        trajectory:  TrajectoryStyle::Straight,
-        // GTW-554: no slots declared / no attachments fitted (the empty defaults).
-        slots:       gdtf_battle_sim::WeaponSlots::default(),
-        attachments: Vec::new(),
-        dot:         None,
-        on_death:    None,
+        stable: Stable::new(true),
+        ..test_weapon_spec()
     }
 }
 

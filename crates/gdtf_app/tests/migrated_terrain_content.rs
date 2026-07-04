@@ -24,7 +24,7 @@
 //! VALUE-AGNOSTIC (gate 4a / C6): NO authored magnitude is pinned — presence + count +
 //! known-UUID resolution + cross-reference consistency only.
 
-use gdtf_app::test_support::AppState;
+use gdtf_app::test_support::{AppState, app_state};
 use gdtf_battle_sim::{
     level::{ThemeUuid, UuidThemeRegistry},
     terrain::def::{TerrainDefRegistry, TerrainSimKind, TerrainTag, TerrainUuid},
@@ -90,14 +90,6 @@ const fn migrated_themes() -> [(ThemeUuid, TerrainUuid); 3] {
 /// `[BlocksVision, BlocksPathfinding]` tags (C4 tag round-trip).
 const fn bulkhead_wall_uuid() -> TerrainUuid {
     terrain_uuid(0x0184_0a91_0002)
-}
-
-/// Reads the current [`AppState`].
-fn app_state(app: &bevy::app::App) -> AppState {
-    app.world()
-        .resource::<bevy::state::state::State<AppState>>()
-        .get()
-        .clone()
 }
 
 /// GTW-490 C2 / C4 — the SHIPPED migrated terrain + theme content resolves through the real

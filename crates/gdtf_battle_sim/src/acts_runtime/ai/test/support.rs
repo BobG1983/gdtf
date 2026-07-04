@@ -7,24 +7,18 @@ pub(super) use bevy::prelude::{App, Entity, Messages, MinimalPlugins, World};
 pub(super) use crate::{
     acts::{FireRequested, MoveRequested, SimActsPlugin},
     ai::{ActCadence, EnemyActCooldown},
-    battle::PlayerFaction,
-    cover::{CoverLedger, HeightBand},
+    cover::HeightBand,
     ganger::{
         Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stance,
         StanceKind, Toughness, Tu, TuMax, Wounds,
     },
     inflicted_wound::InflictedWounds,
-    injuries::{InjuryRegistry, InjuryTables},
     magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
-    rng::{BattleSeed, InjuryRng, LootRng, ProcgenRng, SeverityRng, ShotRng},
-    slab::{BraceStairCells, SlabLedger},
-    surface::SurfaceGrid,
-    terrain::floor::FloorCostGrid,
-    tuning::CombatTuning,
+    rng::BattleSeed,
+    test_support::insert_sim_resources,
     turn::ActiveFaction,
-    vertical::VerticalLinkGraph,
     visibility::{OmniscientFog, SquadVisibility},
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
@@ -61,32 +55,15 @@ pub(super) fn brain_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(SimActsPlugin);
-    app.insert_resource(OccupancyGrid::new());
-    app.insert_resource(SurfaceGrid::new());
-    app.insert_resource(CoverLedger::new());
-    app.insert_resource(SlabLedger::new());
-    app.insert_resource(BraceStairCells::empty());
-    app.insert_resource(VerticalLinkGraph::default());
-    // Full-vision player fog + the omniscient AI move fog (both the whole grid extent). The
-    // brain plans on the OmniscientFog; the full-vision SquadVisibility keeps dispatch_move's
-    // player-fog fallback permissive too.
+    // The canonical seeding litany (GTW-576) — grids, ledgers, five RNG streams, empty
+    // injury content, default tuning + uniform floor costs, PlayerFaction(PLAYER).
+    insert_sim_resources(&mut app, BattleSeed::new(SEED));
+    // Full-vision player fog + the omniscient AI move fog (both the whole grid extent),
+    // OVERRIDING the litany's empty fog. The brain plans on the OmniscientFog; the
+    // full-vision SquadVisibility keeps dispatch_move's player-fog fallback permissive too.
     let omniscient = SquadVisibility::omniscient(&OccupancyGrid::new());
     app.insert_resource(omniscient.clone());
     app.insert_resource(OmniscientFog::new(omniscient));
-    let seed = BattleSeed::new(SEED);
-    app.insert_resource(ShotRng::from_root(seed));
-    app.insert_resource(SeverityRng::from_root(seed));
-    app.insert_resource(LootRng::from_root(seed));
-    app.insert_resource(InjuryRng::from_root(seed));
-    app.insert_resource(ProcgenRng::from_root(seed));
-    // GTW-438: `dispatch_fire` reads `Res<InjuryTables>` + `Res<InjuryRegistry>` — seed
-    // empty ones (the AI fire path rolls no asserted injury; the roll still draws).
-    app.insert_resource(InjuryTables::default());
-    app.insert_resource(InjuryRegistry::default());
-    let tuning = CombatTuning::default();
-    app.insert_resource(FloorCostGrid::new(tuning.move_costs.open, []));
-    app.insert_resource(tuning);
-    app.insert_resource(PlayerFaction::new(PLAYER));
     app.insert_resource(ActiveFaction::new(ENEMY));
     // GTW-461: seed the act cooldown ready-to-act, with a ZERO cadence — so the existing
     // per-tick brain scenarios behave EXACTLY as before (recharge-to-0 = ready next tick =
