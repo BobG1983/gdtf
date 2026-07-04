@@ -11,9 +11,12 @@
 //! This test points a real `AssetServer` at a TEST fixture root
 //! (`tests/fixtures/terrain_model_root/`) whose `content/terrain/industrial_hive/` holds one
 //! `*.terrain_def.ron` + one `*.terrain_theme.ron` (isolated from the SHIPPED per-theme
-//! content, so the known-fixture-UUID asserts stay meaningful), with the OTHER shipped
-//! content dirs symlinked to the real `assets/` so the rest of the Load gate still clears
-//! and the new resolve branch actually runs end-to-end.
+//! content, so the known-fixture-UUID asserts stay meaningful). The `content/` tree
+//! materializes ONLY that overridden `terrain/` subdir (the GTW-580 fixture convention):
+//! every other content family's folder is absent, so each fail-closes to its EMPTY
+//! registry / default fallback (the no-strand guarantee) — the rest of the Load gate still
+//! clears, the resolve branch runs end-to-end, and a new content family requires ZERO
+//! edits to this fixture root.
 //!
 //! VALUE-AGNOSTIC (gate 4a): asserts the registries POPULATE and resolve the KNOWN authored
 //! UUIDs only — no authored magnitudes pinned. Mirrors `load_terrain.rs` /

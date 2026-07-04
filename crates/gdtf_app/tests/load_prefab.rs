@@ -9,9 +9,11 @@
 //! `resolve_prefabs` branch this test drives is now the ONLY live prefab resolver in the app.
 //! The fragments live under `content/maps/`. This test therefore points
 //! a real `AssetServer` at a TEST fixture root (`tests/fixtures/prefab_root/`) whose
-//! `content/maps/industrial_hive/3x3/` holds one `*.prefab.ron`, with the other shipped
-//! `content/` subdirs symlinked to the real `assets/content/` — so the rest of the Load gate
-//! clears and the new resolve branch actually runs end-to-end.
+//! `content/` tree materializes ONLY the overridden `maps/` subdir (the GTW-580 fixture
+//! convention: a fixture root carries just what it overrides). Every other content family's
+//! folder is absent, so each fail-closes to its EMPTY registry (the no-strand guarantee) —
+//! the rest of the Load gate still clears, the resolve branch runs end-to-end, and a new
+//! content family requires ZERO edits to this fixture root.
 //!
 //! VALUE-AGNOSTIC (gate 4a): asserts the registry POPULATES and buckets under the expected
 //! key + carries placements only — no authored magnitudes pinned. Mirrors `load_prefabs.rs` /

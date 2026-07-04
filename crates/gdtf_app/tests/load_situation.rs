@@ -20,20 +20,19 @@
 //! These are *pin-discriminating*: each assertion re-encodes one acceptance
 //! criterion so a regression turns the test red.
 
+/// The shared Load-gate seed helpers over the ONE seed source (GTW-580) —
+/// `gdtf_app::test_support::seed_load_gate` — replacing this file's
+/// hand-stamped gate-seed blocks.
+#[path = "load_suite/gate.rs"]
+mod gate;
+
 use std::path::PathBuf;
 
 use gdtf_app::test_support::{AppState, LoadedSituation, app_state};
-use gdtf_battle_sim::{
-    injuries::InjuryRegistry,
-    procgen::ProcgenTuning,
-    situation::Situation,
-    tuning::{CombatTuning, GangerStatTuning},
-    weapon::WeaponRegistry,
-};
 use gdtf_test_utils::{
     GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
 };
-use gdtf_ui::theme::{GdtfTheme, default_theme};
+use gdtf_ui::theme::GdtfTheme;
 
 /// Bounded budget for the Tier (a) `MinimalPlugins` transition / negative waits,
 /// where all gate resources are injected by hand — a true, small, deterministic
@@ -76,44 +75,10 @@ fn situation_loader_no_ops_cleanly_without_asset_server() {
     );
 
     // Stand in for the theme + tuning + weapons + situation resolves completing (no
-    // AssetServer under MinimalPlugins), driving the real gated transition (GTW-206:
-    // theme + tuning required; GTW-257: the WeaponRegistry; GTW-261: the
-    // LoadedSituation, the empty-battle-race fix — the headless walk seeds the empty
-    // default itself, symmetric with the other three).
-    app.world_mut().insert_resource(default_theme());
-    app.world_mut().insert_resource(CombatTuning::default());
-    // GTW-384: the GangerStatTuning is a gate-blocking resource too.
-    app.world_mut().insert_resource(GangerStatTuning::default());
-    // GTW-533: the ProcgenTuning gate-blocking resource (the Generation procgen trigger
-    // reads it) — seed it alongside the others to reach Intro.
-    app.world_mut().insert_resource(ProcgenTuning::default());
-    app.world_mut().insert_resource(WeaponRegistry::default());
-    // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
-    // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
-    // GTW-269: the Load gate also requires an ArmorRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
-    // GTW-545: the FieldDefRegistry is a gate-blocking resource too; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::FieldDefRegistry::default());
-    app.world_mut().insert_resource(InjuryRegistry::default());
-    // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-489: the NEW gate-blocking PrefabRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
-    // GTW-487: the NEW gate-blocking TerrainDefRegistry + UuidThemeRegistry.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::UuidThemeRegistry::default());
-    app.world_mut()
-        .insert_resource(LoadedSituation::new(Situation::default()));
+    // AssetServer under MinimalPlugins), driving the real gated transition: the ONE
+    // gate-seed source (GTW-580) — the seeded empty LoadedSituation clears the
+    // GTW-261 gate, symmetric with the other stand-ins.
+    gate::seed_full_load_gate(&mut app);
 
     let reached_intro = advance_until(
         &mut app,
@@ -252,40 +217,10 @@ fn load_does_not_leave_without_a_situation() {
         .starting_in(AppState::Load)
         .build();
 
-    // Theme + tuning + weapons + armor present, but the LoadedSituation deliberately
-    // withheld (so the situation is the ONE missing gate resource being asserted on).
-    app.world_mut().insert_resource(default_theme());
-    app.world_mut().insert_resource(CombatTuning::default());
-    // GTW-384: the GangerStatTuning is a gate-blocking resource too.
-    app.world_mut().insert_resource(GangerStatTuning::default());
-    // GTW-533: the ProcgenTuning gate-blocking resource (the Generation procgen trigger
-    // reads it) — seed it alongside the others to reach Intro.
-    app.world_mut().insert_resource(ProcgenTuning::default());
-    app.world_mut().insert_resource(WeaponRegistry::default());
-    // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
-    // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
-    // GTW-545: the FieldDefRegistry is a gate-blocking resource too; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::FieldDefRegistry::default());
-    app.world_mut().insert_resource(InjuryRegistry::default());
-    // GTW-415: the Load gate also requires a GangRegistry; seed it so the situation is
-    // the ONE missing gate resource being asserted on.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-489: the NEW gate-blocking PrefabRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
-    // GTW-487: the NEW gate-blocking TerrainDefRegistry + UuidThemeRegistry.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::UuidThemeRegistry::default());
+    // Every other gate resource present, but the LoadedSituation deliberately
+    // withheld (so the situation is the ONE missing gate resource being asserted
+    // on) — the shared negative-test shape over the ONE seed source (GTW-580).
+    gate::seed_gate_except::<LoadedSituation>(&mut app);
 
     let left_load = advance_until(
         &mut app,
@@ -304,9 +239,9 @@ fn load_does_not_leave_without_a_situation() {
          situation-less — the empty-battle-race fix)",
     );
 
-    // Insert the situation: now ALL four gate resources are present, so Load advances.
-    app.world_mut()
-        .insert_resource(LoadedSituation::new(Situation::default()));
+    // The flip: re-seeding the full gate (situation included) releases the SAME
+    // machine, proving the situation was the one withheld gate condition.
+    gate::seed_full_load_gate(&mut app);
     let reached_intro = advance_until(
         &mut app,
         |app| app_state(app) == AppState::Intro,
@@ -321,9 +256,12 @@ fn load_does_not_leave_without_a_situation() {
 }
 
 /// The fixtures root whose `content/situations/skirmish.ron` is deliberately malformed
-/// (`tests/fixtures/bad_situation_root`), while its `theme` / `combat` / `weapons` /
-/// `fonts` dirs symlink the real `assets/` — so ONLY the situation branch reaches
-/// [`Failed`](bevy::asset::LoadState::Failed) and the empty-default fallback runs.
+/// (`tests/fixtures/bad_situation_root`), materializing ONLY that overridden subdir
+/// (the GTW-580 fixture convention; the `fonts` symlink to the real `assets/` remains).
+/// The situation branch reaches [`Failed`](bevy::asset::LoadState::Failed) on the
+/// malformed file and the empty-default fallback runs; every other absent branch
+/// fail-closes to its own default/empty fallback (the no-strand guarantee), so the
+/// walk still exercises exactly the failed-situation path this test pins.
 fn bad_situation_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")

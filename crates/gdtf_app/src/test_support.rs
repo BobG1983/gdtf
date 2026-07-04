@@ -35,12 +35,15 @@
 
 use bevy::{
     app::App,
+    asset::AssetServer,
+    ecs::system::{Commands, Res},
     input::InputPlugin,
     state::{
         app::{AppExtStates, StatesPlugin},
         state::State,
     },
 };
+use gdtf_battle_sim::tuning::GangerStatTuning;
 pub use gdtf_ui::UiPlugin;
 
 /// Reads the current [`AppState`] — the ONE read-back helper the integration-test
@@ -50,6 +53,42 @@ pub use gdtf_ui::UiPlugin;
 #[must_use]
 pub fn app_state(app: &App) -> AppState {
     app.world().resource::<State<AppState>>().get().clone()
+}
+
+/// The ONE test-side Load-gate seed source (GTW-580): the production
+/// [`seed_load_fallbacks`] plus the [`GangerStatTuning`] delta, so the seeded set
+/// truly covers the WHOLE `transition_to_intro` gate.
+///
+/// Every tier-(a) `MinimalPlugins` load test seeds the gate through this system
+/// (via the shared `tests/load_suite/gate.rs` helpers) instead of hand-stamping
+/// its own `insert_resource` block, so adding gate-blocking registry N+1 touches
+/// the production seed (which every gate registry already extends when it lands)
+/// and NO pre-existing test file.
+///
+/// # Why the delta lives here and not in `seed_load_fallbacks`
+///
+/// `seed_load_fallbacks` has a PRODUCTION caller — `AutoBattlePlugin` registers
+/// it at `Startup` — so widening it is an auto-battle runtime behavior change,
+/// out of GTW-580's scope. Its asset-less branch omits the gate-blocking
+/// [`GangerStatTuning`] (a latent gap: the GTW-384 gate clause landed without the
+/// matching fallback seed, invisible in production because the GUI launch always
+/// has an `AssetServer`), so swapped in unmodified it leaves a tier-(a) walk
+/// resting in `Load` forever. This wrapper closes exactly that delta, mirroring
+/// the production seed's `AssetServer`-absent gating (the `AC3b` seed-shadow rule:
+/// with a server present NOTHING extra is seeded, so the real resolves win).
+///
+/// The production seed also inserts an [`InjuryTables`](gdtf_battle_sim::injuries::InjuryTables)
+/// the gate does NOT require (the `dispatch_fire` panic guard for asset-less full
+/// walks). It rides along here deliberately: the seeded set is a strict SUPERSET
+/// of the gate set, and a non-gate resource can neither hold nor release the
+/// `transition_to_intro` run-condition chain, so gate assertions are unaffected.
+pub fn seed_load_gate(asset_server: Option<Res<AssetServer>>, mut commands: Commands) {
+    // Mirror the production seed's gating: only the asset-less branch seeds the
+    // stand-in, so a real-asset harness still resolves the shipped stat tuning.
+    if asset_server.is_none() {
+        commands.insert_resource(GangerStatTuning::default());
+    }
+    seed_load_fallbacks(asset_server, commands);
 }
 
 // The GTW-577 shared capture EXIT — gated exactly like its module (`dev_capture` debug

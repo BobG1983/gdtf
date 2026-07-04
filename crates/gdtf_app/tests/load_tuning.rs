@@ -24,16 +24,16 @@
 //! default-vs-shipped MECHANISM), so a balance edit to `tuning.ron` never reddens
 //! these tests.
 
+/// The shared Load-gate seed helpers over the ONE seed source (GTW-580) —
+/// `gdtf_app::test_support::seed_load_gate` — replacing this file's
+/// hand-stamped gate-seed blocks.
+#[path = "load_suite/gate.rs"]
+mod gate;
+
 use std::path::PathBuf;
 
-use gdtf_app::test_support::{AppState, LoadedSituation, app_state};
-use gdtf_battle_sim::{
-    injuries::InjuryRegistry,
-    procgen::ProcgenTuning,
-    situation::Situation,
-    tuning::{CombatTuning, GangerStatTuning},
-    weapon::WeaponRegistry,
-};
+use gdtf_app::test_support::{AppState, app_state};
+use gdtf_battle_sim::tuning::CombatTuning;
 use gdtf_test_utils::{
     GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
 };
@@ -99,42 +99,8 @@ fn tuning_loader_no_ops_cleanly_without_asset_server() {
     );
 
     // Stand in for ALL resolves completing (no AssetServer under MinimalPlugins),
-    // driving the real transition (GTW-206 AC5: theme AND tuning required; GTW-257:
-    // the WeaponRegistry too; GTW-261: the LoadedSituation too).
-    app.world_mut().insert_resource(default_theme());
-    app.world_mut().insert_resource(CombatTuning::default());
-    // GTW-384: the GangerStatTuning is a gate-blocking resource too.
-    app.world_mut().insert_resource(GangerStatTuning::default());
-    // GTW-533: the ProcgenTuning gate-blocking resource (the Generation procgen trigger
-    // reads it) — seed it alongside the others to reach Intro.
-    app.world_mut().insert_resource(ProcgenTuning::default());
-    app.world_mut().insert_resource(WeaponRegistry::default());
-    // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
-    // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
-    // GTW-269: the Load gate also requires an ArmorRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
-    // GTW-545: the FieldDefRegistry is a gate-blocking resource too; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::FieldDefRegistry::default());
-    app.world_mut().insert_resource(InjuryRegistry::default());
-    // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-489: the NEW gate-blocking PrefabRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
-    // GTW-487: the NEW gate-blocking TerrainDefRegistry + UuidThemeRegistry.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::UuidThemeRegistry::default());
-    app.world_mut()
-        .insert_resource(LoadedSituation::new(Situation::default()));
+    // driving the real transition: the ONE gate-seed source (GTW-580).
+    gate::seed_full_load_gate(&mut app);
 
     let reached_intro = advance_until(
         &mut app,
@@ -149,19 +115,24 @@ fn tuning_loader_no_ops_cleanly_without_asset_server() {
     );
 }
 
-/// AC3 (companion) — tier (a): with neither a theme nor a tuning ever inserted (no
-/// `AssetServer` to resolve them), the machine must stay in `Load` for the whole
-/// budget — proving `Load` does not auto-leave while tuning-less from the load
-/// path.
+/// AC3 (companion) — tier (a): with every OTHER gate resource present but the
+/// `CombatTuning` withheld (and no `AssetServer` to resolve one), the machine
+/// must stay in `Load` for the whole budget — proving `Load` does not
+/// auto-leave while tuning-less from the load path.
 ///
-/// Pin: this fails if the transition ever fires without BOTH required resources
-/// present (GTW-206 AC5). Combined with the previous test it brackets the
-/// transition condition from both sides.
+/// Pin: this fails if the transition ever fires without the tuning present
+/// (GTW-206 AC5). Combined with the previous test it brackets the transition
+/// condition from both sides.
 #[test]
 fn load_does_not_leave_without_a_tuning() {
     let mut app = GdtfTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
+
+    // Every other gate resource present, the tuning deliberately withheld —
+    // stronger than an all-absent walk: the tuning is proven to be the ONE
+    // missing gate condition (GTW-580).
+    gate::seed_gate_except::<CombatTuning>(&mut app);
 
     let left_load = advance_until(
         &mut app,

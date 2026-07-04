@@ -38,20 +38,21 @@
 //! exact injury COUNT or bucket COUNT — so GTW-440 adding the per-part content floor
 //! cannot redden it.
 
-use gdtf_app::test_support::{AppState, LoadedSituation, app_state};
+/// The shared Load-gate seed helpers over the ONE seed source (GTW-580) —
+/// `gdtf_app::test_support::seed_load_gate` — replacing this file's
+/// hand-stamped gate-seed blocks.
+#[path = "load_suite/gate.rs"]
+mod gate;
+
+use gdtf_app::test_support::{AppState, app_state};
 use gdtf_battle_sim::{
-    armor::{ArmorRegistry, BodyPart},
+    armor::BodyPart,
     injuries::{InjuryName, InjuryRegistry, InjuryTables},
-    procgen::ProcgenTuning,
     severity::Severity,
-    situation::Situation,
-    tuning::{CombatTuning, GangerStatTuning},
-    weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{
     GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
 };
-use gdtf_ui::theme::default_theme;
 
 /// Bounded budget for the Tier (a) `MinimalPlugins` transition / negative waits, where
 /// all gate resources are injected by hand — a true, small, deterministic frame count
@@ -92,42 +93,10 @@ fn injuries_loader_no_ops_cleanly_without_asset_server() {
         "with no AssetServer the kick-off must no-op and the machine rests in Load, not panic",
     );
 
-    // Stand in for the theme + tuning + weapons + situation + armor + terrain + injuries
-    // resolves completing (no AssetServer under MinimalPlugins), driving the real gated
-    // transition (GTW-437: the InjuryRegistry is a gate-blocking resource too, alongside
-    // the GTW-257 WeaponRegistry / GTW-269 ArmorRegistry / GTW-261 LoadedSituation /
-    // GTW-384 GangerStatTuning).
-    app.world_mut().insert_resource(default_theme());
-    app.world_mut().insert_resource(CombatTuning::default());
-    app.world_mut().insert_resource(GangerStatTuning::default());
-    // GTW-533: the ProcgenTuning gate-blocking resource (the Generation procgen trigger
-    // reads it) — seed it alongside the others to reach Intro.
-    app.world_mut().insert_resource(ProcgenTuning::default());
-    app.world_mut().insert_resource(WeaponRegistry::default());
-    // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
-    // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
-    app.world_mut().insert_resource(ArmorRegistry::default());
-    // GTW-545: the FieldDefRegistry is a gate-blocking resource too; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::FieldDefRegistry::default());
-    app.world_mut().insert_resource(InjuryRegistry::default());
-    // GTW-415: the Load gate also requires a GangRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-489: the NEW gate-blocking PrefabRegistry; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
-    // GTW-487: the NEW gate-blocking TerrainDefRegistry + UuidThemeRegistry.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::level::UuidThemeRegistry::default());
-    app.world_mut()
-        .insert_resource(LoadedSituation::new(Situation::default()));
+    // Stand in for every resolve completing (no AssetServer under MinimalPlugins),
+    // driving the real gated transition: the ONE gate-seed source (GTW-580) — the
+    // GTW-437 InjuryRegistry rides the same seeded set as every other gate resource.
+    gate::seed_full_load_gate(&mut app);
 
     let reached_intro = advance_until(
         &mut app,
@@ -159,26 +128,9 @@ fn load_does_not_leave_without_an_injury_registry() {
         .starting_in(AppState::Load)
         .build();
 
-    // Every OTHER gate resource present, but the InjuryRegistry deliberately withheld.
-    app.world_mut().insert_resource(default_theme());
-    app.world_mut().insert_resource(CombatTuning::default());
-    app.world_mut().insert_resource(GangerStatTuning::default());
-    // GTW-533: the ProcgenTuning gate-blocking resource (the Generation procgen trigger
-    // reads it) — seed it alongside the others to reach Intro.
-    app.world_mut().insert_resource(ProcgenTuning::default());
-    app.world_mut().insert_resource(WeaponRegistry::default());
-    // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
-    // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
-    app.world_mut().insert_resource(ArmorRegistry::default());
-    // GTW-545: the FieldDefRegistry is a gate-blocking resource too; empty clears it.
-    app.world_mut()
-        .insert_resource(gdtf_battle_sim::FieldDefRegistry::default());
-    app.world_mut()
-        .insert_resource(LoadedSituation::new(Situation::default()));
+    // Every OTHER gate resource present, but the InjuryRegistry deliberately
+    // withheld — the shared negative-test shape over the ONE seed source (GTW-580).
+    gate::seed_gate_except::<InjuryRegistry>(&mut app);
 
     let left_load = advance_until(
         &mut app,
