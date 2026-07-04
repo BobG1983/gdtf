@@ -125,21 +125,27 @@ fn real_asset_resolves_new_terrain_and_theme_registries_by_uuid() {
     }
 
     // --- Load gate WAITED for both new registries -----------------------------------------
-    let reached_intro = advance_until(
+    // Intro is a TRANSIENT stop: when the registries are the last gate condition, the
+    // resource-wait loops above can consume the exact frame Load releases, and one long
+    // asset-I/O frame runs enough FixedUpdate steps for Intro to queue its own move-on
+    // before this probe samples again — so the probe must accept Intro OR the state past
+    // it; equality with Intro races a window that can be zero frames wide (GTW-589).
+    let load_released = advance_until(
         &mut app,
-        |app| app_state(app) == AppState::Intro,
+        |app| matches!(app_state(app), AppState::Intro | AppState::Running),
         LOAD_SAFETY_NET,
     );
     assert!(
-        reached_intro,
-        "with a real AssetServer, Load must reach Intro once every folder (incl. the new \
-         per-theme terrain/) resolves; last AppState was {:?}",
+        load_released,
+        "with a real AssetServer, Load must release to Intro (or beyond) once every folder \
+         (incl. the new per-theme terrain/) resolves; last AppState was {:?}",
         app_state(&app),
     );
     assert!(
         app.world().get_resource::<TerrainDefRegistry>().is_some()
             && app.world().get_resource::<UuidThemeRegistry>().is_some(),
-        "both new registries must be present when Load reaches Intro (the GTW-487 gate clause \
-         waited for them — not hand-seeded defaults)",
+        "both new registries must be present after Load releases (the GTW-487 gate clause \
+         waited for them — not hand-seeded defaults; Load's cleanup deliberately persists \
+         the content registries)",
     );
 }
