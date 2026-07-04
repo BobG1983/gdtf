@@ -67,10 +67,12 @@ mod test;
 pub use blast::read_throw_resolved;
 pub use fall::read_fall_occurred;
 pub use fct::{
-    CombatLogEvent, CombatText, FctEmphasis, FctStackIndex, FctValence, FloatingCombatText,
-    InjuryLogText, LogLine, LogName, animate_floating_text, classify_log_event,
-    read_consequence_fct, read_dot_fct, read_field_fct, read_injury_fct, read_on_death_fct,
-    read_suppression_fct, severity_color, spawn_floating_text, valence_color,
+    ArmorBrokenFct, BleedingFct, CombatLogEvent, CombatText, ConsequenceFct, ConsequenceFctAppExt,
+    ConsequenceFctSystems, ConsequencePop, DotFct, FctEmphasis, FctStackCounter, FctStackIndex,
+    FctValence, FieldFct, FloatingCombatText, InjuryFct, InjuryLogText, LogLine, LogName,
+    OnDeathFct, PopAnchor, SuppressionFct, animate_floating_text, classify_log_event,
+    read_consequence_fct, register_consequence_fct_core, reset_fct_stacks, severity_color,
+    spawn_floating_text, valence_color,
 };
 pub use flash::{FlashTtl, FxFlash, expire_flashes};
 pub use impact::{ShotImpactResolved, animate_impact};

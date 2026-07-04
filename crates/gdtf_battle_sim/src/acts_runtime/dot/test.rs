@@ -11,7 +11,7 @@ use bevy::prelude::{
 };
 
 use crate::{
-    dot::{DotApplied, DotTicked, apply_dot, tick_dot},
+    dot::{DotAfflicted, DotApplied, DotTicked, apply_dot, tick_dot},
     ganger::{Hp, LifeState, Position},
     metric::{Cell, CellLevel, Level},
     weapon::{Dot, DotDamage, DotProfile, DotTurns},
@@ -59,6 +59,9 @@ fn apply_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_message::<DotApplied>();
+    // GTW-572: apply_dot now also writes the once-per-span DotAfflicted start fact on the
+    // fresh-ATTACH branch — register the buffer so its MessageWriter param validates.
+    app.add_message::<DotAfflicted>();
     app.add_systems(Update, apply_dot);
     app
 }
@@ -229,4 +232,70 @@ fn apply_dot_refreshes_not_stacks() {
             "the refreshed turns are the NEW profile's 5, never the stacked 2+5",
         );
     }
+}
+
+// === (f) GTW-572: the once-per-span DotAfflicted start fact — attach emits, refresh doesn't. ===
+
+/// Captures every [`DotAfflicted`] start fact across the run (the [`Captured`] idiom — a
+/// consumer system, NOT a raw buffer peek, so the count is cumulative and independent of the
+/// double-buffer swap timing). Private inner (rule 5).
+#[derive(Resource, Default, Deref, DerefMut)]
+struct CapturedAfflicted(Vec<DotAfflicted>);
+
+/// Drains the buffered [`DotAfflicted`] facts into [`CapturedAfflicted`] for assertion.
+fn consume_afflicted(
+    mut reader: MessageReader<DotAfflicted>,
+    mut captured: ResMut<CapturedAfflicted>,
+) {
+    for afflicted in reader.read() {
+        captured.push(*afflicted);
+    }
+}
+
+/// The CUMULATIVE count of captured [`DotAfflicted`] facts for `ganger` across the run.
+fn afflicted_count_for(app: &App, ganger: Entity) -> usize {
+    app.world()
+        .get_resource::<CapturedAfflicted>()
+        .map_or(0, |c| c.iter().filter(|a| a.ganger == ganger).count())
+}
+
+/// GTW-572 (the Q2 ruling): a FRESH DOT attach emits exactly ONE [`DotAfflicted`] start
+/// fact (carrying the per-turn drain), and a mid-affliction REFRESH emits NONE — so the
+/// combat log's affliction line fires once at affliction start, never per applying hit.
+#[test]
+fn apply_dot_emits_the_start_fact_once_on_attach_and_not_on_refresh() {
+    let mut app = apply_app();
+    app.init_resource::<CapturedAfflicted>();
+    app.add_systems(Update, consume_afflicted.after(apply_dot));
+    let ganger = app.world_mut().spawn((Hp::new(50), LifeState::Alive)).id();
+
+    // The fresh ATTACH — one start fact, carrying the profile's per-turn drain.
+    app.world_mut()
+        .write_message(DotApplied::new(ganger, dot(4, 2)));
+    app.update();
+    assert_eq!(
+        afflicted_count_for(&app, ganger),
+        1,
+        "a fresh DOT attach emits exactly one DotAfflicted start fact",
+    );
+    let carried = app
+        .world()
+        .get_resource::<CapturedAfflicted>()
+        .and_then(|c| c.iter().find(|a| a.ganger == ganger).map(|a| *a.per_turn));
+    assert_eq!(
+        carried,
+        Some(4),
+        "the start fact carries the attached profile's per-turn drain",
+    );
+
+    // A REFRESH of the already-afflicted ganger — mid-affliction, NO new start fact (the
+    // cumulative capture stays at one).
+    app.world_mut()
+        .write_message(DotApplied::new(ganger, dot(9, 5)));
+    app.update();
+    assert_eq!(
+        afflicted_count_for(&app, ganger),
+        1,
+        "a refresh is mid-affliction — it must emit NO new DotAfflicted start fact",
+    );
 }

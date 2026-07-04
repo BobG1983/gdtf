@@ -32,20 +32,25 @@ use crate::{
 /// nothing (no double-pop). It mirrors the other presenter-facing sim signals
 /// ([`MeleeResolved`](crate::acts::MeleeResolved) /
 /// [`ShotFired`](crate::shot_fired::ShotFired)): it carries ONLY what the view needs —
-/// the suppressed ganger's cell — never combat math. The presenter reads it through a
+/// the suppressed ganger (GTW-572: resolved to a name for the suppression log line) and
+/// its cell — never combat math. The presenter reads it through a
 /// [`MessageReader`](bevy::prelude::MessageReader) (the one-way sim → presenter dep).
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SuppressionApplied {
+    /// The freshly-suppressed ganger — resolved to a display name at the presenter
+    /// boundary for the GTW-572 suppression log line. A Bevy [`Entity`] handle (framework
+    /// plumbing, the only bare type the no-bare-types rule permits in a payload).
+    pub ganger: Entity,
     /// The `(cell, level)` of the newly-suppressed ganger — where the suppression FCT
     /// draws. A [`CellLevel`] newtype, never a bare `IVec3`.
-    pub at: CellLevel,
+    pub at:     CellLevel,
 }
 
 impl SuppressionApplied {
-    /// Build a suppression-applied signal for a ganger freshly suppressed at `at`.
+    /// Build a suppression-applied signal for `ganger`, freshly suppressed at `at`.
     #[must_use]
-    pub const fn new(at: CellLevel) -> Self {
-        Self { at }
+    pub const fn new(ganger: Entity, at: CellLevel) -> Self {
+        Self { ganger, at }
     }
 }
 
@@ -183,7 +188,7 @@ pub fn apply_suppression(
             let is_fresh = already.is_none() && !suppressed_this_tick.contains(&entity);
             commands.entity(entity).insert(Suppressed::new(suppressor));
             if is_fresh {
-                applied.write(SuppressionApplied::new(**position));
+                applied.write(SuppressionApplied::new(entity, **position));
                 suppressed_this_tick.insert(entity);
             }
         }

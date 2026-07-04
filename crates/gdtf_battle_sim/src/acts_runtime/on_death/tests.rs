@@ -301,6 +301,8 @@ fn tick_fields_emits_on_death_when_a_field_kills() {
     app.add_plugins(MinimalPlugins);
     app.add_message::<crate::fields::FieldTicked>();
     app.add_message::<OnDeathOccurred>();
+    // GTW-572: tick_fields also writes the once-per-span FieldAfflicted start fact.
+    app.add_message::<crate::fields::FieldAfflicted>();
     app.init_resource::<CapturedDeaths>();
     app.add_systems(Update, (tick_fields, capture_deaths).chain());
 
@@ -341,6 +343,8 @@ fn tick_bleed_emits_on_death_when_the_wounds_bleed_out_kills() {
     app.add_plugins(MinimalPlugins);
     app.add_message::<crate::bleed::Bleeding>();
     app.add_message::<OnDeathOccurred>();
+    // GTW-572: tick_bleed also writes the once-per-span BleedStarted start fact.
+    app.add_message::<crate::bleed::BleedStarted>();
     app.init_resource::<CapturedDeaths>();
     // A nonzero bleed rate so the Downed ganger's single remaining Wound drains to 0 this tick.
     app.insert_resource(CombatTuning {

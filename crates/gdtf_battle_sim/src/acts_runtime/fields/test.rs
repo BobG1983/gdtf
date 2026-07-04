@@ -54,6 +54,8 @@ fn tick_app() -> App {
     // GTW-547: tick_fields now also writes OnDeathOccurred on a field-kill — register the buffer
     // so its MessageWriter param validates (an unregistered buffer panics the system).
     app.add_message::<crate::on_death::OnDeathOccurred>();
+    // GTW-572: tick_fields now also writes the once-per-span FieldAfflicted start fact.
+    app.add_message::<crate::fields::FieldAfflicted>();
     app.init_resource::<Captured>();
     app.add_systems(Update, (tick_fields, consume).chain());
     app
@@ -276,5 +278,96 @@ fn a_field_tick_that_empties_hp_flips_the_occupant_to_dead() {
         life_of(&app, ganger),
         LifeState::Dead,
         "a field drain that empties HP KILLS (Dead — the GTW-544 DOT-kills precedent)",
+    );
+}
+
+// === (f) GTW-572: the once-per-span FieldAfflicted exposure-start fact. ===
+
+/// Captures every [`FieldAfflicted`](crate::fields::FieldAfflicted) start fact across the
+/// run (the [`Captured`] idiom — a consumer system, NOT a raw buffer peek, so the count is
+/// cumulative and independent of the double-buffer swap timing). Private inner (rule 5).
+#[derive(Resource, Default, Deref, DerefMut)]
+struct CapturedAfflicted(Vec<crate::fields::FieldAfflicted>);
+
+/// Drains the buffered [`FieldAfflicted`](crate::fields::FieldAfflicted) facts into
+/// [`CapturedAfflicted`] for assertion.
+fn consume_afflicted(
+    mut reader: MessageReader<crate::fields::FieldAfflicted>,
+    mut captured: ResMut<CapturedAfflicted>,
+) {
+    for afflicted in reader.read() {
+        captured.push(*afflicted);
+    }
+}
+
+/// The CUMULATIVE count of captured [`FieldAfflicted`](crate::fields::FieldAfflicted)
+/// facts for `occupant` across the run.
+fn afflicted_count_for(app: &App, occupant: Entity) -> usize {
+    app.world()
+        .get_resource::<CapturedAfflicted>()
+        .map_or(0, |c| c.iter().filter(|a| a.occupant == occupant).count())
+}
+
+/// GTW-572 (the Q2 ruling): the FIRST round a live field drains an occupant emits exactly
+/// ONE [`FieldAfflicted`](crate::fields::FieldAfflicted) exposure-start fact; the following
+/// mid-exposure rounds emit no further start fact (the per-round `FieldTicked` keeps
+/// firing); stepping OFF the field for a round and back ON starts a NEW span that
+/// re-announces.
+#[test]
+fn a_field_exposure_announces_once_per_span_and_reannounces_after_leaving() {
+    let cell = ground(5, 5);
+    let mut app = tick_app();
+    app.init_resource::<CapturedAfflicted>();
+    app.add_systems(Update, consume_afflicted.after(tick_fields));
+    let ganger = spawn_armored_ganger(&mut app, 100, ArmorType::Plated);
+    grid_with_occupant(&mut app, cell, ganger);
+
+    let mut registry = FieldRegistry::new();
+    registry.spawn(cell, field(3, &[], FieldDuration::Permanent));
+    app.world_mut().insert_resource(registry);
+
+    // Round one — the exposure span starts: exactly one start fact.
+    app.update();
+    assert_eq!(
+        afflicted_count_for(&app, ganger),
+        1,
+        "the FIRST draining round emits exactly one FieldAfflicted",
+    );
+
+    // Round two — mid-exposure: the drain ticks again, but NO new start fact (the
+    // cumulative capture stays at one).
+    app.update();
+    assert_eq!(
+        afflicted_count_for(&app, ganger),
+        1,
+        "a mid-exposure round emits NO further FieldAfflicted (once per span)",
+    );
+    assert!(
+        tick_count_for(&app, ganger) >= 2,
+        "the per-round FieldTicked drain keeps firing mid-span",
+    );
+
+    // Step OFF the field for a round — the span ends (the marker removal is deferred; the
+    // empty-cell round both skips the drain and unmarks).
+    app.world_mut()
+        .resource_mut::<OccupancyGrid>()
+        .set_occupant(cell, None);
+    app.update();
+    assert_eq!(
+        afflicted_count_for(&app, ganger),
+        1,
+        "an off-field round emits nothing",
+    );
+
+    // Step back ON — a NEW exposure span, a NEW start fact (the cumulative capture climbs
+    // to two).
+    app.world_mut()
+        .resource_mut::<OccupancyGrid>()
+        .set_occupant(cell, Some(ganger));
+    app.update();
+    assert_eq!(
+        afflicted_count_for(&app, ganger),
+        2,
+        "re-entering the field is a NEW span and must re-announce",
     );
 }

@@ -1,99 +1,131 @@
-//! The combat-log scene-plugin (GTW-328, slice 3, bottom-left, ABOVE the weapon panel).
+//! The combat-log scene-plugin (GTW-328, slice 3, bottom-left, ABOVE the weapon panel;
+//! GTW-572 rebuilds the drain as the forwarder → appender message seam).
 //!
-//! Registers the battle-scoped combat-text LOG in the battlescape neighborhood, beside the
-//! action-bar / weapon-panel / status-panel / presenter / input plugins. The log shows the few
-//! most-recent combat events (movement, shot declarations, hit/miss outcomes, damage/wounds,
-//! reloads, turn boundaries) as lines that scroll up and fade — UI/view only (it READS the sim's
-//! combat-event messages + the ganger names, and writes nothing back into the sim/input).
+//! Registers the battle-scoped combat-text LOG in the battlescape neighborhood. The log
+//! shows the most-recent combat events as lines that scroll up and fade — UI/view only (it
+//! READS the sim's fact messages + the ganger names, and writes nothing back).
 //!
-//! - **RON tuning** — the hot-reloadable [`CombatLogTuning`](super::tuning::CombatLogTuning) table registers through the
-//!   GTW-564 generic hot-RON seam ([`register_combat_log_hot_ron`](super::tuning::register_combat_log_hot_ron)): one ext call
-//!   wires the kick-off / gated resolve / live redrive, so a `combat_log.tuning.ron` edit
-//!   re-tunes the log live. The registration self-gates on an
-//!   [`AssetServer`](bevy::asset::AssetServer) existing, so a `MinimalPlugins` headless app
-//!   skips it (`bevy-traps.md` #1), falling back to
-//!   [`CombatLogTuning::default`](super::tuning::CombatLogTuning).
-//! - **Lifecycle** (mirrors the sibling weapon panel) — [`spawn_combat_log`]
-//!   `OnEnter(BattleScapeState::BattleRunning)`, [`despawn_combat_log`]
-//!   `OnExit(BattleScapeState::BattleRunning)`, so the log exists only during the live tactical
-//!   layer (NOT the whole `GameState::BattleScape`).
-//! - **Update** — [`update_combat_log`] drains the four event-driven sim combat-event messages
-//!   PLUS the presenter's per-shot [`ShotImpactResolved`](gdtf_battle_presenter::ShotImpactResolved)
-//!   signal (the shot-outcome lines key off it so they appear at each shot's staggered IMPACT, not
-//!   on the fire frame — GTW-328), classifies them, and appends lines (FIFO-trimming to the tuned
-//!   cap); it runs gated
-//!   `run_if(resource_exists::<BattleInProgress>)` (the live-battle witness, `bevy-traps.md` #1).
-//!   [`fade_combat_log_lines`] ticks each line's fade clock + despawns finished lines; it runs
-//!   unguarded (it self-gates on the lines existing) so a line spawned in the last `BattleRunning`
-//!   frame still fades out cleanly.
-//!
-//! It deps `gdtf_ui` (the spawn helpers + theme), `gdtf_battle_presenter` (the shared
-//! `classify_log_event` classifier), `gdtf_battle_sim` (the combat-event messages + ganger
-//! names), and `gdtf_assets` (the RON loader) — all already on the app's edge; the chain stays
-//! acyclic.
+//! - **RON tuning** — the hot-reloadable [`CombatLogTuning`](super::tuning::CombatLogTuning)
+//!   table registers through the GTW-564 generic hot-RON seam
+//!   ([`register_combat_log_hot_ron`](super::tuning::register_combat_log_hot_ron)); it
+//!   self-gates on an [`AssetServer`](bevy::asset::AssetServer), so a `MinimalPlugins`
+//!   headless app skips it and the log runs on the defaults (`bevy-traps.md` #1).
+//! - **Lifecycle** — [`spawn_combat_log`] `OnEnter(BattleScapeState::BattleRunning)`,
+//!   [`despawn_combat_log`] `OnExit(BattleScapeState::BattleRunning)`.
+//! - **The GTW-572 C5 seam** — the plugin owns the buffered
+//!   [`CombatLogEvent`](gdtf_battle_presenter::CombatLogEvent) message
+//!   (`add_message` here — the seam's owner, the `HighlightRequest` precedent) and the
+//!   explicit `Forward → Append` set chain (`bevy-traps.md` #3). Each log SOURCE is one
+//!   [`add_combat_log_source`](CombatLogSourceAppExt::add_combat_log_source) line (the thin
+//!   generic forwarder, gated on the live-battle witness + the source's own buffer — the
+//!   registrar never `add_message`s a source buffer: the sim plugins / the presenter
+//!   renderer register those); the turn boundary rides the one bespoke
+//!   [`forward_turn_started`] (it needs `PlayerFaction`). The ONE
+//!   [`append_combat_log`] appender drains the events, classifies via the shared
+//!   [`classify_log_event`](gdtf_battle_presenter::classify_log_event), spawns lines, and
+//!   FIFO-trims. Adding a log source = one forwarder impl + one registrar line (+ one
+//!   classify arm if the phrasing is new).
+//! - **Animations** — [`fade_combat_log_lines`] / `slide` / `height` run unguarded (each
+//!   self-gates on its entities existing) so a line spawned in the last `BattleRunning`
+//!   frame still settles cleanly.
 
-use bevy::prelude::*;
-use gdtf_battle_presenter::ShotImpactResolved;
-use gdtf_battle_sim::{BattleInProgress, InjuryInflicted};
+use bevy::{ecs::schedule::SystemCondition, prelude::*};
+use gdtf_battle_presenter::{CombatLogEvent, ShotImpactResolved};
+use gdtf_battle_sim::{
+    ArmorBroken, BattleInProgress, BleedStarted, DotAfflicted, FallOccurred, FieldAfflicted,
+    FireDeclaration, InjuryInflicted, MeleeStruck, MoveRejected, MovementOccurred, OnDeathOccurred,
+    ReloadResult, SuppressionApplied, TurnStarted,
+};
 
 use crate::states::{
     BattleScapeState,
     running::game::battlescape::combat_log::{
         systems::{
-            animate_combat_log_height, despawn_combat_log, fade_combat_log_lines,
-            slide_combat_log_lines, spawn_combat_log, update_combat_log,
+            CombatLogSourceAppExt, CombatLogSystems, animate_combat_log_height, append_combat_log,
+            despawn_combat_log, fade_combat_log_lines, forward_turn_started,
+            slide_combat_log_lines, spawn_combat_log,
         },
         tuning::register_combat_log_hot_ron,
     },
 };
 
-/// The combat-log scene-plugin — loads its hot-reloadable RON tuning, spawns/despawns the log on
-/// the `BattleRunning` boundary, and runs its event-drain + fade systems.
+/// The combat-log scene-plugin — loads its hot-reloadable RON tuning, spawns/despawns the
+/// log on the `BattleRunning` boundary, and wires the GTW-572 forwarder → appender seam.
 pub(in crate::states::running::game::battlescape) struct GameBattleScapeCombatLogScenePlugin;
 
 impl Plugin for GameBattleScapeCombatLogScenePlugin {
     fn build(&self, app: &mut App) {
         // The hot-reloadable combat-log tuning registers through the GTW-564 generic
-        // hot-RON seam — ONE ext call at its owning module (kick-off / gated resolve /
-        // live redrive), self-gated on the `AssetServer` so a `MinimalPlugins` headless
-        // app skips it (no load, no panic — `bevy-traps.md` #1; the log then runs on
-        // `CombatLogTuning::default`).
+        // hot-RON seam — ONE ext call at its owning module, self-gated on the `AssetServer`
+        // so a `MinimalPlugins` headless app skips it (`bevy-traps.md` #1).
         register_combat_log_hot_ron(app);
         add_systems(app);
     }
 }
 
-/// Register the combat-log lifecycle + per-frame systems.
+/// Register the combat-log lifecycle, the forwarder → appender seam, and the animations.
 fn add_systems(app: &mut App) {
-    // GTW-328: the shot-OUTCOME lines drain the presenter's per-shot `ShotImpactResolved` signal
-    // (so a burst's lines appear at each staggered impact, not on the fire frame). Register its
-    // buffer idempotently here so `update_combat_log`'s `MessageReader` param is always valid even
-    // if this plugin builds before the presenter's renderer plugin (`bevy-traps.md` #4 — a
-    // MessageReader panics validation without its buffer; `add_message` is idempotent, the
-    // presenter registers the same buffer).
-    app.add_message::<ShotImpactResolved>();
-    // GTW-439: `update_combat_log` ALSO drains the GTW-438 `InjuryInflicted` message for the
-    // injury log lines. Register its buffer idempotently here so the `MessageReader` param is
-    // always valid even if this plugin builds before the sim's acts plugin registers it
-    // (`bevy-traps.md` #4 — a MessageReader panics validation without its buffer; `add_message`
-    // is idempotent, the sim registers the same buffer).
-    app.add_message::<InjuryInflicted>();
+    // GTW-572 C5: the plugin OWNS the resolved-event seam — the CombatLogEvent buffer is
+    // registered unconditionally here (the seam's owner; every forwarder's MessageWriter
+    // and the appender's MessageReader need it — bevy-traps.md #4). Source buffers are NOT
+    // registered here: each forwarder is gated on its source's Messages<S> existing, so in
+    // a live battle the sim plugins / presenter renderer provide them and a focused harness
+    // that omits one simply keeps that forwarder inert.
+    app.add_message::<CombatLogEvent>();
+    // The explicit Forward → Append chain (bevy-traps.md #3): a sim fact written before an
+    // update is forwarded AND appended within that same update.
+    app.configure_sets(
+        Update,
+        (CombatLogSystems::Forward, CombatLogSystems::Append).chain(),
+    );
+
+    // The log sources — one registrar line each (GTW-572 C5; adding a source = one
+    // CombatLogSource impl in systems/sources.rs + one line here). The GTW-328 combat
+    // events first, then the GTW-572 C6 state changes (the Q2 ruling: falls, melee damage,
+    // on-death kills, suppression, armor-broken, and the three once-at-start afflictions —
+    // their per-tick signals have no source impl at all).
+    app.add_combat_log_source::<FireDeclaration>()
+        .add_combat_log_source::<MovementOccurred>()
+        .add_combat_log_source::<MoveRejected>()
+        .add_combat_log_source::<ShotImpactResolved>()
+        .add_combat_log_source::<ReloadResult>()
+        .add_combat_log_source::<InjuryInflicted>()
+        .add_combat_log_source::<FallOccurred>()
+        .add_combat_log_source::<MeleeStruck>()
+        .add_combat_log_source::<OnDeathOccurred>()
+        .add_combat_log_source::<SuppressionApplied>()
+        .add_combat_log_source::<ArmorBroken>()
+        .add_combat_log_source::<DotAfflicted>()
+        .add_combat_log_source::<FieldAfflicted>()
+        .add_combat_log_source::<BleedStarted>();
+    // The turn boundary is the one bespoke forwarder (it reads PlayerFaction to label
+    // Player vs Enemy) — same set, same gates.
+    app.add_systems(
+        Update,
+        forward_turn_started
+            .in_set(CombatLogSystems::Forward)
+            .run_if(
+                resource_exists::<BattleInProgress>
+                    .and_then(resource_exists::<bevy::ecs::message::Messages<TurnStarted>>),
+            ),
+    );
+
+    // The ONE appender: drain the resolved events, classify, spawn lines, FIFO-trim.
+    app.add_systems(
+        Update,
+        append_combat_log
+            .in_set(CombatLogSystems::Append)
+            .run_if(resource_exists::<BattleInProgress>),
+    );
+
     app.add_systems(OnEnter(BattleScapeState::BattleRunning), spawn_combat_log)
         .add_systems(OnExit(BattleScapeState::BattleRunning), despawn_combat_log)
-        .add_systems(
-            Update,
-            // Drain the combat-event messages + append lines, gated on the live-battle witness
-            // so it is inert when no battle is live (`bevy-traps.md` #1).
-            update_combat_log.run_if(resource_exists::<BattleInProgress>),
-        )
-        // The fade + slide + height animations run UNGUARDED (each self-gates on its entities
-        // existing) so a line spawned in the last BattleRunning frame still fades / settles after
-        // the battle ends — the despawn on OnExit(BattleRunning) tears the whole log down anyway,
-        // so they are harmless when no log exists (an empty query is a no-op). GTW-328 slice B:
-        // `slide_combat_log_lines` eases each line toward its slot, `animate_combat_log_height`
-        // lerps the panel height toward its content height — both read the prior frame's
-        // `ComputedNode` layout (`ui_layout_system` runs in PostUpdate), a one-frame lag that is
-        // imperceptible for a smooth lerp.
+        // The fade + slide + height animations run UNGUARDED (each self-gates on its
+        // entities existing) so a line spawned in the last BattleRunning frame still fades /
+        // settles after the battle ends — the despawn on OnExit(BattleRunning) tears the
+        // whole log down anyway. GTW-328 slice B: both slide + height read the prior
+        // frame's `ComputedNode` layout (`ui_layout_system` runs in PostUpdate), a
+        // one-frame lag that is imperceptible for a smooth lerp.
         .add_systems(
             Update,
             (

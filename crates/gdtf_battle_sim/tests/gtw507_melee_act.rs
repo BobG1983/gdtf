@@ -39,8 +39,8 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Cool, Faction, Grit, Hp, LifeState, Position, Speed, Stance, StanceKind, Strength, Toughness,
-    Tu, Wounds,
+    ArmorBroken, ArmorIntegrity, Cool, Faction, Grit, Hp, LifeState, Position, Speed, Stance,
+    StanceKind, Strength, Toughness, Tu, Wears, Wounds,
     acts::{MeleeRequested, MeleeResolved},
     armor::{ArmorHardness, ArmorProtection},
     battle::{BattleSimPlugin, SetupBattleRequested},
@@ -159,10 +159,16 @@ fn record_melee(
     }
 }
 
-/// Add the `MeleeResolved` recorder (after `BattleSimPlugin`, so the buffer exists).
+/// Add the `MeleeResolved` + `MeleeStruck` + `ArmorBroken` recorders (after
+/// `BattleSimPlugin`, so the buffers exist).
 fn with_melee_log(app: &mut App) {
     app.init_resource::<MeleeLog>();
-    app.add_systems(bevy::app::Update, record_melee);
+    app.init_resource::<StruckLog>();
+    app.init_resource::<BrokenLog>();
+    app.add_systems(
+        bevy::app::Update,
+        (record_melee, record_struck, record_broken),
+    );
 }
 
 /// How many `MeleeResolved` were emitted across the run.
@@ -170,6 +176,79 @@ fn melee_hits(app: &App) -> usize {
     app.world()
         .get_resource::<MeleeLog>()
         .map_or(0, |log| log.hits.len())
+}
+
+/// Every `MeleeStruck` observed across the run — the GTW-572 number-bearing melee fact the
+/// combat log's melee-damage line reads (attacker + target + applied HP loss).
+#[derive(Resource, Default)]
+struct StruckLog {
+    /// One entry per `MeleeStruck` emitted.
+    facts: Vec<gdtf_battle_sim::MeleeStruck>,
+}
+
+/// Drain `MeleeStruck` into the recorder.
+fn record_struck(
+    mut struck: bevy::prelude::MessageReader<gdtf_battle_sim::MeleeStruck>,
+    mut log: bevy::prelude::ResMut<StruckLog>,
+) {
+    for fact in struck.read() {
+        log.facts.push(*fact);
+    }
+}
+
+/// The recorded `MeleeStruck` facts across the run.
+fn struck_facts(app: &App) -> Vec<gdtf_battle_sim::MeleeStruck> {
+    app.world()
+        .get_resource::<StruckLog>()
+        .map_or_else(Vec::new, |log| log.facts.clone())
+}
+
+/// Every `ArmorBroken` observed across the run — the GTW-572 protecting→broken fact the
+/// armor-broken pop + combat-log line drain. Recorded here so the connect test pins the
+/// REAL melee emission path (the verb's surfaced `MeleeStrike.wear` → the dispatch
+/// bridge → the buffered message), not a hand-written buffer write.
+#[derive(Resource, Default)]
+struct BrokenLog {
+    /// One entry per `ArmorBroken` emitted.
+    facts: Vec<ArmorBroken>,
+}
+
+/// Drain `ArmorBroken` into the recorder.
+fn record_broken(
+    mut broken: bevy::prelude::MessageReader<ArmorBroken>,
+    mut log: bevy::prelude::ResMut<BrokenLog>,
+) {
+    for fact in broken.read() {
+        log.facts.push(*fact);
+    }
+}
+
+/// The recorded `ArmorBroken` facts across the run.
+fn broken_facts(app: &App) -> Vec<ArmorBroken> {
+    app.world()
+        .get_resource::<BrokenLog>()
+        .map_or_else(Vec::new, |log| log.facts.clone())
+}
+
+/// Reduce every worn piece on `ganger` to a NEAR-BROKEN integrity (1), returning how
+/// many pieces were reduced (the caller asserts the fixture actually wears armor).
+///
+/// The §5 formula never reads integrity magnitude (only the `> 0` protects gate), so
+/// this leaves the connect test's damage / wound / TU outcomes byte-identical — it only
+/// guarantees the connecting strike's positive wear (`min(protection, damage) ≥ 2` for
+/// the test armor) CROSSES the struck piece protecting→broken.
+fn wear_pieces_near_broken(app: &mut App, ganger: Entity) -> usize {
+    let pieces: Vec<Entity> = app
+        .world()
+        .get::<Wears>(ganger)
+        .map(|wears| wears.pieces().collect())
+        .unwrap_or_default();
+    for &piece in &pieces {
+        if let Some(mut integrity) = app.world_mut().get_mut::<ArmorIntegrity>(piece) {
+            *integrity = ArmorIntegrity::new(1);
+        }
+    }
+    pieces.len()
 }
 
 /// An attacker ganger with a strong Fight (high Strength / Speed / Grit / Cool) so its rolled
@@ -285,6 +364,17 @@ fn connect_applies_damage_and_emits_resolved() {
         unreachable!("both gangers carry Tu / Hp / Wounds pools");
     };
 
+    // GTW-572: reduce the target's worn test armor to NEAR-BROKEN (integrity 1) so the
+    // forced connect's positive wear crosses it protecting→broken — pinning the melee
+    // ArmorBroken emission on the real path (verb wear verdict → dispatch bridge →
+    // buffered fact). Integrity magnitude never feeds §5, so every other assert below
+    // is untouched.
+    let reduced = wear_pieces_near_broken(&mut app, target);
+    assert!(
+        reduced > 0,
+        "fixture precondition: the target wears the test armor (pieces to reduce)",
+    );
+
     // Drive the strike THROUGH the buffered MeleeRequested (the message the input seam writes).
     app.world_mut()
         .write_message(MeleeRequested::new(attacker, target));
@@ -338,6 +428,39 @@ fn connect_applies_damage_and_emits_resolved() {
         melee_hits(&app) >= 1,
         "C6(a)/C6(e): a connecting strike emits MeleeResolved (the FX signal) — the live melee \
          act is wired end-to-end",
+    );
+
+    // GTW-572: the connecting strike ALSO emits the number-bearing MeleeStruck fact — both
+    // combatants named, carrying the strike's RESOLVED HP damage (the sim emits the FACT the
+    // combat log's melee-damage line phrases). The resolved number is at LEAST the observed
+    // pool delta (apply_hit saturates the pool at 0, so an overkill blow drains fewer HP than
+    // it resolved — the fact carries the blow, the pool carries the floor).
+    let facts = struck_facts(&app);
+    let observed_loss = i32::from(target_hp_before) - i32::from(target_hp_after);
+    assert!(
+        facts.iter().any(|fact| fact.attacker == attacker
+            && fact.target == target
+            && *fact.hp_damage >= observed_loss
+            && *fact.hp_damage > 0),
+        "GTW-572: a connecting strike emits one MeleeStruck {{ attacker, target, hp_damage }} \
+         whose resolved amount is positive and at least the observed HP delta \
+         ({observed_loss}), got {facts:?}",
+    );
+
+    // GTW-572: the connecting strike on the NEAR-BROKEN worn piece crossed it
+    // protecting→broken, and the dispatch bridge surfaced the verb's wear verdict as
+    // EXACTLY ONE buffered ArmorBroken naming the struck ganger — the melee emission
+    // pin (reverting the resolve.rs bridge or the MeleeStrike.wear surfacing fails it).
+    let breaks = broken_facts(&app);
+    assert_eq!(
+        breaks.len(),
+        1,
+        "GTW-572: a connecting strike that crosses a near-broken worn piece emits exactly \
+         one ArmorBroken, got {breaks:?}",
+    );
+    assert!(
+        breaks.first().is_some_and(|broke| broke.ganger == target),
+        "GTW-572: the ArmorBroken names the struck melee target, got {breaks:?}",
     );
 }
 

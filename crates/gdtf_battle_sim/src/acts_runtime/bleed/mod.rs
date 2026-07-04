@@ -44,4 +44,4 @@ mod tick;
 mod test;
 
 pub use schedule::enemy_phase_started;
-pub use tick::{Bleeding, tick_bleed};
+pub use tick::{BleedOngoing, BleedStarted, Bleeding, tick_bleed};

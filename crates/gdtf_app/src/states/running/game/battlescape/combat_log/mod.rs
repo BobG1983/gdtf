@@ -1,12 +1,18 @@
 //! The battlescape combat-text LOG (GTW-328, slice 3, bottom-left, ABOVE the weapon panel): a
-//! battle-scoped strip of the few most-recent combat events that scroll up and fade.
+//! battle-scoped strip of the most-recent combat events that scroll up and fade.
 //!
-//! The log drains the five sim combat-event messages (movement, shot declarations, shot
-//! outcomes, reloads, turn boundaries), resolves each [`Entity`](bevy::prelude::Entity) to a
-//! ganger name, classifies them through the shared
-//! [`classify_log_event`](gdtf_battle_presenter::classify_log_event) (slice 2), and renders each
-//! resulting line as a UI text node that fades over a tuned lifetime and FIFO-despawns when the
-//! visible count overflows the tuned cap.
+//! GTW-572 (C5/C6): the log is a FORWARDER → APPENDER message seam. One thin forwarder per
+//! log SOURCE drains its sim fact message, resolves each
+//! [`Entity`](bevy::prelude::Entity) to a ganger name at that boundary, and writes a
+//! buffered [`CombatLogEvent`](gdtf_battle_presenter::CombatLogEvent); the ONE appender
+//! drains those events, classifies them through the shared
+//! [`classify_log_event`](gdtf_battle_presenter::classify_log_event), and renders each
+//! resulting line as a UI text node that fades over a tuned lifetime and FIFO-despawns when
+//! the visible count overflows the tuned cap. Coverage is ALL state changes (the Q2
+//! ruling): fire declarations, movement (and suppressed rejections), staggered shot
+//! outcomes, reloads, turn boundaries, injuries, falls, melee damage, terminal deaths,
+//! suppression, armor breaks — and the DOT / field / bleed afflictions ONCE at affliction
+//! start (their per-tick drain signals never log).
 //!
 //! UI/view only: it reads the sim's combat-event messages + ganger names, owns no combat rule,
 //! and writes nothing back. Mutate-not-respawn — the per-frame fade UPDATES each existing line's

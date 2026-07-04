@@ -17,9 +17,9 @@
 //!    penetrating DOT hit RESETS the affliction's turns + per-turn damage rather than
 //!    stacking).
 
-use bevy::prelude::{Commands, Entity, Message, MessageReader, Query};
+use bevy::prelude::{Commands, Entity, Message, MessageReader, MessageWriter, Query};
 
-use crate::weapon::Dot;
+use crate::weapon::{Dot, DotDamage};
 
 /// One **DOT was applied** — the GTW-544 boundary message bridging a frozen
 /// [`GangerVerdict::dot_applied`](crate::resolve_and_apply::GangerVerdict::dot_applied) attach
@@ -55,6 +55,35 @@ impl DotApplied {
     }
 }
 
+/// A DOT **affliction span STARTED** — a fresh [`Dot`](crate::weapon::Dot) was ATTACHED to
+/// `ganger` (GTW-572).
+///
+/// The once-at-affliction-start fact the combat log's DOT line reads (the Q2 ruling:
+/// DOT logs ONCE at affliction start, never per tick). Emitted by [`apply_dot`] ONLY on the
+/// fresh-ATTACH branch: a refresh of an already-burning ganger (refresh-not-stack, the
+/// GTW-544 locked design) is mid-affliction and emits nothing, and the per-round
+/// [`DotTicked`](super::tick::DotTicked) drain never emits it. The sim emits the FACT — the
+/// afflicted ganger + the per-turn drain magnitude — never a rendered line (ADR-0001).
+///
+/// A buffered Bevy [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`), mirroring
+/// [`DotApplied`]. The [`ganger`](DotAfflicted::ganger) is a Bevy [`Entity`] handle
+/// (framework plumbing, the only bare type the no-bare-types rule permits in a payload).
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DotAfflicted {
+    /// The freshly-afflicted ganger — resolved to a display name at the presenter boundary.
+    pub ganger:   Entity,
+    /// The affliction's flat per-turn HP drain (the attached DOT's profile magnitude).
+    pub per_turn: DotDamage,
+}
+
+impl DotAfflicted {
+    /// Build a DOT-affliction-started fact for `ganger` draining `per_turn` HP each round.
+    #[must_use]
+    pub const fn new(ganger: Entity, per_turn: DotDamage) -> Self {
+        Self { ganger, per_turn }
+    }
+}
+
 /// **Apply** every buffered [`DotApplied`] to its target ganger — the GTW-544 boundary
 /// system (the [`apply_injury`](crate::acts::apply_injury) / cover-destroyed bridge
 /// precedent, `bevy-traps.md` #7 — query / [`Commands`] / [`MessageReader`], no `&mut
@@ -72,7 +101,16 @@ pub fn apply_dot(
     mut applied: MessageReader<DotApplied>,
     mut existing: Query<&mut Dot>,
     mut commands: Commands,
+    // GTW-572: the once-at-affliction-start fact — written ONLY on the fresh-ATTACH branch
+    // (a refresh is mid-affliction; the combat log's DOT line logs once per span, never per
+    // tick — the Q2 ruling). `bevy-traps.md` #4: the buffer is registered by the acts plugin.
+    mut afflicted: MessageWriter<DotAfflicted>,
 ) {
+    // Track targets freshly attached THIS drain: a second DotApplied for the same target in
+    // one tick sees only the deferred Commands insert (not the live Query), so without this
+    // set it would wrongly read as a second fresh attach and double-emit the start fact.
+    let mut attached_this_tick: bevy::platform::collections::HashSet<Entity> =
+        bevy::platform::collections::HashSet::default();
     for message in applied.read() {
         let target = message.target;
         // A despawned target — skip (fail-closed; the entity may have been removed between
@@ -88,9 +126,15 @@ pub fn apply_dot(
                 message.dot.damage_type,
                 message.dot.remaining_turns,
             ));
-        } else {
-            // No existing DOT — attach the fresh one.
+        } else if attached_this_tick.contains(&target) {
+            // Already freshly attached earlier THIS drain — treat the second hit as the
+            // refresh it is (last write wins via the deferred insert), no second start fact.
             entity.insert(message.dot);
+        } else {
+            // No existing DOT — attach the fresh one and emit the affliction-start fact.
+            entity.insert(message.dot);
+            afflicted.write(DotAfflicted::new(target, message.dot.per_turn_damage));
+            attached_this_tick.insert(target);
         }
     }
 }

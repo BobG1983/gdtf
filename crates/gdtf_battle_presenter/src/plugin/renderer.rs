@@ -3,18 +3,18 @@
 
 use bevy::{ecs::message::Messages, prelude::*, sprite_render::Material2dPlugin};
 use gdtf_battle_sim::{
-    ArmorBroken, BattleInProgress, Bleeding, CombatTuning, CoverDestroyed, CoverLedger, DotTicked,
-    FallOccurred, FieldRegistry, FieldTicked, InjuryInflicted, OccupancyGrid, OnDeathOccurred,
-    PlayerFaction, ShotFired, SlabDestroyed, SquadVisibility, SuppressionApplied, SurfaceGrid,
-    VerticalLinkGraph,
+    ArmorBroken, BattleInProgress, Bleeding, CombatTuning, CoverDestroyed, CoverLedger,
+    FallOccurred, FieldRegistry, OccupancyGrid, PlayerFaction, ShotFired, SlabDestroyed,
+    SquadVisibility, SurfaceGrid, VerticalLinkGraph,
     acts::{MeleeResolved, ThrowResolved},
     occupancy_sync::SimSystems,
 };
 
 use crate::{
-    ActiveLevel, CharacterRoles, EffectRoles, FireTargetHighlight, FxTuning, GamepadCursorMoved,
-    GangerSprites, HighlightRequest, PanEdgeDwellState, PathPreview, PresenterSystems,
-    ShotImpactResolved, TerrainFogMaterial, TileRoles, TopDownAtlases, ViewMode,
+    ActiveLevel, ArmorBrokenFct, BleedingFct, CharacterRoles, ConsequenceFctAppExt, DotFct,
+    EffectRoles, FieldFct, FireTargetHighlight, FxTuning, GamepadCursorMoved, GangerSprites,
+    HighlightRequest, InjuryFct, OnDeathFct, PanEdgeDwellState, PathPreview, PresenterSystems,
+    ShotImpactResolved, SuppressionFct, TerrainFogMaterial, TileRoles, TopDownAtlases, ViewMode,
     actors::{
         fx::{register_effect_roles_hot_ron, register_fx_tuning_hot_ron},
         ganger::register_character_roles_hot_ron,
@@ -25,10 +25,9 @@ use crate::{
     draw_highlight_on_request, draw_path_preview, draw_static_battlefield, draw_vertical_links,
     expire_flashes, frame_camera_on_units, indicate_emplacement_occupied, load_topdown_atlases,
     move_ganger_sprites, pan_camera, pan_camera_on_gamepad_cursor_edge, present_fog,
-    read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed, read_dot_fct,
-    read_fall_occurred, read_field_fct, read_injury_fct, read_melee_resolved, read_on_death_fct,
-    read_suppression_fct, read_throw_resolved, reframe_ganger_sprites,
-    reindex_ganger_sprites_on_character_roles_change,
+    read_armor_broken, read_bleeding, read_cover_destroyed, read_fall_occurred,
+    read_melee_resolved, read_throw_resolved, reframe_ganger_sprites,
+    register_consequence_fct_core, reindex_ganger_sprites_on_character_roles_change,
     render::{
         terrain::register_tile_roles_hot_ron, topdown::register_sheet_image_redrive,
         world_camera::register_pan_tuning_hot_ron,
@@ -377,12 +376,12 @@ impl Plugin for TopDownRendererPlugin {
         // keep `build` under the `too_many_lines` lint.
         register_field_overlay_systems(app);
 
-        // GTW-547: the ON-DEATH blast marker (the transient "an on-death effect fired HERE"
-        // flash). It drains the sim's `OnDeathOccurred` and pops a bold "BOOM" marker at each
-        // death cell, closing the Explode VISIBILITY gap (the sim's direct RNG-free blast drain
-        // rides no shot-impact FX nor attrition pop). Extracted to keep `build` — and
-        // `register_fx_flash_systems` — under the `too_many_lines` lint.
-        register_on_death_systems(app);
+        // GTW-572: the CONSEQUENCE-FCT PALETTE — the shared per-frame stack counter + reset,
+        // then one registrar line per consequence family (bleeding / armor-broken / injury /
+        // suppression / DOT / field / on-death). Replaces the six hand-rolled per-family
+        // reader registrations and the two presenter-side idempotent add_message calls
+        // (FieldTicked / OnDeathOccurred — C4: the sim registers those buffers in live play).
+        register_consequence_fct_families(app);
 
         // GTW-450: the reachable-range overlay is the DEBUG-only overlay (visual noise in
         // normal play). EVERY overlay-render-only item — the `ReachableCells` read-seam, the
@@ -658,80 +657,6 @@ fn register_fx_flash_systems(app: &mut App) {
                     .and_then(resource_exists::<Messages<ShotFired>>),
             ),
     )
-    // GTW-302 (slice 4): the AUXILIARY-SIGNAL floating-combat-text reader. Drains the SAME
-    // Bleeding + ArmorBroken buffers the read_bleeding / read_armor_broken blood/spark flash
-    // readers do (a buffered message survives the frame, so both read independently) and spawns
-    // a rise/fade Text2d pop per consequence event — "Bleeding" (AMBER) / "Armor Broken" (RED).
-    // It spawns Text2d (no effects sprite), so it needs NO render resource — and unlike the
-    // per-shot FCT (which now rides the staggered projectile->impact pipeline) the consequence
-    // pops are spawned immediately off their own one-shot messages. Gated on BattleInProgress
-    // (pops belong to a live battle), BOTH message
-    // buffers its two MessageReaders drain (a MessageReader param panics validation without its
-    // buffer — bevy-traps.md #1 / #4), AND — GTW-327 — the hot-reloadable FxTuning resource it
-    // now READS for the pop lifetime + rise. Reload pops + the numeric "Armor -N" are DEFERRED
-    // (no backing sim signal — see the consequence module docs).
-    .add_systems(
-        Update,
-        read_consequence_fct.in_set(PresenterSystems::Draw).run_if(
-            resource_exists::<BattleInProgress>
-                .and_then(resource_exists::<Messages<Bleeding>>)
-                .and_then(resource_exists::<Messages<ArmorBroken>>)
-                .and_then(resource_exists::<FxTuning>),
-        ),
-    )
-    // GTW-439 (slice C1): the INJURY floating-combat-text reader. Drains the GTW-438
-    // InjuryInflicted message (the buffer the sim's acts plugin registers) and spawns one
-    // rise/fade Text2d pop per inflicted injury — its popup_text in a VALENCE BY SEVERITY
-    // (the severity_color wound ramp scaled by the rolled tier). The transient flash is the
-    // message's ONLY presenter job; the persistent per-ganger injury LIST is driven by the
-    // durable InflictedInjuries ledger in the inspect panel, NOT this pop. Spawns Text2d (no
-    // effects sprite), so it needs NO render resource. Gated on BattleInProgress (pops belong
-    // to a live battle), the InjuryInflicted message buffer its MessageReader drains (a
-    // MessageReader param panics validation without its buffer — bevy-traps.md #1 / #4), AND
-    // the hot-reloadable FxTuning it reads for the pop lifetime + rise.
-    .add_systems(
-        Update,
-        read_injury_fct.in_set(PresenterSystems::Draw).run_if(
-            resource_exists::<BattleInProgress>
-                .and_then(resource_exists::<Messages<InjuryInflicted>>)
-                .and_then(resource_exists::<FxTuning>),
-        ),
-    )
-    // GTW-526 (C8): the SUPPRESSION floating-combat-text reader. Drains the sim's
-    // SuppressionApplied message (registered by the acts plugin — one per freshly-pinned ganger)
-    // and spawns one rise/fade "SUPPRESSED" Text2d pop at the message's cell, drawn in the cowed
-    // Suppressed blue-grey valence (the moment-pop; the persistent suppressed look is the
-    // desaturated sprite tint in reframe_ganger_sprites). Spawns Text2d (no effects sprite), so it
-    // needs NO render resource. Gated on BattleInProgress (pops belong to a live battle), the
-    // SuppressionApplied buffer its MessageReader drains (a MessageReader param panics validation
-    // without its buffer — bevy-traps.md #1 / #4; the read_injury_fct precedent — a
-    // presenter-only harness that omits the buffer simply keeps this reader inert), AND the
-    // hot-reloadable FxTuning it reads for the pop lifetime + rise.
-    .add_systems(
-        Update,
-        read_suppression_fct.in_set(PresenterSystems::Draw).run_if(
-            resource_exists::<BattleInProgress>
-                .and_then(resource_exists::<Messages<SuppressionApplied>>)
-                .and_then(resource_exists::<FxTuning>),
-        ),
-    )
-    // GTW-544 (child GTW-41e): the DAMAGE-OVER-TIME floating-combat-text reader. Drains the sim's
-    // DotTicked message (registered by the acts plugin — one per afflicted ganger's per-round
-    // drain) and spawns one rise/fade "-N" Text2d pop at the message's cell, drawn in the toxic
-    // Dot green valence (the moment-pop; the persistent DOT state is the sim's Dot affliction).
-    // Spawns Text2d (no effects sprite), so it needs NO render resource. Gated on BattleInProgress
-    // (pops belong to a live battle), the DotTicked buffer its MessageReader drains (a
-    // MessageReader param panics validation without its buffer — bevy-traps.md #1 / #4; the
-    // read_suppression_fct precedent — a presenter-only harness that omits the buffer simply keeps
-    // this reader inert), AND the hot-reloadable FxTuning it reads for the pop lifetime + rise.
-    .add_systems(
-        Update,
-        read_dot_fct.in_set(PresenterSystems::Draw).run_if(
-            resource_exists::<BattleInProgress>
-                .and_then(resource_exists::<Messages<DotTicked>>)
-                .and_then(resource_exists::<FxTuning>),
-        ),
-    )
     // GTW-306: the 3-frame impact animation (FX-B fills the body). Gated on the same render
     // resources it reads (EffectRoles + TopDownAtlases + BattleInProgress + the
     // hot-reloadable FxTuning) so FX-B edits only impact.rs — never this registration.
@@ -966,9 +891,13 @@ fn register_fire_target_systems(app: &mut App) {
     );
 }
 
-/// Registers the GTW-545 area-damage-field VIEW: the transient per-tick FCT `"-N"` reader and the
-/// persistent per-cell hazard-wash overlay DRAW system, both into the already-defined
-/// [`PresenterSystems::Draw`] band.
+/// Registers the GTW-545 area-damage-field VIEW: the persistent per-cell hazard-wash overlay
+/// DRAW system, into the already-defined [`PresenterSystems::Draw`] band. (The transient
+/// per-tick FCT `"-N"` reader moved into the GTW-572 consequence palette —
+/// [`register_consequence_fct_families`] registers the `FieldFct` family; the old
+/// presenter-side idempotent `add_message::<FieldTicked>` is GONE (GTW-572 C4): the sim's
+/// acts plugin registers the buffer in a live battle, and a presenter-only harness without
+/// it keeps the family reader inert.)
 ///
 /// The presenter reads the AUTHORITATIVE sim [`FieldRegistry`](gdtf_battle_sim::FieldRegistry)
 /// resource DIRECTLY (a battle-lifetime resource `setup_battle` seeds from the situation's
@@ -981,15 +910,8 @@ fn register_fire_target_systems(app: &mut App) {
 /// damage zone MUST be visible AND its per-turn drain MUST show), so it is NOT
 /// `#[cfg(debug_assertions)]`-gated.
 ///
-/// It wires two systems:
+/// It wires:
 ///
-/// - [`read_field_fct`] — the transient `"-N"` floating-combat-text pop for each ganger a live
-///   field drained this round (off the sim's [`FieldTicked`](gdtf_battle_sim::FieldTicked)
-///   message, drawn the hazard Field orange). Its `FieldTicked` buffer is registered idempotently
-///   here (the sim's acts plugin also registers it in a real battle — `add_message` is IDEMPOTENT;
-///   a `MessageReader` param panics validation without its buffer, `bevy-traps.md` #1 / #4; the
-///   `DotTicked` reader precedent). Gated on `BattleInProgress`, its buffer, and the
-///   hot-reloadable `FxTuning` it reads for the pop lifetime + rise.
 /// - [`draw_field_overlay`] — the persistent per-cell hazard wash. It draws each fielded cell on
 ///   the active storey with a pooled, mutated-in-place [`Sprite`] (never despawn-respawned), tinted
 ///   per the field's [`DamageType`](gdtf_battle_sim::DamageType), hard-cut to the active storey.
@@ -1002,63 +924,42 @@ fn register_fire_target_systems(app: &mut App) {
 ///   wash composites OVER the fogged battlefield, consistent with the reachable / path-preview
 ///   placement.
 fn register_field_overlay_systems(app: &mut App) {
-    app.add_message::<FieldTicked>()
-        .add_systems(
-            Update,
-            read_field_fct.in_set(PresenterSystems::Draw).run_if(
-                resource_exists::<BattleInProgress>
-                    .and_then(resource_exists::<Messages<FieldTicked>>)
-                    .and_then(resource_exists::<FxTuning>),
-            ),
-        )
-        .add_systems(
-            Update,
-            draw_field_overlay
-                .in_set(PresenterSystems::Draw)
-                .after(present_fog)
-                .run_if(resource_exists::<FieldRegistry>),
-        );
+    app.add_systems(
+        Update,
+        draw_field_overlay
+            .in_set(PresenterSystems::Draw)
+            .after(present_fog)
+            .run_if(resource_exists::<FieldRegistry>),
+    );
 }
 
-/// Registers the GTW-547 ON-DEATH blast-marker reader: the transient bold `"BOOM"` FCT pop at
-/// every cell where an on-death effect fanned (`read_on_death_fct`), into the shared
-/// [`PresenterSystems::Draw`] band.
+/// Registers the GTW-572 CONSEQUENCE-FCT PALETTE: the shared core (the per-frame
+/// [`FctStackCounter`](crate::FctStackCounter) + its reset, explicitly ordered before the
+/// reader set — `bevy-traps.md` #3) and then ONE registrar line per consequence family.
 ///
-/// Extracted into its own tiny fn (mirroring [`register_field_overlay_systems`] /
-/// [`register_path_preview_systems`]) so neither [`register_fx_flash_systems`] nor `build`
-/// overruns the `too_many_lines` lint.
+/// This replaced the per-family reader walls (the old `read_consequence_fct` /
+/// `read_injury_fct` / `read_suppression_fct` / `read_dot_fct` / `read_field_fct` /
+/// `read_on_death_fct` registrations): each family is now a
+/// [`ConsequenceFct`](crate::ConsequenceFct) impl in its own file under `fct/families/`,
+/// driven by the ONE generic [`read_consequence_fct`](crate::read_consequence_fct) reader.
+/// Adding a consequence = one family file + the one
+/// [`add_consequence_fct`](ConsequenceFctAppExt::add_consequence_fct) line below (see the
+/// families module doc for the whole recipe).
 ///
-/// # Why this reader exists — the Explode visibility gap
-///
-/// A GTW-547 [`OnDeathEffect::LeaveField`](gdtf_battle_sim::OnDeathEffect::LeaveField) spawns a
-/// GTW-545 field into the sim's [`FieldRegistry`](gdtf_battle_sim::FieldRegistry), which
-/// [`draw_field_overlay`] draws automatically (it polls the registry) — no marker needed for the
-/// field itself. But an [`OnDeathEffect::Explode`](gdtf_battle_sim::OnDeathEffect::Explode) applies
-/// its blast as a DIRECT, RNG-free [`Hp`](gdtf_battle_sim::Hp) drain inside the sim's
-/// [`resolve_on_death`](gdtf_battle_sim::resolve_on_death) (to keep the seeded auto-battle stream
-/// byte-stable), which emits NO [`ShotFired`](gdtf_battle_sim::ShotFired) and NO
-/// [`FieldTicked`](gdtf_battle_sim::FieldTicked) — so the blast rides NEITHER the AoE-shot impact FX
-/// NOR an attrition pop and would otherwise be invisible. This marker closes that gap.
-///
-/// It wires:
-///
-/// - the [`OnDeathOccurred`](gdtf_battle_sim::OnDeathOccurred) message buffer, registered
-///   idempotently (the sim's `SimActsPlugin` also registers it in a real battle — `add_message` is
-///   IDEMPOTENT; a `MessageReader` param panics validation without its buffer, `bevy-traps.md`
-///   #1 / #4; the [`FallOccurred`](gdtf_battle_sim::FallOccurred) reader precedent);
-/// - [`read_on_death_fct`], gated on `BattleInProgress` (the pop belongs to a live battle), the
-///   hot-reloadable `FxTuning` it reads for the pop lifetime + rise, and that message buffer. It
-///   spawns [`Text2d`](bevy::prelude::Text2d) (no effects sprite), so — like `read_consequence_fct`
-///   — it needs NO render resource.
-fn register_on_death_systems(app: &mut App) {
-    app.add_message::<OnDeathOccurred>().add_systems(
-        Update,
-        read_on_death_fct.in_set(PresenterSystems::Draw).run_if(
-            resource_exists::<BattleInProgress>
-                .and_then(resource_exists::<FxTuning>)
-                .and_then(resource_exists::<Messages<OnDeathOccurred>>),
-        ),
-    );
+/// The registrar NEVER calls `add_message` (GTW-572 C4): the two old presenter-side
+/// idempotent registrations (`FieldTicked`, `OnDeathOccurred`) are GONE — in a live battle
+/// the sim's plugins register every buffer, and a presenter-only headless harness that
+/// omits a family's `Messages<M>` buffer simply keeps that family's reader INERT (the
+/// `run_if(resource_exists::<Messages<M>>)` gate; `bevy-traps.md` #1 / #4).
+fn register_consequence_fct_families(app: &mut App) {
+    register_consequence_fct_core(app);
+    app.add_consequence_fct::<BleedingFct>()
+        .add_consequence_fct::<ArmorBrokenFct>()
+        .add_consequence_fct::<InjuryFct>()
+        .add_consequence_fct::<SuppressionFct>()
+        .add_consequence_fct::<DotFct>()
+        .add_consequence_fct::<FieldFct>()
+        .add_consequence_fct::<OnDeathFct>();
 }
 
 /// Registers the GTW-387 / GTW-450 reachable-range DEBUG overlay: the [`ReachableCells`]

@@ -29,8 +29,9 @@ use bevy::{
 };
 
 use crate::{
-    acts::request::{MeleeRequested, MeleeResolved, MeleeTarget, ShoveRequested},
+    acts::request::{MeleeRequested, MeleeResolved, MeleeStruck, MeleeTarget, ShoveRequested},
     armor::{PieceArmorMut, Wears, WornBy},
+    armor_wear::ArmorBroken,
     cover::CoverLedger,
     fire::{MeleeQuery, WieldsQuery},
     ganger::{
@@ -172,6 +173,25 @@ pub struct MeleeRngs<'w> {
     severity: Option<ResMut<'w, SeverityRng>>,
 }
 
+/// The two GTW-572 melee FACT writers, bundled into one [`SystemParam`] so
+/// [`dispatch_melee`] stays under Bevy's 16-param system limit (the [`MeleeGrids`] /
+/// [`MeleeRngs`] grouping precedent):
+///
+/// - [`MeleeStruck`] — the NUMBER-BEARING melee fact (attacker + target + applied HP loss)
+///   the combat log's melee-damage line reads, one per CONNECTING ganger strike;
+/// - [`ArmorBroken`] — the protecting→broken crossing the §6 fold surfaced on the
+///   [`MeleeStrike`](crate::melee::MeleeStrike) verdict (GTW-572: previously computed and
+///   dropped inside the verb), emitted so a melee break pops/logs exactly like a ranged one.
+///
+/// A transparent system-param bundle of the named writers, not itself a wrapped domain value.
+#[derive(SystemParam)]
+pub struct MeleeFacts<'w> {
+    /// The per-connecting-strike number-bearing fact (GTW-572).
+    struck: MessageWriter<'w, MeleeStruck>,
+    /// The armor-broken crossing a connecting strike's §6 wear surfaced (GTW-572).
+    breaks: MessageWriter<'w, ArmorBroken>,
+}
+
 /// **Dispatch** buffered [`MeleeRequested`] messages — the LIVE melee act (GTW-507).
 ///
 /// For each request the dispatch:
@@ -236,8 +256,8 @@ pub struct MeleeRngs<'w> {
               / target-surfaces ganger queries, the two armor relationship queries, the wields \
               + melee-marker + melee-weapon-stat relationship queries, the grouped grids+tuning \
               (MeleeGrids) + draw streams (MeleeRngs) bundles, and the MeleeResolved + \
-              CoverDestroyed + ShoveRequested writers — each a distinct Bevy SystemParam (the \
-              dispatch_fire argument-count carve-out)"
+              MeleeStruck + CoverDestroyed + ShoveRequested writers — each a distinct Bevy \
+              SystemParam (the dispatch_fire argument-count carve-out)"
 )]
 pub fn dispatch_melee(
     mut requests: MessageReader<MeleeRequested>,
@@ -258,6 +278,11 @@ pub fn dispatch_melee(
     // The three draw streams the §7 / §4 / §6 synthesis advances, grouped (MeleeRngs).
     rngs: MeleeRngs,
     mut resolved: MessageWriter<MeleeResolved>,
+    // GTW-572: the grouped fact writers — a CONNECTING ganger strike writes one MeleeStruck
+    // { attacker, target, hp_damage } (the combat log's melee-damage line) and, on a
+    // protecting→broken wear crossing, one ArmorBroken; a miss / structural smash writes
+    // neither (`bevy-traps.md` #4).
+    mut facts: MeleeFacts,
     // The GTW-508 cover-destroyed bridge — a lethal cover-smash writes the EXISTING signal the
     // presenter's `read_cover_destroyed` FX (GTW-386) already reacts to (`bevy-traps.md` #4).
     mut cover_destroyed: MessageWriter<CoverDestroyed>,
@@ -351,6 +376,7 @@ pub fn dispatch_melee(
                     severity: &mut severity_rng,
                 },
                 &mut resolved,
+                &mut facts,
                 &mut shoves,
                 &mut deaths,
             ),

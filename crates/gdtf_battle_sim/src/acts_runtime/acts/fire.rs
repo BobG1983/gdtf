@@ -209,6 +209,15 @@ pub struct FireSignals<'w, 's> {
     /// writer) so `dispatch_fire` stays under the 16-param limit; disjoint from the ganger /
     /// magazine queries (a read on a different component set).
     shove_tags:       Query<'w, 's, &'static crate::weapon::Shove>,
+    /// The GTW-572 armor-broken signal — emitted per ROUND whose ganger verdict's §6 wear
+    /// crossed a worn piece from protecting to broken
+    /// ([`ArmorWearOutcome::Broke`](crate::armor_wear::ArmorWearOutcome::Broke), carried on
+    /// [`AppliedDamage::wear`](crate::resolve_and_apply::AppliedDamage)). Bridges the in-fold
+    /// crossing into the buffered [`ArmorBroken`](crate::armor_wear::ArmorBroken) message the
+    /// presenter's spark flash / FCT tag and the combat log's armor-broken line drain —
+    /// before GTW-572 the crossing rode the report but NOTHING emitted the message, so the
+    /// armor-broken surfaces were dead in live play.
+    armor_breaks:     MessageWriter<'w, crate::armor_wear::ArmorBroken>,
     /// The GTW-547 terminal-death signal (`resolve_on_death` drains it) — emitted per ROUND
     /// (primary or splash) that KILLED a ganger (the ganger verdict's `life_after == Dead`),
     /// at the struck ganger's own cell (read via [`ganger_positions`](FireSignals::ganger_positions)).
@@ -708,6 +717,13 @@ fn emit_report_signals(report: &crate::resolve_and_apply::HitReport, signals: &m
                         verdict.target,
                         dot,
                     ));
+            }
+            // GTW-572: the armor-broken bridge — a §6 wear that crossed the struck worn
+            // piece from protecting to broken emits the buffered ArmorBroken fact (the
+            // presenter spark/tag + the combat log's armor-broken line drain it). Worn /
+            // Unaffected outcomes emit nothing (the "emit only on the crossing" rule).
+            if let crate::armor_wear::ArmorWearOutcome::Broke(broken) = verdict.applied.wear {
+                signals.armor_breaks.write(broken);
             }
             // GTW-547: the on-death bridge — a KILL verdict fans the dead ganger's
             // authored on-death effect via `resolve_on_death`. A round that missed,

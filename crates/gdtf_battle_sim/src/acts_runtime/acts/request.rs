@@ -23,6 +23,7 @@ use bevy::prelude::{Deref, Entity, Message};
 use crate::{
     ganger::{Direction, StanceKind},
     metric::{Cell, CellLevel, Level},
+    resolve_hit::HpDamage,
     weapon::{DamageType, FireModeSpec},
 };
 
@@ -310,6 +311,44 @@ impl MeleeResolved {
     #[must_use]
     pub const fn new(at: CellLevel, damage: DamageType) -> Self {
         Self { at, damage }
+    }
+}
+
+/// A ganger was **struck in melee** — a connecting §7 strike applied `hp_damage` from
+/// `attacker` onto `target` (GTW-572).
+///
+/// The NUMBER-BEARING melee fact the combat log's melee-damage line reads. The sibling
+/// [`MeleeResolved`] stays the presenter strike-GLYPH signal (cell + damage type only — the
+/// FX contract, GTW-507); this fact carries the two combatant [`Entity`] handles (each
+/// resolved to a display name at the presenter boundary) plus the applied
+/// [`HpDamage`](crate::resolve_hit::HpDamage), which the strike verb previously computed
+/// and dropped internally. Emitted ONCE per CONNECTING ganger strike by
+/// [`resolve_ganger_melee`](super::melee::dispatch_melee)'s ganger arm; a miss, or a
+/// structural cover-smash, emits nothing (no ganger took damage). The sim emits the FACT —
+/// the amount it applied — never a rendered line (the presenter phrases it, ADR-0001).
+///
+/// A buffered [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`), mirroring
+/// [`MeleeResolved`]. The `attacker` / `target` are Bevy [`Entity`] handles — framework
+/// plumbing, the only bare type the no-bare-types rule permits in a payload.
+#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MeleeStruck {
+    /// The striking ganger — the melee-damage line's subject.
+    pub attacker:  Entity,
+    /// The struck ganger — the melee-damage line's object.
+    pub target:    Entity,
+    /// The §5→§7-multiplied HP loss the connecting strike applied onto the target.
+    pub hp_damage: HpDamage,
+}
+
+impl MeleeStruck {
+    /// Build a melee-struck fact: `attacker` applied `hp_damage` onto `target`.
+    #[must_use]
+    pub const fn new(attacker: Entity, target: Entity, hp_damage: HpDamage) -> Self {
+        Self {
+            attacker,
+            target,
+            hp_damage,
+        }
     }
 }
 

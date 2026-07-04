@@ -18,20 +18,20 @@ use crate::{
         reload::{ReloadResult, dispatch_reload},
         request::{
             EndTurnRequested, EnterEmplacementRequested, ExecuteDownedRequested,
-            ExitEmplacementRequested, FireRequested, MeleeRequested, MeleeResolved, MoveRequested,
-            OpenDoorRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
-            SetStanceRequested, ShoveRequested, StabilizeDownedRequested, ThrowGrenadeRequested,
-            ThrowResolved,
+            ExitEmplacementRequested, FireRequested, MeleeRequested, MeleeResolved, MeleeStruck,
+            MoveRequested, OpenDoorRequested, ReloadRequested, SetAimingRequested,
+            SetFacingRequested, SetStanceRequested, ShoveRequested, StabilizeDownedRequested,
+            ThrowGrenadeRequested, ThrowResolved,
         },
         shove::dispatch_shove,
         throw_grenade::dispatch_throw_grenade,
     },
     ai::enemy_ai_turn,
     apply_pending_attachments,
-    bleed::{Bleeding, enemy_phase_started, tick_bleed},
-    dot::{DotApplied, DotTicked, apply_dot, tick_dot},
+    bleed::{BleedStarted, Bleeding, enemy_phase_started, tick_bleed},
+    dot::{DotAfflicted, DotApplied, DotTicked, apply_dot, tick_dot},
     falls::{FallOccurred, apply_falls},
-    fields::{FieldTicked, tick_fields},
+    fields::{FieldAfflicted, FieldTicked, tick_fields},
     move_acts::{ReactionShotFired, advance_walk},
     occupancy::project_path_blocking,
     occupancy_sync::{
@@ -162,6 +162,12 @@ fn register_messages(app: &mut App) {
         // gated on.
         .add_message::<MeleeRequested>()
         .add_message::<MeleeResolved>()
+        // GTW-572: the NUMBER-BEARING melee fact — one per CONNECTING ganger strike, carrying
+        // both combatants + the applied HP loss so the combat log can phrase a melee-damage
+        // line (MeleeResolved stays the cell+damage-type strike-GLYPH signal). Registering
+        // the buffer here makes dispatch_melee's MessageWriter<MeleeStruck> param valid and
+        // creates the Messages<MeleeStruck> buffer the app's log forwarder is gated on.
+        .add_message::<MeleeStruck>()
         // GTW-525: the SHOVE act's input message — drained by dispatch_shove. Carries the
         // deliberate act (the input seam's contextual Shove press) AND the weapon-tag auto-shove the
         // melee / fire connect hooks write internally. Registering the buffer here makes
@@ -219,6 +225,17 @@ fn register_messages(app: &mut App) {
         // creates the Messages<Bleeding> resource the presenter's consequence reader is
         // gated on (bevy-traps.md #4 / #5).
         .add_message::<Bleeding>()
+        // GTW-572: the armor-broken crossing fact — `dispatch_fire`'s ganger arm and
+        // `dispatch_melee`'s connecting strike both bridge the §6 wear's
+        // protecting→broken crossing into this buffered message (the presenter's spark
+        // flash / FCT tag and the combat log's armor-broken line drain it). Registering
+        // the buffer here makes both writers' params valid (bevy-traps.md #4/#5).
+        .add_message::<crate::armor_wear::ArmorBroken>()
+        // GTW-572: the once-per-span bleed affliction-start fact `tick_bleed` emits on the
+        // FIRST draining tick of a span (the combat log's bleeding line drains it — the Q2
+        // ruling: once at affliction start, never per tick). Registering the buffer here
+        // makes `tick_bleed`'s MessageWriter<BleedStarted> param valid (bevy-traps.md #4/#5).
+        .add_message::<BleedStarted>()
         // GTW-438: the injury signal `dispatch_fire` emits per round whose wound
         // rolled a named injury (the in-fold `roll_injury` froze it onto the report).
         // Registering the buffer here makes `dispatch_fire`'s
@@ -232,6 +249,11 @@ fn register_messages(app: &mut App) {
         // `dispatch_fire`'s MessageWriter<DotApplied> + `apply_dot`'s MessageReader valid
         // (bevy-traps.md #4 / #5).
         .add_message::<DotApplied>()
+        // GTW-572: the once-per-span DOT affliction-start fact `apply_dot` emits ONLY on the
+        // fresh-ATTACH branch (a refresh is mid-affliction — the Q2 ruling: once at affliction
+        // start, never per tick). Registering the buffer here makes `apply_dot`'s
+        // MessageWriter<DotAfflicted> param valid (bevy-traps.md #4/#5).
+        .add_message::<DotAfflicted>()
         // GTW-544: the per-round DOT-tick signal `tick_dot` emits per afflicted ganger that
         // took a DOT tick this round (the presenter's DOT FCT pop drains it, the Bleeding
         // precedent). Registering the buffer here makes `tick_dot`'s MessageWriter<DotTicked>
@@ -244,6 +266,11 @@ fn register_messages(app: &mut App) {
         // MessageWriter<FieldTicked> param valid and creates the Messages<FieldTicked> buffer the
         // presenter reads (bevy-traps.md #4 / #5).
         .add_message::<FieldTicked>()
+        // GTW-572: the once-per-span field exposure-start fact `tick_fields` emits the FIRST
+        // round a live field drains an occupant (the combat log's field line drains it — the
+        // Q2 ruling: once at affliction start, never per tick). Registering the buffer here
+        // makes `tick_fields`'s MessageWriter<FieldAfflicted> param valid (bevy-traps.md #4/#5).
+        .add_message::<FieldAfflicted>()
         // GTW-547: the terminal-death signal emitted from EVERY death / cover-destroyed gate
         // (the ranged/melee/falls ganger kills, the bleed/DOT/field clocks, both cover-destroy
         // sites). `resolve_on_death` drains it to fan each source's authored on-death effect.

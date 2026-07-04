@@ -257,15 +257,15 @@ fn a_movement_message_appends_a_line_with_the_classified_text() {
 }
 
 /// GTW-439, QA-gap remediation — the REAL system path: a genuine `InjuryInflicted` MESSAGE
-/// written to the live buffer drives the registered `update_combat_log` system to APPEND one
+/// written to the live buffer drives the registered forwarder → appender seam (GTW-572) to APPEND one
 /// combat-log line reading `"<name> <log_text>"` (the wounded target resolved to its
 /// `GangerName`, the authored log clause as the predicate) in the severity-scaled wound amber
 /// (`severity_color`). NOT the pure `classify_log_event` classifier (covered by its own unit
-/// test) — this drives the actual `CombatLogReaders.injury` drain in a live battle and asserts
+/// test) — this drives the actual `InjuryInflicted` forwarder + appender in a live battle and asserts
 /// the appended line entity.
 ///
 /// Pin-discriminating: it FAILS if the `InjuryInflicted` → `CombatLogEvent::InjuryInflicted`
-/// arm were removed from `update_combat_log` (no line would be appended, failing the content
+/// arm were removed from the forwarder/classifier (no line would be appended, failing the content
 /// assertion), and it FAILS if the line were drawn a flat (non-severity) color, since the
 /// assertion pins the EXACT `severity_color(Critical)` swatch (RGB) — distinct from a milder
 /// tier's swatch.

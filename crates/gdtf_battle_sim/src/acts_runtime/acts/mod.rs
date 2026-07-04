@@ -81,9 +81,9 @@ pub use posture::{dispatch_set_aiming, dispatch_set_facing, dispatch_set_stance}
 pub use reload::{ReloadOutcome, ReloadResult, dispatch_reload};
 pub use request::{
     AimRequest, EndTurnRequested, EnterEmplacementRequested, ExecuteDownedRequested,
-    ExitEmplacementRequested, FireRequested, MeleeRequested, MeleeResolved, MeleeTarget,
-    MoveRequested, OpenDoorRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
-    SetStanceRequested, ShoveRequested, ShoveSource, StabilizeDownedRequested,
+    ExitEmplacementRequested, FireRequested, MeleeRequested, MeleeResolved, MeleeStruck,
+    MeleeTarget, MoveRequested, OpenDoorRequested, ReloadRequested, SetAimingRequested,
+    SetFacingRequested, SetStanceRequested, ShoveRequested, ShoveSource, StabilizeDownedRequested,
     ThrowGrenadeRequested, ThrowResolved,
 };
 pub use shove::{ShoveOutcome, dispatch_shove, resolve_shove};

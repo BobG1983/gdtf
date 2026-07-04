@@ -1,6 +1,6 @@
 //! The relocated `bleed` unit tests, grouped by acceptance criterion: the shared
 //! headless-app fixtures live in [`support`], the per-AC assertions in the sibling
-//! files (drain / filter / flag / message).
+//! files (drain / filter / flag / message / the GTW-572 once-per-span start facts).
 
 mod support;
 
@@ -9,3 +9,4 @@ mod filter;
 mod flag;
 mod message;
 mod runtime;
+mod span;

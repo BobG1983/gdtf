@@ -43,7 +43,7 @@ mod test;
 
 pub use field::FieldDef;
 pub use registry::{FieldDefRegistry, FieldKey, FieldRegistry, PlacedField};
-pub use tick::{FieldTicked, tick_fields};
+pub use tick::{FieldAfflicted, FieldOngoing, FieldTicked, tick_fields};
 
 // The consequence payload newtypes live with their behaviours in the GTW-553 palette
 // (`crate::effects::fields`); re-exported here so `crate::fields::*` and the crate-root

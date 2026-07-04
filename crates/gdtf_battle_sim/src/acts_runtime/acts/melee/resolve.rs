@@ -19,10 +19,11 @@
 
 use bevy::prelude::{Entity, MessageWriter, Query, With};
 
-use super::{MeleeGeomQuery, MeleeGrids, MeleeTargetQuery};
+use super::{MeleeFacts, MeleeGeomQuery, MeleeGrids, MeleeTargetQuery};
 use crate::{
-    acts::request::{MeleeResolved, ShoveRequested},
+    acts::request::{MeleeResolved, MeleeStruck, ShoveRequested},
     armor::{PieceArmorMut, Wears, WornBy},
+    armor_wear::ArmorWearOutcome,
     cover::CoverEvent,
     downed_acts::is_8_adjacent,
     ganger::{
@@ -108,8 +109,9 @@ pub(super) struct MeleeStreams<'a> {
     reason = "the ganger arm threads the attacker snapshot, the target entity, the disjoint \
               geometry / attacker-Tu / target-surfaces queries, the two armor relationship \
               queries, the grouped grids+tuning bundle, the three draw streams, and the \
-              MeleeResolved + ShoveRequested writers — the irreducible per-arm access set (the \
-              strike_with_target precedent); bundling further would only hide the access set"
+              MeleeResolved + ShoveRequested writers and the grouped GTW-572 fact writers \
+              (MeleeFacts) — the irreducible per-arm access set (the strike_with_target \
+              precedent); bundling further would only hide the access set"
 )]
 pub(super) fn resolve_ganger_melee(
     attacker: &AttackerSnapshot<'_>,
@@ -122,6 +124,7 @@ pub(super) fn resolve_ganger_melee(
     grids: &mut MeleeGrids,
     streams: MeleeStreams<'_>,
     resolved: &mut MessageWriter<MeleeResolved>,
+    facts: &mut MeleeFacts,
     shoves: &mut MessageWriter<ShoveRequested>,
     deaths: &mut MessageWriter<crate::on_death::OnDeathOccurred>,
 ) {
@@ -232,6 +235,22 @@ pub(super) fn resolve_ganger_melee(
         // old decompose-then-recompose was the identity on every real key).
         let at: CellLevel = *tgt_pos;
         resolved.write(MeleeResolved::new(at, attacker.strike_damage_type));
+
+        // GTW-572: the NUMBER-BEARING melee fact — the connecting strike's applied HP loss,
+        // with both combatants, so the combat log can phrase a melee-damage line. The
+        // strike-glyph signal above stays cell+damage-type only (the GTW-507 FX contract).
+        facts.struck.write(MeleeStruck::new(
+            attacker.entity,
+            target_entity,
+            strike.hp_damage,
+        ));
+
+        // GTW-572: a protecting→broken wear crossing (surfaced on the strike verdict — it
+        // was previously computed and dropped inside the verb) emits the SAME ArmorBroken
+        // fact a ranged break does, so a melee break pops and logs identically.
+        if let ArmorWearOutcome::Broke(broken) = strike.wear {
+            facts.breaks.write(broken);
+        }
 
         // GTW-547: a CONNECTING strike that KILLED the target (its post-fold LifeState is Dead)
         // emits the terminal-death signal at the target's cell so `resolve_on_death` fans the
@@ -400,8 +419,10 @@ fn strike_with_target(
     let Ok((mut hp, mut wounds, mut life, mut inflicted, ..)) = targets.get_mut(target_entity)
     else {
         return MeleeStrike {
-            connect:  false,
-            severity: crate::severity::Severity::None,
+            connect:   false,
+            severity:  crate::severity::Severity::None,
+            hp_damage: crate::resolve_hit::HpDamage::new(0),
+            wear:      crate::armor_wear::ArmorWearOutcome::Unaffected,
         };
     };
     resolve_melee_strike(

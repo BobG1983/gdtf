@@ -215,7 +215,10 @@ fn run_until_active(app: &mut App, faction: u8) {
 #[derive(Resource, Default)]
 struct AppliedLog {
     /// One entry per `SuppressionApplied` emitted: the cell it fired for.
-    cells: Vec<CellLevel>,
+    cells:   Vec<CellLevel>,
+    /// One entry per `SuppressionApplied` emitted: the pinned ganger it carried (GTW-572 —
+    /// the field the combat log's suppression line resolves to a name).
+    gangers: Vec<bevy::prelude::Entity>,
 }
 
 /// Drain `SuppressionApplied` into the `AppliedLog` recorder.
@@ -225,7 +228,16 @@ fn record_applied(
 ) {
     for msg in msgs.read() {
         log.cells.push(msg.at);
+        log.gangers.push(msg.ganger);
     }
+}
+
+/// Whether some recorded `SuppressionApplied` carried `ganger` (GTW-572 — the signal names
+/// the pinned unit, not just its cell).
+fn applied_carried_ganger(app: &App, ganger: bevy::prelude::Entity) -> bool {
+    app.world()
+        .get_resource::<AppliedLog>()
+        .is_some_and(|log| log.gangers.contains(&ganger))
 }
 
 /// Add the `SuppressionApplied` recorder to the app (after `BattleSimPlugin`, so the
@@ -281,6 +293,7 @@ fn seed_cover(app: &mut App, cell: CellLevel, entry: CoverEntry) {
 fn producer_suppresses_in_radius_opposing_ganger_only() {
     // Radius 1: the shot's target cell + its Moore-8 ring are suppressed.
     let mut app = battle_app(1);
+    with_applied_log(&mut app);
 
     // The enemy shooter sits west; the target cell is (8,5). An opposing PLAYER stands ON
     // the target (in radius), another PLAYER stands far away (out of radius), and a SECOND
@@ -352,6 +365,12 @@ fn producer_suppresses_in_radius_opposing_ganger_only() {
     assert!(
         !is_suppressed(&app, shooter),
         "(a) the shooter never suppresses itself",
+    );
+    // GTW-572: the fresh SuppressionApplied signal CARRIES the pinned ganger (the field the
+    // combat log's suppression line resolves to a name), not just its cell.
+    assert!(
+        applied_carried_ganger(&app, in_player),
+        "GTW-572: the SuppressionApplied signal must carry the freshly-pinned ganger entity",
     );
 }
 

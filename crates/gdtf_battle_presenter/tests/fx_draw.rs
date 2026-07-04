@@ -1341,7 +1341,7 @@ fn a_non_shot_death_despawns_the_sprite_promptly() {
 }
 
 /// GTW-302 (slice 4) — the REAL dispatch path: a `Bleeding { ganger }` drives the registered
-/// `read_consequence_fct` system to spawn the AMBER `"Bleeding"` floating-combat-text pop over
+/// `read_consequence_fct::<BleedingFct>` family reader (GTW-572) to spawn the AMBER `"Bleeding"` floating-combat-text pop over
 /// the bleeding ganger's cell (ALONGSIDE the existing `read_bleeding` blood flash). Pins the
 /// pop's text + valence on the registered-system path.
 #[test]
@@ -1380,7 +1380,7 @@ fn bleeding_pops_the_amber_bleeding_fct_tag() {
 }
 
 /// GTW-302 (slice 4) — the REAL dispatch path: an `ArmorBroken { ganger, part }` drives the
-/// registered `read_consequence_fct` system to spawn the RED `"Armor Broken"` floating-combat-
+/// registered `read_consequence_fct::<ArmorBrokenFct>` family reader (GTW-572) to spawn the RED `"Armor Broken"` floating-combat-
 /// text pop over the ganger's cell (ALONGSIDE the existing `read_armor_broken` spark flash).
 /// Pins the destroy-crossing tag's text + RED valence; the numeric `"Armor -N"` is DEFERRED
 /// (the message carries no integrity-delta amount), so NO `"Armor -"` pop appears.
@@ -1412,8 +1412,8 @@ fn armor_broken_pops_the_red_armor_broken_fct_tag() {
     );
 }
 
-/// GTW-526 C8 — the REAL dispatch path: a `SuppressionApplied { at }` drives the registered
-/// `read_suppression_fct` system to spawn the cowed `"SUPPRESSED"` floating-combat-text pop
+/// GTW-526 C8 — the REAL dispatch path: a `SuppressionApplied { ganger, at }` drives the registered
+/// `read_consequence_fct::<SuppressionFct>` family reader (GTW-572) to spawn the cowed `"SUPPRESSED"` floating-combat-text pop
 /// over the pinned cell. Pins the pop's text + Suppressed valence + cell anchor on the
 /// registered-system path (deleting the reader FAILS this).
 #[test]
@@ -1425,10 +1425,11 @@ fn suppression_applied_pops_the_suppressed_fct_tag_at_the_cell() {
     let cell = Cell::new(11, 4);
     let level = Level::new(0);
     let at = CellLevel::new(cell, level);
+    let pinned = spawn_ganger(&mut app, cell, level, 2);
 
     app.world_mut()
         .resource_mut::<Messages<SuppressionApplied>>()
-        .write(SuppressionApplied::new(at));
+        .write(SuppressionApplied::new(pinned, at));
     app.update();
 
     // POSITIVE: the system spawned a FloatingCombatText pop reading "SUPPRESSED" in the cowed
@@ -1454,7 +1455,7 @@ fn suppression_applied_pops_the_suppressed_fct_tag_at_the_cell() {
 }
 
 /// GTW-544 — the REAL dispatch path: a `DotTicked { ganger, at, amount }` drives the registered
-/// `read_dot_fct` system to spawn the toxic `"-N"` floating-combat-text pop over the afflicted
+/// `read_consequence_fct::<DotFct>` family reader (GTW-572) to spawn the toxic `"-N"` floating-combat-text pop over the afflicted
 /// ganger's cell. Pins the pop's `-{amount}` text + Dot valence + cell anchor on the
 /// registered-system path (deleting the reader FAILS this).
 #[test]
@@ -1496,12 +1497,16 @@ fn dot_ticked_pops_the_toxic_minus_amount_fct_tag_at_the_cell() {
 }
 
 /// GTW-545 — the REAL dispatch path: a `FieldTicked { occupant, at, amount }` drives the registered
-/// `read_field_fct` system to spawn the hazard `"-N"` floating-combat-text pop over the field cell.
+/// `read_consequence_fct::<FieldFct>` family reader (GTW-572) to spawn the hazard `"-N"` floating-combat-text pop over the field cell.
 /// Pins the pop's `-{amount}` text + Field valence + cell anchor on the registered-system path
 /// (deleting the reader FAILS this).
 #[test]
 fn field_ticked_pops_the_hazard_minus_amount_fct_tag_at_the_cell() {
     let mut app = headless_renderer_app();
+    // GTW-572 C4: the presenter registrar no longer add_messages FieldTicked (the sim's acts
+    // plugin registers it in a live battle); this focused harness adds the buffer itself so
+    // the gated family reader runs (the InjuryInflicted precedent).
+    app.add_message::<FieldTicked>();
     settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
@@ -1600,7 +1605,7 @@ fn a_seeded_field_registry_draws_a_visible_hazard_cell_sprite() {
 }
 
 /// GTW-547 — the REAL dispatch path: an `OnDeathOccurred { entity, at }` drives the registered
-/// `read_on_death_fct` system to spawn the bold `"BOOM"` blast marker over the death cell — the
+/// `read_consequence_fct::<OnDeathFct>` family reader (GTW-572) to spawn the bold `"BOOM"` blast marker over the death cell — the
 /// presenter FLOURISH that closes the Explode visibility gap (the sim's direct RNG-free blast drain
 /// rides no shot-impact FX nor attrition pop). Pins the marker's text + lethal valence + cell anchor
 /// on the registered-system path (deleting the reader FAILS this). The `OnDeathOccurred` buffer is
@@ -1609,6 +1614,9 @@ fn a_seeded_field_registry_draws_a_visible_hazard_cell_sprite() {
 #[test]
 fn on_death_occurred_pops_the_lethal_boom_marker_at_the_cell() {
     let mut app = headless_renderer_app();
+    // GTW-572 C4: the presenter registrar no longer add_messages OnDeathOccurred (the sim's
+    // acts plugin registers it in a live battle); this focused harness adds it itself.
+    app.add_message::<OnDeathOccurred>();
     settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
@@ -1644,11 +1652,13 @@ fn on_death_occurred_pops_the_lethal_boom_marker_at_the_cell() {
 }
 
 /// GTW-547 — a COVER death carries `Entity::PLACEHOLDER` (cover is not an entity) but still a valid
-/// cell: `read_on_death_fct` must still pop the `"BOOM"` marker at that cell (a smashed volatile
+/// cell: the on-death family reader must still pop the `"BOOM"` marker at that cell (a smashed volatile
 /// crate's detonation is visible), never fail on the placeholder entity.
 #[test]
 fn a_cover_on_death_still_pops_the_marker_at_the_cover_cell() {
     let mut app = headless_renderer_app();
+    // GTW-572 C4: the harness adds the OnDeathOccurred buffer itself (see above).
+    app.add_message::<OnDeathOccurred>();
     settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
@@ -1674,11 +1684,13 @@ fn a_cover_on_death_still_pops_the_marker_at_the_cover_cell() {
 /// `resolve_on_death` → `leave_field` does via `FieldRegistry::spawn`) and (2) emitting an
 /// `OnDeathOccurred` at that cell. In ONE presenter update this drives BOTH existing systems with
 /// ZERO new field-render infra: `draw_field_overlay` draws the persistent hazard tile (the field
-/// rides the existing GTW-545 overlay), and `read_on_death_fct` pops the transient blast marker
+/// rides the existing GTW-545 overlay), and the on-death family reader pops the transient blast marker
 /// over it. This is the "on-death effects ride existing rendering" proof for `LeaveField`.
 #[test]
 fn a_leave_field_on_death_draws_the_field_overlay_and_the_marker() {
     let mut app = headless_renderer_app();
+    // GTW-572 C4: the harness adds the OnDeathOccurred buffer itself (see above).
+    app.add_message::<OnDeathOccurred>();
     settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
@@ -1714,7 +1726,7 @@ fn a_leave_field_on_death_draws_the_field_overlay_and_the_marker() {
 /// Builds an [`InjuryInflicted`] for `target` carrying `popup` (the FCT line) at `severity`,
 /// with sane filler for the durable ledger + the log / inspect texts the FCT reader ignores.
 ///
-/// The FCT reader (`read_injury_fct`) reads ONLY the message's `target`, `popup_text`, and
+/// The injury family classify reads ONLY the message's `target`, `popup_text`, and
 /// `severity`; the gained ledger entry + log / inspect texts are along for the ride (they
 /// drive the applier + the combat log + the inspect panel, exercised by their own tests), so
 /// they are filled with self-consistent placeholders here.
@@ -1743,13 +1755,13 @@ fn injury_message(
 }
 
 /// GTW-439 (slice C1), QA-gap remediation — the REAL system path: a genuine `InjuryInflicted`
-/// MESSAGE written to the live buffer drives the REGISTERED `read_injury_fct` system to SPAWN
+/// MESSAGE written to the live buffer drives the REGISTERED `read_consequence_fct::<InjuryFct>` family reader (GTW-572) to SPAWN
 /// one floating-combat-text pop over the wounded ganger's cell, carrying the injury's
 /// `popup_text` verbatim, drawn in the severity-scaled `severity_color`. NOT the pure
 /// `injury_pop` classifier (covered in the module unit test) — this drives the actual message
 /// consumer registered by `TopDownRendererPlugin` and asserts the rendered entity.
 ///
-/// Pin-discriminating: it FAILS if `read_injury_fct` stopped consuming `InjuryInflicted` (or
+/// Pin-discriminating: it FAILS if the injury family reader stopped consuming `InjuryInflicted` (or
 /// stopped spawning a pop) — the world would then carry ZERO `FloatingCombatText`, failing the
 /// content assertion — and it FAILS if the pop were drawn a flat (non-severity) color, since the
 /// assertion pins the EXACT `severity_color(Critical)` swatch (RGB), distinct from the `Minor`
@@ -1773,7 +1785,7 @@ fn injury_inflicted_message_spawns_the_severity_coloured_fct_pop() {
         .id();
 
     // Write a REAL InjuryInflicted to the live buffer and run one update — the registered
-    // read_injury_fct drains it and spawns the pop on this frame's SpawnScene schedule.
+    // the injury family reader drains it and spawns the pop on this frame's SpawnScene schedule.
     app.world_mut()
         .resource_mut::<Messages<InjuryInflicted>>()
         .write(injury_message(target, "LOST EYE", Severity::Critical));
@@ -1785,7 +1797,7 @@ fn injury_inflicted_message_spawns_the_severity_coloured_fct_pop() {
     assert_eq!(
         pop_count_for(&pops, "LOST EYE"),
         1,
-        "the registered read_injury_fct must spawn exactly one \"LOST EYE\" pop for one \
+        "the registered injury family reader must spawn exactly one \"LOST EYE\" pop for one \
          InjuryInflicted, got {pops:?}",
     );
     assert!(
@@ -2048,4 +2060,172 @@ fn throw_resolved_blast_impact_carries_no_shot_verdict() {
         "a blast's numbers ride the per-ganger wound/injury signals — the impact report is None \
          (no verdict; the combat log renders no outcome line for it, GTW-559)",
     );
+}
+
+/// GTW-572 C3 (acceptance 3) — the SHARED per-frame stack counter: two DIFFERENT consequence
+/// families popping on the SAME cell in the SAME frame take DISTINCT stack slots, so their
+/// pops fan out vertically instead of overlapping.
+///
+/// PIN-DISCRIMINATING against the pre-GTW-572 defect: each family reader used to keep a
+/// LOCAL per-drain counter, so a same-frame cross-family pair (here a `SuppressionApplied`
+/// "SUPPRESSED" tag and a `DotTicked` "-4" number on one cell) each took slot 0 and rendered
+/// at the SAME y — this asserts their world `y`s DIFFER by the stack step.
+#[test]
+fn two_families_on_one_cell_in_one_frame_take_distinct_stack_slots() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+    app.world_mut().insert_resource(BattleInProgress);
+
+    let cell = Cell::new(9, 9);
+    let level = Level::new(0);
+    let at = CellLevel::new(cell, level);
+    let pinned = spawn_ganger(&mut app, cell, level, 2);
+
+    // TWO different families, ONE cell, ONE frame: suppression (carried-cell anchor) + DOT
+    // (carried-cell anchor). Both buffers are in the shared harness.
+    app.world_mut()
+        .resource_mut::<Messages<SuppressionApplied>>()
+        .write(SuppressionApplied::new(pinned, at));
+    app.world_mut()
+        .resource_mut::<Messages<DotTicked>>()
+        .write(DotTicked::new(pinned, at, DotDamage::new(4)));
+    // One zero-delta update so both pops spawn on the same frame with no rise applied —
+    // any y difference is purely the stack-slot offset.
+    app.world_mut()
+        .insert_resource(TimeUpdateStrategy::ManualDuration(
+            std::time::Duration::ZERO,
+        ));
+    app.update();
+    app.world_mut()
+        .insert_resource(TimeUpdateStrategy::Automatic);
+
+    let pops = fct_pops(&mut app);
+    assert!(
+        has_fct_pop(&pops, "SUPPRESSED", valence_color(FctValence::Suppressed)),
+        "the suppression family must pop its tag, got {pops:?}",
+    );
+    assert!(
+        has_fct_pop(&pops, "-4", valence_color(FctValence::Dot)),
+        "the DOT family must pop its number, got {pops:?}",
+    );
+
+    // Collect the two pops' world ys — cross-family pops on one cell must sit at DISTINCT
+    // stacked heights (before GTW-572 both took slot 0 and these were EQUAL).
+    let mut q = app
+        .world_mut()
+        .query::<(&Text2d, &FloatingCombatText, &Transform)>();
+    let mut suppressed_y: Option<f32> = None;
+    let mut dot_y: Option<f32> = None;
+    for (text, _, transform) in q.iter(app.world()) {
+        match text.as_str() {
+            "SUPPRESSED" => suppressed_y = Some(transform.translation.y),
+            "-4" => dot_y = Some(transform.translation.y),
+            _ => {}
+        }
+    }
+    let (Some(suppressed_y), Some(dot_y)) = (suppressed_y, dot_y) else {
+        // The has_fct_pop asserts above already failed loudly if a pop is missing.
+        return;
+    };
+    assert!(
+        (suppressed_y - dot_y).abs() > 0.001,
+        "two DIFFERENT families popping one cell in one frame must take DISTINCT stack \
+         slots (distinct ys), got {suppressed_y} == {dot_y} — the shared per-frame \
+         FctStackCounter must hand the second family slot 1",
+    );
+}
+
+/// GTW-572 C4 (acceptance 4) — INERTNESS: a presenter-only app whose harness registers NO
+/// consequence-family `Messages<M>` buffer updates without panicking and spawns no pops —
+/// INCLUDING the field and on-death families, whose buffers the presenter used to
+/// `add_message` idempotently itself (removed by C4).
+///
+/// The load-bearing pins: (a) after the presenter plugin built and the app updated, the
+/// family buffers are STILL ABSENT — proving the registrar never calls `add_message` (the
+/// old renderer walls did, for `FieldTicked` / `OnDeathOccurred`); (b) the gated family
+/// readers stay inert (no `FloatingCombatText` spawns, no param-validation panic) across
+/// several updates of a live-battle app.
+#[test]
+fn a_presenter_only_app_with_no_family_buffers_stays_inert() {
+    // Deliberately NOT the shared harness: no add_message for ANY consequence family
+    // (no Bleeding / ArmorBroken / SuppressionApplied / DotTicked / InjuryInflicted /
+    // FieldTicked / OnDeathOccurred).
+    let mut app = App::new();
+    app.add_plugins(
+        DefaultPlugins
+            .set(RenderPlugin {
+                render_creation: WgpuSettings {
+                    backends: None,
+                    ..default()
+                }
+                .into(),
+                ..default()
+            })
+            .disable::<WinitPlugin>()
+            .disable::<bevy::log::LogPlugin>()
+            .disable::<bevy::app::TerminalCtrlCHandlerPlugin>()
+            .disable::<bevy::gizmos::GizmoPlugin>()
+            .disable::<bevy::audio::AudioPlugin>()
+            .set(WindowPlugin {
+                primary_window: None,
+                exit_condition: ExitCondition::DontExit,
+                ..default()
+            })
+            .set(AssetPlugin {
+                file_path: workspace_assets_root().to_string_lossy().into_owned(),
+                ..default()
+            }),
+    )
+    .add_plugins(TopDownRendererPlugin);
+    app.set_error_handler(warn);
+    settle_resources(&mut app);
+    app.world_mut().insert_resource(BattleInProgress);
+
+    // A live battle, FxTuning resolved, several updates — the family readers must all stay
+    // gated off their absent buffers (no panic, nothing spawned).
+    for _ in 0..4 {
+        app.update();
+    }
+
+    assert_eq!(
+        fct_pop_count(&mut app),
+        0,
+        "with no family Messages<M> buffer registered, no consequence pop may spawn",
+    );
+    // The C4 pin: the registrar must NOT have add_message'd any family buffer — including
+    // the two the old renderer walls registered idempotently (FieldTicked, OnDeathOccurred).
+    assert!(
+        app.world()
+            .get_resource::<Messages<gdtf_battle_sim::FieldTicked>>()
+            .is_none(),
+        "the presenter must no longer register Messages<FieldTicked> itself (GTW-572 C4)",
+    );
+    assert!(
+        app.world()
+            .get_resource::<Messages<OnDeathOccurred>>()
+            .is_none(),
+        "the presenter must no longer register Messages<OnDeathOccurred> itself (GTW-572 C4)",
+    );
+    for absent in [
+        app.world()
+            .get_resource::<Messages<Bleeding>>()
+            .map(|_| "Bleeding"),
+        app.world()
+            .get_resource::<Messages<ArmorBroken>>()
+            .map(|_| "ArmorBroken"),
+        app.world()
+            .get_resource::<Messages<SuppressionApplied>>()
+            .map(|_| "SuppressionApplied"),
+        app.world()
+            .get_resource::<Messages<DotTicked>>()
+            .map(|_| "DotTicked"),
+        app.world()
+            .get_resource::<Messages<InjuryInflicted>>()
+            .map(|_| "InjuryInflicted"),
+    ] {
+        assert!(
+            absent.is_none(),
+            "the presenter registrar must not register the {absent:?} family buffer",
+        );
+    }
 }

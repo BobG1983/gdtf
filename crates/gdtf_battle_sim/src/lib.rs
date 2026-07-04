@@ -262,7 +262,7 @@ pub use acts_runtime::{
     acts,
     acts::{
         FireArcDecision, FireDeclaration, InjuryInflicted, MeleeRequested, MeleeResolved,
-        MeleeTarget, MoveRejected, MoveRejection, MovementOccurred, OpenDoorRequested,
+        MeleeStruck, MeleeTarget, MoveRejected, MoveRejection, MovementOccurred, OpenDoorRequested,
         ReloadOutcome, ReloadResult, ShoveOutcome, ShoveRequested, ShoveSource,
         ThrowGrenadeRequested, ThrowResolved, apply_injury, can_engage, decide_fire_arc,
         dispatch_melee, dispatch_open_door, dispatch_shove, dispatch_throw_grenade, resolve_shove,
@@ -273,9 +273,9 @@ pub use acts_runtime::{
         plan_advance,
     },
     bleed,
-    bleed::{Bleeding, enemy_phase_started, tick_bleed},
+    bleed::{BleedOngoing, BleedStarted, Bleeding, enemy_phase_started, tick_bleed},
     dot,
-    dot::{DotApplied, DotTicked, apply_dot, tick_dot},
+    dot::{DotAfflicted, DotApplied, DotTicked, apply_dot, tick_dot},
     downed_acts,
     downed_acts::{
         Actor, DownedTarget, can_execute, can_stabilize, execute_downed, is_8_adjacent,
@@ -283,8 +283,9 @@ pub use acts_runtime::{
     },
     fields,
     fields::{
-        FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey, FieldRegistry,
-        FieldTicked, FieldTurns, ImmuneArmorTypes, PlacedField, tick_fields,
+        FieldAfflicted, FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey,
+        FieldOngoing, FieldRegistry, FieldTicked, FieldTurns, ImmuneArmorTypes, PlacedField,
+        tick_fields,
     },
     firing_arc, move_acts,
     move_acts::{ReactionShotFired, WalkInProgress, advance_walk},

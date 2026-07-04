@@ -4,6 +4,7 @@
 
 mod support;
 
+mod armor_break;
 mod coschedule;
 mod downed;
 mod fire;

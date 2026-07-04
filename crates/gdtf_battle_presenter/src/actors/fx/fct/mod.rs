@@ -1,109 +1,67 @@
 //! GTW-302 (slice 2): the reusable FLOATING-COMBAT-TEXT (FCT) primitive — the genre's
-//! "this much damage, here" rise-and-fade number / tag over a battlefield cell.
+//! "this much damage, here" rise-and-fade number / tag over a battlefield cell — plus the
+//! GTW-572 CONSEQUENCE-POP PALETTE that feeds it.
 //!
-//! This module is the GENERIC primitive ONLY; it reads NO sim message. It owns two halves:
+//! The module owns these halves:
 //!
 //! - [`text`] — the [`spawn_floating_text`] helper (a caller picks the [`CombatText`]
 //!   string, the [`Color`](bevy::prelude::Color), the `(Cell, Level)` world anchor, and a
 //!   per-cell [`FctStackIndex`] so simultaneous pops fan out) and the
 //!   [`animate_floating_text`] system that RISES + FADES + despawns every live pop. A pop
 //!   is spawned ONCE carrying its own [`FloatingCombatText`] state and is MUTATED in place
-//!   each frame until its [`FctTtlSeconds`] lifetime finishes — the same spawn-then-TTL
-//!   shape as the transient FX flash, never respawned per frame.
-//! - [`palette`] — the VALENCE → color mapping: [`FctValence`] (the presenter's own
-//!   damage / wound / neutral / lethal / suppressed category) → [`valence_color`], plus the
+//!   each frame until its [`FctTtlSeconds`](super::tuning::FctTtlSeconds) lifetime finishes.
+//! - [`palette`] — the VALENCE → color mapping: [`FctValence`] → [`valence_color`], plus the
 //!   [`Severity`](gdtf_battle_sim::Severity)-tier → amber-family ramp [`severity_color`].
-//!   The reader slices (3-4) classify a [`ShotFired`](gdtf_battle_sim::ShotFired)
-//!   consequence into a valence / severity and feed the resulting color to
-//!   [`spawn_floating_text`].
-//! - [`reader`] — the GTW-302 slice-3 / GTW-327 slice-2
-//!   [`ShotFired`](gdtf_battle_sim::ShotFired) → floating-combat-text CLASSIFICATION
-//!   ([`classify_report`](reader::classify_report) / [`anchor_cell`](reader::anchor_cell)): the
-//!   shared, reusable functions that classify each round's
-//!   [`HitReport`](gdtf_battle_sim::HitReport) into the Phase-1 events derivable from it (HP
-//!   damage, wound, graze, penetration verdict, DOWN / DEAD — a clean miss yields nothing) and
-//!   find their anchor cell. GTW-327 removed the immediate-spawn `read_shot_fired_text` system;
-//!   [`spawn_shot_projectiles`](super::spawn_shot_projectiles) now calls these at
-//!   projectile-spawn time and threads the pops THROUGH the staggered projectile → impact
-//!   pipeline so each shot's numbers appear at its own impact.
-//! - [`log_event`] — the GTW-328 slice-2 COMBAT-LOG classification
-//!   ([`classify_log_event`](log_event::classify_log_event)): the shared, PURE function that
-//!   turns a resolved [`CombatLogEvent`](log_event::CombatLogEvent) (the five Phase-1 combat
-//!   events — fire declaration / movement / shot outcome / reload / turn boundary, with each
-//!   [`Entity`](bevy::prelude::Entity) ALREADY resolved to a name) into the ordered
-//!   [`LogLine`](log_event::LogLine)s the bottom-left HUD log renders. The shot outcome REUSES
-//!   [`classify_report`](reader::classify_report) (its FCT callers untouched); a clean miss is
-//!   shown (`"<name> missed"`), NOT suppressed.
-//! - [`injury`] — the GTW-439 slice-C1 INJURY FCT READER ([`read_injury_fct`]): the
-//!   transient flash for a freshly-inflicted named injury, routed off the GTW-438
-//!   [`InjuryInflicted`](gdtf_battle_sim::InjuryInflicted) message — its `popup_text` drawn
-//!   in a VALENCE BY SEVERITY (the [`severity_color`] wound ramp scaled by the rolled tier,
-//!   so a worse injury reads hotter). The durable per-ganger injury LIST is driven by the
-//!   [`InflictedInjuries`](gdtf_battle_sim::InflictedInjuries) ledger in the inspect panel,
-//!   NOT by this one-shot pop.
-//! - [`consequence`] — the GTW-302 slice-4 AUXILIARY-SIGNAL READER ([`read_consequence_fct`]):
-//!   the Phase-1 pops NOT derivable from [`ShotFired`] alone but riding the dedicated
-//!   consequence messages — `"Bleeding"` (AMBER) from [`Bleeding`](gdtf_battle_sim::Bleeding),
-//!   `"Armor Broken"` (RED) from [`ArmorBroken`](gdtf_battle_sim::ArmorBroken). Reload pops
-//!   and the numeric `"Armor -N"` are DEFERRED — no backing sim signal (see `consequence`'s
-//!   module docs).
-//! - [`suppression`] — the GTW-526 C8 SUPPRESSION FCT READER ([`read_suppression_fct`]): the
-//!   transient `"SUPPRESSED"` pop for a ganger freshly pinned down, routed off the
-//!   [`SuppressionApplied`](gdtf_battle_sim::SuppressionApplied) message and drawn in the cowed
-//!   [`FctValence::Suppressed`] blue-grey. The persistent suppressed look is the desaturated
-//!   sprite tint (`reframe_ganger_sprites`), NOT this one-shot pop.
-//! - [`dot`] — the GTW-544 DAMAGE-OVER-TIME FCT READER ([`read_dot_fct`]): the transient `"-N"`
-//!   attrition pop for a ganger a burning / caustic DOT drained this round, routed off the
-//!   [`DotTicked`](gdtf_battle_sim::DotTicked) message and drawn in the toxic
-//!   [`FctValence::Dot`] green (its own recurring-attrition valence, distinct from a fresh
-//!   weapon hit or a bleed status tag). The persistent DOT state is the sim's
-//!   [`Dot`](gdtf_battle_sim::Dot) affliction, NOT this one-shot pop.
-//! - [`field`] — the GTW-545 AREA-DAMAGE-FIELD FCT READER ([`read_field_fct`]): the transient
-//!   `"-N"` attrition pop for a ganger a persistent damage ZONE (toxic pool / electrified floor /
-//!   burning ground) drained this round, routed off the
-//!   [`FieldTicked`](gdtf_battle_sim::FieldTicked) message and drawn in the hazard
-//!   [`FctValence::Field`] orange (its own recurring environmental-attrition valence, distinct
-//!   from a fresh weapon hit or a carried DOT tick). The persistent field zone is the sim's
-//!   [`FieldRegistry`](gdtf_battle_sim::FieldRegistry), drawn as the persistent per-cell overlay,
-//!   NOT this one-shot pop.
-//! - [`on_death`] — the GTW-547 ON-DEATH FCT READER ([`read_on_death_fct`]): the transient bold
-//!   `"BOOM"` blast marker at every cell where an on-death effect fanned, routed off the
-//!   [`OnDeathOccurred`](gdtf_battle_sim::OnDeathOccurred) message and drawn in the lethal
-//!   [`FctValence::Lethal`] blood-red. It closes the Explode VISIBILITY gap: the sim's
-//!   [`Explode`](gdtf_battle_sim::OnDeathEffect::Explode) applies its blast as a direct RNG-free HP
-//!   drain that rides NO shot-impact FX nor attrition pop, so without this marker the detonation
-//!   would be invisible. A [`LeaveField`](gdtf_battle_sim::OnDeathEffect::LeaveField)'s field
-//!   itself still rides the persistent [`draw_field_overlay`](crate::draw_field_overlay).
+//! - [`reader`] — the SHOT-side classification
+//!   ([`classify_report`](reader::classify_report) / [`anchor_cell`](reader::anchor_cell)):
+//!   the presenter's ONE exhaustive view-side dispatch over a round's
+//!   [`HitReport`](gdtf_battle_sim::HitReport), threaded THROUGH the staggered
+//!   projectile → impact pipeline by [`spawn_shot_projectiles`](super::spawn_shot_projectiles)
+//!   so each shot's numbers appear at its own impact. DELIBERATELY outside the consequence
+//!   palette (GTW-572 P9): it is multi-pop, report-driven, and pipeline-threaded.
+//! - the GTW-572 CONSEQUENCE PALETTE — [`pop`] (the [`ConsequencePop`] named pop struct, its
+//!   [`PopAnchor`], and the [`ConsequenceFct`] trait), [`families`] (ONE file per consequence
+//!   family: bleeding / armor-broken / injury / suppression / DOT / field / on-death — each
+//!   holding its classify impl + unit tests, plus the add-one-consequence recipe in the
+//!   module doc), [`stack`] (the SHARED per-frame [`FctStackCounter`] + its reset — the fix
+//!   for the cross-family same-cell slot-0 overlap), and [`stacked_reader`] (the ONE generic
+//!   [`read_consequence_fct`](stacked_reader::read_consequence_fct) reader + the
+//!   [`ConsequenceFctAppExt::add_consequence_fct`] compile-time registrar that replaced the
+//!   six hand-rolled reader clones and their registration walls).
+//! - [`log_event`] — the COMBAT-LOG classification layer (GTW-328 / GTW-572 C5):
+//!   [`CombatLogEvent`] is a buffered [`Message`](bevy::prelude::Message) the app-side
+//!   per-source forwarders write and the ONE appender drains through the shared, PURE
+//!   [`classify_log_event`]. The shot outcome REUSES [`classify_report`](reader::classify_report)
+//!   (never duplicated); a `None` report yields NO line (GTW-559 — a blast detonation is not
+//!   a miss).
 //!
-//! Pure VIEW (ADR-0001): the primitive spawns + animates presenter entities only; it never
-//! reads or writes the sim. [`animate_floating_text`] and [`read_consequence_fct`] are
-//! registered into the shared [`PresenterSystems::Draw`](crate::PresenterSystems) band by
-//! `TopDownRendererPlugin`; the per-shot FCT pops are now spawned at the impact by
-//! [`animate_impact`](super::animate_impact) off the classification this module provides.
+//! Pure VIEW (ADR-0001): everything here spawns/animates presenter entities or phrases
+//! lines over resolved data; it never computes a combat outcome and never writes the sim.
 
-mod consequence;
-mod dot;
-mod field;
-mod injury;
+mod families;
 mod log_event;
-mod on_death;
 mod palette;
+mod pop;
 mod reader;
-mod suppression;
+mod stack;
+mod stacked_reader;
 mod text;
 
 #[cfg(test)]
 mod test;
 
-pub use consequence::read_consequence_fct;
-pub use dot::read_dot_fct;
-pub use field::read_field_fct;
-pub use injury::read_injury_fct;
+pub use families::{
+    ArmorBrokenFct, BleedingFct, DotFct, FieldFct, InjuryFct, OnDeathFct, SuppressionFct,
+};
 pub use log_event::{CombatLogEvent, InjuryLogText, LogLine, LogName, classify_log_event};
-pub use on_death::read_on_death_fct;
 pub use palette::{FctValence, severity_color, valence_color};
+pub use pop::{ConsequenceFct, ConsequencePop, PopAnchor};
 pub(super) use reader::{ClassifiedPop, anchor_cell, classify_report};
-pub use suppression::read_suppression_fct;
+pub use stack::{FctStackCounter, reset_fct_stacks};
+pub use stacked_reader::{
+    ConsequenceFctAppExt, ConsequenceFctSystems, read_consequence_fct,
+    register_consequence_fct_core,
+};
 pub use text::{
     CombatText, FctEmphasis, FctStackIndex, FloatingCombatText, animate_floating_text,
     spawn_floating_text,

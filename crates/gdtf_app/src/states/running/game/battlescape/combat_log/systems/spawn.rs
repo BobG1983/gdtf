@@ -8,7 +8,7 @@
 //! width + `Vh` bottom anchor; the height is intrinsic to the line count). It carries
 //! [`GlobalZIndex(COMBAT_LOG_Z)`](bevy::ui::GlobalZIndex) — ABOVE the opaque bottom bar's
 //! `GlobalZIndex(10)` so the log is not occluded (`bevy-traps.md` #8); the lines themselves are
-//! appended by [`update_combat_log`](super::update::update_combat_log) on each combat event.
+//! appended by [`append_combat_log`](super::append::append_combat_log) on each combat event (GTW-572).
 //!
 //! The lines append NEWEST AT THE BOTTOM: a fresh event is `add_children`'d (appended) under
 //! the column root, so the most recent line sits lowest and older lines drift up — the natural
@@ -68,7 +68,7 @@ const COMBAT_LOG_BG_ALPHA: f32 = 0.45;
 /// width (responsive — `Vw`/`Vh` only, `ui-responsive-not-px`). The fill alpha is forced to
 /// [`COMBAT_LOG_BG_ALPHA`] so the map reads through (a light overlay). [`GlobalZIndex`]
 /// [`COMBAT_LOG_Z`] keeps it above the opaque bottom bar (`bevy-traps.md` #8). The container
-/// starts EMPTY — lines are appended on combat events by `update_combat_log`.
+/// starts EMPTY — lines are appended on combat events by `append_combat_log`.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`] + the theme + tuning reads.
 pub(in crate::states::running::game::battlescape) fn spawn_combat_log(
