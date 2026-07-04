@@ -75,6 +75,21 @@ pub trait HotRonAppExt {
     where
         Spec: for<'de> Deserialize<'de> + TypePath + Send + Sync + 'static,
         T: Resource<Mutability = Mutable>;
+
+    /// Registers a hot-RON chain from an already-BUILT [`HotRonChain`] config —
+    /// the seam a SECOND host of a published chain installs through (GTW-579).
+    ///
+    /// The chain OWNER exports its config constructor (the ui theme's
+    /// `theme_hot_ron_chain`, the presenter's `tile_roles_hot_ron_chain`) so
+    /// the path + map hook stay single-sourced; a second host (the editor)
+    /// installs the WHOLE generic kick-off / resolve / redrive chain from that
+    /// config — optionally re-configured with its own failure policy via
+    /// [`HotRonChain::with_fallback`] — with no copied path constant, no copied
+    /// resolve, and no hand-registered half-chain.
+    fn init_hot_ron_chain<Spec, T>(&mut self, chain: HotRonChain<Spec, T>) -> &mut Self
+    where
+        Spec: for<'de> Deserialize<'de> + TypePath + Send + Sync + 'static,
+        T: Resource<Mutability = Mutable>;
 }
 
 impl HotRonAppExt for App {
@@ -125,6 +140,15 @@ impl HotRonAppExt for App {
         T: Resource<Mutability = Mutable>,
     {
         install(self, HotRonChain::new(path, map, Some(fallback)));
+        self
+    }
+
+    fn init_hot_ron_chain<Spec, T>(&mut self, chain: HotRonChain<Spec, T>) -> &mut Self
+    where
+        Spec: for<'de> Deserialize<'de> + TypePath + Send + Sync + 'static,
+        T: Resource<Mutability = Mutable>,
+    {
+        install(self, chain);
         self
     }
 }
