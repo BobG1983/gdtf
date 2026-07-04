@@ -6,6 +6,7 @@ use crate::states::{
         EditorScenePlugin, GameScenePlugin, MenuScenePlugin, OptionsScenePlugin, QuitScenePlugin,
         systems::*,
     },
+    scaffold::{SceneLabel, log_scene_enter, log_scene_exit},
 };
 
 pub(in crate::states) struct RunningScenePlugin;
@@ -25,11 +26,12 @@ fn add_systems(app: &mut App) {
     // renders against it — rather than to any one sub-state or widget. It carries
     // no scene-scoped despawn marker, so it outlives every `RunningState`
     // transition.
+    let label = SceneLabel::new("Running");
     app.add_systems(
         OnEnter(AppState::Running),
-        (print_on_enter, spawn_ui_camera),
+        (log_scene_enter(label), spawn_ui_camera),
     )
-    .add_systems(OnExit(AppState::Running), print_on_exit);
+    .add_systems(OnExit(AppState::Running), log_scene_exit(label));
 }
 
 fn add_plugins(app: &mut App) {

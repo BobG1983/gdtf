@@ -53,6 +53,11 @@ gdtf_screenshot = { path = "../gdtf_screenshot", optional = true }
 # in gdtf_app with `test-support`, which unifies that feature on for this
 # crate's test target, so the integration tests can name `gdtf_app::test_support`.
 gdtf_test_utils = { path = "../gdtf_test_utils" }
+# GTW-575: the shared state-scoped-RESOURCE seam. Dev-only here — the scene
+# scaffolds use the in-crate `states::scaffold` helpers; the integration test
+# (`tests/scene_scaffold.rs`) registers a probe resource through the shared seam
+# against the REAL AppState machine to pin the insert/seed/remove lifecycle.
+gdtf_state_scoped = { path = "../gdtf_state_scoped" }
 # The canonical shared sim test builders (GTW-324). `gdtf_app` already deps the sim
 # in the NORMAL graph; this adds the `test-support` feature for the TEST target so
 # integration tests name `gdtf_battle_sim::test_support`. (Feature-unification turns

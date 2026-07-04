@@ -42,6 +42,13 @@ ron = { workspace = true }
 # infrastructure — the whole affordance is inert until `GDTF_EDITOR_SHOT` is set / F10 pressed, and
 # the keybind is compiled out of release by its cfg gate.
 gdtf_screenshot = { path = "../gdtf_screenshot" }
+# GTW-575: the shared state-scoped-RESOURCE seam (bevy-traps #1 — Bevy scopes only
+# entities to a state). The `Editing` scene's ten model resources register their
+# OnEnter-insert + OnExit-remove pairs through its ONE `init_state_scoped_resource`
+# call each, replacing the hand-stamped `editor_resources.rs` insert/remove pairs.
+# Shared with `gdtf_app`'s scene scaffolds (the editor does not depend on `gdtf_app`,
+# so the seam lives in this tiny crate below both).
+gdtf_state_scoped = { path = "../gdtf_state_scoped" }
 
 [dev-dependencies]
 # The headless integration test drives the REAL editor plugin on a no-renderer

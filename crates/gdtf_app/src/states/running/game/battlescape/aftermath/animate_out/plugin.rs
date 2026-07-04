@@ -1,9 +1,11 @@
 use bevy::prelude::*;
 
 use crate::states::{
-    AfterMathState,
-    running::game::battlescape::aftermath::animate_out::{
-        resources::AfterMathAnimateOutComplete, systems::*,
+    AfterMathState, RunningState,
+    running::game::battlescape::aftermath::animate_out::resources::AfterMathAnimateOutComplete,
+    scaffold::{
+        SceneLabel, advance_state_to, insert_completion_marker, log_scene_enter, log_scene_exit,
+        remove_scoped_resource,
     },
 };
 
@@ -16,20 +18,30 @@ impl Plugin for GameBattleScapeAfterMathAnimateOutScenePlugin {
 }
 
 fn add_systems(app: &mut App) {
-    app.add_systems(OnEnter(AfterMathState::AnimateOut), print_on_enter)
+    let label = SceneLabel::new("Game::BattleScape::AfterMath::AnimateOut");
+    app.add_systems(OnEnter(AfterMathState::AnimateOut), log_scene_enter(label))
         .add_systems(
             FixedUpdate,
-            game_battlescape_aftermath_animate_out_complete.run_if(
+            insert_completion_marker::<AfterMathAnimateOutComplete>().run_if(
                 in_state(AfterMathState::AnimateOut)
                     .and_then(not(resource_exists::<AfterMathAnimateOutComplete>)),
             ),
         )
         .add_systems(
             FixedUpdate,
-            move_on.run_if(
+            // Terminal of the deepest sub-machine. AfterMath, BattleScape, and Game are
+            // each the last state at their level, so finishing here pops all the way out
+            // of Game to RunningState::Quit, which in turn advances AppState to Teardown.
+            advance_state_to(RunningState::Quit).run_if(
                 in_state(AfterMathState::AnimateOut)
                     .and_then(resource_exists::<AfterMathAnimateOutComplete>),
             ),
         )
-        .add_systems(OnExit(AfterMathState::AnimateOut), (print_on_exit, cleanup));
+        .add_systems(
+            OnExit(AfterMathState::AnimateOut),
+            (
+                log_scene_exit(label),
+                remove_scoped_resource::<AfterMathAnimateOutComplete>(),
+            ),
+        );
 }

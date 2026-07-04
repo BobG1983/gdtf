@@ -2,9 +2,8 @@ use bevy::prelude::*;
 
 use crate::states::{
     GameState, RunningState,
-    running::game::{
-        GameBattleScapeScenePlugin, GameHiveScapeScenePlugin, GameSetupScenePlugin, systems::*,
-    },
+    running::game::{GameBattleScapeScenePlugin, GameHiveScapeScenePlugin, GameSetupScenePlugin},
+    scaffold::{SceneLabel, log_scene_enter, log_scene_exit},
 };
 
 pub(in crate::states) struct GameScenePlugin;
@@ -18,8 +17,9 @@ impl Plugin for GameScenePlugin {
 }
 
 fn add_systems(app: &mut App) {
-    app.add_systems(OnEnter(RunningState::Game), print_on_enter)
-        .add_systems(OnExit(RunningState::Game), print_on_exit);
+    let label = SceneLabel::new("Running::Game");
+    app.add_systems(OnEnter(RunningState::Game), log_scene_enter(label))
+        .add_systems(OnExit(RunningState::Game), log_scene_exit(label));
 }
 
 fn add_plugins(app: &mut App) {

@@ -4,7 +4,10 @@ use crate::states::{
     BattleScapeState,
     running::game::battlescape::generation::{
         battle_sim::BattleSimPlugin, loading_screen::LoadingScreenPlugin,
-        resources::GenerationComplete, systems::*,
+        resources::GenerationComplete,
+    },
+    scaffold::{
+        SceneLabel, advance_state_to, log_scene_enter, log_scene_exit, remove_scoped_resource,
     },
 };
 
@@ -27,16 +30,25 @@ impl Plugin for GameBattleScapeGenerationScenePlugin {
 }
 
 fn add_systems(app: &mut App) {
-    app.add_systems(OnEnter(BattleScapeState::Generation), print_on_enter)
-        .add_systems(
-            FixedUpdate,
-            move_on.run_if(
-                in_state(BattleScapeState::Generation)
-                    .and_then(resource_exists::<GenerationComplete>),
-            ),
-        )
-        .add_systems(
-            OnExit(BattleScapeState::Generation),
-            (print_on_exit, cleanup),
-        );
+    let label = SceneLabel::new("Game::BattleScape::Generation");
+    app.add_systems(
+        OnEnter(BattleScapeState::Generation),
+        log_scene_enter(label),
+    )
+    .add_systems(
+        FixedUpdate,
+        // No scaffold marker-insert here: `GenerationComplete` is inserted by the
+        // `BattleSimPlugin` poll on REAL setup success (E10.5 / GTW-207), so this
+        // scene only registers the marker-gated advance + the exit remove.
+        advance_state_to(BattleScapeState::AnimateIn).run_if(
+            in_state(BattleScapeState::Generation).and_then(resource_exists::<GenerationComplete>),
+        ),
+    )
+    .add_systems(
+        OnExit(BattleScapeState::Generation),
+        (
+            log_scene_exit(label),
+            remove_scoped_resource::<GenerationComplete>(),
+        ),
+    );
 }

@@ -12,6 +12,7 @@ use crate::states::{
         GameBattleScapeSelectCycleScenePlugin, GameBattleScapeStatusPanelScenePlugin,
         GameBattleScapeWeaponPanelScenePlugin, systems::*,
     },
+    scaffold::{SceneLabel, log_scene_enter, log_scene_exit},
 };
 
 pub(in crate::states) struct GameBattleScapeScenePlugin;
@@ -25,8 +26,9 @@ impl Plugin for GameBattleScapeScenePlugin {
 }
 
 fn add_systems(app: &mut App) {
-    app.add_systems(OnEnter(GameState::BattleScape), print_on_enter)
-        .add_systems(OnExit(GameState::BattleScape), print_on_exit)
+    let label = SceneLabel::new("Game::BattleScape");
+    app.add_systems(OnEnter(GameState::BattleScape), log_scene_enter(label))
+        .add_systems(OnExit(GameState::BattleScape), log_scene_exit(label))
         // GTW-216: the SHARED world-camera lifecycle. The presenter exposes these as
         // `pub` param-only systems but cannot name `GameState` (it has no `gdtf_app`
         // dep), so the app registers them on the `GameState::BattleScape` boundary —

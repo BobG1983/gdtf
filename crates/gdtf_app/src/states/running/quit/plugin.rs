@@ -1,8 +1,12 @@
 use bevy::prelude::*;
 
 use crate::states::{
-    RunningState,
-    running::quit::{resources::QuitComplete, systems::*},
+    AppState, RunningState,
+    running::quit::resources::QuitComplete,
+    scaffold::{
+        SceneLabel, advance_state_to, insert_completion_marker, log_scene_enter, log_scene_exit,
+        remove_scoped_resource,
+    },
 };
 
 pub(in crate::states) struct QuitScenePlugin;
@@ -14,16 +18,26 @@ impl Plugin for QuitScenePlugin {
 }
 
 fn add_systems(app: &mut App) {
-    app.add_systems(OnEnter(RunningState::Quit), print_on_enter)
+    let label = SceneLabel::new("Running::Quit");
+    app.add_systems(OnEnter(RunningState::Quit), log_scene_enter(label))
         .add_systems(
             FixedUpdate,
-            quit_complete.run_if(
+            insert_completion_marker::<QuitComplete>().run_if(
                 in_state(RunningState::Quit).and_then(not(resource_exists::<QuitComplete>)),
             ),
         )
         .add_systems(
             FixedUpdate,
-            move_on.run_if(in_state(RunningState::Quit).and_then(resource_exists::<QuitComplete>)),
+            // Quit is the last RunningState: its move-on climbs OUT of the
+            // sub-machine, advancing the PARENT AppState to Teardown.
+            advance_state_to(AppState::Teardown)
+                .run_if(in_state(RunningState::Quit).and_then(resource_exists::<QuitComplete>)),
         )
-        .add_systems(OnExit(RunningState::Quit), (print_on_exit, cleanup));
+        .add_systems(
+            OnExit(RunningState::Quit),
+            (
+                log_scene_exit(label),
+                remove_scoped_resource::<QuitComplete>(),
+            ),
+        );
 }

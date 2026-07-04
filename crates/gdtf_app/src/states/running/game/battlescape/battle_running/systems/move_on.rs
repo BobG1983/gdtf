@@ -20,6 +20,12 @@
 //! This module DEFERS only the transition (the same `input → presenter` app-FX coupling
 //! GTW-328's combat log already established + accepted; the sim, the census, and the latch are
 //! untouched). It reuses the established presenter FX types — no new sim signal.
+//!
+//! SCAFFOLD DIVERGENCE (GTW-575): this `move_on` stays BESPOKE rather than collapsing into
+//! `scaffold::advance_state_to` because it is not a bare `NextState::set` — it classifies the
+//! end (deciding shot vs flee), persists the [`EndTransition`] phase, and holds the transition
+//! until the FX pipeline drains (P9: a scene that outgrows the scaffold graduates to its own
+//! system).
 
 use bevy::prelude::*;
 use gdtf_battle_presenter::{PendingImpact, ShotProjectile};
@@ -34,8 +40,8 @@ use crate::states::BattleScapeState;
 /// FLEE / non-shot end (transition at once) from the in-flight deciding shot (wait for the
 /// tracer) apart, which is exactly trap B. Inserted by [`move_on`] the first frame the
 /// [`BattleRunningComplete`](super::super::resources::BattleRunningComplete) marker is present, and removed `OnExit(BattleRunning)` by
-/// [`cleanup`](super::cleanup) with the marker (a per-run state-scoped resource, `bevy-traps.md`
-/// #1).
+/// the plugin's `scaffold::remove_scoped_resource::<EndTransition>()` registration alongside
+/// the marker (a per-run state-scoped resource, `bevy-traps.md` #1).
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::states::running::game::battlescape::battle_running) enum EndTransition {
     /// A deciding shot WAS in flight at the outcome-decided frame (its `ShotFired` was drained):
