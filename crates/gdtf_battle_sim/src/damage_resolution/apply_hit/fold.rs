@@ -99,7 +99,7 @@ fn hp_damage_to_u16(damage: i32) -> u16 {
 /// resolve → severity → apply chain is the E3.9 capstone). `part` is the struck
 /// [`BodyPart`] (E3.4's location roll), `ganger` is the owning [`Entity`] (carried
 /// on the returned [`ArmorBroken`](crate::armor_wear::ArmorBroken) /
-/// [`ArmorWorn`](crate::armor_wear::ArmorWorn)), and `tuning` supplies the per-tier
+/// [`ArmorDamaged`](crate::armor_wear::ArmorDamaged)), and `tuning` supplies the per-tier
 /// [`crate::tuning::WoundCosts`].
 ///
 /// Order (verbatim, see the module docs):
@@ -119,7 +119,7 @@ fn hp_damage_to_u16(damage: i32) -> u16 {
 ///    piece entity's [`ArmorIntegrity`](crate::armor::ArmorIntegrity) via
 ///    [`wear_armor`], capturing the [`ArmorWearOutcome`]:
 ///    [`Broke`](ArmorWearOutcome::Broke) on the protecting→broken crossing,
-///    [`Worn`](ArmorWearOutcome::Worn) on a reduction that did not break it, or
+///    [`Damaged`](ArmorWearOutcome::Damaged) on a reduction that did not break it, or
 ///    [`Unaffected`](ArmorWearOutcome::Unaffected).
 /// 5. **Terminal gates** — `Wounds == 0` → [`LifeState::Dead`] (**trumps**); else
 ///    `Hp == 0` → [`LifeState::Downed`].
@@ -169,7 +169,7 @@ pub fn apply_hit(
     // (d) Armor wear — persist this hit's integrity wear onto the struck worn piece
     // ENTITY's integrity component (E3.5; the piece resolved from `ganger → Wears`,
     // ADR-0004 / GTW-323), capturing the per-hit ArmorWearOutcome (Broke crossing /
-    // Worn reduction / Unaffected). A struck location with no protecting piece (bare
+    // Damaged reduction / Unaffected). A struck location with no protecting piece (bare
     // flesh — `integrity == None`) wears nothing, folding to Unaffected. The wear
     // mutation itself is byte-identical to the pre-GTW-323 array-slot wear.
     let wear_outcome = match target.integrity {

@@ -1367,7 +1367,7 @@ fn bleeding_pops_the_amber_bleeding_fct_tag() {
 
     let pops = fct_pops(&mut app);
     assert!(
-        has_fct_pop(&pops, "Bleeding", valence_color(FctValence::Wound)),
+        has_fct_pop(&pops, "Bleeding", valence_color(FctValence::Status)),
         "a Bleeding consequence must pop an AMBER \"Bleeding\" tag, got {pops:?}",
     );
 

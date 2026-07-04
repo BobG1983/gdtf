@@ -8,7 +8,7 @@ use crate::{
     resolve_hit::IntegrityWear,
 };
 
-/// A worn armor piece **was worn** — its [`crate::armor::ArmorIntegrity`] was
+/// A worn armor piece **was damaged** — its [`crate::armor::ArmorIntegrity`] was
 /// reduced by `delta` at the struck [`BodyPart`] on a given ganger, **without**
 /// breaking (it stayed protecting, `integrity > 0`) — the GTW-313 companion to
 /// [`ArmorBroken`].
@@ -18,21 +18,21 @@ use crate::{
 /// integrity-loss-per-hit signal the presenter draws an `"Armor -N"` pop from. It
 /// is **mutually exclusive** with [`ArmorBroken`] per hit ([`wear_armor`]'s
 /// [`ArmorWearOutcome`]): the breaking hit emits [`ArmorBroken`] (the crossing),
-/// every prior wearing hit emits [`ArmorWorn`]; a hit on an already-broken /
+/// every prior wearing hit emits [`ArmorDamaged`]; a hit on an already-broken /
 /// bare-flesh piece, or a zero-wear hit, emits NEITHER. So this fires `0..n`
 /// times before the single [`ArmorBroken`], never on the same hit as it.
 ///
 /// A buffered Bevy **message** (`#[derive(Message)]`), mirroring [`ArmorBroken`] /
 /// [`crate::occupancy_sync::CoverDestroyed`] — NOT the observer `Event` API
 /// (`bevy-traps.md` #4). The payload is named: [`BodyPart`] is a domain
-/// newtype-enum, [`delta`](ArmorWorn::delta) is the [`IntegrityWear`] domain
+/// newtype-enum, [`delta`](ArmorDamaged::delta) is the [`IntegrityWear`] domain
 /// newtype (no-bare-types), and [`Entity`] is the one framework-plumbing handle the
 /// no-bare-types rule permits. [`Hash`] is derivable because [`IntegrityWear`]
 /// (its only non-`Copy`-only field beyond [`Entity`]/[`BodyPart`]) derives `Hash`,
 /// matching [`ArmorBroken`]'s derive set.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ArmorWorn {
-    /// The ganger whose armor was worn — the entity owning the worn piece.
+pub struct ArmorDamaged {
+    /// The ganger whose armor was damaged — the entity owning the worn piece.
     pub ganger: Entity,
     /// The body location whose worn piece was reduced (still protecting after).
     pub part:   BodyPart,
@@ -40,8 +40,8 @@ pub struct ArmorWorn {
     pub delta:  IntegrityWear,
 }
 
-impl ArmorWorn {
-    /// Build an armor-worn signal for the `ganger` whose worn piece at `part` was
+impl ArmorDamaged {
+    /// Build an armor-damaged signal for the `ganger` whose worn piece at `part` was
     /// reduced by `delta` this hit, short of breaking.
     #[must_use]
     pub const fn new(ganger: Entity, part: BodyPart, delta: IntegrityWear) -> Self {
@@ -62,8 +62,8 @@ impl ArmorWorn {
 /// - [`Broke`](ArmorWearOutcome::Broke) — the piece was protecting and this wear
 ///   crossed it to broken (`integrity ≤ 0`): the single protecting→broken
 ///   crossing, carrying [`ArmorBroken`] (UNCHANGED from the pre-GTW-313 `Some`).
-/// - [`Worn`](ArmorWearOutcome::Worn) — the piece was protecting, this wear
-///   reduced it (`delta > 0`), and it still protects after: carries [`ArmorWorn`].
+/// - [`Damaged`](ArmorWearOutcome::Damaged) — the piece was protecting, this wear
+///   reduced it (`delta > 0`), and it still protects after: carries [`ArmorDamaged`].
 /// - [`Unaffected`](ArmorWearOutcome::Unaffected) — neither signal fires: the
 ///   piece was already broken / bare flesh (not protecting before), OR the wear
 ///   was `0` (a no-op reduction). Emit nothing — mirroring the [`ArmorBroken`]
@@ -73,8 +73,8 @@ impl ArmorWorn {
 pub enum ArmorWearOutcome {
     /// No armor signal — already-broken/bare piece, or a zero-wear hit.
     Unaffected,
-    /// The piece was worn (reduced, still protecting) — the [`ArmorWorn`] signal.
-    Worn(ArmorWorn),
+    /// The piece was damaged (reduced, still protecting) — the [`ArmorDamaged`] signal.
+    Damaged(ArmorDamaged),
     /// The piece broke (the protecting→broken crossing) — the [`ArmorBroken`] signal.
     Broke(ArmorBroken),
 }
@@ -117,7 +117,7 @@ impl ArmorBroken {
 
 /// Persist a hit's integrity `wear` onto the struck worn-armor-piece **entity's**
 /// [`ArmorIntegrity`] component at `part`, returning the per-hit [`ArmorWearOutcome`]
-/// — the [`ArmorBroken`] crossing, the [`ArmorWorn`] reduction (GTW-313), or nothing.
+/// — the [`ArmorBroken`] crossing, the [`ArmorDamaged`] reduction (GTW-313), or nothing.
 ///
 /// The wear-side primitive E3.6's `apply_hit` calls (`docs/combat/
 /// weapons-and-armor.md` §"Per-hit resolution" step 3). Since GTW-323 (ADR-0004) it
@@ -138,7 +138,7 @@ impl ArmorBroken {
 /// - protecting before AND broken after ⇒ [`ArmorWearOutcome::Broke`] — the single
 ///   protecting→broken crossing (the UNCHANGED break case);
 /// - protecting before, NOT broken after, AND `wear > 0` ⇒
-///   [`ArmorWearOutcome::Worn`] carrying the `delta = wear` removed this hit (the
+///   [`ArmorWearOutcome::Damaged`] carrying the `delta = wear` removed this hit (the
 ///   GTW-313 reduction signal);
 /// - otherwise (NOT protecting before — already broken / bare flesh — OR `wear == 0`)
 ///   ⇒ [`ArmorWearOutcome::Unaffected`]: emit nothing (an already-broken piece
@@ -146,7 +146,7 @@ impl ArmorBroken {
 ///   pops a misleading `"Armor -0"`). This mirrors [`ArmorBroken`]'s emit-only-on-
 ///   the-event rule.
 ///
-/// The caller writes the [`ArmorBroken`] / [`ArmorWorn`] payload to its matching
+/// The caller writes the [`ArmorBroken`] / [`ArmorDamaged`] payload to its matching
 /// [`bevy::prelude::MessageWriter`] at the system boundary, keeping the "emit once /
 /// emit per reduction" rule in the pure function and the buffer write outside it.
 ///
@@ -179,7 +179,7 @@ pub fn wear_armor(
         ArmorWearOutcome::Broke(ArmorBroken::new(ganger, part))
     } else if was_protecting && *wear > 0 {
         // A reduction that did NOT break the piece — the GTW-313 wear signal.
-        ArmorWearOutcome::Worn(ArmorWorn::new(ganger, part, wear))
+        ArmorWearOutcome::Damaged(ArmorDamaged::new(ganger, part, wear))
     } else {
         // Already broken / bare flesh, or a zero-wear no-op: emit nothing.
         ArmorWearOutcome::Unaffected

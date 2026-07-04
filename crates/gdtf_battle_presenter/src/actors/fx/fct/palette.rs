@@ -90,15 +90,16 @@ const FIELD_HAZARD_ORANGE: Color = Color::srgb(0.95, 0.50, 0.10);
 /// [`ShotFired`](gdtf_battle_sim::ShotFired) consequence into one of these, and
 /// [`valence_color`] turns it into the swatch the pop is drawn in. Exhaustive: exactly the
 /// valences the FCT palette distinguishes. A [`Severity`]-tiered wound picks its exact
-/// amber via [`severity_color`] rather than the flat [`Wound`](FctValence::Wound) swatch,
+/// amber via [`severity_color`] rather than the flat [`Status`](FctValence::Status) swatch,
 /// but the flat swatch remains the fallback for a status pop that carries no severity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FctValence {
     /// Damage taken — an HP-loss number. Drawn [`DAMAGE_RED`].
     Damage,
-    /// A wound / status change with no severity tier to scale by. Drawn the flat
-    /// [`WOUND_AMBER`] base (a severity-bearing wound uses [`severity_color`] instead).
-    Wound,
+    /// A status change / caution with no severity tier to scale by — never a
+    /// severity-bearing wound (those pick their amber via [`severity_color`]). Drawn the
+    /// flat [`WOUND_AMBER`] base.
+    Status,
     /// A neutral / miss pop. Drawn [`NEUTRAL_GREY`].
     Neutral,
     /// A lethal outcome — a ganger went Downed or Dead. Drawn [`DAMAGE_RED`] (the reader draws
@@ -125,7 +126,7 @@ pub enum FctValence {
 /// [`Damage`](FctValence::Damage) and [`Lethal`](FctValence::Lethal) share the
 /// [`DAMAGE_RED`] blood family (lethal is drawn heavier by the caller via `FctEmphasis::Bold`,
 /// same hue);
-/// [`Wound`](FctValence::Wound) is the flat [`WOUND_AMBER`] base; [`Neutral`](FctValence::Neutral)
+/// [`Status`](FctValence::Status) is the flat [`WOUND_AMBER`] base; [`Neutral`](FctValence::Neutral)
 /// is [`NEUTRAL_GREY`]; [`Suppressed`](FctValence::Suppressed) is the cowed
 /// [`SUPPRESSED_BLUE_GREY`]; [`Dot`](FctValence::Dot) is the toxic [`DOT_TOXIC_GREEN`];
 /// [`Field`](FctValence::Field) is the hazard [`FIELD_HAZARD_ORANGE`]. A severity-bearing wound
@@ -134,7 +135,7 @@ pub enum FctValence {
 pub const fn valence_color(valence: FctValence) -> Color {
     match valence {
         FctValence::Damage | FctValence::Lethal => DAMAGE_RED,
-        FctValence::Wound => WOUND_AMBER,
+        FctValence::Status => WOUND_AMBER,
         FctValence::Neutral => NEUTRAL_GREY,
         FctValence::Suppressed => SUPPRESSED_BLUE_GREY,
         FctValence::Dot => DOT_TOXIC_GREEN,

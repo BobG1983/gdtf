@@ -26,7 +26,7 @@ impl ConsequenceFct for BleedingFct {
     fn classify(signal: &Self::Signal) -> ConsequencePop {
         ConsequencePop::new(
             CombatText::new("Bleeding"),
-            valence_color(FctValence::Wound),
+            valence_color(FctValence::Status),
             PopAnchor::GangerPosition(signal.ganger),
         )
     }
@@ -56,7 +56,7 @@ mod test {
         );
         assert_eq!(
             pop.color(),
-            valence_color(FctValence::Wound),
+            valence_color(FctValence::Status),
             "the bleeding pop is drawn the AMBER wound/status valence",
         );
         assert_eq!(

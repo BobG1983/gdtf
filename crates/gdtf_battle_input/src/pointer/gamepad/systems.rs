@@ -3,11 +3,11 @@
 
 use bevy::{input::gamepad::Gamepad, prelude::*, window::PrimaryWindow};
 use gdtf_battle_presenter::GamepadCursorMoved;
-use gdtf_battle_sim::{Faction, MeleeWeapon, Position, WieldedBy, Wields};
+use gdtf_battle_sim::{Faction, MeleeQuery, Position, WieldedBy, Wields};
 
 use crate::{
     ActIntent, InspectTarget, PendingActIntent,
-    fire_surface::{MeleeWeaponMarker, ShooterFireData, WeaponMagazine},
+    fire_surface::{ShooterFireData, WeaponMagazine},
     gamepad::cursor::{
         ActivePointer, CURSOR_SPEED, CURSOR_STICK_DEADZONE, GamepadCursor, move_cursor,
     },
@@ -99,7 +99,8 @@ pub fn mouse_reclaims_pointer(
 ///
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + read-only
 /// `Query<&Faction>` / `Query<ShooterFireData>` / `Query<&Wields>` + the weapon-magazine query +
-/// the [`MeleeWeapon`] marker probe (the fire guard's magazine lives on the related RANGED weapon
+/// the [`MeleeWeapon`](gdtf_battle_sim::MeleeWeapon) marker probe ([`MeleeQuery`] — the fire
+/// guard's magazine lives on the related RANGED weapon
 /// entity since GTW-323 slice 3, resolved excluding the melee weapon since GTW-505 C5) + the
 /// [`ResMut<SelectedShooter>`] / [`ResMut<PendingActIntent>`] / [`ResMut<InspectTarget>`] /
 /// [`ResMut<PathPreviewTarget>`](crate::selection::PathPreviewTarget) (GTW-356 two-click target)
@@ -122,7 +123,7 @@ pub fn gamepad_click_act(
     shooters: Query<ShooterFireData>,
     wields: Query<&Wields>,
     weapons: Query<WeaponMagazine, With<WieldedBy>>,
-    melee: Query<MeleeWeaponMarker, With<MeleeWeapon>>,
+    melee: MeleeQuery,
     mut selected: ResMut<SelectedShooter>,
     mut pending: ResMut<PendingActIntent>,
     mut inspect: ResMut<InspectTarget>,

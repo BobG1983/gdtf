@@ -125,7 +125,7 @@ pub(crate) struct WoundSynthesis {
     pub hit:        HitResult,
     /// The rolled wound severity — the ONE [`SeverityRng`] draw's bucket (§6).
     pub severity:   Severity,
-    /// The per-hit armor-wear outcome (broke / worn / unaffected) `apply_hit` produced (§6).
+    /// The per-hit armor-wear outcome (broke / damaged / unaffected) `apply_hit` produced (§6).
     pub wear:       ArmorWearOutcome,
     /// The target's [`LifeState`] AFTER the hit was applied (§6 terminal gates).
     pub life_after: LifeState,
@@ -212,7 +212,7 @@ pub(crate) fn synthesize_wound(inputs: WoundCoreInputs<'_>) -> Option<WoundSynth
 
     // (4) Apply the resolved hit onto the target in place (§6) — HP loss + Wounds-by-tier +
     // the inflicted-wound record + armor wear + the terminal gates. Capture the per-hit
-    // ArmorWearOutcome (broke / worn / unaffected) for the weapon path to freeze.
+    // ArmorWearOutcome (broke / damaged / unaffected) for the weapon path to freeze.
     let wear = apply_hit(
         GangerHitTarget {
             hp:        target.hp,

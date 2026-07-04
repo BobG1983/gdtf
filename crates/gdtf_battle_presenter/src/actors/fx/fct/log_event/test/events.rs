@@ -275,7 +275,7 @@ fn a_suppressed_move_rejection_logs_a_pinned_line_only() {
     assert_eq!(&**lines[0].text(), "Vex is pinned");
     assert_eq!(
         lines[0].color(),
-        valence_color(FctValence::Wound),
+        valence_color(FctValence::Status),
         "the pinned line is drawn in the denied-act wound amber",
     );
 
@@ -312,7 +312,7 @@ fn the_reload_outcomes_each_phrase_distinctly() {
     let no_tu_lines = classify_log_event(&no_tu);
     assert_eq!(no_tu_lines.len(), 1);
     assert_eq!(&**no_tu_lines[0].text(), "Vex: no TU");
-    assert_eq!(no_tu_lines[0].color(), valence_color(FctValence::Wound));
+    assert_eq!(no_tu_lines[0].color(), valence_color(FctValence::Status));
 
     let full = CombatLogEvent::ReloadResult {
         actor:   LogName::new("Vex"),

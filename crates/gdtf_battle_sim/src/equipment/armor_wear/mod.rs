@@ -27,9 +27,9 @@
 //! The crossing-detection lives in the **pure** [`wear_armor`] helper so it is
 //! deterministic and unit-testable with no Bevy app; it returns an
 //! [`ArmorWearOutcome`] ([`Unaffected`](ArmorWearOutcome::Unaffected) /
-//! [`Worn`](ArmorWearOutcome::Worn) carrying the per-hit integrity delta /
+//! [`Damaged`](ArmorWearOutcome::Damaged) carrying the per-hit integrity delta /
 //! [`Broke`](ArmorWearOutcome::Broke)), which the caller (E3.6's `apply_hit`)
-//! maps onto the hit report's `broken` / `worn` fields — surfaced to the
+//! carries unchanged as the hit report's `wear` outcome (GTW-573) — surfaced to the
 //! presenter on [`ShotFired`](crate::ShotFired)`.report` (GTW-313). Pure model
 //! logic — no renderer, no pixel.
 
@@ -37,4 +37,4 @@
 mod test;
 mod wear;
 
-pub use wear::{ArmorBroken, ArmorWearOutcome, ArmorWorn, wear_armor};
+pub use wear::{ArmorBroken, ArmorDamaged, ArmorWearOutcome, wear_armor};

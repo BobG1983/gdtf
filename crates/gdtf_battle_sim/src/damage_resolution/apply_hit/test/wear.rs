@@ -7,7 +7,7 @@ use super::support::*;
 
 /// AC7 (wear path) — `apply_hit` wears the struck piece as part of application: the
 /// struck location's integrity drops by exactly the hit's wear, a sub-fatal wear on
-/// a still-protecting piece returns `Worn` carrying that exact delta (GTW-313), and
+/// a still-protecting piece returns `Damaged` carrying that exact delta (GTW-313), and
 /// a high-wear hit on a near-broken piece returns `Broke(ArmorBroken)`. A unit
 /// assertion on the worn copy + the per-hit outcome through the real `apply_hit`.
 #[test]
@@ -16,7 +16,7 @@ fn apply_hit_wears_the_struck_piece_and_can_break_it() {
     let part = BodyPart::RightArm;
 
     // (1) Wears by exactly the hit's wear: a sturdy piece, sub-fatal wear. The piece
-    //     stays protecting, so apply_hit returns Worn carrying the exact delta (6).
+    //     stays protecting, so apply_hit returns Damaged carrying the exact delta (6).
     let ganger1 = a_ganger();
     let mut hp = Hp::new(50);
     let mut wounds = Wounds::new(9);
@@ -35,8 +35,8 @@ fn apply_hit_wears_the_struck_piece_and_can_break_it() {
         let outcome = apply_hit(target, &hit(1, 6), Severity::Minor, part, ganger1, &tuning);
         assert_eq!(
             outcome,
-            ArmorWearOutcome::Worn(ArmorWorn::new(ganger1, part, IntegrityWear::new(6))),
-            "a sub-fatal wear on a sturdy piece must not break it — it must report Worn(delta=6)",
+            ArmorWearOutcome::Damaged(ArmorDamaged::new(ganger1, part, IntegrityWear::new(6))),
+            "a sub-fatal wear on a sturdy piece must not break it — it must report Damaged(delta=6)",
         );
     }
     assert_eq!(
@@ -110,7 +110,7 @@ fn apply_hit_armor_broken_flows_through_a_message_buffer() {
             inflicted: &mut inflicted,
         };
         // The breaking hit yields Broke(ArmorBroken) — write its payload to the buffer
-        // (the system-boundary message write; a Worn/Unaffected outcome would write
+        // (the system-boundary message write; a Damaged/Unaffected outcome would write
         // nothing here, exactly as the old `if let Some` did).
         if let ArmorWearOutcome::Broke(broke) =
             apply_hit(target, &hit(1, 5), Severity::Minor, part, ganger, &tuning)
