@@ -3,6 +3,8 @@
 //! [`InputSystems::Gather`](crate::InputSystems) band ordered before the sim.
 
 mod build;
+mod populate_reg;
+mod surface_reg;
 
 #[cfg(test)]
 mod test;
