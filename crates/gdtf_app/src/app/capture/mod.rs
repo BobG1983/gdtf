@@ -43,7 +43,11 @@
 //!
 //! `Read` the PNG(s) to verify the HUD / FX; the app exits on its own.
 
+mod capture_config;
 mod plugin;
+mod screenshot;
+mod trigger_config;
+mod triggers;
 
 // `DevCapturePlugin` is the only item the binary consumes (via `gdtf_app.rs`). Plain
 // `pub(crate)` re-export: nothing OUTSIDE the crate names the capture items (the config

@@ -13,12 +13,14 @@
 //! [`trigger_fire_at_frame_emits_on_the_real_path`] test drives the REAL system on a
 //! minimal app and asserts exactly one `FireRequested` at frame N.
 
-use super::DevCapturePlugin;
 // `CaptureFrame` etc. + the pure parse cores + the fire system are not re-exported from
-// `mod.rs` (only `DevCapturePlugin` is, for the binary), so reach them through `plugin`.
-use super::plugin::{
-    CaptureFrame, CaptureFrames, FallAtFrame, FireAtFrame, FireConfig, FireModeOverride,
-    capture_path, frame_path, parse_capture_path, trigger_fire_at_frame,
+// `mod.rs` (only `DevCapturePlugin` is, for the binary), so reach them through their home submodules.
+use super::{
+    DevCapturePlugin,
+    capture_config::{CaptureFrame, CaptureFrames, capture_path, frame_path, parse_capture_path},
+    plugin::FireConfig,
+    trigger_config::{FallAtFrame, FireAtFrame, FireModeOverride},
+    triggers::trigger_fire_at_frame,
 };
 
 /// `CaptureFrame::DEFAULT` is 15 frames and `Default` agrees with it — the wait the
@@ -173,7 +175,7 @@ fn trigger_fires_in_the_overridden_full_mode() {
     };
     use gdtf_test_utils::{MessageProbePlugin, probed};
 
-    use super::plugin::FireAtFrame;
+    use super::trigger_config::FireAtFrame;
 
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
@@ -315,7 +317,7 @@ fn trigger_fire_at_frame_emits_on_the_real_path() {
     };
     use gdtf_test_utils::{MessageProbePlugin, probed};
 
-    use super::plugin::FireAtFrame;
+    use super::trigger_config::FireAtFrame;
 
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
@@ -436,7 +438,7 @@ fn spawn_fall_test_app(fall_frame: FallAtFrame) -> (bevy::app::App, bevy::ecs::e
         occupancy_sync::SlabDestroyed,
     };
 
-    use super::plugin::{FallConfig, trigger_fall_at_frame};
+    use super::{plugin::FallConfig, triggers::trigger_fall_at_frame};
 
     /// An arbitrary fixed seed — determinism is the property, the value is irrelevant.
     const SEED: u64 = 0x0529_FA11_DEAD_BEEF;

@@ -18,11 +18,16 @@
 use std::hash::{Hash, Hasher};
 
 use bevy::{
+    ecs::template::template,
     image::TextureAtlas,
     prelude::*,
+    scene::{CommandsSceneExt, bsn, template_value},
     ui::{Node, Val, widget::ImageNode},
 };
+use gdtf_battle_presenter::{SheetRole, TopDownAtlases};
 use gdtf_battle_sim::GangerName;
+
+use crate::states::running::game::battlescape::stat_block::components::StatPortrait;
 
 /// The number of distinct portrait faces in the
 /// [`SheetRole::Portraits`](gdtf_battle_presenter::SheetRole) sheet.
@@ -128,4 +133,51 @@ pub(in crate::states::running::game::battlescape) fn portrait_node(
             ..default()
         },
     )
+}
+
+/// Spawns the portrait [`ImageNode`](bevy::ui::widget::ImageNode) node at face 0.
+///
+/// Reads the presenter's [`SheetRole::Portraits`](gdtf_battle_presenter::SheetRole)
+/// atlas off [`TopDownAtlases`] and builds the atlas-variant node
+/// ([`portrait_node`](super::portrait::portrait_node)); if the sheet is not loaded it
+/// spawns a bare marked node (no image) so the panel still builds — the update sets the
+/// index on whatever node exists.
+pub(super) fn spawn_portrait(commands: &mut Commands, atlases: Option<&TopDownAtlases>) -> Entity {
+    // GTW-322 — both arms author the `StatPortrait` marker via `bsn!` (its sentinel
+    // `Default`) and compose the runtime-valued `Node` with `template_value`. `ImageNode`
+    // is NOT `Unpin` (it carries `Option<Handle<Image>>` fields), so — like `TextFont` — it
+    // rides the `template(|_| ..)` closure escape hatch rather than `template_value`. The
+    // `portrait_node` helper returns the `(ImageNode, Node)` pair so it can be spliced onto
+    // the same scene entity here.
+    if let Some(sheet) = atlases.and_then(|a| a.role(SheetRole::Portraits)) {
+        let (image_node, node) = portrait_node(
+            sheet.image.clone(),
+            sheet.layout.clone(),
+            PortraitIndex::for_name(None),
+        );
+        commands
+            .spawn_scene((
+                bsn! {
+                    StatPortrait
+                    template(move |_| Ok(image_node.clone()))
+                },
+                template_value(node),
+            ))
+            .id()
+    } else {
+        let node = Node {
+            width: Val::ZERO,
+            height: Val::ZERO,
+            ..default()
+        };
+        commands
+            .spawn_scene((
+                bsn! {
+                    StatPortrait
+                    template(|_| Ok(ImageNode::default()))
+                },
+                template_value(node),
+            ))
+            .id()
+    }
 }
