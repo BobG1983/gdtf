@@ -10,7 +10,11 @@
 use bevy::{platform::collections::HashSet, prelude::Alpha};
 use gdtf_battle_sim::{Cell, CellLevel, Level, SquadVisibility, Tu};
 
-use super::preview::{LABEL_COLOR, PathPreview, label_text, preview_draws};
+use super::{
+    draw::{LABEL_COLOR, label_text},
+    resolve::preview_draws,
+    seam::PathPreview,
+};
 
 /// A `SquadVisibility` with `visible` cells VISIBLE and `explored` cells EXPLORED-only.
 fn fog(visible: &[CellLevel], explored_only: &[CellLevel]) -> SquadVisibility {

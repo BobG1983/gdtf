@@ -32,18 +32,20 @@
 //! to [`ActiveLevel`] changing (S8's level-cycling input mutates the resource).
 
 mod active_level;
-mod draw;
+mod band;
 mod link_draw;
 mod roles;
+mod static_draw;
+mod static_map;
+mod swaps;
 
 #[cfg(test)]
 mod test;
 
 pub use active_level::{ActiveLevel, PresenterSystems, ViewMode};
-pub use draw::{
-    StaticMap, TerrainSprite, draw_static_battlefield, indicate_emplacement_occupied,
-    swap_destroyed_cover, swap_destroyed_slab,
-};
 pub use link_draw::{VerticalLinkSprite, draw_vertical_links};
 pub(crate) use roles::register_tile_roles_hot_ron;
 pub use roles::{TileIndex, TileRole, TileRoles, tile_roles_hot_ron_chain};
+pub use static_draw::{TerrainSprite, draw_static_battlefield};
+pub use static_map::StaticMap;
+pub use swaps::{indicate_emplacement_occupied, swap_destroyed_cover, swap_destroyed_slab};

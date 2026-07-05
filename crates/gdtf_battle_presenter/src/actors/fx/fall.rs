@@ -20,7 +20,7 @@
 //!
 //! **C2 (tween)**: the faller's [`Changed<Position>`] (the sim's one-shot Position overwrite)
 //! is consumed by the EXISTING [`advance_sprite_tweens`](super::super::ganger::tween) +
-//! [`move_ganger_sprites`](super::super::ganger::systems::move_ganger_sprites) path verbatim —
+//! [`move_ganger_sprites`](crate::move_ganger_sprites) path verbatim —
 //! no extension needed. The ganger's presenter sprite glides from the old storey's world
 //! translation to the landing storey's world translation, reading as a downward drop (the
 //! tween re-targets on every [`Changed<Position>`] regardless of whether the change is a walk
@@ -29,7 +29,7 @@
 //! **C4 (gate)**: the flash spawn is gated
 //! `run_if(resource_exists::<BattleInProgress>)` + the `Messages<FallOccurred>` buffer (the
 //! sim's `FallsPlugin` registers it; the presenter registers it idempotently in
-//! [`register_fx_flash_systems`](crate::plugin::renderer::TopDownRendererPlugin)). The FCT pop
+//! [`register_fx_flash_systems`](crate::TopDownRendererPlugin)). The FCT pop
 //! rides the same gated system.
 //!
 //! **C5 (transient)**: the flash is one-shot / transient — the EXISTING `expire_flashes`
