@@ -1,62 +1,19 @@
-//! The **move** dispatch — the SINGLE writer that, on each buffered [`MoveRequested`]
-//! commit, plans a reachable affordable route and (only then) starts the committed walk
-//! (E7 · GTW-12f / GTW-354 / GTW-355; the original any-cell dispatch was E4 / GTW-234).
-//!
-//! ## What this slice adds (GTW-354)
-//!
-//! Before GTW-354 the dispatch let the original single-step `move_ganger` verb jump to ANY
-//! single empty in-bounds cell — an any-empty-cell teleport (the destination need not be
-//! adjacent or reachable). GTW-354 makes [`dispatch_move`] the single CONSTRAINED writer:
-//! on each [`MoveRequested`] (the COMMIT — see below) it runs [`find_path`] from the
-//! mover's cell to the requested [`CellLevel`] through the GTW-353 visibility-gated
-//! [`PlanningView`] and:
-//!
-//! - **REJECTS** the move (a TYPED [`MoveRejected`], NO step) when no route exists
-//!   ([`PathBlocked`] — the teleport is dead); and
-//! - performs ONE up-front **full-route affordability** gate (`docs/combat/visibility.md`
-//!   §48 — "the commit gates full-route affordability once, up front") against the
-//!   [`Path::total`], rejecting (TYPED [`MoveRejected`], NO step) when the mover cannot
-//!   afford the whole route.
-//!
-//! Only when a route exists AND is affordable does it accept: per GTW-355 it attaches a
-//! [`WalkInProgress`] holding the planned route ahead (each cell's DESTINATION-terrain
-//! per-step charge held verbatim), which [`advance_walk`](crate::move_acts::advance_walk)
-//! then walks ONE cell per tick, plus the [`MovementOccurred`] log signal. No act logic is
-//! reimplemented and the per-step charge is UNTOUCHED; the up-front gate here is a CHECK
-//! against the planned total, NOT a second charge.
-//!
-//! ## Commit semantics (C2 — cross-ticket boundary)
-//!
-//! [`dispatch_move`] dispatches on [`MoveRequested`], which IS the commit (the 2nd /
-//! commit click). It does NOT dispatch on a select / preview. The two-click INPUT (click-1
-//! select+preview vs click-2 commit) is **GTW-356** and the preview DISPLAY is **GTW-358**
-//! — NOT this slice. This dispatch treats every drained [`MoveRequested`] as a
-//! commit-dispatch; it does no click-counting (that is GTW-356's input concern).
-//!
-//! It fetches the actor's components + reads the grids via Bevy queries / `Res`
-//! (`bevy-traps.md` #7 — no `&mut World`); it only READS the grids + the squad fog.
-//!
-//! ## GTW-444 — "Hampered" movement-cost factor
-//!
-//! The dispatch reads the mover's
-//! [`MovementCostFactor`](crate::injuries::MovementCostFactor) from its
-//! [`InflictedInjuries`](crate::injuries::InflictedInjuries) ledger and passes it to
-//! [`find_path`], which scales EVERY planar per-step floor cost by it. Because the
-//! accepted [`WalkInProgress`] holds the planned [`Path::steps`](crate::pathfinder::Path::steps)
-//! VERBATIM and [`advance_walk`](crate::move_acts::advance_walk) charges those steps, the
-//! factor flows through to the actual per-step TU charge with NO second application — so a
-//! Hampered unit's previewed path cost equals the TU it is charged (preview==charge, C3).
-//! An uninjured mover passes the IDENTITY factor (`1.0`), leaving the cost unchanged.
+//! The constrained move commit dispatcher — plan a reachable affordable route on
+//! each buffered commit and (only then) start the committed walk.
 
-use bevy::prelude::{Commands, Entity, Message, MessageReader, MessageWriter, Query, Res};
+use bevy::prelude::{Commands, Entity, MessageReader, MessageWriter, Query, Res};
 
+use super::{
+    signals::{MoveRejected, MoveRejection},
+    suppression_gate::suppressed_move_legal,
+};
 use crate::{
     acts::request::MoveRequested,
     battle::PlayerFaction,
     cover::CoverLedger,
-    ganger::{Direction, Faction, Position, Suppressed, Tu},
+    ganger::{Faction, Position, Suppressed, Tu},
     injuries::{InflictedInjuries, MovementCostFactor},
-    metric::{Cell, CellLevel},
+    metric::CellLevel,
     move_acts::WalkInProgress,
     occupancy::OccupancyGrid,
     pathfinder::{PlanningView, find_path},
@@ -66,106 +23,6 @@ use crate::{
     vertical::VerticalLinkGraph,
     visibility::{FactionRelation, OmniscientFog, SquadVisibility, move_fog},
 };
-
-/// Why a [`MoveRequested`] commit was **rejected** — the two no-step outcomes of the
-/// GTW-354 route + affordability gate (C3).
-///
-/// A named domain enum (no-bare-types: a move's rejection reason is a domain value, not a
-/// bare flag), mirroring the [`ReloadOutcome`](crate::acts::ReloadOutcome) shape. The
-/// presenter / any reactive system classifies a [`MoveRejected`] by this variant. A move
-/// that SUCCEEDS emits no [`MoveRejected`] (it emits [`MovementOccurred`] instead), so
-/// there is no "accepted" variant here — and an actor missing a queried component is an
-/// internal guard SKIP (no rejection signal at all, the `dispatch_*` precedent).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MoveRejection {
-    /// No route exists from the mover's cell to the requested destination over the
-    /// visibility-routable grid + links ([`find_path`] returned
-    /// [`PathBlocked`](crate::pathfinder::PathBlocked)) — the destination is unreachable
-    /// (it may be off-grid, walled off, behind an UNSEEN region, or blocked by a visible
-    /// ganger). This is what kills the pre-GTW-354 any-empty-cell teleport.
-    Unreachable,
-    /// A route exists but the mover cannot afford its full-route [`Tu`] cost — the single
-    /// up-front affordability gate (`docs/combat/visibility.md` §48) failed against the
-    /// planned [`Path::total`](crate::pathfinder::Path::total). NO partial move: the mover
-    /// stays put and spends nothing (GTW-355 owns the stepped walk; this is a CHECK, not a
-    /// charge).
-    Unaffordable,
-    /// The mover is [`Suppressed`] and the chosen destination is ILLEGAL for a pinned unit
-    /// (GTW-537, child GTW-41a of GTW-41; `docs/combat/combat.md` "Suppression … advanced
-    /// combat effects"). A suppressed mover may ONLY step to a destination that is BOTH (a)
-    /// STRICTLY FARTHER from the [`SuppressorCell`](crate::ganger::SuppressorCell) than its
-    /// start cell (measured with the sim's Chebyshev ground-plane metric), AND (b) BEHIND
-    /// COVER relative to the suppressor (the cell one step from the destination TOWARD the
-    /// suppressor holds registered cover in the [`CoverLedger`]). A destination failing
-    /// EITHER clause is a HARD REJECT (no clamp) — NO step. On a cover-sparse map this can
-    /// pin the unit hard; that is the intended "pinned" feel (GTW-537 R1). An UNSUPPRESSED
-    /// mover is never subject to this gate (identity).
-    Suppressed,
-}
-
-/// A **move was rejected** — the typed no-step signal that `actor`'s commit could not be
-/// dispatched, with the [`MoveRejection`] reason (GTW-354, C3).
-///
-/// A buffered Bevy [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`), mirroring
-/// [`ReloadResult`](crate::acts::ReloadResult) / [`MovementOccurred`]. Emitted ONCE per
-/// drained [`MoveRequested`] whose route gate fails — either no route
-/// ([`MoveRejection::Unreachable`]) or an unaffordable route
-/// ([`MoveRejection::Unaffordable`]). Neither [`Position`] nor [`Tu`] is touched on a
-/// reject (a TOTAL no-op). The [`actor`](MoveRejected::actor) is a Bevy [`Entity`] handle
-/// — framework plumbing, the only bare type the no-bare-types rule permits in a payload.
-#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MoveRejected {
-    /// The ganger whose move commit was rejected.
-    pub actor:  Entity,
-    /// Why the commit was rejected (no route, or an unaffordable route).
-    pub reason: MoveRejection,
-}
-
-impl MoveRejected {
-    /// Build a move-rejected signal for `actor` with the given [`MoveRejection`] reason.
-    #[must_use]
-    pub const fn new(actor: Entity, reason: MoveRejection) -> Self {
-        Self { actor, reason }
-    }
-}
-
-/// A **move occurred** — the combat-log signal that `actor` stepped from `from` to `to`
-/// (GTW-328), emitted ONCE per accepted WALK STEP (GTW-355).
-///
-/// The combat-text LOG event for a move ("<name> moved <from> -> <to>") — the user-facing
-/// announcement that a ganger changed cell. Since GTW-355 the committed walk
-/// ([`advance_walk`](crate::move_acts::advance_walk)) emits ONE of these per DISCRETE step
-/// it takes, so a multi-cell walk announces a step per cell entered; a rejected
-/// (unreachable / unaffordable) commit emits a [`MoveRejected`] and no `MovementOccurred`,
-/// and a bump-stopped / interrupted walk simply stops emitting them. The
-/// [`from`](MovementOccurred::from) cell is the actor's pre-step ground cell and
-/// [`to`](MovementOccurred::to) the cell it entered, so they are the actual pre/post ground
-/// cells of THAT step. It adds **no** act logic and re-resolves nothing — pure exposure of
-/// the step the walk already performed.
-///
-/// A buffered Bevy [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`), mirroring
-/// [`crate::acts::ReloadResult`]. The [`actor`](MovementOccurred::actor) is a Bevy
-/// [`Entity`] handle — framework plumbing, the only bare type the no-bare-types rule
-/// permits in a payload; [`from`](MovementOccurred::from) / [`to`](MovementOccurred::to)
-/// are the domain [`Cell`] newtype.
-#[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MovementOccurred {
-    /// The ganger that stepped — resolved to a name by the combat-log presenter via
-    /// `Query<&GangerName>`.
-    pub actor: Entity,
-    /// The ground [`Cell`] the actor stepped FROM (its pre-step cell).
-    pub from:  Cell,
-    /// The ground [`Cell`] the actor stepped TO (the cell it entered this step).
-    pub to:    Cell,
-}
-
-impl MovementOccurred {
-    /// Build a movement-occurred signal for `actor` stepping from `from` to `to`.
-    #[must_use]
-    pub const fn new(actor: Entity, from: Cell, to: Cell) -> Self {
-        Self { actor, from, to }
-    }
-}
 
 /// The faction relation of `occupant` **relative to** `mover_faction` — same gang is
 /// [`FactionRelation::OwnSquad`], any other (or an occupant with no [`Faction`]) is
@@ -187,73 +44,6 @@ fn relation_to(
         Ok(faction) if *faction == mover_faction => FactionRelation::OwnSquad,
         _ => FactionRelation::Other,
     }
-}
-
-/// The ground-plane Chebyshev distance between two `(cell, level)` keys — `max(|dx|, |dy|)`
-/// (GTW-537).
-///
-/// The sim's ESTABLISHED cell-distance metric (NOT a new one): the same `max(|dx|, |dy|)`
-/// the AI's `chebyshev_xy` (`acts_runtime/ai/decide.rs`), the LOS engagement range gate, the
-/// pathfinder heuristic, AND — decisively — the suppression producer's `within_radius`
-/// (`acts_runtime/suppression/apply.rs`) all use, so "farther from the suppressor" agrees
-/// with the disc suppression itself is measured on. The `z` storey is ignored (a ground
-/// plane distance; suppression is a same-level effect this slice) — the suppressor anchor
-/// and both the start and destination are on the mover's own storey by construction. A loop
-/// magnitude (a comparison scalar, not a stored domain quantity), never a bare domain type.
-fn chebyshev_xy(a: &CellLevel, b: &CellLevel) -> u32 {
-    let dx = (a.x - b.x).unsigned_abs();
-    let dy = (a.y - b.y).unsigned_abs();
-    dx.max(dy)
-}
-
-/// Whether the cell one Moore-8 step from `dest` TOWARD `suppressor` holds registered cover
-/// in the [`CoverLedger`] — the "ends behind cover relative to the suppressor" clause
-/// (GTW-537).
-///
-/// Mirrors the GTW-526 auto-stance `cover_cell_toward` idiom
-/// (`acts_runtime/suppression/stance.rs`): [`Direction::from_cells`] from `dest` toward the
-/// `suppressor` cell picks the facing, [`Direction::cell_step`] the whole-cell delta, and the
-/// stepped cell (kept on the destination's OWN storey — the cover a mover ducks behind is at
-/// its level, not the suppressor's) is [`peek`](CoverLedger::peek)ed WITHOUT lazy seeding, so
-/// a cell with no registered cover reads `None` = not behind cover. Returns `false` when the
-/// destination and the suppressor share a ground cell (no direction — `from_cells` is `None`),
-/// which is also not "farther", so such a destination is rejected on the distance clause too.
-fn ends_behind_cover(dest: &CellLevel, suppressor: &CellLevel, cover: &CoverLedger) -> bool {
-    // The canonical CellLevel accessors (GTW-565): the two ground cells and the
-    // destination's own storey.
-    let dest_cell = dest.cell();
-    let suppressor_cell = suppressor.cell();
-    let Some(dir) = Direction::from_cells(dest_cell, suppressor_cell) else {
-        return false;
-    };
-    let step = dir.cell_step();
-    let toward = Cell::new(dest_cell.x + step.x, dest_cell.y + step.y);
-    cover.peek(&CellLevel::new(toward, dest.level())).is_some()
-}
-
-/// Whether a [`Suppressed`] mover may legally step from `start` to `dest` (GTW-537) — the
-/// HARD-REJECT movement-strictness gate.
-///
-/// A pinned unit's chosen destination is LEGAL only when BOTH clauses hold (F-movement
-/// strictness — a HARD reject of an illegal destination, never a clamp):
-///
-/// 1. `dest` is STRICTLY FARTHER from the [`SuppressorCell`](crate::ganger::SuppressorCell)
-///    than `start` — [`chebyshev_xy`]`(dest, suppressor) > `[`chebyshev_xy`]`(start,
-///    suppressor)` (the sim's existing Chebyshev metric, the same disc suppression is
-///    measured on); and
-/// 2. `dest` ENDS BEHIND COVER relative to the suppressor — [`ends_behind_cover`].
-///
-/// Failing EITHER clause is illegal (the caller rejects with [`MoveRejection::Suppressed`],
-/// no step). On a cover-sparse map both clauses can be unsatisfiable, pinning the unit — the
-/// intended "pinned" feel (GTW-537 R1), NOT softened.
-fn suppressed_move_legal(
-    start: &CellLevel,
-    dest: &CellLevel,
-    suppressor: &CellLevel,
-    cover: &CoverLedger,
-) -> bool {
-    let farther = chebyshev_xy(dest, suppressor) > chebyshev_xy(start, suppressor);
-    farther && ends_behind_cover(dest, suppressor, cover)
 }
 
 /// **Dispatch** buffered [`MoveRequested`] commits — for each, plan a reachable affordable

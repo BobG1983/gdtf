@@ -1,100 +1,27 @@
-//! The per-target melee **resolvers** — the two arm helpers
-//! [`dispatch_melee`](super::dispatch_melee) branches into (GTW-508 C6 — split out of the
-//! dispatch file to keep each concern under the code-health size cap):
-//!
-//! - [`resolve_ganger_melee`] — the contested §7 opposed-Fight path (GTW-506/507): gate
-//!   8-adjacency + opposing faction + alive + LOS, spend the fight-mode TU, run the §7 → §5 →
-//!   §6 synthesis onto the target ([`strike_with_target`]), emit [`MeleeResolved`] on a connect.
-//! - [`resolve_structure_melee`] — the UNCONTESTED §7 cover-smash path (GTW-508): gate ONLY
-//!   8-adjacency (LOS to an adjacent structure is trivial), spend the same TU, and apply
-//!   multiplied (`mult_max`) weapon damage through the EXISTING cover ledger — NO opposed roll,
-//!   NO RNG draw; fire the EXISTING [`CoverDestroyed`] signal on a lethal smash.
-//!
-//! Pure dispatch glue over the already-landed verbs: no combat math is reimplemented here —
-//! [`resolve_ganger_melee`] composes [`resolve_melee_strike`](crate::melee::resolve_melee_strike)
-//! and [`resolve_structure_melee`] composes
-//! [`resolve_structural_melee`](crate::melee::resolve_structural_melee). Param-only
-//! (`bevy-traps.md` #7 — no `&mut World`); the queries the resolvers borrow are the SAME disjoint
-//! [`super`] query types the system owns.
+//! The contested §7 opposed-Fight melee arm — gate, spend, synthesize onto the
+//! struck ganger, and emit the connect signals (GTW-506/507).
 
 use bevy::prelude::{Entity, MessageWriter, Query, With};
 
-use super::{MeleeFacts, MeleeGeomQuery, MeleeGrids, MeleeTargetQuery};
+use super::{
+    MeleeFacts, MeleeGrids,
+    queries::{MeleeGeomQuery, MeleeTargetQuery},
+    snapshot::{AttackerSnapshot, MeleeStreams},
+};
 use crate::{
     acts::request::{MeleeResolved, MeleeStruck, ShoveRequested},
     armor::{PieceArmorMut, Wears, WornBy},
     armor_wear::ArmorWearOutcome,
-    cover::CoverEvent,
     downed_acts::is_8_adjacent,
-    ganger::{
-        Facing, Faction, Fight, LifeState, Luck, Position, Stance, Toughness, Tu, effective_luck,
-        effective_toughness,
-    },
+    ganger::{LifeState, Luck, Toughness, Tu, effective_luck, effective_toughness},
     los::{Observer, PeekOffset, Target, has_los},
-    melee::{
-        Combatants, MeleeStrike, MeleeWeaponHit, resolve_melee_strike, resolve_structural_melee,
-    },
+    melee::{Combatants, MeleeStrike, MeleeWeaponHit, resolve_melee_strike},
     metric::CellLevel,
-    occupancy_sync::CoverDestroyed,
     resolve_and_apply::{StruckPiece, TargetGanger},
     rng::{FightRng, SeverityRng, ShotRng},
     tu::spend_tu,
     tuning::CombatTuning,
-    weapon::DamageType,
 };
-
-/// The attacker's snapshotted gating reads + the resolved wielded-weapon view the two
-/// per-target melee resolvers ([`resolve_ganger_melee`] / [`resolve_structure_melee`]) share
-/// — factored out of [`dispatch_melee`](super::dispatch_melee)'s per-request loop so each arm
-/// is a focused helper (GTW-508 C6 — keeping the melee dispatch under the size cap; the
-/// [`strike_with_target`] split precedent).
-///
-/// A transparent borrow/`Copy` bundle of the already-named domain newtypes (no bare
-/// primitive): the attacker's [`Position`] / [`Stance`] / [`Facing`] / [`Fight`] /
-/// [`Faction`] / [`Luck`] geometry snapshot, its [`Entity`], the [`MeleeWeaponHit`]
-/// borrow-view, the per-strike [`Tu`] cost, and the weapon's [`DamageType`] (the presenter
-/// strike-glyph role). Assembled ONCE per request before the target branch. `pub(super)` —
-/// the dispatch module assembles it and hands it to a resolver.
-pub(super) struct AttackerSnapshot<'a> {
-    /// The attacking ganger's [`Entity`] — the `&mut Tu` fetch target.
-    pub(super) entity:             Entity,
-    /// The attacker's snapshotted [`Position`] — the 8-adjacency + LOS-observer read.
-    pub(super) position:           Position,
-    /// The attacker's snapshotted [`Stance`] — the LOS-observer eye read.
-    pub(super) stance:             Stance,
-    /// The attacker's snapshotted [`Facing`] — the LOS-observer facing read.
-    pub(super) facing:             Facing,
-    /// The attacker's snapshotted effective [`Fight`] — the §7 `Fight_attacker`.
-    pub(super) fight:              Fight,
-    /// The attacker's [`Faction`] — the opposing-faction gate (ganger arm only).
-    pub(super) faction:            Faction,
-    /// The attacker's [`Luck`] — the §6 shooter-Luck nasty-wound term.
-    pub(super) luck:               Luck,
-    /// The wielded melee weapon's §5/§6 stats — the resolved [`MeleeWeaponHit`] borrow-view.
-    pub(super) weapon:             MeleeWeaponHit<'a>,
-    /// The primary fight-mode flat [`Tu`] cost the swing spends (saturating).
-    pub(super) tu_cost:            Tu,
-    /// The weapon's [`DamageType`] — the presenter [`MeleeResolved`] strike-glyph role/color.
-    pub(super) strike_damage_type: DamageType,
-    /// The wielded melee weapon's [`Shove`](crate::weapon::Shove) tag (GTW-525) — `true`
-    /// KNOCKS BACK the target one cell on a CONNECTING strike (the auto-shove hook writes a
-    /// `ShoveRequested` after the connect; a miss or a non-`shove` weapon writes nothing).
-    pub(super) shove:              crate::weapon::Shove,
-}
-
-/// The three seeded draw streams the §7 / §4 / §6 ganger synthesis advances, threaded by
-/// `&mut` into [`resolve_ganger_melee`] — a transparent borrow bundle of the named stream
-/// resources so the resolver's signature stays under clippy's argument-count gate (the
-/// structural arm takes none — a cover-smash is RNG-free). `pub(super)` — the dispatch module
-/// borrows the owned `ResMut` streams into it.
-pub(super) struct MeleeStreams<'a> {
-    /// The §7 opposed-Fight stream — two draws per resolve.
-    pub(super) fight:    &'a mut FightRng,
-    /// The §4 body-part-roll stream — one draw per resolve.
-    pub(super) shot:     &'a mut ShotRng,
-    /// The §6 severity-roll stream — one draw per connecting resolve.
-    pub(super) severity: &'a mut SeverityRng,
-}
 
 /// Resolve ONE ganger-vs-ganger melee request — the contested §7 opposed-Fight path
 /// (GTW-506/507), extracted from [`dispatch_melee`](super::dispatch_melee)'s target branch
@@ -275,97 +202,6 @@ pub(super) fn resolve_ganger_melee(
         }
     }
 }
-
-/// Resolve ONE melee-vs-structure request — the UNCONTESTED §7 cover-smash path (GTW-508),
-/// extracted from [`dispatch_melee`](super::dispatch_melee)'s target branch (GTW-508 C6 — file
-/// size cap).
-///
-/// Gates ONLY 8-adjacency to the struck cell (LOS to an immediately-adjacent structure is
-/// trivially satisfied — NO spurious LOS block, the C3 ruling), spends the same fight-mode TU,
-/// and calls [`resolve_structural_melee`] — multiplied (`mult_max`, FORK 4a) weapon damage
-/// through the EXISTING [`CoverLedger::deplete_cover`](crate::cover::CoverLedger::deplete_cover).
-/// There is **NO opposed roll and NO `FightRng`/`ShotRng`/`SeverityRng` draw** — a structure is
-/// inert. On a lethal smash it fires the EXISTING [`CoverDestroyed`] signal (the GTW-386 FX);
-/// on either outcome it emits the [`MeleeResolved`] strike-glyph (a structure never dodges, so
-/// there is no connect gate). Fail-closed on a failed adjacency gate / missing Tu pool.
-pub(super) fn resolve_structure_melee(
-    attacker: &AttackerSnapshot<'_>,
-    at: CellLevel,
-    tu_q: &mut Query<&mut Tu>,
-    grids: &mut MeleeGrids,
-    resolved: &mut MessageWriter<MeleeResolved>,
-    cover_destroyed: &mut MessageWriter<CoverDestroyed>,
-    deaths: &mut MessageWriter<crate::on_death::OnDeathOccurred>,
-) {
-    // Gate — 8-adjacency to the struck STRUCTURE cell (reuse `is_8_adjacent` over the attacker's
-    // Position vs a Position at the target cell). LOS to an immediately-adjacent structure is
-    // trivially satisfied, so NO LOS block is applied (a spurious LOS gate would reject the very
-    // cover the attacker stands beside — the C3 ruling).
-    if !is_8_adjacent(attacker.position, Position::new(at)) {
-        return;
-    }
-
-    // The struck cover's prototype — the ledger's stored entry if present, else a lazily-seeded
-    // intact wall. `peek` distinguishes an already-registered cell from an unregistered one;
-    // either way the smash resolves against a defined entry (the ledger owns the lazy seed). An
-    // unregistered cell has no authored HP/armor, so it seeds from the shared no-panic default (a
-    // strike on an out-of-bounds / empty cell still resolves defined bookkeeping, never a panic).
-    let prototype = grids
-        .cover
-        .peek(&at)
-        .copied()
-        .unwrap_or(STRUCTURE_SMASH_FALLBACK);
-
-    // Spend the fight-mode TU off the attacker (saturating) — a swing at a structure costs TU
-    // exactly like a swing at a ganger (fail-closed on a missing Tu pool).
-    let Ok(mut attacker_tu) = tu_q.get_mut(attacker.entity) else {
-        return;
-    };
-    spend_tu(&mut attacker_tu, attacker.tu_cost);
-
-    // The UNCONTESTED smash — multiplied (mult_max) weapon damage through the EXISTING ledger
-    // `deplete_cover`. NO opposed roll, NO FightRng/ShotRng/SeverityRng draw.
-    let event = resolve_structural_melee(
-        attacker.weapon,
-        &prototype,
-        at,
-        &mut grids.cover,
-        &grids.tuning,
-    );
-
-    // On a lethal smash, fire the EXISTING cover-destroyed signal (the presenter's GTW-386
-    // rubble-burst FX reacts to it verbatim).
-    if let CoverEvent::Destroyed(cell) = event {
-        cover_destroyed.write(CoverDestroyed::new(cell));
-        // GTW-547: a destroyed piece of cover ALSO emits the terminal-death signal (keyed by
-        // its cell — cover is not an entity, so Entity::PLACEHOLDER) so `resolve_on_death` fans
-        // the cover tile's authored on-death effect (the ranged cover-destroy bridge mirror).
-        deaths.write(crate::on_death::OnDeathOccurred::cover(cell));
-    }
-    // Emit the strike-glyph at the struck structure cell (a structural smash always lands — a
-    // structure never dodges — so unlike the ganger path there is no connect gate here).
-    resolved.write(MeleeResolved::new(at, attacker.strike_damage_type));
-}
-
-/// The fallback [`CoverEntry`](crate::cover::CoverEntry) prototype a melee cover-smash resolves
-/// against when the struck cell has NO ledger entry yet (an unregistered / unauthored cell) — a
-/// no-panic backstop, NOT authored data.
-///
-/// A registered cell (a real wall / prop) is read through
-/// [`CoverLedger::peek`](crate::cover::CoverLedger::peek); this fallback fires ONLY for a strike
-/// on a cell that was never registered or hit. It seeds an intact, ARMORLESS piece (protection /
-/// hardness `0`, a small `max_hp`, a `Low` band) so the smash resolves defined bookkeeping —
-/// [`CoverLedger::deplete_cover`](crate::cover::CoverLedger::deplete_cover) ignores this
-/// prototype whenever an authored entry already exists (its `entry_seeded` returns the stored
-/// entry unchanged), so authored HP/armor is always honoured; this only backstops an
-/// unregistered strike (the ranged `SLAB_FALLBACK_DEFAULTS` precedent). A code-only const — no
-/// tuning read, no pinned balance magnitude a test asserts.
-const STRUCTURE_SMASH_FALLBACK: crate::cover::CoverEntry = crate::cover::CoverEntry::seeded(
-    crate::cover::CoverHp::new(1),
-    crate::cover::HeightBand::Low,
-    crate::armor::ArmorProtection::new(0),
-    crate::armor::ArmorHardness::new(0),
-);
 
 /// Fold one melee strike onto the target — resolve the struck worn piece, assemble the
 /// [`TargetGanger`] borrow-view, and run [`resolve_melee_strike`] (split out so

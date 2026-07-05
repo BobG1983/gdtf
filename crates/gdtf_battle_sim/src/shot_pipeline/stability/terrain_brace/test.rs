@@ -1,11 +1,11 @@
 use bevy::platform::collections::HashSet;
 
-use super::*;
+use super::{gate::cell_above, *};
 use crate::{
-    ganger::StanceKind,
-    metric::{Cell, CellLevel, Level},
+    ganger::{Position, StanceKind},
+    metric::{Cell, CellLevel, Level, MAX_LEVELS},
     slab::BraceStairCells,
-    surface::SurfaceGrid,
+    surface::{SlabState, SurfaceGrid},
 };
 
 /// Build a `(x, y, z)` `CellLevel` terse helper.

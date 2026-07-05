@@ -30,18 +30,28 @@
 //!
 //! ## Module map
 //!
+//! - `snapshot` — the reaction-relevant ganger snapshot shape (the Copy `ReactionRow`,
+//!   its deterministic ordering keys, and the read-only snapshot query alias);
 //! - `trigger` — the [`reaction_trigger`] system (observe the act-in-LOS surface → gate
-//!   eligible reactors → run the opposed check → fire + halt + count) and the turn-boundary
-//!   [`reset_reactions_used`] system (zero every watcher's per-turn counter on a
-//!   [`TurnStarted`](crate::turn::TurnStarted)). Param-only — `Query` / `Res` / `ResMut` /
-//!   `MessageReader` / `MessageWriter` — NO `&mut World` (`bevy-traps.md` #7).
+//!   eligible reactors in deterministic order → delegate each pair);
+//! - `interrupt` — the per-(actor, reactor) evaluation (the C2 eligibility gates → the
+//!   C3 opposed check → the C4 fire + halt + count emission);
+//! - `reset` — the turn-boundary [`reset_reactions_used`] system (zero every watcher's
+//!   per-turn counter on a [`TurnStarted`](crate::turn::TurnStarted)).
+//!
+//! All param-only — `Query` / `Res` / `ResMut` / `MessageReader` / `MessageWriter` — NO
+//! `&mut World` (`bevy-traps.md` #7).
 //!
 //! The schedule WIRING lives in [`SimActsPlugin`](crate::acts::SimActsPlugin); see
 //! [`reaction_trigger`]'s docs for the C5 ordering (and the cycle constraint it resolves).
 
+mod interrupt;
+mod reset;
+mod snapshot;
 mod trigger;
 
 #[cfg(test)]
 mod test;
 
-pub use trigger::{reaction_trigger, reset_reactions_used};
+pub use reset::reset_reactions_used;
+pub use trigger::reaction_trigger;

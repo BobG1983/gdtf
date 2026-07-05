@@ -32,9 +32,12 @@
 //! omniscient move fog), multi-mode tactics, and AI-decision visualization are all DEFERRED
 //! to GTW-71 / GTW-84 — flagged, never silently dropped.
 
+mod advance;
 mod brain;
 mod cadence;
 mod decide;
+mod engage;
+mod snapshot;
 
 #[cfg(test)]
 mod test;

@@ -6,7 +6,7 @@
 //!
 //! - **engage** emits the REAL [`FireRequested`] the landed
 //!   [`dispatch_fire`](crate::acts::dispatch_fire) resolves, gated by the SHARED
-//!   [`can_see`] (one LOS truth) + [`can_fire`] (the shared fire guard) + [`can_engage`]
+//!   [`can_see`](crate::los::can_see) (one LOS truth) + [`can_fire`](crate::magazine::can_fire) (the shared fire guard) + [`can_engage`](crate::acts::can_engage)
 //!   (the SHARED arc verdict, GTW-70 leaf 2);
 //! - **advance** emits the REAL [`MoveRequested`] the landed
 //!   [`dispatch_move`](crate::acts::dispatch_move) resolves, planning over the SAME
@@ -20,146 +20,31 @@
 //! downstream `ShotRng` / `SeverityRng` draws (inside `fire()`) consume in a reproducible
 //! order — replay-stable (GTW-70 §E).
 
-use bevy::{
-    ecs::{query::Has, system::SystemParam},
-    prelude::{Entity, MessageWriter, Query, Res},
-};
+use bevy::prelude::{Entity, MessageWriter, Res};
 
 use super::{
+    advance::plan_reposition,
     cadence::ActPacing,
-    decide::{AiTarget, pick_nearest, plan_advance},
+    decide::{AiTarget, pick_nearest},
+    engage::{WeaponLookup, engageable_targets},
+    snapshot::{EnemyTurnGangers, GangerRow, cell_order},
 };
 use crate::{
-    acts::{EndTurnRequested, FireRequested, MoveRequested, can_engage},
+    acts::{EndTurnRequested, FireRequested, MoveRequested},
     battle::PlayerFaction,
     cover::CoverLedger,
-    fire::{MeleeQuery, WieldsQuery},
-    ganger::{Aiming, Facing, Faction, LifeState, Position, Stance, Tu, TuMax},
+    ganger::LifeState,
     injuries::{HandsAvailable, InflictedInjuries, MovementCostFactor},
-    los::{Observer, PeekOffset, Target, can_see},
-    magazine::{FireActor, Magazine, can_fire, mode_tu_cost},
-    metric::CellLevel,
-    move_acts::WalkInProgress,
+    magazine::{Magazine, mode_tu_cost},
     occupancy::OccupancyGrid,
-    pathfinder::{PlanningView, reachable_within},
     surface::SurfaceGrid,
     terrain::floor::FloorCostGrid,
     tuning::CombatTuning,
     turn::ActiveFaction,
     vertical::VerticalLinkGraph,
-    visibility::{FactionRelation, OmniscientFog},
-    weapon::{FireMode, Handedness},
+    visibility::OmniscientFog,
+    weapon::Handedness,
 };
-
-/// The brain's read-only ganger snapshot query shape — every ganger's brain-relevant
-/// components plus its mid-walk flag, read out into a Copy [`GangerRow`] each frame
-/// (factored into a `type` so the system signature stays under clippy's type-complexity
-/// gate, the [`ShooterQuery`](crate::fire::ShooterQuery) precedent).
-type EnemyTurnGangers<'world, 'state> = Query<
-    'world,
-    'state,
-    (
-        Entity,
-        &'static Position,
-        &'static Stance,
-        &'static Facing,
-        &'static Aiming,
-        &'static LifeState,
-        &'static Tu,
-        &'static TuMax,
-        &'static Faction,
-        Has<WalkInProgress>,
-        // GTW-443: the enemy's injury ledger, read OPTIONALLY (an absent ledger = the
-        // uninjured two-hands default), folded into the row's `hands` for the SHARED
-        // can_fire hand-count gate — so the AI is refused a TwoHanded weapon below two
-        // hands exactly as the player path is.
-        Option<&'static InflictedInjuries>,
-    ),
->;
-
-/// A Copy snapshot of one ganger's brain-relevant state, read out of the live query so the
-/// decision pass orders + closes over plain data — never raw `Query` iteration order
-/// (`bevy-traps.md` #3 / GTW-70 §E).
-#[derive(Clone, Copy)]
-struct GangerRow {
-    /// The ganger entity — the act emissions' actor/target ref.
-    entity:   Entity,
-    /// Its `(cell, level)` grid position.
-    position: Position,
-    /// Its stance — the eye / silhouette anchor for `can_see`.
-    stance:   Stance,
-    /// Its facing — the arc datum for `can_engage`.
-    facing:   Facing,
-    /// Its aim mode — the per-shot TU premium selector.
-    aiming:   Aiming,
-    /// Its life state — only an active (Alive) enemy acts; only an active observer sees.
-    life:     LifeState,
-    /// Its current TU pool — the fire / move affordability budget.
-    tu:       Tu,
-    /// Its round-start TU ceiling — the denominator of the per-shot TU charge.
-    tu_max:   TuMax,
-    /// Its gang — splits acting enemies (`== active`) from targets (`!= active`).
-    faction:  Faction,
-    /// Whether it is mid-walk (`Has<WalkInProgress>`) — skipped while busy, but it keeps
-    /// the turn open (the §D.3 `busy` measure).
-    walking:  bool,
-    /// Its available hand count (GTW-443) — folded from its injury ledger at snapshot
-    /// time (an absent ledger = the uninjured two-hands default), fed to the SHARED
-    /// `can_fire` hand-count gate.
-    hands:    HandsAvailable,
-    /// Its movement-cost factor (GTW-444) — the "Hampered" slowdown folded from its injury
-    /// ledger at snapshot time (an absent ledger = [`MovementCostFactor::IDENTITY`], `1.0`),
-    /// fed to [`reachable_within`] so a Hampered enemy's advance plan respects the SAME
-    /// per-step slowdown the move dispatch will charge it.
-    factor:   MovementCostFactor,
-}
-
-/// The `(cell, level)` key of a [`Position`] — one [`Position`]→[`CellLevel`] deref.
-fn row_cell_level(position: &Position) -> CellLevel {
-    **position
-}
-
-/// The `(level, y, x)` sort key of a [`Position`] — the deterministic total order the brain
-/// visits actors in (`bevy-traps.md` #3 / GTW-70 §E).
-fn cell_order(position: &Position) -> (i32, i32, i32) {
-    let key = ***position;
-    (key.z, key.y, key.x)
-}
-
-/// The brain's **weapon-resolution** [`SystemParam`] bundle — the three queries the
-/// engage path keys `enemy → Wields → the RANGED weapon entity` through, grouped into
-/// one param so [`enemy_ai_turn`] stays under Bevy's 16-param `SystemParam`-tuple arity
-/// (GTW-505 added the `melee` probe, which pushed the flat list to 17 — the GTW-461
-/// `ActPacing` bundling precedent).
-///
-/// Each is the existing query type ([`WieldsQuery`] / the weapon-stat query / the GTW-505
-/// [`MeleeQuery`] marker probe); the bundle is a transparent grouping of existing
-/// world-state queries, not a wrapped domain scalar.
-#[derive(SystemParam)]
-pub struct WeaponLookup<'w, 's> {
-    /// The wielded-weapon relationship — `&Wields` on the enemy ganger.
-    wields:  WieldsQuery<'w, 's>,
-    /// The ranged weapon-stat columns read off the resolved weapon entity.
-    weapons: Query<'w, 's, (&'static Magazine, &'static FireMode, &'static Handedness)>,
-    /// GTW-505 C5: the melee-weapon marker probe — `ranged_weapon` filters the wielded
-    /// weapon against it so the enemy's melee weapon is never engaged as its gun.
-    melee:   MeleeQuery<'w, 's>,
-}
-
-impl WeaponLookup<'_, '_> {
-    /// Resolve `enemy → Wields → the RANGED weapon entity` and read its `(Magazine,
-    /// FireMode, Handedness)` — excluding the melee weapon the enemy also wields (GTW-505
-    /// C5), the same ranged-filtered resolution `dispatch_fire` / `fire()` use. `None`
-    /// when the enemy wields no ranged weapon or its weapon entity is missing.
-    fn ranged(&self, enemy: Entity) -> Option<(&Magazine, &FireMode, &Handedness)> {
-        let weapon = self
-            .wields
-            .get(enemy)
-            .ok()?
-            .ranged_weapon(|entity| self.melee.get(entity).is_ok())?;
-        self.weapons.get(weapon).ok()
-    }
-}
 
 /// The **enemy-turn brain** — on the enemy faction's turn, run one engage-or-advance-or-hold
 /// pass over each enemy ganger and end the turn back to the player when the enemy is done
@@ -185,13 +70,13 @@ impl WeaponLookup<'_, '_> {
 ///    [`ActCadence`](super::cadence::ActCadence)):
 ///    - **ENGAGE** (§B clause 1 + §C): resolve its weapon (the [`Magazine`] + single-shot
 ///      [`FireModeSpec`](crate::weapon::FireModeSpec) off the related weapon entity, exactly
-///      as `dispatch_fire` does); a target is engageable iff [`can_see`] (real per-pair LOS)
-///      ∧ [`can_fire`] (the shared fire guard) ∧ [`can_engage`] (the SHARED `¬Reject` arc
+///      as `dispatch_fire` does); a target is engageable iff [`can_see`](crate::los::can_see) (real per-pair LOS)
+///      ∧ [`can_fire`](crate::magazine::can_fire) (the shared fire guard) ∧ [`can_engage`](crate::acts::can_engage) (the SHARED `¬Reject` arc
 ///      verdict). Pick the nearest engageable ([`pick_nearest`]) and emit the REAL
 ///      [`FireRequested`] (single mode); that's the enemy's ONE act this frame.
 ///    - **ADVANCE** (§D.2): no engageable target → plan a reposition toward the nearest
 ///      opposing ganger's actual cell over the [`OmniscientFog`] move fog
-///      ([`reachable_within`] + [`plan_advance`]) and emit the REAL [`MoveRequested`].
+///      ([`reachable_within`](crate::pathfinder::reachable_within) + [`plan_advance`](super::decide::plan_advance)) and emit the REAL [`MoveRequested`].
 ///    - **HOLD**: emit nothing.
 /// 5. End-turn, decoupled from emission (§D.3): emit [`EndTurnRequested`] ONLY when no enemy
 ///    acted this frame AND none is mid-walk — so the turn always terminates (the fire path's
@@ -199,7 +84,7 @@ impl WeaponLookup<'_, '_> {
 ///    emitted act dispatcher-accepted, so each act spends TU or attaches a walk, the
 ///    strictly-decreasing termination measure).
 ///
-/// Firing uses the REAL per-pair [`can_see`] (the AI never gets to shoot through the
+/// Firing uses the REAL per-pair [`can_see`](crate::los::can_see) (the AI never gets to shoot through the
 /// omniscient move fog — that fog is the MOVE planner's only); the symmetric enemy
 /// fog-of-war is deferred to GTW-71 (GTW-70 §D.1 / §F).
 #[expect(
@@ -338,7 +223,6 @@ pub fn enemy_ai_turn(
             .is_some_and(|row| row.life == LifeState::Dead)
     };
     let is_dead = &is_dead_fn;
-
     let mut acted = false;
     for enemy in &enemies {
         // Skip a Downed/Dead enemy (cannot act) and one mid-walk (its one act resolves
@@ -349,7 +233,6 @@ pub fn enemy_ai_turn(
 
         let enemy_cell = enemy.position.cell();
         let enemy_level = enemy.position.level();
-        let enemy_cell_level = row_cell_level(&enemy.position);
 
         // (1) ENGAGE — resolve the enemy's weapon (Magazine + single-shot FireModeSpec +
         //     Handedness off the related weapon entity, exactly as dispatch_fire reads it),
@@ -364,62 +247,17 @@ pub fn enemy_ai_turn(
             let magazine: Magazine = *magazine;
             let handedness: Handedness = *handedness;
             let fire_cost = mode_tu_cost(&mode, &enemy.tu_max, &enemy.aiming, &tuning);
-            let observer = Observer {
-                position:         &enemy.position,
-                stance:           &enemy.stance,
-                facing:           &enemy.facing,
-                stair_eye_offset: occupancy.stair_eye_offset_at(&enemy_cell_level),
-                peek_offset:      PeekOffset::default(),
-            };
-            let mut engageable: Vec<AiTarget> = Vec::new();
-            for target_row in &targets {
-                let target_cell = target_row.position.cell();
-                let target_level = target_row.position.level();
-                let target = Target {
-                    position: &target_row.position,
-                    stance:   &target_row.stance,
-                };
-                // can_see (the ONE LOS truth) — conscious observer, in range, clear LOS.
-                if !*can_see(
-                    &observer,
-                    &target,
-                    enemy.life,
-                    tuning.view_range,
-                    &occupancy,
-                    &surface,
-                    &cover,
-                    &tuning,
-                    is_dead,
-                ) {
-                    continue;
-                }
-                // can_fire (the shared fire guard) — alive, affordable, loaded, in-bounds.
-                let actor = FireActor {
-                    life: &enemy.life,
-                    tu: &enemy.tu,
-                    tu_max: &enemy.tu_max,
-                    aiming: &enemy.aiming,
-                    magazine: &magazine,
-                    handedness,
-                    hands_available: enemy.hands,
-                };
-                if !can_fire(&actor, &mode, target_cell, target_level, &tuning) {
-                    continue;
-                }
-                // can_engage (the SHARED ¬Reject arc verdict) — load-bearing for termination:
-                // it guarantees the dispatcher will spend TU rather than silently reject.
-                if !can_engage(
-                    *enemy.facing,
-                    enemy_cell,
-                    target_cell,
-                    enemy.tu,
-                    fire_cost,
-                    &tuning,
-                ) {
-                    continue;
-                }
-                engageable.push(AiTarget::new(target_row.entity, target_cell, target_level));
-            }
+            let engageable = engageable_targets(
+                enemy,
+                &targets,
+                (magazine, mode, handedness),
+                fire_cost,
+                &occupancy,
+                &surface,
+                &cover,
+                &tuning,
+                is_dead,
+            );
             if let Some(target) = pick_nearest(enemy_cell, enemy_level, &engageable) {
                 fire_writer.write(FireRequested::new(
                     enemy.entity,
@@ -433,45 +271,24 @@ pub fn enemy_ai_turn(
         }
 
         // (2) ADVANCE — no engageable target: step toward the nearest opposing ganger's
-        //     actual cell over the OmniscientFog move fog (the AI knows where to walk, but
-        //     still cannot SHOOT until can_see passes — §D.1/§D.2). For any non-player mover
-        //     move_fog provably selects the OmniscientFog, so the brain reads the IDENTICAL
-        //     resource dispatch_move's move_fog selects → planner and executor share ONE fog
-        //     (the reposition emit-⇒-accept guarantee), without the brain needing the player
-        //     fog it would never select. Absent the fog (no live battle) the brain can't
-        //     plan and HOLDs.
+        //     actual cell over the OmniscientFog move fog (see plan_reposition's §D.1/§D.2
+        //     doc). Absent the fog (no live battle) the brain can't plan and HOLDs.
         if let (Some(goal), Some(omniscient)) = (
             pick_nearest(enemy_cell, enemy_level, &all_targets),
             omniscient.as_deref(),
+        ) && let Some(dest) = plan_reposition(
+            enemy,
+            &goal,
+            &rows,
+            omniscient,
+            &occupancy,
+            &links,
+            &tuning,
+            &floor_costs,
         ) {
-            let relation_of = |occupant: Entity| {
-                rows.iter().find(|row| row.entity == occupant).map_or(
-                    FactionRelation::Other,
-                    |row| {
-                        if row.faction == enemy.faction {
-                            FactionRelation::OwnSquad
-                        } else {
-                            FactionRelation::Other
-                        }
-                    },
-                )
-            };
-            let planning = PlanningView::new(omniscient, relation_of);
-            let reachable = reachable_within(
-                enemy_cell_level,
-                enemy.tu,
-                &occupancy,
-                &links,
-                &tuning,
-                &floor_costs,
-                enemy.factor,
-                &planning,
-            );
-            if let Some(dest) = plan_advance(enemy_cell_level, goal.cell, &reachable) {
-                move_writer.write(MoveRequested::new(enemy.entity, dest));
-                acted = true;
-                break; // GTW-461: ONE act per cadence-step — stop at the first enemy to act.
-            }
+            move_writer.write(MoveRequested::new(enemy.entity, dest));
+            acted = true;
+            break; // GTW-461: ONE act per cadence-step — stop at the first enemy to act.
         }
         // (3) HOLD — try the NEXT enemy this same step (a held enemy consumes no cadence).
     }
