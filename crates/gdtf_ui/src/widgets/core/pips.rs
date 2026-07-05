@@ -151,3 +151,6 @@ const PIP_DIAMETER_VW: f32 = 0.9375;
 /// The horizontal gap between adjacent pips (the row `column_gap`), in
 /// viewport-width units. Calibrated 4px / 1280 * 100.
 const PIP_GAP_VW: f32 = 0.3125;
+
+#[cfg(test)]
+mod test;

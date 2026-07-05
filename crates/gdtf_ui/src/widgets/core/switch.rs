@@ -295,3 +295,6 @@ const TRACK_PAD_VW: f32 = 0.234_375;
 /// paddings so the pill track frames the knob on the short axis (the
 /// `switch_track_frames_the_knob` invariant — GTW-277).
 const KNOB_DIAMETER_VW: f32 = 1.09375;
+
+#[cfg(test)]
+mod test;

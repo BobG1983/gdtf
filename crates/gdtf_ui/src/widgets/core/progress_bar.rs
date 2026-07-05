@@ -165,3 +165,6 @@ pub fn set_progress_bar(
 /// width is always 100% of the bar's container, so only the height is fixed here.
 /// Calibrated 10px / 720 * 100 at the default 1280x720 window.
 const BAR_HEIGHT_VH: f32 = 1.38889;
+
+#[cfg(test)]
+mod test;

@@ -1,195 +1,27 @@
-//! Tests for the widget spawn helpers and the disabled / active paint passes.
+//! Tests for the disabled / active paint passes and the GTW-280 deactivation
+//! repaint (the `paint.rs` surface).
 
 use bevy::{
-    MinimalPlugins,
-    asset::AssetPlugin,
     prelude::*,
-    scene::ScenePlugin,
-    text::{FontSize, FontSource, TextColor as UiTextColor, TextFont},
-    ui::{BackgroundColor, BorderColor as UiBorderColor, Interaction, Node, widget::Button},
+    ui::{BackgroundColor, Interaction},
 };
 
-use super::{
-    ActiveButton, ButtonLabel, DisabledButton, paint_active_buttons, paint_disabled_buttons,
-    spawn_button, spawn_panel,
-};
+use super::{paint_active_buttons, paint_disabled_buttons};
 use crate::{
-    theme::{GdtfTheme, GdtfThemeSpec},
-    themed::{ThemeRole, Themed, apply_theme},
+    theme::GdtfTheme,
+    themed::apply_theme,
+    widgets::core::{
+        ActiveButton, ButtonLabel, DisabledButton, spawn_button,
+        test_support::{scene_app, theme},
+    },
 };
-
-/// Builds the headless harness for the widget-builder tests with the scene/asset
-/// infrastructure the GTW-322 `bsn!` builders need.
-///
-/// The builders spawn via [`Commands::spawn_scene`](bevy::scene::CommandsSceneExt::spawn_scene),
-/// whose deferred `apply_scene` (run on the next `flush`) reads the `AssetServer` +
-/// `Assets<ScenePatch>` resources; without `AssetPlugin` + `ScenePlugin` it panics.
-/// `MinimalPlugins` supplies the task pool `AssetPlugin` requires. The widget scenes
-/// have no asset dependencies, so they materialize on the existing single `flush()`
-/// (no extra `app.update()` is needed before asserting).
-fn scene_app() -> App {
-    let mut app = App::new();
-    app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
-    app
-}
-
-/// Builds a [`GdtfTheme`] through the real resolution path (deserialize the
-/// nested spec, then [`GdtfThemeSpec::resolve`]) with a defaulted-font
-/// resolver. The button sub-theme's fill is caller-chosen so the paint tests
-/// can pin it. The theme newtypes have private fields, so this respects
-/// encapsulation while exercising the genuine runtime resolution. Returns the
-/// `ron` error so a malformed literal surfaces via `?`.
-fn theme(
-    button_color: [f32; 4],
-    disabled: [f32; 4],
-) -> Result<GdtfTheme, ron::error::SpannedError> {
-    let [pr, pg, pb, pa] = button_color;
-    let [dr, dg, db, da] = disabled;
-    let ron = format!(
-        "(\
-         default_font: \"fonts/test.ttf\", \
-         background: ( color: (0.05, 0.05, 0.06, 1.0) ), \
-         panel: ( color: (0.16, 0.16, 0.18, 0.55), border_color: (0.20, 0.20, 0.24, 1.0), \
-                  border_width: 2.0, corner_radius: 5.0, \
-                  margin: (left: 12.0, right: 12.0, top: 6.0, bottom: 6.0) ), \
-         button: ( color: ({pr}, {pg}, {pb}, {pa}), disabled: ({dr}, {dg}, {db}, {da}), \
-                   active: (0.45, 0.62, 0.30, 0.96), \
-                   hover: (0.80, 0.16, 0.19, 0.96), pressed: (0.10, 0.10, 0.12, 0.96), \
-                   text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: 18.0, \
-                   border_color: (0.20, 0.20, 0.24, 1.0), \
-                   border_width: 2.0, corner_radius: 5.0, \
-                   margin: (left: 8.0, right: 8.0, top: 6.0, bottom: 6.0) ), \
-         title: ( text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: 36.0 ), \
-         text:  ( text_color: (0.84, 0.80, 0.73, 1.0), font_size_pt: 18.0 ))",
-    );
-    let spec: GdtfThemeSpec = ron::from_str(&ron)?;
-    Ok(spec.resolve(|_| Handle::<Font>::default()))
-}
-
-/// `spawn_button` builds a button carrying the interaction plumbing
-/// (`Button` + `Interaction`), the button-box visuals (`BackgroundColor` +
-/// `BorderColor`), and the `Themed(Button)` marker.
-///
-/// Pin-discriminating: dropping any of those components, or the Themed
-/// marker, fails an assert.
-#[test]
-fn spawned_button_has_interaction_visuals_and_themed_marker() -> Result<(), ron::error::SpannedError>
-{
-    let mut app = scene_app();
-    app.insert_resource(theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?);
-
-    let theme_res = app.world().resource::<GdtfTheme>().clone();
-    let button = {
-        let mut commands = app.world_mut().commands();
-        spawn_button(&mut commands, &theme_res, ButtonLabel::new("Fight"), ())
-    };
-    app.world_mut().flush();
-
-    let world = app.world();
-    assert!(world.get::<Button>(button).is_some(), "must have Button");
-    assert!(
-        world.get::<Interaction>(button).is_some(),
-        "Button requires Interaction",
-    );
-    assert!(
-        world.get::<BackgroundColor>(button).is_some(),
-        "must have BackgroundColor",
-    );
-    assert!(
-        world.get::<UiBorderColor>(button).is_some(),
-        "must have BorderColor",
-    );
-    assert_eq!(
-        world.get::<Themed>(button).map(|t| **t),
-        Some(ThemeRole::Button),
-        "must carry Themed(Button)",
-    );
-
-    Ok(())
-}
-
-/// `spawn_panel` builds a `Themed(Panel)` node with background + border.
-#[test]
-fn spawned_panel_is_themed_with_visuals() -> Result<(), ron::error::SpannedError> {
-    let mut app = scene_app();
-    let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;
-
-    let panel = {
-        let mut commands = app.world_mut().commands();
-        spawn_panel(&mut commands, &theme_res)
-    };
-    app.world_mut().flush();
-
-    let world = app.world();
-    assert!(world.get::<Node>(panel).is_some(), "must have Node");
-    assert!(
-        world.get::<BackgroundColor>(panel).is_some(),
-        "must have BackgroundColor",
-    );
-    assert!(
-        world.get::<UiBorderColor>(panel).is_some(),
-        "must have BorderColor",
-    );
-    assert_eq!(
-        world.get::<Themed>(panel).map(|t| **t),
-        Some(ThemeRole::Panel),
-        "must carry Themed(Panel)",
-    );
-
-    Ok(())
-}
-
-/// The text child of a `spawn_button` carries the button sub-theme font handle,
-/// size, and text color, and is itself `Themed(ButtonText)`.
-#[test]
-fn spawned_button_text_child_is_themed_button_text_from_theme()
--> Result<(), ron::error::SpannedError> {
-    let mut app = scene_app();
-    let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;
-
-    let button = {
-        let mut commands = app.world_mut().commands();
-        spawn_button(&mut commands, &theme_res, ButtonLabel::new("Fight"), ())
-    };
-    app.world_mut().flush();
-
-    let world = app.world();
-    let children = world
-        .get::<Children>(button)
-        .map(|c| c.iter().collect::<Vec<_>>())
-        .unwrap_or_default();
-    assert_eq!(children.len(), 1, "button must have exactly one text child");
-    let child = children[0];
-
-    assert_eq!(
-        world.get::<Themed>(child).map(|t| **t),
-        Some(ThemeRole::ButtonText),
-        "text child must be Themed(ButtonText)",
-    );
-    assert_eq!(
-        world.get::<TextFont>(child).map(|f| f.font.clone()),
-        Some(FontSource::from(Handle::<Font>::default())),
-        "text child must carry the button font handle",
-    );
-    assert!(
-        world
-            .get::<TextFont>(child)
-            .is_some_and(|f| f.font_size == FontSize::Px(18.0)),
-        "text child must carry the button font size",
-    );
-    assert_eq!(
-        world.get::<UiTextColor>(child).map(|c| c.0),
-        Some(Color::srgb(0.84, 0.80, 0.73)),
-        "text child must carry the button text color",
-    );
-
-    Ok(())
-}
 
 /// A `DisabledButton`'s background is the button sub-theme's explicit
 /// `disabled` fill after `paint_disabled_buttons` runs, and it stays `Themed`.
 #[test]
 fn disabled_button_is_painted_from_theme() -> Result<(), ron::error::SpannedError> {
+    use crate::themed::Themed;
+
     let mut app = scene_app();
     let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;
     app.insert_resource(theme_res.clone());
@@ -239,6 +71,8 @@ fn disabled_button_is_painted_from_theme() -> Result<(), ron::error::SpannedErro
 /// fail. The two fills are distinct in the test theme.
 #[test]
 fn active_button_is_painted_from_theme() -> Result<(), ron::error::SpannedError> {
+    use crate::themed::Themed;
+
     let mut app = scene_app();
     let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;
     app.insert_resource(theme_res.clone());
@@ -302,12 +136,7 @@ fn active_button_is_painted_from_theme() -> Result<(), ron::error::SpannedError>
 /// flicker bug.)
 #[test]
 fn active_button_stays_active_when_pressed() -> Result<(), ron::error::SpannedError> {
-    use bevy::ui::Interaction;
-
-    use crate::{
-        themed::UiSystems,
-        widgets::{core::paint_active_buttons, interaction::theme_interaction},
-    };
+    use crate::{themed::UiSystems, widgets::interaction::theme_interaction};
 
     let mut app = scene_app();
     let theme_res = theme([0.12, 0.12, 0.15, 1.0], [0.08, 0.08, 0.10, 0.55])?;

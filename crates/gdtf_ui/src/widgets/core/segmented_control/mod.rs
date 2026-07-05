@@ -23,6 +23,8 @@ mod interaction;
 mod mutators;
 mod spawn;
 mod style;
+#[cfg(test)]
+mod test;
 mod types;
 
 pub use interaction::{repaint_segments, select_segment_on_press};
