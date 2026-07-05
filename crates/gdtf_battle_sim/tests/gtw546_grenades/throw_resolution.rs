@@ -1,39 +1,5 @@
-//! GTW-546 (child GTW-41d of GTW-41) — ARCED / LOBBED fire + grenades: a per-weapon
-//! `TrajectoryStyle::Arc` grenade is THROWN along a deterministic parabola that clears
-//! same-level cover, passes holes / windows, and is BLOCKED by an intact roof; on landing it
-//! fans a GTW-541 `HitType::Blast` at the landing cell through the EXISTING
-//! `resolve_and_apply` damage path. Proven END-TO-END on the REAL
-//! `setup_battle_on_request` → `BattleSimPlugin` `Simulate`-band path, driven THROUGH a
-//! buffered `ThrowGrenadeRequested` (the same message the input seam writes), plus pure
-//! `march_arc` unit tests for the deterministic arc geometry.
-//!
-//! The clause contract this covers:
-//!
-//! - **`TrajectoryStyle` serde default `Straight`** — a weapon `.ron` that omits `trajectory:`
-//!   parses as `Straight` (existing weapons unchanged); an authored `trajectory: Arc` parses
-//!   as `Arc` (the identity property, the GTW-541 `HitType::Single` precedent).
-//! - **Arc blocked by intact roof / passes holes** — `march_arc` from a higher thrower down
-//!   onto a target under an intact `SlabState::Present` roof STOPS at the roof (a `Slab`
-//!   landing at the roof cell, NOT the target); with a `SlabState::Destroyed` hole it PASSES
-//!   and lands ON the target. Same-level lobs clear cover (never self-block on a same-level
-//!   roof).
-//! - **Blast hits room occupants through the roof hole** — a thrown Arc grenade lobbed at a
-//!   room with a roof HOLE lands inside and its `HitType::Blast` DAMAGES the occupants (HP /
-//!   Wounds drop). PIN-DISCRIMINATING (fails if the throw / blast is unwired).
-//! - **Blast blocked by intact roof** — the SAME throw under an intact roof lands on the roof
-//!   (a different cell / storey than the occupants), so the room occupants are UNTOUCHED.
-//! - **Blind throw** — a thrower NOT FACING its target still resolves the throw (no LOS /
-//!   facing / arc gate for an `Arc` weapon).
-//! - **Determinism** — `march_arc` is a pure function (two identical calls agree); the arc
-//!   geometry draws no RNG.
-//!
-//! NO pinned tunable magnitudes: the tests assert HP-DECREASED / untouched / landing-cell —
-//! never a specific damage number.
-//!
-//! HARNESS NOTE (the gtw541 idiom): the sim crate is the LOW crate, so it cannot dev-dep
-//! `gdtf_test_utils` (a cycle). The established sim-crate battle-integration idiom drives
-//! `setup_battle_on_request` via a `SetupBattleRequested` message against a `MinimalPlugins`
-//! + `AssetPlugin` + `ScenePlugin` + `BattleSimPlugin` app — the EXACT production wiring.
+//! Full-app grenade throws: room damage through roof holes, the intact-roof
+//! block, and the blind throw without a facing / LOS gate.
 
 use bevy::{
     app::App,
@@ -47,8 +13,7 @@ use gdtf_battle_sim::{
     battle::{BattleSimPlugin, SetupBattleRequested},
     ganger::{Aim, Direction, Facing, GangRegistry},
     magazine::{Magazine, ReloadTu},
-    march::march_arc,
-    metric::{Cell, CellLevel, Level},
+    metric::CellLevel,
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
     surface::{SlabState, SurfaceGrid},
@@ -64,147 +29,7 @@ use gdtf_battle_sim::{
     },
 };
 
-/// The single faction every fixture ganger belongs to. One faction (no opponents) means no
-/// setup-time AI / reaction fire corrupts the baselines, and the blast striking teammates IS
-/// the faction-blind friendly-fire property (the gtw541 harness ruling).
-const PLAYER: u8 = 0;
-
-/// A view range comfortably covering the whole scene.
-const TEST_VIEW_RANGE: u16 = 30;
-
-/// A ground-floor `(cell, level)` key.
-fn ground(x: i32, y: i32) -> CellLevel {
-    CellLevel::new(Cell::new(x, y), Level::new(0))
-}
-
-/// An `(x, y)` key on a given storey.
-fn at_level(x: i32, y: i32, level: u8) -> CellLevel {
-    CellLevel::new(Cell::new(x, y), Level::new(level))
-}
-
-// === Pure `march_arc` geometry unit tests (deterministic, no app). ===
-
-/// A tuning with the default projectile band edges — the arc march reads only the band
-/// classification (for the reported band) + the slab surface; the default tuning suffices.
-fn arc_tuning() -> CombatTuning {
-    CombatTuning::default()
-}
-
-#[test]
-fn arc_lands_on_the_target_through_open_sky() {
-    // Thrower above (level 2) lobbing down onto a level-0 target, NO roof anywhere.
-    let surface = SurfaceGrid::new();
-    let landing = march_arc(at_level(5, 5, 2), ground(9, 5), &surface, &arc_tuning());
-    // With no roof to intercept, the lob lands AT the target cell (cell + storey).
-    assert_eq!(
-        (landing.at.x, landing.at.y, landing.at.z),
-        (9, 5, 0),
-        "an unobstructed lob lands at the target cell: {landing:?}",
-    );
-}
-
-#[test]
-fn arc_is_blocked_by_an_intact_roof_between_the_thrower_and_a_lower_target() {
-    // Thrower on level 1 lobbing DOWN onto a level-0 target under an INTACT roof at level 1
-    // over the target column — the arc crosses the z=1 boundary and is stopped there.
-    let mut surface = SurfaceGrid::new();
-    surface.set_slab(at_level(6, 5, 1), SlabState::Present);
-    let landing = march_arc(at_level(6, 5, 1), ground(6, 5), &surface, &arc_tuning());
-    // The lob is stopped at the roof (level 1), NOT at the level-0 target — the target is
-    // shielded (AC: arc blocked by intact roofs).
-    assert_ne!(
-        landing.at.z, 0,
-        "an intact roof stops the lob above the target (not on the level-0 target): {landing:?}",
-    );
-    assert_eq!(
-        landing.at.z, 1,
-        "the lob lands on the intact roof at level 1: {landing:?}",
-    );
-}
-
-#[test]
-fn arc_passes_through_a_roof_hole_and_lands_on_the_lower_target() {
-    // The SAME geometry as the blocked case, but the roof slab is DESTROYED (a hole) — the
-    // lob drops through and lands on the level-0 target (AC: passes through holes / windows).
-    let mut surface = SurfaceGrid::new();
-    surface.set_slab(at_level(6, 5, 1), SlabState::Destroyed);
-    let landing = march_arc(at_level(6, 5, 1), ground(6, 5), &surface, &arc_tuning());
-    assert_eq!(
-        (landing.at.x, landing.at.y, landing.at.z),
-        (6, 5, 0),
-        "a lob through a roof hole lands on the lower target: {landing:?}",
-    );
-}
-
-#[test]
-fn a_same_level_lob_is_not_self_blocked_by_a_same_level_roof() {
-    // A short same-level throw under an intact roof at the storey ABOVE — the lob's apex stays
-    // sub-storey, so it never crosses into the roofed level and lands on the target.
-    let mut surface = SurfaceGrid::new();
-    // A roof over the whole path at level 1.
-    for x in 5..=9 {
-        surface.set_slab(at_level(x, 5, 1), SlabState::Present);
-    }
-    let landing = march_arc(ground(5, 5), ground(9, 5), &surface, &arc_tuning());
-    assert_eq!(
-        (landing.at.x, landing.at.y, landing.at.z),
-        (9, 5, 0),
-        "a same-level lob clears cover but stays under the same-level roof, landing on target: {landing:?}",
-    );
-}
-
-#[test]
-fn march_arc_is_a_pure_function() {
-    let mut surface = SurfaceGrid::new();
-    surface.set_slab(at_level(6, 5, 1), SlabState::Destroyed);
-    let a = march_arc(at_level(6, 5, 2), ground(9, 6), &surface, &arc_tuning());
-    let b = march_arc(at_level(6, 5, 2), ground(9, 6), &surface, &arc_tuning());
-    assert_eq!(a, b, "march_arc is deterministic (no RNG): {a:?} vs {b:?}");
-}
-
-// === TrajectoryStyle serde: default Straight, authored Arc. ===
-
-#[test]
-fn trajectory_defaults_to_straight_when_omitted() {
-    // An existing-style weapon `.ron` with NO `trajectory:` field parses as Straight (the
-    // identity property — every existing weapon is untouched).
-    let ron = r"(
-        base_spread: 0.1, accuracy: 1.0, kickback: 0.0, fatal_bias: 0.0,
-        damage: 5, punch: 1, shred: 0, damage_type: Kinetic,
-        magazine: (size: 6, reload_tu: 10),
-        fire_mode: [(kind: Single, cone_mult: 1.0, tu_percent: 0.2, shots: 1)],
-        stable: false, handedness: OneHanded,
-    )";
-    let Ok(spec) = ron::from_str::<WeaponSpec>(ron) else {
-        unreachable!("the trajectory-less spec parses");
-    };
-    assert_eq!(
-        spec.trajectory,
-        TrajectoryStyle::Straight,
-        "an omitted trajectory field defaults to Straight",
-    );
-}
-
-#[test]
-fn authored_arc_trajectory_parses() {
-    let ron = r"(
-        base_spread: 0.2, accuracy: 0.8, kickback: 0.0, fatal_bias: 0.0,
-        damage: 8, punch: 2, shred: 1, damage_type: Blast,
-        magazine: (size: 2, reload_tu: 18),
-        trajectory: Arc,
-        fire_mode: [(kind: Single, cone_mult: 1.0, tu_percent: 0.35, shots: 1, hit_type: Blast(radius: 1))],
-        stable: false, handedness: OneHanded,
-    )";
-    let Ok(spec) = ron::from_str::<WeaponSpec>(ron) else {
-        unreachable!("the arc grenade spec parses");
-    };
-    assert_eq!(
-        spec.trajectory,
-        TrajectoryStyle::Arc,
-        "an authored `trajectory: Arc` parses as Arc",
-    );
-    assert!(spec.trajectory.is_arc(), "the arc weapon reports is_arc()");
-}
+use super::harness::*;
 
 // === Full-app throw dispatch: the blast damages room occupants (or is roof-blocked). ===
 
