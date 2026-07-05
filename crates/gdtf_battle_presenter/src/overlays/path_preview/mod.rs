@@ -21,9 +21,12 @@
 //! Consumed by GTW-356 (the two-click flow: click-1 sets `PathPreviewTarget`, click-2
 //! commits).
 
-mod preview;
+mod draw;
+mod resolve;
+mod seam;
 
 #[cfg(test)]
 mod test;
 
-pub use preview::{PathPreview, PathStepSprite, PathTargetLabel, draw_path_preview};
+pub use draw::{PathStepSprite, PathTargetLabel, draw_path_preview};
+pub use seam::PathPreview;

@@ -2,7 +2,7 @@
 
 use gdtf_battle_sim::{GRID_HEIGHT, GRID_WIDTH, Level};
 
-use super::{active_level::ActiveLevel, draw::i32_extent, roles::TileRoles};
+use super::{active_level::ActiveLevel, roles::TileRoles, static_map::i32_extent};
 
 /// The shipped `tile_roles.ron` parses into `TileRoles` and exposes every
 /// documented role — a `ron::de` round-trip of the SHIPPED bytes (AC1).

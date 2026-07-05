@@ -68,23 +68,27 @@
 //! fireable. Making a drawn lower-storey unit a valid click/fire target (and the reticle across
 //! storeys) is scoped to GTW-522.
 
+mod death;
 mod frame;
+mod reframe;
 mod roles;
+mod spawn_move;
 mod sprite_map;
-mod systems;
 mod tint;
 mod tween;
+mod visibility;
 
 #[cfg(test)]
 mod test;
 
+pub use death::{
+    despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites, update_ganger_life_state,
+};
 pub use frame::{FacingFrame, facing_frame};
+pub use reframe::{reframe_ganger_sprites, reindex_ganger_sprites_on_character_roles_change};
 pub use roles::CharacterRoles;
 pub(crate) use roles::register_character_roles_hot_ron;
+pub use spawn_move::{move_ganger_sprites, spawn_ganger_sprites};
 pub use sprite_map::{GangerSprite, GangerSprites};
-pub use systems::{
-    apply_active_level_filter, despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites,
-    move_ganger_sprites, reframe_ganger_sprites, reindex_ganger_sprites_on_character_roles_change,
-    spawn_ganger_sprites, update_ganger_life_state,
-};
 pub use tween::{SpriteTween, advance_sprite_tweens};
+pub use visibility::apply_active_level_filter;

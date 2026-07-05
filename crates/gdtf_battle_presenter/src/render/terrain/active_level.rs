@@ -11,14 +11,14 @@ use gdtf_battle_sim::{Level, MAX_LEVELS};
 /// [`FullView`](Self::FullView) rather than a nameless flag. OWNED BY THE PRESENTER CRATE so
 /// the `input -> presenter -> sim` direction holds exactly as [`ActiveLevel`] does: the
 /// terrain draw + the ganger visibility filter READ it (through the shared
-/// [`drawn_band`](super::draw::drawn_band) band helper); the input crate's
+/// [`drawn_band`](super::band::drawn_band) band helper); the input crate's
 /// `ToggleFullView` intent — in `gdtf_battle_input`, which depends on the presenter —
 /// MUTATES it. `init_resource`-d by the
 /// [`TopDownRendererPlugin`](crate::TopDownRendererPlugin) on build (its [`Default`] is
 /// [`DownToActive`](Self::DownToActive) — exactly the current GTW-519/520 behaviour) so the
 /// later input toggle has a resource to flip.
 ///
-/// The two modes ONLY differ in the UPPER bound the [`drawn_band`](super::draw::drawn_band) helper
+/// The two modes ONLY differ in the UPPER bound the [`drawn_band`](super::band::drawn_band) helper
 /// returns; every other draw / visibility rule (per-storey Z occlusion, the peek-through
 /// floor-gap reveal, the GTW-520 fog hard-cut) is untouched.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -78,7 +78,7 @@ impl ActiveLevel {
     /// active`): a ganger on ANY storey within the drawn band is DRAWN (it peeks through
     /// floor-gaps on the lower storeys the terrain draw already renders, GTW-519), while a
     /// ganger strictly ABOVE the band ceiling is culled. It is the SAME membership the
-    /// terrain draw's [`drawn_band`](super::draw::drawn_band) range expresses, as a per-storey
+    /// terrain draw's [`drawn_band`](super::band::drawn_band) range expresses, as a per-storey
     /// predicate — so the four ganger-visibility sites
     /// ([`spawn_ganger_sprites`](crate::spawn_ganger_sprites) /
     /// [`move_ganger_sprites`](crate::move_ganger_sprites) /
@@ -86,7 +86,7 @@ impl ActiveLevel {
     /// `present_actor_fog`) all consult ONE predicate and cannot drift from each other OR from
     /// the terrain band.
     ///
-    /// The `view` chooses the CEILING exactly as [`drawn_band`](super::draw::drawn_band) does
+    /// The `view` chooses the CEILING exactly as [`drawn_band`](super::band::drawn_band) does
     /// (GTW-521 C2 — units on all storeys are shown in [`ViewMode::FullView`], still subject
     /// to the GTW-520 fog hard-cut applied downstream):
     ///

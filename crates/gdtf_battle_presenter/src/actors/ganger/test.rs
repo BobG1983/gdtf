@@ -6,9 +6,9 @@ use gdtf_battle_sim::{Direction, Facing, Faction, LifeState};
 
 use super::{
     frame::{FacingFrame, atlas_index, facing_frame},
+    reframe::reindex_ganger_sprites_on_character_roles_change,
     roles::CharacterRoles,
     sprite_map::{GangerSprite, GangerSprites},
-    systems::reindex_ganger_sprites_on_character_roles_change,
     tint::{faction_tint, ganger_tint},
 };
 use crate::TileIndex;

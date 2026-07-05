@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::renderer::{BattlePresenterMode, BattlePresenterPlugin, TopDownRendererActive};
+use super::{BattlePresenterMode, BattlePresenterPlugin, TopDownRendererActive};
 
 /// AC1 — the default presenter selects `TopDown`, builds without panic under
 /// `MinimalPlugins`, and its top-down renderer inserts the marker resource.

@@ -41,14 +41,16 @@
 //! tile-INDEX value a later slice introduces must be a NAMED newtype over its
 //! primitive (no-bare-types); S3 itself stores no per-glyph index.
 
-mod bridge;
+mod atlases;
+mod projection;
+mod redrive;
 
 #[cfg(test)]
 mod test;
 
-pub(crate) use bridge::register_sheet_image_redrive;
-pub use bridge::{
-    CELL_PX, GANGER_Z_BIAS, Layer, SheetAtlas, SheetRole, TopDownAtlases, cell_to_world,
-    cell_to_world_layered, load_topdown_atlases, redrive_sheet_images_on_asset_event,
-    sim_pos_to_world,
+pub use atlases::{SheetAtlas, SheetRole, TopDownAtlases, load_topdown_atlases};
+pub use projection::{
+    CELL_PX, GANGER_Z_BIAS, Layer, cell_to_world, cell_to_world_layered, sim_pos_to_world,
 };
+pub use redrive::redrive_sheet_images_on_asset_event;
+pub(crate) use redrive::register_sheet_image_redrive;

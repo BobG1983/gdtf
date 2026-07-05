@@ -1,5 +1,5 @@
-//! Unit tests for the transient FX layer — flashes (S6/GTW-220) + the GTW-306
-//! per-damage-type traveling projectile.
+//! Tests of the traveling-projectile flight: constant velocity, the arrival seam,
+//! and the GTW-308 burst stagger (mirrors the `projectile` module).
 
 use std::time::Duration;
 
@@ -8,17 +8,14 @@ use bevy::{
     app::{App, Update},
     asset::AssetPlugin,
     math::Vec3,
-    prelude::{Alpha, Transform, Visibility},
+    prelude::{Transform, Visibility},
     scene::ScenePlugin,
     time::TimeUpdateStrategy,
 };
-use gdtf_battle_sim::{Cell, DamageType, Level, Wounds};
+use gdtf_battle_sim::{Cell, DamageType, Level};
 
-use super::{
-    flash::{FLASH_SECONDS, FlashTtl},
+use super::super::{
     projectile::{PendingImpact, ProjectileTravel, ShotProjectile, advance_projectiles},
-    readers::bleed_tint,
-    roles::{COMPASS_DIRECTIONS, DIRECTION_COUNT, EffectRoles, nearest_direction_index},
     tuning::{InterShotSeconds, ProjectileVelocity},
 };
 
@@ -45,115 +42,19 @@ fn test_shooter() -> bevy::ecs::entity::Entity {
     bevy::ecs::entity::Entity::PLACEHOLDER
 }
 
-/// The shipped `effect_roles.ron` parses into `EffectRoles` and exposes every FX role —
-/// a `ron::de` round-trip of the SHIPPED bytes.
+/// The `PendingImpact`s currently in the world (FX-B's impact-animation seeds).
 ///
-/// It asserts the file PARSES and HAS all roles (a missing field is a deserialize error);
-/// it does NOT pin a tunable index magnitude (those are data the engineer eyeballs and may
-/// adjust). A light distinctness guard catches an all-collapsed authoring slip — the four
-/// damage-type rows must not share one directional strip.
-#[test]
-fn shipped_effect_roles_ron_parses_with_all_roles() {
-    const SHIPPED: &str = include_str!("../../../../../assets/sprites/effect_roles.spritedef.ron");
-    let parsed: Result<EffectRoles, _> = ron::de::from_str(SHIPPED);
-    assert!(
-        parsed.is_ok(),
-        "shipped effect_roles.ron must parse into EffectRoles, got: {:?}",
-        parsed.as_ref().err(),
-    );
-    let Ok(roles) = parsed else {
-        return;
-    };
-    // The three consequence roles must not all collapse onto one index (an authoring slip).
-    let conseq_same =
-        roles.bleed == roles.armor_break && roles.armor_break == roles.cover_destroyed;
-    assert!(
-        !conseq_same,
-        "the consequence FX roles must not all share one index (authoring slip)",
-    );
-    // The four damage-type rows must each carry a DISTINCT directional strip (a per-type
-    // color variant) — an all-collapsed authoring slip would make every shot look alike.
-    let rows = [
-        roles.orange.directions,
-        roles.blue.directions,
-        roles.green.directions,
-        roles.purple.directions,
-    ];
-    for (i, a) in rows.iter().enumerate() {
-        for b in rows.iter().skip(i + 1) {
-            assert_ne!(
-                a, b,
-                "each damage-type row must carry its own directional strip (a per-type color)",
-            );
-        }
-    }
+/// Cloned (not `.copied()`): `PendingImpact` carries the GTW-327 owned pop `Vec`, so it is no
+/// longer `Copy`.
+fn pending_impacts(app: &mut App) -> Vec<PendingImpact> {
+    let mut q = app.world_mut().query::<&PendingImpact>();
+    q.iter(app.world()).cloned().collect()
 }
 
-/// Each `DamageType` maps to a per-type FX row, the row carries a full 8-way directional
-/// strip + a 3-frame impact, and the sweep is total over `DamageType::ALL` — the per-type
-/// MECHANISM the contract requires built across the enum (only Kinetic ships in data today).
-#[test]
-fn fx_for_resolves_every_damage_type_to_a_full_row() {
-    const SHIPPED: &str = include_str!("../../../../../assets/sprites/effect_roles.spritedef.ron");
-    let parsed: Result<EffectRoles, _> = ron::de::from_str(SHIPPED);
-    assert!(
-        parsed.is_ok(),
-        "shipped effect_roles.ron must parse, got: {:?}",
-        parsed.as_ref().err(),
-    );
-    let Ok(roles) = parsed else {
-        return;
-    };
-    for damage in DamageType::ALL {
-        let fx = roles.fx_for(damage);
-        assert_eq!(
-            fx.directions.len(),
-            DIRECTION_COUNT,
-            "{damage:?} must resolve to a full 8-way directional strip",
-        );
-        assert_eq!(
-            fx.impact.len(),
-            3,
-            "{damage:?} must resolve to a 3-frame impact strip",
-        );
-    }
-    // Kinetic (the only type in skirmish data) reads the orange row; the fallback is orange.
-    assert_eq!(
-        roles.fx_for(DamageType::Kinetic),
-        &roles.orange,
-        "Kinetic (the in-data type) must read the orange row",
-    );
-    assert_eq!(
-        roles.fallback(),
-        &roles.orange,
-        "the fallback row must be the orange row",
-    );
-}
-
-/// `nearest_direction_index` picks the compass column whose heading the trajectory points
-/// closest to — each cardinal/diagonal heading resolves to its OWN column, and a column's
-/// own heading is its own nearest (round-trip identity).
-#[test]
-fn nearest_direction_index_picks_the_matching_compass_column() {
-    // Each authored compass column's own heading must resolve back to that column.
-    for (index, dir) in COMPASS_DIRECTIONS.iter().enumerate() {
-        let picked = nearest_direction_index(Vec3::new(dir.x, dir.y, 0.0));
-        assert_eq!(
-            picked, index,
-            "compass column {index}'s own heading must pick column {index}, got {picked}",
-        );
-    }
-    // A z-only (straight up/down) trajectory has no XY heading -> defaults to column 0 (E).
-    assert_eq!(
-        nearest_direction_index(Vec3::new(0.0, 0.0, 1.0)),
-        0,
-        "a straight-up shot (no XY heading) must default to column 0",
-    );
-    // The picked index is always a valid strip column.
-    assert!(
-        nearest_direction_index(Vec3::new(0.3, -0.9, 0.2)) < DIRECTION_COUNT,
-        "the picked direction index must be a valid strip column",
-    );
+/// How many `PendingImpact`s are in the world.
+fn pending_impact_count(app: &mut App) -> usize {
+    let mut q = app.world_mut().query::<&PendingImpact>();
+    q.iter(app.world()).count()
 }
 
 /// A traveling projectile flies muzzle→target at a CONSTANT VELOCITY under
@@ -366,51 +267,5 @@ fn staggered_round_holds_at_the_muzzle_until_its_launch_delay_elapses() {
     assert!(
         bolt.launched(),
         "once its launch delay elapses the round must launch (leave the muzzle)",
-    );
-}
-
-/// The `PendingImpact`s currently in the world (FX-B's impact-animation seeds).
-///
-/// Cloned (not `.copied()`): `PendingImpact` carries the GTW-327 owned pop `Vec`, so it is no
-/// longer `Copy`.
-fn pending_impacts(app: &mut App) -> Vec<PendingImpact> {
-    let mut q = app.world_mut().query::<&PendingImpact>();
-    q.iter(app.world()).cloned().collect()
-}
-
-/// How many `PendingImpact`s are in the world.
-fn pending_impact_count(app: &mut App) -> usize {
-    let mut q = app.world_mut().query::<&PendingImpact>();
-    q.iter(app.world()).count()
-}
-
-/// `bleed_tint` is a strictly-DECREASING relation in remaining wounds: a ganger nearer
-/// death (fewer wounds) bleeds a more opaque flash, never a pinned literal.
-#[test]
-fn bleed_tint_alpha_decreases_with_remaining_wounds() {
-    let near_death = bleed_tint(Wounds::new(0)).alpha();
-    let healthier = bleed_tint(Wounds::new(5)).alpha();
-    assert!(
-        near_death > healthier,
-        "fewer remaining wounds must bleed a MORE opaque (higher alpha) flash: \
-         {near_death} (0 wounds) must exceed {healthier} (5 wounds)",
-    );
-}
-
-/// A fresh `FlashTtl` is not finished, and ticking it past `FLASH_SECONDS` finishes it —
-/// the one-shot countdown `expire_flashes` keys its despawn on.
-#[test]
-fn flash_ttl_finishes_after_its_window() {
-    let mut ttl = FlashTtl::new();
-    // A zero tick does not finish a fresh one-shot timer.
-    assert!(
-        !ttl.tick(Duration::ZERO),
-        "a fresh FlashTtl must not be finished before any time passes",
-    );
-    // Ticking past the full window finishes it.
-    let past = Duration::from_secs_f32(FLASH_SECONDS + 0.1);
-    assert!(
-        ttl.tick(past),
-        "ticking a FlashTtl past FLASH_SECONDS must finish it (the one-shot signal)",
     );
 }
