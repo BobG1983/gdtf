@@ -180,3 +180,6 @@ fn box_node(border_vw: f32, radius_vw: f32, theme: &GdtfTheme, kind: BoxKind) ->
         ..default()
     }
 }
+
+#[cfg(test)]
+mod test;

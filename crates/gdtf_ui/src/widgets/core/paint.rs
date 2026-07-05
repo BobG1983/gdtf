@@ -70,3 +70,6 @@ pub fn paint_active_buttons(
         background.0 = fill;
     }
 }
+
+#[cfg(test)]
+mod test;

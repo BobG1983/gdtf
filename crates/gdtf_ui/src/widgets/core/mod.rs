@@ -123,9 +123,7 @@ mod scroll_list;
 mod segmented_control;
 mod switch;
 #[cfg(test)]
-mod test;
-#[cfg(test)]
-mod test_hud;
+pub(crate) mod test_support;
 mod text_field;
 
 pub use accordion::{
