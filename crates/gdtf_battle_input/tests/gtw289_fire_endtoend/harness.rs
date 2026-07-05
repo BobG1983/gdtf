@@ -1,33 +1,5 @@
-//! GTW-289 REGRESSION TEST: clicking an enemy produces a SHOT end-to-end.
-//!
-//! GTW-289 ("clicking an enemy = no shot") was found ALREADY FIXED on re-test — the original
-//! cause was the GTW-297 empty-weapon-registry black-screen, since fixed. This test guards the
-//! fix: it wires the full click->shot chain so a future regression that re-silences the fire
-//! path fails here.
-//!
-//! The existing `acts.rs::left_click_emits_one_fire_requested` proves the INPUT half of the
-//! chain (a left-click on an enemy emits exactly one `FireRequested`), but stops at the
-//! message — its shooter is UNARMED (no `Weapon` marker, no battle surfaces), so `fire()` is a
-//! no-op and no shot is observable. This test wires the WHOLE chain:
-//!
-//! ```text
-//!   left-click (real cursor -> InspectTarget)            [gdtf_battle_input]
-//!     -> left_click_act decides FIRE                   (decision.rs)
-//!       -> ActIntent::Fire pushed                      (apply_left_click)
-//!         -> dispatch_act_intents drains -> FireRequested emitted   (intent/seam.rs)
-//!           -> dispatch_fire gates (arc) + runs fire() (acts/fire.rs, SimActsPlugin)
-//!             -> observable: shooter TU debited, magazine decremented  (fire/volley.rs)
-//! ```
-//!
-//! It spawns a FULLY-ARMED shooter (the `ShooterQuery` `With<Weapon>` set + the `TargetQuery`
-//! battle surfaces the shooter's own liveness reads through) and a battle-surface ENEMY in the
-//! occupancy grid, places them in a LEGITIMATE firing situation (in range, in-arc, alive,
-//! loaded, affordable), synthesizes the click, runs one `update()`, and asserts the shot ran by
-//! the SAME seed-agnostic relation the sim's own AC3 test uses: the shooter's TU strictly
-//! dropped (the up-front mode charge) — hit/miss is seed-dependent, the CHARGE is not.
-//!
-//! Every `app.world_mut()` mutation is in a TEST BODY (`bevy-traps.md` #7 carve-out (a)); no
-//! function here takes `&mut World`/`&World`.
+//! Shared end-to-end fixture: the fully-armed click-to-shot app (camera /
+//! window), armed shooter / enemy authoring, and the cursor drive.
 
 use bevy::{
     camera::{
@@ -39,7 +11,7 @@ use bevy::{
     transform::components::GlobalTransform,
     window::{PrimaryWindow, Window, WindowResolution},
 };
-use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedShooter};
+use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget};
 use gdtf_battle_presenter::{ActiveLevel, ViewMode, WorldCamera};
 use gdtf_battle_sim::{
     Accuracy, Aiming, BaseSpread, BattleInProgress, BattleSeed, Cell, CellLevel, DamageProfile,
@@ -52,23 +24,22 @@ use gdtf_battle_sim::{
     acts::SimActsPlugin,
     test_support::{TEST_SEED, insert_sim_resources, single_mode},
 };
-use gdtf_test_utils::{clear_mouse, press_left};
 
 /// The faction the player controls (matches the litany's gang-0 `PlayerFaction` seed).
-const PLAYER_FACTION: Faction = Faction::new(0);
+pub(crate) const PLAYER_FACTION: Faction = Faction::new(0);
 /// An ENEMY faction (distinct from the player) — the FIRE target.
-const ENEMY_FACTION: Faction = Faction::new(1);
+pub(crate) const ENEMY_FACTION: Faction = Faction::new(1);
 
 /// Synthetic render-target size (physical px) — the `acts.rs` / `picking.rs` harness size.
-const TARGET_SIZE: Vec2 = Vec2::new(1280.0, 720.0);
+pub(crate) const TARGET_SIZE: Vec2 = Vec2::new(1280.0, 720.0);
 /// A cursor offset (from window centre) resolving to a non-origin in-grid SHOOTER cell.
-const SHOOTER_CURSOR_OFFSET: Vec2 = Vec2::new(40.0, 32.0);
+pub(crate) const SHOOTER_CURSOR_OFFSET: Vec2 = Vec2::new(40.0, 32.0);
 /// A second, distinct cursor offset resolving to a different in-grid TARGET cell.
-const TARGET_CURSOR_OFFSET: Vec2 = Vec2::new(200.0, 160.0);
+pub(crate) const TARGET_CURSOR_OFFSET: Vec2 = Vec2::new(200.0, 160.0);
 
 /// A deterministic `Camera` whose `viewport_to_world_2d` succeeds with no render pipeline
 /// (the `picking.rs` synthetic-camera recipe).
-fn synthetic_camera() -> Camera {
+pub(crate) fn synthetic_camera() -> Camera {
     let mut projection = Projection::Orthographic(OrthographicProjection::default_2d());
     projection.update(TARGET_SIZE.x, TARGET_SIZE.y);
     Camera {
@@ -91,7 +62,7 @@ fn synthetic_camera() -> Camera {
 /// so the click drains and the fire dispatch runs in ONE update). Plus the sim resources, a
 /// synthetic camera/window so the REAL picker resolves a cursor to a cell, and seeded input
 /// buffers.
-fn endtoend_app() -> App {
+pub(crate) fn endtoend_app() -> App {
     let mut app = App::new();
     // GTW-322: `update_selection_highlight` (in `GdtfBattleInputPlugin`) spawns its reticle
     // via `Commands::spawn_scene`, which needs an `AssetServer` + the scene schedule. Under
@@ -144,7 +115,7 @@ fn endtoend_app() -> App {
 /// `TargetQuery` (battle surfaces, since the shooter's own liveness reads through the target
 /// query) component set. Position matches the occupancy cell so `dispatch_fire`'s arc reads
 /// the right actor cell. Ample TU (200) so even an out-of-arc turn-then-fire is affordable.
-fn spawn_armed_shooter(app: &mut App, cell: CellLevel, facing: Direction) -> Entity {
+pub(crate) fn spawn_armed_shooter(app: &mut App, cell: CellLevel, facing: Direction) -> Entity {
     spawn_armed_shooter_inner(app, cell, facing, false)
 }
 
@@ -153,13 +124,17 @@ fn spawn_armed_shooter(app: &mut App, cell: CellLevel, facing: Direction) -> Ent
 /// weapon, NOT the gun. The input fire chain must STILL resolve the ranged weapon (via the
 /// `MeleeWeapon`-marker filter, not relate order); a regression to the order-dependent
 /// `Wields::weapon()` would resolve the magazine-less melee weapon and silently refuse the fire.
-fn spawn_armed_shooter_melee_first(app: &mut App, cell: CellLevel, facing: Direction) -> Entity {
+pub(crate) fn spawn_armed_shooter_melee_first(
+    app: &mut App,
+    cell: CellLevel,
+    facing: Direction,
+) -> Entity {
     spawn_armed_shooter_inner(app, cell, facing, true)
 }
 
 /// Spawns the armed PLAYER-faction shooter + relates its ranged weapon; when `melee_first` it
 /// ALSO relates a melee weapon BEFORE the ranged one so the melee entity is FIRST in `Wields`.
-fn spawn_armed_shooter_inner(
+pub(crate) fn spawn_armed_shooter_inner(
     app: &mut App,
     cell: CellLevel,
     facing: Direction,
@@ -247,7 +222,7 @@ fn spawn_armed_shooter_inner(
 /// Place an ENEMY-faction ganger carrying the full TARGET battle-surface set at `cell` in the
 /// occupancy grid (HIGH band, so the march finds a body to strike), returning its entity. Its
 /// armor (if any) would live on related piece entities (GTW-323); this bare enemy wears none.
-fn place_armed_enemy(app: &mut App, cell: CellLevel) -> Entity {
+pub(crate) fn place_armed_enemy(app: &mut App, cell: CellLevel) -> Entity {
     let enemy = app
         .world_mut()
         .spawn((
@@ -281,7 +256,7 @@ fn place_armed_enemy(app: &mut App, cell: CellLevel) -> Entity {
 
 /// Set the primary window cursor to a window-centre offset and resolve it via one `update()`
 /// (the REAL `pick_hovered_cell`), returning the resolved hovered cell.
-fn hover_at(app: &mut App, offset: Vec2) -> CellLevel {
+pub(crate) fn hover_at(app: &mut App, offset: Vec2) -> CellLevel {
     set_cursor(app, Some(TARGET_SIZE * 0.5 + offset));
     app.update();
     app.world()
@@ -291,171 +266,9 @@ fn hover_at(app: &mut App, offset: Vec2) -> CellLevel {
 }
 
 /// Set (or clear) the primary window cursor position (logical px).
-fn set_cursor(app: &mut App, position: Option<Vec2>) {
+pub(crate) fn set_cursor(app: &mut App, position: Option<Vec2>) {
     let mut windows = app.world_mut().query::<&mut Window>();
     for mut window in windows.iter_mut(app.world_mut()) {
         window.set_cursor_position(position);
     }
-}
-
-/// GTW-289 — a left-click on an ENEMY in a LEGITIMATE firing situation produces a SHOT
-/// end-to-end: the shooter's TU strictly drops (the up-front mode charge) after the click.
-#[test]
-fn click_on_enemy_produces_a_shot_endtoend() {
-    let mut app = endtoend_app();
-
-    // Resolve the shooter cell + target cell from the real picker first, so the shooter's
-    // Position / occupancy cell and the enemy's occupancy cell are the SAME cells the click
-    // will resolve.
-    let shooter_cell = hover_at(&mut app, SHOOTER_CURSOR_OFFSET);
-    let target_cell = hover_at(&mut app, TARGET_CURSOR_OFFSET);
-
-    // Place the shooter facing TOWARD the target (in-arc) so the simplest fire path runs;
-    // ample TU also covers the out-of-arc turn-then-fire branch if the facing is off.
-    let facing =
-        Direction::from_cells(shooter_cell.cell(), target_cell.cell()).unwrap_or(Direction::East);
-    let shooter = spawn_armed_shooter(&mut app, shooter_cell, facing);
-    // Register the shooter in the occupancy grid at its own cell (so the SELECT click finds it)
-    if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
-        grid.set_occupant(shooter_cell, Some(shooter));
-        grid.set_occupant_band(shooter_cell, Some(HeightBand::High));
-    }
-    let enemy = place_armed_enemy(&mut app, target_cell);
-    assert_ne!(shooter, enemy, "distinct shooter / enemy entities");
-
-    // SELECT the shooter: cursor over its cell, fresh left-click, one update.
-    let _ = hover_at(&mut app, SHOOTER_CURSOR_OFFSET);
-    press_left(&mut app);
-    app.update();
-    clear_mouse(&mut app);
-    assert_eq!(
-        app.world()
-            .get_resource::<SelectedShooter>()
-            .and_then(|s| **s),
-        Some(shooter),
-        "the player-faction shooter must be SELECTED before firing",
-    );
-
-    // Move the cursor onto the ENEMY cell and snapshot the shooter's TU before the fire click.
-    let _ = hover_at(&mut app, TARGET_CURSOR_OFFSET);
-    let tu_before = app.world().get::<Tu>(shooter).map(|t| **t);
-    assert!(tu_before.is_some(), "shooter has a Tu pool");
-
-    // FIRE: a fresh left-click on the enemy cell. One update runs the WHOLE chain
-    // (click -> intent -> drain -> FireRequested -> dispatch_fire -> fire()).
-    press_left(&mut app);
-    app.update();
-
-    let tu_after = app.world().get::<Tu>(shooter).map(|t| **t);
-    let shot_ran = matches!((tu_before, tu_after), (Some(b), Some(a)) if a < b);
-    assert!(
-        shot_ran,
-        "clicking an enemy in a legitimate firing situation must run fire() (the shooter's \
-         TU must drop by the mode charge) — tu {tu_before:?} -> {tu_after:?}. If TU is \
-         UNCHANGED the fire path is silent end-to-end (GTW-289).",
-    );
-
-    // The selection must be UNCHANGED by a FIRE edge (GTW-238 — FIRE does not re-select).
-    assert_eq!(
-        app.world()
-            .get_resource::<SelectedShooter>()
-            .and_then(|s| **s),
-        Some(shooter),
-        "a FIRE edge leaves the selection untouched",
-    );
-}
-
-/// GTW-505 C5 — the INPUT-LAYER zero-ranged-regression proof, ORDERING-INDEPENDENT: a shooter
-/// wielding BOTH a melee weapon (related FIRST) AND a ranged weapon still fires the RANGED
-/// weapon end-to-end. The input `can_fire` precheck (`fire_surface::try_fire_request`) resolves
-/// the gun via `Wields::ranged_weapon` (the `MeleeWeapon`-marker filter), NOT `Wields::weapon`
-/// (the FIRST related entity) — so the melee weapon being first never silences the fire.
-///
-/// PIN: with the OLD order-dependent `Wields::weapon()`, the FIRST related entity here is the
-/// magazine-less melee weapon; `try_fire_request`'s `(Magazine, Handedness)` read would miss
-/// it and fail closed → NO `FireRequested`, the shooter's TU UNCHANGED. Pinning the TU drop
-/// (the mode charge) AND the RANGED magazine decrement proves the gun was resolved despite the
-/// melee weapon sitting first in `Wields`.
-#[test]
-fn click_on_enemy_fires_the_ranged_weapon_even_with_a_melee_weapon_related_first() {
-    let mut app = endtoend_app();
-
-    let shooter_cell = hover_at(&mut app, SHOOTER_CURSOR_OFFSET);
-    let target_cell = hover_at(&mut app, TARGET_CURSOR_OFFSET);
-
-    let facing =
-        Direction::from_cells(shooter_cell.cell(), target_cell.cell()).unwrap_or(Direction::East);
-    // The MELEE weapon is related FIRST (so it is first in `Wields`), the ranged gun second.
-    let shooter = spawn_armed_shooter_melee_first(&mut app, shooter_cell, facing);
-    if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
-        grid.set_occupant(shooter_cell, Some(shooter));
-        grid.set_occupant_band(shooter_cell, Some(HeightBand::High));
-    }
-    let enemy = place_armed_enemy(&mut app, target_cell);
-    assert_ne!(shooter, enemy, "distinct shooter / enemy entities");
-
-    // The ranged weapon's magazine BEFORE firing — resolved the ranged way (excluding the melee
-    // weapon) so this reads the GUN's count, never the magazine-less melee entity.
-    let rounds_before = ranged_magazine_rounds(&app, shooter);
-    assert_eq!(
-        rounds_before,
-        Some(10),
-        "precondition: the RANGED weapon (resolved excluding the melee one) holds 10 rounds",
-    );
-
-    // SELECT the shooter.
-    let _ = hover_at(&mut app, SHOOTER_CURSOR_OFFSET);
-    press_left(&mut app);
-    app.update();
-    clear_mouse(&mut app);
-    assert_eq!(
-        app.world()
-            .get_resource::<SelectedShooter>()
-            .and_then(|s| **s),
-        Some(shooter),
-        "the player-faction shooter must be SELECTED before firing",
-    );
-
-    // FIRE on the enemy.
-    let _ = hover_at(&mut app, TARGET_CURSOR_OFFSET);
-    let tu_before = app.world().get::<Tu>(shooter).map(|t| **t);
-    press_left(&mut app);
-    app.update();
-
-    let tu_after = app.world().get::<Tu>(shooter).map(|t| **t);
-    let shot_ran = matches!((tu_before, tu_after), (Some(b), Some(a)) if a < b);
-    assert!(
-        shot_ran,
-        "with a melee weapon related FIRST, the input fire chain must STILL fire the ranged \
-         weapon (the shooter's TU must drop) — tu {tu_before:?} -> {tu_after:?}. If TU is \
-         UNCHANGED the input `can_fire` resolved the magazine-less melee weapon (the \
-         order-dependent `Wields::weapon()` regression GTW-505 C5 guards).",
-    );
-
-    // The RANGED magazine decremented — proof the GUN was the entity `fire()` resolved + spent,
-    // not the magazine-less melee weapon (a misresolution leaves rounds untouched).
-    let rounds_after = ranged_magazine_rounds(&app, shooter);
-    assert!(
-        matches!((rounds_before, rounds_after), (Some(b), Some(a)) if a < b),
-        "the RANGED magazine must drop (the burst spent it) — proof the gun, not the \
-         magazine-less melee weapon, was fired: {rounds_before:?} -> {rounds_after:?}",
-    );
-}
-
-/// The current round count of the shooter's RANGED weapon magazine, resolved the ranged way
-/// (`Wields::ranged_weapon`, excluding the `MeleeWeapon`-marked entity) so it reads the GUN's
-/// magazine even when a melee weapon is related first. `None` when unarmed / no ranged weapon.
-fn ranged_magazine_rounds(app: &App, shooter: Entity) -> Option<u16> {
-    use gdtf_battle_sim::{MeleeWeapon, Wields};
-    let melee_entities: bevy::platform::collections::HashSet<Entity> = {
-        let mut q = app
-            .world()
-            .try_query_filtered::<Entity, With<MeleeWeapon>>()?;
-        q.iter(app.world()).collect()
-    };
-    app.world()
-        .get::<Wields>(shooter)
-        .and_then(|w| w.ranged_weapon(|e| melee_entities.contains(&e)))
-        .and_then(|ranged| app.world().get::<Magazine>(ranged))
-        .map(|m| *m.rounds())
 }
