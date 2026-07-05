@@ -1,0 +1,206 @@
+//! C5 — the visibility-aware blocking predicate: a visible enemy blocks, an
+//! invisible enemy does not, own-squad always blocks, and explored scatter
+//! blocks on geometry.
+
+use super::{
+    super::support::{cell, default_floor_costs, fog, grid_with, no_links, tuning},
+    support::*,
+};
+use crate::{
+    occupancy::TerrainKind,
+    pathfinder::{PlanningView, find_path},
+    visibility::FactionRelation,
+};
+
+/// **C5 — a squad-VISIBLE enemy blocks the route.** The corridor forces the route
+/// through `(2, 5, 0)`; an ENEMY standing there, on a cell that is squad-VISIBLE, is a
+/// blocker — the goal is unreachable. The CONTROL (no occupant) proves the corridor is
+/// otherwise open.
+#[test]
+fn visible_enemy_blocks_the_route() {
+    let mut grid = corridor();
+    let links = no_links();
+    let tuning = tuning();
+    let enemy = spawn_entity();
+    let block_cell = cell(2, 5, 0);
+    grid.set_occupant(block_cell, Some(enemy));
+    let start = cell(0, 5, 0);
+    let goal = cell(4, 5, 0);
+
+    // The whole corridor is VISIBLE, and the enemy's cell is VISIBLE — so the enemy
+    // blocks (is_ganger_visible(Other) is true on a visible cell).
+    let floor_costs = default_floor_costs(&tuning);
+    let squad = fog(&corridor_cells(), &[]);
+    let planning = PlanningView::new(&squad, resolve_as(enemy, FactionRelation::Other));
+    let result = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
+    assert!(
+        result.is_err(),
+        "a squad-VISIBLE enemy on the only route blocks it (PathBlocked), got {result:?}",
+    );
+
+    // CONTROL: a clean corridor with NO occupant — the same fog/geometry now has a
+    // route, proving the block above was the visible enemy.
+    let clear_grid = corridor();
+    let open = find_path(
+        start,
+        goal,
+        &clear_grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
+    assert!(
+        open.is_ok(),
+        "with no occupant the corridor is open — the block was the visible enemy, got {open:?}",
+    );
+}
+
+/// **C5 — an INVISIBLE (not squad-VISIBLE) enemy does NOT block.** The SAME enemy on the
+/// SAME chokepoint, but now its cell is only EXPLORED (not currently VISIBLE): the route
+/// passes straight through it (bending around an unseen body would leak its position).
+/// This flips the verdict of [`visible_enemy_blocks_the_route`] by changing ONLY the
+/// enemy's cell visibility (VISIBLE → EXPLORED-only).
+#[test]
+fn invisible_enemy_does_not_block() {
+    let mut grid = corridor();
+    let links = no_links();
+    let tuning = tuning();
+    let enemy = spawn_entity();
+    let block_cell = cell(2, 5, 0);
+    grid.set_occupant(block_cell, Some(enemy));
+    let start = cell(0, 5, 0);
+    let goal = cell(4, 5, 0);
+
+    // The corridor is EXPLORED (routable) but NOT currently VISIBLE — so the enemy on
+    // it is not squad-VISIBLE and does NOT block (is_ganger_visible(Other) is false).
+    let floor_costs = default_floor_costs(&tuning);
+    let squad = fog(&[], &corridor_cells());
+    let planning = PlanningView::new(&squad, resolve_as(enemy, FactionRelation::Other));
+    let result = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
+    assert!(
+        result.is_ok(),
+        "an enemy the squad cannot see must NOT block the route, got {result:?}",
+    );
+    assert!(
+        result.is_ok_and(|p| p.cells().contains(&block_cell)),
+        "the route passes THROUGH the invisible enemy's cell (no fog-leaking detour)",
+    );
+}
+
+/// **C5 — an OWN-SQUAD ganger ALWAYS blocks**, even on a merely-EXPLORED cell. The same
+/// chokepoint and EXPLORED-only fog as [`invisible_enemy_does_not_block`] — but with the
+/// occupant resolved as [`FactionRelation::OwnSquad`] the route is blocked. This flips
+/// that test's verdict by changing ONLY the occupant's faction relation.
+#[test]
+fn own_squad_ganger_always_blocks() {
+    let mut grid = corridor();
+    let links = no_links();
+    let tuning = tuning();
+    let mate = spawn_entity();
+    let block_cell = cell(2, 5, 0);
+    grid.set_occupant(block_cell, Some(mate));
+    let start = cell(0, 5, 0);
+    let goal = cell(4, 5, 0);
+
+    // Same EXPLORED-only fog (the cell is NOT currently VISIBLE) — but an own-squad
+    // ganger is trivially visible, so it blocks regardless.
+    let floor_costs = default_floor_costs(&tuning);
+    let squad = fog(&[], &corridor_cells());
+    let planning = PlanningView::new(&squad, resolve_as(mate, FactionRelation::OwnSquad));
+    let result = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
+    assert!(
+        result.is_err(),
+        "an own-squad ganger always blocks, even on an EXPLORED-only cell, got {result:?}",
+    );
+}
+
+/// **C5 — VISIBLE/EXPLORED scatter (Cover) blocks** (true geometry on a routable cell).
+/// The chokepoint is a Cover tile (the model's blocking scatter/prop); on a routable
+/// (EXPLORED) cell it blocks the route. The CONTROL (the same cell EXPLORED but Open)
+/// proves the block is the scatter, not the visibility.
+#[test]
+fn explored_scatter_blocks_the_route() {
+    let links = no_links();
+    let tuning = tuning();
+    let occupant = spawn_entity();
+    let block_cell = cell(2, 5, 0);
+    let start = cell(0, 5, 0);
+    let goal = cell(4, 5, 0);
+
+    // The corridor with the chokepoint a Cover scatter tile.
+    let mut walls = Vec::new();
+    for x in 0..=4 {
+        walls.push((cell(x, 4, 0), TerrainKind::Wall));
+        walls.push((cell(x, 6, 0), TerrainKind::Wall));
+    }
+    walls.push((block_cell, TerrainKind::Cover));
+    let grid = grid_with(&walls);
+
+    // The whole corridor is EXPLORED (routable); the Cover scatter still blocks.
+    let floor_costs = default_floor_costs(&tuning);
+    let squad = fog(&[], &corridor_cells());
+    let planning = PlanningView::new(&squad, resolve_as(occupant, FactionRelation::Other));
+    let result = find_path(
+        start,
+        goal,
+        &grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
+    assert!(
+        result.is_err(),
+        "a blocking scatter (Cover) on the only route blocks it even when explored, got \
+         {result:?}",
+    );
+
+    // CONTROL: the same cell EXPLORED but OPEN (no scatter) — the route succeeds, so the
+    // block was the scatter geometry, not the fog.
+    let open_grid = corridor();
+    let open = find_path(
+        start,
+        goal,
+        &open_grid,
+        &links,
+        &tuning,
+        &floor_costs,
+        crate::injuries::MovementCostFactor::IDENTITY,
+        &planning,
+    );
+    assert!(
+        open.is_ok(),
+        "with the scatter removed the explored corridor is open — the block was the Cover, got \
+         {open:?}",
+    );
+}

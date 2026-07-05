@@ -2,12 +2,15 @@
 //! (GTW-201 wave 10) — split by concern, with shared fixtures in [`support`].
 
 mod armor_pieces;
+mod bsn_scene;
+mod equipment;
 mod error;
 mod melee;
 mod occupancy_kind;
 mod seed;
 mod serde;
 mod spawn;
+mod stats_seed;
 mod support;
 mod terrain_uuid;
 mod value;
