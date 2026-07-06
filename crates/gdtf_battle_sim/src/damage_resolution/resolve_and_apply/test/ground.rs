@@ -9,7 +9,7 @@
 //! that NO other state is touched (no applied damage, no cover / slab depletion), and
 //! that the path is replay-deterministic (it draws NO RNG). The monotonic-sum property
 //! is driven end-to-end through the production `dispatch_fire` + `sync_accrued_ground`
-//! wiring in `tests/gtw366_ground_accrued_bridge.rs`.
+//! wiring in `tests/ground_accrued_bridge.rs`.
 
 use super::support::*;
 

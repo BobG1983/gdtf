@@ -6,7 +6,7 @@
 //! only binds it to [`FieldsFamily`] with the authored member key. The
 //! assertions stay VALUE-AGNOSTIC (catalog presence + the authored
 //! filename-stem key) — the per-round drain / immunity / seed MECHANISM is
-//! covered by the in-crate sim tests + the `gtw545_fields` integration test.
+//! covered by the in-crate sim tests + the `field_seeding` integration test.
 
 mod load_suite;
 

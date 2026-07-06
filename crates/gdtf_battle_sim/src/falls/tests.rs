@@ -3,7 +3,7 @@
 //! synthesis). The ECS system ([`apply_falls`](super::apply_falls)) — the C1 faller
 //! predicate, the C3 stair brace, the C6/C7 signal + multi-faller, and the C8 hole
 //! regression — is exercised end-to-end by the `GdtfTestAppBuilder` integration test
-//! (`tests/gtw523_falls_sim.rs`).
+//! (`tests/fall_resolution/`).
 //!
 //! Every assert is on the FORMULA / relations (monotone in storeys, same-seed determinism,
 //! a hot-edit shifts the blow), NEVER a pinned tunable magnitude (the GTW-506 melee /

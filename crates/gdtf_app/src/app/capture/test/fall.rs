@@ -52,7 +52,7 @@ struct FallLog(Vec<gdtf_battle_sim::FallOccurred>);
 /// `spawn_menu`). Registers BOTH the REAL `trigger_fall_at_frame` (ordered `.before(apply_falls)`,
 /// exactly as `DevCapturePlugin::build` wires it) AND the production `apply_falls` (via the GTW-523
 /// `FallsPlugin`), plus a recorder that drains `FallOccurred` into [`FallLog`]. The grids / tuning
-/// / injury content + the two RNG streams `apply_falls` reads are all seeded (the `gtw523_falls_sim`
+/// / injury content + the two RNG streams `apply_falls` reads are all seeded (the `fall_resolution`
 /// seeding, so the fall resolves rather than fail-closing); `CombatTuning::default()` suffices since
 /// the test asserts the DROP, never a pinned damage magnitude. The ganger spawns on the GROUND
 /// (level 0), exactly where the shipped skirmish places it (no upper-storey placement).
@@ -87,7 +87,7 @@ fn spawn_fall_test_app(fall_frame: FallAtFrame) -> (bevy::app::App, bevy::ecs::e
         .init_resource::<FallLog>();
 
     // The grids / tuning / injury content + the two RNG streams apply_falls reads (all present,
-    // so the fall resolves — the gtw523_falls_sim seeding). CombatTuning::default() suffices:
+    // so the fall resolves — the fall_resolution seeding). CombatTuning::default() suffices:
     // this test asserts the DROP (Position + FallOccurred), never a pinned damage magnitude.
     let root = BattleSeed::new(SEED);
     app.insert_resource(SurfaceGrid::new());

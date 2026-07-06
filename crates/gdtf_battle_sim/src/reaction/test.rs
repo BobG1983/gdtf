@@ -2,7 +2,7 @@
 //! ([`reset_reactions_used`]) — the cap-lifecycle behavior in isolation (GTW-468 C6).
 //!
 //! The full END-TO-END trigger behavior (AC1–AC7) is exercised against the PRODUCTION
-//! wiring in `tests/gtw468_reaction_trigger.rs` (the `BattleSimPlugin` +
+//! wiring in `tests/reaction_trigger/` (the `BattleSimPlugin` +
 //! `SetupBattleRequested` idiom, driven through the brain/move/dispatch path). These
 //! in-crate tests cover only the reset system's contract: a `TurnStarted` zeroes every
 //! watcher's [`ReactionsUsed`], and no boundary leaves it untouched.

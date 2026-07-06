@@ -18,7 +18,7 @@ use crate::{
 /// wall's KIND-based `is_blocked` (vision) is also still true — proving the path surface and
 /// the vision surface AGREE for a kind-default wall (the C5 zero-regression guarantee).
 #[test]
-fn gtw501_wall_is_path_blocked_after_setup() {
+fn wall_is_path_blocked_after_setup() {
     let wall_cell = cl(2, 2, 0);
     let slab_cell = cl(3, 4, 1);
     let open_cell = cl(5, 5, 0);
