@@ -5,10 +5,12 @@
 //!
 //! - **Tier (a)** — `MinimalPlugins` via `GdtfTestAppBuilder`: no
 //!   `AssetServer`, so the family's loader registration + folder kick-off must
-//!   no-op without panicking (`bevy-traps.md` rule 1); the gated Load→Intro
-//!   transition is then driven by seeding the full gate set through the ONE
-//!   seed source ([`gate`](super::gate)), and the companion negative withholds
-//!   the family's registry to prove it is genuinely gate-blocking.
+//!   no-op without panicking (`bevy-traps.md` rule 1) while the registration
+//!   line seeds the family's DEFAULT registry (the GTW-629 headless-fallback
+//!   rider); the gated Load→Intro transition is then driven by seeding the
+//!   remaining (bespoke) gate set through the ONE seed source
+//!   ([`gate`](super::gate)), and the companion negative withholds the
+//!   family's registry to prove it is genuinely gate-blocking.
 //! - **Tier (b)** — headless `DefaultPlugins` via `GdtfLoadTestAppBuilder`: a
 //!   real `AssetServer` drives the WHOLE production Load flow — the GTW-570
 //!   `register_content_family` seam loads the family's real folder from disk
@@ -33,11 +35,13 @@
 //!    [`load_gates_on_registry`], and [`real_asset_resolves_registry`].
 //! 2. Author the family's content folder under `assets/` (tier (b) reads the
 //!    real folder through the real seam — no fixture copy of shipped content).
-//! 3. If the new registry is Load-gate-blocking, its feature ticket extends
-//!    the production `seed_load_fallbacks` (as every gate registry does) — the
-//!    seed source (`gdtf_app::test_support::seed_load_gate`) inherits it, so
-//!    no test file changes. Forgetting that edit turns every tier-(a) walk
-//!    red (the machine rests in `Load`), so the recipe is self-enforcing.
+//! 3. NOTHING else — the family's ONE `register_content_family` line already
+//!    yields its loader, per-file salvage, validation-window membership, and
+//!    the headless fallback (the GTW-629 rider seeds `Registry::default()`
+//!    when there is no `AssetServer`), so the Load gate stays satisfiable in
+//!    every tier-(a) walk with zero seed-arm edits. (Only a new BESPOKE
+//!    gate-blocking resource still extends the production
+//!    `seed_load_fallbacks`.)
 
 use gdtf_app::test_support::{AppState, app_state, load_released};
 use gdtf_assets::ContentFamily;
@@ -85,12 +89,24 @@ pub(crate) trait FamilyLoadContract: ContentFamily {
 /// Tier (a) — under `MinimalPlugins` there is no `AssetServer`, so entering
 /// `Load` must not panic: the family's loader registration and `load_folder`
 /// kick-off both guard on the missing server and no-op (`bevy-traps.md` rule
-/// 1). The machine still advances past `Load` once the full gate set is seeded
-/// (standing in for all resolves completing), proving the guard holds.
+/// 1), while the registration line seeds the family's DEFAULT registry (the
+/// GTW-629 headless-fallback rider — the recipe's "one line yields the
+/// fallback" pin). The machine still advances past `Load` once the remaining
+/// gate set is seeded (standing in for all resolves completing), proving the
+/// guard holds.
 pub(crate) fn loader_no_ops_without_asset_server<F: FamilyLoadContract>() {
     let mut app = GdtfTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
+
+    // The GTW-629 rider: with no AssetServer the family's ONE registration
+    // line (in the Load plugin, built above) seeded the default registry.
+    assert!(
+        app.world().get_resource::<F::Registry>().is_some(),
+        "with no AssetServer, `register_content_family` must seed the default {} (the \
+         GTW-629 headless-fallback rider)",
+        registry_name::<F>(),
+    );
 
     // Enter Load: the loader registration + folder kick-off must no-op (no
     // AssetServer), not panic.
@@ -117,8 +133,9 @@ pub(crate) fn loader_no_ops_without_asset_server<F: FamilyLoadContract>() {
 
 /// Tier (a) companion — the Load→Intro transition GATES on the family's
 /// registry: with every OTHER gate resource present but the registry withheld
-/// (and no `AssetServer` to resolve one), the machine must stay in `Load` for
-/// the whole budget; re-seeding the full gate then releases it. Proves the
+/// (removed after the build-time rider seed, with no `AssetServer` to resolve
+/// one), the machine must stay in `Load` for the whole budget; re-seeding the
+/// gate plus the registry then releases it. Proves the
 /// registry is a genuine gate-blocking resource (the machine never leaves
 /// `Load` before the family folder is verified loaded), bracketing the
 /// transition condition from both sides.
@@ -151,8 +168,13 @@ pub(crate) fn load_gates_on_registry<F: FamilyLoadContract>() {
     );
 
     // The flip: with the registry seeded too, the SAME machine advances —
-    // proving the registry was the one withheld gate condition.
+    // proving the registry was the one withheld gate condition. The seed
+    // source only re-covers the BESPOKE gate resources (GTW-629 moved the
+    // seam-family arms out of `seed_load_fallbacks`), so the family's own
+    // registry is re-seeded directly — the SAME default the seam rider seeds
+    // at registration (a build-time seed cannot re-run here).
     gate::seed_full_load_gate(&mut app);
+    app.world_mut().insert_resource(F::Registry::default());
     // Intro is TRANSIENT — probe via `load_released`, never `== Intro` (GTW-589/GTW-601).
     let released = advance_until(&mut app, load_released, TRANSITION_BUDGET);
     assert!(

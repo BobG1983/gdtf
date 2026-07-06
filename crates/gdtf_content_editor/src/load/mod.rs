@@ -50,9 +50,11 @@
 //!   [`HotRonChain::with_fallback`](gdtf_assets::HotRonChain::with_fallback)
 //!   (the game's registration of the same chain stays fallback-less — the
 //!   policy rides the host's registration, never a seam mode flag).
-//! - **Headless inertness:** every seam ext call self-gates on an
+//! - **Headless fallback:** every seam ext call self-gates on an
 //!   [`AssetServer`](bevy::asset::AssetServer) being present (`bevy-traps.md`
-//!   #1), so a `MinimalPlugins` harness registers no loaders and no systems.
+//!   #1), so a `MinimalPlugins` harness registers no loaders and no systems —
+//!   each family registration instead seeds its DEFAULT registry (the GTW-629
+//!   rider), so the presence-gated transition still releases headless.
 //! - **Own-absence gating (`bevy-traps.md` #3):** each generic resolve is
 //!   registered `run_if(handle-present AND not(resource_exists::<Registry>))`,
 //!   so every branch gates on its OWN resource's absence and none starves

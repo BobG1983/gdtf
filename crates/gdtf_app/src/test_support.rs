@@ -78,14 +78,20 @@ pub fn load_released(app: &App) -> bool {
 }
 
 /// The ONE test-side Load-gate seed source (GTW-580): the production
-/// [`seed_load_fallbacks`] plus the [`GangerStatTuning`] delta, so the seeded set
-/// truly covers the WHOLE `transition_to_intro` gate.
+/// [`seed_load_fallbacks`] plus the [`GangerStatTuning`] delta — together with
+/// the GTW-629 seam rider this covers the WHOLE `transition_to_intro` gate.
+///
+/// Since GTW-629 the production seed carries the BESPOKE loads only (injuries
+/// pair / prefab / situation / tunings / theme); the eight generic content
+/// families are seeded at APP BUILD by their own `register_content_family`
+/// line (the seam's headless-fallback rider), so under a `GdtfTestAppBuilder`
+/// app the family registries are already present before this system ever runs.
 ///
 /// Every tier-(a) `MinimalPlugins` load test seeds the gate through this system
 /// (via the shared `tests/load_suite/gate.rs` helpers) instead of hand-stamping
-/// its own `insert_resource` block, so adding gate-blocking registry N+1 touches
-/// the production seed (which every gate registry already extends when it lands)
-/// and NO pre-existing test file.
+/// its own `insert_resource` block, so adding a gate-blocking BESPOKE resource
+/// touches the production seed only (a new content FAMILY touches nothing —
+/// its registration line is its fallback) and NO pre-existing test file.
 ///
 /// # Why the delta lives here and not in `seed_load_fallbacks`
 ///
@@ -135,9 +141,7 @@ pub use crate::states::running::procgen_viz::test_support::{
     SizeStatusText, StepButton, ThemeDropdown, VizConfig, WidthField,
 };
 pub use crate::{
-    app::auto_battle::{
-        AutoBattleActive, AutoBattlePlugin, auto_battle_enabled, seed_load_fallbacks,
-    },
+    app::auto_battle::{AutoBattleActive, AutoBattlePlugin, auto_battle_enabled},
     states::{
         AfterMathState, AppState, BattleScapeState, GameState, LoadedSituation, RunningState,
         ScenesPlugin,
@@ -187,6 +191,7 @@ pub use crate::{
                 BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton,
             },
         },
+        seed_load_fallbacks,
     },
 };
 

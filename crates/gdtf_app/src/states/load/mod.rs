@@ -6,6 +6,13 @@ mod systems;
 pub(in crate::states) use plugin::LoadScenePlugin;
 #[cfg(test)]
 pub(crate) use systems::hot_reload_test_support;
+mod fallbacks;
+// The bespoke headless Load-fallback seed (GTW-629) — Load-orchestration policy
+// owned here; the dev-only auto-battle affordance registers it on `Startup`,
+// and the `states/mod.rs` re-export widens it to `pub` under `test-support`
+// for the load-suite gate seed. Unconditional `support_use!`, so it tracks
+// `support_item` visibility in lockstep (the re-export chain caveat).
+crate::support_use!(fallbacks::seed_load_fallbacks;);
 mod resources;
 // The resolved authored battlefield resource the Generation slice (E10.5) reads;
 // it persists past `OnExit(Load)`, so it is the load scene's outward-facing

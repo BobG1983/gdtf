@@ -30,19 +30,33 @@ use crate::{
 /// C3).
 pub trait ContentFamilyAppExt {
     /// Registers a content family's loader + kick-off / resolve / redrive
-    /// chain.
+    /// chain — or, headless, seeds the family's fallback registry.
     ///
     /// Registration SELF-GATES on an [`AssetServer`] being present
     /// (registering an asset without one panics), so a `MinimalPlugins`
     /// headless app skips the whole chain — no loader, no systems, no panic
     /// (`bevy-traps.md` #1) — the [`HotRonAppExt`](crate::HotRonAppExt)
-    /// precedent.
+    /// precedent. On that headless path the call instead seeds
+    /// `F::Registry::default()` (the GTW-629 fallback rider), so a
+    /// presence-gated host flow still releases with zero per-family seed
+    /// arms — a new family's headless fallback comes from its ONE
+    /// registration line.
     fn register_content_family<F: ContentFamily>(&mut self) -> &mut Self;
 }
 
 impl ContentFamilyAppExt for App {
     fn register_content_family<F: ContentFamily>(&mut self) -> &mut Self {
         if self.world().get_resource::<AssetServer>().is_none() {
+            // THE shadow-avoidance invariant (stated once, here at the seam):
+            // the resolve above only runs while the registry is ABSENT, so
+            // with a server present the seam must seed NOTHING — a pre-seeded
+            // default would shadow the real folder resolve (the GTW-297 AC3b
+            // class). With no server there is nothing to shadow, and the
+            // default IS the registry: the headless fallback that keeps a
+            // presence-gated host flow (the game's Load→Intro gate)
+            // satisfiable. `init_resource` (not `insert_resource`) so a
+            // harness that pre-seeded a canonical registry keeps it.
+            self.init_resource::<F::Registry>();
             return self;
         }
         // The DEDICATED compound extension keeps the untyped `load_folder`

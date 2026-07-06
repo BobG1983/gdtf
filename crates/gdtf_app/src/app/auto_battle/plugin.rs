@@ -23,18 +23,12 @@
 //! over `Commands` / `ResMut<NextState<_>>` (NEVER a `&mut World` helper,
 //! `bevy-traps.md` #7):
 //!
-//! - **`Startup`** seeds the persistent `Load` resources a headless walk lacks
-//!   ([`default_theme`] + [`CombatTuning::default`] unconditionally, plus an empty
-//!   [`WeaponRegistry`] + an empty [`ArmorRegistry`] + a default [`LoadedSituation`]
-//!   ONLY when there is no `AssetServer`). Under the real GUI launch the `Load` scene
-//!   resolves the shipped theme / tuning from assets and `insert_resource`-overwrites
-//!   those seeds, and — because its `poll_and_resolve` only RESOLVES the weapon /
-//!   armor registries / `content/situations/skirmish.ron` while those resources are ABSENT —
-//!   the registry + situation seeds are deliberately withheld when an `AssetServer` is
-//!   present so the real `assets/content/weapons/ranged/*.weapon.ron` + `assets/content/armor/*.armor.ron` +
-//!   skirmish win (the asset versions are the QA battlefield). With no `AssetServer` /
-//!   a failed asset the empty fallbacks still keep the machine traversing `Load`. See
-//!   [`seed_load_fallbacks`] for the full rationale (A1 + GTW-297 `AC3b`).
+//! - **`Startup`** registers the LOAD-OWNED bespoke fallback seed
+//!   ([`seed_load_fallbacks`] — GTW-629: fallback-when-headless is
+//!   `Load`-orchestration policy, so the system lives with the `Load` scene; this
+//!   affordance is merely its one production registrar). The eight generic content
+//!   families need no seed at all: their headless fallback rides their
+//!   `register_content_family` line (the GTW-629 seam rider).
 //! - **`Update`** drives the ONE non-automatic transition: the menu does not
 //!   auto-advance (GTW-121), so [`drive_past_menu`] sets
 //!   `NextState<RunningState>::Game` once [`RunningState::Menu`] rests. Everything
@@ -45,21 +39,8 @@
 //! gates on is removed the moment it leaves the menu, so it nudges exactly once.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{
-    FieldDefRegistry,
-    armor::ArmorRegistry,
-    equipment::attachments::AttachmentRegistry,
-    ganger::GangRegistry,
-    injuries::{InjuryRegistry, InjuryTables},
-    level::{PrefabRegistry, UuidThemeRegistry},
-    procgen::ProcgenTuning,
-    terrain::def::TerrainDefRegistry,
-    tuning::CombatTuning,
-    weapon::{MeleeWeaponRegistry, WeaponRegistry},
-};
-use gdtf_ui::theme::default_theme;
 
-use crate::states::{LoadedSituation, RunningState};
+use crate::states::{RunningState, seed_load_fallbacks};
 
 /// The `GDTF_AUTOBATTLE` environment variable that opts a dev build into the
 /// auto-enter-battle affordance.
@@ -128,11 +109,12 @@ crate::support_item! {
     /// Wired into [`GdtfApp`](crate::GdtfApp) only under `cfg!(debug_assertions)`. On
     /// `build` it consults its gate ([`Self::enabled`]); when the gate holds it logs a
     /// one-line `auto-battle: ON (dev)`, inserts the [`AutoBattleActive`] witness,
-    /// seeds the `Load` fallback resources on `Startup`, and registers
-    /// [`drive_past_menu`] in `Update`. When the gate does NOT hold it registers
-    /// nothing — the affordance is fully inert and the app reaches the menu and
-    /// stops, exactly like a build without the plugin. Widened to `pub` under
-    /// `test-support` (the AC1/AC2 tests add it), `pub(crate)` otherwise.
+    /// registers the Load-owned [`seed_load_fallbacks`] on
+    /// `Startup`, and registers [`drive_past_menu`] in `Update`. When the gate does
+    /// NOT hold it registers nothing — the affordance is fully inert and the app
+    /// reaches the menu and stops, exactly like a build without the plugin. Widened
+    /// to `pub` under `test-support` (the AC1/AC2 tests add it), `pub(crate)`
+    /// otherwise.
     struct AutoBattlePlugin {
         /// Whether the affordance should activate. Captured once at construction (from
         /// [`auto_battle_enabled`] at the wiring site, or forced for a headless test of
@@ -209,145 +191,6 @@ impl Plugin for AutoBattlePlugin {
                 Update,
                 drive_past_menu.run_if(resource_exists::<AutoBattleActive>),
             );
-    }
-}
-
-crate::support_item! {
-    /// Seeds the persistent `Load` resources the auto-battle drive needs so the state
-    /// machine can traverse `Load` even without a resolved asset stack.
-    ///
-    /// Inserts [`default_theme`] + [`CombatTuning::default`] unconditionally, and an empty
-    /// [`WeaponRegistry`] + an empty [`ArmorRegistry`] + the empty UUID-keyed
-    /// [`TerrainDefRegistry`] / [`UuidThemeRegistry`] / [`PrefabRegistry`] + the const
-    /// [`ProcgenTuning::default`] (GTW-533) + a default (EMPTY)
-    /// [`LoadedSituation`] **only when no [`AssetServer`] is present** (a headless / asset-less
-    /// build). Under the real GUI launch the `Load` scene later `insert_resource`-overwrites
-    /// the theme / tuning with the shipped assets (the real theme + tuning), and — crucially —
-    /// its `poll_and_resolve` only RESOLVES the registries / situation from
-    /// `assets/content/weapons/ranged/*.weapon.ron` + `assets/content/armor/*.armor.ron` +
-    /// `assets/content/terrain/<theme>/*.terrain_def.ron` + `content/situations/skirmish.ron` while those
-    /// resources are still ABSENT, so the empty seeds must NOT be present for the real assets
-    /// to win.
-    /// Runs once in `Startup` (before the first `Update`, hence before `Load` resolves), so
-    /// the unconditional seeds are in place no matter how the assets resolve, and the
-    /// gated ones are absent whenever a real asset stack can resolve the genuine articles.
-    ///
-    /// **A1 (GTW play-test wave 3) — and GTW-297 (`AC3b`).** The default [`LoadedSituation`]
-    /// is the EMPTY situation (zero gangers) and the default [`WeaponRegistry`] holds zero
-    /// weapons. Post-GTW-261 a present [`LoadedSituation`] SATISFIES the Load→Intro gate,
-    /// and per GTW-257 `poll_and_resolve` only runs
-    /// `resolve_weapons` / `resolve_situation` `if` the registry / situation is still
-    /// ABSENT. So seeding EITHER empty fallback UNCONDITIONALLY shadowed the real load
-    /// under `DefaultPlugins`: the empty situation won the GTW-261 gate race (auto-battle
-    /// dropped into an empty battlefield), and the empty registry made `resolve_weapons`
-    /// skip loading `assets/content/weapons/ranged/*.weapon.ron` entirely — so battle setup's
-    /// `weapons.spec("stub_pistol")` returned `None` and aborted with
-    /// [`WeaponNotFound`](gdtf_battle_sim::situation::BattleSetupError), never reaching
-    /// `BattleRunning` (a black screen). Gating BOTH empty seeds on the [`AssetServer`]
-    /// being ABSENT (SYMMETRIC seeds) means: with an asset stack present (the real GUI
-    /// launch) NONE of the empty fallbacks is inserted, so `poll_and_resolve` WAITS for and
-    /// populates the real skirmish + the real weapon registry + the real armor registry + the
-    /// real UUID-keyed terrain / theme / prefab registries; without one (a headless asset-less
-    /// drive) all empty fallbacks are still seeded so the machine keeps traversing `Load` and
-    /// the GTW-257 / GTW-269 / GTW-487 / GTW-489 Load→Intro gate (which requires a
-    /// [`WeaponRegistry`], an [`ArmorRegistry`], a [`TerrainDefRegistry`], a
-    /// [`UuidThemeRegistry`], and a [`PrefabRegistry`]) is satisfied. The
-    /// unconditional theme + tuning seeds are
-    /// overwritten in place by the resolved assets (their resolve is unconditional), so
-    /// they need no such gate.
-    ///
-    /// Param-only (`bevy-traps.md` #7): [`Commands`] + an `Option<Res<AssetServer>>` probe
-    /// (`Option` so it is panic-free whether or not the asset stack is wired) — no
-    /// `&mut World`.
-    ///
-    /// Widened to `pub` under `test-support` (the A1 test drives it directly as a `Startup`
-    /// system — the real registered path minus the unrelated `drive_past_menu` that needs
-    /// the `RunningState` sub-state machinery), `pub(crate)` otherwise, keeping the binary
-    /// `unreachable_pub`-clean.
-    fn seed_load_fallbacks(asset_server: Option<Res<AssetServer>>, mut commands: Commands) {
-        commands.insert_resource(default_theme());
-        commands.insert_resource(CombatTuning::default());
-        // A1 / AC3b — only seed the empty fallback registries + situation when there is NO
-        // AssetServer. With one present the real `assets/content/weapons/ranged/*.weapon.ron` +
-        // `assets/content/armor/*.armor.ron` registries and `content/situations/skirmish.ron` must win:
-        // `poll_and_resolve` only resolves them while ABSENT, so a pre-seeded empty resource
-        // would shadow the real load (the registry shadow is the AC3b WeaponNotFound bug).
-        // The three seeds are SYMMETRIC (GTW-269 adds the armor registry to the set).
-        if asset_server.is_none() {
-            commands.insert_resource(WeaponRegistry::default());
-            // GTW-505: the MeleeWeaponRegistry is a gate-blocking resource too; seed the
-            // empty fallback when there is no AssetServer so headless walks still reach Intro
-            // (the A1 / AC3b pattern). With an AssetServer present the real
-            // `assets/content/weapons/melee/*.melee_weapon.ron` resolve must win — gated on
-            // `is_none()` exactly like the ranged weapon registry (else the empty seed would
-            // shadow `resolve_melee_weapons`, which only runs while the registry is ABSENT).
-            commands.insert_resource(MeleeWeaponRegistry::default());
-            // GTW-549 PHASE 1: the AttachmentRegistry is a gate-blocking resource too; seed
-            // the empty fallback when there is no AssetServer so headless walks still reach
-            // Intro (the A1 / AC3b pattern). With an AssetServer present the real
-            // `assets/content/attachments/*.attachment.ron` resolve must win — gated on
-            // `is_none()` exactly like the other registries (else the empty seed would shadow
-            // the GTW-619 generic content-family resolve, which only runs while the registry
-            // is ABSENT). This arm stays even though the family rides the generic seam: the
-            // seam seeds NO defaults when the AssetServer is missing — the content-family
-            // headless-fallback rider (the GTW-619 C7 interlock) deletes ALL seam-family
-            // arms here at once when it lands.
-            commands.insert_resource(AttachmentRegistry::default());
-            commands.insert_resource(ArmorRegistry::default());
-            // GTW-545: the FieldDefRegistry (area-damage-field catalog) is a gate-blocking
-            // resource too; seed the empty fallback when there is no AssetServer so headless
-            // walks still reach Intro (the A1 / AC3b pattern). With an AssetServer present the
-            // real `assets/content/fields/*.field.ron` resolve must win — so this is gated on
-            // `is_none()` exactly like the other registries (else the empty seed would shadow
-            // `resolve_fields`, which only runs while the registry is ABSENT).
-            commands.insert_resource(FieldDefRegistry::default());
-            // GTW-437: the InjuryRegistry is a gate-blocking resource too; seed the empty
-            // fallback when there is no AssetServer so headless walks still reach Intro
-            // (the A1 / AC3b pattern for the injury registry).
-            commands.insert_resource(InjuryRegistry::default());
-            // GTW-438: the InjuryTables is read by the fire path's `roll_injury` (the
-            // first reader), so seed the empty fallback alongside the registry for parity
-            // with the resolve path — else `dispatch_fire`'s `Res<InjuryTables>` would
-            // panic on a missing resource in an asset-less headless drive. An empty table
-            // means the roll finds no bucket and still takes-then-discards its one draw.
-            commands.insert_resource(InjuryTables::default());
-            // GTW-415: the GangRegistry is a gate-blocking resource too; seed the empty
-            // fallback when there is no AssetServer so headless walks still reach Intro
-            // (the A1 / AC3b pattern for the gang registry). With an AssetServer present
-            // the real `assets/content/gangs/*.gang.ron` registry must win — so this is
-            // gated on `is_none()` exactly like the weapon/armor registries (else the
-            // empty seed would shadow `resolve_gangs`, which only runs while the registry
-            // is ABSENT — the AC3b shadow class).
-            commands.insert_resource(GangRegistry::default());
-            // GTW-489: the UUID-keyed PrefabRegistry is a gate-blocking resource; seed the
-            // empty fallback when there is no AssetServer so headless walks still reach Intro
-            // (the A1 / AC3b pattern). With an AssetServer present the real
-            // `assets/content/maps/**/*.prefab.ron` resolve must win — so this is gated on
-            // `is_none()` exactly like the other registries (else the empty seed would shadow
-            // resolve_prefabs, which only runs while the registry is ABSENT). GTW-494: this
-            // is the ONLY prefab registry (the legacy prefab-registry seed was retired).
-            commands.insert_resource(PrefabRegistry::default());
-            // GTW-487: the UUID-keyed TerrainDefRegistry + UuidThemeRegistry are gate-blocking
-            // too; seed the empty fallbacks when there is no AssetServer so headless walks still
-            // reach Intro (the A1 / AC3b pattern). With an AssetServer present the real
-            // per-theme `content/terrain/` resolve must win — so this is gated on `is_none()` exactly
-            // like the other registries (else the empty seed would shadow resolve_terrain_defs /
-            // resolve_theme_defs, which only run while their registry is ABSENT). GTW-494: these
-            // are the ONLY terrain / theme registries (the legacy terrain / theme registry
-            // seeds were retired).
-            commands.insert_resource(TerrainDefRegistry::default());
-            commands.insert_resource(UuidThemeRegistry::default());
-            // GTW-533: the ProcgenTuning is a gate-blocking resource too; seed the const
-            // RULED default when there is no AssetServer so headless walks still reach Intro
-            // (the A1 / AC3b pattern). With an AssetServer present the real
-            // `core_tuning/procgen.tuning.ron` resolve must win — so this is gated on
-            // `is_none()` exactly like the registries (else the seed would shadow
-            // resolve_procgen_tuning, which only runs while ProcgenTuning is ABSENT).
-            commands.insert_resource(ProcgenTuning::default());
-            commands.insert_resource(LoadedSituation::new(
-                gdtf_battle_sim::situation::Situation::default(),
-            ));
-        }
     }
 }
 
