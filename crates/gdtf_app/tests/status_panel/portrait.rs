@@ -4,7 +4,7 @@ use bevy::{image::TextureAtlas, prelude::*, ui::widget::ImageNode};
 use gdtf_app::test_support::{
     AppState, BattleScapeState, RunningState, StatPortrait, portrait_index_for_name,
 };
-use gdtf_battle_sim::GangerName;
+use gdtf_battle_sim::ganger::GangerName;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
 use super::harness::*;

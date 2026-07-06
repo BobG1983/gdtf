@@ -14,9 +14,15 @@ use bevy::{
 };
 use gdtf_battle_presenter::{FctValence, FloatingCombatText, TopDownRendererPlugin, valence_color};
 use gdtf_battle_sim::{
-    ArmorBroken, BattleInProgress, Bleeding, Cell, CellLevel, DotDamage, DotTicked, FallOccurred,
-    InjuryInflicted, Level, OnDeathOccurred, ShotFired, SlabDestroyed, SuppressionApplied,
-    acts::{MeleeResolved, ThrowResolved},
+    acts::{InjuryInflicted, MeleeResolved, ThrowResolved},
+    armor_wear::ArmorBroken,
+    effects::{bleed::Bleeding, dot::DotTicked, on_death::OnDeathOccurred},
+    falls::FallOccurred,
+    occupancy_sync::SlabDestroyed,
+    prelude::{BattleInProgress, Cell, CellLevel, Level},
+    shot_fired::ShotFired,
+    suppression::SuppressionApplied,
+    weapon::DotDamage,
 };
 
 use super::{harness::*, probes::*};
@@ -155,7 +161,7 @@ fn a_presenter_only_app_with_no_family_buffers_stays_inert() {
     // the two the old renderer walls registered idempotently (FieldTicked, OnDeathOccurred).
     assert!(
         app.world()
-            .get_resource::<Messages<gdtf_battle_sim::FieldTicked>>()
+            .get_resource::<Messages<gdtf_battle_sim::effects::fields::FieldTicked>>()
             .is_none(),
         "the presenter must no longer register Messages<FieldTicked> itself (GTW-572 C4)",
     );

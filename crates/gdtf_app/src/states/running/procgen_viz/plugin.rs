@@ -22,7 +22,7 @@
 //! mid-run (C5).
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{GangName, ThemeUuid};
+use gdtf_battle_sim::{ganger::GangName, level::ThemeUuid};
 use gdtf_ui::{register_dropdown, register_numeric_field};
 
 use crate::states::{

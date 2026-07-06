@@ -5,14 +5,17 @@
 //! On a [`NumericFieldCommitted`]`<f32>` for an [`AttributeField`] it (1) reads the committing
 //! field's [`MemberRowIndex`] + [`BaseAttribute`] (skipping any non-attribute numeric field), (2)
 //! sets that member's attribute in the [`EditableGang`] model to the (already-clamped) committed
-//! value, (3) runs the REAL GTW-384 [`derive_stats`](gdtf_battle_sim::derive_stats) pipeline over
+//! value, (3) runs the REAL GTW-384 [`derive_stats`](gdtf_battle_sim::ganger::derive_stats) pipeline over
 //! the member's now-current attributes × the [`GangerStatTuning`] weights, and (4) mutates the
 //! row's readonly [`DerivedStatText`] nodes IN PLACE to the pipeline output (the ui-mutate rule,
 //! C5 — never a respawn). The displayed derived value therefore EQUALS the pipeline output for the
 //! live attributes (C3); the derivation is the sim's, never reimplemented here.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{DerivedStats, GangerStatTuning, derive_stats};
+use gdtf_battle_sim::{
+    ganger::{DerivedStats, derive_stats},
+    tuning::GangerStatTuning,
+};
 use gdtf_ui::NumericFieldCommitted;
 
 use crate::states::running::gang_editor::{

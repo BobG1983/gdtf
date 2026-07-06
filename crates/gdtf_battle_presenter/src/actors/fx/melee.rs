@@ -5,7 +5,7 @@
 //! signal (emitted once per CONNECTING melee hit by the sim's `dispatch_melee`) and spawns ONE
 //! short-lived strike sprite at `cell_to_world(at)`, drawn from the data-driven
 //! [`EffectRoles::melee_strike`](super::roles::EffectRoles) tile and tinted per the strike's
-//! [`DamageType`](gdtf_battle_sim::DamageType). It MIRRORS the
+//! [`DamageType`](gdtf_battle_sim::weapon::DamageType). It MIRRORS the
 //! [`read_cover_destroyed`](super::readers::read_cover_destroyed) pattern (the cell-keyed FX
 //! flash) and reuses the SAME [`spawn_flash`](super::readers::spawn_flash) one-shot recipe
 //! ([`FlashTtl`](super::flash::FlashTtl) + [`FxFlash`](super::flash::FxFlash)), so the glyph is
@@ -18,14 +18,14 @@
 //! throughout (`bevy-traps.md` #7).
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{DamageType, acts::MeleeResolved};
+use gdtf_battle_sim::{acts::MeleeResolved, weapon::DamageType};
 
 use super::{readers::spawn_flash, roles::EffectRoles};
 use crate::{TopDownAtlases, cell_to_world, fx::readers::fx_sprite};
 
 /// The strike-glyph tint for a melee hit's [`DamageType`] — a per-type colour hint so the
 /// strike reads as the wielded weapon's flavour (a blunt Kinetic thud vs a Rend power-edge
-/// flash), the melee mirror of the [`ShotFired`](gdtf_battle_sim::ShotFired) projectile's
+/// flash), the melee mirror of the [`ShotFired`](gdtf_battle_sim::shot_fired::ShotFired) projectile's
 /// per-damage-type colour rows.
 ///
 /// A presenter-LOCAL colour choice (like `bleed_tint`) keyed off the
@@ -51,9 +51,9 @@ const fn strike_tint(damage: DamageType) -> Color {
 /// [`MeleeResolved`](gdtf_battle_sim::acts::MeleeResolved) (GTW-507).
 ///
 /// Drains [`MessageReader<MeleeResolved>`](gdtf_battle_sim::acts::MeleeResolved); for each
-/// `MeleeResolved { at, damage }` it reconstructs the typed [`Cell`](gdtf_battle_sim::Cell) /
-/// [`Level`](gdtf_battle_sim::Level) from `at`
-/// ([`CellLevel`](gdtf_battle_sim::CellLevel) Derefs to `IVec3`) and spawns ONE FX flash at
+/// `MeleeResolved { at, damage }` it reconstructs the typed [`Cell`](gdtf_battle_sim::metric::Cell) /
+/// [`Level`](gdtf_battle_sim::metric::Level) from `at`
+/// ([`CellLevel`](gdtf_battle_sim::metric::CellLevel) Derefs to `IVec3`) and spawns ONE FX flash at
 /// [`cell_to_world`](crate::cell_to_world)`(cell, level)` carrying
 /// [`FlashTtl`](super::flash::FlashTtl) + [`FxFlash`](super::flash::FxFlash), with the table's
 /// data-driven `melee_strike` [`TileIndex`](crate::TileIndex) (never a literal) tinted per the

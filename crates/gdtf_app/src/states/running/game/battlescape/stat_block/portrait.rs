@@ -25,7 +25,7 @@ use bevy::{
     ui::{Node, Val, widget::ImageNode},
 };
 use gdtf_battle_presenter::{SheetRole, TopDownAtlases};
-use gdtf_battle_sim::GangerName;
+use gdtf_battle_sim::ganger::GangerName;
 
 use crate::states::running::game::battlescape::stat_block::components::StatPortrait;
 

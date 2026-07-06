@@ -1,6 +1,6 @@
 //! The SUPPRESSION consequence family (GTW-526 C8, palette-ised in GTW-572): the transient
 //! `"SUPPRESSED"` pop for a ganger freshly pinned down, off the sim's
-//! [`SuppressionApplied`](gdtf_battle_sim::SuppressionApplied) message.
+//! [`SuppressionApplied`](gdtf_battle_sim::suppression::SuppressionApplied) message.
 //!
 //! Drawn the cowed [`FctValence::Suppressed`](super::super::palette::FctValence::Suppressed)
 //! blue-grey — the same colour-drained family the suppressed sprite tint uses, so the
@@ -8,7 +8,7 @@
 //! pinned cell, so the anchor is [`PopAnchor::Carried`] (no `Position` lookup). The pop is a
 //! MOMENT signal; the persistent state is the sprite tint (`reframe_ganger_sprites`).
 
-use gdtf_battle_sim::SuppressionApplied;
+use gdtf_battle_sim::suppression::SuppressionApplied;
 
 use super::super::{
     palette::{FctValence, valence_color},
@@ -35,7 +35,10 @@ impl ConsequenceFct for SuppressionFct {
 #[cfg(test)]
 mod test {
     use bevy::prelude::Entity;
-    use gdtf_battle_sim::{Cell, CellLevel, Level, SuppressionApplied};
+    use gdtf_battle_sim::{
+        prelude::{Cell, CellLevel, Level},
+        suppression::SuppressionApplied,
+    };
 
     use super::{
         super::super::pop::ConsequenceFct, FctValence, PopAnchor, SuppressionFct, valence_color,

@@ -5,14 +5,15 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::{GamepadCursorMoved, HighlightRequest};
 use gdtf_battle_sim::{
-    BattleInProgress, OccupancyGrid, PlayerFaction, VerticalLinkGraph,
     acts::{
         EndTurnRequested, FireRequested, MoveRequested, ReloadRequested, SetAimingRequested,
         SetFacingRequested, SetStanceRequested,
     },
+    battle::{PlayerFaction, setup_battle_on_request},
     occupancy_sync::SimSystems,
-    setup_battle_on_request,
+    prelude::{BattleInProgress, OccupancyGrid},
     tuning::CombatTuning,
+    vertical::VerticalLinkGraph,
 };
 
 #[cfg(debug_assertions)]

@@ -4,7 +4,7 @@
 
 use bevy::{prelude::*, text::TextColor as UiTextColor, ui::Display};
 use gdtf_battle_input::InspectMode;
-use gdtf_battle_sim::Faction;
+use gdtf_battle_sim::prelude::Faction;
 use gdtf_ui::ProgressBarFill;
 
 use super::{
@@ -34,9 +34,9 @@ const ENEMY_TINT: Color = Color::srgb(0.86, 0.26, 0.22);
 /// live hovered cell.
 ///
 /// Resolves the effective cell to a ganger (the grid's
-/// [`occupant`](gdtf_battle_sim::OccupancyGrid::occupant) with [`StatBlockData`]), else a
-/// non-floor object (the grid's [`terrain`](gdtf_battle_sim::OccupancyGrid::terrain) being a
-/// wall / cover, with its seeded [`CoverEntry`](gdtf_battle_sim::CoverEntry) from the ledger), else bare floor; and toggles
+/// [`occupant`](gdtf_battle_sim::occupancy::OccupancyGrid::occupant) with [`StatBlockData`]), else a
+/// non-floor object (the grid's [`terrain`](gdtf_battle_sim::occupancy::OccupancyGrid::terrain) being a
+/// wall / cover, with its seeded [`CoverEntry`](gdtf_battle_sim::cover::CoverEntry) from the ledger), else bare floor; and toggles
 /// the panel + its two sub-blocks accordingly. On a ganger hover it ALSO tints the name line
 /// by the ganger's [`Faction`] (AC2 — enemy red-ish, player the normal theme color). Param-only
 /// (`bevy-traps.md` #7).
@@ -114,7 +114,7 @@ pub(in crate::states::running::game::battlescape) fn update_inspect_panel(
 ///   keeps describing whatever occupies it (an enemy occupant OR a cover/wall) because the pin is
 ///   a CELL the same downstream occupant / terrain resolution already handles (no entity→cell
 ///   reverse lookup needed: a cell pin sidesteps the grid's missing reverse map entirely).
-const fn effective_cell(mode: InspectMode) -> Option<gdtf_battle_sim::CellLevel> {
+const fn effective_cell(mode: InspectMode) -> Option<gdtf_battle_sim::metric::CellLevel> {
     match mode {
         InspectMode::Hovered(cell) => cell,
         // GTW-300 slice 3 — a pinned cell IS the cell the panel describes; the rest of
@@ -148,7 +148,7 @@ fn set_display(
 /// mutate-in-place, only when the color differs ([[ui-mutate-not-respawn]]).
 ///
 /// Reads the player faction + theme defensively as [`Option`] (state-scoped, present only in
-/// a live battle, `bevy-traps.md` #1). With no [`PlayerFaction`](gdtf_battle_sim::PlayerFaction) resource the tint falls back
+/// a live battle, `bevy-traps.md` #1). With no [`PlayerFaction`](gdtf_battle_sim::battle::PlayerFaction) resource the tint falls back
 /// to the normal theme color (no allegiance known → no enemy highlight); with no
 /// [`GdtfTheme`](gdtf_ui::theme::GdtfTheme) the player color falls back to the bevy default text color. The hover update
 /// re-asserts this every frame, so it reclaims the color after any `apply_theme` repaint.

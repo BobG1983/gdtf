@@ -35,7 +35,10 @@ use bevy::{
     winit::WinitPlugin,
 };
 use gdtf_battle_presenter::{PathPreview, PathStepSprite, PresenterSystems, TopDownRendererPlugin};
-use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, Level, SquadVisibility, Tu};
+use gdtf_battle_sim::{
+    prelude::{BattleInProgress, Cell, CellLevel, Level, Tu},
+    visibility::SquadVisibility,
+};
 
 /// Bounded settle headroom for the deferred draw (a synchronous command flush, not a load).
 const MAX_UPDATES: u32 = 16;

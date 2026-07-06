@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use bevy::prelude::Alpha;
-use gdtf_battle_sim::Wounds;
+use gdtf_battle_sim::ganger::Wounds;
 
 use super::super::{
     flash::{FLASH_SECONDS, FlashTtl},

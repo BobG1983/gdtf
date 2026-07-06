@@ -3,12 +3,12 @@
 
 use bevy::prelude::Entity;
 use gdtf_battle_sim::{
-    LifeState, Position,
     acts::MeleeRequested,
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::Direction,
     metric::CellLevel,
+    prelude::{LifeState, Position},
     test_support::SituationBuilder,
 };
 

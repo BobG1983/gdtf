@@ -12,7 +12,7 @@ pub(in crate::states::running::gang_editor) mod spawn;
 pub(in crate::states::running::gang_editor) use spawn::spawn_editor_screen;
 
 /// The shared derived-stat formatter (GTW-428 C3) — the single rendering of a
-/// [`DerivedStats`](gdtf_battle_sim::DerivedStats) field, used by BOTH the spawn seed and the live
+/// [`DerivedStats`](gdtf_battle_sim::ganger::DerivedStats) field, used by BOTH the spawn seed and the live
 /// recompute so they can never drift.
 pub(in crate::states::running::gang_editor) mod derived_display;
 

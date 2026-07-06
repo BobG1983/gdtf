@@ -11,7 +11,10 @@
 //! `set_if_neq` visibility flips.
 
 use bevy::{camera::visibility::RenderLayers, prelude::*, text::TextColor};
-use gdtf_battle_sim::{CellLevel, Level, SquadVisibility, Tu};
+use gdtf_battle_sim::{
+    prelude::{CellLevel, Level, Tu},
+    visibility::SquadVisibility,
+};
 
 use super::{resolve::preview_draws, seam::PathPreview};
 use crate::{

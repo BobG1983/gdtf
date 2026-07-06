@@ -3,8 +3,9 @@
 
 use bevy::{platform::collections::HashSet, prelude::*};
 use gdtf_battle_sim::{
-    Cell, CellLevel, Faction, FactionRelation, Level, LifeState, PlayerFaction, Position,
-    SquadVisibility,
+    battle::PlayerFaction,
+    prelude::{Cell, CellLevel, Faction, Level, LifeState, Position},
+    visibility::{FactionRelation, SquadVisibility},
 };
 
 use super::super::visibility::{GangerFogFacts, actor_relation, classify_ganger_visibility};

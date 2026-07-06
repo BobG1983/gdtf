@@ -2,7 +2,7 @@
 //! sim's outcome signal (GTW-239).
 //!
 //! When the sim declares the battle decided — its
-//! [`BattleWon`](gdtf_battle_sim::BattleWon) OR [`BattleLost`](gdtf_battle_sim::BattleLost)
+//! [`BattleWon`](gdtf_battle_sim::battle::BattleWon) OR [`BattleLost`](gdtf_battle_sim::battle::BattleLost)
 //! message, emitted by the `sim-victory-census` slice's `check_outcome` (GTW-237) — this
 //! system inserts the EXISTING [`BattleRunningComplete`] marker, so the marker-gated
 //! [`move_on`](super::move_on) advances `BattleRunning → AnimateOut → AfterMath`. It is the
@@ -22,8 +22,8 @@ use crate::states::running::game::battlescape::battle_running::resources::Battle
 /// `Update` (presence-gated, `.after(SimSystems::Simulate)`): end `BattleRunning` on EITHER
 /// sim outcome signal by inserting [`BattleRunningComplete`].
 ///
-/// Reads BOTH sim-owned outcome buffers — [`BattleWon`](gdtf_battle_sim::BattleWon) and
-/// [`BattleLost`](gdtf_battle_sim::BattleLost) — and, if EITHER carried a message this run,
+/// Reads BOTH sim-owned outcome buffers — [`BattleWon`](gdtf_battle_sim::battle::BattleWon) and
+/// [`BattleLost`](gdtf_battle_sim::battle::BattleLost) — and, if EITHER carried a message this run,
 /// inserts the [`BattleRunningComplete`] marker via [`Commands`]. The marker-gated
 /// [`move_on`](super::move_on) then sets `NextState(AnimateOut)` (unchanged by this slice).
 ///
@@ -39,8 +39,8 @@ use crate::states::running::game::battlescape::battle_running::resources::Battle
 /// both panic-free when the buffers are empty, so the system is safe whether or not an outcome
 /// ever arrives.
 pub(in crate::states::running::game::battlescape::battle_running) fn end_battle_on_outcome(
-    mut won: MessageReader<gdtf_battle_sim::BattleWon>,
-    mut lost: MessageReader<gdtf_battle_sim::BattleLost>,
+    mut won: MessageReader<gdtf_battle_sim::battle::BattleWon>,
+    mut lost: MessageReader<gdtf_battle_sim::battle::BattleLost>,
     mut commands: Commands,
 ) {
     // Drain BOTH readers (non-short-circuiting `|`) so neither buffer backs up, and end on

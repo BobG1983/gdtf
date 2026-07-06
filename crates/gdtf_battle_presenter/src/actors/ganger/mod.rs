@@ -1,8 +1,8 @@
 //! The ganger draw (GTW-48 S5 / GTW-219): each sim ganger drawn as a 16x16 top-down
 //! SPRITE, kept current by Bevy change detection.
 //!
-//! This module reads the sim's per-field ganger components — [`Position`](gdtf_battle_sim::Position), [`Faction`](gdtf_battle_sim::Faction),
-//! [`Facing`](gdtf_battle_sim::Facing), [`Stance`](gdtf_battle_sim::Stance), [`Aiming`](gdtf_battle_sim::Aiming), [`LifeState`](gdtf_battle_sim::LifeState) — and mirrors each ganger as one
+//! This module reads the sim's per-field ganger components — [`Position`](gdtf_battle_sim::ganger::Position), [`Faction`](gdtf_battle_sim::ganger::Faction),
+//! [`Facing`](gdtf_battle_sim::ganger::Facing), [`Stance`](gdtf_battle_sim::ganger::Stance), [`Aiming`](gdtf_battle_sim::ganger::Aiming), [`LifeState`](gdtf_battle_sim::ganger::LifeState) — and mirrors each ganger as one
 //! 16x16 character [`Sprite`](bevy::sprite::Sprite) from the role-separated character sheet
 //! ([`SheetRole::Characters`](crate::SheetRole::Characters), `assets/sprites/alt_tileset_characters.png`). It is the
 //! ganger arm of the change-driven sim->view mirror (ADR-0001): the presenter READS the

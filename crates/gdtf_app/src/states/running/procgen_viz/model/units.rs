@@ -7,7 +7,7 @@ use bevy::prelude::*;
 /// A quad's WIDTH in board cells (its x span).
 ///
 /// A viz-local newtype over [`u32`] (no-bare-types rule 1: a cell extent is a domain value,
-/// not a bare integer). The sim's [`GridWidth`](gdtf_battle_sim::GridWidth) wraps a `u8` coarse
+/// not a bare integer). The sim's [`GridWidth`](gdtf_battle_sim::level::GridWidth) wraps a `u8` coarse
 /// grid span — a prefab footprint width comes off a signed [`Footprint`] cast to `u32`, a
 /// distinct concept and inner type — so the visualizer mints its own. Private inner + derived
 /// [`Deref`]; built through [`new`](QuadCellW::new).
@@ -78,7 +78,7 @@ impl QuadSize {
 /// The min-corner X cell coordinate of a quad's board rectangle (`>= 0`).
 ///
 /// A viz-local newtype over [`u32`] (no-bare-types rule 1: a board cell coordinate is a domain
-/// value). The sim's [`Cell`](gdtf_battle_sim::Cell) wraps a *signed* `IVec2` pair; the packer
+/// value). The sim's [`Cell`](gdtf_battle_sim::metric::Cell) wraps a *signed* `IVec2` pair; the packer
 /// never produces a negative origin, so the visualizer projects the min-corner into a
 /// non-negative `u32` coordinate it owns. Private inner + derived [`Deref`]; built through
 /// [`new`](QuadCellX::new).

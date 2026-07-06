@@ -18,8 +18,12 @@
 
 use gdtf_app::test_support::{AppState, write_gang_roster_in};
 use gdtf_battle_sim::{
-    Aim, ArmorName, Cool, GangMember, GangName, GangRegistry, GangRoster, GangerName, Grit,
-    Reflexes, Speed, Strength, Toughness, WeaponName, ganger::Luck,
+    armor::ArmorName,
+    ganger::{
+        Aim, Cool, GangMember, GangName, GangRegistry, GangRoster, GangerName, Grit, Luck,
+        Reflexes, Speed, Strength, Toughness,
+    },
+    weapon::WeaponName,
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 

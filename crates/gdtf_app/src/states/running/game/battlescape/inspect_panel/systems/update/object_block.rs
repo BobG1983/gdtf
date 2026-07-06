@@ -3,7 +3,11 @@
 //! repaint rationale lives on the parent `update` module.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{CoverEntry, CoverLedger, HeightBand, OccupancyGrid, TerrainKind};
+use gdtf_battle_sim::{
+    cover::{CoverEntry, CoverLedger, HeightBand},
+    occupancy::TerrainKind,
+    prelude::OccupancyGrid,
+};
 use gdtf_ui::{FillFraction, set_progress_bar};
 
 use super::params::InspectNodes;
@@ -14,11 +18,11 @@ use crate::states::running::game::battlescape::stat_block::StatBlockWidgets;
 ///
 /// A cell is an OBJECT when its [`TerrainKind`] is [`Wall`](TerrainKind::Wall) or
 /// [`Cover`](TerrainKind::Cover). Its structural stats come from the
-/// [`CoverLedger`](gdtf_battle_sim::CoverLedger) `peek` (seeded at setup for every authored
+/// [`CoverLedger`](gdtf_battle_sim::cover::CoverLedger) `peek` (seeded at setup for every authored
 /// piece); a wall with no ledger entry falls back to a default full-integrity entry so the
 /// object block still renders a name. `None` (the floor case) hides the panel.
 pub(super) fn object_entry(
-    cell: gdtf_battle_sim::CellLevel,
+    cell: gdtf_battle_sim::metric::CellLevel,
     grid: Option<&OccupancyGrid>,
     ledger: Option<&CoverLedger>,
 ) -> Option<CoverEntry> {
@@ -31,10 +35,10 @@ pub(super) fn object_entry(
     // bare wall the ledger never registered (so the block still renders a name + a full bar).
     ledger.and_then(|l| l.peek(&cell).copied()).or_else(|| {
         Some(CoverEntry::seeded(
-            gdtf_battle_sim::CoverHp::new(1),
-            gdtf_battle_sim::HeightBand::High,
-            gdtf_battle_sim::ArmorProtection::new(0),
-            gdtf_battle_sim::ArmorHardness::new(0),
+            gdtf_battle_sim::cover::CoverHp::new(1),
+            gdtf_battle_sim::cover::HeightBand::High,
+            gdtf_battle_sim::armor::ArmorProtection::new(0),
+            gdtf_battle_sim::armor::ArmorHardness::new(0),
         ))
     })
 }

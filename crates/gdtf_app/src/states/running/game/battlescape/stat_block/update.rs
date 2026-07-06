@@ -15,8 +15,10 @@ use bevy::{
     ui::widget::ImageNode,
 };
 use gdtf_battle_sim::{
-    Faction, GangerName, Hp, HpMax, InflictedInjuries, InflictedWounds, Stance, Tu, TuMax, Wounds,
-    WoundsMax,
+    ganger::{GangerName, Hp, HpMax, TuMax, Wounds, WoundsMax},
+    inflicted_wound::InflictedWounds,
+    injuries::InflictedInjuries,
+    prelude::{Faction, Stance, Tu},
 };
 use gdtf_ui::{FillFraction, Pip, ProgressBarFill, set_progress_bar};
 
@@ -220,7 +222,7 @@ fn update_wound_list(
     inflicted: Option<&InflictedWounds>,
     widgets: &mut StatBlockWidgets,
 ) {
-    let empty: &[gdtf_battle_sim::InflictedWound] = &[];
+    let empty: &[gdtf_battle_sim::inflicted_wound::InflictedWound] = &[];
     let wounds = inflicted.map_or(empty, |w| w);
 
     // Show/hide the container.
@@ -256,11 +258,11 @@ fn update_wound_list(
 
 /// Mutates the injury-name list (GTW-439): shows the first N pooled lines (one per inflicted
 /// injury) with their authored
-/// [`inspect_text`](gdtf_battle_sim::GainedInjury::inspect_text) content, hides the rest, and
+/// [`inspect_text`](gdtf_battle_sim::injuries::GainedInjury::inspect_text) content, hides the rest, and
 /// shows the container only when N ≥ 1 — all in place ([[ui-mutate-not-respawn]]).
 ///
-/// Driven by the DURABLE [`InflictedInjuries`](gdtf_battle_sim::InflictedInjuries) ledger
-/// (read through [`gained`](gdtf_battle_sim::InflictedInjuries::gained)), so the list PERSISTS
+/// Driven by the DURABLE [`InflictedInjuries`](gdtf_battle_sim::injuries::InflictedInjuries) ledger
+/// (read through [`gained`](gdtf_battle_sim::injuries::InflictedInjuries::gained)), so the list PERSISTS
 /// while the ganger is inspected/selected — distinct from the transient FCT flash the
 /// `InjuryInflicted` message drives (the message routes the one-shot pop; the ledger routes
 /// this list). A `None`/absent ledger is treated as an empty list (container hidden). More
@@ -271,7 +273,7 @@ fn update_injury_list(
     injuries: Option<&InflictedInjuries>,
     widgets: &mut StatBlockWidgets,
 ) {
-    let empty: &[gdtf_battle_sim::GainedInjury] = &[];
+    let empty: &[gdtf_battle_sim::injuries::GainedInjury] = &[];
     let gained = injuries.map_or(empty, InflictedInjuries::gained);
 
     // Show/hide the container.

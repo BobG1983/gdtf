@@ -4,7 +4,10 @@
 use bevy::{app::App, math::Vec2, prelude::*};
 use gdtf_battle_presenter::{CellVisibility, HighlightRequest};
 use gdtf_battle_sim::{
-    CellLevel, Faction, Level, OccupancyGrid, PlayerFaction, SquadVisibility, TerrainKind,
+    battle::PlayerFaction,
+    occupancy::TerrainKind,
+    prelude::{CellLevel, Faction, Level, OccupancyGrid},
+    visibility::SquadVisibility,
 };
 use gdtf_test_utils::{MessageProbe, MessageProbePlugin, probed};
 

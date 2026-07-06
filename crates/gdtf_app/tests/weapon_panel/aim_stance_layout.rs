@@ -4,7 +4,10 @@ use bevy::prelude::*;
 use gdtf_app::test_support::{
     AimLabel, AimPanel, AimToggleButton, BottomBarRoot, StancePanelRoot, WeaponPanelRoot,
 };
-use gdtf_battle_sim::{Magazine, MagazineSize, ReloadTu};
+use gdtf_battle_sim::{
+    magazine::{Magazine, ReloadTu},
+    weapon::MagazineSize,
+};
 use gdtf_ui::themed::{ThemeRole, Themed};
 
 use super::harness::*;

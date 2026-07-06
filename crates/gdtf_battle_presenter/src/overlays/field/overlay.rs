@@ -1,14 +1,14 @@
 //! The area-damage-field overlay (GTW-545, child GTW-41f): the persistent per-cell VIEW of the
-//! sim's live [`FieldRegistry`](gdtf_battle_sim::FieldRegistry) — one translucent tile per fielded
+//! sim's live [`FieldRegistry`](gdtf_battle_sim::effects::fields::FieldRegistry) — one translucent tile per fielded
 //! cell so a seeded field (a toxic-waste pool, an electrified floor, a patch of burning ground) is
-//! VISIBLE on the battlefield, tinted by the field's [`DamageType`](gdtf_battle_sim::DamageType)
+//! VISIBLE on the battlefield, tinted by the field's [`DamageType`](gdtf_battle_sim::weapon::DamageType)
 //! flavour.
 //!
 //! # One-way sim read (ADR-0001)
 //!
 //! Unlike the presenter-owned `ReachableCells` read-seam (which the INPUT
 //! crate populates), this overlay reads the AUTHORITATIVE sim
-//! [`FieldRegistry`](gdtf_battle_sim::FieldRegistry) resource DIRECTLY (a battle-lifetime
+//! [`FieldRegistry`](gdtf_battle_sim::effects::fields::FieldRegistry) resource DIRECTLY (a battle-lifetime
 //! [`Resource`](bevy::prelude::Resource) `setup_battle` inserts), the `input → presenter → sim`
 //! direction: the presenter READS the sim's field placements and DRAWS them; it never writes the
 //! sim. This is the SAME shape as the terrain draw reading the cover ledger — the field is sim
@@ -30,7 +30,11 @@
 //! visibility flips.
 
 use bevy::{camera::visibility::RenderLayers, prelude::*};
-use gdtf_battle_sim::{CellLevel, DamageType, FieldRegistry, Level};
+use gdtf_battle_sim::{
+    effects::fields::FieldRegistry,
+    prelude::{CellLevel, Level},
+    weapon::DamageType,
+};
 
 use crate::{
     ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered,
@@ -111,7 +115,7 @@ type FieldSpriteQuery<'w, 's> = Query<
 ///
 /// Returns one [`FieldDraw`] per placed field whose storey index equals `active_level`, each
 /// carrying the field's [`DamageType`] flavour (read off its
-/// [`FieldDef`](gdtf_battle_sim::FieldDef)). Sorted by `(z, y, x)` so the pooled-sprite assignment
+/// [`FieldDef`](gdtf_battle_sim::effects::fields::FieldDef)). Sorted by `(z, y, x)` so the pooled-sprite assignment
 /// is deterministic frame to frame (the [`FieldRegistry`] iterates a `HashMap` in unspecified
 /// order). Called by [`draw_field_overlay`] and directly tested by the sibling `test` module
 /// without an [`App`].
@@ -206,8 +210,9 @@ fn spawn_field_sprite(commands: &mut Commands, world: Vec3, tint: Color) {
 #[cfg(test)]
 mod test {
     use gdtf_battle_sim::{
-        Cell, CellLevel, DamageType, FieldDamage, FieldDef, FieldDuration, FieldRegistry,
-        ImmuneArmorTypes, Level,
+        effects::fields::{FieldDamage, FieldDef, FieldDuration, FieldRegistry, ImmuneArmorTypes},
+        prelude::{Cell, CellLevel, Level},
+        weapon::DamageType,
     };
 
     use super::{FIELD_TINT_ALPHA, field_draws, field_tint};

@@ -3,7 +3,10 @@
 
 use std::ops::RangeInclusive;
 
-use gdtf_battle_sim::{CellLevel, Level, MAX_LEVELS};
+use gdtf_battle_sim::{
+    metric::MAX_LEVELS,
+    prelude::{CellLevel, Level},
+};
 
 use super::active_level::{ActiveLevel, ViewMode};
 

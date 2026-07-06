@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 use gdtf_app::test_support::ShoveButton;
 use gdtf_battle_input::contextual::{ContextualActSystems, PendingContextualIntents, ShoveAct};
-use gdtf_battle_sim::{Position, acts::ShoveRequested};
+use gdtf_battle_sim::{acts::ShoveRequested, prelude::Position};
 use gdtf_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed};
 
 use super::{actors::*, harness::*};

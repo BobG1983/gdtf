@@ -2,7 +2,10 @@
 //! hot-reload re-index.
 
 use bevy::{ecs::lifecycle::RemovedComponents, prelude::*};
-use gdtf_battle_sim::{Aiming, Facing, Faction, LifeState, Stance, Suppressed};
+use gdtf_battle_sim::{
+    ganger::{Aiming, Facing, Suppressed},
+    prelude::{Faction, LifeState, Stance},
+};
 
 use super::{
     frame::atlas_index,

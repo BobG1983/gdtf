@@ -18,8 +18,8 @@
 //! up GTW-328's shared event → text layer (the classification is a clean, reusable seam).
 //!
 //! For each round [`classify_report`](classify::classify_report) CLASSIFIES its
-//! [`report`](gdtf_battle_sim::ShotFired::report)
-//! — dispatching on the per-kind [`HitVerdict`](gdtf_battle_sim::HitVerdict) (GTW-573) —
+//! [`report`](gdtf_battle_sim::shot_fired::ShotFired::report)
+//! — dispatching on the per-kind [`HitVerdict`](gdtf_battle_sim::resolve_and_apply::HitVerdict) (GTW-573) —
 //! into the Phase-1 combat events this slice covers, one pop per event. A ganger verdict
 //! (its `applied` block + struck `part`) yields the FLESH family:
 //!
@@ -54,7 +54,7 @@
 //! The AUX slice (4) covers the rest of the contract's Phase-1 list that is NOT derivable from
 //! [`ShotFired`] alone — armor `"Armor -N"` / `"Armor Broken"`, reload `"Reloaded"` / `"Empty"`
 //! / `"No TU"`, and bleeding — from the consequence messages
-//! ([`ArmorBroken`](gdtf_battle_sim::ArmorBroken) / [`Bleeding`](gdtf_battle_sim::Bleeding)) or
+//! ([`ArmorBroken`](gdtf_battle_sim::armor_wear::ArmorBroken) / [`Bleeding`](gdtf_battle_sim::effects::bleed::Bleeding)) or
 //! a future reload signal. Those pops are NOT staggered (they ride their own one-shot
 //! consequence messages, not the per-round projectile pipeline).
 //!
@@ -62,8 +62,8 @@
 //! the SPAWN happens downstream (at the impact) and never reads any raw sim state by polling and
 //! never writes the sim.
 //!
-//! [`ShotFired`]: gdtf_battle_sim::ShotFired
-//! [`HitReport`]: gdtf_battle_sim::HitReport
+//! [`ShotFired`]: gdtf_battle_sim::shot_fired::ShotFired
+//! [`HitReport`]: gdtf_battle_sim::resolve_and_apply::HitReport
 //! [`spawn_shot_projectiles`]: super::super::spawn_shot_projectiles
 
 mod anchor;

@@ -11,7 +11,10 @@
 //! (FLAGGED in the GTW-358 report).
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{CellLevel, Level, SquadVisibility};
+use gdtf_battle_sim::{
+    prelude::{CellLevel, Level},
+    visibility::SquadVisibility,
+};
 
 use super::seam::PathPreview;
 

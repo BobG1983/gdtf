@@ -7,7 +7,7 @@
 //!
 //! The PRESENTER owns the read-seam ([`ReachableCells`], the reachable `(cell, level)` +
 //! accumulated TU-cost list) plus this draw system; the INPUT crate calls
-//! [`reachable_within`](gdtf_battle_sim::reachable_within) for the SELECTED ganger and
+//! [`reachable_within`](gdtf_battle_sim::pathfinder::reachable_within) for the SELECTED ganger and
 //! POPULATES this resource (clearing it when no ganger is selected). Selection and
 //! [`ActiveLevel`](crate::ActiveLevel) are NEVER pushed into the authoritative sim model
 //! — the dependency direction stays `input → presenter → sim`, the SAME shape as the
@@ -32,7 +32,7 @@
 //! the `set_if_neq` visibility flips.
 
 use bevy::{camera::visibility::RenderLayers, prelude::*};
-use gdtf_battle_sim::{CellLevel, Level, Tu};
+use gdtf_battle_sim::prelude::{CellLevel, Level, Tu};
 
 use crate::{
     ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered,
@@ -104,7 +104,7 @@ pub struct ReachableCells(Vec<ReachableCell>);
 
 impl ReachableCells {
     /// Build the reachable set from the `(CellLevel, Tu)` pairs returned by
-    /// [`reachable_within`](gdtf_battle_sim::reachable_within).
+    /// [`reachable_within`](gdtf_battle_sim::pathfinder::reachable_within).
     #[must_use]
     pub fn new(cells: impl IntoIterator<Item = (CellLevel, Tu)>) -> Self {
         Self(

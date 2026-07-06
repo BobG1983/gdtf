@@ -5,7 +5,7 @@
 //! # Why a re-targeting glide (the GTW-355 cadence note)
 //!
 //! The sim's [`advance_walk`](gdtf_battle_sim) writes ONE discrete
-//! [`Position`](gdtf_battle_sim::Position) per TICK during a committed walk, so the
+//! [`Position`](gdtf_battle_sim::ganger::Position) per TICK during a committed walk, so the
 //! presenter sees a SEQUENCE of [`Changed<Position>`] over frames at ~tick rate. A
 //! fixed-duration per-step tween would DESYNC (the sim outruns it and the sprite would
 //! fall behind, then snap). Instead this is a RE-TARGETING glide: on each

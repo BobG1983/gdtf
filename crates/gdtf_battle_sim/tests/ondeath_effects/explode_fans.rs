@@ -2,10 +2,10 @@
 //! and a Blast splash kill each fan the dead ganger's on-death Explode.
 
 use gdtf_battle_sim::{
-    LifeState,
     acts::{FireRequested, MeleeRequested},
     ganger::Direction,
     metric::{Cell, Level},
+    prelude::LifeState,
     test_support::{SituationBuilder, single_mode},
     weapon::{
         BlastRadius, FireModeSpec, HitType, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,

@@ -37,10 +37,10 @@
 //!
 //! GTW-342 (the squad fog WRITER, leaf 6 of the GTW-13 FOV epic) adds [`mod@actors::fog`]: the
 //! [`present_fog`] system MODULATES the already-drawn layer from the sim's
-//! [`SquadVisibility`](gdtf_battle_sim::SquadVisibility) — terrain VISIBLE → full colour /
+//! [`SquadVisibility`](gdtf_battle_sim::visibility::SquadVisibility) — terrain VISIBLE → full colour /
 //! EXPLORED → full-brightness GREYSCALE (GTW-348 — colour-loss as the memory cue, not
 //! brightness-loss) / UNSEEN → hidden. Each actor sprite is hard-cut by
-//! [`is_ganger_visible`](gdtf_battle_sim::is_ganger_visible) (a player ganger always shown,
+//! [`is_ganger_visible`](gdtf_battle_sim::visibility::is_ganger_visible) (a player ganger always shown,
 //! an enemy / corpse shown iff its cell is squad-VISIBLE) inside the GTW-627
 //! ganger-visibility resolver ([`resolve_ganger_visibility`]), the one writer of every
 //! ganger sprite's `Visibility`. The terrain renders through a

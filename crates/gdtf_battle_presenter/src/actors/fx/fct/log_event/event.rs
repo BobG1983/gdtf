@@ -4,8 +4,15 @@
 
 use bevy::prelude::{Deref, Message};
 use gdtf_battle_sim::{
-    Cell, DotDamage, Faction, GangerName, HitReport, HpDamage, ModeKind, MoveRejection,
-    PlayerFaction, ReloadOutcome, Severity, StoreysFallen,
+    acts::{MoveRejection, ReloadOutcome},
+    battle::PlayerFaction,
+    falls::StoreysFallen,
+    ganger::GangerName,
+    prelude::{Cell, Faction},
+    resolve_and_apply::HitReport,
+    resolve_hit::HpDamage,
+    severity::Severity,
+    weapon::{DotDamage, ModeKind},
 };
 
 /// A resolved display NAME for a combat-log line — a ganger's name, already looked up from
@@ -38,11 +45,11 @@ impl LogName {
 }
 
 /// A resolved INJURY combat-log clause — the authored
-/// [`log_text`](gdtf_battle_sim::InjuryInflicted::log_text), cloned off the message into
+/// [`log_text`](gdtf_battle_sim::acts::InjuryInflicted::log_text), cloned off the message into
 /// the log layer's own vocabulary (GTW-439).
 ///
 /// A NAMED newtype over the displayed [`String`], [`Deref`]ing to `str`. The forwarder
-/// builds it from the sim's [`LogText`](gdtf_battle_sim::LogText); the classifier only
+/// builds it from the sim's [`LogText`](gdtf_battle_sim::injuries::LogText); the classifier only
 /// READS it (a presenter-owned phrasing input, distinct from the sim newtype so the
 /// presenter never re-imports the sim type into its enum payload).
 #[derive(Debug, Clone, PartialEq, Eq, Deref)]
@@ -50,8 +57,8 @@ pub struct InjuryLogText(String);
 
 impl InjuryLogText {
     /// Build an injury log clause from anything string-like — the forwarder hands in the
-    /// resolved [`LogText`](gdtf_battle_sim::LogText) string off the
-    /// [`InjuryInflicted`](gdtf_battle_sim::InjuryInflicted) message.
+    /// resolved [`LogText`](gdtf_battle_sim::injuries::LogText) string off the
+    /// [`InjuryInflicted`](gdtf_battle_sim::acts::InjuryInflicted) message.
     #[must_use]
     pub fn new(text: impl Into<String>) -> Self {
         Self(text.into())
@@ -81,7 +88,7 @@ impl InjuryLogText {
 pub enum CombatLogEvent {
     /// A shot was DECLARED — `"<actor> fired <Mode> at <target>"` (or `"<actor> fired
     /// <Mode>"` when the shot was aimed at no named occupant). From a
-    /// [`FireDeclaration`](gdtf_battle_sim::FireDeclaration).
+    /// [`FireDeclaration`](gdtf_battle_sim::acts::FireDeclaration).
     FireDeclaration {
         /// The shooter's resolved name.
         actor:  LogName,
@@ -93,7 +100,7 @@ pub enum CombatLogEvent {
         mode:   ModeKind,
     },
     /// A ganger MOVED — `"<actor> moved <from> -> <to>"` (ground cell coords). From a
-    /// [`MovementOccurred`](gdtf_battle_sim::MovementOccurred).
+    /// [`MovementOccurred`](gdtf_battle_sim::acts::MovementOccurred).
     MovementOccurred {
         /// The mover's resolved name.
         actor: LogName,
@@ -117,7 +124,7 @@ pub enum CombatLogEvent {
         report: Option<Box<HitReport>>,
     },
     /// A reload RESOLVED — `"<actor> reloaded"` / `"<actor>: no TU"`; an already-full
-    /// reload logs NOTHING. From a [`ReloadResult`](gdtf_battle_sim::ReloadResult).
+    /// reload logs NOTHING. From a [`ReloadResult`](gdtf_battle_sim::acts::ReloadResult).
     ReloadResult {
         /// The reloading ganger's resolved name.
         actor:   LogName,
@@ -125,7 +132,7 @@ pub enum CombatLogEvent {
         outcome: ReloadOutcome,
     },
     /// A turn BOUNDARY — `"— Player turn —"` / `"— Enemy turn —"`, neutral. From a
-    /// [`TurnStarted`](gdtf_battle_sim::TurnStarted).
+    /// [`TurnStarted`](gdtf_battle_sim::turn::TurnStarted).
     TurnStarted {
         /// The faction whose turn just started.
         now_active: Faction,
@@ -137,7 +144,7 @@ pub enum CombatLogEvent {
     /// rejection yields a line (`"<actor> is pinned"`, wound AMBER); the
     /// [`Unreachable`](MoveRejection::Unreachable) /
     /// [`Unaffordable`](MoveRejection::Unaffordable) reasons stay silent. From a
-    /// [`MoveRejected`](gdtf_battle_sim::MoveRejected).
+    /// [`MoveRejected`](gdtf_battle_sim::acts::MoveRejected).
     MoveRejected {
         /// The rejected mover's resolved name (the log clause's subject).
         actor:  LogName,
@@ -146,7 +153,7 @@ pub enum CombatLogEvent {
     },
     /// An INJURY was inflicted (GTW-439) — `"<actor> <log_text>"` (e.g. `"Vex loses an
     /// eye"`), drawn in the severity-scaled wound AMBER ramp. From an
-    /// [`InjuryInflicted`](gdtf_battle_sim::InjuryInflicted).
+    /// [`InjuryInflicted`](gdtf_battle_sim::acts::InjuryInflicted).
     InjuryInflicted {
         /// The wounded ganger's resolved name (the log clause's subject).
         actor:    LogName,
@@ -156,7 +163,7 @@ pub enum CombatLogEvent {
         severity: Severity,
     },
     /// A ganger FELL a storey or more (GTW-572 C6) — `"<actor> fell <N> storey(s)"`, wound
-    /// AMBER (a harm event). From a [`FallOccurred`](gdtf_battle_sim::FallOccurred).
+    /// AMBER (a harm event). From a [`FallOccurred`](gdtf_battle_sim::falls::FallOccurred).
     FallOccurred {
         /// The fallen ganger's resolved name.
         actor:   LogName,
@@ -164,7 +171,7 @@ pub enum CombatLogEvent {
         storeys: StoreysFallen,
     },
     /// A CONNECTING melee strike applied damage (GTW-572 C6) — `"<attacker> struck
-    /// <target> (-N)"`, damage RED. From a [`MeleeStruck`](gdtf_battle_sim::MeleeStruck)
+    /// <target> (-N)"`, damage RED. From a [`MeleeStruck`](gdtf_battle_sim::acts::MeleeStruck)
     /// (the number-bearing sim fact GTW-572 added; the strike-glyph `MeleeResolved` carries
     /// no actor / amount).
     MeleeStruck {
@@ -176,7 +183,7 @@ pub enum CombatLogEvent {
         amount:   HpDamage,
     },
     /// A TERMINAL death occurred (GTW-572 C6) — `"<actor> dies"`, lethal RED BOLD. From a
-    /// ganger [`OnDeathOccurred`](gdtf_battle_sim::OnDeathOccurred) (the every-terminal-gate
+    /// ganger [`OnDeathOccurred`](gdtf_battle_sim::effects::on_death::OnDeathOccurred) (the every-terminal-gate
     /// signal, so the formerly log-invisible DOT / field / bleed-out / melee / explode
     /// cascade kills all log); a COVER death (placeholder entity) is skipped by the
     /// forwarder and never builds this variant.
@@ -186,7 +193,7 @@ pub enum CombatLogEvent {
     },
     /// A ganger was freshly SUPPRESSED (GTW-572 C6) — `"<actor> is suppressed"`, the cowed
     /// suppression blue-grey. From a
-    /// [`SuppressionApplied`](gdtf_battle_sim::SuppressionApplied) (which GTW-572 extended
+    /// [`SuppressionApplied`](gdtf_battle_sim::suppression::SuppressionApplied) (which GTW-572 extended
     /// to carry the pinned ganger).
     SuppressionApplied {
         /// The pinned ganger's resolved name.
@@ -194,15 +201,15 @@ pub enum CombatLogEvent {
     },
     /// A worn piece BROKE (GTW-572 C6) — `"<actor>: armor broken"`, damage RED (the destroy
     /// crossing reads heavier than wear, matching the FCT tag). From an
-    /// [`ArmorBroken`](gdtf_battle_sim::ArmorBroken).
+    /// [`ArmorBroken`](gdtf_battle_sim::armor_wear::ArmorBroken).
     ArmorBroken {
         /// The ganger whose armor broke, resolved to its name.
         actor: LogName,
     },
     /// A DOT affliction span STARTED (GTW-572 C6, the Q2 ruling) — `"<actor> is afflicted
     /// (-N/turn)"`, the toxic DOT green. From a
-    /// [`DotAfflicted`](gdtf_battle_sim::DotAfflicted) (the fresh-ATTACH fact; the per-tick
-    /// [`DotTicked`](gdtf_battle_sim::DotTicked) never logs).
+    /// [`DotAfflicted`](gdtf_battle_sim::effects::dot::DotAfflicted) (the fresh-ATTACH fact; the per-tick
+    /// [`DotTicked`](gdtf_battle_sim::effects::dot::DotTicked) never logs).
     DotAfflicted {
         /// The afflicted ganger's resolved name.
         actor:    LogName,
@@ -211,16 +218,16 @@ pub enum CombatLogEvent {
     },
     /// A field exposure span STARTED (GTW-572 C6, the Q2 ruling) — `"<actor> is caught in a
     /// hazard field"`, the hazard field orange. From a
-    /// [`FieldAfflicted`](gdtf_battle_sim::FieldAfflicted) (the once-per-span fact; the
-    /// per-round [`FieldTicked`](gdtf_battle_sim::FieldTicked) never logs).
+    /// [`FieldAfflicted`](gdtf_battle_sim::effects::fields::FieldAfflicted) (the once-per-span fact; the
+    /// per-round [`FieldTicked`](gdtf_battle_sim::effects::fields::FieldTicked) never logs).
     FieldAfflicted {
         /// The exposed ganger's resolved name.
         actor: LogName,
     },
     /// A bleed affliction span STARTED (GTW-572 C6, the Q2 ruling) — `"<actor> is
     /// bleeding"`, wound AMBER (the FCT tag's family). From a
-    /// [`BleedStarted`](gdtf_battle_sim::BleedStarted) (the once-per-span fact; the
-    /// per-tick [`Bleeding`](gdtf_battle_sim::Bleeding) never logs).
+    /// [`BleedStarted`](gdtf_battle_sim::effects::bleed::BleedStarted) (the once-per-span fact; the
+    /// per-tick [`Bleeding`](gdtf_battle_sim::effects::bleed::Bleeding) never logs).
     BleedStarted {
         /// The bleeding ganger's resolved name.
         actor: LogName,

@@ -1,7 +1,7 @@
 //! The presenter-owned active storey resource and the shared draw-ordering set.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Level, MAX_LEVELS};
+use gdtf_battle_sim::{metric::MAX_LEVELS, prelude::Level};
 
 /// The presenter-owned VIEW MODE — how the terrain draw + ganger visibility bound the
 /// drawn storey stack from ABOVE (GTW-521, the UFO "full view" toggle).

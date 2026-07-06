@@ -8,9 +8,12 @@ use bevy::{
 };
 use gdtf_app::test_support::{AddMemberButton, AppState, MemberRowIndex, RunningState};
 use gdtf_battle_sim::{
-    ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
-    ArmorRegistry, ArmorSpec, ArmorType, FatalBias, WeaponName, WeaponRegistry, WeaponSpec,
+    armor::{
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
+        ArmorRegistry, ArmorSpec, ArmorType,
+    },
     test_support::test_weapon_spec,
+    weapon::{FatalBias, WeaponName, WeaponRegistry, WeaponSpec},
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, press_ui_button};
 use gdtf_ui::theme::default_theme;

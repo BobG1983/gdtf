@@ -3,12 +3,12 @@
 //!
 //! This module is the VIEW arm of the squad fog: the sim
 //! ([`gdtf_battle_sim`]) is the source of truth — it owns the three
-//! [`SquadVisibility`](gdtf_battle_sim::SquadVisibility) states (VISIBLE / EXPLORED /
-//! UNSEEN) and the [`recompute_visibility`](gdtf_battle_sim::recompute_visibility)
+//! [`SquadVisibility`](gdtf_battle_sim::visibility::SquadVisibility) states (VISIBLE / EXPLORED /
+//! UNSEEN) and the [`recompute_visibility`](gdtf_battle_sim::visibility::recompute_visibility)
 //! writer (GTW-341). The presenter never owns fog; it READS the squad sets through the
-//! pure seams ([`SquadVisibility::is_cell_visible`](gdtf_battle_sim::SquadVisibility::is_cell_visible)
-//! / [`SquadVisibility::is_cell_explored`](gdtf_battle_sim::SquadVisibility::is_cell_explored)
-//! / [`is_ganger_visible`](gdtf_battle_sim::is_ganger_visible)), then MODULATES the
+//! pure seams ([`SquadVisibility::is_cell_visible`](gdtf_battle_sim::visibility::SquadVisibility::is_cell_visible)
+//! / [`SquadVisibility::is_cell_explored`](gdtf_battle_sim::visibility::SquadVisibility::is_cell_explored)
+//! / [`is_ganger_visible`](gdtf_battle_sim::visibility::is_ganger_visible)), then MODULATES the
 //! already-drawn layer in place (`docs/combat/visibility.md` §"Composition with the view
 //! slice").
 //!
@@ -52,7 +52,7 @@
 //! every [`TerrainSprite`](crate::TerrainSprite) on `BattleReady` OR an
 //! [`ActiveLevel`](crate::ActiveLevel) change, and
 //! [`swap_destroyed_cover`](crate::swap_destroyed_cover) edits sprites on
-//! [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed). The fog writer MUST run strictly
+//! [`CoverDestroyed`](gdtf_battle_sim::occupancy_sync::CoverDestroyed). The fog writer MUST run strictly
 //! after both, or it would colour stale / just-despawned entities or miss freshly-spawned
 //! ones on a level cycle (`bevy-traps.md` #3). That ordering is STAGE MEMBERSHIP (GTW-623):
 //! the fog runs in [`PresenterSystems::Compose`](crate::PresenterSystems), chained strictly

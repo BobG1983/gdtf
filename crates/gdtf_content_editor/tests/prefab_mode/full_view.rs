@@ -3,9 +3,9 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::ViewMode;
 use gdtf_battle_sim::{
-    Cell,
     level::{GridHeight, GridLevels, GridSize, GridWidth},
     metric::{CellLevel, Level},
+    prelude::Cell,
 };
 use gdtf_content_editor::{CurrentEditLevel, EditorMap, EditorMode, MapEditorSession};
 

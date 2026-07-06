@@ -2,8 +2,14 @@
 
 use bevy::{app::App, ecs::message::Messages};
 use gdtf_battle_sim::{
-    BattleInProgress, BattleReady, Cell, CellLevel, CoverLedger, EmplacementState, Level,
-    SurfaceGrid, TerrainCell, TerrainGraphicKey, TerrainKind, TerrainPlacement,
+    battle::BattleReady,
+    cover::CoverLedger,
+    emplacement::EmplacementState,
+    entity::TerrainCell,
+    occupancy::{TerrainKind, TerrainPlacement},
+    piece::TerrainGraphicKey,
+    prelude::{BattleInProgress, Cell, CellLevel, Level},
+    surface::SurfaceGrid,
 };
 
 use super::harness::*;

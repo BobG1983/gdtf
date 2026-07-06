@@ -112,7 +112,7 @@ pub struct Situation {
     /// (`docs/combat/combat.md`).
     pub vertical_links: Vec<VerticalLink>,
     /// The gang the human player controls — every other [`Faction`] is the enemy.
-    /// Seeds the [`PlayerFaction`](crate::PlayerFaction) battle-lifetime resource the
+    /// Seeds the [`PlayerFaction`](crate::battle::PlayerFaction) battle-lifetime resource the
     /// later control-gating + victory-census slices read. The struct-level
     /// `#[serde(default)]` supplies [`Faction::default`] = `Faction(0)` for any
     /// authored file that omits the field, so every existing situation `.ron` stays

@@ -2,7 +2,7 @@
 //! damage / death / suppression / armor-broken) and the once-at-start affliction lines
 //! (DOT / field / bleed). Each pins the EXACT phrasing + swatch POSITIVELY.
 
-use gdtf_battle_sim::{DotDamage, HpDamage, StoreysFallen};
+use gdtf_battle_sim::{falls::StoreysFallen, resolve_hit::HpDamage, weapon::DotDamage};
 
 use super::super::{
     super::{

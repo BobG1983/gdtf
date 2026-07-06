@@ -4,8 +4,9 @@ use bevy::{ecs::entity::Entity, prelude::*};
 use gdtf_app::test_support::MeleeButton;
 use gdtf_battle_input::{SelectedShooter, contextual::ContextualActSystems};
 use gdtf_battle_sim::{
-    Direction, Facing, Faction, Position, Stance, StanceKind,
     acts::{MeleeRequested, MeleeTarget},
+    ganger::Facing,
+    prelude::{Direction, Faction, Position, Stance, StanceKind},
 };
 use gdtf_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed};
 

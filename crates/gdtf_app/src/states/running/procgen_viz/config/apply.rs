@@ -17,8 +17,10 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    GangName, GangRegistry, GridHeight, GridLevels, GridWidth, PrefabRegistry, ProcgenTuning,
-    ThemeUuid, rng::BattleSeed,
+    ganger::{GangName, GangRegistry},
+    level::{GridHeight, GridLevels, GridWidth, PrefabRegistry, ThemeUuid},
+    procgen::ProcgenTuning,
+    rng::BattleSeed,
 };
 use gdtf_ui::{DisabledButton, DropdownSelectionChanged, NumericFieldCommitted};
 
@@ -134,7 +136,7 @@ pub(in crate::states::running::procgen_viz) fn apply_seed_commit(
 /// Runs whenever the config changes (`Changed<VizConfig>` would not fire on a `Res` — the
 /// resource is `ResMut`-mutated, so this reads it each frame and writes only on a difference,
 /// the mutate-in-place rule). Writes the [`SizeStatusText`] to `OK WxHxL` for a valid combo or
-/// the [`GridSizeError`](gdtf_battle_sim::GridSizeError) message otherwise, and toggles the
+/// the [`GridSizeError`](gdtf_battle_sim::level::GridSizeError) message otherwise, and toggles the
 /// [`GenerateButton`]'s [`DisabledButton`] marker so an invalid size CANNOT regenerate (C2/C5).
 /// Guarded on the config resource. Param-only (`bevy-traps.md` #7).
 pub(in crate::states::running::procgen_viz) fn sync_size_status(
@@ -191,7 +193,7 @@ type EnabledGeneratePresses<'w, 's> = Query<
 /// — so an invalid size never regenerates, C2). On a press it folds the config's three axes
 /// through the validated [`VizConfig::grid_size`] (skipping the rebuild if invalid — defence in
 /// depth on top of the disable) and replaces the model resource via
-/// [`ProcgenViz::build_with_gangs`] with a fresh [`ProcgenRng`](gdtf_battle_sim::ProcgenRng) from
+/// [`ProcgenViz::build_with_gangs`] with a fresh [`ProcgenRng`](gdtf_battle_sim::rng::ProcgenRng) from
 /// the selected seed. The existing STEP / AUTO controls + the draw sync then step the NEW result
 /// (the spawned quads are rebuilt by `respawn_quads_on_generate`, which runs after this).
 /// Guarded on the config resource. Param-only (`bevy-traps.md` #7).

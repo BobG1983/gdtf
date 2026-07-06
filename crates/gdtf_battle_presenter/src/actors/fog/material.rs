@@ -107,8 +107,8 @@ impl Saturation {
 ///
 /// A framework type (`Asset` / `Material2d`), so its fields are the material plumbing the
 /// derive macros require rather than no-bare-types domain values: the wrapped domain
-/// quantities live in the sim's tuning ([`ViewRange`](gdtf_battle_sim::CombatTuning) /
-/// [`ExploredDim`](gdtf_battle_sim::CombatTuning)); `saturation` here is the rendered
+/// quantities live in the sim's tuning ([`ViewRange`](gdtf_battle_sim::tuning::CombatTuning) /
+/// [`ExploredDim`](gdtf_battle_sim::tuning::CombatTuning)); `saturation` here is the rendered
 /// expression of the VISIBLE / EXPLORED decision the fog writer makes.
 #[derive(Asset, AsBindGroup, TypePath, Debug, Clone)]
 #[uniform(0, TerrainFogUniform)]

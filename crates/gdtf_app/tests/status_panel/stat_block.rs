@@ -7,8 +7,12 @@ use gdtf_app::test_support::{
 };
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    BodyPart, GainedInjury, GangerName, Hp, HpMax, InflictedInjuries, InflictedWound,
-    InflictedWounds, InjuryName, InspectText, Severity, Tu, TuMax,
+    armor::BodyPart,
+    ganger::{GangerName, Hp, HpMax, TuMax},
+    inflicted_wound::{InflictedWound, InflictedWounds},
+    injuries::{GainedInjury, InflictedInjuries, InjuryName, InspectText},
+    prelude::Tu,
+    severity::Severity,
 };
 use gdtf_ui::Pip;
 

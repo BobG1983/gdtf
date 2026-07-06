@@ -2,10 +2,10 @@
 //! counterpart resolution, the fail-closed out-of-vocabulary case, and the C2 pair placement.
 
 use gdtf_battle_sim::{
-    Cell,
     armor::{ArmorHardness, ArmorProtection},
     level::{GridHeight, GridLevels, GridSize, GridWidth, ThemeUuid},
     metric::{CellLevel, Level},
+    prelude::Cell,
     slab::SlabHp,
     terrain::{
         def::{

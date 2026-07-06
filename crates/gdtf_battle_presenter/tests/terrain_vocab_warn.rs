@@ -35,9 +35,15 @@ use bevy::{
 };
 use gdtf_battle_presenter::{TileRoles, TopDownAtlases, TopDownRendererPlugin};
 use gdtf_battle_sim::{
-    ArmorHardness, ArmorProtection, BattleInProgress, BattleReady, Cell, CellLevel, CoverDestroyed,
-    CoverEntry, CoverHp, CoverLedger, HeightBand, Level, OccupancyGrid, OccupancyInput,
-    SurfaceGrid, TerrainCell, TerrainGraphicKey, TerrainKind, TerrainPlacement,
+    armor::{ArmorHardness, ArmorProtection},
+    battle::BattleReady,
+    cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    entity::TerrainCell,
+    occupancy::{OccupancyInput, TerrainKind, TerrainPlacement},
+    occupancy_sync::CoverDestroyed,
+    piece::TerrainGraphicKey,
+    prelude::{BattleInProgress, Cell, CellLevel, Level, OccupancyGrid},
+    surface::SurfaceGrid,
 };
 use gdtf_test_utils::advance_until_resource_exists;
 

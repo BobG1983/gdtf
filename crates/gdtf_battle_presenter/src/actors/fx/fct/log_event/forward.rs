@@ -24,7 +24,9 @@ use bevy::{
         Update, resource_exists,
     },
 };
-use gdtf_battle_sim::{BattleInProgress, GangerName, PlayerFaction, TurnStarted};
+use gdtf_battle_sim::{
+    battle::PlayerFaction, ganger::GangerName, prelude::BattleInProgress, turn::TurnStarted,
+};
 
 use super::event::{CombatLogEvent, LogName};
 

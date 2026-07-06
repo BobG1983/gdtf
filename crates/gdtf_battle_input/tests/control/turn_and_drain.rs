@@ -4,8 +4,8 @@
 use bevy::prelude::*;
 use gdtf_battle_input::{ActIntent, PendingActIntent};
 use gdtf_battle_sim::{
-    Cell, CellLevel, Direction, Position,
     acts::{MoveRequested, SetFacingRequested},
+    prelude::{Cell, CellLevel, Direction, Position},
 };
 use gdtf_test_utils::press_mouse;
 

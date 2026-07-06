@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 use gdtf_battle_input::{SelectedShooter, contextual::StabilizeAct};
 use gdtf_battle_sim::{
-    downed_acts::is_8_adjacent,
+    acts::downed::is_8_adjacent,
     ganger::{Faction, LifeState, Position, Stabilized},
 };
 use gdtf_ui::ButtonLabel;

@@ -2,7 +2,10 @@
 //! per-ganger tints, and the character-roles hot-reload re-index.
 
 use bevy::{ecs::system::RunSystemOnce, image::TextureAtlas, prelude::*};
-use gdtf_battle_sim::{Direction, Facing, Faction, LifeState};
+use gdtf_battle_sim::{
+    ganger::Facing,
+    prelude::{Direction, Faction, LifeState},
+};
 
 use super::super::{
     frame::{FacingFrame, atlas_index, facing_frame},

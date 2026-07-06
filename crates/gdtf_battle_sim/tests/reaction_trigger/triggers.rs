@@ -3,8 +3,7 @@
 //! (AC1 / AC2 / AC3 / AC5 / AC7).
 
 use gdtf_battle_sim::{
-    ReactionShotFired,
-    acts::{EndTurnRequested, MoveRequested},
+    acts::{EndTurnRequested, MoveRequested, movement::ReactionShotFired},
     ganger::Direction,
     test_support::SituationBuilder,
 };

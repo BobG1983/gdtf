@@ -3,11 +3,11 @@
 //! out-of-bounds verdict.
 
 use gdtf_battle_sim::{
-    Cell,
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
     level::{GridHeight, GridLevels, GridSize, GridWidth, ThemeUuid},
     metric::{CellLevel, Level},
+    prelude::Cell,
     slab::SlabHp,
     terrain::{
         def::{

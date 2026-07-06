@@ -3,9 +3,14 @@
 
 use bevy::prelude::{Entity, World};
 use gdtf_battle_sim::{
-    CombatTuning, ConeAngle, CoverLedger, HeightBand, Hp, OccupancyGrid, ShotKind, ShotOutcome,
-    SurfaceGrid, Tu, Wounds, resolve_coarse,
+    cone::ConeAngle,
+    cover::{CoverLedger, HeightBand},
+    ganger::{Hp, Wounds},
+    prelude::{OccupancyGrid, Tu},
+    resolve_coarse::{ShotKind, ShotOutcome, resolve_coarse},
+    surface::SurfaceGrid,
     test_support::{SituationBuilder, ganger_at, key, shot_rng},
+    tuning::CombatTuning,
 };
 
 use super::harness::*;
@@ -74,12 +79,12 @@ struct CombatSnapshot {
 fn combat_snapshot(world: &World, target: Entity, shooter: Entity) -> Option<CombatSnapshot> {
     use bevy::ecs::relationship::RelationshipTarget;
 
-    let wears = world.get::<gdtf_battle_sim::Wears>(target)?;
+    let wears = world.get::<gdtf_battle_sim::armor::Wears>(target)?;
     let mut armor: Vec<i32> = wears
         .iter()
         .filter_map(|piece| {
             world
-                .get::<gdtf_battle_sim::ArmorIntegrity>(piece)
+                .get::<gdtf_battle_sim::armor::ArmorIntegrity>(piece)
                 .map(|c| **c)
         })
         .collect();

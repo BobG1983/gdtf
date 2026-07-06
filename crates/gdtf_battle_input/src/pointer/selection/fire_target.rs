@@ -19,7 +19,7 @@
 //!   and the cell is squad-VISIBLE under the occupant relation
 //!   ([`FactionRelation::Other`]); or
 //! - shootable COVER / WALL (GTW-377) — the cell holds NO occupant but DOES block
-//!   ([`is_blocked`](gdtf_battle_sim::OccupancyGrid::is_blocked) — an intact wall / cover piece,
+//!   ([`is_blocked`](gdtf_battle_sim::occupancy::OccupancyGrid::is_blocked) — an intact wall / cover piece,
 //!   `false` once GTW-364 has smashed it), and the cell is squad-VISIBLE under the empty-cell
 //!   relation (`None`).
 //!
@@ -29,7 +29,7 @@
 //! never disagree.
 //!
 //! When the verdict holds, it computes the fire TU cost the same way the shot will charge it —
-//! [`mode_tu_cost`](gdtf_battle_sim::mode_tu_cost) over the [`SelectedFireMode`] + the shooter's
+//! [`mode_tu_cost`](gdtf_battle_sim::magazine::mode_tu_cost) over the [`SelectedFireMode`] + the shooter's
 //! [`TuMax`] / [`Aiming`] + the [`CombatTuning`] — and writes [`FireTargetHighlight::new`].
 //! Otherwise (no selection, an empty / own-ganger / non-visible cell, no hover) it writes
 //! [`FireTargetHighlight::cleared`] (the empty highlight). REUSES the sim's `mode_tu_cost` — no
@@ -38,8 +38,12 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::{FireTargetHighlight, cell_squad_visible};
 use gdtf_battle_sim::{
-    Aiming, CellLevel, CombatTuning, Faction, FactionRelation, OccupancyGrid, PlayerFaction,
-    SquadVisibility, Tu, TuMax, mode_tu_cost,
+    battle::PlayerFaction,
+    ganger::{Aiming, TuMax},
+    magazine::mode_tu_cost,
+    prelude::{CellLevel, Faction, OccupancyGrid, Tu},
+    tuning::CombatTuning,
+    visibility::{FactionRelation, SquadVisibility},
 };
 
 use crate::{InspectTarget, SelectedFireMode, selection::resources::SelectedShooter};
@@ -73,7 +77,7 @@ pub struct FireTargetReads<'w> {
 /// `Update` ([`InputSystems::Gather`](crate::InputSystems)): POPULATE the presenter-owned
 /// [`FireTargetHighlight`] when the SELECTED player-faction shooter hovers a squad-VISIBLE
 /// fireable TARGET it could fire on — an ENEMY *or* (GTW-377) a shootable COVER / WALL cell —
-/// the cell + the [`mode_tu_cost`](gdtf_battle_sim::mode_tu_cost) the shot would charge (C2).
+/// the cell + the [`mode_tu_cost`](gdtf_battle_sim::magazine::mode_tu_cost) the shot would charge (C2).
 ///
 /// Resolves the fireable verdict via [`resolve_fire_target`] (the SAME FIRE + FIRE-AT-COVER
 /// conditions [`decide_left_click`](crate::selection::decide_left_click) gates fire on, plus the
@@ -146,7 +150,7 @@ fn resolve_fire_target(
 ///   and the cell is squad-VISIBLE under the occupant relation
 ///   ([`FactionRelation::Other`]) — exactly `decide_left_click`'s FIRE rung.
 /// - Shootable COVER / WALL (GTW-377): the cell holds NO occupant but DOES block
-///   ([`is_blocked`](gdtf_battle_sim::OccupancyGrid::is_blocked) — an intact wall / cover piece,
+///   ([`is_blocked`](gdtf_battle_sim::occupancy::OccupancyGrid::is_blocked) — an intact wall / cover piece,
 ///   `false` once GTW-364 has smashed it), and the cell is squad-VISIBLE under the empty-cell
 ///   relation (`None`, a structural cell carries no occupant) — `decide_left_click`'s
 ///   FIRE-AT-COVER rung. The user ruling: cover AND walls are valid fire targets.
@@ -176,7 +180,7 @@ fn cell_is_fireable_target(
     }
 }
 
-/// The fire TU cost for `shooter` firing `fire_mode` — [`mode_tu_cost`](gdtf_battle_sim::mode_tu_cost)
+/// The fire TU cost for `shooter` firing `fire_mode` — [`mode_tu_cost`](gdtf_battle_sim::magazine::mode_tu_cost)
 /// over the shooter's `(`[`TuMax`]`, `[`Aiming`]`)` + the tuning, or [`None`] when the shooter
 /// has no TU stats (fail-closed).
 fn fire_cost(

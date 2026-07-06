@@ -6,8 +6,11 @@
 use bevy::prelude::*;
 use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
 use gdtf_battle_sim::{
-    CellLevel, Faction, FireMode, FireModeSpec, Level, ModeKind, PlayerFaction, Position,
-    SlabDestroyed, acts::FireRequested,
+    acts::FireRequested,
+    battle::PlayerFaction,
+    occupancy_sync::SlabDestroyed,
+    prelude::{CellLevel, Faction, Level, Position},
+    weapon::{FireMode, FireModeSpec, ModeKind},
 };
 
 use super::plugin::{FallConfig, FireConfig};
@@ -110,7 +113,7 @@ fn fire_mode_spec(modes: Option<&FireMode>, kind: ModeKind) -> Option<FireModeSp
 /// under it — storey 1 (the lowest UPPER storey).
 ///
 /// Dropping from storey 1 always lands on the ground (`k == 0` supports unconditionally in
-/// [`resolve_drop`](gdtf_battle_sim::resolve_drop)), so the forced fall is RELIABLE on any
+/// [`resolve_drop`](gdtf_battle_sim::falls::resolve_drop)), so the forced fall is RELIABLE on any
 /// battlefield — it needs no procgen-placed intact slab below. A named newtype so the trigger
 /// never passes a bare storey index (no-bare-types).
 const FALL_TRIGGER_STOREY: Level = Level::new(1);
@@ -132,9 +135,9 @@ const FALL_TRIGGER_STOREY: Level = Level::new(1);
 ///    — the lowest upper storey — as ONE write. This stands the ganger on an upper storey so
 ///    there is a floor beneath it to smash, RELIABLY on any battlefield (the default skirmish
 ///    spawns everyone on the ground), keeping the fall deterministic (same frame ⇒ same fall).
-/// 2. **Smash.** It writes one [`SlabDestroyed`](gdtf_battle_sim::SlabDestroyed) at that SAME
+/// 2. **Smash.** It writes one [`SlabDestroyed`](gdtf_battle_sim::occupancy_sync::SlabDestroyed) at that SAME
 ///    `(cell, level)` — the slab the ganger now stands on. Because this system is ordered
-///    `.before(`[`apply_falls`](gdtf_battle_sim::apply_falls)`)`, the same-frame
+///    `.before(`[`apply_falls`](gdtf_battle_sim::falls::apply_falls)`)`, the same-frame
 ///    `SlabDestroyed` is buffered AND the elevating `Position` write is visible when
 ///    `apply_falls` reads its faller query, so the GTW-523 drop resolves THIS frame (down to
 ///    the ground `k == 0`) and the GTW-524 impact flash fires at the landing — both captured

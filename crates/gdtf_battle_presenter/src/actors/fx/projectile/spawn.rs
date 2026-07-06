@@ -7,7 +7,11 @@ use bevy::{
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
 };
-use gdtf_battle_sim::{Cell, Level, Position, ShotFired, ShotKind};
+use gdtf_battle_sim::{
+    prelude::{Cell, Level, Position},
+    resolve_coarse::ShotKind,
+    shot_fired::ShotFired,
+};
 
 use super::{
     super::{
@@ -23,14 +27,14 @@ use crate::{GangerSprite, GangerSprites, TopDownAtlases, cell_to_world, sim_pos_
 /// `Update` (`PresenterSystems::Overlay`): spawn the traveling DIRECTIONAL projectile per
 /// [`ShotFired`] round.
 ///
-/// Drains [`MessageReader<ShotFired>`](gdtf_battle_sim::ShotFired); for each round it picks the
+/// Drains [`MessageReader<ShotFired>`](gdtf_battle_sim::shot_fired::ShotFired); for each round it picks the
 /// per-damage-type FX row ([`EffectRoles::fx_for`]) and, within it, the directional tile for
 /// the shot's heading ([`nearest_direction_index`] of `msg.trajectory`), then spawns ONE
 /// small projectile sprite at the muzzle world point ([`sim_pos_to_world`](crate::sim_pos_to_world)
 /// of `msg.muzzle`) carrying a [`ProjectileTravel`] toward the TARGET world point.
 ///
 /// The target point depends on WHAT the round struck ([`ShotFired::kind`]): for a
-/// [`Ganger`](gdtf_battle_sim::ShotKind::Ganger) hit, the bolt flies to that hit entity's
+/// [`Ganger`](gdtf_battle_sim::resolve_coarse::ShotKind::Ganger) hit, the bolt flies to that hit entity's
 /// CURRENT rendered world position — looked up by mapping its sim [`Entity`] through
 /// [`GangerSprites`](crate::GangerSprites) to its presenter sprite, then reading that sprite's
 /// [`Transform`]. That rendered position ALREADY reflects the target's stance / silhouette
@@ -67,8 +71,8 @@ use crate::{GangerSprite, GangerSprites, TopDownAtlases, cell_to_world, sim_pos_
 /// rebuild.
 ///
 /// GTW-327 (slice 2): each round's classified floating-combat-text pops are computed HERE
-/// ([`classify_report`] of its [`HitReport`](gdtf_battle_sim::HitReport)) + their anchor cell
-/// ([`anchor_cell`], the hit ganger's [`Position`](gdtf_battle_sim::Position)) and threaded INTO
+/// ([`classify_report`] of its [`HitReport`](gdtf_battle_sim::resolve_and_apply::HitReport)) + their anchor cell
+/// ([`anchor_cell`], the hit ganger's [`Position`](gdtf_battle_sim::ganger::Position)) and threaded INTO
 /// the [`ProjectileTravel`], so each shot's numbers ride its own STAGGERED flight and appear
 /// when THAT shot's impact lands ([`animate_impact`](super::super::impact::animate_impact)) —
 /// not all

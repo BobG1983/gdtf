@@ -9,7 +9,7 @@ use super::super::text::{CombatText, FctEmphasis};
 ///
 /// A NAMED grouping struct (not a bare `(CombatText, Color, FctEmphasis)` tuple):
 /// [`classify_report`](super::classify::classify_report) builds the ordered list of pops one
-/// round's [`HitReport`](gdtf_battle_sim::HitReport) yields;
+/// round's [`HitReport`](gdtf_battle_sim::resolve_and_apply::HitReport) yields;
 /// [`spawn_shot_projectiles`](super::super::super::spawn_shot_projectiles) threads that list
 /// THROUGH the staggered projectile pipeline and
 /// [`animate_impact`](super::super::super::animate_impact) anchors each at the round's cell with

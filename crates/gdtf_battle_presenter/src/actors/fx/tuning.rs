@@ -90,7 +90,7 @@ impl Default for ProjectileVelocity {
 /// The gap between successive rounds of one burst / full-auto shot leaving the
 /// muzzle, in SECONDS — the per-round LAUNCH-DELAY step that staggers a volley.
 ///
-/// A burst emits one [`ShotFired`](gdtf_battle_sim::ShotFired) per round in a single
+/// A burst emits one [`ShotFired`](gdtf_battle_sim::shot_fired::ShotFired) per round in a single
 /// frame, so without a stagger every projectile would launch at once and read as one
 /// fat bolt. Each round's read-order index × this step is its launch delay, so the
 /// volley animates SHOT-BY-SHOT. The default `0.35` s is the user's current

@@ -29,16 +29,32 @@ use bevy::{
     prelude::{Entity, MinimalPlugins},
 };
 use gdtf_battle_sim::{
-    Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType,
-    BaseSpread, BattleGrids, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning, CoverLedger,
-    DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, Handedness, HandlingProfile,
-    Hp, InflictedWounds, InjuryRegistry, InjuryTables, Kickback, Level, LifeState, Luck, Magazine,
-    MagazineSize, MeleeQuery, MountedQuery, OccupancyGrid, OccupancyMaintenancePlugin, PieceQuery,
-    Position, ReloadTu, ShooterQuery, Shooting, Shove, SlabLedger, Stable, Stance, StanceKind,
-    SurfaceGrid, TargetQuery, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage, WeaponName,
-    WeaponPunch, WeaponQuery, WeaponShred, WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds,
-    fire::FireOrder,
+    armor::{
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType, BodyPart, WornBy,
+    },
+    cover::CoverLedger,
+    fire::{
+        BattleGrids, FireOrder, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, TargetQuery,
+        WeaponQuery, WearsQuery, WieldsQuery,
+    },
+    ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
+    inflicted_wound::InflictedWounds,
+    injuries::{InjuryRegistry, InjuryTables},
+    magazine::{Magazine, ReloadTu},
+    occupancy_sync::OccupancyMaintenancePlugin,
+    prelude::{
+        Cell, CellLevel, Direction, Level, LifeState, OccupancyGrid, Position, Stance, StanceKind,
+        Tu,
+    },
+    slab::{BraceStairCells, SlabLedger},
+    surface::SurfaceGrid,
     test_support::{injury_rng, severity_rng, shot_rng, single_mode},
+    tuning::CombatTuning,
+    weapon::{
+        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, Handedness,
+        HandlingProfile, Kickback, MagazineSize, Shove, Stable, WeaponBundle, WeaponDamage,
+        WeaponName, WeaponPunch, WeaponShred, WieldedBy,
+    },
 };
 
 /// The faithful skirmish-style geometry the contract names: a shooter near (5,6).
@@ -217,7 +233,7 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
         else {
             return false;
         };
-        let _volley = gdtf_battle_sim::fire(
+        let _volley = gdtf_battle_sim::fire::fire(
             shooter,
             FireOrder {
                 mode:         &mode,

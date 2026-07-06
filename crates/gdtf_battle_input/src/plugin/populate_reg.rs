@@ -9,10 +9,13 @@ use gdtf_battle_presenter::{ReachableCells, ReachableOverlayEnabled};
 // (`register_reachable_overlay_population`), so import it only under `#[cfg(debug_assertions)]`
 // to keep the release build from naming an unused symbol.
 #[cfg(debug_assertions)]
-use gdtf_battle_sim::FloorCostGrid;
+use gdtf_battle_sim::floor::FloorCostGrid;
 use gdtf_battle_sim::{
-    BattleInProgress, OccupancyGrid, PlayerFaction, SquadVisibility, VerticalLinkGraph,
+    battle::PlayerFaction,
+    prelude::{BattleInProgress, OccupancyGrid},
     tuning::CombatTuning,
+    vertical::VerticalLinkGraph,
+    visibility::SquadVisibility,
 };
 
 // GTW-450 — the reachable-overlay POPULATE system + its presenter-owned flag are DEBUG-only
@@ -36,7 +39,7 @@ use crate::{
 /// and fills the presenter-owned [`PathPreview`](gdtf_battle_presenter::PathPreview) the SAME
 /// way [`dispatch_move`](gdtf_battle_sim::acts::dispatch_move) plans a route (the
 /// visibility-gated `PlanningView` over the squad fog + `find_path`), exposing
-/// [`Path::total`](gdtf_battle_sim::Path::total) — the §48 cost GTW-355 charges. Ordered
+/// [`Path::total`](gdtf_battle_sim::pathfinder::Path::total) — the §48 cost GTW-355 charges. Ordered
 /// `.after(left_click_act)` (so it reads the same update's selection) and
 /// `.after(auto_select_first_player_ganger)` (so the battle-start auto-select can preview a
 /// route on the first frame, exactly as a click would). The TARGET itself is set by the GTW-356
@@ -101,7 +104,7 @@ pub(super) fn register_path_preview_population(app: &mut App) {
 /// hovered cell ([`InspectTarget`](crate::InspectTarget)) and fills the presenter-owned
 /// [`FireTargetHighlight`](gdtf_battle_presenter::FireTargetHighlight) when the hover is a
 /// fireable ENEMY (the SAME FIRE-rung conditions [`left_click_act`] gates fire on, plus the
-/// GTW-346 fog gate), exposing the [`mode_tu_cost`](gdtf_battle_sim::mode_tu_cost) the shot
+/// GTW-346 fog gate), exposing the [`mode_tu_cost`](gdtf_battle_sim::magazine::mode_tu_cost) the shot
 /// would charge. Ordered `.after(left_click_act)` (so it reads the same update's selection) and
 /// `.after(auto_select_first_player_ganger)` (so the battle-start auto-select can show the
 /// affordance on the first frame).
@@ -149,10 +152,10 @@ pub(super) fn register_fire_target_population(app: &mut App) {
 /// set truthy at startup — no overlay populates by default (C3 / C4).
 ///
 /// [`populate_reachable_overlay`] reads the current [`SelectedShooter`](crate::SelectedShooter) and its
-/// `(`[`Position`](gdtf_battle_sim::Position)`,` [`Tu`](gdtf_battle_sim::Tu)`,`
-/// [`Faction`](gdtf_battle_sim::Faction)`)` and fills the presenter-owned
+/// `(`[`Position`](gdtf_battle_sim::ganger::Position)`,` [`Tu`](gdtf_battle_sim::ganger::Tu)`,`
+/// [`Faction`](gdtf_battle_sim::ganger::Faction)`)` and fills the presenter-owned
 /// [`ReachableCells`](gdtf_battle_presenter::ReachableCells) by calling
-/// [`reachable_within`](gdtf_battle_sim::reachable_within) — the SAME visibility-gated
+/// [`reachable_within`](gdtf_battle_sim::pathfinder::reachable_within) — the SAME visibility-gated
 /// `PlanningView` construction the path-preview and `dispatch_move` use. Ordered
 /// `.after(left_click_act)` and `.after(auto_select_first_player_ganger)` so it observes
 /// the same update's selection. It recomputes every Update; writes only on a change (the

@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 use gdtf_app::test_support::CombatLogLine;
-use gdtf_battle_sim::{Cell, MovementOccurred};
+use gdtf_battle_sim::{acts::MovementOccurred, prelude::Cell};
 
 use super::harness::*;
 

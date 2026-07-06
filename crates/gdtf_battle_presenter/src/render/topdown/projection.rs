@@ -3,7 +3,7 @@
 //! [`cell_to_world_layered`]).
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Cell, Level, SimPos};
+use gdtf_battle_sim::prelude::{Cell, Level, SimPos};
 
 /// On-screen size of one cell, in world units.
 ///

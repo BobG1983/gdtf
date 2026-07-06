@@ -23,16 +23,15 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Accuracy, BaseSpread, Cell, CellLevel, Cool, Faction, FatalBias, Grit, Kickback, MagazineSize,
-    Silenced, Speed, Stance, StanceKind, Strength, WeaponPunch,
     battle::{BattleSimPlugin, SetupBattleRequested},
     effects::attachments::{AimDelta, AttachmentEffect},
     equipment::attachments::{
         AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec, SlotCapacity,
         WeaponSlots,
     },
-    ganger::{Direction, Facing},
+    ganger::{Cool, Direction, Facing, Grit, Speed, Strength},
     magazine::{Magazine, ReloadTu},
+    prelude::{Cell, CellLevel, Faction, Stance, StanceKind},
     rng::BattleSeed,
     situation::GangerSpawn,
     test_support::{
@@ -41,8 +40,9 @@ use gdtf_battle_sim::{
     },
     tuning::{CombatTuning, ViewRange},
     weapon::{
-        FISTS_KEY, FireMode, MeleeWeapon, MeleeWeaponRegistry, MeleeWeaponSpec, WeaponDamage,
-        WeaponName, WeaponRegistry, WeaponSpec,
+        Accuracy, BaseSpread, FISTS_KEY, FatalBias, FireMode, Kickback, MagazineSize, MeleeWeapon,
+        MeleeWeaponRegistry, MeleeWeaponSpec, Silenced, WeaponDamage, WeaponName, WeaponPunch,
+        WeaponRegistry, WeaponSpec,
     },
 };
 
@@ -59,7 +59,7 @@ const BASE_MAG: u16 = 20;
 const BASE_MELEE_DAMAGE: i32 = 9;
 
 fn ground(x: i32, y: i32) -> CellLevel {
-    CellLevel::new(Cell::new(x, y), gdtf_battle_sim::Level::new(0))
+    CellLevel::new(Cell::new(x, y), gdtf_battle_sim::metric::Level::new(0))
 }
 
 fn name(key: &str) -> AttachmentName {

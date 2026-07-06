@@ -2,7 +2,11 @@
 //! them, byte-equal under the same seed (AC 1-4).
 
 use bevy::prelude::World;
-use gdtf_battle_sim::{InflictedWounds, LifeState, OccupancyGrid, Wounds};
+use gdtf_battle_sim::{
+    ganger::Wounds,
+    inflicted_wound::InflictedWounds,
+    prelude::{LifeState, OccupancyGrid},
+};
 
 use super::harness::*;
 

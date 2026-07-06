@@ -2,7 +2,7 @@
 //! bounds clamp.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{BattleInProgress, PlayerFaction};
+use gdtf_battle_sim::{battle::PlayerFaction, prelude::BattleInProgress};
 
 use crate::{
     GamepadCursorMoved, PanEdgeDwellState, clamp_camera_to_bounds, frame_camera_on_units,

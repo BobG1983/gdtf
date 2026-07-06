@@ -79,7 +79,7 @@
 use std::path::PathBuf;
 
 use bevy::prelude::*;
-use gdtf_battle_sim::apply_falls;
+use gdtf_battle_sim::falls::apply_falls;
 
 use super::{
     capture_config::{CaptureFrames, capture_path},
@@ -115,7 +115,7 @@ pub(crate) struct FireConfig {
     /// The `BattleRunning` frame at which the selected player ganger fires.
     pub(super) frame: FireAtFrame,
     /// An optional fire-MODE override (`GDTF_FIRE_MODE`): when set, the trigger fires in
-    /// this authored [`ModeKind`](gdtf_battle_sim::ModeKind) (read off the shooter's [`FireMode`](gdtf_battle_sim::FireMode)) rather than the
+    /// this authored [`ModeKind`](gdtf_battle_sim::weapon::ModeKind) (read off the shooter's [`FireMode`](gdtf_battle_sim::weapon::FireMode)) rather than the
     /// resident [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) — the FX-capture path uses `Full` for a staggered
     /// multi-round volley.
     pub(super) mode:  Option<FireModeOverride>,

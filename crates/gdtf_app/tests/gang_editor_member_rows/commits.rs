@@ -6,7 +6,7 @@ use gdtf_app::test_support::{
     DeleteMemberButton, EditableGang, MemberArmorDropdown, MemberNameField, MemberRow,
     MemberWeaponDropdown,
 };
-use gdtf_battle_sim::{ArmorName, WeaponName};
+use gdtf_battle_sim::{armor::ArmorName, weapon::WeaponName};
 use gdtf_ui::{CommittedTextValue, DropdownSelectionChanged, TextFieldCommitted};
 
 use super::harness::*;

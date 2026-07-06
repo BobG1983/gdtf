@@ -2,7 +2,7 @@
 //! ordering the spawn, press-listener, active-sync, visibility, and cost-line siblings
 //! all reason against. Split out of the monolithic `mode_panel.rs` (GTW-583).
 
-use gdtf_battle_sim::ModeKind;
+use gdtf_battle_sim::weapon::ModeKind;
 
 /// The three fire-mode segment indices, in DISPLAY (left-to-right) order: Single / Burst /
 /// Full. The index ↔ [`ModeKind`] mapping the press listener + the active-sync + the

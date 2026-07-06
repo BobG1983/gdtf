@@ -3,7 +3,7 @@
 //! visibility resolver.
 
 use bevy::{ecs::message::Messages, prelude::*};
-use gdtf_battle_sim::{BattleInProgress, ShotFired};
+use gdtf_battle_sim::{prelude::BattleInProgress, shot_fired::ShotFired};
 
 use crate::{
     CharacterRoles, PresenterSystems, ShotImpactResolved, TopDownAtlases, advance_sprite_tweens,

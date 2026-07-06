@@ -3,10 +3,15 @@
 
 use bevy::prelude::{Entity, World};
 use gdtf_battle_sim::{
-    Accuracy, Aim, Aiming, Cell, CombatTuning, CoverLedger, Direction, Facing, Faction, HeightBand,
-    Hp, Level, OccupancyGrid, Shooting, ShotKind, Stance, StanceKind, SurfaceGrid, Wounds,
-    concentration_p, resolve_coarse,
+    cover::{CoverLedger, HeightBand},
+    ganger::{Aim, Aiming, Facing, Hp, Shooting, Wounds},
+    prelude::{Cell, Direction, Faction, Level, OccupancyGrid, Stance, StanceKind},
+    resolve_coarse::{ShotKind, resolve_coarse},
+    sample_cone::concentration_p,
+    surface::SurfaceGrid,
     test_support::{GangerSpawnBuilder, SituationBuilder, ganger_at, key, shot_rng},
+    tuning::CombatTuning,
+    weapon::Accuracy,
 };
 
 use super::harness::*;

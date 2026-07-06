@@ -3,8 +3,8 @@
 //!
 //! The sim's victory census (`check_outcome`, GTW-237) emits its `BattleWon` / `BattleLost`
 //! the SAME drain frame the killing shot resolves: `fire()` applies the damage, the struck
-//! ganger goes [`Dead`](gdtf_battle_sim::LifeState::Dead), the census declares the outcome,
-//! and the killing shot's [`ShotFired`](gdtf_battle_sim::ShotFired) is emitted — all one drain.
+//! ganger goes [`Dead`](gdtf_battle_sim::ganger::LifeState::Dead), the census declares the outcome,
+//! and the killing shot's [`ShotFired`](gdtf_battle_sim::shot_fired::ShotFired) is emitted — all one drain.
 //! [`end_battle_on_outcome`](super::end_battle_on_outcome) latches the
 //! [`BattleRunningComplete`](super::super::resources::BattleRunningComplete) marker that frame; that latch is the correct "outcome DECIDED"
 //! signal and is UNCHANGED.
@@ -29,7 +29,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_presenter::{PendingImpact, ShotProjectile};
-use gdtf_battle_sim::ShotFired;
+use gdtf_battle_sim::shot_fired::ShotFired;
 
 use crate::states::BattleScapeState;
 
@@ -69,7 +69,7 @@ pub(in crate::states::running::game::battlescape::battle_running) enum EndTransi
 /// drained (GTW-334).
 ///
 /// On the FIRST frame the [`BattleRunningComplete`](super::super::resources::BattleRunningComplete) latch is present it CLASSIFIES the end by
-/// draining [`MessageReader<ShotFired>`](gdtf_battle_sim::ShotFired) (its own cursor, independent
+/// draining [`MessageReader<ShotFired>`](gdtf_battle_sim::shot_fired::ShotFired) (its own cursor, independent
 /// of the presenter's projectile spawner): a `ShotFired` present that frame is the deciding shot
 /// the sim emitted on the killing drain, so a tracer is coming — it records
 /// [`EndTransition::AwaitingDecidingShot`]. With NO `ShotFired` it is a flee / non-shot end and it
@@ -160,7 +160,7 @@ mod test {
         state::{app::StatesPlugin, state::State},
     };
     use gdtf_battle_presenter::ShotProjectile;
-    use gdtf_battle_sim::ShotFired;
+    use gdtf_battle_sim::shot_fired::ShotFired;
 
     use super::{EndTransition, move_on};
     use crate::states::{
@@ -315,12 +315,14 @@ mod test {
         let struck = app.world_mut().spawn_empty().id();
         ShotFired {
             shooter,
-            muzzle: gdtf_battle_sim::SimPos::new(0.0, 0.0, 0.0),
-            trajectory: gdtf_battle_sim::ShotDir::from_direction(Vec3::new(1.0, 0.0, 0.0)),
-            impact_cell: gdtf_battle_sim::Cell::new(1, 0),
-            impact_level: gdtf_battle_sim::Level::new(0),
-            kind: gdtf_battle_sim::ShotKind::Ganger(struck),
-            damage: gdtf_battle_sim::DamageType::Kinetic,
+            muzzle: gdtf_battle_sim::metric::SimPos::new(0.0, 0.0, 0.0),
+            trajectory: gdtf_battle_sim::sample_cone::ShotDir::from_direction(Vec3::new(
+                1.0, 0.0, 0.0,
+            )),
+            impact_cell: gdtf_battle_sim::metric::Cell::new(1, 0),
+            impact_level: gdtf_battle_sim::metric::Level::new(0),
+            kind: gdtf_battle_sim::resolve_coarse::ShotKind::Ganger(struck),
+            damage: gdtf_battle_sim::weapon::DamageType::Kinetic,
             report: None,
         }
     }

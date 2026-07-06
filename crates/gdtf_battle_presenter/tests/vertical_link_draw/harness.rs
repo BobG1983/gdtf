@@ -15,8 +15,11 @@ use bevy::{
 };
 use gdtf_battle_presenter::{TileRoles, TopDownAtlases, TopDownRendererPlugin};
 use gdtf_battle_sim::{
-    Aiming, BattleReady, BattleSeed, CellLevel, Direction, Facing, Faction, GangerSpawn,
-    SetupBattleRequested, ShotRng, Situation, setup_battle_on_request,
+    battle::{BattleReady, SetupBattleRequested, setup_battle_on_request},
+    ganger::{Aiming, Facing},
+    prelude::{CellLevel, Direction, Faction},
+    rng::{BattleSeed, ShotRng},
+    situation::{GangerSpawn, Situation},
     test_support::{
         test_armor_registry, test_gang_registry, test_melee_weapon_registry, test_terrain_registry,
         test_weapon_registry,
@@ -72,7 +75,7 @@ pub(crate) fn headless_renderer_app() -> App {
     )
     .add_message::<SetupBattleRequested>()
     .add_message::<BattleReady>()
-    .add_message::<gdtf_battle_sim::CoverDestroyed>()
+    .add_message::<gdtf_battle_sim::occupancy_sync::CoverDestroyed>()
     .add_systems(bevy::app::Update, setup_battle_on_request)
     .add_plugins(TopDownRendererPlugin);
     app.insert_resource(test_weapon_registry());
@@ -99,7 +102,7 @@ pub(crate) fn settle_resources(app: &mut App) {
 
 /// Build an authored ganger at `at` (standing rifleman, given faction + facing).
 pub(crate) fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn {
-    use gdtf_battle_sim::{GangerName, test_support::GangerSpawnBuilder};
+    use gdtf_battle_sim::{ganger::GangerName, test_support::GangerSpawnBuilder};
     GangerSpawnBuilder::new()
         .at(at)
         .name(GangerName::new(format!("Ganger {faction}")))

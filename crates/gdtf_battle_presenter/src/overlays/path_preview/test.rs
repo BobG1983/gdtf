@@ -8,7 +8,10 @@
 //! decision (§53 + hard-cut + C5 link marker) that do not need an app.
 
 use bevy::{platform::collections::HashSet, prelude::Alpha};
-use gdtf_battle_sim::{Cell, CellLevel, Level, SquadVisibility, Tu};
+use gdtf_battle_sim::{
+    prelude::{Cell, CellLevel, Level, Tu},
+    visibility::SquadVisibility,
+};
 
 use super::{
     draw::{LABEL_COLOR, label_text},

@@ -16,12 +16,16 @@ use bevy::{
 };
 use gdtf_battle_presenter::{CharacterRoles, TopDownAtlases, TopDownRendererPlugin};
 use gdtf_battle_sim::{
-    Aiming, BattleReady, BattleSeed, CellLevel, Direction, Facing, Faction, GangerSpawn,
-    SetupBattleRequested, ShotRng, Situation, SquadVisibility, setup_battle_on_request,
+    battle::{BattleReady, SetupBattleRequested, setup_battle_on_request},
+    ganger::{Aiming, Facing},
+    prelude::{CellLevel, Direction, Faction},
+    rng::{BattleSeed, ShotRng},
+    situation::{GangerSpawn, Situation},
     test_support::{
         test_armor_registry, test_gang_registry, test_melee_weapon_registry, test_terrain_registry,
         test_weapon_registry,
     },
+    visibility::SquadVisibility,
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
@@ -94,7 +98,7 @@ pub(crate) fn headless_renderer_app() -> App {
     // exist or that system fails param validation ("Message not initialized"). This
     // harness drives a battle, so it registers the buffer the S4 draw needs — the
     // ganger draw itself reads no messages.
-    .add_message::<gdtf_battle_sim::CoverDestroyed>()
+    .add_message::<gdtf_battle_sim::occupancy_sync::CoverDestroyed>()
     .add_systems(bevy::app::Update, setup_battle_on_request)
     .add_plugins(TopDownRendererPlugin);
     // The Load-built WeaponRegistry (GTW-257): setup_battle_on_request reads it to arm
@@ -186,7 +190,7 @@ pub(crate) fn settle_actor(app: &mut App, sim: Option<Entity>) -> bool {
 /// `"Ganger {faction}"` name (the faction-distinct sprite-colour assertion reads it) and
 /// `aiming(false)` (this is the hip-firing draw fixture; the builder default aims).
 pub(crate) fn ganger_at(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn {
-    use gdtf_battle_sim::{GangerName, test_support::GangerSpawnBuilder};
+    use gdtf_battle_sim::{ganger::GangerName, test_support::GangerSpawnBuilder};
     GangerSpawnBuilder::new()
         .at(at)
         .name(GangerName::new(format!("Ganger {faction}")))

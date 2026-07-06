@@ -1,11 +1,11 @@
 //! The area-damage-field overlay (GTW-545, child GTW-41f): the persistent per-cell VIEW that
-//! draws the sim's live [`FieldRegistry`](gdtf_battle_sim::FieldRegistry) so a seeded field (a
+//! draws the sim's live [`FieldRegistry`](gdtf_battle_sim::effects::fields::FieldRegistry) so a seeded field (a
 //! toxic-waste pool, an electrified floor, a patch of burning ground) is VISIBLE on the
 //! battlefield.
 //!
 //! Per ADR-0001 (the presenter owns ALL sim→view drawing) and the `input → presenter → sim`
 //! dependency direction: this overlay reads the AUTHORITATIVE sim
-//! [`FieldRegistry`](gdtf_battle_sim::FieldRegistry) resource DIRECTLY (a battle-lifetime
+//! [`FieldRegistry`](gdtf_battle_sim::effects::fields::FieldRegistry) resource DIRECTLY (a battle-lifetime
 //! [`Resource`](bevy::prelude::Resource) `setup_battle` seeds) and DRAWS one translucent hazard
 //! tile per fielded cell on the active storey — it never writes the sim. This is the SAME
 //! one-way sim-read shape as the terrain draw reading the cover ledger.

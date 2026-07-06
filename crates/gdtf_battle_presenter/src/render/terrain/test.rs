@@ -1,6 +1,9 @@
 //! Unit tests for the static-battlefield terrain draw.
 
-use gdtf_battle_sim::{GRID_HEIGHT, GRID_WIDTH, Level};
+use gdtf_battle_sim::{
+    occupancy::{GRID_HEIGHT, GRID_WIDTH},
+    prelude::Level,
+};
 
 use super::{active_level::ActiveLevel, roles::TileRoles, static_map::i32_extent};
 

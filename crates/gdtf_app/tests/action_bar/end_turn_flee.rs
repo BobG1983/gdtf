@@ -7,7 +7,7 @@ use bevy::{
 };
 use gdtf_app::test_support::{BattleRunningComplete, BattleScapeState, EndTurnButton, FleeButton};
 use gdtf_battle_input::{ActIntent, PendingActIntent};
-use gdtf_battle_sim::BattleInProgress;
+use gdtf_battle_sim::prelude::BattleInProgress;
 use gdtf_test_utils::{advance_until, press_ui_button};
 use gdtf_ui::DisabledButton;
 

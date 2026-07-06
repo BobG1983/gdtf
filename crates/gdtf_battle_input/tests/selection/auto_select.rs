@@ -4,7 +4,9 @@ use bevy::prelude::*;
 use gdtf_battle_input::{GdtfBattleInputPlugin, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
-    Cell, CellLevel, Faction, Level, PlayerFaction, test_support::GangerEntityBuilder,
+    battle::PlayerFaction,
+    prelude::{Cell, CellLevel, Faction, Level},
+    test_support::GangerEntityBuilder,
 };
 
 use super::harness::*;

@@ -2,7 +2,7 @@
 //! gamepad cursor/act surfaces.
 
 use bevy::{ecs::message::Messages, prelude::*, window::CursorMoved};
-use gdtf_battle_sim::BattleInProgress;
+use gdtf_battle_sim::prelude::BattleInProgress;
 
 use super::build::battle_act_gate;
 use crate::{

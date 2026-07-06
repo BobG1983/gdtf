@@ -2,7 +2,7 @@
 
 use bevy::{prelude::*, ui::Display};
 use gdtf_battle_input::{InputSystems, InspectTarget, pick_hovered_cell};
-use gdtf_battle_sim::CellLevel;
+use gdtf_battle_sim::prelude::CellLevel;
 
 use super::harness::*;
 

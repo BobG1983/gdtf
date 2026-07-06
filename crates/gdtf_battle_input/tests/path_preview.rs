@@ -35,10 +35,16 @@ use gdtf_battle_input::{
 };
 use gdtf_battle_presenter::{ActiveLevel, PathPreview, ViewMode};
 use gdtf_battle_sim::{
-    BattleInProgress, Cell, CellLevel, CombatTuning, Faction, FactionRelation, FireModeSpec,
-    FloorCostGrid, GRID_HEIGHT, GRID_WIDTH, Level, MAX_LEVELS, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, OccupancyGrid, PlanningView, PlayerFaction, Position, SquadVisibility,
-    TerrainKind, Tu, VerticalLinkGraph, find_path,
+    battle::PlayerFaction,
+    floor::FloorCostGrid,
+    metric::MAX_LEVELS,
+    occupancy::{GRID_HEIGHT, GRID_WIDTH, TerrainKind},
+    pathfinder::{PlanningView, find_path},
+    prelude::{BattleInProgress, Cell, CellLevel, Faction, Level, OccupancyGrid, Position, Tu},
+    tuning::CombatTuning,
+    vertical::VerticalLinkGraph,
+    visibility::{FactionRelation, SquadVisibility},
+    weapon::{FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
 };
 use gdtf_test_utils::advance_until;
 
@@ -136,7 +142,7 @@ fn expected_route(app: &App, start: CellLevel, goal: CellLevel) -> Option<(Vec<C
         links,
         tuning,
         floor_costs,
-        gdtf_battle_sim::MovementCostFactor::IDENTITY,
+        gdtf_battle_sim::injuries::MovementCostFactor::IDENTITY,
         &planning,
     )
     .ok()
@@ -256,7 +262,7 @@ fn unreachable_target_yields_empty_preview() {
             links,
             tuning,
             floor_costs,
-            gdtf_battle_sim::MovementCostFactor::IDENTITY,
+            gdtf_battle_sim::injuries::MovementCostFactor::IDENTITY,
             &planning
         )
         .is_err(),

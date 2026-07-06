@@ -4,7 +4,7 @@
 //! loadout helpers ([`super::loadout`]) so the collapsed-row layout has its own focused file.
 
 use bevy::{prelude::*, ui::Val};
-use gdtf_battle_sim::{ArmorName, GangerStatTuning, WeaponName};
+use gdtf_battle_sim::{armor::ArmorName, tuning::GangerStatTuning, weapon::WeaponName};
 use gdtf_ui::{
     ButtonLabel, CommittedTextValue, DropdownOption, spawn_button, spawn_text_field,
     theme::GdtfTheme,

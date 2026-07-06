@@ -1,6 +1,6 @@
 //! The presenter level-step helper drained by the level-cycle intents.
 
-use gdtf_battle_sim::{Level, MAX_LEVELS};
+use gdtf_battle_sim::{metric::MAX_LEVELS, prelude::Level};
 
 /// Which way a level-step intent moves the
 /// [`ActiveLevel`](gdtf_battle_presenter::ActiveLevel).

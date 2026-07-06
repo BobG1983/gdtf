@@ -2,7 +2,7 @@
 
 use gdtf_app::test_support::{LevelDownButton, LevelUpButton};
 use gdtf_battle_presenter::ActiveLevel;
-use gdtf_battle_sim::{Level, MAX_LEVELS};
+use gdtf_battle_sim::{metric::MAX_LEVELS, prelude::Level};
 use gdtf_test_utils::press_ui_button;
 
 use super::{harness::*, probes::*};

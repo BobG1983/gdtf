@@ -19,7 +19,8 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    GangName, GridHeight, GridLevels, GridSize, GridSizeError, GridWidth, ThemeUuid,
+    ganger::GangName,
+    level::{GridHeight, GridLevels, GridSize, GridSizeError, GridWidth, ThemeUuid},
     rng::BattleSeed,
 };
 
@@ -33,7 +34,7 @@ crate::support_item! {
     /// A typed [`Resource`] (no-bare-types: every field is a named domain value). The input
     /// widgets mutate it through the named setters as a selection / commit lands;
     /// [`generate_on_press`](super::apply::generate_on_press) reads it to rebuild the model. The
-    /// player / enemy gang are [`Option`] so an EMPTY [`GangRegistry`](gdtf_battle_sim::GangRegistry)
+    /// player / enemy gang are [`Option`] so an EMPTY [`GangRegistry`](gdtf_battle_sim::ganger::GangRegistry)
     /// (no loaded gangs) leaves them `None` — the no-gang fallback (C4): the deployment quads
     /// then label by prefab name.
     ///

@@ -4,7 +4,10 @@ use gdtf_battle_input::{
     SelectedShooter,
     contextual::{OpenDoorAct, PendingContextualIntents},
 };
-use gdtf_battle_sim::{Direction, StanceKind, acts::OpenDoorRequested};
+use gdtf_battle_sim::{
+    acts::OpenDoorRequested,
+    prelude::{Direction, StanceKind},
+};
 use gdtf_test_utils::probed;
 
 use super::harness::*;

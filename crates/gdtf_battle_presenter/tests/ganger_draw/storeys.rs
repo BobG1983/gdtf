@@ -4,7 +4,8 @@
 use bevy::{app::App, prelude::Visibility, transform::components::Transform};
 use gdtf_battle_presenter::{ActiveLevel, TerrainSprite};
 use gdtf_battle_sim::{
-    Cell, CellLevel, Direction, Level, Position, test_support::SituationBuilder,
+    prelude::{Cell, CellLevel, Direction, Level, Position},
+    test_support::SituationBuilder,
 };
 
 use super::{harness::*, probes::*};

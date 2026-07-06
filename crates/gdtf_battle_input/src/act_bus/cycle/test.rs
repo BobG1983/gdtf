@@ -1,6 +1,6 @@
 //! Tests for the authored cyclic orders (relocated from `cycle.rs`, GTW-201).
 
-use gdtf_battle_sim::{Direction, StanceKind};
+use gdtf_battle_sim::prelude::{Direction, StanceKind};
 
 use crate::cycle::orders::{FACING_CYCLE, STANCE_CYCLE, next_facing, next_stance};
 

@@ -45,7 +45,7 @@
 use bevy::prelude::*;
 use gdtf_battle_input::dispatch_act_intents;
 use gdtf_battle_presenter::ActiveLevel;
-use gdtf_battle_sim::BattleInProgress;
+use gdtf_battle_sim::prelude::BattleInProgress;
 use gdtf_ui::{drive_switches, repaint_segments, select_segment_on_press, themed::UiSystems};
 
 use crate::states::{

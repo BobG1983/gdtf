@@ -4,7 +4,11 @@
 //! `model` module.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{GangName, GangRegistry, PlacedPrefab, PrefabName, SpawnRole};
+use gdtf_battle_sim::{
+    ganger::{GangName, GangRegistry},
+    level::{PrefabName, SpawnRole},
+    procgen::PlacedPrefab,
+};
 
 use super::units::{QuadCellH, QuadCellW, QuadCellX, QuadCellY, QuadRect, QuadSize};
 

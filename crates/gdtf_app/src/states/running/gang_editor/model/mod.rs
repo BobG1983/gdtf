@@ -1,10 +1,10 @@
 //! The in-app gang-editor's EDITABLE gang model (GTW-420).
 //!
 //! [`EditableGang`] is a NEW editor-side, in-memory editable model — distinct from the
-//! immutable [`GangRoster`](gdtf_battle_sim::GangRoster) asset the `Load` flow builds. It
-//! is the working copy the editor screen reads and mutates: a gang [`GangName`](gdtf_battle_sim::GangName) plus a list
+//! immutable [`GangRoster`](gdtf_battle_sim::ganger::GangRoster) asset the `Load` flow builds. It
+//! is the working copy the editor screen reads and mutates: a gang [`GangName`](gdtf_battle_sim::ganger::GangName) plus a list
 //! of [`EditableMember`]s. It is inserted as a [`Resource`](bevy::prelude::Resource) `OnEnter(DebugGangEditor)` (seeded
-//! from a loaded gang via the [`GangRegistry`](gdtf_battle_sim::GangRegistry), or empty when
+//! from a loaded gang via the [`GangRegistry`](gdtf_battle_sim::ganger::GangRegistry), or empty when
 //! none is present) and removed `OnExit(DebugGangEditor)`, per the project's
 //! state-scoped-resource convention (`bevy-traps.md` #1) — so every system reading it guards
 //! with `run_if(resource_exists::<EditableGang>)` / `Option<Res<…>>`.

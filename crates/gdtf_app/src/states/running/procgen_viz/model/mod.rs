@@ -5,8 +5,8 @@
 //! sim→presenter boundary): it RUNS the sim's
 //! [`assemble_placement`](gdtf_battle_sim::procgen::assemble_placement) and
 //! [`fill_placement`](gdtf_battle_sim::procgen::fill_placement) against the loaded UUID-keyed
-//! [`PrefabRegistry`](gdtf_battle_sim::PrefabRegistry) for a theme + grid-size + seed, then
-//! projects the resulting [`FilledPlacement`](gdtf_battle_sim::FilledPlacement) into an
+//! [`PrefabRegistry`](gdtf_battle_sim::level::PrefabRegistry) for a theme + grid-size + seed, then
+//! projects the resulting [`FilledPlacement`](gdtf_battle_sim::procgen::FilledPlacement) into an
 //! ORDERED list of [`VizQuad`]s — player, enemy, then every fill prefab in placement order.
 //! It never mutates combat/sim state; it only reads the placement.
 //!

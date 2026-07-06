@@ -4,28 +4,28 @@
 //! FX sprites drawn from the effects sheet ([`SheetRole::Effects`](crate::SheetRole),
 //! `assets/sprites/alt_tileset_effects.png`):
 //!
-//! - [`Bleeding`](gdtf_battle_sim::Bleeding) `{ ganger }` -> a blood/hit FLASH sprite at
+//! - [`Bleeding`](gdtf_battle_sim::effects::bleed::Bleeding) `{ ganger }` -> a blood/hit FLASH sprite at
 //!   the ganger's cell ([`read_bleeding`]); the flash's intensity is a RELATION to the
-//!   ganger's [`Wounds`](gdtf_battle_sim::Wounds) (the message carries NO amount — verified
+//!   ganger's [`Wounds`](gdtf_battle_sim::ganger::Wounds) (the message carries NO amount — verified
 //!   `bleed.rs:62-65`), read from a `Query<&Wounds>`, never a pinned literal.
-//! - [`ArmorBroken`](gdtf_battle_sim::ArmorBroken) `{ ganger, part }` -> a spark/break flash
+//! - [`ArmorBroken`](gdtf_battle_sim::armor_wear::ArmorBroken) `{ ganger, part }` -> a spark/break flash
 //!   at the ganger's cell ([`read_armor_broken`]).
-//! - [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) `{ at }` -> a debris/rubble burst at
+//! - [`CoverDestroyed`](gdtf_battle_sim::occupancy_sync::CoverDestroyed) `{ at }` -> a debris/rubble burst at
 //!   `cell_to_world(at)` ([`read_cover_destroyed`]); ADDITIVE to the S4 rubble swap.
-//! - [`FallOccurred`](gdtf_battle_sim::FallOccurred) `{ ganger, to_level, storeys, … }` ->
+//! - [`FallOccurred`](gdtf_battle_sim::falls::FallOccurred) `{ ganger, to_level, storeys, … }` ->
 //!   a fall-impact flash at the landing cell + a `"Fell"` FCT pop (GTW-524;
 //!   [`read_fall_occurred`]); ADDITIVE to the wound/bleed/injury flashes the fall damage drives.
 //! - [`ThrowResolved`](gdtf_battle_sim::acts::ThrowResolved) `{ at, damage }` -> the GTW-546
 //!   grenade BLAST FX: [`read_throw_resolved`] seeds a [`PendingImpact`] at the arc's LANDING
 //!   cell so the SAME [`animate_impact`] plays the grenade's damage-type expanding-shockwave
 //!   impact strip there — the existing `AoE` hit FX, reused (the throw's sim blast fold emits no
-//!   [`ShotFired`](gdtf_battle_sim::ShotFired), so it would otherwise be an invisible HP drain).
-//! - [`ShotFired`](gdtf_battle_sim::ShotFired) `{ muzzle, trajectory, impact, kind, damage }`
+//!   [`ShotFired`](gdtf_battle_sim::shot_fired::ShotFired), so it would otherwise be an invisible HP drain).
+//! - [`ShotFired`](gdtf_battle_sim::shot_fired::ShotFired) `{ muzzle, trajectory, impact, kind, damage }`
 //!   -> the GTW-306 FIRING FX (reshaped from GTW-290's smeared stretched tracer): a
 //!   **traveling directional projectile** that LERPS muzzle→impact then despawns
 //!   ([`spawn_shot_projectiles`] / [`advance_projectiles`]), and a **3-frame impact
 //!   animation** at its arrival point ([`animate_impact`], FX-B). The projectile + impact
-//!   tiles are PER DAMAGE TYPE (the [`ShotFired`](gdtf_battle_sim::ShotFired) `damage` selects the color row; the
+//!   tiles are PER DAMAGE TYPE (the [`ShotFired`](gdtf_battle_sim::shot_fired::ShotFired) `damage` selects the color row; the
 //!   trajectory selects the 8-way direction). The standalone muzzle flash was REMOVED
 //!   (GTW-307): it rendered oversized at the shooter's feet and read poorly, so the
 //!   traveling projectile (departing the muzzle) IS the fire signal. It is the generic firing

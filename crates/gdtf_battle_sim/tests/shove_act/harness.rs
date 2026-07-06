@@ -6,10 +6,13 @@ use bevy::{
     prelude::{Entity, MessageReader, ResMut, Resource, World},
 };
 use gdtf_battle_sim::{
-    Cell, CellLevel, CombatTuning, Faction, FallOccurred, Hp, Level, OccupancyMaintenancePlugin,
-    Position, ShoveRequested, StanceKind, Tu, Wounds,
-    falls::FallsPlugin,
+    acts::ShoveRequested,
+    falls::{FallOccurred, FallsPlugin},
+    ganger::{Hp, Wounds},
+    occupancy_sync::OccupancyMaintenancePlugin,
+    prelude::{Cell, CellLevel, Faction, Level, Position, StanceKind, Tu},
     test_support::{GangerEntityBuilder, SimAppBuilder},
+    tuning::CombatTuning,
 };
 
 /// An arbitrary fixed seed — determinism is the property, the value is irrelevant.

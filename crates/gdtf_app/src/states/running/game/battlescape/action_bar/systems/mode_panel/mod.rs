@@ -6,7 +6,7 @@
 //! `gdtf_ui` [`SegmentedControl`](gdtf_ui::SegmentedControl) (3 horizontal segments Single / Burst / Full-Auto — the
 //! Fire-Mode control in the mockup). Selecting a segment sets
 //! [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) DIRECTLY to that mode's
-//! read-back [`FireModeSpec`](gdtf_battle_sim::FireModeSpec) (never fabricated); the current
+//! read-back [`FireModeSpec`](gdtf_battle_sim::weapon::FireModeSpec) (never fabricated); the current
 //! mode is the control's own [`ActiveSegment`](gdtf_ui::ActiveSegment) highlight, synced
 //! FROM [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode). Mode does NOT use
 //! [`ActIntent`](gdtf_battle_input::ActIntent)
@@ -22,7 +22,7 @@
 //! control on a selection/weapon change. So the segment [`Entity`](bevy::prelude::Entity) ids stay STABLE across a
 //! weapon change ([[ui-mutate-not-respawn]] / the GTW-284 invariant) and the offered subset
 //! is the only thing that visibly changes. An UNARMED selection (no
-//! [`FireMode`](gdtf_battle_sim::FireMode)) hides every segment and the panel root.
+//! [`FireMode`](gdtf_battle_sim::weapon::FireMode)) hides every segment and the panel root.
 //!
 //! It runs `.after(UiSystems::ApplyTheme)` (`bevy-traps.md` #3) so its writes settle
 //! deterministically relative to the theme pass.

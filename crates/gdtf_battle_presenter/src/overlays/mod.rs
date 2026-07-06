@@ -2,7 +2,7 @@
 //! area-damage-field zone, and the shared targeting gate.
 
 /// The GTW-545 area-damage-field overlay — the persistent per-cell VIEW of the sim's live
-/// [`FieldRegistry`](gdtf_battle_sim::FieldRegistry) so a seeded field (toxic pool / electrified
+/// [`FieldRegistry`](gdtf_battle_sim::effects::fields::FieldRegistry) so a seeded field (toxic pool / electrified
 /// floor / burning ground) is VISIBLE on the battlefield. A SHIPPING view (the playability rule),
 /// so NOT debug-gated, unlike the `reachable` debug overlay.
 pub mod field;

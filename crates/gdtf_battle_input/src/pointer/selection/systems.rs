@@ -2,7 +2,12 @@
 //! MOVE → CLEAR decision) and [`right_click_turn_to_face`], both gated to the player's faction.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Faction, MeleeQuery, PlayerFaction, Position, WieldedBy, Wields};
+use gdtf_battle_sim::{
+    battle::PlayerFaction,
+    fire::MeleeQuery,
+    prelude::{Faction, Position},
+    weapon::{WieldedBy, Wields},
+};
 
 use crate::{
     ActIntent, InspectTarget, PendingActIntent,
@@ -27,7 +32,7 @@ use crate::{
 ///
 /// 1. **FIRE** — a fire mode is selected, the hovered cell holds an ENEMY occupant
 ///    (a [`Faction`] `!=` [`PlayerFaction`]), the current selection is a player-faction ganger,
-///    and the shared [`can_fire`](gdtf_battle_sim::can_fire) guard passes → push
+///    and the shared [`can_fire`](gdtf_battle_sim::magazine::can_fire) guard passes → push
 ///    [`ActIntent::Fire`]; nothing else changes this edge.
 /// 2. **SELECT** — the hovered cell holds one of YOUR gangers
 ///    ([`Faction`] `==` [`PlayerFaction`]) → set [`SelectedShooter::new`] + clear the move
@@ -61,7 +66,7 @@ use crate::{
 ///
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + read-only
 /// `Query<&Faction>` + `Query<ShooterFireData>` + `Query<&Wields>` + the weapon-magazine query +
-/// the [`MeleeWeapon`](gdtf_battle_sim::MeleeWeapon) marker probe ([`MeleeQuery`] — the fire
+/// the [`MeleeWeapon`](gdtf_battle_sim::weapon::MeleeWeapon) marker probe ([`MeleeQuery`] — the fire
 /// guard's magazine lives on the related RANGED weapon
 /// entity since GTW-323 slice 3, resolved excluding the melee weapon since GTW-505 C5), the
 /// [`ResMut<SelectedShooter>`] / [`ResMut<PendingActIntent>`] / [`ResMut<InspectTarget>`] writes —

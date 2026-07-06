@@ -22,17 +22,23 @@ use bevy::{ecs::entity::Entity, prelude::*, state::state::State, ui::Val};
 use gdtf_app::test_support::{AppState, BattleScapeState, RunningState, StabilityBar};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    Aiming, ArmorHardness, ArmorProtection, Cell, CellLevel, ConeMult, CoverEntry, CoverHp,
-    CoverLedger, Direction, Facing, Faction, FireMode, FireModeSpec, HeightBand, Level, LifeState,
-    Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Position, ReloadTu,
-    Shooter, Shove, StabilityTerms, Stable, Stance, StanceKind, Tu, TuMax, WeaponBundle, WieldedBy,
-    faced_cell,
+    aim::{Shooter, stability_for},
+    armor::{ArmorHardness, ArmorProtection},
+    cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    faced_cell::faced_cell,
+    ganger::{Aiming, Facing, TuMax},
     injuries::InjuryRegistry,
-    stability_for,
+    magazine::{Magazine, ReloadTu},
+    prelude::{
+        Cell, CellLevel, Direction, Faction, Level, LifeState, Position, Stance, StanceKind, Tu,
+    },
+    stability::{ConeMult, StabilityTerms},
     tuning::CombatTuning,
     weapon::{
-        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, Handedness, HandlingProfile,
-        Kickback, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
+        Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent, Shove, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+        WeaponShred, WieldedBy,
     },
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};

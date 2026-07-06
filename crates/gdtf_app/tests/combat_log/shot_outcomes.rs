@@ -4,9 +4,15 @@ use bevy::{ecs::entity::Entity, prelude::*};
 use gdtf_app::test_support::CombatLogLine;
 use gdtf_battle_presenter::ShotImpactResolved;
 use gdtf_battle_sim::{
-    AppliedDamage, ArmorWearOutcome, BodyPart, Cell, GangerVerdict, HitReport, HitResult,
-    HitVerdict, HpDamage, IntegrityWear, LifeState, Matchup, PenetratingDamage, Severity,
-    ShotFired, ShotKind,
+    armor::BodyPart,
+    armor_wear::ArmorWearOutcome,
+    matchup::Matchup,
+    prelude::{Cell, LifeState},
+    resolve_and_apply::{AppliedDamage, GangerVerdict, HitReport, HitVerdict},
+    resolve_coarse::ShotKind,
+    resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage},
+    severity::Severity,
+    shot_fired::ShotFired,
 };
 
 use super::harness::*;
@@ -97,12 +103,12 @@ fn a_shot_fired_no_longer_appends_an_outcome_line() {
     // here, on the drain frame. The buffer is registered by the sim plugins in a live battle.
     app.world_mut().write_message(ShotFired {
         shooter,
-        muzzle: gdtf_battle_sim::SimPos::new(1.0, 1.0, 0.0),
-        trajectory: gdtf_battle_sim::ShotDir::from_direction(Vec3::new(1.0, 0.0, 0.0)),
+        muzzle: gdtf_battle_sim::metric::SimPos::new(1.0, 1.0, 0.0),
+        trajectory: gdtf_battle_sim::sample_cone::ShotDir::from_direction(Vec3::new(1.0, 0.0, 0.0)),
         impact_cell: Cell::new(2, 1),
-        impact_level: gdtf_battle_sim::Level::new(0),
+        impact_level: gdtf_battle_sim::metric::Level::new(0),
         kind: ShotKind::Ganger(struck),
-        damage: gdtf_battle_sim::DamageType::Kinetic,
+        damage: gdtf_battle_sim::weapon::DamageType::Kinetic,
         report: Some(connecting_report(struck, 7)),
     });
     app.update();

@@ -4,8 +4,16 @@
 use bevy::{ecs::message::Messages, transform::components::Transform};
 use gdtf_battle_presenter::{FctValence, FloatingCombatText, cell_to_world, valence_color};
 use gdtf_battle_sim::{
-    ArmorBroken, BattleInProgress, Bleeding, BodyPart, Cell, CellLevel, DotDamage, DotTicked,
-    FieldDamage, FieldTicked, Level, SuppressionApplied,
+    armor::BodyPart,
+    armor_wear::ArmorBroken,
+    effects::{
+        bleed::Bleeding,
+        dot::DotTicked,
+        fields::{FieldDamage, FieldTicked},
+    },
+    prelude::{BattleInProgress, Cell, CellLevel, Level},
+    suppression::SuppressionApplied,
+    weapon::DotDamage,
 };
 
 use super::{harness::*, probes::*};

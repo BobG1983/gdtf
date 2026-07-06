@@ -4,7 +4,7 @@
 use bevy::{input::ButtonInput, prelude::*};
 use gdtf_battle_input::{ActIntent, BoundKey, Keybinds, PendingActIntent, SelectedShooter};
 use gdtf_battle_presenter::ActiveLevel;
-use gdtf_battle_sim::{Level, MAX_LEVELS};
+use gdtf_battle_sim::{metric::MAX_LEVELS, prelude::Level};
 use gdtf_test_utils::press_key;
 
 use super::harness::*;

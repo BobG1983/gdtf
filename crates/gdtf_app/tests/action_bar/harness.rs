@@ -8,8 +8,12 @@ use bevy::{
 };
 use gdtf_app::test_support::{AppState, BattleScapeState, RunningState};
 use gdtf_battle_sim::{
-    ArmorRegistry, FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    injuries::InjuryRegistry, tuning::CombatTuning, weapon::WeaponRegistry,
+    armor::ArmorRegistry,
+    injuries::InjuryRegistry,
+    tuning::CombatTuning,
+    weapon::{
+        FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, WeaponRegistry,
+    },
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{ActiveSegment, SegmentIndex, theme::default_theme};

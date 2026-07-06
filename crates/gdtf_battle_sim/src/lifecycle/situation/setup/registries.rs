@@ -87,7 +87,7 @@ pub struct BattleRegistries<'a> {
     /// [`attachments`](crate::weapon::WeaponSpec::attachments) keys resolve against; each
     /// resolved item's [`AttachmentEffect`](crate::effects::attachments::AttachmentEffect)s ride onto the
     /// spawned weapon as its [`PendingAttachments`](crate::weapon::PendingAttachments) marker and are applied post-spawn by
-    /// [`apply_pending_attachments`](crate::apply_pending_attachments). `None`
+    /// [`apply_pending_attachments`](crate::equipment::attachments::apply_pending_attachments). `None`
     /// ([`new`](Self::new)) skips attachment resolution — the fail-safe every content
     /// registry ref shares (a missing registry applies nothing, never fails a battle). The
     /// real app path passes the loaded value via [`with_attachments`](Self::with_attachments).

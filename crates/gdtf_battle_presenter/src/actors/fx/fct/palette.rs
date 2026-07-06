@@ -4,7 +4,7 @@
 //! A floating-combat-text pop signals one of a few combat *valences* (damage taken, a
 //! wound / status change, a neutral miss, a lethal down / death). This module is the
 //! single home for the valence → color mapping ([`FctValence`] / [`valence_color`]) plus
-//! the [`Severity`](gdtf_battle_sim::Severity)-tier → amber-family ramp
+//! the [`Severity`](gdtf_battle_sim::severity::Severity)-tier → amber-family ramp
 //! ([`severity_color`]) the reader slices (3-4) will feed their pops through. Keeping it
 //! here — separate from the spawn/animate primitive in [`text`](super::text) — means a
 //! later palette retune touches ONE file, and the primitive stays a pure
@@ -19,7 +19,7 @@
 //! table did.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::Severity;
+use gdtf_battle_sim::severity::Severity;
 
 /// RED — damage taken. The dominant FCT valence: an HP-loss number a hit dealt.
 ///
@@ -87,7 +87,7 @@ const FIELD_HAZARD_ORANGE: Color = Color::srgb(0.95, 0.50, 0.10);
 /// category that decides the pop's color.
 ///
 /// A named domain enum (no bare color / tag): the reader slices (3-4) classify each
-/// [`ShotFired`](gdtf_battle_sim::ShotFired) consequence into one of these, and
+/// [`ShotFired`](gdtf_battle_sim::shot_fired::ShotFired) consequence into one of these, and
 /// [`valence_color`] turns it into the swatch the pop is drawn in. Exhaustive: exactly the
 /// valences the FCT palette distinguishes. A [`Severity`]-tiered wound picks its exact
 /// amber via [`severity_color`] rather than the flat [`Status`](FctValence::Status) swatch,

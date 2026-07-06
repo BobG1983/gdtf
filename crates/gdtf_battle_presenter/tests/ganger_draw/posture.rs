@@ -4,7 +4,8 @@
 use bevy::{app::App, prelude::Entity, sprite::Sprite};
 use gdtf_battle_presenter::{FacingFrame, GangerSprites};
 use gdtf_battle_sim::{
-    Aiming, Cell, CellLevel, Direction, Facing, Level, Stance, StanceKind,
+    ganger::{Aiming, Facing},
+    prelude::{Cell, CellLevel, Direction, Level, Stance, StanceKind},
     test_support::SituationBuilder,
 };
 

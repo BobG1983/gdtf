@@ -3,8 +3,11 @@
 use bevy::{ecs::message::Messages, transform::components::Transform};
 use gdtf_battle_presenter::{FloatingCombatText, cell_to_world, severity_color};
 use gdtf_battle_sim::{
-    BattleInProgress, BodyPart, Cell, CellLevel, GainedInjury, InjuryInflicted, InjuryName,
-    InspectText, Level, LogText, PopupText, Position, Severity,
+    acts::InjuryInflicted,
+    armor::BodyPart,
+    injuries::{GainedInjury, InjuryName, InspectText, LogText, PopupText},
+    prelude::{BattleInProgress, Cell, CellLevel, Level, Position},
+    severity::Severity,
 };
 
 use super::{harness::*, probes::*};

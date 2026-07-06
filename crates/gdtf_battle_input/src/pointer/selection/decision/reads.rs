@@ -3,7 +3,8 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    OccupancyGrid, PlayerFaction, SquadVisibility, VerticalLinkGraph, tuning::CombatTuning,
+    battle::PlayerFaction, prelude::OccupancyGrid, tuning::CombatTuning,
+    vertical::VerticalLinkGraph, visibility::SquadVisibility,
 };
 
 use crate::{InspectTarget, SelectedFireMode, selection::SelectedShooter};

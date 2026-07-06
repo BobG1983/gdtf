@@ -15,12 +15,12 @@
 //! endpoints round-trip. `assert!` + `let … else` keep it panic-free per the workspace lints.
 
 use gdtf_battle_sim::{
-    Cell,
     armor::{ArmorHardness, ArmorProtection},
     level::{
         GridHeight, GridLevels, GridSize, GridWidth, Prefab, PrefabName, PrefabSpec, ThemeUuid,
     },
     metric::{CellLevel, Level},
+    prelude::Cell,
     slab::SlabHp,
     terrain::{
         def::{

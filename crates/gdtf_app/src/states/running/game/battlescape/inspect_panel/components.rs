@@ -80,7 +80,7 @@ pub(in crate::states::running::game::battlescape::inspect_panel) struct InspectO
 
 crate::support_item! {
     /// Marks the object block's **Hardness** `Text` line (e.g. "Hardness 3") — the cover's
-    /// `armor_hardness` from its [`CoverEntry`](gdtf_battle_sim::CoverEntry), mutated in place
+    /// `armor_hardness` from its [`CoverEntry`](gdtf_battle_sim::cover::CoverEntry), mutated in place
     /// (GTW-295 AC3). Widened to `pub` under `test-support` for the inspect integration test. A
     /// unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -89,7 +89,7 @@ crate::support_item! {
 
 crate::support_item! {
     /// Marks the object block's **Protection** `Text` line (e.g. "Protection 2") — the
-    /// cover's `armor_protection` from its [`CoverEntry`](gdtf_battle_sim::CoverEntry),
+    /// cover's `armor_protection` from its [`CoverEntry`](gdtf_battle_sim::cover::CoverEntry),
     /// mutated in place (GTW-295 AC3). Widened to `pub` under `test-support` for the inspect
     /// integration test. A unit marker: presence on an entity is the whole signal
     /// (no-bare-types rule).
@@ -99,7 +99,7 @@ crate::support_item! {
 
 crate::support_item! {
     /// Marks the object block's **Height band** `Text` line (e.g. "Height: High") — the
-    /// cover's `height_band` from its [`CoverEntry`](gdtf_battle_sim::CoverEntry), mutated in
+    /// cover's `height_band` from its [`CoverEntry`](gdtf_battle_sim::cover::CoverEntry), mutated in
     /// place (GTW-295 AC3). Widened to `pub` under `test-support` for the inspect integration
     /// test. A unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]

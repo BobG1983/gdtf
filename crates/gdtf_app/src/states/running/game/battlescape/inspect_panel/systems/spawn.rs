@@ -8,7 +8,7 @@
 //! (marked [`InspectStatBlockHost`]) and a small OBJECT stat block (marked
 //! [`InspectObjectBlock`]) — a title, a labeled Integrity [`ProgressBar`](gdtf_ui::spawn_progress_bar)
 //! ([`InspectObjectBar`]), and labeled Hardness / Protection / Height-band lines, read from a
-//! hovered cover's [`CoverEntry`](gdtf_battle_sim::CoverEntry).
+//! hovered cover's [`CoverEntry`](gdtf_battle_sim::cover::CoverEntry).
 //!
 //! Each sub-block is HIDDEN via [`Display::None`] (removed from layout, GTW-295) so the
 //! panel sizes to the VISIBLE block only — a hidden tall ganger block no longer balloons the
@@ -138,7 +138,7 @@ pub(in crate::states::running::game::battlescape) fn spawn_inspect_panel(
 /// Integrity row (an "Integrity" label + the [`InspectObjectBar`] [`ProgressBar`]), and labeled
 /// Hardness ([`InspectObjectHardness`]) / Protection ([`InspectObjectProtection`]) / Height-band
 /// ([`InspectObjectHeight`]) [`Text`] lines — a readable block comparable to the ganger block.
-/// The widgets seed empty; the update fills them from the hovered [`CoverEntry`](gdtf_battle_sim::CoverEntry)
+/// The widgets seed empty; the update fills them from the hovered [`CoverEntry`](gdtf_battle_sim::cover::CoverEntry)
 /// in place ([[ui-mutate-not-respawn]]).
 fn spawn_object_block(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
     let title = spawn_line(commands, theme, InspectObjectText, "");

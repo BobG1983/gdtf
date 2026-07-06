@@ -4,7 +4,8 @@
 use bevy::{app::App, math::Vec2, prelude::Entity, time::TimeUpdateStrategy};
 use gdtf_battle_presenter::{CELL_PX, GangerSprites, Layer, cell_to_world_layered};
 use gdtf_battle_sim::{
-    Cell, CellLevel, Direction, Faction, Level, Position, test_support::SituationBuilder,
+    prelude::{Cell, CellLevel, Direction, Faction, Level, Position},
+    test_support::SituationBuilder,
 };
 
 use super::{harness::*, probes::*};

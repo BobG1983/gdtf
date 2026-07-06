@@ -15,6 +15,11 @@
 //! - [`metric`] — the cubic-voxel coordinate system ([`metric::SimPos`],
 //!   [`metric::Cell`] / [`metric::Level`] / [`metric::CellLevel`],
 //!   [`metric::cell_center`] / [`metric::pos_to_cell`]).
+//! - [`prelude`] — the curated ~dozen genuinely ubiquitous types (the
+//!   [`metric`] coordinate family, the core [`ganger`] identity/state
+//!   components, [`battle::BattleInProgress`], [`occupancy::OccupancyGrid`]),
+//!   re-exported so consumers bind them without the concern path (GTW-628).
+//!   Everything else imports concern-pathed.
 //! - [`tuning`] — the [`tuning::CombatTuning`] resource: every balance
 //!   coefficient, serde-loaded from `assets/core_tuning/combat.tuning.ron`.
 //! - [`level`] — the GTW-409 map-editor / procgen foundations: the
@@ -209,7 +214,7 @@
 //!   / [`acts::SetFacingRequested`] / [`acts::StabilizeDownedRequested`] /
 //!   [`acts::ExecuteDownedRequested`]) carrying [`Entity`](bevy::prelude::Entity) actor
 //!   ref(s) + owned payload, and one dispatch system per act that drains the buffered
-//!   message and calls the ALREADY-LANDED verb ([`mod@fire`] / [`posture`] / [`downed_acts`])
+//!   message and calls the ALREADY-LANDED verb ([`mod@fire`] / [`posture`] / [`acts::downed`])
 //!   once per message — every dispatch system `.in_set(occupancy_sync::SimSystems::Simulate)`
 //!   in `Update`. No act logic is reimplemented; no `*Resolved`, no movement act (later).
 //! - [`battle`] — the E10.5 sim-owned battle-lifecycle integration: the public
@@ -254,289 +259,32 @@ pub mod terrain;
 pub mod turn;
 
 // ── Root modules (not moved) ─────────────────────────────────────────────────
+pub mod prelude;
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
 pub mod tuning;
 
-// ── Module re-exports: preserve `gdtf_battle_sim::<child>::Item` call paths ──
-// External crates use sub-paths like `gdtf_battle_sim::acts::SimActsPlugin`;
-// these re-exports keep those paths resolving without any caller edits.
-// ── Flat item re-exports: preserve `gdtf_battle_sim::TypeName` paths ─────────
-// The ONE dissolved-`acts_runtime` module alias still consumed by an external crate
-// today (gdtf_app's contextual-panel act imports name
-// `gdtf_battle_sim::downed_acts::is_8_adjacent`); GTW-628 re-points those imports at
-// `acts::downed` and deletes this alias. The other old aliases had no external
-// consumers and are gone (GTW-638 C7).
-pub use acts::{
-    FireArcDecision, FireDeclaration, InjuryInflicted, MeleeRequested, MeleeResolved, MeleeStruck,
-    MeleeTarget, MoveRejected, MoveRejection, MovementOccurred, OpenDoorRequested, ReloadOutcome,
-    ReloadResult, ShoveOutcome, ShoveRequested, ShoveSource, ThrowGrenadeRequested, ThrowResolved,
-    apply_injury, can_engage, decide_fire_arc, dispatch_melee, dispatch_open_door, dispatch_shove,
-    dispatch_throw_grenade, downed as downed_acts,
-    downed::{
-        Actor, DownedTarget, can_execute, can_stabilize, execute_downed, is_8_adjacent,
-        stabilize_downed,
-    },
-    movement::{ReactionShotFired, WalkInProgress, advance_walk},
-    resolve_shove,
-};
-pub use ai::{
-    ActCadence, ActPacing, AiTarget, EnemyActCooldown, enemy_ai_turn, pick_nearest, plan_advance,
-};
-pub use combatants::{
-    faced_cell,
-    faced_cell::faced_cell,
-    ganger,
-    ganger::{
-        Aim, Aiming, Bottle, Cool, DerivedStats, Direction, Facing, Faction, Fight, GangMember,
-        GangName, GangRegistry, GangRoster, GangerAttributes, GangerName, Grit, Hp, HpMax,
-        LifeState, Luck, Morale, Position, Reactions, Reflexes, Shooting, Speed, Stabilized,
-        Stance, StanceKind, Strength, Suppressed, SuppressorCell, Toughness, Tu, TuMax, Wounds,
-        WoundsMax, derive_stats,
-    },
-    posture,
-    posture::{set_aiming, set_facing, set_stance},
-    tu,
-    tu::{can_spend_tu, reset_tu, spend_tu},
-};
+// ── Second-level module re-exports ───────────────────────────────────────────
+// Each concern parent's child modules stay addressable one hop from the crate
+// root (`gdtf_battle_sim::ganger::…`, `gdtf_battle_sim::weapon::…`) — the
+// concern-pathed surface consumers and intra-doc links bind. ITEM names are
+// never lifted to the crate root (GTW-628 deleted that flat name ledger, so
+// adding a pub sim type never edits this file); the ~dozen genuinely
+// ubiquitous types live in [`prelude`].
+pub use combatants::{faced_cell, ganger, posture, tu};
 pub use damage_resolution::{
-    apply_hit,
-    apply_hit::{GangerHitTarget, apply_hit},
-    hit_location,
-    hit_location::roll_body_part,
-    inflicted_wound,
-    inflicted_wound::{InflictedWound, InflictedWounds},
-    injuries,
-    injuries::{
-        BleedAfflicted, BleedAmount, GainedInjury, HandsAvailable, InflictedInjuries, InjuryDef,
-        InjuryEffect, InjuryName, InjuryRegistry, InjuryTables, InjuryWeight, InjuryWeighting,
-        InspectText, LogText, MovementCostFactor, PopupText, PostHeal, RolledInjury, StatDelta,
-        StatDeltaLedger, StatDeltaSum, StatKind, StatTarget, WeightedInjuryEntry,
-        WeightedInjuryTable, roll_injury,
-    },
-    matchup,
-    matchup::{Matchup, MatchupMultiplier, WheelNode, matchup, matchup_multiplier},
-    resolve_and_apply,
-    resolve_and_apply::{
-        AppliedDamage, CoverVerdict, GangerVerdict, GroundAccrual, HitReport, HitVerdict,
-        SlabVerdict, StruckSurfaces, TargetGanger, resolve_and_apply,
-    },
-    resolve_hit,
-    resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage, resolve_hit},
+    apply_hit, hit_location, inflicted_wound, injuries, matchup, resolve_and_apply, resolve_hit,
     severity,
-    severity::{PartSeverityMod, Severity, SeverityInputs, part_severity_mod, roll_severity},
 };
-pub use effects::{
-    attachments::{
-        AimDelta, ApplyAim, ApplyAttachmentEffect, ApplyBrace, ApplyDamage,
-        ApplyDamageTypeOverride, ApplyExtraAmmo, ApplyFatalBias, ApplyGainFireMode,
-        ApplyPenetration, ApplyReloadTime, ApplyShove, ApplyShred, ApplySilence, ApplyStability,
-        AttachmentEffect, ReloadTimeScale, WeaponBraceBonus,
-    },
-    bleed::{BleedOngoing, BleedStarted, Bleeding, enemy_phase_started, tick_bleed},
-    dot::{DotAfflicted, DotApplied, DotTicked, apply_dot, tick_dot},
-    fields::{
-        FieldAfflicted, FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey,
-        FieldOngoing, FieldRegistry, FieldTicked, FieldTurns, ImmuneArmorTypes, PlacedField,
-        tick_fields,
-    },
-    on_death::{
-        CoverOnDeathRegistry, ExplodeDamage, OnDeath, OnDeathEffect, OnDeathOccurred,
-        resolve_on_death,
-    },
-};
-pub use equipment::{
-    armor,
-    armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
-        ArmorRegistry, ArmorSpec, ArmorType, BodyPart, InjuryCategory, PieceArmorMut, SourceArmor,
-        Wears, WornBy,
-    },
-    armor_wear,
-    armor_wear::{ArmorBroken, ArmorDamaged, ArmorWearOutcome, wear_armor},
-    attachments::{
-        AttachToWeaponExt, AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec,
-        FitRejection, SlotCapacity, WeaponSlots, apply_pending_attachments, attachment_fits,
-        resolve_pending_attachments,
-    },
-    magazine,
-    magazine::{
-        FireActor, LoadedRounds, Magazine, ReloadTu, can_fire, clamp_burst, in_bounds, mode_tu_cost,
-    },
-    weapon,
-    weapon::{
-        Accuracy, AoeRange, BaseSpread, BlastRadius, ConeHalfAngle, DamageProfile, DamageType, Dot,
-        DotDamage, DotProfile, DotTurns, FISTS_KEY, FatalBias, FightMode, FightModeKind,
-        FightModeSpec, FireMode, FireModeSpec, Handedness, HandlingProfile, HitType, Kickback,
-        MagazineSize, MeleeDamageProfile, MeleeWeapon, MeleeWeaponBundle, MeleeWeaponRegistry,
-        MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, MountedWeapon,
-        PendingAttachments, Reach, Shove, Silenced, Stable, Strikes, TrajectoryStyle, TuCost,
-        Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
-        WeaponSpawnSiblings, WeaponSpec, WeaponStats, WieldedBy, Wields, shooter_weapon_silenced,
-    },
-};
-pub use falls::{DropLanding, FallOccurred, FallsPlugin, StoreysFallen, apply_falls, resolve_drop};
-pub use foundation::{
-    metric,
-    metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center, pos_to_cell},
-    registry,
-    registry::Registry,
-    rng,
-    rng::{
-        BattleSeed, FightRng, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng,
-    },
-};
-pub use level::{
-    GridHeight, GridLevels, GridSize, GridSizeError, GridWidth, MAX_GRID_SPAN, Prefab, PrefabKey,
-    PrefabName, PrefabRegistry, PrefabSpec, SpawnRole, TerrainPlacementEntry, ThemeDisplayName,
-    ThemeUuid, UuidThemeDef, UuidThemeRegistry,
-};
-pub use lifecycle::{
-    battle,
-    battle::{
-        BattleInProgress, BattleLost, BattleReady, BattleRoster, BattleSimPlugin, BattleWon,
-        PlayerFaction, SetupBattleRequested, TeardownBattleRequested, check_outcome,
-        setup_battle_on_request, teardown_battle_on_request,
-    },
-    procgen,
-    procgen::{
-        Anchor, DeadRectScatterCount, EmittedLevel, FilledPlacement, Footprint,
-        LargePrefabAreaThreshold, Margin, MaxRectsPacker, MinDensityFloor, MinPlayerSide,
-        PackingError, PlacedPrefab, Placement as PrefabPlacement, ProcgenFinding, ProcgenTuning,
-        RegionRect, SplitMode, assemble_placement, assemble_placement_with, emit_level,
-        fill_placement, fill_placement_with, generate_level,
-    },
-    situation,
-    situation::{
-        BattleRegistries, BattleSetup, BattleSetupError, CoverSpawn, FieldSpawn, FloorSpawn,
-        GangerSpawn, PlacedGanger, Placement, Situation, SlabSpawn, has_stacked_gangers,
-        setup_battle,
-    },
-};
-pub use melee::{
-    Combatants, FightMargin, FightOutcome, MeleeDamageMult, MeleeStrike, MeleeWeaponHit,
-    StructuralMult, apply_melee_multiplier, melee_damage_mult, opposed_fight, resolve_melee_strike,
-    resolve_structural_melee,
-};
-pub use perception::{
-    los,
-    los::{CanSee, Observer, PeekOffset, Sighted, Target, can_see, has_los, has_los_peeking},
-    pathfinder,
-    pathfinder::{
-        MIN_MOVE_COST, Path, PathBlocked, PathCost, PlanningView, find_path, reachable_within,
-    },
-    peek_sync,
-    peek_sync::{peek_population_needed, sync_peek_offsets},
-    visibility,
-    visibility::{
-        FactionRelation, FovObserver, OmniscientFog, SquadVisibility, accrue, is_ganger_visible,
-        move_fog, recompute_visibility, should_recompute_visibility, union_fov,
-    },
-};
-pub use reaction::{reaction_trigger, reset_reactions_used};
+pub use equipment::{armor, armor_wear, magazine, weapon};
+pub use foundation::{metric, registry, rng};
+pub use lifecycle::{battle, procgen, situation};
+pub use perception::{los, pathfinder, peek_sync, visibility};
 pub use shot_pipeline::{
-    aim,
-    aim::{Shooter, cone_for, stability_for},
-    aoe,
-    aoe::aoe_affected,
-    central_axis,
-    central_axis::{AimDir, climb_aim_dir, muzzle_position, target_aim_point},
-    clearance,
-    clearance::{
-        Clearance, round_band_for_cell, round_band_fraction, round_clears_occupant, silhouette_band,
-    },
-    cone,
-    cone::{ConeAngle, PriorShots, RecoilFactor, aim_cone_mult, cone_angle, recoil_factor},
-    fire,
-    fire::{
-        BattleGrids, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, TargetQuery, Volley,
-        WeaponQuery, WearsQuery, WieldsQuery, fire, resolve_blast,
-    },
-    march,
-    march::{MarchKind, MarchResult, march_arc, march_vector},
-    resolve_coarse,
-    resolve_coarse::{ShotInputs, ShotKind, ShotOutcome, resolve_coarse},
-    sample_cone,
-    sample_cone::{ConcentrationP, ShotDir, concentration_p, sample_cone_vector},
-    shot_fired,
-    shot_fired::ShotFired,
+    aim, aoe, central_axis, clearance, cone, fire, march, resolve_coarse, sample_cone, shot_fired,
     stability,
-    stability::{
-        ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, StabilityTerms,
-        SuppressionStability, TerrainBraced, stability,
-    },
-};
-pub use suppression::{
-    SuppressionApplied, apply_suppression, reset_suppression, stance_for_cover_band,
-    suppression_auto_stance,
 };
 pub use terrain::{
-    cover,
-    cover::{
-        BandFraction, CoverDamage, CoverEntry, CoverEvent, CoverHp, CoverLedger, Destroyed,
-        HeightBand, band_for,
-    },
-    def,
-    def::{
-        TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind,
-        TerrainTag, TerrainUuid, closed_openable_vision_band, is_openable,
-    },
-    emplacement,
-    emplacement::{
-        EmplacementOccupant, EmplacementState, EmplacementTogglePlugin, MountedWeaponEntity,
-        MountedWeaponKey, SetEmplacement, apply_emplacement_toggle,
-    },
-    entity,
-    entity::{
-        BlocksVision, TerrainBrace, TerrainCell, TerrainIndex, TerrainIndexKey, TerrainPieceKind,
-    },
-    floor,
-    floor::FloorCostGrid,
-    occupancy,
-    occupancy::{
-        DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupancySlot,
-        OccupantPlacement, StairEyeOffset, TerrainKind, TerrainPlacement, VisionBlocking,
-        pathable_neighbors, project_vision_blocking,
-    },
-    occupancy_sync,
-    occupancy_sync::{
-        CoverDestroyed, GroundAccrued, OccupancyMaintenancePlugin, PrevSlot, SlabDestroyed,
-        sync_accrued_ground, sync_dead_gangers, sync_destroyed_cover, sync_destroyed_slab,
-        sync_moved_gangers,
-    },
-    openable,
-    openable::{
-        OpenState, OpenableBlocking, OpenableTogglePlugin, SetOpenable, apply_openable_toggle,
-    },
-    piece,
-    piece::{FootfallSound, TerrainGraphicKey, TerrainName},
-    slab,
-    slab::{
-        BraceStairCells, SlabDamage, SlabDestroyedFlag, SlabEntry, SlabEvent, SlabHp, SlabLedger,
-    },
-    surface,
-    surface::{GroundDamage, SlabState, SurfaceGrid},
-    vertical,
-    vertical::{
-        InvalidVerticalLink, LinkKind, OneWay, VerticalLink, VerticalLinkGraph,
-        build_vertical_link_graph,
-    },
+    cover, def, emplacement, entity, floor, occupancy, occupancy_sync, openable, piece, slab,
+    surface, vertical,
 };
-pub use tuning::{
-    AimConeMult, AimHeightFrac, AimMode, AimTuPremium, BandEdge, BleedRate, BodyPartWeight,
-    BodyPartWeights, BottlePerMorale, BraceContribution, BraceMinHeight, CombatTuning,
-    ConcentrationCoeff, ConcentrationCoeffs, ConeStabilityTuning, DefenderLuckScale,
-    EmplacementStabilityBonus, ExecuteTu, FightVariance, FightWeights, GangerStatTuning, HpWeights,
-    MatchupMultipliers, MeleeKMargin, MeleeMultMax, MeleeMultMin, MeleeTuning, MoraleWeights,
-    MoveCost, MoveCosts, MuzzleForwardOffset, MuzzleHeight, MuzzleHeights, PenDamageScale,
-    PerStoreyDamage, ProjectileBandEdges, RandomSpread, ReactionCapBase, ReactionCapPerReactions,
-    ReactionPMax, ReactionPMin, ReactionProbability, ReactionScore, ReactionTuning, ReactionsUsed,
-    ReactionsWeights, RecoilClimb, SeverityEdge, SeverityEdges, SeverityScaling, ShooterLuckScale,
-    ShootingWeights, ShoveTu, SilhouetteTop, SilhouetteTops, SlabDefaultHp, SlabDefaults,
-    StabilityCurve, StabilityCurveCoord, StabilityCurvePoint, StabilityCurves, StabilizeTu,
-    StanceChangeTu, StanceContribution, StanceStability, StatWeight, SuppressionRadius,
-    SuppressionStabilityPenalty, ToughnessMitigation, TuBase, TuPerSpeed, TurnTu, WoundCost,
-    WoundCosts, WoundsPerHp, clamp_probability, interrupt_probability, may_interrupt, reaction_cap,
-    reaction_score, rolls_interrupt,
-};
-pub use turn::{ActiveFaction, TurnStarted, dispatch_end_turn, regen_team_tu};

@@ -6,10 +6,14 @@ use bevy::{
     prelude::{Entity, MessageReader, ResMut, Resource, World},
 };
 use gdtf_battle_sim::{
-    Cell, CellLevel, CombatTuning, Faction, FallOccurred, Hp, InflictedWounds, Level, LifeState,
-    Luck, OccupancyMaintenancePlugin, PerStoreyDamage, Position, Stance, StanceKind, Toughness, Tu,
-    TuMax, Wounds, acts::InjuryInflicted, falls::FallsPlugin, occupancy_sync::SlabDestroyed,
+    acts::InjuryInflicted,
+    falls::{FallOccurred, FallsPlugin},
+    ganger::{Hp, Luck, Toughness, TuMax, Wounds},
+    inflicted_wound::InflictedWounds,
+    occupancy_sync::{OccupancyMaintenancePlugin, SlabDestroyed},
+    prelude::{Cell, CellLevel, Faction, Level, LifeState, Position, Stance, StanceKind, Tu},
     test_support::SimAppBuilder,
+    tuning::{CombatTuning, PerStoreyDamage},
 };
 
 /// The SHIPPED combat tuning parsed from the real `assets/core_tuning/combat.tuning.ron` (the

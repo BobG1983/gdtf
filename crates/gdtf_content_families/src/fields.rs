@@ -1,7 +1,7 @@
 //! The area-damage-fields content family (GTW-545, generic seam since GTW-570).
 
 use gdtf_assets::{ContentFamily, ContentFileStem};
-use gdtf_battle_sim::{FieldDef, FieldDefRegistry, FieldKey};
+use gdtf_battle_sim::effects::fields::{FieldDef, FieldDefRegistry, FieldKey};
 
 /// The area-damage-fields family: `assets/content/fields/*.field.ron` → the
 /// stem-keyed [`FieldDefRegistry`] catalog the battle setup resolves a

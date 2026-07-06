@@ -1,15 +1,15 @@
 //! The AREA-DAMAGE-FIELD consequence family (GTW-545, palette-ised in GTW-572): the
 //! transient `"-N"` attrition pop for a ganger a persistent damage ZONE drained this round,
-//! off the sim's [`FieldTicked`](gdtf_battle_sim::FieldTicked) per-round message.
+//! off the sim's [`FieldTicked`](gdtf_battle_sim::effects::fields::FieldTicked) per-round message.
 //!
 //! Drawn the hazard [`FctValence::Field`](super::super::palette::FctValence::Field) orange —
 //! its OWN environmental-attrition valence, distinct from a fresh weapon hit (RED) and from
 //! the DOT's toxic green (a field is a ZONE you stand in, not an affliction you carry). The
 //! message carries the field cell, so the anchor is [`PopAnchor::Carried`]. The persistent
-//! ZONE is the sim's [`FieldRegistry`](gdtf_battle_sim::FieldRegistry), drawn by
+//! ZONE is the sim's [`FieldRegistry`](gdtf_battle_sim::effects::fields::FieldRegistry), drawn by
 //! [`draw_field_overlay`](crate::draw_field_overlay), NOT this one-shot pop.
 
-use gdtf_battle_sim::FieldTicked;
+use gdtf_battle_sim::effects::fields::FieldTicked;
 
 use super::super::{
     palette::{FctValence, valence_color},
@@ -36,7 +36,10 @@ impl ConsequenceFct for FieldFct {
 #[cfg(test)]
 mod test {
     use bevy::prelude::Entity;
-    use gdtf_battle_sim::{Cell, CellLevel, FieldDamage, FieldTicked, Level};
+    use gdtf_battle_sim::{
+        effects::fields::{FieldDamage, FieldTicked},
+        prelude::{Cell, CellLevel, Level},
+    };
 
     use super::{
         super::super::pop::ConsequenceFct, FctValence, FieldFct, PopAnchor, valence_color,

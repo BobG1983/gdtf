@@ -37,9 +37,9 @@
 
 use bevy::{platform::collections::HashMap, prelude::*};
 use gdtf_battle_sim::{
-    Cell,
     level::GridSize,
     metric::{CellLevel, Level},
+    prelude::Cell,
     terrain::def::TerrainUuid,
 };
 
@@ -160,9 +160,9 @@ fn slot_in_bounds(slot: CellLevel, size: GridSize) -> bool {
 #[cfg(test)]
 mod tests {
     use gdtf_battle_sim::{
-        Cell,
         level::{GridHeight, GridLevels, GridSize, GridWidth},
         metric::{CellLevel, Level},
+        prelude::Cell,
         terrain::def::TerrainUuid,
     };
 

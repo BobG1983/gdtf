@@ -3,7 +3,7 @@
 
 use bevy::prelude::*;
 use gdtf_assets::HotRonAppExt;
-use gdtf_battle_sim::Faction;
+use gdtf_battle_sim::prelude::Faction;
 use serde::Deserialize;
 
 use crate::TileIndex;

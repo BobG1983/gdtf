@@ -52,7 +52,7 @@ pub(in crate::states::running::game::battlescape) struct StatBlockRefs {
     /// The wound-name list container (its line children + its visibility are mutated).
     pub wound_list:  Entity,
     /// The injury-name list container (GTW-439) — its line children + its visibility are
-    /// mutated from the durable [`InflictedInjuries`](gdtf_battle_sim::InflictedInjuries)
+    /// mutated from the durable [`InflictedInjuries`](gdtf_battle_sim::injuries::InflictedInjuries)
     /// ledger (the persistent per-ganger injury list, driven by the COMPONENT not the
     /// transient `InjuryInflicted` message).
     pub injury_list: Entity,
@@ -69,7 +69,7 @@ crate::support_item! {
 
 crate::support_item! {
     /// Marks the **name-title** `Text` of a stat block — the selected / hovered ganger's
-    /// [`GangerName`](gdtf_battle_sim::GangerName), `"???"` when nameless.
+    /// [`GangerName`](gdtf_battle_sim::ganger::GangerName), `"???"` when nameless.
     ///
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -158,11 +158,11 @@ crate::support_item! {
 
 crate::support_item! {
     /// Marks the **injury-name list** container of a stat block (GTW-439) — the vertical
-    /// list of each [`GainedInjury`](gdtf_battle_sim::GainedInjury)'s authored
+    /// list of each [`GainedInjury`](gdtf_battle_sim::injuries::GainedInjury)'s authored
     /// `inspect_text`, hidden when the ganger has no inflicted injuries. Driven by the
-    /// DURABLE [`InflictedInjuries`](gdtf_battle_sim::InflictedInjuries) ledger (the
+    /// DURABLE [`InflictedInjuries`](gdtf_battle_sim::injuries::InflictedInjuries) ledger (the
     /// persistent list), distinct from the transient FCT flash the
-    /// [`InjuryInflicted`](gdtf_battle_sim::InjuryInflicted) message drives.
+    /// [`InjuryInflicted`](gdtf_battle_sim::acts::InjuryInflicted) message drives.
     ///
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -172,7 +172,7 @@ crate::support_item! {
 crate::support_item! {
     /// Marks one **injury-name line** `Text` inside the injury-name list (GTW-439) — a
     /// pooled line whose content + visibility the update sets from a
-    /// [`GainedInjury`](gdtf_battle_sim::GainedInjury)'s `inspect_text`, so the list
+    /// [`GainedInjury`](gdtf_battle_sim::injuries::GainedInjury)'s `inspect_text`, so the list
     /// mutates in place rather than respawning per injury ([[ui-mutate-not-respawn]]).
     ///
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).

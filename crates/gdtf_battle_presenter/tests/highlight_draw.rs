@@ -22,7 +22,7 @@ use gdtf_battle_presenter::{
     CELL_PX, CellVisibility, HighlightRequest, HoverHighlight, TopDownRendererPlugin,
     WORLD_RENDER_LAYER, cell_to_world,
 };
-use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, Level};
+use gdtf_battle_sim::prelude::{BattleInProgress, Cell, CellLevel, Level};
 
 /// A squad-VISIBLE highlight request for `cell` — the normal-tint reticle (GTW-251 callers
 /// predate the GTW-11 verdict, so the migrated ctor carries the `SquadVisible` verdict to keep

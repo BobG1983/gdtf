@@ -4,8 +4,10 @@ use bevy::{ecs::entity::Entity, prelude::*};
 use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
 use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
-    Aiming, Direction, Facing, FireMode, FireModeSpec, Level, Stance, StanceKind, TuMax, WieldedBy,
     acts::{EndTurnRequested, SetAimingRequested, SetStanceRequested},
+    ganger::{Aiming, Facing, TuMax},
+    prelude::{Direction, Level, Stance, StanceKind},
+    weapon::{FireMode, FireModeSpec, WieldedBy},
 };
 use gdtf_test_utils::{MessageProbe, MessageProbePlugin, drain_message_probe, probed};
 use gdtf_ui::{DisabledButton, SegmentSubText};

@@ -2,7 +2,11 @@
 //! including the GTW-546 blast seed.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Cell, DamageType, HitReport, Level};
+use gdtf_battle_sim::{
+    prelude::{Cell, Level},
+    resolve_and_apply::HitReport,
+    weapon::DamageType,
+};
 
 use super::super::fct::ClassifiedPop;
 

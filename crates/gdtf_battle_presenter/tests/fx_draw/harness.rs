@@ -19,8 +19,13 @@ use gdtf_battle_presenter::{
     TopDownRendererPlugin,
 };
 use gdtf_battle_sim::{
-    ArmorBroken, Bleeding, CoverDestroyed, DotTicked, FallOccurred, ShotFired, SuppressionApplied,
     acts::{MeleeResolved, ThrowResolved},
+    armor_wear::ArmorBroken,
+    effects::{bleed::Bleeding, dot::DotTicked},
+    falls::FallOccurred,
+    occupancy_sync::CoverDestroyed,
+    shot_fired::ShotFired,
+    suppression::SuppressionApplied,
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
