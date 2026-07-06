@@ -12,33 +12,25 @@
 #[cfg(debug_assertions)]
 use std::path::{Path, PathBuf};
 
-#[cfg(debug_assertions)]
-use gdtf_assets::FileStem;
 use gdtf_assets::serialize_ron_pretty;
+#[cfg(debug_assertions)]
+use gdtf_assets::{ContentFamily, FileStem, WORKSPACE_ASSETS_ROOT};
 use gdtf_battle_sim::terrain::{
     def::{TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind, TerrainUuid},
     piece::TerrainGraphicKey,
 };
+#[cfg(debug_assertions)]
+use gdtf_content_families::TerrainDefsFamily;
 
 use super::{draft::TerrainDraft, error::SaveTerrainError, picks::TerrainKindChoice};
-
-/// The workspace `assets/` root — byte-identical to the editor's `AssetPlugin.file_path`
-/// (`crates/gdtf_content_editor` → up two levels → `assets`), computed at compile time. So a
-/// terrain def the editor SAVES lands exactly where the GTW-487 terrain loader READS from —
-/// `assets/content/terrain/<theme>/`.
 #[cfg(debug_assertions)]
-const WORKSPACE_ASSETS_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
+use crate::theme_dir::theme_dir;
 
-/// The per-theme terrain root the GTW-487 loader scans — `assets/content/terrain/<theme>/`.
-/// The SOLE terrain root after GTW-490 (moved under `content/` in GTW-562).
-#[cfg(debug_assertions)]
-const TERRAIN_SUBDIR: &str = "content/terrain";
-
-/// The compound file extension the GTW-487 terrain loader keys on
-/// (`init_ron_asset_with_extensions::<TerrainDef>(vec!["terrain_def.ron"])`) — a saved def MUST
-/// use it or the loader never picks the file up.
-#[cfg(debug_assertions)]
-const TERRAIN_DEF_EXTENSION: &str = "terrain_def.ron";
+// GTW-634 C1/C3: the assets root, the per-theme terrain folder, and the compound extension
+// are NOT re-spelled here — the root is the shared [`WORKSPACE_ASSETS_ROOT`] owner and the
+// folder/extension are DERIVED from [`TerrainDefsFamily`]'s `FOLDER`/`EXTENSION` (the exact
+// values the GTW-487 loader walks + dispatches on), so a saved def lands where the loader
+// reads BY CONSTRUCTION (the GTW-621 gang-extension bug class, closed for terrain).
 
 /// Sanitize the entered display name into a file-name STEM — since GTW-577 a thin
 /// delegation to the shared [`gdtf_assets::sanitize_file_stem`] seam (the prefab
@@ -50,22 +42,6 @@ const TERRAIN_DEF_EXTENSION: &str = "terrain_def.ron";
 #[must_use]
 pub(crate) fn sanitize_stem(raw: &str) -> FileStem {
     gdtf_assets::sanitize_file_stem(raw)
-}
-
-/// The `snake_case` directory name for a theme, derived from its human label — the prefab
-/// `theme_dir` sibling, delegating the slug filter to the shared
-/// [`gdtf_assets::sanitize_file_stem`] seam (GTW-577 C1). `assets/content/terrain/<theme>/`
-/// keys on the slugified theme DISPLAY NAME (`"Industrial Hive"` → `industrial_hive`),
-/// matching the shipped per-theme layout; the empty-slug fallback stays per-type (P9).
-#[cfg(debug_assertions)]
-#[must_use]
-pub(crate) fn theme_dir(display_name: &str) -> String {
-    let slug = gdtf_assets::sanitize_file_stem(display_name);
-    if slug.is_empty() {
-        "unknown_theme".to_owned()
-    } else {
-        slug.to_string()
-    }
 }
 
 /// Project the in-progress [`TerrainDraft`] into a real [`TerrainDef`] keyed by `uuid` (GTW-474
@@ -202,9 +178,9 @@ pub fn write_terrain_in(
     }
     let def = draft_to_terrain_def(draft, uuid)?;
     let path = assets_root
-        .join(TERRAIN_SUBDIR)
+        .join(TerrainDefsFamily::FOLDER)
         .join(theme_dir(theme_display))
-        .join(format!("{stem}.{TERRAIN_DEF_EXTENSION}"));
+        .join(format!("{stem}.{}", TerrainDefsFamily::EXTENSION));
     gdtf_assets::write_ron_pretty(&path, &def)?;
     Ok(path)
 }

@@ -14,6 +14,7 @@ use gdtf_battle_sim::{
     injuries::{InjuryDef, InjuryRegistry, InjuryTables, InjuryWeighting},
     severity::Severity,
 };
+use gdtf_content_families::injuries::{INJURY_DEF_EXTENSION, INJURY_WEIGHTING_EXTENSION};
 
 use super::super::{build_injury_data, redrive_injuries_on_asset_event};
 
@@ -77,8 +78,10 @@ pub(super) fn app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .add_plugins(AssetPlugin::default())
-        .init_ron_asset_with_extensions::<InjuryDef>(vec!["injury.ron"])
-        .init_ron_asset_with_extensions::<InjuryWeighting>(vec!["weighting.ron"])
+        // GTW-634 C4: the SAME single-owner extension consts production registers with,
+        // so the harness loaders can never drift from the real registration.
+        .init_ron_asset_with_extensions::<InjuryDef>(vec![INJURY_DEF_EXTENSION])
+        .init_ron_asset_with_extensions::<InjuryWeighting>(vec![INJURY_WEIGHTING_EXTENSION])
         .add_systems(Update, redrive_injuries_on_asset_event);
     app
 }

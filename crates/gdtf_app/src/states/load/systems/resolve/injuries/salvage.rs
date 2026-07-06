@@ -16,6 +16,12 @@ use gdtf_assets::{
 use gdtf_battle_sim::injuries::{
     InjuryDef, InjuryName, InjuryRegistry, InjuryTables, InjuryWeighting,
 };
+// GTW-634 C4: the injuries folder + the two compound extensions come from their single
+// owning declarations (the bespoke-family layout vocabulary in `gdtf_content_families`),
+// so the salvage walk can never drift from the kick-off's folder or the registered loaders.
+use gdtf_content_families::injuries::{
+    INJURIES_FOLDER, INJURY_DEF_EXTENSION, INJURY_WEIGHTING_EXTENSION,
+};
 
 use super::{
     audit_unweighted_injuries, build_tables, injury_key_from_stem, warn_on_subfolder_mismatch,
@@ -91,11 +97,11 @@ pub(super) fn settle_injuries_salvage(
 /// rolled — rather than crashing).
 pub(super) fn begin_injuries_salvage(commands: &mut Commands, asset_server: &AssetServer) {
     let def_salvage =
-        begin_ron_folder_salvage::<InjuryDef>(asset_server, "content/injuries", "injury.ron");
+        begin_ron_folder_salvage::<InjuryDef>(asset_server, INJURIES_FOLDER, INJURY_DEF_EXTENSION);
     let weighting_salvage = begin_ron_folder_salvage::<InjuryWeighting>(
         asset_server,
-        "content/injuries",
-        "weighting.ron",
+        INJURIES_FOLDER,
+        INJURY_WEIGHTING_EXTENSION,
     );
     match (def_salvage, weighting_salvage) {
         (Ok(defs), Ok(weightings)) if !(defs.is_empty() && weightings.is_empty()) => {

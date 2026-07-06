@@ -1,30 +1,16 @@
 //! The **type vocabulary** of the save path (GTW-432; swept onto the v2 UUID schema in
-//! GTW-495): compile-time path constants, the [`SavePrefabError`] failure enum, and the theme/size
-//! directory helpers. (GTW-512: the `bevy_ui` save-widget markers were dropped — the egui save
-//! controls are the C4 child.)
+//! GTW-495): the [`SavePrefabError`] failure enum, the authored spawn-role default, and the
+//! size directory helper. (GTW-512: the `bevy_ui` save-widget markers were dropped — the egui
+//! save controls are the C4 child. GTW-634: the path constants — assets root, prefab folder,
+//! compound extension — and the theme-dir helper moved to their single owners:
+//! [`gdtf_assets::WORKSPACE_ASSETS_ROOT`], [`gdtf_content_families::prefabs`], and
+//! [`crate::theme_dir`].)
 
-use gdtf_assets::{RonSaveError, sanitize_file_stem};
+use gdtf_assets::RonSaveError;
 use gdtf_battle_sim::{
     level::{GridSize, SpawnRole},
     metric::CellLevel,
 };
-
-/// The workspace `assets/` root — byte-identical to the editor's `AssetPlugin.file_path`
-/// (`crates/gdtf_content_editor` → up two levels → `assets`), computed at compile time relative to THIS
-/// crate's manifest. So a prefab the editor SAVES lands exactly where the running game (and the
-/// GTW-489 folder loader) READS prefabs from — `assets/content/maps/<theme>/<size>/`.
-pub(super) const WORKSPACE_ASSETS_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
-
-/// The folder under the assets root the GTW-489 loader scans for `*.prefab.ron` fragments
-/// — the `<theme>/<size>/` subfolders are nested under this. Lives under `content/maps/`,
-/// the SOLE prefab root after GTW-494 (GTW-556 moved it from the top-level `maps/`).
-pub(super) const MAPS_SUBDIR: &str = "content/maps";
-
-/// The compound file extension the GTW-489 prefab loader keys on
-/// (`init_ron_asset_with_extensions::<PrefabSpec>(vec!["prefab.ron"])`) — a saved prefab MUST
-/// use it or the loader never picks the file up. The loader strips a trailing `.prefab` from
-/// the file stem to recover the prefab NAME, so `entry_room.prefab.ron` keys `entry_room`.
-pub(super) const PREFAB_EXTENSION: &str = "prefab.ron";
 
 /// The spawn role a saved prefab is authored with (GTW-432) — the connective
 /// [`Fill`](SpawnRole::Fill) default.
@@ -87,26 +73,6 @@ impl std::fmt::Display for SavePrefabError {
 }
 
 impl std::error::Error for SavePrefabError {}
-
-/// The `snake_case` directory name for a theme, derived from its human label (GTW-495).
-///
-/// The maps tree is `assets/content/maps/<theme>/<size>/`; the `<theme>` segment is the slugified
-/// theme DISPLAY NAME (e.g. `"Industrial Hive"` → `industrial_hive`), matching the shipped
-/// per-theme layout. The save path resolves the theme's display name from the
-/// [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry); this folds it to the
-/// directory convention. NOT a closed-enum match (the UUID model has no closed theme enum):
-/// the slug policy is the shared [`sanitize_file_stem`] seam (GTW-577 C1). An empty
-/// result falls back to the (still-unique) nil/unknown bucket name so a save never targets the
-/// assets root — the fallback POLICY stays per-type (P9); only the filter delegated.
-#[must_use]
-pub(super) fn theme_dir(display_name: &str) -> String {
-    let slug = sanitize_file_stem(display_name);
-    if slug.is_empty() {
-        "unknown_theme".to_owned()
-    } else {
-        slug.to_string()
-    }
-}
 
 /// The `<width>x<height>` directory name for a [`GridSize`] — e.g. a `3 × 3 × 1` footprint →
 /// `3x3`, matching the shipped `assets/content/maps/<theme>/<size>/` layout (GTW-432).

@@ -28,21 +28,18 @@ use std::path::{Path, PathBuf};
 use bevy::{prelude::*, ui::Interaction};
 #[cfg(test)]
 use gdtf_assets::serialize_ron_pretty;
-use gdtf_assets::{ContentFamily, sanitize_file_stem, write_ron_pretty};
+use gdtf_assets::{ContentFamily, WORKSPACE_ASSETS_ROOT, sanitize_file_stem, write_ron_pretty};
 use gdtf_battle_sim::ganger::{GangName, GangRoster};
 use gdtf_content_families::GangsFamily;
 
 use crate::states::running::gang_editor::{components::SaveGangButton, model::EditableGang};
 
-/// The workspace `assets/` root — byte-identical to the app's `AssetPlugin.file_path`
-/// (`crates/gdtf_app` → up two levels → `assets`), computed at compile time relative to THIS
-/// crate's manifest. So a gang the editor SAVES lands exactly where the running app (and the
-/// GTW-415 folder loader) READS gangs from — `assets/content/gangs/`.
-const WORKSPACE_ASSETS_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
-
-/// The folder under the assets root the GTW-415 loader scans for `*.gang.ron` gang files — the
-/// directory the saved gang `.gang.ron` is written into.
-const GANGS_SUBDIR: &str = "content/gangs";
+// GTW-634 C1/C3: the assets root and the gangs folder are NOT re-spelled here — the root is
+// the shared [`WORKSPACE_ASSETS_ROOT`] owner (byte-identical to the app's
+// `AssetPlugin.file_path` by construction) and the folder is DERIVED from
+// [`GangsFamily::FOLDER`], joining the extension GTW-621 already derived from
+// [`GangsFamily::EXTENSION`] — so the saved gang lands exactly where the GTW-415 folder
+// loader reads, with zero hand-maintained mirrors.
 
 /// The on-disk FILE NAME for a saved gang — `<sanitized_gang_name>.gang.ron` (the user
 /// 2026-07-04 ruling, revising the 2026-06-26 `<stem>.ron` one; sanitized through the shared
@@ -87,7 +84,7 @@ pub(in crate::states::running::gang_editor) fn gang_save_path_in(
     root: &Path,
     name: &GangName,
 ) -> PathBuf {
-    root.join(GANGS_SUBDIR).join(gang_file_name(name))
+    root.join(GangsFamily::FOLDER).join(gang_file_name(name))
 }
 
 /// The full on-disk PATH the RUNNING app saves a gang to:
@@ -183,6 +180,7 @@ pub(in crate::states::running::gang_editor) fn save_gang_on_press(
 
 #[cfg(test)]
 mod tests {
+    use gdtf_assets::ContentFamily;
     use gdtf_battle_sim::{
         armor::ArmorName,
         ganger::{
@@ -191,6 +189,7 @@ mod tests {
         },
         weapon::WeaponName,
     };
+    use gdtf_content_families::GangsFamily;
 
     use super::{gang_file_name, gang_save_path, serialize_roster};
     use crate::states::running::gang_editor::model::EditableGang;
@@ -314,9 +313,6 @@ mod tests {
     /// `TypeId` filter skipped it, with zero warns.
     #[test]
     fn save_file_name_derives_its_suffix_from_the_gangs_family_extension() {
-        use gdtf_assets::ContentFamily;
-        use gdtf_content_families::GangsFamily;
-
         let file_name = gang_file_name(&GangName::new("goliaths".to_owned()));
         let expected_suffix = format!(".{}", GangsFamily::EXTENSION);
         assert!(
@@ -341,15 +337,17 @@ mod tests {
             "the seam drops path separators/dots and folds the name to the slug convention",
         );
 
-        // The resolved path's TAIL is exactly `content/gangs/<sanitized>.gang.ron` — the
-        // hostile name contributed a single, separator-free FILE component, so it cannot have
-        // escaped the gangs directory. (The workspace root itself contains `../..` by
-        // construction — `CARGO_MANIFEST_DIR/../../assets` — so the assertion pins the
-        // name-derived tail.)
+        // The resolved path's TAIL is exactly the gangs family FOLDER + `<sanitized>.gang.ron`
+        // — the hostile name contributed a single, separator-free FILE component, so it cannot
+        // have escaped the gangs directory. The folder expectation is DERIVED from
+        // `GangsFamily::FOLDER` (GTW-634 A1: the folder literal has ONE owning spelling — the
+        // family impl the loader walks), so this pins the name-derived tail against the exact
+        // folder the loader reads.
         let path = gang_save_path(&hostile);
+        let expected_tail = std::path::Path::new(GangsFamily::FOLDER).join("evil_gang.gang.ron");
         assert!(
-            path.ends_with("content/gangs/evil_gang.gang.ron"),
-            "the sanitized file lands under content/gangs/: {path:?}",
+            path.ends_with(&expected_tail),
+            "the sanitized file lands under the gangs family folder: {path:?}",
         );
         assert_eq!(
             path.file_name().and_then(|f| f.to_str()),

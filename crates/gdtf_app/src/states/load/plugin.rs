@@ -16,6 +16,8 @@ use gdtf_battle_sim::{
 use gdtf_content_families::{
     ArmorFamily, AttachmentsFamily, FieldsFamily, GangsFamily, MeleeWeaponsFamily,
     TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily,
+    injuries::{INJURY_DEF_EXTENSION, INJURY_WEIGHTING_EXTENSION},
+    prefabs::PREFAB_EXTENSION,
 };
 use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 
@@ -141,8 +143,8 @@ impl Plugin for LoadScenePlugin {
             // — so the recursive folder dispatch is unambiguous among GDTF's many `.ron`
             // loaders. Registered here in `build` BEFORE the kick-off's
             // `load_folder("injuries")` runs.
-            app.init_ron_asset_with_extensions::<InjuryDef>(vec!["injury.ron"]);
-            app.init_ron_asset_with_extensions::<InjuryWeighting>(vec!["weighting.ron"]);
+            app.init_ron_asset_with_extensions::<InjuryDef>(vec![INJURY_DEF_EXTENSION]);
+            app.init_ron_asset_with_extensions::<InjuryWeighting>(vec![INJURY_WEIGHTING_EXTENSION]);
             // GTW-489 (child T05c of GTW-476): the UUID-keyed prefab fragments load through the
             // SAME generic RON loader via `load_folder` of the `content/maps/<theme>/<size>/`
             // tree, claiming the dedicated `prefab.ron` compound extension (files are
@@ -151,7 +153,7 @@ impl Plugin for LoadScenePlugin {
             // loader registered here is now the ONLY prefab resolver in the Load flow (the
             // procgen pipeline consumes `PrefabRegistry` as of GTW-492). Registered here in
             // `build` BEFORE the kick-off's `load_folder("content/maps")` runs.
-            app.init_ron_asset_with_extensions::<PrefabSpec>(vec!["prefab.ron"]);
+            app.init_ron_asset_with_extensions::<PrefabSpec>(vec![PREFAB_EXTENSION]);
             add_hot_reload_systems(app);
         }
         // GTW-570: the FOLDER-loaded content families register through the generic

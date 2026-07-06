@@ -37,6 +37,9 @@ use gdtf_assets::{
     begin_ron_folder_salvage, poll_ron_folder_salvage, report_malformed_members,
 };
 use gdtf_battle_sim::level::{Prefab, PrefabName, PrefabRegistry, PrefabSpec};
+// GTW-634 C4: folder + extension from their single owning declarations (shared with the
+// map editor's save path), so the salvage walk and the editor's write can never drift.
+use gdtf_content_families::prefabs::{PREFAB_EXTENSION, PREFABS_FOLDER};
 
 use crate::states::load::resources::{ActivePrefabsFolderHandle, LoadHandles};
 
@@ -116,7 +119,8 @@ pub(super) fn resolve_prefabs(
     // Load always exits with one present (the assembler then has no fragments rather than
     // crashing).
     if matches!(folder_state, RecursiveDependencyLoadState::Failed(_)) {
-        match begin_ron_folder_salvage::<PrefabSpec>(asset_server, "content/maps", "prefab.ron") {
+        match begin_ron_folder_salvage::<PrefabSpec>(asset_server, PREFABS_FOLDER, PREFAB_EXTENSION)
+        {
             Ok(salvage) if !salvage.is_empty() => {
                 warn!(
                     "GDTF Load: the `maps` folder failed to load; salvaging its fragments \

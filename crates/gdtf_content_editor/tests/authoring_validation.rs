@@ -26,7 +26,8 @@ use bevy::{
     winit::WinitPlugin,
 };
 use gdtf_assets::{
-    ContentFinding, ContentFolderHandle, ContentIntegrityReport, ContentValidationDone, RonAsset,
+    ContentFamily, ContentFinding, ContentFolderHandle, ContentIntegrityReport,
+    ContentValidationDone, RonAsset,
 };
 use gdtf_battle_sim::{level::UuidThemeDef, terrain::def::TerrainUuid};
 use gdtf_content_editor::MapEditorPlugin;
@@ -173,9 +174,11 @@ fn theme_hot_edit_rearms_validation_and_republishes_current_findings() {
     let handle = app
         .world()
         .resource::<AssetServer>()
-        .load::<RonAsset<UuidThemeDef>>(
-            "content/terrain/fixture_theme/fixture_theme.terrain_theme.ron",
-        );
+        .load::<RonAsset<UuidThemeDef>>(format!(
+            // GTW-634 A1: the folder segment is DERIVED from the family's owning const.
+            "{}/fixture_theme/fixture_theme.terrain_theme.ron",
+            ThemeDefsFamily::FOLDER
+        ));
     {
         let mut themes = app
             .world_mut()
