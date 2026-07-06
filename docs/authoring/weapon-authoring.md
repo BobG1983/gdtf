@@ -249,9 +249,11 @@ File: `crates/gdtf_battle_sim/src/equipment/weapon/bundle.rs`
 
 ### Step 3 — Define the component (if it lives on the armed entity)
 
-Add a `#[derive(Component)]` newtype to `components.rs`:
+Add a `#[derive(Component)]` newtype to the `components/` module, in the
+concern leaf it belongs to (`ballistics.rs` / `damage.rs` / `handling.rs` /
+`markers.rs` / `tags.rs`):
 
-File: `crates/gdtf_battle_sim/src/equipment/weapon/components.rs`
+File: `crates/gdtf_battle_sim/src/equipment/weapon/components/`
 
 Follow the house style: private inner, derived `Deref`, `#[serde(transparent)]`,
 doc comment with the why. Derive `Default` ONLY as a `bsn!` spawn-seed sentinel
@@ -317,7 +319,7 @@ Key Rust types (all in `crates/gdtf_battle_sim/src/equipment/weapon/`):
 - `WeaponBundle` — `bundle.rs`
 - `BaseSpread`, `Accuracy`, `Kickback`, `FatalBias`, `WeaponDamage`,
   `WeaponPunch`, `WeaponShred`, `DamageType`, `Stable`, `Handedness`,
-  `WeaponName`, `Weapon` — `components.rs`
+  `WeaponName`, `Weapon` — `components/` (one concern leaf each)
 - `FireMode`, `FireModeSpec`, `ModeKind`, `ModeConeMult`, `ModeTuPercent`,
   `ModeShots` — `fire_mode.rs`
 - `Magazine`, `ReloadTu`, `LoadedRounds` — `crates/gdtf_battle_sim/src/equipment/magazine/ammo.rs`

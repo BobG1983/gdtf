@@ -33,7 +33,7 @@ const BEATS: [[u8; 3]; 7] = [
 ];
 ```
 
-The **shipped game table is the converse orientation** — weapon node `w` penetrates `w+3, w+5, w+6` (mod 7), the quadratic *non-residues* (see [matchup.md](matchup.md) "Drop-in data" and `crates/gdtf_battle_sim/src/matchup.rs`). Identical λ=1 structure, every edge reversed; everything below holds for both orientations.
+The **shipped game table is the converse orientation** — weapon node `w` penetrates `w+3, w+5, w+6` (mod 7), the quadratic *non-residues* (see [matchup.md](matchup.md) "Drop-in data" and `crates/gdtf_battle_sim/src/damage_resolution/matchup/wheel.rs`). Identical λ=1 structure, every edge reversed; everything below holds for both orientations.
 
 ## 4. Properties we get for free
 
@@ -44,7 +44,7 @@ The **shipped game table is the converse orientation** — weapon node `w` penet
 
 ## 5. How the math maps to game systems
 
-- **One shared 7-type wheel** for both offense and defense (Pokémon-style single type system): each weapon emits a type, each armor **is** one type, one tournament lookup resolves a hit (the matchup lookup in `crates/gdtf_battle_sim/src/matchup.rs`). Players learn 7 things + a pattern, not 49 cells.
+- **One shared 7-type wheel** for both offense and defense (Pokémon-style single type system): each weapon emits a type, each armor **is** one type, one tournament lookup resolves a hit (the matchup lookup in `crates/gdtf_battle_sim/src/damage_resolution/matchup/wheel.rs`). Players learn 7 things + a pattern, not 49 cells.
 - **Modifier, not auto-win.** Favorable / neutral / resisted multiplies weapon **punch & shred** only (numbers in [matchup.md](matchup.md)). The structure only pays off if matchups are *felt* in the decision — but it must never decide a fight alone.
 - **Two threats = solvable; three threats = tradeoff.** By λ=1, two enemy armor types have exactly one weapon that answers both. Three armor types have **no** single weapon covering all three (three-way coverage would need a 3-paradox tournament, minimum **19** nodes) → the player must split loadout or accept a bad matchup. That escalation falls straight out of the math.
 - **Spatial / cellular-automaton framing (geoscape, deferred).** Running the 7-type interactions over a grid produces shifting fronts and spirals — a candidate texture for the hex turf layer. **TBD (design)**; see [../mvp/campaign.md](../mvp/campaign.md).

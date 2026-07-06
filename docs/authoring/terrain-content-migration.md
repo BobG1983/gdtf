@@ -35,7 +35,7 @@ terrain:
   removed in GTW-562) — the catalog the LIVE battle path, the prefabs, and `skirmish.ron`
   actually reference. **8 pieces:** `barricade`, `bulkhead_wall`, `debris_pile`,
   `deck_floor`, `deck_slab`, `gantry_slab`, `heavy_bulkhead`, `supply_crate`.
-- The **parallel `ThemeTileCatalog`** (`assets/content/themes/industrial_hive.theme.ron`,
+- The **parallel `ThemeTileCatalog`** (the since-deleted `themes/industrial_hive.theme.ron`,
   the editor-palette / old theme loader) — keyed `industrial_hive`'s **4 tiles:**
   `deck_plating`, `bulkhead_wall`, `supply_crate`, `deck_slab`. It lacks
   `barricade` / `heavy_bulkhead` / `debris_pile` / `gantry_slab`, and its
