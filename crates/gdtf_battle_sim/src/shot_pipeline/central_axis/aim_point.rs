@@ -76,7 +76,7 @@ pub(super) fn band_midpoint_fraction(band: HeightBand, edges: ProjectileBandEdge
 ///   `z = level + silhouette_top × aim_height_frac`. The silhouette top is its own
 ///   tuning home, NOT the round's [`ProjectileBandEdges`] clearance band edges.
 /// * **Cover-occupied cell** (`cover_band == Some(band)`): aim at the cover's own
-///   [`HeightBand`] **midpoint** level-fraction ([`band_midpoint_fraction`], derived
+///   [`HeightBand`] **midpoint** level-fraction (`band_midpoint_fraction`, derived
 ///   from the tunable [`ProjectileBandEdges`] band edges — cover height genuinely IS
 ///   band-based) — `z = level + band_midpoint`, so deliberately shooting a low crate
 ///   works at range.

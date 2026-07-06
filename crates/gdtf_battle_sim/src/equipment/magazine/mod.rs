@@ -34,8 +34,8 @@
 //! render-free, **zero pixels**.
 //!
 //! GTW-201 code-health: this concern is a dir-module split by responsibility — the
-//! ammo state ([`ammo`]: the [`Magazine`] + the [`clamp_burst`] primitive) and the
-//! shared firing guard ([`guard`]: [`mode_tu_cost`] / [`in_bounds`] / [`FireActor`]
+//! ammo state (`ammo`: the [`Magazine`] + the [`clamp_burst`] primitive) and the
+//! shared firing guard (`guard`: [`mode_tu_cost`] / [`in_bounds`] / [`FireActor`]
 //! / [`can_fire`]). This `mod.rs` is wiring-only; every public path is preserved
 //! via the re-exports below.
 

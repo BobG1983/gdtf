@@ -131,7 +131,7 @@ pub struct StruckSurfaces<'a> {
 /// Exactly one variant per report: the old parallel `Option` bag (whose "at most one
 /// of these is `Some`" rule lived in prose) is structurally impossible here. Each
 /// variant carries its kind's whole payload, owned by that kind's
-/// [`kinds`](super::kinds) module (P10):
+/// `kinds` module (P10):
 ///
 /// - [`Ganger`](HitVerdict::Ganger) — a hit that LANDED on a live ganger: the boxed
 ///   [`GangerVerdict`] (target / part / applied damage incl. the closed

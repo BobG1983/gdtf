@@ -94,7 +94,7 @@ impl Volley {
 /// 3. **Clamp** the burst to ammo ([`clamp_burst`]); the
 ///    [`Magazine`](crate::magazine::Magazine) decrements one round per fired iteration
 ///    (saturating, AC4).
-/// 4. **Per-round loop** ([`resolve_round`](super::compose::resolve_round)): compose
+/// 4. **Per-round loop** (`resolve_round`): compose
 ///    every [`ShotInputs`](crate::resolve_coarse::ShotInputs) field, run
 ///    [`resolve_coarse`](crate::resolve_coarse::resolve_coarse), and fold
 ///    [`resolve_and_apply`](crate::resolve_and_apply::resolve_and_apply) onto the
@@ -116,7 +116,7 @@ impl Volley {
 ///
 /// Returns the frozen [`Volley`] — the per-round [`HitReport`] reports PLUS the parallel
 /// per-round [`ShotOutcome`] geometry (the GTW-290 FX source, exposed verbatim, not
-/// recomputed). Returns an [`empty`](Volley::empty) volley (and mutates nothing) when
+/// recomputed). Returns an `empty` volley (and mutates nothing) when
 /// [`can_fire`] fails, the shooter entity is not in the shooter query, or the magazine is
 /// empty. The struck entity not being a queryable target (e.g. it lacks a target
 /// component) folds that round to [`HitReport::no_effect`] — never a panic (the round's

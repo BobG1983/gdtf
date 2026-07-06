@@ -40,13 +40,13 @@ use crate::{
 ///   [`fire`]'s own [`crate::magazine::can_fire`] gate + [`crate::tuning::TurnTu`]-free
 ///   charge handle fire-TU affordability — an unaffordable in-arc shot resolves to nothing.
 /// - **Out-of-arc + affordable** ([`FireArcDecision::TurnThenFire`]): ATOMICALLY spend the
-///   turn TU + set the new [`Facing`] (the [`TurnQuery`] half of the [`ParamSet`]) THEN run
+///   turn TU + set the new [`Facing`] (the `TurnQuery` half of the [`ParamSet`]) THEN run
 ///   [`fire`] (the [`ShooterQuery`] half), which spends the fire TU and resolves the shot.
 ///   The combined gate guarantees the remaining pool still affords [`fire`]'s charge.
 /// - **Out-of-arc + unaffordable** ([`FireArcDecision::Reject`]): no TU spent, no facing
 ///   change, no shot — `continue`.
 ///
-/// The turn-write query ([`TurnQuery`]) and [`ShooterQuery`] both touch `Facing`/`Tu`, so
+/// The turn-write query (`TurnQuery`) and [`ShooterQuery`] both touch `Facing`/`Tu`, so
 /// they are time-multiplexed through a [`ParamSet`] (`bevy-traps.md` #3 / #7 — no
 /// `&mut World`); the turn write is taken FIRST, the [`fire`] re-borrow SECOND. No act
 /// logic is reimplemented — the shot resolution REUSES [`fire`] verbatim; this slice only

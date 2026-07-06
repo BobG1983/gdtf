@@ -42,9 +42,9 @@
 //! from the components at the call site — NOT a stored component).
 //!
 //! GTW-201 code-health: this concern is a dir-module split by responsibility —
-//! the per-stat components ([`components`]), the fire-mode model ([`fire_mode`]),
-//! the spawn bundle + borrow-view ([`bundle`]), the authoring spec ([`spec`]), and
-//! the registry ([`registry`]). This `mod.rs` is wiring-only; every public path is
+//! the per-stat components (`components`), the fire-mode model (`fire_mode`),
+//! the spawn bundle + borrow-view (`bundle`), the authoring spec (`spec`), and
+//! the registry (`registry`). This `mod.rs` is wiring-only; every public path is
 //! preserved via the re-exports below.
 
 mod bundle;

@@ -104,7 +104,7 @@ const PLANAR_OFFSETS: [(i32, i32); 8] = [
 /// a DESTROYED-cover cell as walkable and excludes standing walls / cover.
 ///
 /// **Determinism (C5).** Neighbours are yielded in the canonical `(z, y, x)`
-/// cell-key order by iterating [`PLANAR_OFFSETS`] (pre-sorted); the factor scaling is a
+/// cell-key order by iterating `PLANAR_OFFSETS` (pre-sorted); the factor scaling is a
 /// pure `ceil(cost × factor)`, deterministic for a fixed `(cost, factor)`.
 ///
 /// An `origin` whose neighbours are all blocked / out-of-bounds yields an empty

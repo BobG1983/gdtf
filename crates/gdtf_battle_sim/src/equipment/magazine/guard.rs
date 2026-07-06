@@ -43,7 +43,7 @@ fn charge_to_u8(charge: f32) -> u8 {
 /// the tuning [`AimTuPremium`](crate::tuning::AimTuPremium) **only when aiming**
 /// (`1.0` hip-fired). Defining it once here keeps the affordability test and the
 /// actual debit from ever diverging. Returns a [`Tu`] (the guarded `f32→u8` cast
-/// via [`charge_to_u8`] — saturating, no `unwrap`); aiming costs strictly more than
+/// via `charge_to_u8` — saturating, no `unwrap`); aiming costs strictly more than
 /// hip-fire by the `AimTuPremium` factor (resolution.md §1a, default ×1.5).
 #[must_use]
 pub fn mode_tu_cost(

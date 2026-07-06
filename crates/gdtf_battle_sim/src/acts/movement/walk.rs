@@ -104,7 +104,7 @@ impl WalkInProgress {
     /// `Path::steps()`; both are stored reversed internally for O(1) stepping. The caller
     /// (the move dispatch) passes them in forward order. The reveal baseline is captured
     /// on the first [`advance_walk`] tick (see
-    /// [`seen_enemies`](WalkInProgress::seen_enemies)).
+    /// `seen_enemies`).
     #[must_use]
     pub fn new(remaining_cells: &[CellLevel], remaining_costs: &[Tu]) -> Self {
         let mut cells: Vec<CellLevel> = remaining_cells.to_vec();

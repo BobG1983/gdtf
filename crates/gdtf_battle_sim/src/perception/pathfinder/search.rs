@@ -89,11 +89,11 @@ fn chebyshev_heuristic(from: CellLevel, goal: CellLevel) -> PathCost {
 /// deterministic tie-break are unchanged — the gate only removes edges.
 ///
 /// **A\* = Dijkstra + an admissible heuristic** on the ONE shared relaxation core
-/// ([`relax`]): it expands the frontier ordered by `(cost + h, (z, y, x) cell_key)`
-/// — the heuristic [`chebyshev_heuristic`] focusing the search toward `goal`, the
+/// (`relax`): it expands the frontier ordered by `(cost + h, (z, y, x) cell_key)`
+/// — the heuristic `chebyshev_heuristic` focusing the search toward `goal`, the
 /// `(z, y, x)` cell key breaking ties deterministically (C4) — and halts the moment
-/// `goal` is popped ([`StopRule::Done`]). Because `h` is admissible (never
-/// overestimates — see [`chebyshev_heuristic`]), the first time `goal` settles it is
+/// `goal` is popped (`StopRule::Done`). Because `h` is admissible (never
+/// overestimates — see `chebyshev_heuristic`), the first time `goal` settles it is
 /// at its cheapest cost, so the route is optimal.
 ///
 /// Edges are the UNION of GTW-350 planar [`pathable_neighbors`](crate::occupancy::pathable_neighbors)
@@ -193,9 +193,9 @@ where
 /// the cheapest accumulated cost to reach it — the bounded Dijkstra distance-field
 /// FLOOD (C2).
 ///
-/// The SAME relaxation core ([`relax`]) as [`find_path`], with NO goal and NO
+/// The SAME relaxation core (`relax`) as [`find_path`], with NO goal and NO
 /// heuristic (`h ≡ 0` — Dijkstra's native flood shape, ADR-0005 OQ-2): it seeds
-/// `start` at cost `0` and expands outward, but PRUNES ([`StopRule::Prune`]) any
+/// `start` at cost `0` and expands outward, but PRUNES (`StopRule::Prune`) any
 /// settled node whose accumulated cost EXCEEDS `budget` — that node is kept in the
 /// reachable set (it is itself within budget, being settled at its own cost) but its
 /// neighbours are not paid for beyond the budget. The result is every cell whose

@@ -21,7 +21,7 @@
 //! ## One core serves both (ADR-0005 OQ-2)
 //!
 //! [`find_path`] and [`reachable_within`] are thin entry points on a SINGLE
-//! priority-queue relaxation ([`core::relax`]) — they differ only by the heuristic
+//! priority-queue relaxation (`core::relax`) — they differ only by the heuristic
 //! (`chebyshev_xy × 4` for routing, `≡ 0` for the flood) and the stop rule (halt at
 //! the goal vs prune at the budget). The edge model is the UNION of GTW-350 planar
 //! [`pathable_neighbors`](crate::occupancy::pathable_neighbors) (8-connected, octile

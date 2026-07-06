@@ -52,7 +52,7 @@ use crate::{
 ///    abort-first (return early with `Err` before any spawn).
 /// 2. **Spawn each ganger + relate its equipment** — for every
 ///    [`GangerSpawn`](crate::situation::GangerSpawn),
-///    `commands.spawn_scene(`[`ganger_scene`](super::ganger_scene::ganger_scene)`(..))` the ganger's OWN per-field state
+///    `commands.spawn_scene(ganger_scene(..))` the ganger's OWN per-field state
 ///    as a Bevy [`Scene`](bevy::scene::Scene) (GTW-322).
 /// 3. **Seed the [`CoverLedger`](crate::cover::CoverLedger)** — insert a [`CoverEntry`](crate::cover::CoverEntry)
 ///    for every wall and scatter piece (the one unified ledger). Spawn ONE terrain entity

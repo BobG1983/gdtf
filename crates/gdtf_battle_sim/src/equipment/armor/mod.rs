@@ -51,9 +51,9 @@
 //! authors only the key; [`SourceArmor`] remains the roster authoring shape).
 //!
 //! GTW-201 code-health: this concern is a dir-module split by responsibility — the
-//! per-location stats / keys / wheel node ([`stats`]), the roster / battle-local
-//! armor records ([`worn`]), the authoring spec ([`spec`]), and the registry
-//! ([`registry`]). This `mod.rs` is wiring-only; every public path is preserved via
+//! per-location stats / keys / wheel node (`stats`), the roster / battle-local
+//! armor records (`worn`), the authoring spec (`spec`), and the registry
+//! (`registry`). This `mod.rs` is wiring-only; every public path is preserved via
 //! the re-exports below.
 
 mod registry;

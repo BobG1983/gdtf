@@ -78,7 +78,7 @@ pub const fn wall_at(at: CellLevel) -> CoverSpawn {
 /// authoring records and SPLITS them on build — each becomes a
 /// [`PlacedGanger`](crate::situation::PlacedGanger) (into the [`Situation`]) plus a
 /// [`GangMember`](crate::ganger::GangMember) (into a synthesized [`GangRegistry`], keyed
-/// by a per-faction [`GangName`] via [`gang_name_for`]). [`build`](SituationBuilder::build)
+/// by a per-faction [`GangName`] via `gang_name_for`). [`build`](SituationBuilder::build)
 /// yields the [`Situation`] alone (for tests that don't run setup);
 /// [`build_with_gangs`](SituationBuilder::build_with_gangs) yields the
 /// `(Situation, GangRegistry)` pair the v2 [`setup_battle`](crate::situation::setup_battle)
@@ -183,7 +183,7 @@ impl SituationBuilder {
     /// v2 placements plus the synthesized gang registry the placements resolve against.
     ///
     /// Each accumulated combined [`GangerSpawn`] is `split` against a per-faction
-    /// [`GangName`] ([`gang_name_for`]): its [`PlacedGanger`](crate::situation::PlacedGanger)
+    /// [`GangName`] (`gang_name_for`): its [`PlacedGanger`](crate::situation::PlacedGanger)
     /// goes into the situation (authored order preserved) and its
     /// [`GangMember`](crate::ganger::GangMember) into the gang's roster (deduped by member
     /// name — two same-faction gangers sharing a name share one roster member, which is

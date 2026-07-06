@@ -110,7 +110,7 @@ fn hp_damage_to_u16(damage: i32) -> u16 {
 ///    [`HpDamage`](crate::resolve_hit::HpDamage) from [`Hp`] (saturating at `0`),
 ///    even on a graze.
 /// 3. **Wounds by tier + record** — [`Severity::Fatal`] sets [`Wounds`] to `0`
-///    (empties the pool); otherwise subtract [`wound_cost`] (saturating at `0`). In
+///    (empties the pool); otherwise subtract `wound_cost` (saturating at `0`). In
 ///    the SAME branch, every **non-`None`** tier (Minor / Major / Critical / Fatal —
 ///    a wound actually registered) appends one [`InflictedWound`] (this tier + the
 ///    struck `part`) to [`InflictedWounds`]; a [`Severity::None`] graze records

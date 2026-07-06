@@ -212,7 +212,7 @@ pub fn has_los(
 ///
 /// Constructs `Observer { peek_offset: peek, ..*from }` (valid because
 /// `Observer: Copy`) and calls [`has_los`] on the single geometry path — no
-/// second geometry implementation. The clamp in [`eye_anchor`] guarantees the
+/// second geometry implementation. The clamp in `eye_anchor` guarantees the
 /// peeked eye stays within the observer's own cell regardless of the displacement
 /// magnitude.
 ///

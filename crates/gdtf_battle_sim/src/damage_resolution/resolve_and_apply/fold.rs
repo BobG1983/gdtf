@@ -24,19 +24,19 @@ use crate::{
 /// §5 / §6 / §3), and the sim's ONE per-kind delegation dispatch (GTW-573 C3).
 ///
 /// Statically dispatches on what the round struck ([`ShotOutcome::kind`]) — one arm
-/// per struck kind, each a LOGIC-FREE handoff to that kind's [`kinds`](super::kinds)
+/// per struck kind, each a LOGIC-FREE handoff to that kind's `kinds`
 /// module (adding a struck kind = one sibling module + one
 /// [`HitVerdict`](super::report::HitVerdict) variant + one arm here):
 ///
-/// - **[`ShotKind::Ganger`]** → [`kinds::ganger::fold`] — the §5/§6/§8 wound path
+/// - **[`ShotKind::Ganger`]** → `kinds::ganger::fold` — the §5/§6/§8 wound path
 ///   (armored-vs-bare-flesh resolution, the shared `synthesize_wound` core, the
 ///   GTW-544 DOT decision). The ONLY arm that draws RNG.
-/// - **[`ShotKind::Cover`]** → [`kinds::cover::fold`] — the GTW-364 cover-hit path
+/// - **[`ShotKind::Cover`]** → `kinds::cover::fold` — the GTW-364 cover-hit path
 ///   (the SAME damage formula against the cover's own armor,
 ///   `CoverLedger::deplete_cover`, the destroyed-cell verdict). RNG-free.
-/// - **[`ShotKind::Slab`]** → [`kinds::slab::fold`] — the GTW-365 slab mirror
+/// - **[`ShotKind::Slab`]** → `kinds::slab::fold` — the GTW-365 slab mirror
 ///   (`SlabLedger::deplete_slab`). RNG-free.
-/// - **[`ShotKind::Ground`]** → [`kinds::ground::fold`] — the GTW-366
+/// - **[`ShotKind::Ground`]** → `kinds::ground::fold` — the GTW-366
 ///   damaged-never-destroyed accrual verdict. Mutates nothing, RNG-free.
 /// - **[`ShotKind::Miss`]** → [`HitVerdict::NoEffect`] (no draw, no mutation).
 ///

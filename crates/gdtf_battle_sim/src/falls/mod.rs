@@ -12,25 +12,25 @@
 //! pieces (GTW-201 code-health: a directory module, `mod.rs` wiring-only + focused submodules
 //! by concern):
 //!
-//! - [`message`] — the [`FallOccurred`] buffered output signal + its [`StoreysFallen`]
+//! - `message` — the [`FallOccurred`] buffered output signal + its [`StoreysFallen`]
 //!   distance newtype (the presenter's fall FX / log reader drains it).
-//! - [`resolve`] — the pure [`resolve_drop`] verb (C2): scan a cell's slab column downward
+//! - `resolve` — the pure [`resolve_drop`] verb (C2): scan a cell's slab column downward
 //!   from a faller's start storey for the highest SUPPORTED storey (ground, or a `Present`
 //!   slab), returning the [`DropLanding`] (landing storey + storeys fallen).
-//! - [`damage`] — the pure `resolve_fall_hit` fork (C4 / C5): the weight-free
+//! - `damage` — the pure `resolve_fall_hit` fork (C4 / C5): the weight-free
 //!   `per_storey_damage × storeys` blow synthesized as a [`Matchup::Neutral`](crate::matchup::Matchup)
 //!   kinetic hit through the SHARED
-//!   [`synthesize_wound`](crate::resolve_and_apply::synthesize_wound) core the ganger path
+//!   `synthesize_wound` core the ganger path
 //!   also uses (`resolve_hit` → `roll_severity`, one [`SeverityRng`](crate::rng::SeverityRng)
 //!   draw → `apply_hit` → `roll_injury`, one [`InjuryRng`](crate::rng::InjuryRng) draw on a
 //!   non-graze / non-fatal wound) — REUSING every landed combat-math verb, NO new RNG stream,
 //!   NO `FightRng` draw (a fall has no attacker).
-//! - [`system`] — the [`apply_falls`] ECS system (C1 / C2 / C3 / C6 / C7): reads the buffered
+//! - `system` — the [`apply_falls`] ECS system (C1 / C2 / C3 / C6 / C7): reads the buffered
 //!   [`SlabDestroyed`](crate::occupancy_sync::SlabDestroyed), applies the faller predicate +
 //!   stair brace + drop resolution + damage synthesis, rewrites [`Position`](crate::ganger::Position)
 //!   as ONE involuntary write (letting `Changed<Position>` drive the occupancy teardown), and
 //!   emits [`FallOccurred`] + the EXISTING [`InjuryInflicted`](crate::acts::InjuryInflicted).
-//! - [`plugin`] — the [`FallsPlugin`] (C7): registers the `FallOccurred` buffer and wires
+//! - `plugin` — the [`FallsPlugin`] (C7): registers the `FallOccurred` buffer and wires
 //!   `apply_falls` `.in_set(SimSystems::Simulate)` with the EXPLICIT ordering
 //!   `.after(dispatch_fire)` + `.after(sync_destroyed_slab)`.
 

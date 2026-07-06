@@ -1,5 +1,5 @@
 //! The **terrain-brace gate** — [`terrain_braces`], [`TerrainBraced`], and
-//! [`cell_above`](gate::cell_above) (GTW-392, `docs/combat/resolution.md` §1a terrain-brace clause).
+//! `cell_above` (GTW-392, `docs/combat/resolution.md` §1a terrain-brace clause).
 //!
 //! A kneeling occupant on the LOWER endpoint of an authored stair cell earns the
 //! stair-brace bonus when the slab directly overhead is

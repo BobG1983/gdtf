@@ -128,7 +128,7 @@ pub struct ShoveRngs<'w> {
 /// 3. **Resolve** the one-cell displacement away from the shover via the SHARED
 ///    [`resolve_shove`](super::verb::resolve_shove) — supported=>move, unsupported=>fall (via
 ///    the shared [`resolve_drop`](crate::falls::resolve_drop)), blocked=>no-op. NO RNG.
-/// 4. **Apply** via the SHARED [`apply_shove`]: rewrite the target's [`Position`], and on a
+/// 4. **Apply** via the SHARED `apply_shove`: rewrite the target's [`Position`], and on a
 ///    fall run the shared GTW-523 fall-damage fork (the ONLY RNG a shove touches) + emit
 ///    [`FallOccurred`] (+ any [`InjuryInflicted`]).
 ///

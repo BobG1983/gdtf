@@ -12,8 +12,8 @@
 //! ```
 //!
 //! GTW-424 covered the FIRST stage (anchor + opposite placement); GTW-427 added the SECOND
-//! ([`fill`] — random same-theme fill + the no-fit pad-`default_floor` fallback + the OQ-6
-//! [`ProcgenTuning`] knobs); GTW-431 adds the THIRD ([`emit`] — the deterministic seed
+//! (`fill` — random same-theme fill + the no-fit pad-`default_floor` fallback + the OQ-6
+//! [`ProcgenTuning`] knobs); GTW-431 adds the THIRD (`emit` — the deterministic seed
 //! harness [`generate_level`] + [`emit_level`], which pours a [`FilledPlacement`] into the
 //! sim's canonical [`Situation`](crate::situation::Situation) as the terrain entries it
 //! holds inline, connectivity by-construction via the seam lattice). A tested core with no

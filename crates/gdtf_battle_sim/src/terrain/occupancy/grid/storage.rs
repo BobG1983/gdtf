@@ -19,7 +19,7 @@ use crate::{
 /// occupancy the authoritative model owns; ADR-0001,
 /// `docs/decisions/0001-rust-bevy-rewrite.md`).
 ///
-/// A Bevy [`Resource`] (one grid per battle). It holds [`SLOT_COUNT`]
+/// A Bevy [`Resource`] (one grid per battle). It holds `SLOT_COUNT`
 /// ([`GRID_WIDTH`] × [`GRID_HEIGHT`] × [`MAX_LEVELS`] = 60 × 60 × 8) flat
 /// [`OccupancySlot`]s — a slot per `(cell, level)` — addressed by
 /// `x + y·WIDTH + level·WIDTH·HEIGHT`. The grid is built from the situation's

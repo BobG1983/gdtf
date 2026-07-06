@@ -16,18 +16,18 @@
 //!
 //! ## Module map
 //!
-//! - [`request`] — the eight [`#[derive(Message)]`](bevy::prelude::Message) `*Requested`
+//! - `request` — the eight [`#[derive(Message)]`](bevy::prelude::Message) `*Requested`
 //!   types (the input contract; the eighth, [`ReloadRequested`], added in GTW-275) +
 //!   the [`AimRequest`] aim-flag newtype. Each carries the
 //!   act's [`Entity`](bevy::prelude::Entity) actor ref(s) plus the act's OWNED payload; a
 //!   `Message` cannot hold a borrow, so [`FireRequested`] carries an OWNED
 //!   [`FireModeSpec`](crate::weapon::FireModeSpec) (now `Copy` again, GTW-260) and has
 //!   **no lifetime parameter**.
-//! - [`fire`] — the [`dispatch_fire`] system with the GTW-242 firing-arc + turn-to-fire
+//! - `fire` — the [`dispatch_fire`] system with the GTW-242 firing-arc + turn-to-fire
 //!   gate, the [`BattleGridsParam`] system-param bundle, and the pure pre-mutation arc
 //!   decision. The turn-write + [`fire`](crate::fire::fire) re-borrow are time-multiplexed
 //!   through a [`ParamSet`](bevy::ecs::system::ParamSet) (`bevy-traps.md` #3 / #7).
-//! - [`posture`] — the [`dispatch_set_aiming`] / [`dispatch_set_stance`] /
+//! - `posture` — the [`dispatch_set_aiming`] / [`dispatch_set_stance`] /
 //!   [`dispatch_set_facing`] systems (E10.2 AC4).
 //! - [`downed`] — the [`dispatch_stabilize_downed`] / [`dispatch_execute_downed`] systems
 //!   (E10.2 AC5) plus the §9 from-Downed verbs + faction-aware predicates they reuse
@@ -35,11 +35,11 @@
 //! - [`movement`] — the [`dispatch_move`] system (E4 / GTW-234) plus the committed
 //!   per-tick walk it starts ([`movement::advance_walk`], E7 / GTW-355 — re-homed from
 //!   the dissolved `acts_runtime::move_acts`, GTW-638).
-//! - [`reload`] — the [`dispatch_reload`] system (GTW-275): the real, TU-costed
+//! - `reload` — the [`dispatch_reload`] system (GTW-275): the real, TU-costed
 //!   reload act, charging the actor's own per-weapon
 //!   [`Magazine::reload_tu`](crate::magazine::Magazine::reload_tu) and refilling the
 //!   magazine to full.
-//! - [`plugin`] — the public [`SimActsPlugin`] registration unit: it
+//! - `plugin` — the public [`SimActsPlugin`] registration unit: it
 //!   [`add_message`](bevy::app::App::add_message)s all eight types exactly once each
 //!   (`bevy-traps.md` #5) and adds the eight dispatch systems
 //!   `.in_set(SimSystems::Simulate)` in [`Update`](bevy::prelude::Update) — consuming

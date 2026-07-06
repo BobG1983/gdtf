@@ -53,7 +53,7 @@ use crate::{
 /// Turn / stance / reload acts are **excluded** — they do not cross an LOS the way a step or
 /// a shot does (DESIGN FORK a, flagged not silently chosen).
 ///
-/// ## C2-C4 — see [`try_reaction`]
+/// ## C2-C4 — see `try_reaction`
 ///
 /// ## C5 — ordering (the critical wiring, `bevy-traps.md` #3)
 ///

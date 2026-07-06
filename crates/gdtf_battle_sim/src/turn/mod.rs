@@ -17,11 +17,11 @@
 //!
 //! ## Module map
 //!
-//! - [`active_faction`] — the [`ActiveFaction`] battle-lifetime resource (whose turn it
+//! - `active_faction` — the [`ActiveFaction`] battle-lifetime resource (whose turn it
 //!   is) + its [`ActiveFaction::advance`] two-team cycle.
-//! - [`regen`] — the pure [`regen_team_tu`] turn-start TU-regen helper (a plain
+//! - `regen` — the pure [`regen_team_tu`] turn-start TU-regen helper (a plain
 //!   iterator-based fn, directly unit-testable without an `App`).
-//! - [`dispatch`] — the [`dispatch_end_turn`] system: drains the
+//! - `dispatch` — the [`dispatch_end_turn`] system: drains the
 //!   [`EndTurnRequested`](crate::acts::EndTurnRequested) buffer and runs the turn cycle.
 //! - [`test`] — the headless turn-cycle tests (the contract's three cases).
 

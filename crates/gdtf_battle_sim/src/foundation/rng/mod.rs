@@ -42,7 +42,7 @@
 //! ## Binding constraint
 //!
 //! No system may take `Res<ShotRng>` / `Res<SeverityRng>` (etc.) for read-only
-//! access — see [`streams`] module doc for the full rationale.
+//! access — see `streams` module doc for the full rationale.
 
 mod seeded;
 pub(super) mod streams;

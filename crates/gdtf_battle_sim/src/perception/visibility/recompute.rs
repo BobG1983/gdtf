@@ -49,7 +49,7 @@ type MovedReposedOrFlipped = Or<(
 /// Returns `true` when ANY of the events that can change what the squad sees occurred:
 ///
 /// * a **player-faction observer** moved / re-posed / flipped life state — some entity
-///   matched [`MovedReposedOrFlipped`] AND belongs to the [`PlayerFaction`] (a non-player
+///   matched `MovedReposedOrFlipped` AND belongs to the [`PlayerFaction`] (a non-player
 ///   ganger's move never re-reveals the squad's own fog, so it is filtered out here);
 /// * a [`CoverDestroyed`] message was buffered this update (a smashed wall can open a
 ///   sightline);

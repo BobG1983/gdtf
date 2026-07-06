@@ -57,7 +57,7 @@ fn relation_to(
 ///    precedent; no [`MoveRejected`] for a guard skip); it reads, never mutates — the
 ///    [`Position`] / [`Tu`] mutation now lives in the walk;
 /// 2. builds the GTW-353 [`PlanningView`] from the LIVE world — the [`SquadVisibility`]
-///    resource plus an occupant→[`FactionRelation`] resolver ([`relation_to`]) closed over
+///    resource plus an occupant→[`FactionRelation`] resolver (`relation_to`) closed over
 ///    the mover's faction and the `&`[`Faction`] query (C1) — and runs [`find_path`] from
 ///    the mover's cell to `request.dest` over the [`OccupancyGrid`], the
 ///    [`VerticalLinkGraph`], and the per-cell [`FloorCostGrid`] (GTW-396: the per-tile
@@ -67,7 +67,7 @@ fn relation_to(
 ///    [`MoveRejected`]`(`[`MoveRejection::Unreachable`]`)` and starts NOTHING (this kills the
 ///    pre-GTW-354 any-empty-cell teleport — C1);
 /// 4. GTW-537 — if the mover is [`Suppressed`], gates the CHOSEN destination through
-///    [`suppressed_move_legal`] (strictly farther from the
+///    `suppressed_move_legal` (strictly farther from the
 ///    [`SuppressorCell`](crate::ganger::SuppressorCell) by the Chebyshev metric AND behind
 ///    cover relative to the suppressor); an illegal destination is a HARD reject —
 ///    [`MoveRejected`]`(`[`MoveRejection::Suppressed`]`)`, NO step, NO clamp. An UNSUPPRESSED

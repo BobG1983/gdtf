@@ -16,7 +16,7 @@ use crate::{ganger::Tu, metric::CellLevel};
 /// purpose: a multi-storey route over the 60×60×8 grid can sum many steps, so the
 /// search accumulates in a `u32` that cannot wrap mid-search the way summing into a
 /// `u8` would. The frontier orders by this cost FIRST (then the `(z, y, x)` cell key
-/// — see [`super::core`]), and [`reachable_within`](super::reachable_within) compares
+/// — see `super::core`), and [`reachable_within`](super::reachable_within) compares
 /// it against the budget. Private inner + derived [`std::ops::Deref`] (house style).
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct PathCost(u32);

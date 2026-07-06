@@ -23,7 +23,7 @@ pub struct WheelNode(u8);
 
 impl WheelNode {
     /// Build a wheel node from its index, reduced into `0..=6` (the wheel has
-    /// [`WHEEL_NODE_COUNT`] nodes). Reducing here keeps the tournament arithmetic
+    /// `WHEEL_NODE_COUNT` nodes). Reducing here keeps the tournament arithmetic
     /// (`+3`/`+5`/`+6`) total without a separate clamp at each call site.
     #[must_use]
     pub const fn new(index: u8) -> Self {

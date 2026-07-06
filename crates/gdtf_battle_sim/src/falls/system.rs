@@ -159,7 +159,7 @@ pub struct FallSignals<'w> {
 ///    as ONE involuntary write — `Changed<Position>` then drives
 ///    [`sync_moved_gangers`](crate::occupancy_sync::sync_moved_gangers) + `PrevSlot` teardown
 ///    automatically (the occupancy grid is NEVER hand-edited here).
-/// 4. **Fall damage + injury (C4 / C5).** [`resolve_fall_hit`] routes
+/// 4. **Fall damage + injury (C4 / C5).** `resolve_fall_hit` routes
 ///    `per_storey_damage × storeys` as a [`Matchup::Neutral`](crate::matchup::Matchup) kinetic
 ///    hit through the SAME `resolve_hit` → `roll_severity` (one [`SeverityRng`] draw) →
 ///    `apply_hit` → `roll_injury` (one [`InjuryRng`] draw on a non-graze / non-fatal wound)
@@ -186,9 +186,9 @@ pub struct FallSignals<'w> {
 ///
 /// Param-only (`bevy-traps.md` #7 — no `&mut World`). Fail-closed: a missing stream, a
 /// braced faller, or a `start == 0` ganger simply does not fall (never a panic). The
-/// per-concern grids / tuning / injury content ([`FallGrids`]) + the two draw streams
-/// ([`FallRngs`]) + the armor relationship queries ([`FallArmor`]) + the three output signals
-/// ([`FallSignals`]) are grouped into [`SystemParam`] bundles, keeping the system's own param
+/// per-concern grids / tuning / injury content (`FallGrids`) + the two draw streams
+/// (`FallRngs`) + the armor relationship queries (`FallArmor`) + the three output signals
+/// (`FallSignals`) are grouped into [`SystemParam`] bundles, keeping the system's own param
 /// count under clippy's gate.
 pub fn apply_falls(
     mut destroyed: MessageReader<SlabDestroyed>,

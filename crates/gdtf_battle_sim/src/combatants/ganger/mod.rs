@@ -21,12 +21,12 @@
 //! `wounds-and-roster.md`, and `stats.md`.
 //!
 //! GTW-201 code-health: this concern is a dir-module split by responsibility — the
-//! grid position ([`position`]), the 8-way [`Direction`] compass + [`Facing`]
-//! ([`direction`]), the posture / aim-mode / gang identity ([`stance`]), the
-//! numeric pools & computed combat stats ([`vitals`]), the eight raw direct
-//! [`attributes`] (GTW-384, the slowly-changing potential the computed stats derive
+//! grid position (`position`), the 8-way [`Direction`] compass + [`Facing`]
+//! (`direction`), the posture / aim-mode / gang identity (`stance`), the
+//! numeric pools & computed combat stats (`vitals`), the eight raw direct
+//! `attributes` (GTW-384, the slowly-changing potential the computed stats derive
 //! from), the [`derive_stats`] pure derivation (GTW-384), and the terminal life-state
-//! machine ([`life`]). This `mod.rs` is wiring-only; every public path is preserved
+//! machine (`life`). This `mod.rs` is wiring-only; every public path is preserved
 //! via the re-exports below.
 
 mod attributes;

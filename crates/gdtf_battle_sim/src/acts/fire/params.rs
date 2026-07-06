@@ -22,7 +22,7 @@ use crate::{
 ///
 /// Grouping the cohesive grid `Res<…>` reads into one param keeps [`dispatch_fire`](super::dispatch::dispatch_fire) at
 /// seven parameters; the body assembles the borrow-based [`BattleGrids`] from these `Res`
-/// reads via [`BattleGridsParam::grids`]. A transparent system-param bundle of existing
+/// reads via `BattleGridsParam::grids`. A transparent system-param bundle of existing
 /// named world-state resources — not itself a wrapped domain scalar.
 ///
 /// GTW-392: [`BraceStairCells`] is included so the terrain-brace gate in `resolve_round`

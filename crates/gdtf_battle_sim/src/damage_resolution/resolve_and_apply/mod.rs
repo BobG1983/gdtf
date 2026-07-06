@@ -11,14 +11,14 @@
 //!
 //! GTW-573 shape — one dispatch, one module per struck kind:
 //!
-//! - [`fold`] holds [`resolve_and_apply`], the sim's ONE logic-free delegation
+//! - `fold` holds [`resolve_and_apply`], the sim's ONE logic-free delegation
 //!   dispatch over [`ShotKind`](crate::resolve_coarse::ShotKind);
-//! - [`kinds`] holds one module per struck kind (ganger / cover / slab / ground),
+//! - `kinds` holds one module per struck kind (ganger / cover / slab / ground),
 //!   each owning its whole fold AND its per-kind verdict payload type;
-//! - [`report`] holds the frozen value types: the closed [`HitVerdict`] enum (one
+//! - `report` holds the frozen value types: the closed [`HitVerdict`] enum (one
 //!   variant per kind — the old parallel per-kind `Option` bag is gone) and the
 //!   [`HitReport`] (`kind` = what the round struck, `verdict` = what the fold did);
-//! - [`wound_core`] holds the attacker-agnostic §5 → §6 → §8 wound-synthesis core
+//! - `wound_core` holds the attacker-agnostic §5 → §6 → §8 wound-synthesis core
 //!   the ganger kind and the no-attacker fall path share (GTW-523).
 //!
 //! The composed E3 verbs (matchup → `resolve_hit` → `roll_severity` → `apply_hit` →
