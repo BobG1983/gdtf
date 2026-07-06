@@ -6,9 +6,9 @@ use bevy::{
 };
 use gdtf_battle_presenter::{FloatingCombatText, FxFlash};
 use gdtf_battle_sim::{
-    AppliedDamage, BodyPart, Cell, CellLevel, Direction, Facing, Faction, HitReport, HitResult,
-    HpDamage, IntegrityWear, Level, LifeState, Matchup, PenetratingDamage, Position, Severity,
-    ShotKind, test_support::GangerEntityBuilder,
+    Aiming, AppliedDamage, BodyPart, Cell, CellLevel, Direction, Facing, Faction, HitReport,
+    HitResult, HpDamage, IntegrityWear, Level, LifeState, Matchup, PenetratingDamage, Position,
+    Severity, ShotKind, Stance, StanceKind, test_support::GangerEntityBuilder,
 };
 
 /// Spawns a ganger entity carrying a `Position` at `cell`/`level` plus `Wounds(wounds)`, and
@@ -50,7 +50,8 @@ pub(crate) fn single_flash(app: &mut App) -> Option<(bevy::math::Vec3, Option<us
 }
 
 /// Spawns a REAL sim ganger (the components `spawn_ganger_sprites` queries — `Position`,
-/// `Faction`, `Facing`, `LifeState`) at `cell`/`level` and drives one `update()` so the
+/// `Faction`, `Facing`, `Stance`, `Aiming`, `LifeState`, the GTW-631 appearance-classifier
+/// input set) at `cell`/`level` and drives one `update()` so the
 /// presenter's real spawn system builds its sprite and registers the `sim Entity -> sprite
 /// Entity` link in `GangerSprites`. Returns the sim `Entity` (the `ShotKind::Ganger`
 /// payload). `BattleInProgress` must already be resident (the spawn gate).
@@ -66,6 +67,8 @@ pub(crate) fn spawn_sim_ganger_with_sprite(
             Position::new(at),
             Faction::new(0),
             Facing::new(Direction::East),
+            Stance::new(StanceKind::Standing),
+            Aiming::new(false),
             LifeState::Alive,
         ))
         .id();

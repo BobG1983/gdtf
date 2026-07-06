@@ -88,9 +88,9 @@ pub use actors::{
     ganger::{
         CharacterRoles, FacingFrame, GangerSprite, GangerSprites, GangerVisibilityFacts,
         SpriteTween, advance_sprite_tweens, despawn_killed_ganger_on_impact,
-        despawn_removed_ganger_sprites, facing_frame, move_ganger_sprites, reframe_ganger_sprites,
-        reindex_ganger_sprites_on_character_roles_change, resolve_ganger_visibility,
-        spawn_ganger_sprites, update_ganger_life_state,
+        despawn_removed_ganger_sprites, facing_frame, move_ganger_sprites,
+        resolve_ganger_appearance, resolve_ganger_visibility, spawn_ganger_sprites,
+        update_ganger_life_state,
     },
 };
 // GTW-450 — the reachable-range overlay is the DEBUG-only overlay: every public item

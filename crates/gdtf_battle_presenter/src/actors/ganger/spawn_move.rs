@@ -6,44 +6,60 @@ use bevy::{
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
 };
-use gdtf_battle_sim::{Facing, Faction, LifeState, Position};
+use gdtf_battle_sim::{Aiming, Facing, Faction, LifeState, Position, Stance, Suppressed};
 
 use super::{
-    frame::atlas_index,
+    appearance::{GangerAppearance, ganger_sprite_appearance},
     roles::CharacterRoles,
     sprite_map::{GangerSprite, GangerSprites},
-    tint::ganger_tint,
     tween::SpriteTween,
     visibility::GangerVisibilityFacts,
 };
 use crate::{CELL_PX, Layer, SheetRole, TopDownAtlases, cell_to_world_layered};
 
-/// Build one ganger [`Sprite`] on the character sheet at `index`, tinted `tint`, via the
-/// S3 recipe.
+/// Build one ganger [`Sprite`] on the character sheet drawn as `appearance` (the GTW-631
+/// classifier's atlas index + tint), via the S3 recipe.
 ///
 /// `Sprite::from_atlas_image(chars.image, TextureAtlas { layout, index })` with
 /// `custom_size = Some(Vec2::splat(CELL_PX))` (the documented S3 sizing recipe) and the
-/// `tint` applied to `Sprite.color`. Returns [`None`] if the character sheet was not
-/// loaded (so the caller skips the spawn rather than panic).
-fn ganger_sprite(index: usize, tint: Color, atlases: &TopDownAtlases) -> Option<Sprite> {
+/// classifier tint applied to `Sprite.color`. Returns [`None`] if the character sheet
+/// was not loaded (so the caller skips the spawn rather than panic).
+fn ganger_sprite(appearance: GangerAppearance, atlases: &TopDownAtlases) -> Option<Sprite> {
     let chars = atlases.role(SheetRole::Characters)?;
     let mut sprite = Sprite::from_atlas_image(
         chars.image.clone(),
         TextureAtlas {
             layout: chars.layout.clone(),
-            index,
+            index:  appearance.atlas_index,
         },
     );
     sprite.custom_size = Some(Vec2::splat(CELL_PX));
-    sprite.color = tint;
+    sprite.color = appearance.tint;
     Some(sprite)
 }
+
+/// The spawn-seed ganger fields — the [`QueryData`] tuple, factored out to keep the
+/// [`spawn_ganger_sprites`] query under the `type_complexity` clippy gate.
+///
+/// [`QueryData`]: bevy::ecs::query::QueryData
+type SpawnedGanger = (
+    Entity,
+    &'static Position,
+    &'static Faction,
+    &'static Facing,
+    &'static Stance,
+    &'static Aiming,
+    &'static LifeState,
+    Option<&'static Suppressed>,
+);
 
 /// `Update` (`PresenterSystems::Scene`): spawn one presenter sprite per newly-added
 /// ganger within the drawn storey band.
 ///
-/// For every ganger whose [`Position`] was [`Added`], build a [`Sprite`] (atlas
-/// index `faction_base + facing_frame`, the faction tint) at the [`Layer::Actor`](crate::Layer)
+/// For every ganger whose [`Position`] was [`Added`], build a [`Sprite`] (its atlas
+/// index + tint seeded through the ONE GTW-631 appearance classifier,
+/// `ganger_sprite_appearance` — the same verdict the appearance resolver
+/// re-stamps on every later change) at the [`Layer::Actor`](crate::Layer)
 /// projection ([`cell_to_world_layered`](crate::cell_to_world_layered) — the cell's world
 /// position at the ganger's OWN [`Level`](gdtf_battle_sim::Level), lifted by
 /// [`GANGER_Z_BIAS`](crate::GANGER_Z_BIAS)
@@ -69,16 +85,26 @@ pub fn spawn_ganger_sprites(
     roles: Res<CharacterRoles>,
     atlases: Res<TopDownAtlases>,
     facts: GangerVisibilityFacts,
-    added: Query<(Entity, &Position, &Faction, &Facing, &LifeState), Added<Position>>,
+    added: Query<SpawnedGanger, Added<Position>>,
 ) {
-    for (entity, pos, faction, facing, life) in &added {
+    for (entity, pos, faction, facing, stance, aiming, life, suppressed) in &added {
         // A Dead ganger added directly (no live frame) draws no sprite.
         if matches!(life, LifeState::Dead) {
             continue;
         }
-        let index = atlas_index(&roles, *faction, *facing);
-        let tint = ganger_tint(*faction, *life);
-        let Some(sprite) = ganger_sprite(index, tint, &atlases) else {
+        // GTW-631 C2: the seed IS the classifier's verdict — the same (atlas index, tint)
+        // decision the appearance resolver re-stamps on every later change, so a second
+        // appearance derivation is unrepresentable.
+        let appearance = ganger_sprite_appearance(
+            *faction,
+            *facing,
+            *stance,
+            *aiming,
+            *life,
+            suppressed.is_some(),
+            &roles,
+        );
+        let Some(sprite) = ganger_sprite(appearance, &atlases) else {
             continue;
         };
         // The canonical CellLevel::split decompose through Position's deref (GTW-565).
@@ -111,7 +137,7 @@ pub fn spawn_ganger_sprites(
         // (so the `GangerSprites` map records a usable handle this update); the scene's
         // components materialize on the `SpawnScene` schedule (~one update later) — the
         // same entity + components result, only the spawn SHAPE changed. The move /
-        // reframe systems and the GTW-627 visibility resolver (`resolve_ganger_visibility`,
+        // appearance systems and the GTW-627 visibility resolver (`resolve_ganger_visibility`,
         // which owns this sprite's `Visibility` from here on) look the sprite up through
         // the map and gracefully skip until its components exist.
         let presenter = commands
