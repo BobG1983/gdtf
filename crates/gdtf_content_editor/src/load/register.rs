@@ -1,18 +1,17 @@
-//! The `Load`-pass registrar — [`register_load`], the six generic seam registrations plus the
+//! The `Load`-pass registrar — [`register_load`], the five generic seam registrations plus the
 //! transition gate (extracted from the module wiring so `mod.rs` stays fn-free).
 
 use bevy::prelude::*;
 use gdtf_assets::{ContentFamilyAppExt, HotRonAppExt};
 use gdtf_battle_presenter::tile_roles_hot_ron_chain;
 use gdtf_content_families::{ArmorFamily, TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily};
-use gdtf_ui::{theme::default_theme, theme_hot_ron_chain};
 
 use crate::{
     EditorState,
     load::{fallback::default_tile_roles, transition::transition_to_editing},
 };
 
-/// Registers the editor's `Load` asset pass onto `app` — six seam registrations
+/// Registers the editor's `Load` asset pass onto `app` — five seam registrations
 /// plus the transition gate (see the [module docs](super) for the seam-vs-policy
 /// split).
 ///
@@ -25,11 +24,12 @@ use crate::{
 /// resource exists — reached even on an all-failed asset root (the no-strand
 /// guarantee).
 pub(crate) fn register_load(app: &mut App) {
-    // The two single-asset chains (GTW-564 seam), installed from the chain
-    // owners' PUBLISHED configs — path + map hook stay single-sourced in
-    // gdtf_ui / gdtf_battle_presenter — with the editor's ADR-0003 fallback
-    // attached at THIS registration (editor-owned policy, GTW-579 C4b).
-    app.init_hot_ron_chain(theme_hot_ron_chain().with_fallback(default_theme));
+    // The single-asset tile-role chain (GTW-564 seam), installed from the chain
+    // owner's PUBLISHED config — path + map hook stay single-sourced in
+    // gdtf_battle_presenter — with the editor's ADR-0003 fallback attached at
+    // THIS registration (editor-owned policy, GTW-579 C4b). The game-theme
+    // chain is NOT registered: the egui shell styles itself, so the editor
+    // reads no theme field (GTW-625 — the GTW-579 AC2 amendment).
     app.init_hot_ron_chain(tile_roles_hot_ron_chain().with_fallback(default_tile_roles));
 
     // The four folder families (GTW-570 seam) — the SAME glue-crate family

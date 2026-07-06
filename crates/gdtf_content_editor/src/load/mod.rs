@@ -19,12 +19,14 @@
 //!   the SAME `gdtf_content_families` glue impls the game registers. Each
 //!   family's registry-build logic therefore has exactly ONE definition
 //!   workspace-wide (the seam's shared folder walk).
-//! - The two SINGLE-ASSET chains — the [`GdtfTheme`](gdtf_ui::theme::GdtfTheme)
-//!   and the presenter [`TileRoles`](gdtf_battle_presenter::TileRoles) table —
-//!   install the GTW-564 generic hot-RON chain from the chain OWNERS' published
-//!   configs ([`theme_hot_ron_chain`](gdtf_ui::theme_hot_ron_chain) / [`tile_roles_hot_ron_chain`](gdtf_battle_presenter::tile_roles_hot_ron_chain), which
-//!   single-source each path + map hook), re-configured with the editor's
-//!   ADR-0003 fallback (see below).
+//! - The SINGLE-ASSET chain — the presenter
+//!   [`TileRoles`](gdtf_battle_presenter::TileRoles) table — installs the
+//!   GTW-564 generic hot-RON chain from the chain OWNER's published config
+//!   ([`tile_roles_hot_ron_chain`](gdtf_battle_presenter::tile_roles_hot_ron_chain),
+//!   which single-sources the path + map hook), re-configured with the editor's
+//!   ADR-0003 fallback (see below). The game's `GdtfTheme` chain is NOT
+//!   installed: the egui shell styles itself, so the editor reads no theme
+//!   field (GTW-625 — the GTW-579 AC2 amendment).
 //!
 //! **Adding an editor-consumed family** costs at most two edits: ONE
 //! `register_content_family::<F>()` line in [`register_load`], plus a
@@ -43,11 +45,10 @@
 //!   the ONE shared Bevy `file_watcher` mechanism).
 //! - **ADR-0003 fail-safe:** a `Failed` asset falls back to a const default so
 //!   the editor never hangs in `Load` — the folder families fail closed to the
-//!   seam's EMPTY registry; the theme falls back to the published
-//!   [`default_theme`](gdtf_ui::theme::default_theme) and the tile roles to the
-//!   editor-owned zero table ([`fallback`]), each attached HERE via
+//!   seam's EMPTY registry; the tile roles fall back to the
+//!   editor-owned zero table ([`fallback`]), attached HERE via
 //!   [`HotRonChain::with_fallback`](gdtf_assets::HotRonChain::with_fallback)
-//!   (the game's registrations of the same chains stay fallback-less — the
+//!   (the game's registration of the same chain stays fallback-less — the
 //!   policy rides the host's registration, never a seam mode flag).
 //! - **Headless inertness:** every seam ext call self-gates on an
 //!   [`AssetServer`](bevy::asset::AssetServer) being present (`bevy-traps.md`
@@ -56,8 +57,9 @@
 //!   registered `run_if(handle-present AND not(resource_exists::<Registry>))`,
 //!   so every branch gates on its OWN resource's absence and none starves
 //!   another.
-//! - **The transition is unchanged:** [`transition_to_editing`](transition::transition_to_editing) still fires
-//!   only when ALL six resolved resources exist.
+//! - **The transition gates on every resolved resource:** [`transition_to_editing`](transition::transition_to_editing) fires
+//!   only when ALL FIVE resolved resources exist (the four folder registries +
+//!   the tile-role table; the game theme is not among them — GTW-625).
 
 mod fallback;
 mod register;

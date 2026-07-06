@@ -8,7 +8,7 @@
 //!
 //! ## GTW-512: the egui Workbench shell (C1 of the GTW-511 migration)
 //!
-//! The editor's UI is `bevy_egui` (GTW-512) — a CLEAN SWAP off the hand-rolled `gdtf_ui` shell (the
+//! The editor's UI is `bevy_egui` (GTW-512) — a CLEAN SWAP off the hand-rolled `bevy_ui` shell (the
 //! four `bevy_ui` regions + the segmented-control mode tabs + the dropdown/numeric-field widgets +
 //! the palette / canvas / right-panel drive systems are GONE). The egui shell draws the WHOLE
 //! editor in ONE system in the [`EguiPrimaryContextPass`](bevy_egui::EguiPrimaryContextPass) schedule
@@ -85,7 +85,7 @@ mod plugin;
 mod preview;
 // GTW-421 `GridSpanInput` (LIVE — the GTW-464 size-field view model builds on it) + the
 // `seed_default_theme` drive, kept across the egui swap (GTW-512); the `bevy_ui` spawn, the
-// gdtf_ui-widget commit drives (GTW-512), and the dead `SizeFieldAxis` / `ThemeDropdown`
+// hand-rolled-widget commit drives (GTW-512), and the dead `SizeFieldAxis` / `ThemeDropdown`
 // markers (GTW-577 C7) were dropped.
 mod right_panel;
 // The GTW-432 save-prefab path is debug-only (the GTW-429 gang-save precedent): the whole module

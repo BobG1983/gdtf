@@ -1,5 +1,5 @@
 //! `Update` (during [`EditorState::Load`](crate::EditorState)): leave `Load` for
-//! `Editing` once the theme + all registries are present.
+//! `Editing` once all registries + the tile-role table are present.
 
 use bevy::prelude::*;
 use gdtf_battle_presenter::TileRoles;
@@ -7,19 +7,19 @@ use gdtf_battle_sim::{
     armor::ArmorRegistry, level::UuidThemeRegistry, terrain::def::TerrainDefRegistry,
     weapon::WeaponRegistry,
 };
-use gdtf_ui::theme::GdtfTheme;
 
 use crate::EditorState;
 
-/// Transitions [`EditorState::Load`] → [`EditorState::Editing`] once the [`GdtfTheme`], the
-/// legacy [`WeaponRegistry`] / [`ArmorRegistry`], the (GTW-487) NEW [`TerrainDefRegistry`] /
+/// Transitions [`EditorState::Load`] → [`EditorState::Editing`] once the legacy
+/// [`WeaponRegistry`] / [`ArmorRegistry`], the (GTW-487) NEW [`TerrainDefRegistry`] /
 /// [`UuidThemeRegistry`], and the (GTW-495) [`TileRoles`] are all inserted (each generic seam
 /// resolve inserts its resource on success OR on its const-default / empty failure fallback —
 /// GTW-579 C4b — so this is reached even on a bad asset folder: the no-strand guarantee).
+/// The game's `GdtfTheme` is NOT gated on — the egui shell styles itself, so the editor
+/// resolves no theme (GTW-625; the GTW-579 AC2 amendment).
 /// Takes them as `Option<Res<…>>` and only sets the next state when all are present, so it
 /// never panics on an absent resource (`bevy-traps.md` #1).
 pub(crate) fn transition_to_editing(
-    theme: Option<Res<GdtfTheme>>,
     weapons: Option<Res<WeaponRegistry>>,
     armor: Option<Res<ArmorRegistry>>,
     terrain_defs: Option<Res<TerrainDefRegistry>>,
@@ -27,8 +27,7 @@ pub(crate) fn transition_to_editing(
     tile_roles: Option<Res<TileRoles>>,
     mut next: ResMut<NextState<EditorState>>,
 ) {
-    if theme.is_some()
-        && weapons.is_some()
+    if weapons.is_some()
         && armor.is_some()
         && terrain_defs.is_some()
         && theme_defs.is_some()
