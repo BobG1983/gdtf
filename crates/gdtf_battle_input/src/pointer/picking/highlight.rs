@@ -5,7 +5,11 @@
 
 use bevy::prelude::*;
 use gdtf_battle_presenter::{CellVisibility, HighlightRequest, cell_squad_visible};
-use gdtf_battle_sim::{Faction, FactionRelation, OccupancyGrid, PlayerFaction, SquadVisibility};
+use gdtf_battle_sim::{
+    battle::PlayerFaction,
+    prelude::{Faction, OccupancyGrid},
+    visibility::{FactionRelation, SquadVisibility},
+};
 
 use crate::picking::hovered::InspectTarget;
 

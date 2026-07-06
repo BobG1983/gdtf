@@ -8,16 +8,15 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Accuracy, BaseSpread, Cell, CellLevel, Cool, Faction, FatalBias, Grit, Kickback, MagazineSize,
-    Speed, Stance, StanceKind, Strength, Toughness, WeaponPunch,
     battle::{BattleSimPlugin, SetupBattleRequested},
     effects::attachments::AttachmentEffect,
     equipment::attachments::{
         AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec, SlotCapacity,
         WeaponSlots,
     },
-    ganger::{Direction, Facing, GangRegistry},
+    ganger::{Cool, Direction, Facing, GangRegistry, Grit, Speed, Strength, Toughness},
     magazine::{Magazine, ReloadTu},
+    prelude::{Cell, CellLevel, Faction, Stance, StanceKind},
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
     test_support::{
@@ -25,7 +24,10 @@ use gdtf_battle_sim::{
         test_terrain_registry, test_weapon_spec,
     },
     tuning::{CombatTuning, ViewRange},
-    weapon::{FireMode, WeaponName, WeaponRegistry, WeaponSpec},
+    weapon::{
+        Accuracy, BaseSpread, FatalBias, FireMode, Kickback, MagazineSize, WeaponName, WeaponPunch,
+        WeaponRegistry, WeaponSpec,
+    },
 };
 
 /// An arbitrary seed (determinism is asserted elsewhere).
@@ -39,8 +41,8 @@ pub(crate) const WEAPON_KEY: &str = "test-weapon";
 /// The attachment item key the fixture weapon references.
 pub(crate) const ATTACHMENT_KEY: &str = "test-attachment";
 
-pub(crate) const fn level0() -> gdtf_battle_sim::Level {
-    gdtf_battle_sim::Level::new(0)
+pub(crate) const fn level0() -> gdtf_battle_sim::metric::Level {
+    gdtf_battle_sim::metric::Level::new(0)
 }
 
 pub(crate) fn ground(x: i32, y: i32) -> CellLevel {

@@ -8,7 +8,7 @@ use bevy::{
 };
 use gdtf_app::test_support::{AppState, BattleScapeState, LoadedSituation, RunningState};
 use gdtf_battle_sim::{
-    FieldDefRegistry,
+    effects::fields::FieldDefRegistry,
     rng::BattleSeed,
     situation::Situation,
     test_support::{

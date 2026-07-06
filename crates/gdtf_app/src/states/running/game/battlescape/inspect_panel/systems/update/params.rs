@@ -5,7 +5,9 @@
 
 use bevy::{prelude::*, text::TextColor as UiTextColor};
 use gdtf_battle_input::InspectTarget;
-use gdtf_battle_sim::{CoverLedger, OccupancyGrid, PlayerFaction, SquadVisibility};
+use gdtf_battle_sim::{
+    battle::PlayerFaction, cover::CoverLedger, prelude::OccupancyGrid, visibility::SquadVisibility,
+};
 use gdtf_ui::{ProgressBarFill, theme::GdtfTheme};
 
 use crate::states::running::game::battlescape::inspect_panel::components::{
@@ -63,7 +65,7 @@ pub(in crate::states::running::game::battlescape) struct InspectReads<'w> {
     /// info-leak); a BLOCKING wall / cover still inspects (map geometry / mission memory).
     pub squad:  Option<Res<'w, SquadVisibility>>,
     /// The player's own faction (GTW-378) — routes a hovered occupant's
-    /// [`FactionRelation`](gdtf_battle_sim::FactionRelation) so [`cell_squad_visible`](gdtf_battle_presenter::cell_squad_visible) decides via `is_ganger_visible`
+    /// [`FactionRelation`](gdtf_battle_sim::visibility::FactionRelation) so [`cell_squad_visible`](gdtf_battle_presenter::cell_squad_visible) decides via `is_ganger_visible`
     /// (own-squad always visible, an enemy iff its cell is currently VISIBLE).
     pub player: Option<Res<'w, PlayerFaction>>,
 }
@@ -79,7 +81,7 @@ pub(in crate::states::running::game::battlescape) struct InspectReads<'w> {
 /// `pub(in …battlescape)` for `private_interfaces`.
 #[derive(bevy::ecs::system::SystemParam)]
 pub(in crate::states::running::game::battlescape) struct FactionTint<'w, 's> {
-    /// The player's faction — the hovered ganger is an ENEMY when its [`Faction`](gdtf_battle_sim::Faction) differs.
+    /// The player's faction — the hovered ganger is an ENEMY when its [`Faction`](gdtf_battle_sim::ganger::Faction) differs.
     pub player: Option<Res<'w, PlayerFaction>>,
     /// The runtime theme — its body-text color is the player (normal) name color.
     pub theme:  Option<Res<'w, GdtfTheme>>,

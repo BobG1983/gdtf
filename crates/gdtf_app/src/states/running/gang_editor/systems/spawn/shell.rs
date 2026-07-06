@@ -6,7 +6,7 @@
 //! file.
 
 use bevy::{prelude::*, scene::CommandsSceneExt, ui::Val};
-use gdtf_battle_sim::{ArmorRegistry, GangerStatTuning, WeaponRegistry};
+use gdtf_battle_sim::{armor::ArmorRegistry, tuning::GangerStatTuning, weapon::WeaponRegistry};
 use gdtf_ui::{
     ButtonLabel, CommittedTextValue, FieldColors, ScrollListColors, spawn_button, spawn_panel,
     spawn_scroll_list, spawn_text_field,

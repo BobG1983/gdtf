@@ -11,9 +11,22 @@
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
 use gdtf_app::test_support::{AppState, BattleScapeState, CombatLogLine, RunningState};
 use gdtf_battle_sim::{
-    ArmorBroken, BleedStarted, Bleeding, BodyPart, Cell, CellLevel, DotAfflicted, DotDamage,
-    DotTicked, FallOccurred, FieldAfflicted, FieldDamage, FieldTicked, GangerName, HpDamage, Level,
-    MeleeStruck, OnDeathOccurred, StoreysFallen, injuries::InjuryRegistry, tuning::CombatTuning,
+    acts::MeleeStruck,
+    armor::BodyPart,
+    armor_wear::ArmorBroken,
+    effects::{
+        bleed::{BleedStarted, Bleeding},
+        dot::{DotAfflicted, DotTicked},
+        fields::{FieldAfflicted, FieldDamage, FieldTicked},
+        on_death::OnDeathOccurred,
+    },
+    falls::{FallOccurred, StoreysFallen},
+    ganger::GangerName,
+    injuries::InjuryRegistry,
+    prelude::{Cell, CellLevel, Level},
+    resolve_hit::HpDamage,
+    tuning::CombatTuning,
+    weapon::DotDamage,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -197,7 +210,7 @@ fn a_suppression_applied_appends_the_suppressed_line() {
     app.update();
 
     app.world_mut()
-        .write_message(gdtf_battle_sim::SuppressionApplied::new(
+        .write_message(gdtf_battle_sim::suppression::SuppressionApplied::new(
             ganger,
             ground(3, 3),
         ));

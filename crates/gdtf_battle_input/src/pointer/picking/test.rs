@@ -3,7 +3,7 @@
 
 use bevy::prelude::Vec2;
 use gdtf_battle_presenter::{CELL_PX, cell_to_world};
-use gdtf_battle_sim::{Cell, CellLevel, Level};
+use gdtf_battle_sim::prelude::{Cell, CellLevel, Level};
 
 use crate::picking::{
     hovered::{InspectMode, InspectTarget},

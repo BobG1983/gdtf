@@ -2,7 +2,11 @@
 //! determinism, and hot-edited tuning (QA 5-7).
 
 use bevy::{app::App, prelude::Entity};
-use gdtf_battle_sim::{CellLevel, Level, OccupancyGrid, PerStoreyDamage, SlabState, SurfaceGrid};
+use gdtf_battle_sim::{
+    prelude::{CellLevel, Level, OccupancyGrid},
+    surface::{SlabState, SurfaceGrid},
+    tuning::PerStoreyDamage,
+};
 
 use super::harness::*;
 
@@ -18,9 +22,12 @@ fn injury_fired_for(app: &App, entity: Entity) -> bool {
 /// used AS-IS (no falling-specific source dimension; GTW-452 owns that).
 fn install_torso_injury_content(app: &mut App) {
     use gdtf_battle_sim::{
-        InjuryCategory, InjuryDef, InjuryName, InjuryRegistry, InjuryTables, InjuryWeight,
-        InspectText, LogText, PopupText, PostHeal, Severity, WeightedInjuryEntry,
-        WeightedInjuryTable,
+        armor::InjuryCategory,
+        injuries::{
+            InjuryDef, InjuryName, InjuryRegistry, InjuryTables, InjuryWeight, InspectText,
+            LogText, PopupText, PostHeal, WeightedInjuryEntry, WeightedInjuryTable,
+        },
+        severity::Severity,
     };
     let name = InjuryName::new("bruised_ribs".to_owned());
     // A minimal named def in the registry (no effects — the roll just needs a resolvable key).

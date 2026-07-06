@@ -4,8 +4,8 @@ use bevy::prelude::*;
 use gdtf_app::test_support::{ContextualPanelRoot, ExecuteButton, OpenDoorButton, StabilizeButton};
 use gdtf_battle_input::contextual::ContextualActSystems;
 use gdtf_battle_sim::{
-    Position,
     acts::{ExecuteDownedRequested, StabilizeDownedRequested},
+    prelude::Position,
 };
 use gdtf_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed};
 

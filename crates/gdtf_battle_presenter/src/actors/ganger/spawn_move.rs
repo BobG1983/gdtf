@@ -6,7 +6,10 @@ use bevy::{
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
 };
-use gdtf_battle_sim::{Aiming, Facing, Faction, LifeState, Position, Stance, Suppressed};
+use gdtf_battle_sim::{
+    ganger::{Aiming, Facing, Suppressed},
+    prelude::{Faction, LifeState, Position, Stance},
+};
 
 use super::{
     appearance::{GangerAppearance, ganger_sprite_appearance},
@@ -61,7 +64,7 @@ type SpawnedGanger = (
 /// `ganger_sprite_appearance` — the same verdict the appearance resolver
 /// re-stamps on every later change) at the [`Layer::Actor`](crate::Layer)
 /// projection ([`cell_to_world_layered`](crate::cell_to_world_layered) — the cell's world
-/// position at the ganger's OWN [`Level`](gdtf_battle_sim::Level), lifted by
+/// position at the ganger's OWN [`Level`](gdtf_battle_sim::metric::Level), lifted by
 /// [`GANGER_Z_BIAS`](crate::GANGER_Z_BIAS)
 /// so it draws over its own floor tile, GTW-283), on the
 /// [`WORLD_RENDER_LAYER`](crate::WORLD_RENDER_LAYER), with the [`GangerSprite`] marker; record

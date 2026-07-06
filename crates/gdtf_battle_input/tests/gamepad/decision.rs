@@ -5,10 +5,10 @@ use gdtf_battle_input::{
     InspectTarget, LeftClickOutcome, PathPreviewTarget, SelectedShooter, decide_turn,
 };
 use gdtf_battle_sim::{
-    Cell, CellLevel, Direction, Level, LinkKind, Position, VerticalLink, VerticalLinkGraph,
     acts::{MoveRequested, SetFacingRequested},
-    build_vertical_link_graph,
+    prelude::{Cell, CellLevel, Direction, Level, Position},
     test_support::SituationBuilder,
+    vertical::{LinkKind, VerticalLink, VerticalLinkGraph, build_vertical_link_graph},
 };
 
 use super::harness::*;

@@ -4,7 +4,7 @@
 
 use bevy::{prelude::*, window::PrimaryWindow};
 use gdtf_battle_presenter::ActiveLevel;
-use gdtf_battle_sim::{CellLevel, Level};
+use gdtf_battle_sim::prelude::{CellLevel, Level};
 
 use crate::{
     gamepad::{ActivePointer, GamepadCursor},

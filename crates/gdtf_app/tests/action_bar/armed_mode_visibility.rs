@@ -4,8 +4,13 @@ use bevy::prelude::*;
 use gdtf_app::test_support::{AppState, LoadedSituation, ModePanelRoot, ModeSingleButton};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    Aim, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
-    ArmorRegistry, ArmorSpec, ArmorType, Cell, CellLevel, Faction, GangerName, Level, Situation,
+    armor::{
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
+        ArmorRegistry, ArmorSpec, ArmorType,
+    },
+    ganger::{Aim, Aiming, GangerName},
+    prelude::{Cell, CellLevel, Faction, Level},
+    situation::Situation,
     test_support::test_weapon_spec,
     tuning::CombatTuning,
     weapon::{FatalBias, WeaponName, WeaponRegistry, WeaponSpec},

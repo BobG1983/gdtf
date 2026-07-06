@@ -2,7 +2,7 @@
 //! (AC1/AC2).
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Cell, CellLevel};
+use gdtf_battle_sim::prelude::{Cell, CellLevel};
 use gdtf_test_utils::{clear_mouse, press_mouse};
 
 use super::harness::*;

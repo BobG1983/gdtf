@@ -8,7 +8,10 @@ use bevy::{
     prelude::{Camera2d, IntoScheduleConfigs, Transform, With, resource_exists},
 };
 use gdtf_battle_presenter::{WorldCamera, camera_focus, cell_to_world, frame_camera_on_units};
-use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, Faction, Level, PlayerFaction, Position};
+use gdtf_battle_sim::{
+    battle::PlayerFaction,
+    prelude::{BattleInProgress, Cell, CellLevel, Faction, Level, Position},
+};
 
 use super::harness::*;
 

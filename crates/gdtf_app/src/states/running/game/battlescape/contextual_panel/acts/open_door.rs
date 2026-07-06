@@ -4,10 +4,10 @@
 use bevy::prelude::*;
 use gdtf_battle_input::{SelectedShooter, contextual::OpenDoorAct};
 use gdtf_battle_sim::{
-    OpenState,
-    downed_acts::is_8_adjacent,
+    acts::downed::is_8_adjacent,
     entity::TerrainCell,
     ganger::{Faction, Position},
+    openable::OpenState,
 };
 use gdtf_ui::ButtonLabel;
 
@@ -22,7 +22,7 @@ crate::support_item! {
     /// Spawned [`Visibility::Hidden`](bevy::camera::visibility::Visibility) by the generic
     /// button spawn and revealed IN PLACE by the act's visibility toggle when
     /// [`offer_open_door`] names a target — the first 8-adjacent openable terrain entity in
-    /// the [`OpenState::Closed`](gdtf_battle_sim::OpenState) state (the button always OPENS;
+    /// the [`OpenState::Closed`](gdtf_battle_sim::openable::OpenState) state (the button always OPENS;
     /// closing is not offered, and F4 is PLAYER-ONLY). A unit marker: presence on an entity
     /// is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]

@@ -6,9 +6,17 @@ use bevy::{
 };
 use gdtf_battle_presenter::{FloatingCombatText, FxFlash};
 use gdtf_battle_sim::{
-    Aiming, AppliedDamage, BodyPart, Cell, CellLevel, Direction, Facing, Faction, HitReport,
-    HitResult, HpDamage, IntegrityWear, Level, LifeState, Matchup, PenetratingDamage, Position,
-    Severity, ShotKind, Stance, StanceKind, test_support::GangerEntityBuilder,
+    armor::BodyPart,
+    ganger::{Aiming, Facing},
+    matchup::Matchup,
+    prelude::{
+        Cell, CellLevel, Direction, Faction, Level, LifeState, Position, Stance, StanceKind,
+    },
+    resolve_and_apply::{AppliedDamage, HitReport},
+    resolve_coarse::ShotKind,
+    resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage},
+    severity::Severity,
+    test_support::GangerEntityBuilder,
 };
 
 /// Spawns a ganger entity carrying a `Position` at `cell`/`level` plus `Wounds(wounds)`, and
@@ -120,23 +128,25 @@ pub(crate) fn ganger_hit_report(
 ) -> HitReport {
     HitReport {
         kind:    ShotKind::Ganger(struck),
-        verdict: gdtf_battle_sim::HitVerdict::Ganger(Box::new(gdtf_battle_sim::GangerVerdict {
-            target: struck,
-            part,
-            applied: AppliedDamage {
-                matchup: Matchup::Neutral,
-                hit: HitResult {
-                    penetrating: PenetratingDamage::new(pen),
-                    hp_damage:   HpDamage::new(hp),
-                    wear:        IntegrityWear::new(0),
+        verdict: gdtf_battle_sim::resolve_and_apply::HitVerdict::Ganger(Box::new(
+            gdtf_battle_sim::resolve_and_apply::GangerVerdict {
+                target: struck,
+                part,
+                applied: AppliedDamage {
+                    matchup: Matchup::Neutral,
+                    hit: HitResult {
+                        penetrating: PenetratingDamage::new(pen),
+                        hp_damage:   HpDamage::new(hp),
+                        wear:        IntegrityWear::new(0),
+                    },
+                    severity,
+                    life_after,
+                    wear: gdtf_battle_sim::armor_wear::ArmorWearOutcome::Unaffected,
                 },
-                severity,
-                life_after,
-                wear: gdtf_battle_sim::ArmorWearOutcome::Unaffected,
+                injury: None,
+                dot_applied: None,
             },
-            injury: None,
-            dot_applied: None,
-        })),
+        )),
     }
 }
 

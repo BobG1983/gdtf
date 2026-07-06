@@ -3,7 +3,8 @@
 use bevy::{ecs::message::Messages, transform::components::Transform};
 use gdtf_battle_presenter::{FctValence, FloatingCombatText, cell_to_world, valence_color};
 use gdtf_battle_sim::{
-    BattleInProgress, Cell, CellLevel, FallOccurred, Level, Position, StoreysFallen,
+    falls::{FallOccurred, StoreysFallen},
+    prelude::{BattleInProgress, Cell, CellLevel, Level, Position},
 };
 
 use super::{harness::*, probes::*};

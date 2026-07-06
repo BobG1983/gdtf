@@ -6,7 +6,7 @@ use gdtf_app::test_support::{
     AppState, AutoButton, EnemyGangDropdown, GenerateButton, HeightField, PlayerGangDropdown,
     PrefabQuad, ProcgenViz, RunningState, StepButton, WidthField,
 };
-use gdtf_battle_sim::{GangRegistry, rng::BattleSeed};
+use gdtf_battle_sim::{ganger::GangRegistry, rng::BattleSeed};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 

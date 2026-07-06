@@ -7,7 +7,7 @@
 //! "previous" step the SAME order the auto-select picks the first of, never a divergent
 //! one (the allocation-order [`Entity`] id is NOT a stable order — see [`cell_order_key`]).
 
-use gdtf_battle_sim::Position;
+use gdtf_battle_sim::prelude::Position;
 
 /// The total-ordering key a player-faction ganger sorts by for the deterministic selection
 /// order (GTW-255 / GTW-458): `(level, y, x)` of its [`Position`] cell.

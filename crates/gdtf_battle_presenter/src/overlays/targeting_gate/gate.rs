@@ -1,6 +1,9 @@
 //! The [`CellVisibility`] verdict + the shared [`cell_squad_visible`] predicate.
 
-use gdtf_battle_sim::{CellLevel, FactionRelation, SquadVisibility, is_ganger_visible};
+use gdtf_battle_sim::{
+    prelude::CellLevel,
+    visibility::{FactionRelation, SquadVisibility, is_ganger_visible},
+};
 
 /// Whether a targeted `(cell, level)` is currently squad-VISIBLE — the verdict the
 /// reticle, the hint, AND the fire-refusal all read so they can never disagree
@@ -46,7 +49,7 @@ impl CellVisibility {
 /// truth cannot vouch for.
 ///
 /// The verdict resolution (mirroring the sim's
-/// [`is_ganger_visible`](gdtf_battle_sim::is_ganger_visible) read so plan and render agree):
+/// [`is_ganger_visible`](gdtf_battle_sim::visibility::is_ganger_visible) read so plan and render agree):
 ///
 /// * an **occupant-bearing** cell (the caller passes `relation = Some(..)` with the
 ///   occupant's [`FactionRelation`] to the player squad) is decided by
@@ -86,7 +89,10 @@ pub fn cell_squad_visible(
 #[cfg(test)]
 mod tests {
     use bevy::platform::collections::HashSet;
-    use gdtf_battle_sim::{Cell, CellLevel, FactionRelation, Level, SquadVisibility};
+    use gdtf_battle_sim::{
+        prelude::{Cell, CellLevel, Level},
+        visibility::{FactionRelation, SquadVisibility},
+    };
 
     use super::{CellVisibility, cell_squad_visible};
 

@@ -10,7 +10,7 @@
 //! with the model — one row per member.
 
 use bevy::{prelude::*, ui::Interaction};
-use gdtf_battle_sim::{ArmorRegistry, GangerStatTuning, WeaponRegistry};
+use gdtf_battle_sim::{armor::ArmorRegistry, tuning::GangerStatTuning, weapon::WeaponRegistry};
 use gdtf_ui::{ScrollListArea, theme::GdtfTheme};
 
 use crate::states::running::gang_editor::{

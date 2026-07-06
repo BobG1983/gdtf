@@ -12,8 +12,9 @@
 
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_sim::{
-    CellLevel, Faction, FactionRelation, LifeState, PlayerFaction, Position, SquadVisibility,
-    is_ganger_visible,
+    battle::PlayerFaction,
+    prelude::{CellLevel, Faction, LifeState, Position},
+    visibility::{FactionRelation, SquadVisibility, is_ganger_visible},
 };
 
 use super::sprite_map::{GangerSprite, GangerSprites};

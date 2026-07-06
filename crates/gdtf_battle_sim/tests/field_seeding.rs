@@ -28,12 +28,14 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    BattleSetupError, FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey,
-    FieldRegistry, FieldSpawn, FieldTurns, ImmuneArmorTypes, Situation,
     armor::ArmorType,
+    effects::fields::{
+        FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey, FieldRegistry,
+        FieldTurns, ImmuneArmorTypes,
+    },
     ganger::GangRegistry,
     metric::{Cell, CellLevel, Level},
-    situation::{BattleRegistries, setup_battle},
+    situation::{BattleRegistries, BattleSetupError, FieldSpawn, Situation, setup_battle},
     test_support::{
         SituationBuilder, ganger_at, test_armor_registry, test_melee_weapon_registry,
         test_terrain_registry, test_weapon_registry,

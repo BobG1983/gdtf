@@ -35,10 +35,12 @@ use bevy::{
 };
 use gdtf_app::test_support::{AppState, LoadedSituation};
 use gdtf_battle_sim::{
-    ArmorRegistry, BattleRegistries, GangRegistry, GangerName, TerrainDefRegistry, WeaponRegistry,
-    setup_battle,
-    situation::Situation,
+    armor::ArmorRegistry,
+    def::TerrainDefRegistry,
+    ganger::{GangRegistry, GangerName},
+    situation::{BattleRegistries, Situation, setup_battle},
     tuning::{CombatTuning, GangerStatTuning},
+    weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 
@@ -77,7 +79,10 @@ fn real_skirmish_with_real_gangs_spawns_the_expected_set() {
     // GTW-545: the FieldDefRegistry catalog too — the shipped skirmish.ron now authors a
     // `fields:` toxic-pool placement, so setup_battle must resolve its key against the loaded
     // catalog (else FieldNotFound).
-    advance_until_resource_exists::<gdtf_battle_sim::FieldDefRegistry>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<gdtf_battle_sim::effects::fields::FieldDefRegistry>(
+        &mut app,
+        LOAD_SAFETY_NET,
+    );
 
     // 2. Read the resolved-from-disk resources out of the loaded world (all Clone), so a
     //    FRESH headless app can run setup_battle against the REAL data. Every one must be
@@ -92,7 +97,7 @@ fn real_skirmish_with_real_gangs_spawns_the_expected_set() {
     let terrain = world.get_resource::<TerrainDefRegistry>().cloned();
     let stat_tuning = world.get_resource::<GangerStatTuning>().cloned();
     let field_defs = world
-        .get_resource::<gdtf_battle_sim::FieldDefRegistry>()
+        .get_resource::<gdtf_battle_sim::effects::fields::FieldDefRegistry>()
         .cloned();
     let all_present = situation.is_some()
         && gangs.is_some()
@@ -158,7 +163,7 @@ fn run_real_setup(
     armor: ArmorRegistry,
     terrain: TerrainDefRegistry,
     stat_tuning: GangerStatTuning,
-    field_defs: &gdtf_battle_sim::FieldDefRegistry,
+    field_defs: &gdtf_battle_sim::effects::fields::FieldDefRegistry,
 ) -> Option<App> {
     let fallback_floor_cost = CombatTuning::default().move_costs.open;
     let mut battle = App::new();

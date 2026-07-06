@@ -2,8 +2,8 @@
 //! [`InspectTarget`](gdtf_battle_input::InspectTarget) — pinned-else-hovered (GTW-274 / GTW-300).
 //!
 //! [`update_inspect_panel`] reads the effective inspect cell + the
-//! [`OccupancyGrid`](gdtf_battle_sim::OccupancyGrid) (occupant / terrain) +
-//! [`CoverLedger`](gdtf_battle_sim::CoverLedger) and drives the panel:
+//! [`OccupancyGrid`](gdtf_battle_sim::occupancy::OccupancyGrid) (occupant / terrain) +
+//! [`CoverLedger`](gdtf_battle_sim::cover::CoverLedger) and drives the panel:
 //!
 //! - a hovered GANGER → show the shared stat block (the host) for it (with its NAME line
 //!   color tinted by the ganger's `Faction` — enemy red-ish, player the normal theme),

@@ -11,7 +11,7 @@
 //!   cheapest accumulated cost) and the draw system
 //!   [`draw_reachable_overlay`](crate::draw_reachable_overlay) (the
 //!   per-cell hard-cut-to-active-storey sprites);
-//! - the INPUT crate calls [`reachable_within`](gdtf_battle_sim::reachable_within) for
+//! - the INPUT crate calls [`reachable_within`](gdtf_battle_sim::pathfinder::reachable_within) for
 //!   the selected ganger and POPULATES the resource — the
 //!   [`PathPreview`](crate::PathPreview) precedent (the presenter defines the type,
 //!   input writes it).

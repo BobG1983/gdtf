@@ -2,7 +2,11 @@
 //! shootable cover (C2/C4b, GTW-376, GTW-377).
 
 use gdtf_battle_input::SelectedFireMode;
-use gdtf_battle_sim::{Cell, CellLevel, mode_tu_cost, tuning::CombatTuning};
+use gdtf_battle_sim::{
+    magazine::mode_tu_cost,
+    prelude::{Cell, CellLevel},
+    tuning::CombatTuning,
+};
 
 use super::harness::*;
 

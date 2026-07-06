@@ -7,7 +7,7 @@
 //! `bevy-traps.md` #7 carve-out).
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{BattleInProgress, acts::ShoveRequested};
+use gdtf_battle_sim::{acts::ShoveRequested, prelude::BattleInProgress};
 use gdtf_test_utils::{MessageProbePlugin, probed};
 
 use super::{ContextualActAppExt, PendingContextualIntents, ShoveAct};

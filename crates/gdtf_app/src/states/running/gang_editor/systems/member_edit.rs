@@ -8,7 +8,7 @@
 //! echo node to keep in sync (GTW-499 C1: exactly one control per field).
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{ArmorName, GangerName, WeaponName};
+use gdtf_battle_sim::{armor::ArmorName, ganger::GangerName, weapon::WeaponName};
 use gdtf_ui::{DropdownSelectionChanged, TextFieldCommitted};
 
 use crate::states::running::gang_editor::{

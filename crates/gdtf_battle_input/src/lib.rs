@@ -3,7 +3,7 @@
 //! This crate gives the landed top-down SPRITE battle (the read-only presenter, S2-S6) its
 //! cursor awareness and control surfaces. Every update during a live battle it reads the
 //! presenter's [`WorldCamera`](gdtf_battle_presenter::WorldCamera) and the OS cursor, unprojects
-//! the cursor into a sim [`Cell`](gdtf_battle_sim::Cell) on the presenter's
+//! the cursor into a sim [`Cell`](gdtf_battle_sim::metric::Cell) on the presenter's
 //! [`ActiveLevel`](gdtf_battle_presenter::ActiveLevel) (the INVERSE of `cell_to_world`), stores it
 //! in [`InspectTarget`]'s live hovered cell, and EMITS a presenter-owned `HighlightRequest` for the presenter to draw
 //! (GTW-251). The selection / act surfaces (S8) ride on top of that.
@@ -12,9 +12,9 @@
 //!
 //! The dependency edge runs strictly `gdtf_battle_input -> gdtf_battle_presenter ->
 //! gdtf_battle_sim` — a CHAIN, never a cycle. This crate reads the presenter's camera/px/level
-//! interface and the sim's presentation-agnostic metric ([`Cell`](gdtf_battle_sim::Cell) /
-//! [`Level`](gdtf_battle_sim::Level) / [`CellLevel`](gdtf_battle_sim::CellLevel)); the presenter
-//! reads only the sim; the sim reads NEITHER. Input speaks cursor + [`Cell`](gdtf_battle_sim::Cell),
+//! interface and the sim's presentation-agnostic metric ([`Cell`](gdtf_battle_sim::metric::Cell) /
+//! [`Level`](gdtf_battle_sim::metric::Level) / [`CellLevel`](gdtf_battle_sim::metric::CellLevel)); the presenter
+//! reads only the sim; the sim reads NEITHER. Input speaks cursor + [`Cell`](gdtf_battle_sim::metric::Cell),
 //! not pixels — the px boundary lives in the presenter, and the world->cell inverse reuses it.
 //!
 //! # Module layout (GTW-201 / GTW-385)

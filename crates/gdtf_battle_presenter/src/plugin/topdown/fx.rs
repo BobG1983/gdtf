@@ -3,8 +3,13 @@
 
 use bevy::{ecs::message::Messages, prelude::*};
 use gdtf_battle_sim::{
-    ArmorBroken, BattleInProgress, Bleeding, CoverDestroyed, FallOccurred, ShotFired,
     acts::{MeleeResolved, ThrowResolved},
+    armor_wear::ArmorBroken,
+    effects::bleed::Bleeding,
+    falls::FallOccurred,
+    occupancy_sync::CoverDestroyed,
+    prelude::BattleInProgress,
+    shot_fired::ShotFired,
 };
 
 use crate::{
@@ -24,10 +29,10 @@ use crate::{
 /// # The six flash-family readers — one registrar line each (GTW-623 C3)
 ///
 /// Each reader drains a [`MessageReader`] over one sim FX message
-/// ([`Bleeding`](gdtf_battle_sim::Bleeding) / [`ArmorBroken`](gdtf_battle_sim::ArmorBroken) /
-/// [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) /
+/// ([`Bleeding`](gdtf_battle_sim::effects::bleed::Bleeding) / [`ArmorBroken`](gdtf_battle_sim::armor_wear::ArmorBroken) /
+/// [`CoverDestroyed`](gdtf_battle_sim::occupancy_sync::CoverDestroyed) /
 /// [`MeleeResolved`](gdtf_battle_sim::acts::MeleeResolved) (GTW-507) /
-/// [`FallOccurred`](gdtf_battle_sim::FallOccurred) (GTW-524) /
+/// [`FallOccurred`](gdtf_battle_sim::falls::FallOccurred) (GTW-524) /
 /// [`ThrowResolved`](gdtf_battle_sim::acts::ThrowResolved) (GTW-546)), looks up the cell
 /// via `Query<&Position>` / the message geometry (read-only, NO sim plumbing added), and
 /// `Commands::spawn`s the short-lived effects sprite(s). They register through the ONE

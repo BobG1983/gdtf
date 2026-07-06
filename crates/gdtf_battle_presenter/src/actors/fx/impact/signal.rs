@@ -1,7 +1,7 @@
 //! The GTW-328 per-shot [`ShotImpactResolved`] message.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::HitReport;
+use gdtf_battle_sim::resolve_and_apply::HitReport;
 
 /// A per-shot SHOT-IMPACT-RESOLVED signal — emitted (GTW-328) the instant each shot's
 /// [`PendingImpact`](super::super::projectile::PendingImpact) is consumed in

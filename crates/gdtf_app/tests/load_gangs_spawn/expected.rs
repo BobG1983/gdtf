@@ -7,9 +7,14 @@ use std::collections::HashMap;
 
 use bevy::prelude::{Entity, World};
 use gdtf_battle_sim::{
-    Aim, Aiming, Cell, CellLevel, Cool, Direction, Facing, Faction, GangName, GangRegistry,
-    GangerName, Grit, Level, LifeState, Luck, Position, Reflexes, Speed, Stance, StanceKind,
-    Strength, Toughness, WeaponName, Wields,
+    ganger::{
+        Aim, Aiming, Cool, Facing, GangName, GangRegistry, GangerName, Grit, Luck, Reflexes, Speed,
+        Strength, Toughness,
+    },
+    prelude::{
+        Cell, CellLevel, Direction, Faction, Level, LifeState, Position, Stance, StanceKind,
+    },
+    weapon::{WeaponName, Wields},
 };
 
 /// The concrete, expected spawn record for one ganger — the pre-GTW-414 inline value an

@@ -3,8 +3,11 @@
 use bevy::ecs::message::Messages;
 use gdtf_battle_presenter::TileRoles;
 use gdtf_battle_sim::{
-    BattleInProgress, BattleReady, Cell, CellLevel, CoverLedger, Level, SlabState, SurfaceGrid,
-    TerrainKind, TerrainPlacement,
+    battle::BattleReady,
+    cover::CoverLedger,
+    occupancy::{TerrainKind, TerrainPlacement},
+    prelude::{BattleInProgress, Cell, CellLevel, Level},
+    surface::{SlabState, SurfaceGrid},
 };
 
 use super::harness::*;

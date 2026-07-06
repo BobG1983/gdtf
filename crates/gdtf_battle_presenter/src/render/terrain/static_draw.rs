@@ -9,7 +9,11 @@ use bevy::{
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
 };
-use gdtf_battle_sim::{BattleReady, Cell, CellLevel, GRID_HEIGHT, GRID_WIDTH, Level};
+use gdtf_battle_sim::{
+    battle::BattleReady,
+    occupancy::{GRID_HEIGHT, GRID_WIDTH},
+    prelude::{Cell, CellLevel, Level},
+};
 
 use super::{
     active_level::{ActiveLevel, ViewMode},
@@ -25,7 +29,7 @@ use crate::{TerrainFogMaterial, TopDownAtlases, cell_to_world};
 /// despawns exactly the terrain sprites — and ONLY them, never the S5 ganger sprites,
 /// never the S2 [`WorldCamera`](crate::WorldCamera). It carries the source
 /// [`CellLevel`] (the named sim newtype, never a bare key) so the
-/// [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) reaction can find the one sprite
+/// [`CoverDestroyed`](gdtf_battle_sim::occupancy_sync::CoverDestroyed) reaction can find the one sprite
 /// at the smashed cell.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TerrainSprite {
@@ -36,7 +40,7 @@ pub struct TerrainSprite {
 /// `Update` (`PresenterSystems::Scene`, gated `resource_exists::<BattleInProgress>`): the
 /// static-battlefield ONE-SHOT draw + redraw-on-level-change.
 ///
-/// Fires when ANY of: a [`BattleReady`](gdtf_battle_sim::BattleReady) drained this update,
+/// Fires when ANY of: a [`BattleReady`](gdtf_battle_sim::battle::BattleReady) drained this update,
 /// [`ActiveLevel`] `is_changed()`, [`ViewMode`] `is_changed()` (GTW-521 — the full-view
 /// toggle widens/narrows the [`drawn_band`] ceiling, so the terrain must redraw for the new
 /// band), OR [`TileRoles`] `is_changed()` — the GTW-375 third
@@ -63,16 +67,16 @@ pub struct TerrainSprite {
 ///
 /// GTW-493 (T07c — the per-def presenter seam): each cell's atlas index is resolved from
 /// the SIM-SPAWNED terrain entity's per-def
-/// [`TerrainGraphicKey`](gdtf_battle_sim::TerrainGraphicKey) FIRST (via the
+/// [`TerrainGraphicKey`](gdtf_battle_sim::piece::TerrainGraphicKey) FIRST (via the
 /// [`resolve_index`] helper → [`TileRole::from_key`](super::roles::TileRole::from_key)),
 /// falling back to the
 /// [`TileRole`](super::roles::TileRole)-table default keyed on
-/// [`TerrainKind`](gdtf_battle_sim::TerrainKind) only for the floor field (no
+/// [`TerrainKind`](gdtf_battle_sim::occupancy::TerrainKind) only for the floor field (no
 /// spawned entity) or an out-of-vocabulary key (warned loudly — GTW-566 C4). So two `Cover` defs whose `graphic_name`s differ
 /// (e.g. `"cover"` vs `"rubble"`) draw DISTINCT sprites — the per-def graphic the role
-/// table (keyed only on the shared [`TerrainKind`](gdtf_battle_sim::TerrainKind)) cannot
+/// table (keyed only on the shared [`TerrainKind`](gdtf_battle_sim::occupancy::TerrainKind)) cannot
 /// express. The slab-only OPTIONAL
-/// [`FootfallSound`](gdtf_battle_sim::FootfallSound) is also read here from the def's
+/// [`FootfallSound`](gdtf_battle_sim::piece::FootfallSound) is also read here from the def's
 /// presenter facts; an absent footfall is
 /// handled (no panic) with a documented silent default — there is no footfall-audio system
 /// yet (guns-only).

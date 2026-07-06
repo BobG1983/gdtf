@@ -3,7 +3,11 @@
 use bevy::{prelude::*, ui::widget::Button};
 use gdtf_app::test_support::{ReloadButton, WeaponContent, WeaponPanelRoot};
 use gdtf_battle_input::dispatch_act_intents;
-use gdtf_battle_sim::{Magazine, MagazineSize, ReloadTu, acts::ReloadRequested};
+use gdtf_battle_sim::{
+    acts::ReloadRequested,
+    magazine::{Magazine, ReloadTu},
+    weapon::MagazineSize,
+};
 use gdtf_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed};
 
 use super::harness::*;

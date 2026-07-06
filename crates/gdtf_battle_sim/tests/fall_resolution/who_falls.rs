@@ -1,7 +1,11 @@
 //! Who falls when a slab dies: the occupant falls, the roof occupant does not,
 //! multi-storey pass-through, other-level immunity, and stair bracing (QA 1-4).
 
-use gdtf_battle_sim::{CellLevel, Level, OccupancyGrid, PerStoreyDamage, SlabState, SurfaceGrid};
+use gdtf_battle_sim::{
+    prelude::{CellLevel, Level, OccupancyGrid},
+    surface::{SlabState, SurfaceGrid},
+    tuning::PerStoreyDamage,
+};
 
 use super::harness::*;
 

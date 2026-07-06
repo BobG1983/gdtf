@@ -13,7 +13,7 @@
 mod load_suite;
 
 use gdtf_app::test_support::AppState;
-use gdtf_battle_sim::{GangName, GangRegistry, GangerName};
+use gdtf_battle_sim::ganger::{GangName, GangRegistry, GangerName};
 use gdtf_content_families::GangsFamily;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 use load_suite::suite::{self, FamilyLoadContract};

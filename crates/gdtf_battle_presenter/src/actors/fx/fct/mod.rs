@@ -11,11 +11,11 @@
 //!   is spawned ONCE carrying its own [`FloatingCombatText`] state and is MUTATED in place
 //!   each frame until its [`FctTtlSeconds`](super::tuning::FctTtlSeconds) lifetime finishes.
 //! - [`palette`] — the VALENCE → color mapping: [`FctValence`] → [`valence_color`], plus the
-//!   [`Severity`](gdtf_battle_sim::Severity)-tier → amber-family ramp [`severity_color`].
+//!   [`Severity`](gdtf_battle_sim::severity::Severity)-tier → amber-family ramp [`severity_color`].
 //! - [`reader`] — the SHOT-side classification
 //!   ([`classify_report`](reader::classify_report) / [`anchor_cell`](reader::anchor_cell)):
 //!   the presenter's ONE exhaustive view-side dispatch over a round's
-//!   [`HitReport`](gdtf_battle_sim::HitReport), threaded THROUGH the staggered
+//!   [`HitReport`](gdtf_battle_sim::resolve_and_apply::HitReport), threaded THROUGH the staggered
 //!   projectile → impact pipeline by [`spawn_shot_projectiles`](super::spawn_shot_projectiles)
 //!   so each shot's numbers appear at its own impact. DELIBERATELY outside the consequence
 //!   palette (GTW-572 P9): it is multi-pop, report-driven, and pipeline-threaded.

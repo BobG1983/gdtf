@@ -256,7 +256,7 @@ pub fn apply_emplacement_toggle(
 /// [`AttachmentRegistry`] into a
 /// [`PendingAttachments`](crate::weapon::PendingAttachments) marker spawned onto the weapon (an
 /// EMPTY marker when it authors none / the registry is absent), which the post-spawn
-/// [`apply_pending_attachments`](crate::apply_pending_attachments) system applies via
+/// [`apply_pending_attachments`](crate::equipment::attachments::apply_pending_attachments) system applies via
 /// the [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon) extension — the
 /// SAME path the `setup_battle` spawn uses. GTW-554: the resolution is slot-gated
 /// ([`resolve_pending_attachments`] — the ONE shared seam): an item only fits a slot the

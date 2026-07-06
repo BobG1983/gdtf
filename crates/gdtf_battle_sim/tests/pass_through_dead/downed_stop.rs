@@ -2,7 +2,10 @@
 //! only `LifeState::Dead` is transparent to the march.
 
 use bevy::prelude::World;
-use gdtf_battle_sim::{LifeState, OccupancyGrid, Wounds};
+use gdtf_battle_sim::{
+    ganger::Wounds,
+    prelude::{LifeState, OccupancyGrid},
+};
 
 use super::harness::*;
 

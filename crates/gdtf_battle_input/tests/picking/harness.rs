@@ -14,7 +14,7 @@ use bevy::{
 };
 use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget};
 use gdtf_battle_presenter::{ActiveLevel, ViewMode, WorldCamera};
-use gdtf_battle_sim::{BattleInProgress, CellLevel, Level};
+use gdtf_battle_sim::prelude::{BattleInProgress, CellLevel, Level};
 
 /// The synthetic window/camera render-target size (physical px), large enough that a
 /// cursor near its centre unprojects to an in-grid cell.

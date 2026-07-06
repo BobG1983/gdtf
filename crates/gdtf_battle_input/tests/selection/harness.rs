@@ -7,7 +7,9 @@ use gdtf_battle_input::{
 };
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
-    BattleInProgress, CellLevel, Faction, Level, OccupancyGrid, PlayerFaction, VerticalLinkGraph,
+    battle::PlayerFaction,
+    prelude::{BattleInProgress, CellLevel, Faction, Level, OccupancyGrid},
+    vertical::VerticalLinkGraph,
 };
 
 /// The faction the player controls in these tests (matches `PlayerFaction`).

@@ -15,7 +15,7 @@ use super::table::{TileIndex, TileRoles};
 /// (via [`def_authorable`](TileRole::def_authorable)), and the prefab connector pairing
 /// (via [`counterpart`](TileRole::counterpart)) all derive from it rather than
 /// re-listing key strings. The sim's
-/// [`TerrainGraphicKey`](gdtf_battle_sim::TerrainGraphicKey) stays an opaque string
+/// [`TerrainGraphicKey`](gdtf_battle_sim::piece::TerrainGraphicKey) stays an opaque string
 /// newtype — this type never crosses into the sim (the render-free boundary); the
 /// presenter classifies the sim's string at its own edge.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -2,7 +2,10 @@
 //! (AC3/AC4, GTW-377).
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Cell, CellLevel, OccupancyGrid, SquadVisibility};
+use gdtf_battle_sim::{
+    prelude::{Cell, CellLevel, OccupancyGrid},
+    visibility::SquadVisibility,
+};
 use gdtf_test_utils::{clear_mouse, press_mouse};
 
 use super::harness::*;
@@ -14,7 +17,7 @@ use super::harness::*;
 fn place_cover(app: &mut App, cell: CellLevel) {
     app.world_mut()
         .resource_mut::<OccupancyGrid>()
-        .set_terrain(cell, gdtf_battle_sim::TerrainKind::Cover);
+        .set_terrain(cell, gdtf_battle_sim::occupancy::TerrainKind::Cover);
     let mut visible: bevy::platform::collections::HashSet<CellLevel> = app
         .world()
         .get_resource::<SquadVisibility>()

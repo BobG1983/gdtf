@@ -17,7 +17,10 @@ use bevy::{
 use gdtf_battle_presenter::{
     PathPreview, PathStepSprite, PathTargetLabel, TopDownRendererPlugin, cell_to_world,
 };
-use gdtf_battle_sim::{BattleInProgress, CellLevel, SquadVisibility, Tu};
+use gdtf_battle_sim::{
+    prelude::{BattleInProgress, CellLevel, Tu},
+    visibility::SquadVisibility,
+};
 
 /// Bounded settle headroom for the deferred draw (a synchronous command flush, not a load).
 pub(crate) const MAX_UPDATES: u32 = 16;

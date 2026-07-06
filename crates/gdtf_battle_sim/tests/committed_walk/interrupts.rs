@@ -2,10 +2,12 @@
 //! a newly revealed enemy, and a synthetic reaction interrupt.
 
 use gdtf_battle_sim::{
-    Faction, ReactionShotFired, Speed, SquadVisibility, Stance, StanceKind,
-    acts::MoveRequested,
+    acts::{MoveRequested, movement::ReactionShotFired},
+    ganger::Speed,
     occupancy::OccupancyGrid,
+    prelude::{Faction, Stance, StanceKind},
     test_support::{GangerSpawnBuilder, SituationBuilder},
+    visibility::SquadVisibility,
 };
 
 use super::harness::*;

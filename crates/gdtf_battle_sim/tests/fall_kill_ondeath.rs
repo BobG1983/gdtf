@@ -22,10 +22,17 @@ use bevy::{
     prelude::{Entity, MessageReader, ResMut, Resource},
 };
 use gdtf_battle_sim::{
-    Cell, CellLevel, CombatTuning, Faction, Hp, InflictedWounds, Level, LifeState, Luck,
-    OccupancyGrid, OccupancyMaintenancePlugin, PerStoreyDamage, Position, Stance, StanceKind,
-    SurfaceGrid, Toughness, Tu, TuMax, Wounds, effects::on_death::OnDeathOccurred,
-    falls::FallsPlugin, occupancy_sync::SlabDestroyed, test_support::SimAppBuilder,
+    effects::on_death::OnDeathOccurred,
+    falls::FallsPlugin,
+    ganger::{Hp, Luck, Toughness, TuMax, Wounds},
+    inflicted_wound::InflictedWounds,
+    occupancy_sync::{OccupancyMaintenancePlugin, SlabDestroyed},
+    prelude::{
+        Cell, CellLevel, Faction, Level, LifeState, OccupancyGrid, Position, Stance, StanceKind, Tu,
+    },
+    surface::SurfaceGrid,
+    test_support::SimAppBuilder,
+    tuning::{CombatTuning, PerStoreyDamage},
 };
 
 /// An arbitrary fixed seed — determinism is the property, the value is irrelevant.

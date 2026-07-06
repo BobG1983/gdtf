@@ -8,8 +8,8 @@ use bevy::{
 };
 use gdtf_assets::{ContentChecksComplete, ContentValidationAppExt, ContentValidationSet};
 use gdtf_battle_sim::{
-    FieldDefRegistry,
     armor::ArmorRegistry,
+    effects::fields::FieldDefRegistry,
     equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::InjuryRegistry,

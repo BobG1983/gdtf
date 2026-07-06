@@ -7,12 +7,14 @@ use bevy::{
     prelude::{Entity, MessageReader, Resource},
 };
 use gdtf_battle_sim::{
-    Cell, Silenced, SuppressionApplied,
     effects::attachments::AttachmentEffect,
     ganger::Direction,
+    prelude::Cell,
+    suppression::SuppressionApplied,
     test_support::SituationBuilder,
     weapon::{
-        FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, shooter_weapon_silenced,
+        FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Silenced,
+        shooter_weapon_silenced,
     },
 };
 

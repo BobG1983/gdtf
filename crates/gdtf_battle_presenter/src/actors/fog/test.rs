@@ -9,7 +9,10 @@
 //! tests live with the GTW-627 resolver in `actors/ganger/test/visibility.rs`.
 
 use bevy::platform::collections::HashSet;
-use gdtf_battle_sim::{Cell, CellLevel, Level, SquadVisibility};
+use gdtf_battle_sim::{
+    prelude::{Cell, CellLevel, Level},
+    visibility::SquadVisibility,
+};
 
 use super::present::CellFog;
 

@@ -3,7 +3,7 @@
 
 use bevy::{math::Vec3, prelude::*};
 use gdtf_assets::HotRonAppExt;
-use gdtf_battle_sim::DamageType;
+use gdtf_battle_sim::weapon::DamageType;
 use serde::Deserialize;
 
 use crate::TileIndex;
@@ -112,17 +112,17 @@ pub struct DamageTypeFx {
 /// requires of its payload).
 #[derive(Resource, Debug, Clone, PartialEq, Eq, Deserialize, TypePath)]
 pub struct EffectRoles {
-    /// The [`Bleeding`](gdtf_battle_sim::Bleeding) blood/hit-flash tile (the §9 bleed-out signal).
+    /// The [`Bleeding`](gdtf_battle_sim::effects::bleed::Bleeding) blood/hit-flash tile (the §9 bleed-out signal).
     pub bleed:           TileIndex,
-    /// The [`ArmorBroken`](gdtf_battle_sim::ArmorBroken) spark/break-burst tile (the shattered-piece signal).
+    /// The [`ArmorBroken`](gdtf_battle_sim::armor_wear::ArmorBroken) spark/break-burst tile (the shattered-piece signal).
     pub armor_break:     TileIndex,
-    /// The [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) debris/rubble-burst tile (the §3 cover-smashed signal).
+    /// The [`CoverDestroyed`](gdtf_battle_sim::occupancy_sync::CoverDestroyed) debris/rubble-burst tile (the §3 cover-smashed signal).
     pub cover_destroyed: TileIndex,
     /// The [`MeleeResolved`](gdtf_battle_sim::acts::MeleeResolved) close-combat STRIKE tile
     /// (the §7 connecting-hit flash, GTW-507) — a one-frame strike glyph drawn at the struck
     /// target cell when a melee blow lands.
     pub melee_strike:    TileIndex,
-    /// The [`FallOccurred`](gdtf_battle_sim::FallOccurred) fall-IMPACT tile
+    /// The [`FallOccurred`](gdtf_battle_sim::falls::FallOccurred) fall-IMPACT tile
     /// (GTW-524) — a one-frame impact glyph drawn at the LANDING cell when a ganger drops
     /// a storey (or more) after a slab is destroyed beneath it.
     pub fall_impact:     TileIndex,
@@ -177,7 +177,7 @@ impl EffectRoles {
 /// The directional-strip COLUMN index whose [`COMPASS_DIRECTIONS`] heading best
 /// matches `trajectory`'s XY direction — the tile the traveling projectile shows.
 ///
-/// Projects the shot's 3D [`trajectory`](gdtf_battle_sim::ShotFired::trajectory)
+/// Projects the shot's 3D [`trajectory`](gdtf_battle_sim::shot_fired::ShotFired::trajectory)
 /// onto the world-screen XY plane (the sim `+y` cell axis maps to screen `+y`, the
 /// frame [`COMPASS_DIRECTIONS`] lives in) and picks the compass column whose unit
 /// heading has the LARGEST dot product with it — i.e. the nearest of the 8

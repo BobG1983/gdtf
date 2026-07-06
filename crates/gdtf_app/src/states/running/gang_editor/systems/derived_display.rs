@@ -1,5 +1,5 @@
 //! The shared derived-stat FORMATTER (GTW-428 C3) — the single place a
-//! [`DerivedStats`](gdtf_battle_sim::DerivedStats) field becomes the string a readonly
+//! [`DerivedStats`](gdtf_battle_sim::ganger::DerivedStats) field becomes the string a readonly
 //! [`DerivedStatText`](super::super::components::DerivedStatText) node shows.
 //!
 //! Both the initial seed (in [`spawn`](super::spawn)) and the live recompute (in
@@ -7,7 +7,7 @@
 //! the recomputed text are bit-identical for equal stats — the C3 "displayed == pipeline(attrs)"
 //! contract has exactly ONE rendering, never two that could drift.
 
-use gdtf_battle_sim::DerivedStats;
+use gdtf_battle_sim::ganger::DerivedStats;
 
 use crate::states::running::gang_editor::components::DerivedStat;
 

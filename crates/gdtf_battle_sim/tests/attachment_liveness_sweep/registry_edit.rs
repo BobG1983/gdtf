@@ -2,12 +2,11 @@
 //! spawn (the registry is the live source of truth the loader rebuilds).
 
 use gdtf_battle_sim::{
-    Accuracy,
     effects::attachments::{AimDelta, AttachmentEffect},
     equipment::attachments::{AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec},
     ganger::Direction,
     test_support::SituationBuilder,
-    weapon::WeaponName,
+    weapon::{Accuracy, WeaponName},
 };
 
 use super::harness::*;

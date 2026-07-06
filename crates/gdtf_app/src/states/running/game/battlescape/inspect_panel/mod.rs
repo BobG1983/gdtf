@@ -4,7 +4,7 @@
 //! It inspects the EFFECTIVE inspect target (pinned-else-hovered, GTW-300; the live cursor cell
 //! while nothing is pinned) — reading the
 //! [`InspectTarget`](gdtf_battle_input::InspectTarget) + the
-//! [`OccupancyGrid`](gdtf_battle_sim::OccupancyGrid):
+//! [`OccupancyGrid`](gdtf_battle_sim::occupancy::OccupancyGrid):
 //!
 //! - a hovered GANGER → the shared [`stat_block`](super::stat_block), with its NAME line
 //!   color tinted by the ganger's `Faction` (enemy red-ish, player the normal theme color);

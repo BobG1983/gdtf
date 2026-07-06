@@ -14,7 +14,7 @@
 //! reader (`fx/fall.rs`) is a glyph/shake FX, not a stacked pop.
 
 use bevy::prelude::{Color, Message};
-use gdtf_battle_sim::CellLevel;
+use gdtf_battle_sim::prelude::CellLevel;
 
 use super::text::{CombatText, FctEmphasis};
 
@@ -29,7 +29,7 @@ use super::text::{CombatText, FctEmphasis};
 pub enum PopAnchor {
     /// The message carried its own `(cell, level)` — anchor there directly.
     Carried(CellLevel),
-    /// Anchor at this ganger's live [`Position`](gdtf_battle_sim::Position); if the entity
+    /// Anchor at this ganger's live [`Position`](gdtf_battle_sim::ganger::Position); if the entity
     /// has none (despawned / minimal harness) the pop is dropped fail-closed.
     GangerPosition(bevy::prelude::Entity),
 }

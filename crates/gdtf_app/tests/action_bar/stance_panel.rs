@@ -3,7 +3,7 @@
 use bevy::{ecs::entity::Entity, prelude::*};
 use gdtf_app::test_support::{StanceKneelingButton, StanceProneButton, StanceStandingButton};
 use gdtf_battle_input::{ActIntent, PendingActIntent};
-use gdtf_battle_sim::{Direction, StanceKind};
+use gdtf_battle_sim::prelude::{Direction, StanceKind};
 use gdtf_test_utils::press_ui_button;
 
 use super::{harness::*, probes::*};

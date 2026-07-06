@@ -96,10 +96,10 @@ pub(super) fn spawn_wound_list(commands: &mut Commands, theme: &GdtfTheme) -> En
 /// The structural twin of [`spawn_wound_list`]: a vertical column marked [`StatInjuryList`];
 /// each pooled line is a themed [`Text`](bevy::prelude::Text) marked [`StatInjuryLine`],
 /// started empty and [`Visibility::Hidden`]. The update shows the first N lines (one per
-/// inflicted injury) with each [`GainedInjury`](gdtf_battle_sim::GainedInjury)'s authored
+/// inflicted injury) with each [`GainedInjury`](gdtf_battle_sim::injuries::GainedInjury)'s authored
 /// `inspect_text`, hides the rest, and shows/hides the container — all mutate-in-place
 /// ([[ui-mutate-not-respawn]]). Driven by the DURABLE
-/// [`InflictedInjuries`](gdtf_battle_sim::InflictedInjuries) ledger, so the list persists
+/// [`InflictedInjuries`](gdtf_battle_sim::injuries::InflictedInjuries) ledger, so the list persists
 /// while the ganger is inspected/selected (the transient FCT flash is a separate concern).
 pub(super) fn spawn_injury_list(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
     // GTW-322 — the container authors `StatInjuryList` via `bsn!`; its runtime-valued `Node`

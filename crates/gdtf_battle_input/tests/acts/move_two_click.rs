@@ -3,8 +3,10 @@
 use bevy::prelude::*;
 use gdtf_battle_input::PathPreviewTarget;
 use gdtf_battle_sim::{
-    CellLevel, Direction, Level, LinkKind, StanceKind, VerticalLink, acts::MoveRequested,
-    build_vertical_link_graph, test_support::SituationBuilder,
+    acts::MoveRequested,
+    prelude::{CellLevel, Direction, Level, StanceKind},
+    test_support::SituationBuilder,
+    vertical::{LinkKind, VerticalLink, build_vertical_link_graph},
 };
 use gdtf_test_utils::{clear_keys, clear_mouse, press_key, press_left, probed};
 

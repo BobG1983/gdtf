@@ -1,6 +1,6 @@
 //! Tests for the presenter level-step helper (relocated from `intent.rs`, GTW-201).
 
-use gdtf_battle_sim::{Level, MAX_LEVELS};
+use gdtf_battle_sim::{metric::MAX_LEVELS, prelude::Level};
 
 use crate::intent::level::{LevelStep, step_level};
 

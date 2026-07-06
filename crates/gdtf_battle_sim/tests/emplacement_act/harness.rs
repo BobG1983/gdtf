@@ -8,14 +8,13 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    BaseSpread, Cool, DamageType, Faction, FatalBias, FireMode, Grit, Kickback, Speed, Stance,
-    StanceKind, Strength, Toughness, Tu,
     armor::{ArmorHardness, ArmorProtection},
     battle::{BattleSimPlugin, SetupBattleRequested},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
-    ganger::{Direction, Facing, GangRegistry},
+    ganger::{Cool, Direction, Facing, GangRegistry, Grit, Speed, Strength, Toughness},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
+    prelude::{Faction, Stance, StanceKind, Tu},
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
     terrain::{
@@ -29,7 +28,10 @@ use gdtf_battle_sim::{
         test_weapon_spec,
     },
     tuning::{CombatTuning, ViewRange},
-    weapon::{MountedWeapon, WeaponName, WeaponRegistry, WeaponSpec, WieldedBy},
+    weapon::{
+        BaseSpread, DamageType, FatalBias, FireMode, Kickback, MountedWeapon, WeaponName,
+        WeaponRegistry, WeaponSpec, WieldedBy,
+    },
 };
 
 /// Gang `0` is the player.

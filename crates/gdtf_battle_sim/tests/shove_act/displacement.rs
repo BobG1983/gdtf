@@ -3,8 +3,10 @@
 
 use bevy::{app::App, prelude::Entity};
 use gdtf_battle_sim::{
-    Cell, Direction, FallOccurred, OccupancyGrid, Position, ShoveOutcome, SlabState, SurfaceGrid,
-    resolve_shove,
+    acts::{ShoveOutcome, resolve_shove},
+    falls::FallOccurred,
+    prelude::{Cell, Direction, OccupancyGrid, Position},
+    surface::{SlabState, SurfaceGrid},
 };
 
 use super::harness::*;

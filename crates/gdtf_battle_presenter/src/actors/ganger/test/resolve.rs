@@ -4,8 +4,8 @@
 
 use bevy::{image::TextureAtlas, prelude::*};
 use gdtf_battle_sim::{
-    Aiming, Cell, CellLevel, Direction, Facing, Faction, Level, LifeState, Stance, StanceKind,
-    Suppressed, SuppressorCell,
+    ganger::{Aiming, Facing, Suppressed, SuppressorCell},
+    prelude::{Cell, CellLevel, Direction, Faction, Level, LifeState, Stance, StanceKind},
 };
 
 use super::super::{

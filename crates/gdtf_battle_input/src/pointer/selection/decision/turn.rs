@@ -1,7 +1,10 @@
 //! The GTW-238 turn-to-face geometry decision shared by mouse right-click and gamepad East.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Direction, Position, acts::SetFacingRequested};
+use gdtf_battle_sim::{
+    acts::SetFacingRequested,
+    prelude::{Direction, Position},
+};
 
 use crate::{InspectTarget, selection::SelectedShooter};
 
@@ -12,7 +15,7 @@ use crate::{InspectTarget, selection::SelectedShooter};
 /// READ-ONLY: given the player-faction [`SelectedShooter`] (already faction-gated by the
 /// caller), the [`InspectTarget`] (its LIVE hovered cell), and the actor [`Position`] query, it reads the actor's cell,
 /// computes the target [`Direction`] toward the hovered cell via
-/// [`Direction::from_cells`](gdtf_battle_sim::Direction::from_cells), and returns
+/// [`Direction::from_cells`](gdtf_battle_sim::ganger::Direction::from_cells), and returns
 /// [`Some`]`(`[`SetFacingRequested::new`]`)` — or [`None`] (no turn) when: there is no
 /// selection; nothing is hovered; the actor has no [`Position`] (fail-closed via the query
 /// lookup); or the hovered cell is the actor's OWN cell (`from_cells` returns [`None`]).

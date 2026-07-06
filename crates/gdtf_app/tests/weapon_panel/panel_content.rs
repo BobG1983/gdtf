@@ -3,7 +3,10 @@
 use bevy::{prelude::*, ui::Display};
 use gdtf_app::test_support::{WeaponContent, WeaponMagazineText, WeaponNameText};
 use gdtf_battle_input::SelectedShooter;
-use gdtf_battle_sim::{Magazine, MagazineSize, ReloadTu};
+use gdtf_battle_sim::{
+    magazine::{Magazine, ReloadTu},
+    weapon::MagazineSize,
+};
 
 use super::harness::*;
 

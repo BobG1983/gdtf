@@ -5,7 +5,7 @@
 //! split — the SAME split as the [`HighlightRequest`](crate::HighlightRequest) seam:
 //!
 //! - the PRESENTER (this module) DEFINES the read-seam [`PathPreview`] resource (the
-//!   previewed [`find_path`](gdtf_battle_sim::find_path) route cells + its §48 total cost)
+//!   previewed [`find_path`](gdtf_battle_sim::pathfinder::find_path) route cells + its §48 total cost)
 //!   and the draw system [`draw_path_preview`] (the per-step route sprites + the C5
 //!   off-storey link-cell marker), hard-cut to the active storey, §53-dimmed on EXPLORED
 //!   steps;

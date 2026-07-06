@@ -27,7 +27,10 @@ use bevy::{
     },
 };
 use gdtf_battle_presenter::{GangerSprite, PresenterSystems, TerrainFogMaterial, TerrainSprite};
-use gdtf_battle_sim::{Cell, CellLevel, Direction, Faction, Level, test_support::SituationBuilder};
+use gdtf_battle_sim::{
+    prelude::{Cell, CellLevel, Direction, Faction, Level},
+    test_support::SituationBuilder,
+};
 
 use super::harness::*;
 

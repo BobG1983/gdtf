@@ -19,7 +19,7 @@
 //! mouse ([`left_click_act`] / [`right_click_turn_to_face`]) and the gamepad
 //! ([`gamepad_click_act`](crate::gamepad::gamepad_click_act) /
 //! [`gamepad_turn`](crate::gamepad::gamepad_turn)) both call — ONE precedence implementation,
-//! two devices. Both click surfaces read [`Res<PlayerFaction>`](gdtf_battle_sim::PlayerFaction).
+//! two devices. Both click surfaces read [`Res<PlayerFaction>`](gdtf_battle_sim::battle::PlayerFaction).
 //! (The GTW-254 `WorldClickSuppressed` modal click-through guard was REMOVED in GTW-265 once
 //! the fire-mode popup picker — the only modal — was replaced by an always-visible 3-toggle
 //! sub-panel.)

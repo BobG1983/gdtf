@@ -6,10 +6,11 @@ use bevy::{
     prelude::{MessageReader, Resource},
 };
 use gdtf_battle_sim::{
-    Position, SuppressionApplied,
     acts::FireRequested,
     ganger::Direction,
     metric::{Cell, CellLevel, Level},
+    prelude::Position,
+    suppression::SuppressionApplied,
     test_support::SituationBuilder,
 };
 

@@ -17,7 +17,7 @@ use super::harness::*;
 /// AC1 — a `BattleWon` written DURING `BattleRunning` ends the battle → `AnimateOut`.
 ///
 /// Drives into `BattleRunning` (GTW-236 persistence applied), writes ONE
-/// `gdtf_battle_sim::BattleWon` into the world's buffer (the sanctioned test-body
+/// `gdtf_battle_sim::battle::BattleWon` into the world's buffer (the sanctioned test-body
 /// message-write), then advances: `end_battle_on_outcome` reads the outcome and inserts
 /// `BattleRunningComplete`, and the marker-gated `move_on` advances `BattleRunning → AnimateOut`.
 /// Pin-discriminating: with `end_battle_on_outcome` unwired the marker is never inserted, so the
@@ -35,7 +35,8 @@ fn battle_won_in_battle_running_ends_the_battle_to_animate_out() {
 
     // Write one sim outcome signal into the app-side buffer (registered by the already-added
     // BattleSimPlugin), standing in for the census' emit.
-    app.world_mut().write_message(gdtf_battle_sim::BattleWon);
+    app.world_mut()
+        .write_message(gdtf_battle_sim::battle::BattleWon);
 
     // `end_battle_on_outcome` (Update) inserts the marker; observe it WHILE still in
     // BattleRunning — `cleanup` (OnExit(BattleRunning), reused as-is, out of scope) removes the
@@ -74,7 +75,7 @@ fn battle_won_in_battle_running_ends_the_battle_to_animate_out() {
 
 /// AC2 — a `BattleLost` written DURING `BattleRunning` ALSO ends the battle → `AnimateOut`.
 ///
-/// Identical to AC1 but writes `gdtf_battle_sim::BattleLost`, proving LOSS ends the fight via
+/// Identical to AC1 but writes `gdtf_battle_sim::battle::BattleLost`, proving LOSS ends the fight via
 /// the SAME chain, not just victory. Pin-discriminating: a system that only handled the `won`
 /// reader would leave this red (no marker inserted, `BattleRunning` persists).
 #[test]
@@ -88,7 +89,8 @@ fn battle_lost_in_battle_running_also_ends_the_battle_to_animate_out() {
         return;
     };
 
-    app.world_mut().write_message(gdtf_battle_sim::BattleLost);
+    app.world_mut()
+        .write_message(gdtf_battle_sim::battle::BattleLost);
 
     // Observe the marker insert while still in BattleRunning (see AC1 for why the marker and
     // AnimateOut are observable at adjacent points, not the same instant — `cleanup` removes the
@@ -149,7 +151,8 @@ fn repeated_battle_won_does_not_double_fire() {
     let mut left_once = false;
     let mut marker_seen_in_running = false;
     for _ in 0..BUDGET {
-        app.world_mut().write_message(gdtf_battle_sim::BattleWon);
+        app.world_mut()
+            .write_message(gdtf_battle_sim::battle::BattleWon);
         app.update();
         if !left_battle_running(&app)
             && app
@@ -200,7 +203,8 @@ fn repeated_battle_lost_does_not_double_fire() {
     let mut left_once = false;
     let mut marker_seen_in_running = false;
     for _ in 0..BUDGET {
-        app.world_mut().write_message(gdtf_battle_sim::BattleLost);
+        app.world_mut()
+            .write_message(gdtf_battle_sim::battle::BattleLost);
         app.update();
         if !left_battle_running(&app)
             && app

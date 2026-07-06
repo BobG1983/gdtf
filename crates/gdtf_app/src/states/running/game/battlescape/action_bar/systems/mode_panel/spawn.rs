@@ -4,7 +4,7 @@
 //! `mode_panel` module.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::ModeKind;
+use gdtf_battle_sim::weapon::ModeKind;
 use gdtf_ui::{
     Orientation, Segment, SegmentColors, SegmentIndex, SegmentLabel, spawn_segmented_control,
     theme::GdtfTheme,

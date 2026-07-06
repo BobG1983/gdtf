@@ -50,7 +50,7 @@ crate::support_item! {
 /// [`EditableGang`](super::model::EditableGang) to a `*.gang.ron` gang file on disk (C1).
 ///
 /// The save action's live-play trigger: pressing it serializes the full edited model into the
-/// GTW-415 [`GangRoster`](gdtf_battle_sim::GangRoster) schema and writes it to
+/// GTW-415 [`GangRoster`](gdtf_battle_sim::ganger::GangRoster) schema and writes it to
 /// `assets/content/gangs/<gang_name>.gang.ron` (the extension derived from the gangs family's
 /// canonical one since GTW-621). A plain `pub(in …editor)` marker (NOT
 /// [`crate::support_item!`]): no EXTERNAL test names it — the GTW-429 round-trip test is in-crate
@@ -179,7 +179,7 @@ crate::support_item! {
 
 crate::support_item! {
     /// Marks a member row's **weapon dropdown** (the [`spawn_dropdown`](gdtf_ui::spawn_dropdown)
-    /// closed-control root) listing all loaded [`WeaponName`](gdtf_battle_sim::WeaponName) keys
+    /// closed-control root) listing all loaded [`WeaponName`](gdtf_battle_sim::weapon::WeaponName) keys
     /// (C2).
     ///
     /// Carries the row's [`MemberRowIndex`] so a
@@ -191,7 +191,7 @@ crate::support_item! {
 
 crate::support_item! {
     /// Marks a member row's **armor dropdown** (the [`spawn_dropdown`](gdtf_ui::spawn_dropdown)
-    /// closed-control root) listing all loaded [`ArmorName`](gdtf_battle_sim::ArmorName) keys
+    /// closed-control root) listing all loaded [`ArmorName`](gdtf_battle_sim::armor::ArmorName) keys
     /// (C2).
     ///
     /// Carries the row's [`MemberRowIndex`] so a
@@ -312,9 +312,9 @@ crate::support_item! {
     /// Which READONLY derived combat stat one [`DerivedStatText`] node displays (GTW-428 C2 / C3).
     ///
     /// A closed named vocabulary (an enum IS a named domain type — no-bare-types) over the
-    /// `docs/combat/stats.md` computed stats the GTW-384 [`derive_stats`](gdtf_battle_sim::derive_stats)
+    /// `docs/combat/stats.md` computed stats the GTW-384 [`derive_stats`](gdtf_battle_sim::ganger::derive_stats)
     /// pipeline yields. The recompute system formats the matching
-    /// [`DerivedStats`](gdtf_battle_sim::DerivedStats) field into the node carrying this kind +
+    /// [`DerivedStats`](gdtf_battle_sim::ganger::DerivedStats) field into the node carrying this kind +
     /// the row's [`MemberRowIndex`], so the shown value equals the pipeline output for the live
     /// attributes (C3).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]

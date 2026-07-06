@@ -1,8 +1,8 @@
 use bevy::{asset::AssetServer, prelude::*};
 use gdtf_assets::{ContentFamilyAppExt, ContentValidationDone, HotRonAppExt, RonAssetAppExt};
 use gdtf_battle_sim::{
-    FieldDefRegistry,
     armor::ArmorRegistry,
+    effects::fields::FieldDefRegistry,
     equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},

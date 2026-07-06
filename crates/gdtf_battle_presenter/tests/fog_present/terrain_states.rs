@@ -3,9 +3,17 @@
 
 use bevy::{app::App, prelude::Visibility};
 use gdtf_battle_sim::{
-    Cell, CellLevel, CombatTuning, CoverLedger, Direction, Facing, Faction, FovObserver, Level,
-    LifeState, OccupancyGrid, Position, StairEyeOffset, Stance, StanceKind, SurfaceGrid,
-    test_support::SituationBuilder, union_fov,
+    cover::CoverLedger,
+    ganger::Facing,
+    occupancy::StairEyeOffset,
+    prelude::{
+        Cell, CellLevel, Direction, Faction, Level, LifeState, OccupancyGrid, Position, Stance,
+        StanceKind,
+    },
+    surface::SurfaceGrid,
+    test_support::SituationBuilder,
+    tuning::CombatTuning,
+    visibility::{FovObserver, union_fov},
 };
 
 use super::harness::*;

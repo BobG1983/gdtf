@@ -8,16 +8,23 @@
 //! [`FallOccurred`] / [`MeleeStruck`] / [`OnDeathOccurred`] / [`SuppressionApplied`] /
 //! [`ArmorBroken`]; the DOT / field / bleed afflictions ride their once-per-span START
 //! facts ([`DotAfflicted`] / [`FieldAfflicted`] / [`BleedStarted`]) — their per-tick drain
-//! signals ([`DotTicked`](gdtf_battle_sim::DotTicked) /
-//! [`FieldTicked`](gdtf_battle_sim::FieldTicked) /
-//! [`Bleeding`](gdtf_battle_sim::Bleeding)) have NO impl here, so a mid-affliction tick can
+//! signals ([`DotTicked`](gdtf_battle_sim::effects::dot::DotTicked) /
+//! [`FieldTicked`](gdtf_battle_sim::effects::fields::FieldTicked) /
+//! [`Bleeding`](gdtf_battle_sim::effects::bleed::Bleeding)) have NO impl here, so a mid-affliction tick can
 //! never log.
 
 use bevy::prelude::Query;
 use gdtf_battle_sim::{
-    ArmorBroken, BleedStarted, DotAfflicted, FallOccurred, FieldAfflicted, FireDeclaration,
-    GangerName, InjuryInflicted, MeleeStruck, MoveRejected, MovementOccurred, OnDeathOccurred,
-    ReloadResult, SuppressionApplied,
+    acts::{
+        FireDeclaration, InjuryInflicted, MeleeStruck, MoveRejected, MovementOccurred, ReloadResult,
+    },
+    armor_wear::ArmorBroken,
+    effects::{
+        bleed::BleedStarted, dot::DotAfflicted, fields::FieldAfflicted, on_death::OnDeathOccurred,
+    },
+    falls::FallOccurred,
+    ganger::GangerName,
+    suppression::SuppressionApplied,
 };
 
 use super::{

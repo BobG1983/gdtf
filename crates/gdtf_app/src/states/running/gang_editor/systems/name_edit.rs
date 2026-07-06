@@ -10,7 +10,7 @@
 //! committed text.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::GangName;
+use gdtf_battle_sim::ganger::GangName;
 use gdtf_ui::TextFieldCommitted;
 
 use crate::states::running::gang_editor::{components::GangNameField, model::EditableGang};

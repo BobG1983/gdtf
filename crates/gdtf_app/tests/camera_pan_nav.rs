@@ -74,8 +74,8 @@ fn set_camera_xy(app: &mut bevy::app::App, to: Vec2) {
 /// `GRID_WIDTH x GRID_HEIGHT` ground extent through `cell_to_world` (the SAME projection the
 /// clamp uses). Kept local so the assertions check a RELATION, not a pinned magnitude.
 fn battlefield_bounds() -> (Vec2, Vec2) {
-    let w = i32::try_from(gdtf_battle_sim::GRID_WIDTH).unwrap_or(i32::MAX);
-    let h = i32::try_from(gdtf_battle_sim::GRID_HEIGHT).unwrap_or(i32::MAX);
+    let w = i32::try_from(gdtf_battle_sim::occupancy::GRID_WIDTH).unwrap_or(i32::MAX);
+    let h = i32::try_from(gdtf_battle_sim::occupancy::GRID_HEIGHT).unwrap_or(i32::MAX);
     let corners = [
         gdtf_battle_presenter::cell_to_world(Cell::new(0, 0), Level::new(0)),
         gdtf_battle_presenter::cell_to_world(Cell::new(w, 0), Level::new(0)),

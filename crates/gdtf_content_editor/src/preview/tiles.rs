@@ -20,9 +20,9 @@ use core::ops::RangeInclusive;
 use bevy::{image::TextureAtlas, prelude::*};
 use gdtf_battle_presenter::{TileRoles, ViewMode};
 use gdtf_battle_sim::{
-    Cell,
     level::{GridSize, UuidThemeRegistry},
     metric::{CellLevel, Level},
+    prelude::Cell,
     terrain::def::TerrainDefRegistry,
 };
 

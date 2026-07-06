@@ -14,15 +14,25 @@ use bevy::{
 use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget};
 use gdtf_battle_presenter::{ActiveLevel, ViewMode, WorldCamera};
 use gdtf_battle_sim::{
-    Accuracy, Aiming, BaseSpread, BattleInProgress, BattleSeed, Cell, CellLevel, DamageProfile,
-    DamageType, Direction, Facing, Faction, FatalBias, FightMode, FightModeKind, FightModeSpec,
-    FireMode, Handedness, HandlingProfile, HeightBand, Hp, InflictedWounds, Kickback, Level,
-    LifeState, Luck, Magazine, MagazineSize, MeleeDamageProfile, MeleeWeaponBundle, OccupancyGrid,
-    OccupancyMaintenancePlugin, Position, Reach, ReloadTu, Shooting, Shove, SquadVisibility,
-    Stable, Stance, StanceKind, Strikes, Toughness, Tu, TuCost, TuMax, WeaponBundle, WeaponDamage,
-    WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds,
     acts::SimActsPlugin,
+    cover::HeightBand,
+    ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
+    inflicted_wound::InflictedWounds,
+    magazine::{Magazine, ReloadTu},
+    occupancy_sync::OccupancyMaintenancePlugin,
+    prelude::{
+        BattleInProgress, Cell, CellLevel, Direction, Faction, Level, LifeState, OccupancyGrid,
+        Position, Stance, StanceKind, Tu,
+    },
+    rng::BattleSeed,
     test_support::{TEST_SEED, insert_sim_resources, single_mode},
+    visibility::SquadVisibility,
+    weapon::{
+        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FightMode, FightModeKind,
+        FightModeSpec, FireMode, Handedness, HandlingProfile, Kickback, MagazineSize,
+        MeleeDamageProfile, MeleeWeaponBundle, Reach, Shove, Stable, Strikes, TuCost, WeaponBundle,
+        WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy,
+    },
 };
 
 /// The faction the player controls (matches the litany's gang-0 `PlayerFaction` seed).

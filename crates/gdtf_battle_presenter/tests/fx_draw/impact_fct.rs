@@ -5,8 +5,14 @@ use gdtf_battle_presenter::{
     FctValence, FloatingCombatText, cell_to_world, severity_color, valence_color,
 };
 use gdtf_battle_sim::{
-    BattleInProgress, BodyPart, Cell, CellLevel, DamageType, HitReport, Level, LifeState, Position,
-    Severity, ShotDir, ShotFired, ShotKind, SimPos,
+    armor::BodyPart,
+    prelude::{BattleInProgress, Cell, CellLevel, Level, LifeState, Position, SimPos},
+    resolve_and_apply::HitReport,
+    resolve_coarse::ShotKind,
+    sample_cone::ShotDir,
+    severity::Severity,
+    shot_fired::ShotFired,
+    weapon::DamageType,
 };
 
 use super::{harness::*, probes::*};

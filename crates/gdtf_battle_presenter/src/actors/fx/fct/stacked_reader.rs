@@ -4,7 +4,7 @@
 //! [`read_consequence_fct::<C>`] is the whole reader: drain the family's signal, classify it
 //! through the family's [`ConsequenceFct`] impl, resolve the anchor (FAIL-CLOSED on a
 //! [`PopAnchor::GangerPosition`] whose entity has no live
-//! [`Position`](gdtf_battle_sim::Position) — the pop is DROPPED, never spawned at a default
+//! [`Position`](gdtf_battle_sim::ganger::Position) — the pop is DROPPED, never spawned at a default
 //! position), claim the next slot from the SHARED per-frame
 //! [`FctStackCounter`](super::stack::FctStackCounter) (C3 — cross-family same-cell pops fan
 //! out instead of overlapping), and spawn the pop with the hot-reloadable
@@ -26,7 +26,7 @@ use bevy::{
         resource_exists,
     },
 };
-use gdtf_battle_sim::{BattleInProgress, Position};
+use gdtf_battle_sim::prelude::{BattleInProgress, Position};
 
 use super::{
     super::FxTuning,
@@ -55,7 +55,7 @@ pub enum ConsequenceFctSystems {
 /// family's pure mapping, unit-tested in the family file), resolves the anchor — a
 /// [`PopAnchor::Carried`] cell directly, a [`PopAnchor::GangerPosition`] through the
 /// read-only `Query<&Position>` via the canonical
-/// [`CellLevel::split`](gdtf_battle_sim::CellLevel::split) (GTW-565), FAIL-CLOSED: no
+/// [`CellLevel::split`](gdtf_battle_sim::metric::CellLevel::split) (GTW-565), FAIL-CLOSED: no
 /// `Position` → no pop, no panic — claims the next slot from the SHARED per-frame
 /// [`FctStackCounter`] (C3), and spawns via [`spawn_floating_text`] with the family's
 /// classified emphasis and the hot-reloadable [`FxTuning`] lifetime + rise (GTW-327).

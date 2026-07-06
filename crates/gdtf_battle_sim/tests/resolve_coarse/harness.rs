@@ -12,9 +12,15 @@ use bevy::{
 // helper (consolidated out of this file's former local copies — GTW-324 migration).
 use gdtf_battle_sim::test_support::{test_armor_registry, test_weapon_registry};
 use gdtf_battle_sim::{
-    BattleRegistries, BattleSetup, CellLevel, ConcentrationP, ConeAngle, Direction, Facing,
-    GangerStatTuning, HeightBand, Position, PriorShots, RecoilClimb, RecoilGrowth, ShotInputs,
-    Situation, Stance, StanceKind, setup_battle,
+    cone::{ConeAngle, PriorShots},
+    cover::HeightBand,
+    ganger::Facing,
+    prelude::{CellLevel, Direction, Position, Stance, StanceKind},
+    resolve_coarse::ShotInputs,
+    sample_cone::ConcentrationP,
+    situation::{BattleRegistries, BattleSetup, Situation, setup_battle},
+    stability::RecoilGrowth,
+    tuning::{GangerStatTuning, RecoilClimb},
 };
 
 /// Run `setup_battle` on a fresh app, drive the `SpawnScene` schedule so the deferred

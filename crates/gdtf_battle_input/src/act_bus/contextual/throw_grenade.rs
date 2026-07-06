@@ -1,7 +1,7 @@
 //! The **Throw Grenade** contextual act's input-layer descriptor (GTW-546 / GTW-571).
 
 use bevy::prelude::Entity;
-use gdtf_battle_sim::{CellLevel, acts::ThrowGrenadeRequested};
+use gdtf_battle_sim::{acts::ThrowGrenadeRequested, prelude::CellLevel};
 
 use super::seam::ContextualAct;
 

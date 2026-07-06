@@ -4,7 +4,7 @@
 //! module (GTW-583); see its header for the full affordance rationale.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::ModeKind;
+use gdtf_battle_sim::weapon::ModeKind;
 
 /// The `GDTF_FIRE_AT_FRAME` environment variable: the `BattleRunning` frame at which the
 /// selected player ganger fires at the nearest enemy via the real fire path (parsed into
@@ -105,7 +105,7 @@ impl FallAtFrame {
 /// [`ModeKind`] the triggered shot fires in (`Single` / `Burst` / `Full`).
 ///
 /// When set (`GDTF_FIRE_MODE`), [`trigger_fire_at_frame`](super::triggers::trigger_fire_at_frame) picks the matching
-/// [`FireModeSpec`](gdtf_battle_sim::FireModeSpec) off the selected shooter's authored [`FireMode`](gdtf_battle_sim::FireMode) selector and fires in
+/// [`FireModeSpec`](gdtf_battle_sim::weapon::FireModeSpec) off the selected shooter's authored [`FireMode`](gdtf_battle_sim::weapon::FireMode) selector and fires in
 /// THAT mode (so a `full` override produces a multi-round volley the FX stagger spreads
 /// out). When unset the trigger uses the resident [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) unchanged.
 ///

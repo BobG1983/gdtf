@@ -7,7 +7,7 @@ use bevy::{
     prelude::{Transform, With},
 };
 use gdtf_battle_presenter::{BoundsMarginWorld, PanTuning, WorldCamera, cell_to_world};
-use gdtf_battle_sim::{Cell, Level};
+use gdtf_battle_sim::prelude::{Cell, Level};
 
 /// The player gang for the AC3 fixture.
 pub(crate) const PLAYER_GANG: u8 = 0;
@@ -52,8 +52,8 @@ pub(crate) fn camera_xy(app: &mut App) -> Vec2 {
 /// system does (the four corner cells of the 60x60 ground extent through `cell_to_world`).
 /// Kept here in the test so AC4 asserts a RELATION, not a pinned magnitude.
 pub(crate) fn battlefield_bounds() -> (Vec2, Vec2) {
-    let w = i32::try_from(gdtf_battle_sim::GRID_WIDTH).unwrap_or(i32::MAX);
-    let h = i32::try_from(gdtf_battle_sim::GRID_HEIGHT).unwrap_or(i32::MAX);
+    let w = i32::try_from(gdtf_battle_sim::occupancy::GRID_WIDTH).unwrap_or(i32::MAX);
+    let h = i32::try_from(gdtf_battle_sim::occupancy::GRID_HEIGHT).unwrap_or(i32::MAX);
     let corners = [
         cell_to_world(Cell::new(0, 0), Level::new(0)),
         cell_to_world(Cell::new(w, 0), Level::new(0)),

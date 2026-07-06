@@ -30,7 +30,9 @@ use gdtf_battle_presenter::{
     ActiveLevel, HoverHighlight, TopDownRendererPlugin, WorldCamera, cell_to_world,
 };
 use gdtf_battle_sim::{
-    BattleInProgress, Cell, CellLevel, Level, OccupancyGrid, SquadVisibility, TerrainKind,
+    occupancy::TerrainKind,
+    prelude::{BattleInProgress, Cell, CellLevel, Level, OccupancyGrid},
+    visibility::SquadVisibility,
 };
 
 /// The synthetic window/camera render-target size (physical px), large enough that a

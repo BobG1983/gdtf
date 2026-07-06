@@ -3,9 +3,15 @@
 
 use bevy::{math::Vec3, prelude::World};
 use gdtf_battle_sim::{
-    Cell, CellLevel, CombatTuning, CoverLedger, Direction, Facing, HeightBand, Level, MarchKind,
-    OccupancyGrid, Position, PriorShots, RecoilClimb, RecoilGrowth, Stance, StanceKind,
-    SurfaceGrid, climb_aim_dir, march_vector, muzzle_position, target_aim_point,
+    central_axis::{climb_aim_dir, muzzle_position, target_aim_point},
+    cone::PriorShots,
+    cover::{CoverLedger, HeightBand},
+    ganger::Facing,
+    march::{MarchKind, march_vector},
+    prelude::{Cell, CellLevel, Direction, Level, OccupancyGrid, Position, Stance, StanceKind},
+    stability::RecoilGrowth,
+    surface::SurfaceGrid,
+    tuning::{CombatTuning, RecoilClimb},
 };
 
 use super::harness::*;

@@ -6,7 +6,7 @@
 //! defines the [`PendingImpact`](super::projectile::PendingImpact) SEAM
 //! [`advance_projectiles`](super::projectile::advance_projectiles) spawns at a
 //! projectile's arrival point (carrying the arrival world position + the shot's
-//! [`DamageType`](gdtf_battle_sim::DamageType)).
+//! [`DamageType`](gdtf_battle_sim::weapon::DamageType)).
 //!
 //! FX-B's job (this module): turn each arrived [`PendingImpact`](super::projectile::PendingImpact)
 //! into a 3-FRAME

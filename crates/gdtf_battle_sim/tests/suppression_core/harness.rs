@@ -8,10 +8,10 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Faction, Stance, StanceKind, Suppressed, Tu,
     battle::{BattleSimPlugin, SetupBattleRequested},
-    ganger::{Cool, Direction, Facing, GangRegistry, Grit, Reflexes, Speed, Toughness},
+    ganger::{Cool, Direction, Facing, GangRegistry, Grit, Reflexes, Speed, Suppressed, Toughness},
     metric::{Cell, CellLevel, Level},
+    prelude::{Faction, Stance, StanceKind, Tu},
     rng::BattleSeed,
     situation::Situation,
     test_support::{
@@ -175,6 +175,6 @@ pub(crate) fn step(app: &mut App, ticks: u32) {
 /// Whether the active faction is currently `faction`'s.
 pub(crate) fn active_faction_is(app: &App, faction: u8) -> bool {
     app.world()
-        .get_resource::<gdtf_battle_sim::ActiveFaction>()
+        .get_resource::<gdtf_battle_sim::turn::ActiveFaction>()
         .is_some_and(|active| ***active == faction)
 }

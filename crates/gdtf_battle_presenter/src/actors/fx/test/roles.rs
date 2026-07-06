@@ -2,7 +2,7 @@
 //! resolution, and compass indexing (mirrors `roles.rs`).
 
 use bevy::math::Vec3;
-use gdtf_battle_sim::DamageType;
+use gdtf_battle_sim::weapon::DamageType;
 
 use super::super::roles::{
     COMPASS_DIRECTIONS, DIRECTION_COUNT, EffectRoles, nearest_direction_index,

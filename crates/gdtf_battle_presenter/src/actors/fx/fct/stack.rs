@@ -10,7 +10,7 @@
 //! cell fan out vertically exactly like same-family ones.
 
 use bevy::{platform::collections::HashMap, prelude::*};
-use gdtf_battle_sim::CellLevel;
+use gdtf_battle_sim::prelude::CellLevel;
 
 use super::text::FctStackIndex;
 
@@ -53,7 +53,7 @@ pub fn reset_fct_stacks(mut stacks: ResMut<FctStackCounter>) {
 
 #[cfg(test)]
 mod test {
-    use gdtf_battle_sim::{Cell, CellLevel, Level};
+    use gdtf_battle_sim::prelude::{Cell, CellLevel, Level};
 
     use super::{FctStackCounter, FctStackIndex};
 

@@ -7,7 +7,10 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    Aiming, FireMode, MeleeWeapon, TuMax, WieldedBy, Wields, mode_tu_cost, tuning::CombatTuning,
+    ganger::{Aiming, TuMax},
+    magazine::mode_tu_cost,
+    tuning::CombatTuning,
+    weapon::{FireMode, MeleeWeapon, WieldedBy, Wields},
 };
 use gdtf_ui::{
     Segment, SegmentColors, SegmentIndex, SegmentSubLabel, SegmentSubText, set_segment_sub_line,
@@ -73,8 +76,8 @@ pub(in crate::states::running::game::battlescape) struct ModeCostInputs<'w, 's> 
 /// [`SegmentText`](gdtf_ui::SegmentText) label, top) over its TU cost (a quieter
 /// [`SegmentSubText`](gdtf_ui::SegmentSubText) sub-line, bottom — slice 1's
 /// [`set_segment_sub_line`](gdtf_ui::set_segment_sub_line)). The displayed cost is the EXACT
-/// value the sim charges: [`mode_tu_cost`](gdtf_battle_sim::mode_tu_cost) of the selected
-/// shooter's [`FireModeSpec`](gdtf_battle_sim::FireModeSpec) / [`TuMax`] / [`Aiming`] under the live
+/// value the sim charges: [`mode_tu_cost`](gdtf_battle_sim::magazine::mode_tu_cost) of the selected
+/// shooter's [`FireModeSpec`](gdtf_battle_sim::weapon::FireModeSpec) / [`TuMax`] / [`Aiming`] under the live
 /// [`CombatTuning`](gdtf_battle_sim::tuning::CombatTuning) — reusing that one function so the
 /// display can never diverge from the charge (no presenter-side re-derivation). When Aim is
 /// ON the cost includes the aim ×premium; when OFF it reverts to the hip-fire base — the

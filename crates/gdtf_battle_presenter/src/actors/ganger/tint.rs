@@ -2,7 +2,10 @@
 //! stance/aiming modulation.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Aiming, Faction, LifeState, Stance, StanceKind};
+use gdtf_battle_sim::{
+    ganger::Aiming,
+    prelude::{Faction, LifeState, Stance, StanceKind},
+};
 
 /// The faction (gang) tint applied to a ganger sprite so the two gangs read as two
 /// colours at a glance — the "faction-coloured" signal layered on top of the distinct
@@ -52,12 +55,12 @@ pub(super) fn ganger_tint(faction: Faction, life: LifeState) -> Color {
 /// [`resolve_ganger_appearance`](super::resolve_ganger_appearance).
 ///
 /// Starts from [`ganger_tint`] (the faction / Downed base), then layers the stance +
-/// aiming deltas: a [`Prone`](gdtf_battle_sim::StanceKind::Prone) ganger dims (a
+/// aiming deltas: a [`Prone`](gdtf_battle_sim::ganger::StanceKind::Prone) ganger dims (a
 /// flattened, low silhouette), and an aiming ganger brightens (reads "ready to fire").
 /// The deltas only apply to a live ganger — a Downed body keeps its grey-out, undimmed
 /// by stance / aim.
 ///
-/// A SUPPRESSED ganger (GTW-526 C8: it carries a [`Suppressed`](gdtf_battle_sim::Suppressed)
+/// A SUPPRESSED ganger (GTW-526 C8: it carries a [`Suppressed`](gdtf_battle_sim::ganger::Suppressed)
 /// component) is additionally DESATURATED toward grey AND darkened, so a pinned-down ganger
 /// reads distinctly at a glance — the colour drains from a suppressed unit (it has lost its
 /// nerve and cannot reaction-fire). This is applied LAST, on top of the stance/aim value shift,

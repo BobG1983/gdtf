@@ -12,8 +12,11 @@ use bevy::{
 use gdtf_battle_input::world_to_cell;
 use gdtf_battle_presenter::WorldCamera;
 use gdtf_battle_sim::{
-    Faction, Level, OccupancyGrid, PlayerFaction, VerticalLinkGraph, acts::MoveRequested,
+    acts::MoveRequested,
+    battle::PlayerFaction,
+    prelude::{Faction, Level, OccupancyGrid},
     tuning::CombatTuning,
+    vertical::VerticalLinkGraph,
 };
 use gdtf_test_utils::{MessageProbePlugin, clear_mouse, press_left, probed};
 

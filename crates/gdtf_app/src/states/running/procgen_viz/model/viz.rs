@@ -4,8 +4,10 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    FilledPlacement, GangName, GangRegistry, GridSize, PrefabRegistry, ProcgenRng, ProcgenTuning,
-    SpawnRole, ThemeUuid, assemble_placement, fill_placement, rng::BattleSeed,
+    ganger::{GangName, GangRegistry},
+    level::{GridSize, PrefabRegistry, SpawnRole, ThemeUuid},
+    procgen::{FilledPlacement, ProcgenTuning, assemble_placement, fill_placement},
+    rng::{BattleSeed, ProcgenRng},
 };
 
 use super::{

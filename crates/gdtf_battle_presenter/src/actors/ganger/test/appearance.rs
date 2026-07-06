@@ -3,7 +3,10 @@
 //! suppressed+Downed combinations — each pinned to ONE canonical answer.
 
 use bevy::prelude::Color;
-use gdtf_battle_sim::{Aiming, Direction, Facing, Faction, LifeState, Stance, StanceKind};
+use gdtf_battle_sim::{
+    ganger::{Aiming, Facing},
+    prelude::{Direction, Faction, LifeState, Stance, StanceKind},
+};
 
 use super::super::{
     appearance::{GangerAppearance, ganger_sprite_appearance},

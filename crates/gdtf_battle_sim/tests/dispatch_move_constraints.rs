@@ -38,12 +38,11 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Faction, MoveRejected, MoveRejection, MovementOccurred, Position, Speed, Stance, StanceKind,
-    Tu,
-    acts::MoveRequested,
+    acts::{MoveRejected, MoveRejection, MoveRequested, MovementOccurred},
     battle::{BattleSimPlugin, SetupBattleRequested},
-    ganger::GangRegistry,
+    ganger::{GangRegistry, Speed},
     metric::{Cell, CellLevel, Level},
+    prelude::{Faction, Position, Stance, StanceKind, Tu},
     rng::BattleSeed,
     situation::Situation,
     test_support::{

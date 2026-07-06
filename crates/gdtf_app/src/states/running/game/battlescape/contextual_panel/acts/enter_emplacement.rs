@@ -4,8 +4,8 @@
 use bevy::prelude::*;
 use gdtf_battle_input::{SelectedShooter, contextual::EnterEmplacementAct};
 use gdtf_battle_sim::{
-    EmplacementState,
-    downed_acts::is_8_adjacent,
+    acts::downed::is_8_adjacent,
+    emplacement::EmplacementState,
     entity::TerrainCell,
     ganger::{Faction, Position},
 };
@@ -47,7 +47,7 @@ impl ContextualPanelAct for EnterEmplacementAct {
 type EnterEmplacementReads = (Entity, &'static EmplacementState, &'static TerrainCell);
 
 /// OFFERS the Enter Emplacement act: the first 8-adjacent
-/// [`EmplacementState::Vacant`](gdtf_battle_sim::EmplacementState) weapon emplacement,
+/// [`EmplacementState::Vacant`](gdtf_battle_sim::emplacement::EmplacementState) weapon emplacement,
 /// or nothing (GTW-543).
 ///
 /// An occupied emplacement is NOT offered (it already has an operator); F4 is

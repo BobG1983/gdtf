@@ -10,7 +10,10 @@ use bevy::{
     window::{PrimaryWindow, Window, WindowResolution},
 };
 use gdtf_battle_presenter::{WorldCamera, clamp_camera_to_bounds};
-use gdtf_battle_sim::{BattleInProgress, Faction, PlayerFaction};
+use gdtf_battle_sim::{
+    battle::PlayerFaction,
+    prelude::{BattleInProgress, Faction},
+};
 
 use super::harness::*;
 

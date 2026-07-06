@@ -5,7 +5,11 @@
 //! integration tests in `crates/gdtf_app/tests/stat_panels.rs`.
 
 use gdtf_battle_sim::{
-    BodyPart, Faction, GangerName, InflictedWound, Severity, Stance, StanceKind,
+    armor::BodyPart,
+    ganger::GangerName,
+    inflicted_wound::InflictedWound,
+    prelude::{Faction, Stance, StanceKind},
+    severity::Severity,
 };
 
 use super::{

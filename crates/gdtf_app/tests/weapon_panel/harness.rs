@@ -4,14 +4,15 @@ use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
 use gdtf_app::test_support::{AppState, BattleScapeState, RunningState, WeaponContent};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    Aiming, Cell, CellLevel, Direction, Facing, Faction, FireMode, FireModeSpec, LifeState,
-    Magazine, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Position, Stance, StanceKind, Tu,
-    TuMax, WeaponBundle,
+    ganger::{Aiming, Facing, TuMax},
     injuries::InjuryRegistry,
+    magazine::Magazine,
+    prelude::{Cell, CellLevel, Direction, Faction, LifeState, Position, Stance, StanceKind, Tu},
     tuning::CombatTuning,
     weapon::{
-        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, Handedness, HandlingProfile,
-        Kickback, Shove, Stable, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
+        Handedness, HandlingProfile, Kickback, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+        Shove, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
     },
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
@@ -161,7 +162,7 @@ pub(crate) fn spawn_armed_and_select(app: &mut App, weapon: WeaponBundle) -> Ent
         .spawn((
             Position::new(CellLevel::new(
                 Cell::new(3, 3),
-                gdtf_battle_sim::Level::new(0),
+                gdtf_battle_sim::metric::Level::new(0),
             )),
             Faction::new(0),
             Facing::new(Direction::East),
@@ -173,7 +174,7 @@ pub(crate) fn spawn_armed_and_select(app: &mut App, weapon: WeaponBundle) -> Ent
         ))
         .id();
     app.world_mut()
-        .spawn((gdtf_battle_sim::WieldedBy::new(ganger), weapon));
+        .spawn((gdtf_battle_sim::weapon::WieldedBy::new(ganger), weapon));
     app.world_mut()
         .insert_resource(SelectedShooter::new(ganger));
     ganger
@@ -186,7 +187,7 @@ pub(crate) fn spawn_unarmed_and_select(app: &mut App) -> Entity {
         .spawn((
             Position::new(CellLevel::new(
                 Cell::new(4, 4),
-                gdtf_battle_sim::Level::new(0),
+                gdtf_battle_sim::metric::Level::new(0),
             )),
             Faction::new(0),
             Facing::new(Direction::East),

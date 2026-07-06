@@ -10,7 +10,11 @@
 //! stance).
 
 use gdtf_battle_sim::{
-    BodyPart, Faction, GangerName, InflictedWound, Severity, Stance, StanceKind,
+    armor::BodyPart,
+    ganger::GangerName,
+    inflicted_wound::InflictedWound,
+    prelude::{Faction, Stance, StanceKind},
+    severity::Severity,
 };
 
 /// The name fallback shown when a ganger carries no [`GangerName`] — a placeholder so a
