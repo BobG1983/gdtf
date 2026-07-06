@@ -27,7 +27,7 @@ use serde::Deserialize;
 ///
 /// # The two keying shapes
 ///
-/// The ONLY axis the seven shipped families vary on is where a member's
+/// The ONLY axis the shipped families vary on is where a member's
 /// registry key comes from; both shapes are expressed through
 /// [`insert_member`](ContentFamily::insert_member), never a mode flag:
 ///

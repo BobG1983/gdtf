@@ -10,11 +10,11 @@ use gdtf_battle_sim::{
     situation::Situation,
     terrain::def::TerrainDefRegistry,
     tuning::{CombatTuning, GangerStatTuning},
-    weapon::{AttachmentRegistry, AttachmentSpec, MeleeWeaponRegistry, WeaponRegistry},
+    weapon::{AttachmentRegistry, MeleeWeaponRegistry, WeaponRegistry},
 };
 use gdtf_content_families::{
-    ArmorFamily, FieldsFamily, GangsFamily, MeleeWeaponsFamily, TerrainDefsFamily, ThemeDefsFamily,
-    WeaponsFamily,
+    ArmorFamily, AttachmentsFamily, FieldsFamily, GangsFamily, MeleeWeaponsFamily,
+    TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily,
 };
 use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 
@@ -95,7 +95,8 @@ impl Plugin for LoadScenePlugin {
         // `weapon.ron`), making the dispatch unambiguous regardless of registration
         // order. GTW-570: for the seven generic content families that dedicated
         // extension now rides the `register_content_family` call (each family names
-        // its own); the bespoke folder loaders below still register theirs by hand.
+        // its own; GTW-619 moved the attachments folder onto the same seam, the
+        // eighth); the bespoke folder loaders below still register theirs by hand.
         if app.world().get_resource::<AssetServer>().is_some() {
             app.init_ron_asset::<GdtfThemeSpec>();
             // GTW-564: the four SINGLE-FILE gate-blocking chains register through the
@@ -149,13 +150,11 @@ impl Plugin for LoadScenePlugin {
             // members via the seam's unconditional TypeId filter (GTW-487 precedent).
             app.register_content_family::<TerrainDefsFamily>();
             app.register_content_family::<ThemeDefsFamily>();
-            // GTW-549 PHASE 1: the data-driven attachment items mirror the weapon scheme —
-            // each loads as a `RonAsset<AttachmentSpec>` via `load_folder`, so it claims its
-            // OWN dedicated `attachment.ron` compound extension (files are
-            // `assets/content/attachments/*.attachment.ron`), keeping the folder dispatch
-            // unambiguous among GDTF's many `.ron` loaders. Registered here in `build` BEFORE
-            // the kick-off's `load_folder("content/attachments")` runs.
-            app.init_ron_asset_with_extensions::<AttachmentSpec>(vec!["attachment.ron"]);
+            // GTW-619: the data-driven attachment items (GTW-549) ride the SAME generic
+            // seam — the ext call claims their dedicated `attachment.ron` compound
+            // extension (files are `assets/content/attachments/*.attachment.ron`), so the
+            // bespoke loader registration + kick-off / resolve / redrive chain is gone.
+            app.register_content_family::<AttachmentsFamily>();
             // GTW-437: the injuries folder carries TWO asset types, each via the SAME
             // generic RON loader but loaded by `load_folder` (extension dispatch). Each
             // claims its OWN dedicated compound extension — `injury.ron` for the per-injury
@@ -198,13 +197,13 @@ fn add_systems(app: &mut App) {
         Update,
         (
             // poll/resolve runs until the theme + the BESPOKE folder registries
-            // (attachments / injuries / prefabs) are all inserted (success path
-            // resolves the loaded spec/folder; failure path inserts the const
-            // default / empty registry). It runs while ANY of those is still
-            // missing — each branch re-gates internally on its own resource's
-            // absence, so none starves another (bevy-traps rule 3). Ordered BEFORE
-            // the transition so all are present when the transition checks. The
-            // GTW-564 single-file chains and the GTW-570 content families poll
+            // (injuries / prefabs) are all inserted (success path resolves the
+            // loaded spec/folder; failure path inserts the const default / empty
+            // registry). It runs while ANY of those is still missing — each
+            // branch re-gates internally on its own resource's absence, so none
+            // starves another (bevy-traps rule 3). Ordered BEFORE the transition
+            // so all are present when the transition checks. The GTW-564
+            // single-file chains and the GTW-570/GTW-619 content families poll
             // themselves through their generic resolves.
             poll_and_resolve.run_if(
                 in_state(AppState::Load)
@@ -213,17 +212,11 @@ fn add_systems(app: &mut App) {
                         // GTW-564: the situation + the three single-file tunings left this
                         // or-chain — their generic resolves poll themselves (each gated on
                         // its own handle-present + resource-absent). GTW-570 moved the
-                        // seven folder families out the same way, so the orchestrator
-                        // only keeps running for the theme + the BESPOKE folder
-                        // registries (attachments / injuries / prefabs). The transition
-                        // gate below still requires ALL of them.
+                        // seven folder families out the same way (GTW-619 moved the
+                        // attachments too), so the orchestrator only keeps running for
+                        // the theme + the BESPOKE folder registries (injuries /
+                        // prefabs). The transition gate below still requires ALL of them.
                         not(resource_exists::<GdtfTheme>)
-                            // GTW-549 PHASE 1: the AttachmentRegistry is a gate-blocking
-                            // resource too — the `content/attachments/` folder must be verified
-                            // loaded before Load exits (inserted on success OR failure — no
-                            // strand). PHASE 2 resolves each weapon's `attachment_slots` keys
-                            // against it.
-                            .or_else(not(resource_exists::<AttachmentRegistry>))
                             // GTW-437: the InjuryRegistry is a gate-blocking resource too
                             // (the GTW-438 roll uses it + the InjuryTables; the injuries
                             // folder must be verified loaded before Load exits).
@@ -265,7 +258,8 @@ fn add_systems(app: &mut App) {
                     .and_then(resource_exists::<MeleeWeaponRegistry>)
                     // GTW-549 PHASE 1: the AttachmentRegistry must be present before Load
                     // exits, so the `content/attachments/` folder is verified loaded before
-                    // any battle resolves a weapon's attachment keys.
+                    // any battle resolves a weapon's attachment keys (published by the
+                    // GTW-619 generic content-family resolve; the gate is unchanged).
                     .and_then(resource_exists::<AttachmentRegistry>)
                     .and_then(resource_exists::<LoadedSituation>)
                     .and_then(resource_exists::<ArmorRegistry>)
@@ -331,11 +325,9 @@ fn add_hot_reload_systems(app: &mut App) {
             // GTW-564: the situation + combat / stat / procgen tuning redrives moved
             // onto the generic hot-RON seam; GTW-570 moved the seven folder-family
             // redrives (weapons / melee / armor / fields / gangs / terrain + theme
-            // defs) onto the generic content-family seam (both registered by the ext
-            // calls in `build`). This set now carries the BESPOKE folder redrives only.
-            // GTW-549 PHASE 1: the attachment hot-reload — rebuilds the AttachmentRegistry on a
-            // `content/attachments/*.attachment.ron` edit (one folder, one registry).
-            redrive_attachments_on_asset_event,
+            // defs) onto the generic content-family seam, and GTW-619 moved the
+            // attachments redrive the same way (all registered by the ext calls in
+            // `build`). This set now carries the BESPOKE folder redrives only.
             // GTW-437: the injury hot-reload — rebuilds BOTH the InjuryRegistry and the
             // InjuryTables on an edit to ANY `injuries/**/*.injury.ron` OR `*.weighting.ron`
             // (one folder, two resources).

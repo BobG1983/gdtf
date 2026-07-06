@@ -14,15 +14,17 @@
 //! (see [`ContentFamilyAppExt`](gdtf_assets::ContentFamilyAppExt)) — and the
 //! generic chain does the rest.
 //!
-//! # The seven shipped families
+//! # The eight shipped families
 //!
 //! Stem-keyed (key = file stem with the dedicated infix stripped):
 //! [`WeaponsFamily`], [`MeleeWeaponsFamily`], [`ArmorFamily`],
-//! [`FieldsFamily`], [`GangsFamily`]. Payload-keyed (key = the UUID inside the
-//! def; the terrain tree is a MIXED folder both walk with the unconditional
-//! `TypeId` filter): [`TerrainDefsFamily`], [`ThemeDefsFamily`].
+//! [`FieldsFamily`], [`GangsFamily`], [`AttachmentsFamily`]. Payload-keyed
+//! (key = the UUID inside the def; the terrain tree is a MIXED folder both
+//! walk with the unconditional `TypeId` filter): [`TerrainDefsFamily`],
+//! [`ThemeDefsFamily`].
 
 mod armor;
+mod attachments;
 mod fields;
 mod gangs;
 mod melee_weapons;
@@ -31,6 +33,7 @@ mod theme_defs;
 mod weapons;
 
 pub use armor::ArmorFamily;
+pub use attachments::AttachmentsFamily;
 pub use fields::FieldsFamily;
 pub use gangs::GangsFamily;
 pub use melee_weapons::MeleeWeaponsFamily;

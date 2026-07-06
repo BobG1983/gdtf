@@ -12,7 +12,6 @@ use gdtf_ui::{
 use crate::states::load::{
     resources::{FailedAssetPath, LoadFailed, LoadHandles},
     systems::resolve::{
-        attachments::resolve_attachments,
         injuries::resolve_injuries,
         params::{LoadAssetCollections, ResolvedResources, SalvageStates},
         prefab::resolve_prefabs,
@@ -55,14 +54,12 @@ use crate::states::load::{
 /// each is now a generic content-family chain whose gated resolve publishes the
 /// SAME gate-blocking registry with the SAME never-publish-partial +
 /// genuine-`Failed`-only empty-registry semantics; the `transition_to_intro`
-/// gate chain still requires every one of them, unchanged.
+/// gate chain still requires every one of them, unchanged. GTW-619: the
+/// attachments branch (GTW-549) left it onto the same content-family seam.
 ///
 /// The BESPOKE folder branches that remain — the declared GTW-570 exclusions —
 /// each run on their OWN absence guard, so none starves another:
 ///
-/// - GTW-549: [`resolve_attachments`] builds the name-keyed
-///   [`AttachmentRegistry`](gdtf_battle_sim::weapon::AttachmentRegistry)
-///   (adoption of the generic seam belongs to the GTW-579 rider).
 /// - GTW-437: [`resolve_injuries`] builds BOTH the
 ///   [`InjuryRegistry`](gdtf_battle_sim::injuries::InjuryRegistry) and the
 ///   [`InjuryTables`](gdtf_battle_sim::injuries::InjuryTables) from ONE folder.
@@ -73,7 +70,8 @@ use crate::states::load::{
 /// folder per-file through the shared `gdtf_assets` salvage seam (well-formed
 /// siblings still load; each malformed member is reported), falling back to an
 /// empty registry only when the folder cannot be enumerated at all, preserving
-/// the no-strand guarantee either way.
+/// the no-strand guarantee either way — the same semantics the generic seam
+/// applies to its families.
 ///
 /// Guarded by `run_if(resource_exists::<LoadHandles>)` plus the per-resource
 /// `not(resource_exists::<…>)` or-chain in the plugin wiring (run while ANY required
@@ -92,9 +90,8 @@ pub(in crate::states::load) fn poll_and_resolve(
     handles: Option<Res<LoadHandles>>,
     mut salvage: SalvageStates,
 ) {
-    let (theme_present, attachments_present, injuries_present, prefabs_present) = (
+    let (theme_present, injuries_present, prefabs_present) = (
         resolved.theme.is_some(),
-        resolved.attachments.is_some(),
         resolved.injuries.is_some(),
         resolved.prefabs.is_some(),
     );
@@ -102,7 +99,6 @@ pub(in crate::states::load) fn poll_and_resolve(
         Some(asset_server),
         Some(theme_assets),
         Some(folders),
-        Some(attachment_specs),
         Some(injury_defs),
         Some(weightings),
         Some(prefab_specs),
@@ -111,7 +107,6 @@ pub(in crate::states::load) fn poll_and_resolve(
         asset_server,
         collections.theme,
         collections.folders,
-        collections.attachment_specs,
         collections.injury_defs,
         collections.weightings,
         collections.prefab_specs,
@@ -120,22 +115,6 @@ pub(in crate::states::load) fn poll_and_resolve(
     else {
         return;
     };
-
-    // GTW-549 PHASE 1: resolve the attachments folder into the name-keyed AttachmentRegistry on
-    // its OWN absence guard, independently of all other branches. PHASE 2 resolves each
-    // weapon's `attachment_slots` keys against it. On the failure path resolve_attachments
-    // warn!s and inserts an empty registry, preserving the no-strand guarantee.
-    if !attachments_present {
-        resolve_attachments(
-            &mut commands,
-            &asset_server,
-            &folders,
-            &attachment_specs,
-            &handles,
-            salvage.attachments.as_deref(),
-            salvage.report.as_deref_mut(),
-        );
-    }
 
     // GTW-437: resolve the injuries folder into the InjuryRegistry + InjuryTables on
     // its OWN absence guard (the registry's presence is the branch done-probe; the

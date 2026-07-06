@@ -1,165 +1,138 @@
-//! GTW-549 (PHASE 1): `AppState::Load` preloads the `assets/content/attachments/` folder
-//! through the `RonAsset<AttachmentSpec>` loader (guarded for headless), builds a name-keyed
-//! [`AttachmentRegistry`] from the loaded attachment files (keyed by filename stem, minus the
-//! `.attachment` infix), and gates the Load->Intro transition on it — the attachment mirror of
-//! the weapons load-and-build path ([`load_weapons`](../load_weapons.rs)).
+//! GTW-549 / GTW-619: the ATTACHMENTS family's load coverage — the thin
+//! wrapper over the generic per-family suite (`load_suite::suite`) PLUS the
+//! GTW-619 deep-behavior extension (`load_suite/behaviors.rs`, included
+//! standalone), proving the migration off the bespoke resolve/redrive chain
+//! onto the GTW-570 generic content-family seam preserved every seam behavior:
+//! salvage parity, fail-closed-empty, never-publish-partial, and the live
+//! redrive. The family-bespoke shipped weapon-key / slot-fit pins live in
+//! `load_attachment_fit.rs`.
 //!
-//! Tier (b) — `DefaultPlugins` (headless, `backends: None`) via [`GdtfLoadTestAppBuilder`]: a
-//! real `AssetServer` pointed at the workspace `assets/`. The good path loads
-//! `assets/content/attachments/*.attachment.ron` into an [`AttachmentRegistry`] keyed by file
-//! stem. This proves the SHIPPED attachment items PARSE from RON through the real folder-load
-//! path (the "attachment items parse from RON, folder-loaded" verification clause), and that
-//! the KEYS authored on the two shipped weapons resolve to their loaded specs.
-//!
-//! Pin-discriminating + VALUE-AGNOSTIC (mirroring
-//! [`real_asset_resolves_weapon_registry_keyed_by_filename`](../load_weapons.rs)): it asserts
-//! only the registry's PRESENCE / non-emptiness and that the authored attachment KEYS resolve
-//! to NON-EMPTY effect lists — never a shipped magnitude (the brittle-test rule). So a
-//! tuning/magnitude edit never reddens it, but a malformed shipped attachment RON, a
-//! variant-name typo in a shipped file, a stem-strip regression, or a bad weapon slot key does.
-//! The effect-to-stat application MECHANISM is covered by the sim apply/spawn tests
-//! (the `effects::attachments` per-effect + `equipment::attachments` mechanics tests +
-//! `gtw549_attachments`); this harness proves the REAL
-//! `assets/content/attachments/` folder loads through the Load code path.
+//! VALUE-AGNOSTIC: registry presence + authored filename-stem keys + an
+//! in-memory sentinel edit — never a shipped magnitude (the brittle-test
+//! rule).
 
-use gdtf_app::test_support::{AppState, app_state};
-use gdtf_battle_sim::weapon::{
-    AttachmentName, AttachmentRegistry, MeleeWeaponRegistry, WeaponName, WeaponRegistry,
-    attachment_fits,
-};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
+mod load_suite;
 
-/// Generous SAFETY-NET cap for the real-asset `advance_until_resource_exists` wait gated on the
-/// async attachments folder load resolving. The load shares the `AssetServer` with the theme /
-/// situation / tuning / weapons + the presenter's startup tile-sheet loads (the full scene
-/// stack is registered in this harness), so under parallel `cargo` contention the async resolve
-/// has NO fixed frame count. The wait keys off the resolved SIGNAL; the cap is a safety net
-/// against a genuine never-resolve hang, not a timing budget (GTW-305, mirroring `load_weapons`).
-const LOAD_SAFETY_NET: u32 = 10_000;
+#[path = "load_suite/behaviors.rs"]
+mod behaviors;
 
-/// GTW-549 (tier b) — with a real `AssetServer` rooted at the workspace `assets/`, entering
-/// `Load` loads `assets/content/attachments/*.attachment.ron` and builds an
-/// [`AttachmentRegistry`] keyed by each file's stem. Proves the SHIPPED attachment items PARSE
-/// from RON through the folder-load code path (non-empty registry), and that the KEYS the two
-/// shipped weapons authored (`scoped_sight` on `las_carbine`, `suppressor` on `stub_pistol`)
-/// resolve — both to the loaded attachment spec AND, transitively, that each weapon's authored
-/// slot key resolves to a NON-EMPTY effect list in the registry (so the live weapon references
-/// don't resolve to nothing at runtime).
-///
-/// This mirrors the weapons precedent
-/// [`real_asset_resolves_weapon_registry_keyed_by_filename`](../load_weapons.rs). It does NOT
-/// pin any authored magnitude — those are per-item DATA (the brittle-test rule); it asserts
-/// only presence + non-empty effect lists.
-#[test]
-fn real_asset_resolves_attachment_registry_and_shipped_weapon_keys() {
-    let mut app = GdtfLoadTestAppBuilder::new()
-        .starting_in(AppState::Load)
-        .build();
+use behaviors::FamilyBehaviorContract;
+use gdtf_battle_sim::weapon::{AttachmentName, AttachmentRegistry, AttachmentSpec, WeaponName};
+use gdtf_content_families::AttachmentsFamily;
+use load_suite::suite::{self, FamilyLoadContract};
 
-    // Signal-poll the async attachments folder load: wait until the AttachmentRegistry is
-    // inserted (the resolver only inserts it ONCE fully built from the folder — it stays ABSENT
-    // while members are still resolving — so on the good path existence implies the shipped
-    // attachments parsed and are present), not a fixed frame count. Cap is a safety net (GTW-305).
-    advance_until_resource_exists::<AttachmentRegistry>(&mut app, LOAD_SAFETY_NET);
+/// The sentinel display name the redrive walk edits into the probe member's
+/// in-memory spec — never a shipped value, so the pin stays value-agnostic.
+const REDRIVE_SENTINEL: &str = "GTW-619 Redrive Sentinel";
 
-    // Also wait for the WeaponRegistry so the shipped weapon slot keys are available to resolve,
-    // and (GTW-554) the MeleeWeaponRegistry for the shipped melee fitting.
-    advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<MeleeWeaponRegistry>(&mut app, LOAD_SAFETY_NET);
+impl FamilyLoadContract for AttachmentsFamily {
+    /// Shipped stems the two shipped weapons author (`scoped_sight` on
+    /// `las_carbine`, `suppressor` on `stub_pistol`) — the keys that must
+    /// never resolve to nothing at runtime.
+    const EXPECTED_MEMBERS: &'static [&'static str] = &["scoped_sight", "suppressor"];
 
-    // Both registries must have resolved from the workspace assets/. Assert PRESENCE loudly
-    // first (pin-discriminating), THEN bind without a panic (restriction lints deny `panic!`
-    // even in tests) — the `is_some` assert already failed loudly if either is absent.
-    assert!(
-        app.world().get_resource::<AttachmentRegistry>().is_some()
-            && app.world().get_resource::<WeaponRegistry>().is_some(),
-        "both an AttachmentRegistry and a WeaponRegistry must resolve from the workspace \
-         assets/ (last AppState was {:?})",
-        app_state(&app),
-    );
-    let (Some(attachments), Some(weapons)) = (
-        app.world().get_resource::<AttachmentRegistry>(),
-        app.world().get_resource::<WeaponRegistry>(),
-    ) else {
-        return;
-    };
-
-    // The shipped attachment items PARSED and populated the registry (the folder-loaded parse
-    // clause) — a malformed / variant-typo'd shipped RON would leave this empty or partial.
-    assert!(
-        !attachments.is_empty(),
-        "the resolved AttachmentRegistry must carry the shipped (non-empty) attachment items \
-         — a bad/malformed shipped `*.attachment.ron` would leave it empty",
-    );
-
-    // The two shipped weapons authored these attachment KEYS; each must resolve to its loaded
-    // attachment spec, and that spec's effect list must be NON-EMPTY (both are functional
-    // attachments — a sight and a suppressor) so the live weapon references don't resolve to
-    // nothing. Value-agnostic: presence + non-empty, never a magnitude.
-    for (weapon_key, attachment_key) in [
-        ("las_carbine", "scoped_sight"),
-        ("stub_pistol", "suppressor"),
-    ] {
-        let name = AttachmentName::new(attachment_key.to_owned());
-
-        // The shipped weapon RON references the attachment slot KEY.
-        let weapon_authors_key = weapons
-            .spec(&WeaponName::new(weapon_key.to_owned()))
-            .is_some_and(|weapon| weapon.attachments.contains(&name));
-        assert!(
-            weapon_authors_key,
-            "the shipped weapon `{weapon_key}` must resolve and author the `{attachment_key}` \
-             attachment slot key (the shipped weapon RON references it)",
-        );
-
-        // The key resolves to a loaded attachment spec with a NON-EMPTY effect list — a
-        // stem-strip regression, a missing shipped file, or an effect-less item breaks this.
-        let key_resolves_to_effects = attachments
-            .spec(&name)
-            .is_some_and(|spec| !spec.effects.is_empty());
-        assert!(
-            key_resolves_to_effects,
-            "the `{attachment_key}` key authored on `{weapon_key}` must resolve to a loaded \
-             attachment spec with a non-empty effect list (not resolve to nothing at runtime)",
-        );
-
-        // GTW-554: the shipped weapon's declared `slots:` must FIT the item it authors — a
-        // content mistake (fitted item whose slot the weapon never declares) would make the
-        // live reference resolve to nothing under the slot gate. Value-agnostic: it asserts
-        // the FIT, never a capacity magnitude.
-        let item_fits = match (
-            weapons.spec(&WeaponName::new(weapon_key.to_owned())),
-            attachments.spec(&name),
-        ) {
-            (Some(weapon), Some(item)) => attachment_fits(&weapon.slots, &[], item.slot).is_ok(),
-            _ => false,
-        };
-        assert!(
-            item_fits,
-            "the shipped `{weapon_key}` must declare a slot the fitted `{attachment_key}` \
-             occupies (the GTW-554 slot gate would otherwise cleanly reject the live fitting)",
-        );
+    fn is_empty(registry: &AttachmentRegistry) -> bool {
+        registry.is_empty()
     }
 
-    // GTW-554: the shipped MELEE pair — `chainsword` fits the `butchers_weight` counterweight
-    // through the same slot gate (melee weapons gained FULL attachment support).
-    let Some(melee) = app.world().get_resource::<MeleeWeaponRegistry>() else {
-        unreachable!("the MeleeWeaponRegistry resolved with the Load gate");
-    };
-    let weight = AttachmentName::new("butchers_weight".to_owned());
-    let melee_pair_fits = match (
-        melee.spec(&WeaponName::new("chainsword".to_owned())),
-        attachments.spec(&weight),
-    ) {
-        (Some(sword), Some(item)) => {
-            sword.attachments.contains(&weight)
-                && attachment_fits(&sword.slots, &[], item.slot).is_ok()
-        }
-        _ => false,
-    };
-    assert!(
-        melee_pair_fits,
-        "the shipped `chainsword` must author the `butchers_weight` key AND declare the \
-         Counterweight slot it occupies (the GTW-554 melee attachment support, live)",
-    );
+    fn member_resolves(registry: &AttachmentRegistry, label: &str) -> bool {
+        registry
+            .spec(&AttachmentName::new(label.to_owned()))
+            .is_some()
+    }
+}
+
+impl FamilyBehaviorContract for AttachmentsFamily {
+    /// `content/attachments/` with 2 well-formed items + 1 deliberately
+    /// malformed `broken.attachment.ron`.
+    const SALVAGE_FIXTURE_ROOT: &'static str = "attachment_salvage_root";
+
+    /// Both well-formed fixture siblings must survive the per-file salvage.
+    const SALVAGE_GOOD_MEMBERS: &'static [&'static str] = &["good_optic", "good_grip"];
+
+    /// The malformed fixture member the report must name.
+    const SALVAGE_BROKEN_FILE: &'static str = "broken.attachment.ron";
+
+    /// The shared family-agnostic root that materializes NO content folders —
+    /// `content/attachments` is unenumerable there, the genuine-`Failed` path.
+    const MISSING_FOLDER_FIXTURE_ROOT: &'static str = "missing_family_root";
+
+    /// A shipped member (`content/attachments/scoped_sight.attachment.ron`)
+    /// the partial-hold and redrive walks address by path.
+    const PROBE_MEMBER: &'static str = "scoped_sight";
+
+    fn is_empty(registry: &AttachmentRegistry) -> bool {
+        registry.is_empty()
+    }
+
+    fn member_resolves(registry: &AttachmentRegistry, label: &str) -> bool {
+        registry
+            .spec(&AttachmentName::new(label.to_owned()))
+            .is_some()
+    }
+
+    fn mutate_spec(spec: &mut AttachmentSpec) {
+        // Value-agnostic sentinel: the display label, never an effect magnitude.
+        spec.display_name = WeaponName::new(REDRIVE_SENTINEL.to_owned());
+    }
+
+    fn mutation_visible(registry: &AttachmentRegistry, label: &str) -> bool {
+        registry
+            .spec(&AttachmentName::new(label.to_owned()))
+            .is_some_and(|spec| *spec.display_name == *REDRIVE_SENTINEL)
+    }
+}
+
+/// Tier (a) — the attachments loader registration + folder kick-off no-op
+/// cleanly under `MinimalPlugins` (bevy-traps rule 1).
+#[test]
+fn attachments_loader_no_ops_cleanly_without_asset_server() {
+    suite::loader_no_ops_without_asset_server::<AttachmentsFamily>();
+}
+
+/// Tier (a) companion — the Load→Intro transition GATES on the
+/// [`AttachmentRegistry`] (the GTW-549 gate clause: the attachments folder is
+/// verified loaded before any battle resolves a weapon's attachment keys).
+#[test]
+fn load_does_not_leave_without_an_attachment_registry() {
+    suite::load_gates_on_registry::<AttachmentsFamily>();
+}
+
+/// Tier (b) — the REAL `assets/content/attachments/` folder resolves into a
+/// stem-keyed [`AttachmentRegistry`] through the GTW-619 generic seam
+/// registration in the Load plugin.
+#[test]
+fn real_asset_resolves_attachment_registry_keyed_by_filename() {
+    suite::real_asset_resolves_registry::<AttachmentsFamily>();
+}
+
+/// GTW-619 deep behavior — one malformed member no longer empties the family:
+/// the per-file salvage folds both well-formed siblings, reports the broken
+/// file loudly, and Load still exits (parity with the deleted bespoke chain).
+#[test]
+fn malformed_attachment_is_salvaged_around_and_reported() {
+    behaviors::salvage_parity::<AttachmentsFamily>();
+}
+
+/// GTW-619 deep behavior — a missing `content/attachments/` folder fails
+/// closed to the EMPTY registry (a weapon's authored key then resolves to
+/// nothing rather than stranding Load).
+#[test]
+fn missing_attachments_folder_fails_closed_to_empty_registry() {
+    behaviors::missing_folder_fails_closed_empty::<AttachmentsFamily>();
+}
+
+/// GTW-619 deep behavior — the resolve never publishes a partial registry
+/// while a member is absent from its collection, and publishes the FULL
+/// registry once it returns.
+#[test]
+fn attachment_registry_is_never_published_partial() {
+    behaviors::never_publishes_partial::<AttachmentsFamily>();
+}
+
+/// GTW-619 deep behavior — a Modified member rebuilds the resident registry
+/// in place (the GTW-549 live hot-reload, now through the generic redrive).
+#[test]
+fn modified_attachment_member_rebuilds_registry_live() {
+    behaviors::redrive_rebuilds_live::<AttachmentsFamily>();
 }
