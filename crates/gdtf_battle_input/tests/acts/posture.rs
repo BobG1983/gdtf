@@ -3,10 +3,10 @@
 use bevy::prelude::*;
 use gdtf_battle_input::{ActIntent, PendingActIntent, next_facing, next_stance};
 use gdtf_battle_sim::{
-    Direction, StanceKind,
     acts::{
         AimRequest, ReloadRequested, SetAimingRequested, SetFacingRequested, SetStanceRequested,
     },
+    prelude::{Direction, StanceKind},
 };
 use gdtf_test_utils::{press_key, probed};
 

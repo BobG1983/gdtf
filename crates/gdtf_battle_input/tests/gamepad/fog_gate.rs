@@ -5,7 +5,12 @@ use bevy::{ecs::system::SystemState, prelude::*};
 use gdtf_battle_input::{
     InspectTarget, LeftClickOutcome, PathPreviewTarget, SelectedFireMode, SelectedShooter,
 };
-use gdtf_battle_sim::{Cell, CellLevel, Magazine, SquadVisibility, Tu, WieldedBy};
+use gdtf_battle_sim::{
+    magazine::Magazine,
+    prelude::{Cell, CellLevel, Tu},
+    visibility::SquadVisibility,
+    weapon::WieldedBy,
+};
 
 use super::harness::*;
 
@@ -167,7 +172,7 @@ fn apply_and_assert_inert(
 #[test]
 fn shared_squad_visible_read_flips_in_lockstep() {
     use gdtf_battle_presenter::{CellVisibility, cell_squad_visible};
-    use gdtf_battle_sim::FactionRelation;
+    use gdtf_battle_sim::visibility::FactionRelation;
 
     let shooter_cell = CellLevel::new(Cell::new(2, 2), LEVEL);
     let target = CellLevel::new(Cell::new(6, 2), LEVEL);

@@ -8,10 +8,9 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Cell, CellLevel, Cool, Faction, Grit, Position, Shove, Speed, Stance, StanceKind, Strength,
-    Toughness,
     battle::{BattleSimPlugin, SetupBattleRequested},
-    ganger::{Direction, Facing, GangRegistry},
+    ganger::{Cool, Direction, Facing, GangRegistry, Grit, Speed, Strength, Toughness},
+    prelude::{Cell, CellLevel, Faction, Position, Stance, StanceKind},
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
     test_support::{
@@ -21,7 +20,7 @@ use gdtf_battle_sim::{
     tuning::{CombatTuning, ViewRange},
     weapon::{
         Accuracy, BaseSpread, FISTS_KEY, FireMode, Kickback, MeleeWeaponRegistry, MeleeWeaponSpec,
-        WeaponName, WeaponPunch, WeaponRegistry, WeaponSpec,
+        Shove, WeaponName, WeaponPunch, WeaponRegistry, WeaponSpec,
     },
 };
 
@@ -34,8 +33,8 @@ pub(crate) const ENEMY: u8 = 1;
 pub(crate) const TEST_VIEW_RANGE: u16 = 12;
 
 /// Level 0 — every fixture here is ground-floor, so the shove destination is always supported.
-pub(crate) const fn level0() -> gdtf_battle_sim::Level {
-    gdtf_battle_sim::Level::new(0)
+pub(crate) const fn level0() -> gdtf_battle_sim::metric::Level {
+    gdtf_battle_sim::metric::Level::new(0)
 }
 
 /// A ground-floor `(cell, level)` key.

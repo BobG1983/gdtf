@@ -1,14 +1,14 @@
 //! The DAMAGE-OVER-TIME consequence family (GTW-544, palette-ised in GTW-572): the
 //! transient `"-N"` attrition pop for a ganger a burning / caustic DOT drained this round,
-//! off the sim's [`DotTicked`](gdtf_battle_sim::DotTicked) per-round message.
+//! off the sim's [`DotTicked`](gdtf_battle_sim::effects::dot::DotTicked) per-round message.
 //!
 //! Drawn the toxic [`FctValence::Dot`](super::super::palette::FctValence::Dot) green — its
 //! OWN recurring-attrition valence, distinct from a fresh weapon hit (RED) or a bleed
 //! status tag (AMBER). The message carries the drained cell, so the anchor is
 //! [`PopAnchor::Carried`]. The persistent DOT state is the sim's
-//! [`Dot`](gdtf_battle_sim::Dot) affliction, NOT this one-shot pop.
+//! [`Dot`](gdtf_battle_sim::weapon::Dot) affliction, NOT this one-shot pop.
 
-use gdtf_battle_sim::DotTicked;
+use gdtf_battle_sim::effects::dot::DotTicked;
 
 use super::super::{
     palette::{FctValence, valence_color},
@@ -35,7 +35,11 @@ impl ConsequenceFct for DotFct {
 #[cfg(test)]
 mod test {
     use bevy::prelude::Entity;
-    use gdtf_battle_sim::{Cell, CellLevel, DotDamage, DotTicked, Level};
+    use gdtf_battle_sim::{
+        effects::dot::DotTicked,
+        prelude::{Cell, CellLevel, Level},
+        weapon::DotDamage,
+    };
 
     use super::{super::super::pop::ConsequenceFct, DotFct, FctValence, PopAnchor, valence_color};
 

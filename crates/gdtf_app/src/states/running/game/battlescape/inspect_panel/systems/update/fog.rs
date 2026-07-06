@@ -5,7 +5,11 @@
 
 use bevy::prelude::*;
 use gdtf_battle_presenter::cell_squad_visible;
-use gdtf_battle_sim::{CellLevel, Faction, FactionRelation, PlayerFaction};
+use gdtf_battle_sim::{
+    battle::PlayerFaction,
+    prelude::{CellLevel, Faction},
+    visibility::FactionRelation,
+};
 
 use super::params::InspectReads;
 

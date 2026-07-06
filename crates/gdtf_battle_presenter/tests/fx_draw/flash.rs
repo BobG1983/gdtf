@@ -4,8 +4,13 @@
 use bevy::ecs::message::Messages;
 use gdtf_battle_presenter::cell_to_world;
 use gdtf_battle_sim::{
-    ArmorBroken, BattleInProgress, Bleeding, BodyPart, Cell, CellLevel, CoverDestroyed, DamageType,
-    Level, acts::MeleeResolved,
+    acts::MeleeResolved,
+    armor::BodyPart,
+    armor_wear::ArmorBroken,
+    effects::bleed::Bleeding,
+    occupancy_sync::CoverDestroyed,
+    prelude::{BattleInProgress, Cell, CellLevel, Level},
+    weapon::DamageType,
 };
 
 use super::{harness::*, probes::*};

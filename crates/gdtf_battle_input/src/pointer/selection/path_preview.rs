@@ -13,10 +13,10 @@
 //! ([`dispatch_move`](gdtf_battle_sim::acts::dispatch_move)) plans it: it builds the GTW-353
 //! [`PlanningView`] from the sim's [`SquadVisibility`] with an
 //! occupant→[`FactionRelation`] resolver closed over the selected ganger's faction, then calls
-//! [`find_path`](gdtf_battle_sim::find_path) over the SAME grids — so the previewed route +
+//! [`find_path`](gdtf_battle_sim::pathfinder::find_path) over the SAME grids — so the previewed route +
 //! cost EXACTLY match what a commit will accept (the GTW-354 / GTW-355 dependency) and the
 //! route NEVER enters an UNSEEN cell (AC2). It REUSES `find_path` — no re-implemented routing
-//! or cost. On [`PathBlocked`](gdtf_battle_sim::PathBlocked) (unreachable, or only reachable
+//! or cost. On [`PathBlocked`](gdtf_battle_sim::pathfinder::PathBlocked) (unreachable, or only reachable
 //! through UNSEEN) it clears the preview (C2).
 //!
 //! # The GTW-356 boundary (FLAGGED)
@@ -30,9 +30,14 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::PathPreview;
 use gdtf_battle_sim::{
-    CellLevel, CombatTuning, Faction, FactionRelation, FireMode, FloorCostGrid, InflictedInjuries,
-    MovementCostFactor, OccupancyGrid, PlanningView, Position, SquadVisibility, VerticalLinkGraph,
-    find_path,
+    floor::FloorCostGrid,
+    injuries::{InflictedInjuries, MovementCostFactor},
+    pathfinder::{PlanningView, find_path},
+    prelude::{CellLevel, Faction, OccupancyGrid, Position},
+    tuning::CombatTuning,
+    vertical::VerticalLinkGraph,
+    visibility::{FactionRelation, SquadVisibility},
+    weapon::FireMode,
 };
 
 use crate::{SelectedFireMode, selection::resources::SelectedShooter};
@@ -183,17 +188,17 @@ pub struct PreviewGrids<'w> {
 
 /// `Update` ([`InputSystems::Gather`](crate::InputSystems)): POPULATE the presenter-owned
 /// [`PathPreview`] for the [`SelectedShooter`] → the [`PathPreviewTarget`] — the
-/// [`find_path`](gdtf_battle_sim::find_path) route over the visibility-gated grid + its §48
+/// [`find_path`](gdtf_battle_sim::pathfinder::find_path) route over the visibility-gated grid + its §48
 /// total cost (C1 / C6).
 ///
 /// When a ganger is selected, a target is set, and the ganger's `(`[`Position`]`,
 /// `[`Faction`]`)` resolves, it delegates to [`route_for`] (the SAME `PlanningView` +
 /// `find_path` construction `dispatch_move` plans with) and writes the route + cost; otherwise
-/// (no selection, no target, missing component, OR [`PathBlocked`](gdtf_battle_sim::PathBlocked)
+/// (no selection, no target, missing component, OR [`PathBlocked`](gdtf_battle_sim::pathfinder::PathBlocked)
 /// — unreachable / only-through-UNSEEN) it writes [`PathPreview::cleared`] (the empty preview,
 /// C2). It writes only on a real CHANGE (the `!=` guard) so an unchanged selection / target /
 /// grid does not spuriously trip `Changed<PathPreview>` (C4 clears-on-change hygiene). REUSES
-/// [`find_path`](gdtf_battle_sim::find_path) — no re-implemented routing, selection + target
+/// [`find_path`](gdtf_battle_sim::pathfinder::find_path) — no re-implemented routing, selection + target
 /// NEVER pushed into the sim. Param-only (`bevy-traps.md` #7).
 pub fn populate_path_preview(
     selected: Res<SelectedShooter>,
@@ -240,16 +245,16 @@ fn resolve_inputs(
 }
 
 /// The path preview for a ganger at `start` routing to `goal` with `mover_faction` — the SAME
-/// visibility-gated [`PlanningView`] + [`find_path`](gdtf_battle_sim::find_path) construction
+/// visibility-gated [`PlanningView`] + [`find_path`](gdtf_battle_sim::pathfinder::find_path) construction
 /// [`dispatch_move`](gdtf_battle_sim::acts::dispatch_move) plans a route with, so the previewed
 /// route + cost EXACTLY match what a commit will accept (C1) and the route NEVER enters an
 /// UNSEEN cell (C2).
 ///
 /// Builds the [`PlanningView`] from the squad fog + the per-call `relation_to` resolver (closed
 /// over `mover_faction` + the live `&`[`Faction`] query), then routes from `start` to `goal`
-/// over the [`PreviewGrids`]. On [`PathBlocked`](gdtf_battle_sim::PathBlocked) (unreachable, or
+/// over the [`PreviewGrids`]. On [`PathBlocked`](gdtf_battle_sim::pathfinder::PathBlocked) (unreachable, or
 /// only reachable through UNSEEN) it returns the cleared preview (C2). On success the previewed
-/// cost is [`Path::total`](gdtf_battle_sim::Path::total) — the §48 bit-identity GTW-355 charges.
+/// cost is [`Path::total`](gdtf_battle_sim::pathfinder::Path::total) — the §48 bit-identity GTW-355 charges.
 /// REUSES the sim search — no re-implemented routing / cost.
 fn route_for(
     start: CellLevel,

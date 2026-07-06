@@ -20,7 +20,10 @@ use bevy::{
     text::{FontSize, FontWeight, TextColor, TextFont},
     time::TimeUpdateStrategy,
 };
-use gdtf_battle_sim::{Cell, Level, Severity};
+use gdtf_battle_sim::{
+    prelude::{Cell, Level},
+    severity::Severity,
+};
 
 use super::{
     super::tuning::{FctRiseRate, FctTtlSeconds},

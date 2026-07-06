@@ -7,11 +7,11 @@
 //! [`ProgressBar`](gdtf_ui::spawn_progress_bar) whose fill is the selected shooter's
 //! **steadiness** (a fuller bar = a steadier shot). The bar is found for the per-update
 //! mutate by its [`StabilityBar`] marker; the [`Steadiness`] newtype is the named
-//! presentation value the [`ConeMult`](gdtf_battle_sim::ConeMult) readout crosses into the
+//! presentation value the [`ConeMult`](gdtf_battle_sim::stability::ConeMult) readout crosses into the
 //! widget as (no bare `f32` reaches the bar — `.claude/rules/no-bare-types.md`).
 
 use bevy::prelude::*;
-use gdtf_battle_sim::ConeMult;
+use gdtf_battle_sim::stability::ConeMult;
 use gdtf_ui::FillFraction;
 
 crate::support_item! {

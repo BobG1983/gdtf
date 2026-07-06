@@ -8,9 +8,13 @@ use bevy::{
 };
 use gdtf_app::test_support::{AddMemberButton, AppState, MemberRowIndex, RunningState};
 use gdtf_battle_sim::{
-    ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
-    ArmorRegistry, ArmorSpec, ArmorType, FatalBias, GangerStatTuning, WeaponName, WeaponSpec,
+    armor::{
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
+        ArmorRegistry, ArmorSpec, ArmorType,
+    },
     test_support::test_weapon_spec,
+    tuning::GangerStatTuning,
+    weapon::{FatalBias, WeaponName, WeaponSpec},
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, press_ui_button};
 use gdtf_ui::theme::default_theme;
@@ -30,9 +34,9 @@ pub(crate) fn arbitrary_weapon() -> WeaponSpec {
     }
 }
 
-/// A [`WeaponRegistry`](gdtf_battle_sim::WeaponRegistry) of one test weapon key.
-pub(crate) fn weapon_registry() -> gdtf_battle_sim::WeaponRegistry {
-    gdtf_battle_sim::WeaponRegistry::new([(
+/// A [`WeaponRegistry`](gdtf_battle_sim::weapon::WeaponRegistry) of one test weapon key.
+pub(crate) fn weapon_registry() -> gdtf_battle_sim::weapon::WeaponRegistry {
+    gdtf_battle_sim::weapon::WeaponRegistry::new([(
         WeaponName::new(WEAPON_A.to_owned()),
         arbitrary_weapon(),
     )])

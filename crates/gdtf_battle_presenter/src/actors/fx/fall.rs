@@ -1,7 +1,7 @@
 //! The GTW-524 fall-impact FX — a one-frame impact flash at the landing cell and a
 //! floating-combat-text `"Fell"` pop when a ganger drops a storey (or more).
 //!
-//! [`read_fall_occurred`] drains the sim's [`FallOccurred`](gdtf_battle_sim::FallOccurred)
+//! [`read_fall_occurred`] drains the sim's [`FallOccurred`](gdtf_battle_sim::falls::FallOccurred)
 //! signal (emitted once per falling ganger by the sim's `apply_falls`) and, for each fall:
 //!
 //! 1. **Flash (C1)** — spawns ONE transient impact glyph at `cell_to_world(landing_cell,
@@ -42,7 +42,7 @@
 //! draws sprites; NEVER writes the sim.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{FallOccurred, Position};
+use gdtf_battle_sim::{falls::FallOccurred, prelude::Position};
 
 use super::{
     fct::{CombatText, FctEmphasis, FctStackIndex, FctValence, spawn_floating_text, valence_color},
@@ -61,9 +61,9 @@ use crate::{FxTuning, TopDownAtlases, cell_to_world, fx::readers::fx_sprite};
 /// at 3+ storeys so a tall fall is fully opaque). Not a pinned literal —
 /// `storeys` is a structural relation recomputed from the live [`FallOccurred`] payload.
 ///
-/// `storeys: u8` is the INNER of [`StoreysFallen`](gdtf_battle_sim::StoreysFallen) (via
+/// `storeys: u8` is the INNER of [`StoreysFallen`](gdtf_battle_sim::falls::StoreysFallen) (via
 /// `Deref`), carried here as a framework-plumbing scalar — the same raw storey count the
-/// canonical [`CellLevel::level`](gdtf_battle_sim::CellLevel::level) accessor recovers
+/// canonical [`CellLevel::level`](gdtf_battle_sim::metric::CellLevel::level) accessor recovers
 /// from a key's `z` (GTW-565).
 #[must_use]
 fn fall_tint(storeys: u8) -> Color {
@@ -75,7 +75,7 @@ fn fall_tint(storeys: u8) -> Color {
 }
 
 /// `Update` (`PresenterSystems::Overlay`): spawn a fall-impact flash + FCT pop per
-/// [`FallOccurred`](gdtf_battle_sim::FallOccurred) (GTW-524).
+/// [`FallOccurred`](gdtf_battle_sim::falls::FallOccurred) (GTW-524).
 ///
 /// Drains [`MessageReader<FallOccurred>`]; for each message it:
 ///

@@ -2,10 +2,12 @@
 //! empty-list identity, each against a distinctive inline baseline.
 
 use gdtf_battle_sim::{
-    Accuracy, MagazineSize, Silenced,
     effects::attachments::{AimDelta, AttachmentEffect},
     magazine::Magazine,
-    weapon::{FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
+    weapon::{
+        Accuracy, FireMode, FireModeSpec, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent, Silenced,
+    },
 };
 
 use super::harness::*;

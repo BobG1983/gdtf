@@ -2,8 +2,8 @@
 //! variant.
 
 use gdtf_battle_sim::{
-    StanceKind,
     acts::{FireRequested, MoveRequested, SetFacingRequested},
+    prelude::StanceKind,
 };
 
 /// One queued battle intent — the CLASSIC (non-contextual) act a press (key OR button)
@@ -26,7 +26,7 @@ use gdtf_battle_sim::{
 /// [`SelectedFireMode`](crate::SelectedFireMode) directly — no intent variant.)
 ///
 /// Only [`PartialEq`] (no `Eq` / `Hash`): [`Fire`](Self::Fire) carries an owned
-/// [`FireRequested`] whose [`FireModeSpec`](gdtf_battle_sim::FireModeSpec) has `f32`
+/// [`FireRequested`] whose [`FireModeSpec`](gdtf_battle_sim::weapon::FireModeSpec) has `f32`
 /// fields, so the enum cannot derive `Eq` / `Hash`
 /// (`f32`-field-breaks-container-`Eq`-`Hash`). Nothing keys an `ActIntent` — it is
 /// only pushed to / drained from a `Vec` and compared in tests — so `PartialEq`
@@ -80,7 +80,7 @@ pub enum ActIntent {
     Move(MoveRequested),
     /// TURN the carried request — drained 1:1 to a [`SetFacingRequested`] (GTW-238). The
     /// right-click turn-to-face surface pushes this with the
-    /// [`Direction`](gdtf_battle_sim::Direction) computed from the actor's cell toward
+    /// [`Direction`](gdtf_battle_sim::ganger::Direction) computed from the actor's cell toward
     /// the hovered cell; the drain emits it onto the SAME facing writer the
     /// [`FacingCycle`](Self::FacingCycle) intent uses (the per-45deg-step turn TU cost is
     /// the sim's facing dispatch, not this layer's).
@@ -94,10 +94,10 @@ pub enum ActIntent {
     /// END the active team's turn — drained 1:1 to a fieldless [`EndTurnRequested`](gdtf_battle_sim::acts::EndTurnRequested)
     /// (GTW-309). A GLOBAL turn signal like [`SelectionClear`](Self::SelectionClear) /
     /// [`LevelUp`](Self::LevelUp), NOT a per-ganger act: which team's turn is ending lives
-    /// in the sim's [`ActiveFaction`](gdtf_battle_sim::ActiveFaction) resource, so it needs
+    /// in the sim's [`ActiveFaction`](gdtf_battle_sim::turn::ActiveFaction) resource, so it needs
     /// NO [`SelectedShooter`](crate::SelectedShooter) and carries no payload. The action-bar's End-Turn button
     /// pushes this; the drain emits the unit [`EndTurnRequested`](gdtf_battle_sim::acts::EndTurnRequested) unconditionally (the
-    /// sim's [`dispatch_end_turn`](gdtf_battle_sim::dispatch_end_turn) advances the cycle
+    /// sim's [`dispatch_end_turn`](gdtf_battle_sim::turn::dispatch_end_turn) advances the cycle
     /// and runs the next team's turn-start TU regen).
     EndTurn,
     /// CYCLE the [`SelectedShooter`](crate::SelectedShooter) to the NEXT player ganger in `(z, y, x)` order, wrapping

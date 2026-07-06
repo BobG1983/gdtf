@@ -1,6 +1,9 @@
 //! The 8→4 facing-frame map and the structural atlas-index sum.
 
-use gdtf_battle_sim::{Direction, Facing, Faction};
+use gdtf_battle_sim::{
+    ganger::Facing,
+    prelude::{Direction, Faction},
+};
 
 use super::roles::CharacterRoles;
 

@@ -6,7 +6,7 @@
 //! integration tests (the `tests/reachable.rs` pattern). These cover the read-seam +
 //! the `reachable_draws` pure decision (active-storey hard-cut) that do not need an app.
 
-use gdtf_battle_sim::{Cell, CellLevel, Level, Tu};
+use gdtf_battle_sim::prelude::{Cell, CellLevel, Level, Tu};
 
 use super::overlay::{ReachableCells, reachable_draws};
 

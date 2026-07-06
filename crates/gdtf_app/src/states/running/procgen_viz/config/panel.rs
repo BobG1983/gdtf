@@ -11,7 +11,9 @@
 
 use bevy::{prelude::*, ui::Val};
 use gdtf_battle_sim::{
-    GangName, GangRegistry, ThemeUuid, UuidThemeRegistry, level::MAX_GRID_SPAN, metric::MAX_LEVELS,
+    ganger::{GangName, GangRegistry},
+    level::{MAX_GRID_SPAN, ThemeUuid, UuidThemeRegistry},
+    metric::MAX_LEVELS,
 };
 use gdtf_ui::{
     ButtonLabel, DropdownColors, DropdownOption, FieldColors, NumericRange, spawn_button,
@@ -244,7 +246,7 @@ fn spawn_gang_rows(
 }
 
 /// The current size-validity status text (C2): `OK` for a valid combo, else the
-/// [`GridSizeError`](gdtf_battle_sim::GridSizeError) message naming the offending axis.
+/// [`GridSizeError`](gdtf_battle_sim::level::GridSizeError) message naming the offending axis.
 pub(in crate::states::running::procgen_viz) fn size_status_text(config: &VizConfig) -> String {
     match config.grid_size() {
         Ok(size) => format!("OK {}x{}x{}", *size.width(), *size.height(), *size.levels()),

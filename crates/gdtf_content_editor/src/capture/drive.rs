@@ -5,9 +5,9 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::{TileRoles, ViewMode};
 use gdtf_battle_sim::{
-    Cell,
     level::{GridHeight, GridLevels, GridSize, GridWidth, UuidThemeRegistry},
     metric::{CellLevel, Level},
+    prelude::Cell,
     terrain::def::{TerrainDefRegistry, TerrainUuid},
     weapon::{WeaponName, WeaponRegistry},
 };

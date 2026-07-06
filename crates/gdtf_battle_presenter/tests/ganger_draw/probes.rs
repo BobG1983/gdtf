@@ -8,7 +8,7 @@ use bevy::{
     transform::components::Transform,
 };
 use gdtf_battle_presenter::{CharacterRoles, GangerSprite, GangerSprites, facing_frame};
-use gdtf_battle_sim::{CellLevel, Direction, Faction, Position};
+use gdtf_battle_sim::prelude::{CellLevel, Direction, Faction, Position};
 
 /// The resolved `CharacterRoles` resource as a clone, or `None` if absent.
 pub(crate) fn character_roles(app: &App) -> Option<CharacterRoles> {

@@ -6,7 +6,10 @@ use bevy::{
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
 };
-use gdtf_battle_sim::{ArmorBroken, Bleeding, CoverDestroyed, Position, Wounds};
+use gdtf_battle_sim::{
+    armor_wear::ArmorBroken, effects::bleed::Bleeding, ganger::Wounds,
+    occupancy_sync::CoverDestroyed, prelude::Position,
+};
 
 use super::{
     flash::{FlashTtl, FxFlash},
@@ -16,7 +19,7 @@ use crate::{CELL_PX, SheetRole, TileIndex, TopDownAtlases, cell_to_world};
 
 /// The bleed-flash tint, as a relation to the bleeding ganger's remaining [`Wounds`].
 ///
-/// The [`Bleeding`](gdtf_battle_sim::Bleeding) message carries NO amount (verified
+/// The [`Bleeding`](gdtf_battle_sim::effects::bleed::Bleeding) message carries NO amount (verified
 /// `bleed.rs:62-65`), so the flash's intensity is read STRUCTURALLY from `*Wounds`, never a
 /// pinned literal and never from the message: a ganger nearer death (FEWER remaining
 /// [`Wounds`]) bleeds a more saturated, opaque red, while one with wounds to spare reads
@@ -111,10 +114,10 @@ pub(super) fn spawn_flash(commands: &mut Commands, sprite: Sprite, world: Vec3) 
 
 /// `Update` (`PresenterSystems::Overlay`): spawn a blood/hit FX flash per [`Bleeding`] message.
 ///
-/// Drains [`MessageReader<Bleeding>`](gdtf_battle_sim::Bleeding); for each `Bleeding { ganger }`
+/// Drains [`MessageReader<Bleeding>`](gdtf_battle_sim::effects::bleed::Bleeding); for each `Bleeding { ganger }`
 /// it looks up the ganger's cell via `Query<&Position>.get(msg.ganger)` (decomposed via the
-/// canonical [`CellLevel::split`](gdtf_battle_sim::CellLevel::split), GTW-565) and its remaining
-/// [`Wounds`](gdtf_battle_sim::Wounds) via `Query<&Wounds>.get(msg.ganger)`, then spawns ONE
+/// canonical [`CellLevel::split`](gdtf_battle_sim::metric::CellLevel::split), GTW-565) and its remaining
+/// [`Wounds`](gdtf_battle_sim::ganger::Wounds) via `Query<&Wounds>.get(msg.ganger)`, then spawns ONE
 /// FX flash at [`cell_to_world`](crate::cell_to_world) carrying [`FlashTtl`] + [`FxFlash`].
 /// The flash's index is the table's `bleed` [`TileIndex`] (never a literal); its tint is a
 /// RELATION to `*Wounds` ([`bleed_tint`]) — the [`Bleeding`] message carries NO amount. A
@@ -147,7 +150,7 @@ pub fn read_bleeding(
 
 /// `Update` (`PresenterSystems::Overlay`): spawn a spark/break FX flash per [`ArmorBroken`].
 ///
-/// Drains [`MessageReader<ArmorBroken>`](gdtf_battle_sim::ArmorBroken); for each
+/// Drains [`MessageReader<ArmorBroken>`](gdtf_battle_sim::armor_wear::ArmorBroken); for each
 /// `ArmorBroken { ganger, part }` it looks up the ganger's cell via
 /// `Query<&Position>.get(msg.ganger)` and spawns ONE FX flash at
 /// [`cell_to_world`](crate::cell_to_world) carrying [`FlashTtl`] + [`FxFlash`], with the
@@ -181,10 +184,10 @@ pub fn read_armor_broken(
 /// `Update` (`PresenterSystems::Overlay`): spawn a debris/rubble-burst FX flash per
 /// [`CoverDestroyed`].
 ///
-/// Drains [`MessageReader<CoverDestroyed>`](gdtf_battle_sim::CoverDestroyed); for each
-/// `CoverDestroyed { at }` it reconstructs the typed [`Cell`](gdtf_battle_sim::Cell) /
-/// [`Level`](gdtf_battle_sim::Level) from `at`
-/// ([`CellLevel`](gdtf_battle_sim::CellLevel) Derefs to `IVec3`) and spawns ONE FX flash at
+/// Drains [`MessageReader<CoverDestroyed>`](gdtf_battle_sim::occupancy_sync::CoverDestroyed); for each
+/// `CoverDestroyed { at }` it reconstructs the typed [`Cell`](gdtf_battle_sim::metric::Cell) /
+/// [`Level`](gdtf_battle_sim::metric::Level) from `at`
+/// ([`CellLevel`](gdtf_battle_sim::metric::CellLevel) Derefs to `IVec3`) and spawns ONE FX flash at
 /// `cell_to_world(at)` carrying [`FlashTtl`] + [`FxFlash`], with the table's `cover_destroyed`
 /// [`TileIndex`] (never a literal). This is ADDITIVE to the S4 `swap_destroyed_cover` (which
 /// swaps the terrain sprite at `at` to rubble) — the transient burst on top, NOT a terrain

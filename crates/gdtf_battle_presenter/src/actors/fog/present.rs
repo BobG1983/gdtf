@@ -1,6 +1,6 @@
 //! The [`present_fog`] writer system: the public seam that desaturates the rendered
 //! terrain layer (GTW-348) and dims lower drawn storeys (GTW-519) from the sim's
-//! [`SquadVisibility`](gdtf_battle_sim::SquadVisibility).
+//! [`SquadVisibility`](gdtf_battle_sim::visibility::SquadVisibility).
 //!
 //! GTW-627: this is the TERRAIN arm only. Actor-sprite visibility is owned by the
 //! ganger-visibility resolver
@@ -8,7 +8,7 @@
 //! same fog fact with the drawn-band storey fact through one pure classifier.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{CellLevel, SquadVisibility};
+use gdtf_battle_sim::{prelude::CellLevel, visibility::SquadVisibility};
 
 use super::material::Saturation;
 use crate::{

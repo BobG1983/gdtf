@@ -102,7 +102,7 @@
 //! `support_item!` flip.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::apply_falls;
+use gdtf_battle_sim::falls::apply_falls;
 
 use super::{
     capture_config::CaptureConfig,

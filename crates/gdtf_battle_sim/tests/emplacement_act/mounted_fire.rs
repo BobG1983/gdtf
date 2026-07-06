@@ -6,15 +6,16 @@ use bevy::{
     prelude::{Entity, Resource},
 };
 use gdtf_battle_sim::{
-    DamageType, Faction, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Stance,
-    StanceKind, Toughness,
     acts::{EnterEmplacementRequested, FireRequested},
-    ganger::{Direction, Facing},
+    ganger::{Direction, Facing, Toughness},
     metric::{Cell, CellLevel, Level},
+    prelude::{Faction, Stance, StanceKind},
     shot_fired::ShotFired,
     situation::GangerSpawn,
     test_support::{GangerSpawnBuilder, SituationBuilder},
-    weapon::WeaponName,
+    weapon::{
+        DamageType, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, WeaponName,
+    },
 };
 
 use super::harness::*;

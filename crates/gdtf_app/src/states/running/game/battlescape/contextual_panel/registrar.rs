@@ -8,7 +8,7 @@ use bevy::{
     prelude::*,
 };
 use gdtf_battle_input::{contextual::ContextualActSystems, pick_hovered_cell};
-use gdtf_battle_sim::BattleInProgress;
+use gdtf_battle_sim::prelude::BattleInProgress;
 
 use crate::states::{
     BattleScapeState,

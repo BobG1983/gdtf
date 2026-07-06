@@ -2,16 +2,16 @@
 //! stair- or ladder-tile sprite per authored vertical-link endpoint cell on the
 //! [`ActiveLevel`].
 //!
-//! This module reads the sim's [`VerticalLinkGraph`](gdtf_battle_sim::VerticalLinkGraph)
+//! This module reads the sim's [`VerticalLinkGraph`](gdtf_battle_sim::vertical::VerticalLinkGraph)
 //! — the authored stair / ladder links, each carrying its two `(cell, level)` endpoints
-//! and its [`LinkKind`](gdtf_battle_sim::LinkKind) — for the presenter-owned
+//! and its [`LinkKind`](gdtf_battle_sim::vertical::LinkKind) — for the presenter-owned
 //! [`ActiveLevel`] and draws one 16x16 terrain sprite at each link endpoint on the
 //! active storey, choosing the [`TileRoles`] role by the link kind AND (for a stair)
 //! the active endpoint's direction within the link: a
-//! [`Stair`](gdtf_battle_sim::LinkKind::Stair) endpoint draws [`TileRoles::stair_up`]
+//! [`Stair`](gdtf_battle_sim::vertical::LinkKind::Stair) endpoint draws [`TileRoles::stair_up`]
 //! (atlas index `29`) when the active storey is the link's LOWER cell (you ascend) or
 //! [`TileRoles::stair_down`] (atlas index `28`) when it is the UPPER cell (you descend);
-//! a [`Ladder`](gdtf_battle_sim::LinkKind::Ladder) endpoint draws [`TileRoles::ladder`]
+//! a [`Ladder`](gdtf_battle_sim::vertical::LinkKind::Ladder) endpoint draws [`TileRoles::ladder`]
 //! (atlas index `235`) for either direction.
 //!
 //! # Stair up/down split (GTW-373, PROPOSED semantic — flagged for in-engine confirm)
@@ -45,7 +45,10 @@
 //! (no spawn while the terrain sheet is still loading).
 
 use bevy::{camera::visibility::RenderLayers, prelude::*};
-use gdtf_battle_sim::{CellLevel, Level, LinkKind, VerticalLinkGraph};
+use gdtf_battle_sim::{
+    prelude::{CellLevel, Level},
+    vertical::{LinkKind, VerticalLinkGraph},
+};
 
 use super::{
     active_level::ActiveLevel,
@@ -118,7 +121,7 @@ fn link_sprite(index: usize, atlases: &TopDownAtlases) -> Option<Sprite> {
 /// vertical-link (stair / ladder) tiles — one cell-keyed [`Sprite`] per authored link
 /// endpoint on the active storey (AC4).
 ///
-/// Reads [`Res<VerticalLinkGraph>`](gdtf_battle_sim::VerticalLinkGraph),
+/// Reads [`Res<VerticalLinkGraph>`](gdtf_battle_sim::vertical::VerticalLinkGraph),
 /// [`Res<ActiveLevel>`](crate::ActiveLevel), [`Res<TileRoles>`], and
 /// [`Res<TopDownAtlases>`], then maintains a POOL of [`VerticalLinkSprite`] sprites:
 ///
@@ -133,12 +136,12 @@ fn link_sprite(index: usize, atlases: &TopDownAtlases) -> Option<Sprite> {
 ///   C5).
 ///
 /// A link's two endpoints sit on adjacent storeys; iterating the GRAPH's links (not
-/// [`links_from`](gdtf_battle_sim::VerticalLinkGraph::links_from)) once per link and
+/// [`links_from`](gdtf_battle_sim::vertical::VerticalLinkGraph::links_from)) once per link and
 /// filtering each endpoint to the active storey draws exactly the on-storey endpoint —
 /// `from` when its storey is active, `to` when its storey is active.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`] for the lazy pool growth, the
-/// [`VerticalLinkGraph`](gdtf_battle_sim::VerticalLinkGraph) / [`ActiveLevel`] /
+/// [`VerticalLinkGraph`](gdtf_battle_sim::vertical::VerticalLinkGraph) / [`ActiveLevel`] /
 /// [`TileRoles`] / [`TopDownAtlases`] reads, and a
 /// `Query<(&mut Sprite, &mut Transform, &mut Visibility), With<VerticalLinkSprite>>` for
 /// the in-place re-index + move + show/hide. Battle-gated + in
@@ -216,7 +219,7 @@ fn spawn_link_sprite(commands: &mut Commands, sprite: Sprite, world: Vec3) {
 
 #[cfg(test)]
 mod tests {
-    use gdtf_battle_sim::LinkKind;
+    use gdtf_battle_sim::vertical::LinkKind;
 
     use super::{TileRoles, link_tile_index};
 

@@ -1,7 +1,7 @@
 //! The presenter-owned active storey resource and the shared draw-ordering set.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Level, MAX_LEVELS};
+use gdtf_battle_sim::{metric::MAX_LEVELS, prelude::Level};
 
 /// The presenter-owned VIEW MODE — how the terrain draw + ganger visibility bound the
 /// drawn storey stack from ABOVE (GTW-521, the UFO "full view" toggle).
@@ -134,7 +134,7 @@ pub enum PresenterSystems {
     Draw,
     /// Stage 1 — the drawn WORLD: the terrain draw, the destruction / emplacement
     /// state swaps, the vertical links, and the ganger spawn / move / tween /
-    /// life-state systems. Everything the fog must observe settled — the GTW-627
+    /// appearance / life-state systems. Everything the fog must observe settled — the GTW-627
     /// storey/fog visibility DECISION lives in [`Compose`](Self::Compose), not here.
     Scene,
     /// Stage 2 — COMPOSITION over the settled scene: `present_fog` (each terrain

@@ -3,7 +3,7 @@
 use bevy::{camera::visibility::RenderLayers, prelude::*};
 use gdtf_battle_input::{ActIntent, SelectionHighlight};
 use gdtf_battle_presenter::{CELL_PX, WORLD_RENDER_LAYER, cell_to_world};
-use gdtf_battle_sim::{Cell, CellLevel, Level};
+use gdtf_battle_sim::prelude::{Cell, CellLevel, Level};
 use gdtf_test_utils::{clear_mouse, press_left};
 
 use super::harness::*;

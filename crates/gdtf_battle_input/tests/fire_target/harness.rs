@@ -5,10 +5,20 @@ use bevy::{input::ButtonInput, platform::collections::HashSet, prelude::*};
 use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedFireMode, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight, ViewMode};
 use gdtf_battle_sim::{
-    Aiming, BattleInProgress, CellLevel, Faction, FireMode, FireModeSpec, Handedness, Level,
-    LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, PlayerFaction, Position, ReloadTu, SquadVisibility, TerrainKind, Tu, TuMax,
-    VerticalLinkGraph, WieldedBy, tuning::CombatTuning,
+    battle::PlayerFaction,
+    ganger::{Aiming, TuMax},
+    magazine::{Magazine, ReloadTu},
+    occupancy::TerrainKind,
+    prelude::{
+        BattleInProgress, CellLevel, Faction, Level, LifeState, OccupancyGrid, Position, Tu,
+    },
+    tuning::CombatTuning,
+    vertical::VerticalLinkGraph,
+    visibility::SquadVisibility,
+    weapon::{
+        FireMode, FireModeSpec, Handedness, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent, WieldedBy,
+    },
 };
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).

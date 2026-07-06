@@ -34,7 +34,10 @@ use gdtf_battle_presenter::{
     GamepadCursorMoved, WorldCamera, cell_to_world, clamp_camera_to_bounds,
     pan_camera_on_gamepad_cursor_edge,
 };
-use gdtf_battle_sim::{BattleInProgress, Cell, Faction, Level, PlayerFaction};
+use gdtf_battle_sim::{
+    battle::PlayerFaction,
+    prelude::{BattleInProgress, Cell, Faction, Level},
+};
 
 /// A synthetic window size (logical px) for the edge-band reads.
 const WINDOW: Vec2 = Vec2::new(800.0, 600.0);
@@ -99,8 +102,8 @@ fn camera_xy(app: &mut App) -> Vec2 {
 /// through `cell_to_world` (the SAME projection the clamp uses), so the assertions check a
 /// RELATION, not a pinned magnitude.
 fn battlefield_bounds() -> (Vec2, Vec2) {
-    let w = i32::try_from(gdtf_battle_sim::GRID_WIDTH).unwrap_or(i32::MAX);
-    let h = i32::try_from(gdtf_battle_sim::GRID_HEIGHT).unwrap_or(i32::MAX);
+    let w = i32::try_from(gdtf_battle_sim::occupancy::GRID_WIDTH).unwrap_or(i32::MAX);
+    let h = i32::try_from(gdtf_battle_sim::occupancy::GRID_HEIGHT).unwrap_or(i32::MAX);
     let corners = [
         cell_to_world(Cell::new(0, 0), Level::new(0)),
         cell_to_world(Cell::new(w, 0), Level::new(0)),

@@ -1,15 +1,14 @@
-//! Ganger sprite draw-band registration: spawn / move / reframe / life-state /
-//! removal / hot-reload re-index / tween / impact-despawn, plus the Compose-stage
-//! visibility resolver.
+//! Ganger sprite draw-band registration: spawn / move / appearance / life-state /
+//! removal / tween / impact-despawn, plus the Compose-stage visibility resolver.
 
 use bevy::{ecs::message::Messages, prelude::*};
-use gdtf_battle_sim::{BattleInProgress, ShotFired};
+use gdtf_battle_sim::{prelude::BattleInProgress, shot_fired::ShotFired};
 
 use crate::{
     CharacterRoles, PresenterSystems, ShotImpactResolved, TopDownAtlases, advance_sprite_tweens,
     despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites, move_ganger_sprites,
-    reframe_ganger_sprites, reindex_ganger_sprites_on_character_roles_change,
-    resolve_ganger_visibility, spawn_ganger_sprites, update_ganger_life_state,
+    resolve_ganger_appearance, resolve_ganger_visibility, spawn_ganger_sprites,
+    update_ganger_life_state,
 };
 
 /// GTW-219 (S5): the ganger-draw change-detection systems join the
@@ -33,7 +32,7 @@ use crate::{
 /// see its docs. A `MessageReader` panics param validation without its `Messages<ShotFired>`
 /// buffer (`bevy-traps.md` #4), and the ganger batch's gate is deliberately NOT extended
 /// with a `Messages<ShotFired>` guard: the life-state system must keep running for the
-/// Downed re-tint + non-shot death despawn even in a focused FIRE-LESS harness (the
+/// non-shot death despawn even in a focused FIRE-LESS harness (the
 /// `ganger_draw` / `fog_present` suites author gangers + `BattleInProgress` and register no
 /// sim buffer at all), where such a gate would silently turn the whole ganger batch's
 /// life-state handling off. So the presenter registers this ONE sim-owned buffer
@@ -43,6 +42,18 @@ use crate::{
 /// `fx_draw/registrar_contract.rs`; every other sim-owned buffer a presenter system drains
 /// is gated `resource_exists::<Messages<M>>` and seeded by the sim (live play) or the
 /// harness (tests).
+///
+/// # GTW-631 — the ONE appearance writer
+///
+/// `resolve_ganger_appearance` is the single writer of every ganger sprite's atlas index
+/// AND tint, replacing the reframe / life-state re-tint / hot-reload re-index trio. Its
+/// `CharacterRoles`-change driver (the dissolved GTW-375 re-index) lives INSIDE the
+/// system as `roles.is_changed()` — a `resource_changed` run condition would gate its
+/// changed-state and suppression-removal drivers off on roles-quiet frames — so the
+/// registration needs no dedicated roles-change entry. It joins the same gated batch: it
+/// requires `CharacterRoles` (in the gate, `bevy-traps.md` #1), and outside a battle /
+/// without the atlases there are no mapped sprites to stamp, so the batch gate loses
+/// nothing over the old re-index's looser table-only gate.
 pub(super) fn register_ganger_draw(app: &mut App) {
     app.add_message::<ShotFired>();
     let gate = resource_exists::<BattleInProgress>
@@ -53,7 +64,7 @@ pub(super) fn register_ganger_draw(app: &mut App) {
         (
             spawn_ganger_sprites,
             move_ganger_sprites.after(spawn_ganger_sprites),
-            reframe_ganger_sprites,
+            resolve_ganger_appearance,
             update_ganger_life_state,
         )
             .in_set(PresenterSystems::Scene)
@@ -72,22 +83,6 @@ pub(super) fn register_ganger_draw(app: &mut App) {
         resolve_ganger_visibility
             .in_set(PresenterSystems::Compose)
             .run_if(resource_exists::<BattleInProgress>),
-    )
-    // GTW-375 (C4): RE-INDEX every mapped ganger sprite to the freshly-reloaded atlas
-    // indices when `character_roles.ron` hot-reloads (redrive_character_roles_on_asset_event
-    // above marks CharacterRoles changed). The per-field draw systems only re-read the
-    // faction base on an Added/Changed SIM event, never on a resource change, so an
-    // already-spawned idle ganger needs this dedicated re-index. Gated on `CharacterRoles`
-    // existing (so a `MinimalPlugins` app without the table never runs it — `bevy-traps.md`
-    // #1) AND `CharacterRoles.is_changed()` so it does no per-frame work; it needs NO
-    // battle-witness gate (it is idempotent and its sim/sprite queries are empty pre-battle,
-    // per the Discovery). It RE-INDEXES ONLY (it never re-tints), so it never crosses the
-    // life/stance/aiming tint writers.
-    .add_systems(
-        Update,
-        reindex_ganger_sprites_on_character_roles_change
-            .in_set(PresenterSystems::Scene)
-            .run_if(resource_exists::<CharacterRoles>.and_then(resource_changed::<CharacterRoles>)),
     )
     // The removal-detection despawn needs NO render resource (it only despawns
     // mapped sprites + drops map entries), so it is gated on the battle witness

@@ -35,10 +35,12 @@
 
 use bevy::{app::App, asset::AssetPlugin, prelude::MinimalPlugins, scene::ScenePlugin};
 use gdtf_battle_sim::{
-    BlocksVision, Faction, HeightBand, SquadVisibility, Stance, StanceKind,
     battle::{BattleSimPlugin, SetupBattleRequested},
+    cover::HeightBand,
+    entity::BlocksVision,
     ganger::GangRegistry,
     metric::{Cell, CellLevel, Level},
+    prelude::{Faction, Stance, StanceKind},
     rng::BattleSeed,
     situation::{CoverSpawn, Situation},
     terrain::{entity::TerrainCell, occupancy::OccupancyGrid},
@@ -47,6 +49,7 @@ use gdtf_battle_sim::{
         test_pieces, test_terrain_registry, test_weapon_registry,
     },
     tuning::{CombatTuning, ViewRange},
+    visibility::SquadVisibility,
 };
 
 /// An arbitrary (not shipped tuning) seed for the test battle's RNG stream.

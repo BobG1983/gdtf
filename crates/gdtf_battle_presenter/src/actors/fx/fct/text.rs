@@ -7,7 +7,7 @@
 //! [`spawn_floating_text`] helper (caller picks the string, color, cell / level, and a
 //! stack index) and the [`animate_floating_text`] system that drives every live pop's rise,
 //! fade, and TTL despawn. It reads NO sim message — the reader slices (3-4) classify the
-//! [`ShotFired`](gdtf_battle_sim::ShotFired) consequences and CALL [`spawn_floating_text`]
+//! [`ShotFired`](gdtf_battle_sim::shot_fired::ShotFired) consequences and CALL [`spawn_floating_text`]
 //! with a color from the [`palette`](super::palette).
 //!
 //! Lifecycle mirrors the transient FX flash ([`FlashTtl`](super::super::FlashTtl) /
@@ -27,7 +27,7 @@ use bevy::{
     sprite::Anchor,
     text::{FontSize, FontWeight},
 };
-use gdtf_battle_sim::{Cell, Level};
+use gdtf_battle_sim::prelude::{Cell, Level};
 
 use super::super::tuning::{FctRiseRate, FctTtlSeconds};
 use crate::{Layer, cell_to_world_layered};

@@ -3,11 +3,12 @@
 
 use bevy::app::App;
 use gdtf_battle_sim::{
-    ArmorHardness, ArmorProtection, StanceKind, Suppressed,
     acts::{EndTurnRequested, FireRequested},
+    armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, Destroyed, HeightBand},
-    ganger::Direction,
+    ganger::{Direction, Suppressed},
     metric::{Cell, CellLevel, Level},
+    prelude::StanceKind,
     rng::ReactionRng,
     test_support::{SituationBuilder, reaction_rng},
 };

@@ -34,11 +34,11 @@
 //! damage, on-death kills, suppression-applied, and armor-broken each GAIN a line; the
 //! DOT / field / bleed afflictions log ONCE at affliction start (their per-tick drain
 //! signals never log). Where a sim signal lacked the line's data the SIM was extended with
-//! a fact (never a rendered line): [`MeleeStruck`](gdtf_battle_sim::MeleeStruck),
-//! [`DotAfflicted`](gdtf_battle_sim::DotAfflicted),
-//! [`FieldAfflicted`](gdtf_battle_sim::FieldAfflicted),
-//! [`BleedStarted`](gdtf_battle_sim::BleedStarted), and the ganger on
-//! [`SuppressionApplied`](gdtf_battle_sim::SuppressionApplied).
+//! a fact (never a rendered line): [`MeleeStruck`](gdtf_battle_sim::acts::MeleeStruck),
+//! [`DotAfflicted`](gdtf_battle_sim::effects::dot::DotAfflicted),
+//! [`FieldAfflicted`](gdtf_battle_sim::effects::fields::FieldAfflicted),
+//! [`BleedStarted`](gdtf_battle_sim::effects::bleed::BleedStarted), and the ganger on
+//! [`SuppressionApplied`](gdtf_battle_sim::suppression::SuppressionApplied).
 //!
 //! Pure VIEW (ADR-0001): presenter-owned phrasing + palette decisions over resolved data;
 //! it reads no sim state and writes nothing.

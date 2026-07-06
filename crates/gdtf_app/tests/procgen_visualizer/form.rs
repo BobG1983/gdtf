@@ -3,7 +3,7 @@
 
 use bevy::ecs::{component::Component, entity::Entity};
 use gdtf_app::test_support::{GenerateButton, ProcgenViz, SeedField, ThemeDropdown, VizConfig};
-use gdtf_battle_sim::{GangName, level::ThemeUuid};
+use gdtf_battle_sim::{ganger::GangName, level::ThemeUuid};
 use gdtf_ui::{CommittedNumericValue, DropdownSelectionChanged, NumericFieldCommitted};
 
 use super::harness::*;

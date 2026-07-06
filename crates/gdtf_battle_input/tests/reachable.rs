@@ -25,11 +25,16 @@ use gdtf_battle_presenter::{
     ActiveLevel, PathPreview, ReachableCells, ReachableOverlayEnabled, ViewMode,
 };
 use gdtf_battle_sim::{
-    BattleInProgress, Cell, CellLevel, CombatTuning, Faction, FactionRelation, FloorCostGrid,
-    GRID_HEIGHT, GRID_WIDTH, Level, MAX_LEVELS, OccupancyGrid, PlanningView, PlayerFaction,
-    Position, SquadVisibility, Tu, VerticalLink, VerticalLinkGraph, build_vertical_link_graph,
-    reachable_within,
+    battle::PlayerFaction,
+    floor::FloorCostGrid,
+    metric::MAX_LEVELS,
+    occupancy::{GRID_HEIGHT, GRID_WIDTH},
+    pathfinder::{PlanningView, reachable_within},
+    prelude::{BattleInProgress, Cell, CellLevel, Faction, Level, OccupancyGrid, Position, Tu},
     test_support::{SituationBuilder, key},
+    tuning::CombatTuning,
+    vertical::{VerticalLink, VerticalLinkGraph, build_vertical_link_graph},
+    visibility::{FactionRelation, SquadVisibility},
 };
 use gdtf_test_utils::advance_until;
 
@@ -217,7 +222,7 @@ fn populates_reachable_cells_matching_reachable_within_including_l1() {
             &links,
             &tuning,
             &floor_costs,
-            gdtf_battle_sim::MovementCostFactor::IDENTITY,
+            gdtf_battle_sim::injuries::MovementCostFactor::IDENTITY,
             &planning,
         )
     };

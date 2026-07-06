@@ -13,7 +13,7 @@
 //! - the INPUT crate (which alone may read `SelectedShooter` + `SelectedFireMode` + the
 //!   hovered cell) decides whether the hover is a fireable enemy (the SAME `decide_left_click`
 //!   FIRE-rung conditions) and computes the cost via
-//!   [`mode_tu_cost`](gdtf_battle_sim::mode_tu_cost), then POPULATES this resource (clearing it
+//!   [`mode_tu_cost`](gdtf_battle_sim::magazine::mode_tu_cost), then POPULATES this resource (clearing it
 //!   off any non-fireable hover) — the [`HighlightRequest`](crate::HighlightRequest) precedent
 //!   (the presenter defines the type, input writes it).
 //!

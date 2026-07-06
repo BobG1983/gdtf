@@ -5,7 +5,7 @@
 //! - [`spawn_stability_readout`] builds the row at empty (the [`spawn`] submodule), the
 //!   status-panel spawn parents it under its root.
 //! - [`update_stability_readout`] repaints the bar fill from the selected shooter's
-//!   [`stability_for`](gdtf_battle_sim::stability_for) [`ConeMult`](gdtf_battle_sim::ConeMult)
+//!   [`stability_for`](gdtf_battle_sim::aim::stability_for) [`ConeMult`](gdtf_battle_sim::stability::ConeMult)
 //!   in place (the [`update`] submodule, [[ui-mutate-not-respawn]]).
 //! - [`components`] owns the bar marker + the named [`Steadiness`](components::Steadiness)
 //!   presentation value.

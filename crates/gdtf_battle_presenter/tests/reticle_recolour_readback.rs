@@ -44,7 +44,7 @@ use gdtf_battle_presenter::{
     CellVisibility, HighlightRequest, HoverHighlight, WORLD_RENDER_LAYER, cell_to_world,
     draw_highlight_on_request,
 };
-use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, Level};
+use gdtf_battle_sim::prelude::{BattleInProgress, Cell, CellLevel, Level};
 use gdtf_test_utils::gpu_adapter_probe;
 
 /// The offscreen render-target edge (square). The reticle quad covers most of it.

@@ -7,8 +7,11 @@ use bevy::{
 };
 use gdtf_battle_presenter::{CELL_PX, TerrainFogMaterial, TerrainSprite, cell_to_world};
 use gdtf_battle_sim::{
-    BattleInProgress, BattleReady, Cell, CellLevel, CoverLedger, Level, SlabState, SurfaceGrid,
-    TerrainKind, TerrainPlacement,
+    battle::BattleReady,
+    cover::CoverLedger,
+    occupancy::{TerrainKind, TerrainPlacement},
+    prelude::{BattleInProgress, Cell, CellLevel, Level},
+    surface::{SlabState, SurfaceGrid},
 };
 
 use super::harness::*;

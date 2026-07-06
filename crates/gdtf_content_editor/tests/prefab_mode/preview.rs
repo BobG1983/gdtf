@@ -3,8 +3,8 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    Cell,
     metric::{CellLevel, Level},
+    prelude::Cell,
     terrain::def::TerrainDefRegistry,
 };
 use gdtf_content_editor::{

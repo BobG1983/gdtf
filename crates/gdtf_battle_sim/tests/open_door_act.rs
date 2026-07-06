@@ -24,11 +24,15 @@ use bevy::{
     prelude::{Entity, World},
 };
 use gdtf_battle_sim::{
-    Cell, CellLevel, CombatTuning, Faction, HeightBand, Level, OccupancyGrid,
-    OccupancyMaintenancePlugin, OpenDoorRequested, OpenState, OpenableBlocking,
-    OpenableTogglePlugin, Position, Tu, TuMax,
+    acts::OpenDoorRequested,
+    cover::HeightBand,
     entity::{BlocksPathfinding, BlocksVision, TerrainCell},
+    ganger::TuMax,
+    occupancy_sync::OccupancyMaintenancePlugin,
+    openable::{OpenState, OpenableBlocking, OpenableTogglePlugin},
+    prelude::{Cell, CellLevel, Faction, Level, OccupancyGrid, Position, Tu},
     test_support::SimAppBuilder,
+    tuning::CombatTuning,
 };
 
 /// An arbitrary fixed seed — the open-door act is RNG-free, so the value is irrelevant; it only

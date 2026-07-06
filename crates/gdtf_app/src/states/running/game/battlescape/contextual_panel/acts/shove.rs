@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 use gdtf_battle_input::{SelectedShooter, contextual::ShoveAct};
 use gdtf_battle_sim::{
-    downed_acts::is_8_adjacent,
+    acts::downed::is_8_adjacent,
     ganger::{Faction, LifeState, Position},
 };
 use gdtf_ui::ButtonLabel;

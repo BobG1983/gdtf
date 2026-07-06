@@ -3,10 +3,17 @@
 
 use bevy::ecs::entity::Entity;
 use gdtf_battle_sim::{
-    AppliedDamage, ArmorHardness, ArmorProtection, ArmorWearOutcome, BodyPart, Cell, CellLevel,
-    CoverEntry, CoverHp, CoverVerdict, GangerVerdict, HeightBand, HitReport, HitResult, HitVerdict,
-    HpDamage, IntegrityWear, Level, LifeState, Matchup, PenetratingDamage, Severity, ShotKind,
-    SlabVerdict,
+    armor::{ArmorHardness, ArmorProtection, BodyPart},
+    armor_wear::ArmorWearOutcome,
+    cover::{CoverEntry, CoverHp, HeightBand},
+    matchup::Matchup,
+    prelude::{Cell, CellLevel, Level, LifeState},
+    resolve_and_apply::{
+        AppliedDamage, CoverVerdict, GangerVerdict, HitReport, HitVerdict, SlabVerdict,
+    },
+    resolve_coarse::ShotKind,
+    resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage},
+    severity::Severity,
 };
 
 use super::{
@@ -336,10 +343,12 @@ fn a_ground_hit_yields_the_dust_cue_not_a_miss() {
     // amount here; the classifier reads only the variant).
     let report = HitReport {
         kind:    ShotKind::Ground(struck_key()),
-        verdict: gdtf_battle_sim::HitVerdict::Ground(gdtf_battle_sim::GroundAccrual::new(
-            Cell::new(4, 5),
-            gdtf_battle_sim::GroundDamage::new(3),
-        )),
+        verdict: gdtf_battle_sim::resolve_and_apply::HitVerdict::Ground(
+            gdtf_battle_sim::resolve_and_apply::GroundAccrual::new(
+                Cell::new(4, 5),
+                gdtf_battle_sim::surface::GroundDamage::new(3),
+            ),
+        ),
     };
     let pairs = pop_pairs(Some(&report));
     assert!(

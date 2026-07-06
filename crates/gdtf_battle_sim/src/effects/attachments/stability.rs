@@ -10,7 +10,7 @@ use super::ApplyAttachmentEffect;
 /// A brace's **weapon-brace bonus** — the graduated per-item §1a stability-score
 /// contribution a [`Stability`](super::AttachmentEffect::Stability) attachment adds to the
 /// weapon's cone-stability composition (GTW-549). An additive stability term, the
-/// [`SuppressionStability`](crate::SuppressionStability) / emplacement-stability precedent,
+/// [`SuppressionStability`](crate::stability::SuppressionStability) / emplacement-stability precedent,
 /// GRADUATED per item (not the boolean [`Stable`](crate::weapon::Stable) tag).
 ///
 /// A `#[derive(Component)]` (no-bare-types: private inner + derived [`Deref`];
@@ -47,7 +47,7 @@ impl WeaponBraceBonus {
 /// [`ApplyBrace`](super::ApplyBrace) tag.
 ///
 /// Inserts the bonus as a `Component` (the §1a stability composer folds it as an additive
-/// contribution, the [`SuppressionStability`](crate::SuppressionStability) precedent).
+/// contribution, the [`SuppressionStability`](crate::stability::SuppressionStability) precedent).
 pub struct ApplyStability {
     /// The graduated §1a stability-score points this brace contributes.
     bonus: WeaponBraceBonus,

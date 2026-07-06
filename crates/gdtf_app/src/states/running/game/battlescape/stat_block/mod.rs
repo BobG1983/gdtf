@@ -7,7 +7,7 @@
 //! - [`spawn_stat_block`] builds one block (the [`build`] submodule).
 //! - [`update_stat_block`] mutates a block from a ganger's CURRENT components in place
 //!   ([[ui-mutate-not-respawn]], the [`update`] submodule).
-//! - [`portrait`] owns the deterministic [`GangerName`](gdtf_battle_sim::GangerName) →
+//! - [`portrait`] owns the deterministic [`GangerName`](gdtf_battle_sim::ganger::GangerName) →
 //!   face mapping ([`PortraitIndex`]) + the `bevy_ui` portrait node builder.
 //! - [`labels`] owns the pure name / faction / stance / wound-name format helpers.
 //! - [`colors`] owns the mockup-approximate bar / pip colors.

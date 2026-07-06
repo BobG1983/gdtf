@@ -5,8 +5,8 @@
 //! There is NO fire BUTTON — fire is left-click-on-an-ENEMY-target with a fire mode
 //! selected (the 222c action bar carries stance / aim / mode / level only; an explicit
 //! fire button is GTW-11). This module assembles the shooter's
-//! [`FireActor`](gdtf_battle_sim::FireActor) from its QUERIED components and runs the
-//! SHARED [`can_fire`](gdtf_battle_sim::can_fire) guard set (the SAME validation the
+//! [`FireActor`](gdtf_battle_sim::magazine::FireActor) from its QUERIED components and runs the
+//! SHARED [`can_fire`](gdtf_battle_sim::magazine::can_fire) guard set (the SAME validation the
 //! 222c button and the sim `fire()` consult — resolution.md §9 "button and act share
 //! one guard set"); when it passes it yields the [`FireRequested`] the unified system
 //! pushes as an [`ActIntent::Fire`](crate::ActIntent::Fire). The ONE
@@ -22,19 +22,24 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    Aiming, CellLevel, FireActor, Handedness, HandsAvailable, InflictedInjuries, LifeState,
-    Magazine, MeleeQuery, Tu, TuMax, WieldedBy, Wields, acts::FireRequested, can_fire,
+    acts::FireRequested,
+    fire::MeleeQuery,
+    ganger::{Aiming, TuMax},
+    injuries::{HandsAvailable, InflictedInjuries},
+    magazine::{FireActor, Magazine, can_fire},
+    prelude::{CellLevel, LifeState, Tu},
     tuning::CombatTuning,
+    weapon::{Handedness, WieldedBy, Wields},
 };
 
 use crate::SelectedFireMode;
 
 /// The shooter VITALS the FIRE branch queries off the GANGER to assemble a
-/// [`FireActor`](gdtf_battle_sim::FireActor) for the shared `can_fire` guard.
+/// [`FireActor`](gdtf_battle_sim::magazine::FireActor) for the shared `can_fire` guard.
 ///
 /// The shooter vitals `FireActor` borrows from the ganger: its [`LifeState`], current
 /// [`Tu`], [`TuMax`], and [`Aiming`] flag, plus its OPTIONAL [`InflictedInjuries`] ledger
-/// (GTW-443 — folded into the [`FireActor`](gdtf_battle_sim::FireActor)'s
+/// (GTW-443 — folded into the [`FireActor`](gdtf_battle_sim::magazine::FireActor)'s
 /// [`HandsAvailable`] hand count; an absent ledger = the uninjured two-hands default).
 /// The [`Magazine`] + [`Handedness`] `FireActor` fields live on the related WEAPON entity
 /// since GTW-323 slice 3 (ADR-0004) — read separately off `ganger → `[`Wields`]` → the
@@ -51,7 +56,7 @@ pub type ShooterFireData<'a> = (
 );
 
 /// The wielded-weapon [`Magazine`] + [`Handedness`] read off a WEAPON entity
-/// (`With<`[`WieldedBy`]`>`) — two [`FireActor`](gdtf_battle_sim::FireActor) fields,
+/// (`With<`[`WieldedBy`]`>`) — two [`FireActor`](gdtf_battle_sim::magazine::FireActor) fields,
 /// resolved through the shooter's [`Wields`] relationship since GTW-323 slice 3 (ADR-0004;
 /// [`Handedness`] added GTW-443). Read-only; a `QueryData` borrow filtered to weapon
 /// entities so it never collides with the ganger-vitals [`ShooterFireData`] query.
@@ -62,9 +67,9 @@ pub type WeaponMagazine<'a> = (&'a Magazine, &'a Handedness);
 ///
 /// The FIRE rung of [`crate::selection::left_click_act`]'s precedence chain:
 ///
-/// 1. queries the shooter's [`FireActor`](gdtf_battle_sim::FireActor) components off
+/// 1. queries the shooter's [`FireActor`](gdtf_battle_sim::magazine::FireActor) components off
 ///    `shooters` (a `None` lookup — an unarmed/incomplete shooter — fails closed),
-/// 2. runs the SHARED [`can_fire`](gdtf_battle_sim::can_fire) guard with the
+/// 2. runs the SHARED [`can_fire`](gdtf_battle_sim::magazine::can_fire) guard with the
 ///    [`SelectedFireMode`], the target cell / level, and the [`CombatTuning`],
 /// 3. ONLY when it passes, returns
 ///    [`Some`]`(`[`FireRequested`]` { shooter, mode = *SelectedFireMode, target_cell,

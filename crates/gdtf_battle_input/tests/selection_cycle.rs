@@ -23,8 +23,10 @@ use gdtf_battle_input::{
 };
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
-    BattleInProgress, Cell, CellLevel, Faction, Level, OccupancyGrid, PlayerFaction,
-    VerticalLinkGraph, test_support::GangerEntityBuilder,
+    battle::PlayerFaction,
+    prelude::{BattleInProgress, Cell, CellLevel, Faction, Level, OccupancyGrid},
+    test_support::GangerEntityBuilder,
+    vertical::VerticalLinkGraph,
 };
 use gdtf_test_utils::{clear_keys, press_key};
 

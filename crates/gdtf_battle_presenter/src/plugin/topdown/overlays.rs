@@ -2,7 +2,9 @@
 //! target, area-damage field wash, and the debug-only reachable-range overlay.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{BattleInProgress, FieldRegistry, SquadVisibility};
+use gdtf_battle_sim::{
+    effects::fields::FieldRegistry, prelude::BattleInProgress, visibility::SquadVisibility,
+};
 
 use crate::{
     HighlightRequest, PresenterSystems, draw_field_overlay, draw_fire_target,
@@ -49,7 +51,7 @@ pub(super) fn register_highlight_systems(app: &mut App) {
 ///
 /// The PRESENTER owns the [`PathPreview`](crate::PathPreview) read-seam (`init_resource`-d
 /// on build) plus this draw system; the INPUT crate POPULATES the resource by calling
-/// [`find_path`](gdtf_battle_sim::find_path) for the selected ganger → the target — the
+/// [`find_path`](gdtf_battle_sim::pathfinder::find_path) for the selected ganger → the target — the
 /// [`HighlightRequest`] precedent, where the presenter DEFINES the type and input WRITES it,
 /// keeping the `input → presenter → sim` direction (never a cycle).
 ///
@@ -86,7 +88,7 @@ pub(super) fn register_path_preview_systems(app: &mut App) {
 /// The PRESENTER owns the [`FireTargetHighlight`](crate::FireTargetHighlight) read-seam
 /// (`init_resource`-d on build) plus this draw system; the INPUT crate POPULATES the resource
 /// by deciding the fireable-enemy verdict (mirroring `decide_left_click`'s FIRE rung) +
-/// computing the [`mode_tu_cost`](gdtf_battle_sim::mode_tu_cost) — the [`HighlightRequest`]
+/// computing the [`mode_tu_cost`](gdtf_battle_sim::magazine::mode_tu_cost) — the [`HighlightRequest`]
 /// precedent, where the presenter DEFINES the type and input WRITES it, keeping the
 /// `input → presenter → sim` direction (never a cycle).
 ///
@@ -122,7 +124,7 @@ pub(super) fn register_fire_target_systems(app: &mut App) {
 /// (GTW-572 C4): the sim's acts plugin registers the buffer in a live battle, and a
 /// presenter-only harness without it keeps the family reader inert.)
 ///
-/// The presenter reads the AUTHORITATIVE sim [`FieldRegistry`](gdtf_battle_sim::FieldRegistry)
+/// The presenter reads the AUTHORITATIVE sim [`FieldRegistry`](gdtf_battle_sim::effects::fields::FieldRegistry)
 /// resource DIRECTLY (a battle-lifetime resource `setup_battle` seeds from the situation's
 /// authored `fields:` list and the GTW-547 spawn API grows) and DRAWS one translucent hazard
 /// tile per fielded cell — the one-way `input → presenter → sim` direction (the presenter reads
@@ -137,7 +139,7 @@ pub(super) fn register_fire_target_systems(app: &mut App) {
 ///
 /// - [`draw_field_overlay`] — the persistent per-cell hazard wash. It draws each fielded cell on
 ///   the active storey with a pooled, mutated-in-place [`Sprite`] (never despawn-respawned), tinted
-///   per the field's [`DamageType`](gdtf_battle_sim::DamageType), hard-cut to the active storey.
+///   per the field's [`DamageType`](gdtf_battle_sim::weapon::DamageType), hard-cut to the active storey.
 ///   The overlay follows `PageUp` with NO extra wiring: it reads `Res<ActiveLevel>` live every
 ///   frame. Gated `run_if(resource_exists::<FieldRegistry>)` — the sim's live-field witness
 ///   (`setup_battle` inserts it, teardown removes it), so it stays inert when no battle has seeded
@@ -165,7 +167,7 @@ pub(super) fn register_field_overlay_systems(app: &mut App) {
 ///
 /// The PRESENTER owns the [`ReachableCells`] read-seam (`init_resource`-d here) plus this
 /// draw system; the INPUT crate POPULATES the resource by calling
-/// [`reachable_within`](gdtf_battle_sim::reachable_within) for the selected ganger — the
+/// [`reachable_within`](gdtf_battle_sim::pathfinder::reachable_within) for the selected ganger — the
 /// [`PathPreview`](crate::PathPreview) precedent, where the presenter DEFINES the type
 /// and input WRITES it, keeping the `input → presenter → sim` direction.
 ///

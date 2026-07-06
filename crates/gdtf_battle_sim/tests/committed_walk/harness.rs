@@ -8,13 +8,14 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Faction, FloorCostGrid, Position, Speed, SquadVisibility, Stance, StanceKind, Tu,
-    WalkInProgress,
+    acts::movement::WalkInProgress,
     battle::{BattleSimPlugin, SetupBattleRequested},
-    ganger::GangRegistry,
+    floor::FloorCostGrid,
+    ganger::{GangRegistry, Speed},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     pathfinder::{PlanningView, find_path},
+    prelude::{Faction, Position, Stance, StanceKind, Tu},
     rng::BattleSeed,
     situation::Situation,
     test_support::{
@@ -23,7 +24,7 @@ use gdtf_battle_sim::{
     },
     tuning::{CombatTuning, ReactionCapBase, ReactionCapPerReactions, ReactionTuning, ViewRange},
     vertical::VerticalLinkGraph,
-    visibility::FactionRelation,
+    visibility::{FactionRelation, SquadVisibility},
 };
 
 /// An arbitrary (not shipped tuning) seed for the test battle's RNG stream.
@@ -137,7 +138,7 @@ pub(crate) fn plan_total(app: &App, start: CellLevel, goal: CellLevel) -> Option
         links,
         tuning,
         floor_costs,
-        gdtf_battle_sim::MovementCostFactor::IDENTITY,
+        gdtf_battle_sim::injuries::MovementCostFactor::IDENTITY,
         &planning,
     )
     .ok()?;

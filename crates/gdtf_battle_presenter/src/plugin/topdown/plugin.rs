@@ -86,7 +86,7 @@ impl Plugin for TopDownRendererPlugin {
             // the empty highlight, so a battle with no fireable hover draws no fire target.
             .init_resource::<FireTargetHighlight>()
             // The S5 ganger-sprite map (sim Entity -> presenter Entity), present for the
-            // whole battle span so the spawn / move / reframe / death / removal systems
+            // whole battle span so the spawn / move / appearance / death / removal systems
             // share one mapping.
             .init_resource::<GangerSprites>()
             .add_systems(

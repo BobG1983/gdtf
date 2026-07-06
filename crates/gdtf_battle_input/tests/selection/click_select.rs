@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_input::{GdtfBattleInputPlugin, PendingActIntent, SelectedShooter};
-use gdtf_battle_sim::{Cell, CellLevel, Level, OccupancyGrid};
+use gdtf_battle_sim::prelude::{Cell, CellLevel, Level, OccupancyGrid};
 use gdtf_test_utils::press_left;
 
 use super::harness::*;

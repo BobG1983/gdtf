@@ -5,8 +5,8 @@ use gdtf_battle_input::{
     contextual::{EnterEmplacementAct, ExitEmplacementAct, PendingContextualIntents},
 };
 use gdtf_battle_sim::{
-    Direction, StanceKind,
     acts::{EnterEmplacementRequested, ExitEmplacementRequested},
+    prelude::{Direction, StanceKind},
 };
 use gdtf_test_utils::probed;
 

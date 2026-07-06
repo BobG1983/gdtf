@@ -2,8 +2,14 @@
 //! line helpers (GTW-328 slice 2; the GTW-572 C6 state-change arms).
 
 use gdtf_battle_sim::{
-    Cell, DotDamage, Faction, HitReport, HpDamage, ModeKind, MoveRejection, PlayerFaction,
-    ReloadOutcome, Severity, StoreysFallen,
+    acts::{MoveRejection, ReloadOutcome},
+    battle::PlayerFaction,
+    falls::StoreysFallen,
+    prelude::{Cell, Faction},
+    resolve_and_apply::HitReport,
+    resolve_hit::HpDamage,
+    severity::Severity,
+    weapon::{DotDamage, ModeKind},
 };
 
 use super::{
@@ -24,7 +30,7 @@ use super::{
 /// [`World`](bevy::prelude::World) (the forwarders resolve the entities first), so every
 /// variant is unit-testable in isolation. Most events yield exactly one line; a
 /// [`ShotOutcome`](CombatLogEvent::ShotOutcome) on a CONNECTING hit yields the
-/// [`classify_report`] list, an [`AlreadyFull`](gdtf_battle_sim::ReloadOutcome::AlreadyFull)
+/// [`classify_report`] list, an [`AlreadyFull`](gdtf_battle_sim::acts::ReloadOutcome::AlreadyFull)
 /// reload and a non-suppressed move rejection yield NONE.
 ///
 /// Phrasing (v1 battle-HUD voice):
@@ -127,7 +133,7 @@ fn fall_line(actor: &LogName, storeys: StoreysFallen) -> LogLine {
 }
 
 /// The melee-damage line (GTW-572 C6) — `"<attacker> struck <target> (-N)"` in the damage
-/// RED: the number-bearing melee fact ([`MeleeStruck`](gdtf_battle_sim::MeleeStruck))
+/// RED: the number-bearing melee fact ([`MeleeStruck`](gdtf_battle_sim::acts::MeleeStruck))
 /// finally surfaces the strike's applied HP loss in the log.
 fn melee_struck_line(attacker: &LogName, target: &LogName, amount: HpDamage) -> LogLine {
     LogLine::new(

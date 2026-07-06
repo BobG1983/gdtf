@@ -16,7 +16,7 @@ use crate::{
         shove::dispatch_shove,
         throw_grenade::dispatch_throw_grenade,
     },
-    apply_pending_attachments,
+    equipment::attachments::apply_pending_attachments,
     occupancy::project_path_blocking,
     occupancy_sync::{SimSystems, sync_destroyed_cover},
 };

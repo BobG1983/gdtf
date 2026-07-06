@@ -6,7 +6,10 @@ use gdtf_app::test_support::{
     StanceProneButton, StanceStandingButton, WeaponImage, WeaponItemButton, WeaponItemPanel,
     WeaponMagazineText, WeaponNameText, WeaponPanelRoot,
 };
-use gdtf_battle_sim::{Magazine, MagazineSize, ReloadTu};
+use gdtf_battle_sim::{
+    magazine::{Magazine, ReloadTu},
+    weapon::MagazineSize,
+};
 
 use super::harness::*;
 

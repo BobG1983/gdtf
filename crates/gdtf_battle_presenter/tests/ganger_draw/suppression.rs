@@ -3,15 +3,17 @@
 use bevy::{app::App, prelude::Entity};
 use gdtf_battle_presenter::GangerSprites;
 use gdtf_battle_sim::{
-    Cell, CellLevel, Direction, Level, Suppressed, SuppressorCell, test_support::SituationBuilder,
+    ganger::{Suppressed, SuppressorCell},
+    prelude::{Cell, CellLevel, Direction, Level},
+    test_support::SituationBuilder,
 };
 
 use super::{harness::*, probes::*};
 
 /// Whether two sprite colors are the SAME colour within tolerance, compared on their linear
-/// RGB channels — so a `LinearRgba` (the reframe re-tint output) and an `Srgba` (the spawn
-/// tint) carrying the same colour compare equal despite the different enum variant. `None`
-/// colors never match.
+/// RGB channels — so two `Color`s carrying the same colour compare equal despite a possibly
+/// different enum variant (the appearance classifier composes through the linear pipeline).
+/// `None` colors never match.
 fn same_color(a: Option<bevy::color::Color>, b: Option<bevy::color::Color>) -> bool {
     match (a, b) {
         (Some(a), Some(b)) => {
@@ -46,7 +48,7 @@ fn saturation(color: Option<bevy::color::Color>) -> f32 {
 }
 
 /// Insert `Suppressed` on sim ganger `sim` (the real APPLY transition — `Changed<Suppressed>`
-/// the reframe/re-tint arm keys on), anchored to `from` the way the sim producer does.
+/// the appearance resolver keys on), anchored to `from` the way the sim producer does.
 fn suppress(app: &mut App, sim: Entity, from: CellLevel) {
     app.world_mut()
         .entity_mut(sim)
@@ -54,7 +56,7 @@ fn suppress(app: &mut App, sim: Entity, from: CellLevel) {
 }
 
 /// Remove `Suppressed` from sim ganger `sim` (the real CLEAR transition — a component REMOVAL,
-/// which `Changed` does NOT observe, so `reframe_ganger_sprites` drains it via
+/// which `Changed` does NOT observe, so `resolve_ganger_appearance` drains it via
 /// `RemovedComponents<Suppressed>`).
 fn unsuppress(app: &mut App, sim: Entity) {
     app.world_mut().entity_mut(sim).remove::<Suppressed>();
@@ -65,7 +67,7 @@ fn unsuppress(app: &mut App, sim: Entity) {
 /// does NOT observe) drains through `RemovedComponents<Suppressed>` to restore the ordinary
 /// tint.
 ///
-/// This pins the reframe/re-tint suppression arm on the REAL path:
+/// This pins the appearance resolver's suppression arm on the REAL path:
 /// - APPLY: inserting `Suppressed` trips `Changed<Suppressed>` — the sprite re-tints to a
 ///   colour-drained (lower-saturation) AND dimmer swatch than the un-suppressed tint.
 /// - CLEAR: removing `Suppressed` is a removal, not a `Changed`; the system's
@@ -128,9 +130,9 @@ fn suppression_desaturates_the_sprite_and_clearing_restores_it() {
     unsuppress(&mut app, sim);
     app.update();
     let color_restored = sprite_color(&mut app, sprite);
-    // Compare on the linear channels (not variant-equality): the reframe re-tint always emits a
-    // `LinearRgba`, while the spawn tint is stored as `Srgba` — same colour, different enum
-    // variant — so assert the linear RGB match within tolerance rather than `==`.
+    // Compare on the linear channels (not variant-equality): the appearance re-stamp emits a
+    // `LinearRgba` — same colour, possibly a different enum variant than the captured
+    // baseline — so assert the linear RGB match within tolerance rather than `==`.
     assert!(
         same_color(color_restored, color_clear),
         "clearing suppression (a component REMOVAL) must restore the ORIGINAL un-suppressed \

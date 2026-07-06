@@ -4,8 +4,12 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{
-    Aim, ArmorName, Cool, GangMember, GangerAttributes, GangerName, Grit, Reflexes, Speed,
-    Strength, Toughness, WeaponName, ganger::Luck,
+    armor::ArmorName,
+    ganger::{
+        Aim, Cool, GangMember, GangerAttributes, GangerName, Grit, Luck, Reflexes, Speed, Strength,
+        Toughness,
+    },
+    weapon::WeaponName,
 };
 
 use crate::states::running::gang_editor::components::BaseAttribute;
@@ -19,7 +23,7 @@ crate::support_item! {
     /// One **editable gang member** in the editor's working model (GTW-420).
     ///
     /// A faction-agnostic, placement-free roster entry mirroring the sim's
-    /// [`GangMember`](gdtf_battle_sim::GangMember): an identity [`GangerName`], the eight direct
+    /// [`GangMember`](gdtf_battle_sim::ganger::GangMember): an identity [`GangerName`], the eight direct
     /// attributes, and the weapon / armor KEY newtypes. It is a NEW editor-side type (not the sim
     /// asset record) because the editor needs an owned, mutable working copy the screen can edit.
     ///
@@ -199,7 +203,7 @@ impl EditableMember {
 
     crate::support_item! {
         /// The member's eight attributes grouped as the sim's [`GangerAttributes`] input record —
-        /// the EXACT shape the GTW-384 [`derive_stats`](gdtf_battle_sim::derive_stats) pipeline
+        /// the EXACT shape the GTW-384 [`derive_stats`](gdtf_battle_sim::ganger::derive_stats) pipeline
         /// consumes (GTW-428 C3). The editor feeds this straight to the real pipeline rather than
         /// reimplementing the derivation.
         #[must_use]

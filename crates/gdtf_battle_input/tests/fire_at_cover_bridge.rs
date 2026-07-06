@@ -18,15 +18,27 @@ use bevy::{input::ButtonInput, platform::collections::HashSet, prelude::*, scene
 use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedFireMode, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight, ViewMode};
 use gdtf_battle_sim::{
-    Accuracy, Aiming, ArmorHardness, ArmorProtection, BaseSpread, BattleSeed, Cell, CellLevel,
-    CoverEntry, CoverHp, CoverLedger, DamageProfile, DamageType, Direction, Facing, Faction,
-    FatalBias, FireMode, Handedness, HandlingProfile, HeightBand, Hp, InflictedWounds, Kickback,
-    Level, LifeState, Luck, Magazine, MagazineSize, OccupancyGrid, OccupancyMaintenancePlugin,
-    PlayerFaction, Position, ReloadTu, Shooting, Shove, SquadVisibility, Stable, Stance,
-    StanceKind, TerrainKind, Toughness, Tu, TuMax, WeaponBundle, WeaponDamage, WeaponName,
-    WeaponPunch, WeaponShred, WieldedBy, Wounds,
     acts::SimActsPlugin,
+    armor::{ArmorHardness, ArmorProtection},
+    battle::PlayerFaction,
+    cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
+    inflicted_wound::InflictedWounds,
+    magazine::{Magazine, ReloadTu},
+    occupancy::TerrainKind,
+    occupancy_sync::OccupancyMaintenancePlugin,
+    prelude::{
+        Cell, CellLevel, Direction, Faction, Level, LifeState, OccupancyGrid, Position, Stance,
+        StanceKind, Tu,
+    },
+    rng::BattleSeed,
     test_support::{insert_sim_resources, single_mode},
+    visibility::SquadVisibility,
+    weapon::{
+        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, Handedness,
+        HandlingProfile, Kickback, MagazineSize, Shove, Stable, WeaponBundle, WeaponDamage,
+        WeaponName, WeaponPunch, WeaponShred, WieldedBy,
+    },
 };
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).
@@ -66,7 +78,7 @@ fn bridge_app() -> App {
     // suite-specific reads + overrides follow.
     insert_sim_resources(&mut app, BattleSeed::new(0xC0BA_17C0));
     // The battle-live gate witness + the click-decision reads.
-    app.insert_resource(gdtf_battle_sim::BattleInProgress);
+    app.insert_resource(gdtf_battle_sim::battle::BattleInProgress);
     app.insert_resource(ActiveLevel::new(LEVEL));
     // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
     app.insert_resource(ViewMode::default());

@@ -3,7 +3,10 @@
 
 use bevy::prelude::*;
 use gdtf_battle_presenter::CELL_PX;
-use gdtf_battle_sim::{Cell, CellLevel, GRID_HEIGHT, GRID_WIDTH, Level};
+use gdtf_battle_sim::{
+    occupancy::{GRID_HEIGHT, GRID_WIDTH},
+    prelude::{Cell, CellLevel, Level},
+};
 
 /// The INVERSE of the presenter's `cell_to_world`: a world point -> the
 /// `(cell, level)` it falls in, or [`None`] when the cell is outside the 60×60

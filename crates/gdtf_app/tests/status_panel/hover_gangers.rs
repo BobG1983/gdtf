@@ -5,9 +5,13 @@ use gdtf_app::test_support::{
     InspectObjectBlock, InspectPanelRoot, InspectStatBlockHost, StatHpLabel, StatName, StatTuLabel,
 };
 use gdtf_battle_sim::{
-    Cell, CellLevel, Faction, GangerName, Hp, HpMax, InflictedWounds, Level, LifeState,
-    OccupancyGrid, PlayerFaction, Position, SquadVisibility, Stance, StanceKind, Tu, TuMax, Wounds,
-    WoundsMax,
+    battle::PlayerFaction,
+    ganger::{GangerName, Hp, HpMax, TuMax, Wounds, WoundsMax},
+    inflicted_wound::InflictedWounds,
+    prelude::{
+        Cell, CellLevel, Faction, Level, LifeState, OccupancyGrid, Position, Stance, StanceKind, Tu,
+    },
+    visibility::SquadVisibility,
 };
 use gdtf_ui::theme::GdtfTheme;
 

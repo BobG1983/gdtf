@@ -2,7 +2,7 @@
 
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
 use gdtf_app::test_support::{AppState, BattleScapeState, RunningState};
-use gdtf_battle_sim::{GangerName, injuries::InjuryRegistry, tuning::CombatTuning};
+use gdtf_battle_sim::{ganger::GangerName, injuries::InjuryRegistry, tuning::CombatTuning};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 

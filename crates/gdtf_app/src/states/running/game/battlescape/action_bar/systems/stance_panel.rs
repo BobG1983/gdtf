@@ -7,7 +7,7 @@
 //! intent mapping ([`stance_segment_intent`](super::stance_active::stance_segment_intent))
 //! reads the widget's [`SegmentSelected`](gdtf_ui::SegmentSelected) message; the active
 //! mark is the widget's own [`ActiveSegment`](gdtf_ui::ActiveSegment) highlight, synced
-//! FROM the selected ganger's [`Stance`](gdtf_battle_sim::Stance).
+//! FROM the selected ganger's [`Stance`](gdtf_battle_sim::ganger::Stance).
 //!
 //! [`spawn_stance_panel`] builds the Stance sub-panel: its OWN bordered
 //! [`spawn_panel`](gdtf_ui::spawn_panel) box (`Themed(Panel)` — D-B, the same framed look
@@ -30,7 +30,7 @@ use bevy::{
     prelude::*,
     ui::{Node, UiRect, Val},
 };
-use gdtf_battle_sim::StanceKind;
+use gdtf_battle_sim::prelude::StanceKind;
 use gdtf_ui::{
     Orientation, SegmentColors, SegmentLabel, spawn_panel, spawn_segmented_control,
     theme::GdtfTheme,

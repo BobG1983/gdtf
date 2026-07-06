@@ -3,7 +3,11 @@
 //! `model.rs` (GTW-583); the model rationale lives on the parent `model` module.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{ArmorName, GangName, GangRegistry, GangRoster, GangerName, WeaponName};
+use gdtf_battle_sim::{
+    armor::ArmorName,
+    ganger::{GangName, GangRegistry, GangRoster, GangerName},
+    weapon::WeaponName,
+};
 
 use super::member::EditableMember;
 use crate::states::running::gang_editor::components::BaseAttribute;
@@ -14,7 +18,7 @@ crate::support_item! {
     ///
     /// A [`Resource`] holding the gang's [`GangName`] plus its list of [`EditableMember`]s. It is
     /// the editor-side EDITABLE model, distinct from the immutable
-    /// [`GangRoster`](gdtf_battle_sim::GangRoster) asset: the gang-name text field mutates
+    /// [`GangRoster`](gdtf_battle_sim::ganger::GangRoster) asset: the gang-name text field mutates
     /// [`name`](EditableGang::name) (AC3), and "Add member" appends a default
     /// [`EditableMember`] (AC4).
     ///
@@ -66,7 +70,7 @@ impl EditableGang {
         ///
         /// The gang's [`name`](EditableGang::name) becomes the registry KEY (the file stem, NOT a
         /// field of the roster — the GTW-415 key model), and each [`EditableMember`] projects to a
-        /// sim [`GangMember`](gdtf_battle_sim::GangMember) via [`to_sim`](EditableMember::to_sim). The save path serializes the
+        /// sim [`GangMember`](gdtf_battle_sim::ganger::GangMember) via [`to_sim`](EditableMember::to_sim). The save path serializes the
         /// returned [`GangRoster`] to `assets/content/gangs/<gang_name>.gang.ron`, and the round-trip
         /// test reloads it through the same loader and asserts structural equality (C2). Declared
         /// through [`crate::support_item!`] so the round-trip test can name it.

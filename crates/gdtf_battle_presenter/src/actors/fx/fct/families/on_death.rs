@@ -1,9 +1,9 @@
 //! The ON-DEATH consequence family (GTW-547, palette-ised in GTW-572): the transient BOLD
 //! `"BOOM"` blast marker at every cell where an on-death effect fanned, off the sim's
-//! [`OnDeathOccurred`](gdtf_battle_sim::OnDeathOccurred) message.
+//! [`OnDeathOccurred`](gdtf_battle_sim::effects::on_death::OnDeathOccurred) message.
 //!
 //! It closes the Explode VISIBILITY gap: the sim's
-//! [`Explode`](gdtf_battle_sim::OnDeathEffect::Explode) applies its blast as a direct,
+//! [`Explode`](gdtf_battle_sim::effects::on_death::OnDeathEffect::Explode) applies its blast as a direct,
 //! RNG-free HP drain that rides NO shot-impact FX nor attrition pop, so without this marker
 //! a detonation would be invisible. Drawn the lethal
 //! [`FctValence::Lethal`](super::super::palette::FctValence::Lethal) blood-red at
@@ -12,7 +12,7 @@
 //! [`PopAnchor::Carried`]; a cover death carries [`Entity::PLACEHOLDER`](bevy::prelude::Entity)
 //! and still has a valid cell, so the marker never depends on the entity.
 
-use gdtf_battle_sim::OnDeathOccurred;
+use gdtf_battle_sim::effects::on_death::OnDeathOccurred;
 
 use super::super::{
     palette::{FctValence, valence_color},
@@ -45,7 +45,10 @@ impl ConsequenceFct for OnDeathFct {
 #[cfg(test)]
 mod test {
     use bevy::prelude::Entity;
-    use gdtf_battle_sim::{Cell, CellLevel, Level, OnDeathOccurred};
+    use gdtf_battle_sim::{
+        effects::on_death::OnDeathOccurred,
+        prelude::{Cell, CellLevel, Level},
+    };
 
     use super::{
         super::super::{pop::ConsequenceFct, text::FctEmphasis},

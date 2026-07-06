@@ -3,7 +3,7 @@
 //!
 //! The presenter owns the [`ReachableCells`] read-seam + the draw system; this module
 //! POPULATES the presenter resource for the SELECTED ganger using
-//! [`reachable_within`](gdtf_battle_sim::reachable_within) — the SAME sim API the
+//! [`reachable_within`](gdtf_battle_sim::pathfinder::reachable_within) — the SAME sim API the
 //! dispatch and test harnesses use. It is the ONLY place [`SelectedShooter`] feeds the
 //! reachable-range overlay — keeping selection out of the authoritative sim model (the
 //! `input → presenter → sim` direction; the presenter DEFINES the resource, this input
@@ -26,16 +26,20 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::ReachableCells;
 use gdtf_battle_sim::{
-    CellLevel, CombatTuning, Faction, FactionRelation, FloorCostGrid, InflictedInjuries,
-    MovementCostFactor, OccupancyGrid, PlanningView, Position, SquadVisibility, Tu,
-    VerticalLinkGraph, reachable_within,
+    floor::FloorCostGrid,
+    injuries::{InflictedInjuries, MovementCostFactor},
+    pathfinder::{PlanningView, reachable_within},
+    prelude::{CellLevel, Faction, OccupancyGrid, Position, Tu},
+    tuning::CombatTuning,
+    vertical::VerticalLinkGraph,
+    visibility::{FactionRelation, SquadVisibility},
 };
 
 use crate::selection::resources::SelectedShooter;
 
 /// `Update` ([`InputSystems::Gather`](crate::InputSystems)): POPULATE the
 /// presenter-owned [`ReachableCells`] for the [`SelectedShooter`] — the
-/// [`reachable_within`](gdtf_battle_sim::reachable_within) flood over the
+/// [`reachable_within`](gdtf_battle_sim::pathfinder::reachable_within) flood over the
 /// visibility-gated grid within the selected ganger's remaining TU (C3).
 ///
 /// When a ganger is selected and its `(`[`Position`]`,` [`Tu`]`,` [`Faction`]`)` resolves,

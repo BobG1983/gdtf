@@ -24,8 +24,8 @@
 //! is fixed from the start; 222b (GTW-227) FILLS their drain arms — emitting the
 //! matching `gdtf_battle_sim::acts::*Requested` for the
 //! [`SelectedShooter`](crate::SelectedShooter), reading the actor's CURRENT
-//! [`Stance`](gdtf_battle_sim::Stance) / [`Facing`](gdtf_battle_sim::Facing) /
-//! [`Aiming`](gdtf_battle_sim::Aiming) off a query and stepping the authored
+//! [`Stance`](gdtf_battle_sim::ganger::Stance) / [`Facing`](gdtf_battle_sim::ganger::Facing) /
+//! [`Aiming`](gdtf_battle_sim::ganger::Aiming) off a query and stepping the authored
 //! [`crate::cycle`] order — and adds the [`ActIntent::Fire`] variant the left-click
 //! FIRE surface writes (its `can_fire` guard runs at the WRITE site, so the drain
 //! just emits the carried [`FireRequested`](gdtf_battle_sim::acts::FireRequested)

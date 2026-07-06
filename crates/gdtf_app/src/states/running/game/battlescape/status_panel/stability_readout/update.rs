@@ -29,13 +29,16 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    Aiming, BraceStairCells, CoverLedger, Facing, MeleeWeapon, Position, Shooter, Stable, Stance,
-    Suppressed, Weapon, Wields,
+    aim::{Shooter, stability_for},
+    cover::CoverLedger,
     effects::attachments::WeaponBraceBonus,
+    ganger::{Aiming, Facing, Suppressed},
+    prelude::{Position, Stance},
+    slab::BraceStairCells,
     stability::{StabilityTerms, terrain_brace::terrain_braces},
-    stability_for,
     surface::SurfaceGrid,
     tuning::CombatTuning,
+    weapon::{MeleeWeapon, Stable, Weapon, Wields},
 };
 use gdtf_ui::{FillFraction, ProgressBarFill, set_progress_bar};
 

@@ -5,7 +5,11 @@ use bevy::{
     transform::components::Transform,
 };
 use gdtf_battle_presenter::{ShotProjectile, cell_to_world};
-use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, DamageType, Level, acts::ThrowResolved};
+use gdtf_battle_sim::{
+    acts::ThrowResolved,
+    prelude::{BattleInProgress, Cell, CellLevel, Level},
+    weapon::DamageType,
+};
 
 use super::harness::*;
 

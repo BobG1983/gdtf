@@ -3,7 +3,7 @@
 use bevy::{math::Vec2, prelude::*};
 use gdtf_battle_input::world_to_cell;
 use gdtf_battle_presenter::WorldCamera;
-use gdtf_battle_sim::Level;
+use gdtf_battle_sim::prelude::Level;
 
 use super::harness::*;
 

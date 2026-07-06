@@ -2,10 +2,10 @@
 //! outcome is deterministic across identical runs.
 
 use gdtf_battle_sim::{
-    Cool, Faction, Grit, Speed, Stance, StanceKind, Strength, Toughness,
     acts::MeleeRequested,
-    ganger::{Direction, Facing},
+    ganger::{Cool, Direction, Facing, Grit, Speed, Strength, Toughness},
     metric::CellLevel,
+    prelude::{Faction, Stance, StanceKind},
     test_support::{GangerSpawnBuilder, SituationBuilder},
 };
 

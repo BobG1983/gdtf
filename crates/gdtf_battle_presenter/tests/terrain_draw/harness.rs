@@ -17,9 +17,14 @@ use gdtf_battle_presenter::{
     TerrainFogMaterial, TerrainSprite, TileRoles, TopDownAtlases, TopDownRendererPlugin,
 };
 use gdtf_battle_sim::{
-    ArmorHardness, ArmorProtection, BattleReady, CellLevel, CoverDestroyed, CoverEntry, CoverHp,
-    FootfallSound, HeightBand, Level, OccupancyGrid, OccupancyInput, SlabDestroyed, TerrainCell,
-    TerrainGraphicKey, TerrainPlacement,
+    armor::{ArmorHardness, ArmorProtection},
+    battle::BattleReady,
+    cover::{CoverEntry, CoverHp, HeightBand},
+    entity::TerrainCell,
+    occupancy::{OccupancyInput, TerrainPlacement},
+    occupancy_sync::{CoverDestroyed, SlabDestroyed},
+    piece::{FootfallSound, TerrainGraphicKey},
+    prelude::{CellLevel, Level, OccupancyGrid},
 };
 use gdtf_test_utils::advance_until_resource_exists;
 

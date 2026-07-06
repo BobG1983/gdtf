@@ -2,7 +2,7 @@
 //!
 //! GTW-171 added `OccupancyGrid::occupant_band` / `set_occupant_band` (a
 //! `(cell, level) -> HeightBand` side-map) as the band-free
-//! [`march_vector`](gdtf_battle_sim::march_vector)'s way to read an occupant's
+//! [`march_vector`](gdtf_battle_sim::march::march_vector)'s way to read an occupant's
 //! silhouette band for the clearance test. The production publisher that keeps that
 //! side-map in lockstep with the occupant marker lives in `occupancy_sync`
 //! (`sync_moved_gangers` publishes / clears the band on a move or re-pose;
@@ -34,9 +34,15 @@ use bevy::{
     prelude::{Entity, MinimalPlugins},
 };
 use gdtf_battle_sim::{
-    Cell, CellLevel, CombatTuning, CoverLedger, HeightBand, Level, LifeState, MarchKind,
-    OccupancyGrid, OccupancyMaintenancePlugin, Position, SimPos, Stance, StanceKind, SurfaceGrid,
-    cell_center, march_vector,
+    cover::{CoverLedger, HeightBand},
+    march::{MarchKind, march_vector},
+    metric::cell_center,
+    occupancy_sync::OccupancyMaintenancePlugin,
+    prelude::{
+        Cell, CellLevel, Level, LifeState, OccupancyGrid, Position, SimPos, Stance, StanceKind,
+    },
+    surface::SurfaceGrid,
+    tuning::CombatTuning,
 };
 
 /// The cell the target ganger starts in.

@@ -35,11 +35,13 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Cool, Faction, Grit, Position, Speed, Stance, StanceKind, Strength, Toughness,
     acts::FireRequested,
     battle::{BattleSimPlugin, SetupBattleRequested},
-    ganger::{Aim, Aiming, Direction, Facing, GangRegistry},
+    ganger::{
+        Aim, Aiming, Cool, Direction, Facing, GangRegistry, Grit, Speed, Strength, Toughness,
+    },
     metric::{Cell, CellLevel, Level},
+    prelude::{Faction, Position, Stance, StanceKind},
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
     test_support::{

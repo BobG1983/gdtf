@@ -24,10 +24,18 @@ use gdtf_battle_input::{
 };
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
-    Aiming, BattleInProgress, Cell, CellLevel, Faction, FireMode, FireModeSpec, Level, LifeState,
-    Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
-    PlayerFaction, Position, ReloadTu, TerrainKind, Tu, TuMax, VerticalLinkGraph,
+    battle::PlayerFaction,
+    ganger::{Aiming, TuMax},
+    magazine::{Magazine, ReloadTu},
+    occupancy::TerrainKind,
+    prelude::{
+        BattleInProgress, Cell, CellLevel, Faction, Level, LifeState, OccupancyGrid, Position, Tu,
+    },
     tuning::CombatTuning,
+    vertical::VerticalLinkGraph,
+    weapon::{
+        FireMode, FireModeSpec, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
+    },
 };
 use gdtf_test_utils::{clear_mouse, press_left};
 

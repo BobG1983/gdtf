@@ -6,7 +6,11 @@ use bevy::{
     prelude::{Entity, Resource},
 };
 use gdtf_battle_sim::{
-    ArmorBroken, ArmorIntegrity, LifeState, Wears, acts::MeleeRequested, ganger::Direction,
+    acts::MeleeRequested,
+    armor::{ArmorIntegrity, Wears},
+    armor_wear::ArmorBroken,
+    ganger::Direction,
+    prelude::LifeState,
     test_support::SituationBuilder,
 };
 
@@ -17,12 +21,12 @@ use super::harness::*;
 #[derive(Resource, Default)]
 pub(crate) struct StruckLog {
     /// One entry per `MeleeStruck` emitted.
-    facts: Vec<gdtf_battle_sim::MeleeStruck>,
+    facts: Vec<gdtf_battle_sim::acts::MeleeStruck>,
 }
 
 /// Drain `MeleeStruck` into the recorder.
 pub(crate) fn record_struck(
-    mut struck: bevy::prelude::MessageReader<gdtf_battle_sim::MeleeStruck>,
+    mut struck: bevy::prelude::MessageReader<gdtf_battle_sim::acts::MeleeStruck>,
     mut log: bevy::prelude::ResMut<StruckLog>,
 ) {
     for fact in struck.read() {
@@ -31,7 +35,7 @@ pub(crate) fn record_struck(
 }
 
 /// The recorded `MeleeStruck` facts across the run.
-fn struck_facts(app: &App) -> Vec<gdtf_battle_sim::MeleeStruck> {
+fn struck_facts(app: &App) -> Vec<gdtf_battle_sim::acts::MeleeStruck> {
     app.world()
         .get_resource::<StruckLog>()
         .map_or_else(Vec::new, |log| log.facts.clone())

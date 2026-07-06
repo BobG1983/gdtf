@@ -10,7 +10,7 @@
 //! SHIPPED `tile_roles.ron`, `TopDownAtlases` loads) plus `TopDownRendererPlugin` and the
 //! real `setup_battle` spawn path. The links + gangers are NOT hand-spawned — they are
 //! poured through the real setup from a `Situation` carrying authored
-//! [`VerticalLink`](gdtf_battle_sim::VerticalLink)s, so `setup_battle` validates + inserts
+//! [`VerticalLink`](gdtf_battle_sim::vertical::VerticalLink)s, so `setup_battle` validates + inserts
 //! the `VerticalLinkGraph` the draw reads. `app.world_mut()` in the test body is the
 //! accepted headless idiom (`bevy-traps.md` #7 carve-out (a)); no function here takes
 //! `&mut World`/`&World`.

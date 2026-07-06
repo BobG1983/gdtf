@@ -7,7 +7,7 @@
 //!
 //! - `OnEnter(DebugGangEditor)`: [`insert_editable_gang`] inserts the
 //!   [`EditableGang`](super::model::EditableGang) model (loaded
-//!   from the [`GangRegistry`](gdtf_battle_sim::GangRegistry), or empty — AC2), ORDERED BEFORE
+//!   from the [`GangRegistry`](gdtf_battle_sim::ganger::GangRegistry), or empty — AC2), ORDERED BEFORE
 //!   [`spawn_editor_screen`] which builds the themed panel layout (the gang-name field via
 //!   [`spawn_text_field`](gdtf_ui::spawn_text_field), the "Add member" button, the member-list
 //!   shell).
@@ -32,7 +32,7 @@
 //! weapon / armor selectors — C2). The editor is the first consumer of all three widgets in the app.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{ArmorName, WeaponName};
+use gdtf_battle_sim::{armor::ArmorName, weapon::WeaponName};
 use gdtf_ui::{register_dropdown, register_numeric_field, register_text_field};
 
 use crate::states::{RunningState, running::gang_editor::systems::*};

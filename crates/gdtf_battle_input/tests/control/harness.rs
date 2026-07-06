@@ -5,12 +5,20 @@ use bevy::{input::ButtonInput, prelude::*};
 use gdtf_battle_input::{GdtfBattleInputPlugin, InspectTarget, SelectedFireMode, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
-    Aiming, BattleInProgress, CellLevel, Faction, FireMode, FireModeSpec, Handedness, Level,
-    LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-    OccupancyGrid, PlayerFaction, Position, ReloadTu, SquadVisibility, Tu, TuMax,
-    VerticalLinkGraph, WieldedBy,
     acts::{FireRequested, MoveRequested, SetFacingRequested},
+    battle::PlayerFaction,
+    ganger::{Aiming, TuMax},
+    magazine::{Magazine, ReloadTu},
+    prelude::{
+        BattleInProgress, CellLevel, Faction, Level, LifeState, OccupancyGrid, Position, Tu,
+    },
     tuning::CombatTuning,
+    vertical::VerticalLinkGraph,
+    visibility::SquadVisibility,
+    weapon::{
+        FireMode, FireModeSpec, Handedness, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent, WieldedBy,
+    },
 };
 use gdtf_test_utils::{MessageProbePlugin, probed};
 

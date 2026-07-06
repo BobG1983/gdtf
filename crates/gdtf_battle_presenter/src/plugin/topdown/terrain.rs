@@ -3,7 +3,11 @@
 
 use bevy::{ecs::message::Messages, prelude::*};
 use gdtf_battle_sim::{
-    BattleInProgress, CoverLedger, OccupancyGrid, SlabDestroyed, SurfaceGrid, VerticalLinkGraph,
+    cover::CoverLedger,
+    occupancy_sync::SlabDestroyed,
+    prelude::{BattleInProgress, OccupancyGrid},
+    surface::SurfaceGrid,
+    vertical::VerticalLinkGraph,
 };
 
 use crate::{
@@ -48,9 +52,9 @@ pub(super) fn register_terrain_draw(app: &mut App) {
 }
 
 /// Registers the GTW-367 terrain destruction-swap reactions: the S4 [`swap_destroyed_cover`]
-/// (a [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) swaps the cell's terrain sprite to the
+/// (a [`CoverDestroyed`](gdtf_battle_sim::occupancy_sync::CoverDestroyed) swaps the cell's terrain sprite to the
 /// `rubble` tile) and the GTW-367 [`swap_destroyed_slab`] (a
-/// [`SlabDestroyed`](gdtf_battle_sim::SlabDestroyed) swaps it to the `slab_destroyed` tile) — both
+/// [`SlabDestroyed`](gdtf_battle_sim::occupancy_sync::SlabDestroyed) swaps it to the `slab_destroyed` tile) — both
 /// in the [`PresenterSystems::Scene`] stage (GTW-623 — a state swap is part of the drawn
 /// world the fog modulates), MUTATING the existing tile's material in place (no
 /// despawn — the UI mutate-not-respawn rule, C7). Extracted from `build` to keep it under the

@@ -8,12 +8,13 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Faction, Position, Reflexes, ShotFired, Speed, Stance, StanceKind, Tu, WalkInProgress,
-    acts::EndTurnRequested,
+    acts::{EndTurnRequested, movement::WalkInProgress},
     battle::{BattleSimPlugin, SetupBattleRequested},
-    ganger::{Cool, Direction, Facing, GangRegistry},
+    ganger::{Cool, Direction, Facing, GangRegistry, Reflexes, Speed},
     metric::{Cell, CellLevel, Level},
+    prelude::{Faction, Position, Stance, StanceKind, Tu},
     rng::BattleSeed,
+    shot_fired::ShotFired,
     situation::Situation,
     test_support::{
         GangerSpawnBuilder, test_armor_registry, test_melee_weapon_registry, test_weapon_registry,
@@ -262,7 +263,7 @@ pub(crate) fn step(app: &mut App, ticks: u32) {
 /// Whether the active faction is currently the player's.
 pub(crate) fn player_turn_active(app: &App) -> bool {
     app.world()
-        .get_resource::<gdtf_battle_sim::ActiveFaction>()
+        .get_resource::<gdtf_battle_sim::turn::ActiveFaction>()
         .is_some_and(|active| ***active == PLAYER)
 }
 

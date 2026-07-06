@@ -9,9 +9,9 @@ use bevy::{
 use gdtf_app::test_support::{
     AttributeField, BaseAttribute, DerivedStat, DerivedStatText, EditableGang, MemberRowIndex,
 };
-use gdtf_battle_sim::{
-    Aim, Cool, DerivedStats, GangerAttributes, Grit, Reflexes, Speed, Strength, Toughness,
-    derive_stats, ganger::Luck,
+use gdtf_battle_sim::ganger::{
+    Aim, Cool, DerivedStats, GangerAttributes, Grit, Luck, Reflexes, Speed, Strength, Toughness,
+    derive_stats,
 };
 use gdtf_ui::{CommittedNumericValue, NumericFieldCommitted, NumericRange};
 

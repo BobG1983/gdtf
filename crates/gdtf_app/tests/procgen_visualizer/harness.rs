@@ -7,15 +7,19 @@ use bevy::{
 };
 use gdtf_app::test_support::{AppState, ProcgenViz, RunningState};
 use gdtf_battle_sim::{
-    Aim, ArmorName, Cool, GangMember, GangName, GangRegistry, GangRoster, GangerName, Grit, Luck,
-    Reflexes, Speed, Strength, TerrainUuid, ThemeDisplayName, Toughness, UuidThemeDef,
-    UuidThemeRegistry, WeaponName,
+    armor::ArmorName,
+    def::TerrainUuid,
+    ganger::{
+        Aim, Cool, GangMember, GangName, GangRegistry, GangRoster, GangerName, Grit, Luck,
+        Reflexes, Speed, Strength, Toughness,
+    },
     level::{
         GridHeight, GridLevels, GridSize, GridWidth, Prefab, PrefabName, PrefabRegistry,
-        PrefabSpec, SpawnRole, ThemeUuid,
+        PrefabSpec, SpawnRole, ThemeDisplayName, ThemeUuid, UuidThemeDef, UuidThemeRegistry,
     },
     rng::BattleSeed,
     situation::Situation,
+    weapon::WeaponName,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until, press_ui_button};
 use gdtf_ui::theme::default_theme;

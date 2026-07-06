@@ -33,7 +33,7 @@ impl TileIndex {
 impl TileRoles {
     /// Resolve a per-def terrain GRAPHIC-key string to its [`TileIndex`] in this table —
     /// the GTW-493 presenter seam (the sim spawns a
-    /// [`TerrainGraphicKey`](gdtf_battle_sim::TerrainGraphicKey) on every terrain entity,
+    /// [`TerrainGraphicKey`](gdtf_battle_sim::piece::TerrainGraphicKey) on every terrain entity,
     /// keyed in THIS `TileRoles` vocabulary; the presenter resolves it here).
     ///
     /// The authored `graphic_name` follows the `tile_roles.ron` vocabulary, so this
@@ -42,13 +42,13 @@ impl TileRoles {
     /// key strings themselves are spelled only in [`TileRole::as_key`]). Returns
     /// [`None`] for an unrecognized key — the caller then FALLS BACK to its
     /// presenter-owned [`TileRole`]-table default keyed on the cell's
-    /// [`TerrainKind`](gdtf_battle_sim::TerrainKind), so an out-of-vocabulary
+    /// [`TerrainKind`](gdtf_battle_sim::occupancy::TerrainKind), so an out-of-vocabulary
     /// def still draws (no panic) rather than vanishing.
     ///
     /// Two `Cover` defs whose `graphic_name`s differ (e.g. `"cover"` vs `"rubble"`)
     /// therefore resolve to DISTINCT indices through this method — the per-def graphic the
     /// ticket requires, which the role-table default (keyed only on the shared
-    /// [`TerrainKind::Cover`](gdtf_battle_sim::TerrainKind)) cannot express.
+    /// [`TerrainKind::Cover`](gdtf_battle_sim::occupancy::TerrainKind)) cannot express.
     #[must_use]
     pub fn index_for_key(&self, key: &str) -> Option<TileIndex> {
         TileRole::from_key(key).map(|role| role.index_in(self))
@@ -78,7 +78,7 @@ pub struct TileRoles {
     pub floor:                TileIndex,
     /// A bolted/riveted grey-panel floor alternate (future variety).
     pub floor_alt_panel:      TileIndex,
-    /// The default (NS-orientation) [`TerrainKind::Wall`](gdtf_battle_sim::TerrainKind::Wall)
+    /// The default (NS-orientation) [`TerrainKind::Wall`](gdtf_battle_sim::occupancy::TerrainKind::Wall)
     /// tile — solid fixed geometry, the north-south-running wall strip.
     pub wall:                 TileIndex,
     /// The **east-west-running** wall tile (GTW-469) — the [`wall`](TileRoles::wall) NS sprite
@@ -89,7 +89,7 @@ pub struct TileRoles {
     /// orientations draw perpendicular sprites. The author places the correct orientation in a
     /// prefab; orientation is never presenter-inferred.
     pub wall_ew:              TileIndex,
-    /// The [`TerrainKind::Cover`](gdtf_battle_sim::TerrainKind::Cover) tile — a chest-high cover prop.
+    /// The [`TerrainKind::Cover`](gdtf_battle_sim::occupancy::TerrainKind::Cover) tile — a chest-high cover prop.
     pub cover:                TileIndex,
     /// The VACANT weapon-emplacement tile (GTW-543) — a bolted-down heavy-gun mount a ganger
     /// ENTERS to operate, drawn distinctly from generic
@@ -98,12 +98,12 @@ pub struct TileRoles {
     /// [`TerrainDef`](gdtf_battle_sim::terrain::def::TerrainDef) is `sim_kind = Emplacement`
     /// (cover-like blocking + a stateful enter/exit lifecycle) and names
     /// `graphic_name = "emplacement"`, which resolves here. While the emplacement is
-    /// [`Occupied`](gdtf_battle_sim::EmplacementState::Occupied) the presenter swaps its tile in
+    /// [`Occupied`](gdtf_battle_sim::emplacement::EmplacementState::Occupied) the presenter swaps its tile in
     /// place to [`emplacement_occupied`](TileRoles::emplacement_occupied) (the manned look).
     pub emplacement:          TileIndex,
     /// The OCCUPIED weapon-emplacement tile (GTW-543) — the manned variant of
     /// [`emplacement`](TileRoles::emplacement), swapped in when a ganger mans the mount
-    /// ([`EmplacementState::Occupied`](gdtf_battle_sim::EmplacementState::Occupied)) and swapped
+    /// ([`EmplacementState::Occupied`](gdtf_battle_sim::emplacement::EmplacementState::Occupied)) and swapped
     /// back to [`emplacement`](TileRoles::emplacement) on vacate. The presenter drives this swap in
     /// place (no despawn, the UI mutate-not-respawn rule) from a `Changed<EmplacementState>` sim
     /// signal — it is NOT reachable via a def `graphic_name` (an emplacement is always AUTHORED
@@ -114,7 +114,7 @@ pub struct TileRoles {
     /// read the occupied state more clearly — re-point this index in
     /// `assets/sprites/tile_roles.spritedef.ron` when art authors one.
     pub emplacement_occupied: TileIndex,
-    /// The [`SurfaceGrid`](gdtf_battle_sim::SurfaceGrid) `Present`-slab tile — a raised elevated deck.
+    /// The [`SurfaceGrid`](gdtf_battle_sim::surface::SurfaceGrid) `Present`-slab tile — a raised elevated deck.
     pub slab:                 TileIndex,
     /// The destroyed-cover / damaged tile — broken debris scatter.
     pub rubble:               TileIndex,
@@ -139,7 +139,7 @@ pub struct TileRoles {
     pub slab_destroyed:       TileIndex,
     /// A doorway / hatch tile (authored for future variety).
     pub door:                 TileIndex,
-    /// The [`VerticalLink`](gdtf_battle_sim::VerticalLink) `Stair`-endpoint tile drawn
+    /// The [`VerticalLink`](gdtf_battle_sim::vertical::VerticalLink) `Stair`-endpoint tile drawn
     /// where the active storey is the link's LOWER cell — i.e. you ASCEND from here
     /// (atlas index `29`). GTW-373 (user ruling 2026-06-23) SUPERSEDES the GTW-359 OQ-3
     /// single-`stair`-`77` constant: the stair role is split into [`stair_up`] /
@@ -149,14 +149,14 @@ pub struct TileRoles {
     /// [`stair_up`]: TileRoles::stair_up
     /// [`stair_down`]: TileRoles::stair_down
     pub stair_up:             TileIndex,
-    /// The [`VerticalLink`](gdtf_battle_sim::VerticalLink) `Stair`-endpoint tile drawn
+    /// The [`VerticalLink`](gdtf_battle_sim::vertical::VerticalLink) `Stair`-endpoint tile drawn
     /// where the active storey is the link's UPPER cell — i.e. you DESCEND from here
     /// (atlas index `28`). The down-facing companion of [`stair_up`]; same GTW-373 split
     /// of the former single `stair` role, chosen by link direction.
     ///
     /// [`stair_up`]: TileRoles::stair_up
     pub stair_down:           TileIndex,
-    /// The [`VerticalLink`](gdtf_battle_sim::VerticalLink) `Ladder`-endpoint tile — a
+    /// The [`VerticalLink`](gdtf_battle_sim::vertical::VerticalLink) `Ladder`-endpoint tile — a
     /// ladder cell (atlas index `235`, an UNCHANGED system constant per the user OQ-3
     /// ruling). Drawn at each ladder link cell on the active storey by the GTW-359
     /// link-cell draw (a ladder is drawn the same tile both up and down).

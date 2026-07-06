@@ -1,7 +1,7 @@
 //! The 3-frame impact animation state machine and the expanding-scale table.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::DamageType;
+use gdtf_battle_sim::weapon::DamageType;
 
 use super::super::{roles::IMPACT_FRAME_COUNT, tuning::ImpactFrameSeconds};
 

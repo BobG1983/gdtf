@@ -1,8 +1,8 @@
 //! The ganger draw (GTW-48 S5 / GTW-219): each sim ganger drawn as a 16x16 top-down
 //! SPRITE, kept current by Bevy change detection.
 //!
-//! This module reads the sim's per-field ganger components — [`Position`](gdtf_battle_sim::Position), [`Faction`](gdtf_battle_sim::Faction),
-//! [`Facing`](gdtf_battle_sim::Facing), [`Stance`](gdtf_battle_sim::Stance), [`Aiming`](gdtf_battle_sim::Aiming), [`LifeState`](gdtf_battle_sim::LifeState) — and mirrors each ganger as one
+//! This module reads the sim's per-field ganger components — [`Position`](gdtf_battle_sim::ganger::Position), [`Faction`](gdtf_battle_sim::ganger::Faction),
+//! [`Facing`](gdtf_battle_sim::ganger::Facing), [`Stance`](gdtf_battle_sim::ganger::Stance), [`Aiming`](gdtf_battle_sim::ganger::Aiming), [`LifeState`](gdtf_battle_sim::ganger::LifeState) — and mirrors each ganger as one
 //! 16x16 character [`Sprite`](bevy::sprite::Sprite) from the role-separated character sheet
 //! ([`SheetRole::Characters`](crate::SheetRole::Characters), `assets/sprites/alt_tileset_characters.png`). It is the
 //! ganger arm of the change-driven sim->view mirror (ADR-0001): the presenter READS the
@@ -25,16 +25,19 @@
 //!
 //! - [`spawn_ganger_sprites`] — `Added<Position>`: spawns one presenter [`Sprite`](bevy::sprite::Sprite) for
 //!   a ganger (its initial [`Visibility`](bevy::prelude::Visibility) seeded through the
-//!   GTW-627 classifier), recording its `sim Entity -> presenter Entity` in
+//!   GTW-627 classifier, its initial atlas index + tint through the GTW-631 appearance
+//!   classifier), recording its `sim Entity -> presenter Entity` in
 //!   the [`GangerSprites`] map and tagging it with the [`GangerSprite`] marker.
 //! - [`move_ganger_sprites`] — `Changed<Position>` (excluding the spawn): re-targets the
 //!   existing presenter sprite's movement tween (it does NOT respawn); the show/hide
 //!   verdict is the resolver's below.
-//! - [`reframe_ganger_sprites`] — `Changed<Facing>` / `Changed<Stance>` /
-//!   `Changed<Aiming>`: recomputes the atlas index (facing reframe) and re-tints the
-//!   sprite (the stance / aiming delta) in place.
-//! - [`update_ganger_life_state`] — `Changed<LifeState>`: tints/reframes a `Downed`
-//!   ganger and despawns a `Dead` one — but a shot-kill whose tracer is still in flight is
+//! - [`resolve_ganger_appearance`] — `Changed<Facing>` / `Changed<Stance>` /
+//!   `Changed<Aiming>` / `Changed<Suppressed>` / `Changed<LifeState>`, the `Suppressed`
+//!   removal drain, and a [`CharacterRoles`] (hot-reload) change: the ONE writer of a
+//!   ganger sprite's atlas index AND tint, both stamped from one pure classifier
+//!   (GTW-631); the spawn seeds its initial value through the same classifier.
+//! - [`update_ganger_life_state`] — `Changed<LifeState>`: despawns a `Dead` ganger — but a
+//!   shot-kill whose tracer is still in flight is
 //!   DEFERRED (GTW-331): it despawns only a death with no pending incoming shot (a non-shot
 //!   death), dropping its [`GangerSprites`] entry.
 //! - [`despawn_killed_ganger_on_impact`] — [`ShotImpactResolved`](crate::ShotImpactResolved):
@@ -70,9 +73,9 @@
 //! fireable. Making a drawn lower-storey unit a valid click/fire target (and the reticle across
 //! storeys) is scoped to GTW-522.
 
+mod appearance;
 mod death;
 mod frame;
-mod reframe;
 mod roles;
 mod spawn_move;
 mod sprite_map;
@@ -83,11 +86,11 @@ mod visibility;
 #[cfg(test)]
 mod test;
 
+pub use appearance::resolve_ganger_appearance;
 pub use death::{
     despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites, update_ganger_life_state,
 };
 pub use frame::{FacingFrame, facing_frame};
-pub use reframe::{reframe_ganger_sprites, reindex_ganger_sprites_on_character_roles_change};
 pub use roles::CharacterRoles;
 pub(crate) use roles::register_character_roles_hot_ron;
 pub use spawn_move::{move_ganger_sprites, spawn_ganger_sprites};

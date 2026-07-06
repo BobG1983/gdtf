@@ -4,7 +4,11 @@
 
 use bevy::prelude::*;
 use gdtf_battle_input::SelectedShooter;
-use gdtf_battle_sim::{Direction, HeightBand, Magazine, OccupancyGrid, Tu};
+use gdtf_battle_sim::{
+    cover::HeightBand,
+    magazine::Magazine,
+    prelude::{Direction, OccupancyGrid, Tu},
+};
 use gdtf_test_utils::{clear_mouse, press_left};
 
 use super::harness::*;
@@ -157,7 +161,7 @@ fn click_on_enemy_fires_the_ranged_weapon_even_with_a_melee_weapon_related_first
 /// (`Wields::ranged_weapon`, excluding the `MeleeWeapon`-marked entity) so it reads the GUN's
 /// magazine even when a melee weapon is related first. `None` when unarmed / no ranged weapon.
 fn ranged_magazine_rounds(app: &App, shooter: Entity) -> Option<u16> {
-    use gdtf_battle_sim::{MeleeWeapon, Wields};
+    use gdtf_battle_sim::weapon::{MeleeWeapon, Wields};
     let melee_entities: bevy::platform::collections::HashSet<Entity> = {
         let mut q = app
             .world()

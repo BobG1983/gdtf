@@ -4,7 +4,10 @@
 use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
 use gdtf_battle_presenter::FireTargetHighlight;
 use gdtf_battle_sim::{
-    Cell, CellLevel, OccupancyGrid, TerrainKind, Tu, mode_tu_cost, tuning::CombatTuning,
+    magazine::mode_tu_cost,
+    occupancy::TerrainKind,
+    prelude::{Cell, CellLevel, OccupancyGrid, Tu},
+    tuning::CombatTuning,
 };
 
 use super::harness::*;

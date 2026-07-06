@@ -15,8 +15,8 @@
 //! [`MemberStatPanel`](crate::states::running::gang_editor::components::MemberStatPanel). The header row (GTW-425 C1) contains, left→right: an [`ExpandPip`](crate::states::running::gang_editor::components::ExpandPip) `+`/`-`
 //! toggle, a [`MemberPortrait`](crate::states::running::gang_editor::components::MemberPortrait) placeholder, the inline [`MemberNameField`](crate::states::running::gang_editor::components::MemberNameField), a
 //! [`MemberWeaponDropdown`](crate::states::running::gang_editor::components::MemberWeaponDropdown) over all loaded
-//! [`WeaponName`](gdtf_battle_sim::WeaponName) keys, a
-//! [`MemberArmorDropdown`](crate::states::running::gang_editor::components::MemberArmorDropdown) over all loaded [`ArmorName`](gdtf_battle_sim::ArmorName) keys, and a
+//! [`WeaponName`](gdtf_battle_sim::weapon::WeaponName) keys, a
+//! [`MemberArmorDropdown`](crate::states::running::gang_editor::components::MemberArmorDropdown) over all loaded [`ArmorName`](gdtf_battle_sim::armor::ArmorName) keys, and a
 //! [`DeleteMemberButton`](crate::states::running::gang_editor::components::DeleteMemberButton) — exactly ONE editable control per field (GTW-499 C1: the
 //! redundant static echo labels were removed). BELOW it the GTW-428 stat panel lerps open on a pip press to show the
 //! eight editable [`AttributeField`](crate::states::running::gang_editor::components::AttributeField) numeric fields and the eight readonly [`DerivedStatText`](crate::states::running::gang_editor::components::DerivedStatText)

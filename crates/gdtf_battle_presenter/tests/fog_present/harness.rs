@@ -18,13 +18,17 @@ use gdtf_battle_presenter::{
     GangerSprites, TerrainFogMaterial, TerrainSprite, TopDownAtlases, TopDownRendererPlugin,
 };
 use gdtf_battle_sim::{
-    Aiming, BattleSeed, CellLevel, CombatTuning, Direction, Facing, Faction, GangerName,
-    GangerSpawn, Position, SetupBattleRequested, ShotRng, Situation, SquadVisibility,
-    setup_battle_on_request,
+    battle::{SetupBattleRequested, setup_battle_on_request},
+    ganger::{Aiming, Facing, GangerName},
+    prelude::{CellLevel, Direction, Faction, Position},
+    rng::{BattleSeed, ShotRng},
+    situation::{GangerSpawn, Situation},
     test_support::{
         GangerSpawnBuilder, test_armor_registry, test_gang_registry, test_melee_weapon_registry,
         test_weapon_registry,
     },
+    tuning::CombatTuning,
+    visibility::SquadVisibility,
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
@@ -78,8 +82,8 @@ pub(crate) fn headless_renderer_app() -> App {
             }),
     )
     .add_message::<SetupBattleRequested>()
-    .add_message::<gdtf_battle_sim::BattleReady>()
-    .add_message::<gdtf_battle_sim::CoverDestroyed>()
+    .add_message::<gdtf_battle_sim::battle::BattleReady>()
+    .add_message::<gdtf_battle_sim::occupancy_sync::CoverDestroyed>()
     .add_systems(Update, setup_battle_on_request)
     .add_plugins(TopDownRendererPlugin);
     app.insert_resource(test_weapon_registry());

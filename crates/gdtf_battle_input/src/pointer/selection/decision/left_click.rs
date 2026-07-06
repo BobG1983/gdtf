@@ -4,8 +4,11 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::cell_squad_visible;
 use gdtf_battle_sim::{
-    CellLevel, Faction, FactionRelation, MeleeQuery, WieldedBy, Wields,
     acts::{FireRequested, MoveRequested},
+    fire::MeleeQuery,
+    prelude::{CellLevel, Faction},
+    visibility::FactionRelation,
+    weapon::{WieldedBy, Wields},
 };
 
 use super::reads::LeftClickReads;
@@ -82,20 +85,20 @@ pub enum LeftClickOutcome {
 ///    EXPLORED EMPTY cell is NOT a fire target and is unaffected (walking into remembered
 ///    territory stays allowed, `docs/combat/visibility.md` §"UX edges").
 /// 1. **FIRE** — a fire mode is selected, AND EITHER the hovered cell holds an ENEMY occupant
-///    (a [`Faction`] `!=` [`PlayerFaction`](gdtf_battle_sim::PlayerFaction)) OR (GTW-377) it holds SHOOTABLE structure (an intact
-///    wall / cover piece: [`is_blocked`](gdtf_battle_sim::OccupancyGrid::is_blocked) AND no
+///    (a [`Faction`] `!=` [`PlayerFaction`](gdtf_battle_sim::battle::PlayerFaction)) OR (GTW-377) it holds SHOOTABLE structure (an intact
+///    wall / cover piece: [`is_blocked`](gdtf_battle_sim::occupancy::OccupancyGrid::is_blocked) AND no
 ///    occupant), the current selection is a player-faction ganger, the cell is squad-VISIBLE, and
-///    the shared [`can_fire`](gdtf_battle_sim::can_fire) guard passes ([`try_fire_request`]) →
+///    the shared [`can_fire`](gdtf_battle_sim::magazine::can_fire) guard passes ([`try_fire_request`]) →
 ///    [`LeftClickOutcome::Fire`]. The user ruling: cover AND walls are valid fire targets, not
 ///    just gangers; the sim depletes the cover per the GTW-364 model. The enemy case uses the
 ///    occupant fog relation ([`FactionRelation::Other`]); the cover case uses `relation = None`
 ///    (a structural cell carries no occupant).
 /// 2. **SELECT** — the hovered cell holds one of YOUR gangers
-///    ([`Faction`] `==` [`PlayerFaction`](gdtf_battle_sim::PlayerFaction)) → [`LeftClickOutcome::Select`].
+///    ([`Faction`] `==` [`PlayerFaction`](gdtf_battle_sim::battle::PlayerFaction)) → [`LeftClickOutcome::Select`].
 /// 3. **MOVE (two-click, GTW-356 OQ-5)** — there is a player-faction selection AND the hovered
 ///    cell is a VALID move target: empty (`occupant == None`), in-bounds (a [`Some`] hovered
 ///    cell is always in-grid), unblocked (`!is_blocked`), and NOT a vertical-link tile
-///    ([`VerticalLinkGraph::links_from`](gdtf_battle_sim::VerticalLinkGraph::links_from)`(cell).next().is_none()`, OQ-4). It does NOT dispatch
+///    ([`VerticalLinkGraph::links_from`](gdtf_battle_sim::vertical::VerticalLinkGraph::links_from)`(cell).next().is_none()`, OQ-4). It does NOT dispatch
 ///    immediately; it runs a state machine over the current [`PathPreviewTarget`]:
 ///    - the clicked cell EQUALS the current target → [`LeftClickOutcome::Move`] (COMMIT: the
 ///      preview was confirmed; dispatch + clear the target);
@@ -130,7 +133,7 @@ pub enum LeftClickOutcome {
 /// status panel and broke Mode/Stance (which need the selection to resolve the weapon).
 ///
 /// Between MOVE (clause 3) and CLEAR (clause 4) sits the GTW-287 **NO-OP** rung: when the
-/// hovered cell holds an ENEMY occupant ([`Faction`] `!=` [`PlayerFaction`](gdtf_battle_sim::PlayerFaction)) you could not FIRE
+/// hovered cell holds an ENEMY occupant ([`Faction`] `!=` [`PlayerFaction`](gdtf_battle_sim::battle::PlayerFaction)) you could not FIRE
 /// on, [`decide_left_click`] returns [`LeftClickOutcome::NoOp`] instead of falling through to
 /// CLEAR. Clicking an enemy you can't fire on leaves your current player selection UNTOUCHED
 /// (enemies are inspected via the GTW-274 hover panel, not selected/cleared as your shooter) —
@@ -148,12 +151,12 @@ pub enum LeftClickOutcome {
 /// `ResMut` for its write — the pin write on [`InspectTarget`], the two-click target write on
 /// [`PathPreviewTarget`] — without a `Res` + `ResMut` aliasing conflict on the SAME resource
 /// (B0002); the [`InspectTarget`] precedent, GTW-300) + read-only `Query<&Faction>` /
-/// `Query<ShooterFireData>` / `Query<&Wields>` / the weapon-[`Magazine`](gdtf_battle_sim::Magazine)
-/// query + the [`MeleeWeapon`](gdtf_battle_sim::MeleeWeapon) marker probe ([`MeleeQuery`]) + the
+/// `Query<ShooterFireData>` / `Query<&Wields>` / the weapon-[`Magazine`](gdtf_battle_sim::magazine::Magazine)
+/// query + the [`MeleeWeapon`](gdtf_battle_sim::weapon::MeleeWeapon) marker probe ([`MeleeQuery`]) + the
 /// current [`SelectedShooter`], no `&mut World`. The
 /// `Wields` + weapon-magazine + melee-marker queries resolve the fire guard's magazine off the
 /// RANGED weapon entity (`ganger → Wields → the ranged weapon entity`, GTW-323 slice 3; GTW-505 C5
-/// excludes the melee weapon the ganger also wields via [`Wields::ranged_weapon`](gdtf_battle_sim::Wields::ranged_weapon)).
+/// excludes the melee weapon the ganger also wields via [`Wields::ranged_weapon`](gdtf_battle_sim::weapon::Wields::ranged_weapon)).
 /// It does NOT read the mouse button (the caller gates on its own press edge), so the gamepad surface
 /// reuses it without a `ButtonInput<MouseButton>`.
 #[expect(

@@ -2,7 +2,11 @@
 //! [`ProjectileTravel`] state machine.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Cell, DamageType, HitReport, Level};
+use gdtf_battle_sim::{
+    prelude::{Cell, Level},
+    resolve_and_apply::HitReport,
+    weapon::DamageType,
+};
 
 use super::super::{fct::ClassifiedPop, tuning::ProjectileVelocity};
 
@@ -38,7 +42,7 @@ pub struct ShotProjectile;
 /// GTW-327 (slice 2): the bolt ALSO carries this round's classified floating-combat-text
 /// `pops` (the [`ClassifiedPop`] list
 /// [`classify_report`](super::super::fct::classify_report) built from the shot's
-/// [`HitReport`](gdtf_battle_sim::HitReport) — empty for a clean miss) + the `anchor`
+/// [`HitReport`](gdtf_battle_sim::resolve_and_apply::HitReport) — empty for a clean miss) + the `anchor`
 /// `(cell, level)` the pops sit on ([`anchor_cell`](super::super::fct::anchor_cell) of the
 /// hit ganger at the SHOT, not the
 /// impact cell), so each shot's numbers ride its own staggered flight and appear when THAT

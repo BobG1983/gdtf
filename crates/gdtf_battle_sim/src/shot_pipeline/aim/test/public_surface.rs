@@ -19,9 +19,11 @@ use crate::{
 /// (a `ConeAngle` is radians, a `ConeMult` dimensionless — never a pixel).
 #[test]
 fn composers_are_the_public_library_surface_with_zero_pixels() {
-    // Reach them via the crate's public re-exports, exactly as the HUD / fire()
-    // caller would (proving they are the shared public surface).
-    use crate::{Shooter as PubShooter, cone_for as pub_cone_for, stability_for as pub_stab};
+    // Reach them via the crate's public concern-pathed surface (`crate::aim`,
+    // the root-lifted module — GTW-628 deleted the flat crate-root names),
+    // exactly as the HUD / fire() caller would (proving they are the shared
+    // public surface).
+    use crate::aim::{Shooter as PubShooter, cone_for as pub_cone_for, stability_for as pub_stab};
 
     let tuning = CombatTuning::default();
     let state = ShooterState::new(12, 12, 0, StanceKind::Prone, true, Direction::North);

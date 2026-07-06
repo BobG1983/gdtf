@@ -9,7 +9,8 @@ use bevy::{platform::collections::HashMap, prelude::*};
 /// bare collection field; the inner [`Entity`] keys/values are the framework
 /// carve-out). `init_resource`-d by [`TopDownRendererPlugin`](crate::TopDownRendererPlugin)
 /// so it is present for the whole battle span — the spawn system records into it; the
-/// move / reframe / death / removal systems and the GTW-627 visibility resolver
+/// move / death / removal systems, the GTW-631 appearance resolver
+/// (`resolve_ganger_appearance`), and the GTW-627 visibility resolver
 /// (`resolve_ganger_visibility`) look up through it.
 #[derive(Resource, Default, Debug)]
 pub struct GangerSprites {
@@ -46,9 +47,9 @@ impl GangerSprites {
 /// Marker tagging every ganger sprite this slice spawns, carrying the sim [`Entity`] it
 /// mirrors.
 ///
-/// So a redraw / reframe / despawn finds exactly the ganger sprites — and ONLY them,
-/// never the S4 [`TerrainSprite`](crate::TerrainSprite), never the S2
-/// [`WorldCamera`](crate::WorldCamera). The inner [`Entity`] is the framework carve-out
+/// So an appearance re-stamp / visibility resolve / despawn finds exactly the ganger
+/// sprites — and ONLY them, never the S4 [`TerrainSprite`](crate::TerrainSprite), never
+/// the S2 [`WorldCamera`](crate::WorldCamera). The inner [`Entity`] is the framework carve-out
 /// (a Bevy-owned identity, not a domain value); the marker tags only the presenter
 /// sprites this slice spawns.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]

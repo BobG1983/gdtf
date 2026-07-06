@@ -2,7 +2,11 @@
 //! emplacement occupancy indicator.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{CoverDestroyed, EmplacementState, SlabDestroyed, TerrainCell};
+use gdtf_battle_sim::{
+    emplacement::EmplacementState,
+    entity::TerrainCell,
+    occupancy_sync::{CoverDestroyed, SlabDestroyed},
+};
 
 use super::{
     active_level::{ActiveLevel, ViewMode},
@@ -15,7 +19,7 @@ use crate::TerrainFogMaterial;
 /// `Update` (`PresenterSystems::Scene`, gated `resource_exists::<BattleInProgress>`): swap
 /// a destroyed cover cell's sprite to the RUBBLE tile.
 ///
-/// Drains [`MessageReader<CoverDestroyed>`](gdtf_battle_sim::CoverDestroyed); for each
+/// Drains [`MessageReader<CoverDestroyed>`](gdtf_battle_sim::occupancy_sync::CoverDestroyed); for each
 /// `CoverDestroyed { at }` WITHIN THE DRAWN BAND `[0..=active]` (GTW-519 C6 — the shared
 /// [`drawn_band`] predicate, so a cover smashed on any drawn lower storey swaps too) it finds
 /// the [`TerrainSprite`] at `at` and swaps its texture-atlas index to the `rubble`
@@ -69,7 +73,7 @@ pub fn swap_destroyed_cover(
 /// destroyed-SLAB cell's sprite to the destroyed-slab tile.
 ///
 /// The slab mirror of [`swap_destroyed_cover`] (GTW-367 C1/C3): it drains
-/// [`MessageReader<SlabDestroyed>`](gdtf_battle_sim::SlabDestroyed); for each
+/// [`MessageReader<SlabDestroyed>`](gdtf_battle_sim::occupancy_sync::SlabDestroyed); for each
 /// `SlabDestroyed { at }` WITHIN THE DRAWN BAND `[0..=active]` (GTW-519 C6 — the shared
 /// [`drawn_band`] predicate) it finds the [`TerrainSprite`] at `at` and swaps its
 /// texture-atlas index to the `slab_destroyed` [`TileIndex`](super::roles::TileIndex) (read
@@ -124,12 +128,12 @@ pub fn swap_destroyed_slab(
 
 /// `Update` (`PresenterSystems::Scene`, gated `resource_exists::<BattleInProgress>`): swap a
 /// weapon-emplacement's tile between its VACANT and OCCUPIED sprite as its
-/// [`EmplacementState`](gdtf_battle_sim::EmplacementState) changes (GTW-543 — the
+/// [`EmplacementState`](gdtf_battle_sim::emplacement::EmplacementState) changes (GTW-543 — the
 /// occupied-state visual indicator).
 ///
 /// The state analogue of [`swap_destroyed_cover`] / [`swap_destroyed_slab`]: rather than a
 /// one-shot destruction MESSAGE, it reacts to the sim's per-entity
-/// [`Changed<EmplacementState>`](gdtf_battle_sim::EmplacementState) — the enter/exit toggle
+/// [`Changed<EmplacementState>`](gdtf_battle_sim::emplacement::EmplacementState) — the enter/exit toggle
 /// (`apply_emplacement_toggle`) flips the emplacement entity's state Vacant↔Occupied, and this
 /// system mirrors that onto the drawn tile. For each emplacement whose state CHANGED and whose
 /// cell lies WITHIN THE DRAWN BAND `[0..=active]` (the shared `drawn_band` predicate, so an
@@ -137,8 +141,8 @@ pub fn swap_destroyed_slab(
 /// level is not drawn, so there is no tile to re-index), it finds the [`TerrainSprite`] at that
 /// cell and re-indexes its material to the `emplacement_occupied`
 /// [`TileIndex`](super::roles::TileIndex) while
-/// [`Occupied`](gdtf_battle_sim::EmplacementState::Occupied), or back to the `emplacement` tile
-/// while [`Vacant`](gdtf_battle_sim::EmplacementState::Vacant) — both read from [`TileRoles`],
+/// [`Occupied`](gdtf_battle_sim::emplacement::EmplacementState::Occupied), or back to the `emplacement` tile
+/// while [`Vacant`](gdtf_battle_sim::emplacement::EmplacementState::Vacant) — both read from [`TileRoles`],
 /// never a literal.
 ///
 /// Choice: SWAP (not despawn / overlay) so the SAME sprite `Entity` persists across the state
@@ -150,7 +154,7 @@ pub fn swap_destroyed_slab(
 /// Param-only (`bevy-traps.md` #7): [`Res<ActiveLevel>`], [`Res<ViewMode>`], [`Res<TileRoles>`],
 /// [`ResMut<Assets<TerrainFogMaterial>>`] (the swap re-indexes the tile's material in place — the
 /// destruction-swap precedent), the `Changed<EmplacementState>` sim query (the emplacement's
-/// state + its [`TerrainCell`](gdtf_battle_sim::TerrainCell)), and the [`TerrainSprite`] /
+/// state + its [`TerrainCell`](gdtf_battle_sim::entity::TerrainCell)), and the [`TerrainSprite`] /
 /// [`MeshMaterial2d`] query (to find the material at the emplacement's cell). No [`Commands`]
 /// needed — the swap edits the material, never spawning / despawning.
 pub fn indicate_emplacement_occupied(

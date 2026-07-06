@@ -6,7 +6,7 @@ use bevy::{
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
 };
-use gdtf_battle_sim::CellLevel;
+use gdtf_battle_sim::prelude::CellLevel;
 
 use crate::{CELL_PX, CellVisibility, WORLD_RENDER_LAYER, cell_to_world};
 

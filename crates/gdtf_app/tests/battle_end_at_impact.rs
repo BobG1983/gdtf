@@ -25,9 +25,16 @@ use bevy::{app::App, prelude::*, state::state::State, time::TimeUpdateStrategy};
 use gdtf_app::test_support::{AppState, BattleScapeState, RunningState};
 use gdtf_battle_presenter::{PendingImpact, ShotProjectile};
 use gdtf_battle_sim::{
-    AppliedDamage, BattleLost, BattleWon, BodyPart, Cell, HitReport, HitResult, HpDamage,
-    IntegrityWear, Level, LifeState, Matchup, PenetratingDamage, Severity, ShotDir, ShotFired,
-    ShotKind, SimPos,
+    armor::BodyPart,
+    battle::{BattleLost, BattleWon},
+    matchup::Matchup,
+    prelude::{Cell, Level, LifeState, SimPos},
+    resolve_and_apply::{AppliedDamage, HitReport},
+    resolve_coarse::ShotKind,
+    resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage},
+    sample_cone::ShotDir,
+    severity::Severity,
+    shot_fired::ShotFired,
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
@@ -115,23 +122,25 @@ fn battle_running_app() -> Option<App> {
 fn lethal_ganger_hit(struck: Entity) -> HitReport {
     HitReport {
         kind:    ShotKind::Ganger(struck),
-        verdict: gdtf_battle_sim::HitVerdict::Ganger(Box::new(gdtf_battle_sim::GangerVerdict {
-            target:      struck,
-            part:        BodyPart::Torso,
-            applied:     AppliedDamage {
-                matchup:    Matchup::Neutral,
-                hit:        HitResult {
-                    penetrating: PenetratingDamage::new(8),
-                    hp_damage:   HpDamage::new(12),
-                    wear:        IntegrityWear::new(0),
+        verdict: gdtf_battle_sim::resolve_and_apply::HitVerdict::Ganger(Box::new(
+            gdtf_battle_sim::resolve_and_apply::GangerVerdict {
+                target:      struck,
+                part:        BodyPart::Torso,
+                applied:     AppliedDamage {
+                    matchup:    Matchup::Neutral,
+                    hit:        HitResult {
+                        penetrating: PenetratingDamage::new(8),
+                        hp_damage:   HpDamage::new(12),
+                        wear:        IntegrityWear::new(0),
+                    },
+                    severity:   Severity::Critical,
+                    life_after: LifeState::Dead,
+                    wear:       gdtf_battle_sim::armor_wear::ArmorWearOutcome::Unaffected,
                 },
-                severity:   Severity::Critical,
-                life_after: LifeState::Dead,
-                wear:       gdtf_battle_sim::ArmorWearOutcome::Unaffected,
+                injury:      None,
+                dot_applied: None,
             },
-            injury:      None,
-            dot_applied: None,
-        })),
+        )),
     }
 }
 
@@ -157,7 +166,7 @@ fn write_deciding_shot(app: &mut App) {
         impact_cell: cell,
         impact_level: level,
         kind: ShotKind::Ganger(struck),
-        damage: gdtf_battle_sim::DamageType::Kinetic,
+        damage: gdtf_battle_sim::weapon::DamageType::Kinetic,
         report: Some(lethal_ganger_hit(struck)),
     };
     app.world_mut()

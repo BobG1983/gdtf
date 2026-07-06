@@ -1,6 +1,6 @@
 //! The ARMOR-BROKEN consequence family (GTW-302 slice 4, palette-ised in GTW-572): the RED
 //! `"Armor Broken"` tag for a worn piece that crossed from protecting to useless, off the
-//! sim's [`ArmorBroken`](gdtf_battle_sim::ArmorBroken) crossing message.
+//! sim's [`ArmorBroken`](gdtf_battle_sim::armor_wear::ArmorBroken) crossing message.
 //!
 //! The destroy CROSSING reads heavier than ordinary wear, so it pops the damage RED (the
 //! contract's "AMBER/RED", drawn the redder of the two), alongside the `read_armor_broken`
@@ -8,7 +8,7 @@
 //! fail-closed). The numeric `"Armor -N"` variant stays DEFERRED: [`ArmorBroken`] carries no
 //! integrity-delta amount (only the `{ ganger, part }` crossing).
 
-use gdtf_battle_sim::ArmorBroken;
+use gdtf_battle_sim::armor_wear::ArmorBroken;
 
 use super::super::{
     palette::{FctValence, valence_color},
@@ -35,7 +35,7 @@ impl ConsequenceFct for ArmorBrokenFct {
 #[cfg(test)]
 mod test {
     use bevy::prelude::Entity;
-    use gdtf_battle_sim::{ArmorBroken, BodyPart};
+    use gdtf_battle_sim::{armor::BodyPart, armor_wear::ArmorBroken};
 
     use super::{
         super::super::pop::ConsequenceFct, ArmorBrokenFct, FctValence, PopAnchor, valence_color,

@@ -31,7 +31,7 @@
 //! owns the button-side descriptor + offer scan. The registrars stitch the layers.
 
 use bevy::{ecs::message::Message, prelude::*};
-use gdtf_battle_sim::BattleInProgress;
+use gdtf_battle_sim::prelude::BattleInProgress;
 
 use crate::{InputSystems, SelectedShooter, intent::dispatch_act_intents};
 
@@ -51,7 +51,7 @@ use crate::{InputSystems, SelectedShooter, intent::dispatch_act_intents};
 /// untouched by this seam.
 pub trait ContextualAct: Send + Sync + 'static {
     /// The offered TARGET payload a press carries — a raw [`Entity`] handle for the
-    /// entity-targeted acts, a [`CellLevel`](gdtf_battle_sim::CellLevel) for the
+    /// entity-targeted acts, a [`CellLevel`](gdtf_battle_sim::metric::CellLevel) for the
     /// cell-targeted ones, or a per-act domain enum (the melee ganger-or-structure
     /// target). `Copy + PartialEq` so the queue and the panel's offer resource stay
     /// value-plumbing.

@@ -5,8 +5,12 @@ use gdtf_battle_presenter::{
     FctValence, FieldCellSprite, FloatingCombatText, cell_to_world, valence_color,
 };
 use gdtf_battle_sim::{
-    BattleInProgress, Cell, CellLevel, DamageType, FieldDamage, FieldDef, FieldDuration,
-    FieldRegistry, ImmuneArmorTypes, Level, OnDeathOccurred,
+    effects::{
+        fields::{FieldDamage, FieldDef, FieldDuration, FieldRegistry, ImmuneArmorTypes},
+        on_death::OnDeathOccurred,
+    },
+    prelude::{BattleInProgress, Cell, CellLevel, Level},
+    weapon::DamageType,
 };
 
 use super::{harness::*, probes::*};

@@ -2,7 +2,11 @@
 //! viewport-bounds clamp, and their pure geometry helpers.
 
 use bevy::{prelude::*, window::PrimaryWindow};
-use gdtf_battle_sim::{Cell, Faction, GRID_HEIGHT, GRID_WIDTH, Level, PlayerFaction, Position};
+use gdtf_battle_sim::{
+    battle::PlayerFaction,
+    occupancy::{GRID_HEIGHT, GRID_WIDTH},
+    prelude::{Cell, Faction, Level, Position},
+};
 
 use super::{
     marker::WorldCamera,

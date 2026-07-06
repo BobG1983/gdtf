@@ -6,9 +6,17 @@ use bevy::{
 };
 use gdtf_battle_presenter::{FloatingCombatText, FxFlash};
 use gdtf_battle_sim::{
-    AppliedDamage, BodyPart, Cell, CellLevel, Direction, Facing, Faction, HitReport, HitResult,
-    HpDamage, IntegrityWear, Level, LifeState, Matchup, PenetratingDamage, Position, Severity,
-    ShotKind, test_support::GangerEntityBuilder,
+    armor::BodyPart,
+    ganger::{Aiming, Facing},
+    matchup::Matchup,
+    prelude::{
+        Cell, CellLevel, Direction, Faction, Level, LifeState, Position, Stance, StanceKind,
+    },
+    resolve_and_apply::{AppliedDamage, HitReport},
+    resolve_coarse::ShotKind,
+    resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage},
+    severity::Severity,
+    test_support::GangerEntityBuilder,
 };
 
 /// Spawns a ganger entity carrying a `Position` at `cell`/`level` plus `Wounds(wounds)`, and
@@ -50,7 +58,8 @@ pub(crate) fn single_flash(app: &mut App) -> Option<(bevy::math::Vec3, Option<us
 }
 
 /// Spawns a REAL sim ganger (the components `spawn_ganger_sprites` queries — `Position`,
-/// `Faction`, `Facing`, `LifeState`) at `cell`/`level` and drives one `update()` so the
+/// `Faction`, `Facing`, `Stance`, `Aiming`, `LifeState`, the GTW-631 appearance-classifier
+/// input set) at `cell`/`level` and drives one `update()` so the
 /// presenter's real spawn system builds its sprite and registers the `sim Entity -> sprite
 /// Entity` link in `GangerSprites`. Returns the sim `Entity` (the `ShotKind::Ganger`
 /// payload). `BattleInProgress` must already be resident (the spawn gate).
@@ -66,6 +75,8 @@ pub(crate) fn spawn_sim_ganger_with_sprite(
             Position::new(at),
             Faction::new(0),
             Facing::new(Direction::East),
+            Stance::new(StanceKind::Standing),
+            Aiming::new(false),
             LifeState::Alive,
         ))
         .id();
@@ -117,23 +128,25 @@ pub(crate) fn ganger_hit_report(
 ) -> HitReport {
     HitReport {
         kind:    ShotKind::Ganger(struck),
-        verdict: gdtf_battle_sim::HitVerdict::Ganger(Box::new(gdtf_battle_sim::GangerVerdict {
-            target: struck,
-            part,
-            applied: AppliedDamage {
-                matchup: Matchup::Neutral,
-                hit: HitResult {
-                    penetrating: PenetratingDamage::new(pen),
-                    hp_damage:   HpDamage::new(hp),
-                    wear:        IntegrityWear::new(0),
+        verdict: gdtf_battle_sim::resolve_and_apply::HitVerdict::Ganger(Box::new(
+            gdtf_battle_sim::resolve_and_apply::GangerVerdict {
+                target: struck,
+                part,
+                applied: AppliedDamage {
+                    matchup: Matchup::Neutral,
+                    hit: HitResult {
+                        penetrating: PenetratingDamage::new(pen),
+                        hp_damage:   HpDamage::new(hp),
+                        wear:        IntegrityWear::new(0),
+                    },
+                    severity,
+                    life_after,
+                    wear: gdtf_battle_sim::armor_wear::ArmorWearOutcome::Unaffected,
                 },
-                severity,
-                life_after,
-                wear: gdtf_battle_sim::ArmorWearOutcome::Unaffected,
+                injury: None,
+                dot_applied: None,
             },
-            injury: None,
-            dot_applied: None,
-        })),
+        )),
     }
 }
 

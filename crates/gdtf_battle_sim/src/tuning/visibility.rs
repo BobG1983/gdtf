@@ -59,7 +59,7 @@ impl Default for ViewRange {
 /// `saturation` knob (`0.0` on EXPLORED), with no brightness scaling.
 ///
 /// It is RETAINED (not removed) because GTW-348 is presenter-only — pruning it from
-/// [`CombatTuning`](crate::CombatTuning), the shipped `tuning.ron`, and the sim parse /
+/// [`CombatTuning`](crate::tuning::CombatTuning), the shipped `tuning.ron`, and the sim parse /
 /// default tests would ripple into the model and outside that scope. It stays a valid,
 /// parseable tuning leaf so the model/RON contract is unbroken; a future ticket may either
 /// repurpose it (e.g. a greyscale-floor offset) or retire it.

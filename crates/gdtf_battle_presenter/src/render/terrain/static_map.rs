@@ -5,8 +5,12 @@ use bevy::{
     ecs::system::SystemParam, image::TextureAtlasLayout, platform::collections::HashMap, prelude::*,
 };
 use gdtf_battle_sim::{
-    CellLevel, CoverLedger, FootfallSound, OccupancyGrid, SlabState, SurfaceGrid, TerrainCell,
-    TerrainGraphicKey, TerrainKind,
+    cover::CoverLedger,
+    entity::TerrainCell,
+    occupancy::TerrainKind,
+    piece::{FootfallSound, TerrainGraphicKey},
+    prelude::{CellLevel, OccupancyGrid},
+    surface::{SlabState, SurfaceGrid},
 };
 
 use super::roles::{TileIndex, TileRole, TileRoles};
@@ -201,13 +205,13 @@ pub(super) fn storey_has_terrain(
         || !matches!(map.occupancy.terrain(key), TerrainKind::Open)
 }
 
-/// Converts a `usize` grid extent ([`GRID_WIDTH`](gdtf_battle_sim::GRID_WIDTH) /
-/// [`GRID_HEIGHT`](gdtf_battle_sim::GRID_HEIGHT)) to the `i32` cell
+/// Converts a `usize` grid extent ([`GRID_WIDTH`](gdtf_battle_sim::occupancy::GRID_WIDTH) /
+/// [`GRID_HEIGHT`](gdtf_battle_sim::occupancy::GRID_HEIGHT)) to the `i32` cell
 /// coordinate range bound, saturating rather than wrapping.
 ///
-/// [`GRID_WIDTH`](gdtf_battle_sim::GRID_WIDTH) / [`GRID_HEIGHT`](gdtf_battle_sim::GRID_HEIGHT)
+/// [`GRID_WIDTH`](gdtf_battle_sim::occupancy::GRID_WIDTH) / [`GRID_HEIGHT`](gdtf_battle_sim::occupancy::GRID_HEIGHT)
 /// are `usize` (flat-buffer extents); a cell coordinate
-/// is `i32` ([`Cell`](gdtf_battle_sim::Cell) wraps `IVec2`). `i32::try_from` clamps an
+/// is `i32` ([`Cell`](gdtf_battle_sim::metric::Cell) wraps `IVec2`). `i32::try_from` clamps an
 /// (impossible-in-practice) over-large extent to [`i32::MAX`] rather than wrap
 /// (`cast_possible_wrap`).
 pub(super) fn i32_extent(extent: usize) -> i32 {

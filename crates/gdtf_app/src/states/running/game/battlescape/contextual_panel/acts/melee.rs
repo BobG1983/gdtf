@@ -4,11 +4,12 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_input::{SelectedShooter, contextual::MeleeAct};
 use gdtf_battle_sim::{
-    Cell, CellLevel, CoverLedger, OccupancyGrid, SurfaceGrid,
-    acts::MeleeTarget,
-    downed_acts::is_8_adjacent,
+    acts::{MeleeTarget, downed::is_8_adjacent},
+    cover::CoverLedger,
     ganger::{Facing, Faction, LifeState, Position, Stance, StanceKind},
     los::{Observer, PeekOffset, Target, has_los},
+    prelude::{Cell, CellLevel, OccupancyGrid},
+    surface::SurfaceGrid,
     tuning::CombatTuning,
 };
 use gdtf_ui::ButtonLabel;

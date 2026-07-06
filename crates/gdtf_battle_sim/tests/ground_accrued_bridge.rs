@@ -29,15 +29,26 @@ use bevy::{
     prelude::{Entity, World},
 };
 use gdtf_battle_sim::{
-    Accuracy, Aiming, BaseSpread, Cell, CellLevel, CombatTuning, CoverLedger, DamageProfile,
-    DamageType, Direction, Facing, Faction, FatalBias, FireMode, Handedness, HandlingProfile, Hp,
-    InflictedWounds, Kickback, Level, LifeState, Luck, Magazine, MagazineSize, MarchKind,
-    OccupancyGrid, OccupancyMaintenancePlugin, Position, ReloadTu, Shooting, Shove, SimPos,
-    SlabLedger, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax, WeaponBundle,
-    WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WieldedBy, Wounds,
     acts::FireRequested,
-    march_vector,
+    cover::CoverLedger,
+    ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
+    inflicted_wound::InflictedWounds,
+    magazine::{Magazine, ReloadTu},
+    march::{MarchKind, march_vector},
+    occupancy_sync::OccupancyMaintenancePlugin,
+    prelude::{
+        Cell, CellLevel, Direction, Faction, Level, LifeState, OccupancyGrid, Position, SimPos,
+        Stance, StanceKind, Tu,
+    },
+    slab::SlabLedger,
+    surface::SurfaceGrid,
     test_support::{SimAppBuilder, single_mode},
+    tuning::CombatTuning,
+    weapon::{
+        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, Handedness,
+        HandlingProfile, Kickback, MagazineSize, Shove, Stable, WeaponBundle, WeaponDamage,
+        WeaponName, WeaponPunch, WeaponShred, WieldedBy,
+    },
 };
 
 /// The per-round weapon damage the shooter deals to the ground — an arbitrary (NOT
