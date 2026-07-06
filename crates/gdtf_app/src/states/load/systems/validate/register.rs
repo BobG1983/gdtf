@@ -17,8 +17,12 @@ use gdtf_battle_sim::{
     terrain::def::TerrainDefRegistry,
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
+use gdtf_content_families::validate::{
+    check_emplacement_weapon_refs, check_gang_equipment_refs, check_theme_terrain_refs,
+    check_weapon_attachment_refs,
+};
 
-use super::{attachments, gangs, injuries, prefabs, situation, terrain};
+use super::{injuries, prefabs, situation};
 use crate::states::{AppState, load::resources::LoadedSituation};
 
 /// Presence-probes over every resource the per-edge checks read — bundled into
@@ -100,10 +104,12 @@ pub(in crate::states::load) fn add_content_validation(app: &mut App) {
         .register_reference_check(situation::check_situation_theme_ref)
         .register_reference_check(situation::check_situation_terrain_refs)
         .register_reference_check(situation::check_situation_field_refs)
-        .register_reference_check(gangs::check_gang_equipment_refs)
-        .register_reference_check(attachments::check_weapon_attachment_refs)
-        .register_reference_check(terrain::check_theme_terrain_refs)
-        .register_reference_check(terrain::check_emplacement_weapon_refs)
+        // The four HOST-AGNOSTIC edge checks, shared with the content editor
+        // via gdtf_content_families::validate (GTW-630).
+        .register_reference_check(check_gang_equipment_refs)
+        .register_reference_check(check_weapon_attachment_refs)
+        .register_reference_check(check_theme_terrain_refs)
+        .register_reference_check(check_emplacement_weapon_refs)
         .register_reference_check(prefabs::check_prefab_refs)
         .register_reference_check(injuries::check_injury_weighting_refs);
 }

@@ -1,0 +1,12 @@
+// GTW-630 fixture theme — a registry-PRESENT theme whose default_floor and palette entry
+// both reference terrain UUIDs this root never defines, so the theme→terrain edges dangle
+// ON PURPOSE (NOT shipped content; loaded only by tests/authoring_validation.rs — the
+// editor-side authoring-time validation pins).
+(
+    key: "00000000-0000-0000-0000-0630000000a1",  // this theme IS in the registry
+    display_name: "Fixture Theme",
+    default_floor: "00000000-0000-0000-0000-063000000001",  // DANGLING terrain UUID
+    terrain: [
+        "00000000-0000-0000-0000-063000000002",  // DANGLING terrain UUID (palette entry)
+    ],
+)

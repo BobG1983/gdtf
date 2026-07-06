@@ -22,6 +22,10 @@
 //! (key = the UUID inside the def; the terrain tree is a MIXED folder both
 //! walk with the unconditional `TypeId` filter): [`TerrainDefsFamily`],
 //! [`ThemeDefsFamily`].
+//!
+//! Beside the family impls, [`validate`] hosts the HOST-AGNOSTIC per-edge
+//! reference checks of the GTW-582 unified dangling-reference contract
+//! (GTW-630) — the same one-crate seam logic, shared by both hosts.
 
 mod armor;
 mod attachments;
@@ -30,6 +34,7 @@ mod gangs;
 mod melee_weapons;
 mod terrain_defs;
 mod theme_defs;
+pub mod validate;
 mod weapons;
 
 pub use armor::ArmorFamily;

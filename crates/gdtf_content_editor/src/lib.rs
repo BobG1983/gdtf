@@ -106,6 +106,10 @@ mod theme_form;
 // THE PRESENTER DOES (via the presenter's TileRoles table) — shared by the palette + canvas.
 mod terrain_graphics;
 mod tile_atlas;
+// GTW-630: the editor's AUTHORING-TIME registration of the GTW-582 reference-integrity pass —
+// the shared gdtf_content_families::validate checks over the edges the editor loads
+// (theme→terrain + emplacement→weapon), re-armed live on hot-reload.
+mod validate;
 
 pub use app::MapEditorApp;
 // GTW-512: the `bevy_ui` canvas render markers are GONE (the egui viewport is C4); only the two

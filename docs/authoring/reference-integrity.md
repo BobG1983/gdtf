@@ -2,9 +2,14 @@
 
 How GDTF validates the authored content graph, what a finding looks like, and
 what happens to a malformed file or a dangling key (GTW-582, Q3 ruling
-2026-07-02). This is the authoring-facing contract; the validator's module docs
-live at `crates/gdtf_app/src/states/load/systems/validate/mod.rs` and the
-shared report/salvage vocabulary at `crates/gdtf_assets/src/family/report/` /
+2026-07-02). This is the authoring-facing contract. The HOST-AGNOSTIC per-edge
+checks (gang equipment, weapon attachments, theme/emplacement terrain — shared
+by game and editor since GTW-630) live at
+`crates/gdtf_content_families/src/validate/`; the game-bespoke edges
+(situation, prefabs, injuries) and the game's registration at
+`crates/gdtf_app/src/states/load/systems/validate/mod.rs`; the editor's
+registration at `crates/gdtf_content_editor/src/validate/`; and the shared
+report/salvage vocabulary at `crates/gdtf_assets/src/family/report/` /
 `crates/gdtf_assets/src/family/salvage.rs`.
 
 ---
@@ -19,6 +24,13 @@ findings persist in the `ContentIntegrityReport` resource. Validation is loud,
 **never fatal**: `Load` always exits (the no-strand guarantee), and the
 existing runtime guards (a battle setup still aborts fail-closed on a bad key)
 stay in place. Mistakes become visible at `Load`, not at battle-request time.
+
+The **content editor runs the same pass** (GTW-630) over the edges it loads —
+theme → terrain UUIDs and emplacement → mounted-weapon keys — and RE-ARMS it
+on every hot-reload of a watched registry: the report is reset, re-checked
+against the current content, and re-published. A dangling terrain UUID
+authored in the editor therefore surfaces at authoring time (at the save/edit),
+not on the next game launch.
 
 ## What is validated (the reference graph)
 
@@ -82,6 +94,27 @@ Two generation-time degradations survive, as last resorts only, and both
 - **empty-board fallback** — when procgen cannot assemble a level at all (no
   prefabs for the theme), the battle uses the authored situation's terrain
   as-is.
+
+## Adding a family edge (the recipe — one crate)
+
+A new cross-file reference edge costs ONE check system in ONE crate
+(`crates/gdtf_content_families/src/validate/`, beside the family glue impls),
+plus one `register_reference_check(...)` hook per host that loads the edge's
+registries:
+
+1. Write the check beside its edge family in
+   `crates/gdtf_content_families/src/validate/` — a Bevy system over the sim
+   registries that appends a `DanglingRef` finding per unresolved key.
+2. Hook it in the game's registrar
+   (`crates/gdtf_app/src/states/load/systems/validate/`) and, IF the editor
+   loads every registry the check reads, in the editor's
+   (`crates/gdtf_content_editor/src/validate/`). Never register a check whose
+   registries a host doesn't load — the host's `Check` window gates on the
+   registries its registered checks read, so an unloaded one would hold the
+   whole window shut (and an empty stand-in would false-fail every key).
+
+Only game-bespoke edges (families the editor never loads — situations,
+prefabs, injuries) live in the game crate's `validate/` instead.
 
 ## Fixing a finding
 
