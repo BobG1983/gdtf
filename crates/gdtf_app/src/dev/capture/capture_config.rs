@@ -162,7 +162,7 @@ impl CaptureConfig {
     /// Build a single-frame capture config for `path` with the default schedule.
     /// Test-only inherent surface (the production path constructs it via struct
     /// literal in the `resolve` module; the GTW-590 output-dir pins drive
-    /// [`ensure_output_dir`](super::plugin::ensure_output_dir) through this).
+    /// [`ensure_output_dir`](super::diagnostics::ensure_output_dir) through this).
     /// `#[cfg(test)]` so the binary stays `dead_code`-clean.
     #[cfg(test)]
     #[must_use]

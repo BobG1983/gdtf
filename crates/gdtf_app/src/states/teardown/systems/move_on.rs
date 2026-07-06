@@ -9,7 +9,7 @@ use bevy::{prelude::*, window::PrimaryWindow};
 /// app intermittently hangs on shutdown ("Entered Teardown State" then never exits).
 /// The macOS-safe exit is to despawn the `PrimaryWindow` entity, which drives winit's
 /// native window-close exit path (it does not have the #23313 bug — this is the
-/// documented fallback at `app/capture/plugin.rs`). The `AppExit::Success` message is
+/// documented fallback at `dev/capture/plugin.rs`). The `AppExit::Success` message is
 /// KEPT for the headless / no-window / CI path, where there is no window to despawn and
 /// the runner exits on the message instead. Both together: a windowed macOS run exits
 /// via window-close; a headless run exits via `AppExit`.

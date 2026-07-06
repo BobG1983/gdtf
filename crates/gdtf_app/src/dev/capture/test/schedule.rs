@@ -15,7 +15,8 @@ use bevy::{prelude::*, render::view::window::screenshot::Screenshot, state::app:
 
 use super::super::{
     capture_config::CaptureConfig,
-    plugin::{DevCapturePlugin, ensure_output_dir},
+    diagnostics::ensure_output_dir,
+    plugin::DevCapturePlugin,
     resolve::{RawCaptureEnv, resolve},
 };
 use crate::states::{AppState, BattleScapeState, GameState, RunningState};

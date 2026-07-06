@@ -1,7 +1,10 @@
-//! The DEV-ONLY screenshot / in-engine visual-QA + fire-trigger affordance (GTW-297,
-//! extended GTW-306). The gates, the capture / fire config, the plugin, and the systems
-//! live in the `plugin` submodule; see it for the full rationale and the exact
-//! invocation. Tests live in the sibling `test` submodule.
+//! The DEV-ONLY screenshot / in-engine visual-QA affordance (GTW-297, extended
+//! GTW-306). The gates, the capture config, the env-resolution seam, the plugin, and
+//! the capture system live in the focused submodules below; see `plugin` for the full
+//! rationale. Tests live in the sibling `test` submodule. The scripted fire / fall
+//! DRIVE triggers this plugin also registers are owned by the sibling `drive` module
+//! (`crate::dev::drive`, GTW-632); their env vars are documented below because the
+//! QA invocation combines both affordances in one run.
 //!
 //! ## Invocation
 //!
@@ -48,13 +51,13 @@
 //! `grep -i 'capture'` over the run log tells the whole story.
 
 mod capture_config;
+mod diagnostics;
 mod plugin;
 mod resolve;
 mod screenshot;
-mod trigger_config;
-mod triggers;
 
-// `DevCapturePlugin` is the only item the binary consumes (via `gdtf_app.rs`). Plain
+// `DevCapturePlugin` is the only item the binary consumes (via the dev aggregate
+// plugin, `crate::dev::plugin`). Plain
 // `pub(crate)` re-export: nothing OUTSIDE the crate names the capture items (the config
 // tests are the in-crate `#[cfg(test)]` sibling), so it stays `unreachable_pub`-clean
 // without the `test-support` visibility flip the `auto_battle` affordance needs.

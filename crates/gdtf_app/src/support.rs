@@ -22,7 +22,7 @@
 //!   [`LoadedSituation`](crate::states::LoadedSituation) at the states root;
 //! - the dual-use re-exports the production binary also reads: the bottom-bar root
 //!   (`set_world_viewport` measures it) and the auto-battle plugin
-//!   (`crate::app::auto_battle`).
+//!   (`crate::dev::auto_battle`).
 
 /// Declares an item with `pub` visibility when the `test-support` feature is
 /// enabled, and `pub(crate)` visibility otherwise.

@@ -4,7 +4,8 @@
 
 mod plugin;
 
-// `AutoBattlePlugin` is the only item the binary consumes (via `gdtf_app.rs`), so it
+// `AutoBattlePlugin` is the only item the binary consumes (via the dev aggregate
+// plugin, `crate::dev::plugin`), so it
 // is re-exported in BOTH configurations, at the same `test-support` visibility flip
 // the item itself uses (`support_item!` in `plugin`): `pub` under `test-support` (the
 // `test_support` re-export needs it), `pub(crate)` otherwise — `unreachable_pub`-clean

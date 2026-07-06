@@ -4,7 +4,7 @@
 //! orchestrator's post-gate QA) can drive the app into a live, rendered battle and
 //! capture the rendered frame(s) to PNG(s) on disk — which the agent then `Read`s to
 //! visually verify the HUD / FX that the per-slice headless tests structurally cannot
-//! observe. It pairs with the GTW-223 [`AutoBattlePlugin`](crate::app::auto_battle)
+//! observe. It pairs with the GTW-223 [`AutoBattlePlugin`](crate::dev::auto_battle)
 //! which drives the app unattended into [`BattleScapeState::BattleRunning`].
 //!
 //! ## Two gates, both must hold to activate
@@ -54,7 +54,8 @@
 //!   a [`FireRequested`](gdtf_battle_sim::acts::FireRequested) message — exactly what a
 //!   left-click fire produces — so the sim's `dispatch_fire` resolves the shot, the FX
 //!   slices emit their projectile / impact, and the capture sequence above records it).
-//!   Independent of capture (it activates on its own env var).
+//!   Independent of capture (its own env var); a DRIVE affordance owned by the sibling
+//!   `crate::dev::drive` module (GTW-632), this plugin remaining its one registrar.
 //!
 //! ## How it captures
 //!
@@ -96,8 +97,9 @@
 //! Unlike the GTW-223 `auto_battle` affordance — whose plugin the EXTERNAL
 //! `test_support` / `gdtf_test_utils` harness names (so it widens to `pub` via
 //! `support_item!`) — NOTHING outside this crate references the capture items: the
-//! binary wires [`DevCapturePlugin`] in-crate via `gdtf_app.rs`, and the tests are the
-//! in-crate `#[cfg(test)]` sibling. So every item here is `pub(crate)` (the widest
+//! binary wires [`DevCapturePlugin`] in-crate via the dev aggregate plugin
+//! (`crate::dev::plugin`), and the tests are the in-crate `#[cfg(test)]` sibling. So
+//! every item here is `pub(crate)` (the widest
 //! visibility anything reaches), keeping the binary `unreachable_pub`-clean WITHOUT the
 //! `support_item!` flip.
 
@@ -106,12 +108,17 @@ use gdtf_battle_sim::falls::apply_falls;
 
 use super::{
     capture_config::CaptureConfig,
+    diagnostics::{ensure_output_dir, warn_config_diagnostics},
     resolve::{RawCaptureEnv, ResolvedCaptureEnv, resolve},
     screenshot::capture_when_ready,
-    trigger_config::{FallConfig, FireConfig},
-    triggers::{trigger_fall_at_frame, trigger_fire_at_frame},
 };
-use crate::states::BattleScapeState;
+use crate::{
+    dev::drive::{
+        trigger_config::{FallConfig, FireConfig},
+        triggers::{trigger_fall_at_frame, trigger_fire_at_frame},
+    },
+    states::BattleScapeState,
+};
 
 /// The DEV-ONLY screenshot / visual-QA + fire-trigger affordance plugin (GTW-297 /
 /// GTW-306).
@@ -184,19 +191,20 @@ impl DevCapturePlugin {
         self.capture.as_ref().map(|config| config.frames.clone())
     }
 
-    /// The configured [`FireAtFrame`](super::trigger_config::FireAtFrame), if the fire
-    /// sub-affordance is enabled. Test-only inherent surface. `#[cfg(test)]`.
+    /// The configured [`FireAtFrame`](crate::dev::drive::trigger_config::FireAtFrame),
+    /// if the fire sub-affordance is enabled. Test-only inherent surface. `#[cfg(test)]`.
     #[cfg(test)]
     #[must_use]
-    pub(crate) fn fire_frame(&self) -> Option<super::trigger_config::FireAtFrame> {
+    pub(crate) fn fire_frame(&self) -> Option<crate::dev::drive::trigger_config::FireAtFrame> {
         self.fire.map(|config| config.frame)
     }
 
-    /// The configured [`FallAtFrame`](super::trigger_config::FallAtFrame), if the fall
-    /// sub-affordance is enabled. Test-only inherent surface (GTW-529). `#[cfg(test)]`.
+    /// The configured [`FallAtFrame`](crate::dev::drive::trigger_config::FallAtFrame),
+    /// if the fall sub-affordance is enabled. Test-only inherent surface (GTW-529).
+    /// `#[cfg(test)]`.
     #[cfg(test)]
     #[must_use]
-    pub(crate) fn fall_frame(&self) -> Option<super::trigger_config::FallAtFrame> {
+    pub(crate) fn fall_frame(&self) -> Option<crate::dev::drive::trigger_config::FallAtFrame> {
         self.fall.map(|config| config.frame)
     }
 }
@@ -265,36 +273,4 @@ impl Plugin for DevCapturePlugin {
             );
         }
     }
-}
-
-/// `warn!` every [`CaptureConfigWarning`](super::resolve::CaptureConfigWarning)
-/// diagnostic a resolved env snapshot carries, one `dev-capture: `-prefixed line per
-/// warning — the ONE emission choke point for the GTW-590 loud-config lines (C4c).
-///
-/// [`DevCapturePlugin::from_env`] runs it on the live snapshot; it takes the RESOLVED
-/// snapshot (rather than reading the env itself) so the loudness test drives the REAL
-/// emitter with an injected snapshot under the log capture, no process-global env
-/// mutation — deleting the `warn!` turns the suite red instead of turning a
-/// misconfigured QA run silent. `pub(super)` for exactly that test.
-pub(super) fn warn_config_diagnostics(resolved: &ResolvedCaptureEnv) {
-    for warning in &resolved.warnings {
-        warn!("dev-capture: {warning}");
-    }
-}
-
-/// Create the capture output's parent directory (`create_dir_all`) so every scheduled
-/// PNG can land — GTW-590 C3's "parent dirs created or a loud error". `Ok` for a bare
-/// filename (no parent) or an already-existing directory; `Err` carries the IO cause,
-/// which [`DevCapturePlugin::build`] logs as an immediate `error!` naming the output
-/// path. `pub(super)` so the schedule test pins both the materialization and the
-/// failure classification.
-pub(super) fn ensure_output_dir(config: &CaptureConfig) -> std::io::Result<()> {
-    let Some(parent) = config.path.parent() else {
-        return Ok(());
-    };
-    if parent.as_os_str().is_empty() {
-        // A bare relative filename ("shot.png"): nothing to create.
-        return Ok(());
-    }
-    std::fs::create_dir_all(parent)
 }

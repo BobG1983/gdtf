@@ -1,7 +1,8 @@
-pub(crate) mod auto_battle;
-// The DEV-ONLY screenshot / visual-QA affordance (GTW-297). Double-gated: only compiled
-// under the opt-in `dev_capture` feature, and only wired in under `debug_assertions`.
-#[cfg(all(debug_assertions, feature = "dev_capture"))]
-pub(crate) mod capture;
+//! The [`GdtfApp`] application wrapper — the ONE production entry point.
+//!
+//! Purely the wrapper (GTW-632): the DEV-ONLY QA affordances that used to live
+//! beside it (auto-battle, capture, the drive triggers) are owned by `crate::dev`
+//! and wired in through its one aggregate plugin.
+
 mod gdtf_app;
 pub use gdtf_app::GdtfApp;

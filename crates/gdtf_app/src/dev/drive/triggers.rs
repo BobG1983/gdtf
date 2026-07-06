@@ -1,7 +1,8 @@
-//! The dev fire / fall trigger systems of the DEV-ONLY capture affordance — scripted
-//! triggers that drive the REAL sim paths (a `FireRequested` message / the GTW-523
-//! fall path) at a configured `BattleRunning` frame. Split out of the sibling `plugin`
-//! module (GTW-583); see its header for the full affordance rationale.
+//! The DEV battle-script drive trigger systems — scripted one-shot triggers that
+//! drive the REAL sim paths (a `FireRequested` message / the GTW-523 fall path) at a
+//! configured `BattleRunning` frame. Split out of the capture plugin (GTW-583) and
+//! homed with the drive affordance (GTW-632); see the capture plugin's header
+//! (`crate::dev::capture::plugin`, their one registrar) for the full rationale.
 
 use bevy::prelude::*;
 use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
@@ -168,7 +169,7 @@ const FALL_TRIGGER_STOREY: Level = Level::new(1);
 ///    `SlabDestroyed` is buffered AND the elevating `Position` write is visible when
 ///    `apply_falls` reads its faller query, so the GTW-523 drop resolves THIS frame (down to
 ///    the ground `k == 0`) and the GTW-524 impact flash fires at the landing — both captured
-///    in the same frame by the GTW-297 [`capture_when_ready`](super::screenshot::capture_when_ready) path (no second capture
+///    in the same frame by the GTW-297 [`capture_when_ready`](crate::dev::capture::screenshot::capture_when_ready) path (no second capture
 ///    mechanism).
 ///
 /// Fires exactly once: it acts only while its [`Local<u32>`] counter equals the target frame.

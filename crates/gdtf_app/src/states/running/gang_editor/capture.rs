@@ -4,7 +4,7 @@
 //! This is **not shipping behavior**. It exists so QA (or a coding agent) can drive the app into
 //! the gang editor and capture the rendered editor screen — proving C6 visually, which the
 //! headless tests structurally cannot observe. It mirrors the GTW-419 loading-screen capture /
-//! GTW-297 [`DevCapturePlugin`](crate::app::capture) gating discipline.
+//! GTW-297 [`DevCapturePlugin`](crate::dev::capture) gating discipline.
 //!
 //! ## Two gates, both must hold to activate
 //!
@@ -20,7 +20,7 @@
 //! the `Screenshot` + `save_to_disk` spawn, and the exit poll delegate to the shared pieces:
 //! [`parse_shot_path`] (the path gate), [`settle_then_capture`] (the settle-then-spawn, with
 //! this scene's calibrated [`SettleFrames`]), and the game-side
-//! [`poll_then_quit`](crate::states::running::capture_exit::poll_then_quit) (PNG-on-disk →
+//! [`poll_then_quit`](crate::dev::capture_exit::poll_then_quit) (PNG-on-disk →
 //! [`RunningState::Quit`], the shared cascade — NEVER a direct `AppExit`, the macOS winit
 //! hang Bevy #23313). When active it (a) drives the menu into [`RunningState::DebugGangEditor`]
 //! the moment the menu rests (the editor screen then spawns `OnEnter`), (b) once in
@@ -39,11 +39,11 @@ use gdtf_screenshot::{
 };
 use gdtf_ui::{AccordionAnim, CommittedNumericValue, NumericFieldCommitted};
 
-use crate::states::{
-    RunningState,
-    running::{
-        capture_exit::poll_then_quit,
-        gang_editor::components::{
+use crate::{
+    dev::capture_exit::poll_then_quit,
+    states::{
+        RunningState,
+        running::gang_editor::components::{
             AddMemberButton, AttributeField, BaseAttribute, EditorScreenRoot, ExpandPip, MemberRow,
             MemberRowIndex, MemberStatPanel, PipExpanded,
         },

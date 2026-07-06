@@ -39,7 +39,7 @@ serde = { workspace = true }
 # stays normal because the `#[cfg(test)]` modules ride the lib target.
 ron = { workspace = true }
 # GTW-510: the reusable in-engine self-capture crate. OPTIONAL — pulled in ONLY by the `dev_capture`
-# feature (below), matching the existing `crate::app::capture` gating discipline. Since GTW-577 the
+# feature (below), matching the existing `crate::dev::capture` gating discipline. Since GTW-577 the
 # three scene capture hooks (gang editor / procgen visualizer / loading screen) run ON its
 # primitives — `parse_shot_path` for the env-var path gate and `settle_then_capture` for the
 # settle-then-`Screenshot` spawn — keeping only their per-scene env vars + drive; the game also adds
@@ -84,7 +84,7 @@ dynamic_linking = ["bevy/dynamic_linking"]
 # Test/dev only — never enabled for release artifacts or by the binary crate.
 test-support = []
 # DEV / LOCAL-only screenshot / visual-QA capture (GTW-297). Compiles in the
-# `crate::app::capture` affordance, which is ADDITIONALLY double-gated on
+# `crate::dev::capture` affordance, which is ADDITIONALLY double-gated on
 # `cfg!(debug_assertions)` at the wiring site, so a release binary never sees it even
 # with the feature on. `Screenshot` / `save_to_disk` live in `bevy_render` (already
 # present via `DefaultPlugins`), so no extra bevy feature is required. The affordance
