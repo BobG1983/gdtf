@@ -47,11 +47,12 @@ crate::support_item! {
 
 /// Marks the "Save gang" button so the GTW-429 save system can read its
 /// [`Interaction`](bevy::ui::Interaction) press (C4) and write the edited
-/// [`EditableGang`](super::model::EditableGang) to a `*.ron` gang file on disk (C1).
+/// [`EditableGang`](super::model::EditableGang) to a `*.gang.ron` gang file on disk (C1).
 ///
 /// The save action's live-play trigger: pressing it serializes the full edited model into the
 /// GTW-415 [`GangRoster`](gdtf_battle_sim::GangRoster) schema and writes it to
-/// `assets/content/gangs/<gang_name>.ron`. A plain `pub(in …editor)` marker (NOT
+/// `assets/content/gangs/<gang_name>.gang.ron` (the extension derived from the gangs family's
+/// canonical one since GTW-621). A plain `pub(in …editor)` marker (NOT
 /// [`crate::support_item!`]): no EXTERNAL test names it — the GTW-429 round-trip test is in-crate
 /// and exercises the model-projection + loader path directly, not the button widget.
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]

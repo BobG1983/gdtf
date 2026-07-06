@@ -67,7 +67,7 @@ impl EditableGang {
         /// The gang's [`name`](EditableGang::name) becomes the registry KEY (the file stem, NOT a
         /// field of the roster — the GTW-415 key model), and each [`EditableMember`] projects to a
         /// sim [`GangMember`](gdtf_battle_sim::GangMember) via [`to_sim`](EditableMember::to_sim). The save path serializes the
-        /// returned [`GangRoster`] to `assets/content/gangs/<gang_name>.ron`, and the round-trip
+        /// returned [`GangRoster`] to `assets/content/gangs/<gang_name>.gang.ron`, and the round-trip
         /// test reloads it through the same loader and asserts structural equality (C2). Declared
         /// through [`crate::support_item!`] so the round-trip test can name it.
         #[must_use]

@@ -1,16 +1,18 @@
 //! The gang SAVE system: a press on the "Save gang" button serializes the edited
 //! [`EditableGang`](super::super::model::EditableGang) into the GTW-415
 //! [`GangRoster`](gdtf_battle_sim::GangRoster) schema and WRITES it to
-//! `assets/content/gangs/<sanitized_gang_name>.ron` (GTW-429; the stem is sanitized through
-//! the shared GTW-577 [`sanitize_file_stem`](gdtf_assets::sanitize_file_stem) seam).
+//! `assets/content/gangs/<sanitized_gang_name>.gang.ron` (GTW-429; the stem is sanitized
+//! through the shared GTW-577 [`sanitize_file_stem`](gdtf_assets::sanitize_file_stem) seam;
+//! the extension is DERIVED from `GangsFamily::EXTENSION` since GTW-621 so the write can
+//! never drift from the gangs folder loader's read).
 //!
 //! The save action's live-play trigger (C4): the editor toolbar's [`SaveGangButton`]. A press
 //! projects the model to its sim `(`[`GangName`](gdtf_battle_sim::GangName)`,
 //! `[`GangRoster`](gdtf_battle_sim::GangRoster)`)` via
 //! [`to_roster`](super::super::model::EditableGang::to_roster) — the SAME def the loader reads,
 //! NOT a parallel schema (C1) — serializes the roster to RON, and writes it under the workspace
-//! assets root the running app loads from, keyed by the gang NAME (the RESOLVED save path, user
-//! 2026-06-26).
+//! assets root the running app loads from, keyed by the gang NAME (the user 2026-07-04 ruling,
+//! revising the 2026-06-26 `<stem>.ron` one after GTW-621 showed a bare `.ron` never reloads).
 //!
 //! The whole module is `#[cfg(debug_assertions)]`-gated (C3): the fs-write fn + the press system
 //! are NOT compiled into a release binary. The editor scene itself is debug-only (its menu entry
@@ -26,8 +28,9 @@ use std::path::{Path, PathBuf};
 use bevy::{prelude::*, ui::Interaction};
 #[cfg(test)]
 use gdtf_assets::serialize_ron_pretty;
-use gdtf_assets::{sanitize_file_stem, write_ron_pretty};
+use gdtf_assets::{ContentFamily, sanitize_file_stem, write_ron_pretty};
 use gdtf_battle_sim::{GangName, GangRoster};
+use gdtf_content_families::GangsFamily;
 
 use crate::states::running::editor::{components::SaveGangButton, model::EditableGang};
 
@@ -38,23 +41,30 @@ use crate::states::running::editor::{components::SaveGangButton, model::Editable
 const WORKSPACE_ASSETS_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
 
 /// The folder under the assets root the GTW-415 loader scans for `*.gang.ron` gang files — the
-/// directory the saved gang `.ron` is written into.
+/// directory the saved gang `.gang.ron` is written into.
 const GANGS_SUBDIR: &str = "content/gangs";
 
-/// The on-disk FILE NAME for a saved gang — `<sanitized_gang_name>.ron` (the RESOLVED save
-/// path, user 2026-06-26; sanitized through the shared seam since GTW-577 C1), a pure function
-/// of the [`GangName`] so a test can assert it WITHOUT touching the filesystem.
+/// The on-disk FILE NAME for a saved gang — `<sanitized_gang_name>.gang.ron` (the user
+/// 2026-07-04 ruling, revising the 2026-06-26 `<stem>.ron` one; sanitized through the shared
+/// seam since GTW-577 C1), a pure function of the [`GangName`] so a test can assert it WITHOUT
+/// touching the filesystem.
+///
+/// The suffix is DERIVED from [`GangsFamily::EXTENSION`] — the ONE canonical extension
+/// discriminant, the exact compound extension the gangs folder loader is registered for — so
+/// the editor's WRITE can never drift from the loader's READ again (GTW-621 C3). The
+/// pre-GTW-621 `<stem>.ron` write drifted: the bare `.ron` dispatched to another plain-`ron`
+/// loader, the gangs family's `TypeId` filter skipped the member, and every saved gang
+/// silently vanished on reload.
 ///
 /// The stem is built through [`sanitize_file_stem`], so a path-hostile gang name (`"../../X"`,
 /// spaces, uppercase) can never reach the filesystem raw — before GTW-577 the raw name went
 /// straight into the file name. A name that sanitizes to NOTHING falls back to the documented
-/// `unnamed_gang` stem (minted through the SAME seam), so a save never targets a bare `.ron`.
+/// `unnamed_gang` stem (minted through the SAME seam), so a save never targets a bare,
+/// extension-only file name.
 ///
-/// NOTE: the GTW-415 loader keys a gang by its file STEM with a trailing `.gang` infix stripped
-/// (`gang_0.gang.ron` keys `gang_0`), so a `<stem>.ron` file keys back to exactly `<stem>` —
-/// the editor's save target deliberately omits the `.gang` infix. Since the stem is the
-/// SANITIZED name, a gang whose name needed sanitizing reloads keyed by the sanitized stem
-/// (the loader's own slug convention).
+/// NOTE: the GTW-415 loader keys a gang by its file STEM with the `.gang` infix stripped
+/// (`gang_0.gang.ron` keys `gang_0`), so a saved gang reloads keyed by exactly its sanitized
+/// stem (the loader's own slug convention).
 #[must_use]
 pub(in crate::states::running::editor) fn gang_file_name(name: &GangName) -> String {
     let stem = sanitize_file_stem(name.as_str());
@@ -63,20 +73,33 @@ pub(in crate::states::running::editor) fn gang_file_name(name: &GangName) -> Str
     } else {
         stem
     };
-    format!("{stem}.ron")
+    format!("{stem}.{}", GangsFamily::EXTENSION)
 }
 
-/// The full on-disk PATH a saved gang is written to:
-/// `<workspace assets>/content/gangs/<sanitized_gang_name>.ron` (the stem via
-/// [`gang_file_name`] → the shared GTW-577 sanitize seam).
+/// The full on-disk PATH a saved gang is written to under an arbitrary assets `root`:
+/// `<root>/content/gangs/` joined with the [`gang_file_name`] — the root-parameterized core
+/// (the GTW-555 `write_terrain_in` precedent), so a test can resolve the REAL save location
+/// against a `TempDir` root instead of the version-controlled `assets/` tree.
 ///
-/// Pure (no IO) so a test can assert the resolved location ends in the expected
-/// `content/gangs/<stem>.ron` without writing anything.
+/// Pure (no IO) so a test can assert the resolved location without writing anything.
 #[must_use]
-pub(in crate::states::running::editor) fn gang_save_path(name: &GangName) -> PathBuf {
-    Path::new(WORKSPACE_ASSETS_ROOT)
-        .join(GANGS_SUBDIR)
-        .join(gang_file_name(name))
+pub(in crate::states::running::editor) fn gang_save_path_in(
+    root: &Path,
+    name: &GangName,
+) -> PathBuf {
+    root.join(GANGS_SUBDIR).join(gang_file_name(name))
+}
+
+/// The full on-disk PATH the RUNNING app saves a gang to:
+/// [`gang_save_path_in`] under the workspace [`WORKSPACE_ASSETS_ROOT`].
+///
+/// Test-only since GTW-621: the production write chain resolves its path inside
+/// [`write_gang_roster_in`] (via the root the wrapper supplies), so this thin delegation
+/// exists for the path-sanitization test to assert the resolved workspace location.
+#[cfg(test)]
+#[must_use]
+fn gang_save_path(name: &GangName) -> PathBuf {
+    gang_save_path_in(Path::new(WORKSPACE_ASSETS_ROOT), name)
 }
 
 /// Serialize the gang roster to its `*.gang.ron`-shaped RON text — the SAME schema the GTW-415
@@ -92,28 +115,42 @@ fn serialize_roster(roster: &GangRoster) -> Result<String, gdtf_assets::RonSaveE
     serialize_ron_pretty(roster)
 }
 
-/// Write the edited gang to `assets/content/gangs/<sanitized_gang_name>.ron` (C1).
-///
-/// Resolves the sanitized save path ([`gang_save_path`], which builds its stem through the
-/// shared [`sanitize_file_stem`] seam) and hands the serialize → mkdir → write chain to the
-/// shared [`write_ron_pretty`] seam (GTW-577 C2). The fallible write is handled by LOGGING an
-/// `error!` — it NEVER `unwrap`/`expect`/`panic`s (the no-panic rule); the seam error's
-/// `Display` names the failed stage (serialize vs write). A success logs an `info!` naming the
-/// written path.
-///
-/// The whole module is `#[cfg(debug_assertions)]`-gated (C3), so this filesystem write is never
-/// compiled into a release binary.
-fn write_gang_roster(name: &GangName, roster: &GangRoster) {
-    let path = gang_save_path(name);
-    if let Err(err) = write_ron_pretty(&path, roster) {
-        error!("gang save: gang `{}`: {err}", name.as_str());
-        return;
+crate::support_item! {
+    /// Write the edited gang under an arbitrary assets `root` — the root-parameterized write core
+    /// (the GTW-555 `write_terrain_in` precedent), so the GTW-621 regression test can drive the
+    /// REAL write into a `TempDir` assets root and then load it back through the REAL gangs
+    /// folder walk, never polluting the version-controlled `assets/` tree.
+    ///
+    /// Resolves the sanitized save path ([`gang_save_path_in`], which builds its stem through the
+    /// shared [`sanitize_file_stem`] seam) and hands the serialize → mkdir → write chain to the
+    /// shared [`write_ron_pretty`] seam (GTW-577 C2). The fallible write is handled by LOGGING an
+    /// `error!` — it NEVER `unwrap`/`expect`/`panic`s (the no-panic rule); the seam error's
+    /// `Display` names the failed stage (serialize vs write). A success logs an `info!` naming
+    /// the written path.
+    ///
+    /// The whole module is `#[cfg(debug_assertions)]`-gated (C3), so this filesystem write is
+    /// never compiled into a release binary. Declared through `crate::support_item!` (`pub`
+    /// under `test-support`, `pub(crate)` otherwise) so the GTW-621 regression test can reach
+    /// it through the crate-root ledger.
+    fn write_gang_roster_in(root: &Path, name: &GangName, roster: &GangRoster) {
+        let path = gang_save_path_in(root, name);
+        if let Err(err) = write_ron_pretty(&path, roster) {
+            error!("gang save: gang `{}`: {err}", name.as_str());
+            return;
+        }
+        info!(
+            "gang save: wrote gang `{}` to `{}`",
+            name.as_str(),
+            path.display()
+        );
     }
-    info!(
-        "gang save: wrote gang `{}` to `{}`",
-        name.as_str(),
-        path.display()
-    );
+}
+
+/// Write the edited gang to `assets/content/gangs/` (C1): [`write_gang_roster_in`] under the
+/// workspace [`WORKSPACE_ASSETS_ROOT`] — the thin root-supplying wrapper the Save-button
+/// system calls.
+fn write_gang_roster(name: &GangName, roster: &GangRoster) {
+    write_gang_roster_in(Path::new(WORKSPACE_ASSETS_ROOT), name, roster);
 }
 
 /// `Update` (gated `in_state(DebugEditor)`): writes the edited gang to disk on a "Save gang" press
@@ -199,8 +236,8 @@ mod tests {
     /// The reload mirrors the GTW-415 loader EXACTLY: it deserializes the serialized bytes with
     /// `ron::de::from_str::<GangRoster>` — the parser `RonAsset<GangRoster>` uses — and keys the
     /// roster into a [`GangRegistry`] by the saved file's STEM with a trailing `.gang` stripped
-    /// (the loader's `gang_key_from_stem`). The editor saves `<name>.ron` (no `.gang` infix), so
-    /// the strip is a no-op and the key is the gang name unchanged.
+    /// (the loader's stem keying). The editor saves `<name>.gang.ron` (GTW-621), so the strip
+    /// recovers exactly the gang name.
     ///
     /// In-memory string round-trip — it NEVER writes into the real `assets/content/gangs/` dir (no
     /// repo pollution, deterministic). Structural equality across the WHOLE model (gang name + each
@@ -225,7 +262,7 @@ mod tests {
         let Ok(serialized) = serialized else {
             return;
         };
-        // The on-disk file name the save path would use — `<gang_name>.ron`.
+        // The on-disk file name the save path would use — `<gang_name>.gang.ron`.
         let file_name = gang_file_name(&name);
 
         // RELOAD via the loader path: deserialize the bytes the way `RonAsset<GangRoster>` does …
@@ -238,8 +275,8 @@ mod tests {
         let Ok(reloaded_roster) = reloaded_roster else {
             return;
         };
-        // … and key it into a registry by the file STEM minus a trailing `.gang` (the loader's
-        // `gang_key_from_stem`), mirroring `build_gang_registry`.
+        // … and key it into a registry by the file STEM minus the `.gang` infix (the family
+        // seam's `stem_from_path` keying), mirroring the folder-walk registry build.
         let stem = file_name
             .strip_suffix(".ron")
             .map_or_else(|| file_name.clone(), ToOwned::to_owned);
@@ -255,13 +292,35 @@ mod tests {
         );
     }
 
-    /// The save FILE NAME is `<gang_name>.ron` (the RESOLVED save path, user 2026-06-26) — and the
-    /// loader's stem-keying recovers exactly the gang name from it (no `.gang` infix to strip).
-    /// An already-slug-shaped name passes through the GTW-577 sanitize seam unchanged.
+    /// The save FILE NAME is `<gang_name>.gang.ron` (the user 2026-07-04 ruling, revising the
+    /// 2026-06-26 `<stem>.ron` one) — the loader's stem-keying strips the `.gang` infix and
+    /// recovers exactly the gang name. An already-slug-shaped name passes through the GTW-577
+    /// sanitize seam unchanged.
     #[test]
-    fn save_file_name_is_gang_name_dot_ron() {
+    fn save_file_name_is_gang_name_dot_gang_dot_ron() {
         let name = GangName::new("goliaths".to_owned());
-        assert_eq!(gang_file_name(&name), "goliaths.ron");
+        assert_eq!(gang_file_name(&name), "goliaths.gang.ron");
+    }
+
+    /// GTW-621 C4 — the written file name derives its suffix from the ONE canonical extension
+    /// discriminant, [`GangsFamily::EXTENSION`] (the compound extension the gangs folder
+    /// loader is registered for), so the editor's WRITE can never again drift from the
+    /// loader's READ. The pre-GTW-621 `<stem>.ron` drift silently dropped every saved gang on
+    /// reload: the bare `.ron` dispatched to another plain-`ron` loader and the gangs family's
+    /// `TypeId` filter skipped it, with zero warns.
+    #[test]
+    fn save_file_name_derives_its_suffix_from_the_gangs_family_extension() {
+        use gdtf_assets::ContentFamily;
+        use gdtf_content_families::GangsFamily;
+
+        let file_name = gang_file_name(&GangName::new("goliaths".to_owned()));
+        let expected_suffix = format!(".{}", GangsFamily::EXTENSION);
+        assert!(
+            file_name.ends_with(&expected_suffix),
+            "the saved gang file name `{file_name}` must end with `{expected_suffix}` \
+             (derived from GangsFamily::EXTENSION), or the gangs folder loader never \
+             dispatches the saved file and the gang silently vanishes on reload",
+        );
     }
 
     /// GTW-577 acceptance (2) — a PATH-HOSTILE [`GangName`] saves to a SANITIZED filename via
@@ -274,27 +333,29 @@ mod tests {
         let hostile = GangName::new("../../Evil Gang!".to_owned());
         assert_eq!(
             gang_file_name(&hostile),
-            "evil_gang.ron",
+            "evil_gang.gang.ron",
             "the seam drops path separators/dots and folds the name to the slug convention",
         );
 
-        // The resolved path's TAIL is exactly `content/gangs/<sanitized>.ron` — the hostile
-        // name contributed a single, separator-free FILE component, so it cannot have escaped
-        // the gangs directory. (The workspace root itself contains `../..` by construction —
-        // `CARGO_MANIFEST_DIR/../../assets` — so the assertion pins the name-derived tail.)
+        // The resolved path's TAIL is exactly `content/gangs/<sanitized>.gang.ron` — the
+        // hostile name contributed a single, separator-free FILE component, so it cannot have
+        // escaped the gangs directory. (The workspace root itself contains `../..` by
+        // construction — `CARGO_MANIFEST_DIR/../../assets` — so the assertion pins the
+        // name-derived tail.)
         let path = gang_save_path(&hostile);
         assert!(
-            path.ends_with("content/gangs/evil_gang.ron"),
+            path.ends_with("content/gangs/evil_gang.gang.ron"),
             "the sanitized file lands under content/gangs/: {path:?}",
         );
         assert_eq!(
             path.file_name().and_then(|f| f.to_str()),
-            Some("evil_gang.ron"),
+            Some("evil_gang.gang.ron"),
             "the whole hostile name collapsed into ONE sanitized file component",
         );
 
-        // A name that sanitizes to NOTHING falls back to the documented stem — never `.ron`.
+        // A name that sanitizes to NOTHING falls back to the documented stem — never a bare,
+        // extension-only file name.
         let unnameable = GangName::new("!!!///".to_owned());
-        assert_eq!(gang_file_name(&unnameable), "unnamed_gang.ron");
+        assert_eq!(gang_file_name(&unnameable), "unnamed_gang.gang.ron");
     }
 }

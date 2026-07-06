@@ -18,7 +18,7 @@
 //!   [`delete_member_on_press`] (C4), and the expand-pip→accordion [`toggle_expand_pip`]
 //!   (GTW-428 C1). The GTW-416 accordion height-lerp itself rides `UiPlugin`'s `drive_accordions`.
 //!   In a DEBUG build it ALSO registers `save_gang_on_press` (GTW-429 C4): a press on the "Save
-//!   gang" button writes the edited model to `assets/content/gangs/<gang_name>.ron` in the GTW-415
+//!   gang" button writes the edited model to `assets/content/gangs/<gang_name>.gang.ron` in the GTW-415
 //!   schema (C1). The save system + its fs-write are `cfg(debug_assertions)`-gated (C3).
 //! - `OnExit(DebugEditor)`: [`remove_editable_gang`] removes the model resource (C1); the screen
 //!   entities tear down via their own `DespawnOnExit` markers.
@@ -83,7 +83,7 @@ impl Plugin for EditorScenePlugin {
         );
 
         // GTW-429 C4: the SAVE trigger — a press on the "Save gang" button writes the edited model
-        // to `assets/content/gangs/<gang_name>.ron` (C1). `#[cfg(debug_assertions)]`-gated (C3) so
+        // to `assets/content/gangs/<gang_name>.gang.ron` (C1). `#[cfg(debug_assertions)]`-gated (C3) so
         // the filesystem-write system is never compiled into a release binary. Registered as its own
         // gated `add_systems` so the always-compiled tuple above stays release-buildable.
         #[cfg(debug_assertions)]

@@ -22,6 +22,11 @@ mod components;
 /// chain is `pub(crate)`, so a `pub mod` here trips the workspace `unreachable_pub = deny`.
 #[cfg(feature = "test-support")]
 pub(crate) mod test_support {
+    // The GTW-621 real-folder-walk regression aims the REAL save write at a `TempDir`
+    // assets root; the fn rides the debug-gated `systems::save` module, so its
+    // re-export carries the same cfg (the procgen-viz ledger precedent).
+    #[cfg(debug_assertions)]
+    pub use super::systems::save::write_gang_roster_in;
     pub use super::{
         components::{
             AddMemberButton, AttributeField, BaseAttribute, DeleteMemberButton, DerivedStat,
