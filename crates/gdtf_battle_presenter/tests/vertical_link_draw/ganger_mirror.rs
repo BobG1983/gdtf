@@ -67,12 +67,13 @@ fn settle_sprite_mapped(app: &mut App, sim: Entity) {
 /// Drive bounded `update()`s until the presenter sprite mirroring sim ganger `sim` reports the
 /// `expected` [`Visibility`] (or the bound elapses).
 ///
-/// The cross-storey Visibility flip is `move_ganger_sprites` in `PresenterSystems::Draw`, so after
-/// a `Position` mutation the flip can trail the sim write by a frame under parallel `cargo dtest`
-/// contention. This bounded settle removes that flip-lag race before the Visibility is asserted —
-/// it never weakens the check: the following `assert_eq!` still fails if the value never converges,
-/// the bound only stops a transient one-frame-off read (and a never-converging value still surfaces
-/// as the assertion failing on the final read, not a hang).
+/// The cross-storey Visibility flip is the ganger-visibility resolver
+/// (`resolve_ganger_visibility`, GTW-627 — the `Compose` stage of `PresenterSystems::Draw`), so
+/// after a `Position` mutation the flip can trail the sim write by a frame under parallel
+/// `cargo dtest` contention. This bounded settle removes that flip-lag race before the Visibility
+/// is asserted — it never weakens the check: the following `assert_eq!` still fails if the value
+/// never converges, the bound only stops a transient one-frame-off read (and a never-converging
+/// value still surfaces as the assertion failing on the final read, not a hang).
 fn settle_visibility(app: &mut App, sim: Entity, expected: Visibility) {
     for _ in 0..MAX_UPDATES {
         if visibility_of_sim(app, Some(sim)) == Some(expected) {
@@ -82,10 +83,12 @@ fn settle_visibility(app: &mut App, sim: Entity, expected: Visibility) {
     }
 }
 
-/// C6 (c) — the CROSS-STOREY ganger Visibility handoff (AC2 CONFIRM, no new system): a
-/// ganger whose `Position.z` leaves the active storey goes `Hidden`; back on it goes
-/// `Inherited`. Confirms the LANDED `move_ganger_sprites` flip survives the GTW-359 tween
-/// restructure (the C3 KEEP clause).
+/// C6 (c) — the CROSS-STOREY ganger Visibility handoff: a ganger whose `Position.z`
+/// leaves the active storey goes `Hidden`; back on it goes `Inherited`. Since GTW-627 the
+/// flip is owned by the ganger-visibility resolver (`resolve_ganger_visibility` — the one
+/// visibility writer), which re-classifies the moved ganger the same update; this pins
+/// the handoff end-to-end through the real registered wiring (the ganger here is
+/// player-faction, so the fog fact composes trivially and the storey axis decides).
 #[test]
 fn ganger_visibility_flips_hidden_when_position_leaves_active_storey() {
     let mut app = headless_renderer_app();

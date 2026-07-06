@@ -29,24 +29,22 @@
 //!
 //! Terrain tiles render through a [`Material2d`](bevy::sprite_render::Material2d)
 //! ([`TerrainFogMaterial`]) rather than a [`Sprite`](bevy::prelude::Sprite), because the
-//! sprite pipeline's per-channel multiply tint cannot DESATURATE (GTW-348). Gangers stay on
-//! the sprite path — the actor arm of [`present_fog`] is a Visibility hard-cut, unchanged.
+//! sprite pipeline's per-channel multiply tint cannot DESATURATE (GTW-348). Gangers stay
+//! on the sprite path, and their fog hard-cut lives in the ganger-visibility RESOLVER
+//! ([`resolve_ganger_visibility`](crate::resolve_ganger_visibility), GTW-627) — this
+//! module writes terrain only.
 //!
-//! # Composition with the view slice — never crossing writers
+//! # Composition with the view slice
 //!
-//! Two visibility writers, never crossed (`docs/combat/visibility.md` §"Composition with
-//! the view slice"): the [`ActiveLevel`](crate::ActiveLevel) **slice** owns LAYER visibility (a
-//! ganger strictly ABOVE the drawn band `0..=active` is hard-hidden by
-//! [`apply_active_level_filter`](crate::apply_active_level_filter) / the spawn / move systems);
-//! **fog** owns the per-cell terrain modulate plus each actor entity's own fog flag. The design
-//! intent is "a thing draws iff fog shows its cell/entity AND the slice draws its storey". This
-//! codebase has no layer-parent hierarchy to inherit through, so the fog writer is the SINGLE
-//! FINAL writer of each actor sprite's `Visibility`: ordered `.after` the slice's storey-filter
-//! systems, it re-reads the SAME drawn-band storey fact the slice uses (GTW-520 — the shared
-//! [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey) predicate, widened from the
-//! pre-GTW-520 on-active-storey hard cut so a ganger on a LOWER drawn storey is shown) and ANDs
-//! it with the fog fact — so plan and render can never disagree and the two facts are composed
-//! by one writer rather than two fighting over the same component.
+//! Two visibility FACTS (`docs/combat/visibility.md` §"Composition with the view slice"):
+//! the [`ActiveLevel`](crate::ActiveLevel) **slice** owns LAYER visibility (only storeys
+//! within the drawn band `0..=active` are drawn); **fog** owns per-cell presentation and
+//! actor flags. The design intent — "a thing draws iff fog shows its cell/entity AND the
+//! slice draws its storey" — is composed per SURFACE: for terrain, the slice decides which
+//! tiles EXIST (the band draw) and [`present_fog`] modulates every drawn tile; for actor
+//! sprites, ONE pure classifier ANDs both facts and ONE resolver
+//! ([`resolve_ganger_visibility`](crate::resolve_ganger_visibility)) writes the verdict
+//! (GTW-627 — the writes are tick-quiet through the shared `actors/quiet.rs` seam).
 //!
 //! # Ordering (the CRITICAL clause)
 //!
@@ -70,5 +68,6 @@ mod present;
 #[cfg(test)]
 mod test;
 
+pub(crate) use material::Saturation;
 pub use material::{Brightness, TerrainFogMaterial, TerrainFogUniform};
 pub use present::present_fog;

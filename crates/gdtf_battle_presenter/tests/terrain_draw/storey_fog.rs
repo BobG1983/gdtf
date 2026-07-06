@@ -6,8 +6,8 @@ use bevy::{
 };
 use gdtf_battle_presenter::{ActiveLevel, TerrainFogMaterial, TerrainSprite};
 use gdtf_battle_sim::{
-    BattleInProgress, BattleReady, Cell, CellLevel, CombatTuning, CoverLedger, Level,
-    SquadVisibility, SurfaceGrid, TerrainKind, TerrainPlacement,
+    BattleInProgress, BattleReady, Cell, CellLevel, CoverLedger, Level, SquadVisibility,
+    SurfaceGrid, TerrainKind, TerrainPlacement,
 };
 
 use super::harness::*;
@@ -67,7 +67,8 @@ fn set_fog(app: &mut App, visible: &[CellLevel], explored: &[CellLevel]) {
 ///
 /// At `ActiveLevel` 1: authors a wall at `(4,4)` on storey 0 and on storey 1. The storey-1
 /// wall is squad-VISIBLE; the storey-0 wall is EXPLORED-only. Drives the REAL `present_fog`
-/// (requires `SquadVisibility` + `CombatTuning` — inserted here) and asserts the four facts.
+/// (requires `SquadVisibility` — inserted here; GTW-627 deleted the old `CombatTuning`
+/// pseudo-gate) and asserts the four facts.
 #[test]
 fn lower_storey_darkened_active_full_bright_and_explored_saturation_preserved() {
     let mut app = headless_renderer_app();
@@ -89,8 +90,6 @@ fn lower_storey_darkened_active_full_bright_and_explored_saturation_preserved() 
     app.world_mut().insert_resource(CoverLedger::new());
     app.world_mut().insert_resource(SurfaceGrid::new());
     app.world_mut().insert_resource(BattleInProgress);
-    // present_fog's gate needs CombatTuning present (the battle-configured witness).
-    app.world_mut().insert_resource(CombatTuning::default());
 
     // The active-storey wall is VISIBLE; the lower-storey wall is EXPLORED-only (remembered).
     set_fog(&mut app, &[active], &[lower]);

@@ -1,20 +1,17 @@
-//! In-crate unit tests for the fog writer's PURE helpers: the three-state fog resolution
-//! and the per-actor faction-relation gate.
+//! In-crate unit tests for the fog writer's PURE helper: the three-state fog resolution.
 //!
-//! These exercise the relation / state-resolution DECISIONS in isolation (no App / no
-//! render); the full system wiring (ordering after the terrain draw + cover swap, the
-//! per-cell terrain DESATURATE, the actor hard-cut, the post-level-cycle re-apply) is the
-//! headless integration test in `tests/fog_present.rs`. The GTW-348 per-cell
+//! This exercises the state-resolution DECISION in isolation (no App / no render); the
+//! full system wiring (ordering after the terrain draw + cover swap, the per-cell terrain
+//! DESATURATE, the post-level-cycle re-apply, the steady-frame tick-quietness) is the
+//! headless integration test in `tests/fog_present/`. The GTW-348 per-cell
 //! `TerrainFogMaterial.saturation` mapping (VISIBLE 1.0 / EXPLORED 0.0) lives in that
-//! integration test, where the real material assets exist (the saturation values are not a
-//! pure helper any more — they are written into the material store by the system).
+//! integration test, where the real material assets exist. The actor-side classifier
+//! tests live with the GTW-627 resolver in `actors/ganger/test/visibility.rs`.
 
 use bevy::platform::collections::HashSet;
-use gdtf_battle_sim::{
-    Cell, CellLevel, Faction, FactionRelation, Level, LifeState, PlayerFaction, SquadVisibility,
-};
+use gdtf_battle_sim::{Cell, CellLevel, Level, SquadVisibility};
 
-use super::present::{CellFog, actor_relation};
+use super::present::CellFog;
 
 /// `CellFog::resolve` maps the three squad states: VISIBLE wins over EXPLORED, and a cell
 /// in neither set is UNSEEN.
@@ -43,40 +40,5 @@ fn cell_fog_resolves_three_states() {
     assert!(matches!(
         CellFog::resolve(&squad, &unseen_cell),
         CellFog::Unseen
-    ));
-}
-
-/// A live player-faction ganger is `OwnSquad` (always shown); an enemy, or a corpse of
-/// either faction, is `Other` (fog-gated).
-#[test]
-fn actor_relation_gates_by_faction_and_life() {
-    let player = Faction::new(0);
-    let enemy = Faction::new(1);
-    let pf = Some(PlayerFaction::new(player));
-
-    // Live player ganger -> OwnSquad.
-    assert!(matches!(
-        actor_relation(pf, player, LifeState::Alive),
-        FactionRelation::OwnSquad
-    ));
-    // Live enemy ganger -> Other.
-    assert!(matches!(
-        actor_relation(pf, enemy, LifeState::Alive),
-        FactionRelation::Other
-    ));
-    // A DOWNED player ganger (a corpse-like body, no longer a live observer) -> Other.
-    assert!(matches!(
-        actor_relation(pf, player, LifeState::Downed),
-        FactionRelation::Other
-    ));
-    // A DEAD player ganger -> Other.
-    assert!(matches!(
-        actor_relation(pf, player, LifeState::Dead),
-        FactionRelation::Other
-    ));
-    // No PlayerFaction resident (a focused harness) -> everything fog-gated (fail-closed).
-    assert!(matches!(
-        actor_relation(None, player, LifeState::Alive),
-        FactionRelation::Other
     ));
 }

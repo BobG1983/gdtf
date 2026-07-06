@@ -8,8 +8,9 @@ use bevy::{platform::collections::HashMap, prelude::*};
 /// A NAMED newtype [`Resource`] over a [`HashMap`] (no-bare-types: a domain map, not a
 /// bare collection field; the inner [`Entity`] keys/values are the framework
 /// carve-out). `init_resource`-d by [`TopDownRendererPlugin`](crate::TopDownRendererPlugin)
-/// so it is present for the whole battle span — the spawn system records into it, the
-/// move / reframe / death / removal / level-filter systems look up through it.
+/// so it is present for the whole battle span — the spawn system records into it; the
+/// move / reframe / death / removal systems and the GTW-627 visibility resolver
+/// (`resolve_ganger_visibility`) look up through it.
 #[derive(Resource, Default, Debug)]
 pub struct GangerSprites {
     /// Each `sim ganger Entity -> presenter sprite Entity` link. The framework

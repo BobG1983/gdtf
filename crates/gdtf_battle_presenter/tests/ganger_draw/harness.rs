@@ -16,9 +16,8 @@ use bevy::{
 };
 use gdtf_battle_presenter::{CharacterRoles, TopDownAtlases, TopDownRendererPlugin};
 use gdtf_battle_sim::{
-    Aiming, BattleReady, BattleSeed, CellLevel, CombatTuning, Direction, Facing, Faction,
-    GangerSpawn, SetupBattleRequested, ShotRng, Situation, SquadVisibility,
-    setup_battle_on_request,
+    Aiming, BattleReady, BattleSeed, CellLevel, Direction, Facing, Faction, GangerSpawn,
+    SetupBattleRequested, ShotRng, Situation, SquadVisibility, setup_battle_on_request,
     test_support::{
         test_armor_registry, test_gang_registry, test_melee_weapon_registry, test_terrain_registry,
         test_weapon_registry,
@@ -127,25 +126,18 @@ pub(crate) fn headless_renderer_app() -> App {
     app
 }
 
-/// A FOG-AWARE harness for the GTW-520 lower-storey visibility tests: the same
-/// [`headless_renderer_app`] PLUS a resident [`CombatTuning`].
+/// Put the GTW-627 ganger-visibility resolver in BAND-ONLY mode: remove the
+/// setup-inserted [`SquadVisibility`], so the classifier takes its ABSENT-fog branch (the
+/// band fact alone decides — no fog composition, no mode flag).
 ///
-/// CRITICAL (`plugin/renderer.rs:843`): `present_fog` is gated on
-/// `resource_exists::<CombatTuning>` — the "a real battle's balance data is configured"
-/// witness. The base [`headless_renderer_app`] deliberately OMITS `CombatTuning`
-/// (`renderer.rs:824-826`) so the pre-GTW-520 draw tests exercise the spawn / move / filter
-/// set with the fog writer INERT. The GTW-520 tests must exercise the app's REAL final
-/// visibility — `present_actor_fog` is the single final [`Visibility`] writer every real-app
-/// frame — so they insert `CombatTuning` here, making the fog writer LIVE (alongside the
-/// setup-inserted [`SquadVisibility`], the always-present `Assets<TerrainFogMaterial>` from
-/// `Material2dPlugin`, and the setup-inserted `BattleInProgress`).
-pub(crate) fn fog_aware_app() -> App {
-    let mut app = headless_renderer_app();
-    // The `Load`-state combat tuning: the battle-configured witness that ungates `present_fog`
-    // (`renderer.rs:843`). The Default's magnitudes are irrelevant here — its presence alone
-    // ungates the fog writer so the actor-visibility assertions see the real final flag.
-    app.insert_resource(CombatTuning::default());
-    app
+/// The real `setup_battle` inserts an (empty) `SquadVisibility` alongside a default
+/// `PlayerFaction`, which makes the resolver COMPOSE the fog fact — an empty fog would
+/// hide every non-player ganger. The storey-filter tests pin the BAND axis in isolation,
+/// so they clear the fog sets and exercise the classifier's band-only mode directly
+/// (pre-GTW-627 the same isolation came from the deleted `CombatTuning` pseudo-gate
+/// keeping the fog writer inert).
+pub(crate) fn band_only_fog(app: &mut App) {
+    app.world_mut().remove_resource::<SquadVisibility>();
 }
 
 /// Drives `update()`s until `CharacterRoles` + `TopDownAtlases` are BOTH resident (the async

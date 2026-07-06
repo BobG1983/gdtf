@@ -1,20 +1,22 @@
 //! Ganger sprite draw-band registration: spawn / move / reframe / life-state /
-//! removal / storey-filter / hot-reload re-index / tween / impact-despawn.
+//! removal / hot-reload re-index / tween / impact-despawn, plus the Compose-stage
+//! visibility resolver.
 
 use bevy::{ecs::message::Messages, prelude::*};
 use gdtf_battle_sim::{BattleInProgress, ShotFired};
 
 use crate::{
     CharacterRoles, PresenterSystems, ShotImpactResolved, TopDownAtlases, advance_sprite_tweens,
-    apply_active_level_filter, despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites,
-    move_ganger_sprites, reframe_ganger_sprites, reindex_ganger_sprites_on_character_roles_change,
-    spawn_ganger_sprites, update_ganger_life_state,
+    despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites, move_ganger_sprites,
+    reframe_ganger_sprites, reindex_ganger_sprites_on_character_roles_change,
+    resolve_ganger_visibility, spawn_ganger_sprites, update_ganger_life_state,
 };
 
 /// GTW-219 (S5): the ganger-draw change-detection systems join the
-/// [`PresenterSystems::Scene`] stage (GTW-623 — the drawn-world stage; the fog
-/// visibility hard-cut and the overlays order after them by STAGE MEMBERSHIP, no
-/// pairwise edges). Each is gated `run_if(resource_exists::<BattleInProgress>)` AND on
+/// [`PresenterSystems::Scene`] stage (GTW-623 — the drawn-world stage; the Compose-stage
+/// writers — the terrain fog and the GTW-627 visibility resolver — and the overlays order
+/// after them by STAGE MEMBERSHIP, no pairwise edges). Each is gated
+/// `run_if(resource_exists::<BattleInProgress>)` AND on
 /// every render resource it reads — `CharacterRoles` (the data table) and
 /// `TopDownAtlases` — so a `MinimalPlugins` headless app with no `AssetServer`
 /// (those resources absent) simply does not draw rather than failing param
@@ -53,10 +55,23 @@ pub(super) fn register_ganger_draw(app: &mut App) {
             move_ganger_sprites.after(spawn_ganger_sprites),
             reframe_ganger_sprites,
             update_ganger_life_state,
-            apply_active_level_filter,
         )
             .in_set(PresenterSystems::Scene)
             .run_if(gate),
+    )
+    // GTW-627: the ganger-visibility RESOLVER — the ONE writer of every ganger sprite's
+    // `Visibility`, in the Compose stage (chained strictly after the Scene stage above by
+    // STAGE MEMBERSHIP, GTW-623 — no pairwise `.after` edges). It resolves the drawn-band
+    // storey fact AND, when the fog resources are resident, the fog fact through one pure
+    // classifier; with the fog sets absent (a focused harness) it is band-only. Gated on
+    // the battle witness alone: its classifier resources are `Option`al or
+    // `init_resource`-d on build (`bevy-traps.md` #1), and with no mapped sprites it is
+    // inert.
+    .add_systems(
+        Update,
+        resolve_ganger_visibility
+            .in_set(PresenterSystems::Compose)
+            .run_if(resource_exists::<BattleInProgress>),
     )
     // GTW-375 (C4): RE-INDEX every mapped ganger sprite to the freshly-reloaded atlas
     // indices when `character_roles.ron` hot-reloads (redrive_character_roles_on_asset_event
