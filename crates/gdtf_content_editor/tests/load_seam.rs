@@ -1,15 +1,18 @@
 //! GTW-579 headless pins for the editor's seam-registered `Load` pass.
 //!
-//! AC-2: driving the REAL [`MapEditorPlugin`] on the no-renderer `DefaultPlugins`
-//! harness (live workspace `assets/` root) reaches [`EditorState::Editing`] with
-//! ALL SIX resolved resources present — through the actual GTW-570 content-family
-//! and GTW-564 hot-RON seam registrations, not an editor-local mirror — and the
-//! seam's persistent handles survive past `Load` (the GTW-533 whole-session
-//! persistence the live hot-reload rides).
+//! AC-2 (as AMENDED by GTW-625): driving the REAL [`MapEditorPlugin`] on the
+//! no-renderer `DefaultPlugins` harness (live workspace `assets/` root) reaches
+//! [`EditorState::Editing`] with ALL FIVE resolved resources present — through
+//! the actual GTW-570 content-family and GTW-564 hot-RON seam registrations, not
+//! an editor-local mirror — and the seam's persistent handles survive past
+//! `Load` (the GTW-533 whole-session persistence the live hot-reload rides).
+//! The game's `GdtfTheme` is NOT among the gate resources: the egui shell styles
+//! itself, so the editor neither registers the theme chain nor depends on the
+//! game's hand-rolled UI crate at all (this test crate cannot even name the type).
 //!
 //! AC-4 (ADR-0003): pointing the SAME app at an EMPTY asset root fails every
-//! load, and the editor STILL transitions to `Editing` — the theme + tile-role
-//! chains fall back to their const defaults (the editor-owned policy attached at
+//! load, and the editor STILL transitions to `Editing` — the tile-role
+//! chain falls back to its const default (the editor-owned policy attached at
 //! registration) and the four folder families fail closed to EMPTY registries.
 
 use std::path::Path;
@@ -33,7 +36,6 @@ use gdtf_battle_sim::{
 use gdtf_content_editor::{EditorState, MapEditorPlugin};
 use gdtf_content_families::{ArmorFamily, TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily};
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
-use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 
 /// A generous frame cap: the async asset loads under parallel `cargo` contention
 /// take a non-deterministic number of frames, so this is a SAFETY NET (not a
@@ -115,21 +117,20 @@ fn advance_to_editing(app: &mut App) {
     }
 }
 
-/// AC-2: the real seam path resolves the editor's whole gate set — the app
-/// reaches `Editing` with the theme, the four folder registries (each NON-empty,
-/// so the shipped content genuinely resolved — no count pins), and the tile-role
-/// table all present, plus the six PERSISTENT seam handles (GTW-533 C4a: no
-/// `OnExit(Load)` cleanup exists, so the live hot-reload substrate survives).
+/// AC-2 (as amended by GTW-625): the real seam path resolves the editor's whole
+/// gate set — the app reaches `Editing` with the four folder registries (each
+/// NON-empty, so the shipped content genuinely resolved — no count pins) and the
+/// tile-role table all present, plus the five PERSISTENT seam handles (GTW-533
+/// C4a: no `OnExit(Load)` cleanup exists, so the live hot-reload substrate
+/// survives). No game-theme resource exists to gate on — the editor no longer
+/// depends on the game's hand-rolled UI crate, so reaching `Editing` here IS the
+/// boots-without-the-theme proof.
 #[test]
-fn load_pass_resolves_all_six_resources_through_the_real_seams() {
+fn load_pass_resolves_all_five_resources_through_the_real_seams() {
     let mut app = editor_app();
     advance_to_editing(&mut app);
 
     let world = app.world();
-    assert!(
-        world.get_resource::<GdtfTheme>().is_some(),
-        "the GdtfTheme must resolve through the published theme hot-RON chain",
-    );
     assert!(
         world
             .get_resource::<WeaponRegistry>()
@@ -186,12 +187,6 @@ fn load_pass_resolves_all_six_resources_through_the_real_seams() {
         "the theme-defs ContentFolderHandle must persist past Load",
     );
     assert!(
-        world
-            .get_resource::<HotRonHandle<GdtfThemeSpec>>()
-            .is_some(),
-        "the theme HotRonHandle must persist past Load",
-    );
-    assert!(
         world.get_resource::<HotRonHandle<TileRoles>>().is_some(),
         "the tile-roles HotRonHandle must persist past Load",
     );
@@ -199,7 +194,7 @@ fn load_pass_resolves_all_six_resources_through_the_real_seams() {
 
 /// AC-4 (the ADR-0003 pin): with an EMPTY asset root every load reaches
 /// `Failed`, the fallbacks fire, and `Load` STILL transitions — the editor never
-/// hangs. The theme + tile-role chains resolve to their const defaults (the
+/// hangs. The tile-role chain resolves to its const default (the
 /// editor-owned zero table: every role at index 0) and the four folder families
 /// fail closed to EMPTY registries.
 #[test]
@@ -213,10 +208,6 @@ fn failed_asset_root_falls_back_and_still_reaches_editing() {
     advance_to_editing(&mut app);
 
     let world = app.world();
-    assert!(
-        world.get_resource::<GdtfTheme>().is_some(),
-        "a Failed theme must fall back to the const default theme",
-    );
     let roles = world.get_resource::<TileRoles>();
     assert_eq!(
         roles.map(|r| r.floor),

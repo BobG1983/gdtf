@@ -72,7 +72,7 @@ use crate::{
 ///   [`seed_default_theme`] (seed the session theme to the registry's first theme once it resolves)
 ///   and [`mode_hotkeys`] (the `1`/`2`/`3` mode hotkeys). The theme SELECTION is now folded into the
 ///   session by the egui `ComboBox` directly (resolve the chosen theme's default-floor +
-///   [`MapEditorSession::select_theme`](crate::session::MapEditorSession::select_theme)) — the verbatim body the old gdtf_ui-coupled
+///   [`MapEditorSession::select_theme`](crate::session::MapEditorSession::select_theme)) — the verbatim body the old widget-coupled
 ///   `apply_theme_selection` ran, which is gone now its dropdown message no longer fires.
 pub struct MapEditorPlugin;
 
@@ -145,7 +145,7 @@ impl Plugin for MapEditorPlugin {
 
         // The UI-agnostic model drives kept from the old shell (no `bevy_ui` dependency): the theme
         // seed + the mode hotkeys. The theme SELECTION is folded into the session by the egui
-        // `ComboBox` directly (the verbatim `apply_theme_selection` body), so that `gdtf_ui`-coupled
+        // `ComboBox` directly (the verbatim `apply_theme_selection` body), so that widget-coupled
         // drive is not wired.
         app.add_systems(
             Update,

@@ -5,7 +5,8 @@
 //! display name, SORTED by label so the order is deterministic (the registry is a `HashMap`), with
 //! index `0` the pre-selected default. An absent / empty registry yields an empty list (the
 //! `ComboBox` then offers nothing rather than panicking). The only change is the option type — egui
-//! has no `gdtf_ui::DropdownOption`, so an option is a plain `(label, ThemeUuid)` pair.
+//! has no equivalent of the old hand-rolled `DropdownOption`, so an option is a plain
+//! `(label, ThemeUuid)` pair.
 
 use gdtf_battle_sim::level::{ThemeUuid, UuidThemeRegistry};
 

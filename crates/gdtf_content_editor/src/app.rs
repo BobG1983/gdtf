@@ -3,7 +3,7 @@
 //! Mirrors `gdtf_app`'s `GdtfApp`: a thin newtype over a Bevy [`App`] that composes
 //! `DefaultPlugins` (with the asset source root pointed at the workspace `assets/`), the
 //! [`EguiPlugin`](bevy_egui::EguiPlugin) (GTW-512: the editor's UI is now egui — a CLEAN SWAP off
-//! the hand-rolled `gdtf_ui::UiPlugin`), the editor's own [`MapEditorPlugin`], and the env-gated
+//! the game's hand-rolled UI plugin), the editor's own [`MapEditorPlugin`], and the env-gated
 //! QA capture affordance. It is a SEPARATE binary from the game — it shares no scene graph and runs
 //! no battle sim (the GTW-417 housing constraint).
 

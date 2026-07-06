@@ -2886,7 +2886,6 @@ dependencies = [
  "gdtf_screenshot",
  "gdtf_state_scoped",
  "gdtf_test_utils",
- "gdtf_ui",
  "ron",
  "tempfile",
 ]

@@ -2,8 +2,7 @@
 //!
 //! ADR-0003 (GTW-579 C4b): every asset the editor's `Load` pass gates on must
 //! fall back to a const default on a genuine `Failed`, so the editor NEVER
-//! hangs in `Load` on a bad/missing file. The theme chain's fallback is the
-//! published [`default_theme`](gdtf_ui::theme::default_theme); the presenter
+//! hangs in `Load` on a bad/missing file. The presenter
 //! ships NO [`TileRoles`] fallback (the game leaves the resource absent and its
 //! gate waits), so the zero table below is the editor's own policy — attached
 //! at the editor's chain registration ([`register_load`](super::register_load)

@@ -1,16 +1,15 @@
 //! The TERRAIN form's **numeric-input newtypes** (GTW-474; split out of `types.rs` in
-//! GTW-574): the [`NumericValue`](gdtf_ui::NumericValue)-shaped wrappers the HP / armor
-//! fields edit through.
+//! GTW-574): the typed numeric wrappers the HP / armor fields edit through.
 
 use bevy::prelude::Deref;
 
-/// An HP magnitude the TERRAIN form's HP numeric field edits, clamps, and commits — the
-/// [`NumericValue`](gdtf_ui::NumericValue) generic the field is built over (GTW-474).
+/// An HP magnitude the TERRAIN form's HP numeric field edits, clamps, and commits — the typed
+/// value the field is built over (GTW-474).
 ///
-/// A named newtype over [`u32`] (no-bare-types rule 1: a numeric-field generic is a domain value,
+/// A named newtype over [`u32`] (no-bare-types rule 1: a numeric-field value is a domain value,
 /// never a bare `u32`; the sim's [`CoverHp`](gdtf_battle_sim::cover::CoverHp) /
 /// [`SlabHp`](gdtf_battle_sim::slab::SlabHp) do not impl `Display` / `FromStr`, so
-/// this thin input newtype satisfies the [`NumericValue`](gdtf_ui::NumericValue) bound and is
+/// this thin input newtype carries the text round-trip impls itself and is
 /// converted into the right HP newtype on commit). Private inner + derived [`Deref`].
 #[derive(Deref, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct HpInput(u32);
@@ -38,8 +37,7 @@ impl core::str::FromStr for HpInput {
 }
 
 /// An armor magnitude the TERRAIN form's armor numeric fields edit, clamp, and commit — the
-/// [`NumericValue`](gdtf_ui::NumericValue) generic the protection + hardness fields share
-/// (GTW-474).
+/// typed value the protection + hardness fields share (GTW-474).
 ///
 /// A named newtype over [`i32`] (no-bare-types rule 1; the sim's
 /// [`ArmorProtection`](gdtf_battle_sim::armor::ArmorProtection) /

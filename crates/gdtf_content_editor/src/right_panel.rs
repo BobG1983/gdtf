@@ -3,7 +3,7 @@
 //!
 //! GTW-421 stood up a `bevy_ui` right panel: a theme dropdown + a three-field prefab SIZE selector,
 //! each driving the shared [`MapEditorSession`]. The GTW-512 egui swap DELETED that `bevy_ui` spawn
-//! (`spawn_right_panel_controls`) and the `gdtf_ui`-widget commit drives (`apply_size_commit`);
+//! (`spawn_right_panel_controls`) and the hand-rolled-widget commit drives (`apply_size_commit`);
 //! GTW-577 then deleted the two never-reconsumed `bevy_ui` marker types (`SizeFieldAxis` /
 //! `ThemeDropdown` — the egui rebuild needed neither). This module retains:
 //!
@@ -12,8 +12,8 @@
 //! - [`seed_default_theme`] — the UI-agnostic `Update` system that seeds the session theme to the
 //!   registry's first theme once it resolves (still wired).
 //!
-//! The pre-egui `apply_theme_selection` (which read a `gdtf_ui` `DropdownSelectionChanged<ThemeUuid>`
-//! and folded it into the session) is GONE: the egui `ComboBox` in
+//! The pre-egui `apply_theme_selection` (which read a hand-rolled `DropdownSelectionChanged<ThemeUuid>`
+//! widget message and folded it into the session) is GONE: the egui `ComboBox` in
 //! [`editor_egui_ui`](crate::egui_shell::editor_egui_ui) performs its VERBATIM body inline
 //! (resolve the chosen theme's default-floor + [`MapEditorSession::select_theme`]), so there is no
 //! separate drive system and no inert message reader.
