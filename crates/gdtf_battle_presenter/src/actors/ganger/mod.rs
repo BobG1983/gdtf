@@ -24,11 +24,12 @@
 //! ordered `.after(SimSystems::Simulate)`, and chained before the fog `Compose` stage):
 //!
 //! - [`spawn_ganger_sprites`] — `Added<Position>`: spawns one presenter [`Sprite`](bevy::sprite::Sprite) for
-//!   a ganger on the [`ActiveLevel`](crate::ActiveLevel), recording its `sim Entity -> presenter Entity` in
+//!   a ganger (its initial [`Visibility`](bevy::prelude::Visibility) seeded through the
+//!   GTW-627 classifier), recording its `sim Entity -> presenter Entity` in
 //!   the [`GangerSprites`] map and tagging it with the [`GangerSprite`] marker.
-//! - [`move_ganger_sprites`] — `Changed<Position>` (excluding the spawn): moves the
-//!   existing presenter sprite's [`Transform`](bevy::transform::components::Transform) (it does NOT respawn) and shows/hides it
-//!   by whether the new `(cell, level)` is on the active level.
+//! - [`move_ganger_sprites`] — `Changed<Position>` (excluding the spawn): re-targets the
+//!   existing presenter sprite's movement tween (it does NOT respawn); the show/hide
+//!   verdict is the resolver's below.
 //! - [`reframe_ganger_sprites`] — `Changed<Facing>` / `Changed<Stance>` /
 //!   `Changed<Aiming>`: recomputes the atlas index (facing reframe) and re-tints the
 //!   sprite (the stance / aiming delta) in place.
@@ -41,26 +42,26 @@
 //!   does not vanish before the bolt reaches it; drops its [`GangerSprites`] entry.
 //! - [`despawn_removed_ganger_sprites`] — [`RemovedComponents<Position>`](bevy::ecs::lifecycle::RemovedComponents): despawns the
 //!   mapped presenter sprite and drops its map entry.
-//! - [`apply_active_level_filter`] — on an [`ActiveLevel`](crate::ActiveLevel) change: hides off-level ganger
-//!   sprites and shows on-level ones (the SAME active-level filter the S4 static draw
-//!   uses — compare the ganger's `Position` `z` against `**ActiveLevel`).
+//! - [`resolve_ganger_visibility`] — every frame (the `Compose` stage): the ONE writer of
+//!   each ganger sprite's [`Visibility`](bevy::prelude::Visibility), resolving the
+//!   drawn-band storey fact AND (when the fog resources are resident) the fog fact
+//!   through one pure classifier, written tick-quietly via `set_if_neq` (GTW-627).
 //!
 //! It draws ONLY ganger sprites — never the S4 [`TerrainSprite`](crate::TerrainSprite),
 //! never the S2 [`WorldCamera`](crate::WorldCamera) — and adds ZERO sim setup/teardown
 //! plumbing (S5 only READS the running battle's results).
 //!
-//! # GTW-520 — draw gangers on visible lower storeys
+//! # GTW-520 / GTW-627 — the drawn-band × fog visibility decision
 //!
 //! The ganger-visibility model is a DRAWN-BAND decision, not a single-active-storey hard cut:
 //! a live ganger on ANY storey within `0..=active` is drawn at its OWN storey's Z (peeking
 //! through the floor-gaps GTW-519 already renders terrain for), and one strictly ABOVE the
-//! active level is culled. The four visibility sites — [`spawn_ganger_sprites`],
-//! [`move_ganger_sprites`], [`apply_active_level_filter`], AND the fog writer's
-//! `present_actor_fog` (the single final [`Visibility`](bevy::prelude::Visibility)
-//! writer) — all consult ONE shared predicate,
-//! [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey), so they cannot drift. The
-//! fog hard-cut is UNCHANGED (an unseen enemy on a lower drawn storey is still hidden); only
-//! the storey axis widened.
+//! active level is culled. Since GTW-627 the decision lives in ONE pure classifier (the
+//! band fact via [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey), AND the
+//! GTW-342 fog hard-cut when the fog resources are resident — band-only when absent) with
+//! ONE writer, [`resolve_ganger_visibility`]; the spawn seeds its initial value through
+//! the same classifier. The fog hard-cut itself is unchanged (an unseen enemy on a lower
+//! drawn storey is still hidden).
 //!
 //! FOLLOW-ON (GTW-522, NOT built here): cross-storey TARGETING — clicking / firing a ganger
 //! drawn on a LOWER storey. The cursor / selection / hover pick still binds the hovered cell to
@@ -92,4 +93,4 @@ pub(crate) use roles::register_character_roles_hot_ron;
 pub use spawn_move::{move_ganger_sprites, spawn_ganger_sprites};
 pub use sprite_map::{GangerSprite, GangerSprites};
 pub use tween::{SpriteTween, advance_sprite_tweens};
-pub use visibility::apply_active_level_filter;
+pub use visibility::{GangerVisibilityFacts, resolve_ganger_visibility};

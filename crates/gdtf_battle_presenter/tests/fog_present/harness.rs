@@ -92,8 +92,8 @@ pub(crate) fn headless_renderer_app() -> App {
     app.insert_resource(test_gang_registry());
     // The dense-FOV helper (dense_visible_from_observer -> union_fov) reads CombatTuning for
     // view_range (a Load-state resource the focused setup path does NOT insert); author the
-    // Default. GTW-348: the fog WRITER itself no longer reads CombatTuning (EXPLORED is
-    // greyscale, not dimmed), so this is only for the union_fov helper.
+    // Default. This is ONLY for the union_fov helper: the fog writer neither reads it
+    // (GTW-348) nor gates on it (GTW-627 deleted the pseudo-gate).
     app.insert_resource(CombatTuning::default());
     app.set_error_handler(warn);
     app

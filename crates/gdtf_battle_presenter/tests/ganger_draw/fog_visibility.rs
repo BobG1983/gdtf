@@ -29,24 +29,25 @@ fn position_of_sim(app: &mut App, sim: Option<Entity>) -> Option<CellLevel> {
 }
 
 /// GTW-520 C1 — a live PLAYER ganger on a storey BELOW the active view level (a LOWER drawn
-/// storey) ends `Visibility::Inherited` at its OWN storey's Z, AFTER the REAL fog writer
-/// (`present_actor_fog`, the single final visibility writer) runs.
+/// storey) ends `Visibility::Inherited` at its OWN storey's Z, AFTER the REAL
+/// ganger-visibility resolver (`resolve_ganger_visibility`, GTW-627 — the one writer of
+/// ganger-sprite visibility) runs.
 ///
-/// CRITICAL: this uses [`fog_aware_app`] (inserts `CombatTuning`) so `present_fog` is LIVE
-/// (`renderer.rs:843`). Without `CombatTuning` the fog writer is inert and this would assert
-/// the pre-fog spawn/filter set, NOT the app's real final visibility (`renderer.rs:824-826`).
-/// A player ganger is always shown by the fog predicate ([`FactionRelation::OwnSquad`]), so the
+/// The setup-inserted `SquadVisibility` + the authored `player_faction` make the
+/// resolver's classifier COMPOSE the fog fact (the fog resources are resident — no
+/// pseudo-gate; GTW-627 C2 deleted the old `CombatTuning` witness). A player ganger is
+/// always shown by the fog predicate ([`FactionRelation::OwnSquad`]), so the
 /// only thing under test is the STOREY axis: pre-GTW-520 the storey-0 ganger with active=1 was
 /// HARD-CUT Hidden (`pos.z == active` fails); GTW-520 widens it to drawn-band membership
 /// (`0 <= 1`) so it is shown. The Z assert pins C1's "positioned via
 /// `cell_to_world_layered(cell, its-own-level, Actor)`" — the lower-storey sprite draws at
 /// storey-0 Z, not the active storey's, so it occludes / peeks correctly.
 ///
-/// Pin-discriminating: reverting `present_actor_fog` to the `pos.z == active` hard cut leaves
-/// the storey-0 ganger Hidden at active=1 and this FAILS.
+/// Pin-discriminating: reverting the classifier's band fact to the `pos.z == active` hard cut
+/// leaves the storey-0 ganger Hidden at active=1 and this FAILS.
 #[test]
 fn player_ganger_on_lower_storey_stays_visible_at_own_z_after_fog() {
-    let mut app = fog_aware_app();
+    let mut app = headless_renderer_app();
     settle_resources(&mut app);
 
     let l0 = Level::new(0);
@@ -84,7 +85,7 @@ fn player_ganger_on_lower_storey_stays_visible_at_own_z_after_fog() {
         visibility_of_sim(&mut app, l0_sim),
         Some(Visibility::Inherited),
         "a player ganger on a LOWER drawn storey (0) is shown at active level 1 — the drawn-band \
-         widening, asserted through the LIVE fog writer (present_actor_fog)",
+         widening, asserted through the LIVE resolver (resolve_ganger_visibility)",
     );
     // C1: it draws at its OWN storey's Z (storey 0), not the active storey's — so it occludes /
     // peeks correctly against the lower-storey terrain.
@@ -100,8 +101,8 @@ fn player_ganger_on_lower_storey_stays_visible_at_own_z_after_fog() {
 /// GTW-520 C2 — a live PLAYER ganger on a storey ABOVE the active view level (strictly above
 /// the drawn band) ends `Visibility::Hidden`, AFTER the REAL fog writer runs.
 ///
-/// Uses [`fog_aware_app`] (`CombatTuning` inserted) so `present_actor_fog` — the single final
-/// visibility writer — is LIVE. A player ganger passes the FOG predicate unconditionally, so a
+/// The resolver COMPOSES the resident fog fact (setup-inserted `SquadVisibility` + the
+/// authored `player_faction`). A player ganger passes the FOG predicate unconditionally, so a
 /// `Hidden` verdict here can ONLY come from the STOREY axis: the storey-2 ganger is strictly
 /// above active==1, so it is culled by drawn-band membership (`2 > 1`).
 ///
@@ -109,7 +110,7 @@ fn player_ganger_on_lower_storey_stays_visible_at_own_z_after_fog() {
 /// whole occupied stack) would show the storey-2 ganger and FAIL.
 #[test]
 fn ganger_above_active_is_hidden_after_fog() {
-    let mut app = fog_aware_app();
+    let mut app = headless_renderer_app();
     settle_resources(&mut app);
 
     let l0 = Level::new(0);
@@ -153,7 +154,7 @@ fn ganger_above_active_is_hidden_after_fog() {
 /// `Visibility::Hidden` even though its storey IS drawn.
 ///
 /// This is the decisive fidelity guard: GTW-520 widens ONLY the storey axis, never the fog
-/// predicate. Uses [`fog_aware_app`] so `present_actor_fog` runs for real. The enemy (faction 1,
+/// predicate. The resolver composes the resident fog fact for real. The enemy (faction 1,
 /// with `player_faction` 0) is on the ground floor — WITHIN the drawn band at active==1 — but its
 /// cell is NOT squad-VISIBLE, so `is_ganger_visible` (the untouched fog predicate) hides it. A
 /// co-located PLAYER ganger on the same lower storey IS shown (proving the storey axis widened,
@@ -163,7 +164,7 @@ fn ganger_above_active_is_hidden_after_fog() {
 /// conjunct), the unseen lower-storey enemy would wrongly show and this FAILS.
 #[test]
 fn unseen_enemy_on_lower_storey_stays_hidden_fog_preserved() {
-    let mut app = fog_aware_app();
+    let mut app = headless_renderer_app();
     settle_resources(&mut app);
 
     let l0 = Level::new(0);
@@ -230,7 +231,7 @@ fn unseen_enemy_on_lower_storey_stays_hidden_fog_preserved() {
 /// `Position` onto the active storey to make it pickable, the storeys would match and this FAILS.
 #[test]
 fn hover_over_lower_storey_ganger_does_not_select_it_active_level_pick() {
-    let mut app = fog_aware_app();
+    let mut app = headless_renderer_app();
     settle_resources(&mut app);
 
     let l0 = Level::new(0);

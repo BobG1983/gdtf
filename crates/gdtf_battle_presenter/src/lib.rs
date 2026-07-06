@@ -39,9 +39,11 @@
 //! [`present_fog`] system MODULATES the already-drawn layer from the sim's
 //! [`SquadVisibility`](gdtf_battle_sim::SquadVisibility) — terrain VISIBLE → full colour /
 //! EXPLORED → full-brightness GREYSCALE (GTW-348 — colour-loss as the memory cue, not
-//! brightness-loss) / UNSEEN → hidden, and each actor sprite hard-cut by
+//! brightness-loss) / UNSEEN → hidden. Each actor sprite is hard-cut by
 //! [`is_ganger_visible`](gdtf_battle_sim::is_ganger_visible) (a player ganger always shown,
-//! an enemy / corpse shown iff its cell is squad-VISIBLE). The terrain renders through a
+//! an enemy / corpse shown iff its cell is squad-VISIBLE) inside the GTW-627
+//! ganger-visibility resolver ([`resolve_ganger_visibility`]), the one writer of every
+//! ganger sprite's `Visibility`. The terrain renders through a
 //! [`TerrainFogMaterial`] (a [`Material2d`](bevy::sprite_render::Material2d) with a `saturation`
 //! knob the fog writer drives per cell: `1.0` VISIBLE colour, `0.0` EXPLORED greyscale),
 //! because the [`Sprite`](bevy::prelude::Sprite) pipeline's per-channel multiply tint cannot
@@ -84,11 +86,11 @@ pub use actors::{
         valence_color,
     },
     ganger::{
-        CharacterRoles, FacingFrame, GangerSprite, GangerSprites, SpriteTween,
-        advance_sprite_tweens, apply_active_level_filter, despawn_killed_ganger_on_impact,
+        CharacterRoles, FacingFrame, GangerSprite, GangerSprites, GangerVisibilityFacts,
+        SpriteTween, advance_sprite_tweens, despawn_killed_ganger_on_impact,
         despawn_removed_ganger_sprites, facing_frame, move_ganger_sprites, reframe_ganger_sprites,
-        reindex_ganger_sprites_on_character_roles_change, spawn_ganger_sprites,
-        update_ganger_life_state,
+        reindex_ganger_sprites_on_character_roles_change, resolve_ganger_visibility,
+        spawn_ganger_sprites, update_ganger_life_state,
     },
 };
 // GTW-450 — the reachable-range overlay is the DEBUG-only overlay: every public item

@@ -1,10 +1,10 @@
-//! Unit tests for the ganger draw: the facing map, the atlas-index sum, the role table,
-//! the per-ganger tints, and the character-roles hot-reload re-index.
+//! Draw-side unit tests: the facing map, the atlas-index sum, the role table, the
+//! per-ganger tints, and the character-roles hot-reload re-index.
 
 use bevy::{ecs::system::RunSystemOnce, image::TextureAtlas, prelude::*};
 use gdtf_battle_sim::{Direction, Facing, Faction, LifeState};
 
-use super::{
+use super::super::{
     frame::{FacingFrame, atlas_index, facing_frame},
     reframe::reindex_ganger_sprites_on_character_roles_change,
     roles::CharacterRoles,
@@ -109,7 +109,7 @@ fn base_for_resolves_factions_and_falls_back() {
 #[test]
 fn shipped_character_roles_ron_parses_with_distinct_factions() {
     const SHIPPED: &str =
-        include_str!("../../../../../assets/sprites/character_roles.spritedef.ron");
+        include_str!("../../../../../../assets/sprites/character_roles.spritedef.ron");
     let parsed: Result<CharacterRoles, _> = ron::de::from_str(SHIPPED);
     assert!(
         parsed.is_ok(),

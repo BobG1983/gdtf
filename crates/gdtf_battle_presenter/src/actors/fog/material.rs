@@ -76,6 +76,26 @@ impl Default for Brightness {
     }
 }
 
+/// The per-tile fog SATURATION scalar the fog writer drives (GTW-348, named for the
+/// GTW-627 write seam).
+///
+/// A named view-domain newtype (no-bare-types) over the WGSL saturation mix factor: `1.0`
+/// reads the atlas tile's own colours through unchanged (squad-VISIBLE), `0.0` mixes the
+/// tile fully toward its BT.709 luminance (squad-EXPLORED — colour-loss as the memory cue,
+/// `docs/combat/visibility.md`). The [`TerrainFogMaterial::saturation`] FIELD stays a bare
+/// `f32` (framework material plumbing, documented on the struct); this newtype names the
+/// value where it crosses the presenter's own seams. Wraps `f32`; [`Deref`]s to it, minted
+/// only through [`Saturation::new`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+pub(crate) struct Saturation(f32);
+
+impl Saturation {
+    /// Build a fog saturation mix factor (`1.0` = full colour, `0.0` = full greyscale).
+    pub(crate) const fn new(factor: f32) -> Self {
+        Self(factor)
+    }
+}
+
 /// A [`Material2d`] for one terrain tile, with a `saturation` knob the fog writer drives.
 ///
 /// Holds the atlas image, the RESOLVED [`TextureAtlasLayout`] (the layout struct, not the

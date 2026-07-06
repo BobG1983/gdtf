@@ -38,16 +38,19 @@ fn settle_terrain_z_at(app: &mut App, at: CellLevel) -> Option<f32> {
     terrain_z_at(app, at)
 }
 
-/// AC5 (GTW-520-widened) — `apply_active_level_filter` shows every ganger WITHIN the drawn
-/// band `0..=active` and hides those strictly ABOVE it, on an `ActiveLevel` change.
+/// AC5 (GTW-520-widened, GTW-627-churned) — the ganger-visibility RESOLVER in BAND-ONLY
+/// mode shows every ganger WITHIN the drawn band `0..=active` and hides those strictly
+/// ABOVE it, on an `ActiveLevel` change.
 ///
-/// This drives SITE 3 (`apply_active_level_filter`) in isolation on the non-fog harness (the
-/// fog writer is inert without `CombatTuning` — `renderer.rs:824-826`), so it pins the shared
-/// drawn-band predicate at the level-filter site. Pre-GTW-520 this asserted the hard cut (the
-/// level-0 ganger HIDDEN at active 1); GTW-520 widens it — the level-0 ganger is now SHOWN at
-/// active 1 (it is a lower drawn storey), while the level-1 ganger is hidden at active 0 (above
-/// the band). The app's REAL final visibility (fog-composed) is asserted by the `fog_aware_app`
-/// tests below.
+/// This pins the resolver's band-only mode DIRECTLY (GTW-627 C7): [`band_only_fog`]
+/// removes the setup-inserted `SquadVisibility`, so the one classifier takes its
+/// ABSENT-fog branch and only drawn-band membership decides — the mixed-faction pair
+/// below is the discriminator (an empty COMPOSED fog would hide the faction-1 ganger; in
+/// band-only mode both factions show when in-band). Pre-GTW-520 this asserted the hard
+/// cut (the level-0 ganger HIDDEN at active 1); GTW-520 widens it — the level-0 ganger is
+/// now SHOWN at active 1 (a lower drawn storey), while the level-1 ganger is hidden at
+/// active 0 (above the band). The fog-COMPOSED final visibility is asserted by the
+/// `fog_visibility.rs` tests.
 #[test]
 fn active_level_change_shows_drawn_band_hides_above() {
     let mut app = headless_renderer_app();
@@ -67,6 +70,10 @@ fn active_level_change_shows_drawn_band_hides_above() {
         drive_setup(&mut app, situation),
         "setup_battle must complete"
     );
+    // GTW-627: clear the setup-inserted fog sets so the resolver runs BAND-ONLY (the
+    // classifier's absent-fog branch) — this test isolates the storey axis.
+    band_only_fog(&mut app);
+    app.update();
 
     let l0_sim = sim_entity_at(&mut app, l0_at);
     let l1_sim = sim_entity_at(&mut app, l1_at);

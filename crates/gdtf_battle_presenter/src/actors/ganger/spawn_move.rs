@@ -14,11 +14,9 @@ use super::{
     sprite_map::{GangerSprite, GangerSprites},
     tint::ganger_tint,
     tween::SpriteTween,
-    visibility::ganger_in_drawn_band,
+    visibility::GangerVisibilityFacts,
 };
-use crate::{
-    ActiveLevel, CELL_PX, Layer, SheetRole, TopDownAtlases, ViewMode, cell_to_world_layered,
-};
+use crate::{CELL_PX, Layer, SheetRole, TopDownAtlases, cell_to_world_layered};
 
 /// Build one ganger [`Sprite`] on the character sheet at `index`, tinted `tint`, via the
 /// S3 recipe.
@@ -53,25 +51,24 @@ fn ganger_sprite(index: usize, tint: Color, atlases: &TopDownAtlases) -> Option<
 /// [`WORLD_RENDER_LAYER`](crate::WORLD_RENDER_LAYER), with the [`GangerSprite`] marker; record
 /// `sim Entity -> presenter Entity` in [`GangerSprites`].
 ///
-/// GTW-520 (C1/C2): the sprite is spawned SHOWN when the ganger's storey lies within the drawn
-/// band `0..=active` ([`ganger_in_drawn_band`], the shared
-/// [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey) predicate) — so a ganger on
-/// a LOWER storey is drawn at its own storey's Z and peeks through floor-gaps — and spawned
-/// HIDDEN when it is strictly ABOVE the active level. An off-band ganger's
-/// [`Visibility::Hidden`] sprite is recorded too so a later
-/// [`apply_active_level_filter`](super::visibility::apply_active_level_filter) can
-/// show it without a respawn — the band filter is uniform across spawn / move / level-change /
-/// the fog writer.
+/// GTW-627 (C3): the sprite's INITIAL [`Visibility`] is seeded through the ONE pure
+/// classifier (`GangerVisibilityFacts::classify` — the band fact AND, when the fog
+/// resources are resident, the fog fact), the same decision the
+/// [`resolve_ganger_visibility`](super::visibility::resolve_ganger_visibility) resolver
+/// re-applies every frame. Seeding the composed verdict (not a band-only guess) means the
+/// deferred `spawn_scene` materializes with the correct flag — no first-frame flicker
+/// while the resolver has not yet seen the sprite. A hidden ganger's sprite is recorded in
+/// the map too, so the resolver can show it later without a respawn.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`], [`ResMut<GangerSprites>`], the read
-/// resources, and the [`Added<Position>`] ganger query.
+/// resources (the classifier inputs bundled as [`GangerVisibilityFacts`]), and the
+/// [`Added<Position>`] ganger query.
 pub fn spawn_ganger_sprites(
     mut commands: Commands,
     mut sprites: ResMut<GangerSprites>,
     roles: Res<CharacterRoles>,
     atlases: Res<TopDownAtlases>,
-    active: Res<ActiveLevel>,
-    view: Res<ViewMode>,
+    facts: GangerVisibilityFacts,
     added: Query<(Entity, &Position, &Faction, &Facing, &LifeState), Added<Position>>,
 ) {
     for (entity, pos, faction, facing, life) in &added {
@@ -86,16 +83,11 @@ pub fn spawn_ganger_sprites(
         };
         // The canonical CellLevel::split decompose through Position's deref (GTW-565).
         let (cell, level) = pos.split();
-        // GTW-520 C1/C2: a ganger anywhere in the DRAWN band (`0..=active`) spawns shown so it
-        // peeks through floor-gaps on a lower storey; one strictly above the active level
-        // spawns HIDDEN (later shown without a respawn by `apply_active_level_filter`). The
-        // Actor-layer projection below uses the ganger's OWN `level`, so a lower-storey ganger
-        // draws at its own storey's Z and occludes correctly.
-        let visibility = if ganger_in_drawn_band(pos, *active, *view) {
-            Visibility::Inherited
-        } else {
-            Visibility::Hidden
-        };
+        // GTW-627 C3: seed the sprite's initial Visibility through the ONE classifier —
+        // the same band × fog verdict the resolver re-applies every frame. The Actor-layer
+        // projection below uses the ganger's OWN `level`, so a lower-storey ganger draws
+        // at its own storey's Z and occludes correctly (GTW-520).
+        let visibility = facts.classify(pos, *faction, *life);
         // The Actor layer lifts the ganger by GANGER_Z_BIAS so it draws over its own
         // floor tile (GTW-283), without crossing into the next storey's band.
         let spawn_world = cell_to_world_layered(cell, level, Layer::Actor);
@@ -119,8 +111,9 @@ pub fn spawn_ganger_sprites(
         // (so the `GangerSprites` map records a usable handle this update); the scene's
         // components materialize on the `SpawnScene` schedule (~one update later) — the
         // same entity + components result, only the spawn SHAPE changed. The move /
-        // reframe / level-filter systems look the sprite up through the map and gracefully
-        // skip until its components exist.
+        // reframe systems and the GTW-627 visibility resolver (`resolve_ganger_visibility`,
+        // which owns this sprite's `Visibility` from here on) look the sprite up through
+        // the map and gracefully skip until its components exist.
         let presenter = commands
             .spawn_scene((
                 bsn! { template(move |_| Ok(sprite.clone())) },
@@ -140,31 +133,27 @@ pub fn spawn_ganger_sprites(
 }
 
 /// `Update` (`PresenterSystems::Scene`, `.after(spawn_ganger_sprites)`): RE-TARGET the
-/// movement tween (do NOT respawn, do NOT snap) of a ganger whose [`Position`] changed,
-/// and flip its [`Visibility`].
+/// movement tween (do NOT respawn, do NOT snap) of a ganger whose [`Position`] changed.
 ///
 /// For every ganger whose [`Position`] is [`Changed`], look the presenter sprite up
-/// through [`GangerSprites`] and:
+/// through [`GangerSprites`] and RE-TARGET its [`SpriteTween`] (GTW-359 C4) — source = the
+/// sprite's CURRENT (possibly mid-glide) [`Transform`] translation, target = the new
+/// [`Layer::Actor`](crate::Layer) projection of the cell
+/// ([`cell_to_world_layered`](crate::cell_to_world_layered) — so the
+/// [`GANGER_Z_BIAS`](crate::GANGER_Z_BIAS) lift holds across moves), restarting the
+/// glide clock. The actual [`Transform`] write is the
+/// [`advance_sprite_tweens`](super::advance_sprite_tweens) glide that runs
+/// `.after` this; setting the source to the live translation means a sim that outruns
+/// the tween keeps the sprite gliding continuously toward the latest cell — it NEVER
+/// snaps and NEVER gates the sim (the sim's [`Position`] is authoritative; the tween
+/// only smooths the view). Covers planar AND cross-storey moves (the GENERAL per-step
+/// glide that subsumes GTW-361).
 ///
-/// - GTW-359 (C4): RE-TARGET its [`SpriteTween`] — source = the sprite's CURRENT (possibly
-///   mid-glide) [`Transform`] translation, target = the new
-///   [`Layer::Actor`](crate::Layer) projection of the cell
-///   ([`cell_to_world_layered`](crate::cell_to_world_layered) — so the
-///   [`GANGER_Z_BIAS`](crate::GANGER_Z_BIAS) lift holds across moves), restarting the
-///   glide clock. The actual [`Transform`] write is the
-///   [`advance_sprite_tweens`](super::advance_sprite_tweens) glide that runs
-///   `.after` this; setting the source to the live translation means a sim that outruns
-///   the tween keeps the sprite gliding continuously toward the latest cell — it NEVER
-///   snaps and NEVER gates the sim (the sim's [`Position`] is authoritative; the tween
-///   only smooths the view). Covers planar AND cross-storey moves (the GENERAL per-step
-///   glide that subsumes GTW-361);
-/// - GTW-520 (C4): flip its [`Visibility`] by whether the new `(cell, level)` is WITHIN the
-///   drawn band `0..=active` ([`ganger_in_drawn_band`], the shared
-///   [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey) predicate) — the
-///   cross-storey handoff (Hidden only when the ganger moves strictly ABOVE the active level,
-///   Inherited when it is at or below it, including onto a lower drawn storey where it peeks
-///   through the floor-gaps). The tween restructured the [`Transform`] write (now via the
-///   glide); this filter WIDENED from the old on-active-storey hard cut to band membership.
+/// It writes NO [`Visibility`](bevy::prelude::Visibility): the cross-storey show/hide
+/// handoff is the resolver's
+/// ([`resolve_ganger_visibility`](super::visibility::resolve_ganger_visibility), the one
+/// visibility writer — GTW-627 C3), which re-classifies the moved ganger in the `Compose`
+/// stage of the SAME update.
 ///
 /// It does NOT spawn a second sprite: it is idempotent via the map (a just-`Added` ganger
 /// handled by [`spawn_ganger_sprites`] this same update is already mapped —
@@ -172,21 +161,18 @@ pub fn spawn_ganger_sprites(
 /// — so this only re-targets the same tween; a not-yet-mapped ganger is skipped). The
 /// contract's "idempotent via the map" move path.
 ///
-/// Param-only (`bevy-traps.md` #7): [`Res<GangerSprites>`], [`Res<ActiveLevel>`], the
-/// moved-ganger query, and the presenter-sprite [`Transform`] / [`SpriteTween`] /
-/// [`Visibility`] query.
+/// Param-only (`bevy-traps.md` #7): [`Res<GangerSprites>`], the moved-ganger query, and
+/// the presenter-sprite [`Transform`] / [`SpriteTween`] query.
 pub fn move_ganger_sprites(
     sprites: Res<GangerSprites>,
-    active: Res<ActiveLevel>,
-    view: Res<ViewMode>,
     moved: Query<(Entity, &Position), Changed<Position>>,
-    mut presenters: Query<(&Transform, &mut SpriteTween, &mut Visibility), With<GangerSprite>>,
+    mut presenters: Query<(&Transform, &mut SpriteTween), With<GangerSprite>>,
 ) {
     for (entity, pos) in &moved {
         let Some(presenter) = sprites.sprite_for(entity) else {
             continue;
         };
-        let Ok((transform, mut tween, mut visibility)) = presenters.get_mut(presenter) else {
+        let Ok((transform, mut tween)) = presenters.get_mut(presenter) else {
             continue;
         };
         let (cell, level) = pos.split();
@@ -197,14 +183,5 @@ pub fn move_ganger_sprites(
         // glide is seamless across a rapid sequence of Changed<Position> (the sim never
         // gated, the sprite never snapped).
         tween.retarget(transform.translation, target);
-        // GTW-520 C4: the cross-storey handoff now uses the shared DRAWN-BAND predicate
-        // (`0..=active`), not the old on-active-storey hard cut — so a ganger that moves DOWN
-        // onto a lower drawn storey stays shown (peeking through the floor-gaps) and only one
-        // that moves strictly ABOVE the active level is hidden.
-        *visibility = if ganger_in_drawn_band(pos, *active, *view) {
-            Visibility::Inherited
-        } else {
-            Visibility::Hidden
-        };
     }
 }

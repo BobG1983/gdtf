@@ -78,13 +78,10 @@ impl ActiveLevel {
     /// active`): a ganger on ANY storey within the drawn band is DRAWN (it peeks through
     /// floor-gaps on the lower storeys the terrain draw already renders, GTW-519), while a
     /// ganger strictly ABOVE the band ceiling is culled. It is the SAME membership the
-    /// terrain draw's [`drawn_band`](super::band::drawn_band) range expresses, as a per-storey
-    /// predicate — so the four ganger-visibility sites
-    /// ([`spawn_ganger_sprites`](crate::spawn_ganger_sprites) /
-    /// [`move_ganger_sprites`](crate::move_ganger_sprites) /
-    /// [`apply_active_level_filter`](crate::apply_active_level_filter) / the fog writer's
-    /// `present_actor_fog`) all consult ONE predicate and cannot drift from each other OR from
-    /// the terrain band.
+    /// terrain draw's [`drawn_band`](super::band::drawn_band) range expresses, as a
+    /// per-storey predicate — the band fact the GTW-627 ganger-visibility classifier
+    /// (feeding [`resolve_ganger_visibility`](crate::resolve_ganger_visibility), the one
+    /// writer of ganger-sprite visibility) composes with the fog fact.
     ///
     /// The `view` chooses the CEILING exactly as [`drawn_band`](super::band::drawn_band) does
     /// (GTW-521 C2 — units on all storeys are shown in [`ViewMode::FullView`], still subject
@@ -137,11 +134,12 @@ pub enum PresenterSystems {
     Draw,
     /// Stage 1 — the drawn WORLD: the terrain draw, the destruction / emplacement
     /// state swaps, the vertical links, and the ganger spawn / move / tween /
-    /// life-state / storey-filter systems. Everything the fog must observe settled.
+    /// life-state systems. Everything the fog must observe settled — the GTW-627
+    /// storey/fog visibility DECISION lives in [`Compose`](Self::Compose), not here.
     Scene,
-    /// Stage 2 — fog COMPOSITION over the settled scene: `present_fog`, the single
-    /// final writer of each terrain tile's material saturation and each actor
-    /// sprite's `Visibility`.
+    /// Stage 2 — COMPOSITION over the settled scene: `present_fog` (each terrain
+    /// tile's material saturation / visibility) and the GTW-627 ganger-visibility
+    /// resolver (each actor sprite's `Visibility`).
     Compose,
     /// Stage 3 — OVERLAYS drawn over the composed (fogged) scene: hover highlight,
     /// route path preview, fire target, field wash, the debug reachable overlay,

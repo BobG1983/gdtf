@@ -1,84 +1,169 @@
-//! The drawn-storey-band visibility policy: the shared band predicate and the
-//! on-change band re-apply.
+//! The ganger-sprite visibility RESOLVER (GTW-627): the ONE system holding
+//! `Query<&mut Visibility, With<GangerSprite>>` in the crate, fed by a single pure
+//! band × fog classifier.
+//!
+//! Before GTW-627 four sites wrote a ganger sprite's [`Visibility`] (the spawn seed, the
+//! move flip, the on-change level filter, and the fog writer's actor arm), held consistent
+//! by a shared predicate and ordering conventions. Now the decision lives in ONE pure
+//! classifier ([`classify_ganger_visibility`]) and the component has ONE writer
+//! ([`resolve_ganger_visibility`]); the spawn seeds its initial value through the same
+//! classifier (via [`GangerVisibilityFacts::classify`]), so a second writer is
+//! unrepresentable rather than conventioned.
 
-use bevy::prelude::*;
-use gdtf_battle_sim::Position;
+use bevy::{ecs::system::SystemParam, prelude::*};
+use gdtf_battle_sim::{
+    CellLevel, Faction, FactionRelation, LifeState, PlayerFaction, Position, SquadVisibility,
+    is_ganger_visible,
+};
 
 use super::sprite_map::{GangerSprite, GangerSprites};
-use crate::{ActiveLevel, ViewMode};
+use crate::{ActiveLevel, ViewMode, actors::quiet::set_visibility_quiet};
 
-/// Whether a ganger at `pos` is DRAWN — i.e. its storey lies within the drawn band under the
-/// current [`ViewMode`] (GTW-520 C4, widened for the GTW-521 view toggle).
+/// The fog-side facts the classifier composes when the fog resources are RESIDENT.
 ///
-/// Consults the ONE shared band predicate
-/// [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey), the successor to the
-/// pre-GTW-520 on-active-storey hard cut: a ganger on ANY storey within the drawn band is
-/// drawn (it peeks through floor-gaps on the lower storeys GTW-519 already renders terrain
-/// for), and one strictly ABOVE the band ceiling is culled. Every ganger-visibility
-/// site ([`spawn_ganger_sprites`](super::spawn_move::spawn_ganger_sprites) /
-/// [`move_ganger_sprites`](super::spawn_move::move_ganger_sprites) /
-/// [`apply_active_level_filter`]
-/// AND the fog writer's `present_actor_fog`) routes through this SAME predicate so they
-/// cannot drift.
-///
-/// The [`ViewMode`] chooses the band CEILING (GTW-521 C2): [`ViewMode::DownToActive`] caps at
-/// the active level (unchanged GTW-520); [`ViewMode::FullView`] draws every storey. It reads
-/// the typed [`Level`](gdtf_battle_sim::Level) via the canonical
-/// [`CellLevel::level`](gdtf_battle_sim::CellLevel::level) accessor (GTW-565 — [`Position`]
-/// Derefs to [`CellLevel`](gdtf_battle_sim::CellLevel); the accessor owns the one storey
-/// clamp, a no-op on every real key) and asks the [`ActiveLevel`] whether that storey is
-/// drawn under `view`. The move / filter systems have the [`ActiveLevel`] + [`ViewMode`] as
-/// [`Res`]; the actor fog arm holds the dereferenced values and rebuilds one via
-/// [`ActiveLevel::new`] — both reach the same predicate.
-pub(super) fn ganger_in_drawn_band(pos: &Position, active: ActiveLevel, view: ViewMode) -> bool {
-    active.draws_storey(pos.level(), view)
+/// Bundles the sim's [`SquadVisibility`] sets with the battle's optional
+/// [`PlayerFaction`]: the squad sets decide WHAT is seen, the player faction decides which
+/// gangers are trivially visible ([`FactionRelation::OwnSquad`]). `player` stays [`None`]
+/// in a harness whose setup seeded no player faction — then every ganger is fog-gated
+/// ([`FactionRelation::Other`], fail-closed), exactly the pre-GTW-627 actor-arm behaviour.
+pub(super) struct GangerFogFacts<'a> {
+    /// The squad's VISIBLE / EXPLORED sets — the sim-owned fog truth.
+    squad:  &'a SquadVisibility,
+    /// The player-controlled faction, when a battle seeded one.
+    player: Option<PlayerFaction>,
 }
 
-/// `Update` (`PresenterSystems::Scene`, runs only on an [`ActiveLevel`] OR [`ViewMode`]
-/// change): show the ganger sprites within the new drawn storey band, hide the rest.
-///
-/// On an [`ActiveLevel`](crate::ActiveLevel) change (`ActiveLevel::is_changed`) OR a
-/// [`ViewMode`](crate::ViewMode) change (`ViewMode::is_changed`, GTW-521 — the full-view
-/// toggle widens/narrows the band ceiling exactly as a level cycle moves it) it walks every
-/// live ganger and sets its mapped presenter sprite's [`Visibility`] by whether the ganger's
-/// `Position` lies WITHIN the new drawn band ([`ganger_in_drawn_band`], the shared
-/// [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey) predicate under the current
-/// [`ViewMode`] — GTW-520 C4, the SAME band the S4/S5 terrain + spawn/move sites and the fog
-/// writer consult). Above-band sprites are HIDDEN (not despawned — the move / reframe systems
-/// keep them current), in-band sprites (in [`ViewMode::FullView`] every storey) are SHOWN. It
-/// is gated to only run when a triggering resource changed so it does no per-frame work.
-///
-/// Param-only (`bevy-traps.md` #7): [`Res<GangerSprites>`], [`Res<ActiveLevel>`],
-/// [`Res<ViewMode>`], the ganger [`Position`] query, and the presenter-sprite [`Visibility`]
-/// query.
-pub fn apply_active_level_filter(
-    sprites: Res<GangerSprites>,
-    active: Res<ActiveLevel>,
-    view: Res<ViewMode>,
-    gangers: Query<(Entity, &Position)>,
-    mut presenters: Query<&mut Visibility, With<GangerSprite>>,
-) {
-    // GTW-521: re-apply the band filter on EITHER an active-level cycle OR a view-mode toggle —
-    // both change which storeys are drawn, so a stale filter would leave upper-storey gangers
-    // wrongly hidden (or lower ones wrongly shown) after a FullView flip.
-    if !active.is_changed() && !view.is_changed() {
-        return;
+impl<'a> GangerFogFacts<'a> {
+    /// Bundle the resident fog facts for one classification pass.
+    pub(super) const fn new(squad: &'a SquadVisibility, player: Option<PlayerFaction>) -> Self {
+        Self { squad, player }
     }
-    for (entity, pos) in &gangers {
-        let Some(presenter) = sprites.sprite_for(entity) else {
+}
+
+/// The squad-fog [`FactionRelation`] a ganger sprite is gated by.
+///
+/// A live ([`Alive`](LifeState::Alive)) PLAYER-faction ganger is
+/// [`FactionRelation::OwnSquad`] (always shown); everything else — an ENEMY ganger, or a
+/// CORPSE of either faction (a downed/dead body is no longer a member of the seeing
+/// squad) — is [`FactionRelation::Other`], shown only on a squad-VISIBLE cell. `player`
+/// is [`None`] when no [`PlayerFaction`] is resident, in which case every ganger is
+/// treated as [`FactionRelation::Other`] (fog-gated) — fail-closed.
+pub(super) fn actor_relation(
+    player: Option<PlayerFaction>,
+    faction: Faction,
+    life: LifeState,
+) -> FactionRelation {
+    let is_player = player.is_some_and(|p| *p == faction);
+    if is_player && life.is_active() {
+        FactionRelation::OwnSquad
+    } else {
+        FactionRelation::Other
+    }
+}
+
+/// The ONE pure ganger-visibility classifier (GTW-627 C1): compose the drawn-band storey
+/// fact with the fog fact into the sprite's [`Visibility`].
+///
+/// * **Band fact** (always) — the shared
+///   [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey) predicate under the
+///   current [`ViewMode`] (GTW-520 drawn-band membership / GTW-521 full-view ceiling): a
+///   ganger on any storey within the drawn band passes; one strictly above the band
+///   ceiling is culled.
+/// * **Fog fact** (only when `fog` carries the RESIDENT fog resources) — the untouched
+///   GTW-342 hard-cut: a live player ganger is trivially visible
+///   ([`FactionRelation::OwnSquad`]); an enemy or a corpse is shown iff its cell is
+///   squad-VISIBLE ([`is_ganger_visible`]) — no fade, no last-known ghost. With `fog`
+///   [`None`] (the fog sets not resident — a focused harness) the classifier is BAND-ONLY,
+///   preserving the fog-inert harness behaviour exactly: the absent-fog branch IS the
+///   band-only mode, not a mode flag.
+///
+/// Shown ⇔ band AND fog: [`Visibility::Inherited`] when both facts pass,
+/// [`Visibility::Hidden`] otherwise.
+pub(super) fn classify_ganger_visibility(
+    pos: &Position,
+    faction: Faction,
+    life: LifeState,
+    active: ActiveLevel,
+    view: ViewMode,
+    fog: Option<&GangerFogFacts<'_>>,
+) -> Visibility {
+    // The storey axis: the canonical CellLevel::level accessor through Position's deref
+    // (GTW-565) against the ONE shared band predicate.
+    let in_drawn_band = active.draws_storey(pos.level(), view);
+    // The fog axis: only when the fog resources are resident; band-only when absent.
+    let shown_by_fog = fog.is_none_or(|facts| {
+        let key: CellLevel = **pos;
+        is_ganger_visible(
+            facts.squad,
+            &key,
+            actor_relation(facts.player, faction, life),
+        )
+    });
+    if in_drawn_band && shown_by_fog {
+        Visibility::Inherited
+    } else {
+        Visibility::Hidden
+    }
+}
+
+/// The classifier's resource inputs, bundled once for the resolver AND the spawn seed
+/// (GTW-627 C3) — so both sites reach the one pure classifier
+/// (`classify_ganger_visibility`) through the same facts and neither re-derives a
+/// compose decision.
+#[derive(SystemParam)]
+pub struct GangerVisibilityFacts<'w> {
+    /// The presenter-owned active view storey — the band fact's ceiling input.
+    active: Res<'w, ActiveLevel>,
+    /// The presenter-owned view mode — chooses the band ceiling rule (GTW-521).
+    view:   Res<'w, ViewMode>,
+    /// The sim's squad fog sets — the fog RESIDENCY witness (`bevy-traps.md` #1): absent
+    /// (a focused harness with no battle fog) puts the classifier in band-only mode.
+    squad:  Option<Res<'w, SquadVisibility>>,
+    /// The battle's player faction; optional INSIDE the fog fact (fail-closed to
+    /// [`FactionRelation::Other`] when absent while the squad sets are resident).
+    player: Option<Res<'w, PlayerFaction>>,
+}
+
+impl GangerVisibilityFacts<'_> {
+    /// Classify one ganger through the pure classifier under the currently-resident facts.
+    pub(super) fn classify(&self, pos: &Position, faction: Faction, life: LifeState) -> Visibility {
+        let fog = self
+            .squad
+            .as_deref()
+            .map(|squad| GangerFogFacts::new(squad, self.player.as_deref().copied()));
+        classify_ganger_visibility(pos, faction, life, *self.active, *self.view, fog.as_ref())
+    }
+}
+
+/// `Update` ([`PresenterSystems::Compose`](crate::PresenterSystems), GTW-627): the ONE
+/// writer of every ganger sprite's [`Visibility`] — resolve each mapped sprite through the
+/// pure classifier every frame.
+///
+/// Runs in the `Compose` stage, chained strictly after the `Scene` stage that spawns /
+/// moves the sprites (GTW-623 stage membership — no pairwise `.after` edges), so it always
+/// resolves against the frame's settled sim state. For each live sim ganger it looks the
+/// presenter sprite up through [`GangerSprites`] and writes the classifier's verdict via
+/// the shared tick-quiet seam (`set_if_neq` — an unchanged sprite's change ticks stay
+/// untouched, GTW-627 C3). A not-yet-materialized sprite (the deferred `spawn_scene`,
+/// GTW-322) is skipped and picked up the frame its components exist; its spawn-seeded
+/// value came through the same classifier, so there is no first-frame flicker.
+///
+/// Param-only (`bevy-traps.md` #7): [`Res<GangerSprites>`], the bundled
+/// [`GangerVisibilityFacts`], the sim-ganger query, and the ONE
+/// `Query<&mut Visibility, With<GangerSprite>>` in the crate (GTW-627 A1).
+pub fn resolve_ganger_visibility(
+    sprites: Res<GangerSprites>,
+    facts: GangerVisibilityFacts,
+    gangers: Query<(Entity, &Position, &Faction, &LifeState)>,
+    mut actors: Query<&mut Visibility, With<GangerSprite>>,
+) {
+    for (entity, pos, faction, life) in &gangers {
+        let Some(sprite) = sprites.sprite_for(entity) else {
             continue;
         };
-        let Ok(mut visibility) = presenters.get_mut(presenter) else {
+        let Ok(mut visibility) = actors.get_mut(sprite) else {
             continue;
         };
-        // GTW-520 C4 / GTW-521 C2: show a ganger anywhere in the new DRAWN band, hide only
-        // one strictly above the band ceiling — the shared band predicate under the current
-        // ViewMode, so this on-change re-apply agrees with spawn / move (and the fog writer)
-        // exactly.
-        *visibility = if ganger_in_drawn_band(pos, *active, *view) {
-            Visibility::Inherited
-        } else {
-            Visibility::Hidden
-        };
+        set_visibility_quiet(&mut visibility, facts.classify(pos, *faction, *life));
     }
 }
