@@ -23,7 +23,7 @@ Fidelity to the spec beats speed, every time.
    ticket text.
 4. `docs/` is the design source of truth — it is the contract ALONGSIDE the
    ticket. Design canon: `docs/pillars/`, `docs/combat/`,
-   `docs/architecture.md`. When code and docs disagree, stop and surface the
+   `docs/decisions/`. When code and docs disagree, stop and surface the
    conflict — never pick a side silently.
 5. Ambiguous spec? Ask the user, or route the question through the
    `design-gate` agent. Never resolve ambiguity by choosing the cheapest

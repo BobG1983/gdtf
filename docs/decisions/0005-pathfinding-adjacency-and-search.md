@@ -25,7 +25,7 @@ GDTF's core loop carries a scarred roster from fight to fight, and the fights ar
 turn-based tactics over a **60×60×8 cubic-voxel grid** ([battle-space.md](../combat/battle-space.md)):
 x/y are ground-plane cells, z is a storey level, one sim unit = one cell = one
 level, and the canonical identity is `CellLevel` wrapping `IVec3` (`(x, y, level)`)
-(`crates/gdtf_battle_sim/src/metric/coords.rs`). There are no pixels in the model.
+(`crates/gdtf_battle_sim/src/foundation/metric/coords.rs`). There are no pixels in the model.
 
 GTW-12 owes the sim two pathfinding deliverables:
 
@@ -39,22 +39,22 @@ redesign them:
 
 - **The movement economy is canon** ([visibility.md `## Pay-per-step TUs`](../combat/visibility.md),
   referred to below as §48 — the in-repo shorthand for that section, matching the
-  code comment in `tuning/economy.rs`). TU charges land **per step**: the committed-walk
+  code comment in `tuning/economy/movement.rs`). TU charges land **per step**: the committed-walk
   writer `advance_walk` charges the entered cell's terrain `move_cost`; a vertical-link hop
-  charges the flat `link_tu` **instead of** terrain (`crates/gdtf_battle_sim/src/tuning/economy.rs`). The
+  charges the flat `link_tu` **instead of** terrain (`crates/gdtf_battle_sim/src/tuning/economy/movement.rs`). The
   **move-commit step gates full-route affordability once, up front**; per-step charges then
   always succeed (strictly turn-based). Interruptions are arithmetic-free — *charged = ground
   covered*; the old spend-plus-refund economy is deleted. **Pathfinding must honour
   this economy, not invent its own.**
 - **Per-terrain weighted cost is fixed**: `MoveCost(u8)` per `TerrainKind`, defaults
-  `open=4, cover=6, wall=8` (`tuning/economy.rs`). **The minimum positive move cost
+  `open=4, cover=6, wall=8` (`tuning/economy/movement.rs`). **The minimum positive move cost
   on the grid is 4** — load-bearing for the search heuristic below.
 - **The OccupancyGrid** is the authoritative blocked/walkable surface, change-driven
   (maintained in place, never rebuilt per shot — the GTW-6/GTW-12 ruling)
-  (`crates/gdtf_battle_sim/src/occupancy/grid.rs`).
+  (`crates/gdtf_battle_sim/src/terrain/occupancy/grid/storage.rs`).
 - **The VerticalLinkGraph** indexes authored stair/ladder links, validated at setup,
   bidirectional unless one-way, queryable via `links_from(origin)`
-  (`crates/gdtf_battle_sim/src/vertical/graph.rs`). It is explicitly **existence-only
+  (`crates/gdtf_battle_sim/src/terrain/vertical/graph.rs`). It is explicitly **existence-only
   today — "there is no traversal / pathfinding / movement cost here (that is GTW-12)."**
 - **Determinism is a hard constraint**: the sim is seeded-replayable; equal-cost
   choices must resolve in a fixed total order or two replays diverge. Movement reads
@@ -73,7 +73,8 @@ What is **not yet decided**, and why a decision is needed now:
   replay.
 
 There is no pathfinding code today; `move_ganger` steps a single `dest: CellLevel`
-per call (`crates/gdtf_battle_sim/src/move_acts/verb.rs`). GTW-12 introduces the
+per call (the GTW-234 single-step verb — since evolved into the committed per-tick
+walk, `crates/gdtf_battle_sim/src/acts_runtime/move_acts/walk.rs`). GTW-12 introduces the
 search and the neighbour model; it does not touch the economy.
 
 ## Decision
@@ -90,7 +91,7 @@ chosen model**; the 4-connected option below is recorded as the rejected alterna
 - For: simplest to build; clean axis-aligned cover facings (4 faces) that are easy to
   reason about; no diagonal-cost question; no corner-cutting rule needed.
 - Against: blocky, staircase routes around obstacles; coarse flanking angles; under-uses
-  the existing 8-way `Direction` compass (`crates/gdtf_battle_sim/src/ganger/direction.rs`,
+  the existing 8-way `Direction` compass (`crates/gdtf_battle_sim/src/combatants/ganger/direction.rs`,
   N/NE/E/SE/S/SW/W/NW with `forward_step` and `steps_to`).
 
 **8-connected (orthogonal + diagonal)**

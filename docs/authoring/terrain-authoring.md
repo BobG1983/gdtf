@@ -182,7 +182,7 @@ Each theme folder carries ONE theme file, deserializing into `UuidThemeDef`
 
 ### 1g. Worked example — a new cover piece
 
-Create `assets/content/terrain/underhive/rusted_barrels.terrain_def.ron`:
+Create `rusted_barrels.terrain_def.ron` under `assets/content/terrain/underhive/`:
 
 ```ron
 // Rusted barrels — stacked low cover, underhive theme.
@@ -343,5 +343,5 @@ Supporting newtypes from other modules:
   `crates/gdtf_battle_sim/src/equipment/armor/stats.rs`
 - `TerrainGraphicKey`, `FootfallSound` —
   `crates/gdtf_battle_sim/src/terrain/piece/components.rs`
-- `WeaponName` — `crates/gdtf_battle_sim/src/equipment/weapon/components.rs`
+- `WeaponName` — `crates/gdtf_battle_sim/src/equipment/weapon/components/handling.rs`
 - `OnDeathEffect` — `crates/gdtf_battle_sim/src/effects/on_death/effect.rs`

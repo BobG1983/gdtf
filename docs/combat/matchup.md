@@ -134,7 +134,7 @@ Emergent properties, straight out of the structure:
 
 ## Drop-in data
 
-Weapon node `w` penetrates armor nodes `w+3, w+5, w+6` (mod 7). Shipped as the matchup lookup in `crates/gdtf_battle_sim/src/matchup.rs` (same table):
+Weapon node `w` penetrates armor nodes `w+3, w+5, w+6` (mod 7). Shipped as the matchup lookup in `crates/gdtf_battle_sim/src/damage_resolution/matchup/wheel.rs` (same table, derived — `WheelNode::strong_against` yields `w+3, w+5, w+6` mod 7 and `matchup()` resolves mirror / strong / else exactly as below):
 
 ```rust
 // node = one type, dual-named:
@@ -161,7 +161,7 @@ fn matchup(weapon: u8, armor: u8) -> Matchup {
 }
 ```
 
-Unit tests pin the wheel (`#[cfg(test)] mod tests` in `crates/gdtf_battle_sim/src/matchup.rs`): each type beats exactly 3 / loses to 3, and the tournament antisymmetry (one node's favorable is the other's resisted). The λ=1 pair-guarantee assert (every pair of armor types has exactly one weapon strong against both) is still an open test target.
+Unit tests pin the wheel (the matchup module's `#[cfg(test)] mod test`, `crates/gdtf_battle_sim/src/damage_resolution/matchup/test.rs`): each type beats exactly 3 / loses to 3 (`each_type_favorable_three_resisted_three`), and the tournament antisymmetry (one node's favorable is the other's resisted — `favorable_implies_mirror_resisted`). The λ=1 pair-guarantee assert (every pair of armor types has exactly one weapon strong against both) is still an open test target.
 
 ## UI requirement — non-negotiable
 

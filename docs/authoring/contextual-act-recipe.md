@@ -74,8 +74,9 @@ surfaces pending the GTW-71 AI-acts expansion; none has a brain arm today.
 
 ### 5. Tests + test-surface (as the act warrants)
 
-- A headless end-to-end press test in `crates/gdtf_app/tests/contextual_panel.rs`
-  (the existing `battle_running_app()` harness): offer → press → assert the
+- A headless end-to-end press test in the `crates/gdtf_app/tests/contextual_panel/`
+  suite — one file per act, sharing `harness.rs`'s `battle_running_app()`: offer →
+  press → assert the
   `*Requested` in the sim buffer (probe `.after(ContextualActSystems::Drain)`), plus
   the negative offer cases.
 - To name the marker from the external test: 2 edits — add it to the panel's
@@ -91,4 +92,4 @@ surfaces pending the GTW-71 AI-acts expansion; none has a brain arm today.
 `.add_contextual_act::<ShoveAct>()`, app `contextual_panel/acts/shove.rs` +
 `.add_contextual_act_button::<ShoveAct, _>(acts::shove::offer_shove)`, AI why-not
 recorded above, and the press/offer/same-frame tests in
-`crates/gdtf_app/tests/contextual_panel.rs`.
+`crates/gdtf_app/tests/contextual_panel/shove.rs`.

@@ -194,7 +194,7 @@ derive's doc-comment. This is safe because the ledger is read via `Changed<>` qu
 
 Reference the new variant from an `.injury.ron` `effects:` list and weight the injury
 into a bucket (Part 1). Add a ledger-level folding test in
-`crates/gdtf_battle_sim/src/damage_resolution/injuries/test.rs`, and — if the effect
+`crates/gdtf_battle_sim/src/damage_resolution/injuries/test/ledger.rs`, and — if the effect
 flows through the projector — a projection test in
 `crates/gdtf_battle_sim/src/combatants/ganger/test/injury.rs`.
 
