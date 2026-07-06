@@ -115,18 +115,38 @@ impl Default for ActiveLevel {
     }
 }
 
-/// Presenter draw ordering anchor — the named `Update`-schedule band the terrain draw
-/// (and S5's ganger draw) registers into.
+/// Presenter draw ordering vocabulary — the named `Update`-schedule bands every draw
+/// system registers into.
 ///
-/// Defined ONCE via `configure_sets` (`bevy-traps.md` #5), then `.in_set`. The draw
-/// band is ordered `.after(SimSystems::Simulate)` so a draw reads the sim AFTER its
-/// world mutations this update (`bevy-traps.md` #3). This is the shared anchor S5's
-/// ganger draw also registers into; S4 (the slice that lands first) introduces it.
+/// Configured ONCE by `TopDownRendererPlugin::build` via `configure_sets`
+/// (`bevy-traps.md` #5), then `.in_set` everywhere else. [`Draw`](Self::Draw) is the
+/// umbrella band, ordered `.after(SimSystems::Simulate)` so a draw reads the sim AFTER
+/// its world mutations this update (`bevy-traps.md` #3); inside it the three STAGES
+/// [`Scene`](Self::Scene) → [`Compose`](Self::Compose) → [`Overlay`](Self::Overlay) are
+/// `.chain()`ed (GTW-623), so ordering between draw systems is STAGE MEMBERSHIP, never a
+/// hand-maintained pairwise `.after` wall: a new writer (say a doors state-swap) joins
+/// [`Scene`](Self::Scene) and the fog + overlays order after it with ZERO new edges.
+/// Pairwise `.after` edges are reserved for TRUE data flow WITHIN one stage (e.g. the
+/// ganger move runs after the ganger spawn).
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PresenterSystems {
-    /// The band holding the presenter's per-`(cell, level)` draw systems — ordered
-    /// after the sim's world mutations so it observes a settled sim state.
+    /// The umbrella band holding the presenter's per-`(cell, level)` draw systems —
+    /// ordered after the sim's world mutations so it observes a settled sim state.
+    /// External consumers (the app's `move_on` pacing) order against THIS set; the
+    /// three chained stages below all live inside it.
     Draw,
+    /// Stage 1 — the drawn WORLD: the terrain draw, the destruction / emplacement
+    /// state swaps, the vertical links, and the ganger spawn / move / tween /
+    /// life-state / storey-filter systems. Everything the fog must observe settled.
+    Scene,
+    /// Stage 2 — fog COMPOSITION over the settled scene: `present_fog`, the single
+    /// final writer of each terrain tile's material saturation and each actor
+    /// sprite's `Visibility`.
+    Compose,
+    /// Stage 3 — OVERLAYS drawn over the composed (fogged) scene: hover highlight,
+    /// route path preview, fire target, field wash, the debug reachable overlay,
+    /// the transient FX-flash / projectile / impact readers, and the FCT palette.
+    Overlay,
 }
 
 #[cfg(test)]

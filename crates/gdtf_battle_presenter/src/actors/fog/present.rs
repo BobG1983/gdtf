@@ -62,10 +62,10 @@ impl CellFog {
     }
 }
 
-/// `Update` ([`PresenterSystems::Draw`](crate::PresenterSystems), ordered
-/// `.after(draw_static_battlefield).after(swap_destroyed_cover)` and after the ganger
-/// storey-filter writers): the presenter FOG WRITER — the documented public seam GTW-342
-/// exposes.
+/// `Update` ([`PresenterSystems::Compose`](crate::PresenterSystems) — the fog-composition
+/// stage, chained strictly after the `Scene` stage that holds the terrain draw, the
+/// destruction swaps, and the ganger storey-filter writers, GTW-623): the presenter FOG
+/// WRITER — the documented public seam GTW-342 exposes.
 ///
 /// It is the VIEW arm of the squad fog (`docs/combat/visibility.md`): the sim owns the
 /// three [`SquadVisibility`] states and recomputes them; this system READS them through

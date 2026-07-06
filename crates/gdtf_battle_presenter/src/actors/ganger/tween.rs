@@ -123,7 +123,7 @@ impl SpriteTween {
     }
 }
 
-/// `Update` ([`PresenterSystems::Draw`](crate::PresenterSystems),
+/// `Update` ([`PresenterSystems::Scene`](crate::PresenterSystems),
 /// `.after(move_ganger_sprites)`): glide every ganger sprite's [`Transform`] toward its
 /// tween target.
 ///

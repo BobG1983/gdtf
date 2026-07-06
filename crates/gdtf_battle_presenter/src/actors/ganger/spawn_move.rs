@@ -41,7 +41,7 @@ fn ganger_sprite(index: usize, tint: Color, atlases: &TopDownAtlases) -> Option<
     Some(sprite)
 }
 
-/// `Update` (`PresenterSystems::Draw`): spawn one presenter sprite per newly-added
+/// `Update` (`PresenterSystems::Scene`): spawn one presenter sprite per newly-added
 /// ganger within the drawn storey band.
 ///
 /// For every ganger whose [`Position`] was [`Added`], build a [`Sprite`] (atlas
@@ -139,7 +139,7 @@ pub fn spawn_ganger_sprites(
     }
 }
 
-/// `Update` (`PresenterSystems::Draw`, `.after(spawn_ganger_sprites)`): RE-TARGET the
+/// `Update` (`PresenterSystems::Scene`, `.after(spawn_ganger_sprites)`): RE-TARGET the
 /// movement tween (do NOT respawn, do NOT snap) of a ganger whose [`Position`] changed,
 /// and flip its [`Visibility`].
 ///

@@ -6,15 +6,15 @@ use gdtf_battle_sim::{BattleInProgress, FieldRegistry, SquadVisibility};
 
 use crate::{
     HighlightRequest, PresenterSystems, draw_field_overlay, draw_fire_target,
-    draw_highlight_on_request, draw_path_preview, present_fog,
+    draw_highlight_on_request, draw_path_preview,
 };
 // GTW-450 — the reachable-range overlay items are DEBUG-only (C1); imported via a
 // separate `#[cfg(debug_assertions)]` `use` below so the release build never names them.
 #[cfg(debug_assertions)]
 use crate::{ReachableCells, ReachableOverlayEnabled, draw_reachable_overlay};
 
-/// Registers the GTW-251 message-driven hover-highlight draw into the already-defined
-/// [`PresenterSystems::Draw`] band.
+/// Registers the GTW-251 message-driven hover-highlight draw into the
+/// [`PresenterSystems::Overlay`] stage (GTW-623 — the over-the-composed-scene stage).
 ///
 /// The presenter DEFINES the [`HighlightRequest`] message (the consumer owns its input
 /// API, mirroring how the sim defines the `*Requested` messages input writes) and
@@ -26,8 +26,8 @@ use crate::{ReachableCells, ReachableOverlayEnabled, draw_reachable_overlay};
 /// so its `MessageWriter` validates headlessly, and the two coexist (the `*Requested`
 /// precedent).
 ///
-/// [`draw_highlight_on_request`] joins the SAME `PresenterSystems::Draw` band (defined
-/// once, ordered `.after(SimSystems::Simulate)`), gated `run_if(resource_exists::<BattleInProgress>)`
+/// [`draw_highlight_on_request`] joins the shared `PresenterSystems::Overlay` stage
+/// (configured once, chained after `Compose`), gated `run_if(resource_exists::<BattleInProgress>)`
 /// — the sim's live-battle witness, the same gate the other draw systems use, so the
 /// highlight is inert pre-battle (`bevy-traps.md` #1). It needs NO render resource (it
 /// draws a solid-tint sprite, not an atlas tile) and its `Messages<HighlightRequest>`
@@ -39,16 +39,13 @@ pub(super) fn register_highlight_systems(app: &mut App) {
     app.add_message::<HighlightRequest>().add_systems(
         Update,
         draw_highlight_on_request
-            .in_set(PresenterSystems::Draw)
+            .in_set(PresenterSystems::Overlay)
             .run_if(resource_exists::<BattleInProgress>),
     );
 }
 
-/// Registers the GTW-357 reachable-range overlay DRAW systems into the already-defined
-/// [`PresenterSystems::Draw`] band.
-///
-/// Registers the GTW-358 / GTW-368 route path-preview DRAW system into the already-defined
-/// [`PresenterSystems::Draw`] band.
+/// Registers the GTW-358 / GTW-368 route path-preview DRAW system into the
+/// [`PresenterSystems::Overlay`] stage.
 ///
 /// The PRESENTER owns the [`PathPreview`](crate::PathPreview) read-seam (`init_resource`-d
 /// on build) plus this draw system; the INPUT crate POPULATES the resource by calling
@@ -68,25 +65,23 @@ pub(super) fn register_highlight_systems(app: &mut App) {
 /// AND `resource_exists::<SquadVisibility>` (the §53 VISIBLE-vs-EXPLORED read: the fog sets are
 /// inserted by the sim's `setup_battle`, absent in a focused harness that opens
 /// `BattleInProgress` directly; without this guard the `Res<SquadVisibility>` param would panic
-/// validation — the [`present_fog`] precedent). It needs NO render resource (a solid-tint sprite
-/// and a `Text2d`, not an atlas tile) and the always-present `init_resource`-d
-/// [`PathPreview`](crate::PathPreview) and [`ActiveLevel`](crate::ActiveLevel). It is ordered
-/// `.after(present_fog)` so the route composites OVER the fogged battlefield — the route preview
-/// is the topmost within-storey band ([`Layer::PathPreview`](crate::Layer)).
+/// validation — the [`present_fog`](crate::present_fog) precedent). It needs NO render resource
+/// (a solid-tint sprite and a `Text2d`, not an atlas tile) and the always-present
+/// `init_resource`-d [`PathPreview`](crate::PathPreview) and [`ActiveLevel`](crate::ActiveLevel).
+/// Its `Overlay` stage membership (chained after `Compose` — GTW-623) makes the route composite
+/// OVER the fogged battlefield — the route preview is the topmost within-storey band
+/// ([`Layer::PathPreview`](crate::Layer)).
 pub(super) fn register_path_preview_systems(app: &mut App) {
     app.add_systems(
         Update,
-        draw_path_preview
-            .in_set(PresenterSystems::Draw)
-            .after(present_fog)
-            .run_if(
-                resource_exists::<BattleInProgress>.and_then(resource_exists::<SquadVisibility>),
-            ),
+        draw_path_preview.in_set(PresenterSystems::Overlay).run_if(
+            resource_exists::<BattleInProgress>.and_then(resource_exists::<SquadVisibility>),
+        ),
     );
 }
 
-/// Registers the GTW-371 fire-target highlight DRAW system into the already-defined
-/// [`PresenterSystems::Draw`] band.
+/// Registers the GTW-371 fire-target highlight DRAW system into the
+/// [`PresenterSystems::Overlay`] stage.
 ///
 /// The PRESENTER owns the [`FireTargetHighlight`](crate::FireTargetHighlight) read-seam
 /// (`init_resource`-d on build) plus this draw system; the INPUT crate POPULATES the resource
@@ -106,21 +101,21 @@ pub(super) fn register_path_preview_systems(app: &mut App) {
 /// `bevy-traps.md` #1). It needs NO render resource (a solid-tint sprite + a `Text2d`, not an
 /// atlas tile) and NO `SquadVisibility` (the input populate applies the fog gate before writing
 /// the seam — the draw only reads the resolved highlight + the always-present `init_resource`-d
-/// [`FireTargetHighlight`](crate::FireTargetHighlight) / [`ActiveLevel`](crate::ActiveLevel)). It
-/// is ordered `.after(present_fog)` so the red tile composites OVER the fogged battlefield (and,
-/// being at [`Layer::FireTarget`](crate::Layer), UNDER the enemy sprite).
+/// [`FireTargetHighlight`](crate::FireTargetHighlight) / [`ActiveLevel`](crate::ActiveLevel)). Its
+/// `Overlay` stage membership (chained after `Compose` — GTW-623) makes the red tile composite
+/// OVER the fogged battlefield (and, being at [`Layer::FireTarget`](crate::Layer), UNDER the
+/// enemy sprite).
 pub(super) fn register_fire_target_systems(app: &mut App) {
     app.add_systems(
         Update,
         draw_fire_target
-            .in_set(PresenterSystems::Draw)
-            .after(present_fog)
+            .in_set(PresenterSystems::Overlay)
             .run_if(resource_exists::<BattleInProgress>),
     );
 }
 
 /// Registers the GTW-545 area-damage-field VIEW: the persistent per-cell hazard-wash overlay
-/// DRAW system, into the already-defined [`PresenterSystems::Draw`] band. (The transient
+/// DRAW system, into the [`PresenterSystems::Overlay`] stage. (The transient
 /// per-tick FCT `"-N"` reader moved into the GTW-572 consequence palette —
 /// [`register_consequence_fct_families`](super::fx::register_consequence_fct_families) registers
 /// the `FieldFct` family; the old presenter-side idempotent `add_message::<FieldTicked>` is GONE
@@ -148,22 +143,21 @@ pub(super) fn register_fire_target_systems(app: &mut App) {
 ///   (`setup_battle` inserts it, teardown removes it), so it stays inert when no battle has seeded
 ///   a field registry (a `Res<FieldRegistry>` param panics validation without the resource,
 ///   `bevy-traps.md` #1). It needs NO render resource (solid-tint sprites, not atlas tiles) and the
-///   always-present `init_resource`-d [`ActiveLevel`](crate::ActiveLevel). Ordered
-///   `.after(present_fog)` so the hazard wash composites OVER the fogged battlefield, consistent
-///   with the reachable / path-preview placement.
+///   always-present `init_resource`-d [`ActiveLevel`](crate::ActiveLevel). Its `Overlay` stage
+///   membership (chained after `Compose` — GTW-623) makes the hazard wash composite OVER the
+///   fogged battlefield, consistent with the reachable / path-preview placement.
 pub(super) fn register_field_overlay_systems(app: &mut App) {
     app.add_systems(
         Update,
         draw_field_overlay
-            .in_set(PresenterSystems::Draw)
-            .after(present_fog)
+            .in_set(PresenterSystems::Overlay)
             .run_if(resource_exists::<FieldRegistry>),
     );
 }
 
 /// Registers the GTW-387 / GTW-450 reachable-range DEBUG overlay: the [`ReachableCells`]
 /// read-seam, the [`ReachableOverlayEnabled`] flag (seeded from the env var), and the DRAW
-/// system into the already-defined [`PresenterSystems::Draw`] band.
+/// system into the [`PresenterSystems::Overlay`] stage.
 ///
 /// DEBUG-ONLY (GTW-450 C1): this whole fn — and every item it names — compiles only under
 /// `#[cfg(debug_assertions)]`. A release build excludes it, so the overlay never renders
@@ -192,8 +186,8 @@ pub(super) fn register_field_overlay_systems(app: &mut App) {
 /// opt-in; the flag is always present here, so the gate reads its value, not its
 /// existence). It needs NO render resource (solid-tint sprites, not atlas tiles) and the
 /// always-present `init_resource`-d [`ReachableCells`] and [`ActiveLevel`](crate::ActiveLevel).
-/// Ordered `.after(present_fog)` so the range tint composites OVER the fogged battlefield,
-/// consistent with the path-preview placement.
+/// Its `Overlay` stage membership (chained after `Compose` — GTW-623) makes the range tint
+/// composite OVER the fogged battlefield, consistent with the path-preview placement.
 #[cfg(debug_assertions)]
 pub(super) fn register_reachable_overlay_systems(app: &mut App) {
     // GTW-450 C3 — read the env var ONCE at startup (NOT per-frame) into the flag resource.
@@ -205,8 +199,7 @@ pub(super) fn register_reachable_overlay_systems(app: &mut App) {
         .add_systems(
             Update,
             draw_reachable_overlay
-                .in_set(PresenterSystems::Draw)
-                .after(present_fog)
+                .in_set(PresenterSystems::Overlay)
                 .run_if(
                     resource_exists::<BattleInProgress>
                         .and_then(resource_exists::<SquadVisibility>)

@@ -127,7 +127,7 @@ const fn tint_for(visibility: CellVisibility) -> Color {
 /// Param-only (`bevy-traps.md` #7): [`Commands`] for the lazy spawn, a
 /// [`MessageReader<HighlightRequest>`] for the request, and a
 /// `Query<(&mut Transform, &mut Sprite, &mut Visibility), With<HoverHighlight>>` for the
-/// move + recolour + show/hide. Battle-gated + in [`PresenterSystems::Draw`](crate::PresenterSystems)
+/// move + recolour + show/hide. Battle-gated + in [`PresenterSystems::Overlay`](crate::PresenterSystems)
 /// by the [`TopDownRendererPlugin`](crate::TopDownRendererPlugin), so it observes a
 /// settled sim state and is inert pre-battle.
 pub fn draw_highlight_on_request(

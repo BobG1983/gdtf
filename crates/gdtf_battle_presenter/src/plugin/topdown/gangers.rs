@@ -11,9 +11,10 @@ use crate::{
     spawn_ganger_sprites, update_ganger_life_state,
 };
 
-/// GTW-219 (S5): the ganger-draw change-detection systems join the SAME
-/// [`PresenterSystems::Draw`] band (defined once in the plugin shell, ordered after the
-/// sim's mutations). Each is gated `run_if(resource_exists::<BattleInProgress>)` AND on
+/// GTW-219 (S5): the ganger-draw change-detection systems join the
+/// [`PresenterSystems::Scene`] stage (GTW-623 — the drawn-world stage; the fog
+/// visibility hard-cut and the overlays order after them by STAGE MEMBERSHIP, no
+/// pairwise edges). Each is gated `run_if(resource_exists::<BattleInProgress>)` AND on
 /// every render resource it reads — `CharacterRoles` (the data table) and
 /// `TopDownAtlases` — so a `MinimalPlugins` headless app with no `AssetServer`
 /// (those resources absent) simply does not draw rather than failing param
@@ -21,17 +22,25 @@ use crate::{
 /// panic the draw"). `ActiveLevel` + `GangerSprites` are `init_resource`-d on
 /// build, so they are always present. `move_ganger_sprites` runs
 /// `.after(spawn_ganger_sprites)` so a same-update spawn is already mapped when
-/// the move runs (the idempotent-via-the-map move path).
+/// the move runs — a TRUE intra-stage data-flow edge, KEPT (GTW-623 C2).
+///
+/// # THE one sim-owned `add_message` exception (GTW-623 C4 / A2)
 ///
 /// GTW-331: `update_ganger_life_state` drains `MessageReader<ShotFired>` to discriminate a
 /// shot-kill (deferred to the impact despawn) from a non-shot death (despawned promptly) —
 /// see its docs. A `MessageReader` panics param validation without its `Messages<ShotFired>`
-/// buffer (`bevy-traps.md` #4), and the sim's `BattleSimPlugin` only registers it in a real
-/// battle, so register it idempotently HERE (the `ShotImpactResolved` / `HighlightRequest`
-/// precedent): `add_message` creates the buffer if absent and is a no-op if the sim already
-/// did — so the ganger batch's gate stays `BattleInProgress + CharacterRoles +
-/// TopDownAtlases` (an empty buffer is fine), and the life-state system keeps running for
-/// the Downed re-tint + non-shot death despawn even in a focused harness that fires nothing.
+/// buffer (`bevy-traps.md` #4), and the ganger batch's gate is deliberately NOT extended
+/// with a `Messages<ShotFired>` guard: the life-state system must keep running for the
+/// Downed re-tint + non-shot death despawn even in a focused FIRE-LESS harness (the
+/// `ganger_draw` / `fog_present` suites author gangers + `BattleInProgress` and register no
+/// sim buffer at all), where such a gate would silently turn the whole ganger batch's
+/// life-state handling off. So the presenter registers this ONE sim-owned buffer
+/// idempotently here (`add_message` is a no-op when the sim's `BattleSimPlugin` already
+/// registered it in a real battle). It is the SINGLE sanctioned exception to the
+/// never-`add_message`-a-sim-owned-buffer convention (GTW-572 C4 / GTW-623 C4) — pinned by
+/// `fx_draw/registrar_contract.rs`; every other sim-owned buffer a presenter system drains
+/// is gated `resource_exists::<Messages<M>>` and seeded by the sim (live play) or the
+/// harness (tests).
 pub(super) fn register_ganger_draw(app: &mut App) {
     app.add_message::<ShotFired>();
     let gate = resource_exists::<BattleInProgress>
@@ -46,7 +55,7 @@ pub(super) fn register_ganger_draw(app: &mut App) {
             update_ganger_life_state,
             apply_active_level_filter,
         )
-            .in_set(PresenterSystems::Draw)
+            .in_set(PresenterSystems::Scene)
             .run_if(gate),
     )
     // GTW-375 (C4): RE-INDEX every mapped ganger sprite to the freshly-reloaded atlas
@@ -62,7 +71,7 @@ pub(super) fn register_ganger_draw(app: &mut App) {
     .add_systems(
         Update,
         reindex_ganger_sprites_on_character_roles_change
-            .in_set(PresenterSystems::Draw)
+            .in_set(PresenterSystems::Scene)
             .run_if(resource_exists::<CharacterRoles>.and_then(resource_changed::<CharacterRoles>)),
     )
     // The removal-detection despawn needs NO render resource (it only despawns
@@ -72,7 +81,7 @@ pub(super) fn register_ganger_draw(app: &mut App) {
     .add_systems(
         Update,
         despawn_removed_ganger_sprites
-            .in_set(PresenterSystems::Draw)
+            .in_set(PresenterSystems::Scene)
             .run_if(resource_exists::<BattleInProgress>),
     )
     // GTW-359 (AC3 / C4): the general sprite-movement glide. It ticks each ganger
@@ -86,7 +95,7 @@ pub(super) fn register_ganger_draw(app: &mut App) {
     .add_systems(
         Update,
         advance_sprite_tweens
-            .in_set(PresenterSystems::Draw)
+            .in_set(PresenterSystems::Scene)
             .after(move_ganger_sprites)
             .run_if(resource_exists::<BattleInProgress>),
     )
@@ -104,7 +113,7 @@ pub(super) fn register_ganger_draw(app: &mut App) {
     .add_systems(
         Update,
         despawn_killed_ganger_on_impact
-            .in_set(PresenterSystems::Draw)
+            .in_set(PresenterSystems::Scene)
             .run_if(
                 resource_exists::<BattleInProgress>
                     .and_then(resource_exists::<Messages<ShotImpactResolved>>),

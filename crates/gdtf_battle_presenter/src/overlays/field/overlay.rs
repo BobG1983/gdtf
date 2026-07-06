@@ -131,7 +131,7 @@ fn field_draws(fields: &FieldRegistry, active_level: Level) -> Vec<FieldDraw> {
     draws
 }
 
-/// `Update` ([`PresenterSystems::Draw`](crate::PresenterSystems)): draw the area-damage-field
+/// `Update` ([`PresenterSystems::Overlay`](crate::PresenterSystems)): draw the area-damage-field
 /// overlay — one cell-keyed translucent [`Sprite`] per live field on the active storey (GTW-545).
 ///
 /// Reads the AUTHORITATIVE sim [`FieldRegistry`] (a battle-lifetime resource `setup_battle` seeds

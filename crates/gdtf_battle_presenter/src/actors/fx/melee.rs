@@ -47,7 +47,7 @@ const fn strike_tint(damage: DamageType) -> Color {
     }
 }
 
-/// `Update` (`PresenterSystems::Draw`): spawn a one-frame STRIKE glyph per
+/// `Update` (`PresenterSystems::Overlay`): spawn a one-frame STRIKE glyph per
 /// [`MeleeResolved`](gdtf_battle_sim::acts::MeleeResolved) (GTW-507).
 ///
 /// Drains [`MessageReader<MeleeResolved>`](gdtf_battle_sim::acts::MeleeResolved); for each

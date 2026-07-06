@@ -19,7 +19,8 @@ use gdtf_battle_presenter::{
     TopDownRendererPlugin,
 };
 use gdtf_battle_sim::{
-    ArmorBroken, Bleeding, CoverDestroyed, DotTicked, ShotFired, SuppressionApplied,
+    ArmorBroken, Bleeding, CoverDestroyed, DotTicked, FallOccurred, ShotFired, SuppressionApplied,
+    acts::{MeleeResolved, ThrowResolved},
 };
 use gdtf_test_utils::advance_until_resource_exists;
 
@@ -88,6 +89,15 @@ pub(crate) fn headless_renderer_app() -> App {
     // battle, but this focused presenter-only harness adds it itself (matching the buffers above —
     // the reader is `run_if`-gated on the buffer's presence, so it would otherwise stay inert).
     .add_message::<DotTicked>()
+    // GTW-623 C5: the melee-strike / fall-impact / grenade-blast readers drain these three
+    // sim-owned buffers. The presenter's registrar no longer `add_message`s them itself
+    // (GTW-623 C4 — the FieldTicked / OnDeathOccurred precedent): the sim's plugins register
+    // them in a real battle, so this focused presenter-only harness seeds the ones its tests
+    // write (each reader is `run_if`-gated on its buffer's presence and would otherwise stay
+    // inert, silently dropping the written message).
+    .add_message::<MeleeResolved>()
+    .add_message::<FallOccurred>()
+    .add_message::<ThrowResolved>()
     .add_plugins(TopDownRendererPlugin);
     // Bevy 0.19 routes a FAILED system-param validation to the global error handler
     // (default panics); 0.18 silently SKIPPED. This no-renderer harness lacks the

@@ -19,8 +19,9 @@
 //! # Draw lifecycle
 //!
 //! Driven entirely by change detection over the sim's ganger components (registered by
-//! [`TopDownRendererPlugin`](crate::TopDownRendererPlugin) in the S4-defined
-//! [`PresenterSystems::Draw`](crate::PresenterSystems) set, ordered `.after(SimSystems::Simulate)`):
+//! [`TopDownRendererPlugin`](crate::TopDownRendererPlugin) in the
+//! [`PresenterSystems::Scene`](crate::PresenterSystems) stage — inside the `Draw` band
+//! ordered `.after(SimSystems::Simulate)`, and chained before the fog `Compose` stage):
 //!
 //! - [`spawn_ganger_sprites`] — `Added<Position>`: spawns one presenter [`Sprite`](bevy::sprite::Sprite) for
 //!   a ganger on the [`ActiveLevel`](crate::ActiveLevel), recording its `sim Entity -> presenter Entity` in

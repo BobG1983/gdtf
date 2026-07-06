@@ -39,7 +39,7 @@ impl FctStackCounter {
     }
 }
 
-/// `Update` (`PresenterSystems::Draw`, `.before(ConsequenceFctSystems::Read)`): clear the
+/// `Update` (`PresenterSystems::Overlay`, `.before(ConsequenceFctSystems::Read)`): clear the
 /// shared [`FctStackCounter`] so this frame's pops stack from slot `0` per cell.
 ///
 /// The ordering is EXPLICIT (`bevy-traps.md` #3): the reset is configured strictly before

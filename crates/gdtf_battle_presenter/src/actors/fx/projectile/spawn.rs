@@ -20,7 +20,7 @@ use super::{
 };
 use crate::{GangerSprite, GangerSprites, TopDownAtlases, cell_to_world, sim_pos_to_world};
 
-/// `Update` (`PresenterSystems::Draw`): spawn the traveling DIRECTIONAL projectile per
+/// `Update` (`PresenterSystems::Overlay`): spawn the traveling DIRECTIONAL projectile per
 /// [`ShotFired`] round.
 ///
 /// Drains [`MessageReader<ShotFired>`](gdtf_battle_sim::ShotFired); for each round it picks the

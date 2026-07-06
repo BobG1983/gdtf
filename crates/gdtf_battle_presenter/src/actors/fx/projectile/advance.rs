@@ -11,7 +11,7 @@ use super::{
     travel::{ProjectileTravel, ShotProjectile},
 };
 
-/// `Update` (`PresenterSystems::Draw`): advance every traveling projectile and HAND OFF its
+/// `Update` (`PresenterSystems::Overlay`): advance every traveling projectile and HAND OFF its
 /// impact on arrival.
 ///
 /// Advances each [`ProjectileTravel`] by the frame [`Res<Time>`] delta. A round whose staggered

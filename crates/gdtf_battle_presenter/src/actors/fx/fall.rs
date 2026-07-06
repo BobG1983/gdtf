@@ -74,7 +74,7 @@ fn fall_tint(storeys: u8) -> Color {
     Color::srgba(0.95, 0.55, 0.10, alpha)
 }
 
-/// `Update` (`PresenterSystems::Draw`): spawn a fall-impact flash + FCT pop per
+/// `Update` (`PresenterSystems::Overlay`): spawn a fall-impact flash + FCT pop per
 /// [`FallOccurred`](gdtf_battle_sim::FallOccurred) (GTW-524).
 ///
 /// Drains [`MessageReader<FallOccurred>`]; for each message it:

@@ -19,7 +19,7 @@ use super::{
 };
 use crate::TopDownAtlases;
 
-/// `Update` (`PresenterSystems::Draw`): play the 3-frame damage-type impact
+/// `Update` (`PresenterSystems::Overlay`): play the 3-frame damage-type impact
 /// animation — AND spawn this shot's floating-combat-text pops (GTW-327) — at each
 /// arrived projectile's [`PendingImpact`](super::super::projectile::PendingImpact).
 ///
