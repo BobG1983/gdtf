@@ -324,11 +324,14 @@ fn modified_member_rebuilds_the_registry_live() {
     );
 }
 
-/// C2(a) / C7: a no-`AssetServer` `MinimalPlugins` app updates without panic —
-/// registration self-gates, so the ext call registers NOTHING (no loader, no
-/// systems, no handle, no registry).
+/// C2(a) / C7 + the GTW-629 headless-fallback rider: a no-`AssetServer`
+/// `MinimalPlugins` app updates without panic — registration self-gates, so
+/// the ext call registers NO chain (no loader, no systems, no handle) but
+/// seeds the family's DEFAULT registry as the headless fallback, so a
+/// presence-gated host flow (the game's Load gate) stays satisfiable from the
+/// ONE registration line, with zero per-family seed arms anywhere else.
 #[test]
-fn headless_minimal_app_stays_a_no_op() {
+fn headless_minimal_app_seeds_the_default_registry_and_skips_the_chain() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.register_content_family::<SwatchFamily>();
@@ -337,10 +340,17 @@ fn headless_minimal_app_stays_a_no_op() {
         app.update();
     }
 
+    let registry = app.world().get_resource::<SwatchRegistry>();
     assert!(
-        app.world().get_resource::<SwatchRegistry>().is_none(),
-        "a headless app must never resolve the registry",
+        registry.is_some(),
+        "a headless registration must seed the DEFAULT registry (the GTW-629 fallback rider)",
     );
+    if let Some(registry) = registry {
+        assert!(
+            registry.0.is_empty(),
+            "the headless fallback is the EMPTY default — nothing resolves it",
+        );
+    }
     assert!(
         app.world()
             .get_resource::<ContentFolderHandle<SwatchFamily>>()

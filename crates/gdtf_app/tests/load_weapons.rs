@@ -60,12 +60,14 @@ fn real_asset_resolves_weapon_registry_keyed_by_filename() {
     suite::real_asset_resolves_registry::<WeaponsFamily>();
 }
 
-/// GTW-297 (`AC3b`) — the REAL auto-battle path: the `AutoBattlePlugin`'s
-/// `seed_load_fallbacks` runs on `Startup` AND a real `AssetServer` is present
-/// (the GUI auto-battle launch). The empty `WeaponRegistry::default()` seed must NOT
-/// shadow the real folder resolve: with an `AssetServer` present the seed must NOT
-/// insert an empty registry, so the generic content-family resolve (which only runs
-/// while the registry is ABSENT) populates it from `assets/content/weapons/ranged/*.weapon.ron`.
+/// GTW-297 (`AC3b`) — the REAL auto-battle path: the Load-owned
+/// `seed_load_fallbacks` (registered on `Startup` by `AutoBattlePlugin`) runs AND a
+/// real `AssetServer` is present (the GUI auto-battle launch). NO empty
+/// `WeaponRegistry::default()` may shadow the real folder resolve: with an
+/// `AssetServer` present neither the bespoke seed nor the GTW-629 seam rider (the
+/// registry's fallback now lives on its `register_content_family` line) may insert
+/// an empty registry, so the generic content-family resolve (which only runs while
+/// the registry is ABSENT) populates it from `assets/content/weapons/ranged/*.weapon.ron`.
 ///
 /// This reproduces the bug's exact preconditions on the real code path: a
 /// `GdtfLoadTestAppBuilder` app (live `AssetServer` rooted at the workspace `assets/`)
@@ -78,9 +80,10 @@ fn real_asset_resolves_weapon_registry_keyed_by_filename() {
 /// - the machine reaches `Intro` with the registry present (the gate waited for the
 ///   REAL registry, not the empty seed).
 ///
-/// PIN: if the seed reverts to inserting `WeaponRegistry::default()` UNCONDITIONALLY,
-/// the registry is present from `Startup`, the absence-gated resolve SKIPS the folder,
-/// the registry stays empty, `spec("stub_pistol")` returns `None`, and this test goes
+/// PIN: if ANY seed path — a revived seam-family arm, or a seam rider gone
+/// unconditional — inserts `WeaponRegistry::default()` while a server is present,
+/// the registry exists early, the absence-gated resolve SKIPS the folder, the
+/// registry stays empty, `spec("stub_pistol")` returns `None`, and this test goes
 /// red — exactly the `AC3b` black-screen failure. Family-bespoke: NEVER genericized
 /// away (GTW-580 P9).
 #[test]

@@ -1,14 +1,17 @@
 //! Shared Load-gate seed helpers (GTW-580) — thin drivers over the ONE
 //! test-side seed source, [`seed_load_gate`].
 //!
-//! No resource is named here: the gate set lives in
+//! No resource is named here: the BESPOKE gate set lives in
 //! `gdtf_app::test_support::seed_load_gate` (the production
-//! `seed_load_fallbacks` plus its documented delta), so adding gate-blocking
-//! registry N+1 touches the seed source only — never a test file. A tier-(a)
-//! negative test withholds ONE resource by seeding everything and then
-//! removing its own registry ([`seed_gate_except`]), which stays deterministic
-//! because no `app.update()` runs between the seed and the removal (the gated
-//! transition can only fire during `Update`).
+//! `seed_load_fallbacks` plus its documented delta), so adding a gate-blocking
+//! bespoke resource touches the seed source only — never a test file. The
+//! seam-family registries are NOT seeded here at all: each is seeded at APP
+//! BUILD by its own `register_content_family` line (the GTW-629
+//! headless-fallback rider), so a new content family touches nothing. A
+//! tier-(a) negative test withholds ONE resource by seeding everything and
+//! then removing its own registry ([`seed_gate_except`]), which stays
+//! deterministic because no `app.update()` runs between the seed and the
+//! removal (the gated transition can only fire during `Update`).
 //!
 //! This file is self-contained (no `super::` references) so bespoke,
 //! non-family load tests can include it standalone via

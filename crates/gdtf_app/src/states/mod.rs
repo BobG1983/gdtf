@@ -40,6 +40,11 @@ pub(in crate::states) use load::LoadScenePlugin;
 // the resource directly via `load::LoadedSituation`.) Unconditional `support_use!`,
 // so it tracks `support_item` visibility in lockstep (the re-export chain caveat).
 crate::support_use!(load::LoadedSituation;);
+// The bespoke headless Load-fallback seed (GTW-629), re-exported here so it is
+// nameable from OUTSIDE `states` — the GTW-223 DEV auto-battle affordance
+// (`crate::app::auto_battle`) registers it on `Startup`, and `test_support`
+// widens it to `pub` for the load-suite gate seed.
+crate::support_use!(load::seed_load_fallbacks;);
 
 // `pub(crate)` so the crate-root test-support ledger can name the panel `test_support`
 // submodules under it (GTW-569 one-hop ledger — markers no longer climb through here).
