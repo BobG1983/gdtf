@@ -48,13 +48,14 @@ use bevy::prelude::*;
 use gdtf_battle_sim::{
     FieldDefRegistry,
     armor::ArmorRegistry,
+    equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
     level::{PrefabRegistry, UuidThemeRegistry},
     procgen::ProcgenTuning,
     terrain::def::TerrainDefRegistry,
     tuning::CombatTuning,
-    weapon::{AttachmentRegistry, MeleeWeaponRegistry, WeaponRegistry},
+    weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
 use gdtf_ui::theme::default_theme;
 

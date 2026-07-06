@@ -25,7 +25,7 @@ use crate::{
 /// **negative** term when the shooter is [`Suppressed`](crate::ganger::Suppressed),
 /// zero otherwise), and the GTW-549 per-item brace seam (a **positive** term when
 /// the weapon carries a data-driven
-/// [`WeaponBraceBonus`](crate::weapon::WeaponBraceBonus) attachment, zero otherwise)
+/// [`WeaponBraceBonus`](crate::effects::attachments::WeaponBraceBonus) attachment, zero otherwise)
 /// — then **clamps/normalises** the sum into the `0..=100` [`StabilityScore`]
 /// domain and reads **both** tuning curves at that score, returning the named
 /// `(cone_mult, recoil_growth)` pair. A steadier situation yields a higher score,

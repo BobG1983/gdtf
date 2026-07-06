@@ -74,7 +74,7 @@ fn walk_app() -> App {
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
     app.world_mut()
-        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
+        .insert_resource(gdtf_battle_sim::equipment::attachments::AttachmentRegistry::default());
     // GTW-269: the Load->Intro gate also requires an ArmorRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());

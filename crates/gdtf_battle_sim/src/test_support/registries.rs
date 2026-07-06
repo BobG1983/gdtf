@@ -13,6 +13,7 @@ use crate::{
         ArmorRegistry, ArmorSpec, ArmorType,
     },
     cover::{CoverHp, HeightBand},
+    equipment::attachments::WeaponSlots,
     magazine::{Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     slab::SlabHp,
@@ -28,7 +29,7 @@ use crate::{
         FightModeSpec, FireMode, FireModeSpec, Handedness, Kickback, MagazineSize,
         MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
         Reach, Shove, Stable, Strikes, TrajectoryStyle, TuCost, WeaponDamage, WeaponName,
-        WeaponPunch, WeaponRegistry, WeaponShred, WeaponSlots, WeaponSpec,
+        WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
     },
 };
 

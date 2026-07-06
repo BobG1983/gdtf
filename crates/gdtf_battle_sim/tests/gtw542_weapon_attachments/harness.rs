@@ -11,6 +11,11 @@ use gdtf_battle_sim::{
     Accuracy, BaseSpread, Cell, CellLevel, Cool, Faction, FatalBias, Grit, Kickback, MagazineSize,
     Speed, Stance, StanceKind, Strength, Toughness, WeaponPunch,
     battle::{BattleSimPlugin, SetupBattleRequested},
+    effects::attachments::AttachmentEffect,
+    equipment::attachments::{
+        AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec, SlotCapacity,
+        WeaponSlots,
+    },
     ganger::{Direction, Facing, GangRegistry},
     magazine::{Magazine, ReloadTu},
     rng::BattleSeed,
@@ -20,10 +25,7 @@ use gdtf_battle_sim::{
         test_terrain_registry, test_weapon_spec,
     },
     tuning::{CombatTuning, ViewRange},
-    weapon::{
-        AttachmentEffect, AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec,
-        FireMode, SlotCapacity, WeaponName, WeaponRegistry, WeaponSlots, WeaponSpec,
-    },
+    weapon::{FireMode, WeaponName, WeaponRegistry, WeaponSpec},
 };
 
 /// An arbitrary seed (determinism is asserted elsewhere).

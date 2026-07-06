@@ -8,11 +8,15 @@ use bevy::{prelude::Component, reflect::TypePath};
 use serde::Deserialize;
 
 use super::{
-    Accuracy, AttachmentEffect, AttachmentName, BaseSpread, DamageProfile, DamageType, DotProfile,
-    FatalBias, FireMode, Handedness, HandlingProfile, Kickback, Shove, Stable, TrajectoryStyle,
-    WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WeaponSlots,
+    Accuracy, BaseSpread, DamageProfile, DamageType, DotProfile, FatalBias, FireMode, Handedness,
+    HandlingProfile, Kickback, Shove, Stable, TrajectoryStyle, WeaponBundle, WeaponDamage,
+    WeaponName, WeaponPunch, WeaponShred,
 };
-use crate::magazine::Magazine;
+use crate::{
+    effects::attachments::AttachmentEffect,
+    equipment::attachments::{AttachmentName, WeaponSlots},
+    magazine::Magazine,
+};
 
 /// The **authoring struct** an `assets/content/weapons/ranged/*.ron` deserializes into — every
 /// weapon NUMBER the §1/§6 math reads, MINUS the [`WeaponName`] (the name is the
@@ -93,11 +97,11 @@ pub struct WeaponSpec {
     /// The weapon's declared **attachment slots** (GTW-554) — the
     /// [`WeaponSlots`] pair list authored as the `slots:` `.weapon.ron` field, e.g.
     /// `slots: [(Muzzle, 1), (Sight, 1), (Rail, 3)]`: WHICH
-    /// [`AttachmentSlot`](super::AttachmentSlot)s this weapon offers and how many
+    /// [`AttachmentSlot`](crate::equipment::attachments::AttachmentSlot)s this weapon offers and how many
     /// attachments each holds. `#[serde(default)]` so an omitted field is the EMPTY
     /// declaration — the weapon offers NO slots, so no attachment fits it (fail-closed; a
     /// thrown grenade authors none). The fit gate
-    /// ([`attachment_fits`](super::attachment_fits)) admits each `attachments` key's item
+    /// ([`attachment_fits`](crate::equipment::attachments::attachment_fits)) admits each `attachments` key's item
     /// only into a declared slot with free capacity; class gating EMERGES from these
     /// declarations (no ranged/melee tag exists on an item).
     #[serde(default)]
@@ -109,12 +113,12 @@ pub struct WeaponSpec {
     /// back to an EMPTY list (a weapon with no attachments): the field is OPT-IN (the
     /// [`Shove`] `#[serde(default)]` precedent), so EVERY existing weapon `.ron` — none of which
     /// author it — deserializes and spawns BYTE-IDENTICAL. At battle setup each key is resolved
-    /// against the [`AttachmentRegistry`](super::AttachmentRegistry) — GATED by the GTW-554
-    /// slot fit ([`resolve_pending_attachments`](super::resolve_pending_attachments)): an item
-    /// whose [`slot`](super::AttachmentSpec::slot) is undeclared in [`slots`](Self::slots) or
+    /// against the [`AttachmentRegistry`](crate::equipment::attachments::AttachmentRegistry) — GATED by the GTW-554
+    /// slot fit ([`resolve_pending_attachments`](crate::equipment::attachments::resolve_pending_attachments)): an item
+    /// whose [`slot`](crate::equipment::attachments::AttachmentSpec::slot) is undeclared in [`slots`](Self::slots) or
     /// already at capacity is CLEANLY REJECTED (skipped, never evicted) — and each FITTING
     /// item's [`AttachmentEffect`]s are applied to the spawned weapon entity via the
-    /// [`attach_to_weapon`](super::AttachToWeaponExt::attach_to_weapon) commands extension
+    /// [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon) commands extension
     /// (SUPERSEDES the GTW-542 `attachment_slots: Vec<AttachTag>` inline-enum model). The empty
     /// default applies NO effects.
     #[serde(default)]
@@ -157,7 +161,7 @@ impl WeaponSpec {
     /// the resolved bundle alongside a [`WeaponSpawnSiblings`] carrying the spec's optional
     /// `dot` / `on_death` siblings. The GTW-549 [`attachments`](WeaponSpec::attachments) list is
     /// NOT folded here — attachment effects are applied to the SPAWNED weapon entity via the
-    /// [`attach_to_weapon`](super::AttachToWeaponExt::attach_to_weapon) commands extension at
+    /// [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon) commands extension at
     /// setup (SUPERSEDES the GTW-542 pre-spawn leaf-fold model). A weapon with no attachments,
     /// `dot`, or `on_death` resolves BYTE-IDENTICAL to before the attachment model existed.
     ///
@@ -196,7 +200,7 @@ impl WeaponSpec {
 /// The resolved spawn-side **optional sibling components** of a weapon spec — the `dot` /
 /// `on_death` siblings the wielded-weapon scene seam composes onto the spawned weapon entity
 /// (GTW-549; the slimmed successor of the GTW-542 `AttachmentEffects` accumulator, now that
-/// attachment effects are applied via the [`attach_to_weapon`](super::AttachToWeaponExt::attach_to_weapon)
+/// attachment effects are applied via the [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon)
 /// commands extension rather than pre-spawn leaf rewrites).
 ///
 /// Built by [`into_bundle`](WeaponSpec::into_bundle) from the spec's optional `dot` /
@@ -251,7 +255,7 @@ impl WeaponSpawnSiblings {
 /// attachment application system applies them — the deferred-spawn bridge that lets the
 /// setup path point a weapon at data-driven attachment items and have their effects land on
 /// the (deferred-materializing) weapon entity via the
-/// [`attach_to_weapon`](super::AttachToWeaponExt::attach_to_weapon) commands extension.
+/// [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon) commands extension.
 ///
 /// The wielded-weapon scene is spawned via
 /// [`queue_spawn_related_scenes`](bevy::scene::EntityCommandsSceneExt::queue_spawn_related_scenes),
@@ -279,7 +283,7 @@ impl PendingAttachments {
 
     /// The resolved [`AttachmentEffect`]s to apply to the weapon entity — read by the
     /// application system, which invokes each via the
-    /// [`attach_to_weapon`](super::AttachToWeaponExt::attach_to_weapon) extension.
+    /// [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon) extension.
     #[must_use]
     pub fn effects(&self) -> &[AttachmentEffect] {
         &self.0

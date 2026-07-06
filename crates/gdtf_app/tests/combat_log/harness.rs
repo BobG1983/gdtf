@@ -38,7 +38,7 @@ pub(crate) fn battle_running_app() -> App {
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
     app.world_mut()
-        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
+        .insert_resource(gdtf_battle_sim::equipment::attachments::AttachmentRegistry::default());
     // GTW-269: setup_battle_on_request armors each ganger from an ArmorRegistry, failing closed
     // without one. This log harness builds a ganger-free default battle, so an empty registry
     // suffices — it just must be present for the setup to reach BattleRunning.

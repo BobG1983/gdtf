@@ -7,14 +7,15 @@ use bevy::prelude::Entity;
 use super::super::query::{MeleeQuery, MountedQuery, ShooterQuery, WeaponQuery, WieldsQuery};
 use crate::{
     aim::Shooter,
+    effects::attachments::WeaponBraceBonus,
     ganger::{Aiming, Facing, Luck, Position, Shooting, Stance, Suppressed, Tu, TuMax},
     injuries::{HandsAvailable, InflictedInjuries},
     magazine::Magazine,
     stability::EmplacementStability,
     tuning::CombatTuning,
     weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, Handedness, Kickback, Stable,
-        WeaponBraceBonus, WeaponDamage, WeaponPunch, WeaponShred, WeaponStats,
+        Accuracy, BaseSpread, DamageType, FatalBias, Handedness, Kickback, Stable, WeaponDamage,
+        WeaponPunch, WeaponShred, WeaponStats,
     },
 };
 

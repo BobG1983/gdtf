@@ -45,7 +45,7 @@ use crate::{
 /// [`Stable`](crate::weapon::Stable) tag (braces unconditionally), the GTW-392
 /// [`TerrainBraced`](crate::stability::TerrainBraced) decision (the HUD passes the
 /// live value it computed from the grids), the GTW-549 per-item
-/// [`WeaponBraceBonus`](crate::weapon::WeaponBraceBonus) attachment points, and the
+/// [`WeaponBraceBonus`](crate::effects::attachments::WeaponBraceBonus) attachment points, and the
 /// GTW-543 [`EmplacementStability`](crate::stability::EmplacementStability) mounted-gun
 /// points. Every field's [`Default`] is its zero identity, so a caller spells only
 /// the engaged terms (struct-update) and an all-default bundle scores
@@ -116,7 +116,7 @@ pub fn stability_for(
 /// The shot's stability contribution arrives as the caller-resolved
 /// [`StabilityTerms`] bundle (GTW-573 C7): the caller sources the weapon-side terms
 /// (the [`Stable`](crate::weapon::Stable) tag; the GTW-549 per-item
-/// [`WeaponBraceBonus`](crate::weapon::WeaponBraceBonus) attachment, which SUPERSEDES
+/// [`WeaponBraceBonus`](crate::effects::attachments::WeaponBraceBonus) attachment, which SUPERSEDES
 /// the GTW-542 sight-stability seam — a sight now boosts AIM, not stability) off the
 /// weapon it holds, the GTW-392 [`TerrainBraced`](crate::stability::TerrainBraced)
 /// decision off the live grids, and the GTW-543

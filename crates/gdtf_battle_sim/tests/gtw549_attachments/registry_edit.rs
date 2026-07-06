@@ -3,12 +3,11 @@
 
 use gdtf_battle_sim::{
     Accuracy,
+    effects::attachments::{AimDelta, AttachmentEffect},
+    equipment::attachments::{AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec},
     ganger::Direction,
     test_support::SituationBuilder,
-    weapon::{
-        AimDelta, AttachmentEffect, AttachmentName, AttachmentRegistry, AttachmentSlot,
-        AttachmentSpec, WeaponName,
-    },
+    weapon::WeaponName,
 };
 
 use super::harness::*;

@@ -67,7 +67,7 @@ fn seed_load(app: &mut App) {
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
     app.world_mut()
-        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
+        .insert_resource(gdtf_battle_sim::equipment::attachments::AttachmentRegistry::default());
     // GTW-269: the Load→Intro gate also requires an ArmorRegistry; empty clears it (the
     // registry is dormant this slice — the setup does not read it yet).
     app.world_mut()

@@ -7,10 +7,9 @@ use bevy::prelude::Bundle;
 
 use super::{
     Accuracy, BaseSpread, DamageType, DotProfile, FatalBias, FireMode, Handedness, Kickback, Shove,
-    Stable, TrajectoryStyle, Weapon, WeaponBraceBonus, WeaponDamage, WeaponName, WeaponPunch,
-    WeaponShred,
+    Stable, TrajectoryStyle, Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
 };
-use crate::magazine::Magazine;
+use crate::{effects::attachments::WeaponBraceBonus, magazine::Magazine};
 
 /// A transient **borrow-view** of a weapon's stats — refs assembled at the call
 /// site from the individual weapon components, the read-shape the §1/§6 readers
@@ -48,7 +47,7 @@ pub struct WeaponStats<'a> {
     /// only when the faced cover suits the stance).
     pub stable:      &'a Stable,
     /// The GTW-549 per-item **brace bonus** attachment — `Some` when a data-driven
-    /// [`Stability`](super::AttachmentEffect::Stability) attachment fitted a
+    /// [`Stability`](crate::effects::attachments::AttachmentEffect::Stability) attachment fitted a
     /// [`WeaponBraceBonus`] component, feeding its graduated additive §1a stability
     /// contribution into the cone read; `None` for a weapon with no brace attachment (the
     /// zero-identity term, byte-identical to before the attachment). An `Option` because the

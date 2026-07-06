@@ -10,11 +10,12 @@ use gdtf_assets::{ContentChecksComplete, ContentValidationAppExt, ContentValidat
 use gdtf_battle_sim::{
     FieldDefRegistry,
     armor::ArmorRegistry,
+    equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::InjuryRegistry,
     level::{PrefabRegistry, UuidThemeRegistry},
     terrain::def::TerrainDefRegistry,
-    weapon::{AttachmentRegistry, MeleeWeaponRegistry, WeaponRegistry},
+    weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
 
 use super::{attachments, gangs, injuries, prefabs, situation, terrain};

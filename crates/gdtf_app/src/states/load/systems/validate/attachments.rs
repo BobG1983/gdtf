@@ -8,7 +8,10 @@ use gdtf_assets::{
     ContentFinding, ContentIntegrityReport, FindingFamily, FindingReferrer, FindingTarget,
     ReferenceKeyScheme,
 };
-use gdtf_battle_sim::weapon::{AttachmentRegistry, MeleeWeaponRegistry, WeaponRegistry};
+use gdtf_battle_sim::{
+    equipment::attachments::AttachmentRegistry,
+    weapon::{MeleeWeaponRegistry, WeaponRegistry},
+};
 
 /// `Check`: every RANGED and MELEE weapon spec's authored `attachments` keys
 /// resolve in the [`AttachmentRegistry`] (GTW-549 item files, file-stem keyed).

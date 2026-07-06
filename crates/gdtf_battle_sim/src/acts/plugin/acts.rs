@@ -171,7 +171,7 @@ pub(super) fn wire_acts(app: &mut App) {
     // scene) rather than being `attach_to_weapon`'d inline (no live entity exists at setup). This
     // system runs on a later tick — once the weapon's stat components + the `PendingAttachments`
     // marker have materialized — reads the marker, and applies each effect via the mandated
-    // post-spawn [`attach_to_weapon`](crate::weapon::AttachToWeaponExt::attach_to_weapon)
+    // post-spawn [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon)
     // `EntityCommand`, then removes the marker (one-shot). Ordered `.before(dispatch_fire)` so a
     // weapon's attachment stat changes are in place before any shot could read them
     // (bevy-traps.md #3; realistically the marker materializes turns before the player fires). It

@@ -7,9 +7,12 @@ use bevy::reflect::TypePath;
 use serde::Deserialize;
 
 use super::{FightMode, MeleeDamageProfile, MeleeWeaponBundle, Reach};
-use crate::weapon::{
-    AttachmentName, DamageType, FatalBias, Handedness, Shove, WeaponDamage, WeaponName,
-    WeaponPunch, WeaponShred, WeaponSlots,
+use crate::{
+    equipment::attachments::{AttachmentName, WeaponSlots},
+    weapon::{
+        DamageType, FatalBias, Handedness, Shove, WeaponDamage, WeaponName, WeaponPunch,
+        WeaponShred,
+    },
 };
 
 /// The **authoring struct** an `assets/content/weapons/melee/*.melee_weapon.ron`
@@ -82,7 +85,7 @@ pub struct MeleeWeaponSpec {
     /// references, the exact ranged
     /// [`attachments`](crate::weapon::WeaponSpec::attachments) mirror. `#[serde(default)]`
     /// (an omitted field fits nothing). At battle setup the keys resolve through the SAME
-    /// slot-gated [`resolve_pending_attachments`](crate::weapon::resolve_pending_attachments)
+    /// slot-gated [`resolve_pending_attachments`](crate::equipment::attachments::resolve_pending_attachments)
     /// seam as the ranged path and ride onto the spawned MELEE weapon entity as a
     /// [`PendingAttachments`](crate::weapon::PendingAttachments) marker the post-spawn
     /// applier consumes.

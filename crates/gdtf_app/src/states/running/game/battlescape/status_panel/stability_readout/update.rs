@@ -31,11 +31,11 @@ use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
     Aiming, BraceStairCells, CoverLedger, Facing, MeleeWeapon, Position, Shooter, Stable, Stance,
     Suppressed, Weapon, Wields,
+    effects::attachments::WeaponBraceBonus,
     stability::{StabilityTerms, terrain_brace::terrain_braces},
     stability_for,
     surface::SurfaceGrid,
     tuning::CombatTuning,
-    weapon::WeaponBraceBonus,
 };
 use gdtf_ui::{FillFraction, ProgressBarFill, set_progress_bar};
 

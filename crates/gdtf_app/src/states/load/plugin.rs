@@ -3,6 +3,7 @@ use gdtf_assets::{ContentFamilyAppExt, ContentValidationDone, HotRonAppExt, RonA
 use gdtf_battle_sim::{
     FieldDefRegistry,
     armor::ArmorRegistry,
+    equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
     level::{PrefabRegistry, PrefabSpec, UuidThemeRegistry},
@@ -10,7 +11,7 @@ use gdtf_battle_sim::{
     situation::Situation,
     terrain::def::TerrainDefRegistry,
     tuning::{CombatTuning, GangerStatTuning},
-    weapon::{AttachmentRegistry, MeleeWeaponRegistry, WeaponRegistry},
+    weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
 use gdtf_content_families::{
     ArmorFamily, AttachmentsFamily, FieldsFamily, GangsFamily, MeleeWeaponsFamily,

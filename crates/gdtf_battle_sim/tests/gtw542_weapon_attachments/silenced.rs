@@ -8,11 +8,11 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     Cell, Silenced, SuppressionApplied,
+    effects::attachments::AttachmentEffect,
     ganger::Direction,
     test_support::SituationBuilder,
     weapon::{
-        AttachmentEffect, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        shooter_weapon_silenced,
+        FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, shooter_weapon_silenced,
     },
 };
 

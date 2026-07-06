@@ -6,8 +6,8 @@ use bevy::{
     prelude::{Entity, MessageReader, ResMut, Resource},
 };
 use gdtf_battle_sim::{
-    Cell, SuppressionApplied, ganger::Direction, test_support::SituationBuilder,
-    weapon::AttachmentEffect,
+    Cell, SuppressionApplied, effects::attachments::AttachmentEffect, ganger::Direction,
+    test_support::SituationBuilder,
 };
 
 use super::harness::*;

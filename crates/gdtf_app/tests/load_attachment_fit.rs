@@ -17,9 +17,9 @@
 //! MECHANISM is covered by the sim apply/spawn tests.
 
 use gdtf_app::test_support::{AppState, app_state};
-use gdtf_battle_sim::weapon::{
-    AttachmentName, AttachmentRegistry, MeleeWeaponRegistry, WeaponName, WeaponRegistry,
-    attachment_fits,
+use gdtf_battle_sim::{
+    equipment::attachments::{AttachmentName, AttachmentRegistry, attachment_fits},
+    weapon::{MeleeWeaponRegistry, WeaponName, WeaponRegistry},
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 

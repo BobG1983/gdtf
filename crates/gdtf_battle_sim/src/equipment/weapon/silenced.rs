@@ -3,7 +3,7 @@
 //! REACTION/REVEAL.
 //!
 //! The [`Silenced`](super::Silenced) tag itself is a weapon-side sibling component (fitted by
-//! the GTW-549 [`Silence`](super::AttachmentEffect::Silence) attachment effect). This module
+//! the GTW-549 [`Silence`](crate::effects::attachments::AttachmentEffect::Silence) attachment effect). This module
 //! owns only the shared RESOLUTION both producers call — relocated here (GTW-549) out of the
 //! ripped-out GTW-542 `attachment` module so the gate survives the attachment-model rework
 //! unchanged.

@@ -58,7 +58,7 @@ pub fn attachment_fits(
 
 /// Resolve a weapon's authored attachment KEYS against the [`AttachmentRegistry`] — gated by
 /// the GTW-554 slot fit — into the flat list of
-/// [`AttachmentEffect`](crate::weapon::AttachmentEffect)s to apply, wrapped in a
+/// [`AttachmentEffect`](crate::effects::attachments::AttachmentEffect)s to apply, wrapped in a
 /// [`PendingAttachments`] marker for the spawned weapon entity.
 ///
 /// Keys are processed in authored order. Each resolved item must FIT ([`attachment_fits`]):

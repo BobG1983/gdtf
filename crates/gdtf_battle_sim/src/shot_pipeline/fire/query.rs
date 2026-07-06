@@ -8,6 +8,7 @@ use bevy::ecs::{query::With, system::Query};
 use crate::{
     armor::{PieceArmorMut, Wears, WornBy},
     cover::CoverLedger,
+    effects::attachments::WeaponBraceBonus,
     ganger::{
         Aiming, Facing, Hp, LifeState, Luck, Position, Shooting, Stance, Suppressed, Toughness, Tu,
         TuMax, Wounds,
@@ -21,8 +22,8 @@ use crate::{
     surface::SurfaceGrid,
     weapon::{
         Accuracy, BaseSpread, DamageType, DotProfile, FatalBias, FireModeSpec, Handedness,
-        Kickback, MeleeWeapon, MountedWeapon, Stable, WeaponBraceBonus, WeaponDamage, WeaponPunch,
-        WeaponShred, WieldedBy, Wields,
+        Kickback, MeleeWeapon, MountedWeapon, Stable, WeaponDamage, WeaponPunch, WeaponShred,
+        WieldedBy, Wields,
     },
 };
 

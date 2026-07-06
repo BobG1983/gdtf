@@ -327,6 +327,12 @@ pub use damage_resolution::{
     severity::{PartSeverityMod, Severity, SeverityInputs, part_severity_mod, roll_severity},
 };
 pub use effects::{
+    attachments::{
+        AimDelta, ApplyAim, ApplyAttachmentEffect, ApplyBrace, ApplyDamage,
+        ApplyDamageTypeOverride, ApplyExtraAmmo, ApplyFatalBias, ApplyGainFireMode,
+        ApplyPenetration, ApplyReloadTime, ApplyShove, ApplyShred, ApplySilence, ApplyStability,
+        AttachmentEffect, ReloadTimeScale, WeaponBraceBonus,
+    },
     bleed::{BleedOngoing, BleedStarted, Bleeding, enemy_phase_started, tick_bleed},
     dot::{DotAfflicted, DotApplied, DotTicked, apply_dot, tick_dot},
     fields::{
@@ -348,27 +354,25 @@ pub use equipment::{
     },
     armor_wear,
     armor_wear::{ArmorBroken, ArmorDamaged, ArmorWearOutcome, wear_armor},
-    attachments::apply_pending_attachments,
+    attachments::{
+        AttachToWeaponExt, AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec,
+        FitRejection, SlotCapacity, WeaponSlots, apply_pending_attachments, attachment_fits,
+        resolve_pending_attachments,
+    },
     magazine,
     magazine::{
         FireActor, LoadedRounds, Magazine, ReloadTu, can_fire, clamp_burst, in_bounds, mode_tu_cost,
     },
     weapon,
     weapon::{
-        Accuracy, AimDelta, AoeRange, ApplyAim, ApplyAttachmentEffect, ApplyBrace, ApplyDamage,
-        ApplyDamageTypeOverride, ApplyExtraAmmo, ApplyFatalBias, ApplyGainFireMode,
-        ApplyPenetration, ApplyReloadTime, ApplyShove, ApplyShred, ApplySilence, ApplyStability,
-        AttachToWeaponExt, AttachmentEffect, AttachmentName, AttachmentRegistry, AttachmentSlot,
-        AttachmentSpec, BaseSpread, BlastRadius, ConeHalfAngle, DamageProfile, DamageType, Dot,
+        Accuracy, AoeRange, BaseSpread, BlastRadius, ConeHalfAngle, DamageProfile, DamageType, Dot,
         DotDamage, DotProfile, DotTurns, FISTS_KEY, FatalBias, FightMode, FightModeKind,
-        FightModeSpec, FireMode, FireModeSpec, FitRejection, Handedness, HandlingProfile, HitType,
-        Kickback, MagazineSize, MeleeDamageProfile, MeleeWeapon, MeleeWeaponBundle,
-        MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
-        MountedWeapon, PendingAttachments, Reach, ReloadTimeScale, Shove, Silenced, SlotCapacity,
-        Stable, Strikes, TrajectoryStyle, TuCost, Weapon, WeaponBraceBonus, WeaponBundle,
-        WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSlots,
-        WeaponSpawnSiblings, WeaponSpec, WeaponStats, WieldedBy, Wields, attachment_fits,
-        resolve_pending_attachments, shooter_weapon_silenced,
+        FightModeSpec, FireMode, FireModeSpec, Handedness, HandlingProfile, HitType, Kickback,
+        MagazineSize, MeleeDamageProfile, MeleeWeapon, MeleeWeaponBundle, MeleeWeaponRegistry,
+        MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, MountedWeapon,
+        PendingAttachments, Reach, Shove, Silenced, Stable, Strikes, TrajectoryStyle, TuCost,
+        Weapon, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
+        WeaponSpawnSiblings, WeaponSpec, WeaponStats, WieldedBy, Wields, shooter_weapon_silenced,
     },
 };
 pub use falls::{DropLanding, FallOccurred, FallsPlugin, StoreysFallen, apply_falls, resolve_drop};

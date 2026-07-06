@@ -1,7 +1,7 @@
 //! The ATTACHMENTS content family (GTW-549 items, generic seam since GTW-619).
 
 use gdtf_assets::{ContentFamily, ContentFileStem};
-use gdtf_battle_sim::weapon::{AttachmentName, AttachmentRegistry, AttachmentSpec};
+use gdtf_battle_sim::equipment::attachments::{AttachmentName, AttachmentRegistry, AttachmentSpec};
 
 /// The attachments family: `assets/content/attachments/*.attachment.ron` → the
 /// name-keyed [`AttachmentRegistry`] the battle setup resolves each weapon's

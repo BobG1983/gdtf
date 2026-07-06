@@ -43,6 +43,15 @@ each file readable in one sitting.
    Never invent shared abstractions to shrink counts; never move logic across
    the sim→presenter seam; helpers with 2+ consuming modules live in the shared
    support/harness module, single-consumer helpers stay local to their consumer.
+7. **A module's `pub use` may lift only from its own DESCENDANTS.** A module
+   re-exports its own submodules' items — never a sibling's, a cousin's, or
+   another family's (`pub use crate::other_family::…` presented as this
+   module's API). A cross-family re-export erases a concern split at the
+   public surface: consumers import the type via the lying path and the
+   families read as one (GTW-624 — `equipment::weapon` re-exported the entire
+   attachments palette + mechanics, erasing the GTW-558 split for 20+
+   consumers). Consumers import a type from its owning family's true path.
+   The crate root (`lib.rs`) is exempt — every module is its descendant.
 
 ## The census command (pinned)
 

@@ -62,13 +62,12 @@ use bevy::prelude::{
 use super::{EmplacementOccupant, EmplacementState, MountedWeaponEntity, MountedWeaponKey};
 use crate::{
     clearance::silhouette_band,
+    equipment::attachments::{AttachmentRegistry, resolve_pending_attachments},
     ganger::{Stance, StanceKind},
     occupancy::OccupancyGrid,
     occupancy_sync::{SimSystems, sync_moved_gangers},
     terrain::entity::TerrainCell,
-    weapon::{
-        AttachmentRegistry, MountedWeapon, WeaponRegistry, WieldedBy, resolve_pending_attachments,
-    },
+    weapon::{MountedWeapon, WeaponRegistry, WieldedBy},
 };
 
 /// A request to set a **weapon emplacement**'s [`EmplacementState`] — the toggle message the
@@ -258,7 +257,7 @@ pub fn apply_emplacement_toggle(
 /// [`PendingAttachments`](crate::weapon::PendingAttachments) marker spawned onto the weapon (an
 /// EMPTY marker when it authors none / the registry is absent), which the post-spawn
 /// [`apply_pending_attachments`](crate::apply_pending_attachments) system applies via
-/// the [`attach_to_weapon`](crate::weapon::AttachToWeaponExt::attach_to_weapon) extension — the
+/// the [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon) extension — the
 /// SAME path the `setup_battle` spawn uses. GTW-554: the resolution is slot-gated
 /// ([`resolve_pending_attachments`] — the ONE shared seam): an item only fits a slot the
 /// mounted weapon's spec declares, with free capacity.

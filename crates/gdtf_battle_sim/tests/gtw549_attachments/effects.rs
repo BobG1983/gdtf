@@ -3,11 +3,9 @@
 
 use gdtf_battle_sim::{
     Accuracy, MagazineSize, Silenced,
+    effects::attachments::{AimDelta, AttachmentEffect},
     magazine::Magazine,
-    weapon::{
-        AimDelta, AttachmentEffect, FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent,
-    },
+    weapon::{FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
 };
 
 use super::harness::*;

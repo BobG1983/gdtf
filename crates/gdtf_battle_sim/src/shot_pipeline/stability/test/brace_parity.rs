@@ -4,6 +4,7 @@
 use super::support::*;
 use crate::{
     cover::HeightBand,
+    effects::attachments::WeaponBraceBonus,
     ganger::{Stance, StanceKind},
     stability::{
         TerrainBraced,
@@ -11,7 +12,7 @@ use crate::{
         types::{EmplacementStability, StabilityTerms, SuppressionStability},
     },
     tuning::ConeStabilityTuning,
-    weapon::{Stable, WeaponBraceBonus},
+    weapon::Stable,
 };
 
 /// GTW-549 — the additive per-item BRACE seam steadies the shot: a POSITIVE

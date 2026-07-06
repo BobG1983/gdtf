@@ -26,6 +26,11 @@ use gdtf_battle_sim::{
     Accuracy, BaseSpread, Cell, CellLevel, Cool, Faction, FatalBias, Grit, Kickback, MagazineSize,
     Silenced, Speed, Stance, StanceKind, Strength, WeaponPunch,
     battle::{BattleSimPlugin, SetupBattleRequested},
+    effects::attachments::{AimDelta, AttachmentEffect},
+    equipment::attachments::{
+        AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec, SlotCapacity,
+        WeaponSlots,
+    },
     ganger::{Direction, Facing},
     magazine::{Magazine, ReloadTu},
     rng::BattleSeed,
@@ -36,9 +41,8 @@ use gdtf_battle_sim::{
     },
     tuning::{CombatTuning, ViewRange},
     weapon::{
-        AimDelta, AttachmentEffect, AttachmentName, AttachmentRegistry, AttachmentSlot,
-        AttachmentSpec, FISTS_KEY, FireMode, MeleeWeapon, MeleeWeaponRegistry, MeleeWeaponSpec,
-        SlotCapacity, WeaponDamage, WeaponName, WeaponRegistry, WeaponSlots, WeaponSpec,
+        FISTS_KEY, FireMode, MeleeWeapon, MeleeWeaponRegistry, MeleeWeaponSpec, WeaponDamage,
+        WeaponName, WeaponRegistry, WeaponSpec,
     },
 };
 

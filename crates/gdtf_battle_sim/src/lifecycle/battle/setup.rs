@@ -9,11 +9,12 @@ use super::runtime_seed::insert_battle_runtime;
 use crate::{
     armor::ArmorRegistry,
     battle::messages::{BattleReady, SetupBattleRequested},
+    equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     situation::{BattleRegistries, setup_battle},
     terrain::def::TerrainDefRegistry,
     tuning::{CombatTuning, GangerStatTuning},
-    weapon::{AttachmentRegistry, MeleeWeaponRegistry, WeaponRegistry},
+    weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
 
 /// **Setup** the battle on [`SetupBattleRequested`] — seed the per-subsystem RNG

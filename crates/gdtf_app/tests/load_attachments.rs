@@ -17,7 +17,10 @@ mod load_suite;
 mod behaviors;
 
 use behaviors::FamilyBehaviorContract;
-use gdtf_battle_sim::weapon::{AttachmentName, AttachmentRegistry, AttachmentSpec, WeaponName};
+use gdtf_battle_sim::{
+    equipment::attachments::{AttachmentName, AttachmentRegistry, AttachmentSpec},
+    weapon::WeaponName,
+};
 use gdtf_content_families::AttachmentsFamily;
 use load_suite::suite::{self, FamilyLoadContract};
 

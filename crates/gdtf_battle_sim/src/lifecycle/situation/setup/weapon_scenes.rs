@@ -30,10 +30,10 @@ use crate::weapon::{
 ///
 /// GTW-544/547: `siblings` are the weapon's optional `dot` / `on_death` sibling components
 /// ([`WeaponSpawnSiblings`]). GTW-549: `pending` carries the resolved
-/// [`AttachmentEffect`](crate::weapon::AttachmentEffect)s of the weapon's fitted attachment
+/// [`AttachmentEffect`](crate::effects::attachments::AttachmentEffect)s of the weapon's fitted attachment
 /// items, composed onto the weapon entity as a [`PendingAttachments`] marker the post-spawn
 /// [`apply_pending_attachments`](crate::apply_pending_attachments) system applies
-/// via the [`attach_to_weapon`](crate::weapon::AttachToWeaponExt::attach_to_weapon) extension.
+/// via the [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon) extension.
 pub(super) fn wielded_weapon_scenes(
     weapon: &WeaponBundle,
     siblings: WeaponSpawnSiblings,
@@ -64,7 +64,7 @@ pub(super) fn wielded_weapon_scenes(
 /// application system then no-ops), which the post-spawn
 /// [`apply_pending_attachments`](crate::apply_pending_attachments) system reads
 /// to apply each attachment effect via the
-/// [`attach_to_weapon`](crate::weapon::AttachToWeaponExt::attach_to_weapon) extension — the
+/// [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon) extension — the
 /// mandated post-spawn `EntityCommand` path (the weapon entity's stat components exist once the
 /// scene materializes).
 fn wielded_weapon_scene(

@@ -154,7 +154,10 @@ that canon is part of the contract ALONGSIDE the ticket.
    - **Structure/Bevy lens** — checks 4b + 4c, the `no-bare-types.md` rules (every domain value a
      named newtype INCLUDING leaf fields inside a grouping struct; newtype inner field PRIVATE and
      `Deref` DERIVED — not hand-impl'd — per `crates/gdtf_ui/src/theme.rs`; no direct dep on a
-     crate the framework re-exports, e.g. `glam` vs `bevy::math`), and the `bevy-traps.md` ECS
+     crate the framework re-exports, e.g. `glam` vs `bevy::math`), the `module-layout.md` Rule 7
+     re-export gate (a module's `pub use` may lift only from its own DESCENDANTS — a re-export of
+     a sibling/cousin/other-family path as this module's API is a VIOLATION; crate roots exempt),
+     and the `bevy-traps.md` ECS
      traps (unwired wiring chain, file size+cohesion, ambiguous ordering, OnEnter-without-OnExit
      resources, `EventWriter` vs `MessageWriter`).
    **Lightweight option:** when a single pass is enough, spawn ONE design-gate sub-agent

@@ -28,6 +28,7 @@ use bevy::{
 
 use crate::{
     acts::request::{ThrowGrenadeRequested, ThrowResolved},
+    effects::attachments::WeaponBraceBonus,
     fire::{BattleGrids, MeleeQuery, PieceQuery, TargetQuery, WearsQuery, resolve_blast},
     ganger::{Luck, Position, Tu},
     injuries::{InjuryRegistry, InjuryTables},
@@ -40,8 +41,8 @@ use crate::{
     tuning::CombatTuning,
     weapon::{
         Accuracy, BaseSpread, DamageType, DotProfile, FatalBias, FireMode, HitType, Kickback,
-        Stable, TrajectoryStyle, WeaponBraceBonus, WeaponDamage, WeaponPunch, WeaponShred,
-        WeaponStats, WieldedBy, Wields,
+        Stable, TrajectoryStyle, WeaponDamage, WeaponPunch, WeaponShred, WeaponStats, WieldedBy,
+        Wields,
     },
 };
 

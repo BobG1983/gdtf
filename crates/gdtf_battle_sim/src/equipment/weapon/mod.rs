@@ -61,13 +61,11 @@ mod trajectory;
 #[cfg(test)]
 mod test;
 
-// GTW-549 (child of GTW-551): the DATA-DRIVEN attachment model — a folder-loaded RON item
-// carrying a typed `AttachmentEffect` list with per-item magnitudes, applied to a weapon
-// entity via the `attach_to_weapon` commands extension. GTW-558 re-homed the effect PALETTE
-// into `crate::effects::attachments` (the enum + isolated `ApplyX` behaviours + magnitudes)
-// and the MECHANICS into `crate::equipment::attachments` (the registry / spec / key /
-// commands extension). These re-exports preserve the historical `crate::weapon::Attachment*`
-// paths so external call-sites keep compiling.
+// GTW-624: attachment types are NOT weapon API. The effect PALETTE lives in
+// `crate::effects::attachments` and the MECHANICS (registry / spec / key / commands
+// extension / slot-gated fit) in `crate::equipment::attachments` — import them from
+// those true paths. This mod.rs re-exports ONLY its own descendants, keeping the
+// GTW-558 palette/mechanics split visible at the public surface.
 pub use bundle::{DamageProfile, HandlingProfile, WeaponBundle, WeaponStats};
 pub use components::{
     Accuracy, BaseSpread, DamageType, FatalBias, Handedness, Kickback, MagazineSize, MountedWeapon,
@@ -99,16 +97,3 @@ pub use spec::{PendingAttachments, WeaponSpawnSiblings, WeaponSpec};
 // default, every existing weapon) or a lobbed `Arc` (a grenade / grenade launcher). The
 // fire path reads it to pick the straight `march_vector` or the parabolic `march_arc`.
 pub use trajectory::TrajectoryStyle;
-
-pub use crate::{
-    effects::attachments::{
-        AimDelta, ApplyAim, ApplyAttachmentEffect, ApplyBrace, ApplyDamage,
-        ApplyDamageTypeOverride, ApplyExtraAmmo, ApplyFatalBias, ApplyGainFireMode,
-        ApplyPenetration, ApplyReloadTime, ApplyShove, ApplyShred, ApplySilence, ApplyStability,
-        AttachmentEffect, ReloadTimeScale, WeaponBraceBonus,
-    },
-    equipment::attachments::{
-        AttachToWeaponExt, AttachmentName, AttachmentRegistry, AttachmentSlot, AttachmentSpec,
-        FitRejection, SlotCapacity, WeaponSlots, attachment_fits, resolve_pending_attachments,
-    },
-};

@@ -63,7 +63,7 @@ pub(crate) fn walk_app() -> App {
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
     app.world_mut()
-        .insert_resource(gdtf_battle_sim::weapon::AttachmentRegistry::default());
+        .insert_resource(gdtf_battle_sim::equipment::attachments::AttachmentRegistry::default());
     // GTW-269: the Load->Intro gate also requires an ArmorRegistry; the empty-default
     // situation has zero gangers, so an empty registry clears the gate and the setup
     // resolves no armor keys.

@@ -6,11 +6,12 @@
 use crate::{
     armor::ArmorRegistry,
     effects::fields::FieldDefRegistry,
+    equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     occupancy::OccupantPlacement,
     terrain::def::TerrainDefRegistry,
     tuning::GangerStatTuning,
-    weapon::{AttachmentRegistry, MeleeWeaponRegistry, WeaponRegistry},
+    weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
 
 /// The result of [`setup_battle`](super::setup_battle) — the spawned ganger placements, so the caller
@@ -84,7 +85,7 @@ pub struct BattleRegistries<'a> {
     pub fields:        Option<&'a FieldDefRegistry>,
     /// The GTW-549 DATA-DRIVEN attachment registry — the key→spec map a weapon's
     /// [`attachments`](crate::weapon::WeaponSpec::attachments) keys resolve against; each
-    /// resolved item's [`AttachmentEffect`](crate::weapon::AttachmentEffect)s ride onto the
+    /// resolved item's [`AttachmentEffect`](crate::effects::attachments::AttachmentEffect)s ride onto the
     /// spawned weapon as its [`PendingAttachments`](crate::weapon::PendingAttachments) marker and are applied post-spawn by
     /// [`apply_pending_attachments`](crate::apply_pending_attachments). `None`
     /// ([`new`](Self::new)) skips attachment resolution — the fail-safe every content
@@ -136,7 +137,7 @@ impl<'a> BattleRegistries<'a> {
     }
 
     /// The same borrow-bundle carrying the GTW-549 DATA-DRIVEN
-    /// [`AttachmentRegistry`](crate::weapon::AttachmentRegistry) — the app path passes the
+    /// [`AttachmentRegistry`](crate::equipment::attachments::AttachmentRegistry) — the app path passes the
     /// loaded registry so a weapon's authored `attachments` keys resolve to their items and
     /// each item's effects ride onto the spawned weapon (applied post-spawn). Defaults to
     /// `None` ([`new`](Self::new)), so existing callers (every test fixture without authored

@@ -7,8 +7,7 @@
 use bevy::prelude::Deref;
 
 use crate::{
-    stability::terrain_brace::TerrainBraced,
-    weapon::{Stable, WeaponBraceBonus},
+    effects::attachments::WeaponBraceBonus, stability::terrain_brace::TerrainBraced, weapon::Stable,
 };
 
 /// The **per-shot stability terms** — the four zero-identity inputs a caller

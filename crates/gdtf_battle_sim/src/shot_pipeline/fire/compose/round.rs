@@ -13,6 +13,7 @@ use super::{
 use crate::{
     aim::{cone_for, stability_for},
     cover::CoverLedger,
+    effects::attachments::WeaponBraceBonus,
     ganger::{LifeState, Position, Stance, StanceKind},
     injuries::{InjuryRegistry, InjuryTables},
     metric::{Cell, CellLevel, Level},
@@ -23,7 +24,7 @@ use crate::{
     sample_cone::concentration_p,
     stability::{StabilityTerms, terrain_brace::terrain_braces},
     tuning::CombatTuning,
-    weapon::{FireModeSpec, WeaponBraceBonus},
+    weapon::FireModeSpec,
 };
 
 /// The **target geometry** every round in the burst aims at — composed once (it is

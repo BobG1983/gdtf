@@ -13,12 +13,13 @@ use super::super::terrain_resolve::{
 use crate::{
     armor::{ArmorRegistry, ArmorSpec},
     effects::fields::{FieldDefRegistry, FieldRegistry},
+    equipment::attachments::{AttachmentRegistry, resolve_pending_attachments},
     ganger::{GangMember, GangRegistry},
     situation::{BattleSetupError, PlacedGanger, Situation},
     terrain::def::TerrainDefRegistry,
     weapon::{
-        AttachmentRegistry, FISTS_KEY, MeleeWeaponBundle, MeleeWeaponRegistry, PendingAttachments,
-        WeaponBundle, WeaponName, WeaponRegistry, WeaponSpawnSiblings, resolve_pending_attachments,
+        FISTS_KEY, MeleeWeaponBundle, MeleeWeaponRegistry, PendingAttachments, WeaponBundle,
+        WeaponName, WeaponRegistry, WeaponSpawnSiblings,
     },
 };
 

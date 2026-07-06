@@ -1,9 +1,10 @@
 //! RON round-trip — an `AttachmentSpec` parses its `effects:` list, and a weapon parses its
 //! `attachments:` key list (an omitted field defaults to an empty list).
 
-use gdtf_battle_sim::weapon::{
-    AimDelta, AttachmentEffect, AttachmentName, AttachmentSlot, AttachmentSpec, SlotCapacity,
-    WeaponSpec,
+use gdtf_battle_sim::{
+    effects::attachments::{AimDelta, AttachmentEffect},
+    equipment::attachments::{AttachmentName, AttachmentSlot, AttachmentSpec, SlotCapacity},
+    weapon::WeaponSpec,
 };
 
 // ── RON round-trip ─────────────────────────────────────────────────────────────
