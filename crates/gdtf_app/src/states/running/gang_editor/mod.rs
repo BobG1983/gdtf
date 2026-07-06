@@ -1,7 +1,7 @@
 //! The DEV-ONLY in-app gang-editor scene (GTW-420) — the foundation of the GTW-403
 //! gang-editor track.
 //!
-//! Owns [`RunningState::DebugEditor`](super::RunningState)'s screen, the editable
+//! Owns [`RunningState::DebugGangEditor`](super::RunningState)'s screen, the editable
 //! [`EditableGang`](model::EditableGang) model, and the gang-name-edit / add-member systems.
 //! The ENTRY point (the "Gang Editor" main-menu button) is `cfg(debug_assertions)`-gated in the
 //! menu scene, so this editor is unreachable in a release binary even though the state variant
@@ -9,7 +9,7 @@
 
 mod plugin;
 mod systems;
-pub(in crate::states::running) use plugin::EditorScenePlugin;
+pub(in crate::states::running) use plugin::GangEditorScenePlugin;
 
 mod model;
 

@@ -65,12 +65,12 @@ crate::support_item! {
 }
 
 /// Marks the DEV-ONLY **Gang Editor** menu button (GTW-420) — transitions to
-/// [`RunningState::DebugEditor`](crate::states::RunningState).
+/// [`RunningState::DebugGangEditor`](crate::states::RunningState).
 ///
 /// `cfg(debug_assertions)`-gated: the button (and this marker) never compile into a release
 /// binary, so the editor entry point ships only in dev builds. A unit marker (no-bare-types
 /// rule). Named only IN-CRATE (the menu spawn + action systems), never by an external test —
-/// the C5 test drives the `DebugEditor` transition via `NextState` directly — so it stays a
+/// the C5 test drives the `DebugGangEditor` transition via `NextState` directly — so it stays a
 /// plain `pub(in …menu)` marker rather than a `support_item!`-widened one.
 #[cfg(debug_assertions)]
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]

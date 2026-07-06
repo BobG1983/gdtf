@@ -25,7 +25,7 @@ crate::support_item! {
         /// editor model resource. The variant itself is always present (a
         /// `SubStates` enum cannot easily cfg-gate one discriminant), but with no
         /// non-debug code transitioning to it, it is unreachable in release.
-        DebugEditor,
+        DebugGangEditor,
         /// DEV-ONLY procgen STEP/AUTO visualizer (GTW-434) — a debug overlay that
         /// reveals the procgen space-packing placement sequence one prefab at a time
         /// (STEP) or all at once (AUTO), drawn as tinted quads over a dark board quad.

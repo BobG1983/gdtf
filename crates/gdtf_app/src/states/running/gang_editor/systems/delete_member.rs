@@ -9,7 +9,7 @@
 
 use bevy::{prelude::*, ui::Interaction};
 
-use crate::states::running::editor::{
+use crate::states::running::gang_editor::{
     components::{DeleteMemberButton, MemberRowIndex, MemberRowRef},
     model::EditableGang,
 };
@@ -29,14 +29,14 @@ type PressedDelete = (Changed<Interaction>, With<DeleteMemberButton>);
 /// [`MemberRowIndex`] of every surviving control whose index was ABOVE the deleted one, so the
 /// remaining rows stay keyed to their (now-shifted) model slots WITHOUT a rebuild (C5). Guarded on
 /// the model's presence (state-scoped resource — `bevy-traps.md` #1) and registered
-/// `run_if(in_state(RunningState::DebugEditor))`. Param-only — the despawn goes through
+/// `run_if(in_state(RunningState::DebugGangEditor))`. Param-only — the despawn goes through
 /// [`Commands`] (`bevy-traps.md` #7).
 ///
 /// The press detection reads `Interaction` + `MemberRowRef` (NOT `MemberRowIndex`) so it does not
 /// overlap the `&mut MemberRowIndex` re-key query — the deleted slot is read from that single mut
 /// query by the pressed button's entity, keeping the two params disjoint (no B0001 — `bevy-traps`
 /// query-conflict rule).
-pub(in crate::states::running::editor) fn delete_member_on_press(
+pub(in crate::states::running::gang_editor) fn delete_member_on_press(
     mut commands: Commands,
     pressed: Query<(Entity, &Interaction, &MemberRowRef), PressedDelete>,
     mut indices: Query<&mut MemberRowIndex>,

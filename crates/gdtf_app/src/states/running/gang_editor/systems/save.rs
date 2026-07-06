@@ -32,7 +32,7 @@ use gdtf_assets::{ContentFamily, sanitize_file_stem, write_ron_pretty};
 use gdtf_battle_sim::{GangName, GangRoster};
 use gdtf_content_families::GangsFamily;
 
-use crate::states::running::editor::{components::SaveGangButton, model::EditableGang};
+use crate::states::running::gang_editor::{components::SaveGangButton, model::EditableGang};
 
 /// The workspace `assets/` root — byte-identical to the app's `AssetPlugin.file_path`
 /// (`crates/gdtf_app` → up two levels → `assets`), computed at compile time relative to THIS
@@ -66,7 +66,7 @@ const GANGS_SUBDIR: &str = "content/gangs";
 /// (`gang_0.gang.ron` keys `gang_0`), so a saved gang reloads keyed by exactly its sanitized
 /// stem (the loader's own slug convention).
 #[must_use]
-pub(in crate::states::running::editor) fn gang_file_name(name: &GangName) -> String {
+pub(in crate::states::running::gang_editor) fn gang_file_name(name: &GangName) -> String {
     let stem = sanitize_file_stem(name.as_str());
     let stem = if stem.is_empty() {
         sanitize_file_stem("unnamed gang")
@@ -83,7 +83,7 @@ pub(in crate::states::running::editor) fn gang_file_name(name: &GangName) -> Str
 ///
 /// Pure (no IO) so a test can assert the resolved location without writing anything.
 #[must_use]
-pub(in crate::states::running::editor) fn gang_save_path_in(
+pub(in crate::states::running::gang_editor) fn gang_save_path_in(
     root: &Path,
     name: &GangName,
 ) -> PathBuf {
@@ -153,7 +153,7 @@ fn write_gang_roster(name: &GangName, roster: &GangRoster) {
     write_gang_roster_in(Path::new(WORKSPACE_ASSETS_ROOT), name, roster);
 }
 
-/// `Update` (gated `in_state(DebugEditor)`): writes the edited gang to disk on a "Save gang" press
+/// `Update` (gated `in_state(DebugGangEditor)`): writes the edited gang to disk on a "Save gang" press
 /// (C4).
 ///
 /// Reads the [`SaveGangButton`]'s [`Interaction`] (the menu-action / add-member press precedent) and
@@ -164,7 +164,7 @@ fn write_gang_roster(name: &GangName, roster: &GangRoster) {
 /// (C3), so this disk-write system is never compiled into a release binary.
 ///
 /// Param-only (`bevy-traps.md` #7): the [`Query`] + the optional [`EditableGang`] borrow.
-pub(in crate::states::running::editor) fn save_gang_on_press(
+pub(in crate::states::running::gang_editor) fn save_gang_on_press(
     buttons: Query<&Interaction, (Changed<Interaction>, With<SaveGangButton>)>,
     model: Option<ResMut<EditableGang>>,
 ) {
@@ -189,7 +189,7 @@ mod tests {
     };
 
     use super::{gang_file_name, gang_save_path, serialize_roster};
-    use crate::states::running::editor::model::EditableGang;
+    use crate::states::running::gang_editor::model::EditableGang;
 
     /// A two-member edited gang's REGISTRY fixture — built from the fully-public sim
     /// [`GangRoster`] / [`GangMember`] types so the test does not reach the editor model's private

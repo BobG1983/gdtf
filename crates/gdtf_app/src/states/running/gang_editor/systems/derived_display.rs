@@ -9,7 +9,7 @@
 
 use gdtf_battle_sim::DerivedStats;
 
-use crate::states::running::editor::components::DerivedStat;
+use crate::states::running::gang_editor::components::DerivedStat;
 
 /// How many fractional digits the f32 SKILL stats (Shooting / Fight / Reactions / Morale) render
 /// with — the integer POOLS (TU / HP / Wounds / Bottle) render with none. Framework-plumbing
@@ -23,7 +23,7 @@ const SKILL_DECIMALS: usize = 1;
 /// through the deref and formatted — no reimplementation of the GTW-384 derivation, only its
 /// presentation.
 #[must_use]
-pub(in crate::states::running::editor) fn format_derived(
+pub(in crate::states::running::gang_editor) fn format_derived(
     stats: &DerivedStats,
     stat: DerivedStat,
 ) -> String {

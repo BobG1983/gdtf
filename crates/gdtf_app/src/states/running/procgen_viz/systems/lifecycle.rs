@@ -6,7 +6,7 @@
 //! resource — `bevy-traps.md` #1), the [`remove_editable_gang`] precedent. The whole module is
 //! `#[cfg(debug_assertions)]`-gated by its parent.
 //!
-//! [`remove_editable_gang`]: crate::states::running::editor
+//! [`remove_editable_gang`]: crate::states::running::gang_editor
 
 use bevy::prelude::*;
 

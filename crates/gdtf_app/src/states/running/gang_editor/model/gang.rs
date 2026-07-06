@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use gdtf_battle_sim::{ArmorName, GangName, GangRegistry, GangRoster, GangerName, WeaponName};
 
 use super::member::EditableMember;
-use crate::states::running::editor::components::BaseAttribute;
+use crate::states::running::gang_editor::components::BaseAttribute;
 
 crate::support_item! {
     /// The in-app gang editor's **editable gang model** — the working copy the editor screen
@@ -37,7 +37,7 @@ impl EditableGang {
     /// iteration order is unspecified, so the keys are sorted before picking, making the opened
     /// gang deterministic.
     #[must_use]
-    pub(in crate::states::running::editor) fn from_registry(registry: &GangRegistry) -> Self {
+    pub(in crate::states::running::gang_editor) fn from_registry(registry: &GangRegistry) -> Self {
         let mut names: Vec<&GangName> = registry.keys().collect();
         names.sort_by(|a, b| a.as_str().cmp(b.as_str()));
         let Some(name) = names.into_iter().next() else {
@@ -86,7 +86,7 @@ impl EditableGang {
     }
 
     /// Set the gang's name — the gang-name text field's commit path (AC3).
-    pub(in crate::states::running::editor) fn set_name(&mut self, name: GangName) {
+    pub(in crate::states::running::gang_editor) fn set_name(&mut self, name: GangName) {
         self.name = name;
     }
 
@@ -119,7 +119,7 @@ impl EditableGang {
 
     /// Set the name of the member at `index` — the inline name field's commit path
     /// (GTW-425 C3). A no-op for an out-of-range index (degraded, never panics).
-    pub(in crate::states::running::editor) fn set_member_name(
+    pub(in crate::states::running::gang_editor) fn set_member_name(
         &mut self,
         index: usize,
         name: GangerName,
@@ -131,7 +131,7 @@ impl EditableGang {
 
     /// Set the weapon KEY of the member at `index` — the weapon dropdown's commit path
     /// (GTW-425 C2). A no-op for an out-of-range index (degraded, never panics).
-    pub(in crate::states::running::editor) fn set_member_weapon(
+    pub(in crate::states::running::gang_editor) fn set_member_weapon(
         &mut self,
         index: usize,
         weapon: WeaponName,
@@ -143,7 +143,7 @@ impl EditableGang {
 
     /// Set the armor KEY of the member at `index` — the armor dropdown's commit path
     /// (GTW-425 C2). A no-op for an out-of-range index (degraded, never panics).
-    pub(in crate::states::running::editor) fn set_member_armor(
+    pub(in crate::states::running::gang_editor) fn set_member_armor(
         &mut self,
         index: usize,
         armor: ArmorName,
@@ -156,7 +156,7 @@ impl EditableGang {
     /// Set one of the member-at-`index`'s editable base attributes — the expanded panel's
     /// numeric-field commit path (GTW-428 C3). A no-op for an out-of-range index (degraded, never
     /// panics).
-    pub(in crate::states::running::editor) fn set_member_attribute(
+    pub(in crate::states::running::gang_editor) fn set_member_attribute(
         &mut self,
         index: usize,
         attribute: BaseAttribute,

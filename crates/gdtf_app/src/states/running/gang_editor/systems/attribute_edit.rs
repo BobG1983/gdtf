@@ -15,7 +15,7 @@ use bevy::prelude::*;
 use gdtf_battle_sim::{DerivedStats, GangerStatTuning, derive_stats};
 use gdtf_ui::NumericFieldCommitted;
 
-use crate::states::running::editor::{
+use crate::states::running::gang_editor::{
     components::{AttributeField, BaseAttribute, DerivedStat, DerivedStatText, MemberRowIndex},
     model::EditableGang,
     systems::derived_display::format_derived,
@@ -31,8 +31,8 @@ use crate::states::running::editor::{
 /// re-derives the member's stats and mutates the matching [`DerivedStatText`] nodes in place.
 /// Guarded by the model's presence (`Option<ResMut<…>>` — state-scoped resource, `bevy-traps.md`
 /// #1) and the tuning's (`Option<Res<…>>` — an absent tuning falls back to the const-default
-/// weights so the recompute still runs). Registered `run_if(in_state(RunningState::DebugEditor))`.
-pub(in crate::states::running::editor) fn commit_member_attribute(
+/// weights so the recompute still runs). Registered `run_if(in_state(RunningState::DebugGangEditor))`.
+pub(in crate::states::running::gang_editor) fn commit_member_attribute(
     mut commits: MessageReader<NumericFieldCommitted<f32>>,
     fields: Query<(&MemberRowIndex, &BaseAttribute), With<AttributeField>>,
     mut displays: Query<(&MemberRowIndex, &DerivedStat, &mut Text), With<DerivedStatText>>,

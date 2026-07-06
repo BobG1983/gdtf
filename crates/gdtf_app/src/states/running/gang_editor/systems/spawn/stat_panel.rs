@@ -16,7 +16,7 @@ use gdtf_ui::{
 
 use crate::states::{
     RunningState,
-    running::editor::{
+    running::gang_editor::{
         components::{
             AttributeField, BaseAttribute, DerivedStat, DerivedStatText, MemberRowIndex,
             MemberStatPanel,
@@ -115,16 +115,22 @@ pub(super) fn spawn_member_stat_panel(
             AccordionExpandedVh::new(STAT_PANEL_EXPANDED_VH),
             BackgroundColor(*theme.panel.color),
             stat_panel_node(),
-            DespawnOnExit(RunningState::DebugEditor),
+            DespawnOnExit(RunningState::DebugGangEditor),
         ))
         .id();
 
     // The two side-by-side stat columns: editable attributes (left) | readonly derived (right).
     let attributes_column = commands
-        .spawn((stat_column_node(), DespawnOnExit(RunningState::DebugEditor)))
+        .spawn((
+            stat_column_node(),
+            DespawnOnExit(RunningState::DebugGangEditor),
+        ))
         .id();
     let derived_column = commands
-        .spawn((stat_column_node(), DespawnOnExit(RunningState::DebugEditor)))
+        .spawn((
+            stat_column_node(),
+            DespawnOnExit(RunningState::DebugGangEditor),
+        ))
         .id();
 
     // LEFT column — the eight editable attribute fields (C2).
@@ -160,13 +166,16 @@ fn spawn_attribute_field(
     attribute: BaseAttribute,
 ) -> Entity {
     let row = commands
-        .spawn((stat_line_node(), DespawnOnExit(RunningState::DebugEditor)))
+        .spawn((
+            stat_line_node(),
+            DespawnOnExit(RunningState::DebugGangEditor),
+        ))
         .id();
     let label = commands
         .spawn((
             Text::new(attribute.label().to_owned()),
             TextColor(*theme.text.text_color),
-            DespawnOnExit(RunningState::DebugEditor),
+            DespawnOnExit(RunningState::DebugGangEditor),
         ))
         .id();
     let field = spawn_numeric_field(
@@ -178,7 +187,7 @@ fn spawn_attribute_field(
             AttributeField,
             row_index,
             attribute,
-            DespawnOnExit(RunningState::DebugEditor),
+            DespawnOnExit(RunningState::DebugGangEditor),
         ),
     );
     commands.entity(row).add_children(&[label, field]);
@@ -198,13 +207,16 @@ fn spawn_derived_display(
     stats: &DerivedStats,
 ) -> Entity {
     let row = commands
-        .spawn((stat_line_node(), DespawnOnExit(RunningState::DebugEditor)))
+        .spawn((
+            stat_line_node(),
+            DespawnOnExit(RunningState::DebugGangEditor),
+        ))
         .id();
     let label = commands
         .spawn((
             Text::new(stat.label().to_owned()),
             TextColor(*theme.text.text_color),
-            DespawnOnExit(RunningState::DebugEditor),
+            DespawnOnExit(RunningState::DebugGangEditor),
         ))
         .id();
     let value = commands
@@ -214,7 +226,7 @@ fn spawn_derived_display(
             stat,
             Text::new(format_derived(stats, stat)),
             TextColor(*theme.text.text_color),
-            DespawnOnExit(RunningState::DebugEditor),
+            DespawnOnExit(RunningState::DebugGangEditor),
         ))
         .id();
     commands.entity(row).add_children(&[label, value]);

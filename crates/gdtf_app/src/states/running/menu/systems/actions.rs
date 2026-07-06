@@ -57,11 +57,11 @@ impl MenuActionTarget {
     const OPTIONS: Self = Self(RunningState::Options);
     /// Quit exits the game → [`RunningState::Quit`].
     const QUIT: Self = Self(RunningState::Quit);
-    /// DEV-ONLY: the Gang Editor opens the in-app editor → [`RunningState::DebugEditor`]
+    /// DEV-ONLY: the Gang Editor opens the in-app editor → [`RunningState::DebugGangEditor`]
     /// (GTW-420). `cfg(debug_assertions)`-gated so this mapping never compiles into a release
     /// binary.
     #[cfg(debug_assertions)]
-    const GANG_EDITOR: Self = Self(RunningState::DebugEditor);
+    const GANG_EDITOR: Self = Self(RunningState::DebugGangEditor);
     /// DEV-ONLY: the Procgen Viz opens the procgen visualizer →
     /// [`RunningState::DebugProcgenVisualizer`] (GTW-434). `cfg(debug_assertions)`-gated so this
     /// mapping never compiles into a release binary.

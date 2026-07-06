@@ -54,11 +54,11 @@ pub(crate) fn armor_registry() -> ArmorRegistry {
     ArmorRegistry::new([(ArmorName::new(ARMOR_A.to_owned()), arbitrary_armor())])
 }
 
-/// Builds a headless app driven into [`RunningState::DebugEditor`] with the editor screen spawned,
+/// Builds a headless app driven into [`RunningState::DebugGangEditor`] with the editor screen spawned,
 /// the weapon / armor registries seeded (so the per-member dropdowns have options), and the
 /// [`GangerStatTuning`] seeded (so the production recompute and the test compute through the SAME
 /// derivation weights — C3). Starts in `AppState::Running` (default sub-state `Menu`), seeds the
-/// resources before the first update so the `OnEnter` spawn sees them, then sets the `DebugEditor`
+/// resources before the first update so the `OnEnter` spawn sees them, then sets the `DebugGangEditor`
 /// transition and pumps a few updates so the screen + any deferred parenting flush.
 pub(crate) fn editor_app() -> App {
     let mut app = GdtfTestAppBuilder::new_with_scene_support()
@@ -71,7 +71,7 @@ pub(crate) fn editor_app() -> App {
     app.update();
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
-        .set(RunningState::DebugEditor);
+        .set(RunningState::DebugGangEditor);
     app.update();
     app.update();
     app

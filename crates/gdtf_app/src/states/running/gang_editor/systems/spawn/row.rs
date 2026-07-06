@@ -16,7 +16,7 @@ use super::{
 };
 use crate::states::{
     RunningState,
-    running::editor::{
+    running::gang_editor::{
         components::{
             DeleteMemberButton, ExpandPip, MemberNameField, MemberPortrait, MemberRow,
             MemberRowIndex, MemberRowRef, PipExpanded,
@@ -43,13 +43,13 @@ const PORTRAIT_SIDE_VW: f32 = 2.0;
 /// [`DeleteMemberButton`] — exactly ONE editable control per field (GTW-499 C1: the redundant
 /// static echo labels were removed; each editable control shows its own value). BELOW it sits the
 /// collapsed-by-default stat panel (C1) holding the eight
-/// editable [`AttributeField`](crate::states::running::editor::components::AttributeField)s + the
-/// readonly [`DerivedStatText`](crate::states::running::editor::components::DerivedStatText)
+/// editable [`AttributeField`](crate::states::running::gang_editor::components::AttributeField)s + the
+/// readonly [`DerivedStatText`](crate::states::running::gang_editor::components::DerivedStatText)
 /// displays. Every control carries the same [`MemberRowIndex`] so a commit / selection / press maps
 /// back to the member. `weapon_options` / `armor_options` are the pre-sorted dropdown option lists
 /// (all loaded keys — C2); `tuning` is the GTW-384 derivation weights the panel seeds its readonly
 /// displays from (C3).
-pub(in crate::states::running::editor) fn spawn_member_row(
+pub(in crate::states::running::gang_editor) fn spawn_member_row(
     commands: &mut Commands,
     theme: &GdtfTheme,
     index: usize,
@@ -70,12 +70,12 @@ pub(in crate::states::running::editor) fn spawn_member_row(
             row_index,
             gdtf_ui::themed::Themed::new(gdtf_ui::themed::ThemeRole::Panel),
             member_root_node(),
-            DespawnOnExit(RunningState::DebugEditor),
+            DespawnOnExit(RunningState::DebugGangEditor),
         ))
         .id();
     // The collapsed HEADER row — the GTW-425 controls laid left→right.
     let header = commands
-        .spawn((row_node(), DespawnOnExit(RunningState::DebugEditor)))
+        .spawn((row_node(), DespawnOnExit(RunningState::DebugGangEditor)))
         .id();
 
     // + pip — the expand-toggle CONTROL (renders its toggle state only; GTW-428 owns the panel).
@@ -88,7 +88,7 @@ pub(in crate::states::running::editor) fn spawn_member_row(
             BackgroundColor(*theme.button.color),
             Text::new(PIP_COLLAPSED_GLYPH.to_owned()),
             TextColor(text_color),
-            DespawnOnExit(RunningState::DebugEditor),
+            DespawnOnExit(RunningState::DebugGangEditor),
         ))
         .id();
 
@@ -98,7 +98,7 @@ pub(in crate::states::running::editor) fn spawn_member_row(
             MemberPortrait,
             BackgroundColor(portrait_color),
             portrait_node(),
-            DespawnOnExit(RunningState::DebugEditor),
+            DespawnOnExit(RunningState::DebugGangEditor),
         ))
         .id();
 
@@ -111,7 +111,7 @@ pub(in crate::states::running::editor) fn spawn_member_row(
         (
             MemberNameField,
             row_index,
-            DespawnOnExit(RunningState::DebugEditor),
+            DespawnOnExit(RunningState::DebugGangEditor),
         ),
     );
 
@@ -134,7 +134,7 @@ pub(in crate::states::running::editor) fn spawn_member_row(
             DeleteMemberButton,
             row_index,
             MemberRowRef::new(row),
-            DespawnOnExit(RunningState::DebugEditor),
+            DespawnOnExit(RunningState::DebugGangEditor),
         ),
     );
 

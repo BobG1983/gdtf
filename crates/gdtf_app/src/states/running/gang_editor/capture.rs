@@ -8,10 +8,10 @@
 //!
 //! ## Two gates, both must hold to activate
 //!
-//! 1. **Dev cfg.** Wired into [`EditorScenePlugin`](super::plugin::EditorScenePlugin) only under
+//! 1. **Dev cfg.** Wired into [`GangEditorScenePlugin`](super::plugin::GangEditorScenePlugin) only under
 //!    `cfg!(all(debug_assertions, feature = "dev_capture"))`; a release / default build never
 //!    compiles it.
-//! 2. **Opt-in env var.** Even when compiled in it is inert until `GDTF_EDITOR_SCREEN_SHOT=/abs/out.png`
+//! 2. **Opt-in env var.** Even when compiled in it is inert until `GDTF_GANG_EDITOR_SHOT=/abs/out.png`
 //!    is set: with it unset the hook registers nothing.
 //!
 //! ## How it drives + captures (GTW-577: the shared primitives)
@@ -22,9 +22,9 @@
 //! this scene's calibrated [`SettleFrames`]), and the game-side
 //! [`poll_then_quit`](crate::states::running::capture_exit::poll_then_quit) (PNG-on-disk →
 //! [`RunningState::Quit`], the shared cascade — NEVER a direct `AppExit`, the macOS winit
-//! hang Bevy #23313). When active it (a) drives the menu into [`RunningState::DebugEditor`]
+//! hang Bevy #23313). When active it (a) drives the menu into [`RunningState::DebugGangEditor`]
 //! the moment the menu rests (the editor screen then spawns `OnEnter`), (b) once in
-//! `DebugEditor` presses "Add member" (a populated row), then EXPANDS that row's pip + commits
+//! `DebugGangEditor` presses "Add member" (a populated row), then EXPANDS that row's pip + commits
 //! a Grit attribute edit (so the GTW-428 stat table is open via the accordion lerp and the
 //! readonly derived stats have visibly recomputed), then (c) the chained shared systems
 //! settle, capture, and quit. The captured PNG shows the expanded per-member stat table: the
@@ -43,18 +43,18 @@ use crate::states::{
     RunningState,
     running::{
         capture_exit::poll_then_quit,
-        editor::components::{
+        gang_editor::components::{
             AddMemberButton, AttributeField, BaseAttribute, EditorScreenRoot, ExpandPip, MemberRow,
             MemberRowIndex, MemberStatPanel, PipExpanded,
         },
     },
 };
 
-/// The `GDTF_EDITOR_SCREEN_SHOT` env var: the absolute path of the output PNG. Setting it (in a
+/// The `GDTF_GANG_EDITOR_SHOT` env var: the absolute path of the output PNG. Setting it (in a
 /// `dev_capture` debug build) opts into the editor capture hook.
-const EDITOR_SHOT_ENV: &str = "GDTF_EDITOR_SCREEN_SHOT";
+const GANG_EDITOR_SHOT_ENV: &str = "GDTF_GANG_EDITOR_SHOT";
 
-/// This scene's calibrated settle window: 90 `DebugEditor` frames, well over the GTW-425
+/// This scene's calibrated settle window: 90 `DebugGangEditor` frames, well over the GTW-425
 /// row-only capture so the full GTW-428 drive applies before the shot — the "Add member"
 /// press, then the pip-expand + attribute-edit (the accordion FULLY LERPS open, `~0.25 s` at
 /// the default frame rate, and the live derived recompute runs) are all settled by the
@@ -73,25 +73,25 @@ const EXPANDED_PIP_GLYPH: &str = "-";
 
 /// Whether the editor capture hook is enabled, and where it writes.
 ///
-/// `Some(path)` when [`EDITOR_SHOT_ENV`] is set to a non-empty (trimmed) value; `None` (the hook
+/// `Some(path)` when [`GANG_EDITOR_SHOT_ENV`] is set to a non-empty (trimmed) value; `None` (the hook
 /// stays inert) otherwise. Pure aside from the env read: the trim/empty gate is the shared
 /// [`parse_shot_path`] (GTW-577 C4 — the ONE path gate, asserted once in `gdtf_screenshot`).
 #[must_use]
-pub(in crate::states::running::editor) fn editor_shot_path() -> Option<CapturePath> {
-    parse_shot_path(std::env::var(EDITOR_SHOT_ENV).ok().as_deref())
+pub(in crate::states::running::gang_editor) fn editor_shot_path() -> Option<CapturePath> {
+    parse_shot_path(std::env::var(GANG_EDITOR_SHOT_ENV).ok().as_deref())
 }
 
-/// Drives the menu into [`RunningState::DebugEditor`] once the menu rests (the only non-automatic
+/// Drives the menu into [`RunningState::DebugGangEditor`] once the menu rests (the only non-automatic
 /// launch transition), so the capture run reaches the editor unattended.
 ///
 /// Runs in `Update`, gated `run_if(in_state(RunningState::Menu))` + the [`CapturePath`] existing.
 /// Param-only (`bevy-traps.md` #7).
 fn drive_into_editor(mut next: ResMut<NextState<RunningState>>) {
-    next.set(RunningState::DebugEditor);
+    next.set(RunningState::DebugGangEditor);
 }
 
 /// Ensures the captured editor frame shows at least one POPULATED member row + its dropdowns
-/// (GTW-425 C6): once in `DebugEditor`, if the list has no rows yet it presses "Add member" ONCE
+/// (GTW-425 C6): once in `DebugGangEditor`, if the list has no rows yet it presses "Add member" ONCE
 /// by setting the button's [`Interaction::Pressed`] directly — the real
 /// [`add_member_on_press`](super::systems::add_member_on_press) system then appends a member +
 /// spawns the row on the next frame.
@@ -99,7 +99,7 @@ fn drive_into_editor(mut next: ResMut<NextState<RunningState>>) {
 /// Sets the interaction directly (not via a synthesized pointer) because the windowed
 /// `ui_focus_system` would clear a synthesized `Pressed` before the driver reads it (the GTW-422
 /// `drive_capture_selection` precedent — bevy-traps #6). A [`Local<bool>`] makes it fire ONCE, so
-/// it does not spam members every frame. Runs in `Update`, gated on `DebugEditor` + the
+/// it does not spam members every frame. Runs in `Update`, gated on `DebugGangEditor` + the
 /// [`CapturePath`]. Param-only (`bevy-traps.md` #7).
 fn drive_capture_add_member(
     rows: Query<(), With<MemberRow>>,
@@ -119,7 +119,7 @@ fn drive_capture_add_member(
 /// Expands the first member's stat panel AND commits a Grit attribute edit, so the captured frame
 /// shows the EXPANDED stat table + the LIVE derived recompute + an open accordion (GTW-428 C4).
 ///
-/// Runs in `Update`, gated on `DebugEditor` + the [`CapturePath`], ordered AFTER
+/// Runs in `Update`, gated on `DebugGangEditor` + the [`CapturePath`], ordered AFTER
 /// [`drive_capture_add_member`]. The member row is spawned by a DEFERRED `commands.queue` in
 /// [`add_member_on_press`](super::systems::add_member_on_press), so the row + its pip + its
 /// [`MemberStatPanel`] do NOT exist the same frame the add-member press fires — this driver GATES on
@@ -184,7 +184,7 @@ fn drive_capture_expand_and_edit(
 
 /// Register the editor capture hook IF its env-var gate is set.
 ///
-/// Called by [`EditorScenePlugin`](super::plugin::EditorScenePlugin) only under
+/// Called by [`GangEditorScenePlugin`](super::plugin::GangEditorScenePlugin) only under
 /// `cfg!(all(debug_assertions, feature = "dev_capture"))`. When [`editor_shot_path`] returns
 /// `None` it registers nothing (the hook is fully inert).
 ///
@@ -195,7 +195,7 @@ fn drive_capture_expand_and_edit(
 /// captures a blank screen — and retries until the screen exists. NOTE: the shared
 /// [`CapturePath`] / [`SettleFrames`] resources mean ONE scene-capture env var per run (the
 /// QA workflow's existing shape — each scene's capture is a separate app run anyway).
-pub(in crate::states::running::editor) fn register_editor_capture(app: &mut App) {
+pub(in crate::states::running::gang_editor) fn register_editor_capture(app: &mut App) {
     let Some(path) = editor_shot_path() else {
         return;
     };
@@ -219,20 +219,21 @@ pub(in crate::states::running::editor) fn register_editor_capture(app: &mut App)
             )
                 .chain()
                 .run_if(
-                    in_state(RunningState::DebugEditor).and_then(resource_exists::<CapturePath>),
+                    in_state(RunningState::DebugGangEditor)
+                        .and_then(resource_exists::<CapturePath>),
                 ),
         );
 }
 
 #[cfg(test)]
 mod tests {
-    use super::EDITOR_SHOT_ENV;
+    use super::GANG_EDITOR_SHOT_ENV;
 
     /// The thin per-scene pin (GTW-577 C6): the scene KEEPS its own env var — the QA-facing
     /// activation contract — while the trim/empty gate logic is asserted ONCE in
     /// `gdtf_screenshot` (`parse_shot_path`'s own tests), which `editor_shot_path` delegates to.
     #[test]
     fn env_var_name_is_the_scene_contract() {
-        assert_eq!(EDITOR_SHOT_ENV, "GDTF_EDITOR_SCREEN_SHOT");
+        assert_eq!(GANG_EDITOR_SHOT_ENV, "GDTF_GANG_EDITOR_SHOT");
     }
 }

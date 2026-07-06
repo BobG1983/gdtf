@@ -8,7 +8,7 @@ use gdtf_battle_sim::{
     Strength, Toughness, WeaponName, ganger::Luck,
 };
 
-use crate::states::running::editor::components::BaseAttribute;
+use crate::states::running::gang_editor::components::BaseAttribute;
 
 /// The default new-member display name the SCAFFOLD's "Add member" stamps onto a fresh
 /// [`EditableMember`]. A named placeholder so a freshly-added row reads as a member rather

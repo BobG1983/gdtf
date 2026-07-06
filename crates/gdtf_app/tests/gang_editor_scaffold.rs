@@ -1,18 +1,18 @@
 //! GTW-420: headless behavioral tests for the in-app gang-editor SCAFFOLD.
 //!
 //! These run on the `MinimalPlugins` [`GdtfTestAppBuilder`] (the real state stack, `UiPlugin`,
-//! and the real `EditorScenePlugin` wired through `ScenesPlugin`), seeded with a theme so the
+//! and the real `GangEditorScenePlugin` wired through `ScenesPlugin`), seeded with a theme so the
 //! editor screen spawns. They assert on the WORLD and the model resource — the system-effects —
 //! never on rendering or real device input.
 //!
 //! Coverage (C5):
 //!
 //! - [`enter_editor_inserts_model_and_screen`] — driving into
-//!   [`RunningState::DebugEditor`](gdtf_app::test_support::RunningState) inserts the
+//!   [`RunningState::DebugGangEditor`](gdtf_app::test_support::RunningState) inserts the
 //!   [`EditableGang`] model AND spawns the editor screen root (C1 / C2).
 //! - [`add_member_grows_model_and_adds_row`] — pressing the "Add member" button appends a
 //!   member to the model AND a member-row entity appears (AC4).
-//! - [`exit_editor_despawns_screen_and_removes_model`] — transitioning AWAY from `DebugEditor`
+//! - [`exit_editor_despawns_screen_and_removes_model`] — transitioning AWAY from `DebugGangEditor`
 //!   despawns the screen root AND removes the model resource (C1).
 //! - [`commit_gang_name_updates_model`] — a `TextFieldCommitted` on the gang-name field updates
 //!   the model name (AC3).
@@ -34,9 +34,9 @@ use gdtf_app::test_support::{
 use gdtf_test_utils::GdtfTestAppBuilder;
 use gdtf_ui::{CommittedTextValue, TextFieldCommitted, theme::default_theme};
 
-/// Builds a headless app driven into [`RunningState::DebugEditor`] with the editor screen
+/// Builds a headless app driven into [`RunningState::DebugGangEditor`] with the editor screen
 /// spawned: seed the theme before the first update so the `OnEnter` spawn sees it, start in
-/// `AppState::Running` (whose default sub-state is `Menu`), then set the `DebugEditor`
+/// `AppState::Running` (whose default sub-state is `Menu`), then set the `DebugGangEditor`
 /// transition and pump updates until the screen is up.
 fn editor_app() -> bevy::app::App {
     let mut app = GdtfTestAppBuilder::new_with_scene_support()
@@ -45,11 +45,11 @@ fn editor_app() -> bevy::app::App {
     app.world_mut().insert_resource(default_theme());
     // Enter Running (rests on Menu, spawns the menu).
     app.update();
-    // Drive Menu -> DebugEditor (the cfg-gated button does this in the GUI; here we set the
+    // Drive Menu -> DebugGangEditor (the cfg-gated button does this in the GUI; here we set the
     // transition directly, the headless idiom — no window / mouse).
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
-        .set(RunningState::DebugEditor);
+        .set(RunningState::DebugGangEditor);
     // Apply the transition + run OnEnter (insert model + spawn screen), then one more update so
     // any deferred spawn-scene commands (themed title) flush.
     app.update();
@@ -73,7 +73,7 @@ fn single_with<M: Component>(app: &mut bevy::app::App) -> Option<Entity> {
     }
 }
 
-/// C1 / C2: entering `DebugEditor` inserts the editable model AND spawns the screen root.
+/// C1 / C2: entering `DebugGangEditor` inserts the editable model AND spawns the screen root.
 ///
 /// Pin: if the `OnEnter` wiring is missing the model is never inserted (`EditableGang` absent) or
 /// the root never spawns — either fails the assert.
@@ -85,16 +85,16 @@ fn enter_editor_inserts_model_and_screen() {
         app.world()
             .resource::<bevy::state::state::State<RunningState>>()
             .get(),
-        &RunningState::DebugEditor,
-        "the app must rest in RunningState::DebugEditor after the transition",
+        &RunningState::DebugGangEditor,
+        "the app must rest in RunningState::DebugGangEditor after the transition",
     );
     assert!(
         app.world().get_resource::<EditableGang>().is_some(),
-        "OnEnter(DebugEditor) must insert the EditableGang model (AC2)",
+        "OnEnter(DebugGangEditor) must insert the EditableGang model (AC2)",
     );
     assert!(
         single_with::<EditorScreenRoot>(&mut app).is_some(),
-        "OnEnter(DebugEditor) must spawn exactly one editor screen root (C1)",
+        "OnEnter(DebugGangEditor) must spawn exactly one editor screen root (C1)",
     );
 }
 
@@ -138,7 +138,7 @@ fn add_member_grows_model_and_adds_row() {
     );
 }
 
-/// C1: transitioning AWAY from `DebugEditor` despawns the screen root AND removes the model.
+/// C1: transitioning AWAY from `DebugGangEditor` despawns the screen root AND removes the model.
 ///
 /// Pin: a missing `OnExit` remove leaves `EditableGang` present; a missing `DespawnOnExit` leaves
 /// the root entity alive — either fails the assert.
@@ -158,12 +158,12 @@ fn exit_editor_despawns_screen_and_removes_model() {
 
     assert!(
         app.world().get_resource::<EditableGang>().is_none(),
-        "OnExit(DebugEditor) must remove the EditableGang model resource (C1)",
+        "OnExit(DebugGangEditor) must remove the EditableGang model resource (C1)",
     );
     assert_eq!(
         count_with::<EditorScreenRoot>(&mut app),
         0,
-        "OnExit(DebugEditor) must despawn the editor screen root (C1)",
+        "OnExit(DebugGangEditor) must despawn the editor screen root (C1)",
     );
 }
 
