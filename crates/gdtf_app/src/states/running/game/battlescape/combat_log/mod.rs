@@ -1,11 +1,15 @@
 //! The battlescape combat-text LOG (GTW-328, slice 3, bottom-left, ABOVE the weapon panel): a
 //! battle-scoped strip of the most-recent combat events that scroll up and fade.
 //!
-//! GTW-572 (C5/C6): the log is a FORWARDER → APPENDER message seam. One thin forwarder per
-//! log SOURCE drains its sim fact message, resolves each
+//! GTW-572 (C5/C6): the log is a FORWARDER → APPENDER message seam. The forwarder half
+//! lives in the PRESENTER since GTW-620 (`gdtf_battle_presenter`'s
+//! `actors/fx/fct/log_event/`, beside the vocabulary + classifier it feeds): one thin
+//! forwarder per log SOURCE drains its sim fact message, resolves each
 //! [`Entity`](bevy::prelude::Entity) to a ganger name at that boundary, and writes a
-//! buffered [`CombatLogEvent`](gdtf_battle_presenter::CombatLogEvent); the ONE appender
-//! drains those events, classifies them through the shared
+//! buffered [`CombatLogEvent`](gdtf_battle_presenter::CombatLogEvent). This module is the
+//! `bevy_ui` half: the ONE appender (ordered `.after` the presenter's exported
+//! [`CombatLogSystems::Forward`](gdtf_battle_presenter::CombatLogSystems) set) drains
+//! those events, classifies them through the shared
 //! [`classify_log_event`](gdtf_battle_presenter::classify_log_event), and renders each
 //! resulting line as a UI text node that fades over a tuned lifetime and FIFO-despawns when
 //! the visible count overflows the tuned cap. Coverage is ALL state changes (the Q2

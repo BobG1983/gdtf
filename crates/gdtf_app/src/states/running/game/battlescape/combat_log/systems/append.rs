@@ -1,8 +1,8 @@
 //! The ONE combat-log APPENDER (GTW-572 C5) — drains the buffered
-//! [`CombatLogEvent`](gdtf_battle_presenter::CombatLogEvent)s the per-source forwarders
-//! wrote, classifies each through the shared
-//! [`classify_log_event`](gdtf_battle_presenter::classify_log_event), spawns one UI text
-//! line per [`LogLine`](gdtf_battle_presenter::LogLine) under [`CombatLogRoot`], and
+//! [`CombatLogEvent`](gdtf_battle_presenter::CombatLogEvent)s the presenter's per-source
+//! forwarders wrote (forwarders presenter-side since GTW-620), classifies each through the
+//! shared [`classify_log_event`](gdtf_battle_presenter::classify_log_event), spawns one UI
+//! text line per [`LogLine`](gdtf_battle_presenter::LogLine) under [`CombatLogRoot`], and
 //! FIFO-trims to the tuned cap with the GTW-328 slide semantics.
 //!
 //! It preserves the pre-GTW-572 semantics exactly: the single-pass FIFO trim (oldest lines
@@ -28,8 +28,10 @@ use crate::states::running::game::battlescape::combat_log::{
 /// Drain the buffered [`CombatLogEvent`]s, classify each into log lines, and append them
 /// under the combat-log root, FIFO-trimming to the tuned visible cap (GTW-572 C5).
 ///
-/// Runs in `Update` (`CombatLogSystems::Append`, strictly AFTER every forwarder — the
-/// explicit set chain), gated on the live-battle witness. For each drained event it
+/// Runs in `Update`, strictly AFTER every forwarder — `.after` the presenter's exported
+/// [`CombatLogSystems::Forward`](gdtf_battle_presenter::CombatLogSystems) set (GTW-620,
+/// the explicit cross-crate edge) — gated on the live-battle witness + the
+/// presenter-owned event buffer existing. For each drained event it
 /// classifies with the shared [`classify_log_event`] and spawns one UI text line per
 /// [`LogLine`] under [`CombatLogRoot`], then despawns the OLDEST lines until the visible
 /// count is within [`max_visible_lines`](CombatLogTuning::max_visible_lines).
@@ -229,14 +231,17 @@ fn spawn_log_line(
 /// The (weight, size) a classified line's [`FctEmphasis`] draws at — BOLD at a size bump
 /// for a lethal line, the base weight/size otherwise.
 ///
-/// Mirrors the presenter's private `FctEmphasis::weight` / `font_size` mapping (which is
-/// not `pub`), so the log line reads heavier for the lethal line on the bundled
-/// non-variable font.
+/// The WEIGHT delegates to the presenter's one [`FctEmphasis::weight`] mapping (GTW-620 —
+/// the shared emphasis → [`FontWeight`] semantic, so the tiers can never drift); the SIZE
+/// bump is this surface's own magnitude ([`BOLD_FONT_SCALE`] — per-surface size scales
+/// stay local, GTW-572 P10), the visible heavier-weight lever on the bundled non-variable
+/// font.
 fn emphasis_style(emphasis: FctEmphasis, base_pt: f32) -> (FontWeight, f32) {
-    match emphasis {
-        FctEmphasis::Bold => (FontWeight::BOLD, base_pt * BOLD_FONT_SCALE),
-        FctEmphasis::Normal => (FontWeight::NORMAL, base_pt),
-    }
+    let font_size = match emphasis {
+        FctEmphasis::Bold => base_pt * BOLD_FONT_SCALE,
+        FctEmphasis::Normal => base_pt,
+    };
+    (emphasis.weight(), font_size)
 }
 
 /// The size multiplier a BOLD (lethal) combat-log line is drawn at, on top of the theme's

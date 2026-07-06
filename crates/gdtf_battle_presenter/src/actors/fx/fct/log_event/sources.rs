@@ -1,7 +1,7 @@
-//! The per-source [`CombatLogSource`] impls (GTW-572 C5) — one impl per fact message the
-//! combat log renders lines from. Each resolves its [`Entity`](bevy::prelude::Entity)s to
-//! [`LogName`]s AT THIS BOUNDARY (via [`name_of`]) so the shared classifier stays
-//! `World`-free.
+//! The per-source [`CombatLogSource`] impls (GTW-572 C5; presenter-side since GTW-620) —
+//! one impl per fact message the combat log renders lines from. Each resolves its
+//! [`Entity`](bevy::prelude::Entity)s to [`LogName`](super::event::LogName)s AT THIS
+//! BOUNDARY (via [`name_of`]) so the shared classifier stays `World`-free.
 //!
 //! The GTW-572 C6 sources (the Q2 ruling — ALL state changes log): the fall / melee-damage
 //! / on-death / suppression / armor-broken gain lines ride
@@ -14,14 +14,17 @@
 //! never log.
 
 use bevy::prelude::Query;
-use gdtf_battle_presenter::{CombatLogEvent, InjuryLogText, ShotImpactResolved};
 use gdtf_battle_sim::{
     ArmorBroken, BleedStarted, DotAfflicted, FallOccurred, FieldAfflicted, FireDeclaration,
     GangerName, InjuryInflicted, MeleeStruck, MoveRejected, MovementOccurred, OnDeathOccurred,
     ReloadResult, SuppressionApplied,
 };
 
-use super::forward::{CombatLogSource, name_of};
+use super::{
+    event::{CombatLogEvent, InjuryLogText},
+    forward::{CombatLogSource, name_of},
+};
+use crate::ShotImpactResolved;
 
 impl CombatLogSource for FireDeclaration {
     /// `"<actor> fired <Mode> [at <target>]"` — the shot announcement.

@@ -180,6 +180,12 @@ impl Plugin for TopDownRendererPlugin {
         // (FieldTicked / OnDeathOccurred — C4: the sim registers those buffers in live play).
         super::fx::register_consequence_fct_families(app);
 
+        // GTW-620: the combat-log FORWARDERS (sim fact -> resolved CombatLogEvent), moved
+        // down from gdtf_app beside the log_event vocabulary they feed — one registrar line
+        // per source over the same sim facts the FCT drains read. gdtf_app's appender (the
+        // bevy_ui half) orders itself .after(CombatLogSystems::Forward) cross-crate.
+        super::combat_log::register_combat_log_forwarders(app);
+
         // GTW-450: the reachable-range overlay is the DEBUG-only overlay (visual noise in
         // normal play). EVERY overlay-render-only item — the `ReachableCells` read-seam, the
         // `ReachableOverlayEnabled` flag (seeded ONCE here from the env var), and the DRAW

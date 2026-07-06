@@ -13,9 +13,9 @@ use gdtf_battle_sim::{
 ///
 /// A NAMED newtype over the displayed [`String`] (no-bare-types: a name shown in the log is
 /// a domain value, not a bare `String`), [`Deref`]ing to `str` so the phrasing reads it
-/// straight through. The app-side forwarders build it from the sim's [`GangerName`] (or a
-/// fallback for an unnamed / unresolvable entity); the classifier only ever READS it, so
-/// the classifier stays `World`-free.
+/// straight through. The per-source forwarders (co-located in this module since GTW-620)
+/// build it from the sim's [`GangerName`] (or a fallback for an unnamed / unresolvable
+/// entity); the classifier only ever READS it, so the classifier stays `World`-free.
 #[derive(Debug, Clone, PartialEq, Eq, Deref)]
 pub struct LogName(String);
 
@@ -62,11 +62,13 @@ impl InjuryLogText {
 /// display data with every [`Entity`](bevy::prelude::Entity) ALREADY resolved to a
 /// [`LogName`] / typed value.
 ///
-/// A buffered [`Message`] (GTW-572 C5, `bevy-traps.md` #4): the app-side per-source
-/// forwarders WRITE it (one thin system per sim signal, resolving names at that boundary)
-/// and the ONE appender DRAINS it through [`classify_log_event`](super::classify_log_event)
-/// — so adding a log source touches one forwarder + one classify arm, never a reader-field
-/// / drain-loop / `.clear()` lock-step. Exhaustive: exactly the events the combat log
+/// A buffered [`Message`] (GTW-572 C5, `bevy-traps.md` #4): the per-source forwarders
+/// (co-located in this module since GTW-620) WRITE it (one thin system per sim signal,
+/// resolving names at that boundary) and `gdtf_app`'s ONE appender DRAINS it through
+/// [`classify_log_event`](super::classify_log_event) — so adding a log source is a
+/// presenter-only change (one forwarder impl + one variant here + one classify arm), never
+/// a reader-field / drain-loop / `.clear()` lock-step. Exhaustive: exactly the events the
+/// combat log
 /// shows. The GTW-572 C6 variants (fall / melee / on-death / suppression / armor-broken /
 /// the three affliction starts) deliver the Q2 ruling: EVERY state change logs, and the
 /// DOT / field / bleed afflictions log once at their START variant (their per-tick signals

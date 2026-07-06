@@ -118,8 +118,14 @@ pub enum FctEmphasis {
 impl FctEmphasis {
     /// The [`FontWeight`] this emphasis tier draws in — [`FontWeight::BOLD`] for
     /// [`Bold`](FctEmphasis::Bold), [`FontWeight::NORMAL`] otherwise.
+    ///
+    /// `pub` (GTW-620): this mapping is THE one emphasis → weight semantic — every surface
+    /// that renders a classified pop / line (the FCT pop here, `gdtf_app`'s combat-log
+    /// appender) maps through it, so the tiers can never drift apart. SIZE stays
+    /// per-surface (each surface keeps its own bold size-bump magnitude — GTW-572 P10),
+    /// which is why only the weight is exposed.
     #[must_use]
-    const fn weight(self) -> FontWeight {
+    pub const fn weight(self) -> FontWeight {
         match self {
             Self::Normal => FontWeight::NORMAL,
             Self::Bold => FontWeight::BOLD,
