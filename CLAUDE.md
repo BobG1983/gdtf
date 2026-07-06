@@ -32,6 +32,7 @@ Binding rules live in `.claude/rules/` — short, read them, follow them:
 - [`linear-discipline.md`](.claude/rules/linear-discipline.md) — every change has a GTW-* ticket; statuses move with the work; bugs filed before fixing.
 - [`bevy-traps.md`](.claude/rules/bevy-traps.md) — Rust/Bevy ECS gotchas (system ordering, change detection, schedules, state transitions, query conflicts).
 - [`no-bare-types.md`](.claude/rules/no-bare-types.md) — no bare Rust/std type for a domain value; wrap each in a named newtype that `Deref`s to it.
+- [`module-layout.md`](.claude/rules/module-layout.md) — a module is a directory; mod.rs is wiring-only (no fns); warn >300 / block >400 lines in every band; exemptions via the registry; enforced by the clause-7 conformance test.
 
 ## The one definition of green
 
