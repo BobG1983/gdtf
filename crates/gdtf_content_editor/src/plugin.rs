@@ -46,6 +46,7 @@ use crate::{
     terrain_form::TerrainDraft,
     theme_form::ThemeDraft,
     tile_atlas::load_tile_atlas,
+    validate::register_validation,
 };
 
 /// The map editor's single plugin: state machine + `Load` pass + `Editing` scene + the egui shell.
@@ -80,6 +81,11 @@ impl Plugin for MapEditorPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<EditorState>();
         register_load(app);
+        // GTW-630: the authoring-time reference-integrity pass — the SAME
+        // gdtf_content_families::validate checks the game registers, over the
+        // edges the editor loads (theme→terrain + emplacement→weapon), re-armed
+        // live on hot-reload so a dangling key surfaces at the edit.
+        register_validation(app);
 
         // GTW-515: disable bevy_egui's auto-attach of the primary context (the editor has TWO
         // cameras now — the window camera + the offscreen prefab preview camera — so auto-attach to

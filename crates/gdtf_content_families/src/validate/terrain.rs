@@ -2,7 +2,8 @@
 //! `default_floor` + palette UUIDs (the nil-sentinel `default_floor` fallback's
 //! root cause, C3(d)) and an emplacement def's mounted-weapon key (found on the
 //! C1 verify-first walk; a dangling mount leaves the emplacement weaponless at
-//! setup).
+//! setup). Both edges span only families the content editor loads too, so the
+//! editor registers both (GTW-630).
 
 use bevy::prelude::{Res, ResMut};
 use gdtf_assets::{
@@ -21,9 +22,10 @@ use gdtf_battle_sim::{
 /// its authoring root, and again at generation time if the pour actually
 /// degrades.
 ///
-/// Plain `Res` params are safe here: the `Check` set's window condition
-/// verified them present (bevy-traps #1, guarded once at the set).
-pub(super) fn check_theme_terrain_refs(
+/// Plain `Res` params by contract: the registering HOST's `Check`-set window
+/// condition must have verified them present (`bevy-traps.md` #1, guarded once
+/// at the host's set — see the [module doc](super)).
+pub fn check_theme_terrain_refs(
     themes: Res<UuidThemeRegistry>,
     terrain: Res<TerrainDefRegistry>,
     mut report: ResMut<ContentIntegrityReport>,
@@ -57,7 +59,7 @@ pub(super) fn check_theme_terrain_refs(
 /// the [`WeaponRegistry`] — the terrain → weapon edge the C1 walk surfaced
 /// (`TerrainSimKind::Emplacement` mounts a ranged weapon by file stem,
 /// GTW-543).
-pub(super) fn check_emplacement_weapon_refs(
+pub fn check_emplacement_weapon_refs(
     terrain: Res<TerrainDefRegistry>,
     weapons: Res<WeaponRegistry>,
     mut report: ResMut<ContentIntegrityReport>,

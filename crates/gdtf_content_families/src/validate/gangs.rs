@@ -24,9 +24,10 @@ use gdtf_battle_sim::{
 /// dangles EVERY melee-less member, so it is reported once per such member's
 /// gang context).
 ///
-/// Plain `Res` params are safe here: the `Check` set's window condition
-/// verified them present (bevy-traps #1, guarded once at the set).
-pub(super) fn check_gang_equipment_refs(
+/// Plain `Res` params by contract: the registering HOST's `Check`-set window
+/// condition must have verified them present (`bevy-traps.md` #1, guarded once
+/// at the host's set — see the [module doc](super)).
+pub fn check_gang_equipment_refs(
     gangs: Res<GangRegistry>,
     weapons: Res<WeaponRegistry>,
     melee_weapons: Res<MeleeWeaponRegistry>,

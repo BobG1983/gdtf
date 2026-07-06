@@ -10,29 +10,26 @@
 //! strand `Load` (the `audit_unweighted_injuries` precedent, generalized).
 //!
 //! Submodules by EDGE FAMILY (wiring only here — gate directive P10, the
-//! per-family checks live with their family's edge):
+//! per-family checks live with their family's edge). Since GTW-630 the
+//! HOST-AGNOSTIC edge checks — gangs → equipment, weapons → attachments,
+//! theme/emplacement → terrain-def/weapon — live in
+//! [`gdtf_content_families::validate`] beside the family glue impls, so the
+//! content editor registers the SAME systems; only the game-bespoke edges stay
+//! here:
 //!
 //! - [`register`] — the one registration surface (`add_content_validation`)
 //!   plus the "every gate registry resolved" window condition.
 //! - [`situation`] — the authored situation's outbound edges (gangs/members,
-//!   theme, terrain, fields).
-//! - [`gangs`] — every roster member's equipment keys (weapon / armor / melee,
-//!   incl. the implicit `fists` default).
-//! - [`attachments`] — every ranged + melee weapon's attachment keys (the
-//!   formerly-silent resolution drop, C3(b)).
-//! - [`terrain`] — theme → terrain-def UUIDs and emplacement → mounted-weapon
-//!   keys.
+//!   theme, terrain, fields); app-owned (`LoadedSituation` +
+//!   `SITUATION_RON_PATH` live in this crate).
 //! - [`prefabs`] — prefab → theme UUID agreement and prefab → terrain-def
-//!   UUIDs.
+//!   UUIDs (a game-bespoke family the editor never loads).
 //! - [`injuries`] — weighting rows → injury keys (the warn-skip, now also
-//!   reported through the unified pass, C3(c)).
+//!   reported through the unified pass, C3(c); game-bespoke likewise).
 
-mod attachments;
-mod gangs;
 mod injuries;
 mod prefabs;
 mod register;
 mod situation;
-mod terrain;
 
 pub(in crate::states::load) use register::add_content_validation;

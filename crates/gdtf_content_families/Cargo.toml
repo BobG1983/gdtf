@@ -10,6 +10,11 @@ edition = "2024"
 # depending on gdtf_app — and so `gdtf_assets` stays a deliberate leaf
 # (bevy/ron/serde only, no sim dependency).
 [dependencies]
+# ECS system types (Res/ResMut) for the host-agnostic per-edge reference checks
+# in `validate/` (GTW-630). Already in this crate's transitive closure via BOTH
+# deps below (same workspace version + features), so the workspace layering is
+# unchanged — this only makes the existing edge direct.
+bevy = { workspace = true }
 # The generic seam: ContentFamily / ContentFileStem live here.
 gdtf_assets = { path = "../gdtf_assets" }
 # The authoritative sim owns every family's Spec + Registry domain types.

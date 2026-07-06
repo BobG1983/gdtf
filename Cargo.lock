@@ -2901,6 +2901,7 @@ dependencies = [
 name = "gdtf_content_families"
 version = "0.1.0"
 dependencies = [
+ "bevy",
  "gdtf_assets",
  "gdtf_battle_sim",
 ]
