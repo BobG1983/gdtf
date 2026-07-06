@@ -27,7 +27,7 @@
 //!
 //! The state enums ([`AppState`] / [`RunningState`] / [`GameState`] /
 //! [`BattleScapeState`] / [`AfterMathState`]), [`ScenesPlugin`],
-//! [`LoadedSituation`], `BottomBarRoot`, and the `app::auto_battle` items are
+//! [`LoadedSituation`], `BottomBarRoot`, and the `dev::auto_battle` items are
 //! deliberately NOT part of the panel ledger: they keep their `support_use!`
 //! climbs because the GTW-321 co-location contract keeps `crate::states::<Enum>`
 //! nameable at the states root and/or the production binary reads the same
@@ -124,7 +124,7 @@ pub fn seed_load_gate(asset_server: Option<Res<AssetServer>>, mut commands: Comm
 // `dev_capture`-gated) can chain the REAL `poll_then_quit` after the crate's
 // `settle_then_capture` and assert the Quit-cascade exit (never a direct `AppExit`).
 #[cfg(all(debug_assertions, feature = "dev_capture"))]
-pub use crate::states::running::capture_exit::poll_then_quit;
+pub use crate::dev::capture_exit::poll_then_quit;
 // The GTW-621 gang-save write path — `debug_assertions`-gated exactly like its
 // `gang_editor::systems::save` module: the real-folder-walk regression test aims the REAL editor
 // write at a `TempDir` assets root (never the repo `assets/`), then drives the actual gangs
@@ -141,7 +141,7 @@ pub use crate::states::running::procgen_viz::test_support::{
     SizeStatusText, StepButton, ThemeDropdown, VizConfig, WidthField,
 };
 pub use crate::{
-    app::auto_battle::{AutoBattleActive, AutoBattlePlugin, auto_battle_enabled},
+    dev::auto_battle::{AutoBattleActive, AutoBattlePlugin, auto_battle_enabled},
     states::{
         AfterMathState, AppState, BattleScapeState, GameState, LoadedSituation, RunningState,
         ScenesPlugin,

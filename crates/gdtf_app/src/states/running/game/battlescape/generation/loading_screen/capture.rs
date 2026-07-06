@@ -4,7 +4,7 @@
 //! This is **not shipping behavior**. It exists so QA (or a coding agent) can drive the app and
 //! capture the rendered LOADING SCREEN frame — proving AC2 (no partial-level frame) visually,
 //! which the headless tests structurally cannot observe. It mirrors the GTW-297
-//! [`DevCapturePlugin`](crate::app::capture) gating discipline but fires DURING
+//! [`DevCapturePlugin`](crate::dev::capture) gating discipline but fires DURING
 //! [`BattleScapeState::Generation`](crate::states::BattleScapeState) rather than `BattleRunning`.
 //!
 //! ## Two gates, both must hold to activate

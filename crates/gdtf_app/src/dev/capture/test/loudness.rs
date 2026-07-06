@@ -15,12 +15,17 @@ use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
 use gdtf_battle_sim::acts::FireRequested;
 
 use super::super::{
-    plugin::{DevCapturePlugin, warn_config_diagnostics},
+    diagnostics::warn_config_diagnostics,
+    plugin::DevCapturePlugin,
     resolve::{RawCaptureEnv, resolve},
-    trigger_config::{FireAtFrame, FireConfig},
-    triggers::trigger_fire_at_frame,
 };
-use crate::states::hot_reload_test_support::capture_logs;
+use crate::{
+    dev::drive::{
+        trigger_config::{FireAtFrame, FireConfig},
+        triggers::trigger_fire_at_frame,
+    },
+    states::hot_reload_test_support::capture_logs,
+};
 
 /// C4c — [`warn_config_diagnostics`] (the sole emission choke point `from_env` runs)
 /// EMITS one `dev-capture: `-prefixed `warn!` line per diagnostic, driven with an

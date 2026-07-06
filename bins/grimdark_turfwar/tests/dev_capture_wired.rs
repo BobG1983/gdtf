@@ -16,7 +16,7 @@
 
 /// The `dynamic_linking` dev flow compiles the capture affordance in: with this
 /// binary's `dynamic_linking` feature on (a debug build — tests are), `gdtf_app`
-/// must report the `crate::app::capture` module compiled
+/// must report the `crate::dev::capture` module compiled
 /// ([`gdtf_app::dev_capture_compiled`]).
 #[test]
 fn dynamic_linking_dev_flow_compiles_dev_capture_in() {

@@ -33,7 +33,7 @@ pub(in crate::states) use intro::IntroScenePlugin;
 mod load;
 pub(in crate::states) use load::LoadScenePlugin;
 // GTW-590: extend the GTW-582 re-export ladder one rung further — the
-// `app::capture` loudness pins live OUTSIDE `states`, and must drive their
+// `dev::capture` loudness pins live OUTSIDE `states`, and must drive their
 // emission asserts through the ONE shared, poison-proof log-capture scaffold
 // (a second CaptureLayer copy would lose the process-global-default race and
 // capture nothing).
@@ -42,14 +42,14 @@ pub(crate) use load::hot_reload_test_support;
 // The resolved authored battlefield resource (GTW-205 / E10.3), re-exported here so
 // it is nameable from OUTSIDE `states` — `test_support` widens it to `pub` for the
 // AC7 real-asset harness (`crate::states::LoadedSituation`), and the GTW-223 DEV
-// auto-battle affordance (`crate::app::auto_battle`) names it `pub(crate)` in the
+// auto-battle affordance (`crate::dev::auto_battle`) names it `pub(crate)` in the
 // binary build to seed a default battlefield. (Within `states`, E10.5 still reaches
 // the resource directly via `load::LoadedSituation`.) Unconditional `support_use!`,
 // so it tracks `support_item` visibility in lockstep (the re-export chain caveat).
 crate::support_use!(load::LoadedSituation;);
 // The bespoke headless Load-fallback seed (GTW-629), re-exported here so it is
 // nameable from OUTSIDE `states` — the GTW-223 DEV auto-battle affordance
-// (`crate::app::auto_battle`) registers it on `Startup`, and `test_support`
+// (`crate::dev::auto_battle`) registers it on `Startup`, and `test_support`
 // widens it to `pub` for the load-suite gate seed.
 crate::support_use!(load::seed_load_fallbacks;);
 
