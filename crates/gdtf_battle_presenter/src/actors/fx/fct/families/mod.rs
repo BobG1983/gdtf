@@ -8,7 +8,7 @@
 //!    family's classify unit tests IN THE SAME FILE (P11 — a new family edits no
 //!    pre-existing test file beyond its registration line). Wire it in this `mod.rs`.
 //! 2. **One registrar line** in `TopDownRendererPlugin`
-//!    (`plugin/renderer.rs::register_consequence_fct_families`):
+//!    (`plugin/topdown/fx.rs::register_consequence_fct_families`):
 //!    `app.add_consequence_fct::<YourFamily>()`. Nothing else — the generic reader, the
 //!    shared per-frame stack counter, and the gates are already wired.
 //! 3. **If it also logs** (a combat-log line): stay in THIS crate (GTW-620) — one

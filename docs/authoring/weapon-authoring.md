@@ -6,6 +6,7 @@ This guide documents the **current, landed state** of the weapon system
 (GTW-257 / GTW-260 / GTW-374 / GTW-443, plus the optional-field additions
 GTW-525 / GTW-544 / GTW-546 / GTW-547 / GTW-549 / GTW-554) and is the primary
 reference for content authors and engineers extending weapon mechanics.
+Melee weapons (GTW-505) are Part 5.
 
 ---
 
@@ -17,8 +18,7 @@ Ranged weapons live under `assets/content/weapons/ranged/` — one file per
 weapon. The file is named `<key>.weapon.ron`, where `<key>` is the weapon's
 registry key, the string a roster member references to load it. (GTW-505 split
 the weapons tree into `ranged/` + `melee/`; melee weapons — the
-`.melee_weapon.ron` sibling — are covered in
-[combat/weapons-and-armor.md](../combat/weapons-and-armor.md) §Melee weapons.)
+`.melee_weapon.ron` sibling — are covered in Part 5 below.)
 
 **Key convention:** the file stem minus the `.weapon` infix is the weapon's
 registry key. For example, `ranged/stub_pistol.weapon.ron` → key `"stub_pistol"`.
@@ -101,6 +101,12 @@ The `magazine:` field is a grouped struct with two authored leaves:
 The `rounds` (loaded count) leaf is NOT authored — it defaults to `0` at
 parse time and is overwritten by `WeaponSpec::into_bundle`, which always spawns
 the weapon FULL (`loaded == size`).
+
+Reloading is a real, per-weapon TU-costed act: `reload_tu` is the flat cost
+the reload act charges. A fitted `ReloadTime(scale)` attachment SCALES it
+per-item (bidirectional — `< 1.0` faster, `> 1.0` slower; GTW-558 renamed the
+effect from the speed-up-only `FastReload` misnomer) — see
+[attachment-authoring.md](attachment-authoring.md) §1d.
 
 ### 1d. Fire-mode authoring
 
@@ -192,7 +198,8 @@ capacity; a non-fitting item is cleanly skipped. Attachment ITEMS themselves
 (the `AttachmentSpec` + its typed effect list) are authored in
 `assets/content/attachments/` and their effect behaviors live in the
 attachments palette (`crates/gdtf_battle_sim/src/effects/attachments/`,
-GTW-558 — one file per effect).
+GTW-558 — one file per effect) — the full item schema + effect vocabulary is
+[attachment-authoring.md](attachment-authoring.md).
 
 ### 1k. `dot` — damage-over-time profile (GTW-544, optional)
 
@@ -324,3 +331,73 @@ Key Rust types (all in `crates/gdtf_battle_sim/src/equipment/weapon/`):
   `ModeShots` — `fire_mode.rs`
 - `Magazine`, `ReloadTu`, `LoadedRounds` — `crates/gdtf_battle_sim/src/equipment/magazine/ammo.rs`
 - `WeaponRegistry` — `registry.rs` (re-exported via `mod.rs`)
+
+---
+
+## Part 5 — Melee weapons (`.melee_weapon.ron`)
+
+Melee weapons (GTW-505, child GTW-37a) live under
+`assets/content/weapons/melee/` — one file per weapon, named
+`<key>.melee_weapon.ron` (the stem is the registry key; no `name:` field, the
+ranged rule). They SHARE the ranged damage model verbatim and swap the
+cone/handling group for melee-only mechanics.
+
+### 5a. The schema — by example
+
+The shipped `assets/content/weapons/melee/fists.melee_weapon.ron` (the unarmed
+default — magnitudes are tuning DATA, never pinned):
+
+```ron
+(
+    // SHARED ranged damage model — a strike resolves through the SAME per-hit formula:
+    damage:        4,        // modest blunt damage
+    punch:         0,        // bare knuckles ignore no armor
+    shred:         0,        // no armor-durability chew
+    damage_type:   Kinetic,  // blunt impact — the Kinetic wheel node
+    fatal_bias:    0.0,      // no severity push
+    handedness:    OneHanded,// a punch needs one working hand
+    // MELEE-ONLY mechanics:
+    reach:         1,        // strikes the adjacent cell (optional; defaults to 1)
+    fight_mode: [
+        (kind: Swing, tu_cost: 20, strikes: 1),  // flat TU cost + strike count per mode
+    ],
+    // slots: / attachments: omitted — bare hands take no fittings (fail-closed)
+)
+```
+
+**Field reference** (`MeleeWeaponSpec`,
+`crates/gdtf_battle_sim/src/equipment/weapon/melee/spec.rs`): `damage`,
+`punch`, `shred`, `damage_type`, `fatal_bias`, `handedness`, and the optional
+`shove` are the SAME newtypes and semantics as the ranged table in §1b —
+there is deliberately no melee mirror vocabulary. The melee-only fields:
+
+| Field | Rust type | RON form | Notes |
+|-------|-----------|----------|-------|
+| `reach` | `Reach` | bare integer, optional | Cells away a strike can land. `#[serde(default)]` → `1` |
+| `fight_mode` | `FightMode` | list of `FightModeSpec` | The offered fight modes: `kind` (`Swing` \| `Thrust`), `tu_cost` (flat TU), `strikes` (count) |
+| `slots` / `attachments` | `WeaponSlots` / `Vec<AttachmentName>` | as ranged §1j, optional | Melee weapons get FULL attachment support (GTW-554) — melee slots are `Counterweight` / `Pommel` |
+
+Unlike a ranged fire mode (a TU *percentage*), a fight mode charges a FLAT
+`tu_cost`. The mode label (`"swing"` / `"thrust"`) derives from
+`FightModeKind`'s `Display` — never authored.
+
+### 5b. The fists default
+
+Every ganger can melee: a gang member that authors no `melee_weapon:` key
+resolves to the shipped `"fists"` registry key at setup (`FISTS_KEY`,
+`crates/gdtf_battle_sim/src/equipment/weapon/melee/registry.rs`) — so
+`fists.melee_weapon.ron` must always exist. See
+[battlefield-authoring.md](battlefield-authoring.md) §4a for the gang-side
+field.
+
+### 5c. Loading, hot-reload, verify
+
+Melee weapons are their own stem-keyed content family (`MeleeWeaponsFamily`,
+`crates/gdtf_content_families/src/melee_weapons.rs` — folder
+`content/weapons/melee`, extension `melee_weapon.ron`) resolving into the
+`MeleeWeaponRegistry`; everything in Parts 3–4 (hot-reload, salvage,
+fail-closed empty registry) applies unchanged
+([content-families.md](content-families.md)). Load coverage:
+`crates/gdtf_app/tests/load_melee_weapons.rs`. In game (`cargo drun`), the
+contextual MELEE button offers an adjacent-enemy strike; a ganger with no
+authored melee key punches with fists.

@@ -106,6 +106,25 @@ step 3: integrity -= min(armor.protection, weapon.damage) + effPen + weapon.shre
 At `integrity ≤ 0` the armor stops applying (protection reads as 0 for the
 remainder of the battle).
 
+### 1f. The wear/damage signal surface (what the game shows)
+
+Per-hit wear classifies into exactly ONE of three outcomes
+(`ArmorWearOutcome`, `crates/gdtf_battle_sim/src/equipment/armor_wear/wear.rs`),
+so at most one signal fires per hit:
+
+| Outcome | Signal message | When |
+|---------|----------------|------|
+| `Damaged` | `ArmorDamaged` | The piece was reduced (`delta > 0`) and still protects — fires `0..n` times before the break; the presenter's "Armor -N" pop |
+| `Broke` | `ArmorBroken` | THE protecting→broken crossing (`integrity ≤ 0`) — fires exactly once per piece |
+| `Unaffected` | (none) | Already-broken / bare-flesh piece, or a zero-wear hit — never a misleading "Armor -0" |
+
+Both are buffered messages the presenter consumes: `ArmorDamaged` draws the
+"Armor -N" floating pop; `ArmorBroken` pops via the `ArmorBrokenFct` family
+AND gains a combat-log line ([fct-authoring.md](fct-authoring.md) /
+[combat-log-authoring.md](combat-log-authoring.md)). Nothing here is
+authored — it is the runtime contract an armor author balances against
+(higher `integrity` = more `ArmorDamaged` hits before the one `ArmorBroken`).
+
 ---
 
 ## Part 2 — How to extend the armor model

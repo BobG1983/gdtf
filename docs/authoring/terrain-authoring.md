@@ -159,6 +159,11 @@ Kind defaults already cover the common cases (a `Wall` / `Emplacement` blocks
 path + vision by kind), so most defs author `tags: []`; solid walls in the
 shipped content tag `[BlocksVision, BlocksPathfinding]` explicitly.
 
+**Forward note (GTW-587, post-epic):** per-def blocking-OVERRIDE knobs (a def
+opting out of its kind's blocking defaults) are planned but NOT built — today
+the kind defaults + the additive tags above are the whole authored blocking
+surface; do not author override fields.
+
 `on_death:` names the `OnDeathEffect` a DESTRUCTIBLE piece fans when smashed
 (GTW-547): `Explode(hit_type: …, damage: …, damage_type: …)` or
 `LeaveField(field: "<field key>")`. Example from the shipped content
@@ -235,6 +240,17 @@ existing newtypes (`CoverHp`, `SlabHp`, `ArmorProtection`, `ArmorHardness`,
 `HeightBand`, …) — no bare types. Add the mirroring `TerrainPresenterKind`
 variant (graphic key only, unless the kind is walked on). The `Emplacement`
 kind (GTW-543) is the template for a stateful kind.
+
+Both payload-carrying kinds project onto the CANONICAL fieldless discriminant
+`TerrainPieceKind` (GTW-574 —
+`crates/gdtf_battle_sim/src/terrain/entity/components.rs`:
+`Wall` / `Cover` / `Slab` / `Emplacement`, the queryable kind tag on every
+terrain entity). Its exhaustive `kind()` projections and `TerrainPieceKind::ALL`
+inventory compiler-tie every payload-free kind-identity decision (the editor
+pick list, the occupancy bridge, the procgen classifier, the blocking
+defaults) to the new variant — so a new kind is a COMPILE ERROR at each
+decision point until you grow the discriminant, its projections, and the
+`ALL` array alongside the two authored halves.
 
 ### Step 2 — Add a new field to an existing kind (or to `TerrainDef`)
 
