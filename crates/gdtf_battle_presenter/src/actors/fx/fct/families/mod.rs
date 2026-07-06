@@ -11,10 +11,12 @@
 //!    (`plugin/renderer.rs::register_consequence_fct_families`):
 //!    `app.add_consequence_fct::<YourFamily>()`. Nothing else — the generic reader, the
 //!    shared per-frame stack counter, and the gates are already wired.
-//! 3. **If it also logs** (a combat-log line): one forwarder impl in
-//!    `gdtf_app`'s `combat_log/systems/sources.rs` (+ its one registrar line in the
-//!    combat-log plugin) and one classify arm in
-//!    [`classify_log_event`](super::log_event::classify_log_event).
+//! 3. **If it also logs** (a combat-log line): stay in THIS crate (GTW-620) — one
+//!    [`CombatLogSource`](super::log_event::CombatLogSource) impl in
+//!    `log_event/sources.rs`, one `CombatLogEvent` variant, one classify arm in
+//!    [`classify_log_event`](super::log_event::classify_log_event), and one
+//!    `add_combat_log_source` registrar line in
+//!    `plugin/topdown/combat_log.rs`.
 //!
 //! The families: [`BleedingFct`] / [`ArmorBrokenFct`] (the two aux pops formerly fused in
 //! one `consequence.rs` reader), [`InjuryFct`] (severity-ramp color), [`SuppressionFct`],

@@ -137,14 +137,15 @@ fn add_plugins(app: &mut App) {
         // The GTW-328 COMBAT-TEXT LOG (bottom-left, ABOVE the weapon panel): the scroll-up-and-
         // fade strip of recent combat events. Same `BattleRunning` lifecycle as the panels; it
         // loads its hot-reloadable `combat_log.tuning.ron` tuning (the FX-tuning RON precedent).
-        // GTW-572: one thin FORWARDER per log source drains its sim fact message (combat events,
-        // falls, melee damage, deaths, suppression, armor breaks, and the once-per-span
-        // affliction starts), resolves each Entity to a ganger name, and writes a buffered
-        // `CombatLogEvent`; the ONE appender classifies via the shared presenter
-        // `classify_log_event` and appends fading UI text lines (FIFO-trimmed to the tuned cap),
-        // gated on the `BattleInProgress` witness. View-only — it reads sim messages + names,
-        // writes nothing back. It deps `gdtf_ui` + `gdtf_battle_presenter` + `gdtf_battle_sim` +
-        // `gdtf_assets`, all already on the app's edge; the chain stays acyclic.
+        // GTW-572/GTW-620: the sim-fact FORWARDERS live in the PRESENTER (registered by the
+        // renderer plugin beside the FCT drains over the same sim facts); this plugin is the
+        // bevy_ui half — the ONE appender drains the presenter's buffered `CombatLogEvent`s
+        // (ordered `.after` the exported `CombatLogSystems::Forward` set), classifies via the
+        // shared presenter `classify_log_event`, and appends fading UI text lines
+        // (FIFO-trimmed to the tuned cap), gated on the `BattleInProgress` witness. View-only
+        // — it reads resolved events, writes nothing back. It deps `gdtf_ui` +
+        // `gdtf_battle_presenter` + `gdtf_battle_sim` + `gdtf_assets`, all already on the
+        // app's edge; the chain stays acyclic.
         .add_plugins(GameBattleScapeCombatLogScenePlugin);
 }
 

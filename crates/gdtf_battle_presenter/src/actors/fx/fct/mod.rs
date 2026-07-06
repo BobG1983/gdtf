@@ -28,12 +28,15 @@
 //!   [`read_consequence_fct`](stacked_reader::read_consequence_fct) reader + the
 //!   [`ConsequenceFctAppExt::add_consequence_fct`] compile-time registrar that replaced the
 //!   six hand-rolled reader clones and their registration walls).
-//! - [`log_event`] — the COMBAT-LOG classification layer (GTW-328 / GTW-572 C5):
-//!   [`CombatLogEvent`] is a buffered [`Message`](bevy::prelude::Message) the app-side
-//!   per-source forwarders write and the ONE appender drains through the shared, PURE
-//!   [`classify_log_event`]. The shot outcome REUSES [`classify_report`](reader::classify_report)
-//!   (never duplicated); a `None` report yields NO line (GTW-559 — a blast detonation is not
-//!   a miss).
+//! - [`log_event`] — the COMBAT-LOG family (GTW-328 / GTW-572 C5 / GTW-620): the
+//!   [`CombatLogEvent`] buffered [`Message`](bevy::prelude::Message) vocabulary, the
+//!   per-source FORWARDERS that write it (the [`CombatLogSource`] impls + the
+//!   [`CombatLogSourceAppExt`] registrar, moved down from `gdtf_app` in GTW-620 so a new
+//!   log source is a presenter-only change), and the shared, PURE [`classify_log_event`]
+//!   `gdtf_app`'s ONE appender drains through (ordered `.after` the exported
+//!   [`CombatLogSystems::Forward`] set). The shot outcome REUSES
+//!   [`classify_report`](reader::classify_report) (never duplicated); a `None` report
+//!   yields NO line (GTW-559 — a blast detonation is not a miss).
 //!
 //! Pure VIEW (ADR-0001): everything here spawns/animates presenter entities or phrases
 //! lines over resolved data; it never computes a combat outcome and never writes the sim.
@@ -53,7 +56,10 @@ mod test;
 pub use families::{
     ArmorBrokenFct, BleedingFct, DotFct, FieldFct, InjuryFct, OnDeathFct, SuppressionFct,
 };
-pub use log_event::{CombatLogEvent, InjuryLogText, LogLine, LogName, classify_log_event};
+pub use log_event::{
+    CombatLogEvent, CombatLogSource, CombatLogSourceAppExt, CombatLogSystems, InjuryLogText,
+    LogLine, LogName, classify_log_event, forward_log_source, forward_turn_started,
+};
 pub use palette::{FctValence, severity_color, valence_color};
 pub use pop::{ConsequenceFct, ConsequencePop, PopAnchor};
 pub(super) use reader::{ClassifiedPop, anchor_cell, classify_report};

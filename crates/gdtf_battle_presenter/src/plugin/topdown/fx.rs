@@ -75,8 +75,9 @@ pub(super) fn register_fx_flash_systems(app: &mut App) {
     // `actors/fx/impact/`), so registering it here is the owner registering its own buffer —
     // NOT a sim-owned-buffer registration (GTW-623 C4 leaves it untouched). `add_message` is
     // idempotent and creates the `Messages<T>` resource so the `MessageWriter` param is always
-    // valid even when `animate_impact` is gated off (`bevy-traps.md` #4); a downstream consumer
-    // (the combat-log plugin in `gdtf_app`) also registers it idempotently.
+    // valid even when `animate_impact` is gated off (`bevy-traps.md` #4); the downstream
+    // consumer (the GTW-620 combat-log forwarder in `combat_log.rs`) gates on this buffer
+    // existing rather than registering it.
     app.add_message::<ShotImpactResolved>();
     // GTW-623 C3: the six flash-family readers — one registrar line each. The registrar
     // carries the stage + the shared render gate + the per-message `Messages<M>` gate.
