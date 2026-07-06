@@ -63,9 +63,9 @@ const CHARACTER_ROLES_RON_PATH: &str = "sprites/character_roles.spritedef.ron";
 /// (`bevy-traps.md` #1), so a `MinimalPlugins` headless app stays a no-op.
 ///
 /// The live redrive overwrites [`CharacterRoles`] through `ResMut`, which MARKS
-/// it changed — the signal
-/// [`reindex_ganger_sprites_on_character_roles_change`](super::reindex_ganger_sprites_on_character_roles_change)
-/// re-indexes the persistent ganger sprites on (GTW-375 C3).
+/// it changed — the signal the appearance resolver
+/// ([`resolve_ganger_appearance`](super::resolve_ganger_appearance)) re-stamps
+/// the persistent ganger sprites on (GTW-375 C3 / GTW-631 C3).
 pub(crate) fn register_character_roles_hot_ron(app: &mut App) {
     app.init_hot_ron_resource::<CharacterRoles>(CHARACTER_ROLES_RON_PATH);
 }

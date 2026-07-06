@@ -60,22 +60,24 @@ fn real_asset_resolves_armor_registry_keyed_by_filename() {
     suite::real_asset_resolves_registry::<ArmorFamily>();
 }
 
-/// GTW-269 (mirroring GTW-297 `AC3b`) — the REAL auto-battle path: the
-/// `AutoBattlePlugin`'s `seed_load_fallbacks` runs on `Startup` AND a real
-/// `AssetServer` is present (the GUI auto-battle launch). The empty
-/// `ArmorRegistry::default()` seed must NOT shadow the real folder resolve: with an
-/// `AssetServer` present the seed must NOT insert an empty registry, so the generic
-/// content-family resolve (which only runs while the registry is ABSENT) populates
-/// it from `assets/content/armor/*.armor.ron`.
+/// GTW-269 (mirroring GTW-297 `AC3b`) — the REAL auto-battle path: the Load-owned
+/// `seed_load_fallbacks` (registered on `Startup` by `AutoBattlePlugin`) runs AND a
+/// real `AssetServer` is present (the GUI auto-battle launch). NO empty
+/// `ArmorRegistry::default()` may shadow the real folder resolve: with an
+/// `AssetServer` present neither the bespoke seed nor the GTW-629 seam rider (the
+/// registry's fallback now lives on its `register_content_family` line) may insert
+/// an empty registry, so the generic content-family resolve (which only runs while
+/// the registry is ABSENT) populates it from `assets/content/armor/*.armor.ron`.
 ///
 /// This reproduces the bug's exact preconditions on the real code path: a
 /// `GdtfLoadTestAppBuilder` app (live `AssetServer` rooted at the workspace `assets/`)
 /// with the genuine `seed_load_fallbacks` system registered on `Startup`, exactly as
 /// `AutoBattlePlugin::build` wires it. The assertions encode the fix.
 ///
-/// PIN: if the seed reverts to inserting `ArmorRegistry::default()` UNCONDITIONALLY,
-/// the registry is present from `Startup`, the absence-gated resolve SKIPS the folder,
-/// the registry stays empty, `spec("flak_vest")` returns `None`, and this test goes
+/// PIN: if ANY seed path — a revived seam-family arm, or a seam rider gone
+/// unconditional — inserts `ArmorRegistry::default()` while a server is present,
+/// the registry exists early, the absence-gated resolve SKIPS the folder, the
+/// registry stays empty, `spec("flak_vest")` returns `None`, and this test goes
 /// red. Family-bespoke: NEVER genericized away (GTW-580 P9).
 #[test]
 fn seeded_startup_does_not_shadow_real_armor_resolution() {

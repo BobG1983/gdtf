@@ -6,7 +6,7 @@
 //! blue-grey — the same colour-drained family the suppressed sprite tint uses, so the
 //! transient pop and the persistent desaturation read as ONE signal. The message carries the
 //! pinned cell, so the anchor is [`PopAnchor::Carried`] (no `Position` lookup). The pop is a
-//! MOMENT signal; the persistent state is the sprite tint (`reframe_ganger_sprites`).
+//! MOMENT signal; the persistent state is the sprite tint (`resolve_ganger_appearance`).
 
 use gdtf_battle_sim::suppression::SuppressionApplied;
 

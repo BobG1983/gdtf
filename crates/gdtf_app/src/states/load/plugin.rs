@@ -133,29 +133,6 @@ impl Plugin for LoadScenePlugin {
                 PROCGEN_TUNING_RON_PATH,
                 ProcgenTuning::default,
             );
-            // GTW-570: the FOLDER-loaded content families register through the generic
-            // content-family seam — ONE ext call each wires the dedicated-extension
-            // loader, the `Startup` folder kick-off (the persistent generic
-            // `ContentFolderHandle`), the gated resolve (inserts the registry ONCE, on
-            // Loaded — or the EMPTY registry on a genuine Failed, so Load never
-            // strands), and the ungated live redrive (the GTW-374 hot-reloads,
-            // preserved). The `transition_to_intro` gate below still requires every
-            // resolved registry, so the Load-gating semantics are unchanged (C3).
-            app.register_content_family::<WeaponsFamily>();
-            app.register_content_family::<MeleeWeaponsFamily>();
-            app.register_content_family::<ArmorFamily>();
-            app.register_content_family::<FieldsFamily>();
-            app.register_content_family::<GangsFamily>();
-            // The terrain + theme defs are the PAYLOAD-KEYED families sharing the ONE
-            // MIXED `content/terrain/` tree — each walk skips the other family's
-            // members via the seam's unconditional TypeId filter (GTW-487 precedent).
-            app.register_content_family::<TerrainDefsFamily>();
-            app.register_content_family::<ThemeDefsFamily>();
-            // GTW-619: the data-driven attachment items (GTW-549) ride the SAME generic
-            // seam — the ext call claims their dedicated `attachment.ron` compound
-            // extension (files are `assets/content/attachments/*.attachment.ron`), so the
-            // bespoke loader registration + kick-off / resolve / redrive chain is gone.
-            app.register_content_family::<AttachmentsFamily>();
             // GTW-437: the injuries folder carries TWO asset types, each via the SAME
             // generic RON loader but loaded by `load_folder` (extension dispatch). Each
             // claims its OWN dedicated compound extension — `injury.ron` for the per-injury
@@ -177,6 +154,35 @@ impl Plugin for LoadScenePlugin {
             app.init_ron_asset_with_extensions::<PrefabSpec>(vec!["prefab.ron"]);
             add_hot_reload_systems(app);
         }
+        // GTW-570: the FOLDER-loaded content families register through the generic
+        // content-family seam — ONE ext call each wires the dedicated-extension
+        // loader, the `Startup` folder kick-off (the persistent generic
+        // `ContentFolderHandle`), the gated resolve (inserts the registry ONCE, on
+        // Loaded — or the EMPTY registry on a genuine Failed, so Load never
+        // strands), and the ungated live redrive (the GTW-374 hot-reloads,
+        // preserved). The `transition_to_intro` gate below still requires every
+        // resolved registry, so the Load-gating semantics are unchanged (C3).
+        //
+        // Deliberately OUTSIDE the `AssetServer` guard (GTW-629): the seam
+        // SELF-GATES — with a server it wires the full chain; without one it seeds
+        // the family's default registry as the headless fallback instead, so a
+        // `MinimalPlugins` walk keeps traversing `Load` with zero per-family seed
+        // arms anywhere else.
+        app.register_content_family::<WeaponsFamily>();
+        app.register_content_family::<MeleeWeaponsFamily>();
+        app.register_content_family::<ArmorFamily>();
+        app.register_content_family::<FieldsFamily>();
+        app.register_content_family::<GangsFamily>();
+        // The terrain + theme defs are the PAYLOAD-KEYED families sharing the ONE
+        // MIXED `content/terrain/` tree — each walk skips the other family's
+        // members via the seam's unconditional TypeId filter (GTW-487 precedent).
+        app.register_content_family::<TerrainDefsFamily>();
+        app.register_content_family::<ThemeDefsFamily>();
+        // GTW-619: the data-driven attachment items (GTW-549) ride the SAME generic
+        // seam — the ext call claims their dedicated `attachment.ron` compound
+        // extension (files are `assets/content/attachments/*.attachment.ron`), so the
+        // bespoke loader registration + kick-off / resolve / redrive chain is gone.
+        app.register_content_family::<AttachmentsFamily>();
         add_systems(app);
     }
 }

@@ -41,8 +41,10 @@ use serde::Deserialize;
 ///
 /// # What the generic chain guarantees (encoded once, per GTW-570 C2)
 ///
-/// - headless (`Option<Res<AssetServer>>`) no-op — a `MinimalPlugins` app
-///   registers nothing and never panics;
+/// - headless (`Option<Res<AssetServer>>`) fallback — a `MinimalPlugins` app
+///   registers no chain (no loader, no systems, no handle), never panics, and
+///   seeds `Registry::default()` instead (the GTW-629 rider), so a
+///   presence-gated host flow still releases;
 /// - fail-closed on a `Failed` folder — `warn!` + an EMPTY registry (ADR-0003),
 ///   so a presence-gated `Load` flow is never stranded;
 /// - never-publish-partial — while ANY matching-type member is absent from its

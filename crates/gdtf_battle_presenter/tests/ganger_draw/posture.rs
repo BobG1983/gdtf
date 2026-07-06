@@ -58,8 +58,8 @@ fn atlas_index_of_sim(app: &mut App, sim: Entity) -> Option<usize> {
 ///   brightens it — both on the SAME presenter sprite, each a distinct, expected-direction
 ///   re-tint.
 ///
-/// This pins `reframe_ganger_sprites` + `stance_aiming_tint` on the real path: deleting
-/// the reframe system (or no-opping its atlas/color writes) FAILS this test.
+/// This pins `resolve_ganger_appearance` + its tint composition on the real path: deleting
+/// the appearance resolver (or no-opping its atlas/color writes) FAILS this test.
 #[test]
 fn changed_facing_reframes_and_stance_aiming_retints_the_same_sprite() {
     let mut app = headless_renderer_app();

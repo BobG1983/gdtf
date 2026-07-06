@@ -1,7 +1,6 @@
-//! Draw-side unit tests: the facing map, the atlas-index sum, the role table, the
-//! per-ganger tints, and the character-roles hot-reload re-index.
+//! Draw-side unit tests: the facing map, the atlas-index sum, the role table, and the
+//! per-ganger tints.
 
-use bevy::{ecs::system::RunSystemOnce, image::TextureAtlas, prelude::*};
 use gdtf_battle_sim::{
     ganger::Facing,
     prelude::{Direction, Faction, LifeState},
@@ -9,9 +8,7 @@ use gdtf_battle_sim::{
 
 use super::super::{
     frame::{FacingFrame, atlas_index, facing_frame},
-    reframe::reindex_ganger_sprites_on_character_roles_change,
     roles::CharacterRoles,
-    sprite_map::{GangerSprite, GangerSprites},
     tint::{faction_tint, ganger_tint},
 };
 use crate::TileIndex;
@@ -154,101 +151,5 @@ fn faction_tints_are_distinct() {
     );
 }
 
-/// C10(c): the ganger re-index re-indexes a MAPPED ganger sprite's atlas index to the new
-/// `CharacterRoles` base when the table hot-reloads — driven through the REAL registered
-/// system (`reindex_ganger_sprites_on_character_roles_change`) via `run_system_once`.
-///
-/// A presenter sprite carrying a `TextureAtlas` (index seeded at the OLD base) is mapped to
-/// a sim ganger (`Faction` 0, facing East). After overwriting `CharacterRoles` with a new
-/// faction-0 base and running the system, the sprite's atlas index is the NEW
-/// `atlas_index(&new_roles, faction_0, East)` — proving the re-index reads the CURRENT sim
-/// state against the freshly-reloaded table.
-///
-/// Pin-discriminating: dropping the re-index leaves the sprite on the OLD base+frame index;
-/// re-tinting instead of re-indexing would not move the atlas index.
-#[test]
-fn character_roles_change_reindexes_mapped_ganger_sprite() {
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
-
-    // Seed a starting CharacterRoles (faction-0 base 10) and a matching sprite index.
-    let old_roles = CharacterRoles {
-        faction_0: TileIndex::new(10),
-        faction_1: TileIndex::new(40),
-    };
-    let faction = Faction::new(0);
-    let facing = Facing::new(Direction::East);
-    let old_index = atlas_index(&old_roles, faction, facing);
-
-    // The PRESENTER sprite: a `Sprite` carrying a `TextureAtlas` at the OLD index, tagged
-    // `GangerSprite`. Its layout handle is a throwaway default (the re-index only mutates
-    // `texture_atlas.index`, never the layout). A recognizable tint lets the "re-index ONLY,
-    // never re-tint" clause be checked afterward.
-    let sim_entity_placeholder = app.world_mut().spawn_empty().id();
-    let original_color = Color::srgb(0.25, 0.5, 0.75);
-    let sprite = Sprite {
-        texture_atlas: Some(TextureAtlas {
-            layout: Handle::default(),
-            index:  old_index,
-        }),
-        color: original_color,
-        ..Sprite::default()
-    };
-    let presenter = app
-        .world_mut()
-        .spawn((
-            sprite,
-            GangerSprite {
-                entity: sim_entity_placeholder,
-            },
-        ))
-        .id();
-
-    // The SIM ganger: faction + facing only (the fields the re-index reads).
-    let sim = app.world_mut().spawn((faction, facing)).id();
-
-    // Map sim -> presenter, and install the OLD roles.
-    let mut sprites = GangerSprites::default();
-    sprites.insert(sim, presenter);
-    app.world_mut().insert_resource(sprites);
-    app.world_mut().insert_resource(old_roles);
-
-    // Hot-reload: overwrite CharacterRoles with a NEW, distinct faction-0 base.
-    let new_roles = CharacterRoles {
-        faction_0: TileIndex::new(120),
-        faction_1: TileIndex::new(40),
-    };
-    let new_index = atlas_index(&new_roles, faction, facing);
-    assert_ne!(
-        new_index, old_index,
-        "precondition: the new base must move the index"
-    );
-    app.world_mut().insert_resource(new_roles);
-
-    // Run the REAL registered re-index system once.
-    let result = app
-        .world_mut()
-        .run_system_once(reindex_ganger_sprites_on_character_roles_change);
-    assert!(result.is_ok(), "the re-index system must run cleanly");
-
-    let sprite = app
-        .world()
-        .entity(presenter)
-        .get::<Sprite>()
-        .and_then(|s| s.texture_atlas.as_ref().map(|a| a.index));
-    assert_eq!(
-        sprite,
-        Some(new_index),
-        "a CharacterRoles hot-reload must re-index the mapped ganger sprite to the new base",
-    );
-
-    // The re-index must NOT touch the tint (the life/stance/aiming tint is owned elsewhere).
-    assert_eq!(
-        app.world()
-            .entity(presenter)
-            .get::<Sprite>()
-            .map(|s| s.color),
-        Some(original_color),
-        "the re-index must preserve the existing tint (re-index ONLY)",
-    );
-}
+// The CharacterRoles hot-reload restamp is the appearance resolver's roles-change driver
+// since GTW-631 — pinned in [`super::resolve`], not here.
