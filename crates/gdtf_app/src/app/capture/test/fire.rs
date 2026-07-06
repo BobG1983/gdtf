@@ -4,8 +4,7 @@
 // The parse cores + the fire system are not re-exported from `mod.rs` (only
 // `DevCapturePlugin` is, for the binary), so reach them through their home submodules.
 use super::super::{
-    plugin::FireConfig,
-    trigger_config::{FireAtFrame, FireModeOverride},
+    trigger_config::{FireAtFrame, FireConfig, FireModeOverride},
     triggers::trigger_fire_at_frame,
 };
 

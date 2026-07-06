@@ -1,13 +1,10 @@
 //! Screenshot-capture env config: the frame parse, the multi-frame schedule, the
-//! `capture_path` gate, the `.fNN` naming, and the `from_env` wiring.
+//! capture-path gate, and the `.fNN` naming. The env SNAPSHOT + resolution (and its
+//! GTW-590 loud diagnostics) are pinned by the sibling `resolve` test module.
 
 // `CaptureFrame` etc. + the pure parse cores are not re-exported from `mod.rs` (only
 // `DevCapturePlugin` is, for the binary), so reach them through their home submodules.
-use super::super::{
-    DevCapturePlugin,
-    capture_config::{CaptureFrame, CaptureFrames, capture_path, frame_path, parse_capture_path},
-    trigger_config::{FallAtFrame, FireAtFrame},
-};
+use super::super::capture_config::{CaptureFrame, CaptureFrames, frame_path, parse_capture_path};
 
 /// `CaptureFrame::DEFAULT` is 15 frames and `Default` agrees with it — the wait the
 /// affordance uses when `GDTF_CAPTURE_FRAME` is unset, so the UI layout flushes before
@@ -111,27 +108,18 @@ fn capture_path_gate_rejects_empty() {
     );
 }
 
-/// `DevCapturePlugin::from_env` defers to the env-var gates: capture is enabled exactly
-/// when [`capture_path`] returns a path, and a [`CaptureFrames`] schedule is configured
-/// iff enabled. Reading via the real `from_env` path keeps the assertion honest without
-/// injecting or mutating state.
-///
-/// `capture_enabled` / `capture_frames` / `fire_frame` are `#[cfg(test)]` inherent
-/// surface (absent from the binary build, keeping it `dead_code`-clean), so this test
-/// reaches them directly.
+/// The GTW-590 activation-log schedule rendering: [`CaptureFrames`] `Display`s as the
+/// bare comma list QA typed into `GDTF_CAPTURE_FRAMES`, so the `dev-capture: capture
+/// ON -> path at BattleRunning frame(s) 10,60,150,300` line echoes the configuration
+/// back verbatim.
 #[test]
-fn from_env_capture_enabled_matches_the_gate() {
-    let plugin = DevCapturePlugin::from_env();
+fn capture_frames_display_is_the_comma_list() {
+    let frames = CaptureFrames::parse(Some("60, 10 ,300,150"), CaptureFrame::DEFAULT);
+    assert_eq!(frames.to_string(), "10,60,150,300", "sorted comma list");
+    let single = CaptureFrames::parse(None, CaptureFrame::parse(Some("9")));
     assert_eq!(
-        plugin.capture_enabled(),
-        capture_path().is_some(),
-        "from_env capture must activate exactly when GDTF_CAPTURE_PATH is set",
+        single.to_string(),
+        "9",
+        "single-frame schedule renders bare"
     );
-    // When capture is enabled, a frame schedule is configured; when inert, none is.
-    assert_eq!(plugin.capture_enabled(), plugin.capture_frames().is_some());
-    // The fire trigger is independent — its `Option` mirrors the GDTF_FIRE_AT_FRAME gate.
-    assert_eq!(plugin.fire_frame(), FireAtFrame::from_env());
-    // GTW-529 — the fall trigger is likewise independent; its `Option` mirrors the
-    // GDTF_FALL_AT_FRAME gate.
-    assert_eq!(plugin.fall_frame(), FallAtFrame::from_env());
 }

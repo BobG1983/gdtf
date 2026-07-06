@@ -10,7 +10,17 @@ gdtf_app = { path = "../../crates/gdtf_app" }
 # Bevy dynamic linking for fast dev builds; chains through to gdtf_app -> bevy.
 # Enable for non-release builds (e.g. `cargo run --features dynamic_linking`);
 # leave off for `--release` so it never ships in release artifacts.
-dynamic_linking = ["gdtf_app/dynamic_linking"]
+#
+# GTW-590: the dev flow ALSO folds in `gdtf_app/dev_capture`, so every dynamic-linked
+# dev invocation (`cargo run/drun/dbuild`, the dclippy/dtest gate suite) compiles the
+# QA capture affordance in and the pinned QA repro
+# (`GDTF_AUTOBATTLE=1 GDTF_CAPTURE_PATH=... cargo run -p grimdark_turfwar --features
+# dynamic_linking`) works verbatim — no separate feature to remember. Before the fold
+# the capture env vars were SILENTLY ignored on that exact invocation (the GTW-590
+# symptom: four QA runs, zero PNGs, zero log lines). Release / CI static builds never
+# enable `dynamic_linking`, so the capture code still never reaches them; the capture
+# module stays additionally `debug_assertions`-gated at its wiring site.
+dynamic_linking = ["gdtf_app/dynamic_linking", "gdtf_app/dev_capture"]
 # DEV / LOCAL-only asset hot-reload; chains through to gdtf_app -> bevy/file_watcher.
 # Enable locally (e.g. `cargo run --features dynamic_linking,file_watcher`) to make
 # editing a loose asset on disk live-reload it; never enabled for release/CI.
