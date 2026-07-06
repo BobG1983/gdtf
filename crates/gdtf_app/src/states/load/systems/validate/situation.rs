@@ -10,7 +10,7 @@ use gdtf_assets::{
     ReferenceKeyScheme,
 };
 use gdtf_battle_sim::{
-    FieldDefRegistry, ganger::GangRegistry, level::UuidThemeRegistry,
+    effects::fields::FieldDefRegistry, ganger::GangRegistry, level::UuidThemeRegistry,
     terrain::def::TerrainDefRegistry,
 };
 

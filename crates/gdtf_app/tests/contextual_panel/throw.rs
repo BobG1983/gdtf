@@ -4,7 +4,9 @@ use bevy::{ecs::entity::Entity, prelude::*};
 use gdtf_app::test_support::ThrowGrenadeButton;
 use gdtf_battle_input::{InspectTarget, SelectedShooter, contextual::ContextualActSystems};
 use gdtf_battle_sim::{
-    Cell, CellLevel, Faction, Level, TrajectoryStyle, WieldedBy, acts::ThrowGrenadeRequested,
+    acts::ThrowGrenadeRequested,
+    prelude::{Cell, CellLevel, Faction, Level},
+    weapon::{TrajectoryStyle, WieldedBy},
 };
 use gdtf_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed};
 

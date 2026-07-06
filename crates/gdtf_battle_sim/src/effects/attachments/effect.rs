@@ -78,7 +78,7 @@ pub enum AttachmentEffect {
     Aim(AimDelta),
     /// **Stability** — a bipod / brace that adds a graduated per-item
     /// [`WeaponBraceBonus`] of §1a stability-score points (the brace seam — an additive
-    /// stability contribution, the [`SuppressionStability`](crate::SuppressionStability) /
+    /// stability contribution, the [`SuppressionStability`](crate::stability::SuppressionStability) /
     /// emplacement precedent). GRADUATED, not the boolean [`Brace`](AttachmentEffect::Brace)
     /// tag — a per-item magnitude.
     Stability(WeaponBraceBonus),

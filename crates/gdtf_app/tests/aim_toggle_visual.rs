@@ -25,8 +25,11 @@ use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
 use gdtf_app::test_support::{AimToggleButton, AppState, BattleScapeState, RunningState};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    Aiming, Cell, CellLevel, Faction, Level, Position, injuries::InjuryRegistry,
-    tuning::CombatTuning, weapon::WeaponRegistry,
+    ganger::Aiming,
+    injuries::InjuryRegistry,
+    prelude::{Cell, CellLevel, Faction, Level, Position},
+    tuning::CombatTuning,
+    weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{SwitchState, theme::default_theme};

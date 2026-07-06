@@ -1,5 +1,5 @@
 //! [`BattleSimPlugin`] — the thin app-side glue that drives the SIM-OWNED
-//! `gdtf_battle_sim::BattleSimPlugin` across the battle lifecycle (E10.5 / GTW-207).
+//! `gdtf_battle_sim::battle::BattleSimPlugin` across the battle lifecycle (E10.5 / GTW-207).
 //!
 //! It is the VIEW-side seam (`docs/decisions/0001-rust-bevy-rewrite.md`: the model is
 //! the authoritative render-free sim, consumed ONE-WAY by the app). The sim owns its
@@ -13,7 +13,7 @@
 //! consumed here).
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{BattleSimPlugin as SimBattleSimPlugin, occupancy_sync::SimSystems};
+use gdtf_battle_sim::{battle::BattleSimPlugin as SimBattleSimPlugin, occupancy_sync::SimSystems};
 
 use crate::states::{
     BattleScapeState, GameState,
@@ -25,12 +25,12 @@ use crate::states::{
     },
 };
 
-/// Drives the sim-owned `gdtf_battle_sim::BattleSimPlugin` across the app's battle
+/// Drives the sim-owned `gdtf_battle_sim::battle::BattleSimPlugin` across the app's battle
 /// lifecycle.
 ///
 /// Wiring (all additive — it touches no presenter / camera / window / input):
 ///
-/// 1. Adds [`gdtf_battle_sim::BattleSimPlugin`](SimBattleSimPlugin) — the ONE plugin
+/// 1. Adds [`gdtf_battle_sim::battle::BattleSimPlugin`](SimBattleSimPlugin) — the ONE plugin
 ///    that wires the whole sim runtime (bundling `OccupancyMaintenancePlugin` +
 ///    `SimActsPlugin`, registering the three lifecycle messages, and adding the sim's
 ///    setup / teardown systems in `SimSystems::Simulate`).

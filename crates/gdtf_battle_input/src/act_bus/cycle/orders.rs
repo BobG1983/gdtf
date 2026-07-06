@@ -1,6 +1,6 @@
 //! The authored cyclic orders + the single step-and-wrap helper.
 
-use gdtf_battle_sim::{Direction, StanceKind};
+use gdtf_battle_sim::prelude::{Direction, StanceKind};
 
 /// The authored facing-cycle order — the 8 [`Direction`]s in cardinal-compass order
 /// with wrap (`North` → `NorthEast` → ... → `NorthWest` → `North`).

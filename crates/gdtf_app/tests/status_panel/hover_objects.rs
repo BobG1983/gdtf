@@ -6,8 +6,10 @@ use gdtf_app::test_support::{
     InspectObjectProtection, InspectObjectText, InspectPanelRoot, InspectStatBlockHost,
 };
 use gdtf_battle_sim::{
-    ArmorHardness, ArmorProtection, Cell, CellLevel, CoverEntry, CoverHp, CoverLedger, Destroyed,
-    HeightBand, Level, OccupancyGrid, TerrainKind,
+    armor::{ArmorHardness, ArmorProtection},
+    cover::{CoverEntry, CoverHp, CoverLedger, Destroyed, HeightBand},
+    occupancy::TerrainKind,
+    prelude::{Cell, CellLevel, Level, OccupancyGrid},
 };
 
 use super::{harness::*, hover_harness::*};

@@ -2,10 +2,10 @@
 //!
 //! [`update_weapon_panel`] reads [`Res<SelectedShooter>`](gdtf_battle_input::SelectedShooter),
 //! resolves it to the selected ganger [`Entity`], then resolves that ganger's WIELDED
-//! WEAPON ENTITY through `ganger → `[`Wields`](gdtf_battle_sim::Wields)` → the weapon
+//! WEAPON ENTITY through `ganger → `[`Wields`](gdtf_battle_sim::weapon::Wields)` → the weapon
 //! entity` (GTW-323 slice 3, ADR-0004 — the weapon stats live on the related weapon
 //! entity, not the ganger), and reads the WEAPON entity's
-//! [`WeaponName`](gdtf_battle_sim::WeaponName) + [`Magazine`](gdtf_battle_sim::Magazine)
+//! [`WeaponName`](gdtf_battle_sim::weapon::WeaponName) + [`Magazine`](gdtf_battle_sim::magazine::Magazine)
 //! (both `Option` — a weapon may carry no magazine). It MUTATES the panel widgets in place
 //! ([[ui-mutate-not-respawn]]): it sets the name text, the magazine `"cur/max"` text, and
 //! reveals / hides the content column + the Reload button by the rules in AC5 / AC6 / AC9.
@@ -18,7 +18,10 @@
 
 use bevy::{prelude::*, ui::Display};
 use gdtf_battle_input::SelectedShooter;
-use gdtf_battle_sim::{Magazine, MeleeWeapon, WeaponName, WieldedBy, Wields};
+use gdtf_battle_sim::{
+    magazine::Magazine,
+    weapon::{MeleeWeapon, WeaponName, WieldedBy, Wields},
+};
 
 use crate::states::running::game::battlescape::weapon_panel::components::{
     ReloadButton, WeaponContent, WeaponMagazineText, WeaponNameText,

@@ -4,9 +4,12 @@ use bevy::{ecs::entity::Entity, prelude::*, state::state::State, ui::Val};
 use gdtf_app::test_support::{AppState, BattleScapeState, InspectPanelRoot, RunningState};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    Cell, CellLevel, Faction, GangerName, Hp, HpMax, InflictedInjuries, InflictedWounds, Level,
-    LifeState, Position, Stance, StanceKind, Tu, TuMax, Wounds, WoundsMax,
-    injuries::InjuryRegistry, tuning::CombatTuning, weapon::WeaponRegistry,
+    ganger::{GangerName, Hp, HpMax, TuMax, Wounds, WoundsMax},
+    inflicted_wound::InflictedWounds,
+    injuries::{InflictedInjuries, InjuryRegistry},
+    prelude::{Cell, CellLevel, Faction, Level, LifeState, Position, Stance, StanceKind, Tu},
+    tuning::CombatTuning,
+    weapon::WeaponRegistry,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{ProgressBarFill, theme::default_theme};

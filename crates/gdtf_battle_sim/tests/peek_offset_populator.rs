@@ -1,6 +1,6 @@
 //! GTW-406 — the automatic positional [`PeekOffset`] populator, driven END-TO-END on
 //! the REAL [`sync_peek_offsets`] system and the REAL
-//! [`has_los`](gdtf_battle_sim::has_los) / [`has_los_peeking`](gdtf_battle_sim::has_los_peeking)
+//! [`has_los`](gdtf_battle_sim::los::has_los) / [`has_los_peeking`](gdtf_battle_sim::los::has_los_peeking)
 //! consumer.
 //!
 //! Proves the producer half of the GTW-393 wall-peek seam:
@@ -33,14 +33,15 @@ use bevy::{
     prelude::{IntoScheduleConfigs, MinimalPlugins},
 };
 use gdtf_battle_sim::{
-    Direction, Facing, Faction, Position, Stance, StanceKind,
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    ganger::Facing,
     los::{Observer, PeekOffset, Target, has_los, has_los_peeking},
     metric::{Cell, CellLevel, Level},
     occupancy::{OccupancyGrid, StairEyeOffset, TerrainKind},
     occupancy_sync::{CoverDestroyed, sync_destroyed_cover},
     peek_sync::{peek_population_needed, sync_peek_offsets},
+    prelude::{Direction, Faction, Position, Stance, StanceKind},
     surface::SurfaceGrid,
     test_support::GangerEntityBuilder,
     tuning::CombatTuning,

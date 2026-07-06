@@ -4,11 +4,12 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
-    Aiming, Facing, Stance, StanceKind,
     acts::{
         AimRequest, EndTurnRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
         SetStanceRequested,
     },
+    ganger::{Aiming, Facing},
+    prelude::{Stance, StanceKind},
 };
 
 use super::{ActIntent, ActWriters, PendingActIntent, SelectionCycleReads};
@@ -48,7 +49,7 @@ use crate::{
 /// - [`ActIntent::AimToggle`] emits [`SetAimingRequested`] toggling the actor's
 ///   current [`Aiming`] flag.
 /// - [`ActIntent::FacingCycle`] emits [`SetFacingRequested`] for the next-of-cycle
-///   [`Direction`](gdtf_battle_sim::Direction) ([`cycle::next_facing`]).
+///   [`Direction`](gdtf_battle_sim::ganger::Direction) ([`cycle::next_facing`]).
 /// - [`ActIntent::Fire`] emits the carried [`FireRequested`](gdtf_battle_sim::acts::FireRequested) verbatim — the `can_fire`
 ///   guard already ran at the WRITE site.
 /// - [`ActIntent::Move`] emits the carried [`MoveRequested`](gdtf_battle_sim::acts::MoveRequested) verbatim onto the move

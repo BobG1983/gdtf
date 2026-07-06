@@ -6,7 +6,8 @@ use gdtf_app::test_support::{
 };
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    Cell, CellLevel, Faction, Level, LifeState, Position, Stabilized, Stance, StanceKind,
+    ganger::Stabilized,
+    prelude::{Cell, CellLevel, Faction, Level, LifeState, Position, Stance, StanceKind},
 };
 
 use super::harness::*;

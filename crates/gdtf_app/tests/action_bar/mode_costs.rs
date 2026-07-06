@@ -3,8 +3,11 @@
 use bevy::prelude::*;
 use gdtf_app::test_support::{ModeBurstButton, ModeFullButton, ModeSingleButton};
 use gdtf_battle_sim::{
-    Aiming, Direction, FireMode, FireModeSpec, ModeKind, StanceKind, TuMax, mode_tu_cost,
+    ganger::{Aiming, TuMax},
+    magazine::mode_tu_cost,
+    prelude::{Direction, StanceKind},
     tuning::CombatTuning,
+    weapon::{FireMode, FireModeSpec, ModeKind},
 };
 
 use super::{harness::*, probes::*};

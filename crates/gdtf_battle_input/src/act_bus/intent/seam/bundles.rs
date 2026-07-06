@@ -3,11 +3,12 @@
 
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_sim::{
-    Faction, PlayerFaction, Position,
     acts::{
         EndTurnRequested, FireRequested, MoveRequested, ReloadRequested, SetAimingRequested,
         SetFacingRequested, SetStanceRequested,
     },
+    battle::PlayerFaction,
+    prelude::{Faction, Position},
 };
 
 use crate::selection::cell_order_key;

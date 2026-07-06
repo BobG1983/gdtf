@@ -10,7 +10,7 @@
 //! bevy-traps #1), so every reader guards with `Option<Res<…>>` / `run_if(resource_exists::<…>)`.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Cell, metric::Level};
+use gdtf_battle_sim::{metric::Level, prelude::Cell};
 
 /// The drawable cell the cursor (or the QA capture drive) is currently hovering, if any
 /// (GTW-512 C1.5).

@@ -1,6 +1,6 @@
 //! The INJURY consequence family (GTW-439 C1, palette-ised in GTW-572): the transient flash
 //! for a freshly-inflicted named injury, off the GTW-438
-//! [`InjuryInflicted`](gdtf_battle_sim::InjuryInflicted) boundary message.
+//! [`InjuryInflicted`](gdtf_battle_sim::acts::InjuryInflicted) boundary message.
 //!
 //! The pop renders the authored `popup_text` verbatim in a VALENCE BY SEVERITY — the
 //! [`severity_color`](super::super::palette::severity_color) wound-family amber ramp scaled
@@ -10,9 +10,9 @@
 //! one palette member riding the ramp. It anchors at the wounded ganger's live position
 //! ([`PopAnchor::GangerPosition`], fail-closed). The transient flash is the message's ONLY
 //! presenter job: the durable per-ganger injury LIST is the
-//! [`InflictedInjuries`](gdtf_battle_sim::InflictedInjuries) ledger in the inspect panel.
+//! [`InflictedInjuries`](gdtf_battle_sim::injuries::InflictedInjuries) ledger in the inspect panel.
 
-use gdtf_battle_sim::InjuryInflicted;
+use gdtf_battle_sim::acts::InjuryInflicted;
 
 use super::super::{
     palette::severity_color,
@@ -40,8 +40,10 @@ impl ConsequenceFct for InjuryFct {
 mod test {
     use bevy::prelude::Entity;
     use gdtf_battle_sim::{
-        BodyPart, GainedInjury, InjuryInflicted, InjuryName, InspectText, LogText, PopupText,
-        Severity,
+        acts::InjuryInflicted,
+        armor::BodyPart,
+        injuries::{GainedInjury, InjuryName, InspectText, LogText, PopupText},
+        severity::Severity,
     };
 
     use super::{super::super::pop::ConsequenceFct, InjuryFct, PopAnchor, severity_color};

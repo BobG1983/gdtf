@@ -2,8 +2,8 @@
 //! back; an untagged connect and a wall-stopped miss do not.
 
 use gdtf_battle_sim::{
-    Cell,
     ganger::Direction,
+    prelude::Cell,
     test_support::SituationBuilder,
     weapon::{FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
 };

@@ -1,6 +1,6 @@
 //! Unit tests for the px/coordinate projection surface.
 
-use gdtf_battle_sim::{Cell, Level};
+use gdtf_battle_sim::prelude::{Cell, Level};
 
 use super::super::projection::{
     CELL_PX, GANGER_Z_BIAS, Layer, cell_to_world, cell_to_world_layered, z_for,

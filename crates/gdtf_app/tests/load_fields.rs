@@ -10,7 +10,7 @@
 
 mod load_suite;
 
-use gdtf_battle_sim::{FieldDefRegistry, FieldKey};
+use gdtf_battle_sim::effects::fields::{FieldDefRegistry, FieldKey};
 use gdtf_content_families::FieldsFamily;
 use load_suite::suite::{self, FamilyLoadContract};
 

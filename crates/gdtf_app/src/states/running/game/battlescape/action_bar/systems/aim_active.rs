@@ -22,7 +22,7 @@
 //! ## Sim → switch sync (no feedback loop)
 //!
 //! [`sync_aim_switch_state`] mirrors the selected ganger's
-//! [`Aiming`](gdtf_battle_sim::Aiming) onto the switch's [`SwitchState`](gdtf_ui::SwitchState):
+//! [`Aiming`](gdtf_battle_sim::ganger::Aiming) onto the switch's [`SwitchState`](gdtf_ui::SwitchState):
 //! aiming → [`SwitchState::On`], not-aiming / no-selection → [`SwitchState::Off`]. Writing
 //! [`SwitchState`] alone does NOT repaint the track (`drive_switches` only repaints on a
 //! user click), so this system ALSO re-derives the track color + re-justifies the knob to
@@ -32,7 +32,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_input::{ActIntent, PendingActIntent, SelectedShooter};
-use gdtf_battle_sim::Aiming;
+use gdtf_battle_sim::ganger::Aiming;
 use gdtf_ui::{
     Orientation, Switch, SwitchColors, SwitchOrientation, SwitchState, ToggleFlipped, spawn_switch,
     theme::GdtfTheme,
@@ -159,7 +159,7 @@ type AimSwitchData = (
 type AimSwitchFilter = (With<AimToggleButton>, With<Switch>);
 
 /// Syncs the Aim [`Switch`]'s on/off state + look to the selected ganger's
-/// [`Aiming`](gdtf_battle_sim::Aiming) (GTW-277 / GTW-253).
+/// [`Aiming`](gdtf_battle_sim::ganger::Aiming) (GTW-277 / GTW-253).
 ///
 /// Reads [`Res<SelectedShooter>`](gdtf_battle_input::SelectedShooter); if it holds an
 /// entity whose [`Aiming`] is `true`, the switch is set [`SwitchState::On`]; otherwise —

@@ -24,17 +24,24 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    Aim, Aiming, ArmorIntegrity, BattleGrids, BattleRegistries, BattleSetup, BraceStairCells, Cell,
-    CombatTuning, CoverLedger, Direction, Facing, Faction, GangerStatTuning, InjuryRegistry,
-    InjuryTables, Level, MeleeQuery, MountedQuery, OccupancyGrid, PieceQuery, ShooterQuery,
-    ShotKind, SlabLedger, Stance, StanceKind, SurfaceGrid, TargetQuery, Volley, WeaponQuery, Wears,
-    WearsQuery, WieldsQuery,
-    fire::FireOrder,
-    setup_battle,
+    armor::{ArmorIntegrity, Wears},
+    cover::CoverLedger,
+    fire::{
+        BattleGrids, FireOrder, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, TargetQuery,
+        Volley, WeaponQuery, WearsQuery, WieldsQuery,
+    },
+    ganger::{Aim, Aiming, Facing},
+    injuries::{InjuryRegistry, InjuryTables},
+    prelude::{Cell, Direction, Faction, Level, OccupancyGrid, Stance, StanceKind},
+    resolve_coarse::ShotKind,
+    situation::{BattleRegistries, BattleSetup, setup_battle},
+    slab::{BraceStairCells, SlabLedger},
+    surface::SurfaceGrid,
     test_support::{
         GangerSpawnBuilder, SituationBuilder, injury_rng, key, severity_rng, shot_rng, single_mode,
         test_armor_registry, test_melee_weapon_registry, test_weapon_registry,
     },
+    tuning::{CombatTuning, GangerStatTuning},
 };
 
 /// The shooter's cell and the enemy's cell — a few cells apart, enemy due East.
@@ -181,7 +188,7 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
                 splash:  Vec::new(),
             };
         };
-        gdtf_battle_sim::fire(
+        gdtf_battle_sim::fire::fire(
             shooter,
             FireOrder {
                 mode:         &mode,

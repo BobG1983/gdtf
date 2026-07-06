@@ -1,9 +1,9 @@
 //! The static-battlefield terrain draw (GTW-48 S4 / GTW-218): the first VISUAL slice.
 //!
 //! This module reads the three sim-owned static-map resources — the
-//! [`OccupancyGrid`](gdtf_battle_sim::OccupancyGrid) terrain, the
-//! [`CoverLedger`](gdtf_battle_sim::CoverLedger) cover entries, and the
-//! [`SurfaceGrid`](gdtf_battle_sim::SurfaceGrid) slabs — for the presenter-owned
+//! [`OccupancyGrid`](gdtf_battle_sim::occupancy::OccupancyGrid) terrain, the
+//! [`CoverLedger`](gdtf_battle_sim::cover::CoverLedger) cover entries, and the
+//! [`SurfaceGrid`](gdtf_battle_sim::surface::SurfaceGrid) slabs — for the presenter-owned
 //! [`ActiveLevel`] and spawns one 16x16 top-down terrain [`Sprite`](bevy::sprite::Sprite) per non-empty
 //! `(cell, level)`, choosing each tile's atlas index from a DATA-DRIVEN role table
 //! ([`TileRoles`], loaded from `assets/sprites/tile_roles.spritedef.ron`). It positions each
@@ -18,14 +18,14 @@
 //! # Draw lifecycle
 //!
 //! The initial draw is a ONE-SHOT triggered by draining
-//! [`MessageReader<BattleReady>`](gdtf_battle_sim::BattleReady) — NOT per-frame polling
+//! [`MessageReader<BattleReady>`](gdtf_battle_sim::battle::BattleReady) — NOT per-frame polling
 //! and NOT `Changed<Resource>` (the three grids are mutated in place with no per-cell
 //! change detection). After the initial draw it reacts to exactly two further triggers:
 //!
 //! - an [`ActiveLevel`] change (`ActiveLevel::is_changed`): redraw the new level, the
 //!   off-active-level terrain despawned (the despawn-all-then-respawn path also makes
 //!   the first-ready double-fire idempotent), and
-//! - a [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) message: swap that cover
+//! - a [`CoverDestroyed`](gdtf_battle_sim::occupancy_sync::CoverDestroyed) message: swap that cover
 //!   cell's sprite to the RUBBLE tile.
 //!
 //! It draws NO gangers (S5), NO FX (S6), and reads NO input (S7/S8) — it only REACTS

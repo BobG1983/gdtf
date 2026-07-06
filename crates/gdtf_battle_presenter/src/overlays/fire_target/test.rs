@@ -6,7 +6,7 @@
 //! wires the REAL `FireTargetHighlight` → draw system. These cover the read-seam accessors + the
 //! cost-label format that do not need an app.
 
-use gdtf_battle_sim::{Cell, CellLevel, Level, Tu};
+use gdtf_battle_sim::prelude::{Cell, CellLevel, Level, Tu};
 
 use super::draw::{FireTargetHighlight, cost_label_text};
 

@@ -8,7 +8,7 @@ use bevy::{
     scene::{CommandsSceneExt, bsn, template_value},
 };
 use gdtf_battle_presenter::{ActiveLevel, CELL_PX, WORLD_RENDER_LAYER, cell_to_world};
-use gdtf_battle_sim::{Cell, CellLevel, Level, OccupancyGrid};
+use gdtf_battle_sim::prelude::{Cell, CellLevel, Level, OccupancyGrid};
 
 use crate::selection::resources::{
     SELECTION_TINT, SelectedShooter, SelectionHighlight, grid_extent_i32,
@@ -99,7 +99,7 @@ pub fn update_selection_highlight(
 /// any cell on `level` (e.g. it is on a different storey), so the highlight hides. Bounded by the
 /// 60×60 grid extent.
 fn selected_cell(occupancy: &OccupancyGrid, level: Level, entity: Entity) -> Option<Cell> {
-    use gdtf_battle_sim::{GRID_HEIGHT, GRID_WIDTH};
+    use gdtf_battle_sim::occupancy::{GRID_HEIGHT, GRID_WIDTH};
     for y in 0..grid_extent_i32(GRID_HEIGHT) {
         for x in 0..grid_extent_i32(GRID_WIDTH) {
             let cell = Cell::new(x, y);

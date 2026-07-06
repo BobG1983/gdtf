@@ -28,7 +28,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_input::{InputSystems, dispatch_act_intents};
-use gdtf_battle_sim::BattleInProgress;
+use gdtf_battle_sim::prelude::BattleInProgress;
 use gdtf_ui::themed::UiSystems;
 
 use crate::states::{

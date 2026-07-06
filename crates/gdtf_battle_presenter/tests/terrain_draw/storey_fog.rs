@@ -6,8 +6,12 @@ use bevy::{
 };
 use gdtf_battle_presenter::{ActiveLevel, TerrainFogMaterial, TerrainSprite};
 use gdtf_battle_sim::{
-    BattleInProgress, BattleReady, Cell, CellLevel, CoverLedger, Level, SquadVisibility,
-    SurfaceGrid, TerrainKind, TerrainPlacement,
+    battle::BattleReady,
+    cover::CoverLedger,
+    occupancy::{TerrainKind, TerrainPlacement},
+    prelude::{BattleInProgress, Cell, CellLevel, Level},
+    surface::SurfaceGrid,
+    visibility::SquadVisibility,
 };
 
 use super::harness::*;

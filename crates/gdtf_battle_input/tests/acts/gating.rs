@@ -3,11 +3,11 @@
 
 use gdtf_battle_input::{ActIntent, PendingActIntent, SelectedShooter};
 use gdtf_battle_sim::{
-    Direction, OccupancyGrid, StanceKind,
     acts::{
         EndTurnRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
         SetStanceRequested,
     },
+    prelude::{Direction, OccupancyGrid, StanceKind},
 };
 use gdtf_test_utils::{press_key, press_left, probed};
 

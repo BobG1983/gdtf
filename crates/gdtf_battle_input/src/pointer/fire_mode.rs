@@ -3,16 +3,16 @@
 //!
 //! The selected mode is the per-mode numbers ([`FireModeSpec`]) the next shot fires
 //! with. On selecting an armed ganger it is set to that weapon's
-//! [`FireMode::single`](gdtf_battle_sim::FireMode::single) (the `Single`-kind mode).
+//! [`FireMode::single`](gdtf_battle_sim::weapon::FireMode::single) (the `Single`-kind mode).
 //!
 //! GTW-254 REPLACED the blind cycle (the removed `next_fire_mode` helper + the
 //! fire-mode-cycle key/button) with the `gdtf_app` popup picker, which SETS
 //! [`SelectedFireMode`] directly to a mode read back off the selected weapon's
-//! [`FireMode`](gdtf_battle_sim::FireMode) selector. This module now owns only the
+//! [`FireMode`](gdtf_battle_sim::weapon::FireMode) selector. This module now owns only the
 //! resource + its default-on-select sync ([`sync_fire_mode_on_select`]).
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{FireMode, FireModeSpec, MeleeWeapon, WieldedBy, Wields};
+use gdtf_battle_sim::weapon::{FireMode, FireModeSpec, MeleeWeapon, WieldedBy, Wields};
 
 use crate::SelectedShooter;
 
@@ -25,7 +25,7 @@ use crate::SelectedShooter;
 /// [`GdtfBattleInputPlugin`](crate::GdtfBattleInputPlugin) to a structural
 /// single-shot default ([`Default`]), then RESET by the selection path
 /// ([`sync_fire_mode_on_select`]) to the picked weapon's
-/// [`FireMode::single`](gdtf_battle_sim::FireMode::single), and SET directly by the
+/// [`FireMode::single`](gdtf_battle_sim::weapon::FireMode::single), and SET directly by the
 /// `gdtf_app` popup picker (GTW-254) to a mode read back off the selected weapon.
 ///
 /// `Copy` again — it holds a [`FireModeSpec`], which regained `Copy` once the
@@ -50,10 +50,10 @@ impl Default for SelectedFireMode {
     /// only ever live before any selection.
     fn default() -> Self {
         Self(FireModeSpec::new(
-            gdtf_battle_sim::ModeKind::Single,
-            gdtf_battle_sim::ModeConeMult::new(1.0),
-            gdtf_battle_sim::ModeTuPercent::new(0.0),
-            gdtf_battle_sim::ModeShots::new(1),
+            gdtf_battle_sim::weapon::ModeKind::Single,
+            gdtf_battle_sim::weapon::ModeConeMult::new(1.0),
+            gdtf_battle_sim::weapon::ModeTuPercent::new(0.0),
+            gdtf_battle_sim::weapon::ModeShots::new(1),
         ))
     }
 }

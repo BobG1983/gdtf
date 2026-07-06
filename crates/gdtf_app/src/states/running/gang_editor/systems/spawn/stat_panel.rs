@@ -8,7 +8,10 @@ use bevy::{
     prelude::*,
     ui::{Overflow, Val},
 };
-use gdtf_battle_sim::{DerivedStats, GangerStatTuning, derive_stats};
+use gdtf_battle_sim::{
+    ganger::{DerivedStats, derive_stats},
+    tuning::GangerStatTuning,
+};
 use gdtf_ui::{
     AccordionAnim, AccordionContent, AccordionContentFit, AccordionExpandedVh, AccordionProgress,
     FieldColors, NumericRange, spawn_numeric_field, theme::GdtfTheme,

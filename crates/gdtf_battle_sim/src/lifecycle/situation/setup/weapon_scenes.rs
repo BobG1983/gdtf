@@ -32,7 +32,7 @@ use crate::weapon::{
 /// ([`WeaponSpawnSiblings`]). GTW-549: `pending` carries the resolved
 /// [`AttachmentEffect`](crate::effects::attachments::AttachmentEffect)s of the weapon's fitted attachment
 /// items, composed onto the weapon entity as a [`PendingAttachments`] marker the post-spawn
-/// [`apply_pending_attachments`](crate::apply_pending_attachments) system applies
+/// [`apply_pending_attachments`](crate::equipment::attachments::apply_pending_attachments) system applies
 /// via the [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon) extension.
 pub(super) fn wielded_weapon_scenes(
     weapon: &WeaponBundle,
@@ -62,7 +62,7 @@ pub(super) fn wielded_weapon_scenes(
 /// no-op, per `bevy_scene`'s `impl Scene for Option<S>`). GTW-549: `pending` is composed as a
 /// [`PendingAttachments`] component (an EMPTY marker for a weapon with no attachments — the
 /// application system then no-ops), which the post-spawn
-/// [`apply_pending_attachments`](crate::apply_pending_attachments) system reads
+/// [`apply_pending_attachments`](crate::equipment::attachments::apply_pending_attachments) system reads
 /// to apply each attachment effect via the
 /// [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon) extension — the
 /// mandated post-spawn `EntityCommand` path (the weapon entity's stat components exist once the
@@ -194,7 +194,7 @@ pub(super) fn wielded_melee_weapon_scenes(
 /// GTW-554: `pending` — the melee weapon's slot-gated resolved attachment effects — is
 /// composed as a [`PendingAttachments`] component via [`template_value`] (an EMPTY marker
 /// for a melee weapon with no attachments; the post-spawn
-/// [`apply_pending_attachments`](crate::apply_pending_attachments) system applies each
+/// [`apply_pending_attachments`](crate::equipment::attachments::apply_pending_attachments) system applies each
 /// effect and removes the marker — the exact ranged-weapon path, so melee attachments are
 /// FULLY supported).
 fn wielded_melee_weapon_scene(

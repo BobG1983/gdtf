@@ -6,11 +6,14 @@
 use bevy::prelude::*;
 use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
 use gdtf_battle_sim::{
-    CellLevel, Faction, FireMode, FireModeSpec, Level, ModeKind, PlayerFaction, Position,
-    SlabDestroyed, acts::FireRequested,
+    acts::FireRequested,
+    battle::PlayerFaction,
+    occupancy_sync::SlabDestroyed,
+    prelude::{CellLevel, Faction, Level, Position},
+    weapon::{FireMode, FireModeSpec, ModeKind},
 };
 
-use super::plugin::{FallConfig, FireConfig};
+use super::trigger_config::{FallConfig, FireConfig};
 
 /// At the configured [`FireAtFrame`](super::trigger_config::FireAtFrame) (counted in
 /// [`BattleRunning`](crate::states::BattleScapeState::BattleRunning) frames), makes the selected player
@@ -55,17 +58,34 @@ pub(crate) fn trigger_fire_at_frame(
         // target frame.
         return;
     }
-    // The selected player ganger; bail (no-op) if nothing is selected.
+    // The selected player ganger; bail — LOUDLY (GTW-590 C3: this is the one frame the
+    // scripted shot can happen, so a silent no-op is a dead QA run) — if nothing is
+    // selected.
     let Some(shooter) = **selected else {
+        warn!(
+            "dev-capture: fire trigger at frame {}: no shooter selected; the scripted \
+             shot is skipped",
+            *config.frame,
+        );
         return;
     };
     let Some(player) = player else {
+        warn!(
+            "dev-capture: fire trigger at frame {}: no player faction in the battle; \
+             the scripted shot is skipped",
+            *config.frame,
+        );
         return;
     };
     let player_faction = **player;
     // The shooter's own cell (to pick the NEAREST enemy) + its authored fire-mode selector
     // (consulted only when GDTF_FIRE_MODE overrides the mode).
     let Ok((_, _, shooter_pos, shooter_modes)) = gangers.get(shooter) else {
+        warn!(
+            "dev-capture: fire trigger at frame {}: the selected shooter is not a live \
+             ganger; the scripted shot is skipped",
+            *config.frame,
+        );
         return;
     };
     // The canonical CellLevel accessors through Position's deref (GTW-565).
@@ -91,10 +111,20 @@ pub(crate) fn trigger_fire_at_frame(
         })
         .min_by_key(|(dist_sq, _)| *dist_sq)
     else {
+        warn!(
+            "dev-capture: fire trigger at frame {}: no enemy ganger to target; the \
+             scripted shot is skipped",
+            *config.frame,
+        );
         return;
     };
     let (target_cell, target_level) = enemy_pos.split();
     fires.write(FireRequested::new(shooter, mode, target_cell, target_level));
+    // GTW-590 C3: the fired trigger is as loud as a skipped one.
+    info!(
+        "dev-capture: fire trigger fired at frame {} (mode {:?})",
+        *config.frame, mode.kind,
+    );
 }
 
 /// The authored [`FireModeSpec`] for `kind` on a shooter's optional [`FireMode`] selector,
@@ -110,7 +140,7 @@ fn fire_mode_spec(modes: Option<&FireMode>, kind: ModeKind) -> Option<FireModeSp
 /// under it — storey 1 (the lowest UPPER storey).
 ///
 /// Dropping from storey 1 always lands on the ground (`k == 0` supports unconditionally in
-/// [`resolve_drop`](gdtf_battle_sim::resolve_drop)), so the forced fall is RELIABLE on any
+/// [`resolve_drop`](gdtf_battle_sim::falls::resolve_drop)), so the forced fall is RELIABLE on any
 /// battlefield — it needs no procgen-placed intact slab below. A named newtype so the trigger
 /// never passes a bare storey index (no-bare-types).
 const FALL_TRIGGER_STOREY: Level = Level::new(1);
@@ -132,9 +162,9 @@ const FALL_TRIGGER_STOREY: Level = Level::new(1);
 ///    — the lowest upper storey — as ONE write. This stands the ganger on an upper storey so
 ///    there is a floor beneath it to smash, RELIABLY on any battlefield (the default skirmish
 ///    spawns everyone on the ground), keeping the fall deterministic (same frame ⇒ same fall).
-/// 2. **Smash.** It writes one [`SlabDestroyed`](gdtf_battle_sim::SlabDestroyed) at that SAME
+/// 2. **Smash.** It writes one [`SlabDestroyed`](gdtf_battle_sim::occupancy_sync::SlabDestroyed) at that SAME
 ///    `(cell, level)` — the slab the ganger now stands on. Because this system is ordered
-///    `.before(`[`apply_falls`](gdtf_battle_sim::apply_falls)`)`, the same-frame
+///    `.before(`[`apply_falls`](gdtf_battle_sim::falls::apply_falls)`)`, the same-frame
 ///    `SlabDestroyed` is buffered AND the elevating `Position` write is visible when
 ///    `apply_falls` reads its faller query, so the GTW-523 drop resolves THIS frame (down to
 ///    the ground `k == 0`) and the GTW-524 impact flash fires at the landing — both captured
@@ -170,6 +200,11 @@ pub(crate) fn trigger_fall_at_frame(
         return;
     }
     let Some(player) = player else {
+        warn!(
+            "dev-capture: fall trigger at frame {}: no player faction in the battle; \
+             the scripted fall is skipped",
+            *config.frame,
+        );
         return;
     };
     let player_faction = **player;
@@ -188,9 +223,21 @@ pub(crate) fn trigger_fall_at_frame(
             .map(|(entity, ..)| entity)
             .min()
     }) else {
+        warn!(
+            "dev-capture: fall trigger at frame {}: no player-faction ganger to drop; \
+             the scripted fall is skipped",
+            *config.frame,
+        );
         return;
     };
     let Ok((_, _, mut position)) = gangers.get_mut(faller) else {
+        // Structurally unreachable (the faller came out of this same query), but the
+        // GTW-590 loudness contract forbids a silent one-shot no-op even here.
+        warn!(
+            "dev-capture: fall trigger at frame {}: the chosen faller vanished from the \
+             query; the scripted fall is skipped",
+            *config.frame,
+        );
         return;
     };
     // 1. Elevate: stand the ganger on the lowest upper storey (same cell), so there is a floor
@@ -202,4 +249,10 @@ pub(crate) fn trigger_fall_at_frame(
     // 2. Smash: destroy the slab the ganger now stands on. `apply_falls` (ordered after) reads
     //    this same-frame message + the elevated position and drops the ganger to the ground.
     destroyed.write(SlabDestroyed::new(elevated));
+    // GTW-590 C3: the fired trigger is as loud as a skipped one.
+    info!(
+        "dev-capture: fall trigger fired at frame {}: ganger {faller} elevated to storey {} \
+         and its slab smashed",
+        *config.frame, *FALL_TRIGGER_STOREY,
+    );
 }

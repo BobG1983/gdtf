@@ -1,14 +1,14 @@
 //! The gang SAVE system: a press on the "Save gang" button serializes the edited
 //! [`EditableGang`](super::super::model::EditableGang) into the GTW-415
-//! [`GangRoster`](gdtf_battle_sim::GangRoster) schema and WRITES it to
+//! [`GangRoster`](gdtf_battle_sim::ganger::GangRoster) schema and WRITES it to
 //! `assets/content/gangs/<sanitized_gang_name>.gang.ron` (GTW-429; the stem is sanitized
 //! through the shared GTW-577 [`sanitize_file_stem`](gdtf_assets::sanitize_file_stem) seam;
 //! the extension is DERIVED from `GangsFamily::EXTENSION` since GTW-621 so the write can
 //! never drift from the gangs folder loader's read).
 //!
 //! The save action's live-play trigger (C4): the editor toolbar's [`SaveGangButton`]. A press
-//! projects the model to its sim `(`[`GangName`](gdtf_battle_sim::GangName)`,
-//! `[`GangRoster`](gdtf_battle_sim::GangRoster)`)` via
+//! projects the model to its sim `(`[`GangName`](gdtf_battle_sim::ganger::GangName)`,
+//! `[`GangRoster`](gdtf_battle_sim::ganger::GangRoster)`)` via
 //! [`to_roster`](super::super::model::EditableGang::to_roster) — the SAME def the loader reads,
 //! NOT a parallel schema (C1) — serializes the roster to RON, and writes it under the workspace
 //! assets root the running app loads from, keyed by the gang NAME (the user 2026-07-04 ruling,
@@ -29,7 +29,7 @@ use bevy::{prelude::*, ui::Interaction};
 #[cfg(test)]
 use gdtf_assets::serialize_ron_pretty;
 use gdtf_assets::{ContentFamily, WORKSPACE_ASSETS_ROOT, sanitize_file_stem, write_ron_pretty};
-use gdtf_battle_sim::{GangName, GangRoster};
+use gdtf_battle_sim::ganger::{GangName, GangRoster};
 use gdtf_content_families::GangsFamily;
 
 use crate::states::running::gang_editor::{components::SaveGangButton, model::EditableGang};
@@ -182,8 +182,12 @@ pub(in crate::states::running::gang_editor) fn save_gang_on_press(
 mod tests {
     use gdtf_assets::ContentFamily;
     use gdtf_battle_sim::{
-        Aim, ArmorName, Cool, GangMember, GangName, GangRegistry, GangRoster, GangerName, Grit,
-        Reflexes, Speed, Strength, Toughness, WeaponName, ganger::Luck,
+        armor::ArmorName,
+        ganger::{
+            Aim, Cool, GangMember, GangName, GangRegistry, GangRoster, GangerName, Grit, Luck,
+            Reflexes, Speed, Strength, Toughness,
+        },
+        weapon::WeaponName,
     };
     use gdtf_content_families::GangsFamily;
 

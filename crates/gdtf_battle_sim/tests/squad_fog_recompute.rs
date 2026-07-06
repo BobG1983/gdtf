@@ -3,7 +3,7 @@
 //! `Simulate`-band path.
 //!
 //! Proves the writer system [`recompute_visibility`] is the SOLE
-//! [`SquadVisibility`](gdtf_battle_sim::SquadVisibility) mutator, triggered on every
+//! [`SquadVisibility`](gdtf_battle_sim::visibility::SquadVisibility) mutator, triggered on every
 //! event that can change what the squad sees, and the resource is inserted/removed at the
 //! real battle seams:
 //!
@@ -34,11 +34,11 @@
 
 use bevy::{app::App, asset::AssetPlugin, prelude::MinimalPlugins, scene::ScenePlugin};
 use gdtf_battle_sim::{
-    Faction, LifeState, Position, SquadVisibility, Stance, StanceKind,
     battle::{BattleInProgress, BattleSimPlugin, SetupBattleRequested, TeardownBattleRequested},
     ganger::GangRegistry,
     metric::{Cell, CellLevel, Level},
     occupancy_sync::CoverDestroyed,
+    prelude::{Faction, LifeState, Position, Stance, StanceKind},
     rng::BattleSeed,
     situation::Situation,
     test_support::{
@@ -46,6 +46,7 @@ use gdtf_battle_sim::{
         test_weapon_registry,
     },
     tuning::{CombatTuning, ViewRange},
+    visibility::SquadVisibility,
 };
 
 /// An arbitrary (not shipped tuning) seed for the test battle's RNG stream.

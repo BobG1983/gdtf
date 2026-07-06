@@ -4,8 +4,12 @@
 use bevy::ecs::message::Messages;
 use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
-    BattleInProgress, BattleReady, Cell, CellLevel, CoverDestroyed, CoverLedger, Level,
-    SlabDestroyed, SlabState, SurfaceGrid, TerrainKind, TerrainPlacement,
+    battle::BattleReady,
+    cover::CoverLedger,
+    occupancy::{TerrainKind, TerrainPlacement},
+    occupancy_sync::{CoverDestroyed, SlabDestroyed},
+    prelude::{BattleInProgress, Cell, CellLevel, Level},
+    surface::{SlabState, SurfaceGrid},
 };
 
 use super::harness::*;

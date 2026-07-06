@@ -11,7 +11,7 @@
 //! renders DOWN-screen, matching the top-down battlescape.
 
 use bevy::math::Vec2;
-use gdtf_battle_sim::Cell;
+use gdtf_battle_sim::prelude::Cell;
 
 /// One drawable cell's square edge, in preview WORLD units. A framework layout const (the
 /// no-bare-types clause-4 plumbing carve-out), not a domain value — it only fixes the preview's
@@ -83,7 +83,7 @@ pub(crate) fn uv_to_world(uv: Vec2, scale: f32, pan: Vec2) -> Vec2 {
 #[cfg(test)]
 mod tests {
     use bevy::math::Vec2;
-    use gdtf_battle_sim::Cell;
+    use gdtf_battle_sim::prelude::Cell;
 
     use super::{CELL_WORLD, cell_center_world, uv_to_cell, uv_to_world};
 

@@ -4,8 +4,10 @@ use bevy::{ecs::entity::Entity, prelude::*};
 use gdtf_app::test_support::{EnterEmplacementButton, ExitEmplacementButton};
 use gdtf_battle_input::{SelectedShooter, contextual::ContextualActSystems};
 use gdtf_battle_sim::{
-    Cell, CellLevel, EmplacementOccupant, EmplacementState, Faction, Level, Position,
-    acts::ExitEmplacementRequested, entity::TerrainCell,
+    acts::ExitEmplacementRequested,
+    emplacement::{EmplacementOccupant, EmplacementState},
+    entity::TerrainCell,
+    prelude::{Cell, CellLevel, Faction, Level, Position},
 };
 use gdtf_test_utils::{MessageProbe, advance_until, drain_message_probe, press_ui_button, probed};
 
@@ -29,8 +31,8 @@ fn spawn_emplacement_actor(app: &mut App, x: i32, y: i32, gang: u8) -> Entity {
         .spawn((
             at(x, y),
             Faction::new(gang),
-            gdtf_battle_sim::Tu::new(100),
-            gdtf_battle_sim::TuMax::new(100),
+            gdtf_battle_sim::ganger::Tu::new(100),
+            gdtf_battle_sim::ganger::TuMax::new(100),
         ))
         .id();
     app.world_mut().insert_resource(SelectedShooter::new(actor));

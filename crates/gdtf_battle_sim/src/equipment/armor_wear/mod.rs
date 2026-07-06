@@ -30,7 +30,7 @@
 //! [`Damaged`](ArmorWearOutcome::Damaged) carrying the per-hit integrity delta /
 //! [`Broke`](ArmorWearOutcome::Broke)), which the caller (E3.6's `apply_hit`)
 //! carries unchanged as the hit report's `wear` outcome (GTW-573) — surfaced to the
-//! presenter on [`ShotFired`](crate::ShotFired)`.report` (GTW-313). Pure model
+//! presenter on [`ShotFired`](crate::shot_fired::ShotFired)`.report` (GTW-313). Pure model
 //! logic — no renderer, no pixel.
 
 #[cfg(test)]

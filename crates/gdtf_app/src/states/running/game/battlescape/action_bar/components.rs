@@ -44,11 +44,11 @@ use bevy::prelude::*;
 
 crate::support_item! {
     /// Marks the **Stand** stance-toggle button (GTW-267) — a press pushes a direct
-    /// [`ActIntent::SetStance`](gdtf_battle_input::ActIntent::SetStance)`(`[`StanceKind::Standing`](gdtf_battle_sim::StanceKind::Standing)`)`,
+    /// [`ActIntent::SetStance`](gdtf_battle_input::ActIntent::SetStance)`(`[`StanceKind::Standing`](gdtf_battle_sim::ganger::StanceKind::Standing)`)`,
     /// setting the [`SelectedShooter`](gdtf_battle_input::SelectedShooter)'s posture
     /// directly to standing (NOT a blind cycle). One of the three mutually-exclusive
     /// stance toggles; `sync_stance_buttons_active` marks the one matching the selected
-    /// ganger's current [`Stance`](gdtf_battle_sim::Stance) with
+    /// ganger's current [`Stance`](gdtf_battle_sim::ganger::Stance) with
     /// [`ActiveButton`](gdtf_ui::ActiveButton).
     ///
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
@@ -58,9 +58,9 @@ crate::support_item! {
 
 crate::support_item! {
     /// Marks the **Kneel** stance-toggle button (GTW-267) — a press pushes a direct
-    /// [`ActIntent::SetStance`](gdtf_battle_input::ActIntent::SetStance)`(`[`StanceKind::Crouching`](gdtf_battle_sim::StanceKind::Crouching)`)`,
+    /// [`ActIntent::SetStance`](gdtf_battle_input::ActIntent::SetStance)`(`[`StanceKind::Crouching`](gdtf_battle_sim::ganger::StanceKind::Crouching)`)`,
     /// setting the [`SelectedShooter`](gdtf_battle_input::SelectedShooter)'s posture
-    /// directly to kneeling (the doc's "kneel" = [`StanceKind::Crouching`](gdtf_battle_sim::StanceKind::Crouching)).
+    /// directly to kneeling (the doc's "kneel" = [`StanceKind::Crouching`](gdtf_battle_sim::ganger::StanceKind::Crouching)).
     /// One of the three mutually-exclusive stance toggles.
     ///
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
@@ -70,7 +70,7 @@ crate::support_item! {
 
 crate::support_item! {
     /// Marks the **Prone** stance-toggle button (GTW-267) — a press pushes a direct
-    /// [`ActIntent::SetStance`](gdtf_battle_input::ActIntent::SetStance)`(`[`StanceKind::Prone`](gdtf_battle_sim::StanceKind::Prone)`)`,
+    /// [`ActIntent::SetStance`](gdtf_battle_input::ActIntent::SetStance)`(`[`StanceKind::Prone`](gdtf_battle_sim::ganger::StanceKind::Prone)`)`,
     /// setting the [`SelectedShooter`](gdtf_battle_input::SelectedShooter)'s posture
     /// directly to prone. One of the three mutually-exclusive stance toggles.
     ///
@@ -94,8 +94,8 @@ crate::support_item! {
 crate::support_item! {
     /// Marks the **Single** fire-mode toggle button (GTW-265) — a press sets
     /// [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) directly to the selected
-    /// weapon's [`ModeKind::Single`](gdtf_battle_sim::ModeKind::Single) spec (read back off
-    /// the weapon's [`FireMode`](gdtf_battle_sim::FireMode) selector, never fabricated).
+    /// weapon's [`ModeKind::Single`](gdtf_battle_sim::weapon::ModeKind::Single) spec (read back off
+    /// the weapon's [`FireMode`](gdtf_battle_sim::weapon::FireMode) selector, never fabricated).
     /// One of the (up to three) mutually-exclusive mode toggles in the Mode sub-panel,
     /// REPLACING the GTW-254 popup picker; spawned ONLY when the selected weapon offers
     /// this mode. `sync_mode_buttons_active` marks the live mode with
@@ -109,7 +109,7 @@ crate::support_item! {
 crate::support_item! {
     /// Marks the **Burst** fire-mode toggle button (GTW-265) — a press sets
     /// [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) directly to the selected
-    /// weapon's [`ModeKind::Burst`](gdtf_battle_sim::ModeKind::Burst) spec (read back off
+    /// weapon's [`ModeKind::Burst`](gdtf_battle_sim::weapon::ModeKind::Burst) spec (read back off
     /// the weapon's selector). One of the mutually-exclusive mode toggles, spawned ONLY
     /// when the selected weapon offers Burst.
     ///
@@ -121,7 +121,7 @@ crate::support_item! {
 crate::support_item! {
     /// Marks the **Full-auto** fire-mode toggle button (GTW-265) — a press sets
     /// [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) directly to the selected
-    /// weapon's [`ModeKind::Full`](gdtf_battle_sim::ModeKind::Full) spec (read back off
+    /// weapon's [`ModeKind::Full`](gdtf_battle_sim::weapon::ModeKind::Full) spec (read back off
     /// the weapon's selector). One of the mutually-exclusive mode toggles, spawned ONLY
     /// when the selected weapon offers Full.
     ///

@@ -8,7 +8,10 @@
 
 use bevy::{prelude::*, ui::Val};
 use gdtf_battle_sim::{
-    GangRegistry, ProcgenTuning, UuidThemeRegistry, level::PrefabRegistry, rng::BattleSeed,
+    ganger::GangRegistry,
+    level::{PrefabRegistry, UuidThemeRegistry},
+    procgen::ProcgenTuning,
+    rng::BattleSeed,
 };
 use gdtf_ui::{
     ButtonLabel, spawn_button, spawn_panel,

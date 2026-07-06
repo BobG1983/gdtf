@@ -1,6 +1,6 @@
 //! The BLEEDING consequence family (GTW-302 slice 4, palette-ised in GTW-572): the AMBER
 //! `"Bleeding"` status tag for a ganger the bleed-out clock drained this round, off the
-//! sim's per-tick [`Bleeding`](gdtf_battle_sim::Bleeding) message.
+//! sim's per-tick [`Bleeding`](gdtf_battle_sim::effects::bleed::Bleeding) message.
 //!
 //! The pop sits ALONGSIDE the `read_bleeding` blood flash (the flash is the splash, this is
 //! the labelled tag) and anchors at the ganger's live position — the message carries no
@@ -8,7 +8,7 @@
 //! ganger pops nothing). The flat wound AMBER (not the severity ramp) because the message
 //! carries no severity to ramp by.
 
-use gdtf_battle_sim::Bleeding;
+use gdtf_battle_sim::effects::bleed::Bleeding;
 
 use super::super::{
     palette::{FctValence, valence_color},
@@ -35,7 +35,7 @@ impl ConsequenceFct for BleedingFct {
 #[cfg(test)]
 mod test {
     use bevy::prelude::Entity;
-    use gdtf_battle_sim::Bleeding;
+    use gdtf_battle_sim::effects::bleed::Bleeding;
 
     use super::{
         super::super::pop::ConsequenceFct, BleedingFct, FctValence, PopAnchor, valence_color,

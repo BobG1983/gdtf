@@ -49,7 +49,7 @@ use bevy::{
 use gdtf_battle_presenter::{
     FireTargetHighlight, FireTargetTile, TopDownRendererPlugin, WORLD_RENDER_LAYER,
 };
-use gdtf_battle_sim::{BattleInProgress, Cell, CellLevel, Level, Tu};
+use gdtf_battle_sim::prelude::{BattleInProgress, Cell, CellLevel, Level, Tu};
 use gdtf_test_utils::gpu_adapter_probe;
 
 /// The dark battlefield clear colour the non-target cells read as.

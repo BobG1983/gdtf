@@ -76,10 +76,12 @@ impl Default for GdtfApp {
 ///
 /// The GTW-297 screenshot / visual-QA affordance (`crate::app::capture`) is wired in
 /// beside it, DOUBLE-gated on `cfg!(all(debug_assertions, feature = "dev_capture"))` —
-/// opt-in feature AND debug build — so it never reaches a release artifact and is not
-/// compiled by the default suite. It too is inert at runtime until `GDTF_CAPTURE_PATH`
-/// is set. Paired with the auto-battle affordance, it captures a live battlescape frame
-/// to a PNG unattended (see `crate::app::capture` for the invocation).
+/// dev feature AND debug build — so it never reaches a release artifact (release builds
+/// enable neither). Since GTW-590 the binary's `dynamic_linking` dev feature folds
+/// `dev_capture` in, so every dynamic-linked dev/gate build compiles it. It too is
+/// inert at runtime until `GDTF_CAPTURE_PATH` is set. Paired with the auto-battle
+/// affordance, it captures a live battlescape frame to a PNG unattended (see
+/// `crate::app::capture` for the invocation).
 ///
 /// Takes `&mut App` (the ordinary Bevy app-builder handle, like
 /// [`App::add_plugins`]); this is NOT a registered system or a `&mut World` helper,

@@ -12,7 +12,8 @@ use bevy::{
 };
 use gdtf_battle_presenter::{GangerSprites, Layer, cell_to_world_layered};
 use gdtf_battle_sim::{
-    Cell, CellLevel, Direction, Level, Position, test_support::SituationBuilder,
+    prelude::{Cell, CellLevel, Direction, Level, Position},
+    test_support::SituationBuilder,
 };
 
 use super::harness::*;

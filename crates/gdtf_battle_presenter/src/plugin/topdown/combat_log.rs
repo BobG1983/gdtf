@@ -8,9 +8,17 @@ use bevy::{
     prelude::*,
 };
 use gdtf_battle_sim::{
-    ArmorBroken, BattleInProgress, BleedStarted, DotAfflicted, FallOccurred, FieldAfflicted,
-    FireDeclaration, InjuryInflicted, MeleeStruck, MoveRejected, MovementOccurred, OnDeathOccurred,
-    ReloadResult, SuppressionApplied, TurnStarted,
+    acts::{
+        FireDeclaration, InjuryInflicted, MeleeStruck, MoveRejected, MovementOccurred, ReloadResult,
+    },
+    armor_wear::ArmorBroken,
+    effects::{
+        bleed::BleedStarted, dot::DotAfflicted, fields::FieldAfflicted, on_death::OnDeathOccurred,
+    },
+    falls::FallOccurred,
+    prelude::BattleInProgress,
+    suppression::SuppressionApplied,
+    turn::TurnStarted,
 };
 
 use crate::{

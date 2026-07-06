@@ -15,16 +15,23 @@ use bevy::{
 use gdtf_battle_input::{BoundKey, GdtfBattleInputPlugin, InspectTarget, Keybinds};
 use gdtf_battle_presenter::{ActiveLevel, ViewMode, WorldCamera};
 use gdtf_battle_sim::{
-    BattleInProgress, BattleSeed, Cell, CellLevel, Direction, Faction, FireMode, FireModeSpec,
-    Handedness, Level, LifeState, Magazine, MagazineSize, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, OccupancyGrid, ReloadTu, StanceKind,
     acts::{
         EndTurnRequested, EnterEmplacementRequested, ExecuteDownedRequested,
         ExitEmplacementRequested, FireRequested, MoveRequested, OpenDoorRequested, ReloadRequested,
         SetAimingRequested, SetFacingRequested, SetStanceRequested, SimActsPlugin,
         StabilizeDownedRequested,
     },
+    magazine::{Magazine, ReloadTu},
+    prelude::{
+        BattleInProgress, Cell, CellLevel, Direction, Faction, Level, LifeState, OccupancyGrid,
+        StanceKind,
+    },
+    rng::BattleSeed,
     test_support::{GangerEntityBuilder, TEST_SEED, fight_rng, insert_sim_resources, wield},
+    weapon::{
+        FireMode, FireModeSpec, Handedness, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent,
+    },
 };
 use gdtf_test_utils::{MessageProbePlugin, clear_mouse, press_left, probed};
 

@@ -3,11 +3,11 @@
 
 use bevy::{app::App, prelude::Entity};
 use gdtf_battle_sim::{
-    Accuracy, DamageType, MagazineSize, Silenced, Stable,
     effects::attachments::{AimDelta, AttachmentEffect, ReloadTimeScale, WeaponBraceBonus},
     ganger::Direction,
     magazine::Magazine,
     test_support::SituationBuilder,
+    weapon::{Accuracy, DamageType, MagazineSize, Silenced, Stable},
 };
 
 use super::harness::*;

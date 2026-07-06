@@ -2,7 +2,10 @@
 //! [`SelectedShooter`] once to the deterministic player-faction ganger.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{Faction, PlayerFaction, Position};
+use gdtf_battle_sim::{
+    battle::PlayerFaction,
+    prelude::{Faction, Position},
+};
 
 use crate::selection::{
     order::cell_order_key,

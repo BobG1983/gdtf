@@ -3,7 +3,11 @@
 
 use bevy::{input::gamepad::Gamepad, prelude::*, window::PrimaryWindow};
 use gdtf_battle_presenter::GamepadCursorMoved;
-use gdtf_battle_sim::{Faction, MeleeQuery, Position, WieldedBy, Wields};
+use gdtf_battle_sim::{
+    fire::MeleeQuery,
+    prelude::{Faction, Position},
+    weapon::{WieldedBy, Wields},
+};
 
 use crate::{
     ActIntent, InspectTarget, PendingActIntent,
@@ -99,7 +103,7 @@ pub fn mouse_reclaims_pointer(
 ///
 /// Param-only (`bevy-traps.md` #7): the [`LeftClickReads`] read bundle + read-only
 /// `Query<&Faction>` / `Query<ShooterFireData>` / `Query<&Wields>` + the weapon-magazine query +
-/// the [`MeleeWeapon`](gdtf_battle_sim::MeleeWeapon) marker probe ([`MeleeQuery`] — the fire
+/// the [`MeleeWeapon`](gdtf_battle_sim::weapon::MeleeWeapon) marker probe ([`MeleeQuery`] — the fire
 /// guard's magazine lives on the related RANGED weapon
 /// entity since GTW-323 slice 3, resolved excluding the melee weapon since GTW-505 C5) + the
 /// [`ResMut<SelectedShooter>`] / [`ResMut<PendingActIntent>`] / [`ResMut<InspectTarget>`] /

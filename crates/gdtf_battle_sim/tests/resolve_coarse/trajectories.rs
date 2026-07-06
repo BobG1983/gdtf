@@ -3,11 +3,16 @@
 
 use bevy::prelude::World;
 use gdtf_battle_sim::{
-    ArmorHardness, ArmorProtection, BodyPart, Cell, CombatTuning, ConeAngle, CoverEntry, CoverHp,
-    CoverLedger, Direction, Facing, HeightBand, Level, OccupancyGrid, Position, PriorShots,
-    RecoilClimb, RecoilGrowth, ShotInputs, ShotKind, ShotOutcome, Stance, StanceKind, SurfaceGrid,
-    resolve_coarse,
+    armor::{ArmorHardness, ArmorProtection, BodyPart},
+    cone::{ConeAngle, PriorShots},
+    cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    ganger::Facing,
+    prelude::{Cell, Direction, Level, OccupancyGrid, Position, Stance, StanceKind},
+    resolve_coarse::{ShotInputs, ShotKind, ShotOutcome, resolve_coarse},
+    stability::RecoilGrowth,
+    surface::SurfaceGrid,
     test_support::{key, shot_rng},
+    tuning::{CombatTuning, RecoilClimb},
 };
 
 use super::harness::*;
@@ -171,7 +176,7 @@ fn shot_outcome_variants_construct_and_inspect() {
         level:      Level::new(2),
         body_part:  Some(BodyPart::Torso),
         band:       HeightBand::Mid,
-        muzzle:     gdtf_battle_sim::SimPos::new(2.5, 2.5, 0.5),
+        muzzle:     gdtf_battle_sim::metric::SimPos::new(2.5, 2.5, 0.5),
         trajectory: trajectory_unit_x(),
     };
     assert_eq!(ganger.kind, ShotKind::Ganger(entity));
@@ -192,8 +197,10 @@ fn shot_outcome_variants_construct_and_inspect() {
 /// A unit-X `ShotDir` for the type-surface test — built through the public cone
 /// sampler under a zero cone (dead-center on a +X aim axis), so it exercises the
 /// real `ShotDir` constructor rather than a hand-built private value.
-fn trajectory_unit_x() -> gdtf_battle_sim::ShotDir {
-    use gdtf_battle_sim::{SimPos, climb_aim_dir, sample_cone_vector};
+fn trajectory_unit_x() -> gdtf_battle_sim::sample_cone::ShotDir {
+    use gdtf_battle_sim::{
+        central_axis::climb_aim_dir, prelude::SimPos, sample_cone::sample_cone_vector,
+    };
     let mut rng = shot_rng(0);
     let axis = climb_aim_dir(
         SimPos::new(0.0, 0.0, 0.0),

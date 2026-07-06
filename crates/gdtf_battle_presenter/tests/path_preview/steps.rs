@@ -2,7 +2,7 @@
 //! the pooled shrink (C1/C5/C4).
 
 use gdtf_battle_presenter::PathPreview;
-use gdtf_battle_sim::{Cell, CellLevel, Level, Tu};
+use gdtf_battle_sim::prelude::{Cell, CellLevel, Level, Tu};
 
 use super::harness::*;
 

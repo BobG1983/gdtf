@@ -12,7 +12,10 @@ use bevy::{
     scene::ScenePlugin,
     time::TimeUpdateStrategy,
 };
-use gdtf_battle_sim::{Cell, DamageType, Level};
+use gdtf_battle_sim::{
+    prelude::{Cell, Level},
+    weapon::DamageType,
+};
 
 use super::super::{
     projectile::{PendingImpact, ProjectileTravel, ShotProjectile, advance_projectiles},

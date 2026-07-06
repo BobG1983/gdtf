@@ -7,17 +7,33 @@ use bevy::{
     prelude::{Entity, World},
 };
 use gdtf_battle_sim::{
-    Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType,
-    BaseSpread, BattleGrids, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning, CoverLedger,
-    DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, FireModeSpec, Handedness,
-    HandlingProfile, HeightBand, Hp, InflictedWounds, InjuryRegistry, InjuryTables, Kickback,
-    Level, LifeState, Luck, Magazine, MagazineSize, MeleeQuery, ModeConeMult, ModeKind, ModeShots,
-    ModeTuPercent, MountedQuery, OccupancyGrid, PieceQuery, Position, ReloadTu, ShooterQuery,
-    Shooting, ShotKind, Shove, Stable, Stance, StanceKind, SurfaceGrid, Toughness, Tu, TuMax,
-    Volley, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponQuery, WeaponShred,
-    WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds,
-    fire::FireOrder,
+    armor::{
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType, BodyPart, WornBy,
+    },
+    cover::{CoverLedger, HeightBand},
+    fire::{
+        BattleGrids, FireOrder, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, Volley,
+        WeaponQuery, WearsQuery, WieldsQuery,
+    },
+    ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
+    inflicted_wound::InflictedWounds,
+    injuries::{InjuryRegistry, InjuryTables},
+    magazine::{Magazine, ReloadTu},
+    prelude::{
+        Cell, CellLevel, Direction, Level, LifeState, OccupancyGrid, Position, Stance, StanceKind,
+        Tu,
+    },
+    resolve_coarse::ShotKind,
+    slab::BraceStairCells,
+    surface::SurfaceGrid,
     test_support::{GangerEntityBuilder, empty_slab_ledger, injury_rng, severity_rng, shot_rng},
+    tuning::CombatTuning,
+    weapon::{
+        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
+        Handedness, HandlingProfile, Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots,
+        ModeTuPercent, Shove, Stable, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch,
+        WeaponShred, WieldedBy,
+    },
 };
 
 /// The shooter cell — well to the West so the East-facing line of occupants lies
@@ -161,7 +177,7 @@ pub(crate) fn fire_volley(
     /// Declared FIRST in the fn so it precedes the `let`s (`items_after_statements`).
     type FireQueries<'w, 's> = (
         ShooterQuery<'w, 's>,
-        gdtf_battle_sim::TargetQuery<'w, 's>,
+        gdtf_battle_sim::fire::TargetQuery<'w, 's>,
         WearsQuery<'w, 's>,
         PieceQuery<'w, 's>,
         WieldsQuery<'w, 's>,
@@ -185,7 +201,7 @@ pub(crate) fn fire_volley(
     assert!(access.is_ok(), "shooter/target queries must validate");
     let volley = match access {
         Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) => {
-            gdtf_battle_sim::fire(
+            gdtf_battle_sim::fire::fire(
                 shooter,
                 FireOrder {
                     mode:         &mode,
@@ -239,13 +255,15 @@ pub(crate) fn report_struck(volley: &Volley, entity: Entity) -> bool {
 pub(crate) fn applied_on(
     volley: &Volley,
     entity: Entity,
-) -> Option<gdtf_battle_sim::AppliedDamage> {
+) -> Option<gdtf_battle_sim::resolve_and_apply::AppliedDamage> {
     volley
         .reports
         .iter()
         .find(|r| r.kind == ShotKind::Ganger(entity))
         .and_then(|r| match &r.verdict {
-            gdtf_battle_sim::HitVerdict::Ganger(verdict) => Some(verdict.applied),
+            gdtf_battle_sim::resolve_and_apply::HitVerdict::Ganger(verdict) => {
+                Some(verdict.applied)
+            }
             _ => None,
         })
 }

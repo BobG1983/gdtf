@@ -3,8 +3,12 @@
 
 use bevy::prelude::Entity;
 use gdtf_battle_sim::{
-    Faction, Tu, acts::EnterEmplacementRequested, ganger::Direction, metric::CellLevel,
-    terrain::emplacement::EmplacementState, test_support::SituationBuilder,
+    acts::EnterEmplacementRequested,
+    ganger::Direction,
+    metric::CellLevel,
+    prelude::{Faction, Tu},
+    terrain::emplacement::EmplacementState,
+    test_support::SituationBuilder,
 };
 
 use super::harness::*;

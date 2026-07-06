@@ -8,11 +8,11 @@
 //! named posture (NOT a blind cycle), exactly as the three ad-hoc toggles did — so the
 //! `prone_toggle_sets_stance_prone_directly` byte-equal parity is preserved. The active
 //! mark is the widget's own [`ActiveSegment`](gdtf_ui::ActiveSegment) highlight, synced FROM
-//! the selected ganger's [`Stance`](gdtf_battle_sim::Stance).
+//! the selected ganger's [`Stance`](gdtf_battle_sim::ganger::Stance).
 
 use bevy::prelude::*;
 use gdtf_battle_input::{ActIntent, PendingActIntent, SelectedShooter};
-use gdtf_battle_sim::{Stance, StanceKind};
+use gdtf_battle_sim::prelude::{Stance, StanceKind};
 use gdtf_ui::{ActiveSegment, SegmentSelected, SegmentedControl};
 
 use super::stance_panel::{stance_for_index, stance_index};
@@ -52,7 +52,7 @@ pub(in crate::states::running::game::battlescape) fn stance_segment_intent(
 }
 
 /// Drives the Stance control's active SEGMENT from the selected ganger's
-/// [`Stance`](gdtf_battle_sim::Stance) (GTW-267 / GTW-277).
+/// [`Stance`](gdtf_battle_sim::ganger::Stance) (GTW-267 / GTW-277).
 ///
 /// Reads [`Res<SelectedShooter>`](gdtf_battle_input::SelectedShooter); if it holds an entity
 /// with a [`Stance`], the control root's [`ActiveSegment`](gdtf_ui::ActiveSegment) is set to

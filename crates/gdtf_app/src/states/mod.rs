@@ -32,6 +32,13 @@ pub(in crate::states) use intro::IntroScenePlugin;
 
 mod load;
 pub(in crate::states) use load::LoadScenePlugin;
+// GTW-590: extend the GTW-582 re-export ladder one rung further — the
+// `app::capture` loudness pins live OUTSIDE `states`, and must drive their
+// emission asserts through the ONE shared, poison-proof log-capture scaffold
+// (a second CaptureLayer copy would lose the process-global-default race and
+// capture nothing).
+#[cfg(test)]
+pub(crate) use load::hot_reload_test_support;
 // The resolved authored battlefield resource (GTW-205 / E10.3), re-exported here so
 // it is nameable from OUTSIDE `states` — `test_support` widens it to `pub` for the
 // AC7 real-asset harness (`crate::states::LoadedSituation`), and the GTW-223 DEV

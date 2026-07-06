@@ -2,7 +2,6 @@
 //! sanitize, path resolution, the round-trip (C2), and the illegal-cell guard (C3).
 
 use gdtf_battle_sim::{
-    Cell,
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
     level::{
@@ -10,6 +9,7 @@ use gdtf_battle_sim::{
         ThemeUuid,
     },
     metric::{CellLevel, Level},
+    prelude::Cell,
     slab::SlabHp,
     terrain::{
         def::{

@@ -5,14 +5,14 @@
 //!
 //! ## Invocation
 //!
-//! Drive the app into a live battle with the GTW-223 auto-battle affordance, point the
-//! capture at an absolute PNG path, and build with the `dev_capture` feature (a debug
-//! build — the affordance is double-gated on `debug_assertions`):
+//! Drive the app into a live battle with the GTW-223 auto-battle affordance and point
+//! the capture at an absolute PNG path. Since GTW-590 the binary's `dynamic_linking`
+//! dev feature folds `dev_capture` in, so the standard dev invocation captures
+//! verbatim (a debug build — the affordance is double-gated on `debug_assertions`):
 //!
 //! ```text
 //! GDTF_AUTOBATTLE=1 GDTF_CAPTURE_PATH=/abs/out.png \
-//!   cargo run -p grimdark_turfwar \
-//!   --features "grimdark_turfwar/dynamic_linking,gdtf_app/dev_capture"
+//!   cargo run -p grimdark_turfwar --features dynamic_linking
 //! ```
 //!
 //! Optional env vars (all `dev_capture` debug-build only, inert when unset):
@@ -37,14 +37,19 @@
 //! GDTF_AUTOBATTLE=1 GDTF_CAPTURE_PATH=/abs/shot.png \
 //!   GDTF_FIRE_AT_FRAME=8 GDTF_FIRE_MODE=full \
 //!   GDTF_CAPTURE_FRAMES="10,14,18,22,26,30" \
-//!   cargo run -p grimdark_turfwar \
-//!   --features "grimdark_turfwar/dynamic_linking,gdtf_app/dev_capture"
+//!   cargo run -p grimdark_turfwar --features dynamic_linking
 //! ```
 //!
-//! `Read` the PNG(s) to verify the HUD / FX; the app exits on its own.
+//! `Read` the PNG(s) to verify the HUD / FX; the app exits on its own. Every run is
+//! LOUD (GTW-590): activation logs the resolved config (`dev-capture: capture ON ->
+//! ...`), each scheduled frame logs `dev-capture: capturing BattleRunning frame N ->
+//! path`, each write logs bevy's `Screenshot saved to <path>` (or an `error!` on
+//! failure), and any set-but-ineffective env var `warn!`s at startup — so
+//! `grep -i 'capture'` over the run log tells the whole story.
 
 mod capture_config;
 mod plugin;
+mod resolve;
 mod screenshot;
 mod trigger_config;
 mod triggers;

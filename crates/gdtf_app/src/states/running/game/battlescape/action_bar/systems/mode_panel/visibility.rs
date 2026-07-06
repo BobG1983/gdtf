@@ -5,7 +5,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_input::SelectedShooter;
-use gdtf_battle_sim::{FireMode, MeleeWeapon, ModeKind, WieldedBy, Wields};
+use gdtf_battle_sim::weapon::{FireMode, MeleeWeapon, ModeKind, WieldedBy, Wields};
 use gdtf_ui::{Segment, SegmentIndex, set_segment_visible};
 
 use super::order::MODE_ORDER;
@@ -27,8 +27,8 @@ type ModeControlChildren = (Entity, &'static Children);
 /// spawned once by [`spawn_mode_panel`](super::spawn::spawn_mode_panel); on a selection change this system toggles each
 /// segment's [`Display`](bevy::ui::Display) via `gdtf_ui`'s
 /// [`set_segment_visible`](gdtf_ui::set_segment_visible) — `Display::Flex` if the selected
-/// weapon's [`FireMode`](gdtf_battle_sim::FireMode) offers that
-/// [`ModeKind`](gdtf_battle_sim::ModeKind) (so the row shows only the offered set),
+/// weapon's [`FireMode`](gdtf_battle_sim::weapon::FireMode) offers that
+/// [`ModeKind`](gdtf_battle_sim::weapon::ModeKind) (so the row shows only the offered set),
 /// `Display::None` otherwise. The segment [`Entity`] ids stay STABLE across the change. An
 /// UNARMED / cleared selection hides all three. Runs `.after(UiSystems::ApplyTheme)`.
 ///

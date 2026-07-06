@@ -38,7 +38,7 @@ use bevy::{
     prelude::*,
 };
 use gdtf_battle_presenter::{CombatLogEvent, CombatLogSystems};
-use gdtf_battle_sim::BattleInProgress;
+use gdtf_battle_sim::prelude::BattleInProgress;
 
 use crate::states::{
     BattleScapeState,

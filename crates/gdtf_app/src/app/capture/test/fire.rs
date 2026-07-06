@@ -4,8 +4,7 @@
 // The parse cores + the fire system are not re-exported from `mod.rs` (only
 // `DevCapturePlugin` is, for the binary), so reach them through their home submodules.
 use super::super::{
-    plugin::FireConfig,
-    trigger_config::{FireAtFrame, FireModeOverride},
+    trigger_config::{FireAtFrame, FireConfig, FireModeOverride},
     triggers::trigger_fire_at_frame,
 };
 
@@ -30,7 +29,7 @@ fn fire_at_frame_parses_or_disables() {
 /// GTW-306 `GDTF_FIRE_MODE` gate that drives a multi-round capture volley.
 #[test]
 fn fire_mode_override_parses_or_disables() {
-    use gdtf_battle_sim::ModeKind;
+    use gdtf_battle_sim::weapon::ModeKind;
 
     assert_eq!(
         FireModeOverride::parse(Some("single")),
@@ -64,8 +63,10 @@ fn trigger_fires_in_the_overridden_full_mode() {
     use bevy::prelude::*;
     use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
     use gdtf_battle_sim::{
-        Cell, CellLevel, Faction, FireMode, FireModeSpec, Level, ModeConeMult, ModeKind, ModeShots,
-        ModeTuPercent, PlayerFaction, Position, acts::FireRequested,
+        acts::FireRequested,
+        battle::PlayerFaction,
+        prelude::{Cell, CellLevel, Faction, Level, Position},
+        weapon::{FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent},
     };
     use gdtf_test_utils::{MessageProbePlugin, probed};
 
@@ -157,7 +158,9 @@ fn trigger_fire_at_frame_emits_on_the_real_path() {
     use bevy::prelude::*;
     use gdtf_battle_input::{SelectedFireMode, SelectedShooter};
     use gdtf_battle_sim::{
-        Cell, CellLevel, Faction, Level, PlayerFaction, Position, acts::FireRequested,
+        acts::FireRequested,
+        battle::PlayerFaction,
+        prelude::{Cell, CellLevel, Faction, Level, Position},
     };
     use gdtf_test_utils::{MessageProbePlugin, probed};
 

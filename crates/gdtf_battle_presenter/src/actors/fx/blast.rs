@@ -4,14 +4,14 @@
 //! A thrown grenade's damage is applied entirely inside the sim
 //! ([`resolve_blast`](gdtf_battle_sim::shot_pipeline::fire::resolve_blast) folds each covered
 //! ganger through the SAME GTW-541 wound path) — but that fold emits NO
-//! [`ShotFired`](gdtf_battle_sim::ShotFired), so the firing FX pipeline
+//! [`ShotFired`](gdtf_battle_sim::shot_fired::ShotFired), so the firing FX pipeline
 //! ([`spawn_shot_projectiles`](super::projectile::spawn_shot_projectiles) →
 //! [`animate_impact`](super::impact::animate_impact)) never draws anything for it. Like the
 //! GTW-547 on-death explode, the blast would otherwise be an INVISIBLE HP drain (the struck
 //! gangers' wounds tick down via change-detection + the bleed / injury signals, but nothing
 //! reads at the point of detonation). The dedicated [`ThrowResolved`](gdtf_battle_sim::acts::ThrowResolved)
 //! signal the sim emits per resolved throw is the presenter's hook: it carries the arc's LANDING
-//! cell + the grenade's [`DamageType`](gdtf_battle_sim::DamageType).
+//! cell + the grenade's [`DamageType`](gdtf_battle_sim::weapon::DamageType).
 //!
 //! [`read_throw_resolved`] drains that signal and, at the landing cell, SEEDS a
 //! [`PendingImpact`](super::projectile::PendingImpact) — the SAME seam a straight shot's arrived
@@ -51,13 +51,13 @@ use crate::cell_to_world;
 /// [`ThrowResolved`](gdtf_battle_sim::acts::ThrowResolved) (GTW-546).
 ///
 /// Drains [`MessageReader<ThrowResolved>`](gdtf_battle_sim::acts::ThrowResolved); for each
-/// `ThrowResolved { at, damage }` it reconstructs the typed [`Cell`](gdtf_battle_sim::Cell) /
-/// [`Level`](gdtf_battle_sim::Level) from the landing
-/// [`CellLevel`](gdtf_battle_sim::CellLevel) (the `read_melee_resolved` idiom — `at` Derefs to
+/// `ThrowResolved { at, damage }` it reconstructs the typed [`Cell`](gdtf_battle_sim::metric::Cell) /
+/// [`Level`](gdtf_battle_sim::metric::Level) from the landing
+/// [`CellLevel`](gdtf_battle_sim::metric::CellLevel) (the `read_melee_resolved` idiom — `at` Derefs to
 /// `IVec3`; the storey clamps panic-free if impossibly out of range) and SEEDS a
 /// [`PendingImpact`](super::projectile::PendingImpact) at
 /// [`cell_to_world`](crate::cell_to_world)`(cell, level)` carrying the grenade's
-/// [`DamageType`](gdtf_battle_sim::DamageType). The EXISTING
+/// [`DamageType`](gdtf_battle_sim::weapon::DamageType). The EXISTING
 /// [`animate_impact`](super::impact::animate_impact) (registered in the same FX band) picks the
 /// seed up next update and plays that damage type's 3-frame expanding-shockwave impact strip at
 /// the detonation point — the SAME `AoE` hit FX the fire path renders, reused verbatim (no new

@@ -7,7 +7,7 @@
 //! [`spawn_editor_screen`](super::spawn::spawn_editor_screen) so the screen sees the model.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::GangRegistry;
+use gdtf_battle_sim::ganger::GangRegistry;
 
 use crate::states::running::gang_editor::model::EditableGang;
 

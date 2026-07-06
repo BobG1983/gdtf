@@ -3,7 +3,10 @@
 use bevy::{app::App, ecs::message::Messages};
 use gdtf_battle_presenter::ViewMode;
 use gdtf_battle_sim::{
-    BattleInProgress, BattleReady, Cell, CellLevel, CoverLedger, Level, SlabState, SurfaceGrid,
+    battle::BattleReady,
+    cover::CoverLedger,
+    prelude::{BattleInProgress, Cell, CellLevel, Level},
+    surface::{SlabState, SurfaceGrid},
 };
 
 use super::harness::*;

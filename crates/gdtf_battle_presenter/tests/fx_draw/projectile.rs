@@ -6,7 +6,11 @@ use gdtf_battle_presenter::{
     GangerSprites, ProjectileTravel, ShotProjectile, cell_to_world, sim_pos_to_world,
 };
 use gdtf_battle_sim::{
-    BattleInProgress, Cell, DamageType, Level, ShotDir, ShotFired, ShotKind, SimPos,
+    prelude::{BattleInProgress, Cell, Level, SimPos},
+    resolve_coarse::ShotKind,
+    sample_cone::ShotDir,
+    shot_fired::ShotFired,
+    weapon::DamageType,
 };
 
 use super::{harness::*, probes::*};

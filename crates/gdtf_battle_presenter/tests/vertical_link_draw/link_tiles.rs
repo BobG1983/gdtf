@@ -4,7 +4,9 @@
 use bevy::{app::App, prelude::Visibility, sprite::Sprite};
 use gdtf_battle_presenter::{ActiveLevel, TileRoles, VerticalLinkSprite};
 use gdtf_battle_sim::{
-    Cell, CellLevel, Level, LinkKind, VerticalLink, test_support::SituationBuilder,
+    prelude::{Cell, CellLevel, Level},
+    test_support::SituationBuilder,
+    vertical::{LinkKind, VerticalLink},
 };
 
 use super::harness::*;

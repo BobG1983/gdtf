@@ -11,7 +11,7 @@ use gdtf_app::test_support::{
 };
 use gdtf_battle_input::{ActIntent, PendingActIntent, SelectedShooter};
 use gdtf_battle_presenter::WORLD_RENDER_LAYER;
-use gdtf_battle_sim::{Direction, StanceKind};
+use gdtf_battle_sim::prelude::{Direction, StanceKind};
 use gdtf_test_utils::{advance_until, press_ui_button};
 
 use super::{harness::*, probes::*};

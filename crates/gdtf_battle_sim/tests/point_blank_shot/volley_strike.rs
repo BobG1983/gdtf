@@ -7,17 +7,33 @@ use bevy::{
     prelude::{Entity, MinimalPlugins},
 };
 use gdtf_battle_sim::{
-    Accuracy, Aiming, ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType,
-    BaseSpread, BattleGrids, BodyPart, BraceStairCells, Cell, CellLevel, CombatTuning, CoverLedger,
-    DamageProfile, DamageType, Direction, Facing, FatalBias, FireMode, Handedness, HandlingProfile,
-    HeightBand, Hp, InflictedWounds, InjuryRegistry, InjuryTables, Kickback, Level, LifeState,
-    Luck, Magazine, MagazineSize, MeleeQuery, MountedQuery, OccupancyGrid,
-    OccupancyMaintenancePlugin, PieceQuery, Position, ReloadTu, ShooterQuery, Shooting, ShotKind,
-    Shove, SlabLedger, Stable, Stance, StanceKind, SurfaceGrid, TargetQuery, Toughness, Tu, TuMax,
-    Volley, WeaponBundle, WeaponDamage, WeaponName, WeaponPunch, WeaponQuery, WeaponShred,
-    WearsQuery, WieldedBy, WieldsQuery, WornBy, Wounds,
-    fire::FireOrder,
+    armor::{
+        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType, BodyPart, WornBy,
+    },
+    cover::{CoverLedger, HeightBand},
+    fire::{
+        BattleGrids, FireOrder, MeleeQuery, MountedQuery, PieceQuery, ShooterQuery, TargetQuery,
+        Volley, WeaponQuery, WearsQuery, WieldsQuery,
+    },
+    ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
+    inflicted_wound::InflictedWounds,
+    injuries::{InjuryRegistry, InjuryTables},
+    magazine::{Magazine, ReloadTu},
+    occupancy_sync::OccupancyMaintenancePlugin,
+    prelude::{
+        Cell, CellLevel, Direction, Level, LifeState, OccupancyGrid, Position, Stance, StanceKind,
+        Tu,
+    },
+    resolve_coarse::ShotKind,
+    slab::{BraceStairCells, SlabLedger},
+    surface::SurfaceGrid,
     test_support::{injury_rng, severity_rng, shot_rng, single_mode},
+    tuning::CombatTuning,
+    weapon::{
+        Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, Handedness,
+        HandlingProfile, Kickback, MagazineSize, Shove, Stable, WeaponBundle, WeaponDamage,
+        WeaponName, WeaponPunch, WeaponShred, WieldedBy,
+    },
 };
 
 use super::harness::*;
@@ -176,7 +192,7 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
     assert!(access.is_ok(), "shooter/target queries must validate");
     let volley = match access {
         Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) => {
-            gdtf_battle_sim::fire(
+            gdtf_battle_sim::fire::fire(
                 shooter,
                 FireOrder {
                     mode:         &mode,

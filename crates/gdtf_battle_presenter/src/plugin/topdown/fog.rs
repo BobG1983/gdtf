@@ -2,7 +2,7 @@
 //! every drawn tile, expressed as STAGE MEMBERSHIP.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{BattleInProgress, SquadVisibility};
+use gdtf_battle_sim::{prelude::BattleInProgress, visibility::SquadVisibility};
 
 use crate::{PresenterSystems, TerrainFogMaterial, present_fog};
 
@@ -11,8 +11,8 @@ use crate::{PresenterSystems, TerrainFogMaterial, present_fog};
 ///
 /// [`present_fog`] is the terrain VIEW arm of the squad fog
 /// (`docs/combat/visibility.md`): the sim owns the three
-/// [`SquadVisibility`](gdtf_battle_sim::SquadVisibility) states and the
-/// [`recompute_visibility`](gdtf_battle_sim::recompute_visibility) writer (GTW-341); this
+/// [`SquadVisibility`](gdtf_battle_sim::visibility::SquadVisibility) states and the
+/// [`recompute_visibility`](gdtf_battle_sim::visibility::recompute_visibility) writer (GTW-341); this
 /// presenter READS them and modulates the already-drawn layer in place (the rendered layer
 /// IS the fog mask — it never repaints from a snapshot). Actor-sprite visibility is the
 /// ganger-visibility resolver's

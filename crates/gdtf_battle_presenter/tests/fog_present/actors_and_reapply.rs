@@ -3,7 +3,8 @@
 use bevy::prelude::Visibility;
 use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
-    Cell, CellLevel, Direction, Faction, Level, SlabState, SurfaceGrid,
+    prelude::{Cell, CellLevel, Direction, Faction, Level},
+    surface::{SlabState, SurfaceGrid},
     test_support::SituationBuilder,
 };
 

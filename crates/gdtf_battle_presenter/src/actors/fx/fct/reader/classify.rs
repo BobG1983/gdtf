@@ -2,7 +2,10 @@
 //! their labels.
 
 use gdtf_battle_sim::{
-    BodyPart, CellLevel, GangerVerdict, HitReport, HitVerdict, LifeState, Severity,
+    armor::BodyPart,
+    prelude::{CellLevel, LifeState},
+    resolve_and_apply::{GangerVerdict, HitReport, HitVerdict},
+    severity::Severity,
 };
 
 use super::{
@@ -101,10 +104,10 @@ fn ganger_pops(verdict: &GangerVerdict) -> Vec<ClassifiedPop> {
 /// so the two share one spelling of the noun.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StructuralKind {
-    /// A wall / prop piece of cover (a [`ShotKind::Cover`](gdtf_battle_sim::ShotKind::Cover)
+    /// A wall / prop piece of cover (a [`ShotKind::Cover`](gdtf_battle_sim::resolve_coarse::ShotKind::Cover)
     /// outcome).
     Cover,
-    /// A floor / roof slab (a [`ShotKind::Slab`](gdtf_battle_sim::ShotKind::Slab) outcome).
+    /// A floor / roof slab (a [`ShotKind::Slab`](gdtf_battle_sim::resolve_coarse::ShotKind::Slab) outcome).
     Slab,
 }
 
@@ -146,7 +149,7 @@ fn structural_pops(kind: StructuralKind, destroyed: Option<CellLevel>) -> Vec<Cl
     }
 }
 
-/// The structural-family pop for a [`ShotKind::Ground`](gdtf_battle_sim::ShotKind::Ground)
+/// The structural-family pop for a [`ShotKind::Ground`](gdtf_battle_sim::resolve_coarse::ShotKind::Ground)
 /// hit (GTW-386).
 ///
 /// The ground is **damaged, never destroyed** — its accrual is purely cosmetic

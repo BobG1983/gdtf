@@ -2,8 +2,12 @@
 
 use bevy::{app::App, math::Vec3};
 use gdtf_battle_sim::{
-    CellLevel, CombatTuning, CoverLedger, Level, MarchKind, OccupancyGrid, PerStoreyDamage, SimPos,
-    SlabState, SurfaceGrid, VerticalLinkGraph, march_vector,
+    cover::CoverLedger,
+    march::{MarchKind, march_vector},
+    prelude::{CellLevel, Level, OccupancyGrid, SimPos},
+    surface::{SlabState, SurfaceGrid},
+    tuning::{CombatTuning, PerStoreyDamage},
+    vertical::VerticalLinkGraph,
 };
 
 use super::harness::*;

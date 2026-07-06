@@ -12,10 +12,17 @@ use gdtf_battle_input::{
     selection::LeftClickReads,
 };
 use gdtf_battle_sim::{
-    Aiming, CellLevel, Faction, FireMode, FireModeSpec, Handedness, Level, LifeState, Magazine,
-    MagazineSize, MeleeWeapon, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, OccupancyGrid,
-    PlayerFaction, Position, ReloadTu, SquadVisibility, Tu, TuMax, VerticalLinkGraph, WieldedBy,
-    Wields, tuning::CombatTuning,
+    battle::PlayerFaction,
+    ganger::{Aiming, TuMax},
+    magazine::{Magazine, ReloadTu},
+    prelude::{CellLevel, Faction, Level, LifeState, OccupancyGrid, Position, Tu},
+    tuning::CombatTuning,
+    vertical::VerticalLinkGraph,
+    visibility::SquadVisibility,
+    weapon::{
+        FireMode, FireModeSpec, Handedness, MagazineSize, MeleeWeapon, ModeConeMult, ModeKind,
+        ModeShots, ModeTuPercent, WieldedBy, Wields,
+    },
 };
 
 /// The faction the player controls (matches the inserted `PlayerFaction`).

@@ -9,7 +9,7 @@
 //! [`CellLevel`] + the [`Tu`] fire cost) plus this draw system; the INPUT crate (which alone
 //! may read `SelectedShooter` + `SelectedFireMode` + the hovered cell) decides the fireable
 //! verdict (mirroring `decide_left_click`'s FIRE rung), computes the cost via
-//! [`mode_tu_cost`](gdtf_battle_sim::mode_tu_cost), and POPULATES this resource (clearing it
+//! [`mode_tu_cost`](gdtf_battle_sim::magazine::mode_tu_cost), and POPULATES this resource (clearing it
 //! off any non-fireable hover). Selection / fire-mode / hover NEVER enter the sim, and the
 //! dependency direction stays `input → presenter → sim` — the SAME shape as the
 //! [`PathPreview`](crate::PathPreview) seam.
@@ -34,7 +34,7 @@
 //! the helper owns the `set_if_neq` visibility flips.
 
 use bevy::{camera::visibility::RenderLayers, prelude::*, text::TextColor};
-use gdtf_battle_sim::{CellLevel, Level, Tu};
+use gdtf_battle_sim::prelude::{CellLevel, Level, Tu};
 
 use crate::{
     ActiveLevel, CELL_PX, Layer, WORLD_RENDER_LAYER, cell_to_world_layered,
@@ -46,7 +46,7 @@ use crate::{
 ///
 /// A named domain value (no-bare-types: the fire-target affordance is a domain value), holding
 /// an `Option<(CellLevel, Tu)>`: [`Some`] when the cursor hovers a fireable enemy (the cell + the
-/// [`mode_tu_cost`](gdtf_battle_sim::mode_tu_cost) the fire would charge), [`None`] when not
+/// [`mode_tu_cost`](gdtf_battle_sim::magazine::mode_tu_cost) the fire would charge), [`None`] when not
 /// hovering a fireable enemy (empty cell / own ganger / non-visible enemy / no selection). OWNED
 /// BY THE PRESENTER so the `input → presenter → sim` direction holds: the draw system READS it;
 /// the input crate's `populate_fire_target` POPULATES it (the
@@ -87,7 +87,7 @@ impl FireTargetHighlight {
     }
 
     /// The fire TU cost on the hovered cell, if any — exactly the
-    /// [`mode_tu_cost`](gdtf_battle_sim::mode_tu_cost) a fire would charge.
+    /// [`mode_tu_cost`](gdtf_battle_sim::magazine::mode_tu_cost) a fire would charge.
     #[must_use]
     pub const fn cost(&self) -> Option<Tu> {
         match self.target {

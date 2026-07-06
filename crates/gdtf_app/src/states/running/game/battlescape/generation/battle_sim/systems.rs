@@ -5,7 +5,7 @@
 //! and the Generation [`GenerationComplete`] marker, and they bridge them to the
 //! SIM-OWNED lifecycle messages ([`SetupBattleRequested`] / [`BattleReady`] /
 //! [`TeardownBattleRequested`]). The actual setup / teardown logic lives in
-//! `gdtf_battle_sim::BattleSimPlugin` — the sim owns its own integration; the app only
+//! `gdtf_battle_sim::battle::BattleSimPlugin` — the sim owns its own integration; the app only
 //! SENDS triggers and GATES on the sim's ready signal.
 //!
 //! Three systems, each in a different schedule slot:

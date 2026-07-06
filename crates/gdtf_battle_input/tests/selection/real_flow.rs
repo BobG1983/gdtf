@@ -4,9 +4,6 @@
 use bevy::{asset::AssetPlugin, input::ButtonInput, prelude::*, scene::ScenePlugin};
 use gdtf_battle_input::GdtfBattleInputPlugin;
 use gdtf_battle_presenter::{ActiveLevel, ViewMode, cell_to_world};
-use gdtf_battle_sim::{
-    BattleInProgress, BattleSimPlugin, Cell, CellLevel, Faction, Level, PlayerFaction,
-};
 // ---------------------------------------------------------------------------------
 // GTW play-test wave 3 (A2 + B) — the REAL battle-setup flow: a `SetupBattleRequested`
 // (NOT a hand-inserted BattleInProgress/PlayerFaction/ganger) auto-selects a player
@@ -20,17 +17,17 @@ use gdtf_battle_sim::{
 // gangers DIRECTLY, bypassing setup — which is exactly the gap that let A2 ship.
 // ---------------------------------------------------------------------------------
 use gdtf_battle_sim::{
-    SetupBattleRequested,
-    armor::{
-        ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
-        ArmorRegistry, ArmorSpec, ArmorType,
-    },
-    ganger::{Aim, Aiming, Direction, Facing, GangerName, Luck, Stance, StanceKind, Toughness},
-    rng::BattleSeed,
-    situation::{GangerSpawn, Situation},
-    test_support::test_weapon_spec,
-    tuning::CombatTuning,
-    weapon::{WeaponName, WeaponRegistry},
+    armor::ArmorFloor, armor::ArmorHardness, armor::ArmorIntegrity, armor::ArmorName,
+    armor::ArmorPiece, armor::ArmorProtection, armor::ArmorRegistry, armor::ArmorSpec,
+    armor::ArmorType, battle::SetupBattleRequested, ganger::Aim, ganger::Aiming, ganger::Direction,
+    ganger::Facing, ganger::GangerName, ganger::Luck, ganger::Stance, ganger::StanceKind,
+    ganger::Toughness, rng::BattleSeed, situation::GangerSpawn, situation::Situation,
+    test_support::test_weapon_spec, tuning::CombatTuning, weapon::WeaponName,
+    weapon::WeaponRegistry,
+};
+use gdtf_battle_sim::{
+    battle::{BattleSimPlugin, PlayerFaction},
+    prelude::{BattleInProgress, Cell, CellLevel, Faction, Level},
 };
 use gdtf_test_utils::press_left;
 

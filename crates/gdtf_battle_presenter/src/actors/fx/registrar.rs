@@ -24,7 +24,7 @@ use bevy::{
     },
     prelude::{App, IntoScheduleConfigs, Update, resource_exists},
 };
-use gdtf_battle_sim::BattleInProgress;
+use gdtf_battle_sim::prelude::BattleInProgress;
 
 use super::roles::EffectRoles;
 use crate::{PresenterSystems, TopDownAtlases};

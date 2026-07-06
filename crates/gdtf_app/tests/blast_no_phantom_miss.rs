@@ -25,10 +25,10 @@ use bevy::prelude::*;
 use gdtf_app::test_support::{AppState, BattleScapeState, CombatLogLine, RunningState};
 use gdtf_battle_presenter::ShotImpactResolved;
 use gdtf_battle_sim::{
-    Cell, CellLevel, Level, Position,
     acts::ThrowGrenadeRequested,
     ganger::{Luck, Tu},
     magazine::{Magazine, ReloadTu},
+    prelude::{Cell, CellLevel, Level, Position},
     test_support::test_weapon_spec,
     weapon::{
         Accuracy, BaseSpread, BlastRadius, DamageType, FatalBias, FireMode, FireModeSpec, HitType,

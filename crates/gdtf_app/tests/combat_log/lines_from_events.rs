@@ -4,8 +4,12 @@ use bevy::{prelude::*, text::TextColor};
 use gdtf_app::test_support::{CombatLogLine, CombatLogRoot};
 use gdtf_battle_presenter::severity_color;
 use gdtf_battle_sim::{
-    BodyPart, Cell, GainedInjury, InjuryInflicted, InjuryName, InspectText, LogText,
-    MovementOccurred, PopupText, Severity, TurnStarted,
+    acts::{InjuryInflicted, MovementOccurred},
+    armor::BodyPart,
+    injuries::{GainedInjury, InjuryName, InspectText, LogText, PopupText},
+    prelude::Cell,
+    severity::Severity,
+    turn::TurnStarted,
 };
 
 use super::harness::*;
@@ -152,7 +156,7 @@ fn a_turn_message_appends_the_player_turn_boundary_line() {
     // "Player". Assert it is present (a live battle always has it) before reading.
     let player = app
         .world()
-        .get_resource::<gdtf_battle_sim::PlayerFaction>()
+        .get_resource::<gdtf_battle_sim::battle::PlayerFaction>()
         .copied();
     assert!(
         player.is_some(),

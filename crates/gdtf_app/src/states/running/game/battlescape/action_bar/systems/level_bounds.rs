@@ -26,7 +26,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_presenter::ActiveLevel;
-use gdtf_battle_sim::MAX_LEVELS;
+use gdtf_battle_sim::metric::MAX_LEVELS;
 use gdtf_ui::DisabledButton;
 
 use crate::states::running::game::battlescape::action_bar::components::{

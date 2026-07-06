@@ -1,7 +1,7 @@
 //! The orthogonal GTW-300 inspect-panel pin effect: its outcome vocabulary, decide, and apply.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::Faction;
+use gdtf_battle_sim::prelude::Faction;
 
 use super::reads::LeftClickReads;
 use crate::InspectTarget;
@@ -22,7 +22,7 @@ pub enum PinOutcome {
     /// PIN the inspect panel to the carried cell — the click landed on COVER (a wall / cover
     /// cell) or an ENEMY fighter. The panel freezes on that cell's occupant / terrain until an
     /// [`Unpin`](PinOutcome::Unpin).
-    Pin(gdtf_battle_sim::CellLevel),
+    Pin(gdtf_battle_sim::metric::CellLevel),
     /// UNPIN the inspect panel — the click landed on an EMPTY in-grid tile; hover resumes.
     Unpin,
     /// KEEP the current pin untouched — the click was on your OWN ganger (a SELECT), a FIRE on
@@ -40,10 +40,10 @@ pub enum PinOutcome {
 /// committed by [`apply_pin`] / [`apply_left_click`](super::apply_left_click) independently (the contract's "composes
 /// correctly"). The pin precedence (each tested against the LIVE hovered cell):
 ///
-/// 1. **PIN to cover** — the cell's [`TerrainKind`](gdtf_battle_sim::TerrainKind) is a wall /
-///    cover ([`is_blocked`](gdtf_battle_sim::OccupancyGrid::is_blocked)) → [`PinOutcome::Pin`].
+/// 1. **PIN to cover** — the cell's [`TerrainKind`](gdtf_battle_sim::occupancy::TerrainKind) is a wall /
+///    cover ([`is_blocked`](gdtf_battle_sim::occupancy::OccupancyGrid::is_blocked)) → [`PinOutcome::Pin`].
 /// 2. **PIN to an enemy** — the cell holds an occupant whose [`Faction`] differs from the
-///    [`PlayerFaction`](gdtf_battle_sim::PlayerFaction) → [`PinOutcome::Pin`]. (So clicking an enemy pins it whether or not the
+///    [`PlayerFaction`](gdtf_battle_sim::battle::PlayerFaction) → [`PinOutcome::Pin`]. (So clicking an enemy pins it whether or not the
 ///    click ALSO fires — the FIRE branch in [`decide_left_click`](super::decide_left_click) is independent.)
 /// 3. **KEEP** — the cell holds one of YOUR OWN gangers (a SELECT) → [`PinOutcome::Keep`]
 ///    (selecting your ganger never disturbs the pin).

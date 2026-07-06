@@ -1,7 +1,10 @@
 //! The deliberate shove ACT — TU-costed and wound-free, gated on adjacency + faction, and
 //! seed-deterministic in its shove/fall outcome.
 
-use gdtf_battle_sim::{CellLevel, OccupancyGrid, SlabState, SurfaceGrid};
+use gdtf_battle_sim::{
+    prelude::{CellLevel, OccupancyGrid},
+    surface::{SlabState, SurfaceGrid},
+};
 
 use super::harness::*;
 

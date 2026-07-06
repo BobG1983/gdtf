@@ -4,8 +4,13 @@
 use bevy::{app::App, ecs::message::Messages};
 use gdtf_battle_presenter::FxTuning;
 use gdtf_battle_sim::{
-    BattleInProgress, BodyPart, Cell, CellLevel, DamageType, Level, LifeState, Position, Severity,
-    ShotDir, ShotFired, ShotKind, SimPos,
+    armor::BodyPart,
+    prelude::{BattleInProgress, Cell, CellLevel, Level, LifeState, Position, SimPos},
+    resolve_coarse::ShotKind,
+    sample_cone::ShotDir,
+    severity::Severity,
+    shot_fired::ShotFired,
+    weapon::DamageType,
 };
 
 use super::{harness::*, probes::*};

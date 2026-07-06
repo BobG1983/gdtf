@@ -3,7 +3,9 @@
 use bevy::{app::App, prelude::Entity};
 use gdtf_battle_presenter::GangerSprites;
 use gdtf_battle_sim::{
-    Cell, CellLevel, Direction, Level, Suppressed, SuppressorCell, test_support::SituationBuilder,
+    ganger::{Suppressed, SuppressorCell},
+    prelude::{Cell, CellLevel, Direction, Level},
+    test_support::SituationBuilder,
 };
 
 use super::{harness::*, probes::*};

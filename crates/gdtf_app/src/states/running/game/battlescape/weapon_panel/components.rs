@@ -108,7 +108,7 @@ crate::support_item! {
 
 crate::support_item! {
     /// Marks the weapon panel's **name** [`Text`](bevy::prelude::Text) line — the selected
-    /// weapon's [`WeaponName`](gdtf_battle_sim::WeaponName), mutated in place by the update.
+    /// weapon's [`WeaponName`](gdtf_battle_sim::weapon::WeaponName), mutated in place by the update.
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct WeaponNameText;
@@ -117,7 +117,7 @@ crate::support_item! {
 crate::support_item! {
     /// Marks the weapon panel's **magazine** [`Text`](bevy::prelude::Text) line — the
     /// `"cur/max"` round count (e.g. "30/30") from the
-    /// [`Magazine`](gdtf_battle_sim::Magazine) grouping, mutated in place. Shown only when
+    /// [`Magazine`](gdtf_battle_sim::magazine::Magazine) grouping, mutated in place. Shown only when
     /// the weapon has a magazine (`size > 0`), else hidden. A unit marker: presence on an
     /// entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]

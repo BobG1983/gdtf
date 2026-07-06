@@ -4,8 +4,12 @@
 use bevy::prelude::*;
 use gdtf_battle_input::{InspectTarget, SelectedFireMode};
 use gdtf_battle_sim::{
-    Aiming, CellLevel, Direction, FireModeSpec, Level, LifeState, Magazine, MagazineSize,
-    OccupancyGrid, ReloadTu, SquadVisibility, StanceKind, Tu, TuMax, tuning::CombatTuning,
+    ganger::{Aiming, TuMax},
+    magazine::{Magazine, ReloadTu},
+    prelude::{CellLevel, Direction, Level, LifeState, OccupancyGrid, StanceKind, Tu},
+    tuning::CombatTuning,
+    visibility::SquadVisibility,
+    weapon::{FireModeSpec, MagazineSize},
 };
 use gdtf_test_utils::press_left;
 
@@ -17,8 +21,8 @@ use super::harness::*;
 fn empty_wielded_magazine(app: &mut App, ganger: Entity) {
     if let Some(weapon) = app
         .world()
-        .get::<gdtf_battle_sim::Wields>(ganger)
-        .and_then(gdtf_battle_sim::Wields::weapon)
+        .get::<gdtf_battle_sim::weapon::Wields>(ganger)
+        .and_then(gdtf_battle_sim::weapon::Wields::weapon)
     {
         app.world_mut().entity_mut(weapon).insert(Magazine::new(
             0,
@@ -229,7 +233,7 @@ fn can_fire_failure_blocks_fire_requested() {
         place_enemy(&mut app, target);
         // The selected mode is single() (set on selection). Compute its exact charge and
         // set TU one below it via the SHARED mode_tu_cost source.
-        let charge = gdtf_battle_sim::mode_tu_cost(
+        let charge = gdtf_battle_sim::magazine::mode_tu_cost(
             &sbf_selector().single(),
             &TuMax::new(100),
             &Aiming::new(false),
