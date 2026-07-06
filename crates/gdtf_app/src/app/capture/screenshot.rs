@@ -7,10 +7,7 @@ use bevy::{
     render::view::window::screenshot::{Screenshot, ScreenshotCaptured, save_to_disk},
 };
 
-use super::{
-    capture_config::{CaptureFrame, frame_path},
-    plugin::CaptureConfig,
-};
+use super::capture_config::{CaptureConfig, CaptureFrame, frame_path};
 use crate::states::RunningState;
 
 /// Captures the rendered battlescape frame(s) to disk on each scheduled
@@ -57,6 +54,15 @@ pub(super) fn capture_when_ready(
         // Multi-frame: one PNG per frame, `.fNN`-tagged.
         frame_path(&config.path, current)
     };
+    // GTW-590 C3: the trigger side of the loudness contract — one line per scheduled
+    // frame naming its output path. The WRITE result is logged by bevy's `save_to_disk`
+    // (`Screenshot saved to <path>` / `Cannot save screenshot ...`), so trigger + write
+    // together leave no silent frame.
+    info!(
+        "dev-capture: capturing BattleRunning frame {} -> {}",
+        *current,
+        path.display(),
+    );
     commands.spawn(Screenshot::primary_window()).observe(
         move |captured: On<ScreenshotCaptured>, mut next: ResMut<NextState<RunningState>>| {
             // Flush this frame's PNG to disk FIRST and synchronously (so the final image is

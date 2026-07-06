@@ -9,20 +9,20 @@ use gdtf_battle_sim::ModeKind;
 /// The `GDTF_FIRE_AT_FRAME` environment variable: the `BattleRunning` frame at which the
 /// selected player ganger fires at the nearest enemy via the real fire path (parsed into
 /// a [`FireAtFrame`]).
-const FIRE_AT_FRAME_ENV: &str = "GDTF_FIRE_AT_FRAME";
+pub(super) const FIRE_AT_FRAME_ENV: &str = "GDTF_FIRE_AT_FRAME";
 
 /// The `GDTF_FIRE_MODE` environment variable: which fire MODE the dev fire-trigger shoots
 /// in — `single` / `burst` / `full` (parsed into a [`FireModeOverride`]). Unset leaves the
 /// trigger using the resident [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode). Used by the GTW-306 FX capture to drive
 /// a multi-round (burst / full-auto) volley so the staggered projectiles are observable.
-const FIRE_MODE_ENV: &str = "GDTF_FIRE_MODE";
+pub(super) const FIRE_MODE_ENV: &str = "GDTF_FIRE_MODE";
 
 /// The `GDTF_FALL_AT_FRAME` environment variable: the `BattleRunning` frame at which a
 /// determinate player ganger is forced to FALL via the real GTW-523 fall path (parsed into
 /// a [`FallAtFrame`]). Mirrors [`FIRE_AT_FRAME_ENV`] exactly — the fall counterpart of the
 /// fire trigger, added (GTW-529) so the GTW-524 fall FX has a scripted in-engine QA trigger
 /// (`GDTF_FIRE_AT_FRAME` only targets an enemy ganger, never a slab under a friendly).
-const FALL_AT_FRAME_ENV: &str = "GDTF_FALL_AT_FRAME";
+pub(super) const FALL_AT_FRAME_ENV: &str = "GDTF_FALL_AT_FRAME";
 
 /// The frame at which the dev fire-trigger fires the selected player ganger.
 ///
@@ -42,18 +42,10 @@ impl FireAtFrame {
         Self(frame)
     }
 
-    /// Read the optional [`FireAtFrame`] from the [`FIRE_AT_FRAME_ENV`]
-    /// (`GDTF_FIRE_AT_FRAME`) env var. `None` (the trigger stays inert) when the var is
-    /// unset, empty, or not a valid `u32`. Pure (no `World`); delegates to
-    /// [`FireAtFrame::parse`].
-    #[must_use]
-    pub(crate) fn from_env() -> Option<Self> {
-        Self::parse(std::env::var(FIRE_AT_FRAME_ENV).ok().as_deref())
-    }
-
     /// Parse a raw env-var value into an optional [`FireAtFrame`]: `Some` for a valid
-    /// `u32`, `None` (trigger inert) for an absent / empty / non-numeric value. The pure
-    /// core of [`FireAtFrame::from_env`]; never panics.
+    /// `u32`, `None` (trigger inert) for an absent / empty / non-numeric value. Pure —
+    /// the env read + the loud set-but-invalid diagnostic live in the sibling `resolve`
+    /// module (GTW-590); never panics.
     #[must_use]
     pub(crate) fn parse(value: Option<&str>) -> Option<Self> {
         value
@@ -81,18 +73,10 @@ impl FallAtFrame {
         Self(frame)
     }
 
-    /// Read the optional [`FallAtFrame`] from the [`FALL_AT_FRAME_ENV`]
-    /// (`GDTF_FALL_AT_FRAME`) env var. `None` (the trigger stays inert) when the var is
-    /// unset, empty, or not a valid `u32`. Pure (no `World`); delegates to
-    /// [`FallAtFrame::parse`].
-    #[must_use]
-    pub(crate) fn from_env() -> Option<Self> {
-        Self::parse(std::env::var(FALL_AT_FRAME_ENV).ok().as_deref())
-    }
-
     /// Parse a raw env-var value into an optional [`FallAtFrame`]: `Some` for a valid
-    /// `u32`, `None` (trigger inert) for an absent / empty / non-numeric value. The pure
-    /// core of [`FallAtFrame::from_env`]; never panics. Mirrors [`FireAtFrame::parse`].
+    /// `u32`, `None` (trigger inert) for an absent / empty / non-numeric value. Pure —
+    /// the env read + the loud set-but-invalid diagnostic live in the sibling `resolve`
+    /// module (GTW-590); never panics. Mirrors [`FireAtFrame::parse`].
     #[must_use]
     pub(crate) fn parse(value: Option<&str>) -> Option<Self> {
         value
@@ -124,19 +108,11 @@ impl FireModeOverride {
         Self(kind)
     }
 
-    /// Read the optional [`FireModeOverride`] from the [`FIRE_MODE_ENV`] (`GDTF_FIRE_MODE`)
-    /// env var. `None` (the trigger keeps the resident mode) when the var is unset, empty,
-    /// or not a recognised mode name. Pure (no `World`); delegates to
-    /// [`FireModeOverride::parse`].
-    #[must_use]
-    pub(crate) fn from_env() -> Option<Self> {
-        Self::parse(std::env::var(FIRE_MODE_ENV).ok().as_deref())
-    }
-
     /// Parse a raw env-var value into an optional [`FireModeOverride`]: `Some` for a
     /// recognised, case-insensitive mode name (`single` / `burst` / `full` / `full-auto`),
-    /// `None` for an absent / empty / unrecognised value. The pure core of
-    /// [`FireModeOverride::from_env`]; never panics.
+    /// `None` for an absent / empty / unrecognised value. Pure — the env read + the loud
+    /// set-but-unrecognised diagnostic live in the sibling `resolve` module (GTW-590);
+    /// never panics.
     #[must_use]
     pub(crate) fn parse(value: Option<&str>) -> Option<Self> {
         let kind = match value?.trim().to_ascii_lowercase().as_str() {
@@ -146,5 +122,62 @@ impl FireModeOverride {
             _ => return None,
         };
         Some(Self(kind))
+    }
+}
+
+/// The resolved fire-trigger configuration: the frame to fire on.
+///
+/// Built by the sibling `resolve` module's env resolution, held by
+/// [`DevCapturePlugin`](super::plugin::DevCapturePlugin) when the fire sub-affordance is
+/// enabled, inserted as a [`Resource`] so
+/// [`trigger_fire_at_frame`](super::triggers::trigger_fire_at_frame) can read it.
+/// `pub(crate)`: internal only.
+#[derive(Resource, Debug, Clone, Copy)]
+pub(crate) struct FireConfig {
+    /// The `BattleRunning` frame at which the selected player ganger fires.
+    pub(super) frame: FireAtFrame,
+    /// An optional fire-MODE override (`GDTF_FIRE_MODE`): when set, the trigger fires in
+    /// this authored [`ModeKind`] (read off the shooter's [`FireMode`](gdtf_battle_sim::FireMode)) rather than the
+    /// resident [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) — the FX-capture path uses `Full` for a staggered
+    /// multi-round volley.
+    pub(super) mode:  Option<FireModeOverride>,
+}
+
+impl FireConfig {
+    /// Build a fire-trigger config from the frame to fire on and an optional mode override.
+    /// Test-only inherent surface (the production path constructs it via struct literal in
+    /// the `resolve` module; the headless test seeds the REAL resource the
+    /// [`trigger_fire_at_frame`](super::triggers::trigger_fire_at_frame) system reads
+    /// through this). `#[cfg(test)]` so the binary stays `dead_code`-clean.
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) const fn new(frame: FireAtFrame, mode: Option<FireModeOverride>) -> Self {
+        Self { frame, mode }
+    }
+}
+
+/// The resolved fall-trigger configuration: the frame to force a fall on.
+///
+/// Built by the sibling `resolve` module's env resolution, held by
+/// [`DevCapturePlugin`](super::plugin::DevCapturePlugin) when the fall sub-affordance is
+/// enabled, inserted as a [`Resource`] so
+/// [`trigger_fall_at_frame`](super::triggers::trigger_fall_at_frame) can read it.
+/// `pub(crate)`: internal only. Mirrors [`FireConfig`].
+#[derive(Resource, Debug, Clone, Copy)]
+pub(crate) struct FallConfig {
+    /// The `BattleRunning` frame at which the chosen player ganger is forced to fall.
+    pub(super) frame: FallAtFrame,
+}
+
+impl FallConfig {
+    /// Build a fall-trigger config from the frame to force a fall on. Test-only inherent
+    /// surface (the production path constructs it via struct literal in the `resolve`
+    /// module; the headless test seeds the REAL resource the
+    /// [`trigger_fall_at_frame`](super::triggers::trigger_fall_at_frame) system reads
+    /// through this). `#[cfg(test)]` so the binary stays `dead_code`-clean.
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) const fn new(frame: FallAtFrame) -> Self {
+        Self { frame }
     }
 }

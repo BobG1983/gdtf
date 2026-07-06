@@ -62,12 +62,12 @@ fn spawn_fall_test_app(fall_frame: FallAtFrame) -> (bevy::app::App, bevy::ecs::e
     use gdtf_battle_sim::{
         BattleSeed, Cell, CellLevel, CombatTuning, Faction, FallOccurred, Hp, InflictedWounds,
         InjuryRegistry, InjuryRng, InjuryTables, Level, LifeState, Luck, OccupancyGrid,
-        OccupancyMaintenancePlugin, PlayerFaction, Position, SeverityRng, SurfaceGrid, Toughness,
-        Wounds, acts::InjuryInflicted, apply_falls, falls::FallsPlugin,
+        OccupancyMaintenancePlugin, OnDeathOccurred, PlayerFaction, Position, SeverityRng,
+        SurfaceGrid, Toughness, Wounds, acts::InjuryInflicted, apply_falls, falls::FallsPlugin,
         occupancy_sync::SlabDestroyed,
     };
 
-    use super::super::{plugin::FallConfig, triggers::trigger_fall_at_frame};
+    use super::super::{trigger_config::FallConfig, triggers::trigger_fall_at_frame};
 
     /// An arbitrary fixed seed — determinism is the property, the value is irrelevant.
     const SEED: u64 = 0x0529_FA11_DEAD_BEEF;
@@ -75,10 +75,15 @@ fn spawn_fall_test_app(fall_frame: FallAtFrame) -> (bevy::app::App, bevy::ecs::e
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         // The SlabDestroyed buffer the trigger WRITES + apply_falls READS, and the
-        // InjuryInflicted buffer apply_falls writes — registered explicitly (this minimal app
-        // omits SimActsPlugin, which normally registers them).
+        // InjuryInflicted + OnDeathOccurred buffers apply_falls writes — registered
+        // explicitly (this minimal app omits SimActsPlugin, which normally registers
+        // them). OnDeathOccurred is the GTW-547 terminal-death signal `apply_falls`'
+        // `FallSignals.deaths` writer validates against: without the buffer the system
+        // fails param validation and PANICS ("Message not initialized") — the GTW-590
+        // addendum red this harness fix retires.
         .add_message::<SlabDestroyed>()
         .add_message::<InjuryInflicted>()
+        .add_message::<OnDeathOccurred>()
         // The GTW-523 fall wiring: registers apply_falls (+ the FallOccurred buffer). The
         // occupancy maintenance plugin provides sync_moved_gangers / sync_destroyed_slab that
         // apply_falls orders `.after`, so the involuntary-drop Position write settles.

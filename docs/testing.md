@@ -48,8 +48,23 @@ When the design target from [ADR 0001](decisions/0001-rust-bevy-rewrite.md) land
 Every dev / QA / test affordance in the workspace is opted into by a `GDTF_*` environment
 variable. They are ALL non-shipping: each is additionally gated on a debug build and/or a
 dev-only cargo feature (`dev_capture`) at its wiring site, so a release binary ignores the
-lot. Census command (run from the repo root; re-run it when adding a flag and keep this
-table in step):
+lot. Since GTW-590 the game binary's `dynamic_linking` dev feature folds `dev_capture` in,
+so the standard dev invocation captures with no extra feature flag:
+
+```bash
+GDTF_AUTOBATTLE=1 GDTF_CAPTURE_PATH=/abs/out.png GDTF_CAPTURE_FRAMES="10,60,150,300" \
+  cargo run -p grimdark_turfwar --features dynamic_linking
+```
+
+(a debug build WITHOUT `dynamic_linking` still ignores the capture vars — the affordance
+rides the dev feature). Every capture run is LOUD: activation, per-frame trigger, and
+per-frame write each log a `capture`-greppable line, and a set-but-ineffective
+`GDTF_CAPTURE_*` / trigger var `warn!`s at startup. The capture-gated tests ride the same
+fold — `cargo dtest` compiles + runs them; the targeted recipe is
+`cargo test -p gdtf_app --features test-support,dev_capture --lib` (plus
+`--test capture_quit` for the exit pin), so that combination can never be an invisible
+red again. Census command (run from the repo root; re-run it when adding a flag and keep
+this table in step):
 
 ```bash
 grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
@@ -62,7 +77,7 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 | `GDTF_BATTLE_SEED` | `gdtf_app` (consumed by `gdtf_battle_sim`; honored by the `gdtf_test_utils` battle harness) | Pins the root battle RNG seed for a reproducible replay; unset = wall-clock entropy, logged at `info!`. |
 | `GDTF_CAPTURE_FRAME` | `gdtf_app` | Battle capture: how many `BattleRunning` frames to wait before capturing ONE frame. |
 | `GDTF_CAPTURE_FRAMES` | `gdtf_app` | Battle capture: comma-separated list of `BattleRunning` frames, one PNG each (wins over `GDTF_CAPTURE_FRAME`). |
-| `GDTF_CAPTURE_PATH` | `gdtf_app` | Output PNG path; setting it (in a `dev_capture` debug build) opts into the battle capture affordance. |
+| `GDTF_CAPTURE_PATH` | `gdtf_app` | Output PNG path; setting it (in a `dev_capture` debug build — `dynamic_linking` implies it since GTW-590) opts into the battle capture affordance. |
 | `GDTF_DEBUG_REACHABLE_OVERLAY` | `gdtf_battle_presenter` (mirrored by `gdtf_battle_input` docs) | Truthy renders the reachable-range debug overlay in a debug build (GTW-450; default off — visual noise). |
 | `GDTF_DOCS_PATH_ROOT` | `gdtf_test_utils` | Overrides the repo root the docs path-truth guard test scans (guard-test hook). |
 | `GDTF_DROPDOWN_SHOT` | `gdtf_ui` | Dropdown demo example: capture a PNG to this path, then exit. |

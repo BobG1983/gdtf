@@ -90,9 +90,13 @@ test-support = []
 # present via `DefaultPlugins`), so no extra bevy feature is required. The affordance
 # is inert at runtime until `GDTF_CAPTURE_PATH` is set.
 #
-# NOT in the default feature set and NEVER forced into CI / test / release builds. The
-# capture code is NOT compiled by the default green suite — it is built + linted
-# separately with this feature on (see GTW-297's verification note).
+# NOT in the default feature set and NEVER enabled for CI / release builds. Since
+# GTW-590 the BINARY's `dynamic_linking` dev feature folds this in
+# (`grimdark_turfwar/dynamic_linking` -> `gdtf_app/dev_capture`), so the dynamic-linked
+# dev/gate suite (dclippy/dtest/dbuild) compiles + lints + tests the capture code on
+# every run — the pinned QA repro works verbatim and the capture-gated tests can never
+# be an invisible red again. The CI static suite and release builds never enable
+# `dynamic_linking`, so they still never see it.
 #
 # GTW-510/GTW-577: this feature ALSO pulls in the reusable `gdtf_screenshot` crate — the three
 # scene capture hooks delegate their path gate (`parse_shot_path`) and their settle-then-capture

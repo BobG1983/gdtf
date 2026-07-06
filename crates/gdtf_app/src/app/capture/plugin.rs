@@ -11,11 +11,33 @@
 //!
 //! 1. **Dev cfg.** The affordance is wired into [`GdtfApp`](crate::GdtfApp) only
 //!    under `cfg!(all(debug_assertions, feature = "dev_capture"))` — a debug / dev
-//!    build with the opt-in `dev_capture` feature. A release artifact never sees it
-//!    even if the feature is on, and the default suite never compiles it.
+//!    build with the `dev_capture` feature. Since GTW-590 the BINARY's
+//!    `dynamic_linking` dev feature folds `dev_capture` in, so every dynamic-linked
+//!    dev invocation (and the dclippy/dtest gate suite) compiles it; a release
+//!    artifact (never dynamic-linked) still never sees it.
 //! 2. **Opt-in env var(s).** Even when compiled in it is **inert by default**: each
 //!    sub-affordance activates only when its env var is set. With them all unset the
 //!    plugin registers nothing.
+//!
+//! ## Loudness contract (GTW-590 C3)
+//!
+//! Every activation, trigger, write, and failure is one `grep -i capture` away:
+//!
+//! - a set-but-ineffective env var `warn!`s at construction (the
+//!   [`CaptureConfigWarning`](super::resolve::CaptureConfigWarning) diagnostics from
+//!   the sibling `resolve` module);
+//! - each active sub-affordance `info!`s its resolved config at registration
+//!   (`dev-capture: capture ON -> ...` / `... fire trigger ON ...` / `... fall
+//!   trigger ON ...`), and a capture output directory that cannot be created is an
+//!   immediate `error!` naming path + cause;
+//! - each scheduled frame `info!`s `dev-capture: capturing BattleRunning frame N ->
+//!   path` when it fires, and the triggers `warn!` when their one shot is skipped
+//!   (no shooter / faction / enemy) instead of no-oping silently;
+//! - the WRITE result is bevy's own
+//!   [`save_to_disk`](bevy::render::view::window::screenshot::save_to_disk) observer
+//!   log — `Screenshot saved to <path>` on success, `Cannot save screenshot ...` at
+//!   `error!` on any failure (`bevy_render` 0.19.0 `view/window/screenshot.rs`) — one
+//!   line per written frame.
 //!
 //! ## The three sub-affordances (GTW-306)
 //!
@@ -41,7 +63,7 @@
 //! It carries a [`Local<u32>`] frame counter that increments only while the battle is
 //! running (so it counts frames since the battle rendered, not total app frames; a
 //! `Res<FrameCount>` would hang on macOS, Bevy issue #24035). On each frame matching a
-//! target in [`CaptureFrames`] it spawns a [`Screenshot::primary_window`](bevy::render::view::window::screenshot::Screenshot::primary_window) entity with an
+//! target in [`CaptureFrames`](super::capture_config::CaptureFrames) it spawns a [`Screenshot::primary_window`](bevy::render::view::window::screenshot::Screenshot::primary_window) entity with an
 //! observer that saves the frame to that frame's PNG path; on the LAST target frame the
 //! observer hands off to the shutdown cascade by setting
 //! [`RunningState::Quit`](crate::states::RunningState::Quit).
@@ -62,9 +84,12 @@
 //!
 //! The actual screenshot capture needs a real render device, so it CANNOT be
 //! headless-tested — it is verified by RUNNING the app (the orchestrator does so, then
-//! `Read`s the PNGs). The headless tests cover the [`DevCapturePlugin::from_env`] config
-//! logic (path gate, [`CaptureFrame`](super::capture_config::CaptureFrame) / [`CaptureFrames`] / [`FireAtFrame`] parse) AND
-//! the fire-trigger's frame match + real-path message emission (which IS headless).
+//! `Read`s the PNGs). The headless tests cover the [`resolve`](super::resolve::resolve)
+//! config path (parse gates + the GTW-590 loud diagnostics), the registration /
+//! state-gating of [`capture_when_ready`] (the schedule pin), the fire-trigger's
+//! frame match + real-path message emission (which IS headless), AND the loud-line
+//! EMISSION itself ([`warn_config_diagnostics`], the blocked-output-dir `error!`, a
+//! trigger skip `warn!`) under the shared log capture — the `test::loudness` pins.
 //!
 //! ## Visibility
 //!
@@ -76,95 +101,28 @@
 //! visibility anything reaches), keeping the binary `unreachable_pub`-clean WITHOUT the
 //! `support_item!` flip.
 
-use std::path::PathBuf;
-
 use bevy::prelude::*;
 use gdtf_battle_sim::apply_falls;
 
 use super::{
-    capture_config::{CaptureFrames, capture_path},
+    capture_config::CaptureConfig,
+    resolve::{RawCaptureEnv, ResolvedCaptureEnv, resolve},
     screenshot::capture_when_ready,
-    trigger_config::{FallAtFrame, FireAtFrame, FireModeOverride},
+    trigger_config::{FallConfig, FireConfig},
     triggers::{trigger_fall_at_frame, trigger_fire_at_frame},
 };
 use crate::states::BattleScapeState;
-
-/// The resolved capture configuration: where to write and which frames to capture.
-///
-/// Held by [`DevCapturePlugin`] when the capture sub-affordance is enabled, and inserted
-/// as a [`Resource`] so [`capture_when_ready`] can read both fields. Framework-plumbing
-/// config (a path + a [`CaptureFrames`] newtype), not a domain value, so the
-/// no-bare-types rule applies only to its `frames` field (which is the newtype).
-/// `pub(crate)`: a purely internal resource, never re-exported.
-#[derive(Resource, Debug, Clone)]
-pub(crate) struct CaptureConfig {
-    /// Absolute base path of the output PNG(s), handed to
-    /// [`save_to_disk`](bevy::render::view::window::screenshot::save_to_disk). On the
-    /// multi-frame path each frame is suffixed via [`frame_path`](super::capture_config::frame_path).
-    pub(super) path:   PathBuf,
-    /// Which `BattleRunning` frames to capture (one PNG per frame).
-    pub(super) frames: CaptureFrames,
-}
-
-/// The resolved fire-trigger configuration: the frame to fire on.
-///
-/// Held by [`DevCapturePlugin`] when the fire sub-affordance is enabled, inserted as a
-/// [`Resource`] so [`trigger_fire_at_frame`] can read it. `pub(crate)`: internal only.
-#[derive(Resource, Debug, Clone, Copy)]
-pub(crate) struct FireConfig {
-    /// The `BattleRunning` frame at which the selected player ganger fires.
-    pub(super) frame: FireAtFrame,
-    /// An optional fire-MODE override (`GDTF_FIRE_MODE`): when set, the trigger fires in
-    /// this authored [`ModeKind`](gdtf_battle_sim::ModeKind) (read off the shooter's [`FireMode`](gdtf_battle_sim::FireMode)) rather than the
-    /// resident [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) — the FX-capture path uses `Full` for a staggered
-    /// multi-round volley.
-    pub(super) mode:  Option<FireModeOverride>,
-}
-
-impl FireConfig {
-    /// Build a fire-trigger config from the frame to fire on and an optional mode override.
-    /// Test-only inherent surface (the production path constructs it via struct literal in
-    /// `from_env`; the headless test seeds the REAL resource the [`trigger_fire_at_frame`]
-    /// system reads through this). `#[cfg(test)]` so the binary stays `dead_code`-clean.
-    #[cfg(test)]
-    #[must_use]
-    pub(crate) const fn new(frame: FireAtFrame, mode: Option<FireModeOverride>) -> Self {
-        Self { frame, mode }
-    }
-}
-
-/// The resolved fall-trigger configuration: the frame to force a fall on.
-///
-/// Held by [`DevCapturePlugin`] when the fall sub-affordance is enabled, inserted as a
-/// [`Resource`] so [`trigger_fall_at_frame`] can read it. `pub(crate)`: internal only.
-/// Mirrors [`FireConfig`].
-#[derive(Resource, Debug, Clone, Copy)]
-pub(crate) struct FallConfig {
-    /// The `BattleRunning` frame at which the chosen player ganger is forced to fall.
-    pub(super) frame: FallAtFrame,
-}
-
-impl FallConfig {
-    /// Build a fall-trigger config from the frame to force a fall on. Test-only inherent
-    /// surface (the production path constructs it via struct literal in `from_env`; the
-    /// headless test seeds the REAL resource the [`trigger_fall_at_frame`] system reads
-    /// through this). `#[cfg(test)]` so the binary stays `dead_code`-clean.
-    #[cfg(test)]
-    #[must_use]
-    pub(crate) const fn new(frame: FallAtFrame) -> Self {
-        Self { frame }
-    }
-}
 
 /// The DEV-ONLY screenshot / visual-QA + fire-trigger affordance plugin (GTW-297 /
 /// GTW-306).
 ///
 /// Wired into [`GdtfApp`](crate::GdtfApp) only under `cfg!(all(debug_assertions, feature
 /// = "dev_capture"))`. On `build` it consults its config; for each present sub-config it
-/// registers the matching `Update` system, gated on [`BattleScapeState::BattleRunning`].
-/// When NO sub-config is present it registers nothing — the affordance is fully inert,
-/// exactly like a build without the plugin. `pub(crate)`: named only by the in-crate
-/// wiring + config tests.
+/// registers the matching `Update` system, gated on [`BattleScapeState::BattleRunning`],
+/// and `info!`s the resolved config (the GTW-590 loudness contract — see the module
+/// doc). When NO sub-config is present it registers nothing — the affordance is fully
+/// inert, exactly like a build without the plugin. `pub(crate)`: named only by the
+/// in-crate wiring + config tests.
 pub(crate) struct DevCapturePlugin {
     /// The capture configuration, captured once at construction. `None` = no capture.
     capture: Option<CaptureConfig>,
@@ -175,9 +133,11 @@ pub(crate) struct DevCapturePlugin {
 }
 
 impl DevCapturePlugin {
-    /// Construct the affordance, reading every env-var gate: the capture path
-    /// ([`capture_path`]) + frame schedule ([`CaptureFrames::from_env`]) and the
-    /// fire-trigger frame ([`FireAtFrame::from_env`]).
+    /// Construct the affordance from the env-var gates: snapshot the vars once
+    /// ([`RawCaptureEnv::from_env`]), [`resolve`] the snapshot purely, and `warn!`
+    /// every [`CaptureConfigWarning`](super::resolve::CaptureConfigWarning)
+    /// diagnostic via [`warn_config_diagnostics`] (GTW-590 — a set-but-ineffective
+    /// var is never silent).
     ///
     /// This is the constructor [`GdtfApp`](crate::GdtfApp) uses under
     /// `cfg!(all(debug_assertions, feature = "dev_capture"))`: each env var decides
@@ -185,16 +145,21 @@ impl DevCapturePlugin {
     /// (the variables unset).
     #[must_use]
     pub(crate) fn from_env() -> Self {
+        let resolved = resolve(&RawCaptureEnv::from_env());
+        warn_config_diagnostics(&resolved);
+        Self::from_resolved(resolved)
+    }
+
+    /// Build the plugin from an already-resolved env snapshot — the pure tail of
+    /// [`DevCapturePlugin::from_env`], split out so the headless tests construct the
+    /// REAL plugin from an injected [`RawCaptureEnv`] (no process-global env
+    /// mutation). Drops the diagnostics: the caller owns logging them.
+    #[must_use]
+    pub(super) fn from_resolved(resolved: ResolvedCaptureEnv) -> Self {
         Self {
-            capture: capture_path().map(|path| CaptureConfig {
-                path,
-                frames: CaptureFrames::from_env(),
-            }),
-            fire:    FireAtFrame::from_env().map(|frame| FireConfig {
-                frame,
-                mode: FireModeOverride::from_env(),
-            }),
-            fall:    FallAtFrame::from_env().map(|frame| FallConfig { frame }),
+            capture: resolved.capture,
+            fire:    resolved.fire,
+            fall:    resolved.fall,
         }
     }
 
@@ -210,27 +175,28 @@ impl DevCapturePlugin {
         self.capture.is_some()
     }
 
-    /// The configured [`CaptureFrames`] schedule, if the capture sub-affordance is
-    /// enabled. Test-only inherent surface. `#[cfg(test)]`.
+    /// The configured [`CaptureFrames`](super::capture_config::CaptureFrames)
+    /// schedule, if the capture sub-affordance is enabled. Test-only inherent surface.
+    /// `#[cfg(test)]`.
     #[cfg(test)]
     #[must_use]
-    pub(crate) fn capture_frames(&self) -> Option<CaptureFrames> {
+    pub(crate) fn capture_frames(&self) -> Option<super::capture_config::CaptureFrames> {
         self.capture.as_ref().map(|config| config.frames.clone())
     }
 
-    /// The configured [`FireAtFrame`], if the fire sub-affordance is enabled. Test-only
-    /// inherent surface. `#[cfg(test)]`.
+    /// The configured [`FireAtFrame`](super::trigger_config::FireAtFrame), if the fire
+    /// sub-affordance is enabled. Test-only inherent surface. `#[cfg(test)]`.
     #[cfg(test)]
     #[must_use]
-    pub(crate) fn fire_frame(&self) -> Option<FireAtFrame> {
+    pub(crate) fn fire_frame(&self) -> Option<super::trigger_config::FireAtFrame> {
         self.fire.map(|config| config.frame)
     }
 
-    /// The configured [`FallAtFrame`], if the fall sub-affordance is enabled. Test-only
-    /// inherent surface (GTW-529). `#[cfg(test)]`.
+    /// The configured [`FallAtFrame`](super::trigger_config::FallAtFrame), if the fall
+    /// sub-affordance is enabled. Test-only inherent surface (GTW-529). `#[cfg(test)]`.
     #[cfg(test)]
     #[must_use]
-    pub(crate) fn fall_frame(&self) -> Option<FallAtFrame> {
+    pub(crate) fn fall_frame(&self) -> Option<super::trigger_config::FallAtFrame> {
         self.fall.map(|config| config.frame)
     }
 }
@@ -248,20 +214,42 @@ impl Plugin for DevCapturePlugin {
             // Inert: register nothing. The app runs normally and never captures / fires / falls.
             return;
         }
-        info!("dev-capture: ON (dev)");
         if let Some(config) = self.capture.clone() {
+            // GTW-590 C3: materialize the output directory NOW, loudly — before the fix a
+            // missing parent surfaced only as bevy's write-time IO error (and before that,
+            // nothing at all).
+            if let Err(cause) = ensure_output_dir(&config) {
+                error!(
+                    "dev-capture: cannot create the capture output directory for {}: {cause}",
+                    config.path.display(),
+                );
+            }
+            info!(
+                "dev-capture: capture ON -> {} at BattleRunning frame(s) {}",
+                config.path.display(),
+                config.frames,
+            );
             app.insert_resource(config).add_systems(
                 Update,
                 capture_when_ready.run_if(in_state(BattleScapeState::BattleRunning)),
             );
         }
         if let Some(config) = self.fire {
+            info!(
+                "dev-capture: fire trigger ON at BattleRunning frame {} (mode override {:?})",
+                *config.frame,
+                config.mode.map(|mode| *mode),
+            );
             app.insert_resource(config).add_systems(
                 Update,
                 trigger_fire_at_frame.run_if(in_state(BattleScapeState::BattleRunning)),
             );
         }
         if let Some(config) = self.fall {
+            info!(
+                "dev-capture: fall trigger ON at BattleRunning frame {}",
+                *config.frame,
+            );
             // GTW-529 C4 / `bevy-traps.md` #3: order the trigger `.before(apply_falls)` so the
             // SAME-FRAME `SlabDestroyed` it writes is buffered AND its elevating `Position`
             // rewrite is visible when the GTW-523 `apply_falls` reads the faller query — the fall
@@ -277,4 +265,36 @@ impl Plugin for DevCapturePlugin {
             );
         }
     }
+}
+
+/// `warn!` every [`CaptureConfigWarning`](super::resolve::CaptureConfigWarning)
+/// diagnostic a resolved env snapshot carries, one `dev-capture: `-prefixed line per
+/// warning — the ONE emission choke point for the GTW-590 loud-config lines (C4c).
+///
+/// [`DevCapturePlugin::from_env`] runs it on the live snapshot; it takes the RESOLVED
+/// snapshot (rather than reading the env itself) so the loudness test drives the REAL
+/// emitter with an injected snapshot under the log capture, no process-global env
+/// mutation — deleting the `warn!` turns the suite red instead of turning a
+/// misconfigured QA run silent. `pub(super)` for exactly that test.
+pub(super) fn warn_config_diagnostics(resolved: &ResolvedCaptureEnv) {
+    for warning in &resolved.warnings {
+        warn!("dev-capture: {warning}");
+    }
+}
+
+/// Create the capture output's parent directory (`create_dir_all`) so every scheduled
+/// PNG can land — GTW-590 C3's "parent dirs created or a loud error". `Ok` for a bare
+/// filename (no parent) or an already-existing directory; `Err` carries the IO cause,
+/// which [`DevCapturePlugin::build`] logs as an immediate `error!` naming the output
+/// path. `pub(super)` so the schedule test pins both the materialization and the
+/// failure classification.
+pub(super) fn ensure_output_dir(config: &CaptureConfig) -> std::io::Result<()> {
+    let Some(parent) = config.path.parent() else {
+        return Ok(());
+    };
+    if parent.as_os_str().is_empty() {
+        // A bare relative filename ("shot.png"): nothing to create.
+        return Ok(());
+    }
+    std::fs::create_dir_all(parent)
 }
