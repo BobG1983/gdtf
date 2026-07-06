@@ -1,5 +1,5 @@
 //! The closed **field-consequence vocabulary** — the [`FieldEffect`] an area-damage
-//! field's authored [`FieldDef`](crate::fields::FieldDef) means (GTW-545; GTW-553 re-homes
+//! field's authored [`FieldDef`](crate::effects::fields::FieldDef) means (GTW-545; GTW-553 re-homes
 //! the consequence behaviours into the [`effects`](crate::effects) palette).
 //!
 //! ## The serde name↔type bridge + effect isolation (GTW-553)
@@ -7,7 +7,7 @@
 //! This vocabulary is a closed serde enum (the name↔type bridge — RON cannot deserialize
 //! trait objects). Unlike its palette siblings it is NOT yet RON-exposed: a shipped
 //! `assets/content/fields/*.field.ron` authors the flat
-//! [`FieldDef`](crate::fields::FieldDef) `{ damage, damage_type, immune_armor_types,
+//! [`FieldDef`](crate::effects::fields::FieldDef) `{ damage, damage_type, immune_armor_types,
 //! duration }` struct (unchanged by GTW-553), and [`FieldEffect::consequences_of`] is the
 //! bridge that PROJECTS that authored def into this vocabulary — so the def stays the
 //! authoring surface while every consequence BEHAVIOUR lives isolated in the palette.
@@ -17,8 +17,8 @@
 //! `match`, no inline tick branch, no authoring step scattered across the tree), and this
 //! enum's own [`ApplyFieldEffect`] impl forwards every verb through the ONE
 //! purely-mechanical `with_behaviour` match — the ONLY sim-side match over this
-//! vocabulary. The fields MECHANICS ([`tick_fields`](crate::fields::tick_fields) + the
-//! [`PlacedField`](crate::fields::PlacedField) lifetime) invoke the trait generically.
+//! vocabulary. The fields MECHANICS ([`tick_fields`](crate::effects::fields::tick_fields) + the
+//! [`PlacedField`](crate::effects::fields::PlacedField) lifetime) invoke the trait generically.
 //!
 //! Adding a new consequence means ONE new per-consequence file + ONE variant here + ONE
 //! delegation arm + ONE `mod` line (plus its [`consequences_of`](FieldEffect::consequences_of)
@@ -33,13 +33,13 @@ use super::{
     ApplyDrain, ApplyDuration, ApplyFieldEffect, ApplyImmunity, FieldDamage, FieldDuration,
     FieldTurns, ImmuneArmorTypes, OccupantArmor, OccupantDrain,
 };
-use crate::{fields::FieldDef, metric::CellLevel, weapon::DamageType};
+use crate::{effects::fields::FieldDef, metric::CellLevel, weapon::DamageType};
 
 /// One **consequence** of an area-damage field — the atomic thing standing in (or
 /// placing) the field DOES (GTW-545; palette-isolated per GTW-553).
 ///
 /// A named domain enum (no-bare-types: a field consequence is a domain value). NOT yet
-/// RON-exposed: the authored surface stays the flat [`FieldDef`](crate::fields::FieldDef)
+/// RON-exposed: the authored surface stays the flat [`FieldDef`](crate::effects::fields::FieldDef)
 /// struct, projected into this vocabulary by [`consequences_of`](FieldEffect::consequences_of)
 /// (the module docs record the bridge). Each variant's behaviour lives in its isolated
 /// sibling per-consequence file impl-ing [`ApplyFieldEffect`]; this enum's own impl

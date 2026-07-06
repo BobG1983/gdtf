@@ -86,7 +86,7 @@ pub fn setup_battle_on_request(
     terrain: Option<Res<TerrainDefRegistry>>,
     stat_tuning: Option<Res<GangerStatTuning>>,
     combat_tuning: Option<Res<CombatTuning>>,
-    field_defs: Option<Res<crate::fields::FieldDefRegistry>>,
+    field_defs: Option<Res<crate::effects::fields::FieldDefRegistry>>,
     attachments: Option<Res<AttachmentRegistry>>,
     mut commands: Commands,
 ) {

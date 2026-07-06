@@ -10,7 +10,7 @@
 //! [`ShotOutcome`].
 //!
 //! A buffered Bevy **message** (`#[derive(Message)]`), mirroring
-//! [`crate::bleed::Bleeding`] / [`crate::occupancy_sync::CoverDestroyed`] /
+//! [`crate::effects::bleed::Bleeding`] / [`crate::occupancy_sync::CoverDestroyed`] /
 //! [`crate::armor_wear::ArmorBroken`] — NOT the observer `Event` API
 //! (`bevy-traps.md` #4), so it is written with [`bevy::prelude::MessageWriter`] and read
 //! with [`bevy::prelude::MessageReader`]. One [`ShotFired`] is emitted per ROUND resolved

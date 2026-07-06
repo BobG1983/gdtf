@@ -42,7 +42,7 @@ impl WoundCost {
 /// §"Downed → death … state machine").
 ///
 /// The bleed-out clock's per-round drain: once per full round
-/// [`crate::bleed::tick_bleed`] subtracts this from every un-stabilized Downed
+/// [`crate::effects::bleed::tick_bleed`] subtracts this from every un-stabilized Downed
 /// ganger's [`crate::ganger::Wounds`] life pool, and the stack count (turns down)
 /// = total Wounds lost — a clock you can read. A small `u8` count, matching
 /// [`crate::ganger::Wounds`]'s inner type so it subtracts directly from the life
@@ -85,7 +85,7 @@ impl Default for BleedRate {
 /// "pays the flat `stabilize_tu`"; `docs/combat/wounds-and-roster.md`
 /// §"Downed → death … state machine").
 ///
-/// The flat cost of the E3.8 [`crate::downed_acts::stabilize_downed`] verb. **This
+/// The flat cost of the E3.8 [`crate::acts::downed::stabilize_downed`] verb. **This
 /// slice only READS the cost** to wire the leaf — the TU economy (debiting a
 /// [`crate::ganger::Tu`] pool, the can-afford check) is **E4**, so nothing here
 /// spends or validates against a TU budget. A small `u8` count, matching
@@ -125,7 +125,7 @@ impl Default for StabilizeTu {
 /// (`docs/combat/resolution.md` §9: `execute_downed` "pays the flat `execute_tu`";
 /// `docs/combat/wounds-and-roster.md` §"Downed → death … state machine").
 ///
-/// The flat cost of the E3.8 [`crate::downed_acts::execute_downed`] verb. **This
+/// The flat cost of the E3.8 [`crate::acts::downed::execute_downed`] verb. **This
 /// slice only READS the cost** to wire the leaf — the TU economy (debiting a
 /// [`crate::ganger::Tu`] pool, the can-afford check) is **E4**, so nothing here
 /// spends or validates against a TU budget. A small `u8` count, matching

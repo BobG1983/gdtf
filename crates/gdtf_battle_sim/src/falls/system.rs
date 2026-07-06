@@ -12,6 +12,7 @@ use bevy::{
 use crate::{
     acts::InjuryInflicted,
     armor::{BodyPart, PieceArmorMut, Wears, WornBy},
+    effects::on_death::OnDeathOccurred,
     falls::{
         FallOccurred,
         damage::{FallImpact, FallWoundEnv, resolve_fall_hit},
@@ -23,7 +24,6 @@ use crate::{
     metric::{CellLevel, Level},
     occupancy::OccupancyGrid,
     occupancy_sync::SlabDestroyed,
-    on_death::OnDeathOccurred,
     resolve_and_apply::{StruckPiece, TargetGanger},
     rng::{InjuryRng, SeverityRng},
     surface::SurfaceGrid,

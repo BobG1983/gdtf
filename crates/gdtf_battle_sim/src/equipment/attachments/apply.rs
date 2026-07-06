@@ -21,7 +21,7 @@
 //! one-shot.
 //!
 //! It is a general mechanic (runs a weapon's attachments at spawn), so it belongs with the
-//! attachment mechanics, NOT in `acts_runtime`. Pure ECS side effect (`bevy-traps.md` #7 —
+//! attachment mechanics, NOT in the act runtime (`crate::acts`). Pure ECS side effect (`bevy-traps.md` #7 —
 //! query / [`Commands`](bevy::prelude::Commands), no `&mut World`); the effect closures'
 //! `EntityWorldMut` access is the ticket's sanctioned carve-out (see the
 //! [`crate::effects::attachments`] palette docs).

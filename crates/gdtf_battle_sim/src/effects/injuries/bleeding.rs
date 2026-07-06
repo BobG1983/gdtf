@@ -38,7 +38,7 @@ impl BleedAmount {
 /// **Bleeding** — accrues a per-turn [`BleedAmount`] onto the ledger's summed bleed
 /// total, which the [`apply_injury`](crate::acts::apply_injury) boundary mirrors onto
 /// the standalone [`BleedAfflicted`](crate::injuries::BleedAfflicted) component the
-/// bleed runtime ([`tick_bleed`](crate::bleed::tick_bleed)) drains each round. NOT a
+/// bleed runtime ([`tick_bleed`](crate::effects::bleed::tick_bleed)) drains each round. NOT a
 /// [`Modify`](super::InjuryEffect::Modify): it drains the current HP pool, distinct
 /// from any stat ceiling.
 pub struct ApplyBleeding {

@@ -16,7 +16,7 @@
 //! - [`Dot`] is the **battle-state** side — the `{ remaining_turns, per_turn_damage,
 //!   damage_type }` component the fire path attaches (or REFRESHES) onto a struck ganger
 //!   when a penetrating hit lands. The per-turn drain + terminal gate is
-//!   [`tick_dot`](crate::acts_runtime::dot::tick_dot); this module owns only the two data
+//!   [`tick_dot`](crate::effects::dot::tick_dot); this module owns only the two data
 //!   types (no math, no world access).
 //!
 //! **Refresh-not-stack** ([`Dot::refresh_from`]): a fresh penetrating DOT hit RESETS the
@@ -121,7 +121,7 @@ impl DotProfile {
 /// The battle-state side of the DOT model: a `#[derive(Component)]` the fire path attaches
 /// (or REFRESHES) on a struck ganger when a hit PENETRATES armor
 /// ([`PenetratingDamage`](crate::resolve_hit::PenetratingDamage) `> 0`) from a weapon
-/// carrying a [`DotProfile`]. Each turn [`tick_dot`](crate::acts_runtime::dot::tick_dot)
+/// carrying a [`DotProfile`]. Each turn [`tick_dot`](crate::effects::dot::tick_dot)
 /// decrements the ganger's [`Hp`](crate::ganger::Hp) DIRECTLY by
 /// [`per_turn_damage`](Dot::per_turn_damage) (no armor matchup, no injury roll, no RNG),
 /// decrements [`remaining_turns`](Dot::remaining_turns), and removes the component when it
@@ -164,7 +164,7 @@ impl Dot {
     }
 
     /// Whether this DOT still has a turn left to tick — `remaining_turns > 0`
-    /// (the terminal gate [`tick_dot`](crate::acts_runtime::dot::tick_dot) removes the
+    /// (the terminal gate [`tick_dot`](crate::effects::dot::tick_dot) removes the
     /// component on).
     #[must_use]
     pub const fn is_active(&self) -> bool {

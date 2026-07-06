@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 
 use super::{ApplyOnDeathEffect, DeathFanOut};
 use crate::{
+    effects::on_death::OnDeathOccurred,
     ganger::{Hp, LifeState},
     metric::CellLevel,
-    on_death::OnDeathOccurred,
     shot_pipeline::aoe::aoe_affected,
     weapon::HitType,
 };
@@ -24,7 +24,7 @@ use crate::{
 /// from [`WeaponDamage`](crate::weapon::WeaponDamage) (a signed-`i32` spawn sentinel that
 /// runs the full §5/§6 armor+wound fold) — an on-death blast is a DETERMINISTIC,
 /// armor-bypassing, RNG-free direct drain (the [`DotDamage`](crate::weapon::DotDamage) /
-/// [`FieldDamage`](crate::fields::FieldDamage) precedent), so its magnitude is its OWN
+/// [`FieldDamage`](crate::effects::fields::FieldDamage) precedent), so its magnitude is its OWN
 /// positive quantity, keyed to the exploding source.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize)]
 #[serde(transparent)]
@@ -46,7 +46,7 @@ impl ExplodeDamage {
 /// direction), reads each cell's occupant off the fan-out surface's
 /// [`grid`](DeathFanOut::grid), and drains a flat, deterministic [`ExplodeDamage`] from
 /// each LIVE ganger's [`Hp`] (`saturating_sub`, armor-bypassing, NO RNG — the
-/// [`tick_dot`](crate::dot::tick_dot) / [`tick_fields`](crate::fields::tick_fields)
+/// [`tick_dot`](crate::effects::dot::tick_dot) / [`tick_fields`](crate::effects::fields::tick_fields)
 /// direct-drain model). The variant's authored
 /// [`damage_type`](super::OnDeathEffect::Explode) is presentation-only flavour (the drain
 /// BYPASSES the armor matchup, the field-tick precedent), so it is not part of this
@@ -116,12 +116,13 @@ mod tests {
 
     use super::{ApplyExplode, ApplyOnDeathEffect, ExplodeDamage};
     use crate::{
-        effects::on_death::{DeathFanOut, VictimRow},
-        fields::FieldRegistry,
+        effects::{
+            fields::FieldRegistry,
+            on_death::{DeathFanOut, OnDeathOccurred, VictimRow},
+        },
         ganger::{Hp, LifeState},
         metric::{Cell, CellLevel, Level},
         occupancy::OccupancyGrid,
-        on_death::OnDeathOccurred,
         weapon::{BlastRadius, HitType},
     };
 
@@ -133,7 +134,7 @@ mod tests {
     /// Run `effect.fan_at(at, …)` against a world holding `victims`, returning the cascade
     /// deaths the fan pushed. Bare-`World` + `SystemState` is the sanctioned pure-sim
     /// unit-test idiom (`bevy-traps.md` #7 carve-out (b)) — the resolver's end-to-end path
-    /// is proven by the `acts_runtime/on_death` suite.
+    /// is proven by the `effects/on_death` suite.
     fn fan(
         world: &mut World,
         grid: &OccupancyGrid,

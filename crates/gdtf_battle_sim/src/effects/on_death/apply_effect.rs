@@ -6,7 +6,7 @@
 //! Every isolated per-effect `ApplyX` type (one per file in this module) impls this trait;
 //! the closed [`OnDeathEffect`](super::OnDeathEffect) serde enum impls it too, by THIN
 //! mechanical delegation to each variant's isolated type. The mechanics never match on the
-//! enum — the [`resolve_on_death`](crate::on_death::resolve_on_death) fixpoint loop invokes
+//! enum — the [`resolve_on_death`](crate::effects::on_death::resolve_on_death) fixpoint loop invokes
 //! this trait generically, DIRECTLY on its same-frame cascade drain (synchronous — never a
 //! deferred command — so a lethal fan's fresh deaths land on the SAME work-queue the loop
 //! is draining, the GTW-547 cascade cadence unchanged).
@@ -14,11 +14,13 @@
 use bevy::prelude::Query;
 
 use crate::{
-    fields::{FieldDefRegistry, FieldRegistry},
+    effects::{
+        fields::{FieldDefRegistry, FieldRegistry},
+        on_death::OnDeathOccurred,
+    },
     ganger::{Hp, LifeState},
     metric::CellLevel,
     occupancy::OccupancyGrid,
-    on_death::OnDeathOccurred,
 };
 
 /// The victim-surface query row an on-death fan mutates — the struck ganger's
@@ -28,7 +30,7 @@ use crate::{
 pub type VictimRow = (&'static mut Hp, &'static mut LifeState);
 
 /// The mutable **fan-out surface** an on-death effect fans into — the battle surfaces
-/// [`resolve_on_death`](crate::on_death::resolve_on_death) lends out for the duration of
+/// [`resolve_on_death`](crate::effects::on_death::resolve_on_death) lends out for the duration of
 /// ONE death's fan (GTW-552).
 ///
 /// A borrowed VIEW over the resolver's own `SystemParam`s, never effect-owned state: the
@@ -64,7 +66,7 @@ pub struct DeathFanOut<'a, 'w, 's> {
 /// [`fan_at`](Self::fan_at) in its own palette file — not in a central `match`, a
 /// folder-fn, or a scatter of authoring steps. The [`OnDeathEffect`](super::OnDeathEffect)
 /// serde enum impls this by DELEGATING each variant to its isolated type (the palette's ONE
-/// mechanical match), and [`resolve_on_death`](crate::on_death::resolve_on_death) invokes
+/// mechanical match), and [`resolve_on_death`](crate::effects::on_death::resolve_on_death) invokes
 /// it generically over the borrowed [`DeathFanOut`] surface.
 pub trait ApplyOnDeathEffect {
     /// **Fan** this effect at the death `(cell, level)` — its whole behaviour, applied

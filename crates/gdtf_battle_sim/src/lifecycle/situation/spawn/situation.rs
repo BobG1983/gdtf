@@ -139,8 +139,8 @@ pub struct Situation {
     pub floors:         Vec<FloorSpawn>,
     /// The authored area-damage **field placements** (GTW-545) — each a [`FieldSpawn`]: a
     /// `(cell, level)` paired with a field-type KEY resolved against the
-    /// [`FieldDefRegistry`](crate::fields::FieldDefRegistry) and seeded into the live
-    /// [`FieldRegistry`](crate::fields::FieldRegistry) at
+    /// [`FieldDefRegistry`](crate::effects::fields::FieldDefRegistry) and seeded into the live
+    /// [`FieldRegistry`](crate::effects::fields::FieldRegistry) at
     /// [`setup_battle`](crate::situation::setup_battle) (e.g. a toxic-waste pool as initial
     /// terrain). `#[serde(default)]` gives an empty list, so every EXISTING situation `.ron`
     /// deserializes byte-identical (a battlefield with no hazards omits the field entirely).

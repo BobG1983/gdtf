@@ -5,7 +5,7 @@
 
 use crate::{
     armor::ArmorRegistry,
-    fields::FieldDefRegistry,
+    effects::fields::FieldDefRegistry,
     ganger::GangRegistry,
     occupancy::OccupantPlacement,
     terrain::def::TerrainDefRegistry,
@@ -75,11 +75,11 @@ pub struct BattleRegistries<'a> {
     pub terrain:       Option<&'a TerrainDefRegistry>,
     /// The area-damage-field catalog a situation's authored
     /// [`fields`](crate::situation::Situation::fields) placements resolve their
-    /// [`FieldKey`](crate::fields::FieldKey) against (GTW-545); `None` skips field seeding — a
+    /// [`FieldKey`](crate::effects::fields::FieldKey) against (GTW-545); `None` skips field seeding — a
     /// situation with an authored field then fails with
     /// [`FieldNotFound`](crate::situation::BattleSetupError::FieldNotFound), and a situation with NO fields
     /// (every test fixture that omits the list) seeds an empty
-    /// [`FieldRegistry`](crate::fields::FieldRegistry). The real app always has the catalog
+    /// [`FieldRegistry`](crate::effects::fields::FieldRegistry). The real app always has the catalog
     /// loaded before a battle starts.
     pub fields:        Option<&'a FieldDefRegistry>,
     /// The GTW-549 DATA-DRIVEN attachment registry — the key→spec map a weapon's
@@ -126,9 +126,9 @@ impl<'a> BattleRegistries<'a> {
     /// The same borrow-bundle carrying the GTW-545 area-damage-field catalog — the app path
     /// passes the loaded [`FieldDefRegistry`] so a situation's authored
     /// [`fields`](crate::situation::Situation::fields) placements resolve their
-    /// [`FieldKey`](crate::fields::FieldKey) against the catalog. Defaults to `None`
+    /// [`FieldKey`](crate::effects::fields::FieldKey) against the catalog. Defaults to `None`
     /// ([`new`](Self::new)), so existing callers (every test fixture without authored fields)
-    /// seed an empty [`FieldRegistry`](crate::fields::FieldRegistry) and never fail on the field-seed phase.
+    /// seed an empty [`FieldRegistry`](crate::effects::fields::FieldRegistry) and never fail on the field-seed phase.
     #[must_use]
     pub const fn with_field_defs(mut self, fields: &'a FieldDefRegistry) -> Self {
         self.fields = Some(fields);

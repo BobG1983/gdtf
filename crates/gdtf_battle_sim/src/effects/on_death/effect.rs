@@ -11,7 +11,7 @@
 //! no per-variant folder-fn in the resolver, no authoring step scattered across the tree),
 //! and this enum's own [`ApplyOnDeathEffect`] impl is the ONE purely-mechanical delegation
 //! match — the ONLY sim-side match over this vocabulary. The resolver
-//! ([`resolve_on_death`](crate::on_death::resolve_on_death)) invokes the trait generically.
+//! ([`resolve_on_death`](crate::effects::on_death::resolve_on_death)) invokes the trait generically.
 //!
 //! Adding a new effect means ONE new per-effect file + ONE variant here + ONE delegation
 //! arm + ONE `mod` line — compile-checked (the delegation match is exhaustive, so a new
@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{ApplyExplode, ApplyLeaveField, ApplyOnDeathEffect, DeathFanOut, ExplodeDamage};
 use crate::{
-    fields::FieldKey,
+    effects::fields::FieldKey,
     metric::CellLevel,
     weapon::{DamageType, HitType},
 };
@@ -35,7 +35,7 @@ use crate::{
 /// cover tile (the [`TerrainDef::on_death`](crate::terrain::def::TerrainDef) field). Each
 /// variant's behaviour lives in its isolated sibling per-effect file impl-ing
 /// [`ApplyOnDeathEffect`]; this enum's own impl forwards its one verb through the one
-/// mechanical delegation match, and [`resolve_on_death`](crate::on_death::resolve_on_death)
+/// mechanical delegation match, and [`resolve_on_death`](crate::effects::on_death::resolve_on_death)
 /// invokes the trait generically — so adding a new effect kind is ONE per-effect file + ONE
 /// variant + ONE delegation arm + ONE `mod` line (GTW-552), compile-checked end to end.
 ///
@@ -58,7 +58,7 @@ pub enum OnDeathEffect {
     /// flat, deterministic [`ExplodeDamage`] drain (armor-bypassing, no RNG, the DOT /
     /// field-tick drain model). A blast that empties a victim's
     /// [`Hp`](crate::ganger::Hp) KILLS it, pushing the fresh
-    /// [`OnDeathOccurred`](crate::on_death::OnDeathOccurred) onto the resolver's cascade
+    /// [`OnDeathOccurred`](crate::effects::on_death::OnDeathOccurred) onto the resolver's cascade
     /// work-queue. Behaviour: [`ApplyExplode`].
     Explode {
         /// The `AoE` template shape (GTW-541) — `Blast{radius}` / `Cone{range,angle}` /
@@ -74,13 +74,13 @@ pub enum OnDeathEffect {
         damage_type: DamageType,
     },
     /// **Leave a persistent field** at the death cell — spawn the referenced GTW-545 field
-    /// ([`FieldRegistry::spawn`](crate::fields::FieldRegistry::spawn)) so the cell becomes
+    /// ([`FieldRegistry::spawn`](crate::effects::fields::FieldRegistry::spawn)) so the cell becomes
     /// a live hazard that persists + ticks per GTW-545 rules (a fuel barrel leaving burning
     /// ground when it is smashed). Behaviour: [`ApplyLeaveField`].
     LeaveField {
         /// The field catalog KEY (the ticket's `FieldDefRef`) resolved against the
-        /// [`FieldDefRegistry`](crate::fields::FieldDefRegistry) to the
-        /// [`FieldDef`](crate::fields::FieldDef) spawned at the death cell.
+        /// [`FieldDefRegistry`](crate::effects::fields::FieldDefRegistry) to the
+        /// [`FieldDef`](crate::effects::fields::FieldDef) spawned at the death cell.
         field: FieldKey,
     },
 }

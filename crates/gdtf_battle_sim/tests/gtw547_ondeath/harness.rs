@@ -13,13 +13,15 @@ use gdtf_battle_sim::{
     Wounds,
     battle::{BattleSimPlugin, SetupBattleRequested},
     cover::CoverHp,
-    fields::{
-        FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey, FieldTurns,
-        ImmuneArmorTypes,
+    effects::{
+        fields::{
+            FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey, FieldTurns,
+            ImmuneArmorTypes,
+        },
+        on_death::OnDeathEffect,
     },
     ganger::{Aim, Aiming, Direction, Facing, GangRegistry},
     metric::{Cell, CellLevel, Level},
-    on_death::OnDeathEffect,
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
     terrain::def::{
@@ -71,7 +73,7 @@ pub(crate) fn explode_weapon_spec() -> WeaponSpec {
             hit_type:    HitType::Blast {
                 radius: BlastRadius::new(1),
             },
-            damage:      gdtf_battle_sim::on_death::ExplodeDamage::new(50),
+            damage:      gdtf_battle_sim::effects::on_death::ExplodeDamage::new(50),
             damage_type: DamageType::Blast,
         }),
         ..test_weapon_spec()

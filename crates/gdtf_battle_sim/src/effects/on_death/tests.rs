@@ -3,7 +3,7 @@
 //! serde bridge, in the exact shipped authoring forms), and the enum's THIN delegation
 //! `impl ApplyOnDeathEffect` routes each variant to its isolated behaviour (fanned directly
 //! through the trait against a [`DeathFanOut`](super::DeathFanOut) surface, the seam
-//! [`resolve_on_death`](crate::on_death::resolve_on_death) drives).
+//! [`resolve_on_death`](crate::effects::on_death::resolve_on_death) drives).
 //!
 //! Per-effect fan semantics are asserted in each effect file's own `#[cfg(test)]`; this
 //! suite proves the enum bridge (parse + delegation), not the drain / spawn maths. Per the
@@ -16,7 +16,7 @@ use bevy::{
 
 use super::{ApplyOnDeathEffect, DeathFanOut, ExplodeDamage, OnDeathEffect, VictimRow};
 use crate::{
-    fields::{
+    effects::fields::{
         FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey, FieldRegistry,
         FieldTurns, ImmuneArmorTypes,
     },

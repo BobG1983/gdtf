@@ -100,7 +100,7 @@ pub struct CombatTuning {
     /// `shove_tu` baseline. Tunable, mirroring `stance_change_tu` / `turn_tu`.
     pub throw_tu:              ThrowTu,
     /// The per-terrain move-cost table (movement) — the flat Time Units
-    /// [`crate::move_acts::advance_walk`] spends via [`crate::tu::spend_tu`] to step onto
+    /// [`crate::acts::movement::advance_walk`] spends via [`crate::tu::spend_tu`] to step onto
     /// a destination cell, keyed by that cell's
     /// [`TerrainKind`](crate::occupancy::TerrainKind) (the floor tile crossed determines
     /// the cost; combat.md L34 "step" costs TUs). Terrain-determined, NOT a

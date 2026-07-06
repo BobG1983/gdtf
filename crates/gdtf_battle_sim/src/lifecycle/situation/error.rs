@@ -2,7 +2,7 @@
 
 use crate::{
     armor::ArmorName,
-    fields::FieldKey,
+    effects::fields::FieldKey,
     ganger::{GangName, GangerName},
     metric::CellLevel,
     terrain::def::TerrainUuid,
@@ -142,7 +142,7 @@ pub enum BattleSetupError {
         at: CellLevel,
     },
     /// A [`FieldSpawn`](crate::situation::FieldSpawn)'s field-type KEY was not in the
-    /// [`FieldDefRegistry`](crate::fields::FieldDefRegistry) — no
+    /// [`FieldDefRegistry`](crate::effects::fields::FieldDefRegistry) — no
     /// `assets/content/fields/*.field.ron` with that filename stem loaded (GTW-545, the
     /// area-damage-field mirror of [`ArmorNotFound`](BattleSetupError::ArmorNotFound)).
     ///

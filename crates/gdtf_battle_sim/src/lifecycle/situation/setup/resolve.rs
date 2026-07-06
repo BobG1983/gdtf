@@ -12,7 +12,7 @@ use super::super::terrain_resolve::{
 };
 use crate::{
     armor::{ArmorRegistry, ArmorSpec},
-    fields::{FieldDefRegistry, FieldRegistry},
+    effects::fields::{FieldDefRegistry, FieldRegistry},
     ganger::{GangMember, GangRegistry},
     situation::{BattleSetupError, PlacedGanger, Situation},
     terrain::def::TerrainDefRegistry,
@@ -153,7 +153,7 @@ pub(super) fn resolve_armor_specs(
 /// parallel to the source lists. GTW-547: each cover piece's authored on-death effect
 /// is captured (keyed by its cell) as we resolve — a destroyed cover cell fans it via
 /// `resolve_on_death` (cover is not an entity, so the effect lives in the
-/// [`CoverOnDeathRegistry`](crate::on_death::CoverOnDeathRegistry) keyed by cell, not
+/// [`CoverOnDeathRegistry`](crate::effects::on_death::CoverOnDeathRegistry) keyed by cell, not
 /// on a component).
 #[expect(
     clippy::type_complexity,
@@ -168,7 +168,10 @@ pub(super) fn resolve_covers(
 ) -> Result<
     (
         Vec<ResolvedCoverPiece>,
-        Vec<(crate::metric::CellLevel, crate::on_death::OnDeathEffect)>,
+        Vec<(
+            crate::metric::CellLevel,
+            crate::effects::on_death::OnDeathEffect,
+        )>,
     ),
     BattleSetupError,
 > {
@@ -178,7 +181,7 @@ pub(super) fn resolve_covers(
     // so the effect lives in the CoverOnDeathRegistry keyed by cell, not on a component).
     let mut cover_on_death_entries: Vec<(
         crate::metric::CellLevel,
-        crate::on_death::OnDeathEffect,
+        crate::effects::on_death::OnDeathEffect,
     )> = Vec::new();
     for cover in situation.walls.iter().chain(situation.scatter.iter()) {
         let def = resolve_terrain_or_err(terrain, &cover.piece)?;
@@ -218,7 +221,7 @@ pub(super) fn resolve_slabs(
 
 /// Build the live [`FieldRegistry`] from a situation's authored
 /// [`fields`](crate::situation::Situation::fields) placements, resolving each
-/// [`FieldKey`](crate::fields::FieldKey) against the [`FieldDefRegistry`] catalog (GTW-545).
+/// [`FieldKey`](crate::effects::fields::FieldKey) against the [`FieldDefRegistry`] catalog (GTW-545).
 ///
 /// A private [`setup_battle`](super::setup_battle) helper (mirroring the existing pre-resolve helpers) so the field
 /// seed phase is a single named call rather than a seventh inline phase body — keeping

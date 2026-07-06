@@ -142,7 +142,7 @@ pub fn sync_moved_gangers(
 /// stabilized / executed / recovered) and is a physical body still on the field, so
 /// its cell stays BLOCKED for movement: the path planner
 /// ([`is_open`](crate::pathfinder::PlanningView)) and the
-/// [`advance_walk`](crate::move_acts) bump-stop both refuse a cell whose occupant
+/// [`advance_walk`](crate::acts::movement) bump-stop both refuse a cell whose occupant
 /// marker is set, so retaining the marker keeps an enemy from routing onto / through
 /// a downed friendly (the live-play bug: a unit walked through a downed body because
 /// its slot had been freed). Only a truly Dead ganger frees its cell; the previous

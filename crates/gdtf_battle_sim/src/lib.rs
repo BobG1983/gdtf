@@ -57,7 +57,7 @@
 //!   and [`posture::set_facing`] (charges [`tuning::TurnTu`] on a real turn). Each
 //!   costed verb is a no-op — no charge — when the value is unchanged. Pure math, no
 //!   `World` access.
-//! - [`move_acts`] — the GTW-355 committed walk [`move_acts::advance_walk`]: drives an
+//! - [`acts::movement`] — the GTW-355 committed walk [`acts::movement::advance_walk`]: drives an
 //!   accepted route ONE cell per tick, charging each entered cell its TERRAIN-DETERMINED
 //!   TU cost (the cell's [`occupancy::TerrainKind`] movement cost from the per-terrain
 //!   [`tuning::MoveCosts`] table, NOT a flat constant) atomically with the step. The route
@@ -85,20 +85,20 @@
 //!   [`resolve_hit::IntegrityWear`] onto the struck piece entity's
 //!   [`armor::ArmorIntegrity`] ([`armor_wear::wear_armor`]) + the
 //!   [`armor_wear::ArmorBroken`] message on the protecting→broken crossing.
-//! - [`bleed`] — the §9 bleed-out clock: [`bleed::tick_bleed`] drains a flat
+//! - [`effects::bleed`] — the §9 bleed-out clock: [`effects::bleed::tick_bleed`] drains a flat
 //!   tuning [`tuning::BleedRate`] of [`ganger::Wounds`] per round from each
 //!   un-stabilized [`ganger::LifeState::Downed`] ganger, emits the
-//!   [`bleed::Bleeding`] message, and runs the once-only terminal gate to
+//!   [`effects::bleed::Bleeding`] message, and runs the once-only terminal gate to
 //!   [`ganger::LifeState::Dead`] on depletion. The clock is wired into the live
 //!   runtime by [`acts::SimActsPlugin`]: it runs `tick_bleed` once per full round
-//!   at the enemy-phase start, gated on [`bleed::enemy_phase_started`] (GTW-336).
-//! - [`downed_acts`] — the §9 from-Downed verbs + their shared faction-aware
-//!   predicates: [`downed_acts::can_stabilize`] / [`downed_acts::stabilize_downed`]
+//!   at the enemy-phase start, gated on [`effects::bleed::enemy_phase_started`] (GTW-336).
+//! - [`acts::downed`] — the §9 from-Downed verbs + their shared faction-aware
+//!   predicates: [`acts::downed::can_stabilize`] / [`acts::downed::stabilize_downed`]
 //!   (an 8-adjacent ALIVE ally halts the bleed clock by setting [`ganger::Stabilized`],
-//!   the ganger staying Downed) and [`downed_acts::can_execute`] /
-//!   [`downed_acts::execute_downed`] (an 8-adjacent ALIVE enemy finishes a Downed
+//!   the ganger staying Downed) and [`acts::downed::can_execute`] /
+//!   [`acts::downed::execute_downed`] (an 8-adjacent ALIVE enemy finishes a Downed
 //!   ganger outright → [`ganger::LifeState::Dead`]), over the same-level Moore-8
-//!   [`downed_acts::is_8_adjacent`] reach. Each act is a no-op exactly when its
+//!   [`acts::downed::is_8_adjacent`] reach. Each act is a no-op exactly when its
 //!   predicate is false (button ⇔ act share one guard); the flat TU costs
 //!   ([`tuning::StabilizeTu`] / [`tuning::ExecuteTu`]) are READ, not debited (E4).
 //! - Terrain & space: [`cover`] (the [`cover::CoverLedger`] + [`cover::HeightBand`]
@@ -235,7 +235,8 @@
 //! this crate sits inside as the authoritative, render-free model.
 
 // ── Parent concern modules ───────────────────────────────────────────────────
-pub mod acts_runtime;
+pub mod acts;
+pub mod ai;
 pub mod combatants;
 pub mod damage_resolution;
 pub mod effects;
@@ -246,8 +247,11 @@ pub mod level;
 pub mod lifecycle;
 pub mod melee;
 pub mod perception;
+pub mod reaction;
 pub mod shot_pipeline;
+pub mod suppression;
 pub mod terrain;
+pub mod turn;
 
 // ── Root modules (not moved) ─────────────────────────────────────────────────
 #[cfg(any(test, feature = "test-support"))]
@@ -258,51 +262,26 @@ pub mod tuning;
 // External crates use sub-paths like `gdtf_battle_sim::acts::SimActsPlugin`;
 // these re-exports keep those paths resolving without any caller edits.
 // ── Flat item re-exports: preserve `gdtf_battle_sim::TypeName` paths ─────────
-pub use acts_runtime::{
-    acts,
-    acts::{
-        FireArcDecision, FireDeclaration, InjuryInflicted, MeleeRequested, MeleeResolved,
-        MeleeStruck, MeleeTarget, MoveRejected, MoveRejection, MovementOccurred, OpenDoorRequested,
-        ReloadOutcome, ReloadResult, ShoveOutcome, ShoveRequested, ShoveSource,
-        ThrowGrenadeRequested, ThrowResolved, apply_injury, can_engage, decide_fire_arc,
-        dispatch_melee, dispatch_open_door, dispatch_shove, dispatch_throw_grenade, resolve_shove,
-    },
-    ai,
-    ai::{
-        ActCadence, ActPacing, AiTarget, EnemyActCooldown, enemy_ai_turn, pick_nearest,
-        plan_advance,
-    },
-    bleed,
-    bleed::{BleedOngoing, BleedStarted, Bleeding, enemy_phase_started, tick_bleed},
-    dot,
-    dot::{DotAfflicted, DotApplied, DotTicked, apply_dot, tick_dot},
-    downed_acts,
-    downed_acts::{
+// The ONE dissolved-`acts_runtime` module alias still consumed by an external crate
+// today (gdtf_app's contextual-panel act imports name
+// `gdtf_battle_sim::downed_acts::is_8_adjacent`); GTW-628 re-points those imports at
+// `acts::downed` and deletes this alias. The other old aliases had no external
+// consumers and are gone (GTW-638 C7).
+pub use acts::{
+    FireArcDecision, FireDeclaration, InjuryInflicted, MeleeRequested, MeleeResolved, MeleeStruck,
+    MeleeTarget, MoveRejected, MoveRejection, MovementOccurred, OpenDoorRequested, ReloadOutcome,
+    ReloadResult, ShoveOutcome, ShoveRequested, ShoveSource, ThrowGrenadeRequested, ThrowResolved,
+    apply_injury, can_engage, decide_fire_arc, dispatch_melee, dispatch_open_door, dispatch_shove,
+    dispatch_throw_grenade, downed as downed_acts,
+    downed::{
         Actor, DownedTarget, can_execute, can_stabilize, execute_downed, is_8_adjacent,
         stabilize_downed,
     },
-    fields,
-    fields::{
-        FieldAfflicted, FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey,
-        FieldOngoing, FieldRegistry, FieldTicked, FieldTurns, ImmuneArmorTypes, PlacedField,
-        tick_fields,
-    },
-    firing_arc, move_acts,
-    move_acts::{ReactionShotFired, WalkInProgress, advance_walk},
-    on_death,
-    on_death::{
-        CoverOnDeathRegistry, ExplodeDamage, OnDeath, OnDeathEffect, OnDeathOccurred,
-        resolve_on_death,
-    },
-    reaction,
-    reaction::{reaction_trigger, reset_reactions_used},
-    suppression,
-    suppression::{
-        SuppressionApplied, apply_suppression, reset_suppression, stance_for_cover_band,
-        suppression_auto_stance,
-    },
-    turn,
-    turn::{ActiveFaction, TurnStarted, dispatch_end_turn, regen_team_tu},
+    movement::{ReactionShotFired, WalkInProgress, advance_walk},
+    resolve_shove,
+};
+pub use ai::{
+    ActCadence, ActPacing, AiTarget, EnemyActCooldown, enemy_ai_turn, pick_nearest, plan_advance,
 };
 pub use combatants::{
     faced_cell,
@@ -346,6 +325,19 @@ pub use damage_resolution::{
     resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage, resolve_hit},
     severity,
     severity::{PartSeverityMod, Severity, SeverityInputs, part_severity_mod, roll_severity},
+};
+pub use effects::{
+    bleed::{BleedOngoing, BleedStarted, Bleeding, enemy_phase_started, tick_bleed},
+    dot::{DotAfflicted, DotApplied, DotTicked, apply_dot, tick_dot},
+    fields::{
+        FieldAfflicted, FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey,
+        FieldOngoing, FieldRegistry, FieldTicked, FieldTurns, ImmuneArmorTypes, PlacedField,
+        tick_fields,
+    },
+    on_death::{
+        CoverOnDeathRegistry, ExplodeDamage, OnDeath, OnDeathEffect, OnDeathOccurred,
+        resolve_on_death,
+    },
 };
 pub use equipment::{
     armor,
@@ -437,6 +429,7 @@ pub use perception::{
         move_fog, recompute_visibility, should_recompute_visibility, union_fov,
     },
 };
+pub use reaction::{reaction_trigger, reset_reactions_used};
 pub use shot_pipeline::{
     aim,
     aim::{Shooter, cone_for, stability_for},
@@ -468,6 +461,10 @@ pub use shot_pipeline::{
         ConeMult, EmplacementStability, RecoilGrowth, StabilityScore, StabilityTerms,
         SuppressionStability, TerrainBraced, stability,
     },
+};
+pub use suppression::{
+    SuppressionApplied, apply_suppression, reset_suppression, stance_for_cover_band,
+    suppression_auto_stance,
 };
 pub use terrain::{
     cover,
@@ -538,3 +535,4 @@ pub use tuning::{
     WoundCosts, WoundsPerHp, clamp_probability, interrupt_probability, may_interrupt, reaction_cap,
     reaction_score, rolls_interrupt,
 };
+pub use turn::{ActiveFaction, TurnStarted, dispatch_end_turn, regen_team_tu};

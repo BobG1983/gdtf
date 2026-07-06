@@ -1,18 +1,18 @@
 //! The **shared apply contract** for the field-consequence palette — the
 //! [`ApplyFieldEffect`] trait whose verbs ARE a consequence's behaviour, and the two
 //! borrowed occupant surfaces ([`OccupantArmor`] / [`OccupantDrain`]) the
-//! [`tick_fields`](crate::fields::tick_fields) clock lends it for one fielded cell
+//! [`tick_fields`](crate::effects::fields::tick_fields) clock lends it for one fielded cell
 //! (GTW-553, the field sibling of the GTW-558 attachment / GTW-550 injury / GTW-552
 //! on-death palettes).
 //!
 //! Every isolated per-consequence `ApplyX` type (one per file in this module) impls this
 //! trait; the closed [`FieldEffect`](super::FieldEffect) vocabulary enum impls it too, by
 //! THIN mechanical delegation to each variant's isolated type. The mechanics never match
-//! on the enum — [`tick_fields`](crate::fields::tick_fields) and the
-//! [`PlacedField`](crate::fields::PlacedField) lifetime invoke this trait generically,
+//! on the enum — [`tick_fields`](crate::effects::fields::tick_fields) and the
+//! [`PlacedField`](crate::effects::fields::PlacedField) lifetime invoke this trait generically,
 //! DIRECTLY on the drain path (synchronous — never a deferred command — so a lethal drain
 //! flips [`LifeState::Dead`](crate::ganger::LifeState::Dead) and emits its
-//! [`OnDeathOccurred`](crate::on_death::OnDeathOccurred) at exactly the same point of the
+//! [`OnDeathOccurred`](crate::effects::on_death::OnDeathOccurred) at exactly the same point of the
 //! round the pre-palette inline tick did).
 
 use bevy::prelude::{Entity, MessageWriter, Mut, Query, With};
@@ -20,15 +20,14 @@ use bevy::prelude::{Entity, MessageWriter, Mut, Query, With};
 use super::FieldTurns;
 use crate::{
     armor::{ArmorType, Wears, WornBy},
-    fields::FieldTicked,
+    effects::{fields::FieldTicked, on_death::OnDeathOccurred},
     ganger::{Hp, LifeState},
     metric::CellLevel,
-    on_death::OnDeathOccurred,
 };
 
 /// The occupant's **worn-armor read surface** the exemption verb inspects — the borrowed
 /// view over the occupant's [`Wears`] relationship plus the worn-piece [`ArmorType`]
-/// lookup [`tick_fields`](crate::fields::tick_fields) lends out for one fielded cell
+/// lookup [`tick_fields`](crate::effects::fields::tick_fields) lends out for one fielded cell
 /// (GTW-553).
 ///
 /// A borrowed VIEW over the clock's own `SystemParam`s, never consequence-owned state: the
@@ -44,7 +43,7 @@ pub struct OccupantArmor<'a, 'w, 's> {
 
 /// The occupant's mutable **drain surface** the per-turn drain verb writes through — the
 /// borrowed view over ONE occupant's vitals plus the round's two signal writers,
-/// lent out by [`tick_fields`](crate::fields::tick_fields) for one fielded cell (GTW-553).
+/// lent out by [`tick_fields`](crate::effects::fields::tick_fields) for one fielded cell (GTW-553).
 ///
 /// The vitals are lent as `&mut `[`Mut`]`<…>` (NOT bare `&mut`) so a consequence that
 /// drains writes through [`Mut`] ONLY when it actually mutates — preserving the
@@ -73,8 +72,8 @@ pub struct OccupantDrain<'a, 'hp, 'life, 'wt, 'wd> {
 /// in its own palette file — not in a central `match`, an inline tick branch, or a scatter
 /// of authoring steps. The [`FieldEffect`](super::FieldEffect) vocabulary enum impls this
 /// by DELEGATING each variant to its isolated type (the palette's ONE mechanical match),
-/// and the fields MECHANICS ([`tick_fields`](crate::fields::tick_fields) + the
-/// [`PlacedField`](crate::fields::PlacedField) lifetime) invoke it generically.
+/// and the fields MECHANICS ([`tick_fields`](crate::effects::fields::tick_fields) + the
+/// [`PlacedField`](crate::effects::fields::PlacedField) lifetime) invoke it generically.
 ///
 /// The verbs mirror what field consequences actually do — every verb is DEFAULTED to the
 /// inert answer, so a consequence overrides exactly the verb(s) that ARE its behaviour
@@ -101,7 +100,7 @@ pub trait ApplyFieldEffect {
     /// **Drain** the occupant standing at the field cell `at` this round — the per-turn
     /// occupant mutation, applied synchronously through the borrowed [`OccupantDrain`]
     /// surface (never a deferred command: the lethal flip + its
-    /// [`OnDeathOccurred`](crate::on_death::OnDeathOccurred) must land the same tick the
+    /// [`OnDeathOccurred`](crate::effects::on_death::OnDeathOccurred) must land the same tick the
     /// clock runs, the pre-palette timing).
     ///
     /// Defaulted to the inert no-op so only the draining consequence overrides it.
@@ -116,7 +115,7 @@ pub trait ApplyFieldEffect {
     }
 
     /// The **countdown this consequence seeds** at placement time — the remaining-turns
-    /// value a fresh [`PlacedField`](crate::fields::PlacedField) starts from.
+    /// value a fresh [`PlacedField`](crate::effects::fields::PlacedField) starts from.
     ///
     /// Defaulted to zero so only the lifetime consequence overrides it (every other
     /// consequence contributes nothing to the countdown).
@@ -126,7 +125,7 @@ pub trait ApplyFieldEffect {
 
     /// **Count the placement's lifetime down one round**, mutating `remaining`, and
     /// report `true` iff the placement is now EXPIRED (and must be removed) — the
-    /// per-round expiry step [`tick_down_and_expire`](crate::fields::FieldRegistry::tick_down_and_expire)
+    /// per-round expiry step [`tick_down_and_expire`](crate::effects::fields::FieldRegistry::tick_down_and_expire)
     /// drives after the round's drain.
     ///
     /// Defaulted to `false` with `remaining` untouched, so only the lifetime consequence

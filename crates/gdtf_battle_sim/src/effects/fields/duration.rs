@@ -17,7 +17,7 @@ use super::ApplyFieldEffect;
 /// every [`Tu`](crate::ganger::Tu)-domain count — this is a count of TURNS the field runs, not
 /// a TU cost, and distinct from [`crate::weapon::DotTurns`] (the DOT clock). Derives
 /// [`Ord`] so the placement seed can pick the lifetime consequence's countdown out of the
-/// consequence fold ([`PlacedField::from_def`](crate::fields::PlacedField::from_def)).
+/// consequence fold ([`PlacedField::from_def`](crate::effects::fields::PlacedField::from_def)).
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Deserialize)]
 #[serde(transparent)]
 pub struct FieldTurns(u8);
@@ -34,14 +34,14 @@ impl FieldTurns {
 ///
 /// The lifetime arm of the field model (`docs/combat/resolution.md` — the area-damage-field
 /// beat): a [`Turns`](FieldDuration::Turns) field counts down one turn per
-/// [`tick_fields`](crate::fields::tick_fields) round and is removed at zero (a thrown gas
+/// [`tick_fields`](crate::effects::fields::tick_fields) round and is removed at zero (a thrown gas
 /// grenade's dissipating cloud); a [`Permanent`](FieldDuration::Permanent) field NEVER expires
 /// (a toxic-waste pool seeded as fixed terrain). A named domain enum (no-bare-types: a field
 /// lifetime is a domain value, not a bare `Option<u8>`). Behaviour: [`ApplyDuration`].
 ///
 /// Derives [`Deserialize`] so an authored `.ron` writes `duration: Turns(3)` or
 /// `duration: Permanent`. Derives the sentinel [`Default`] ([`Turns`](FieldDuration::Turns)
-/// of zero — an immediately-expiring no-op) so a [`FieldDef`](crate::fields::FieldDef)
+/// of zero — an immediately-expiring no-op) so a [`FieldDef`](crate::effects::fields::FieldDef)
 /// composes cleanly; the default is never authored (a real field authors either a positive
 /// `Turns` count or `Permanent`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
@@ -56,7 +56,7 @@ impl Default for FieldDuration {
     /// The sentinel default: a zero-turn (immediately-expiring) field. Never authored — a
     /// real field authors a positive [`Turns`](FieldDuration::Turns) count or
     /// [`Permanent`](FieldDuration::Permanent); the default exists only so
-    /// [`FieldDef`](crate::fields::FieldDef) derives [`Default`] cleanly.
+    /// [`FieldDef`](crate::effects::fields::FieldDef) derives [`Default`] cleanly.
     fn default() -> Self {
         Self::Turns(FieldTurns::new(0))
     }

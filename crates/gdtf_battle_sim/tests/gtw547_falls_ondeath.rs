@@ -24,8 +24,8 @@ use bevy::{
 use gdtf_battle_sim::{
     Cell, CellLevel, CombatTuning, Faction, Hp, InflictedWounds, Level, LifeState, Luck,
     OccupancyGrid, OccupancyMaintenancePlugin, PerStoreyDamage, Position, Stance, StanceKind,
-    SurfaceGrid, Toughness, Tu, TuMax, Wounds, falls::FallsPlugin, occupancy_sync::SlabDestroyed,
-    on_death::OnDeathOccurred, test_support::SimAppBuilder,
+    SurfaceGrid, Toughness, Tu, TuMax, Wounds, effects::on_death::OnDeathOccurred,
+    falls::FallsPlugin, occupancy_sync::SlabDestroyed, test_support::SimAppBuilder,
 };
 
 /// An arbitrary fixed seed — determinism is the property, the value is irrelevant.

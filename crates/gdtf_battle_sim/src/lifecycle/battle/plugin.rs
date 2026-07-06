@@ -4,7 +4,7 @@
 use bevy::prelude::{App, IntoScheduleConfigs, Plugin, Update, resource_exists};
 
 use crate::{
-    acts::SimActsPlugin,
+    acts::{SimActsPlugin, movement::advance_walk},
     battle::{
         messages::{
             BattleLost, BattleReady, BattleWon, SetupBattleRequested, TeardownBattleRequested,
@@ -17,7 +17,6 @@ use crate::{
     emplacement::EmplacementTogglePlugin,
     falls::FallsPlugin,
     ganger::{rederive_stats_on_injury_change, rederive_stats_on_tuning_change},
-    move_acts::advance_walk,
     occupancy::project_vision_blocking,
     occupancy_sync::{
         OccupancyMaintenancePlugin, SimSystems, sync_destroyed_cover, sync_destroyed_slab,

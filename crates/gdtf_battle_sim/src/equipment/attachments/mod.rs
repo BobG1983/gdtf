@@ -30,7 +30,8 @@
 //! - `apply` — the post-spawn
 //!   [`apply_pending_attachments`](crate::equipment::attachments::apply_pending_attachments)
 //!   system that runs a spawned weapon's resolved effects (the deferred-spawn bridge; a
-//!   general mechanic, so it lives here with the mechanics, NOT in `acts_runtime`).
+//!   general mechanic, so it lives here with the mechanics, NOT in the act runtime
+//!   (`crate::acts`)).
 //!
 //! ## Dependency direction (acyclic)
 //!

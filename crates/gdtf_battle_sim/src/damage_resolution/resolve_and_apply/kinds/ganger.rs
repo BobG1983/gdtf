@@ -108,8 +108,8 @@ pub struct GangerVerdict {
     /// The DOT this round attached (GTW-544) — `Some(`[`Dot`]`)` ONLY when the firing
     /// weapon carries a [`DotProfile`](crate::weapon::DotProfile) AND the hit PENETRATED
     /// armor ([`PenetratingDamage`](crate::resolve_hit::PenetratingDamage) `> 0`); the
-    /// fire path bridges it to a [`DotApplied`](crate::acts_runtime::dot::DotApplied)
-    /// message the [`apply_dot`](crate::acts_runtime::dot::apply_dot) boundary attaches
+    /// fire path bridges it to a [`DotApplied`](crate::effects::dot::DotApplied)
+    /// message the [`apply_dot`](crate::effects::dot::apply_dot) boundary attaches
     /// (or REFRESHES — DOTs do not stack). `None` for a fully-soaked hit or a non-DOT
     /// weapon. A frozen decision, not a live mutation (the fold owns no component
     /// attach; the boundary system does), taking no RNG draw.

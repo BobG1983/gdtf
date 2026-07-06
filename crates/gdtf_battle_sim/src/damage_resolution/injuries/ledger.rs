@@ -101,7 +101,7 @@ impl StatDeltaLedger {
 /// from the Downed Wounds bleed-out: this drains HP and can down but never kill.
 ///
 /// GTW-438: ALSO a [`Component`] — the standalone per-ganger accrual the bleed runtime
-/// ([`tick_bleed`](crate::bleed::tick_bleed)) queries to drain HP each round. The
+/// ([`tick_bleed`](crate::effects::bleed::tick_bleed)) queries to drain HP each round. The
 /// [`apply_injury`](crate::acts::apply_injury) boundary keeps it in sync with the
 /// owning [`InflictedInjuries`] ledger's [`bleed`](InflictedInjuries::bleed) (the SINGLE
 /// source: the ledger's `gain` is the only accrual point; this component MIRRORS it so a

@@ -19,7 +19,7 @@
 //!   weapon with no `DotProfile` leaves the target with no [`Dot`].
 //!
 //! The per-round `tick_dot` drain (HP-decrement / removal / the DOT-kills gate) is covered by
-//! the in-crate unit tests (`acts_runtime::dot::test`); this file owns the attach seam.
+//! the in-crate unit tests (`effects::dot::test`); this file owns the attach seam.
 //!
 //! HARNESS NOTE (the gtw541 idiom): the sim crate is the LOW crate, so it cannot dev-dep
 //! `gdtf_test_utils` (a cycle). The established sim-crate battle-integration idiom drives

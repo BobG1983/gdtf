@@ -4,7 +4,7 @@
 use bevy::app::App;
 use gdtf_battle_sim::{
     acts::{FireRequested, MeleeRequested},
-    fields::FieldRegistry,
+    effects::fields::FieldRegistry,
     ganger::Direction,
     metric::{Cell, CellLevel, Level},
     situation::CoverSpawn,

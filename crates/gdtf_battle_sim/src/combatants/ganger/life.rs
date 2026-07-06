@@ -52,11 +52,11 @@ impl LifeState {
 /// (`docs/combat/resolution.md` §9; `docs/combat/wounds-and-roster.md`
 /// §"Downed → death … state machine"): an 8-adjacent ally's stabilize action
 /// **sets** this `true`, after which the per-round bleed-out drain
-/// ([`crate::bleed::tick_bleed`]) skips the ganger — no new *Bleeding Out* stacks,
+/// ([`crate::effects::bleed::tick_bleed`]) skips the ganger — no new *Bleeding Out* stacks,
 /// the Wounds already drained stay drained, and the ganger **remains Downed**
 /// (alive, out for the rest of the mission).
 ///
-/// This slice (E3.7) is the flag's single **home**: [`tick_bleed`](crate::bleed::tick_bleed)
+/// This slice (E3.7) is the flag's single **home**: [`tick_bleed`](crate::effects::bleed::tick_bleed)
 /// must **read** it to skip stabilized gangers, so it is defined here, not deferred
 /// to the E3.8 stabilize action (which only **sets** this already-defined flag). A
 /// distinct component so the bleed-out path can query `Option<&Stabilized>` alone.

@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{fields::FieldKey, metric::CellLevel, terrain::def::TerrainUuid};
+use crate::{effects::fields::FieldKey, metric::CellLevel, terrain::def::TerrainUuid};
 
 /// One authored piece of cover — a wall *or* a scatter prop.
 ///
@@ -127,10 +127,10 @@ impl FloorSpawn {
 /// waste pool as initial terrain, an electrified floor) by listing a
 /// [`FieldSpawn`] in [`Situation::fields`](crate::situation::Situation::fields). At [`setup_battle`](crate::situation::setup_battle)
 /// the [`field`](FieldSpawn::field) KEY is resolved against the
-/// [`FieldDefRegistry`](crate::fields::FieldDefRegistry) (abort-first, like the terrain /
+/// [`FieldDefRegistry`](crate::effects::fields::FieldDefRegistry) (abort-first, like the terrain /
 /// weapon / armor keys) and placed into the live
-/// [`FieldRegistry`](crate::fields::FieldRegistry) via
-/// [`FieldRegistry::spawn`](crate::fields::FieldRegistry::spawn).
+/// [`FieldRegistry`](crate::effects::fields::FieldRegistry) via
+/// [`FieldRegistry::spawn`](crate::effects::fields::FieldRegistry::spawn).
 ///
 /// A named struct (`at` + `field`) so the authored shape is self-describing, mirroring
 /// [`CoverSpawn`]. Derives [`Deserialize`] so an authored situation `.ron` names each field's
@@ -141,8 +141,8 @@ pub struct FieldSpawn {
     /// The `(cell, level)` this field occupies.
     pub at:    CellLevel,
     /// The field-type KEY — the [`FieldKey`] of a catalog
-    /// [`FieldDef`](crate::fields::FieldDef), resolved against the
-    /// [`FieldDefRegistry`](crate::fields::FieldDefRegistry) at
+    /// [`FieldDef`](crate::effects::fields::FieldDef), resolved against the
+    /// [`FieldDefRegistry`](crate::effects::fields::FieldDefRegistry) at
     /// [`setup_battle`](crate::situation::setup_battle). A key absent from the catalog is a
     /// handled
     /// [`BattleSetupError::FieldNotFound`](crate::situation::BattleSetupError::FieldNotFound)

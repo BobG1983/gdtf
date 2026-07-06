@@ -115,11 +115,11 @@ pub fn teardown_battle_on_request(
         // GTW-545: remove the battle-lifetime FieldRegistry (the live area-damage-field
         // placements, inserted by setup_battle; same lifetime as the other battle grids —
         // removed alongside BattleInProgress so a fresh battle starts field-free).
-        commands.remove_resource::<crate::fields::FieldRegistry>();
+        commands.remove_resource::<crate::effects::fields::FieldRegistry>();
         // GTW-547: remove the battle-lifetime CoverOnDeathRegistry (the cover-cell on-death
         // effects, inserted by setup_battle; same lifetime as the other battle grids — removed
         // alongside BattleInProgress so a fresh battle starts with no stale cover effects).
-        commands.remove_resource::<crate::on_death::CoverOnDeathRegistry>();
+        commands.remove_resource::<crate::effects::on_death::CoverOnDeathRegistry>();
         // GTW-395: despawn all terrain entities (one per authored cover / slab piece).
         // Commands::despawn (bevy-traps #7 form — never world.spawn/despawn inside a
         // registered system): each entity is queued for despawn at the end of this frame.

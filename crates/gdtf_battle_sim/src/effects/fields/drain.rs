@@ -8,10 +8,9 @@ use serde::Deserialize;
 
 use super::{ApplyFieldEffect, OccupantDrain};
 use crate::{
-    fields::FieldTicked,
+    effects::{fields::FieldTicked, on_death::OnDeathOccurred},
     ganger::{Hp, LifeState},
     metric::CellLevel,
-    on_death::OnDeathOccurred,
 };
 
 /// The **per-turn HP damage** an area-damage field deals each turn a ganger stands in it —
@@ -20,7 +19,7 @@ use crate::{
 ///
 /// A field damage NUMBER (a small per-turn count, `u16` to match the [`Hp`]
 /// inner). A no-bare-types newtype: private inner + derived [`Deref`];
-/// `#[serde(transparent)]` so a field's authored [`FieldDef`](crate::fields::FieldDef)
+/// `#[serde(transparent)]` so a field's authored [`FieldDef`](crate::effects::fields::FieldDef)
 /// `.ron` names it as a bare integer. Distinct from [`crate::weapon::DotDamage`] (the DOT
 /// per-turn tick) — a field's per-turn drain is its OWN quantity, keyed to the field type,
 /// never a weapon's.
@@ -94,11 +93,12 @@ mod tests {
 
     use super::{ApplyDrain, FieldDamage};
     use crate::{
-        effects::fields::{ApplyFieldEffect, OccupantDrain},
-        fields::FieldTicked,
+        effects::{
+            fields::{ApplyFieldEffect, FieldTicked, OccupantDrain},
+            on_death::OnDeathOccurred,
+        },
         ganger::{Hp, LifeState},
         metric::{Cell, CellLevel, Level},
-        on_death::OnDeathOccurred,
     };
 
     /// A ground-floor `(cell, level)` key at `(x, y)`.

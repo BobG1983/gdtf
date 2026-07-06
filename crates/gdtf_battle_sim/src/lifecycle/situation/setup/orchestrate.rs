@@ -234,7 +234,7 @@ pub fn setup_battle(
     // `on_death` field above). Battle-lifetime — removed at teardown alongside the other battle
     // grids. Empty when no cover piece authored an on-death effect. `resolve_on_death` reads it
     // for a COVER death (an OnDeathOccurred carrying Entity::PLACEHOLDER, keyed by cell).
-    commands.insert_resource(crate::on_death::CoverOnDeathRegistry::new(
+    commands.insert_resource(crate::effects::on_death::CoverOnDeathRegistry::new(
         cover_on_death_entries,
     ));
 

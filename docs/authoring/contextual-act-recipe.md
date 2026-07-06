@@ -19,14 +19,14 @@ frame (`ContextualPanelSystems::Press` → `ContextualActSystems::Drain` →
 
 ### 1. Sim — the act itself (bespoke, load-bearing)
 
-- **New module** `crates/gdtf_battle_sim/src/acts_runtime/acts/<act>.rs`: the
+- **New module** `crates/gdtf_battle_sim/src/acts/<act>.rs`: the
   `<Act>Requested` message type (per-act message TYPES stay — no mega-enum) and the
   bespoke `dispatch_<act>` system. The dispatch owns the authoritative gate
   (adjacency / faction / state), the TU spend, and any act-specific ordering — these are
   deliberately NOT generic.
-- **Registration lines** in `acts_runtime/acts/plugin.rs` (`SimActsPlugin`):
+- **Registration lines** in `crates/gdtf_battle_sim/src/acts/plugin/` (`SimActsPlugin`):
   `.add_message::<<Act>Requested>()` in `register_messages` and the dispatch system
-  `.in_set(SimSystems::Simulate)` in `wire_systems` (with explicit `.before`/`.after`
+  `.in_set(SimSystems::Simulate)` in `wire_acts` (with explicit `.before`/`.after`
   edges only where the act genuinely shares state — read the neighbouring comments).
 
 ### 2. Input — the descriptor (one file + one line)
@@ -64,7 +64,7 @@ frame (`ContextualPanelSystems::Press` → `ContextualActSystems::Drain` →
 ### 4. AI arm, or documented why-not (named station — GTW-571 Q6, ruled)
 
 Until GTW-71 lands, the enemy-AI act contract is **move / fire / end-turn, plus
-reload-when-landed** — the brain (`acts_runtime/ai/`) writes only `FireRequested` /
+reload-when-landed** — the brain (`crates/gdtf_battle_sim/src/ai/`) writes only `FireRequested` /
 `MoveRequested` / `EndTurnRequested` today, and GTW-560 records the reload gap. Every
 new act must EITHER add a brain arm that can emit its `*Requested`, OR record here (and
 on the ticket) why the AI does not use it yet.
@@ -88,7 +88,7 @@ surfaces pending the GTW-71 AI-acts expansion; none has a brain arm today.
 ## Worked reference
 
 `Shove` (GTW-525, ported end-to-end in GTW-571) is the reference walk: sim
-`acts_runtime/acts/shove/`, input `act_bus/contextual/shove.rs` +
+`crates/gdtf_battle_sim/src/acts/shove/`, input `act_bus/contextual/shove.rs` +
 `.add_contextual_act::<ShoveAct>()`, app `contextual_panel/acts/shove.rs` +
 `.add_contextual_act_button::<ShoveAct, _>(acts::shove::offer_shove)`, AI why-not
 recorded above, and the press/offer/same-frame tests in

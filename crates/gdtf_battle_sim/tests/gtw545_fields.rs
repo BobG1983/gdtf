@@ -16,7 +16,7 @@
 //!   (no partial world).
 //!
 //! The per-round `tick_fields` drain (HP-decrement / immunity skip / expiry / the field-kills
-//! gate) is covered END-TO-END by the in-crate unit tests (`acts_runtime::fields::test`), which
+//! gate) is covered END-TO-END by the in-crate unit tests (`effects::fields::test`), which
 //! exercise the REAL `tick_fields` against a REAL `OccupancyGrid` + a worn-armor relationship;
 //! this file owns the RON-seed path. NO pinned tunable magnitudes.
 

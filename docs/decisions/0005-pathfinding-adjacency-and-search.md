@@ -74,7 +74,7 @@ What is **not yet decided**, and why a decision is needed now:
 
 There is no pathfinding code today; `move_ganger` steps a single `dest: CellLevel`
 per call (the GTW-234 single-step verb — since evolved into the committed per-tick
-walk, `crates/gdtf_battle_sim/src/acts_runtime/move_acts/walk.rs`). GTW-12 introduces the
+walk, `crates/gdtf_battle_sim/src/acts/movement/walk.rs`). GTW-12 introduces the
 search and the neighbour model; it does not touch the economy.
 
 ## Decision

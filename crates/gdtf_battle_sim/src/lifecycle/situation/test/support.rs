@@ -159,15 +159,15 @@ const SHIPPED_TOXIC_POOL_RON: &str = include_str!(concat!(
 /// `skirmish.ron` setup resolves its authored `fields:` placements against (GTW-545, the field
 /// mirror of [`shipped_armor_registry`]). Returns `None` (assert-fail) if the file fails to
 /// parse (no panic in tests).
-pub(super) fn shipped_field_registry() -> Option<crate::fields::FieldDefRegistry> {
-    let toxic_pool = ron::de::from_str::<crate::fields::FieldDef>(SHIPPED_TOXIC_POOL_RON);
+pub(super) fn shipped_field_registry() -> Option<crate::effects::fields::FieldDefRegistry> {
+    let toxic_pool = ron::de::from_str::<crate::effects::fields::FieldDef>(SHIPPED_TOXIC_POOL_RON);
     assert!(
         toxic_pool.is_ok(),
         "the shipped toxic_waste_pool field file must parse: {toxic_pool:?}",
     );
     let toxic_pool = toxic_pool.ok()?;
-    Some(crate::fields::FieldDefRegistry::new([(
-        crate::fields::FieldKey::new("toxic_waste_pool".to_owned()),
+    Some(crate::effects::fields::FieldDefRegistry::new([(
+        crate::effects::fields::FieldKey::new("toxic_waste_pool".to_owned()),
         toxic_pool,
     )]))
 }

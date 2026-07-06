@@ -4,15 +4,15 @@
 //! when it is smashed).
 
 use super::{ApplyOnDeathEffect, DeathFanOut};
-use crate::{fields::FieldKey, metric::CellLevel};
+use crate::{effects::fields::FieldKey, metric::CellLevel};
 
 /// **`LeaveField`** — spawn the referenced GTW-545 field at the death cell (GTW-547;
 /// isolated per GTW-552).
 ///
 /// Resolves the authored [`FieldKey`] against the fan-out surface's
 /// [`field_defs`](DeathFanOut::field_defs) catalog to its
-/// [`FieldDef`](crate::fields::FieldDef) and calls the GTW-545
-/// [`FieldRegistry::spawn`](crate::fields::FieldRegistry::spawn) placement API at the
+/// [`FieldDef`](crate::effects::fields::FieldDef) and calls the GTW-545
+/// [`FieldRegistry::spawn`](crate::effects::fields::FieldRegistry::spawn) placement API at the
 /// death cell, so the cell becomes a live hazard that persists + ticks per GTW-545 rules.
 ///
 /// BORROWS its key from the enum variant (the delegation arm lends `&FieldKey` for the
@@ -20,7 +20,7 @@ use crate::{fields::FieldKey, metric::CellLevel};
 /// it).
 pub struct ApplyLeaveField<'k> {
     /// The field catalog KEY (the GTW-547 ticket's `FieldDefRef`) resolved against the
-    /// [`FieldDefRegistry`](crate::fields::FieldDefRegistry) to the spawned field.
+    /// [`FieldDefRegistry`](crate::effects::fields::FieldDefRegistry) to the spawned field.
     field: &'k FieldKey,
 }
 
@@ -36,7 +36,7 @@ impl ApplyOnDeathEffect for ApplyLeaveField<'_> {
     /// Fan the field: resolve the key against the catalog and spawn the field at the
     /// death cell. FAIL-CLOSED twice over, never a panic: with the catalog absent
     /// (app/Load-owned — a battle with no field content has none) the fan does nothing
-    /// (the [`tick_fields`](crate::fields::tick_fields) Option-resource precedent), and an
+    /// (the [`tick_fields`](crate::effects::fields::tick_fields) Option-resource precedent), and an
     /// unresolvable key (no field file with that stem loaded) fans nothing (the setup-time
     /// [`FieldNotFound`](crate::situation::BattleSetupError) abort's runtime counterpart).
     fn fan_at(&self, at: CellLevel, fan_out: &mut DeathFanOut<'_, '_, '_>) {
@@ -59,10 +59,12 @@ mod tests {
 
     use super::{ApplyLeaveField, ApplyOnDeathEffect};
     use crate::{
-        effects::on_death::{DeathFanOut, VictimRow},
-        fields::{
-            FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey, FieldRegistry,
-            FieldTurns, ImmuneArmorTypes,
+        effects::{
+            fields::{
+                FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey, FieldRegistry,
+                FieldTurns, ImmuneArmorTypes,
+            },
+            on_death::{DeathFanOut, VictimRow},
         },
         metric::{Cell, CellLevel, Level},
         occupancy::OccupancyGrid,

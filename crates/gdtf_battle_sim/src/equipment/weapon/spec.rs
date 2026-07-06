@@ -132,7 +132,7 @@ pub struct WeaponSpec {
     #[serde(default)]
     pub dot:         Option<DotProfile>,
     /// The weapon's optional **on-death effect** (GTW-547, child GTW-41g) — the
-    /// [`OnDeathEffect`](crate::on_death::OnDeathEffect) (`Explode` / `LeaveField`) the WIELDING
+    /// [`OnDeathEffect`](crate::effects::on_death::OnDeathEffect) (`Explode` / `LeaveField`) the WIELDING
     /// ganger's death fans (a live grenade, an unstable power cell), authored as the `on_death:`
     /// `.weapon.ron` field. `#[serde(default)]` (defaulting to `None`) so an omitted field is a
     /// weapon with no death effect: the field is OPT-IN (the `dot` / `attachments` /
@@ -140,10 +140,10 @@ pub struct WeaponSpec {
     /// author it — deserializes and spawns BYTE-IDENTICAL. When present,
     /// [`into_bundle`](WeaponSpec::into_bundle) carries it into the resolved
     /// [`WeaponSpawnSiblings`] as the `on_death` sibling the wielded-weapon scene seam composes
-    /// onto the weapon entity (as an [`OnDeath`](crate::on_death::OnDeath) component), so
-    /// [`resolve_on_death`](crate::on_death::resolve_on_death) fans it when the ganger dies.
+    /// onto the weapon entity (as an [`OnDeath`](crate::effects::on_death::OnDeath) component), so
+    /// [`resolve_on_death`](crate::effects::on_death::resolve_on_death) fans it when the ganger dies.
     #[serde(default)]
-    pub on_death:    Option<crate::on_death::OnDeathEffect>,
+    pub on_death:    Option<crate::effects::on_death::OnDeathEffect>,
 }
 
 impl WeaponSpec {
@@ -203,7 +203,7 @@ impl WeaponSpec {
 /// `on_death` fields. An identity record (both `None`) composes NO sibling, so a weapon with
 /// neither spawns byte-identical.
 ///
-/// NOT `Copy` (the `on_death` field carries an [`OnDeath`](crate::on_death::OnDeath) whose
+/// NOT `Copy` (the `on_death` field carries an [`OnDeath`](crate::effects::on_death::OnDeath) whose
 /// `OnDeathEffect::LeaveField` owns a `FieldKey` [`String`]); it is `Clone`, moved through the
 /// spawn seam once.
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -212,20 +212,23 @@ pub struct WeaponSpawnSiblings {
     /// when the weapon authors no `dot:` profile — a penetrating hit then attaches a
     /// [`Dot`](super::Dot) on the struck ganger.
     dot:      Option<DotProfile>,
-    /// The weapon's [`OnDeath`](crate::on_death::OnDeath) sibling to add (GTW-547), or `None`
+    /// The weapon's [`OnDeath`](crate::effects::on_death::OnDeath) sibling to add (GTW-547), or `None`
     /// when the weapon authors no `on_death:` effect — the wielding ganger's death then fans
-    /// it via [`resolve_on_death`](crate::on_death::resolve_on_death).
-    on_death: Option<crate::on_death::OnDeath>,
+    /// it via [`resolve_on_death`](crate::effects::on_death::resolve_on_death).
+    on_death: Option<crate::effects::on_death::OnDeath>,
 }
 
 impl WeaponSpawnSiblings {
     /// Build the sibling record from the spec's optional `dot` profile + `on_death` effect
-    /// (the `on_death` effect is wrapped into an [`OnDeath`](crate::on_death::OnDeath)).
+    /// (the `on_death` effect is wrapped into an [`OnDeath`](crate::effects::on_death::OnDeath)).
     #[must_use]
-    pub fn new(dot: Option<DotProfile>, on_death: Option<crate::on_death::OnDeathEffect>) -> Self {
+    pub fn new(
+        dot: Option<DotProfile>,
+        on_death: Option<crate::effects::on_death::OnDeathEffect>,
+    ) -> Self {
         Self {
             dot,
-            on_death: on_death.map(crate::on_death::OnDeath::new),
+            on_death: on_death.map(crate::effects::on_death::OnDeath::new),
         }
     }
 
@@ -236,10 +239,10 @@ impl WeaponSpawnSiblings {
         self.dot
     }
 
-    /// The weapon's [`OnDeath`](crate::on_death::OnDeath) sibling to spawn on the weapon entity
+    /// The weapon's [`OnDeath`](crate::effects::on_death::OnDeath) sibling to spawn on the weapon entity
     /// (GTW-547), or `None` when the weapon authors no death effect.
     #[must_use]
-    pub const fn on_death(&self) -> Option<&crate::on_death::OnDeath> {
+    pub const fn on_death(&self) -> Option<&crate::effects::on_death::OnDeath> {
         self.on_death.as_ref()
     }
 }

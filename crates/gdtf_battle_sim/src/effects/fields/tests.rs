@@ -13,7 +13,7 @@
 use super::{
     ApplyFieldEffect, FieldDamage, FieldDuration, FieldEffect, FieldTurns, ImmuneArmorTypes,
 };
-use crate::{armor::ArmorType, fields::FieldDef, weapon::DamageType};
+use crate::{armor::ArmorType, effects::fields::FieldDef, weapon::DamageType};
 
 /// The closed [`FieldEffect`] vocabulary deserializes each variant from RON by name —
 /// payload newtypes as bare scalars / lists (the `#[serde(transparent)]` bridge).

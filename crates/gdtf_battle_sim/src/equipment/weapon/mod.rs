@@ -75,7 +75,7 @@ pub use components::{
 };
 // GTW-544 (child GTW-41e): the damage-over-time model — the weapon-side `DotProfile` a DOT
 // weapon authors + the per-ganger `Dot` affliction a penetrating hit attaches. The runtime
-// per-turn drain is `acts_runtime::dot::tick_dot`; this module owns only the data types.
+// per-turn drain is `effects::dot::tick_dot`; this module owns only the data types.
 pub use dot::{Dot, DotDamage, DotProfile, DotTurns};
 pub use fire_mode::{
     AoeRange, BlastRadius, ConeHalfAngle, FireMode, FireModeSpec, HitType, ModeConeMult, ModeKind,
