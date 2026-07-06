@@ -25,16 +25,19 @@
 //!
 //! - [`spawn_ganger_sprites`] — `Added<Position>`: spawns one presenter [`Sprite`](bevy::sprite::Sprite) for
 //!   a ganger (its initial [`Visibility`](bevy::prelude::Visibility) seeded through the
-//!   GTW-627 classifier), recording its `sim Entity -> presenter Entity` in
+//!   GTW-627 classifier, its initial atlas index + tint through the GTW-631 appearance
+//!   classifier), recording its `sim Entity -> presenter Entity` in
 //!   the [`GangerSprites`] map and tagging it with the [`GangerSprite`] marker.
 //! - [`move_ganger_sprites`] — `Changed<Position>` (excluding the spawn): re-targets the
 //!   existing presenter sprite's movement tween (it does NOT respawn); the show/hide
 //!   verdict is the resolver's below.
-//! - [`reframe_ganger_sprites`] — `Changed<Facing>` / `Changed<Stance>` /
-//!   `Changed<Aiming>`: recomputes the atlas index (facing reframe) and re-tints the
-//!   sprite (the stance / aiming delta) in place.
-//! - [`update_ganger_life_state`] — `Changed<LifeState>`: tints/reframes a `Downed`
-//!   ganger and despawns a `Dead` one — but a shot-kill whose tracer is still in flight is
+//! - [`resolve_ganger_appearance`] — `Changed<Facing>` / `Changed<Stance>` /
+//!   `Changed<Aiming>` / `Changed<Suppressed>` / `Changed<LifeState>`, the `Suppressed`
+//!   removal drain, and a [`CharacterRoles`] (hot-reload) change: the ONE writer of a
+//!   ganger sprite's atlas index AND tint, both stamped from one pure classifier
+//!   (GTW-631); the spawn seeds its initial value through the same classifier.
+//! - [`update_ganger_life_state`] — `Changed<LifeState>`: despawns a `Dead` ganger — but a
+//!   shot-kill whose tracer is still in flight is
 //!   DEFERRED (GTW-331): it despawns only a death with no pending incoming shot (a non-shot
 //!   death), dropping its [`GangerSprites`] entry.
 //! - [`despawn_killed_ganger_on_impact`] — [`ShotImpactResolved`](crate::ShotImpactResolved):
@@ -70,9 +73,9 @@
 //! fireable. Making a drawn lower-storey unit a valid click/fire target (and the reticle across
 //! storeys) is scoped to GTW-522.
 
+mod appearance;
 mod death;
 mod frame;
-mod reframe;
 mod roles;
 mod spawn_move;
 mod sprite_map;
@@ -83,11 +86,11 @@ mod visibility;
 #[cfg(test)]
 mod test;
 
+pub use appearance::resolve_ganger_appearance;
 pub use death::{
     despawn_killed_ganger_on_impact, despawn_removed_ganger_sprites, update_ganger_life_state,
 };
 pub use frame::{FacingFrame, facing_frame};
-pub use reframe::{reframe_ganger_sprites, reindex_ganger_sprites_on_character_roles_change};
 pub use roles::CharacterRoles;
 pub(crate) use roles::register_character_roles_hot_ron;
 pub use spawn_move::{move_ganger_sprites, spawn_ganger_sprites};

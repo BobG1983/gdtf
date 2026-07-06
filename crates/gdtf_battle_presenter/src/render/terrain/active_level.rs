@@ -134,7 +134,7 @@ pub enum PresenterSystems {
     Draw,
     /// Stage 1 — the drawn WORLD: the terrain draw, the destruction / emplacement
     /// state swaps, the vertical links, and the ganger spawn / move / tween /
-    /// life-state systems. Everything the fog must observe settled — the GTW-627
+    /// appearance / life-state systems. Everything the fog must observe settled — the GTW-627
     /// storey/fog visibility DECISION lives in [`Compose`](Self::Compose), not here.
     Scene,
     /// Stage 2 — COMPOSITION over the settled scene: `present_fog` (each terrain
