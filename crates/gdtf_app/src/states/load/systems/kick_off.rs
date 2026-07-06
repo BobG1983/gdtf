@@ -2,6 +2,10 @@
 
 use bevy::prelude::*;
 use gdtf_assets::{HotRonHandle, RonAsset};
+// GTW-634 C4: the two bespoke families' folders are IMPORTED from their single owning
+// declarations (beside the family layout vocabulary in `gdtf_content_families`), never
+// re-spelled here — the same one-owner rule the seam families get from `FOLDER`.
+use gdtf_content_families::{injuries::INJURIES_FOLDER, prefabs::PREFABS_FOLDER};
 use gdtf_ui::theme::GdtfThemeSpec;
 
 use crate::states::load::resources::{
@@ -13,22 +17,6 @@ const THEME_RON_PATH: &str = "core_tuning/ui_theme.tuning.ron";
 
 /// Path of the loose fonts folder, relative to the asset source root.
 const FONTS_FOLDER_PATH: &str = "fonts";
-
-/// Path of the loose injuries folder, relative to the asset source root (GTW-437 —
-/// the per-injury `assets/content/injuries/**/*.injury.ron` files + the per-part
-/// `content/injuries/weighting/*.weighting.ron` files the registry + tables are built
-/// from). One recursive folder carrying both asset types; the dedicated compound
-/// extensions (`injury.ron` / `weighting.ron`) keep the `.ron` loader dispatch unambiguous.
-const INJURIES_DIR: &str = "content/injuries";
-
-/// Path of the maps (prefab) folder, relative to the asset source root (GTW-489 — child
-/// T05c of the GTW-476 data-model refactor; the per-prefab
-/// `assets/content/maps/<theme>/<size>/*.prefab.ron` fragments the `PrefabRegistry` is
-/// built from). One recursive `load_folder` walks the whole `<theme>/<size>/` tree, and
-/// the dedicated `prefab.ron` compound extension
-/// keeps the `.ron` loader dispatch unambiguous. GTW-494 retired the legacy
-/// `content/maps/*.prefab.ron` loader, so this is the ONLY prefab load in the Load flow.
-const MAPS_DIR: &str = "content/maps";
 
 /// Kicks off the theme-RON load and the BESPOKE folder preloads, storing their
 /// typed handles.
@@ -76,12 +64,12 @@ pub(in crate::states::load) fn kick_off_loads(
 
     let theme = HotRonHandle::new(asset_server.load::<RonAsset<GdtfThemeSpec>>(THEME_RON_PATH));
     let fonts = FontFolderHandle::new(asset_server.load_folder(FONTS_FOLDER_PATH));
-    let injuries = InjuriesFolderHandle::new(asset_server.load_folder(INJURIES_DIR));
+    let injuries = InjuriesFolderHandle::new(asset_server.load_folder(INJURIES_FOLDER));
     // GTW-489 / GTW-494: the UUID-keyed prefab fragments live under the `maps/` root. One
     // recursive `load_folder` fans every `*.prefab.ron` member to the dedicated-extension
     // `RonAsset<PrefabSpec>` loader. This is the ONLY prefab load (the legacy flat-dir
     // `content/maps/*.prefab.ron` loader was retired).
-    let prefabs = PrefabsFolderHandle::new(asset_server.load_folder(MAPS_DIR));
+    let prefabs = PrefabsFolderHandle::new(asset_server.load_folder(PREFABS_FOLDER));
 
     commands.insert_resource(LoadHandles {
         theme,

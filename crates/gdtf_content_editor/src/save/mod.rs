@@ -57,7 +57,7 @@
 //!
 //! | Submodule    | Concern |
 //! |--------------|---------|
-//! | [`types`]    | Path consts, component markers ([`PrefabNameField`](types::PrefabNameField), [`SavePrefabButton`](types::SavePrefabButton)), [`SavePrefabError`](types::SavePrefabError), theme/size dir helpers |
+//! | [`types`]    | [`SavePrefabError`](types::SavePrefabError), the authored spawn-role default, the size-dir helper (GTW-634: the path consts + theme-dir helper moved to their single owners — `gdtf_assets::WORKSPACE_ASSETS_ROOT`, `gdtf_content_families::prefabs`, `crate::theme_dir`) |
 //! | [`project`]  | Pure projection + serialization: [`editor_map_to_prefab`](project::editor_map_to_prefab), [`serialize_prefab`](project::serialize_prefab), [`prefab_save_path`](project::prefab_save_path), [`sanitize_name`](project::sanitize_name) |
 //! | [`tests`]    | In-crate tests (the contract-clause tests) |
 

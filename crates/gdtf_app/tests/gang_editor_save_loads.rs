@@ -17,6 +17,7 @@
 #![cfg(debug_assertions)] // `write_gang_roster_in` rides the debug-gated editor save module.
 
 use gdtf_app::test_support::{AppState, write_gang_roster_in};
+use gdtf_assets::ContentFamily;
 use gdtf_battle_sim::{
     armor::ArmorName,
     ganger::{
@@ -25,6 +26,7 @@ use gdtf_battle_sim::{
     },
     weapon::WeaponName,
 };
+use gdtf_content_families::GangsFamily;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 
 /// Generous SAFETY-NET cap for the real-asset `advance_until` waits gated on an
@@ -67,14 +69,15 @@ fn saved_gang_loads_into_the_registry_through_the_real_folder_walk() {
     let name = GangName::new("edited_gang".to_owned());
     write_gang_roster_in(assets_root.path(), &name, &saved_roster());
 
-    // Positive control: the write LANDED exactly one file under
-    // `<root>/content/gangs/` — otherwise a missing gang below would mean a
+    // Positive control: the write LANDED exactly one file under the gangs family
+    // folder (GTW-634 A2: the folder expectation is DERIVED from `GangsFamily::FOLDER`,
+    // the loader's own owning spelling) — otherwise a missing gang below would mean a
     // failed write, not the extension drift under test.
     let written =
-        std::fs::read_dir(assets_root.path().join("content/gangs")).map_or(0, Iterator::count);
+        std::fs::read_dir(assets_root.path().join(GangsFamily::FOLDER)).map_or(0, Iterator::count);
     assert_eq!(
         written, 1,
-        "the real save write must land exactly one file under content/gangs/",
+        "the real save write must land exactly one file under the gangs family folder",
     );
 
     // RELAUNCH: drive the real Load orchestration (kick-off → folder walk →
