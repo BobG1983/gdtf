@@ -12,31 +12,21 @@
 #[cfg(debug_assertions)]
 use std::path::{Path, PathBuf};
 
-#[cfg(debug_assertions)]
-use gdtf_assets::FileStem;
 use gdtf_assets::serialize_ron_pretty;
+#[cfg(debug_assertions)]
+use gdtf_assets::{ContentFamily, FileStem, WORKSPACE_ASSETS_ROOT};
 use gdtf_battle_sim::level::{ThemeDisplayName, ThemeUuid, UuidThemeDef};
+#[cfg(debug_assertions)]
+use gdtf_content_families::ThemeDefsFamily;
 
 use super::types::{SaveThemeError, ThemeDraft};
 
-/// The workspace `assets/` root — byte-identical to the editor's `AssetPlugin.file_path`
-/// (`crates/gdtf_content_editor` → up two levels → `assets`), computed at compile time. So a
-/// theme def the editor SAVES lands exactly where the GTW-487 theme loader READS from —
-/// `assets/content/terrain/<slug>/`.
-#[cfg(debug_assertions)]
-const WORKSPACE_ASSETS_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
-
-/// The per-theme terrain root the GTW-487 loader scans — `assets/content/terrain/<slug>/`.
-/// The SOLE terrain/theme root after GTW-490 (moved under `content/` in GTW-562), shared
-/// with the per-theme `.terrain_def.ron` files.
-#[cfg(debug_assertions)]
-const TERRAIN_SUBDIR: &str = "content/terrain";
-
-/// The compound file extension the GTW-487 theme loader keys on — a saved theme MUST use it or
-/// the loader never picks the file up (the filename STEM is cosmetic; the `key` field is the
-/// UUID).
-#[cfg(debug_assertions)]
-const THEME_DEF_EXTENSION: &str = "terrain_theme.ron";
+// GTW-634 C1/C3: the assets root, the (mixed) per-theme terrain folder, and the compound
+// extension are NOT re-spelled here — the root is the shared [`WORKSPACE_ASSETS_ROOT`]
+// owner and the folder/extension are DERIVED from [`ThemeDefsFamily`]'s
+// `FOLDER`/`EXTENSION` (the exact values the GTW-487 theme loader walks + dispatches on;
+// the filename STEM is cosmetic, the `key` field is the UUID), so a saved theme lands
+// where the loader reads BY CONSTRUCTION.
 
 /// The `snake_case` slug for a theme, derived from its human display name — the TERRAIN form's
 /// `theme_dir` sibling, since GTW-577 a thin delegation to the shared
@@ -61,9 +51,9 @@ pub(crate) fn slugify(raw: &str) -> FileStem {
 #[must_use]
 pub(crate) fn theme_save_path(slug: &str) -> PathBuf {
     Path::new(WORKSPACE_ASSETS_ROOT)
-        .join(TERRAIN_SUBDIR)
+        .join(ThemeDefsFamily::FOLDER)
         .join(slug)
-        .join(format!("{slug}.{THEME_DEF_EXTENSION}"))
+        .join(format!("{slug}.{}", ThemeDefsFamily::EXTENSION))
 }
 
 /// Project the in-progress [`ThemeDraft`] into a real [`UuidThemeDef`] keyed by `key` (GTW-475

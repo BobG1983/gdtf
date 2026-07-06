@@ -7,20 +7,19 @@
 
 use std::path::{Path, PathBuf};
 
-use gdtf_assets::{FileStem, sanitize_file_stem, serialize_ron_pretty};
+use gdtf_assets::{FileStem, WORKSPACE_ASSETS_ROOT, sanitize_file_stem, serialize_ron_pretty};
 use gdtf_battle_sim::{
     level::{GridSize, PrefabSpec, TerrainPlacementEntry, ThemeUuid},
     terrain::def::TerrainDefRegistry,
 };
+use gdtf_content_families::prefabs::{PREFAB_EXTENSION, PREFABS_FOLDER};
 
-use super::types::{
-    MAPS_SUBDIR, PREFAB_EXTENSION, SAVED_SPAWN_ROLE, SavePrefabError, WORKSPACE_ASSETS_ROOT,
-    size_dir, theme_dir,
-};
+use super::types::{SAVED_SPAWN_ROLE, SavePrefabError, size_dir};
 use crate::{
     EditorMap,
     placement::{PlacementVerdict, ProposedPlacement, evaluate_placement},
     session::MapEditorSession,
+    theme_dir::theme_dir,
 };
 
 /// Sanitize the entered prefab name into a file-name STEM (GTW-432) — since GTW-577 a thin
@@ -43,7 +42,7 @@ pub fn sanitize_name(raw: &str) -> FileStem {
 #[must_use]
 pub fn prefab_save_path(theme_display: &str, size: GridSize, stem: &str) -> PathBuf {
     Path::new(WORKSPACE_ASSETS_ROOT)
-        .join(MAPS_SUBDIR)
+        .join(PREFABS_FOLDER)
         .join(theme_dir(theme_display))
         .join(size_dir(size))
         .join(format!("{stem}.{PREFAB_EXTENSION}"))

@@ -105,6 +105,10 @@ mod theme_form;
 // GTW-495: resolve a TerrainDef's presenter_kind.graphic_name to a terrain atlas index THE WAY
 // THE PRESENTER DOES (via the presenter's TileRoles table) — shared by the palette + canvas.
 mod terrain_graphics;
+// GTW-634 C2: the ONE per-theme directory naming policy (slug + `unknown_theme` fallback)
+// the terrain-def + prefab savers share — the theme form's `slugify` stays a DELIBERATELY
+// divergent sibling (empty → error, no fallback).
+mod theme_dir;
 mod tile_atlas;
 // GTW-630: the editor's AUTHORING-TIME registration of the GTW-582 reference-integrity pass —
 // the shared gdtf_content_families::validate checks over the edges the editor loads

@@ -15,7 +15,7 @@ use bevy::{
     asset::{AssetEvent, AssetServer, Assets},
     prelude::*,
 };
-use gdtf_assets::{ContentFolderHandle, RonAsset};
+use gdtf_assets::{ContentFamily, ContentFolderHandle, RonAsset};
 use gdtf_battle_sim::{
     armor::{ArmorName, ArmorRegistry, ArmorSpec},
     level::{ThemeDisplayName, UuidThemeDef, UuidThemeRegistry},
@@ -220,7 +220,11 @@ fn modified_terrain_def_member_rebuilds_terrain_registry_after_load() {
     let handle = app
         .world()
         .resource::<AssetServer>()
-        .load::<RonAsset<TerrainDef>>("content/terrain/underhive/scrap_barricade.terrain_def.ron");
+        // GTW-634 A1: the folder segment is DERIVED from the family's owning const.
+        .load::<RonAsset<TerrainDef>>(format!(
+            "{}/underhive/scrap_barricade.terrain_def.ron",
+            TerrainDefsFamily::FOLDER
+        ));
     // Edit IN PLACE under the def's own (payload) key, so the assertion needs no
     // shipped-UUID pin.
     let key = {
@@ -266,7 +270,10 @@ fn modified_theme_def_member_rebuilds_theme_registry_after_load() {
     let handle = app
         .world()
         .resource::<AssetServer>()
-        .load::<RonAsset<UuidThemeDef>>("content/terrain/underhive/underhive.terrain_theme.ron");
+        .load::<RonAsset<UuidThemeDef>>(format!(
+            "{}/underhive/underhive.terrain_theme.ron",
+            ThemeDefsFamily::FOLDER
+        ));
     let key = {
         let mut defs = app
             .world_mut()

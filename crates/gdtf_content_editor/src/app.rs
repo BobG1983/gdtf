@@ -9,19 +9,12 @@
 
 use bevy::{asset::AssetPlugin, prelude::*};
 use bevy_egui::EguiPlugin;
+// GTW-634 C1: the workspace `assets/` root has ONE owning definition — the shared
+// `gdtf_assets` constant both hosts' `AssetPlugin` AND every editor-side saver import,
+// so what the editor loads-from and saves-into can never drift from the game.
+use gdtf_assets::WORKSPACE_ASSETS_ROOT;
 
 use crate::{capture::EditorCapturePlugin, plugin::MapEditorPlugin};
-
-/// Absolute path to the workspace-root `assets/` directory.
-///
-/// Identical rationale to `gdtf_app`'s `GdtfApp`: Bevy's default file asset reader resolves
-/// its base from `BEVY_ASSET_ROOT`, else `CARGO_MANIFEST_DIR`, else the executable dir.
-/// Under `cargo run -p gdtf_content_editor_bin`, `CARGO_MANIFEST_DIR` is the `bins/gdtf_content_editor` package,
-/// so the default would look under `bins/gdtf_content_editor/assets`. We therefore point
-/// [`AssetPlugin::file_path`] at the workspace root, computed at compile time relative to
-/// THIS crate's manifest (`crates/gdtf_content_editor` → up two levels → `assets`). This matches
-/// both `gdtf_app` and the headless test harness, so a path that loads in one loads in all.
-const WORKSPACE_ASSETS_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
 
 /// The GDTF map-editor application — a SEPARATE windowed binary from the game.
 pub struct MapEditorApp(App);

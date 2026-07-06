@@ -139,16 +139,33 @@ fn sanitize_name_folds_to_stem() {
 /// The save path is `assets/content/maps/<theme>/<size>/<stem>.prefab.ron` — the layout the GTW-489
 /// loader scans (the `.prefab` infix is required so the loader keys it). The theme dir is
 /// the slugified theme display name (NOT a closed-enum match).
+///
+/// GTW-634 A2: the root + folder expectations are DERIVED from their single owners
+/// ([`gdtf_assets::WORKSPACE_ASSETS_ROOT`] + the bespoke prefab family's
+/// `PREFABS_FOLDER`) — the exact consts the GTW-489 loader kick-off walks — so the
+/// GTW-562 change-class (move a content root) is a ONE-site edit that this test follows
+/// automatically. The FILE component stays a literal pin (`entry_room.prefab.ron`): the
+/// shipped tree really does use that compound extension, so an extension change goes
+/// consciously red here.
 #[test]
 fn save_path_is_themed_sized_and_dot_prefab_ron() {
+    use std::path::Path;
+
+    use gdtf_assets::WORKSPACE_ASSETS_ROOT;
+    use gdtf_content_families::prefabs::PREFABS_FOLDER;
+
     let path = prefab_save_path("Industrial Hive", size(), "entry_room");
+    assert!(
+        path.starts_with(Path::new(WORKSPACE_ASSETS_ROOT).join(PREFABS_FOLDER)),
+        "under the ONE shared assets root + prefab folder (GTW-634): {path:?}",
+    );
     let tail: Vec<_> = path
         .components()
         .rev()
-        .take(4)
+        .take(3)
         .map(|c| c.as_os_str().to_string_lossy().into_owned())
         .collect();
-    // Reversed: file, size dir, theme dir, maps dir.
+    // Reversed: file, size dir, theme dir (the folder above them is pinned by starts_with).
     assert_eq!(
         tail[0], "entry_room.prefab.ron",
         "the .prefab.ron extension"
@@ -158,7 +175,6 @@ fn save_path_is_themed_sized_and_dot_prefab_ron() {
         tail[2], "industrial_hive",
         "the slugified theme display-name dir (not a closed-enum match)",
     );
-    assert_eq!(tail[3], "maps", "under the maps root");
 }
 
 /// GTW-495 C2 — the IDENTITY round-trip on the REAL code path: build an [`EditorMap`] with a

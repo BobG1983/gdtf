@@ -1,27 +1,14 @@
 //! Core wiring and app logic for GDTF.
 
 use bevy::{asset::AssetPlugin, prelude::*};
+// GTW-634 C1: the workspace `assets/` root has ONE owning definition — the shared
+// `gdtf_assets` constant (see its doc for the `get_base_path` rationale) that both
+// hosts' `AssetPlugin` AND every editor-side saver import, so a saved file lands
+// exactly where this app loads from, by construction.
+use gdtf_assets::WORKSPACE_ASSETS_ROOT;
 use gdtf_ui::UiPlugin;
 
 use crate::states::{AppState, ScenesPlugin};
-
-/// Absolute path to the workspace-root `assets/` directory.
-///
-/// GDTF ships its loose `.ron`/font assets under the **repo-root** `assets/`
-/// (ADR 0003), and the [`AssetServer`] must resolve `assets/...` paths against
-/// that directory. Bevy's default file
-/// [`AssetReader`](bevy::asset::io::AssetReader) base path is **not** the
-/// working directory — `bevy_asset`'s `get_base_path` reads `BEVY_ASSET_ROOT`,
-/// else the runtime `CARGO_MANIFEST_DIR`, else the executable's directory. Under
-/// `cargo run -p grimdark_turfwar`, cargo sets `CARGO_MANIFEST_DIR` in the child
-/// process to the **binary** package (`bins/grimdark_turfwar`), so the default
-/// would look under `bins/grimdark_turfwar/assets` — not the repo root. We
-/// therefore point [`AssetPlugin::file_path`] explicitly at the workspace root,
-/// computed at compile time relative to **this** crate's manifest
-/// (`crates/gdtf_app` → up two levels → `assets`). This mirrors the headless
-/// test harness (`GdtfUiTestAppBuilder`), so a path that loads in a test loads
-/// in the app.
-const WORKSPACE_ASSETS_ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets");
 
 /// Main entry point for the GDTF application.
 pub struct GdtfApp(App);
