@@ -10,14 +10,14 @@ use gdtf_ui::{DropdownColors, DropdownOption, spawn_dropdown, theme::GdtfTheme};
 
 use crate::states::{
     RunningState,
-    running::editor::components::{MemberArmorDropdown, MemberRowIndex, MemberWeaponDropdown},
+    running::gang_editor::components::{MemberArmorDropdown, MemberRowIndex, MemberWeaponDropdown},
 };
 
 /// Build the pre-sorted weapon dropdown option list — ALL loaded
 /// [`WeaponName`](gdtf_battle_sim::WeaponName) keys (C2), sorted by name for a stable order (the
 /// `HashMap` `keys()` order is unspecified). Each option's identity IS its key; its label is the
 /// key string. Returns an empty list when the registry is absent (degraded, never panics).
-pub(in crate::states::running::editor) fn sorted_weapon_options(
+pub(in crate::states::running::gang_editor) fn sorted_weapon_options(
     weapons: Option<&WeaponRegistry>,
 ) -> Vec<DropdownOption<WeaponName>> {
     let Some(weapons) = weapons else {
@@ -33,7 +33,7 @@ pub(in crate::states::running::editor) fn sorted_weapon_options(
 /// Build the pre-sorted armor dropdown option list — ALL loaded
 /// [`ArmorName`](gdtf_battle_sim::ArmorName) keys (C2), sorted by name. The armor mirror of
 /// [`sorted_weapon_options`].
-pub(in crate::states::running::editor) fn sorted_armor_options(
+pub(in crate::states::running::gang_editor) fn sorted_armor_options(
     armor: Option<&ArmorRegistry>,
 ) -> Vec<DropdownOption<ArmorName>> {
     let Some(armor) = armor else {
@@ -77,7 +77,7 @@ pub(super) fn spawn_weapon_loadout(
         (
             MemberWeaponDropdown,
             row_index,
-            DespawnOnExit(RunningState::DebugEditor),
+            DespawnOnExit(RunningState::DebugGangEditor),
         ),
     )
 }
@@ -100,7 +100,7 @@ pub(super) fn spawn_armor_loadout(
         (
             MemberArmorDropdown,
             row_index,
-            DespawnOnExit(RunningState::DebugEditor),
+            DespawnOnExit(RunningState::DebugGangEditor),
         ),
     )
 }

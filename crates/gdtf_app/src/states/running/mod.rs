@@ -29,8 +29,8 @@ crate::support_use!(game::AfterMathState;);
 // `pub(crate)` so the crate-root test-support ledger can name the scene's own
 // `test_support` submodule directly (GTW-569 one-hop ledger — the gang-editor model +
 // markers no longer climb through here).
-pub(crate) mod editor;
-pub(in crate::states::running) use editor::EditorScenePlugin;
+pub(crate) mod gang_editor;
+pub(in crate::states::running) use gang_editor::GangEditorScenePlugin;
 
 // The DEV-ONLY procgen STEP/AUTO visualizer (GTW-434). The WHOLE module — model, components,
 // systems, and scene plugin — is `#[cfg(debug_assertions)]`-gated so it compiles out of a

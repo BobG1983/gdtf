@@ -13,7 +13,7 @@ use bevy::{prelude::*, ui::Interaction};
 use gdtf_battle_sim::{ArmorRegistry, GangerStatTuning, WeaponRegistry};
 use gdtf_ui::{ScrollListArea, theme::GdtfTheme};
 
-use crate::states::running::editor::{
+use crate::states::running::gang_editor::{
     components::{AddMemberButton, MemberListHost},
     model::EditableGang,
     systems::spawn::{sorted_armor_options, sorted_weapon_options, spawn_member_row},
@@ -28,10 +28,10 @@ use crate::states::running::editor::{
 /// [`ArmorRegistry`] (all loaded keys — C2); the new row's readonly derived-stat displays are
 /// seeded from the GTW-384 [`GangerStatTuning`] derivation (C3). Guarded on the model + theme
 /// presence (state-scoped resource — `bevy-traps.md` #1) and registered
-/// `run_if(in_state(RunningState::DebugEditor))`.
+/// `run_if(in_state(RunningState::DebugGangEditor))`.
 /// The row is parented into the [`ScrollListArea`] via a deferred command (it queries the
 /// [`MemberListHost`] frame for its area child, the GTW-422 palette precedent).
-pub(in crate::states::running::editor) fn add_member_on_press(
+pub(in crate::states::running::gang_editor) fn add_member_on_press(
     mut commands: Commands,
     buttons: Query<&Interaction, (Changed<Interaction>, With<AddMemberButton>)>,
     theme: Option<Res<GdtfTheme>>,

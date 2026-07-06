@@ -1,7 +1,7 @@
 //! GTW-428: headless behavioral tests for the in-app gang-editor's EXPANDED per-member stat table.
 //!
 //! These run on the `MinimalPlugins` [`GdtfTestAppBuilder`] (the real state stack, `UiPlugin` —
-//! which registers `drive_accordions` — and the real `EditorScenePlugin` wired through
+//! which registers `drive_accordions` — and the real `GangEditorScenePlugin` wired through
 //! `ScenesPlugin`), seeded with a theme + a [`GangerStatTuning`] so the editor screen spawns with
 //! the GTW-384 derivation available. They assert on the WORLD and the model resource (the
 //! system-effects) — never on rendering or real device input.

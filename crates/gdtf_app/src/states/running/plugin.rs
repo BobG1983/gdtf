@@ -3,8 +3,8 @@ use bevy::prelude::*;
 use crate::states::{
     AppState, RunningState,
     running::{
-        EditorScenePlugin, GameScenePlugin, MenuScenePlugin, OptionsScenePlugin, QuitScenePlugin,
-        systems::*,
+        GameScenePlugin, GangEditorScenePlugin, MenuScenePlugin, OptionsScenePlugin,
+        QuitScenePlugin, systems::*,
     },
     scaffold::{SceneLabel, log_scene_enter, log_scene_exit},
 };
@@ -40,10 +40,10 @@ fn add_plugins(app: &mut App) {
         .add_plugins(OptionsScenePlugin)
         .add_plugins(QuitScenePlugin)
         // The DEV-ONLY gang editor (GTW-420). Its scene plugin is always registered (the
-        // `DebugEditor` state variant always exists), but the only entry point — the
+        // `DebugGangEditor` state variant always exists), but the only entry point — the
         // `cfg(debug_assertions)`-gated "Gang Editor" menu button — never compiles into a
         // release binary, so the editor is unreachable in release.
-        .add_plugins(EditorScenePlugin);
+        .add_plugins(GangEditorScenePlugin);
 
     // The DEV-ONLY procgen STEP/AUTO visualizer (GTW-434). Its whole module — including this
     // plugin — is `#[cfg(debug_assertions)]`-gated, so a release build neither registers nor

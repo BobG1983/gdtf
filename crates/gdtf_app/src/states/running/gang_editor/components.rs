@@ -23,9 +23,9 @@ use bevy::ui::widget::Button;
 crate::support_item! {
     /// Marks the editor screen's ROOT node (the themed panel layout).
     ///
-    /// Carries [`DespawnOnExit(RunningState::DebugEditor)`](bevy::prelude::DespawnOnExit) so the
+    /// Carries [`DespawnOnExit(RunningState::DebugGangEditor)`](bevy::prelude::DespawnOnExit) so the
     /// whole screen tears down on leave. The headless test asserts this root EXISTS in
-    /// `DebugEditor` and is GONE after the transition away (C1 / C5).
+    /// `DebugGangEditor` and is GONE after the transition away (C1 / C5).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct EditorScreenRoot;
 }
@@ -56,7 +56,7 @@ crate::support_item! {
 /// [`crate::support_item!`]): no EXTERNAL test names it — the GTW-429 round-trip test is in-crate
 /// and exercises the model-projection + loader path directly, not the button widget.
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-pub(in crate::states::running::editor) struct SaveGangButton;
+pub(in crate::states::running::gang_editor) struct SaveGangButton;
 
 crate::support_item! {
     /// Marks the GTW-412 [`ScrollList`](gdtf_ui::ScrollList) ROOT FRAME the per-member rows
@@ -128,7 +128,7 @@ impl PipExpanded {
     }
 
     /// Flip the state, returning the new value — the pip press toggle.
-    pub(in crate::states::running::editor) const fn toggle(&mut self) -> bool {
+    pub(in crate::states::running::gang_editor) const fn toggle(&mut self) -> bool {
         self.0 = !self.0;
         self.0
     }

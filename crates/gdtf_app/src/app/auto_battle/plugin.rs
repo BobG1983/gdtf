@@ -81,11 +81,30 @@ crate::support_item! {
     struct AutoBattleActive;
 }
 
+/// Whether `value` spells "enabled" for the [`AUTO_BATTLE_ENV`] gate: `1` / `true` /
+/// `yes` / `on` after trimming, case-insensitive; anything else is disabled.
+///
+/// The ONE truthy parser for this module — [`auto_battle_enabled`] applies it to the
+/// env read, and the sibling `test` module drives it directly (GTW-622 C8 folded the
+/// test's former local copy into this production fn, so the test exercises the real
+/// recognition logic). Deliberately intra-module: only two production truthy parsers
+/// exist workspace-wide (this and the presenter overlay's), short of the rule of
+/// three, so there is NO shared cross-crate helper.
+#[must_use]
+pub(super) fn recognised_truthy(value: &str) -> bool {
+    matches!(
+        value.trim().to_ascii_lowercase().as_str(),
+        "1" | "true" | "yes" | "on"
+    )
+}
+
 crate::support_item! {
     /// Whether the DEV auto-enter-battle affordance is enabled for this process.
     ///
     /// Reads the [`AUTO_BATTLE_ENV`] (`GDTF_AUTOBATTLE`) environment variable and
-    /// treats `1` / `true` / `yes` / `on` (case-insensitive, trimmed) as enabled;
+    /// treats `1` / `true` / `yes` / `on` (case-insensitive, trimmed — the module's
+    /// `recognised_truthy` parser; a plain code span, not a doc link, because this item
+    /// is `pub` under `test-support` while the parser stays module-private) as enabled;
     /// anything else — including the variable being unset or empty — is disabled.
     /// This is the env-var half of the gate; the `cfg!(debug_assertions)` half lives
     /// at the [`GdtfApp`](crate::GdtfApp) wiring site, so a release build never even
@@ -98,12 +117,7 @@ crate::support_item! {
     /// `pub(crate)` otherwise.
     #[must_use]
     fn auto_battle_enabled() -> bool {
-        std::env::var(AUTO_BATTLE_ENV).is_ok_and(|value| {
-            matches!(
-                value.trim().to_ascii_lowercase().as_str(),
-                "1" | "true" | "yes" | "on"
-            )
-        })
+        std::env::var(AUTO_BATTLE_ENV).is_ok_and(|value| recognised_truthy(&value))
     }
 }
 

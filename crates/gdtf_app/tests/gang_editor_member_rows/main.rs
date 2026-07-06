@@ -2,7 +2,7 @@
 //! editing.
 //!
 //! These run on the `MinimalPlugins` [`GdtfTestAppBuilder`] (the real state stack, `UiPlugin`, and
-//! the real `EditorScenePlugin` wired through `ScenesPlugin`), seeded with a theme + a
+//! the real `GangEditorScenePlugin` wired through `ScenesPlugin`), seeded with a theme + a
 //! [`WeaponRegistry`] / [`ArmorRegistry`] so the editor screen spawns with populated weapon /
 //! armor dropdowns. They assert on the WORLD and the model resource (the system-effects) — never
 //! on rendering or real device input.

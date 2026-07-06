@@ -1,27 +1,25 @@
 //! Unit tests for the DEV-ONLY auto-enter-battle gate (relocated from the inline
 //! `auto_battle` test module, GTW-201).
 
-use super::*;
+use super::{plugin::recognised_truthy, *};
 
 /// The gate predicate is a pure function of the env var: enabled exactly for
 /// the recognised truthy spellings, disabled otherwise. Asserting against a
-/// process-global env var is racy across parallel tests, so this exercises the
-/// SAME recognition logic [`auto_battle_enabled`] applies, proving the env-var
-/// path is wired without mutating the shared environment.
+/// process-global env var is racy across parallel tests, so this drives the
+/// REAL [`recognised_truthy`] parser [`auto_battle_enabled`] applies (GTW-622
+/// C8: the former local copy is folded into that production fn), proving the
+/// env-var path's recognition logic without mutating the shared environment.
 #[test]
 fn truthy_spellings_enable_falsey_disable() {
-    let recognise = |value: &str| {
-        matches!(
-            value.trim().to_ascii_lowercase().as_str(),
-            "1" | "true" | "yes" | "on"
-        )
-    };
     for truthy in ["1", "true", "TRUE", "Yes", " on "] {
-        assert!(recognise(truthy), "{truthy:?} should enable the affordance");
+        assert!(
+            recognised_truthy(truthy),
+            "{truthy:?} should enable the affordance"
+        );
     }
     for falsey in ["", "0", "false", "no", "off", "maybe"] {
         assert!(
-            !recognise(falsey),
+            !recognised_truthy(falsey),
             "{falsey:?} should leave the affordance inert",
         );
     }

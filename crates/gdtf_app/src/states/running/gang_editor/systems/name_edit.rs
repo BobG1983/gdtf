@@ -13,7 +13,7 @@ use bevy::prelude::*;
 use gdtf_battle_sim::GangName;
 use gdtf_ui::TextFieldCommitted;
 
-use crate::states::running::editor::{components::GangNameField, model::EditableGang};
+use crate::states::running::gang_editor::{components::GangNameField, model::EditableGang};
 
 /// Updates the model [`GangName`] from a commit on the gang-name field (AC3).
 ///
@@ -21,8 +21,8 @@ use crate::states::running::editor::{components::GangNameField, model::EditableG
 /// `bevy-traps.md` #4) and filters to the field carrying [`GangNameField`] via
 /// [`Query::contains`], so a commit on any OTHER field is ignored. Guarded by the model's
 /// presence via `Option<ResMut<…>>` (the model is a state-scoped resource — `bevy-traps.md`
-/// #1) and registered `run_if(in_state(RunningState::DebugEditor))`.
-pub(in crate::states::running::editor) fn commit_gang_name(
+/// #1) and registered `run_if(in_state(RunningState::DebugGangEditor))`.
+pub(in crate::states::running::gang_editor) fn commit_gang_name(
     mut commits: MessageReader<TextFieldCommitted>,
     name_fields: Query<(), With<GangNameField>>,
     model: Option<ResMut<EditableGang>>,

@@ -13,7 +13,7 @@
 use bevy::{prelude::*, ui::Interaction};
 use gdtf_ui::AccordionAnim;
 
-use crate::states::running::editor::components::{
+use crate::states::running::gang_editor::components::{
     ExpandPip, MemberRowIndex, MemberStatPanel, PipExpanded,
 };
 
@@ -37,11 +37,11 @@ type PressedPip = (Changed<Interaction>, With<ExpandPip>);
 /// (3) finds the [`MemberStatPanel`] carrying the SAME [`MemberRowIndex`] and sets its
 /// [`AccordionAnim`](gdtf_ui::AccordionAnim) to its toggled direction so the shared
 /// `drive_accordions` lerps the panel open / closed. Registered
-/// `run_if(in_state(RunningState::DebugEditor))`.
+/// `run_if(in_state(RunningState::DebugGangEditor))`.
 ///
 /// The two queries are disjoint (an [`ExpandPip`] is never a [`MemberStatPanel`]), and both read
 /// [`MemberRowIndex`] only immutably, so there is no B0001 borrow conflict.
-pub(in crate::states::running::editor) fn toggle_expand_pip(
+pub(in crate::states::running::gang_editor) fn toggle_expand_pip(
     mut pips: Query<(&Interaction, &MemberRowIndex, &mut PipExpanded, &mut Text), PressedPip>,
     mut panels: Query<(&MemberRowIndex, &mut AccordionAnim), With<MemberStatPanel>>,
 ) {

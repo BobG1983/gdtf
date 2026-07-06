@@ -20,10 +20,10 @@ use super::{
 };
 // The GTW-429 Save-gang button marker — spawned only in a debug build (C3/C4).
 #[cfg(debug_assertions)]
-use crate::states::running::editor::components::SaveGangButton;
+use crate::states::running::gang_editor::components::SaveGangButton;
 use crate::states::{
     RunningState,
-    running::editor::{
+    running::gang_editor::{
         components::{AddMemberButton, EditorScreenRoot, GangNameField, MemberListHost},
         model::EditableGang,
     },
@@ -33,7 +33,15 @@ use crate::states::{
 /// rule), reusing the menu's calibrated `10px / 720` separation so the editor spacing matches.
 const EDITOR_GAP_VH: f32 = 1.388_89;
 
-/// Spawns the full editor screen when [`RunningState::DebugEditor`] is entered.
+/// The screen's teardown marker: every node this module spawns carries it, so the whole
+/// gang-editor screen despawns on leaving [`RunningState::DebugGangEditor`]. Hoisted (GTW-622)
+/// so [`spawn_editor_screen`] stays under the `too_many_lines` lint after the state-variant
+/// rename lengthened — and rustfmt therefore re-wrapped — its spawn tuples.
+const fn editor_exit() -> DespawnOnExit<RunningState> {
+    DespawnOnExit(RunningState::DebugGangEditor)
+}
+
+/// Spawns the full editor screen when [`RunningState::DebugGangEditor`] is entered.
 ///
 /// Reads the live [`GdtfTheme`] as `Option<Res<GdtfTheme>>` and no-ops if it is absent
 /// (`bevy-traps.md` #1) — in the running app the theme is present by the time the menu can
@@ -42,8 +50,8 @@ const EDITOR_GAP_VH: f32 = 1.388_89;
 /// inserts), and the [`GangerStatTuning`] (the GTW-384 derivation weights, a persistent resource
 /// the `Load` flow inserts) as `Option<Res<…>>` so it is robust if any is absent — an absent
 /// tuning seeds the readonly derived displays with the const-default derivation (C3). Each spawned
-/// node carries [`DespawnOnExit(RunningState::DebugEditor)`](bevy::prelude::DespawnOnExit).
-pub(in crate::states::running::editor) fn spawn_editor_screen(
+/// node carries [`DespawnOnExit(RunningState::DebugGangEditor)`](bevy::prelude::DespawnOnExit).
+pub(in crate::states::running::gang_editor) fn spawn_editor_screen(
     mut commands: Commands,
     theme: Option<Res<GdtfTheme>>,
     model: Option<Res<EditableGang>>,
@@ -70,7 +78,7 @@ pub(in crate::states::running::editor) fn spawn_editor_screen(
                 row_gap: Val::Vh(EDITOR_GAP_VH),
                 ..default()
             },
-            DespawnOnExit(RunningState::DebugEditor),
+            editor_exit(),
         ))
         .id();
 
@@ -81,14 +89,14 @@ pub(in crate::states::running::editor) fn spawn_editor_screen(
                 Themed::new(ThemeRole::Title)
                 Text::new("GANG EDITOR")
             },
-            bevy::scene::template_value(DespawnOnExit(RunningState::DebugEditor)),
+            bevy::scene::template_value(editor_exit()),
         ))
         .id();
 
     // PANEL — wraps the editing controls in a themed box, a flex column.
     let panel = spawn_panel(&mut commands, &theme);
     commands.entity(panel).insert((
-        DespawnOnExit(RunningState::DebugEditor),
+        editor_exit(),
         Node {
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::Stretch,
@@ -110,7 +118,7 @@ pub(in crate::states::running::editor) fn spawn_editor_screen(
         &mut commands,
         CommittedTextValue::new(initial_name),
         field_colors(&theme),
-        (GangNameField, DespawnOnExit(RunningState::DebugEditor)),
+        (GangNameField, editor_exit()),
     );
 
     // ADD-MEMBER button (AC4).
@@ -118,7 +126,7 @@ pub(in crate::states::running::editor) fn spawn_editor_screen(
         &mut commands,
         &theme,
         ButtonLabel::new("Add member"),
-        (AddMemberButton, DespawnOnExit(RunningState::DebugEditor)),
+        (AddMemberButton, editor_exit()),
     );
 
     // MEMBER-LIST shell — a GTW-412 scroll list. `spawn_scroll_list` puts the MemberListHost
@@ -130,7 +138,7 @@ pub(in crate::states::running::editor) fn spawn_editor_screen(
     let list_area = spawn_scroll_list(
         &mut commands,
         scroll_list_colors(&theme),
-        (MemberListHost, DespawnOnExit(RunningState::DebugEditor)),
+        (MemberListHost, editor_exit()),
     );
 
     // Seed one collapsed row per member already in the model (the load-from-registry path),
@@ -200,7 +208,7 @@ fn spawn_save_button(commands: &mut Commands, theme: &GdtfTheme, panel: Entity) 
         commands,
         theme,
         ButtonLabel::new("Save gang"),
-        (SaveGangButton, DespawnOnExit(RunningState::DebugEditor)),
+        (SaveGangButton, editor_exit()),
     );
     commands.entity(panel).add_child(save_button);
 }

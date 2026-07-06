@@ -11,7 +11,7 @@ use bevy::prelude::*;
 use gdtf_battle_sim::{ArmorName, GangerName, WeaponName};
 use gdtf_ui::{DropdownSelectionChanged, TextFieldCommitted};
 
-use crate::states::running::editor::{
+use crate::states::running::gang_editor::{
     components::{MemberArmorDropdown, MemberNameField, MemberRowIndex, MemberWeaponDropdown},
     model::EditableGang,
 };
@@ -24,8 +24,8 @@ use crate::states::running::editor::{
 /// index) and sets that member's name in the model. The name field itself shows the committed
 /// value — there is no separate echo node to mutate (GTW-499 C1). Guarded by the model's presence
 /// (`Option<ResMut<…>>` — state-scoped resource, `bevy-traps.md` #1) and registered
-/// `run_if(in_state(RunningState::DebugEditor))`.
-pub(in crate::states::running::editor) fn commit_member_name(
+/// `run_if(in_state(RunningState::DebugGangEditor))`.
+pub(in crate::states::running::gang_editor) fn commit_member_name(
     mut commits: MessageReader<TextFieldCommitted>,
     fields: Query<&MemberRowIndex, With<MemberNameField>>,
     model: Option<ResMut<EditableGang>>,
@@ -50,7 +50,7 @@ pub(in crate::states::running::editor) fn commit_member_name(
 /// [`MemberRowIndex`] and sets that member's weapon in the model. The dropdown's own label already
 /// shows the chosen key (`select_dropdown_option` mutates it in place), so there is no echo node to
 /// keep in sync (GTW-499 C1). Guarded + registered as [`commit_member_name`].
-pub(in crate::states::running::editor) fn commit_member_weapon(
+pub(in crate::states::running::gang_editor) fn commit_member_weapon(
     mut changes: MessageReader<DropdownSelectionChanged<WeaponName>>,
     controls: Query<&MemberRowIndex, With<MemberWeaponDropdown>>,
     model: Option<ResMut<EditableGang>>,
@@ -69,7 +69,7 @@ pub(in crate::states::running::editor) fn commit_member_weapon(
 
 /// Updates a MEMBER's armor key from an armor-dropdown selection (GTW-425 C2). The armor mirror of
 /// [`commit_member_weapon`].
-pub(in crate::states::running::editor) fn commit_member_armor(
+pub(in crate::states::running::gang_editor) fn commit_member_armor(
     mut changes: MessageReader<DropdownSelectionChanged<ArmorName>>,
     controls: Query<&MemberRowIndex, With<MemberArmorDropdown>>,
     model: Option<ResMut<EditableGang>>,
