@@ -12,7 +12,6 @@ use gdtf_assets::{ContentIntegrityReport, RonAsset, RonFolderSalvage};
 use gdtf_battle_sim::{
     injuries::{InjuryDef, InjuryRegistry, InjuryWeighting},
     level::{PrefabRegistry, PrefabSpec},
-    weapon::{AttachmentRegistry, AttachmentSpec},
 };
 use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 
@@ -22,9 +21,10 @@ use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 /// precedent — a transparent bundle of existing world-state resources, not a
 /// wrapped domain scalar).
 ///
-/// GTW-570 shrank this bundle to the BESPOKE branches (attachments / injuries /
-/// prefabs — the declared exclusions): the seven generic content families read
-/// their collections through their own generic resolve systems now.
+/// GTW-570 shrank this bundle to the BESPOKE branches (injuries / prefabs —
+/// the declared exclusions): the generic content families (GTW-619 moved the
+/// attachments onto that seam too) read their collections through their own
+/// generic resolve systems now.
 ///
 /// Each is `Option<Res<…>>` because a `MinimalPlugins` headless app has no
 /// `AssetServer` (and so no `Assets<…>` collections); the system early-returns
@@ -33,20 +33,17 @@ use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 #[derive(SystemParam)]
 pub(in crate::states::load) struct LoadAssetCollections<'w> {
     /// The loaded theme-spec RON collection (`core_tuning/ui_theme.tuning.ron`).
-    pub(super) theme:            Option<Res<'w, Assets<RonAsset<GdtfThemeSpec>>>>,
+    pub(super) theme:        Option<Res<'w, Assets<RonAsset<GdtfThemeSpec>>>>,
     /// The loaded `LoadedFolder` collection — used to read each folder's
     /// member handles when building a registry (GTW-257).
-    pub(super) folders:          Option<Res<'w, Assets<LoadedFolder>>>,
-    /// The loaded per-attachment RON collection (`content/attachments/*.attachment.ron`,
-    /// GTW-549 PHASE 1).
-    pub(super) attachment_specs: Option<Res<'w, Assets<RonAsset<AttachmentSpec>>>>,
+    pub(super) folders:      Option<Res<'w, Assets<LoadedFolder>>>,
     /// The loaded per-injury RON collection (`injuries/**/*.injury.ron`, GTW-437).
-    pub(super) injury_defs:      Option<Res<'w, Assets<RonAsset<InjuryDef>>>>,
+    pub(super) injury_defs:  Option<Res<'w, Assets<RonAsset<InjuryDef>>>>,
     /// The loaded per-part injury-weighting RON collection
     /// (`injuries/weighting/*.weighting.ron`, GTW-437).
-    pub(super) weightings:       Option<Res<'w, Assets<RonAsset<InjuryWeighting>>>>,
+    pub(super) weightings:   Option<Res<'w, Assets<RonAsset<InjuryWeighting>>>>,
     /// The loaded per-prefab RON collection (`content/maps/**/*.prefab.ron`, GTW-489).
-    pub(super) prefab_specs:     Option<Res<'w, Assets<RonAsset<PrefabSpec>>>>,
+    pub(super) prefab_specs: Option<Res<'w, Assets<RonAsset<PrefabSpec>>>>,
 }
 
 /// The persistent resources [`poll_and_resolve`](super::poll_and_resolve) resolves,
@@ -61,18 +58,16 @@ pub(in crate::states::load) struct LoadAssetCollections<'w> {
 #[derive(SystemParam)]
 pub(in crate::states::load) struct ResolvedResources<'w> {
     /// Whether the resolved [`GdtfTheme`] is already inserted.
-    pub(super) theme:       Option<Res<'w, GdtfTheme>>,
-    /// Whether the resolved [`AttachmentRegistry`] is already inserted (GTW-549 PHASE 1).
-    pub(super) attachments: Option<Res<'w, AttachmentRegistry>>,
+    pub(super) theme:    Option<Res<'w, GdtfTheme>>,
     /// Whether the resolved [`InjuryRegistry`] is already inserted (GTW-437). The
     /// [`InjuryTables`](gdtf_battle_sim::injuries::InjuryTables) is built and inserted
     /// in the SAME branch, so the registry's presence is the branch's done-probe.
-    pub(super) injuries:    Option<Res<'w, InjuryRegistry>>,
+    pub(super) injuries: Option<Res<'w, InjuryRegistry>>,
     /// Whether the resolved [`PrefabRegistry`] is already inserted (GTW-489).
-    pub(super) prefabs:     Option<Res<'w, PrefabRegistry>>,
+    pub(super) prefabs:  Option<Res<'w, PrefabRegistry>>,
 }
 
-/// The GTW-582 per-file salvage states of the three BESPOKE folder branches, plus
+/// The GTW-582 per-file salvage states of the two BESPOKE folder branches, plus
 /// the shared content-integrity report — bundled into one [`SystemParam`] so
 /// [`poll_and_resolve`](super::poll_and_resolve)'s parameter list stays under
 /// clippy's argument-count gate (the [`LoadAssetCollections`] grouping precedent).
@@ -84,8 +79,6 @@ pub(in crate::states::load) struct ResolvedResources<'w> {
 /// Load plugin init's it unconditionally, but a bespoke harness might not.
 #[derive(SystemParam)]
 pub(in crate::states::load) struct SalvageStates<'w> {
-    /// The attachments branch's per-file salvage (GTW-549 folder).
-    pub(super) attachments:       Option<Res<'w, RonFolderSalvage<AttachmentSpec>>>,
     /// The injuries branch's per-injury-def salvage (GTW-437 folder, defs half).
     pub(super) injury_defs:       Option<Res<'w, RonFolderSalvage<InjuryDef>>>,
     /// The injuries branch's per-weighting salvage (GTW-437 folder, tables half).

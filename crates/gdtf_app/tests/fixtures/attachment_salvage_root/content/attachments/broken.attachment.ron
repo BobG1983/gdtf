@@ -1,0 +1,8 @@
+// GTW-619 fixture attachment — DELIBERATELY MALFORMED RON (the closing paren is
+// missing and `slot:` carries a nonsense value), so the folder's load_folder walk
+// FAILS and the GTW-582 C4 per-file salvage engages: BOTH good siblings must still
+// load and THIS file alone must be reported as a MalformedFile finding (NOT shipped
+// content).
+(
+    display_name: "Broken",
+    slot: "this is not a slot variant",

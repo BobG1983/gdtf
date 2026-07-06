@@ -1,0 +1,10 @@
+// GTW-619 fixture attachment — the SECOND well-formed sibling, proving the salvage
+// folds EVERY healthy member (not just one) around the malformed file (NOT shipped
+// content — magnitudes are arbitrary).
+(
+    display_name: "Good Grip",  // picker/HUD label, not the key (the key is the file stem)
+    slot: Rail,                 // a non-Sight slot so the two good members differ structurally
+    effects: [
+        Stability(0.2),  // arbitrary fixture magnitude — never asserted by value
+    ],
+)

@@ -31,27 +31,6 @@ impl FontFolderHandle {
     }
 }
 
-/// Typed handle to the in-flight **attachments folder** load (`content/attachments/`).
-///
-/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule), mirroring
-/// [`FontFolderHandle`] (GTW-549, PHASE 1). The `Load` scene preloads the whole
-/// `assets/content/attachments/` folder up front via
-/// [`AssetServer::load_folder`](bevy::asset::AssetServer::load_folder); the poll/resolve
-/// system gates on its recursive load state, then builds the
-/// [`AttachmentRegistry`](gdtf_battle_sim::weapon::AttachmentRegistry) from the loaded
-/// `RonAsset<AttachmentSpec>` files (keyed by filename stem). Holding this handle keeps a
-/// strong reference to every attachment asset while the registry is built; the registry then
-/// holds the specs BY VALUE, so they survive the handle being dropped on `OnExit(Load)`.
-#[derive(Deref, Clone, Debug)]
-pub(in crate::states::load) struct AttachmentsFolderHandle(Handle<LoadedFolder>);
-
-impl AttachmentsFolderHandle {
-    /// Wrap an in-flight attachments-folder load handle.
-    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
-        Self(handle)
-    }
-}
-
 /// Typed handle to the in-flight **injuries folder** load (`injuries/`).
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types rule),
@@ -109,42 +88,39 @@ impl PrefabsFolderHandle {
 /// kick-off started loading.
 ///
 /// Holds the theme's generic [`HotRonHandle`] plus the typed [`FontFolderHandle`],
-/// [`AttachmentsFolderHandle`], [`InjuriesFolderHandle`], and
-/// [`PrefabsFolderHandle`]
+/// [`InjuriesFolderHandle`], and [`PrefabsFolderHandle`]
 /// the poll/resolve system reads each frame to check load progress. Inserted
 /// `OnEnter(Load)` and removed `OnExit(Load)` (it has no meaning outside `Load`).
 ///
 /// GTW-564 moved the four single-file RON chains (situation, combat / stat /
-/// procgen tuning) onto the generic hot-RON seam, and GTW-570 moved the seven
+/// procgen tuning) onto the generic hot-RON seam, GTW-570 moved the seven
 /// folder content families (ranged/melee weapons, armor, fields, gangs,
-/// terrain + theme defs) onto the generic content-family seam — their kick-off /
-/// resolve / redrive now live in `gdtf_assets`, registered by one ext call each
+/// terrain + theme defs) onto the generic content-family seam, and GTW-619
+/// moved the attachments folder the same way — their kick-off / resolve /
+/// redrive now live in `gdtf_assets`, registered by one ext call each
 /// in the Load plugin, so their Load-scoped handles left this set. The THEME
 /// stays (its kick-off/resolve remain bespoke: the resolve pairs with the fonts
 /// folder's recursive load state — the GTW-564 C7 record) but its handle is the
 /// generic [`HotRonHandle`]`<GdtfThemeSpec>`, inserted as the PERSISTENT
 /// resource by the theme resolve so the UI's generic redrive filters against
-/// it. The attachments / injuries / prefabs folders stay bespoke — the declared
-/// GTW-570 exclusions (attachments adoption belongs to the GTW-579 rider;
-/// injuries is one folder → two resources; prefabs is a UUID multimap).
+/// it. The injuries / prefabs folders stay bespoke — the declared GTW-570
+/// exclusions (injuries is one folder → two resources; prefabs is a UUID
+/// multimap).
 #[derive(Resource, Clone, Debug)]
 pub(in crate::states::load) struct LoadHandles {
     /// The theme RON asset being loaded — the generic hot-RON handle the theme
     /// resolve later re-inserts as the PERSISTENT redrive filter.
-    pub theme:       HotRonHandle<GdtfThemeSpec>,
+    pub theme:    HotRonHandle<GdtfThemeSpec>,
     /// The fonts folder being preloaded (all fonts up front).
-    pub fonts:       FontFolderHandle,
-    /// The attachments folder being preloaded (all `content/attachments/*.attachment.ron`s up
-    /// front, GTW-549 PHASE 1).
-    pub attachments: AttachmentsFolderHandle,
+    pub fonts:    FontFolderHandle,
     /// The injuries folder being preloaded (all `*.injury.ron` + `*.weighting.ron`
     /// up front, GTW-437).
-    pub injuries:    InjuriesFolderHandle,
+    pub injuries: InjuriesFolderHandle,
     /// The maps (prefab) folder being preloaded (all `*.prefab.ron` fragments up front,
     /// recursively under `<theme>/<size>/`, GTW-489 — the UUID-keyed
     /// [`PrefabSpec`](gdtf_battle_sim::level::PrefabSpec); the ONLY prefab loader after
     /// GTW-494 retired the legacy flat-dir load.).
-    pub prefabs:     PrefabsFolderHandle,
+    pub prefabs:  PrefabsFolderHandle,
 }
 
 crate::support_item! {
@@ -180,33 +156,11 @@ impl LoadedSituation {
     }
 }
 
-/// The PERSISTENT handle to the loaded **attachments folder** (`content/attachments/`).
-///
-/// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that — unlike the
-/// Load-scoped [`AttachmentsFolderHandle`] inside [`LoadHandles`], which is dropped
-/// `OnExit(Load)` — **persists** past `Load` (GTW-549, PHASE 1). It is inserted alongside the resolved
-/// [`AttachmentRegistry`](gdtf_battle_sim::weapon::AttachmentRegistry) and kept alive so the
-/// live hot-reload handler (`redrive_attachments_on_asset_event`) can re-enumerate the
-/// folder's member handles to rebuild the registry on a hot edit to ANY
-/// `assets/content/attachments/*.attachment.ron`. Holding the folder handle keeps every
-/// member attachment asset loaded for the file-watcher. Like the registry, it is **not**
-/// removed in `cleanup`.
-#[derive(Resource, Deref, Clone, Debug)]
-pub(in crate::states::load) struct ActiveAttachmentsFolderHandle(Handle<LoadedFolder>);
-
-impl ActiveAttachmentsFolderHandle {
-    /// Wrap the loaded attachments-folder handle as the persistent hot-reload handle.
-    pub(in crate::states::load) const fn new(handle: Handle<LoadedFolder>) -> Self {
-        Self(handle)
-    }
-}
-
 /// The PERSISTENT handle to the loaded **injuries folder** (`injuries/`).
 ///
 /// A named newtype over the bevy [`Handle<LoadedFolder>`] (no-bare-types) that —
 /// unlike the Load-scoped [`InjuriesFolderHandle`] inside [`LoadHandles`], which is
-/// dropped `OnExit(Load)` — **persists** past `Load` (GTW-437), the injuries mirror of
-/// [`ActiveAttachmentsFolderHandle`]. It is inserted alongside the resolved
+/// dropped `OnExit(Load)` — **persists** past `Load` (GTW-437). It is inserted alongside the resolved
 /// [`InjuryRegistry`](gdtf_battle_sim::injuries::InjuryRegistry) and
 /// [`InjuryTables`](gdtf_battle_sim::injuries::InjuryTables) and kept alive so the
 /// GTW-437 live hot-reload handler

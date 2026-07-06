@@ -272,7 +272,11 @@ crate::support_item! {
             // Intro (the A1 / AC3b pattern). With an AssetServer present the real
             // `assets/content/attachments/*.attachment.ron` resolve must win — gated on
             // `is_none()` exactly like the other registries (else the empty seed would shadow
-            // `resolve_attachments`, which only runs while the registry is ABSENT).
+            // the GTW-619 generic content-family resolve, which only runs while the registry
+            // is ABSENT). This arm stays even though the family rides the generic seam: the
+            // seam seeds NO defaults when the AssetServer is missing — the content-family
+            // headless-fallback rider (the GTW-619 C7 interlock) deletes ALL seam-family
+            // arms here at once when it lands.
             commands.insert_resource(AttachmentRegistry::default());
             commands.insert_resource(ArmorRegistry::default());
             // GTW-545: the FieldDefRegistry (area-damage-field catalog) is a gate-blocking

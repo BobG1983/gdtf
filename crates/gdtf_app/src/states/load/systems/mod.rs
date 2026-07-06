@@ -10,8 +10,7 @@ mod resolve;
 #[cfg(test)]
 pub(crate) use resolve::hot_reload_test_support;
 pub(in crate::states::load) use resolve::{
-    poll_and_resolve, redrive_attachments_on_asset_event, redrive_injuries_on_asset_event,
-    redrive_prefabs_on_asset_event,
+    poll_and_resolve, redrive_injuries_on_asset_event, redrive_prefabs_on_asset_event,
 };
 
 mod transition;
