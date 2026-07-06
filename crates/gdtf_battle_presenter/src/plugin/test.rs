@@ -1,8 +1,10 @@
-//! Unit tests for the presenter plugin seam (mode selection + the renderer-active marker).
+//! Unit tests for the presenter plugin seam (mode selection + the renderer-active marker)
+//! and the GTW-623 chained draw-stage contract.
 
 use bevy::prelude::*;
 
 use super::{BattlePresenterMode, BattlePresenterPlugin, TopDownRendererActive};
+use crate::PresenterSystems;
 
 /// AC1 — the default presenter selects `TopDown`, builds without panic under
 /// `MinimalPlugins`, and its top-down renderer inserts the marker resource.
@@ -56,5 +58,54 @@ fn mode_switch_selects_the_named_renderer_branch() {
             .get_resource::<TopDownRendererActive>()
             .is_none(),
         "the Iso-mode presenter must NOT carry the TopDown marker — the iso branch ran",
+    );
+}
+
+/// GTW-623 (C1 / C2 / A1) — the three draw stages are chained `Scene` → `Compose` →
+/// `Overlay` by the ONE `configure_sets` in `TopDownRendererPlugin::build`: ordering
+/// between draw systems is STAGE MEMBERSHIP, not pairwise `.after` edges.
+///
+/// One probe system per stage records its run order into a shared log; the probes are
+/// deliberately REGISTERED in reverse (Overlay, Scene, Compose) so insertion order
+/// cannot fake the pass — only the chained set config can produce
+/// `[Scene, Compose, Overlay]`.
+#[test]
+fn draw_stages_run_scene_then_compose_then_overlay() {
+    /// A probe's stage tag, in the order the chain must produce.
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+    enum StageTag {
+        Scene,
+        Compose,
+        Overlay,
+    }
+    /// The observed run order the three probes append to.
+    #[derive(Resource, Default)]
+    struct RunOrder(Vec<StageTag>);
+
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins)
+        .add_plugins(BattlePresenterPlugin::default())
+        .init_resource::<RunOrder>()
+        .add_systems(
+            Update,
+            (|mut log: ResMut<RunOrder>| log.0.push(StageTag::Overlay))
+                .in_set(PresenterSystems::Overlay),
+        )
+        .add_systems(
+            Update,
+            (|mut log: ResMut<RunOrder>| log.0.push(StageTag::Scene))
+                .in_set(PresenterSystems::Scene),
+        )
+        .add_systems(
+            Update,
+            (|mut log: ResMut<RunOrder>| log.0.push(StageTag::Compose))
+                .in_set(PresenterSystems::Compose),
+        );
+    app.update();
+
+    assert_eq!(
+        app.world().resource::<RunOrder>().0,
+        vec![StageTag::Scene, StageTag::Compose, StageTag::Overlay],
+        "the Draw stages must run chained Scene → Compose → Overlay (GTW-623 C1)",
     );
 }

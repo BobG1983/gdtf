@@ -14,10 +14,11 @@ use crate::{
 /// GTW-218 (S4) adds the static terrain draw here: it registers the [`TileRoles`]
 /// hot-RON chain through the GTW-564 generic seam (self-gated on an
 /// [`AssetServer`] so a `MinimalPlugins` app no-ops rather than panicking on the asset
-/// registration), inserts the [`ActiveLevel`](crate::ActiveLevel) default (level 0), defines the
-/// [`PresenterSystems::Draw`] set `.after(SimSystems::Simulate)`, and registers the
-/// one-shot [`draw_static_battlefield`] + the [`swap_destroyed_cover`] /
-/// [`swap_destroyed_slab`] destruction reactions (GTW-367) in that set, all gated
+/// registration), inserts the [`ActiveLevel`](crate::ActiveLevel) default (level 0), and
+/// registers the one-shot [`draw_static_battlefield`] + the [`swap_destroyed_cover`] /
+/// [`swap_destroyed_slab`] destruction reactions (GTW-367) in the
+/// [`PresenterSystems::Scene`] stage (GTW-623 — the drawn-world stage; fog and the
+/// overlays order after it by STAGE MEMBERSHIP), all gated
 /// `run_if(resource_exists::<BattleInProgress>)` (the sim's battle-in-progress witness, so
 /// the draw runs only DURING a live battle).
 ///
@@ -34,7 +35,7 @@ pub(super) fn register_terrain_draw(app: &mut App) {
     app.add_systems(
         Update,
         draw_static_battlefield
-            .in_set(PresenterSystems::Draw)
+            .in_set(PresenterSystems::Scene)
             .run_if(
                 resource_exists::<BattleInProgress>
                     .and_then(resource_exists::<TileRoles>)
@@ -50,7 +51,8 @@ pub(super) fn register_terrain_draw(app: &mut App) {
 /// (a [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed) swaps the cell's terrain sprite to the
 /// `rubble` tile) and the GTW-367 [`swap_destroyed_slab`] (a
 /// [`SlabDestroyed`](gdtf_battle_sim::SlabDestroyed) swaps it to the `slab_destroyed` tile) — both
-/// in the [`PresenterSystems::Draw`] band, MUTATING the existing tile's material in place (no
+/// in the [`PresenterSystems::Scene`] stage (GTW-623 — a state swap is part of the drawn
+/// world the fog modulates), MUTATING the existing tile's material in place (no
 /// despawn — the UI mutate-not-respawn rule, C7). Extracted from `build` to keep it under the
 /// `too_many_lines` lint (mirrors
 /// [`register_fx_flash_systems`](super::fx::register_fx_flash_systems) /
@@ -59,41 +61,41 @@ pub(super) fn register_terrain_draw(app: &mut App) {
 /// Each reaction is gated `run_if(resource_exists::<BattleInProgress>)` (the live-battle witness)
 /// AND `resource_exists::<TileRoles>` (read for the destroyed tile index). The slab reaction's
 /// [`MessageReader<SlabDestroyed>`](bevy::ecs::message::MessageReader) panics param validation
-/// without its `Messages<SlabDestroyed>` buffer (`bevy-traps.md` #4); the sim's `BattleSimPlugin`
-/// registers it in a real battle, so it is registered idempotently HERE (the `ShotFired` /
-/// `HighlightRequest` precedent — `add_message` creates the buffer if absent and is a no-op
-/// otherwise) and gated on its presence, so a focused harness that opens `BattleInProgress`
-/// directly never fails validation.
+/// without its `Messages<SlabDestroyed>` buffer (`bevy-traps.md` #4), so it is ALSO gated on
+/// that buffer existing — a REAL gate (GTW-623 C4): the presenter no longer `add_message`s
+/// the sim-owned `SlabDestroyed` buffer itself. The sim's `BattleSimPlugin` registers it in a
+/// real battle; a focused harness that opens `BattleInProgress` directly and wants the swap
+/// seeds the buffer itself (the `terrain_draw` harness does), and one that omits it simply
+/// keeps the reaction inert instead of failing validation.
 pub(super) fn register_destruction_swaps(app: &mut App) {
-    app.add_message::<SlabDestroyed>()
-        .add_systems(
-            Update,
-            swap_destroyed_cover
-                .in_set(PresenterSystems::Draw)
-                .run_if(resource_exists::<BattleInProgress>.and_then(resource_exists::<TileRoles>)),
-        )
-        .add_systems(
-            Update,
-            swap_destroyed_slab.in_set(PresenterSystems::Draw).run_if(
-                resource_exists::<BattleInProgress>
-                    .and_then(resource_exists::<TileRoles>)
-                    .and_then(resource_exists::<Messages<SlabDestroyed>>),
-            ),
-        )
-        // GTW-543: the weapon-emplacement OCCUPIED-state visual indicator — the state analogue of
-        // the two destruction swaps. Rather than a one-shot destruction MESSAGE it reacts to the
-        // sim's per-entity `Changed<EmplacementState>` (the enter/exit toggle flips it) and swaps
-        // the drawn tile's material in place between the VACANT `emplacement` tile and the
-        // OCCUPIED `emplacement_occupied` tile — mutate-not-respawn, the same in-place material
-        // re-index the destruction swaps do. It reads no message buffer (a `Changed` query, not a
-        // `MessageReader`), so it is gated on `BattleInProgress` (the live-battle witness) AND
-        // `TileRoles` (read for the two emplacement tile indices) — the swap_destroyed_cover gate.
-        .add_systems(
-            Update,
-            indicate_emplacement_occupied
-                .in_set(PresenterSystems::Draw)
-                .run_if(resource_exists::<BattleInProgress>.and_then(resource_exists::<TileRoles>)),
-        );
+    app.add_systems(
+        Update,
+        swap_destroyed_cover
+            .in_set(PresenterSystems::Scene)
+            .run_if(resource_exists::<BattleInProgress>.and_then(resource_exists::<TileRoles>)),
+    )
+    .add_systems(
+        Update,
+        swap_destroyed_slab.in_set(PresenterSystems::Scene).run_if(
+            resource_exists::<BattleInProgress>
+                .and_then(resource_exists::<TileRoles>)
+                .and_then(resource_exists::<Messages<SlabDestroyed>>),
+        ),
+    )
+    // GTW-543: the weapon-emplacement OCCUPIED-state visual indicator — the state analogue of
+    // the two destruction swaps. Rather than a one-shot destruction MESSAGE it reacts to the
+    // sim's per-entity `Changed<EmplacementState>` (the enter/exit toggle flips it) and swaps
+    // the drawn tile's material in place between the VACANT `emplacement` tile and the
+    // OCCUPIED `emplacement_occupied` tile — mutate-not-respawn, the same in-place material
+    // re-index the destruction swaps do. It reads no message buffer (a `Changed` query, not a
+    // `MessageReader`), so it is gated on `BattleInProgress` (the live-battle witness) AND
+    // `TileRoles` (read for the two emplacement tile indices) — the swap_destroyed_cover gate.
+    .add_systems(
+        Update,
+        indicate_emplacement_occupied
+            .in_set(PresenterSystems::Scene)
+            .run_if(resource_exists::<BattleInProgress>.and_then(resource_exists::<TileRoles>)),
+    );
 }
 
 /// GTW-359 (AC4 / C2) + GTW-373: the vertical-link (stair / ladder) cell draw. It
@@ -110,7 +112,7 @@ pub(super) fn register_destruction_swaps(app: &mut App) {
 pub(super) fn register_vertical_links(app: &mut App) {
     app.add_systems(
         Update,
-        draw_vertical_links.in_set(PresenterSystems::Draw).run_if(
+        draw_vertical_links.in_set(PresenterSystems::Scene).run_if(
             resource_exists::<BattleInProgress>
                 .and_then(resource_exists::<VerticalLinkGraph>)
                 .and_then(resource_exists::<TileRoles>)

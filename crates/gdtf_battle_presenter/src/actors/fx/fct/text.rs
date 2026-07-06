@@ -283,7 +283,7 @@ pub fn spawn_floating_text(
     ));
 }
 
-/// `Update` (`PresenterSystems::Draw`): rise + fade + despawn every live floating-combat-text
+/// `Update` (`PresenterSystems::Overlay`): rise + fade + despawn every live floating-combat-text
 /// pop.
 ///
 /// Advances each [`FloatingCombatText`] by the frame [`Res<Time>`] delta. While the pop is

@@ -109,7 +109,7 @@ pub(super) fn spawn_flash(commands: &mut Commands, sprite: Sprite, world: Vec3) 
         .insert(FxFlash);
 }
 
-/// `Update` (`PresenterSystems::Draw`): spawn a blood/hit FX flash per [`Bleeding`] message.
+/// `Update` (`PresenterSystems::Overlay`): spawn a blood/hit FX flash per [`Bleeding`] message.
 ///
 /// Drains [`MessageReader<Bleeding>`](gdtf_battle_sim::Bleeding); for each `Bleeding { ganger }`
 /// it looks up the ganger's cell via `Query<&Position>.get(msg.ganger)` (decomposed via the
@@ -145,7 +145,7 @@ pub fn read_bleeding(
     }
 }
 
-/// `Update` (`PresenterSystems::Draw`): spawn a spark/break FX flash per [`ArmorBroken`].
+/// `Update` (`PresenterSystems::Overlay`): spawn a spark/break FX flash per [`ArmorBroken`].
 ///
 /// Drains [`MessageReader<ArmorBroken>`](gdtf_battle_sim::ArmorBroken); for each
 /// `ArmorBroken { ganger, part }` it looks up the ganger's cell via
@@ -178,7 +178,7 @@ pub fn read_armor_broken(
     }
 }
 
-/// `Update` (`PresenterSystems::Draw`): spawn a debris/rubble-burst FX flash per
+/// `Update` (`PresenterSystems::Overlay`): spawn a debris/rubble-burst FX flash per
 /// [`CoverDestroyed`].
 ///
 /// Drains [`MessageReader<CoverDestroyed>`](gdtf_battle_sim::CoverDestroyed); for each

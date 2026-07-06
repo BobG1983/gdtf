@@ -13,7 +13,7 @@
 //! Registration is COMPILE-TIME generic (P4 — no runtime descriptor table):
 //! [`register_consequence_fct_core`] wires the shared pieces ONCE (the counter resource, the
 //! reset system explicitly `.before` the reader set — `bevy-traps.md` #3, the set's
-//! placement in [`PresenterSystems::Draw`]), and each family is one
+//! placement in the [`PresenterSystems::Overlay`] stage), and each family is one
 //! [`ConsequenceFctAppExt::add_consequence_fct`] line. The registrar NEVER calls
 //! `add_message` — a presenter-only headless harness that omits a family's `Messages<M>`
 //! buffer keeps that reader INERT (the `run_if` gate), which the inertness tests rely on; in
@@ -47,7 +47,7 @@ pub enum ConsequenceFctSystems {
     Read,
 }
 
-/// `Update` (`ConsequenceFctSystems::Read`, in `PresenterSystems::Draw`): the ONE generic
+/// `Update` (`ConsequenceFctSystems::Read`, in the `PresenterSystems::Overlay` stage): the ONE generic
 /// stacked-pop reader — drain family `C`'s signal and spawn one rise-and-fade pop per
 /// message (GTW-572 C2).
 ///
@@ -105,7 +105,8 @@ pub fn read_consequence_fct<C: ConsequenceFct>(
 
 /// Wire the SHARED consequence-FCT core ONCE (GTW-572 C3): the [`FctStackCounter`] resource,
 /// the [`ConsequenceFctSystems`] set chain (`Reset` strictly `.before(Read)`, both inside
-/// [`PresenterSystems::Draw`] — the EXPLICIT ordering of `bevy-traps.md` #3), and the
+/// the [`PresenterSystems::Overlay`] stage (GTW-623 — the FCT palette draws over the
+/// composed scene) — the EXPLICIT ordering of `bevy-traps.md` #3), and the
 /// [`reset_fct_stacks`] system. Called once by `TopDownRendererPlugin::build` before the
 /// per-family [`ConsequenceFctAppExt::add_consequence_fct`] lines.
 pub fn register_consequence_fct_core(app: &mut App) {
@@ -113,8 +114,8 @@ pub fn register_consequence_fct_core(app: &mut App) {
         .configure_sets(
             Update,
             (
-                ConsequenceFctSystems::Reset.in_set(PresenterSystems::Draw),
-                ConsequenceFctSystems::Read.in_set(PresenterSystems::Draw),
+                ConsequenceFctSystems::Reset.in_set(PresenterSystems::Overlay),
+                ConsequenceFctSystems::Read.in_set(PresenterSystems::Overlay),
             )
                 .chain(),
         )

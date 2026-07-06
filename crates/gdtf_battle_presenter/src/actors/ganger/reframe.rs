@@ -44,7 +44,7 @@ type ReframeChanged = Or<(
     Changed<Suppressed>,
 )>;
 
-/// `Update` (`PresenterSystems::Draw`): reframe / re-tint a ganger sprite whose
+/// `Update` (`PresenterSystems::Scene`): reframe / re-tint a ganger sprite whose
 /// [`Facing`], [`Stance`], [`Aiming`], or [`Suppressed`] state changed.
 ///
 /// For every ganger whose [`Facing`] / [`Stance`] / [`Aiming`] / [`Suppressed`] is [`Changed`],
@@ -126,7 +126,7 @@ fn reframe_one(
     sprite.color = stance_aiming_tint(*faction, *life, *stance, *aiming, suppressed.is_some());
 }
 
-/// `Update` (`PresenterSystems::Draw`, runs only on a [`CharacterRoles`] change):
+/// `Update` (`PresenterSystems::Scene`, runs only on a [`CharacterRoles`] change):
 /// RE-INDEX every mapped ganger sprite to the freshly-reloaded atlas indices (GTW-375 C4).
 ///
 /// When the GTW-375 hot-reload (now the GTW-564 generic hot-RON redrive of the

@@ -188,7 +188,7 @@ pub(super) fn reachable_draws(reachable: &ReachableCells, active_level: Level) -
         .collect()
 }
 
-/// `Update` ([`PresenterSystems::Draw`](crate::PresenterSystems)): draw the
+/// `Update` ([`PresenterSystems::Overlay`](crate::PresenterSystems)): draw the
 /// reachable-range overlay — one cell-keyed [`Sprite`] per reachable cell on the active
 /// storey (GTW-387 C3).
 ///
@@ -209,7 +209,7 @@ pub(super) fn reachable_draws(reachable: &ReachableCells, active_level: Level) -
 /// Param-only (`bevy-traps.md` #7): [`Commands`] for the lazy pool growth, the
 /// [`ReachableCells`] / [`ActiveLevel`] reads, and the [`ReachableSpriteQuery`] for the
 /// pooled sprites. Battle-gated in [`TopDownRendererPlugin`](crate::TopDownRendererPlugin)
-/// by [`PresenterSystems::Draw`](crate::PresenterSystems).
+/// by [`PresenterSystems::Overlay`](crate::PresenterSystems).
 pub fn draw_reachable_overlay(
     mut commands: Commands,
     reachable: Res<ReachableCells>,

@@ -46,8 +46,9 @@ pub struct TopDownRendererActive;
 ///
 /// The draw-system registrations themselves live in this module's sibling per-concern
 /// registrar modules (`terrain` / `gangers` / `fx` / `camera` / `fog` / `overlays`);
-/// `build` defines the shared [`PresenterSystems::Draw`] band once and calls one
-/// registrar per concern.
+/// `build` defines the shared [`PresenterSystems::Draw`] band and its three chained
+/// stages ([`PresenterSystems::Scene`] → [`PresenterSystems::Compose`] →
+/// [`PresenterSystems::Overlay`], GTW-623) once and calls one registrar per concern.
 pub struct TopDownRendererPlugin;
 
 impl Plugin for TopDownRendererPlugin {
@@ -101,10 +102,30 @@ impl Plugin for TopDownRendererPlugin {
         // `too_many_lines` lint).
         register_hot_ron_chains(app);
 
-        // The shared presenter draw band (S5's ganger draw joins this set). Defined
-        // ONCE via `configure_sets` (`bevy-traps.md` #5), ordered after the sim's
-        // world mutations (`bevy-traps.md` #3) so a draw observes a settled sim state.
+        // The shared presenter draw band. Defined ONCE via `configure_sets`
+        // (`bevy-traps.md` #5), ordered after the sim's world mutations
+        // (`bevy-traps.md` #3) so a draw observes a settled sim state.
         app.configure_sets(Update, PresenterSystems::Draw.after(SimSystems::Simulate));
+        // GTW-623: the three chained DRAW STAGES inside that band — Scene (the drawn
+        // world: terrain + swaps + gangers) → Compose (fog: the final material +
+        // visibility writer) → Overlay (highlight / path / fire / field / reachable +
+        // FX + the FCT palette). Configured ONCE here (the ConsequenceFctSystems
+        // Reset→Read exemplar); every draw system gets its ordering from STAGE
+        // MEMBERSHIP, so the old cross-stage pairwise `.after` wall (fog's seven
+        // edges, the overlays' four `.after(present_fog)`) is GONE — a NEW scene
+        // writer (e.g. a doors state-swap) joins `Scene` and fog + overlays order
+        // after it with zero new edges. Pairwise `.after` stays only for true
+        // data-flow INSIDE a stage (ganger move-after-spawn, tween-after-move).
+        app.configure_sets(
+            Update,
+            (
+                PresenterSystems::Scene,
+                PresenterSystems::Compose,
+                PresenterSystems::Overlay,
+            )
+                .chain()
+                .in_set(PresenterSystems::Draw),
+        );
 
         // GTW-218 (S4): the static terrain draw.
         super::terrain::register_terrain_draw(app);
@@ -119,14 +140,10 @@ impl Plugin for TopDownRendererPlugin {
         // GTW-219 (S5): the ganger-sprite draw-band systems.
         super::gangers::register_ganger_draw(app);
 
-        // GTW-220 (S6): the transient FX-flash readers + the one-shot expiry clock join the
-        // SAME `PresenterSystems::Draw` band (extracted to keep `build` under the
-        // `too_many_lines` lint).
+        // GTW-220 (S6): the transient FX-flash readers (incl. the GTW-546 grenade BLAST
+        // reader) + the firing FX + the one-shot expiry clock join the Overlay stage —
+        // the six flash-family readers via the GTW-623 `FxReaderAppExt` registrar.
         super::fx::register_fx_flash_systems(app);
-
-        // GTW-546: the grenade BLAST FX reader (extracted to its own fn to keep
-        // `register_fx_flash_systems` under the `too_many_lines` lint — the on-death precedent).
-        super::fx::register_throw_blast_systems(app);
 
         // GTW-249: the battle-start frame-on-units + the bounds clamp (extracted for the
         // same `too_many_lines` reason).

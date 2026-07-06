@@ -14,8 +14,9 @@ use bevy::{
 };
 use gdtf_battle_presenter::{FctValence, FloatingCombatText, TopDownRendererPlugin, valence_color};
 use gdtf_battle_sim::{
-    ArmorBroken, BattleInProgress, Bleeding, Cell, CellLevel, DotDamage, DotTicked,
-    InjuryInflicted, Level, OnDeathOccurred, SuppressionApplied,
+    ArmorBroken, BattleInProgress, Bleeding, Cell, CellLevel, DotDamage, DotTicked, FallOccurred,
+    InjuryInflicted, Level, OnDeathOccurred, ShotFired, SlabDestroyed, SuppressionApplied,
+    acts::{MeleeResolved, ThrowResolved},
 };
 
 use super::{harness::*, probes::*};
@@ -180,10 +181,75 @@ fn a_presenter_only_app_with_no_family_buffers_stays_inert() {
         app.world()
             .get_resource::<Messages<InjuryInflicted>>()
             .map(|_| "InjuryInflicted"),
+        // GTW-623 C4: the four buffers the renderer plugin used to `add_message`
+        // idempotently itself (the vacuous registrations that made its own
+        // `resource_exists::<Messages<M>>` gates always-true). The sim's plugins register
+        // them in a live battle; a presenter-only app must NOT carry them.
+        app.world()
+            .get_resource::<Messages<MeleeResolved>>()
+            .map(|_| "MeleeResolved"),
+        app.world()
+            .get_resource::<Messages<FallOccurred>>()
+            .map(|_| "FallOccurred"),
+        app.world()
+            .get_resource::<Messages<ThrowResolved>>()
+            .map(|_| "ThrowResolved"),
+        app.world()
+            .get_resource::<Messages<SlabDestroyed>>()
+            .map(|_| "SlabDestroyed"),
     ] {
         assert!(
             absent.is_none(),
             "the presenter registrar must not register the {absent:?} family buffer",
         );
     }
+}
+
+/// GTW-623 C4 / A2 — the ONE sanctioned sim-owned `add_message` exception, pinned: the
+/// presenter registers `Messages<ShotFired>` itself (in `plugin/topdown/gangers.rs`, the
+/// documented exception) so `update_ganger_life_state`'s `MessageReader<ShotFired>` stays
+/// valid — and the ganger batch keeps running — in a fire-less presenter-only harness (the
+/// `ganger_draw` / `fog_present` suites register no sim buffer at all).
+///
+/// If a refactor either DROPS the exception (the buffer goes absent — those harnesses would
+/// panic param validation) or ADDS more sim-owned registrations (caught by the absent-buffer
+/// pins above), this contract goes red.
+#[test]
+fn the_presenter_registers_exactly_the_one_documented_sim_buffer_exception() {
+    let mut app = App::new();
+    app.add_plugins(
+        DefaultPlugins
+            .set(RenderPlugin {
+                render_creation: WgpuSettings {
+                    backends: None,
+                    ..default()
+                }
+                .into(),
+                ..default()
+            })
+            .disable::<WinitPlugin>()
+            .disable::<bevy::log::LogPlugin>()
+            .disable::<bevy::app::TerminalCtrlCHandlerPlugin>()
+            .disable::<bevy::gizmos::GizmoPlugin>()
+            .disable::<bevy::audio::AudioPlugin>()
+            .set(WindowPlugin {
+                primary_window: None,
+                exit_condition: ExitCondition::DontExit,
+                ..default()
+            })
+            .set(AssetPlugin {
+                file_path: workspace_assets_root().to_string_lossy().into_owned(),
+                ..default()
+            }),
+    )
+    .add_plugins(TopDownRendererPlugin);
+    app.set_error_handler(warn);
+    app.update();
+
+    assert!(
+        app.world().get_resource::<Messages<ShotFired>>().is_some(),
+        "the presenter must register Messages<ShotFired> itself — THE one documented \
+         sim-owned add_message exception (GTW-623 C4): update_ganger_life_state must keep \
+         running in fire-less harnesses",
+    );
 }

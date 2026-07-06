@@ -58,6 +58,7 @@ mod impact;
 mod melee;
 mod projectile;
 mod readers;
+mod registrar;
 mod roles;
 mod tuning;
 
@@ -81,6 +82,7 @@ pub use projectile::{
     PendingImpact, ProjectileTravel, ShotProjectile, advance_projectiles, spawn_shot_projectiles,
 };
 pub use readers::{read_armor_broken, read_bleeding, read_cover_destroyed};
+pub use registrar::FxReaderAppExt;
 pub(crate) use roles::register_effect_roles_hot_ron;
 pub use roles::{
     COMPASS_DIRECTIONS, DIRECTION_COUNT, DamageTypeFx, EffectRoles, IMPACT_FRAME_COUNT,

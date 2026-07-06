@@ -33,7 +33,7 @@ pub struct TerrainSprite {
     pub at: CellLevel,
 }
 
-/// `Update` (`PresenterSystems::Draw`, gated `resource_exists::<BattleInProgress>`): the
+/// `Update` (`PresenterSystems::Scene`, gated `resource_exists::<BattleInProgress>`): the
 /// static-battlefield ONE-SHOT draw + redraw-on-level-change.
 ///
 /// Fires when ANY of: a [`BattleReady`](gdtf_battle_sim::BattleReady) drained this update,
@@ -108,8 +108,8 @@ pub fn draw_static_battlefield(
     // tile-appearance hot-reload — both reload paths converge on it: a `tile_roles.ron`
     // re-save MUTATES TileRoles (redrive_tile_roles_on_asset_event), and an
     // `alt_tileset_terrain.png` re-save `set_changed()`s it (redrive_terrain_sheet_on_asset_event)
-    // so the tiles re-render against the freshly-reloaded GPU texture. present_fog runs
-    // `.after(draw_static_battlefield)`, so the fog re-applies to the redrawn tiles.
+    // so the tiles re-render against the freshly-reloaded GPU texture. present_fog runs in the
+    // Compose stage, chained after this Scene stage, so the fog re-applies to the redrawn tiles.
     // Fully DRAIN the reader (`.count()`, not `.next()`) so a multi-message ready never
     // leaves an unread BattleReady to re-fire a redundant redraw next update.
     let ready_fired = ready.read().count() > 0;

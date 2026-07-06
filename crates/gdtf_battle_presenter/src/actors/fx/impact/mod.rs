@@ -2,7 +2,7 @@
 //!
 //! This module is the stub FX-A created so FX-B fills only the body (no `mod.rs`
 //! edit collision): FX-A already declares + registers [`animate_impact`](animate::animate_impact)
-//! in [`fx::mod`](super) and wires it into the `PresenterSystems::Draw` band, and
+//! in [`fx::mod`](super) and wires it into the `PresenterSystems::Overlay` band, and
 //! defines the [`PendingImpact`](super::projectile::PendingImpact) SEAM
 //! [`advance_projectiles`](super::projectile::advance_projectiles) spawns at a
 //! projectile's arrival point (carrying the arrival world position + the shot's

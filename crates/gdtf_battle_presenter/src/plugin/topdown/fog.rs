@@ -1,17 +1,12 @@
 //! Squad-fog writer registration — the final-writer ordering contract over every
-//! drawn tile / actor sprite.
+//! drawn tile / actor sprite, expressed as STAGE MEMBERSHIP.
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{BattleInProgress, CombatTuning, SquadVisibility};
 
-use crate::{
-    PresenterSystems, TerrainFogMaterial, apply_active_level_filter, draw_static_battlefield,
-    indicate_emplacement_occupied, move_ganger_sprites, present_fog, spawn_ganger_sprites,
-    swap_destroyed_cover, swap_destroyed_slab,
-};
+use crate::{PresenterSystems, TerrainFogMaterial, present_fog};
 
-/// Registers the GTW-342 squad fog WRITER into the already-defined
-/// [`PresenterSystems::Draw`] band.
+/// Registers the GTW-342 squad fog WRITER into the [`PresenterSystems::Compose`] stage.
 ///
 /// [`present_fog`] is the VIEW arm of the squad fog (`docs/combat/visibility.md`): the sim
 /// owns the three [`SquadVisibility`](gdtf_battle_sim::SquadVisibility) states and the
@@ -21,16 +16,18 @@ use crate::{
 ///
 /// # Ordering (the CRITICAL clause, `bevy-traps.md` #3)
 ///
-/// It is ordered strictly `.after(draw_static_battlefield)`, `.after(swap_destroyed_cover)`, and
-/// `.after(swap_destroyed_slab)` (GTW-367) so it always colours LIVE, freshly-spawned /
-/// just-swapped [`TerrainSprite`](crate::TerrainSprite) entities — including after an
-/// [`ActiveLevel`](crate::ActiveLevel) cycle, which despawns + respawns the terrain on the SAME
-/// update (so the fog re-applies to the newly drawn storey, not to stale entities). It
-/// is ALSO ordered after the ganger storey-filter writers
-/// ([`spawn_ganger_sprites`] / [`move_ganger_sprites`] / [`apply_active_level_filter`]) so it is
-/// the SINGLE FINAL writer of each actor sprite's [`Visibility`]: it composes the slice's storey
-/// fact AND the fog fact rather than crossing the slice's writer (`docs/combat/visibility.md`
-/// §"Composition with the view slice").
+/// [`PresenterSystems::Compose`] is chained strictly after [`PresenterSystems::Scene`]
+/// (configured ONCE in `TopDownRendererPlugin::build` — GTW-623), so the fog always
+/// colours LIVE, freshly-spawned / just-swapped [`TerrainSprite`](crate::TerrainSprite)
+/// entities — including after an [`ActiveLevel`](crate::ActiveLevel) cycle, which despawns
+/// and respawns the terrain on the SAME update — and runs after the ganger storey-filter
+/// writers, making it the SINGLE FINAL writer of each actor sprite's [`Visibility`]: it
+/// composes the slice's storey fact AND the fog fact rather than crossing the slice's
+/// writer (`docs/combat/visibility.md` §"Composition with the view slice"). This STAGE
+/// MEMBERSHIP replaced the old hand-maintained seven-edge `.after` wall (the terrain draw,
+/// the two destruction swaps, the emplacement swap, and the three ganger writers — a wall
+/// every NEW scene writer had to remember to append itself to, GTW-543 being the last):
+/// a new scene writer now joins `Scene` and the fog orders after it with ZERO new edges.
 ///
 /// # Gating (`bevy-traps.md` #1)
 ///
@@ -57,23 +54,11 @@ use crate::{
 pub(super) fn register_fog_systems(app: &mut App) {
     app.add_systems(
         Update,
-        present_fog
-            .in_set(PresenterSystems::Draw)
-            .after(draw_static_battlefield)
-            .after(swap_destroyed_cover)
-            .after(swap_destroyed_slab)
-            // GTW-543: run after the emplacement OCCUPIED-state swap so fog modulates the
-            // freshly re-indexed tile's material (present_fog must be the FINAL material writer
-            // per tile — the same rationale as the .after(swap_destroyed_*) ordering).
-            .after(indicate_emplacement_occupied)
-            .after(spawn_ganger_sprites)
-            .after(move_ganger_sprites)
-            .after(apply_active_level_filter)
-            .run_if(
-                resource_exists::<BattleInProgress>
-                    .and_then(resource_exists::<SquadVisibility>)
-                    .and_then(resource_exists::<Assets<TerrainFogMaterial>>)
-                    .and_then(resource_exists::<CombatTuning>),
-            ),
+        present_fog.in_set(PresenterSystems::Compose).run_if(
+            resource_exists::<BattleInProgress>
+                .and_then(resource_exists::<SquadVisibility>)
+                .and_then(resource_exists::<Assets<TerrainFogMaterial>>)
+                .and_then(resource_exists::<CombatTuning>),
+        ),
     );
 }

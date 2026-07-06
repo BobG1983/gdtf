@@ -18,7 +18,7 @@ use gdtf_battle_presenter::{
 };
 use gdtf_battle_sim::{
     ArmorHardness, ArmorProtection, BattleReady, CellLevel, CoverDestroyed, CoverEntry, CoverHp,
-    FootfallSound, HeightBand, Level, OccupancyGrid, OccupancyInput, TerrainCell,
+    FootfallSound, HeightBand, Level, OccupancyGrid, OccupancyInput, SlabDestroyed, TerrainCell,
     TerrainGraphicKey, TerrainPlacement,
 };
 use gdtf_test_utils::advance_until_resource_exists;
@@ -69,10 +69,14 @@ pub(crate) fn headless_renderer_app() -> App {
                 ..default()
             }),
     )
-    // The draw reads these two buffers; the sim's BattleSimPlugin registers them in the
-    // app, but this focused harness adds only the two the draw needs.
+    // The draw + swap reactions read these buffers; the sim's BattleSimPlugin registers them
+    // in the app, but this focused harness adds only the ones the suite needs. SlabDestroyed
+    // is seeded here since GTW-623 C4/C5: the presenter no longer `add_message`s the sim-owned
+    // buffer itself, and `swap_destroyed_slab` is `run_if`-gated on its presence — without this
+    // seed the destruction-swap test's written message would be silently dropped.
     .add_message::<BattleReady>()
     .add_message::<CoverDestroyed>()
+    .add_message::<SlabDestroyed>()
     .add_plugins(TopDownRendererPlugin);
     // Bevy 0.19 routes a FAILED system-param validation to the global error handler
     // (default panics); 0.18 silently SKIPPED. This no-renderer harness lacks the

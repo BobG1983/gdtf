@@ -177,7 +177,7 @@ const COST_LABEL_FONT_PX: f32 = 9.0;
 /// "above the cell" treatment).
 const COST_LABEL_LIFT_PX: f32 = CELL_PX * 0.55;
 
-/// `Update` ([`PresenterSystems::Draw`](crate::PresenterSystems)): draw the fire-target
+/// `Update` ([`PresenterSystems::Overlay`](crate::PresenterSystems)): draw the fire-target
 /// highlight — the SINGLE RED tile UNDER the hovered enemy + the SINGLE OPAQUE TU-cost label
 /// (C2).
 ///
@@ -203,7 +203,7 @@ const COST_LABEL_LIFT_PX: f32 = CELL_PX * 0.55;
 /// [`FireTargetHighlight`] / [`ActiveLevel`] reads, a [`TileQuery`] for the red tile, and a
 /// [`LabelQuery`] for the cost label. The two pooled-entity queries are `Without` each other's
 /// marker so they are provably disjoint (no B0001 conflict). Battle-gated + in
-/// [`PresenterSystems::Draw`](crate::PresenterSystems) by the
+/// [`PresenterSystems::Overlay`](crate::PresenterSystems) by the
 /// [`TopDownRendererPlugin`](crate::TopDownRendererPlugin).
 pub fn draw_fire_target(
     mut commands: Commands,

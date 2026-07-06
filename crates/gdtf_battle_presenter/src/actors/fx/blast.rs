@@ -47,7 +47,7 @@ use gdtf_battle_sim::acts::ThrowResolved;
 use super::projectile::PendingImpact;
 use crate::cell_to_world;
 
-/// `Update` (`PresenterSystems::Draw`): draw the grenade BLAST explosion per
+/// `Update` (`PresenterSystems::Overlay`): draw the grenade BLAST explosion per
 /// [`ThrowResolved`](gdtf_battle_sim::acts::ThrowResolved) (GTW-546).
 ///
 /// Drains [`MessageReader<ThrowResolved>`](gdtf_battle_sim::acts::ThrowResolved); for each

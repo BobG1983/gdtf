@@ -114,7 +114,7 @@ fn link_sprite(index: usize, atlases: &TopDownAtlases) -> Option<Sprite> {
     Some(sprite)
 }
 
-/// `Update` ([`PresenterSystems::Draw`](crate::PresenterSystems)): draw the
+/// `Update` ([`PresenterSystems::Scene`](crate::PresenterSystems)): draw the
 /// vertical-link (stair / ladder) tiles — one cell-keyed [`Sprite`] per authored link
 /// endpoint on the active storey (AC4).
 ///
@@ -142,7 +142,7 @@ fn link_sprite(index: usize, atlases: &TopDownAtlases) -> Option<Sprite> {
 /// [`TileRoles`] / [`TopDownAtlases`] reads, and a
 /// `Query<(&mut Sprite, &mut Transform, &mut Visibility), With<VerticalLinkSprite>>` for
 /// the in-place re-index + move + show/hide. Battle-gated + in
-/// [`PresenterSystems::Draw`](crate::PresenterSystems) by the
+/// [`PresenterSystems::Scene`](crate::PresenterSystems) by the
 /// [`TopDownRendererPlugin`](crate::TopDownRendererPlugin).
 pub fn draw_vertical_links(
     mut commands: Commands,

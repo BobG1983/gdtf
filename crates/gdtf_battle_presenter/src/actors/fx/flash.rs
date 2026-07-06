@@ -60,7 +60,7 @@ impl Default for FlashTtl {
     }
 }
 
-/// `Update` (`PresenterSystems::Draw`): the one-shot despawn-on-expiry system.
+/// `Update` (`PresenterSystems::Overlay`): the one-shot despawn-on-expiry system.
 ///
 /// Advances each [`FlashTtl`] by the frame [`Res<Time>`] delta ([`FlashTtl::tick`]) and
 /// `Commands::entity(e).despawn()`s the flash the moment its clock finishes. THIS is what

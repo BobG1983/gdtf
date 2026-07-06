@@ -55,9 +55,11 @@
 //! [`ActiveLevel`](crate::ActiveLevel) change, and
 //! [`swap_destroyed_cover`](crate::swap_destroyed_cover) edits sprites on
 //! [`CoverDestroyed`](gdtf_battle_sim::CoverDestroyed). The fog writer MUST run strictly
-//! `.after` both (within [`PresenterSystems::Draw`](crate::PresenterSystems)) or it would
-//! colour stale / just-despawned entities or miss freshly-spawned ones on a level cycle
-//! (`bevy-traps.md` #3). It is wired so in [`TopDownRendererPlugin`](crate::TopDownRendererPlugin).
+//! after both, or it would colour stale / just-despawned entities or miss freshly-spawned
+//! ones on a level cycle (`bevy-traps.md` #3). That ordering is STAGE MEMBERSHIP (GTW-623):
+//! the fog runs in [`PresenterSystems::Compose`](crate::PresenterSystems), chained strictly
+//! after the `Scene` stage holding every drawn-world writer — configured once in
+//! [`TopDownRendererPlugin`](crate::TopDownRendererPlugin).
 //!
 //! It mints NO fire / targeting fog-GATE UX (the reticle / "hold your fire" refusal) —
 //! that is GTW-11, which consumes the SIM read seams, not this presenter writer.

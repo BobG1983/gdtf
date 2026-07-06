@@ -12,7 +12,7 @@ use super::{
 };
 use crate::TerrainFogMaterial;
 
-/// `Update` (`PresenterSystems::Draw`, gated `resource_exists::<BattleInProgress>`): swap
+/// `Update` (`PresenterSystems::Scene`, gated `resource_exists::<BattleInProgress>`): swap
 /// a destroyed cover cell's sprite to the RUBBLE tile.
 ///
 /// Drains [`MessageReader<CoverDestroyed>`](gdtf_battle_sim::CoverDestroyed); for each
@@ -65,7 +65,7 @@ pub fn swap_destroyed_cover(
     }
 }
 
-/// `Update` (`PresenterSystems::Draw`, gated `resource_exists::<BattleInProgress>`): swap a
+/// `Update` (`PresenterSystems::Scene`, gated `resource_exists::<BattleInProgress>`): swap a
 /// destroyed-SLAB cell's sprite to the destroyed-slab tile.
 ///
 /// The slab mirror of [`swap_destroyed_cover`] (GTW-367 C1/C3): it drains
@@ -122,7 +122,7 @@ pub fn swap_destroyed_slab(
     }
 }
 
-/// `Update` (`PresenterSystems::Draw`, gated `resource_exists::<BattleInProgress>`): swap a
+/// `Update` (`PresenterSystems::Scene`, gated `resource_exists::<BattleInProgress>`): swap a
 /// weapon-emplacement's tile between its VACANT and OCCUPIED sprite as its
 /// [`EmplacementState`](gdtf_battle_sim::EmplacementState) changes (GTW-543 — the
 /// occupied-state visual indicator).

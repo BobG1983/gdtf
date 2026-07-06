@@ -10,7 +10,7 @@ use super::{
 };
 use crate::ShotImpactResolved;
 
-/// `Update` (`PresenterSystems::Draw`): apply a [`Changed<LifeState>`] to a ganger
+/// `Update` (`PresenterSystems::Scene`): apply a [`Changed<LifeState>`] to a ganger
 /// sprite.
 ///
 /// A [`Downed`](LifeState::Downed) ganger's sprite is re-tinted to the downed grey-out
@@ -123,7 +123,7 @@ fn report_kill_victim(report: Option<&HitReport>) -> Option<Entity> {
     (verdict.applied.life_after == LifeState::Dead).then_some(verdict.target)
 }
 
-/// `Update` (`PresenterSystems::Draw`): despawn the presenter sprite of a ganger killed by a
+/// `Update` (`PresenterSystems::Scene`): despawn the presenter sprite of a ganger killed by a
 /// shot WHEN the killing tracer lands (GTW-331).
 ///
 /// Drains [`MessageReader<ShotImpactResolved>`](crate::ShotImpactResolved) — the shared per-shot
@@ -165,7 +165,7 @@ pub fn despawn_killed_ganger_on_impact(
     }
 }
 
-/// `Update` (`PresenterSystems::Draw`): despawn the presenter sprite of a ganger whose
+/// `Update` (`PresenterSystems::Scene`): despawn the presenter sprite of a ganger whose
 /// [`Position`] was REMOVED.
 ///
 /// Drains [`RemovedComponents<Position>`] (from `bevy::ecs::removal_detection`); for each

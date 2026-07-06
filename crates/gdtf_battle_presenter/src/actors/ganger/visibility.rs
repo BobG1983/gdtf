@@ -34,7 +34,7 @@ pub(super) fn ganger_in_drawn_band(pos: &Position, active: ActiveLevel, view: Vi
     active.draws_storey(pos.level(), view)
 }
 
-/// `Update` (`PresenterSystems::Draw`, runs only on an [`ActiveLevel`] OR [`ViewMode`]
+/// `Update` (`PresenterSystems::Scene`, runs only on an [`ActiveLevel`] OR [`ViewMode`]
 /// change): show the ganger sprites within the new drawn storey band, hide the rest.
 ///
 /// On an [`ActiveLevel`](crate::ActiveLevel) change (`ActiveLevel::is_changed`) OR a

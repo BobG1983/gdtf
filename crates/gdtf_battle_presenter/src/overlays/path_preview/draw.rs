@@ -94,7 +94,7 @@ const LABEL_FONT_PX: f32 = 9.0;
 /// route-trail sprite (the FCT / reticle-label "above the cell" treatment).
 const LABEL_LIFT_PX: f32 = CELL_PX * 0.55;
 
-/// `Update` ([`PresenterSystems::Draw`](crate::PresenterSystems)): draw the route
+/// `Update` ([`PresenterSystems::Overlay`](crate::PresenterSystems)): draw the route
 /// path-preview — one cell-keyed [`Sprite`] per route step on the active storey, a MINIMAL
 /// marker at the active-storey cell where the route leaves the storey, AND the SINGLE
 /// target-cell TU-cost label (C1 / C2 / C3 / C5).
@@ -136,7 +136,7 @@ const LABEL_LIFT_PX: f32 = CELL_PX * 0.55;
 /// [`PathPreview`] / [`ActiveLevel`] / [`SquadVisibility`] reads, a [`StepQuery`] for the route
 /// steps, and a [`LabelQuery`] for the single target-cost label. The two pooled-entity queries
 /// are `Without` each other's marker so they are provably disjoint (no B0001 conflict).
-/// Battle-gated + in [`PresenterSystems::Draw`](crate::PresenterSystems) by the
+/// Battle-gated + in [`PresenterSystems::Overlay`](crate::PresenterSystems) by the
 /// [`TopDownRendererPlugin`](crate::TopDownRendererPlugin).
 pub fn draw_path_preview(
     mut commands: Commands,
