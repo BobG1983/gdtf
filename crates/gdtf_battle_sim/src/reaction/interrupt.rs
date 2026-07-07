@@ -3,15 +3,18 @@
 
 use bevy::prelude::{Entity, MessageWriter, Query, With};
 
-use super::snapshot::{ReactionRow, row_cell_level};
+use super::{
+    ledger::{InterruptCommit, PendingSpendLedger},
+    snapshot::{ReactionRow, row_cell_level},
+};
 use crate::{
-    acts::{FireRequested, can_engage, movement::ReactionShotFired},
+    acts::{FireArcDecision, FireRequested, decide_fire_arc, movement::ReactionShotFired},
     cover::CoverLedger,
     fire::{MeleeQuery, WieldsQuery},
-    ganger::Suppressed,
+    ganger::{Facing, Suppressed, Tu},
     injuries::HandsAvailable,
     los::{Observer, PeekOffset, Target, can_see},
-    magazine::{FireActor, Magazine, can_fire, mode_tu_cost},
+    magazine::{FireActor, Magazine, can_fire, clamp_burst, mode_tu_cost},
     occupancy::OccupancyGrid,
     rng::ReactionRng,
     surface::SurfaceGrid,
@@ -38,10 +41,19 @@ use crate::{
 /// [`ReactionRng`](crate::rng::ReactionRng) draws); with cap room
 /// ([`may_interrupt`](crate::tuning::may_interrupt) true). Each `(reactor, actor)` pair is
 /// then gated with the EXISTING faction-agnostic [`can_see`] (conscious-observer + range +
-/// LOS) and [`can_fire`] + [`can_engage`] (loaded + affordable + the shared arc verdict) so
-/// the emitted interrupt is dispatcher-accepted. Reactors are evaluated in the deterministic
-/// `(level, y, x)` order; each reactor gets AT MOST ONE roll per actor-act, subject to its
-/// own cap (DESIGN FORK b).
+/// LOS) and [`can_fire`] + [`decide_fire_arc`] (loaded + affordable + the shared arc
+/// verdict `dispatch_fire` itself matches) so the emitted interrupt is
+/// dispatcher-accepted. Reactors are evaluated in the deterministic `(level, y, x)` order;
+/// each reactor gets AT MOST ONE roll per actor-act, subject to its own cap (DESIGN FORK
+/// b).
+///
+/// GTW-646 (spend integrity): the TU / facing / magazine these gates read come through
+/// the trigger pass's [`PendingSpendLedger`] — the settled snapshot OVERLAID with every
+/// interrupt already emitted this pass — so a SECOND same-pass interrupt is gated on the
+/// state the dispatcher will actually see, never a stale snapshot. An offer the
+/// dispatcher could not accept is skipped HERE, before the opposed-check roll (zero
+/// [`ReactionRng`](crate::rng::ReactionRng) draws, the GTW-526 suppression-skip shape),
+/// keeping the C4 cap spend 1:1 with actually-dispatched shots.
 ///
 /// ## C3 — the opposed check
 ///
@@ -59,20 +71,26 @@ use crate::{
 /// double-charges); AND emit [`ReactionShotFired`] `{ mover: actor }` so a walking actor
 /// halts at its current cell (closing the GTW-355 orphan); AND
 /// [`increment`](crate::tuning::ReactionsUsed::increment) the reactor's [`ReactionsUsed`].
+/// The returned [`InterruptCommit`] carries the predicted post-dispatch TU / facing /
+/// magazine (computed from the SAME shared sources the dispatcher runs —
+/// [`decide_fire_arc`] / [`mode_tu_cost`] / the [`Magazine`] round spend) for the trigger
+/// to fold into the pass ledger; `None` means no interrupt was emitted (a failed gate or
+/// a failed roll).
 ///
 /// [`single`]: crate::weapon::FireMode::single
 #[expect(
     clippy::too_many_arguments,
     reason = "the per-pair evaluation borrows the trigger system's own params (the \
-              wielded-weapon + weapon-entity queries, the suppressed probe, the mutable \
-              ReactionsUsed counter, the four read grids + tuning, the seeded ReactionRng, \
-              the is_dead corpse predicate, and the two act MessageWriters); each is a \
-              distinct borrow mirroring reaction_trigger's own argument-count carve-out — \
-              bundling would only hide the reads"
+              wielded-weapon + weapon-entity queries, the suppressed probe, the pass's \
+              pending-spend ledger, the mutable ReactionsUsed counter, the four read grids \
+              + tuning, the seeded ReactionRng, the is_dead corpse predicate, and the two \
+              act MessageWriters); each is a distinct borrow mirroring reaction_trigger's \
+              own argument-count carve-out — bundling would only hide the reads"
 )]
 pub(super) fn try_reaction(
     actor: &ReactionRow,
     reactor: &ReactionRow,
+    ledger: &PendingSpendLedger,
     wields: &WieldsQuery,
     weapons: &Query<(&Magazine, &FireMode, &Handedness)>,
     melee: &MeleeQuery,
@@ -86,16 +104,22 @@ pub(super) fn try_reaction(
     is_dead: &impl Fn(Entity) -> bool,
     fire_writer: &mut MessageWriter<FireRequested>,
     halt_writer: &mut MessageWriter<ReactionShotFired>,
-) {
+) -> Option<InterruptCommit> {
     // The canonical CellLevel accessors through Position's deref (GTW-565).
     let actor_cell = actor.position.cell();
     let actor_level = actor.position.level();
 
+    // GTW-646: the reactor's WORKING TU / facing — the settled snapshot overlaid with
+    // every interrupt already committed this pass, so a second same-pass evaluation
+    // gates on what the dispatcher will actually see (never a stale snapshot).
+    let tu_now = ledger.tu_of(reactor.entity, reactor.tu);
+    let facing_now = ledger.facing_of(reactor.entity, reactor.facing);
+
     // C2: eligibility gate — alive + unspent TU + cap room. The cap read is the
     // reactor's LIVE ReactionsUsed (mutated by an earlier successful interrupt this
     // same tick), so a reactor that already hit its cap this pass is refused.
-    if !reactor.life.is_active() || *reactor.tu == 0 {
-        return;
+    if !reactor.life.is_active() || *tu_now == 0 {
+        return None;
     }
     // GTW-526 C3: a SUPPRESSED reactor cannot interrupt — a pinned unit is a worse
     // reactor (it keeps its head down). This skip happens in the ELIGIBILITY gate,
@@ -105,24 +129,25 @@ pub(super) fn try_reaction(
     // draw-then-discard (which would perturb every later reactor's roll); the
     // suppression check gates purely on the marker, no RNG touched.
     if suppressed.get(reactor.entity).is_ok() {
-        return;
+        return None;
     }
     let used_now = used
         .get(reactor.entity)
         .copied()
         .unwrap_or_else(|_| ReactionsUsed::new(0));
     if !may_interrupt(used_now, reactor.reactions, &tuning.reaction) {
-        return;
+        return None;
     }
 
     // Resolve the reactor's weapon EXACTLY as dispatch_fire / enemy_ai_turn do
     // (`ganger → Wields → the weapon entity`) — the single-shot spec + Magazine +
     // Handedness the can_fire gate + the FireRequested need. A reactor wielding no
     // weapon (or whose weapon entity is missing) cannot react — fail closed.
-    let Some((mode, magazine, handedness)) = reactor_weapon(reactor.entity, wields, weapons, melee)
-    else {
-        return;
-    };
+    let (mode, live_magazine, handedness, weapon_entity) =
+        reactor_weapon(reactor.entity, wields, weapons, melee)?;
+    // GTW-646: the WORKING magazine — rounds net of the shots already committed from
+    // this weapon this pass, so the ammo gate below matches the dispatcher's own.
+    let magazine = ledger.magazine_of(weapon_entity, live_magazine);
     let fire_cost = mode_tu_cost(&mode, &reactor.tu_max, &reactor.aiming, tuning);
 
     // C2: the per-pair LOS + arc + fire gates — REUSED verbatim (faction-agnostic),
@@ -130,7 +155,7 @@ pub(super) fn try_reaction(
     let observer = Observer {
         position:         &reactor.position,
         stance:           &reactor.stance,
-        facing:           &reactor.facing,
+        facing:           &facing_now,
         stair_eye_offset: occupancy.stair_eye_offset_at(&row_cell_level(&reactor.position)),
         peek_offset:      PeekOffset::default(),
     };
@@ -150,12 +175,14 @@ pub(super) fn try_reaction(
         tuning,
         is_dead,
     ) {
-        return;
+        return None;
     }
-    // can_fire (the shared fire guard) — alive, affordable, loaded, in-bounds.
+    // can_fire (the shared fire guard) — alive, affordable, loaded, in-bounds. The TU
+    // pool and magazine are the GTW-646 working values, so affordability here matches
+    // the dispatcher's own gate later this tick.
     let fire_actor = FireActor {
         life: &reactor.life,
-        tu: &reactor.tu,
+        tu: &tu_now,
         tu_max: &reactor.tu_max,
         aiming: &reactor.aiming,
         magazine: &magazine,
@@ -163,28 +190,34 @@ pub(super) fn try_reaction(
         hands_available: HandsAvailable::default(),
     };
     if !can_fire(&fire_actor, &mode, actor_cell, actor_level, tuning) {
-        return;
+        return None;
     }
-    // can_engage (the SHARED ¬Reject arc verdict) — the reactor turns-to-fire if it
-    // can afford turn + shot, else the interrupt would be rejected (so don't emit it).
-    if !can_engage(
-        *reactor.facing,
+    // decide_fire_arc (the SHARED arc verdict `dispatch_fire` matches) — the reactor
+    // turns-to-fire if it can afford turn + shot, else the interrupt would be rejected
+    // (so don't emit it). Taking the FULL verdict (not the `can_engage` boolean over
+    // the same function) also yields the exact turn cost + post-turn facing the
+    // dispatcher will apply — the GTW-646 commit below folds them into the ledger.
+    let (facing_after, turn_cost) = match decide_fire_arc(
+        *facing_now,
         reactor.position.cell(),
         actor_cell,
-        reactor.tu,
+        tu_now,
         fire_cost,
         tuning,
     ) {
-        return;
-    }
+        FireArcDecision::Reject => return None,
+        FireArcDecision::FireInArc => (*facing_now, Tu::new(0)),
+        FireArcDecision::TurnThenFire { facing, turn_cost } => (facing, turn_cost),
+    };
 
     // C3: the opposed check — score both sides, derive the clamped probability, roll
-    // ONE seeded draw. The watcher is the reactor, the mover is the actor.
-    let watcher_score = reaction_score(reactor.reactions, reactor.tu, reactor.tu_max);
+    // ONE seeded draw. The watcher is the reactor, the mover is the actor. The watcher
+    // term reads the WORKING TU (what is actually left to fund this interrupt).
+    let watcher_score = reaction_score(reactor.reactions, tu_now, reactor.tu_max);
     let mover_score = reaction_score(actor.reactions, actor.tu, actor.tu_max);
     let probability = interrupt_probability(watcher_score, mover_score, &tuning.reaction);
     if !rolls_interrupt(probability, rng) {
-        return;
+        return None;
     }
 
     // C4: SUCCESS — fire the interrupt, halt the walking actor, count the interrupt.
@@ -202,13 +235,29 @@ pub(super) fn try_reaction(
     halt_writer.write(ReactionShotFired::new(actor.entity));
     //  (iii) consume the reactor's per-turn cap so the next may_interrupt sees it —
     //       both for a later actor this tick AND the LIVE read above for this same pass.
+    //       The spend's ONE owner stays here (GTW-646): the gates above already read
+    //       the pass ledger, so an emitted interrupt is dispatcher-affordable by
+    //       construction — the count can never precede a shot that will not fire.
     if let Ok(mut counter) = used.get_mut(reactor.entity) {
         counter.increment();
     }
+    //  (iv) predict the post-dispatch reactor state from the SAME sources the
+    //       dispatcher runs (the arc verdict's turn cost + facing, the shared mode
+    //       charge, the fire() round spend) and hand it back for the pass ledger.
+    Some(InterruptCommit::predict(
+        reactor.entity,
+        weapon_entity,
+        tu_now,
+        Tu::new((*turn_cost).saturating_add(*fire_cost)),
+        Facing::new(facing_after),
+        clamp_burst(mode.shots, &magazine),
+        magazine,
+    ))
 }
 
-/// Resolve a reactor's single-shot fire spec + magazine + handedness through
-/// `ganger → Wields → the weapon entity` — the EXACT traversal
+/// Resolve a reactor's single-shot fire spec + magazine + handedness — AND the weapon
+/// entity they live on (the GTW-646 ledger's magazine key) — through
+/// `ganger → Wields → the weapon entity`: the EXACT traversal
 /// [`dispatch_fire`](crate::acts::dispatch_fire) / `enemy_ai_turn` use, so the interrupt
 /// shot fires the same weapon the dispatcher would (GTW-468 C9 — reuse, don't reimplement).
 ///
@@ -219,7 +268,7 @@ pub(super) fn reactor_weapon(
     wields: &WieldsQuery,
     weapons: &Query<(&Magazine, &FireMode, &Handedness)>,
     melee: &MeleeQuery,
-) -> Option<(crate::weapon::FireModeSpec, Magazine, Handedness)> {
+) -> Option<(crate::weapon::FireModeSpec, Magazine, Handedness, Entity)> {
     // GTW-505 C5: resolve the RANGED weapon (excluding the melee weapon the reactor also
     // wields) so the interrupt fires the gun, never the melee weapon — the same
     // ranged-filtered resolution `dispatch_fire` / `fire()` use.
@@ -228,5 +277,5 @@ pub(super) fn reactor_weapon(
         .ok()
         .and_then(|w| w.ranged_weapon(|entity| melee.get(entity).is_ok()))?;
     let (magazine, fire_mode, handedness) = weapons.get(weapon_entity).ok()?;
-    Some((fire_mode.single(), *magazine, *handedness))
+    Some((fire_mode.single(), *magazine, *handedness, weapon_entity))
 }

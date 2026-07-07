@@ -36,6 +36,10 @@
 //!   eligible reactors in deterministic order → delegate each pair);
 //! - `interrupt` — the per-(actor, reactor) evaluation (the C2 eligibility gates → the
 //!   C3 opposed check → the C4 fire + halt + count emission);
+//! - `ledger` — the per-pass pending-spend ledger (GTW-646): the working TU / facing /
+//!   magazine view that advances as interrupts are emitted, so a later same-pass
+//!   interrupt is gated on the state the dispatcher will actually see (the cap spend
+//!   stays 1:1 with dispatched shots);
 //! - `reset` — the turn-boundary [`reset_reactions_used`] system (zero every watcher's
 //!   per-turn counter on a [`TurnStarted`](crate::turn::TurnStarted)).
 //!
@@ -46,6 +50,7 @@
 //! [`reaction_trigger`]'s docs for the C5 ordering (and the cycle constraint it resolves).
 
 mod interrupt;
+mod ledger;
 mod reset;
 mod snapshot;
 mod trigger;

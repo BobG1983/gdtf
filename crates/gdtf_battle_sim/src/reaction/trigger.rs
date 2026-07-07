@@ -17,6 +17,7 @@ use bevy::{
 
 use super::{
     interrupt::try_reaction,
+    ledger::PendingSpendLedger,
     snapshot::{ReactionGangers, ReactionRow, cell_order},
 };
 use crate::{
@@ -146,6 +147,8 @@ pub fn reaction_trigger(
 
     // Snapshot every ganger as a Copy row so the closures below borrow the snapshot (not the
     // live query) and every ordering is a pure function of game state (bevy-traps.md #3).
+    // GTW-646: reactor GATE reads overlay this settled snapshot with the pass ledger below
+    // (the actor-side reads stay settled — the act happened at its settled state).
     let rows: Vec<ReactionRow> = gangers
         .iter()
         .map(
@@ -206,6 +209,12 @@ pub fn reaction_trigger(
         .collect();
     acting_rows.sort_by_key(|row| cell_order(&row.position));
 
+    // GTW-646: the pass's pending-spend ledger. Each emitted interrupt's predicted
+    // post-dispatch TU / facing / magazine is folded in, so a reactor evaluated AGAIN
+    // this pass (a second actor in the same tick) is gated on the state `dispatch_fire`
+    // will actually see — the cap spend stays 1:1 with actually-dispatched shots.
+    let mut ledger = PendingSpendLedger::default();
+
     for actor in &acting_rows {
         // A dead/downed actor is not a live act-in-LOS event — fail closed (only an Alive
         // ganger moving/firing crosses a sightline as an act to react to).
@@ -222,9 +231,10 @@ pub fn reaction_trigger(
             .collect();
         reactors.sort_by_key(|row| cell_order(&row.position));
         for reactor in &reactors {
-            try_reaction(
+            if let Some(commit) = try_reaction(
                 actor,
                 reactor,
+                &ledger,
                 &wields,
                 &weapons,
                 &melee,
@@ -238,7 +248,9 @@ pub fn reaction_trigger(
                 is_dead,
                 &mut fire_writer,
                 &mut halt_writer,
-            );
+            ) {
+                ledger.commit(commit);
+            }
         }
     }
 }

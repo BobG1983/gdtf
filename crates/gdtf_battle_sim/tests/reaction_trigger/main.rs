@@ -36,7 +36,16 @@
 //! CYCLE. The established sim-crate battle-integration idiom (`squad_fog_recompute` / `committed_walk`) drives
 //! `setup_battle_on_request` via a `SetupBattleRequested` message against a `MinimalPlugins`
 //! + `AssetPlugin` + `ScenePlugin` + `BattleSimPlugin` app — the EXACT production wiring.
+//!
+//! GTW-646 adds the SPEND-INTEGRITY pins: `ReactionsUsed` increments correspond 1:1
+//! with actually-dispatched reaction shots (`spend_integrity` — the stale-snapshot
+//! two-movers-one-tick geometry + the mixed eligible/ineligible tick), and the
+//! GTW-526 suppression gate pinned end-to-end on the mover surface with the no-spend
+//! halves (`suppressed_reactor`: no shot, no cap spend, no TU spend).
 
 mod cap;
 mod harness;
+mod spend_integrity;
+mod support;
+mod suppressed_reactor;
 mod triggers;
