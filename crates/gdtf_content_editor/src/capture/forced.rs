@@ -4,7 +4,6 @@
 //! rather than colliding with the editor's own resources.
 
 use bevy::prelude::{Deref, Resource};
-use gdtf_battle_presenter::ViewMode;
 
 use crate::{EditorMode, canvas::CanvasZoom, terrain_form::TerrainKindChoice};
 
@@ -70,18 +69,32 @@ impl ForcedZoom {
     }
 }
 
-/// The capture's FORCED prefab [`ViewMode`] (GTW-532 — from `GDTF_EDITOR_VIEW`), inserted only when
-/// the env var selected the non-default full view.
-#[derive(Resource, Clone, Copy, Deref)]
-pub(super) struct ForcedView(ViewMode);
+/// The capture's FORCED prefab storey view (GTW-532 / GTW-594 — from `GDTF_EDITOR_VIEW`),
+/// inserted only when the env var selected a stageable variant. Either way the drive
+/// stages a 2-storey grid with a distinct upper-storey block, so the captured view
+/// visibly differs from the plain default shot.
+#[derive(Resource, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ForcedView {
+    /// `GDTF_EDITOR_VIEW=full` — force
+    /// [`ViewMode::FullView`](gdtf_battle_presenter::ViewMode::FullView) AND
+    /// [`IsolateView::Off`](gdtf_battle_presenter::IsolateView::Off) (Isolate wins over
+    /// the two-state mode, so the GTW-521 whole-stack capture must lift it — GTW-594 C3).
+    Full,
+    /// `GDTF_EDITOR_VIEW=isolate` — assert the GTW-594 editor default (Isolate ON, one
+    /// onion below) AND lift the edit storey to the painted UPPER storey, so the shot
+    /// shows the three categorical classes (authored-here / exists-below / empty) at once.
+    Isolate,
+}
 
 impl ForcedView {
-    /// Parse a `GDTF_EDITOR_VIEW` value into a forced view, or [`None`] for an unset value / one
-    /// that is not `full` (the capture keeps the default [`ViewMode::DownToActive`]). Only `full`
-    /// (case-insensitive) selects [`ViewMode::FullView`] — the toggled state worth capturing.
+    /// Parse a `GDTF_EDITOR_VIEW` value into a forced view, or [`None`] for an unset /
+    /// unrecognized value (the capture keeps the editor's defaults). `full`
+    /// (case-insensitive) selects the GTW-521 whole-stack variant; `isolate` the GTW-594
+    /// three-class variant.
     pub(super) fn from_env_value(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
-            "full" | "fullview" | "full_view" => Some(Self(ViewMode::FullView)),
+            "full" | "fullview" | "full_view" => Some(Self::Full),
+            "isolate" => Some(Self::Isolate),
             _ => None,
         }
     }

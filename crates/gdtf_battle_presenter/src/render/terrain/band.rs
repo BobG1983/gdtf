@@ -1,5 +1,5 @@
-//! The drawn-storey band: the ONE shared which-storeys-are-drawn definition
-//! ([`drawn_band`]) plus its predicates.
+//! The drawn-storey band: the RANGE form of the shared storey-treatment classification
+//! ([`drawn_band`], derived from [`storey_treatment`] — GTW-594 C1) plus its predicates.
 
 use std::ops::RangeInclusive;
 
@@ -8,7 +8,10 @@ use gdtf_battle_sim::{
     prelude::{CellLevel, Level},
 };
 
-use super::active_level::{ActiveLevel, ViewMode};
+use super::{
+    active_level::ActiveLevel,
+    treatment::{StoreyTreatment, StoreyViewMode, storey_treatment},
+};
 
 /// Whether a `(cell, level)` key's storey lies within the drawn [`drawn_band`] (GTW-519 C6).
 ///
@@ -36,44 +39,49 @@ pub(super) fn level_band(band: RangeInclusive<Level>) -> impl Iterator<Item = Le
     (**band.start()..=**band.end()).map(Level::new)
 }
 
-/// The inclusive band of storeys the terrain draw renders (GTW-519 / GTW-521), given the
-/// current [`ActiveLevel`] and [`ViewMode`].
+/// The inclusive band of storeys the terrain draw renders (GTW-519 / GTW-521 / GTW-594),
+/// given the current [`ActiveLevel`] and the composed [`StoreyViewMode`].
 ///
-/// The UFO:EU / `OpenXcom` multi-level display: the band FLOOR is always the ground floor
-/// (level 0 — the whole stack at/below the ceiling, not a windowed `[ceiling-N..=ceiling]`,
-/// the GTW-519 logged fork (a)). The CEILING is the ONE thing the [`ViewMode`] chooses
-/// (GTW-521):
+/// GTW-594 (C1): the band is DERIVED from the ONE shared storey-treatment classifier
+/// ([`storey_treatment`]) — it is the contiguous span of storeys that classify non-
+/// [`Hidden`](StoreyTreatment::Hidden), so this range and the per-storey classifications
+/// can never drift. The three mode shapes it derives:
 ///
-/// - [`ViewMode::DownToActive`] (the default) → `0..=active`: draw up to and including the
-///   active view level and CULL everything strictly above it — EXACTLY the GTW-519/520
-///   behaviour, unchanged.
-/// - [`ViewMode::FullView`] → `0..=MAX_LEVELS - 1`: draw the WHOLE storey stack regardless of
-///   the active level (the UFO full-stack view). The upper roofs / floors re-appear and hide
-///   the storeys / units beneath by per-storey Z; empty upper cells still emit nothing
+/// - `DownToActive` (Isolate off, the default) → `0..=active`: the whole stack at/below
+///   the active view level, culling strictly above — EXACTLY the GTW-519/520 behaviour.
+/// - `FullView` (Isolate off) → `0..=MAX_LEVELS - 1`: the WHOLE storey stack regardless of
+///   the active level (the UFO full-stack view); empty upper cells still emit nothing
 ///   (peek-through), so it stays cheap.
+/// - Isolate ON (WINS over both — the GTW-594 C3 precedence) → `active - onion ..= active`
+///   (saturating at the ground): the band FLOOR is the active storey minus its onion
+///   depth, no longer always the ground plane.
 ///
 /// The painter's-algorithm occlusion falls out of the existing per-storey Z ([`z_for`], via
 /// [`cell_to_world`](crate::cell_to_world)) either way — a higher storey's tile carries a
 /// strictly greater z, so it
 /// draws in front, with NO new Z math.
 ///
-/// The SINGLE readable definition of "which storeys are drawn", shared by the draw loop
+/// The SINGLE readable range form of "which storeys are drawn", shared by the draw loop
 /// (C1) AND the two destroyed-swap reactions (C6,
 /// [`swap_destroyed_cover`](super::swaps::swap_destroyed_cover) /
-/// [`swap_destroyed_slab`](super::swaps::swap_destroyed_slab)) — and, through
-/// [`ActiveLevel::draws_storey`](super::active_level::ActiveLevel), the GTW-520 ganger
-/// visibility filter — so they can never drift. GTW-521's full-view toggle widens the band's
-/// CEILING here in this ONE helper WITHOUT re-touching the loop body or the swap predicates.
+/// [`swap_destroyed_slab`](super::swaps::swap_destroyed_slab)) — the GTW-520 ganger
+/// visibility filter reads the same classifier through
+/// [`ActiveLevel::draws_storey`](super::active_level::ActiveLevel) — so they can never
+/// drift.
 ///
 /// [`z_for`]: crate::cell_to_world
-pub(super) fn drawn_band(active: ActiveLevel, view: ViewMode) -> RangeInclusive<Level> {
-    // The band floor is always the ground plane; only the ceiling depends on the view mode.
-    let ceiling = match view {
-        // DEFAULT (GTW-519/520): cull above the active view level.
-        ViewMode::DownToActive => *active,
-        // FULL VIEW (GTW-521): the top valid storey (`MAX_LEVELS - 1` = 7). `saturating_sub`
-        // guards the impossible `MAX_LEVELS == 0`.
-        ViewMode::FullView => Level::new(MAX_LEVELS.saturating_sub(1)),
-    };
-    Level::new(0)..=ceiling
+pub(super) fn drawn_band(active: ActiveLevel, mode: StoreyViewMode) -> RangeInclusive<Level> {
+    // Derive the span from the classifier: the active storey always classifies Active
+    // (the exactly-one-Active law), so the fold's seed is the active index; every other
+    // non-Hidden storey widens the floor/ceiling. All three modes classify a CONTIGUOUS
+    // drawn set, so the min/max span IS the drawn set.
+    let mut floor = **active;
+    let mut ceiling = **active;
+    for storey in 0..MAX_LEVELS {
+        if storey_treatment(Level::new(storey), active, mode) != StoreyTreatment::Hidden {
+            floor = floor.min(storey);
+            ceiling = ceiling.max(storey);
+        }
+    }
+    Level::new(floor)..=Level::new(ceiling)
 }

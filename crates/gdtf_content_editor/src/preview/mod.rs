@@ -5,7 +5,8 @@
 //! redraw + the once-per-frame set-to-target zoom/pan apply.
 //!
 //! Wiring-only module. The render target + camera + the multipass-idempotent apply live in
-//! [`target`]; the change-driven tile-sprite redraw + hover ghost in [`tiles`]; the owned zoom/pan
+//! [`target`]; the change-driven tile-sprite redraw + hover ghost in [`tiles`]; the GTW-594
+//! generated stipple / void-grid overlay textures in [`overlay`]; the owned zoom/pan
 //! view state + the PURE cursor-anchored-zoom math in [`view`]; and the PURE UV↔cell↔world
 //! coordinate mapping in [`coords`].
 //!
@@ -24,6 +25,7 @@
 //! `gdtf_state_scoped` seam) alongside the kept [`CanvasZoom`](crate::canvas::CanvasZoom).
 
 pub(crate) mod coords;
+pub(crate) mod overlay;
 mod register;
 pub(crate) mod target;
 mod tiles;

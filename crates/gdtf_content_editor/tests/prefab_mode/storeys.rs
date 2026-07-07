@@ -1,14 +1,14 @@
 //! Storey z-anchoring: the default floor fill is anchored to the ground storey (GTW-535).
 
 use bevy::prelude::*;
-use gdtf_battle_presenter::ViewMode;
+use gdtf_battle_presenter::{IsolateView, ViewMode};
 use gdtf_battle_sim::level::{GridHeight, GridLevels, GridSize, GridWidth};
 use gdtf_content_editor::{CurrentEditLevel, EditorMap, LevelStep, MapEditorSession};
 
 use super::harness::*;
 
 /// The per-storey z-lift the base fill applies: storey 0 draws at z=0, storey `n` at `n *
-/// STOREY_Z_GAP`. Mirrors `tiles.rs`'s `STOREY_Z_GAP` const so the test can bucket a preview
+/// STOREY_Z_GAP`. Mirrors `tiles/sprites.rs`'s `STOREY_Z_GAP` const so the test can bucket a preview
 /// sprite back to its storey by its `Transform` z (the harness spawns no other world sprites).
 const STOREY_Z_GAP: f32 = 0.01;
 
@@ -16,15 +16,23 @@ const STOREY_Z_GAP: f32 = 0.01;
 /// "on storey `n`" when its z is within this of `n * STOREY_Z_GAP`).
 const Z_TOLERANCE: f32 = STOREY_Z_GAP / 2.0;
 
-/// Count the preview tile [`Sprite`]s whose `Transform` z places them on storey `storey` (z ≈
+/// Count the preview TILE [`Sprite`]s whose `Transform` z places them on storey `storey` (z ≈
 /// `storey * STOREY_Z_GAP`). Lets the test distinguish the GROUND default-floor fill (z≈0) from an
 /// UPPER storey's tiles (z≈`storey * gap`) on the real spawned entities.
+///
+/// Counts ATLAS-image sprites only (`texture_atlas.is_some()`) — the base terrain tiles.
+/// GTW-594's per-cell PATTERN overlays (the context stipple / the void grid) are plain
+/// image sprites sharing the storey's z band; they are overlays, not fill, so the
+/// fill-anchor assertions must not count them.
 fn sprite_count_on_storey(app: &mut App, storey: u8) -> usize {
     let target_z = STOREY_Z_GAP * f32::from(storey);
     app.world_mut()
         .query::<(&Sprite, &Transform)>()
         .iter(app.world())
-        .filter(|(_, transform)| (transform.translation.z - target_z).abs() < Z_TOLERANCE)
+        .filter(|(sprite, transform)| {
+            sprite.texture_atlas.is_some()
+                && (transform.translation.z - target_z).abs() < Z_TOLERANCE
+        })
         .count()
 }
 
@@ -56,6 +64,17 @@ fn default_floor_fill_is_anchored_to_the_ground_storey() {
         Some(ViewMode::DownToActive),
         "the prefab viewport opens in the default DownToActive view",
     );
+    // GTW-594: the editor now DEFAULTS to the Isolate view (which would exclude the ground
+    // storey at edit level 2 — the isolate.rs test pins that); this test pins the GTW-535
+    // ground-anchor rule for the DRAWN ground storey, so lift Isolate to get the DownToActive
+    // band (the same flip the RIGHT-panel Isolate checkbox applies).
+    {
+        let world = app.world_mut();
+        let Some(mut isolate) = world.get_resource_mut::<IsolateView>() else {
+            unreachable!("isolate toggle inserted in Editing");
+        };
+        *isolate = IsolateView::Off;
+    }
 
     // Soft-skip if the async seed has not resolved a default floor yet (asset-timing dependent) —
     // there is nothing to fill without one.

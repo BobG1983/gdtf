@@ -12,8 +12,10 @@ use gdtf_battle_sim::{prelude::CellLevel, visibility::SquadVisibility};
 
 use super::material::Saturation;
 use crate::{
-    Brightness, TerrainFogMaterial, TerrainSprite,
+    Brightness, ContextDepth, IsolateView, StoreyTreatment, StoreyViewMode, TerrainFogMaterial,
+    TerrainSprite, ViewMode,
     actors::quiet::{set_fog_knobs_quiet, set_visibility_quiet},
+    storey_treatment,
 };
 
 /// The [`TerrainFogMaterial`] saturation for a squad-VISIBLE cell — full colour (the atlas
@@ -26,18 +28,29 @@ const VISIBLE_SATURATION: Saturation = Saturation::new(1.0);
 /// its BT.709 luminance in the shader.
 const EXPLORED_SATURATION: Saturation = Saturation::new(0.0);
 
-/// The [`Brightness`] a terrain tile on a LOWER drawn storey renders at (GTW-519 — the
-/// UFO:EU / `OpenXcom` multi-level darken): a single tunable dim `< 1.0`, so a storey BELOW
-/// the active view level draws visibly darker than the full-bright active storey.
+/// The [`Brightness`] a [`StoreyTreatment::ContextBelow`] tile at depth 1 renders at —
+/// tier ONE of the (at most two-tier) context ramp (GTW-594 C3).
 ///
-/// The ONE knob for the storey-depth darken axis. It is a SEPARATE axis from the fog
-/// [`saturation`](TerrainFogMaterial::saturation) (the EXPLORED colour-loss): a lower
+/// This (with [`CONTEXT_TIER_TWO`]) is the GTW-519 below-active brightness knob, now the
+/// NAMED `ContextBelow` treatment: a single tunable dim `< 1.0`, so a context storey draws
+/// visibly darker than the full-bright active storey (the UFO:EU / `OpenXcom` multi-level
+/// darken). It is a SEPARATE axis from the fog
+/// [`saturation`](TerrainFogMaterial::saturation) (the EXPLORED colour-loss): a context
 /// EXPLORED tile is BOTH greyscaled (saturation) AND dimmed (this brightness), the two
 /// composing in the shader (grey-mix, then scale). It is deliberately NOT the DEPRECATED
 /// `explored_dim` (the fog EXPLORED cue is colour-loss, never dimmed —
 /// `docs/combat/visibility.md`); this dim expresses storey DEPTH, not fog state. `0.55` is a
 /// legible-but-clearly-recessed dim, in-engine adjustable in the GTW-388 QA pass.
-const LOWER_STOREY_BRIGHTNESS: Brightness = Brightness::new(0.55);
+const CONTEXT_TIER_ONE: Brightness = Brightness::new(0.55);
+
+/// The [`Brightness`] a [`StoreyTreatment::ContextBelow`] tile at depth `>= 2` renders at —
+/// tier TWO, where the ramp CLAMPS (GTW-594 C3: any context-depth brightness ramp holds at
+/// most TWO tiers; a deeper storey never dims further than this).
+///
+/// Deliberately EQUAL to [`CONTEXT_TIER_ONE`] today — the ramp is FLAT, so the GTW-594
+/// promotion changes NO battlescape pixel (C3's "no visual change day one"); a future tune
+/// may split the two tiers, never add a third.
+const CONTEXT_TIER_TWO: Brightness = Brightness::new(0.55);
 
 /// The fog treatment a `(cell, level)` resolves to, for a terrain tile the fog modulates.
 ///
@@ -68,6 +81,23 @@ impl CellFog {
     }
 }
 
+/// The presenter's storey-treatment TABLE, brightness column (GTW-594 C1/C3): the
+/// [`Brightness`] a [`StoreyTreatment::ContextBelow`] tile renders at, by depth.
+///
+/// The class → pixels mapping for the terrain arm's context treatment: depth `1` is
+/// [`CONTEXT_TIER_ONE`], depth `>= 2` CLAMPS to [`CONTEXT_TIER_TWO`] (at most two tiers —
+/// C3). Both tiers are the same flat `0.55` today, so this is bit-identical to the
+/// pre-GTW-594 single knob (no visual change day one). Only
+/// [`StoreyTreatment::Active`] maps to [`Brightness::FULL`] (the A1 law's second half),
+/// asserted by the unit test below.
+pub(super) fn context_below_brightness(depth: ContextDepth) -> Brightness {
+    if *depth <= 1 {
+        CONTEXT_TIER_ONE
+    } else {
+        CONTEXT_TIER_TWO
+    }
+}
+
 /// `Update` ([`PresenterSystems::Compose`](crate::PresenterSystems) — the fog-composition
 /// stage, chained strictly after the `Scene` stage that holds the terrain draw and the
 /// destruction swaps, GTW-623): the presenter TERRAIN fog writer — the documented public
@@ -90,10 +120,15 @@ impl CellFog {
 ///   colour-loss as the memory cue, shown); UNSEEN → [`Visibility::Hidden`]. This drives ALL
 ///   drawn storeys, so a lower-storey EXPLORED cell still desaturates and a lower-storey
 ///   UNSEEN cell still hides.
-/// * `brightness` by the tile's storey DEPTH (GTW-519 — the UFO:EU multi-level darken): the
-///   ACTIVE view storey is [`Brightness::FULL`] (full-bright), a LOWER drawn storey is
-///   [`LOWER_STOREY_BRIGHTNESS`] (`< 1.0`, dimmed). A SEPARATE axis from the fog saturation —
-///   they multiply (grey-mix, THEN scale), so a lower EXPLORED tile is greyscaled AND dimmed.
+/// * `brightness` by the tile's storey TREATMENT (GTW-519 → GTW-594: the shared
+///   [`storey_treatment`] classifier + this presenter's table): the ONE
+///   [`StoreyTreatment::Active`] storey is [`Brightness::FULL`] (full-bright — the A1 law:
+///   only Active renders full-bright), a [`StoreyTreatment::ContextBelow`] storey is
+///   dimmed through `context_below_brightness` (`< 1.0`, clamped to two tiers). A SEPARATE axis
+///   from the fog saturation — they multiply (grey-mix, THEN scale), so a context EXPLORED
+///   tile is greyscaled AND dimmed. A [`StoreyTreatment::Hidden`] sprite cannot normally
+///   survive to this Compose stage (the Scene-stage redraw despawns the band's complement
+///   the same update); one is defensively hidden.
 ///
 /// # Tick-quiet writes (GTW-627 C4)
 ///
@@ -110,13 +145,16 @@ impl CellFog {
 /// despawn + respawn (the UI-mutate-not-respawn convention).
 ///
 /// Param-only (`bevy-traps.md` #7): the read [`Res`]ources ([`SquadVisibility`] / the
-/// [`ActiveLevel`](crate::ActiveLevel)), the terrain materials store
+/// [`ActiveLevel`](crate::ActiveLevel) / the [`ViewMode`] + [`IsolateView`] pair the
+/// classifier's mode composes from), the terrain materials store
 /// ([`ResMut<Assets<TerrainFogMaterial>>`]), and the [`TerrainSprite`] /
 /// [`MeshMaterial2d`] terrain query. It takes no [`Commands`] — every change is an
 /// in-place mutate.
 pub fn present_fog(
     squad: Res<SquadVisibility>,
     active: Res<crate::ActiveLevel>,
+    view: Res<ViewMode>,
+    isolate: Res<IsolateView>,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
     mut terrain: Query<(
         &TerrainSprite,
@@ -124,14 +162,22 @@ pub fn present_fog(
         &mut Visibility,
     )>,
 ) {
+    let mode = StoreyViewMode::new(*view, *isolate);
     for (marker, mat_handle, mut visibility) in &mut terrain {
-        // The storey-depth brightness (GTW-519): FULL on the active view storey, dimmed on a
-        // lower drawn storey. Orthogonal to the fog saturation below — a lower EXPLORED tile
-        // ends up greyscaled AND dimmed (the two axes compose in the shader).
-        let brightness = if marker.at.z == i32::from(***active) {
-            Brightness::FULL
-        } else {
-            LOWER_STOREY_BRIGHTNESS
+        // The storey-treatment brightness (GTW-519 → GTW-594): the shared classifier's
+        // verdict through this presenter's table — FULL only on the one Active storey,
+        // the two-tier context dim on a ContextBelow storey. Orthogonal to the fog
+        // saturation below — a context EXPLORED tile ends up greyscaled AND dimmed (the
+        // two axes compose in the shader).
+        let brightness = match storey_treatment(marker.at.level(), *active, mode) {
+            StoreyTreatment::Hidden => {
+                // Cannot normally exist (the Scene-stage redraw despawned this storey's
+                // sprites this update); hide defensively rather than mis-brighten.
+                set_visibility_quiet(&mut visibility, Visibility::Hidden);
+                continue;
+            }
+            StoreyTreatment::Active => Brightness::FULL,
+            StoreyTreatment::ContextBelow(depth) => context_below_brightness(depth),
         };
         match CellFog::resolve(&squad, &marker.at) {
             CellFog::Visible => {
@@ -156,5 +202,57 @@ pub fn present_fog(
                 set_visibility_quiet(&mut visibility, Visibility::Hidden);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use gdtf_battle_sim::metric::MAX_LEVELS;
+
+    use super::{CONTEXT_TIER_ONE, CONTEXT_TIER_TWO, context_below_brightness};
+    use crate::{Brightness, ContextDepth};
+
+    /// The A1 law, second half (presenter table): only [`StoreyTreatment::Active`] maps
+    /// to [`Brightness::FULL`] — every context depth renders strictly dimmer than full
+    /// bright (`present_fog` maps `Active` to `Brightness::FULL` and everything else
+    /// through this table).
+    ///
+    /// [`StoreyTreatment::Active`]: crate::StoreyTreatment::Active
+    #[test]
+    fn only_the_active_treatment_is_full_bright() {
+        for depth in 1..=MAX_LEVELS {
+            let brightness = context_below_brightness(ContextDepth::new(depth));
+            assert!(
+                *brightness < *Brightness::FULL,
+                "a ContextBelow tile at depth {depth} must render dimmer than the one \
+                 full-bright Active storey (A1: only Active is full-bright); got {}",
+                *brightness,
+            );
+        }
+    }
+
+    /// GTW-594 C3 — the context ramp CLAMPS at two tiers: depth 2 and every deeper depth
+    /// share ONE brightness (tier two); depth 1 is tier one. (Both tiers are deliberately
+    /// equal today — the flat pre-GTW-594 knob, no visual change day one.)
+    #[test]
+    fn context_ramp_clamps_at_two_tiers() {
+        let tier_two = context_below_brightness(ContextDepth::new(2));
+        for depth in 2..=MAX_LEVELS {
+            assert_eq!(
+                context_below_brightness(ContextDepth::new(depth)),
+                tier_two,
+                "depth {depth} must clamp to tier two (a <=2-tier ramp — GTW-594 C3)",
+            );
+        }
+        assert_eq!(
+            context_below_brightness(ContextDepth::new(1)),
+            CONTEXT_TIER_ONE,
+            "depth 1 is tier one",
+        );
+        assert_eq!(
+            CONTEXT_TIER_ONE, CONTEXT_TIER_TWO,
+            "day one the ramp is FLAT (both tiers equal) — the GTW-594 promotion changes \
+             no battlescape pixel (C3)",
+        );
     }
 }

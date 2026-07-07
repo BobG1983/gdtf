@@ -38,6 +38,7 @@ mod roles;
 mod static_draw;
 mod static_map;
 mod swaps;
+mod treatment;
 
 #[cfg(test)]
 mod test;
@@ -49,3 +50,4 @@ pub use roles::{TileIndex, TileRole, TileRoles, tile_roles_hot_ron_chain};
 pub use static_draw::{TerrainSprite, draw_static_battlefield};
 pub use static_map::StaticMap;
 pub use swaps::{indicate_emplacement_occupied, swap_destroyed_cover, swap_destroyed_slab};
+pub use treatment::{ContextDepth, IsolateView, StoreyTreatment, StoreyViewMode, storey_treatment};

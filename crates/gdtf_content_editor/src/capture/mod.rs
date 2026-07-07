@@ -32,12 +32,14 @@
 //! ## GTW-515 C4.11: PREFAB capture + zoom-applied variant
 //!
 //! With `GDTF_EDITOR_MODE=prefab` the capture drives the PREFAB scenario deterministically: it
-//! shrinks the grid to [`drive::SHOT_GRID_EDGE`]²×1, selects the first distinct palette tile, paints
+//! shrinks the grid to [`SHOT_GRID_EDGE`](drive::stage::SHOT_GRID_EDGE)²×1, selects the first
+//! distinct palette tile, paints
 //! a block, and hovers a legal cell beside it — so the render-to-texture viewport shows a painted
 //! block + the hover ghost. A further optional env var — `GDTF_EDITOR_ZOOM` (a float in
 //! `[0.25, 4.0]`) — forces a non-`1.0` preview zoom before the shot, so a SECOND capture proves
 //! the PROJECTION-SCALE path renders (catches an empty/black viewport at a scaled projection);
-//! `GDTF_EDITOR_VIEW=full` forces the GTW-532 full-view variant.
+//! `GDTF_EDITOR_VIEW=full` forces the GTW-532 full-view variant and `GDTF_EDITOR_VIEW=isolate`
+//! the GTW-594 three-class Isolate variant (edit storey lifted to the painted upper storey).
 //!
 //! ## GTW-510: capture CORE delegated to `gdtf_screenshot`
 //!

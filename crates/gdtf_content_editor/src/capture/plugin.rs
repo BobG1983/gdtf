@@ -42,11 +42,14 @@ const TERRAIN_KIND_ENV_VAR: &str = "GDTF_EDITOR_TERRAIN_KIND";
 /// PREFAB.
 const ZOOM_ENV_VAR: &str = "GDTF_EDITOR_ZOOM";
 
-/// The env var that FORCES the prefab-viewport [`gdtf_battle_presenter::ViewMode`] before the
-/// capture (GTW-532) — `full` selects the full view, anything else keeps the default
-/// down-to-active. Honored only when the capture affordance is enabled AND the mode is (forced
-/// to) PREFAB. When set to `full` the capture also drives a 2-storey grid with a distinct block
-/// painted on the UPPER storey, so the `FullView` capture visibly differs.
+/// The env var that FORCES the prefab-viewport storey view before the capture — `full`
+/// (GTW-532) selects the whole-stack view (lifting the GTW-594 Isolate default, which
+/// would win over it); `isolate` (GTW-594) asserts the Isolate default AND lifts the edit
+/// storey to the painted upper storey so the three categorical classes (authored-here /
+/// exists-below / empty) all read in one shot; anything else keeps the editor's defaults.
+/// Honored only when the capture affordance is enabled AND the mode is (forced to)
+/// PREFAB. Either value also drives a 2-storey grid with a distinct block painted on the
+/// UPPER storey, so the staged capture visibly differs.
 const VIEW_ENV_VAR: &str = "GDTF_EDITOR_VIEW";
 
 /// QA / debug-only screenshot-then-exit plugin for the editor.
@@ -72,8 +75,9 @@ pub struct EditorCapturePlugin {
     /// The forced preview zoom (C4.11 — from `GDTF_EDITOR_ZOOM`), or `None` to keep the identity
     /// `1.0` scale. Read once at construction.
     forced_zoom: Option<ForcedZoom>,
-    /// The forced prefab view mode (GTW-532 — from `GDTF_EDITOR_VIEW`), or `None` to keep the
-    /// default down-to-active view. Read once at construction.
+    /// The forced prefab storey view (GTW-532 `full` / GTW-594 `isolate` — from
+    /// `GDTF_EDITOR_VIEW`), or `None` to keep the editor's defaults. Read once at
+    /// construction.
     forced_view: Option<ForcedView>,
 }
 
@@ -136,8 +140,8 @@ impl Plugin for EditorCapturePlugin {
         if let Some(forced) = self.forced_zoom {
             app.insert_resource(forced);
         }
-        // GTW-532: insert the forced-view resource (the full-view capture variant) only when
-        // GDTF_EDITOR_VIEW=full; unset keeps the default down-to-active view.
+        // GTW-532/GTW-594: insert the forced-view resource (the full-view / isolate capture
+        // variants) only when GDTF_EDITOR_VIEW named one; unset keeps the editor's defaults.
         if let Some(forced) = self.forced_view {
             app.insert_resource(forced);
         }

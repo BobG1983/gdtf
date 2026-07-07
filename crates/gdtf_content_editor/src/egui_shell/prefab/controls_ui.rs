@@ -15,13 +15,16 @@
 //! A `Level n / m` readout + `[▲]` / `[▼]` buttons that step the [`CurrentEditLevel`] within
 //! `[1, levels]` (the kept clamp — [`CurrentEditLevel::stepped`]). The same clamp the hotkeys use.
 //!
-//! ## View toggle (GTW-532)
+//! ## View toggle (GTW-532) + Isolate (GTW-594)
 //!
 //! A `[Down-to-active | Full view]` toggle button that flips the prefab viewport's [`ViewMode`]
 //! (REUSED from the presenter — the SAME type the GTW-521 battlescape toggle drives). In
 //! [`ViewMode::DownToActive`] the viewport draws `0..=CurrentEditLevel`; in [`ViewMode::FullView`]
 //! it draws the whole prefab storey stack at once. The `F` hotkey ([`view_mode_hotkey`](super::nav::view_mode_hotkey)) flips the
 //! same resource, so button + key agree (mirroring the mode / level-nav dual controls).
+//! Beneath it, the GTW-594 ISOLATE checkbox flips the orthogonal [`IsolateView`] (the
+//! editor default: ON, one onion storey below) — while on it WINS over the two-state
+//! toggle (the C3 precedence).
 //!
 //! ## Save (C4.9)
 //!
@@ -30,7 +33,7 @@
 //! function signature is uniform across profiles (the release arm consumes the save-only bindings).
 
 use bevy_egui::egui;
-use gdtf_battle_presenter::ViewMode;
+use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_battle_sim::level::UuidThemeRegistry;
 
 use crate::{
@@ -45,7 +48,9 @@ use crate::{
 /// The size fields display + commit through the [`size_fields`] view model (session → fields
 /// reverse sync + the kept clamp commit — GTW-464) and re-clamp the edit level on a size change;
 /// the level-nav buttons step the [`CurrentEditLevel`]; the view toggle
-/// flips the [`ViewMode`]; the debug Save control writes the prefab. `save_name` is the in-UI
+/// flips the [`ViewMode`]; the GTW-594 Isolate checkbox flips the orthogonal
+/// [`IsolateView`] (ON by default — it wins over the view toggle while on); the debug Save
+/// control writes the prefab. `save_name` is the in-UI
 /// prefab-name buffer the shell owns across frames (an [`egui::TextEdit`] needs a persistent
 /// `&mut String`); `themes` resolves the active theme's display name for the save path.
 #[expect(
@@ -60,6 +65,7 @@ pub(crate) fn controls_panel(
     session: &mut MapEditorSession,
     edit_level: &mut CurrentEditLevel,
     view: &mut ViewMode,
+    isolate: &mut IsolateView,
     #[cfg_attr(
         not(debug_assertions),
         expect(unused_variables, reason = "save-only in debug")
@@ -85,6 +91,7 @@ pub(crate) fn controls_panel(
     level_nav(ui, session, edit_level);
     ui.separator();
     view_toggle(ui, view);
+    isolate_toggle(ui, isolate);
 
     #[cfg(debug_assertions)]
     {
@@ -120,6 +127,27 @@ fn view_toggle(ui: &mut egui::Ui, view: &mut ViewMode) {
         ViewMode::DownToActive => "Drawing storeys 0..=active (F to toggle)",
         ViewMode::FullView => "Drawing ALL storeys (F to toggle)",
     });
+}
+
+/// The ISOLATE toggle (GTW-594 C2/C3) — a checkbox flipping the orthogonal
+/// [`IsolateView`] between ON (the editor default: band floor = active, ONE onion storey
+/// below as the categorical ghost) and OFF (the two-state [`ViewMode`] above chooses the
+/// band). While ON it WINS over the two-state mode (the C3 precedence — the classifier
+/// decides it, this control just flips the resource). Set-to-target (an explicit
+/// assignment from the checkbox's post-click state), so it is idempotent under the egui
+/// multipass re-run (bevy-traps #8 (b)).
+fn isolate_toggle(ui: &mut egui::Ui, isolate: &mut IsolateView) {
+    let mut on = matches!(*isolate, IsolateView::On(_));
+    if ui.checkbox(&mut on, "Isolate (active + 1 below)").changed() {
+        *isolate = if on {
+            IsolateView::On(ContextDepth::new(1))
+        } else {
+            IsolateView::Off
+        };
+    }
+    if matches!(*isolate, IsolateView::On(_)) {
+        ui.label("Isolate wins over the storey view above");
+    }
 }
 
 /// The level-nav readout + step buttons (C4.5) — a `Level n / m` readout (1-based for the reader)

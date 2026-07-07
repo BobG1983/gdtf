@@ -6,7 +6,7 @@ use bevy::{prelude::*, sprite_render::Material2dPlugin};
 use gdtf_battle_sim::occupancy_sync::SimSystems;
 
 use crate::{
-    ActiveLevel, FireTargetHighlight, GangerSprites, PathPreview, PresenterSystems,
+    ActiveLevel, FireTargetHighlight, GangerSprites, IsolateView, PathPreview, PresenterSystems,
     TerrainFogMaterial, ViewMode,
     actors::{
         fx::{register_effect_roles_hot_ron, register_fx_tuning_hot_ron},
@@ -74,6 +74,10 @@ impl Plugin for TopDownRendererPlugin {
             // terrain draw + ganger visibility filter read it through the shared `drawn_band`
             // helper. Present for the whole battle span so the toggle always has a resource.
             .init_resource::<ViewMode>()
+            // GTW-594 — the orthogonal Isolate toggle (Off default = NO battlescape visual
+            // change day one; C3). The storey-treatment classifier composes it with the
+            // ViewMode; while On it WINS over the two-state mode (the C3 precedence).
+            .init_resource::<IsolateView>()
             // GTW-358 — the route path-preview read-seam (the find_path route from the selected
             // ganger to the target + its §48 total cost). Present for the whole battle span: the
             // input crate POPULATES it (clearing it when there is no target or it is

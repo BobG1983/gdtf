@@ -1,8 +1,8 @@
-//! GTW-575 headless integration test: the editor's eleven `Editing`-scoped MODEL
-//! resources (the GTW-636 `GangDraft` included) ride the shared `gdtf_state_scoped` seam with their EXACT
-//! pre-sweep lifecycle — absent in `Load`, inserted `OnEnter(Editing)` with
-//! the same seed values the hand-stamped `editor_resources.rs` pairs used, and
-//! removed `OnExit(Editing)`.
+//! GTW-575 headless integration test: the editor's twelve `Editing`-scoped MODEL
+//! resources (the GTW-636 `GangDraft` and the GTW-594 `IsolateView` included) ride the
+//! shared `gdtf_state_scoped` seam with their EXACT lifecycle — absent in `Load`,
+//! inserted `OnEnter(Editing)` with the registered seed values, and removed
+//! `OnExit(Editing)`.
 //!
 //! Drives the REAL [`MapEditorPlugin`] on the no-renderer `DefaultPlugins` UI
 //! harness (the `egui_shell.rs` recipe): the editor's actual `Load` pass
@@ -10,7 +10,7 @@
 //! and the scoped inserts are the production path, not a copy.
 
 use bevy::prelude::*;
-use gdtf_battle_presenter::ViewMode;
+use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_content_editor::{
     CanvasZoom, CurrentEditLevel, EditorMap, EditorMode, EditorState, GangDraft, HoveredCell,
     MapEditorPlugin, MapEditorSession, PreviewPan, TerrainDraft, ThemeDraft,
@@ -66,7 +66,7 @@ fn advance_to_editing(app: &mut App) {
     }
 }
 
-/// Asserts every one of the eleven `Editing`-scoped model resources is absent.
+/// Asserts every one of the twelve `Editing`-scoped model resources is absent.
 fn assert_all_scoped_resources_absent(app: &App, when: &str) {
     let world = app.world();
     assert!(
@@ -108,6 +108,10 @@ fn assert_all_scoped_resources_absent(app: &App, when: &str) {
     assert!(
         world.get_resource::<ViewMode>().is_none(),
         "ViewMode {when}"
+    );
+    assert!(
+        world.get_resource::<IsolateView>().is_none(),
+        "IsolateView {when}"
     );
     assert!(
         world.get_resource::<GangDraft>().is_none(),
@@ -159,6 +163,12 @@ fn assert_all_scoped_resources_seeded(app: &App) {
         world.get_resource::<ViewMode>(),
         Some(&ViewMode::default()),
         "ViewMode seeds to the default DownToActive (GTW-532)",
+    );
+    assert_eq!(
+        world.get_resource::<IsolateView>(),
+        Some(&IsolateView::On(ContextDepth::new(1))),
+        "IsolateView seeds ON with one onion storey below — the GTW-594 editor default \
+         (the battlescape's own init_resource default stays Off)",
     );
     assert_eq!(
         world.get_resource::<GangDraft>(),

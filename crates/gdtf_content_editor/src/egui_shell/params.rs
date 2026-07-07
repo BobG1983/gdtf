@@ -7,7 +7,7 @@
 //! does.
 
 use bevy::prelude::*;
-use gdtf_battle_presenter::ViewMode;
+use gdtf_battle_presenter::{IsolateView, ViewMode};
 use gdtf_battle_sim::{
     armor::ArmorRegistry, ganger::GangRegistry, tuning::GangerStatTuning,
     weapon::MeleeWeaponRegistry,
@@ -41,6 +41,10 @@ pub(crate) struct PrefabParams<'w> {
     /// The prefab-viewport view mode (GTW-532) — REUSED from the presenter (the SAME type the
     /// GTW-521 battlescape full-view toggle drives); flipped by the RIGHT-panel view toggle.
     pub(super) view:           Option<ResMut<'w, ViewMode>>,
+    /// The orthogonal Isolate toggle (GTW-594) — presenter-owned, editor-defaulted ON with
+    /// one onion storey below; flipped by the RIGHT-panel Isolate checkbox. Wins over the
+    /// two-state view mode while on (the C3 precedence, decided in the classifier).
+    pub(super) isolate:        Option<ResMut<'w, IsolateView>>,
     /// The terrain tile atlas (the palette sprite thumbnails draw over it).
     pub(super) atlas:          Option<Res<'w, TileAtlas>>,
     /// The offscreen preview render target (the viewport draws its egui-registered image).

@@ -20,6 +20,7 @@ use super::{
     band::{drawn_band, level_band},
     roles::TileRoles,
     static_map::{StaticMap, i32_extent, resolve_index, storey_has_terrain, terrain_material},
+    treatment::{IsolateView, StoreyViewMode},
 };
 use crate::{TerrainFogMaterial, TopDownAtlases, cell_to_world};
 
@@ -43,7 +44,8 @@ pub struct TerrainSprite {
 /// Fires when ANY of: a [`BattleReady`](gdtf_battle_sim::battle::BattleReady) drained this update,
 /// [`ActiveLevel`] `is_changed()`, [`ViewMode`] `is_changed()` (GTW-521 — the full-view
 /// toggle widens/narrows the [`drawn_band`] ceiling, so the terrain must redraw for the new
-/// band), OR [`TileRoles`] `is_changed()` — the GTW-375 third
+/// band), [`IsolateView`] `is_changed()` (GTW-594 — the Isolate toggle moves the band's
+/// FLOOR), OR [`TileRoles`] `is_changed()` — the GTW-375 third
 /// trigger that re-renders the terrain on a tile hot-reload. A `tile_roles.ron` re-save
 /// MUTATES [`TileRoles`] (the indices swap) and an `alt_tileset_terrain.png` re-save
 /// `set_changed()`s it (same indices, fresh GPU texture); either way the rendered tiles
@@ -100,6 +102,7 @@ pub fn draw_static_battlefield(
     roles: Res<TileRoles>,
     active: Res<ActiveLevel>,
     view: Res<ViewMode>,
+    isolate: Res<IsolateView>,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut quad: Local<Option<Handle<Mesh>>>,
@@ -118,8 +121,14 @@ pub fn draw_static_battlefield(
     // leaves an unread BattleReady to re-fire a redundant redraw next update.
     let ready_fired = ready.read().count() > 0;
     // GTW-521: a ViewMode toggle changes the drawn_band ceiling, so it must redraw the terrain
-    // for the new band exactly as an ActiveLevel change does.
-    if !ready_fired && !active.is_changed() && !view.is_changed() && !roles.is_changed() {
+    // for the new band exactly as an ActiveLevel change does. GTW-594: an IsolateView flip
+    // changes the band's FLOOR (and preempts the two-state mode), so it is a fourth trigger.
+    if !ready_fired
+        && !active.is_changed()
+        && !view.is_changed()
+        && !isolate.is_changed()
+        && !roles.is_changed()
+    {
         return;
     }
 
@@ -150,7 +159,7 @@ pub fn draw_static_battlefield(
     // cell_to_world), NOT new math — a higher storey's tile carries a strictly greater z, so
     // it draws in front. A storey strictly above active is never entered, so it emits nothing
     // (the hard cull). present_fog dims each lower storey's tiles per-tile afterward.
-    for level in level_band(drawn_band(*active, *view)) {
+    for level in level_band(drawn_band(*active, StoreyViewMode::new(*view, *isolate))) {
         for y in 0..i32_extent(GRID_HEIGHT) {
             for x in 0..i32_extent(GRID_WIDTH) {
                 let cell = Cell::new(x, y);

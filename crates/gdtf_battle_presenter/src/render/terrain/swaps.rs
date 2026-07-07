@@ -13,6 +13,7 @@ use super::{
     band::{cell_level_in_band, drawn_band},
     roles::TileRoles,
     static_draw::TerrainSprite,
+    treatment::{IsolateView, StoreyViewMode},
 };
 use crate::TerrainFogMaterial;
 
@@ -37,12 +38,13 @@ use crate::TerrainFogMaterial;
 pub fn swap_destroyed_cover(
     active: Res<ActiveLevel>,
     view: Res<ViewMode>,
+    isolate: Res<IsolateView>,
     roles: Res<TileRoles>,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
     mut destroyed: MessageReader<CoverDestroyed>,
     tiles: Query<(&TerrainSprite, &MeshMaterial2d<TerrainFogMaterial>)>,
 ) {
-    let band = drawn_band(*active, *view);
+    let band = drawn_band(*active, StoreyViewMode::new(*view, *isolate));
     let rubble = *roles.rubble;
     for event in destroyed.read() {
         // CoverDestroyed.at is a CellLevel; only act on cells WITHIN the drawn band
@@ -95,12 +97,13 @@ pub fn swap_destroyed_cover(
 pub fn swap_destroyed_slab(
     active: Res<ActiveLevel>,
     view: Res<ViewMode>,
+    isolate: Res<IsolateView>,
     roles: Res<TileRoles>,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
     mut destroyed: MessageReader<SlabDestroyed>,
     tiles: Query<(&TerrainSprite, &MeshMaterial2d<TerrainFogMaterial>)>,
 ) {
-    let band = drawn_band(*active, *view);
+    let band = drawn_band(*active, StoreyViewMode::new(*view, *isolate));
     let slab_destroyed = *roles.slab_destroyed;
     for event in destroyed.read() {
         // SlabDestroyed.at is a CellLevel; only act on cells WITHIN the drawn band
@@ -160,12 +163,13 @@ pub fn swap_destroyed_slab(
 pub fn indicate_emplacement_occupied(
     active: Res<ActiveLevel>,
     view: Res<ViewMode>,
+    isolate: Res<IsolateView>,
     roles: Res<TileRoles>,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
     emplacements: Query<(&EmplacementState, &TerrainCell), Changed<EmplacementState>>,
     tiles: Query<(&TerrainSprite, &MeshMaterial2d<TerrainFogMaterial>)>,
 ) {
-    let band = drawn_band(*active, *view);
+    let band = drawn_band(*active, StoreyViewMode::new(*view, *isolate));
     let vacant_index = *roles.emplacement;
     let occupied_index = *roles.emplacement_occupied;
     for (state, cell) in &emplacements {

@@ -1,7 +1,7 @@
 //! The full-view toggle changes the drawn tile set (GTW-532).
 
 use bevy::prelude::*;
-use gdtf_battle_presenter::ViewMode;
+use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_battle_sim::{
     level::{GridHeight, GridLevels, GridSize, GridWidth},
     metric::{CellLevel, Level},
@@ -35,7 +35,8 @@ fn full_view_toggle_changes_the_drawn_tile_set() {
         app.update();
     }
 
-    // The editor opens in PREFAB mode with the default DownToActive view.
+    // The editor opens in PREFAB mode with the default DownToActive view — and, since
+    // GTW-594, the Isolate toggle ON (one onion below).
     assert_eq!(
         app.world().get_resource::<EditorMode>().copied(),
         Some(EditorMode::Prefab),
@@ -46,6 +47,21 @@ fn full_view_toggle_changes_the_drawn_tile_set() {
         Some(ViewMode::DownToActive),
         "the prefab viewport opens in the default DownToActive view (GTW-532 C1)",
     );
+    assert_eq!(
+        app.world().get_resource::<IsolateView>().copied(),
+        Some(IsolateView::On(ContextDepth::new(1))),
+        "the editor opens with the GTW-594 Isolate default (one onion storey below)",
+    );
+    // GTW-594 C3: Isolate WINS over the two-state ViewMode, so this test — which pins the
+    // TWO-STATE toggle's drawn-set effect — lifts it explicitly (the same flip the RIGHT-panel
+    // Isolate checkbox applies).
+    {
+        let world = app.world_mut();
+        let Some(mut isolate) = world.get_resource_mut::<IsolateView>() else {
+            unreachable!("isolate toggle inserted in Editing");
+        };
+        *isolate = IsolateView::Off;
+    }
 
     // Resolve a real paint tile from the seeded session; soft-skip if the async seed has not
     // resolved a default floor yet (the tile pipeline is asset-timing dependent).

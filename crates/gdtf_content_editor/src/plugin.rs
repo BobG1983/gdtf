@@ -28,7 +28,7 @@
 
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
-use gdtf_battle_presenter::ViewMode;
+use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_state_scoped::StateScopedResourceAppExt as _;
 
 use crate::{
@@ -101,7 +101,7 @@ impl Plugin for MapEditorPlugin {
             (spawn_editor_camera, load_tile_atlas),
         );
 
-        // GTW-575: the eleven `Editing`-scoped MODEL resources register their whole
+        // GTW-575: the twelve `Editing`-scoped MODEL resources register their whole
         // OnEnter-insert + OnExit-remove lifecycle through ONE
         // `init_state_scoped_resource` call each (bevy-traps #1 via the shared
         // `gdtf_state_scoped` seam) — same `OnEnter(Editing)` / `OnExit(Editing)`
@@ -141,6 +141,14 @@ impl Plugin for MapEditorPlugin {
         // GTW-532: the prefab-viewport ViewMode (REUSED from the presenter — the SAME
         // type the GTW-521 battlescape full-view toggle drives), default DownToActive.
         app.init_state_scoped_resource(EditorState::Editing, ViewMode::default);
+        // GTW-594 C2: the orthogonal Isolate toggle — the EDITOR's default is ON with ONE
+        // onion storey below (band floor = active), so a higher edit storey shows only its
+        // authored content + the categorical ghost below (the GTW-592 fix). While on it
+        // WINS over the two-state ViewMode (the C3 precedence); the battlescape's own
+        // default stays Off.
+        app.init_state_scoped_resource(EditorState::Editing, || {
+            IsolateView::On(ContextDepth::new(1))
+        });
 
         // GTW-515 C4.3: the prefab preview render machinery — the offscreen render-target image +
         // the dedicated isolated-render-layer camera (OnEnter/OnExit), the change-driven tile

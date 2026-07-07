@@ -1,7 +1,7 @@
 //! The presenter-owned active storey resource and the shared draw-ordering set.
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{metric::MAX_LEVELS, prelude::Level};
+use gdtf_battle_sim::prelude::Level;
 
 /// The presenter-owned VIEW MODE — how the terrain draw + ganger visibility bound the
 /// drawn storey stack from ABOVE (GTW-521, the UFO "full view" toggle).
@@ -71,37 +71,33 @@ impl ActiveLevel {
         Self(level)
     }
 
-    /// Whether `storey` lies WITHIN the drawn band under `view` — the ONE shared band
-    /// predicate (GTW-520 C4, widened for the GTW-521 view toggle).
+    /// Whether `storey` lies WITHIN the drawn band under `mode` — the shared band
+    /// predicate (GTW-520 C4, widened for the GTW-521 view toggle, GTW-594-promoted onto
+    /// the one classifier).
     ///
     /// The single successor to the pre-GTW-520 on-active-storey hard cut (`storey ==
     /// active`): a ganger on ANY storey within the drawn band is DRAWN (it peeks through
     /// floor-gaps on the lower storeys the terrain draw already renders, GTW-519), while a
-    /// ganger strictly ABOVE the band ceiling is culled. It is the SAME membership the
-    /// terrain draw's [`drawn_band`](super::band::drawn_band) range expresses, as a
-    /// per-storey predicate — the band fact the GTW-627 ganger-visibility classifier
-    /// (feeding [`resolve_ganger_visibility`](crate::resolve_ganger_visibility), the one
-    /// writer of ganger-sprite visibility) composes with the fog fact.
+    /// ganger on a hidden storey is culled. GTW-594 (C1): the membership is DERIVED from
+    /// the ONE shared storey-treatment classifier
+    /// ([`storey_treatment`](super::treatment::storey_treatment)) — a storey is drawn iff
+    /// it does not classify [`Hidden`](super::treatment::StoreyTreatment::Hidden) — the
+    /// SAME classification the terrain draw's [`drawn_band`](super::band::drawn_band)
+    /// range derives from, so the two can never drift. This is the band fact the GTW-627
+    /// ganger-visibility classifier (feeding
+    /// [`resolve_ganger_visibility`](crate::resolve_ganger_visibility), the one writer of
+    /// ganger-sprite visibility) composes with the fog fact.
     ///
-    /// The `view` chooses the CEILING exactly as [`drawn_band`](super::band::drawn_band) does
-    /// (GTW-521 C2 — units on all storeys are shown in [`ViewMode::FullView`], still subject
-    /// to the GTW-520 fog hard-cut applied downstream):
-    ///
-    /// - [`ViewMode::DownToActive`] (default) → `storey <= active` (unchanged GTW-520).
-    /// - [`ViewMode::FullView`] → every storey `0..=MAX_LEVELS - 1` is drawn.
-    ///
-    /// `storey` reads through [`Level`]'s `Deref<Target = u8>`, as does the wrapped active
-    /// level; the comparison is on the `u8` storey indices.
+    /// The `mode` composes the two-state [`ViewMode`] with the GTW-594
+    /// [`IsolateView`](super::treatment::IsolateView) toggle (Isolate wins — the C3
+    /// precedence, decided inside the classifier): `DownToActive` draws `storey <=
+    /// active`, `FullView` draws every storey, Isolate draws only `active - onion ..=
+    /// active`. Units on drawn storeys stay subject to the GTW-520 fog hard-cut applied
+    /// downstream.
     #[must_use]
-    pub fn draws_storey(&self, storey: Level, view: ViewMode) -> bool {
-        // `self` Derefs `ActiveLevel -> Level -> u8`; `storey` Derefs `Level -> u8`. The
-        // ceiling is the active level (DownToActive) or the top storey (FullView), matching
-        // `drawn_band`.
-        let ceiling = match view {
-            ViewMode::DownToActive => ***self,
-            ViewMode::FullView => MAX_LEVELS.saturating_sub(1),
-        };
-        *storey <= ceiling
+    pub fn draws_storey(&self, storey: Level, mode: super::treatment::StoreyViewMode) -> bool {
+        super::treatment::storey_treatment(storey, *self, mode)
+            != super::treatment::StoreyTreatment::Hidden
     }
 }
 

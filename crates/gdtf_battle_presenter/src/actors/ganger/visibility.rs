@@ -18,7 +18,9 @@ use gdtf_battle_sim::{
 };
 
 use super::sprite_map::{GangerSprite, GangerSprites};
-use crate::{ActiveLevel, ViewMode, actors::quiet::set_visibility_quiet};
+use crate::{
+    ActiveLevel, IsolateView, StoreyViewMode, ViewMode, actors::quiet::set_visibility_quiet,
+};
 
 /// The fog-side facts the classifier composes when the fog resources are RESIDENT.
 ///
@@ -67,9 +69,9 @@ pub(super) fn actor_relation(
 ///
 /// * **Band fact** (always) — the shared
 ///   [`ActiveLevel::draws_storey`](crate::ActiveLevel::draws_storey) predicate under the
-///   current [`ViewMode`] (GTW-520 drawn-band membership / GTW-521 full-view ceiling): a
-///   ganger on any storey within the drawn band passes; one strictly above the band
-///   ceiling is culled.
+///   composed [`StoreyViewMode`] (GTW-520 drawn-band membership / GTW-521 full-view
+///   ceiling / the GTW-594 Isolate band, all derived from the one storey-treatment
+///   classifier): a ganger on any drawn storey passes; one on a hidden storey is culled.
 /// * **Fog fact** (only when `fog` carries the RESIDENT fog resources) — the untouched
 ///   GTW-342 hard-cut: a live player ganger is trivially visible
 ///   ([`FactionRelation::OwnSquad`]); an enemy or a corpse is shown iff its cell is
@@ -85,12 +87,12 @@ pub(super) fn classify_ganger_visibility(
     faction: Faction,
     life: LifeState,
     active: ActiveLevel,
-    view: ViewMode,
+    mode: StoreyViewMode,
     fog: Option<&GangerFogFacts<'_>>,
 ) -> Visibility {
     // The storey axis: the canonical CellLevel::level accessor through Position's deref
     // (GTW-565) against the ONE shared band predicate.
-    let in_drawn_band = active.draws_storey(pos.level(), view);
+    let in_drawn_band = active.draws_storey(pos.level(), mode);
     // The fog axis: only when the fog resources are resident; band-only when absent.
     let shown_by_fog = fog.is_none_or(|facts| {
         let key: CellLevel = **pos;
@@ -114,15 +116,18 @@ pub(super) fn classify_ganger_visibility(
 #[derive(SystemParam)]
 pub struct GangerVisibilityFacts<'w> {
     /// The presenter-owned active view storey — the band fact's ceiling input.
-    active: Res<'w, ActiveLevel>,
+    active:  Res<'w, ActiveLevel>,
     /// The presenter-owned view mode — chooses the band ceiling rule (GTW-521).
-    view:   Res<'w, ViewMode>,
+    view:    Res<'w, ViewMode>,
+    /// The presenter-owned Isolate toggle (GTW-594) — wins over the two-state mode when
+    /// on; composed with `view` into the classifier's [`StoreyViewMode`] input.
+    isolate: Res<'w, IsolateView>,
     /// The sim's squad fog sets — the fog RESIDENCY witness (`bevy-traps.md` #1): absent
     /// (a focused harness with no battle fog) puts the classifier in band-only mode.
-    squad:  Option<Res<'w, SquadVisibility>>,
+    squad:   Option<Res<'w, SquadVisibility>>,
     /// The battle's player faction; optional INSIDE the fog fact (fail-closed to
     /// [`FactionRelation::Other`] when absent while the squad sets are resident).
-    player: Option<Res<'w, PlayerFaction>>,
+    player:  Option<Res<'w, PlayerFaction>>,
 }
 
 impl GangerVisibilityFacts<'_> {
@@ -132,7 +137,14 @@ impl GangerVisibilityFacts<'_> {
             .squad
             .as_deref()
             .map(|squad| GangerFogFacts::new(squad, self.player.as_deref().copied()));
-        classify_ganger_visibility(pos, faction, life, *self.active, *self.view, fog.as_ref())
+        classify_ganger_visibility(
+            pos,
+            faction,
+            life,
+            *self.active,
+            StoreyViewMode::new(*self.view, *self.isolate),
+            fog.as_ref(),
+        )
     }
 }
 

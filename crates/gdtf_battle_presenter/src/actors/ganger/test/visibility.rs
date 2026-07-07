@@ -9,7 +9,13 @@ use gdtf_battle_sim::{
 };
 
 use super::super::visibility::{GangerFogFacts, actor_relation, classify_ganger_visibility};
-use crate::{ActiveLevel, ViewMode};
+use crate::{ActiveLevel, IsolateView, StoreyViewMode, ViewMode};
+
+/// The composed classifier mode for `view` with the Isolate toggle OFF (the pre-GTW-594
+/// behaviour these tests pin).
+fn mode(view: ViewMode) -> StoreyViewMode {
+    StoreyViewMode::new(view, IsolateView::Off)
+}
 
 /// A live player-faction ganger is `OwnSquad` (always shown); an enemy, or a corpse of
 /// either faction, is `Other` (fog-gated).
@@ -69,7 +75,7 @@ fn classifier_without_fog_facts_is_band_only() {
             Faction::new(1),
             LifeState::Alive,
             active,
-            ViewMode::DownToActive,
+            mode(ViewMode::DownToActive),
             None,
         ),
         Visibility::Inherited,
@@ -83,7 +89,7 @@ fn classifier_without_fog_facts_is_band_only() {
             Faction::new(0),
             LifeState::Alive,
             active,
-            ViewMode::DownToActive,
+            mode(ViewMode::DownToActive),
             None,
         ),
         Visibility::Hidden,
@@ -96,7 +102,7 @@ fn classifier_without_fog_facts_is_band_only() {
             Faction::new(0),
             LifeState::Alive,
             active,
-            ViewMode::FullView,
+            mode(ViewMode::FullView),
             None,
         ),
         Visibility::Inherited,
@@ -125,7 +131,7 @@ fn classifier_with_fog_facts_composes_band_and_fog() {
             enemy,
             LifeState::Alive,
             active,
-            ViewMode::DownToActive,
+            mode(ViewMode::DownToActive),
             Some(&facts),
         ),
         Visibility::Hidden,
@@ -138,7 +144,7 @@ fn classifier_with_fog_facts_composes_band_and_fog() {
             enemy,
             LifeState::Alive,
             active,
-            ViewMode::DownToActive,
+            mode(ViewMode::DownToActive),
             Some(&facts),
         ),
         Visibility::Inherited,
@@ -151,7 +157,7 @@ fn classifier_with_fog_facts_composes_band_and_fog() {
             player,
             LifeState::Alive,
             active,
-            ViewMode::DownToActive,
+            mode(ViewMode::DownToActive),
             Some(&facts),
         ),
         Visibility::Inherited,
@@ -164,7 +170,7 @@ fn classifier_with_fog_facts_composes_band_and_fog() {
             player,
             LifeState::Alive,
             active,
-            ViewMode::DownToActive,
+            mode(ViewMode::DownToActive),
             Some(&facts),
         ),
         Visibility::Hidden,

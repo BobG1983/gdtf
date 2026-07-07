@@ -113,6 +113,7 @@ pub(crate) fn editor_egui_ui(
         mut zoom,
         mut pan,
         mut view,
+        mut isolate,
         atlas,
         preview_target,
     } = prefab;
@@ -229,9 +230,10 @@ pub(crate) fn editor_egui_ui(
             theme_form_ui::field_stack(ui, &mut theme_draft, terrain_registry.as_deref());
         }
         EditorMode::Prefab => {
-            if let (Some(edit_level), Some(view), Some(map)) = (
+            if let (Some(edit_level), Some(view), Some(isolate), Some(map)) = (
                 edit_level.as_deref_mut(),
                 view.as_deref_mut(),
+                isolate.as_deref_mut(),
                 map.as_deref(),
             ) {
                 controls_ui::controls_panel(
@@ -239,6 +241,7 @@ pub(crate) fn editor_egui_ui(
                     &mut session,
                     edit_level,
                     view,
+                    isolate,
                     &mut prefab_save_name,
                     map,
                     terrain_registry.as_deref(),
