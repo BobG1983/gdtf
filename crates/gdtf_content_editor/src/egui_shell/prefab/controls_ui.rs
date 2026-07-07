@@ -1,5 +1,5 @@
 //! The PREFAB-mode **controls** (GTW-515 C4.5 / C4.6 / C4.9) — the RIGHT panel: the grid SIZE
-//! fields, the LEVEL navigation (chrome buttons + readout; the `]`/`[`/PageUp/PageDown hotkeys live
+//! fields, the per-storey LEVEL RAIL (GTW-595; the `]`/`[`/PageUp/PageDown hotkeys live
 //! in a `Update` system), and the debug-only Save-prefab control.
 //!
 //! ## Size fields (C4.6 / GTW-464)
@@ -10,10 +10,12 @@
 //! pass (the session → fields reverse sync) and committed back through the kept clamp on a real
 //! edit. This panel just draws them ([`size_fields::size_fields`](super::size_fields::size_fields)).
 //!
-//! ## Level nav (C4.5)
+//! ## Level rail (GTW-595, replacing the C4.5 `Level n / m` paging)
 //!
-//! A `Level n / m` readout + `[▲]` / `[▼]` buttons that step the [`CurrentEditLevel`] within
-//! `[1, levels]` (the kept clamp — [`CurrentEditLevel::stepped`]). The same clamp the hotkeys use.
+//! The blind readout + `[▲]` / `[▼]` buttons are GONE: the sibling
+//! [`level_rail`](super::level_rail) module draws one row per storey (top first) with an
+//! occupancy thumbnail + painted count, click-to-jump / scroll / drag-to-scrub — all through the
+//! SAME kept clamp ([`CurrentEditLevel::jumped`] / [`CurrentEditLevel::stepped`]) the hotkeys use.
 //!
 //! ## View toggle (GTW-532) + Isolate (GTW-594)
 //!
@@ -21,7 +23,7 @@
 //! (REUSED from the presenter — the SAME type the GTW-521 battlescape toggle drives). In
 //! [`ViewMode::DownToActive`] the viewport draws `0..=CurrentEditLevel`; in [`ViewMode::FullView`]
 //! it draws the whole prefab storey stack at once. The `F` hotkey ([`view_mode_hotkey`](super::nav::view_mode_hotkey)) flips the
-//! same resource, so button + key agree (mirroring the mode / level-nav dual controls).
+//! same resource, so button + key agree (mirroring the mode-tab / hotkey dual controls).
 //! Beneath it, the GTW-594 ISOLATE checkbox flips the orthogonal [`IsolateView`] (the
 //! editor default: ON, one onion storey below) — while on it WINS over the two-state
 //! toggle (the C3 precedence).
@@ -37,8 +39,11 @@ use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_battle_sim::level::UuidThemeRegistry;
 
 use crate::{
-    canvas::{CurrentEditLevel, LevelStep},
-    egui_shell::prefab::size_fields,
+    canvas::CurrentEditLevel,
+    egui_shell::prefab::{
+        level_rail::{self, RailCtx, RailUiState},
+        size_fields,
+    },
     session::MapEditorSession,
 };
 
@@ -47,18 +52,21 @@ use crate::{
 ///
 /// The size fields display + commit through the [`size_fields`] view model (session → fields
 /// reverse sync + the kept clamp commit — GTW-464) and re-clamp the edit level on a size change;
-/// the level-nav buttons step the [`CurrentEditLevel`]; the view toggle
+/// the GTW-595 level rail draws the per-storey thumbnails + counts and jumps/scrubs the
+/// [`CurrentEditLevel`]; the view toggle
 /// flips the [`ViewMode`]; the GTW-594 Isolate checkbox flips the orthogonal
 /// [`IsolateView`] (ON by default — it wins over the view toggle while on); the debug Save
 /// control writes the prefab. `save_name` is the in-UI
 /// prefab-name buffer the shell owns across frames (an [`egui::TextEdit`] needs a persistent
-/// `&mut String`); `themes` resolves the active theme's display name for the save path.
+/// `&mut String`); `rail_state` is the rail's shell-owned view state (thumbnail cache + scrub
+/// remainder); `themes` resolves the active theme's display name for the save path.
 #[expect(
     clippy::too_many_arguments,
     reason = "the controls panel drives every prefab RIGHT-panel control from the borrows the shell \
-              already holds (session + edit level + view mode + the debug save name/map/registries + \
-              themes); each is a distinct borrow threaded through the shell's panel closure and \
-              Bevy's injection cannot reduce them without a wrapper that changes the crate API"
+              already holds (session + edit level + view mode + the rail state/map/registries + \
+              themes + the debug save name); each is a distinct borrow threaded through the shell's \
+              panel closure and Bevy's injection cannot reduce them without a wrapper that changes \
+              the crate API"
 )]
 pub(crate) fn controls_panel(
     ui: &mut egui::Ui,
@@ -71,24 +79,27 @@ pub(crate) fn controls_panel(
         expect(unused_variables, reason = "save-only in debug")
     )]
     save_name: &mut String,
-    #[cfg_attr(
-        not(debug_assertions),
-        expect(unused_variables, reason = "save-only in debug")
-    )]
     map: &crate::editor_map::EditorMap,
-    #[cfg_attr(
-        not(debug_assertions),
-        expect(unused_variables, reason = "save-only in debug")
-    )]
     registry: Option<&gdtf_battle_sim::terrain::def::TerrainDefRegistry>,
     themes: Option<&UuidThemeRegistry>,
+    rail_state: &mut RailUiState,
 ) {
     ui.heading("Prefab");
     ui.separator();
 
     size_fields::size_fields(ui, session, edit_level);
     ui.separator();
-    level_nav(ui, session, edit_level);
+    // GTW-595: the per-storey level rail, replacing the blind `Level n / m` paging.
+    level_rail::level_rail(
+        ui,
+        &mut RailCtx {
+            map,
+            session,
+            edit_level,
+            registry,
+            state: rail_state,
+        },
+    );
     ui.separator();
     view_toggle(ui, view);
     isolate_toggle(ui, isolate);
@@ -148,25 +159,6 @@ fn isolate_toggle(ui: &mut egui::Ui, isolate: &mut IsolateView) {
     if matches!(*isolate, IsolateView::On(_)) {
         ui.label("Isolate wins over the storey view above");
     }
-}
-
-/// The level-nav readout + step buttons (C4.5) — a `Level n / m` readout (1-based for the reader)
-/// and `[▲]` / `[▼]` buttons stepping the [`CurrentEditLevel`] within `[1, levels]` (the kept
-/// clamp — [`CurrentEditLevel::stepped`], the SAME clamp the hotkeys use).
-fn level_nav(ui: &mut egui::Ui, session: &MapEditorSession, edit_level: &mut CurrentEditLevel) {
-    let size = session.grid_size();
-    let levels = *size.levels();
-    // The stored Level is a 0-based storey index; show it 1-based for the reader.
-    let current_1based = u16::from(*edit_level.level()).saturating_add(1);
-    ui.horizontal(|ui| {
-        ui.label(format!("Level {current_1based} / {levels}"));
-        if ui.button("▼").clicked() {
-            *edit_level = edit_level.stepped(LevelStep::down(), size);
-        }
-        if ui.button("▲").clicked() {
-            *edit_level = edit_level.stepped(LevelStep::up(), size);
-        }
-    });
 }
 
 /// The debug-only Save-prefab control (C4.9) — a name field + a "Save prefab" button; on press it

@@ -105,18 +105,15 @@ pub(crate) fn viewport_panel(
 
     // C4.7 reset affordance — a thin toolbar row above the image restores the zoom + pan to their
     // defaults (identity zoom, origin pan). Set-to-target (never accumulate), so it is idempotent
-    // under the egui multipass re-run. GTW-594 C2: the row also carries the PERSISTENT
-    // "Editing Ln" badge — always visible over the viewport, 1-based to match the level-nav
-    // readout — so the isolated storey the author is painting is never ambiguous.
+    // under the egui multipass re-run. The GTW-594 "Editing Ln" badge that rode this row was
+    // SUPERSEDED by the GTW-595 level rail (its highlighted active row + always-visible header
+    // readout are THE level affordance now — one indicator, no competition).
     ui.horizontal(|ui| {
         if ui.button("Reset view").clicked() {
             *ctx.zoom = CanvasZoom::reset();
             *ctx.pan = PreviewPan::origin();
         }
         ui.label(format!("Zoom {:.2}x", **ctx.zoom));
-        ui.separator();
-        let editing_1based = u16::from(*ctx.edit_level.level()).saturating_add(1);
-        ui.strong(format!("Editing L{editing_1based}"));
     });
 
     let size = ui.available_size();

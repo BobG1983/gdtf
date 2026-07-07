@@ -21,13 +21,16 @@
 //!   right-drag pan (C4.3 / C4.4 / C4.7 / C4.8).
 //! - RIGHT controls panel — [`controls_ui::controls_panel`]: the grid-size fields (drawn +
 //!   two-way-synced by [`size_fields`] over its [`SizeFieldSpans`](size_fields::SizeFieldSpans)
-//!   view model — GTW-464), the level-nav readout + buttons, and the debug-only Save-prefab
-//!   control (C4.5 / C4.6 / C4.9).
+//!   view model — GTW-464), the per-storey LEVEL RAIL ([`level_rail`] — GTW-595, replacing the
+//!   blind `Level n / m` paging), and the debug-only Save-prefab control (C4.5 / C4.6 / C4.9).
 //!
 //! The `]`/`[`/PageUp/PageDown level-nav HOTKEYS are a UI-agnostic `Update` system
 //! ([`nav::level_nav_hotkeys`]), like the kept mode hotkeys.
 
 pub(crate) mod controls_ui;
+// GTW-595: the per-storey occupancy thumbnail scrub-strip (the level rail) — the sweep /
+// cache / scrub model half plus its egui rows.
+pub(crate) mod level_rail;
 pub(crate) mod nav;
 pub(crate) mod palette_ui;
 // GTW-464: the grid-size fields + their explicit SizeFieldSpans view model (session → fields

@@ -116,6 +116,7 @@ pub(crate) fn editor_egui_ui(
         mut isolate,
         atlas,
         preview_target,
+        mut rail_state,
     } = prefab;
     // Unpack the GANG model borrows (GTW-636; all state-scoped / Load-resolved — bevy-traps #1).
     // GANG mode no-ops until they exist; the other modes never touch them.
@@ -221,7 +222,7 @@ pub(crate) fn editor_egui_ui(
     // 4. RIGHT — the ACTIVE mode's form (an in-UI branch). TERRAIN no longer renders here (GTW-534
     //    C1 folded its picker + field stack into the CENTRAL primary region below); THEME is the
     //    real form (C3 / GTW-514); PREFAB is the real controls (C4 / GTW-515) — the grid-size
-    //    fields, the level nav, and the debug Save.
+    //    fields, the GTW-595 level rail, and the debug Save.
     egui::Panel::right("editor_mode_form").show(&mut viewport_ui, |ui| match *mode {
         // TERRAIN's controls are central now (GTW-534 C1); the right panel is intentionally idle in
         // TERRAIN mode so nothing competes with the central stats + sprite picker.
@@ -246,6 +247,7 @@ pub(crate) fn editor_egui_ui(
                     map,
                     terrain_registry.as_deref(),
                     themes.as_deref(),
+                    &mut rail_state,
                 );
             }
         }

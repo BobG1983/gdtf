@@ -52,6 +52,16 @@ impl CurrentEditLevel {
         self.stepped(LevelStep::none(), size)
     }
 
+    /// The selector JUMPED straight to `target`, clamped into the prefab's `[0, levels-1]` range
+    /// (GTW-595 C1) — the level rail's click-to-jump, routed through the SAME kept clamp the
+    /// stepping nav uses so a row click can never land the selector outside the drawable volume.
+    /// No new level state: this is still the one [`CurrentEditLevel`] resource, just addressed by
+    /// absolute storey instead of a relative step.
+    #[must_use]
+    pub fn jumped(target: Level, size: GridSize) -> Self {
+        Self(target).clamped(size)
+    }
+
     /// The wrapped storey index — the [`Level`] the canvas render / paint / ghost read.
     #[must_use]
     pub const fn level(self) -> Level {

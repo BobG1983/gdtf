@@ -2,9 +2,10 @@
 //! `PageUp` / `PageDown` keys that step the [`CurrentEditLevel`] within the prefab's storey range.
 //!
 //! UI-agnostic (a plain `Update` system reading [`ButtonInput`], NOT egui), mirroring the kept
-//! [`mode_hotkeys`](crate::mode::mode_hotkeys). It uses the SAME clamp the on-chrome nav buttons use
-//! — [`CurrentEditLevel::stepped`], which saturates the result into `[0, levels-1]` — so a step at
-//! either end is a no-op and the selector never points past the drawable volume.
+//! [`mode_hotkeys`](crate::mode::mode_hotkeys). It uses the SAME clamp the GTW-595 level rail's
+//! click/scrub uses — [`CurrentEditLevel::stepped`], which saturates the result into
+//! `[0, levels-1]` — so a step at either end is a no-op and the selector never points past the
+//! drawable volume.
 
 use bevy::prelude::*;
 use gdtf_battle_presenter::ViewMode;
