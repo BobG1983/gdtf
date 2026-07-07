@@ -32,6 +32,11 @@
 //! - a [`CoverDestroyed`](gdtf_battle_sim::occupancy_sync::CoverDestroyed) message: swap that cover
 //!   cell's sprite to the RUBBLE tile.
 //!
+//! A sprite-def hot-reload never redraws: the GTW-666 restamp reaction
+//! ([`restamp_tiles_on_def_change`]) re-resolves every already-drawn tile IN PLACE when
+//! the [`SpriteDefRegistry`](gdtf_content_families::sprites::SpriteDefRegistry) changes —
+//! mutate-not-respawn, tick-quiet for unchanged defs.
+//!
 //! It draws NO gangers (S5), NO FX (S6), and reads NO input (S7/S8) — it only REACTS
 //! to [`ActiveLevel`] changing (S8's level-cycling input mutates the resource).
 
@@ -39,6 +44,7 @@ mod active_level;
 mod band;
 mod link_draw;
 mod resolve;
+mod restamp;
 mod roles;
 mod static_draw;
 mod static_map;
@@ -54,6 +60,7 @@ pub use resolve::{
     MissingTileTexture, anchor_world_offset, resolve_sprite, setup_missing_tile_texture,
     single_rect_layout, source_parts, source_px_size, source_urect,
 };
+pub use restamp::{StampedGraphic, restamp_tiles_on_def_change};
 pub use roles::TileRole;
 pub use static_draw::{TerrainSprite, draw_static_battlefield};
 pub use static_map::{SpriteResolveCtx, StaticMap};

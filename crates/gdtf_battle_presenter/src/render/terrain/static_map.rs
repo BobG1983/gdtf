@@ -156,9 +156,10 @@ pub struct SpriteResolveCtx<'w> {
 }
 
 impl SpriteResolveCtx<'_> {
-    /// Whether the sprite-def registry changed this tick — the draw's hot-reload
-    /// redraw trigger (a `.spritedef.ron` re-save rebuilds the registry; a sheet
-    /// `.png` re-save `set_changed()`s it).
+    /// Whether the sprite-def registry changed this tick — the GTW-666 restamp's
+    /// trigger (a `.spritedef.ron` re-save rebuilds the registry through the family
+    /// redrive; [`restamp_tiles_on_def_change`](super::restamp::restamp_tiles_on_def_change)
+    /// then re-resolves every already-drawn tile in place).
     pub(super) fn defs_changed(&self) -> bool {
         self.defs.is_changed()
     }

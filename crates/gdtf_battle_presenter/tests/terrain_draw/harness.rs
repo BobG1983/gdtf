@@ -201,6 +201,55 @@ pub(crate) fn sprite_entity_at(app: &mut App, key: CellLevel) -> Option<bevy::ec
         .map(|(entity, _)| entity)
 }
 
+/// The `wall` def the two GTW-666 `def_restamp*` suites author FIRST (v1): the
+/// sheet's origin tile at the CENTER anchor — the seeded shape (zero anchor
+/// offset, the tile centered on its cell). Its re-save variants live with each
+/// consuming test.
+pub(crate) const CENTER_WALL_DEF: &str = r#"(
+    source: Sheet(
+        sheet: "sprites/alt_tileset_terrain.png",
+        rect: (x: 0, y: 0, w: 16, h: 16),
+    ),
+    anchor: (x: 8, y: 8),
+)"#;
+
+/// Write one sprite-def member under `root`'s `content/sprites/` folder (the
+/// GTW-666 restamp suites' `TempDir` authoring seam).
+pub(crate) fn write_sprite_def(root: &std::path::Path, file: &str, payload: &str) {
+    let dir = root.join("content").join("sprites");
+    let created = std::fs::create_dir_all(&dir);
+    assert!(
+        created.is_ok(),
+        "creating the sprites dir must succeed: {created:?}"
+    );
+    let written = std::fs::write(dir.join(file), payload);
+    assert!(written.is_ok(), "writing {file} must succeed: {written:?}");
+}
+
+/// Author one Wall cell at `key` (occupancy + ledger + surface + the sim-spawned
+/// per-def `"wall"` graphic fact + `BattleInProgress`) and fire the one-shot draw —
+/// the GTW-666 restamp suites' shared fixture.
+pub(crate) fn draw_one_wall(app: &mut App, key: CellLevel) {
+    insert_occupancy(
+        app,
+        vec![TerrainPlacement::new(
+            key,
+            gdtf_battle_sim::occupancy::TerrainKind::Wall,
+        )],
+    );
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::cover::CoverLedger::new());
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::surface::SurfaceGrid::new());
+    app.world_mut()
+        .insert_resource(gdtf_battle_sim::prelude::BattleInProgress);
+    spawn_terrain_entity(app, key, "wall", None);
+    app.world_mut()
+        .resource_mut::<bevy::ecs::message::Messages<BattleReady>>()
+        .write(BattleReady);
+    app.update();
+}
+
 /// Spawns ONE sim-side terrain entity at `key` carrying its per-def
 /// [`TerrainGraphicKey`] (and an OPTIONAL [`FootfallSound`]) — mirroring exactly what the
 /// sim's `setup_battle` spawns onto every terrain entity (GTW-491). This is the seam the

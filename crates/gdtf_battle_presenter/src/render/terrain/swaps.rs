@@ -12,45 +12,53 @@ use gdtf_battle_sim::{
 use super::{
     active_level::{ActiveLevel, ViewMode},
     band::{cell_level_in_band, drawn_band},
+    restamp::{StampedGraphic, stamp_tile_quiet},
     roles::TileRole,
     static_draw::TerrainSprite,
     static_map::SpriteResolveCtx,
     treatment::{IsolateView, StoreyViewMode},
 };
-use crate::{TerrainFogMaterial, cell_to_world};
+use crate::TerrainFogMaterial;
 
 /// Retarget the ONE [`TerrainSprite`] at `at` to the sprite `role`'s resolved def —
 /// the shared in-place swap body (GTW-665): the material's `image` / `atlas_layout` /
-/// `atlas_index` are overwritten from the def's source (a missing def retargets to the
+/// `atlas_index` re-resolve from the def's source (a missing def retargets to the
 /// LOUD magenta marker — C4, warned by [`SpriteResolveCtx::resolved`]) and the entity's
 /// [`Transform`] re-derives from the def's ANCHOR (C2 — the seeded center anchors make
 /// this the unchanged cell center). The fog-driven `saturation` / `brightness` are
 /// deliberately left alone (the Compose-stage fog writer owns them per frame). KEEPS the
-/// entity (the UI mutate-not-respawn rule): `get_mut` marks the material asset dirty so
-/// the UV-transform uniform re-uploads next frame. A tile whose material was dropped is
+/// entity (the UI mutate-not-respawn rule). The writes ride the ONE tick-quiet stamp
+/// seam ([`stamp_tile_quiet`], GTW-666 — shared with the registry-change restamp):
+/// a REAL retarget `get_mut`s the material so the UV-transform uniform re-uploads next
+/// frame, an already-correct tile (e.g. the emplacement `Changed` first-observation)
+/// writes nothing. The [`StampedGraphic`] records the role key so a later def
+/// hot-reload restamps what the tile NOW shows. A tile whose material was dropped is
 /// simply not in the query; nothing to re-index.
 fn retarget_tile(
     at: CellLevel,
     role: TileRole,
     resolve: &SpriteResolveCtx,
-    materials: &mut Assets<TerrainFogMaterial>,
+    materials: &mut ResMut<Assets<TerrainFogMaterial>>,
     tiles: &mut Query<(
         &TerrainSprite,
         &MeshMaterial2d<TerrainFogMaterial>,
         &mut Transform,
+        &mut StampedGraphic,
     )>,
 ) {
-    for (terrain, mat_handle, mut transform) in tiles.iter_mut() {
+    for (terrain, mat_handle, mut transform, mut stamped) in tiles.iter_mut() {
         if terrain.at != at {
             continue;
         }
-        let (target, offset) = resolve.resolved(role.as_key(), &at);
-        if let Some(mut material) = materials.get_mut(mat_handle.id()) {
-            material.image = target.image;
-            material.atlas_layout = target.atlas_layout;
-            material.atlas_index = target.atlas_index;
-        }
-        transform.translation = cell_to_world(at.cell(), at.level()) + offset.extend(0.0);
+        stamp_tile_quiet(
+            resolve,
+            materials,
+            role.as_key(),
+            at,
+            mat_handle,
+            &mut transform,
+        );
+        stamped.set_if_neq(StampedGraphic::from_key(role.as_key()));
     }
 }
 
@@ -71,9 +79,9 @@ fn retarget_tile(
 /// Param-only (`bevy-traps.md` #7): [`Res<ActiveLevel>`], the [`SpriteResolveCtx`]
 /// bundle, [`ResMut<Assets<TerrainFogMaterial>>`] (GTW-348 — the swap retargets the
 /// tile's material rather than its sprite), [`MessageReader<CoverDestroyed>`], and the
-/// [`TerrainSprite`] / [`MeshMaterial2d`] / [`Transform`] query (to find the material at
-/// `at` and re-anchor it) — no [`Commands`] needed, the swap edits in place (no despawn /
-/// respawn).
+/// [`TerrainSprite`] / [`MeshMaterial2d`] / [`Transform`] / [`StampedGraphic`] query (to
+/// find the material at `at`, re-anchor it, and re-stamp the shown key — GTW-666) — no
+/// [`Commands`] needed, the swap edits in place (no despawn / respawn).
 pub fn swap_destroyed_cover(
     active: Res<ActiveLevel>,
     view: Res<ViewMode>,
@@ -85,6 +93,7 @@ pub fn swap_destroyed_cover(
         &TerrainSprite,
         &MeshMaterial2d<TerrainFogMaterial>,
         &mut Transform,
+        &mut StampedGraphic,
     )>,
 ) {
     let band = drawn_band(*active, StoreyViewMode::new(*view, *isolate));
@@ -125,8 +134,8 @@ pub fn swap_destroyed_cover(
 /// Param-only (`bevy-traps.md` #7): [`Res<ActiveLevel>`], the [`SpriteResolveCtx`]
 /// bundle, [`ResMut<Assets<TerrainFogMaterial>>`] (GTW-348 — the swap retargets the
 /// tile's material rather than its sprite), [`MessageReader<SlabDestroyed>`], and the
-/// [`TerrainSprite`] / [`MeshMaterial2d`] / [`Transform`] query — no [`Commands`]
-/// needed, the swap edits in place (no despawn / respawn).
+/// [`TerrainSprite`] / [`MeshMaterial2d`] / [`Transform`] / [`StampedGraphic`] query —
+/// no [`Commands`] needed, the swap edits in place (no despawn / respawn).
 pub fn swap_destroyed_slab(
     active: Res<ActiveLevel>,
     view: Res<ViewMode>,
@@ -138,6 +147,7 @@ pub fn swap_destroyed_slab(
         &TerrainSprite,
         &MeshMaterial2d<TerrainFogMaterial>,
         &mut Transform,
+        &mut StampedGraphic,
     )>,
 ) {
     let band = drawn_band(*active, StoreyViewMode::new(*view, *isolate));
@@ -189,8 +199,9 @@ pub fn swap_destroyed_slab(
 /// [`ResMut<Assets<TerrainFogMaterial>>`] (the swap retargets the tile's material in place — the
 /// destruction-swap precedent), the `Changed<EmplacementState>` sim query (the emplacement's
 /// state + its [`TerrainCell`](gdtf_battle_sim::entity::TerrainCell)), and the [`TerrainSprite`] /
-/// [`MeshMaterial2d`] / [`Transform`] query (to find the material at the emplacement's cell). No
-/// [`Commands`] needed — the swap edits in place, never spawning / despawning.
+/// [`MeshMaterial2d`] / [`Transform`] / [`StampedGraphic`] query (to find the material at the
+/// emplacement's cell). No [`Commands`] needed — the swap edits in place, never spawning /
+/// despawning.
 pub fn indicate_emplacement_occupied(
     active: Res<ActiveLevel>,
     view: Res<ViewMode>,
@@ -202,6 +213,7 @@ pub fn indicate_emplacement_occupied(
         &TerrainSprite,
         &MeshMaterial2d<TerrainFogMaterial>,
         &mut Transform,
+        &mut StampedGraphic,
     )>,
 ) {
     let band = drawn_band(*active, StoreyViewMode::new(*view, *isolate));

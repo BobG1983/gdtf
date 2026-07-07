@@ -89,6 +89,23 @@ extension loader, per-file salvage (a malformed def fails ALONE, as a
 fallback, and the live hot-reload redrive: edit a `.spritedef.ron` under
 `cargo drun` and the whole `SpriteDefRegistry` rebuilds in place.
 
+**Applied defs restamp (GTW-666).** A rebuilt registry does not only affect
+FUTURE draws — entities already stamped from a def re-resolve live, in both
+hosts. In the game, the terrain-draw family's restamp
+(`restamp_tiles_on_def_change`,
+`crates/gdtf_battle_presenter/src/render/terrain/restamp.rs`) re-resolves
+every drawn tile's stamped graphic key when the registry changes and
+re-applies texture/rect/anchor IN PLACE — the same tile entity, tick-quiet
+for defs that did not change (an unrelated-def edit or a no-op registry touch
+re-dirties nothing). In the editor, the painted preview's change-driven
+redraw keys on the same registry change
+(`crates/gdtf_content_editor/src/preview/tiles/redraw.rs`), and the palette /
+SPRITE-mode previews re-derive from the live registry/draft every egui frame.
+A re-saved sheet `.png` (same defs, fresh pixels) re-prepares exactly the
+tile materials sampling it
+(`crates/gdtf_battle_presenter/src/render/topdown/redrive.rs`) — no restart,
+no despawn, either way.
+
 The registry is `SpriteDefRegistry`
 (`crates/gdtf_content_families/src/sprites/registry.rs`). Unlike every other
 family its spec/registry types live in the GLUE crate, not the sim: sprite
@@ -140,7 +157,10 @@ blocking load.
   (`crates/gdtf_app/tests/load_ref_integrity.rs`,
   `crates/gdtf_content_editor/tests/authoring_validation/sprites.rs`).
 - **Hot-reload:** `cargo drun`, edit a `.spritedef.ron`, watch the
-  "hot-reload: rebuilt … from content/sprites" info line.
+  "hot-reload: rebuilt … from content/sprites" info line — and the already-
+  drawn tiles using that def swap rect/anchor in place (GTW-666; pinned in
+  `crates/gdtf_battle_presenter/tests/terrain_draw/def_restamp.rs` and
+  `crates/gdtf_content_editor/tests/prefab_mode/registry_redraw.rs`).
 - **Dangling key:** author a `graphic_name` with no matching sprite def and
   watch the `DanglingRef … SpriteDefRegistry` finding on the end-of-`Load`
   report (game) or the live editor report (authoring time) — and the magenta

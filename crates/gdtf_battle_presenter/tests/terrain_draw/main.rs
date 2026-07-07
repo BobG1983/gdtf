@@ -16,6 +16,8 @@
 //! #7 carve-out (a)). No function here takes `&mut World`/`&World`.
 
 mod anchor;
+mod def_restamp;
+mod def_restamp_quiet;
 mod destruction_swap;
 mod door_stair_tiles;
 mod emplacement;

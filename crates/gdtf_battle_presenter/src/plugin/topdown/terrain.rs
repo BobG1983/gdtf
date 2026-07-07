@@ -14,7 +14,7 @@ use gdtf_content_families::sprites::SpriteDefRegistry;
 use crate::{
     MissingTileTexture, PresenterSystems, draw_static_battlefield, draw_vertical_links,
     indicate_emplacement_occupied, render::terrain::setup_missing_tile_texture,
-    swap_destroyed_cover, swap_destroyed_slab,
+    restamp_tiles_on_def_change, swap_destroyed_cover, swap_destroyed_slab,
 };
 
 /// GTW-218 (S4) adds the static terrain draw here (re-plumbed by GTW-665 onto the
@@ -62,8 +62,11 @@ pub(super) fn register_terrain_draw(app: &mut App) {
 /// [`SlabDestroyed`](gdtf_battle_sim::occupancy_sync::SlabDestroyed) swaps it to the `slab_destroyed` tile) — both
 /// in the [`PresenterSystems::Scene`] stage (GTW-623 — a state swap is part of the drawn
 /// world the fog modulates), MUTATING the existing tile's material in place (no
-/// despawn — the UI mutate-not-respawn rule, C7). Extracted from `build` to keep it under the
-/// `too_many_lines` lint (mirrors
+/// despawn — the UI mutate-not-respawn rule, C7) — plus the GTW-666
+/// [`restamp_tiles_on_def_change`] hot-reload restamp, which rides the same stage + gates and
+/// is ordered explicitly after the draw + all three swap writers (`bevy-traps.md` #3: five
+/// systems touch `Assets<TerrainFogMaterial>`, so the order is pinned). Extracted from
+/// `build` to keep it under the `too_many_lines` lint (mirrors
 /// [`register_fx_flash_systems`](super::fx::register_fx_flash_systems) /
 /// [`register_fog_systems`](super::fog::register_fog_systems)).
 ///
@@ -105,6 +108,24 @@ pub(super) fn register_destruction_swaps(app: &mut App) {
         Update,
         indicate_emplacement_occupied
             .in_set(PresenterSystems::Scene)
+            .run_if(resource_exists::<BattleInProgress>.and_then(sprite_resolution_ready)),
+    )
+    // GTW-666: the sprite-def hot-reload RESTAMP — when the SpriteDefRegistry changes (the
+    // family redrive rebuilt it from a re-saved `.spritedef.ron`), every already-drawn tile
+    // re-resolves its StampedGraphic key and re-applies texture/rect/anchor IN PLACE through
+    // the swaps' tick-quiet write seam. Same Scene stage + gates as the swaps; ordered
+    // explicitly AFTER the draw and the three swap writers (bevy-traps #3 — all five touch
+    // Assets<TerrainFogMaterial>, so the shared-data order must be pinned, not ambient): on a
+    // frame where a swap retargets AND the registry changed, the restamp re-resolves the
+    // final (post-swap) stamp against the new defs.
+    .add_systems(
+        Update,
+        restamp_tiles_on_def_change
+            .in_set(PresenterSystems::Scene)
+            .after(draw_static_battlefield)
+            .after(swap_destroyed_cover)
+            .after(swap_destroyed_slab)
+            .after(indicate_emplacement_occupied)
             .run_if(resource_exists::<BattleInProgress>.and_then(sprite_resolution_ready)),
     );
 }

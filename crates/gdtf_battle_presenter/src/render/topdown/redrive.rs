@@ -1,10 +1,14 @@
 //! The GTW-375 sheet-IMAGE hot-reload reaction: react to a re-saved sheet `.png`
-//! and (for the terrain sheet) force the terrain redraw; plus its registrar.
+//! and re-prepare the terrain materials that sample it; plus its registrar.
 
-use bevy::{asset::AssetEvent, prelude::*};
-use gdtf_content_families::sprites::SpriteDefRegistry;
+use bevy::{
+    asset::{AssetEvent, AssetId, Assets},
+    image::Image,
+    prelude::*,
+};
 
 use super::atlases::{SheetRole, TopDownAtlases};
+use crate::TerrainFogMaterial;
 
 /// `Update` (unguarded; self-gates on its [`Option`] borrows): live-reload ANY sprite
 /// sheet registered in [`TopDownAtlases`] when its `.png` is re-saved (GTW-375 C4) —
@@ -14,30 +18,28 @@ use super::atlases::{SheetRole, TopDownAtlases};
 /// file-watcher, so the GPU texture refreshes on its own. It reads the [`MessageReader`] of
 /// [`AssetEvent`](bevy::asset::AssetEvent)`<`[`Image`]`>` — asset events are MESSAGES in Bevy
 /// 0.19, so this is a `MessageReader`, not an `EventReader` (`bevy-traps.md` #4) — and for
-/// each [`Modified`](bevy::asset::AssetEvent::Modified) maps the image id back to its sheet
-/// via [`TopDownAtlases::sheet_role_for_image`]. It collects the DISTINCT reloaded
-/// [`SheetRole`]s (ignoring events for ids that are not a loaded sheet — portrait nodes,
-/// font atlases, one-off textures) and:
+/// each [`Modified`](bevy::asset::AssetEvent::Modified):
 ///
-/// - logs ONE `info!` per reloaded sheet, naming it by its asset path (GTW-375 C5); and
-/// - if [`Terrain`](SheetRole::Terrain) is among them, calls
-///   [`DetectChangesMut::set_changed`] on the [`SpriteDefRegistry`] (the GTW-665 redraw
-///   signal — the retired `TileRoles` poke re-anchored) to force
-///   `draw_static_battlefield`'s `defs_changed()` trigger to despawn+respawn the terrain
-///   tiles against the freshly-reloaded texture.
+/// - logs ONE `info!` per DISTINCT reloaded sheet in [`TopDownAtlases`], naming it by its
+///   asset path (GTW-375 C5; events for ids that are not a loaded sheet — portrait nodes,
+///   font atlases, one-off textures — are not logged); and
+/// - re-prepares every [`TerrainFogMaterial`] whose `image` IS a modified id: one
+///   [`Assets::get_mut`] deref per affected material queues the `AssetEvent::Modified`
+///   that rebuilds its bind group against the fresh `GpuImage` (GTW-666 — the successor
+///   of the retired GTW-665 registry poke, which forced a full despawn+respawn redraw;
+///   the tiles now keep their entities and only the materials actually sampling the
+///   reloaded image re-prepare).
 ///
-/// Why ONLY terrain gets the poke (the Research-phase bevy-expert finding, Bevy 0.19): the
-/// terrain draws through a custom [`Material2d`](bevy::sprite_render::Material2d)
+/// Why ONLY the terrain materials need this (the Research-phase bevy-expert finding, Bevy
+/// 0.19): the terrain draws through a custom [`Material2d`](bevy::sprite_render::Material2d)
 /// (`TerrainFogMaterial`), whose `PreparedMaterial2d` bind group is a SNAPSHOT of the
 /// `texture_view` baked at `as_bind_group` time — an image reload updates the `GpuImage` but
-/// the existing bind group still references the OLD view, so the only way to re-bind is to
-/// re-prepare the material, which the despawn+respawn in `draw_static_battlefield` does
-/// (`materials.add(...)` mints fresh `PreparedMaterial2d` entries against the already-updated
-/// `GpuImage`). The OTHER sheets draw as atlas SPRITES (gangers, effects, stair/ladder, and
-/// the portrait UI node): the sprite pipeline keys its image bind group by
-/// [`AssetId<Image>`] and invalidates+rebuilds it from the fresh `GpuImage` automatically on
-/// the same `AssetEvent::Modified` — so those sheets show new pixels with ZERO system action,
-/// and this system only LOGS them.
+/// the existing bind group still references the OLD view, so the material must re-prepare.
+/// The OTHER sheets draw as atlas SPRITES (gangers, effects, stair/ladder, and the portrait
+/// UI node): the sprite pipeline keys its image bind group by [`AssetId<Image>`] and
+/// invalidates+rebuilds it from the fresh `GpuImage` automatically on the same
+/// `AssetEvent::Modified` — so those sheets show new pixels with ZERO system action, and
+/// this system only LOGS them.
 ///
 /// Guarded so it never panics. The [`MessageReader<AssetEvent<Image>>`](MessageReader) is
 /// itself wrapped in an [`Option`] because `Messages<AssetEvent<Image>>` exists only when
@@ -45,72 +47,78 @@ use super::atlases::{SheetRole, TopDownAtlases};
 /// that wires the renderer with an [`AssetServer`] but no image-asset stack would otherwise
 /// trip Bevy's param validation (`Message not initialized`). When the buffer is absent the
 /// param resolves to [`None`] and the system no-ops (nothing to drain — there is no buffer).
-/// [`TopDownAtlases`] (the id→sheet map) is an [`Option`]al borrow, draining the reader and
-/// returning early when it is missing (`bevy-traps.md` #1) so a pre-resolve event does not
-/// linger and re-fire later. The [`SpriteDefRegistry`] is [`Option`]al too and used ONLY
-/// for the terrain poke, so a non-terrain reload still LOGS even when it is absent.
+/// [`TopDownAtlases`] (the id→sheet map) is an [`Option`]al borrow used ONLY for the
+/// logging; the [`Assets<TerrainFogMaterial>`] store is [`Option`]al too (absent without
+/// the material plugin) and touched ONLY when a modified id is actually sampled — an
+/// unrelated reload leaves the store's tick untouched (the `ResMut` binding never derefs).
 ///
 /// Param-only (`bevy-traps.md` #7): the optional [`MessageReader`], the optional
-/// [`TopDownAtlases`] / [`SpriteDefRegistry`] borrows.
+/// [`TopDownAtlases`] / [`Assets<TerrainFogMaterial>`] borrows.
 pub fn redrive_sheet_images_on_asset_event(
     events: Option<MessageReader<AssetEvent<Image>>>,
     atlases: Option<Res<TopDownAtlases>>,
-    defs: Option<ResMut<SpriteDefRegistry>>,
+    materials: Option<ResMut<Assets<TerrainFogMaterial>>>,
 ) {
     let Some(mut events) = events else {
         // No `Messages<AssetEvent<Image>>` buffer (no image-asset stack) — nothing to read
         // or drain; a real dev binary always has it via `ImagePlugin`/`DefaultPlugins`.
         return;
     };
-    let Some(atlases) = atlases else {
-        // Drain the reader so a pre-resolve event does not linger and re-fire once the
-        // atlas resource arrives; there is no id→sheet map to consult yet.
-        events.clear();
-        return;
-    };
 
-    // Map every Modified event to the sheet it reloaded, keeping the DISTINCT roles so each
-    // sheet is logged once even if several events arrive for it this frame.
-    let mut reloaded: Vec<SheetRole> = Vec::new();
+    // The DISTINCT image ids modified this frame (several events can arrive for one id).
+    let mut modified: Vec<AssetId<Image>> = Vec::new();
     for event in events.read() {
         let AssetEvent::Modified { id } = event else {
             continue;
         };
-        let Some(role) = atlases.sheet_role_for_image(*id) else {
-            // Not a loaded sheet (a portrait node, a font atlas, a one-off texture, …) —
-            // ignore it; a non-sheet reload must not log or redraw a sheet.
-            continue;
-        };
-        if !reloaded.contains(&role) {
-            reloaded.push(role);
+        if !modified.contains(id) {
+            modified.push(*id);
         }
     }
-
-    if reloaded.is_empty() {
+    if modified.is_empty() {
         return;
     }
 
-    for role in &reloaded {
-        // GTW-374 Part C convention / GTW-375 C5: log EVERY hot-reload path, one line per
-        // reloaded sheet, naming it by its asset path.
-        info!(
-            "tileset hot-reload: reloaded sheet `{}`, refreshing it",
-            role.asset_path(),
-        );
+    // GTW-374 Part C convention / GTW-375 C5: log EVERY sheet hot-reload path, one line per
+    // DISTINCT reloaded sheet, naming it by its asset path. Non-sheet ids (a portrait node,
+    // a font atlas, a one-off texture, …) are not logged — reloading them must not claim a
+    // sheet refreshed.
+    if let Some(atlases) = atlases {
+        let mut reloaded: Vec<SheetRole> = Vec::new();
+        for id in &modified {
+            let Some(role) = atlases.sheet_role_for_image(*id) else {
+                continue;
+            };
+            if !reloaded.contains(&role) {
+                reloaded.push(role);
+            }
+        }
+        for role in &reloaded {
+            info!(
+                "tileset hot-reload: reloaded sheet `{}`, refreshing it",
+                role.asset_path(),
+            );
+        }
     }
 
-    // ONLY the terrain sheet needs an explicit redraw poke: it draws through the custom
-    // TerrainFogMaterial whose bind group is a snapshot, so force draw_static_battlefield's
-    // `defs_changed()` trigger to despawn+respawn the tiles against the fresh GPU
-    // texture. The other sheets are atlas sprites and refresh through the sprite pipeline on
-    // their own (see the system doc). The resolved defs are unchanged, so this marks the
-    // SpriteDefRegistry changed WITHOUT mutating it (GTW-665 — the retired TileRoles poke
-    // re-anchored) — and is gated on the registry being present, so a non-terrain reload
-    // still LOGS above even when it is absent.
-    if reloaded.contains(&SheetRole::Terrain)
-        && let Some(mut defs) = defs
-    {
-        defs.set_changed();
+    // GTW-666: re-prepare every terrain material sampling a reloaded image — its bind
+    // group is a snapshot of the OLD texture view (see the system doc), and only a
+    // material-asset Modified rebuilds it. Collect through the immutable Deref (no
+    // resource tick when nothing matches), then take one real DerefMut per affected
+    // material: Bevy 0.19 queues `AssetEvent::Modified` on actual DerefMut only.
+    let Some(mut materials) = materials else {
+        return;
+    };
+    let stale: Vec<AssetId<TerrainFogMaterial>> = materials
+        .iter()
+        .filter(|(_, material)| modified.contains(&material.image.id()))
+        .map(|(id, _)| id)
+        .collect();
+    for id in stale {
+        if let Some(mut material) = materials.get_mut(id) {
+            // The deref IS the re-prepare signal: same field values, fresh bind group.
+            let _: &mut TerrainFogMaterial = &mut material;
+        }
     }
 }
 

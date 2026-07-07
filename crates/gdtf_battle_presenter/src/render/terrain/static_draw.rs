@@ -17,6 +17,7 @@ use gdtf_battle_sim::{
 use super::{
     active_level::{ActiveLevel, ViewMode},
     band::{drawn_band, level_band},
+    restamp::StampedGraphic,
     static_map::{SpriteResolveCtx, StaticMap, graphic_name_at, i32_extent, storey_has_terrain},
     treatment::{IsolateView, StoreyViewMode},
 };
@@ -42,14 +43,16 @@ pub struct TerrainSprite {
 /// Fires when ANY of: a [`BattleReady`](gdtf_battle_sim::battle::BattleReady) drained this update,
 /// [`ActiveLevel`] `is_changed()`, [`ViewMode`] `is_changed()` (GTW-521 — the full-view
 /// toggle widens/narrows the [`drawn_band`] ceiling, so the terrain must redraw for the new
-/// band), [`IsolateView`] `is_changed()` (GTW-594 — the Isolate toggle moves the band's
-/// FLOOR), OR [`SpriteDefRegistry`](gdtf_content_families::sprites::SpriteDefRegistry)
-/// `is_changed()` — the GTW-375 third
-/// trigger (re-anchored by GTW-665) that re-renders the terrain on a tile hot-reload. A
-/// `content/sprites/*.spritedef.ron` re-save REBUILDS the registry through the family
-/// redrive (the resolved rects/anchors swap) and an `alt_tileset_terrain.png` re-save
-/// `set_changed()`s it (same defs, fresh GPU texture); either way the rendered tiles
-/// SWAP, live, with no restart. It despawns ALL existing [`TerrainSprite`]
+/// band), OR [`IsolateView`] `is_changed()` (GTW-594 — the Isolate toggle moves the band's
+/// FLOOR). A sprite-def hot-reload is NOT a redraw trigger since GTW-666: a
+/// `content/sprites/*.spritedef.ron` re-save rebuilds the
+/// [`SpriteDefRegistry`](gdtf_content_families::sprites::SpriteDefRegistry) through the
+/// family redrive and the sibling
+/// [`restamp_tiles_on_def_change`](super::restamp::restamp_tiles_on_def_change)
+/// re-resolves every ALREADY-DRAWN tile in place (tick-quiet for unchanged defs), and an
+/// `alt_tileset_terrain.png` re-save re-prepares the affected tile materials directly
+/// (`redrive_sheet_images_on_asset_event`) — either way the rendered tiles swap, live,
+/// with no restart and no despawn. It despawns ALL existing [`TerrainSprite`]
 /// entities, then (GTW-519) for the whole DRAWN BAND [`drawn_band`] (`0..=active`,
 /// BOTTOM-UP) scans `0..GRID_WIDTH` × `0..GRID_HEIGHT` per storey and spawns one terrain
 /// tile per NON-EMPTY cell as a shared unit-rect [`Mesh2d`] +
@@ -113,26 +116,20 @@ pub fn draw_static_battlefield(
     mut ready: MessageReader<BattleReady>,
     existing: Query<Entity, With<TerrainSprite>>,
 ) {
-    // The redraw triggers: a drained BattleReady (one-shot), an ActiveLevel change, OR a
-    // changed SpriteDefRegistry (GTW-375 / GTW-665). The registry trigger is THE single
-    // redraw signal for a tile-appearance hot-reload — both reload paths converge on it: a
-    // `content/sprites/*.spritedef.ron` re-save REBUILDS the registry (the family redrive
-    // re-inserts it), and an `alt_tileset_terrain.png` re-save `set_changed()`s it
-    // (redrive_sheet_images_on_asset_event) so the tiles re-render against the
-    // freshly-reloaded GPU texture. present_fog runs in the Compose stage, chained after
-    // this Scene stage, so the fog re-applies to the redrawn tiles.
+    // The redraw triggers: a drained BattleReady (one-shot), an ActiveLevel change, or a
+    // band toggle. A sprite-def / sheet hot-reload is NOT one (GTW-666): the registry
+    // rebuild restamps the ALREADY-DRAWN tiles in place via the sibling
+    // restamp_tiles_on_def_change (mutate-not-respawn, tick-quiet for unchanged defs),
+    // and a sheet `.png` re-save re-prepares the affected materials directly
+    // (redrive_sheet_images_on_asset_event). present_fog runs in the Compose stage,
+    // chained after this Scene stage, so the fog re-applies to the redrawn tiles.
     // Fully DRAIN the reader (`.count()`, not `.next()`) so a multi-message ready never
     // leaves an unread BattleReady to re-fire a redundant redraw next update.
     let ready_fired = ready.read().count() > 0;
     // GTW-521: a ViewMode toggle changes the drawn_band ceiling, so it must redraw the terrain
     // for the new band exactly as an ActiveLevel change does. GTW-594: an IsolateView flip
     // changes the band's FLOOR (and preempts the two-state mode), so it is a fourth trigger.
-    if !ready_fired
-        && !active.is_changed()
-        && !view.is_changed()
-        && !isolate.is_changed()
-        && !resolve.defs_changed()
-    {
+    if !ready_fired && !active.is_changed() && !view.is_changed() && !isolate.is_changed() {
         return;
     }
 
@@ -218,6 +215,8 @@ pub fn draw_static_battlefield(
                 // scene. The tile is never read back by id (the redraw / cover-swap / fog find
                 // it via the `TerrainSprite { at }` query, not a captured handle), so the
                 // deferred materialization is inert — the same entity + components result.
+                // The GTW-666 StampedGraphic records WHICH key the pixels came from, so
+                // a def hot-reload restamps exactly what the tile shows.
                 commands
                     .spawn_scene((
                         bsn! { template(move |_| Ok(mesh2d.clone())) },
@@ -225,7 +224,7 @@ pub fn draw_static_battlefield(
                         template_value(transform),
                         template_value(layers),
                     ))
-                    .insert(TerrainSprite { at: key });
+                    .insert((TerrainSprite { at: key }, StampedGraphic::from_key(name)));
             }
         }
     }
