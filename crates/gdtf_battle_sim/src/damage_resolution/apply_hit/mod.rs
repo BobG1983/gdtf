@@ -57,7 +57,7 @@
 //! returns the per-hit [`ArmorWearOutcome`](crate::armor_wear::ArmorWearOutcome);
 //! the caller writes its [`ArmorBroken`](crate::armor_wear::ArmorBroken) /
 //! [`ArmorDamaged`](crate::armor_wear::ArmorDamaged) payload to the matching
-//! [`bevy::prelude::MessageWriter`](bevy::prelude::MessageWriter) at the system
+//! [`bevy::prelude::MessageWriter`] at the system
 //! boundary (the same pure-helper / message-at-the-boundary split as
 //! [`wear_armor`](crate::armor_wear::wear_armor)).
 

@@ -2,7 +2,7 @@
 //! reads to draw the GTW-290 muzzle / tracer / impact FX.
 //!
 //! The shot's geometry is ALREADY computed by the coarse pipeline
-//! ([`ShotOutcome`](crate::resolve_coarse::ShotOutcome) in
+//! ([`ShotOutcome`] in
 //! [`resolve_coarse`](crate::resolve_coarse::resolve_coarse)) and folded into the
 //! frozen volley [`fire`](crate::fire::fire) returns; this message simply EXPOSES that
 //! already-resolved geometry so it is not dropped. It carries NO new fire-result logic
@@ -38,7 +38,7 @@ use crate::{
 ///
 /// Emitted once per round resolved in [`dispatch_fire`](crate::acts::dispatch_fire),
 /// AFTER the volley resolves (so the geometry is final), sourced field-by-field from the
-/// round's already-computed [`ShotOutcome`](crate::resolve_coarse::ShotOutcome) — it adds
+/// round's already-computed [`ShotOutcome`] — it adds
 /// no fire-result logic and recomputes nothing.
 ///
 /// Every position is a **sim unit**, never a pixel: [`muzzle`](ShotFired::muzzle) is the
@@ -108,7 +108,7 @@ pub struct ShotFired {
     /// the GTW-290 geometry-only callers). In `dispatch_fire`'s zip, every fired round has
     /// its `reports[i]`, so the report is always `Some` for a real volley round (a clean
     /// MISS still carries `Some` — a [`HitReport`] whose [`kind`](HitReport::kind) is
-    /// [`ShotKind::Miss`](crate::resolve_coarse::ShotKind::Miss) and whose verdict is
+    /// [`ShotKind::Miss`] and whose verdict is
     /// no-effect). A non-ganger / corpse-skip round carries `Some` with a no-effect
     /// verdict.
     pub report:       Option<HitReport>,
@@ -116,7 +116,7 @@ pub struct ShotFired {
 
 impl ShotFired {
     /// Build a **geometry-only** [`ShotFired`] for `shooter` firing `damage` from the
-    /// round's already-computed [`ShotOutcome`](crate::resolve_coarse::ShotOutcome) — the
+    /// round's already-computed [`ShotOutcome`] — the
     /// [`report`](ShotFired::report) is `None`.
     ///
     /// Copies the geometry straight off the outcome — muzzle / trajectory / impact
@@ -146,7 +146,7 @@ impl ShotFired {
     }
 
     /// Build a [`ShotFired`] for `shooter` firing `damage` from the round's already-computed
-    /// [`ShotOutcome`](crate::resolve_coarse::ShotOutcome) AND its parallel
+    /// [`ShotOutcome`] AND its parallel
     /// [`HitReport`] (GTW-302) — the report the floating-combat-text presenter draws from.
     ///
     /// The geometry is copied exactly as [`from_outcome`](ShotFired::from_outcome) does; the
@@ -154,7 +154,7 @@ impl ShotFired {
     /// entry, carried verbatim onto [`report`](ShotFired::report). PURE EXPOSURE of the
     /// already-computed report — no fire-result / RNG / severity logic runs here. In
     /// `dispatch_fire`'s zip of `shots[i]` with `reports[i]`, `report` is always `Some`; a
-    /// clean MISS rides `Some` with a [`ShotKind::Miss`](crate::resolve_coarse::ShotKind::Miss)
+    /// clean MISS rides `Some` with a [`ShotKind::Miss`]
     /// report (no `applied`).
     #[must_use]
     pub const fn from_round(

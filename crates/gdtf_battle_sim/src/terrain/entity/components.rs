@@ -68,7 +68,7 @@ pub struct TerrainBrace;
 /// into the grid at setup and keeps them in sync via
 /// `Added<BlocksPathfinding>` / `RemovedComponents<BlocksPathfinding>` change detection.
 /// The pathfinder reads that surface, NEVER branching on
-/// [`TerrainPieceKind`](TerrainPieceKind) directly — satisfying the epic criterion
+/// [`TerrainPieceKind`] directly — satisfying the epic criterion
 /// "queries read tags, not kind". This is PATH-blocking ONLY: vision still reads the
 /// kind-based [`OccupancyGrid::is_blocked`](crate::occupancy::OccupancyGrid::is_blocked)
 /// (the split is GTW-501 D1; vision's own occluder is GTW-502).

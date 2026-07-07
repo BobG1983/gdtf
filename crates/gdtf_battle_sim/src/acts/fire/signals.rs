@@ -19,8 +19,8 @@ use crate::{
 /// `target` (GTW-328), emitted ONCE per [`FireRequested`](crate::acts::request::FireRequested) that passes the firing-arc gate,
 /// BEFORE the shot rolls.
 ///
-/// The combat-text LOG event for a shot declaration ("<name> fired <Single/Burst/Full> at
-/// <target>") — the user-facing announcement that a shot is being taken, distinct from the
+/// The combat-text LOG event for a shot declaration ("`<name>` fired <Single/Burst/Full> at
+/// `<target>`") — the user-facing announcement that a shot is being taken, distinct from the
 /// per-round [`ShotFired`] outcome signal (a burst declares ONCE but fires multiple
 /// rounds). It carries ONLY data the [`dispatch_fire`](super::dispatch::dispatch_fire) system already holds at fire time —
 /// the [`shooter`](FireDeclaration::shooter) ref, the resolved [`target`](FireDeclaration::target)

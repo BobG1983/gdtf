@@ -26,8 +26,8 @@
 //!   afford the whole route.
 //!
 //! Only when a route exists AND is affordable does it accept: per GTW-355 it attaches a
-//! [`WalkInProgress`](crate::acts::movement::WalkInProgress) holding the planned route ahead (each cell's DESTINATION-terrain
-//! per-step charge held verbatim), which [`advance_walk`](crate::acts::movement::advance_walk)
+//! [`WalkInProgress`] holding the planned route ahead (each cell's DESTINATION-terrain
+//! per-step charge held verbatim), which [`advance_walk`]
 //! then walks ONE cell per tick, plus the [`MovementOccurred`] log signal. No act logic is
 //! reimplemented and the per-step charge is UNTOUCHED; the up-front gate here is a CHECK
 //! against the planned total, NOT a second charge.
@@ -49,8 +49,8 @@
 //! [`MovementCostFactor`](crate::injuries::MovementCostFactor) from its
 //! [`InflictedInjuries`](crate::injuries::InflictedInjuries) ledger and passes it to
 //! [`find_path`](crate::pathfinder::find_path), which scales EVERY planar per-step floor cost by it. Because the
-//! accepted [`WalkInProgress`](crate::acts::movement::WalkInProgress) holds the planned [`Path::steps`](crate::pathfinder::Path::steps)
-//! VERBATIM and [`advance_walk`](crate::acts::movement::advance_walk) charges those steps, the
+//! accepted [`WalkInProgress`] holds the planned [`Path::steps`](crate::pathfinder::Path::steps)
+//! VERBATIM and [`advance_walk`] charges those steps, the
 //! factor flows through to the actual per-step TU charge with NO second application — so a
 //! Hampered unit's previewed path cost equals the TU it is charged (preview==charge, C3).
 //! An uninjured mover passes the IDENTITY factor (`1.0`), leaving the cost unchanged.

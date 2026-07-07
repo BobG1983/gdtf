@@ -35,7 +35,7 @@
 //! **The E3 / E4 boundary.** This is the coarse pipeline ONLY: it stops at the
 //! resolved outcome + part. It applies **no** damage / severity (E3) and runs
 //! **no** TU / ammo bookkeeping (E4) — it mutates nothing but the injected
-//! [`ShotRng`](crate::rng::ShotRng)'s draw cursor. Every random draw (the cone
+//! [`ShotRng`]'s draw cursor. Every random draw (the cone
 //! sample and the part roll) bottoms out in the shot-subsystem RNG stream, so the
 //! same [`crate::rng::BattleSeed`] reproduces the same [`ShotOutcome`]
 //! (`docs/testing.md`'s seeded-replay property).
@@ -136,7 +136,7 @@ pub struct ShotOutcome {
 ///
 /// This is the GTW-179 bundle: the inputs that DESCRIBE the shot itself, grouped
 /// apart from the world state ([`OccupancyGrid`] / [`SurfaceGrid`] / [`CoverLedger`]),
-/// the config ([`CombatTuning`]), and the entropy ([`ShotRng`](crate::rng::ShotRng)) — those stay their
+/// the config ([`CombatTuning`]), and the entropy ([`ShotRng`]) — those stay their
 /// own [`resolve_coarse`] parameters because they are NOT part of the shot
 /// description (the §"change-driven contract" boundary; the change-driven sim↔app
 /// seam recorded in ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`). Every
@@ -204,14 +204,14 @@ pub struct ShotInputs {
 ///    that axis (E2.5), with the composed `θ_cone` ([`ConeAngle`], from E2.3) and
 ///    `p` ([`ConcentrationP`], from E2.5) — the cone width and concentration arrive
 ///    already composed (the ticket's composed inputs). The draw comes from the
-///    injected [`ShotRng`](crate::rng::ShotRng).
+///    injected [`ShotRng`].
 /// 4. **March** — [`march_vector`] flies that trajectory through the passed
 ///    [`OccupancyGrid`] / [`SurfaceGrid`] / [`CoverLedger`] (E2.7), reporting the
 ///    first thing the round fails to clear; the shooter's own cell never blocks its
 ///    own shot. The grids are **read, never rebuilt** (the change-driven contract).
 /// 5. **Part roll** — ONLY when the march stops on a ganger, [`roll_body_part`]
 ///    picks the struck [`BodyPart`] from `tuning.body_part_weights` (E2.8), again
-///    via the injected [`ShotRng`](crate::rng::ShotRng). A non-ganger outcome carries `None`.
+///    via the injected [`ShotRng`]. A non-ganger outcome carries `None`.
 ///
 /// The per-shot description — the shooter / target geometry and the composed
 /// flight params — arrives bundled in [`ShotInputs`] (GTW-179): `shot.cone`
@@ -233,7 +233,7 @@ pub struct ShotInputs {
 /// predicate is consulted ONLY inside the march; it takes no draw, so seeded replay
 /// is unaffected and the part-roll / no-draw discipline below is unchanged.
 ///
-/// **Mutates nothing** but the injected [`ShotRng`](crate::rng::ShotRng)'s draw
+/// **Mutates nothing** but the injected [`ShotRng`]'s draw
 /// cursor: no damage / severity (E3) and no TU / ammo bookkeeping (E4) — the
 /// target's `Hp` / `Wounds` / `WornArmor` and the shooter's `Tu` are untouched.
 /// Every position in the result is a sim-unit [`SimPos`] / unit-[`bevy::math::Vec3`];

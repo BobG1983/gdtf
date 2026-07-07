@@ -70,7 +70,7 @@ impl MoveRejected {
 /// A **move occurred** — the combat-log signal that `actor` stepped from `from` to `to`
 /// (GTW-328), emitted ONCE per accepted WALK STEP (GTW-355).
 ///
-/// The combat-text LOG event for a move ("<name> moved <from> -> <to>") — the user-facing
+/// The combat-text LOG event for a move ("`<name>` moved `<from>` -> `<to>`") — the user-facing
 /// announcement that a ganger changed cell. Since GTW-355 the committed walk
 /// ([`advance_walk`](crate::acts::movement::advance_walk)) emits ONE of these per DISCRETE step
 /// it takes, so a multi-cell walk announces a step per cell entered; a rejected

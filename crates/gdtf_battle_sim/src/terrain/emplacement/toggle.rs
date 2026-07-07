@@ -28,18 +28,18 @@
 //! ## Mounted weapon (GTW-543 Phase 2)
 //!
 //! On OCCUPY the toggle resolves the emplacement's
-//! [`MountedWeaponKey`](super::MountedWeaponKey) against the
-//! [`WeaponRegistry`](crate::weapon::WeaponRegistry) and SPAWNS the bolted-down gun onto the
+//! [`MountedWeaponKey`] against the
+//! [`WeaponRegistry`] and SPAWNS the bolted-down gun onto the
 //! occupant — a [`WeaponBundle`](crate::weapon::WeaponBundle) related via
-//! [`WieldedBy`](crate::weapon::WieldedBy) + the [`MountedWeapon`](crate::weapon::MountedWeapon)
+//! [`WieldedBy`] + the [`MountedWeapon`]
 //! marker — recording the spawned weapon's entity in a
-//! [`MountedWeaponEntity`](super::MountedWeaponEntity) component on the emplacement. The
-//! ranged-firing read PREFERS that [`MountedWeapon`](crate::weapon::MountedWeapon)-marked entity
+//! [`MountedWeaponEntity`] component on the emplacement. The
+//! ranged-firing read PREFERS that [`MountedWeapon`]-marked entity
 //! (`Wields::mounted_weapon` before `Wields::ranged_weapon`), so the manning ganger fires the
 //! mount, and the [`EmplacementStability`](crate::stability::EmplacementStability) seam steadies
 //! its deliberately-wide cone. On VACATE the toggle DESPAWNS that recorded mounted-weapon entity
-//! (the [`WieldedBy`](crate::weapon::WieldedBy) edge goes with it), reverting the occupant to its
-//! own carried gun. A missing [`WeaponRegistry`](crate::weapon::WeaponRegistry) / an unresolved
+//! (the [`WieldedBy`] edge goes with it), reverting the occupant to its
+//! own carried gun. A missing [`WeaponRegistry`] / an unresolved
 //! key simply spawns no mount (fail-closed) — the band-force + occupant record still apply, so an
 //! emplacement with an unresolvable gun still offers cover.
 //!
@@ -152,16 +152,16 @@ impl SetEmplacement {
 ///   [`EmplacementOccupant`]`(ganger)` via `Commands`, FORCE the occupant's silhouette band
 ///   to [`HeightBand::High`](crate::cover::HeightBand::High) at the emplacement cell (`set_occupant_band(cell, Some(High))`) —
 ///   the occupant reads as HIGH cover — and SPAWN the mounted weapon: resolve the emplacement's
-///   [`MountedWeaponKey`](super::MountedWeaponKey) against the [`WeaponRegistry`], spawn its
+///   [`MountedWeaponKey`] against the [`WeaponRegistry`], spawn its
 ///   [`WeaponBundle`](crate::weapon::WeaponBundle) related to `ganger` via
-///   [`WieldedBy`](crate::weapon::WieldedBy) + the [`MountedWeapon`](crate::weapon::MountedWeapon)
-///   marker, and record the spawned entity in a [`MountedWeaponEntity`](super::MountedWeaponEntity)
+///   [`WieldedBy`] + the [`MountedWeapon`]
+///   marker, and record the spawned entity in a [`MountedWeaponEntity`]
 ///   on the emplacement (a missing registry / unresolved key spawns no mount — fail-closed).
 /// - `→ Vacant`: write [`EmplacementState::Vacant`], remove the [`EmplacementOccupant`] via
 ///   `Commands`, RESTORE the occupant's band from its [`Stance`] silhouette
 ///   ([`silhouette_band`], defaulting to standing → HIGH when the ganger carries no `Stance`), and
-///   DESPAWN the recorded [`MountedWeaponEntity`](super::MountedWeaponEntity) (the
-///   [`WieldedBy`](crate::weapon::WieldedBy) edge goes with it), reverting the occupant to its own
+///   DESPAWN the recorded [`MountedWeaponEntity`] (the
+///   [`WieldedBy`] edge goes with it), reverting the occupant to its own
 ///   carried gun and removing the record.
 ///
 /// `bevy-traps.md` #7: `MessageReader` / `Query` / `Res` / `ResMut` / `Commands` — no
