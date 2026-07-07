@@ -167,20 +167,17 @@ hot-reloadable like every family ([content-families.md](content-families.md)).
 
 ### 4b. The CURRENT gang editor surface
 
-A dev-only in-game gang editor exists today
-(`crates/gdtf_app/src/states/running/gang_editor/`): in a debug build, the
-main menu offers a "Gang Editor" button (the entry is
-`cfg(debug_assertions)`-gated — unreachable in release). It edits a gang's
-name, members, attributes, and weapon/armor picks, and SAVES back to
+Gangs are authored in the CONTENT EDITOR binary (`cargo edrun`), in its GANG
+Workbench mode (GTW-636; the 2026-07-06 ruling — gangs are authored OUTSIDE
+the game binary, and the old in-game debug gang editor is GONE). The mode
+(`crates/gdtf_content_editor/src/gang_form/` — model; the egui form is its
+`egui_shell/gang_form_ui/` sibling) loads any gang from the registry (or
+starts a new one), edits members — add/remove/rename, the eight attributes,
+weapon/armor picks plus the `melee_weapon` key — shows the live derived
+stats through the real GTW-384 pipeline, and SAVES back to
 `assets/content/gangs/<name>.gang.ron` in the exact loader schema (the
 round-trip contract; the write path derives its folder + extension from the
-same one-owner spellings the loader reads — GTW-621).
-
-**Forward note (GTW-636 ruling, 2026-07-06):** gang authoring is slated to
-MOVE to the content-editor binary (`cargo edrun`) as part of the editor's
-egui consolidation. That move is NOT built — today the in-game debug editor
-above is the only gang-editing surface; the content editor edits terrain,
-themes, and prefabs.
+same one-owner spellings the loader reads — GTW-621/634).
 
 ## Part 5 — Verify
 
@@ -189,14 +186,14 @@ themes, and prefabs.
   `crates/gdtf_app/tests/migrated_skirmish_theme.rs`. Prefabs:
   `crates/gdtf_app/tests/load_prefab.rs`, `load_prefabs.rs`,
   `migrated_prefab_content.rs`. Gangs: `crates/gdtf_app/tests/load_gangs.rs`
-  (family suite), `load_gangs_spawn.rs` (setup resolution), and the
-  gang-editor suites (`gang_editor_scaffold.rs`, `gang_editor_save_loads.rs`,
-  plus the `gang_editor_member_rows` / `gang_editor_stat_table` dir-form
-  suites). The whole graph: `load_ref_integrity.rs` / `load_ref_salvage.rs`.
+  (family suite), `load_gangs_spawn.rs` (setup resolution), and the GANG-mode
+  round-trip (`crates/gdtf_content_editor/tests/gang_mode.rs` — save into a
+  TempDir root, reload through the real loader). The whole graph:
+  `load_ref_integrity.rs` / `load_ref_salvage.rs`.
 - **In game:** `cargo drun` — the shipped skirmish loads, procgen assembles
   the industrial_hive board, both gangs deploy at their prefab corners.
   Editing `skirmish.ron`, a gang file, or a prefab under `cargo drun`
   hot-reloads it; a dangling gang/member/theme/piece reference prints on the
   end-of-`Load` report.
-- **Editor:** `cargo edrun` for terrain/theme/prefab authoring; the debug
-  main-menu "Gang Editor" for rosters.
+- **Editor:** `cargo edrun` for terrain/theme/prefab/gang authoring (the GANG
+  Workbench mode owns rosters — GTW-636).

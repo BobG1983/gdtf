@@ -37,6 +37,7 @@ use crate::{
     canvas::{CanvasZoom, CurrentEditLevel},
     editor_map::EditorMap,
     egui_shell::{editor_egui_ui, level_nav_hotkeys, view_mode_hotkey},
+    gang_form::GangDraft,
     hovered_cell::HoveredCell,
     load::register_load,
     mode::{EditorMode, mode_hotkeys},
@@ -99,7 +100,7 @@ impl Plugin for MapEditorPlugin {
             (spawn_editor_camera, load_tile_atlas),
         );
 
-        // GTW-575: the ten `Editing`-scoped MODEL resources register their whole
+        // GTW-575: the eleven `Editing`-scoped MODEL resources register their whole
         // OnEnter-insert + OnExit-remove lifecycle through ONE
         // `init_state_scoped_resource` call each (bevy-traps #1 via the shared
         // `gdtf_state_scoped` seam) — same `OnEnter(Editing)` / `OnExit(Editing)`
@@ -126,6 +127,10 @@ impl Plugin for MapEditorPlugin {
         // The THEME-mode authoring draft (GTW-475), a fresh NEW-theme draft (a minted
         // key, an empty form).
         app.init_state_scoped_resource(EditorState::Editing, ThemeDraft::default);
+        // The GANG-mode authoring draft (GTW-636), a pristine form whose one-shot
+        // open-with-a-gang autoload is still pending (the shell seeds it from the
+        // resolved GangRegistry on the first Gang-mode frame).
+        app.init_state_scoped_resource(EditorState::Editing, GangDraft::default);
         // GTW-512 C1.5: the hovered-cell model the live egui hover + the QA capture
         // write, seeded empty (nothing hovered).
         app.init_state_scoped_resource(EditorState::Editing, HoveredCell::new);

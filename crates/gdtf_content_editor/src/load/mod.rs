@@ -13,8 +13,9 @@
 //! generic seams in `gdtf_assets`, with the SAME definitions the game
 //! registers, so an authored file resolves IDENTICALLY in game and editor:
 //!
-//! - The four FOLDER families — ranged weapons, armor, the UUID-keyed terrain
-//!   defs + theme defs — register through the GTW-570
+//! - The six FOLDER families — ranged weapons, armor, the UUID-keyed terrain
+//!   defs + theme defs, plus the gangs + melee weapons the GANG mode edits
+//!   (GTW-636) — register through the GTW-570
 //!   [`register_content_family`](gdtf_assets::ContentFamilyAppExt) seam using
 //!   the SAME `gdtf_content_families` glue impls the game registers. Each
 //!   family's registry-build logic therefore has exactly ONE definition
@@ -60,7 +61,7 @@
 //!   so every branch gates on its OWN resource's absence and none starves
 //!   another.
 //! - **The transition gates on every resolved resource:** [`transition_to_editing`](transition::transition_to_editing) fires
-//!   only when ALL FIVE resolved resources exist (the four folder registries +
+//!   only when ALL SEVEN resolved resources exist (the six folder registries +
 //!   the tile-role table; the game theme is not among them — GTW-625).
 
 mod fallback;

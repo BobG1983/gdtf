@@ -1,8 +1,9 @@
 //! GTW-579 headless pins for the editor's seam-registered `Load` pass.
 //!
-//! AC-2 (as AMENDED by GTW-625): driving the REAL [`MapEditorPlugin`] on the
+//! AC-2 (as AMENDED by GTW-625; extended by GTW-636 with the gangs + melee
+//! families the GANG mode edits): driving the REAL [`MapEditorPlugin`] on the
 //! no-renderer `DefaultPlugins` harness (live workspace `assets/` root) reaches
-//! [`EditorState::Editing`] with ALL FIVE resolved resources present — through
+//! [`EditorState::Editing`] with ALL SEVEN resolved resources present — through
 //! the actual GTW-570 content-family and GTW-564 hot-RON seam registrations, not
 //! an editor-local mirror — and the seam's persistent handles survive past
 //! `Load` (the GTW-533 whole-session persistence the live hot-reload rides).
@@ -13,7 +14,7 @@
 //! AC-4 (ADR-0003): pointing the SAME app at an EMPTY asset root fails every
 //! load, and the editor STILL transitions to `Editing` — the tile-role
 //! chain falls back to its const default (the editor-owned policy attached at
-//! registration) and the four folder families fail closed to EMPTY registries.
+//! registration) and the six folder families fail closed to EMPTY registries.
 
 use std::path::Path;
 
@@ -30,11 +31,16 @@ use bevy::{
 use gdtf_assets::{ContentFolderHandle, HotRonHandle};
 use gdtf_battle_presenter::{TileIndex, TileRoles};
 use gdtf_battle_sim::{
-    armor::ArmorRegistry, level::UuidThemeRegistry, terrain::def::TerrainDefRegistry,
-    weapon::WeaponRegistry,
+    armor::ArmorRegistry,
+    ganger::GangRegistry,
+    level::UuidThemeRegistry,
+    terrain::def::TerrainDefRegistry,
+    weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
 use gdtf_content_editor::{EditorState, MapEditorPlugin};
-use gdtf_content_families::{ArmorFamily, TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily};
+use gdtf_content_families::{
+    ArmorFamily, GangsFamily, MeleeWeaponsFamily, TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily,
+};
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
 /// A generous frame cap: the async asset loads under parallel `cargo` contention
@@ -117,16 +123,16 @@ fn advance_to_editing(app: &mut App) {
     }
 }
 
-/// AC-2 (as amended by GTW-625): the real seam path resolves the editor's whole
-/// gate set — the app reaches `Editing` with the four folder registries (each
-/// NON-empty, so the shipped content genuinely resolved — no count pins) and the
-/// tile-role table all present, plus the five PERSISTENT seam handles (GTW-533
-/// C4a: no `OnExit(Load)` cleanup exists, so the live hot-reload substrate
-/// survives). No game-theme resource exists to gate on — the editor no longer
-/// depends on the game's hand-rolled UI crate, so reaching `Editing` here IS the
-/// boots-without-the-theme proof.
+/// AC-2 (as amended by GTW-625; extended by GTW-636): the real seam path resolves
+/// the editor's whole gate set — the app reaches `Editing` with the six folder
+/// registries (each NON-empty, so the shipped content genuinely resolved — no
+/// count pins) and the tile-role table all present, plus the seven PERSISTENT
+/// seam handles (GTW-533 C4a: no `OnExit(Load)` cleanup exists, so the live
+/// hot-reload substrate survives). No game-theme resource exists to gate on —
+/// the editor no longer depends on the game's hand-rolled UI crate, so reaching
+/// `Editing` here IS the boots-without-the-theme proof.
 #[test]
-fn load_pass_resolves_all_five_resources_through_the_real_seams() {
+fn load_pass_resolves_all_seven_resources_through_the_real_seams() {
     let mut app = editor_app();
     advance_to_editing(&mut app);
 
@@ -154,6 +160,19 @@ fn load_pass_resolves_all_five_resources_through_the_real_seams() {
             .get_resource::<UuidThemeRegistry>()
             .is_some_and(|r| !r.is_empty()),
         "the UuidThemeRegistry must resolve NON-empty through the shared ThemeDefsFamily",
+    );
+    assert!(
+        world
+            .get_resource::<GangRegistry>()
+            .is_some_and(|r| !r.is_empty()),
+        "the GangRegistry must resolve NON-empty through the shared GangsFamily (GTW-636)",
+    );
+    assert!(
+        world
+            .get_resource::<MeleeWeaponRegistry>()
+            .is_some_and(|r| !r.is_empty()),
+        "the MeleeWeaponRegistry must resolve NON-empty through the shared MeleeWeaponsFamily \
+         (GTW-636)",
     );
     assert!(
         world.get_resource::<TileRoles>().is_some(),
@@ -187,6 +206,18 @@ fn load_pass_resolves_all_five_resources_through_the_real_seams() {
         "the theme-defs ContentFolderHandle must persist past Load",
     );
     assert!(
+        world
+            .get_resource::<ContentFolderHandle<GangsFamily>>()
+            .is_some(),
+        "the gangs ContentFolderHandle must persist past Load (GTW-636)",
+    );
+    assert!(
+        world
+            .get_resource::<ContentFolderHandle<MeleeWeaponsFamily>>()
+            .is_some(),
+        "the melee-weapons ContentFolderHandle must persist past Load (GTW-636)",
+    );
+    assert!(
         world.get_resource::<HotRonHandle<TileRoles>>().is_some(),
         "the tile-roles HotRonHandle must persist past Load",
     );
@@ -195,7 +226,7 @@ fn load_pass_resolves_all_five_resources_through_the_real_seams() {
 /// AC-4 (the ADR-0003 pin): with an EMPTY asset root every load reaches
 /// `Failed`, the fallbacks fire, and `Load` STILL transitions — the editor never
 /// hangs. The tile-role chain resolves to its const default (the
-/// editor-owned zero table: every role at index 0) and the four folder families
+/// editor-owned zero table: every role at index 0) and the six folder families
 /// fail closed to EMPTY registries.
 #[test]
 fn failed_asset_root_falls_back_and_still_reaches_editing() {
@@ -246,5 +277,19 @@ fn failed_asset_root_falls_back_and_still_reaches_editing() {
             .map(UuidThemeRegistry::is_empty),
         Some(true),
         "a Failed terrain folder must fail closed to the EMPTY UuidThemeRegistry",
+    );
+    assert_eq!(
+        world
+            .get_resource::<GangRegistry>()
+            .map(GangRegistry::is_empty),
+        Some(true),
+        "a Failed gangs folder must fail closed to the EMPTY GangRegistry (GTW-636)",
+    );
+    assert_eq!(
+        world
+            .get_resource::<MeleeWeaponRegistry>()
+            .map(MeleeWeaponRegistry::is_empty),
+        Some(true),
+        "a Failed melee folder must fail closed to the EMPTY MeleeWeaponRegistry (GTW-636)",
     );
 }

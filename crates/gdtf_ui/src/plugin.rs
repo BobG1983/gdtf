@@ -1,9 +1,6 @@
 //! The [`UiPlugin`] registration seam and its theme-asset message-buffer gate.
 
-use bevy::{
-    prelude::*,
-    ui_widgets::{ScrollAreaPlugin, ScrollbarPlugin},
-};
+use bevy::prelude::*;
 use gdtf_assets::{RonAsset, redrive_hot_ron_resource};
 
 use crate::{
@@ -17,10 +14,10 @@ use crate::{
         core::{
             DropdownDismissRequest, DropdownSelectionChanged, OptionId, SegmentSelected,
             ToggleFlipped, activate_focused_option, close_dropdowns_on_dismiss_request,
-            dismiss_dropdowns_on_escape, dismiss_on_backdrop_press, drive_accordions,
-            drive_switches, open_dropdown, paint_active_buttons, paint_disabled_buttons,
-            paint_dropdown_option_highlight, position_dropdown_popups, repaint_segments,
-            select_option_on_press, select_segment_on_press,
+            dismiss_dropdowns_on_escape, dismiss_on_backdrop_press, drive_switches, open_dropdown,
+            paint_active_buttons, paint_disabled_buttons, paint_dropdown_option_highlight,
+            position_dropdown_popups, repaint_segments, select_option_on_press,
+            select_segment_on_press,
         },
         interaction::{
             repaint_deactivated_buttons, repaint_theme_change, sync_hover_to_focus,
@@ -65,15 +62,9 @@ type ThemeAssetMessages = Messages<AssetEvent<RonAsset<GdtfThemeSpec>>>;
 /// generic over its option identity, so each caller registers its concrete option-id type's
 /// drivers + message via [`register_dropdown::<T>`](register_dropdown).
 ///
-/// For the GTW-412 [`ScrollList`](crate::ScrollList) it ensures the built-in scroll widgets'
-/// plugins ([`ScrollAreaPlugin`] + [`ScrollbarPlugin`]) are present — added only if a
-/// `DefaultPlugins` app (whose `UiWidgetsPlugins` already supply them) has not registered
-/// them, since a unique plugin re-add panics.
-///
-/// For the GTW-416 [`Accordion`](crate::Accordion) it registers
-/// [`drive_accordions`](crate::widgets::core::drive_accordions) in [`Update`] (in the
-/// theming-independent widget-driver band): it toggles a pressed row's content animation and
-/// advances every animating row's content-height lerp each frame.
+/// (The GTW-412 `ScrollList` — with its guarded `ScrollAreaPlugin` / `ScrollbarPlugin`
+/// adds — and the GTW-416 `Accordion` driver were RETIRED by GTW-636: their only consumer,
+/// the in-game gang editor, moved to the content-editor binary's egui GANG mode.)
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
@@ -169,25 +160,6 @@ impl Plugin for UiPlugin {
     /// Later tickets hang further UI systems/resources here; the layer stays
     /// bevy-only (no ecosystem crate).
     fn build(&self, app: &mut App) {
-        // GTW-412 — the built-in scroll widgets the `ScrollList` container relies on:
-        // `ScrollAreaPlugin` registers the `Pointer<Scroll>` observer that clamps
-        // `ScrollPosition` to the overflow, and `ScrollbarPlugin` registers
-        // `update_scrollbar_thumb` (in `PostUpdate`, after `ui_layout_system`) that sizes +
-        // positions the thumb from the content/viewport ratio. These ride
-        // `DefaultPlugins`' `UiWidgetsPlugins` (the workspace `ui` feature pulls
-        // `bevy_ui_widgets`), so under the real app + the `DefaultPlugins` test harness they
-        // are ALREADY present — re-adding a unique plugin panics. The `is_plugin_added`
-        // guard keeps `UiPlugin` correct under BOTH a `DefaultPlugins` app (present → skip)
-        // and a bare app that wired `UiPlugin` without the widget group (absent → add), so
-        // the `ScrollList` scroll mechanism is never silently missing. (This deviates from
-        // the ticket's literal "always add" wording, which would panic here — the intent,
-        // "wire the engine scroll widgets, don't hand-roll", is met.)
-        if !app.is_plugin_added::<ScrollAreaPlugin>() {
-            app.add_plugins(ScrollAreaPlugin);
-        }
-        if !app.is_plugin_added::<ScrollbarPlugin>() {
-            app.add_plugins(ScrollbarPlugin);
-        }
         app.add_message::<ToggleFlipped>()
             .add_message::<SegmentSelected>()
             // GTW-410 — the dropdown's ONE type-agnostic message (the Esc-close request);
@@ -203,12 +175,6 @@ impl Plugin for UiPlugin {
                     // the active index changes (active-driven, never hover — the
                     // GTW-280/284 lesson; bevy-traps rule 3).
                     drive_switches,
-                    // GTW-416 — the accordion driver: it both toggles a pressed row's
-                    // content animation state and advances every animating content's
-                    // height lerp each frame (one system so the flip + advance never
-                    // race; bevy-traps rule 3). It carries its own colors / `Time`,
-                    // independent of the theming band like the other widget drivers.
-                    drive_accordions,
                     select_segment_on_press,
                     repaint_segments.after(select_segment_on_press),
                     // GTW-410 — the type-agnostic dropdown systems: the `Escape`-press emitter

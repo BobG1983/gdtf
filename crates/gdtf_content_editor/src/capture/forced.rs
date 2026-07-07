@@ -14,14 +14,15 @@ use crate::{EditorMode, canvas::CanvasZoom, terrain_form::TerrainKindChoice};
 pub(super) struct ForcedMode(EditorMode);
 
 impl ForcedMode {
-    /// Parse a `GDTF_EDITOR_MODE` value (case-insensitive `terrain` | `theme` | `prefab`) into a
-    /// forced mode, or [`None`] for an unset / unrecognized value (the capture keeps the editor's
-    /// default mode).
+    /// Parse a `GDTF_EDITOR_MODE` value (case-insensitive `terrain` | `theme` | `prefab` |
+    /// `gang`) into a forced mode, or [`None`] for an unset / unrecognized value (the capture
+    /// keeps the editor's default mode).
     pub(super) fn from_env_value(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
             "terrain" => Some(Self(EditorMode::Terrain)),
             "theme" => Some(Self(EditorMode::Theme)),
             "prefab" => Some(Self(EditorMode::Prefab)),
+            "gang" => Some(Self(EditorMode::Gang)),
             _ => None,
         }
     }

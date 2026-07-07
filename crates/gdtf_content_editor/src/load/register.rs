@@ -1,17 +1,19 @@
-//! The `Load`-pass registrar — [`register_load`], the five generic seam registrations plus the
+//! The `Load`-pass registrar — [`register_load`], the seven generic seam registrations plus the
 //! transition gate (extracted from the module wiring so `mod.rs` stays fn-free).
 
 use bevy::prelude::*;
 use gdtf_assets::{ContentFamilyAppExt, HotRonAppExt};
 use gdtf_battle_presenter::tile_roles_hot_ron_chain;
-use gdtf_content_families::{ArmorFamily, TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily};
+use gdtf_content_families::{
+    ArmorFamily, GangsFamily, MeleeWeaponsFamily, TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily,
+};
 
 use crate::{
     EditorState,
     load::{fallback::default_tile_roles, transition::transition_to_editing},
 };
 
-/// Registers the editor's `Load` asset pass onto `app` — five seam registrations
+/// Registers the editor's `Load` asset pass onto `app` — seven seam registrations
 /// plus the transition gate (see the [module docs](super) for the seam-vs-policy
 /// split).
 ///
@@ -32,7 +34,7 @@ pub(crate) fn register_load(app: &mut App) {
     // reads no theme field (GTW-625 — the GTW-579 AC2 amendment).
     app.init_hot_ron_chain(tile_roles_hot_ron_chain().with_fallback(default_tile_roles));
 
-    // The four folder families (GTW-570 seam) — the SAME glue-crate family
+    // The six folder families (GTW-570 seam) — the SAME glue-crate family
     // definitions the game registers, so game and editor build each registry
     // through literally one function. The terrain + theme defs share the ONE
     // MIXED `content/terrain/` tree; the seam's unconditional TypeId filter
@@ -41,6 +43,13 @@ pub(crate) fn register_load(app: &mut App) {
     app.register_content_family::<ArmorFamily>();
     app.register_content_family::<TerrainDefsFamily>();
     app.register_content_family::<ThemeDefsFamily>();
+    // GTW-636 C2: the GANG mode's registry — the GTW-629 seam brings the loader,
+    // salvage, validation window, and headless fallback with this one line.
+    app.register_content_family::<GangsFamily>();
+    // GTW-636 C1: the melee-weapons registry — the member model carries a
+    // `melee_weapon` key (GTW-505), so the Gang mode's melee dropdown needs the
+    // same family the game resolves that key against.
+    app.register_content_family::<MeleeWeaponsFamily>();
 
     app.add_systems(
         Update,

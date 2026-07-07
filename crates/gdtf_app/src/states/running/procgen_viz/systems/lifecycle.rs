@@ -3,10 +3,8 @@
 //!
 //! The screen entities self-despawn via their [`DespawnOnExit`](bevy::prelude::DespawnOnExit)
 //! markers; this removes the state-scoped model RESOURCE (Bevy has no built-in state-scoped
-//! resource — `bevy-traps.md` #1), the [`remove_editable_gang`] precedent. The whole module is
-//! `#[cfg(debug_assertions)]`-gated by its parent.
-//!
-//! [`remove_editable_gang`]: crate::states::running::gang_editor
+//! resource — `bevy-traps.md` #1). The whole module is `#[cfg(debug_assertions)]`-gated by its
+//! parent.
 
 use bevy::prelude::*;
 

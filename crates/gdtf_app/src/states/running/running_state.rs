@@ -16,16 +16,6 @@ crate::support_item! {
         Options,
         /// Quit confirmation / shutdown.
         Quit,
-        /// DEV-ONLY in-app gang editor (GTW-420), the foundation of the GTW-403
-        /// gang-editor track.
-        ///
-        /// Reached **only** from the `cfg(debug_assertions)`-gated "Gang Editor"
-        /// main-menu button (so the entry point never compiles into a release
-        /// binary), and torn down on `OnExit` — both the screen entities and the
-        /// editor model resource. The variant itself is always present (a
-        /// `SubStates` enum cannot easily cfg-gate one discriminant), but with no
-        /// non-debug code transitioning to it, it is unreachable in release.
-        DebugGangEditor,
         /// DEV-ONLY procgen STEP/AUTO visualizer (GTW-434) — a debug overlay that
         /// reveals the procgen space-packing placement sequence one prefab at a time
         /// (STEP) or all at once (AUTO), drawn as tinted quads over a dark board quad.

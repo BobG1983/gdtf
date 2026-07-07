@@ -86,32 +86,10 @@
 //! The type-agnostic pieces ride [`register_text_field`]; each numeric `N` registers via
 //! [`register_numeric_field::<N>`].
 //!
-//! ## Scrollable list container (GTW-412)
-//!
-//! - [`ScrollList`](scroll_list::ScrollList) ([`spawn_scroll_list`]): a themed frame that
-//!   CLIPS + SCROLLS a vertical stack of caller-supplied rows taller than it, with a
-//!   draggable / wheel-driven scrollbar. Rows are OPAQUE to the list — the caller parents
-//!   its own row bundles onto the returned [`ScrollListArea`](scroll_list::ScrollListArea)
-//!   entity and the list only stacks + clips them. Built on Bevy's built-in
-//!   [`ScrollArea`](bevy::ui_widgets::ScrollArea) /
-//!   [`Scrollbar`](bevy::ui_widgets::Scrollbar) (the scroll mechanism is NOT hand-rolled);
-//!   their plugins ride [`UiPlugin`](crate::UiPlugin). All sizing is relative bar the two
-//!   API-forced scrollbar-chrome px the engine defines as pixels.
-//!
-//! ## Expand/collapse lerp accordion (GTW-416)
-//!
-//! - [`Accordion`](accordion::Accordion) ([`spawn_accordion`]): a vertical stack of
-//!   expand/collapse rows INSIDE a [`spawn_scroll_list`], built for the gang-member rows
-//!   (GTW-425/428) to reveal/hide a stat table. Each row ([`spawn_accordion_row`]) is a
-//!   clickable [`AccordionHeader`](accordion::AccordionHeader) over an
-//!   [`AccordionContent`](accordion::AccordionContent) section whose RELATIVE (`Vh`) height
-//!   LERPS open and closed — a visible animation over several frames, never a snap — while
-//!   the flex column repositions the sibling rows below it automatically. The
-//!   [`drive_accordions`] system advances each row's [`AccordionProgress`](accordion::AccordionProgress)
-//!   by `Time::delta` toward its target and SNAPS to the exact endpoint within an epsilon so
-//!   it settles deterministically; it is registered by [`UiPlugin`](crate::UiPlugin).
+//! (The GTW-412 `ScrollList` container and the GTW-416 `Accordion` were RETIRED by
+//! GTW-636: their only consumer — the in-game gang editor — moved to the content-editor
+//! binary's egui GANG mode, and the widget census found no other user.)
 
-mod accordion;
 mod builders;
 mod dropdown;
 mod markers;
@@ -119,18 +97,12 @@ mod orientation;
 mod paint;
 mod pips;
 mod progress_bar;
-mod scroll_list;
 mod segmented_control;
 mod switch;
 #[cfg(test)]
 pub(crate) mod test_support;
 mod text_field;
 
-pub use accordion::{
-    Accordion, AccordionAnim, AccordionColors, AccordionContent, AccordionContentFit,
-    AccordionExpandedVh, AccordionHeader, AccordionProgress, AccordionRow, AccordionTarget,
-    drive_accordions, spawn_accordion, spawn_accordion_row,
-};
 pub use builders::{spawn_button, spawn_panel};
 pub use dropdown::{
     Dropdown, DropdownAnchor, DropdownBackdrop, DropdownColors, DropdownDismissRequest,
@@ -147,9 +119,6 @@ pub use paint::{paint_active_buttons, paint_disabled_buttons};
 pub use pips::{FilledPips, Pip, PipsRow, set_pips, spawn_pips};
 pub use progress_bar::{
     FillFraction, ProgressBarFill, ProgressBarTrack, set_progress_bar, spawn_progress_bar,
-};
-pub use scroll_list::{
-    ScrollList, ScrollListArea, ScrollListBar, ScrollListColors, spawn_scroll_list,
 };
 pub use segmented_control::{
     ActiveSegment, Segment, SegmentColors, SegmentIndex, SegmentLabel, SegmentSelected,

@@ -69,10 +69,9 @@ gdtf_battle_sim = { path = "../gdtf_battle_sim", features = ["test-support"] }
 # `PollCap`) and chains the REAL `settle_then_capture` — the SAME path-dep instance the
 # optional normal dependency resolves to, so the test drives the exact production pipeline.
 gdtf_screenshot = { path = "../gdtf_screenshot" }
-# GTW-621: the saved-gang regression test (`tests/gang_editor_save_loads.rs`) drives the REAL
-# editor save write into a unique TempDir assets root — never into the version-controlled
-# `assets/` tree — then loads it back through the real gangs folder walk. TempDir auto-cleans
-# on drop (the GTW-555 terrain-save isolation precedent).
+# The dev-capture schedule/loudness tests (`src/dev/capture/test/`) write their capture
+# PNGs into a unique TempDir — never into the version-controlled tree. TempDir auto-cleans
+# on drop (the GTW-555 isolation precedent).
 tempfile = "3"
 
 [features]

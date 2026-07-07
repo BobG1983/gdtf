@@ -72,7 +72,6 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 
 | Variable | Owner crate | Effect |
 | --- | --- | --- |
-| `GDTF_ACCORDION_SHOT` | `gdtf_ui` | Accordion demo example: capture a PNG to this path, then exit. |
 | `GDTF_AUTOBATTLE` | `gdtf_app` | Truthy (`1`/`true`/`yes`/`on`) drives a debug launch straight into a live battle (the GTW-223 QA affordance). |
 | `GDTF_BATTLE_SEED` | `gdtf_app` (consumed by `gdtf_battle_sim`; honored by the `gdtf_test_utils` battle harness) | Pins the root battle RNG seed for a reproducible replay; unset = wall-clock entropy, logged at `info!`. |
 | `GDTF_CAPTURE_FRAME` | `gdtf_app` | Battle capture: how many `BattleRunning` frames to wait before capturing ONE frame. |
@@ -81,7 +80,7 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 | `GDTF_DEBUG_REACHABLE_OVERLAY` | `gdtf_battle_presenter` (mirrored by `gdtf_battle_input` docs) | Truthy renders the reachable-range debug overlay in a debug build (GTW-450; default off — visual noise). |
 | `GDTF_DOCS_PATH_ROOT` | `gdtf_test_utils` | Overrides the repo root the docs path-truth guard test scans (guard-test hook). |
 | `GDTF_DROPDOWN_SHOT` | `gdtf_ui` | Dropdown demo example: capture a PNG to this path, then exit. |
-| `GDTF_EDITOR_MODE` | `gdtf_content_editor` | Content-editor capture: force the Workbench mode (`terrain`/`theme`/`prefab`) before the shot. |
+| `GDTF_EDITOR_MODE` | `gdtf_content_editor` | Content-editor capture: force the Workbench mode (`terrain`/`theme`/`prefab`/`gang`) before the shot. |
 | `GDTF_EDITOR_SHOT` | `gdtf_content_editor` | Content-editor capture: output PNG path; setting it opts the standalone editor into screenshot-then-exit. |
 | `GDTF_EDITOR_TERRAIN_KIND` | `gdtf_content_editor` | Content-editor capture: pre-select the TERRAIN form's kind segment (`wall`/`cover`/`slab`/`emplacement`). |
 | `GDTF_EDITOR_VIEW` | `gdtf_content_editor` | Content-editor capture: `full` forces the prefab-viewport full view (default down-to-active). |
@@ -89,12 +88,10 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 | `GDTF_FALL_AT_FRAME` | `gdtf_app` | Battle capture trigger: the `BattleRunning` frame at which a player ganger is forced to FALL via the real fall path (fall-FX QA). |
 | `GDTF_FIRE_AT_FRAME` | `gdtf_app` | Battle capture trigger: the `BattleRunning` frame at which the selected ganger fires at the nearest enemy via the real fire path. |
 | `GDTF_FIRE_MODE` | `gdtf_app` | Battle capture trigger: fire-mode override for the fire trigger (`single`/`burst`/`full`). |
-| `GDTF_GANG_EDITOR_SHOT` | `gdtf_app` | In-app GANG-editor scene self-screenshot: output PNG path (drives menu → gang editor → capture → quit). GTW-622 renamed it: the old spelling sat one token from the content editor's `GDTF_EDITOR_SHOT`, and setting the wrong one silently no-oped. |
 | `GDTF_LOADING_SHOT` | `gdtf_app` | Loading-screen capture: output PNG path (the GTW-419 capture hook). |
 | `GDTF_MODULE_LAYOUT_ROOT` | `gdtf_test_utils` | Overrides the repo root the module-layout conformance guard test scans (guard-test hook). |
 | `GDTF_PROCGEN_VIZ_SCREEN_SHOT` | `gdtf_app` | Procgen STEP/AUTO visualizer self-screenshot: output PNG path. |
 | `GDTF_SCREENSHOT_TEST_DEFINITELY_UNSET_VAR` | `gdtf_screenshot` | Test-only sentinel: a deliberately-never-set name proving `from_env` stays inert when its var is unset. Never set it. |
-| `GDTF_SCROLL_SHOT` | `gdtf_ui` | Scroll-list demo example: capture a PNG to this path, then exit. |
 | `GDTF_TEST_FORCE_NO_GPU` | `gdtf_test_utils` | Forces the GPU-adapter probe to report Absent, driving the exact no-GPU skip path on a GPU machine (GTW-527). |
 | `GDTF_TEXTFIELD_SHOT` | `gdtf_ui` | Text-field demo example: capture a PNG to this path, then exit. |
 

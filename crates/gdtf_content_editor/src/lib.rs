@@ -70,6 +70,11 @@ mod connector_pairing;
 // GTW-512 C1: the egui Workbench shell — the CLEAN SWAP off the hand-rolled `bevy_ui` shell.
 mod editor_map;
 mod egui_shell;
+// GTW-636: the GANG authoring mode of the Workbench — the form that edits a gang roster
+// and saves it to `content/gangs/<name>.gang.ron` where the GTW-415 gangs loader reads
+// (the USER RULING 2026-07-06: gangs are authored OUTSIDE the game binary; this mode
+// replaces the retired in-game gang editor at full parity).
+mod gang_form;
 // GTW-512 C1.5: the hovered-cell model the live egui hover + the QA capture both write.
 mod hovered_cell;
 mod load;
@@ -130,6 +135,15 @@ pub use editor_map::EditorMap;
 // every egui pass (the session → fields reverse sync) + the kept clamp commit. Exported so the
 // headless test asserts the exact model the panel renders from (the GTW-512 pattern).
 pub use egui_shell::prefab::size_fields::SizeFieldSpans;
+// GTW-636: the GANG-mode model + the pure save halves — exported so the C5 tests drive
+// the REAL projection / path resolution / write (the TempDir round-trip through the
+// actual GangsFamily loader) and the headless lifecycle test asserts the scoped draft.
+pub use gang_form::{GangDraft, draft_to_roster, gang_file_name, gang_save_path_in};
+// The debug-only GANG fs-write surface (the terrain/theme write precedent):
+// `write_gang_in` is the root-parameterized core tests aim at a `TempDir`; `write_gang`
+// is the production wrapper (WORKSPACE_ASSETS_ROOT).
+#[cfg(debug_assertions)]
+pub use gang_form::{write_gang, write_gang_in};
 pub use hovered_cell::HoveredCell;
 // GTW-512: only the `EditorMode` enum survives the egui swap (the `bevy_ui` tab / content markers
 // are gone — the egui shell draws the tabs + branches the right panel in-UI).

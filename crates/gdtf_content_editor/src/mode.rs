@@ -38,13 +38,17 @@ pub enum EditorMode {
     /// PREFAB authoring — paint a prefab with the selected theme (the original editor).
     #[default]
     Prefab,
+    /// GANG authoring — edit a gang roster (`*.gang.ron`) and save it where the gangs
+    /// folder loader reads (GTW-636; the USER RULING 2026-07-06: gangs are authored
+    /// OUTSIDE the game binary — this mode replaces the retired in-game gang editor).
+    Gang,
 }
 
 impl EditorMode {
     /// The mode-tab order, left to right — the order the egui shell renders the tabs and the index
     /// order [`from_tab_index`](EditorMode::from_tab_index) maps. THEME sits BETWEEN Terrain and
-    /// Prefab (GTW-475): `[TERRAIN | THEME | PREFAB]`.
-    pub const TAB_ORDER: [Self; 3] = [Self::Terrain, Self::Theme, Self::Prefab];
+    /// Prefab (GTW-475); GANG follows Prefab (GTW-636): `[TERRAIN | THEME | PREFAB | GANG]`.
+    pub const TAB_ORDER: [Self; 4] = [Self::Terrain, Self::Theme, Self::Prefab, Self::Gang];
 
     /// The mode at top-bar tab `index`, or [`None`] if the index is out of range — the inverse of
     /// [`tab_index`](EditorMode::tab_index).
@@ -69,15 +73,18 @@ impl EditorMode {
             Self::Terrain => "TERRAIN",
             Self::Theme => "THEME",
             Self::Prefab => "PREFAB",
+            Self::Gang => "GANG",
         }
     }
 }
 
-/// `Update` (in `Editing`): number-key hotkeys set the [`EditorMode`] (the `1`/`2`/`3` mode
-/// hotkeys, preserved across the egui swap — GTW-512 C1.3).
+/// `Update` (in `Editing`): number-key hotkeys set the [`EditorMode`] (the `1`/`2`/`3`/`4`
+/// mode hotkeys — `1`–`3` preserved across the egui swap, GTW-512 C1.3; `4` added with the
+/// GANG mode, GTW-636).
 ///
 /// `1` → [`Terrain`](EditorMode::Terrain), `2` → [`Theme`](EditorMode::Theme), `3` →
-/// [`Prefab`](EditorMode::Prefab) — the `[TERRAIN | THEME | PREFAB]` tab order. Writes with
+/// [`Prefab`](EditorMode::Prefab), `4` → [`Gang`](EditorMode::Gang) — the
+/// `[TERRAIN | THEME | PREFAB | GANG]` tab order. Writes with
 /// [`set_if_neq`](DetectChangesMut::set_if_neq) so an unchanged key-press is a no-op. Guarded on the
 /// optional [`EditorMode`] (state-scoped — bevy-traps #1). UI-agnostic: the egui tabs and these keys
 /// both write the same resource, and the next-frame egui draw reflects the change.
@@ -91,6 +98,8 @@ pub(crate) fn mode_hotkeys(keys: Res<ButtonInput<KeyCode>>, mode: Option<ResMut<
         Some(EditorMode::Theme)
     } else if keys.just_pressed(KeyCode::Digit3) {
         Some(EditorMode::Prefab)
+    } else if keys.just_pressed(KeyCode::Digit4) {
+        Some(EditorMode::Gang)
     } else {
         None
     };

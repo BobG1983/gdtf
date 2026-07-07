@@ -28,7 +28,7 @@ file_watcher = ["gdtf_app/file_watcher"]
 # DEV / LOCAL-only screenshot / visual-QA capture (GTW-297); chains through to
 # gdtf_app -> dev_capture. The capture affordances are ADDITIONALLY double-gated on
 # `cfg!(debug_assertions)` at their wiring sites and stay inert until their env var
-# (e.g. `GDTF_CAPTURE_PATH` / `GDTF_GANG_EDITOR_SHOT`) is set, so a release binary
+# (e.g. `GDTF_CAPTURE_PATH` / `GDTF_LOADING_SHOT`) is set, so a release binary
 # never sees them even with the feature on. Enable locally to run a QA capture
 # (e.g. `cargo run --features dynamic_linking,dev_capture`); never enabled for release/CI.
 dev_capture = ["gdtf_app/dev_capture"]

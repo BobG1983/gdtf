@@ -125,12 +125,6 @@ pub fn seed_load_gate(asset_server: Option<Res<AssetServer>>, mut commands: Comm
 // `settle_then_capture` and assert the Quit-cascade exit (never a direct `AppExit`).
 #[cfg(all(debug_assertions, feature = "dev_capture"))]
 pub use crate::dev::capture_exit::poll_then_quit;
-// The GTW-621 gang-save write path — `debug_assertions`-gated exactly like its
-// `gang_editor::systems::save` module: the real-folder-walk regression test aims the REAL editor
-// write at a `TempDir` assets root (never the repo `assets/`), then drives the actual gangs
-// folder walk over it.
-#[cfg(debug_assertions)]
-pub use crate::states::running::gang_editor::test_support::write_gang_roster_in;
 // The GTW-434/GTW-498 procgen-visualizer model + markers — `debug_assertions`-gated because
 // the whole visualizer module compiles out of release (C4), so these items only exist in a
 // debug build.
@@ -179,13 +173,6 @@ pub use crate::{
                     WeaponImage, WeaponItemButton, WeaponItemPanel, WeaponMagazineText,
                     WeaponNameText, WeaponPanelRoot,
                 },
-            },
-            gang_editor::test_support::{
-                AddMemberButton, AttributeField, BaseAttribute, DeleteMemberButton, DerivedStat,
-                DerivedStatText, EditableGang, EditableMember, EditorScreenRoot, ExpandPip,
-                GangNameField, MemberArmorDropdown, MemberListHost, MemberNameField,
-                MemberPortrait, MemberRow, MemberRowIndex, MemberRowRef, MemberStatPanel,
-                MemberWeaponDropdown, PipExpanded,
             },
             menu::test_support::{
                 BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton,

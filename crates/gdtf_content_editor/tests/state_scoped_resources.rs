@@ -1,5 +1,5 @@
-//! GTW-575 headless integration test: the editor's ten `Editing`-scoped MODEL
-//! resources ride the shared `gdtf_state_scoped` seam with their EXACT
+//! GTW-575 headless integration test: the editor's eleven `Editing`-scoped MODEL
+//! resources (the GTW-636 `GangDraft` included) ride the shared `gdtf_state_scoped` seam with their EXACT
 //! pre-sweep lifecycle — absent in `Load`, inserted `OnEnter(Editing)` with
 //! the same seed values the hand-stamped `editor_resources.rs` pairs used, and
 //! removed `OnExit(Editing)`.
@@ -12,8 +12,8 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::ViewMode;
 use gdtf_content_editor::{
-    CanvasZoom, CurrentEditLevel, EditorMap, EditorMode, EditorState, HoveredCell, MapEditorPlugin,
-    MapEditorSession, PreviewPan, TerrainDraft, ThemeDraft,
+    CanvasZoom, CurrentEditLevel, EditorMap, EditorMode, EditorState, GangDraft, HoveredCell,
+    MapEditorPlugin, MapEditorSession, PreviewPan, TerrainDraft, ThemeDraft,
 };
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
@@ -66,7 +66,7 @@ fn advance_to_editing(app: &mut App) {
     }
 }
 
-/// Asserts every one of the ten `Editing`-scoped model resources is absent.
+/// Asserts every one of the eleven `Editing`-scoped model resources is absent.
 fn assert_all_scoped_resources_absent(app: &App, when: &str) {
     let world = app.world();
     assert!(
@@ -108,6 +108,10 @@ fn assert_all_scoped_resources_absent(app: &App, when: &str) {
     assert!(
         world.get_resource::<ViewMode>().is_none(),
         "ViewMode {when}"
+    );
+    assert!(
+        world.get_resource::<GangDraft>().is_none(),
+        "GangDraft {when}"
     );
 }
 
@@ -155,6 +159,11 @@ fn assert_all_scoped_resources_seeded(app: &App) {
         world.get_resource::<ViewMode>(),
         Some(&ViewMode::default()),
         "ViewMode seeds to the default DownToActive (GTW-532)",
+    );
+    assert_eq!(
+        world.get_resource::<GangDraft>(),
+        Some(&GangDraft::default()),
+        "GangDraft seeds to the pristine autoload-pending form (GTW-636)",
     );
     // ThemeDraft's seed (`ThemeDraft::default` -> `new_theme`) MINTS a fresh
     // `ThemeUuid` per entry by design (GTW-475 C4), so whole-value equality

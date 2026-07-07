@@ -2,10 +2,7 @@ use bevy::prelude::*;
 
 use crate::states::{
     AppState, RunningState,
-    running::{
-        GameScenePlugin, GangEditorScenePlugin, MenuScenePlugin, OptionsScenePlugin,
-        QuitScenePlugin, systems::*,
-    },
+    running::{GameScenePlugin, MenuScenePlugin, OptionsScenePlugin, QuitScenePlugin, systems::*},
     scaffold::{SceneLabel, log_scene_enter, log_scene_exit},
 };
 
@@ -38,17 +35,13 @@ fn add_plugins(app: &mut App) {
     app.add_plugins(MenuScenePlugin)
         .add_plugins(GameScenePlugin)
         .add_plugins(OptionsScenePlugin)
-        .add_plugins(QuitScenePlugin)
-        // The DEV-ONLY gang editor (GTW-420). Its scene plugin is always registered (the
-        // `DebugGangEditor` state variant always exists), but the only entry point — the
-        // `cfg(debug_assertions)`-gated "Gang Editor" menu button — never compiles into a
-        // release binary, so the editor is unreachable in release.
-        .add_plugins(GangEditorScenePlugin);
+        .add_plugins(QuitScenePlugin);
 
     // The DEV-ONLY procgen STEP/AUTO visualizer (GTW-434). Its whole module — including this
     // plugin — is `#[cfg(debug_assertions)]`-gated, so a release build neither registers nor
-    // compiles it (C4). Like the gang editor, its only entry point is the
-    // `cfg(debug_assertions)`-gated "Procgen Viz" menu button.
+    // compiles it (C4). Its only entry point is the `cfg(debug_assertions)`-gated
+    // "Procgen Viz" menu button. (The in-game gang editor that used to sit beside it was
+    // RETIRED by GTW-636 — gangs are authored in the content-editor binary's GANG mode.)
     #[cfg(debug_assertions)]
     app.add_plugins(crate::states::running::ProcgenVizScenePlugin);
 }

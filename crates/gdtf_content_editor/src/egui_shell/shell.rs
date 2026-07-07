@@ -31,34 +31,26 @@
 
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
-use gdtf_battle_presenter::{TileRoles, ViewMode};
+use gdtf_battle_presenter::TileRoles;
 use gdtf_battle_sim::{
-    level::{ThemeUuid, UuidThemeRegistry},
-    terrain::def::TerrainDefRegistry,
-    weapon::WeaponRegistry,
+    level::UuidThemeRegistry, terrain::def::TerrainDefRegistry, weapon::WeaponRegistry,
 };
 
 use crate::{
-    canvas::{CanvasZoom, CurrentEditLevel},
-    editor_map::EditorMap,
     egui_shell::{
+        chrome::{mode_tabs, status_line, theme_combo_box},
+        gang_form_ui,
+        params::{GangParams, PrefabParams},
         prefab::{controls_ui, palette_ui, viewport_ui, viewport_ui::ViewportCtx},
         terrain_form_ui,
-        theme_combo::{ThemeOption, theme_options},
+        theme_combo::theme_options,
         theme_form_ui,
     },
-    hovered_cell::HoveredCell,
     mode::EditorMode,
-    preview::{target::PreviewTarget, view::PreviewPan},
     session::MapEditorSession,
     terrain_form::TerrainDraft,
     theme_form::ThemeDraft,
-    tile_atlas::TileAtlas,
 };
-
-/// The placeholder label shown when no theme is selected (the [`ThemeUuid::nil`] sentinel) — the
-/// status line's nil-theme text and the `ComboBox`'s empty preview.
-const NO_THEME: &str = "—";
 
 /// `EguiPrimaryContextPass` (in `Editing`): the WHOLE editor shell — mode tabs + global theme
 /// `ComboBox` (top), the status line (bottom), the per-mode palette/stats (left), the active mode's
@@ -104,6 +96,7 @@ pub(crate) fn editor_egui_ui(
     roles: Option<Res<TileRoles>>,
     weapons: Option<Res<WeaponRegistry>>,
     prefab: PrefabParams,
+    gang: GangParams,
 ) -> Result {
     let (Some(mut mode), Some(mut session), Some(mut terrain_draft), Some(mut theme_draft)) =
         (mode, session, terrain_draft, theme_draft)
@@ -123,6 +116,15 @@ pub(crate) fn editor_egui_ui(
         atlas,
         preview_target,
     } = prefab;
+    // Unpack the GANG model borrows (GTW-636; all state-scoped / Load-resolved — bevy-traps #1).
+    // GANG mode no-ops until they exist; the other modes never touch them.
+    let GangParams {
+        draft: mut gang_draft,
+        gangs,
+        melee,
+        armor,
+        tuning,
+    } = gang;
 
     // Resolve the egui texture ids the PREFAB panels draw (the palette sprite sheet + the preview
     // render target) BEFORE borrowing `ctx_mut()` — `image_id` takes `&self`, so it must run before
@@ -159,6 +161,16 @@ pub(crate) fn editor_egui_ui(
         && theme_draft.key() != def.key
     {
         theme_form_ui::load_theme_into_form(&mut theme_draft, def);
+    }
+
+    // GTW-636: the GANG mode's one-shot open-with-a-gang seed — a still-pristine draft
+    // loads the FIRST gang (sorted) from the resolved registry, the retired in-game
+    // editor's exact open behavior. `autoload_first_gang` self-gates on the pending
+    // state, so this is idempotent under the egui multipass re-run (bevy-traps #8).
+    if *mode == EditorMode::Gang
+        && let (Some(draft), Some(registry)) = (gang_draft.as_deref_mut(), gangs.as_deref())
+    {
+        gang_form_ui::autoload_first_gang(draft, registry);
     }
 
     // 1. TOP — mode tabs (left) + the global theme `ComboBox` (right). Full-width bars are declared
@@ -199,6 +211,10 @@ pub(crate) fn editor_egui_ui(
                 sheet_id,
             );
         }
+        // GANG mode keeps this secondary strip intentionally idle (GTW-636): the member
+        // list is the central primary focus and the gang controls live in the right
+        // panel, so nothing competes here (the TERRAIN right-panel precedent).
+        EditorMode::Gang => {}
     });
 
     // 4. RIGHT — the ACTIVE mode's form (an in-UI branch). TERRAIN no longer renders here (GTW-534
@@ -228,6 +244,11 @@ pub(crate) fn editor_egui_ui(
                     terrain_registry.as_deref(),
                     themes.as_deref(),
                 );
+            }
+        }
+        EditorMode::Gang => {
+            if let Some(draft) = gang_draft.as_deref_mut() {
+                gang_form_ui::field_stack(ui, draft, gangs.as_deref());
             }
         }
     });
@@ -286,100 +307,22 @@ pub(crate) fn editor_egui_ui(
                 ui.label("Preparing prefab preview…");
             }
         }
+        // GTW-636: the member-list editor is the GANG mode's PRIMARY focus — one
+        // collapsible per-member editor (name / loadout dropdowns / attributes /
+        // derived stats / remove) over the draft's sim records.
+        EditorMode::Gang => {
+            if let Some(draft) = gang_draft.as_deref_mut() {
+                gang_form_ui::members_panel(
+                    ui,
+                    draft,
+                    weapons.as_deref(),
+                    melee.as_deref(),
+                    armor.as_deref(),
+                    tuning.as_deref(),
+                );
+            }
+        }
     });
 
     Ok(())
-}
-
-/// The state-scoped PREFAB-mode model borrows the shell threads into the PREFAB panels (GTW-515) —
-/// grouped into one `#[derive(SystemParam)]` bundle so the shell system's argument list stays
-/// legible (the borrows are distinct `SystemParam`s; bundling them is the standard Bevy pattern for a
-/// system that would otherwise take too many). Every field is `Option` because each resource is
-/// state-scoped (inserted `OnEnter(Editing)`, removed `OnExit(Editing)` — bevy-traps #1), so
-/// TERRAIN / THEME modes (which never touch them) tolerate their absence and PREFAB mode no-ops
-/// until they exist.
-#[derive(bevy::ecs::system::SystemParam)]
-pub(crate) struct PrefabParams<'w> {
-    /// The paintable map model (mutated by click-to-paint).
-    map:            Option<ResMut<'w, EditorMap>>,
-    /// The current edit storey (stepped by the level nav; read by the viewport paint).
-    edit_level:     Option<ResMut<'w, CurrentEditLevel>>,
-    /// The hovered-cell model (written each frame from the viewport pointer).
-    hovered:        Option<ResMut<'w, HoveredCell>>,
-    /// The owned zoom target (folded from the viewport wheel — set-to-target).
-    zoom:           Option<ResMut<'w, CanvasZoom>>,
-    /// The owned pan target (folded from the viewport right-drag — set-to-target).
-    pan:            Option<ResMut<'w, PreviewPan>>,
-    /// The prefab-viewport view mode (GTW-532) — REUSED from the presenter (the SAME type the
-    /// GTW-521 battlescape full-view toggle drives); flipped by the RIGHT-panel view toggle.
-    view:           Option<ResMut<'w, ViewMode>>,
-    /// The terrain tile atlas (the palette sprite thumbnails draw over it).
-    atlas:          Option<Res<'w, TileAtlas>>,
-    /// The offscreen preview render target (the viewport draws its egui-registered image).
-    preview_target: Option<Res<'w, PreviewTarget>>,
-}
-
-/// Draw the `[TERRAIN | THEME | PREFAB]` mode tabs as egui
-/// [`selectable_value`](egui::Ui::selectable_value)s over the [`EditorMode`] resource — a click
-/// sets the mode in place (the `1`/`2`/`3` hotkeys do the same via
-/// [`mode_hotkeys`](crate::mode::mode_hotkeys)). The tab ORDER is [`EditorMode::TAB_ORDER`] and
-/// each label is [`EditorMode::tab_label`], so the egui tabs match the old shell's tabs.
-fn mode_tabs(ui: &mut egui::Ui, mode: &mut EditorMode) {
-    for option in EditorMode::TAB_ORDER {
-        ui.selectable_value(mode, option, option.tab_label());
-    }
-}
-
-/// Draw the global theme [`ComboBox`](egui::ComboBox) — its options are the sorted
-/// [`theme_options`], the currently-selected theme's display name is the preview, and choosing a
-/// row folds the selection into the session exactly as the old `apply_theme_selection` did
-/// (resolving the chosen theme's default-floor from the registry, then calling
-/// [`MapEditorSession::select_theme`]).
-fn theme_combo_box(
-    ui: &mut egui::Ui,
-    options: &[ThemeOption],
-    themes: Option<&UuidThemeRegistry>,
-    session: &mut MapEditorSession,
-) {
-    let selected = session.theme();
-    let preview = theme_label(selected, themes);
-    ui.label("Theme:");
-    egui::ComboBox::from_id_salt("editor_theme_combo")
-        .selected_text(preview)
-        .show_ui(ui, |ui| {
-            for option in options {
-                let key = option.key();
-                if ui
-                    .selectable_label(key == selected, option.label())
-                    .clicked()
-                {
-                    let default_floor = themes.and_then(|themes| themes.default_floor(&key));
-                    session.select_theme(key, default_floor);
-                }
-            }
-        });
-}
-
-/// The status line text — `"Mode: {LABEL}  |  Theme: {name}"`, with a nil / unknown theme shown as
-/// the [`NO_THEME`] placeholder (never a panic). Reuses [`EditorMode::tab_label`] and resolves the
-/// session theme's display name from the registry — the verbatim text the old `refresh_status_bar`
-/// produced.
-fn status_line(
-    mode: EditorMode,
-    session: &MapEditorSession,
-    themes: Option<&UuidThemeRegistry>,
-) -> String {
-    let theme_label = theme_label(session.theme(), themes);
-    format!("Mode: {}  |  Theme: {theme_label}", mode.tab_label())
-}
-
-/// Resolve a theme's display name from the registry, or the [`NO_THEME`] placeholder for the nil
-/// sentinel / an unknown / an absent registry (never a panic).
-fn theme_label(theme: ThemeUuid, themes: Option<&UuidThemeRegistry>) -> String {
-    if theme.is_nil() {
-        return NO_THEME.to_owned();
-    }
-    themes
-        .and_then(|themes| themes.def(&theme))
-        .map_or_else(|| NO_THEME.to_owned(), |def| (*def.display_name).clone())
 }

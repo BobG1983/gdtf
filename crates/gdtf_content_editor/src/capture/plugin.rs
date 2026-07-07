@@ -24,9 +24,9 @@ use crate::EditorState;
 const SHOT_ENV_VAR: &str = "GDTF_EDITOR_SHOT";
 
 /// The env var that FORCES the [`crate::EditorMode`] before the capture (C2.4) — so the
-/// Screenshot-QA can capture a SPECIFIC Workbench mode (`terrain` | `theme` | `prefab`,
-/// case-insensitive). Unset (or an unrecognized value) keeps the default mode the editor opened
-/// in. Honored only when the capture affordance itself is enabled (`GDTF_EDITOR_SHOT` set).
+/// Screenshot-QA can capture a SPECIFIC Workbench mode (`terrain` | `theme` | `prefab` |
+/// `gang`, case-insensitive). Unset (or an unrecognized value) keeps the default mode the editor
+/// opened in. Honored only when the capture affordance itself is enabled (`GDTF_EDITOR_SHOT` set).
 const MODE_ENV_VAR: &str = "GDTF_EDITOR_MODE";
 
 /// The env var that pre-selects the TERRAIN form's kind segment before the capture (GTW-574 —

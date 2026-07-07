@@ -64,18 +64,6 @@ crate::support_item! {
     struct QuitButton;
 }
 
-/// Marks the DEV-ONLY **Gang Editor** menu button (GTW-420) — transitions to
-/// [`RunningState::DebugGangEditor`](crate::states::RunningState).
-///
-/// `cfg(debug_assertions)`-gated: the button (and this marker) never compile into a release
-/// binary, so the editor entry point ships only in dev builds. A unit marker (no-bare-types
-/// rule). Named only IN-CRATE (the menu spawn + action systems), never by an external test —
-/// the C5 test drives the `DebugGangEditor` transition via `NextState` directly — so it stays a
-/// plain `pub(in …menu)` marker rather than a `support_item!`-widened one.
-#[cfg(debug_assertions)]
-#[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
-pub(in crate::states::running::menu) struct GangEditorButton;
-
 /// Marks the DEV-ONLY **Procgen Viz** menu button (GTW-434) — transitions to
 /// [`RunningState::DebugProcgenVisualizer`](crate::states::RunningState).
 ///
