@@ -32,10 +32,12 @@ for GDTF:
   onto its own `feature/gtw-N-slug` branch, build it, gate it, then land it onto
   `develop` and close the ticket.
 - **`/gate` runs the one definition of green plus a `design-gate` audit.** Green
-  = `cargo fmt --check`, `cargo clippy --workspace --all-targets --all-features
-  -- -D warnings`, and `cargo test --workspace` all pass; the `design-gate`
-  agent additionally audits the diff against the ticket and `docs/`. A change
-  that is green but deviates from spec fails the gate.
+  = the five-command suite of
+  [verification.md](../../.claude/rules/verification.md) — `cargo fmt --check`,
+  `cargo dclippy -- -D warnings`, `cargo dtest`, `cargo dbuild`, and
+  `cargo doc --workspace --no-deps` — all pass; the `design-gate` agent
+  additionally audits the diff against the ticket and `docs/`. A change that is
+  green but deviates from spec fails the gate.
 - **A gate-pass commit hook enforces it.** `.claude/hooks/pre-commit-gate.sh`
   (paths via `$CLAUDE_PROJECT_DIR`) blocks a commit on `develop`/`main`, with a
   red suite, or without a fresh `.gate-pass` matching the current branch and

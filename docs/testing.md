@@ -4,36 +4,36 @@ The combat model is render-free by design (the model/view split is recorded in [
 
 ## The ONE definition of green
 
-This is the same suite the gate, `/land`, the pre-commit hook, and [verification.md](../.claude/rules/verification.md) all run. Run from the repo root; **green = ALL THREE pass**:
+This is the same suite the gate, `/land`, the pre-commit hook, and [verification.md](../.claude/rules/verification.md) all run. Run from the repo root; **green = ALL FIVE pass**:
 
 ```bash
 cargo fmt --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace
+cargo dclippy -- -D warnings
+cargo dtest
+cargo dbuild
+cargo doc --workspace --no-deps
 ```
+
+`dclippy` / `dtest` / `dbuild` are the `.cargo/config.toml` aliases for the dynamic-linked dev/gate forms — `clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking`, `test --workspace --features grimdark_turfwar/dynamic_linking`, and `build -p grimdark_turfwar --features dynamic_linking,file_watcher`. `dbuild` is the only step that builds + links the actual game binary (`check`/`clippy` never link; `test` links only test binaries). **`--all-features` is deliberately NOT used** — it forces a second full bevy build for no lint gain. `cargo doc` is dev/gate-only: the workspace `broken_intra_doc_links = "deny"` lint surfaces only under `cargo doc`. CI green is the static subset (no `dynamic_linking`): `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`.
 
 The workspace `Cargo.toml` denies clippy `all` / `pedantic` / `correctness` / `suspicious` plus the restriction lints (`unwrap_used`, `expect_used`, `panic`, `todo`, `unimplemented`) and `missing_docs`, so being **fmt-clean and lint-clean IS part of "done"**, not a separate nicety. Run it yourself — never report a remembered or assumed result.
 
-(`cargo nextest run --workspace` is an optional faster swap for the test step; default to `cargo test`.)
+(`cargo nextest run` is an optional faster swap for the test step; default to `cargo dtest`.)
 
-> **Zero tests today.** gdtf currently has no tests, so `cargo test --workspace` passes trivially. That is **NOT red** — there is no "nothing ran = red" rule here (do not port the Godot/GUT logic where an empty run meant failure). But every behavioral ticket MUST add tests that exercise the **real** code path, so the suite grows with the code.
+> Every behavioral ticket MUST add tests that exercise the **real** code path — never a stub or a shadow copy of the unit under test — so the suite grows with the code.
 
 ## Suite layout
 
-Two homes, standard Cargo:
+Two homes, standard Cargo, placed per the module-layout test convention ([module-layout.md](../.claude/rules/module-layout.md), rule 5):
 
-- **In-crate unit tests** — `#[cfg(test)] mod tests { … }` inside the module under test, for white-box coverage of private helpers and tight math. This is where most `gdtf_battle_sim` coverage lives.
-- **Integration tests** — `crates/<crate>/tests/*.rs`, one file per system or ticket-sized concern, exercising the crate's public surface as a downstream user would (e.g. constructing a battle and driving a volley through the public verbs).
+- **In-crate unit tests** — a sibling `test/` directory (or `test.rs` leaf) next to the module under test (an inline `#[cfg(test)] mod test` only while tiny), for white-box coverage of private helpers and tight math. This is where most `gdtf_battle_sim` coverage lives.
+- **Integration tests** — `crates/<crate>/tests/`, one file per system or ticket-sized concern (`tests/<suite>/main.rs` dir-form once a suite outgrows one file), exercising the crate's public surface as a downstream user would (e.g. constructing a battle and driving a volley through the public verbs).
 
-When the design target from [ADR 0001](decisions/0001-rust-bevy-rewrite.md) lands, expect the suite to grow roughly by band (names ported from the Godot GUT suite, re-grounded to Rust modules):
+Three repo-wide **guard suites** live in `crates/gdtf_test_utils/tests/` and ride every `cargo dtest` run:
 
-- **Coarse pipeline geometry** — the 3D DDA march (hand-computed cell sequences, entry/exit `t`, z-crossings, grid-exit rules), clearance bands, corner-tie, occupancy, surfaces, height, the stance/cover matrix, build-from-situation, impact, pipeline integration.
-- **Combat math** — cone vector, recoil climb, muzzle origin, shot origin, hit/matchup resolution, severity roll, math guards, tuning parity, battle-space metric, stance shot bands, shot outcome.
-- **Manager contract** — the battle value's event + id discipline, `apply_hit` terminal gates, the coarse path, TU/aiming, armor degradation, wounds guard, stance-change TU, volley integration.
-- **Presenter routing** — fire routing, outcome routing, burst, input gates, battle-over routing, enemy-AI fire, outcome marker, hit data, battle→world projection, pathfinder restore, prop registry, ganger facing.
-- **Shell / misc** — battle seed, situation validation, the `AppState` transition guards, app outcome handoff, camera bounds.
-
-> **TBD (Bevy):** these are the *target* test names; none exist yet. They land alongside the code they pin.
+- **`module_layout`** — the clause-7 module-layout conformance guard: wiring-only `mod.rs`, the warn>300 / block>400 line bands, and the exemption registry.
+- **`docs_path_truth`** — every repo path referenced from `docs/` and `.claude/rules/` must resolve against the live tree, so a module move can't silently strand design canon.
+- **`assets_tree_clean`** — the tracked `assets/` tree must be git-clean when the suite runs, so a test that mutates shipped authored content is caught loudly instead of silently corrupting authored work.
 
 ## Conventions
 
@@ -72,6 +72,7 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 
 | Variable | Owner crate | Effect |
 | --- | --- | --- |
+| `GDTF_ASSETS_CLEAN_ROOT` | `gdtf_test_utils` | Overrides the repo root the assets-tree-clean guard test scans (guard-test hook). |
 | `GDTF_AUTOBATTLE` | `gdtf_app` | Truthy (`1`/`true`/`yes`/`on`) drives a debug launch straight into a live battle (the GTW-223 QA affordance). |
 | `GDTF_BATTLE_SEED` | `gdtf_app` (consumed by `gdtf_battle_sim`; honored by the `gdtf_test_utils` battle harness) | Pins the root battle RNG seed for a reproducible replay; unset = wall-clock entropy, logged at `info!`. |
 | `GDTF_CAPTURE_FRAME` | `gdtf_app` | Battle capture: how many `BattleRunning` frames to wait before capturing ONE frame. |
