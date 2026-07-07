@@ -23,7 +23,9 @@
 //! identical landing. Because a coarse XY sample could skip a thin roof slab the parabola
 //! passes through, the walk tests EVERY storey boundary the sampled polyline crosses (not
 //! just XY cells): each consecutive sample pair whose floored z differs triggers the slab
-//! test at that boundary, exactly mirroring the straight march's `advance_z` semantics.
+//! test at EACH plane the segment crosses — a steep segment can cross several storeys in
+//! one step (GTW-645), so the planes are walked in flight order and the first intact slab
+//! blocks — exactly mirroring the straight march's `advance_z` semantics.
 //!
 //! The LANDING [`MarchResult`] feeds the GTW-541 blast resolver
 //! ([`aoe_affected`](crate::aoe::aoe_affected)) at its `at` cell — the throw dispatch fans
@@ -44,8 +46,11 @@ use crate::{
 
 /// The horizontal sub-cell sampling cadence of the parabola, in sim units — a fixed, small
 /// step so the polyline never skips a thin roof slab between two samples (GTW-546 risk
-/// note: sample z-crossings explicitly). Four samples per cell (0.25 units) is dense enough
-/// that the parabola's monotone-per-segment z crosses at most one storey boundary per step.
+/// note: sample z-crossings explicitly). Four samples per cell (0.25 units) bounds the XY
+/// travel per segment, but NOT the z travel: a STEEP lob (a multi-storey level change over
+/// little horizontal run — the steepest being the same-column throw, whose whole parabola is
+/// ONE segment) crosses several storey boundaries in a single step, so `roof_block_between`
+/// walks EVERY crossed boundary rather than assuming one per segment (GTW-645).
 const SAMPLE_STEP: f32 = 0.25;
 
 /// The base apex height a lob rises ABOVE the straight muzzle→target line, in sim units
@@ -84,11 +89,13 @@ fn arc_z(z0: f32, z1: f32, u: f32, apex: f32) -> f32 {
 ///
 /// - **Passes** same-level cover / walls / occupants — a lob arcs OVER them, so they never
 ///   stop it (unlike the straight march). The grenade's only blocker is a roof.
-/// - **Tests the roof** on every storey boundary the sampled polyline crosses: an intact
-///   [`SlabState::Present`](crate::surface::SlabState) slab STOPS the lob at that boundary
-///   ([`MarchKind::Slab`]) — the grenade cannot pass an intact roof (AC: "arc blocked by
-///   intact roofs"); a [`SlabState::Destroyed`](crate::surface::SlabState) / `Absent` slab
-///   (a hole / window / open sky) PASSES (AC: "passes through holes and windows").
+/// - **Tests the roof** on every storey boundary the sampled polyline crosses — a steep
+///   segment may cross several in one step; each is tested in flight order (GTW-645): an
+///   intact [`SlabState::Present`](crate::surface::SlabState) slab STOPS the lob at that
+///   boundary ([`MarchKind::Slab`]) — the grenade cannot pass an intact roof (AC: "arc
+///   blocked by intact roofs"); a [`SlabState::Destroyed`](crate::surface::SlabState) /
+///   `Absent` slab (a hole / window / open sky) PASSES (AC: "passes through holes and
+///   windows").
 /// - **Lands** at the `target` cell once the parabola settles there: the returned
 ///   [`MarchResult`] carries [`MarchKind::Ground`] at the target `(cell, level)` — the
 ///   LANDING cell the GTW-541 blast resolver fans its
@@ -184,46 +191,100 @@ fn arc_sample_count(horizontal: f32) -> u32 {
     n.clamp(1, MAX_STEPS)
 }
 
-/// Test the roof slab on any storey boundary the segment `prev → point` crosses — an intact
-/// [`SlabState::Present`](crate::surface::SlabState) roof STOPS the lob (returns [`Some`]
-/// with a [`MarchKind::Slab`] result at the boundary), a
-/// [`SlabState::Destroyed`](crate::surface::SlabState) / `Absent` hole PASSES (returns
-/// [`None`]). Mirrors the straight march's `advance_z` slab semantics: the slab between two
-/// storeys is keyed at the UPPER of the two levels (the floor of the upper storey / roof of
-/// the lower).
+/// Test the roof slab on EVERY storey boundary the segment `prev → point` crosses — an
+/// intact [`SlabState::Present`](crate::surface::SlabState) roof STOPS the lob at the FIRST
+/// crossed boundary in flight order (returns [`Some`] with a [`MarchKind::Slab`] result at
+/// that boundary), a [`SlabState::Destroyed`](crate::surface::SlabState) / `Absent` hole
+/// PASSES that boundary (the walk continues to the next). Mirrors the straight march's
+/// `advance_z` slab semantics: the slab between two storeys is keyed at the UPPER of the two
+/// levels (the floor of the upper storey / roof of the lower).
 ///
-/// The XY cell the boundary is tested at is `point`'s cell (where the parabola sits at the
-/// crossing) — the roof above / below the grenade's current column.
+/// A STEEP segment — a multi-storey z-change over one `SAMPLE_STEP` of horizontal travel;
+/// the steepest is the same-column lob, whose whole parabola is ONE segment — can cross
+/// SEVERAL storey planes in a single sample step (GTW-645: testing only `max(prev_z, cur_z)`
+/// skipped every intermediate slab, letting a grenade sail through an intact roof). The walk
+/// therefore visits each crossed plane in FLIGHT order — ascending while the lob rises,
+/// descending while it falls — so the first intact roof the grenade meets is the one that
+/// stops it, each tested where the segment crosses that plane ([`roof_block_at`]).
 fn roof_block_between(
     prev: SimPos,
     point: SimPos,
     surface: &SurfaceGrid,
     tuning: &CombatTuning,
 ) -> Option<MarchResult> {
-    let (cell, _) = pos_to_cell(point);
     let prev_z = floor_level(prev.z);
     let cur_z = floor_level(point.z);
     if prev_z == cur_z {
         return None; // no storey boundary crossed on this segment
     }
-    // The slab between the two storeys is keyed at the UPPER of the two levels (advance_z's
-    // convention — one slab, both faces). Only test in-grid boundaries.
-    let upper = prev_z.max(cur_z);
-    if !z_in_grid(upper) {
+    // Every integer z-plane in `(min .. max]` separates two storeys this segment spans;
+    // walk them in flight order so the FIRST intact roof met is the one that blocks.
+    let low = prev_z.min(cur_z) + 1;
+    let high = prev_z.max(cur_z);
+    if cur_z > prev_z {
+        // Rising: the lob meets the lowest crossed plane first.
+        for boundary in low..=high {
+            if let Some(blocked) = roof_block_at(prev, point, boundary, surface, tuning) {
+                return Some(blocked);
+            }
+        }
+    } else {
+        // Falling: the lob meets the highest crossed plane first.
+        for boundary in (low..=high).rev() {
+            if let Some(blocked) = roof_block_at(prev, point, boundary, surface, tuning) {
+                return Some(blocked);
+            }
+        }
+    }
+    None // every crossed slab is a hole / window — the lob passes through
+}
+
+/// Test ONE crossed storey plane `boundary` against the segment `prev → point` — [`Some`]
+/// with the [`MarchKind::Slab`] block when the slab there is intact
+/// ([`SlabState::Present`](crate::surface::SlabState)), [`None`] when the plane is out of
+/// grid or the slab is a hole (`Destroyed` / `Absent`, AC: passes through holes / windows).
+///
+/// The XY cell tested is where the SEGMENT crosses the plane: the sampled polyline treats
+/// each segment as a straight line, so the crossing is the linear interpolation of the
+/// endpoints at `z == boundary` (clamped into the segment for float safety) — the roof the
+/// grenade is actually under / over at that instant, not the segment-end cell (GTW-645: on
+/// a steep segment the end cell can be a column the parabola only reaches a storey later).
+/// The slab between two storeys is keyed at the UPPER of the two — `boundary` itself.
+fn roof_block_at(
+    prev: SimPos,
+    point: SimPos,
+    boundary: i32,
+    surface: &SurfaceGrid,
+    tuning: &CombatTuning,
+) -> Option<MarchResult> {
+    if !z_in_grid(boundary) {
         return None;
     }
-    let slab_key = key_of(cell.x, cell.y, upper);
+    // In-grid boundaries are 0..MAX_LEVELS (checked above), so this conversion never fails —
+    // taking the typed route (instead of an `as` cast) keeps the cast lints inert.
+    let plane = f32::from(u8::try_from(boundary).ok()?);
+    // Where the segment crosses the plane. The caller only calls with `floor(prev.z) !=
+    // floor(point.z)`, so the segment's z-extent is non-zero and the division is well-formed;
+    // the clamp guards the interpolant against float dust at the segment ends.
+    let t = ((plane - prev.z) / (point.z - prev.z)).clamp(0.0, 1.0);
+    let cross = SimPos::new(
+        (point.x - prev.x).mul_add(t, prev.x),
+        (point.y - prev.y).mul_add(t, prev.y),
+        plane,
+    );
+    let (cell, _) = pos_to_cell(cross);
+    let slab_key = key_of(cell.x, cell.y, boundary);
     if surface.slab_state(&slab_key) == SlabState::Present {
-        // An intact roof stops the lob at the boundary (AC: blocked by intact roofs). The
-        // grenade cannot pass — it lands against the roof at this cell.
+        // An intact roof stops the lob at this boundary (AC: blocked by intact roofs). The
+        // grenade cannot pass — it lands against the roof where it crossed the plane.
         return Some(MarchResult {
             kind:   MarchKind::Slab,
             at:     slab_key,
-            band:   round_band_for_cell(point, tuning),
-            impact: point,
+            band:   round_band_for_cell(cross, tuning),
+            impact: cross,
         });
     }
-    None // a Destroyed / Absent slab is a hole / window — the lob passes through
+    None // a Destroyed / Absent slab is a hole / window — the lob passes this plane
 }
 
 /// Floor a sim-unit `z` to its storey index, clamped into the representable

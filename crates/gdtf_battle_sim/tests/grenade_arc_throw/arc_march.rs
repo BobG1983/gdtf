@@ -2,7 +2,7 @@
 //! same-level lobs, purity, and `TrajectoryStyle` serde parsing.
 
 use gdtf_battle_sim::{
-    march::march_arc,
+    march::{MarchKind, march_arc},
     surface::{SlabState, SurfaceGrid},
     tuning::CombatTuning,
     weapon::{TrajectoryStyle, WeaponSpec},
@@ -78,6 +78,76 @@ fn a_same_level_lob_is_not_self_blocked_by_a_same_level_roof() {
         (landing.at.x, landing.at.y, landing.at.z),
         (9, 5, 0),
         "a same-level lob clears cover but stays under the same-level roof, landing on target: {landing:?}",
+    );
+}
+
+// === GTW-645: steep lobs crossing SEVERAL storey boundaries in one sample segment. ===
+
+#[test]
+fn a_steep_lob_is_blocked_by_an_intermediate_roof_it_crosses_mid_segment() {
+    // GTW-645: a STEEP lob (5 storeys up over 1 cell of horizontal travel) samples at the
+    // fixed 0.25-unit horizontal cadence — 4 segments — so its second segment climbs from
+    // z≈1.64 to z≈3.02, crossing TWO storey planes (z=2 and z=3) in ONE sample step. The
+    // z=2 crossing happens at x≈5.82 (still column 5): an intact roof there must stop the
+    // lob. Pre-fix only `max(prev_z, cur_z)` was tested (at the segment-END cell), so the
+    // z=2 plane was never tested anywhere and the grenade sailed through the intact slab.
+    let mut surface = SurfaceGrid::new();
+    surface.set_slab(at_level(5, 5, 2), SlabState::Present);
+    let landing = march_arc(ground(5, 5), at_level(6, 5, 5), &surface, &arc_tuning());
+    assert_eq!(
+        landing.kind,
+        MarchKind::Slab,
+        "the steep lob is BLOCKED by the intermediate roof, not landed: {landing:?}",
+    );
+    assert_eq!(
+        (landing.at.x, landing.at.y, landing.at.z),
+        (5, 5, 2),
+        "the lob stops at the z=2 roof where its segment crosses that plane: {landing:?}",
+    );
+}
+
+#[test]
+fn a_vertical_lob_cannot_pass_its_own_intact_ceiling() {
+    // GTW-645, the steepest constructible lob: a same-column throw (zero horizontal travel)
+    // samples the WHOLE parabola as ONE segment (level 0 -> level 4), crossing four storey
+    // planes in a single step. The intact roof DIRECTLY OVER THE THROWER (the z=1 plane,
+    // the first crossed in flight order) must stop it. Pre-fix only the top plane (z=4)
+    // was tested, so the grenade flew straight through its own intact ceiling.
+    let mut surface = SurfaceGrid::new();
+    surface.set_slab(at_level(5, 5, 1), SlabState::Present);
+    let landing = march_arc(ground(5, 5), at_level(5, 5, 4), &surface, &arc_tuning());
+    assert_eq!(
+        landing.kind,
+        MarchKind::Slab,
+        "a vertical lob is BLOCKED by the thrower's own intact ceiling: {landing:?}",
+    );
+    assert_eq!(
+        (landing.at.x, landing.at.y, landing.at.z),
+        (5, 5, 1),
+        "the lob stops at the FIRST crossed plane (z=1), not a higher one: {landing:?}",
+    );
+}
+
+#[test]
+fn a_steep_drop_stops_at_the_highest_roof_in_flight_order() {
+    // GTW-645 flight-order pin (the covered case): a steep DESCENT (5 storeys down over 1
+    // cell) crosses z=3 and z=2 in one sample segment. With intact roofs at BOTH planes
+    // (authored in both columns, so the pin is float-robust at the column seam), the lob
+    // must stop at the HIGHEST plane — the first crossed while falling — never the lower.
+    let mut surface = SurfaceGrid::new();
+    for x in [5, 6] {
+        surface.set_slab(at_level(x, 5, 3), SlabState::Present);
+        surface.set_slab(at_level(x, 5, 2), SlabState::Present);
+    }
+    let landing = march_arc(at_level(5, 5, 5), ground(6, 5), &surface, &arc_tuning());
+    assert_eq!(
+        landing.kind,
+        MarchKind::Slab,
+        "the steep drop is BLOCKED by a roof: {landing:?}",
+    );
+    assert_eq!(
+        landing.at.z, 3,
+        "the falling lob stops at the FIRST roof it meets (z=3), not the lower z=2: {landing:?}",
     );
 }
 
