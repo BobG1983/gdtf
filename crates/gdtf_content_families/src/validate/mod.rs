@@ -17,8 +17,8 @@
 //! #1 is guarded ONCE, at the host's set condition). Register only checks
 //! whose registries the host actually loads: an absent registry would fail the
 //! window (or, unguarded, fail param validation) — e.g. the editor registers
-//! the theme→terrain and emplacement→weapon edges but NOT weapons→attachments,
-//! because it never loads the attachment items.
+//! the theme→terrain, emplacement→weapon, and gang-equipment edges but NOT
+//! weapons→attachments, because it never loads the attachment items.
 //!
 //! Submodules by EDGE FAMILY (wiring only here; the game-bespoke edges —
 //! situation, prefabs, injuries — stay in the game's

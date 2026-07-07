@@ -5,14 +5,16 @@
 //! ([`gdtf_content_families::validate`]) through the same seam
 //! ([`ContentValidationAppExt`](gdtf_assets::ContentValidationAppExt)), for
 //! exactly the edges over families the editor loads: theme → terrain-def
-//! UUIDs and emplacement → mounted-weapon keys. Edges whose registries the
-//! editor never loads (weapons → attachments, the gang equipment edges) are
-//! NOT registered — their windows could never open, and stand-in empty
-//! registries would false-fail every key.
+//! UUIDs, emplacement → mounted-weapon keys, and — since the GTW-636 Gang
+//! mode brought the gang + melee-weapon registries — the gang equipment edges
+//! (weapon / armor / melee keys incl. the implicit `fists` default, GTW-651).
+//! The one edge whose registry the editor never loads (weapons → attachments)
+//! is NOT registered — its window could never open, and a stand-in empty
+//! registry would false-fail every key.
 //!
-//! So a dangling terrain UUID authored in the editor surfaces HERE, loudly,
-//! as the game's consolidated report shape — at authoring time, not on the
-//! next game launch. Two halves:
+//! So a dangling terrain UUID or gang equipment key authored in the editor
+//! surfaces HERE, loudly, as the game's consolidated report shape — at
+//! authoring time, not on the next game launch. Two halves:
 //!
 //! - [`register`] — the pass registration + the editor's `Check` window
 //!   condition (all read registries present, not yet checked).

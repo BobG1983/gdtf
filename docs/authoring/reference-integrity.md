@@ -26,11 +26,15 @@ existing runtime guards (a battle setup still aborts fail-closed on a bad key)
 stay in place. Mistakes become visible at `Load`, not at battle-request time.
 
 The **content editor runs the same pass** (GTW-630) over the edges it loads —
-theme → terrain UUIDs and emplacement → mounted-weapon keys — and RE-ARMS it
-on every hot-reload of a watched registry: the report is reset, re-checked
-against the current content, and re-published. A dangling terrain UUID
-authored in the editor therefore surfaces at authoring time (at the save/edit),
-not on the next game launch.
+theme → terrain UUIDs, emplacement → mounted-weapon keys, and the gang
+equipment keys (weapon / armor / melee incl. the implicit `fists` default —
+GTW-651) — and RE-ARMS it on every hot-reload of a watched registry: the
+report is reset, re-checked against the current content, and re-published.
+The watch set spans every registry the registered checks read, so an edit to
+EITHER side of an edge — the gang file OR the weapons/armor/melee folder it
+references — re-runs every check onto the one consolidated report. A dangling
+terrain UUID or equipment key authored in the editor therefore surfaces at
+authoring time (at the save/edit), not on the next game launch.
 
 ## What is validated (the reference graph)
 

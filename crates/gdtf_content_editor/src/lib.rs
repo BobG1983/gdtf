@@ -117,7 +117,8 @@ mod theme_dir;
 mod tile_atlas;
 // GTW-630: the editor's AUTHORING-TIME registration of the GTW-582 reference-integrity pass —
 // the shared gdtf_content_families::validate checks over the edges the editor loads
-// (theme→terrain + emplacement→weapon), re-armed live on hot-reload.
+// (theme→terrain + emplacement→weapon + gang equipment — GTW-651), re-armed live on
+// hot-reload.
 mod validate;
 
 pub use app::MapEditorApp;

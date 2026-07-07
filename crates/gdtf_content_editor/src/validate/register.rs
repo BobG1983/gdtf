@@ -7,23 +7,38 @@ use bevy::{
 };
 use gdtf_assets::{ContentChecksComplete, ContentValidationAppExt, ContentValidationSet};
 use gdtf_battle_sim::{
-    level::UuidThemeRegistry, terrain::def::TerrainDefRegistry, weapon::WeaponRegistry,
+    armor::ArmorRegistry,
+    ganger::GangRegistry,
+    level::UuidThemeRegistry,
+    terrain::def::TerrainDefRegistry,
+    weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
-use gdtf_content_families::validate::{check_emplacement_weapon_refs, check_theme_terrain_refs};
+use gdtf_content_families::validate::{
+    check_emplacement_weapon_refs, check_gang_equipment_refs, check_theme_terrain_refs,
+};
 
 use super::rearm::rearm_validation_on_content_change;
 
 /// The editor's validation WINDOW condition: every registry the editor's
-/// REGISTERED checks read is present — weapons + terrain defs + theme defs
-/// (each is inserted on its load's success OR its fail-closed empty fallback,
-/// so this always eventually opens; the editor's loaded-but-unchecked armor
-/// registry is deliberately absent — no registered check reads it).
+/// REGISTERED checks read is present. Since the gang equipment edge joined
+/// (GTW-651) that is ALL SIX editor-loaded registries — weapons + melee
+/// weapons + armor + gangs (the gang edge's reads) plus terrain defs + theme
+/// defs (the theme/emplacement edges') — each inserted on its load's success
+/// OR its fail-closed empty fallback, so this always eventually opens.
 pub(super) const fn validation_graph_ready(
     weapons: Option<Res<WeaponRegistry>>,
+    melee_weapons: Option<Res<MeleeWeaponRegistry>>,
+    armor: Option<Res<ArmorRegistry>>,
+    gangs: Option<Res<GangRegistry>>,
     terrain: Option<Res<TerrainDefRegistry>>,
     themes: Option<Res<UuidThemeRegistry>>,
 ) -> bool {
-    weapons.is_some() && terrain.is_some() && themes.is_some()
+    weapons.is_some()
+        && melee_weapons.is_some()
+        && armor.is_some()
+        && gangs.is_some()
+        && terrain.is_some()
+        && themes.is_some()
 }
 
 /// Install the reference-integrity pass on the editor: the seam plumbing
@@ -47,9 +62,12 @@ pub(crate) fn register_validation(app: &mut App) {
         ContentValidationSet::Check
             .run_if(not(resource_exists::<ContentChecksComplete>).and_then(validation_graph_ready)),
     );
-    // The two host-agnostic edge checks over families the editor loads — the
-    // SAME systems the game registers (gdtf_content_families::validate).
+    // The three host-agnostic edge checks over families the editor loads — the
+    // SAME systems the game registers (gdtf_content_families::validate). The
+    // gang equipment edge joined with the GTW-636 Gang mode's registries
+    // (GTW-651).
     app.register_reference_check(check_theme_terrain_refs)
-        .register_reference_check(check_emplacement_weapon_refs);
+        .register_reference_check(check_emplacement_weapon_refs)
+        .register_reference_check(check_gang_equipment_refs);
     app.add_systems(Update, rearm_validation_on_content_change);
 }

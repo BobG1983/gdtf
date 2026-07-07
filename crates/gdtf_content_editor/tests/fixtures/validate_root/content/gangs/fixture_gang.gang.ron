@@ -1,0 +1,26 @@
+// GTW-651 test fixture — ONE gang whose member's every equipment key DANGLES against this
+// fixture root (validate_root materializes no weapons / armor / melee folders, so each of
+// those families fails closed to its EMPTY registry): the editor's authoring-time gang
+// equipment-refs check must surface each key as a `DanglingRef` finding.
+//
+// The gang's registry key is the file STEM (`fixture_gang`) — the name the finding's
+// referrer must carry. Attribute magnitudes are inert filler (validation reads keys only).
+(
+    members: [
+        (
+            name:      "Dangling Dave",  // member identity — named in the finding referrer
+            speed:     3.0,              // inert — validation reads keys, not attributes
+            aim:       3.0,              // inert
+            strength:  3.0,              // inert
+            toughness: 10.0,             // inert
+            reflexes:  3.0,              // inert
+            cool:      5.0,              // inert
+            grit:      15.0,             // inert
+            luck:      1.0,              // inert
+            armor:     "missing_armor",  // DANGLING armor KEY — no armor folder in this root
+            weapon:    "missing_weapon", // DANGLING weapon KEY — the pinned C3(a) finding
+            // melee_weapon omitted — resolves to the implicit `fists` default, which ALSO
+            // dangles here (no melee folder): the check's documented default-edge behavior.
+        ),
+    ],
+)
