@@ -14,6 +14,7 @@ use gdtf_battle_sim::{
 };
 
 use crate::{
+    armor_form::ArmorDraft,
     canvas::{CanvasZoom, CurrentEditLevel},
     editor_map::EditorMap,
     egui_shell::prefab::level_rail::RailUiState,
@@ -76,4 +77,16 @@ pub(crate) struct GangParams<'w> {
     /// stat tuning, so the panel falls back to the const default when absent (the
     /// retired in-game editor's exact fallback).
     pub(super) tuning: Option<Res<'w, GangerStatTuning>>,
+}
+
+/// The ARMOR-mode model borrows the shell threads into the ARMOR panels (GTW-479) — the
+/// [`GangParams`] pattern. Every field is `Option` — the draft is state-scoped
+/// (bevy-traps #1) and the registry arrives with the `Load` pass — so the other modes
+/// tolerate their absence and ARMOR mode no-ops until they exist.
+#[derive(bevy::ecs::system::SystemParam)]
+pub(crate) struct ArmorParams<'w> {
+    /// The editable armor working model (the form writes it; the save projects it).
+    pub(super) draft:    Option<ResMut<'w, ArmorDraft>>,
+    /// The loaded armor registry (the load `ComboBox` options + the one-shot autoload).
+    pub(super) registry: Option<Res<'w, ArmorRegistry>>,
 }

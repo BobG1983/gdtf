@@ -14,8 +14,10 @@
 //! Submodules: [`harness`] (the fixture-root editor app + publish driver +
 //! report probes), [`theme`] (the GTW-630 theme→terrain pins), [`gangs`] (the
 //! GTW-651 gang-equipment pins), [`save_rearm`] (the GTW-651 save-path →
-//! reload → re-arm loop).
+//! reload → re-arm loop), [`armor_save`] (the GTW-479 armor save-path →
+//! reload → re-arm loop over the gang-equipment armor edge).
 
+mod armor_save;
 mod gangs;
 mod harness;
 mod save_rearm;

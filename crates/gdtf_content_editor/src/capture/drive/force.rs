@@ -16,7 +16,7 @@ use crate::{
 
 /// `Update` (in `Editing`, capture-only): FORCE the [`EditorMode`] to the C2.4 [`ForcedMode`]
 /// before the settle / screenshot — so the Screenshot-QA can capture a specific Workbench mode
-/// (`GDTF_EDITOR_MODE=terrain|theme|prefab`). No-ops when no mode was forced (the resource is
+/// (`GDTF_EDITOR_MODE=terrain|theme|prefab|gang|armor`). No-ops when no mode was forced (the resource is
 /// absent) or the editor's mode already matches. Both borrows are `Option` (state-scoped —
 /// bevy-traps #1); [`set_if_neq`](DetectChangesMut::set_if_neq) keeps an already-matching mode a
 /// no-op (idempotent under the egui multipass re-run).

@@ -7,7 +7,8 @@
 //! [`terrain_form_ui`](self::terrain_form_ui); the real THEME-mode form (GTW-514 C3) lives in
 //! [`theme_form_ui`](self::theme_form_ui); the real PREFAB-mode form + the render-to-texture
 //! viewport (GTW-515 C4) live in [`prefab`](self::prefab); the GANG-mode form (GTW-636) lives in
-//! [`gang_form_ui`](self::gang_form_ui). The shell registers ONE UI system in the
+//! [`gang_form_ui`](self::gang_form_ui); the ARMOR-mode form (GTW-479) lives in
+//! [`armor_form_ui`](self::armor_form_ui). The shell registers ONE UI system in the
 //! [`EguiPrimaryContextPass`](bevy_egui::EguiPrimaryContextPass) schedule (NOT `Update` —
 //! bevy-traps: a `Update` system calling `ctx_mut()` fights the egui begin/end-pass plumbing),
 //! gated `run_if(in_state(EditorState::Editing))`.
@@ -31,6 +32,9 @@
 //! central panel last), so [`editor_egui_ui`](self::shell::editor_egui_ui) declares them in that
 //! exact order.
 
+// GTW-479: the ARMOR-mode form — the draw half over the `armor_form` model (the gang
+// form split: model module + `*_form_ui` sibling).
+mod armor_form_ui;
 // The shell's mode-agnostic top/bottom-bar chrome (mode tabs + global theme combo +
 // status line), split out of `shell.rs` (GTW-636 — module-layout bands).
 mod chrome;

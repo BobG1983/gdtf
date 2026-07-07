@@ -1,8 +1,8 @@
-//! GTW-575 headless integration test: the editor's twelve `Editing`-scoped MODEL
-//! resources (the GTW-636 `GangDraft` and the GTW-594 `IsolateView` included) ride the
-//! shared `gdtf_state_scoped` seam with their EXACT lifecycle — absent in `Load`,
-//! inserted `OnEnter(Editing)` with the registered seed values, and removed
-//! `OnExit(Editing)`.
+//! GTW-575 headless integration test: the editor's thirteen `Editing`-scoped MODEL
+//! resources (the GTW-636 `GangDraft`, the GTW-479 `ArmorDraft`, and the GTW-594
+//! `IsolateView` included) ride the shared `gdtf_state_scoped` seam with their EXACT
+//! lifecycle — absent in `Load`, inserted `OnEnter(Editing)` with the registered seed
+//! values, and removed `OnExit(Editing)`.
 //!
 //! Drives the REAL [`MapEditorPlugin`] on the no-renderer `DefaultPlugins` UI
 //! harness (the `egui_shell.rs` recipe): the editor's actual `Load` pass
@@ -12,8 +12,8 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_content_editor::{
-    CanvasZoom, CurrentEditLevel, EditorMap, EditorMode, EditorState, GangDraft, HoveredCell,
-    MapEditorPlugin, MapEditorSession, PreviewPan, TerrainDraft, ThemeDraft,
+    ArmorDraft, CanvasZoom, CurrentEditLevel, EditorMap, EditorMode, EditorState, GangDraft,
+    HoveredCell, MapEditorPlugin, MapEditorSession, PreviewPan, TerrainDraft, ThemeDraft,
 };
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
@@ -66,7 +66,7 @@ fn advance_to_editing(app: &mut App) {
     }
 }
 
-/// Asserts every one of the twelve `Editing`-scoped model resources is absent.
+/// Asserts every one of the thirteen `Editing`-scoped model resources is absent.
 fn assert_all_scoped_resources_absent(app: &App, when: &str) {
     let world = app.world();
     assert!(
@@ -116,6 +116,10 @@ fn assert_all_scoped_resources_absent(app: &App, when: &str) {
     assert!(
         world.get_resource::<GangDraft>().is_none(),
         "GangDraft {when}"
+    );
+    assert!(
+        world.get_resource::<ArmorDraft>().is_none(),
+        "ArmorDraft {when}"
     );
 }
 
@@ -174,6 +178,11 @@ fn assert_all_scoped_resources_seeded(app: &App) {
         world.get_resource::<GangDraft>(),
         Some(&GangDraft::default()),
         "GangDraft seeds to the pristine autoload-pending form (GTW-636)",
+    );
+    assert_eq!(
+        world.get_resource::<ArmorDraft>(),
+        Some(&ArmorDraft::default()),
+        "ArmorDraft seeds to the pristine autoload-pending form (GTW-479)",
     );
     // ThemeDraft's seed (`ThemeDraft::default` -> `new_theme`) MINTS a fresh
     // `ThemeUuid` per entry by design (GTW-475 C4), so whole-value equality

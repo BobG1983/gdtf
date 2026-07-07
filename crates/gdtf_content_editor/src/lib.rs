@@ -59,6 +59,10 @@
 //!   to a terrain atlas index THE WAY THE PRESENTER DOES (through the presenter's `TileRoles` table).
 
 mod app;
+// GTW-479: the ARMOR authoring mode of the Workbench — the form that edits an armor
+// suit's six per-body-part pieces and saves it to `content/armor/<name>.armor.ron`
+// where the GTW-269 armor loader reads (the GTW-636 Gang mode/form precedent).
+mod armor_form;
 // GTW-512 C1.2: the editor's standalone 2D camera (the `bevy_ui` shell used to spawn it).
 mod camera;
 mod canvas;
@@ -122,6 +126,16 @@ mod tile_atlas;
 mod validate;
 
 pub use app::MapEditorApp;
+// GTW-479: the ARMOR-mode model + the pure save halves — exported so the round-trip
+// tests drive the REAL projection / path resolution / write (the TempDir round-trip
+// through the actual ArmorFamily loader) and the headless lifecycle test asserts the
+// scoped draft (the GTW-636 gang export precedent).
+pub use armor_form::{ArmorDraft, armor_file_name, armor_save_path_in, draft_to_spec};
+// The debug-only ARMOR fs-write surface (the terrain/theme/gang write precedent):
+// `write_armor_in` is the root-parameterized core tests aim at a `TempDir`;
+// `write_armor` is the production wrapper (WORKSPACE_ASSETS_ROOT).
+#[cfg(debug_assertions)]
+pub use armor_form::{write_armor, write_armor_in};
 // GTW-512: the `bevy_ui` canvas render markers are GONE (the egui viewport is C4); only the two
 // model resources the editor's lifecycle inserts survive (the egui viewport reads them in C4).
 pub use canvas::{CanvasZoom, CurrentEditLevel, LevelStep};

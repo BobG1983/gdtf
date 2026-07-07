@@ -38,9 +38,10 @@ use gdtf_battle_sim::{
 
 use crate::{
     egui_shell::{
+        armor_form_ui,
         chrome::{mode_tabs, status_line, theme_combo_box},
         gang_form_ui,
-        params::{GangParams, PrefabParams},
+        params::{ArmorParams, GangParams, PrefabParams},
         prefab::{controls_ui, palette_ui, viewport_ui, viewport_ui::ViewportCtx},
         terrain_form_ui,
         theme_combo::theme_options,
@@ -97,6 +98,7 @@ pub(crate) fn editor_egui_ui(
     weapons: Option<Res<WeaponRegistry>>,
     prefab: PrefabParams,
     gang: GangParams,
+    armor_mode: ArmorParams,
 ) -> Result {
     let (Some(mut mode), Some(mut session), Some(mut terrain_draft), Some(mut theme_draft)) =
         (mode, session, terrain_draft, theme_draft)
@@ -127,6 +129,12 @@ pub(crate) fn editor_egui_ui(
         armor,
         tuning,
     } = gang;
+    // Unpack the ARMOR model borrows (GTW-479; the same lifecycle). ARMOR mode no-ops
+    // until they exist; the other modes never touch them.
+    let ArmorParams {
+        draft: mut armor_draft,
+        registry: armor_registry,
+    } = armor_mode;
 
     // Resolve the egui texture ids the PREFAB panels draw (the palette sprite sheet + the preview
     // render target) BEFORE borrowing `ctx_mut()` — `image_id` takes `&self`, so it must run before
@@ -175,6 +183,15 @@ pub(crate) fn editor_egui_ui(
         gang_form_ui::autoload_first_gang(draft, registry);
     }
 
+    // GTW-479: the ARMOR mode's one-shot open-with-an-armor seed — the Gang autoload's
+    // exact parity twin (self-gating, multipass-idempotent — bevy-traps #8).
+    if *mode == EditorMode::Armor
+        && let (Some(draft), Some(registry)) =
+            (armor_draft.as_deref_mut(), armor_registry.as_deref())
+    {
+        armor_form_ui::autoload_first_armor(draft, registry);
+    }
+
     // 1. TOP — mode tabs (left) + the global theme `ComboBox` (right). Full-width bars are declared
     //    FIRST so they span edge-to-edge; the side panels then fit between them.
     egui::Panel::top("editor_top_bar").show(&mut viewport_ui, |ui| {
@@ -213,10 +230,11 @@ pub(crate) fn editor_egui_ui(
                 sheet_id,
             );
         }
-        // GANG mode keeps this secondary strip intentionally idle (GTW-636): the member
-        // list is the central primary focus and the gang controls live in the right
-        // panel, so nothing competes here (the TERRAIN right-panel precedent).
-        EditorMode::Gang => {}
+        // GANG / ARMOR modes keep this secondary strip intentionally idle (GTW-636 /
+        // GTW-479): the member list / per-part piece grid is the central primary focus
+        // and the form controls live in the right panel, so nothing competes here (the
+        // TERRAIN right-panel precedent).
+        EditorMode::Gang | EditorMode::Armor => {}
     });
 
     // 4. RIGHT — the ACTIVE mode's form (an in-UI branch). TERRAIN no longer renders here (GTW-534
@@ -254,6 +272,11 @@ pub(crate) fn editor_egui_ui(
         EditorMode::Gang => {
             if let Some(draft) = gang_draft.as_deref_mut() {
                 gang_form_ui::field_stack(ui, draft, gangs.as_deref());
+            }
+        }
+        EditorMode::Armor => {
+            if let Some(draft) = armor_draft.as_deref_mut() {
+                armor_form_ui::field_stack(ui, draft, armor_registry.as_deref());
             }
         }
     });
@@ -325,6 +348,14 @@ pub(crate) fn editor_egui_ui(
                     armor.as_deref(),
                     tuning.as_deref(),
                 );
+            }
+        }
+        // GTW-479: the per-body-part piece grid is the ARMOR mode's PRIMARY focus —
+        // one row per BodyPart (the four clamped stat drags + the ArmorType combo)
+        // over the draft's sim record.
+        EditorMode::Armor => {
+            if let Some(draft) = armor_draft.as_deref_mut() {
+                armor_form_ui::pieces_panel(ui, draft);
             }
         }
     });

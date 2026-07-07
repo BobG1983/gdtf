@@ -16,7 +16,13 @@ use serde::{Deserialize, Serialize};
 /// spawn path seeds the [`ArmorPiece`] / armor-piece entity (related via
 /// [`Wears`](super::Wears)) component slot via `Default` before the authored value
 /// overwrites it (GTW-322). It is NOT a valid authored armor stat.
-#[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
+/// `Serialize` is added (GTW-479) so the content editor's ARMOR authoring mode can
+/// round-trip an authored [`ArmorSpec`](super::ArmorSpec) back to its `.armor.ron`
+/// (the GTW-484 terrain precedent); it serialises as a bare integer via
+/// `#[serde(transparent)]`.
+#[derive(
+    Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default,
+)]
 #[serde(transparent)]
 pub struct ArmorFloor(i32);
 
@@ -71,8 +77,23 @@ impl ArmorProtection {
 /// `Default` (`ArmorIntegrity(0)`) is a **spawn-seed sentinel only** — seeded by
 /// the `bsn!` spawn path before the authored value overwrites it (GTW-322). NOT a
 /// valid authored armor stat (`0` would read as already-useless armor).
+/// `Serialize` is added (GTW-479) so the content editor's ARMOR authoring mode can
+/// round-trip an authored [`ArmorSpec`](super::ArmorSpec) back to its `.armor.ron`
+/// (the GTW-484 terrain precedent); it serialises as a bare integer via
+/// `#[serde(transparent)]`.
 #[derive(
-    Deref, DerefMut, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default,
+    Deref,
+    DerefMut,
+    Component,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Deserialize,
+    Serialize,
+    Default,
 )]
 #[serde(transparent)]
 pub struct ArmorIntegrity(i32);
@@ -254,11 +275,14 @@ impl InjuryCategory {
 /// `Default` is [`ArmorType::Plated`] — matching the documented [`ArmorType::DEFAULT`]
 /// (node 0, the canonical first wheel node). Used as the `bsn!` spawn-seed sentinel
 /// (GTW-322), consistent with the existing `DEFAULT` fallback.
+/// `Serialize` is added (GTW-479) so the content editor's ARMOR authoring mode can
+/// round-trip an authored [`ArmorSpec`](super::ArmorSpec) back to its `.armor.ron`;
+/// it serialises as the bare variant name, the authored form.
 ///
 /// A Bevy [`Component`] since GTW-323 (ADR-0004): the per-piece wheel node lives on
 /// the worn-armor-piece entity (the `struck_piece` matchup reads it off the piece),
 /// not packed inside a ganger-side array.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default)]
 pub enum ArmorType {
     /// Wheel node 0 — mirror of [`DamageType::Shock`](crate::weapon::DamageType::Shock).
     #[default]
@@ -316,7 +340,10 @@ impl ArmorType {
 /// `Default` (all-zero stats, [`ArmorType::Plated`]) is a **spawn-seed sentinel
 /// only** — seeded by the `bsn!` spawn path before the authored piece overwrites
 /// it (GTW-322). NOT a valid authored piece (zero integrity reads as already-useless).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
+/// `Serialize` is added (GTW-479) so the content editor's ARMOR authoring mode can
+/// round-trip an authored [`ArmorSpec`](super::ArmorSpec) back to its `.armor.ron` —
+/// it serialises as the same named-field record the authoring convention reads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default)]
 pub struct ArmorPiece {
     /// Minimum damage a landing hit deals through this piece.
     pub floor:      ArmorFloor,

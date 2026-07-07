@@ -81,7 +81,7 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 | `GDTF_DEBUG_REACHABLE_OVERLAY` | `gdtf_battle_presenter` (mirrored by `gdtf_battle_input` docs) | Truthy renders the reachable-range debug overlay in a debug build (GTW-450; default off — visual noise). |
 | `GDTF_DOCS_PATH_ROOT` | `gdtf_test_utils` | Overrides the repo root the docs path-truth guard test scans (guard-test hook). |
 | `GDTF_DROPDOWN_SHOT` | `gdtf_ui` | Dropdown demo example: capture a PNG to this path, then exit. |
-| `GDTF_EDITOR_MODE` | `gdtf_content_editor` | Content-editor capture: force the Workbench mode (`terrain`/`theme`/`prefab`/`gang`) before the shot. |
+| `GDTF_EDITOR_MODE` | `gdtf_content_editor` | Content-editor capture: force the Workbench mode (`terrain`/`theme`/`prefab`/`gang`/`armor`) before the shot. |
 | `GDTF_EDITOR_SHOT` | `gdtf_content_editor` | Content-editor capture: output PNG path; setting it opts the standalone editor into screenshot-then-exit. |
 | `GDTF_EDITOR_TERRAIN_KIND` | `gdtf_content_editor` | Content-editor capture: pre-select the TERRAIN form's kind segment (`wall`/`cover`/`slab`/`emplacement`). |
 | `GDTF_EDITOR_VIEW` | `gdtf_content_editor` | Content-editor capture: `full` forces the prefab-viewport full view (lifting the GTW-594 Isolate default, which wins over it); `isolate` stages the GTW-594 three-class Isolate shot (edit storey lifted to the painted upper storey). Unset keeps the editor defaults (Isolate on, one onion below). |

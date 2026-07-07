@@ -3,7 +3,7 @@
 //! [`WeaponSpec`](crate::weapon::WeaponSpec).
 
 use bevy::reflect::TypePath;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::stats::ArmorPiece;
 
@@ -32,7 +32,12 @@ use super::stats::ArmorPiece;
 ///
 /// **`Copy`** — an [`ArmorPiece`] is `Copy` (it owns only `i32`/enum leaves), so an
 /// authored suit of six is `Copy` too, mirroring [`SourceArmor`](super::SourceArmor).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, TypePath)]
+///
+/// Derives [`Serialize`] too (GTW-479): the content editor's ARMOR authoring mode
+/// WRITES an edited spec back to a `.armor.ron` through the shared RON save seam
+/// (the [`GangRoster`](crate::ganger::GangRoster) / `TerrainDef` write precedent),
+/// so the authoring struct must serialise to exactly the shape it deserialises from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, TypePath)]
 pub struct ArmorSpec {
     /// The Head piece — protects the rarely-struck, severity-amplifying head.
     pub head:      ArmorPiece,
