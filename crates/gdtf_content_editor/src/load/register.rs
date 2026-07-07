@@ -10,12 +10,15 @@ use gdtf_content_families::{
 
 use crate::{
     EditorState,
-    load::{fallback::default_tile_roles, transition::transition_to_editing},
+    load::{
+        fallback::default_tile_roles, injuries::register_injuries,
+        transition::transition_to_editing,
+    },
 };
 
-/// Registers the editor's `Load` asset pass onto `app` — seven seam registrations
-/// plus the transition gate (see the [module docs](super) for the seam-vs-policy
-/// split).
+/// Registers the editor's `Load` asset pass onto `app` — seven seam registrations,
+/// the bespoke injuries pass (GTW-654), plus the transition gate (see the
+/// [module docs](super) for the seam-vs-policy split).
 ///
 /// Each ext call wires its family's/chain's WHOLE generic kick-off (`Startup`,
 /// storing the persistent handle), gated resolve (inserts the resource exactly
@@ -50,6 +53,12 @@ pub(crate) fn register_load(app: &mut App) {
     // `melee_weapon` key (GTW-505), so the Gang mode's melee dropdown needs the
     // same family the game resolves that key against.
     app.register_content_family::<MeleeWeaponsFamily>();
+
+    // GTW-654: the BESPOKE injuries family (one folder → the InjuryRegistry +
+    // InjuryTables pair — a declared GTW-570 seam exclusion, so it registers
+    // through its own thin pass instead of `register_content_family`). The
+    // INJURY mode's load combo / effects palette / weighting tables read these.
+    register_injuries(app);
 
     app.add_systems(
         Update,

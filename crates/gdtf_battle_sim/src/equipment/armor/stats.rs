@@ -237,7 +237,9 @@ impl BodyPart {
 /// `.injury.ron` / `.weighting.ron` file, naming the shared pool the def / weighting
 /// routes into. A struck per-side [`BodyPart`] is still resolved to its category at the
 /// roll's lookup boundary via [`injury_category`](BodyPart::injury_category).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// `Serialize` is added (GTW-654) so the content editor's INJURY authoring mode can
+/// write an edited def / weighting back to disk (behavior-inert for the sim).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum InjuryCategory {
     /// The head pool — `head` injuries (Aim / Cool effects).
     Head,

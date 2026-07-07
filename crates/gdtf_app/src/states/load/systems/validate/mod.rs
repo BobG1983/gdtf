@@ -12,10 +12,10 @@
 //! Submodules by EDGE FAMILY (wiring only here — gate directive P10, the
 //! per-family checks live with their family's edge). Since GTW-630 the
 //! HOST-AGNOSTIC edge checks — gangs → equipment, weapons → attachments,
-//! theme/emplacement → terrain-def/weapon — live in
-//! [`gdtf_content_families::validate`] beside the family glue impls, so the
-//! content editor registers the SAME systems; only the game-bespoke edges stay
-//! here:
+//! theme/emplacement → terrain-def/weapon, and (since GTW-654) weighting rows
+//! → injury keys — live in [`gdtf_content_families::validate`] beside the
+//! family glue impls, so the content editor registers the SAME systems; only
+//! the game-bespoke edges stay here:
 //!
 //! - [`register`] — the one registration surface (`add_content_validation`)
 //!   plus the "every gate registry resolved" window condition.
@@ -24,10 +24,7 @@
 //!   `SITUATION_RON_PATH` live in this crate).
 //! - [`prefabs`] — prefab → theme UUID agreement and prefab → terrain-def
 //!   UUIDs (a game-bespoke family the editor never loads).
-//! - [`injuries`] — weighting rows → injury keys (the warn-skip, now also
-//!   reported through the unified pass, C3(c); game-bespoke likewise).
 
-mod injuries;
 mod prefabs;
 mod register;
 mod situation;

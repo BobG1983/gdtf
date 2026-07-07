@@ -15,10 +15,13 @@
 //! report probes), [`theme`] (the GTW-630 theme→terrain pins), [`gangs`] (the
 //! GTW-651 gang-equipment pins), [`save_rearm`] (the GTW-651 save-path →
 //! reload → re-arm loop), [`armor_save`] (the GTW-479 armor save-path →
-//! reload → re-arm loop over the gang-equipment armor edge).
+//! reload → re-arm loop over the gang-equipment armor edge), [`injuries_save`]
+//! (the GTW-654 weighting save-path → reload → re-arm loop over the
+//! weighting-row → injury-key edge).
 
 mod armor_save;
 mod gangs;
 mod harness;
+mod injuries_save;
 mod save_rearm;
 mod theme;

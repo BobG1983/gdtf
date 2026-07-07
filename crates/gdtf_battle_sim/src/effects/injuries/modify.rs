@@ -3,7 +3,7 @@
 //! into the ledger's per-stat store, and its exact inverse heal.
 
 use bevy::prelude::Deref;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{ApplyInjuryEffect, HealError, LedgerAccumulators};
 use crate::injuries::StatTarget;
@@ -18,7 +18,9 @@ use crate::injuries::StatTarget;
 /// `#[serde(transparent)]` lets an authored effect name it as a bare RON number
 /// (`amount: -2`). The summed-delta store widens to `i16` so many stacked deltas
 /// can never overflow — see [`StatDeltaSum`](crate::injuries::StatDeltaSum).
-#[derive(Deref, Clone, Copy, PartialEq, Eq, Debug, Deserialize)]
+/// `Serialize` is added (GTW-654) so the content editor's INJURY authoring mode can
+/// write an edited effects list back to disk (behavior-inert for the sim).
+#[derive(Deref, Clone, Copy, PartialEq, Eq, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct StatDelta(i8);
 

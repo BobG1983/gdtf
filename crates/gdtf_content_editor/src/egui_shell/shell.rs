@@ -39,9 +39,10 @@ use gdtf_battle_sim::{
 use crate::{
     egui_shell::{
         armor_form_ui,
+        autoload::{armor_form_sync, gang_form_sync, injury_form_sync, theme_form_sync},
         chrome::{mode_tabs, status_line, theme_combo_box},
-        gang_form_ui,
-        params::{ArmorParams, GangParams, PrefabParams},
+        gang_form_ui, injury_form_ui,
+        params::{ArmorParams, GangParams, InjuryParams, PrefabParams},
         prefab::{controls_ui, palette_ui, viewport_ui, viewport_ui::ViewportCtx},
         terrain_form_ui,
         theme_combo::theme_options,
@@ -99,6 +100,7 @@ pub(crate) fn editor_egui_ui(
     prefab: PrefabParams,
     gang: GangParams,
     armor_mode: ArmorParams,
+    injury_mode: InjuryParams,
 ) -> Result {
     let (Some(mut mode), Some(mut session), Some(mut terrain_draft), Some(mut theme_draft)) =
         (mode, session, terrain_draft, theme_draft)
@@ -135,6 +137,14 @@ pub(crate) fn editor_egui_ui(
         draft: mut armor_draft,
         registry: armor_registry,
     } = armor_mode;
+    // Unpack the INJURY model borrows (GTW-654; the same lifecycle). INJURY mode
+    // no-ops until they exist; the other modes never touch them.
+    let InjuryParams {
+        draft: mut injury_draft,
+        weighting: mut weighting_draft,
+        registry: injury_registry,
+        tables: injury_tables,
+    } = injury_mode;
 
     // Resolve the egui texture ids the PREFAB panels draw (the palette sprite sheet + the preview
     // render target) BEFORE borrowing `ctx_mut()` — `image_id` takes `&self`, so it must run before
@@ -159,38 +169,19 @@ pub(crate) fn editor_egui_ui(
     );
     let options = theme_options(themes.as_deref());
 
-    // C3.2: when entering THEME mode with a theme already selected in the session, auto-load that
-    // theme's def into the form so the author edits the live definition. This is checked every
-    // frame; the `theme_form_ui::resolve_autoload` returns `None` for a nil theme / absent
-    // registry, so it no-ops until a real theme resolves. The comparison avoids redundant
-    // reinitialisation across frames by only loading when the form's current key differs from the
-    // session theme (a new selection or a first-enter with a pre-selected theme).
-    if *mode == EditorMode::Theme
-        && let Some(themes_res) = themes.as_deref()
-        && let Some(def) = theme_form_ui::resolve_autoload(session.theme(), themes_res)
-        && theme_draft.key() != def.key
-    {
-        theme_form_ui::load_theme_into_form(&mut theme_draft, def);
-    }
-
-    // GTW-636: the GANG mode's one-shot open-with-a-gang seed — a still-pristine draft
-    // loads the FIRST gang (sorted) from the resolved registry, the retired in-game
-    // editor's exact open behavior. `autoload_first_gang` self-gates on the pending
-    // state, so this is idempotent under the egui multipass re-run (bevy-traps #8).
-    if *mode == EditorMode::Gang
-        && let (Some(draft), Some(registry)) = (gang_draft.as_deref_mut(), gangs.as_deref())
-    {
-        gang_form_ui::autoload_first_gang(draft, registry);
-    }
-
-    // GTW-479: the ARMOR mode's one-shot open-with-an-armor seed — the Gang autoload's
-    // exact parity twin (self-gating, multipass-idempotent — bevy-traps #8).
-    if *mode == EditorMode::Armor
-        && let (Some(draft), Some(registry)) =
-            (armor_draft.as_deref_mut(), armor_registry.as_deref())
-    {
-        armor_form_ui::autoload_first_armor(draft, registry);
-    }
+    // The PRE-PANEL per-mode model-sync / autoload block (split into
+    // `egui_shell::autoload` at the GTW-479-flagged seam — GTW-654): each runner
+    // self-gates on its mode + borrows and is multipass-idempotent (bevy-traps #8).
+    theme_form_sync(*mode, &session, themes.as_deref(), &mut theme_draft);
+    gang_form_sync(*mode, gang_draft.as_deref_mut(), gangs.as_deref());
+    armor_form_sync(*mode, armor_draft.as_deref_mut(), armor_registry.as_deref());
+    injury_form_sync(
+        *mode,
+        injury_draft.as_deref_mut(),
+        injury_registry.as_deref(),
+        weighting_draft.as_deref_mut(),
+        injury_tables.as_deref(),
+    );
 
     // 1. TOP — mode tabs (left) + the global theme `ComboBox` (right). Full-width bars are declared
     //    FIRST so they span edge-to-edge; the side panels then fit between them.
@@ -230,11 +221,11 @@ pub(crate) fn editor_egui_ui(
                 sheet_id,
             );
         }
-        // GANG / ARMOR modes keep this secondary strip intentionally idle (GTW-636 /
-        // GTW-479): the member list / per-part piece grid is the central primary focus
-        // and the form controls live in the right panel, so nothing competes here (the
-        // TERRAIN right-panel precedent).
-        EditorMode::Gang | EditorMode::Armor => {}
+        // GANG / ARMOR / INJURY modes keep this secondary strip intentionally idle
+        // (GTW-636 / GTW-479 / GTW-654): the member list / piece grid / def+weighting
+        // editors are the central primary focus and the form controls live in the
+        // right panel, so nothing competes here (the TERRAIN right-panel precedent).
+        EditorMode::Gang | EditorMode::Armor | EditorMode::Injury => {}
     });
 
     // 4. RIGHT — the ACTIVE mode's form (an in-UI branch). TERRAIN no longer renders here (GTW-534
@@ -277,6 +268,11 @@ pub(crate) fn editor_egui_ui(
         EditorMode::Armor => {
             if let Some(draft) = armor_draft.as_deref_mut() {
                 armor_form_ui::field_stack(ui, draft, armor_registry.as_deref());
+            }
+        }
+        EditorMode::Injury => {
+            if let Some(draft) = injury_draft.as_deref_mut() {
+                injury_form_ui::field_stack(ui, draft, injury_registry.as_deref());
             }
         }
     });
@@ -357,6 +353,27 @@ pub(crate) fn editor_egui_ui(
             if let Some(draft) = armor_draft.as_deref_mut() {
                 armor_form_ui::pieces_panel(ui, draft);
             }
+        }
+        // GTW-654: the def editor (fields + the closed-palette effects list) and the
+        // weighting section (C2) are the INJURY mode's PRIMARY focus, stacked in one
+        // scroll area over the two drafts' sim records.
+        EditorMode::Injury => {
+            egui::ScrollArea::vertical()
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    if let Some(draft) = injury_draft.as_deref_mut() {
+                        injury_form_ui::def_panel(ui, draft);
+                    }
+                    if let Some(weighting) = weighting_draft.as_deref_mut() {
+                        ui.separator();
+                        injury_form_ui::weighting_panel(
+                            ui,
+                            weighting,
+                            injury_registry.as_deref(),
+                            injury_tables.as_deref(),
+                        );
+                    }
+                });
         }
     });
 

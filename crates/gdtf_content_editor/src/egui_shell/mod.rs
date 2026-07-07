@@ -8,7 +8,10 @@
 //! [`theme_form_ui`](self::theme_form_ui); the real PREFAB-mode form + the render-to-texture
 //! viewport (GTW-515 C4) live in [`prefab`](self::prefab); the GANG-mode form (GTW-636) lives in
 //! [`gang_form_ui`](self::gang_form_ui); the ARMOR-mode form (GTW-479) lives in
-//! [`armor_form_ui`](self::armor_form_ui). The shell registers ONE UI system in the
+//! [`armor_form_ui`](self::armor_form_ui); the INJURY-mode forms (GTW-654 — the def editor +
+//! the weighting section) live in [`injury_form_ui`](self::injury_form_ui); the pre-panel
+//! per-mode autoload/model-sync runners live in [`autoload`](self::autoload). The shell
+//! registers ONE UI system in the
 //! [`EguiPrimaryContextPass`](bevy_egui::EguiPrimaryContextPass) schedule (NOT `Update` —
 //! bevy-traps: a `Update` system calling `ctx_mut()` fights the egui begin/end-pass plumbing),
 //! gated `run_if(in_state(EditorState::Editing))`.
@@ -35,12 +38,18 @@
 // GTW-479: the ARMOR-mode form — the draw half over the `armor_form` model (the gang
 // form split: model module + `*_form_ui` sibling).
 mod armor_form_ui;
+// The shell's PRE-PANEL per-mode model-sync / autoload runners, split out of
+// `shell.rs` at the GTW-479-flagged seam (GTW-654 — module-layout bands).
+mod autoload;
 // The shell's mode-agnostic top/bottom-bar chrome (mode tabs + global theme combo +
 // status line), split out of `shell.rs` (GTW-636 — module-layout bands).
 mod chrome;
 // GTW-636: the GANG-mode form — the draw half over the `gang_form` model (the terrain /
 // theme form split: model module + `*_form_ui` sibling).
 mod gang_form_ui;
+// GTW-654: the INJURY-mode forms — the draw half over the `injury_form` models (the
+// def editor + the C2 weighting section; the gang/armor form split).
+mod injury_form_ui;
 // The shell system's per-mode model-borrow SystemParam bundles (PrefabParams /
 // GangParams), split out of `shell.rs` (GTW-636 — module-layout bands).
 mod params;

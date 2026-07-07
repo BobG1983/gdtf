@@ -1,20 +1,23 @@
 //! GTW-579 headless pins for the editor's seam-registered `Load` pass.
 //!
 //! AC-2 (as AMENDED by GTW-625; extended by GTW-636 with the gangs + melee
-//! families the GANG mode edits): driving the REAL [`MapEditorPlugin`] on the
+//! families the GANG mode edits, and by GTW-654 with the bespoke injuries pair
+//! the INJURY mode edits): driving the REAL [`MapEditorPlugin`] on the
 //! no-renderer `DefaultPlugins` harness (live workspace `assets/` root) reaches
-//! [`EditorState::Editing`] with ALL SEVEN resolved resources present — through
-//! the actual GTW-570 content-family and GTW-564 hot-RON seam registrations, not
-//! an editor-local mirror — and the seam's persistent handles survive past
-//! `Load` (the GTW-533 whole-session persistence the live hot-reload rides).
-//! The game's `GdtfTheme` is NOT among the gate resources: the egui shell styles
-//! itself, so the editor neither registers the theme chain nor depends on the
-//! game's hand-rolled UI crate at all (this test crate cannot even name the type).
+//! [`EditorState::Editing`] with ALL NINE resolved resources present — through
+//! the actual GTW-570 content-family / GTW-564 hot-RON / bespoke-injuries
+//! registrations, not an editor-local mirror — and the seam's persistent handles
+//! survive past `Load` (the GTW-533 whole-session persistence the live
+//! hot-reload rides). The game's `GdtfTheme` is NOT among the gate resources:
+//! the egui shell styles itself, so the editor neither registers the theme
+//! chain nor depends on the game's hand-rolled UI crate at all (this test crate
+//! cannot even name the type).
 //!
 //! AC-4 (ADR-0003): pointing the SAME app at an EMPTY asset root fails every
 //! load, and the editor STILL transitions to `Editing` — the tile-role
 //! chain falls back to its const default (the editor-owned policy attached at
-//! registration) and the six folder families fail closed to EMPTY registries.
+//! registration) and the folder families (incl. the bespoke injuries pair) fail
+//! closed to EMPTY registries.
 
 use std::path::Path;
 
@@ -33,6 +36,7 @@ use gdtf_battle_presenter::{TileIndex, TileRoles};
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
     ganger::GangRegistry,
+    injuries::{InjuryRegistry, InjuryTables},
     level::UuidThemeRegistry,
     terrain::def::TerrainDefRegistry,
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
@@ -123,16 +127,17 @@ fn advance_to_editing(app: &mut App) {
     }
 }
 
-/// AC-2 (as amended by GTW-625; extended by GTW-636): the real seam path resolves
-/// the editor's whole gate set — the app reaches `Editing` with the six folder
-/// registries (each NON-empty, so the shipped content genuinely resolved — no
-/// count pins) and the tile-role table all present, plus the seven PERSISTENT
+/// AC-2 (as amended by GTW-625; extended by GTW-636 + GTW-654): the real seam
+/// path resolves the editor's whole gate set — the app reaches `Editing` with
+/// the six folder registries plus the bespoke injuries pair (each NON-empty, so
+/// the shipped content genuinely resolved — no count pins) and the tile-role
+/// table all present, plus the seven PERSISTENT
 /// seam handles (GTW-533 C4a: no `OnExit(Load)` cleanup exists, so the live
 /// hot-reload substrate survives). No game-theme resource exists to gate on —
 /// the editor no longer depends on the game's hand-rolled UI crate, so reaching
 /// `Editing` here IS the boots-without-the-theme proof.
 #[test]
-fn load_pass_resolves_all_seven_resources_through_the_real_seams() {
+fn load_pass_resolves_all_nine_resources_through_the_real_seams() {
     let mut app = editor_app();
     advance_to_editing(&mut app);
 
@@ -173,6 +178,20 @@ fn load_pass_resolves_all_seven_resources_through_the_real_seams() {
             .is_some_and(|r| !r.is_empty()),
         "the MeleeWeaponRegistry must resolve NON-empty through the shared MeleeWeaponsFamily \
          (GTW-636)",
+    );
+    assert!(
+        world
+            .get_resource::<InjuryRegistry>()
+            .is_some_and(|r| !r.is_empty()),
+        "the InjuryRegistry must resolve NON-empty through the editor's bespoke injuries pass \
+         (GTW-654)",
+    );
+    assert!(
+        world
+            .get_resource::<InjuryTables>()
+            .is_some_and(|t| !t.is_empty()),
+        "the InjuryTables must resolve NON-empty through the editor's bespoke injuries pass \
+         (GTW-654)",
     );
     assert!(
         world.get_resource::<TileRoles>().is_some(),
@@ -291,5 +310,19 @@ fn failed_asset_root_falls_back_and_still_reaches_editing() {
             .map(MeleeWeaponRegistry::is_empty),
         Some(true),
         "a Failed melee folder must fail closed to the EMPTY MeleeWeaponRegistry (GTW-636)",
+    );
+    assert_eq!(
+        world
+            .get_resource::<InjuryRegistry>()
+            .map(InjuryRegistry::is_empty),
+        Some(true),
+        "a Failed injuries folder must fail closed to the EMPTY InjuryRegistry (GTW-654)",
+    );
+    assert_eq!(
+        world
+            .get_resource::<InjuryTables>()
+            .map(InjuryTables::is_empty),
+        Some(true),
+        "a Failed injuries folder must fail closed to the EMPTY InjuryTables (GTW-654)",
     );
 }

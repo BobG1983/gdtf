@@ -3,8 +3,9 @@
 //! every resolved resource exists.
 //!
 //! Wiring-only module: [`register_load`] does the registration; the transition
-//! gate lives in [`transition`] and the editor-owned tile-role fallback in
-//! [`fallback`].
+//! gate lives in [`transition`], the editor-owned tile-role fallback in
+//! [`fallback`], and the bespoke injuries pass (GTW-654 — one folder, two
+//! resources, off the generic seam by design) in [`injuries`].
 //!
 //! # One source, two hosts (GTW-579)
 //!
@@ -20,6 +21,12 @@
 //!   the SAME `gdtf_content_families` glue impls the game registers. Each
 //!   family's registry-build logic therefore has exactly ONE definition
 //!   workspace-wide (the seam's shared folder walk).
+//! - The BESPOKE injuries family (GTW-654) — one folder resolving into TWO
+//!   resources ([`InjuryRegistry`](gdtf_battle_sim::injuries::InjuryRegistry) +
+//!   [`InjuryTables`](gdtf_battle_sim::injuries::InjuryTables)), a declared
+//!   GTW-570 seam exclusion — registers through its own thin pass
+//!   ([`injuries`]), whose folder walk + salvage are the SAME
+//!   `gdtf_content_families::injuries` halves the game's Load resolve runs.
 //! - The SINGLE-ASSET chain — the presenter
 //!   [`TileRoles`](gdtf_battle_presenter::TileRoles) table — installs the
 //!   GTW-564 generic hot-RON chain from the chain OWNER's published config
@@ -61,10 +68,12 @@
 //!   so every branch gates on its OWN resource's absence and none starves
 //!   another.
 //! - **The transition gates on every resolved resource:** [`transition_to_editing`](transition::transition_to_editing) fires
-//!   only when ALL SEVEN resolved resources exist (the six folder registries +
-//!   the tile-role table; the game theme is not among them — GTW-625).
+//!   only when ALL NINE resolved resources exist (the six folder registries +
+//!   the injuries pair + the tile-role table; the game theme is not among
+//!   them — GTW-625).
 
 mod fallback;
+mod injuries;
 mod register;
 mod transition;
 

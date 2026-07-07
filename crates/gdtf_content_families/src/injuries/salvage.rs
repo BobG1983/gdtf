@@ -1,9 +1,9 @@
-//! The injuries branch's GTW-582 C4 **per-file salvage** halves — split out of
-//! the parent resolve so the two-asset-type begin/settle plumbing lives beside
-//! (not inside) the folder-state machine (file-cap discipline). The salvage
+//! The injuries family's GTW-582 C4 **per-file salvage** halves — the salvage
 //! MACHINERY itself is the ONE shared `gdtf_assets` seam; these two fns are
 //! only the injuries-shaped fold over it (one folder → two asset types → two
-//! resources, settled atomically).
+//! resources, settled atomically). Moved host-agnostic from the game's `Load`
+//! resolve in GTW-654 (the GTW-630 `validate` precedent) so the content
+//! editor's injuries pass salvages a broken folder IDENTICALLY.
 
 use bevy::{
     asset::{AssetServer, Assets},
@@ -16,24 +16,20 @@ use gdtf_assets::{
 use gdtf_battle_sim::injuries::{
     InjuryDef, InjuryName, InjuryRegistry, InjuryTables, InjuryWeighting,
 };
-// GTW-634 C4: the injuries folder + the two compound extensions come from their single
-// owning declarations (the bespoke-family layout vocabulary in `gdtf_content_families`),
-// so the salvage walk can never drift from the kick-off's folder or the registered loaders.
-use gdtf_content_families::injuries::{
-    INJURIES_FOLDER, INJURY_DEF_EXTENSION, INJURY_WEIGHTING_EXTENSION,
-};
 
 use super::{
-    audit_unweighted_injuries, build_tables, injury_key_from_stem, warn_on_subfolder_mismatch,
+    build::{audit_unweighted_injuries, build_tables},
+    keying::{injury_key_from_stem, warn_on_subfolder_mismatch},
+    layout::{INJURIES_FOLDER, INJURY_DEF_EXTENSION, INJURY_WEIGHTING_EXTENSION},
 };
 
-/// Settle the injuries branch's TWO per-file salvages (defs + weightings) —
+/// Settle the injuries family's TWO per-file salvages (defs + weightings) —
 /// when BOTH have settled, fold the loaded defs into the [`InjuryRegistry`],
 /// build the [`InjuryTables`] from the loaded weightings (the same
 /// `build_tables` + audit the folder path runs), report every malformed member
 /// (loudly), and insert both resources atomically. While EITHER salvage is
 /// still pending, nothing is published (the caller re-polls next frame).
-pub(super) fn settle_injuries_salvage(
+pub fn settle_injuries_salvage(
     commands: &mut Commands,
     asset_server: &AssetServer,
     injury_defs: &Assets<RonAsset<InjuryDef>>,
@@ -88,14 +84,14 @@ pub(super) fn settle_injuries_salvage(
     }
 }
 
-/// Begin the injuries branch's per-file salvage on a `Failed` folder walk
+/// Begin the injuries family's per-file salvage on a `Failed` folder walk
 /// (GTW-582 C4): one salvage per asset type over the SAME `content/injuries`
 /// tree. When at least one member file enumerates, both salvage resources are
 /// inserted (the settle above waits for both); a folder that cannot be
-/// enumerated at all still fails closed to the EMPTY resources, so `Load`
-/// always exits with both present (the roll then fails closed — no injury
+/// enumerated at all still fails closed to the EMPTY resources, so the host's
+/// load always exits with both present (the roll then fails closed — no injury
 /// rolled — rather than crashing).
-pub(super) fn begin_injuries_salvage(commands: &mut Commands, asset_server: &AssetServer) {
+pub fn begin_injuries_salvage(commands: &mut Commands, asset_server: &AssetServer) {
     let def_salvage =
         begin_ron_folder_salvage::<InjuryDef>(asset_server, INJURIES_FOLDER, INJURY_DEF_EXTENSION);
     let weighting_salvage = begin_ron_folder_salvage::<InjuryWeighting>(

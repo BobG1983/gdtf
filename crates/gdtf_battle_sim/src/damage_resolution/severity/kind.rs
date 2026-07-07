@@ -1,7 +1,7 @@
 //! The severity vocabulary — the [`Severity`] bucket ladder, the per-part
 //! [`PartSeverityMod`] escalation, and the [`bucket`] cutpoint mapping.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{armor::BodyPart, tuning::SeverityScaling};
 
@@ -11,8 +11,10 @@ use crate::{armor::BodyPart, tuning::SeverityScaling};
 /// edges `e0..e3` into one of these five outcomes. The ladder ascends from a
 /// harmless graze ([`None`](Severity::None)) to death
 /// ([`Fatal`](Severity::Fatal)); each non-`None` bucket costs the defender Wounds
-/// (the per-tier Wounds cost is a later E3 slice).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// (the per-tier Wounds cost is a later E3 slice). `Serialize` is added (GTW-654)
+/// so the content editor's INJURY authoring mode can write an edited def's
+/// `severity:` field back to disk (behavior-inert for the sim).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum Severity {
     /// A **graze** (`< e0`): HP loss only, **no Wound** is spent — the
     /// penetration-gated floor of the ladder.

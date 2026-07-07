@@ -20,7 +20,7 @@
 //! exhaustive, so a new variant without an arm is a build error, never a silent
 //! no-op or a denied panic).
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{
     ApplyBleeding, ApplyDisableHand, ApplyInjuryEffect, ApplyModify, ApplyMovementCostMul,
@@ -55,7 +55,12 @@ use crate::injuries::StatTarget;
 /// [`MovementCostMul`](InjuryEffect::MovementCostMul) payload is an `f32`
 /// ([`MovementCostFactor`]), which is not `Eq`. Tests compare effects with `matches!` /
 /// `==` (`PartialEq`), never as a `HashSet`/`BTreeSet` key.
-#[derive(Clone, Copy, PartialEq, Debug, Deserialize)]
+///
+/// Derives [`Serialize`] too (GTW-654): the content editor's INJURY authoring mode
+/// WRITES an edited def's effects list back to a `.injury.ron` through the shared
+/// RON save seam (the `ArmorSpec` / `GangRoster` write precedent) — behavior-inert
+/// for the sim.
+#[derive(Clone, Copy, PartialEq, Debug, Deserialize, Serialize)]
 pub enum InjuryEffect {
     /// Shift a stat by a signed [`StatDelta`] — a modifier-layer delta the projector
     /// re-sums every projection (so a `stat.tuning.ron` hot-reload re-applies it

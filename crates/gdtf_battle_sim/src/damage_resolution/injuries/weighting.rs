@@ -3,7 +3,7 @@
 //! per-bucket [`WeightedInjuryTable`].
 
 use bevy::{prelude::Deref, reflect::TypePath};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::InjuryName;
 use crate::armor::InjuryCategory;
@@ -15,8 +15,10 @@ use crate::armor::InjuryCategory;
 /// A no-bare-types newtype over `u32` (a weight is a domain value, not a bare
 /// integer; `u32` so a bucket's summed weights never overflow a realistic roll):
 /// private inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare RON
-/// number (`weight: 10`).
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
+/// number (`weight: 10`). `Serialize` is added (GTW-654) so the content editor's
+/// INJURY authoring mode can write an edited weighting file back to disk
+/// (behavior-inert for the sim).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct InjuryWeight(u32);
 
@@ -36,8 +38,10 @@ impl InjuryWeight {
 /// of a built [`WeightedInjuryTable`]. The [`injury`](WeightedInjuryEntry::injury)
 /// is the table-build KEY (an unknown key WARNs + is skipped at build, GTW-437), NOT
 /// the display name. Both fields are typed domain values; public fields (a
-/// value-object row).
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+/// value-object row). `Serialize` is added (GTW-654) so the content editor's INJURY
+/// authoring mode can write an edited weighting file back to disk (behavior-inert
+/// for the sim).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct WeightedInjuryEntry {
     /// The injury this row weights — the file-stem [`InjuryName`] key the loader
     /// resolves to an [`InjuryDef`](super::InjuryDef).
@@ -65,7 +69,13 @@ impl WeightedInjuryEntry {
 /// **sorting** entries, into the per-`(category, severity)` [`WeightedInjuryTable`]s —
 /// so the authored Vec order never affects the deterministic roll. THIS slice only
 /// names the schema. Public fields (a value-object record).
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, TypePath)]
+///
+/// Derives [`Serialize`] too (GTW-654): the content editor's INJURY authoring mode
+/// WRITES an edited weighting table back to a `.weighting.ron` through the shared
+/// RON save seam (the [`ArmorSpec`](crate::armor::ArmorSpec) / `GangRoster` write
+/// precedent), so the authoring struct serialises to exactly the shape it
+/// deserialises from.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TypePath)]
 pub struct InjuryWeighting {
     /// The injury-pool [`InjuryCategory`] this file weights (one weighting file per
     /// category — both arms / both legs share one, GTW-453).

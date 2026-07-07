@@ -21,8 +21,9 @@
 //! weapons→attachments, because it never loads the attachment items.
 //!
 //! Submodules by EDGE FAMILY (wiring only here; the game-bespoke edges —
-//! situation, prefabs, injuries — stay in the game's
-//! `states/load/systems/validate/`, the adopted GTW-630 split):
+//! situation, prefabs — stay in the game's `states/load/systems/validate/`,
+//! the adopted GTW-630 split; the injuries edge moved HERE in GTW-654 when the
+//! editor started loading the injuries family):
 //!
 //! - [`check_gang_equipment_refs`] — every roster member's equipment keys
 //!   (weapon / armor / melee, incl. the implicit `fists` default).
@@ -30,11 +31,15 @@
 //!   attachment keys.
 //! - [`check_theme_terrain_refs`] / [`check_emplacement_weapon_refs`] —
 //!   theme → terrain-def UUIDs and emplacement → mounted-weapon keys.
+//! - [`check_injury_weighting_refs`] — every weighting row's injury key
+//!   (GTW-654).
 
 mod attachments;
 mod gangs;
+mod injuries;
 mod terrain;
 
 pub use attachments::check_weapon_attachment_refs;
 pub use gangs::check_gang_equipment_refs;
+pub use injuries::check_injury_weighting_refs;
 pub use terrain::{check_emplacement_weapon_refs, check_theme_terrain_refs};

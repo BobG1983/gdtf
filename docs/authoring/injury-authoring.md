@@ -16,7 +16,7 @@ Injuries live under `assets/content/injuries/<CATEGORY>/`, where `CATEGORY` is o
 four pools that map to the body's broad anatomy. (Injuries are one of the two
 deliberately BESPOKE loaders — one folder, two asset types, two resources — so
 its folder/extension spellings are the one-owner consts in
-`crates/gdtf_content_families/src/injuries.rs`, GTW-634; see
+`crates/gdtf_content_families/src/injuries/layout.rs`, GTW-634; see
 [content-families.md](content-families.md) Parts 3–4.)
 
 | Category folder | Body parts that draw from it | Theme |

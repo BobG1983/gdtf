@@ -2,7 +2,12 @@
 //! routed display texts ([`PopupText`] / [`LogText`] / [`InspectText`]).
 
 use bevy::prelude::Deref;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+
+// Every newtype below also derives `Serialize` (GTW-654): the content editor's
+// INJURY authoring mode writes an edited `InjuryDef` / `InjuryWeighting` back to
+// disk through the shared RON save seam (the `ArmorSpec` / `GangRoster`
+// precedent), and these are their string leaves — behavior-inert for the sim.
 
 /// An injury's **name** — serving BOTH roles the schema needs: the human display
 /// label (the `name` field of an [`InjuryDef`](super::InjuryDef), e.g. `"Lost Eye"`,
@@ -19,7 +24,7 @@ use serde::Deserialize;
 /// RON string. [`Eq`] / [`Hash`] so it can key the GTW-437 injury registry, and
 /// [`Ord`] so the loader can canonically sort a bucket's weighting rows by key (making
 /// the cumulative-weight pick folder-enumeration-order-independent).
-#[derive(Deref, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
+#[derive(Deref, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct InjuryName(String);
 
@@ -39,7 +44,7 @@ impl InjuryName {
 /// coloured by severity. A newtype over [`String`]: private inner + derived
 /// [`Deref`]; `#[serde(transparent)]` parses a bare RON string. The presenter
 /// routing is GTW-439; THIS slice only carries the text.
-#[derive(Deref, Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Deref, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct PopupText(String);
 
@@ -57,7 +62,7 @@ impl PopupText {
 /// The second of three distinct display destinations: this one feeds the combat-log
 /// line classifier. A newtype over [`String`]: private inner + derived [`Deref`];
 /// `#[serde(transparent)]` parses a bare RON string.
-#[derive(Deref, Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Deref, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct LogText(String);
 
@@ -77,7 +82,7 @@ impl LogText {
 /// (the message drives the transient FCT/log flash, the ledger drives this
 /// persistent list). A newtype over [`String`]: private inner + derived [`Deref`];
 /// `#[serde(transparent)]` parses a bare RON string.
-#[derive(Deref, Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Deref, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct InspectText(String);
 

@@ -2,7 +2,7 @@
 //! [`PostHeal`] placeholder.
 
 use bevy::reflect::TypePath;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{InjuryEffect, InjuryName, InspectText, LogText, PopupText};
 use crate::{armor::InjuryCategory, severity::Severity};
@@ -27,8 +27,12 @@ use crate::{armor::InjuryCategory, severity::Severity};
 ///
 /// A pure value enum (no bare marker). [`Deserialize`] so the `.injury.ron`
 /// `post_heal:` field parses; defaults to [`Deferred`](PostHeal::Deferred) via
-/// [`deferred`](PostHeal::deferred) so floor files may omit it.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Deserialize)]
+/// [`deferred`](PostHeal::deferred) so floor files may omit it. `Serialize` is
+/// added (GTW-654) so the content editor's INJURY authoring mode can write an
+/// edited [`InjuryDef`] back to disk through the shared RON save seam (the
+/// [`ArmorSpec`](crate::armor::ArmorSpec) / `GangRoster` precedent) — behavior-inert
+/// for the sim.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Deserialize, Serialize)]
 pub enum PostHeal {
     /// Healing semantics are deferred to GTW-23 — the only live variant. Parsed,
     /// stored, and never read at runtime in GTW-405.
@@ -70,7 +74,12 @@ impl PostHeal {
 /// [`MovementCostMul`](super::InjuryEffect::MovementCostMul) whose `f32` payload is not
 /// `Eq`. The registry keys defs by [`InjuryName`] (a `String` newtype), never by the
 /// whole def, so no `Eq`/`Hash` on `InjuryDef` is needed.
-#[derive(Debug, Clone, PartialEq, Deserialize, TypePath)]
+///
+/// Derives [`Serialize`] too (GTW-654): the content editor's INJURY authoring mode
+/// WRITES an edited def back to a `.injury.ron` through the shared RON save seam
+/// (the [`ArmorSpec`](crate::armor::ArmorSpec) / `GangRoster` write precedent), so the
+/// authoring struct must serialise to exactly the shape it deserialises from.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, TypePath)]
 pub struct InjuryDef {
     /// The display name of the condition (e.g. `"Lost Eye"`) — the inspect-panel
     /// label.

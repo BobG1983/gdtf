@@ -4,7 +4,7 @@
 //! accumulator, and its refold-signalling heal.
 
 use bevy::prelude::Deref;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{ApplyInjuryEffect, HealError, LedgerAccumulators};
 
@@ -27,8 +27,10 @@ use super::{ApplyInjuryEffect, HealError, LedgerAccumulators};
 /// model keeps the `f32` and the `PartialEq`-only derive). The accumulated product folds
 /// through [`InflictedInjuries::movement_cost_factor`](crate::injuries::InflictedInjuries::movement_cost_factor),
 /// and the pathfinder + the committed walk both scale each per-step cost by it (the
-/// preview==charge consistency, GTW-444 C3).
-#[derive(Deref, Clone, Copy, PartialEq, Debug, Deserialize)]
+/// preview==charge consistency, GTW-444 C3). `Serialize` is added (GTW-654) so the
+/// content editor's INJURY authoring mode can write an edited effects list back to
+/// disk (behavior-inert for the sim).
+#[derive(Deref, Clone, Copy, PartialEq, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct MovementCostFactor(f32);
 

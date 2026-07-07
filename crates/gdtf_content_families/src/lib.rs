@@ -27,7 +27,7 @@
 //! reference checks of the GTW-582 unified dangling-reference contract
 //! (GTW-630) — the same one-crate seam logic, shared by both hosts.
 //!
-//! # The two bespoke families' layout vocabulary (GTW-634)
+//! # The two bespoke families (GTW-634 / GTW-654)
 //!
 //! The two declared GTW-570 seam EXCLUSIONS — [`prefabs`] (a nested
 //! `<theme>/<size>/` tree into a bucketed multimap) and [`injuries`] (one
@@ -35,8 +35,11 @@
 //! carry a `FOLDER` / `EXTENSION`, so their folder + extension consts are
 //! declared ONCE in the sibling [`prefabs`] / [`injuries`] modules here.
 //! Both hosts import them (the game's bespoke Load chain reads with them; the
-//! map editor's prefab saver writes with them), so a write-side spelling can
+//! map editor's savers write with them), so a write-side spelling can
 //! never drift from the loader's read (the GTW-621 gang-extension bug class).
+//! Since GTW-654 the [`injuries`] module ALSO hosts the family's host-agnostic
+//! folder-walk builder + per-file salvage fold (the GTW-630 `validate`
+//! precedent), shared by the game's Load resolve and the editor's Load pass.
 
 mod armor;
 mod attachments;

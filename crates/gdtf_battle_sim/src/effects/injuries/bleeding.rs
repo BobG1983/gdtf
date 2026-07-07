@@ -3,7 +3,7 @@
 //! per-turn drain onto the ledger's bleed total, and its exact inverse heal.
 
 use bevy::prelude::Deref;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{ApplyInjuryEffect, HealError, LedgerAccumulators};
 
@@ -15,8 +15,10 @@ use super::{ApplyInjuryEffect, HealError, LedgerAccumulators};
 /// [`Deref`]; `#[serde(transparent)]` parses a bare RON number (`amount: 1`). The
 /// accrued total widens to `u16` so stacked bleeds can never overflow — see
 /// [`BleedAfflicted`](crate::injuries::BleedAfflicted). Distinct from the Downed Wounds
-/// bleed-out: this drains HP and can down but never kill.
-#[derive(Deref, Clone, Copy, PartialEq, Eq, Debug, Deserialize)]
+/// bleed-out: this drains HP and can down but never kill. `Serialize` is added
+/// (GTW-654) so the content editor's INJURY authoring mode can write an edited
+/// effects list back to disk (behavior-inert for the sim).
+#[derive(Deref, Clone, Copy, PartialEq, Eq, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct BleedAmount(u8);
 

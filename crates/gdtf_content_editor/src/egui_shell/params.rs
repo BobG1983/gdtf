@@ -9,7 +9,10 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::{IsolateView, ViewMode};
 use gdtf_battle_sim::{
-    armor::ArmorRegistry, ganger::GangRegistry, tuning::GangerStatTuning,
+    armor::ArmorRegistry,
+    ganger::GangRegistry,
+    injuries::{InjuryRegistry, InjuryTables},
+    tuning::GangerStatTuning,
     weapon::MeleeWeaponRegistry,
 };
 
@@ -20,6 +23,7 @@ use crate::{
     egui_shell::prefab::level_rail::RailUiState,
     gang_form::GangDraft,
     hovered_cell::HoveredCell,
+    injury_form::{InjuryDraft, WeightingDraft},
     preview::{target::PreviewTarget, view::PreviewPan},
     tile_atlas::TileAtlas,
 };
@@ -89,4 +93,24 @@ pub(crate) struct ArmorParams<'w> {
     pub(super) draft:    Option<ResMut<'w, ArmorDraft>>,
     /// The loaded armor registry (the load `ComboBox` options + the one-shot autoload).
     pub(super) registry: Option<Res<'w, ArmorRegistry>>,
+}
+
+/// The INJURY-mode model borrows the shell threads into the INJURY panels (GTW-654) —
+/// the [`GangParams`] pattern. Every field is `Option` — the two drafts are
+/// state-scoped (bevy-traps #1) and the registry + built tables arrive with the
+/// `Load` pass — so the other modes tolerate their absence and INJURY mode no-ops
+/// until they exist.
+#[derive(bevy::ecs::system::SystemParam)]
+pub(crate) struct InjuryParams<'w> {
+    /// The editable injury-def working model (the def form writes it; the save
+    /// projects it).
+    pub(super) draft:     Option<ResMut<'w, InjuryDraft>>,
+    /// The editable weighting-table working model (the weighting section writes
+    /// it; its save projects it — GTW-654 C2).
+    pub(super) weighting: Option<ResMut<'w, WeightingDraft>>,
+    /// The loaded injury registry (the load `ComboBox` + the weighting rows'
+    /// injury-name combos + the one-shot autoload).
+    pub(super) registry:  Option<Res<'w, InjuryRegistry>>,
+    /// The built weighting tables (the context-table load source).
+    pub(super) tables:    Option<Res<'w, InjuryTables>>,
 }

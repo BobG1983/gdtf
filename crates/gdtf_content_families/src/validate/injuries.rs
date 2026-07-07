@@ -1,8 +1,11 @@
 //! GTW-582 C3(c): the **injury weightings'** reference edges — every weighting
 //! row's injury key. The build-time behavior is untouched (an unknown key is
-//! still `warn!`-skipped in `build_tables`, so the roll never crashes); this
+//! still `warn!`-skipped in the table build, so the roll never crashes); this
 //! check ALSO reports each dangling row through the unified pass, so the
-//! mistake lands on the ONE consolidated report.
+//! mistake lands on the ONE consolidated report. Moved host-agnostic from the
+//! game's `Load` validator in GTW-654 (the GTW-630 precedent): the content
+//! editor loads the injuries family now, so BOTH hosts register the SAME check
+//! and a dangling weighting key surfaces at authoring time too.
 
 use bevy::prelude::{Assets, Res, ResMut};
 use gdtf_assets::{
@@ -21,8 +24,10 @@ use gdtf_battle_sim::{
 ///
 /// The collection is `Option<Res<…>>`: it exists only when the RON loader
 /// registered (a real `AssetServer` app); a `MinimalPlugins` harness has no
-/// authored weightings to check, so the check no-ops (bevy-traps #1).
-pub(super) fn check_injury_weighting_refs(
+/// authored weightings to check, so the check no-ops (bevy-traps #1). The
+/// [`InjuryRegistry`] is plain `Res` by the host-window contract (see the
+/// [module doc](super)).
+pub fn check_injury_weighting_refs(
     weightings: Option<Res<Assets<RonAsset<InjuryWeighting>>>>,
     injuries: Res<InjuryRegistry>,
     mut report: ResMut<ContentIntegrityReport>,

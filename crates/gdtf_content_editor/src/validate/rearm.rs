@@ -9,14 +9,16 @@ use gdtf_assets::{ContentChecksComplete, ContentIntegrityReport, ContentValidati
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
     ganger::GangRegistry,
+    injuries::InjuryRegistry,
     level::UuidThemeRegistry,
     terrain::def::TerrainDefRegistry,
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
 
 /// The WATCH SET: every registry the editor's registered checks read (the
-/// [`register`](super::register) window's exact resource set — all six since
-/// the gang equipment edge joined in GTW-651), bundled into one
+/// [`register`](super::register) window's exact resource set — all seven since
+/// the gang equipment edge joined in GTW-651 and the injury-weighting edge in
+/// GTW-654), bundled into one
 /// `#[derive(SystemParam)]` (the load gate's `GateResources` pattern) so the
 /// re-arm system's signature stays legible as families accrue. Every field is
 /// `Option` — a registry arrives only once its seam resolve (or fallback)
@@ -35,6 +37,12 @@ pub(super) struct WatchedRegistries<'w> {
     terrain:       Option<Res<'w, TerrainDefRegistry>>,
     /// The UUID-keyed theme defs — the theme edge's referrer side.
     themes:        Option<Res<'w, UuidThemeRegistry>>,
+    /// The injury-def registry — read by the weighting edge (GTW-654). The
+    /// injuries redrive overwrites the registry AND the tables together on ANY
+    /// member edit (def OR weighting), so watching the registry alone re-arms
+    /// on both artifact kinds; the built `InjuryTables` is read by no check,
+    /// so per the seam invariant it is not watched.
+    injuries:      Option<Res<'w, InjuryRegistry>>,
 }
 
 impl WatchedRegistries<'_> {
@@ -51,6 +59,10 @@ impl WatchedRegistries<'_> {
             || self.gangs.as_ref().is_some_and(DetectChanges::is_changed)
             || self.terrain.as_ref().is_some_and(DetectChanges::is_changed)
             || self.themes.as_ref().is_some_and(DetectChanges::is_changed)
+            || self
+                .injuries
+                .as_ref()
+                .is_some_and(DetectChanges::is_changed)
     }
 }
 

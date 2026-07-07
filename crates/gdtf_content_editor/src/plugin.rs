@@ -40,6 +40,7 @@ use crate::{
     egui_shell::{editor_egui_ui, level_nav_hotkeys, view_mode_hotkey},
     gang_form::GangDraft,
     hovered_cell::HoveredCell,
+    injury_form::{InjuryDraft, WeightingDraft},
     load::register_load,
     mode::{EditorMode, mode_hotkeys},
     preview::{register_preview, view::PreviewPan},
@@ -102,7 +103,7 @@ impl Plugin for MapEditorPlugin {
             (spawn_editor_camera, load_tile_atlas),
         );
 
-        // GTW-575: the thirteen `Editing`-scoped MODEL resources register their whole
+        // GTW-575: the fifteen `Editing`-scoped MODEL resources register their whole
         // OnEnter-insert + OnExit-remove lifecycle through ONE
         // `init_state_scoped_resource` call each (bevy-traps #1 via the shared
         // `gdtf_state_scoped` seam) — same `OnEnter(Editing)` / `OnExit(Editing)`
@@ -137,6 +138,15 @@ impl Plugin for MapEditorPlugin {
         // open-with-an-armor autoload is still pending (the shell seeds it from the
         // resolved ArmorRegistry on the first Armor-mode frame — the Gang parity).
         app.init_state_scoped_resource(EditorState::Editing, ArmorDraft::default);
+        // The INJURY-mode def authoring draft (GTW-654), a pristine form whose
+        // one-shot open-with-an-injury autoload is still pending (the shell seeds it
+        // from the resolved InjuryRegistry on the first Injury-mode frame — the
+        // Gang/Armor parity).
+        app.init_state_scoped_resource(EditorState::Editing, InjuryDraft::default);
+        // The INJURY-mode weighting-table draft (GTW-654 C2), a pristine form whose
+        // one-shot open-with-a-table autoload is still pending (the shell seeds it
+        // from the resolved InjuryTables' first canonical category).
+        app.init_state_scoped_resource(EditorState::Editing, WeightingDraft::default);
         // GTW-512 C1.5: the hovered-cell model the live egui hover + the QA capture
         // write, seeded empty (nothing hovered).
         app.init_state_scoped_resource(EditorState::Editing, HoveredCell::new);

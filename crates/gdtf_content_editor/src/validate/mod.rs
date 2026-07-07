@@ -5,9 +5,11 @@
 //! ([`gdtf_content_families::validate`]) through the same seam
 //! ([`ContentValidationAppExt`](gdtf_assets::ContentValidationAppExt)), for
 //! exactly the edges over families the editor loads: theme → terrain-def
-//! UUIDs, emplacement → mounted-weapon keys, and — since the GTW-636 Gang
+//! UUIDs, emplacement → mounted-weapon keys, — since the GTW-636 Gang
 //! mode brought the gang + melee-weapon registries — the gang equipment edges
-//! (weapon / armor / melee keys incl. the implicit `fists` default, GTW-651).
+//! (weapon / armor / melee keys incl. the implicit `fists` default, GTW-651),
+//! and — since the GTW-654 Injury mode brought the injuries family — the
+//! weighting-row → injury-key edge.
 //! The one edge whose registry the editor never loads (weapons → attachments)
 //! is NOT registered — its window could never open, and a stand-in empty
 //! registry would false-fail every key.

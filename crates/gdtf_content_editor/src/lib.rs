@@ -81,6 +81,12 @@ mod egui_shell;
 mod gang_form;
 // GTW-512 C1.5: the hovered-cell model the live egui hover + the QA capture both write.
 mod hovered_cell;
+// GTW-654: the INJURY authoring mode of the Workbench — the forms that edit an injury
+// def (`<category>/<key>.injury.ron`, incl. the closed-palette effects list) and a
+// per-category weighting table (`weighting/<category>.weighting.ron`), saving both
+// where the bespoke GTW-437 injuries folder loader reads (the GTW-479 Armor
+// mode/form precedent).
+mod injury_form;
 mod load;
 // GTW-474: the Workbench mode machine (the EditorMode resource) — GTW-512 trimmed it to the enum +
 // the `1`/`2`/`3` hotkeys (the egui shell draws the tabs + branches the right panel in-UI).
@@ -160,6 +166,19 @@ pub use gang_form::{GangDraft, draft_to_roster, gang_file_name, gang_save_path_i
 #[cfg(debug_assertions)]
 pub use gang_form::{write_gang, write_gang_in};
 pub use hovered_cell::HoveredCell;
+// GTW-654: the INJURY-mode models + the pure save halves — exported so the round-trip
+// tests drive the REAL projections / path resolutions / writes (the TempDir round-trip
+// through the actual bespoke injuries loader) and the headless lifecycle test asserts
+// the scoped drafts (the GTW-636/GTW-479 export precedent).
+pub use injury_form::{
+    InjuryDraft, WeightingDraft, draft_to_def, draft_to_weighting, injury_file_name,
+    injury_save_path_in, weighting_file_name, weighting_save_path_in,
+};
+// The debug-only INJURY fs-write surface (the terrain/theme/gang/armor write
+// precedent): the `*_in` cores are root-parameterized for `TempDir` tests; the bare
+// wrappers are the production Save-button paths (WORKSPACE_ASSETS_ROOT).
+#[cfg(debug_assertions)]
+pub use injury_form::{write_injury, write_injury_in, write_weighting, write_weighting_in};
 // GTW-512: only the `EditorMode` enum survives the egui swap (the `bevy_ui` tab / content markers
 // are gone — the egui shell draws the tabs + branches the right panel in-UI).
 pub use mode::EditorMode;

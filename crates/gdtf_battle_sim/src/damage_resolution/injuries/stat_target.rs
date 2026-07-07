@@ -1,7 +1,7 @@
 //! The [`StatTarget`] discriminant — every stat an injury can modify — and its
 //! [`StatKind`] (attribute vs derived) split.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Every stat an injury can modify — BOTH the eight **direct attributes** AND the
 /// eight **derived stats** (`docs/combat/stats.md`, the GTW-384 two-layer model).
@@ -23,7 +23,9 @@ use serde::Deserialize;
 /// A pure value enum (no bare integer / string for the stat axis). Derives
 /// [`Hash`] / [`Eq`] so it can key the GTW-436 projector's per-stat lookups and
 /// [`Deserialize`] so an authored effect names it as a bare RON identifier.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Deserialize)]
+/// `Serialize` is added (GTW-654) so the content editor's INJURY authoring mode can
+/// write an edited effects list back to disk (behavior-inert for the sim).
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Deserialize, Serialize)]
 pub enum StatTarget {
     /// Quickness — drives the derived TU budget and Fight / Reactions terms.
     Speed,

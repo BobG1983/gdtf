@@ -46,19 +46,25 @@ pub enum EditorMode {
     /// and save it where the armor folder loader reads (GTW-479; the GTW-636 Gang
     /// mode/form precedent).
     Armor,
+    /// INJURY authoring — edit an injury def (`*.injury.ron`: severity / category /
+    /// texts / the effects list) and the per-category weighting tables
+    /// (`*.weighting.ron`), saving both where the bespoke injuries folder loader
+    /// reads (GTW-654; the GTW-479 Armor mode/form precedent).
+    Injury,
 }
 
 impl EditorMode {
     /// The mode-tab order, left to right — the order the egui shell renders the tabs and the index
     /// order [`from_tab_index`](EditorMode::from_tab_index) maps. THEME sits BETWEEN Terrain and
-    /// Prefab (GTW-475); GANG follows Prefab (GTW-636); ARMOR follows Gang (GTW-479):
-    /// `[TERRAIN | THEME | PREFAB | GANG | ARMOR]`.
-    pub const TAB_ORDER: [Self; 5] = [
+    /// Prefab (GTW-475); GANG follows Prefab (GTW-636); ARMOR follows Gang (GTW-479); INJURY
+    /// follows Armor (GTW-654): `[TERRAIN | THEME | PREFAB | GANG | ARMOR | INJURY]`.
+    pub const TAB_ORDER: [Self; 6] = [
         Self::Terrain,
         Self::Theme,
         Self::Prefab,
         Self::Gang,
         Self::Armor,
+        Self::Injury,
     ];
 
     /// The mode at top-bar tab `index`, or [`None`] if the index is out of range — the inverse of
@@ -86,18 +92,20 @@ impl EditorMode {
             Self::Prefab => "PREFAB",
             Self::Gang => "GANG",
             Self::Armor => "ARMOR",
+            Self::Injury => "INJURY",
         }
     }
 }
 
-/// `Update` (in `Editing`): number-key hotkeys set the [`EditorMode`] (the `1`–`5`
+/// `Update` (in `Editing`): number-key hotkeys set the [`EditorMode`] (the `1`–`6`
 /// mode hotkeys — `1`–`3` preserved across the egui swap, GTW-512 C1.3; `4` added with the
-/// GANG mode, GTW-636; `5` with the ARMOR mode, GTW-479).
+/// GANG mode, GTW-636; `5` with the ARMOR mode, GTW-479; `6` with the INJURY mode,
+/// GTW-654).
 ///
 /// `1` → [`Terrain`](EditorMode::Terrain), `2` → [`Theme`](EditorMode::Theme), `3` →
 /// [`Prefab`](EditorMode::Prefab), `4` → [`Gang`](EditorMode::Gang), `5` →
-/// [`Armor`](EditorMode::Armor) — the
-/// `[TERRAIN | THEME | PREFAB | GANG | ARMOR]` tab order. Writes with
+/// [`Armor`](EditorMode::Armor), `6` → [`Injury`](EditorMode::Injury) — the
+/// `[TERRAIN | THEME | PREFAB | GANG | ARMOR | INJURY]` tab order. Writes with
 /// [`set_if_neq`](DetectChangesMut::set_if_neq) so an unchanged key-press is a no-op. Guarded on the
 /// optional [`EditorMode`] (state-scoped — bevy-traps #1). UI-agnostic: the egui tabs and these keys
 /// both write the same resource, and the next-frame egui draw reflects the change.
@@ -115,6 +123,8 @@ pub(crate) fn mode_hotkeys(keys: Res<ButtonInput<KeyCode>>, mode: Option<ResMut<
         Some(EditorMode::Gang)
     } else if keys.just_pressed(KeyCode::Digit5) {
         Some(EditorMode::Armor)
+    } else if keys.just_pressed(KeyCode::Digit6) {
+        Some(EditorMode::Injury)
     } else {
         None
     };

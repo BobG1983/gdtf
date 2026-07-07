@@ -11,7 +11,7 @@
 //! ## GTW-513 C2.4: capture mode-force
 //!
 //! A second, optional env var — `GDTF_EDITOR_MODE` (`terrain` | `theme` | `prefab` | `gang` |
-//! `armor`, case-insensitive) — FORCES the [`EditorMode`](crate::EditorMode) before the settle /
+//! `armor` | `injury`, case-insensitive) — FORCES the [`EditorMode`](crate::EditorMode) before the settle /
 //! screenshot,
 //! so a QA run can capture a SPECIFIC Workbench mode (e.g. the TERRAIN form). It is honored ONLY
 //! when the capture affordance itself is enabled (`GDTF_EDITOR_SHOT` set); unset or an unrecognized

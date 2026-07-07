@@ -14,9 +14,13 @@ use gdtf_battle_sim::{
     injuries::{InjuryDef, InjuryRegistry, InjuryTables, InjuryWeighting},
     severity::Severity,
 };
-use gdtf_content_families::injuries::{INJURY_DEF_EXTENSION, INJURY_WEIGHTING_EXTENSION};
+// GTW-654: `build_injury_data` moved host-agnostic into the families glue crate
+// (the content editor runs the SAME builder); the redrive stays the game host's.
+use gdtf_content_families::injuries::{
+    INJURY_DEF_EXTENSION, INJURY_WEIGHTING_EXTENSION, build_injury_data,
+};
 
-use super::super::{build_injury_data, redrive_injuries_on_asset_event};
+use super::super::redrive_injuries_on_asset_event;
 
 /// Parse a sample-shaped `InjuryDef` from inline RON (the schema the loader reads),
 /// asserting it parses rather than a denied `unwrap`. The `category:` field names the
