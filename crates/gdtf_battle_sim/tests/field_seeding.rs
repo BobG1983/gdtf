@@ -31,13 +31,13 @@ use gdtf_battle_sim::{
     armor::ArmorType,
     effects::fields::{
         FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey, FieldRegistry,
-        FieldTurns, ImmuneArmorTypes,
+        ImmuneArmorTypes,
     },
     ganger::GangRegistry,
     metric::{Cell, CellLevel, Level},
     situation::{BattleRegistries, BattleSetupError, FieldSpawn, Situation, setup_battle},
     test_support::{
-        SituationBuilder, ganger_at, test_armor_registry, test_melee_weapon_registry,
+        SituationBuilder, field_turns, ganger_at, test_armor_registry, test_melee_weapon_registry,
         test_terrain_registry, test_weapon_registry,
     },
     tuning::{CombatTuning, GangerStatTuning},
@@ -250,7 +250,7 @@ fn turns_field_def_round_trips_through_ron() {
     if let Ok(def) = parsed {
         assert_eq!(
             def.duration,
-            FieldDuration::Turns(FieldTurns::new(3)),
+            FieldDuration::Turns(field_turns(3)),
             "the authored Turns duration round-trips",
         );
         assert!(

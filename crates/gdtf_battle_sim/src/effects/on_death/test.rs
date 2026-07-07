@@ -18,7 +18,7 @@ use crate::{
         dot::tick_dot,
         fields::{
             FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey, FieldRegistry,
-            FieldTurns, ImmuneArmorTypes, tick_fields,
+            ImmuneArmorTypes, tick_fields,
         },
         on_death::{
             CoverOnDeathRegistry, ExplodeDamage, OnDeath, OnDeathEffect, OnDeathOccurred,
@@ -28,7 +28,7 @@ use crate::{
     ganger::{Hp, LifeState, Position, Wounds},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
-    test_support::{GangerEntityBuilder, dot_turns, wield},
+    test_support::{GangerEntityBuilder, dot_turns, field_turns, wield},
     tuning::CombatTuning,
     weapon::{BlastRadius, DamageType, Dot, DotDamage, HitType, Weapon, WieldedBy},
 };
@@ -168,7 +168,7 @@ fn leave_field_spawns_the_referenced_field_at_the_death_cell() {
             FieldDamage::new(3),
             DamageType::Plasma,
             ImmuneArmorTypes::default(),
-            FieldDuration::Turns(FieldTurns::new(2)),
+            FieldDuration::Turns(field_turns(2)),
         ),
     );
     app.world_mut().insert_resource(defs);

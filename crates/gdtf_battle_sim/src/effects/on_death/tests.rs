@@ -18,11 +18,12 @@ use super::{ApplyOnDeathEffect, DeathFanOut, ExplodeDamage, OnDeathEffect, Victi
 use crate::{
     effects::fields::{
         FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey, FieldRegistry,
-        FieldTurns, ImmuneArmorTypes,
+        ImmuneArmorTypes,
     },
     ganger::{Hp, LifeState},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
+    test_support::field_turns,
     weapon::{BlastRadius, DamageType, HitType},
 };
 
@@ -79,7 +80,7 @@ fn enum_delegates_to_the_isolated_behaviour() {
             FieldDamage::new(3),
             DamageType::Plasma,
             ImmuneArmorTypes::default(),
-            FieldDuration::Turns(FieldTurns::new(2)),
+            FieldDuration::Turns(field_turns(2)),
         ),
     );
     let mut fields = FieldRegistry::new();

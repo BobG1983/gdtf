@@ -95,37 +95,41 @@ impl FieldDefRegistry {
 /// [`def`](PlacedField::def) it was placed from, plus the [`remaining`](PlacedField::remaining)
 /// turns for a [`FieldDuration::Turns`](crate::effects::fields::FieldDuration::Turns) field (a
 /// [`FieldDuration::Permanent`](crate::effects::fields::FieldDuration::Permanent) field carries
-/// no countdown and never expires). Cloned by value from the catalog def at placement, so it
-/// survives the catalog registry being dropped. Both lifetime steps (the countdown seed and
-/// the per-round expiry) are the GTW-553 palette's Duration consequence — invoked generically
-/// through [`ApplyFieldEffect`], never matched here.
+/// NO countdown — the explicit `None`, never a magic zero (GTW-659) — and never expires).
+/// Cloned by value from the catalog def at placement, so it survives the catalog registry
+/// being dropped. Both lifetime steps (the countdown seed and the per-round expiry) are the
+/// GTW-553 palette's Duration consequence — invoked generically through
+/// [`ApplyFieldEffect`], never matched here.
 ///
 /// A named value object (no bare fields): the def is the domain [`FieldDef`], the remaining
-/// count the domain [`FieldTurns`]. Not a [`Component`](bevy::prelude::Component) — a placed
-/// field is a registry entry keyed by cell, not an entity.
+/// count an `Option` of the domain [`FieldTurns`] (`Some` = a finite countdown, positive by
+/// construction — [`FieldTurns`] wraps a `NonZeroU8`; `None` = no countdown, the
+/// [`Option<DotProfile>`](crate::weapon::DotProfile) optional-domain-value precedent). Not a
+/// [`Component`](bevy::prelude::Component) — a placed field is a registry entry keyed by
+/// cell, not an entity.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlacedField {
     /// The immutable field definition this placement was made from.
     def:       FieldDef,
-    /// The remaining turns for a finite-lifetime field — decremented one per
+    /// The remaining turns for a finite-lifetime field — decremented-or-expired one per
     /// [`tick_fields`](super::tick_fields) round by the palette's Duration consequence;
-    /// ignored for a permanent field (which never expires).
-    remaining: FieldTurns,
+    /// `None` for a permanent field (no countdown — it never expires).
+    remaining: Option<FieldTurns>,
 }
 
 impl PlacedField {
     /// Place a field from its catalog [`FieldDef`] — the remaining countdown is SEEDED by
     /// the def's consequences, invoked generically through the GTW-553 palette (only the
-    /// lifetime consequence answers; every other consequence contributes the zero
-    /// default, so the fold's `max` picks the lifetime's seed — zero for a permanent
-    /// field, which never reads it).
+    /// lifetime consequence answers; every other consequence contributes the `None`
+    /// default, so the fold's `max` picks the lifetime's seed — `None < Some(_)` — and a
+    /// permanent field's placement carries the explicit no-countdown `None`, GTW-659).
     #[must_use]
     pub fn from_def(def: FieldDef) -> Self {
         let remaining = FieldEffect::consequences_of(&def)
             .iter()
             .map(ApplyFieldEffect::initial_countdown)
             .max()
-            .unwrap_or_default();
+            .flatten();
         Self { def, remaining }
     }
 
@@ -136,9 +140,10 @@ impl PlacedField {
         &self.def
     }
 
-    /// The remaining-turns countdown (meaningful only for a finite-lifetime field).
+    /// The remaining-turns countdown — `Some` for a finite-lifetime field (positive by
+    /// construction), `None` for a permanent one (no countdown; GTW-659).
     #[must_use]
-    pub const fn remaining(&self) -> FieldTurns {
+    pub const fn remaining(&self) -> Option<FieldTurns> {
         self.remaining
     }
 
@@ -210,10 +215,11 @@ impl FieldRegistry {
     /// Decrement every placed field's countdown one turn and REMOVE the ones that expired —
     /// the GTW-545 per-round lifetime step [`tick_fields`](super::tick_fields) runs after it
     /// drains occupants. A [`FieldDuration::Turns`](crate::effects::fields::FieldDuration::Turns)
-    /// field whose countdown reaches zero is removed; a
-    /// [`FieldDuration::Permanent`](crate::effects::fields::FieldDuration::Permanent) field
-    /// never counts down and never expires (each placement's step is the palette's Duration
-    /// consequence, via [`PlacedField::tick_down`]).
+    /// field whose countdown spends its LAST round is removed (decrement-or-expire — a
+    /// zero-valued countdown is never stored, GTW-659; `Turns(n)` = exactly `n` draining
+    /// rounds); a [`FieldDuration::Permanent`](crate::effects::fields::FieldDuration::Permanent)
+    /// field never counts down and never expires (each placement's step is the palette's
+    /// Duration consequence, via [`PlacedField::tick_down`]).
     pub fn tick_down_and_expire(&mut self) {
         self.0.retain(|_cell, placed| !placed.tick_down());
     }

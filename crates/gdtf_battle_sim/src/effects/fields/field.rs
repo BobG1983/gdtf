@@ -55,7 +55,7 @@ use crate::{
 /// Derives [`TypePath`] (render-free reflection metadata, no rendering) because the
 /// `RonAsset<FieldDef>` the folder loader wraps it in requires its payload to be [`TypePath`]
 /// — the same bound the [`Situation`](crate::situation::Situation) / armor spec satisfy.
-#[derive(Debug, Clone, PartialEq, Eq, Default, Deserialize, TypePath)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, TypePath)]
 pub struct FieldDef {
     /// The per-turn HP damage each tick deals (bypasses the matchup wheel).
     pub damage:             FieldDamage,

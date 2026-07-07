@@ -135,14 +135,14 @@ impl ApplyFieldEffect for FieldEffect {
     }
 
     /// The placement-time countdown seed, DELEGATED to the isolated behaviour type (only
-    /// [`ApplyDuration`] overrides the defaulted zero).
-    fn initial_countdown(&self) -> FieldTurns {
+    /// [`ApplyDuration`] overrides the defaulted `None` — GTW-659).
+    fn initial_countdown(&self) -> Option<FieldTurns> {
         self.with_behaviour(|behaviour| behaviour.initial_countdown())
     }
 
     /// The per-round lifetime step, DELEGATED to the isolated behaviour type (only
     /// [`ApplyDuration`] overrides the defaulted never-expires).
-    fn count_down_one_turn(&self, remaining: &mut FieldTurns) -> bool {
+    fn count_down_one_turn(&self, remaining: &mut Option<FieldTurns>) -> bool {
         self.with_behaviour(|behaviour| behaviour.count_down_one_turn(remaining))
     }
 }

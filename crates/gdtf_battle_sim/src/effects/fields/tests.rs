@@ -10,10 +10,10 @@
 //! lifetime maths. Per the brittle-test rule, assertions check the MAPPING + DIRECTION,
 //! never a shipped magnitude.
 
-use super::{
-    ApplyFieldEffect, FieldDamage, FieldDuration, FieldEffect, FieldTurns, ImmuneArmorTypes,
+use super::{ApplyFieldEffect, FieldDamage, FieldDuration, FieldEffect, ImmuneArmorTypes};
+use crate::{
+    armor::ArmorType, effects::fields::FieldDef, test_support::field_turns, weapon::DamageType,
 };
-use crate::{armor::ArmorType, effects::fields::FieldDef, weapon::DamageType};
 
 /// The closed [`FieldEffect`] vocabulary deserializes each variant from RON by name —
 /// payload newtypes as bare scalars / lists (the `#[serde(transparent)]` bridge).
@@ -63,7 +63,7 @@ fn consequences_of_mirrors_the_authored_def() {
         FieldDamage::new(4),
         DamageType::Shock,
         ImmuneArmorTypes::new([ArmorType::Plated]),
-        FieldDuration::Turns(FieldTurns::new(3)),
+        FieldDuration::Turns(field_turns(3)),
     );
     let consequences = FieldEffect::consequences_of(&def);
     assert_eq!(
@@ -76,7 +76,7 @@ fn consequences_of_mirrors_the_authored_def() {
             FieldEffect::Immunity {
                 armor_types: ImmuneArmorTypes::new([ArmorType::Plated]),
             },
-            FieldEffect::Duration(FieldDuration::Turns(FieldTurns::new(3))),
+            FieldEffect::Duration(FieldDuration::Turns(field_turns(3))),
         ],
         "the projection carries each authored payload into its consequence variant"
     );
@@ -89,20 +89,28 @@ fn consequences_of_mirrors_the_authored_def() {
 /// same `with_behaviour` match, exercised end-to-end by the `tick_fields` suite).
 #[test]
 fn the_enum_delegates_the_lifetime_verbs_to_the_isolated_behaviour() {
-    let finite = FieldEffect::Duration(FieldDuration::Turns(FieldTurns::new(2)));
+    let finite = FieldEffect::Duration(FieldDuration::Turns(field_turns(2)));
     let mut remaining = finite.initial_countdown();
-    assert_eq!(*remaining, 2, "the enum seeds the authored Turns count");
+    assert_eq!(
+        remaining,
+        Some(field_turns(2)),
+        "the enum seeds the authored Turns count"
+    );
     assert!(
         !finite.count_down_one_turn(&mut remaining),
         "2 → 1 through the enum: not yet expired"
     );
     assert!(
         finite.count_down_one_turn(&mut remaining),
-        "1 → 0 through the enum: expired"
+        "1 → expired through the enum: the last round expires the placement"
     );
 
     let permanent = FieldEffect::Duration(FieldDuration::Permanent);
     let mut forever = permanent.initial_countdown();
+    assert_eq!(
+        forever, None,
+        "Permanent through the enum carries no countdown"
+    );
     assert!(
         !permanent.count_down_one_turn(&mut forever),
         "Permanent through the enum never expires"
@@ -114,11 +122,15 @@ fn the_enum_delegates_the_lifetime_verbs_to_the_isolated_behaviour() {
         damage:      FieldDamage::new(1),
         damage_type: DamageType::Chem,
     };
-    assert_eq!(*drain.initial_countdown(), 0, "Drain seeds no countdown");
-    let mut untouched = FieldTurns::new(5);
+    assert_eq!(drain.initial_countdown(), None, "Drain seeds no countdown");
+    let mut untouched = Some(field_turns(5));
     assert!(
         !drain.count_down_one_turn(&mut untouched),
         "Drain never expires the field"
     );
-    assert_eq!(*untouched, 5, "Drain never touches the countdown");
+    assert_eq!(
+        untouched,
+        Some(field_turns(5)),
+        "Drain never touches the countdown"
+    );
 }

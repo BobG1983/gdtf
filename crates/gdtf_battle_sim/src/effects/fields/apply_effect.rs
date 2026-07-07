@@ -114,23 +114,26 @@ pub trait ApplyFieldEffect {
     ) {
     }
 
-    /// The **countdown this consequence seeds** at placement time — the remaining-turns
-    /// value a fresh [`PlacedField`](crate::effects::fields::PlacedField) starts from.
+    /// The **countdown this consequence seeds** at placement time — `Some` of the
+    /// remaining-turns value a fresh [`PlacedField`](crate::effects::fields::PlacedField)
+    /// starts from, or `None` for no countdown at all (GTW-659: "no countdown" is
+    /// explicit, never a magic zero — [`FieldTurns`] wraps a [`NonZeroU8`](std::num::NonZeroU8)).
     ///
-    /// Defaulted to zero so only the lifetime consequence overrides it (every other
+    /// Defaulted to `None` so only the lifetime consequence overrides it (every other
     /// consequence contributes nothing to the countdown).
-    fn initial_countdown(&self) -> FieldTurns {
-        FieldTurns::new(0)
+    fn initial_countdown(&self) -> Option<FieldTurns> {
+        None
     }
 
     /// **Count the placement's lifetime down one round**, mutating `remaining`, and
     /// report `true` iff the placement is now EXPIRED (and must be removed) — the
     /// per-round expiry step [`tick_down_and_expire`](crate::effects::fields::FieldRegistry::tick_down_and_expire)
-    /// drives after the round's drain.
+    /// drives after the round's drain. `remaining` is `None` for a placement with no
+    /// countdown (a Permanent field — GTW-659).
     ///
     /// Defaulted to `false` with `remaining` untouched, so only the lifetime consequence
     /// overrides it (a consequence with no lifetime opinion never expires the field).
-    fn count_down_one_turn(&self, _remaining: &mut FieldTurns) -> bool {
+    fn count_down_one_turn(&self, _remaining: &mut Option<FieldTurns>) -> bool {
         false
     }
 }
