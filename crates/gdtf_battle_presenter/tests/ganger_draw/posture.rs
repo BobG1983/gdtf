@@ -1,7 +1,7 @@
 //! Facing reframe + stance/aim retint on the same sprite; the facing-frame API
 //! surface.
 
-use bevy::{app::App, prelude::Entity, sprite::Sprite};
+use bevy::{app::App, prelude::Entity};
 use gdtf_battle_presenter::{FacingFrame, GangerSprites};
 use gdtf_battle_sim::{
     ganger::{Aiming, Facing},
@@ -33,18 +33,6 @@ fn set_aiming(app: &mut App, sim: Entity, aiming: bool) {
     if let Ok(mut a) = q.get_mut(app.world_mut(), sim) {
         *a = Aiming::new(aiming);
     }
-}
-
-/// The presenter sprite's atlas index (looked up through `GangerSprites`), or `None`.
-fn atlas_index_of_sim(app: &mut App, sim: Entity) -> Option<usize> {
-    let sprite = app
-        .world()
-        .get_resource::<GangerSprites>()
-        .and_then(|m| m.sprite_for(sim))?;
-    let mut q = app.world_mut().query::<&Sprite>();
-    q.get(app.world(), sprite)
-        .ok()
-        .and_then(|s| s.texture_atlas.as_ref().map(|a| a.index))
 }
 
 /// Reframe / re-tint (the contract's "asserted to match" clause, identical phrasing to

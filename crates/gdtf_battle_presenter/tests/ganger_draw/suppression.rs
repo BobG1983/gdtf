@@ -10,43 +10,6 @@ use gdtf_battle_sim::{
 
 use super::{harness::*, probes::*};
 
-/// Whether two sprite colors are the SAME colour within tolerance, compared on their linear
-/// RGB channels — so two `Color`s carrying the same colour compare equal despite a possibly
-/// different enum variant (the appearance classifier composes through the linear pipeline).
-/// `None` colors never match.
-fn same_color(a: Option<bevy::color::Color>, b: Option<bevy::color::Color>) -> bool {
-    match (a, b) {
-        (Some(a), Some(b)) => {
-            let (la, lb) = (a.to_linear(), b.to_linear());
-            (la.red - lb.red).abs() < 1.0e-4
-                && (la.green - lb.green).abs() < 1.0e-4
-                && (la.blue - lb.blue).abs() < 1.0e-4
-                && (la.alpha - lb.alpha).abs() < 1.0e-4
-        }
-        _ => false,
-    }
-}
-
-/// The saturation of a sprite color — the spread between its brightest and dimmest linear
-/// channel, normalized by the brightest, so a fully-grey swatch is `0.0` and a saturated one
-/// approaches `1.0`. Enough to assert the DESATURATION direction of the suppressed re-tint
-/// without pinning exact channel values. `None` colors (no sprite) sort to `0.0`.
-fn saturation(color: Option<bevy::color::Color>) -> f32 {
-    match color {
-        Some(c) => {
-            let lin = c.to_linear();
-            let max = lin.red.max(lin.green).max(lin.blue);
-            let min = lin.red.min(lin.green).min(lin.blue);
-            if max <= f32::EPSILON {
-                0.0
-            } else {
-                (max - min) / max
-            }
-        }
-        None => 0.0,
-    }
-}
-
 /// Insert `Suppressed` on sim ganger `sim` (the real APPLY transition — `Changed<Suppressed>`
 /// the appearance resolver keys on), anchored to `from` the way the sim producer does.
 fn suppress(app: &mut App, sim: Entity, from: CellLevel) {

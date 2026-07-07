@@ -21,6 +21,7 @@ mod harness;
 mod life_state;
 mod posture;
 mod probes;
+mod spawn_appearance;
 mod spawn_move;
 mod storeys;
 mod suppression;
