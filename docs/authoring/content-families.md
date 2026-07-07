@@ -54,8 +54,13 @@ The shipped families vary on ONE axis — where a member's key comes from:
 
 | Keying | Families | Key |
 |--------|----------|-----|
-| Stem-keyed | `WeaponsFamily`, `MeleeWeaponsFamily`, `ArmorFamily`, `FieldsFamily`, `GangsFamily`, `AttachmentsFamily` | File stem, infix stripped (`stub_pistol.weapon.ron` → `stub_pistol`) |
+| Stem-keyed | `WeaponsFamily`, `MeleeWeaponsFamily`, `ArmorFamily`, `FieldsFamily`, `GangsFamily`, `AttachmentsFamily`, `SpriteDefsFamily` | File stem, infix stripped (`stub_pistol.weapon.ron` → `stub_pistol`) |
 | Payload-keyed | `TerrainDefsFamily`, `ThemeDefsFamily` | The UUID inside the def; the filename is a courtesy |
+
+One placement exception: `SpriteDefsFamily` (GTW-663) is the one family whose
+`Spec`/`Registry` live IN the glue crate
+(`crates/gdtf_content_families/src/sprites/`) rather than the sim — sprite
+data is presentation-side, and the render-free sim cannot own it.
 
 ## Part 3 — Path spellings have ONE owner (GTW-621 / GTW-634)
 
@@ -98,7 +103,7 @@ file per chain, with a fallback so a bad file never strands `Load`.
   `FamilyLoadContract` wrapper — one file per family
   (`crates/gdtf_app/tests/load_weapons.rs`, `load_melee_weapons.rs`,
   `load_armor.rs`, `load_fields.rs`, `load_gangs.rs`, `load_attachments.rs`,
-  `load_terrain.rs`, `load_themes.rs`) pinning: the headless
+  `load_terrain.rs`, `load_themes.rs`, `load_sprites.rs`) pinning: the headless
   `MinimalPlugins` no-op + fallback seed, the Load→Intro gate on the registry,
   and the real-asset folder resolve with the shipped member stems
   (value-agnostic — presence, never magnitudes). A NEW family adds its own

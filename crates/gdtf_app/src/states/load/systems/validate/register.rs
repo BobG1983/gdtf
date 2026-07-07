@@ -17,9 +17,12 @@ use gdtf_battle_sim::{
     terrain::def::TerrainDefRegistry,
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
-use gdtf_content_families::validate::{
-    check_emplacement_weapon_refs, check_gang_equipment_refs, check_injury_weighting_refs,
-    check_theme_terrain_refs, check_weapon_attachment_refs,
+use gdtf_content_families::{
+    sprites::SpriteDefRegistry,
+    validate::{
+        check_emplacement_weapon_refs, check_gang_equipment_refs, check_injury_weighting_refs,
+        check_terrain_graphic_refs, check_theme_terrain_refs, check_weapon_attachment_refs,
+    },
 };
 
 use super::{prefabs, situation};
@@ -54,6 +57,8 @@ pub(super) struct ReferenceGraphResources<'w> {
     injuries:      Option<Res<'w, InjuryRegistry>>,
     /// The terrain defs (situation / theme / prefab refs).
     terrain:       Option<Res<'w, TerrainDefRegistry>>,
+    /// The sprite defs (terrain `graphic_name` refs — GTW-663).
+    sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
     /// The themes (situation / prefab refs).
     themes:        Option<Res<'w, UuidThemeRegistry>>,
     /// The prefab fragments (theme / terrain refs).
@@ -73,6 +78,7 @@ pub(super) const fn reference_graph_ready(graph: ReferenceGraphResources) -> boo
         && graph.fields.is_some()
         && graph.injuries.is_some()
         && graph.terrain.is_some()
+        && graph.sprite_defs.is_some()
         && graph.themes.is_some()
         && graph.prefabs.is_some()
 }
@@ -104,14 +110,15 @@ pub(in crate::states::load) fn add_content_validation(app: &mut App) {
         .register_reference_check(situation::check_situation_theme_ref)
         .register_reference_check(situation::check_situation_terrain_refs)
         .register_reference_check(situation::check_situation_field_refs)
-        // The five HOST-AGNOSTIC edge checks, shared with the content editor
+        // The six HOST-AGNOSTIC edge checks, shared with the content editor
         // via gdtf_content_families::validate (GTW-630; the injuries edge
         // joined the shared set in GTW-654 when the editor started loading
-        // the injuries family).
+        // the injuries family; the terrain graphic_name edge in GTW-663).
         .register_reference_check(check_gang_equipment_refs)
         .register_reference_check(check_weapon_attachment_refs)
         .register_reference_check(check_theme_terrain_refs)
         .register_reference_check(check_emplacement_weapon_refs)
         .register_reference_check(check_injury_weighting_refs)
+        .register_reference_check(check_terrain_graphic_refs)
         .register_reference_check(prefabs::check_prefab_refs);
 }

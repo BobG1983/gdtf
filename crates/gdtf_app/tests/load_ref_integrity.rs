@@ -237,6 +237,19 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
         ),
         "the emplacement's dangling mounted-weapon key must be reported; findings: {report:?}",
     );
+    // (12) terrain def → sprite def by graphic_name (the GTW-663 foreign-key
+    // edge; the fixture root materializes no content/sprites, so the authored
+    // `ghost_graphic` key resolves nothing in the fail-closed EMPTY registry).
+    assert!(
+        has_dangling(
+            &report,
+            "Ghost Tile",
+            "ghost_graphic",
+            "SpriteDefRegistry",
+            ReferenceKeyScheme::FileStem,
+        ),
+        "the terrain def's dangling graphic_name must be reported; findings: {report:?}",
+    );
     // The CLEAN placement ("Real Member" of fixture_gang) must NOT be reported —
     // the pass is discriminating, not noisy.
     assert!(

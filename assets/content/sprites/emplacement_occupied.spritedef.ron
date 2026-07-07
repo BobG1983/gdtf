@@ -1,0 +1,15 @@
+// GTW-663 seeded sprite def — `emplacement_occupied`, mechanically derived from the shipped role table
+// assets/sprites/tile_roles.spritedef.ron: role `emplacement_occupied` -> atlas index 347 on the 16-column,
+// 16px-cell terrain sheet (x = (347 % 16) * 16 = 176, y = (347 / 16) * 16 = 336). INERT data
+// until the GTW-665 renderer swap consumes the SpriteDefRegistry — the role table stays the
+// live draw path today; a load-time test pins this def against the table so they cannot drift.
+(
+    source: Sheet(
+        sheet: "sprites/alt_tileset_terrain.png",  // the presenter's terrain sheet (SheetRole::Terrain)
+        rect: (x: 176, y: 336, w: 16, h: 16),  // sheet col 11, row 21 — one 16x16 cell
+    ),
+    // The CURRENT implicit anchor, documented as such: the presenter draws each tile as a
+    // unit quad CENTERED on its cell's world position (static_draw.rs: Rectangle::from_size
+    // at cell_to_world), so the anchor is the sprite CENTER — (8, 8) of a 16x16 tile.
+    anchor: (x: 8, y: 8),
+)

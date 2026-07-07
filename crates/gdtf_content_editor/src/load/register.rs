@@ -1,11 +1,12 @@
-//! The `Load`-pass registrar — [`register_load`], the seven generic seam registrations plus the
+//! The `Load`-pass registrar — [`register_load`], the eight generic seam registrations plus the
 //! transition gate (extracted from the module wiring so `mod.rs` stays fn-free).
 
 use bevy::prelude::*;
 use gdtf_assets::{ContentFamilyAppExt, HotRonAppExt};
 use gdtf_battle_presenter::tile_roles_hot_ron_chain;
 use gdtf_content_families::{
-    ArmorFamily, GangsFamily, MeleeWeaponsFamily, TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily,
+    ArmorFamily, GangsFamily, MeleeWeaponsFamily, SpriteDefsFamily, TerrainDefsFamily,
+    ThemeDefsFamily, WeaponsFamily,
 };
 
 use crate::{
@@ -16,7 +17,7 @@ use crate::{
     },
 };
 
-/// Registers the editor's `Load` asset pass onto `app` — seven seam registrations,
+/// Registers the editor's `Load` asset pass onto `app` — eight seam registrations,
 /// the bespoke injuries pass (GTW-654), plus the transition gate (see the
 /// [module docs](super) for the seam-vs-policy split).
 ///
@@ -37,7 +38,7 @@ pub(crate) fn register_load(app: &mut App) {
     // reads no theme field (GTW-625 — the GTW-579 AC2 amendment).
     app.init_hot_ron_chain(tile_roles_hot_ron_chain().with_fallback(default_tile_roles));
 
-    // The six folder families (GTW-570 seam) — the SAME glue-crate family
+    // The seven folder families (GTW-570 seam) — the SAME glue-crate family
     // definitions the game registers, so game and editor build each registry
     // through literally one function. The terrain + theme defs share the ONE
     // MIXED `content/terrain/` tree; the seam's unconditional TypeId filter
@@ -53,6 +54,11 @@ pub(crate) fn register_load(app: &mut App) {
     // `melee_weapon` key (GTW-505), so the Gang mode's melee dropdown needs the
     // same family the game resolves that key against.
     app.register_content_family::<MeleeWeaponsFamily>();
+    // GTW-663: the sprite-defs registry — the catalog a terrain def's
+    // `graphic_name` foreign key resolves against, so the authoring-time
+    // validation pass (and the GTW-664 sprite mode) reads the same family the
+    // game loads.
+    app.register_content_family::<SpriteDefsFamily>();
 
     // GTW-654: the BESPOKE injuries family (one folder → the InjuryRegistry +
     // InjuryTables pair — a declared GTW-570 seam exclusion, so it registers

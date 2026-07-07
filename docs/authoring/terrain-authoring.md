@@ -129,9 +129,17 @@ intact slab regardless of the shot's band, `resolution.md` §2 — do not author
 `TerrainPresenterKind` (same file as `TerrainSimKind`) mirrors the sim kinds
 and carries ONLY presentation hooks; by the one-way sim→presenter dependency
 the presenter reads this half and never the sim half. Every variant carries a
-`graphic_name:` (`TerrainGraphicKey`, a bare string) — the graphic ROLE key the
-presenter resolves via `TileRoles` to an atlas tile; the sim never touches
-atlas indices. Only `Slab` adds an optional footfall:
+`graphic_name:` (`TerrainGraphicKey`, a bare string) — a **FOREIGN KEY by
+name into the sprite-def registry** (GTW-663 / the GTW-600 ruling): the key
+is the file stem of a `assets/content/sprites/<name>.spritedef.ron` member
+(see [sprite-defs.md](sprite-defs.md)), and the reference-integrity pass
+reports a `DanglingRef` finding — at the game's `Load` AND live in the editor
+— for a `graphic_name` that resolves no sprite def
+([reference-integrity.md](reference-integrity.md)). The RENDERER today still
+resolves the same key through the legacy `TileRoles` role table to an atlas
+tile (the seeded sprite defs mirror that table until the GTW-665 renderer
+swap); the sim never touches atlas indices either way. Only `Slab` adds an
+optional footfall:
 
 | `presenter_kind:` variant | Fields |
 |---------------------------|--------|

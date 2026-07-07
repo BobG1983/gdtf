@@ -14,37 +14,60 @@ use gdtf_battle_sim::{
     terrain::def::TerrainDefRegistry,
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
-use gdtf_content_families::validate::{
-    check_emplacement_weapon_refs, check_gang_equipment_refs, check_injury_weighting_refs,
-    check_theme_terrain_refs,
+use gdtf_content_families::{
+    sprites::SpriteDefRegistry,
+    validate::{
+        check_emplacement_weapon_refs, check_gang_equipment_refs, check_injury_weighting_refs,
+        check_terrain_graphic_refs, check_theme_terrain_refs,
+    },
 };
 
 use super::rearm::rearm_validation_on_content_change;
 
+/// Presence-probes over every registry the editor's REGISTERED checks read —
+/// bundled into one [`SystemParam`](bevy::ecs::system::SystemParam) (the
+/// game registrar's `ReferenceGraphResources` pattern) so the
+/// [`validation_graph_ready`] window condition stays under clippy's
+/// argument-count gate as families accrue.
+#[derive(bevy::ecs::system::SystemParam)]
+pub(super) struct ValidationGraphResources<'w> {
+    /// The ranged weapons (gang + emplacement edge reads).
+    weapons:       Option<Res<'w, WeaponRegistry>>,
+    /// The melee weapons (gang edge reads).
+    melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
+    /// The armor (gang edge reads).
+    armor:         Option<Res<'w, ArmorRegistry>>,
+    /// The gang rosters (the gang edge's referrer side).
+    gangs:         Option<Res<'w, GangRegistry>>,
+    /// The terrain defs (theme/emplacement edge reads + the `graphic_name`
+    /// edge's referrer side).
+    terrain:       Option<Res<'w, TerrainDefRegistry>>,
+    /// The theme defs (the theme edge's referrer side).
+    themes:        Option<Res<'w, UuidThemeRegistry>>,
+    /// The injury defs (weighting edge reads).
+    injuries:      Option<Res<'w, InjuryRegistry>>,
+    /// The sprite defs (`graphic_name` edge reads — GTW-663).
+    sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
+}
+
 /// The editor's validation WINDOW condition: every registry the editor's
 /// REGISTERED checks read is present. Since the gang equipment edge joined
-/// (GTW-651) and the injuries edge followed (GTW-654) that is ALL SEVEN
-/// editor-loaded check-read registries — weapons + melee weapons + armor +
-/// gangs (the gang edge's reads) plus terrain defs + theme defs (the
-/// theme/emplacement edges') plus the injury defs (the weighting edge's) —
-/// each inserted on its load's success OR its fail-closed empty fallback, so
-/// this always eventually opens.
-pub(super) const fn validation_graph_ready(
-    weapons: Option<Res<WeaponRegistry>>,
-    melee_weapons: Option<Res<MeleeWeaponRegistry>>,
-    armor: Option<Res<ArmorRegistry>>,
-    gangs: Option<Res<GangRegistry>>,
-    terrain: Option<Res<TerrainDefRegistry>>,
-    themes: Option<Res<UuidThemeRegistry>>,
-    injuries: Option<Res<InjuryRegistry>>,
-) -> bool {
-    weapons.is_some()
-        && melee_weapons.is_some()
-        && armor.is_some()
-        && gangs.is_some()
-        && terrain.is_some()
-        && themes.is_some()
-        && injuries.is_some()
+/// (GTW-651), the injuries edge followed (GTW-654), and the terrain
+/// `graphic_name` edge joined (GTW-663) that is ALL EIGHT editor-loaded
+/// check-read registries — weapons + melee weapons + armor + gangs (the gang
+/// edge's reads) plus terrain defs + theme defs (the theme/emplacement
+/// edges') plus the injury defs (the weighting edge's) plus the sprite defs
+/// (the `graphic_name` edge's) — each inserted on its load's success OR its
+/// fail-closed empty fallback, so this always eventually opens.
+pub(super) const fn validation_graph_ready(graph: ValidationGraphResources) -> bool {
+    graph.weapons.is_some()
+        && graph.melee_weapons.is_some()
+        && graph.armor.is_some()
+        && graph.gangs.is_some()
+        && graph.terrain.is_some()
+        && graph.themes.is_some()
+        && graph.injuries.is_some()
+        && graph.sprite_defs.is_some()
 }
 
 /// Install the reference-integrity pass on the editor: the seam plumbing
@@ -68,13 +91,15 @@ pub(crate) fn register_validation(app: &mut App) {
         ContentValidationSet::Check
             .run_if(not(resource_exists::<ContentChecksComplete>).and_then(validation_graph_ready)),
     );
-    // The four host-agnostic edge checks over families the editor loads — the
+    // The five host-agnostic edge checks over families the editor loads — the
     // SAME systems the game registers (gdtf_content_families::validate). The
     // gang equipment edge joined with the GTW-636 Gang mode's registries
-    // (GTW-651); the injury-weighting edge with the GTW-654 Injury mode's.
+    // (GTW-651); the injury-weighting edge with the GTW-654 Injury mode's;
+    // the terrain graphic_name edge with the GTW-663 sprite-defs family.
     app.register_reference_check(check_theme_terrain_refs)
         .register_reference_check(check_emplacement_weapon_refs)
         .register_reference_check(check_gang_equipment_refs)
-        .register_reference_check(check_injury_weighting_refs);
+        .register_reference_check(check_injury_weighting_refs)
+        .register_reference_check(check_terrain_graphic_refs);
     app.add_systems(Update, rearm_validation_on_content_change);
 }

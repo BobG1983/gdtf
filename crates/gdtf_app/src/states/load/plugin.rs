@@ -15,9 +15,10 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_families::{
     ArmorFamily, AttachmentsFamily, FieldsFamily, GangsFamily, MeleeWeaponsFamily,
-    TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily,
+    SpriteDefsFamily, TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily,
     injuries::{INJURY_DEF_EXTENSION, INJURY_WEIGHTING_EXTENSION},
     prefabs::PREFAB_EXTENSION,
+    sprites::SpriteDefRegistry,
 };
 use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 
@@ -185,6 +186,12 @@ impl Plugin for LoadScenePlugin {
         // extension (files are `assets/content/attachments/*.attachment.ron`), so the
         // bespoke loader registration + kick-off / resolve / redrive chain is gone.
         app.register_content_family::<AttachmentsFamily>();
+        // GTW-663: the per-file sprite defs (`content/sprites/*.spritedef.ron`) — the
+        // catalog a terrain def's `graphic_name` foreign key resolves against. The
+        // dedicated `spritedef.ron` extension is claimed by no other loader (the OLD
+        // same-suffixed role tables under `sprites/` are single-file TYPED loads,
+        // untouched — GTW-665 supersedes them).
+        app.register_content_family::<SpriteDefsFamily>();
         add_systems(app);
     }
 }
@@ -292,6 +299,10 @@ fn add_systems(app: &mut App) {
                     // the GTW-491/492/493 consumers read them.
                     .and_then(resource_exists::<TerrainDefRegistry>)
                     .and_then(resource_exists::<UuidThemeRegistry>)
+                    // GTW-663: the SpriteDefRegistry must be present before Load exits, so
+                    // the `content/sprites/` catalog is verified loaded before the
+                    // graphic_name integrity edge (and, from GTW-665, the renderer) reads it.
+                    .and_then(resource_exists::<SpriteDefRegistry>)
                     // GTW-582: the unified reference-integrity pass must have PUBLISHED its
                     // consolidated report before Load exits — the pass's done-marker is the
                     // explicit ordering that puts validation strictly before this transition.

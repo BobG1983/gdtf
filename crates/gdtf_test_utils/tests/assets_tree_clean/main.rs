@@ -5,12 +5,16 @@
 //! through a real save path) is caught LOUDLY instead of silently corrupting
 //! authored work and dirtying the land train.
 //!
-//! Two git reads, both of which must come back empty:
+//! Two git reads, both of which must come back empty of UNSTAGED dirt:
 //!
-//! - `git status --porcelain -- assets/` — worktree + index changes and
-//!   untracked files under `assets/`;
-//! - `git diff HEAD --stat -- assets/` — the stronger HEAD-relative diff,
-//!   catching staged-over dirt from a prior run.
+//! - `git status --porcelain -- assets/` — filtered to untracked (`??`) and
+//!   worktree-column-dirty entries; STAGED-only entries (index column set,
+//!   worktree column clean) are deliberate author/orchestrator intent en
+//!   route to a gated commit and PASS (GTW-668 — tests never run `git add`,
+//!   and counting staged content as dirt blocked the very commit that would
+//!   legitimize new authored assets: the hook runs this guard pre-commit);
+//! - `git diff --stat -- assets/` — the worktree-vs-index diff, i.e. UNSTAGED
+//!   modifications to tracked files.
 //!
 //! HONEST SEMANTICS: cargo schedules tests in parallel, so this guard catches
 //! PERSISTENT mutations — the observed incident class, where the dirt survived
@@ -18,10 +22,11 @@
 //! isolation (every write-path test rooted in a `TempDir`, the GTW-555/636
 //! pattern) is the GTW-653 C1 audit's job, not this guard's.
 //!
-//! A developer's own uncommitted `assets/` edits WILL trip this guard during
+//! A developer's own UNSTAGED `assets/` edits WILL trip this guard during
 //! local dev — that is BY DESIGN for the gate/CI context (the guard is about
 //! TESTS mutating authored content, not about authors authoring). The escape:
-//! commit or stash your authored-content edits before running the suite.
+//! stage (`git add`) or stash your authored-content edits before running the
+//! suite.
 //!
 //! Reads git state only — no cargo invocations, no writes. Outside a git
 //! checkout (no `git` binary / not a work tree) there is no baseline to

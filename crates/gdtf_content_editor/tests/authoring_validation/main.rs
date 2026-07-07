@@ -13,7 +13,8 @@
 //!
 //! Submodules: [`harness`] (the fixture-root editor app + publish driver +
 //! report probes), [`theme`] (the GTW-630 theme→terrain pins), [`gangs`] (the
-//! GTW-651 gang-equipment pins), [`save_rearm`] (the GTW-651 save-path →
+//! GTW-651 gang-equipment pins), [`sprites`] (the GTW-663 terrain
+//! `graphic_name` → sprite-def pin), [`save_rearm`] (the GTW-651 save-path →
 //! reload → re-arm loop), [`armor_save`] (the GTW-479 armor save-path →
 //! reload → re-arm loop over the gang-equipment armor edge), [`injuries_save`]
 //! (the GTW-654 weighting save-path → reload → re-arm loop over the
@@ -24,4 +25,5 @@ mod gangs;
 mod harness;
 mod injuries_save;
 mod save_rearm;
+mod sprites;
 mod theme;

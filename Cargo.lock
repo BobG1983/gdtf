@@ -2904,6 +2904,8 @@ dependencies = [
  "bevy",
  "gdtf_assets",
  "gdtf_battle_sim",
+ "ron",
+ "serde",
 ]
 
 [[package]]

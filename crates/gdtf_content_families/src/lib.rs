@@ -14,14 +14,18 @@
 //! (see [`ContentFamilyAppExt`](gdtf_assets::ContentFamilyAppExt)) — and the
 //! generic chain does the rest.
 //!
-//! # The eight shipped families
+//! # The nine shipped families
 //!
 //! Stem-keyed (key = file stem with the dedicated infix stripped):
 //! [`WeaponsFamily`], [`MeleeWeaponsFamily`], [`ArmorFamily`],
-//! [`FieldsFamily`], [`GangsFamily`], [`AttachmentsFamily`]. Payload-keyed
-//! (key = the UUID inside the def; the terrain tree is a MIXED folder both
-//! walk with the unconditional `TypeId` filter): [`TerrainDefsFamily`],
-//! [`ThemeDefsFamily`].
+//! [`FieldsFamily`], [`GangsFamily`], [`AttachmentsFamily`],
+//! [`SpriteDefsFamily`]. Payload-keyed (key = the UUID inside the def; the
+//! terrain tree is a MIXED folder both walk with the unconditional `TypeId`
+//! filter): [`TerrainDefsFamily`], [`ThemeDefsFamily`].
+//!
+//! The [`sprites`] family (GTW-663) is the one family whose `Spec`/`Registry`
+//! live IN this crate rather than the sim: the sprite-def model is
+//! PRESENTATION data the render-free sim cannot own (see the module doc).
 //!
 //! Beside the family impls, [`validate`] hosts the HOST-AGNOSTIC per-edge
 //! reference checks of the GTW-582 unified dangling-reference contract
@@ -48,6 +52,7 @@ mod gangs;
 pub mod injuries;
 mod melee_weapons;
 pub mod prefabs;
+pub mod sprites;
 mod terrain_defs;
 mod theme_defs;
 pub mod validate;
@@ -58,6 +63,7 @@ pub use attachments::AttachmentsFamily;
 pub use fields::FieldsFamily;
 pub use gangs::GangsFamily;
 pub use melee_weapons::MeleeWeaponsFamily;
+pub use sprites::SpriteDefsFamily;
 pub use terrain_defs::TerrainDefsFamily;
 pub use theme_defs::ThemeDefsFamily;
 pub use weapons::WeaponsFamily;

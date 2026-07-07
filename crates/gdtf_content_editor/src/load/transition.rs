@@ -11,6 +11,7 @@ use gdtf_battle_sim::{
     terrain::def::TerrainDefRegistry,
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
+use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use crate::EditorState;
 
@@ -18,7 +19,8 @@ use crate::EditorState;
 /// [`WeaponRegistry`] / [`ArmorRegistry`], the (GTW-487) NEW [`TerrainDefRegistry`] /
 /// [`UuidThemeRegistry`], the (GTW-636) GANG mode's [`GangRegistry`] /
 /// [`MeleeWeaponRegistry`], the (GTW-654) INJURY mode's [`InjuryRegistry`] /
-/// [`InjuryTables`] pair, and the (GTW-495) [`TileRoles`] are all inserted (each seam
+/// [`InjuryTables`] pair, the (GTW-663) [`SpriteDefRegistry`], and the (GTW-495)
+/// [`TileRoles`] are all inserted (each seam
 /// resolve inserts its resource on success OR on its const-default / empty failure fallback —
 /// GTW-579 C4b — so this is reached even on a bad asset folder: the no-strand guarantee).
 /// The game's `GdtfTheme` is NOT gated on — the egui shell styles itself, so the editor
@@ -31,7 +33,7 @@ pub(crate) fn transition_to_editing(gate: GateResources, mut next: ResMut<NextSt
     }
 }
 
-/// The nine resolved-resource borrows the transition gates on, bundled into one
+/// The ten resolved-resource borrows the transition gates on, bundled into one
 /// `#[derive(SystemParam)]` (the shell's `PrefabParams` pattern) so the gate system's
 /// signature stays legible as families accrue. Every field is `Option` — each resource
 /// arrives only once its seam resolve (or fallback) fires (bevy-traps #1).
@@ -54,6 +56,8 @@ pub(crate) struct GateResources<'w> {
     /// The built injury weighting tables (the injuries pass's second resource —
     /// GTW-654; both are published atomically by the shared builder).
     injury_tables: Option<Res<'w, InjuryTables>>,
+    /// The sprite-def registry (`SpriteDefsFamily` — GTW-663).
+    sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
     /// The presenter tile-role table (the GTW-564 hot-RON chain — GTW-495).
     tile_roles:    Option<Res<'w, TileRoles>>,
 }
@@ -69,6 +73,7 @@ impl GateResources<'_> {
             && self.melee_weapons.is_some()
             && self.injuries.is_some()
             && self.injury_tables.is_some()
+            && self.sprite_defs.is_some()
             && self.tile_roles.is_some()
     }
 }

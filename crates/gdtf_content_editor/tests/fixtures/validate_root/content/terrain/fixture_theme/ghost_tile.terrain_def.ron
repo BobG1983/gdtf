@@ -1,0 +1,20 @@
+// GTW-663 fixture terrain def — a registry-PRESENT def whose presenter-half `graphic_name`
+// names a sprite def this root never defines (the root materializes no content/sprites/ at
+// all, so the SpriteDefRegistry fails closed EMPTY), so the terrain→sprite-def edge dangles
+// ON PURPOSE (NOT shipped content; loaded only by tests/authoring_validation/ — the
+// editor-side authoring-time validation pins). Structural magnitudes are arbitrary
+// schema-valid values.
+(
+    key: "00000000-0000-0000-0000-0663000000a1",  // this def IS in the registry
+    display_name: "Ghost Tile",
+    sim_kind: Cover(
+        hp:               10,   // arbitrary schema-valid structural stats
+        armor_protection: 0,
+        armor_hardness:   0,
+        height_band:      Low,
+    ),
+    presenter_kind: Cover(
+        graphic_name: "ghost_graphic",  // DANGLING sprite-def key — no ghost_graphic.spritedef.ron
+    ),
+    tags: [],
+)

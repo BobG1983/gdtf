@@ -19,6 +19,16 @@ bevy = { workspace = true }
 gdtf_assets = { path = "../gdtf_assets" }
 # The authoritative sim owns every family's Spec + Registry domain types.
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
+# The sprite-defs family (GTW-663) is the one family whose Spec + Registry live
+# IN this crate (presentation data — the render-free sim cannot own it, and the
+# presenter must not be a dependency of this glue crate), so its spec types
+# derive serde here. Already in the transitive closure via both deps above.
+serde = { workspace = true }
+
+[dev-dependencies]
+# The in-crate sprite-def schema pins (`sprites/test/parse.rs`) parse/emit RON
+# directly (`ron::de::from_str` / `ron::ser::to_string`) — test-only.
+ron = { workspace = true }
 
 [lints]
 workspace = true
