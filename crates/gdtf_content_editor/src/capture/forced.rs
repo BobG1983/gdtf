@@ -14,8 +14,8 @@ pub(super) struct ForcedMode(EditorMode);
 
 impl ForcedMode {
     /// Parse a `GDTF_EDITOR_MODE` value (case-insensitive `terrain` | `theme` | `prefab` |
-    /// `gang` | `armor` | `injury`) into a forced mode, or [`None`] for an unset / unrecognized
-    /// value (the capture keeps the editor's default mode).
+    /// `gang` | `armor` | `injury` | `sprite`) into a forced mode, or [`None`] for an unset /
+    /// unrecognized value (the capture keeps the editor's default mode).
     pub(super) fn from_env_value(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
             "terrain" => Some(Self(EditorMode::Terrain)),
@@ -24,6 +24,7 @@ impl ForcedMode {
             "gang" => Some(Self(EditorMode::Gang)),
             "armor" => Some(Self(EditorMode::Armor)),
             "injury" => Some(Self(EditorMode::Injury)),
+            "sprite" => Some(Self(EditorMode::Sprite)),
             _ => None,
         }
     }

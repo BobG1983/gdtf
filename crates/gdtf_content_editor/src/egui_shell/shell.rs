@@ -28,6 +28,10 @@
 //! theme `ComboBox` folds a selection into the [`MapEditorSession`] exactly as the old
 //! `apply_theme_selection` did (it resolves the chosen theme's default-floor from the registry and
 //! calls [`MapEditorSession::select_theme`]).
+//!
+//! Since GTW-664 the per-mode MODEL borrows stay inside their `params` bundles (direct field
+//! access, no unpack block) — the bundles grow when a mode's model surface does, the shell only
+//! when the PANEL layout does.
 
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
@@ -39,12 +43,15 @@ use gdtf_battle_sim::{
 use crate::{
     egui_shell::{
         armor_form_ui,
-        autoload::{armor_form_sync, gang_form_sync, injury_form_sync, theme_form_sync},
+        autoload::{
+            armor_form_sync, gang_form_sync, injury_form_sync, sprite_form_sync, theme_form_sync,
+        },
         chrome::{mode_tabs, status_line, theme_combo_box},
         gang_form_ui, injury_form_ui,
-        params::{ArmorParams, GangParams, InjuryParams, PrefabParams},
+        params::{ArmorParams, GangParams, InjuryParams, PrefabParams, SpriteParams},
         prefab::{controls_ui, palette_ui, viewport_ui, viewport_ui::ViewportCtx},
-        terrain_form_ui,
+        sprite_form_ui, terrain_form_ui,
+        textures::resolve_panel_textures,
         theme_combo::theme_options,
         theme_form_ui,
     },
@@ -72,16 +79,16 @@ use crate::{
     clippy::too_many_arguments,
     reason = "the whole-editor egui system draws ALL panels in one pass (the EguiPrimaryContextPass \
               requirement — bevy-traps #8); each param is a distinct Bevy SystemParam (the egui \
-              context, the state-scoped mutable drafts + mode + session + the PREFAB model borrows \
-              — map / edit-level / hovered / zoom / pan — and the read-only registries + tile atlas \
-              + preview target); Bevy's injection model cannot reduce this without a wrapper \
-              resource that changes the crate's API surface"
+              context, the state-scoped mutable drafts + mode + session, the per-mode model \
+              bundles — prefab / gang / armor / injury / sprite — and the read-only registries); \
+              Bevy's injection model cannot reduce this without a wrapper resource that changes \
+              the crate's API surface"
 )]
 #[expect(
     clippy::too_many_lines,
     reason = "egui panels CANNOT overlap and MUST be declared in one system, outermost-first with \
               the central panel last (bevy-traps #8) — the whole editor shell (top/bottom/left/ \
-              right/central, each branching over the three Workbench modes) is one indivisible \
+              right/central, each branching over the Workbench modes) is one indivisible \
               EguiPrimaryContextPass system; the per-mode DRAW bodies are already factored into the \
               mode-specific `*_form_ui` / `prefab` modules, so what remains here is the irreducible \
               panel-declaration skeleton"
@@ -97,64 +104,47 @@ pub(crate) fn editor_egui_ui(
     terrain_registry: Option<Res<TerrainDefRegistry>>,
     roles: Option<Res<TileRoles>>,
     weapons: Option<Res<WeaponRegistry>>,
-    prefab: PrefabParams,
-    gang: GangParams,
-    armor_mode: ArmorParams,
-    injury_mode: InjuryParams,
+    mut prefab: PrefabParams,
+    mut gang: GangParams,
+    mut armor_mode: ArmorParams,
+    mut injury_mode: InjuryParams,
+    mut sprite_mode: SpriteParams,
 ) -> Result {
     let (Some(mut mode), Some(mut session), Some(mut terrain_draft), Some(mut theme_draft)) =
         (mode, session, terrain_draft, theme_draft)
     else {
         return Ok(());
     };
-    // Unpack the PREFAB model borrows (all state-scoped — bevy-traps #1). PREFAB mode no-ops until
-    // they exist; TERRAIN / THEME modes never touch them, so a missing prefab resource does not
-    // block those modes.
-    let PrefabParams {
-        mut map,
-        mut edit_level,
-        mut hovered,
-        mut zoom,
-        mut pan,
-        mut view,
-        mut isolate,
-        atlas,
-        preview_target,
-        mut rail_state,
-    } = prefab;
-    // Unpack the GANG model borrows (GTW-636; all state-scoped / Load-resolved — bevy-traps #1).
-    // GANG mode no-ops until they exist; the other modes never touch them.
-    let GangParams {
-        draft: mut gang_draft,
-        gangs,
-        melee,
-        armor,
-        tuning,
-    } = gang;
-    // Unpack the ARMOR model borrows (GTW-479; the same lifecycle). ARMOR mode no-ops
-    // until they exist; the other modes never touch them.
-    let ArmorParams {
-        draft: mut armor_draft,
-        registry: armor_registry,
-    } = armor_mode;
-    // Unpack the INJURY model borrows (GTW-654; the same lifecycle). INJURY mode
-    // no-ops until they exist; the other modes never touch them.
-    let InjuryParams {
-        draft: mut injury_draft,
-        weighting: mut weighting_draft,
-        registry: injury_registry,
-        tables: injury_tables,
-    } = injury_mode;
 
-    // Resolve the egui texture ids the PREFAB panels draw (the palette sprite sheet + the preview
-    // render target) BEFORE borrowing `ctx_mut()` — `image_id` takes `&self`, so it must run before
-    // the exclusive `ctx_mut()` borrow (bevy_egui 0.41). `None` until the atlas / target register.
-    let sheet_id = atlas
-        .as_deref()
-        .and_then(|atlas| contexts.image_id(&atlas.image()));
-    let preview_id = preview_target
-        .as_deref()
-        .and_then(|target| contexts.image_id(&target.image_handle()));
+    // The PRE-PANEL per-mode model-sync / autoload block (split into
+    // `egui_shell::autoload` at the GTW-479-flagged seam — GTW-654): each runner
+    // self-gates on its mode + borrows and is multipass-idempotent (bevy-traps #8).
+    // Runs BEFORE the texture-id resolution below so the sprite autoload's seeded
+    // source is what the preview resolver loads this same frame (GTW-664).
+    theme_form_sync(*mode, &session, themes.as_deref(), &mut theme_draft);
+    gang_form_sync(*mode, gang.draft.as_deref_mut(), gang.gangs.as_deref());
+    armor_form_sync(
+        *mode,
+        armor_mode.draft.as_deref_mut(),
+        armor_mode.registry.as_deref(),
+    );
+    injury_form_sync(
+        *mode,
+        injury_mode.draft.as_deref_mut(),
+        injury_mode.registry.as_deref(),
+        injury_mode.weighting.as_deref_mut(),
+        injury_mode.tables.as_deref(),
+    );
+    sprite_form_sync(
+        *mode,
+        sprite_mode.draft.as_deref_mut(),
+        sprite_mode.registry.as_deref(),
+    );
+
+    // Resolve the egui texture ids the panels draw (the palette sprite sheet, the prefab
+    // preview render target, and the GTW-664 sprite-source preview) BEFORE borrowing
+    // `ctx_mut()` — split into `egui_shell::textures` at the GTW-664 natural seam.
+    let textures = resolve_panel_textures(&mut contexts, *mode, &prefab, &mut sprite_mode);
 
     let ctx = contexts.ctx_mut()?;
     // egui 0.35 / bevy_egui 0.41 show panels INTO a root `Ui` (the panel `show` takes `&mut Ui`,
@@ -168,20 +158,6 @@ pub(crate) fn editor_egui_ui(
             .max_rect(ctx.viewport_rect()),
     );
     let options = theme_options(themes.as_deref());
-
-    // The PRE-PANEL per-mode model-sync / autoload block (split into
-    // `egui_shell::autoload` at the GTW-479-flagged seam — GTW-654): each runner
-    // self-gates on its mode + borrows and is multipass-idempotent (bevy-traps #8).
-    theme_form_sync(*mode, &session, themes.as_deref(), &mut theme_draft);
-    gang_form_sync(*mode, gang_draft.as_deref_mut(), gangs.as_deref());
-    armor_form_sync(*mode, armor_draft.as_deref_mut(), armor_registry.as_deref());
-    injury_form_sync(
-        *mode,
-        injury_draft.as_deref_mut(),
-        injury_registry.as_deref(),
-        weighting_draft.as_deref_mut(),
-        injury_tables.as_deref(),
-    );
 
     // 1. TOP — mode tabs (left) + the global theme `ComboBox` (right). Full-width bars are declared
     //    FIRST so they span edge-to-edge; the side panels then fit between them.
@@ -217,15 +193,15 @@ pub(crate) fn editor_egui_ui(
                 themes.as_deref(),
                 terrain_registry.as_deref(),
                 roles.as_deref(),
-                atlas.as_deref(),
-                sheet_id,
+                prefab.atlas.as_deref(),
+                textures.sheet_id,
             );
         }
-        // GANG / ARMOR / INJURY modes keep this secondary strip intentionally idle
-        // (GTW-636 / GTW-479 / GTW-654): the member list / piece grid / def+weighting
-        // editors are the central primary focus and the form controls live in the
+        // GANG / ARMOR / INJURY / SPRITE modes keep this secondary strip intentionally
+        // idle (GTW-636 / GTW-479 / GTW-654 / GTW-664): the member list / piece grid /
+        // def editors are the central primary focus and the form controls live in the
         // right panel, so nothing competes here (the TERRAIN right-panel precedent).
-        EditorMode::Gang | EditorMode::Armor | EditorMode::Injury => {}
+        EditorMode::Gang | EditorMode::Armor | EditorMode::Injury | EditorMode::Sprite => {}
     });
 
     // 4. RIGHT — the ACTIVE mode's form (an in-UI branch). TERRAIN no longer renders here (GTW-534
@@ -241,10 +217,10 @@ pub(crate) fn editor_egui_ui(
         }
         EditorMode::Prefab => {
             if let (Some(edit_level), Some(view), Some(isolate), Some(map)) = (
-                edit_level.as_deref_mut(),
-                view.as_deref_mut(),
-                isolate.as_deref_mut(),
-                map.as_deref(),
+                prefab.edit_level.as_deref_mut(),
+                prefab.view.as_deref_mut(),
+                prefab.isolate.as_deref_mut(),
+                prefab.map.as_deref(),
             ) {
                 controls_ui::controls_panel(
                     ui,
@@ -256,23 +232,30 @@ pub(crate) fn editor_egui_ui(
                     map,
                     terrain_registry.as_deref(),
                     themes.as_deref(),
-                    &mut rail_state,
+                    &mut prefab.rail_state,
                 );
             }
         }
         EditorMode::Gang => {
-            if let Some(draft) = gang_draft.as_deref_mut() {
-                gang_form_ui::field_stack(ui, draft, gangs.as_deref());
+            if let Some(draft) = gang.draft.as_deref_mut() {
+                gang_form_ui::field_stack(ui, draft, gang.gangs.as_deref());
             }
         }
         EditorMode::Armor => {
-            if let Some(draft) = armor_draft.as_deref_mut() {
-                armor_form_ui::field_stack(ui, draft, armor_registry.as_deref());
+            if let Some(draft) = armor_mode.draft.as_deref_mut() {
+                armor_form_ui::field_stack(ui, draft, armor_mode.registry.as_deref());
             }
         }
         EditorMode::Injury => {
-            if let Some(draft) = injury_draft.as_deref_mut() {
-                injury_form_ui::field_stack(ui, draft, injury_registry.as_deref());
+            if let Some(draft) = injury_mode.draft.as_deref_mut() {
+                injury_form_ui::field_stack(ui, draft, injury_mode.registry.as_deref());
+            }
+        }
+        // GTW-664: load / name / New sprite / debug Save — the Gang/Armor field-stack
+        // parity over the sprite draft + the GTW-663 registry.
+        EditorMode::Sprite => {
+            if let Some(draft) = sprite_mode.draft.as_deref_mut() {
+                sprite_form_ui::field_stack(ui, draft, sprite_mode.registry.as_deref());
             }
         }
     });
@@ -294,7 +277,7 @@ pub(crate) fn editor_egui_ui(
                 themes.as_deref(),
                 roles.as_deref(),
                 weapons.as_deref(),
-                sheet_id,
+                textures.sheet_id,
             );
         }
         EditorMode::Theme => {
@@ -303,16 +286,16 @@ pub(crate) fn editor_egui_ui(
                 &mut theme_draft,
                 terrain_registry.as_deref(),
                 roles.as_deref(),
-                sheet_id,
+                textures.sheet_id,
             );
         }
         EditorMode::Prefab => {
             if let (Some(map), Some(edit_level), Some(hovered), Some(zoom), Some(pan)) = (
-                map.as_deref_mut(),
-                edit_level.as_deref(),
-                hovered.as_deref_mut(),
-                zoom.as_deref_mut(),
-                pan.as_deref_mut(),
+                prefab.map.as_deref_mut(),
+                prefab.edit_level.as_deref(),
+                prefab.hovered.as_deref_mut(),
+                prefab.zoom.as_deref_mut(),
+                prefab.pan.as_deref_mut(),
             ) {
                 let mut vp = ViewportCtx {
                     map,
@@ -325,7 +308,7 @@ pub(crate) fn editor_egui_ui(
                     themes: themes.as_deref(),
                     roles: roles.as_deref(),
                 };
-                viewport_ui::viewport_panel(ui, &mut vp, preview_id);
+                viewport_ui::viewport_panel(ui, &mut vp, textures.preview_id);
             } else {
                 ui.heading("Viewport");
                 ui.label("Preparing prefab preview…");
@@ -335,14 +318,14 @@ pub(crate) fn editor_egui_ui(
         // collapsible per-member editor (name / loadout dropdowns / attributes /
         // derived stats / remove) over the draft's sim records.
         EditorMode::Gang => {
-            if let Some(draft) = gang_draft.as_deref_mut() {
+            if let Some(draft) = gang.draft.as_deref_mut() {
                 gang_form_ui::members_panel(
                     ui,
                     draft,
                     weapons.as_deref(),
-                    melee.as_deref(),
-                    armor.as_deref(),
-                    tuning.as_deref(),
+                    gang.melee.as_deref(),
+                    gang.armor.as_deref(),
+                    gang.tuning.as_deref(),
                 );
             }
         }
@@ -350,7 +333,7 @@ pub(crate) fn editor_egui_ui(
         // one row per BodyPart (the four clamped stat drags + the ArmorType combo)
         // over the draft's sim record.
         EditorMode::Armor => {
-            if let Some(draft) = armor_draft.as_deref_mut() {
+            if let Some(draft) = armor_mode.draft.as_deref_mut() {
                 armor_form_ui::pieces_panel(ui, draft);
             }
         }
@@ -361,19 +344,32 @@ pub(crate) fn editor_egui_ui(
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
-                    if let Some(draft) = injury_draft.as_deref_mut() {
+                    if let Some(draft) = injury_mode.draft.as_deref_mut() {
                         injury_form_ui::def_panel(ui, draft);
                     }
-                    if let Some(weighting) = weighting_draft.as_deref_mut() {
+                    if let Some(weighting) = injury_mode.weighting.as_deref_mut() {
                         ui.separator();
                         injury_form_ui::weighting_panel(
                             ui,
                             weighting,
-                            injury_registry.as_deref(),
-                            injury_tables.as_deref(),
+                            injury_mode.registry.as_deref(),
+                            injury_mode.tables.as_deref(),
                         );
                     }
                 });
+        }
+        // GTW-664: the full def editor is the SPRITE mode's PRIMARY focus — source
+        // picker, the visual anchor affordance (crosshair over the shell-resolved
+        // preview), facings overrides, and animation rows, stacked in one scroll area.
+        EditorMode::Sprite => {
+            if let Some(draft) = sprite_mode.draft.as_deref_mut() {
+                sprite_form_ui::primary_panel(
+                    ui,
+                    draft,
+                    &mut sprite_mode.preview_cache,
+                    textures.sprite_preview.as_ref(),
+                );
+            }
         }
     });
 

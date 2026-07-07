@@ -9,7 +9,9 @@
 //! viewport (GTW-515 C4) live in [`prefab`](self::prefab); the GANG-mode form (GTW-636) lives in
 //! [`gang_form_ui`](self::gang_form_ui); the ARMOR-mode form (GTW-479) lives in
 //! [`armor_form_ui`](self::armor_form_ui); the INJURY-mode forms (GTW-654 — the def editor +
-//! the weighting section) live in [`injury_form_ui`](self::injury_form_ui); the pre-panel
+//! the weighting section) live in [`injury_form_ui`](self::injury_form_ui); the SPRITE-mode
+//! form (GTW-664 — source / visual anchor / facings / animation) lives in
+//! [`sprite_form_ui`](self::sprite_form_ui); the pre-panel
 //! per-mode autoload/model-sync runners live in [`autoload`](self::autoload). The shell
 //! registers ONE UI system in the
 //! [`EguiPrimaryContextPass`](bevy_egui::EguiPrimaryContextPass) schedule (NOT `Update` —
@@ -57,8 +59,14 @@ mod params;
 // the headless integration test asserts the exact size-field view model the panel renders from.
 pub(crate) mod prefab;
 mod shell;
+// GTW-664: the SPRITE-mode form — the draw half over the `sprite_form` model (the gang /
+// armor form split: model module + `*_form_ui` sibling).
+mod sprite_form_ui;
 mod sprite_thumb;
 mod terrain_form_ui;
+// The shell's PRE-PANEL egui texture-id resolution, split out of `shell.rs` at the
+// GTW-664 seam (module-layout bands): it changes when a mode's TEXTURE surface does.
+mod textures;
 mod theme_combo;
 mod theme_form_ui;
 

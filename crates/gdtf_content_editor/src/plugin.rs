@@ -46,6 +46,7 @@ use crate::{
     preview::{register_preview, view::PreviewPan},
     right_panel::seed_default_theme,
     session::MapEditorSession,
+    sprite_form::SpriteDraft,
     terrain_form::TerrainDraft,
     theme_form::ThemeDraft,
     tile_atlas::load_tile_atlas,
@@ -103,7 +104,7 @@ impl Plugin for MapEditorPlugin {
             (spawn_editor_camera, load_tile_atlas),
         );
 
-        // GTW-575: the fifteen `Editing`-scoped MODEL resources register their whole
+        // GTW-575: the sixteen `Editing`-scoped MODEL resources register their whole
         // OnEnter-insert + OnExit-remove lifecycle through ONE
         // `init_state_scoped_resource` call each (bevy-traps #1 via the shared
         // `gdtf_state_scoped` seam) — same `OnEnter(Editing)` / `OnExit(Editing)`
@@ -147,6 +148,11 @@ impl Plugin for MapEditorPlugin {
         // one-shot open-with-a-table autoload is still pending (the shell seeds it
         // from the resolved InjuryTables' first canonical category).
         app.init_state_scoped_resource(EditorState::Editing, WeightingDraft::default);
+        // The SPRITE-mode authoring draft (GTW-664), a pristine form whose one-shot
+        // open-with-a-sprite autoload is still pending (the shell seeds it from the
+        // resolved GTW-663 SpriteDefRegistry on the first Sprite-mode frame — the
+        // Gang/Armor parity).
+        app.init_state_scoped_resource(EditorState::Editing, SpriteDraft::default);
         // GTW-512 C1.5: the hovered-cell model the live egui hover + the QA capture
         // write, seeded empty (nothing hovered).
         app.init_state_scoped_resource(EditorState::Editing, HoveredCell::new);

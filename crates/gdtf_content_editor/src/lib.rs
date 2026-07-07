@@ -109,6 +109,11 @@ mod right_panel;
 #[cfg(debug_assertions)]
 mod save;
 mod session;
+// GTW-664: the SPRITE authoring mode of the Workbench — the form that edits a sprite def
+// (source / anchor / optional facings / optional animation — the GTW-600 ruled schema)
+// and saves it to `content/sprites/<name>.spritedef.ron` where the GTW-663
+// SpriteDefsFamily loader reads (the GTW-479 Armor mode/form precedent).
+mod sprite_form;
 mod state;
 // GTW-474: the TERRAIN authoring mode of the Workbench — the form that captures a TerrainDef and
 // saves it to a per-theme `.terrain_def.ron` the GTW-487 loader resolves.
@@ -199,6 +204,16 @@ pub use save::{
     write_prefab,
 };
 pub use session::MapEditorSession;
+// GTW-664: the SPRITE-mode model + the pure save halves — exported so the round-trip
+// tests drive the REAL projection / path resolution / write (the TempDir round-trip
+// through the actual SpriteDefsFamily loader) and the headless lifecycle test asserts
+// the scoped draft (the GTW-636/GTW-479 export precedent).
+pub use sprite_form::{SpriteDraft, draft_to_sprite_def, sprite_file_name, sprite_save_path_in};
+// The debug-only SPRITE fs-write surface (the terrain/theme/gang/armor write precedent):
+// `write_sprite_in` is the root-parameterized core tests aim at a `TempDir`;
+// `write_sprite` is the production wrapper (WORKSPACE_ASSETS_ROOT).
+#[cfg(debug_assertions)]
+pub use sprite_form::{write_sprite, write_sprite_in};
 pub use state::EditorState;
 // GTW-566 C5: `TerrainGraphicChoice` is GONE — the graphic pick is the presenter's
 // `TileRole` vocabulary directly, filtered through `offered_graphic_roles`.

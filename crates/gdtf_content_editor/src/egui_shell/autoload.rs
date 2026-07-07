@@ -12,14 +12,16 @@ use gdtf_battle_sim::{
     injuries::{InjuryRegistry, InjuryTables},
     level::UuidThemeRegistry,
 };
+use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use crate::{
     armor_form::ArmorDraft,
-    egui_shell::{armor_form_ui, gang_form_ui, injury_form_ui, theme_form_ui},
+    egui_shell::{armor_form_ui, gang_form_ui, injury_form_ui, sprite_form_ui, theme_form_ui},
     gang_form::GangDraft,
     injury_form::{InjuryDraft, WeightingDraft},
     mode::EditorMode,
     session::MapEditorSession,
+    sprite_form::SpriteDraft,
     theme_form::ThemeDraft,
 };
 
@@ -92,5 +94,19 @@ pub(super) fn injury_form_sync(
     }
     if let (Some(weighting), Some(tables)) = (weighting, tables) {
         injury_form_ui::autoload_weighting_table(weighting, tables);
+    }
+}
+
+/// GTW-664: the SPRITE mode's one-shot open-with-a-sprite seed — the Gang / Armor
+/// autoloads' exact parity twin over the GTW-663 [`SpriteDefRegistry`].
+pub(super) fn sprite_form_sync(
+    mode: EditorMode,
+    draft: Option<&mut SpriteDraft>,
+    registry: Option<&SpriteDefRegistry>,
+) {
+    if mode == EditorMode::Sprite
+        && let (Some(draft), Some(registry)) = (draft, registry)
+    {
+        sprite_form_ui::autoload_first_sprite(draft, registry);
     }
 }

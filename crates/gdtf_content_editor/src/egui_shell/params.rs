@@ -15,16 +15,18 @@ use gdtf_battle_sim::{
     tuning::GangerStatTuning,
     weapon::MeleeWeaponRegistry,
 };
+use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use crate::{
     armor_form::ArmorDraft,
     canvas::{CanvasZoom, CurrentEditLevel},
     editor_map::EditorMap,
-    egui_shell::prefab::level_rail::RailUiState,
+    egui_shell::{prefab::level_rail::RailUiState, sprite_form_ui::SpritePreviewCache},
     gang_form::GangDraft,
     hovered_cell::HoveredCell,
     injury_form::{InjuryDraft, WeightingDraft},
     preview::{target::PreviewTarget, view::PreviewPan},
+    sprite_form::SpriteDraft,
     tile_atlas::TileAtlas,
 };
 
@@ -113,4 +115,26 @@ pub(crate) struct InjuryParams<'w> {
     pub(super) registry:  Option<Res<'w, InjuryRegistry>>,
     /// The built weighting tables (the context-table load source).
     pub(super) tables:    Option<Res<'w, InjuryTables>>,
+}
+
+/// The SPRITE-mode model borrows the shell threads into the SPRITE panels (GTW-664) —
+/// the [`GangParams`] pattern. The draft is state-scoped (bevy-traps #1) and the
+/// registry arrives with the `Load` pass, so those are `Option` and the other modes
+/// tolerate their absence; the asset surfaces the PREVIEW needs (the image store + the
+/// server that loads a source path) are `Option` too, so the no-renderer harness (which
+/// never runs the egui system anyway) stays constructible.
+#[derive(bevy::ecs::system::SystemParam)]
+pub(crate) struct SpriteParams<'w, 's> {
+    /// The editable sprite working model (the form writes it; the save projects it).
+    pub(super) draft:         Option<ResMut<'w, SpriteDraft>>,
+    /// The loaded sprite-def registry (the load `ComboBox` options + the one-shot
+    /// autoload).
+    pub(super) registry:      Option<Res<'w, SpriteDefRegistry>>,
+    /// The image store — the loaded source image's pixel dims for the anchor preview.
+    pub(super) images:        Option<Res<'w, Assets<Image>>>,
+    /// The asset server the preview loads the draft's source image path through.
+    pub(super) asset_server:  Option<Res<'w, AssetServer>>,
+    /// The path-keyed preview/validity cache — a `Local` (the GTW-595 `RailUiState`
+    /// precedent): content-keyed, so it needs no state-scoped lifecycle.
+    pub(super) preview_cache: Local<'s, SpritePreviewCache>,
 }
