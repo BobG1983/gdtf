@@ -5,7 +5,8 @@
 use std::{fs, path::Path};
 
 use crate::rng::{
-    BattleSeed, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng, streams::fnv1a64,
+    BattleSeed, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng,
+    derivation::fnv1a64,
 };
 
 /// Number of consecutive draws compared when asserting stream equality or

@@ -126,7 +126,13 @@ const DEGENERATE_MARGIN: f32 = 1.0e6;
 /// each uniform in `[1 − v, 1 + v]` for the [`FightVariance`] `v` from
 /// [`MeleeTuning`]. Then `atk = Fight_attacker × roll_atk`,
 /// `def = Fight_defender × roll_def`, `connect = atk > def`, and
-/// `margin = atk / def − 1`.
+/// `margin = atk / def − 1`. The band's bounds are TUNABLE (hot-reloadable), so
+/// both rolls go through the stream's safe-draw verb
+/// ([`FightRng::random_range_or_midpoint`](crate::rng::FightRng)): a DEGENERATE
+/// band (`v <= 0.0` — documented-legal tuning, GTW-640) never panics — each roll
+/// factor collapses to the band's midpoint `1.0` while STILL consuming its draw
+/// (draw-count stability, GTW-644), so the exchange resolves as a pure
+/// `Fight_attacker` vs `Fight_defender` comparison and the stream stays aligned.
 ///
 /// Two draws in a fixed order keep the stream deterministically replayable: two
 /// [`FightRng`]s from the same [`BattleSeed`](crate::rng::BattleSeed) yield the
@@ -159,11 +165,14 @@ pub fn opposed_fight(
 ) -> FightOutcome {
     // Two draws in a FIXED order — attacker roll first, then defender roll — so
     // the stream advances identically on every replay. Each roll is uniform in
-    // [1 − v, 1 + v].
+    // [1 − v, 1 + v]; the band is TUNABLE-driven, so each roll takes the safe-draw
+    // verb: a degenerate band (v <= 0.0, GTW-640) collapses the factor to the
+    // midpoint 1.0 while still consuming the draw (GTW-644 — never a panic, never
+    // a skipped draw).
     let lo = 1.0 - *variance;
     let hi = 1.0 + *variance;
-    let roll_atk: f32 = rng.random_range(lo..hi);
-    let roll_def: f32 = rng.random_range(lo..hi);
+    let roll_atk: f32 = rng.random_range_or_midpoint(lo..hi);
+    let roll_def: f32 = rng.random_range_or_midpoint(lo..hi);
 
     let atk = *attacker * roll_atk;
     let def = *defender * roll_def;

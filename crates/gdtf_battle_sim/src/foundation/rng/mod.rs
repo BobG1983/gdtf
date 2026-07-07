@@ -36,14 +36,17 @@
 //!
 //! Every stream type exposes the same surface, stamped by the
 //! `impl_sim_stream!` macro (the single source of truth): `from_root`,
-//! `rng`, `next_u64`, `random_range`. Adding a draw method means editing
-//! the macro.
+//! `rng`, `next_u64`, `random_range`, `random_range_or_midpoint` (the
+//! never-panic, always-one-draw verb for TUNABLE-driven ranges — GTW-640 /
+//! GTW-644). Adding a draw method means editing the macro.
 //!
 //! ## Binding constraint
 //!
 //! No system may take `Res<ShotRng>` / `Res<SeverityRng>` (etc.) for read-only
 //! access — see `streams` module doc for the full rationale.
 
+mod derivation;
+mod safe_draw;
 mod seeded;
 pub(super) mod streams;
 #[cfg(test)]

@@ -23,7 +23,8 @@
 //! stream_rng     = ChaCha12Rng::seed_from_u64(per_stream_u64)
 //! ```
 //!
-//! FNV-1a-64 is hand-rolled as a `const fn` (NOT `std::hash::DefaultHasher`, whose
+//! FNV-1a-64 is hand-rolled as a `const fn` in the sibling `derivation` leaf (NOT
+//! `std::hash::DefaultHasher`, whose
 //! output is not stability-guaranteed across Rust releases). The `root` is always
 //! exactly 8 leading little-endian bytes, and each label is a fixed versioned ASCII
 //! constant — so the concatenation is unambiguous with no length prefix. The resulting
@@ -64,77 +65,10 @@
 use rand::{SeedableRng, distr::uniform::SampleRange};
 use rand_chacha::ChaCha12Rng;
 
-use super::seeded::BattleSeed;
-
-// ── FNV-1a-64 derivation ────────────────────────────────────────────────────
-
-/// The FNV-1a-64 offset basis (the FNV spec's fixed constant).
-const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
-/// The FNV-1a-64 prime (the FNV spec's fixed constant).
-const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
-
-/// FNV-1a-64 of a fixed 8-byte root seed (little-endian) concatenated with a
-/// label slice — the per-stream seed derivation (GTW-14, §A).
-///
-/// Hand-rolled as a `const fn` so the derivation is entirely specified here and
-/// does NOT rely on [`std::hash::DefaultHasher`] (whose output is not
-/// stability-guaranteed across Rust releases or targets). Only `wrapping_mul` /
-/// `^` are needed; the arithmetic is identical on every platform.
-///
-/// The byte stream fed to FNV is:
-/// `root.to_le_bytes()` (always exactly 8 bytes) `++` `label` (fixed ASCII)
-///
-/// — so the concatenation is unambiguous without a length prefix. The resulting
-/// `u64` is fed to [`SeedableRng::seed_from_u64`] in each stream's constructor.
-pub(super) const fn fnv1a64(root: u64, label: &[u8]) -> u64 {
-    let root_bytes = root.to_le_bytes();
-    // Feed the 8 root bytes first.
-    let mut hash = FNV_OFFSET;
-    let mut i = 0usize;
-    while i < root_bytes.len() {
-        hash = hash ^ (root_bytes[i] as u64);
-        hash = hash.wrapping_mul(FNV_PRIME);
-        i += 1;
-    }
-    // Then the label bytes.
-    let mut j = 0usize;
-    while j < label.len() {
-        hash = hash ^ (label[j] as u64);
-        hash = hash.wrapping_mul(FNV_PRIME);
-        j += 1;
-    }
-    hash
-}
-
-// ── Stream-label newtype ─────────────────────────────────────────────────────
-
-/// A stable, versioned byte-label identifying one RNG stream in the
-/// [`fnv1a64`] root-seed derivation.
-///
-/// Distinct labels → independent per-stream seeds (GTW-14, §A). Each label is a
-/// fixed versioned ASCII constant (`.v1` suffix) so a deliberate re-tune bumps
-/// one label without disturbing others. The inner `&'static [u8]` is private;
-/// the derivation reads it only through [`StreamLabel::as_bytes`].
-pub struct StreamLabel(&'static [u8]);
-
-impl StreamLabel {
-    /// Construct a stream label from a fixed `'static` byte slice.
-    ///
-    /// The one constructor; the label is always a compile-time constant so no
-    /// runtime allocation is needed and the `const fn` carries zero overhead.
-    #[must_use]
-    pub const fn new(b: &'static [u8]) -> Self {
-        Self(b)
-    }
-
-    /// The raw bytes of this label — fed to [`fnv1a64`] as the second segment.
-    ///
-    /// Private to this module; callers use the stream's `from_root` constructor
-    /// which combines label + root through `fnv1a64` internally.
-    pub(super) const fn as_bytes(&self) -> &[u8] {
-        self.0
-    }
-}
+use super::{
+    derivation::{StreamLabel, fnv1a64},
+    seeded::BattleSeed,
+};
 
 // ── The single draw-surface macro ────────────────────────────────────────────
 
@@ -153,10 +87,14 @@ impl StreamLabel {
 ///   `rand::Rng` trait (for the `sample_cone_vector` / `roll_body_part` leaves that
 ///   take `&mut impl Rng`). The concrete type never escapes.
 /// - `random_range<T, R>(&mut self, range: R) -> T` — draw a value uniformly from
-///   `range`. The actual sim draw sites: the §6 `roll(lo..hi)` verb, the §4
-///   body-part roll (`roll_body_part` → cumulative-weight `random_range`, NOT a
-///   `WeightedIndex`), and the §1 cone sample (radius + azimuth, drawn via the
-///   `rng()` handle).
+///   `range`. The actual sim draw sites: the §4 body-part roll (`roll_body_part` →
+///   cumulative-weight `random_range`, NOT a `WeightedIndex`) and the §1 cone
+///   sample (radius + azimuth, drawn via the `rng()` handle).
+/// - `random_range_or_midpoint(&mut self, range: Range<f32>) -> f32` — the SAFE
+///   draw for a TUNABLE-DRIVEN range (GTW-640 / GTW-644): never panics, ALWAYS
+///   consumes exactly one draw, collapses a degenerate (`start >= end`) range to
+///   the bounds' midpoint. The §6 `roll(lo..hi)` term and the §7 opposed-Fight
+///   rolls draw through this.
 /// - `next_u64(&mut self) -> u64` — draw the next raw `u64`. Test/regression-anchor
 ///   only (the pinned-output tests + leaf draw-determinism tests); no production
 ///   draw site uses it, but the integration test crates do, so it stays public.
@@ -215,8 +153,10 @@ macro_rules! impl_sim_stream {
 
             /// Draw a value uniformly from `range`.
             ///
-            /// The `rand` 0.10 rename of `gen_range` — used by the §6 `roll(lo..hi)` verb
-            /// and any draw site that needs a bounded sample from this stream.
+            /// The `rand` 0.10 rename of `gen_range` — for draw sites whose range is
+            /// non-empty BY CONSTRUCTION (it panics on an empty range). A range whose
+            /// bounds derive from tunable/authored data must draw through
+            /// [`random_range_or_midpoint`](Self::random_range_or_midpoint) instead.
             pub fn random_range<T, R>(&mut self, range: R) -> T
             where
                 T: rand::distr::uniform::SampleUniform,
@@ -224,6 +164,28 @@ macro_rules! impl_sim_stream {
             {
                 use rand::RngExt as _;
                 self.0.random_range(range)
+            }
+
+            /// Draw uniformly from a TUNABLE-DRIVEN `f32` range — NEVER panicking and
+            /// ALWAYS consuming exactly one draw, even when the range is empty or
+            /// inverted (GTW-640 / GTW-644).
+            ///
+            /// The safe-draw verb for any range whose bounds derive from tunable /
+            /// authored / hot-reloadable data — which makes the bounds attacker-controlled
+            /// at runtime: a documented-legal tuning edit (e.g. a fight variance of `0.0`)
+            /// can degenerate such a range mid-session. A LIVE range (`start < end`) draws
+            /// byte-identically to [`random_range`](Self::random_range); a DEGENERATE
+            /// range (`start >= end`) still consumes exactly one uniform draw and returns
+            /// the bounds' MIDPOINT (so the §7 band `[1 − v, 1 + v]` with `v <= 0.0`
+            /// collapses to factor `1.0`).
+            ///
+            /// **Draw-count stability is the documented invariant, not an optimization**:
+            /// one call = one draw, unconditionally, so the stream cursor advances
+            /// identically whether or not the degenerate case was hit — seeded replays
+            /// stay aligned across every downstream draw. (GTW-644's defect was a guard
+            /// that SKIPPED the degenerate draw and silently sheared the stream.)
+            pub fn random_range_or_midpoint(&mut self, range: core::ops::Range<f32>) -> f32 {
+                super::safe_draw::uniform_or_midpoint(&mut self.0, range)
             }
         }
     };

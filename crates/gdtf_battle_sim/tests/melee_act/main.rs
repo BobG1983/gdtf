@@ -21,8 +21,9 @@
 //!   `MeleeResolved` FX signal emits end-to-end on the real runtime path.
 //!
 //! DETERMINISM: a seeded battle RNG + a degenerate Fight on one side, so the outcome is
-//! variance-INDEPENDENT (no `variance 0` — `opposed_fight` draws `random_range(1−v..1+v)`, which
-//! is an empty range at `v == 0`). A ZERO-Fight DEFENDER drives the §7 degenerate `def ≤ 0`
+//! variance-INDEPENDENT. (`variance 0` is LEGAL since GTW-640 — the `[1−v, 1+v]` band draws
+//! through the safe-draw verb, collapsing to factor `1.0`; the `degenerate_variance` module
+//! pins that path.) A ZERO-Fight DEFENDER drives the §7 degenerate `def ≤ 0`
 //! connect (guaranteed connect at `mult_max`, any variance); a ZERO-Fight ATTACKER drives a
 //! guaranteed MISS (`atk == 0 ≤ def > 0`, any variance) — the connect / miss outcome is a pure
 //! function of the two gangers' Fights, with no brittle tunable-magnitude assert.
@@ -33,6 +34,7 @@
 //! `AssetPlugin` + `ScenePlugin` + `BattleSimPlugin` app — the EXACT production wiring.
 
 mod connect;
+mod degenerate_variance;
 mod gates;
 mod harness;
 mod misses;

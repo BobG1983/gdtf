@@ -38,18 +38,15 @@ pub(crate) fn ground(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(0))
 }
 
-/// Build the FULL live-runtime harness (the `reaction_trigger` `battle_app` idiom) with a `CombatTuning`
-/// carrying the view range + the DEFAULT melee tuning (its `variance > 0`, so `opposed_fight`'s
-/// `random_range(1−v..1+v)` draw is a valid non-empty range), plus the persistent `Load`
-/// weapon/armor registries a `MinimalPlugins` app has no `AssetServer` to load.
-pub(crate) fn battle_app() -> App {
+/// Build the FULL live-runtime harness (the `reaction_trigger` `battle_app` idiom) with an
+/// EXPLICIT `CombatTuning` (the degenerate-range suite pins `melee.variance` to `0.0`,
+/// GTW-640), plus the persistent `Load` weapon/armor registries a `MinimalPlugins` app has
+/// no `AssetServer` to load.
+pub(crate) fn battle_app_with_tuning(tuning: CombatTuning) -> App {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     app.add_plugins(BattleSimPlugin);
-    app.insert_resource(CombatTuning {
-        view_range: ViewRange::new(TEST_VIEW_RANGE),
-        ..Default::default()
-    });
+    app.insert_resource(tuning);
     app.insert_resource(test_weapon_registry());
     // GTW-505: the melee registry (with the `fists` default) so each ganger's melee weapon
     // resolves at setup (fixture gangers author none → `fists`, which the test registry maps to
@@ -57,6 +54,15 @@ pub(crate) fn battle_app() -> App {
     app.insert_resource(test_melee_weapon_registry());
     app.insert_resource(test_armor_registry());
     app
+}
+
+/// Build the harness under a `CombatTuning` carrying the view range + the DEFAULT melee
+/// tuning.
+pub(crate) fn battle_app() -> App {
+    battle_app_with_tuning(CombatTuning {
+        view_range: ViewRange::new(TEST_VIEW_RANGE),
+        ..Default::default()
+    })
 }
 
 /// Drive a setup through the REAL `setup_battle_on_request` Ok path and settle it (the deferred

@@ -82,10 +82,14 @@ const fn pen_to_f32(pen: i32) -> f32 {
 ///
 /// The lower bound is `−defender_luck_scale × Luck_defender` (the defender's Luck
 /// extends the floor below 0); the upper bound is the fixed `random_spread` (`R`).
-/// When the bounds are degenerate (`lo >= hi` — e.g. an `R ≤ 0` tuning, or a
-/// negative Luck), the term collapses to the upper bound `hi` rather than asking
-/// the RNG for an empty range (which would be invalid). Drawn from the one seeded
-/// stream, so the roll is deterministic and replayable.
+/// Both bounds are TUNABLE-DRIVEN (hot-reloadable tuning × per-defender Luck), so
+/// the roll takes the stream's safe-draw verb
+/// ([`SeverityRng::random_range_or_midpoint`](crate::rng::SeverityRng)): a
+/// DEGENERATE range (`lo >= hi` — e.g. an `R ≤ 0` tuning, or a negative Luck)
+/// never panics and STILL consumes exactly one draw (draw-count stability,
+/// GTW-644 — the old guard here SKIPPED the degenerate draw, shearing the stream
+/// for every downstream draw), collapsing the term to the bounds' midpoint. Drawn
+/// from the one seeded stream, so the roll is deterministic and replayable.
 pub(super) fn roll_term(
     scaling: &SeverityScaling,
     luck_defender: Luck,
@@ -93,11 +97,7 @@ pub(super) fn roll_term(
 ) -> f32 {
     let lo = -*scaling.defender_luck_scale * *luck_defender;
     let hi = *scaling.random_spread;
-    if lo >= hi {
-        // Degenerate range: no spread to draw over — collapse to the ceiling.
-        return hi;
-    }
-    rng.random_range(lo..hi)
+    rng.random_range_or_midpoint(lo..hi)
 }
 
 /// Compute the §6 severity score for `inputs` under `scaling`, drawing the random

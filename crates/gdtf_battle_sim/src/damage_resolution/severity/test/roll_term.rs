@@ -9,7 +9,7 @@ use crate::{
     armor::BodyPart,
     ganger::Luck,
     rng::{BattleSeed, SeverityRng},
-    tuning::SeverityScaling,
+    tuning::{RandomSpread, SeverityScaling},
 };
 
 /// AC4 — the random term is `roll(−L·Luck_defender .. R)`: over a stream of
@@ -57,6 +57,38 @@ fn roll_term_floor_is_zero_without_defender_luck() {
             "with no defender Luck the term stays in [0, R]: {term}",
         );
     }
+}
+
+/// GTW-644 (C1b) — DRAW-COUNT STABILITY: a DEGENERATE roll-term range (`lo >= hi`)
+/// must still consume EXACTLY ONE [`SeverityRng`] draw, so the stream stays aligned
+/// with a same-seeded sibling that took a live roll. Two same-seeded streams: one
+/// takes a DEGENERATE roll (zero spread + zero defender Luck → `lo = 0 >= hi = 0`),
+/// the other a live default-scaling roll; their SUBSEQUENT draws must be identical.
+/// RED before the safe-draw fix — the old guard SKIPPED the degenerate draw, so the
+/// degenerate stream's next draw came one cursor position early and the same seed
+/// produced divergent downstream draws.
+#[test]
+fn degenerate_roll_term_keeps_the_stream_aligned() {
+    let degenerate_scaling = SeverityScaling {
+        random_spread: RandomSpread::new(0.0),
+        ..SeverityScaling::default()
+    };
+    let mut through_degenerate = rng();
+    let mut reference = rng();
+
+    // lo = −L·0 = 0, hi = R = 0 → lo >= hi: the degenerate range.
+    let _ = roll_term(&degenerate_scaling, Luck::new(0.0), &mut through_degenerate);
+    // The same-seeded sibling takes a LIVE (non-degenerate) default-scaling roll.
+    let _ = roll_term(&SeverityScaling::default(), Luck::new(0.0), &mut reference);
+
+    // Draw-count stability: both streams consumed exactly one draw, so their next
+    // draws are identical.
+    assert_eq!(
+        through_degenerate.next_u64(),
+        reference.next_u64(),
+        "GTW-644: a degenerate roll_term must consume exactly one draw — the same seed \
+         diverges downstream when the degenerate range skips its draw",
+    );
 }
 
 /// AC6 — seeded determinism: two `roll_severity` SEQUENCES from the same
