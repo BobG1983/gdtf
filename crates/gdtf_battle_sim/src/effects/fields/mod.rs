@@ -71,6 +71,8 @@ mod tick;
 #[cfg(test)]
 mod test;
 #[cfg(test)]
+mod test_turn_start;
+#[cfg(test)]
 mod tests;
 
 pub use apply_effect::{ApplyFieldEffect, OccupantArmor, OccupantDrain};

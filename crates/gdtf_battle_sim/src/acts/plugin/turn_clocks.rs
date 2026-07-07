@@ -173,10 +173,22 @@ fn wire_dot(app: &mut App) {
     // steals the boundary from the combat-log / bleed readers). It joins the
     // BattleInProgress-gated Simulate band, so its Query is exercised only in a live battle
     // (bevy-traps.md #1).
+    //
+    // GTW-658 (the turn-start ruling, the GTW-641 tick_bleed precedent): on the boundary
+    // frame the tick is ALSO pinned `.before` the act dispatchers (fire / move / melee) —
+    // the new turn's acts resolve the SAME frame the enemy TurnStarted lands (the AI's
+    // volley dispatches this frame), and without the pin tick_dot vs the dispatchers is
+    // unordered (bevy-traps.md #3): the DOT's Hp drain and a same-frame act's resolution
+    // could interleave nondeterministically (the same hazard class GTW-641 fixed for
+    // tick_bleed — Hp clocks here, no Wounds semantics). The clocks resolve AT the
+    // boundary, before the new turn's act resolution.
     .add_systems(
         Update,
         tick_dot
             .after(dispatch_end_turn)
+            .before(dispatch_fire)
+            .before(dispatch_move)
+            .before(dispatch_melee)
             .run_if(enemy_phase_started)
             .in_set(SimSystems::Simulate),
     )
@@ -194,11 +206,23 @@ fn wire_dot(app: &mut App) {
     // (the Dead-flip is idempotent, but the order is pinned). It joins the BattleInProgress-gated
     // Simulate band, so its Res<OccupancyGrid> / ResMut<FieldRegistry> reads are exercised only
     // in a live battle (bevy-traps.md #1).
+    //
+    // GTW-658 (the turn-start ruling, the GTW-641 tick_bleed precedent): on the boundary
+    // frame the tick is ALSO pinned `.before` the act dispatchers (fire / move / melee) —
+    // the new turn's acts resolve the SAME frame the enemy TurnStarted lands (the AI's
+    // volley dispatches this frame), and without the pin tick_fields vs the dispatchers is
+    // unordered (bevy-traps.md #3): a fielded ganger's field drain and a same-frame act's
+    // resolution could interleave nondeterministically (the same hazard class GTW-641 fixed
+    // for tick_bleed — Hp clocks here, no Wounds semantics). The clocks resolve AT the
+    // boundary, before the new turn's act resolution.
     .add_systems(
         Update,
         tick_fields
             .after(dispatch_end_turn)
             .after(tick_dot)
+            .before(dispatch_fire)
+            .before(dispatch_move)
+            .before(dispatch_melee)
             .run_if(enemy_phase_started)
             .run_if(resource_exists::<crate::effects::fields::FieldRegistry>)
             .in_set(SimSystems::Simulate),
