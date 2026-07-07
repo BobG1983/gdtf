@@ -28,9 +28,9 @@ use crate::{
     ganger::{Hp, LifeState, Position, Wounds},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
-    test_support::{GangerEntityBuilder, wield},
+    test_support::{GangerEntityBuilder, dot_turns, wield},
     tuning::CombatTuning,
-    weapon::{BlastRadius, DamageType, Dot, DotDamage, DotTurns, HitType, Weapon, WieldedBy},
+    weapon::{BlastRadius, DamageType, Dot, DotDamage, HitType, Weapon, WieldedBy},
 };
 
 /// A ground-floor `(cell, level)` key at `(x, y)`.
@@ -279,7 +279,7 @@ fn tick_dot_emits_on_death_when_a_dot_kills() {
             LifeState::Alive,
             Position::new(cell),
             Dot {
-                remaining_turns: DotTurns::new(2),
+                remaining_turns: dot_turns(2),
                 per_turn_damage: DotDamage::new(5),
                 damage_type:     DamageType::Plasma,
             },

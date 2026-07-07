@@ -7,7 +7,7 @@ use crate::{
     effects::on_death::OnDeathOccurred,
     ganger::{Hp, LifeState, Position},
     metric::CellLevel,
-    weapon::{Dot, DotDamage, DotTurns},
+    weapon::{Dot, DotDamage},
 };
 
 /// The [`tick_dot`] per-ganger query row — the afflicted ganger's surfaces bundled into one
@@ -63,20 +63,27 @@ impl DotTicked {
 /// [`enemy_phase_started`](crate::effects::bleed::enemy_phase_started) cadence as the §9 bleed-out
 /// clock). For each ganger carrying a [`Dot`](crate::weapon::Dot), in order:
 ///
-/// 1. **Skip a corpse** — a [`LifeState::Dead`] ganger is already a corpse (the once-only
-///    property: once Dead, the next tick skips it). Mutates nothing, emits nothing.
+/// 1. **Skip a corpse** — a ganger already [`LifeState::Dead`] at tick start is a corpse
+///    (the once-only property: once Dead, the next tick skips it). Mutates nothing, emits
+///    nothing — its `Dot` stays on the corpse, inert (the pre-GTW-643 contract, pinned by
+///    `an_already_dead_hosts_dot_is_skipped_untouched`; only a KILLING tick removes it).
 /// 2. **Drain Hp DIRECTLY** — subtract the DOT's per-turn damage from the ganger's
 ///    [`Hp`](crate::ganger::Hp) (`saturating_sub`, floors at `0` — no underflow), with NO
 ///    armor matchup, NO injury roll, and NO RNG (the deterministic DOT tick), and emit one
 ///    [`DotTicked`] carrying the ganger + its `(cell, level)` + the amount.
-/// 3. **Decrement the clock** — decrement the DOT's remaining turns.
-/// 4. **Terminal gate — the GTW-544 locked design: DOT KILLS** — if the drain emptied the
+/// 3. **Terminal gate — the GTW-544 locked design: DOT KILLS** — if the drain emptied the
 ///    ganger's [`Hp`](crate::ganger::Hp) to `0`, flip it to [`LifeState::Dead`] (NOT `Downed`
 ///    — the ticket's locked spec: "if `Hp` hits 0 flip `LifeState` to Dead"). Unlike the weapon
 ///    HP-loss path (`Hp` → 0 downs) and the injury bleed (`Hp` → 0 downs), a DOT's HP depletion
 ///    is lethal.
-/// 5. **Remove the exhausted affliction** — when the remaining turns reach `0`, remove the
-///    [`Dot`](crate::weapon::Dot) component (the affliction has run its profile turn count).
+/// 4. **Decrement-or-REMOVE the clock (GTW-643)** — step the remaining turns down via
+///    [`DotTurns::decremented`](crate::weapon::DotTurns::decremented): while turns remain,
+///    store the shortened duration; when the tick spent the LAST turn — or the tick KILLED
+///    (step 3) — remove the [`Dot`](crate::weapon::Dot) component outright. Expiry is
+///    removal, never a stored zero: a zero-turn `Dot` is unrepresentable
+///    ([`DotTurns`](crate::weapon::DotTurns) wraps `NonZeroU8`), so no inert affliction can
+///    exist between ticks — the §9 leak (an inert-from-creation DOT skipping its own
+///    removal forever) is structurally dead.
 ///
 /// `writer` buffers each [`DotTicked`]. Pure, render-free, saturating arithmetic — no
 /// underflow, no `unwrap`, no pixel. Param-only (`bevy-traps.md` #7): a [`Query`], a
@@ -92,9 +99,9 @@ pub fn tick_dot(
 ) {
     for (entity, mut hp, mut life, mut dot, position) in &mut q {
         // (1) A Dead ganger is a corpse — the DOT does not touch it (the once-only property:
-        // once Dead, the next tick skips it). A defensively exhausted DOT (zero turns) is
-        // likewise inert until removed below.
-        if *life == LifeState::Dead || !dot.is_active() {
+        // once Dead, the next tick skips it; its Dot stays inert on the corpse — the pinned
+        // pre-GTW-643 contract).
+        if *life == LifeState::Dead {
             continue;
         }
 
@@ -107,10 +114,7 @@ pub fn tick_dot(
         // anchor). One fewer deref than `***position` (which would reach the inner IVec3).
         writer.write(DotTicked::new(entity, **position, amount));
 
-        // (3) Decrement the clock by one turn (saturating — never below 0).
-        dot.remaining_turns = DotTurns::new(dot.remaining_turns.saturating_sub(1));
-
-        // (4) Terminal gate — the GTW-544 locked design: a DOT tick that empties Hp KILLS
+        // (3) Terminal gate — the GTW-544 locked design: a DOT tick that empties Hp KILLS
         // (flip to Dead, NOT Downed). This diverges deliberately from the weapon / injury-bleed
         // Hp→0-downs gate: the ticket's locked spec says the DOT's HP depletion is lethal.
         if *hp == Hp::new(0) {
@@ -120,11 +124,15 @@ pub fn tick_dot(
             deaths.write(OnDeathOccurred::new(entity, **position));
         }
 
-        // (5) Remove the exhausted affliction — when the profile turn count runs out, drop the
-        // Dot component (via Commands; the deferred removal settles at the frame's sync point).
-        // A dead ganger's DOT is likewise removed (it will never tick again).
-        if !dot.is_active() || *life == LifeState::Dead {
-            commands.entity(entity).remove::<Dot>();
+        // (4) Decrement-or-REMOVE (GTW-643): store the shortened duration while turns remain;
+        // on the tick that spent the LAST turn — or on the killing tick (a corpse never ticks
+        // again) — drop the Dot component (via Commands; the deferred removal settles at the
+        // frame's sync point). Expiry is removal, never a stored zero.
+        match dot.remaining_turns.decremented() {
+            Some(next) if *life != LifeState::Dead => dot.remaining_turns = next,
+            _ => {
+                commands.entity(entity).remove::<Dot>();
+            }
         }
     }
 }

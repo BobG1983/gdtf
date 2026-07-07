@@ -210,9 +210,15 @@ the struck ganger:
 dot: Some((
     damage:      4,       // HP per turn, bypasses armor
     damage_type: Plasma,  // presentation flavour only (no soak lookup)
-    turns:       3,       // duration; a second penetrating hit REFRESHES, never stacks
+    turns:       3,       // duration, MUST be >= 1; a second penetrating hit REFRESHES, never stacks
 )),
 ```
+
+`turns` must be **at least 1** — a zero-turn DOT makes no sense and is
+unrepresentable (`DotTurns` wraps `NonZeroU8`, GTW-643). A file authoring
+`turns: 0` FAILS to load: the per-file salvage rejects it loudly as a
+`MalformedFile` finding on the `ContentIntegrityReport` and the weapon never
+enters the registry (no silent clamp-to-1).
 
 ### 1l. `on_death` — wielder-death effect (GTW-547, optional)
 

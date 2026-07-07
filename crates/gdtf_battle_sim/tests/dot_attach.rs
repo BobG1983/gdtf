@@ -45,13 +45,13 @@ use gdtf_battle_sim::{
     rng::BattleSeed,
     situation::{GangerSpawn, Situation},
     test_support::{
-        GangerSpawnBuilder, SituationBuilder, TEST_WEAPON_KEY, single_mode, test_armor_registry,
-        test_melee_weapon_registry, test_weapon_spec,
+        GangerSpawnBuilder, SituationBuilder, TEST_WEAPON_KEY, dot_turns, single_mode,
+        test_armor_registry, test_melee_weapon_registry, test_weapon_spec,
     },
     tuning::{CombatTuning, ViewRange},
     weapon::{
-        Accuracy, BaseSpread, DamageType, Dot, DotDamage, DotProfile, DotTurns, FatalBias,
-        FireMode, FireModeSpec, Kickback, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Stable,
+        Accuracy, BaseSpread, DamageType, Dot, DotDamage, DotProfile, FatalBias, FireMode,
+        FireModeSpec, Kickback, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Stable,
         WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred, WeaponSpec,
     },
 };
@@ -75,12 +75,13 @@ fn ground(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(0))
 }
 
-/// The DOT profile the ATTACH tests expect on a penetrating hit.
+/// The DOT profile the ATTACH tests expect on a penetrating hit (`dot_turns` — the
+/// GTW-643 positive-literal fixture helper; a zero-turn duration is unrepresentable).
 const fn dot_profile() -> DotProfile {
     DotProfile::new(
         DotDamage::new(DOT_PER_TURN),
         DamageType::Plasma,
-        DotTurns::new(DOT_TURNS),
+        dot_turns(DOT_TURNS),
     )
 }
 
@@ -345,7 +346,7 @@ fn a_second_penetrating_dot_hit_refreshes_not_stacks() {
     step(&mut app, 3);
     let first = dot_of(&app, target_e);
     assert_eq!(
-        first.map(|d| *d.remaining_turns),
+        first.map(|d| d.remaining_turns.get()),
         Some(DOT_TURNS),
         "the first penetrating DOT hit attaches the full profile turn count",
     );
@@ -362,7 +363,7 @@ fn a_second_penetrating_dot_hit_refreshes_not_stacks() {
     step(&mut app, 3);
     let second = dot_of(&app, target_e);
     assert_eq!(
-        second.map(|d| *d.remaining_turns),
+        second.map(|d| d.remaining_turns.get()),
         Some(DOT_TURNS),
         "refresh-not-stack: a second penetrating DOT hit RESETS the remaining turns to the \
          profile ({DOT_TURNS}), never the stacked {}",
