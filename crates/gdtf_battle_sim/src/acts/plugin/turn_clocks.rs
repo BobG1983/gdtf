@@ -69,10 +69,22 @@ pub(super) fn wire_turn_clocks(app: &mut App) {
     // the combat-log reader). It joins the BattleInProgress-gated Simulate band, so
     // its Res<CombatTuning> read is panic-free outside a live battle (the band's
     // run_if skips it — bevy-traps.md #1).
+    //
+    // GTW-641 (the turn-start ruling): on the boundary frame the tick is ALSO pinned
+    // `.before` the act dispatchers (fire / move / melee) — the new turn's acts
+    // resolve the SAME frame the enemy TurnStarted lands (the AI's volley dispatches
+    // this frame), and without the pin tick_bleed vs dispatch_fire is unordered
+    // (bevy-traps.md #3): a ganger THAT volley downs could nondeterministically
+    // drain a Wound the instant it fell (down zero rounds — the exact GTW-641
+    // off-by-one, cross-system). "Bleeds happen at turn start" = the clock resolves
+    // AT the boundary, before the new turn's act resolution.
     app.add_systems(
         Update,
         tick_bleed
             .after(dispatch_end_turn)
+            .before(dispatch_fire)
+            .before(dispatch_move)
+            .before(dispatch_melee)
             .run_if(enemy_phase_started)
             .in_set(SimSystems::Simulate),
     );

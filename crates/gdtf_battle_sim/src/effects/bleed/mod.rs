@@ -13,11 +13,14 @@
 //!
 //! ## Who bleeds (and who is skipped)
 //!
-//! - **Only [`crate::ganger::LifeState::Downed`] gangers bleed.** An
-//!   [`crate::ganger::LifeState::Alive`] ganger is up and fighting; an
-//!   [`crate::ganger::LifeState::Dead`] one is already a corpse — both are skipped,
-//!   mutate nothing, and emit no [`Bleeding`](crate::effects::bleed::Bleeding) (the "once-only" property: once Dead,
-//!   the next tick skips it).
+//! - **Only gangers who ENTERED the tick [`crate::ganger::LifeState::Downed`]
+//!   bleed** (GTW-641: the gate is a pre-tick snapshot, so a ganger the tick's own
+//!   injury-HP bleed just downed has been down zero rounds and drains its first
+//!   Wound on the NEXT tick). An [`crate::ganger::LifeState::Alive`] ganger is up
+//!   and fighting; an [`crate::ganger::LifeState::Dead`] one is already a corpse —
+//!   both are skipped, mutate nothing, and emit no
+//!   [`Bleeding`](crate::effects::bleed::Bleeding) (the "once-only" property: once
+//!   Dead, the next tick skips it).
 //! - **A [`crate::ganger::Stabilized`] Downed ganger is skipped.** Once an ally has
 //!   dressed the wound ([`crate::ganger::Stabilized`] present and `true`), the clock
 //!   halts: no drain, no new stack, no [`Bleeding`](crate::effects::bleed::Bleeding) — the Wounds already lost stay

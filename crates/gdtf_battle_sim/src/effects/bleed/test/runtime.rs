@@ -10,111 +10,18 @@
 //! per full round (`docs/combat/resolution.md` §9). The buffer
 //! [`Bleeding`](crate::effects::bleed::Bleeding) the drain emits is the same one the presenter's
 //! consequence FCT reads; these tests prove it is actually produced in a live battle.
+//!
+//! The shared live-harness fixtures (`live_app` / `seed_battle_resources` /
+//! `bleeding_ganger` / `end_turn` / `drain_bleeding`) live in [`super::support`]
+//! (GTW-641 lifted them there for the entry-gate / turn-start siblings).
 
-use bevy::prelude::{App, Entity, Messages, MinimalPlugins};
+use bevy::prelude::{App, MinimalPlugins};
 
-use crate::{
-    acts::EndTurnRequested,
-    battle::{BattleInProgress, BattleRoster, BattleSimPlugin},
-    effects::bleed::Bleeding,
-    ganger::{Faction, LifeState, Stabilized, Wounds},
-    rng::BattleSeed,
-    test_support::{GangerEntityBuilder, insert_sim_resources},
-    tuning::CombatTuning,
-    turn::ActiveFaction,
+use super::support::{
+    ENEMY, LifeState, PLAYER, Stabilized, bleed_rate, bleeding_ganger, drain_bleeding, end_turn,
+    life_of, live_app, seed_battle_resources, wounds_of,
 };
-
-/// Seed the shared battle-lifetime resources a live battle has (everything BUT the
-/// [`BattleInProgress`] gate witness): the three grids, the five seeded RNG streams (GTW-14),
-/// [`CombatTuning::default`] (persistent `Load`-tier in production), the
-/// [`BattleRoster`] the `check_outcome` census reads, and [`PlayerFaction`] +
-/// [`ActiveFaction`] on the player (the player acts first). [`BattleSimPlugin`] (added
-/// by the caller) bundles
-/// [`OccupancyMaintenancePlugin`](crate::occupancy_sync::OccupancyMaintenancePlugin) and
-/// [`SimActsPlugin`](crate::acts::SimActsPlugin) and installs the real `BattleInProgress`
-/// gate on the `SimSystems::Simulate` band — so these tests drive the exact production
-/// registration, gate included.
-fn seed_battle_resources(app: &mut App) {
-    // The canonical seeding litany (GTW-576) — grids, ledgers, five RNG streams, empty
-    // injury content, default tuning + uniform floor costs, PlayerFaction on gang 0
-    // (== PLAYER here).
-    insert_sim_resources(app, BattleSeed::new(SEED));
-    // The live-runtime extras on top of the litany: the BattleRoster the `check_outcome`
-    // census reads, and ActiveFaction on the player (the player acts first).
-    app.insert_resource(BattleRoster::new([PLAYER, ENEMY]));
-    app.insert_resource(ActiveFaction::new(PLAYER));
-}
-
-/// A fixed seed for the per-test RNG stream (arbitrary, not tuned).
-const SEED: u64 = 0x5A1C_AC75;
-
-/// Gang `0` is the player team; gang `1` is the enemy.
-const PLAYER: Faction = Faction::new(0);
-/// The enemy team.
-const ENEMY: Faction = Faction::new(1);
-
-/// Build the FULL live-runtime harness: [`MinimalPlugins`] + the real production
-/// [`BattleSimPlugin`] (which bundles
-/// [`OccupancyMaintenancePlugin`](crate::occupancy_sync::OccupancyMaintenancePlugin) +
-/// [`SimActsPlugin`](crate::acts::SimActsPlugin) — the turn-cycle engine + the GTW-336
-/// bleed wiring — AND installs the `run_if(resource_exists::<BattleInProgress>)` gate on
-/// the `SimSystems::Simulate` band), seeded with the battle-lifetime resources a live
-/// battle has PLUS the [`BattleInProgress`] gate witness (so the gated Simulate band
-/// actually runs). Driving through `BattleSimPlugin` means these tests exercise the SAME
-/// registration the live runtime uses — gate included — not a hand-rolled subset.
-fn live_app() -> App {
-    let mut app = App::new();
-    app.add_plugins(MinimalPlugins);
-    app.add_plugins(BattleSimPlugin);
-    seed_battle_resources(&mut app);
-    app.insert_resource(BattleInProgress);
-    app
-}
-
-/// The bleed rate the default [`CombatTuning`] carries — read, never pinned; tests assert
-/// the per-round drop EQUALS this (a relation to the tuning value, not a fixed magnitude).
-fn bleed_rate() -> u8 {
-    *CombatTuning::default().bleed_rate
-}
-
-/// Spawn a ganger of `faction` in the given [`LifeState`] with a Wounds pool, plus a full
-/// TU pool (so the turn engine's regen has something to act on, matching a real ganger).
-fn bleeding_ganger(app: &mut App, faction: Faction, life: LifeState, wounds: u8) -> Entity {
-    GangerEntityBuilder::new()
-        .faction(faction)
-        .life_state(life)
-        .wounds(wounds)
-        .tu(0)
-        .tu_max(100)
-        .spawn(app.world_mut())
-}
-
-/// Read a ganger's current Wounds back out (0 if somehow absent — no `unwrap`).
-fn wounds_of(app: &App, ganger: Entity) -> u8 {
-    app.world().get::<Wounds>(ganger).map_or(0, |w| **w)
-}
-
-/// Read a ganger's current [`LifeState`] back out (Alive if absent — no `unwrap`).
-fn life_of(app: &App, ganger: Entity) -> LifeState {
-    app.world()
-        .get::<LifeState>(ganger)
-        .copied()
-        .unwrap_or(LifeState::Alive)
-}
-
-/// Drain the buffered [`Bleeding`] messages emitted this run, in order.
-fn drain_bleeding(app: &mut App) -> Vec<Bleeding> {
-    app.world_mut()
-        .resource_mut::<Messages<Bleeding>>()
-        .drain()
-        .collect()
-}
-
-/// Send one End-Turn request and run the cycle (player → enemy → auto-pass → player).
-fn end_turn(app: &mut App) {
-    app.world_mut().write_message(EndTurnRequested);
-    app.update();
-}
+use crate::battle::BattleSimPlugin;
 
 /// GTW-336 core — a player End Turn (one full round) drains a live Downed ganger's Wounds
 /// by exactly `bleed_rate` AND emits a `Bleeding` carrying it. This is the wiring under
