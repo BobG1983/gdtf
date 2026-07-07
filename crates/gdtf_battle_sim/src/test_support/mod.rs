@@ -25,8 +25,9 @@
 //!   [`test_armor_spec`] / [`arbitrary_armor`] / [`key`] / [`TEST_WEAPON_KEY`] /
 //!   [`TEST_ARMOR_KEY`] — the shared specs + registries + the `(cell, level)` key
 //!   helper consolidated out of the former per-module test-support copies.
-//! - [`dot_turns`] — the typed fixture-literal builders (GTW-643): `const` helpers
-//!   spelling a `NonZero`-backed domain value from a plain positive test literal.
+//! - [`dot_turns`] / [`field_turns`] — the typed fixture-literal builders (GTW-643 /
+//!   GTW-659): `const` helpers spelling a `NonZero`-backed domain value from a plain
+//!   positive test literal.
 //! - [`SimAppBuilder`] / [`insert_sim_resources`] / [`full_vision`] — the knobbed
 //!   headless sim-app builder and the ONE canonical sim-resource seeding litany
 //!   (GTW-576), plus the value-level RNG/ledger knobs ([`shot_rng`] /
@@ -68,7 +69,7 @@ mod situation;
 pub use actor::{GangerEntityBuilder, single_mode, target_bundle, wield};
 pub use ganger::{GangerSpawnBuilder, ganger_at};
 pub use harness::{SimAppBuilder, TEST_PLAYER_GANG, TEST_SEED, full_vision, insert_sim_resources};
-pub use literals::dot_turns;
+pub use literals::{dot_turns, field_turns};
 pub use registries::{
     TEST_ARMOR_KEY, TEST_MELEE_WEAPON_KEY, TEST_WEAPON_KEY, arbitrary_armor, key,
     test_armor_registry, test_armor_spec, test_melee_weapon_registry, test_melee_weapon_spec,

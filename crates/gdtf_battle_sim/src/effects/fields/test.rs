@@ -12,14 +12,14 @@ use bevy::prelude::{
 };
 
 use super::{
-    FieldDamage, FieldDef, FieldDuration, FieldRegistry, FieldTicked, FieldTurns, ImmuneArmorTypes,
-    tick_fields,
+    FieldDamage, FieldDef, FieldDuration, FieldRegistry, FieldTicked, ImmuneArmorTypes, tick_fields,
 };
 use crate::{
     armor::{ArmorType, WornBy},
     ganger::{Hp, LifeState},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
+    test_support::field_turns,
     weapon::DamageType,
 };
 
@@ -203,13 +203,14 @@ fn turns_field_counts_down_and_is_removed_after_n_rounds() {
     let mut registry = FieldRegistry::new();
     registry.spawn(
         cell,
-        field(3, &[], FieldDuration::Turns(FieldTurns::new(turns))),
+        field(3, &[], FieldDuration::Turns(field_turns(turns))),
     );
     app.world_mut().insert_resource(registry);
     app.update();
 
     assert_eq!(field_count(&app), 1, "the field is live before any tick");
-    // Tick exactly `turns` rounds — the countdown reaches zero and the field is removed.
+    // Tick `turns` more rounds — the round that spends the last turn removes the field
+    // (decrement-or-expire; a zero countdown is never stored — GTW-659).
     for _ in 0..turns {
         app.update();
     }

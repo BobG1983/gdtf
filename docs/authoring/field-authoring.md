@@ -27,7 +27,7 @@ From the shipped `assets/content/fields/toxic_waste_pool.field.ron`
     damage:             3,                 // FieldDamage — flat HP drained per turn (bypasses armor)
     damage_type:        Chem,              // wheel-node flavour (presentation only — the tick bypasses the matchup)
     immune_armor_types: [Flak, Hazard],    // whole-source immunity: ANY worn piece of these skips ALL damage
-    duration:           Permanent,         // never expires; or Turns(3) for a timed hazard
+    duration:           Permanent,         // never expires; or Turns(3) = exactly 3 draining rounds (Turns(0) is rejected at load)
 )
 ```
 
@@ -39,7 +39,7 @@ From the shipped `assets/content/fields/toxic_waste_pool.field.ron`
 | `damage` | `FieldDamage` | bare integer | Flat per-turn HP drain — no armor matchup, no injury roll, no RNG |
 | `damage_type` | `DamageType` | enum variant | Wheel-node flavour, presentation only (the drain bypasses soak) |
 | `immune_armor_types` | `ImmuneArmorTypes` | list of `ArmorType` variants | WHOLE-SOURCE immunity: a ganger wearing ANY piece of a listed type takes zero |
-| `duration` | `FieldDuration` | `Permanent` \| `Turns(n)` | Lifetime in full rounds |
+| `duration` | `FieldDuration` | `Permanent` \| `Turns(n)` | `Turns(n)` = exactly `n` draining rounds, then the field is removed (the same round boundary that spends the last turn removes it). `n` must be ≥ 1 — `Turns(0)` is unrepresentable (GTW-659) and FAILS the file's load (per-file salvage, `MalformedFile` finding); there is no clamp |
 
 ### 1c. Placing a field (three producers)
 
@@ -61,7 +61,10 @@ A catalog entry does nothing until something PLACES it at a `(cell, level)`:
 `tick_fields` (`crates/gdtf_battle_sim/src/effects/fields/tick.rs`) runs once
 per full round (the enemy-phase-start cadence shared with the bleed clock):
 each fielded cell drains its occupant (unless an armor exemption applies), then
-every placement's lifetime counts down and expired placements are removed. The
+every placement's lifetime counts down and expired placements are removed. A
+`Turns(n)` field therefore drains on exactly `n` round boundaries — the
+boundary that spends its last turn still drains, then removes the placement
+(never `n + 1`; pinned by the `test_lifetime.rs` suite, GTW-659). The
 presenter draws a field overlay on fielded cells
 (`crates/gdtf_battle_presenter/src/overlays/field/`) and a hazard-orange FCT
 pop on each tick ([fct-authoring.md](fct-authoring.md)); the affliction logs

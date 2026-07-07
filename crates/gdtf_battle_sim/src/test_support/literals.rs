@@ -7,7 +7,7 @@
 
 use std::num::NonZeroU8;
 
-use crate::weapon::DotTurns;
+use crate::{effects::fields::FieldTurns, weapon::DotTurns};
 
 /// A [`DotTurns`] from a positive TEST literal — the terse fixture helper for DOT
 /// durations (a zero-turn duration is unrepresentable — [`DotTurns`] wraps
@@ -19,6 +19,21 @@ pub const fn dot_turns(turns: u8) -> DotTurns {
     match NonZeroU8::new(turns) {
         Some(turns) => DotTurns::new(turns),
         // A test fixture's DOT duration literal is always positive (zero is the
+        // unrepresentable state this helper exists to spell safely).
+        None => unreachable!(),
+    }
+}
+
+/// A [`FieldTurns`] from a positive TEST literal — the terse fixture helper for
+/// area-damage-field durations (a zero-turn duration is unrepresentable —
+/// [`FieldTurns`] wraps [`NonZeroU8`], GTW-659). A fixture literal is never `0`; the
+/// zero arm `unreachable!`s — in the `const` position the fixtures use, a `0` is a
+/// COMPILE error, never a silent clamp.
+#[must_use]
+pub const fn field_turns(turns: u8) -> FieldTurns {
+    match NonZeroU8::new(turns) {
+        Some(turns) => FieldTurns::new(turns),
+        // A test fixture's field duration literal is always positive (zero is the
         // unrepresentable state this helper exists to spell safely).
         None => unreachable!(),
     }

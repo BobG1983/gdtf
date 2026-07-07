@@ -62,12 +62,13 @@ mod tests {
         effects::{
             fields::{
                 FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey, FieldRegistry,
-                FieldTurns, ImmuneArmorTypes,
+                ImmuneArmorTypes,
             },
             on_death::{DeathFanOut, VictimRow},
         },
         metric::{Cell, CellLevel, Level},
         occupancy::OccupancyGrid,
+        test_support::field_turns,
         weapon::DamageType,
     };
 
@@ -85,7 +86,7 @@ mod tests {
                 FieldDamage::new(3),
                 DamageType::Plasma,
                 ImmuneArmorTypes::default(),
-                FieldDuration::Turns(FieldTurns::new(2)),
+                FieldDuration::Turns(field_turns(2)),
             ),
         );
         defs

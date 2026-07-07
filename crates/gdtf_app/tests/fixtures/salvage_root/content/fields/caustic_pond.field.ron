@@ -1,0 +1,11 @@
+// GTW-659 fixture field — the WELL-FORMED control sibling for the zero-turn
+// rejection test: it must still resolve into the FieldDefRegistry while its
+// zero-turn sibling is salvage-rejected (fail-closed per FILE, not per family —
+// the GTW-582 contract). NOT shipped content; loaded only by
+// tests/load_ref_salvage.rs.
+(
+    damage:             3,        // flat per-turn HP drain (bypasses armor)
+    damage_type:        Chem,     // wheel-node flavour (presentation only)
+    immune_armor_types: [Flak],   // whole-source immunity set
+    duration:           Turns(2), // a positive, representable turn count
+)

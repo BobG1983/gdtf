@@ -13,8 +13,7 @@ use gdtf_battle_sim::{
     cover::CoverHp,
     effects::{
         fields::{
-            FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey, FieldTurns,
-            ImmuneArmorTypes,
+            FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey, ImmuneArmorTypes,
         },
         on_death::OnDeathEffect,
     },
@@ -31,7 +30,7 @@ use gdtf_battle_sim::{
         TerrainUuid,
     },
     test_support::{
-        GangerSpawnBuilder, TEST_MELEE_WEAPON_KEY, TEST_WEAPON_KEY, single_mode,
+        GangerSpawnBuilder, TEST_MELEE_WEAPON_KEY, TEST_WEAPON_KEY, field_turns, single_mode,
         test_armor_registry, test_melee_weapon_registry, test_melee_weapon_spec, test_weapon_spec,
     },
     tuning::{CombatTuning, ViewRange},
@@ -128,7 +127,7 @@ pub(crate) fn burning_field_registry() -> FieldDefRegistry {
             FieldDamage::new(3),
             DamageType::Plasma,
             ImmuneArmorTypes::default(),
-            FieldDuration::Turns(FieldTurns::new(2)),
+            FieldDuration::Turns(field_turns(2)),
         ),
     )])
 }
