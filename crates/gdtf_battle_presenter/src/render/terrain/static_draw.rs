@@ -4,7 +4,6 @@
 use bevy::{
     camera::visibility::RenderLayers,
     ecs::template::template,
-    image::TextureAtlasLayout,
     math::primitives::Rectangle,
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
@@ -18,11 +17,10 @@ use gdtf_battle_sim::{
 use super::{
     active_level::{ActiveLevel, ViewMode},
     band::{drawn_band, level_band},
-    roles::TileRoles,
-    static_map::{StaticMap, i32_extent, resolve_index, storey_has_terrain, terrain_material},
+    static_map::{SpriteResolveCtx, StaticMap, graphic_name_at, i32_extent, storey_has_terrain},
     treatment::{IsolateView, StoreyViewMode},
 };
-use crate::{TerrainFogMaterial, TopDownAtlases, cell_to_world};
+use crate::{TerrainFogMaterial, cell_to_world};
 
 /// Marker tagging every static-terrain sprite this slice spawns.
 ///
@@ -45,17 +43,21 @@ pub struct TerrainSprite {
 /// [`ActiveLevel`] `is_changed()`, [`ViewMode`] `is_changed()` (GTW-521 — the full-view
 /// toggle widens/narrows the [`drawn_band`] ceiling, so the terrain must redraw for the new
 /// band), [`IsolateView`] `is_changed()` (GTW-594 — the Isolate toggle moves the band's
-/// FLOOR), OR [`TileRoles`] `is_changed()` — the GTW-375 third
-/// trigger that re-renders the terrain on a tile hot-reload. A `tile_roles.ron` re-save
-/// MUTATES [`TileRoles`] (the indices swap) and an `alt_tileset_terrain.png` re-save
-/// `set_changed()`s it (same indices, fresh GPU texture); either way the rendered tiles
+/// FLOOR), OR [`SpriteDefRegistry`](gdtf_content_families::sprites::SpriteDefRegistry)
+/// `is_changed()` — the GTW-375 third
+/// trigger (re-anchored by GTW-665) that re-renders the terrain on a tile hot-reload. A
+/// `content/sprites/*.spritedef.ron` re-save REBUILDS the registry through the family
+/// redrive (the resolved rects/anchors swap) and an `alt_tileset_terrain.png` re-save
+/// `set_changed()`s it (same defs, fresh GPU texture); either way the rendered tiles
 /// SWAP, live, with no restart. It despawns ALL existing [`TerrainSprite`]
 /// entities, then (GTW-519) for the whole DRAWN BAND [`drawn_band`] (`0..=active`,
 /// BOTTOM-UP) scans `0..GRID_WIDTH` × `0..GRID_HEIGHT` per storey and spawns one terrain
 /// tile per NON-EMPTY cell as a shared unit-rect [`Mesh2d`] +
 /// [`MeshMaterial2d<TerrainFogMaterial>`] (GTW-348 — the material path so EXPLORED can render
 /// greyscale; the `Sprite` pipeline cannot desaturate) at
-/// [`cell_to_world`](crate::cell_to_world), on the
+/// [`cell_to_world`](crate::cell_to_world) plus the def's ANCHOR offset (GTW-665 C2 —
+/// the authored ground-contact/pivot sits ON the cell position; every seeded def
+/// authors the center anchor, so shipped art draws exactly where it always did), on the
 /// [`WORLD_RENDER_LAYER`](crate::WORLD_RENDER_LAYER), with the [`TerrainSprite`] marker. The
 /// ground floor (storey 0) draws its FULL floor field (the pre-GTW-519 single-storey
 /// behaviour); every UPPER storey in the band draws ONLY cells with a real terrain fact
@@ -67,56 +69,58 @@ pub struct TerrainSprite {
 /// update `ActiveLevel` first reads `is_changed`) idempotent, and a level cycle redraws the
 /// whole `[0..=active]` band (C7).
 ///
-/// GTW-493 (T07c — the per-def presenter seam): each cell's atlas index is resolved from
-/// the SIM-SPAWNED terrain entity's per-def
-/// [`TerrainGraphicKey`](gdtf_battle_sim::piece::TerrainGraphicKey) FIRST (via the
-/// [`resolve_index`] helper → [`TileRole::from_key`](super::roles::TileRole::from_key)),
-/// falling back to the
-/// [`TileRole`](super::roles::TileRole)-table default keyed on
+/// GTW-665 (C1 — the def-driven resolution): each cell's PIXELS resolve from the
+/// SIM-SPAWNED terrain entity's per-def
+/// [`TerrainGraphicKey`](gdtf_battle_sim::piece::TerrainGraphicKey) FIRST (via
+/// [`graphic_name_at`] → [`SpriteResolveCtx::resolved`] over the
+/// [`SpriteDefRegistry`](gdtf_content_families::sprites::SpriteDefRegistry)), falling
+/// back to the [`TileRole`](super::roles::TileRole) key mapped from the cell's
 /// [`TerrainKind`](gdtf_battle_sim::occupancy::TerrainKind) only for the floor field (no
-/// spawned entity) or an out-of-vocabulary key (warned loudly — GTW-566 C4). So two `Cover` defs whose `graphic_name`s differ
-/// (e.g. `"cover"` vs `"rubble"`) draw DISTINCT sprites — the per-def graphic the role
-/// table (keyed only on the shared [`TerrainKind`](gdtf_battle_sim::occupancy::TerrainKind)) cannot
-/// express. The slab-only OPTIONAL
-/// [`FootfallSound`](gdtf_battle_sim::piece::FootfallSound) is also read here from the def's
-/// presenter facts; an absent footfall is
+/// spawned entity). A name resolving NO def draws the LOUD magenta
+/// [`MissingTileTexture`](super::resolve::MissingTileTexture) marker (C4 — warned, never
+/// invisible, never a panic). So two
+/// `Cover` defs whose `graphic_name`s differ (e.g. `"cover"` vs `"rubble"`) draw DISTINCT
+/// sprites — the per-def graphic a kind-keyed default cannot express. The slab-only
+/// OPTIONAL [`FootfallSound`](gdtf_battle_sim::piece::FootfallSound) is also read here from
+/// the def's presenter facts; an absent footfall is
 /// handled (no panic) with a documented silent default — there is no footfall-audio system
 /// yet (guns-only).
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`], the [`StaticMap`] sim-grid bundle,
-/// [`Res<TopDownAtlases>`], [`Res<TileRoles>`], [`Res<ActiveLevel>`], the asset stores it
-/// builds tiles from ([`ResMut<Assets<TerrainFogMaterial>>`] for the per-tile material,
-/// [`ResMut<Assets<Mesh>>`] + a [`Local`] cache for the shared unit-rect quad,
-/// [`Res<Assets<TextureAtlasLayout>>`] to resolve the atlas layout — GTW-348),
-/// [`MessageReader<BattleReady>`], and the [`TerrainSprite`] despawn query.
+/// the [`SpriteResolveCtx`] resolution bundle (registry + asset server + images + the
+/// C4 marker — GTW-665), [`Res<ActiveLevel>`], the
+/// asset stores it builds tiles from ([`ResMut<Assets<TerrainFogMaterial>>`] for the
+/// per-tile material, [`ResMut<Assets<Mesh>>`] + a [`Local`] cache for the shared
+/// unit-rect quad), [`MessageReader<BattleReady>`], and the [`TerrainSprite`] despawn
+/// query.
 #[expect(
     clippy::too_many_arguments,
-    reason = "the GTW-348 material path adds three asset stores (TerrainFogMaterial, Mesh, \
-              the atlas-layout resolve) to the existing draw params; grouping into a \
-              SystemParam bundle would not reduce the count and would obscure the per-arg docs"
+    reason = "the GTW-348 material path adds two asset stores (TerrainFogMaterial, Mesh) \
+              to the existing draw params and GTW-665 adds the bundled resolution ctx; \
+              further grouping into SystemParam bundles would not reduce the count and \
+              would obscure the per-arg docs"
 )]
 pub fn draw_static_battlefield(
     mut commands: Commands,
     map: StaticMap,
-    atlases: Res<TopDownAtlases>,
-    roles: Res<TileRoles>,
+    resolve: SpriteResolveCtx,
     active: Res<ActiveLevel>,
     view: Res<ViewMode>,
     isolate: Res<IsolateView>,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut quad: Local<Option<Handle<Mesh>>>,
-    layouts: Res<Assets<TextureAtlasLayout>>,
     mut ready: MessageReader<BattleReady>,
     existing: Query<Entity, With<TerrainSprite>>,
 ) {
     // The redraw triggers: a drained BattleReady (one-shot), an ActiveLevel change, OR a
-    // changed TileRoles (GTW-375). The TileRoles trigger is THE single redraw signal for a
-    // tile-appearance hot-reload — both reload paths converge on it: a `tile_roles.ron`
-    // re-save MUTATES TileRoles (redrive_tile_roles_on_asset_event), and an
-    // `alt_tileset_terrain.png` re-save `set_changed()`s it (redrive_terrain_sheet_on_asset_event)
-    // so the tiles re-render against the freshly-reloaded GPU texture. present_fog runs in the
-    // Compose stage, chained after this Scene stage, so the fog re-applies to the redrawn tiles.
+    // changed SpriteDefRegistry (GTW-375 / GTW-665). The registry trigger is THE single
+    // redraw signal for a tile-appearance hot-reload — both reload paths converge on it: a
+    // `content/sprites/*.spritedef.ron` re-save REBUILDS the registry (the family redrive
+    // re-inserts it), and an `alt_tileset_terrain.png` re-save `set_changed()`s it
+    // (redrive_sheet_images_on_asset_event) so the tiles re-render against the
+    // freshly-reloaded GPU texture. present_fog runs in the Compose stage, chained after
+    // this Scene stage, so the fog re-applies to the redrawn tiles.
     // Fully DRAIN the reader (`.count()`, not `.next()`) so a multi-message ready never
     // leaves an unread BattleReady to re-fire a redundant redraw next update.
     let ready_fired = ready.read().count() > 0;
@@ -127,7 +131,7 @@ pub fn draw_static_battlefield(
         && !active.is_changed()
         && !view.is_changed()
         && !isolate.is_changed()
-        && !roles.is_changed()
+        && !resolve.defs_changed()
     {
         return;
     }
@@ -148,7 +152,7 @@ pub fn draw_static_battlefield(
 
     // GTW-493: build the per-cell terrain presentation-fact map ONCE per draw — the
     // sim-spawned `(cell, level)` -> (per-def TerrainGraphicKey, optional slab FootfallSound).
-    // Each cell then resolves its atlas index from its OWN def's graphic (resolve_index),
+    // Each cell then resolves its sprite def from its OWN graphic name (resolve_cell_sprite),
     // not solely from the TerrainKind-keyed TileRole default.
     let graphic_facts = map.graphic_facts();
 
@@ -178,28 +182,27 @@ pub fn draw_static_battlefield(
                          footfall-audio system yet — default: silent)",
                     );
                 }
-                // GTW-493: resolve the atlas index from this cell's per-def TerrainGraphicKey
-                // FIRST (so two same-TerrainKind defs with distinct graphic_names draw
-                // distinct sprites), falling back to the TerrainKind-keyed TileRole default
-                // for the floor field / an out-of-vocabulary key.
-                //
-                // GTW-519 PEEK-THROUGH (C2): a `resolve_index` on a cell with nothing on it
-                // still yields the FLOOR default — but the caller only spawns a tile where a
-                // sim FACT exists on THIS storey. An open/empty upper-storey cell (no
-                // terrain entity, no slab, occupancy `Open`) resolves to floor yet has no
-                // fact keying it here for a non-zero storey, so it emits NOTHING and the
-                // storey beneath peeks through. The floor field is authored on storey 0 (the
-                // ground plane); upper storeys draw only their real walls / cover / slabs.
+                // GTW-519 PEEK-THROUGH (C2): a cell with nothing on it still resolves the
+                // FLOOR default — but the caller only spawns a tile where a sim FACT exists
+                // on THIS storey. An open/empty upper-storey cell (no terrain entity, no
+                // slab, occupancy `Open`) resolves to floor yet has no fact keying it here
+                // for a non-zero storey, so it emits NOTHING and the storey beneath peeks
+                // through. The floor field is authored on storey 0 (the ground plane); upper
+                // storeys draw only their real walls / cover / slabs.
                 if level != Level::new(0) && !storey_has_terrain(&key, &graphic_facts, &map) {
                     continue;
                 }
-                let index = resolve_index(&key, &graphic_facts, &map, &roles);
-                let Some(material) = terrain_material(index, &atlases, &layouts) else {
-                    continue;
-                };
+                // GTW-665: resolve the cell's graphic NAME (per-def graphic FIRST, the
+                // TileRole key for the floor field) through the ONE def resolution — the
+                // material carries the def's texture + rect (C1), the offset its anchor
+                // (C2 — zero for the seeded center anchors, so shipped art is
+                // pixel-identical), and a missing def yields the LOUD magenta marker (C4).
+                let name = graphic_name_at(&key, &graphic_facts, &map);
+                let (material, offset) = resolve.resolved(name, &key);
                 let mesh2d = Mesh2d(mesh.clone());
                 let material2d = MeshMaterial2d(materials.add(material));
-                let transform = Transform::from_translation(cell_to_world(cell, level));
+                let transform =
+                    Transform::from_translation(cell_to_world(cell, level) + offset.extend(0.0));
                 let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
                 // GTW-348 — terrain moved from the `Sprite` path to a `Mesh2d` +
                 // `MeshMaterial2d<TerrainFogMaterial>` so EXPLORED cells can render GREYSCALE

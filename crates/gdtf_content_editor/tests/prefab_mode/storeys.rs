@@ -20,18 +20,20 @@ const Z_TOLERANCE: f32 = STOREY_Z_GAP / 2.0;
 /// `storey * STOREY_Z_GAP`). Lets the test distinguish the GROUND default-floor fill (z≈0) from an
 /// UPPER storey's tiles (z≈`storey * gap`) on the real spawned entities.
 ///
-/// Counts ATLAS-image sprites only (`texture_atlas.is_some()`) — the base terrain tiles.
-/// GTW-594's per-cell PATTERN overlays (the context stipple / the void grid) are plain
-/// image sprites sharing the storey's z band; they are overlays, not fill, so the
-/// fill-anchor assertions must not count them.
+/// Counts SOURCE-RECT sprites only (`sprite.rect.is_some()`) — since GTW-665 a base
+/// terrain tile resolves its sprite def to a source image + pixel rect (every shipped
+/// seed is a `Sheet` source, so the fill tiles all carry a rect; the pre-665 draw was a
+/// `texture_atlas` sprite, which this discriminator replaced). GTW-594's per-cell
+/// PATTERN overlays (the context stipple / the void grid) are whole-image sprites (no
+/// rect) sharing the storey's z band; they are overlays, not fill, so the fill-anchor
+/// assertions must not count them.
 fn sprite_count_on_storey(app: &mut App, storey: u8) -> usize {
     let target_z = STOREY_Z_GAP * f32::from(storey);
     app.world_mut()
         .query::<(&Sprite, &Transform)>()
         .iter(app.world())
         .filter(|(sprite, transform)| {
-            sprite.texture_atlas.is_some()
-                && (transform.translation.z - target_z).abs() < Z_TOLERANCE
+            sprite.rect.is_some() && (transform.translation.z - target_z).abs() < Z_TOLERANCE
         })
         .count()
 }

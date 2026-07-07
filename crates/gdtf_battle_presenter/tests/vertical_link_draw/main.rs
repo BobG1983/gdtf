@@ -6,8 +6,8 @@
 //! render NON-EMPTY is `vertical_link_readback.rs` (the dev screenshot capture is broken,
 //! so a real-GPU readback closes that gap, `bevy-traps.md` #8). The harness is the
 //! `ganger_draw.rs` pattern: a `DefaultPlugins`/`no_renderer` app with a live
-//! `AssetServer` rooted at the workspace `assets/` (so `TileRoles` resolves to the
-//! SHIPPED `tile_roles.ron`, `TopDownAtlases` loads) plus `TopDownRendererPlugin` and the
+//! `AssetServer` rooted at the workspace `assets/` (so the `SpriteDefRegistry` resolves
+//! to the SHIPPED `content/sprites/` seeds, `TopDownAtlases` loads) plus `TopDownRendererPlugin` and the
 //! real `setup_battle` spawn path. The links + gangers are NOT hand-spawned — they are
 //! poured through the real setup from a `Situation` carrying authored
 //! [`VerticalLink`](gdtf_battle_sim::vertical::VerticalLink)s, so `setup_battle` validates + inserts

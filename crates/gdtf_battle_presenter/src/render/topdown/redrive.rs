@@ -2,9 +2,9 @@
 //! and (for the terrain sheet) force the terrain redraw; plus its registrar.
 
 use bevy::{asset::AssetEvent, prelude::*};
+use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use super::atlases::{SheetRole, TopDownAtlases};
-use crate::TileRoles;
 
 /// `Update` (unguarded; self-gates on its [`Option`] borrows): live-reload ANY sprite
 /// sheet registered in [`TopDownAtlases`] when its `.png` is re-saved (GTW-375 C4) —
@@ -21,8 +21,9 @@ use crate::TileRoles;
 ///
 /// - logs ONE `info!` per reloaded sheet, naming it by its asset path (GTW-375 C5); and
 /// - if [`Terrain`](SheetRole::Terrain) is among them, calls
-///   [`DetectChangesMut::set_changed`] on [`TileRoles`] to force
-///   `draw_static_battlefield`'s `roles.is_changed()` trigger to despawn+respawn the terrain
+///   [`DetectChangesMut::set_changed`] on the [`SpriteDefRegistry`] (the GTW-665 redraw
+///   signal — the retired `TileRoles` poke re-anchored) to force
+///   `draw_static_battlefield`'s `defs_changed()` trigger to despawn+respawn the terrain
 ///   tiles against the freshly-reloaded texture.
 ///
 /// Why ONLY terrain gets the poke (the Research-phase bevy-expert finding, Bevy 0.19): the
@@ -46,15 +47,15 @@ use crate::TileRoles;
 /// param resolves to [`None`] and the system no-ops (nothing to drain — there is no buffer).
 /// [`TopDownAtlases`] (the id→sheet map) is an [`Option`]al borrow, draining the reader and
 /// returning early when it is missing (`bevy-traps.md` #1) so a pre-resolve event does not
-/// linger and re-fire later. [`TileRoles`] is [`Option`]al too and used ONLY for the terrain
-/// poke, so a non-terrain reload still LOGS even when [`TileRoles`] is absent.
+/// linger and re-fire later. The [`SpriteDefRegistry`] is [`Option`]al too and used ONLY
+/// for the terrain poke, so a non-terrain reload still LOGS even when it is absent.
 ///
 /// Param-only (`bevy-traps.md` #7): the optional [`MessageReader`], the optional
-/// [`TopDownAtlases`] / [`TileRoles`] borrows.
+/// [`TopDownAtlases`] / [`SpriteDefRegistry`] borrows.
 pub fn redrive_sheet_images_on_asset_event(
     events: Option<MessageReader<AssetEvent<Image>>>,
     atlases: Option<Res<TopDownAtlases>>,
-    roles: Option<ResMut<TileRoles>>,
+    defs: Option<ResMut<SpriteDefRegistry>>,
 ) {
     let Some(mut events) = events else {
         // No `Messages<AssetEvent<Image>>` buffer (no image-asset stack) — nothing to read
@@ -100,15 +101,16 @@ pub fn redrive_sheet_images_on_asset_event(
 
     // ONLY the terrain sheet needs an explicit redraw poke: it draws through the custom
     // TerrainFogMaterial whose bind group is a snapshot, so force draw_static_battlefield's
-    // `roles.is_changed()` trigger to despawn+respawn the tiles against the fresh GPU
+    // `defs_changed()` trigger to despawn+respawn the tiles against the fresh GPU
     // texture. The other sheets are atlas sprites and refresh through the sprite pipeline on
-    // their own (see the system doc). The tile indices are unchanged, so this marks TileRoles
-    // changed WITHOUT mutating it — and is gated on TileRoles being present, so a non-terrain
-    // reload still LOGS above even when TileRoles is absent.
+    // their own (see the system doc). The resolved defs are unchanged, so this marks the
+    // SpriteDefRegistry changed WITHOUT mutating it (GTW-665 — the retired TileRoles poke
+    // re-anchored) — and is gated on the registry being present, so a non-terrain reload
+    // still LOGS above even when it is absent.
     if reloaded.contains(&SheetRole::Terrain)
-        && let Some(mut roles) = roles
+        && let Some(mut defs) = defs
     {
-        roles.set_changed();
+        defs.set_changed();
     }
 }
 

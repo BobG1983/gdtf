@@ -7,13 +7,13 @@ sprite's pixels come from* (a standalone image, or a `{sheet, rect}` region of
 a sprite sheet), *where it touches the ground* (the anchor/pivot), and
 optionally *how it faces and animates*.
 
-**Status today:** the defs are the authoritative sprite DATA MODEL and are
-validated at load + authoring time, but the battle renderer still draws
-terrain through the legacy role table (`assets/sprites/tile_roles.spritedef.ron`
-→ `TileRoles`). The renderer swap onto this registry is **GTW-665**; the
+**Status today:** the defs are the authoritative sprite data model AND the
+authoritative RESOLUTION: since **GTW-665** the battle renderer and the
+content editor both resolve a terrain `graphic_name` to its sprite def
+(texture + rect + anchor) through this registry — the legacy terrain role
+table (`tile_roles.spritedef.ron` → `TileRoles`) is retired and deleted. The
 editor authoring mode is **GTW-664**; restamping shipped content is
-**GTW-666**. Until GTW-665 lands, a seeded def and the role table are kept in
-lockstep by a standing test (see Part 4).
+**GTW-666**.
 
 ---
 
@@ -25,10 +25,11 @@ registry name (`floor.spritedef.ron` → name `"floor"`), exactly the string a
 terrain def's `graphic_name:` references.
 
 Do NOT confuse this family with the OLD role tables under `assets/sprites/`
-(`tile_roles.spritedef.ron`, `character_roles.spritedef.ron`,
-`effect_roles.spritedef.ron`) — same suffix, different format and folder.
-Those are single-file role→atlas-index tables the renderer still draws with;
-they keep working untouched until GTW-665 supersedes them.
+(`character_roles.spritedef.ron`, `effect_roles.spritedef.ron`) — same
+suffix, different format and folder. Those are single-file role→atlas-index
+tables the ACTOR/FX draws still use; the TERRAIN table
+(`tile_roles.spritedef.ron`) was retired and deleted when GTW-665 swapped
+terrain resolution onto this family.
 
 ## Part 2 — The `.spritedef.ron` schema — by example
 
@@ -102,27 +103,39 @@ BOTH hosts: a `graphic_name` that resolves no sprite def lands a
 at the end of the game's `Load` and live at editor authoring time (the watch
 set re-arms the pass when the sprite registry rebuilds).
 
-## Part 4 — The seeded catalog (GTW-663 C2)
+## Part 4 — The seeded catalog (GTW-663 C2) and how it resolves (GTW-665)
 
 GTW-663 seeded one def per name reachable as a `graphic_name` today — the 20
-`TileRole` keys — each mechanically derived from the live role table: sheet =
-the presenter's terrain sheet, rect = the role's atlas index unpacked on the
-sheet's 16-column/16-px grid, anchor = the current implicit CENTER anchor
+`TileRole` keys — each mechanically derived from the then-live role table:
+sheet = the presenter's terrain sheet, rect = the role's atlas index unpacked
+on the sheet's 16-column/16-px grid, anchor = the implicit CENTER anchor
 `(8, 8)` (the renderer draws each tile as a unit quad centered on its cell —
 `crates/gdtf_battle_presenter/src/render/terrain/static_draw.rs`).
 
-The defs are INERT data until GTW-665: re-pointing a role index in
-`tile_roles.spritedef.ron` changes what draws, and the standing
-derivation-truth test (`crates/gdtf_app/tests/load_sprites.rs`) then fails
-until the seeded def is re-derived to match — that lockstep is deliberate, so
-the catalog can never silently drift from what actually renders before the
-swap.
+Since GTW-665 the defs ARE what renders: the presenter's ONE resolution
+(`resolve_sprite`,
+`crates/gdtf_battle_presenter/src/render/terrain/resolve.rs`) looks a
+`graphic_name` up in the registry by NAME; `source` picks the pixels (a
+`Sheet` source's rect, or a `File` image), and `anchor` places the sprite (the
+authored anchor point sits ON the cell position — a center anchor reproduces
+the old centered draw exactly). The content editor's palette / preview
+thumbnails consume the SAME resolution — one resolution, two consumers. The
+GTW-663 derivation-truth pin retired with the table, per its own retirement
+note: there is no second artifact left to drift from.
+
+A `graphic_name` that resolves NO def draws the LOUD magenta missing-sprite
+marker (never a panic, never an invisible tile) and warns naming the key and
+the cell — possible mid-authoring, since the integrity edge warns without
+blocking load.
 
 ## Part 5 — Verify
 
-- **Suite:** `cargo dtest` — the family binds the generic load suite plus the
-  derivation-truth pin (`crates/gdtf_app/tests/load_sprites.rs`), the schema
-  pins live in-crate (`crates/gdtf_content_families/src/sprites/test/`), and
+- **Suite:** `cargo dtest` — the family binds the generic load suite
+  (`crates/gdtf_app/tests/load_sprites.rs`), the schema
+  pins live in-crate (`crates/gdtf_content_families/src/sprites/test/`), the
+  def-driven draw / off-center-anchor / missing-marker behavior is pinned in
+  `crates/gdtf_battle_presenter/tests/terrain_draw/` and
+  `crates/gdtf_battle_presenter/tests/terrain_missing_sprite.rs`, and
   the dangling-`graphic_name` finding is pinned in both hosts
   (`crates/gdtf_app/tests/load_ref_integrity.rs`,
   `crates/gdtf_content_editor/tests/authoring_validation/sprites.rs`).
@@ -130,4 +143,5 @@ swap.
   "hot-reload: rebuilt … from content/sprites" info line.
 - **Dangling key:** author a `graphic_name` with no matching sprite def and
   watch the `DanglingRef … SpriteDefRegistry` finding on the end-of-`Load`
-  report (game) or the live editor report (authoring time).
+  report (game) or the live editor report (authoring time) — and the magenta
+  missing-sprite marker at any cell that draws it.

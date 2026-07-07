@@ -2856,9 +2856,11 @@ dependencies = [
  "gdtf_app",
  "gdtf_assets",
  "gdtf_battle_sim",
+ "gdtf_content_families",
  "gdtf_test_utils",
  "ron",
  "serde",
+ "tempfile",
 ]
 
 [[package]]

@@ -135,10 +135,11 @@ is the file stem of a `assets/content/sprites/<name>.spritedef.ron` member
 (see [sprite-defs.md](sprite-defs.md)), and the reference-integrity pass
 reports a `DanglingRef` finding — at the game's `Load` AND live in the editor
 — for a `graphic_name` that resolves no sprite def
-([reference-integrity.md](reference-integrity.md)). The RENDERER today still
-resolves the same key through the legacy `TileRoles` role table to an atlas
-tile (the seeded sprite defs mirror that table until the GTW-665 renderer
-swap); the sim never touches atlas indices either way. Only `Slab` adds an
+([reference-integrity.md](reference-integrity.md)). The RENDERER resolves the
+same key through the sprite-def registry to a texture + rect + anchor
+(GTW-665 — the legacy `TileRoles` role table is retired; a key that resolves
+no def draws the loud magenta missing-sprite marker); the sim never touches
+pixels either way. Only `Slab` adds an
 optional footfall:
 
 | `presenter_kind:` variant | Fields |
@@ -210,7 +211,7 @@ Create `rusted_barrels.terrain_def.ron` under `assets/content/terrain/underhive/
         height_band:      Low,   // LOW cover; a MID/HIGH round clears it
     ),
     presenter_kind: Cover(
-        graphic_name: "cover",   // TileRoles role key -> atlas tile
+        graphic_name: "cover",   // sprite-def name -> texture + rect + anchor
     ),
     tags: [],                    // plain destructible cover; no extra traits
 )

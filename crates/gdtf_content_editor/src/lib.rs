@@ -56,7 +56,8 @@
 //!   GTW-464 [`SizeFieldSpans`] view model is built over it) + [`seed_default_theme`](right_panel);
 //!   the dead `bevy_ui` marker types (`SizeFieldAxis` / `ThemeDropdown`) were deleted in GTW-577 C7.
 //! - The GTW-495 `terrain_graphics` module resolves a `TerrainDef`'s `presenter_kind.graphic_name`
-//!   to a terrain atlas index THE WAY THE PRESENTER DOES (through the presenter's `TileRoles` table).
+//!   to its SPRITE DEF the way the presenter does (through the presenter's `resolve_sprite` over
+//!   the GTW-663 sprite-def registry — GTW-665).
 
 mod app;
 // GTW-479: the ARMOR authoring mode of the Workbench — the form that edits an armor
@@ -122,14 +123,14 @@ mod terrain_form;
 // REFERENCE (terrain UUIDs + a default floor) and saves it to a per-theme `.terrain_theme.ron`
 // the GTW-487 theme loader resolves.
 mod theme_form;
-// GTW-495: resolve a TerrainDef's presenter_kind.graphic_name to a terrain atlas index THE WAY
-// THE PRESENTER DOES (via the presenter's TileRoles table) — shared by the palette + canvas.
+// GTW-495: resolve a TerrainDef's presenter_kind.graphic_name to its sprite def THE WAY
+// THE PRESENTER DOES (via the presenter's resolve_sprite over the sprite-def registry —
+// GTW-665) — shared by the palette + preview.
 mod terrain_graphics;
 // GTW-634 C2: the ONE per-theme directory naming policy (slug + `unknown_theme` fallback)
 // the terrain-def + prefab savers share — the theme form's `slugify` stays a DELIBERATELY
 // divergent sibling (empty → error, no fallback).
 mod theme_dir;
-mod tile_atlas;
 // GTW-630: the editor's AUTHORING-TIME registration of the GTW-582 reference-integrity pass —
 // the shared gdtf_content_families::validate checks over the edges the editor loads
 // (theme→terrain + emplacement→weapon + gang equipment — GTW-651), re-armed live on

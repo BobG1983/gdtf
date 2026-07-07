@@ -8,13 +8,16 @@ use bevy::{
     app::{App, PluginGroup},
     asset::{AssetPlugin, Assets},
     ecs::error::warn,
+    math::URect,
     prelude::{MeshMaterial2d, default},
     render::{RenderPlugin, settings::WgpuSettings},
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
+use gdtf_assets::ContentFamilyAppExt;
 use gdtf_battle_presenter::{
-    TerrainFogMaterial, TerrainSprite, TileRoles, TopDownAtlases, TopDownRendererPlugin,
+    TerrainFogMaterial, TerrainSprite, TopDownAtlases, TopDownRendererPlugin, source_parts,
+    source_urect,
 };
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
@@ -26,16 +29,20 @@ use gdtf_battle_sim::{
     piece::{FootfallSound, TerrainGraphicKey},
     prelude::{CellLevel, Level, OccupancyGrid},
 };
+use gdtf_content_families::{
+    SpriteDefsFamily,
+    sprites::{SpriteDefRegistry, SpriteName},
+};
 use gdtf_test_utils::advance_until_resource_exists;
 
-/// Generous SAFETY-NET cap for the async atlas / tile-role loads polled by
+/// Generous SAFETY-NET cap for the async atlas / sprite-def loads polled by
 /// [`settle_resources`]. It is a safety net against a genuine never-resolve hang, NOT a timing
 /// budget: each gate resource is waited on by its inserted SIGNAL (not a fixed frame count),
 /// which is what makes these draw tests deterministic under parallel `cargo` load (GTW-305).
 pub(crate) const LOAD_SAFETY_NET: u32 = 10_000;
 
 /// The workspace-root `assets/` directory (this crate's manifest → up two → assets),
-/// the same root the running app uses so the shipped sheets + `tile_roles.ron` load.
+/// the same root the running app uses so the shipped sheets + `content/sprites/` defs load.
 pub(crate) fn workspace_assets_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
@@ -44,10 +51,12 @@ pub(crate) fn workspace_assets_root() -> PathBuf {
 }
 
 /// Builds a headless `DefaultPlugins`/`no_renderer` app with a live `AssetServer`
-/// (workspace `assets/`), the `TopDownRendererPlugin`, and the two sim message buffers
+/// rooted at `assets_root`, the `TopDownRendererPlugin`, the GTW-663 sprite-defs
+/// family (the HOST registration the game's / editor's Load pass performs — the
+/// GTW-665 draw resolves through its registry), and the two sim message buffers
 /// the draw reads. It does NOT add the sim's lifecycle systems — the test authors the
 /// grids + `BattleInProgress` directly and writes `BattleReady` itself.
-pub(crate) fn headless_renderer_app() -> App {
+pub(crate) fn headless_renderer_app_at(assets_root: &std::path::Path) -> App {
     let mut app = App::new();
     app.add_plugins(
         DefaultPlugins
@@ -70,7 +79,7 @@ pub(crate) fn headless_renderer_app() -> App {
                 ..default()
             })
             .set(AssetPlugin {
-                file_path: workspace_assets_root().to_string_lossy().into_owned(),
+                file_path: assets_root.to_string_lossy().into_owned(),
                 ..default()
             }),
     )
@@ -83,6 +92,10 @@ pub(crate) fn headless_renderer_app() -> App {
     .add_message::<CoverDestroyed>()
     .add_message::<SlabDestroyed>()
     .add_plugins(TopDownRendererPlugin);
+    // GTW-665: the sprite-defs family — the SAME one-line host registration the game's
+    // Load plugin performs; its folder resolve publishes the SpriteDefRegistry the draw
+    // resolves graphic names against.
+    app.register_content_family::<SpriteDefsFamily>();
     // Bevy 0.19 routes a FAILED system-param validation to the global error handler
     // (default panics); 0.18 silently SKIPPED. This no-renderer harness lacks the
     // render-provided resources some DefaultPlugins systems want (e.g. bevy_light's
@@ -92,14 +105,20 @@ pub(crate) fn headless_renderer_app() -> App {
     app
 }
 
-/// Drives `update()`s until `TileRoles` + `TopDownAtlases` are BOTH resident (the async
-/// load chain has settled), polling each resource's inserted SIGNAL rather than a fixed frame
-/// count (GTW-305). Both resolve over the same async `AssetServer` chain, so waiting for them
-/// in sequence drives the app until the last is present. Panics (naming the missing resource)
-/// via [`advance_until_resource_exists`] if either is still absent after the safety-net cap — a
-/// genuine load failure, surfaced loudly rather than leaving the draw systems silently no-op.
+/// [`headless_renderer_app_at`] rooted at the workspace `assets/` (the shipped content).
+pub(crate) fn headless_renderer_app() -> App {
+    headless_renderer_app_at(&workspace_assets_root())
+}
+
+/// Drives `update()`s until the `SpriteDefRegistry` + `TopDownAtlases` are BOTH resident
+/// (the async load chain has settled), polling each resource's inserted SIGNAL rather than a
+/// fixed frame count (GTW-305). Both resolve over the same async `AssetServer` chain, so
+/// waiting for them in sequence drives the app until the last is present. Panics (naming the
+/// missing resource) via [`advance_until_resource_exists`] if either is still absent after
+/// the safety-net cap — a genuine load failure, surfaced loudly rather than leaving the draw
+/// systems silently no-op.
 pub(crate) fn settle_resources(app: &mut App) {
-    advance_until_resource_exists::<TileRoles>(app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<SpriteDefRegistry>(app, LOAD_SAFETY_NET);
     advance_until_resource_exists::<TopDownAtlases>(app, LOAD_SAFETY_NET);
 }
 
@@ -119,10 +138,20 @@ pub(crate) fn insert_occupancy(app: &mut App, terrain: Vec<TerrainPlacement>) {
     app.world_mut().insert_resource(grid);
 }
 
-/// Reads the resolved `TileRoles` resource as a clone, or `None` if it is absent (the
-/// caller asserts it is `Some` — `settle_resources` already gated on its presence).
-pub(crate) fn tile_roles(app: &App) -> Option<TileRoles> {
-    app.world().get_resource::<TileRoles>().cloned()
+/// Reads the resolved `SpriteDefRegistry` resource as a clone, or `None` if it is absent
+/// (the caller asserts it is `Some` — `settle_resources` already gated on its presence).
+pub(crate) fn sprite_defs(app: &App) -> Option<SpriteDefRegistry> {
+    app.world().get_resource::<SpriteDefRegistry>().cloned()
+}
+
+/// The authored SHEET pixel region of the named sprite def — the rect a drawn tile's
+/// material must carry post-GTW-665 (the structural read replacing the retired
+/// role-table index read: the truth is the SEEDED def, never a literal). `None` for a
+/// missing def or a `File` source (no rect).
+pub(crate) fn def_rect(defs: &SpriteDefRegistry, name: &str) -> Option<URect> {
+    let def = defs.def(&SpriteName::new(name.to_owned()))?;
+    let (_path, rect) = source_parts(&def.source);
+    rect.map(source_urect)
 }
 
 /// A cover entry seeded for a Low prop (the AC2 cover cell), through the real ctor.
@@ -135,10 +164,14 @@ pub(crate) const fn low_cover_entry() -> CoverEntry {
     )
 }
 
-/// Reads the atlas index of the one `TerrainSprite` at `key`, if present (GTW-348 — the
-/// tile renders through a `TerrainFogMaterial`, so the index is read off the material's
-/// `atlas_index`, not a `Sprite`'s `TextureAtlas`).
-pub(crate) fn sprite_index_at(app: &mut App, key: CellLevel) -> Option<usize> {
+/// Reads the resolved SHEET pixel region of the one `TerrainSprite` at `key`, if present
+/// (GTW-348 / GTW-665 — the tile renders through a `TerrainFogMaterial`; post-swap the
+/// material carries the def's authored rect as a single-rect layout at `atlas_index`, so
+/// the drawn identity is `layout.textures[atlas_index]`). `None` when no tile is drawn
+/// at `key`, or when the tile's material carries NO layout (a `File`-source def or the
+/// C4 magenta missing marker — the `terrain_missing_sprite` binary probes the marker by
+/// its material image).
+pub(crate) fn sprite_rect_at(app: &mut App, key: CellLevel) -> Option<URect> {
     let mut q = app
         .world_mut()
         .query::<(&TerrainSprite, &MeshMaterial2d<TerrainFogMaterial>)>();
@@ -146,12 +179,14 @@ pub(crate) fn sprite_index_at(app: &mut App, key: CellLevel) -> Option<usize> {
         .iter(app.world())
         .find(|(t, _)| t.at == key)
         .map(|(_, mat)| mat.id())?;
-    let index = app
+    let material = app
         .world()
         .get_resource::<Assets<TerrainFogMaterial>>()?
-        .get(handle)?
-        .atlas_index;
-    Some(index)
+        .get(handle)?;
+    material
+        .atlas_layout
+        .as_ref()
+        .and_then(|layout| layout.textures.get(material.atlas_index).copied())
 }
 
 /// Reads the [`Entity`] id of the one `TerrainSprite` at `key`, if present — the C7
@@ -169,8 +204,8 @@ pub(crate) fn sprite_entity_at(app: &mut App, key: CellLevel) -> Option<bevy::ec
 /// Spawns ONE sim-side terrain entity at `key` carrying its per-def
 /// [`TerrainGraphicKey`] (and an OPTIONAL [`FootfallSound`]) — mirroring exactly what the
 /// sim's `setup_battle` spawns onto every terrain entity (GTW-491). This is the seam the
-/// GTW-493 presenter reads: the per-def graphic the draw resolves the cell's atlas index
-/// from, ahead of the `TileRoles`-table default keyed only on `TerrainKind`.
+/// GTW-493 presenter reads: the per-def graphic the draw resolves the cell's sprite def
+/// from, ahead of the `TileRole` fallback keyed only on `TerrainKind`.
 pub(crate) fn spawn_terrain_entity(
     app: &mut App,
     key: CellLevel,

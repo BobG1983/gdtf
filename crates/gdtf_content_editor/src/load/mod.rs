@@ -3,9 +3,8 @@
 //! every resolved resource exists.
 //!
 //! Wiring-only module: [`register_load`] does the registration; the transition
-//! gate lives in [`transition`], the editor-owned tile-role fallback in
-//! [`fallback`], and the bespoke injuries pass (GTW-654 — one folder, two
-//! resources, off the generic seam by design) in [`injuries`].
+//! gate lives in [`transition`], and the bespoke injuries pass (GTW-654 — one
+//! folder, two resources, off the generic seam by design) in [`injuries`].
 //!
 //! # One source, two hosts (GTW-579)
 //!
@@ -14,9 +13,10 @@
 //! generic seams in `gdtf_assets`, with the SAME definitions the game
 //! registers, so an authored file resolves IDENTICALLY in game and editor:
 //!
-//! - The six FOLDER families — ranged weapons, armor, the UUID-keyed terrain
-//!   defs + theme defs, plus the gangs + melee weapons the GANG mode edits
-//!   (GTW-636) — register through the GTW-570
+//! - The seven FOLDER families — ranged weapons, armor, the UUID-keyed terrain
+//!   defs + theme defs, the gangs + melee weapons the GANG mode edits
+//!   (GTW-636), plus the sprite defs every terrain graphic resolves through
+//!   (GTW-663/665) — register through the GTW-570
 //!   [`register_content_family`](gdtf_assets::ContentFamilyAppExt) seam using
 //!   the SAME `gdtf_content_families` glue impls the game registers. Each
 //!   family's registry-build logic therefore has exactly ONE definition
@@ -27,14 +27,11 @@
 //!   GTW-570 seam exclusion — registers through its own thin pass
 //!   ([`injuries`]), whose folder walk + salvage are the SAME
 //!   `gdtf_content_families::injuries` halves the game's Load resolve runs.
-//! - The SINGLE-ASSET chain — the presenter
-//!   [`TileRoles`](gdtf_battle_presenter::TileRoles) table — installs the
-//!   GTW-564 generic hot-RON chain from the chain OWNER's published config
-//!   ([`tile_roles_hot_ron_chain`](gdtf_battle_presenter::tile_roles_hot_ron_chain),
-//!   which single-sources the path + map hook), re-configured with the editor's
-//!   ADR-0003 fallback (see below). The game's `GdtfTheme` chain is NOT
-//!   installed: the egui shell styles itself, so the editor reads no theme
-//!   field (GTW-625 — the GTW-579 AC2 amendment).
+//! - NO single-asset hot-RON chain remains: GTW-665 retired the presenter's
+//!   tile-role chain (terrain graphics resolve through the sprite-defs FAMILY
+//!   above), and the game's `GdtfTheme` chain was never installed — the egui
+//!   shell styles itself, so the editor reads no theme field (GTW-625 — the
+//!   GTW-579 AC2 amendment).
 //!
 //! **Adding an editor-consumed family** costs at most two edits: ONE
 //! `register_content_family::<F>()` line in [`register_load`], plus a
@@ -44,20 +41,16 @@
 //! # Editor-specific load policy (stays editor-owned — GTW-579 C4)
 //!
 //! - **Whole-session handle persistence (GTW-533):** the seam's persistent
-//!   [`ContentFolderHandle`](gdtf_assets::ContentFolderHandle) /
-//!   [`HotRonHandle`](gdtf_assets::HotRonHandle) resources are inserted at
-//!   `Startup` and NEVER removed — `register_load` registers no
+//!   [`ContentFolderHandle`](gdtf_assets::ContentFolderHandle) resources are
+//!   inserted at `Startup` and NEVER removed — `register_load` registers no
 //!   `OnExit(EditorState::Load)` cleanup — so a live `.ron` edit re-enumerates
 //!   folder members and refreshes the resolved resources with NO restart (the
 //!   editor half of the "hot-reload in-app, game AND editor" contract, through
 //!   the ONE shared Bevy `file_watcher` mechanism).
 //! - **ADR-0003 fail-safe:** a `Failed` asset falls back to a const default so
-//!   the editor never hangs in `Load` — the folder families fail closed to the
-//!   seam's EMPTY registry; the tile roles fall back to the
-//!   editor-owned zero table ([`fallback`]), attached HERE via
-//!   [`HotRonChain::with_fallback`](gdtf_assets::HotRonChain::with_fallback)
-//!   (the game's registration of the same chain stays fallback-less — the
-//!   policy rides the host's registration, never a seam mode flag).
+//!   the editor never hangs in `Load` — the folder families (every editor-gated
+//!   asset since GTW-665 retired the tile-role chain) fail closed to the
+//!   seam's EMPTY registry.
 //! - **Headless fallback:** every seam ext call self-gates on an
 //!   [`AssetServer`](bevy::asset::AssetServer) being present (`bevy-traps.md`
 //!   #1), so a `MinimalPlugins` harness registers no loaders and no systems —
@@ -68,11 +61,9 @@
 //!   so every branch gates on its OWN resource's absence and none starves
 //!   another.
 //! - **The transition gates on every resolved resource:** [`transition_to_editing`](transition::transition_to_editing) fires
-//!   only when ALL NINE resolved resources exist (the six folder registries +
-//!   the injuries pair + the tile-role table; the game theme is not among
-//!   them — GTW-625).
+//!   only when ALL NINE resolved resources exist (the seven folder registries +
+//!   the injuries pair; the game theme is not among them — GTW-625).
 
-mod fallback;
 mod injuries;
 mod register;
 mod transition;

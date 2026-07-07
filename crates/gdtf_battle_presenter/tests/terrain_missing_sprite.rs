@@ -1,7 +1,14 @@
-//! GTW-566 C4 (AC5) — the LOUD-TYPO warn: a sim-spawned [`TerrainGraphicKey`] that fails
-//! [`TileRole::from_key`](gdtf_battle_presenter::TileRole) classification makes the draw's
-//! `resolve_index` emit a `warn!` naming the unresolvable key AND the cell — while the
-//! no-panic role-default fallback STILL draws the tile (the pre-GTW-566 behaviour, kept).
+//! GTW-665 C4 — the LOUD missing-sprite fallback: a sim-spawned [`TerrainGraphicKey`]
+//! naming NO sprite def makes the draw emit a `warn!` naming the unresolvable name AND
+//! the cell — while the tile STILL DRAWS, carrying the magenta
+//! [`MissingTileTexture`](gdtf_battle_presenter::MissingTileTexture) marker (never a
+//! panic, never invisible).
+//!
+//! SUCCESSOR of the GTW-566 `terrain_vocab_warn` pin: the retired role table resolved an
+//! out-of-vocabulary key to the quiet `TerrainKind` role-default tile; the def-driven
+//! resolution replaces that with the Level-Rail-precedent magenta marker (the ruled C4
+//! semantics), so this file pins the NEW contract (warn + marker + still-drawn) rather
+//! than the old one (warn + role default).
 //!
 //! Driven through the REAL `draw_static_battlefield` system on the same
 //! `DefaultPlugins`/`no_renderer` harness as `terrain_draw.rs`. This lives in its OWN test
@@ -20,6 +27,7 @@ use std::{
 use bevy::{
     DefaultPlugins,
     app::{App, PluginGroup},
+    asset::Assets,
     ecs::{error::warn, message::Messages},
     log::{
         tracing::{
@@ -28,12 +36,15 @@ use bevy::{
         },
         tracing_subscriber::{Layer, layer::Context, prelude::*, registry::Registry},
     },
-    prelude::default,
+    prelude::{MeshMaterial2d, default},
     render::{RenderPlugin, settings::WgpuSettings},
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use gdtf_battle_presenter::{TileRoles, TopDownAtlases, TopDownRendererPlugin};
+use gdtf_assets::ContentFamilyAppExt;
+use gdtf_battle_presenter::{
+    MissingTileTexture, TerrainFogMaterial, TerrainSprite, TopDownAtlases, TopDownRendererPlugin,
+};
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     battle::BattleReady,
@@ -45,15 +56,16 @@ use gdtf_battle_sim::{
     prelude::{BattleInProgress, Cell, CellLevel, Level, OccupancyGrid},
     surface::SurfaceGrid,
 };
+use gdtf_content_families::{SpriteDefsFamily, sprites::SpriteDefRegistry};
 use gdtf_test_utils::advance_until_resource_exists;
 
-/// Generous SAFETY-NET cap for the async atlas / tile-role loads — a hang guard, not a
+/// Generous SAFETY-NET cap for the async atlas / sprite-def loads — a hang guard, not a
 /// timing budget (each gate resource is polled by its inserted SIGNAL).
 const LOAD_SAFETY_NET: u32 = 10_000;
 
-/// The out-of-vocabulary graphic key under test — unique to this test so the captured
-/// warn line is unambiguously OURS.
-const BOGUS_KEY: &str = "gtw566_not_a_role";
+/// The graphic name under test — names NO shipped sprite def, and is unique to this
+/// test so the captured warn line is unambiguously OURS.
+const MISSING_NAME: &str = "gtw665_no_such_sprite";
 
 /// Every `message` captured by the process-global subscriber, in emission order.
 static CAPTURED: Mutex<Vec<String>> = Mutex::new(Vec::new());
@@ -111,10 +123,11 @@ fn workspace_assets_root() -> PathBuf {
         .join("assets")
 }
 
-/// The `terrain_draw.rs` headless `DefaultPlugins`/`no_renderer` harness: a live
-/// `AssetServer` (workspace `assets/`), `TopDownRendererPlugin`, and the two sim message
-/// buffers the draw reads. `LogPlugin` stays disabled — the global capture subscriber IS
-/// this process's log sink.
+/// The `terrain_draw` headless `DefaultPlugins`/`no_renderer` harness: a live
+/// `AssetServer` (workspace `assets/`), `TopDownRendererPlugin`, the GTW-663 sprite-defs
+/// family (the host registration whose registry the GTW-665 draw resolves against), and
+/// the sim message buffers the draw reads. `LogPlugin` stays disabled — the global
+/// capture subscriber IS this process's log sink.
 fn headless_renderer_app() -> App {
     let mut app = App::new();
     app.add_plugins(
@@ -145,31 +158,31 @@ fn headless_renderer_app() -> App {
     .add_message::<BattleReady>()
     .add_message::<CoverDestroyed>()
     .add_plugins(TopDownRendererPlugin);
+    app.register_content_family::<SpriteDefsFamily>();
     // No-renderer harness: route failed param validation to `warn` (the 0.18 skip), not a panic.
     app.set_error_handler(warn);
     app
 }
 
-/// GTW-566 C4/AC5 — an out-of-vocabulary authored key WARNS (naming the key + the cell)
-/// and STILL draws the `TerrainKind` role-default tile.
+/// GTW-665 C4 — a `graphic_name` naming NO sprite def WARNS (naming the name + the cell)
+/// and STILL DRAWS the tile, carrying the magenta `MissingTileTexture` marker.
 ///
 /// Pin-discriminating both ways: dropping the `warn!` leaves the capture without the line
-/// (the log assert fails); dropping the fallback leaves no sprite / a wrong index at the
-/// cell (the draw asserts fail).
+/// (the log assert fails); dropping the fallback leaves NO sprite at the cell (the
+/// entity/material asserts fail — "never invisible").
 #[test]
-fn out_of_vocabulary_key_warns_and_still_draws_the_role_default() {
+fn missing_sprite_def_warns_and_draws_the_magenta_marker() {
     // Install the process-global capture BEFORE the app exists, so every later callsite
     // registers against the live always-interested subscriber.
     install_global_capture();
 
     let mut app = headless_renderer_app();
-    advance_until_resource_exists::<TileRoles>(&mut app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<SpriteDefRegistry>(&mut app, LOAD_SAFETY_NET);
     advance_until_resource_exists::<TopDownAtlases>(&mut app, LOAD_SAFETY_NET);
 
     let cell = CellLevel::new(Cell::new(8, 7), Level::new(0));
 
-    // A Cover cell in the occupancy grid — the TerrainKind role default the fallback must
-    // draw when the per-def key fails classification.
+    // A Cover cell in the occupancy grid whose spawned entity names a def-less graphic.
     let input = OccupancyInput {
         terrain:   vec![TerrainPlacement::new(cell, TerrainKind::Cover)],
         occupants: Vec::new(),
@@ -193,10 +206,11 @@ fn out_of_vocabulary_key_warns_and_still_draws_the_role_default() {
     app.world_mut().insert_resource(SurfaceGrid::new());
     app.world_mut().insert_resource(BattleInProgress);
 
-    // The sim-spawned per-def fact carrying the TYPO'd graphic key.
+    // The sim-spawned per-def fact carrying the def-less graphic name (possible
+    // mid-authoring — the integrity edge warns but load still exits).
     app.world_mut().spawn((
         TerrainCell::new(cell),
-        TerrainGraphicKey::new(BOGUS_KEY.to_owned()),
+        TerrainGraphicKey::new(MISSING_NAME.to_owned()),
     ));
 
     // Fire the one-shot draw and settle.
@@ -205,19 +219,34 @@ fn out_of_vocabulary_key_warns_and_still_draws_the_role_default() {
         .write(BattleReady);
     app.update();
 
-    // STILL DRAWS: the cell's sprite exists and carries the TerrainKind role default
-    // (`roles.cover`) — the no-panic fallback is unchanged (C4).
-    let roles = app.world().get_resource::<TileRoles>().cloned();
-    assert!(roles.is_some(), "TileRoles must be resident after settle");
-    let Some(roles) = roles else { return };
-    let index = sprite_index_at(&mut app, cell);
+    // STILL DRAWS, LOUDLY: the cell's sprite exists and its material carries the magenta
+    // MissingTileTexture image (identity UV — no layout), never an invisible hole (C4).
+    let missing = app
+        .world()
+        .get_resource::<MissingTileTexture>()
+        .map(MissingTileTexture::handle);
+    assert!(
+        missing.is_some(),
+        "the MissingTileTexture marker must be minted at Startup",
+    );
+    let Some(missing) = missing else { return };
+    let material = material_at(&mut app, cell);
+    assert!(
+        material.is_some(),
+        "the missing-def cell must STILL draw a tile (never invisible — C4)",
+    );
+    let Some(material) = material else { return };
     assert_eq!(
-        index,
-        Some(*roles.cover),
-        "an out-of-vocabulary key must STILL draw the TerrainKind role-default tile (cover)",
+        material.image.id(),
+        missing.id(),
+        "the missing-def tile must carry the magenta MissingTileTexture image (C4)",
+    );
+    assert!(
+        material.atlas_layout.is_none(),
+        "the missing marker draws the whole 1×1 magenta image (identity UV, no layout)",
     );
 
-    // WARNS LOUDLY: the capture holds a warn naming the unresolvable key AND the cell.
+    // WARNS LOUDLY: the capture holds a warn naming the unresolvable name AND the cell.
     let captured = CAPTURED
         .lock()
         .map(|buffer| buffer.clone())
@@ -225,21 +254,17 @@ fn out_of_vocabulary_key_warns_and_still_draws_the_role_default() {
     let expected_cell = format!("{cell:?}");
     assert!(
         captured.iter().any(|line| {
-            line.contains("unresolvable graphic key")
-                && line.contains(BOGUS_KEY)
+            line.contains("no sprite def named")
+                && line.contains(MISSING_NAME)
                 && line.contains(&expected_cell)
         }),
-        "the draw must warn, naming the unresolvable key (`{BOGUS_KEY}`) and the cell \
-         ({expected_cell}); captured: {captured:?}",
+        "the draw must warn, naming the unresolvable sprite name (`{MISSING_NAME}`) and the \
+         cell ({expected_cell}); captured: {captured:?}",
     );
 }
 
-/// Reads the atlas index of the one `TerrainSprite` at `key`, if present (the material's
-/// `atlas_index` — the GTW-348 material path).
-fn sprite_index_at(app: &mut App, key: CellLevel) -> Option<usize> {
-    use bevy::{asset::Assets, prelude::MeshMaterial2d};
-    use gdtf_battle_presenter::{TerrainFogMaterial, TerrainSprite};
-
+/// Reads a CLONE of the one `TerrainSprite` at `key`'s material, if present.
+fn material_at(app: &mut App, key: CellLevel) -> Option<TerrainFogMaterial> {
     let mut q = app
         .world_mut()
         .query::<(&TerrainSprite, &MeshMaterial2d<TerrainFogMaterial>)>();
@@ -247,10 +272,8 @@ fn sprite_index_at(app: &mut App, key: CellLevel) -> Option<usize> {
         .iter(app.world())
         .find(|(t, _)| t.at == key)
         .map(|(_, mat)| mat.id())?;
-    let index = app
-        .world()
+    app.world()
         .get_resource::<Assets<TerrainFogMaterial>>()?
-        .get(handle)?
-        .atlas_index;
-    Some(index)
+        .get(handle)
+        .cloned()
 }

@@ -1,31 +1,21 @@
 //! In-crate tests for the GTW-566 tile-role vocabulary: the key round-trip, the
-//! vocabulary-completeness pin against the serialized [`TileRoles`] key set, the
-//! def-authorable flags, and the typed stair counterpart pairing.
+//! vocabulary↔seeded-sprite-catalog lockstep pin (GTW-665 — the anchor the retired
+//! role-table serde pin used to provide), the def-authorable flags, and the typed
+//! stair counterpart pairing.
 
-use super::{TileRole, TileRoles};
+use std::path::PathBuf;
 
-/// The shipped `tile_roles.spritedef.ron`, parsed into a [`TileRoles`] — the real
-/// authored table (the GTW-373 tests in `render/terrain/test.rs` pin its magnitudes;
-/// these tests only use it as a live vocabulary fixture). `None` surfaces a parse
-/// failure to the calling assert.
-fn shipped_roles() -> Option<TileRoles> {
-    const SHIPPED: &str = include_str!("../../../../../../assets/sprites/tile_roles.spritedef.ron");
-    ron::de::from_str(SHIPPED).ok()
-}
+use super::TileRole;
 
-/// The field-key list of a serialized [`TileRoles`] RON body — `(floor:6,wall:0,…)`
-/// split into its `key:` names. Every value is a `#[serde(transparent)]` integer, so
-/// a flat comma/colon split is exact (no nested separators).
-fn serialized_keys(text: &str) -> Vec<String> {
-    text.trim()
-        .trim_start_matches('(')
-        .trim_end_matches(')')
-        .split(',')
-        .filter_map(|pair| pair.split(':').next())
-        .map(str::trim)
-        .filter(|key| !key.is_empty())
-        .map(str::to_owned)
-        .collect()
+/// The shipped `assets/content/sprites/` catalog directory — the sprite-def
+/// members the presenter resolves graphic keys against (GTW-665).
+fn shipped_sprites_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .join("assets")
+        .join("content")
+        .join("sprites")
 }
 
 /// GTW-566 AC1 — the key round-trip: every [`TileRole`] survives
@@ -47,64 +37,24 @@ fn every_role_key_round_trips() {
     );
 }
 
-/// GTW-566 AC2 — vocabulary completeness: the serialized key set of a [`TileRoles`]
-/// value equals the [`TileRole::ALL`] `as_key` set, in both size and membership. Adding
-/// a `TileRoles` field without a matching variant (or renaming a key on either side)
-/// FAILS here; a variant without a field already fails `index_in` at compile time.
+/// GTW-566 AC2 as re-anchored by GTW-665 — vocabulary↔catalog lockstep: every
+/// [`TileRole`] key names a shipped `content/sprites/<key>.spritedef.ron` member
+/// (the presenter-owned role fallbacks — floor / rubble / the stair-link tiles —
+/// must resolve to REAL defs, never the missing-marker). Before GTW-665 this pin
+/// compared the vocabulary against the retired `TileRoles` serde key set; the
+/// seeded sprite catalog is the successor truth.
 #[test]
-fn vocabulary_matches_the_serialized_tile_roles_key_set() {
-    let roles = shipped_roles();
-    assert!(
-        roles.is_some(),
-        "the shipped tile_roles.spritedef.ron must parse into TileRoles",
-    );
-    let Some(roles) = roles else { return };
-    let serialized = ron::ser::to_string(&roles);
-    assert!(
-        serialized.is_ok(),
-        "TileRoles must serialize to RON: {:?}",
-        serialized.as_ref().err(),
-    );
-    let Ok(serialized) = serialized else { return };
-
-    let mut struct_keys = serialized_keys(&serialized);
-    let mut vocab_keys: Vec<String> = TileRole::ALL
-        .into_iter()
-        .map(|role| role.as_key().to_owned())
-        .collect();
-    struct_keys.sort();
-    vocab_keys.sort();
-    assert_eq!(
-        struct_keys, vocab_keys,
-        "the TileRoles serde key set must equal the TileRole vocabulary — a field \
-         added/renamed without its enum variant (or vice versa) fails this pin",
-    );
-}
-
-/// GTW-566 C2 — `index_for_key` routes through the vocabulary: for every role the
-/// public seam resolves the SAME index the typed `index_in` read yields, and an
-/// out-of-vocabulary key resolves to [`None`].
-#[test]
-fn index_for_key_routes_through_the_vocabulary() {
-    let roles = shipped_roles();
-    assert!(
-        roles.is_some(),
-        "the shipped tile_roles.spritedef.ron must parse into TileRoles",
-    );
-    let Some(roles) = roles else { return };
+fn every_role_key_names_a_shipped_sprite_def() {
+    let dir = shipped_sprites_dir();
     for role in TileRole::ALL {
-        assert_eq!(
-            roles.index_for_key(role.as_key()),
-            Some(role.index_in(&roles)),
-            "index_for_key({:?}) must resolve through the vocabulary to index_in",
+        let member = dir.join(format!("{}.spritedef.ron", role.as_key()));
+        assert!(
+            member.is_file(),
+            "the vocabulary key `{}` must name a shipped sprite-def member at {member:?} — a \
+             renamed/removed seed breaks the presenter's role fallback resolution",
             role.as_key(),
         );
     }
-    assert_eq!(
-        roles.index_for_key("not_a_role"),
-        None,
-        "an out-of-vocabulary key must resolve to None (the caller falls back)",
-    );
 }
 
 /// GTW-566 C5 — the def-authorable flags: exactly the runtime-swap roles

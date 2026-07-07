@@ -101,6 +101,13 @@ pub(crate) fn headless_renderer_app() -> App {
     .add_message::<gdtf_battle_sim::occupancy_sync::CoverDestroyed>()
     .add_systems(bevy::app::Update, setup_battle_on_request)
     .add_plugins(TopDownRendererPlugin);
+    // GTW-665: the sprite-defs family — the SAME one-line host registration the game's
+    // Load plugin performs; the S4 terrain draw (whose floor tiles the storey tests
+    // assert under the gangers) resolves graphic names against the SpriteDefRegistry
+    // it publishes.
+    gdtf_assets::ContentFamilyAppExt::register_content_family::<
+        gdtf_content_families::SpriteDefsFamily,
+    >(&mut app);
     // The Load-built WeaponRegistry (GTW-257): setup_battle_on_request reads it to arm
     // each spawned ganger. The canonical shared [`test_weapon_registry`] (GTW-324),
     // inserted up front (the fixture gangers reference its [`TEST_WEAPON_KEY`]).
@@ -144,15 +151,20 @@ pub(crate) fn band_only_fog(app: &mut App) {
     app.world_mut().remove_resource::<SquadVisibility>();
 }
 
-/// Drives `update()`s until `CharacterRoles` + `TopDownAtlases` are BOTH resident (the async
+/// Drives `update()`s until `CharacterRoles` + `TopDownAtlases` + the GTW-665
+/// `SpriteDefRegistry` are ALL resident (the async
 /// load chain has settled), polling each resource's inserted SIGNAL rather than a fixed frame
-/// count (GTW-305). Both resolve over the same async `AssetServer` chain, so waiting for them
+/// count (GTW-305). All resolve over the same async `AssetServer` chain, so waiting for them
 /// in sequence drives the app until the last is present. Panics (naming the missing resource)
-/// via [`advance_until_resource_exists`] if either is still absent after the safety-net cap — a
+/// via [`advance_until_resource_exists`] if any is still absent after the safety-net cap — a
 /// genuine load failure, surfaced loudly rather than leaving the draw systems silently no-op.
 pub(crate) fn settle_resources(app: &mut App) {
     advance_until_resource_exists::<CharacterRoles>(app, LOAD_SAFETY_NET);
     advance_until_resource_exists::<TopDownAtlases>(app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<gdtf_content_families::sprites::SpriteDefRegistry>(
+        app,
+        LOAD_SAFETY_NET,
+    );
 }
 
 /// Insert a [`SquadVisibility`] fog with the given VISIBLE / EXPLORED cells (mirrors the

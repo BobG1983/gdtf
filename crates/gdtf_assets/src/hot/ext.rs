@@ -80,7 +80,7 @@ pub trait HotRonAppExt {
     /// the seam a SECOND host of a published chain installs through (GTW-579).
     ///
     /// The chain OWNER exports its config constructor (the ui theme's
-    /// `theme_hot_ron_chain`, the presenter's `tile_roles_hot_ron_chain`) so
+    /// `theme_hot_ron_chain`) so
     /// the path + map hook stay single-sourced; a second host (the editor)
     /// installs the WHOLE generic kick-off / resolve / redrive chain from that
     /// config — optionally re-configured with its own failure policy via

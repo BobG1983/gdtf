@@ -5,8 +5,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_presenter::{
-    ActiveLevel, IsolateView, StoreyTreatment, StoreyViewMode, TileRoles, ViewMode,
-    storey_treatment,
+    ActiveLevel, IsolateView, StoreyTreatment, StoreyViewMode, ViewMode, storey_treatment,
 };
 use gdtf_battle_sim::{
     level::{GridSize, UuidThemeRegistry},
@@ -14,10 +13,11 @@ use gdtf_battle_sim::{
     prelude::Cell,
     terrain::def::{TerrainDefRegistry, TerrainUuid},
 };
+use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use super::sprites::{
-    OVERLAY_Z_LIFT, STIPPLE_TINT, STOREY_Z_GAP, TILE_Z, VOID_GRID_TINT, base_tile_tint,
-    draw_hover_ghost, spawn_overlay_sprite, spawn_tile_sprite,
+    MISSING_SPRITE_TINT, OVERLAY_Z_LIFT, STIPPLE_TINT, STOREY_Z_GAP, TILE_Z, VOID_GRID_TINT,
+    base_tile_tint, draw_hover_ghost, spawn_color_tile, spawn_overlay_sprite, spawn_tile_sprite,
 };
 use crate::{
     canvas::CurrentEditLevel,
@@ -25,8 +25,7 @@ use crate::{
     hovered_cell::HoveredCell,
     preview::{overlay::PreviewOverlayImages, target::PreviewTile},
     session::MapEditorSession,
-    terrain_graphics::terrain_atlas_index,
-    tile_atlas::TileAtlas,
+    terrain_graphics::terrain_sprite_def,
 };
 
 /// The GROUND storey index (z=0) — the base plane that carries the theme default-floor fill
@@ -67,8 +66,8 @@ const GROUND_STOREY: u8 = 0;
     clippy::too_many_arguments,
     reason = "the preview redraw reads every model input it depends on (map, session, edit level, \
               hover, view mode, isolate toggle) + the three shared registries (terrain defs, \
-              themes, tile roles) + the tile atlas + the generated overlay textures + Commands to \
-              (re)spawn; each is a distinct Bevy SystemParam and Bevy's injection cannot reduce \
+              themes, sprite defs) + the asset server + the generated overlay textures + Commands \
+              to (re)spawn; each is a distinct Bevy SystemParam and Bevy's injection cannot reduce \
               them without a wrapper resource that changes the crate API"
 )]
 pub(crate) fn redraw_preview_tiles(
@@ -82,8 +81,8 @@ pub(crate) fn redraw_preview_tiles(
     overlays: Option<Res<PreviewOverlayImages>>,
     registry: Option<Res<TerrainDefRegistry>>,
     themes: Option<Res<UuidThemeRegistry>>,
-    roles: Option<Res<TileRoles>>,
-    atlas: Option<Res<TileAtlas>>,
+    sprites: Option<Res<SpriteDefRegistry>>,
+    asset_server: Option<Res<AssetServer>>,
     existing: Query<Entity, With<PreviewTile>>,
 ) {
     let (
@@ -96,16 +95,26 @@ pub(crate) fn redraw_preview_tiles(
         Some(overlays),
         Some(registry),
         Some(themes),
-        Some(roles),
-        Some(atlas),
+        Some(sprites),
+        Some(asset_server),
     ) = (
-        map, session, edit_level, hovered, view, isolate, overlays, registry, themes, roles, atlas,
+        map,
+        session,
+        edit_level,
+        hovered,
+        view,
+        isolate,
+        overlays,
+        registry,
+        themes,
+        sprites,
+        asset_server,
     )
     else {
         return;
     };
 
-    // CHANGE-DRIVEN: only redraw when an input the preview depends on changed (or the atlas /
+    // CHANGE-DRIVEN: only redraw when an input the preview depends on changed (or the
     // overlays just loaded / registries just resolved — is_changed covers first-insert too).
     // GTW-532/GTW-594: the ViewMode + IsolateView toggles re-run the draw exactly the way the
     // level-nav already does (`edit_level`).
@@ -118,8 +127,7 @@ pub(crate) fn redraw_preview_tiles(
         || overlays.is_changed()
         || registry.is_changed()
         || themes.is_changed()
-        || roles.is_changed()
-        || atlas.is_changed();
+        || sprites.is_changed();
     if !dirty {
         return;
     }
@@ -134,8 +142,8 @@ pub(crate) fn redraw_preview_tiles(
     let pass = StoreyPass {
         map: &map,
         registry: &registry,
-        roles: &roles,
-        atlas: &atlas,
+        sprites: &sprites,
+        asset_server: &asset_server,
         overlays: &overlays,
         default_floor: session
             .default_floor()
@@ -158,10 +166,10 @@ pub(crate) fn redraw_preview_tiles(
     // placement is illegal — always the top overlay (GHOST_Z above every storey band).
     draw_hover_ghost(
         &mut commands,
-        pass.atlas,
+        pass.asset_server,
         &map,
         &registry,
-        &roles,
+        &sprites,
         &session,
         &hovered,
         level,
@@ -174,12 +182,14 @@ pub(crate) fn redraw_preview_tiles(
 struct StoreyPass<'a> {
     /// The paintable map (read for each cell's painted tile).
     map:           &'a EditorMap,
-    /// The terrain registry (the per-def atlas-index resolve).
+    /// The terrain registry (the per-def graphic-name resolve).
     registry:      &'a TerrainDefRegistry,
-    /// The presenter tile-role table (the same resolve the presenter uses).
-    roles:         &'a TileRoles,
-    /// The terrain sheet atlas the tile sprites draw over.
-    atlas:         &'a TileAtlas,
+    /// The GTW-663 sprite-def registry (the same def-driven resolve the presenter uses —
+    /// GTW-665).
+    sprites:       &'a SpriteDefRegistry,
+    /// Loads each def's source image by its authored path (the same handle the
+    /// battle renderer holds for the same path).
+    asset_server:  &'a AssetServer,
     /// The GTW-594 generated stipple / void-grid overlay sheets.
     overlays:      &'a PreviewOverlayImages,
     /// The theme default-floor the GROUND storey's unpainted cells fall back to (GTW-535).
@@ -235,12 +245,15 @@ fn draw_storey(
                 }
                 continue;
             };
-            // An unresolved tile (no atlas index) draws nothing (the clear colour shows
-            // through), matching the presenter's fall-back behaviour.
-            let Some(index) = terrain_atlas_index(pass.registry, pass.roles, &tile) else {
-                continue;
-            };
-            spawn_tile_sprite(commands, pass.atlas, cell, *index, tint, z);
+            // GTW-665: resolve the painted tile's sprite def THE WAY THE PRESENTER DOES;
+            // a graphic that resolves NO def draws the LOUD magenta missing quad (C4 —
+            // matching the battle renderer's missing-marker semantics, never invisible).
+            match terrain_sprite_def(pass.registry, pass.sprites, &tile) {
+                Some(def) => {
+                    spawn_tile_sprite(commands, pass.asset_server, cell, def, tint, z);
+                }
+                None => spawn_color_tile(commands, cell, MISSING_SPRITE_TINT, z),
+            }
             // EXISTS-BELOW: the stipple overlay rides every context tile (GTW-594 C2 —
             // hue+alpha tint PLUS the pattern, so the class reads at any zoom; the
             // blue-grey base tint itself came through `base_tile_tint` above).

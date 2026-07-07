@@ -48,7 +48,7 @@ mod redrive;
 #[cfg(test)]
 mod test;
 
-pub use atlases::{SheetAtlas, SheetRole, TopDownAtlases, load_topdown_atlases};
+pub use atlases::{SheetAtlas, SheetRole, TileIndex, TopDownAtlases, load_topdown_atlases};
 pub use projection::{
     CELL_PX, GANGER_Z_BIAS, Layer, cell_to_world, cell_to_world_layered, sim_pos_to_world,
 };

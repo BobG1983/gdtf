@@ -13,10 +13,7 @@ use crate::{
         ganger::register_character_roles_hot_ron,
     },
     load_topdown_atlases,
-    render::{
-        terrain::register_tile_roles_hot_ron, topdown::register_sheet_image_redrive,
-        world_camera::register_pan_tuning_hot_ron,
-    },
+    render::{topdown::register_sheet_image_redrive, world_camera::register_pan_tuning_hot_ron},
 };
 
 /// Marker resource the [`TopDownRendererPlugin`] inserts on `build`.
@@ -209,17 +206,18 @@ impl Plugin for TopDownRendererPlugin {
 }
 
 /// Gathers the per-module hot-RON chain registrations (GTW-564): one generic-seam
-/// ext call per table — [`TileRoles`](crate::TileRoles),
+/// ext call per table —
 /// [`CharacterRoles`](crate::CharacterRoles), [`EffectRoles`](crate::EffectRoles),
 /// [`FxTuning`](crate::FxTuning), [`PanTuning`](crate::PanTuning) — plus the one
 /// NON-RON reaction (the sheet-image redrive owned by `render/topdown/redrive.rs`).
+/// (The terrain `TileRoles` chain RETIRED with its table — GTW-665: terrain graphics
+/// now resolve through the GTW-663 sprite-def family the HOST's Load pass registers.)
 /// Each ext call wires the chain's kick-off / gated resolve / live redrive and
 /// SELF-gates on the [`AssetServer`](bevy::asset::AssetServer), so a `MinimalPlugins`
 /// headless app skips every chain (no load, no panic — `bevy-traps.md` #1). This
 /// replaced the `register_ron_tables` wall (extracted from `build` to keep it under
 /// the `too_many_lines` lint).
 fn register_hot_ron_chains(app: &mut App) {
-    register_tile_roles_hot_ron(app);
     register_character_roles_hot_ron(app);
     // GTW-220 (S6): the FX-flash effect-role table.
     register_effect_roles_hot_ron(app);

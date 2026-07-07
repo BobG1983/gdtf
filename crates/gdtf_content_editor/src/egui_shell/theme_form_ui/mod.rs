@@ -20,8 +20,9 @@
 //! - CENTRAL primary panel — the [`terrain_library_panel`]: the terrain multi-select library, now
 //!   the largest / most-prominent region. Each row renders `[sprite thumbnail] name [Kind]` — the
 //!   sprite resolved via the SHARED [`sprite_thumb`](crate::egui_shell::sprite_thumb) helper
-//!   (GTW-516) over the terrain's [`terrain_atlas_index`](crate::terrain_graphics::terrain_atlas_index),
-//!   NO hardcoded index. The check/uncheck multi-select (fail-closed default floor) is preserved.
+//!   (GTW-516) over the terrain's [`terrain_sprite_def`](crate::terrain_graphics::terrain_sprite_def)
+//!   (GTW-665), NO hardcoded index. The check/uncheck multi-select (fail-closed default floor) is
+//!   preserved.
 //! - LEFT palette panel — the resolved-stats readout for the current default-floor terrain (or a
 //!   placeholder when none is selected), reusing [`resolved_stats`](crate::theme_form::resolved_stats)
 //!   (the C3 stat proof) — a text summary + an [`egui::ProgressBar`](bevy_egui::egui::ProgressBar) HP bar.

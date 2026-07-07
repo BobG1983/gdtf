@@ -16,16 +16,17 @@ use super::harness::*;
 /// `TerrainKind` (`Cover`) but DIFFERENT `presenter_kind.graphic_name` resolve to DISTINCT
 /// atlas indices, driven through the REAL `draw_static_battlefield` system.
 ///
-/// Both cells are authored `TerrainKind::Cover` in the occupancy grid, so the OLD
-/// `TileRoles`-table-only resolution (keyed solely on `TerrainKind`) would draw them
-/// IDENTICALLY at `roles.cover`. The sim-spawned per-def `TerrainGraphicKey` ("cover" vs
-/// "rubble") is what makes them DIFFER: cell A resolves to `roles.cover`, cell B to
-/// `roles.rubble`. Reverting the presenter to role-table-only resolution makes both
-/// `roles.cover` — identical — and this test FAILS.
+/// Both cells are authored `TerrainKind::Cover` in the occupancy grid, so a
+/// kind-keyed-only resolution would draw them
+/// IDENTICALLY at the `cover` def. The sim-spawned per-def `TerrainGraphicKey` ("cover" vs
+/// "rubble") is what makes them DIFFER: cell A resolves to the `cover` def's rect, cell B
+/// to the `rubble` def's rect (GTW-665 — read from the SEEDED defs, never a literal).
+/// Reverting the presenter to kind-keyed-only resolution makes both
+/// the `cover` rect — identical — and this test FAILS.
 ///
 /// Occlusion-aware (a visible+laid-out node can still draw nothing): the assertion reads
-/// the resolved material `atlas_index` actually carried by the spawned sprite at each cell
-/// (`sprite_index_at`), and settles a frame (the one-shot draw) before reading.
+/// the resolved material rect actually carried by the spawned sprite at each cell
+/// (`sprite_rect_at`), and settles a frame (the one-shot draw) before reading.
 #[test]
 fn per_def_graphic_distinguishes_same_kind_cells() {
     let mut app = headless_renderer_app();
@@ -61,38 +62,45 @@ fn per_def_graphic_distinguishes_same_kind_cells() {
         .write(BattleReady);
     app.update();
 
-    let roles = tile_roles(&app);
-    assert!(roles.is_some(), "TileRoles must be resident after settle");
-    let Some(roles) = roles else { return };
+    let defs = sprite_defs(&app);
+    assert!(
+        defs.is_some(),
+        "the SpriteDefRegistry must be resident after settle"
+    );
+    let Some(defs) = defs else { return };
 
-    // Precondition: the two graphic roles are DISTINCT indices in the shipped table (so a
-    // "different" assertion is meaningful rather than vacuously true).
+    // Precondition: the two defs cut DISTINCT sheet rects (so a "different" assertion is
+    // meaningful rather than vacuously true). Read from the SEEDED defs, never a literal.
+    let cover_rect = def_rect(&defs, "cover");
+    let rubble_rect = def_rect(&defs, "rubble");
+    assert!(
+        cover_rect.is_some() && rubble_rect.is_some(),
+        "the `cover` + `rubble` seeded defs must resolve with Sheet rects",
+    );
     assert_ne!(
-        *roles.cover, *roles.rubble,
-        "the `cover` and `rubble` role indices must differ (else the pin is vacuous)",
+        cover_rect, rubble_rect,
+        "the `cover` and `rubble` def rects must differ (else the pin is vacuous)",
     );
 
-    let index_a = sprite_index_at(&mut app, cover_a);
-    let index_b = sprite_index_at(&mut app, cover_b);
+    let rect_a = sprite_rect_at(&mut app, cover_a);
+    let rect_b = sprite_rect_at(&mut app, cover_b);
 
     // POSITIVE: each cell resolves to ITS OWN def graphic, not the shared TerrainKind default.
     assert_eq!(
-        index_a,
-        Some(*roles.cover),
-        "cell A (graphic_name \"cover\") must resolve to the `cover` atlas index",
+        rect_a, cover_rect,
+        "cell A (graphic_name \"cover\") must draw the `cover` def's sheet rect",
     );
     assert_eq!(
-        index_b,
-        Some(*roles.rubble),
-        "cell B (graphic_name \"rubble\") must resolve to the `rubble` atlas index, NOT the \
+        rect_b, rubble_rect,
+        "cell B (graphic_name \"rubble\") must draw the `rubble` def's sheet rect, NOT the \
          shared TerrainKind::Cover default",
     );
     // The DISCRIMINATING clause: two same-TerrainKind cells draw DIFFERENT sprites — exactly
-    // what role-table-only resolution (keyed on TerrainKind) could not do.
+    // what kind-keyed-only resolution could not do.
     assert_ne!(
-        index_a, index_b,
+        rect_a, rect_b,
         "two cells of the SAME TerrainKind but DIFFERENT graphic_name must draw DIFFERENT \
-         sprites (role-table-only resolution would make them identical and fail here)",
+         sprites (kind-keyed-only resolution would make them identical and fail here)",
     );
 }
 
@@ -101,17 +109,18 @@ fn per_def_graphic_distinguishes_same_kind_cells() {
 /// `"wall_ew"`), resolve to DISTINCT atlas indices, driven through the REAL
 /// `draw_static_battlefield` system.
 ///
-/// Both cells are authored `TerrainKind::Wall` in the occupancy grid, so the
-/// `TileRoles`-table-only resolution (keyed solely on `TerrainKind`) would draw them
-/// IDENTICALLY at `roles.wall` — orientation is presentation-only, so the sim semantics ARE
+/// Both cells are authored `TerrainKind::Wall` in the occupancy grid, so a
+/// kind-keyed-only resolution would draw them
+/// IDENTICALLY at the `wall` def — orientation is presentation-only, so the sim semantics ARE
 /// identical (C5). The sim-spawned per-def `TerrainGraphicKey` (`"wall"` vs `"wall_ew"`) is what
-/// makes the SPRITES differ: the NS cell resolves to `roles.wall`, the EW cell to `roles.wall_ew`
-/// (the row-2 rotated tile). Reverting the presenter to role-table-only resolution makes both
-/// `roles.wall` — identical — and this test FAILS.
+/// makes the SPRITES differ: the NS cell resolves to the `wall` def's rect, the EW cell to the
+/// `wall_ew` def's rect (the row-2 rotated tile — GTW-665, read from the SEEDED defs). Reverting
+/// the presenter to kind-keyed-only resolution makes both
+/// the `wall` rect — identical — and this test FAILS.
 ///
 /// Occlusion-aware (a visible+laid-out node can still draw nothing): the assertion reads the
-/// resolved material `atlas_index` actually carried by the spawned sprite at each cell
-/// (`sprite_index_at`), and settles a frame (the one-shot draw) before reading.
+/// resolved material rect actually carried by the spawned sprite at each cell
+/// (`sprite_rect_at`), and settles a frame (the one-shot draw) before reading.
 #[test]
 fn ns_and_ew_wall_resolve_to_distinct_sprites() {
     let mut app = headless_renderer_app();
@@ -145,38 +154,45 @@ fn ns_and_ew_wall_resolve_to_distinct_sprites() {
         .write(BattleReady);
     app.update();
 
-    let roles = tile_roles(&app);
-    assert!(roles.is_some(), "TileRoles must be resident after settle");
-    let Some(roles) = roles else { return };
+    let defs = sprite_defs(&app);
+    assert!(
+        defs.is_some(),
+        "the SpriteDefRegistry must be resident after settle"
+    );
+    let Some(defs) = defs else { return };
 
-    // Precondition: the two wall-orientation roles are DISTINCT indices in the shipped table
-    // (so a "different" assertion is meaningful rather than vacuously true).
+    // Precondition: the two wall-orientation defs cut DISTINCT sheet rects (so a
+    // "different" assertion is meaningful rather than vacuously true).
+    let wall_rect = def_rect(&defs, "wall");
+    let wall_ew_rect = def_rect(&defs, "wall_ew");
+    assert!(
+        wall_rect.is_some() && wall_ew_rect.is_some(),
+        "the `wall` + `wall_ew` seeded defs must resolve with Sheet rects",
+    );
     assert_ne!(
-        *roles.wall, *roles.wall_ew,
-        "the `wall` (NS) and `wall_ew` (EW) role indices must differ (else the pin is vacuous)",
+        wall_rect, wall_ew_rect,
+        "the `wall` (NS) and `wall_ew` (EW) def rects must differ (else the pin is vacuous)",
     );
 
-    let index_ns = sprite_index_at(&mut app, wall_ns);
-    let index_ew = sprite_index_at(&mut app, wall_ew);
+    let rect_ns = sprite_rect_at(&mut app, wall_ns);
+    let rect_ew = sprite_rect_at(&mut app, wall_ew);
 
     // POSITIVE: each cell resolves to ITS OWN orientation graphic, not the shared Wall default.
     assert_eq!(
-        index_ns,
-        Some(*roles.wall),
-        "the NS-wall cell (graphic_name \"wall\") must resolve to the `wall` atlas index",
+        rect_ns, wall_rect,
+        "the NS-wall cell (graphic_name \"wall\") must draw the `wall` def's sheet rect",
     );
     assert_eq!(
-        index_ew,
-        Some(*roles.wall_ew),
-        "the EW-wall cell (graphic_name \"wall_ew\") must resolve to the `wall_ew` atlas index, \
+        rect_ew, wall_ew_rect,
+        "the EW-wall cell (graphic_name \"wall_ew\") must draw the `wall_ew` def's sheet rect, \
          NOT the shared TerrainKind::Wall default",
     );
     // The DISCRIMINATING clause: two same-TerrainKind::Wall cells draw DIFFERENT (perpendicular)
     // sprites — exactly what role-table-only resolution (keyed on TerrainKind) could not do.
     assert_ne!(
-        index_ns, index_ew,
+        rect_ns, rect_ew,
         "an NS-wall cell and an EW-wall cell (SAME TerrainKind::Wall, DIFFERENT graphic_name) \
-         must draw DIFFERENT sprites (role-table-only resolution would make them identical)",
+         must draw DIFFERENT sprites (kind-keyed-only resolution would make them identical)",
     );
 }
 
@@ -217,21 +233,29 @@ fn slab_footfall_optional_is_read_without_panic() {
         .write(BattleReady);
     app.update();
 
-    let roles = tile_roles(&app);
-    assert!(roles.is_some(), "TileRoles must be resident after settle");
-    let Some(roles) = roles else { return };
+    let defs = sprite_defs(&app);
+    assert!(
+        defs.is_some(),
+        "the SpriteDefRegistry must be resident after settle"
+    );
+    let Some(defs) = defs else { return };
+    let slab_rect = def_rect(&defs, "slab");
+    assert!(
+        slab_rect.is_some(),
+        "the `slab` seeded def must resolve with a Sheet rect"
+    );
 
     // Both slab cells render their per-def `slab` graphic — the absent-footfall slab draws
     // exactly like the present-footfall one (the footfall is a non-visual hook; its absence
     // is the silent default, never a missing tile).
     assert_eq!(
-        sprite_index_at(&mut app, slab_with),
-        Some(*roles.slab),
+        sprite_rect_at(&mut app, slab_with),
+        slab_rect,
         "the slab cell WITH a footfall must render the `slab` graphic",
     );
     assert_eq!(
-        sprite_index_at(&mut app, slab_without),
-        Some(*roles.slab),
+        sprite_rect_at(&mut app, slab_without),
+        slab_rect,
         "the slab cell WITHOUT a footfall must STILL render the `slab` graphic (absent \
          footfall is the documented silent default, not a missing tile)",
     );

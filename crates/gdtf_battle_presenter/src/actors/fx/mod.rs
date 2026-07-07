@@ -42,7 +42,7 @@
 //!
 //! WHICH effect tile each FX draws is DATA-DRIVEN: a per-line-commented
 //! `assets/sprites/effect_roles.spritedef.ron`, loaded through the SAME generic
-//! [`RonAsset<T>`](gdtf_assets::RonAsset) loader S4's `tile_roles.ron` uses, mapping each FX
+//! [`RonAsset<T>`](gdtf_assets::RonAsset) loader the role tables share, mapping each FX
 //! to a [`TileIndex`](crate::TileIndex). Nothing about the index choices is hardcoded in
 //! Rust.
 //!

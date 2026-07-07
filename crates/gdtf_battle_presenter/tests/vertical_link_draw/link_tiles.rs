@@ -1,8 +1,8 @@
-//! Vertical-link tile draw: the locked role indices, the hard-cut, and the
-//! directional stair pick (C6b, GTW-373).
+//! Vertical-link tile draw: the locked stair/ladder sprite regions, the hard-cut, and
+//! the directional stair pick (C6b, GTW-373 / GTW-665).
 
-use bevy::{app::App, prelude::Visibility, sprite::Sprite};
-use gdtf_battle_presenter::{ActiveLevel, TileRoles, VerticalLinkSprite};
+use bevy::{app::App, math::Rect, prelude::Visibility, sprite::Sprite};
+use gdtf_battle_presenter::{ActiveLevel, VerticalLinkSprite};
 use gdtf_battle_sim::{
     prelude::{Cell, CellLevel, Level},
     test_support::SituationBuilder,
@@ -11,77 +11,71 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-/// The stair-UP tile index (GTW-373, supersedes the OQ-3 single-stair 77) — drawn when the
-/// active storey is the link's LOWER cell (you ascend). Asserted as a system constant.
-const STAIR_UP_INDEX: usize = 29;
+/// The stair-UP sheet region (GTW-373, supersedes the OQ-3 single-stair 77) — the
+/// seeded `stair_up.spritedef.ron` rect, i.e. the locked atlas index 29 unpacked on the
+/// 16-column/16-px terrain sheet (`(29 % 16) * 16 = 208`, `(29 / 16) * 16 = 16`).
+/// Drawn when the active storey is the link's LOWER cell (you ascend). Asserted as a
+/// system constant (the GTW-373 user-locked contract, carried in rect form since the
+/// GTW-665 table retirement).
+const STAIR_UP_RECT: Rect = Rect {
+    min: bevy::math::Vec2::new(208.0, 16.0),
+    max: bevy::math::Vec2::new(224.0, 32.0),
+};
 
-/// The stair-DOWN tile index (GTW-373) — drawn when the active storey is the link's UPPER
-/// cell (you descend). Asserted as a system constant.
-const STAIR_DOWN_INDEX: usize = 28;
+/// The stair-DOWN sheet region (GTW-373) — the seeded `stair_down.spritedef.ron` rect
+/// (index 28 → `(192, 16)`). Drawn when the active storey is the link's UPPER cell (you
+/// descend). Asserted as a system constant.
+const STAIR_DOWN_RECT: Rect = Rect {
+    min: bevy::math::Vec2::new(192.0, 16.0),
+    max: bevy::math::Vec2::new(208.0, 32.0),
+};
 
-/// The ladder tile index (user OQ-3 ruling, UNCHANGED) — asserted as a system constant.
-const LADDER_INDEX: usize = 235;
+/// The ladder sheet region (user OQ-3 ruling, UNCHANGED) — the seeded
+/// `ladder.spritedef.ron` rect (index 235 → `(176, 224)`). Asserted as a system constant.
+const LADDER_RECT: Rect = Rect {
+    min: bevy::math::Vec2::new(176.0, 224.0),
+    max: bevy::math::Vec2::new(192.0, 240.0),
+};
 
-/// The atlas indices of every VISIBLE pooled vertical-link sprite (hidden pooled sprites,
+/// The sheet regions of every VISIBLE pooled vertical-link sprite (hidden pooled sprites,
 /// which carry stale state, are excluded — the draw shows exactly the on-storey set).
-fn visible_link_indices(app: &mut App) -> Vec<usize> {
+/// Post-GTW-665 a link tile is an atlas-free `Sprite` whose `rect` IS the def's authored
+/// region.
+fn visible_link_rects(app: &mut App) -> Vec<Rect> {
     let mut q = app
         .world_mut()
         .query::<(&VerticalLinkSprite, &Sprite, &Visibility)>();
     q.iter(app.world())
         .filter(|(_, _, vis)| !matches!(vis, Visibility::Hidden))
-        .filter_map(|(_, sprite, _)| sprite.texture_atlas.as_ref().map(|a| a.index))
+        .filter_map(|(_, sprite, _)| sprite.rect)
         .collect()
 }
 
 /// Drive bounded `update()`s until at least one VISIBLE vertical-link sprite exists
-/// (the link draw fires once `BattleInProgress` + the graph + `TileRoles` + atlases are
-/// all live; its spawn lands a frame after the setup flush under parallel contention).
+/// (the link draw fires once `BattleInProgress` + the graph + the sprite-def registry +
+/// the missing marker are all live; its spawn lands a frame after the setup flush under
+/// parallel contention).
 fn settle_link_sprites(app: &mut App) {
     for _ in 0..MAX_UPDATES {
-        if !visible_link_indices(app).is_empty() {
+        if !visible_link_rects(app).is_empty() {
             return;
         }
         app.update();
     }
 }
 
-/// C6 (b) / GTW-373 — the loaded SHIPPED `TileRoles` resolves `stair_up` == 29 +
-/// `stair_down` == 28 + ladder == 235 (the system constants — OQ-3 ladder UNCHANGED, the
-/// stair split is the GTW-373 ruling), AND the rendered link-cell tile carries the
-/// direction-keyed atlas index: a Stair endpoint on the link's LOWER cell (you ascend)
-/// draws `stair_up` (29), a Ladder endpoint draws 235.
-///
-/// Authors two links on level 0 ⇄ level 1: a STAIR (cells (3,3)) and a LADDER (cells
-/// (6,6)), each `from` = the L0 endpoint. At active level 0 the LOWER endpoint of each is
-/// drawn; the stair sprite must carry `stair_up` (29) — the active storey is the link's
-/// lower cell so the ascend tile is chosen — and the ladder sprite index 235 — proving the
-/// direction-keyed role mapping (C2 / GTW-373) on the real draw path.
+/// C6 (b) / GTW-373 / GTW-665 — the loaded SHIPPED sprite-def catalog resolves
+/// `stair_up` == the (208, 16) region + `stair_down` == (192, 16) + `ladder` ==
+/// (176, 224) (the system constants — OQ-3 ladder UNCHANGED, the stair split is the
+/// GTW-373 ruling; carried as seeded-def rects since the table retirement), AND the
+/// rendered link-cell tile carries the direction-keyed region: a Stair endpoint on the
+/// link's LOWER cell (you ascend) draws `stair_up`, a Ladder endpoint draws the ladder
+/// region — proving the direction-keyed role mapping (C2 / GTW-373) on the real draw
+/// path, resolved through the sprite-def registry.
 #[test]
-fn loaded_roles_resolve_locked_indices_and_link_cells_carry_them() {
+fn loaded_defs_resolve_locked_regions_and_link_cells_carry_them() {
     let mut app = headless_renderer_app();
     settle_resources(&mut app);
-
-    // The loaded SHIPPED tile_roles.ron resolves the system constants (the locked-constant
-    // exemption — these are the user-chosen role->index contract, not tunable magnitudes).
-    let roles = app.world().get_resource::<TileRoles>().cloned();
-    assert!(
-        roles.is_some(),
-        "TileRoles must be resident after the load settles",
-    );
-    let Some(roles) = roles else { return };
-    assert_eq!(
-        *roles.stair_up, STAIR_UP_INDEX,
-        "the shipped tile_roles.ron must resolve stair_up == 29 (GTW-373)",
-    );
-    assert_eq!(
-        *roles.stair_down, STAIR_DOWN_INDEX,
-        "the shipped tile_roles.ron must resolve stair_down == 28 (GTW-373)",
-    );
-    assert_eq!(
-        *roles.ladder, LADDER_INDEX,
-        "the shipped tile_roles.ron must resolve ladder == 235 (UNCHANGED, user OQ-3)",
-    );
 
     // A stair link (3,3) L0 <-> L1 and a ladder link (6,6) L0 <-> L1, each `from` = the L0
     // endpoint. Author the endpoints as slabs so the link validation passes.
@@ -103,32 +97,33 @@ fn loaded_roles_resolve_locked_indices_and_link_cells_carry_them() {
     );
 
     settle_link_sprites(&mut app);
-    let indices = visible_link_indices(&mut app);
+    let rects = visible_link_rects(&mut app);
     // At active level 0 exactly the two LOWER endpoints draw (the hard cut excludes the
-    // level-1 endpoints), one stair-UP (29 — ascend from the lower cell) and one ladder (235).
+    // level-1 endpoints), one stair-UP (ascend from the lower cell) and one ladder.
     assert_eq!(
-        indices.len(),
+        rects.len(),
         2,
-        "exactly two link-cell sprites draw at active level 0 (one stair, one ladder), got {indices:?}",
+        "exactly two link-cell sprites draw at active level 0 (one stair, one ladder), got {rects:?}",
     );
     assert!(
-        indices.contains(&STAIR_UP_INDEX),
-        "a Stair link cell on the link's LOWER endpoint (you ascend) must draw stair_up (29), got {indices:?}",
+        rects.contains(&STAIR_UP_RECT),
+        "a Stair link cell on the link's LOWER endpoint (you ascend) must draw the stair_up \
+         region (208, 16), got {rects:?}",
     );
     assert!(
-        indices.contains(&LADDER_INDEX),
-        "a Ladder link cell must draw the ladder tile (index 235), got {indices:?}",
+        rects.contains(&LADDER_RECT),
+        "a Ladder link cell must draw the ladder region (176, 224), got {rects:?}",
     );
 }
 
 /// C6 (b) cont. / GTW-373 — the link draw HARD-CUTS to the active storey (AC4) AND picks
 /// the direction-keyed stair tile: only the on-storey endpoint of a link is drawn, and a
-/// stair endpoint draws `stair_up` (29) on the LOWER cell (you ascend) vs `stair_down` (28)
-/// on the UPPER cell (you descend). With ONE stair link L0 ⇄ L1, exactly one stair sprite
-/// is visible at active level 0 carrying `stair_up` (29); switching to active level 1 still
-/// shows exactly one stair sprite (the upper endpoint, mutated in place — not respawned),
-/// now carrying `stair_down` (28), never both endpoints. This is the direction selection on
-/// the real draw path: it FAILS if the up/down arms are swapped.
+/// stair endpoint draws the `stair_up` region on the LOWER cell (you ascend) vs the
+/// `stair_down` region on the UPPER cell (you descend). With ONE stair link L0 ⇄ L1,
+/// exactly one stair sprite is visible at active level 0 carrying `stair_up`; switching
+/// to active level 1 still shows exactly one stair sprite (the upper endpoint, mutated in
+/// place — not respawned), now carrying `stair_down`, never both endpoints. This is the
+/// direction selection on the real draw path: it FAILS if the up/down arms are swapped.
 #[test]
 fn link_draw_hard_cuts_and_picks_directional_stair_tile() {
     let mut app = headless_renderer_app();
@@ -148,14 +143,14 @@ fn link_draw_hard_cuts_and_picks_directional_stair_tile() {
 
     settle_link_sprites(&mut app);
     assert_eq!(
-        visible_link_indices(&mut app),
-        vec![STAIR_UP_INDEX],
+        visible_link_rects(&mut app),
+        vec![STAIR_UP_RECT],
         "at active level 0 exactly the LOWER stair endpoint draws (the hard cut), carrying \
-         stair_up (29 — you ascend from here)",
+         the stair_up region (208, 16 — you ascend from here)",
     );
 
     // Switch to active level 1 — the upper endpoint draws, still exactly one (mutated in
-    // place, never both endpoints at once), and now the DESCEND tile (stair_down 28).
+    // place, never both endpoints at once), and now the DESCEND tile (stair_down).
     *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(Level::new(1));
     app.update();
     // Settle the Draw-schedule re-draw for the new active level before reading (the link draw
@@ -163,9 +158,9 @@ fn link_draw_hard_cuts_and_picks_directional_stair_tile() {
     // parallel contention; the assert stands).
     settle_link_sprites(&mut app);
     assert_eq!(
-        visible_link_indices(&mut app),
-        vec![STAIR_DOWN_INDEX],
+        visible_link_rects(&mut app),
+        vec![STAIR_DOWN_RECT],
         "at active level 1 exactly the UPPER stair endpoint draws (still one, mutated in \
-         place), carrying stair_down (28 — you descend from here)",
+         place), carrying the stair_down region (192, 16 — you descend from here)",
     );
 }

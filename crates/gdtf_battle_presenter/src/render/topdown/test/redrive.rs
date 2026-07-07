@@ -18,12 +18,12 @@ use bevy::{
     platform::collections::HashMap,
     prelude::*,
 };
+use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use super::super::{
     atlases::{SheetAtlas, SheetRole, TopDownAtlases},
     redrive::redrive_sheet_images_on_asset_event,
 };
-use crate::{TileIndex, TileRoles};
 
 thread_local! {
     /// The buffer the process-global [`CaptureLayer`] appends captured event
@@ -110,24 +110,26 @@ fn capture_logs(body: impl FnOnce()) -> Vec<String> {
     captured.unwrap_or_default()
 }
 
-/// Probe resource: the value of `TileRoles::is_changed()` observed by a downstream system
-/// the LAST time it ran. The image-redrive test reads this to prove the terrain redraw
-/// trigger (`set_changed()`) fired — a downstream `DetectChanges` witness, exactly the C8
-/// "assert `TileRoles` becomes `is_changed` via a downstream system" shape.
+/// Probe resource: the value of `SpriteDefRegistry::is_changed()` observed by a downstream
+/// system the LAST time it ran. The image-redrive test reads this to prove the terrain
+/// redraw trigger (`set_changed()`) fired — a downstream `DetectChanges` witness, exactly
+/// the C8 "assert the redraw signal becomes `is_changed` via a downstream system" shape
+/// (GTW-665 re-anchored the signal from the retired `TileRoles` onto the registry).
 #[derive(Resource, Default)]
-struct RolesChangedWitness {
-    /// Whether `TileRoles` was `is_changed()` when the witness system last ran.
+struct DefsChangedWitness {
+    /// Whether the `SpriteDefRegistry` was `is_changed()` when the witness system last ran.
     changed: bool,
 }
 
-/// Downstream witness system: records whether `TileRoles` is currently `is_changed()`.
+/// Downstream witness system: records whether the `SpriteDefRegistry` is currently
+/// `is_changed()`.
 ///
 /// Ordered `.after(redrive_sheet_images_on_asset_event)` so a `set_changed()` the redrive
 /// performs THIS frame is visible to it (change ticks compare against this system's own
 /// last-run tick). Overwrites the witness each frame (no latching) so the read after the
 /// event update reflects only that frame.
-fn witness_roles_changed(roles: Res<TileRoles>, mut witness: ResMut<RolesChangedWitness>) {
-    witness.changed = roles.is_changed();
+fn witness_defs_changed(defs: Res<SpriteDefRegistry>, mut witness: ResMut<DefsChangedWitness>) {
+    witness.changed = defs.is_changed();
 }
 
 /// A headless app with the real sheet-image hot-reload wiring: `MinimalPlugins` +
@@ -141,41 +143,13 @@ fn app() -> App {
         .add_plugins(AssetPlugin::default())
         .init_asset::<Image>()
         .init_asset::<TextureAtlasLayout>()
-        .init_resource::<RolesChangedWitness>()
+        .init_resource::<DefsChangedWitness>()
         .add_systems(
             Update,
-            witness_roles_changed.after(redrive_sheet_images_on_asset_event),
+            witness_defs_changed.after(redrive_sheet_images_on_asset_event),
         )
         .add_systems(Update, redrive_sheet_images_on_asset_event);
     app
-}
-
-/// A `TileRoles` with every field set to the same index — a valid fixture; the image
-/// redrive never reads the indices, only marks the resource changed.
-fn uniform_roles() -> TileRoles {
-    let index = TileIndex::new(7);
-    TileRoles {
-        floor:                index,
-        floor_alt_panel:      index,
-        wall:                 index,
-        wall_ew:              index,
-        cover:                index,
-        emplacement:          index,
-        emplacement_occupied: index,
-        slab:                 index,
-        rubble:               index,
-        slab_destroyed:       index,
-        door:                 index,
-        stair_up:             index,
-        stair_down:           index,
-        ladder:               index,
-        door_ns:              index,
-        door_ew:              index,
-        stair_ns_up:          index,
-        stair_ns_down:        index,
-        stair_ew_up:          index,
-        stair_ew_down:        index,
-    }
 }
 
 /// Mint a fresh `Image` handle in the app's `Assets<Image>` and return it.
@@ -222,7 +196,7 @@ fn inject_modified(app: &mut App, handle: &Handle<Image>) {
 }
 
 /// Drive two settling updates so the witness's last-run tick advances PAST the
-/// `TileRoles` / `TopDownAtlases` insert, leaving the witness reading `false` (nothing
+/// `SpriteDefRegistry` / `TopDownAtlases` insert, leaving the witness reading `false` (nothing
 /// changed) before the event under test — so a `true` afterwards is the redrive's poke.
 fn settle(app: &mut App) {
     app.update();
@@ -230,7 +204,7 @@ fn settle(app: &mut App) {
 }
 
 /// C4/C8(b): a `Modified` for the TERRAIN sheet image triggers the terrain redraw — the
-/// redrive calls `set_changed()` on `TileRoles`, which the downstream witness sees as
+/// redrive calls `set_changed()` on the `SpriteDefRegistry`, which the downstream witness sees as
 /// `is_changed()`. Driven through the REAL registered system via `app.update()`.
 ///
 /// Pin-discriminating: dropping the terrain `set_changed()` leaves the witness `false`;
@@ -239,25 +213,26 @@ fn settle(app: &mut App) {
 fn terrain_image_modified_triggers_the_terrain_redraw() {
     let mut app = app();
     let (terrain, _characters) = insert_atlases(&mut app);
-    app.world_mut().insert_resource(uniform_roles());
+    app.world_mut()
+        .insert_resource(SpriteDefRegistry::default());
     settle(&mut app);
     assert!(
-        !app.world().resource::<RolesChangedWitness>().changed,
-        "precondition: after settling, TileRoles must NOT be is_changed",
+        !app.world().resource::<DefsChangedWitness>().changed,
+        "precondition: after settling, the SpriteDefRegistry must NOT be is_changed",
     );
 
     inject_modified(&mut app, &terrain);
     app.update();
 
     assert!(
-        app.world().resource::<RolesChangedWitness>().changed,
-        "a Modified for the TERRAIN sheet image must set_changed() TileRoles \
+        app.world().resource::<DefsChangedWitness>().changed,
+        "a Modified for the TERRAIN sheet image must set_changed() the SpriteDefRegistry \
          (forcing the terrain re-render)",
     );
 }
 
 /// C10(e): a `Modified` for a LOADED NON-terrain sheet image (characters) is handled but
-/// does NOT trigger the terrain redraw — the redrive logs the reload yet leaves `TileRoles`
+/// does NOT trigger the terrain redraw — the redrive logs the reload yet leaves the `SpriteDefRegistry`
 /// untouched, because only the terrain sheet draws through the snapshot bind group. Driven
 /// through the REAL registered system via `app.update()`, with the downstream witness
 /// ordered `.after` it (mirrors `terrain_image_modified_triggers_the_terrain_redraw`).
@@ -270,25 +245,26 @@ fn terrain_image_modified_triggers_the_terrain_redraw() {
 fn non_terrain_sheet_image_modified_does_not_trigger_the_terrain_redraw() {
     let mut app = app();
     let (_terrain, characters) = insert_atlases(&mut app);
-    app.world_mut().insert_resource(uniform_roles());
+    app.world_mut()
+        .insert_resource(SpriteDefRegistry::default());
     settle(&mut app);
     assert!(
-        !app.world().resource::<RolesChangedWitness>().changed,
-        "precondition: after settling, TileRoles must NOT be is_changed",
+        !app.world().resource::<DefsChangedWitness>().changed,
+        "precondition: after settling, the SpriteDefRegistry must NOT be is_changed",
     );
 
     inject_modified(&mut app, &characters);
     app.update();
 
     assert!(
-        !app.world().resource::<RolesChangedWitness>().changed,
+        !app.world().resource::<DefsChangedWitness>().changed,
         "a Modified for a LOADED NON-terrain sheet (characters) must be handled WITHOUT \
-         marking TileRoles changed — only the terrain sheet pokes the terrain redraw",
+         marking the SpriteDefRegistry changed — only the terrain sheet pokes the terrain redraw",
     );
 }
 
 /// C4/C8(b): a `Modified` for a NON-sheet (unrelated) image id does NOT trigger the
-/// terrain redraw — the id maps to no sheet, so `TileRoles` stays unchanged.
+/// terrain redraw — the id maps to no sheet, so the `SpriteDefRegistry` stays unchanged.
 ///
 /// Pin-discriminating: a redrive that poked on ANY image event (not just a loaded sheet's)
 /// would flip the witness `true` here.
@@ -296,7 +272,8 @@ fn non_terrain_sheet_image_modified_does_not_trigger_the_terrain_redraw() {
 fn unrelated_image_modified_does_not_trigger_the_terrain_redraw() {
     let mut app = app();
     let (_terrain, _characters) = insert_atlases(&mut app);
-    app.world_mut().insert_resource(uniform_roles());
+    app.world_mut()
+        .insert_resource(SpriteDefRegistry::default());
     // An image handle that is NOT registered in TopDownAtlases (a portrait node, a one-off
     // texture, …).
     let unrelated = add_image(&mut app);
@@ -306,8 +283,8 @@ fn unrelated_image_modified_does_not_trigger_the_terrain_redraw() {
     app.update();
 
     assert!(
-        !app.world().resource::<RolesChangedWitness>().changed,
-        "a Modified for an id that is NOT a loaded sheet must NOT touch TileRoles",
+        !app.world().resource::<DefsChangedWitness>().changed,
+        "a Modified for an id that is NOT a loaded sheet must NOT touch the SpriteDefRegistry",
     );
 }
 
@@ -342,7 +319,8 @@ fn non_terrain_sheet_reload_logs_an_info_line_naming_the_sheet() {
 
     let mut app = app();
     let (_terrain, characters) = insert_atlases(&mut app);
-    app.world_mut().insert_resource(uniform_roles());
+    app.world_mut()
+        .insert_resource(SpriteDefRegistry::default());
     inject_modified(&mut app, &characters);
 
     let captured = capture_logs(|| {

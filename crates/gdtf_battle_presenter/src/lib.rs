@@ -27,9 +27,13 @@
 //!
 //! GTW-218 (the S4 slice) adds the first VISUAL draw in [`mod@render::terrain`]: the static
 //! battlefield drawn as 16x16 terrain sprites from the three sim-owned static-map
-//! resources for the presenter-owned [`ActiveLevel`], choosing each tile via the
-//! DATA-DRIVEN [`TileRoles`] table (`assets/sprites/tile_roles.spritedef.ron`). The
-//! [`TopDownRendererPlugin`] loads + resolves that table, inserts the [`ActiveLevel`]
+//! resources for the presenter-owned [`ActiveLevel`], resolving each tile's pixels
+//! from its graphic name's SPRITE DEF (GTW-665 — the
+//! [`SpriteDefRegistry`](gdtf_content_families::sprites::SpriteDefRegistry) loaded from
+//! `assets/content/sprites/*.spritedef.ron` by the HOST's Load pass; the presenter's
+//! [`resolve_sprite`] is the ONE resolution both the battle draw and the content editor
+//! consume). The
+//! [`TopDownRendererPlugin`] inserts the [`ActiveLevel`]
 //! default, defines the [`PresenterSystems::Draw`] set after
 //! `SimSystems::Simulate`, and registers the one-shot [`draw_static_battlefield`] +
 //! the [`swap_destroyed_cover`] reaction (both gated on the sim's `BattleInProgress`).
@@ -114,15 +118,17 @@ pub use plugin::{
 };
 pub use render::{
     terrain::{
-        ActiveLevel, ContextDepth, IsolateView, PresenterSystems, StaticMap, StoreyTreatment,
-        StoreyViewMode, TerrainSprite, TileIndex, TileRole, TileRoles, VerticalLinkSprite,
-        ViewMode, draw_static_battlefield, draw_vertical_links, indicate_emplacement_occupied,
-        storey_treatment, swap_destroyed_cover, swap_destroyed_slab, tile_roles_hot_ron_chain,
+        ActiveLevel, ContextDepth, IsolateView, MissingTileTexture, PresenterSystems,
+        SpriteResolveCtx, StaticMap, StoreyTreatment, StoreyViewMode, TerrainSprite, TileRole,
+        VerticalLinkSprite, ViewMode, anchor_world_offset, draw_static_battlefield,
+        draw_vertical_links, indicate_emplacement_occupied, resolve_sprite,
+        setup_missing_tile_texture, single_rect_layout, source_parts, source_px_size, source_urect,
+        storey_treatment, swap_destroyed_cover, swap_destroyed_slab,
     },
     topdown::{
-        CELL_PX, GANGER_Z_BIAS, Layer, SheetAtlas, SheetRole, TopDownAtlases, cell_to_world,
-        cell_to_world_layered, load_topdown_atlases, redrive_sheet_images_on_asset_event,
-        sim_pos_to_world,
+        CELL_PX, GANGER_Z_BIAS, Layer, SheetAtlas, SheetRole, TileIndex, TopDownAtlases,
+        cell_to_world, cell_to_world_layered, load_topdown_atlases,
+        redrive_sheet_images_on_asset_event, sim_pos_to_world,
     },
     world_camera::{
         BoundsMarginWorld, DwellDelaySeconds, DwellElapsed, EdgeBandPx, GamepadCursorMoved,

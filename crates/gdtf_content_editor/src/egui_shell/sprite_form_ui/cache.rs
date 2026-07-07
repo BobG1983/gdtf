@@ -33,7 +33,10 @@ pub(crate) struct SpritePreviewCache {
 impl SpritePreviewCache {
     /// The image handle for `path`, loading it through the `asset_server` on the first
     /// request (idempotent — later requests reuse the stored strong handle).
-    pub(super) fn handle(
+    /// `pub(crate)` since GTW-665: the shell's per-path [`SpriteTextures`] resolution
+    /// (`egui_shell/textures.rs`) rides the same path-keyed store for every thumbnail
+    /// source, not just the SPRITE mode's preview.
+    pub(crate) fn handle(
         &mut self,
         asset_server: &AssetServer,
         path: &SpriteImagePath,

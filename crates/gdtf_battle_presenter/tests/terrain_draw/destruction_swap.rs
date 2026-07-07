@@ -15,7 +15,8 @@ use gdtf_battle_sim::{
 use super::harness::*;
 
 /// AC3 — a `CoverDestroyed { at }` on the active level swaps that cover cell's sprite to
-/// the `rubble` tile (read from `TileRoles`), and the other terrain sprites are untouched.
+/// the `rubble` tile (the `rubble` def's seeded rect, read from the `SpriteDefRegistry` —
+/// GTW-665), and the other terrain sprites are untouched.
 #[test]
 fn cover_destroyed_swaps_the_cover_cell_to_rubble() {
     let mut app = headless_renderer_app();
@@ -45,10 +46,10 @@ fn cover_destroyed_swaps_the_cover_cell_to_rubble() {
         .write(BattleReady);
     app.update();
 
-    let roles = tile_roles(&app);
-    assert!(roles.is_some(), "TileRoles must be resident");
-    let Some(roles) = roles else { return };
-    let wall_index_before = sprite_index_at(&mut app, wall_key);
+    let defs = sprite_defs(&app);
+    assert!(defs.is_some(), "the SpriteDefRegistry must be resident");
+    let Some(defs) = defs else { return };
+    let wall_rect_before = sprite_rect_at(&mut app, wall_key);
 
     // Smash the cover cell.
     app.world_mut()
@@ -57,28 +58,29 @@ fn cover_destroyed_swaps_the_cover_cell_to_rubble() {
     app.update();
 
     assert_eq!(
-        sprite_index_at(&mut app, cover_key),
-        Some(*roles.rubble),
-        "the destroyed cover cell's sprite must now be the rubble tile index",
+        sprite_rect_at(&mut app, cover_key),
+        def_rect(&defs, "rubble"),
+        "the destroyed cover cell's sprite must now carry the `rubble` def's rect",
     );
     assert_eq!(
-        sprite_index_at(&mut app, wall_key),
-        wall_index_before,
+        sprite_rect_at(&mut app, wall_key),
+        wall_rect_before,
         "the other (wall) terrain sprite must be untouched by the cover destruction",
     );
 }
 
 /// GTW-367 C6/C7 (POSITIVE) — a `SlabDestroyed { at }` on the active level, fed through the
 /// REAL presenter plugin's `swap_destroyed_slab` reaction, swaps that slab cell's sprite to
-/// the `slab_destroyed` tile (read from `TileRoles`) IN PLACE — the SAME `Entity` persists
-/// (no despawn/respawn), the destroyed index is DISTINCT from the intact slab index, and the
+/// the `slab_destroyed` tile (the def's seeded rect, read from the `SpriteDefRegistry` —
+/// GTW-665) IN PLACE — the SAME `Entity` persists
+/// (no despawn/respawn), the destroyed rect is DISTINCT from the intact slab rect, and the
 /// neighbouring slab cell is untouched.
 ///
 /// Drives the production `TopDownRendererPlugin` (no hand-mutated sprite in the arrange):
 /// authors two `Present` slabs, fires `BattleReady` + `update()`s so the real draw spawns the
 /// tiles, then writes a real `SlabDestroyed` to its `Messages` buffer and `update()`s again so
 /// `swap_destroyed_slab` runs (the settle-before-read rule) before the assert reads the
-/// resulting material `atlas_index` + entity id.
+/// resulting material rect + entity id.
 #[test]
 fn slab_destroyed_swaps_the_slab_cell_to_destroyed_in_place() {
     let mut app = headless_renderer_app();
@@ -106,29 +108,33 @@ fn slab_destroyed_swaps_the_slab_cell_to_destroyed_in_place() {
         .write(BattleReady);
     app.update();
 
-    let roles = tile_roles(&app);
-    assert!(roles.is_some(), "TileRoles must be resident after settle");
-    let Some(roles) = roles else { return };
+    let defs = sprite_defs(&app);
+    assert!(
+        defs.is_some(),
+        "the SpriteDefRegistry must be resident after settle"
+    );
+    let Some(defs) = defs else { return };
 
-    // Precondition: the destroyed treatment is a REAL visible swap (distinct atlas index).
+    // Precondition: the destroyed treatment is a REAL visible swap (distinct def rect).
     assert_ne!(
-        *roles.slab_destroyed, *roles.slab,
-        "the slab_destroyed tile index must differ from the intact slab index (a real swap)",
+        def_rect(&defs, "slab_destroyed"),
+        def_rect(&defs, "slab"),
+        "the slab_destroyed def rect must differ from the intact slab rect (a real swap)",
     );
 
     // The slab cell starts on the intact slab tile, and we capture its Entity id for the C7
     // same-entity check.
     assert_eq!(
-        sprite_index_at(&mut app, slab_key),
-        Some(*roles.slab),
-        "the slab cell's sprite must start on the intact slab tile index",
+        sprite_rect_at(&mut app, slab_key),
+        def_rect(&defs, "slab"),
+        "the slab cell's sprite must start on the intact slab def's rect",
     );
     let entity_before = sprite_entity_at(&mut app, slab_key);
     assert!(
         entity_before.is_some(),
         "the slab cell's terrain sprite must exist before the destruction",
     );
-    let other_index_before = sprite_index_at(&mut app, other_slab_key);
+    let other_rect_before = sprite_rect_at(&mut app, other_slab_key);
 
     // Smash the slab — write a REAL message to the buffer the plugin registered, then settle.
     app.world_mut()
@@ -136,12 +142,12 @@ fn slab_destroyed_swaps_the_slab_cell_to_destroyed_in_place() {
         .write(SlabDestroyed::new(slab_key));
     app.update();
 
-    // POSITIVE: the slab cell now renders the destroyed-slab tile index (the intended content
+    // POSITIVE: the slab cell now renders the destroyed-slab def's rect (the intended content
     // actually renders — not merely "something changed").
     assert_eq!(
-        sprite_index_at(&mut app, slab_key),
-        Some(*roles.slab_destroyed),
-        "the destroyed slab cell's sprite must now be the slab_destroyed tile index",
+        sprite_rect_at(&mut app, slab_key),
+        def_rect(&defs, "slab_destroyed"),
+        "the destroyed slab cell's sprite must now carry the `slab_destroyed` def's rect",
     );
     // C7: the SAME entity persists (in-place mutation, no despawn/respawn).
     assert_eq!(
@@ -151,8 +157,8 @@ fn slab_destroyed_swaps_the_slab_cell_to_destroyed_in_place() {
     );
     // The neighbouring slab cell is untouched.
     assert_eq!(
-        sprite_index_at(&mut app, other_slab_key),
-        other_index_before,
+        sprite_rect_at(&mut app, other_slab_key),
+        other_rect_before,
         "the other (intact) slab sprite must be untouched by the slab destruction",
     );
 }
@@ -196,19 +202,22 @@ fn cover_destroyed_swaps_on_lower_storey_and_ignores_above_active() {
         .write(BattleReady);
     app.update();
 
-    let roles = tile_roles(&app);
-    assert!(roles.is_some(), "TileRoles must be resident after settle");
-    let Some(roles) = roles else { return };
+    let defs = sprite_defs(&app);
+    assert!(
+        defs.is_some(),
+        "the SpriteDefRegistry must be resident after settle"
+    );
+    let Some(defs) = defs else { return };
 
     // Precondition: the lower cover is drawn (a real tile to swap); the above-active cover is
     // NOT drawn (culled), so there is no tile there to begin with.
     assert_eq!(
-        sprite_index_at(&mut app, lower_cover),
-        Some(*roles.cover),
+        sprite_rect_at(&mut app, lower_cover),
+        def_rect(&defs, "cover"),
         "the lower-storey cover must be drawn before the smash",
     );
     assert_eq!(
-        sprite_index_at(&mut app, above_cover),
+        sprite_rect_at(&mut app, above_cover),
         None,
         "the above-active cover must NOT be drawn (culled)",
     );
@@ -224,13 +233,13 @@ fn cover_destroyed_swaps_on_lower_storey_and_ignores_above_active() {
 
     // C6: the DRAWN lower-storey cover swapped to rubble.
     assert_eq!(
-        sprite_index_at(&mut app, lower_cover),
-        Some(*roles.rubble),
+        sprite_rect_at(&mut app, lower_cover),
+        def_rect(&defs, "rubble"),
         "a cover smashed on a DRAWN lower storey must swap to the rubble tile (C6)",
     );
     // The above-active destruction is ignored — still no drawn tile there.
     assert_eq!(
-        sprite_index_at(&mut app, above_cover),
+        sprite_rect_at(&mut app, above_cover),
         None,
         "a cover smashed STRICTLY ABOVE the active view level must be ignored (not drawn)",
     );

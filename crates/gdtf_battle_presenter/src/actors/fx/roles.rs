@@ -93,7 +93,7 @@ pub struct DamageTypeFx {
 /// [`RonAsset<T>`](gdtf_assets::RonAsset) loader and resolved into a presenter-owned
 /// [`EffectRoles`] resource before battle time (the GTW-564 generic hot-RON
 /// chain, registered by [`register_effect_roles_hot_ron`]), mirroring S4's
-/// `tile_roles.ron` chain.
+/// GTW-564 generic hot-RON seam (the mechanism the retired S4 terrain table used).
 ///
 /// GTW-306 reshaped the firing-FX half from the old single stretched-`tracer`
 /// index into a PER-DAMAGE-TYPE model: each of the four authored color rows

@@ -4,15 +4,19 @@
 //! [`OccupancyGrid`](gdtf_battle_sim::occupancy::OccupancyGrid) terrain, the
 //! [`CoverLedger`](gdtf_battle_sim::cover::CoverLedger) cover entries, and the
 //! [`SurfaceGrid`](gdtf_battle_sim::surface::SurfaceGrid) slabs — for the presenter-owned
-//! [`ActiveLevel`] and spawns one 16x16 top-down terrain [`Sprite`](bevy::sprite::Sprite) per non-empty
-//! `(cell, level)`, choosing each tile's atlas index from a DATA-DRIVEN role table
-//! ([`TileRoles`], loaded from `assets/sprites/tile_roles.spritedef.ron`). It positions each
-//! sprite via the S3 [`cell_to_world`](crate::cell_to_world) projection through the
+//! [`ActiveLevel`] and spawns one 16x16 top-down terrain tile per non-empty
+//! `(cell, level)`, resolving each tile's PIXELS from its graphic name's sprite def
+//! (GTW-665 — the [`resolve`] module over the GTW-663
+//! [`SpriteDefRegistry`](gdtf_content_families::sprites::SpriteDefRegistry), loaded from
+//! `assets/content/sprites/*.spritedef.ron`). It positions each
+//! sprite via the S3 [`cell_to_world`](crate::cell_to_world) projection (plus the def's
+//! authored ANCHOR offset) through the
 //! S3 sprite-sizing recipe (`custom_size: Some(Vec2::splat(CELL_PX))`).
 //!
-//! Which sim fact maps to which ROLE is owned HERE; which atlas INDEX a role resolves
-//! to is data, read from the [`TileRoles`] resource at draw time — never a hardcoded
-//! literal. The model never reads the presenter (ADR-0001): this slice writes NOTHING
+//! Which sim fact maps to which fallback ROLE is owned HERE (the closed [`TileRole`]
+//! vocabulary); which PIXELS a graphic name resolves to is data, read from the
+//! sprite-def registry at draw time — never a hardcoded atlas index. The model never
+//! reads the presenter (ADR-0001): this slice writes NOTHING
 //! back to the sim, it only projects sim state to terrain sprites.
 //!
 //! # Draw lifecycle
@@ -34,6 +38,7 @@
 mod active_level;
 mod band;
 mod link_draw;
+mod resolve;
 mod roles;
 mod static_draw;
 mod static_map;
@@ -45,9 +50,12 @@ mod test;
 
 pub use active_level::{ActiveLevel, PresenterSystems, ViewMode};
 pub use link_draw::{VerticalLinkSprite, draw_vertical_links};
-pub(crate) use roles::register_tile_roles_hot_ron;
-pub use roles::{TileIndex, TileRole, TileRoles, tile_roles_hot_ron_chain};
+pub use resolve::{
+    MissingTileTexture, anchor_world_offset, resolve_sprite, setup_missing_tile_texture,
+    single_rect_layout, source_parts, source_px_size, source_urect,
+};
+pub use roles::TileRole;
 pub use static_draw::{TerrainSprite, draw_static_battlefield};
-pub use static_map::StaticMap;
+pub use static_map::{SpriteResolveCtx, StaticMap};
 pub use swaps::{indicate_emplacement_occupied, swap_destroyed_cover, swap_destroyed_slab};
 pub use treatment::{ContextDepth, IsolateView, StoreyTreatment, StoreyViewMode, storey_treatment};

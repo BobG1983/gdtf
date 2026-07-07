@@ -53,10 +53,12 @@ terrain:
    default walkable plating). The theme's `default_floor` UUID is the migrated
    `deck_floor` def's UUID.
 3. **`atlas_index` is INTENTIONALLY DROPPED.** The old `ThemeTileCatalog`
-   `CatalogTile.atlas_index` does not survive the migration. The presenter
-   resolves the atlas index via `TileRoles` keyed by the def's
+   `CatalogTile.atlas_index` does not survive the migration. The presenter (at
+   migration time) resolved the atlas index via `TileRoles` keyed by the def's
    `presenter_kind.graphic_name` (the old flat file's `graphic` `TileRoles` key),
-   NEVER a per-def atlas index.
+   NEVER a per-def atlas index. (GTW-665 has since retired the `TileRoles`
+   table itself — the same `graphic_name` now resolves through the sprite-def
+   registry, see [sprite-defs.md](sprite-defs.md).)
 
 ## Kind mapping (the new model)
 

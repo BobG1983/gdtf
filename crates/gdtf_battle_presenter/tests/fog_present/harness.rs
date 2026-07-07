@@ -86,6 +86,12 @@ pub(crate) fn headless_renderer_app() -> App {
     .add_message::<gdtf_battle_sim::occupancy_sync::CoverDestroyed>()
     .add_systems(Update, setup_battle_on_request)
     .add_plugins(TopDownRendererPlugin);
+    // GTW-665: the sprite-defs family — the SAME one-line host registration the game's
+    // Load plugin performs; the terrain draw resolves graphic names against the
+    // SpriteDefRegistry it publishes.
+    gdtf_assets::ContentFamilyAppExt::register_content_family::<
+        gdtf_content_families::SpriteDefsFamily,
+    >(&mut app);
     app.insert_resource(test_weapon_registry());
     // GTW-505: the melee registry (with the `fists` default) so each ganger's melee
     // weapon resolves at setup (fixture gangers author none -> `fists`).
@@ -105,7 +111,10 @@ pub(crate) fn headless_renderer_app() -> App {
 
 /// Drive `update()`s until both async render resources have settled.
 pub(crate) fn settle_resources(app: &mut App) {
-    advance_until_resource_exists::<gdtf_battle_presenter::TileRoles>(app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<gdtf_content_families::sprites::SpriteDefRegistry>(
+        app,
+        LOAD_SAFETY_NET,
+    );
     advance_until_resource_exists::<TopDownAtlases>(app, LOAD_SAFETY_NET);
 }
 

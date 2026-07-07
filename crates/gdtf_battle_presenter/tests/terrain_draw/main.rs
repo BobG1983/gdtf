@@ -9,12 +9,13 @@
 //! These prove the DRAW LOGIC headless; "the right tiles appear on screen" is AC6's
 //! in-engine QA evidence. The harness is a `DefaultPlugins`/`no_renderer` app (a live
 //! `AssetServer` rooted at the workspace `assets/` so `TopDownAtlases` + the
-//! `tile_roles.ron`-resolved `TileRoles` are resident) plus `TopDownRendererPlugin` and
+//! `content/sprites/`-resolved `SpriteDefRegistry` is resident) plus `TopDownRendererPlugin` and
 //! the two sim message buffers the draw reads (`BattleReady` / `CoverDestroyed`). The
 //! three grids + `BattleInProgress` are authored, and `BattleReady` is written, DIRECTLY
 //! via `app.world_mut()` in the test body — the accepted headless idiom (`bevy-traps.md`
 //! #7 carve-out (a)). No function here takes `&mut World`/`&World`.
 
+mod anchor;
 mod destruction_swap;
 mod door_stair_tiles;
 mod emplacement;

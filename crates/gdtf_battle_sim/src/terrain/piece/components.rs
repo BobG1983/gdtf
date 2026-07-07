@@ -48,13 +48,13 @@ impl TerrainName {
     }
 }
 
-/// A terrain piece's **graphic role key** — an opaque string the presenter resolves
-/// to a tile atlas entry via `TileRoles`.
+/// A terrain piece's **graphic key** — an opaque string the presenter resolves
+/// to drawable pixels (since GTW-665, a sprite def looked up by NAME in the
+/// sprite-def registry).
 ///
-/// The sim stores this key render-free and never resolves it to an atlas index —
-/// that is the presenter's `TileRoles` job. The key follows the existing
-/// `tile_roles.ron` vocabulary (e.g. `"floor"`, `"wall"`, `"cover"`) so the
-/// presenter wire-up is later-trivial.
+/// The sim stores this key render-free and never resolves it to pixels —
+/// that is the presenter's job. The key names a `content/sprites/` sprite def
+/// (e.g. `"floor"`, `"wall"`, `"cover"`) so the presenter wire-up is trivial.
 ///
 /// Derives [`Component`] so it can be attached to a terrain entity at setup
 /// (GTW-396, Decision E: presentation-hook seam). The presenter queries it to
@@ -71,7 +71,7 @@ impl TerrainName {
 pub struct TerrainGraphicKey(String);
 
 impl TerrainGraphicKey {
-    /// Build a graphic key from its role string (the `TileRoles` vocabulary key).
+    /// Build a graphic key from its sprite-name string (a sprite-def registry key).
     #[must_use]
     pub const fn new(key: String) -> Self {
         Self(key)

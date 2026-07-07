@@ -3,18 +3,18 @@
 //! same paths the live controls commit through).
 
 use bevy::prelude::*;
-use gdtf_battle_presenter::TileRoles;
 use gdtf_battle_sim::{
     level::{GridHeight, GridLevels, GridSize, GridWidth, UuidThemeRegistry},
     metric::{CellLevel, Level},
     prelude::Cell,
     terrain::def::{TerrainDefRegistry, TerrainUuid},
 };
+use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use super::super::forced::ForcedView;
 use crate::{
     EditorMap, hovered_cell::HoveredCell, session::MapEditorSession,
-    terrain_graphics::terrain_atlas_index,
+    terrain_graphics::terrain_sprite_def,
 };
 
 /// The modest, legible grid edge the capture shrinks the canvas to before the shot — a `16 × 16`
@@ -74,23 +74,24 @@ pub(in crate::capture) fn drive_capture_grid_size(
 /// `Update` (in `Editing`, capture-only): SELECT a distinct (non-default-floor) palette tile in the
 /// [`MapEditorSession`] before the shot — exactly what a real palette click does, driven directly.
 /// Idempotent: once the session has a selected tile it no-ops. Resolving a distinct tile needs the
-/// theme's terrain palette + the per-def atlas index (resolved THE WAY THE PRESENTER DOES, via
-/// [`TileRoles`]), so it waits until those registries + the seeded theme resolve.
+/// theme's terrain palette + the per-def sprite resolution (resolved THE WAY THE PRESENTER DOES,
+/// via [`terrain_sprite_def`] over the GTW-663 [`SpriteDefRegistry`] — GTW-665), so it waits until
+/// those registries + the seeded theme resolve.
 pub(in crate::capture) fn drive_capture_selection(
     registry: Option<Res<TerrainDefRegistry>>,
     themes: Option<Res<UuidThemeRegistry>>,
-    roles: Option<Res<TileRoles>>,
+    sprites: Option<Res<SpriteDefRegistry>>,
     session: Option<ResMut<MapEditorSession>>,
 ) {
-    let (Some(registry), Some(themes), Some(roles), Some(mut session)) =
-        (registry, themes, roles, session)
+    let (Some(registry), Some(themes), Some(sprites), Some(mut session)) =
+        (registry, themes, sprites, session)
     else {
         return;
     };
     if session.selected_tile().is_some() {
         return;
     }
-    if let Some(paint_key) = distinct_paint_tile(&registry, &themes, &roles, &session) {
+    if let Some(paint_key) = distinct_paint_tile(&registry, &themes, &sprites, &session) {
         session.select_tile(paint_key);
     }
 }
@@ -158,25 +159,24 @@ fn upper_block_cells() -> Vec<Cell> {
         .collect()
 }
 
-/// Resolve a terrain of the session's theme palette whose resolved atlas index DIFFERS from the
+/// Resolve a terrain of the session's theme palette whose resolved SPRITE DEF differs from the
 /// default-floor's, returning its [`TerrainUuid`] — so a painted cell reads visibly different in the
-/// capture. The index resolution mirrors the presenter (via [`TileRoles`]).
+/// capture. The resolution mirrors the presenter (via [`terrain_sprite_def`] — GTW-665; a different
+/// def means different authored pixels, the successor of the retired atlas-index-differs check).
 fn distinct_paint_tile(
     registry: &TerrainDefRegistry,
     themes: &UuidThemeRegistry,
-    roles: &TileRoles,
+    sprites: &SpriteDefRegistry,
     session: &MapEditorSession,
 ) -> Option<TerrainUuid> {
     let theme = session.theme();
-    let default_index = session
+    let default_def = session
         .default_floor()
         .or_else(|| themes.default_floor(&theme))
-        .and_then(|key| terrain_atlas_index(registry, roles, &key))
-        .map(|index| *index)?;
+        .and_then(|key| terrain_sprite_def(registry, sprites, &key))?;
     themes.terrain(&theme)?.iter().find_map(|key| {
-        terrain_atlas_index(registry, roles, key)
-            .map(|index| *index)
-            .filter(|index| *index != default_index)
+        terrain_sprite_def(registry, sprites, key)
+            .filter(|def| *def != default_def)
             .map(|_| *key)
     })
 }

@@ -1,4 +1,4 @@
-//! The role-keyed sheet/atlas model ([`SheetRole`] / [`SheetAtlas`] /
+//! The role-keyed sheet/atlas model ([`TileIndex`] / [`SheetRole`] / [`SheetAtlas`] /
 //! [`TopDownAtlases`]) and the one-shot atlas load ([`load_topdown_atlases`]).
 
 use bevy::{
@@ -6,6 +6,33 @@ use bevy::{
     platform::collections::HashMap,
     prelude::*,
 };
+use serde::{Deserialize, Serialize};
+
+/// An index into a sprite sheet's atlas layout — WHICH grid tile a role draws.
+///
+/// A named newtype over `usize` (no-bare-types: an atlas index is a domain value, not
+/// a bare `usize`), [`Deref`]ing to it so a consumer reads the index straight through.
+/// `#[serde(transparent)]` so an authored role-table field parses as a bare integer
+/// (`faction_0: 0`), not a one-field struct. [`Serialize`] (with the same transparency)
+/// lets a round-trip-identity test re-serialize a loaded table. Rehomed here from the
+/// retired terrain role table (GTW-665): the surviving consumers are the
+/// [`CharacterRoles`](crate::CharacterRoles) / [`EffectRoles`](crate::EffectRoles)
+/// tables over the character / effect sheets.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[serde(transparent)]
+pub struct TileIndex(usize);
+
+impl TileIndex {
+    /// Build a tile index from its layout position.
+    ///
+    /// `usize` is the index space of the atlas layout's `textures` collection (a
+    /// collection-index, the no-bare-types framework-plumbing carve-out for the inner
+    /// value), wrapped here as the named domain [`TileIndex`].
+    #[must_use]
+    pub const fn new(index: usize) -> Self {
+        Self(index)
+    }
+}
 
 /// Which of the role-separated sprite sheets an atlas entry belongs to.
 ///

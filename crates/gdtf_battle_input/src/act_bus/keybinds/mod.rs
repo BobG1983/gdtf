@@ -3,7 +3,7 @@
 //!
 //! Every bound act names a key in a loose, per-line-commented
 //! `assets/core_tuning/keybinds.tuning.ron`, loaded through the generic GTW-136
-//! [`RonAsset<T>`](gdtf_assets::RonAsset) path (the `tile_roles` / `character_roles`
+//! [`RonAsset<T>`](gdtf_assets::RonAsset) path (the `character_roles`
 //! precedent) and resolved into a resident [`Keybinds`] resource. The systems read
 //! the resolved [`KeyCode`](bevy::prelude::KeyCode) off that resource — there is NO
 //! hardcoded `KeyCode` literal in any system.

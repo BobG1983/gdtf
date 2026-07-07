@@ -5,7 +5,7 @@
 //! placement layer VERBATIM (C4.10): the [`EditorMap`](crate::EditorMap) paintable model, the
 //! shared [`evaluate_placement`](crate::evaluate_placement) / [`apply_placement`](crate::apply_placement)
 //! legality (ladder auto-clear, slab-seals-ladder reject), the presenter-mirroring
-//! [`terrain_atlas_index`](crate::terrain_graphics) sprite resolution, and the debug-only
+//! [`terrain_sprite_def`](crate::terrain_graphics) sprite resolution (GTW-665), and the debug-only
 //! [`write_prefab`](crate::save::write_prefab) save. The RENDER-TO-TEXTURE viewport machinery (the
 //! offscreen image + the dedicated isolated-render-layer camera + the change-driven tile redraw +
 //! the set-to-target zoom/pan apply) lives in [`preview`](crate::preview); this module only DRAWS

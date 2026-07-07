@@ -13,7 +13,8 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use gdtf_battle_presenter::{TileRoles, TopDownAtlases, TopDownRendererPlugin};
+use gdtf_assets::ContentFamilyAppExt;
+use gdtf_battle_presenter::{TopDownAtlases, TopDownRendererPlugin};
 use gdtf_battle_sim::{
     battle::{BattleReady, SetupBattleRequested, setup_battle_on_request},
     ganger::{Aiming, Facing},
@@ -25,12 +26,13 @@ use gdtf_battle_sim::{
         test_weapon_registry,
     },
 };
+use gdtf_content_families::{SpriteDefsFamily, sprites::SpriteDefRegistry};
 use gdtf_test_utils::advance_until_resource_exists;
 
 /// Bounded settle headroom for the post-setup state / spawn / glide waits.
 pub(crate) const MAX_UPDATES: u32 = 128;
 
-/// Safety-net cap for the async atlas / tile-role loads.
+/// Safety-net cap for the async atlas / sprite-def loads.
 pub(crate) const LOAD_SAFETY_NET: u32 = 10_000;
 
 /// A fixed seed for the deterministic `SetupBattleRequested`.
@@ -78,6 +80,10 @@ pub(crate) fn headless_renderer_app() -> App {
     .add_message::<gdtf_battle_sim::occupancy_sync::CoverDestroyed>()
     .add_systems(bevy::app::Update, setup_battle_on_request)
     .add_plugins(TopDownRendererPlugin);
+    // GTW-665: the sprite-defs family — the SAME one-line host registration the game's
+    // Load plugin performs; the link draw resolves its stair/ladder role keys against
+    // the registry it publishes.
+    app.register_content_family::<SpriteDefsFamily>();
     app.insert_resource(test_weapon_registry());
     // GTW-505: the melee registry (with the `fists` default) so each ganger's melee
     // weapon resolves at setup (fixture gangers author none -> `fists`).
@@ -93,10 +99,10 @@ pub(crate) fn headless_renderer_app() -> App {
     app
 }
 
-/// Drive `update()`s until `TileRoles` + `TopDownAtlases` are BOTH resident (the async
-/// load chain settled), polling each resource's inserted SIGNAL (GTW-305).
+/// Drive `update()`s until the `SpriteDefRegistry` + `TopDownAtlases` are BOTH resident
+/// (the async load chain settled), polling each resource's inserted SIGNAL (GTW-305).
 pub(crate) fn settle_resources(app: &mut App) {
-    advance_until_resource_exists::<TileRoles>(app, LOAD_SAFETY_NET);
+    advance_until_resource_exists::<SpriteDefRegistry>(app, LOAD_SAFETY_NET);
     advance_until_resource_exists::<TopDownAtlases>(app, LOAD_SAFETY_NET);
 }
 

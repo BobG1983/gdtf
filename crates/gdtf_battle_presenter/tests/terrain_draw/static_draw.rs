@@ -48,10 +48,11 @@ fn terrain_sprite_count(app: &mut App) -> usize {
 ///
 /// Authors exactly one `Wall (8,7,0)`, one `Cover (9,8,0)`, and one `Present` slab
 /// `(2,2,0)` on the active level (level 0), then writes `BattleReady` and updates once.
-/// For each, asserts (a) the sprite's atlas index equals the `TileRoles` role index READ
-/// FROM THE RESOURCE (structural, never a literal), (b) `custom_size ==
-/// Some(Vec2::splat(CELL_PX))`, and (c) `Transform.translation == cell_to_world(cell,
-/// L0)`.
+/// For each, asserts (a) the sprite's material rect equals the role key's SEEDED sprite
+/// def's rect READ FROM THE REGISTRY (structural, never a literal — GTW-665), (b)
+/// `custom_size == Some(Vec2::splat(CELL_PX))`, and (c) `Transform.translation ==
+/// cell_to_world(cell, L0)` (the seeded CENTER anchors add a zero offset — the
+/// identical-pixels claim).
 #[test]
 fn battle_ready_draws_role_correct_sized_positioned_sprites() {
     let mut app = headless_renderer_app();
@@ -87,26 +88,29 @@ fn battle_ready_draws_role_correct_sized_positioned_sprites() {
         .write(BattleReady);
     app.update();
 
-    // Read the resolved role indices FROM the resource — never a hardcoded literal.
-    let roles = tile_roles(&app);
-    assert!(roles.is_some(), "TileRoles must be resident after settle");
-    let Some(roles) = roles else { return };
+    // Read the resolved def rects FROM the registry — never a hardcoded literal.
+    let defs = sprite_defs(&app);
+    assert!(
+        defs.is_some(),
+        "the SpriteDefRegistry must be resident after settle"
+    );
+    let Some(defs) = defs else { return };
 
-    // (a) role-correct atlas indices, structural against the resource.
+    // (a) role-correct sheet rects, structural against the seeded defs.
     assert_eq!(
-        sprite_index_at(&mut app, wall_key),
-        Some(*roles.wall),
-        "the wall cell's sprite index must equal the resource's wall role index",
+        sprite_rect_at(&mut app, wall_key),
+        def_rect(&defs, "wall"),
+        "the wall cell's material rect must equal the `wall` def's seeded rect",
     );
     assert_eq!(
-        sprite_index_at(&mut app, cover_key),
-        Some(*roles.cover),
-        "the cover cell's sprite index must equal the resource's cover role index",
+        sprite_rect_at(&mut app, cover_key),
+        def_rect(&defs, "cover"),
+        "the cover cell's material rect must equal the `cover` def's seeded rect",
     );
     assert_eq!(
-        sprite_index_at(&mut app, slab_key),
-        Some(*roles.slab),
-        "the slab cell's sprite index must equal the resource's slab role index",
+        sprite_rect_at(&mut app, slab_key),
+        def_rect(&defs, "slab"),
+        "the slab cell's material rect must equal the `slab` def's seeded rect",
     );
 
     // (b) + (c) sizing + positioning for the wall cell (representative).

@@ -27,7 +27,6 @@ use crate::{
     injury_form::{InjuryDraft, WeightingDraft},
     preview::{target::PreviewTarget, view::PreviewPan},
     sprite_form::SpriteDraft,
-    tile_atlas::TileAtlas,
 };
 
 /// The state-scoped PREFAB-mode model borrows the shell threads into the PREFAB panels (GTW-515).
@@ -54,8 +53,6 @@ pub(crate) struct PrefabParams<'w, 's> {
     /// one onion storey below; flipped by the RIGHT-panel Isolate checkbox. Wins over the
     /// two-state view mode while on (the C3 precedence, decided in the classifier).
     pub(super) isolate:        Option<ResMut<'w, IsolateView>>,
-    /// The terrain tile atlas (the palette sprite thumbnails draw over it).
-    pub(super) atlas:          Option<Res<'w, TileAtlas>>,
     /// The offscreen preview render target (the viewport draws its egui-registered image).
     pub(super) preview_target: Option<Res<'w, PreviewTarget>>,
     /// The GTW-595 level rail's view-local state (change-keyed thumbnail cache + wheel-scrub

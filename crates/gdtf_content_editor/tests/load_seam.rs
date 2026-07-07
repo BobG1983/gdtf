@@ -3,11 +3,13 @@
 //! AC-2 (as AMENDED by GTW-625; extended by GTW-636 with the gangs + melee
 //! families the GANG mode edits, by GTW-654 with the bespoke injuries pair the
 //! INJURY mode edits, and by GTW-663 with the sprite-defs family a terrain
-//! def's `graphic_name` foreign key resolves against): driving the REAL
+//! def's `graphic_name` foreign key resolves against; GTW-665 retired the
+//! tile-role hot-RON chain from the gate set — terrain graphics resolve
+//! through the sprite-defs family): driving the REAL
 //! [`MapEditorPlugin`] on the no-renderer `DefaultPlugins` harness (live
-//! workspace `assets/` root) reaches [`EditorState::Editing`] with ALL TEN
+//! workspace `assets/` root) reaches [`EditorState::Editing`] with ALL NINE
 //! resolved resources present — through
-//! the actual GTW-570 content-family / GTW-564 hot-RON / bespoke-injuries
+//! the actual GTW-570 content-family / bespoke-injuries
 //! registrations, not an editor-local mirror — and the seam's persistent handles
 //! survive past `Load` (the GTW-533 whole-session persistence the live
 //! hot-reload rides). The game's `GdtfTheme` is NOT among the gate resources:
@@ -16,10 +18,8 @@
 //! cannot even name the type).
 //!
 //! AC-4 (ADR-0003): pointing the SAME app at an EMPTY asset root fails every
-//! load, and the editor STILL transitions to `Editing` — the tile-role
-//! chain falls back to its const default (the editor-owned policy attached at
-//! registration) and the folder families (incl. the bespoke injuries pair) fail
-//! closed to EMPTY registries.
+//! load, and the editor STILL transitions to `Editing` — the folder families
+//! (incl. the bespoke injuries pair) fail closed to EMPTY registries.
 
 use std::path::Path;
 
@@ -33,8 +33,7 @@ use bevy::{
     window::{ExitCondition, WindowPlugin},
     winit::WinitPlugin,
 };
-use gdtf_assets::{ContentFolderHandle, HotRonHandle};
-use gdtf_battle_presenter::{TileIndex, TileRoles};
+use gdtf_assets::ContentFolderHandle;
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
     ganger::GangRegistry,
@@ -130,17 +129,18 @@ fn advance_to_editing(app: &mut App) {
     }
 }
 
-/// AC-2 (as amended by GTW-625; extended by GTW-636 + GTW-654 + GTW-663): the
+/// AC-2 (as amended by GTW-625; extended by GTW-636 + GTW-654 + GTW-663; the
+/// GTW-665 chain retirement shrank the set from ten to nine): the
 /// real seam path resolves the editor's whole gate set — the app reaches
 /// `Editing` with the seven folder registries plus the bespoke injuries pair
 /// (each NON-empty, so the shipped content genuinely resolved — no count pins)
-/// and the tile-role table all present, plus the eight PERSISTENT
+/// all present, plus the seven PERSISTENT
 /// seam handles (GTW-533 C4a: no `OnExit(Load)` cleanup exists, so the live
 /// hot-reload substrate survives). No game-theme resource exists to gate on —
 /// the editor no longer depends on the game's hand-rolled UI crate, so reaching
 /// `Editing` here IS the boots-without-the-theme proof.
 #[test]
-fn load_pass_resolves_all_ten_resources_through_the_real_seams() {
+fn load_pass_resolves_all_nine_resources_through_the_real_seams() {
     let mut app = editor_app();
     advance_to_editing(&mut app);
 
@@ -203,10 +203,6 @@ fn load_pass_resolves_all_ten_resources_through_the_real_seams() {
         "the SpriteDefRegistry must resolve NON-empty through the shared SpriteDefsFamily \
          (GTW-663)",
     );
-    assert!(
-        world.get_resource::<TileRoles>().is_some(),
-        "the TileRoles table must resolve through the presenter's published hot-RON chain",
-    );
 
     assert_seam_handles_persist(world);
 }
@@ -214,7 +210,8 @@ fn load_pass_resolves_all_ten_resources_through_the_real_seams() {
 /// C4a: the seam's persistent handles survive past `Load` — whole-session handle
 /// persistence (GTW-533; no `OnExit(Load)` cleanup exists), the substrate the
 /// live redrives rebuild from: the seven folder families' [`ContentFolderHandle`]s
-/// plus the tile-roles [`HotRonHandle`]. Read-only `&World` assertions off the
+/// (the tile-roles hot-RON handle retired with its chain — GTW-665). Read-only
+/// `&World` assertions off the
 /// same post-`Editing` world the resolve proof reads (the sanctioned
 /// `app.world()`-in-a-test idiom, not a `&mut World` system — `bevy-traps.md` #7).
 fn assert_seam_handles_persist(world: &World) {
@@ -260,17 +257,12 @@ fn assert_seam_handles_persist(world: &World) {
             .is_some(),
         "the sprite-defs ContentFolderHandle must persist past Load (GTW-663)",
     );
-    assert!(
-        world.get_resource::<HotRonHandle<TileRoles>>().is_some(),
-        "the tile-roles HotRonHandle must persist past Load",
-    );
 }
 
 /// AC-4 (the ADR-0003 pin): with an EMPTY asset root every load reaches
 /// `Failed`, the fallbacks fire, and `Load` STILL transitions — the editor never
-/// hangs. The tile-role chain resolves to its const default (the
-/// editor-owned zero table: every role at index 0) and the seven folder families
-/// fail closed to EMPTY registries.
+/// hangs. The seven folder families fail closed to EMPTY registries (the
+/// tile-role chain and its editor-owned zero-table fallback retired — GTW-665).
 #[test]
 fn failed_asset_root_falls_back_and_still_reaches_editing() {
     let dir = tempfile::tempdir();
@@ -282,17 +274,6 @@ fn failed_asset_root_falls_back_and_still_reaches_editing() {
     advance_to_editing(&mut app);
 
     let world = app.world();
-    let roles = world.get_resource::<TileRoles>();
-    assert_eq!(
-        roles.map(|r| r.floor),
-        Some(TileIndex::new(0)),
-        "a Failed tile-role table must fall back to the editor's zero table (floor)",
-    );
-    assert_eq!(
-        roles.map(|r| r.wall),
-        Some(TileIndex::new(0)),
-        "a Failed tile-role table must fall back to the editor's zero table (wall)",
-    );
     assert_eq!(
         world
             .get_resource::<WeaponRegistry>()

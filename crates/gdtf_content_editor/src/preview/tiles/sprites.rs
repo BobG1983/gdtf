@@ -8,13 +8,14 @@
 //! unpainted active cells). Only the [`StoreyTreatment::Active`] class renders full-bright
 //! (the A1 law's editor half, unit-tested in the sibling `test` module).
 
-use bevy::{image::TextureAtlas, prelude::*};
-use gdtf_battle_presenter::StoreyTreatment;
+use bevy::prelude::*;
+use gdtf_battle_presenter::{StoreyTreatment, anchor_world_offset, source_parts, source_px_size};
 use gdtf_battle_sim::{
     metric::{CellLevel, Level},
     prelude::Cell,
     terrain::def::TerrainDefRegistry,
 };
+use gdtf_content_families::sprites::{SpriteDef, SpriteDefRegistry};
 
 use crate::{
     editor_map::EditorMap,
@@ -25,8 +26,7 @@ use crate::{
         target::{PreviewTile, preview_layer},
     },
     session::MapEditorSession,
-    terrain_graphics::terrain_atlas_index,
-    tile_atlas::TileAtlas,
+    terrain_graphics::terrain_sprite_def,
 };
 
 /// The z-order of a base (floor / painted) tile sprite on the GROUND storey — below the
@@ -74,6 +74,12 @@ pub(super) const STIPPLE_TINT: Color = Color::srgba(0.35, 0.5, 0.75, 0.4);
 /// content.
 pub(super) const VOID_GRID_TINT: Color = Color::srgba(0.65, 0.68, 0.75, 0.22);
 
+/// The LOUD missing-sprite tile colour (GTW-665 C4 — the Level-Rail magenta precedent):
+/// a painted cell whose graphic resolves NO sprite def draws a solid magenta quad, so
+/// unresolved content flags instead of vanishing (matching the battle renderer's
+/// missing-marker semantics).
+pub(super) const MISSING_SPRITE_TINT: Color = Color::srgb(0.78, 0.24, 0.78);
+
 /// The editor's treatment TABLE, base-tile column (GTW-594 C1/C2): the tint a storey's
 /// BASE tile sprites render with, by [`StoreyTreatment`] class — or [`None`] for a storey
 /// that draws nothing.
@@ -97,15 +103,15 @@ pub(super) const fn base_tile_tint(treatment: StoreyTreatment) -> Option<Color> 
 #[expect(
     clippy::too_many_arguments,
     reason = "the ghost needs the same model + registry inputs the base redraw resolved (map, \
-              defs, roles, session, hover) plus the atlas + Commands to spawn one sprite; each is \
-              a borrowed SystemParam slice threaded from the single redraw system"
+              defs, sprites, session, hover) plus the asset server + Commands to spawn one \
+              sprite; each is a borrowed SystemParam slice threaded from the single redraw system"
 )]
 pub(super) fn draw_hover_ghost(
     commands: &mut Commands,
-    atlas: &TileAtlas,
+    asset_server: &AssetServer,
     map: &EditorMap,
     registry: &TerrainDefRegistry,
-    roles: &gdtf_battle_presenter::TileRoles,
+    sprites: &SpriteDefRegistry,
     session: &MapEditorSession,
     hovered: &HoveredCell,
     level: Level,
@@ -130,33 +136,50 @@ pub(super) fn draw_hover_ghost(
     } else {
         GHOST_LEGAL
     };
-    // The ghost shows the tile being placed (its resolved index), tinted; fall back to a plain
-    // translucent quad (index 0) if the tile has no atlas index so the ghost still reads.
-    let index = terrain_atlas_index(registry, roles, &tile).map_or(0, |i| *i);
-    spawn_tile_sprite(commands, atlas, cell, index, tint, GHOST_Z);
+    // The ghost shows the tile being placed (its resolved sprite def), tinted; fall back to a
+    // plain translucent colour quad if the tile's graphic resolves no def, so the ghost still
+    // reads (GTW-665).
+    match terrain_sprite_def(registry, sprites, &tile) {
+        Some(def) => spawn_tile_sprite(commands, asset_server, cell, def, tint, GHOST_Z),
+        None => spawn_color_tile(commands, cell, tint, GHOST_Z),
+    }
 }
 
-/// Spawn one preview tile sprite at `cell` showing atlas `index`, tinted `tint`, at z-order `z` —
-/// on the isolated [`preview_layer`] with the [`PreviewTile`] marker (GTW-515 C4.3). Uses a
-/// world-space [`Sprite`] atlas image over the editor's terrain sheet (NOT a `bevy_ui` node — this
-/// is world content the offscreen camera renders).
+/// Spawn one preview tile sprite at `cell` showing the resolved sprite `def`, tinted `tint`, at
+/// z-order `z` — on the isolated [`preview_layer`] with the [`PreviewTile`] marker (GTW-515
+/// C4.3). Uses a world-space [`Sprite`] over the def's SOURCE image + pixel rect (GTW-665 — the
+/// same def-driven pixels the battle renderer draws; the `AssetServer` returns the same handle
+/// for the same authored path), positioned at the cell centre PLUS the def's C2 anchor offset
+/// scaled to the preview cell (zero for the seeded center anchors). NOT a `bevy_ui` node — this
+/// is world content the offscreen camera renders.
 pub(super) fn spawn_tile_sprite(
     commands: &mut Commands,
-    atlas: &TileAtlas,
+    asset_server: &AssetServer,
     cell: Cell,
-    index: usize,
+    def: &SpriteDef,
     tint: Color,
     z: f32,
 ) {
-    let mut sprite = Sprite::from_atlas_image(
-        atlas.image(),
-        TextureAtlas {
-            layout: atlas.layout(),
-            index,
-        },
-    );
+    let (path, rect) = source_parts(&def.source);
+    let mut sprite = Sprite::from_image(asset_server.load(path.as_str().to_owned()));
+    sprite.rect = rect.map(|rect| gdtf_battle_presenter::source_urect(rect).as_rect());
     sprite.custom_size = Some(Vec2::splat(CELL_WORLD));
     sprite.color = tint;
+    // The C2 anchor offset at preview scale: a Sheet source's extent is cheaply knowable
+    // (its rect); a File source's is not (async decode) — the centered default applies
+    // there (the presenter's documented layering, GTW-664/665).
+    let offset = source_px_size(&def.source).map_or(Vec2::ZERO, |px| {
+        anchor_world_offset(def, px, Vec2::splat(CELL_WORLD))
+    });
+    spawn_preview_sprite_offset(commands, sprite, cell, offset, z);
+}
+
+/// Spawn one solid COLOUR quad tile at `cell` (GTW-665) — the ghost's no-def fallback and
+/// the loud [`MISSING_SPRITE_TINT`] missing-sprite marker (C4: unresolved content flags,
+/// never vanishes).
+pub(super) fn spawn_color_tile(commands: &mut Commands, cell: Cell, tint: Color, z: f32) {
+    let mut sprite = Sprite::from_color(tint, Vec2::splat(CELL_WORLD));
+    sprite.custom_size = Some(Vec2::splat(CELL_WORLD));
     spawn_preview_sprite(commands, sprite, cell, z);
 }
 
@@ -179,7 +202,19 @@ pub(super) fn spawn_overlay_sprite(
 /// The shared preview-sprite spawn tail: position at the cell centre on the isolated
 /// [`preview_layer`], marked [`PreviewTile`] so the change-driven redraw owns its lifetime.
 fn spawn_preview_sprite(commands: &mut Commands, sprite: Sprite, cell: Cell, z: f32) {
-    let world = cell_center_world(cell);
+    spawn_preview_sprite_offset(commands, sprite, cell, Vec2::ZERO, z);
+}
+
+/// [`spawn_preview_sprite`] with a world-space anchor `offset` (GTW-665 C2) added to the
+/// cell-centre position.
+fn spawn_preview_sprite_offset(
+    commands: &mut Commands,
+    sprite: Sprite,
+    cell: Cell,
+    offset: Vec2,
+    z: f32,
+) {
+    let world = cell_center_world(cell) + offset;
     commands.spawn((
         sprite,
         Transform::from_translation(world.extend(z)),

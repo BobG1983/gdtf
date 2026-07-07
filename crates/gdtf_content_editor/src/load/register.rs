@@ -1,9 +1,8 @@
-//! The `Load`-pass registrar — [`register_load`], the eight generic seam registrations plus the
+//! The `Load`-pass registrar — [`register_load`], the seven generic family registrations plus the
 //! transition gate (extracted from the module wiring so `mod.rs` stays fn-free).
 
 use bevy::prelude::*;
-use gdtf_assets::{ContentFamilyAppExt, HotRonAppExt};
-use gdtf_battle_presenter::tile_roles_hot_ron_chain;
+use gdtf_assets::ContentFamilyAppExt;
 use gdtf_content_families::{
     ArmorFamily, GangsFamily, MeleeWeaponsFamily, SpriteDefsFamily, TerrainDefsFamily,
     ThemeDefsFamily, WeaponsFamily,
@@ -11,13 +10,10 @@ use gdtf_content_families::{
 
 use crate::{
     EditorState,
-    load::{
-        fallback::default_tile_roles, injuries::register_injuries,
-        transition::transition_to_editing,
-    },
+    load::{injuries::register_injuries, transition::transition_to_editing},
 };
 
-/// Registers the editor's `Load` asset pass onto `app` — eight seam registrations,
+/// Registers the editor's `Load` asset pass onto `app` — seven family registrations,
 /// the bespoke injuries pass (GTW-654), plus the transition gate (see the
 /// [module docs](super) for the seam-vs-policy split).
 ///
@@ -30,13 +26,11 @@ use crate::{
 /// resource exists — reached even on an all-failed asset root (the no-strand
 /// guarantee).
 pub(crate) fn register_load(app: &mut App) {
-    // The single-asset tile-role chain (GTW-564 seam), installed from the chain
-    // owner's PUBLISHED config — path + map hook stay single-sourced in
-    // gdtf_battle_presenter — with the editor's ADR-0003 fallback attached at
-    // THIS registration (editor-owned policy, GTW-579 C4b). The game-theme
-    // chain is NOT registered: the egui shell styles itself, so the editor
-    // reads no theme field (GTW-625 — the GTW-579 AC2 amendment).
-    app.init_hot_ron_chain(tile_roles_hot_ron_chain().with_fallback(default_tile_roles));
+    // NO single-asset hot-RON chain is registered (GTW-665 retired the
+    // presenter's tile-role chain — terrain graphics now resolve through the
+    // SpriteDefsFamily registry below; the game's GdtfTheme chain was never
+    // registered here: the egui shell styles itself, so the editor reads no
+    // theme field — GTW-625, the GTW-579 AC2 amendment).
 
     // The seven folder families (GTW-570 seam) — the SAME glue-crate family
     // definitions the game registers, so game and editor build each registry

@@ -35,7 +35,6 @@
 
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
-use gdtf_battle_presenter::TileRoles;
 use gdtf_battle_sim::{
     level::UuidThemeRegistry, terrain::def::TerrainDefRegistry, weapon::WeaponRegistry,
 };
@@ -69,10 +68,12 @@ use crate::{
 ///
 /// Every editor resource is state-scoped (inserted `OnEnter(Editing)`, removed `OnExit(Editing)` —
 /// bevy-traps #1), so the mode + session + the TERRAIN draft are taken as `Option<ResMut<…>>` and
-/// the system no-ops until they exist; the theme registry + the presenter tile-role table + the
+/// the system no-ops until they exist; the theme registry + the
 /// weapon registry (the GTW-574 Emplacement mounted-weapon combo's option source) are likewise
-/// `Option<Res<…>>` (the empty-registry `ComboBox` then offers nothing; an unresolved
-/// `TileRoles` leaves the graphic picker fully enabled). Returns a `Result` so a missing primary
+/// `Option<Res<…>>` (the empty-registry `ComboBox` then offers nothing). The sprite thumbnails
+/// resolve through the GTW-663 `SpriteDefRegistry` the SPRITE bundle already carries (GTW-665 —
+/// the ONE def-driven resolution the battle renderer uses; an unresolved registry leaves every
+/// thumb on its fallback). Returns a `Result` so a missing primary
 /// egui context (`ctx_mut()?`) is handled, never unwrapped (the workspace lints deny
 /// `unwrap`/`expect`).
 #[expect(
@@ -102,7 +103,6 @@ pub(crate) fn editor_egui_ui(
     terrain_draft: Option<ResMut<TerrainDraft>>,
     theme_draft: Option<ResMut<ThemeDraft>>,
     terrain_registry: Option<Res<TerrainDefRegistry>>,
-    roles: Option<Res<TileRoles>>,
     weapons: Option<Res<WeaponRegistry>>,
     mut prefab: PrefabParams,
     mut gang: GangParams,
@@ -192,9 +192,8 @@ pub(crate) fn editor_egui_ui(
                 &mut session,
                 themes.as_deref(),
                 terrain_registry.as_deref(),
-                roles.as_deref(),
-                prefab.atlas.as_deref(),
-                textures.sheet_id,
+                sprite_mode.registry.as_deref(),
+                &textures.sprites,
             );
         }
         // GANG / ARMOR / INJURY / SPRITE modes keep this secondary strip intentionally
@@ -275,9 +274,9 @@ pub(crate) fn editor_egui_ui(
                 &mut terrain_draft,
                 &session,
                 themes.as_deref(),
-                roles.as_deref(),
+                sprite_mode.registry.as_deref(),
                 weapons.as_deref(),
-                textures.sheet_id,
+                &textures.sprites,
             );
         }
         EditorMode::Theme => {
@@ -285,8 +284,8 @@ pub(crate) fn editor_egui_ui(
                 ui,
                 &mut theme_draft,
                 terrain_registry.as_deref(),
-                roles.as_deref(),
-                textures.sheet_id,
+                sprite_mode.registry.as_deref(),
+                &textures.sprites,
             );
         }
         EditorMode::Prefab => {
@@ -306,7 +305,6 @@ pub(crate) fn editor_egui_ui(
                     pan,
                     registry: terrain_registry.as_deref(),
                     themes: themes.as_deref(),
-                    roles: roles.as_deref(),
                 };
                 viewport_ui::viewport_panel(ui, &mut vp, textures.preview_id);
             } else {

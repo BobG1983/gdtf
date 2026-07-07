@@ -1,166 +1,130 @@
-//! Unit tests for the static-battlefield terrain draw.
+//! Unit tests for the static-battlefield terrain draw's pure helpers.
+//!
+//! The retired role-table serde pins (parse / field-set / round-trip over
+//! `tile_roles.spritedef.ron`) left with the table (GTW-665); the successor data
+//! pins live in `roles/test.rs` (vocabulary↔seeded-catalog lockstep) and the
+//! `terrain_draw` / `vertical_link_draw` integration suites (the drawn rects
+//! against the seeded defs).
 
+use bevy::math::{URect, UVec2, Vec2};
 use gdtf_battle_sim::{
     occupancy::{GRID_HEIGHT, GRID_WIDTH},
     prelude::Level,
 };
+use gdtf_content_families::sprites::{
+    SpriteAnchor, SpriteDef, SpriteImagePath, SpritePx, SpriteRect, SpriteSource,
+};
 
-use super::{active_level::ActiveLevel, roles::TileRoles, static_map::i32_extent};
+use super::{
+    active_level::ActiveLevel,
+    resolve::{anchor_world_offset, single_rect_layout, source_parts, source_px_size},
+    static_map::i32_extent,
+};
 
-/// The shipped `tile_roles.ron` parses into `TileRoles` and exposes every
-/// documented role — a `ron::de` round-trip of the SHIPPED bytes (AC1).
-///
-/// It asserts the file PARSES and HAS all roles; it does NOT pin a tunable index
-/// magnitude (those are data the engineer eyeballs and may adjust). A `floor`
-/// failing to differ from `wall` would be a copy-paste authoring error, so the
-/// distinctness check is a light structural guard, not a magnitude pin.
+/// A Sheet-source def fixture at the given rect + anchor.
+fn sheet_def(x: u32, y: u32, w: u32, h: u32, ax: u32, ay: u32) -> SpriteDef {
+    SpriteDef {
+        source:    SpriteSource::Sheet {
+            sheet: SpriteImagePath::new("sprites/alt_tileset_terrain.png".to_owned()),
+            rect:  SpriteRect {
+                x: SpritePx::new(x),
+                y: SpritePx::new(y),
+                w: SpritePx::new(w),
+                h: SpritePx::new(h),
+            },
+        },
+        anchor:    SpriteAnchor {
+            x: SpritePx::new(ax),
+            y: SpritePx::new(ay),
+        },
+        facings:   None,
+        animation: None,
+    }
+}
+
+/// GTW-665 C1 — `source_parts` / `source_px_size` split a Sheet source into its sheet
+/// path + rect (with a knowable pixel extent) and a File source into its path alone
+/// (extent unknowable headlessly — the GTW-664 layered-knowledge rule: no invented dims).
 #[test]
-fn shipped_tile_roles_ron_parses_with_all_roles() {
-    const SHIPPED: &str = include_str!("../../../../../assets/sprites/tile_roles.spritedef.ron");
-    let parsed: Result<TileRoles, _> = ron::de::from_str(SHIPPED);
-    // Parsing into TileRoles proves every documented role is present (a missing
-    // field would be a deserialize error). Assert the parse succeeded; if not,
-    // surface the error rather than pinning any index magnitude.
+fn source_projections_split_sheet_and_file() {
+    let sheet = sheet_def(96, 0, 16, 16, 8, 8);
+    let (path, rect) = source_parts(&sheet.source);
+    assert_eq!(path.as_str(), "sprites/alt_tileset_terrain.png");
+    assert!(rect.is_some(), "a Sheet source carries its rect");
+    assert_eq!(
+        source_px_size(&sheet.source),
+        Some(UVec2::new(16, 16)),
+        "a Sheet source's extent is its rect's w × h",
+    );
+
+    let file = SpriteSource::File(SpriteImagePath::new("sprites/lone_crate.png".to_owned()));
+    let (path, rect) = source_parts(&file);
+    assert_eq!(path.as_str(), "sprites/lone_crate.png");
     assert!(
-        parsed.is_ok(),
-        "shipped tile_roles.ron must parse into TileRoles, got: {:?}",
-        parsed.as_ref().err(),
-    );
-    let Ok(roles) = parsed else {
-        return;
-    };
-    // Sanity-check the five draw roles are not all collapsed onto one index (an
-    // authoring slip) — a structural guard, not a magnitude pin.
-    let draw_roles = [
-        roles.floor,
-        roles.wall,
-        roles.cover,
-        roles.slab,
-        roles.rubble,
-    ];
-    let all_same = draw_roles.iter().all(|r| *r == roles.floor);
-    assert!(
-        !all_same,
-        "the five draw roles must not all share one index (authoring slip)",
-    );
-    // The door role is documented; the struct parsing means it is present.
-    let _ = roles.door;
-    let _ = roles.floor_alt_panel;
-    // GTW-373 (the role -> index CONTRACT, the user's chosen mapping): floor/wall and the
-    // stair up/down split + ladder are SYSTEM CONSTANTS the user picked for this ticket
-    // (config/coordinate constants), not balance-tuning magnitudes the engineer eyeballs —
-    // so pinning them asserts the CONTRACT (the locked-constant carve-out), not a brittle
-    // tunable. The shipped tile_roles.ron must resolve these exact roles.
-    assert_eq!(
-        *roles.floor, 6,
-        "the shipped tile_roles.ron must resolve floor == 6 (GTW-373)",
+        rect.is_none(),
+        "a File source has no rect (the whole image)"
     );
     assert_eq!(
-        *roles.wall, 0,
-        "the shipped tile_roles.ron must resolve wall == 0 (GTW-373)",
-    );
-    assert_eq!(
-        *roles.stair_up, 29,
-        "the shipped tile_roles.ron must resolve stair_up == 29 (GTW-373, supersedes OQ-3 77)",
-    );
-    assert_eq!(
-        *roles.stair_down, 28,
-        "the shipped tile_roles.ron must resolve stair_down == 28 (GTW-373, supersedes OQ-3 77)",
-    );
-    assert_eq!(
-        *roles.ladder, 235,
-        "the shipped tile_roles.ron must resolve the ladder index 235 (UNCHANGED, user OQ-3)",
+        source_px_size(&file),
+        None,
+        "a File source's extent is unknowable without the decoded image",
     );
 }
 
-/// GTW-373 (C1) — the `TileRoles` field-set is DISCRIMINATING: a `tile_roles.ron` MISSING
-/// the new `stair_up` (or `stair_down` / `ladder`) key, or RENAMING it, fails to
-/// deserialize.
-///
-/// This pins the struct's field-set 1:1 with the `.ron` keys (the round-trip above proves
-/// the shipped file parses; this proves the parse is not vacuous — dropping or renaming a
-/// required role IS rejected, so the field-set stays in lockstep with the data). It builds
-/// a complete authored body, then re-authors it MISSING the `stair_up` key (and separately
-/// with `stair_up` RENAMED) and asserts each fails — proving the GTW-373 split keys are
-/// each required, and that the OLD single `stair` key is no longer accepted.
+/// GTW-665 C1 — `single_rect_layout` carries EXACTLY the authored region at index 0:
+/// the material's UV bake reads `layout.textures[0]`, so this is the rect the shader
+/// samples — byte-identical to a grid layout's entry for a grid-aligned rect.
 #[test]
-fn tile_roles_field_set_is_discriminating() {
-    // A complete authored body parses (the positive control) — the GTW-373 split keys plus
-    // the GTW-367 `slab_destroyed` key plus the GTW-469 `wall_ew` key plus the GTW-470
-    // orientation/direction door + stair keys (door_ns/door_ew/stair_ns_up/stair_ns_down/
-    // stair_ew_up/stair_ew_down).
-    const COMPLETE: &str = "(\
-        floor: 6, floor_alt_panel: 128, wall: 0, wall_ew: 16, cover: 248, \
-        emplacement: 346, emplacement_occupied: 347, slab: 22, rubble: 295, \
-        slab_destroyed: 295, door: 339, stair_up: 29, stair_down: 28, ladder: 235, \
-        door_ns: 340, door_ew: 341, stair_ns_up: 342, stair_ns_down: 343, stair_ew_up: 344, \
-        stair_ew_down: 345)";
-    // MISSING the `stair_up` key — must fail (the field is required).
-    const MISSING_STAIR_UP: &str = "(\
-        floor: 6, floor_alt_panel: 128, wall: 0, wall_ew: 16, cover: 248, \
-        emplacement: 346, emplacement_occupied: 347, slab: 22, rubble: 295, \
-        slab_destroyed: 295, door: 339, stair_down: 28, ladder: 235, \
-        door_ns: 340, door_ew: 341, stair_ns_up: 342, stair_ns_down: 343, stair_ew_up: 344, \
-        stair_ew_down: 345)";
-    // RENAMED `stair_up` -> `stair` (the OLD single-stair key) — must fail (the field-set
-    // is fixed; the superseded `stair` key no longer substitutes for the split role).
-    const RENAMED_STAIR_UP: &str = "(\
-        floor: 6, floor_alt_panel: 128, wall: 0, wall_ew: 16, cover: 248, \
-        emplacement: 346, emplacement_occupied: 347, slab: 22, rubble: 295, \
-        slab_destroyed: 295, door: 339, stair: 29, stair_down: 28, ladder: 235, \
-        door_ns: 340, door_ew: 341, stair_ns_up: 342, stair_ns_down: 343, stair_ew_up: 344, \
-        stair_ew_down: 345)";
-
-    assert!(
-        ron::de::from_str::<TileRoles>(COMPLETE).is_ok(),
-        "a complete authored TileRoles body must parse",
+fn single_rect_layout_carries_exactly_the_authored_region() {
+    let def = sheet_def(208, 16, 16, 16, 8, 8);
+    let (_, rect) = source_parts(&def.source);
+    let region = rect.map(super::resolve::source_urect);
+    assert_eq!(
+        region,
+        Some(URect {
+            min: UVec2::new(208, 16),
+            max: UVec2::new(224, 32),
+        }),
+        "the authored rect projects to its pixel URect",
     );
-    assert!(
-        ron::de::from_str::<TileRoles>(MISSING_STAIR_UP).is_err(),
-        "a TileRoles body missing the `stair_up` key must fail to deserialize",
-    );
-    assert!(
-        ron::de::from_str::<TileRoles>(RENAMED_STAIR_UP).is_err(),
-        "a TileRoles body with `stair_up` renamed to the old `stair` key must fail to deserialize",
+    let Some(region) = region else { return };
+    let layout = single_rect_layout(region);
+    assert_eq!(
+        layout.textures,
+        vec![region],
+        "the single-rect layout holds exactly the authored region at index 0",
     );
 }
 
-/// GTW-373 (C4 (a)) — the shipped `tile_roles.ron` ROUND-TRIPS by IDENTITY: load ->
-/// serialize -> load yields a structurally identical `TileRoles`.
-///
-/// Proves the `Serialize`/`Deserialize` pair is a faithful inverse on the SHIPPED bytes
-/// (no field dropped, reordered into a different role, or re-typed by the re-emit), so the
-/// data table is a stable contract. Distinct from the magnitude-mapping assertions above:
-/// this checks STRUCTURE survives a serialize round-trip, those check the chosen indices.
+/// GTW-665 C2 — the anchor offset: a CENTER anchor is exactly `Vec2::ZERO` (the
+/// identical-pixels guarantee for every seeded def), an off-center anchor displaces the
+/// sprite CENTER so the anchor point sits ON the cell position (bottom-center anchor →
+/// the sprite rises by half its drawn height), and a degenerate zero extent is a
+/// documented no-op.
 #[test]
-fn shipped_tile_roles_round_trips_by_identity() {
-    const SHIPPED: &str = include_str!("../../../../../assets/sprites/tile_roles.spritedef.ron");
-    let first: Result<TileRoles, _> = ron::de::from_str(SHIPPED);
-    assert!(
-        first.is_ok(),
-        "shipped tile_roles.ron must parse: {:?}",
-        first.as_ref().err(),
-    );
-    let Ok(first) = first else { return };
-    let reserialized = ron::ser::to_string(&first);
-    assert!(
-        reserialized.is_ok(),
-        "TileRoles must serialize back to RON: {:?}",
-        reserialized.as_ref().err(),
-    );
-    let Ok(reserialized) = reserialized else {
-        return;
-    };
-    let second: Result<TileRoles, _> = ron::de::from_str(&reserialized);
-    assert!(
-        second.is_ok(),
-        "the re-serialized TileRoles must parse back: {:?}",
-        second.as_ref().err(),
-    );
-    let Ok(second) = second else { return };
+fn anchor_offset_center_is_zero_and_bottom_anchor_lifts() {
+    let drawn = Vec2::splat(16.0);
+    let centered = sheet_def(0, 0, 16, 16, 8, 8);
     assert_eq!(
-        first, second,
-        "load -> serialize -> load must yield a structurally identical TileRoles",
+        anchor_world_offset(&centered, UVec2::new(16, 16), drawn),
+        Vec2::ZERO,
+        "the seeded CENTER anchor must be a zero offset (identical pixels)",
+    );
+
+    // Bottom-center ground contact (8, 16): the anchor sits at the sprite's bottom edge,
+    // so the CENTER rises by half the drawn height (+y is up in world space).
+    let bottom = sheet_def(0, 0, 16, 16, 8, 16);
+    assert_eq!(
+        anchor_world_offset(&bottom, UVec2::new(16, 16), drawn),
+        Vec2::new(0.0, 8.0),
+        "a bottom-center anchor lifts the sprite center by half its drawn height",
+    );
+
+    let degenerate = sheet_def(0, 0, 0, 0, 0, 0);
+    assert_eq!(
+        anchor_world_offset(&degenerate, UVec2::ZERO, drawn),
+        Vec2::ZERO,
+        "a zero-extent sprite yields the documented centered no-op (no NaN)",
     );
 }
 

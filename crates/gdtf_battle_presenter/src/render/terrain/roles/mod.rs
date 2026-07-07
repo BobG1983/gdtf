@@ -1,20 +1,23 @@
-//! The terrain tile-role seam (GTW-566): the DATA-DRIVEN [`TileRoles`] table (the
-//! authored `tile_roles.spritedef.ron` shape + its hot-RON chain) and the presenter's
-//! CLOSED [`TileRole`] vocabulary over it — one enum variant per authored role key,
-//! the ONE place a graphic-role key is spelled in production Rust.
+//! The terrain tile-role seam (GTW-566): the presenter's CLOSED [`TileRole`]
+//! vocabulary — one variant per authorable graphic-role key, the ONE place a
+//! graphic-role key is spelled in production Rust.
+//!
+//! GTW-665 retired the role→atlas-index TABLE that used to live beside it
+//! (`TileRoles` + the `tile_roles.spritedef.ron` hot-RON chain): a graphic key
+//! now resolves through the sprite-def registry
+//! ([`resolve_sprite`](super::resolve::resolve_sprite)). The ENUM stays the
+//! closed renderer vocabulary/concern seam — the sim-fact → role fallback
+//! mapping, the editor's authorable-picker filter, and the prefab connector
+//! pairing all still classify through it.
 //!
 //! | Submodule | Concern |
 //! |-----------|---------|
-//! | [`table`] | [`TileIndex`], the [`TileRoles`] resource (serde-tied to the RON), [`TileRoles::index_for_key`], and the GTW-564 hot-RON registration |
-//! | [`vocab`] | The [`TileRole`] enum: `as_key` / `from_key` / `index_in` / `def_authorable` / `counterpart` |
-//! | `test`    | The key round-trip, vocabulary-completeness, authorable-flag, and counterpart pins |
+//! | [`vocab`] | The [`TileRole`] enum: `as_key` / `from_key` / `def_authorable` / `counterpart` |
+//! | `test`    | The key round-trip, seeded-catalog lockstep, authorable-flag, and counterpart pins |
 
-mod table;
 mod vocab;
 
 #[cfg(test)]
 mod test;
 
-pub(crate) use table::register_tile_roles_hot_ron;
-pub use table::{TileIndex, TileRoles, tile_roles_hot_ron_chain};
 pub use vocab::TileRole;

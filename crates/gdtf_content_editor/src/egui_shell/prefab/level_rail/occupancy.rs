@@ -4,11 +4,12 @@
 //!
 //! ## Role-hued through the presenter's ONE resolution (no parallel palette)
 //!
-//! A painted cell's texel hue resolves EXACTLY the way the preview resolves a sprite
-//! (GTW-495 / [`terrain_atlas_index`](crate::terrain_graphics::terrain_atlas_index)):
+//! A painted cell's texel hue resolves off the SAME graphic key the preview resolves a
+//! sprite from (GTW-495 /
+//! [`terrain_sprite_def`](crate::terrain_graphics::terrain_sprite_def)):
 //! [`TerrainUuid`] → registry def → [`graphic_key`] → [`TileRole::from_key`] (the ONE
 //! key↔role site — GTW-566). The rail stops at the classified [`TileRole`] instead of
-//! reading the atlas index, because a thumbnail texel is a flat colour, not a 16×16
+//! resolving a sprite def, because a thumbnail texel is a flat colour, not a 16×16
 //! sprite; the hue is then an exhaustive [`rail_hue`] match over that CLOSED vocabulary,
 //! so there is no second key table to drift and an out-of-vocabulary def falls back to
 //! the loud [`FALLBACK_HUE`] rather than vanishing.
@@ -135,10 +136,11 @@ fn texel_index(slot: &CellLevel, size: GridSize) -> Option<usize> {
     (x < width && y < height).then_some(y * width + x)
 }
 
-/// Resolve a painted [`TerrainUuid`] to its texel hue THE WAY THE PREVIEW RESOLVES its
-/// sprite (GTW-595 C1): registry def → [`graphic_key`] → [`TileRole::from_key`] — the
-/// same chain [`terrain_atlas_index`](crate::terrain_graphics::terrain_atlas_index)
-/// walks, stopping at the classified role (a texel needs a colour, not an atlas index).
+/// Resolve a painted [`TerrainUuid`] to its texel hue off the SAME graphic key the
+/// preview resolves its sprite from (GTW-595 C1): registry def → [`graphic_key`] →
+/// [`TileRole::from_key`] — the front of the chain
+/// [`terrain_sprite_def`](crate::terrain_graphics::terrain_sprite_def) walks, stopping
+/// at the classified role (a texel needs a colour, not a sprite def).
 /// An absent registry, an unregistered key, or an out-of-vocabulary role all fall back
 /// to the loud [`FALLBACK_HUE`] — the cell still reads as painted.
 fn cell_hue(registry: Option<&TerrainDefRegistry>, tile: &TerrainUuid) -> egui::Color32 {

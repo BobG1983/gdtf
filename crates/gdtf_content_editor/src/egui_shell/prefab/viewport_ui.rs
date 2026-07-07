@@ -33,7 +33,6 @@
 //! camera mutation can never double-apply.
 
 use bevy_egui::egui;
-use gdtf_battle_presenter::TileRoles;
 use gdtf_battle_sim::{
     level::UuidThemeRegistry,
     metric::{CellLevel, Level},
@@ -80,9 +79,6 @@ pub(crate) struct ViewportCtx<'a> {
     /// The theme registry (unused directly — placement resolves by UUID — kept for signature
     /// symmetry with the other panels + future theme-scoped rules).
     pub(crate) themes:     Option<&'a UuidThemeRegistry>,
-    /// The presenter tile-role table (kept for signature symmetry — the preview redraw resolves
-    /// sprites; the viewport itself needs no role lookup).
-    pub(crate) roles:      Option<&'a TileRoles>,
 }
 
 /// Draw the PREFAB-mode render-to-texture viewport into the CENTRAL panel (GTW-515 C4.3) and drive
@@ -206,7 +202,7 @@ fn paint_at_uv(ctx: &mut ViewportCtx<'_>, uv: egui::Vec2, level: Level) {
         &placement,
         ctx.session.grid_size(),
     );
-    let _ = (ctx.themes, ctx.roles); // symmetry-only borrows (see the struct docs).
+    let _ = ctx.themes; // symmetry-only borrow (see the struct docs).
 }
 
 /// The image-local pointer position as an egui [`egui::Vec2`] UV in `[0,1]` (`(0,0)` = image

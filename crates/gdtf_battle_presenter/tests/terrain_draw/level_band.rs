@@ -49,18 +49,18 @@ fn raising_active_level_redraws_the_whole_drawn_band() {
         .write(BattleReady);
     app.update();
 
-    let roles = tile_roles(&app);
-    assert!(roles.is_some(), "TileRoles must be resident");
-    let Some(roles) = roles else { return };
+    let defs = sprite_defs(&app);
+    assert!(defs.is_some(), "the SpriteDefRegistry must be resident");
+    let Some(defs) = defs else { return };
 
     // At active level 0: the level-0 slab draws; the level-1 slab is CULLED (above active).
     assert_eq!(
-        sprite_index_at(&mut app, slab0),
-        Some(*roles.slab),
+        sprite_rect_at(&mut app, slab0),
+        def_rect(&defs, "slab"),
         "the level-0 slab sprite must be present at active level 0",
     );
     assert_eq!(
-        sprite_index_at(&mut app, slab1),
+        sprite_entity_at(&mut app, slab1),
         None,
         "the level-1 slab sprite (strictly ABOVE active) must be CULLED at active level 0",
     );
@@ -77,13 +77,13 @@ fn raising_active_level_redraws_the_whole_drawn_band() {
     // BOTH slabs now draw: level 1 is the active storey, level 0 is a DRAWN lower storey
     // (NOT despawned — the multi-level band redraw, C1/C7).
     assert_eq!(
-        sprite_index_at(&mut app, slab1),
-        Some(*roles.slab),
+        sprite_rect_at(&mut app, slab1),
+        def_rect(&defs, "slab"),
         "after raising to level 1, the level-1 (active) slab sprite must be present",
     );
     assert_eq!(
-        sprite_index_at(&mut app, slab0),
-        Some(*roles.slab),
+        sprite_rect_at(&mut app, slab0),
+        def_rect(&defs, "slab"),
         "after raising to level 1, the level-0 slab sprite must STILL be present (a drawn \
          lower storey, not despawned)",
     );
@@ -208,26 +208,29 @@ fn upper_storey_gap_peeks_through_to_the_storey_beneath() {
         .write(BattleReady);
     app.update();
 
-    let roles = tile_roles(&app);
-    assert!(roles.is_some(), "TileRoles must be resident after settle");
-    let Some(roles) = roles else { return };
+    let defs = sprite_defs(&app);
+    assert!(
+        defs.is_some(),
+        "the SpriteDefRegistry must be resident after settle"
+    );
+    let Some(defs) = defs else { return };
 
     // The empty upper cell emits NOTHING — the floor-gap reveals the storey beneath (C2).
     assert_eq!(
-        sprite_index_at(&mut app, gap_upper),
+        sprite_entity_at(&mut app, gap_upper),
         None,
         "an open/empty upper-storey cell must emit NO sprite (peek-through)",
     );
     // The same (x,y) on the storey BENEATH it DOES emit (its slab) — the revealed cell.
     assert_eq!(
-        sprite_index_at(&mut app, gap_lower),
-        Some(*roles.slab),
+        sprite_rect_at(&mut app, gap_lower),
+        def_rect(&defs, "slab"),
         "the storey-0 cell beneath the upper gap must still emit (peek-through reveals it)",
     );
     // Real terrain on the upper storey still draws.
     assert_eq!(
-        sprite_index_at(&mut app, wall_upper),
-        Some(*roles.wall),
+        sprite_rect_at(&mut app, wall_upper),
+        def_rect(&defs, "wall"),
         "a REAL upper-storey terrain cell (a wall) must still emit its sprite",
     );
 }

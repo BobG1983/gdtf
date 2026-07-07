@@ -2,12 +2,12 @@
 //! `[sprite thumbnail] name [Kind]` row per registered terrain, the tab's primary focus.
 
 use bevy_egui::egui;
-use gdtf_battle_presenter::TileRoles;
 use gdtf_battle_sim::terrain::def::{TerrainDefRegistry, TerrainUuid};
+use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use crate::{
-    egui_shell::sprite_thumb,
-    terrain_graphics::terrain_atlas_index,
+    egui_shell::{sprite_thumb, textures::SpriteTextures},
+    terrain_graphics::terrain_sprite_def,
     theme_form::{ThemeDraft, sim_kind_label},
 };
 
@@ -19,25 +19,28 @@ use crate::{
 /// A [`ScrollArea`] of rows, one per registered terrain, sorted by display name so the order is
 /// deterministic (the registry is a `HashMap`). Each row renders `[sprite thumbnail] name [Kind]`:
 /// the SPRITE via the SHARED [`sprite_thumb`] helper (GTW-516) over the terrain's
-/// [`terrain_atlas_index`](crate::terrain_graphics::terrain_atlas_index) — the SAME resolution the
-/// battlescape + the TERRAIN picker use, NO hardcoded index — then a selectable multi-select
+/// [`terrain_sprite_def`](crate::terrain_graphics::terrain_sprite_def) — the SAME def-driven
+/// resolution the
+/// battlescape + the TERRAIN picker use (GTW-665), NO hardcoded index — then a selectable
+/// multi-select
 /// checkbox carrying `"name [Kind]"` (Kind = Wall / Cover / Slab / Emplacement). A check / uncheck
 /// routes through
 /// [`ThemeDraft::toggle_terrain`], which fail-closes the default floor if the toggled terrain was
 /// the chosen floor (the C6 rule) — the multi-select behavior is PRESERVED across the relocation.
 ///
 /// When no registry is present (registries not yet resolved), the area shows a loading marker
-/// rather than panicking. An absent [`TileRoles`] / unregistered sheet leaves the sprite unresolved
-/// and the shared helper draws a fixed-size blank spacer so the row layout stays stable. The sort
+/// rather than panicking. A graphic resolving NO sprite def paints the loud magenta missing
+/// square (GTW-665 C4); a still-decoding source leaves a fixed-size blank spacer so the row
+/// layout stays stable. The sort
 /// is rebuilt from the raw `defs()` iterator every draw (deterministic — the registry count / key
-/// change drives a natural re-sort). `sheet_id` is the terrain sheet's egui texture id (resolved by
-/// the shell before the draw); `roles` is the presenter's role table.
+/// change drives a natural re-sort). `textures` is the shell's per-path sprite-texture map;
+/// `sprites` the GTW-663 sprite-def registry.
 pub(crate) fn terrain_library_panel(
     ui: &mut egui::Ui,
     draft: &mut ThemeDraft,
     terrain: Option<&TerrainDefRegistry>,
-    roles: Option<&TileRoles>,
-    sheet_id: Option<egui::TextureId>,
+    sprites: Option<&SpriteDefRegistry>,
+    textures: &SpriteTextures,
 ) {
     ui.heading("Terrain library");
     ui.separator();
@@ -59,7 +62,7 @@ pub(crate) fn terrain_library_panel(
         .id_salt("theme_terrain_library")
         .show(ui, |ui| {
             for (key, label) in entries {
-                terrain_library_row(ui, draft, reg, roles, sheet_id, key, &label);
+                terrain_library_row(ui, draft, reg, sprites, textures, key, &label);
             }
         });
 }
@@ -67,29 +70,29 @@ pub(crate) fn terrain_library_panel(
 /// Draw ONE terrain-library row — `[sprite thumbnail] name [Kind]` on a single horizontal line
 /// (GTW-530 C2).
 ///
-/// The sprite is the terrain's atlas index resolved via
-/// [`terrain_atlas_index`](crate::terrain_graphics::terrain_atlas_index) (the presenter's
+/// The sprite is the terrain's sprite def resolved via
+/// [`terrain_sprite_def`](crate::terrain_graphics::terrain_sprite_def) (the presenter's GTW-665
 /// resolution — no hardcoded index) and drawn by the shared [`sprite_thumb::draw_thumb`] (which
-/// allocates a fixed-size blank spacer when the index / sheet is unavailable, keeping rows aligned
+/// paints the loud magenta missing square for a def-less graphic, or a fixed-size blank spacer
+/// while the source decodes, keeping rows aligned
 /// — never a panic). The multi-select is a checkbox carrying the `"name [Kind]"` label; a toggle
-/// routes through [`ThemeDraft::toggle_terrain`] (fail-closed default floor — C6). Resolving the
-/// index needs both the registry + the role table; when [`TileRoles`] is absent the sprite is left
-/// unresolved (blank spacer) but the checkbox still works.
+/// routes through [`ThemeDraft::toggle_terrain`] (fail-closed default floor — C6). When the
+/// sprite-def registry is absent the sprite is left
+/// unresolved but the checkbox still works.
 fn terrain_library_row(
     ui: &mut egui::Ui,
     draft: &mut ThemeDraft,
     reg: &TerrainDefRegistry,
-    roles: Option<&TileRoles>,
-    sheet_id: Option<egui::TextureId>,
+    sprites: Option<&SpriteDefRegistry>,
+    textures: &SpriteTextures,
     key: TerrainUuid,
     label: &str,
 ) {
     ui.horizontal(|ui| {
         // Resolve the sprite the way the presenter + TERRAIN picker do (no hardcoded index): the
-        // terrain's graphic role → atlas index. `None` (absent role table / out-of-vocabulary role)
-        // draws a fixed-size blank spacer so the row still lines up.
-        let index = roles.and_then(|roles| terrain_atlas_index(reg, roles, &key));
-        sprite_thumb::draw_thumb(ui, index, sheet_id);
+        // terrain's graphic name → sprite def (GTW-665).
+        let def = sprites.and_then(|sprites| terrain_sprite_def(reg, sprites, &key));
+        sprite_thumb::draw_thumb(ui, def, textures);
         let mut checked = draft.has_terrain(key);
         if ui.checkbox(&mut checked, label).changed() {
             draft.toggle_terrain(key);

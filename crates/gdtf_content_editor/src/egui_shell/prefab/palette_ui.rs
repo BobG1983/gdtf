@@ -1,24 +1,26 @@
 //! The PREFAB-mode **palette panel** (GTW-515 C4.2) — the LEFT panel: one selectable row per
 //! terrain in the selected theme's palette, each showing its sprite thumbnail (via
-//! [`terrain_atlas_index`]) with the active row highlighted, plus a stat summary for the selected
+//! [`terrain_sprite_def`]) with the active row highlighted, plus a stat summary for the selected
 //! tile.
 //!
-//! Reuses the theme / terrain registries + the presenter-mirroring [`terrain_atlas_index`]
-//! resolution VERBATIM (C4.2): a row's sprite is the terrain's own graphic (resolved THE WAY THE
+//! Reuses the theme / terrain / sprite-def registries + the presenter's [`terrain_sprite_def`]
+//! resolution VERBATIM (C4.2 / GTW-665): a row's sprite is the terrain's own graphic (resolved
+//! THE WAY THE
 //! PRESENTER DOES), and clicking a row sets the session's active PAINT tile
 //! ([`MapEditorSession::select_tile`]) — the SAME selection the viewport paints with and the save
 //! writes.
 
 use bevy_egui::egui;
-use gdtf_battle_presenter::TileRoles;
 use gdtf_battle_sim::{
     level::UuidThemeRegistry,
     terrain::def::{TerrainDefRegistry, TerrainSimKind, TerrainUuid},
 };
+use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use crate::{
-    egui_shell::sprite_thumb, session::MapEditorSession, terrain_graphics::terrain_atlas_index,
-    tile_atlas::TileAtlas,
+    egui_shell::{sprite_thumb, textures::SpriteTextures},
+    session::MapEditorSession,
+    terrain_graphics::terrain_sprite_def,
 };
 
 /// Draw the PREFAB-mode palette into the LEFT panel (GTW-515 C4.2).
@@ -27,18 +29,16 @@ use crate::{
 /// order), each as a selectable row `[sprite] name` with the active PAINT tile highlighted; a click
 /// selects that tile ([`MapEditorSession::select_tile`]). Below the list, a stat summary for the
 /// currently-selected tile (its kind + HP + armor). The sprite thumbnail is an [`egui::Image`] UV
-/// sub-rect over the terrain sheet (registered with egui in
-/// [`load_tile_atlas`](crate::tile_atlas::load_tile_atlas)); `sheet_id` is that sheet's egui texture
-/// id (resolved by the shell before the draw). When the theme/registries have not resolved the
+/// sub-rect over the def's source texture (the shell-resolved per-path [`SpriteTextures`] map —
+/// GTW-665). When the theme/registries have not resolved the
 /// panel shows a placeholder rather than an empty list.
-pub(crate) fn palette_panel(
+pub(in crate::egui_shell) fn palette_panel(
     ui: &mut egui::Ui,
     session: &mut MapEditorSession,
     themes: Option<&UuidThemeRegistry>,
     registry: Option<&TerrainDefRegistry>,
-    roles: Option<&TileRoles>,
-    atlas: Option<&TileAtlas>,
-    sheet_id: Option<egui::TextureId>,
+    sprites: Option<&SpriteDefRegistry>,
+    textures: &SpriteTextures,
 ) {
     ui.heading("Palette");
     ui.separator();
@@ -72,7 +72,7 @@ pub(crate) fn palette_panel(
         .show(ui, |ui| {
             for (key, name) in &entries {
                 let selected = active == Some(*key);
-                if palette_row(ui, name, selected, *key, roles, atlas, registry, sheet_id) {
+                if palette_row(ui, name, selected, *key, sprites, registry, textures) {
                     session.select_tile(*key);
                 }
             }
@@ -83,53 +83,28 @@ pub(crate) fn palette_panel(
 }
 
 /// Draw one palette row `[sprite] name` as a selectable region, highlighted when `selected`;
-/// returns whether it was clicked. The sprite is the terrain's resolved atlas index drawn as an
-/// [`egui::Image`] UV sub-rect over the sheet; a tile with no resolvable index / no atlas / no
-/// registered sheet id falls back to just the name (never a panic).
-#[expect(
-    clippy::too_many_arguments,
-    reason = "one palette row draws a sprite thumbnail (needs the tile key + roles + atlas + \
-              registry + the egui sheet texture id) beside its selectable name label + the \
-              selected flag; each is a borrowed slice threaded from the palette panel"
-)]
+/// returns whether it was clicked. The sprite is the terrain's resolved sprite def drawn as an
+/// [`egui::Image`] UV sub-rect over its source texture; a def-less graphic paints the loud
+/// magenta missing square, a still-decoding source a fixed-size spacer (never a panic).
 fn palette_row(
     ui: &mut egui::Ui,
     name: &str,
     selected: bool,
     key: TerrainUuid,
-    roles: Option<&TileRoles>,
-    atlas: Option<&TileAtlas>,
+    sprites: Option<&SpriteDefRegistry>,
     registry: &TerrainDefRegistry,
-    sheet_id: Option<egui::TextureId>,
+    textures: &SpriteTextures,
 ) -> bool {
     let response = ui
         .horizontal(|ui| {
-            draw_thumb(ui, key, roles, atlas, registry, sheet_id);
+            // Resolve THE WAY THE PRESENTER DOES (GTW-665 — terrain_sprite_def) and hand
+            // the def to the SHARED thumbnail draw (GTW-516 C3).
+            let def = sprites.and_then(|sprites| terrain_sprite_def(registry, sprites, &key));
+            sprite_thumb::draw_thumb(ui, def, textures);
             ui.selectable_label(selected, name)
         })
         .inner;
     response.clicked()
-}
-
-/// Draw the terrain's sprite thumbnail (GTW-515 C4.2) — resolves the terrain's atlas index THE WAY
-/// THE PRESENTER DOES ([`terrain_atlas_index`]) and hands it to the SHARED thumbnail draw
-/// ([`sprite_thumb::draw_thumb`], GTW-516 C3), which draws the [`egui::Image`] over the sheet's UV
-/// sub-rect (or a fixed-size spacer when the index / atlas / sheet id is unavailable, so the row
-/// layout stays stable).
-fn draw_thumb(
-    ui: &mut egui::Ui,
-    key: TerrainUuid,
-    roles: Option<&TileRoles>,
-    atlas: Option<&TileAtlas>,
-    registry: &TerrainDefRegistry,
-    sheet_id: Option<egui::TextureId>,
-) {
-    // The atlas must be resolved for the sheet to be drawable; `roles` resolves the index. When
-    // either is absent the shared draw falls back to a blank spacer.
-    let index = roles
-        .zip(atlas)
-        .and_then(|(roles, _atlas)| terrain_atlas_index(registry, roles, &key));
-    sprite_thumb::draw_thumb(ui, index, sheet_id);
 }
 
 /// Draw the stat summary for the currently-selected paint tile (GTW-515 C4.2) — its kind + HP +

@@ -73,8 +73,8 @@ fn full_view_toggle_draws_upper_storeys_and_round_trips() {
     );
     // The lower storey's slab is still drawn (FullView never drops the band floor).
     assert_eq!(
-        sprite_index_at(&mut app, CellLevel::new(slab_cell, l0)),
-        tile_roles(&app).map(|r| *r.slab),
+        sprite_rect_at(&mut app, CellLevel::new(slab_cell, l0)),
+        sprite_defs(&app).and_then(|defs| def_rect(&defs, "slab")),
         "the storey-0 slab must STILL draw in FullView (the band floor is unchanged)",
     );
 

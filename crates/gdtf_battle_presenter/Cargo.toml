@@ -12,12 +12,16 @@ bevy = { workspace = true }
 # only lands the edge, mirroring the GTW-203 `gdtf_app -> gdtf_battle_sim`
 # "land the edge now, consume later" precedent.
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
-# GTW-218 (S4): the DATA-DRIVEN tile-role table (`assets/sprites/tile_roles.spritedef.ron`)
-# loads through the generic `RonAsset<T>` loader, the same mechanism the theme /
-# situation / tuning use.
+# GTW-218 (S4): the remaining DATA-DRIVEN role tables (`assets/sprites/
+# character_roles.spritedef.ron` / `effect_roles.spritedef.ron`) load through the
+# generic `RonAsset<T>` loader, the same mechanism the theme / situation / tuning use.
 gdtf_assets = { path = "../gdtf_assets" }
-# GTW-218 (S4): `TileIndex` / `TileRoles` derive `Deserialize` so the authored
-# `tile_roles.ron` parses through the loader.
+# GTW-665: the presenter→families READ edge (the one-way direction the GTW-663
+# crate placement anticipated) — terrain sprites resolve `graphic_name` through
+# the glue crate's `SpriteDefRegistry` (`content/sprites/*.spritedef.ron`).
+gdtf_content_families = { path = "../gdtf_content_families" }
+# GTW-218 (S4): `TileIndex` / the role tables derive `Deserialize` so the authored
+# role RONs parse through the loader.
 serde = { workspace = true }
 
 [dev-dependencies]
@@ -39,9 +43,12 @@ gdtf_battle_sim = { path = "../gdtf_battle_sim", features = ["test-support"] }
 gdtf_app = { path = "../gdtf_app", features = ["test-support"] }
 # Naming `Assets<TextureAtlasLayout>` and driving `App::update()` in the test body.
 bevy = { workspace = true }
-# GTW-218 (S4): the AC1 round-trip test deserializes the SHIPPED `tile_roles.ron`
-# bytes via `ron::de::from_str` (test-only — the runtime path uses the loader).
+# The role-table-era round-trip pins deserialized shipped RON bytes via
+# `ron::de::from_str`; the remaining role tables (characters / effects) still do.
 ron = { workspace = true }
+# GTW-665 C2: the off-center-anchor draw test authors a sprite def into an isolated
+# TempDir asset root (the contract's red-first anchor evidence) — test-only.
+tempfile = "3"
 
 [lints]
 workspace = true

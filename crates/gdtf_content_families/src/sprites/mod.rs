@@ -19,11 +19,12 @@
 //! live HERE, beside the family glue; the presenter gains the (one-way)
 //! `presenter → families` read edge when GTW-665 consumes the registry.
 //!
-//! NAMING CAUTION: `assets/sprites/*.spritedef.ron` ALREADY exists as the OLD
-//! role-table format (the presenter's `TileRoles` / character / effect role
-//! tables — single-file typed loads). This family lives under
-//! `assets/content/sprites/` (the content root, like every family); the old
-//! tables keep working untouched until GTW-665 supersedes them. The two never
+//! NAMING CAUTION: `assets/sprites/*.spritedef.ron` ALSO exists as the OLD
+//! role-table format (the presenter's character / effect role tables —
+//! single-file typed loads; the terrain `tile_roles` table retired when
+//! GTW-665 superseded it with this family). This family lives under
+//! `assets/content/sprites/` (the content root, like every family); the
+//! surviving role tables keep working untouched. The two never
 //! collide at the loader: a typed load resolves by ASSET TYPE first
 //! (`bevy_asset` `loaders.rs::find` — a single-candidate type match returns
 //! before extension dispatch), and the untyped folder walk dispatches on the

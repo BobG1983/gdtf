@@ -2,12 +2,16 @@
 //! ([`primary_panel`]) and the sprite-grid graphic picker (GTW-516).
 
 use bevy_egui::egui;
-use gdtf_battle_presenter::{TileRole, TileRoles};
+use gdtf_battle_presenter::{TileRole, resolve_sprite};
 use gdtf_battle_sim::{level::UuidThemeRegistry, weapon::WeaponRegistry};
+use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use super::fields::field_stack;
 use crate::{
-    egui_shell::sprite_thumb::{self, THUMB_EDGE},
+    egui_shell::{
+        sprite_thumb::{self, THUMB_EDGE},
+        textures::SpriteTextures,
+    },
     session::MapEditorSession,
     terrain_form::{TerrainDraft, offered_graphic_roles},
 };
@@ -35,9 +39,9 @@ pub(crate) fn primary_panel(
     draft: &mut TerrainDraft,
     session: &MapEditorSession,
     themes: Option<&UuidThemeRegistry>,
-    roles: Option<&TileRoles>,
+    sprites: Option<&SpriteDefRegistry>,
     weapons: Option<&WeaponRegistry>,
-    sheet_id: Option<egui::TextureId>,
+    textures: &SpriteTextures,
 ) {
     // Two evenly-split columns: the sprite-grid picker on the left, the stat field stack on the
     // right. `columns` gives each a `&mut Ui`; the borrow checker requires we not borrow `draft`
@@ -45,7 +49,7 @@ pub(crate) fn primary_panel(
     // in turn is sound (they do not overlap in time).
     ui.columns(2, |columns| {
         if let [picker_col, fields_col] = columns {
-            graphic_picker(picker_col, draft, roles, sheet_id);
+            graphic_picker(picker_col, draft, sprites, textures);
             field_stack(fields_col, draft, session, themes, weapons);
         }
     });
@@ -59,23 +63,20 @@ pub(crate) fn primary_panel(
 /// The offered set is [`offered_graphic_roles`] — the presenter's [`TileRole`] vocabulary
 /// filtered by [`TileRole::def_authorable`] (GTW-566 C5), so the GTW-543 emplacement and the four
 /// GTW-470 oriented stairs are authorable here with no hand-mirrored editor role list. Each cell
-/// shows the ACTUAL sprite for its role: the role's atlas index is read via
-/// [`TileRole::index_in`] over the presenter's loaded [`TileRoles`] table — the SAME table the
-/// battlescape resolves against — drawn via the shared [`sprite_thumb`] helper over the
-/// egui-registered terrain sheet (no hardcoded index, no second sprite-loading path — C3). A cell
-/// is a clickable [`egui::Button`] that carries the sprite as its image and is `selected` when
-/// its role is the draft's active one (C2 highlight); a click writes the role through
-/// [`TerrainDraft::set_graphic`] (C2), which the reactive RON preview then re-serializes. Every
-/// offered role is in-vocabulary BY CONSTRUCTION (`index_in` is total over the enum), so there is
-/// no unresolvable-cell state; before the sheet registers, a labeled placeholder keeps the grid
-/// stable. Reuses the draft model verbatim (C2.2). `sheet_id` is the terrain sheet's egui texture
-/// id (registered by [`load_tile_atlas`](crate::tile_atlas::load_tile_atlas), resolved by the
-/// shell).
+/// shows the ACTUAL sprite for its role: the role key resolves through the presenter's
+/// [`resolve_sprite`] over the GTW-663 [`SpriteDefRegistry`] — the SAME def-driven resolution the
+/// battlescape draws with (GTW-665) — drawn via the shared [`sprite_thumb`] helper over the
+/// shell-resolved per-path textures (no hardcoded index, no second sprite-loading path — C3). A
+/// cell is a clickable [`egui::Button`] that carries the sprite as its image and is `selected`
+/// when its role is the draft's active one (C2 highlight); a click writes the role through
+/// [`TerrainDraft::set_graphic`] (C2), which the reactive RON preview then re-serializes. Before
+/// a role's sprite def / source texture resolves, a labeled placeholder keeps the grid
+/// stable. Reuses the draft model verbatim (C2.2).
 fn graphic_picker(
     ui: &mut egui::Ui,
     draft: &mut TerrainDraft,
-    roles: Option<&TileRoles>,
-    sheet_id: Option<egui::TextureId>,
+    sprites: Option<&SpriteDefRegistry>,
+    textures: &SpriteTextures,
 ) {
     ui.heading("Graphic role");
     ui.separator();
@@ -88,7 +89,7 @@ fn graphic_picker(
         .spacing(egui::vec2(4.0, 4.0))
         .show(ui, |ui| {
             for (slot, choice) in offered_graphic_roles().into_iter().enumerate() {
-                if graphic_cell(ui, choice, choice == active, roles, sheet_id) {
+                if graphic_cell(ui, choice, choice == active, sprites, textures) {
                     picked = Some(choice);
                 }
                 if (slot + 1) % PICKER_COLUMNS == 0 {
@@ -104,23 +105,24 @@ fn graphic_picker(
 /// Draw ONE graphic-role cell — a clickable sprite [`egui::Button`], `selected` (highlighted) when
 /// `selected`, returning whether it was clicked (GTW-516 C1/C2).
 ///
-/// The sprite is the role's atlas index read via [`TileRole::index_in`] (total over the
-/// vocabulary — GTW-566, no failable key round-trip) and built by the shared
-/// [`sprite_thumb::thumb_image`] (C3). Until the sheet registers (or the [`TileRoles`] table is
-/// still loading) the button falls back to the role key text, so the cell is never blank.
+/// The sprite is the role key's sprite def resolved via the presenter's [`resolve_sprite`]
+/// (GTW-665 — the ONE resolution) and built by the shared
+/// [`sprite_thumb::thumb_image`] (C3). Until the def's source texture registers (or the
+/// registry is still loading) the button falls back to the role key text, so the cell is
+/// never blank.
 fn graphic_cell(
     ui: &mut egui::Ui,
     choice: TileRole,
     selected: bool,
-    roles: Option<&TileRoles>,
-    sheet_id: Option<egui::TextureId>,
+    sprites: Option<&SpriteDefRegistry>,
+    textures: &SpriteTextures,
 ) -> bool {
-    let index = roles.map(|roles| choice.index_in(roles));
-    let button = match sprite_thumb::thumb_image(index, sheet_id) {
+    let def = sprites.and_then(|sprites| resolve_sprite(sprites, choice.as_key()));
+    let button = match sprite_thumb::thumb_image(def, textures) {
         // The sprite thumbnail as a selectable, framed image button (the resolved role tile).
         Some(image) => egui::Button::image(image).selected(selected).frame(true),
-        // No sprite yet (sheet not registered / table still loading): a labeled placeholder
-        // button of the same footprint keeps the grid layout stable until the sheet loads.
+        // No sprite yet (def / source texture still loading): a labeled placeholder
+        // button of the same footprint keeps the grid layout stable until it resolves.
         None => egui::Button::new(choice.as_key())
             .selected(selected)
             .min_size(egui::vec2(THUMB_EDGE, THUMB_EDGE)),

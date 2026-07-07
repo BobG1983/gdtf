@@ -49,7 +49,6 @@ use crate::{
     sprite_form::SpriteDraft,
     terrain_form::TerrainDraft,
     theme_form::ThemeDraft,
-    tile_atlas::load_tile_atlas,
     validate::register_validation,
 };
 
@@ -59,10 +58,11 @@ use crate::{
 /// already has `DefaultPlugins` + the [`EguiPlugin`](bevy_egui::EguiPlugin). It owns:
 ///
 /// - `init_state::<EditorState>()` — the editor's own two-state lifecycle.
-/// - the `Load` pass (theme + weapon/armor + the UUID-keyed terrain/theme registries + the
-///   presenter tile-role table) — registered through the SAME generic content-family / hot-RON
+/// - the `Load` pass (the weapon/armor/gang/melee/injury registries, the UUID-keyed
+///   terrain/theme registries, and the GTW-663 sprite defs every terrain graphic resolves
+///   through since GTW-665) — registered through the SAME generic content-family
 ///   seams the game uses (GTW-579), WITHOUT pulling the game scene graph.
-/// - `OnEnter(Editing)` → the standalone editor camera + the tile atlas, plus the FULL
+/// - `OnEnter(Editing)` → the standalone editor camera, plus the FULL
 ///   state-scoped model/resource lifecycle — the Workbench mode, the authoring session, the
 ///   paintable map, the level / zoom selectors, the terrain / theme drafts, the hovered-cell
 ///   model, the preview pan, and the prefab-viewport view mode each register their
@@ -99,10 +99,7 @@ impl Plugin for MapEditorPlugin {
         // run before any camera spawns (Startup, before the OnEnter(Editing) camera spawns).
         app.add_systems(Startup, disable_egui_auto_context);
 
-        app.add_systems(
-            OnEnter(EditorState::Editing),
-            (spawn_editor_camera, load_tile_atlas),
-        );
+        app.add_systems(OnEnter(EditorState::Editing), spawn_editor_camera);
 
         // GTW-575: the sixteen `Editing`-scoped MODEL resources register their whole
         // OnEnter-insert + OnExit-remove lifecycle through ONE
