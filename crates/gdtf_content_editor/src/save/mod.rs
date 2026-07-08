@@ -58,7 +58,7 @@
 //! | Submodule    | Concern |
 //! |--------------|---------|
 //! | [`types`]    | [`SavePrefabError`](types::SavePrefabError), the authored spawn-role default, the size-dir helper (GTW-634: the path consts + theme-dir helper moved to their single owners — `gdtf_assets::WORKSPACE_ASSETS_ROOT`, `gdtf_content_families::prefabs`, `crate::theme_dir`) |
-//! | [`project`]  | Pure projection + serialization: [`editor_map_to_prefab`](project::editor_map_to_prefab), [`serialize_prefab`](project::serialize_prefab), [`prefab_save_path`](project::prefab_save_path), [`sanitize_name`](project::sanitize_name) |
+//! | [`project`]  | Pure projection + serialization: [`editor_map_to_prefab`](project::editor_map_to_prefab), [`serialize_prefab`](project::serialize_prefab), [`prefab_save_path_in`](project::prefab_save_path_in) / [`prefab_save_path`](project::prefab_save_path), [`sanitize_name`](project::sanitize_name) |
 //! | [`tests`]    | In-crate tests (the contract-clause tests) |
 
 mod project;
@@ -70,8 +70,11 @@ mod tests;
 // The pure projection + serialization + path-resolution surface, re-exported for the crate root
 // (`lib.rs`) so the egui save control (C4.9) + the in-crate save tests reach it (GTW-512 / GTW-515).
 // GTW-515 C4.9 / C4.10: the debug-only fs-write the egui "Save prefab" button calls — the deleted
-// `bevy_ui` `systems` writer, re-added on the egui path.
+// `bevy_ui` `systems` writer, re-added on the egui path. GTW-662: `write_prefab_in` is the
+// root-parameterized core (the TempDir-test seam); `write_prefab` is its thin production wrapper.
+pub use project::{
+    editor_map_to_prefab, prefab_save_path, prefab_save_path_in, sanitize_name, serialize_prefab,
+};
 #[cfg(debug_assertions)]
-pub use project::write_prefab;
-pub use project::{editor_map_to_prefab, prefab_save_path, sanitize_name, serialize_prefab};
+pub use project::{write_prefab, write_prefab_in};
 pub use types::SavePrefabError;

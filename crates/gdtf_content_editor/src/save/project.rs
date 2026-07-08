@@ -2,8 +2,9 @@
 //! the [`PrefabSpec`] schema and serialize it to RON (GTW-432; swept onto the UUID schema
 //! in GTW-495).
 //!
-//! No Bevy systems here — only pure data-transformation functions and their helpers. All
-//! filesystem I/O lives in [`super::systems`].
+//! No Bevy systems here — only pure data-transformation functions and their helpers. The
+//! filesystem write funnels through the root-parameterized [`write_prefab_in`] core (GTW-662)
+//! and its thin production wrapper [`write_prefab`], both debug-only.
 
 use std::path::{Path, PathBuf};
 
@@ -33,19 +34,35 @@ pub fn sanitize_name(raw: &str) -> FileStem {
     sanitize_file_stem(raw)
 }
 
-/// The full on-disk PATH a saved prefab is written to:
-/// `<workspace assets>/maps/<theme>/<size>/<stem>.prefab.ron` (GTW-432; root in GTW-495).
+/// The full on-disk PATH a saved prefab is written to under an arbitrary assets `root`:
+/// `<root>/content/maps/<theme>/<size>/<stem>.prefab.ron` — the root-parameterized core
+/// (GTW-662, the GTW-555 pattern), so a test resolves the REAL save location against a
+/// `TempDir` root instead of the version-controlled `assets/` tree.
 ///
 /// Pure (no IO) so a test can assert the resolved location without writing anything. The
 /// `theme_display` is the slugified theme directory's source (the theme's display name), `size`
 /// comes from the prefab being authored, `stem` is the sanitized prefab name.
 #[must_use]
-pub fn prefab_save_path(theme_display: &str, size: GridSize, stem: &str) -> PathBuf {
-    Path::new(WORKSPACE_ASSETS_ROOT)
-        .join(PREFABS_FOLDER)
+pub fn prefab_save_path_in(
+    root: &Path,
+    theme_display: &str,
+    size: GridSize,
+    stem: &str,
+) -> PathBuf {
+    root.join(PREFABS_FOLDER)
         .join(theme_dir(theme_display))
         .join(size_dir(size))
         .join(format!("{stem}.{PREFAB_EXTENSION}"))
+}
+
+/// The full on-disk PATH a saved prefab is written to:
+/// `<workspace assets>/maps/<theme>/<size>/<stem>.prefab.ron` (GTW-432; root in GTW-495).
+///
+/// Thin wrapper around [`prefab_save_path_in`] that supplies the workspace `assets/` root
+/// ([`WORKSPACE_ASSETS_ROOT`]) — the location the production [`write_prefab`] writes to.
+#[must_use]
+pub fn prefab_save_path(theme_display: &str, size: GridSize, stem: &str) -> PathBuf {
+    prefab_save_path_in(Path::new(WORKSPACE_ASSETS_ROOT), theme_display, size, stem)
 }
 
 /// Project the in-memory [`EditorMap`] (incl. multi-level cells) into the [`PrefabSpec`]
@@ -106,13 +123,19 @@ pub fn serialize_prefab(spec: &PrefabSpec) -> Result<String, SavePrefabError> {
 }
 
 /// Project + serialize + WRITE the [`EditorMap`] to
-/// `assets/content/maps/<theme>/<size>/<stem>.prefab.ron` (GTW-515 C4.9 / C4.10), or return the typed
-/// [`SavePrefabError`] (never a panic).
+/// `<assets_root>/content/maps/<theme>/<size>/<stem>.prefab.ron` (GTW-515 C4.9 / C4.10), or
+/// return the typed [`SavePrefabError`] (never a panic).
+///
+/// This is the **root-parameterized core** (GTW-662 — the GTW-555 `write_terrain_in`
+/// precedent): all path-building, serialization, and `fs` writes go through here.
+/// `assets_root` is the on-disk parent of the `content/maps/` subtree: production passes
+/// [`WORKSPACE_ASSETS_ROOT`] (via [`write_prefab`]); tests pass a unique `tempfile::TempDir`
+/// root so no test ever writes into the version-controlled `assets/` tree.
 ///
 /// Sanitizes the entered prefab name to a file stem (the shared [`sanitize_file_stem`] seam),
 /// projects the map to a [`PrefabSpec`] via [`editor_map_to_prefab`] (which re-checks every
 /// painted cell through the shared [`evaluate_placement`] — C3 illegal-cell guard, reused
-/// verbatim), resolves the themed/sized path via [`prefab_save_path`], and hands the
+/// verbatim), resolves the themed/sized path via [`prefab_save_path_in`], and hands the
 /// serialize → mkdir → write chain to the shared
 /// [`write_ron_pretty`](gdtf_assets::write_ron_pretty) seam (GTW-577 C2). Returns the resolved
 /// [`PathBuf`] on success so the caller can log it. Debug-only — the whole save path is gated
@@ -129,7 +152,8 @@ pub fn serialize_prefab(spec: &PrefabSpec) -> Result<String, SavePrefabError> {
 /// if a painted cell is illegal; [`SavePrefabError::Save`] from the seam's serialization / file
 /// write.
 #[cfg(debug_assertions)]
-pub fn write_prefab(
+pub fn write_prefab_in(
+    assets_root: &Path,
     map: &EditorMap,
     registry: &TerrainDefRegistry,
     session: &MapEditorSession,
@@ -141,7 +165,38 @@ pub fn write_prefab(
         return Err(SavePrefabError::EmptyName);
     }
     let spec = editor_map_to_prefab(map, registry, session)?;
-    let path = prefab_save_path(theme_display, session.grid_size(), &stem);
+    let path = prefab_save_path_in(assets_root, theme_display, session.grid_size(), &stem);
     gdtf_assets::write_ron_pretty(&path, &spec)?;
     Ok(path)
+}
+
+/// Project + serialize + WRITE the [`EditorMap`] to
+/// `assets/content/maps/<theme>/<size>/<stem>.prefab.ron` (GTW-515 C4.9 / C4.10), or return the
+/// typed [`SavePrefabError`] (never a panic).
+///
+/// Thin wrapper around [`write_prefab_in`] that supplies the workspace `assets/` root
+/// ([`WORKSPACE_ASSETS_ROOT`]) — byte-identical paths for production callers (GTW-662 C3).
+/// This is the function the egui "Save prefab" button calls; the file lands exactly where the
+/// GTW-489 folder loader reads from.
+///
+/// # Errors
+///
+/// Any [`SavePrefabError`] from name validation, the projection's illegal-cell guard, or the
+/// seam's serialization / file write (see [`write_prefab_in`]).
+#[cfg(debug_assertions)]
+pub fn write_prefab(
+    map: &EditorMap,
+    registry: &TerrainDefRegistry,
+    session: &MapEditorSession,
+    theme_display: &str,
+    raw_name: &str,
+) -> Result<PathBuf, SavePrefabError> {
+    write_prefab_in(
+        Path::new(WORKSPACE_ASSETS_ROOT),
+        map,
+        registry,
+        session,
+        theme_display,
+        raw_name,
+    )
 }

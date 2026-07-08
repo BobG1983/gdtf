@@ -240,10 +240,14 @@ pub use preview::{target::PreviewTarget, view::PreviewPan};
 pub use right_panel::GridSpanInput;
 // GTW-512: the save PROJECTION surface (debug-only, the v2 save path) — kept for the C4 save-control
 // re-point + the in-crate save tests. The `bevy_ui` save controls themselves are the C4 child.
+// GTW-662: `write_prefab_in` / `prefab_save_path_in` are the root-parameterized cores — the
+// round-trip test aims them at a `tempfile::TempDir` root so it never writes into the
+// version-controlled `assets/` tree; `write_prefab` / `prefab_save_path` are the production
+// wrappers (WORKSPACE_ASSETS_ROOT).
 #[cfg(debug_assertions)]
 pub use save::{
-    SavePrefabError, editor_map_to_prefab, prefab_save_path, sanitize_name, serialize_prefab,
-    write_prefab,
+    SavePrefabError, editor_map_to_prefab, prefab_save_path, prefab_save_path_in, sanitize_name,
+    serialize_prefab, write_prefab, write_prefab_in,
 };
 pub use session::MapEditorSession;
 // GTW-664: the SPRITE-mode model + the pure save halves — exported so the round-trip
@@ -269,12 +273,15 @@ pub use terrain_form::{
 // thin wrapper (WORKSPACE_ASSETS_ROOT). Both are `cfg(debug_assertions)`-only.
 #[cfg(debug_assertions)]
 pub use terrain_form::{write_terrain, write_terrain_in};
-#[cfg(debug_assertions)]
-pub use theme_form::write_theme;
 pub use theme_form::{
     SaveThemeError, ThemeDraft, draft_to_theme_def, floor_candidates, resolved_stats,
     serialize_theme_def, slab_floor_candidates, validate_for_save,
 };
+// The debug-only THEME fs-write surface (the terrain/gang/armor/sprite/weapon write precedent):
+// `write_theme_in` is the root-parameterized core tests aim at a `TempDir` (GTW-662);
+// `write_theme` is the production wrapper (WORKSPACE_ASSETS_ROOT).
+#[cfg(debug_assertions)]
+pub use theme_form::{write_theme, write_theme_in};
 // GTW-670: the WEAPON-mode model + the pure save halves — exported so the round-trip
 // tests drive the REAL projection / path resolution / write (the TempDir round-trip
 // through the actual WeaponsFamily loader) and the headless lifecycle test asserts the

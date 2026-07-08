@@ -4,9 +4,11 @@
 //! (`resolve_theme_defs`) resolves it into the
 //! [`UuidThemeRegistry`](gdtf_battle_sim::level::UuidThemeRegistry).
 //!
-//! [`draft_to_theme_def`] + [`serialize_theme_def`] + [`theme_save_path`] are PURE (no IO) so a
+//! [`draft_to_theme_def`] + [`serialize_theme_def`] + [`theme_save_path_in`] are PURE (no IO) so a
 //! test can round-trip them without touching the assets tree (the C7 round-trip). The filesystem
-//! write lives in [`write_theme`] (debug-only — the whole `theme_form` save trigger is gated, the
+//! write lives in [`write_theme_in`] (root-parameterized core, debug-only — the GTW-555
+//! `write_terrain_in` precedent, so tests aim it at a `tempfile::TempDir`) and its thin
+//! production wrapper [`write_theme`] (the whole `theme_form` save trigger is gated, the
 //! GTW-474 terrain-save precedent).
 
 #[cfg(debug_assertions)]
@@ -42,16 +44,17 @@ pub(crate) fn slugify(raw: &str) -> FileStem {
     gdtf_assets::sanitize_file_stem(raw)
 }
 
-/// The full on-disk PATH a saved theme def is written to:
-/// `<workspace assets>/content/terrain/<slug>/<slug>.terrain_theme.ron` (GTW-475 C5).
+/// The full on-disk PATH a saved theme def is written to under an arbitrary assets `root`:
+/// `<root>/content/terrain/<slug>/<slug>.terrain_theme.ron` (GTW-475 C5) — the
+/// root-parameterized core (the GTW-555 pattern), so a test resolves the REAL save location
+/// against a `TempDir` root instead of the version-controlled `assets/` tree (GTW-662).
 ///
 /// Pure (no IO) so a test can assert the resolved location without writing. `slug` is the
 /// slugified display name (the same value names both the dir and the file stem).
 #[cfg(debug_assertions)]
 #[must_use]
-pub(crate) fn theme_save_path(slug: &str) -> PathBuf {
-    Path::new(WORKSPACE_ASSETS_ROOT)
-        .join(ThemeDefsFamily::FOLDER)
+pub(crate) fn theme_save_path_in(root: &Path, slug: &str) -> PathBuf {
+    root.join(ThemeDefsFamily::FOLDER)
         .join(slug)
         .join(format!("{slug}.{}", ThemeDefsFamily::EXTENSION))
 }
@@ -120,8 +123,15 @@ pub fn validate_for_save(draft: &ThemeDraft) -> Result<(), SaveThemeError> {
     }
 }
 
-/// Build + serialize + WRITE a theme def to `assets/content/terrain/<slug>/<slug>.terrain_theme.ron`
-/// (GTW-475 C5), or return the typed [`SaveThemeError`] (never a panic).
+/// Build + serialize + WRITE a theme def to
+/// `<assets_root>/content/terrain/<slug>/<slug>.terrain_theme.ron` (GTW-475 C5), or return the
+/// typed [`SaveThemeError`] (never a panic).
+///
+/// This is the **root-parameterized core** (GTW-662 — the GTW-555 `write_terrain_in`
+/// precedent): all path-building, serialization, and `fs` writes go through here.
+/// `assets_root` is the on-disk parent of the `content/terrain/` subtree: production passes
+/// [`WORKSPACE_ASSETS_ROOT`] (via [`write_theme`]); tests pass a unique `tempfile::TempDir`
+/// root so no test ever writes into the version-controlled `assets/` tree.
 ///
 /// Validates the draft (the C6 default-floor rule + a non-empty name + a non-empty palette),
 /// slugifies the display name to the dir + file stem (the shared seam), projects the draft to
@@ -133,14 +143,35 @@ pub fn validate_for_save(draft: &ThemeDraft) -> Result<(), SaveThemeError> {
 ///
 /// Any [`SaveThemeError`] from validation or the seam's serialization / file write.
 #[cfg(debug_assertions)]
-pub fn write_theme(draft: &ThemeDraft, key: ThemeUuid) -> Result<PathBuf, SaveThemeError> {
+pub fn write_theme_in(
+    assets_root: &Path,
+    draft: &ThemeDraft,
+    key: ThemeUuid,
+) -> Result<PathBuf, SaveThemeError> {
     validate_for_save(draft)?;
     let slug = slugify(draft.display_name());
     if slug.is_empty() {
         return Err(SaveThemeError::EmptyName);
     }
     let def = draft_to_theme_def(draft, key);
-    let path = theme_save_path(&slug);
+    let path = theme_save_path_in(assets_root, &slug);
     gdtf_assets::write_ron_pretty(&path, &def)?;
     Ok(path)
+}
+
+/// Build + serialize + WRITE a theme def to `assets/content/terrain/<slug>/<slug>.terrain_theme.ron`
+/// (GTW-475 C5), or return the typed [`SaveThemeError`] (never a panic).
+///
+/// Thin wrapper around [`write_theme_in`] that supplies the workspace `assets/` root
+/// ([`WORKSPACE_ASSETS_ROOT`]) — byte-identical paths for production callers (GTW-662 C3).
+/// This is the function the egui Save button calls; the file lands exactly where the GTW-487
+/// theme loader (`resolve_theme_defs`) reads from.
+///
+/// # Errors
+///
+/// Any [`SaveThemeError`] from validation or the seam's serialization / file write
+/// (see [`write_theme_in`]).
+#[cfg(debug_assertions)]
+pub fn write_theme(draft: &ThemeDraft, key: ThemeUuid) -> Result<PathBuf, SaveThemeError> {
+    write_theme_in(Path::new(WORKSPACE_ASSETS_ROOT), draft, key)
 }
