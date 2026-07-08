@@ -16,7 +16,11 @@
 //! [`attachment_form_ui`](self::attachment_form_ui) over the SHARED
 //! [`fire_mode_edit`](self::fire_mode_edit) row widget; the WEAPON-mode form (GTW-670 —
 //! the full 18-field `WeaponSpec` in collapsible sections) lives in
-//! [`weapon_form_ui`](self::weapon_form_ui) over the same shared widget; the per-mode
+//! [`weapon_form_ui`](self::weapon_form_ui) over the same shared widget; the
+//! MELEE-mode form (GTW-671 — the full `MeleeWeaponSpec` in collapsible sections)
+//! lives in [`melee_weapon_form_ui`](self::melee_weapon_form_ui) over the SHARED
+//! [`damage_edit`](self::damage_edit) group + [`slots_edit`](self::slots_edit) lists
+//! both weapon forms draw; the per-mode
 //! RIGHT-form + CENTRAL-panel dispatches live in [`mode_panels`](self::mode_panels)
 //! (the GTW-670 band seam); the pre-panel
 //! per-mode autoload/model-sync runners live in [`autoload`](self::autoload). The shell
@@ -56,6 +60,11 @@ mod autoload;
 // The shell's mode-agnostic top/bottom-bar chrome (mode tabs + global theme combo +
 // status line), split out of `shell.rs` (GTW-636 — module-layout bands).
 mod chrome;
+// GTW-671: the SHARED damage-group editor — one authoring surface for the six fields
+// the ranged and melee weapon specs share verbatim (damage / punch / shred /
+// damage_type / fatal_bias / handedness), plus the generic scalar drags both forms'
+// remaining fields reuse (the `fire_mode_edit` shared-leaf precedent).
+mod damage_edit;
 // GTW-669: the SHARED fire-mode row editor — one `FireModeSpec` authoring surface the
 // ATTACHMENT mode's `GainFireMode` rows and the GTW-670 weapon forms both consume (the
 // `theme_combo` / `sprite_thumb` shared-leaf precedent).
@@ -66,6 +75,10 @@ mod gang_form_ui;
 // GTW-654: the INJURY-mode forms — the draw half over the `injury_form` models (the
 // def editor + the C2 weighting section; the gang/armor form split).
 mod injury_form_ui;
+// GTW-671: the MELEE-mode form — the draw half over the `melee_weapon_form` model (the
+// gang / armor / sprite / attachment / weapon form split: model module + `*_form_ui`
+// sibling).
+mod melee_weapon_form_ui;
 // GTW-670: the per-mode RIGHT-form + CENTRAL-panel dispatches (one arm per Workbench
 // mode), split out of `shell.rs` at the band seam.
 mod mode_panels;
@@ -76,6 +89,10 @@ mod params;
 // the headless integration test asserts the exact size-field view model the panel renders from.
 pub(crate) mod prefab;
 mod shell;
+// GTW-671: the SHARED slot-declaration + attachment-key list editors — the GTW-670
+// weapon-form widgets lifted to one authoring surface both weapon forms draw (the
+// `fire_mode_edit` / `damage_edit` shared-leaf precedent).
+mod slots_edit;
 // GTW-664: the SPRITE-mode form — the draw half over the `sprite_form` model (the gang /
 // armor form split: model module + `*_form_ui` sibling).
 mod sprite_form_ui;

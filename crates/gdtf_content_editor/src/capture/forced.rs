@@ -15,9 +15,9 @@ pub(super) struct ForcedMode(EditorMode);
 
 impl ForcedMode {
     /// Parse a `GDTF_EDITOR_MODE` value (case-insensitive `terrain` | `theme` | `prefab` |
-    /// `gang` | `armor` | `injury` | `sprite` | `attachment` | `weapon`) into a forced mode,
-    /// or [`None`] for an unset / unrecognized value (the capture keeps the editor's default
-    /// mode).
+    /// `gang` | `armor` | `injury` | `sprite` | `attachment` | `weapon` | `melee_weapon`)
+    /// into a forced mode, or [`None`] for an unset / unrecognized value (the capture keeps
+    /// the editor's default mode).
     pub(super) fn from_env_value(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
             "terrain" => Some(Self(EditorMode::Terrain)),
@@ -29,6 +29,7 @@ impl ForcedMode {
             "sprite" => Some(Self(EditorMode::Sprite)),
             "attachment" => Some(Self(EditorMode::Attachment)),
             "weapon" => Some(Self(EditorMode::Weapon)),
+            "melee_weapon" => Some(Self(EditorMode::MeleeWeapon)),
             _ => None,
         }
     }
@@ -93,6 +94,27 @@ impl ForcedWeapon {
     /// trimming — keys are an open stem set, not a closed vocabulary) into a forced weapon,
     /// or [`None`] for an unset / empty value (the capture keeps the mode's sorted-first
     /// autoload).
+    pub(super) fn from_env_value(value: &str) -> Option<Self> {
+        let key = value.trim();
+        (!key.is_empty()).then(|| Self(WeaponName::new(key.to_owned())))
+    }
+}
+
+/// The capture's FORCED MELEE-WEAPON-mode loaded weapon (GTW-671 — from
+/// `GDTF_EDITOR_MELEE_WEAPON`), inserted only when the env var carried a non-empty key. The
+/// drive loads the named melee weapon from the resolved
+/// [`MeleeWeaponRegistry`](gdtf_battle_sim::weapon::MeleeWeaponRegistry) through the SAME
+/// `load_melee_weapon` path the load `ComboBox` commits — so QA can capture a SPECIFIC melee
+/// weapon (the MELEE twin of the GTW-670 `ForcedWeapon`: egui combo closures never run
+/// headless, which is why the drive exists — e.g. the contract-named `chainsword`).
+#[derive(Resource, Clone, Deref)]
+pub(super) struct ForcedMeleeWeapon(WeaponName);
+
+impl ForcedMeleeWeapon {
+    /// Parse a `GDTF_EDITOR_MELEE_WEAPON` value (a registry key / file stem, taken verbatim
+    /// after trimming — keys are an open stem set, not a closed vocabulary) into a forced
+    /// melee weapon, or [`None`] for an unset / empty value (the capture keeps the mode's
+    /// sorted-first autoload).
     pub(super) fn from_env_value(value: &str) -> Option<Self> {
         let key = value.trim();
         (!key.is_empty()).then(|| Self(WeaponName::new(key.to_owned())))

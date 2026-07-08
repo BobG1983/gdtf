@@ -6,16 +6,18 @@ use bevy::prelude::*;
 use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_battle_sim::{
     equipment::attachments::AttachmentRegistry,
-    weapon::{WeaponName, WeaponRegistry},
+    weapon::{MeleeWeaponRegistry, WeaponName, WeaponRegistry},
 };
 
 use super::super::forced::{
-    ForcedAttachment, ForcedMode, ForcedTerrainKind, ForcedView, ForcedWeapon, ForcedZoom,
+    ForcedAttachment, ForcedMeleeWeapon, ForcedMode, ForcedTerrainKind, ForcedView, ForcedWeapon,
+    ForcedZoom,
 };
 use crate::{
     EditorMode,
     attachment_form::AttachmentDraft,
     canvas::{CanvasZoom, CurrentEditLevel, LevelStep},
+    melee_weapon_form::MeleeWeaponDraft,
     session::MapEditorSession,
     terrain_form::TerrainDraft,
     weapon_form::WeaponDraft,
@@ -23,8 +25,8 @@ use crate::{
 
 /// `Update` (in `Editing`, capture-only): FORCE the [`EditorMode`] to the C2.4 [`ForcedMode`]
 /// before the settle / screenshot — so the Screenshot-QA can capture a specific Workbench mode
-/// (`GDTF_EDITOR_MODE=terrain|theme|prefab|gang|armor|injury|sprite|attachment|weapon`). No-ops
-/// when no mode was forced (the resource is
+/// (`GDTF_EDITOR_MODE=terrain|theme|prefab|gang|armor|injury|sprite|attachment|weapon|melee_weapon`).
+/// No-ops when no mode was forced (the resource is
 /// absent) or the editor's mode already matches. Both borrows are `Option` (state-scoped —
 /// bevy-traps #1); [`set_if_neq`](DetectChangesMut::set_if_neq) keeps an already-matching mode a
 /// no-op (idempotent under the egui multipass re-run).
@@ -127,6 +129,35 @@ pub(in crate::capture) fn force_capture_weapon(
     if let Some(spec) = registry.spec(&forced) {
         let spec = spec.clone();
         draft.load_weapon(&forced, &spec);
+    }
+}
+
+/// `Update` (in `Editing`, capture-only): load the GTW-671 [`ForcedMeleeWeapon`]'s named
+/// melee weapon into the live [`MeleeWeaponDraft`] from the resolved [`MeleeWeaponRegistry`]
+/// — through the SAME [`load_melee_weapon`](MeleeWeaponDraft::load_melee_weapon) path the
+/// MELEE mode's load `ComboBox` commits, so the Screenshot-QA can capture a SPECIFIC melee
+/// weapon's full spec form (`GDTF_EDITOR_MELEE_WEAPON=<key>`; the GTW-670 `ForcedWeapon`
+/// precedent — egui combo closures never run headless, so the shot is the in-engine
+/// evidence).
+///
+/// No-ops when nothing was forced / the draft or registry is absent (state-scoped —
+/// bevy-traps #1) / the key resolves nothing (the sorted-first autoload stands); idempotent —
+/// the load is skipped once the draft already carries the forced key, so it never fights later
+/// edits or the one-shot autoload (which the first forced load ends).
+pub(in crate::capture) fn force_capture_melee_weapon(
+    forced: Option<Res<ForcedMeleeWeapon>>,
+    draft: Option<ResMut<MeleeWeaponDraft>>,
+    registry: Option<Res<MeleeWeaponRegistry>>,
+) {
+    let (Some(forced), Some(mut draft), Some(registry)) = (forced, draft, registry) else {
+        return;
+    };
+    if draft.name() == forced.as_str() {
+        return;
+    }
+    if let Some(spec) = registry.spec(&forced) {
+        let spec = spec.clone();
+        draft.load_melee_weapon(&forced, &spec);
     }
 }
 

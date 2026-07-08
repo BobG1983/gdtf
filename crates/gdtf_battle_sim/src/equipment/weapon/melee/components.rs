@@ -11,7 +11,7 @@
 //! [`Wields::ranged_weapon`](super::super::Wields::ranged_weapon)).
 
 use bevy::prelude::{Component, Deref};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// A melee weapon's **reach** — how many cells away a strike can land (GTW-505). A
 /// knife/fist reaches the adjacent cell (`1`); a spear/polearm reaches further. The
@@ -21,8 +21,10 @@ use serde::Deserialize;
 /// A weapon NUMBER (lives on the melee weapon, not in tuning), a small non-negative
 /// cell count (`u16`, the band/count inner type). Private inner + derived [`Deref`];
 /// `#[serde(transparent)]` parses a bare RON scalar (the
-/// [`crate::tuning`] / GTW-200 house style). A `#[derive(Component)]` so it lives as a
-/// sibling component on the armed melee-weapon entity.
+/// [`crate::tuning`] / GTW-200 house style), and [`Serialize`] so the editor's MELEE
+/// mode (GTW-671) saves the field in the same bare-scalar schema it loads. A
+/// `#[derive(Component)]` so it lives as a sibling component on the armed melee-weapon
+/// entity.
 ///
 /// `Default` ([`Reach::DEFAULT`] = `1`) is the DEFENSIBLE melee reach AND the
 /// `bsn!`-spawn-seed sentinel (the GTW-322 convention): the `bsn!` spawn path seeds the
@@ -30,7 +32,7 @@ use serde::Deserialize;
 /// ranged sentinels (which default to a NEUTRAL zero), `1` is BOTH a sensible default
 /// AND the sentinel — a melee weapon authored WITHOUT a `reach:` field is a
 /// reach-1 weapon (the `#[serde(default)]` on the spec field makes the field optional).
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Reach(u16);
 

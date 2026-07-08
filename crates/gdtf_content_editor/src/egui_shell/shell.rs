@@ -23,7 +23,7 @@
 //! grow one arm per Workbench mode; the shell only changes when the panel LAYOUT does —
 //! the `autoload.rs` / `textures.rs` seam continuation). The mode tabs are egui
 //! [`selectable_value`](bevy_egui::egui::Ui::selectable_value)s over the kept
-//! [`EditorMode`](crate::mode::EditorMode) resource; the `1`–`9` hotkeys are still handled by
+//! [`EditorMode`](crate::mode::EditorMode) resource; the `1`–`9` + `0` hotkeys are still handled by
 //! [`mode_hotkeys`](crate::mode::mode_hotkeys) in `Update` (UI-agnostic, kept). The theme
 //! `ComboBox` folds a selection into the [`MapEditorSession`] exactly as the old
 //! `apply_theme_selection` did.
@@ -34,9 +34,6 @@
 
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
-use gdtf_battle_sim::{
-    level::UuidThemeRegistry, terrain::def::TerrainDefRegistry, weapon::WeaponRegistry,
-};
 
 use crate::{
     egui_shell::{
@@ -44,8 +41,8 @@ use crate::{
         chrome::{mode_tabs, status_line, theme_combo_box},
         mode_panels::{ModePanelsCtx, central_panel, right_panel},
         params::{
-            ArmorParams, AttachmentParams, GangParams, InjuryParams, PrefabParams, SpriteParams,
-            WeaponParams,
+            ArmorParams, AttachmentParams, GangParams, InjuryParams, MeleeWeaponParams,
+            PrefabParams, SharedRegistries, SpriteParams, WeaponParams,
         },
         prefab::palette_ui,
         terrain_form_ui,
@@ -66,8 +63,8 @@ use crate::{
 ///
 /// Every editor resource is state-scoped (inserted `OnEnter(Editing)`, removed `OnExit(Editing)` —
 /// bevy-traps #1), so the mode + session + the TERRAIN draft are taken as `Option<ResMut<…>>` and
-/// the system no-ops until they exist; the theme registry + the
-/// weapon registry (the GTW-574 Emplacement mounted-weapon combo's option source) are likewise
+/// the system no-ops until they exist; the mode-agnostic read-only registries (the theme /
+/// terrain-def / weapon registries — the [`SharedRegistries`] bundle since GTW-671) are likewise
 /// `Option<Res<…>>` (the empty-registry `ComboBox` then offers nothing). The sprite thumbnails
 /// resolve through the GTW-663 `SpriteDefRegistry` the SPRITE bundle already carries (GTW-665 —
 /// the ONE def-driven resolution the battle renderer uses; an unresolved registry leaves every
@@ -79,20 +76,18 @@ use crate::{
     reason = "the whole-editor egui system draws ALL panels in one pass (the EguiPrimaryContextPass \
               requirement — bevy-traps #8); each param is a distinct Bevy SystemParam (the egui \
               context, the state-scoped mutable drafts + mode + session, the per-mode model \
-              bundles — prefab / gang / armor / injury / sprite / attachment / weapon — and the \
-              read-only registries); Bevy's injection model cannot reduce this without a wrapper \
-              resource that changes the crate's API surface"
+              bundles — prefab / gang / armor / injury / sprite / attachment / weapon / melee — \
+              and the read-only registries); Bevy's injection model cannot reduce this without a \
+              wrapper resource that changes the crate's API surface"
 )]
 pub(crate) fn editor_egui_ui(
     mut contexts: EguiContexts,
     mut prefab_save_name: Local<String>,
     mode: Option<ResMut<EditorMode>>,
     session: Option<ResMut<MapEditorSession>>,
-    themes: Option<Res<UuidThemeRegistry>>,
     terrain_draft: Option<ResMut<TerrainDraft>>,
     theme_draft: Option<ResMut<ThemeDraft>>,
-    terrain_registry: Option<Res<TerrainDefRegistry>>,
-    weapons: Option<Res<WeaponRegistry>>,
+    shared: SharedRegistries,
     mut prefab: PrefabParams,
     mut gang: GangParams,
     mut armor_mode: ArmorParams,
@@ -100,6 +95,7 @@ pub(crate) fn editor_egui_ui(
     mut sprite_mode: SpriteParams,
     mut attachment_mode: AttachmentParams,
     mut weapon_mode: WeaponParams,
+    mut melee_weapon_mode: MeleeWeaponParams,
 ) -> Result {
     let (Some(mut mode), Some(mut session), Some(mut terrain_draft), Some(mut theme_draft)) =
         (mode, session, terrain_draft, theme_draft)
@@ -116,15 +112,16 @@ pub(crate) fn editor_egui_ui(
     run_form_syncs(
         *mode,
         &session,
-        themes.as_deref(),
+        shared.themes.as_deref(),
         &mut theme_draft,
         ModeSyncBundles {
-            gang:       &mut gang,
-            armor:      &mut armor_mode,
-            injury:     &mut injury_mode,
-            sprite:     &mut sprite_mode,
-            attachment: &mut attachment_mode,
-            weapon:     &mut weapon_mode,
+            gang:         &mut gang,
+            armor:        &mut armor_mode,
+            injury:       &mut injury_mode,
+            sprite:       &mut sprite_mode,
+            attachment:   &mut attachment_mode,
+            weapon:       &mut weapon_mode,
+            melee_weapon: &mut melee_weapon_mode,
         },
     );
 
@@ -144,7 +141,7 @@ pub(crate) fn editor_egui_ui(
             .layer_id(egui::LayerId::background())
             .max_rect(ctx.viewport_rect()),
     );
-    let options = theme_options(themes.as_deref());
+    let options = theme_options(shared.themes.as_deref());
 
     // 1. TOP — mode tabs (left) + the global theme `ComboBox` (right). Full-width bars are declared
     //    FIRST so they span edge-to-edge; the side panels then fit between them.
@@ -152,13 +149,13 @@ pub(crate) fn editor_egui_ui(
         ui.horizontal(|ui| {
             mode_tabs(ui, &mut mode);
             ui.separator();
-            theme_combo_box(ui, &options, themes.as_deref(), &mut session);
+            theme_combo_box(ui, &options, shared.themes.as_deref(), &mut session);
         });
     });
 
     // 2. BOTTOM — the status line.
     egui::Panel::bottom("editor_status_bar").show(&mut viewport_ui, |ui| {
-        ui.label(status_line(*mode, &session, themes.as_deref()));
+        ui.label(status_line(*mode, &session, shared.themes.as_deref()));
     });
 
     // 3. LEFT — the palette / stats region. In TERRAIN mode (GTW-534 C2) it now hosts the DEMOTED
@@ -171,29 +168,30 @@ pub(crate) fn editor_egui_ui(
             terrain_form_ui::ron_preview(ui, &terrain_draft);
         }
         EditorMode::Theme => {
-            theme_form_ui::stats_panel(ui, &theme_draft, terrain_registry.as_deref());
+            theme_form_ui::stats_panel(ui, &theme_draft, shared.terrain.as_deref());
         }
         EditorMode::Prefab => {
             palette_ui::palette_panel(
                 ui,
                 &mut session,
-                themes.as_deref(),
-                terrain_registry.as_deref(),
+                shared.themes.as_deref(),
+                shared.terrain.as_deref(),
                 sprite_mode.registry.as_deref(),
                 &textures.sprites,
             );
         }
-        // GANG / ARMOR / INJURY / SPRITE / ATTACHMENT / WEAPON modes keep this
+        // GANG / ARMOR / INJURY / SPRITE / ATTACHMENT / WEAPON / MELEE modes keep this
         // secondary strip intentionally idle (GTW-636 / GTW-479 / GTW-654 / GTW-664 /
-        // GTW-669 / GTW-670): the member list / piece grid / def editors are the
-        // central primary focus and the form controls live in the right panel, so
+        // GTW-669 / GTW-670 / GTW-671): the member list / piece grid / def editors are
+        // the central primary focus and the form controls live in the right panel, so
         // nothing competes here (the TERRAIN right-panel precedent).
         EditorMode::Gang
         | EditorMode::Armor
         | EditorMode::Injury
         | EditorMode::Sprite
         | EditorMode::Attachment
-        | EditorMode::Weapon => {}
+        | EditorMode::Weapon
+        | EditorMode::MeleeWeapon => {}
     });
 
     // 4 + 5. RIGHT (the active mode's form) then CENTRAL (the primary region, LAST —
@@ -205,9 +203,9 @@ pub(crate) fn editor_egui_ui(
         terrain_draft:    &mut terrain_draft,
         theme_draft:      &mut theme_draft,
         prefab_save_name: &mut prefab_save_name,
-        themes:           themes.as_deref(),
-        terrain_registry: terrain_registry.as_deref(),
-        weapons:          weapons.as_deref(),
+        themes:           shared.themes.as_deref(),
+        terrain_registry: shared.terrain.as_deref(),
+        weapons:          shared.weapons.as_deref(),
         textures:         &textures,
         prefab:           &mut prefab,
         gang:             &mut gang,
@@ -216,6 +214,7 @@ pub(crate) fn editor_egui_ui(
         sprite:           &mut sprite_mode,
         attachment:       &mut attachment_mode,
         weapon:           &mut weapon_mode,
+        melee_weapon:     &mut melee_weapon_mode,
     };
     right_panel(&mut viewport_ui, *mode, &mut panel_ctx);
     central_panel(&mut viewport_ui, *mode, &mut panel_ctx);

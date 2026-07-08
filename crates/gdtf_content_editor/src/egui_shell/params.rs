@@ -13,6 +13,8 @@ use gdtf_battle_sim::{
     equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
+    level::UuidThemeRegistry,
+    terrain::def::TerrainDefRegistry,
     tuning::GangerStatTuning,
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
@@ -27,10 +29,30 @@ use crate::{
     gang_form::GangDraft,
     hovered_cell::HoveredCell,
     injury_form::{InjuryDraft, WeightingDraft},
+    melee_weapon_form::MeleeWeaponDraft,
     preview::{target::PreviewTarget, view::PreviewPan},
     sprite_form::SpriteDraft,
     weapon_form::WeaponDraft,
 };
+
+/// The shell's MODE-AGNOSTIC read-only registry borrows — the theme / terrain-def /
+/// ranged-weapon registries several panels read regardless of the active mode — bundled
+/// at the GTW-671 growth point: the whole-editor egui system crossed Bevy's 16-param
+/// function-system ceiling when the MELEE bundle joined, and these three shared reads
+/// are the natural single bundle (they change together with the `Load` pass, not with
+/// any one mode). Every field is `Option` — a registry arrives only once its seam
+/// resolve (or fallback) fires (bevy-traps #1).
+#[derive(bevy::ecs::system::SystemParam)]
+pub(crate) struct SharedRegistries<'w> {
+    /// The UUID-keyed theme registry (the global theme combo + option sources + the
+    /// viewport's resolution).
+    pub(super) themes:  Option<Res<'w, UuidThemeRegistry>>,
+    /// The UUID-keyed terrain-def registry (pickers + the viewport's tile resolution).
+    pub(super) terrain: Option<Res<'w, TerrainDefRegistry>>,
+    /// The ranged-weapons registry (the TERRAIN Emplacement mounted-weapon combo + the
+    /// GANG loadout dropdowns — GTW-574).
+    pub(super) weapons: Option<Res<'w, WeaponRegistry>>,
+}
 
 /// The state-scoped PREFAB-mode model borrows the shell threads into the PREFAB panels (GTW-515).
 /// Every field is `Option` because each resource is state-scoped (inserted `OnEnter(Editing)`,
@@ -167,6 +189,26 @@ pub(crate) struct WeaponParams<'w> {
     /// The loaded ranged-weapons registry (the load `ComboBox` options + the one-shot
     /// autoload).
     pub(super) registry:    Option<Res<'w, WeaponRegistry>>,
+    /// The loaded attachment registry — the `attachments:` key combos' option source.
+    pub(super) attachments: Option<Res<'w, AttachmentRegistry>>,
+}
+
+/// The MELEE-WEAPON-mode model borrows the shell threads into the MELEE panels
+/// (GTW-671) — the [`WeaponParams`] pattern. Every field is `Option` — the draft is
+/// state-scoped (bevy-traps #1) and the registries arrive with the `Load` pass — so
+/// the other modes tolerate their absence and MELEE mode no-ops until they exist. The
+/// attachment registry rides here TOO (the [`WeaponParams::attachments`] precedent;
+/// both are read-only `Res`): it is the option source of the melee weapon's
+/// `attachments:` key combos, which is what makes a dangling key UNAUTHORABLE via the
+/// form (GTW-671 C2).
+#[derive(bevy::ecs::system::SystemParam)]
+pub(crate) struct MeleeWeaponParams<'w> {
+    /// The editable melee-weapon working model (the form writes it; the save projects
+    /// it).
+    pub(super) draft:       Option<ResMut<'w, MeleeWeaponDraft>>,
+    /// The loaded melee-weapons registry (the load `ComboBox` options + the one-shot
+    /// autoload).
+    pub(super) registry:    Option<Res<'w, MeleeWeaponRegistry>>,
     /// The loaded attachment registry — the `attachments:` key combos' option source.
     pub(super) attachments: Option<Res<'w, AttachmentRegistry>>,
 }

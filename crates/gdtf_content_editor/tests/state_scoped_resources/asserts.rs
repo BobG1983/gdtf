@@ -6,11 +6,11 @@ use bevy::prelude::*;
 use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_content_editor::{
     ArmorDraft, AttachmentDraft, CanvasZoom, CurrentEditLevel, EditorMap, EditorMode, GangDraft,
-    HoveredCell, InjuryDraft, MapEditorSession, PreviewPan, SpriteDraft, TerrainDraft, ThemeDraft,
-    WeaponDraft, WeightingDraft,
+    HoveredCell, InjuryDraft, MapEditorSession, MeleeWeaponDraft, PreviewPan, SpriteDraft,
+    TerrainDraft, ThemeDraft, WeaponDraft, WeightingDraft,
 };
 
-/// Asserts every one of the eighteen `Editing`-scoped model resources is absent.
+/// Asserts every one of the nineteen `Editing`-scoped model resources is absent.
 pub(crate) fn assert_all_scoped_resources_absent(app: &App, when: &str) {
     let world = app.world();
     assert!(
@@ -84,6 +84,10 @@ pub(crate) fn assert_all_scoped_resources_absent(app: &App, when: &str) {
     assert!(
         world.get_resource::<WeaponDraft>().is_none(),
         "WeaponDraft {when}"
+    );
+    assert!(
+        world.get_resource::<MeleeWeaponDraft>().is_none(),
+        "MeleeWeaponDraft {when}"
     );
 }
 
@@ -173,15 +177,20 @@ pub(crate) fn assert_all_scoped_resources_seeded(app: &App) {
         Some(&WeaponDraft::default()),
         "WeaponDraft seeds to the pristine autoload-pending form (GTW-670)",
     );
+    assert_eq!(
+        world.get_resource::<MeleeWeaponDraft>(),
+        Some(&MeleeWeaponDraft::default()),
+        "MeleeWeaponDraft seeds to the pristine autoload-pending form (GTW-671)",
+    );
     assert_minted_seeds(world);
 }
 
 /// The two seeds whole-value equality cannot pin, asserted field by field —
 /// split out of [`assert_all_scoped_resources_seeded`] purely for the
 /// `too_many_lines` band as the fifteenth resource joined (GTW-654; the
-/// sixteenth through eighteenth — GTW-664's `SpriteDraft`, GTW-669's
-/// `AttachmentDraft`, and GTW-670's `WeaponDraft` — pin by whole-value
-/// equality above).
+/// sixteenth through nineteenth — GTW-664's `SpriteDraft`, GTW-669's
+/// `AttachmentDraft`, GTW-670's `WeaponDraft`, and GTW-671's
+/// `MeleeWeaponDraft` — pin by whole-value equality above).
 fn assert_minted_seeds(world: &World) {
     // ThemeDraft's seed (`ThemeDraft::default` -> `new_theme`) MINTS a fresh
     // `ThemeUuid` per entry by design (GTW-475 C4), so whole-value equality

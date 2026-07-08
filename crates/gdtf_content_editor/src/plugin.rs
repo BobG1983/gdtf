@@ -43,6 +43,7 @@ use crate::{
     hovered_cell::HoveredCell,
     injury_form::{InjuryDraft, WeightingDraft},
     load::register_load,
+    melee_weapon_form::MeleeWeaponDraft,
     mode::{EditorMode, mode_hotkeys},
     preview::{register_preview, view::PreviewPan},
     right_panel::seed_default_theme,
@@ -103,7 +104,7 @@ impl Plugin for MapEditorPlugin {
 
         app.add_systems(OnEnter(EditorState::Editing), spawn_editor_camera);
 
-        // GTW-575: the eighteen `Editing`-scoped MODEL resources register their whole
+        // GTW-575: the nineteen `Editing`-scoped MODEL resources register their whole
         // OnEnter-insert + OnExit-remove lifecycle through ONE
         // `init_state_scoped_resource` call each (bevy-traps #1 via the shared
         // `gdtf_state_scoped` seam) — same `OnEnter(Editing)` / `OnExit(Editing)`
@@ -162,6 +163,11 @@ impl Plugin for MapEditorPlugin {
         // resolved GTW-257 WeaponRegistry on the first Weapon-mode frame — the
         // Gang/Armor/Attachment parity).
         app.init_state_scoped_resource(EditorState::Editing, WeaponDraft::default);
+        // The MELEE-WEAPON-mode authoring draft (GTW-671), a pristine form whose
+        // one-shot open-with-a-weapon autoload is still pending (the shell seeds it
+        // from the resolved GTW-505 MeleeWeaponRegistry on the first MeleeWeapon-mode
+        // frame — the Weapon parity).
+        app.init_state_scoped_resource(EditorState::Editing, MeleeWeaponDraft::default);
         // GTW-512 C1.5: the hovered-cell model the live egui hover + the QA capture
         // write, seeded empty (nothing hovered).
         app.init_state_scoped_resource(EditorState::Editing, HoveredCell::new);

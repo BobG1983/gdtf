@@ -11,8 +11,8 @@
 //! ## GTW-513 C2.4: capture mode-force
 //!
 //! A second, optional env var — `GDTF_EDITOR_MODE` (`terrain` | `theme` | `prefab` | `gang` |
-//! `armor` | `injury` | `sprite` | `attachment` | `weapon`, case-insensitive) — FORCES the
-//! [`EditorMode`](crate::EditorMode) before the settle / screenshot,
+//! `armor` | `injury` | `sprite` | `attachment` | `weapon` | `melee_weapon`, case-insensitive) —
+//! FORCES the [`EditorMode`](crate::EditorMode) before the settle / screenshot,
 //! so a QA run can capture a SPECIFIC Workbench mode (e.g. the TERRAIN form). It is honored ONLY
 //! when the capture affordance itself is enabled (`GDTF_EDITOR_SHOT` set); unset or an unrecognized
 //! value keeps the editor's default mode (the pre-C2.4 behavior). Example:
@@ -51,6 +51,17 @@
 //! that resolves nothing) keeps the mode's sorted-first autoload. Honored only when the
 //! capture affordance is enabled. Example:
 //! `GDTF_EDITOR_SHOT=/abs/weapon.png GDTF_EDITOR_MODE=weapon GDTF_EDITOR_WEAPON=heavy_bolter cargo run -p gdtf_content_editor_bin`.
+//!
+//! ## GTW-671: MELEE named-weapon pre-load
+//!
+//! A further optional env var — `GDTF_EDITOR_MELEE_WEAPON` (a registry key / file stem, e.g.
+//! `chainsword`) — pre-loads the NAMED melee weapon into the live
+//! [`MeleeWeaponDraft`](crate::MeleeWeaponDraft) through the SAME `load_melee_weapon` path the
+//! MELEE mode's load `ComboBox` commits, so QA can capture a SPECIFIC melee weapon's full spec
+//! form (the GTW-670 `ForcedWeapon` precedent — egui combo closures never run headless). Unset
+//! (or a key that resolves nothing) keeps the mode's sorted-first autoload. Honored only when
+//! the capture affordance is enabled. Example:
+//! `GDTF_EDITOR_SHOT=/abs/melee.png GDTF_EDITOR_MODE=melee_weapon GDTF_EDITOR_MELEE_WEAPON=chainsword cargo run -p gdtf_content_editor_bin`.
 //!
 //! ## GTW-515 C4.11: PREFAB capture + zoom-applied variant
 //!

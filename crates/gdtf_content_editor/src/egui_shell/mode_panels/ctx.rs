@@ -19,8 +19,8 @@ use gdtf_battle_sim::{
 use crate::{
     egui_shell::{
         params::{
-            ArmorParams, AttachmentParams, GangParams, InjuryParams, PrefabParams, SpriteParams,
-            WeaponParams,
+            ArmorParams, AttachmentParams, GangParams, InjuryParams, MeleeWeaponParams,
+            PrefabParams, SpriteParams, WeaponParams,
         },
         textures::ResolvedTextures,
     },
@@ -48,6 +48,7 @@ pub(in crate::egui_shell) struct ModePanelsCtx<
     'ss,
     'attach,
     'weapon,
+    'melee,
 > {
     /// The shared authoring session (theme / grid / selected tile) — mutated by the
     /// PREFAB controls, read by the TERRAIN primary panel and the viewport.
@@ -82,4 +83,6 @@ pub(in crate::egui_shell) struct ModePanelsCtx<
     pub(in crate::egui_shell) attachment:       &'a mut AttachmentParams<'attach>,
     /// The WEAPON-mode model borrows (GTW-670).
     pub(in crate::egui_shell) weapon:           &'a mut WeaponParams<'weapon>,
+    /// The MELEE-WEAPON-mode model borrows (GTW-671).
+    pub(in crate::egui_shell) melee_weapon:     &'a mut MeleeWeaponParams<'melee>,
 }

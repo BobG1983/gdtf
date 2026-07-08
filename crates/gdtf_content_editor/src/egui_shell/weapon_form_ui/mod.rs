@@ -7,10 +7,13 @@
 //! lives in [`fields`]; the CENTRAL primary panel — the full 18-field
 //! [`WeaponSpec`](gdtf_battle_sim::weapon::WeaponSpec) editor in collapsible sections
 //! (GTW-670 C2) — is the [`def_panel`] skeleton over the per-concern section bodies:
-//! [`stats`] (the seven scalars + the handling combos/tags + the magazine pair),
-//! [`lists`] (fire modes via the SHARED
-//! [`fire_mode_edit`](super::fire_mode_edit) widget, slots, and registry-sourced
-//! attachment keys), and [`optionals`] (the enable-gated dot / on-death sub-forms).
+//! [`stats`] (the ranged ballistics scalars + the handling combo/tags + the magazine
+//! pair), [`lists`] (fire modes via the SHARED
+//! [`fire_mode_edit`](super::fire_mode_edit) widget), and [`optionals`] (the
+//! enable-gated dot / on-death sub-forms) — plus, since GTW-671, the SHARED
+//! [`damage_edit`](super::damage_edit) group (the six fields the melee spec shares
+//! verbatim) and the SHARED [`slots_edit`](super::slots_edit) slot / attachment lists
+//! both weapon forms draw.
 
 mod autoload;
 mod def_panel;

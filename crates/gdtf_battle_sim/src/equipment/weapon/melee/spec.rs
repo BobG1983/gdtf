@@ -4,7 +4,7 @@
 //! [`MeleeWeaponBundle`] (GTW-505, child GTW-37a of the GTW-37 melee epic).
 
 use bevy::reflect::TypePath;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{FightMode, MeleeDamageProfile, MeleeWeaponBundle, Reach};
 use crate::{
@@ -37,13 +37,15 @@ use crate::{
 /// pinned by tests (the brittle-test rule). The [`Reach`] field is
 /// `#[serde(default)]` — an omitted `reach:` falls back to [`Reach::DEFAULT`] (`1`), so
 /// the first-slice "Reach default 1" ruling holds for a weapon that does not author it.
-/// Derives [`Deserialize`] so the loose `.ron` parses, and [`TypePath`] because the
-/// `RonAsset<MeleeWeaponSpec>` the loader wraps it in requires its payload to be
+/// Derives [`Deserialize`] so the loose `.ron` parses, [`Serialize`] so the editor's
+/// MELEE mode (GTW-671) saves a `.melee_weapon.ron` in the same schema it loads (every
+/// field type already round-trips — the GTW-670 ranged sweep), and [`TypePath`] because
+/// the `RonAsset<MeleeWeaponSpec>` the loader wraps it in requires its payload to be
 /// [`TypePath`] (the same bound [`WeaponSpec`](super::super::WeaponSpec) satisfies).
 ///
 /// **Not `Copy`** — it owns a [`FightMode`] (which holds a `Vec`); it is `Clone`, so
 /// the registry can hold specs BY VALUE.
-#[derive(Debug, Clone, PartialEq, Deserialize, TypePath)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TypePath)]
 pub struct MeleeWeaponSpec {
     /// The base damage a strike deals before armor (`damage`) — the shared ranged newtype.
     pub damage:      WeaponDamage,

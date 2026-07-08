@@ -8,7 +8,7 @@ use bevy_egui::egui;
 use super::ctx::ModePanelsCtx;
 use crate::{
     egui_shell::{
-        armor_form_ui, attachment_form_ui, gang_form_ui, injury_form_ui,
+        armor_form_ui, attachment_form_ui, gang_form_ui, injury_form_ui, melee_weapon_form_ui,
         prefab::{viewport_ui, viewport_ui::ViewportCtx},
         sprite_form_ui, terrain_form_ui, theme_form_ui, weapon_form_ui,
     },
@@ -20,12 +20,12 @@ use crate::{
 /// (GTW-516) + the terrain stat field stack. In THEME mode (GTW-530 C1/C2) the terrain
 /// multi-select library with per-row sprite thumbnails. In PREFAB mode (GTW-515 C4) the
 /// render-to-texture viewport (click-to-paint + hover ghost + wheel-zoom + right-drag
-/// pan). The GANG / ARMOR / INJURY / SPRITE / ATTACHMENT / WEAPON modes host their full
-/// def editors here (each mode's `*_form_ui` primary panel).
+/// pan). The GANG / ARMOR / INJURY / SPRITE / ATTACHMENT / WEAPON / MELEE modes host
+/// their full def editors here (each mode's `*_form_ui` primary panel).
 pub(in crate::egui_shell) fn central_panel(
     viewport_ui: &mut egui::Ui,
     mode: EditorMode,
-    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
+    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
 ) {
     egui::CentralPanel::default().show(viewport_ui, |ui| match mode {
         EditorMode::Terrain => {
@@ -132,6 +132,24 @@ pub(in crate::egui_shell) fn central_panel(
                     }
                 });
         }
+        // GTW-671: the full MeleeWeaponSpec editor is the MELEE mode's PRIMARY focus —
+        // the collapsible-section stack (the SHARED damage group / handling / fight
+        // modes / slots / attachments) in one scroll area over the draft's sim record
+        // (the weapon scroll-stack shape), with the GTW-619 attachment registry as the
+        // key combos' option source.
+        EditorMode::MeleeWeapon => {
+            egui::ScrollArea::vertical()
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    if let Some(draft) = ctx.melee_weapon.draft.as_deref_mut() {
+                        melee_weapon_form_ui::def_panel(
+                            ui,
+                            draft,
+                            ctx.melee_weapon.attachments.as_deref(),
+                        );
+                    }
+                });
+        }
     });
 }
 
@@ -141,7 +159,7 @@ pub(in crate::egui_shell) fn central_panel(
 /// purely for the `too_many_lines` band as the WEAPON arm joined (GTW-670).
 fn prefab_viewport(
     ui: &mut egui::Ui,
-    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
+    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
 ) {
     if let (Some(map), Some(edit_level), Some(hovered), Some(zoom), Some(pan)) = (
         ctx.prefab.map.as_deref_mut(),

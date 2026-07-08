@@ -8,8 +8,8 @@ use bevy_egui::egui;
 use super::ctx::ModePanelsCtx;
 use crate::{
     egui_shell::{
-        armor_form_ui, attachment_form_ui, gang_form_ui, injury_form_ui, prefab::controls_ui,
-        sprite_form_ui, theme_form_ui, weapon_form_ui,
+        armor_form_ui, attachment_form_ui, gang_form_ui, injury_form_ui, melee_weapon_form_ui,
+        prefab::controls_ui, sprite_form_ui, theme_form_ui, weapon_form_ui,
     },
     mode::EditorMode,
 };
@@ -19,12 +19,12 @@ use crate::{
 /// (GTW-534 C1 folded its picker + field stack into the CENTRAL primary region); THEME
 /// is the real form (GTW-514); PREFAB the real controls (GTW-515) — the grid-size
 /// fields, the GTW-595 level rail, and the debug Save; the GANG / ARMOR / INJURY /
-/// SPRITE / ATTACHMENT / WEAPON modes each draw their `fields.rs` stack (load / name /
-/// New / debug Save).
+/// SPRITE / ATTACHMENT / WEAPON / MELEE modes each draw their `fields.rs` stack (load /
+/// name / New / debug Save).
 pub(in crate::egui_shell) fn right_panel(
     viewport_ui: &mut egui::Ui,
     mode: EditorMode,
-    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
+    ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,
 ) {
     egui::Panel::right("editor_mode_form").show(viewport_ui, |ui| match mode {
         // TERRAIN's controls are central now (GTW-534 C1); the right panel is
@@ -89,6 +89,13 @@ pub(in crate::egui_shell) fn right_panel(
         EditorMode::Weapon => {
             if let Some(draft) = ctx.weapon.draft.as_deref_mut() {
                 weapon_form_ui::field_stack(ui, draft, ctx.weapon.registry.as_deref());
+            }
+        }
+        // GTW-671: load / name / New melee weapon / debug Save — the Weapon field-stack
+        // parity over the melee draft + the GTW-505 registry.
+        EditorMode::MeleeWeapon => {
+            if let Some(draft) = ctx.melee_weapon.draft.as_deref_mut() {
+                melee_weapon_form_ui::field_stack(ui, draft, ctx.melee_weapon.registry.as_deref());
             }
         }
     });

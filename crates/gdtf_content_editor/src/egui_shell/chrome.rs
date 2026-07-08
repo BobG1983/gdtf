@@ -14,7 +14,7 @@ const NO_THEME: &str = "—";
 
 /// Draw ONE mode tab per Workbench mode as egui
 /// [`selectable_value`](egui::Ui::selectable_value)s over the [`EditorMode`] resource — a click
-/// sets the mode in place (the `1`–`9` number hotkeys do the same via
+/// sets the mode in place (the `1`–`9` + `0` number hotkeys do the same via
 /// [`mode_hotkeys`](crate::mode::mode_hotkeys)). The tab ORDER is [`EditorMode::TAB_ORDER`] and
 /// each label is [`EditorMode::tab_label`], so a new mode variant joins the bar with no edit
 /// here (the roster was hand-enumerated in this doc until GTW-670 — it had already drifted).

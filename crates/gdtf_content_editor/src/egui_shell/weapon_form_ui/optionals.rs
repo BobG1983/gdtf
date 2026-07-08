@@ -17,8 +17,10 @@ use gdtf_battle_sim::{
     weapon::{DotDamage, DotProfile, HitType, WeaponSpec},
 };
 
-use super::stats::damage_type_combo;
-use crate::{egui_shell::fire_mode_edit, weapon_form::dot_turns_from_raw};
+use crate::{
+    egui_shell::{damage_edit::damage_type_combo, fire_mode_edit},
+    weapon_form::dot_turns_from_raw,
+};
 
 /// The DOT sub-form — the enable checkbox toggling the authored
 /// `Option<DotProfile>`, then the per-turn damage drag (the `u16` type's own range),

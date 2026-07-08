@@ -94,6 +94,12 @@ mod hovered_cell;
 // mode/form precedent).
 mod injury_form;
 mod load;
+// GTW-671: the MELEE-WEAPON authoring mode of the Workbench — the form that edits a
+// full MeleeWeaponSpec (the shared damage group, reach, fight modes, shove, slots,
+// attachments) and saves it to `content/weapons/melee/<name>.melee_weapon.ron` where
+// the GTW-505/570 MeleeWeaponsFamily loader reads (the GTW-670 Weapon mode/form
+// precedent — the last GTW-478 child).
+mod melee_weapon_form;
 // GTW-474: the Workbench mode machine (the EditorMode resource) — GTW-512 trimmed it to the enum +
 // the `1`/`2`/`3` hotkeys (the egui shell draws the tabs + branches the right panel in-UI).
 mod mode;
@@ -207,6 +213,19 @@ pub use injury_form::{
 // wrappers are the production Save-button paths (WORKSPACE_ASSETS_ROOT).
 #[cfg(debug_assertions)]
 pub use injury_form::{write_injury, write_injury_in, write_weighting, write_weighting_in};
+// GTW-671: the MELEE-WEAPON-mode model + the pure save halves — exported so the
+// round-trip tests drive the REAL projection / path resolution / write (the TempDir
+// round-trip through the actual MeleeWeaponsFamily loader) and the headless lifecycle
+// test asserts the scoped draft (the GTW-636/GTW-479/GTW-670 export precedent).
+pub use melee_weapon_form::{
+    MeleeWeaponDraft, draft_to_melee_weapon_spec, melee_weapon_file_name, melee_weapon_save_path_in,
+};
+// The debug-only MELEE-WEAPON fs-write surface (the terrain/theme/gang/armor/sprite/
+// attachment/weapon write precedent): `write_melee_weapon_in` is the root-parameterized
+// core tests aim at a `TempDir`; `write_melee_weapon` is the production wrapper
+// (WORKSPACE_ASSETS_ROOT).
+#[cfg(debug_assertions)]
+pub use melee_weapon_form::{write_melee_weapon, write_melee_weapon_in};
 // GTW-512: only the `EditorMode` enum survives the egui swap (the `bevy_ui` tab / content markers
 // are gone — the egui shell draws the tabs + branches the right panel in-UI).
 pub use mode::EditorMode;

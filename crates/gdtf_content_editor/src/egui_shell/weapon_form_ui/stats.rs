@@ -1,6 +1,9 @@
-//! The WEAPON form's STATS / HANDLING / MAGAZINE groups (GTW-670 C2) — the seven
-//! ballistics/damage scalar drags, the three closed-vocabulary combos plus the two
-//! boolean tags, and the authored magazine pair.
+//! The WEAPON form's STATS / HANDLING / MAGAZINE groups (GTW-670 C2) — the three
+//! ranged-only ballistics scalar drags, the trajectory combo plus the two boolean tags,
+//! and the authored magazine pair. The six SHARED damage-group fields (`damage` /
+//! `punch` / `shred` / `damage_type` / `fatal_bias` / `handedness`) moved to the shared
+//! [`damage_edit`](crate::egui_shell::damage_edit) widget the melee form consumes too
+//! (GTW-671 C2 — one source, never a fork); the generic scalar drags ride with it.
 //!
 //! NO drag clamp is invented (the GTW-479 ruling, restated by the shared
 //! `fire_mode_edit` widget): every weapon scalar's magnitude is documented tuning-open
@@ -12,24 +15,21 @@ use bevy_egui::egui;
 use gdtf_battle_sim::{
     magazine::ReloadTu,
     weapon::{
-        Accuracy, BaseSpread, DamageType, FatalBias, Handedness, Kickback, MagazineSize, Shove,
-        Stable, TrajectoryStyle, WeaponDamage, WeaponPunch, WeaponShred, WeaponSpec,
+        Accuracy, BaseSpread, Kickback, MagazineSize, Shove, Stable, TrajectoryStyle, WeaponSpec,
     },
 };
 
-/// The two closed [`Handedness`] variants the combo offers, in the sim's declaration
-/// order (GTW-443 — the hand-count vocabulary).
-const HANDEDNESS_OPTIONS: [Handedness; 2] = [Handedness::OneHanded, Handedness::TwoHanded];
+use crate::egui_shell::damage_edit::drag_f32;
 
 /// The two closed [`TrajectoryStyle`] variants the combo offers, in the sim's
 /// declaration order (GTW-546 — flat ray vs lobbed arc).
 const TRAJECTORY_OPTIONS: [TrajectoryStyle; 2] = [TrajectoryStyle::Straight, TrajectoryStyle::Arc];
 
-/// The STATS group — the seven scalar drags (`base_spread` / `accuracy` / `kickback` /
-/// `fatal_bias` / `damage` / `punch` / `shred`), each folding through its sim newtype's
-/// constructor (GTW-670 C2). The floats carry NO documented bounds (tuning-open — the
-/// GTW-479 ruling), so no clamp is invented; the signed damage triple spans the honest
-/// `i32` the per-hit formula subtracts with.
+/// The STATS group — the three RANGED-ONLY ballistics scalar drags (`base_spread` /
+/// `accuracy` / `kickback`), each folding through its sim newtype's constructor
+/// (GTW-670 C2). The floats carry NO documented bounds (tuning-open — the GTW-479
+/// ruling), so no clamp is invented. The four shared damage scalars draw in the
+/// [`damage_edit`](crate::egui_shell::damage_edit) group since GTW-671.
 pub(super) fn stats_group(ui: &mut egui::Ui, spec: &mut WeaponSpec) {
     drag_f32(ui, "base_spread", 0.01, *spec.base_spread, |v| {
         spec.base_spread = BaseSpread::new(v);
@@ -40,35 +40,13 @@ pub(super) fn stats_group(ui: &mut egui::Ui, spec: &mut WeaponSpec) {
     drag_f32(ui, "kickback", 0.01, *spec.kickback, |v| {
         spec.kickback = Kickback::new(v);
     });
-    drag_f32(ui, "fatal_bias", 0.05, *spec.fatal_bias, |v| {
-        spec.fatal_bias = FatalBias::new(v);
-    });
-    drag_i32(ui, "damage", *spec.damage, |v| {
-        spec.damage = WeaponDamage::new(v);
-    });
-    drag_i32(ui, "punch", *spec.punch, |v| {
-        spec.punch = WeaponPunch::new(v);
-    });
-    drag_i32(ui, "shred", *spec.shred, |v| {
-        spec.shred = WeaponShred::new(v);
-    });
 }
 
-/// The HANDLING group — the three closed-vocabulary combos (`damage_type` /
-/// `handedness` / `trajectory`) plus the two boolean weapon tags (`stable` / `shove`),
-/// each committed straight into the sim record (GTW-670 C2).
+/// The HANDLING group — the RANGED-ONLY trajectory combo plus the two boolean weapon
+/// tags (`stable` / `shove`), each committed straight into the sim record (GTW-670 C2).
+/// The `damage_type` / `handedness` combos draw in the shared
+/// [`damage_edit`](crate::egui_shell::damage_edit) group since GTW-671.
 pub(super) fn handling_group(ui: &mut egui::Ui, spec: &mut WeaponSpec) {
-    damage_type_combo(ui, "weapon_damage_type", &mut spec.damage_type);
-    ui.horizontal(|ui| {
-        ui.label("handedness");
-        egui::ComboBox::from_id_salt("weapon_handedness")
-            .selected_text(format!("{:?}", spec.handedness))
-            .show_ui(ui, |ui| {
-                for option in HANDEDNESS_OPTIONS {
-                    ui.selectable_value(&mut spec.handedness, option, format!("{option:?}"));
-                }
-            });
-    });
     ui.horizontal(|ui| {
         ui.label("trajectory");
         egui::ComboBox::from_id_salt("weapon_trajectory")
@@ -110,56 +88,6 @@ pub(super) fn magazine_group(ui: &mut egui::Ui, spec: &mut WeaponSpec) {
         let mut reload = *spec.magazine.reload_tu;
         if ui.add(egui::DragValue::new(&mut reload)).changed() {
             spec.magazine.reload_tu = ReloadTu::new(reload);
-        }
-    });
-}
-
-/// A labelled [`DamageType`] combo over the seven wheel nodes in the sim's canonical
-/// [`DamageType::ALL`] order (the attachment form's convention: debug-formatted labels
-/// ARE the authored RON identifiers). Shared by the HANDLING group and the DOT sub-form
-/// (distinct salts).
-pub(super) fn damage_type_combo(ui: &mut egui::Ui, salt: &'static str, ty: &mut DamageType) {
-    ui.horizontal(|ui| {
-        ui.label("damage_type");
-        egui::ComboBox::from_id_salt(salt)
-            .selected_text(format!("{ty:?}"))
-            .show_ui(ui, |ui| {
-                for option in DamageType::ALL {
-                    ui.selectable_value(ty, option, format!("{option:?}"));
-                }
-            });
-    });
-}
-
-/// A labelled `f32` stat drag on its own row, committing through `commit` only on a
-/// change (the attachment payload-drag shape — the stats group has four float fields).
-pub(super) fn drag_f32(
-    ui: &mut egui::Ui,
-    label: &str,
-    speed: f64,
-    value: f32,
-    commit: impl FnOnce(f32),
-) {
-    ui.horizontal(|ui| {
-        ui.label(label);
-        let mut edited = value;
-        if ui
-            .add(egui::DragValue::new(&mut edited).speed(speed))
-            .changed()
-        {
-            commit(edited);
-        }
-    });
-}
-
-/// A labelled `i32` stat drag — the signed-magnitude twin of [`drag_f32`] (damage /
-/// punch / shred share the sim's honest-signed `i32`).
-pub(super) fn drag_i32(ui: &mut egui::Ui, label: &str, value: i32, commit: impl FnOnce(i32)) {
-    ui.horizontal(|ui| {
-        ui.label(label);
-        let mut edited = value;
-        if ui.add(egui::DragValue::new(&mut edited)).changed() {
-            commit(edited);
         }
     });
 }

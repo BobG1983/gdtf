@@ -1,10 +1,10 @@
-//! GTW-575 headless integration test: the editor's eighteen `Editing`-scoped MODEL
+//! GTW-575 headless integration test: the editor's nineteen `Editing`-scoped MODEL
 //! resources (the GTW-636 `GangDraft`, the GTW-479 `ArmorDraft`, the GTW-654
 //! `InjuryDraft` + `WeightingDraft`, the GTW-664 `SpriteDraft`, the GTW-669
-//! `AttachmentDraft`, the GTW-670 `WeaponDraft`, and the GTW-594 `IsolateView`
-//! included) ride the shared `gdtf_state_scoped` seam with their EXACT lifecycle —
-//! absent in `Load`, inserted `OnEnter(Editing)` with the registered seed values, and
-//! removed `OnExit(Editing)`.
+//! `AttachmentDraft`, the GTW-670 `WeaponDraft`, the GTW-671 `MeleeWeaponDraft`, and
+//! the GTW-594 `IsolateView` included) ride the shared `gdtf_state_scoped` seam with
+//! their EXACT lifecycle — absent in `Load`, inserted `OnEnter(Editing)` with the
+//! registered seed values, and removed `OnExit(Editing)`.
 //!
 //! Drives the REAL [`MapEditorPlugin`] on the no-renderer `DefaultPlugins` UI
 //! harness (the `egui_shell.rs` recipe): the editor's actual `Load` pass
