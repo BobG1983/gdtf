@@ -46,10 +46,12 @@ cargo dbuild
 cargo doc --workspace --no-deps
 ```
 
-`dclippy` / `dtest` / `dbuild` expand to the full `--workspace --all-targets --features
-grimdark_turfwar/dynamic_linking` forms; `dbuild` (`build -p grimdark_turfwar --features
-dynamic_linking`) builds+links the actual binary, which `clippy`/`test` never do — so it's the only
-step that catches an `unreachable_pub`/link error in the `grimdark_turfwar` binary. Dynamic linking
+Per `.cargo/config.toml`: `dclippy` = `clippy --workspace --all-targets --features
+grimdark_turfwar/dynamic_linking`, `dtest` = `test --workspace --features
+grimdark_turfwar/dynamic_linking`, `dbuild` = `build -p grimdark_turfwar --features
+dynamic_linking,file_watcher` (`drun` = the same with `run`); `dbuild` builds+links the actual
+binary, which `clippy`/`test` never do — so it's the only step that catches an
+`unreachable_pub`/link error in the `grimdark_turfwar` binary. Dynamic linking
 keeps the dev/gate loop fast; `--all-features` is not used — it forces a second full bevy build for no
 lint gain. CI green is **static** (no `dynamic_linking`): fmt/clippy/test only — the release-binary
 build (`cargo build -p grimdark_turfwar --release`) is deferred to packaging, not a CI gate.

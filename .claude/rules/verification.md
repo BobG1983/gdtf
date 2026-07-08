@@ -17,7 +17,7 @@ Run from the repo root; green = ALL FIVE pass:
 cargo fmt --check
 cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
 cargo test --workspace --features grimdark_turfwar/dynamic_linking
-cargo build -p grimdark_turfwar --features dynamic_linking
+cargo build -p grimdark_turfwar --features dynamic_linking,file_watcher
 cargo doc --workspace --no-deps
 ```
 
@@ -65,9 +65,10 @@ dev/test target exhausts the CI runner's disk ("No space left on device"). When
 release artifacts are packaged, that build runs there (still static — release
 NEVER uses `dynamic_linking`). See GTW-140.
 
-NOTE: gdtf currently has ZERO tests, so `cargo test` passes trivially today.
-That is NOT red — do not invent a "nothing ran = red" rule. But every
-behavioral ticket MUST add tests on the real code path.
+NOTE: the suite is 2000+ tests across ~180 targets, but test COUNT is not the
+gate: a target that collects zero tests still passes, and that is NOT red — do
+not invent a "nothing ran = red" rule. Coverage is enforced the other way:
+every behavioral ticket MUST add tests on the real code path.
 
 ## Rules
 
@@ -84,7 +85,8 @@ behavioral ticket MUST add tests on the real code path.
    `State<…>` / the `World`. The harness exists — reading the code, or "I ran
    it and it looked right", is not verification for state-machine or system
    logic. Reserve in-engine evidence — RUN the app
-   (`cargo run -p grimdark_turfwar --features dynamic_linking`) and observe
+   (`cargo run -p grimdark_turfwar --features dynamic_linking,file_watcher`,
+   i.e. `cargo drun`) and observe
    (the app can capture its own screenshot) — for genuinely unautomatable
    checks: actual RENDERING / visual correctness, real input, font / layout.
    Those, and only those, are still **TBD (Bevy harness)** for richer
