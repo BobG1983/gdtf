@@ -42,9 +42,14 @@
 //! two-movers-one-tick geometry + the mixed eligible/ineligible tick), and the
 //! GTW-526 suppression gate pinned end-to-end on the mover surface with the no-spend
 //! halves (`suppressed_reactor`: no shot, no cap spend, no TU spend).
+//!
+//! GTW-660 extends the invariant to the EMPLACEMENT geometry (`mounted_reactor`): the
+//! reactor's gates read the SAME weapon `dispatch_fire` will fire (mounted-first), so
+//! a reactor manning an emplacement whose mount cannot fire spends nothing.
 
 mod cap;
 mod harness;
+mod mounted_reactor;
 mod spend_integrity;
 mod support;
 mod suppressed_reactor;

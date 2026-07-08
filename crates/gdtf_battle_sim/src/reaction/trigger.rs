@@ -21,9 +21,9 @@ use super::{
     snapshot::{ReactionGangers, ReactionRow, cell_order},
 };
 use crate::{
-    acts::{FireDeclaration, FireRequested, movement::ReactionShotFired},
+    acts::{FireDeclaration, FireRequested, WeaponProbes, movement::ReactionShotFired},
     cover::CoverLedger,
-    fire::{MeleeQuery, WieldsQuery},
+    fire::WieldsQuery,
     ganger::{LifeState, Position, Suppressed},
     magazine::Magazine,
     occupancy::OccupancyGrid,
@@ -79,12 +79,13 @@ use crate::{
     reason = "the trigger reads the two act-in-LOS surfaces (Changed<Position> movers + the \
               FireDeclaration buffer), the full ganger snapshot, the wielded-weapon + \
               weapon-entity queries (to resolve the reactor's single-shot spec exactly as \
-              dispatch_fire does), the melee-marker + GTW-526 suppressed-marker probes, the \
-              mutable ReactionsUsed counter, the four read grids + tuning the \
-              can_see/can_fire/can_engage gates need, the seeded ReactionRng, the GTW-542 \
-              silenced-weapon probe, and the two act MessageWriters; each is a distinct Bevy \
-              SystemParam, mirroring dispatch_fire's own argument-count carve-out — bundling \
-              would only hide the reads"
+              dispatch_fire does), the shared weapon-marker probe bundle (melee + mounted, \
+              GTW-660) + the GTW-526 suppressed-marker probe, the mutable ReactionsUsed \
+              counter, the four read grids + tuning the can_see/can_fire/can_engage gates \
+              need, the seeded ReactionRng, the GTW-542 silenced-weapon probe, and the two \
+              act MessageWriters; each is a distinct Bevy SystemParam, mirroring \
+              dispatch_fire's own argument-count carve-out — bundling would only hide the \
+              reads"
 )]
 pub fn reaction_trigger(
     // C1 surface (a): gangers whose Position CHANGED — a completed movement step. Filtered
@@ -101,10 +102,13 @@ pub fn reaction_trigger(
     // Magazine + Handedness the can_fire gate + the FireRequested need.
     wields: WieldsQuery,
     weapons: Query<(&Magazine, &FireMode, &Handedness)>,
-    // GTW-505 C5: the melee-weapon marker probe — `reactor_weapon` resolves the RANGED
-    // weapon (excluding the melee weapon the reactor also wields) so an interrupt fires the
-    // reactor's GUN, never its melee weapon (a `Query<(), With<MeleeWeapon>>`, disjoint).
-    melee: MeleeQuery,
+    // GTW-505 C5 / GTW-543 / GTW-660: the SHARED weapon-marker probe bundle (melee +
+    // mounted) backing `Wields::firing_weapon` — `reactor_weapon` resolves the SAME
+    // weapon `dispatch_fire` will fire (mounted-first, melee-excluded), so a reactor
+    // manning an emplacement is gated on the MOUNTED gun's mode / TU / magazine and an
+    // interrupt never fires the melee weapon. The same `WeaponProbes` bundle
+    // `dispatch_fire` takes (two disjoint unit-item marker probes).
+    probes: WeaponProbes,
     // GTW-526 C3: the SUPPRESSED-reactor probe — a read-only marker query so the
     // eligibility gate can skip a suppressed reactor BEFORE the interrupt roll, consuming
     // ZERO ReactionRng draws (determinism-critical: a suppressed unit must not perturb the
@@ -182,7 +186,7 @@ pub fn reaction_trigger(
         // reactor rolls against it, no ReactionRng draws). A moving shooter still reveals via
         // the Changed<Position> surface above; only the shot's noise is removed. A silenced
         // INTERRUPT shot's own FireDeclaration is gated the same way (it stays silent too).
-        if shooter_weapon_silenced(declaration.shooter, &wields, &melee, &silenced) {
+        if shooter_weapon_silenced(declaration.shooter, &wields, &probes.melee, &silenced) {
             continue;
         }
         actors.insert(declaration.shooter);
@@ -237,7 +241,7 @@ pub fn reaction_trigger(
                 &ledger,
                 &wields,
                 &weapons,
-                &melee,
+                &probes,
                 &suppressed,
                 &mut used,
                 &tuning,

@@ -177,11 +177,13 @@ pub(in crate::shot_pipeline::fire) struct ShooterReads {
 /// relating a melee weapon never regresses ranged firing.
 ///
 /// GTW-543: the resolution PREFERS a [`MountedWeapon`](crate::weapon::MountedWeapon)-marked
-/// wielded entity (the `mounted` [`MountedQuery`] probe) when present —
-/// `wields.mounted_weapon(..).or_else(|| wields.ranged_weapon(..))` — so a ganger MANNING an
+/// wielded entity (the `mounted` [`MountedQuery`] probe) when present — so a ganger MANNING an
 /// emplacement fires its bolted-down gun, and reverts to its own carried weapon when it exits
 /// (the mount edge despawned). A ganger with no mounted weapon (the common case) falls straight
-/// through to the GTW-505 ranged resolution, byte-identical to before. The
+/// through to the GTW-505 ranged resolution, byte-identical to before. GTW-660: both steps run
+/// through the ONE shared preference rule,
+/// [`Wields::firing_weapon`](crate::weapon::Wields::firing_weapon) (mounted-first,
+/// melee-excluded) — the same fn `dispatch_fire` and the reaction trigger resolve through. The
 /// [`mounted`](ShooterSnapshot::mounted) flag on the snapshot records which was resolved so the
 /// emplacement stability seam engages for a mounted shot only.
 pub(in crate::shot_pipeline::fire) fn read_shooter(
@@ -205,18 +207,20 @@ pub(in crate::shot_pipeline::fire) fn read_shooter(
     // ledger = the uninjured two-hands default) for the FireActor hand-count gate.
     let hands_available =
         injuries.map_or_else(HandsAvailable::default, InflictedInjuries::hands_available);
-    // Resolve `ganger → Wields → the RANGED weapon entity` (GTW-323 slice 2 / GTW-505
-    // C5), then read the GTW-200 weapon stats + magazine off that weapon entity (a
-    // different entity than the ganger, so the borrow is disjoint). `ranged_weapon`
-    // EXCLUDES the melee weapon the ganger also wields (the `melee` marker probe) so the
-    // melee entity is never mistaken for the gun. GTW-543: PREFER a MountedWeapon-marked
-    // wielded entity (the ganger is manning an emplacement) over its own carried gun; a ganger
-    // with no mounted weapon falls straight through to the ranged resolution.
+    // Resolve `ganger → Wields → the FIRING weapon entity` (GTW-323 slice 2), then read
+    // the GTW-200 weapon stats + magazine off that weapon entity (a different entity
+    // than the ganger, so the borrow is disjoint). The resolution is the ONE shared
+    // preference rule (`Wields::firing_weapon`, GTW-660): PREFER a MountedWeapon-marked
+    // wielded entity (the ganger is manning an emplacement, GTW-543), else the carried
+    // ranged gun EXCLUDING the melee weapon the ganger also wields (GTW-505 C5). The
+    // resolved entity is mounted-marked ONLY when the mounted-first step won (a carried
+    // gun never carries the marker), so the probe re-read recovers the `mounted` flag.
     let wielded = wields.get(shooter).ok()?;
-    let mounted_weapon = wielded.mounted_weapon(|entity| mounted.get(entity).is_ok());
-    let is_mounted = mounted_weapon.is_some();
-    let weapon =
-        mounted_weapon.or_else(|| wielded.ranged_weapon(|entity| melee.get(entity).is_ok()))?;
+    let weapon = wielded.firing_weapon(
+        |entity| mounted.get(entity).is_ok(),
+        |entity| melee.get(entity).is_ok(),
+    )?;
+    let is_mounted = mounted.get(weapon).is_ok();
     let (
         base_spread,
         accuracy,

@@ -191,4 +191,30 @@ impl Wields {
     pub fn mounted_weapon(&self, is_mounted: impl Fn(Entity) -> bool) -> Option<Entity> {
         self.iter().find(|&entity| is_mounted(entity))
     }
+
+    /// The weapon entity the RANGED-FIRING path resolves for this ganger — the ONE
+    /// owner of the fire-weapon PREFERENCE rule (GTW-660): PREFER the
+    /// [`mounted_weapon`](Wields::mounted_weapon) (the emplacement's bolted-down gun a
+    /// manning ganger fires, GTW-543), else fall back to the carried
+    /// [`ranged_weapon`](Wields::ranged_weapon) (excluding the melee weapon, GTW-505
+    /// C5); `None` when the ganger wields no ranged weapon at all.
+    ///
+    /// Every site that decides WHICH gun a ganger fires resolves through this one
+    /// function — [`dispatch_fire`](crate::acts::dispatch_fire)'s weapon read, `fire()`'s
+    /// shooter snapshot, the reaction trigger's `reactor_weapon` (so an interrupt is
+    /// gated + ledger-predicted on the SAME weapon the dispatcher will fire, GTW-660),
+    /// and the on-death fan's source resolution — the mounted-first ordering can never
+    /// diverge between an offer and its dispatch.
+    ///
+    /// `is_mounted` / `is_melee` are the same caller-injected query CLOSURES the
+    /// per-kind accessors take (the framework carve-out).
+    #[must_use]
+    pub fn firing_weapon(
+        &self,
+        is_mounted: impl Fn(Entity) -> bool,
+        is_melee: impl Fn(Entity) -> bool,
+    ) -> Option<Entity> {
+        self.mounted_weapon(is_mounted)
+            .or_else(|| self.ranged_weapon(is_melee))
+    }
 }

@@ -8,9 +8,11 @@ use super::{
     snapshot::{ReactionRow, row_cell_level},
 };
 use crate::{
-    acts::{FireArcDecision, FireRequested, decide_fire_arc, movement::ReactionShotFired},
+    acts::{
+        FireArcDecision, FireRequested, WeaponProbes, decide_fire_arc, movement::ReactionShotFired,
+    },
     cover::CoverLedger,
-    fire::{MeleeQuery, WieldsQuery},
+    fire::WieldsQuery,
     ganger::{Facing, Suppressed, Tu},
     injuries::HandsAvailable,
     los::{Observer, PeekOffset, Target, can_see},
@@ -81,11 +83,12 @@ use crate::{
 #[expect(
     clippy::too_many_arguments,
     reason = "the per-pair evaluation borrows the trigger system's own params (the \
-              wielded-weapon + weapon-entity queries, the suppressed probe, the pass's \
-              pending-spend ledger, the mutable ReactionsUsed counter, the four read grids \
-              + tuning, the seeded ReactionRng, the is_dead corpse predicate, and the two \
-              act MessageWriters); each is a distinct borrow mirroring reaction_trigger's \
-              own argument-count carve-out — bundling would only hide the reads"
+              wielded-weapon + weapon-entity queries, the weapon-marker probe bundle, the \
+              suppressed probe, the pass's pending-spend ledger, the mutable ReactionsUsed \
+              counter, the four read grids + tuning, the seeded ReactionRng, the is_dead \
+              corpse predicate, and the two act MessageWriters); each is a distinct borrow \
+              mirroring reaction_trigger's own argument-count carve-out — bundling would \
+              only hide the reads"
 )]
 pub(super) fn try_reaction(
     actor: &ReactionRow,
@@ -93,7 +96,7 @@ pub(super) fn try_reaction(
     ledger: &PendingSpendLedger,
     wields: &WieldsQuery,
     weapons: &Query<(&Magazine, &FireMode, &Handedness)>,
-    melee: &MeleeQuery,
+    probes: &WeaponProbes,
     suppressed: &Query<(), With<Suppressed>>,
     used: &mut Query<&mut ReactionsUsed>,
     tuning: &CombatTuning,
@@ -139,12 +142,13 @@ pub(super) fn try_reaction(
         return None;
     }
 
-    // Resolve the reactor's weapon EXACTLY as dispatch_fire / enemy_ai_turn do
-    // (`ganger → Wields → the weapon entity`) — the single-shot spec + Magazine +
-    // Handedness the can_fire gate + the FireRequested need. A reactor wielding no
-    // weapon (or whose weapon entity is missing) cannot react — fail closed.
+    // Resolve the reactor's weapon EXACTLY as dispatch_fire does (`ganger → Wields →
+    // the weapon entity`, mounted-first via the ONE shared preference rule — GTW-660)
+    // — the single-shot spec + Magazine + Handedness the can_fire gate + the
+    // FireRequested need. A reactor wielding no weapon (or whose weapon entity is
+    // missing) cannot react — fail closed.
     let (mode, live_magazine, handedness, weapon_entity) =
-        reactor_weapon(reactor.entity, wields, weapons, melee)?;
+        reactor_weapon(reactor.entity, wields, weapons, probes)?;
     // GTW-646: the WORKING magazine — rounds net of the shots already committed from
     // this weapon this pass, so the ammo gate below matches the dispatcher's own.
     let magazine = ledger.magazine_of(weapon_entity, live_magazine);
@@ -257,25 +261,31 @@ pub(super) fn try_reaction(
 
 /// Resolve a reactor's single-shot fire spec + magazine + handedness — AND the weapon
 /// entity they live on (the GTW-646 ledger's magazine key) — through
-/// `ganger → Wields → the weapon entity`: the EXACT traversal
-/// [`dispatch_fire`](crate::acts::dispatch_fire) / `enemy_ai_turn` use, so the interrupt
-/// shot fires the same weapon the dispatcher would (GTW-468 C9 — reuse, don't reimplement).
+/// `ganger → Wields → the weapon entity`: the EXACT resolution
+/// [`dispatch_fire`](crate::acts::dispatch_fire) runs, via the ONE shared preference
+/// rule [`Wields::firing_weapon`](crate::weapon::Wields::firing_weapon) (mounted-first,
+/// melee-excluded — GTW-660), so the interrupt is GATED on — and fires — the same
+/// weapon the dispatcher will resolve (GTW-468 C9 — reuse, don't reimplement): a
+/// reactor MANNING an emplacement is gated on the mounted gun's mode / TU / magazine,
+/// never its carried gun's.
 ///
-/// `None` when the reactor wields no weapon or its weapon entity is missing from the weapon
-/// query — the reactor then cannot react (fail closed).
+/// `None` when the reactor wields no ranged weapon or its weapon entity is missing from
+/// the weapon query — the reactor then cannot react (fail closed).
 pub(super) fn reactor_weapon(
     reactor: Entity,
     wields: &WieldsQuery,
     weapons: &Query<(&Magazine, &FireMode, &Handedness)>,
-    melee: &MeleeQuery,
+    probes: &WeaponProbes,
 ) -> Option<(crate::weapon::FireModeSpec, Magazine, Handedness, Entity)> {
-    // GTW-505 C5: resolve the RANGED weapon (excluding the melee weapon the reactor also
-    // wields) so the interrupt fires the gun, never the melee weapon — the same
-    // ranged-filtered resolution `dispatch_fire` / `fire()` use.
-    let weapon_entity = wields
-        .get(reactor)
-        .ok()
-        .and_then(|w| w.ranged_weapon(|entity| melee.get(entity).is_ok()))?;
+    // GTW-505 C5 / GTW-543 / GTW-660: the shared mounted-first, melee-excluded
+    // resolution — the interrupt fires the mount while manning, else the carried gun,
+    // never the melee weapon.
+    let weapon_entity = wields.get(reactor).ok().and_then(|w| {
+        w.firing_weapon(
+            |entity| probes.mounted.get(entity).is_ok(),
+            |entity| probes.melee.get(entity).is_ok(),
+        )
+    })?;
     let (magazine, fire_mode, handedness) = weapons.get(weapon_entity).ok()?;
     Some((fire_mode.single(), *magazine, *handedness, weapon_entity))
 }

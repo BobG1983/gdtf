@@ -70,22 +70,25 @@ impl BattleGridsParam<'_> {
     }
 }
 
-/// The two wielded-weapon MARKER probes [`dispatch_fire`](super::dispatch::dispatch_fire) resolves a shooter's PREFERRED ranged
-/// weapon through, bundled into one [`SystemParam`] so the system stays under Bevy's 16-param
-/// limit (the [`BattleGridsParam`] grouping precedent).
+/// The two wielded-weapon MARKER probes a shooter's PREFERRED ranged weapon is resolved
+/// through ([`Wields::firing_weapon`](crate::weapon::Wields::firing_weapon) — the ONE
+/// preference rule, GTW-660), bundled into one [`SystemParam`] so each consuming system
+/// stays under Bevy's 16-param limit (the [`BattleGridsParam`] grouping precedent).
 ///
 /// Both are cheap unit-item archetype-filter probes over the weapon entities: [`MeleeQuery`]
 /// (GTW-505 — EXCLUDES the ganger's melee weapon from the ranged resolution) and [`MountedQuery`]
 /// (GTW-543 — the emplacement's bolted-down gun the manning ganger PREFERS). Disjoint from the
-/// stat-reading [`WeaponQuery`](crate::fire::WeaponQuery) and each other, so no `ParamSet` is needed. `dispatch_fire`
-/// resolves the weapon as `mounted → ranged` (prefer the mount, else the carried gun) and threads
-/// both borrows into [`fire`](crate::fire::fire) (which does the same internally).
+/// stat-reading [`WeaponQuery`](crate::fire::WeaponQuery) and each other, so no `ParamSet` is needed.
+/// [`dispatch_fire`](super::dispatch::dispatch_fire) threads both borrows into
+/// [`fire`](crate::fire::fire) (which runs the same shared resolution internally); the reaction
+/// trigger takes the SAME bundle so its eligibility gates resolve the SAME weapon the dispatcher
+/// will fire (GTW-660 — hence the `pub(crate)` fields).
 #[derive(SystemParam)]
 pub struct WeaponProbes<'w, 's> {
     /// The melee-weapon marker probe (GTW-505 C5) — the ranged resolution EXCLUDES a match.
-    pub(super) melee:   MeleeQuery<'w, 's>,
+    pub(crate) melee:   MeleeQuery<'w, 's>,
     /// The mounted-weapon marker probe (GTW-543) — the ranged resolution PREFERS a match.
-    pub(super) mounted: MountedQuery<'w, 's>,
+    pub(crate) mounted: MountedQuery<'w, 's>,
 }
 
 /// The query the GTW-242 fire dispatch turns the shooter through for an out-of-arc shot —

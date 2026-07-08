@@ -153,15 +153,16 @@ pub fn dispatch_fire(
         // per-round ShotFired can carry it (pure exposure; no fire-result change). A
         // shooter wielding no weapon — or whose weapon entity is not in the weapon query
         // — fires nothing (fail-closed, the same outcome `fire()` reaches internally).
-        // GTW-505 C5: resolve the RANGED weapon (excluding the melee weapon the ganger
-        // also wields) so the ShotFired carries the GUN's DamageType, never the melee
-        // weapon's — the same ranged-filtered resolution `fire()` does internally.
-        // GTW-543: PREFER the emplacement's mounted gun (the ganger is manning it) over its own
-        // carried gun, so the ShotFired carries the MOUNTED gun's DamageType while occupied — the
-        // same mounted-preferring resolution `fire()` does internally.
+        // GTW-505 C5 / GTW-543 / GTW-660: resolve WHICH gun fires through the ONE shared
+        // preference rule (`Wields::firing_weapon` — mounted-first, melee-excluded), the
+        // same resolution `fire()` runs internally, so the ShotFired carries the FIRING
+        // gun's DamageType: the mount's while manning an emplacement, else the carried
+        // gun's, never the melee weapon's.
         let Some(weapon_entity) = wields.get(request.shooter).ok().and_then(|w| {
-            w.mounted_weapon(|entity| probes.mounted.get(entity).is_ok())
-                .or_else(|| w.ranged_weapon(|entity| probes.melee.get(entity).is_ok()))
+            w.firing_weapon(
+                |entity| probes.mounted.get(entity).is_ok(),
+                |entity| probes.melee.get(entity).is_ok(),
+            )
         }) else {
             continue;
         };

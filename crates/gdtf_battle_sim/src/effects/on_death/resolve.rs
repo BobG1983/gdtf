@@ -161,11 +161,12 @@ pub fn resolve_on_death(
                 .get(death.entity)
                 .ok()
                 .and_then(|w| {
-                    // Prefer the mounted gun the ganger is manning, else its carried ranged
-                    // weapon (the fire-path resolution) — the melee weapon is excluded so a
-                    // gun's on-death effect is the one that fires, not the fists'.
-                    w.mounted_weapon(|e| mounted.get(e).is_ok())
-                        .or_else(|| w.ranged_weapon(|e| melee.get(e).is_ok()))
+                    // The firing gun through the ONE shared preference rule (GTW-660,
+                    // `Wields::firing_weapon`): prefer the mounted gun the ganger is
+                    // manning, else its carried ranged weapon — the melee weapon is
+                    // excluded so a gun's on-death effect is the one that fires, not
+                    // the fists'.
+                    w.firing_weapon(|e| mounted.get(e).is_ok(), |e| melee.get(e).is_ok())
                 })
                 .and_then(|weapon_entity| on_deaths.get(weapon_entity).ok())
                 .map(|on_death| on_death.effect().clone())
