@@ -118,6 +118,21 @@ pub(crate) fn has_dangling_ref(
     dangling_ref_referrer(report, family, target).is_some()
 }
 
+/// Whether `report` holds a `MalformedFile` finding whose path names `stem` —
+/// the salvage finding shape. Its disappearance is the re-arm suites' RESET
+/// observable: the re-arm replaces the report and only the REFERENCE checks
+/// re-run, so a load-time salvage finding dropping proves the report was
+/// reset, not stale (shared by [`armor_save`](crate::armor_save) and
+/// [`attachments`](crate::attachments)).
+pub(crate) fn has_malformed(report: &ContentIntegrityReport, stem: &str) -> bool {
+    report.findings().iter().any(|finding| {
+        matches!(
+            finding,
+            ContentFinding::MalformedFile { path, .. } if path.contains(stem)
+        )
+    })
+}
+
 /// The REFERRER text of the `DanglingRef` finding for the given `target` key
 /// against the given registry `family`, or [`None`] when no such finding is on
 /// the report — so a test can pin WHO the finding names (A1: the gang file),

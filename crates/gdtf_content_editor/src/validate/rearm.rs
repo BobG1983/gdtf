@@ -8,6 +8,7 @@ use bevy::{
 use gdtf_assets::{ContentChecksComplete, ContentIntegrityReport, ContentValidationDone};
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
+    equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::InjuryRegistry,
     level::UuidThemeRegistry,
@@ -17,9 +18,10 @@ use gdtf_battle_sim::{
 use gdtf_content_families::sprites::SpriteDefRegistry;
 
 /// The WATCH SET: every registry the editor's registered checks read (the
-/// [`register`](super::register) window's exact resource set — all eight since
+/// [`register`](super::register) window's exact resource set — all nine since
 /// the gang equipment edge joined in GTW-651, the injury-weighting edge in
-/// GTW-654, and the terrain `graphic_name` edge in GTW-663), bundled into one
+/// GTW-654, the terrain `graphic_name` edge in GTW-663, and the
+/// weapon→attachment edge in GTW-669), bundled into one
 /// `#[derive(SystemParam)]` (the load gate's `GateResources` pattern) so the
 /// re-arm system's signature stays legible as families accrue. Every field is
 /// `Option` — a registry arrives only once its seam resolve (or fallback)
@@ -48,6 +50,11 @@ pub(super) struct WatchedRegistries<'w> {
     /// (GTW-663), so authoring or deleting a `.spritedef.ron` member re-runs
     /// the foreign-key check live.
     sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
+    /// The attachment registry — read by the weapon→attachment edge (GTW-669),
+    /// so authoring or deleting an `.attachment.ron` member re-runs the
+    /// weapon-side key check live (a save that fixes a dangling scope clears
+    /// its finding at the edit).
+    attachments:   Option<Res<'w, AttachmentRegistry>>,
 }
 
 impl WatchedRegistries<'_> {
@@ -70,6 +77,10 @@ impl WatchedRegistries<'_> {
                 .is_some_and(DetectChanges::is_changed)
             || self
                 .sprite_defs
+                .as_ref()
+                .is_some_and(DetectChanges::is_changed)
+            || self
+                .attachments
                 .as_ref()
                 .is_some_and(DetectChanges::is_changed)
     }

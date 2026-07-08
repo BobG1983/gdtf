@@ -57,15 +57,20 @@ pub enum EditorMode {
     /// sprite-defs folder loader reads (GTW-664; the GTW-479 Armor mode/form
     /// precedent).
     Sprite,
+    /// ATTACHMENT authoring — edit an attachment item (`*.attachment.ron`: display
+    /// name / the closed 5-slot mount / the closed 13-effect list) and save it where
+    /// the GTW-619 attachments folder loader reads (GTW-669; the GTW-479 Armor
+    /// mode/form precedent).
+    Attachment,
 }
 
 impl EditorMode {
     /// The mode-tab order, left to right — the order the egui shell renders the tabs and the index
     /// order [`from_tab_index`](EditorMode::from_tab_index) maps. THEME sits BETWEEN Terrain and
     /// Prefab (GTW-475); GANG follows Prefab (GTW-636); ARMOR follows Gang (GTW-479); INJURY
-    /// follows Armor (GTW-654); SPRITE follows Injury (GTW-664):
-    /// `[TERRAIN | THEME | PREFAB | GANG | ARMOR | INJURY | SPRITE]`.
-    pub const TAB_ORDER: [Self; 7] = [
+    /// follows Armor (GTW-654); SPRITE follows Injury (GTW-664); ATTACHMENT follows Sprite
+    /// (GTW-669): `[TERRAIN | THEME | PREFAB | GANG | ARMOR | INJURY | SPRITE | ATTACHMENT]`.
+    pub const TAB_ORDER: [Self; 8] = [
         Self::Terrain,
         Self::Theme,
         Self::Prefab,
@@ -73,6 +78,7 @@ impl EditorMode {
         Self::Armor,
         Self::Injury,
         Self::Sprite,
+        Self::Attachment,
     ];
 
     /// The mode at top-bar tab `index`, or [`None`] if the index is out of range — the inverse of
@@ -102,20 +108,21 @@ impl EditorMode {
             Self::Armor => "ARMOR",
             Self::Injury => "INJURY",
             Self::Sprite => "SPRITE",
+            Self::Attachment => "ATTACHMENT",
         }
     }
 }
 
-/// `Update` (in `Editing`): number-key hotkeys set the [`EditorMode`] (the `1`–`7`
+/// `Update` (in `Editing`): number-key hotkeys set the [`EditorMode`] (the `1`–`8`
 /// mode hotkeys — `1`–`3` preserved across the egui swap, GTW-512 C1.3; `4` added with the
 /// GANG mode, GTW-636; `5` with the ARMOR mode, GTW-479; `6` with the INJURY mode,
-/// GTW-654; `7` with the SPRITE mode, GTW-664).
+/// GTW-654; `7` with the SPRITE mode, GTW-664; `8` with the ATTACHMENT mode, GTW-669).
 ///
 /// `1` → [`Terrain`](EditorMode::Terrain), `2` → [`Theme`](EditorMode::Theme), `3` →
 /// [`Prefab`](EditorMode::Prefab), `4` → [`Gang`](EditorMode::Gang), `5` →
 /// [`Armor`](EditorMode::Armor), `6` → [`Injury`](EditorMode::Injury), `7` →
-/// [`Sprite`](EditorMode::Sprite) — the
-/// `[TERRAIN | THEME | PREFAB | GANG | ARMOR | INJURY | SPRITE]` tab order. Writes with
+/// [`Sprite`](EditorMode::Sprite), `8` → [`Attachment`](EditorMode::Attachment) — the
+/// `[TERRAIN | THEME | PREFAB | GANG | ARMOR | INJURY | SPRITE | ATTACHMENT]` tab order. Writes with
 /// [`set_if_neq`](DetectChangesMut::set_if_neq) so an unchanged key-press is a no-op. Guarded on the
 /// optional [`EditorMode`] (state-scoped — bevy-traps #1). UI-agnostic: the egui tabs and these keys
 /// both write the same resource, and the next-frame egui draw reflects the change.
@@ -137,6 +144,8 @@ pub(crate) fn mode_hotkeys(keys: Res<ButtonInput<KeyCode>>, mode: Option<ResMut<
         Some(EditorMode::Injury)
     } else if keys.just_pressed(KeyCode::Digit7) {
         Some(EditorMode::Sprite)
+    } else if keys.just_pressed(KeyCode::Digit8) {
+        Some(EditorMode::Attachment)
     } else {
         None
     };

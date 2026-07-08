@@ -18,9 +18,12 @@
 //! reload → re-arm loop), [`armor_save`] (the GTW-479 armor save-path →
 //! reload → re-arm loop over the gang-equipment armor edge), [`injuries_save`]
 //! (the GTW-654 weighting save-path → reload → re-arm loop over the
-//! weighting-row → injury-key edge).
+//! weighting-row → injury-key edge), [`attachments`] (the GTW-669
+//! weapon→attachment edge pins: the editor-registered check + the
+//! attachment-registry watch-set re-arm).
 
 mod armor_save;
+mod attachments;
 mod gangs;
 mod harness;
 mod injuries_save;

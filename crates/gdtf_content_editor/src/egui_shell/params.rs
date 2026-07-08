@@ -10,6 +10,7 @@ use bevy::prelude::*;
 use gdtf_battle_presenter::{IsolateView, ViewMode};
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
+    equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
     tuning::GangerStatTuning,
@@ -19,6 +20,7 @@ use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use crate::{
     armor_form::ArmorDraft,
+    attachment_form::AttachmentDraft,
     canvas::{CanvasZoom, CurrentEditLevel},
     editor_map::EditorMap,
     egui_shell::{prefab::level_rail::RailUiState, sprite_form_ui::SpritePreviewCache},
@@ -134,4 +136,17 @@ pub(crate) struct SpriteParams<'w, 's> {
     /// The path-keyed preview/validity cache — a `Local` (the GTW-595 `RailUiState`
     /// precedent): content-keyed, so it needs no state-scoped lifecycle.
     pub(super) preview_cache: Local<'s, SpritePreviewCache>,
+}
+
+/// The ATTACHMENT-mode model borrows the shell threads into the ATTACHMENT panels
+/// (GTW-669) — the [`GangParams`] pattern. Every field is `Option` — the draft is
+/// state-scoped (bevy-traps #1) and the registry arrives with the `Load` pass — so the
+/// other modes tolerate their absence and ATTACHMENT mode no-ops until they exist.
+#[derive(bevy::ecs::system::SystemParam)]
+pub(crate) struct AttachmentParams<'w> {
+    /// The editable attachment working model (the form writes it; the save projects it).
+    pub(super) draft:    Option<ResMut<'w, AttachmentDraft>>,
+    /// The loaded attachment registry (the load `ComboBox` options + the one-shot
+    /// autoload).
+    pub(super) registry: Option<Res<'w, AttachmentRegistry>>,
 }

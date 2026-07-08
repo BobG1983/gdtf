@@ -39,7 +39,7 @@
 //! [`Shove`](AttachmentEffect::Shove)) map to boolean weapon tags.
 
 use bevy::prelude::EntityWorldMut;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{
     AimDelta, ApplyAim, ApplyAttachmentEffect, ApplyBrace, ApplyDamage, ApplyDamageTypeOverride,
@@ -59,7 +59,10 @@ use crate::weapon::{
 /// holds a `Vec<AttachmentEffect>`, each variant naming a distinct stat lever with its
 /// per-item magnitude. `#[derive(Deserialize)]` so the list round-trips from RON by
 /// variant name (the serde name↔type bridge — RON cannot deserialize trait objects, so
-/// the on-disk form is this closed enum). NOT a `Component` — it is authoring DATA.
+/// the on-disk form is this closed enum); `#[derive(Serialize)]` so the content editor's
+/// ATTACHMENT authoring mode saves the SAME schema it loads (GTW-669 — the editor
+/// round-trip precedent; the sim never serializes at runtime). NOT a `Component` — it is
+/// authoring DATA.
 ///
 /// It impls [`ApplyAttachmentEffect`] by DELEGATING each variant to its isolated behaviour
 /// type in a sibling per-effect file; the
@@ -68,7 +71,7 @@ use crate::weapon::{
 ///
 /// Each magnitude-carrying variant's payload is a NAMED newtype (no-bare-types), and the
 /// magnitude lives HERE (on the item), never in global tuning — the headline GTW-549 fix.
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum AttachmentEffect {
     /// **Aim** — a precision optic that raises the weapon's
     /// [`Accuracy`](crate::weapon::Accuracy) (the §1b in-cone concentration exponent) by

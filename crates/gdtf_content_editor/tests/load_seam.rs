@@ -2,12 +2,13 @@
 //!
 //! AC-2 (as AMENDED by GTW-625; extended by GTW-636 with the gangs + melee
 //! families the GANG mode edits, by GTW-654 with the bespoke injuries pair the
-//! INJURY mode edits, and by GTW-663 with the sprite-defs family a terrain
-//! def's `graphic_name` foreign key resolves against; GTW-665 retired the
-//! tile-role hot-RON chain from the gate set — terrain graphics resolve
-//! through the sprite-defs family): driving the REAL
+//! INJURY mode edits, by GTW-663 with the sprite-defs family a terrain
+//! def's `graphic_name` foreign key resolves against — GTW-665 retired the
+//! tile-role hot-RON chain from the gate set: terrain graphics resolve
+//! through the sprite-defs family — and by GTW-669 with the attachments
+//! family the ATTACHMENT mode edits): driving the REAL
 //! [`MapEditorPlugin`] on the no-renderer `DefaultPlugins` harness (live
-//! workspace `assets/` root) reaches [`EditorState::Editing`] with ALL NINE
+//! workspace `assets/` root) reaches [`EditorState::Editing`] with ALL TEN
 //! resolved resources present — through
 //! the actual GTW-570 content-family / bespoke-injuries
 //! registrations, not an editor-local mirror — and the seam's persistent handles
@@ -36,6 +37,7 @@ use bevy::{
 use gdtf_assets::ContentFolderHandle;
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
+    equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
     level::UuidThemeRegistry,
@@ -44,8 +46,8 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_editor::{EditorState, MapEditorPlugin};
 use gdtf_content_families::{
-    ArmorFamily, GangsFamily, MeleeWeaponsFamily, SpriteDefsFamily, TerrainDefsFamily,
-    ThemeDefsFamily, WeaponsFamily, sprites::SpriteDefRegistry,
+    ArmorFamily, AttachmentsFamily, GangsFamily, MeleeWeaponsFamily, SpriteDefsFamily,
+    TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily, sprites::SpriteDefRegistry,
 };
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
@@ -129,18 +131,19 @@ fn advance_to_editing(app: &mut App) {
     }
 }
 
-/// AC-2 (as amended by GTW-625; extended by GTW-636 + GTW-654 + GTW-663; the
-/// GTW-665 chain retirement shrank the set from ten to nine): the
+/// AC-2 (as amended by GTW-625; extended by GTW-636 + GTW-654 + GTW-663 +
+/// GTW-669; the GTW-665 chain retirement shrank the set from ten to nine and
+/// the GTW-669 attachments family grew it back to ten): the
 /// real seam path resolves the editor's whole gate set — the app reaches
-/// `Editing` with the seven folder registries plus the bespoke injuries pair
+/// `Editing` with the eight folder registries plus the bespoke injuries pair
 /// (each NON-empty, so the shipped content genuinely resolved — no count pins)
-/// all present, plus the seven PERSISTENT
+/// all present, plus the eight PERSISTENT
 /// seam handles (GTW-533 C4a: no `OnExit(Load)` cleanup exists, so the live
 /// hot-reload substrate survives). No game-theme resource exists to gate on —
 /// the editor no longer depends on the game's hand-rolled UI crate, so reaching
 /// `Editing` here IS the boots-without-the-theme proof.
 #[test]
-fn load_pass_resolves_all_nine_resources_through_the_real_seams() {
+fn load_pass_resolves_all_ten_resources_through_the_real_seams() {
     let mut app = editor_app();
     advance_to_editing(&mut app);
 
@@ -203,13 +206,20 @@ fn load_pass_resolves_all_nine_resources_through_the_real_seams() {
         "the SpriteDefRegistry must resolve NON-empty through the shared SpriteDefsFamily \
          (GTW-663)",
     );
+    assert!(
+        world
+            .get_resource::<AttachmentRegistry>()
+            .is_some_and(|r| !r.is_empty()),
+        "the AttachmentRegistry must resolve NON-empty through the shared AttachmentsFamily \
+         (GTW-669)",
+    );
 
     assert_seam_handles_persist(world);
 }
 
 /// C4a: the seam's persistent handles survive past `Load` — whole-session handle
 /// persistence (GTW-533; no `OnExit(Load)` cleanup exists), the substrate the
-/// live redrives rebuild from: the seven folder families' [`ContentFolderHandle`]s
+/// live redrives rebuild from: the eight folder families' [`ContentFolderHandle`]s
 /// (the tile-roles hot-RON handle retired with its chain — GTW-665). Read-only
 /// `&World` assertions off the
 /// same post-`Editing` world the resolve proof reads (the sanctioned
@@ -257,11 +267,17 @@ fn assert_seam_handles_persist(world: &World) {
             .is_some(),
         "the sprite-defs ContentFolderHandle must persist past Load (GTW-663)",
     );
+    assert!(
+        world
+            .get_resource::<ContentFolderHandle<AttachmentsFamily>>()
+            .is_some(),
+        "the attachments ContentFolderHandle must persist past Load (GTW-669)",
+    );
 }
 
 /// AC-4 (the ADR-0003 pin): with an EMPTY asset root every load reaches
 /// `Failed`, the fallbacks fire, and `Load` STILL transitions — the editor never
-/// hangs. The seven folder families fail closed to EMPTY registries (the
+/// hangs. The eight folder families fail closed to EMPTY registries (the
 /// tile-role chain and its editor-owned zero-table fallback retired — GTW-665).
 #[test]
 fn failed_asset_root_falls_back_and_still_reaches_editing() {
@@ -322,6 +338,13 @@ fn failed_asset_root_falls_back_and_still_reaches_editing() {
             .map(SpriteDefRegistry::is_empty),
         Some(true),
         "a Failed sprites folder must fail closed to the EMPTY SpriteDefRegistry (GTW-663)",
+    );
+    assert_eq!(
+        world
+            .get_resource::<AttachmentRegistry>()
+            .map(AttachmentRegistry::is_empty),
+        Some(true),
+        "a Failed attachments folder must fail closed to the EMPTY AttachmentRegistry (GTW-669)",
     );
     assert_eq!(
         world

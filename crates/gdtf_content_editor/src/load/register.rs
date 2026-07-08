@@ -1,11 +1,11 @@
-//! The `Load`-pass registrar — [`register_load`], the seven generic family registrations plus the
+//! The `Load`-pass registrar — [`register_load`], the eight generic family registrations plus the
 //! transition gate (extracted from the module wiring so `mod.rs` stays fn-free).
 
 use bevy::prelude::*;
 use gdtf_assets::ContentFamilyAppExt;
 use gdtf_content_families::{
-    ArmorFamily, GangsFamily, MeleeWeaponsFamily, SpriteDefsFamily, TerrainDefsFamily,
-    ThemeDefsFamily, WeaponsFamily,
+    ArmorFamily, AttachmentsFamily, GangsFamily, MeleeWeaponsFamily, SpriteDefsFamily,
+    TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily,
 };
 
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
     load::{injuries::register_injuries, transition::transition_to_editing},
 };
 
-/// Registers the editor's `Load` asset pass onto `app` — seven family registrations,
+/// Registers the editor's `Load` asset pass onto `app` — eight family registrations,
 /// the bespoke injuries pass (GTW-654), plus the transition gate (see the
 /// [module docs](super) for the seam-vs-policy split).
 ///
@@ -32,7 +32,7 @@ pub(crate) fn register_load(app: &mut App) {
     // registered here: the egui shell styles itself, so the editor reads no
     // theme field — GTW-625, the GTW-579 AC2 amendment).
 
-    // The seven folder families (GTW-570 seam) — the SAME glue-crate family
+    // The eight folder families (GTW-570 seam) — the SAME glue-crate family
     // definitions the game registers, so game and editor build each registry
     // through literally one function. The terrain + theme defs share the ONE
     // MIXED `content/terrain/` tree; the seam's unconditional TypeId filter
@@ -53,6 +53,10 @@ pub(crate) fn register_load(app: &mut App) {
     // validation pass (and the GTW-664 sprite mode) reads the same family the
     // game loads.
     app.register_content_family::<SpriteDefsFamily>();
+    // GTW-669 C1: the attachments registry — the ATTACHMENT mode's load-any /
+    // save family, and the option source the GTW-670 weapon forms' attachment
+    // combos resolve against (the same GTW-619 family the game registers).
+    app.register_content_family::<AttachmentsFamily>();
 
     // GTW-654: the BESPOKE injuries family (one folder → the InjuryRegistry +
     // InjuryTables pair — a declared GTW-570 seam exclusion, so it registers

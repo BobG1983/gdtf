@@ -4,11 +4,17 @@
 
 use bevy::prelude::*;
 use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
-use gdtf_battle_sim::weapon::{WeaponName, WeaponRegistry};
+use gdtf_battle_sim::{
+    equipment::attachments::AttachmentRegistry,
+    weapon::{WeaponName, WeaponRegistry},
+};
 
-use super::super::forced::{ForcedMode, ForcedTerrainKind, ForcedView, ForcedZoom};
+use super::super::forced::{
+    ForcedAttachment, ForcedMode, ForcedTerrainKind, ForcedView, ForcedZoom,
+};
 use crate::{
     EditorMode,
+    attachment_form::AttachmentDraft,
     canvas::{CanvasZoom, CurrentEditLevel, LevelStep},
     session::MapEditorSession,
     terrain_form::TerrainDraft,
@@ -16,7 +22,8 @@ use crate::{
 
 /// `Update` (in `Editing`, capture-only): FORCE the [`EditorMode`] to the C2.4 [`ForcedMode`]
 /// before the settle / screenshot — so the Screenshot-QA can capture a specific Workbench mode
-/// (`GDTF_EDITOR_MODE=terrain|theme|prefab|gang|armor|injury|sprite`). No-ops when no mode was forced (the resource is
+/// (`GDTF_EDITOR_MODE=terrain|theme|prefab|gang|armor|injury|sprite|attachment`). No-ops when no
+/// mode was forced (the resource is
 /// absent) or the editor's mode already matches. Both borrows are `Option` (state-scoped —
 /// bevy-traps #1); [`set_if_neq`](DetectChangesMut::set_if_neq) keeps an already-matching mode a
 /// no-op (idempotent under the egui multipass re-run).
@@ -63,6 +70,34 @@ pub(in crate::capture) fn force_capture_terrain_kind(
         if let Some(first) = names.first() {
             draft.set_mounted_weapon(Some((*first).clone()));
         }
+    }
+}
+
+/// `Update` (in `Editing`, capture-only): load the GTW-669 [`ForcedAttachment`]'s named item
+/// into the live [`AttachmentDraft`] from the resolved [`AttachmentRegistry`] — through the SAME
+/// [`load_attachment`](AttachmentDraft::load_attachment) path the ATTACHMENT mode's load
+/// `ComboBox` commits, so the Screenshot-QA can capture a SPECIFIC item's slot + effect rows
+/// (`GDTF_EDITOR_ATTACHMENT=<key>`; the GTW-574 terrain-kind precedent — egui combo closures
+/// never run headless, so the shot is the in-engine evidence).
+///
+/// No-ops when nothing was forced / the draft or registry is absent (state-scoped —
+/// bevy-traps #1) / the key resolves nothing (the sorted-first autoload stands); idempotent —
+/// the load is skipped once the draft already carries the forced key, so it never fights later
+/// edits or the one-shot autoload (which the first forced load ends).
+pub(in crate::capture) fn force_capture_attachment(
+    forced: Option<Res<ForcedAttachment>>,
+    draft: Option<ResMut<AttachmentDraft>>,
+    registry: Option<Res<AttachmentRegistry>>,
+) {
+    let (Some(forced), Some(mut draft), Some(registry)) = (forced, draft, registry) else {
+        return;
+    };
+    if draft.name() == forced.as_str() {
+        return;
+    }
+    if let Some(spec) = registry.spec(&forced) {
+        let spec = spec.clone();
+        draft.load_attachment(&forced, &spec);
     }
 }
 

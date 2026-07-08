@@ -20,9 +20,10 @@ use gdtf_battle_sim::{
 ///
 /// Plain `Res` params by contract: the registering HOST's `Check`-set window
 /// condition must have verified them present (`bevy-traps.md` #1, guarded once
-/// at the host's set — see the [module doc](super)). The content editor does NOT
-/// register this edge: it never loads the attachment items, so the window would
-/// never open (and an empty stand-in registry would false-fail every key).
+/// at the host's set — see the [module doc](super)). BOTH hosts register this
+/// edge: the game at `Load`, and the content editor since it loads the
+/// attachments family for its ATTACHMENT authoring mode (GTW-669) — a dangling
+/// weapon `attachments:` key now surfaces at the edit, not on the next launch.
 pub fn check_weapon_attachment_refs(
     weapons: Res<WeaponRegistry>,
     melee_weapons: Res<MeleeWeaponRegistry>,

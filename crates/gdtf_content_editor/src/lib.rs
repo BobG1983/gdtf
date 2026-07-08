@@ -64,6 +64,11 @@ mod app;
 // suit's six per-body-part pieces and saves it to `content/armor/<name>.armor.ron`
 // where the GTW-269 armor loader reads (the GTW-636 Gang mode/form precedent).
 mod armor_form;
+// GTW-669: the ATTACHMENT authoring mode of the Workbench — the form that edits an
+// attachment item (display name / the closed 5-slot mount / the closed 13-effect list)
+// and saves it to `content/attachments/<name>.attachment.ron` where the GTW-619
+// attachments loader reads (the GTW-479 Armor mode/form precedent).
+mod attachment_form;
 // GTW-512 C1.2: the editor's standalone 2D camera (the `bevy_ui` shell used to spawn it).
 mod camera;
 mod canvas;
@@ -148,6 +153,18 @@ pub use armor_form::{ArmorDraft, armor_file_name, armor_save_path_in, draft_to_s
 // `write_armor` is the production wrapper (WORKSPACE_ASSETS_ROOT).
 #[cfg(debug_assertions)]
 pub use armor_form::{write_armor, write_armor_in};
+// GTW-669: the ATTACHMENT-mode model + the pure save halves — exported so the
+// round-trip tests drive the REAL projection / path resolution / write (the TempDir
+// round-trip through the actual AttachmentsFamily loader) and the headless lifecycle
+// test asserts the scoped draft (the GTW-636/GTW-479 export precedent).
+pub use attachment_form::{
+    AttachmentDraft, attachment_file_name, attachment_save_path_in, draft_to_attachment_spec,
+};
+// The debug-only ATTACHMENT fs-write surface (the terrain/theme/gang/armor/sprite write
+// precedent): `write_attachment_in` is the root-parameterized core tests aim at a
+// `TempDir`; `write_attachment` is the production wrapper (WORKSPACE_ASSETS_ROOT).
+#[cfg(debug_assertions)]
+pub use attachment_form::{write_attachment, write_attachment_in};
 // GTW-512: the `bevy_ui` canvas render markers are GONE (the egui viewport is C4); only the two
 // model resources the editor's lifecycle inserts survive (the egui viewport reads them in C4).
 pub use canvas::{CanvasZoom, CurrentEditLevel, LevelStep};

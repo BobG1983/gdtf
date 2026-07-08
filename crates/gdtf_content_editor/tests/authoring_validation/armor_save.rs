@@ -13,7 +13,7 @@
 //! real re-arm → re-check → re-publish.
 
 use bevy::asset::AssetServer;
-use gdtf_assets::{ContentFamily, ContentFinding, ContentIntegrityReport};
+use gdtf_assets::{ContentFamily, ContentIntegrityReport};
 use gdtf_battle_sim::{
     armor::{ArmorName, ArmorProtection, ArmorRegistry, BodyPart},
     weapon::WeaponName,
@@ -26,7 +26,7 @@ use gdtf_content_families::ArmorFamily;
 use gdtf_test_utils::advance_until;
 
 use crate::harness::{
-    MAX_UPDATES, advance_to_published, editor_app_with_asset_root, has_dangling_ref,
+    MAX_UPDATES, advance_to_published, editor_app_with_asset_root, has_dangling_ref, has_malformed,
 };
 
 /// The saved armor's name (sanitizes to itself, so it is also the file stem) —
@@ -44,18 +44,6 @@ const DANGLING_WEAPON: &str = "armor_suite_missing_weapon";
 /// disappearance proves the report was reset, not stale (the documented
 /// reset-don't-accumulate behavior of the re-arm).
 const MALFORMED_STEM: &str = "broken_plate";
-
-/// Whether `report` holds a `MalformedFile` finding whose path names `stem` —
-/// the salvage finding shape (local probe: this suite file is its only
-/// consumer).
-fn has_malformed(report: &ContentIntegrityReport, stem: &str) -> bool {
-    report.findings().iter().any(|finding| {
-        matches!(
-            finding,
-            ContentFinding::MalformedFile { path, .. } if path.contains(stem)
-        )
-    })
-}
 
 /// C3: author + SAVE an armor suit through the REAL form model + write into a
 /// `TempDir` assets root referenced by a saved gang — at editor launch the REAL

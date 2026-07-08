@@ -4,6 +4,7 @@
 //! rather than colliding with the editor's own resources.
 
 use bevy::prelude::{Deref, Resource};
+use gdtf_battle_sim::equipment::attachments::AttachmentName;
 
 use crate::{EditorMode, canvas::CanvasZoom, terrain_form::TerrainKindChoice};
 
@@ -14,8 +15,8 @@ pub(super) struct ForcedMode(EditorMode);
 
 impl ForcedMode {
     /// Parse a `GDTF_EDITOR_MODE` value (case-insensitive `terrain` | `theme` | `prefab` |
-    /// `gang` | `armor` | `injury` | `sprite`) into a forced mode, or [`None`] for an unset /
-    /// unrecognized value (the capture keeps the editor's default mode).
+    /// `gang` | `armor` | `injury` | `sprite` | `attachment`) into a forced mode, or [`None`]
+    /// for an unset / unrecognized value (the capture keeps the editor's default mode).
     pub(super) fn from_env_value(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
             "terrain" => Some(Self(EditorMode::Terrain)),
@@ -25,6 +26,7 @@ impl ForcedMode {
             "armor" => Some(Self(EditorMode::Armor)),
             "injury" => Some(Self(EditorMode::Injury)),
             "sprite" => Some(Self(EditorMode::Sprite)),
+            "attachment" => Some(Self(EditorMode::Attachment)),
             _ => None,
         }
     }
@@ -52,6 +54,25 @@ impl ForcedTerrainKind {
             "emplacement" => Some(Self(TerrainKindChoice::Emplacement)),
             _ => None,
         }
+    }
+}
+
+/// The capture's FORCED ATTACHMENT-mode loaded item (GTW-669 — from `GDTF_EDITOR_ATTACHMENT`),
+/// inserted only when the env var carried a non-empty key. The drive loads the named item from
+/// the resolved [`AttachmentRegistry`](gdtf_battle_sim::equipment::attachments::AttachmentRegistry)
+/// through the SAME `load_attachment` path the load `ComboBox` commits — so QA can capture a
+/// SPECIFIC item (the ATTACHMENT-mode twin of the GTW-574 terrain-kind pre-select: egui combo
+/// closures never run headless, which is why the drive exists).
+#[derive(Resource, Clone, Deref)]
+pub(super) struct ForcedAttachment(AttachmentName);
+
+impl ForcedAttachment {
+    /// Parse a `GDTF_EDITOR_ATTACHMENT` value (a registry key / file stem, taken verbatim after
+    /// trimming — keys are an open stem set, not a closed vocabulary) into a forced item, or
+    /// [`None`] for an unset / empty value (the capture keeps the mode's sorted-first autoload).
+    pub(super) fn from_env_value(value: &str) -> Option<Self> {
+        let key = value.trim();
+        (!key.is_empty()).then(|| Self(AttachmentName::new(key.to_owned())))
     }
 }
 

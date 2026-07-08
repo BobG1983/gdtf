@@ -16,9 +16,9 @@
 //! window — the checks take plain `Res<…>` on that contract (`bevy-traps.md`
 //! #1 is guarded ONCE, at the host's set condition). Register only checks
 //! whose registries the host actually loads: an absent registry would fail the
-//! window (or, unguarded, fail param validation) — e.g. the editor registers
-//! the theme→terrain, emplacement→weapon, and gang-equipment edges but NOT
-//! weapons→attachments, because it never loads the attachment items.
+//! window (or, unguarded, fail param validation). Since GTW-669 the editor
+//! loads every family these checks read (the attachments family was the last
+//! hold-out), so both hosts currently register every edge here.
 //!
 //! Submodules by EDGE FAMILY (wiring only here; the game-bespoke edges —
 //! situation, prefabs — stay in the game's `states/load/systems/validate/`,

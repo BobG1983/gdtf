@@ -5,7 +5,7 @@
 //! each with its per-item magnitude.
 
 use bevy::reflect::TypePath;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::AttachmentSlot;
 use crate::{effects::attachments::AttachmentEffect, weapon::WeaponName};
@@ -26,14 +26,17 @@ use crate::{effects::attachments::AttachmentEffect, weapon::WeaponName};
 ///
 /// Derives [`Deserialize`] so the loose `.ron` parses (the closed
 /// [`AttachmentEffect`](crate::effects::attachments::AttachmentEffect) enum is the serde
-/// name↔type bridge), and [`TypePath`] because the `RonAsset<AttachmentSpec>` the folder
+/// name↔type bridge), [`Serialize`] so the content editor's ATTACHMENT authoring mode
+/// saves the SAME schema it loads (GTW-669 — the `GangRoster` / `ArmorSpec` round-trip
+/// precedent; the sim never serializes at runtime), and [`TypePath`] because the
+/// `RonAsset<AttachmentSpec>` the folder
 /// loader wraps it in requires its payload to be [`TypePath`] (the
 /// [`WeaponSpec`](crate::weapon::WeaponSpec) /
 /// [`MeleeWeaponSpec`](crate::weapon::MeleeWeaponSpec) precedent).
 ///
 /// **Not `Copy`** — it owns a `Vec` (and a [`WeaponName`] display name); it is `Clone`, so
 /// the [`AttachmentRegistry`](super::AttachmentRegistry) can hold specs BY VALUE.
-#[derive(Debug, Clone, PartialEq, Deserialize, TypePath)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TypePath)]
 pub struct AttachmentSpec {
     /// The attachment's human-facing name (`display_name`) — the picker / HUD label. A
     /// [`WeaponName`] (reusing the weapon-identity newtype for a display string, the

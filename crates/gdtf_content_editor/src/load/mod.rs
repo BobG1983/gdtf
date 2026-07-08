@@ -13,10 +13,11 @@
 //! generic seams in `gdtf_assets`, with the SAME definitions the game
 //! registers, so an authored file resolves IDENTICALLY in game and editor:
 //!
-//! - The seven FOLDER families — ranged weapons, armor, the UUID-keyed terrain
+//! - The eight FOLDER families — ranged weapons, armor, the UUID-keyed terrain
 //!   defs + theme defs, the gangs + melee weapons the GANG mode edits
-//!   (GTW-636), plus the sprite defs every terrain graphic resolves through
-//!   (GTW-663/665) — register through the GTW-570
+//!   (GTW-636), the sprite defs every terrain graphic resolves through
+//!   (GTW-663/665), plus the attachments the ATTACHMENT mode edits
+//!   (GTW-669) — register through the GTW-570
 //!   [`register_content_family`](gdtf_assets::ContentFamilyAppExt) seam using
 //!   the SAME `gdtf_content_families` glue impls the game registers. Each
 //!   family's registry-build logic therefore has exactly ONE definition
@@ -61,7 +62,7 @@
 //!   so every branch gates on its OWN resource's absence and none starves
 //!   another.
 //! - **The transition gates on every resolved resource:** [`transition_to_editing`](transition::transition_to_editing) fires
-//!   only when ALL NINE resolved resources exist (the seven folder registries +
+//!   only when ALL TEN resolved resources exist (the eight folder registries +
 //!   the injuries pair; the game theme is not among them — GTW-625).
 
 mod injuries;

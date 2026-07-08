@@ -41,13 +41,13 @@ use gdtf_battle_sim::{
 
 use crate::{
     egui_shell::{
-        armor_form_ui,
-        autoload::{
-            armor_form_sync, gang_form_sync, injury_form_sync, sprite_form_sync, theme_form_sync,
-        },
+        armor_form_ui, attachment_form_ui,
+        autoload::{ModeSyncBundles, run_form_syncs},
         chrome::{mode_tabs, status_line, theme_combo_box},
         gang_form_ui, injury_form_ui,
-        params::{ArmorParams, GangParams, InjuryParams, PrefabParams, SpriteParams},
+        params::{
+            ArmorParams, AttachmentParams, GangParams, InjuryParams, PrefabParams, SpriteParams,
+        },
         prefab::{controls_ui, palette_ui, viewport_ui, viewport_ui::ViewportCtx},
         sprite_form_ui, terrain_form_ui,
         textures::resolve_panel_textures,
@@ -81,9 +81,9 @@ use crate::{
     reason = "the whole-editor egui system draws ALL panels in one pass (the EguiPrimaryContextPass \
               requirement — bevy-traps #8); each param is a distinct Bevy SystemParam (the egui \
               context, the state-scoped mutable drafts + mode + session, the per-mode model \
-              bundles — prefab / gang / armor / injury / sprite — and the read-only registries); \
-              Bevy's injection model cannot reduce this without a wrapper resource that changes \
-              the crate's API surface"
+              bundles — prefab / gang / armor / injury / sprite / attachment — and the read-only \
+              registries); Bevy's injection model cannot reduce this without a wrapper resource \
+              that changes the crate's API surface"
 )]
 #[expect(
     clippy::too_many_lines,
@@ -109,6 +109,7 @@ pub(crate) fn editor_egui_ui(
     mut armor_mode: ArmorParams,
     mut injury_mode: InjuryParams,
     mut sprite_mode: SpriteParams,
+    mut attachment_mode: AttachmentParams,
 ) -> Result {
     let (Some(mut mode), Some(mut session), Some(mut terrain_draft), Some(mut theme_draft)) =
         (mode, session, terrain_draft, theme_draft)
@@ -116,29 +117,24 @@ pub(crate) fn editor_egui_ui(
         return Ok(());
     };
 
-    // The PRE-PANEL per-mode model-sync / autoload block (split into
-    // `egui_shell::autoload` at the GTW-479-flagged seam — GTW-654): each runner
-    // self-gates on its mode + borrows and is multipass-idempotent (bevy-traps #8).
-    // Runs BEFORE the texture-id resolution below so the sprite autoload's seeded
-    // source is what the preview resolver loads this same frame (GTW-664).
-    theme_form_sync(*mode, &session, themes.as_deref(), &mut theme_draft);
-    gang_form_sync(*mode, gang.draft.as_deref_mut(), gang.gangs.as_deref());
-    armor_form_sync(
+    // The PRE-PANEL per-mode model-sync / autoload FAN-OUT (split into
+    // `egui_shell::autoload` at the GTW-479-flagged seam — GTW-654; the whole roster
+    // call moved there in GTW-669): each runner self-gates on its mode + borrows and
+    // is multipass-idempotent (bevy-traps #8). Runs BEFORE the texture-id resolution
+    // below so the sprite autoload's seeded source is what the preview resolver loads
+    // this same frame (GTW-664).
+    run_form_syncs(
         *mode,
-        armor_mode.draft.as_deref_mut(),
-        armor_mode.registry.as_deref(),
-    );
-    injury_form_sync(
-        *mode,
-        injury_mode.draft.as_deref_mut(),
-        injury_mode.registry.as_deref(),
-        injury_mode.weighting.as_deref_mut(),
-        injury_mode.tables.as_deref(),
-    );
-    sprite_form_sync(
-        *mode,
-        sprite_mode.draft.as_deref_mut(),
-        sprite_mode.registry.as_deref(),
+        &session,
+        themes.as_deref(),
+        &mut theme_draft,
+        ModeSyncBundles {
+            gang:       &mut gang,
+            armor:      &mut armor_mode,
+            injury:     &mut injury_mode,
+            sprite:     &mut sprite_mode,
+            attachment: &mut attachment_mode,
+        },
     );
 
     // Resolve the egui texture ids the panels draw (the palette sprite sheet, the prefab
@@ -196,11 +192,16 @@ pub(crate) fn editor_egui_ui(
                 &textures.sprites,
             );
         }
-        // GANG / ARMOR / INJURY / SPRITE modes keep this secondary strip intentionally
-        // idle (GTW-636 / GTW-479 / GTW-654 / GTW-664): the member list / piece grid /
-        // def editors are the central primary focus and the form controls live in the
-        // right panel, so nothing competes here (the TERRAIN right-panel precedent).
-        EditorMode::Gang | EditorMode::Armor | EditorMode::Injury | EditorMode::Sprite => {}
+        // GANG / ARMOR / INJURY / SPRITE / ATTACHMENT modes keep this secondary strip
+        // intentionally idle (GTW-636 / GTW-479 / GTW-654 / GTW-664 / GTW-669): the
+        // member list / piece grid / def editors are the central primary focus and the
+        // form controls live in the right panel, so nothing competes here (the TERRAIN
+        // right-panel precedent).
+        EditorMode::Gang
+        | EditorMode::Armor
+        | EditorMode::Injury
+        | EditorMode::Sprite
+        | EditorMode::Attachment => {}
     });
 
     // 4. RIGHT — the ACTIVE mode's form (an in-UI branch). TERRAIN no longer renders here (GTW-534
@@ -255,6 +256,13 @@ pub(crate) fn editor_egui_ui(
         EditorMode::Sprite => {
             if let Some(draft) = sprite_mode.draft.as_deref_mut() {
                 sprite_form_ui::field_stack(ui, draft, sprite_mode.registry.as_deref());
+            }
+        }
+        // GTW-669: load / name / New attachment / debug Save — the Gang/Armor
+        // field-stack parity over the attachment draft + the GTW-619 registry.
+        EditorMode::Attachment => {
+            if let Some(draft) = attachment_mode.draft.as_deref_mut() {
+                attachment_form_ui::field_stack(ui, draft, attachment_mode.registry.as_deref());
             }
         }
     });
@@ -368,6 +376,18 @@ pub(crate) fn editor_egui_ui(
                     textures.sprite_preview.as_ref(),
                 );
             }
+        }
+        // GTW-669: the item editor (display name / slot / the closed 13-effect list)
+        // is the ATTACHMENT mode's PRIMARY focus, in one scroll area over the draft's
+        // sim record (the injury def-panel shape).
+        EditorMode::Attachment => {
+            egui::ScrollArea::vertical()
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    if let Some(draft) = attachment_mode.draft.as_deref_mut() {
+                        attachment_form_ui::def_panel(ui, draft);
+                    }
+                });
         }
     });
 

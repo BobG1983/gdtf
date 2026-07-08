@@ -3,7 +3,7 @@
 //! that inserts the graduated brace bonus onto the weapon.
 
 use bevy::prelude::{Component, Deref, EntityWorldMut};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::ApplyAttachmentEffect;
 
@@ -17,10 +17,11 @@ use super::ApplyAttachmentEffect;
 /// `#[serde(transparent)]` so it authors as a bare RON scalar — `Stability(12.0)`). The
 /// isolated [`Stability`](super::AttachmentEffect::Stability) effect inserts it onto the
 /// weapon entity and the §1a stability composer reads it as an additive score contribution.
-/// Its magnitude lives HERE, on the attachment item, never in global tuning. `Default`
+/// Its magnitude lives HERE, on the attachment item, never in global tuning ([`Serialize`]
+/// so the editor's ATTACHMENT mode saves the same schema it loads — GTW-669). `Default`
 /// (`WeaponBraceBonus(0.0)`) is the identity contribution — a weapon with no brace effect
 /// adds no stability points.
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize, Default)]
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 pub struct WeaponBraceBonus(f32);
 

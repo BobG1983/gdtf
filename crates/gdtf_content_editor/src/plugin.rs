@@ -34,6 +34,7 @@ use gdtf_state_scoped::StateScopedResourceAppExt as _;
 use crate::{
     EditorState,
     armor_form::ArmorDraft,
+    attachment_form::AttachmentDraft,
     camera::{disable_egui_auto_context, spawn_editor_camera},
     canvas::{CanvasZoom, CurrentEditLevel},
     editor_map::EditorMap,
@@ -101,7 +102,7 @@ impl Plugin for MapEditorPlugin {
 
         app.add_systems(OnEnter(EditorState::Editing), spawn_editor_camera);
 
-        // GTW-575: the sixteen `Editing`-scoped MODEL resources register their whole
+        // GTW-575: the seventeen `Editing`-scoped MODEL resources register their whole
         // OnEnter-insert + OnExit-remove lifecycle through ONE
         // `init_state_scoped_resource` call each (bevy-traps #1 via the shared
         // `gdtf_state_scoped` seam) — same `OnEnter(Editing)` / `OnExit(Editing)`
@@ -150,6 +151,11 @@ impl Plugin for MapEditorPlugin {
         // resolved GTW-663 SpriteDefRegistry on the first Sprite-mode frame — the
         // Gang/Armor parity).
         app.init_state_scoped_resource(EditorState::Editing, SpriteDraft::default);
+        // The ATTACHMENT-mode authoring draft (GTW-669), a pristine form whose one-shot
+        // open-with-an-item autoload is still pending (the shell seeds it from the
+        // resolved GTW-619 AttachmentRegistry on the first Attachment-mode frame — the
+        // Gang/Armor/Sprite parity).
+        app.init_state_scoped_resource(EditorState::Editing, AttachmentDraft::default);
         // GTW-512 C1.5: the hovered-cell model the live egui hover + the QA capture
         // write, seeded empty (nothing hovered).
         app.init_state_scoped_resource(EditorState::Editing, HoveredCell::new);

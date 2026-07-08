@@ -1,0 +1,135 @@
+//! GTW-669 C5: form-model headless tests over the ATTACHMENT draft's pure mutators, the
+//! path derivation, and the empty-effects legality (the armor / injury / sprite
+//! form-test parity).
+
+use std::path::Path;
+
+use gdtf_battle_sim::{
+    effects::attachments::{AimDelta, AttachmentEffect},
+    equipment::attachments::{AttachmentName, AttachmentSlot, AttachmentSpec},
+    weapon::{
+        FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, WeaponName, WeaponPunch,
+    },
+};
+
+use super::{
+    draft::AttachmentDraft,
+    save::{attachment_file_name, attachment_save_path_in, draft_to_attachment_spec},
+};
+
+/// An authored spec exercising a payload-carrying effect — the shape the load / edit
+/// tests copy in.
+fn authored_spec() -> AttachmentSpec {
+    AttachmentSpec {
+        display_name: WeaponName::new("Whisper Choke".to_owned()),
+        slot:         AttachmentSlot::Muzzle,
+        effects:      vec![
+            AttachmentEffect::Silence,
+            AttachmentEffect::Penetration(WeaponPunch::new(3)),
+        ],
+    }
+}
+
+/// A fresh draft seeds the legal COSMETIC IDENTITY: zero effects (GTW-669 C2 — the
+/// schema's `#[serde(default)]` empty list), an empty display name, and the palette's
+/// first slot; the effects list edits down to EMPTY through the one `spec_mut` seam (no
+/// `effects >= 1` floor — the injuries contrast).
+#[test]
+fn empty_effects_list_is_legal_and_reachable() {
+    let mut draft = AttachmentDraft::new_attachment();
+    assert!(
+        draft.spec().effects.is_empty(),
+        "a fresh attachment seeds the cosmetic identity (no effects)",
+    );
+    assert_eq!(draft.spec().slot, AttachmentSlot::Muzzle);
+
+    // Add two effects, then remove BOTH — the empty list must be reachable again.
+    draft
+        .spec_mut()
+        .effects
+        .push(AttachmentEffect::Aim(AimDelta::new(0.4)));
+    draft.spec_mut().effects.push(AttachmentEffect::Brace);
+    assert_eq!(draft.spec().effects.len(), 2);
+    draft.spec_mut().effects.remove(1);
+    draft.spec_mut().effects.remove(0);
+    assert!(
+        draft.spec().effects.is_empty(),
+        "removing every effect is legal — an empty list is the cosmetic identity",
+    );
+
+    // The projection carries the empty list verbatim (no floor is re-imposed on save).
+    let (_, spec) = draft_to_attachment_spec(&draft);
+    assert!(spec.effects.is_empty());
+}
+
+/// The load path copies an authored spec VERBATIM and ends the one-shot autoload; the
+/// projection trims the name buffer into the registry-key [`AttachmentName`] and copies
+/// the working spec.
+#[test]
+fn load_is_verbatim_and_projection_trims_the_name() {
+    let authored = authored_spec();
+    let key = AttachmentName::new("whisper_choke".to_owned());
+
+    let mut draft = AttachmentDraft::default();
+    assert!(draft.autoload_pending(), "a default draft awaits the seed");
+    draft.load_attachment(&key, &authored);
+    assert!(!draft.autoload_pending(), "a load ends the one-shot seed");
+    assert_eq!(draft.name(), "whisper_choke");
+    assert_eq!(draft.spec(), &authored, "load copies the spec verbatim");
+
+    draft.set_name("  re keyed  ".to_owned());
+    let (name, spec) = draft_to_attachment_spec(&draft);
+    assert_eq!(name.as_str(), "re keyed", "the projection trims the buffer");
+    assert_eq!(
+        &spec,
+        draft.spec(),
+        "the projection copies the working spec"
+    );
+}
+
+/// A `GainFireMode` payload edits in place through the one `spec_mut` seam — the nested
+/// [`FireModeSpec`] row editor's model path (GTW-669 C2).
+#[test]
+fn gain_fire_mode_payload_edits_in_place() {
+    let mut draft = AttachmentDraft::new_attachment();
+    draft
+        .spec_mut()
+        .effects
+        .push(AttachmentEffect::GainFireMode(FireModeSpec::new(
+            ModeKind::Single,
+            ModeConeMult::new(1.0),
+            ModeTuPercent::new(0.0),
+            ModeShots::new(1),
+        )));
+    if let Some(AttachmentEffect::GainFireMode(mode)) = draft.spec_mut().effects.get_mut(0) {
+        mode.kind = ModeKind::Burst;
+        mode.shots = ModeShots::new(3);
+    }
+    let Some(AttachmentEffect::GainFireMode(mode)) = draft.spec().effects.first() else {
+        unreachable!("the pushed GainFireMode effect is still row 0");
+    };
+    assert_eq!(mode.kind, ModeKind::Burst, "the kind edit landed");
+    assert_eq!(*mode.shots, 3, "the shots edit landed");
+}
+
+/// The path derivation runs through the family consts + the shared sanitize seam: the
+/// literal `content/attachments/<stem>.attachment.ron` shape the GTW-619 loader
+/// dispatches on (pinning the LITERALS is the drift alarm — GTW-621), with the
+/// `unnamed_attachment` fallback for a name that sanitizes to nothing.
+#[test]
+fn save_path_derives_from_the_family_consts() {
+    let name = AttachmentName::new("Gore-Sump Drum (mk II)".to_owned());
+    assert_eq!(
+        attachment_file_name(&name),
+        "gore_sump_drum_mk_ii.attachment.ron"
+    );
+    assert_eq!(
+        attachment_save_path_in(Path::new("/tmp/assets"), &name),
+        Path::new("/tmp/assets/content/attachments/gore_sump_drum_mk_ii.attachment.ron"),
+    );
+    assert_eq!(
+        attachment_file_name(&AttachmentName::new("!!!".to_owned())),
+        "unnamed_attachment.attachment.ron",
+        "a name that sanitizes to nothing falls back to the documented stem",
+    );
+}

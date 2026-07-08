@@ -10,12 +10,14 @@ use serde::{Deserialize, Serialize};
 /// §"What's pure math vs sim": "ammo clamp") reads this.
 ///
 /// A weapon NUMBER, a small non-negative count (`u16`). Private inner + derived
-/// [`Deref`]; `#[serde(transparent)]`. Since GTW-275 it is **not** a standalone
+/// [`Deref`]; `#[serde(transparent)]` ([`Serialize`] so the editor's ATTACHMENT mode
+/// saves an `ExtraAmmo` payload in the same schema it loads — GTW-669). Since GTW-275
+/// it is **not** a standalone
 /// `#[derive(Component)]` — it is the `size` LEAF of the [`crate::magazine::Magazine`]
 /// grouping component (the user's `Magazine { size, reload_tu, … }` model), which
 /// also carries the per-weapon [`ReloadTu`](crate::magazine::ReloadTu) and the live
 /// [`LoadedRounds`](crate::magazine::LoadedRounds) battle-state count.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct MagazineSize(u16);
 

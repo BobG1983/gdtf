@@ -3,7 +3,7 @@
 //! and the `impl` that scales the weapon's reload cost.
 
 use bevy::prelude::{Deref, EntityWorldMut};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::ApplyAttachmentEffect;
 use crate::magazine::{Magazine, ReloadTu};
@@ -19,10 +19,12 @@ use crate::magazine::{Magazine, ReloadTu};
 /// renames it from the GTW-549 misnomer that implied a speed-up only — the scale is
 /// bidirectional (a `> 1.0` drum SLOWS the reload). A per-item
 /// authoring magnitude (no-bare-types: private inner + derived [`Deref`];
-/// `#[serde(transparent)]` so it authors as a bare RON scalar — `ReloadTime(0.5)`). NOT a
+/// `#[serde(transparent)]` so it authors as a bare RON scalar — `ReloadTime(0.5)`;
+/// [`Serialize`] so the editor's ATTACHMENT mode saves the same schema it loads —
+/// GTW-669). NOT a
 /// `Component` — it is an effect payload the application path reads to rebuild the weapon's
 /// [`Magazine`](crate::magazine::Magazine) with a scaled reload cost.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ReloadTimeScale(f32);
 

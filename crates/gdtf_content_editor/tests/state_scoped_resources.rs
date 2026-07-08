@@ -1,6 +1,7 @@
-//! GTW-575 headless integration test: the editor's sixteen `Editing`-scoped MODEL
+//! GTW-575 headless integration test: the editor's seventeen `Editing`-scoped MODEL
 //! resources (the GTW-636 `GangDraft`, the GTW-479 `ArmorDraft`, the GTW-654
-//! `InjuryDraft` + `WeightingDraft`, the GTW-664 `SpriteDraft`, and the GTW-594
+//! `InjuryDraft` + `WeightingDraft`, the GTW-664 `SpriteDraft`, the GTW-669
+//! `AttachmentDraft`, and the GTW-594
 //! `IsolateView` included) ride the shared `gdtf_state_scoped` seam with their EXACT
 //! lifecycle — absent in `Load`, inserted `OnEnter(Editing)` with the registered seed
 //! values, and removed `OnExit(Editing)`.
@@ -13,9 +14,9 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_content_editor::{
-    ArmorDraft, CanvasZoom, CurrentEditLevel, EditorMap, EditorMode, EditorState, GangDraft,
-    HoveredCell, InjuryDraft, MapEditorPlugin, MapEditorSession, PreviewPan, SpriteDraft,
-    TerrainDraft, ThemeDraft, WeightingDraft,
+    ArmorDraft, AttachmentDraft, CanvasZoom, CurrentEditLevel, EditorMap, EditorMode, EditorState,
+    GangDraft, HoveredCell, InjuryDraft, MapEditorPlugin, MapEditorSession, PreviewPan,
+    SpriteDraft, TerrainDraft, ThemeDraft, WeightingDraft,
 };
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
@@ -68,7 +69,7 @@ fn advance_to_editing(app: &mut App) {
     }
 }
 
-/// Asserts every one of the sixteen `Editing`-scoped model resources is absent.
+/// Asserts every one of the seventeen `Editing`-scoped model resources is absent.
 fn assert_all_scoped_resources_absent(app: &App, when: &str) {
     let world = app.world();
     assert!(
@@ -134,6 +135,10 @@ fn assert_all_scoped_resources_absent(app: &App, when: &str) {
     assert!(
         world.get_resource::<SpriteDraft>().is_none(),
         "SpriteDraft {when}"
+    );
+    assert!(
+        world.get_resource::<AttachmentDraft>().is_none(),
+        "AttachmentDraft {when}"
     );
 }
 
@@ -213,13 +218,19 @@ fn assert_all_scoped_resources_seeded(app: &App) {
         Some(&SpriteDraft::default()),
         "SpriteDraft seeds to the pristine autoload-pending form (GTW-664)",
     );
+    assert_eq!(
+        world.get_resource::<AttachmentDraft>(),
+        Some(&AttachmentDraft::default()),
+        "AttachmentDraft seeds to the pristine autoload-pending form (GTW-669)",
+    );
     assert_minted_seeds(world);
 }
 
 /// The two seeds whole-value equality cannot pin, asserted field by field —
 /// split out of [`assert_all_scoped_resources_seeded`] purely for the
 /// `too_many_lines` band as the fifteenth resource joined (GTW-654; the
-/// sixteenth, GTW-664's `SpriteDraft`, pins by whole-value equality above).
+/// sixteenth + seventeenth — GTW-664's `SpriteDraft` and GTW-669's
+/// `AttachmentDraft` — pin by whole-value equality above).
 fn assert_minted_seeds(world: &World) {
     // ThemeDraft's seed (`ThemeDraft::default` -> `new_theme`) MINTS a fresh
     // `ThemeUuid` per entry by design (GTW-475 C4), so whole-value equality

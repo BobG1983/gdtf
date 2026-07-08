@@ -11,7 +11,10 @@
 //! [`armor_form_ui`](self::armor_form_ui); the INJURY-mode forms (GTW-654 — the def editor +
 //! the weighting section) live in [`injury_form_ui`](self::injury_form_ui); the SPRITE-mode
 //! form (GTW-664 — source / visual anchor / facings / animation) lives in
-//! [`sprite_form_ui`](self::sprite_form_ui); the pre-panel
+//! [`sprite_form_ui`](self::sprite_form_ui); the ATTACHMENT-mode form (GTW-669 — display
+//! name / slot / the closed 13-effect list) lives in
+//! [`attachment_form_ui`](self::attachment_form_ui) over the SHARED
+//! [`fire_mode_edit`](self::fire_mode_edit) row widget; the pre-panel
 //! per-mode autoload/model-sync runners live in [`autoload`](self::autoload). The shell
 //! registers ONE UI system in the
 //! [`EguiPrimaryContextPass`](bevy_egui::EguiPrimaryContextPass) schedule (NOT `Update` —
@@ -40,12 +43,19 @@
 // GTW-479: the ARMOR-mode form — the draw half over the `armor_form` model (the gang
 // form split: model module + `*_form_ui` sibling).
 mod armor_form_ui;
+// GTW-669: the ATTACHMENT-mode form — the draw half over the `attachment_form` model
+// (the gang / armor / sprite form split: model module + `*_form_ui` sibling).
+mod attachment_form_ui;
 // The shell's PRE-PANEL per-mode model-sync / autoload runners, split out of
 // `shell.rs` at the GTW-479-flagged seam (GTW-654 — module-layout bands).
 mod autoload;
 // The shell's mode-agnostic top/bottom-bar chrome (mode tabs + global theme combo +
 // status line), split out of `shell.rs` (GTW-636 — module-layout bands).
 mod chrome;
+// GTW-669: the SHARED fire-mode row editor — one `FireModeSpec` authoring surface the
+// ATTACHMENT mode's `GainFireMode` rows and the GTW-670 weapon forms both consume (the
+// `theme_combo` / `sprite_thumb` shared-leaf precedent).
+mod fire_mode_edit;
 // GTW-636: the GANG-mode form — the draw half over the `gang_form` model (the terrain /
 // theme form split: model module + `*_form_ui` sibling).
 mod gang_form_ui;

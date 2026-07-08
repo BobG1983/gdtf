@@ -4,6 +4,7 @@
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
+    equipment::attachments::AttachmentRegistry,
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
     level::UuidThemeRegistry,
@@ -18,8 +19,9 @@ use crate::EditorState;
 /// [`WeaponRegistry`] / [`ArmorRegistry`], the (GTW-487) NEW [`TerrainDefRegistry`] /
 /// [`UuidThemeRegistry`], the (GTW-636) GANG mode's [`GangRegistry`] /
 /// [`MeleeWeaponRegistry`], the (GTW-654) INJURY mode's [`InjuryRegistry`] /
-/// [`InjuryTables`] pair, and the (GTW-663) [`SpriteDefRegistry`] — since GTW-665 also the
-/// resolution source for every terrain graphic — are all inserted (each seam
+/// [`InjuryTables`] pair, the (GTW-663) [`SpriteDefRegistry`] — since GTW-665 also the
+/// resolution source for every terrain graphic — and the (GTW-669) ATTACHMENT mode's
+/// [`AttachmentRegistry`] are all inserted (each seam
 /// resolve inserts its resource on success OR on its empty failure fallback —
 /// GTW-579 C4b — so this is reached even on a bad asset folder: the no-strand guarantee).
 /// The game's `GdtfTheme` is NOT gated on — the egui shell styles itself, so the editor
@@ -32,7 +34,7 @@ pub(crate) fn transition_to_editing(gate: GateResources, mut next: ResMut<NextSt
     }
 }
 
-/// The nine resolved-resource borrows the transition gates on, bundled into one
+/// The ten resolved-resource borrows the transition gates on, bundled into one
 /// `#[derive(SystemParam)]` (the shell's `PrefabParams` pattern) so the gate system's
 /// signature stays legible as families accrue. Every field is `Option` — each resource
 /// arrives only once its seam resolve (or fallback) fires (bevy-traps #1).
@@ -58,6 +60,8 @@ pub(crate) struct GateResources<'w> {
     /// The sprite-def registry (`SpriteDefsFamily` — GTW-663; the terrain-graphic
     /// resolution source since GTW-665).
     sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
+    /// The attachments registry (`AttachmentsFamily` — GTW-669).
+    attachments:   Option<Res<'w, AttachmentRegistry>>,
 }
 
 impl GateResources<'_> {
@@ -72,5 +76,6 @@ impl GateResources<'_> {
             && self.injuries.is_some()
             && self.injury_tables.is_some()
             && self.sprite_defs.is_some()
+            && self.attachments.is_some()
     }
 }

@@ -3,7 +3,7 @@
 //! raises the weapon's [`Accuracy`](crate::weapon::Accuracy).
 
 use bevy::prelude::{Deref, EntityWorldMut};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::ApplyAttachmentEffect;
 use crate::weapon::Accuracy;
@@ -14,11 +14,12 @@ use crate::weapon::Accuracy;
 /// §1b draw toward centre), the lever DISTINCT from stability.
 ///
 /// A per-item authoring magnitude (no-bare-types: private inner + derived [`Deref`];
-/// `#[serde(transparent)]` so it authors as a bare RON scalar — `Aim(0.4)`). NOT a
+/// `#[serde(transparent)]` so it authors as a bare RON scalar — `Aim(0.4)`; [`Serialize`]
+/// so the editor's ATTACHMENT mode saves the same schema it loads — GTW-669). NOT a
 /// `Component` — it is an effect payload the application path reads to mutate the
 /// weapon's [`Accuracy`](crate::weapon::Accuracy). Its magnitude lives HERE, on the
 /// attachment item, never in global tuning (the GTW-549 headline fix).
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct AimDelta(f32);
 

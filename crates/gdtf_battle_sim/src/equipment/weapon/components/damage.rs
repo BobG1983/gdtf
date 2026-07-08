@@ -9,12 +9,14 @@ use serde::{Deserialize, Serialize};
 /// the table toward nastier buckets. **Carried here, consumed by E3** (severity,
 /// resolution.md §6) — authored on the weapon but unused in this data slice.
 ///
-/// A weapon NUMBER. Private inner + derived [`Deref`]; `#[serde(transparent)]`. A
+/// A weapon NUMBER. Private inner + derived [`Deref`]; `#[serde(transparent)]`
+/// ([`Serialize`] so the editor's ATTACHMENT mode saves a `FatalBias` payload in the
+/// same schema it loads — GTW-669). A
 /// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
 /// `Default` (`FatalBias(0.0)`) is a **spawn-seed sentinel only** — the `bsn!`
 /// spawn path seeds the slot via `Default` before `FatalBias::new(..)` overwrites
 /// it (GTW-322). It is NOT a valid authored weapon stat.
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize, Default)]
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 pub struct FatalBias(f32);
 
@@ -35,12 +37,15 @@ impl FatalBias {
 /// formula, which subtracts and clamps these against the `i32` armor stats
 /// ([`crate::armor`]) — the same honest-signed reasoning the armor side uses.
 /// Private inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare RON
-/// scalar. A magnitude is TBD tuning (no shipped weapons yet). A
+/// scalar ([`Serialize`] so the editor's ATTACHMENT mode saves a `Damage` payload in
+/// the same schema it loads — GTW-669). A magnitude is TBD tuning (no shipped weapons yet). A
 /// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
 /// `Default` (`WeaponDamage(0)`) is a **spawn-seed sentinel only** — the `bsn!`
 /// spawn path seeds the slot via `Default` before `WeaponDamage::new(..)`
 /// overwrites it (GTW-322). It is NOT a valid authored weapon stat.
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
+#[derive(
+    Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default,
+)]
 #[serde(transparent)]
 pub struct WeaponDamage(i32);
 
@@ -60,12 +65,16 @@ impl WeaponDamage {
 ///
 /// A weapon NUMBER. An `i32` for the signed `punch − hardness` subtraction against
 /// the `i32` armor hardness ([`crate::armor::ArmorHardness`]). Private inner +
-/// derived [`Deref`]; `#[serde(transparent)]`. A magnitude is TBD tuning. A
+/// derived [`Deref`]; `#[serde(transparent)]` ([`Serialize`] so the editor's
+/// ATTACHMENT mode saves a `Penetration` payload in the same schema it loads —
+/// GTW-669). A magnitude is TBD tuning. A
 /// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
 /// `Default` (`WeaponPunch(0)`) is a **spawn-seed sentinel only** — the `bsn!`
 /// spawn path seeds the slot via `Default` before `WeaponPunch::new(..)`
 /// overwrites it (GTW-322). It is NOT a valid authored weapon stat.
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
+#[derive(
+    Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default,
+)]
 #[serde(transparent)]
 pub struct WeaponPunch(i32);
 
@@ -85,12 +94,16 @@ impl WeaponPunch {
 ///
 /// A weapon NUMBER. An `i32` to share the signed integrity arithmetic of the armor
 /// side ([`crate::armor::ArmorIntegrity`], which tracks below zero). Private inner,
-/// a derived [`Deref`], and `#[serde(transparent)]`; a magnitude is TBD tuning. A
+/// a derived [`Deref`], and `#[serde(transparent)]` ([`Serialize`] so the editor's
+/// ATTACHMENT mode saves a `Shred` payload in the same schema it loads — GTW-669);
+/// a magnitude is TBD tuning. A
 /// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
 /// `Default` (`WeaponShred(0)`) is a **spawn-seed sentinel only** — the `bsn!`
 /// spawn path seeds the slot via `Default` before `WeaponShred::new(..)`
 /// overwrites it (GTW-322). It is NOT a valid authored weapon stat.
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
+#[derive(
+    Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default,
+)]
 #[serde(transparent)]
 pub struct WeaponShred(i32);
 

@@ -13,9 +13,10 @@ use gdtf_screenshot::{
 use super::{
     drive::{
         drive_capture_grid_size, drive_capture_paint_and_hover, drive_capture_selection,
-        force_capture_mode, force_capture_terrain_kind, force_capture_view, force_capture_zoom,
+        force_capture_attachment, force_capture_mode, force_capture_terrain_kind,
+        force_capture_view, force_capture_zoom,
     },
-    forced::{ForcedMode, ForcedTerrainKind, ForcedView, ForcedZoom},
+    forced::{ForcedAttachment, ForcedMode, ForcedTerrainKind, ForcedView, ForcedZoom},
 };
 use crate::EditorState;
 
@@ -25,7 +26,8 @@ const SHOT_ENV_VAR: &str = "GDTF_EDITOR_SHOT";
 
 /// The env var that FORCES the [`crate::EditorMode`] before the capture (C2.4) — so the
 /// Screenshot-QA can capture a SPECIFIC Workbench mode (`terrain` | `theme` | `prefab` |
-/// `gang`, case-insensitive). Unset (or an unrecognized value) keeps the default mode the editor
+/// `gang` | `armor` | `injury` | `sprite` | `attachment`, case-insensitive). Unset (or an
+/// unrecognized value) keeps the default mode the editor
 /// opened in. Honored only when the capture affordance itself is enabled (`GDTF_EDITOR_SHOT` set).
 const MODE_ENV_VAR: &str = "GDTF_EDITOR_MODE";
 
@@ -35,6 +37,13 @@ const MODE_ENV_VAR: &str = "GDTF_EDITOR_MODE";
 /// the live registry). Unset (or an unrecognized value) keeps the draft's default kind. Honored
 /// only when the capture affordance itself is enabled.
 const TERRAIN_KIND_ENV_VAR: &str = "GDTF_EDITOR_TERRAIN_KIND";
+
+/// The env var that pre-loads a NAMED attachment item into the ATTACHMENT form before the
+/// capture (GTW-669 — a registry key / file stem, e.g. `scoped_sight`), so QA can capture a
+/// specific item's slot + effect rows (the GTW-574 terrain-kind precedent). Unset (or a key that
+/// resolves nothing) keeps the mode's sorted-first autoload. Honored only when the capture
+/// affordance itself is enabled.
+const ATTACHMENT_ENV_VAR: &str = "GDTF_EDITOR_ATTACHMENT";
 
 /// The env var that FORCES a non-`1.0` preview [`crate::canvas::CanvasZoom`] scale before the
 /// capture (GTW-515 C4.11) — a float in `[0.25, 4.0]`, clamped on apply. Unset keeps the identity
@@ -65,45 +74,53 @@ const VIEW_ENV_VAR: &str = "GDTF_EDITOR_VIEW";
 pub struct EditorCapturePlugin {
     /// The resolved capture path, or `None` when the env var was unset (plugin inert). Typed as the
     /// shared [`CapturePath`] (GTW-510) so the crate's `settle_then_capture` reads it directly.
-    path:        Option<CapturePath>,
+    path:              Option<CapturePath>,
     /// The forced capture mode (C2.4 — from `GDTF_EDITOR_MODE`), or `None` to keep the editor's
     /// default mode. Read once at construction.
-    forced_mode: Option<ForcedMode>,
+    forced_mode:       Option<ForcedMode>,
     /// The forced TERRAIN kind segment (GTW-574 — from `GDTF_EDITOR_TERRAIN_KIND`), or `None` to
     /// keep the draft's default kind. Read once at construction.
-    forced_kind: Option<ForcedTerrainKind>,
+    forced_kind:       Option<ForcedTerrainKind>,
+    /// The forced ATTACHMENT-mode loaded item (GTW-669 — from `GDTF_EDITOR_ATTACHMENT`), or
+    /// `None` to keep the sorted-first autoload. Read once at construction.
+    forced_attachment: Option<ForcedAttachment>,
     /// The forced preview zoom (C4.11 — from `GDTF_EDITOR_ZOOM`), or `None` to keep the identity
     /// `1.0` scale. Read once at construction.
-    forced_zoom: Option<ForcedZoom>,
+    forced_zoom:       Option<ForcedZoom>,
     /// The forced prefab storey view (GTW-532 `full` / GTW-594 `isolate` — from
     /// `GDTF_EDITOR_VIEW`), or `None` to keep the editor's defaults. Read once at
     /// construction.
-    forced_view: Option<ForcedView>,
+    forced_view:       Option<ForcedView>,
 }
 
 impl EditorCapturePlugin {
     /// Reads `GDTF_EDITOR_SHOT` (+ the optional `GDTF_EDITOR_MODE` / `GDTF_EDITOR_TERRAIN_KIND` /
-    /// `GDTF_EDITOR_ZOOM` / `GDTF_EDITOR_VIEW`) once and builds the plugin. When
+    /// `GDTF_EDITOR_ATTACHMENT` / `GDTF_EDITOR_ZOOM` / `GDTF_EDITOR_VIEW`) once and builds the
+    /// plugin. When
     /// `GDTF_EDITOR_SHOT` is unset the plugin is inert (registers nothing); when set the value is
-    /// the PNG output path and the optional vars force the captured mode / TERRAIN kind / zoom /
-    /// view.
+    /// the PNG output path and the optional vars force the captured mode / TERRAIN kind / loaded
+    /// attachment / zoom / view.
     #[must_use]
     pub fn from_env() -> Self {
         Self {
-            path:        parse_shot_path(env::var(SHOT_ENV_VAR).ok().as_deref()),
-            forced_mode: env::var(MODE_ENV_VAR)
+            path:              parse_shot_path(env::var(SHOT_ENV_VAR).ok().as_deref()),
+            forced_mode:       env::var(MODE_ENV_VAR)
                 .ok()
                 .as_deref()
                 .and_then(ForcedMode::from_env_value),
-            forced_kind: env::var(TERRAIN_KIND_ENV_VAR)
+            forced_kind:       env::var(TERRAIN_KIND_ENV_VAR)
                 .ok()
                 .as_deref()
                 .and_then(ForcedTerrainKind::from_env_value),
-            forced_zoom: env::var(ZOOM_ENV_VAR)
+            forced_attachment: env::var(ATTACHMENT_ENV_VAR)
+                .ok()
+                .as_deref()
+                .and_then(ForcedAttachment::from_env_value),
+            forced_zoom:       env::var(ZOOM_ENV_VAR)
                 .ok()
                 .as_deref()
                 .and_then(ForcedZoom::from_env_value),
-            forced_view: env::var(VIEW_ENV_VAR)
+            forced_view:       env::var(VIEW_ENV_VAR)
                 .ok()
                 .as_deref()
                 .and_then(ForcedView::from_env_value),
@@ -135,6 +152,11 @@ impl Plugin for EditorCapturePlugin {
         if let Some(forced) = self.forced_kind {
             app.insert_resource(forced);
         }
+        // GTW-669: insert the forced-attachment resource (the named-item QA drive) only when
+        // GDTF_EDITOR_ATTACHMENT carried a key; unset keeps the sorted-first autoload.
+        if let Some(forced) = self.forced_attachment.clone() {
+            app.insert_resource(forced);
+        }
         // C4.11: insert the forced-zoom resource (the zoom-applied capture variant) only when
         // GDTF_EDITOR_ZOOM parsed a finite float; unset keeps the identity 1.0 scale.
         if let Some(forced) = self.forced_zoom {
@@ -150,6 +172,7 @@ impl Plugin for EditorCapturePlugin {
             (
                 force_capture_mode,
                 force_capture_terrain_kind,
+                force_capture_attachment,
                 force_capture_zoom,
                 force_capture_view,
                 drive_capture_grid_size,
