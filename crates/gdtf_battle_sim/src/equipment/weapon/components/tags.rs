@@ -2,7 +2,7 @@
 //! [`Silenced`] suppressor tag.
 
 use bevy::prelude::{Component, Deref};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// A weapon's **`shove` tag** — whether the weapon KNOCKS BACK the target on a
 /// connecting attack (GTW-525). A `shove` weapon (a shock maul, a heavy bolter's
@@ -29,7 +29,11 @@ use serde::Deserialize;
 /// field is a NON-shove weapon (the field is `#[serde(default)]` on the spec, so the
 /// vast majority of existing weapons that never author it keep shoving off). Unlike
 /// [`Stable`](super::ballistics::Stable) — a required RON field — `shove` is opt-in.
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
+/// [`Serialize`] so the editor's WEAPON mode saves the field in the same schema it
+/// loads (GTW-670).
+#[derive(
+    Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default,
+)]
 #[serde(transparent)]
 pub struct Shove(bool);
 

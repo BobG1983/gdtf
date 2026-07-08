@@ -13,21 +13,20 @@
 //! 2. bottom `Panel::bottom` — the status line,
 //! 3. left `Panel::left` — the palette / stats (TERRAIN's DEMOTED `.terrain_def.ron` preview —
 //!    GTW-534 C2, THEME floor stats, PREFAB tile palette),
-//! 4. right `Panel::right` — the active mode's form (THEME field stack, PREFAB controls; TERRAIN is
-//!    idle here since GTW-534 C1 moved its controls to the central primary region),
-//! 5. [`CentralPanel`](bevy_egui::egui::CentralPanel) — the primary region (TERRAIN's stat fields +
-//!    sprite-grid picker as the primary focus — GTW-534 C1, THEME's terrain multi-select library
-//!    with per-row sprite thumbnails as the primary focus — GTW-530 C1/C2, PREFAB the
-//!    render-to-texture tile viewport — GTW-515 C4).
+//! 4. right `Panel::right` — the active mode's form
+//!    ([`mode_panels::right_panel`] — the per-mode dispatch),
+//! 5. [`CentralPanel`](bevy_egui::egui::CentralPanel) — the primary region
+//!    ([`mode_panels::central_panel`] — the per-mode dispatch).
 //!
-//! The mode switch is an IN-UI branch inside the right panel (`if mode == Prefab {…} else if …`)
-//! — there is no `bevy_ui` `mode_host` / `Visibility`-container machinery any more (C1.3 deleted
-//! it). The mode tabs are egui [`selectable_value`](bevy_egui::egui::Ui::selectable_value)s over
-//! the kept [`EditorMode`](crate::mode::EditorMode) resource; the `1`/`2`/`3` hotkeys are still
-//! handled by [`mode_hotkeys`](crate::mode::mode_hotkeys) in `Update` (UI-agnostic, kept). The
-//! theme `ComboBox` folds a selection into the [`MapEditorSession`] exactly as the old
-//! `apply_theme_selection` did (it resolves the chosen theme's default-floor from the registry and
-//! calls [`MapEditorSession::select_theme`]).
+//! The two PER-MODE dispatches (panels 4 + 5) live in the
+//! [`mode_panels`](super::mode_panels) sibling since GTW-670 (module-layout bands: they
+//! grow one arm per Workbench mode; the shell only changes when the panel LAYOUT does —
+//! the `autoload.rs` / `textures.rs` seam continuation). The mode tabs are egui
+//! [`selectable_value`](bevy_egui::egui::Ui::selectable_value)s over the kept
+//! [`EditorMode`](crate::mode::EditorMode) resource; the `1`–`9` hotkeys are still handled by
+//! [`mode_hotkeys`](crate::mode::mode_hotkeys) in `Update` (UI-agnostic, kept). The theme
+//! `ComboBox` folds a selection into the [`MapEditorSession`] exactly as the old
+//! `apply_theme_selection` did.
 //!
 //! Since GTW-664 the per-mode MODEL borrows stay inside their `params` bundles (direct field
 //! access, no unpack block) — the bundles grow when a mode's model surface does, the shell only
@@ -41,15 +40,15 @@ use gdtf_battle_sim::{
 
 use crate::{
     egui_shell::{
-        armor_form_ui, attachment_form_ui,
         autoload::{ModeSyncBundles, run_form_syncs},
         chrome::{mode_tabs, status_line, theme_combo_box},
-        gang_form_ui, injury_form_ui,
+        mode_panels::{ModePanelsCtx, central_panel, right_panel},
         params::{
             ArmorParams, AttachmentParams, GangParams, InjuryParams, PrefabParams, SpriteParams,
+            WeaponParams,
         },
-        prefab::{controls_ui, palette_ui, viewport_ui, viewport_ui::ViewportCtx},
-        sprite_form_ui, terrain_form_ui,
+        prefab::palette_ui,
+        terrain_form_ui,
         textures::resolve_panel_textures,
         theme_combo::theme_options,
         theme_form_ui,
@@ -62,9 +61,8 @@ use crate::{
 
 /// `EguiPrimaryContextPass` (in `Editing`): the WHOLE editor shell — mode tabs + global theme
 /// `ComboBox` (top), the status line (bottom), the per-mode palette/stats (left), the active mode's
-/// form (right), and the per-mode viewport (central — the PREFAB render-to-texture viewport for
-/// GTW-515 C4), declared outermost-first with the central panel last (C1.3 — the load-bearing egui
-/// panel order).
+/// form (right — the [`mode_panels`](super::mode_panels) dispatch), and the per-mode viewport
+/// (central — same dispatch, declared LAST per C1.3, the load-bearing egui panel order).
 ///
 /// Every editor resource is state-scoped (inserted `OnEnter(Editing)`, removed `OnExit(Editing)` —
 /// bevy-traps #1), so the mode + session + the TERRAIN draft are taken as `Option<ResMut<…>>` and
@@ -81,18 +79,9 @@ use crate::{
     reason = "the whole-editor egui system draws ALL panels in one pass (the EguiPrimaryContextPass \
               requirement — bevy-traps #8); each param is a distinct Bevy SystemParam (the egui \
               context, the state-scoped mutable drafts + mode + session, the per-mode model \
-              bundles — prefab / gang / armor / injury / sprite / attachment — and the read-only \
-              registries); Bevy's injection model cannot reduce this without a wrapper resource \
-              that changes the crate's API surface"
-)]
-#[expect(
-    clippy::too_many_lines,
-    reason = "egui panels CANNOT overlap and MUST be declared in one system, outermost-first with \
-              the central panel last (bevy-traps #8) — the whole editor shell (top/bottom/left/ \
-              right/central, each branching over the Workbench modes) is one indivisible \
-              EguiPrimaryContextPass system; the per-mode DRAW bodies are already factored into the \
-              mode-specific `*_form_ui` / `prefab` modules, so what remains here is the irreducible \
-              panel-declaration skeleton"
+              bundles — prefab / gang / armor / injury / sprite / attachment / weapon — and the \
+              read-only registries); Bevy's injection model cannot reduce this without a wrapper \
+              resource that changes the crate's API surface"
 )]
 pub(crate) fn editor_egui_ui(
     mut contexts: EguiContexts,
@@ -110,6 +99,7 @@ pub(crate) fn editor_egui_ui(
     mut injury_mode: InjuryParams,
     mut sprite_mode: SpriteParams,
     mut attachment_mode: AttachmentParams,
+    mut weapon_mode: WeaponParams,
 ) -> Result {
     let (Some(mut mode), Some(mut session), Some(mut terrain_draft), Some(mut theme_draft)) =
         (mode, session, terrain_draft, theme_draft)
@@ -134,6 +124,7 @@ pub(crate) fn editor_egui_ui(
             injury:     &mut injury_mode,
             sprite:     &mut sprite_mode,
             attachment: &mut attachment_mode,
+            weapon:     &mut weapon_mode,
         },
     );
 
@@ -192,204 +183,42 @@ pub(crate) fn editor_egui_ui(
                 &textures.sprites,
             );
         }
-        // GANG / ARMOR / INJURY / SPRITE / ATTACHMENT modes keep this secondary strip
-        // intentionally idle (GTW-636 / GTW-479 / GTW-654 / GTW-664 / GTW-669): the
-        // member list / piece grid / def editors are the central primary focus and the
-        // form controls live in the right panel, so nothing competes here (the TERRAIN
-        // right-panel precedent).
+        // GANG / ARMOR / INJURY / SPRITE / ATTACHMENT / WEAPON modes keep this
+        // secondary strip intentionally idle (GTW-636 / GTW-479 / GTW-654 / GTW-664 /
+        // GTW-669 / GTW-670): the member list / piece grid / def editors are the
+        // central primary focus and the form controls live in the right panel, so
+        // nothing competes here (the TERRAIN right-panel precedent).
         EditorMode::Gang
         | EditorMode::Armor
         | EditorMode::Injury
         | EditorMode::Sprite
-        | EditorMode::Attachment => {}
+        | EditorMode::Attachment
+        | EditorMode::Weapon => {}
     });
 
-    // 4. RIGHT — the ACTIVE mode's form (an in-UI branch). TERRAIN no longer renders here (GTW-534
-    //    C1 folded its picker + field stack into the CENTRAL primary region below); THEME is the
-    //    real form (C3 / GTW-514); PREFAB is the real controls (C4 / GTW-515) — the grid-size
-    //    fields, the GTW-595 level rail, and the debug Save.
-    egui::Panel::right("editor_mode_form").show(&mut viewport_ui, |ui| match *mode {
-        // TERRAIN's controls are central now (GTW-534 C1); the right panel is intentionally idle in
-        // TERRAIN mode so nothing competes with the central stats + sprite picker.
-        EditorMode::Terrain => {}
-        EditorMode::Theme => {
-            theme_form_ui::field_stack(ui, &mut theme_draft, terrain_registry.as_deref());
-        }
-        EditorMode::Prefab => {
-            if let (Some(edit_level), Some(view), Some(isolate), Some(map)) = (
-                prefab.edit_level.as_deref_mut(),
-                prefab.view.as_deref_mut(),
-                prefab.isolate.as_deref_mut(),
-                prefab.map.as_deref(),
-            ) {
-                controls_ui::controls_panel(
-                    ui,
-                    &mut session,
-                    edit_level,
-                    view,
-                    isolate,
-                    &mut prefab_save_name,
-                    map,
-                    terrain_registry.as_deref(),
-                    themes.as_deref(),
-                    &mut prefab.rail_state,
-                );
-            }
-        }
-        EditorMode::Gang => {
-            if let Some(draft) = gang.draft.as_deref_mut() {
-                gang_form_ui::field_stack(ui, draft, gang.gangs.as_deref());
-            }
-        }
-        EditorMode::Armor => {
-            if let Some(draft) = armor_mode.draft.as_deref_mut() {
-                armor_form_ui::field_stack(ui, draft, armor_mode.registry.as_deref());
-            }
-        }
-        EditorMode::Injury => {
-            if let Some(draft) = injury_mode.draft.as_deref_mut() {
-                injury_form_ui::field_stack(ui, draft, injury_mode.registry.as_deref());
-            }
-        }
-        // GTW-664: load / name / New sprite / debug Save — the Gang/Armor field-stack
-        // parity over the sprite draft + the GTW-663 registry.
-        EditorMode::Sprite => {
-            if let Some(draft) = sprite_mode.draft.as_deref_mut() {
-                sprite_form_ui::field_stack(ui, draft, sprite_mode.registry.as_deref());
-            }
-        }
-        // GTW-669: load / name / New attachment / debug Save — the Gang/Armor
-        // field-stack parity over the attachment draft + the GTW-619 registry.
-        EditorMode::Attachment => {
-            if let Some(draft) = attachment_mode.draft.as_deref_mut() {
-                attachment_form_ui::field_stack(ui, draft, attachment_mode.registry.as_deref());
-            }
-        }
-    });
-
-    // 5. CENTRAL — the viewport / primary region (LAST: egui fills the residual space with it). In
-    //    TERRAIN mode (GTW-534 C1) it is now the PRIMARY focus: the sprite-grid graphic picker
-    //    (GTW-516) + the terrain stat field stack, side by side — the two things authoring a terrain
-    //    is about (the demoted `.terrain_def.ron` preview lives in the LEFT secondary strip). In
-    //    THEME mode (GTW-530 C1/C2) it is now the PRIMARY focus: the terrain multi-select library
-    //    with per-row `[sprite] name [Kind]` thumbnails (the `.terrain_theme.ron` preview was
-    //    REMOVED — C1). In PREFAB mode (C4 / GTW-515) it shows the render-to-texture viewport
-    //    (click-to-paint + hover ghost + wheel-zoom + right-drag pan).
-    egui::CentralPanel::default().show(&mut viewport_ui, |ui| match *mode {
-        EditorMode::Terrain => {
-            terrain_form_ui::primary_panel(
-                ui,
-                &mut terrain_draft,
-                &session,
-                themes.as_deref(),
-                sprite_mode.registry.as_deref(),
-                weapons.as_deref(),
-                &textures.sprites,
-            );
-        }
-        EditorMode::Theme => {
-            theme_form_ui::terrain_library_panel(
-                ui,
-                &mut theme_draft,
-                terrain_registry.as_deref(),
-                sprite_mode.registry.as_deref(),
-                &textures.sprites,
-            );
-        }
-        EditorMode::Prefab => {
-            if let (Some(map), Some(edit_level), Some(hovered), Some(zoom), Some(pan)) = (
-                prefab.map.as_deref_mut(),
-                prefab.edit_level.as_deref(),
-                prefab.hovered.as_deref_mut(),
-                prefab.zoom.as_deref_mut(),
-                prefab.pan.as_deref_mut(),
-            ) {
-                let mut vp = ViewportCtx {
-                    map,
-                    session: &session,
-                    edit_level,
-                    hovered,
-                    zoom,
-                    pan,
-                    registry: terrain_registry.as_deref(),
-                    themes: themes.as_deref(),
-                };
-                viewport_ui::viewport_panel(ui, &mut vp, textures.preview_id);
-            } else {
-                ui.heading("Viewport");
-                ui.label("Preparing prefab preview…");
-            }
-        }
-        // GTW-636: the member-list editor is the GANG mode's PRIMARY focus — one
-        // collapsible per-member editor (name / loadout dropdowns / attributes /
-        // derived stats / remove) over the draft's sim records.
-        EditorMode::Gang => {
-            if let Some(draft) = gang.draft.as_deref_mut() {
-                gang_form_ui::members_panel(
-                    ui,
-                    draft,
-                    weapons.as_deref(),
-                    gang.melee.as_deref(),
-                    gang.armor.as_deref(),
-                    gang.tuning.as_deref(),
-                );
-            }
-        }
-        // GTW-479: the per-body-part piece grid is the ARMOR mode's PRIMARY focus —
-        // one row per BodyPart (the four clamped stat drags + the ArmorType combo)
-        // over the draft's sim record.
-        EditorMode::Armor => {
-            if let Some(draft) = armor_mode.draft.as_deref_mut() {
-                armor_form_ui::pieces_panel(ui, draft);
-            }
-        }
-        // GTW-654: the def editor (fields + the closed-palette effects list) and the
-        // weighting section (C2) are the INJURY mode's PRIMARY focus, stacked in one
-        // scroll area over the two drafts' sim records.
-        EditorMode::Injury => {
-            egui::ScrollArea::vertical()
-                .auto_shrink([false, false])
-                .show(ui, |ui| {
-                    if let Some(draft) = injury_mode.draft.as_deref_mut() {
-                        injury_form_ui::def_panel(ui, draft);
-                    }
-                    if let Some(weighting) = injury_mode.weighting.as_deref_mut() {
-                        ui.separator();
-                        injury_form_ui::weighting_panel(
-                            ui,
-                            weighting,
-                            injury_mode.registry.as_deref(),
-                            injury_mode.tables.as_deref(),
-                        );
-                    }
-                });
-        }
-        // GTW-664: the full def editor is the SPRITE mode's PRIMARY focus — source
-        // picker, the visual anchor affordance (crosshair over the shell-resolved
-        // preview), facings overrides, and animation rows, stacked in one scroll area.
-        EditorMode::Sprite => {
-            if let Some(draft) = sprite_mode.draft.as_deref_mut() {
-                sprite_form_ui::primary_panel(
-                    ui,
-                    draft,
-                    &mut sprite_mode.preview_cache,
-                    textures.sprite_preview.as_ref(),
-                );
-            }
-        }
-        // GTW-669: the item editor (display name / slot / the closed 13-effect list)
-        // is the ATTACHMENT mode's PRIMARY focus, in one scroll area over the draft's
-        // sim record (the injury def-panel shape).
-        EditorMode::Attachment => {
-            egui::ScrollArea::vertical()
-                .auto_shrink([false, false])
-                .show(ui, |ui| {
-                    if let Some(draft) = attachment_mode.draft.as_deref_mut() {
-                        attachment_form_ui::def_panel(ui, draft);
-                    }
-                });
-        }
-    });
+    // 4 + 5. RIGHT (the active mode's form) then CENTRAL (the primary region, LAST —
+    // egui fills the residual space with it): the per-mode dispatches, moved to
+    // `egui_shell::mode_panels` at the GTW-670 band seam. One borrow context threads
+    // every per-mode model into both.
+    let mut panel_ctx = ModePanelsCtx {
+        session:          &mut session,
+        terrain_draft:    &mut terrain_draft,
+        theme_draft:      &mut theme_draft,
+        prefab_save_name: &mut prefab_save_name,
+        themes:           themes.as_deref(),
+        terrain_registry: terrain_registry.as_deref(),
+        weapons:          weapons.as_deref(),
+        textures:         &textures,
+        prefab:           &mut prefab,
+        gang:             &mut gang,
+        armor:            &mut armor_mode,
+        injury:           &mut injury_mode,
+        sprite:           &mut sprite_mode,
+        attachment:       &mut attachment_mode,
+        weapon:           &mut weapon_mode,
+    };
+    right_panel(&mut viewport_ui, *mode, &mut panel_ctx);
+    central_panel(&mut viewport_ui, *mode, &mut panel_ctx);
 
     Ok(())
 }

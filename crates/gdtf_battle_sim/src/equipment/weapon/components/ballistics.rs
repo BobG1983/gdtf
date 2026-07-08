@@ -2,7 +2,7 @@
 //! and the braced-by-design [`Stable`] tag.
 
 use bevy::prelude::{Component, Deref};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// A weapon's **base spread** — the intrinsic angular dispersion before the
 /// situational multipliers, the `base_spread` term of `θ_cone` (resolution.md
@@ -17,7 +17,9 @@ use serde::Deserialize;
 /// `bsn!`-scene spawn path's `get_or_insert_template` seeds the component slot
 /// via `Default` before the authored `BaseSpread::new(..)` overwrites it
 /// (GTW-322). It is NOT a valid authored weapon stat.
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize, Default)]
+/// [`Serialize`] so the editor's WEAPON mode saves the field in the same schema it
+/// loads (GTW-670 — the [`FatalBias`](super::FatalBias) precedent).
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 pub struct BaseSpread(f32);
 
@@ -41,7 +43,9 @@ impl BaseSpread {
 /// `Default` (`Accuracy(0.0)`) is a **spawn-seed sentinel only** — the `bsn!`
 /// spawn path seeds the slot via `Default` before `Accuracy::new(..)` overwrites
 /// it (GTW-322). It is NOT a valid authored weapon stat.
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize, Default)]
+/// [`Serialize`] so the editor's WEAPON mode saves the field in the same schema it
+/// loads (GTW-670).
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 pub struct Accuracy(f32);
 
@@ -63,7 +67,9 @@ impl Accuracy {
 /// `Default` (`Kickback(0.0)`) is a **spawn-seed sentinel only** — the `bsn!`
 /// spawn path seeds the slot via `Default` before `Kickback::new(..)` overwrites
 /// it (GTW-322). It is NOT a valid authored weapon stat.
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Deserialize, Default)]
+/// [`Serialize`] so the editor's WEAPON mode saves the field in the same schema it
+/// loads (GTW-670).
+#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 pub struct Kickback(f32);
 
@@ -93,7 +99,11 @@ impl Kickback {
 /// spawn path seeds the slot via `Default` before `Stable::new(..)` overwrites it
 /// (GTW-322). It is NOT a valid authored weapon tag (though `false` happens to
 /// coincide with "not braced-by-design", it is overwritten regardless).
-#[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
+/// [`Serialize`] so the editor's WEAPON mode saves the field in the same schema it
+/// loads (GTW-670).
+#[derive(
+    Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default,
+)]
 #[serde(transparent)]
 pub struct Stable(bool);
 

@@ -5,7 +5,7 @@
 //! the ranged [`WeaponName`](crate::weapon::WeaponName).
 
 use bevy::prelude::Deref;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// An **attachment item's key** — its stable identity, the filename stem of its
 /// `assets/content/attachments/<key>.attachment.ron` file (GTW-549). A weapon references
@@ -18,7 +18,9 @@ use serde::Deserialize;
 /// mirroring [`WeaponName`](crate::weapon::WeaponName). Private inner + derived [`Deref`];
 /// `#[serde(transparent)]` so a weapon's `attachments:` list authors bare RON strings
 /// (`["scoped_sight"]`). `Hash` + `Eq` so it keys the registry [`HashMap`](bevy::platform::collections::HashMap).
-#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+/// [`Serialize`] so the editor's WEAPON mode saves a weapon's `attachments:` key list in
+/// the same schema it loads (GTW-670).
+#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct AttachmentName(String);
 

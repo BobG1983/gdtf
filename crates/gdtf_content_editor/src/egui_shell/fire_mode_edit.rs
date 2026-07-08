@@ -4,9 +4,12 @@
 //!
 //! A SHARED `egui_shell` sibling (not an `attachment_form_ui` private) on purpose: the
 //! ATTACHMENT mode's `GainFireMode` effect row edits exactly one authored fire mode, and
-//! the GTW-670 WEAPON forms' `fire_mode:` list editor edits the same row shape — both
+//! the GTW-670 WEAPON form's `fire_mode:` list editor edits the same row shape — both
 //! consume THIS widget, so the fire-mode authoring surface has one definition (the
-//! `theme_combo` / `sprite_thumb` shared-leaf precedent).
+//! `theme_combo` / `sprite_thumb` shared-leaf precedent). The [`HitType`] half is also
+//! exposed on its own ([`hit_type_row`] — extended IN PLACE for GTW-670, not forked):
+//! the WEAPON form's `on_death: Explode` payload authors a bare [`HitType`] outside any
+//! fire mode, and it draws the SAME template combo + payload drags.
 //!
 //! Every commit folds through the sim newtypes' constructors, and the drag clamps are
 //! the payload TYPES' own ranges — the specs document NO tighter numeric bounds (the
@@ -70,9 +73,22 @@ pub(crate) fn fire_mode_row(ui: &mut egui::Ui, index: usize, spec: &mut FireMode
             });
         mode_number_drags(ui, spec);
     });
+    hit_type_row(ui, ("fire_mode_hit_type", index), &mut spec.hit_type);
+}
+
+/// Draw the [`HitType`] row on its own — the template combo plus that kind's payload
+/// drags, editing the value IN PLACE (GTW-670: the WEAPON form's `on_death: Explode`
+/// payload authors a bare [`HitType`], so the row is exposed beside
+/// [`fire_mode_row`], which delegates to it). `salt` disambiguates coexisting rows
+/// (the calling list supplies its own id source).
+pub(crate) fn hit_type_row(
+    ui: &mut egui::Ui,
+    salt: impl std::hash::Hash + std::fmt::Debug,
+    hit_type: &mut HitType,
+) {
     ui.horizontal(|ui| {
-        hit_type_combo(ui, index, &mut spec.hit_type);
-        hit_type_payload(ui, &mut spec.hit_type);
+        hit_type_combo(ui, salt, hit_type);
+        hit_type_payload(ui, hit_type);
     });
 }
 
@@ -104,10 +120,14 @@ fn mode_number_drags(ui: &mut egui::Ui, spec: &mut FireModeSpec) {
 /// The [`HitType`] template combo — picking a DIFFERENT kind replaces the value with
 /// that kind's [`HIT_TYPE_TEMPLATES`] seed (the current kind's row is a no-op, so an
 /// open combo never wipes a tuned payload — the injury variant-combo convention).
-fn hit_type_combo(ui: &mut egui::Ui, index: usize, hit_type: &mut HitType) {
+fn hit_type_combo(
+    ui: &mut egui::Ui,
+    salt: impl std::hash::Hash + std::fmt::Debug,
+    hit_type: &mut HitType,
+) {
     ui.label("Hit");
     let current = hit_type_label(*hit_type);
-    egui::ComboBox::from_id_salt(("fire_mode_hit_type", index))
+    egui::ComboBox::from_id_salt(salt)
         .selected_text(current)
         .show_ui(ui, |ui| {
             for template in HIT_TYPE_TEMPLATES {

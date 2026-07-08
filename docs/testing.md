@@ -82,10 +82,11 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 | `GDTF_DOCS_PATH_ROOT` | `gdtf_test_utils` | Overrides the repo root the docs path-truth guard test scans (guard-test hook). |
 | `GDTF_DROPDOWN_SHOT` | `gdtf_ui` | Dropdown demo example: capture a PNG to this path, then exit. |
 | `GDTF_EDITOR_ATTACHMENT` | `gdtf_content_editor` | Content-editor capture: pre-load a NAMED attachment item (a registry key / file stem, e.g. `scoped_sight`) into the ATTACHMENT form before the shot (GTW-669); unset keeps the sorted-first autoload. |
-| `GDTF_EDITOR_MODE` | `gdtf_content_editor` | Content-editor capture: force the Workbench mode (`terrain`/`theme`/`prefab`/`gang`/`armor`/`injury`/`sprite`/`attachment`) before the shot. |
+| `GDTF_EDITOR_MODE` | `gdtf_content_editor` | Content-editor capture: force the Workbench mode (`terrain`/`theme`/`prefab`/`gang`/`armor`/`injury`/`sprite`/`attachment`/`weapon`) before the shot. |
 | `GDTF_EDITOR_SHOT` | `gdtf_content_editor` | Content-editor capture: output PNG path; setting it opts the standalone editor into screenshot-then-exit. |
 | `GDTF_EDITOR_TERRAIN_KIND` | `gdtf_content_editor` | Content-editor capture: pre-select the TERRAIN form's kind segment (`wall`/`cover`/`slab`/`emplacement`). |
 | `GDTF_EDITOR_VIEW` | `gdtf_content_editor` | Content-editor capture: `full` forces the prefab-viewport full view (lifting the GTW-594 Isolate default, which wins over it); `isolate` stages the GTW-594 three-class Isolate shot (edit storey lifted to the painted upper storey). Unset keeps the editor defaults (Isolate on, one onion below). |
+| `GDTF_EDITOR_WEAPON` | `gdtf_content_editor` | Content-editor capture: pre-load a NAMED weapon (a registry key / file stem, e.g. `heavy_bolter`) into the WEAPON form before the shot (GTW-670); unset keeps the sorted-first autoload. |
 | `GDTF_EDITOR_ZOOM` | `gdtf_content_editor` | Content-editor capture: force a non-`1.0` prefab canvas zoom (`0.25`–`4.0`, clamped). |
 | `GDTF_FALL_AT_FRAME` | `gdtf_app` | Battle capture trigger: the `BattleRunning` frame at which a player ganger is forced to FALL via the real fall path (fall-FX QA). |
 | `GDTF_FIRE_AT_FRAME` | `gdtf_app` | Battle capture trigger: the `BattleRunning` frame at which the selected ganger fires at the nearest enemy via the real fire path. |

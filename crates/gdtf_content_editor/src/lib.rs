@@ -141,6 +141,11 @@ mod theme_dir;
 // (theme→terrain + emplacement→weapon + gang equipment — GTW-651), re-armed live on
 // hot-reload.
 mod validate;
+// GTW-670: the WEAPON authoring mode of the Workbench — the form that edits a full
+// ranged WeaponSpec (all 18 authored fields) and saves it to
+// `content/weapons/ranged/<name>.weapon.ron` where the GTW-257/570 WeaponsFamily
+// loader reads (the GTW-479 Armor mode/form precedent).
+mod weapon_form;
 
 pub use app::MapEditorApp;
 // GTW-479: the ARMOR-mode model + the pure save halves — exported so the round-trip
@@ -251,3 +256,13 @@ pub use theme_form::{
     SaveThemeError, ThemeDraft, draft_to_theme_def, floor_candidates, resolved_stats,
     serialize_theme_def, slab_floor_candidates, validate_for_save,
 };
+// GTW-670: the WEAPON-mode model + the pure save halves — exported so the round-trip
+// tests drive the REAL projection / path resolution / write (the TempDir round-trip
+// through the actual WeaponsFamily loader) and the headless lifecycle test asserts the
+// scoped draft (the GTW-636/GTW-479 export precedent).
+pub use weapon_form::{WeaponDraft, draft_to_weapon_spec, weapon_file_name, weapon_save_path_in};
+// The debug-only WEAPON fs-write surface (the terrain/theme/gang/armor/sprite/
+// attachment write precedent): `write_weapon_in` is the root-parameterized core tests
+// aim at a `TempDir`; `write_weapon` is the production wrapper (WORKSPACE_ASSETS_ROOT).
+#[cfg(debug_assertions)]
+pub use weapon_form::{write_weapon, write_weapon_in};

@@ -12,6 +12,7 @@ use gdtf_battle_sim::{
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
     level::UuidThemeRegistry,
+    weapon::WeaponRegistry,
 };
 use gdtf_content_families::sprites::SpriteDefRegistry;
 
@@ -20,8 +21,10 @@ use crate::{
     attachment_form::AttachmentDraft,
     egui_shell::{
         armor_form_ui, attachment_form_ui, gang_form_ui, injury_form_ui,
-        params::{ArmorParams, AttachmentParams, GangParams, InjuryParams, SpriteParams},
-        sprite_form_ui, theme_form_ui,
+        params::{
+            ArmorParams, AttachmentParams, GangParams, InjuryParams, SpriteParams, WeaponParams,
+        },
+        sprite_form_ui, theme_form_ui, weapon_form_ui,
     },
     gang_form::GangDraft,
     injury_form::{InjuryDraft, WeightingDraft},
@@ -29,6 +32,7 @@ use crate::{
     session::MapEditorSession,
     sprite_form::SpriteDraft,
     theme_form::ThemeDraft,
+    weapon_form::WeaponDraft,
 };
 
 /// The per-mode model bundles the sync fan-out below reads — borrowed from the shell's
@@ -38,7 +42,7 @@ use crate::{
 /// PANEL layout does). Each bundle keeps its OWN world lifetime — a `&mut` is invariant
 /// over its type parameter, so one shared `'w` would force the shell's independently
 /// elided param lifetimes to unify (a compile error).
-pub(super) struct ModeSyncBundles<'a, 'gang, 'armor, 'injury, 'sprite, 'attach, 's> {
+pub(super) struct ModeSyncBundles<'a, 'gang, 'armor, 'injury, 'sprite, 'attach, 'weapon, 's> {
     /// The GANG-mode model borrows (GTW-636).
     pub(super) gang:       &'a mut GangParams<'gang>,
     /// The ARMOR-mode model borrows (GTW-479).
@@ -49,6 +53,8 @@ pub(super) struct ModeSyncBundles<'a, 'gang, 'armor, 'injury, 'sprite, 'attach, 
     pub(super) sprite:     &'a mut SpriteParams<'sprite, 's>,
     /// The ATTACHMENT-mode model borrows (GTW-669).
     pub(super) attachment: &'a mut AttachmentParams<'attach>,
+    /// The WEAPON-mode model borrows (GTW-670).
+    pub(super) weapon:     &'a mut WeaponParams<'weapon>,
 }
 
 /// Run EVERY per-mode pre-panel sync/autoload runner — the ONE fan-out the shell calls
@@ -60,7 +66,7 @@ pub(super) fn run_form_syncs(
     session: &MapEditorSession,
     themes: Option<&UuidThemeRegistry>,
     theme_draft: &mut ThemeDraft,
-    bundles: ModeSyncBundles<'_, '_, '_, '_, '_, '_, '_>,
+    bundles: ModeSyncBundles<'_, '_, '_, '_, '_, '_, '_, '_>,
 ) {
     theme_form_sync(mode, session, themes, theme_draft);
     gang_form_sync(
@@ -89,6 +95,11 @@ pub(super) fn run_form_syncs(
         mode,
         bundles.attachment.draft.as_deref_mut(),
         bundles.attachment.registry.as_deref(),
+    );
+    weapon_form_sync(
+        mode,
+        bundles.weapon.draft.as_deref_mut(),
+        bundles.weapon.registry.as_deref(),
     );
 }
 
@@ -185,5 +196,19 @@ fn attachment_form_sync(
         && let (Some(draft), Some(registry)) = (draft, registry)
     {
         attachment_form_ui::autoload_first_attachment(draft, registry);
+    }
+}
+
+/// GTW-670: the WEAPON mode's one-shot open-with-a-weapon seed — the Gang / Armor /
+/// Attachment autoloads' exact parity twin over the GTW-257 [`WeaponRegistry`].
+fn weapon_form_sync(
+    mode: EditorMode,
+    draft: Option<&mut WeaponDraft>,
+    registry: Option<&WeaponRegistry>,
+) {
+    if mode == EditorMode::Weapon
+        && let (Some(draft), Some(registry)) = (draft, registry)
+    {
+        weapon_form_ui::autoload_first_weapon(draft, registry);
     }
 }

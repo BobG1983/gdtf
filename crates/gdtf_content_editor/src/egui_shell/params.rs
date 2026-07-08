@@ -14,7 +14,7 @@ use gdtf_battle_sim::{
     ganger::GangRegistry,
     injuries::{InjuryRegistry, InjuryTables},
     tuning::GangerStatTuning,
-    weapon::MeleeWeaponRegistry,
+    weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
 use gdtf_content_families::sprites::SpriteDefRegistry;
 
@@ -29,6 +29,7 @@ use crate::{
     injury_form::{InjuryDraft, WeightingDraft},
     preview::{target::PreviewTarget, view::PreviewPan},
     sprite_form::SpriteDraft,
+    weapon_form::WeaponDraft,
 };
 
 /// The state-scoped PREFAB-mode model borrows the shell threads into the PREFAB panels (GTW-515).
@@ -149,4 +150,23 @@ pub(crate) struct AttachmentParams<'w> {
     /// The loaded attachment registry (the load `ComboBox` options + the one-shot
     /// autoload).
     pub(super) registry: Option<Res<'w, AttachmentRegistry>>,
+}
+
+/// The WEAPON-mode model borrows the shell threads into the WEAPON panels (GTW-670) —
+/// the [`GangParams`] pattern. Every field is `Option` — the draft is state-scoped
+/// (bevy-traps #1) and the registries arrive with the `Load` pass — so the other modes
+/// tolerate their absence and WEAPON mode no-ops until they exist. The attachment
+/// registry rides here TOO (alongside [`AttachmentParams::registry`] — the
+/// [`GangParams`]-holds-`ArmorRegistry` precedent; both are read-only `Res`): it is the
+/// option source of the weapon's `attachments:` key combos, which is what makes a
+/// dangling key UNAUTHORABLE via the form (GTW-670 C2).
+#[derive(bevy::ecs::system::SystemParam)]
+pub(crate) struct WeaponParams<'w> {
+    /// The editable weapon working model (the form writes it; the save projects it).
+    pub(super) draft:       Option<ResMut<'w, WeaponDraft>>,
+    /// The loaded ranged-weapons registry (the load `ComboBox` options + the one-shot
+    /// autoload).
+    pub(super) registry:    Option<Res<'w, WeaponRegistry>>,
+    /// The loaded attachment registry — the `attachments:` key combos' option source.
+    pub(super) attachments: Option<Res<'w, AttachmentRegistry>>,
 }

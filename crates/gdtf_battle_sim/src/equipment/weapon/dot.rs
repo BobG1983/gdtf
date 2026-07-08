@@ -34,7 +34,7 @@
 use std::num::NonZeroU8;
 
 use bevy::prelude::{Component, Deref};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::DamageType;
 
@@ -47,8 +47,9 @@ use super::DamageType;
 /// inner). A no-bare-types newtype: private inner + derived [`Deref`];
 /// `#[serde(transparent)]` so a weapon's authored [`DotProfile`] `.ron` names it as a bare
 /// integer. Distinct from [`crate::weapon::WeaponDamage`] (the at-impact damage) — a DOT's
-/// per-turn tick is its OWN quantity, never the weapon's base damage.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+/// per-turn tick is its OWN quantity, never the weapon's base damage. [`Serialize`] so
+/// the editor's WEAPON mode saves the field in the same schema it loads (GTW-670).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DotDamage(u16);
 
@@ -81,7 +82,10 @@ impl DotDamage {
 /// // A zero-turn DOT duration is a TYPE error, not a runtime state.
 /// let zero = DotTurns::new(0);
 /// ```
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+///
+/// [`Serialize`] so the editor's WEAPON mode saves the field in the same schema it
+/// loads (GTW-670 — serde's [`NonZeroU8`] impl writes the bare positive scalar back).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DotTurns(NonZeroU8);
 
@@ -123,7 +127,9 @@ impl DotTurns {
 /// `turns: 0` fails the parse loudly — and [`Component`] so it rides on the weapon entity.
 /// NOT a stat the matchup wheel touches — the per-turn tick bypasses armor entirely, so the
 /// `DamageType` here is a presentation / flavour tag, never a soak lookup.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+/// [`Serialize`] so the editor's WEAPON mode saves an authored `dot:` profile in the
+/// same schema it loads (GTW-670).
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct DotProfile {
     /// The per-turn HP damage each tick deals (bypasses armor).
     pub damage:      DotDamage,

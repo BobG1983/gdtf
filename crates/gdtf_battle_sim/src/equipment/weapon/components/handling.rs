@@ -83,7 +83,9 @@ impl WeaponName {
 /// `Handedness::<Variant>` patch overwrites it (GTW-322). It carries no special meaning
 /// as the default; `OneHanded` is chosen as the least-restrictive node so an
 /// un-authored weapon never spuriously gates on hand count.
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Default)]
+/// [`Serialize`] so the editor's WEAPON mode saves the field in the same schema it
+/// loads (GTW-670 — authored as the bare variant name).
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum Handedness {
     /// A one-handed weapon — fires with a single working hand (a pistol).
     #[default]

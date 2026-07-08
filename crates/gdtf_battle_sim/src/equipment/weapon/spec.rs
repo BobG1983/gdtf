@@ -5,7 +5,7 @@
 //! composes.
 
 use bevy::{prelude::Component, reflect::TypePath};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{
     Accuracy, BaseSpread, DamageProfile, DamageType, DotProfile, FatalBias, FireMode, Handedness,
@@ -42,7 +42,13 @@ use crate::{
 ///
 /// **Not `Copy`** — it owns a [`FireMode`] (which holds a `Vec` of specs); it is
 /// `Clone`, so the registry can hold specs BY VALUE.
-#[derive(Debug, Clone, PartialEq, Deserialize, TypePath)]
+///
+/// [`Serialize`] too (GTW-670) so the editor's WEAPON mode saves a `.weapon.ron` in the
+/// SAME schema it loads (the round-trip contract — never a parallel serialize-only
+/// mirror); the [`Magazine`]'s live `rounds` count is `#[serde(skip_serializing)]` on its
+/// own field, so a saved file authors only `(size, reload_tu)` exactly like every
+/// hand-authored member.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TypePath)]
 pub struct WeaponSpec {
     /// The intrinsic angular spread before situational multipliers (`base_spread`).
     pub base_spread: BaseSpread,

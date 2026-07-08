@@ -39,6 +39,19 @@ pub enum AttachmentSlot {
     Pommel,
 }
 
+impl AttachmentSlot {
+    /// Every closed-vocabulary slot, in declaration order — the canonical enumeration a
+    /// slot-picking UI iterates (GTW-670; the [`DamageType::ALL`](crate::weapon::DamageType::ALL)
+    /// precedent), so the editor's combos never hand-copy the palette.
+    pub const ALL: [Self; 5] = [
+        Self::Muzzle,
+        Self::Sight,
+        Self::Rail,
+        Self::Counterweight,
+        Self::Pommel,
+    ];
+}
+
 /// How many attachments ONE declared slot holds (GTW-554) — the per-slot capacity a weapon
 /// authors next to each offered [`AttachmentSlot`] (e.g. `(Rail, 3)` — a long rail hosting
 /// three mods).
@@ -92,6 +105,15 @@ impl WeaponSlots {
             .iter()
             .find(|(declared, _)| *declared == slot)
             .map(|&(_, capacity)| capacity)
+    }
+
+    /// The authored `(slot, capacity)` pairs, in authored order — the read surface the
+    /// editor's WEAPON-mode slots rows render from (GTW-670). Edits fold back through
+    /// [`new`](WeaponSlots::new) (the same constructor the loader's deserialize uses),
+    /// so the declaration list stays construct-only.
+    #[must_use]
+    pub fn declarations(&self) -> &[(AttachmentSlot, SlotCapacity)] {
+        &self.0
     }
 }
 

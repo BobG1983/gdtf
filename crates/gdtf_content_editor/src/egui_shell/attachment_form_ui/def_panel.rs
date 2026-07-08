@@ -20,16 +20,6 @@ use gdtf_battle_sim::{
 
 use crate::{attachment_form::AttachmentDraft, egui_shell::fire_mode_edit};
 
-/// The five closed [`AttachmentSlot`]s the slot combo offers, in the sim's declaration
-/// order (GTW-554 — the mount-point vocabulary).
-const SLOTS: [AttachmentSlot; 5] = [
-    AttachmentSlot::Muzzle,
-    AttachmentSlot::Sight,
-    AttachmentSlot::Rail,
-    AttachmentSlot::Counterweight,
-    AttachmentSlot::Pommel,
-];
-
 /// The seed each effect KIND switches to when a row's variant combo picks it — one
 /// template per closed-palette variant, in the palette's declaration order. Every
 /// payload seeds its DOCUMENTED IDENTITY where one exists ([`WeaponBraceBonus::none`],
@@ -103,10 +93,13 @@ fn identity_fields(ui: &mut egui::Ui, draft: &mut AttachmentDraft) {
     });
     ui.horizontal(|ui| {
         ui.label("Slot");
+        // The closed 5-slot palette is the sim's own canonical enumeration
+        // (`AttachmentSlot::ALL` — GTW-670 hoisted it beside `DamageType::ALL`, so the
+        // WEAPON form's slots rows and this combo share one source).
         egui::ComboBox::from_id_salt("attachment_slot_combo")
             .selected_text(format!("{:?}", spec.slot))
             .show_ui(ui, |ui| {
-                for option in SLOTS {
+                for option in AttachmentSlot::ALL {
                     ui.selectable_value(&mut spec.slot, option, format!("{option:?}"));
                 }
             });

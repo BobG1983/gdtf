@@ -51,6 +51,7 @@ use crate::{
     terrain_form::TerrainDraft,
     theme_form::ThemeDraft,
     validate::register_validation,
+    weapon_form::WeaponDraft,
 };
 
 /// The map editor's single plugin: state machine + `Load` pass + `Editing` scene + the egui shell.
@@ -102,7 +103,7 @@ impl Plugin for MapEditorPlugin {
 
         app.add_systems(OnEnter(EditorState::Editing), spawn_editor_camera);
 
-        // GTW-575: the seventeen `Editing`-scoped MODEL resources register their whole
+        // GTW-575: the eighteen `Editing`-scoped MODEL resources register their whole
         // OnEnter-insert + OnExit-remove lifecycle through ONE
         // `init_state_scoped_resource` call each (bevy-traps #1 via the shared
         // `gdtf_state_scoped` seam) — same `OnEnter(Editing)` / `OnExit(Editing)`
@@ -156,6 +157,11 @@ impl Plugin for MapEditorPlugin {
         // resolved GTW-619 AttachmentRegistry on the first Attachment-mode frame — the
         // Gang/Armor/Sprite parity).
         app.init_state_scoped_resource(EditorState::Editing, AttachmentDraft::default);
+        // The WEAPON-mode authoring draft (GTW-670), a pristine form whose one-shot
+        // open-with-a-weapon autoload is still pending (the shell seeds it from the
+        // resolved GTW-257 WeaponRegistry on the first Weapon-mode frame — the
+        // Gang/Armor/Attachment parity).
+        app.init_state_scoped_resource(EditorState::Editing, WeaponDraft::default);
         // GTW-512 C1.5: the hovered-cell model the live egui hover + the QA capture
         // write, seeded empty (nothing hovered).
         app.init_state_scoped_resource(EditorState::Editing, HoveredCell::new);

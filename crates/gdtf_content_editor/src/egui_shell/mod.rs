@@ -14,7 +14,11 @@
 //! [`sprite_form_ui`](self::sprite_form_ui); the ATTACHMENT-mode form (GTW-669 — display
 //! name / slot / the closed 13-effect list) lives in
 //! [`attachment_form_ui`](self::attachment_form_ui) over the SHARED
-//! [`fire_mode_edit`](self::fire_mode_edit) row widget; the pre-panel
+//! [`fire_mode_edit`](self::fire_mode_edit) row widget; the WEAPON-mode form (GTW-670 —
+//! the full 18-field `WeaponSpec` in collapsible sections) lives in
+//! [`weapon_form_ui`](self::weapon_form_ui) over the same shared widget; the per-mode
+//! RIGHT-form + CENTRAL-panel dispatches live in [`mode_panels`](self::mode_panels)
+//! (the GTW-670 band seam); the pre-panel
 //! per-mode autoload/model-sync runners live in [`autoload`](self::autoload). The shell
 //! registers ONE UI system in the
 //! [`EguiPrimaryContextPass`](bevy_egui::EguiPrimaryContextPass) schedule (NOT `Update` —
@@ -62,6 +66,9 @@ mod gang_form_ui;
 // GTW-654: the INJURY-mode forms — the draw half over the `injury_form` models (the
 // def editor + the C2 weighting section; the gang/armor form split).
 mod injury_form_ui;
+// GTW-670: the per-mode RIGHT-form + CENTRAL-panel dispatches (one arm per Workbench
+// mode), split out of `shell.rs` at the band seam.
+mod mode_panels;
 // The shell system's per-mode model-borrow SystemParam bundles (PrefabParams /
 // GangParams), split out of `shell.rs` (GTW-636 — module-layout bands).
 mod params;
@@ -79,6 +86,9 @@ mod terrain_form_ui;
 mod textures;
 mod theme_combo;
 mod theme_form_ui;
+// GTW-670: the WEAPON-mode form — the draw half over the `weapon_form` model (the gang
+// / armor / sprite / attachment form split: model module + `*_form_ui` sibling).
+mod weapon_form_ui;
 
 pub(crate) use prefab::nav::{level_nav_hotkeys, view_mode_hotkey};
 pub(crate) use shell::editor_egui_ui;

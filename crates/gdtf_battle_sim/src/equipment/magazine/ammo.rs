@@ -4,7 +4,7 @@
 //! reload refill, and the [`clamp_burst`] burst-clamp primitive.
 
 use bevy::prelude::{Component, Deref};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::weapon::{MagazineSize, ModeShots};
 
@@ -19,8 +19,9 @@ use crate::weapon::{MagazineSize, ModeShots};
 /// [`StanceChangeTu`](crate::tuning::StanceChangeTu) / [`TurnTu`](crate::tuning::TurnTu)
 /// per-act cost shape) so the economy subtracts it directly. Magnitudes are tunable
 /// balance DATA (commented in the `.ron`), NOT pinned by tests. Private inner + derived
-/// [`Deref`]; `#[serde(transparent)]` parses a bare RON scalar.
-#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+/// [`Deref`]; `#[serde(transparent)]` parses a bare RON scalar ([`Serialize`] so the
+/// editor's WEAPON mode saves the field in the same schema it loads — GTW-670).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ReloadTu(u8);
 
@@ -80,7 +81,12 @@ impl LoadedRounds {
 /// Defaults to `0` rounds, size `0`, reload `0` (empty — a structural spawn default,
 /// not a balance value; a fresh ganger carries no ammo until the situation setup loads
 /// a magazine from the resolved weapon bundle).
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
+///
+/// [`Serialize`] (GTW-670) so the editor's WEAPON mode saves the authored grouping in
+/// the same schema it loads — with `rounds` `#[serde(skip_serializing)]`: the live
+/// loaded count is SPAWN-ONLY, never authored, so a saved `.weapon.ron` writes exactly
+/// `(size, reload_tu)` like every hand-authored member.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct Magazine {
     /// The weapon's round capacity — the maximum [`rounds`](Magazine::rounds) it can
     /// hold. Authored per-weapon.
@@ -89,9 +95,10 @@ pub struct Magazine {
     /// Authored per-weapon.
     pub reload_tu: ReloadTu,
     /// The rounds currently loaded — the live ammo state `fire()` decrements and a
-    /// reload refills. Not authored in the `.ron` (defaults to `0`); spawned FULL by
+    /// reload refills. Not authored in the `.ron` (defaults to `0` on deserialize and
+    /// is skipped on serialize — GTW-670); spawned FULL by
     /// [`WeaponSpec::into_bundle`](crate::weapon::WeaponSpec::into_bundle).
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub rounds:    LoadedRounds,
 }
 
