@@ -206,3 +206,38 @@ fn touched_leaves_round_trip_through_private_inner() {
         assert_eq!((*d).to_bits(), 0.25_f32.to_bits(), "ExploredDim deref");
     }
 }
+
+/// GTW-657 — an authored `body_part_weights` table whose six weights sum to ZERO is
+/// INVALID DATA, rejected at the deserialize boundary (the tuning artifact's load
+/// validation: a rejected parse fails the `RonAsset<CombatTuning>` load, and the
+/// hot-RON resolve warns naming the path and falls back to the default — the GTW-643
+/// serde-rejection precedent, via the `GridSize` `try_from` intermediate shape). The
+/// rejection message names the offending table so the finding is actionable. Individual
+/// zero weights stay legal — a zero-weight part is simply never picked (the §4 roll's
+/// pinned behavior) — so a sibling table with SOME zero weights still parses.
+#[test]
+fn all_zero_body_part_weights_table_is_rejected_at_deserialize() {
+    // The full six-zero table — the degenerate authored shape GTW-657 makes invalid.
+    let all_zero = "( head: 0, torso: 0, left_arm: 0, right_arm: 0, left_leg: 0, right_leg: 0 )";
+    let rejected = ron::from_str::<BodyPartWeights>(all_zero);
+    assert!(
+        rejected.is_err(),
+        "an all-zero body_part_weights table must be rejected at deserialize: {rejected:?}",
+    );
+    if let Err(err) = rejected {
+        let message = err.to_string();
+        assert!(
+            message.contains("body_part_weights"),
+            "the rejection must name the body_part_weights table: {message}",
+        );
+    }
+
+    // A valid sibling shape — SOME zeroes, arbitrary non-shipped magnitudes — still
+    // parses: only the all-zero (zero-total) table is invalid.
+    let some_zero = "( head: 0, torso: 9, left_arm: 0, right_arm: 4, left_leg: 2, right_leg: 0 )";
+    let accepted = ron::from_str::<BodyPartWeights>(some_zero);
+    assert!(
+        accepted.is_ok(),
+        "a table with at least one non-zero weight must still parse: {accepted:?}",
+    );
+}

@@ -41,6 +41,7 @@ pub fn roll_body_part(weights: &BodyPartWeights, rng: &mut impl Rng) -> BodyPart
 
     // All-zero fallback: no proportional answer exists, so pick the central mass
     // deterministically rather than draw from an empty range (documented guard).
+    // GTW-657: Load rejects authored all-zero tables, so this branch is defense-in-depth.
     let Some(upper) = total.checked_sub(1) else {
         return BodyPart::Torso;
     };
