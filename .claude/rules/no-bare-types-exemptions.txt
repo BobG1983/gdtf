@@ -6,6 +6,25 @@
 # The test FAILS on stale entries (a key that no longer matches a live
 # violation), so this file only ever shrinks or is deliberately re-approved.
 #
+# SHRINK-ONLY (GTW-704, user ruling 2026-07-09): SECTION 2 is capped by a pinned
+# ceiling recorded INSIDE the suite (crates/gdtf_test_utils/tests/no_bare_types/
+# ceiling.rs, SECTION_2_CEILING). A run whose live SECTION-2 count EXCEEDS the
+# pin FAILS — no new baseline entries may be added; wrap the value in a newtype
+# instead. Any commit may LOWER the pin (each burn-down wave's land does); it is
+# raised only with explicit user approval. SECTION 1 is exempt from the ceiling
+# (a genuine new false positive is legitimate) but its additions remain
+# user-approval-only — the guard prints a loud, non-failing reminder if SECTION 1
+# grows past SECTION_1_BASELINE. When an edit drifts baselined lines, re-key the
+# baseline entries mechanically instead of by hand:
+#   NO_BARE_TYPES_REGEN=1 cargo test -p gdtf_test_utils --test no_bare_types \
+#     regenerate_section_2_keys -- --nocapture
+# It preserves each entry's why-text, refuses to add net-new entries (an
+# unpairable live violation is printed and left out), and never touches the
+# false-positive section above.
+# The parser/rewriter key on the EXACT `# SECTION 1 —` / `# SECTION 2 —` header
+# lines (em-dash form), so a comment that merely mentions a section by name (like
+# this note) never flips the tooling into the wrong section.
+#
 # The STRUCTURAL allowlist in the walker encodes EXACTLY rules 4/5 + the Q4
 # marker-generic carve-out (see crates/gdtf_test_utils/tests/no_bare_types/walk.rs):
 # the single non-PhantomData inner of a tuple-STRUCT newtype, a newtype's own
@@ -28,7 +47,9 @@ crates/gdtf_battle_presenter/src/actors/fog/material.rs:161:23 f32 — FALSE POS
 # down by follow-up tickets (filed by the orchestrator — see the GTW-599
 # report). Each line is class-tagged so a follow-up can take one class/crate at
 # a time; remove an entry when its source is wrapped in a named newtype. Any NEW
-# bare-type use is caught immediately (not in this baseline -> red).
+# bare-type use is caught immediately (not in this baseline -> red). This section
+# is SHRINK-ONLY: its entry count is pinned as a ceiling in ceiling.rs (see the
+# top-of-file note) and may never grow.
 #
 # The bulk are FUNCTION SIGNATURES (SIG-*), dominated by the sim/presenter
 # continuous-metric convention (bare f32/Vec2/Vec3/i32 geometry math — see the

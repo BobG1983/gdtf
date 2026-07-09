@@ -74,6 +74,20 @@ ticket — lives line-by-line in `.claude/rules/no-bare-types-exemptions.txt`,
 and the test fails on any stale entry — mirroring the `module_layout` clause-7
 guard.
 
+The registry is **SHRINK-ONLY** (GTW-704, user ruling 2026-07-09). SECTION 2
+(the GTW-599 baseline of known pre-existing violations) is capped by a ceiling
+pinned INSIDE the suite (`ceiling.rs`, `SECTION_2_CEILING`): a run whose live
+SECTION-2 count EXCEEDS the pin FAILS, so no new bare type may be baselined away
+— wrap it in a newtype instead. Any commit may LOWER the pin (each burn-down
+wave's land does); it is raised only with explicit user approval. SECTION 1
+(documented false positives) is exempt from the ceiling, but its additions stay
+user-approval-only, so growth past its pinned baseline prints a loud, non-failing
+reminder. When an edit drifts a baselined line, the suite's opt-in re-key mode
+(`NO_BARE_TYPES_REGEN=1 cargo test … regenerate_section_2_keys`) rewrites
+SECTION 2's keys from the live scan — preserving each entry's why-text, refusing
+to add net-new entries (an unpairable live violation is printed and left out),
+and never touching SECTION 1.
+
 `/gate`'s `design-gate` audit additionally treats a bare domain type as a
 violation, even if it compiles — and treats a `pub`/`pub(crate)`/`pub(super)`
 newtype inner field (rule 5) as the same violation: the inner must be private,

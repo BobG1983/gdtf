@@ -23,9 +23,11 @@
 //! The dylint alternative is RECORDED in GTW-599, not built: this stays inside
 //! `cargo dtest` with zero toolchain changes.
 
+mod ceiling;
 mod conformance;
 mod diagnostics;
 mod fixtures;
+mod regen;
 mod registry;
 mod syntax;
 mod tree;
