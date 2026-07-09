@@ -1,9 +1,10 @@
 //! The [`TextField`] / [`NumericField`] widgets: focus-driven, keyboard-editable text
 //! and clamped-numeric input fields (GTW-411).
 //!
-//! Bevy 0.19 ships NO built-in text-input control, so these widgets ASSEMBLE one from the
-//! [`bevy_input_focus`](bevy::input_focus) primitives the rest of the hand-rolled UI already
-//! rides. A field is a themed [`Button`] (so `bevy_ui`'s built-in `ui_focus_system` drives its
+//! Bevy 0.19 DOES ship a first-party text-input primitive (the `EditableText` text widget in
+//! `bevy_text`, driven by `bevy_ui_widgets`'s `EditableTextInputPlugin`); these GTW-411 widgets predate that adoption and
+//! instead ASSEMBLE one from the [`bevy_input_focus`](bevy::input_focus) primitives the rest of
+//! the hand-rolled `gdtf_ui` widgets already ride. A field is a themed [`Button`] (so `bevy_ui`'s built-in `ui_focus_system` drives its
 //! [`Interaction`](bevy::ui::Interaction) from the mouse — bevy-traps #6) carrying an
 //! [`EditBuffer`] (the in-progress text) and a [`Text`] child that mirrors the buffer plus a
 //! thin [`Caret`] node drawn at the text END. Pressing the control captures

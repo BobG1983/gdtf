@@ -1,6 +1,6 @@
 ---
 name: "ADR 0003: Hand-rolled, data-driven UI on first-party bevy_ui"
-description: The main-menu UI block is hand-rolled on first-party bevy_ui only, themed from RON via a typed GdtfTheme resource, with loose assets and a headless-tested hot-reload policy.
+description: UI is built on first-party bevy_ui, themed from RON via a typed GdtfTheme resource, with loose assets and a headless-tested hot-reload policy. Amended 2026-07-05 (GTW-635) to PREFER Bevy's first-party widget primitives (bevy_ui_widgets), author new screens with bsn!, and sanction egui for dev-only surfaces.
 ---
 
 # 0003. Hand-rolled, data-driven UI on first-party `bevy_ui`
@@ -9,6 +9,13 @@ description: The main-menu UI block is hand-rolled on first-party bevy_ui only, 
 
 `Accepted` — 2026-06-13. Driven by the main-menu UI block (GTW-112 / GTW-113 /
 GTW-114) and the loose-asset decision recorded under GTW-117.
+
+`Amended` — 2026-07-05 (GTW-635), per USER RULING adopting the game-UI-stack
+research recommendation. See [Amendment — 2026-07-05](#amendment--2026-07-05-gtw-635)
+below: first-party widget primitives are now PREFERRED over hand-rolling, new
+screens are `bsn!`-authored, and `egui` is sanctioned for dev-only surfaces. The
+data-driven-theming, one-way-crate-graph, loose-asset, and hot-reload clauses are
+unchanged.
 
 ## Context
 
@@ -55,6 +62,11 @@ hot-reload policy. Specifically:
    Bevy-ecosystem UI or styling crate — no `iyes_*`, no `bevy-ui-*`, no
    third-party widget/styling/layout framework. A change that adds such a
    dependency violates this ADR.
+   (AMENDED 2026-07-05, GTW-635 — see the
+   [Amendment](#amendment--2026-07-05-gtw-635): Bevy's own first-party widget
+   primitives in `bevy_ui_widgets` are now PREFERRED over hand-rolling. The
+   third-party-ecosystem ban this clause exists for is unchanged —
+   `bevy_ui_widgets` is FIRST-PARTY Bevy, not a Bevy-ecosystem crate.)
 2. **Ordinary Rust crates are permitted.** This ban is on *Bevy-ecosystem UI*
    crates, not on general-purpose libraries. Plain Rust crates the UI needs —
    e.g. `ron` for deserialization, `serde` for the derive — ARE allowed and
@@ -86,6 +98,40 @@ hot-reload policy. Specifically:
    asserting the resource and styling update; in Bevy 0.19 an `AssetEvent` is a
    `MessageReader` MESSAGE (not `EventReader`), so the test drives it as a
    message. Visual confirmation of a live retheme is **local-only**.
+
+## Amendment — 2026-07-05 (GTW-635)
+
+`Amended` — 2026-07-05, per USER RULING adopting the game-UI-stack research
+recommendation. The original decision predates two things maturing in Bevy: the
+first-party widget primitives that now ship in `bevy_ui_widgets` (part of the
+`bevy` `ui` feature), and the `bsn!` scene macro hardening into the proven
+action-bar authoring pattern. The built battlescape HUD is now bevy_ui + `bsn!` —
+six of its nine panels and the main menu are already `bsn!`-authored. The posture
+is refined as follows; everything else in this ADR (data-driven theming, the
+one-way `gdtf_ui` crate graph, loose assets, and the headless-tested hot-reload
+policy) is UNCHANGED.
+
+1. **First-party primitives preferred; hand-roll only the gaps.** "Hand-rolled on
+   first-party `bevy_ui` ONLY" (Decision clause 1) becomes: build on `bevy_ui`,
+   and PREFER Bevy's own first-party widget primitives — the `EditableText` text
+   widget (`bevy_text`, driven by `bevy_ui_widgets`'s `EditableTextInputPlugin`),
+   `bevy_ui_widgets`'s `MenuButton`, `ScrollArea`, and their siblings —
+   over hand-rolling. Hand-roll ONLY what upstream lacks. The widgets Bevy does
+   not provide stay hand-rolled in `gdtf_ui`: `ProgressBar`, `Pips`, `Switch`, and
+   `SegmentedControl`. This does NOT relax the third-party ban — `bevy_ui_widgets`
+   is FIRST-PARTY Bevy, not a Bevy-ecosystem crate, so clause 1's real target
+   (`iyes_*` / `bevy-ui-*` / any third-party widget-styling-layout framework)
+   still stands.
+2. **New screens are `bsn!`-authored.** Every NEW screen is authored with the
+   `bsn!` scene macro, following the proven action-bar pattern already used by the
+   built HUD. GTW-637 (the `bsn!` Options-screen pilot) is the pilot that LOCKS
+   this policy if it holds on authoring velocity — or BREAKS it if it does not
+   (see clause 3).
+3. **`egui` is dev-only, plus a pre-approved meta-screen fallback.** `egui` (via
+   `bevy_egui`) is the sanctioned stack for DEV-ONLY surfaces — the content editor
+   is the established precedent. It is ALSO the pre-approved fallback for NEW
+   form-heavy META screens, but ONLY if the GTW-637 `bsn!` Options pilot fails on
+   authoring velocity. It is NEVER used for the built battlescape HUD.
 
 ## Consequences
 

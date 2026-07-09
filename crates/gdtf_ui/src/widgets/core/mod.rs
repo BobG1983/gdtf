@@ -72,7 +72,7 @@
 //!
 //! - [`TextField`](text_field::TextField) ([`spawn_text_field`]): a themed, focus-driven
 //!   editable text box assembled from the [`bevy_input_focus`](bevy::input_focus) primitives
-//!   (Bevy 0.19 has no built-in text input). Pressing it captures focus; typed characters
+//!   (it predates Bevy's first-party `EditableText` text widget (`bevy_text`, driven by `bevy_ui_widgets`'s `EditableTextInputPlugin`)). Pressing it captures focus; typed characters
 //!   APPEND to its [`EditBuffer`](text_field::EditBuffer), Backspace pops, a rendered
 //!   [`Caret`](text_field::Caret) sits at the text END. Enter / blur commit a typed
 //!   [`CommittedTextValue`](text_field::CommittedTextValue) in a
