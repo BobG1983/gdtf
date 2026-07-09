@@ -239,9 +239,11 @@ pub fn enemy_ai_turn(
         //     then engage iff some opposing ganger passes the SHARED gate: can_see ∧ can_fire
         //     (incl. the GTW-443 hand-count clause folded from the enemy's injury ledger) ∧
         //     ¬Reject arc.
-        // GTW-505 C5: resolve the RANGED weapon (excluding the melee weapon the enemy also
-        // wields) so the brain engages with the gun, never the melee weapon.
-        let weapon_data = weapon_lookup.ranged(enemy.entity);
+        // GTW-505 C5 / GTW-543 / GTW-673: resolve the weapon dispatch would FIRE through the
+        // shared preference rule (`Wields::firing_weapon`, mounted-first, melee-excluded), so
+        // the brain engage-gates on the mount a manning enemy would fire — never its carried
+        // gun — and never the melee weapon.
+        let weapon_data = weapon_lookup.firing(enemy.entity);
         if let Some((magazine, fire_mode, handedness)) = weapon_data {
             let mode = fire_mode.single();
             let magazine: Magazine = *magazine;

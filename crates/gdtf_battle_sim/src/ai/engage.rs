@@ -13,7 +13,7 @@ use super::{
 use crate::{
     acts::can_engage,
     cover::CoverLedger,
-    fire::{MeleeQuery, WieldsQuery},
+    fire::{MeleeQuery, MountedQuery, WieldsQuery},
     ganger::Tu,
     los::{Observer, PeekOffset, Target, can_see},
     magazine::{FireActor, Magazine, can_fire},
@@ -23,37 +23,43 @@ use crate::{
     weapon::{FireMode, FireModeSpec, Handedness},
 };
 
-/// The brain's **weapon-resolution** [`SystemParam`] bundle — the three queries the
-/// engage path keys `enemy → Wields → the RANGED weapon entity` through, grouped into
-/// one param so [`enemy_ai_turn`] stays under Bevy's 16-param `SystemParam`-tuple arity
-/// (GTW-505 added the `melee` probe, which pushed the flat list to 17 — the GTW-461
-/// `ActPacing` bundling precedent).
+/// The brain's **weapon-resolution** [`SystemParam`] bundle — the queries the engage path
+/// keys `enemy → Wields → the weapon dispatch would FIRE` through, grouped into one param so
+/// [`enemy_ai_turn`] stays under Bevy's 16-param `SystemParam`-tuple arity (GTW-505 added the
+/// `melee` probe, which pushed the flat list to 17 — the GTW-461 `ActPacing` bundling precedent).
 ///
 /// Each is the existing query type ([`WieldsQuery`] / the weapon-stat query / the GTW-505
-/// [`MeleeQuery`] marker probe); the bundle is a transparent grouping of existing
-/// world-state queries, not a wrapped domain scalar.
+/// [`MeleeQuery`] marker probe / the GTW-543 [`MountedQuery`] marker probe); the bundle is a
+/// transparent grouping of existing world-state queries, not a wrapped domain scalar.
 #[derive(SystemParam)]
 pub struct WeaponLookup<'w, 's> {
     /// The wielded-weapon relationship — `&Wields` on the enemy ganger.
     wields:  WieldsQuery<'w, 's>,
-    /// The ranged weapon-stat columns read off the resolved weapon entity.
+    /// The weapon-stat columns read off the resolved weapon entity.
     weapons: Query<'w, 's, (&'static Magazine, &'static FireMode, &'static Handedness)>,
-    /// GTW-505 C5: the melee-weapon marker probe — `ranged_weapon` filters the wielded
-    /// weapon against it so the enemy's melee weapon is never engaged as its gun.
+    /// GTW-505 C5: the melee-weapon marker probe — the firing resolution EXCLUDES a match so
+    /// the enemy's melee weapon is never engaged as its gun.
     melee:   MeleeQuery<'w, 's>,
+    /// GTW-543 / GTW-673: the mounted-weapon marker probe — the firing resolution PREFERS a
+    /// match so a manning enemy engage-gates on the mount it would actually fire.
+    mounted: MountedQuery<'w, 's>,
 }
 
 impl WeaponLookup<'_, '_> {
-    /// Resolve `enemy → Wields → the RANGED weapon entity` and read its `(Magazine,
-    /// FireMode, Handedness)` — excluding the melee weapon the enemy also wields (GTW-505
-    /// C5), the same ranged-filtered resolution `dispatch_fire` / `fire()` use. `None`
-    /// when the enemy wields no ranged weapon or its weapon entity is missing.
-    pub(super) fn ranged(&self, enemy: Entity) -> Option<(&Magazine, &FireMode, &Handedness)> {
-        let weapon = self
-            .wields
-            .get(enemy)
-            .ok()?
-            .ranged_weapon(|entity| self.melee.get(entity).is_ok())?;
+    /// Resolve `enemy → Wields → the weapon dispatch would FIRE` and read its `(Magazine,
+    /// FireMode, Handedness)` — routed through the ONE shared fire-weapon preference rule
+    /// [`Wields::firing_weapon`](crate::weapon::Wields::firing_weapon) (GTW-660): PREFER the
+    /// mounted weapon (the emplacement's bolted-down gun a manning enemy fires, GTW-543),
+    /// else the carried ranged weapon (excluding the melee weapon, GTW-505 C5). This is the
+    /// SAME resolution `dispatch_fire` / `fire()` run, so the AI engage gate can never
+    /// diverge from the weapon its own `FireRequested` will fire (GTW-673 — a mounted enemy
+    /// gates on the mount, not its carried gun). `None` when the enemy wields no ranged/
+    /// mounted weapon or its weapon entity is missing.
+    pub(super) fn firing(&self, enemy: Entity) -> Option<(&Magazine, &FireMode, &Handedness)> {
+        let weapon = self.wields.get(enemy).ok()?.firing_weapon(
+            |entity| self.mounted.get(entity).is_ok(),
+            |entity| self.melee.get(entity).is_ok(),
+        )?;
         self.weapons.get(weapon).ok()
     }
 }
