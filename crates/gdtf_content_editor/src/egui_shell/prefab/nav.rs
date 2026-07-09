@@ -1,8 +1,12 @@
 //! The PREFAB-mode **level-navigation hotkeys** (GTW-515 C4.5) — the `]` / `[` and
 //! `PageUp` / `PageDown` keys that step the [`CurrentEditLevel`] within the prefab's storey range.
 //!
-//! UI-agnostic (a plain `Update` system reading [`ButtonInput`], NOT egui), mirroring the kept
-//! [`mode_hotkeys`](crate::mode::mode_hotkeys). It uses the SAME clamp the GTW-595 level rail's
+//! Egui-import-free (plain `Update` systems reading [`ButtonInput`], NOT egui), mirroring the kept
+//! [`mode_hotkeys`](crate::mode::mode_hotkeys). Their keyboard reads the plugin SUPPRESSES while an
+//! egui text field holds keyboard focus — both systems here share the ONE
+//! `not(egui_wants_any_keyboard_input)` guard the plugin wires at its `add_systems` seam (GTW-681),
+//! so a `]` / `[` / `F` keypress while typing into a form field does nothing. It uses the SAME clamp
+//! the GTW-595 level rail's
 //! click/scrub uses — [`CurrentEditLevel::stepped`], which saturates the result into
 //! `[0, levels-1]` — so a step at either end is a no-op and the selector never points past the
 //! drawable volume.
@@ -45,8 +49,10 @@ pub(crate) fn level_nav_hotkeys(
 /// `Update` (in `Editing`): the `F` key flips the prefab viewport's [`ViewMode`] (GTW-532 C3) —
 /// the keyboard sibling of the RIGHT-panel view toggle button, flipping the SAME resource.
 ///
-/// UI-agnostic (a plain `Update` system reading [`ButtonInput`], NOT egui), mirroring
-/// [`level_nav_hotkeys`] and [`mode_hotkeys`](crate::mode::mode_hotkeys). Gated on the active
+/// Egui-import-free (a plain `Update` system reading [`ButtonInput`], NOT egui), mirroring
+/// [`level_nav_hotkeys`] and [`mode_hotkeys`](crate::mode::mode_hotkeys); the plugin suppresses its
+/// keyboard read while an egui text field holds focus (the shared GTW-681
+/// `not(egui_wants_any_keyboard_input)` guard, wired in `plugin.rs`). Gated on the active
 /// [`EditorMode`] being [`Prefab`](EditorMode::Prefab) so the key only toggles the storey view
 /// while the prefab painter is up (it does not fire while authoring a TERRAIN / THEME def).
 /// Guarded on the optional [`ViewMode`] + [`EditorMode`] (state-scoped — bevy-traps #1); no-ops

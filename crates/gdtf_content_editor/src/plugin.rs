@@ -27,7 +27,7 @@
 //! TERRAIN / THEME / PREFAB forms + the texture viewport are the later children C2 / C3 / C4.
 
 use bevy::prelude::*;
-use bevy_egui::EguiPrimaryContextPass;
+use bevy_egui::{EguiPrimaryContextPass, input::egui_wants_any_keyboard_input};
 use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_state_scoped::StateScopedResourceAppExt as _;
 
@@ -76,10 +76,15 @@ use crate::{
 ///   global theme `ComboBox`, status line, palette/stats placeholder, the active mode's stubbed form,
 ///   the viewport placeholder). egui systems live in `EguiPrimaryContextPass`, NOT `Update`
 ///   (bevy-traps: a `Update` `ctx_mut()` call fights the egui begin/end-pass plumbing).
-/// - `Update` (in `Editing`) → the UI-agnostic model drives kept from the old shell:
-///   [`seed_default_theme`] (seed the session theme to the registry's first theme once it resolves)
-///   and [`mode_hotkeys`] (the `1`/`2`/`3` mode hotkeys). The theme SELECTION is now folded into the
-///   session by the egui `ComboBox` directly (resolve the chosen theme's default-floor +
+/// - `Update` (in `Editing`) → the model drives kept from the old shell: [`seed_default_theme`]
+///   (seed the session theme to the registry's first theme once it resolves) and the three
+///   `ButtonInput<KeyCode>` hotkeys ([`mode_hotkeys`] — the mode digits; [`level_nav_hotkeys`] and
+///   [`view_mode_hotkey`] — the prefab nav). The theme seed reads no keyboard input and keeps only
+///   the state gate; the three hotkeys ALSO carry ONE shared keyboard-focus guard
+///   (`not(egui_wants_any_keyboard_input)`, GTW-681) so they are suppressed while an egui text
+///   field holds focus (typing `8` into the prefab width/height field inserts the character rather
+///   than switching to the ATTACHMENT tab). The theme SELECTION is now folded into the session by
+///   the egui `ComboBox` directly (resolve the chosen theme's default-floor +
 ///   [`MapEditorSession::select_theme`](crate::session::MapEditorSession::select_theme)) — the verbatim body the old widget-coupled
 ///   `apply_theme_selection` ran, which is gone now its dropdown message no longer fires.
 pub struct MapEditorPlugin;
@@ -199,19 +204,31 @@ impl Plugin for MapEditorPlugin {
             editor_egui_ui.run_if(in_state(EditorState::Editing)),
         );
 
-        // The UI-agnostic model drives kept from the old shell (no `bevy_ui` dependency): the theme
-        // seed + the mode hotkeys. The theme SELECTION is folded into the session by the egui
-        // `ComboBox` directly (the verbatim `apply_theme_selection` body), so that widget-coupled
-        // drive is not wired.
+        // The theme seed kept from the old shell (no `bevy_ui` dependency): it reads NO keyboard
+        // input, so it keeps only the `Editing` state gate — it must NOT be suppressed while a text
+        // field is focused. The theme SELECTION is folded into the session by the egui `ComboBox`
+        // directly (the verbatim `apply_theme_selection` body), so that widget-coupled drive is not
+        // wired.
         app.add_systems(
             Update,
-            (
-                seed_default_theme,
-                mode_hotkeys,
-                level_nav_hotkeys,
-                view_mode_hotkey,
-            )
-                .run_if(in_state(EditorState::Editing)),
+            seed_default_theme.run_if(in_state(EditorState::Editing)),
+        );
+
+        // GTW-681: the three `ButtonInput<KeyCode>` hotkey drives — the mode digits, the prefab
+        // level nav, and the prefab view-mode flip. They ALL share ONE keyboard-focus guard here at
+        // the wiring seam: `not(egui_wants_any_keyboard_input)` consults `bevy_egui`'s shipped
+        // `EguiWantsInput` resource (populated by `EguiPlugin`), so while an egui `TextEdit` holds
+        // keyboard focus — e.g. typing `8` into the prefab width/height field — egui owns the
+        // keypress and none of these systems act (chained `.run_if`s AND-combine with the `Editing`
+        // gate). The guard reads the value `bevy_egui` wrote in the PREVIOUS frame's `PostUpdate`
+        // (one frame of latency, inherent to the plugin's own wiring — acceptable here), so it is
+        // NOT egui-imported into `mode.rs` / `nav.rs`; those systems stay UI-agnostic and the guard
+        // lives only at this seam.
+        app.add_systems(
+            Update,
+            (mode_hotkeys, level_nav_hotkeys, view_mode_hotkey)
+                .run_if(in_state(EditorState::Editing))
+                .run_if(not(egui_wants_any_keyboard_input)),
         );
     }
 }

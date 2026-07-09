@@ -15,7 +15,9 @@
 //! `selectable_value`s over this resource (a click sets it), branches the right panel on the active
 //! mode in-UI (no `Visibility` containers), and reads the active mode for the status line. So the
 //! `bevy_ui` mode systems + the tab / content markers are GONE; this module keeps the [`EditorMode`]
-//! enum (+ its tab vocabulary the egui tabs reuse) and the UI-agnostic [`mode_hotkeys`].
+//! enum (+ its tab vocabulary the egui tabs reuse) and the egui-import-free [`mode_hotkeys`] — whose
+//! keyboard reads the plugin suppresses while an egui text field is focused (GTW-681, the guard
+//! wired in `plugin.rs`).
 
 use bevy::prelude::*;
 
@@ -144,8 +146,13 @@ impl EditorMode {
 /// [`Weapon`](EditorMode::Weapon), `0` → [`MeleeWeapon`](EditorMode::MeleeWeapon) — the
 /// `[TERRAIN | THEME | PREFAB | GANG | ARMOR | INJURY | SPRITE | ATTACHMENT | WEAPON | MELEE]` tab order. Writes with
 /// [`set_if_neq`](DetectChangesMut::set_if_neq) so an unchanged key-press is a no-op. Guarded on the
-/// optional [`EditorMode`] (state-scoped — bevy-traps #1). UI-agnostic: the egui tabs and these keys
-/// both write the same resource, and the next-frame egui draw reflects the change.
+/// optional [`EditorMode`] (state-scoped — bevy-traps #1). The egui tabs and these keys both write
+/// the same resource, and the next-frame egui draw reflects the change; this system holds NO egui
+/// import — it reads only `ButtonInput`. Focus-suppression (GTW-681): the plugin gates this system
+/// on `not(egui_wants_any_keyboard_input)` at the wiring seam, so it does NOT act while an egui text
+/// field holds keyboard focus (e.g. typing `8` into the prefab width/height field inserts the digit
+/// rather than switching to the ATTACHMENT tab). That guard lives in `plugin.rs`, not here, so this
+/// stays egui-import-free.
 pub(crate) fn mode_hotkeys(keys: Res<ButtonInput<KeyCode>>, mode: Option<ResMut<EditorMode>>) {
     let Some(mut mode) = mode else {
         return;
