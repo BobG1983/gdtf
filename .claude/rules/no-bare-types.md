@@ -50,8 +50,33 @@ pub struct Hp(u32);
 
 ## Enforcement
 
-`/gate`'s `design-gate` audit treats a bare domain type as a violation, even if
-it compiles — and treats a `pub`/`pub(crate)`/`pub(super)` newtype inner field
-(rule 5) as the same violation: the inner must be private, reachable only through
-`Deref`/`DerefMut`/a constructor/a named accessor. Wrapping a value is also how
-`docs/glossary.md` vocabulary becomes code — see `design-fidelity.md`.
+A `syn`-based conformance test enforces this rule MECHANICALLY on every
+`cargo dtest` run — the no-bare-types suite
+(`crates/gdtf_test_utils/tests/no_bare_types/`, dir-form target
+`no_bare_types`, GTW-599) parses every tracked PRODUCTION `.rs` file, walks
+each struct/enum field and fn signature (params + returns), and FAILS on any
+bare `u32`/`f32`/`bool`/`usize`/`String`/`IVec2`/`Vec3`/`Duration`/… used as a
+domain value, printing a clippy-style `file:line:col` diagnostic per hit. The
+STRUCTURAL allowlist encodes rules 4/5 exactly — the single non-`PhantomData`
+inner field of a tuple-STRUCT newtype (an enum variant is not a newtype), a
+param/return matching the enclosing newtype's OWN inner type (its
+constructor/accessor boundary, rule 5), and trait-`impl` signatures (rule 4;
+trait DEFINITION signatures ARE checked, being a domain-modeling choice) —
+plus the Q4 marker-parameterized-generic carve-out. NOTHING else is exempted in
+code: `#[derive(Serialize/Deserialize)]` wire shapes serialize newtypes fine
+and are NOT carved out, `ShaderType` GPU uniforms (bare `f32`/`Vec2` for WGSL
+layout) are NOT carved out, and a bare `usize`/`bool` the checker cannot prove
+is a collection index or a predicate answer is flagged. Test bands are out of
+scope (their scaffolding values are not domain data). Every residual exception
+— documented FALSE POSITIVES (framework plumbing that genuinely cannot be
+wrapped, e.g. a `ShaderType` uniform) and KNOWN VIOLATIONS pending a follow-up
+ticket — lives line-by-line in `.claude/rules/no-bare-types-exemptions.txt`,
+and the test fails on any stale entry — mirroring the `module_layout` clause-7
+guard.
+
+`/gate`'s `design-gate` audit additionally treats a bare domain type as a
+violation, even if it compiles — and treats a `pub`/`pub(crate)`/`pub(super)`
+newtype inner field (rule 5) as the same violation: the inner must be private,
+reachable only through `Deref`/`DerefMut`/a constructor/a named accessor.
+Wrapping a value is also how `docs/glossary.md` vocabulary becomes code — see
+`design-fidelity.md`.
