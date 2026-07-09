@@ -66,11 +66,14 @@ pub(super) struct ResolvedCoverPiece {
     /// without re-reading the registry.
     pub(super) blocks_path:      bool,
     /// The [`HeightBand`] this piece occludes vision at, or `None` if it derives no
-    /// [`BlocksVision`](crate::terrain::entity::BlocksVision) component (GTW-502 C1) — per
-    /// [`derives_vision_occlusion`]: a `Wall`/`Cover` occludes at its own band by default
-    /// (so existing walls/cover keep occluding with no content migration, zero regression),
-    /// and an explicit `BlocksVision` tag can only add/retune it. Carried forward so the spawn
-    /// loop attaches the component (at this band) without re-reading the registry.
+    /// [`BlocksVision`](crate::terrain::entity::BlocksVision) component (GTW-502 C1, refined
+    /// GTW-587) — per [`derives_vision_occlusion`]: a `Wall` occludes FULLY (the whole storey
+    /// → `High`) by default while a `Cover`/`Emplacement` occludes only up to its own band; an
+    /// explicit `BlocksVision` tag or a `blocks_los` override can retune it, and a `Slab`
+    /// derives none unless tagged. Every SHIPPED wall authors `height_band: High`, so its
+    /// derived band is byte-identical to the pre-587 own-band rule (zero regression). Carried
+    /// forward so the spawn loop attaches the component (at this band) without re-reading the
+    /// registry.
     pub(super) occludes_vision:  Option<HeightBand>,
     /// `Some(band)` if this piece is **openable** (a door / hatch — the def carries the
     /// [`Openable`](crate::terrain::def::TerrainTag::Openable) tag), where `band` is the vision
@@ -79,8 +82,11 @@ pub(super) struct ResolvedCoverPiece {
     /// [`OpenState::Closed`](crate::terrain::openable::OpenState) plus an
     /// [`OpenableBlocking`](crate::terrain::openable::OpenableBlocking)`(band)` and FORCES the
     /// closed blocking pair (both `BlocksPathfinding` and `BlocksVision(band)`), so GTW-503 owns
-    /// the openable's blocking lifecycle (C2). A `Wall`/`Cover` already carries that band by
-    /// default, so its open state will re-block at the SAME band on close.
+    /// the openable's blocking lifecycle (C2). This closed band is the `sim_kind`'s OWN
+    /// `height_band` (a `Wall`/`Cover`/`Emplacement` has one; a band-less slab hatch falls back to
+    /// `High`) — the band its `OpenableBlocking` re-imposes on close, independent of the
+    /// kind-default `LoS` the piece would otherwise derive (e.g. an untagged non-`High` wall
+    /// defaults to `Full`/`High`, yet its closed door re-blocks at its own authored band).
     pub(super) openable:         Option<HeightBand>,
     /// `Some(key)` if this piece is a **weapon emplacement** (GTW-543) — the def's
     /// [`TerrainSimKind::Emplacement`](crate::terrain::def::TerrainSimKind::Emplacement)
@@ -208,10 +214,12 @@ pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<R
         // default makes this `true` (existing walls/cover keep blocking, zero regression);
         // an explicit BlocksPathfinding tag can only add to that.
         blocks_path: derives_path_blocking(def),
-        // GTW-502 C1: derive the vision-occlusion band from the def — for a Wall/Cover the
-        // kind default returns Some(its height_band) (existing walls/cover keep occluding
-        // sight at the SAME band their CoverLedger entry already does, zero regression /
-        // idempotent); an explicit BlocksVision tag can only add/retune it.
+        // GTW-502 C1 / GTW-587: derive the vision-occlusion band from the def — for a Wall the
+        // kind default is Full (the whole storey → High), for a Cover/Emplacement it is the
+        // def's own height_band. Every shipped wall authors height_band: High, where its derived
+        // High band equals its CoverLedger entry's band, so existing walls/cover keep occluding
+        // sight at that same band (zero regression / idempotent). An explicit BlocksVision tag,
+        // or a blocks_los override, can add/retune it.
         occludes_vision: derives_vision_occlusion(def),
         // GTW-503 C1/C2: an Openable Wall/Cover (a door) carries OpenState + forces the closed
         // blocking pair; the closed-vision band is the sim_kind's own band (Wall/Cover have

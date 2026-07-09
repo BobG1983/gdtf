@@ -33,6 +33,9 @@ fn registry_inserts_and_looks_up_by_uuid() {
         },
         tags: Vec::new(),
         on_death: None,
+
+        blocks_pathing: None,
+        blocks_los: None,
     };
 
     let mut registry = TerrainDefRegistry::default();
@@ -83,6 +86,9 @@ fn registry_new_keys_by_uuid() {
         },
         tags: Vec::new(),
         on_death: None,
+
+        blocks_pathing: None,
+        blocks_los: None,
     };
 
     let registry = TerrainDefRegistry::new([(key, def.clone())]);

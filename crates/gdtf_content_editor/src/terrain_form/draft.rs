@@ -9,7 +9,7 @@ use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
     slab::SlabHp,
-    terrain::def::{TerrainTag, TerrainUuid},
+    terrain::def::{LosBlocking, TerrainTag, TerrainUuid},
     weapon::WeaponName,
 };
 
@@ -57,6 +57,14 @@ pub struct TerrainDraft {
     mounted_weapon:   Option<WeaponName>,
     /// The multi-selected tags — a set (deduped, order-stable on save).
     tags:             Vec<TerrainTag>,
+    /// The OPTIONAL authored path-blocking override (GTW-587) — `Some(true)`/`Some(false)`
+    /// force blocking / walkable, `None` (default) uses the kind default. Written to
+    /// [`TerrainDef::blocks_pathing`](gdtf_battle_sim::terrain::def::TerrainDef::blocks_pathing).
+    blocks_pathing:   Option<bool>,
+    /// The OPTIONAL authored line-of-sight blocking override (GTW-587) — a [`LosBlocking`]
+    /// mode, or `None` (default) to use the kind default. Written to
+    /// [`TerrainDef::blocks_los`](gdtf_battle_sim::terrain::def::TerrainDef::blocks_los).
+    blocks_los:       Option<LosBlocking>,
     /// The auto-generated UUID — `None` until the FIRST save MINTS it (C2: editor-generated,
     /// shown read-only). A re-save reuses the minted key so the def keeps a stable identity.
     uuid:             Option<TerrainUuid>,
@@ -212,6 +220,31 @@ impl TerrainDraft {
         }
     }
 
+    /// The authored path-blocking override (GTW-587) — `Some(true)`/`Some(false)` force
+    /// blocking / walkable, `None` uses the kind default.
+    #[must_use]
+    pub const fn blocks_pathing(&self) -> Option<bool> {
+        self.blocks_pathing
+    }
+
+    /// Set the path-blocking override (GTW-587) — `None` clears it back to the kind default.
+    pub const fn set_blocks_pathing(&mut self, blocks_pathing: Option<bool>) {
+        self.blocks_pathing = blocks_pathing;
+    }
+
+    /// The authored line-of-sight blocking override (GTW-587) — a [`LosBlocking`] mode, or
+    /// `None` to use the kind default.
+    #[must_use]
+    pub const fn blocks_los(&self) -> Option<LosBlocking> {
+        self.blocks_los
+    }
+
+    /// Set the line-of-sight blocking override (GTW-587) — `None` clears it back to the kind
+    /// default.
+    pub const fn set_blocks_los(&mut self, blocks_los: Option<LosBlocking>) {
+        self.blocks_los = blocks_los;
+    }
+
     /// The auto-generated UUID, or [`None`] until the first save mints it.
     #[must_use]
     pub const fn uuid(&self) -> Option<TerrainUuid> {
@@ -227,7 +260,8 @@ impl TerrainDraft {
 
 impl Default for TerrainDraft {
     /// A fresh draft: an empty name, a Wall kind, modest default stats, the `floor` graphic, no
-    /// footfall, no mounted weapon, no tags, and no UUID (minted on first save).
+    /// footfall, no mounted weapon, no tags, no blocking overrides (both `None` = kind default,
+    /// GTW-587), and no UUID (minted on first save).
     fn default() -> Self {
         Self {
             display_name:     String::new(),
@@ -241,6 +275,8 @@ impl Default for TerrainDraft {
             footfall:         FootfallChoice::default(),
             mounted_weapon:   None,
             tags:             Vec::new(),
+            blocks_pathing:   None,
+            blocks_los:       None,
             uuid:             None,
         }
     }

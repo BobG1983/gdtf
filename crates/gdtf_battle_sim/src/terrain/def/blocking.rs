@@ -8,7 +8,7 @@
 //! single authority for the **zero-regression** rules (GTW-501 D2 / GTW-502), so the spawn
 //! loop, the tests, and any future reader all agree on one definition.
 
-use super::{TerrainDef, TerrainSimKind, TerrainTag};
+use super::{LosBlocking, TerrainDef, TerrainSimKind, TerrainTag};
 use crate::{cover::HeightBand, terrain::entity::TerrainPieceKind};
 
 /// Whether a [`TerrainDef`] derives **path-blocking** — the rule that decides whether a
@@ -28,13 +28,22 @@ use crate::{cover::HeightBand, terrain::entity::TerrainPieceKind};
 ///    GTW-501 zero-regression guarantee (D2).
 ///
 /// A def is path-blocking iff EITHER holds. The two are deliberately a union (not a
-/// gate): the explicit tag can only ADD blocking, never remove a kind-default block —
-/// removing a `Wall`/`Cover`'s block is out of scope for this child (it would be an
-/// explicit "passable wall" tag, not modelled here).
+/// gate): the explicit tag can only ADD blocking, never remove a kind-default block.
+///
+/// **Authored override (GTW-587).** An explicit [`blocks_pathing`](TerrainDef::blocks_pathing)
+/// `Some(bool)` WINS OUTRIGHT over both the tag and the kind default — `Some(true)` forces the
+/// def to block (e.g. a `Slab` railing), `Some(false)` forces it walkable (e.g. a decorative
+/// wall you can walk through), letting path-blocking vary per-def WITHOUT a new sim kind. The
+/// field defaults to `None` (`#[serde(default)]`), which falls through to the tag-∪-kind rule
+/// below — so every shipped def (none author it) derives EXACTLY as before (zero regression).
 ///
 /// PURE: a read over the borrowed def — no world access, no RNG, no side effects.
 #[must_use]
 pub fn derives_path_blocking(def: &TerrainDef) -> bool {
+    // GTW-587: an explicit per-def override wins over the tag ∪ kind-default rule.
+    if let Some(over) = def.blocks_pathing {
+        return over;
+    }
     let explicit = def.tags.contains(&TerrainTag::BlocksPathfinding);
     explicit || sim_kind_blocks_path(&def.sim_kind)
 }
@@ -84,50 +93,140 @@ pub const fn sim_kind_blocks_path(sim_kind: &TerrainSimKind) -> bool {
 ///    [`HeightBand::High`] for a tagged `Slab` (a slab has no band; a deliberately-opaque
 ///    slab fills the storey, so it occludes the tallest band — nothing within the storey
 ///    sees over it).
-/// 2. **Per-kind default** ([`sim_kind_occludes_vision`]). [`Wall`](TerrainSimKind::Wall)
-///    and [`Cover`](TerrainSimKind::Cover) occlude vision by default at their authored
-///    `height_band`; [`Slab`](TerrainSimKind::Slab) does NOT (a slab is a horizontal
-///    z-boundary the SLAB march already stops sight at via the `SurfaceGrid` — it is not a
-///    same-storey occluder, so it gets no `BlocksVision` band unless explicitly tagged).
+/// 2. **Per-kind default** ([`sim_kind_default_los`]). [`Wall`](TerrainSimKind::Wall)
+///    occludes vision FULLY by default ([`LosBlocking::Full`] → the whole storey; a wall fills
+///    the cell, nothing within the storey sees over it), while [`Cover`](TerrainSimKind::Cover)
+///    and [`Emplacement`](TerrainSimKind::Emplacement) occlude only UP TO their authored
+///    `height_band` ([`LosBlocking::UpToHeightBand`] — a higher sightline clears them);
+///    [`Slab`](TerrainSimKind::Slab) does NOT occlude (a slab is a horizontal z-boundary the
+///    SLAB march already stops sight at via the `SurfaceGrid` — it is not a same-storey
+///    occluder, so it gets no `BlocksVision` band unless explicitly tagged).
 ///
-/// **Zero-regression reconciliation (GTW-502 D-CRITICAL).** A `Wall`/`Cover` is ALREADY
-/// seeded into the [`CoverLedger`](crate::cover::CoverLedger) at setup carrying this same
-/// `height_band`, and [`impact_at`](crate::march) ALREADY occludes vision on it via that
-/// ledger entry — so walls/cover occlude sight TODAY, height-aware. Deriving the SAME band
-/// here means the new tag-derived occluder reproduces a Wall/Cover's existing occlusion
-/// EXACTLY (same band gate, same destroyed-cover exclusion) — an idempotent re-block that
-/// never changes their behaviour and never double-counts (the cover-ledger clause fires
-/// first in `impact_at` for an intact `Wall`/`Cover`, and the new clause uses an identical
-/// band test, so it can only agree). The NET-NEW behaviour is the explicit-tag opt-in for a
-/// `Slab`, which the cover ledger never held — a desirable gap-closer, not a regression.
+/// **Zero-regression reconciliation (GTW-502 D-CRITICAL, refined GTW-587).** A
+/// `Wall`/`Cover`/`Emplacement` is ALREADY seeded into the
+/// [`CoverLedger`](crate::cover::CoverLedger) at setup carrying its `height_band`, and
+/// [`impact_at`](crate::march) ALREADY occludes vision on it via that ledger entry — so
+/// walls/cover occlude sight TODAY, height-aware. A `Cover`/`Emplacement`'s kind default
+/// ([`UpToHeightBand`](LosBlocking::UpToHeightBand)) derives that SAME band, reproducing its
+/// existing occlusion EXACTLY. A `Wall`'s kind default is [`Full`](LosBlocking::Full) →
+/// [`HeightBand::High`] (the GTW-587 model, "walls occlude fully"); every SHIPPED wall def
+/// authors `height_band: High`, so its derived High band EQUALS its ledger band and shipped
+/// behaviour is byte-identical (AC1). The derivation and the ledger use an identical band
+/// test, so on an intact piece they can only agree (the cover-ledger clause fires first in
+/// `impact_at`, same destroyed-cover exclusion). The NET-NEW behaviours are the explicit-tag
+/// opt-in for a `Slab` (which the ledger never held) and — for a hypothetical untagged
+/// NON-`High` wall (none shipped) — the deliberate whole-storey `Full` occlusion the GTW-587
+/// kind default mandates in place of the pre-587 own-band derivation.
 ///
-/// Returns `None` when the def derives NO vision occlusion (an untagged `Slab`).
+/// **Authored override (GTW-587).** An explicit
+/// [`blocks_los`](TerrainDef::blocks_los) `Some(LosBlocking)` WINS OUTRIGHT over both the
+/// `BlocksVision` tag and the kind default, letting LoS-occlusion vary per-def WITHOUT a new
+/// sim kind: `Some(LosBlocking::None)` makes a piece LoS-transparent, `Some(Full)` occludes the
+/// whole storey, `Some(UpToHeightBand)` occludes only up to the def's own band. The field
+/// defaults to `None` (`#[serde(default)]`), which falls through to the tag-then-kind default —
+/// so every shipped def derives EXACTLY the same band as before (zero regression).
+///
+/// Returns `None` when the def derives NO vision occlusion (an untagged `Slab`, or an explicit
+/// `LosBlocking::None`).
 ///
 /// PURE: a read over the borrowed def — no world access, no RNG, no side effects.
 #[must_use]
 pub fn derives_vision_occlusion(def: &TerrainDef) -> Option<HeightBand> {
-    if def.tags.contains(&TerrainTag::BlocksVision) {
-        // The explicit opt-in: occlude at the sim_kind's own band, or HIGH for a tagged Slab
-        // (a slab has no band; an opaque slab fills the storey, so it occludes the tallest).
-        return Some(sim_kind_band(&def.sim_kind).unwrap_or(HeightBand::High));
+    los_blocking_to_band(resolved_los_blocking(def), &def.sim_kind)
+}
+
+/// Resolve a [`TerrainDef`]'s effective [`LosBlocking`] mode (GTW-587) — the authored
+/// [`blocks_los`](TerrainDef::blocks_los) override if present, else the tag-then-kind default.
+///
+/// The precedence, highest first:
+///
+/// 1. **Authored override.** An explicit [`blocks_los`](TerrainDef::blocks_los) `Some(mode)`
+///    wins outright.
+/// 2. **Explicit [`BlocksVision`](TerrainTag::BlocksVision) tag.** The additive opt-in occludes
+///    at the def's own band — [`UpToHeightBand`](LosBlocking::UpToHeightBand) for a kind WITH a
+///    band (`Wall`/`Cover`/`Emplacement`), [`Full`](LosBlocking::Full) for a band-less `Slab`
+///    (an opaque slab fills the storey). This reproduces the pre-GTW-587 tagged-slab-at-HIGH /
+///    tagged-wall-at-its-band behaviour EXACTLY once mapped back through
+///    [`los_blocking_to_band`].
+/// 3. **Per-kind default** ([`sim_kind_default_los`]): `Wall` → `Full`, `Cover`/`Emplacement` →
+///    `UpToHeightBand`, `Slab` → `None`.
+///
+/// PURE: a read over the borrowed def.
+#[must_use]
+pub fn resolved_los_blocking(def: &TerrainDef) -> LosBlocking {
+    if let Some(over) = def.blocks_los {
+        return over;
     }
-    // The per-kind default: a Wall/Cover occludes at its authored band, a Slab does not.
-    sim_kind_band_when_occludes(&def.sim_kind)
+    if def.tags.contains(&TerrainTag::BlocksVision) {
+        // The additive tag occludes at the def's OWN band: UpToHeightBand for a banded kind, or
+        // Full for a band-less Slab (which fills the storey) — mapped back through
+        // `los_blocking_to_band` this yields Some(band) / Some(High), the pre-GTW-587 shape.
+        return match sim_kind_band(&def.sim_kind) {
+            Some(_) => LosBlocking::UpToHeightBand,
+            None => LosBlocking::Full,
+        };
+    }
+    sim_kind_default_los(&def.sim_kind)
+}
+
+/// The KIND-DERIVED default [`LosBlocking`] mode for a [`TerrainSimKind`] (GTW-587) — the
+/// per-kind arm of [`resolved_los_blocking`].
+///
+/// [`Wall`](TerrainSimKind::Wall) → [`Full`](LosBlocking::Full) (a wall fills the cell; nothing
+/// within the storey sees over it); [`Cover`](TerrainSimKind::Cover) /
+/// [`Emplacement`](TerrainSimKind::Emplacement) → [`UpToHeightBand`](LosBlocking::UpToHeightBand)
+/// (chest-high cover a higher sightline clears, at the def's own band);
+/// [`Slab`](TerrainSimKind::Slab) → [`None`](LosBlocking::None) (a z-boundary the slab march
+/// already stops sight at, not a same-storey occluder).
+///
+/// A kind-IDENTITY decision, so it reads the canonical [`TerrainPieceKind`] projection.
+#[must_use]
+pub const fn sim_kind_default_los(sim_kind: &TerrainSimKind) -> LosBlocking {
+    match sim_kind.kind() {
+        TerrainPieceKind::Wall => LosBlocking::Full,
+        TerrainPieceKind::Cover | TerrainPieceKind::Emplacement => LosBlocking::UpToHeightBand,
+        TerrainPieceKind::Slab => LosBlocking::None,
+    }
+}
+
+/// Map a resolved [`LosBlocking`] mode to the concrete occluding [`HeightBand`] the sim's
+/// `VisionBlocking` surface reads (GTW-587), given the def's `sim_kind` for the band-relative
+/// mode:
+///
+/// - [`Full`](LosBlocking::Full) → `Some(`[`HeightBand::High`]`)` — occludes the tallest band,
+///   so nothing within the storey clears it.
+/// - [`UpToHeightBand`](LosBlocking::UpToHeightBand) → `Some(`the def's own band`)`, or
+///   [`HeightBand::High`] for a band-less [`Slab`](TerrainSimKind::Slab) (it spans the storey).
+/// - [`None`](LosBlocking::None) → `None` — no occluder (LoS-transparent).
+#[must_use]
+pub const fn los_blocking_to_band(
+    los: LosBlocking,
+    sim_kind: &TerrainSimKind,
+) -> Option<HeightBand> {
+    match los {
+        LosBlocking::Full => Some(HeightBand::High),
+        LosBlocking::UpToHeightBand => match sim_kind_band(sim_kind) {
+            Some(band) => Some(band),
+            None => Some(HeightBand::High),
+        },
+        LosBlocking::None => None,
+    }
 }
 
 /// Whether a [`TerrainSimKind`] occludes vision **by default** — `true` for
 /// [`Wall`](TerrainSimKind::Wall), [`Cover`](TerrainSimKind::Cover), and
-/// [`Emplacement`](TerrainSimKind::Emplacement) (occluding at its authored band);
-/// `false` for [`Slab`](TerrainSimKind::Slab) (GTW-502 C1 / GTW-543).
+/// [`Emplacement`](TerrainSimKind::Emplacement); `false` for [`Slab`](TerrainSimKind::Slab)
+/// (GTW-502 C1 / GTW-543).
 ///
-/// The per-kind half of [`derives_vision_occlusion`], exposed as a `bool` predicate (the
-/// [`sim_kind_blocks_path`] mirror) for readers/tests that want the kind-default flag without
-/// the band. A wall fills the cell and standing cover obstructs it, so both occlude a
-/// same-storey sightline by default — the same kinds already seeded into the
-/// [`CoverLedger`](crate::cover::CoverLedger) (so deriving the occluder from this default
-/// reproduces the existing `LoS` exactly, zero regression). A slab is a horizontal z-boundary
-/// the slab march already handles, not a same-storey occluder, so it does not occlude by
-/// default — only an explicit [`BlocksVision`](TerrainTag::BlocksVision) tag makes one.
+/// A `bool` PRESENCE predicate — whether the kind derives ANY vision occlusion, NOT at which
+/// band or in which mode. The per-kind mode/band arm is [`sim_kind_default_los`] (`Wall` →
+/// `Full`, `Cover`/`Emplacement` → `UpToHeightBand`, `Slab` → `None`); this predicate is `true`
+/// exactly when that default is non-[`None`](LosBlocking::None). It is exposed as the
+/// [`sim_kind_blocks_path`] mirror for readers/tests that want the kind-default flag without
+/// resolving the [`LosBlocking`] mode. A wall fills the cell and standing cover obstructs it,
+/// so both occlude a same-storey sightline by default; a slab is a horizontal z-boundary the
+/// slab march already handles, not a same-storey occluder, so it does not occlude by default —
+/// only an explicit [`BlocksVision`](TerrainTag::BlocksVision) tag makes one.
 ///
 /// A kind-IDENTITY decision (no per-variant payload), so it reads the canonical
 /// [`TerrainPieceKind`] projection ([`TerrainSimKind::kind`] — GTW-574 C2).
@@ -139,23 +238,19 @@ pub const fn sim_kind_occludes_vision(sim_kind: &TerrainSimKind) -> bool {
     )
 }
 
-/// The occluding [`HeightBand`] of a `Wall`/`Cover` `sim_kind`, or `None` for a `Slab` — the
-/// per-kind-default arm of [`derives_vision_occlusion`].
-const fn sim_kind_band_when_occludes(sim_kind: &TerrainSimKind) -> Option<HeightBand> {
+/// The authored [`HeightBand`] a `Wall`/`Cover`/`Emplacement` `sim_kind` carries, or `None` for
+/// a [`Slab`] (which has no band — it spans the whole z-boundary, `docs/combat/resolution.md`
+/// §2). The band ACCESSOR read by [`resolved_los_blocking`] (to band a `BlocksVision`-tagged
+/// piece at its own band), by [`los_blocking_to_band`] (to resolve the
+/// [`UpToHeightBand`](LosBlocking::UpToHeightBand) mode to a concrete band), and by
+/// [`closed_openable_vision_band`] (falling back to [`HeightBand::High`] for a band-less slab).
+const fn sim_kind_band(sim_kind: &TerrainSimKind) -> Option<HeightBand> {
     match sim_kind {
         TerrainSimKind::Wall { height_band, .. }
         | TerrainSimKind::Cover { height_band, .. }
         | TerrainSimKind::Emplacement { height_band, .. } => Some(*height_band),
         TerrainSimKind::Slab { .. } => None,
     }
-}
-
-/// The authored [`HeightBand`] a `sim_kind` carries, or `None` for a [`Slab`] (which has no
-/// band — it spans the whole z-boundary, `docs/combat/resolution.md` §2). The explicit-tag
-/// arm of [`derives_vision_occlusion`] reads this to band a tagged `Wall`/`Cover` at its own
-/// band and falls back to [`HeightBand::High`] for a tagged `Slab`.
-const fn sim_kind_band(sim_kind: &TerrainSimKind) -> Option<HeightBand> {
-    sim_kind_band_when_occludes(sim_kind)
 }
 
 /// Whether a [`TerrainDef`] is **openable** — carries the

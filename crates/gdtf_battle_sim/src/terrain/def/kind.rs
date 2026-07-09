@@ -85,9 +85,9 @@ pub enum TerrainSimKind {
     /// operate a bolted-down gun (GTW-543 / GTW-41c). It is a distinct sim kind (NOT a
     /// tagged [`Cover`](TerrainSimKind::Cover)) because it carries a mounted-weapon key AND
     /// a stateful enter/exit lifecycle no cover has — but structurally it is cover-like: a
-    /// destructible, smashable structure that blocks the path and occludes vision at its
-    /// authored band (it seeds a [`CoverLedger`](crate::cover::CoverLedger) entry, exactly
-    /// like a `Wall`/`Cover`, so a shot can chew it down).
+    /// destructible, smashable structure that blocks the path and occludes vision UP TO its
+    /// authored band like a `Cover` (it seeds a [`CoverLedger`](crate::cover::CoverLedger) entry,
+    /// as a `Wall`/`Cover` does, so a shot can chew it down).
     ///
     /// While OCCUPIED, the occupant reads as HIGH cover (its published silhouette band is
     /// forced to [`HeightBand::High`](crate::cover::HeightBand::High)) and the mounted gun is
@@ -105,7 +105,7 @@ pub enum TerrainSimKind {
         armor_hardness:   ArmorHardness,
         /// The clearance band the emplacement occupies while UNOCCUPIED (REUSE
         /// [`HeightBand`]) — the band its `BlocksVision` occluder + `CoverLedger` entry
-        /// carry, exactly like a `Wall`/`Cover`.
+        /// carry, exactly like a `Cover` (both up to its own band).
         height_band:      HeightBand,
         /// The registry KEY of the gun bolted to this emplacement (REUSE [`WeaponName`], the
         /// weapon-identity newtype — no bare `String`). The enter act resolves it against the
@@ -230,4 +230,41 @@ pub enum TerrainTag {
     /// The piece is indestructible — combat HP depletion can never destroy it
     /// (consumption is GTW-482).
     Indestructible,
+}
+
+/// The **authored line-of-sight blocking mode** a terrain def may carry to OVERRIDE its
+/// kind-derived vision-occlusion default (GTW-587).
+///
+/// Line-of-sight blocking is NOT a flat bool: the sim's vision model is HEIGHT-BANDED — a round /
+/// eye-line clears an occluder by flying STRICTLY HIGHER than the [`HeightBand`] it fills
+/// (`docs/combat/resolution.md` §3), so a low prop occludes a low sightline but a high one
+/// sails over it. A single `bool` cannot express "cover occludes up to its band" vs. "a wall
+/// occludes the whole storey", so the override is this CLOSED enum of the three occlusion
+/// modes:
+///
+/// - [`Full`](LosBlocking::Full) — occludes ALL bands (a solid wall; nothing within the
+///   storey sees over it). Resolves to the tallest band, [`HeightBand::High`].
+/// - [`UpToHeightBand`](LosBlocking::UpToHeightBand) — occludes only UP TO the def's own
+///   [`height_band`](TerrainSimKind) (chest-high cover; a higher sightline clears it). A kind
+///   with no band of its own (a [`Slab`](TerrainSimKind::Slab)) falls back to
+///   [`HeightBand::High`] (it spans the whole storey).
+/// - [`None`](LosBlocking::None) — does NOT occlude vision at all (LoS-transparent — e.g. a
+///   glass wall or a low railing that bars footfall but not sight).
+///
+/// A NAMED CLOSED enum (no-bare-types: an occlusion mode is a domain value). It is the
+/// AUTHORED-OVERRIDE vocabulary; the def stores it as an `Option<LosBlocking>` (`None` = use
+/// the kind default) and
+/// [`derives_vision_occlusion`](crate::terrain::def::derives_vision_occlusion) resolves the
+/// mode to the concrete occluding [`HeightBand`] the sim's `VisionBlocking` surface reads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, TypePath)]
+pub enum LosBlocking {
+    /// Occludes vision at ALL bands — a solid wall; nothing within the storey sees over it
+    /// (resolves to [`HeightBand::High`]).
+    Full,
+    /// Occludes vision only UP TO the def's own [`height_band`](TerrainSimKind) — chest-high
+    /// cover a higher sightline clears (a band-less [`Slab`](TerrainSimKind::Slab) falls back
+    /// to [`HeightBand::High`]).
+    UpToHeightBand,
+    /// Does NOT occlude vision — LoS-transparent (a glass wall / low railing).
+    None,
 }

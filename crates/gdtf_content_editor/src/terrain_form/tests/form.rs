@@ -233,3 +233,57 @@ fn terrain_def_round_trips_through_the_loader_parser() {
         "the reloaded TerrainDef must equal the saved one — every field survives (C3)",
     );
 }
+
+/// GTW-587 (AC3) — the form exposes the two OPTIONAL blocking overrides: setting them on the
+/// draft (the exact writes the `blocking` UNDER controls make) projects them onto the produced
+/// [`TerrainDef`], and they survive the loader-parser round-trip. Also pins the DEFAULT: an
+/// untouched draft projects both as `None` (pure kind default — zero-migration for shipped defs).
+#[test]
+fn blocking_overrides_project_and_round_trip() {
+    use gdtf_battle_sim::terrain::def::LosBlocking;
+
+    // Default draft: no overrides authored.
+    let default_draft = TerrainDraft::default();
+    let Ok(default_def) = draft_to_terrain_def(&default_draft, key()) else {
+        unreachable!("a default Wall draft always projects")
+    };
+    assert_eq!(
+        default_def.blocks_pathing, None,
+        "default = kind default (path)"
+    );
+    assert_eq!(default_def.blocks_los, None, "default = kind default (LoS)");
+
+    // Author a glass-wall-style override: blocks pathing, transparent to LoS.
+    let mut draft = TerrainDraft::default();
+    draft.set_display_name("Glass Wall".to_owned());
+    draft.set_kind(TerrainKindChoice::Wall);
+    draft.set_graphic(TileRole::Wall);
+    draft.set_blocks_pathing(Some(true));
+    draft.set_blocks_los(Some(LosBlocking::None));
+
+    let Ok(def) = draft_to_terrain_def(&draft, key()) else {
+        unreachable!("a Wall draft always projects")
+    };
+    assert_eq!(
+        def.blocks_pathing,
+        Some(true),
+        "AC3: the path-blocking override projects onto the def",
+    );
+    assert_eq!(
+        def.blocks_los,
+        Some(LosBlocking::None),
+        "AC3: the LoS-blocking override projects onto the def",
+    );
+
+    // The overrides survive the loader-parser round-trip.
+    let Ok(serialized) = serialize_terrain_def(&def) else {
+        unreachable!("serializing the override def must succeed")
+    };
+    let Ok(reloaded) = ron::de::from_str::<TerrainDef>(&serialized) else {
+        unreachable!("the override def must round-trip through the loader parser")
+    };
+    assert_eq!(
+        reloaded, def,
+        "the reloaded TerrainDef must carry both authored overrides (AC3)",
+    );
+}

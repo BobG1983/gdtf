@@ -81,10 +81,12 @@ pub(super) fn seed_cover_terrain(
         if resolved.blocks_path {
             commands.entity(entity).insert(BlocksPathfinding);
         }
-        // GTW-502 C1/C2: attach the BlocksVision component (carrying its height-aware band)
-        // when the def derives vision occlusion — for a Wall/Cover the kind default makes this
-        // Some(its band), so existing walls/cover keep occluding sight at the SAME band their
-        // CoverLedger entry already does (zero regression / idempotent re-block). `Added` fires
+        // GTW-502 C1/C2 / GTW-587: attach the BlocksVision component (carrying its height-aware
+        // band) when the def derives vision occlusion — for a Wall the kind default is Full (the
+        // whole storey → High) and for a Cover/Emplacement it is Some(its own band). Every shipped
+        // wall authors height_band: High, so existing walls/cover keep occluding sight at the same
+        // band their CoverLedger entry already does (zero regression / idempotent re-block).
+        // `Added` fires
         // on this insert, so the GTW-502 projection picks it up the next time it runs (a band
         // payload makes BlocksVision a single-component, not a Bundle, so insert it
         // conditionally rather than tupling).

@@ -132,6 +132,10 @@ pub fn draft_to_terrain_def(
         presenter_kind,
         tags: draft.tags().to_vec(),
         on_death: None,
+        // GTW-587: the authored per-def blocking overrides (both `None` unless the author set
+        // them, in which case they win over the kind default at battle setup).
+        blocks_pathing: draft.blocks_pathing(),
+        blocks_los: draft.blocks_los(),
     })
 }
 

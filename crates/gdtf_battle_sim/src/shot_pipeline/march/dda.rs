@@ -99,8 +99,11 @@ enum SteppedAxis {
 /// already occludes via its [`CoverLedger`](crate::cover::CoverLedger) entry (clause 2),
 /// so the occluder clause is reached only when no occupant/cover stopped the round —
 /// where its NET-NEW effect is occluding an explicitly-`BlocksVision`-tagged `Slab` (a
-/// gap the cover ledger never held). For a `Wall`/`Cover` the occluder band is identical
-/// to the cover entry's, so the additional clause can only agree (idempotent).
+/// gap the cover ledger never held). Because the cover-ledger clause runs FIRST, an intact
+/// `Wall`/`Cover` already stopped the round before the occluder clause is reached, so the
+/// additive clause can only agree (idempotent); a `Cover`/`Emplacement` derives its ledger band
+/// exactly and every shipped `Wall` (all `High`) derives that same band, so the two coincide for
+/// shipped content anyway.
 ///
 /// `here_point` is the round's position at the voxel ENTRY (the reported impact
 /// point, recorded on the [`MarchResult`]). `test_band` is the band the clearance

@@ -114,6 +114,9 @@ pub(crate) fn barrel_terrain_registry() -> TerrainDefRegistry {
             on_death:       Some(OnDeathEffect::LeaveField {
                 field: FieldKey::new("burning".to_owned()),
             }),
+
+            blocks_pathing: None,
+            blocks_los:     None,
         },
     );
     base

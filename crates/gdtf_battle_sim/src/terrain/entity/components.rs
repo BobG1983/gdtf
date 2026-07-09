@@ -93,11 +93,13 @@ pub struct BlocksPathfinding;
 /// [`derives_vision_occlusion`](crate::terrain::def::derives_vision_occlusion) — present iff
 /// the def carries an explicit [`BlocksVision`](crate::terrain::def::TerrainTag::BlocksVision)
 /// tag OR its [`sim_kind`](crate::terrain::def::TerrainSimKind) occludes by default
-/// (`Wall`/`Cover` occlude at their band; `Slab` does not). An explicit tag therefore ADDS
+/// (a `Wall` occludes FULLY / the whole storey, a `Cover`/`Emplacement` up to its own band; a
+/// `Slab` does not). An explicit tag therefore ADDS
 /// vision occlusion to an otherwise-transparent `Slab`, and existing walls/cover keep
 /// occluding with no content migration (the GTW-502 zero-regression rule — a `Wall`/`Cover`
 /// already occludes sight via its [`CoverLedger`](crate::cover::CoverLedger) entry, and this
-/// derives the SAME band, an idempotent re-block, never a double-count).
+/// derives a `Cover`/`Emplacement`'s ledger band exactly and, for every shipped `Wall` (all
+/// `High`), an equal band — an idempotent re-block, never a double-count).
 ///
 /// The [`OccupancyGrid`](crate::occupancy::OccupancyGrid)'s tag-derived vision-blocking
 /// surface ([`VisionBlocking`](crate::occupancy::VisionBlocking)) is the PROJECTED snapshot

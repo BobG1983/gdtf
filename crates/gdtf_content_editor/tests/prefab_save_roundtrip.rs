@@ -73,6 +73,9 @@ fn slab_def() -> TerrainDef {
         },
         tags:           Vec::new(),
         on_death:       None,
+
+        blocks_pathing: None,
+        blocks_los:     None,
     }
 }
 

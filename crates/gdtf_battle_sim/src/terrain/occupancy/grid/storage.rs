@@ -102,8 +102,9 @@ pub struct OccupancyGrid {
     /// independent — GTW-502 C7). It is ADDITIVE to the existing occupant + cover occlusion
     /// `impact_at` already performs: an intact `Wall`/`Cover` still occludes via its
     /// [`CoverLedger`](crate::cover::CoverLedger) entry (the cover clause fires first), so this
-    /// surface re-derives the SAME band for them (idempotent, no double-count) and ADDS
-    /// occlusion only for an explicitly-`BlocksVision`-tagged `Slab` (the gap-closer). Kept in
+    /// surface re-derives a `Cover`/`Emplacement`'s ledger band exactly and, for every shipped
+    /// `Wall` (all `High`), an equal band (idempotent, no double-count) and ADDS occlusion only
+    /// for an explicitly-`BlocksVision`-tagged `Slab` (the gap-closer). Kept in
     /// sync by [`project_vision_blocking`](crate::occupancy::project_vision_blocking) via
     /// `Added`/`Changed`/`RemovedComponents` change detection. A lazily-populated side map
     /// (like [`destroyed_cover`](OccupancyGrid::destroyed_cover)), so a grid built without the

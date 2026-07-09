@@ -54,6 +54,9 @@ fn wall_def_round_trips() {
         },
         tags:           vec![TerrainTag::BlocksVision, TerrainTag::BlocksPathfinding],
         on_death:       None,
+
+        blocks_pathing: None,
+        blocks_los:     None,
     };
     assert_round_trips(&def);
 }
@@ -76,6 +79,9 @@ fn cover_def_round_trips() {
         },
         tags:           Vec::new(),
         on_death:       None,
+
+        blocks_pathing: None,
+        blocks_los:     None,
     };
     assert_round_trips(&def);
 }
@@ -98,6 +104,9 @@ fn slab_def_round_trips() {
         },
         tags:           Vec::new(),
         on_death:       None,
+
+        blocks_pathing: None,
+        blocks_los:     None,
     };
     assert_round_trips(&def);
 }
@@ -121,6 +130,9 @@ fn emplacement_def_round_trips() {
         },
         tags:           Vec::new(),
         on_death:       None,
+
+        blocks_pathing: None,
+        blocks_los:     None,
     };
     assert_round_trips(&def);
 }

@@ -18,11 +18,13 @@
 //! [`CoverLedger`](crate::cover::CoverLedger) at setup carrying its `height_band`, and
 //! [`impact_at`](crate::march) stops sight on that ledger entry (height-aware, destroyed-cover
 //! excluded). The [`BlocksVision`](crate::terrain::entity::BlocksVision) component
-//! ([`derives_vision_occlusion`](crate::terrain::def::derives_vision_occlusion)) derives the
-//! SAME band for a `Wall`/`Cover`, so this surface reproduces their existing occlusion
-//! EXACTLY — and because `impact_at` runs the cover-ledger clause FIRST, an intact
-//! `Wall`/`Cover` already stopped the round before the vision-surface clause is reached, so
-//! the surface is a harmless idempotent re-block, never a double-count. The NET-NEW behaviour
+//! ([`derives_vision_occlusion`](crate::terrain::def::derives_vision_occlusion)) derives a
+//! `Cover`/`Emplacement`'s ledger band exactly, and a `Wall`'s `Full` → `High` band, which
+//! equals the ledger band for every shipped wall (all author `height_band: High`); so this
+//! surface reproduces their existing occlusion EXACTLY for shipped content — and because
+//! `impact_at` runs the cover-ledger clause FIRST, an intact `Wall`/`Cover` already stopped the
+//! round before the vision-surface clause is reached, so the surface is a harmless idempotent
+//! re-block, never a double-count. The NET-NEW behaviour
 //! is the explicit-`BlocksVision`-tag opt-in for a `Slab` (which the cover ledger never held)
 //! — a desirable gap-closer.
 //!

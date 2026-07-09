@@ -81,6 +81,8 @@ Every `.terrain_def.ron` deserializes into `TerrainDef`
 | `presenter_kind` | `TerrainPresenterKind` | struct variant | The PRESENTER half — graphic role key (+ optional slab footfall; see 1d). |
 | `tags` | `Vec<TerrainTag>` | list of variants | SIM-owned pathing/vision traits (see 1e). `#[serde(default)]` — omitted = `[]`. |
 | `on_death` | `Option<OnDeathEffect>` | `Some(…)` | What the piece fans when DESTROYED (GTW-547; see 1e). `#[serde(default)]` — omitted = `None`. |
+| `blocks_pathing` | `Option<bool>` | `Some(true)` \| `Some(false)` | OPTIONAL path-blocking OVERRIDE (GTW-587; see 1h). `#[serde(default)]` — omitted = `None` = kind default. |
+| `blocks_los` | `Option<LosBlocking>` | `Some(Full)` \| `Some(UpToHeightBand)` \| `Some(None)` | OPTIONAL line-of-sight blocking OVERRIDE (GTW-587; see 1h). `#[serde(default)]` — omitted = `None` = kind default. |
 
 Kind variants are **struct variants**, so RON uses the single-paren named-field
 form: `Slab(hp: 120, …)` — never the double-paren `Slab((…))` tuple form.
@@ -168,10 +170,12 @@ Kind defaults already cover the common cases (a `Wall` / `Emplacement` blocks
 path + vision by kind), so most defs author `tags: []`; solid walls in the
 shipped content tag `[BlocksVision, BlocksPathfinding]` explicitly.
 
-**Forward note (GTW-587, post-epic):** per-def blocking-OVERRIDE knobs (a def
-opting out of its kind's blocking defaults) are planned but NOT built — today
-the kind defaults + the additive tags above are the whole authored blocking
-surface; do not author override fields.
+The kind defaults + these additive tags are the BASE blocking surface. To make
+a def's blocking VARY independently of its kind (a glass wall, a low railing)
+WITHOUT a new sim kind, author the `blocks_pathing` / `blocks_los` OVERRIDES —
+see 1h (GTW-587). A tag can only ADD blocking; an override can force it either
+way (including OFF), and when present WINS over both the tag and the kind
+default.
 
 `on_death:` names the `OnDeathEffect` a DESTRUCTIBLE piece fans when smashed
 (GTW-547): `Explode(hit_type: …, damage: …, damage_type: …)` or
@@ -233,6 +237,63 @@ next launch (or live, via hot-reload — Part 3). The content editor
 (`crates/gdtf_content_editor/src/terrain_form/save.rs` /
 `theme_form/save.rs`).
 
+### 1h. `blocks_pathing:` / `blocks_los:` — per-def blocking overrides (GTW-587)
+
+Blocking is normally DERIVED from the `sim_kind` (a `Wall` blocks path + sight,
+a `Cover` blocks path + occludes up to its band, a `Slab` does neither). Two
+OPTIONAL fields let a single def OVERRIDE those kind defaults so blocking can
+vary per-def WITHOUT a new sim kind — killing the old "Step 3" code excursion
+(Part 2) for blocking variance:
+
+- **`blocks_pathing: Option<bool>`** — `Some(true)` forces the def to block the
+  pathfinder, `Some(false)` forces it walkable, omitted (`None`) uses the kind
+  default. Resolved by `derives_path_blocking`
+  (`crates/gdtf_battle_sim/src/terrain/def/blocking.rs`).
+- **`blocks_los: Option<LosBlocking>`** — the height-banded LoS mode, or omitted
+  (`None`) for the kind default. LoS blocking is NOT a flat bool: the sim's
+  vision model is banded (`docs/combat/resolution.md` §3), so the closed
+  `LosBlocking` enum names the three modes:
+  - `Full` — occludes the WHOLE storey (a solid wall; nothing sees over it).
+  - `UpToHeightBand` — occludes only up to the def's own `height_band` (a higher
+    sightline clears it); a band-less `Slab` falls back to occluding the tallest
+    band.
+  - `None` — LoS-transparent (a glass wall / low railing).
+  Resolved by `derives_vision_occlusion`.
+
+When present, an override WINS over both the additive tag (1e) and the kind
+default. Both fields are `#[serde(default)]`, so EVERY shipped `.ron` (none of
+which author them) deserializes byte-identical and derives EXACTLY as before —
+zero migration.
+
+**Kind-derived defaults** (what an omitted field falls back to):
+
+| `sim_kind:` | `blocks_pathing` default | `blocks_los` default |
+|-------------|--------------------------|----------------------|
+| `Wall` | `true` (blocks) | `Full` |
+| `Cover` | `true` (blocks) | `UpToHeightBand` (at the def's `height_band`) |
+| `Emplacement` | `true` (blocks) | `UpToHeightBand` (at the def's `height_band`) |
+| `Slab` | `false` (walkable) | `None` (transparent) |
+
+**Worked example — a glass wall** (blocks footfall, but you can see AND shoot
+through it), authored on a `Wall` kind:
+
+```ron
+    // Glass wall — bars movement, but LoS + shots pass straight through.
+    blocks_pathing: Some(true),   // force-block the path (Wall already does; explicit here)
+    blocks_los:     Some(None),   // OVERRIDE the Wall default (Full) → LoS-transparent
+```
+
+**Interaction with the destructible-cover march (important).** A standing
+`Wall` / `Cover` / `Emplacement` is ALSO a destructible cover in the shot march
+(the `CoverLedger`, the "shoot-the-cover" mechanism — UNTOUCHED by GTW-587),
+which occludes at the def's `height_band`. So on those kinds, `blocks_los` drives
+the def's own height-aware occluder surface (it can RAISE occlusion to `Full`, or
+band-limit it) but the cover-ledger occlusion floor at the authored band still
+applies to a shot that would smash the piece. A truly LoS-transparent blocker
+that shots also pass through is authored on the `Slab` kind (not seeded into the
+cover ledger) — the low-railing / catwalk-lip case. This is a property of the
+pre-existing shot-follows-LoS + destructible-cover model, not of the override.
+
 ---
 
 ## Part 2 — How to extend the terrain model
@@ -268,15 +329,26 @@ backwards-compatible, add `#[serde(default)]` (the `tags` / `on_death`
 precedent — every shipped def stays parseable). If required, update every
 `.terrain_def.ron` under `assets/content/terrain/`.
 
-### Step 3 — Thread through the sim
+### Step 3 — Thread through the sim (only for genuinely new MECHANICS)
+
+Since GTW-587 this step is **NOT needed for blocking variance** — a def that
+blocks pathing but not sight (or vice-versa), or occludes at a different band,
+is authored with the `blocks_pathing` / `blocks_los` overrides (1h), no code.
+Reach for this step only when adding a genuinely NEW mechanic a field cannot
+express.
 
 Terrain defs are consumed at battle setup
 (`crates/gdtf_battle_sim/src/lifecycle/situation/` — cover/slab UUID
 resolution) and by the pathfinder / shot-march systems:
 
-- Move / blocking: `crates/gdtf_battle_sim/src/perception/pathfinder/`.
+- Move / blocking: `crates/gdtf_battle_sim/src/perception/pathfinder/`. The
+  per-def `blocks_pathing` resolves through `derives_path_blocking`
+  (`terrain/def/blocking.rs`) into the `BlocksPathfinding` marker → the
+  occupancy grid's `PathBlocking` surface the pathfinder reads.
 - Vision / LOS: `crates/gdtf_battle_sim/src/perception/visibility/` and
-  `crates/gdtf_battle_sim/src/shot_pipeline/march/`.
+  `crates/gdtf_battle_sim/src/shot_pipeline/march/`. The per-def `blocks_los`
+  resolves through `derives_vision_occlusion` into the height-aware
+  `BlocksVision` component → the grid's `VisionBlocking` occluder surface.
 
 ### Step 4 — Update tests and fixtures
 

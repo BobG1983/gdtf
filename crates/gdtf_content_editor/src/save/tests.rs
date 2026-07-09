@@ -66,6 +66,9 @@ fn cover_def(key: TerrainUuid, label: &str) -> TerrainDef {
         },
         tags: Vec::new(),
         on_death: None,
+
+        blocks_pathing: None,
+        blocks_los: None,
     }
 }
 
@@ -85,6 +88,9 @@ fn wall_def(key: TerrainUuid, label: &str) -> TerrainDef {
         },
         tags: Vec::new(),
         on_death: None,
+
+        blocks_pathing: None,
+        blocks_los: None,
     }
 }
 
@@ -104,6 +110,9 @@ fn slab_def(key: TerrainUuid, label: &str) -> TerrainDef {
         },
         tags: Vec::new(),
         on_death: None,
+
+        blocks_pathing: None,
+        blocks_los: None,
     }
 }
 

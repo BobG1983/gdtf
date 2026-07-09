@@ -49,6 +49,9 @@ fn orientation_wall_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
         },
         tags: Vec::new(),
         on_death: None,
+
+        blocks_pathing: None,
+        blocks_los: None,
     }
 }
 
@@ -68,6 +71,9 @@ fn orientation_terrain_defs() -> TerrainDefRegistry {
         },
         tags:           Vec::new(),
         on_death:       None,
+
+        blocks_pathing: None,
+        blocks_los:     None,
     };
     TerrainDefRegistry::new([
         (WALL_NS_EW_NS, orientation_wall_def(WALL_NS_EW_NS, "wall")),

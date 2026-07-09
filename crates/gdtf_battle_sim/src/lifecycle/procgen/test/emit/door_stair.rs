@@ -55,6 +55,9 @@ fn door_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
         },
         tags: vec![crate::terrain::def::TerrainTag::Openable],
         on_death: None,
+
+        blocks_pathing: None,
+        blocks_los: None,
     }
 }
 
@@ -74,6 +77,9 @@ fn stair_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
         },
         tags: Vec::new(),
         on_death: None,
+
+        blocks_pathing: None,
+        blocks_los: None,
     }
 }
 
@@ -93,6 +99,9 @@ fn door_stair_terrain_defs() -> TerrainDefRegistry {
         },
         tags:           Vec::new(),
         on_death:       None,
+
+        blocks_pathing: None,
+        blocks_los:     None,
     };
     TerrainDefRegistry::new([
         (DOOR_NS, door_def(DOOR_NS, "door_ns")),

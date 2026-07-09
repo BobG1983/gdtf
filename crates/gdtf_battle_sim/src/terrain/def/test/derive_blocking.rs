@@ -32,6 +32,9 @@ fn wall_def(tags: Vec<TerrainTag>) -> TerrainDef {
         },
         tags,
         on_death: None,
+
+        blocks_pathing: None,
+        blocks_los: None,
     }
 }
 
@@ -51,6 +54,9 @@ fn cover_def(tags: Vec<TerrainTag>) -> TerrainDef {
         },
         tags,
         on_death: None,
+
+        blocks_pathing: None,
+        blocks_los: None,
     }
 }
 
@@ -72,6 +78,9 @@ fn emplacement_def(tags: Vec<TerrainTag>) -> TerrainDef {
         },
         tags,
         on_death: None,
+
+        blocks_pathing: None,
+        blocks_los: None,
     }
 }
 
@@ -91,6 +100,9 @@ fn slab_def(tags: Vec<TerrainTag>) -> TerrainDef {
         },
         tags,
         on_death: None,
+
+        blocks_pathing: None,
+        blocks_los: None,
     }
 }
 

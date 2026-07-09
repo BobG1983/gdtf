@@ -8,12 +8,16 @@
 //! - [`registry`] — insert-by-key + lookup-by-`TerrainUuid` (C7).
 //! - [`derive_blocking`] — GTW-501: the path-blocking DERIVATION rule (Wall/Cover block by
 //!   default, Slab does not, an explicit `BlocksPathfinding` tag adds blocking).
-//! - [`derive_vision`] — GTW-502: the vision-occlusion DERIVATION rule (Wall/Cover occlude at
-//!   their band by default, Slab does not, an explicit `BlocksVision` tag adds occlusion).
+//! - [`derive_vision`] — GTW-502/GTW-587: the vision-occlusion DERIVATION rule (Wall occludes
+//!   fully by default, Cover/Emplacement up to their band, Slab does not, an explicit
+//!   `BlocksVision` tag adds occlusion).
+//! - [`blocking_override`] — GTW-587: the authored `blocks_pathing` / `blocks_los` overrides,
+//!   proven on the REAL pathfinder (`pathable_neighbors`) + march (`march_vector`) paths.
 //! - [`kind_projection`] — GTW-574: the canonical [`TerrainPieceKind`](crate::terrain::entity::TerrainPieceKind)
 //!   projections (every sim/presenter variant projects onto its piece kind) + the
 //!   `ALL` inventory completeness pin.
 
+mod blocking_override;
 mod derive_blocking;
 mod derive_vision;
 mod kind_projection;

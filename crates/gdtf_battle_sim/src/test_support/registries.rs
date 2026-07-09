@@ -233,6 +233,9 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
                 },
                 tags:           Vec::new(),
                 on_death:       None,
+
+                blocks_pathing: None,
+                blocks_los:     None,
             },
         ),
         (
@@ -253,6 +256,9 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
                 },
                 tags:           Vec::new(),
                 on_death:       None,
+
+                blocks_pathing: None,
+                blocks_los:     None,
             },
         ),
         (
@@ -271,6 +277,9 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
                 },
                 tags:           Vec::new(),
                 on_death:       None,
+
+                blocks_pathing: None,
+                blocks_los:     None,
             },
         ),
         (
@@ -290,6 +299,9 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
                 },
                 tags:           Vec::new(),
                 on_death:       None,
+
+                blocks_pathing: None,
+                blocks_los:     None,
             },
         ),
         (
@@ -310,6 +322,9 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
                 },
                 tags:           vec![TerrainTag::BlocksVision],
                 on_death:       None,
+
+                blocks_pathing: None,
+                blocks_los:     None,
             },
         ),
         (
@@ -330,6 +345,9 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
                 },
                 tags:           vec![TerrainTag::BlocksPathfinding],
                 on_death:       None,
+
+                blocks_pathing: None,
+                blocks_los:     None,
             },
         ),
         (
@@ -350,6 +368,9 @@ pub fn test_terrain_registry() -> TerrainDefRegistry {
                 },
                 tags:           Vec::new(),
                 on_death:       None,
+
+                blocks_pathing: None,
+                blocks_los:     None,
             },
         ),
     ])

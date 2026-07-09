@@ -4,7 +4,7 @@
 use bevy::{prelude::Deref, reflect::TypePath};
 use serde::{Deserialize, Serialize};
 
-use super::{TerrainPresenterKind, TerrainSimKind, TerrainTag, TerrainUuid};
+use super::{LosBlocking, TerrainPresenterKind, TerrainSimKind, TerrainTag, TerrainUuid};
 
 /// A terrain definition's **human-readable display name** — the label shown for a
 /// terrain piece in tooling / authoring.
@@ -84,4 +84,41 @@ pub struct TerrainDef {
     /// [`CoverDestroyed`](crate::occupancy_sync::CoverDestroyed).
     #[serde(default)]
     pub on_death:       Option<crate::effects::on_death::OnDeathEffect>,
+    /// An OPTIONAL authored **path-blocking OVERRIDE** (GTW-587) — `Some(true)` forces this
+    /// def to block pathfinding, `Some(false)` forces it walkable, and `None` (the serde
+    /// default) falls back to the KIND-derived default
+    /// ([`sim_kind_blocks_path`](crate::terrain::def::sim_kind_blocks_path): `Wall` / `Cover`
+    /// / `Emplacement` block, `Slab` does not) UNIONED with the additive
+    /// [`BlocksPathfinding`](TerrainTag::BlocksPathfinding) tag. When `Some`, the override WINS
+    /// outright over both the tag and the kind default.
+    ///
+    /// This lets path-blocking VARY per-def independently of the kind — a low railing that bars
+    /// footfall, or a decorative wall you can walk through — WITHOUT a new sim kind (the
+    /// terrain-authoring "Step 3" code excursion this ticket kills). `#[serde(default)]` keeps
+    /// every shipped `.ron` (none of which author it) byte-identical: an omitted field is
+    /// `None` = pure kind default. Resolved by
+    /// [`derives_path_blocking`](crate::terrain::def::derives_path_blocking) at battle setup.
+    ///
+    /// (`Option<bool>` is the authored shape the GTW-587 design pins — a tri-state
+    /// force-on / force-off / use-default; the resolved value flows through the sim's typed
+    /// [`BlocksPathfinding`](crate::terrain::entity::BlocksPathfinding) marker.)
+    #[serde(default)]
+    pub blocks_pathing: Option<bool>,
+    /// An OPTIONAL authored **line-of-sight blocking OVERRIDE** (GTW-587) — a [`LosBlocking`]
+    /// mode (`Full` / `UpToHeightBand` / `None`) that overrides the KIND-derived
+    /// vision-occlusion default, or `None` (the serde default) to fall back to that default
+    /// (`Wall` → `Full`; `Cover` / `Emplacement` → `UpToHeightBand` at the def's `height_band`;
+    /// `Slab` → no occlusion) UNIONED with the additive [`BlocksVision`](TerrainTag::BlocksVision)
+    /// tag. When `Some`, the override WINS outright.
+    ///
+    /// Line-of-sight blocking is HEIGHT-BANDED (cover occludes up to its band; a wall occludes
+    /// the whole storey), so the override is the [`LosBlocking`] enum, NOT a flat bool — a glass
+    /// wall (blocks pathing, not sight) authors `blocks_pathing: Some(true)` +
+    /// `blocks_los: Some(None)`.
+    /// `#[serde(default)]` keeps shipped `.ron` byte-identical. Resolved by
+    /// [`derives_vision_occlusion`](crate::terrain::def::derives_vision_occlusion) at battle
+    /// setup into the sim's height-aware
+    /// [`VisionBlocking`](crate::occupancy::VisionBlocking) occluder surface.
+    #[serde(default)]
+    pub blocks_los:     Option<LosBlocking>,
 }

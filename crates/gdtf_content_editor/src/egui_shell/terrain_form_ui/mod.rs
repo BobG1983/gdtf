@@ -40,6 +40,7 @@
 //! [`panel`] (central composition + the sprite picker), [`fields`] (the stat field stack + the
 //! save press), [`preview`] (the demoted RON preview). Wiring-only here.
 
+mod blocking;
 mod fields;
 mod panel;
 mod preview;

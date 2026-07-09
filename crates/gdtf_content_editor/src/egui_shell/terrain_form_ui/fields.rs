@@ -94,6 +94,9 @@ pub(crate) fn field_stack(
     footfall_combo(ui, draft);
     mounted_weapon_combo(ui, draft, weapons);
     tag_checkboxes(ui, draft);
+    // GTW-587: the two OPTIONAL per-def blocking overrides (path + height-banded LoS), split
+    // into the sibling `blocking` module so this already-large stack does not grow further.
+    super::blocking::blocking_overrides(ui, draft);
 
     ui.separator();
     uuid_text(ui, draft);
