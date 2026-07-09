@@ -114,11 +114,13 @@ pub fn reaction_trigger(
     // ZERO ReactionRng draws (determinism-critical: a suppressed unit must not perturb the
     // RNG stream). A `Query<(), With<Suppressed>>`, disjoint from every other param.
     suppressed: Query<(), With<Suppressed>>,
-    // GTW-542: the SILENCED-weapon probe — a read-only marker query so an ACT by a shooter
-    // wielding a silenced weapon does NOT trip a reaction (a suppressor removes the shot's
-    // reveal). Gated on the ACTOR (the declaration's shooter), resolved via
-    // `shooter → Wields → the weapon entity`, so a silenced INTERRUPT shot also stays silent.
-    // A `Query<(), With<Silenced>>`, disjoint from every other param.
+    // GTW-542 / GTW-674: the SILENCED-weapon probe — a read-only marker query so an ACT by a
+    // shooter wielding a silenced weapon does NOT trip a reaction (a suppressor removes the
+    // shot's reveal). Gated on the ACTOR (the declaration's shooter), resolved via the shared
+    // firing-weapon rule (`shooter → Wields → the FIRING weapon`, mounted-first via
+    // `probes.mounted`, melee-excluded), so a MOUNTED shooter's reveal tracks the mount it
+    // fires and a silenced INTERRUPT shot also stays silent. A `Query<(), With<Silenced>>`,
+    // disjoint from every other param.
     silenced: Query<(), With<Silenced>>,
     // C4: the per-turn interrupt counter, mutated through its own `increment` (a different
     // component than the read snapshot, so this &mut query is disjoint — no ParamSet).
@@ -186,7 +188,13 @@ pub fn reaction_trigger(
         // reactor rolls against it, no ReactionRng draws). A moving shooter still reveals via
         // the Changed<Position> surface above; only the shot's noise is removed. A silenced
         // INTERRUPT shot's own FireDeclaration is gated the same way (it stays silent too).
-        if shooter_weapon_silenced(declaration.shooter, &wields, &probes.melee, &silenced) {
+        if shooter_weapon_silenced(
+            declaration.shooter,
+            &wields,
+            &probes.mounted,
+            &probes.melee,
+            &silenced,
+        ) {
             continue;
         }
         actors.insert(declaration.shooter);

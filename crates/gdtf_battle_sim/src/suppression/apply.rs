@@ -16,7 +16,7 @@ use bevy::prelude::{Commands, Entity, Message, MessageReader, MessageWriter, Que
 
 use crate::{
     acts::FireRequested,
-    fire::{MeleeQuery, WieldsQuery},
+    fire::{MeleeQuery, MountedQuery, WieldsQuery},
     ganger::{Faction, Position, Suppressed, SuppressorCell},
     metric::{Cell, CellLevel, Level},
     tuning::CombatTuning,
@@ -109,11 +109,14 @@ fn within_radius(
 /// suppresses enemies and an ENEMY shot suppresses players (BOTH factions can be
 /// suppressed).
 ///
-/// GTW-542: a SILENCED shooter's shot produces NO suppression. Before marking anyone, the
-/// producer resolves the shooter's RANGED weapon (`shooter → Wields → the weapon entity`,
-/// EXCLUDING the melee weapon via the `melee` probe — the `dispatch_fire` resolution) and
-/// SKIPS the whole fire request if that weapon carries the [`Silenced`] tag (a `silenced`
-/// probe). So a suppressor removes the shot's NOISE footprint entirely, faction-blind.
+/// GTW-542 / GTW-674: a SILENCED shooter's shot produces NO suppression. Before marking
+/// anyone, the producer resolves the shooter's FIRING weapon through the shared preference
+/// rule ([`Wields::firing_weapon`](crate::weapon::Wields::firing_weapon), mounted-first via
+/// the `mounted` probe, melee-excluded via the `melee` probe — the `dispatch_fire`
+/// resolution) and SKIPS the whole fire request if that weapon carries the [`Silenced`] tag
+/// (a `silenced` probe). So a MOUNTED shooter's suppression tracks the mount it fires (not
+/// its carried gun), and a suppressor removes the shot's NOISE footprint entirely,
+/// faction-blind.
 ///
 /// Param-only (`MessageReader` / `Query` / `Res` / `Commands` / `MessageWriter`) — no
 /// `&mut World` (`bevy-traps.md` #7). Reads [`CombatTuning`] as `Option<Res>` so a
@@ -122,17 +125,20 @@ fn within_radius(
 #[expect(
     clippy::too_many_arguments,
     reason = "the producer reads the FireRequested buffer, the shooter position/faction \
-              query, the candidate-ganger query, the GTW-542 silenced-weapon resolution (the \
-              wield + melee-probe + Silenced-marker queries), the Option<CombatTuning>, and the \
-              Commands + SuppressionApplied writer; each is a distinct Bevy SystemParam \
-              (mirroring dispatch_fire's own carve-out) — bundling would only hide the reads"
+              query, the candidate-ganger query, the GTW-542/674 silenced-weapon resolution (the \
+              wield + mounted-probe + melee-probe + Silenced-marker queries), the \
+              Option<CombatTuning>, and the Commands + SuppressionApplied writer; each is a \
+              distinct Bevy SystemParam (mirroring dispatch_fire's own carve-out) — bundling \
+              would only hide the reads"
 )]
 pub fn apply_suppression(
     mut fires: MessageReader<FireRequested>,
     positions: Query<(&Position, &Faction)>,
     gangers: Query<(Entity, &Position, &Faction, Option<&Suppressed>)>,
-    // GTW-542: resolve the shooter's RANGED weapon to gate on its `Silenced` tag.
+    // GTW-542 / GTW-674: resolve the shooter's FIRING weapon (mounted-first) to gate on its
+    // `Silenced` tag.
     wields: WieldsQuery,
+    mounted: MountedQuery,
     melee: MeleeQuery,
     silenced: Query<(), With<Silenced>>,
     tuning: Option<Res<CombatTuning>>,
@@ -152,11 +158,12 @@ pub fn apply_suppression(
         bevy::platform::collections::HashSet::default();
 
     for fire in fires.read() {
-        // GTW-542: a SILENCED shot makes NO noise — skip the whole request before marking
-        // anyone. Resolve the shooter's RANGED weapon (excluding its melee weapon) and skip
-        // if it carries the Silenced tag. A shooter with no resolvable ranged weapon is
-        // treated as un-silenced (fall through — the shot came from somewhere loud).
-        if shooter_weapon_silenced(fire.shooter, &wields, &melee, &silenced) {
+        // GTW-542 / GTW-674: a SILENCED shot makes NO noise — skip the whole request before
+        // marking anyone. Resolve the shooter's FIRING weapon (mounted-first, excluding its
+        // melee weapon) and skip if it carries the Silenced tag. A shooter with no resolvable
+        // firing weapon is treated as un-silenced (fall through — the shot came from somewhere
+        // loud).
+        if shooter_weapon_silenced(fire.shooter, &wields, &mounted, &melee, &silenced) {
             continue;
         }
         // Resolve the shooter's origin + side; a shooter missing from the query (an
