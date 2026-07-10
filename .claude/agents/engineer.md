@@ -8,7 +8,7 @@ description: >-
   refactors — and you want it done compiling, lint-clean (-D warnings), and
   tested. Reports back concisely; the orchestrating workflow relays to the user.
 tools: Read, Edit, Write, Grep, Glob, Bash
-model: opus
+model: sonnet
 memory: project
 ---
 
