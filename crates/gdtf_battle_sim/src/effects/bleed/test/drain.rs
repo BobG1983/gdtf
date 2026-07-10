@@ -1,7 +1,7 @@
 //! AC1/AC2 — the per-tick drain magnitude and the stacking clock that depletes a
 //! Downed ganger to Dead.
 
-use super::support::{LifeState, Wounds, bleed_app, bleed_rate, life_of, wounds_of};
+use super::support::{BleedingOut, LifeState, Wounds, bleed_app, bleed_rate, life_of, wounds_of};
 
 /// AC1 — one `tick_bleed` drains exactly `bleed_rate` Wounds from an un-stabilized
 /// Downed ganger. Spawns a Downed ganger with a comfortable Wounds pool, runs one
@@ -17,7 +17,7 @@ fn one_tick_drains_exactly_bleed_rate_from_a_downed_ganger() {
     let mut app = bleed_app();
     let ganger = app
         .world_mut()
-        .spawn((Wounds::new(start), LifeState::Downed))
+        .spawn((Wounds::new(start), LifeState::Downed, BleedingOut))
         .id();
 
     app.update();
@@ -49,7 +49,7 @@ fn ticks_stack_and_deplete_to_dead() {
     let mut app = bleed_app();
     let ganger = app
         .world_mut()
-        .spawn((Wounds::new(start), LifeState::Downed))
+        .spawn((Wounds::new(start), LifeState::Downed, BleedingOut))
         .id();
 
     // Tick three rounds — cumulative drop is 3×rate, still alive-but-downed.

@@ -3,7 +3,7 @@
 //! once-only skip of an already-dead (bled-out) ganger.
 
 use super::support::{
-    Bleeding, LifeState, Stabilized, Wounds, bleed_app, bleed_rate, bleeding_count_for, life_of,
+    Bleeding, BleedingOut, LifeState, Wounds, bleed_app, bleed_rate, bleeding_count_for, life_of,
     wounds_of,
 };
 use crate::ganger::Hp;
@@ -11,8 +11,8 @@ use crate::ganger::Hp;
 /// AC6 — `Bleeding` is a buffered `#[derive(Message)]` (NOT the observer `Event`
 /// API, `bevy-traps.md` #4), read with a `MessageReader`: one per draining Downed
 /// ganger carrying the right `Entity`, and none for a stabilized or alive ganger.
-/// Spawns a Downed, a Stabilized-Downed, and an Alive ganger, ticks once, and
-/// asserts exactly one captured `Bleeding` — for the bleeding ganger only.
+/// Spawns a bleeding-out Downed, a stabilized (no-condition) Downed, and an Alive ganger,
+/// ticks once, and asserts exactly one captured `Bleeding` — for the bleeding ganger only.
 #[test]
 fn bleeding_is_a_buffered_message_one_per_draining_ganger() {
     let rate = bleed_rate();
@@ -21,11 +21,12 @@ fn bleeding_is_a_buffered_message_one_per_draining_ganger() {
     let mut app = bleed_app();
     let bleeder = app
         .world_mut()
-        .spawn((Wounds::new(start), LifeState::Downed))
+        .spawn((Wounds::new(start), LifeState::Downed, BleedingOut))
         .id();
+    // A stabilized Downed ganger — no BleedingOut condition, so the clock is halted.
     let stabilized = app
         .world_mut()
-        .spawn((Wounds::new(start), LifeState::Downed, Stabilized::new(true)))
+        .spawn((Wounds::new(start), LifeState::Downed))
         .id();
     let alive = app
         .world_mut()
@@ -76,7 +77,7 @@ fn the_lethal_tick_emits_bleeding_and_flips_to_dead() {
     let mut app = bleed_app();
     let ganger = app
         .world_mut()
-        .spawn((Wounds::new(start), LifeState::Downed))
+        .spawn((Wounds::new(start), LifeState::Downed, BleedingOut))
         .id();
 
     app.update();
@@ -109,7 +110,12 @@ fn a_dead_bled_out_ganger_is_skipped_next_tick() {
     let mut app = bleed_app();
     let ganger = app
         .world_mut()
-        .spawn((Wounds::new(start), LifeState::Downed, Hp::new(0)))
+        .spawn((
+            Wounds::new(start),
+            LifeState::Downed,
+            Hp::new(0),
+            BleedingOut,
+        ))
         .id();
 
     // Tick 1: the lethal tick — Dead, Wounds 0, one Bleeding.

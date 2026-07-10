@@ -5,7 +5,7 @@ use bevy::prelude::{Commands, Component, Entity, Message, MessageWriter, Query, 
 
 use crate::{
     effects::on_death::OnDeathOccurred,
-    ganger::{Hp, LifeState, Position, Stabilized, Wounds},
+    ganger::{Hp, LifeState, Position, Wounds},
     injuries::BleedAfflicted,
     tuning::CombatTuning,
 };
@@ -14,14 +14,15 @@ use crate::{
 /// one `QueryData` tuple alias so the `Query` stays under clippy's type-complexity gate
 /// (GTW-438): the [`Entity`], the optional [`Hp`] (the injury-bleed pool — `Option` so a
 /// ganger with no Hp component is simply un-drainable), the [`Wounds`] (the §9 Downed
-/// bleed-out pool), the [`LifeState`] (the gates), the optional [`Stabilized`] (the §9
-/// clock halt), and the optional [`BleedAfflicted`] (the injury-bleed accrual).
+/// bleed-out pool), the [`LifeState`] (the gates), the optional [`BleedingOut`] condition
+/// marker (the §9 clock gate — presence IS "actively bleeding out"), and the optional
+/// [`BleedAfflicted`] (the injury-bleed accrual).
 type BleedRow = (
     Entity,
     Option<&'static mut Hp>,
     &'static mut Wounds,
     &'static mut LifeState,
-    Option<&'static Stabilized>,
+    Option<&'static BleedingOut>,
     Option<&'static BleedAfflicted>,
     // GTW-547: the ganger's cell — the (cell, level) the terminal-death OnDeathOccurred signal
     // carries when a Wounds bleed-out empties the pool (the tick otherwise has no cell in scope).
@@ -44,6 +45,28 @@ type BleedRow = (
 /// [`BleedStarted`] message, not this bookkeeping.
 #[derive(Component, Debug, Clone, Copy, Default)]
 pub struct BleedOngoing;
+
+/// The **Bleeding Out** condition (`docs/combat/resolution.md` §9;
+/// `docs/combat/wounds-and-roster.md` §"Downed → death … state machine") — its presence
+/// on a [`LifeState::Downed`] ganger IS the fact that the §9 Wounds bleed-out clock is
+/// running (GTW-695).
+///
+/// A reified condition, NOT a negation flag: a ganger goes Downed with this marker
+/// INSERTED (at each down-transition — the [`crate::apply_hit`] damage down-gate, surfaced
+/// by [`mark_downed_bleeding`](crate::effects::bleed::mark_downed_bleeding), and
+/// [`tick_bleed`]'s own injury-HP-bleed down-gate), and an ally's stabilize REMOVES it
+/// ([`stabilize_downed`](crate::acts::downed::stabilize_downed)), halting the clock. So
+/// [`tick_bleed`]'s §9 drain gates on **presence** — no more "entered Downed AND not
+/// stabilized" double-negative — and a stabilized ganger (marker gone) is simply skipped.
+///
+/// A marker component (no payload — presence IS the fact), the same shape as
+/// [`BleedOngoing`] and never presenter-read (the presenter reads the [`Bleeding`] /
+/// [`BleedStarted`] messages). Its Commands-deferred insertion at a down-transition
+/// naturally gives NEXT-tick visibility, preserving the GTW-641 entry-snapshot semantics:
+/// a ganger downed by THIS tick's injury-HP bleed has no marker yet, so it drains no Wound
+/// until the next tick.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct BleedingOut;
 
 /// A bleed **affliction span STARTED** — `ganger` began bleeding this round (GTW-572).
 ///
@@ -103,27 +126,27 @@ impl Bleeding {
     }
 }
 
-/// Drain one round of bleed-out from every un-stabilized [`LifeState::Downed`]
+/// Drain one round of bleed-out from every [`BleedingOut`] [`LifeState::Downed`]
 /// ganger — the §9 per-round clock (`docs/combat/resolution.md` §9;
 /// `docs/combat/wounds-and-roster.md` §"Downed → death … state machine").
 ///
 /// Run once per full round (ticked at the enemy-phase turn start). For each queried
 /// ganger, in order:
 ///
-/// 1. **Skip unless it ENTERED the tick Downed** — an [`LifeState::Alive`] ganger is
-///    up and fighting; an [`LifeState::Dead`] ganger is already a corpse (the
-///    once-only property: once Dead, the next tick skips it). Both mutate nothing
-///    and emit nothing. The gate reads a SNAPSHOT of the life state taken before
-///    the injury-HP bleed below runs (GTW-641): a ganger downed BY this tick has
-///    been down zero rounds and drains its first Wound on the NEXT tick.
-/// 2. **Skip if stabilized** — an ally has dressed the wound ([`Stabilized`] present
-///    **and** its bool `true`): the clock is halted, so no drain and no
-///    [`Bleeding`] (the Wounds already lost stay lost; the ganger remains Downed).
-/// 3. **Drain** — subtract the flat tuning [`crate::tuning::BleedRate`] from the
+/// 1. **Drain only a ganger carrying the [`BleedingOut`] condition** — a ganger goes
+///    Downed with the marker inserted (at the down-transition), and stabilize removes
+///    it. So presence IS "actively bleeding out": an [`LifeState::Alive`] ganger never
+///    has it, a stabilized Downed ganger has had it removed, and a [`LifeState::Dead`]
+///    ganger is a corpse (the once-only property: once Dead, the next tick skips it) —
+///    all three drain nothing and emit nothing. Because the marker is inserted
+///    Commands-DEFERRED at each down-transition, a ganger downed BY this tick's own
+///    injury-HP bleed has no marker yet, so it drains its first Wound on the NEXT tick
+///    (the GTW-641 entry-snapshot semantics, now carried by the deferred insertion).
+/// 2. **Drain** — subtract the flat tuning [`crate::tuning::BleedRate`] from the
 ///    ganger's [`Wounds`] (`saturating_sub`, so the unsigned life pool never
 ///    underflows — it floors at `0`), and emit one [`Bleeding`] carrying the ganger
 ///    [`Entity`].
-/// 4. **Terminal gate** — if [`Wounds`] is now `0` (the doc's `Wounds ≤ 0` on an
+/// 3. **Terminal gate** — if [`Wounds`] is now `0` (the doc's `Wounds ≤ 0` on an
 ///    unsigned pool that saturates), set [`LifeState::Dead`] — the **same** gate
 ///    E3.6's `apply_hit` runs, applied once on the draining-to-empty tick.
 ///
@@ -136,12 +159,13 @@ impl Bleeding {
 /// the injury ledger) from the ganger's [`Hp`] each round — a SEPARATE source from the
 /// Downed `Wounds` bleed-out above (`docs/combat/resolution.md` injury tables; the GTW-405
 /// design §"Bleeding routing"). The two are DISTINCT: the Wounds bleed-out drains the
-/// LIFE pool of an un-stabilized **Downed** ganger and CAN KILL (Wounds → 0 → Dead); the
+/// LIFE pool of a [`BleedingOut`] **Downed** ganger and CAN KILL (Wounds → 0 → Dead); the
 /// injury HP bleed drains the **Hp** pool of ANY non-Dead ganger (Alive or Downed) and
 /// **can down but never kill** (Hp → 0 sets [`LifeState::Downed`], never `Dead` — only a
-/// Wounds depletion kills). A down it inflicts takes effect for the Wounds clock only
-/// from the NEXT tick (the GTW-641 entry snapshot above — the two sources never chain
-/// Alive→Downed→Dead within one tick). Each draining injury-bleed tick ALSO emits a
+/// Wounds depletion kills). A down it inflicts inserts the [`BleedingOut`] marker
+/// Commands-deferred, so it takes effect for the Wounds clock only from the NEXT tick
+/// (the GTW-641 entry semantics — the two sources never chain Alive→Downed→Dead within one
+/// tick). Each draining injury-bleed tick ALSO emits a
 /// [`Bleeding`] (the same message the presenter's FCT pop reads), so an injury bleed
 /// surfaces on screen like the Downed bleed-out.
 pub fn tick_bleed(
@@ -160,7 +184,7 @@ pub fn tick_bleed(
     mut commands: Commands,
 ) {
     let rate = *tuning.bleed_rate;
-    for (entity, hp, mut wounds, mut life, stabilized, bleed, position, ongoing) in &mut q {
+    for (entity, hp, mut wounds, mut life, bleeding_out, bleed, position, ongoing) in &mut q {
         // A Dead ganger is a corpse — neither bleed source touches it (the once-only
         // property: once Dead, the next tick skips it). Its span bookkeeping is dropped
         // (a corpse never drains again).
@@ -175,24 +199,16 @@ pub fn tick_bleed(
         // span-boundary signal the once-per-span BleedStarted fact keys off.
         let mut drained = false;
 
-        // GTW-641: SNAPSHOT whether the ganger ENTERED this tick already Downed —
-        // the §9 Wounds bleed-out below gates on this snapshot, never a re-read of
-        // the life state block (A) may have just mutated. A ganger downed BY this
-        // tick's injury-HP bleed has been down ZERO rounds (§9: stack count = turns
-        // down = Wounds lost), so it drains no Wound this tick — and the
-        // Alive→Downed→Dead single-tick chain is impossible.
-        let entered_downed = *life == LifeState::Downed;
-
         // (A) GTW-438 — the injury-driven HP bleed: drain the accrued BleedAfflicted from
         // the Hp pool of ANY non-Dead ganger (Alive or Downed). It is a SEPARATE source
-        // from the Downed Wounds bleed-out below, and the stabilization flag does NOT halt
-        // it (stabilization is the §9 Downed-bleedout clock; an injury bleed is its own
-        // condition). Drains Hp (saturating at 0); Hp → 0 DOWNS the ganger (never kills —
-        // only a Wounds depletion kills). Emits one Bleeding per draining tick (the
-        // presenter FCT pop). A zero accrual (or no BleedAfflicted) drains nothing; `Hp`
-        // is `Option` (a ganger with an accrual but no Hp pool — e.g. a minimal test
-        // ganger — simply has nothing to drain), so the §9 Wounds bleed-out below stays
-        // independent of the Hp component's presence.
+        // from the Downed Wounds bleed-out below, and stabilization does NOT halt it
+        // (stabilization removes the §9 Downed-bleedout BleedingOut marker; an injury bleed
+        // is its own condition). Drains Hp (saturating at 0); Hp → 0 DOWNS the ganger
+        // (never kills — only a Wounds depletion kills). Emits one Bleeding per draining
+        // tick (the presenter FCT pop). A zero accrual (or no BleedAfflicted) drains
+        // nothing; `Hp` is `Option` (a ganger with an accrual but no Hp pool — e.g. a
+        // minimal test ganger — simply has nothing to drain), so the §9 Wounds bleed-out
+        // below stays independent of the Hp component's presence.
         let injury_bleed = bleed.map_or(0u16, |b| **b);
         if let Some(mut hp) = hp
             && injury_bleed > 0
@@ -201,27 +217,33 @@ pub fn tick_bleed(
             writer.write(Bleeding::new(entity));
             drained = true;
             // Down-not-kill gate: an injury HP bleed that empties the pool downs an Alive
-            // ganger; it NEVER sets Dead (the Wounds bleed-out owns the kill).
+            // ganger; it NEVER sets Dead (the Wounds bleed-out owns the kill). GTW-695:
+            // going Downed INSERTS the §9 BleedingOut condition marker (the injury-HP-bleed
+            // down-gate — one of the two down-transition sites). Deferred via Commands, so
+            // the marker is NOT visible to the §9 gate THIS tick: this just-downed ganger
+            // drains no Wound until the NEXT tick, preserving the GTW-641 entry semantics.
             if *hp == Hp::new(0) && *life == LifeState::Alive {
                 *life = LifeState::Downed;
+                commands.entity(entity).insert(BleedingOut);
             }
         }
 
-        // (1) The §9 Downed Wounds bleed-out — only a ganger who ENTERED the tick
-        // Downed bleeds (Alive is fighting; the Dead skip already `continue`d above;
-        // a ganger block (A) just downed waits until the NEXT tick — GTW-641's
-        // entry snapshot, not a re-read). (2) A stabilized ganger's bleed-out
-        // clock is halted — no Wounds drain, no Bleeding from THIS source (the Wounds
-        // already lost stay lost; it remains Downed). E3.8 SETS the flag; this reads it.
-        if entered_downed && !stabilized.is_some_and(|s| **s) {
-            // (3) Drain a flat bleed_rate from the life pool (saturating at 0 — Wounds
+        // (1) The §9 Downed Wounds bleed-out — drains ONLY a ganger carrying the
+        // BleedingOut condition marker (GTW-695). An Alive ganger never has it; the Dead
+        // skip already `continue`d above; a ganger block (A) just downed had its marker
+        // inserted DEFERRED, so it is absent here and waits until the NEXT tick (the
+        // GTW-641 entry semantics, now carried by the deferred insertion); and a stabilized
+        // ganger has had the marker REMOVED, halting its clock (no Wounds drain, no Bleeding
+        // from THIS source — the Wounds already lost stay lost; it remains Downed).
+        if bleeding_out.is_some() {
+            // (2) Drain a flat bleed_rate from the life pool (saturating at 0 — Wounds
             // is unsigned, so the lethal tick floors it, never underflows) and emit the
             // per-tick bleeding signal.
             *wounds = Wounds::new(wounds.saturating_sub(rate));
             writer.write(Bleeding::new(entity));
             drained = true;
 
-            // (4) Terminal gate — Wounds depleted to 0 → Dead (the same once-only gate
+            // (3) Terminal gate — Wounds depleted to 0 → Dead (the same once-only gate
             // E3.6's apply_hit runs; "≤ 0" is "== 0 after the saturating drain").
             if *wounds == Wounds::new(0) {
                 *life = LifeState::Dead;

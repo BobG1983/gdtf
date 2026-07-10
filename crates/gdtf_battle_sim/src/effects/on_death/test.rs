@@ -14,7 +14,7 @@ use bevy::prelude::{
 
 use crate::{
     effects::{
-        bleed::tick_bleed,
+        bleed::{BleedingOut, tick_bleed},
         dot::tick_dot,
         fields::{
             FieldDamage, FieldDef, FieldDefRegistry, FieldDuration, FieldKey, FieldRegistry,
@@ -364,6 +364,7 @@ fn tick_bleed_emits_on_death_when_the_wounds_bleed_out_kills() {
             Hp::new(10),
             Wounds::new(1),
             LifeState::Downed,
+            BleedingOut,
             Position::new(cell),
         ))
         .id();

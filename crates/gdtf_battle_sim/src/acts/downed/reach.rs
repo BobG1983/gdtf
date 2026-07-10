@@ -3,7 +3,10 @@
 
 use bevy::prelude::Deref;
 
-use crate::ganger::{Faction, LifeState, Position, Stabilized};
+use crate::{
+    effects::bleed::BleedingOut,
+    ganger::{Faction, LifeState, Position},
+};
 
 /// Whether two gangers occupy the same-level Moore-8 neighbourhood — the
 /// [`is_8_adjacent`] reach verdict (`docs/combat/resolution.md` §9).
@@ -75,19 +78,20 @@ pub struct Actor {
 /// A transparent argument record of the existing named ganger components (each a
 /// `Copy` E1 newtype). The target is the would-be-stabilized / -executed ganger;
 /// the act applies only to a [`LifeState::Downed`] one, and stabilize additionally
-/// requires it is not already [`Stabilized`].
+/// requires it is currently [`BleedingOut`] (an already-stabilized ganger no longer is).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DownedTarget {
     /// The target's grid [`Position`] — tested for 8-adjacency to the actor.
-    pub pos:        Position,
+    pub pos:          Position,
     /// The target's [`LifeState`] — only a [`LifeState::Downed`] target is a valid
     /// subject for either act.
-    pub life:       LifeState,
+    pub life:         LifeState,
     /// The target's [`Faction`] — compared against the actor's (ally vs enemy).
-    pub faction:    Faction,
-    /// The target's [`Stabilized`] flag, if present — stabilize is rejected when the
-    /// target is **already** stabilized (`Some(true)`); absent or `Some(false)` is
-    /// not-yet-stabilized. Unused by [`can_execute`](crate::acts::downed::can_execute)
-    /// (an executable ganger may be stabilized or not).
-    pub stabilized: Option<Stabilized>,
+    pub faction:      Faction,
+    /// The target's [`BleedingOut`] condition, if present — stabilize is legal ONLY
+    /// while it is present (the clock is running); absent means already stabilized (or
+    /// never bleeding), so re-stabilizing is a guarded no-op. Unused by
+    /// [`can_execute`](crate::acts::downed::can_execute) (an executable ganger may be
+    /// bleeding out or not).
+    pub bleeding_out: Option<BleedingOut>,
 }

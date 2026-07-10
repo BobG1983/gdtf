@@ -1,15 +1,15 @@
 //! AC1/AC2/AC6 (stabilize) — `can_stabilize` is true ONLY for an Alive actor
-//! 8-adjacent to a Downed, not-yet-Stabilized SAME-faction target; `stabilize_downed`
-//! SETS the flag and keeps the ganger Downed; and the act fires EXACTLY when the
-//! predicate is true (both directions).
+//! 8-adjacent to a Downed, still-bleeding-out SAME-faction target; `stabilize_downed`
+//! REMOVES the `BleedingOut` condition (GTW-695) and never touches `LifeState`; and the
+//! act fires EXACTLY when the predicate is true (both directions).
 
 use super::support::{
-    Actor, CombatTuning, DownedTarget, Faction, GROUND, Level, LifeState, Stabilized,
-    can_stabilize, pos, stabilize_downed, stabilize_pass,
+    Actor, CombatTuning, DownedTarget, Faction, GROUND, Level, LifeState, can_stabilize, pos,
+    run_stabilize, stabilize_pass,
 };
 
 // === AC1 — can_stabilize is true ONLY for an Alive actor 8-adjacent to a
-// Downed, not-yet-Stabilized SAME-faction target; each guard, flipped alone,
+// Downed, still-bleeding-out SAME-faction target; each guard, flipped alone,
 // independently makes it false. ===
 
 #[test]
@@ -17,7 +17,7 @@ fn can_stabilize_true_for_the_canonical_ally_setup() {
     let (a, t) = stabilize_pass();
     assert!(
         *can_stabilize(&a, &t),
-        "an Alive 8-adjacent same-faction actor stabilizes a Downed, un-stabilized target",
+        "an Alive 8-adjacent same-faction actor stabilizes a Downed, bleeding-out target",
     );
 }
 
@@ -69,14 +69,14 @@ fn can_stabilize_sweep_each_guard_flips_it_false() {
         "an Alive target is not a stabilize subject",
     );
 
-    // (4) already stabilized (Some(true)).
+    // (4) NOT bleeding out (already stabilized — the condition is absent).
     let already = DownedTarget {
-        stabilized: Some(Stabilized::new(true)),
+        bleeding_out: None,
         ..t
     };
     assert!(
         !*can_stabilize(&a, &already),
-        "an already-stabilized target must fail (no re-dress)",
+        "a target that is not bleeding out (already stabilized) must fail (no re-dress)",
     );
 
     // (5) cross-faction (an ENEMY cannot stabilize).
@@ -90,48 +90,39 @@ fn can_stabilize_sweep_each_guard_flips_it_false() {
     );
 }
 
-/// A `Some(false)` flag is NOT "already stabilized" — present-and-false is
-/// not-yet-stabilized, so the guard still passes (distinguishes "has the
-/// component" from "is stabilized").
+/// Re-stabilizing a target that is NOT bleeding out (its condition already removed) is a
+/// guarded no-op — "marker present" is the guard, so a stabilized target is rejected.
 #[test]
-fn can_stabilize_passes_with_stabilized_false_flag_present() {
+fn can_stabilize_rejects_a_target_that_is_not_bleeding_out() {
     let (a, mut t) = stabilize_pass();
-    t.stabilized = Some(Stabilized::new(false));
+    t.bleeding_out = None;
     assert!(
-        *can_stabilize(&a, &t),
-        "Stabilized(false) present is not-yet-stabilized — the guard passes",
+        !*can_stabilize(&a, &t),
+        "a not-bleeding-out (stabilized) target is rejected — re-stabilize is a no-op",
     );
 }
 
-// === AC2 — stabilize_downed SETS the flag and leaves LifeState::Downed
-// unchanged (NOT Alive, NOT Dead). ===
+// === AC2 — stabilize_downed REMOVES the BleedingOut condition and leaves LifeState
+// untouched (the verb never writes it — the ganger stays Downed). ===
 
 #[test]
-fn stabilize_downed_sets_flag_and_keeps_downed() {
+fn stabilize_downed_removes_the_condition_and_never_touches_life() {
     let (a, t) = stabilize_pass();
-    // Model the target's LifeState as the SAME `&mut` shape execute_downed
-    // mutates, so this test would catch a stabilize verb that wrongly wrote it.
-    let mut flag = Stabilized::new(false);
-    let mut life = t.life;
     let tuning = CombatTuning::default();
 
-    let acted = stabilize_downed(&a, &t, &mut flag, &tuning);
-    // Apply the (non-)life-effect the same way the caller would: stabilize never
-    // returns a LifeState change, so `life` stays whatever the target held.
-    let _ = &mut life;
+    let (acted, marker_survived) = run_stabilize(&a, &t, &tuning);
 
     assert!(acted.is_some(), "the canonical setup must act");
-    assert_eq!(
-        flag,
-        Stabilized::new(true),
-        "stabilize_downed must SET the Stabilized flag true",
+    assert!(
+        !marker_survived,
+        "stabilize_downed must REMOVE the BleedingOut condition (the clock halts)",
     );
-    // The verb takes NO &mut LifeState — the ganger stays Downed (NOT Alive, NOT
-    // Dead): a stabilized ganger remains down, just no longer bleeding.
+    // The verb takes NO &mut LifeState — the ganger stays Downed by construction (this
+    // test's target.life is Downed and the verb never writes it).
     assert_eq!(
-        life,
+        t.life,
         LifeState::Downed,
-        "a stabilized ganger remains Downed (NOT Alive, NOT Dead)",
+        "a stabilized ganger remains Downed (the verb never touches LifeState)",
     );
 }
 
@@ -142,26 +133,20 @@ fn stabilize_downed_sets_flag_and_keeps_downed() {
 fn stabilize_act_iff_predicate_both_directions() {
     let tuning = CombatTuning::default();
 
-    // Predicate TRUE → act fires (sets flag, returns Some).
+    // Predicate TRUE → act fires (removes the condition, returns Some).
     let (a, t) = stabilize_pass();
-    let mut flag = Stabilized::new(false);
     assert!(*can_stabilize(&a, &t));
-    let acted = stabilize_downed(&a, &t, &mut flag, &tuning);
+    let (acted, marker_survived) = run_stabilize(&a, &t, &tuning);
     assert!(acted.is_some(), "predicate true ⇒ act fires");
-    assert_eq!(flag, Stabilized::new(true), "predicate true ⇒ flag set");
+    assert!(!marker_survived, "predicate true ⇒ condition removed");
 
-    // Predicate FALSE (here: non-adjacent) → act is a no-op (None, flag intact).
+    // Predicate FALSE (here: non-adjacent) → act is a no-op (None, condition intact).
     let far = DownedTarget {
         pos: pos(20, 20, GROUND),
         ..t
     };
-    let mut flag2 = Stabilized::new(false);
     assert!(!*can_stabilize(&a, &far));
-    let acted2 = stabilize_downed(&a, &far, &mut flag2, &tuning);
+    let (acted2, marker_survived2) = run_stabilize(&a, &far, &tuning);
     assert!(acted2.is_none(), "predicate false ⇒ no-op (None)");
-    assert_eq!(
-        flag2,
-        Stabilized::new(false),
-        "predicate false ⇒ flag untouched",
-    );
+    assert!(marker_survived2, "predicate false ⇒ condition untouched");
 }

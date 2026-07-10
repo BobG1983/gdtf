@@ -1,10 +1,10 @@
 //! AC3/AC4/AC6 (execute) — `can_execute` is true ONLY for an Alive actor 8-adjacent
-//! to a Downed OPPOSING-faction target (and ignores the Stabilized flag);
+//! to a Downed OPPOSING-faction target (and ignores the `BleedingOut` condition);
 //! `execute_downed` transitions the target to Dead; and the act fires EXACTLY when
 //! the predicate is true (both directions).
 
 use super::support::{
-    Actor, CombatTuning, DownedTarget, Faction, GROUND, Level, LifeState, Stabilized, can_execute,
+    Actor, CombatTuning, DownedTarget, Faction, GROUND, Level, LifeState, can_execute,
     execute_downed, execute_pass, pos,
 };
 
@@ -72,15 +72,15 @@ fn can_execute_sweep_each_guard_flips_it_false() {
     );
 }
 
-/// A stabilized Downed enemy can STILL be executed — the Stabilized flag does not
-/// gate execute (only stabilize is blocked by it).
+/// A stabilized Downed enemy (no `BleedingOut` condition) can STILL be executed — the
+/// condition does not gate execute (only stabilize is blocked by its absence).
 #[test]
-fn can_execute_ignores_stabilized_flag() {
+fn can_execute_ignores_bleeding_out_condition() {
     let (a, mut t) = execute_pass();
-    t.stabilized = Some(Stabilized::new(true));
+    t.bleeding_out = None;
     assert!(
         *can_execute(&a, &t),
-        "a stabilized Downed enemy can still be executed (flag does not gate execute)",
+        "a stabilized Downed enemy can still be executed (the condition does not gate execute)",
     );
 }
 

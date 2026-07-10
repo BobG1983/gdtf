@@ -10,10 +10,10 @@
 //! predicate so button and act share one guard set"):
 //!
 //! - [`stabilize_downed`] — an 8-adjacent ALIVE **ally** dresses the wound, halting
-//!   the bleed-out clock: it **sets** the E3.7 [`crate::ganger::Stabilized`] flag
-//!   (defined in `ganger.rs`, reused here — this slice only *sets* it;
-//!   [`crate::effects::bleed::tick_bleed`] *reads* it). The ganger **remains
-//!   [`crate::ganger::LifeState::Downed`]** — NOT Alive, NOT Dead.
+//!   the bleed-out clock: it **removes** the [`crate::effects::bleed::BleedingOut`]
+//!   condition (GTW-695 — the §9 clock is reified as a removable marker, not a negation
+//!   flag; [`crate::effects::bleed::tick_bleed`] *reads* its presence). The ganger
+//!   **remains [`crate::ganger::LifeState::Downed`]** — NOT Alive, NOT Dead.
 //! - [`execute_downed`] — an 8-adjacent ALIVE **enemy** finishes the Downed ganger
 //!   outright → [`crate::ganger::LifeState::Dead`].
 //!

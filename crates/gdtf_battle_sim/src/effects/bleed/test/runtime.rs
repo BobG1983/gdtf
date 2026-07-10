@@ -18,7 +18,7 @@
 use bevy::prelude::{App, MinimalPlugins};
 
 use super::support::{
-    ENEMY, LifeState, PLAYER, Stabilized, bleed_rate, bleeding_ganger, drain_bleeding, end_turn,
+    BleedingOut, ENEMY, LifeState, PLAYER, bleed_rate, bleeding_ganger, drain_bleeding, end_turn,
     life_of, live_app, seed_battle_resources, wounds_of,
 };
 use crate::battle::BattleSimPlugin;
@@ -135,11 +135,12 @@ fn the_live_clock_skips_alive_dead_and_stabilized_gangers() {
     let alive = bleeding_ganger(&mut app, PLAYER, LifeState::Alive, start);
     let dead = bleeding_ganger(&mut app, PLAYER, LifeState::Dead, start);
     let downed = bleeding_ganger(&mut app, ENEMY, LifeState::Downed, start);
-    // A stabilized Downed ganger — an ally dressed the wound; the clock is halted.
+    // A stabilized Downed ganger — an ally dressed the wound; REMOVE the BleedingOut
+    // condition so the §9 clock is halted (bleeding_ganger spawns it bleeding-out).
     let stabilized = bleeding_ganger(&mut app, PLAYER, LifeState::Downed, start);
     app.world_mut()
         .entity_mut(stabilized)
-        .insert(Stabilized::new(true));
+        .remove::<BleedingOut>();
 
     end_turn(&mut app);
 

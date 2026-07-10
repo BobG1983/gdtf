@@ -36,8 +36,8 @@ impl CanExecute {
 /// 4. `actor.faction != target.faction` — an **enemy** (the faction differentiator;
 ///    an ally can never execute).
 ///
-/// The target's [`Stabilized`](crate::ganger::Stabilized) flag does **not** gate
-/// execute — a stabilized Downed ganger can still be finished off by an enemy. Pure
+/// The target's [`BleedingOut`](crate::effects::bleed::BleedingOut) condition does **not**
+/// gate execute — a stabilized Downed ganger can still be finished off by an enemy. Pure
 /// read over component values — no mutation, no draw, no pixel.
 #[must_use]
 pub fn can_execute(actor: &Actor, target: &DownedTarget) -> CanExecute {

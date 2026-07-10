@@ -10,8 +10,8 @@ use bevy::prelude::{Entity, Message};
 /// bundles from the queried components and calls
 /// [`stabilize_downed`](crate::acts::downed::stabilize_downed), whose faction gate
 /// ([`can_stabilize`](crate::acts::downed::can_stabilize)) holds end-to-end — only an
-/// 8-adjacent alive ALLY sets the target's [`Stabilized`](crate::ganger::Stabilized) flag
-/// (the target stays Downed).
+/// 8-adjacent alive ALLY removes the target's
+/// [`BleedingOut`](crate::effects::bleed::BleedingOut) condition (the target stays Downed).
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StabilizeDownedRequested {
     /// The acting (would-be stabilizer) ganger.

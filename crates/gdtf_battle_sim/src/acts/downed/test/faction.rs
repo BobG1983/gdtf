@@ -2,15 +2,15 @@
 //! both the predicate AND the act (no-op).
 
 use super::support::{
-    CombatTuning, GROUND, LifeState, Stabilized, actor, can_execute, can_stabilize, execute_downed,
-    pos, stabilize_downed, target,
+    CombatTuning, GROUND, LifeState, actor, can_execute, can_stabilize, execute_downed, pos,
+    run_stabilize, target,
 };
 
 #[test]
 fn faction_gate_enemy_cannot_stabilize() {
     // An Alive, 8-adjacent actor and a Downed target of a DIFFERENT faction.
     let a = actor(pos(10, 10, GROUND), LifeState::Alive, 1);
-    let t = target(pos(11, 10, GROUND), LifeState::Downed, 2, None);
+    let t = target(pos(11, 10, GROUND), LifeState::Downed, 2, true);
 
     // Predicate: false.
     assert!(
@@ -18,18 +18,16 @@ fn faction_gate_enemy_cannot_stabilize() {
         "an enemy (cross-faction) cannot stabilize — predicate false",
     );
 
-    // Act: no-op (flag untouched, returns None).
-    let mut flag = Stabilized::new(false);
+    // Act: no-op (condition untouched, returns None).
     let tuning = CombatTuning::default();
-    let acted = stabilize_downed(&a, &t, &mut flag, &tuning);
+    let (acted, marker_survived) = run_stabilize(&a, &t, &tuning);
     assert!(
         acted.is_none(),
         "an enemy's stabilize_downed is a no-op (None)"
     );
-    assert_eq!(
-        flag,
-        Stabilized::new(false),
-        "an enemy's stabilize_downed must NOT set the flag",
+    assert!(
+        marker_survived,
+        "an enemy's stabilize_downed must NOT remove the BleedingOut condition",
     );
 }
 
@@ -37,7 +35,7 @@ fn faction_gate_enemy_cannot_stabilize() {
 fn faction_gate_ally_cannot_execute() {
     // An Alive, 8-adjacent actor and a Downed target of the SAME faction.
     let a = actor(pos(10, 10, GROUND), LifeState::Alive, 1);
-    let t = target(pos(11, 10, GROUND), LifeState::Downed, 1, None);
+    let t = target(pos(11, 10, GROUND), LifeState::Downed, 1, true);
 
     // Predicate: false.
     assert!(

@@ -4,8 +4,8 @@ use bevy::{ecs::world::World, prelude::Component};
 
 use crate::{
     ganger::{
-        Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stabilized,
-        Stance, StanceKind, Toughness, Tu, TuMax, Wounds,
+        Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stance,
+        StanceKind, Toughness, Tu, TuMax, Wounds,
     },
     metric::{Cell, CellLevel, Level},
 };
@@ -87,11 +87,6 @@ fn tu_max_inserts_and_queries_independently() {
 #[test]
 fn life_state_inserts_and_queries_independently() {
     assert_independent(LifeState::Downed);
-}
-
-#[test]
-fn stabilized_inserts_and_queries_independently() {
-    assert_independent(Stabilized::new(true));
 }
 
 #[test]
@@ -209,9 +204,6 @@ fn defaults_are_the_documented_initial_values() {
     // round-start budget until the situation setup authors one (not a tunable).
     assert_eq!(TuMax::default(), TuMax::new(0));
     assert_eq!(LifeState::default(), LifeState::Alive);
-    // A freshly-downed ganger is NOT stabilized — the bleed clock runs until an
-    // ally dresses the wound (a structural spawn default, not a tuning value).
-    assert_eq!(Stabilized::default(), Stabilized::new(false));
     // The GTW-182 attribute stats default to 0.0 (a structural "no value yet"
     // spawn floor, not a tuning magnitude — real values are per-ganger data).
     assert_eq!(Shooting::default(), Shooting::new(0.0));
@@ -233,8 +225,6 @@ fn newtypes_deref_to_inner() {
     assert_eq!(*Tu::new(80), 80u8);
     // TuMax derefs to its inner u8 — the GTW-38 reaction ratio denominator.
     assert_eq!(*TuMax::new(120), 120u8);
-    // Stabilized derefs to its inner bool (arbitrary value, mechanism not value).
-    assert!(*Stabilized::new(true));
     // The GTW-182 attribute stats deref to their inner f32 (an f32 compare, so
     // an epsilon tolerance, not a bit-exact compare on a derived value).
     assert!((*Shooting::new(3.0) - 3.0).abs() < f32::EPSILON);

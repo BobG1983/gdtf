@@ -5,7 +5,8 @@ use bevy::prelude::*;
 use gdtf_battle_input::{SelectedShooter, contextual::StabilizeAct};
 use gdtf_battle_sim::{
     acts::downed::is_8_adjacent,
-    ganger::{Faction, LifeState, Position, Stabilized},
+    effects::bleed::BleedingOut,
+    ganger::{Faction, LifeState, Position},
 };
 use gdtf_ui::ButtonLabel;
 
@@ -36,18 +37,18 @@ impl ContextualPanelAct for StabilizeAct {
 }
 
 /// The candidate-neighbour reads the Stabilize scan needs — each ganger's identity,
-/// cell, life, gang, and the optional already-stabilized flag. A named alias for clippy
+/// cell, life, gang, and the optional [`BleedingOut`] condition. A named alias for clippy
 /// `type_complexity` legibility.
 type StabilizeCandidates = (
     Entity,
     &'static Position,
     &'static LifeState,
     &'static Faction,
-    Option<&'static Stabilized>,
+    Option<&'static BleedingOut>,
 );
 
 /// OFFERS the Stabilize act: the first [`LifeState::Downed`] ALLY (same faction) that
-/// is NOT already [`Stabilized`] (its bleed clock still runs) 8-adjacent to the
+/// is currently [`BleedingOut`] (its bleed clock still runs) 8-adjacent to the
 /// selected actor, or nothing (GTW-294).
 ///
 /// The actor resolves from the [`SelectedShooter`]'s `(Position, Faction)`; any miss
@@ -65,10 +66,10 @@ pub(in crate::states::running::game::battlescape) fn offer_stabilize(
         .and_then(|(actor_pos, actor_faction)| {
             candidates
                 .iter()
-                .find(|(_, pos, life, faction, stabilized)| {
+                .find(|(_, pos, life, faction, bleeding_out)| {
                     **life == LifeState::Downed
                         && **faction == *actor_faction
-                        && !stabilized.is_some_and(|flag| **flag)
+                        && bleeding_out.is_some()
                         && *is_8_adjacent(*actor_pos, **pos)
                 })
                 .map(|(entity, ..)| entity)

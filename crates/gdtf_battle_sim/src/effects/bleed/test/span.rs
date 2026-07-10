@@ -5,7 +5,7 @@
 use bevy::prelude::{Deref, DerefMut, MessageReader};
 
 use super::support::{
-    App, Entity, IntoScheduleConfigs, LifeState, ResMut, Resource, Stabilized, Update, Wounds,
+    App, BleedingOut, Entity, IntoScheduleConfigs, LifeState, ResMut, Resource, Update, Wounds,
     bleed_app, bleed_rate,
 };
 use crate::effects::bleed::{BleedStarted, tick_bleed};
@@ -49,7 +49,7 @@ fn the_first_draining_tick_announces_once_and_mid_span_ticks_do_not() {
     let mut app = span_app();
     let ganger = app
         .world_mut()
-        .spawn((Wounds::new(start), LifeState::Downed))
+        .spawn((Wounds::new(start), LifeState::Downed, BleedingOut))
         .id();
 
     // The first draining tick — the span starts, exactly one start fact.
@@ -81,18 +81,16 @@ fn a_halted_then_resumed_bleed_is_a_new_span_and_re_announces() {
     let mut app = span_app();
     let ganger = app
         .world_mut()
-        .spawn((Wounds::new(start), LifeState::Downed))
+        .spawn((Wounds::new(start), LifeState::Downed, BleedingOut))
         .id();
 
     // Span one starts.
     app.update();
     assert_eq!(starts_for(&app, ganger), 1, "span one announces once");
 
-    // Stabilize — the clock halts; the next tick drains nothing and ENDS the span
-    // (the marker removal is deferred, so run one settling tick after).
-    app.world_mut()
-        .entity_mut(ganger)
-        .insert(Stabilized::new(true));
+    // Stabilize — REMOVE the BleedingOut condition; the clock halts, so the next tick
+    // drains nothing and ENDS the span.
+    app.world_mut().entity_mut(ganger).remove::<BleedingOut>();
     app.update();
     app.update();
     assert_eq!(
@@ -101,8 +99,8 @@ fn a_halted_then_resumed_bleed_is_a_new_span_and_re_announces() {
         "a stabilized (non-draining) ganger announces nothing",
     );
 
-    // Un-stabilize — the bleed resumes: a FRESH span, a NEW start fact.
-    app.world_mut().entity_mut(ganger).remove::<Stabilized>();
+    // Un-stabilize — RE-INSERT the condition; the bleed resumes: a FRESH span, a NEW start fact.
+    app.world_mut().entity_mut(ganger).insert(BleedingOut);
     app.update();
     assert_eq!(
         starts_for(&app, ganger),

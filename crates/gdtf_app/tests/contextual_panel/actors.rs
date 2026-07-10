@@ -6,7 +6,7 @@ use gdtf_app::test_support::{
 };
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    ganger::Stabilized,
+    effects::bleed::BleedingOut,
     prelude::{Cell, CellLevel, Faction, Level, LifeState, Position, Stance, StanceKind},
 };
 
@@ -33,8 +33,10 @@ pub(crate) fn spawn_actor(app: &mut App, x: i32, y: i32, gang: u8) -> Entity {
 }
 
 /// Spawns a DOWNED neighbour at cell `(x, y)` in gang `gang` — [`LifeState::Downed`] plus its
-/// [`Position`] / [`Faction`], and (when `stabilized` is `Some`) a [`Stabilized`] flag. Returns
-/// its entity. The detection scan reads exactly these components.
+/// [`Position`] / [`Faction`]. Its stabilization state is the presence of the [`BleedingOut`]
+/// condition (GTW-695): a still-bleeding (offer-able) neighbour carries it; an already-stabilized
+/// one (`stabilized == Some(true)`) does not. Returns its entity. The detection scan reads
+/// exactly these components.
 pub(crate) fn spawn_downed(
     app: &mut App,
     x: i32,
@@ -45,8 +47,9 @@ pub(crate) fn spawn_downed(
     let mut entity = app
         .world_mut()
         .spawn((at(x, y), Faction::new(gang), LifeState::Downed));
-    if let Some(flag) = stabilized {
-        entity.insert(Stabilized::new(flag));
+    // Bleeding out (the §9 clock running) unless the ganger is already stabilized.
+    if stabilized != Some(true) {
+        entity.insert(BleedingOut);
     }
     entity.id()
 }

@@ -83,8 +83,8 @@
 //!   affords the mode TU + ≥1 round + [`magazine::in_bounds`] — NO LOS input (fog is
 //!   presenter player policy). The TU-costed reload ACT is [`acts::dispatch_reload`]
 //!   (it charges the magazine's own per-weapon `reload_tu`).
-//! - [`ganger`] — per-field ganger battle-state components (including the
-//!   [`ganger::Stabilized`] bleed-out flag, owned here from E3.7); [`armor`] —
+//! - [`ganger`] — per-field ganger battle-state components (the §9 bleed-out state is
+//!   the removable [`effects::bleed::BleedingOut`] condition, GTW-695); [`armor`] —
 //!   armor stats + the battle-local armor-piece entities related via
 //!   [`armor::Wears`] (ADR-0004); [`armor_wear`] — persisting a hit's
 //!   [`resolve_hit::IntegrityWear`] onto the struck piece entity's
@@ -92,15 +92,16 @@
 //!   [`armor_wear::ArmorBroken`] message on the protecting→broken crossing.
 //! - [`effects::bleed`] — the §9 bleed-out clock: [`effects::bleed::tick_bleed`] drains a flat
 //!   tuning [`tuning::BleedRate`] of [`ganger::Wounds`] per round from each
-//!   un-stabilized [`ganger::LifeState::Downed`] ganger, emits the
+//!   [`effects::bleed::BleedingOut`] [`ganger::LifeState::Downed`] ganger, emits the
 //!   [`effects::bleed::Bleeding`] message, and runs the once-only terminal gate to
 //!   [`ganger::LifeState::Dead`] on depletion. The clock is wired into the live
 //!   runtime by [`acts::SimActsPlugin`]: it runs `tick_bleed` once per full round
 //!   at the enemy-phase start, gated on [`effects::bleed::enemy_phase_started`] (GTW-336).
 //! - [`acts::downed`] — the §9 from-Downed verbs + their shared faction-aware
 //!   predicates: [`acts::downed::can_stabilize`] / [`acts::downed::stabilize_downed`]
-//!   (an 8-adjacent ALIVE ally halts the bleed clock by setting [`ganger::Stabilized`],
-//!   the ganger staying Downed) and [`acts::downed::can_execute`] /
+//!   (an 8-adjacent ALIVE ally halts the bleed clock by removing the
+//!   [`effects::bleed::BleedingOut`] condition, the ganger staying Downed) and
+//!   [`acts::downed::can_execute`] /
 //!   [`acts::downed::execute_downed`] (an 8-adjacent ALIVE enemy finishes a Downed
 //!   ganger outright → [`ganger::LifeState::Dead`]), over the same-level Moore-8
 //!   [`acts::downed::is_8_adjacent`] reach. Each act is a no-op exactly when its

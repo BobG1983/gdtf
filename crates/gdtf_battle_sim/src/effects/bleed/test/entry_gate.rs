@@ -9,7 +9,9 @@
 //! harness ([`super::support::live_app`]: `BattleSimPlugin`, turn cycle, the
 //! `enemy_phase_started`-gated `tick_bleed` registration), not a hand-rolled tick.
 
-use super::support::{PLAYER, bleed_rate, bleeding_ganger, end_turn, life_of, live_app, wounds_of};
+use super::support::{
+    BleedingOut, PLAYER, bleed_rate, bleeding_ganger, end_turn, life_of, live_app, wounds_of,
+};
 use crate::{
     apply_hit::{GangerHitTarget, apply_hit},
     armor::BodyPart,
@@ -119,6 +121,11 @@ fn weapon_down(app: &mut bevy::prelude::App, ganger: bevy::prelude::Entity, star
     );
     assert_eq!(life, LifeState::Downed, "the graze's HP loss must down");
     assert_eq!(*wounds, start_wounds, "a graze spends no Wounds");
+    // Persist ONLY the folded pools — NO hand-inserted BleedingOut. The §9 condition is
+    // reified by the REAL `mark_downed_bleeding` system reacting to this LifeState::Downed
+    // write (GTW-695); the caller drives an `app.update()` to let it fire, so the marker's
+    // appearance and the subsequent drain pin the apply_hit down-gate END-TO-END rather than
+    // bypassing it with a hand-insert.
     app.world_mut()
         .entity_mut(ganger)
         .insert((hp, wounds, life));
@@ -135,7 +142,8 @@ fn weapon_and_injury_downs_share_the_first_downed_tick_wound_behavior() {
     let start = rate.saturating_mul(2).saturating_add(10);
 
     let mut app = live_app();
-    // The weapon path: downed mid-turn (before any turn boundary) via apply_hit.
+    // The weapon path: downed mid-turn (before any turn boundary) via apply_hit — the
+    // pools are persisted with NO marker.
     let by_weapon = bleeding_ganger(&mut app, PLAYER, LifeState::Alive, start);
     weapon_down(&mut app, by_weapon, start);
     // The injury path: Alive at the boundary; round 1's tick downs them.
@@ -143,6 +151,18 @@ fn weapon_and_injury_downs_share_the_first_downed_tick_wound_behavior() {
     app.world_mut()
         .entity_mut(by_bleed)
         .insert((Hp::new(ACCRUAL), BleedAfflicted::new(ACCRUAL)));
+
+    // One sim tick with no turn boundary — the REAL `mark_downed_bleeding` reacts to the
+    // apply_hit LifeState::Downed write and reifies the §9 condition (models the down
+    // happening during a turn, before the round boundary). This pins the apply_hit
+    // down-gate: unwiring/emptying `mark_downed_bleeding` leaves the marker absent, so the
+    // round-1 drain below never happens and this assert fails.
+    app.update();
+    assert!(
+        app.world().get::<BleedingOut>(by_weapon).is_some(),
+        "the live mark_downed_bleeding must reify the apply_hit down as the BleedingOut \
+         condition (no hand-insert)",
+    );
 
     end_turn(&mut app); // round 1
     assert_eq!(

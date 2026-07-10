@@ -5,11 +5,12 @@ use bevy::prelude::{App, IntoScheduleConfigs, Update, resource_exists};
 
 use crate::{
     acts::{
-        fire::dispatch_fire, injury::apply_injury, melee::dispatch_melee, movement::dispatch_move,
+        downed::dispatch_stabilize_downed, fire::dispatch_fire, injury::apply_injury,
+        melee::dispatch_melee, movement::dispatch_move,
     },
     ai::enemy_ai_turn,
     effects::{
-        bleed::{enemy_phase_started, tick_bleed},
+        bleed::{enemy_phase_started, mark_downed_bleeding, tick_bleed},
         dot::{apply_dot, tick_dot},
         fields::tick_fields,
         on_death::resolve_on_death,
@@ -86,6 +87,34 @@ pub(super) fn wire_turn_clocks(app: &mut App) {
             .before(dispatch_move)
             .before(dispatch_melee)
             .run_if(enemy_phase_started)
+            .in_set(SimSystems::Simulate),
+    );
+    // GTW-695: reify the apply_hit down-gate as the §9 BleedingOut condition. The damage
+    // pipeline (fire / melee / falls → apply_hit) writes LifeState::Downed in place with
+    // NO Commands (bevy-traps.md #7 — the whole pipeline mutates via queries/messages), so
+    // this change-detection system inserts the BleedingOut marker on each ganger the damage
+    // pipeline just downed (the OTHER down-transition site, tick_bleed's own injury-HP
+    // bleed, inserts inline). Ordered `.after` every damage dispatcher (so this frame's
+    // Downed writes are visible) AND `.after(tick_bleed)` with a `Without<BleedingOut>`
+    // filter, so a ganger tick_bleed downed + marked inline this frame is not double-handled
+    // (bevy-traps.md #3). It writes only deferred Commands, so the marker is visible to the
+    // NEXT tick_bleed round — a damage-downed ganger bleeds from the following enemy phase,
+    // exactly as the flag model's LifeState::Downed read did. Its Query + Commands are always
+    // valid, so it joins the gated Simulate band with no extra run_if.
+    app.add_systems(
+        Update,
+        mark_downed_bleeding
+            .after(dispatch_fire)
+            .after(dispatch_melee)
+            .after(apply_falls)
+            .after(tick_bleed)
+            // Ordered BEFORE the stabilize dispatcher (bevy-traps.md #3): if a ganger is
+            // both downed and stabilized in the SAME frame, stabilize's marker REMOVAL must
+            // win — so this insertion runs first and stabilize removes it after (never the
+            // reverse, which would re-insert the just-removed condition on a still-Changed
+            // LifeState). In normal play the two never coincide (stabilize is turns after the
+            // down), but the ordering makes the coincident case deterministic.
+            .before(dispatch_stabilize_downed)
             .in_set(SimSystems::Simulate),
     );
     // GTW-438: the injury applier — drains the InjuryInflicted buffer and folds

@@ -17,8 +17,8 @@ use crate::{
     turn::ActiveFaction,
 };
 pub(super) use crate::{
-    effects::bleed::{Bleeding, tick_bleed},
-    ganger::{Faction, LifeState, Stabilized, Wounds},
+    effects::bleed::{Bleeding, BleedingOut, tick_bleed},
+    ganger::{Faction, LifeState, Wounds},
     tuning::CombatTuning,
 };
 
@@ -144,20 +144,28 @@ pub(super) fn live_app() -> App {
 }
 
 /// Spawn a ganger of `faction` in the given [`LifeState`] with a Wounds pool, plus a full
-/// TU pool (so the turn engine's regen has something to act on, matching a real ganger).
+/// TU pool (so the turn engine's regen has something to act on, matching a real ganger). A
+/// [`LifeState::Downed`] ganger is spawned carrying the [`BleedingOut`] condition — a
+/// freshly-downed ganger is bleeding out (GTW-695); pass it through
+/// [`entity_mut`](bevy::prelude::World::entity_mut)`.remove::<BleedingOut>()` to model a
+/// stabilized one.
 pub(super) fn bleeding_ganger(
     app: &mut App,
     faction: Faction,
     life: LifeState,
     wounds: u8,
 ) -> Entity {
-    GangerEntityBuilder::new()
+    let ganger = GangerEntityBuilder::new()
         .faction(faction)
         .life_state(life)
         .wounds(wounds)
         .tu(0)
         .tu_max(100)
-        .spawn(app.world_mut())
+        .spawn(app.world_mut());
+    if life == LifeState::Downed {
+        app.world_mut().entity_mut(ganger).insert(BleedingOut);
+    }
+    ganger
 }
 
 /// Send one End-Turn request and run the cycle (player → enemy → auto-pass → player).

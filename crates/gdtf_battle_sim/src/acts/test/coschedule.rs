@@ -45,7 +45,7 @@ fn no_messages_means_no_mutation() {
             app.world().get::<Facing>(posture_actor).copied(),
             app.world().get::<Aiming>(posture_actor).copied(),
             app.world().get::<Tu>(posture_actor).copied(),
-            app.world().get::<Stabilized>(downed_target).copied(),
+            app.world().get::<BleedingOut>(downed_target).copied(),
             app.world().get::<LifeState>(downed_target).copied(),
             app.world().get::<LifeState>(downed_actor).copied(),
             // The move actor's Position + Tu, nested so the outer tuple stays within

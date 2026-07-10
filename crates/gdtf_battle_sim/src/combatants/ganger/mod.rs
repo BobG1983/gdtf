@@ -49,7 +49,7 @@ pub use derive_stats::{DerivedStats, derive_stats};
 pub use direction::{Direction, Facing, ForwardStep, RingSteps};
 pub use gang::{GangMember, GangName, GangRegistry, GangRoster};
 pub use injury_projection::{derive_stats_with_injuries, effective_luck, effective_toughness};
-pub use life::{Active, LifeState, Stabilized};
+pub use life::{Active, LifeState};
 pub use position::Position;
 pub use rederive::{rederive_stats_on_injury_change, rederive_stats_on_tuning_change};
 pub use stance::{Aiming, Faction, Stance, StanceKind};

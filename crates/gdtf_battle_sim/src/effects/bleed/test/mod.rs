@@ -12,4 +12,5 @@ mod flag;
 mod message;
 mod runtime;
 mod span;
+mod stabilize_regression;
 mod turn_start;

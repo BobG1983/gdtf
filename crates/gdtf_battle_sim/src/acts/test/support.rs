@@ -21,9 +21,10 @@ pub(super) use crate::{
     // co-schedule test (terrain armor), not ganger-worn armor — kept for that glob use.
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
+    effects::bleed::BleedingOut,
     ganger::{
-        Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stabilized,
-        Stance, StanceKind, Suppressed, SuppressorCell, Toughness, Tu, TuMax, Wounds,
+        Aiming, Direction, Facing, Faction, Hp, LifeState, Luck, Position, Shooting, Stance,
+        StanceKind, Suppressed, SuppressorCell, Toughness, Tu, TuMax, Wounds,
     },
     inflicted_wound::InflictedWounds,
     magazine::{LoadedRounds, Magazine, ReloadTu, mode_tu_cost},
@@ -132,27 +133,27 @@ pub(super) fn fire_scenario() -> (App, Entity, Entity) {
     (app, shooter, target)
 }
 
-/// Spawn a downed-act actor at `(x, y, 0)` of `faction`, [`LifeState::Alive`].
+/// Spawn a downed-act actor at `(x, y, 0)` of `faction`, [`LifeState::Alive`] (an Alive
+/// actor carries no bleed condition).
 pub(super) fn spawn_downed_actor(world: &mut World, x: i32, y: i32, faction: u8) -> Entity {
     world
         .spawn((
             Position::new(CellLevel::new(Cell::new(x, y), Level::new(0))),
             LifeState::Alive,
             Faction::new(faction),
-            Stabilized::new(false),
         ))
         .id()
 }
 
-/// Spawn a downed-act target at `(x, y, 0)` of `faction`, [`LifeState::Downed`], not
-/// yet stabilized.
+/// Spawn a downed-act target at `(x, y, 0)` of `faction`, [`LifeState::Downed`] and
+/// currently [`BleedingOut`] (the §9 clock running — the stabilizable state).
 pub(super) fn spawn_downed_target(world: &mut World, x: i32, y: i32, faction: u8) -> Entity {
     world
         .spawn((
             Position::new(CellLevel::new(Cell::new(x, y), Level::new(0))),
             LifeState::Downed,
             Faction::new(faction),
-            Stabilized::new(false),
+            BleedingOut,
         ))
         .id()
 }

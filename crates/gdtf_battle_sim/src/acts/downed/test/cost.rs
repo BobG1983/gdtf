@@ -3,8 +3,8 @@
 //! in `tuning::tests`.
 
 use super::support::{
-    CombatTuning, ExecuteTu, LifeState, StabilizeTu, Stabilized, execute_downed, execute_pass,
-    stabilize_downed, stabilize_pass,
+    CombatTuning, ExecuteTu, LifeState, StabilizeTu, execute_downed, execute_pass, run_stabilize,
+    stabilize_pass,
 };
 
 /// On success each act returns the cost it READ from tuning — equal to that
@@ -21,8 +21,7 @@ fn acts_return_the_tu_cost_read_from_tuning() {
     };
 
     let (a, t) = stabilize_pass();
-    let mut flag = Stabilized::new(false);
-    let stab_cost = stabilize_downed(&a, &t, &mut flag, &tuning);
+    let (stab_cost, _) = run_stabilize(&a, &t, &tuning);
     assert_eq!(
         stab_cost,
         Some(tuning.stabilize_tu),

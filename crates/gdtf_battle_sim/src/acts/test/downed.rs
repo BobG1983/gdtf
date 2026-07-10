@@ -3,7 +3,7 @@
 use super::support::*;
 
 #[test]
-fn stabilize_dispatch_from_adjacent_ally_sets_the_flag_and_keeps_downed() {
+fn stabilize_dispatch_from_adjacent_ally_removes_the_condition_and_keeps_downed() {
     let mut app = headless_app();
     let actor = spawn_downed_actor(app.world_mut(), 10, 10, 1);
     let target = spawn_downed_target(app.world_mut(), 11, 10, 1); // adjacent, same faction
@@ -12,10 +12,9 @@ fn stabilize_dispatch_from_adjacent_ally_sets_the_flag_and_keeps_downed() {
         .write_message(StabilizeDownedRequested::new(actor, target));
     app.update();
 
-    assert_eq!(
-        app.world().get::<Stabilized>(target).map(|s| **s),
-        Some(true),
-        "an adjacent alive ALLY's stabilize dispatch must SET the Stabilized flag",
+    assert!(
+        app.world().get::<BleedingOut>(target).is_none(),
+        "an adjacent alive ALLY's stabilize dispatch must REMOVE the BleedingOut condition",
     );
     assert_eq!(
         app.world().get::<LifeState>(target).copied(),
@@ -50,10 +49,9 @@ fn faction_gate_holds_end_to_end_through_dispatch() {
     app.world_mut()
         .write_message(StabilizeDownedRequested::new(enemy_actor, downed_enemy));
     app.update();
-    assert_eq!(
-        app.world().get::<Stabilized>(downed_enemy).map(|s| **s),
-        Some(false),
-        "a cross-faction (enemy) stabilize dispatch is a no-op — the flag stays false",
+    assert!(
+        app.world().get::<BleedingOut>(downed_enemy).is_some(),
+        "a cross-faction (enemy) stabilize dispatch is a no-op — the BleedingOut condition stays",
     );
 
     // A same-faction (ally) EXECUTE is a no-op (target stays Downed).

@@ -29,7 +29,8 @@
 pub mod attachments;
 
 /// The **§9 bleed-out clock** — [`tick_bleed`](crate::effects::bleed::tick_bleed) (the
-/// per-round [`Wounds`](crate::ganger::Wounds) drain of every un-stabilized Downed
+/// per-round [`Wounds`](crate::ganger::Wounds) drain of every
+/// [`BleedingOut`](crate::effects::bleed::BleedingOut) Downed
 /// ganger + its once-only terminal gate), the
 /// [`Bleeding`](crate::effects::bleed::Bleeding) signal, and the
 /// [`enemy_phase_started`](crate::effects::bleed::enemy_phase_started) cadence gate
