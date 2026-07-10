@@ -52,7 +52,7 @@ pub(super) fn grid_band(app: &App, at: CellLevel) -> Option<HeightBand> {
 pub(super) fn cover_destroyed(app: &App, at: CellLevel) -> Option<bool> {
     app.world()
         .get_resource::<OccupancyGrid>()
-        .map(|g| g.is_cover_destroyed(&at))
+        .map(|g| *g.is_cover_destroyed(&at))
 }
 
 /// Mark `cell` as a stair tile in the app's [`OccupancyGrid`] resource.

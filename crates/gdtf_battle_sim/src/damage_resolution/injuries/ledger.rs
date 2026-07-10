@@ -269,7 +269,7 @@ impl InflictedInjuries {
         let mut left_disabled = false;
         let mut right_disabled = false;
         for record in &self.gained {
-            let disables = record.effects.iter().any(ApplyInjuryEffect::disables_hand);
+            let disables = record.effects.iter().any(|e| *e.disables_hand());
             if !disables {
                 continue;
             }

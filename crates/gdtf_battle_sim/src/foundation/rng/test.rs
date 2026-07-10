@@ -222,7 +222,7 @@ fn fnv1a64_is_stable() {
     //   for each byte: hash = (hash ^ byte).wrapping_mul(0x0000_0100_0000_01b3)
     //
     // The expected value was computed offline from first principles.
-    let computed = fnv1a64(0u64, b"gdtf.rng.shot.v1");
+    let computed = fnv1a64(BattleSeed::new(0), b"gdtf.rng.shot.v1");
     // The pinned expected value for the ShotRng label, computed from first principles
     // (FNV-1a-64 over the 8 LE root bytes ++ the 16 label bytes). The `assert_eq!`
     // always runs so any change to the FNV constants, the LE byte-order, or the label

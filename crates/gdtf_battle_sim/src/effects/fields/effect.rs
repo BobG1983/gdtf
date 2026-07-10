@@ -30,8 +30,8 @@ use bevy::prelude::Entity;
 use serde::Deserialize;
 
 use super::{
-    ApplyDrain, ApplyDuration, ApplyFieldEffect, ApplyImmunity, FieldDamage, FieldDuration,
-    FieldTurns, ImmuneArmorTypes, OccupantArmor, OccupantDrain,
+    ApplyDrain, ApplyDuration, ApplyFieldEffect, ApplyImmunity, DrainExempt, FieldDamage,
+    FieldDuration, FieldExpired, FieldTurns, ImmuneArmorTypes, OccupantArmor, OccupantDrain,
 };
 use crate::{effects::fields::FieldDef, metric::CellLevel, weapon::DamageType};
 
@@ -119,7 +119,7 @@ impl FieldEffect {
 impl ApplyFieldEffect for FieldEffect {
     /// The exemption gate, DELEGATED to the isolated behaviour type (only
     /// [`ApplyImmunity`] overrides the defaulted `false`).
-    fn exempts_occupant(&self, armor: &OccupantArmor<'_, '_, '_>) -> bool {
+    fn exempts_occupant(&self, armor: &OccupantArmor<'_, '_, '_>) -> DrainExempt {
         self.with_behaviour(|behaviour| behaviour.exempts_occupant(armor))
     }
 
@@ -142,7 +142,7 @@ impl ApplyFieldEffect for FieldEffect {
 
     /// The per-round lifetime step, DELEGATED to the isolated behaviour type (only
     /// [`ApplyDuration`] overrides the defaulted never-expires).
-    fn count_down_one_turn(&self, remaining: &mut Option<FieldTurns>) -> bool {
+    fn count_down_one_turn(&self, remaining: &mut Option<FieldTurns>) -> FieldExpired {
         self.with_behaviour(|behaviour| behaviour.count_down_one_turn(remaining))
     }
 }

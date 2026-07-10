@@ -51,7 +51,7 @@ pub use kinds::{
     cover::CoverVerdict, ganger::AppliedDamage, ganger::GangerVerdict, ground::GroundAccrual,
     slab::SlabVerdict,
 };
-pub use report::{HitReport, HitVerdict, StruckPiece, StruckSurfaces, TargetGanger};
+pub use report::{HitReport, HitVerdict, Protecting, StruckPiece, StruckSurfaces, TargetGanger};
 /// The **attacker-agnostic wound-synthesis core** (GTW-523 remediation): the ONE shared
 /// §5 → §6 → §8 fold both the ganger kind module and the no-attacker fall path
 /// ([`resolve_fall_hit`](crate::falls::resolve_fall_hit)) route through, plus its

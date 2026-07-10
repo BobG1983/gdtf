@@ -13,7 +13,7 @@ use super::support::{
 };
 use crate::{
     ganger::Direction,
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     metric::Cell,
     weapon::{
         Accuracy, BaseSpread, DamageProfile, DamageType, FatalBias, FireMode, FireModeSpec,
@@ -57,7 +57,11 @@ fn man_loaded_mount(world: &mut World, ganger: Entity, ammo: u16) {
             DamageType::Kinetic,
         ),
         HandlingProfile::new(
-            Magazine::new(ammo, MagazineSize::new(30), ReloadTu::new(12)),
+            Magazine::new(
+                LoadedRounds::new(ammo),
+                MagazineSize::new(30),
+                ReloadTu::new(12),
+            ),
             FireMode::new(vec![mode]),
             Stable::new(true),
             Shove::new(false),

@@ -7,7 +7,7 @@ use gdtf_battle_presenter::{ActiveLevel, FireTargetHighlight, ViewMode};
 use gdtf_battle_sim::{
     battle::PlayerFaction,
     ganger::{Aiming, TuMax},
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     occupancy::TerrainKind,
     prelude::{
         BattleInProgress, CellLevel, Faction, Level, LifeState, OccupancyGrid, Position, Tu,
@@ -91,7 +91,11 @@ pub(crate) fn spawn_and_select_shooter(app: &mut App, cell: CellLevel) -> (Entit
         .id();
     app.world_mut().spawn((
         WieldedBy::new(ganger),
-        Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+        Magazine::new(
+            LoadedRounds::new(10),
+            MagazineSize::new(30),
+            ReloadTu::new(12),
+        ),
         // GTW-443: the fire surface's WeaponMagazine query reads `(&Magazine, &Handedness)`.
         Handedness::OneHanded,
     ));
@@ -147,7 +151,11 @@ pub(crate) fn spawn_select_then_arm_late(
     app.world_mut().spawn((
         WieldedBy::new(ganger),
         FireMode::new(vec![spec(single_tu_percent)]),
-        Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+        Magazine::new(
+            LoadedRounds::new(10),
+            MagazineSize::new(30),
+            ReloadTu::new(12),
+        ),
         // GTW-443: the fire surface's WeaponMagazine query reads `(&Magazine, &Handedness)`.
         Handedness::OneHanded,
     ));

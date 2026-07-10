@@ -64,7 +64,7 @@ pub fn muzzle_position(
 
     let center = cell_center(cell, level);
     let offset = *tuning.cone_stability.muzzle_forward_offset;
-    let step = (*facing).forward_step();
+    let step = *(*facing).forward_step();
 
     // cell_center + forward-offset along the facing, on the ground plane, then clamp
     // each axis so the muzzle stays strictly within the shooter's cell.

@@ -80,7 +80,7 @@ pub(super) fn grid_with(terrain: &[(CellLevel, TerrainKind)]) -> OccupancyGrid {
         grid.set_terrain(at, kind);
         // Mirror a kind-default-blocking placement into the path-blocking surface, so the
         // geometry fixtures route exactly as before the GTW-501 path/vision split.
-        if kind.blocks() {
+        if *kind.blocks() {
             grid.set_path_blocking(at);
         }
     }

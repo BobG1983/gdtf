@@ -214,7 +214,7 @@ pub fn dispatch_move(
         if let Ok(suppressed) = suppressed.get(request.actor) {
             // `suppressed.from` is a `SuppressorCell`; deref through the newtype to the
             // `&CellLevel` the gate helpers take (the crate's `Deref`-newtype read path).
-            if !suppressed_move_legal(&start, &request.dest, &suppressed.from, &cover) {
+            if !*suppressed_move_legal(&start, &request.dest, &suppressed.from, &cover) {
                 rejects.write(MoveRejected::new(request.actor, MoveRejection::Suppressed));
                 continue;
             }
@@ -225,7 +225,7 @@ pub fn dispatch_move(
         // stays put). This is a CHECK, not a charge — the per-step charges land in the walk
         // and always succeed (the up-front gate guarantees the whole route is payable, and
         // strictly turn-based play means nothing spends the mover's TU mid-walk).
-        if !can_spend_tu(tu, path.total()) {
+        if !*can_spend_tu(tu, path.total()) {
             rejects.write(MoveRejected::new(
                 request.actor,
                 MoveRejection::Unaffordable,

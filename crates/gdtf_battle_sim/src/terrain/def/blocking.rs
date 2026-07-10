@@ -8,8 +8,31 @@
 //! single authority for the **zero-regression** rules (GTW-501 D2 / GTW-502), so the spawn
 //! loop, the tests, and any future reader all agree on one definition.
 
+use bevy::prelude::Deref;
+
 use super::{LosBlocking, TerrainDef, TerrainSimKind, TerrainTag};
-use crate::{cover::HeightBand, terrain::entity::TerrainPieceKind};
+use crate::{
+    cover::HeightBand,
+    occupancy::{OccludesVision, PathBlocked},
+    terrain::entity::TerrainPieceKind,
+};
+
+/// Whether a [`TerrainDef`] is **openable** — a door / hatch that carries the
+/// [`TerrainTag::Openable`] tag (the answer [`is_openable`] returns).
+///
+/// A named newtype over `bool` (no-bare-types: door-ness is a domain fact, not a bare
+/// boolean). `true` gates the spawn loop's [`OpenState`](crate::terrain::openable::OpenState)
+/// attachment. Private inner + derived [`Deref`] (house style).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Openable(bool);
+
+impl Openable {
+    /// Build an openable answer from its boolean state.
+    #[must_use]
+    pub const fn new(openable: bool) -> Self {
+        Self(openable)
+    }
+}
 
 /// Whether a [`TerrainDef`] derives **path-blocking** — the rule that decides whether a
 /// spawned terrain entity gets the
@@ -39,13 +62,13 @@ use crate::{cover::HeightBand, terrain::entity::TerrainPieceKind};
 ///
 /// PURE: a read over the borrowed def — no world access, no RNG, no side effects.
 #[must_use]
-pub fn derives_path_blocking(def: &TerrainDef) -> bool {
+pub fn derives_path_blocking(def: &TerrainDef) -> PathBlocked {
     // GTW-587: an explicit per-def override wins over the tag ∪ kind-default rule.
     if let Some(over) = def.blocks_pathing {
-        return over;
+        return PathBlocked::new(*over);
     }
     let explicit = def.tags.contains(&TerrainTag::BlocksPathfinding);
-    explicit || sim_kind_blocks_path(&def.sim_kind)
+    PathBlocked::new(explicit || *sim_kind_blocks_path(&def.sim_kind))
 }
 
 /// Whether a [`TerrainSimKind`] blocks the path **by default** — `true` for
@@ -65,11 +88,11 @@ pub fn derives_path_blocking(def: &TerrainDef) -> bool {
 /// A kind-IDENTITY decision (no per-variant payload), so it reads the canonical
 /// [`TerrainPieceKind`] projection ([`TerrainSimKind::kind`] — GTW-574 C2).
 #[must_use]
-pub const fn sim_kind_blocks_path(sim_kind: &TerrainSimKind) -> bool {
-    matches!(
+pub const fn sim_kind_blocks_path(sim_kind: &TerrainSimKind) -> PathBlocked {
+    PathBlocked::new(matches!(
         sim_kind.kind(),
         TerrainPieceKind::Wall | TerrainPieceKind::Cover | TerrainPieceKind::Emplacement
-    )
+    ))
 }
 
 /// Whether a [`TerrainDef`] derives **vision occlusion**, and at WHICH [`HeightBand`] it
@@ -231,11 +254,11 @@ pub const fn los_blocking_to_band(
 /// A kind-IDENTITY decision (no per-variant payload), so it reads the canonical
 /// [`TerrainPieceKind`] projection ([`TerrainSimKind::kind`] — GTW-574 C2).
 #[must_use]
-pub const fn sim_kind_occludes_vision(sim_kind: &TerrainSimKind) -> bool {
-    matches!(
+pub const fn sim_kind_occludes_vision(sim_kind: &TerrainSimKind) -> OccludesVision {
+    OccludesVision::new(matches!(
         sim_kind.kind(),
         TerrainPieceKind::Wall | TerrainPieceKind::Cover | TerrainPieceKind::Emplacement
-    )
+    ))
 }
 
 /// The authored [`HeightBand`] a `Wall`/`Cover`/`Emplacement` `sim_kind` carries, or `None` for
@@ -268,8 +291,8 @@ const fn sim_kind_band(sim_kind: &TerrainSimKind) -> Option<HeightBand> {
 ///
 /// PURE: a read over the borrowed def — no world access, no RNG, no side effects.
 #[must_use]
-pub fn is_openable(def: &TerrainDef) -> bool {
-    def.tags.contains(&TerrainTag::Openable)
+pub fn is_openable(def: &TerrainDef) -> Openable {
+    Openable::new(def.tags.contains(&TerrainTag::Openable))
 }
 
 /// The [`HeightBand`] a **closed openable** piece occludes vision at (GTW-503 C2).

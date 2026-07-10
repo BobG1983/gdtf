@@ -66,15 +66,15 @@ pub(super) const PEEK_LEAN: f32 = 0.4;
 pub(super) fn corner_lean(cell: CellLevel, grid: &OccupancyGrid) -> PeekOffset {
     for (dx, dy) in CARDINALS {
         let wall = offset_in_plane(cell, dx, dy);
-        if !grid.is_blocked(&wall) {
+        if !*grid.is_blocked(&wall) {
             continue;
         }
         // The wall's own axis: a 90° rotation of the cardinal `d` (never `d` itself),
         // so the lean runs ALONG the wall toward an open end — structurally impossible
         // to nudge the eye THROUGH the blocker.
         let (px, py) = (-dy, dx);
-        let plus_open = !grid.is_blocked(&offset_in_plane(wall, px, py));
-        let minus_open = !grid.is_blocked(&offset_in_plane(wall, -px, -py));
+        let plus_open = !*grid.is_blocked(&offset_in_plane(wall, px, py));
+        let minus_open = !*grid.is_blocked(&offset_in_plane(wall, -px, -py));
         // A true corner has EXACTLY ONE end of this wall open (XOR). Both open = a lone
         // pillar (target-dependent, deferred); both blocked = a mid-flat-wall (no edge).
         if plus_open != minus_open {

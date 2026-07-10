@@ -231,13 +231,13 @@ fn sim_kind_default_occludes_wall_and_cover_only() {
         armor_protection: ArmorProtection::new(0),
         armor_hardness:   ArmorHardness::new(0),
     };
-    assert!(sim_kind_occludes_vision(&wall), "Wall occludes by default");
+    assert!(*sim_kind_occludes_vision(&wall), "Wall occludes by default");
     assert!(
-        sim_kind_occludes_vision(&cover),
+        *sim_kind_occludes_vision(&cover),
         "Cover occludes by default"
     );
     assert!(
-        !sim_kind_occludes_vision(&slab),
+        !*sim_kind_occludes_vision(&slab),
         "Slab does not occlude by default"
     );
 }

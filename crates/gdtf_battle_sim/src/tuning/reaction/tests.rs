@@ -9,8 +9,8 @@
 
 use super::{
     core::{
-        ReactionScore, ReactionsUsed, interrupt_probability, may_interrupt, reaction_score,
-        rolls_interrupt,
+        ReactionProbability, ReactionScore, ReactionsUsed, interrupt_probability, may_interrupt,
+        reaction_score, rolls_interrupt,
     },
     leaves::{ReactionTuning, clamp_probability, reaction_cap},
 };
@@ -34,7 +34,7 @@ fn reaction_cap_is_monotone_nondecreasing_in_reactions() {
     let values = [0.0_f32, 1.0, 2.0, 3.0, 5.0, 8.0, 13.0, 20.0];
     let caps: Vec<u32> = values
         .iter()
-        .map(|&r| reaction_cap(Reactions::new(r), &tuning))
+        .map(|&r| *reaction_cap(Reactions::new(r), &tuning))
         .collect();
 
     for window in caps.windows(2) {
@@ -53,7 +53,7 @@ fn clamp_probability_lifts_below_p_min_to_p_min() {
     let tuning = ReactionTuning::default();
     // Arbitrary value strictly below the default p_min.
     let below = *tuning.p_min - 0.02;
-    let clamped = clamp_probability(below, &tuning);
+    let clamped = clamp_probability(ReactionProbability::new(below), &tuning);
     assert_eq!(
         clamped.to_bits(),
         (*tuning.p_min).to_bits(),
@@ -67,7 +67,7 @@ fn clamp_probability_lowers_above_p_max_to_p_max() {
     let tuning = ReactionTuning::default();
     // Arbitrary value strictly above the default p_max.
     let above = *tuning.p_max + 0.02;
-    let clamped = clamp_probability(above, &tuning);
+    let clamped = clamp_probability(ReactionProbability::new(above), &tuning);
     assert_eq!(
         clamped.to_bits(),
         (*tuning.p_max).to_bits(),
@@ -81,7 +81,7 @@ fn clamp_probability_passes_through_in_range_value() {
     let tuning = ReactionTuning::default();
     // An arbitrary in-range value (midpoint between p_min and p_max).
     let mid = f32::midpoint(*tuning.p_min, *tuning.p_max);
-    let clamped = clamp_probability(mid, &tuning);
+    let clamped = clamp_probability(ReactionProbability::new(mid), &tuning);
     assert_eq!(
         clamped.to_bits(),
         mid.to_bits(),
@@ -109,8 +109,8 @@ fn rolls_interrupt_is_deterministic_replayable_under_same_seed() {
     let mut a = ReactionRng::from_root(BattleSeed::new(0x0467_C0DE_DEAD_BEEF));
     let mut b = ReactionRng::from_root(BattleSeed::new(0x0467_C0DE_DEAD_BEEF));
 
-    let seq_a: Vec<bool> = (0..ROLL_LEN).map(|_| rolls_interrupt(p, &mut a)).collect();
-    let seq_b: Vec<bool> = (0..ROLL_LEN).map(|_| rolls_interrupt(p, &mut b)).collect();
+    let seq_a: Vec<bool> = (0..ROLL_LEN).map(|_| *rolls_interrupt(p, &mut a)).collect();
+    let seq_b: Vec<bool> = (0..ROLL_LEN).map(|_| *rolls_interrupt(p, &mut b)).collect();
 
     assert_eq!(
         seq_a, seq_b,
@@ -223,12 +223,12 @@ fn extremes_clamp_strictly_inside_zero_and_one() {
 fn cap_blocks_at_limit_and_reset_reopens() {
     let tuning = ReactionTuning::default();
     let reactions = Reactions::new(4.0);
-    let cap = reaction_cap(reactions, &tuning);
+    let cap = *reaction_cap(reactions, &tuning);
 
     // Below the cap, interrupts are allowed.
     let used_below = ReactionsUsed::new(cap.saturating_sub(1));
     assert!(
-        may_interrupt(used_below, reactions, &tuning),
+        *may_interrupt(used_below, reactions, &tuning),
         "with used < cap, may_interrupt must be true",
     );
 
@@ -236,14 +236,14 @@ fn cap_blocks_at_limit_and_reset_reopens() {
     let mut used = ReactionsUsed::default();
     for _ in 0..cap {
         assert!(
-            may_interrupt(used, reactions, &tuning),
+            *may_interrupt(used, reactions, &tuning),
             "every interrupt up to the cap must be allowed",
         );
         used.increment();
     }
     assert_eq!(*used, cap, "increment must reach exactly the cap");
     assert!(
-        !may_interrupt(used, reactions, &tuning),
+        !*may_interrupt(used, reactions, &tuning),
         "at the cap, may_interrupt must be false (locked out for the turn)",
     );
 
@@ -251,7 +251,7 @@ fn cap_blocks_at_limit_and_reset_reopens() {
     used.reset();
     assert_eq!(*used, 0, "reset must zero the counter");
     assert!(
-        may_interrupt(used, reactions, &tuning),
+        *may_interrupt(used, reactions, &tuning),
         "after reset, may_interrupt must be true again",
     );
 }
@@ -292,7 +292,7 @@ fn interrupt_probability_with_zero_denominator_is_defined_and_finite() {
     );
     assert_eq!(
         p.to_bits(),
-        clamp_probability(0.5, &tuning).to_bits(),
+        clamp_probability(ReactionProbability::new(0.5), &tuning).to_bits(),
         "the zero-denominator fallback must be clamp_probability(0.5, tuning)",
     );
 }

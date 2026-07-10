@@ -131,7 +131,7 @@ fn ground_damage_decrease_is_rejected() {
     assert_eq!(grid.ground_damage(&cell), GroundDamage::new(40));
 
     // A decrease attempt is rejected and leaves the total untouched.
-    let lowered = grid.set_ground_damage(cell, GroundDamage::new(10));
+    let lowered = *grid.set_ground_damage(cell, GroundDamage::new(10));
     assert!(
         !lowered,
         "setting a value below the current total must be rejected"
@@ -143,7 +143,7 @@ fn ground_damage_decrease_is_rejected() {
     );
 
     // A non-decreasing set is accepted (it never lowers the accumulator).
-    let raised = grid.set_ground_damage(cell, GroundDamage::new(55));
+    let raised = *grid.set_ground_damage(cell, GroundDamage::new(55));
     assert!(
         raised,
         "setting a value at-or-above the current total is accepted"
@@ -186,7 +186,7 @@ fn slab_and_ground_are_independent() {
 #[test]
 fn surface_newtypes_expose_inner() {
     assert_eq!(*GroundDamage::new(99), 99u32);
-    assert!(SlabState::Destroyed.is_destroyed());
-    assert!(!SlabState::Present.is_destroyed());
-    assert!(!SlabState::Absent.is_destroyed());
+    assert!(*SlabState::Destroyed.is_destroyed());
+    assert!(!*SlabState::Present.is_destroyed());
+    assert!(!*SlabState::Absent.is_destroyed());
 }

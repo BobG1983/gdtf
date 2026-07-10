@@ -203,7 +203,7 @@ pub fn has_los(
         is_dead,
     );
 
-    Sighted::new(is_clear(&result, target_cell, eye, aim))
+    is_clear(&result, target_cell, eye, aim)
 }
 
 /// A convenience wrapper over [`has_los`] that probes with a peeked eye — the
@@ -367,23 +367,23 @@ fn is_clear(
     target_cell: CellLevel,
     eye: SimPos,
     aim: SimPos,
-) -> bool {
+) -> Sighted {
     match result.kind {
         // Nothing was failed-to-clear before the target — a clean line of sight.
-        MarchKind::Miss | MarchKind::Ground => true,
+        MarchKind::Miss | MarchKind::Ground => Sighted::new(true),
         // A slab / cover / ganger stop: it blocks sight only if it is strictly before
         // the target (a different cell AND nearer the eye than the aim point).
         MarchKind::Slab | MarchKind::Cover(_) | MarchKind::Ganger(_) => {
             if result.at == target_cell {
                 // A stop AT the target cell is the target itself (or its own cover) —
                 // it does not occlude the target. CLEAR.
-                return true;
+                return Sighted::new(true);
             }
             let impact_d2 = (*result.impact - *eye).length_squared();
             let aim_d2 = (*aim - *eye).length_squared();
             // BLOCKED only when the blocker is strictly nearer than the aim point;
             // otherwise the march reported something BEHIND the target → still CLEAR.
-            impact_d2 >= aim_d2
+            Sighted::new(impact_d2 >= aim_d2)
         }
     }
 }

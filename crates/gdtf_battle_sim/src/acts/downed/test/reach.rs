@@ -13,7 +13,7 @@ fn moore_8_neighbours_are_adjacent_self_and_far_are_not() {
     for dx in -1..=1 {
         for dy in -1..=1 {
             let other = pos(10 + dx, 10 + dy, GROUND);
-            let adjacent = is_8_adjacent(center, other);
+            let adjacent = *is_8_adjacent(center, other);
             if dx == 0 && dy == 0 {
                 assert!(!adjacent, "the same cell is NOT 8-adjacent (excludes self)");
             } else {
@@ -26,11 +26,11 @@ fn moore_8_neighbours_are_adjacent_self_and_far_are_not() {
     }
     // A two-cell step (Chebyshev 2) is out of reach.
     assert!(
-        !is_8_adjacent(center, pos(12, 10, GROUND)),
+        !*is_8_adjacent(center, pos(12, 10, GROUND)),
         "a two-cell step is NOT 8-adjacent",
     );
     assert!(
-        !is_8_adjacent(center, pos(12, 12, GROUND)),
+        !*is_8_adjacent(center, pos(12, 12, GROUND)),
         "a two-cell diagonal step is NOT 8-adjacent",
     );
 }
@@ -42,12 +42,12 @@ fn a_different_storey_is_not_adjacent() {
     let a = pos(5, 5, Level::new(2));
     // Directly above: same cell, one storey up.
     assert!(
-        !is_8_adjacent(a, pos(5, 5, Level::new(3))),
+        !*is_8_adjacent(a, pos(5, 5, Level::new(3))),
         "the cell directly above is NOT 8-adjacent (same-level only)",
     );
     // A would-be Moore neighbour but a storey up — still not adjacent.
     assert!(
-        !is_8_adjacent(a, pos(6, 5, Level::new(3))),
+        !*is_8_adjacent(a, pos(6, 5, Level::new(3))),
         "a Moore neighbour on another storey is NOT 8-adjacent",
     );
 }

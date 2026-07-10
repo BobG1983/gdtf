@@ -111,7 +111,7 @@ fn slab_def(tags: Vec<TerrainTag>) -> TerrainDef {
 #[test]
 fn wall_blocks_path_by_kind_default() {
     assert!(
-        derives_path_blocking(&wall_def(vec![])),
+        *derives_path_blocking(&wall_def(vec![])),
         "a Wall blocks the path by kind default (zero regression)",
     );
 }
@@ -120,7 +120,7 @@ fn wall_blocks_path_by_kind_default() {
 #[test]
 fn cover_blocks_path_by_kind_default() {
     assert!(
-        derives_path_blocking(&cover_def(vec![])),
+        *derives_path_blocking(&cover_def(vec![])),
         "a Cover blocks the path by kind default (zero regression)",
     );
 }
@@ -130,7 +130,7 @@ fn cover_blocks_path_by_kind_default() {
 #[test]
 fn emplacement_blocks_path_by_kind_default() {
     assert!(
-        derives_path_blocking(&emplacement_def(vec![])),
+        *derives_path_blocking(&emplacement_def(vec![])),
         "an Emplacement blocks the path by kind default (a cover-like structure)",
     );
 }
@@ -140,7 +140,7 @@ fn emplacement_blocks_path_by_kind_default() {
 #[test]
 fn slab_does_not_block_path_by_default() {
     assert!(
-        !derives_path_blocking(&slab_def(vec![])),
+        !*derives_path_blocking(&slab_def(vec![])),
         "a Slab does NOT block the path by default",
     );
 }
@@ -150,7 +150,7 @@ fn slab_does_not_block_path_by_default() {
 #[test]
 fn explicit_tag_adds_path_blocking_to_slab() {
     assert!(
-        derives_path_blocking(&slab_def(vec![TerrainTag::BlocksPathfinding])),
+        *derives_path_blocking(&slab_def(vec![TerrainTag::BlocksPathfinding])),
         "an explicit BlocksPathfinding tag makes an otherwise-open Slab block the path",
     );
 }
@@ -161,7 +161,7 @@ fn explicit_tag_adds_path_blocking_to_slab() {
 #[test]
 fn unrelated_tag_does_not_block_slab() {
     assert!(
-        !derives_path_blocking(&slab_def(vec![
+        !*derives_path_blocking(&slab_def(vec![
             TerrainTag::BlocksVision,
             TerrainTag::Openable
         ])),
@@ -174,7 +174,7 @@ fn unrelated_tag_does_not_block_slab() {
 #[test]
 fn explicit_tag_on_wall_is_still_blocking() {
     assert!(
-        derives_path_blocking(&wall_def(vec![TerrainTag::BlocksPathfinding])),
+        *derives_path_blocking(&wall_def(vec![TerrainTag::BlocksPathfinding])),
         "a tagged Wall is still path-blocking (the union is monotone)",
     );
 }
@@ -206,14 +206,14 @@ fn sim_kind_default_blocks_wall_and_cover_only() {
         height_band:      HeightBand::High,
         mounted_weapon:   WeaponName::new("heavy_bolter".to_owned()),
     };
-    assert!(sim_kind_blocks_path(&wall), "Wall blocks by default");
-    assert!(sim_kind_blocks_path(&cover), "Cover blocks by default");
+    assert!(*sim_kind_blocks_path(&wall), "Wall blocks by default");
+    assert!(*sim_kind_blocks_path(&cover), "Cover blocks by default");
     assert!(
-        sim_kind_blocks_path(&emplacement),
+        *sim_kind_blocks_path(&emplacement),
         "Emplacement blocks by default (a cover-like structure)"
     );
     assert!(
-        !sim_kind_blocks_path(&slab),
+        !*sim_kind_blocks_path(&slab),
         "Slab does not block by default"
     );
 }

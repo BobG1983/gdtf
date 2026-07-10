@@ -240,7 +240,7 @@ fn terrain_def_round_trips_through_the_loader_parser() {
 /// untouched draft projects both as `None` (pure kind default — zero-migration for shipped defs).
 #[test]
 fn blocking_overrides_project_and_round_trip() {
-    use gdtf_battle_sim::terrain::def::LosBlocking;
+    use gdtf_battle_sim::terrain::def::{BlocksPathingOverride, LosBlocking};
 
     // Default draft: no overrides authored.
     let default_draft = TerrainDraft::default();
@@ -266,7 +266,7 @@ fn blocking_overrides_project_and_round_trip() {
     };
     assert_eq!(
         def.blocks_pathing,
-        Some(true),
+        Some(BlocksPathingOverride::new(true)),
         "AC3: the path-blocking override projects onto the def",
     );
     assert_eq!(

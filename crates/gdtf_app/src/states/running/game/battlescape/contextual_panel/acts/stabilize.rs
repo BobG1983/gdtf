@@ -69,7 +69,7 @@ pub(in crate::states::running::game::battlescape) fn offer_stabilize(
                     **life == LifeState::Downed
                         && **faction == *actor_faction
                         && !stabilized.is_some_and(|flag| **flag)
-                        && is_8_adjacent(*actor_pos, **pos)
+                        && *is_8_adjacent(*actor_pos, **pos)
                 })
                 .map(|(entity, ..)| entity)
         });

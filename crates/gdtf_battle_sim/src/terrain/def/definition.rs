@@ -25,6 +25,31 @@ impl TerrainDisplayName {
     }
 }
 
+/// An authored **path-blocking override** value (GTW-587) — the payload of a
+/// [`TerrainDef::blocks_pathing`] `Some(_)`: `true` forces the def to block pathfinding,
+/// `false` forces it walkable, WINNING outright over the tag-∪-kind default.
+///
+/// A named newtype over `bool` (no-bare-types: an authored path-blocking decision is a domain
+/// value, not a bare boolean). Private inner + derived [`Deref`] (house style);
+/// `#[serde(transparent)]` round-trips it as the bare boolean wire form, so an authored
+/// `blocks_pathing: Some(true)` / `Some(false)` parses and re-serializes byte-identically to the
+/// pre-newtype `Option<bool>` shape (and an omitted field stays `None`, RON-invisible for every
+/// shipped def). Resolved into the sim's typed
+/// [`PathBlocked`](crate::occupancy::PathBlocked) answer by
+/// [`derives_path_blocking`](crate::terrain::def::derives_path_blocking).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(transparent)]
+pub struct BlocksPathingOverride(bool);
+
+impl BlocksPathingOverride {
+    /// Build a path-blocking override from its boolean state — `true` forces blocking,
+    /// `false` forces walkable.
+    #[must_use]
+    pub const fn new(over: bool) -> Self {
+        Self(over)
+    }
+}
+
 /// The **unified terrain definition** — the UUID-keyed terrain model (GTW-484, child T02
 /// of the GTW-476 refactor) and the SOLE terrain model after GTW-496.
 ///
@@ -103,7 +128,7 @@ pub struct TerrainDef {
     /// force-on / force-off / use-default; the resolved value flows through the sim's typed
     /// [`BlocksPathfinding`](crate::terrain::entity::BlocksPathfinding) marker.)
     #[serde(default)]
-    pub blocks_pathing: Option<bool>,
+    pub blocks_pathing: Option<BlocksPathingOverride>,
     /// An OPTIONAL authored **line-of-sight blocking OVERRIDE** (GTW-587) — a [`LosBlocking`]
     /// mode (`Full` / `UpToHeightBand` / `None`) that overrides the KIND-derived
     /// vision-occlusion default, or `None` (the serde default) to fall back to that default

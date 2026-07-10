@@ -28,7 +28,7 @@ use gdtf_battle_sim::{
     faced_cell::faced_cell,
     ganger::{Aiming, Facing, TuMax},
     injuries::InjuryRegistry,
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     prelude::{
         Cell, CellLevel, Direction, Faction, Level, LifeState, Position, Stance, StanceKind, Tu,
     },
@@ -184,7 +184,11 @@ fn weapon_kit(stable: bool) -> WeaponBundle {
             DamageType::Kinetic,
         ),
         HandlingProfile::new(
-            Magazine::new(20, MagazineSize::new(30), ReloadTu::new(12)),
+            Magazine::new(
+                LoadedRounds::new(20),
+                MagazineSize::new(30),
+                ReloadTu::new(12),
+            ),
             FireMode::new(vec![FireModeSpec::new(
                 ModeKind::Single,
                 ModeConeMult::new(1.0),

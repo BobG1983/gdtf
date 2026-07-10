@@ -131,12 +131,12 @@ pub(super) fn engageable_targets(
             handedness,
             hands_available: enemy.hands,
         };
-        if !can_fire(&actor, &mode, target_cell, target_level, tuning) {
+        if !*can_fire(&actor, &mode, target_cell, target_level, tuning) {
             continue;
         }
         // can_engage (the SHARED ¬Reject arc verdict) — load-bearing for termination:
         // it guarantees the dispatcher will spend TU rather than silently reject.
-        if !can_engage(
+        if !*can_engage(
             *enemy.facing,
             enemy_cell,
             target_cell,

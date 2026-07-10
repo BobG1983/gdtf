@@ -2,6 +2,8 @@
 //! per-stance minimum brace band, the per-stance stability points, and whether
 //! the automatic brace engages for a given weapon / stance / faced cover.
 
+use bevy::prelude::Deref;
+
 use crate::{
     cover::{CoverEntry, HeightBand},
     ganger::StanceKind,
@@ -9,6 +11,23 @@ use crate::{
     tuning::{ConeStabilityTuning, StanceContribution},
     weapon::Stable,
 };
+
+/// Whether the automatic **brace** engages for a shot (resolution.md §1a) — the OR of
+/// the three unconditional brace sources (a `stable` weapon, a terrain-braced stair
+/// kneel, or faced cover reaching the stance's minimum brace band).
+///
+/// A named verdict (no-bare-types) rather than a bare `bool`, so a caller feeding it
+/// the single `tuning.brace_contribution` addend can never invert the sense of the
+/// gate by accident. Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct BraceEngaged(bool);
+
+impl BraceEngaged {
+    /// Build a brace-gate verdict from whether the brace engages.
+    pub(super) const fn new(engaged: bool) -> Self {
+        Self(engaged)
+    }
+}
 
 /// The rank of a [`HeightBand`] on the LOW < MID < HIGH ladder — the orderable
 /// view of the cover-height bands the brace gate compares.
@@ -72,15 +91,15 @@ pub(super) fn brace_engages(
     stance: StanceKind,
     faced: Option<&CoverEntry>,
     tuning: &ConeStabilityTuning,
-) -> bool {
+) -> BraceEngaged {
     if *stable || *terrain_braced {
         // A stable weapon OR a terrain-braced stair kneel engages the brace
         // unconditionally — no cover / stance gate needed. The || is OR-combined with
         // the cover-height gate below so all three sources share one bool (never a sum).
-        return true;
+        return BraceEngaged::new(true);
     }
     let Some(entry) = faced else {
-        return false;
+        return BraceEngaged::new(false);
     };
-    band_rank(entry.height_band) >= band_rank(brace_min_band(stance, tuning))
+    BraceEngaged::new(band_rank(entry.height_band) >= band_rank(brace_min_band(stance, tuning)))
 }

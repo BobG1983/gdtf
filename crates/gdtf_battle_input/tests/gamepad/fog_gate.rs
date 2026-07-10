@@ -94,7 +94,7 @@ fn fire_commit_is_refused_into_a_non_visible_cell() {
         // Pin the DISTINCT EXPLORED-not-VISIBLE state on the fog itself.
         let fog = app.world().resource::<SquadVisibility>();
         assert!(
-            fog.is_cell_explored(&target) && !fog.is_cell_visible(&target),
+            *fog.is_cell_explored(&target) && !*fog.is_cell_visible(&target),
             "Case C fixture: the target must be EXPLORED but NOT VISIBLE (distinct from UNSEEN)",
         );
         let tu_before = shooter_tu(&app, ganger);

@@ -64,7 +64,7 @@ fn weapon_bundle_spawns_an_armed_entity() {
         *magazine.size(),
         "the spawned magazine is loaded FULL (loaded == size)"
     );
-    assert!(magazine.is_full(), "the spawned magazine is full");
+    assert!(*magazine.is_full(), "the spawned magazine is full");
 }
 
 /// AC3 — a [`WeaponStats`] borrow-view assembled off a bundle reads the same

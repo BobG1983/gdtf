@@ -4,6 +4,23 @@
 use bevy::prelude::{Component, Deref};
 use serde::Deserialize;
 
+/// Whether a ganger is a **conscious observer / actor** — `true` only while
+/// [`Alive`](LifeState::Alive) ([`LifeState::is_active`]).
+///
+/// The squad-FOV `is_active` gate (`docs/combat/visibility.md`): an Alive ganger
+/// contributes sight and may act; a Downed or Dead one does neither. A distinct
+/// agency predicate, not a bare `bool`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Active(bool);
+
+impl Active {
+    /// Build the agency verdict from the life-state test.
+    #[must_use]
+    pub const fn new(active: bool) -> Self {
+        Self(active)
+    }
+}
+
 /// A ganger's terminal life state — the two-pool outcome machine.
 ///
 /// The combat/death system owns this (it is a state component, not a stat):
@@ -40,8 +57,8 @@ impl LifeState {
     /// SEE NOTHING. [`can_see`](crate::los::can_see) consults this first: an inactive
     /// observer fails the gate regardless of range or line of sight.
     #[must_use]
-    pub const fn is_active(self) -> bool {
-        matches!(self, Self::Alive)
+    pub const fn is_active(self) -> Active {
+        Active::new(matches!(self, Self::Alive))
     }
 }
 

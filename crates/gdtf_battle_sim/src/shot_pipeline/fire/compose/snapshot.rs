@@ -2,7 +2,7 @@
 //! queries, before [`fire`](super::super::fire)'s burst loop takes its mutable
 //! re-borrows.
 
-use bevy::prelude::Entity;
+use bevy::prelude::{Deref, Entity};
 
 use super::super::query::{MeleeQuery, MountedQuery, ShooterQuery, WeaponQuery, WieldsQuery};
 use crate::{
@@ -18,6 +18,24 @@ use crate::{
         WeaponPunch, WeaponShred, WeaponStats,
     },
 };
+
+/// Whether this shot is fired from a **mounted** (emplacement) weapon — `true` when
+/// the shooter is MANNING an emplacement and firing its bolted-down gun (GTW-543),
+/// `false` for a normal carried-weapon shot. Records which weapon the shared firing
+/// preference resolved, so the emplacement-stability seam engages for a mounted shot
+/// only.
+///
+/// A named verdict (no-bare-types) rather than a bare `bool`. Private inner + derived
+/// [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct MountedShot(bool);
+
+impl MountedShot {
+    /// Build the mounted-shot flag from whether the resolved weapon is mounted.
+    pub(super) const fn new(mounted: bool) -> Self {
+        Self(mounted)
+    }
+}
 
 /// The shooter's `Copy` read state, snapshotted **before** the burst loop so the
 /// shooter query is only re-borrowed (mutably, for the `Magazine` decrement) one
@@ -61,7 +79,7 @@ pub(in crate::shot_pipeline::fire) struct ShooterSnapshot {
     // stability seam (cone_for / the recoil-recompute stability_for), steadying the deliberately
     // inaccurate mount. `false` (an un-mounted / normal shot) resolves the zero-identity
     // EmplacementStability, so the shot is byte-identical to before the seam engaged.
-    pub(super) mounted:     bool,
+    pub(super) mounted:     MountedShot,
     // GTW-544: the weapon's optional DamageProfile-over-time (`DotProfile`), snapshotted so
     // `weapon_stats` hands out its `Option<&DotProfile>` borrow to the fold — a penetrating hit
     // from a DOT weapon attaches a `Dot` on the struck ganger. `None` = a non-DOT weapon (no
@@ -116,7 +134,7 @@ impl ShooterSnapshot {
     /// precedent). An un-mounted shot resolves the zero identity, so its stability score — and
     /// thus its cone — is byte-identical to before the seam engaged (the pure-additive property).
     pub(super) fn emplacement_stability(&self, tuning: &CombatTuning) -> EmplacementStability {
-        if self.mounted {
+        if *self.mounted {
             EmplacementStability::new(*tuning.cone_stability.emplacement_stability_bonus)
         } else {
             EmplacementStability::none()
@@ -260,7 +278,7 @@ pub(in crate::shot_pipeline::fire) fn read_shooter(
         suppressed:  suppressed.copied(),
         // GTW-543: whether the resolved ranged weapon is the emplacement's mounted gun (the
         // ganger is manning it) — engages the emplacement stability seam for this shot.
-        mounted:     is_mounted,
+        mounted:     MountedShot::new(is_mounted),
         // GTW-544: copy the resolved weapon's DOT profile into the snapshot (None = a non-DOT
         // weapon = no attach). Rides through `weapon_stats` to the fold's DOT-attach decision.
         dot:         dot.copied(),

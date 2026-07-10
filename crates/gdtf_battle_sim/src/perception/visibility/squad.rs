@@ -6,9 +6,63 @@
 //! the GTW-38 reaction fire — never recompute logic (that is GTW-341). Every read
 //! here is a set lookup: no geometry, no march, no grid / tuning input.
 
-use bevy::{platform::collections::HashSet, prelude::Resource};
+use bevy::{
+    platform::collections::HashSet,
+    prelude::{Deref, Resource},
+};
 
 use crate::{metric::CellLevel, occupancy::OccupancyGrid};
+
+/// Whether a `(cell, level)` is **squad-VISIBLE** — some conscious player-faction
+/// ganger sees it right now (GTW-340 clause 2).
+///
+/// A named domain answer (no bare `bool`): the fog reads it to draw a cell lit, and
+/// the plan/render seams gate on it. Private inner + derived [`Deref`]; build one via
+/// [`CellVisible::new`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CellVisible(bool);
+
+impl CellVisible {
+    /// Build a squad-VISIBLE answer for a cell.
+    #[must_use]
+    pub const fn new(visible: bool) -> Self {
+        Self(visible)
+    }
+}
+
+/// Whether a `(cell, level)` is **squad-EXPLORED** — seen at some point this mission
+/// (VISIBLE ⊆ EXPLORED; GTW-340 clause 2).
+///
+/// A named domain answer (no bare `bool`): the fog reads it to draw a cell dimmed
+/// (remembered), and the planner treats EXPLORED as routable. Private inner + derived
+/// [`Deref`]; build one via [`CellExplored::new`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CellExplored(bool);
+
+impl CellExplored {
+    /// Build a squad-EXPLORED answer for a cell.
+    #[must_use]
+    pub const fn new(explored: bool) -> Self {
+        Self(explored)
+    }
+}
+
+/// Whether a watched ganger should **show / block** for the player squad — the
+/// rendered-only planning read (GTW-340 clause 3).
+///
+/// A named domain answer (no bare `bool`): own-squad is trivially visible; an enemy
+/// shows iff its cell is squad-VISIBLE. Private inner + derived [`Deref`]; build one
+/// via [`GangerVisible::new`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GangerVisible(bool);
+
+impl GangerVisible {
+    /// Build a ganger-visibility answer for the player squad.
+    #[must_use]
+    pub const fn new(visible: bool) -> Self {
+        Self(visible)
+    }
+}
 
 /// Whether a `(cell, level)` is the **player squad's**: own-squad (always shown) or
 /// an other-faction relation (shown only when the cell is squad-VISIBLE) — the
@@ -99,16 +153,16 @@ impl SquadVisibility {
     /// it right now. A pure set lookup: no geometry, no recompute, no grid / tuning
     /// input (GTW-340 clause 2).
     #[must_use]
-    pub fn is_cell_visible(&self, cell: &CellLevel) -> bool {
-        self.visible.contains(cell)
+    pub fn is_cell_visible(&self, cell: &CellLevel) -> CellVisible {
+        CellVisible::new(self.visible.contains(cell))
     }
 
     /// Whether `cell` is **squad-EXPLORED** — seen at some point this mission (it may or
     /// may not also be VISIBLE now; EXPLORED is the superset). A pure set lookup: no
     /// geometry, no recompute, no grid / tuning input (GTW-340 clause 2).
     #[must_use]
-    pub fn is_cell_explored(&self, cell: &CellLevel) -> bool {
-        self.explored.contains(cell)
+    pub fn is_cell_explored(&self, cell: &CellLevel) -> CellExplored {
+        CellExplored::new(self.explored.contains(cell))
     }
 
     /// The squad-VISIBLE cells — the iterator/query seam over the VISIBLE set (GTW-340
@@ -151,12 +205,12 @@ pub fn is_ganger_visible(
     squad: &SquadVisibility,
     target: &CellLevel,
     relation: FactionRelation,
-) -> bool {
+) -> GangerVisible {
     match relation {
         // Your own squad is always shown (player ids are trivially visible).
-        FactionRelation::OwnSquad => true,
+        FactionRelation::OwnSquad => GangerVisible::new(true),
         // An enemy shows iff its cell is squad-VISIBLE — the same read that
         // shows/hides its entity, so plan and render agree.
-        FactionRelation::Other => squad.is_cell_visible(target),
+        FactionRelation::Other => GangerVisible::new(*squad.is_cell_visible(target)),
     }
 }

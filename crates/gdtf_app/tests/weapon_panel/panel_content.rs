@@ -4,7 +4,7 @@ use bevy::{prelude::*, ui::Display};
 use gdtf_app::test_support::{WeaponContent, WeaponMagazineText, WeaponNameText};
 use gdtf_battle_input::SelectedShooter;
 use gdtf_battle_sim::{
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     weapon::MagazineSize,
 };
 
@@ -17,7 +17,11 @@ use super::harness::*;
 #[test]
 fn weapon_panel_shows_name_and_magazine_for_the_selected_ganger() {
     let mut app = battle_running_app();
-    let magazine = Magazine::new(20, MagazineSize::new(30), ReloadTu::new(12));
+    let magazine = Magazine::new(
+        LoadedRounds::new(20),
+        MagazineSize::new(30),
+        ReloadTu::new(12),
+    );
     spawn_armed_and_select(&mut app, weapon_kit("Autogun", magazine));
     app.update();
 
@@ -56,7 +60,11 @@ fn selection_change_mutates_the_panel_in_place() {
         &mut app,
         weapon_kit(
             "Lasgun",
-            Magazine::new(8, MagazineSize::new(20), ReloadTu::new(10)),
+            Magazine::new(
+                LoadedRounds::new(8),
+                MagazineSize::new(20),
+                ReloadTu::new(10),
+            ),
         ),
     );
     app.update();

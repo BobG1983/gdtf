@@ -13,8 +13,29 @@
 //! message-drain path (synchronous — never a deferred command — so the gain trips
 //! `Changed<InflictedInjuries>` the same tick the GTW-436 projector re-derives on).
 
+use bevy::prelude::Deref;
+
 use super::MovementCostFactor;
 use crate::injuries::{BleedAfflicted, StatDeltaLedger};
+
+/// Whether an injury effect **disables the hand** on its injury's struck arm — the
+/// read-side answer [`ApplyInjuryEffect::disables_hand`] returns (folded into
+/// [`InflictedInjuries::hands_available`](crate::injuries::InflictedInjuries::hands_available)).
+///
+/// A named predicate newtype (no-bare-types: "the effect disables a hand" is a domain
+/// answer, not a bare `bool`). Private inner, read through the derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HandDisabling(bool);
+
+impl HandDisabling {
+    /// Wrap a computed hand-disabling answer — the hand-disabling effect builds one from
+    /// its resolved `bool` (an implementor lives in a sibling file, so the private inner
+    /// is set through this constructor, never a tuple literal).
+    #[must_use]
+    pub const fn new(disables: bool) -> Self {
+        Self(disables)
+    }
+}
 
 /// The mutable **fold surface** an injury effect folds into — the three accumulators of
 /// one ganger's [`InflictedInjuries`](crate::injuries::InflictedInjuries) ledger, lent
@@ -92,10 +113,10 @@ pub trait ApplyInjuryEffect {
     /// folds over the ledger's entries (the struck SIDE comes from each entry's
     /// [`part`](crate::injuries::GainedInjury::part), never from the effect).
     ///
-    /// Defaulted to `false` so only the hand-disabling effect overrides it — a new
-    /// effect file never has to name it.
-    fn disables_hand(&self) -> bool {
-        false
+    /// Defaulted to [`HandDisabling`]`(false)` so only the hand-disabling effect overrides
+    /// it — a new effect file never has to name it.
+    fn disables_hand(&self) -> HandDisabling {
+        HandDisabling(false)
     }
 
     /// **Heal** this effect back OUT of the accumulators — the inverse of

@@ -34,7 +34,7 @@ use crate::{
     ganger::{Fight, Luck},
     hit_location::roll_body_part,
     matchup::{Matchup, matchup},
-    melee::{apply_melee_multiplier, melee_damage_mult, opposed_fight},
+    melee::{Connected, apply_melee_multiplier, melee_damage_mult, opposed_fight},
     resolve_and_apply::{StruckPiece, TargetGanger},
     resolve_hit::{HpDamage, resolve_hit},
     rng::{FightRng, SeverityRng, ShotRng},
@@ -113,8 +113,8 @@ pub struct Combatants {
 /// `connect == false`, [`Severity::None`], and a zero `hp_damage` (nothing was applied).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MeleeStrike {
-    /// `true` iff the §7 opposed roll connected (`atk > def`) — the strike landed.
-    pub connect:   bool,
+    /// Whether the §7 opposed roll connected (`atk > def`) — the strike landed.
+    pub connect:   Connected,
     /// The rolled §6 wound severity on a connecting hit; [`Severity::None`] on a miss.
     pub severity:  Severity,
     /// The §5→§7-multiplied HP loss the connecting hit applied; zero on a miss (GTW-572).
@@ -130,7 +130,7 @@ impl MeleeStrike {
     /// A **missed** strike — the opposed roll was lost, so no damage was applied, no
     /// severity was drawn ([`Severity::None`], zero HP loss), and no armor was worn.
     const MISS: Self = Self {
-        connect:   false,
+        connect:   Connected::new(false),
         severity:  Severity::None,
         hp_damage: HpDamage::new(0),
         wear:      ArmorWearOutcome::Unaffected,
@@ -151,7 +151,7 @@ fn melee_struck_piece(
     weapon: MeleeWeaponHit<'_>,
 ) -> (ArmorPiece, Matchup) {
     match piece {
-        Some(p) if p.protects() => {
+        Some(p) if *p.protects() => {
             let assembled = ArmorPiece::new(
                 p.floor,
                 p.protection,
@@ -233,7 +233,7 @@ pub fn resolve_melee_strike(
     );
 
     // (3) Miss — the opposed roll was lost: no damage, no severity draw (a clean miss).
-    if !outcome.connect {
+    if !*outcome.connect {
         return MeleeStrike::MISS;
     }
 
@@ -284,7 +284,7 @@ pub fn resolve_melee_strike(
     );
 
     MeleeStrike {
-        connect: true,
+        connect: Connected::new(true),
         severity,
         // Surface the SCALED applied HP loss (GTW-572) — the same number `apply_hit` folded
         // onto the target — so the owning dispatcher's MeleeStruck fact can carry it.

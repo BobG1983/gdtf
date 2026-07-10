@@ -24,7 +24,7 @@ use gdtf_battle_sim::{
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
     inflicted_wound::InflictedWounds,
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     occupancy::TerrainKind,
     occupancy_sync::OccupancyMaintenancePlugin,
     prelude::{
@@ -110,7 +110,11 @@ fn spawn_shooter(app: &mut App) -> Entity {
             DamageType::Kinetic,
         ),
         HandlingProfile::new(
-            Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+            Magazine::new(
+                LoadedRounds::new(10),
+                MagazineSize::new(30),
+                ReloadTu::new(12),
+            ),
             FireMode::new(vec![single_mode(0.2, 1)]),
             Stable::new(true),
             Shove::new(false),
@@ -199,11 +203,11 @@ fn clicking_cover_fires_and_the_sim_depletes_it() {
     {
         let grid = app.world().resource::<OccupancyGrid>();
         assert!(
-            grid.is_blocked(&cover_cell()),
+            *grid.is_blocked(&cover_cell()),
             "BEFORE: the standing cover cell must block",
         );
         assert!(
-            !grid.is_cover_destroyed(&cover_cell()),
+            !*grid.is_cover_destroyed(&cover_cell()),
             "BEFORE: the cover cell must not yet be in the destroyed-cover set",
         );
     }
@@ -226,13 +230,13 @@ fn clicking_cover_fires_and_the_sim_depletes_it() {
     // destroyed-cover set, so it no longer blocks.
     let grid = app.world().resource::<OccupancyGrid>();
     assert!(
-        grid.is_cover_destroyed(&cover_cell()),
+        *grid.is_cover_destroyed(&cover_cell()),
         "AFTER: clicking the cover must have fired a real shot that depleted it — \
          sync_destroyed_cover marks the smashed cell destroyed (the click→fire→free chain); \
          got destroyed-set miss",
     );
     assert!(
-        !grid.is_blocked(&cover_cell()),
+        !*grid.is_blocked(&cover_cell()),
         "AFTER: a destroyed cover cell must stop blocking (the freed cell)",
     );
 }

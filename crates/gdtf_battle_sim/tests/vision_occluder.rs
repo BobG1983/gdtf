@@ -151,11 +151,11 @@ fn tagged_slab_occludes_but_untagged_slab_does_not() {
         unreachable!("setup inserts SquadVisibility");
     };
     assert!(
-        fog_tagged.is_cell_visible(&observer_at()),
+        *fog_tagged.is_cell_visible(&observer_at()),
         "sanity: the observer always sees its own cell",
     );
     assert!(
-        !fog_tagged.is_cell_visible(&target_at()),
+        !*fog_tagged.is_cell_visible(&target_at()),
         "C8a: a Slab tagged BlocksVision OCCLUDES — the cell behind it is NOT in the FOV",
     );
 
@@ -170,7 +170,7 @@ fn tagged_slab_occludes_but_untagged_slab_does_not() {
         unreachable!("setup inserts SquadVisibility");
     };
     assert!(
-        fog_untagged.is_cell_visible(&target_at()),
+        *fog_untagged.is_cell_visible(&target_at()),
         "C8b: the SAME Slab WITHOUT the tag does NOT occlude — the cell behind it IS in the FOV \
          (the discriminating pair: only the BlocksVision tag changed the verdict)",
     );
@@ -186,11 +186,11 @@ fn existing_wall_still_occludes() {
         unreachable!("setup inserts SquadVisibility");
     };
     assert!(
-        fog.is_cell_visible(&observer_at()),
+        *fog.is_cell_visible(&observer_at()),
         "sanity: the observer sees its own cell",
     );
     assert!(
-        !fog.is_cell_visible(&target_at()),
+        !*fog.is_cell_visible(&target_at()),
         "C8c (zero regression): an existing Wall still OCCLUDES the sightline (cell behind it \
          is NOT in the FOV) — the tag-derived occluder reproduces the wall's existing behaviour",
     );
@@ -211,7 +211,7 @@ fn path_only_slab_does_not_occlude_vision() {
         unreachable!("setup inserts SquadVisibility");
     };
     assert!(
-        fog.is_cell_visible(&target_at()),
+        *fog.is_cell_visible(&target_at()),
         "C8d: a Slab tagged ONLY BlocksPathfinding does NOT occlude vision (cell behind it IS \
          visible) — vision and path are independent (C7)",
     );
@@ -245,14 +245,14 @@ fn vision_and_path_surfaces_are_independent_on_the_grid() {
         "the BlocksVision-tagged slab occludes vision (it is on the vision surface)",
     );
     assert!(
-        !grid.is_path_blocked(&vision_only),
+        !*grid.is_path_blocked(&vision_only),
         "C8d: a vision-only occluder does NOT block a path (it is NOT on the path surface) — \
          the two surfaces are independent (C7)",
     );
 
     // The path-only slab blocks a path but does NOT occlude vision.
     assert!(
-        grid.is_path_blocked(&path_only),
+        *grid.is_path_blocked(&path_only),
         "the BlocksPathfinding-tagged slab blocks a path (it is on the path surface)",
     );
     assert!(
@@ -287,7 +287,7 @@ fn occluder_band_gates_the_sightline() {
         unreachable!("setup inserts SquadVisibility");
     };
     assert!(
-        low_fog.is_cell_visible(&target_at()),
+        *low_fog.is_cell_visible(&target_at()),
         "C8e: a LOW-band occluder is CLEARED by the standing observer's higher eye-line (target \
          IS visible) — a sightline strictly above the occluder's band sails over it",
     );
@@ -302,7 +302,7 @@ fn occluder_band_gates_the_sightline() {
         unreachable!("setup inserts SquadVisibility");
     };
     assert!(
-        !high_fog.is_cell_visible(&target_at()),
+        !*high_fog.is_cell_visible(&target_at()),
         "C8e: a HIGH-band occluder at the SAME cell OCCLUDES the SAME eye-line (target NOT \
          visible) — the band gate flips the verdict with only the occluder band changed",
     );
@@ -325,7 +325,7 @@ fn adding_and_removing_occluder_flips_visibility() {
         unreachable!("setup inserts SquadVisibility");
     };
     assert!(
-        before.is_cell_visible(&target_at()),
+        *before.is_cell_visible(&target_at()),
         "precondition: with the untagged slab the cell behind it is VISIBLE",
     );
 
@@ -343,7 +343,7 @@ fn adding_and_removing_occluder_flips_visibility() {
         unreachable!("SquadVisibility persists");
     };
     assert!(
-        !occluded.is_cell_visible(&target_at()),
+        !*occluded.is_cell_visible(&target_at()),
         "C8f: ADDING BlocksVision at runtime occludes the sightline (the cell behind it leaves \
          VISIBLE) — the real recompute fired off the C6 Added<BlocksVision> trigger",
     );
@@ -359,7 +359,7 @@ fn adding_and_removing_occluder_flips_visibility() {
         unreachable!("SquadVisibility persists");
     };
     assert!(
-        reopened.is_cell_visible(&target_at()),
+        *reopened.is_cell_visible(&target_at()),
         "C8f: REMOVING BlocksVision re-opens the sightline (the cell behind it re-enters \
          VISIBLE) — the real recompute fired off the C6 RemovedComponents<BlocksVision> trigger",
     );

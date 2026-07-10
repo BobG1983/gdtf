@@ -34,7 +34,7 @@ pub fn faced_cell(position: &Position, facing: &Facing) -> (Cell, Level) {
     // (2)-(4) Step from the cell CENTER by the facing's UNIT forward step, then floor
     //         back to a cell. Stepping from the center (not the corner) is what makes a
     //         0.707 diagonal cross the boundary; SimPos derefs to Vec3 for the add.
-    let stepped = *cell_center(cell, level) + facing.forward_step();
+    let stepped = *cell_center(cell, level) + *facing.forward_step();
     let (faced, _faced_level) = pos_to_cell(SimPos::new(stepped.x, stepped.y, stepped.z));
 
     // (5) The faced cell, on the shooter's OWN level (the forward step is horizontal).

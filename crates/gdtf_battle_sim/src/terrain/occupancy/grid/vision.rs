@@ -1,7 +1,7 @@
 //! The GTW-502 height-aware vision-occlusion query surface — the tag-derived
 //! occluder map the LoS/FoV march reads.
 
-use super::storage::OccupancyGrid;
+use super::{storage::OccupancyGrid, types::OccludesVision};
 use crate::{cover::HeightBand, metric::CellLevel};
 
 impl OccupancyGrid {
@@ -26,7 +26,7 @@ impl OccupancyGrid {
     /// `cell_level` reads `None` (graceful — no panic).
     #[must_use]
     pub fn vision_occluder_at(&self, cell_level: &CellLevel) -> Option<HeightBand> {
-        if self.is_cover_destroyed(cell_level) {
+        if *self.is_cover_destroyed(cell_level) {
             return None;
         }
         self.vision_blocking.get(cell_level).copied()
@@ -43,11 +43,11 @@ impl OccupancyGrid {
     /// over it, identically to how cover bands gate the march. A destroyed-cover or unmarked
     /// cell reads `false` (graceful — no panic).
     #[must_use]
-    pub fn occludes_vision(&self, cell_level: &CellLevel, test_band: HeightBand) -> bool {
-        self.vision_occluder_at(cell_level).is_some_and(|band| {
+    pub fn occludes_vision(&self, cell_level: &CellLevel, test_band: HeightBand) -> OccludesVision {
+        OccludesVision::new(self.vision_occluder_at(cell_level).is_some_and(|band| {
             crate::clearance::round_clears_occupant(test_band, band)
                 == crate::clearance::Clearance::Impacts
-        })
+        }))
     }
 
     /// Mark `cell_level` as **vision-occluding** at `band` — insert it into the tag-derived

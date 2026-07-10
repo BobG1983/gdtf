@@ -6,7 +6,7 @@ use gdtf_battle_sim::{
     battle::BattleInProgress,
     cover::HeightBand,
     ganger::{Faction, Hp, LifeState, Tu, TuMax, Wounds},
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     metric::{Cell, Level},
     occupancy::OccupancyGrid,
     test_support::{key, single_mode},
@@ -46,7 +46,7 @@ fn shooter_weapon_kit(mode: FireModeSpec) -> impl bevy::prelude::Bundle {
             // known 10-round load rides in the HandlingProfile (a separate Magazine in
             // the same bundle would be a duplicate-component panic).
             HandlingProfile::new(
-                Magazine::new(10, mag_size, ReloadTu::new(12)),
+                Magazine::new(LoadedRounds::new(10), mag_size, ReloadTu::new(12)),
                 FireMode::new(vec![mode]),
                 Stable::new(true),
                 Shove::new(false),

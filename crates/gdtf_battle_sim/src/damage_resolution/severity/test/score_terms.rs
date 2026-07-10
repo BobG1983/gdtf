@@ -98,8 +98,10 @@ fn near_zero_pen_cannot_reach_severe_buckets() {
         &mut high_score_rng,
     );
     assert!(
-        high_pen_score > low_pen_score,
-        "a higher pen_damage must strictly raise the score (pen_term wired in): {high_pen_score} <= {low_pen_score}",
+        *high_pen_score > *low_pen_score,
+        "a higher pen_damage must strictly raise the score (pen_term wired in): {} <= {}",
+        *high_pen_score,
+        *low_pen_score,
     );
 }
 
@@ -146,8 +148,10 @@ fn luck_is_directional() {
         &mut high_shooter_rng,
     );
     assert!(
-        high_shooter_score > low_shooter_score,
-        "higher shooter Luck must strictly raise the score (shooter_term wired in): {high_shooter_score} <= {low_shooter_score}",
+        *high_shooter_score > *low_shooter_score,
+        "higher shooter Luck must strictly raise the score (shooter_term wired in): {} <= {}",
+        *high_shooter_score,
+        *low_shooter_score,
     );
 
     // Defender Luck: more ⇒ ≤ bucket (floor extends down; ceiling fixed).
@@ -184,8 +188,10 @@ fn head_hit_outscores_leg_hit() {
     // `>` (not `>=`) is therefore always correct here AND fails iff the
     // `+ part_mod` term is reverted out of the score — pinning the wiring.
     assert!(
-        head_score > leg_score,
-        "a head hit must strictly out-score a leg hit at identical seed/inputs (part_mod wired in): {head_score} <= {leg_score}",
+        *head_score > *leg_score,
+        "a head hit must strictly out-score a leg hit at identical seed/inputs (part_mod wired in): {} <= {}",
+        *head_score,
+        *leg_score,
     );
 
     let mut head_b = rng();

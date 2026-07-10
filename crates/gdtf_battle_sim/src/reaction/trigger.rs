@@ -188,7 +188,7 @@ pub fn reaction_trigger(
         // reactor rolls against it, no ReactionRng draws). A moving shooter still reveals via
         // the Changed<Position> surface above; only the shot's noise is removed. A silenced
         // INTERRUPT shot's own FireDeclaration is gated the same way (it stays silent too).
-        if shooter_weapon_silenced(
+        if *shooter_weapon_silenced(
             declaration.shooter,
             &wields,
             &probes.mounted,
@@ -230,7 +230,7 @@ pub fn reaction_trigger(
     for actor in &acting_rows {
         // A dead/downed actor is not a live act-in-LOS event — fail closed (only an Alive
         // ganger moving/firing crosses a sightline as an act to react to).
-        if !actor.life.is_active() {
+        if !*actor.life.is_active() {
             continue;
         }
         // The candidate REACTORS for this actor, in deterministic (level, y, x) order.

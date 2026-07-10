@@ -4,7 +4,7 @@
 
 use crate::{
     armor::ArmorPiece,
-    matchup::{Matchup, matchup_multiplier},
+    matchup::{Matchup, MatchupMultiplier, matchup_multiplier},
     resolve_hit::result::{HitResult, HpDamage, IntegrityWear, PenetratingDamage},
     tuning::CombatTuning,
     weapon::{WeaponDamage, WeaponPunch, WeaponShred},
@@ -32,15 +32,15 @@ const fn round_to_i32(value: f32) -> i32 {
 /// `i32` — the **only** stats the matchup touches (`weapons-and-armor.md` §"How the
 /// matchup wheel plugs in", resolution.md §5).
 ///
-/// `stat` is the weapon stat's already-`Deref`'d `i32`; `mult` is the matchup
-/// scalar. Computed in `f32` (`stat × mult`) then rounded back via
-/// [`round_to_i32`].
+/// `stat` is the weapon stat's already-`Deref`'d `i32`; `mult` is the
+/// [`MatchupMultiplier`] the wheel resolved. Computed in `f32` (`stat × mult`) then
+/// rounded back via [`round_to_i32`].
 #[expect(
     clippy::cast_precision_loss,
     reason = "i32 stat → f32 for the matchup multiply; weapon punch/shred magnitudes are far inside f32's exact-integer range"
 )]
-pub(super) fn scale_by_matchup(stat: i32, mult: f32) -> i32 {
-    round_to_i32(stat as f32 * mult)
+pub(super) fn scale_by_matchup(stat: i32, mult: MatchupMultiplier) -> i32 {
+    round_to_i32(stat as f32 * *mult)
 }
 
 /// Resolve a single landed hit into a [`HitResult`] — the per-hit damage /
@@ -72,7 +72,7 @@ pub fn resolve_hit(
     tuning: &CombatTuning,
 ) -> HitResult {
     // (a) The matchup scalar — the single hook (E3.2). Touches punch & shred only.
-    let mult = *matchup_multiplier(matchup, tuning);
+    let mult = matchup_multiplier(matchup, tuning);
 
     // (b) Apply the multiplier to PUNCH & SHRED ONLY (rounded back to i32).
     let punch_scaled = scale_by_matchup(*weapon_punch, mult);

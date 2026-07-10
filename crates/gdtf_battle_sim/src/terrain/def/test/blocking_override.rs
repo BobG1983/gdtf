@@ -17,8 +17,8 @@
 use bevy::math::Vec3;
 
 use super::super::{
-    LosBlocking, TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind, TerrainTag,
-    TerrainUuid, derives_path_blocking, derives_vision_occlusion,
+    BlocksPathingOverride, LosBlocking, TerrainDef, TerrainDisplayName, TerrainPresenterKind,
+    TerrainSimKind, TerrainTag, TerrainUuid, derives_path_blocking, derives_vision_occlusion,
 };
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
@@ -56,7 +56,7 @@ fn slab_def(blocks_pathing: Option<bool>, blocks_los: Option<LosBlocking>) -> Te
         },
         tags: Vec::new(),
         on_death: None,
-        blocks_pathing,
+        blocks_pathing: blocks_pathing.map(BlocksPathingOverride::new),
         blocks_los,
     }
 }
@@ -83,7 +83,7 @@ fn wall_def(
         },
         tags,
         on_death: None,
-        blocks_pathing,
+        blocks_pathing: blocks_pathing.map(BlocksPathingOverride::new),
         blocks_los,
     }
 }
@@ -91,7 +91,7 @@ fn wall_def(
 /// Apply a def's DERIVED blocking to `grid` at `at` — the exact pair of writes the setup spawn
 /// loop makes (path marker → path surface; vision band → occluder surface).
 fn apply_derived(grid: &mut OccupancyGrid, def: &TerrainDef, at: CellLevel) {
-    if derives_path_blocking(def) {
+    if *derives_path_blocking(def) {
         grid.set_path_blocking(at);
     }
     if let Some(band) = derives_vision_occlusion(def) {
@@ -142,7 +142,7 @@ fn walkable(grid: &OccupancyGrid, origin: CellLevel, target: CellLevel) -> bool 
 fn pathing_only_blocker_is_los_transparent() {
     let def = slab_def(Some(true), None);
     assert!(
-        derives_path_blocking(&def),
+        *derives_path_blocking(&def),
         "blocks_pathing: Some(true) forces the Slab to block the path",
     );
     assert_eq!(
@@ -176,7 +176,7 @@ fn pathing_only_blocker_is_los_transparent() {
 fn los_only_blocker_is_walkable() {
     let def = slab_def(Some(false), Some(LosBlocking::Full));
     assert!(
-        !derives_path_blocking(&def),
+        !*derives_path_blocking(&def),
         "blocks_pathing: Some(false) forces the Slab walkable",
     );
     assert_eq!(
@@ -265,7 +265,7 @@ fn override_beats_tags() {
     let mut tagged_path = path_off;
     tagged_path.tags = vec![TerrainTag::BlocksPathfinding];
     assert!(
-        !derives_path_blocking(&tagged_path),
+        !*derives_path_blocking(&tagged_path),
         "blocks_pathing: Some(false) beats a BlocksPathfinding tag",
     );
 

@@ -201,5 +201,5 @@ fn authored_arc_trajectory_parses() {
         TrajectoryStyle::Arc,
         "an authored `trajectory: Arc` parses as Arc",
     );
-    assert!(spec.trajectory.is_arc(), "the arc weapon reports is_arc()");
+    assert!(*spec.trajectory.is_arc(), "the arc weapon reports is_arc()");
 }

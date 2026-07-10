@@ -6,7 +6,7 @@
 use bevy::platform::collections::HashSet;
 use serde::Deserialize;
 
-use super::{ApplyFieldEffect, OccupantArmor};
+use super::{ApplyFieldEffect, DrainExempt, OccupantArmor};
 use crate::armor::ArmorType;
 
 /// The set of [`ArmorType`]s that make a ganger **wholly immune** to a field — the GTW-545
@@ -81,13 +81,13 @@ impl ApplyFieldEffect for ApplyImmunity<'_> {
     /// resolved piece-by-piece through the surface's worn-armor lookup. A piece the
     /// lookup cannot resolve (a stale relationship) counts as NOT immune (fail-closed:
     /// the field still drains).
-    fn exempts_occupant(&self, armor: &OccupantArmor<'_, '_, '_>) -> bool {
-        armor.wears.pieces().any(|piece| {
+    fn exempts_occupant(&self, armor: &OccupantArmor<'_, '_, '_>) -> DrainExempt {
+        DrainExempt::new(armor.wears.pieces().any(|piece| {
             armor
                 .worn
                 .get(piece)
                 .is_ok_and(|armor_type| self.armor_types.contains(armor_type))
-        })
+        }))
     }
 }
 
@@ -122,7 +122,7 @@ mod tests {
         };
         let armor = OccupantArmor { wears, worn: &worn };
         let set = ImmuneArmorTypes::new(immune.iter().copied());
-        ApplyImmunity::new(&set).exempts_occupant(&armor)
+        *ApplyImmunity::new(&set).exempts_occupant(&armor)
     }
 
     /// A worn piece whose type IS in the immune set exempts the occupant.

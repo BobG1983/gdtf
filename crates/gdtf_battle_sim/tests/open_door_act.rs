@@ -125,7 +125,7 @@ fn open_door_tu(app: &App) -> u8 {
 fn path_blocked(app: &App, at: CellLevel) -> Option<bool> {
     app.world()
         .get_resource::<OccupancyGrid>()
-        .map(|g| g.is_path_blocked(&at))
+        .map(|g| *g.is_path_blocked(&at))
 }
 
 /// The grid's vision-occluder band at `at` — `None` if absent OR the cell is not occluding.

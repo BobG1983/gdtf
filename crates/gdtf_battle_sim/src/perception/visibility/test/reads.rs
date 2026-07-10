@@ -35,16 +35,16 @@ fn cell_read_seams_are_pure_set_lookups() {
     let (fog, visible_cell, explored_only_cell, unseen_cell) = fixture();
 
     // A VISIBLE cell is both visible and explored.
-    assert!(fog.is_cell_visible(&visible_cell));
-    assert!(fog.is_cell_explored(&visible_cell));
+    assert!(*fog.is_cell_visible(&visible_cell));
+    assert!(*fog.is_cell_explored(&visible_cell));
 
     // An EXPLORED-only cell is explored but not visible.
-    assert!(!fog.is_cell_visible(&explored_only_cell));
-    assert!(fog.is_cell_explored(&explored_only_cell));
+    assert!(!*fog.is_cell_visible(&explored_only_cell));
+    assert!(*fog.is_cell_explored(&explored_only_cell));
 
     // An UNSEEN cell is in neither set.
-    assert!(!fog.is_cell_visible(&unseen_cell));
-    assert!(!fog.is_cell_explored(&unseen_cell));
+    assert!(!*fog.is_cell_visible(&unseen_cell));
+    assert!(!*fog.is_cell_explored(&unseen_cell));
 }
 
 /// `visible_cells` yields exactly the VISIBLE set — the iterator seam (clause 2).
@@ -69,7 +69,7 @@ fn visible_cells_iterator_yields_the_visible_set() {
 fn player_ganger_is_always_visible() {
     let (fog, _visible, _explored, unseen_cell) = fixture();
     assert!(
-        is_ganger_visible(&fog, &unseen_cell, FactionRelation::OwnSquad),
+        *is_ganger_visible(&fog, &unseen_cell, FactionRelation::OwnSquad),
         "a player ganger is trivially visible regardless of the squad sets"
     );
 }
@@ -82,15 +82,15 @@ fn enemy_ganger_visible_iff_cell_is_visible() {
     let (fog, visible_cell, explored_only_cell, unseen_cell) = fixture();
 
     assert!(
-        is_ganger_visible(&fog, &visible_cell, FactionRelation::Other),
+        *is_ganger_visible(&fog, &visible_cell, FactionRelation::Other),
         "an enemy at a squad-VISIBLE cell is visible"
     );
     assert!(
-        !is_ganger_visible(&fog, &explored_only_cell, FactionRelation::Other),
+        !*is_ganger_visible(&fog, &explored_only_cell, FactionRelation::Other),
         "an enemy at a merely-EXPLORED cell is NOT visible (only VISIBLE shows enemies)"
     );
     assert!(
-        !is_ganger_visible(&fog, &unseen_cell, FactionRelation::Other),
+        !*is_ganger_visible(&fog, &unseen_cell, FactionRelation::Other),
         "an enemy at an UNSEEN cell is NOT visible"
     );
 }

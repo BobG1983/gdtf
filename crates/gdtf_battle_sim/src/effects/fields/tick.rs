@@ -188,7 +188,7 @@ pub fn tick_fields(
         let armor = OccupantArmor { wears, worn: &worn };
         if consequences
             .iter()
-            .any(|consequence| consequence.exempts_occupant(&armor))
+            .any(|consequence| *consequence.exempts_occupant(&armor))
         {
             continue;
         }

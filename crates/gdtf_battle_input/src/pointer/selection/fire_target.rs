@@ -174,7 +174,7 @@ fn cell_is_fireable_target(
         // An UNOCCUPIED cell is a fire target iff it is intact blocking structure (cover / wall)
         // on a squad-VISIBLE cell (GTW-377). A bare floor cell (`!is_blocked`) is NOT a target.
         None => {
-            reads.occupancy.is_blocked(cell)
+            *reads.occupancy.is_blocked(cell)
                 && cell_squad_visible(reads.squad.as_deref(), cell, None).is_squad_visible()
         }
     }

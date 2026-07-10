@@ -26,7 +26,7 @@ pub(super) use crate::{
         Stance, StanceKind, Suppressed, SuppressorCell, Toughness, Tu, TuMax, Wounds,
     },
     inflicted_wound::InflictedWounds,
-    magazine::{Magazine, ReloadTu, mode_tu_cost},
+    magazine::{LoadedRounds, Magazine, ReloadTu, mode_tu_cost},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     occupancy_sync::OccupancyMaintenancePlugin,
@@ -79,7 +79,7 @@ pub(super) fn spawn_shooter(
         // handling's magazine as-authored, so no separate Magazine insert is needed —
         // a second Magazine in the spawn tuple would be a duplicate-component panic).
         HandlingProfile::new(
-            Magazine::new(10, mag_size, reload_tu),
+            Magazine::new(LoadedRounds::new(10), mag_size, reload_tu),
             FireMode::new(vec![mode]),
             Stable::new(true),
             Shove::new(false),

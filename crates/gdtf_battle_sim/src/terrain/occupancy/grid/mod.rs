@@ -9,6 +9,9 @@ mod storage;
 mod types;
 mod vision;
 
-pub use stairs::StairEyeOffset;
+pub use stairs::{StairCell, StairEyeOffset};
 pub use storage::OccupancyGrid;
-pub use types::{DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancySlot};
+pub use types::{
+    Blocked, CoverDestroyed, DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccludesVision,
+    OccupancySlot, PathBlocked,
+};

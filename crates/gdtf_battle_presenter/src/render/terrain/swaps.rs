@@ -228,7 +228,7 @@ pub fn indicate_emplacement_occupied(
         // The tile the manned/unmanned state resolves to: the OCCUPIED variant while manned,
         // the VACANT emplacement tile otherwise (a Vacant `Changed` first-observation retargets
         // to the def it already draws — an inert no-op, never a mis-tint).
-        let role = if state.is_occupied() {
+        let role = if *state.is_occupied() {
             TileRole::EmplacementOccupied
         } else {
             TileRole::Emplacement

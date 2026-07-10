@@ -175,22 +175,22 @@ fn empty_situation_builds_empty_graph() {
 /// back faithfully.
 #[test]
 fn link_kind_one_way_predicate() {
-    assert!(!LinkKind::stair().is_one_way());
-    assert!(!LinkKind::ladder().is_one_way());
+    assert!(!*LinkKind::stair().is_one_way());
+    assert!(!*LinkKind::ladder().is_one_way());
     assert!(
-        LinkKind::Stair {
+        *LinkKind::Stair {
             one_way: OneWay::forward_only(),
         }
         .is_one_way()
     );
     assert!(
-        LinkKind::Ladder {
+        *LinkKind::Ladder {
             one_way: OneWay::forward_only(),
         }
         .is_one_way()
     );
     assert!(
-        !LinkKind::Ladder {
+        !*LinkKind::Ladder {
             one_way: OneWay::bidirectional(),
         }
         .is_one_way()

@@ -7,7 +7,7 @@ use super::super::{
     assembler::PlacedPrefab,
     geometry::{Footprint, RegionRect},
     packer::MaxRectsPacker,
-    tuning::ProcgenTuning,
+    tuning::{MinDensityFloor, ProcgenTuning},
 };
 use crate::{
     level::{Prefab, PrefabKey, PrefabRegistry, SpawnRole, ThemeUuid},
@@ -64,7 +64,7 @@ pub(super) fn run_fill_pass(
     fill: &mut Vec<PlacedPrefab>,
     covered: &mut i64,
     board_cells: i64,
-    min_density: f32,
+    min_density: MinDensityFloor,
     rng: &mut ProcgenRng,
 ) {
     if bucket.is_empty() {
@@ -72,7 +72,7 @@ pub(super) fn run_fill_pass(
     }
     loop {
         // C1 termination: stop once the coverage fraction reaches the density floor.
-        if coverage_fraction(*covered, board_cells) >= min_density {
+        if coverage_fraction(*covered, board_cells) >= *min_density {
             return;
         }
         // Draw a random prefab from the bucket (the one RNG draw per attempt) and try to

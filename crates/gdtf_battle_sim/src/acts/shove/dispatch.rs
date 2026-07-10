@@ -201,9 +201,9 @@ pub fn dispatch_shove(
         if request.source == ShoveSource::Deliberate {
             // The deliberate act: an 8-adjacent, opposing, ALIVE target only (mirrors the melee
             // ganger-arm gates). A rejected gate is a no-op (no TU, no shove).
-            if !is_8_adjacent(shover_pos, target_pos)
+            if !*is_8_adjacent(shover_pos, target_pos)
                 || shover_faction == target_faction
-                || !target_life.is_active()
+                || !*target_life.is_active()
             {
                 continue;
             }

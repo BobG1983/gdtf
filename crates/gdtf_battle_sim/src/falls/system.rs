@@ -233,7 +233,7 @@ pub fn apply_falls(
             // Only a LIVE (Alive) ganger falls — a corpse/downed body is not a standing actor
             // for trigger (a). (A Downed body HOLDS its cell but is not "standing"; the fall
             // mechanic is for a standing ganger — resolution.md §Falls.)
-            if !life.is_active() {
+            if !*life.is_active() {
                 continue;
             }
             // The C1 key match: SAME cell AND SAME level as the destroyed slab (the
@@ -244,7 +244,7 @@ pub fn apply_falls(
 
             // C3: a stair lower-endpoint occupant is BRACED — it does not fall through its own
             // stair (the stair supports it). Skip (no drop, no damage, no signal).
-            if occupancy.is_stair_cell(&position) {
+            if *occupancy.is_stair_cell(&position) {
                 continue;
             }
 

@@ -1,7 +1,7 @@
 //! The §6 score math + the roll — [`SeverityInputs`], the seeded random term, the
 //! score formula, and the [`roll_severity`] entry point.
 
-use super::kind::{PartSeverityMod, Severity, bucket};
+use super::kind::{PartSeverityMod, Severity, SeverityScore, bucket};
 use crate::{
     ganger::{Luck, Toughness},
     resolve_hit::PenetratingDamage,
@@ -112,13 +112,15 @@ pub(super) fn severity_score(
     inputs: &SeverityInputs,
     scaling: &SeverityScaling,
     rng: &mut SeverityRng,
-) -> f32 {
+) -> SeverityScore {
     let pen_term = *scaling.pen_damage_scale * pen_to_f32(*inputs.pen_damage);
     let toughness_term = *scaling.toughness_mitigation * *inputs.toughness;
     let shooter_term = *scaling.shooter_luck_scale * *inputs.luck_shooter;
     let roll = roll_term(scaling, inputs.luck_defender, rng);
 
-    pen_term - toughness_term + *inputs.part_mod + *inputs.fatal_bias + shooter_term + roll
+    SeverityScore::new(
+        pen_term - toughness_term + *inputs.part_mod + *inputs.fatal_bias + shooter_term + roll,
+    )
 }
 
 /// Roll a hit's wound severity — the §6 score → [`Severity`] bucket, in the

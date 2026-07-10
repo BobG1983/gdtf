@@ -1,11 +1,29 @@
 //! The **execute** verb + its shared `can_execute` predicate — an 8-adjacent ALIVE
 //! enemy finishes a Downed ganger outright.
 
+use bevy::prelude::Deref;
+
 use super::reach::{Actor, DownedTarget, is_8_adjacent};
 use crate::{
     ganger::LifeState,
     tuning::{CombatTuning, ExecuteTu},
 };
+
+/// Whether an actor may **execute** a Downed target — the [`can_execute`] guard verdict
+/// the HUD Execute button and the act share (`docs/combat/resolution.md` §9).
+///
+/// `true` means an enemy finisher is legal against this target; `false` means it is not.
+/// A distinct act-permission predicate, not a bare `bool`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CanExecute(bool);
+
+impl CanExecute {
+    /// Build the execute-permission verdict from the computed guard.
+    #[must_use]
+    pub const fn new(allowed: bool) -> Self {
+        Self(allowed)
+    }
+}
 
 /// Whether `actor` can **execute** `target` — the shared guard for the HUD Execute
 /// button and [`execute_downed`] (`docs/combat/resolution.md` §9).
@@ -22,11 +40,13 @@ use crate::{
 /// execute — a stabilized Downed ganger can still be finished off by an enemy. Pure
 /// read over component values — no mutation, no draw, no pixel.
 #[must_use]
-pub fn can_execute(actor: &Actor, target: &DownedTarget) -> bool {
-    is_8_adjacent(actor.pos, target.pos)
-        && actor.life == LifeState::Alive
-        && target.life == LifeState::Downed
-        && actor.faction != target.faction
+pub fn can_execute(actor: &Actor, target: &DownedTarget) -> CanExecute {
+    CanExecute::new(
+        *is_8_adjacent(actor.pos, target.pos)
+            && actor.life == LifeState::Alive
+            && target.life == LifeState::Downed
+            && actor.faction != target.faction,
+    )
 }
 
 /// **Execute** a Downed ganger if the shared [`can_execute`] guard passes — the
@@ -49,7 +69,7 @@ pub fn execute_downed(
     target_life: &mut LifeState,
     tuning: &CombatTuning,
 ) -> Option<ExecuteTu> {
-    if !can_execute(actor, target) {
+    if !*can_execute(actor, target) {
         return None;
     }
     // Finish the Downed ganger outright — the enemy executor.

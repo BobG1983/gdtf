@@ -95,7 +95,7 @@ fn stable_weapon_braces_unconditionally_non_stable_does_not() {
 
     // Empty cell (no faced cover): stable braces, non-stable does not.
     assert!(
-        brace_engages(
+        *brace_engages(
             Stable::new(true),
             TerrainBraced::new(false),
             stance,
@@ -105,7 +105,7 @@ fn stable_weapon_braces_unconditionally_non_stable_does_not() {
         "a stable weapon must brace even facing an EMPTY cell",
     );
     assert!(
-        !brace_engages(
+        !*brace_engages(
             Stable::new(false),
             TerrainBraced::new(false),
             stance,
@@ -117,7 +117,7 @@ fn stable_weapon_braces_unconditionally_non_stable_does_not() {
 
     // Cover present but its band does NOT suit the stance: same relation.
     assert!(
-        brace_engages(
+        *brace_engages(
             Stable::new(true),
             TerrainBraced::new(false),
             stance,
@@ -127,7 +127,7 @@ fn stable_weapon_braces_unconditionally_non_stable_does_not() {
         "a stable weapon must brace even facing cover that does not suit the stance",
     );
     assert!(
-        !brace_engages(
+        !*brace_engages(
             Stable::new(false),
             TerrainBraced::new(false),
             stance,

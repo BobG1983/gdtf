@@ -37,4 +37,4 @@ mod grid;
 #[cfg(test)]
 mod test;
 
-pub use grid::{GroundDamage, SlabState, SurfaceGrid};
+pub use grid::{DamageApplied, GroundDamage, SlabState, SurfaceGrid};

@@ -88,13 +88,13 @@ pub fn can_see(
     is_dead: impl Fn(Entity) -> bool,
 ) -> CanSee {
     // 1. Conscious-observer gate (clause 2): a Downed / Dead watcher sees nothing.
-    if !observer_life.is_active() {
+    if !*observer_life.is_active() {
         return CanSee::new(false);
     }
 
     // 2. Range disc (clause 2/3): the 2D Chebyshev bound, x/y only — the level axis is
     //    the LOS probe's, never this term. `<=` so the edge cell is inclusive.
-    if chebyshev(observer.position, target.position) > *view_range {
+    if *chebyshev(observer.position, target.position) > *view_range {
         return CanSee::new(false);
     }
 
@@ -111,12 +111,29 @@ pub fn can_see(
 /// excluded — the LOS probe owns the height axis, so a one-storey climb never inflates
 /// the range term. A `u16` to match [`ViewRange`]'s inner: the `|dx|`/`|dy|` magnitudes
 /// fit the 60×60 grid comfortably.
-fn chebyshev(a: &Position, b: &Position) -> u16 {
+fn chebyshev(a: &Position, b: &Position) -> TargetRange {
     // `Position` derefs to `CellLevel`, which derefs to the inner `IVec3` (x, y, z).
     let da = (a.x - b.x).unsigned_abs();
     let db = (a.y - b.y).unsigned_abs();
     let max = da.max(db);
     // Cell deltas on the 60×60 grid fit a u16 with room to spare; saturate rather than
     // wrap on the pathological out-of-grid input (defined, never a panic).
-    u16::try_from(max).unwrap_or(u16::MAX)
+    TargetRange::new(u16::try_from(max).unwrap_or(u16::MAX))
+}
+
+/// The **2D range to a target** — the Chebyshev cell-distance `max(|dx|, |dy|)`
+/// between two combatants' `(x, y)` cells, the value the engagement range disc bounds
+/// against [`ViewRange`] (GTW-339 clause 3).
+///
+/// A named domain value (no bare `u16`): it is how far apart two gangers stand on the
+/// grid, distinct from the [`ViewRange`] *config* it is compared to (a distance, not a
+/// sight limit). Private inner + derived [`Deref`]; build one via [`TargetRange::new`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct TargetRange(u16);
+
+impl TargetRange {
+    /// Build a target range from its Chebyshev cell-distance magnitude.
+    const fn new(range: u16) -> Self {
+        Self(range)
+    }
 }

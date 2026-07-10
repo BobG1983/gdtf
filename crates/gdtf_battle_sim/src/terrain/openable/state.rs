@@ -39,11 +39,27 @@ pub enum OpenState {
     Open,
 }
 
+/// Whether an openable piece is **open** — the answer [`OpenState::is_open`] returns.
+///
+/// A named newtype over `bool` (no-bare-types: a door's open-ness is a domain fact, not a bare
+/// boolean — an open door reads `DoorOpen(true)`). Private inner + derived [`Deref`] (house
+/// style).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DoorOpen(bool);
+
+impl DoorOpen {
+    /// Build a door-open answer from its boolean state.
+    #[must_use]
+    pub const fn new(open: bool) -> Self {
+        Self(open)
+    }
+}
+
 impl OpenState {
     /// Whether this state is [`Open`](OpenState::Open) — the door clears path + vision.
     #[must_use]
-    pub const fn is_open(self) -> bool {
-        matches!(self, Self::Open)
+    pub const fn is_open(self) -> DoorOpen {
+        DoorOpen::new(matches!(self, Self::Open))
     }
 
     /// The OTHER state — [`Open`](OpenState::Open) ⇄ [`Closed`](OpenState::Closed). The flip a

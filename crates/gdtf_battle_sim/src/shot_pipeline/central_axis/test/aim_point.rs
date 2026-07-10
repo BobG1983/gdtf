@@ -135,8 +135,8 @@ fn cover_aim_z_is_within_each_bands_fraction_range() {
     for band in [HeightBand::Low, HeightBand::Mid, HeightBand::High] {
         let aim = target_aim_point(pos, Stance::new(StanceKind::Standing), Some(band), &tuning);
         let above_floor = aim.z - f32::from(level);
-        let bottom = band_bottom_fraction(band, edges);
-        let top = band_top_fraction(band, edges);
+        let bottom = *band_bottom_fraction(band, edges);
+        let top = *band_top_fraction(band, edges);
         assert!(
             above_floor >= bottom && above_floor < top,
             "{band:?}: aim fraction {above_floor} must lie in [{bottom}, {top})",
@@ -152,7 +152,7 @@ fn cover_aim_z_is_the_band_midpoint() {
     let edges = tuning.projectile_band_edges;
     for band in [HeightBand::Low, HeightBand::Mid, HeightBand::High] {
         let aim = target_aim_point(pos, Stance::new(StanceKind::Standing), Some(band), &tuning);
-        let expected = band_midpoint_fraction(band, edges);
+        let expected = *band_midpoint_fraction(band, edges);
         assert!(
             (aim.z - expected).abs() < TOL,
             "{band:?}: cover aim z {} should be the band midpoint {expected}",

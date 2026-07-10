@@ -75,9 +75,9 @@ pub fn cell_squad_visible(
     };
     let visible = match relation {
         // An occupant cell: the SAME read that shows / hides the occupant's sprite.
-        Some(relation) => is_ganger_visible(squad, cell, relation),
+        Some(relation) => *is_ganger_visible(squad, cell, relation),
         // An empty / terrain cell: a plain VISIBLE-set lookup (EXPLORED is NOT visible).
-        None => squad.is_cell_visible(cell),
+        None => *squad.is_cell_visible(cell),
     };
     if visible {
         CellVisibility::SquadVisible
@@ -153,11 +153,11 @@ mod tests {
         let squad = fog(&[visible], &[explored_only]);
         // Pin the DISTINCT EXPLORED state: the cell IS explored, is NOT visible.
         assert!(
-            squad.is_cell_explored(&explored_only),
+            *squad.is_cell_explored(&explored_only),
             "fixture: the cell must be EXPLORED (mission memory)",
         );
         assert!(
-            !squad.is_cell_visible(&explored_only),
+            !*squad.is_cell_visible(&explored_only),
             "fixture: the EXPLORED cell must NOT be currently VISIBLE",
         );
         assert_eq!(

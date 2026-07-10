@@ -180,14 +180,14 @@ where
         // Planar steps keep the FULL gate (C1 UNSEEN + C2). An UNSEEN floor tile
         // reached by an ordinary step stays non-routable — no fog relaxation.
         let planar = pathable_neighbors(origin, self.grid, self.floor_costs, self.factor)
-            .filter(|(neighbour, _)| self.planning.is_routable(*neighbour, self.grid));
+            .filter(|(neighbour, _)| *self.planning.is_routable(*neighbour, self.grid));
         // GTW-387: a vertical hop's far endpoint comes from the VALIDATED
         // VerticalLinkGraph (links_from(origin)) — it IS a known link. Relax C1 for
         // it (you may plan onto an UNSEEN storey VIA a known link) but KEEP C2: the
         // landing cell must still be geometrically open and unblocked by a visible
         // occupant. is_routable_link skips ONLY the explored check.
         let vertical = traversable_links(origin, self.links, self.tuning.link_tu)
-            .filter(|(neighbour, _)| self.planning.is_routable_link(*neighbour, self.grid));
+            .filter(|(neighbour, _)| *self.planning.is_routable_link(*neighbour, self.grid));
         planar.chain(vertical).collect()
     }
 }

@@ -8,6 +8,24 @@ use serde::Deserialize;
 
 use crate::metric::Cell;
 
+/// A facing's **ground-plane unit step** — the normalised sim-unit `Vec3` a
+/// [`Direction`] looks along, `z = 0` ([`Direction::forward_step`]).
+///
+/// The per-facing forward offset the firing-arc geometry and the barrel offset read: a
+/// unit-length ground vector (cardinals `±1` on one axis, diagonals `±1/√2` on two). A
+/// distinct facing-vector concept, never a bare `Vec3`, and distinct from the shot's
+/// central-axis [`AimDir`](crate::central_axis::AimDir).
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+pub struct ForwardStep(Vec3);
+
+impl ForwardStep {
+    /// Build a forward step from a facing's ground-plane unit vector.
+    #[must_use]
+    pub const fn new(step: Vec3) -> Self {
+        Self(step)
+    }
+}
+
 /// One of the eight grid facings a ganger can turn to face.
 ///
 /// The square grid's 8-way compass (cardinals + diagonals): a ganger turns in
@@ -50,11 +68,11 @@ impl Direction {
     /// §"Sub-cell precision on the ground plane"). No pixel, no screen-coordinate
     /// convention — these are cubic-voxel sim units.
     #[must_use]
-    pub fn forward_step(self) -> Vec3 {
+    pub fn forward_step(self) -> ForwardStep {
         // The diagonal component: a unit vector's per-axis magnitude on the two
         // axes a diagonal spans (so √(d² + d²) = 1). Derived, not a pixel literal.
         let d = core::f32::consts::FRAC_1_SQRT_2;
-        match self {
+        ForwardStep::new(match self {
             Self::North => Vec3::new(0.0, -1.0, 0.0),
             Self::NorthEast => Vec3::new(d, -d, 0.0),
             Self::East => Vec3::new(1.0, 0.0, 0.0),
@@ -63,7 +81,7 @@ impl Direction {
             Self::SouthWest => Vec3::new(-d, d, 0.0),
             Self::West => Vec3::new(-1.0, 0.0, 0.0),
             Self::NorthWest => Vec3::new(-d, -d, 0.0),
-        }
+        })
     }
 
     /// This direction's **integer ground-plane cell step** — the `(±1, ±1, 0)`

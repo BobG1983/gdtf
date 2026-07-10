@@ -149,7 +149,7 @@ pub fn apply_openable_toggle(
         }
         *open_state = request.state();
         let mut entity = commands.entity(request.entity());
-        if request.state().is_open() {
+        if *request.state().is_open() {
             // Open: clear BOTH — the GTW-501 / GTW-502 RemovedComponents change-detection
             // re-opens path + vision and re-fires the squad-fog recompute next tick.
             entity.remove::<BlocksPathfinding>();

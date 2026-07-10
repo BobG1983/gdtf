@@ -93,11 +93,11 @@ impl LinkKind {
     }
 
     /// Whether this kind is one-way — traversable only in the authored
-    /// `(from → to)` direction. `false` means bidirectional (climbed both ways).
+    /// `(from → to)` direction. A bidirectional [`OneWay`] is climbed both ways.
     #[must_use]
-    pub const fn is_one_way(self) -> bool {
+    pub const fn is_one_way(self) -> OneWay {
         match self {
-            Self::Stair { one_way } | Self::Ladder { one_way } => one_way.is_one_way(),
+            Self::Stair { one_way } | Self::Ladder { one_way } => one_way,
         }
     }
 }

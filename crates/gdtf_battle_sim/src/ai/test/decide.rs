@@ -116,7 +116,7 @@ fn can_engage_in_arc_is_true() {
     let tuning = CombatTuning::default();
     // Facing East, target due East (straight ahead) → in arc.
     assert!(
-        can_engage(
+        *can_engage(
             Direction::East,
             Cell::new(0, 0),
             Cell::new(5, 0),
@@ -137,7 +137,7 @@ fn can_engage_out_of_arc_unaffordable_is_false() {
     // Facing East, target due WEST (behind) → out of arc; with zero TU the turn-into-arc is
     // unaffordable → Reject → not engageable.
     assert!(
-        !can_engage(
+        !*can_engage(
             Direction::East,
             Cell::new(0, 0),
             Cell::new(-5, 0),
@@ -156,7 +156,7 @@ fn can_engage_out_of_arc_affordable_is_true() {
     let tuning = CombatTuning::default();
     // Same behind-target, but a full TU pool affords the turn-into-arc + the shot.
     assert!(
-        can_engage(
+        *can_engage(
             Direction::East,
             Cell::new(0, 0),
             Cell::new(-5, 0),

@@ -8,7 +8,7 @@ use std::num::NonZeroU8;
 use bevy::prelude::Deref;
 use serde::Deserialize;
 
-use super::ApplyFieldEffect;
+use super::{ApplyFieldEffect, FieldExpired};
 
 /// The **duration in turns** a [`FieldDuration::Turns`] field lingers — how many turns the
 /// zone ticks before it is removed (`docs/combat/resolution.md` — the area-damage-field beat).
@@ -122,8 +122,8 @@ impl ApplyFieldEffect for ApplyDuration {
     /// `Turns` field whose countdown spent its LAST round (a zero-valued countdown is
     /// never stored between rounds; a finite field that somehow carries no countdown is
     /// expired fail-closed). A `Permanent` field always returns `false`.
-    fn count_down_one_turn(&self, remaining: &mut Option<FieldTurns>) -> bool {
-        match self.duration {
+    fn count_down_one_turn(&self, remaining: &mut Option<FieldTurns>) -> FieldExpired {
+        FieldExpired::new(match self.duration {
             FieldDuration::Turns(_) => match (*remaining).and_then(FieldTurns::decremented) {
                 Some(next) => {
                     *remaining = Some(next);
@@ -133,7 +133,7 @@ impl ApplyFieldEffect for ApplyDuration {
             },
             // A Permanent field never counts down and never expires.
             FieldDuration::Permanent => false,
-        }
+        })
     }
 }
 
@@ -190,7 +190,7 @@ mod tests {
         let lifetime = ApplyDuration::new(FieldDuration::Turns(field_turns(2)));
         let mut remaining = lifetime.initial_countdown();
         assert!(
-            !lifetime.count_down_one_turn(&mut remaining),
+            !*lifetime.count_down_one_turn(&mut remaining),
             "2 → 1: not yet expired"
         );
         assert_eq!(
@@ -199,7 +199,7 @@ mod tests {
             "the countdown decremented one turn"
         );
         assert!(
-            lifetime.count_down_one_turn(&mut remaining),
+            *lifetime.count_down_one_turn(&mut remaining),
             "1 → expired: the round that spends the last turn expires the placement"
         );
     }
@@ -212,7 +212,7 @@ mod tests {
         let mut remaining = lifetime.initial_countdown();
         for _ in 0..10 {
             assert!(
-                !lifetime.count_down_one_turn(&mut remaining),
+                !*lifetime.count_down_one_turn(&mut remaining),
                 "a Permanent field never expires"
             );
         }

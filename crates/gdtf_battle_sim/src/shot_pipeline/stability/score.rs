@@ -72,7 +72,7 @@ pub fn stability(
     // suppression and brace_bonus are BOTH pure-additive identity (0.0) when absent, so an
     // un-suppressed weapon with no brace attachment has a raw sum — and thus its clamped
     // score and both curve reads — byte-identical to before either seam landed.
-    let brace = if brace_engages(terms.stable, terms.terrain_braced, posture, faced, tuning) {
+    let brace = if *brace_engages(terms.stable, terms.terrain_braced, posture, faced, tuning) {
         *tuning.brace_contribution
     } else {
         0.0

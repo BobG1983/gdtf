@@ -202,7 +202,7 @@ pub fn fire(
         handedness:      shooter_handedness,
         hands_available: shooter_hands,
     };
-    if !can_fire(
+    if !*can_fire(
         &actor,
         order.mode,
         order.target_cell,

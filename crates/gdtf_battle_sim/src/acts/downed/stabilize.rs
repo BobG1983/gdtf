@@ -1,11 +1,29 @@
 //! The **stabilize** verb + its shared `can_stabilize` predicate — an 8-adjacent
 //! ALIVE ally halts the bleed clock by setting the [`Stabilized`] flag.
 
+use bevy::prelude::Deref;
+
 use super::reach::{Actor, DownedTarget, is_8_adjacent};
 use crate::{
     ganger::{LifeState, Stabilized},
     tuning::{CombatTuning, StabilizeTu},
 };
+
+/// Whether an actor may **stabilize** a Downed target — the [`can_stabilize`] guard
+/// verdict the HUD Stabilize button and the act share (`docs/combat/resolution.md` §9).
+///
+/// `true` means an ally dressing is legal against this target; `false` means it is not.
+/// A distinct act-permission predicate, not a bare `bool`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CanStabilize(bool);
+
+impl CanStabilize {
+    /// Build the stabilize-permission verdict from the computed guard.
+    #[must_use]
+    pub const fn new(allowed: bool) -> Self {
+        Self(allowed)
+    }
+}
 
 /// Whether `actor` can **stabilize** `target` — the shared guard for the HUD
 /// Stabilize button and [`stabilize_downed`] (`docs/combat/resolution.md` §9).
@@ -23,12 +41,14 @@ use crate::{
 ///
 /// Pure read over component values — no mutation, no draw, no pixel.
 #[must_use]
-pub fn can_stabilize(actor: &Actor, target: &DownedTarget) -> bool {
-    is_8_adjacent(actor.pos, target.pos)
-        && actor.life == LifeState::Alive
-        && target.life == LifeState::Downed
-        && actor.faction == target.faction
-        && !target.stabilized.is_some_and(|s| *s)
+pub fn can_stabilize(actor: &Actor, target: &DownedTarget) -> CanStabilize {
+    CanStabilize::new(
+        *is_8_adjacent(actor.pos, target.pos)
+            && actor.life == LifeState::Alive
+            && target.life == LifeState::Downed
+            && actor.faction == target.faction
+            && !target.stabilized.is_some_and(|s| *s),
+    )
 }
 
 /// **Stabilize** a Downed ganger if the shared [`can_stabilize`] guard passes — the
@@ -54,7 +74,7 @@ pub fn stabilize_downed(
     target_stabilized: &mut Stabilized,
     tuning: &CombatTuning,
 ) -> Option<StabilizeTu> {
-    if !can_stabilize(actor, target) {
+    if !*can_stabilize(actor, target) {
         return None;
     }
     // Set the E3.7 flag (reused, only set here) — the bleed clock halts; the ganger

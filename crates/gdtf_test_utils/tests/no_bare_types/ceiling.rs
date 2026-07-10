@@ -20,10 +20,11 @@ use crate::{
 };
 
 /// The pinned ceiling on SECTION-2 (baseline) entries. Measured live at the
-/// GTW-704 land: 860 GTW-599 baseline entries + 5 GTW-587-introduced entries
-/// (user-approved 2026-07-09) = 865. SHRINK-ONLY: any commit may LOWER this
-/// (each burn-down wave's land does); it is raised only with user approval.
-pub(crate) const SECTION_2_CEILING: usize = 865;
+/// GTW-705 (W1 sim burn-down) land: 782 remaining entries after wrapping the
+/// fixed `gdtf_battle_sim` violations (the GTW-704 land pinned 865). SHRINK-ONLY:
+/// any commit may LOWER this (each burn-down wave's land does); it is raised only
+/// with user approval.
+pub(crate) const SECTION_2_CEILING: usize = 782;
 
 /// The pinned baseline count of SECTION-1 (documented false positive) entries.
 /// Growth past this is legal but user-approval-only, so it triggers the loud

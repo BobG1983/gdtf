@@ -21,7 +21,7 @@ use gdtf_battle_sim::{
         SetAimingRequested, SetFacingRequested, SetStanceRequested, SimActsPlugin,
         StabilizeDownedRequested,
     },
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     prelude::{
         BattleInProgress, Cell, CellLevel, Direction, Faction, Level, LifeState, OccupancyGrid,
         StanceKind,
@@ -210,7 +210,11 @@ pub(crate) fn armed_ganger(
         ganger,
         (
             selector,
-            Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+            Magazine::new(
+                LoadedRounds::new(10),
+                MagazineSize::new(30),
+                ReloadTu::new(12),
+            ),
             // GTW-443: the wielded-weapon entity carries Handedness — the fire surface's
             // WeaponMagazine query reads `(&Magazine, &Handedness)`, so without it the query
             // would not match and the click would fire nothing.

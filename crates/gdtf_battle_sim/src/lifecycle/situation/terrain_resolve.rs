@@ -19,6 +19,7 @@
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
+    occupancy::PathBlocked,
     situation::BattleSetupError,
     slab::SlabHp,
     terrain::{
@@ -64,7 +65,7 @@ pub(super) struct ResolvedCoverPiece {
     /// — `true` per [`derives_path_blocking`]: an explicit `BlocksPathfinding` tag OR a
     /// `Wall`/`Cover` sim-kind default. Carried forward so the spawn loop attaches the marker
     /// without re-reading the registry.
-    pub(super) blocks_path:      bool,
+    pub(super) blocks_path:      PathBlocked,
     /// The [`HeightBand`] this piece occludes vision at, or `None` if it derives no
     /// [`BlocksVision`](crate::terrain::entity::BlocksVision) component (GTW-502 C1, refined
     /// GTW-587) — per [`derives_vision_occlusion`]: a `Wall` occludes FULLY (the whole storey
@@ -124,7 +125,7 @@ pub(super) struct ResolvedSlabPiece {
     /// — a slab does NOT block path by default, so this is `true` ONLY when the def carries
     /// an explicit `BlocksPathfinding` tag (the C1 opt-in, e.g. a barricade slab). Carried
     /// forward so the spawn loop attaches the marker without re-reading the registry.
-    pub(super) blocks_path:      bool,
+    pub(super) blocks_path:      PathBlocked,
     /// The [`HeightBand`] this slab occludes vision at, or `None` (GTW-502 C1) — per
     /// [`derives_vision_occlusion`]: a `Slab` does NOT occlude vision by default (the SLAB
     /// march already stops sight at a z-boundary), so this is `Some(HeightBand::High)` ONLY

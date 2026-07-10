@@ -2,7 +2,7 @@
 
 use serde::Deserialize;
 
-use crate::terrain::entity::TerrainPieceKind;
+use crate::{occupancy::Blocked, terrain::entity::TerrainPieceKind};
 
 /// The static-terrain marker for one `(cell, level)` slot — what kind of fixed
 /// terrain occupies it, and therefore whether it **blocks** (collision / LOS /
@@ -51,8 +51,8 @@ impl TerrainKind {
     /// [`Cover`]: TerrainKind::Cover
     /// [`Open`]: TerrainKind::Open
     #[must_use]
-    pub const fn blocks(self) -> bool {
-        matches!(self, Self::Wall | Self::Cover | Self::Emplacement)
+    pub const fn blocks(self) -> Blocked {
+        Blocked::new(matches!(self, Self::Wall | Self::Cover | Self::Emplacement))
     }
 }
 

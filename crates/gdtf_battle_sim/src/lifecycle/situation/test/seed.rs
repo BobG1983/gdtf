@@ -104,7 +104,7 @@ fn occupancy_grid_seeded_from_fixture() {
         TerrainKind::Wall,
         "the wall cell must carry Wall terrain",
     );
-    assert!(grid.is_blocked(&wall_cell), "a standing wall blocks");
+    assert!(*grid.is_blocked(&wall_cell), "a standing wall blocks");
 
     // Occupant slots hold the SPAWNED Entity handles (matching the returned
     // placements), never a numeric id.

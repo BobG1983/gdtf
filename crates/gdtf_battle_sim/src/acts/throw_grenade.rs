@@ -282,7 +282,7 @@ pub fn dispatch_throw_grenade(
         //      round. A straight-firing weapon or an empty magazine is a no-op — the throw is
         //      blind, so there is NO line-of-sight / facing gate here (the one divergence from
         //      the ranged fire path's `decide_fire_arc`).
-        if !trajectory.is_arc() || magazine.is_empty() {
+        if !*trajectory.is_arc() || *magazine.is_empty() {
             continue;
         }
 

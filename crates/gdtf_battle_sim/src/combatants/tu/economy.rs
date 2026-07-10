@@ -1,7 +1,25 @@
 //! The TU-economy verb implementations — [`can_spend_tu`] / [`spend_tu`] / [`reset_tu`].
 //! See the module docs (`super`) for the saturating-arithmetic contract.
 
+use bevy::prelude::Deref;
+
 use crate::ganger::{Tu, TuMax};
+
+/// Whether a ganger's current [`Tu`] pool can afford a cost — the [`can_spend_tu`]
+/// affordability verdict the firing / posture / movement acts gate on.
+///
+/// `true` means the cost is payable (`current >= cost`); `false` means it is not. A
+/// distinct affordability predicate, not a bare `bool`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TuAffordable(bool);
+
+impl TuAffordable {
+    /// Build the affordability verdict from the pool-versus-cost comparison.
+    #[must_use]
+    pub const fn new(affordable: bool) -> Self {
+        Self(affordable)
+    }
+}
 
 /// Whether a ganger's current pool can afford a cost — `true` iff `current >= cost`.
 ///
@@ -10,8 +28,8 @@ use crate::ganger::{Tu, TuMax};
 /// model-authoritative). The `cost` is a [`Tu`] (the named TU amount, not a bare `u8`).
 /// Equality affords (a cost exactly equal to the pool is payable).
 #[must_use]
-pub fn can_spend_tu(tu: &Tu, cost: Tu) -> bool {
-    **tu >= *cost
+pub fn can_spend_tu(tu: &Tu, cost: Tu) -> TuAffordable {
+    TuAffordable::new(**tu >= *cost)
 }
 
 /// Charge `cost` against a ganger's current pool — **saturating** subtraction.

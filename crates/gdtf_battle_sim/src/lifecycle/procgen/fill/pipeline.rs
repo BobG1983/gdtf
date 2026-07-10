@@ -107,7 +107,7 @@ pub fn fill_placement_with(
             &mut fill,
             &mut covered,
             board_cells,
-            *tuning.min_density_floor,
+            tuning.min_density_floor,
             rng,
         );
     }

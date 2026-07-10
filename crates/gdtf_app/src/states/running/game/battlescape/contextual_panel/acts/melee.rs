@@ -169,7 +169,7 @@ fn scan_melee_target(
     let standing = Stance::new(StanceKind::Standing);
     for (entity, pos, life, faction, stance) in candidates {
         // An ALIVE (incl. Downed) OPPOSING ganger within the 8-adjacent reach.
-        if !life.is_active() || *faction == actor_faction || !is_8_adjacent(actor_pos, *pos) {
+        if !*life.is_active() || *faction == actor_faction || !*is_8_adjacent(actor_pos, *pos) {
             continue;
         }
         // The LOS gate — a clear sight line actor → target over the SAME voxel geometry

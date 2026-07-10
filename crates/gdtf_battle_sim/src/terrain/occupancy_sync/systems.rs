@@ -110,7 +110,7 @@ pub fn sync_moved_gangers(
         // 2. REGISTER NEW SLOT(S).
         //    Stair + non-prone → dual-cell (register_stair_presence writes both).
         //    Otherwise        → single-cell (set_occupant + set_occupant_band).
-        let new_upper = if grid.is_stair_cell(&new_lower) && stance_kind != StanceKind::Prone {
+        let new_upper = if *grid.is_stair_cell(&new_lower) && stance_kind != StanceKind::Prone {
             grid.register_stair_presence(new_lower, entity, band)
         } else {
             grid.set_occupant(new_lower, Some(entity));

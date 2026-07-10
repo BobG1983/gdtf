@@ -5,7 +5,7 @@ use gdtf_app::test_support::{ReloadButton, WeaponContent, WeaponPanelRoot};
 use gdtf_battle_input::dispatch_act_intents;
 use gdtf_battle_sim::{
     acts::ReloadRequested,
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     weapon::MagazineSize,
 };
 use gdtf_test_utils::{MessageProbe, drain_message_probe, press_ui_button, probed};
@@ -74,7 +74,11 @@ fn pressing_reload_emits_a_reload_requested_for_the_selection() {
         &mut app,
         weapon_kit(
             "Autogun",
-            Magazine::new(0, MagazineSize::new(30), ReloadTu::new(12)),
+            Magazine::new(
+                LoadedRounds::new(0),
+                MagazineSize::new(30),
+                ReloadTu::new(12),
+            ),
         ),
     );
     app.update();

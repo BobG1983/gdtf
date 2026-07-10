@@ -6,7 +6,7 @@ use bevy::prelude::{Deref, EntityWorldMut};
 use serde::{Deserialize, Serialize};
 
 use super::ApplyAttachmentEffect;
-use crate::magazine::{Magazine, ReloadTu};
+use crate::magazine::{LoadedRounds, Magazine, ReloadTu};
 
 /// A reload-time attachment's **reload-cost scale** — the per-item multiplier a
 /// [`ReloadTime`](super::AttachmentEffect::ReloadTime) attachment applies to the weapon's
@@ -71,7 +71,11 @@ impl ApplyAttachmentEffect for ApplyReloadTime {
                       sign-flip (the GTW-542 scale_reload precedent this isolates)"
         )]
         let tu = scaled as u8;
-        let rebuilt = Magazine::new(*magazine.rounds(), magazine.size(), ReloadTu::new(tu));
+        let rebuilt = Magazine::new(
+            LoadedRounds::new(*magazine.rounds()),
+            magazine.size(),
+            ReloadTu::new(tu),
+        );
         weapon.insert(rebuilt);
     }
 }

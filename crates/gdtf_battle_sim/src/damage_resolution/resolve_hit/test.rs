@@ -4,7 +4,7 @@ use crate::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType,
         BodyPart, SourceArmor,
     },
-    matchup::{Matchup, matchup_multiplier},
+    matchup::{Matchup, MatchupMultiplier, matchup_multiplier},
     tuning::CombatTuning,
     weapon::{WeaponDamage, WeaponPunch, WeaponShred},
 };
@@ -153,9 +153,9 @@ fn favorable_beats_resisted_through_punch_and_shred() {
     // The HP-loss difference traces to PUNCH only: recompute the expected
     // HP-loss from the SAME damage/floor/protection but the per-matchup scaled
     // punch — if it matches, nothing but punch moved.
-    let mult_fav = *matchup_multiplier(Matchup::Favorable, &tuning);
-    let mult_res = *matchup_multiplier(Matchup::Resisted, &tuning);
-    let expected_hp = |mult: f32| {
+    let mult_fav = matchup_multiplier(Matchup::Favorable, &tuning);
+    let mult_res = matchup_multiplier(Matchup::Resisted, &tuning);
+    let expected_hp = |mult: MatchupMultiplier| {
         let punch_scaled = scale_by_matchup(10, mult);
         let eff_pen = (punch_scaled - *armor.hardness).max(0);
         let inner = 14 - (*armor.protection - eff_pen).max(0);
@@ -197,7 +197,7 @@ fn shred_adds_to_wear_and_matchup_leaves_damage_floor() {
     // shred (mult == 1.0 at Neutral, so the difference is exactly the shred).
     let no_shred = resolve(0, Matchup::Neutral);
     let with_shred = resolve(5, Matchup::Neutral);
-    let neutral_mult = *matchup_multiplier(Matchup::Neutral, &tuning);
+    let neutral_mult = matchup_multiplier(Matchup::Neutral, &tuning);
     let scaled_shred = scale_by_matchup(5, neutral_mult);
     assert_eq!(
         *with_shred.wear - *no_shred.wear,

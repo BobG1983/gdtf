@@ -26,7 +26,7 @@ use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
     battle::PlayerFaction,
     ganger::{Aiming, TuMax},
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     occupancy::TerrainKind,
     prelude::{
         BattleInProgress, Cell, CellLevel, Faction, Level, LifeState, OccupancyGrid, Position, Tu,
@@ -104,7 +104,11 @@ fn spawn_player_shooter(app: &mut App, cell: CellLevel) -> Entity {
             LifeState::Alive,
             Tu::new(255),
             TuMax::new(100),
-            Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+            Magazine::new(
+                LoadedRounds::new(10),
+                MagazineSize::new(30),
+                ReloadTu::new(12),
+            ),
         ))
         .id();
     app.world_mut()

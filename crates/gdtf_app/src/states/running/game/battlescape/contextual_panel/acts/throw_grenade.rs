@@ -82,7 +82,7 @@ impl ThrowReads<'_, '_> {
         let wields = self.wields.get(actor).ok()?;
         let weapon = wields.ranged_weapon(|entity| self.melee.get(entity).is_ok())?;
         let style = self.styles.get(weapon).ok()?;
-        style.is_arc().then_some(hovered)
+        (*style.is_arc()).then_some(hovered)
     }
 }
 

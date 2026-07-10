@@ -150,7 +150,7 @@ pub fn build_vertical_link_graph(
         let index = graph.links.len();
         graph.links.push(link);
         graph.by_origin.entry(link.from).or_default().push(index);
-        if !link.kind.is_one_way() {
+        if !*link.kind.is_one_way() {
             graph.by_origin.entry(link.to).or_default().push(index);
         }
     }

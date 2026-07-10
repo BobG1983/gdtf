@@ -66,7 +66,7 @@ pub(in crate::states::running::game::battlescape) fn offer_execute(
                 .find(|(_, pos, life, faction)| {
                     **life == LifeState::Downed
                         && **faction != *actor_faction
-                        && is_8_adjacent(*actor_pos, **pos)
+                        && *is_8_adjacent(*actor_pos, **pos)
                 })
                 .map(|(entity, ..)| entity)
         });

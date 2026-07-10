@@ -7,6 +7,8 @@
 //! surface a stream exposes" concern. The stream types themselves (and the
 //! `impl_sim_stream!` macro that stamps them) live in `streams`.
 
+use super::seeded::BattleSeed;
+
 // ── FNV-1a-64 derivation ────────────────────────────────────────────────────
 
 /// The FNV-1a-64 offset basis (the FNV spec's fixed constant).
@@ -27,8 +29,8 @@ const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
 ///
 /// — so the concatenation is unambiguous without a length prefix. The resulting
 /// `u64` is fed to `SeedableRng::seed_from_u64` in each stream's constructor.
-pub(super) const fn fnv1a64(root: u64, label: &[u8]) -> u64 {
-    let root_bytes = root.to_le_bytes();
+pub(super) const fn fnv1a64(root: BattleSeed, label: &[u8]) -> u64 {
+    let root_bytes = root.get().to_le_bytes();
     // Feed the 8 root bytes first.
     let mut hash = FNV_OFFSET;
     let mut i = 0usize;

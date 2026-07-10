@@ -125,7 +125,7 @@ macro_rules! impl_sim_stream {
             /// stay replay-pure).
             #[must_use]
             pub fn from_root(root: BattleSeed) -> Self {
-                let seed = fnv1a64(*root, Self::LABEL.as_bytes());
+                let seed = fnv1a64(root, Self::LABEL.as_bytes());
                 Self(ChaCha12Rng::seed_from_u64(seed))
             }
 

@@ -159,7 +159,7 @@ fn diagonal_absent_when_both_shared_edges_blocked() {
 
     // The diagonal cell itself is walkable …
     assert!(
-        !grid.is_blocked(&diagonal),
+        !*grid.is_blocked(&diagonal),
         "the diagonal cell itself is open"
     );
     // … yet the step is illegal — both shared-edge orthogonals are blocked (C3).

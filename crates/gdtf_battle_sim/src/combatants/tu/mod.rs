@@ -23,4 +23,4 @@ mod economy;
 #[cfg(test)]
 mod test;
 
-pub use economy::{can_spend_tu, reset_tu, spend_tu};
+pub use economy::{TuAffordable, can_spend_tu, reset_tu, spend_tu};

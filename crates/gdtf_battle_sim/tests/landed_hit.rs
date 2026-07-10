@@ -40,7 +40,7 @@ use gdtf_battle_sim::{
     ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
     inflicted_wound::InflictedWounds,
     injuries::{InjuryRegistry, InjuryTables},
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     occupancy_sync::OccupancyMaintenancePlugin,
     prelude::{
         Cell, CellLevel, Direction, Level, LifeState, OccupancyGrid, Position, Stance, StanceKind,
@@ -118,7 +118,11 @@ fn spawn_shooter(app: &mut App, facing: Direction) -> Entity {
             DamageType::Kinetic,
         ),
         HandlingProfile::new(
-            Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+            Magazine::new(
+                LoadedRounds::new(10),
+                MagazineSize::new(30),
+                ReloadTu::new(12),
+            ),
             FireMode::new(vec![single_mode(0.2, 1)]),
             Stable::new(true),
             Shove::new(false),

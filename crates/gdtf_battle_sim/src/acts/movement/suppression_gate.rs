@@ -2,11 +2,46 @@
 //! [`Suppressed`](crate::ganger::Suppressed) mover's chosen destination is legal
 //! (strictly farther from the suppressor AND ending behind cover).
 
+use bevy::prelude::Deref;
+
 use crate::{
     cover::CoverLedger,
     ganger::Direction,
     metric::{Cell, CellLevel},
 };
+
+/// Whether a suppressed mover's destination **ends behind cover** relative to the
+/// suppressor — the [`ends_behind_cover`] clause of the GTW-537 movement gate.
+///
+/// `true` means the cell one Moore-8 step toward the suppressor holds registered cover;
+/// `false` means it does not (an illegal destination on this clause). A distinct
+/// cover-relation predicate, not a bare `bool`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+struct EndsBehindCover(bool);
+
+impl EndsBehindCover {
+    /// Build the ends-behind-cover verdict.
+    const fn new(behind_cover: bool) -> Self {
+        Self(behind_cover)
+    }
+}
+
+/// Whether a [`Suppressed`](crate::ganger::Suppressed) mover may legally step from its
+/// start to a chosen destination — the [`suppressed_move_legal`] hard-reject verdict
+/// (GTW-537).
+///
+/// `true` means BOTH strictness clauses hold (strictly farther from the suppressor AND
+/// ending behind cover); `false` means at least one fails (the caller rejects the step). A
+/// distinct movement-legality predicate, not a bare `bool`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct SuppressedMoveLegal(bool);
+
+impl SuppressedMoveLegal {
+    /// Build the suppressed-movement legality verdict.
+    pub(super) const fn new(legal: bool) -> Self {
+        Self(legal)
+    }
+}
 
 /// The ground-plane Chebyshev distance between two `(cell, level)` keys — `max(|dx|, |dy|)`
 /// (GTW-537).
@@ -37,17 +72,21 @@ fn chebyshev_xy(a: &CellLevel, b: &CellLevel) -> u32 {
 /// a cell with no registered cover reads `None` = not behind cover. Returns `false` when the
 /// destination and the suppressor share a ground cell (no direction — `from_cells` is `None`),
 /// which is also not "farther", so such a destination is rejected on the distance clause too.
-fn ends_behind_cover(dest: &CellLevel, suppressor: &CellLevel, cover: &CoverLedger) -> bool {
+fn ends_behind_cover(
+    dest: &CellLevel,
+    suppressor: &CellLevel,
+    cover: &CoverLedger,
+) -> EndsBehindCover {
     // The canonical CellLevel accessors (GTW-565): the two ground cells and the
     // destination's own storey.
     let dest_cell = dest.cell();
     let suppressor_cell = suppressor.cell();
     let Some(dir) = Direction::from_cells(dest_cell, suppressor_cell) else {
-        return false;
+        return EndsBehindCover::new(false);
     };
     let step = dir.cell_step();
     let toward = Cell::new(dest_cell.x + step.x, dest_cell.y + step.y);
-    cover.peek(&CellLevel::new(toward, dest.level())).is_some()
+    EndsBehindCover::new(cover.peek(&CellLevel::new(toward, dest.level())).is_some())
 }
 
 /// Whether a [`Suppressed`](crate::ganger::Suppressed) mover may legally step from `start` to `dest` (GTW-537) — the
@@ -70,7 +109,7 @@ pub(super) fn suppressed_move_legal(
     dest: &CellLevel,
     suppressor: &CellLevel,
     cover: &CoverLedger,
-) -> bool {
+) -> SuppressedMoveLegal {
     let farther = chebyshev_xy(dest, suppressor) > chebyshev_xy(start, suppressor);
-    farther && ends_behind_cover(dest, suppressor, cover)
+    SuppressedMoveLegal::new(farther && *ends_behind_cover(dest, suppressor, cover))
 }

@@ -47,12 +47,29 @@ pub enum EmplacementState {
     Occupied,
 }
 
+/// Whether a weapon emplacement is **manned** — the answer [`EmplacementState::is_occupied`]
+/// returns (a ganger is currently operating it).
+///
+/// A named newtype over `bool` (no-bare-types: an emplacement's occupancy is a domain fact, not
+/// a bare boolean — a manned emplacement reads `EmplacementManned(true)`). Private inner +
+/// derived [`Deref`] (house style).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EmplacementManned(bool);
+
+impl EmplacementManned {
+    /// Build a manned answer from its boolean state.
+    #[must_use]
+    pub const fn new(manned: bool) -> Self {
+        Self(manned)
+    }
+}
+
 impl EmplacementState {
     /// Whether this state is [`Occupied`](EmplacementState::Occupied) — a ganger is manning
     /// the emplacement.
     #[must_use]
-    pub const fn is_occupied(self) -> bool {
-        matches!(self, Self::Occupied)
+    pub const fn is_occupied(self) -> EmplacementManned {
+        EmplacementManned::new(matches!(self, Self::Occupied))
     }
 }
 

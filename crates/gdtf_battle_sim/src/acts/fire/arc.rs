@@ -1,12 +1,31 @@
 //! The pure GTW-242 firing-arc gate — the arc verdict ([`FireArcDecision`]), its
 //! decider ([`decide_fire_arc`]), and the AI-shared [`can_engage`] boolean wrapper.
 
+use bevy::prelude::Deref;
+
 use crate::{
     combatants::firing_arc::target_in_arc,
     ganger::{Direction, Tu},
     metric::Cell,
     tuning::CombatTuning,
 };
+
+/// Whether a shooter can **engage** a target under the firing-arc gate — the
+/// [`can_engage`] verdict (`true` iff the arc verdict is not a reject; GTW-70).
+///
+/// The AI's turn-termination gate keys off this: an act is emitted ONLY when engagement
+/// is legal, so the dispatcher can never silently reject a shot the AI keeps re-emitting.
+/// A distinct engagement-permission predicate, not a bare `bool`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CanEngage(bool);
+
+impl CanEngage {
+    /// Build the engagement verdict from the computed arc gate.
+    #[must_use]
+    pub const fn new(engageable: bool) -> Self {
+        Self(engageable)
+    }
+}
 
 /// The firing-arc gate's decision for ONE [`FireRequested`](crate::acts::request::FireRequested) — computed from the read state
 /// BEFORE any mutation, so the spend/turn/shot is atomic-by-construction (GTW-242).
@@ -64,7 +83,7 @@ pub fn decide_fire_arc(
     fire_cost: Tu,
     tuning: &CombatTuning,
 ) -> FireArcDecision {
-    if target_in_arc(facing, actor_cell, target_cell, &tuning.firing_arc) {
+    if *target_in_arc(facing, actor_cell, target_cell, &tuning.firing_arc) {
         return FireArcDecision::FireInArc;
     }
     // Out-of-arc: the shot needs a turn-into-arc first. from_cells is Some here (a
@@ -113,9 +132,9 @@ pub fn can_engage(
     tu: Tu,
     fire_cost: Tu,
     tuning: &CombatTuning,
-) -> bool {
-    !matches!(
+) -> CanEngage {
+    CanEngage::new(!matches!(
         decide_fire_arc(facing, actor_cell, target_cell, tu, fire_cost, tuning),
         FireArcDecision::Reject
-    )
+    ))
 }

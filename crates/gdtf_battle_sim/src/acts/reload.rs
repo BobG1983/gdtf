@@ -156,7 +156,7 @@ pub fn dispatch_reload(
         };
 
         // Already-full reload is a no-op — no charge (FLAGGED choice; see the fn doc).
-        if magazine.is_full() {
+        if *magazine.is_full() {
             results.write(ReloadResult::new(request.actor, ReloadOutcome::AlreadyFull));
             continue;
         }
@@ -164,7 +164,7 @@ pub fn dispatch_reload(
         // GATE: affordable — the per-weapon reload_tu must be payable (silent reject
         // when short, matching fire/move/stance).
         let cost = Tu::new(*magazine.reload_tu());
-        if !can_spend_tu(&tu, cost) {
+        if !*can_spend_tu(&tu, cost) {
             results.write(ReloadResult::new(request.actor, ReloadOutcome::NoTu));
             continue;
         }

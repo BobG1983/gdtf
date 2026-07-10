@@ -75,7 +75,7 @@ pub fn decide_pin(
 
     // 1. PIN to COVER — a wall / cover cell. Pinning is a VIEW concern, so it pins the
     //    structural object regardless of selection / fire mode.
-    if reads.occupancy.is_blocked(&cell) {
+    if *reads.occupancy.is_blocked(&cell) {
         return PinOutcome::Pin(cell);
     }
     // 2. PIN to an ENEMY — an occupant whose faction differs from the player's. Independent of

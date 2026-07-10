@@ -90,7 +90,7 @@ pub fn emit_highlight_request(
             .map(|occupant| occupant_relation(occupant, &factions, player.as_deref()));
         let occupant_visible = grid.occupant(&cell).is_some()
             && cell_squad_visible(squad.as_deref(), &cell, relation).is_squad_visible();
-        (occupant_visible || grid.is_blocked(&cell)).then_some(cell)
+        (occupant_visible || *grid.is_blocked(&cell)).then_some(cell)
     });
     // GTW-11 — the verdict CARRIED to the presenter (drives the reticle recolour + the
     // fire-refusal share). Computed for the cell that survived the highlight gate (a blocking

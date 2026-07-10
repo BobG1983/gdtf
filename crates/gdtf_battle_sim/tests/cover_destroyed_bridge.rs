@@ -21,7 +21,7 @@ use gdtf_battle_sim::{
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
     inflicted_wound::InflictedWounds,
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     march::{MarchKind, march_vector},
     occupancy::TerrainKind,
     occupancy_sync::OccupancyMaintenancePlugin,
@@ -88,7 +88,11 @@ fn spawn_shooter(world: &mut World) -> Entity {
             DamageType::Kinetic,
         ),
         HandlingProfile::new(
-            Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+            Magazine::new(
+                LoadedRounds::new(10),
+                MagazineSize::new(30),
+                ReloadTu::new(12),
+            ),
             FireMode::new(vec![single_mode(0.2, 1)]),
             Stable::new(true),
             Shove::new(false),
@@ -182,11 +186,11 @@ fn fired_round_destroys_cover_and_the_bridge_frees_the_cell() {
         let grid = app.world().resource::<OccupancyGrid>();
         let cover_res = app.world().resource::<CoverLedger>();
         assert!(
-            grid.is_blocked(&cover_cell()),
+            *grid.is_blocked(&cover_cell()),
             "BEFORE: the standing cover cell must block",
         );
         assert!(
-            !grid.is_cover_destroyed(&cover_cell()),
+            !*grid.is_cover_destroyed(&cover_cell()),
             "BEFORE: the cover cell must not yet be in the destroyed-cover set",
         );
         assert!(
@@ -214,12 +218,12 @@ fn fired_round_destroys_cover_and_the_bridge_frees_the_cell() {
     let grid = app.world().resource::<OccupancyGrid>();
     let cover_res = app.world().resource::<CoverLedger>();
     assert!(
-        grid.is_cover_destroyed(&cover_cell()),
+        *grid.is_cover_destroyed(&cover_cell()),
         "AFTER: sync_destroyed_cover must have marked the smashed cell destroyed (the bridge \
          drove the real wiring) — got destroyed-set miss",
     );
     assert!(
-        !grid.is_blocked(&cover_cell()),
+        !*grid.is_blocked(&cover_cell()),
         "AFTER: a destroyed cover cell must stop blocking (the freed cell)",
     );
     assert!(

@@ -69,8 +69,8 @@ pub(in crate::states::running::game::battlescape) fn offer_enter_emplacement(
             emplacements
                 .iter()
                 .find(|(_, state, emplacement_cell)| {
-                    !state.is_occupied()
-                        && is_8_adjacent(*actor_pos, Position::new(***emplacement_cell))
+                    !*state.is_occupied()
+                        && *is_8_adjacent(*actor_pos, Position::new(***emplacement_cell))
                 })
                 .map(|(entity, ..)| entity)
         });

@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use gdtf_battle_input::{InspectTarget, SelectedFireMode};
 use gdtf_battle_sim::{
     ganger::{Aiming, TuMax},
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     prelude::{CellLevel, Direction, Level, LifeState, OccupancyGrid, StanceKind, Tu},
     tuning::CombatTuning,
     visibility::SquadVisibility,
@@ -25,7 +25,7 @@ fn empty_wielded_magazine(app: &mut App, ganger: Entity) {
         .and_then(gdtf_battle_sim::weapon::Wields::weapon)
     {
         app.world_mut().entity_mut(weapon).insert(Magazine::new(
-            0,
+            LoadedRounds::new(0),
             MagazineSize::new(30),
             ReloadTu::new(12),
         ));

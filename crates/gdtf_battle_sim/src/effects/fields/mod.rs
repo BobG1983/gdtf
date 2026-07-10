@@ -77,7 +77,7 @@ mod test_turn_start;
 #[cfg(test)]
 mod tests;
 
-pub use apply_effect::{ApplyFieldEffect, OccupantArmor, OccupantDrain};
+pub use apply_effect::{ApplyFieldEffect, DrainExempt, FieldExpired, OccupantArmor, OccupantDrain};
 pub use drain::{ApplyDrain, FieldDamage};
 pub use duration::{ApplyDuration, FieldDuration, FieldTurns};
 pub use effect::FieldEffect;

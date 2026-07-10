@@ -7,7 +7,7 @@
 
 use bevy::{
     platform::collections::HashSet,
-    prelude::{Commands, Entity, Message, MessageReader, MessageWriter, Query, Res},
+    prelude::{Commands, Deref, Entity, Message, MessageReader, MessageWriter, Query, Res},
 };
 
 use crate::{
@@ -18,6 +18,38 @@ use crate::{
     tu::spend_tu,
     visibility::{FactionRelation, SquadVisibility, is_ganger_visible},
 };
+
+/// Whether a committed walk's route is **exhausted** — no cells remain to enter
+/// ([`WalkInProgress::is_complete`]).
+///
+/// `true` means the walk has covered its whole accepted route; `false` means at least
+/// one step remains. A distinct route-progress predicate, not a bare `bool`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RouteComplete(bool);
+
+impl RouteComplete {
+    /// Build the route-complete verdict.
+    #[must_use]
+    pub const fn new(complete: bool) -> Self {
+        Self(complete)
+    }
+}
+
+/// Whether the current visible-enemy set reveals a **new** enemy versus the walk's
+/// baseline — the [`reveals_new_enemy`](WalkInProgress::reveals_new_enemy) interrupt trigger.
+///
+/// `true` means a freshly-revealed enemy halts the committed walk; `false` means no
+/// reveal (or the first-tick baseline capture). A distinct reveal predicate, not a bare
+/// `bool`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+struct NewEnemyRevealed(bool);
+
+impl NewEnemyRevealed {
+    /// Build the new-enemy-revealed verdict.
+    const fn new(revealed: bool) -> Self {
+        Self(revealed)
+    }
+}
 
 /// A **reaction shot was fired** at a walking mover — the typed interrupt the committed
 /// walk stops on (GTW-355, C5(b)).
@@ -120,8 +152,8 @@ impl WalkInProgress {
 
     /// Whether the route is exhausted — no cells remain to enter.
     #[must_use]
-    pub const fn is_complete(&self) -> bool {
-        self.remaining_cells.is_empty()
+    pub const fn is_complete(&self) -> RouteComplete {
+        RouteComplete::new(self.remaining_cells.is_empty())
     }
 
     /// The next cell the walk would step ONTO and its entry [`Tu`] cost, without
@@ -147,13 +179,15 @@ impl WalkInProgress {
     /// the call returns `false` (nothing is "new" relative to the moment the walk
     /// began). On every later tick a cell in `current` absent from the baseline is a
     /// freshly-revealed enemy → `true` (C5(a)).
-    fn reveals_new_enemy(&mut self, current: &HashSet<CellLevel>) -> bool {
+    fn reveals_new_enemy(&mut self, current: &HashSet<CellLevel>) -> NewEnemyRevealed {
         match &self.seen_enemies {
             None => {
                 self.seen_enemies = Some(current.clone());
-                false
+                NewEnemyRevealed::new(false)
             }
-            Some(baseline) => current.iter().any(|cell| !baseline.contains(cell)),
+            Some(baseline) => {
+                NewEnemyRevealed::new(current.iter().any(|cell| !baseline.contains(cell)))
+            }
         }
     }
 }
@@ -189,7 +223,7 @@ fn visible_enemy_cells(
                 FactionRelation::Other
             };
             // Only an ENEMY whose cell is squad-VISIBLE is a reveal candidate.
-            if relation == FactionRelation::Other && is_ganger_visible(squad, cell, relation) {
+            if relation == FactionRelation::Other && *is_ganger_visible(squad, cell, relation) {
                 Some(*cell)
             } else {
                 None
@@ -300,7 +334,7 @@ pub fn advance_walk(
         // Position write already refreshed (§44 ambush invariant; FOV is NOT re-derived).
         // The first tick captures the current set AS the baseline (no reveal yet).
         let visible_now = visible_enemy_cells(mover, faction, &snapshot, &squad);
-        if walk.reveals_new_enemy(&visible_now) {
+        if *walk.reveals_new_enemy(&visible_now) {
             commands.entity(mover).remove::<WalkInProgress>();
             continue;
         }
@@ -327,7 +361,7 @@ pub fn advance_walk(
         // the bump-stop and the mover would walk THROUGH a cell the planner treats as
         // impassable. Reading `is_path_blocked` keeps planner and executor in lock-step. The
         // zero-regression Wall/Cover case is unaffected (both queries agree there, C5).
-        if grid.is_path_blocked(&next) || grid.occupant(&next).is_some() {
+        if *grid.is_path_blocked(&next) || grid.occupant(&next).is_some() {
             commands.entity(mover).remove::<WalkInProgress>();
             continue;
         }
@@ -345,7 +379,7 @@ pub fn advance_walk(
         walk.pop_next();
 
         // Route exhausted → the destination is reached; remove the walk.
-        if walk.is_complete() {
+        if *walk.is_complete() {
             commands.entity(mover).remove::<WalkInProgress>();
         }
     }

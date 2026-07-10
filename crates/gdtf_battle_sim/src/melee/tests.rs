@@ -78,7 +78,7 @@ fn connect_rate_and_mean_margin(attacker: f32, defender: f32) -> (usize, f32) {
             tuning.variance,
             &mut rng,
         );
-        if outcome.connect {
+        if *outcome.connect {
             connects += 1;
         }
         margin_sum += *outcome.margin;
@@ -223,7 +223,7 @@ fn degenerate_zero_defender_fight_is_defined_and_finite() {
             *outcome.margin,
         );
         assert!(
-            outcome.connect,
+            *outcome.connect,
             "degenerate def<=0 must connect (a defenceless target is hit), sample {i}",
         );
         let mult = melee_damage_mult(outcome.margin, &tuning);

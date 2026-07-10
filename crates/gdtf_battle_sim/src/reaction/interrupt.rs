@@ -121,7 +121,7 @@ pub(super) fn try_reaction(
     // C2: eligibility gate — alive + unspent TU + cap room. The cap read is the
     // reactor's LIVE ReactionsUsed (mutated by an earlier successful interrupt this
     // same tick), so a reactor that already hit its cap this pass is refused.
-    if !reactor.life.is_active() || *tu_now == 0 {
+    if !*reactor.life.is_active() || *tu_now == 0 {
         return None;
     }
     // GTW-526 C3: a SUPPRESSED reactor cannot interrupt — a pinned unit is a worse
@@ -138,7 +138,7 @@ pub(super) fn try_reaction(
         .get(reactor.entity)
         .copied()
         .unwrap_or_else(|_| ReactionsUsed::new(0));
-    if !may_interrupt(used_now, reactor.reactions, &tuning.reaction) {
+    if !*may_interrupt(used_now, reactor.reactions, &tuning.reaction) {
         return None;
     }
 
@@ -193,7 +193,7 @@ pub(super) fn try_reaction(
         handedness,
         hands_available: HandsAvailable::default(),
     };
-    if !can_fire(&fire_actor, &mode, actor_cell, actor_level, tuning) {
+    if !*can_fire(&fire_actor, &mode, actor_cell, actor_level, tuning) {
         return None;
     }
     // decide_fire_arc (the SHARED arc verdict `dispatch_fire` matches) — the reactor
@@ -220,7 +220,7 @@ pub(super) fn try_reaction(
     let watcher_score = reaction_score(reactor.reactions, tu_now, reactor.tu_max);
     let mover_score = reaction_score(actor.reactions, actor.tu, actor.tu_max);
     let probability = interrupt_probability(watcher_score, mover_score, &tuning.reaction);
-    if !rolls_interrupt(probability, rng) {
+    if !*rolls_interrupt(probability, rng) {
         return None;
     }
 

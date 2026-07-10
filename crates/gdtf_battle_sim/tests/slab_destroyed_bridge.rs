@@ -30,7 +30,7 @@ use gdtf_battle_sim::{
     cover::CoverLedger,
     ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
     inflicted_wound::InflictedWounds,
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     march::{MarchKind, march_vector},
     occupancy_sync::OccupancyMaintenancePlugin,
     prelude::{
@@ -108,7 +108,11 @@ fn spawn_shooter(world: &mut World) -> Entity {
             DamageType::Kinetic,
         ),
         HandlingProfile::new(
-            Magazine::new(30, MagazineSize::new(30), ReloadTu::new(12)),
+            Magazine::new(
+                LoadedRounds::new(30),
+                MagazineSize::new(30),
+                ReloadTu::new(12),
+            ),
             FireMode::new(vec![single_mode(0.2, 1)]),
             Stable::new(true),
             Shove::new(false),

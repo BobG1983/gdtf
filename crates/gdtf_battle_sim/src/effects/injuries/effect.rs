@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     ApplyBleeding, ApplyDisableHand, ApplyInjuryEffect, ApplyModify, ApplyMovementCostMul,
-    BleedAmount, HealError, LedgerAccumulators, MovementCostFactor, StatDelta,
+    BleedAmount, HandDisabling, HealError, LedgerAccumulators, MovementCostFactor, StatDelta,
 };
 use crate::injuries::StatTarget;
 
@@ -116,7 +116,7 @@ impl ApplyInjuryEffect for InjuryEffect {
 
     /// The read-side hand projection, DELEGATED to the isolated behaviour type (only
     /// [`ApplyDisableHand`] overrides the defaulted `false`).
-    fn disables_hand(&self) -> bool {
+    fn disables_hand(&self) -> HandDisabling {
         self.with_behaviour(|behaviour| behaviour.disables_hand())
     }
 

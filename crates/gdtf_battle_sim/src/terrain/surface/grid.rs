@@ -6,7 +6,10 @@ use bevy::{
     prelude::{Deref, Resource},
 };
 
-use crate::metric::{Cell, CellLevel};
+use crate::{
+    metric::{Cell, CellLevel},
+    slab::SlabDestroyedFlag,
+};
 
 /// The state of one floor/roof slab at a `(cell, level)` — does a slab exist there,
 /// and if it did, has it been destroyed?
@@ -37,8 +40,8 @@ impl SlabState {
     /// Whether this slab has been destroyed — the terminal state that no API can
     /// revert.
     #[must_use]
-    pub const fn is_destroyed(self) -> bool {
-        matches!(self, Self::Destroyed)
+    pub const fn is_destroyed(self) -> SlabDestroyedFlag {
+        SlabDestroyedFlag::new(matches!(self, Self::Destroyed))
     }
 }
 
@@ -67,6 +70,23 @@ impl GroundDamage {
     #[must_use]
     pub const fn accrue(self, amount: Self) -> Self {
         Self(self.0.saturating_add(amount.0))
+    }
+}
+
+/// Whether a guarded ground-damage write was **applied** — the answer
+/// [`SurfaceGrid::set_ground_damage`] returns (`true` applied, `false` rejected as a monotonic
+/// no-op below the current total).
+///
+/// A named newtype over `bool` (no-bare-types: the outcome of a monotonic-guard write is a
+/// domain fact, not a bare boolean). Private inner + derived [`Deref`] (house style).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DamageApplied(bool);
+
+impl DamageApplied {
+    /// Build a damage-applied answer from its boolean state.
+    #[must_use]
+    pub const fn new(applied: bool) -> Self {
+        Self(applied)
     }
 }
 
@@ -127,7 +147,7 @@ impl SurfaceGrid {
     /// [`destroy_slab`](SurfaceGrid::destroy_slab); this method exists for authoring
     /// the *pre-destruction* state and must not be a back door around permanence.
     pub fn set_slab(&mut self, key: CellLevel, state: SlabState) {
-        if self.slab_state(&key).is_destroyed() {
+        if *self.slab_state(&key).is_destroyed() {
             // Permanent destruction: refuse to overwrite a Destroyed slab.
             return;
         }
@@ -178,12 +198,12 @@ impl SurfaceGrid {
     /// [`accrue_ground_damage`](SurfaceGrid::accrue_ground_damage) is the normal
     /// write path; this guarded setter exists for callers that hold an absolute
     /// total (and proves a decrease attempt cannot succeed — C4).
-    pub fn set_ground_damage(&mut self, cell: Cell, value: GroundDamage) -> bool {
+    pub fn set_ground_damage(&mut self, cell: Cell, value: GroundDamage) -> DamageApplied {
         if value < self.ground_damage(&cell) {
             // Monotonic guard: refuse to lower the accumulated total.
-            return false;
+            return DamageApplied::new(false);
         }
         self.ground.insert(cell, value);
-        true
+        DamageApplied::new(true)
     }
 }

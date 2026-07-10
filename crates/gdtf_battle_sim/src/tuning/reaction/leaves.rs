@@ -32,7 +32,27 @@
 use bevy::prelude::Deref;
 use serde::Deserialize;
 
+use super::core::ReactionProbability;
 use crate::ganger::Reactions;
+
+/// A watcher's **per-turn reaction interrupt cap** — the maximum number of interrupts a
+/// ganger may take this enemy turn ([`reaction_cap`]).
+///
+/// `floor(cap_base + cap_per_reactions × Reactions)`, compared against
+/// [`ReactionsUsed`](super::core::ReactionsUsed) by
+/// [`may_interrupt`](super::core::may_interrupt). A distinct interrupt-count ceiling — the
+/// same `u32` units as [`ReactionsUsed`](super::core::ReactionsUsed) — wrapped
+/// (no-bare-types), never a bare `u32`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ReactionCap(u32);
+
+impl ReactionCap {
+    /// Build the per-turn interrupt cap from its computed count.
+    #[must_use]
+    pub const fn new(cap: u32) -> Self {
+        Self(cap)
+    }
+}
 
 // ── Tuning leaves ────────────────────────────────────────────────────────────
 
@@ -341,15 +361,15 @@ const fn floor_to_u32(val: f32) -> u32 {
 ///   via [`crate::ganger::derive_stats`]).
 /// - `tuning` — the [`ReactionTuning`] group from [`crate::tuning::CombatTuning`].
 #[must_use]
-pub fn reaction_cap(reactions: Reactions, tuning: &ReactionTuning) -> u32 {
+pub fn reaction_cap(reactions: Reactions, tuning: &ReactionTuning) -> ReactionCap {
     // FMA form: cap_per_reactions × reactions + cap_base (suboptimal_flops lint).
     let raw = (*tuning.cap_per_reactions).mul_add(*reactions, *tuning.cap_base);
     // Clamp to 0 before the floor so a badly-tuned negative never wraps.
-    if raw < 0.0 {
+    ReactionCap::new(if raw < 0.0 {
         0
     } else {
         floor_to_u32(raw.floor())
-    }
+    })
 }
 
 /// The **probability clamp** — pins the opposed-check `P(interrupt)` to the
@@ -371,6 +391,6 @@ pub fn reaction_cap(reactions: Reactions, tuning: &ReactionTuning) -> u32 {
 ///   valid inputs — the clamp enforces the bounds).
 /// - `tuning` — the [`ReactionTuning`] group from [`crate::tuning::CombatTuning`].
 #[must_use]
-pub fn clamp_probability(p: f32, tuning: &ReactionTuning) -> f32 {
-    p.clamp(*tuning.p_min, *tuning.p_max)
+pub fn clamp_probability(p: ReactionProbability, tuning: &ReactionTuning) -> ReactionProbability {
+    ReactionProbability::new((*p).clamp(*tuning.p_min, *tuning.p_max))
 }

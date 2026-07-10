@@ -39,7 +39,7 @@ fn walk_bump_stop_halts_on_a_tag_only_path_block_added_mid_walk() {
     let kind_blocks_before = app
         .world()
         .get_resource::<OccupancyGrid>()
-        .map(|g| g.is_blocked(&block_cell));
+        .map(|g| *g.is_blocked(&block_cell));
     assert_eq!(
         kind_blocks_before,
         Some(false),
@@ -83,7 +83,7 @@ fn walk_bump_stop_halts_on_a_tag_only_path_block_added_mid_walk() {
     assert_eq!(
         app.world()
             .get_resource::<OccupancyGrid>()
-            .map(|g| (g.is_blocked(&block_cell), g.is_path_blocked(&block_cell))),
+            .map(|g| (*g.is_blocked(&block_cell), *g.is_path_blocked(&block_cell))),
         Some((false, true)),
         "(13,10) blocks the PATH (tag) but not the kind surface — the tag/kind split (D1)",
     );

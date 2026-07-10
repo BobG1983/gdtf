@@ -2,7 +2,8 @@
 //! Cover, and one Slab definition. NO magnitude pins — identity only.
 
 use super::super::{
-    TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind, TerrainTag, TerrainUuid,
+    BlocksPathingOverride, TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind,
+    TerrainTag, TerrainUuid,
 };
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
@@ -109,6 +110,69 @@ fn slab_def_round_trips() {
         blocks_los:     None,
     };
     assert_round_trips(&def);
+}
+
+/// A minimal `Slab` def carrying an authored `blocks_pathing` override — the vehicle for the
+/// GTW-705 serde-transparency proof below.
+fn slab_with_path_override(over: Option<BlocksPathingOverride>) -> TerrainDef {
+    TerrainDef {
+        key:            TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_0587)),
+        display_name:   TerrainDisplayName::new("Override Slab".to_owned()),
+        sim_kind:       TerrainSimKind::Slab {
+            hp:               SlabHp::new(80),
+            armor_protection: ArmorProtection::new(4),
+            armor_hardness:   ArmorHardness::new(2),
+        },
+        presenter_kind: TerrainPresenterKind::Slab {
+            graphic_name: TerrainGraphicKey::new("floor".to_owned()),
+            footfall:     None,
+        },
+        tags:           Vec::new(),
+        on_death:       None,
+
+        blocks_pathing: over,
+        blocks_los:     None,
+    }
+}
+
+/// GTW-705 (special item) — the [`BlocksPathingOverride`] wrap is `#[serde(transparent)]`, so an
+/// authored `blocks_pathing: Some(true)` / `Some(false)` serializes to the SAME bare-bool wire
+/// form as the pre-wrap `Option<bool>` (the newtype name never appears in RON) and round-trips
+/// to itself. Proves the wrap is RON-invisible for authored overrides — no shipped `.ron` changes.
+#[test]
+fn blocks_pathing_override_serializes_transparently() {
+    for over in [
+        Some(BlocksPathingOverride::new(true)),
+        Some(BlocksPathingOverride::new(false)),
+        None,
+    ] {
+        let def = slab_with_path_override(over);
+        assert_round_trips(&def);
+
+        let serialized = ron::ser::to_string(&def);
+        assert!(serialized.is_ok(), "def must serialize: {serialized:?}");
+        let Ok(text) = serialized else { return };
+        assert!(
+            !text.contains("BlocksPathingOverride"),
+            "the newtype is #[serde(transparent)] — its name must NOT appear in the RON wire form \
+             (the override rides as a bare bool, byte-identical to the pre-wrap Option<bool>): \
+             {text}",
+        );
+        match over {
+            Some(o) if *o => assert!(
+                text.contains("blocks_pathing:Some(true)"),
+                "an authored Some(true) rides as the bare-bool wire form: {text}",
+            ),
+            Some(_) => assert!(
+                text.contains("blocks_pathing:Some(false)"),
+                "an authored Some(false) rides as the bare-bool wire form: {text}",
+            ),
+            None => assert!(
+                text.contains("blocks_pathing:None"),
+                "an omitted override rides as None: {text}",
+            ),
+        }
+    }
 }
 
 /// GTW-543 — an `Emplacement` definition round-trips to itself (identity), including the

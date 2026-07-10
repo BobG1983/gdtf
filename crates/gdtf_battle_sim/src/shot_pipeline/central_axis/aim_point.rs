@@ -3,7 +3,7 @@
 //! level-fraction).
 
 use crate::{
-    cover::HeightBand,
+    cover::{BandFraction, HeightBand},
     ganger::{Position, Stance, StanceKind},
     metric::{SimPos, cell_center},
     tuning::{AimHeightFrac, CombatTuning, ProjectileBandEdges, SilhouetteTop},
@@ -30,13 +30,13 @@ const fn silhouette_top(stance: StanceKind, tuning: &CombatTuning) -> Silhouette
 /// [`ProjectileBandEdges`] (resolution.md §1 / AC #3): Low-top = `low_mid`,
 /// Mid-top = `mid_high`, High-top = `1.0` (the storey ceiling). Never a hardcoded
 /// magnitude beyond the storey-ceiling fraction `1.0`.
-pub(super) fn band_top_fraction(band: HeightBand, edges: ProjectileBandEdges) -> f32 {
+pub(super) fn band_top_fraction(band: HeightBand, edges: ProjectileBandEdges) -> BandFraction {
     match band {
-        HeightBand::Low => *edges.low_mid,
-        HeightBand::Mid => *edges.mid_high,
+        HeightBand::Low => BandFraction::new(*edges.low_mid),
+        HeightBand::Mid => BandFraction::new(*edges.mid_high),
         // The top of the HIGH band is the top of the storey — the 1.0 level-fraction
         // (a level-fraction, not a pixel): nothing within a storey sits above it.
-        HeightBand::High => 1.0,
+        HeightBand::High => BandFraction::new(1.0),
     }
 }
 
@@ -44,12 +44,12 @@ pub(super) fn band_top_fraction(band: HeightBand, edges: ProjectileBandEdges) ->
 /// [`ProjectileBandEdges`]: Low-bottom = `0.0` (the storey floor), Mid-bottom =
 /// `low_mid`, High-bottom = `mid_high`. Paired with [`band_top_fraction`] this
 /// gives each band its `[bottom, top)` level-fraction range.
-pub(super) fn band_bottom_fraction(band: HeightBand, edges: ProjectileBandEdges) -> f32 {
+pub(super) fn band_bottom_fraction(band: HeightBand, edges: ProjectileBandEdges) -> BandFraction {
     match band {
         // The bottom of the LOW band is the storey floor — the 0.0 level-fraction.
-        HeightBand::Low => 0.0,
-        HeightBand::Mid => *edges.low_mid,
-        HeightBand::High => *edges.mid_high,
+        HeightBand::Low => BandFraction::new(0.0),
+        HeightBand::Mid => BandFraction::new(*edges.low_mid),
+        HeightBand::High => BandFraction::new(*edges.mid_high),
     }
 }
 
@@ -57,10 +57,10 @@ pub(super) fn band_bottom_fraction(band: HeightBand, edges: ProjectileBandEdges)
 /// `[bottom, top)` edges, both derived from the tunable [`ProjectileBandEdges`]
 /// (AC #4: "a cover-occupied cell aims at the object's own band midpoint, derived
 /// from the band edges, never a literal"). Lies strictly inside the band's range.
-pub(super) fn band_midpoint_fraction(band: HeightBand, edges: ProjectileBandEdges) -> f32 {
+pub(super) fn band_midpoint_fraction(band: HeightBand, edges: ProjectileBandEdges) -> BandFraction {
     let bottom = band_bottom_fraction(band, edges);
     let top = band_top_fraction(band, edges);
-    f32::midpoint(bottom, top)
+    BandFraction::new(f32::midpoint(*bottom, *top))
 }
 
 /// The **aim point** a shooter centres the cone on, as a [`SimPos`] (resolution.md
@@ -102,7 +102,7 @@ pub fn target_aim_point(
     // height genuinely IS band-based); a bare ganger target aims at its per-stance
     // silhouette-top level-fraction (the dedicated SilhouetteTops tuning) × aim_height_frac.
     let aim_fraction = if let Some(band) = cover_band {
-        band_midpoint_fraction(band, edges)
+        *band_midpoint_fraction(band, edges)
     } else {
         let top = *silhouette_top(*stance, tuning);
         top * *aim_height_frac(tuning)

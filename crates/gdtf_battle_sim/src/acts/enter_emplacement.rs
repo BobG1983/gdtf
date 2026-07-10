@@ -85,7 +85,7 @@ pub fn dispatch_enter_emplacement(
         let Ok((state, cell)) = emplacements.get(request.emplacement) else {
             continue;
         };
-        if state.is_occupied() {
+        if *state.is_occupied() {
             continue;
         }
         // (2) Gate the actor: it must exist (have a Position + Tu), be 8-adjacent to the
@@ -96,7 +96,7 @@ pub fn dispatch_enter_emplacement(
             continue;
         };
         let cost = Tu::new(*tuning.enter_emplacement_tu);
-        if !is_8_adjacent(actor_pos, Position::new(**cell)) || **actor_tu < *cost {
+        if !*is_8_adjacent(actor_pos, Position::new(**cell)) || **actor_tu < *cost {
             continue;
         }
         // (3) Charge + occupy. Spend the EnterEmplacementTu (saturating), then man the emplacement
@@ -146,7 +146,7 @@ pub fn dispatch_exit_emplacement(
         let Ok((state, occupant)) = emplacements.get(request.emplacement) else {
             continue;
         };
-        if !state.is_occupied() || **occupant != request.actor {
+        if !*state.is_occupied() || **occupant != request.actor {
             continue;
         }
         // (2) Gate the actor: it must exist (have Tu) and afford the ExitEmplacementTu leaf.

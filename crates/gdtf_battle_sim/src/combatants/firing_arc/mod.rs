@@ -22,4 +22,4 @@ mod arc;
 #[cfg(test)]
 mod test;
 
-pub use arc::target_in_arc;
+pub use arc::{TargetInArc, target_in_arc};

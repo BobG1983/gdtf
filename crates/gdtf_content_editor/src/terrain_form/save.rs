@@ -16,7 +16,10 @@ use gdtf_assets::serialize_ron_pretty;
 #[cfg(debug_assertions)]
 use gdtf_assets::{ContentFamily, FileStem, WORKSPACE_ASSETS_ROOT};
 use gdtf_battle_sim::terrain::{
-    def::{TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind, TerrainUuid},
+    def::{
+        BlocksPathingOverride, TerrainDef, TerrainDisplayName, TerrainPresenterKind,
+        TerrainSimKind, TerrainUuid,
+    },
     piece::TerrainGraphicKey,
 };
 #[cfg(debug_assertions)]
@@ -134,7 +137,7 @@ pub fn draft_to_terrain_def(
         on_death: None,
         // GTW-587: the authored per-def blocking overrides (both `None` unless the author set
         // them, in which case they win over the kind default at battle setup).
-        blocks_pathing: draft.blocks_pathing(),
+        blocks_pathing: draft.blocks_pathing().map(BlocksPathingOverride::new),
         blocks_los: draft.blocks_los(),
     })
 }

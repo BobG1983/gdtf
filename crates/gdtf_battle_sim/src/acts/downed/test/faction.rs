@@ -14,7 +14,7 @@ fn faction_gate_enemy_cannot_stabilize() {
 
     // Predicate: false.
     assert!(
-        !can_stabilize(&a, &t),
+        !*can_stabilize(&a, &t),
         "an enemy (cross-faction) cannot stabilize — predicate false",
     );
 
@@ -41,7 +41,7 @@ fn faction_gate_ally_cannot_execute() {
 
     // Predicate: false.
     assert!(
-        !can_execute(&a, &t),
+        !*can_execute(&a, &t),
         "an ally (same-faction) cannot execute — predicate false",
     );
 

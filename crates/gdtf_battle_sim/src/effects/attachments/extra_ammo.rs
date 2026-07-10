@@ -68,7 +68,7 @@ mod tests {
             magazine.size().get()
         );
         assert!(
-            magazine.is_full(),
+            *magazine.is_full(),
             "ExtraAmmo refills the grown magazine to full"
         );
     }

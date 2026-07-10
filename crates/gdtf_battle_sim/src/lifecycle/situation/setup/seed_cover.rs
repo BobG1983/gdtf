@@ -78,7 +78,7 @@ pub(super) fn seed_cover_terrain(
         // existing walls/cover keep blocking with no content migration). `Added` fires on
         // this insert, so the GTW-501 projection picks it up the next time it runs (a unit
         // struct is not a Bundle in 0.19, so insert it conditionally rather than tupling).
-        if resolved.blocks_path {
+        if *resolved.blocks_path {
             commands.entity(entity).insert(BlocksPathfinding);
         }
         // GTW-502 C1/C2 / GTW-587: attach the BlocksVision component (carrying its height-aware

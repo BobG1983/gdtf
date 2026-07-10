@@ -253,7 +253,7 @@ pub fn decide_left_click(
     if let Some(shooter) = **selected
         && selection_is_player
         && occupant.is_none()
-        && reads.occupancy.is_blocked(&target)
+        && *reads.occupancy.is_blocked(&target)
         && cell_squad_visible(reads.squad_visibility.as_deref(), &target, None).is_squad_visible()
         && let Some(request) = try_fire_request(
             shooter,
@@ -281,7 +281,7 @@ pub fn decide_left_click(
     if let Some(actor) = **selected
         && selection_is_player
         && occupant.is_none()
-        && !reads.occupancy.is_blocked(&target)
+        && !*reads.occupancy.is_blocked(&target)
     {
         // OQ-4: a vertical-link tile is NOT a move target — clicking it is a no-op (no target
         // set, no dispatch, no active-level change). Reaching another storey is "switch

@@ -41,6 +41,23 @@ use bevy::{
     prelude::{Deref, Res, ResMut, Resource},
 };
 
+/// Whether the enemy brain **may emit an act this tick** — the cadence-gate verdict
+/// ([`EnemyActCooldown::is_ready`] / [`ActPacing::gate`]).
+///
+/// `true` means the cadence dwell has elapsed (or no pacing resource is seeded) so the
+/// brain may act; `false` means it must wait this tick. A distinct pacing-gate predicate,
+/// not a bare `bool`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ActReady(bool);
+
+impl ActReady {
+    /// Build the act-readiness verdict from the cooldown / pacing check.
+    #[must_use]
+    pub const fn new(ready: bool) -> Self {
+        Self(ready)
+    }
+}
+
 /// The **enemy-act cadence** — the number of [`Update`](bevy::prelude::Update) ticks the
 /// brain waits between successive enemy acts (GTW-461).
 ///
@@ -107,8 +124,8 @@ impl EnemyActCooldown {
 
     /// Whether the cooldown has elapsed — the brain may emit an act this tick.
     #[must_use]
-    pub const fn is_ready(self) -> bool {
-        self.0 == 0
+    pub const fn is_ready(self) -> ActReady {
+        ActReady::new(self.0 == 0)
     }
 
     /// Count DOWN one tick toward readiness (saturating at `0` — never wraps below zero).
@@ -149,13 +166,13 @@ impl ActPacing<'_> {
     /// must emit NO act this tick — at most one act per cadence-step). If it HAS elapsed (or
     /// is absent), return `true` (the brain may emit an act). An absent cooldown always
     /// returns `true` (the un-paced fallback).
-    pub fn gate(&mut self) -> bool {
+    pub fn gate(&mut self) -> ActReady {
         match self.cooldown.as_deref_mut() {
-            Some(cooldown) if !cooldown.is_ready() => {
+            Some(cooldown) if !*cooldown.is_ready() => {
                 cooldown.tick();
-                false
+                ActReady::new(false)
             }
-            _ => true,
+            _ => ActReady::new(true),
         }
     }
 

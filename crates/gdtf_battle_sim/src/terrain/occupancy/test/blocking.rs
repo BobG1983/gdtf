@@ -25,22 +25,22 @@ fn destroyed_cover_is_excluded_from_blocking() {
     let intact = key(9, 9, 0);
 
     // Both cover cells block while standing.
-    assert!(grid.is_blocked(&smashed), "standing cover must block");
-    assert!(grid.is_blocked(&intact), "standing cover must block");
+    assert!(*grid.is_blocked(&smashed), "standing cover must block");
+    assert!(*grid.is_blocked(&intact), "standing cover must block");
 
     // Mark one destroyed — it must no longer block, the other still blocks.
     grid.mark_cover_destroyed(smashed);
     assert!(
-        !grid.is_blocked(&smashed),
+        !*grid.is_blocked(&smashed),
         "a destroyed cover cell must NOT block (C6)",
     );
     assert!(
-        grid.is_blocked(&intact),
+        *grid.is_blocked(&intact),
         "an unrelated standing cover cell must still block",
     );
     // The destroyed-cover set records the smashed cell.
-    assert!(grid.is_cover_destroyed(&smashed));
-    assert!(!grid.is_cover_destroyed(&intact));
+    assert!(*grid.is_cover_destroyed(&smashed));
+    assert!(!*grid.is_cover_destroyed(&intact));
 }
 
 /// A wall blocks and Open does not — the static blocking-ness of the terrain
@@ -53,14 +53,14 @@ fn wall_blocks_open_does_not() {
     };
     let grid = OccupancyGrid::build_from_occupancy_input(&input, &no_stair_cells());
 
-    assert!(grid.is_blocked(&key(4, 4, 0)), "a wall must block");
+    assert!(*grid.is_blocked(&key(4, 4, 0)), "a wall must block");
     assert!(
-        !grid.is_blocked(&key(0, 0, 0)),
+        !*grid.is_blocked(&key(0, 0, 0)),
         "an Open cell must not block",
     );
-    assert!(TerrainKind::Wall.blocks());
-    assert!(TerrainKind::Cover.blocks());
-    assert!(!TerrainKind::Open.blocks());
+    assert!(*TerrainKind::Wall.blocks());
+    assert!(*TerrainKind::Cover.blocks());
+    assert!(!*TerrainKind::Open.blocks());
 }
 
 /// The destroyed-cover set is **append-only** and survives a rebuild only by

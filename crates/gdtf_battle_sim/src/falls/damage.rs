@@ -184,7 +184,7 @@ pub(crate) fn resolve_fall_hit(
     // advantage is absent). Read the struck piece's stats if it still protects, else the
     // zeroed BARE_FLESH piece.
     let piece = match target.piece.as_ref() {
-        Some(p) if p.protects() => ArmorPiece::new(
+        Some(p) if *p.protects() => ArmorPiece::new(
             p.floor,
             p.protection,
             p.integrity_value(),

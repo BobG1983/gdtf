@@ -44,7 +44,7 @@ pub(super) fn grid_with(terrain: &[(CellLevel, TerrainKind)]) -> OccupancyGrid {
     let mut grid = OccupancyGrid::new();
     for &(at, kind) in terrain {
         grid.set_terrain(at, kind);
-        if kind.blocks() {
+        if *kind.blocks() {
             grid.set_path_blocking(at);
         }
     }

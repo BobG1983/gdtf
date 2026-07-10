@@ -45,5 +45,5 @@ mod guard;
 #[cfg(test)]
 mod test;
 
-pub use ammo::{LoadedRounds, Magazine, ReloadTu, clamp_burst};
-pub use guard::{FireActor, can_fire, in_bounds, mode_tu_cost};
+pub use ammo::{LoadedRounds, Magazine, MagazineEmpty, MagazineFull, ReloadTu, clamp_burst};
+pub use guard::{CanFire, FireActor, InBounds, can_fire, in_bounds, mode_tu_cost};

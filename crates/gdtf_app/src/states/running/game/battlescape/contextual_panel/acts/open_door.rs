@@ -68,7 +68,8 @@ pub(in crate::states::running::game::battlescape) fn offer_open_door(
             doors
                 .iter()
                 .find(|(_, open_state, door_cell)| {
-                    !open_state.is_open() && is_8_adjacent(*actor_pos, Position::new(***door_cell))
+                    !*open_state.is_open()
+                        && *is_8_adjacent(*actor_pos, Position::new(***door_cell))
                 })
                 .map(|(entity, ..)| entity)
         });

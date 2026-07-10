@@ -3,7 +3,7 @@
 
 use bevy::{
     ecs::query::Has,
-    prelude::{Entity, Query},
+    prelude::{Deref, Entity, Query},
 };
 
 use crate::{
@@ -12,6 +12,21 @@ use crate::{
     injuries::{HandsAvailable, InflictedInjuries, MovementCostFactor},
     metric::CellLevel,
 };
+
+/// Whether a snapshotted ganger is **mid-walk** — busy stepping through a committed
+/// route (`Has<`[`WalkInProgress`]`>`), so the brain skips it while it keeps the turn open.
+///
+/// `true` means the ganger is walking (not idle for a new act this frame); `false` means
+/// it is free to act. A distinct busy-state predicate, not a bare `bool`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct MidWalk(bool);
+
+impl MidWalk {
+    /// Build the mid-walk flag from the `Has<WalkInProgress>` query read.
+    pub(super) const fn new(walking: bool) -> Self {
+        Self(walking)
+    }
+}
 
 /// The brain's read-only ganger snapshot query shape — every ganger's brain-relevant
 /// components plus its mid-walk flag, read out into a Copy [`GangerRow`] each frame
@@ -64,7 +79,7 @@ pub(super) struct GangerRow {
     pub(super) faction:  Faction,
     /// Whether it is mid-walk (`Has<WalkInProgress>`) — skipped while busy, but it keeps
     /// the turn open (the §D.3 `busy` measure).
-    pub(super) walking:  bool,
+    pub(super) walking:  MidWalk,
     /// Its available hand count (GTW-443) — folded from its injury ledger at snapshot
     /// time (an absent ledger = the uninjured two-hands default), fed to the SHARED
     /// `can_fire` hand-count gate.

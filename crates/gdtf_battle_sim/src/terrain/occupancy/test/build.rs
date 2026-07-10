@@ -118,7 +118,7 @@ fn out_of_range_coords_are_graceful() {
         assert_eq!(grid.terrain(&oob), TerrainKind::Open);
         assert_eq!(grid.occupant(&oob), None);
         assert!(
-            !grid.is_blocked(&oob),
+            !*grid.is_blocked(&oob),
             "an out-of-range cell must not block"
         );
         assert!(grid.slot(&oob).is_none());

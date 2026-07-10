@@ -29,11 +29,11 @@ mod uuid;
 mod test;
 
 pub use blocking::{
-    closed_openable_vision_band, derives_path_blocking, derives_vision_occlusion, is_openable,
-    los_blocking_to_band, resolved_los_blocking, sim_kind_blocks_path, sim_kind_default_los,
-    sim_kind_occludes_vision,
+    Openable, closed_openable_vision_band, derives_path_blocking, derives_vision_occlusion,
+    is_openable, los_blocking_to_band, resolved_los_blocking, sim_kind_blocks_path,
+    sim_kind_default_los, sim_kind_occludes_vision,
 };
-pub use definition::{TerrainDef, TerrainDisplayName};
+pub use definition::{BlocksPathingOverride, TerrainDef, TerrainDisplayName};
 pub use kind::{LosBlocking, TerrainPresenterKind, TerrainSimKind, TerrainTag};
 pub use registry::TerrainDefRegistry;
 pub use uuid::TerrainUuid;

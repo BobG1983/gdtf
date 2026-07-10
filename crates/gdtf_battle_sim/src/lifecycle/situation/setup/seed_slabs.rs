@@ -122,7 +122,7 @@ pub(super) fn seed_slab_terrain(
         // BlocksPathfinding marker ONLY when the def carries an explicit BlocksPathfinding
         // tag (`resolved.blocks_path`), the C1 opt-in for a barricade/lip slab. `Added`
         // fires on insert so the GTW-501 projection blocks the cell.
-        if resolved.blocks_path {
+        if *resolved.blocks_path {
             commands.entity(slab_entity).insert(BlocksPathfinding);
         }
         // GTW-502 C1/C2: a slab does NOT occlude vision by default (the slab march already

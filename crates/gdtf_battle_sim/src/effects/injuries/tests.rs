@@ -84,11 +84,11 @@ fn enum_delegates_to_the_isolated_behaviour() {
 
     // The projection verb delegates too: true for DisableHand, false elsewhere.
     assert!(
-        InjuryEffect::DisableHand.disables_hand(),
+        *InjuryEffect::DisableHand.disables_hand(),
         "DisableHand projects the disabled hand through the trait"
     );
     assert!(
-        !InjuryEffect::MovementCostMul(MovementCostFactor::new(1.5)).disables_hand(),
+        !*InjuryEffect::MovementCostMul(MovementCostFactor::new(1.5)).disables_hand(),
         "a non-hand effect keeps the defaulted false projection"
     );
 }

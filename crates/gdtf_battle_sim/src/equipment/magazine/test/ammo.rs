@@ -3,7 +3,7 @@
 
 use super::support::*;
 use crate::{
-    magazine::{Magazine, clamp_burst},
+    magazine::{LoadedRounds, Magazine, clamp_burst},
     weapon::{MagazineSize, ModeShots},
 };
 
@@ -16,7 +16,7 @@ fn magazine_clamps_request_to_magazine_size() {
     let size = MagazineSize::new(12);
 
     // Asked for more than capacity → clamped to capacity.
-    let over = Magazine::new(100, size, RELOAD_TU);
+    let over = Magazine::new(LoadedRounds::new(100), size, RELOAD_TU);
     assert_eq!(
         *over.rounds(),
         *size,
@@ -24,7 +24,7 @@ fn magazine_clamps_request_to_magazine_size() {
     );
 
     // Asked for within capacity → preserved exactly.
-    let within = Magazine::new(5, size, RELOAD_TU);
+    let within = Magazine::new(LoadedRounds::new(5), size, RELOAD_TU);
     assert_eq!(
         *within.rounds(),
         5,
@@ -32,7 +32,7 @@ fn magazine_clamps_request_to_magazine_size() {
     );
 
     // The exact-capacity request is preserved (the boundary).
-    let exact = Magazine::new(12, size, RELOAD_TU);
+    let exact = Magazine::new(LoadedRounds::new(12), size, RELOAD_TU);
     assert_eq!(
         *exact.rounds(),
         *size,
@@ -42,7 +42,7 @@ fn magazine_clamps_request_to_magazine_size() {
     // loaded() is the full magazine.
     let full = Magazine::loaded(size, RELOAD_TU);
     assert_eq!(*full.rounds(), *size, "loaded() fills to MagazineSize");
-    assert!(full.is_full(), "loaded() is full");
+    assert!(*full.is_full(), "loaded() is full");
 }
 
 // AC2 — the per-round decrement is saturating: an empty (0-round) magazine
@@ -53,7 +53,7 @@ fn spend_round_is_saturating_on_empty_and_decrements_exactly() {
     let size = MagazineSize::new(30);
 
     // Empty magazine: spend_round must floor at 0, never wrap to ~65535.
-    let mut empty = Magazine::new(0, size, RELOAD_TU);
+    let mut empty = Magazine::new(LoadedRounds::new(0), size, RELOAD_TU);
     empty.spend_round();
     assert_eq!(
         *empty.rounds(),
@@ -62,7 +62,7 @@ fn spend_round_is_saturating_on_empty_and_decrements_exactly() {
     );
 
     // Non-empty magazine: spend_round drops by exactly one.
-    let mut loaded = Magazine::new(3, size, RELOAD_TU);
+    let mut loaded = Magazine::new(LoadedRounds::new(3), size, RELOAD_TU);
     loaded.spend_round();
     assert_eq!(
         *loaded.rounds(),
@@ -89,18 +89,18 @@ fn refill_tops_loaded_rounds_to_capacity() {
     let size = MagazineSize::new(30);
 
     // A depleted magazine refills to its full capacity.
-    let mut depleted = Magazine::new(7, size, RELOAD_TU);
-    assert!(!depleted.is_full(), "precondition: not full");
+    let mut depleted = Magazine::new(LoadedRounds::new(7), size, RELOAD_TU);
+    assert!(!*depleted.is_full(), "precondition: not full");
     depleted.refill();
     assert_eq!(
         *depleted.rounds(),
         *size,
         "refill tops the loaded count to the capacity"
     );
-    assert!(depleted.is_full(), "after refill the magazine is full");
+    assert!(*depleted.is_full(), "after refill the magazine is full");
 
     // An empty magazine refills to full too.
-    let mut empty = Magazine::new(0, size, RELOAD_TU);
+    let mut empty = Magazine::new(LoadedRounds::new(0), size, RELOAD_TU);
     empty.refill();
     assert_eq!(*empty.rounds(), *size, "refill fills an empty magazine");
 
@@ -122,7 +122,7 @@ fn clamp_burst_bounds_shots_to_rounds_left() {
     let size = MagazineSize::new(30);
 
     // Fewer rounds than the burst wants → clamped to rounds left.
-    let low = Magazine::new(2, size, RELOAD_TU);
+    let low = Magazine::new(LoadedRounds::new(2), size, RELOAD_TU);
     assert_eq!(
         *clamp_burst(ModeShots::new(5), &low),
         2,
@@ -130,7 +130,7 @@ fn clamp_burst_bounds_shots_to_rounds_left() {
     );
 
     // Enough rounds → the mode's full shot count passes through.
-    let full = Magazine::new(10, size, RELOAD_TU);
+    let full = Magazine::new(LoadedRounds::new(10), size, RELOAD_TU);
     assert_eq!(
         *clamp_burst(ModeShots::new(5), &full),
         5,
@@ -138,7 +138,7 @@ fn clamp_burst_bounds_shots_to_rounds_left() {
     );
 
     // Empty magazine → zero shots fire.
-    let empty = Magazine::new(0, size, RELOAD_TU);
+    let empty = Magazine::new(LoadedRounds::new(0), size, RELOAD_TU);
     assert_eq!(
         *clamp_burst(ModeShots::new(5), &empty),
         0,

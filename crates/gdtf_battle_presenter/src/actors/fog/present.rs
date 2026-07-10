@@ -71,9 +71,9 @@ impl CellFog {
     /// Resolve the fog treatment for `key` from the squad sets (VISIBLE wins over
     /// EXPLORED; neither is UNSEEN).
     pub(super) fn resolve(squad: &SquadVisibility, key: &CellLevel) -> Self {
-        if squad.is_cell_visible(key) {
+        if *squad.is_cell_visible(key) {
             Self::Visible
-        } else if squad.is_cell_explored(key) {
+        } else if *squad.is_cell_explored(key) {
             Self::Explored
         } else {
             Self::Unseen

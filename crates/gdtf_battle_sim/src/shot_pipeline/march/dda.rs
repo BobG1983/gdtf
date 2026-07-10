@@ -146,7 +146,7 @@ pub(super) fn impact_at(
         });
     }
     // 2. Standing cover, banded by its CoverEntry band, excluded when destroyed (AC #3).
-    if !occupancy.is_cover_destroyed(&here)
+    if !*occupancy.is_cover_destroyed(&here)
         && let Some(entry) = cover.peek(&here)
         && !*entry.destroyed
         && round_clears_occupant(test_band, entry.height_band) == Clearance::Impacts

@@ -39,7 +39,7 @@ pub(super) fn resolve_structure_melee(
     // Position vs a Position at the target cell). LOS to an immediately-adjacent structure is
     // trivially satisfied, so NO LOS block is applied (a spurious LOS gate would reject the very
     // cover the attacker stands beside — the C3 ruling).
-    if !is_8_adjacent(attacker.position, Position::new(at)) {
+    if !*is_8_adjacent(attacker.position, Position::new(at)) {
         return;
     }
 

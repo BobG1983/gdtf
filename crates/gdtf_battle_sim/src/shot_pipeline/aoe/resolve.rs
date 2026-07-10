@@ -6,7 +6,7 @@ use bevy::math::Vec2;
 use crate::{
     metric::{Cell, CellLevel, Level, cell_center},
     occupancy::{GRID_HEIGHT, GRID_WIDTH},
-    weapon::HitType,
+    weapon::{AoeRange, BlastRadius, ConeHalfAngle, HitType},
 };
 
 /// Whether a ground-plane `(x, y)` lies inside the coarse grid's
@@ -61,11 +61,11 @@ pub fn aoe_affected(impact: CellLevel, hit: HitType, shooter: CellLevel) -> Vec<
 
     let cells: Vec<Cell> = match hit {
         HitType::Single => vec![impact_cell],
-        HitType::Blast { radius } => blast_cells(impact_cell, *radius),
+        HitType::Blast { radius } => blast_cells(impact_cell, radius),
         HitType::Cone { range, angle } => {
-            cone_cells(impact_cell, shooter_cell, level, *range, *angle)
+            cone_cells(impact_cell, shooter_cell, level, range, angle)
         }
-        HitType::Line { range } => line_cells(impact_cell, shooter_cell, *range),
+        HitType::Line { range } => line_cells(impact_cell, shooter_cell, range),
     };
 
     // Clamp to grid bounds, lift each to the impact storey, dedup, and sort canonically
@@ -82,8 +82,8 @@ pub fn aoe_affected(impact: CellLevel, hit: HitType, shooter: CellLevel) -> Vec<
 
 /// The same-storey Chebyshev disc of `radius` cells around `centre` (a
 /// [`HitType::Blast`] template). Radius `0` = just `centre`.
-fn blast_cells(centre: Cell, radius: u8) -> Vec<Cell> {
-    let r = i32::from(radius);
+fn blast_cells(centre: Cell, radius: BlastRadius) -> Vec<Cell> {
+    let r = i32::from(*radius);
     let mut cells = Vec::new();
     for dy in -r..=r {
         for dx in -r..=r {
@@ -96,14 +96,14 @@ fn blast_cells(centre: Cell, radius: u8) -> Vec<Cell> {
 /// The [`HitType::Line`] beam — `impact` plus up to `range` cells stepping the
 /// shooter→impact ground [`Direction`](crate::ganger::Direction). A degenerate
 /// shooter==impact direction yields just `[impact]`.
-fn line_cells(impact: Cell, shooter: Cell, range: u8) -> Vec<Cell> {
+fn line_cells(impact: Cell, shooter: Cell, range: AoeRange) -> Vec<Cell> {
     let mut cells = vec![impact];
     let Some(dir) = crate::ganger::Direction::from_cells(shooter, impact) else {
         return cells; // point-blank: no direction, no line
     };
     let step = dir.cell_step();
     let mut cursor = impact;
-    for _ in 0..range {
+    for _ in 0..*range {
         cursor = Cell::new(cursor.x + step.x, cursor.y + step.y);
         cells.push(cursor);
     }
@@ -119,18 +119,26 @@ fn line_cells(impact: Cell, shooter: Cell, range: u8) -> Vec<Cell> {
 /// is inside the wedge when the angle between (candidate − shooter) and (impact − shooter)
 /// is ≤ `angle`. A degenerate shooter==impact (point-blank) has no meaningful fire
 /// direction, so it falls back to the full `blast_cells` disc of `range` around `impact`.
-fn cone_cells(impact: Cell, shooter: Cell, level: Level, range: u8, angle: f32) -> Vec<Cell> {
+fn cone_cells(
+    impact: Cell,
+    shooter: Cell,
+    level: Level,
+    range: AoeRange,
+    angle: ConeHalfAngle,
+) -> Vec<Cell> {
     let shooter_c = ground_centre(shooter, level);
     let impact_c = ground_centre(impact, level);
     // The fire direction shooter→impact as a ground-plane vector.
     let fire = impact_c - shooter_c;
-    // Point-blank (shooter == impact): no direction to wedge along → the full disc.
+    // Point-blank (shooter == impact): no direction to wedge along → the full disc. The
+    // cone's `range` becomes the disc radius (the doc's "full disc of `range`"): a directed
+    // reach reused as an omnidirectional radius, same cell count.
     if fire.length_squared() <= f32::EPSILON {
-        return blast_cells(impact, range);
+        return blast_cells(impact, BlastRadius::new(*range));
     }
-    let cos_half = angle.to_radians().cos();
+    let cos_half = (*angle).to_radians().cos();
 
-    let r = i32::from(range);
+    let r = i32::from(*range);
     let mut cells = vec![impact];
     for dy in -r..=r {
         for dx in -r..=r {

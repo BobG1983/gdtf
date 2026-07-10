@@ -11,7 +11,7 @@
 //! [`march_arc`](crate::march::march_arc) traversal. A blind lob has NO line-of-sight
 //! gate (`docs/combat/combat.md` names lobbed grenades among the advanced-effect weapons).
 
-use bevy::prelude::Component;
+use bevy::prelude::{Component, Deref};
 use serde::{Deserialize, Serialize};
 
 /// A weapon's **trajectory style** — the closed set of ways a weapon's projectile flies
@@ -48,11 +48,22 @@ pub enum TrajectoryStyle {
     Arc,
 }
 
+/// Whether a shot follows a lobbed parabolic arc rather than a straight line — the
+/// throw / arc-march trajectory answer (GTW-546).
+///
+/// A named predicate newtype (no-bare-types: "the shot is lobbed" is a domain answer,
+/// not a bare `bool`) over the [`TrajectoryStyle::is_arc`] read: `true` for an
+/// [`Arc`](TrajectoryStyle::Arc) weapon (grenades / launchers), `false` for a
+/// [`Straight`](TrajectoryStyle::Straight) one. Private inner, read through the derived
+/// [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Lobbed(bool);
+
 impl TrajectoryStyle {
     /// Whether this style is a lobbed [`Arc`](TrajectoryStyle::Arc) — the throw / arc-march
-    /// path (GTW-546). `false` for a [`Straight`](TrajectoryStyle::Straight) weapon.
+    /// path (GTW-546). [`Lobbed`]`(false)` for a [`Straight`](TrajectoryStyle::Straight) weapon.
     #[must_use]
-    pub const fn is_arc(self) -> bool {
-        matches!(self, Self::Arc)
+    pub const fn is_arc(self) -> Lobbed {
+        Lobbed(matches!(self, Self::Arc))
     }
 }

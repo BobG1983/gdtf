@@ -99,6 +99,26 @@ pub const fn part_severity_mod(part: BodyPart) -> PartSeverityMod {
     }
 }
 
+/// The **§6 severity score** — the scalar the wound-severity roll computes and the
+/// [`bucket`] cutpoints tier into a [`Severity`] (resolution.md §6).
+///
+/// A named domain value (no bare `f32`): the score is the weighted sum
+/// `j·pen − k·Toughness + part_mod + fatal_bias + I·Luck_shooter + roll`, produced by
+/// [`severity_score`](super::roll::severity_score) and consumed only by [`bucket`].
+/// Private inner + derived [`Deref`](std::ops::Deref); build one via
+/// [`SeverityScore::new`]. The magnitudes are unpinned tuning — tests assert the
+/// score's *relations* (monotonicity, directional Luck), never an absolute value.
+#[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq)]
+pub struct SeverityScore(f32);
+
+impl SeverityScore {
+    /// Build a severity score from its computed §6 magnitude.
+    #[must_use]
+    pub const fn new(score: f32) -> Self {
+        Self(score)
+    }
+}
+
 /// Bucket a §6 severity `score` into a [`Severity`] via the ascending edges
 /// `e0..e3` (resolution.md §6: `< e0 → None`, `< e1 → Minor`, `< e2 → Major`,
 /// `< e3 → Critical`, `≥ e3 → Fatal`).
@@ -106,15 +126,15 @@ pub const fn part_severity_mod(part: BodyPart) -> PartSeverityMod {
 /// Split out so the cutpoints live in one place; relies on the edges climbing
 /// (`e0 < e1 < e2 < e3`, the [`crate::tuning::SeverityEdges`] invariant) for the
 /// buckets to be monotone in the score.
-pub(super) fn bucket(score: f32, scaling: &SeverityScaling) -> Severity {
+pub(super) fn bucket(score: SeverityScore, scaling: &SeverityScaling) -> Severity {
     let edges = &scaling.edges;
-    if score < *edges.e0 {
+    if *score < *edges.e0 {
         Severity::None
-    } else if score < *edges.e1 {
+    } else if *score < *edges.e1 {
         Severity::Minor
-    } else if score < *edges.e2 {
+    } else if *score < *edges.e2 {
         Severity::Major
-    } else if score < *edges.e3 {
+    } else if *score < *edges.e3 {
         Severity::Critical
     } else {
         Severity::Fatal

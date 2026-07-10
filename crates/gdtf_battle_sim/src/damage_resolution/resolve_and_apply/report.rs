@@ -9,7 +9,7 @@
 //! combinations unrepresentable. Each variant's payload type lives in its own
 //! [`kinds`](super::kinds) module.
 
-use bevy::prelude::Entity;
+use bevy::prelude::{Deref, Entity};
 
 use crate::{
     armor::{ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorProtection, ArmorType},
@@ -84,14 +84,32 @@ pub struct StruckPiece<'a> {
     pub integrity:  &'a mut ArmorIntegrity,
 }
 
+/// Whether a struck worn-armor piece still **protects** — its [`ArmorIntegrity`] is
+/// strictly above zero (`weapons-and-armor.md` §"Per-hit resolution" step 3: "useless
+/// at `≤ 0`").
+///
+/// A named domain answer (no bare `bool`): it drives the struck-vs-bare-flesh branch
+/// of the fold — a still-protecting piece soaks/matchups, a broken one folds to bare
+/// flesh. Private inner + derived [`Deref`]; build one via [`Protecting::new`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Protecting(bool);
+
+impl Protecting {
+    /// Build a protecting answer from whether the piece's integrity is above zero.
+    #[must_use]
+    pub const fn new(protecting: bool) -> Self {
+        Self(protecting)
+    }
+}
+
 impl StruckPiece<'_> {
     /// Whether this worn piece still **protects** — its [`ArmorIntegrity`] is strictly
     /// above zero (`weapons-and-armor.md` §"Per-hit resolution" step 3: "useless at
     /// `≤ 0`"). The struck-vs-bare-flesh gate the fold reads (mirrors the old
     /// `WornArmor::protects`).
     #[must_use]
-    pub fn protects(&self) -> bool {
-        **self.integrity > 0
+    pub fn protects(&self) -> Protecting {
+        Protecting::new(**self.integrity > 0)
     }
 
     /// The piece's current [`ArmorIntegrity`] read **by value** — the read the

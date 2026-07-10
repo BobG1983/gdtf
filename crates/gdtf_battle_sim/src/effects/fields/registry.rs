@@ -156,7 +156,7 @@ impl PlacedField {
     pub fn tick_down(&mut self) -> bool {
         FieldEffect::consequences_of(&self.def)
             .iter()
-            .any(|consequence| consequence.count_down_one_turn(&mut self.remaining))
+            .any(|consequence| *consequence.count_down_one_turn(&mut self.remaining))
     }
 }
 

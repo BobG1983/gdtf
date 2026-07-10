@@ -37,4 +37,4 @@
 mod test;
 mod verbs;
 
-pub use verbs::{set_aiming, set_facing, set_stance};
+pub use verbs::{FacingChanged, StanceChanged, set_aiming, set_facing, set_stance};

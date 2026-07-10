@@ -12,7 +12,7 @@ use crate::{
     metric::{Cell, CellLevel, Level},
     occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, StairEyeOffset},
     surface::SurfaceGrid,
-    tuning::CombatTuning,
+    tuning::{CombatTuning, ViewRange},
     visibility::SquadVisibility,
 };
 
@@ -106,7 +106,7 @@ pub fn union_fov(
         // Conscious-observer gate (clause "only conscious player-faction observers
         // contribute"): a Downed / Dead observer reveals nothing. The caller restricts
         // `observers` to the PLAYER faction; this restricts to the ALIVE ones.
-        if !fov.life.is_active() {
+        if !*fov.life.is_active() {
             continue;
         }
         let observer = Observer {
@@ -123,7 +123,7 @@ pub fn union_fov(
         // observer's own storey), clamped to the grid extent — the dense floor the
         // presenter draws (clause 1 / 3). `can_see` re-applies the range disc + LOS, so
         // an out-of-sight cell offered by the (square) disc bound is excluded.
-        for (level, cell) in disc_cells(fov.position, *tuning.view_range, authored) {
+        for (level, cell) in disc_cells(fov.position, tuning.view_range, authored) {
             let candidate = CellLevel::new(cell, level);
             // Build the Target at the candidate cell. The occupant's band is resolved
             // inside `can_see` / `has_los` the SAME way the shot pipeline does (cover
@@ -168,10 +168,10 @@ pub fn union_fov(
 /// blocked cell are excluded there.
 fn disc_cells(
     observer: &Position,
-    view_range: u16,
+    view_range: ViewRange,
     authored: Option<(Level, Level)>,
 ) -> impl Iterator<Item = (Level, Cell)> {
-    let radius = i32::from(view_range);
+    let radius = i32::from(*view_range);
     // The observer's own storey is always in the scan (a flat all-Open floor has no
     // authored content, yet the squad still sees its own level — clause 1 / 4). The
     // canonical CellLevel::level accessor through Position's deref (GTW-565).

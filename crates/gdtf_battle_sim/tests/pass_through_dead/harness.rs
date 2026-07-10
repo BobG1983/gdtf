@@ -18,7 +18,7 @@ use gdtf_battle_sim::{
     ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
     inflicted_wound::InflictedWounds,
     injuries::{InjuryRegistry, InjuryTables},
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     prelude::{
         Cell, CellLevel, Direction, Level, LifeState, OccupancyGrid, Position, Stance, StanceKind,
         Tu,
@@ -101,7 +101,11 @@ pub(crate) fn spawn_shooter(world: &mut World, mode: FireModeSpec) -> Entity {
             DamageType::Kinetic,
         ),
         HandlingProfile::new(
-            Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+            Magazine::new(
+                LoadedRounds::new(10),
+                MagazineSize::new(30),
+                ReloadTu::new(12),
+            ),
             FireMode::new(vec![mode]),
             // Braced so recoil-climb does not walk later rounds off the line.
             Stable::new(true),

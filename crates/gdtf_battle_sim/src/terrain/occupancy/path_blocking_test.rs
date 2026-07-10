@@ -13,7 +13,7 @@ use bevy::prelude::{App, Entity, MinimalPlugins};
 
 use crate::{
     metric::{Cell, CellLevel, Level},
-    occupancy::OccupancyGrid,
+    occupancy::{OccupancyGrid, PathBlocked},
     occupancy_sync::OccupancyMaintenancePlugin,
     surface::SurfaceGrid,
     terrain::entity::{BlocksPathfinding, TerrainCell},
@@ -38,7 +38,7 @@ fn headless_app() -> App {
 
 /// Whether the grid reports `at` as PATH-blocked — `None` if the grid resource is absent
 /// (kept `Option` so the test never `unwrap`s; the restriction lints fire in tests too).
-fn path_blocked(app: &App, at: CellLevel) -> Option<bool> {
+fn path_blocked(app: &App, at: CellLevel) -> Option<PathBlocked> {
     app.world()
         .get_resource::<OccupancyGrid>()
         .map(|g| g.is_path_blocked(&at))
@@ -61,14 +61,14 @@ fn marker_add_remove_flips_path_blocking() {
     // Before any tick the projection has not run — the surface is empty.
     assert_eq!(
         path_blocked(&app, at),
-        Some(false),
+        Some(PathBlocked::new(false)),
         "before the first tick, no projection has run — the cell is not path-blocked",
     );
 
     app.update();
     assert_eq!(
         path_blocked(&app, at),
-        Some(true),
+        Some(PathBlocked::new(true)),
         "C6(d): Added<BlocksPathfinding> projects the cell as path-blocked",
     );
 
@@ -80,7 +80,7 @@ fn marker_add_remove_flips_path_blocking() {
     app.update();
     assert_eq!(
         path_blocked(&app, at),
-        Some(false),
+        Some(PathBlocked::new(false)),
         "C6(d): RemovedComponents<BlocksPathfinding> re-opens the cell",
     );
 
@@ -89,7 +89,7 @@ fn marker_add_remove_flips_path_blocking() {
     app.update();
     assert_eq!(
         path_blocked(&app, at),
-        Some(true),
+        Some(PathBlocked::new(true)),
         "C6(d): re-adding the marker re-blocks the cell",
     );
 }
@@ -108,7 +108,7 @@ fn despawning_marked_entity_re_opens_cell() {
     app.update();
     assert_eq!(
         path_blocked(&app, at),
-        Some(true),
+        Some(PathBlocked::new(true)),
         "the spawned marked entity blocks the cell",
     );
 
@@ -116,7 +116,7 @@ fn despawning_marked_entity_re_opens_cell() {
     app.update();
     assert_eq!(
         path_blocked(&app, at),
-        Some(false),
+        Some(PathBlocked::new(false)),
         "C6(d·despawn): despawning the marked entity re-opens the cell",
     );
 }
@@ -137,8 +137,16 @@ fn per_cell_projection_is_independent() {
         .spawn((TerrainCell::new(b), BlocksPathfinding))
         .id();
     app.update();
-    assert_eq!(path_blocked(&app, a), Some(true), "cell a blocked");
-    assert_eq!(path_blocked(&app, b), Some(true), "cell b blocked");
+    assert_eq!(
+        path_blocked(&app, a),
+        Some(PathBlocked::new(true)),
+        "cell a blocked"
+    );
+    assert_eq!(
+        path_blocked(&app, b),
+        Some(PathBlocked::new(true)),
+        "cell b blocked"
+    );
 
     app.world_mut()
         .entity_mut(ent_a)
@@ -146,12 +154,12 @@ fn per_cell_projection_is_independent() {
     app.update();
     assert_eq!(
         path_blocked(&app, a),
-        Some(false),
+        Some(PathBlocked::new(false)),
         "removing a's marker re-opens a",
     );
     assert_eq!(
         path_blocked(&app, b),
-        Some(true),
+        Some(PathBlocked::new(true)),
         "C6(d·multi): b stays blocked — the projection is per-cell",
     );
 }

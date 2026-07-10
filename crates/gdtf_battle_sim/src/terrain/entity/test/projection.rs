@@ -60,19 +60,19 @@ fn wall_is_path_blocked_after_setup() {
         return;
     };
     assert!(
-        grid.is_path_blocked(&wall_cell),
+        *grid.is_path_blocked(&wall_cell),
         "C3/C5: the wall cell must be PATH-blocked after the projection runs",
     );
     assert!(
-        grid.is_blocked(&wall_cell),
+        *grid.is_blocked(&wall_cell),
         "C5: the wall cell is ALSO kind-blocked (vision) — path & vision agree for a wall",
     );
     assert!(
-        !grid.is_path_blocked(&slab_cell),
+        !*grid.is_path_blocked(&slab_cell),
         "C1: a slab does NOT block the path by default (no marker → not in the surface)",
     );
     assert!(
-        !grid.is_path_blocked(&open_cell),
+        !*grid.is_path_blocked(&open_cell),
         "an empty cell is not path-blocked",
     );
 }

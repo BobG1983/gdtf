@@ -63,7 +63,7 @@ pub(super) fn resolve_ganger_melee(
     };
 
     // Gate — 8-adjacency + opposing faction (the cheap reads first).
-    if !is_8_adjacent(attacker.position, tgt_pos) || attacker.faction == tgt_faction {
+    if !*is_8_adjacent(attacker.position, tgt_pos) || attacker.faction == tgt_faction {
         return;
     }
 
@@ -74,7 +74,7 @@ pub(super) fn resolve_ganger_melee(
     else {
         return;
     };
-    if !tgt_life.is_active() {
+    if !*tgt_life.is_active() {
         return;
     }
     // Route the defender's Toughness / Luck through the gate-enforced effective accessors over
@@ -159,7 +159,7 @@ pub(super) fn resolve_ganger_melee(
 
     // On a connect, emit the presenter strike-glyph signal at the target's cell. A miss deals
     // no damage and emits nothing (the §7 connect gate).
-    if strike.connect {
+    if *strike.connect {
         // The target's own (cell, level) key — Position derefs to CellLevel (the
         // old decompose-then-recompose was the identity on every real key).
         let at: CellLevel = *tgt_pos;
@@ -260,7 +260,7 @@ fn strike_with_target(
     let Ok((mut hp, mut wounds, mut life, mut inflicted, ..)) = targets.get_mut(target_entity)
     else {
         return MeleeStrike {
-            connect:   false,
+            connect:   crate::melee::Connected::new(false),
             severity:  crate::severity::Severity::None,
             hp_damage: crate::resolve_hit::HpDamage::new(0),
             wear:      crate::armor_wear::ArmorWearOutcome::Unaffected,

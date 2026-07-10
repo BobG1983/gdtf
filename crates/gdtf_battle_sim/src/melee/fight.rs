@@ -97,10 +97,27 @@ impl MeleeDamageMult {
 /// not a domain value.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FightOutcome {
-    /// `true` iff `atk > def` — the attack landed (resolution.md §7 line 148).
-    pub connect: bool,
+    /// Whether the attack landed (`atk > def`; resolution.md §7 line 148).
+    pub connect: Connected,
     /// The relative dominance `atk / def − 1` (resolution.md §7 line 149).
     pub margin:  FightMargin,
+}
+
+/// Whether a §7 opposed-Fight exchange **connected** — the `atk > def` verdict
+/// (resolution.md §7 line 148).
+///
+/// `true` means the strike landed (its damage runs the §5→§6 steps); `false` means it
+/// missed. A distinct hit/miss verdict shared by [`FightOutcome`] and
+/// [`MeleeStrike`](crate::melee::MeleeStrike), not a bare `bool`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Connected(bool);
+
+impl Connected {
+    /// Build the connect verdict.
+    #[must_use]
+    pub const fn new(connected: bool) -> Self {
+        Self(connected)
+    }
 }
 
 // ── The degenerate-margin constant ─────────────────────────────────────────────
@@ -182,13 +199,13 @@ pub fn opposed_fight(
     // clamp. (A defenceless target eats the maximum blow.)
     if def <= 0.0 {
         return FightOutcome {
-            connect: true,
+            connect: Connected::new(true),
             margin:  FightMargin::new(DEGENERATE_MARGIN),
         };
     }
 
     FightOutcome {
-        connect: atk > def,
+        connect: Connected::new(atk > def),
         // margin = atk/def − 1 (resolution.md §7 line 149). Relative, unbounded.
         margin:  FightMargin::new(atk / def - 1.0),
     }

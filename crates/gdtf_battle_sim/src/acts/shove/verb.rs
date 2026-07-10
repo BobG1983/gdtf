@@ -146,7 +146,7 @@ pub fn resolve_shove(
     {
         return ShoveOutcome::Blocked;
     }
-    if occupancy.is_blocked(&dest) {
+    if *occupancy.is_blocked(&dest) {
         return ShoveOutcome::Blocked;
     }
 

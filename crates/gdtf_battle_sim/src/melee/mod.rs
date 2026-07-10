@@ -52,8 +52,8 @@ mod structure;
 mod tests;
 
 pub use fight::{
-    FightMargin, FightOutcome, MeleeDamageMult, apply_melee_multiplier, melee_damage_mult,
-    opposed_fight,
+    Connected, FightMargin, FightOutcome, MeleeDamageMult, apply_melee_multiplier,
+    melee_damage_mult, opposed_fight,
 };
 pub use strike::{Combatants, MeleeStrike, MeleeWeaponHit, resolve_melee_strike};
 pub use structure::{StructuralMult, resolve_structural_melee};

@@ -2,7 +2,10 @@
 //! ([`OccupancyGrid::is_blocked`]) and GTW-501 path-blocking
 //! ([`OccupancyGrid::is_path_blocked`]) query surfaces.
 
-use super::{storage::OccupancyGrid, types::DestroyedCover};
+use super::{
+    storage::OccupancyGrid,
+    types::{Blocked, CoverDestroyed, DestroyedCover, PathBlocked},
+};
 use crate::metric::CellLevel;
 
 impl OccupancyGrid {
@@ -25,8 +28,8 @@ impl OccupancyGrid {
     /// Whether `cell_level` is in the append-only destroyed-cover set — a read-only
     /// peek.
     #[must_use]
-    pub fn is_cover_destroyed(&self, cell_level: &CellLevel) -> bool {
-        self.destroyed_cover.contains(cell_level)
+    pub fn is_cover_destroyed(&self, cell_level: &CellLevel) -> CoverDestroyed {
+        CoverDestroyed::new(self.destroyed_cover.contains(cell_level))
     }
 
     /// Whether `cell_level` **blocks** (collision / LOS / cover) — `true` if its
@@ -39,9 +42,9 @@ impl OccupancyGrid {
     /// `docs/combat/combat.md`: cover "can be shot and destroyed"). An out-of-range `cell_level` reads [`TerrainKind::Open`](crate::occupancy::TerrainKind::Open) and so
     /// returns `false` (graceful — no panic).
     #[must_use]
-    pub fn is_blocked(&self, cell_level: &CellLevel) -> bool {
-        if self.is_cover_destroyed(cell_level) {
-            return false;
+    pub fn is_blocked(&self, cell_level: &CellLevel) -> Blocked {
+        if *self.is_cover_destroyed(cell_level) {
+            return Blocked::new(false);
         }
         self.terrain(cell_level).blocks()
     }
@@ -74,11 +77,11 @@ impl OccupancyGrid {
     /// (the GTW-501 C5 zero-path-regression guarantee — no new destruction wiring needed).
     /// An out-of-range or unmarked `cell_level` reads `false` (graceful — no panic).
     #[must_use]
-    pub fn is_path_blocked(&self, cell_level: &CellLevel) -> bool {
-        if self.is_cover_destroyed(cell_level) {
-            return false;
+    pub fn is_path_blocked(&self, cell_level: &CellLevel) -> PathBlocked {
+        if *self.is_cover_destroyed(cell_level) {
+            return PathBlocked::new(false);
         }
-        self.path_blocking.contains(cell_level)
+        PathBlocked::new(self.path_blocking.contains(cell_level))
     }
 
     /// Mark `cell_level` as **path-blocking** — insert it into the tag-derived

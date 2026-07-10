@@ -65,13 +65,31 @@
 //! and grid lookups only). It changes WHICH edges the search accepts, never the
 //! octile / link COSTS or the deterministic `(z, y, x)` tie-break (those stay intact).
 
-use bevy::prelude::Entity;
+use bevy::prelude::{Deref, Entity};
 
 use crate::{
     metric::CellLevel,
     occupancy::OccupancyGrid,
     visibility::{FactionRelation, SquadVisibility, is_ganger_visible},
 };
+
+/// Whether a candidate `(cell, level)` is **routable** for the path search — the
+/// verdict the planning gate returns (`true` = the search may step onto it).
+///
+/// A named domain answer (no bare `bool`): routable folds the OQ-5 non-UNSEEN rule
+/// (C1) and the within-routable blocking predicate (C2) into one decision the search
+/// core filters candidate edges by. Private inner + derived [`Deref`]; build one via
+/// [`Routable::new`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Routable(bool);
+
+impl Routable {
+    /// Build a routability verdict from whether the search may step onto the cell.
+    #[must_use]
+    pub const fn new(routable: bool) -> Self {
+        Self(routable)
+    }
+}
 
 /// The borrowed squad-fog view + occupant-faction resolver the planning gate reads as
 /// a SNAPSHOT — the visibility-aware blocking seam threaded into both search entry
@@ -130,11 +148,11 @@ where
     ///
     /// PURE: set membership + grid lookups + the resolver — no RNG, no world access.
     #[must_use]
-    pub fn is_routable(&self, cell: CellLevel, grid: &OccupancyGrid) -> bool {
+    pub fn is_routable(&self, cell: CellLevel, grid: &OccupancyGrid) -> Routable {
         // C1: UNSEEN (never seen) is non-routable. Non-UNSEEN == EXPLORED (VISIBLE is a
         // subset of EXPLORED by the accrual invariant), so EXPLORED stays routable.
-        if !self.squad.is_cell_explored(&cell) {
-            return false;
+        if !*self.squad.is_cell_explored(&cell) {
+            return Routable::new(false);
         }
         // C2 — shared blocking check (geometry + visibility-aware occupant).
         self.is_open(cell, grid)
@@ -162,7 +180,7 @@ where
     ///
     /// PURE: grid lookups + the resolver — no RNG, no world access.
     #[must_use]
-    pub fn is_routable_link(&self, cell: CellLevel, grid: &OccupancyGrid) -> bool {
+    pub fn is_routable_link(&self, cell: CellLevel, grid: &OccupancyGrid) -> Routable {
         // C1 — SKIPPED for a known link endpoint. The vertical graph is the oracle:
         // if this cell came from traversable_links it IS a known stair/ladder endpoint,
         // so planning onto an unseen storey via it is permitted.
@@ -176,24 +194,24 @@ where
     /// [`is_routable_link`] so the rule lives in ONE place and cannot drift.
     ///
     /// PURE: grid lookups + the resolver — no RNG, no world access.
-    fn is_open(&self, cell: CellLevel, grid: &OccupancyGrid) -> bool {
+    fn is_open(&self, cell: CellLevel, grid: &OccupancyGrid) -> Routable {
         // C2 (true geometry): walls / floor / standing cover (blocking scatter/props)
         // always block on a routable cell. GTW-501 D1/C2: this is the PATHFINDER's gate,
         // so it reads the TAG-DERIVED path-blocking surface (`is_path_blocked`) — the
         // markers projected from `BlocksPathfinding`, NOT the kind-based `is_blocked` that
         // vision reads. The surface mirrors the destroyed-cover exclusion (C5), so a
         // destroyed wall/cover re-opens the route exactly as before.
-        if grid.is_path_blocked(&cell) {
-            return false;
+        if *grid.is_path_blocked(&cell) {
+            return Routable::new(false);
         }
         // C2 (visibility-aware occupant): an occupant blocks per its relation —
         // own-squad always, an enemy only when its cell is squad-VISIBLE.
         if let Some(occupant) = grid.occupant(&cell) {
             let relation = (self.relation_of)(occupant);
-            if is_ganger_visible(self.squad, &cell, relation) {
-                return false;
+            if *is_ganger_visible(self.squad, &cell, relation) {
+                return Routable::new(false);
             }
         }
-        true
+        Routable::new(true)
     }
 }

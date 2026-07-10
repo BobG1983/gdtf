@@ -11,7 +11,11 @@ use super::support::*;
 /// fixture. The `reload_tu` value is arbitrary (tunable); tests relate the TU drop to
 /// it, never pin it.
 fn empty_magazine(size: u16, reload_tu: u8) -> Magazine {
-    Magazine::new(0, MagazineSize::new(size), ReloadTu::new(reload_tu))
+    Magazine::new(
+        LoadedRounds::new(0),
+        MagazineSize::new(size),
+        ReloadTu::new(reload_tu),
+    )
 }
 
 /// Spawn a reload-act actor — the ganger carries the `Tu`/`LifeState` the gate reads, and

@@ -163,7 +163,7 @@ fn walk_stops_when_a_new_enemy_is_revealed() {
     let enemy_now_visible = app
         .world()
         .get_resource::<SquadVisibility>()
-        .is_some_and(|squad| squad.is_cell_visible(&enemy_cell));
+        .is_some_and(|squad| *squad.is_cell_visible(&enemy_cell));
     assert!(
         enemy_now_visible,
         "the enemy entered the squad VISIBLE set — the reveal is what stopped the walk",

@@ -220,7 +220,7 @@ fn silenced_probe(
     melee: gdtf_battle_sim::fire::MeleeQuery,
     silenced: bevy::prelude::Query<(), bevy::prelude::With<Silenced>>,
 ) -> bool {
-    shooter_weapon_silenced(*shooter, &wields, &mounted, &melee, &silenced)
+    *shooter_weapon_silenced(*shooter, &wields, &mounted, &melee, &silenced)
 }
 
 #[test]

@@ -91,9 +91,9 @@ pub use relationship::{WieldedBy, Wields};
 // GTW-549: the shared silenced-weapon gate — relocated out of the ripped-out GTW-542
 // `attachment` module; the `Silenced` component (above) is fitted by the `Silence`
 // attachment effect, and BOTH loud-signal producers key off this predicate.
-pub use silenced::shooter_weapon_silenced;
+pub use silenced::{ShotSilenced, shooter_weapon_silenced};
 pub use spec::{PendingAttachments, WeaponSpawnSiblings, WeaponSpec};
 // GTW-546 (child GTW-41d): the per-weapon trajectory style — a `Straight` ray (the
 // default, every existing weapon) or a lobbed `Arc` (a grenade / grenade launcher). The
 // fire path reads it to pick the straight `march_vector` or the parabolic `march_arc`.
-pub use trajectory::TrajectoryStyle;
+pub use trajectory::{Lobbed, TrajectoryStyle};

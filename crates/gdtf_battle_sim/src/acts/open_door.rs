@@ -72,7 +72,7 @@ pub fn dispatch_open_door(
         let Ok((open_state, door_cell)) = doors.get(request.door) else {
             continue;
         };
-        if open_state.is_open() {
+        if *open_state.is_open() {
             // The button only OPENS; an already-open door needs no toggle and costs no TU.
             continue;
         }
@@ -84,7 +84,7 @@ pub fn dispatch_open_door(
             continue;
         };
         let cost = Tu::new(*tuning.open_door_tu);
-        if !is_8_adjacent(actor_pos, Position::new(**door_cell)) || **actor_tu < *cost {
+        if !*is_8_adjacent(actor_pos, Position::new(**door_cell)) || **actor_tu < *cost {
             continue;
         }
         // (3) Charge + toggle. Spend the OpenDoorTu off the actor (saturating), then flip the door

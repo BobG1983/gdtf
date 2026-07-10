@@ -12,16 +12,34 @@
 //! [`SuppressorCell`](crate::ganger::SuppressorCell) updates to the newest shooter, but
 //! no second signal fires and the suppression does not stack.
 
-use bevy::prelude::{Commands, Entity, Message, MessageReader, MessageWriter, Query, Res, With};
+use bevy::prelude::{
+    Commands, Deref, Entity, Message, MessageReader, MessageWriter, Query, Res, With,
+};
 
 use crate::{
     acts::FireRequested,
     fire::{MeleeQuery, MountedQuery, WieldsQuery},
     ganger::{Faction, Position, Suppressed, SuppressorCell},
     metric::{Cell, CellLevel, Level},
-    tuning::CombatTuning,
+    tuning::{CombatTuning, SuppressionRadius},
     weapon::{Silenced, shooter_weapon_silenced},
 };
+
+/// Whether a ganger falls **within the suppression radius** of a shot's target cell —
+/// the [`within_radius`] Chebyshev-disc verdict (same storey only).
+///
+/// `true` means the ganger is inside the suppression disc (a candidate to be pinned);
+/// `false` means it is out of range or on another storey. A distinct suppression-reach
+/// predicate, not a bare `bool`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+struct WithinSuppressionRadius(bool);
+
+impl WithinSuppressionRadius {
+    /// Build the within-radius verdict.
+    const fn new(within: bool) -> Self {
+        Self(within)
+    }
+}
 
 /// A ganger was **freshly suppressed** at `at` — the presenter-facing signal a
 /// suppression FCT (floating combat text) keys off (GTW-526 C2).
@@ -66,14 +84,14 @@ fn within_radius(
     level: Level,
     target_cell: Cell,
     target_level: Level,
-    radius: u8,
-) -> bool {
+    radius: SuppressionRadius,
+) -> WithinSuppressionRadius {
     if *level != *target_level {
-        return false;
+        return WithinSuppressionRadius::new(false);
     }
     let dx = (cell.x - target_cell.x).unsigned_abs();
     let dy = (cell.y - target_cell.y).unsigned_abs();
-    dx.max(dy) <= u32::from(radius)
+    WithinSuppressionRadius::new(dx.max(dy) <= u32::from(*radius))
 }
 
 /// The **suppression producer** — mark every OPPOSING-faction ganger within the tuning
@@ -149,7 +167,7 @@ pub fn apply_suppression(
     let Some(tuning) = tuning else {
         return;
     };
-    let radius = *tuning.reaction.suppression_radius;
+    let radius = tuning.reaction.suppression_radius;
 
     // Track units suppressed THIS tick so a second fire request the same tick treats an
     // already-just-suppressed unit as a REFRESH (no double signal) — the live Query's
@@ -163,7 +181,7 @@ pub fn apply_suppression(
         // melee weapon) and skip if it carries the Silenced tag. A shooter with no resolvable
         // firing weapon is treated as un-silenced (fall through — the shot came from somewhere
         // loud).
-        if shooter_weapon_silenced(fire.shooter, &wields, &mounted, &melee, &silenced) {
+        if *shooter_weapon_silenced(fire.shooter, &wields, &mounted, &melee, &silenced) {
             continue;
         }
         // Resolve the shooter's origin + side; a shooter missing from the query (an
@@ -180,7 +198,7 @@ pub fn apply_suppression(
                 continue;
             }
             // The canonical CellLevel accessors through Position's deref (GTW-565).
-            if !within_radius(
+            if !*within_radius(
                 position.cell(),
                 position.level(),
                 fire.target_cell,

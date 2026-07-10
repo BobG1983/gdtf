@@ -1,7 +1,26 @@
 //! The shared 8-adjacency reach + the actor/target read-bundles both from-Downed
 //! verbs gate on.
 
+use bevy::prelude::Deref;
+
 use crate::ganger::{Faction, LifeState, Position, Stabilized};
+
+/// Whether two gangers occupy the same-level Moore-8 neighbourhood — the
+/// [`is_8_adjacent`] reach verdict (`docs/combat/resolution.md` §9).
+///
+/// The tactical-reach answer both from-Downed verbs gate on: `true` means the two
+/// cells are 8-adjacent (a stabilize / execute is within reach), `false` means out of
+/// reach. A distinct domain predicate, not a bare `bool`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Adjacent8(bool);
+
+impl Adjacent8 {
+    /// Build the 8-adjacency verdict from the computed reach test.
+    #[must_use]
+    pub const fn new(adjacent: bool) -> Self {
+        Self(adjacent)
+    }
+}
 
 /// Whether two grid [`Position`]s are **8-adjacent** — the same-level Moore-8
 /// neighbourhood (the 8 surrounding cells on the *same* storey).
@@ -15,19 +34,19 @@ use crate::ganger::{Faction, LifeState, Position, Stabilized};
 /// `docs/combat/resolution.md` §9. Pure integer arithmetic over the cubic-voxel
 /// metric — no pixel.
 #[must_use]
-pub fn is_8_adjacent(a: Position, b: Position) -> bool {
+pub fn is_8_adjacent(a: Position, b: Position) -> Adjacent8 {
     // The (cell, level) keys: x/y are cells, z is the storey index (metric.rs).
     let pa = **a;
     let pb = **b;
     // Same storey: a ganger above or below is NOT in the 8 surrounding cells.
     if pa.z != pb.z {
-        return false;
+        return Adjacent8::new(false);
     }
     let dx = (pa.x - pb.x).abs();
     let dy = (pa.y - pb.y).abs();
     // Chebyshev distance exactly 1: the 8 cells ringing the actor, excluding itself
     // (dx == 0 && dy == 0 → the same cell, not adjacent).
-    dx <= 1 && dy <= 1 && (dx != 0 || dy != 0)
+    Adjacent8::new(dx <= 1 && dy <= 1 && (dx != 0 || dy != 0))
 }
 
 /// The acting ganger's reads for a from-Downed predicate — a small named bundle so

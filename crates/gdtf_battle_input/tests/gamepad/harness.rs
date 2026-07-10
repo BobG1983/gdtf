@@ -14,7 +14,7 @@ use gdtf_battle_input::{
 use gdtf_battle_sim::{
     battle::PlayerFaction,
     ganger::{Aiming, TuMax},
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     prelude::{CellLevel, Faction, Level, LifeState, OccupancyGrid, Position, Tu},
     tuning::CombatTuning,
     vertical::VerticalLinkGraph,
@@ -104,7 +104,11 @@ pub(crate) fn spawn_player_shooter(app: &mut App, cell: CellLevel) -> Entity {
     app.world_mut().spawn((
         WieldedBy::new(ganger),
         FireMode::new(vec![single]),
-        Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+        Magazine::new(
+            LoadedRounds::new(10),
+            MagazineSize::new(30),
+            ReloadTu::new(12),
+        ),
         // GTW-443: the fire surface's WeaponMagazine query reads `(&Magazine, &Handedness)`.
         Handedness::OneHanded,
     ));

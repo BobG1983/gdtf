@@ -18,7 +18,7 @@ use gdtf_battle_sim::{
     cover::HeightBand,
     ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
     inflicted_wound::InflictedWounds,
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     occupancy_sync::OccupancyMaintenancePlugin,
     prelude::{
         BattleInProgress, Cell, CellLevel, Direction, Faction, Level, LifeState, OccupancyGrid,
@@ -163,7 +163,11 @@ pub(crate) fn spawn_armed_shooter_inner(
             DamageType::Kinetic,
         ),
         HandlingProfile::new(
-            Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+            Magazine::new(
+                LoadedRounds::new(10),
+                MagazineSize::new(30),
+                ReloadTu::new(12),
+            ),
             FireMode::new(vec![single_mode(0.2, 1)]),
             Stable::new(true),
             Shove::new(false),

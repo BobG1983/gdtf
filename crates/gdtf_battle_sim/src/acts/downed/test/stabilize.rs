@@ -16,7 +16,7 @@ use super::support::{
 fn can_stabilize_true_for_the_canonical_ally_setup() {
     let (a, t) = stabilize_pass();
     assert!(
-        can_stabilize(&a, &t),
+        *can_stabilize(&a, &t),
         "an Alive 8-adjacent same-faction actor stabilizes a Downed, un-stabilized target",
     );
 }
@@ -29,7 +29,7 @@ fn can_stabilize_sweep_each_guard_flips_it_false() {
         pos: pos(13, 10, GROUND),
         ..t
     };
-    assert!(!can_stabilize(&a, &far), "non-adjacent must fail");
+    assert!(!*can_stabilize(&a, &far), "non-adjacent must fail");
 
     // (1b) NOT adjacent because a DIFFERENT level (same x/y, z+1).
     let other_storey = DownedTarget {
@@ -37,7 +37,7 @@ fn can_stabilize_sweep_each_guard_flips_it_false() {
         ..t
     };
     assert!(
-        !can_stabilize(&a, &other_storey),
+        !*can_stabilize(&a, &other_storey),
         "a same-x/y target one storey up is NOT adjacent — must fail",
     );
 
@@ -47,7 +47,7 @@ fn can_stabilize_sweep_each_guard_flips_it_false() {
         ..a
     };
     assert!(
-        !can_stabilize(&downed_actor, &t),
+        !*can_stabilize(&downed_actor, &t),
         "a non-Alive (Downed) actor cannot stabilize",
     );
     let dead_actor = Actor {
@@ -55,7 +55,7 @@ fn can_stabilize_sweep_each_guard_flips_it_false() {
         ..a
     };
     assert!(
-        !can_stabilize(&dead_actor, &t),
+        !*can_stabilize(&dead_actor, &t),
         "a Dead actor cannot stabilize",
     );
 
@@ -65,7 +65,7 @@ fn can_stabilize_sweep_each_guard_flips_it_false() {
         ..t
     };
     assert!(
-        !can_stabilize(&a, &alive_target),
+        !*can_stabilize(&a, &alive_target),
         "an Alive target is not a stabilize subject",
     );
 
@@ -75,7 +75,7 @@ fn can_stabilize_sweep_each_guard_flips_it_false() {
         ..t
     };
     assert!(
-        !can_stabilize(&a, &already),
+        !*can_stabilize(&a, &already),
         "an already-stabilized target must fail (no re-dress)",
     );
 
@@ -85,7 +85,7 @@ fn can_stabilize_sweep_each_guard_flips_it_false() {
         ..t
     };
     assert!(
-        !can_stabilize(&a, &enemy),
+        !*can_stabilize(&a, &enemy),
         "a cross-faction (enemy) actor cannot stabilize",
     );
 }
@@ -98,7 +98,7 @@ fn can_stabilize_passes_with_stabilized_false_flag_present() {
     let (a, mut t) = stabilize_pass();
     t.stabilized = Some(Stabilized::new(false));
     assert!(
-        can_stabilize(&a, &t),
+        *can_stabilize(&a, &t),
         "Stabilized(false) present is not-yet-stabilized — the guard passes",
     );
 }
@@ -145,7 +145,7 @@ fn stabilize_act_iff_predicate_both_directions() {
     // Predicate TRUE → act fires (sets flag, returns Some).
     let (a, t) = stabilize_pass();
     let mut flag = Stabilized::new(false);
-    assert!(can_stabilize(&a, &t));
+    assert!(*can_stabilize(&a, &t));
     let acted = stabilize_downed(&a, &t, &mut flag, &tuning);
     assert!(acted.is_some(), "predicate true ⇒ act fires");
     assert_eq!(flag, Stabilized::new(true), "predicate true ⇒ flag set");
@@ -156,7 +156,7 @@ fn stabilize_act_iff_predicate_both_directions() {
         ..t
     };
     let mut flag2 = Stabilized::new(false);
-    assert!(!can_stabilize(&a, &far));
+    assert!(!*can_stabilize(&a, &far));
     let acted2 = stabilize_downed(&a, &far, &mut flag2, &tuning);
     assert!(acted2.is_none(), "predicate false ⇒ no-op (None)");
     assert_eq!(

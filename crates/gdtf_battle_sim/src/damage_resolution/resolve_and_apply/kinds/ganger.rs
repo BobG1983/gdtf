@@ -129,7 +129,7 @@ pub struct GangerVerdict {
 /// hit lands as full weapon damage (`weapons-and-armor.md` §"Per-hit resolution").
 fn struck_piece(piece: Option<&StruckPiece<'_>>, weapon: WeaponStats<'_>) -> (ArmorPiece, Matchup) {
     match piece {
-        Some(p) if p.protects() => {
+        Some(p) if *p.protects() => {
             // Re-assemble the read-only ArmorPiece value the damage formula consumes
             // from the piece entity's stat components (integrity is read by value here;
             // the wear mutation happens later, inside the shared core's `apply_hit`).

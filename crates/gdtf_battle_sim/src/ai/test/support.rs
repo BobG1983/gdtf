@@ -13,7 +13,7 @@ pub(super) use crate::{
         StanceKind, Toughness, Tu, TuMax, Wounds,
     },
     inflicted_wound::InflictedWounds,
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     rng::BattleSeed,
@@ -132,7 +132,7 @@ pub(super) fn spawn_combatant(
             DamageType::Kinetic,
         ),
         HandlingProfile::new(
-            Magazine::new(ammo, mag_size, reload_tu),
+            Magazine::new(LoadedRounds::new(ammo), mag_size, reload_tu),
             FireMode::new(vec![mode]),
             Stable::new(true),
             Shove::new(false),
@@ -192,7 +192,11 @@ pub(super) fn spawn_combatant_handed(
             DamageType::Kinetic,
         ),
         HandlingProfile::new(
-            Magazine::new(6, MagazineSize::new(30), ReloadTu::new(12)),
+            Magazine::new(
+                LoadedRounds::new(6),
+                MagazineSize::new(30),
+                ReloadTu::new(12),
+            ),
             FireMode::new(vec![mode]),
             Stable::new(true),
             Shove::new(false),

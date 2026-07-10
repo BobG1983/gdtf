@@ -15,7 +15,7 @@ use super::support::{
 fn can_execute_true_for_the_canonical_enemy_setup() {
     let (a, t) = execute_pass();
     assert!(
-        can_execute(&a, &t),
+        *can_execute(&a, &t),
         "an Alive 8-adjacent opposing-faction actor executes a Downed target",
     );
 }
@@ -29,7 +29,7 @@ fn can_execute_sweep_each_guard_flips_it_false() {
         pos: pos(13, 10, GROUND),
         ..t
     };
-    assert!(!can_execute(&a, &far), "non-adjacent must fail");
+    assert!(!*can_execute(&a, &far), "non-adjacent must fail");
 
     // (1b) NOT adjacent — different storey.
     let other_storey = DownedTarget {
@@ -37,7 +37,7 @@ fn can_execute_sweep_each_guard_flips_it_false() {
         ..t
     };
     assert!(
-        !can_execute(&a, &other_storey),
+        !*can_execute(&a, &other_storey),
         "a same-x/y target one storey up is NOT adjacent — must fail",
     );
 
@@ -47,7 +47,7 @@ fn can_execute_sweep_each_guard_flips_it_false() {
         ..a
     };
     assert!(
-        !can_execute(&downed_actor, &t),
+        !*can_execute(&downed_actor, &t),
         "a Downed actor cannot execute"
     );
 
@@ -57,7 +57,7 @@ fn can_execute_sweep_each_guard_flips_it_false() {
         ..t
     };
     assert!(
-        !can_execute(&a, &alive_target),
+        !*can_execute(&a, &alive_target),
         "an Alive target is not an execute subject",
     );
 
@@ -67,7 +67,7 @@ fn can_execute_sweep_each_guard_flips_it_false() {
         ..t
     };
     assert!(
-        !can_execute(&a, &ally),
+        !*can_execute(&a, &ally),
         "a same-faction (ally) actor cannot execute",
     );
 }
@@ -79,7 +79,7 @@ fn can_execute_ignores_stabilized_flag() {
     let (a, mut t) = execute_pass();
     t.stabilized = Some(Stabilized::new(true));
     assert!(
-        can_execute(&a, &t),
+        *can_execute(&a, &t),
         "a stabilized Downed enemy can still be executed (flag does not gate execute)",
     );
 }
@@ -112,7 +112,7 @@ fn execute_act_iff_predicate_both_directions() {
     // Predicate TRUE → act fires (kills, returns Some).
     let (a, t) = execute_pass();
     let mut life = LifeState::Downed;
-    assert!(can_execute(&a, &t));
+    assert!(*can_execute(&a, &t));
     let acted = execute_downed(&a, &t, &mut life, &tuning);
     assert!(acted.is_some(), "predicate true ⇒ act fires");
     assert_eq!(life, LifeState::Dead, "predicate true ⇒ target Dead");
@@ -123,7 +123,7 @@ fn execute_act_iff_predicate_both_directions() {
         ..t
     };
     let mut life2 = LifeState::Downed;
-    assert!(!can_execute(&a, &far));
+    assert!(!*can_execute(&a, &far));
     let acted2 = execute_downed(&a, &far, &mut life2, &tuning);
     assert!(acted2.is_none(), "predicate false ⇒ no-op (None)");
     assert_eq!(

@@ -27,7 +27,7 @@ use super::{
     cadence::ActPacing,
     decide::{AiTarget, pick_nearest},
     engage::{WeaponLookup, engageable_targets},
-    snapshot::{EnemyTurnGangers, GangerRow, cell_order},
+    snapshot::{EnemyTurnGangers, GangerRow, MidWalk, cell_order},
 };
 use crate::{
     acts::{EndTurnRequested, FireRequested, MoveRequested},
@@ -142,7 +142,7 @@ pub fn enemy_ai_turn(
     // act per ActCadence-step (the advance_walk one-step-per-tick model). The turn-end check
     // below is intentionally OUTSIDE this gate, so a finished enemy turn still hands control
     // back promptly. An absent cooldown (lean harness) returns true (act-every-tick fallback).
-    if !pacing.gate() {
+    if !*pacing.gate() {
         return;
     }
 
@@ -174,7 +174,7 @@ pub fn enemy_ai_turn(
                     tu: *tu,
                     tu_max: *tu_max,
                     faction: *faction,
-                    walking,
+                    walking: MidWalk::new(walking),
                     // GTW-443: fold the available hand count from the ledger now (an
                     // absent ledger = the uninjured two-hands default).
                     hands: injuries
@@ -227,7 +227,7 @@ pub fn enemy_ai_turn(
     for enemy in &enemies {
         // Skip a Downed/Dead enemy (cannot act) and one mid-walk (its one act resolves
         // across frames — it stays "busy" until advance_walk finishes; GTW-70 §D.3).
-        if !enemy.life.is_active() || enemy.walking {
+        if !*enemy.life.is_active() || *enemy.walking {
             continue;
         }
 
@@ -308,7 +308,7 @@ pub fn enemy_ai_turn(
     // is set only behind a dispatcher-guaranteed-accept pre-check, so an emitted act always
     // spends TU (fire) or attaches a walk (move) — the brain then waits rather than
     // re-emitting, and EndTurnRequested fires only when the enemy genuinely has nothing left.
-    let any_walking = enemies.iter().any(|enemy| enemy.walking);
+    let any_walking = enemies.iter().any(|enemy| *enemy.walking);
     if !acted && !any_walking {
         end_turn_writer.write(EndTurnRequested);
     }

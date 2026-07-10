@@ -24,7 +24,7 @@ fn can_spend_tu_is_true_iff_pool_at_least_cost() {
     ];
     for (pool, cost, expected) in cases {
         assert_eq!(
-            can_spend_tu(&Tu::new(pool), Tu::new(cost)),
+            *can_spend_tu(&Tu::new(pool), Tu::new(cost)),
             expected,
             "can_spend_tu(pool={pool}, cost={cost}) should be {expected}",
         );

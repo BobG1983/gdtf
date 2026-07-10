@@ -38,11 +38,12 @@ mod leaves;
 mod tests;
 
 pub use core::{
-    ReactionProbability, ReactionScore, ReactionsUsed, interrupt_probability, may_interrupt,
-    reaction_score, rolls_interrupt,
+    Interrupts, MayInterrupt, ReactionProbability, ReactionScore, ReactionsUsed,
+    interrupt_probability, may_interrupt, reaction_score, rolls_interrupt,
 };
 
 pub use leaves::{
-    ReactionCapBase, ReactionCapPerReactions, ReactionPMax, ReactionPMin, ReactionTuning,
-    SuppressionRadius, SuppressionStabilityPenalty, clamp_probability, reaction_cap,
+    ReactionCap, ReactionCapBase, ReactionCapPerReactions, ReactionPMax, ReactionPMin,
+    ReactionTuning, SuppressionRadius, SuppressionStabilityPenalty, clamp_probability,
+    reaction_cap,
 };

@@ -19,11 +19,11 @@ fn set_aiming_toggles_flag_and_charges_no_tu() {
     // contract that toggling aim is free).
     let tu = Tu::new(30);
 
-    set_aiming(&mut aiming, true);
+    set_aiming(&mut aiming, Aiming::new(true));
     assert!(*aiming, "set_aiming(true) must set the aim flag");
     assert_eq!(*tu, 30, "toggling aim must not spend any TU");
 
-    set_aiming(&mut aiming, false);
+    set_aiming(&mut aiming, Aiming::new(false));
     assert!(!*aiming, "set_aiming(false) must clear the aim flag");
     assert_eq!(*tu, 30, "toggling aim off must not spend any TU either");
 }
@@ -39,7 +39,7 @@ fn set_stance_to_different_stance_spends_exactly_the_cost() {
     let mut tu = Tu::new(60);
     let before = *tu;
 
-    let changed = set_stance(&mut stance, &mut tu, StanceKind::Prone, &cost);
+    let changed = *set_stance(&mut stance, &mut tu, StanceKind::Prone, &cost);
 
     assert!(
         changed,
@@ -70,7 +70,7 @@ fn set_stance_to_same_stance_is_a_no_op() {
     let mut stance = Stance::new(StanceKind::Crouching);
     let mut tu = Tu::new(60);
 
-    let changed = set_stance(&mut stance, &mut tu, StanceKind::Crouching, &cost);
+    let changed = *set_stance(&mut stance, &mut tu, StanceKind::Crouching, &cost);
 
     assert!(
         !changed,
@@ -100,7 +100,7 @@ fn set_facing_to_different_facing_spends_exactly_the_cost() {
     let mut tu = Tu::new(50);
     let before = *tu;
 
-    let changed = set_facing(&mut facing, &mut tu, Direction::East, &cost);
+    let changed = *set_facing(&mut facing, &mut tu, Direction::East, &cost);
 
     assert!(
         changed,
@@ -123,7 +123,7 @@ fn set_facing_to_different_facing_spends_exactly_the_cost() {
     let mut tu = Tu::new(50);
     let before = *tu;
 
-    let changed = set_facing(&mut facing, &mut tu, Direction::South, &cost);
+    let changed = *set_facing(&mut facing, &mut tu, Direction::South, &cost);
 
     assert!(
         changed,
@@ -150,7 +150,7 @@ fn set_facing_to_same_facing_is_a_no_op() {
     let mut facing = Facing::new(Direction::SouthWest);
     let mut tu = Tu::new(50);
 
-    let changed = set_facing(&mut facing, &mut tu, Direction::SouthWest, &cost);
+    let changed = *set_facing(&mut facing, &mut tu, Direction::SouthWest, &cost);
 
     assert!(
         !changed,
@@ -182,7 +182,7 @@ fn set_facing_partial_turn_spends_exactly_the_afforded_steps() {
     let mut tu = Tu::new(2 * c);
     let before = *tu;
 
-    let changed = set_facing(&mut facing, &mut tu, Direction::South, &cost);
+    let changed = *set_facing(&mut facing, &mut tu, Direction::South, &cost);
 
     assert!(
         changed,
@@ -221,7 +221,7 @@ fn set_facing_with_pool_below_one_step_does_not_turn_or_charge() {
     let mut facing = Facing::new(Direction::North);
     let mut tu = Tu::new(c - 1);
 
-    let changed = set_facing(&mut facing, &mut tu, Direction::South, &cost);
+    let changed = *set_facing(&mut facing, &mut tu, Direction::South, &cost);
 
     assert!(
         !changed,
@@ -241,7 +241,7 @@ fn set_facing_with_pool_below_one_step_does_not_turn_or_charge() {
     // The Tu::new(0) sub-case: a broke ganger likewise cannot turn and is not charged.
     let mut facing = Facing::new(Direction::North);
     let mut tu = Tu::new(0);
-    let changed = set_facing(&mut facing, &mut tu, Direction::South, &cost);
+    let changed = *set_facing(&mut facing, &mut tu, Direction::South, &cost);
     assert!(!changed, "a broke ganger (Tu == 0) cannot turn");
     assert_eq!(
         *facing,
@@ -261,7 +261,7 @@ fn set_stance_charge_saturates_when_cost_exceeds_pool() {
     let mut stance = Stance::new(StanceKind::Standing);
     let mut tu = Tu::new(5);
 
-    let changed = set_stance(&mut stance, &mut tu, StanceKind::Prone, &cost);
+    let changed = *set_stance(&mut stance, &mut tu, StanceKind::Prone, &cost);
 
     assert!(
         changed,

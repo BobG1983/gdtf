@@ -122,7 +122,7 @@ pub(super) fn preview_draws(
 /// them), so only the VISIBLE / EXPLORED branches are reachable for a real preview; an
 /// (impossible) UNSEEN cell falls into the dimmer branch fail-safe.
 fn step_tint(squad: &SquadVisibility, cell: &CellLevel) -> Color {
-    if squad.is_cell_visible(cell) {
+    if *squad.is_cell_visible(cell) {
         PREVIEW_TINT
     } else {
         // EXPLORED (remembered) — dimmer; the §53 memory treatment.

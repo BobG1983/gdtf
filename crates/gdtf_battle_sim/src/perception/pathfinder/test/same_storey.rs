@@ -73,7 +73,7 @@ fn route_detours_around_a_wall() {
     // The route never steps onto a wall cell.
     for &c in path.cells() {
         assert!(
-            !grid.is_blocked(&c),
+            !*grid.is_blocked(&c),
             "the route never enters a blocked cell ({c:?})",
         );
     }

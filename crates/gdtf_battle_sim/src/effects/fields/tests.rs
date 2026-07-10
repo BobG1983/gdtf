@@ -97,11 +97,11 @@ fn the_enum_delegates_the_lifetime_verbs_to_the_isolated_behaviour() {
         "the enum seeds the authored Turns count"
     );
     assert!(
-        !finite.count_down_one_turn(&mut remaining),
+        !*finite.count_down_one_turn(&mut remaining),
         "2 → 1 through the enum: not yet expired"
     );
     assert!(
-        finite.count_down_one_turn(&mut remaining),
+        *finite.count_down_one_turn(&mut remaining),
         "1 → expired through the enum: the last round expires the placement"
     );
 
@@ -112,7 +112,7 @@ fn the_enum_delegates_the_lifetime_verbs_to_the_isolated_behaviour() {
         "Permanent through the enum carries no countdown"
     );
     assert!(
-        !permanent.count_down_one_turn(&mut forever),
+        !*permanent.count_down_one_turn(&mut forever),
         "Permanent through the enum never expires"
     );
 
@@ -125,7 +125,7 @@ fn the_enum_delegates_the_lifetime_verbs_to_the_isolated_behaviour() {
     assert_eq!(drain.initial_countdown(), None, "Drain seeds no countdown");
     let mut untouched = Some(field_turns(5));
     assert!(
-        !drain.count_down_one_turn(&mut untouched),
+        !*drain.count_down_one_turn(&mut untouched),
         "Drain never expires the field"
     );
     assert_eq!(

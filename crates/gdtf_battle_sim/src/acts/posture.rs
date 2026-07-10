@@ -29,7 +29,7 @@ pub fn dispatch_set_aiming(
         let Ok(mut aiming) = actors.get_mut(request.actor) else {
             continue;
         };
-        set_aiming(&mut aiming, *request.aim);
+        set_aiming(&mut aiming, Aiming::new(*request.aim));
     }
 }
 

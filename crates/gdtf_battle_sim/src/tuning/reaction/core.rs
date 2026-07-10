@@ -79,6 +79,39 @@ impl ReactionProbability {
     }
 }
 
+/// Whether a watcher's §8 interrupt roll **fired** — the [`rolls_interrupt`] outcome.
+///
+/// `true` means the seeded draw landed under the interrupt probability (the watcher
+/// interrupts the mover); `false` means it did not. A distinct roll-outcome predicate,
+/// not a bare `bool`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Interrupts(bool);
+
+impl Interrupts {
+    /// Build the interrupt-roll outcome.
+    #[must_use]
+    pub const fn new(interrupts: bool) -> Self {
+        Self(interrupts)
+    }
+}
+
+/// Whether a watcher **may take another interrupt** this enemy turn — the §8 per-turn
+/// cap gate ([`may_interrupt`]).
+///
+/// `true` means the watcher has used fewer interrupts than its [`reaction_cap`] allows;
+/// `false` means the per-turn cap is reached. A distinct cap-gate predicate, not a bare
+/// `bool`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MayInterrupt(bool);
+
+impl MayInterrupt {
+    /// Build the per-turn cap-gate verdict.
+    #[must_use]
+    pub const fn new(allowed: bool) -> Self {
+        Self(allowed)
+    }
+}
+
 /// A watcher's **interrupts used this enemy turn** — the per-turn counter the §8
 /// cap gates (`docs/combat/resolution.md` §8: `max interrupts this enemy turn =
 /// cap(Reactions)`).
@@ -193,10 +226,10 @@ pub fn interrupt_probability(
     // theoretically-negative denominator (scores are non-negative, so this is
     // belt-and-braces — never produce NaN/inf).
     if denominator <= 0.0 {
-        return ReactionProbability::new(clamp_probability(0.5, tuning));
+        return clamp_probability(ReactionProbability::new(0.5), tuning);
     }
     let raw = *watcher / denominator;
-    ReactionProbability::new(clamp_probability(raw, tuning))
+    clamp_probability(ReactionProbability::new(raw), tuning)
 }
 
 /// Roll the §8 interrupt check against a seeded stream — `true` iff the watcher
@@ -218,12 +251,12 @@ pub fn interrupt_probability(
 /// - `rng` — the injected seeded [`ReactionRng`](crate::rng::ReactionRng),
 ///   borrowed mutably for the one draw.
 #[must_use]
-pub fn rolls_interrupt(p: ReactionProbability, rng: &mut crate::rng::ReactionRng) -> bool {
+pub fn rolls_interrupt(p: ReactionProbability, rng: &mut crate::rng::ReactionRng) -> Interrupts {
     // Exactly one draw: a uniform [0.0, 1.0) sample. `< p` so p == 0.0 never
     // fires and p == 1.0 always fires — but the §8 clamp keeps p strictly inside
     // (0, 1), so neither extreme is reachable in practice.
     let roll: f32 = rng.random_range(0.0_f32..1.0);
-    roll < *p
+    Interrupts::new(roll < *p)
 }
 
 /// The §8 **per-turn cap gate** — may this watcher take another reaction
@@ -241,6 +274,10 @@ pub fn rolls_interrupt(p: ReactionProbability, rng: &mut crate::rng::ReactionRng
 /// - `reactions` — the watcher's [`Reactions`] computed stat (the cap input).
 /// - `tuning` — the [`ReactionTuning`] group from [`crate::tuning::CombatTuning`].
 #[must_use]
-pub fn may_interrupt(used: ReactionsUsed, reactions: Reactions, tuning: &ReactionTuning) -> bool {
-    *used < reaction_cap(reactions, tuning)
+pub fn may_interrupt(
+    used: ReactionsUsed,
+    reactions: Reactions,
+    tuning: &ReactionTuning,
+) -> MayInterrupt {
+    MayInterrupt::new(*used < *reaction_cap(reactions, tuning))
 }

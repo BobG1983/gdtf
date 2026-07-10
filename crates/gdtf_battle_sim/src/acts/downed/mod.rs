@@ -59,6 +59,6 @@ mod stabilize;
 mod test;
 
 pub use dispatch::{dispatch_execute_downed, dispatch_stabilize_downed};
-pub use execute::{can_execute, execute_downed};
-pub use reach::{Actor, DownedTarget, is_8_adjacent};
-pub use stabilize::{can_stabilize, stabilize_downed};
+pub use execute::{CanExecute, can_execute, execute_downed};
+pub use reach::{Actor, Adjacent8, DownedTarget, is_8_adjacent};
+pub use stabilize::{CanStabilize, can_stabilize, stabilize_downed};

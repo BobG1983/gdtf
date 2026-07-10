@@ -32,7 +32,7 @@ pub(super) use crate::{
     },
     inflicted_wound::{InflictedWound, InflictedWounds},
     injuries::{InjuryRegistry, InjuryTables},
-    magazine::{Magazine, ReloadTu, mode_tu_cost},
+    magazine::{LoadedRounds, Magazine, ReloadTu, mode_tu_cost},
     metric::{Cell, CellLevel, Level},
     occupancy::OccupancyGrid,
     resolve_and_apply::{AppliedDamage, GangerVerdict, HitReport, HitVerdict},
@@ -238,7 +238,7 @@ fn test_weapon(
         // The bundle carries the test's exact ammo count directly (GTW-275: the
         // WeaponBundle holds the Magazine grouping, spawned on the weapon entity).
         HandlingProfile::new(
-            Magazine::new(ammo, mag_size, reload_tu),
+            Magazine::new(LoadedRounds::new(ammo), mag_size, reload_tu),
             FireMode::new(vec![mode]),
             Stable::new(stable),
             Shove::new(false),
@@ -266,7 +266,11 @@ pub(super) fn equip_handed_weapon(world: &mut World, ganger: Entity, handedness:
             DamageType::Kinetic,
         ),
         HandlingProfile::new(
-            Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+            Magazine::new(
+                LoadedRounds::new(10),
+                MagazineSize::new(30),
+                ReloadTu::new(12),
+            ),
             FireMode::new(vec![mode]),
             Stable::new(true),
             Shove::new(false),

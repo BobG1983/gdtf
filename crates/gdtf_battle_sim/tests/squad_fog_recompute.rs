@@ -179,17 +179,17 @@ fn setup_inserts_and_fills_squad_visibility() {
     // The spawn-time squad FOV: a standing player ganger sees at least its OWN cell
     // (the candidate set includes its occupied cell, and a ganger always sees itself).
     assert!(
-        fog.is_cell_visible(&player_at()),
+        *fog.is_cell_visible(&player_at()),
         "the spawn-time fog must mark the player ganger's own cell VISIBLE",
     );
     // VISIBLE is a subset of EXPLORED (the accrual invariant) — its own cell is explored.
     assert!(
-        fog.is_cell_explored(&player_at()),
+        *fog.is_cell_explored(&player_at()),
         "a VISIBLE cell must also be EXPLORED (accrue's visible ⊆ explored invariant)",
     );
     // The enemy on clear ground a few cells East is within the player's spawn sight.
     assert!(
-        fog.is_cell_visible(&enemy_at()),
+        *fog.is_cell_visible(&enemy_at()),
         "the spawn-time fog must see the enemy on clear ground within view range",
     );
 }
@@ -207,7 +207,7 @@ fn moving_player_reveals_new_cells_and_retains_explored() {
     };
     // Precondition: the enemy cell is VISIBLE at spawn and the player is where we expect.
     assert!(
-        before.is_cell_visible(&enemy_at()),
+        *before.is_cell_visible(&enemy_at()),
         "precondition: the enemy cell is VISIBLE at spawn",
     );
     assert_eq!(
@@ -237,17 +237,17 @@ fn moving_player_reveals_new_cells_and_retains_explored() {
     };
     // The new cell is now VISIBLE (the writer recomputed from where the player stopped).
     assert!(
-        after.is_cell_visible(&moved_to),
+        *after.is_cell_visible(&moved_to),
         "after the move, the player's NEW cell must be VISIBLE (the writer recomputed)",
     );
     // The far enemy cell dropped from VISIBLE (out of the new sight)...
     assert!(
-        !after.is_cell_visible(&enemy_at()),
+        !*after.is_cell_visible(&enemy_at()),
         "after moving away, the enemy cell must DROP from VISIBLE",
     );
     // ...but stays in EXPLORED (monotone mission memory).
     assert!(
-        after.is_cell_explored(&enemy_at()),
+        *after.is_cell_explored(&enemy_at()),
         "a cell that left VISIBLE must STAY in EXPLORED (monotone accrual)",
     );
 }
@@ -289,7 +289,7 @@ fn downing_player_drops_its_fov() {
         unreachable!("setup inserts SquadVisibility");
     };
     assert!(
-        before.is_cell_visible(&enemy_at()),
+        *before.is_cell_visible(&enemy_at()),
         "precondition: the adjacent player A sees the enemy cell",
     );
 
@@ -313,12 +313,12 @@ fn downing_player_drops_its_fov() {
     // The downed ganger contributes no FOV: the enemy cell, seen only by it, drops from
     // VISIBLE (no other live observer reaches it).
     assert!(
-        !after.is_cell_visible(&enemy_at()),
+        !*after.is_cell_visible(&enemy_at()),
         "downing the only observer of the enemy must DROP its FOV (enemy cell leaves VISIBLE)",
     );
     // EXPLORED is monotone — the enemy cell stays remembered.
     assert!(
-        after.is_cell_explored(&enemy_at()),
+        *after.is_cell_explored(&enemy_at()),
         "the enemy cell stays EXPLORED after the observer is downed (monotone memory)",
     );
 }
@@ -356,7 +356,7 @@ fn cover_destroyed_triggers_a_recompute() {
     // The player still sees its own cell after the recompute (the writer produced a sane
     // fog, not an empty one).
     assert!(
-        after.is_cell_visible(&player_at()),
+        *after.is_cell_visible(&player_at()),
         "after the CoverDestroyed-triggered recompute, the player still sees its own cell",
     );
 }

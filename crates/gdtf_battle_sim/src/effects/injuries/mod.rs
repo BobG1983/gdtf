@@ -49,7 +49,7 @@ mod movement_cost_mul;
 #[cfg(test)]
 mod tests;
 
-pub use apply_effect::{ApplyInjuryEffect, HealError, LedgerAccumulators};
+pub use apply_effect::{ApplyInjuryEffect, HandDisabling, HealError, LedgerAccumulators};
 pub use bleeding::{ApplyBleeding, BleedAmount};
 pub use disable_hand::ApplyDisableHand;
 pub use effect::InjuryEffect;

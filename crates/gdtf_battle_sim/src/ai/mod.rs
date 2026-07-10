@@ -43,5 +43,5 @@ mod snapshot;
 mod test;
 
 pub use brain::enemy_ai_turn;
-pub use cadence::{ActCadence, ActPacing, EnemyActCooldown};
+pub use cadence::{ActCadence, ActPacing, ActReady, EnemyActCooldown};
 pub use decide::{AiTarget, pick_nearest, plan_advance};

@@ -51,4 +51,6 @@ mod test;
 pub use compute::{FovObserver, accrue, union_fov};
 pub use fog_select::{OmniscientFog, move_fog};
 pub use recompute::{recompute_visibility, should_recompute_visibility};
-pub use squad::{FactionRelation, SquadVisibility, is_ganger_visible};
+pub use squad::{
+    CellExplored, CellVisible, FactionRelation, GangerVisible, SquadVisibility, is_ganger_visible,
+};

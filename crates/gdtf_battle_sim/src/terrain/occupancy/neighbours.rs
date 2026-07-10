@@ -36,6 +36,8 @@
 
 use std::f32::consts::SQRT_2;
 
+use bevy::prelude::Deref;
+
 use crate::{
     ganger::Tu,
     injuries::MovementCostFactor,
@@ -44,6 +46,37 @@ use crate::{
     terrain::floor::FloorCostGrid,
     tuning::MoveCost,
 };
+
+/// Whether a planar step is **diagonal** — one of the four corner offsets (both `dx` and `dy`
+/// non-zero), which pays the octile step cost and is subject to the no-corner-cutting rule.
+///
+/// A named newtype over `bool` (no-bare-types: a step's diagonality is a domain fact, not a bare
+/// boolean). Private inner + derived [`Deref`] (house style).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+struct Diagonal(bool);
+
+impl Diagonal {
+    /// Build a diagonal-step answer from its boolean state.
+    const fn new(diagonal: bool) -> Self {
+        Self(diagonal)
+    }
+}
+
+/// Whether a diagonal step would **cut a corner** — the `AT_LEAST_ONE_WALKABLE` verdict: `true`
+/// when BOTH of the diagonal's shared-edge orthogonal neighbours are path-blocked (the step is
+/// illegal).
+///
+/// A named newtype over `bool` (no-bare-types: a corner-cut verdict is a domain fact, not a bare
+/// boolean). Private inner + derived [`Deref`] (house style).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+struct CornerCut(bool);
+
+impl CornerCut {
+    /// Build a corner-cut verdict from its boolean state.
+    const fn new(cut: bool) -> Self {
+        Self(cut)
+    }
+}
 
 /// The eight planar `(dx, dy)` step offsets of an 8-connected neighbourhood, in
 /// the canonical `(z, y, x)` cell-key order relative to the origin.
@@ -125,19 +158,19 @@ pub fn pathable_neighbors<'a>(
         // TAG-DERIVED path-blocking surface — NOT the kind-based `is_blocked` vision reads
         // — excluding cells with a `BlocksPathfinding` marker while still INCLUDING
         // destroyed-cover cells (the surface mirrors the destroyed-cover exclusion, C5).
-        if grid.slot(&neighbour).is_none() || grid.is_path_blocked(&neighbour) {
+        if grid.slot(&neighbour).is_none() || *grid.is_path_blocked(&neighbour) {
             return None;
         }
         let diagonal = dx != 0 && dy != 0;
         // C3 (no corner-cutting): a diagonal is illegal when BOTH its shared-edge
         // orthogonal neighbours are blocked. Orthogonal steps are never corner-cut.
-        if diagonal && corner_is_cut(origin, dx, dy, grid) {
+        if diagonal && *corner_is_cut(origin, dx, dy, grid) {
             return None;
         }
         // C2 (GTW-396): the entered cell's floor cost from FloorCostGrid;
         // diagonals pay the octile `round(move_cost × √2)`, orthogonals unchanged.
         // GTW-444: then scale by the mover's MovementCostFactor (ceil, never below base).
-        let base = step_cost(floor_costs.cost(&neighbour), diagonal);
+        let base = step_cost(floor_costs.cost(&neighbour), Diagonal::new(diagonal));
         let cost = scale_by_factor(base, factor);
         Some((neighbour, cost))
     })
@@ -164,10 +197,10 @@ fn planar_neighbour(origin: CellLevel, dx: i32, dy: i32) -> CellLevel {
 /// above (GTW-501 D1/C2), not the kind-based `is_blocked` vision reads. If at least one is
 /// path-walkable the diagonal is fine. Only called for true diagonals
 /// (`dx != 0 && dy != 0`).
-fn corner_is_cut(origin: CellLevel, dx: i32, dy: i32, grid: &OccupancyGrid) -> bool {
+fn corner_is_cut(origin: CellLevel, dx: i32, dy: i32, grid: &OccupancyGrid) -> CornerCut {
     let side_a = planar_neighbour(origin, dx, 0);
     let side_b = planar_neighbour(origin, 0, dy);
-    grid.is_path_blocked(&side_a) && grid.is_path_blocked(&side_b)
+    CornerCut::new(*grid.is_path_blocked(&side_a) && *grid.is_path_blocked(&side_b))
 }
 
 /// The [`Tu`] cost of stepping onto a cell with floor cost `floor_cost` — orthogonal
@@ -177,9 +210,9 @@ fn corner_is_cut(origin: CellLevel, dx: i32, dy: i32, grid: &OccupancyGrid) -> b
 /// [`FloorCostGrid::cost`] at the call site, rather than looked up via
 /// `move_costs.cost(terrain)` — the caller passes the resolved per-cell cost. The
 /// octile math is unchanged: `f32::round(move_cost × √2)`, narrowed to `u8`.
-fn step_cost(floor_cost: MoveCost, diagonal: bool) -> Tu {
+fn step_cost(floor_cost: MoveCost, diagonal: Diagonal) -> Tu {
     let orthogonal = *floor_cost;
-    if !diagonal {
+    if !*diagonal {
         return Tu::new(orthogonal);
     }
     #[expect(

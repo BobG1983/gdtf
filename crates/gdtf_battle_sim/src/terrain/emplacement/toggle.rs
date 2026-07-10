@@ -197,7 +197,7 @@ pub fn apply_emplacement_toggle(
         *state = request.state();
         let ganger = request.ganger();
         let key = **cell;
-        if request.state().is_occupied() {
+        if *request.state().is_occupied() {
             // Occupy: record the occupant + force its band to HIGH so it reads as HIGH cover.
             commands
                 .entity(request.emplacement())

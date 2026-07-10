@@ -2,7 +2,7 @@
 //! isolated, payload-free [`ApplyDisableHand`] behaviour: INERT at gain, surfaced
 //! through the read-side hand projection instead of any accumulator.
 
-use super::{ApplyInjuryEffect, HealError, LedgerAccumulators};
+use super::{ApplyInjuryEffect, HandDisabling, HealError, LedgerAccumulators};
 
 /// **`DisableHand`** — disables the hand on the injury's struck arm (GTW-443).
 ///
@@ -31,8 +31,8 @@ impl ApplyInjuryEffect for ApplyDisableHand {
     fn fold_on_gain(&self, _accumulators: &mut LedgerAccumulators<'_>) {}
 
     /// THE hand-disabling effect — the one override of the defaulted projection.
-    fn disables_hand(&self) -> bool {
-        true
+    fn disables_hand(&self) -> HandDisabling {
+        HandDisabling::new(true)
     }
 
     /// A documented NO-OP `Ok`: nothing was accumulated at gain, so there is nothing
@@ -68,7 +68,7 @@ mod tests {
         let healed = ApplyDisableHand.heal(&mut acc);
         assert_eq!(healed, Ok(()), "nothing to heal — a documented no-op Ok");
         assert!(
-            ApplyDisableHand.disables_hand(),
+            *ApplyDisableHand.disables_hand(),
             "the projection is the behaviour"
         );
         assert_eq!(

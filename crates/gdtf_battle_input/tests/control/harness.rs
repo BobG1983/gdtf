@@ -8,7 +8,7 @@ use gdtf_battle_sim::{
     acts::{FireRequested, MoveRequested, SetFacingRequested},
     battle::PlayerFaction,
     ganger::{Aiming, TuMax},
-    magazine::{Magazine, ReloadTu},
+    magazine::{LoadedRounds, Magazine, ReloadTu},
     prelude::{
         BattleInProgress, CellLevel, Faction, Level, LifeState, OccupancyGrid, Position, Tu,
     },
@@ -105,7 +105,11 @@ pub(crate) fn spawn_player_shooter(app: &mut App, cell: CellLevel) -> Entity {
     app.world_mut().spawn((
         WieldedBy::new(ganger),
         FireMode::new(vec![single]),
-        Magazine::new(10, MagazineSize::new(30), ReloadTu::new(12)),
+        Magazine::new(
+            LoadedRounds::new(10),
+            MagazineSize::new(30),
+            ReloadTu::new(12),
+        ),
         // GTW-443: the fire surface's WeaponMagazine query reads `(&Magazine, &Handedness)`.
         Handedness::OneHanded,
     ));

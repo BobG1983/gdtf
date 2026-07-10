@@ -37,6 +37,25 @@ impl StairEyeOffset {
     }
 }
 
+/// Whether a `(cell, level)` is an **authored stair tile** — the membership answer
+/// [`OccupancyGrid::is_stair_cell`] returns (the cell is a registered stair endpoint).
+///
+/// A named newtype over `bool` (no-bare-types: stair-tile membership is a domain fact, not a
+/// bare boolean — a stair endpoint reads `StairCell(true)`). `true` when the cell was
+/// registered via [`mark_stair_cell`](OccupancyGrid::mark_stair_cell) at battle setup, which
+/// the LOS probe reads to lift an observer's eye z. Private inner + derived [`Deref`] (house
+/// style).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct StairCell(bool);
+
+impl StairCell {
+    /// Build a stair-tile membership answer from its boolean state.
+    #[must_use]
+    pub const fn new(is_stair: bool) -> Self {
+        Self(is_stair)
+    }
+}
+
 impl OccupancyGrid {
     /// Mark `cell_level` as an **authored stair tile** (GTW-390) — insert it into the
     /// [`stair_cells`](OccupancyGrid::is_stair_cell) set so the LOS probe can lift
@@ -58,8 +77,8 @@ impl OccupancyGrid {
     /// stair endpoint). A cell absent from the set — including every cell on a grid
     /// built with `OccupancyGrid::new()` — returns `false` (non-stair = no eye-lift).
     #[must_use]
-    pub fn is_stair_cell(&self, cell_level: &CellLevel) -> bool {
-        self.stair_cells.contains(cell_level)
+    pub fn is_stair_cell(&self, cell_level: &CellLevel) -> StairCell {
+        StairCell::new(self.stair_cells.contains(cell_level))
     }
 
     /// The raw [`StairEyeOffset`] for `cell_level` — `StairEyeOffset(0.5)` when the

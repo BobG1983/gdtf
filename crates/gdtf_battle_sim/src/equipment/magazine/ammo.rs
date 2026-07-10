@@ -56,6 +56,23 @@ impl LoadedRounds {
     }
 }
 
+/// Whether a [`Magazine`] holds **no rounds** — the `can_fire` ammo gate's answer.
+///
+/// A named predicate newtype (no-bare-types: "the magazine is empty" is a domain answer,
+/// not a bare `bool`) over [`Magazine::is_empty`]. Private inner, read through the derived
+/// [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MagazineEmpty(bool);
+
+/// Whether a [`Magazine`] is loaded to **its full capacity** — the reload act's
+/// no-op-refill answer.
+///
+/// A named predicate newtype (no-bare-types: "the magazine is full" is a domain answer,
+/// not a bare `bool`) over [`Magazine::is_full`]. Private inner, read through the derived
+/// [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MagazineFull(bool);
+
 /// A ganger's **magazine** — the weapon's round capacity, its per-weapon reload cost,
 /// and the rounds currently loaded, grouped into one Component (the user's
 /// `Magazine { size, reload_tu, … }` model, USER DIRECTIVE 2026-06-17).
@@ -111,12 +128,12 @@ impl Magazine {
     /// (AC1) — and a request within capacity is preserved exactly. Use
     /// [`loaded`](Magazine::loaded) for a full magazine.
     #[must_use]
-    pub const fn new(rounds: u16, size: MagazineSize, reload_tu: ReloadTu) -> Self {
+    pub const fn new(rounds: LoadedRounds, size: MagazineSize, reload_tu: ReloadTu) -> Self {
         Self {
             size,
             reload_tu,
-            rounds: LoadedRounds(if rounds < size.get() {
-                rounds
+            rounds: LoadedRounds(if rounds.0 < size.get() {
+                rounds.0
             } else {
                 size.get()
             }),
@@ -159,15 +176,15 @@ impl Magazine {
 
     /// Whether the magazine is **empty** — no rounds loaded (the `can_fire` ammo gate).
     #[must_use]
-    pub const fn is_empty(&self) -> bool {
-        self.rounds.0 == 0
+    pub const fn is_empty(&self) -> MagazineEmpty {
+        MagazineEmpty(self.rounds.0 == 0)
     }
 
     /// Whether the magazine is **full** — loaded to its capacity (the reload act reads
     /// it to decide whether a reload is a no-op refill).
     #[must_use]
-    pub const fn is_full(&self) -> bool {
-        self.rounds.0 >= self.size.get()
+    pub const fn is_full(&self) -> MagazineFull {
+        MagazineFull(self.rounds.0 >= self.size.get())
     }
 
     /// Spend **one** round — a **saturating** decrement that floors at `0`.

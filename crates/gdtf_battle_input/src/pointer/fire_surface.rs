@@ -140,7 +140,7 @@ pub(crate) fn try_fire_request(
     // consult (resolution.md §9). LOS/fog is presenter policy, not a `can_fire` input.
     // `fire_mode` auto-derefs `SelectedFireMode` -> `FireModeSpec` to the `&FireModeSpec`
     // the guard expects.
-    if !can_fire(&actor, fire_mode, target_cell, target_level, tuning) {
+    if !*can_fire(&actor, fire_mode, target_cell, target_level, tuning) {
         return None;
     }
 

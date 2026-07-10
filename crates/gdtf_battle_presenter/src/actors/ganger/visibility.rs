@@ -57,7 +57,7 @@ pub(super) fn actor_relation(
     life: LifeState,
 ) -> FactionRelation {
     let is_player = player.is_some_and(|p| *p == faction);
-    if is_player && life.is_active() {
+    if is_player && *life.is_active() {
         FactionRelation::OwnSquad
     } else {
         FactionRelation::Other
@@ -96,7 +96,7 @@ pub(super) fn classify_ganger_visibility(
     // The fog axis: only when the fog resources are resident; band-only when absent.
     let shown_by_fog = fog.is_none_or(|facts| {
         let key: CellLevel = **pos;
-        is_ganger_visible(
+        *is_ganger_visible(
             facts.squad,
             &key,
             actor_relation(facts.player, faction, life),

@@ -15,7 +15,7 @@
 //! [`OnDeathOccurred`](crate::effects::on_death::OnDeathOccurred) at exactly the same point of the
 //! round the pre-palette inline tick did).
 
-use bevy::prelude::{Entity, MessageWriter, Mut, Query, With};
+use bevy::prelude::{Deref, Entity, MessageWriter, Mut, Query, With};
 
 use super::FieldTurns;
 use crate::{
@@ -92,9 +92,9 @@ pub trait ApplyFieldEffect {
     /// round — the whole-source-immunity gate, asked of every consequence BEFORE any
     /// drain verb runs (an exempt occupant takes zero damage and emits no signal).
     ///
-    /// Defaulted to `false` so only the exempting consequence overrides it.
-    fn exempts_occupant(&self, _armor: &OccupantArmor<'_, '_, '_>) -> bool {
-        false
+    /// Defaulted to [`DrainExempt`]`(false)` so only the exempting consequence overrides it.
+    fn exempts_occupant(&self, _armor: &OccupantArmor<'_, '_, '_>) -> DrainExempt {
+        DrainExempt(false)
     }
 
     /// **Drain** the occupant standing at the field cell `at` this round — the per-turn
@@ -131,9 +131,47 @@ pub trait ApplyFieldEffect {
     /// drives after the round's drain. `remaining` is `None` for a placement with no
     /// countdown (a Permanent field — GTW-659).
     ///
-    /// Defaulted to `false` with `remaining` untouched, so only the lifetime consequence
-    /// overrides it (a consequence with no lifetime opinion never expires the field).
-    fn count_down_one_turn(&self, _remaining: &mut Option<FieldTurns>) -> bool {
-        false
+    /// Defaulted to [`FieldExpired`]`(false)` with `remaining` untouched, so only the
+    /// lifetime consequence overrides it (a consequence with no lifetime opinion never
+    /// expires the field).
+    fn count_down_one_turn(&self, _remaining: &mut Option<FieldTurns>) -> FieldExpired {
+        FieldExpired(false)
+    }
+}
+
+/// Whether a field consequence **exempts** the standing occupant from this round's drain
+/// — the whole-source-immunity answer [`ApplyFieldEffect::exempts_occupant`] returns.
+///
+/// A named predicate newtype (no-bare-types: "the occupant is exempt from the drain" is a
+/// domain answer, not a bare `bool`). Private inner, read through the derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DrainExempt(bool);
+
+impl DrainExempt {
+    /// Wrap a computed exemption answer — the per-consequence exemption gate builds one
+    /// from its resolved `bool` (an implementor lives in a sibling file, so the private
+    /// inner is set through this constructor, never a tuple literal).
+    #[must_use]
+    pub const fn new(exempt: bool) -> Self {
+        Self(exempt)
+    }
+}
+
+/// Whether a field placement's lifetime has **now elapsed** (and the placement must be
+/// removed) — the answer [`ApplyFieldEffect::count_down_one_turn`] returns after stepping
+/// the countdown one round.
+///
+/// A named predicate newtype (no-bare-types: "the field has expired" is a domain answer,
+/// not a bare `bool`). Private inner, read through the derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FieldExpired(bool);
+
+impl FieldExpired {
+    /// Wrap a computed expiry answer — the lifetime consequence builds one from its
+    /// resolved `bool` after stepping the countdown (an implementor lives in a sibling
+    /// file, so the private inner is set through this constructor, never a tuple literal).
+    #[must_use]
+    pub const fn new(expired: bool) -> Self {
+        Self(expired)
     }
 }

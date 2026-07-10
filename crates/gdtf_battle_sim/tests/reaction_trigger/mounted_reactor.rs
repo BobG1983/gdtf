@@ -17,7 +17,7 @@ use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
     ganger::Direction,
-    magazine::Magazine,
+    magazine::{LoadedRounds, Magazine},
     metric::CellLevel,
     terrain::{
         emplacement::{EmplacementState, MountedWeaponEntity, MountedWeaponKey},
@@ -94,7 +94,7 @@ fn empty_magazine(app: &mut App, weapon: Entity) {
     let Some(mut live) = app.world_mut().get_mut::<Magazine>(weapon) else {
         unreachable!("the weapon entity carries a Magazine");
     };
-    *live = Magazine::new(0, magazine.size(), magazine.reload_tu());
+    *live = Magazine::new(LoadedRounds::new(0), magazine.size(), magazine.reload_tu());
 }
 
 /// Whether `ganger` wields a LOADED gun other than `mount` — the carried weapon the
@@ -112,7 +112,7 @@ fn carried_gun_loaded(app: &mut App, ganger: Entity, mount: Entity) -> bool {
         entity != mount
             && world
                 .get::<Magazine>(entity)
-                .is_some_and(|magazine| !magazine.is_empty())
+                .is_some_and(|magazine| !*magazine.is_empty())
     })
 }
 

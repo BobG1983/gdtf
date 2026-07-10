@@ -34,5 +34,7 @@ pub mod toggle;
 #[cfg(test)]
 mod test;
 
-pub use state::{EmplacementOccupant, EmplacementState, MountedWeaponEntity, MountedWeaponKey};
+pub use state::{
+    EmplacementManned, EmplacementOccupant, EmplacementState, MountedWeaponEntity, MountedWeaponKey,
+};
 pub use toggle::{EmplacementTogglePlugin, SetEmplacement, apply_emplacement_toggle};
