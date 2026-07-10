@@ -2945,8 +2945,6 @@ dependencies = [
  "gdtf_app",
  "gdtf_battle_sim",
  "gdtf_ui",
- "proc-macro2",
- "syn",
  "wgpu",
 ]
 

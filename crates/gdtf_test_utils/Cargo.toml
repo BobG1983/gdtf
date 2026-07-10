@@ -22,15 +22,5 @@ gdtf_ui = { path = "../gdtf_ui" }
 # into ONE `wgpu` crate instance — the probe's query mirrors bevy's own adapter request.
 wgpu = "=29.0.3"
 
-[dev-dependencies]
-# GTW-599: the no-bare-types conformance suite parses every tracked production
-# `.rs` file structurally. `syn` (full + visit) walks fields and fn signatures;
-# `proc-macro2`'s `span-locations` gives the 1-based file:line:col each
-# diagnostic reports. Both are already in the lockfile transitively (syn is a
-# proc-macro dep across the tree); this only pins them as direct dev-deps and
-# turns on `span-locations`. Dev-only — never linked into the release binary.
-syn = { version = "2", features = ["full", "visit", "extra-traits"] }
-proc-macro2 = { version = "1", features = ["span-locations"] }
-
 [lints]
 workspace = true

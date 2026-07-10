@@ -87,60 +87,36 @@ pub struct Hp(u32);
 
 ## Enforcement
 
-A `syn`-based conformance test enforces this rule MECHANICALLY on every
-`cargo dtest` run — the no-bare-types suite
-(`crates/gdtf_test_utils/tests/no_bare_types/`, dir-form target
-`no_bare_types`, GTW-599) parses every tracked PRODUCTION `.rs` file, walks
-each struct/enum field and fn signature (params + returns), and FAILS on any
-bare `u32`/`f32`/`bool`/`usize`/`String`/`IVec2`/`Vec3`/`Duration`/… used as a
-domain value, printing a clippy-style `file:line:col` diagnostic per hit. The
-STRUCTURAL allowlist encodes rules 4/5 exactly — the single non-`PhantomData`
-inner field of a tuple-STRUCT newtype (an enum variant is not a newtype), a
-param/return matching the enclosing newtype's OWN inner type (its
-constructor/accessor boundary, rule 5), and trait-`impl` signatures (rule 4;
-trait DEFINITION signatures ARE checked, being a domain-modeling choice) —
-plus the Q4 marker-parameterized-generic carve-out AND the four **convention
-carve-outs** of rule 4 (GTW-722), each predicate a direct translation of its
-clause: (a) the std-container trio `is_empty`/`len`/`contains…` (the `len`
-allowance gated on an `is_empty` sibling in the same inherent `impl`, the
-`contains…` allowance gated on a reference parameter); (b) a coordinate/vector
-newtype's constructor/accessor scalar boundary — a bare param/return matching
-the inner `glam` vector's COMPONENT scalar (`IVec*`→`i32`, `UVec*`→`u32`,
+This rule is enforced by the `design-gate` review during `/gate` — the crates
+audit of the diff — and NOT by any mechanical test. The `design-gate` audit
+(its structure + Bevy lens) treats a bare domain type as a violation even if it
+compiles — as a struct/enum field, a fn param/return, or a
+`Component`/`Resource`/`Event`/`Message` payload — and treats a
+`pub`/`pub(crate)`/`pub(super)` newtype inner field (rule 5) as the same
+violation: the inner must be private, reachable only through
+`Deref`/`DerefMut`/a constructor/a named accessor. What the audit lets pass is
+exactly rules 4/5: the single non-`PhantomData` inner of a tuple-STRUCT
+newtype, a param/return matching the enclosing newtype's OWN inner type (its
+constructor/accessor boundary), trait-`impl` signatures, framework plumbing
+that genuinely cannot be wrapped (Bevy system params, a `ShaderType` GPU
+uniform's bare `f32`/`Vec2` for WGSL layout, a `.run_if` run-condition's bare
+`bool` return), and the four rule-4 **convention carve-outs** (GTW-722): (a)
+the std-container trio `is_empty`/`len`/`contains…` (the `len` allowance gated
+on an `is_empty` sibling in the same inherent `impl`, the `contains…` allowance
+gated on a reference parameter); (b) a coordinate/vector newtype's
+constructor/accessor scalar boundary — a bare param/return matching the inner
+`glam` vector's COMPONENT scalar (`IVec*`→`i32`, `UVec*`→`u32`,
 float-vec/`Quat`→`f32`); (c) a provable own-collection index — an
 `index`/`idx` `-> usize` method on a type whose inherent `impl` declares an
 associated fixed-size-array `const`; (d) a named hash digest — a fn whose name
 contains `hash` returning a bare unsigned integer. A near-miss that fails the
 exact wording (a `len` with no `is_empty`, a scalar on a non-coordinate
 newtype, an `index` on a type with no owned array, a cast/sampling helper whose
-name does not say `hash`) is STILL flagged. NOTHING else is exempted in
-code: `#[derive(Serialize/Deserialize)]` wire shapes serialize newtypes fine
-and are NOT carved out, `ShaderType` GPU uniforms (bare `f32`/`Vec2` for WGSL
-layout) are NOT carved out, and a bare `usize`/`bool` the checker cannot prove
-is a collection index or a predicate answer is flagged. Test bands are out of
-scope (their scaffolding values are not domain data). Every residual exception
-— documented FALSE POSITIVES (framework plumbing that genuinely cannot be
-wrapped, e.g. a `ShaderType` uniform) and KNOWN VIOLATIONS pending a follow-up
-ticket — lives line-by-line in `.claude/rules/no-bare-types-exemptions.txt`,
-and the test fails on any stale entry — mirroring the `module_layout` clause-7
-guard.
+name does not say `hash`) is STILL a violation. Test bands are out of scope
+(their scaffolding values are not domain data). Wrapping a value is also how
+`docs/glossary.md` vocabulary becomes code — see `design-fidelity.md`.
 
-The registry is **SHRINK-ONLY** (GTW-704, user ruling 2026-07-09). SECTION 2
-(the GTW-599 baseline of known pre-existing violations) is capped by a ceiling
-pinned INSIDE the suite (`ceiling.rs`, `SECTION_2_CEILING`): a run whose live
-SECTION-2 count EXCEEDS the pin FAILS, so no new bare type may be baselined away
-— wrap it in a newtype instead. Any commit may LOWER the pin (each burn-down
-wave's land does); it is raised only with explicit user approval. SECTION 1
-(documented false positives) is exempt from the ceiling, but its additions stay
-user-approval-only, so growth past its pinned baseline prints a loud, non-failing
-reminder. When an edit drifts a baselined line, the suite's opt-in re-key mode
-(`NO_BARE_TYPES_REGEN=1 cargo test … regenerate_section_2_keys`) rewrites
-SECTION 2's keys from the live scan — preserving each entry's why-text, refusing
-to add net-new entries (an unpairable live violation is printed and left out),
-and never touching SECTION 1.
-
-`/gate`'s `design-gate` audit additionally treats a bare domain type as a
-violation, even if it compiles — and treats a `pub`/`pub(crate)`/`pub(super)`
-newtype inner field (rule 5) as the same violation: the inner must be private,
-reachable only through `Deref`/`DerefMut`/a constructor/a named accessor.
-Wrapping a value is also how `docs/glossary.md` vocabulary becomes code — see
-`design-fidelity.md`.
+A `syn`-based mechanical checker was built and deliberately retired 2026-07-10
+(GTW-703/724) after the false-positive maintenance cost outweighed demonstrated
+value — do not rebuild mechanical enforcement for this rule without new evidence
+(a one-crate pilot measuring false-positive rate and caught-bug rate).
