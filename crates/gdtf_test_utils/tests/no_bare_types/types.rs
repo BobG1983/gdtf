@@ -52,6 +52,13 @@ impl TypeName {
     pub(crate) fn new(name: impl Into<String>) -> Self {
         Self(name.into())
     }
+
+    /// Whether this type name is exactly `other` — used by the convention
+    /// carve-out predicates to match a signature's flagged type against the
+    /// std-container / index / hash shapes named in `.claude/rules/no-bare-types.md`.
+    pub(crate) fn is(&self, other: &str) -> bool {
+        self.0 == other
+    }
 }
 
 /// Where in the source a bare type was found — shapes the diagnostic wording.

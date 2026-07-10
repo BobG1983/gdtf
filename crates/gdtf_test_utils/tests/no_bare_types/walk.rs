@@ -1,7 +1,8 @@
 //! The syn parse + AST walk. `scan_source` parses one file and walks it with a
 //! [`Walker`] that flags bare domain types in struct/enum fields and fn
 //! signatures, honoring EXACTLY the structural allowlist of rules 4/5 of
-//! `.claude/rules/no-bare-types.md` (plus the Q4 marker-generic carve-out):
+//! `.claude/rules/no-bare-types.md` (plus the Q4 marker-generic carve-out and
+//! the four GTW-722 convention carve-outs, see [`crate::conventions`]):
 //!
 //! - the single non-`PhantomData` field of a tuple-**struct** newtype is exempt
 //!   (rule 5, plus Q4: a generic marker newtype like `Meters<T>(f32,
@@ -13,13 +14,18 @@
 //!   trait-*impl* signatures);
 //! - inside a newtype's OWN inherent `impl`, a bare param/return that MATCHES
 //!   the newtype's inner type is exempt — the constructor/accessor raw-value
-//!   boundary of rule 5; any OTHER bare type in that `impl` is still flagged;
+//!   boundary of rule 5; carve-out (b) generalises this to the inner `glam`
+//!   vector's COMPONENT scalar; any OTHER bare type in that `impl` is still
+//!   flagged;
+//! - the convention carve-outs (a) std-container `is_empty`/`len`/`contains…`,
+//!   (c) a provable own-collection `index`/`idx`, and (d) a named hash digest
+//!   exempt the specific RETURN they name — decided by [`crate::conventions`]
+//!   from the enclosing inherent `impl`'s facts (an [`ImplFrame`]);
 //! - `#[cfg(test)]` modules are skipped (their scaffolding is not domain data).
 //!
-//! Bevy system params (`Commands`/`Query`/`Res`/`ResMut`/`MessageWriter`/…) and
-//! owned-collection indices need no special handling: the former are not flagged
-//! bare types, and a bare `usize`/`bool` the checker cannot prove is an
-//! index/predicate is flagged and tracked in the exemption registry.
+//! Bevy system params (`Commands`/`Query`/`Res`/`ResMut`/`MessageWriter`/…) are
+//! not flagged bare types, and a bare `usize`/`bool` the checker cannot prove is
+//! an index/predicate is flagged and tracked in the exemption registry.
 
 use std::collections::HashMap;
 
@@ -29,9 +35,27 @@ use syn::{
 };
 
 use crate::{
+    conventions::{
+        declares_is_empty, declares_owned_array, glam_component_scalar, return_is_conventional,
+    },
     syntax::{collect_newtypes, flagged_type, has_cfg_test, is_newtype, segment_head},
     types::{ColumnNumber, LineNumber, PositionKind, RepoPath, TypeName, Violation},
 };
+
+/// The facts about an enclosing inherent `impl` the convention carve-outs read.
+/// One frame is pushed per inherent `impl` (trait impls are wholly exempt via
+/// [`Walker::trait_impl_depth`] and get no frame).
+struct ImplFrame {
+    /// The bare types exempt as this newtype's raw-value boundary (rule 5 + the
+    /// carve-out (b) `glam` component scalar) — matched against params AND
+    /// returns. Empty for a non-newtype inherent `impl`.
+    exempt_scalars:  Vec<TypeName>,
+    /// The `impl` declares `is_empty(&self) -> bool` — gates the `len` carve-out.
+    has_is_empty:    bool,
+    /// The `impl` declares a fixed-size-array `const` — proves the `index`
+    /// carve-out's owned collection.
+    has_owned_array: bool,
+}
 
 /// A file that syn could not parse (non-fatal — reported, never panics).
 pub(crate) struct ParseError {
@@ -53,7 +77,7 @@ pub(crate) fn scan_source(path: &RepoPath, src: &str) -> Result<Vec<Violation>, 
         path,
         newtypes: &newtypes,
         trait_impl_depth: 0,
-        newtype_impl_inner: Vec::new(),
+        impl_frames: Vec::new(),
         test_cfg_depth: 0,
         violations: Vec::new(),
     };
@@ -64,21 +88,19 @@ pub(crate) fn scan_source(path: &RepoPath, src: &str) -> Result<Vec<Violation>, 
 /// The AST walker — carries the enclosing-context state the allowlist needs.
 struct Walker<'a> {
     /// The file being walked (for violation coordinates).
-    path:               &'a RepoPath,
+    path:             &'a RepoPath,
     /// The tuple-struct newtypes declared in this file, mapped to the flagged
     /// inner type each wraps (if any).
-    newtypes:           &'a HashMap<String, Option<TypeName>>,
+    newtypes:         &'a HashMap<String, Option<TypeName>>,
     /// Depth of enclosing trait `impl`s (>0 ⇒ fn sigs exempt — rule 4).
-    trait_impl_depth:   usize,
-    /// Stack of enclosing newtype inherent `impl`s — each frame is the flagged
-    /// inner type of the newtype whose `impl` we are in (`None` if its inner is
-    /// not itself a flagged bare type). A bare sig type matching the top frame
-    /// is exempt (the newtype's constructor/accessor boundary, rule 5).
-    newtype_impl_inner: Vec<Option<TypeName>>,
+    trait_impl_depth: usize,
+    /// Stack of enclosing inherent `impl` frames — the newtype/std-container/
+    /// owned-array facts the convention carve-outs read (see [`ImplFrame`]).
+    impl_frames:      Vec<ImplFrame>,
     /// Depth of enclosing `#[cfg(test)]` modules (>0 ⇒ skip).
-    test_cfg_depth:     usize,
+    test_cfg_depth:   usize,
     /// Accumulated violations.
-    violations:         Vec<Violation>,
+    violations:       Vec<Violation>,
 }
 
 impl Walker<'_> {
@@ -117,38 +139,60 @@ impl Walker<'_> {
         }
     }
 
-    /// Flag bare params + return of a fn signature. `exempt_inner` is the inner
-    /// type of the enclosing newtype's own `impl` (if any) — a bare param/return
-    /// matching it is the newtype's raw-value boundary (rule 5) and is skipped.
-    fn flag_signature(&mut self, sig: &syn::Signature, exempt_inner: Option<&TypeName>) {
+    /// Flag bare params + return of the fn `name`d by `sig`, honoring the
+    /// convention carve-outs against the innermost enclosing inherent `impl`
+    /// frame (if any). A param/return matching the frame's exempt scalars is the
+    /// newtype's raw-value / coordinate-component boundary (rules 5 + carve-out
+    /// (b)); a RETURN the [`return_is_conventional`] predicate names (carve-outs
+    /// a/c/d) is skipped too.
+    fn flag_signature(&mut self, sig: &syn::Signature, name: &str) {
+        // Snapshot the enclosing-`impl` facts BEFORE the `&mut self` record
+        // calls below (the frame borrows `self.impl_frames`).
+        let frame = self.impl_frames.last();
+        let exempt_scalars: Vec<TypeName> =
+            frame.map(|f| f.exempt_scalars.clone()).unwrap_or_default();
+        let has_is_empty = frame.is_some_and(|f| f.has_is_empty);
+        let has_owned_array = frame.is_some_and(|f| f.has_owned_array);
         for input in &sig.inputs {
             let FnArg::Typed(pat) = input else {
                 continue; // `self` receiver — not a typed param
             };
-            if let Some(name) = flagged_type(&pat.ty)
-                && !matches_inner(&name, exempt_inner)
+            if let Some(found) = flagged_type(&pat.ty)
+                && !exempt_scalars.contains(&found)
             {
-                self.record(&pat.ty, name, PositionKind::FnParam);
+                self.record(&pat.ty, found, PositionKind::FnParam);
             }
         }
         if let ReturnType::Type(_, ty) = &sig.output
-            && let Some(name) = flagged_type(ty)
-            && !matches_inner(&name, exempt_inner)
+            && let Some(found) = flagged_type(ty)
+            && !exempt_scalars.contains(&found)
+            && !return_is_conventional(name, &found, sig, has_is_empty, has_owned_array)
         {
-            self.record(ty, name, PositionKind::FnReturn);
+            self.record(ty, found, PositionKind::FnReturn);
         }
     }
 
-    /// The exempt inner type of the innermost enclosing newtype `impl`, if any.
-    fn current_newtype_inner(&self) -> Option<&TypeName> {
-        self.newtype_impl_inner.last().and_then(Option::as_ref)
+    /// Build the [`ImplFrame`] for an inherent `impl`: its newtype raw-value /
+    /// `glam`-component exempt scalars (carve-out (b) + rule 5) and the
+    /// std-container / owned-array facts carve-outs (a) and (c) read.
+    fn build_impl_frame(&self, node: &ItemImpl) -> ImplFrame {
+        let inner = segment_head(&node.self_ty)
+            .and_then(|(head, _)| self.newtypes.get(&head))
+            .cloned()
+            .flatten();
+        let mut exempt_scalars = Vec::new();
+        if let Some(inner) = inner {
+            if let Some(component) = glam_component_scalar(&inner) {
+                exempt_scalars.push(component);
+            }
+            exempt_scalars.push(inner);
+        }
+        ImplFrame {
+            exempt_scalars,
+            has_is_empty: declares_is_empty(&node.items),
+            has_owned_array: declares_owned_array(&node.items),
+        }
     }
-}
-
-/// Whether `name` matches the enclosing newtype's inner type (see
-/// [`Walker::flag_signature`]).
-fn matches_inner(name: &TypeName, exempt_inner: Option<&TypeName>) -> bool {
-    exempt_inner.is_some_and(|inner| inner == name)
 }
 
 impl<'ast> Visit<'ast> for Walker<'_> {
@@ -179,43 +223,28 @@ impl<'ast> Visit<'ast> for Walker<'_> {
 
     fn visit_item_impl(&mut self, node: &'ast ItemImpl) {
         let is_trait_impl = node.trait_.is_some();
-        // `Some(inner)` iff `self_ty` names a newtype declared in this file;
-        // `inner` is its flagged inner type (or `None`).
-        let newtype_inner = if is_trait_impl {
-            None
-        } else {
-            segment_head(&node.self_ty)
-                .and_then(|(head, _)| self.newtypes.get(&head))
-                .cloned()
-        };
-        let is_newtype_impl = newtype_inner.is_some();
         if is_trait_impl {
+            // Trait-impl signatures are wholly exempt (rule 4); no frame needed.
             self.trait_impl_depth += 1;
-        }
-        if let Some(inner) = newtype_inner {
-            self.newtype_impl_inner.push(inner);
-        }
-        syn::visit::visit_item_impl(self, node);
-        if is_newtype_impl {
-            self.newtype_impl_inner.pop();
-        }
-        if is_trait_impl {
+            syn::visit::visit_item_impl(self, node);
             self.trait_impl_depth -= 1;
+            return;
         }
+        self.impl_frames.push(self.build_impl_frame(node));
+        syn::visit::visit_item_impl(self, node);
+        self.impl_frames.pop();
     }
 
     fn visit_item_fn(&mut self, node: &'ast ItemFn) {
         if self.signatures_checked() {
-            let exempt = self.current_newtype_inner().cloned();
-            self.flag_signature(&node.sig, exempt.as_ref());
+            self.flag_signature(&node.sig, &node.sig.ident.to_string());
         }
         syn::visit::visit_item_fn(self, node);
     }
 
     fn visit_impl_item_fn(&mut self, node: &'ast ImplItemFn) {
         if self.signatures_checked() {
-            let exempt = self.current_newtype_inner().cloned();
-            self.flag_signature(&node.sig, exempt.as_ref());
+            self.flag_signature(&node.sig, &node.sig.ident.to_string());
         }
         syn::visit::visit_impl_item_fn(self, node);
     }
@@ -224,8 +253,7 @@ impl<'ast> Visit<'ast> for Walker<'_> {
         // A trait DEFINITION's signatures are a domain-modeling choice (rule 4
         // exempts trait-*impl* signatures only), so they are checked.
         if self.signatures_checked() {
-            let exempt = self.current_newtype_inner().cloned();
-            self.flag_signature(&node.sig, exempt.as_ref());
+            self.flag_signature(&node.sig, &node.sig.ident.to_string());
         }
         syn::visit::visit_trait_item_fn(self, node);
     }

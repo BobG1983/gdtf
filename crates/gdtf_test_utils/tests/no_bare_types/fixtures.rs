@@ -10,7 +10,8 @@ use crate::{
 };
 
 /// Parse a fixture string and return its violations (the fixture must parse).
-fn scan(src: &str) -> Vec<crate::types::Violation> {
+/// Shared with [`crate::conventions_fixtures`] (the GTW-722 carve-out fixtures).
+pub(crate) fn scan(src: &str) -> Vec<crate::types::Violation> {
     let path = RepoPath::new("FIXTURE.rs");
     let Ok(found) = scan_source(&path, src) else {
         unreachable!("fixture must parse");

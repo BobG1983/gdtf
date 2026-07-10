@@ -24,7 +24,44 @@ variable name bolted onto a bare primitive.
 4. The ONLY bare types that remain are the inner field of a newtype itself, and
    **framework plumbing you cannot wrap** — Bevy system params (`Commands`,
    `Query`, `Res`/`ResMut`, `EventWriter`), trait-impl signatures, and indices
-   into a collection you own. Those are not domain values.
+   into a collection you own. Those are not domain values. The same reasoning
+   admits a small, CLOSED set of **convention carve-outs** — signatures that
+   are a language / std-library convention rather than a domain value, so their
+   bare type carries no meaning to name. Each is phrased narrowly enough that
+   the mechanical checker's predicate is its DIRECT translation; a near-miss
+   that does not meet the exact wording stays flagged. These four, and only
+   these, are exempt beyond the inner-field / trait-impl allowances:
+   - **(a) Std-container method signatures.** The collection-surface trio, where
+     a type stands in for a `std` collection: `fn is_empty(&self) -> bool`;
+     `fn len(&self) -> usize` **only when the same inherent `impl` also declares
+     that** `fn is_empty(&self) -> bool` (the pairing `clippy::len_without_is_empty`
+     requires — a `len` with NO `is_empty` sibling stays flagged); and a
+     `fn contains…(&self, …) -> bool` **that takes at least one reference
+     parameter** (the borrowed key/value whose membership it answers). The
+     `usize` count and `bool` answer are named by std convention here, not as a
+     domain quantity — this is the delegating trio every registry-family wrapper
+     stamps over the foundation `Registry`.
+   - **(b) Constructor / accessor scalar boundary of a coordinate/vector
+     newtype** — the generalisation of rule 5's own-inner allowance to a newtype
+     whose inner is a multi-component `glam` type. Inside the inherent `impl` of
+     a newtype wrapping a `glam` vector (`IVec2`/`IVec3`/`IVec4`, `UVec2`/`UVec3`/
+     `UVec4`, `Vec2`/`Vec3`/`Vec4`, `Quat`), a bare parameter or return whose
+     type is that vector's COMPONENT scalar — `i32` for the `IVec*` family, `u32`
+     for `UVec*`, `f32` for the float vectors and `Quat` — is the raw-value
+     boundary of the wrapped coordinate: `Cell::new(i32, i32)`,
+     `SimPos::new(f32, f32, f32)`, a component accessor. A scalar that does NOT
+     match the inner's component type, or a scalar on a newtype whose inner is
+     NOT a multi-component vector, stays flagged.
+   - **(c) Provable own-collection index.** Rule 4's "indices into a collection
+     you own", made mechanically PROVABLE: an inherent method named `index` or
+     `idx` returning `usize` on a type whose inherent `impl` also declares an
+     associated `const` of fixed-size-array type (`[_; N]`) — the collection it
+     indexes (`BodyPart::index()` over `BodyPart::ALL`). An `index`/`idx` method
+     on a type with no such owned array stays flagged.
+   - **(d) Named hash digest.** A function whose name contains `hash`
+     (case-insensitive) returning a bare unsigned integer — a raw digest value,
+     plumbing by its very name. Cast and sampling helpers whose names do NOT say
+     `hash` are NOT covered: wrap their result or carry them as tracked debt.
 5. **The newtype's inner field is PRIVATE — never `pub`, `pub(crate)`, or
    `pub(super)`.** Construct it through a `new` (or named) constructor, read it
    through the derived `Deref`, mutate it through `DerefMut` (added only where the
@@ -62,7 +99,20 @@ inner field of a tuple-STRUCT newtype (an enum variant is not a newtype), a
 param/return matching the enclosing newtype's OWN inner type (its
 constructor/accessor boundary, rule 5), and trait-`impl` signatures (rule 4;
 trait DEFINITION signatures ARE checked, being a domain-modeling choice) —
-plus the Q4 marker-parameterized-generic carve-out. NOTHING else is exempted in
+plus the Q4 marker-parameterized-generic carve-out AND the four **convention
+carve-outs** of rule 4 (GTW-722), each predicate a direct translation of its
+clause: (a) the std-container trio `is_empty`/`len`/`contains…` (the `len`
+allowance gated on an `is_empty` sibling in the same inherent `impl`, the
+`contains…` allowance gated on a reference parameter); (b) a coordinate/vector
+newtype's constructor/accessor scalar boundary — a bare param/return matching
+the inner `glam` vector's COMPONENT scalar (`IVec*`→`i32`, `UVec*`→`u32`,
+float-vec/`Quat`→`f32`); (c) a provable own-collection index — an
+`index`/`idx` `-> usize` method on a type whose inherent `impl` declares an
+associated fixed-size-array `const`; (d) a named hash digest — a fn whose name
+contains `hash` returning a bare unsigned integer. A near-miss that fails the
+exact wording (a `len` with no `is_empty`, a scalar on a non-coordinate
+newtype, an `index` on a type with no owned array, a cast/sampling helper whose
+name does not say `hash`) is STILL flagged. NOTHING else is exempted in
 code: `#[derive(Serialize/Deserialize)]` wire shapes serialize newtypes fine
 and are NOT carved out, `ShaderType` GPU uniforms (bare `f32`/`Vec2` for WGSL
 layout) are NOT carved out, and a bare `usize`/`bool` the checker cannot prove

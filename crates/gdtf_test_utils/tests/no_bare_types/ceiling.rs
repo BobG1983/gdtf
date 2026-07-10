@@ -19,12 +19,13 @@ use crate::{
     tree::workspace_root,
 };
 
-/// The pinned ceiling on SECTION-2 (baseline) entries. Measured live at the
-/// GTW-705 (W1 sim burn-down) land: 782 remaining entries after wrapping the
-/// fixed `gdtf_battle_sim` violations (the GTW-704 land pinned 865). SHRINK-ONLY:
-/// any commit may LOWER this (each burn-down wave's land does); it is raised only
-/// with user approval.
-pub(crate) const SECTION_2_CEILING: usize = 782;
+/// The pinned ceiling on SECTION-2 (baseline) entries. Lowered at the GTW-722
+/// (W1.5 convention carve-out) land to 719: the regen dropped 63 entries that
+/// the four rule-4 convention carve-outs (std-container trio, coordinate scalar
+/// boundary, provable own-collection index, named hash digest) now clear BY RULE
+/// (GTW-705 pinned 782; GTW-704 pinned 865). SHRINK-ONLY: any commit may LOWER
+/// this (each burn-down wave's land does); it is raised only with user approval.
+pub(crate) const SECTION_2_CEILING: usize = 719;
 
 /// The pinned baseline count of SECTION-1 (documented false positive) entries.
 /// Growth past this is legal but user-approval-only, so it triggers the loud

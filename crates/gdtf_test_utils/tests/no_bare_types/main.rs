@@ -25,6 +25,8 @@
 
 mod ceiling;
 mod conformance;
+mod conventions;
+mod conventions_fixtures;
 mod diagnostics;
 mod fixtures;
 mod regen;
