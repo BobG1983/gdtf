@@ -13,7 +13,7 @@ use bevy::prelude::Entity;
 
 use crate::{
     ganger::Tu,
-    metric::{Cell, CellLevel, Level},
+    metric::{Cell, CellDistance, CellLevel, Level},
 };
 
 /// A candidate the AI reasons about — an opposing ganger (or its cell as an advance goal),
@@ -54,10 +54,10 @@ impl AiTarget {
 /// gate's range disc uses, so "nearest" agrees with "in view-range". Saturating into the
 /// `u32` magnitude on the pathological out-of-grid delta (defined, never a panic).
 #[must_use]
-fn chebyshev_xy(a: Cell, b: Cell) -> u32 {
+fn chebyshev_xy(a: Cell, b: Cell) -> CellDistance {
     let dx = (a.x - b.x).unsigned_abs();
     let dy = (a.y - b.y).unsigned_abs();
-    dx.max(dy)
+    CellDistance::new(dx.max(dy))
 }
 
 /// The total-order key for ranking [`candidates`](AiTarget) relative to a shooter at
@@ -73,7 +73,7 @@ fn order_key(from_cell: Cell, from_level: Level, target: AiTarget) -> (u32, u32,
     let distance = chebyshev_xy(from_cell, target.cell);
     let level_gap = u32::from((*from_level).abs_diff(*target.level));
     (
-        distance,
+        *distance,
         level_gap,
         *target.level,
         target.cell.y,

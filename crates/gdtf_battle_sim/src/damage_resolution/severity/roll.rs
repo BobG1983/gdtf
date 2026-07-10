@@ -1,14 +1,33 @@
 //! The §6 score math + the roll — [`SeverityInputs`], the seeded random term, the
 //! score formula, and the [`roll_severity`] entry point.
 
+use bevy::prelude::Deref;
+
 use super::kind::{PartSeverityMod, Severity, SeverityScore, bucket};
 use crate::{
     ganger::{Luck, Toughness},
-    resolve_hit::PenetratingDamage,
+    resolve_hit::{DamageReal, PenetratingDamage},
     rng::SeverityRng,
     tuning::SeverityScaling,
     weapon::FatalBias,
 };
+
+/// The **§6 random roll term** — the uniform draw over the floor-extend range
+/// `[−L·Luck_defender, R]` the severity score adds in (resolution.md §6).
+///
+/// One `f32` addend of the severity score, drawn from the seeded stream. Names it so
+/// [`roll_term`] does not return a bare `f32` (no-bare-types). Private inner + derived
+/// [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+pub(super) struct RollTerm(f32);
+
+impl RollTerm {
+    /// Build a roll term from its drawn magnitude.
+    #[must_use]
+    const fn new(term: f32) -> Self {
+        Self(term)
+    }
+}
 
 /// The six per-roll inputs to the §6 severity score, bundled into one named
 /// struct (resolution.md §6).
@@ -61,8 +80,8 @@ impl SeverityInputs {
     }
 }
 
-/// Cast a non-negative count-like `i32` to `f32` for the severity score's
-/// `f32` arithmetic, clamped so a wild value cannot lose its sign.
+/// The [`PenetratingDamage`] as a real ([`DamageReal`]) for the severity score's
+/// `f32` arithmetic.
 ///
 /// [`PenetratingDamage`] is an `i32` (the per-hit formula is signed) but reaches
 /// the §6 score as `j × pen` in `f32`. Penetrating damage is `max(0, inner)`, so
@@ -73,8 +92,8 @@ impl SeverityInputs {
     clippy::cast_precision_loss,
     reason = "penetrating damage is a small non-negative count, far inside f32's exact-integer range"
 )]
-const fn pen_to_f32(pen: i32) -> f32 {
-    pen as f32
+fn pen_to_f32(pen: PenetratingDamage) -> DamageReal {
+    DamageReal::new(*pen as f32)
 }
 
 /// Draw the §6 random roll term — a **uniform** `f32` over the floor-extend range
@@ -94,10 +113,10 @@ pub(super) fn roll_term(
     scaling: &SeverityScaling,
     luck_defender: Luck,
     rng: &mut SeverityRng,
-) -> f32 {
+) -> RollTerm {
     let lo = -*scaling.defender_luck_scale * *luck_defender;
     let hi = *scaling.random_spread;
-    rng.random_range_or_midpoint(lo..hi)
+    RollTerm::new(rng.random_range_or_midpoint(lo..hi))
 }
 
 /// Compute the §6 severity score for `inputs` under `scaling`, drawing the random
@@ -113,13 +132,13 @@ pub(super) fn severity_score(
     scaling: &SeverityScaling,
     rng: &mut SeverityRng,
 ) -> SeverityScore {
-    let pen_term = *scaling.pen_damage_scale * pen_to_f32(*inputs.pen_damage);
+    let pen_term = *scaling.pen_damage_scale * *pen_to_f32(inputs.pen_damage);
     let toughness_term = *scaling.toughness_mitigation * *inputs.toughness;
     let shooter_term = *scaling.shooter_luck_scale * *inputs.luck_shooter;
     let roll = roll_term(scaling, inputs.luck_defender, rng);
 
     SeverityScore::new(
-        pen_term - toughness_term + *inputs.part_mod + *inputs.fatal_bias + shooter_term + roll,
+        pen_term - toughness_term + *inputs.part_mod + *inputs.fatal_bias + shooter_term + *roll,
     )
 }
 

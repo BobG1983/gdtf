@@ -125,7 +125,7 @@ fn shipped_situation_ron_deserializes_with_required_structure() {
         situation.floors.len(),
     );
     assert!(
-        situation.default_floor.is_nil(),
+        *situation.default_floor.is_nil(),
         "the migrated shipped file must author NO default_floor (procgen supplies it)",
     );
 }
@@ -197,7 +197,7 @@ fn shipped_situation_ron_drives_the_real_setup_path() {
     };
 
     assert_eq!(
-        setup.ganger_count(),
+        *setup.ganger_count(),
         authored_ganger_count,
         "setup must spawn exactly the authored ganger count from the shipped file",
     );

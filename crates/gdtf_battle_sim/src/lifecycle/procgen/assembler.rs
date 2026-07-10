@@ -180,7 +180,7 @@ pub fn assemble_placement_with(
     let player_footprint = Footprint::of(player_prefab.spec().size);
     let player_region = board.place_at_anchor(player_anchor, player_footprint);
     // The fit was already checked in selection, but commit it (and re-guard fail-closed).
-    if !packer.place(player_region) {
+    if !*packer.place(player_region) {
         return Err(PackingError::FootprintDoesNotFit {
             anchor:    player_anchor,
             footprint: player_footprint,
@@ -200,7 +200,7 @@ pub fn assemble_placement_with(
     )?;
     let enemy_footprint = Footprint::of(enemy_prefab.spec().size);
     let enemy_region = board.place_at_anchor(enemy_anchor, enemy_footprint);
-    if !packer.place(enemy_region) {
+    if !*packer.place(enemy_region) {
         return Err(PackingError::FootprintDoesNotFit {
             anchor:    enemy_anchor,
             footprint: enemy_footprint,
@@ -280,7 +280,7 @@ fn pick_player_prefab(
     let mut last_no_fit: Option<PackingError> = None;
     for prefab in candidates {
         let footprint = Footprint::of(prefab.spec().size);
-        if footprint.min_side() < min_player_side.cells() {
+        if footprint.min_side() < *min_player_side.cells() {
             last_too_small = Some(PackingError::PlayerFootprintTooSmall {
                 footprint,
                 min_side: min_player_side,
@@ -288,7 +288,7 @@ fn pick_player_prefab(
             continue;
         }
         let region = board.place_at_anchor(anchor, footprint);
-        if packer.fits(region) {
+        if *packer.fits(region) {
             return Ok(prefab);
         }
         last_no_fit = Some(PackingError::FootprintDoesNotFit {
@@ -329,7 +329,7 @@ fn pick_fitting_prefab(
     for prefab in candidates {
         let footprint = Footprint::of(prefab.spec().size);
         let region = board.place_at_anchor(anchor, footprint);
-        if packer.fits(region) {
+        if *packer.fits(region) {
             return Ok(prefab);
         }
         last_no_fit = Some(PackingError::FootprintDoesNotFit {

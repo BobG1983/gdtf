@@ -21,7 +21,7 @@ fn present_slab_stops_climbing_ray_destroyed_crosses() {
     present.set_slab(slab_at, SlabState::Present);
     let r_present = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &present,
         &cover,
@@ -41,7 +41,7 @@ fn present_slab_stops_climbing_ray_destroyed_crosses() {
     destroyed.destroy_slab(slab_at);
     let r_destroyed = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &destroyed,
         &cover,
@@ -59,7 +59,7 @@ fn present_slab_stops_climbing_ray_destroyed_crosses() {
     let absent = SurfaceGrid::new();
     let r_absent = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &absent,
         &cover,

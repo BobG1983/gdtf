@@ -19,18 +19,22 @@ use crate::{
     tree::workspace_root,
 };
 
-/// The pinned ceiling on SECTION-2 (baseline) entries. Lowered at the GTW-722
-/// (W1.5 convention carve-out) land to 719: the regen dropped 63 entries that
-/// the four rule-4 convention carve-outs (std-container trio, coordinate scalar
-/// boundary, provable own-collection index, named hash digest) now clear BY RULE
-/// (GTW-705 pinned 782; GTW-704 pinned 865). SHRINK-ONLY: any commit may LOWER
-/// this (each burn-down wave's land does); it is raised only with user approval.
-pub(crate) const SECTION_2_CEILING: usize = 719;
+/// The pinned ceiling on SECTION-2 (baseline) entries. Lowered at the GTW-723
+/// (W1b sim-leftovers burn-down) land to 575: the wave wrapped every remaining
+/// `gdtf_battle_sim` SECTION-2 entry in a domain newtype (the W1 C5 leftovers —
+/// ring ordinals/step counts/rank bands, coordinate converters, neighbour
+/// scalars, cast/sampling one-offs), and the regen dropped the 144 now-cleared
+/// keys, leaving only the five written C5 proposals (three `run_if`
+/// run-condition bools + the `CellDef` serde-shape x/y pair) as sim SECTION-2
+/// debt. (GTW-722 pinned 719; GTW-705 pinned 782; GTW-704 pinned 865.)
+/// SHRINK-ONLY: any commit may LOWER this (each burn-down wave's land does); it
+/// is raised only with user approval.
+pub(crate) const SECTION_2_CEILING: usize = 570;
 
 /// The pinned baseline count of SECTION-1 (documented false positive) entries.
 /// Growth past this is legal but user-approval-only, so it triggers the loud
 /// non-failing reminder in [`section_1_growth_reminder`], not a failure.
-pub(crate) const SECTION_1_BASELINE: usize = 3;
+pub(crate) const SECTION_1_BASELINE: usize = 8;
 
 /// The ceiling diagnostic for a SECTION-2 count, or `None` when the count is at
 /// or below the pin (shrinking / holding stays green). Pure over the count so

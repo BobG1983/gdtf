@@ -2,7 +2,7 @@
 //! round-band / clearance predicates. See the module docs (`super`) for the §2 rule.
 
 use crate::{
-    cover::{BandFraction, HeightBand, band_for},
+    cover::{BandFraction, BandRank, HeightBand, band_for},
     ganger::StanceKind,
     metric::{SimPos, pos_to_cell},
     tuning::CombatTuning,
@@ -66,12 +66,13 @@ pub enum Clearance {
 /// over the ranks. It is **not** a band threshold — the band *edges* still live in
 /// [`crate::tuning::ProjectileBandEdges`] and reach a band only through
 /// [`band_for`]; this merely orders the enum the docs already order
-/// (resolution.md §2's LOW/MID/HIGH ladder).
-pub(super) const fn band_rank(band: HeightBand) -> u8 {
+/// (resolution.md §2's LOW/MID/HIGH ladder). Returns the shared
+/// [`BandRank`](crate::cover::BandRank) ordinal (no-bare-types).
+pub(super) const fn band_rank(band: HeightBand) -> BandRank {
     match band {
-        HeightBand::Low => 0,
-        HeightBand::Mid => 1,
-        HeightBand::High => 2,
+        HeightBand::Low => BandRank::new(0),
+        HeightBand::Mid => BandRank::new(1),
+        HeightBand::High => BandRank::new(2),
     }
 }
 
@@ -123,7 +124,11 @@ pub fn round_band_for_cell(round: SimPos, tuning: &CombatTuning) -> HeightBand {
 /// this is the (unchanged) entry band.
 #[must_use]
 pub const fn lower_band(a: HeightBand, b: HeightBand) -> HeightBand {
-    if band_rank(a) <= band_rank(b) { a } else { b }
+    if band_rank(a).get() <= band_rank(b).get() {
+        a
+    } else {
+        b
+    }
 }
 
 /// The per-crossing **clearance predicate**: does a round in `round_band` clear an
@@ -137,7 +142,7 @@ pub const fn lower_band(a: HeightBand, b: HeightBand) -> HeightBand {
 /// band: a LOW round versus a LOW occupant is *equal*, so it impacts (AC #3).
 #[must_use]
 pub const fn round_clears_occupant(round_band: HeightBand, occupant_band: HeightBand) -> Clearance {
-    if band_rank(round_band) > band_rank(occupant_band) {
+    if band_rank(round_band).get() > band_rank(occupant_band).get() {
         Clearance::Clears
     } else {
         Clearance::Impacts

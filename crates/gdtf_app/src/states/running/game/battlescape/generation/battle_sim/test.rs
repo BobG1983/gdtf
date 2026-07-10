@@ -10,7 +10,7 @@ use bevy::{app::App, ecs::system::RunSystemOnce, prelude::*};
 use gdtf_assets::{ContentFinding, ContentIntegrityReport};
 use gdtf_battle_sim::{
     battle::SetupBattleRequested,
-    level::{PrefabRegistry, ThemeUuid, UuidThemeRegistry},
+    level::{PrefabRegistry, ThemeName, ThemeUuid, UuidThemeRegistry},
     rng::BattleSeed,
     situation::Situation,
     terrain::def::TerrainDefRegistry,
@@ -48,7 +48,7 @@ fn procgen_app_with_absent_theme(theme: ThemeUuid) -> App {
 fn absent_theme_procgen_fallback_warns_and_lands_on_the_report() {
     // A deterministic theme UUID deliberately ABSENT from the (present, empty)
     // registries — the "procgen request with an absent theme UUID" shape.
-    let theme = ThemeUuid::from_legacy_theme("gtw-582-absent-theme");
+    let theme = ThemeUuid::from_legacy_theme(&ThemeName::new("gtw-582-absent-theme".to_owned()));
     let mut app = procgen_app_with_absent_theme(theme);
 
     let captured = capture_logs(|| {

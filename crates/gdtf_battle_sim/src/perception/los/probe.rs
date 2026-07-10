@@ -7,7 +7,7 @@
 //! (the facing-neutral eye + the exact compose-derived target aim band).
 
 use bevy::{
-    math::{Vec2, Vec3},
+    math::Vec2,
     prelude::{Component, Deref, Entity},
 };
 
@@ -15,8 +15,8 @@ use crate::{
     central_axis::{clamp_within_cell, muzzle_height, target_aim_point},
     cover::CoverLedger,
     ganger::{Facing, Position, Stance, StanceKind},
-    march::{MarchKind, march_vector},
-    metric::{CellLevel, SimPos, cell_center},
+    march::{MarchDir, MarchKind, march_vector},
+    metric::{CellLevel, SimPos, SimUnit, cell_center},
     occupancy::{OccupancyGrid, StairEyeOffset},
     surface::SurfaceGrid,
     tuning::CombatTuning,
@@ -187,7 +187,7 @@ pub fn has_los(
     // The unit eye→aim direction. `normalize_or_zero` yields the zero vector for a
     // coincident eye/aim (which `march_vector` then handles as a graceful Miss — no
     // panic, clause 6/7); the degenerate same-cell case is already returned above.
-    let dir: Vec3 = (*aim - *eye).normalize_or_zero();
+    let dir = MarchDir::new((*aim - *eye).normalize_or_zero());
 
     // The ONE geometry call (clause 5): march the eye→aim ray through the voxel grid.
     // The observer's own cell is exempt (clause 6 — pass `observer_cell`), and the
@@ -290,13 +290,13 @@ pub(super) fn eye_anchor(observer: &Observer, tuning: &CombatTuning) -> SimPos {
         reason = "grid coords are tiny (0..60); the f32 conversion of the integer \
                   corner is exact for this range"
     )]
-    let eye_x = clamp_within_cell(center.x + peek.x, cell.x as f32);
+    let eye_x = *clamp_within_cell(SimUnit::new(center.x + peek.x), SimUnit::new(cell.x as f32));
     #[expect(
         clippy::cast_precision_loss,
         reason = "grid coords are tiny (0..60); the f32 conversion of the integer \
                   corner is exact for this range"
     )]
-    let eye_y = clamp_within_cell(center.y + peek.y, cell.y as f32);
+    let eye_y = *clamp_within_cell(SimUnit::new(center.y + peek.y), SimUnit::new(cell.y as f32));
     SimPos::new(eye_x, eye_y, base_z + stair_z)
 }
 

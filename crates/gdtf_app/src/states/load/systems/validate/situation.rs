@@ -65,7 +65,7 @@ pub(super) fn check_situation_theme_ref(
     themes: Res<UuidThemeRegistry>,
     mut report: ResMut<ContentIntegrityReport>,
 ) {
-    if situation.theme.is_nil() {
+    if *situation.theme.is_nil() {
         return;
     }
     if themes.def(&situation.theme).is_none() {
@@ -115,7 +115,7 @@ pub(super) fn check_situation_terrain_refs(
         }
     }
     // The level-wide default floor (nil = "not authored", the documented default).
-    if !situation.default_floor.is_nil() && terrain.def(&situation.default_floor).is_none() {
+    if !*situation.default_floor.is_nil() && terrain.def(&situation.default_floor).is_none() {
         report.record(ContentFinding::DanglingRef {
             referrer: FindingReferrer::new(format!("{SITUATION_RON_PATH}: default_floor")),
             target:   FindingTarget::new(situation.default_floor.to_string()),

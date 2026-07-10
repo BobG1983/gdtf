@@ -26,7 +26,7 @@ fn flat_axis_aligned_ray_walks_expected_cell_sequence() {
 
         let result = march_vector(
             muzzle,
-            dir,
+            MarchDir::new(dir),
             &grid,
             &surface,
             &cover,
@@ -81,7 +81,7 @@ fn diagonal_climbing_ray_walks_expected_staircase() {
 
         let result = march_vector(
             muzzle,
-            dir,
+            MarchDir::new(dir),
             &grid,
             &surface,
             &cover,

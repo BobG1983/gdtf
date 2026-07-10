@@ -53,8 +53,8 @@ impl ThemeUuid {
 
     /// Whether this key is the [`nil`](ThemeUuid::nil) sentinel.
     #[must_use]
-    pub const fn is_nil(&self) -> bool {
-        self.0.is_nil()
+    pub const fn is_nil(&self) -> crate::terrain::def::NilKey {
+        crate::terrain::def::NilKey::new(self.0.is_nil())
     }
 
     /// Mint a **fresh, random** theme key (UUID v4) — used when authoring a new theme
@@ -71,9 +71,28 @@ impl ThemeUuid {
     /// the terrain shim uses, so the same theme always yields the same key. It does NOT match
     /// a migrated [`UuidThemeDef`](super::UuidThemeDef)'s authored key.
     #[must_use]
-    pub fn from_legacy_theme(name: &str) -> Self {
-        Self(Uuid::from_u128(crate::terrain::def::fnv1a64_u128(
+    pub fn from_legacy_theme(name: &ThemeName) -> Self {
+        Self(Uuid::from_u128(*crate::terrain::def::fnv1a64_u128(
             name.as_bytes(),
         )))
+    }
+}
+
+/// A theme's **legacy identifier** — the string key that identified a theme before the
+/// GTW-476 UUID redesign, folded into a stable UUID by
+/// [`ThemeUuid::from_legacy_theme`] (the procgen shim).
+///
+/// A named newtype over `String` (no-bare-types: a theme identifier is a domain value,
+/// not a bare string) — the theme analogue of the terrain-piece
+/// [`TerrainName`](crate::terrain::piece::TerrainName). Private inner + derived
+/// [`Deref`] to [`String`] for the byte read the digest needs.
+#[derive(Deref, Debug, Clone, PartialEq, Eq)]
+pub struct ThemeName(String);
+
+impl ThemeName {
+    /// Build a legacy theme identifier from its string key.
+    #[must_use]
+    pub const fn new(name: String) -> Self {
+        Self(name)
     }
 }

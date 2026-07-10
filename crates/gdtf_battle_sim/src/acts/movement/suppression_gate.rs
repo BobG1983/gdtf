@@ -7,7 +7,7 @@ use bevy::prelude::Deref;
 use crate::{
     cover::CoverLedger,
     ganger::Direction,
-    metric::{Cell, CellLevel},
+    metric::{Cell, CellDistance, CellLevel},
 };
 
 /// Whether a suppressed mover's destination **ends behind cover** relative to the
@@ -54,10 +54,10 @@ impl SuppressedMoveLegal {
 /// plane distance; suppression is a same-level effect this slice) — the suppressor anchor
 /// and both the start and destination are on the mover's own storey by construction. A loop
 /// magnitude (a comparison scalar, not a stored domain quantity), never a bare domain type.
-fn chebyshev_xy(a: &CellLevel, b: &CellLevel) -> u32 {
+fn chebyshev_xy(a: &CellLevel, b: &CellLevel) -> CellDistance {
     let dx = (a.x - b.x).unsigned_abs();
     let dy = (a.y - b.y).unsigned_abs();
-    dx.max(dy)
+    CellDistance::new(dx.max(dy))
 }
 
 /// Whether the cell one Moore-8 step from `dest` TOWARD `suppressor` holds registered cover

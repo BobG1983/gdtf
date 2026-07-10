@@ -21,6 +21,10 @@
 //!   [`ReactionPMax`]), the [`ReactionTuning`] group, and the two pure tuning
 //!   functions [`reaction_cap`] (the per-ganger interrupt cap) and
 //!   [`clamp_probability`] (the `[p_min, p_max]` clamp).
+//! - [`suppression`] — the GTW-526 **suppression tuning leaves**
+//!   ([`SuppressionRadius`] / [`SuppressionStabilityPenalty`]), carried as
+//!   fields of [`ReactionTuning`] but consumed by the suppression pipeline and
+//!   the aim composer rather than the reaction-cap functions.
 //! - [`core`] — the GTW-467 **deterministic opposed-check core**: the output
 //!   newtypes ([`ReactionScore`] / [`ReactionProbability`] / [`ReactionsUsed`])
 //!   and the four pure functions ([`reaction_score`] / [`interrupt_probability`]
@@ -33,6 +37,7 @@
 
 mod core;
 mod leaves;
+mod suppression;
 
 #[cfg(test)]
 mod tests;
@@ -44,6 +49,6 @@ pub use core::{
 
 pub use leaves::{
     ReactionCap, ReactionCapBase, ReactionCapPerReactions, ReactionPMax, ReactionPMin,
-    ReactionTuning, SuppressionRadius, SuppressionStabilityPenalty, clamp_probability,
-    reaction_cap,
+    ReactionTuning, clamp_probability, reaction_cap,
 };
+pub use suppression::{SuppressionRadius, SuppressionStabilityPenalty};

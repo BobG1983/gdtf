@@ -67,6 +67,54 @@ impl IntegrityWear {
     }
 }
 
+/// A **signed intermediate damage magnitude** in the per-hit / melee resolution
+/// arithmetic — a matchup-scaled weapon stat, an effective-penetration term, or a
+/// melee-scaled damage component before it lands in one of the frozen damage
+/// newtypes ([`HpDamage`] / [`PenetratingDamage`] / [`IntegrityWear`]).
+///
+/// The formula reasons in signed `i32` (protection can out-soak damage, driving an
+/// inner value negative). This names that transient magnitude so a helper's
+/// matchup / melee scaling boundary is not a bare `i32` (no-bare-types). Private
+/// inner + derived [`Deref`]; build one via [`DamageMagnitude::new`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DamageMagnitude(i32);
+
+impl DamageMagnitude {
+    /// Build a signed intermediate damage magnitude from its computed value.
+    #[must_use]
+    pub const fn new(magnitude: i32) -> Self {
+        Self(magnitude)
+    }
+}
+
+/// A **damage magnitude in real (floating-point) form** — the intermediate
+/// representation the matchup / melee scaling and the §6 severity-score penetration
+/// term compute in before rounding back to an integer damage newtype.
+///
+/// The matchup / melee multipliers are `f32`, so a stat × multiplier product (or a
+/// penetrating-damage count cast to real for the score) is a real number until it is
+/// rounded. This names that pre-rounding real so the guarded-cast helpers do not
+/// carry a bare `f32` (no-bare-types). Private inner + derived [`Deref`]; a `const`
+/// [`get`](DamageReal::get) exposes the inner for the `const fn` rounding helpers
+/// (derived `Deref` is not `const`).
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+pub struct DamageReal(f32);
+
+impl DamageReal {
+    /// Build a real-valued damage magnitude from its floating-point value.
+    #[must_use]
+    pub const fn new(real: f32) -> Self {
+        Self(real)
+    }
+
+    /// The inner real value — the `const` accessor the `const fn` rounding helpers
+    /// read (the derived [`Deref`] is not usable in a `const fn`).
+    #[must_use]
+    pub const fn get(self) -> f32 {
+        self.0
+    }
+}
+
 /// The **frozen record** a single per-hit resolution produces — the output of
 /// [`resolve_hit`](super::resolve_hit) (`docs/combat/resolution.md` §5,
 /// `weapons-and-armor.md` §"Per-hit resolution").

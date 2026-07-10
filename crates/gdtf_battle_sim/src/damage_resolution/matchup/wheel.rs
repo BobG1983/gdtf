@@ -84,7 +84,7 @@ impl DamageType {
     /// [`crate::weapon::Weapon`]).
     #[must_use]
     pub fn node(self) -> WheelNode {
-        WheelNode::new(node_index(&Self::ALL, self))
+        node_index(&Self::ALL, self)
     }
 }
 
@@ -98,26 +98,26 @@ impl ArmorType {
     /// [`crate::armor::ArmorPiece`]).
     #[must_use]
     pub fn node(self) -> WheelNode {
-        WheelNode::new(node_index(&Self::ALL, self))
+        node_index(&Self::ALL, self)
     }
 }
 
-/// The index of `needle` within `all` (an `ALL` array in wheel-node order),
-/// as a `u8` wheel index — the shared `node()` body for both vocabularies.
+/// The [`WheelNode`] of `needle` within `all` (an `ALL` array in wheel-node order)
+/// — the shared `node()` body for both vocabularies.
 ///
 /// Both `ALL` arrays are length 7 and ordered by wheel node (matchup.md Table 1),
 /// so a variant's position *is* its wheel node. A missing variant cannot occur
 /// (the search is over the exhaustive `ALL`); it falls back to node 0 rather than
 /// panic (no `unwrap`/`expect` in the sim).
-fn node_index<T: PartialEq>(all: &[T; WHEEL_NODE_COUNT as usize], needle: T) -> u8 {
+fn node_index<T: PartialEq>(all: &[T; WHEEL_NODE_COUNT as usize], needle: T) -> WheelNode {
     for (index, candidate) in all.iter().enumerate() {
         if *candidate == needle {
             // `index < 7` (the array length), so it always fits a `u8`; the
             // fallback `0` can never be taken in practice.
-            return u8::try_from(index).unwrap_or(0);
+            return WheelNode::new(u8::try_from(index).unwrap_or(0));
         }
     }
-    0
+    WheelNode::new(0)
 }
 
 /// Resolve the matchup of a weapon's [`DamageType`] against an armor's

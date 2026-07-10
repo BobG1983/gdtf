@@ -41,18 +41,35 @@ impl Severity {
         Self::Fatal,
     ];
 
-    /// This bucket's rank on the ascending ladder (`None` = 0 … `Fatal` = 4) —
-    /// the order used to compare two severities as relations (monotone /
-    /// directional tests), without pinning any score magnitude.
+    /// This bucket's [`SeverityRank`] on the ascending ladder (`None` = 0 …
+    /// `Fatal` = 4) — the order used to compare two severities as relations
+    /// (monotone / directional tests), without pinning any score magnitude.
     #[must_use]
-    pub const fn rank(self) -> u8 {
+    pub const fn rank(self) -> SeverityRank {
         match self {
-            Self::None => 0,
-            Self::Minor => 1,
-            Self::Major => 2,
-            Self::Critical => 3,
-            Self::Fatal => 4,
+            Self::None => SeverityRank::new(0),
+            Self::Minor => SeverityRank::new(1),
+            Self::Major => SeverityRank::new(2),
+            Self::Critical => SeverityRank::new(3),
+            Self::Fatal => SeverityRank::new(4),
         }
+    }
+}
+
+/// A [`Severity`]'s **rank** on the ascending ladder — `None = 0 … Fatal = 4`.
+///
+/// The order used to compare two severities as relations (monotone / directional
+/// tests) without pinning any score magnitude. A named domain ordinal (no bare
+/// `u8`): private inner + derived [`Deref`](std::ops::Deref); derives [`Ord`] so
+/// two ranks compare directly.
+#[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SeverityRank(u8);
+
+impl SeverityRank {
+    /// Build a severity rank from its ladder position (`0 = None … 4 = Fatal`).
+    #[must_use]
+    pub const fn new(rank: u8) -> Self {
+        Self(rank)
     }
 }
 

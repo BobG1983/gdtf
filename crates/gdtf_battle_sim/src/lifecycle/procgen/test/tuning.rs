@@ -23,8 +23,8 @@ fn fill_tuning_newtypes_wrap_inner_and_deref() {
     assert_eq!(*LargePrefabAreaThreshold::new(99), 99u32);
     assert_eq!(*DeadRectScatterCount::new(5), 5u8);
     // The integer-cast helpers expose the value for the fill arithmetic.
-    assert_eq!(LargePrefabAreaThreshold::new(99).area(), 99i64);
-    assert_eq!(DeadRectScatterCount::new(5).count(), 5usize);
+    assert_eq!(*LargePrefabAreaThreshold::new(99).area(), 99i64);
+    assert_eq!(*DeadRectScatterCount::new(5).count(), 5usize);
 }
 
 /// The shipped `procgen.tuning.ron` PARSES into a complete [`ProcgenTuning`] — serde

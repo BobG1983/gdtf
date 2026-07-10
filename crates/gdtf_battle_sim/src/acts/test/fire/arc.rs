@@ -47,7 +47,7 @@ fn out_of_arc_with_enough_tu_turns_then_fires() {
     // The expected combined drop: steps_to(East -> South) * turn_tu + fire_cost.
     let expected_drop = fire_cost
         .zip(turn_tu)
-        .map(|(f, t)| Direction::East.steps_to(Direction::South) * t + f);
+        .map(|(f, t)| *Direction::East.steps_to(Direction::South) * t + f);
     let tu_before = app.world().get::<Tu>(shooter).map(|t| **t);
 
     app.world_mut().write_message(FireRequested::new(

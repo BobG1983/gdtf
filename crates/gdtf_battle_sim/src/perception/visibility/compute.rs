@@ -3,13 +3,13 @@
 //! VISIBLE-replaces / EXPLORED-grows fold). NO I/O, no `Commands`, no `&mut World`:
 //! these are the value transforms GTW-341's recompute system calls (GTW-340, leaf 4).
 
-use bevy::platform::collections::HashSet;
+use bevy::{platform::collections::HashSet, prelude::Deref};
 
 use crate::{
     cover::CoverLedger,
     ganger::{Facing, LifeState, Position, Stance, StanceKind},
     los::{Observer, PeekOffset, Target, can_see},
-    metric::{Cell, CellLevel, Level},
+    metric::{Cell, CellLevel, CellUnit, Level},
     occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, StairEyeOffset},
     surface::SurfaceGrid,
     tuning::{CombatTuning, ViewRange},
@@ -183,9 +183,9 @@ fn disc_cells(
     // The x/y window: the observer's cell ± view_range, clamped to the grid extent so no
     // off-grid (x, y) is ever offered (the presenter never draws one either).
     let x_min = (observer.x - radius).max(0);
-    let x_max = (observer.x + radius).min(i32_extent(GRID_WIDTH) - 1);
+    let x_max = (observer.x + radius).min(*i32_extent(GridExtent::new(GRID_WIDTH)) - 1);
     let y_min = (observer.y - radius).max(0);
-    let y_max = (observer.y + radius).min(i32_extent(GRID_HEIGHT) - 1);
+    let y_max = (observer.y + radius).min(*i32_extent(GridExtent::new(GRID_HEIGHT)) - 1);
     (*lo..=*hi).flat_map(move |level_index| {
         (y_min..=y_max).flat_map(move |y| {
             (x_min..=x_max).map(move |x| (Level::new(level_index), Cell::new(x, y)))
@@ -193,14 +193,30 @@ fn disc_cells(
     })
 }
 
-/// The grid extent `dimension` (a `usize` slot-buffer width) as an `i32` coordinate bound —
-/// the inclusive upper edge of the `x`/`y` disc clamp.
+/// A **grid extent** — the width or height of the coarse cell grid, in whole cells
+/// (`GRID_WIDTH` / `GRID_HEIGHT`, both `60`).
+///
+/// Names the slot-buffer dimension so [`i32_extent`] does not take a bare `usize`
+/// (no-bare-types). Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+struct GridExtent(usize);
+
+impl GridExtent {
+    /// Build a grid extent from its whole-cell dimension.
+    #[must_use]
+    const fn new(extent: usize) -> Self {
+        Self(extent)
+    }
+}
+
+/// The grid [`GridExtent`] as a [`CellUnit`] coordinate bound — the inclusive upper
+/// edge of the `x`/`y` disc clamp.
 ///
 /// `GRID_WIDTH` / `GRID_HEIGHT` are `60`, so the conversion is always in range; a
 /// pathological oversize saturates at [`i32::MAX`] rather than wrapping (defined, never a
 /// panic).
-fn i32_extent(dimension: usize) -> i32 {
-    i32::try_from(dimension).unwrap_or(i32::MAX)
+fn i32_extent(dimension: GridExtent) -> CellUnit {
+    CellUnit::new(i32::try_from(*dimension).unwrap_or(i32::MAX))
 }
 
 /// Fold a freshly-computed VISIBLE set into a new squad fog — VISIBLE **replaces**, but

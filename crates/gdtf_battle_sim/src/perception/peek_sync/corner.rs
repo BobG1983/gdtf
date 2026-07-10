@@ -65,7 +65,7 @@ pub(super) const PEEK_LEAN: f32 = 0.4;
 /// path — no panic.
 pub(super) fn corner_lean(cell: CellLevel, grid: &OccupancyGrid) -> PeekOffset {
     for (dx, dy) in CARDINALS {
-        let wall = offset_in_plane(cell, dx, dy);
+        let wall = offset_in_plane(cell, Cell::new(dx, dy));
         if !*grid.is_blocked(&wall) {
             continue;
         }
@@ -73,8 +73,8 @@ pub(super) fn corner_lean(cell: CellLevel, grid: &OccupancyGrid) -> PeekOffset {
         // so the lean runs ALONG the wall toward an open end — structurally impossible
         // to nudge the eye THROUGH the blocker.
         let (px, py) = (-dy, dx);
-        let plus_open = !*grid.is_blocked(&offset_in_plane(wall, px, py));
-        let minus_open = !*grid.is_blocked(&offset_in_plane(wall, -px, -py));
+        let plus_open = !*grid.is_blocked(&offset_in_plane(wall, Cell::new(px, py)));
+        let minus_open = !*grid.is_blocked(&offset_in_plane(wall, Cell::new(-px, -py)));
         // A true corner has EXACTLY ONE end of this wall open (XOR). Both open = a lone
         // pillar (target-dependent, deferred); both blocked = a mid-flat-wall (no edge).
         if plus_open != minus_open {
@@ -89,11 +89,13 @@ pub(super) fn corner_lean(cell: CellLevel, grid: &OccupancyGrid) -> PeekOffset {
     PeekOffset::default()
 }
 
-/// `at` offset by `(dx, dy)` cells on its OWN storey — the same-level planar neighbour
-/// the corner scan probes. The storey index is carried verbatim (a peek corner is a
-/// planar wall relationship; slabs live in the `SurfaceGrid` and never affect the
-/// planar [`OccupancyGrid::is_blocked`]).
-fn offset_in_plane(at: CellLevel, dx: i32, dy: i32) -> CellLevel {
+/// `at` offset by the `delta` cell step on its OWN storey — the same-level planar
+/// neighbour the corner scan probes. The storey index is carried verbatim (a peek corner
+/// is a planar wall relationship; slabs live in the `SurfaceGrid` and never affect the
+/// planar [`OccupancyGrid::is_blocked`]). `delta` is a [`Cell`] used as a `(dx, dy)`
+/// offset (the established cell-as-delta idiom, e.g.
+/// [`Direction::cell_step`](crate::ganger::Direction::cell_step)).
+fn offset_in_plane(at: CellLevel, delta: Cell) -> CellLevel {
     // The storey via the canonical CellLevel::level accessor (GTW-565).
-    CellLevel::new(Cell::new(at.x + dx, at.y + dy), at.level())
+    CellLevel::new(Cell::new(at.x + delta.x, at.y + delta.y), at.level())
 }

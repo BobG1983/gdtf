@@ -6,7 +6,7 @@ use super::{
         anchor::Anchor,
         assembler::{PlacedPrefab, Placement},
         error::PackingError,
-        geometry::{Margin, RegionRect},
+        geometry::{CellCount, Margin, RegionRect},
         packer::{MaxRectsPacker, SplitMode},
         tuning::ProcgenTuning,
     },
@@ -71,7 +71,7 @@ pub fn fill_placement_with(
     split: SplitMode,
 ) -> Result<FilledPlacement, PackingError> {
     let board = RegionRect::board(grid_size);
-    let board_cells = board.cell_count().max(1);
+    let board_cells = board.cell_count().max(CellCount::new(1));
 
     // Re-derive the packer free space by carving the two GTW-424 placed regions, reserving
     // the RULED 1-cell seam (OQ-3). The GTW-424 placement already validated fit, so these
@@ -79,7 +79,7 @@ pub fn fill_placement_with(
     // rather than panic.
     let mut packer = MaxRectsPacker::new(board, split, Margin::DEFAULT);
     for region in [placement.player().region(), placement.enemy().region()] {
-        if !packer.place(region) {
+        if !*packer.place(region) {
             return Err(PackingError::FootprintDoesNotFit {
                 anchor:    Anchor::BottomLeft,
                 footprint: region.footprint(),
@@ -130,7 +130,7 @@ pub fn fill_placement_with(
         .free_rects()
         .iter()
         .copied()
-        .filter(|r| r.is_non_empty())
+        .filter(|r| *r.is_non_empty())
         .collect();
 
     Ok(FilledPlacement {

@@ -9,7 +9,7 @@ use crate::{
     cover::CoverLedger,
     march::{
         dda::{MAX_STEPS, MarchState, Step, impact_at},
-        geom::{key_of, key_of_clamped, point_at, xy_in_grid, z_in_grid},
+        geom::{MarchDir, VoxelIndex, key_of, key_of_clamped, point_at, xy_in_grid, z_in_grid},
         result::{MarchKind, MarchResult},
     },
     metric::{CellLevel, SimPos, pos_to_cell},
@@ -70,7 +70,7 @@ use crate::{
 )]
 pub fn march_vector(
     muzzle: SimPos,
-    dir: Vec3,
+    dir: MarchDir,
     occupancy: &OccupancyGrid,
     surface: &SurfaceGrid,
     cover: &CoverLedger,
@@ -80,16 +80,16 @@ pub fn march_vector(
 ) -> MarchResult {
     let (start_cell, start_level) = pos_to_cell(muzzle);
     let mut state = MarchState::new(
-        start_cell.x,
-        start_cell.y,
-        i32::from(*start_level),
+        VoxelIndex::new(start_cell.x),
+        VoxelIndex::new(start_cell.y),
+        VoxelIndex::new(i32::from(*start_level)),
         muzzle,
         dir,
     );
 
     // Degenerate / out-of-grid start, or a zero direction: a graceful Miss at the
     // muzzle, no panic (AC #7).
-    if dir == Vec3::ZERO || !xy_in_grid(state.vx, state.vy) || !z_in_grid(state.vz) {
+    if *dir == Vec3::ZERO || !*xy_in_grid(state.vx, state.vy) || !*z_in_grid(state.vz) {
         return MarchResult {
             kind:   MarchKind::Miss,
             at:     key_of_clamped(state.vx, state.vy, state.vz),

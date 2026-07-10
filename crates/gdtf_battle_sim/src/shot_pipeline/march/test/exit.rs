@@ -15,7 +15,7 @@ fn ray_leaving_the_top_is_a_sky_miss() {
     let dir = Vec3::new(0.0, 0.0, 1.0);
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -43,7 +43,7 @@ fn ray_leaving_the_bottom_strikes_ground() {
     let dir = Vec3::new(0.0, 0.0, -1.0);
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -76,7 +76,7 @@ fn ray_leaving_laterally_is_a_miss() {
     let dir = Vec3::new(-1.0, 0.0, 0.0);
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -116,7 +116,7 @@ fn no_target_stop_round_continues_to_the_blocker_behind() {
     let dir = Vec3::new(1.0, 0.0, 0.0);
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,

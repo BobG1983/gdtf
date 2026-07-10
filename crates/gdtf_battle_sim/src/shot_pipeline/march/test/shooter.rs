@@ -24,7 +24,7 @@ fn shooter_own_cell_never_blocks() {
     let dir = Vec3::new(1.0, 0.0, 0.0);
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -63,7 +63,7 @@ fn friendly_fire_is_real() {
     let dir = Vec3::new(1.0, 0.0, 0.0);
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,

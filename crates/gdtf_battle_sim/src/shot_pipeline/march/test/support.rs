@@ -8,7 +8,7 @@ pub(super) use bevy::{ecs::world::World, math::Vec3, prelude::Entity};
 pub(super) use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverEntry, CoverHp, CoverLedger, HeightBand},
-    march::{MarchKind, march_vector},
+    march::{MarchDir, MarchKind, march_vector},
     metric::{Cell, CellLevel, Level, MAX_LEVELS, SimPos, cell_center},
     occupancy::{
         GRID_HEIGHT, GRID_WIDTH, OccupancyGrid, OccupancyInput, OccupantPlacement, TerrainKind,

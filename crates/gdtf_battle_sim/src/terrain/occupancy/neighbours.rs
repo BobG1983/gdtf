@@ -78,6 +78,22 @@ impl CornerCut {
     }
 }
 
+/// A signed single-axis **cell offset** between neighbouring cells — one of `-1`, `0`,
+/// or `+1` on the ground plane (the `dx`/`dy` of an 8-connected planar step).
+///
+/// A named newtype over `i32` (no-bare-types: a neighbour offset is a domain value, not
+/// a bare integer) with a private inner + derived [`Deref`] (house style). Distinct from
+/// a [`Cell`] coordinate: it is a DELTA added to one, not an absolute position.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+struct CellDelta(i32);
+
+impl CellDelta {
+    /// Build a single-axis cell offset from its signed step.
+    const fn new(step: i32) -> Self {
+        Self(step)
+    }
+}
+
 /// The eight planar `(dx, dy)` step offsets of an 8-connected neighbourhood, in
 /// the canonical `(z, y, x)` cell-key order relative to the origin.
 ///
@@ -152,7 +168,7 @@ pub fn pathable_neighbors<'a>(
     factor: MovementCostFactor,
 ) -> impl Iterator<Item = (CellLevel, Tu)> + 'a {
     PLANAR_OFFSETS.into_iter().filter_map(move |(dx, dy)| {
-        let neighbour = planar_neighbour(origin, dx, dy);
+        let neighbour = planar_neighbour(origin, CellDelta::new(dx), CellDelta::new(dy));
         // C4: in-bounds AND not PATH-blocked (GTW-501 D1/C2). `slot` is `None` for an
         // out-of-bounds cell (so the cell is dropped); `is_path_blocked` reads the
         // TAG-DERIVED path-blocking surface — NOT the kind-based `is_blocked` vision reads
@@ -164,7 +180,7 @@ pub fn pathable_neighbors<'a>(
         let diagonal = dx != 0 && dy != 0;
         // C3 (no corner-cutting): a diagonal is illegal when BOTH its shared-edge
         // orthogonal neighbours are blocked. Orthogonal steps are never corner-cut.
-        if diagonal && *corner_is_cut(origin, dx, dy, grid) {
+        if diagonal && *corner_is_cut(origin, CellDelta::new(dx), CellDelta::new(dy), grid) {
             return None;
         }
         // C2 (GTW-396): the entered cell's floor cost from FloorCostGrid;
@@ -182,8 +198,8 @@ pub fn pathable_neighbors<'a>(
 /// A small helper so the offset → `CellLevel` construction reads once. Same-storey
 /// (`dz = 0`), so the storey is the origin's [`CellLevel::level`] unchanged (the
 /// canonical accessor, GTW-565); the cell is `origin`'s cell shifted by `(dx, dy)`.
-fn planar_neighbour(origin: CellLevel, dx: i32, dy: i32) -> CellLevel {
-    CellLevel::new(Cell::new(origin.x + dx, origin.y + dy), origin.level())
+fn planar_neighbour(origin: CellLevel, dx: CellDelta, dy: CellDelta) -> CellLevel {
+    CellLevel::new(Cell::new(origin.x + *dx, origin.y + *dy), origin.level())
 }
 
 /// Whether the diagonal step `(dx, dy)` from `origin` would CUT a corner — the
@@ -197,9 +213,14 @@ fn planar_neighbour(origin: CellLevel, dx: i32, dy: i32) -> CellLevel {
 /// above (GTW-501 D1/C2), not the kind-based `is_blocked` vision reads. If at least one is
 /// path-walkable the diagonal is fine. Only called for true diagonals
 /// (`dx != 0 && dy != 0`).
-fn corner_is_cut(origin: CellLevel, dx: i32, dy: i32, grid: &OccupancyGrid) -> CornerCut {
-    let side_a = planar_neighbour(origin, dx, 0);
-    let side_b = planar_neighbour(origin, 0, dy);
+fn corner_is_cut(
+    origin: CellLevel,
+    dx: CellDelta,
+    dy: CellDelta,
+    grid: &OccupancyGrid,
+) -> CornerCut {
+    let side_a = planar_neighbour(origin, dx, CellDelta::new(0));
+    let side_b = planar_neighbour(origin, CellDelta::new(0), dy);
     CornerCut::new(*grid.is_path_blocked(&side_a) && *grid.is_path_blocked(&side_b))
 }
 

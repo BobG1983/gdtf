@@ -36,5 +36,5 @@ pub use blocking::{
 pub use definition::{BlocksPathingOverride, TerrainDef, TerrainDisplayName};
 pub use kind::{LosBlocking, TerrainPresenterKind, TerrainSimKind, TerrainTag};
 pub use registry::TerrainDefRegistry;
-pub use uuid::TerrainUuid;
 pub(crate) use uuid::fnv1a64_u128;
+pub use uuid::{NilKey, TerrainUuid};

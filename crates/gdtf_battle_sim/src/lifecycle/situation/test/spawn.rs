@@ -12,7 +12,11 @@ fn setup_spawns_exactly_the_authored_ganger_count() {
         return;
     };
 
-    assert_eq!(setup.ganger_count(), 2, "two authored gangers were spawned");
+    assert_eq!(
+        *setup.ganger_count(),
+        2,
+        "two authored gangers were spawned"
+    );
 
     // Exactly two gangers carry the per-ganger `Wears` armor relationship — the spawned
     // set. Since GTW-323 slice 3 (ADR-0004) the armor stats live on related piece

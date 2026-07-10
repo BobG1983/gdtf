@@ -4,6 +4,8 @@
 use bevy::{asset::uuid::Uuid, prelude::Deref, reflect::TypePath};
 use serde::{Deserialize, Serialize};
 
+use crate::terrain::piece::TerrainName;
+
 /// A terrain definition's **stable key** — the UUID that identifies one
 /// [`TerrainDef`](super::TerrainDef) across themes, prefabs, and the registry.
 ///
@@ -57,8 +59,8 @@ impl TerrainUuid {
     /// for an omitted `default_floor` field (signals "no authored floor piece, use the
     /// `CombatTuning::move_costs.open` fallback").
     #[must_use]
-    pub const fn is_nil(&self) -> bool {
-        self.0.is_nil()
+    pub const fn is_nil(&self) -> NilKey {
+        NilKey::new(self.0.is_nil())
     }
 
     /// Mint a **fresh, random** terrain key (UUID v4) — used when authoring a new
@@ -81,8 +83,45 @@ impl TerrainUuid {
     /// full procgen switch onto real UUID-keyed v2 prefabs is GTW-492 (T07b), which removes
     /// this shim.
     #[must_use]
-    pub fn from_legacy_name(name: &str) -> Self {
-        Self(Uuid::from_u128(fnv1a64_u128(name.as_bytes())))
+    pub fn from_legacy_name(name: &TerrainName) -> Self {
+        Self(Uuid::from_u128(*fnv1a64_u128(name.as_bytes())))
+    }
+}
+
+/// Whether a UUID content key is the **nil sentinel** (an all-zero UUID) — the
+/// `#[serde(default)]` an omitted key parses to, signalling "no authored piece".
+///
+/// A named newtype over `bool` (no-bare-types: a nil-key verdict is a domain fact, not
+/// a bare boolean) shared by every UUID content key's `is_nil` accessor
+/// ([`TerrainUuid::is_nil`] and [`ThemeUuid::is_nil`](crate::level::ThemeUuid::is_nil)).
+/// Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NilKey(bool);
+
+impl NilKey {
+    /// Build a nil-key verdict from its boolean state.
+    #[must_use]
+    pub const fn new(is_nil: bool) -> Self {
+        Self(is_nil)
+    }
+}
+
+/// A 128-bit FNV-1a **digest** used to derive a stable UUID from a legacy content-key
+/// string (the GTW-491 procgen shim).
+///
+/// A named newtype over `u128` (no-bare-types: the digest is a domain value — a raw
+/// hash result, plumbing by its nature — not a bare integer, and the `fnv1a64_u128`
+/// name lacks "hash" so the rule-4 named-digest carve-out does not cover it). Private
+/// inner + derived [`Deref`]; the two `from_legacy_*` shims read it through `Deref` and
+/// feed it to [`Uuid::from_u128`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct LegacyKeyDigest(u128);
+
+impl LegacyKeyDigest {
+    /// Wrap a packed 128-bit FNV-1a digest.
+    #[must_use]
+    pub(crate) const fn new(digest: u128) -> Self {
+        Self(digest)
     }
 }
 
@@ -91,7 +130,7 @@ impl TerrainUuid {
 /// [`ThemeUuid::from_legacy_theme`](crate::level::ThemeUuid::from_legacy_theme) to mint a
 /// stable UUID from a legacy key string (the GTW-491 procgen shim). Deterministic and
 /// dependency-free, mirroring the RNG-stream FNV-1a-64 derivation.
-pub(crate) fn fnv1a64_u128(bytes: &[u8]) -> u128 {
+pub(crate) fn fnv1a64_u128(bytes: &[u8]) -> LegacyKeyDigest {
     const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
     const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
     let hash_pass = |iter: &mut dyn Iterator<Item = &u8>| {
@@ -104,5 +143,5 @@ pub(crate) fn fnv1a64_u128(bytes: &[u8]) -> u128 {
     };
     let high = hash_pass(&mut bytes.iter());
     let low = hash_pass(&mut bytes.iter().rev());
-    (u128::from(high) << 64) | u128::from(low)
+    LegacyKeyDigest::new((u128::from(high) << 64) | u128::from(low))
 }

@@ -1,31 +1,50 @@
 //! The pure `AoE` template resolver — enumerate the affected `(cell, level)` set a
 //! shot's [`HitType`] template covers at its impact cell (GTW-541).
 
-use bevy::math::Vec2;
+use bevy::{math::Vec2, prelude::Deref};
 
 use crate::{
+    march::InGrid,
     metric::{Cell, CellLevel, Level, cell_center},
     occupancy::{GRID_HEIGHT, GRID_WIDTH},
     weapon::{AoeRange, BlastRadius, ConeHalfAngle, HitType},
 };
 
-/// Whether a ground-plane `(x, y)` lies inside the coarse grid's
-/// [`GRID_WIDTH`] × [`GRID_HEIGHT`] bounds — the edge-clamp guard so a template
-/// centred near an edge never emits an off-grid cell (GTW-541 edge case).
-fn in_bounds(x: i32, y: i32) -> bool {
-    x >= 0
-        && y >= 0
-        && usize::try_from(x).is_ok_and(|x| x < GRID_WIDTH)
-        && usize::try_from(y).is_ok_and(|y| y < GRID_HEIGHT)
+/// A cell's ground-plane **centre point** — the `(x, y)` of its [`cell_center`],
+/// a 2D sim-unit position on the ground plane.
+///
+/// A named newtype over [`Vec2`] (no-bare-types: a ground-plane point is a domain
+/// value, not a bare vector) used only inside the cone-wedge bearing math. Private
+/// inner + derived [`Deref`], dereferenced to the [`Vec2`] for the vector algebra.
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+struct GroundPoint(Vec2);
+
+impl GroundPoint {
+    /// Build a ground-plane point from its 2D sim-unit position.
+    const fn new(point: Vec2) -> Self {
+        Self(point)
+    }
 }
 
-/// A cell's ground-plane centre as a 2D sim-unit [`Vec2`] — the `(x, y)` of its
+/// Whether a ground-plane [`Cell`] lies inside the coarse grid's
+/// [`GRID_WIDTH`] × [`GRID_HEIGHT`] bounds — the edge-clamp guard so a template
+/// centred near an edge never emits an off-grid cell (GTW-541 edge case).
+fn in_bounds(cell: Cell) -> InGrid {
+    InGrid::new(
+        cell.x >= 0
+            && cell.y >= 0
+            && usize::try_from(cell.x).is_ok_and(|x| x < GRID_WIDTH)
+            && usize::try_from(cell.y).is_ok_and(|y| y < GRID_HEIGHT),
+    )
+}
+
+/// A cell's ground-plane centre as a 2D sim-unit [`GroundPoint`] — the `(x, y)` of its
 /// [`cell_center`] on the given storey. Reuses the metric's cell-centre helper (which
 /// owns the int→float conversion) so this module does no raw `as f32` cast; the storey
 /// is irrelevant to a ground-plane bearing, so any [`Level`] works.
-fn ground_centre(cell: Cell, level: Level) -> Vec2 {
+fn ground_centre(cell: Cell, level: Level) -> GroundPoint {
     let c = cell_center(cell, level);
-    Vec2::new(c.x, c.y)
+    GroundPoint::new(Vec2::new(c.x, c.y))
 }
 
 /// Enumerate the set of affected `(cell, level)` a shot's `hit` template covers at its
@@ -72,7 +91,7 @@ pub fn aoe_affected(impact: CellLevel, hit: HitType, shooter: CellLevel) -> Vec<
     // ((z, y, x) — the sim cell_key order) so the resolution order is deterministic.
     let mut out: Vec<CellLevel> = cells
         .into_iter()
-        .filter(|c| in_bounds(c.x, c.y))
+        .filter(|c| *in_bounds(*c))
         .map(|c| CellLevel::new(c, level))
         .collect();
     out.sort_by_key(|cl| (cl.z, cl.y, cl.x));
@@ -126,8 +145,8 @@ fn cone_cells(
     range: AoeRange,
     angle: ConeHalfAngle,
 ) -> Vec<Cell> {
-    let shooter_c = ground_centre(shooter, level);
-    let impact_c = ground_centre(impact, level);
+    let shooter_c = *ground_centre(shooter, level);
+    let impact_c = *ground_centre(impact, level);
     // The fire direction shooter→impact as a ground-plane vector.
     let fire = impact_c - shooter_c;
     // Point-blank (shooter == impact): no direction to wedge along → the full disc. The
@@ -147,7 +166,7 @@ fn cone_cells(
             }
             let cell = Cell::new(impact.x + dx, impact.y + dy);
             // The candidate's bearing from the shooter.
-            let cand = ground_centre(cell, level) - shooter_c;
+            let cand = *ground_centre(cell, level) - shooter_c;
             if cand.length_squared() <= f32::EPSILON {
                 continue; // the shooter's own cell has no bearing — skip
             }

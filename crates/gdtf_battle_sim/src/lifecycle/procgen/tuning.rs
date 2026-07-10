@@ -16,6 +16,25 @@
 use bevy::{prelude::Resource, reflect::TypePath};
 use serde::Deserialize;
 
+use super::geometry::CellCount;
+
+/// The per-rect **scatter count** as a loop bound — [`DeadRectScatterCount`] widened to
+/// `usize` for the bounded `0..k` scatter loop the fill pass runs over a dead rect.
+///
+/// A named newtype over `usize` (no-bare-types: the loop bound is a domain value, not a
+/// bare index) — the `usize` companion to the `u8`-inner [`DeadRectScatterCount`].
+/// Private inner + derived [`Deref`](bevy::prelude::Deref).
+#[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ScatterCount(usize);
+
+impl ScatterCount {
+    /// Build a scatter loop count from its value.
+    #[must_use]
+    pub const fn new(count: usize) -> Self {
+        Self(count)
+    }
+}
+
 /// The **minimum density floor** — the cell-coverage FRACTION (placed-prefab cells over
 /// total board cells) the fill pass aims to reach before it considers the level "full
 /// enough" and stops drawing more fill prefabs (OQ-6).
@@ -79,8 +98,8 @@ impl LargePrefabAreaThreshold {
     /// This threshold as an `i64` cell area — for the integer area comparison the fill
     /// pass does against a footprint's `width * height`.
     #[must_use]
-    pub const fn area(self) -> i64 {
-        self.0 as i64
+    pub const fn area(self) -> CellCount {
+        CellCount::new(self.0 as i64)
     }
 }
 
@@ -122,8 +141,8 @@ impl DeadRectScatterCount {
     /// This cap as a `usize` — for the bounded scatter loop the fill pass runs over a
     /// dead rect.
     #[must_use]
-    pub const fn count(self) -> usize {
-        self.0 as usize
+    pub const fn count(self) -> ScatterCount {
+        ScatterCount::new(self.0 as usize)
     }
 }
 

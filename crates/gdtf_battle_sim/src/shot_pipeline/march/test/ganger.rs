@@ -23,7 +23,7 @@ fn ganger_at_equal_band_impacts_returning_entity() {
 
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -72,7 +72,7 @@ fn upper_shooter_march_terminates_on_stair_upper_cell() {
 
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -128,7 +128,7 @@ fn ground_shooter_resolves_lower_band_unchanged() {
 
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -173,7 +173,7 @@ fn strictly_higher_round_sails_over_ganger() {
 
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,

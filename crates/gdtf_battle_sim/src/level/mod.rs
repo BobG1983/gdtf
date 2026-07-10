@@ -28,4 +28,4 @@ pub use prefab::{
     Prefab, PrefabKey, PrefabName, PrefabRegistry, PrefabSpec, SpawnRole, TerrainPlacementEntry,
 };
 pub use theme::{GridHeight, GridLevels, GridSize, GridSizeError, GridWidth, MAX_GRID_SPAN};
-pub use theme_def::{ThemeDisplayName, ThemeUuid, UuidThemeDef, UuidThemeRegistry};
+pub use theme_def::{ThemeDisplayName, ThemeName, ThemeUuid, UuidThemeDef, UuidThemeRegistry};

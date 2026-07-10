@@ -4,7 +4,7 @@
 
 use bevy::{
     platform::collections::{HashMap, HashSet},
-    prelude::{Entity, Resource},
+    prelude::{Deref, Entity, Resource},
 };
 
 use super::types::{DestroyedCover, GRID_HEIGHT, GRID_WIDTH, OccupancySlot, SLOT_COUNT};
@@ -13,6 +13,24 @@ use crate::{
     metric::{CellLevel, MAX_LEVELS},
     occupancy::{OccupancyInput, PathBlocking, TerrainKind, VisionBlocking},
 };
+
+/// A flat-buffer **slot index** into the grid's `SLOT_COUNT`-long occupancy array —
+/// the linearised `x + y·WIDTH + level·WIDTH·HEIGHT` address of one `(cell, level)`.
+///
+/// A named newtype over `usize` (no-bare-types: the buffer address is a domain value,
+/// not a bare index the caller could confuse with any other count). Private inner +
+/// derived [`Deref`]; [`slot_index`](OccupancyGrid::slot_index) mints it and
+/// [`cell_level_of_index`](OccupancyGrid::cell_level_of_index) inverts it.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct SlotIndex(usize);
+
+impl SlotIndex {
+    /// Wrap a flat-buffer slot address.
+    #[must_use]
+    pub(super) const fn new(index: usize) -> Self {
+        Self(index)
+    }
+}
 
 /// The coarse 3D occupancy grid — the model's `(cell, level)` collision/query
 /// surface that movement (GTW-12) and the LOS/cover queries read (the coarse
@@ -203,21 +221,23 @@ impl OccupancyGrid {
     /// The single bounds-check choke point: negative coordinates and any axis at or
     /// past its extent return `None`, so every public accessor degrades gracefully
     /// (no panic, no out-of-bounds index) on an out-of-range coordinate.
-    fn slot_index(key: &CellLevel) -> Option<usize> {
+    fn slot_index(key: &CellLevel) -> Option<SlotIndex> {
         let x = usize::try_from(key.x).ok()?;
         let y = usize::try_from(key.y).ok()?;
         let level = usize::try_from(key.z).ok()?;
         if x >= GRID_WIDTH || y >= GRID_HEIGHT || level >= MAX_LEVELS as usize {
             return None;
         }
-        Some(x + y * GRID_WIDTH + level * GRID_WIDTH * GRID_HEIGHT)
+        Some(SlotIndex::new(
+            x + y * GRID_WIDTH + level * GRID_WIDTH * GRID_HEIGHT,
+        ))
     }
 
     /// The slot at `key`, or `None` if `key` is outside the grid — a read-only peek
     /// that never mutates the grid and never panics on an out-of-range coordinate.
     #[must_use]
     pub fn slot(&self, key: &CellLevel) -> Option<&OccupancySlot> {
-        Self::slot_index(key).and_then(|i| self.slots.get(i))
+        Self::slot_index(key).and_then(|i| self.slots.get(*i))
     }
 
     /// Set the static-terrain marker at `key`. An out-of-range `key` is a graceful
@@ -227,7 +247,7 @@ impl OccupancyGrid {
     /// [`build_from_occupancy_input`](OccupancyGrid::build_from_occupancy_input) to
     /// pour the situation's authored walls / cover into the grid.
     pub fn set_terrain(&mut self, key: CellLevel, terrain: TerrainKind) {
-        if let Some(slot) = Self::slot_index(&key).and_then(|i| self.slots.get_mut(i)) {
+        if let Some(slot) = Self::slot_index(&key).and_then(|i| self.slots.get_mut(*i)) {
             slot.terrain = terrain;
         }
     }
@@ -239,7 +259,7 @@ impl OccupancyGrid {
     /// [`build_from_occupancy_input`](OccupancyGrid::build_from_occupancy_input) to
     /// pour the situation's live occupants into the grid.
     pub fn set_occupant(&mut self, key: CellLevel, occupant: Option<Entity>) {
-        if let Some(slot) = Self::slot_index(&key).and_then(|i| self.slots.get_mut(i)) {
+        if let Some(slot) = Self::slot_index(&key).and_then(|i| self.slots.get_mut(*i)) {
             slot.occupant = occupant;
         }
     }

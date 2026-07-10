@@ -176,7 +176,7 @@ fn each_derived_stat_equals_its_weighted_formula() {
     );
 
     // HP = round(grit·Grit + toughness·Toughness + cool·Cool).
-    let expected_hp = round_pool_u16(weighted_sum(&[
+    let expected_hp = round_pool_u16(*weighted_sum(&[
         (*tuning.hp.grit, *a.grit),
         (*tuning.hp.toughness, *a.toughness),
         (*tuning.hp.cool, *a.cool),
@@ -194,7 +194,7 @@ fn each_derived_stat_equals_its_weighted_formula() {
     );
 
     // Bottle = round(Morale / bottle_per_morale).
-    let expected_bottle = round_pool_u8(expected_morale / *tuning.bottle_per_morale);
+    let expected_bottle = round_pool_u8(*expected_morale / *tuning.bottle_per_morale);
     assert_eq!(
         *derived.bottle, expected_bottle,
         "Bottle == round(Morale / bottle_per_morale)",

@@ -30,7 +30,7 @@ pub(crate) fn resolve_autoload(
     session_theme: ThemeUuid,
     themes: &UuidThemeRegistry,
 ) -> Option<&UuidThemeDef> {
-    if session_theme.is_nil() {
+    if *session_theme.is_nil() {
         return None;
     }
     themes.def(&session_theme)

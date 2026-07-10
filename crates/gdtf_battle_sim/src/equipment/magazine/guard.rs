@@ -26,7 +26,7 @@ use crate::{
 /// `u8::MAX`. The clamp + localized `#[expect]` is the crate's guarded-cast idiom
 /// (see [`crate::resolve_hit`]'s `round_to_i32` / [`crate::apply_hit`]'s
 /// `hp_damage_to_u16`), so no `unwrap`/`expect` is needed.
-fn charge_to_u8(charge: f32) -> u8 {
+fn charge_to_u8(charge: TuCharge) -> Tu {
     let rounded = charge.round();
     #[expect(
         clippy::cast_sign_loss,
@@ -34,7 +34,24 @@ fn charge_to_u8(charge: f32) -> u8 {
         reason = "clamped into [0.0, u8::MAX] first, so the cast can neither wrap nor lose a sign; fractional part is gone after round"
     )]
     let clamped = rounded.clamp(0.0, f32::from(u8::MAX)) as u8;
-    clamped
+    Tu::new(clamped)
+}
+
+/// A single shot's **TU charge in real form** — the `TuMax × ModeTuPercent × aim
+/// premium` product (resolution.md §1 / §1a), before it is rounded into the [`Tu`]
+/// pool by [`charge_to_u8`].
+///
+/// Names the pre-rounding real so [`charge_to_u8`] does not take a bare `f32`
+/// (no-bare-types). Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+struct TuCharge(f32);
+
+impl TuCharge {
+    /// Build a TU charge from its computed real product.
+    #[must_use]
+    const fn new(charge: f32) -> Self {
+        Self(charge)
+    }
 }
 
 /// The TU charge a single shot in `mode` costs the shooter — the **shared source**
@@ -60,7 +77,7 @@ pub fn mode_tu_cost(
         1.0
     };
     let charge = f32::from(**tu_max) * *mode.tu_percent * aim_premium;
-    Tu::new(charge_to_u8(charge))
+    charge_to_u8(TuCharge::new(charge))
 }
 
 /// Whether a target `(cell, level)` is **inside** the coarse grid extent — the

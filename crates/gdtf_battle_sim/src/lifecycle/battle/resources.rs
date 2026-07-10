@@ -123,15 +123,47 @@ impl BattleRoster {
     /// Whether the `player` gang was fielded at setup — the players-fielded existence
     /// fact the loss census splits on.
     #[must_use]
-    pub fn has_player(&self, player: Faction) -> bool {
-        self.0.contains(&player)
+    pub fn has_player(&self, player: Faction) -> PlayersFielded {
+        PlayersFielded::new(self.0.contains(&player))
     }
 
     /// Whether ≥1 fielded faction is NOT the `player` gang — the enemies-fielded existence
     /// fact the win census splits on. An empty enemy roster (player-only / no fielded
     /// faction) is `false`, so the census never wins on a degenerate roster.
     #[must_use]
-    pub fn has_enemy_of(&self, player: Faction) -> bool {
-        self.0.iter().any(|&faction| faction != player)
+    pub fn has_enemy_of(&self, player: Faction) -> EnemiesFielded {
+        EnemiesFielded::new(self.0.iter().any(|&faction| faction != player))
+    }
+}
+
+/// Whether the `player` gang was fielded at setup — the players-fielded existence fact
+/// the loss census splits on (GTW-237).
+///
+/// A named newtype over `bool` (no-bare-types: a fielded-at-setup fact is a domain
+/// value, not a bare boolean). Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlayersFielded(bool);
+
+impl PlayersFielded {
+    /// Build a players-fielded fact from its boolean state.
+    #[must_use]
+    pub const fn new(fielded: bool) -> Self {
+        Self(fielded)
+    }
+}
+
+/// Whether ≥1 fielded faction is NOT the `player` gang — the enemies-fielded existence
+/// fact the win census splits on (GTW-237).
+///
+/// A named newtype over `bool` (no-bare-types: a fielded-at-setup fact is a domain
+/// value, not a bare boolean). Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EnemiesFielded(bool);
+
+impl EnemiesFielded {
+    /// Build an enemies-fielded fact from its boolean state.
+    #[must_use]
+    pub const fn new(fielded: bool) -> Self {
+        Self(fielded)
     }
 }

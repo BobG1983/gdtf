@@ -8,7 +8,7 @@ use crate::{
     armor_wear::{ArmorWearOutcome, wear_armor},
     ganger::{Hp, LifeState, Wounds},
     inflicted_wound::{InflictedWound, InflictedWounds},
-    resolve_hit::HitResult,
+    resolve_hit::{HitResult, HpDamage},
     severity::Severity,
     tuning::{CombatTuning, WoundCost, WoundCosts},
 };
@@ -79,14 +79,14 @@ pub(super) const fn wound_cost(severity: Severity, costs: WoundCosts) -> WoundCo
 /// [`crate::resolve_hit`]'s `round_to_i32` / [`crate::metric`]'s `floor_to_i32`),
 /// so no `unwrap`/`expect` is needed. (Not a `const fn`: `i32::clamp` comes from
 /// `Ord`, which is not yet const-callable.)
-fn hp_damage_to_u16(damage: i32) -> u16 {
+fn hp_damage_to_u16(damage: HpDamage) -> Hp {
     #[expect(
         clippy::cast_sign_loss,
         clippy::cast_possible_truncation,
         reason = "clamped into [0, u16::MAX] first, so the cast can neither wrap nor lose a sign"
     )]
     let clamped = damage.clamp(0, i32::from(u16::MAX)) as u16;
-    clamped
+    Hp::new(clamped)
 }
 
 /// Fold **one resolved hit** onto a ganger — HP loss + Wounds-by-severity + armor
@@ -145,8 +145,8 @@ pub fn apply_hit(
 
     // (b) HP loss ALWAYS — saturating at 0 (Hp is unsigned; a lethal hit depletes
     // the pool to 0, never underflows). Applies even on a Severity::None graze.
-    let hp_loss = hp_damage_to_u16(*hit.hp_damage);
-    *target.hp = Hp::new(target.hp.saturating_sub(hp_loss));
+    let hp_loss = hp_damage_to_u16(hit.hp_damage);
+    *target.hp = Hp::new(target.hp.saturating_sub(*hp_loss));
 
     // (c) Wounds by severity tier. Fatal EMPTIES the pool (structural); every other
     // tier spends its tunable cost, saturating at 0.

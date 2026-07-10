@@ -10,8 +10,42 @@ use bevy::math::IVec2;
 use super::anchor::Anchor;
 use crate::{
     level::{GridSize, GridWidth},
-    metric::Cell,
+    metric::{Cell, CellUnit},
 };
+
+/// A COUNT of cells — a rectangle's area (`width × height`), the board's cell total, or
+/// the running coverage the fill pass accumulates (GTW-424 / GTW-427).
+///
+/// A named newtype over `i64` (no-bare-types: a cell count is a domain quantity, not a
+/// bare integer, and distinct from the single-axis [`CellUnit`] — this is a 2D
+/// population, not a coordinate). Widened to `i64` so a max-board (60×60) area cannot
+/// overflow. Private inner + derived [`Deref`](std::ops::Deref)/[`Ord`];
+/// [`Add`](std::ops::Add)/[`AddAssign`](std::ops::AddAssign) sum
+/// placed regions into a running coverage total.
+#[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct CellCount(i64);
+
+impl CellCount {
+    /// Build a cell count from its value (whole cells).
+    #[must_use]
+    pub const fn new(count: i64) -> Self {
+        Self(count)
+    }
+}
+
+impl std::ops::Add for CellCount {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        Self(self.0 + rhs.0)
+    }
+}
+
+impl std::ops::AddAssign for CellCount {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 += rhs.0;
+    }
+}
 
 /// The 1-cell **seam margin** reserved around every placed prefab (OQ-3 RULED).
 ///
@@ -38,8 +72,8 @@ impl Margin {
     /// This margin as an `i32` cell count — for the integer rectangle arithmetic the
     /// packer does (insetting a region, padding a placed footprint).
     #[must_use]
-    pub const fn cells(self) -> i32 {
-        self.0 as i32
+    pub const fn cells(self) -> CellUnit {
+        CellUnit::new(self.0 as i32)
     }
 }
 
@@ -95,8 +129,8 @@ impl Footprint {
     /// prefab against the [`LargePrefabAreaThreshold`](super::tuning::LargePrefabAreaThreshold)
     /// by area. Widened to `i64` so a max-board footprint (60×60) cannot overflow.
     #[must_use]
-    pub const fn area(self) -> i64 {
-        self.0.x as i64 * self.0.y as i64
+    pub const fn area(self) -> CellCount {
+        CellCount::new(self.0.x as i64 * self.0.y as i64)
     }
 }
 
@@ -145,21 +179,21 @@ impl RegionRect {
 
     /// The exclusive max x edge (`origin.x + width`) — one past the last cell column.
     #[must_use]
-    pub fn max_x(self) -> i32 {
-        self.origin.x + self.footprint.width()
+    pub fn max_x(self) -> CellUnit {
+        CellUnit::new(self.origin.x + self.footprint.width())
     }
 
     /// The exclusive max y edge (`origin.y + height`) — one past the last cell row.
     #[must_use]
-    pub fn max_y(self) -> i32 {
-        self.origin.y + self.footprint.height()
+    pub fn max_y(self) -> CellUnit {
+        CellUnit::new(self.origin.y + self.footprint.height())
     }
 
     /// Whether this rectangle is non-empty (both axes `> 0`) — the packer prunes empty
     /// free rectangles from its list.
     #[must_use]
-    pub const fn is_non_empty(self) -> bool {
-        self.footprint.width() > 0 && self.footprint.height() > 0
+    pub const fn is_non_empty(self) -> RectNonEmpty {
+        RectNonEmpty::new(self.footprint.width() > 0 && self.footprint.height() > 0)
     }
 
     /// This rectangle's cell COUNT (`width * height`) — the GTW-427 fill pass sums placed
@@ -167,7 +201,7 @@ impl RegionRect {
     /// [`MinDensityFloor`](super::tuning::MinDensityFloor). Negative extents (an empty
     /// intersection) clamp to `0`.
     #[must_use]
-    pub const fn cell_count(self) -> i64 {
+    pub const fn cell_count(self) -> CellCount {
         let w = if self.footprint.width() > 0 {
             self.footprint.width()
         } else {
@@ -178,27 +212,31 @@ impl RegionRect {
         } else {
             0
         };
-        w as i64 * h as i64
+        CellCount::new(w as i64 * h as i64)
     }
 
     /// Whether `other`'s cells are wholly contained in this rectangle (used by the
     /// MAXRECTS prune step to drop free rectangles a placement fully covers).
     #[must_use]
-    pub fn contains_rect(self, other: Self) -> bool {
-        self.origin.x <= other.origin.x
-            && self.origin.y <= other.origin.y
-            && other.max_x() <= self.max_x()
-            && other.max_y() <= self.max_y()
+    pub fn contains_rect(self, other: Self) -> RectContains {
+        RectContains::new(
+            self.origin.x <= other.origin.x
+                && self.origin.y <= other.origin.y
+                && other.max_x() <= self.max_x()
+                && other.max_y() <= self.max_y(),
+        )
     }
 
     /// Whether this rectangle and `other` share any cell — the packer's overlap test
     /// (no two placed prefabs, nor a prefab and a seam, may overlap).
     #[must_use]
-    pub fn intersects(self, other: Self) -> bool {
-        self.origin.x < other.max_x()
-            && other.origin.x < self.max_x()
-            && self.origin.y < other.max_y()
-            && other.origin.y < self.max_y()
+    pub fn intersects(self, other: Self) -> RectsIntersect {
+        RectsIntersect::new(
+            self.origin.x < *other.max_x()
+                && other.origin.x < *self.max_x()
+                && self.origin.y < *other.max_y()
+                && other.origin.y < *self.max_y(),
+        )
     }
 
     /// This rectangle grown OUTWARD by `margin` cells on every side — the seam-padded
@@ -210,12 +248,12 @@ impl RegionRect {
     /// to separate prefabs from EACH OTHER; the board boundary is already a wall).
     #[must_use]
     pub fn padded(self, margin: Margin) -> Self {
-        let m = margin.cells();
+        let m = *margin.cells();
         let ox = (self.origin.x - m).max(0);
         let oy = (self.origin.y - m).max(0);
         let new_origin = Cell::new(ox, oy);
-        let new_w = (self.max_x() + m) - ox;
-        let new_h = (self.max_y() + m) - oy;
+        let new_w = (*self.max_x() + m) - ox;
+        let new_h = (*self.max_y() + m) - oy;
         Self::new(new_origin, Footprint::new(new_w, new_h))
     }
 
@@ -230,8 +268,8 @@ impl RegionRect {
     pub fn clamped_to(self, bounds: Self) -> Self {
         let x0 = self.origin.x.max(bounds.origin.x);
         let y0 = self.origin.y.max(bounds.origin.y);
-        let x1 = self.max_x().min(bounds.max_x());
-        let y1 = self.max_y().min(bounds.max_y());
+        let x1 = *self.max_x().min(bounds.max_x());
+        let y1 = *self.max_y().min(bounds.max_y());
         Self::new(
             Cell::new(x0, y0),
             Footprint::new((x1 - x0).max(0), (y1 - y0).max(0)),
@@ -298,9 +336,57 @@ impl MinPlayerSide {
         Self(cells)
     }
 
-    /// This floor as an `i32` cell count — for the `Footprint::min_side` comparison.
+    /// This floor as a cell count — for the `Footprint::min_side` comparison.
     #[must_use]
-    pub fn cells(self) -> i32 {
-        i32::from(*self.0)
+    pub fn cells(self) -> CellUnit {
+        CellUnit::new(i32::from(*self.0))
+    }
+}
+
+/// Whether a [`RegionRect`] is **non-empty** (both axes `> 0`) — the packer's
+/// empty-rectangle prune verdict.
+///
+/// A named newtype over `bool` (no-bare-types: a geometric predicate answer is a
+/// domain fact, not a bare boolean). Private inner + derived [`Deref`](std::ops::Deref).
+#[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RectNonEmpty(bool);
+
+impl RectNonEmpty {
+    /// Build a non-empty verdict from its boolean state.
+    #[must_use]
+    pub const fn new(non_empty: bool) -> Self {
+        Self(non_empty)
+    }
+}
+
+/// Whether one [`RegionRect`] wholly **contains** another — the MAXRECTS prune test
+/// that drops free rectangles a placement fully covers.
+///
+/// A named newtype over `bool` (no-bare-types: a containment verdict is a domain fact,
+/// not a bare boolean). Private inner + derived [`Deref`](std::ops::Deref).
+#[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RectContains(bool);
+
+impl RectContains {
+    /// Build a containment verdict from its boolean state.
+    #[must_use]
+    pub const fn new(contains: bool) -> Self {
+        Self(contains)
+    }
+}
+
+/// Whether two [`RegionRect`]s share any cell — the packer's overlap test (no two
+/// placed prefabs, nor a prefab and a seam, may overlap).
+///
+/// A named newtype over `bool` (no-bare-types: an overlap verdict is a domain fact, not
+/// a bare boolean). Private inner + derived [`Deref`](std::ops::Deref).
+#[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RectsIntersect(bool);
+
+impl RectsIntersect {
+    /// Build an overlap verdict from its boolean state.
+    #[must_use]
+    pub const fn new(intersects: bool) -> Self {
+        Self(intersects)
     }
 }

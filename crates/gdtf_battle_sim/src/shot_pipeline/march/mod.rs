@@ -61,5 +61,6 @@ mod test;
 // counterpart to `march_vector`. A deterministic parabola blocked only by intact roofs
 // (holes / windows pass); its landing feeds the GTW-541 blast resolver.
 pub use arc::march_arc;
+pub use geom::{InGrid, MarchDir};
 pub use result::{MarchKind, MarchResult};
 pub use vector::march_vector;

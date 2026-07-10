@@ -24,7 +24,7 @@ use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, CoverLedger, HeightBand},
     injuries::MovementCostFactor,
-    march::{MarchKind, MarchResult, march_vector},
+    march::{MarchDir, MarchKind, MarchResult, march_vector},
     metric::{Cell, CellLevel, Level, SimPos},
     occupancy::{OccupancyGrid, pathable_neighbors},
     slab::SlabHp,
@@ -119,7 +119,7 @@ fn march_row(grid: &OccupancyGrid, tuning: &CombatTuning, above: f32) -> MarchRe
     let muzzle = SimPos::new(2.5, 10.5, above);
     march_vector(
         muzzle,
-        Vec3::new(1.0, 0.0, 0.0),
+        MarchDir::new(Vec3::new(1.0, 0.0, 0.0)),
         grid,
         &surface,
         &cover,

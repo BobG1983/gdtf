@@ -2,16 +2,19 @@
 //! state, the grid-bounds tests, the per-voxel occupant impact test, and the
 //! z-boundary slab crossing. Driven by [`march_vector`](super::march_vector).
 
-use bevy::{math::Vec3, prelude::Entity};
+use bevy::prelude::Entity;
 
 use crate::{
     clearance::{Clearance, round_band_for_cell, round_clears_occupant},
     cover::{CoverLedger, HeightBand},
     march::{
-        geom::{key_of, key_of_clamped, point_at, xy_in_grid, z_in_grid},
+        geom::{
+            AxisDir, AxisStep, MarchDir, RayParam, VoxelIndex, key_of, key_of_clamped, point_at,
+            xy_in_grid, z_in_grid,
+        },
         result::{MarchKind, MarchResult},
     },
-    metric::{CellLevel, MAX_LEVELS, SimPos},
+    metric::{CellLevel, MAX_LEVELS, SimPos, SimUnit},
     occupancy::{GRID_HEIGHT, GRID_WIDTH, OccupancyGrid},
     surface::{SlabState, SurfaceGrid},
     tuning::CombatTuning,
@@ -26,32 +29,32 @@ pub(super) const MAX_STEPS: u32 = (GRID_WIDTH + GRID_HEIGHT + MAX_LEVELS as usiz
 #[derive(Debug, Clone, Copy)]
 struct AxisDda {
     /// The integer voxel index on this axis (a cell coord on x/y, a storey on z).
-    index:   i32,
+    index:   VoxelIndex,
     /// `+1` / `-1` step direction, or `0` when the ray does not move on this axis.
-    step:    i32,
+    step:    AxisStep,
     /// The ray parameter `t` at which the ray next crosses a voxel boundary on this
     /// axis; `f32::INFINITY` when the ray does not move on this axis.
-    t_max:   f32,
+    t_max:   RayParam,
     /// The `t` increment to cross one whole voxel on this axis; `f32::INFINITY` when
     /// the ray does not move on this axis.
-    t_delta: f32,
+    t_delta: RayParam,
 }
 
 impl AxisDda {
     /// Initialise the DDA for one axis from the ray's origin and direction
     /// components on that axis. `origin` is the continuous sim-unit start, `dir` the
     /// direction component, and `index` the integer voxel the origin floors into.
-    fn new(origin: f32, dir: f32, index: i32) -> Self {
-        if dir == 0.0 {
+    fn new(origin: SimUnit, dir: AxisDir, index: VoxelIndex) -> Self {
+        if *dir == 0.0 {
             return Self {
                 index,
-                step: 0,
-                t_max: f32::INFINITY,
-                t_delta: f32::INFINITY,
+                step: AxisStep::new(0),
+                t_max: RayParam::new(f32::INFINITY),
+                t_delta: RayParam::new(f32::INFINITY),
             };
         }
-        let step = if dir > 0.0 { 1 } else { -1 };
-        let t_delta = (1.0 / dir).abs();
+        let step = if *dir > 0.0 { 1 } else { -1 };
+        let t_delta = (1.0 / *dir).abs();
         // Distance (in t) from the origin to the first voxel boundary in the step
         // direction: the next integer boundary above (step +) or below (step −).
         #[expect(
@@ -59,16 +62,16 @@ impl AxisDda {
             reason = "voxel indices are tiny (0..60 / 0..8); the f32 conversion is exact for this range"
         )]
         let next_boundary = if step > 0 {
-            (index as f32 + 1.0) - origin
+            (*index as f32 + 1.0) - *origin
         } else {
-            origin - index as f32
+            *origin - *index as f32
         };
-        let t_max = next_boundary.abs() / dir.abs();
+        let t_max = next_boundary.abs() / (*dir).abs();
         Self {
             index,
-            step,
-            t_max,
-            t_delta,
+            step: AxisStep::new(step),
+            t_max: RayParam::new(t_max),
+            t_delta: RayParam::new(t_delta),
         }
     }
 }
@@ -197,11 +200,11 @@ pub(super) enum Step {
 /// per-axis DDA traversals, and the `t` the ray entered the current voxel at.
 pub(super) struct MarchState {
     /// Current voxel x (cell coord).
-    pub(super) vx:      i32,
+    pub(super) vx:      VoxelIndex,
     /// Current voxel y (cell coord).
-    pub(super) vy:      i32,
+    pub(super) vy:      VoxelIndex,
     /// Current voxel z (storey index).
-    pub(super) vz:      i32,
+    pub(super) vz:      VoxelIndex,
     /// The x-axis DDA traversal.
     ax:                 AxisDda,
     /// The y-axis DDA traversal.
@@ -210,20 +213,26 @@ pub(super) struct MarchState {
     az:                 AxisDda,
     /// The ray parameter `t` at which the ray entered the current voxel (0 at the
     /// muzzle's own voxel).
-    pub(super) entry_t: f32,
+    pub(super) entry_t: RayParam,
 }
 
 impl MarchState {
     /// Initialise the walk at integer voxel `(vx, vy, vz)` for the ray `muzzle + t × dir`.
-    pub(super) fn new(vx: i32, vy: i32, vz: i32, muzzle: SimPos, dir: Vec3) -> Self {
+    pub(super) fn new(
+        vx: VoxelIndex,
+        vy: VoxelIndex,
+        vz: VoxelIndex,
+        muzzle: SimPos,
+        dir: MarchDir,
+    ) -> Self {
         Self {
             vx,
             vy,
             vz,
-            ax: AxisDda::new(muzzle.x, dir.x, vx),
-            ay: AxisDda::new(muzzle.y, dir.y, vy),
-            az: AxisDda::new(muzzle.z, dir.z, vz),
-            entry_t: 0.0,
+            ax: AxisDda::new(SimUnit::new(muzzle.x), AxisDir::new(dir.x), vx),
+            ay: AxisDda::new(SimUnit::new(muzzle.y), AxisDir::new(dir.y), vy),
+            az: AxisDda::new(SimUnit::new(muzzle.z), AxisDir::new(dir.z), vz),
+            entry_t: RayParam::new(0.0),
         }
     }
 
@@ -237,8 +246,8 @@ impl MarchState {
     /// is the lower of the entry and exit bands (GTW-329). A non-moving / degenerate
     /// ray has all-`INFINITY` `t_max`s, so `t_exit` is `INFINITY` and the exit point
     /// coincides with the (capped) march end — harmless, as such a ray takes no step.
-    pub(super) fn exit_point(&self, muzzle: SimPos, dir: Vec3) -> SimPos {
-        let t_exit = self.ax.t_max.min(self.ay.t_max).min(self.az.t_max);
+    pub(super) fn exit_point(&self, muzzle: SimPos, dir: MarchDir) -> SimPos {
+        let t_exit = RayParam::new((*self.ax.t_max).min(*self.ay.t_max).min(*self.az.t_max));
         point_at(muzzle, dir, t_exit)
     }
 
@@ -249,7 +258,7 @@ impl MarchState {
     pub(super) fn advance(
         &mut self,
         muzzle: SimPos,
-        dir: Vec3,
+        dir: MarchDir,
         surface: &SurfaceGrid,
         tuning: &CombatTuning,
         round_band: HeightBand,
@@ -265,10 +274,10 @@ impl MarchState {
 
         match stepped {
             SteppedAxis::X => {
-                self.vx += self.ax.step;
+                self.vx = VoxelIndex::new(*self.vx + *self.ax.step);
                 self.ax.index = self.vx;
-                self.ax.t_max += self.ax.t_delta;
-                if xy_in_grid(self.vx, self.vy) {
+                self.ax.t_max = RayParam::new(*self.ax.t_max + *self.ax.t_delta);
+                if *xy_in_grid(self.vx, self.vy) {
                     Step::Continue
                 } else {
                     Step::Stopped(lateral_miss(
@@ -277,10 +286,10 @@ impl MarchState {
                 }
             }
             SteppedAxis::Y => {
-                self.vy += self.ay.step;
+                self.vy = VoxelIndex::new(*self.vy + *self.ay.step);
                 self.ay.index = self.vy;
-                self.ay.t_max += self.ay.t_delta;
-                if xy_in_grid(self.vx, self.vy) {
+                self.ay.t_max = RayParam::new(*self.ay.t_max + *self.ay.t_delta);
+                if *xy_in_grid(self.vx, self.vy) {
                     Step::Continue
                 } else {
                     Step::Stopped(lateral_miss(
@@ -302,8 +311,8 @@ impl MarchState {
     ) -> Step {
         // The slab between the two storeys (one slab, both faces) is keyed at the
         // UPPER of the two levels — the floor of the upper storey / roof of the lower.
-        let upper_level = self.vz.max(self.vz + self.az.step);
-        if z_in_grid(upper_level) {
+        let upper_level = self.vz.max(VoxelIndex::new(*self.vz + *self.az.step));
+        if *z_in_grid(upper_level) {
             let slab_key = key_of(self.vx, self.vy, upper_level);
             if surface.slab_state(&slab_key) == SlabState::Present {
                 // An intact slab stops the round at the boundary (AC #4).
@@ -315,10 +324,10 @@ impl MarchState {
                 });
             }
         }
-        self.vz += self.az.step;
+        self.vz = VoxelIndex::new(*self.vz + *self.az.step);
         self.az.index = self.vz;
-        self.az.t_max += self.az.t_delta;
-        if self.vz >= i32::from(MAX_LEVELS) {
+        self.az.t_max = RayParam::new(*self.az.t_max + *self.az.t_delta);
+        if *self.vz >= i32::from(MAX_LEVELS) {
             // Left the top — a clean sky Miss (AC #5).
             Step::Stopped(MarchResult {
                 kind:   MarchKind::Miss,
@@ -326,11 +335,11 @@ impl MarchState {
                 band:   round_band_for_cell(crossing, tuning),
                 impact: crossing,
             })
-        } else if self.vz < 0 {
+        } else if *self.vz < 0 {
             // Left the bottom — strikes the ground in the exit cell (AC #5).
             Step::Stopped(MarchResult {
                 kind:   MarchKind::Ground,
-                at:     key_of_clamped(self.vx, self.vy, 0),
+                at:     key_of_clamped(self.vx, self.vy, VoxelIndex::new(0)),
                 band:   HeightBand::Low,
                 impact: crossing,
             })
@@ -341,7 +350,13 @@ impl MarchState {
 }
 
 /// A lateral grid-exit [`MarchKind::Miss`] result at the crossing point.
-fn lateral_miss(impact: SimPos, x: i32, y: i32, z: i32, band: HeightBand) -> MarchResult {
+fn lateral_miss(
+    impact: SimPos,
+    x: VoxelIndex,
+    y: VoxelIndex,
+    z: VoxelIndex,
+    band: HeightBand,
+) -> MarchResult {
     MarchResult {
         kind: MarchKind::Miss,
         at: key_of_clamped(x, y, z),

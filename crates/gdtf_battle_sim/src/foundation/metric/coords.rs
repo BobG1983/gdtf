@@ -259,8 +259,11 @@ pub fn cell_center(cell: Cell, level: Level) -> SimPos {
 /// See `docs/combat/battle-space.md` ("`pos_to_cell` floors — never rounds").
 #[must_use]
 pub fn pos_to_cell(pos: SimPos) -> (Cell, Level) {
-    let cell = Cell::new(floor_to_i32(pos.x), floor_to_i32(pos.y));
-    let storey = floor_to_i32(pos.z).clamp(0, i32::from(u8::MAX));
+    let cell = Cell::new(
+        *floor_axis(SimUnit::new(pos.x)),
+        *floor_axis(SimUnit::new(pos.y)),
+    );
+    let storey = (*floor_axis(SimUnit::new(pos.z))).clamp(0, i32::from(u8::MAX));
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -270,18 +273,79 @@ pub fn pos_to_cell(pos: SimPos) -> (Cell, Level) {
     (cell, level)
 }
 
-/// Floor a sim-unit `f32` coordinate to its integer cell/level index.
+/// Floor a sim-unit coordinate to its integer cell/level index along one axis.
 ///
 /// Uses [`f32::floor`] so negative coordinates go to the lower integer (−0.5 →
 /// −1), never toward zero — the floor-not-round contract of the metric. The
 /// result is clamped into the `i32` range so a wild out-of-grid coordinate can
 /// never wrap on the cast.
-const fn floor_to_i32(coord: f32) -> i32 {
+fn floor_axis(coord: SimUnit) -> CellUnit {
     let floored = coord.floor();
     #[expect(
         clippy::cast_possible_truncation,
         reason = "clamped to the i32 range below, so the cast cannot wrap; fractional part is gone after floor"
     )]
     let clamped = floored.clamp(i32::MIN as f32, i32::MAX as f32) as i32;
-    clamped
+    CellUnit::new(clamped)
+}
+
+/// A single-axis scalar in the cubic-voxel metric — a length or coordinate along
+/// one axis, in sim units (one cell-width = one level-height = 1.0).
+///
+/// The scalar companion to [`SimPos`] (which is the 3D vector of these): a
+/// ground-plane `x`/`y` coordinate, a continuous `z` height, an apex rise, or any
+/// other one-axis distance the shot geometry reasons in. Wraps `f32` so a sim-unit
+/// magnitude can never be confused with a dimensionless fraction, a ray parameter, or
+/// a raw cast (no-bare-types). Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub struct SimUnit(f32);
+
+impl SimUnit {
+    /// Build a sim-unit scalar from its magnitude (one cell / one level = 1.0).
+    #[must_use]
+    pub const fn new(value: f32) -> Self {
+        Self(value)
+    }
+}
+
+/// A single-axis INTEGER value in the coarse-grid metric — a floored cell/level
+/// coordinate, a rectangle edge, or an extent, in whole grid units (one cell-width
+/// = one level-height = 1).
+///
+/// The discrete integer companion to [`SimUnit`] (the continuous `f32` single-axis
+/// scalar): where [`SimUnit`] is a length or coordinate along one axis in sim units,
+/// a `CellUnit` is that value FLOORED onto the integer grid — a cell `x`/`y`
+/// coordinate, a storey index, a packer rectangle's exclusive edge, or a span in
+/// cells. Wraps `i32` so a discrete grid quantity can never be confused with a
+/// continuous [`SimUnit`], a cell COUNT, or a raw cast (no-bare-types). Private inner
+/// + derived [`Deref`]; derives [`Ord`] so edges compare directly.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct CellUnit(i32);
+
+impl CellUnit {
+    /// Build a grid-unit scalar from its integer value (whole cells / levels).
+    #[must_use]
+    pub const fn new(value: i32) -> Self {
+        Self(value)
+    }
+}
+
+/// The **Chebyshev ground-plane distance** between two cells — `max(|Δx|, |Δy|)`,
+/// the z storey ignored, in whole cells.
+///
+/// The sim's established cell-distance metric (`docs/combat/battle-space.md`): the
+/// same `max(|dx|, |dy|)` the AI target ordering, the LOS engagement-range disc, the
+/// pathfinder heuristic, and the suppression movement gate all reason in. Wraps `u32`
+/// so a cell distance can never be confused with a coordinate, a cell count, or a raw
+/// magnitude (no-bare-types). Private inner + derived [`Deref`]; derives [`Ord`] so
+/// two distances compare directly (nearer/farther).
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct CellDistance(u32);
+
+impl CellDistance {
+    /// Build a Chebyshev cell distance from its whole-cell magnitude.
+    #[must_use]
+    pub const fn new(distance: u32) -> Self {
+        Self(distance)
+    }
 }

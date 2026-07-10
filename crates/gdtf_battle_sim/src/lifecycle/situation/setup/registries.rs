@@ -3,6 +3,8 @@
 //! [`setup_battle`](super::setup_battle) resolves a
 //! [`Situation`](crate::situation::Situation)'s authored references against.
 
+use bevy::prelude::Deref;
+
 use crate::{
     armor::ArmorRegistry,
     effects::fields::FieldDefRegistry,
@@ -13,6 +15,21 @@ use crate::{
     tuning::GangerStatTuning,
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
+
+/// The number of gangers a [`setup_battle`](super::setup_battle) run spawned.
+///
+/// A named newtype over `usize` (no-bare-types: a spawned-ganger count is a domain
+/// value, not a bare `len`). Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GangerCount(usize);
+
+impl GangerCount {
+    /// Build a spawned-ganger count from its value.
+    #[must_use]
+    pub const fn new(count: usize) -> Self {
+        Self(count)
+    }
+}
 
 /// The result of [`setup_battle`](super::setup_battle) — the spawned ganger placements, so the caller
 /// can map each authored ganger to its newly-spawned Bevy [`Entity`](bevy::prelude::Entity) handle.
@@ -32,8 +49,8 @@ pub struct BattleSetup {
 impl BattleSetup {
     /// The number of gangers spawned by the setup.
     #[must_use]
-    pub const fn ganger_count(&self) -> usize {
-        self.occupants.len()
+    pub const fn ganger_count(&self) -> GangerCount {
+        GangerCount::new(self.occupants.len())
     }
 }
 

@@ -29,7 +29,7 @@ fn first_occupant_dead_round_strikes_second_live_occupant() {
 
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -71,7 +71,7 @@ fn no_occupant_dead_round_strikes_first_as_before() {
 
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -113,7 +113,7 @@ fn first_occupant_dead_wall_behind_returns_wall() {
 
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -151,7 +151,7 @@ fn first_occupant_dead_nothing_behind_misses() {
 
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -190,7 +190,7 @@ fn single_dead_occupant_is_not_struck() {
 
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,

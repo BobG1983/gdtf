@@ -3,7 +3,7 @@
 //! inverse mapping.
 
 use super::{
-    storage::OccupancyGrid,
+    storage::{OccupancyGrid, SlotIndex},
     types::{GRID_HEIGHT, GRID_WIDTH, SLOT_COUNT},
 };
 use crate::{
@@ -26,7 +26,7 @@ impl OccupancyGrid {
             .iter()
             .enumerate()
             .filter(|(_, slot)| slot.terrain != TerrainKind::Open || slot.occupant.is_some())
-            .map(|(index, _)| Self::cell_level_of_index(index))
+            .map(|(index, _)| Self::cell_level_of_index(SlotIndex::new(index)))
     }
 
     /// The inclusive `(min, max)` storey range of the grid's **authored / occupied**
@@ -67,7 +67,7 @@ impl OccupancyGrid {
     /// pure index→key function), so the dense `28_800`-cell walk is allocation-free until
     /// the caller collects it.
     pub fn all_cells(&self) -> impl Iterator<Item = CellLevel> {
-        (0..SLOT_COUNT).map(Self::cell_level_of_index)
+        (0..SLOT_COUNT).map(|index| Self::cell_level_of_index(SlotIndex::new(index)))
     }
 
     /// The `(cell, level)` key the flat-buffer slot at `index` represents — the inverse
@@ -77,9 +77,9 @@ impl OccupancyGrid {
     /// successive division/modulo. Used only by
     /// [`authored_or_occupied_cells`](OccupancyGrid::authored_or_occupied_cells) over
     /// the buffer's own indices, which are in `0..SLOT_COUNT` by construction.
-    fn cell_level_of_index(index: usize) -> CellLevel {
-        let level = index / (GRID_WIDTH * GRID_HEIGHT);
-        let plane = index % (GRID_WIDTH * GRID_HEIGHT);
+    fn cell_level_of_index(index: SlotIndex) -> CellLevel {
+        let level = *index / (GRID_WIDTH * GRID_HEIGHT);
+        let plane = *index % (GRID_WIDTH * GRID_HEIGHT);
         let y = plane / GRID_WIDTH;
         let x = plane % GRID_WIDTH;
         #[expect(

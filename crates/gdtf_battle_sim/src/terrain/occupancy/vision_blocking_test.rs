@@ -21,9 +21,9 @@ use crate::{
     terrain::entity::{BlocksVision, TerrainCell},
 };
 
-/// A `(x, y, level)` cell-key helper.
-fn key(x: i32, y: i32, level: u8) -> CellLevel {
-    CellLevel::new(Cell::new(x, y), Level::new(level))
+/// A `(cell, level)` cell-key helper.
+fn key(cell: Cell, level: Level) -> CellLevel {
+    CellLevel::new(cell, level)
 }
 
 /// Build the headless app: `MinimalPlugins` + the full grid resources + the maintenance
@@ -51,7 +51,7 @@ fn occluder_band(app: &App, at: CellLevel) -> Option<HeightBand> {
 /// detection.
 #[test]
 fn component_add_remove_flips_vision_blocking() {
-    let at = key(3, 4, 0);
+    let at = key(Cell::new(3, 4), Level::new(0));
     let mut app = headless_app();
 
     // Spawn a terrain entity carrying the occluder. `Added<BlocksVision>` fires on this
@@ -102,7 +102,7 @@ fn component_add_remove_flips_vision_blocking() {
 /// recorded band follows the component.
 #[test]
 fn component_band_retune_updates_the_surface() {
-    let at = key(5, 5, 0);
+    let at = key(Cell::new(5, 5), Level::new(0));
     let mut app = headless_app();
     let entity = app
         .world_mut()
@@ -133,7 +133,7 @@ fn component_band_retune_updates_the_surface() {
 /// `RemovedComponents` fires for a despawn too, so the projection clears the surface.
 #[test]
 fn despawning_occluding_entity_re_opens_cell() {
-    let at = key(7, 2, 1);
+    let at = key(Cell::new(7, 2), Level::new(1));
     let mut app = headless_app();
     let entity = app
         .world_mut()
@@ -159,8 +159,8 @@ fn despawning_occluding_entity_re_opens_cell() {
 /// occluding (the projection is per-cell, not all-or-nothing).
 #[test]
 fn per_cell_projection_is_independent() {
-    let a = key(1, 1, 0);
-    let b = key(2, 2, 0);
+    let a = key(Cell::new(1, 1), Level::new(0));
+    let b = key(Cell::new(2, 2), Level::new(0));
     let mut app = headless_app();
     let ent_a = app
         .world_mut()

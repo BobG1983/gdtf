@@ -4,7 +4,7 @@
 //! terrain UUIDs, field keys) BEFORE any entity is spawned or resource inserted, so
 //! a bad reference aborts with a typed [`BattleSetupError`] and no partial world.
 
-use bevy::platform::collections::HashSet;
+use bevy::{platform::collections::HashSet, prelude::Deref};
 
 use super::super::terrain_resolve::{
     ResolvedCoverPiece, ResolvedSlabPiece, resolve_cover_def, resolve_slab_def,
@@ -259,8 +259,24 @@ pub(super) fn build_field_registry(
 /// GTW-156 occupancy pour is last-write-wins and would otherwise silently overwrite
 /// the first ganger's slot while both entities survive stacked on one cell.
 #[must_use]
-pub fn has_stacked_gangers(situation: &Situation) -> bool {
-    first_stacked_cell(situation).is_some()
+pub fn has_stacked_gangers(situation: &Situation) -> StackedGangers {
+    StackedGangers::new(first_stacked_cell(situation).is_some())
+}
+
+/// Whether a situation authors two gangers on the SAME `(cell, level)` — the GTW-457
+/// stacked-spawn invariant [`setup_battle`](super::setup_battle) enforces.
+///
+/// A named newtype over `bool` (no-bare-types: a stacked-spawn verdict is a domain
+/// value, not a bare boolean). Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StackedGangers(bool);
+
+impl StackedGangers {
+    /// Build a stacked-gangers verdict from its boolean state.
+    #[must_use]
+    pub const fn new(stacked: bool) -> Self {
+        Self(stacked)
+    }
 }
 
 /// The first `(cell, level)` two or more authored gangers share, in

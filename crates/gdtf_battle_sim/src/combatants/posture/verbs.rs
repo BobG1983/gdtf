@@ -4,7 +4,7 @@
 use bevy::prelude::Deref;
 
 use crate::{
-    ganger::{Aiming, Direction, Facing, Stance, StanceKind, Tu},
+    ganger::{Aiming, Direction, Facing, RingSteps, Stance, StanceKind, Tu},
     tu::spend_tu,
     tuning::{StanceChangeTu, TurnTu},
 };
@@ -100,7 +100,7 @@ pub fn set_stance(
 /// (value-agnostic, USER DECISION: `1` per step). NOT a free toggle.
 pub fn set_facing(facing: &mut Facing, tu: &mut Tu, to: Direction, cost: &TurnTu) -> FacingChanged {
     // The full short-way rotation, in whole 45deg steps. Zero == already facing `to`.
-    let total = (**facing).steps_to(to);
+    let total = *(**facing).steps_to(to);
     if total == 0 {
         // Re-asserting the facing the ganger already holds — a no-op, no charge.
         return FacingChanged::new(false);
@@ -120,7 +120,7 @@ pub fn set_facing(facing: &mut Facing, tu: &mut Tu, to: Direction, cost: &TurnTu
         return FacingChanged::new(false);
     }
     // Compute the landing facing BEFORE mutating; lands at `to` iff afford == total.
-    let landing = (**facing).rotated_toward(to, afford);
+    let landing = (**facing).rotated_toward(to, RingSteps::new(afford));
     *facing = Facing::new(landing);
     // Exact charge: per * afford never exceeds the pool by construction.
     spend_tu(tu, Tu::new(per * afford));

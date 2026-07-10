@@ -28,14 +28,14 @@ fn fits_then_rejects_oversize() {
     // A 15x15 leaves room — it fits a 20x20 board.
     let mut packer = MaxRectsPacker::new(board, SplitMode::MaxRects, Margin::DEFAULT);
     let smaller = board.place_at_anchor(Anchor::BottomLeft, Footprint::new(15, 15));
-    assert!(packer.place(smaller), "a 15x15 must fit a 20x20 board");
+    assert!(*packer.place(smaller), "a 15x15 must fit a 20x20 board");
 
     // A 25x25 footprint is LARGER than the 20x20 board — even clamped to the board it
     // cannot be contained, so it is rejected and the free list is left untouched.
     let mut packer2 = MaxRectsPacker::new(board, SplitMode::MaxRects, Margin::DEFAULT);
     let oversize = RegionRect::new(crate::metric::Cell::new(0, 0), Footprint::new(25, 25));
     assert!(
-        !packer2.place(oversize),
+        !*packer2.place(oversize),
         "a 25x25 footprint must not fit a 20x20 board",
     );
     assert_eq!(
@@ -61,14 +61,14 @@ fn maxrects_free_list_stays_maximal() {
 
     // A footprint roughly centred (place at the middle of the board).
     let centred = RegionRect::new(crate::metric::Cell::new(10, 10), Footprint::new(8, 8));
-    assert!(packer.place(centred), "centred footprint fits");
+    assert!(*packer.place(centred), "centred footprint fits");
 
     let rects = packer.free_rects();
     for (i, a) in rects.iter().enumerate() {
         for (j, b) in rects.iter().enumerate() {
             if i != j {
                 assert!(
-                    !(a.contains_rect(*b) && a != b),
+                    !(*a.contains_rect(*b) && a != b),
                     "free rect {b:?} is contained in {a:?} — prune invariant broken",
                 );
             }
@@ -88,7 +88,7 @@ fn guillotine_flag_places_successfully() {
     let mut packer = MaxRectsPacker::new(board, SplitMode::Guillotine, Margin::DEFAULT);
     let placed = board.place_at_anchor(Anchor::BottomLeft, Footprint::new(10, 10));
     assert!(
-        packer.place(placed),
+        *packer.place(placed),
         "the guillotine packer must still place a fitting footprint",
     );
     // Guillotine keeps fewer (single-axis) free rectangles than MaxRects would.

@@ -34,7 +34,7 @@ use gdtf_battle_sim::{
     ganger::{Aiming, Facing, Hp, Luck, Shooting, Toughness, TuMax, Wounds},
     inflicted_wound::InflictedWounds,
     magazine::{LoadedRounds, Magazine, ReloadTu},
-    march::{MarchKind, march_vector},
+    march::{MarchDir, MarchKind, march_vector},
     occupancy_sync::OccupancyMaintenancePlugin,
     prelude::{
         Cell, CellLevel, Direction, Faction, Level, LifeState, OccupancyGrid, Position, SimPos,
@@ -174,7 +174,7 @@ fn probe_strikes_ground(
     let dir = Vec3::new(0.0, 0.0, -1.0);
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         occupancy,
         surface,
         cover,

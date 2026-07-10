@@ -49,4 +49,6 @@ mod result;
 mod test;
 
 pub use formula::resolve_hit;
-pub use result::{HitResult, HpDamage, IntegrityWear, PenetratingDamage};
+pub use result::{
+    DamageMagnitude, DamageReal, HitResult, HpDamage, IntegrityWear, PenetratingDamage,
+};

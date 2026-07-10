@@ -2,7 +2,7 @@
 //! verbatim from the former inline `#[cfg(test)] mod tests`).
 
 use crate::{
-    ganger::{Aiming, Direction, Facing, Stance, StanceKind, Tu},
+    ganger::{Aiming, Direction, Facing, RingSteps, Stance, StanceKind, Tu},
     posture::{set_aiming, set_facing, set_stance},
     tuning::{StanceChangeTu, TurnTu},
 };
@@ -114,7 +114,7 @@ fn set_facing_to_different_facing_spends_exactly_the_cost() {
     assert!(*tu < before, "a real turn must strictly decrease TU");
     assert_eq!(
         before - *tu,
-        Direction::North.steps_to(Direction::East) * (*cost),
+        *Direction::North.steps_to(Direction::East) * (*cost),
         "the TU drop must equal exactly (short-way steps) * the per-step TurnTu leaf",
     );
 
@@ -136,7 +136,7 @@ fn set_facing_to_different_facing_spends_exactly_the_cost() {
     );
     assert_eq!(
         before - *tu,
-        Direction::North.steps_to(Direction::South) * (*cost),
+        *Direction::North.steps_to(Direction::South) * (*cost),
         "an opposite turn costs steps_to (= 4) * the per-step TurnTu leaf",
     );
 }
@@ -190,7 +190,7 @@ fn set_facing_partial_turn_spends_exactly_the_afforded_steps() {
     );
     assert_eq!(
         *facing,
-        Direction::North.rotated_toward(Direction::South, 2),
+        Direction::North.rotated_toward(Direction::South, RingSteps::new(2)),
         "an under-affordable turn lands partway at the afforded short-way facing",
     );
     // The partway facing is the 90°-short East (sanity on the rotated_toward landing).

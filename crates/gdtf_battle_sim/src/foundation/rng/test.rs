@@ -229,7 +229,8 @@ fn fnv1a64_is_stable() {
     // fails this test loudly.
     let expected: u64 = 0xb114_3619_01d0_9046;
     assert_eq!(
-        computed, expected,
+        computed.get(),
+        expected,
         "fnv1a64 output for (0, b\"gdtf.rng.shot.v1\") changed — the FNV constants \
          or label were altered"
     );

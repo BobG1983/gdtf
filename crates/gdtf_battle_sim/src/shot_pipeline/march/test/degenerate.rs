@@ -16,7 +16,7 @@ fn direction_leaving_grid_immediately_is_a_graceful_miss() {
     let dir = Vec3::new(-1.0, 0.0, 0.0); // straight off the west edge
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -42,7 +42,7 @@ fn zero_direction_is_a_graceful_miss() {
     let muzzle = center(3, 3, 0);
     let result = march_vector(
         muzzle,
-        Vec3::ZERO,
+        MarchDir::new(Vec3::ZERO),
         &grid,
         &surface,
         &cover,
@@ -75,7 +75,7 @@ fn out_of_grid_muzzle_is_a_graceful_miss() {
     let dir = Vec3::new(1.0, 0.0, 0.0);
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -108,7 +108,7 @@ fn impact_point_lies_on_the_ray() {
     let dir = Vec3::new(1.0, 0.0, 0.0);
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -160,7 +160,7 @@ fn band_edges_come_from_tuning() {
     // Default: the round is HIGH, strictly above the MID occupant → sails over.
     let r_default = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -179,7 +179,7 @@ fn band_edges_come_from_tuning() {
     raised.projectile_band_edges.mid_high = BandEdge::new(probe + 0.1);
     let r_raised = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -221,7 +221,7 @@ fn marches_over_real_built_grids() {
     let dir = Vec3::new(1.0, 0.0, 0.0);
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -251,7 +251,7 @@ fn long_diagonal_completes_within_step_cap() {
     let dir = Vec3::new(1.0, 1.0, 0.0);
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,

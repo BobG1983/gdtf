@@ -18,7 +18,26 @@
 
 use core::ops::Range;
 
+use bevy::prelude::Deref;
 use rand::{Rng, RngExt};
+
+/// A value **drawn** from a tunable `f32` range — uniform when the range is live, its
+/// bounds' midpoint when the range is degenerate (empty or inverted).
+///
+/// A named newtype over `f32` (no-bare-types: a sampled range value is a domain value,
+/// not a bare float). Private inner + derived [`Deref`]; the per-stream
+/// `random_range_or_midpoint` wrapper reads it back as the bare `f32` its callers expect,
+/// so the byte-exact seeded-replay draw order is unchanged.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub(super) struct RangeSample(f32);
+
+impl RangeSample {
+    /// Wrap a drawn range value.
+    #[must_use]
+    const fn new(value: f32) -> Self {
+        Self(value)
+    }
+}
 
 /// Draw uniformly from a tunable-driven `f32` range — NEVER panicking and ALWAYS
 /// consuming exactly one draw, even when the range is empty or inverted.
@@ -41,15 +60,15 @@ use rand::{Rng, RngExt};
 /// the same seed produces divergent downstream draws the moment a degenerate
 /// range is crossed, silently breaking the sim's seeded-replay determinism
 /// pillar (GTW-644's defect was a guard that SKIPPED the degenerate draw).
-pub(super) fn uniform_or_midpoint(rng: &mut impl Rng, range: Range<f32>) -> f32 {
+pub(super) fn uniform_or_midpoint(rng: &mut impl Rng, range: Range<f32>) -> RangeSample {
     if range.start < range.end {
         // Live range: the plain uniform draw — byte-identical to `random_range`.
-        return rng.random_range(range);
+        return RangeSample::new(rng.random_range(range));
     }
     // Degenerate (empty or inverted): CONSUME the one draw anyway, then collapse
     // to the midpoint. The unit range is never empty, so this cannot panic.
     let _: f32 = rng.random_range(0.0_f32..1.0);
-    f32::midpoint(range.start, range.end)
+    RangeSample::new(f32::midpoint(range.start, range.end))
 }
 
 #[cfg(test)]

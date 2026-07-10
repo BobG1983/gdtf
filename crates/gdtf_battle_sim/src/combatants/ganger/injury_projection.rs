@@ -32,15 +32,38 @@
 //!    never itself reduce a live current pool to `0` — only the injury table's
 //!    `Fatal` severity kills (`docs/combat/resolution.md` §6).
 
+use bevy::prelude::Deref;
+
 use crate::{
     ganger::{
         Aim, Bottle, Cool, DerivedStats, Fight, GangerAttributes, Grit, Hp, HpMax, Luck, Morale,
         Reactions, Reflexes, Shooting, Speed, Strength, Toughness, Tu, TuMax, Wounds, WoundsMax,
         derive_stats,
+        derive_stats::{PoolValue, StatMagnitude},
     },
     injuries::{InflictedInjuries, StatDeltaSum, StatTarget},
     tuning::GangerStatTuning,
 };
+
+/// A direct **attribute's real value** — a base attribute plus (or minus) the
+/// ledger's summed `Modify` delta, in the pre-derivation effective-attribute layer
+/// (`docs/combat/resolution.md` injury tables; GTW-405).
+///
+/// The shared `f32` the eight attribute folds ([`effective_attributes`]) and the
+/// gate-enforced [`effective_toughness`] / [`effective_luck`] read paths compute in,
+/// before it is wrapped back into its specific attribute newtype. Names that real so
+/// the shared [`effective_attr_value`] core does not carry a bare `f32`
+/// (no-bare-types). Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+struct AttributeValue(f32);
+
+impl AttributeValue {
+    /// Build an effective-attribute value from its computed real value.
+    #[must_use]
+    const fn new(value: f32) -> Self {
+        Self(value)
+    }
+}
 
 /// The effective value of a direct **attribute** — the base attribute value plus the
 /// ledger's summed `Modify` delta for it (`docs/combat/resolution.md` injury tables;
@@ -52,8 +75,8 @@ use crate::{
 /// negative (debuff) delta shifts the value either way. A debuff that drives an
 /// attribute below zero is left as the raw (possibly negative) effective value — the
 /// derivation's pool rounding already clamps the final pools at `0`.
-fn effective_attr_value(base: f32, sum: StatDeltaSum) -> f32 {
-    base + f32::from(*sum)
+fn effective_attr_value(base: AttributeValue, sum: StatDeltaSum) -> AttributeValue {
+    AttributeValue::new(*base + f32::from(*sum))
 }
 
 /// The gate-enforced **single read path** for a direct [`Toughness`] — the base value
@@ -67,8 +90,8 @@ fn effective_attr_value(base: f32, sum: StatDeltaSum) -> f32 {
 /// divergence the modifier layer would otherwise open.
 #[must_use]
 pub fn effective_toughness(base: Toughness, ledger: &InflictedInjuries) -> Toughness {
-    Toughness::new(effective_attr_value(
-        *base,
+    Toughness::new(*effective_attr_value(
+        AttributeValue::new(*base),
         ledger.delta_for(StatTarget::Toughness),
     ))
 }
@@ -83,8 +106,8 @@ pub fn effective_toughness(base: Toughness, ledger: &InflictedInjuries) -> Tough
 /// with the derived stats.
 #[must_use]
 pub fn effective_luck(base: Luck, ledger: &InflictedInjuries) -> Luck {
-    Luck::new(effective_attr_value(
-        *base,
+    Luck::new(*effective_attr_value(
+        AttributeValue::new(*base),
         ledger.delta_for(StatTarget::Luck),
     ))
 }
@@ -100,29 +123,29 @@ pub fn effective_luck(base: Luck, ledger: &InflictedInjuries) -> Luck {
 /// identity).
 fn effective_attributes(base: &GangerAttributes, ledger: &InflictedInjuries) -> GangerAttributes {
     GangerAttributes {
-        speed:     Speed::new(effective_attr_value(
-            *base.speed,
+        speed:     Speed::new(*effective_attr_value(
+            AttributeValue::new(*base.speed),
             ledger.delta_for(StatTarget::Speed),
         )),
-        aim:       Aim::new(effective_attr_value(
-            *base.aim,
+        aim:       Aim::new(*effective_attr_value(
+            AttributeValue::new(*base.aim),
             ledger.delta_for(StatTarget::Aim),
         )),
-        strength:  Strength::new(effective_attr_value(
-            *base.strength,
+        strength:  Strength::new(*effective_attr_value(
+            AttributeValue::new(*base.strength),
             ledger.delta_for(StatTarget::Strength),
         )),
         toughness: effective_toughness(base.toughness, ledger),
-        reflexes:  Reflexes::new(effective_attr_value(
-            *base.reflexes,
+        reflexes:  Reflexes::new(*effective_attr_value(
+            AttributeValue::new(*base.reflexes),
             ledger.delta_for(StatTarget::Reflexes),
         )),
-        cool:      Cool::new(effective_attr_value(
-            *base.cool,
+        cool:      Cool::new(*effective_attr_value(
+            AttributeValue::new(*base.cool),
             ledger.delta_for(StatTarget::Cool),
         )),
-        grit:      Grit::new(effective_attr_value(
-            *base.grit,
+        grit:      Grit::new(*effective_attr_value(
+            AttributeValue::new(*base.grit),
             ledger.delta_for(StatTarget::Grit),
         )),
         luck:      effective_luck(base.luck, ledger),
@@ -131,8 +154,8 @@ fn effective_attributes(base: &GangerAttributes, ledger: &InflictedInjuries) -> 
 
 /// Add a derived-`Modify` `f32` delta onto a freshly derived skill value (the POST-
 /// derivation skill layer). The delta sum is an `i16`; a skill stat is an `f32`.
-fn skill_with_delta(derived: f32, sum: StatDeltaSum) -> f32 {
-    derived + f32::from(*sum)
+fn skill_with_delta(derived: StatMagnitude, sum: StatDeltaSum) -> StatMagnitude {
+    StatMagnitude::new(*derived + f32::from(*sum))
 }
 
 /// Dock a derived `u8` pool MAX by the ledger's summed `Modify` delta, with the
@@ -146,9 +169,9 @@ fn skill_with_delta(derived: f32, sum: StatDeltaSum) -> f32 {
 /// degenerate base derivation, e.g. zeroed tuning weights — NOT an injury), the lower
 /// bound is `0`, so the ZERO-DELTA IDENTITY is preserved exactly (an empty ledger derives
 /// precisely as [`derive_stats`](crate::ganger::derive_stats)).
-fn pool_max_u8_with_delta(derived_max: u8, sum: StatDeltaSum) -> u8 {
-    let docked = i32::from(derived_max) + i32::from(*sum);
-    let floor = i32::from(derived_max).min(1);
+fn pool_max_u8_with_delta(derived_max: PoolValue, sum: StatDeltaSum) -> PoolValue {
+    let docked = i32::from(*derived_max) + i32::from(*sum);
+    let floor = i32::from(*derived_max).min(1);
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -156,16 +179,16 @@ fn pool_max_u8_with_delta(derived_max: u8, sum: StatDeltaSum) -> u8 {
                   wrap or go negative"
     )]
     let floored = docked.clamp(floor, i32::from(u8::MAX)) as u8;
-    floored
+    PoolValue::new(floored)
 }
 
 /// Dock a derived `u16` pool MAX by the ledger's summed `Modify` delta, with the
 /// no-self-kill floor — the `u16` ([`HpMax`](crate::ganger::HpMax)) companion to
 /// [`pool_max_u8_with_delta`] (same `min(derived_max, 1)` lower bound, identity-preserving
 /// at a base max of `0`).
-fn pool_max_u16_with_delta(derived_max: u16, sum: StatDeltaSum) -> u16 {
-    let docked = i32::from(derived_max) + i32::from(*sum);
-    let floor = i32::from(derived_max).min(1);
+fn pool_max_u16_with_delta(derived_max: Hp, sum: StatDeltaSum) -> Hp {
+    let docked = i32::from(*derived_max) + i32::from(*sum);
+    let floor = i32::from(*derived_max).min(1);
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -173,7 +196,7 @@ fn pool_max_u16_with_delta(derived_max: u16, sum: StatDeltaSum) -> u16 {
                   wrap or go negative"
     )]
     let floored = docked.clamp(floor, i32::from(u16::MAX)) as u16;
-    floored
+    Hp::new(floored)
 }
 
 /// **Derive** the computed combat stats with the GTW-405 injury modifier layer applied
@@ -210,42 +233,51 @@ pub fn derive_stats_with_injuries(
 
     // (2) POST-derivation skill layer: add the derived-Modify deltas onto the four
     // skill stats, independent of the attribute layer.
-    let shooting = Shooting::new(skill_with_delta(
-        *derived.shooting,
+    let shooting = Shooting::new(*skill_with_delta(
+        StatMagnitude::new(*derived.shooting),
         ledger.delta_for(StatTarget::Shooting),
     ));
-    let fight = Fight::new(skill_with_delta(
-        *derived.fight,
+    let fight = Fight::new(*skill_with_delta(
+        StatMagnitude::new(*derived.fight),
         ledger.delta_for(StatTarget::Fight),
     ));
-    let reactions = Reactions::new(skill_with_delta(
-        *derived.reactions,
+    let reactions = Reactions::new(*skill_with_delta(
+        StatMagnitude::new(*derived.reactions),
         ledger.delta_for(StatTarget::Reactions),
     ));
-    let morale = Morale::new(skill_with_delta(
-        *derived.morale,
+    let morale = Morale::new(*skill_with_delta(
+        StatMagnitude::new(*derived.morale),
         ledger.delta_for(StatTarget::Morale),
     ));
 
     // (3) POST-derivation pool layer: dock the derived MAXES (floored at 1); the
     // current pools track the docked max here (the caller clamps a damaged pool).
-    let tu_max = pool_max_u8_with_delta(*derived.tu_max, ledger.delta_for(StatTarget::Tu));
-    let hp_max = pool_max_u16_with_delta(*derived.hp_max, ledger.delta_for(StatTarget::Hp));
-    let wounds_max =
-        pool_max_u8_with_delta(*derived.wounds_max, ledger.delta_for(StatTarget::Wounds));
-    let bottle = pool_max_u8_with_delta(*derived.bottle, ledger.delta_for(StatTarget::Bottle));
+    let tu_max = pool_max_u8_with_delta(
+        PoolValue::new(*derived.tu_max),
+        ledger.delta_for(StatTarget::Tu),
+    );
+    let hp_max =
+        pool_max_u16_with_delta(Hp::new(*derived.hp_max), ledger.delta_for(StatTarget::Hp));
+    let wounds_max = pool_max_u8_with_delta(
+        PoolValue::new(*derived.wounds_max),
+        ledger.delta_for(StatTarget::Wounds),
+    );
+    let bottle = pool_max_u8_with_delta(
+        PoolValue::new(*derived.bottle),
+        ledger.delta_for(StatTarget::Bottle),
+    );
 
     DerivedStats {
         shooting,
         fight,
         reactions,
         morale,
-        tu: Tu::new(tu_max),
-        tu_max: TuMax::new(tu_max),
-        hp: Hp::new(hp_max),
-        hp_max: HpMax::new(hp_max),
-        wounds: Wounds::new(wounds_max),
-        wounds_max: WoundsMax::new(wounds_max),
-        bottle: Bottle::new(bottle),
+        tu: Tu::new(*tu_max),
+        tu_max: TuMax::new(*tu_max),
+        hp: hp_max,
+        hp_max: HpMax::new(*hp_max),
+        wounds: Wounds::new(*wounds_max),
+        wounds_max: WoundsMax::new(*wounds_max),
+        bottle: Bottle::new(*bottle),
     }
 }

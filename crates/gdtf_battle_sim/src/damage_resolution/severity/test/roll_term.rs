@@ -26,7 +26,7 @@ fn roll_term_floor_extends_below_zero_and_ceiling_is_fixed() {
     let mut saw_negative = false;
     // Many draws so the negative tail is virtually certain to appear.
     for _ in 0..1_000 {
-        let term = roll_term(&scaling, Luck::new(6.0), &mut r);
+        let term = *roll_term(&scaling, Luck::new(6.0), &mut r);
         assert!(
             term <= ceiling,
             "the roll term must never exceed R (the fixed ceiling): {term} > {ceiling}",
@@ -51,7 +51,7 @@ fn roll_term_floor_is_zero_without_defender_luck() {
     let ceiling = *scaling.random_spread;
     let mut r = rng();
     for _ in 0..1_000 {
-        let term = roll_term(&scaling, Luck::new(0.0), &mut r);
+        let term = *roll_term(&scaling, Luck::new(0.0), &mut r);
         assert!(
             (0.0..=ceiling).contains(&term),
             "with no defender Luck the term stays in [0, R]: {term}",

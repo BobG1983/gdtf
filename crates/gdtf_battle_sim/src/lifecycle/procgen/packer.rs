@@ -13,7 +13,42 @@
 //! upstream). Given the same free-rectangle list and the same placement requests it
 //! produces the same placements every time.
 
+use bevy::prelude::Deref;
+
 use super::geometry::{Footprint, Margin, RegionRect};
+
+/// Whether a (seam-padded) footprint **fits** somewhere in the packer's current free
+/// space — the C2 pre-commit fit query ([`MaxRectsPacker::fits`]).
+///
+/// A named newtype over `bool` (no-bare-types: a fit verdict is a domain fact, not a
+/// bare boolean). Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FootprintFits(bool);
+
+impl FootprintFits {
+    /// Build a fit verdict from its boolean state.
+    #[must_use]
+    pub const fn new(fits: bool) -> Self {
+        Self(fits)
+    }
+}
+
+/// Whether a placement was **accepted** — committed to the packer, reserving its
+/// seam-padded space ([`MaxRectsPacker::place`]); `false` means the footprint did not
+/// fit and the packer is unchanged.
+///
+/// A named newtype over `bool` (no-bare-types: a placement-accepted verdict is a domain
+/// fact, not a bare boolean). Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PlacementAccepted(bool);
+
+impl PlacementAccepted {
+    /// Build a placement-accepted verdict from its boolean state.
+    #[must_use]
+    pub const fn new(accepted: bool) -> Self {
+        Self(accepted)
+    }
+}
 
 /// How the packer SPLITS a free rectangle when a placement covers part of it (OQ-7).
 ///
@@ -86,15 +121,15 @@ impl MaxRectsPacker {
     /// its padded extent is wholly inside some free rectangle, which guarantees the 1-cell
     /// seam to every previously placed prefab (OQ-3).
     #[must_use]
-    pub fn fits(&self, candidate: RegionRect) -> bool {
+    pub fn fits(&self, candidate: RegionRect) -> FootprintFits {
         // The footprint itself must lie inside the board (an oversize footprint clamped to
         // the board would otherwise spuriously "fit"); only the outward SEAM ring is
         // allowed to be clipped at the board boundary (the edge is already a wall).
-        if !self.board.contains_rect(candidate) {
-            return false;
+        if !*self.board.contains_rect(candidate) {
+            return FootprintFits::new(false);
         }
         let padded = candidate.padded(self.seam).clamped_to(self.board);
-        self.free.iter().any(|f| f.contains_rect(padded))
+        FootprintFits::new(self.free.iter().any(|f| *f.contains_rect(padded)))
     }
 
     /// Commit a placement at `candidate` (the UN-padded prefab footprint) — reserving its
@@ -104,13 +139,13 @@ impl MaxRectsPacker {
     /// rectangle — the caller then fails closed with a [`PackingError`](super::error::PackingError).
     /// On success the padded rectangle is removed from every free rectangle it intersects
     /// (split per [`SplitMode`]), then contained rectangles are pruned (`MaxRects`).
-    pub fn place(&mut self, candidate: RegionRect) -> bool {
-        if !self.fits(candidate) {
-            return false;
+    pub fn place(&mut self, candidate: RegionRect) -> PlacementAccepted {
+        if !*self.fits(candidate) {
+            return PlacementAccepted::new(false);
         }
         let padded = candidate.padded(self.seam).clamped_to(self.board);
         self.carve(padded);
-        true
+        PlacementAccepted::new(true)
     }
 
     /// Remove `occupied` from every free rectangle it intersects, replacing each with the
@@ -118,7 +153,7 @@ impl MaxRectsPacker {
     fn carve(&mut self, occupied: RegionRect) {
         let mut next: Vec<RegionRect> = Vec::with_capacity(self.free.len() * 4);
         for free in std::mem::take(&mut self.free) {
-            if free.intersects(occupied) {
+            if *free.intersects(occupied) {
                 match self.split {
                     SplitMode::MaxRects => split_maxrects(free, occupied, &mut next),
                     SplitMode::Guillotine => split_guillotine(free, occupied, &mut next),
@@ -128,7 +163,7 @@ impl MaxRectsPacker {
             }
         }
         // Drop empties.
-        next.retain(|r| r.is_non_empty());
+        next.retain(|r| *r.is_non_empty());
         if matches!(self.split, SplitMode::MaxRects) {
             prune_contained(&mut next);
         }
@@ -154,8 +189,8 @@ fn split_maxrects(free: RegionRect, occupied: RegionRect, out: &mut Vec<RegionRe
     // Right strip: occupied.right .. free.right, full free height.
     if occupied.max_x() < free.max_x() {
         out.push(RegionRect::new(
-            crate::metric::Cell::new(occupied.max_x(), fo.y),
-            Footprint::new(free.max_x() - occupied.max_x(), free.footprint().height()),
+            crate::metric::Cell::new(*occupied.max_x(), fo.y),
+            Footprint::new(*free.max_x() - *occupied.max_x(), free.footprint().height()),
         ));
     }
     // Bottom strip: free.bottom .. occupied.bottom, full free width.
@@ -168,8 +203,8 @@ fn split_maxrects(free: RegionRect, occupied: RegionRect, out: &mut Vec<RegionRe
     // Top strip: occupied.top .. free.top, full free width.
     if occupied.max_y() < free.max_y() {
         out.push(RegionRect::new(
-            crate::metric::Cell::new(fo.x, occupied.max_y()),
-            Footprint::new(free.footprint().width(), free.max_y() - occupied.max_y()),
+            crate::metric::Cell::new(fo.x, *occupied.max_y()),
+            Footprint::new(free.footprint().width(), *free.max_y() - *occupied.max_y()),
         ));
     }
 }
@@ -180,8 +215,10 @@ fn split_maxrects(free: RegionRect, occupied: RegionRect, out: &mut Vec<RegionRe
 fn split_guillotine(free: RegionRect, occupied: RegionRect, out: &mut Vec<RegionRect>) {
     let fo = free.origin();
     // Horizontal leftover (left + right strips of the occupied band) vs vertical leftover.
-    let h_leftover = (occupied.origin().x - fo.x).max(0) + (free.max_x() - occupied.max_x()).max(0);
-    let v_leftover = (occupied.origin().y - fo.y).max(0) + (free.max_y() - occupied.max_y()).max(0);
+    let h_leftover =
+        (occupied.origin().x - fo.x).max(0) + (*free.max_x() - *occupied.max_x()).max(0);
+    let v_leftover =
+        (occupied.origin().y - fo.y).max(0) + (*free.max_y() - *occupied.max_y()).max(0);
 
     if h_leftover >= v_leftover {
         // Cut horizontally: keep full-height left & right strips, then a single
@@ -194,8 +231,8 @@ fn split_guillotine(free: RegionRect, occupied: RegionRect, out: &mut Vec<Region
         }
         if occupied.max_x() < free.max_x() {
             out.push(RegionRect::new(
-                crate::metric::Cell::new(occupied.max_x(), fo.y),
-                Footprint::new(free.max_x() - occupied.max_x(), free.footprint().height()),
+                crate::metric::Cell::new(*occupied.max_x(), fo.y),
+                Footprint::new(*free.max_x() - *occupied.max_x(), free.footprint().height()),
             ));
         }
     } else {
@@ -207,8 +244,8 @@ fn split_guillotine(free: RegionRect, occupied: RegionRect, out: &mut Vec<Region
         }
         if occupied.max_y() < free.max_y() {
             out.push(RegionRect::new(
-                crate::metric::Cell::new(fo.x, occupied.max_y()),
-                Footprint::new(free.footprint().width(), free.max_y() - occupied.max_y()),
+                crate::metric::Cell::new(fo.x, *occupied.max_y()),
+                Footprint::new(free.footprint().width(), *free.max_y() - *occupied.max_y()),
             ));
         }
     }
@@ -222,7 +259,7 @@ fn prune_contained(rects: &mut Vec<RegionRect>) {
     while i < rects.len() {
         let mut contained = false;
         for (j, other) in rects.iter().enumerate() {
-            if i != j && other.contains_rect(rects[i]) && (rects[i] != *other || j < i) {
+            if i != j && *other.contains_rect(rects[i]) && (rects[i] != *other || j < i) {
                 contained = true;
                 break;
             }

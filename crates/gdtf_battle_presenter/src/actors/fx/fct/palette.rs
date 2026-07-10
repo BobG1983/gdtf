@@ -170,7 +170,7 @@ pub fn severity_color(severity: Severity) -> Color {
             /// The span of wounding ranks (Minor=1 … Critical=3) the ramp interpolates
             /// across, so Critical lands at `t = 1`.
             const WOUND_RANK_SPAN: f32 = 2.0;
-            let t = ((f32::from(wound.rank()) - MIN_WOUND_RANK) / WOUND_RANK_SPAN).clamp(0.0, 1.0);
+            let t = ((f32::from(*wound.rank()) - MIN_WOUND_RANK) / WOUND_RANK_SPAN).clamp(0.0, 1.0);
             WOUND_AMBER.mix(&WOUND_AMBER_DEEP, t)
         }
     }

@@ -3,7 +3,7 @@
 
 use crate::{
     ganger::{Facing, Position, Stance, StanceKind},
-    metric::{SimPos, cell_center},
+    metric::{SimPos, SimUnit, cell_center},
     tuning::{CombatTuning, MuzzleHeight},
 };
 
@@ -32,9 +32,9 @@ pub(crate) const fn muzzle_height(stance: StanceKind, tuning: &CombatTuning) -> 
 /// below `corner + 1.0` (so a point clamped to the top edge still buckets to this
 /// cell under [`crate::metric::pos_to_cell`], which floors). No pixel — this is a
 /// sim-unit (cell-unit) clamp.
-pub(crate) fn clamp_within_cell(coord: f32, corner: f32) -> f32 {
-    let upper = (corner + 1.0).next_down();
-    coord.clamp(corner, upper)
+pub(crate) fn clamp_within_cell(coord: SimUnit, corner: SimUnit) -> SimUnit {
+    let upper = (*corner + 1.0).next_down();
+    SimUnit::new((*coord).clamp(*corner, upper))
 }
 
 /// The shooter's **3D muzzle point** as a [`SimPos`] (resolution.md §1
@@ -74,12 +74,12 @@ pub fn muzzle_position(
         clippy::cast_precision_loss,
         reason = "grid coords are tiny (0..60); the f32 conversion of the integer corner is exact for this range"
     )]
-    let muzzle_x = clamp_within_cell(raw_x, cell.x as f32);
+    let muzzle_x = *clamp_within_cell(SimUnit::new(raw_x), SimUnit::new(cell.x as f32));
     #[expect(
         clippy::cast_precision_loss,
         reason = "grid coords are tiny (0..60); the f32 conversion of the integer corner is exact for this range"
     )]
-    let muzzle_y = clamp_within_cell(raw_y, cell.y as f32);
+    let muzzle_y = *clamp_within_cell(SimUnit::new(raw_y), SimUnit::new(cell.y as f32));
 
     // z = storey floor (the level cast to f32) + the per-stance muzzle level-fraction.
     let muzzle_z = f32::from(*level) + *muzzle_height(*stance, tuning);

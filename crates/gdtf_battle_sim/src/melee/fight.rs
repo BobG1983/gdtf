@@ -26,7 +26,9 @@ use bevy::prelude::Deref;
 
 use crate::{
     ganger::Fight,
-    resolve_hit::{HitResult, HpDamage, IntegrityWear, PenetratingDamage},
+    resolve_hit::{
+        DamageMagnitude, DamageReal, HitResult, HpDamage, IntegrityWear, PenetratingDamage,
+    },
     rng::FightRng,
     tuning::{FightVariance, MeleeTuning},
 };
@@ -242,14 +244,14 @@ pub fn melee_damage_mult(margin: FightMargin, tuning: &MeleeTuning) -> MeleeDama
 /// the [`resolve_hit`](crate::resolve_hit::resolve_hit) `round_to_i32` idiom. The
 /// clamp + localized `#[expect]` is the crate's guarded-cast idiom, so no
 /// `unwrap`/`expect` is needed.
-const fn round_to_i32(value: f32) -> i32 {
-    let rounded = value.round();
+const fn round_to_i32(value: DamageReal) -> DamageMagnitude {
+    let rounded = value.get().round();
     #[expect(
         clippy::cast_possible_truncation,
         reason = "clamped to the i32 range below, so the cast cannot wrap; fractional part is gone after round"
     )]
     let clamped = rounded.clamp(i32::MIN as f32, i32::MAX as f32) as i32;
-    clamped
+    DamageMagnitude::new(clamped)
 }
 
 /// Scale one `i32` damage component by the melee multiplier and round back to
@@ -261,8 +263,8 @@ const fn round_to_i32(value: f32) -> i32 {
     clippy::cast_precision_loss,
     reason = "i32 damage → f32 for the melee multiply; resolved-damage magnitudes are far inside f32's exact-integer range"
 )]
-fn scale_damage(component: i32, mult: MeleeDamageMult) -> i32 {
-    round_to_i32(component as f32 * *mult)
+fn scale_damage(component: DamageMagnitude, mult: MeleeDamageMult) -> DamageMagnitude {
+    round_to_i32(DamageReal::new(*component as f32 * *mult))
 }
 
 /// Apply the §7 [`MeleeDamageMult`] to a resolved [`HitResult`] — the seam between
@@ -298,8 +300,11 @@ fn scale_damage(component: i32, mult: MeleeDamageMult) -> i32 {
 #[must_use]
 pub fn apply_melee_multiplier(hit: HitResult, mult: MeleeDamageMult) -> HitResult {
     HitResult {
-        penetrating: PenetratingDamage::new(scale_damage(*hit.penetrating, mult)),
-        hp_damage:   HpDamage::new(scale_damage(*hit.hp_damage, mult)),
-        wear:        IntegrityWear::new(scale_damage(*hit.wear, mult)),
+        penetrating: PenetratingDamage::new(*scale_damage(
+            DamageMagnitude::new(*hit.penetrating),
+            mult,
+        )),
+        hp_damage:   HpDamage::new(*scale_damage(DamageMagnitude::new(*hit.hp_damage), mult)),
+        wear:        IntegrityWear::new(*scale_damage(DamageMagnitude::new(*hit.wear), mult)),
     }
 }

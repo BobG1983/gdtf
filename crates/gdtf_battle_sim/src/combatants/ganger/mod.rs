@@ -46,7 +46,7 @@ mod test;
 
 pub use attributes::{Aim, Cool, GangerAttributes, Grit, Reflexes, Speed, Strength};
 pub use derive_stats::{DerivedStats, derive_stats};
-pub use direction::{Direction, Facing, ForwardStep};
+pub use direction::{Direction, Facing, ForwardStep, RingSteps};
 pub use gang::{GangMember, GangName, GangRegistry, GangRoster};
 pub use injury_projection::{derive_stats_with_injuries, effective_luck, effective_toughness};
 pub use life::{Active, LifeState, Stabilized};

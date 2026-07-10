@@ -220,7 +220,7 @@ fn head_hit_outscores_leg_hit() {
 fn severity_vocabulary_and_part_mod_newtype() {
     assert_eq!(Severity::ALL.len(), 5);
     // Ascending ranks, distinct per bucket.
-    let ranks: Vec<u8> = Severity::ALL.iter().map(|s| s.rank()).collect();
+    let ranks: Vec<u8> = Severity::ALL.iter().map(|s| *s.rank()).collect();
     assert_eq!(ranks, vec![0, 1, 2, 3, 4]);
     // The part-mod newtype derefs to its inner f32 (arbitrary literal).
     assert!((*PartSeverityMod::new(3.5) - 3.5).abs() < f32::EPSILON);

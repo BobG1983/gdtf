@@ -71,7 +71,7 @@ pub(super) fn status_line(
 /// Resolve a theme's display name from the registry, or the [`NO_THEME`] placeholder for the nil
 /// sentinel / an unknown / an absent registry (never a panic).
 fn theme_label(theme: ThemeUuid, themes: Option<&UuidThemeRegistry>) -> String {
-    if theme.is_nil() {
+    if *theme.is_nil() {
         return NO_THEME.to_owned();
     }
     themes

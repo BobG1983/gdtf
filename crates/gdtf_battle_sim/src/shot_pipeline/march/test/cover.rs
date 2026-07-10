@@ -21,7 +21,7 @@ fn cover_stops_non_strictly_higher_round() {
 
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -58,7 +58,7 @@ fn destroyed_cover_passes_through() {
 
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,
@@ -96,7 +96,7 @@ fn ledger_destroyed_flag_passes_through() {
 
     let result = march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         &grid,
         &surface,
         &cover,

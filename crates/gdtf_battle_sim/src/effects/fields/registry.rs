@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use super::FieldDef;
 use crate::{
-    effects::fields::{ApplyFieldEffect, FieldEffect, FieldTurns},
+    effects::fields::{ApplyFieldEffect, FieldEffect, FieldExpired, FieldTurns},
     metric::CellLevel,
     registry::Registry,
 };
@@ -153,10 +153,12 @@ impl PlacedField {
     /// here). At most ONE consequence owns the lifetime (the def's Duration); the others
     /// answer the defaulted never-expires and never touch the countdown, so `any` is
     /// exact — it cannot short-circuit past a decrement.
-    pub fn tick_down(&mut self) -> bool {
-        FieldEffect::consequences_of(&self.def)
-            .iter()
-            .any(|consequence| *consequence.count_down_one_turn(&mut self.remaining))
+    pub fn tick_down(&mut self) -> FieldExpired {
+        FieldExpired::new(
+            FieldEffect::consequences_of(&self.def)
+                .iter()
+                .any(|consequence| *consequence.count_down_one_turn(&mut self.remaining)),
+        )
     }
 }
 
@@ -221,7 +223,7 @@ impl FieldRegistry {
     /// field never counts down and never expires (each placement's step is the palette's
     /// Duration consequence, via [`PlacedField::tick_down`]).
     pub fn tick_down_and_expire(&mut self) {
-        self.0.retain(|_cell, placed| !placed.tick_down());
+        self.0.retain(|_cell, placed| !*placed.tick_down());
     }
 
     /// How many live fields the registry holds — the count a seed / expiry test asserts.

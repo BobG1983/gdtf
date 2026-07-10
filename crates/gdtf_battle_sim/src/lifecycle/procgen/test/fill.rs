@@ -73,13 +73,13 @@ fn tuning(density: f32, large_area: u32, scatter_k: u8) -> ProcgenTuning {
 /// fill prefab + every dead-space region) — used to assert the playable area is never
 /// shrunk (C3: board fully accounted for, no lost cells).
 fn covered_plus_dead(filled: &FilledPlacement) -> i64 {
-    let mut sum = filled.placement().player().region().cell_count()
-        + filled.placement().enemy().region().cell_count();
+    let mut sum = *filled.placement().player().region().cell_count()
+        + *filled.placement().enemy().region().cell_count();
     for p in filled.fill() {
-        sum += p.region().cell_count();
+        sum += *p.region().cell_count();
     }
     for d in filled.dead_space() {
-        sum += d.cell_count();
+        sum += *d.cell_count();
     }
     sum
 }
@@ -257,7 +257,7 @@ fn dead_space_is_padded_with_default_floor_not_shrunk() {
     };
 
     let board = RegionRect::board(board_size);
-    let board_cells = board.cell_count();
+    let board_cells = *board.cell_count();
     assert!(
         !filled.dead_space().is_empty(),
         "remaining dead space must be padded with default_floor regions (C3), not dropped",

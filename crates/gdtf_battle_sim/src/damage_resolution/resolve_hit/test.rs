@@ -156,8 +156,8 @@ fn favorable_beats_resisted_through_punch_and_shred() {
     let mult_fav = matchup_multiplier(Matchup::Favorable, &tuning);
     let mult_res = matchup_multiplier(Matchup::Resisted, &tuning);
     let expected_hp = |mult: MatchupMultiplier| {
-        let punch_scaled = scale_by_matchup(10, mult);
-        let eff_pen = (punch_scaled - *armor.hardness).max(0);
+        let punch_scaled = scale_by_matchup(DamageMagnitude::new(10), mult);
+        let eff_pen = (*punch_scaled - *armor.hardness).max(0);
         let inner = 14 - (*armor.protection - eff_pen).max(0);
         (*armor.floor).max(inner)
     };
@@ -198,10 +198,10 @@ fn shred_adds_to_wear_and_matchup_leaves_damage_floor() {
     let no_shred = resolve(0, Matchup::Neutral);
     let with_shred = resolve(5, Matchup::Neutral);
     let neutral_mult = matchup_multiplier(Matchup::Neutral, &tuning);
-    let scaled_shred = scale_by_matchup(5, neutral_mult);
+    let scaled_shred = scale_by_matchup(DamageMagnitude::new(5), neutral_mult);
     assert_eq!(
         *with_shred.wear - *no_shred.wear,
-        scaled_shred,
+        *scaled_shred,
         "shred must add to integrity wear on top of the soak/pen term",
     );
     assert!(

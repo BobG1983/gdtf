@@ -60,8 +60,8 @@ pub fn check_outcome(
     let player = **player;
 
     // Existence from the ROSTER (the gangs fielded at setup), not the live scan.
-    let enemies_fielded = roster.has_enemy_of(player);
-    let players_fielded = roster.has_player(player);
+    let enemies_fielded = *roster.has_enemy_of(player);
+    let players_fielded = *roster.has_player(player);
 
     // Liveness from the live scan: "up" iff Alive (Downed AND Dead both count OUT).
     let mut any_enemy_up = false;

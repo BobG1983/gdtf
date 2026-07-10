@@ -13,5 +13,5 @@ mod spawn_gangers;
 mod weapon_scenes;
 
 pub use orchestrate::setup_battle;
-pub use registries::{BattleRegistries, BattleSetup};
-pub use resolve::has_stacked_gangers;
+pub use registries::{BattleRegistries, BattleSetup, GangerCount};
+pub use resolve::{StackedGangers, has_stacked_gangers};

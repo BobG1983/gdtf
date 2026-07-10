@@ -16,6 +16,8 @@
 //! [`Reactions`] / [`Morale`] stay `f32` (skill stats, not pools), so they carry the raw
 //! weighted sum with no rounding.
 
+use bevy::prelude::Deref;
+
 use crate::{
     ganger::{
         Bottle, Fight, Hp, HpMax, Morale, Reactions, Shooting, Tu, TuMax, Wounds, WoundsMax,
@@ -23,6 +25,47 @@ use crate::{
     },
     tuning::GangerStatTuning,
 };
+
+/// A computed combat stat's **raw real magnitude** — the `f32` weighted-attribute
+/// sum a skill stat carries or a pool derivation rounds, before it is committed to
+/// its typed field (`docs/combat/stats.md` §"Computed combat stats", GTW-384).
+///
+/// The shared real intermediate every derivation produces: the skill stats
+/// ([`Shooting`] / [`Fight`] / [`Reactions`] / [`Morale`]) store it verbatim, the
+/// integer pools round it via [`round_to_u16`] / [`round_to_u8`]. Names the
+/// pre-storage magnitude so a derivation helper does not carry a bare `f32`
+/// (no-bare-types). Private inner + derived [`Deref`]; the `const fn` rounding
+/// helpers read the inner directly (same module) since derived `Deref` is not
+/// `const`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+pub(crate) struct StatMagnitude(f32);
+
+impl StatMagnitude {
+    /// Build a stat magnitude from its computed real value.
+    #[must_use]
+    pub(crate) const fn new(magnitude: f32) -> Self {
+        Self(magnitude)
+    }
+}
+
+/// The **integer value a small pool derivation rounds to** — the `u8` count a
+/// [`Tu`] / [`Wounds`] / [`Bottle`] (or their maxes) derivation yields before the
+/// caller commits it to that specific pool type.
+///
+/// A transient rounding result shared by the three `u8` pool derivations (each stays
+/// its own distinct stored type — [`Tu`] / [`Wounds`] / [`Bottle`] — this only names
+/// the rounded count on the way there). Names it so [`round_to_u8`] does not return a
+/// bare `u8` (no-bare-types). Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct PoolValue(u8);
+
+impl PoolValue {
+    /// Build a pool value from its rounded count.
+    #[must_use]
+    pub(crate) const fn new(value: u8) -> Self {
+        Self(value)
+    }
+}
 
 /// The full set of **computed combat stats** [`derive_stats`] yields for one ganger
 /// (`docs/combat/stats.md` §"Computed combat stats", GTW-384).
@@ -66,8 +109,8 @@ pub struct DerivedStats {
 
 /// Round a non-negative `f32` to the nearest `u16`, clamped into range — the pool
 /// rounding rule for [`Hp`] (`docs/combat/stats.md`, GTW-384).
-const fn round_to_u16(value: f32) -> u16 {
-    let rounded = value.round();
+const fn round_to_u16(value: StatMagnitude) -> Hp {
+    let rounded = value.0.round();
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -75,7 +118,7 @@ const fn round_to_u16(value: f32) -> u16 {
                   the fractional part is gone after round"
     )]
     let clamped = rounded.clamp(0.0, u16::MAX as f32) as u16;
-    clamped
+    Hp::new(clamped)
 }
 
 /// The weighted-attribute sum `Σ weightᵢ · attributeᵢ` — the SHAPE of every skill / pool
@@ -87,16 +130,16 @@ const fn round_to_u16(value: f32) -> u16 {
 /// so the C8(a) derivation-relation test computes its EXPECTED value through the SAME
 /// fused chain — bit-identical, so the relation assert is exact (not tolerance-based).
 #[must_use]
-pub(crate) fn weighted_sum(terms: &[(f32, f32)]) -> f32 {
-    terms.iter().fold(0.0, |acc, &(weight, attribute)| {
+pub(crate) fn weighted_sum(terms: &[(f32, f32)]) -> StatMagnitude {
+    StatMagnitude::new(terms.iter().fold(0.0, |acc, &(weight, attribute)| {
         weight.mul_add(attribute, acc)
-    })
+    }))
 }
 
 /// Round a non-negative `f32` to the nearest `u8`, clamped into range — the pool
 /// rounding rule for the tiny pools ([`Wounds`] / [`Tu`] / [`Bottle`]).
-const fn round_to_u8(value: f32) -> u8 {
-    let rounded = value.round();
+const fn round_to_u8(value: StatMagnitude) -> PoolValue {
+    let rounded = value.0.round();
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -104,7 +147,7 @@ const fn round_to_u8(value: f32) -> u8 {
                   the fractional part is gone after round"
     )]
     let clamped = rounded.clamp(0.0, u8::MAX as f32) as u8;
-    clamped
+    PoolValue::new(clamped)
 }
 
 /// **Derive** the computed combat stats from the eight authored attributes × the
@@ -170,34 +213,33 @@ pub fn derive_stats(attributes: &GangerAttributes, tuning: &GangerStatTuning) ->
 
     // TU = tu_base + tu_per_speed·Speed (the action budget; rounded to the u8 pool).
     let tu_f = (*tuning.tu_per_speed).mul_add(speed, *tuning.tu_base);
-    let tu = round_to_u8(tu_f);
+    let tu = round_to_u8(StatMagnitude::new(tu_f));
 
     // HP = grit·Grit + toughness·Toughness + cool·Cool (the knock-down pool; Cool ~0.5 by default).
-    let hp_f = weighted_sum(&[
+    let hp = round_to_u16(weighted_sum(&[
         (*tuning.hp.grit, grit),
         (*tuning.hp.toughness, toughness),
         (*tuning.hp.cool, cool),
-    ]);
-    let hp = round_to_u16(hp_f);
+    ]));
 
     // Wounds = round(HP / wounds_per_hp) — the second derivation level, off the ROUNDED hp
     // so the displayed knock-down pool and the divided life pool agree.
-    let wounds = round_to_u8(f32::from(hp) / *tuning.wounds_per_hp);
+    let wounds = round_to_u8(StatMagnitude::new(f32::from(*hp) / *tuning.wounds_per_hp));
 
     // Bottle = round(Morale / bottle_per_morale) — the psychological mirror of Wounds.
-    let bottle = round_to_u8(morale / *tuning.bottle_per_morale);
+    let bottle = round_to_u8(StatMagnitude::new(*morale / *tuning.bottle_per_morale));
 
     DerivedStats {
-        shooting:   Shooting::new(shooting),
-        fight:      Fight::new(fight),
-        reactions:  Reactions::new(reactions),
-        morale:     Morale::new(morale),
-        tu:         Tu::new(tu),
-        tu_max:     TuMax::new(tu),
-        hp:         Hp::new(hp),
-        hp_max:     HpMax::new(hp),
-        wounds:     Wounds::new(wounds),
-        wounds_max: WoundsMax::new(wounds),
-        bottle:     Bottle::new(bottle),
+        shooting: Shooting::new(*shooting),
+        fight: Fight::new(*fight),
+        reactions: Reactions::new(*reactions),
+        morale: Morale::new(*morale),
+        tu: Tu::new(*tu),
+        tu_max: TuMax::new(*tu),
+        hp,
+        hp_max: HpMax::new(*hp),
+        wounds: Wounds::new(*wounds),
+        wounds_max: WoundsMax::new(*wounds),
+        bottle: Bottle::new(*bottle),
     }
 }

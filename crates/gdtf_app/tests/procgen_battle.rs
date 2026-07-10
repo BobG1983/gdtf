@@ -106,7 +106,7 @@ fn skirmish_ron_authors_no_terrain() {
         "skirmish.ron must author no vertical_links (they are terrain)",
     );
     assert!(
-        situation.default_floor.is_nil(),
+        *situation.default_floor.is_nil(),
         "skirmish.ron must author no default_floor (procgen supplies it)",
     );
 }

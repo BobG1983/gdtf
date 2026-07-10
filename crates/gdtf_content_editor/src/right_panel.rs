@@ -74,7 +74,7 @@ pub(crate) fn seed_default_theme(
     let (Some(themes), Some(mut session)) = (themes, session) else {
         return;
     };
-    if !session.theme().is_nil() {
+    if !*session.theme().is_nil() {
         return;
     }
     let mut entries: Vec<(String, ThemeUuid)> = themes

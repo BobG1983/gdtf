@@ -62,6 +62,11 @@ pub use emit::{emit_level, generate_level};
 pub use error::PackingError;
 pub use fill::{FilledPlacement, fill_placement, fill_placement_with};
 pub use findings::{EmittedLevel, ProcgenFinding};
-pub use geometry::{Footprint, Margin, MinPlayerSide, RegionRect};
+pub use geometry::{
+    CellCount, Footprint, Margin, MinPlayerSide, RectContains, RectNonEmpty, RectsIntersect,
+    RegionRect,
+};
 pub use packer::{MaxRectsPacker, SplitMode};
-pub use tuning::{DeadRectScatterCount, LargePrefabAreaThreshold, MinDensityFloor, ProcgenTuning};
+pub use tuning::{
+    DeadRectScatterCount, LargePrefabAreaThreshold, MinDensityFloor, ProcgenTuning, ScatterCount,
+};

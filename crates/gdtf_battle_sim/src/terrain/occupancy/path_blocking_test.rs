@@ -19,9 +19,9 @@ use crate::{
     terrain::entity::{BlocksPathfinding, TerrainCell},
 };
 
-/// A `(x, y, level)` cell-key helper.
-fn key(x: i32, y: i32, level: u8) -> CellLevel {
-    CellLevel::new(Cell::new(x, y), Level::new(level))
+/// A `(cell, level)` cell-key helper.
+fn key(cell: Cell, level: Level) -> CellLevel {
+    CellLevel::new(cell, level)
 }
 
 /// Build the headless app: `MinimalPlugins` + the full grid resources + the maintenance
@@ -48,7 +48,7 @@ fn path_blocked(app: &App, at: CellLevel) -> Option<PathBlocked> {
 /// again: the projection keeps the path-blocking surface in sync via change detection.
 #[test]
 fn marker_add_remove_flips_path_blocking() {
-    let at = key(3, 4, 0);
+    let at = key(Cell::new(3, 4), Level::new(0));
     let mut app = headless_app();
 
     // Spawn a terrain entity carrying the marker. `Added<BlocksPathfinding>` fires on this
@@ -99,7 +99,7 @@ fn marker_add_remove_flips_path_blocking() {
 /// (Belt-and-braces: the runtime removal path the cover-smash flow could later use.)
 #[test]
 fn despawning_marked_entity_re_opens_cell() {
-    let at = key(7, 2, 1);
+    let at = key(Cell::new(7, 2), Level::new(1));
     let mut app = headless_app();
     let entity = app
         .world_mut()
@@ -125,8 +125,8 @@ fn despawning_marked_entity_re_opens_cell() {
 /// blocked (the projection is per-cell, not all-or-nothing).
 #[test]
 fn per_cell_projection_is_independent() {
-    let a = key(1, 1, 0);
-    let b = key(2, 2, 0);
+    let a = key(Cell::new(1, 1), Level::new(0));
+    let b = key(Cell::new(2, 2), Level::new(0));
     let mut app = headless_app();
     let ent_a = app
         .world_mut()

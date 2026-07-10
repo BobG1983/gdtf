@@ -126,7 +126,7 @@ macro_rules! impl_sim_stream {
             #[must_use]
             pub fn from_root(root: BattleSeed) -> Self {
                 let seed = fnv1a64(root, Self::LABEL.as_bytes());
-                Self(ChaCha12Rng::seed_from_u64(seed))
+                Self(ChaCha12Rng::seed_from_u64(seed.get()))
             }
 
             /// Borrow the inner [`ChaCha12Rng`] as `&mut impl rand::Rng`.
@@ -185,7 +185,7 @@ macro_rules! impl_sim_stream {
             /// stay aligned across every downstream draw. (GTW-644's defect was a guard
             /// that SKIPPED the degenerate draw and silently sheared the stream.)
             pub fn random_range_or_midpoint(&mut self, range: core::ops::Range<f32>) -> f32 {
-                super::safe_draw::uniform_or_midpoint(&mut self.0, range)
+                *super::safe_draw::uniform_or_midpoint(&mut self.0, range)
             }
         }
     };

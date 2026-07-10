@@ -54,6 +54,37 @@ impl BandFraction {
     }
 }
 
+/// The rank of a [`HeightBand`] on the LOW < MID < HIGH ladder — the orderable view
+/// of the bands the clearance and brace gates compare.
+///
+/// [`HeightBand`] is a plain three-variant enum (deliberately no `Ord`), so any
+/// "strictly higher" / "reaches this band" comparison needs an explicit ordering:
+/// this newtype IS that ordering, so a rank comparison is a `>`/`>=` over the derived
+/// [`Ord`]. It is **not** a band *threshold* — the band edges still live in
+/// [`crate::tuning`] and reach a band only through [`band_for`]; this merely orders
+/// the enum the docs already order (`docs/combat/resolution.md` §2's LOW/MID/HIGH
+/// ladder). A named newtype over `u8` (no-bare-types: a band rank is a domain ordinal,
+/// not a bare integer). Private inner + derived [`Deref`]; shared by the shot-pipeline
+/// clearance test and the stability brace gate so the one ladder is pinned once.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct BandRank(u8);
+
+impl BandRank {
+    /// Build a band rank from its rung on the LOW(0) < MID(1) < HIGH(2) ladder.
+    #[must_use]
+    pub const fn new(rung: u8) -> Self {
+        Self(rung)
+    }
+
+    /// The rung on the ladder as its raw `u8` — a `const` reader so a `const fn`
+    /// clearance predicate can compare two ranks (the derived [`Ord`] operators are
+    /// not usable in a `const` context).
+    #[must_use]
+    pub const fn get(self) -> u8 {
+        self.0
+    }
+}
+
 /// Classify a within-level clearance fraction into a [`HeightBand`] using the
 /// tunable [`BandEdge`](crate::tuning::BandEdge) level-fraction edges off
 /// [`CombatTuning`] — **no hardcoded band numbers** (C6,

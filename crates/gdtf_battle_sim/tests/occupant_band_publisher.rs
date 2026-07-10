@@ -35,7 +35,7 @@ use bevy::{
 };
 use gdtf_battle_sim::{
     cover::{CoverLedger, HeightBand},
-    march::{MarchKind, march_vector},
+    march::{MarchDir, MarchKind, march_vector},
     metric::cell_center,
     occupancy_sync::OccupancyMaintenancePlugin,
     prelude::{
@@ -117,7 +117,7 @@ fn march_mid_round_through(app: &App, cell: CellLevel) -> MarchKind {
 
     march_vector(
         muzzle,
-        dir,
+        MarchDir::new(dir),
         occupancy,
         &surface,
         &cover,

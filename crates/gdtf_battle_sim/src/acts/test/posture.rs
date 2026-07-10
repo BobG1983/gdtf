@@ -74,7 +74,7 @@ fn set_facing_dispatch_changes_facing_and_spends_the_tuning_leaf() {
         .world()
         .get_resource::<CombatTuning>()
         .map(|t| *t.turn_tu);
-    let expected_drop = per_step.map(|c| Direction::North.steps_to(Direction::East) * c);
+    let expected_drop = per_step.map(|c| *Direction::North.steps_to(Direction::East) * c);
     let tu_before = app.world().get::<Tu>(actor).map(|t| **t);
 
     app.world_mut()

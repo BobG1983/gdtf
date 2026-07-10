@@ -1,7 +1,10 @@
 //! The [`Direction`] compass: `forward_step` unit-vectors and the 8-way ring
 //! helpers (`steps_to`, `from_cells`, `rotated_toward`).
 
-use crate::{ganger::Direction, metric::Cell};
+use crate::{
+    ganger::{Direction, RingSteps},
+    metric::Cell,
+};
 
 // --- GTW-168 AC #1: Direction::forward_step() — each of the 8 variants maps to
 // a documented ground-plane unit step in sim units, sign + axis matching the
@@ -115,12 +118,12 @@ fn steps_to_is_the_short_way_45deg_count_for_every_pair() {
             let d = ia.abs_diff(ib);
             let expected = d.min(8 - d);
 
-            let got = a.steps_to(b);
+            let got = *a.steps_to(b);
             assert_eq!(got, expected, "{a:?}.steps_to({b:?}) must be min(d, 8-d)");
             // 0 iff equal.
             assert_eq!(got == 0, a == b, "{a:?}.steps_to({b:?}) is 0 iff equal");
             // Symmetric.
-            assert_eq!(got, b.steps_to(a), "steps_to must be symmetric");
+            assert_eq!(got, *b.steps_to(a), "steps_to must be symmetric");
             // Never exceeds 4 (half the ring).
             assert!(got <= 4, "{a:?}.steps_to({b:?}) = {got} must not exceed 4");
         }
@@ -134,7 +137,7 @@ fn steps_to_is_the_short_way_45deg_count_for_every_pair() {
         (Direction::SouthEast, Direction::NorthWest),
     ];
     for (a, b) in opposites {
-        assert_eq!(a.steps_to(b), 4, "{a:?} and {b:?} are opposite (4 steps)");
+        assert_eq!(*a.steps_to(b), 4, "{a:?} and {b:?} are opposite (4 steps)");
     }
 }
 
@@ -184,52 +187,56 @@ fn from_cells_points_the_8_way_compass_toward_the_target() {
 fn rotated_toward_advances_the_short_way_clamped_with_clockwise_tie() {
     // Clockwise short way (North -> East is +2 clockwise).
     assert_eq!(
-        Direction::North.rotated_toward(Direction::East, 1),
+        Direction::North.rotated_toward(Direction::East, RingSteps::new(1)),
         Direction::NorthEast,
         "one step North toward East is NorthEast",
     );
     assert_eq!(
-        Direction::North.rotated_toward(Direction::East, 2),
+        Direction::North.rotated_toward(Direction::East, RingSteps::new(2)),
         Direction::East,
         "two steps North toward East reach East",
     );
     // Clamp: more steps than needed never overshoots the target.
     assert_eq!(
-        Direction::North.rotated_toward(Direction::East, 9),
+        Direction::North.rotated_toward(Direction::East, RingSteps::new(9)),
         Direction::East,
         "rotated_toward clamps — it never overshoots the target",
     );
 
     // Opposite facing (North <-> South, cw == ccw == 4): the tie breaks CLOCKWISE.
     assert_eq!(
-        Direction::North.rotated_toward(Direction::South, 1),
+        Direction::North.rotated_toward(Direction::South, RingSteps::new(1)),
         Direction::NorthEast,
         "the opposite-facing tie breaks clockwise (one step is NorthEast)",
     );
     assert_eq!(
-        Direction::North.rotated_toward(Direction::South, 2),
+        Direction::North.rotated_toward(Direction::South, RingSteps::new(2)),
         Direction::East,
         "two clockwise steps from North toward South reach East",
     );
     assert_eq!(
-        Direction::North.rotated_toward(Direction::South, 4),
+        Direction::North.rotated_toward(Direction::South, RingSteps::new(4)),
         Direction::South,
         "four steps from North reach the opposite South",
     );
 
     // Counter-clockwise short way (North -> West is -2 counter-clockwise).
     assert_eq!(
-        Direction::North.rotated_toward(Direction::West, 1),
+        Direction::North.rotated_toward(Direction::West, RingSteps::new(1)),
         Direction::NorthWest,
         "one step North toward West (the short way) is NorthWest",
     );
 
     // Identity: rotating toward self, or zero steps, stays put — for ALL facings.
     for &d in &RING {
-        assert_eq!(d.rotated_toward(d, 3), d, "{d:?} toward itself stays put");
+        assert_eq!(
+            d.rotated_toward(d, RingSteps::new(3)),
+            d,
+            "{d:?} toward itself stays put"
+        );
         for &t in &RING {
             assert_eq!(
-                d.rotated_toward(t, 0),
+                d.rotated_toward(t, RingSteps::new(0)),
                 d,
                 "{d:?}.rotated_toward({t:?}, 0) must stay put",
             );

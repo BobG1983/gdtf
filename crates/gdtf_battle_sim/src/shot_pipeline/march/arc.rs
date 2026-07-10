@@ -32,17 +32,51 @@
 //! the weapon's [`HitType::Blast`](crate::weapon::HitType) there. Pure, render-free model
 //! logic; **zero pixels**.
 
+use bevy::prelude::Deref;
+
 use crate::{
     clearance::round_band_for_cell,
     march::{
         dda::MAX_STEPS,
-        geom::{key_of, key_of_clamped, xy_in_grid, z_in_grid},
+        geom::{VoxelIndex, key_of, key_of_clamped, xy_in_grid, z_in_grid},
         result::{MarchKind, MarchResult},
     },
-    metric::{CellLevel, MAX_LEVELS, SimPos, cell_center, pos_to_cell},
+    metric::{CellLevel, MAX_LEVELS, SimPos, SimUnit, cell_center, pos_to_cell},
     surface::{SlabState, SurfaceGrid},
     tuning::CombatTuning,
 };
+
+/// The along-trajectory **horizontal fraction** of the lob parabola, `u ∈ [0, 1]` —
+/// `0` at the muzzle, `1` at the target, `0.5` at the apex.
+///
+/// A named newtype over `f32` (no-bare-types: a trajectory fraction is a dimensionless
+/// domain value, distinct from a sim-unit height or a ray parameter) so the parabola's
+/// progress can never be confused with a coordinate. Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq)]
+struct ArcFraction(f32);
+
+impl ArcFraction {
+    /// Build a horizontal trajectory fraction (`0..=1`).
+    const fn new(fraction: f32) -> Self {
+        Self(fraction)
+    }
+}
+
+/// The number of sub-cell **samples** along the lob parabola — the parabola is
+/// evaluated at this many fractions between muzzle and target (at least one, capped by
+/// [`MAX_STEPS`]).
+///
+/// A named newtype over `u32` (no-bare-types: a sample count is a domain quantity, not
+/// a bare integer). Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+struct SampleCount(u32);
+
+impl SampleCount {
+    /// Build a parabola sample count.
+    const fn new(count: u32) -> Self {
+        Self(count)
+    }
+}
 
 /// The horizontal sub-cell sampling cadence of the parabola, in sim units — a fixed, small
 /// step so the polyline never skips a thin roof slab between two samples (GTW-546 risk
@@ -74,9 +108,9 @@ const APEX_PER_CELL: f32 = 0.02;
 /// interpolation from `z0` (muzzle) to `z1` (target) PLUS a symmetric parabolic bump peaking
 /// at `u == 0.5` with height `apex`. `4·u·(1−u)` is the unit parabola (0 at the ends, 1 at
 /// the middle), scaled by `apex`, so the round rises then falls onto the target — the lob.
-fn arc_z(z0: f32, z1: f32, u: f32, apex: f32) -> f32 {
-    let straight = (z1 - z0).mul_add(u, z0);
-    apex.mul_add(4.0 * u * (1.0 - u), straight)
+fn arc_z(z0: SimUnit, z1: SimUnit, u: ArcFraction, apex: SimUnit) -> SimUnit {
+    let straight = (*z1 - *z0).mul_add(*u, *z0);
+    SimUnit::new((*apex).mul_add(4.0 * *u * (1.0 - *u), straight))
 }
 
 /// March a LOBBED grenade along a deterministic parabola from `thrower` to `target` and
@@ -120,14 +154,18 @@ pub fn march_arc(
 
     // Degenerate / out-of-grid endpoints: a graceful Miss at the clamped thrower cell (AC
     // #7 no-panic parity with the straight march).
-    if !xy_in_grid(thrower.x, thrower.y)
-        || !z_in_grid(thrower.z)
-        || !xy_in_grid(target.x, target.y)
-        || !z_in_grid(target.z)
+    if !*xy_in_grid(VoxelIndex::new(thrower.x), VoxelIndex::new(thrower.y))
+        || !*z_in_grid(VoxelIndex::new(thrower.z))
+        || !*xy_in_grid(VoxelIndex::new(target.x), VoxelIndex::new(target.y))
+        || !*z_in_grid(VoxelIndex::new(target.z))
     {
         return MarchResult {
             kind:   MarchKind::Miss,
-            at:     key_of_clamped(thrower.x, thrower.y, thrower.z),
+            at:     key_of_clamped(
+                VoxelIndex::new(thrower.x),
+                VoxelIndex::new(thrower.y),
+                VoxelIndex::new(thrower.z),
+            ),
             band:   round_band_for_cell(muzzle, tuning),
             impact: muzzle,
         };
@@ -141,22 +179,27 @@ pub fn march_arc(
     let apex = horizontal.mul_add(APEX_PER_CELL, BASE_APEX);
     // The number of sub-cell samples along the parabola — at least one, capped by MAX_STEPS
     // so a pathological range can never spin (AC #7).
-    let steps = arc_sample_count(horizontal);
+    let steps = arc_sample_count(SimUnit::new(horizontal));
 
     // Walk the sampled polyline. `prev` starts at the muzzle; each step advances the
     // horizontal fraction `u` and evaluates the parabola. On a storey-boundary crossing the
     // roof slab is tested; reaching the final sample (u == 1) lands at the target.
     let mut prev = muzzle;
-    for i in 1..=steps {
+    for i in 1..=*steps {
         #[expect(
             clippy::cast_precision_loss,
             reason = "steps is a small sample count bounded by MAX_STEPS; the f32 fraction is exact for this range"
         )]
-        let u = (i as f32) / (steps as f32);
+        let u = ArcFraction::new((i as f32) / (*steps as f32));
         let point = SimPos::new(
-            dx.mul_add(u, muzzle.x),
-            dy.mul_add(u, muzzle.y),
-            arc_z(muzzle.z, landing.z, u, apex),
+            dx.mul_add(*u, muzzle.x),
+            dy.mul_add(*u, muzzle.y),
+            *arc_z(
+                SimUnit::new(muzzle.z),
+                SimUnit::new(landing.z),
+                u,
+                SimUnit::new(apex),
+            ),
         );
         // Test every storey boundary this segment crosses — an intact roof STOPS the lob
         // (AC: blocked by intact roofs), a hole / window PASSES (AC: passes through).
@@ -180,15 +223,15 @@ pub fn march_arc(
 /// The number of parabola samples for a `horizontal` sim-unit range — the range divided by
 /// the [`SAMPLE_STEP`] cadence, at least one, capped by [`MAX_STEPS`] so a pathological range
 /// never spins (AC #7). A zero-range self-throw still samples once (it lands in place).
-fn arc_sample_count(horizontal: f32) -> u32 {
-    let raw = (horizontal / SAMPLE_STEP).ceil();
+fn arc_sample_count(horizontal: SimUnit) -> SampleCount {
+    let raw = (*horizontal / SAMPLE_STEP).ceil();
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
         reason = "raw is a non-negative ceil'd count clamped to 1.0..=MAX_STEPS below, so the u32 cast cannot wrap"
     )]
     let n = raw.clamp(1.0, f32::from(u16::MAX)) as u32;
-    n.clamp(1, MAX_STEPS)
+    SampleCount::new(n.clamp(1, MAX_STEPS))
 }
 
 /// Test the roof slab on EVERY storey boundary the segment `prev → point` crosses — an
@@ -212,26 +255,30 @@ fn roof_block_between(
     surface: &SurfaceGrid,
     tuning: &CombatTuning,
 ) -> Option<MarchResult> {
-    let prev_z = floor_level(prev.z);
-    let cur_z = floor_level(point.z);
+    let prev_z = floor_level(SimUnit::new(prev.z));
+    let cur_z = floor_level(SimUnit::new(point.z));
     if prev_z == cur_z {
         return None; // no storey boundary crossed on this segment
     }
     // Every integer z-plane in `(min .. max]` separates two storeys this segment spans;
     // walk them in flight order so the FIRST intact roof met is the one that blocks.
-    let low = prev_z.min(cur_z) + 1;
-    let high = prev_z.max(cur_z);
+    let low = *prev_z.min(cur_z) + 1;
+    let high = *prev_z.max(cur_z);
     if cur_z > prev_z {
         // Rising: the lob meets the lowest crossed plane first.
         for boundary in low..=high {
-            if let Some(blocked) = roof_block_at(prev, point, boundary, surface, tuning) {
+            if let Some(blocked) =
+                roof_block_at(prev, point, VoxelIndex::new(boundary), surface, tuning)
+            {
                 return Some(blocked);
             }
         }
     } else {
         // Falling: the lob meets the highest crossed plane first.
         for boundary in (low..=high).rev() {
-            if let Some(blocked) = roof_block_at(prev, point, boundary, surface, tuning) {
+            if let Some(blocked) =
+                roof_block_at(prev, point, VoxelIndex::new(boundary), surface, tuning)
+            {
                 return Some(blocked);
             }
         }
@@ -253,16 +300,16 @@ fn roof_block_between(
 fn roof_block_at(
     prev: SimPos,
     point: SimPos,
-    boundary: i32,
+    boundary: VoxelIndex,
     surface: &SurfaceGrid,
     tuning: &CombatTuning,
 ) -> Option<MarchResult> {
-    if !z_in_grid(boundary) {
+    if !*z_in_grid(boundary) {
         return None;
     }
     // In-grid boundaries are 0..MAX_LEVELS (checked above), so this conversion never fails —
     // taking the typed route (instead of an `as` cast) keeps the cast lints inert.
-    let plane = f32::from(u8::try_from(boundary).ok()?);
+    let plane = f32::from(u8::try_from(*boundary).ok()?);
     // Where the segment crosses the plane. The caller only calls with `floor(prev.z) !=
     // floor(point.z)`, so the segment's z-extent is non-zero and the division is well-formed;
     // the clamp guards the interpolant against float dust at the segment ends.
@@ -273,7 +320,7 @@ fn roof_block_at(
         plane,
     );
     let (cell, _) = pos_to_cell(cross);
-    let slab_key = key_of(cell.x, cell.y, boundary);
+    let slab_key = key_of(VoxelIndex::new(cell.x), VoxelIndex::new(cell.y), boundary);
     if surface.slab_state(&slab_key) == SlabState::Present {
         // An intact roof stops the lob at this boundary (AC: blocked by intact roofs). The
         // grenade cannot pass — it lands against the roof where it crossed the plane.
@@ -289,12 +336,12 @@ fn roof_block_at(
 
 /// Floor a sim-unit `z` to its storey index, clamped into the representable
 /// `0..=MAX_LEVELS` range so a sub-floor / above-ceiling sample never wraps the cast.
-fn floor_level(z: f32) -> i32 {
-    let floored = z.floor();
+fn floor_level(z: SimUnit) -> VoxelIndex {
+    let floored = (*z).floor();
     #[expect(
         clippy::cast_possible_truncation,
         reason = "clamped to the i32 range below, so the cast cannot wrap; the fractional part is gone after floor"
     )]
     let clamped = floored.clamp(i32::MIN as f32, i32::MAX as f32) as i32;
-    clamped.clamp(0, i32::from(MAX_LEVELS))
+    VoxelIndex::new(clamped.clamp(0, i32::from(MAX_LEVELS)))
 }

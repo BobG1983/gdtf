@@ -86,7 +86,7 @@ impl std::fmt::Display for PackingError {
                 "player-spawn footprint {}x{} is below the minimum side {}",
                 footprint.width(),
                 footprint.height(),
-                min_side.cells(),
+                *min_side.cells(),
             ),
         }
     }

@@ -85,7 +85,7 @@ fn places_player_and_opposite_enemy() {
         "enemy anchor must be the strict opposite of the player anchor (OQ-2)",
     );
     assert!(
-        !placement
+        !*placement
             .player()
             .region()
             .intersects(placement.enemy().region()),
@@ -94,7 +94,7 @@ fn places_player_and_opposite_enemy() {
     // The chosen player fragment cleared the OQ-5 minimum side.
     assert!(
         Footprint::of(placement.player().prefab().spec().size).min_side()
-            >= MinPlayerSide::DEFAULT.cells(),
+            >= *MinPlayerSide::DEFAULT.cells(),
         "the placed player fragment must clear the 10-cell minimum (OQ-5)",
     );
 }

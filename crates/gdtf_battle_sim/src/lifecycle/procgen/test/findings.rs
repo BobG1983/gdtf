@@ -125,7 +125,7 @@ fn missing_theme_default_floor_pours_nil_and_is_reported() {
         return;
     };
     assert!(
-        degraded.situation.default_floor.is_nil(),
+        *degraded.situation.default_floor.is_nil(),
         "a theme absent from the registry must pour the NIL-sentinel default_floor (the \
          last-resort degraded pour)",
     );

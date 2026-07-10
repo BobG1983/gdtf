@@ -54,14 +54,14 @@ fn stacked_ganger_detection() {
         .with_gangers(vec![ganger_at(at, 0), ganger_at(at, 1)])
         .build();
     assert!(
-        has_stacked_gangers(&stacked),
+        *has_stacked_gangers(&stacked),
         "two gangers on one cell stack"
     );
 
     // The central two-ganger-plus-terrain fixture has distinct ganger cells.
     let clean = crate::test_support::fixtures::minimal_with_cells();
     assert!(
-        !has_stacked_gangers(&clean),
+        !*has_stacked_gangers(&clean),
         "distinct ganger cells do not stack",
     );
 }

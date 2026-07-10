@@ -5,7 +5,7 @@
 use bevy::prelude::Deref;
 
 use crate::{
-    cover::{CoverEntry, HeightBand},
+    cover::{BandRank, CoverEntry, HeightBand},
     ganger::StanceKind,
     stability::TerrainBraced,
     tuning::{ConeStabilityTuning, StanceContribution},
@@ -36,12 +36,13 @@ impl BraceEngaged {
 /// ordering: this maps each band to its position so "the faced band reaches the
 /// stance's minimum band" is a `>=` over the ranks. It is **not** a hardcoded
 /// band number — the *thresholds* still come from [`crate::tuning::BraceMinHeight`];
-/// this only orders the enum the doc already orders ("LOW+ / MID+ / HIGH").
-const fn band_rank(band: HeightBand) -> u8 {
+/// this only orders the enum the doc already orders ("LOW+ / MID+ / HIGH"). Returns
+/// the shared [`BandRank`](crate::cover::BandRank) ordinal (no-bare-types).
+const fn band_rank(band: HeightBand) -> BandRank {
     match band {
-        HeightBand::Low => 0,
-        HeightBand::Mid => 1,
-        HeightBand::High => 2,
+        HeightBand::Low => BandRank::new(0),
+        HeightBand::Mid => BandRank::new(1),
+        HeightBand::High => BandRank::new(2),
     }
 }
 

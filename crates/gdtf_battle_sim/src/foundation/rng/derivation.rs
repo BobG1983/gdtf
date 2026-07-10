@@ -7,6 +7,8 @@
 //! surface a stream exposes" concern. The stream types themselves (and the
 //! `impl_sim_stream!` macro that stamps them) live in `streams`.
 
+use bevy::prelude::Deref;
+
 use super::seeded::BattleSeed;
 
 // ── FNV-1a-64 derivation ────────────────────────────────────────────────────
@@ -15,6 +17,33 @@ use super::seeded::BattleSeed;
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 /// The FNV-1a-64 prime (the FNV spec's fixed constant).
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+
+/// A per-stream **derived seed** — the FNV-1a-64 digest of a [`BattleSeed`] root
+/// concatenated with a stream's label (GTW-14, §A).
+///
+/// The value each RNG stream feeds to `SeedableRng::seed_from_u64` in its
+/// `from_root` constructor. A named newtype over `u64` (no-bare-types: a derived
+/// seed is a domain value — a raw hash digest, plumbing by its nature — not a bare
+/// integer, and the `fnv1a64` name lacks "hash" so the rule-4 named-digest carve-out
+/// does not cover it). Private inner + derived [`Deref`]; `get()` reads the inner in
+/// the `const` derivation.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(super) struct StreamSeed(u64);
+
+impl StreamSeed {
+    /// Wrap a derived per-stream seed digest.
+    #[must_use]
+    pub(super) const fn new(seed: u64) -> Self {
+        Self(seed)
+    }
+
+    /// The raw `u64` seed — the `const`-context accessor `from_root` feeds to
+    /// `SeedableRng::seed_from_u64` (a derived [`Deref`] is not usable in `const`).
+    #[must_use]
+    pub(super) const fn get(self) -> u64 {
+        self.0
+    }
+}
 
 /// FNV-1a-64 of a fixed 8-byte root seed (little-endian) concatenated with a
 /// label slice — the per-stream seed derivation (GTW-14, §A).
@@ -29,7 +58,7 @@ const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
 ///
 /// — so the concatenation is unambiguous without a length prefix. The resulting
 /// `u64` is fed to `SeedableRng::seed_from_u64` in each stream's constructor.
-pub(super) const fn fnv1a64(root: BattleSeed, label: &[u8]) -> u64 {
+pub(super) const fn fnv1a64(root: BattleSeed, label: &[u8]) -> StreamSeed {
     let root_bytes = root.get().to_le_bytes();
     // Feed the 8 root bytes first.
     let mut hash = FNV_OFFSET;
@@ -46,7 +75,7 @@ pub(super) const fn fnv1a64(root: BattleSeed, label: &[u8]) -> u64 {
         hash = hash.wrapping_mul(FNV_PRIME);
         j += 1;
     }
-    hash
+    StreamSeed::new(hash)
 }
 
 // ── Stream-label newtype ─────────────────────────────────────────────────────

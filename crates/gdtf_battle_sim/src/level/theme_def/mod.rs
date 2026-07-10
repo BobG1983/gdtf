@@ -25,4 +25,4 @@ mod test;
 
 pub use definition::{ThemeDisplayName, UuidThemeDef};
 pub use registry::UuidThemeRegistry;
-pub use uuid::ThemeUuid;
+pub use uuid::{ThemeName, ThemeUuid};

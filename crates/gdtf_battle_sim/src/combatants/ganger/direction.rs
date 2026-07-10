@@ -26,6 +26,43 @@ impl ForwardStep {
     }
 }
 
+/// A **ring ordinal** — a facing's position on the 8-way compass ring, `North = 0`
+/// advancing clockwise to `NorthWest = 7`.
+///
+/// The shared index the turn helpers reason in ([`Direction::steps_to`] /
+/// [`Direction::rotated_toward`]): a clockwise step is `+1` (mod 8). Names the ring
+/// position so [`Direction::ordinal`] / [`Direction::from_ordinal`] do not pass a bare
+/// `u8` (no-bare-types). Private inner + derived [`Deref`]; the `const fn` ring helpers
+/// read the inner directly (same module) since derived `Deref` is not `const`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+struct RingOrdinal(u8);
+
+impl RingOrdinal {
+    /// Build a ring ordinal from its position (`0 = North … 7 = NorthWest`).
+    const fn new(ordinal: u8) -> Self {
+        Self(ordinal)
+    }
+}
+
+/// A **count of 45° steps** around the 8-way compass ring — the short-way turn
+/// distance ([`Direction::steps_to`]) or the number of steps a partial turn advances
+/// ([`Direction::rotated_toward`]).
+///
+/// Range `0..=4` from `steps_to` (the short way is never more than half the ring);
+/// `rotated_toward` accepts any count and clamps it. Names the step count so the turn
+/// verbs do not pass a bare `u8` (no-bare-types). Private inner + derived [`Deref`];
+/// derives [`Ord`] so two step counts compare directly.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct RingSteps(u8);
+
+impl RingSteps {
+    /// Build a ring-step count from its number of 45° steps.
+    #[must_use]
+    pub const fn new(steps: u8) -> Self {
+        Self(steps)
+    }
+}
+
 /// One of the eight grid facings a ganger can turn to face.
 ///
 /// The square grid's 8-way compass (cardinals + diagonals): a ganger turns in
@@ -108,36 +145,34 @@ impl Direction {
         }
     }
 
-    /// This direction's **ordinal** on the 8-way ring — `North = 0`, advancing
-    /// clockwise through the compass to `NorthWest = 7`.
+    /// This direction's **[`RingOrdinal`]** on the 8-way ring — `North = 0`,
+    /// advancing clockwise through the compass to `NorthWest = 7`.
     ///
     /// The shared ring index the turn helpers ([`steps_to`](Self::steps_to),
     /// [`rotated_toward`](Self::rotated_toward)) reason in: a clockwise step is `+1`
-    /// (mod 8), the short-way distance is computed from the ordinal gap. A loop
-    /// index into the fixed eight-variant ring (the no-bare-types carve-out for an
-    /// index into a collection you own), never a domain quantity stored on a
-    /// component.
-    const fn ordinal(self) -> u8 {
+    /// (mod 8), the short-way distance is computed from the ordinal gap. A named ring
+    /// position ([`RingOrdinal`]), never a domain quantity stored on a component.
+    const fn ordinal(self) -> RingOrdinal {
         match self {
-            Self::North => 0,
-            Self::NorthEast => 1,
-            Self::East => 2,
-            Self::SouthEast => 3,
-            Self::South => 4,
-            Self::SouthWest => 5,
-            Self::West => 6,
-            Self::NorthWest => 7,
+            Self::North => RingOrdinal::new(0),
+            Self::NorthEast => RingOrdinal::new(1),
+            Self::East => RingOrdinal::new(2),
+            Self::SouthEast => RingOrdinal::new(3),
+            Self::South => RingOrdinal::new(4),
+            Self::SouthWest => RingOrdinal::new(5),
+            Self::West => RingOrdinal::new(6),
+            Self::NorthWest => RingOrdinal::new(7),
         }
     }
 
-    /// The [`Direction`] at ring ordinal `ord` (taken mod 8) — the inverse of
+    /// The [`Direction`] at [`RingOrdinal`] `ord` (taken mod 8) — the inverse of
     /// [`ordinal`](Self::ordinal).
     ///
-    /// Total: any `u8` maps to one of the eight variants by wrapping the ordinal
-    /// into `0..8`, so the clockwise/counter-clockwise stepping in
+    /// Total: any ordinal maps to one of the eight variants by wrapping into `0..8`,
+    /// so the clockwise/counter-clockwise stepping in
     /// [`rotated_toward`](Self::rotated_toward) can never index out of the ring.
-    const fn from_ordinal(ord: u8) -> Self {
-        match ord % 8 {
+    const fn from_ordinal(ord: RingOrdinal) -> Self {
+        match ord.0 % 8 {
             0 => Self::North,
             1 => Self::NorthEast,
             2 => Self::East,
@@ -157,16 +192,14 @@ impl Direction {
     /// (`North`↔`South`), and symmetric (`a.steps_to(b) == b.steps_to(a)`). This is
     /// the number of whole 45deg steps the [`crate::posture::set_facing`] verb must
     /// turn (and pay one [`crate::tuning::TurnTu`] for) to reach `other`. Returns a
-    /// bare `u8` step *count* — a loop index / per-step multiplier into the
-    /// `TurnTu` leaf (the no-bare-types carve-out for "indices into a collection you
-    /// own"), NOT a domain quantity, and never stored on a component. Pure, total,
-    /// no panic.
+    /// named [`RingSteps`] count (the per-step multiplier into the `TurnTu` leaf), NOT
+    /// a domain quantity, and never stored on a component. Pure, total, no panic.
     #[must_use]
-    pub const fn steps_to(self, other: Self) -> u8 {
+    pub const fn steps_to(self, other: Self) -> RingSteps {
         // The unsigned ordinal gap (both are in 0..8, so this never underflows).
-        let d = self.ordinal().abs_diff(other.ordinal());
+        let d = self.ordinal().0.abs_diff(other.ordinal().0);
         // The short way around the ring of eight: never more than half (= 4).
-        if d <= 8 - d { d } else { 8 - d }
+        RingSteps::new(if d <= 8 - d { d } else { 8 - d })
     }
 
     /// The 8-way compass [`Direction`] pointing from cell `from` toward cell `to`,
@@ -215,21 +248,22 @@ impl Direction {
     /// PARTIAL turn land on an intermediate facing when the TU pool runs out before
     /// the full rotation. Pure, total, no panic.
     #[must_use]
-    pub const fn rotated_toward(self, target: Self, steps: u8) -> Self {
-        let from = self.ordinal();
-        let to = target.ordinal();
+    pub const fn rotated_toward(self, target: Self, steps: RingSteps) -> Self {
+        let from = self.ordinal().0;
+        let to = target.ordinal().0;
         // The two ways around the ring (both in 0..8). cw + ccw == 8 unless equal.
         let cw = (to + 8 - from) % 8;
         let ccw = (from + 8 - to) % 8;
         // The short way's length; the tie (cw == ccw == 4) prefers clockwise.
         let short = if cw <= ccw { cw } else { ccw };
         // Clamp the requested steps so the turn never overshoots `target`.
-        let n = if steps < short { steps } else { short };
+        let n = if steps.0 < short { steps.0 } else { short };
         if cw <= ccw {
-            Self::from_ordinal(from + n) // clockwise: +1 per step (mod 8 in from_ordinal)
+            // clockwise: +1 per step (mod 8 in from_ordinal)
+            Self::from_ordinal(RingOrdinal::new(from + n))
         } else {
             // counter-clockwise: -1 per step, kept non-negative by adding a full ring.
-            Self::from_ordinal(from + 8 - n)
+            Self::from_ordinal(RingOrdinal::new(from + 8 - n))
         }
     }
 }

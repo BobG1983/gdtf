@@ -137,7 +137,7 @@ fn emitted_level_is_in_bounds_and_fully_connected() {
         "the leftover dead space must be FLOORED with explicit default_floor entries (C3)",
     );
     assert!(
-        !situation.default_floor.is_nil(),
+        !*situation.default_floor.is_nil(),
         "the emitted level must carry a default_floor (the theme's nominated ground terrain)",
     );
     assert_eq!(
@@ -167,7 +167,7 @@ fn emitted_level_is_in_bounds_and_fully_connected() {
 fn seam_separated_regions_stay_connected() {
     let board_w = 20;
     let board_h = 20;
-    let seam = Margin::DEFAULT.cells();
+    let seam = *Margin::DEFAULT.cells();
 
     // Two region blocks side by side across a mid band (rows 5..15), leaving open rows above
     // (0..5) and below (15..20). A LEFT block on columns `0..10`, and a RIGHT block that, with
