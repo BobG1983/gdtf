@@ -34,8 +34,8 @@ const Z_PER_LEVEL: f32 = 1.0;
 pub const GANGER_Z_BIAS: f32 = 0.1;
 
 /// A presenter draw layer within a single storey — the ONE place the
-/// terrain &lt; vertical-link &lt; fire-target &lt; actor &lt; highlight &lt; path-preview
-/// stacking order lives.
+/// terrain &lt; field &lt; vertical-link &lt; fire-target &lt; actor &lt; cross-level-signal &lt;
+/// highlight &lt; reachable-range &lt; path-preview stacking order lives.
 ///
 /// A domain value (a real named type, not a bare z magnitude), per
 /// `.claude/rules/no-bare-types.md`. Each layer's [`z_bias`](Layer::z_bias) is added on
@@ -75,6 +75,12 @@ pub enum Layer {
     FireTarget,
     /// A ganger (actor) — drawn just in front of its own terrain by [`GANGER_Z_BIAS`].
     Actor,
+    /// The GTW-596 cross-level tactical badges — compact corner signals (threats
+    /// above/below, hole/ledge drop depth, stair/ladder connector deltas) drawn ON the
+    /// active storey. Strictly ABOVE the actor band (so a badge reads over a ganger
+    /// standing at that cell) but strictly BELOW the [`Highlight`](Layer::Highlight) band
+    /// (so it never competes with the hover/selection highlight).
+    CrossLevelSignal,
     /// The hover / selection highlight — drawn in front of the actor so it tints the unit
     /// (documented order; wiring deferred, see the type doc).
     Highlight,
@@ -95,8 +101,8 @@ impl Layer {
     /// This layer's within-storey draw-z bias, added on top of the per-storey level z.
     ///
     /// Strictly increasing terrain &lt; field &lt; vertical-link &lt; fire-target &lt; actor &lt;
-    /// highlight &lt; reachable-range &lt; path-preview, and every value is strictly `<
-    /// Z_PER_LEVEL` so a biased sprite never sorts into the next storey's band.
+    /// cross-level-signal &lt; highlight &lt; reachable-range &lt; path-preview, and every value
+    /// is strictly `< Z_PER_LEVEL` so a biased sprite never sorts into the next storey's band.
     #[must_use]
     const fn z_bias(self) -> f32 {
         match self {
@@ -113,6 +119,9 @@ impl Layer {
             // (`0.075 < GANGER_Z_BIAS`).
             Self::FireTarget => GANGER_Z_BIAS * 0.75,
             Self::Actor => GANGER_Z_BIAS,
+            // GTW-596: strictly above the actor, strictly below the highlight
+            // (`0.15` sits between `Actor`'s `GANGER_Z_BIAS` (`0.1`) and `Highlight`'s `0.2`).
+            Self::CrossLevelSignal => GANGER_Z_BIAS * 1.5,
             // Strictly above the actor, still within the storey band (`< Z_PER_LEVEL`).
             Self::Highlight => GANGER_Z_BIAS * 2.0,
             // GTW-387: above the highlight, below the route-preview so the move-route reads

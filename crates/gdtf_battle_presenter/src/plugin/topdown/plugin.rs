@@ -202,6 +202,12 @@ impl Plugin for TopDownRendererPlugin {
         // crate) and hard-cuts to the active storey (extracted to keep `build` under the
         // `too_many_lines` lint).
         super::overlays::register_fire_target_systems(app);
+
+        // GTW-596: the cross-level tactical badges — the CrossLevelSignals DERIVE (Compose,
+        // reading the SAME fog seams present_fog / the ganger-visibility resolver use) + the
+        // badge DRAW (Overlay, change-driven off the resource). Extracted to keep `build`
+        // under the `too_many_lines` lint.
+        super::overlays::register_cross_level_signals_systems(app);
     }
 }
 

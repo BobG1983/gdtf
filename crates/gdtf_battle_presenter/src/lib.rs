@@ -106,6 +106,11 @@ pub use overlays::reachable::{
     draw_reachable_overlay,
 };
 pub use overlays::{
+    cross_level_signals::{
+        BADGE_CAP_PER_CELL, CrossLevelBadgeKind, CrossLevelBadgeLabel, CrossLevelBadgeTile,
+        CrossLevelSignals, CrossLevelSimFacts, LevelDelta, ThreatCount, derive_cross_level_signals,
+        draw_cross_level_signals,
+    },
     field::{FieldCellSprite, draw_field_overlay},
     fire_target::{FireTargetHighlight, FireTargetLabel, FireTargetTile, draw_fire_target},
     highlight::{HighlightRequest, HoverHighlight, draw_highlight_on_request},

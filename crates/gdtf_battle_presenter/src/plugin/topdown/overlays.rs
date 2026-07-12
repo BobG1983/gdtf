@@ -7,8 +7,9 @@ use gdtf_battle_sim::{
 };
 
 use crate::{
-    HighlightRequest, PresenterSystems, draw_field_overlay, draw_fire_target,
-    draw_highlight_on_request, draw_path_preview,
+    CrossLevelSignals, HighlightRequest, PresenterSystems, derive_cross_level_signals,
+    draw_cross_level_signals, draw_field_overlay, draw_fire_target, draw_highlight_on_request,
+    draw_path_preview,
 };
 // GTW-450 — the reachable-range overlay items are DEBUG-only (C1); imported via a
 // separate `#[cfg(debug_assertions)]` `use` below so the release build never names them.
@@ -155,6 +156,53 @@ pub(super) fn register_field_overlay_systems(app: &mut App) {
             .in_set(PresenterSystems::Overlay)
             .run_if(resource_exists::<FieldRegistry>),
     );
+}
+
+/// Registers the GTW-596 cross-level tactical badges: the [`CrossLevelSignals`]
+/// DERIVE system (into [`PresenterSystems::Compose`] — the SAME composition stage
+/// [`present_fog`](crate::present_fog) / the ganger-visibility resolver occupy, so it reads
+/// their settled facts) and the badge DRAW system (into [`PresenterSystems::Overlay`]).
+///
+/// [`derive_cross_level_signals`] reads the sim through the SAME pure fog seams
+/// `present_fog` / `resolve_ganger_visibility` use (never a parallel visibility check),
+/// aggregating a fog-gated cross-level Threat scan, a hole/ledge `DropDepth` scan, and a
+/// vertical-link `ConnectorDelta` scan into the [`CrossLevelSignals`] resource
+/// (`init_resource`-d here, so its `Default` is the empty set — a battle with nothing
+/// cross-level-worthy to surface draws no badge). Gated
+/// `run_if(resource_exists::<BattleInProgress>)` (the sim's live-battle witness,
+/// `bevy-traps.md` #1) — the terrain / fog resources it reads are each `Option<Res<_>>`
+/// inside the system itself, so it stays panic-free even in a focused harness that opens
+/// `BattleInProgress` without the full `setup_battle`.
+///
+/// [`draw_cross_level_signals`] draws up to [`BADGE_CAP_PER_CELL`](crate::BADGE_CAP_PER_CELL)
+/// pooled tile+label badge pairs per cell, hard-cut to the active storey. Gated
+/// `run_if(resource_exists::<BattleInProgress>)`; per the UI-mutate convention this walk
+/// NEVER despawn-respawns, so it re-walks the pool only when ONE OF ITS TWO
+/// output-shaping inputs actually changed — the derive system wrote a differing signal
+/// set (the resource is change-tick-quiet via `set_if_neq`) OR [`ActiveLevel`] itself
+/// changed (a badge's drawn Z-band is hard-cut to the active storey, so a level switch
+/// must redraw even on the rare frame where the newly-derived signal set happens to be
+/// byte-identical to the old storey's — the check lives INSIDE
+/// [`draw_cross_level_signals`] itself, the
+/// [`draw_static_battlefield`](crate::draw_static_battlefield) multi-trigger precedent,
+/// not encoded into this `run_if`).
+///
+/// A SHIPPING view (the playability rule: a cross-level enemy / hole / connector MUST be
+/// visible), so NOT debug-gated, unlike the `reachable` debug overlay.
+pub(super) fn register_cross_level_signals_systems(app: &mut App) {
+    app.init_resource::<CrossLevelSignals>()
+        .add_systems(
+            Update,
+            derive_cross_level_signals
+                .in_set(PresenterSystems::Compose)
+                .run_if(resource_exists::<BattleInProgress>),
+        )
+        .add_systems(
+            Update,
+            draw_cross_level_signals
+                .in_set(PresenterSystems::Overlay)
+                .run_if(resource_exists::<BattleInProgress>),
+        );
 }
 
 /// Registers the GTW-387 / GTW-450 reachable-range DEBUG overlay: the [`ReachableCells`]
