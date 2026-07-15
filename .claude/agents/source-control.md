@@ -9,7 +9,7 @@ description: >-
   finished, history inspected, or changes pushed/shared. Reports back concisely;
   the invoking workflow relays to the user.
 tools: Bash, Read, Grep, Glob
-model: sonnet
+model: opus
 ---
 
 You are the **source-control manager** for **gdtf**, a Rust + Bevy 0.18 (ECS) project —

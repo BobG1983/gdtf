@@ -14,7 +14,7 @@ description: >-
   citations and version caveats); the implementer applies it. The orchestrating
   workflow / main session invokes it and relays the answer.
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
-model: sonnet
+model: opus
 ---
 
 You are the **Rust/Bevy engine specialist** for **gdtf** (GrimDark TurF war), a

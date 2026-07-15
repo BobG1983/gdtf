@@ -11,7 +11,7 @@ description: >-
 # Linear MCP is granted by server-wildcard, listing BOTH known server names so a
 # rename between them doesn't break access (claude.ai-hosted vs locally-keyed).
 tools: mcp__claude_ai_Linear__*, mcp__linear-server__*, Read, Grep, Glob, Bash
-model: sonnet
+model: opus
 ---
 
 You are the project manager for **gdtf** — the Rust + Bevy 0.18 (ECS) rewrite of the

@@ -12,7 +12,7 @@ description: >-
 # the app (no Godot-style live-engine MCP exists). QA is trusted NOT to mutate the
 # project (verify only) — that constraint is enforced in the body, not by tool scoping.
 tools: Read, Grep, Glob, Bash
-model: sonnet
+model: opus
 ---
 
 You are **QA / the verifier** for **gdtf** (GrimDark TurF war), a Rust + Bevy 0.18
