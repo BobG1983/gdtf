@@ -14,7 +14,7 @@ cargo dbuild
 cargo doc --workspace --no-deps
 ```
 
-`dclippy` / `dtest` / `dbuild` are the `.cargo/config.toml` aliases for the dynamic-linked dev/gate forms — `clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking`, `test --workspace --features grimdark_turfwar/dynamic_linking`, and `build -p grimdark_turfwar --features dynamic_linking,file_watcher`. `dbuild` is the only step that builds + links the actual game binary (`check`/`clippy` never link; `test` links only test binaries). **`--all-features` is deliberately NOT used** — it forces a second full bevy build for no lint gain. `cargo doc` is dev/gate-only: the workspace `broken_intra_doc_links = "deny"` lint surfaces only under `cargo doc`. CI green is the static subset (no `dynamic_linking`): `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`.
+`dclippy` / `dtest` / `dbuild` are the `.cargo/config.toml` aliases for the dynamic-linked dev/gate forms — `clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools`, `test --workspace --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools`, and `build -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools`. `dev_tools` (GTW-655) is the procgen load-time stepper's `bevy_egui` dependency — folded into every dev alias so the dev/gate loop always compiles, lints, and tests the stepper's drive/gate/command/summary logic (the non-egui majority of it, including the pure stage-summary formatter, split into its own `summary` module specifically so it stays unit-tested rather than riding behind the panel's exclusion); only the egui draw closure itself (`ui.rs`'s `draw_stepper_panel`) needs a primary window, so it is compiled only by `dbuild` (the same screenshot-QA-territory carve-out as the content editor's own egui closure — see `.claude/rules/bevy-traps.md` #8). The whole affordance stays inert at runtime unless `GDTF_PROCGEN_STEPPER` is set truthy. `dbuild` is the only step that builds + links the actual game binary (`check`/`clippy` never link; `test` links only test binaries). **`--all-features` is deliberately NOT used** — it forces a second full bevy build for no lint gain. `cargo doc` is dev/gate-only: the workspace `broken_intra_doc_links = "deny"` lint surfaces only under `cargo doc`. CI green is the static subset (no `dynamic_linking` / `dev_tools`): `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`.
 
 The workspace `Cargo.toml` denies clippy `all` / `pedantic` / `correctness` / `suspicious` plus the restriction lints (`unwrap_used`, `expect_used`, `panic`, `todo`, `unimplemented`) and `missing_docs`, so being **fmt-clean and lint-clean IS part of "done"**, not a separate nicety. Run it yourself — never report a remembered or assumed result.
 
@@ -61,8 +61,8 @@ rides the dev feature). Every capture run is LOUD: activation, per-frame trigger
 per-frame write each log a `capture`-greppable line, and a set-but-ineffective
 `GDTF_CAPTURE_*` / trigger var `warn!`s at startup. The capture-gated tests ride the same
 fold — `cargo dtest` compiles + runs them; the targeted recipe is
-`cargo test -p gdtf_app --features test-support,dev_capture --lib` (plus
-`--test capture_quit` for the exit pin), so that combination can never be an invisible
+`cargo test -p gdtf_app --features test-support,dev_capture --lib`, so that combination
+can never be an invisible
 red again. Census command (run from the repo root; re-run it when adding a flag and keep
 this table in step):
 
@@ -80,7 +80,6 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 | `GDTF_CAPTURE_PATH` | `gdtf_app` | Output PNG path; setting it (in a `dev_capture` debug build — `dynamic_linking` implies it since GTW-590) opts into the battle capture affordance. |
 | `GDTF_DEBUG_REACHABLE_OVERLAY` | `gdtf_battle_presenter` (mirrored by `gdtf_battle_input` docs) | Truthy renders the reachable-range debug overlay in a debug build (GTW-450; default off — visual noise). |
 | `GDTF_DOCS_PATH_ROOT` | `gdtf_test_utils` | Overrides the repo root the docs path-truth guard test scans (guard-test hook). |
-| `GDTF_DROPDOWN_SHOT` | `gdtf_ui` | Dropdown demo example: capture a PNG to this path, then exit. |
 | `GDTF_EDITOR_ATTACHMENT` | `gdtf_content_editor` | Content-editor capture: pre-load a NAMED attachment item (a registry key / file stem, e.g. `scoped_sight`) into the ATTACHMENT form before the shot (GTW-669); unset keeps the sorted-first autoload. |
 | `GDTF_EDITOR_MELEE_WEAPON` | `gdtf_content_editor` | Content-editor capture: pre-load a NAMED melee weapon (a registry key / file stem, e.g. `chainsword`) into the MELEE form before the shot (GTW-671); unset keeps the sorted-first autoload. |
 | `GDTF_EDITOR_MODE` | `gdtf_content_editor` | Content-editor capture: force the Workbench mode (`terrain`/`theme`/`prefab`/`gang`/`armor`/`injury`/`sprite`/`attachment`/`weapon`/`melee_weapon`) before the shot. |
@@ -94,10 +93,9 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 | `GDTF_FIRE_MODE` | `gdtf_app` | Battle capture trigger: fire-mode override for the fire trigger (`single`/`burst`/`full`). |
 | `GDTF_LOADING_SHOT` | `gdtf_app` | Loading-screen capture: output PNG path (the GTW-419 capture hook). |
 | `GDTF_MODULE_LAYOUT_ROOT` | `gdtf_test_utils` | Overrides the repo root the module-layout conformance guard test scans (guard-test hook). |
-| `GDTF_PROCGEN_VIZ_SCREEN_SHOT` | `gdtf_app` | Procgen STEP/AUTO visualizer self-screenshot: output PNG path. |
+| `GDTF_PROCGEN_STEPPER` | `gdtf_app` | Truthy (`1`/`true`/`yes`/`on`) opts a `dev_tools` build into the load-time procgen stepper (an egui Next/Auto/Skip overlay pausing `BattleScapeState::Generation` between the sim's staged assemble/fill/emit stages, GTW-655); unset = the normal to-completion path. |
 | `GDTF_SCREENSHOT_TEST_DEFINITELY_UNSET_VAR` | `gdtf_screenshot` | Test-only sentinel: a deliberately-never-set name proving `from_env` stays inert when its var is unset. Never set it. |
 | `GDTF_TEST_FORCE_NO_GPU` | `gdtf_test_utils` | Forces the GPU-adapter probe to report Absent, driving the exact no-GPU skip path on a GPU machine (GTW-527). |
-| `GDTF_TEXTFIELD_SHOT` | `gdtf_ui` | Text-field demo example: capture a PNG to this path, then exit. |
 
 ## What the suite pins (and what it doesn't)
 

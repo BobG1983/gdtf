@@ -11,15 +11,15 @@
 //! - `drive` — the env-scripted battle-script triggers (`GDTF_FIRE_AT_FRAME` /
 //!   `GDTF_FALL_AT_FRAME` / `GDTF_FIRE_MODE`): drive affordances over the REAL sim
 //!   paths, not screenshot logic, so they live beside `capture`, not inside it.
-//! - `capture_exit` — the ONE game-side capture EXIT (`poll_then_quit`) the
-//!   per-scene capture hooks chain (GTW-577 C5).
 //! - [`DevAffordancesPlugin`] — the ONE aggregate plugin owner
 //!   [`GdtfApp`](crate::GdtfApp) wires; every cfg gate lives inside it.
 //!
-//! The per-scene capture HOOKS (the gang-editor / procgen-visualizer /
-//! loading-screen `capture.rs` files) are scene-local drive + env glue over the
-//! `gdtf_screenshot` primitives and deliberately STAY with their scenes
-//! (GTW-577 P9) — they are consumers of this module's `capture_exit`, not members.
+//! The per-scene capture HOOKS (the loading-screen `capture.rs`, currently the only
+//! remaining one) are scene-local drive + env glue over the `gdtf_screenshot`
+//! primitives and deliberately STAY with their scenes (GTW-577 P9). The GTW-434
+//! procgen-visualizer hook's game-side capture-EXIT sibling (`capture_exit`,
+//! `poll_then_quit`) was removed with it in GTW-655 — the loading-screen hook never
+//! chained it (capture-and-continue, no exit) and no other scene did either.
 
 pub(crate) mod auto_battle;
 
@@ -28,19 +28,18 @@ pub(crate) mod auto_battle;
 #[cfg(all(debug_assertions, feature = "dev_capture"))]
 pub(crate) mod capture;
 
-// The ONE game-side capture EXIT (GTW-577 C5) the gang-editor and procgen-visualizer
-// capture hooks chain after `gdtf_screenshot::settle_then_capture` — PNG-on-disk (or
-// poll-cap) → `RunningState::Quit`, never a direct `AppExit`. Gated exactly like its
-// two consumers; `pub(crate)` so the crate-root test-support ledger can name
-// `poll_then_quit` for the headless pin test.
-#[cfg(all(debug_assertions, feature = "dev_capture"))]
-pub(crate) mod capture_exit;
-
 // The env-scripted battle-script drive triggers (GTW-306/GTW-529). Gated exactly like
 // `capture`: the capture plugin registers them and the shared env resolution lives in
 // `capture::resolve`.
 #[cfg(all(debug_assertions, feature = "dev_capture"))]
 pub(crate) mod drive;
+
+// The DEV-ONLY procgen load-time stepper (GTW-655): an egui Next/Auto/Skip overlay over the
+// sim's staged procgen driver, replacing the GTW-434 menu-invoked procgen-visualizer scene.
+// Compiled ONLY under the opt-in `dev_tools` feature (which pulls in `bevy_egui`) — a
+// release artifact, and a normal `dev_tools`-less dev build, never link egui.
+#[cfg(feature = "dev_tools")]
+pub(crate) mod procgen_stepper;
 
 mod plugin;
 pub(crate) use plugin::DevAffordancesPlugin;

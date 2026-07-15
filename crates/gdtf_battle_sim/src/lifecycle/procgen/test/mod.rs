@@ -8,8 +8,11 @@
 //! [`Situation`](crate::situation::Situation) is in-bounds + connected (C3)); plus the
 //! GTW-582 C3(d) engagement-time finding pins ([`findings`]: the nil-sentinel theme pour and
 //! the fail-open unresolved-piece pour each ride back on
-//! [`EmittedLevel::findings`](crate::procgen::EmittedLevel), deduplicated — never silent).
-//! Wiring only: `mod` declarations, no test bodies.
+//! [`EmittedLevel::findings`](crate::procgen::EmittedLevel), deduplicated — never silent);
+//! plus the GTW-655 staged-driver pins ([`staged`]: a stepped-to-completion drive produces an
+//! IDENTICAL result to a one-shot `generate_level` call, each `advance` runs exactly one
+//! stage, and a finished/failed drive is idempotent under a repeat `advance`). Wiring only:
+//! `mod` declarations, no test bodies.
 
 mod anchor;
 mod assembler;
@@ -18,4 +21,5 @@ mod fill;
 mod findings;
 mod packer;
 mod seam;
+mod staged;
 mod tuning;

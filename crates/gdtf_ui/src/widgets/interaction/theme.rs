@@ -7,7 +7,7 @@ use bevy::{
 
 use crate::{
     theme::GdtfTheme,
-    widgets::core::{ActiveButton, DisabledButton, DropdownItemMarker, Segment, Switch},
+    widgets::core::{ActiveButton, DisabledButton, Segment, Switch},
 };
 
 /// Query filter selecting the buttons [`theme_interaction`] restyles: enabled,
@@ -30,13 +30,7 @@ use crate::{
 /// [`Button`](bevy::ui::widget::Button), so without this exclusion the resting
 /// `button.color` fill would clobber the switch's off/on track color the frame its
 /// `Interaction` is added/changed, leaving the track near-invisible against the panel) —
-/// `Without<DropdownItemMarker>` skips
-/// [`Dropdown`](crate::Dropdown) option rows so their fill comes ONLY from
-/// [`paint_dropdown_option_highlight`](crate::paint_dropdown_option_highlight) — the GTW-499
-/// dropdown-highlight rule (an option row is a [`Button`](bevy::ui::widget::Button), so
-/// without this exclusion the global hover/press fill would clobber the dropdown's own
-/// `option_bg` / `option_highlight_bg`, leaving a stray highlight bar and no per-option
-/// highlight) — and `Changed<Interaction>` limits the work to state transitions.
+/// and `Changed<Interaction>` limits the work to state transitions.
 type InteractedButton = (
     Changed<Interaction>,
     With<Button>,
@@ -44,7 +38,6 @@ type InteractedButton = (
     Without<ActiveButton>,
     Without<Segment>,
     Without<Switch>,
-    Without<DropdownItemMarker>,
 );
 
 /// The per-button visuals [`theme_interaction`] reads and writes: the current

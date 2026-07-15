@@ -32,6 +32,14 @@ file_watcher = ["gdtf_app/file_watcher"]
 # never sees them even with the feature on. Enable locally to run a QA capture
 # (e.g. `cargo run --features dynamic_linking,dev_capture`); never enabled for release/CI.
 dev_capture = ["gdtf_app/dev_capture"]
+# GTW-655: DEV-ONLY procgen load-time stepper; chains through to gdtf_app -> dev_tools ->
+# bevy_egui, mirroring the `dev_capture` forwarding above (its own feature, not folded into
+# `dynamic_linking`, so the egui dependency is opted into explicitly). Unlike `dev_capture`,
+# its wiring site gates on this Cargo feature ONLY — there is NO `cfg!(debug_assertions)`
+# double-gate, because `dev_tools` is itself never enabled for a release/CI build — and it
+# stays inert until `GDTF_PROCGEN_STEPPER` is set truthy, so a release binary never links egui
+# and a normal dev launch is unaffected. Never enabled for release/CI.
+dev_tools = ["gdtf_app/dev_tools"]
 
 [lints]
 workspace = true

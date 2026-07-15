@@ -124,14 +124,10 @@ Lines starting with `#` are comments.
 - Current approved entries: `crates/gdtf_battle_sim/src/lib.rs` (540-line
   pure-wiring crate root: module-map doc + mod decls + GTW-385 compatibility
   re-exports; zero fn/impl; splitting separates no concern; becomes moot when
-  GTW-628 lands — delete the entry then); plus two deletion-pending
-  `gdtf_ui` files exempted by the GTW-636 UI-stack ruling (GTW-636 deleted
-  the accordion + scroll-list widgets with the in-game gang editor; its
-  census found `procgen_viz` still consumes these two, so their deletion now
-  rides the GTW-655 procgen-stepper migration — delete each entry when
-  GTW-655 lands): `crates/gdtf_ui/src/widgets/core/text_field.rs`,
-  `crates/gdtf_ui/src/widgets/core/dropdown.rs` (approved: GTW-583
-  amendment, 2026-07-05).
+  GTW-628 lands — delete the entry then). (The two deletion-pending `gdtf_ui`
+  widget entries the GTW-636 UI-stack ruling added — `text_field.rs` /
+  `dropdown.rs`, kept alive by `procgen_viz` — were REMOVED 2026-07-11: GTW-655
+  retired `procgen_viz` and deleted both widget files outright.)
 
 ## Enforcement
 

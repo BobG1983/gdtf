@@ -18,8 +18,11 @@
 //!
 //! - the unconditional state-enum climbs (the GTW-321 co-location contract keeps
 //!   `crate::states::<Enum>` nameable at the states root), plus
-//!   [`ScenesPlugin`](crate::states::ScenesPlugin) /
-//!   [`LoadedSituation`](crate::states::LoadedSituation) at the states root;
+//!   [`ScenesPlugin`](crate::states::ScenesPlugin) at the states root (unconditional —
+//!   `crate::GdtfApp` always names it); `LoadedSituation` also climbs to the states
+//!   root, but (GTW-655) only under `any(test-support, dev_tools)` — its only two
+//!   in-crate consumers since the `procgen_viz` scene (its last unconditional reader)
+//!   was retired;
 //! - the dual-use re-exports the production binary also reads: the bottom-bar root
 //!   (`set_world_viewport` measures it) and the auto-battle plugin
 //!   (`crate::dev::auto_battle`).

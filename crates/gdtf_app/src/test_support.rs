@@ -119,20 +119,14 @@ pub fn seed_load_gate(asset_server: Option<Res<AssetServer>>, mut commands: Comm
     seed_load_fallbacks(asset_server, commands);
 }
 
-// The GTW-577 shared capture EXIT — gated exactly like its module (`dev_capture` debug
-// builds only), so the headless pin test (`tests/capture_quit.rs`, itself
-// `dev_capture`-gated) can chain the REAL `poll_then_quit` after the crate's
-// `settle_then_capture` and assert the Quit-cascade exit (never a direct `AppExit`).
-#[cfg(all(debug_assertions, feature = "dev_capture"))]
-pub use crate::dev::capture_exit::poll_then_quit;
-// The GTW-434/GTW-498 procgen-visualizer model + markers — `debug_assertions`-gated because
-// the whole visualizer module compiles out of release (C4), so these items only exist in a
-// debug build.
-#[cfg(debug_assertions)]
-pub use crate::states::running::procgen_viz::test_support::{
-    AutoButton, BoardQuad, EnemyGangDropdown, GenerateButton, HeightField, LevelsField,
-    PlayerGangDropdown, PrefabQuad, ProcgenViz, ProcgenVizRoot, QuadTint, SeedField,
-    SizeStatusText, StepButton, ThemeDropdown, VizConfig, WidthField,
+// The GTW-655 procgen-stepper command/latch types + its forced-enable test constructor —
+// `dev_tools`-gated because the whole stepper module compiles out unless that feature is on
+// (it pulls in `bevy_egui`). Retired the GTW-434/GTW-498 procgen-visualizer ledger entry this
+// module replaces (its `debug_assertions`-gated scene was deleted in the same change).
+#[cfg(feature = "dev_tools")]
+pub use crate::dev::procgen_stepper::{
+    AutoRunning, AutoStepDelay, PendingStepCommand, ProcgenStepperPlugin, StepCommand,
+    stage_summary, stepper_enabled,
 };
 pub use crate::{
     dev::auto_battle::{AutoBattleActive, AutoBattlePlugin, auto_battle_enabled},

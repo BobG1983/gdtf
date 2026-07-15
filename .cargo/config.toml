@@ -1,19 +1,30 @@
 [alias]
 # Dynamic linking for fast, non-release iteration.
 # `dynamic_linking` is opt-in and must NEVER be enabled for release builds.
+#
+# GTW-655: every dev alias below also enables `dev_tools` (the procgen load-time stepper's
+# egui overlay), so the dev/gate loop always compiles, lints, and tests the stepper's
+# drive/gate/command/summary logic — the non-egui majority of it, including the pure
+# stage-summary formatter (`gdtf_app`'s `dev::procgen_stepper::summary`). Only the egui draw
+# closure itself (`ui.rs`'s panel) needs a primary window, so it is compiled only by `dbuild`
+# (the same screenshot-QA-territory carve-out as the content editor's own egui closure — see
+# `.claude/rules/bevy-traps.md` #8; details in `docs/testing.md`). The stepper stays inert at
+# runtime (no behavior change) unless `GDTF_PROCGEN_STEPPER` is set truthy — see
+# `crate::dev::procgen_stepper` in `gdtf_app`. CI's static suite does not enable
+# `dynamic_linking` or `dev_tools`.
 
 # Run / build the game with dynamic linking.
-drun = "run -p grimdark_turfwar --features dynamic_linking,file_watcher"
-dbuild = "build -p grimdark_turfwar --features dynamic_linking,file_watcher"
+drun = "run -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools"
+dbuild = "build -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools"
 
 # Run / build the content editor (bins/gdtf_content_editor) with dynamic linking.
 edrun = "run -p gdtf_content_editor_bin --features dynamic_linking"
 edbuild = "build -p gdtf_content_editor_bin --features dynamic_linking"
 
-# Workspace-wide dev checks with dynamic linking. 
-dcheck = "check --workspace --all-targets --features grimdark_turfwar/dynamic_linking"
-dclippy = "clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking"
-dtest = "test --workspace --features grimdark_turfwar/dynamic_linking"
+# Workspace-wide dev checks with dynamic linking.
+dcheck = "check --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools"
+dclippy = "clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools"
+dtest = "test --workspace --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools"
 
 [unstable]
 checksum-freshness = true

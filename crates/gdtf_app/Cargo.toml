@@ -40,12 +40,17 @@ serde = { workspace = true }
 ron = { workspace = true }
 # GTW-510: the reusable in-engine self-capture crate. OPTIONAL — pulled in ONLY by the `dev_capture`
 # feature (below), matching the existing `crate::dev::capture` gating discipline. Since GTW-577 the
-# three scene capture hooks (gang editor / procgen visualizer / loading screen) run ON its
-# primitives — `parse_shot_path` for the env-var path gate and `settle_then_capture` for the
-# settle-then-`Screenshot` spawn — keeping only their per-scene env vars + drive; the game also adds
-# the crate's F10 debug keybind. All under `cfg!(all(debug_assertions, feature = "dev_capture"))`,
-# so a release binary never links it.
+# game's scene capture hooks (currently just the loading screen — GTW-655 retired the
+# procgen-visualizer hook alongside its scene) run ON its primitives — `parse_shot_path` for the
+# env-var path gate and `settle_then_capture` for the settle-then-`Screenshot` spawn — keeping only
+# their per-scene env vars + drive; the game also adds the crate's F10 debug keybind. All under
+# `cfg!(all(debug_assertions, feature = "dev_capture"))`, so a release binary never links it.
 gdtf_screenshot = { path = "../gdtf_screenshot", optional = true }
+# GTW-655: the dev-tools procgen load-time stepper's egui overlay. OPTIONAL — pulled in ONLY
+# by the `dev_tools` feature (below), so a release binary never links egui. Same version spec
+# as `gdtf_content_editor`'s (non-optional) `bevy_egui` dependency — that crate did not
+# workspace-dep it either, so this stays a per-crate pin rather than a promotion.
+bevy_egui = { version = "0.41", optional = true }
 
 [dev-dependencies]
 # Dev-only cycle gdtf_app -> gdtf_test_utils -> gdtf_app is permitted by Cargo
@@ -64,11 +69,6 @@ gdtf_state_scoped = { path = "../gdtf_state_scoped" }
 # `test-support` on for the sim across the workspace test build — fine: it is test/dev
 # only and the binary build enables it nowhere.)
 gdtf_battle_sim = { path = "../gdtf_battle_sim", features = ["test-support"] }
-# The GTW-577 `poll_then_quit` headless pin (`tests/capture_quit.rs`, `dev_capture`-gated)
-# names the capture-primitive types (`CapturePath` / `CaptureProgress` / `SettleFrames` /
-# `PollCap`) and chains the REAL `settle_then_capture` — the SAME path-dep instance the
-# optional normal dependency resolves to, so the test drives the exact production pipeline.
-gdtf_screenshot = { path = "../gdtf_screenshot" }
 # The dev-capture schedule/loudness tests (`src/dev/capture/test/`) write their capture
 # PNGs into a unique TempDir — never into the version-controlled tree. TempDir auto-cleans
 # on drop (the GTW-555 isolation precedent).
@@ -97,7 +97,7 @@ test-support = []
 # be an invisible red again. The CI static suite and release builds never enable
 # `dynamic_linking`, so they still never see it.
 #
-# GTW-510/GTW-577: this feature ALSO pulls in the reusable `gdtf_screenshot` crate — the three
+# GTW-510/GTW-577: this feature ALSO pulls in the reusable `gdtf_screenshot` crate — the game's
 # scene capture hooks delegate their path gate (`parse_shot_path`) and their settle-then-capture
 # pipeline (`settle_then_capture`) to it, and the game gains the F10 debug keybind — all still
 # double-gated on `cfg!(debug_assertions)` at their wiring sites.
@@ -123,6 +123,17 @@ dev_capture = ["dep:gdtf_screenshot"]
 # packaging. file_watcher is meaningless on embedded assets, which is one more
 # reason embedding stays deferred.
 file_watcher = ["bevy/file_watcher"]
+# GTW-655: DEV-ONLY procgen load-time stepper (an egui Next/Auto/Skip overlay over the
+# sim's staged procgen driver). Pulls in `bevy_egui` (optional above) ONLY behind this
+# feature, so a release binary never links egui. Unlike the `dev_capture` affordances, its
+# wiring site (`crate::dev::plugin`) gates it on this Cargo feature ONLY — there is NO
+# `cfg!(debug_assertions)` double-gate, because `dev_tools` is itself never enabled for a
+# release/CI build. It is inert at runtime until the `GDTF_PROCGEN_STEPPER` env var is set
+# truthy — so even a `dev_tools`-enabled dev build reaches a battle exactly as before unless a
+# developer opts in.
+#
+# NOT in the default feature set and NEVER enabled for CI / release builds.
+dev_tools = ["dep:bevy_egui"]
 
 [lints]
 workspace = true

@@ -14,7 +14,9 @@
 //! default floor) + the [`TerrainDefRegistry`] (classifying each placed piece); the
 //! assertions are on the EMITTED output, never on a reimplementation.
 
-mod support;
+// `pub(in crate::lifecycle::procgen::test)`, not `mod support;` — the GTW-655 `../staged.rs`
+// unit test is a second consumer of these fixtures (see `support`'s module doc).
+pub(in crate::lifecycle::procgen::test) mod support;
 
 mod connectivity;
 mod determinism;

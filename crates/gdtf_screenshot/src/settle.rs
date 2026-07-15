@@ -31,7 +31,7 @@ impl SettleFrames {
     pub const DEFAULT_BATTLE: Self = Self(15);
 
     /// Wrap an explicit settle-frame count (a caller that has calibrated its own scene's settle,
-    /// e.g. the procgen visualizer's 45-frame reveal-sync window).
+    /// e.g. the battle loading screen's 4-frame settle window, `gdtf_app`'s `LOADING_SETTLE`).
     #[must_use]
     pub const fn new(frames: u32) -> Self {
         Self(frames)

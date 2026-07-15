@@ -37,6 +37,15 @@ use crate::states::{
 /// 2. `OnEnter(BattleScapeState::Generation)`:
 ///    [`request_battle_setup`](super::systems::request_battle_setup) writes a
 ///    `SetupBattleRequested` carrying the authored situation + the placeholder seed.
+///
+///    GTW-655: under the `dev_tools` feature, this is additionally gated
+///    `.run_if(`[`battle_setup_runs_directly`](crate::dev::procgen_stepper::battle_setup_runs_directly)`)`
+///    — `true` (the UNCHANGED behavior below) whenever the dev-tools procgen stepper is
+///    NOT enabled for this process. When it IS enabled, this system is skipped for every
+///    `Generation` entry and `crate::dev::procgen_stepper`'s own `OnEnter(Generation)`
+///    system drives the battle instead, one stage at a time, finishing through the SAME
+///    `SetupBattleRequested` write. Without `dev_tools` compiled in at all, this line does
+///    not exist and the registration below is byte-identical to before GTW-655.
 /// 3. `Update`, presence-gated and ordered `.after(SimSystems::Simulate)`:
 ///    [`gate_generation_complete`](super::systems::gate_generation_complete) inserts
 ///    [`GenerationComplete`] on the sim's `BattleReady` signal — strictly after the
@@ -52,15 +61,25 @@ pub(in crate::states::running::game::battlescape::generation) struct BattleSimPl
 
 impl Plugin for BattleSimPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(SimBattleSimPlugin)
-            .add_systems(OnEnter(BattleScapeState::Generation), request_battle_setup)
-            .add_systems(
-                Update,
-                gate_generation_complete.after(SimSystems::Simulate).run_if(
-                    in_state(BattleScapeState::Generation)
-                        .and_then(not(resource_exists::<GenerationComplete>)),
-                ),
-            )
-            .add_systems(OnExit(GameState::BattleScape), request_battle_teardown);
+        app.add_plugins(SimBattleSimPlugin);
+        // GTW-655: gate `request_battle_setup` off exactly while the dev-tools procgen
+        // stepper is engaged for this process — see the doc above. Without `dev_tools`
+        // compiled, this registration is UNCHANGED (no run_if at all), so a non-`dev_tools`
+        // build behaves byte-identically to before this ticket.
+        #[cfg(feature = "dev_tools")]
+        app.add_systems(
+            OnEnter(BattleScapeState::Generation),
+            request_battle_setup.run_if(crate::dev::procgen_stepper::battle_setup_runs_directly),
+        );
+        #[cfg(not(feature = "dev_tools"))]
+        app.add_systems(OnEnter(BattleScapeState::Generation), request_battle_setup);
+        app.add_systems(
+            Update,
+            gate_generation_complete.after(SimSystems::Simulate).run_if(
+                in_state(BattleScapeState::Generation)
+                    .and_then(not(resource_exists::<GenerationComplete>)),
+            ),
+        )
+        .add_systems(OnExit(GameState::BattleScape), request_battle_teardown);
     }
 }

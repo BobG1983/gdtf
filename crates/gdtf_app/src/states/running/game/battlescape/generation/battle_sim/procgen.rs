@@ -62,7 +62,7 @@ use bevy::prelude::warn;
 use gdtf_assets::{ContentFinding, FindingDetail, FindingReferrer};
 use gdtf_battle_sim::{
     level::{PrefabRegistry, UuidThemeRegistry},
-    procgen::{ProcgenFinding, ProcgenTuning, generate_level},
+    procgen::{EmittedLevel, PackingError, ProcgenFinding, ProcgenTuning, generate_level},
     rng::{BattleSeed, ProcgenRng},
     situation::Situation,
     terrain::def::TerrainDefRegistry,
@@ -99,15 +99,48 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) struct
 /// plus every GTW-582 content-integrity finding the generation surfaced (a
 /// named result struct per the no-bare-types rule, the sim's `EmittedLevel`
 /// mirror). `findings` is EMPTY on a fully-resolved generation; the caller
-/// (`request_battle_setup`) records each into the
+/// (`request_battle_setup`, or the GTW-655 dev-tools stepper once its staged
+/// drive completes) records each into the
 /// [`ContentIntegrityReport`](gdtf_assets::ContentIntegrityReport).
-pub(in crate::states::running::game::battlescape::generation::battle_sim) struct ProcgenOutcome {
+///
+/// `pub(crate)`, not scoped to this module's parent: the GTW-655 dev-tools stepper
+/// (`crate::dev::procgen_stepper`) is a SECOND caller of [`outcome_from_emitted`] once its
+/// staged drive reaches the emit stage, so it must name this type too.
+pub(crate) struct ProcgenOutcome {
     /// The situation the battle is built from (generated terrain merged over
     /// the authored gangers, or the authored situation on the C4 fallback).
     pub situation: Situation,
     /// The degraded resolutions / last-resort fallbacks the generation took
     /// (GTW-582 C3(d)/C5) — already `warn!`ed here; the caller reports them.
     pub findings:  Vec<ContentFinding>,
+}
+
+/// Turn a successfully-[`generate_level`]d [`EmittedLevel`](gdtf_battle_sim::procgen::EmittedLevel)
+/// into the [`ProcgenOutcome`] the battle is built from: merge its terrain over `authored`'s
+/// gangers ([`merge_procgen_terrain`]) and convert every GTW-582 finding it carried, `warn!`ing
+/// each here (the generation site — the sim is render-free and cannot write the report itself).
+///
+/// Extracted from [`procgen_battle_situation`]'s `Ok` arm (GTW-655) so the dev-tools stepper's
+/// staged drive — which reaches an [`EmittedLevel`](gdtf_battle_sim::procgen::EmittedLevel) via
+/// [`StagedProcgen::advance`](gdtf_battle_sim::procgen::StagedProcgen::advance) one stage at a
+/// time instead of one [`generate_level`] call — can finish through the EXACT SAME merge +
+/// finding-conversion logic as the normal path, rather than a second reimplementation that could
+/// drift from it. [`procgen_battle_situation`] itself is UNCHANGED behaviorally by this split —
+/// it now simply calls this function from its `Ok` arm.
+#[must_use]
+pub(crate) fn outcome_from_emitted(authored: Situation, emitted: EmittedLevel) -> ProcgenOutcome {
+    // GTW-582 C3(d): every degraded resolution the emit took is loud — warn! here (the
+    // generation site) and hand the converted findings to the caller for the
+    // ContentIntegrityReport.
+    let findings = emitted
+        .findings
+        .iter()
+        .map(|finding| convert_procgen_finding(*finding))
+        .collect();
+    ProcgenOutcome {
+        situation: merge_procgen_terrain(authored, emitted.situation),
+        findings,
+    }
 }
 
 /// Build the battle's situation by running procgen terrain over the authored situation's
@@ -176,44 +209,41 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn pro
         &mut rng,
         &tuning,
     ) {
-        Ok(emitted) => {
-            // GTW-582 C3(d): every degraded resolution the emit took is loud —
-            // warn! here (the generation site) and hand the converted findings
-            // to the caller for the ContentIntegrityReport.
-            let findings = emitted
-                .findings
-                .iter()
-                .map(|finding| convert_procgen_finding(*finding))
-                .collect();
-            ProcgenOutcome {
-                situation: merge_procgen_terrain(authored, emitted.situation),
-                findings,
-            }
-        }
-        Err(err) => {
-            // Fail closed to the authored terrain: the LAST-RESORT empty-board fallback
-            // (GTW-582 C5) — the headless deep-walk seeds EMPTY registries, so procgen
-            // cannot assemble a level; the authored (often empty) situation still sets up
-            // and reaches BattleRunning. Never silent: warn! AND a report finding.
-            warn!(
-                "procgen could not assemble a level ({err}); using the authored situation's \
-                 terrain instead"
-            );
-            let finding = ContentFinding::DegradedFallback {
-                context: FindingReferrer::new(format!(
-                    "procgen for theme {} (empty-board fallback)",
-                    *authored.theme,
-                )),
-                detail:  FindingDetail::new(format!(
-                    "could not assemble a level ({err}); the authored situation's terrain \
-                     was used instead"
-                )),
-            };
-            ProcgenOutcome {
-                situation: authored,
-                findings:  vec![finding],
-            }
-        }
+        Ok(emitted) => outcome_from_emitted(authored, emitted),
+        Err(err) => outcome_from_packing_error(authored, &err),
+    }
+}
+
+/// Fail closed to the authored terrain on a [`PackingError`](gdtf_battle_sim::procgen::PackingError)
+/// — the LAST-RESORT empty-board fallback (GTW-582 C5): the authored (often empty) situation is
+/// used as-is, `warn!`ed and recorded as a `DegradedFallback` finding, never silently.
+///
+/// Extracted from [`procgen_battle_situation`]'s `Err` arm (GTW-655) for the SAME reason as
+/// [`outcome_from_emitted`]: the dev-tools stepper's staged drive can also fail closed on the
+/// assemble or fill stage, and finishes through this EXACT same fallback logic rather than a
+/// second reimplementation.
+#[must_use]
+pub(crate) fn outcome_from_packing_error(
+    authored: Situation,
+    err: &PackingError,
+) -> ProcgenOutcome {
+    warn!(
+        "procgen could not assemble a level ({err}); using the authored situation's terrain \
+         instead"
+    );
+    let finding = ContentFinding::DegradedFallback {
+        context: FindingReferrer::new(format!(
+            "procgen for theme {} (empty-board fallback)",
+            *authored.theme,
+        )),
+        detail:  FindingDetail::new(format!(
+            "could not assemble a level ({err}); the authored situation's terrain was used \
+             instead"
+        )),
+    };
+    ProcgenOutcome {
+        situation: authored,
+        findings:  vec![finding],
     }
 }
 

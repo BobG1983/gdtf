@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use gdtf_assets::{RonAsset, redrive_hot_ron_resource};
 
 use crate::{
-    focus_nav::{FocusNavPlugin, FocusNavSystems},
+    focus_nav::FocusNavPlugin,
     theming::{
         retheme::theme_hot_ron_chain,
         theme::{GdtfTheme, GdtfThemeSpec},
@@ -12,12 +12,8 @@ use crate::{
     },
     widgets::{
         core::{
-            DropdownDismissRequest, DropdownSelectionChanged, OptionId, SegmentSelected,
-            ToggleFlipped, activate_focused_option, close_dropdowns_on_dismiss_request,
-            dismiss_dropdowns_on_escape, dismiss_on_backdrop_press, drive_switches, open_dropdown,
-            paint_active_buttons, paint_disabled_buttons, paint_dropdown_option_highlight,
-            position_dropdown_popups, repaint_segments, select_option_on_press,
-            select_segment_on_press,
+            SegmentSelected, ToggleFlipped, drive_switches, paint_active_buttons,
+            paint_disabled_buttons, repaint_segments, select_segment_on_press,
         },
         interaction::{
             repaint_deactivated_buttons, repaint_theme_change, sync_hover_to_focus,
@@ -55,16 +51,12 @@ type ThemeAssetMessages = Messages<AssetEvent<RonAsset<GdtfThemeSpec>>>;
 /// GTW-141 mouse hover→focus bridge
 /// ([`sync_hover_to_focus`](crate::widgets::interaction::sync_hover_to_focus)).
 ///
-/// For the GTW-410 dropdown it installs only the TYPE-AGNOSTIC pieces (the
-/// [`DropdownDismissRequest`](crate::DropdownDismissRequest) message, the `Escape` emitter
-/// [`dismiss_dropdowns_on_escape`](crate::dismiss_dropdowns_on_escape), and the popup
-/// positioner [`position_dropdown_popups`](crate::position_dropdown_popups)); a dropdown is
-/// generic over its option identity, so each caller registers its concrete option-id type's
-/// drivers + message via [`register_dropdown::<T>`](register_dropdown).
-///
-/// (The GTW-412 `ScrollList` — with its guarded `ScrollAreaPlugin` / `ScrollbarPlugin`
-/// adds — and the GTW-416 `Accordion` driver were RETIRED by GTW-636: their only consumer,
-/// the in-game gang editor, moved to the content-editor binary's egui GANG mode.)
+/// (The GTW-410 `Dropdown<T>` combobox — with its type-agnostic message + `Escape` emitter +
+/// popup positioner this plugin used to install, plus the per-option-id `register_dropdown::<T>`
+/// caller seam — the GTW-411 `TextField`/`NumericField` editable fields, the GTW-412
+/// `ScrollList` — with its guarded `ScrollAreaPlugin` / `ScrollbarPlugin` adds — and the
+/// GTW-416 `Accordion` driver were RETIRED by GTW-655/GTW-636: their only consumers, the
+/// GTW-434 procgen visualizer and the in-game gang editor, moved off / were retired.)
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
@@ -162,11 +154,6 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<ToggleFlipped>()
             .add_message::<SegmentSelected>()
-            // GTW-410 — the dropdown's ONE type-agnostic message (the Esc-close request);
-            // the per-option-id `DropdownSelectionChanged<T>` message + generic drivers are
-            // registered per concrete `T` via `register_dropdown::<T>` (an unregistered
-            // generic system never runs — gate 4b).
-            .add_message::<DropdownDismissRequest>()
             .add_systems(
                 Update,
                 (
@@ -177,12 +164,6 @@ impl Plugin for UiPlugin {
                     drive_switches,
                     select_segment_on_press,
                     repaint_segments.after(select_segment_on_press),
-                    // GTW-410 — the type-agnostic dropdown systems: the `Escape`-press emitter
-                    // and the per-frame popup positioner (it reads the trigger's
-                    // `UiGlobalTransform` + `ComputedNode` to place the floating list flush
-                    // below the closed control — bevy-traps #8).
-                    dismiss_dropdowns_on_escape,
-                    position_dropdown_popups,
                 ),
             );
         // GTW-564: the theme's HotRonChain config (the canonical path + the
@@ -277,47 +258,4 @@ impl Plugin for UiPlugin {
             ),
         );
     }
-}
-
-/// Registers the [`Dropdown<T>`](crate::Dropdown) drivers + message for ONE concrete option
-/// identity type `T` (GTW-410).
-///
-/// A dropdown is generic over its option identity, and a generic system cannot be added for
-/// an arbitrary unknown `T` — so [`UiPlugin`] registers only the dropdown's type-agnostic
-/// pieces (the [`DropdownDismissRequest`] message + the `Escape` emitter + the popup
-/// positioner), and each caller (or test) calls `register_dropdown::<MyId>(app)` once per
-/// option-id type it spawns. Without this the per-type systems never run (an unregistered
-/// system is a dead feature — gate 4b).
-///
-/// It registers the [`DropdownSelectionChanged<T>`](crate::DropdownSelectionChanged) message
-/// and adds, in [`Update`]:
-///
-/// - [`open_dropdown::<T>`](crate::open_dropdown) — click toggles the floating list open/closed.
-/// - [`select_option_on_press::<T>`](crate::select_option_on_press) ordered
-///   `.before(open_dropdown::<T>)` so an option press that closes the list is NOT re-opened by
-///   the trigger handler the same frame (the recipe's ordering; bevy-traps rule 3).
-/// - [`activate_focused_option::<T>`](crate::activate_focused_option) ordered
-///   `.after(`[`FocusNavSystems::Bridge`](crate::focus_nav::FocusNavSystems::Bridge)`)` so the
-///   `Enter` → [`FocusActivated`](crate::focus_nav::FocusActivated) message is populated before
-///   it is drained (bevy-traps rule 3) — keyboard select.
-/// - [`dismiss_on_backdrop_press::<T>`](crate::dismiss_on_backdrop_press) — outside-click dismiss.
-/// - [`close_dropdowns_on_dismiss_request::<T>`](crate::close_dropdowns_on_dismiss_request) — the
-///   `Escape` consumer (a no-op when nothing is open).
-/// - [`paint_dropdown_option_highlight::<T>`](crate::paint_dropdown_option_highlight) — the
-///   GTW-499 option-row highlight painter (the hovered / focused / selected row takes the
-///   dropdown's `option_highlight_bg`, every other row its `option_bg`); the option-row look is
-///   OWNED here, not by the shared `theme_interaction` painter (which excludes option rows).
-pub fn register_dropdown<T: OptionId>(app: &mut App) {
-    app.add_message::<DropdownSelectionChanged<T>>()
-        .add_systems(
-            Update,
-            (
-                open_dropdown::<T>,
-                select_option_on_press::<T>.before(open_dropdown::<T>),
-                activate_focused_option::<T>.after(FocusNavSystems::Bridge),
-                dismiss_on_backdrop_press::<T>,
-                close_dropdowns_on_dismiss_request::<T>,
-                paint_dropdown_option_highlight::<T>,
-            ),
-        );
 }

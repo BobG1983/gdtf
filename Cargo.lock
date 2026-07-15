@@ -2808,6 +2808,7 @@ name = "gdtf_app"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy_egui",
  "gdtf_assets",
  "gdtf_battle_input",
  "gdtf_battle_presenter",

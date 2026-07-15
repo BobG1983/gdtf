@@ -10,8 +10,8 @@
 //!
 //! This crate is DEV / DEBUG infrastructure. It carries no gate of its own — the consuming crate
 //! adds it behind a debug/dev feature gate (`cfg!(all(debug_assertions, feature = "dev_capture"))`)
-//! or a `cfg!(debug_assertions)` keybind gate, exactly as the procgen visualizer is dev-gated, so
-//! it is compiled OUT of release (matching the `gdtf_app` `capture` module discipline).
+//! or a `cfg!(debug_assertions)` keybind gate, so it is compiled OUT of release (matching the
+//! `gdtf_app` `capture` module discipline).
 //!
 //! ## What it exposes
 //!
@@ -31,12 +31,13 @@
 //! ## Three triggers, all dev-gated by the consumer
 //!
 //! 1. **Env-var capture-then-exit** (unattended QA / CI-able): set the opt-in env var to a path;
-//!    [`ScreenshotCapturePlugin::from_env`] captures after settle and exits. The scene hooks in
-//!    `gdtf_app` (gang editor / procgen visualizer / loading screen, since GTW-577) keep their
-//!    own env vars + drive but delegate the path gate to [`parse_shot_path`] and the
-//!    settle-then-`Screenshot` spawn to [`settle_then_capture`]; their EXIT is the game's own
-//!    `RunningState::Quit` cascade (`gdtf_app`'s `poll_then_quit`), NOT [`poll_then_exit`] —
-//!    and the loading-screen hook deliberately does not exit at all (capture-and-continue).
+//!    [`ScreenshotCapturePlugin::from_env`] captures after settle and exits. `gdtf_app`'s own
+//!    scene hook (the loading screen, since GTW-577) keeps its own env var + drive but
+//!    delegates the path gate to [`parse_shot_path`] and the settle-then-`Screenshot` spawn to
+//!    [`settle_then_capture`]; it deliberately does not exit at all (capture-and-continue). A
+//!    mid-game scene hook that DOES need a QA exit would chain the game's own
+//!    `RunningState::Quit` cascade rather than [`poll_then_exit`] — a direct `AppExit` outside
+//!    Teardown does not reliably terminate winit on macOS (Bevy #23313).
 //! 2. **Debug keybind** (interactive): [`KeyboardCapturePlugin`] on F10, no exit.
 //! 3. **Programmatic** (harness): [`ScreenshotCapturePlugin::with_path`] / inserting a
 //!    [`CapturePath`] resource + advancing the app drives the same pipeline.

@@ -41,11 +41,18 @@ pub(in crate::states) use load::LoadScenePlugin;
 pub(crate) use load::hot_reload_test_support;
 // The resolved authored battlefield resource (GTW-205 / E10.3), re-exported here so
 // it is nameable from OUTSIDE `states` — `test_support` widens it to `pub` for the
-// AC7 real-asset harness (`crate::states::LoadedSituation`), and the GTW-223 DEV
-// auto-battle affordance (`crate::dev::auto_battle`) names it `pub(crate)` in the
-// binary build to seed a default battlefield. (Within `states`, E10.5 still reaches
-// the resource directly via `load::LoadedSituation`.) Unconditional `support_use!`,
-// so it tracks `support_item` visibility in lockstep (the re-export chain caveat).
+// AC7 real-asset harness (`crate::states::LoadedSituation`), and the GTW-655 DEV
+// procgen stepper (`crate::dev::procgen_stepper::drive`) names it `pub(crate)` in a
+// `dev_tools` binary build to resolve the same authored situation the normal
+// `request_battle_setup` path reads. (Within `states`, E10.5 still reaches the
+// resource directly via `load::LoadedSituation`, which is why that site names no
+// climb at all.) GTW-655 retired the `procgen_viz` scene — the last consumer of this
+// root climb outside `test-support`/`dev_tools` — so the climb is now gated on
+// `any(test-support, dev_tools)`: with BOTH off (a plain release/CI build), nothing
+// in-crate names `crate::states::LoadedSituation`, and an unconditional `support_use!`
+// would leave a genuinely unused `pub(crate) use` (caught by `cargo check` without
+// features — the same class `cargo dbuild` catches for the binary).
+#[cfg(any(feature = "test-support", feature = "dev_tools"))]
 crate::support_use!(load::LoadedSituation;);
 // The bespoke headless Load-fallback seed (GTW-629), re-exported here so it is
 // nameable from OUTSIDE `states` — the GTW-223 DEV auto-battle affordance

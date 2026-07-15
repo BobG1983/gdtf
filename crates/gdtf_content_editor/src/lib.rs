@@ -4,7 +4,7 @@
 //! windowed editor with the theme + content registries loaded. It mirrors `gdtf_app`'s shape — a
 //! [`MapEditorApp`] wrapper over a Bevy `App` — but runs its OWN minimal [`EditorState`] machine and
 //! shares NONE of the game's scene graph or battle sim (the housing constraint: the procgen assembly
-//! + debug visualizer live in the main game, not the editor).
+//! + its dev-tools load-time stepper live in the main game, not the editor).
 //!
 //! ## GTW-512: the egui Workbench shell (C1 of the GTW-511 migration)
 //!

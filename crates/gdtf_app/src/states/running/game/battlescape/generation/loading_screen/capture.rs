@@ -26,9 +26,9 @@
 //! in `Update`, so it deterministically overrides the `BattleReady`-gated `move_on` (which runs
 //! in `FixedUpdate`, earlier in the frame). Once the shot is requested the pin RELEASES (stops
 //! re-pinning), so the normal `Generation → AnimateIn` flow resumes on the next ready frame —
-//! and this scene deliberately gains NO exit (no `poll_then_quit`): the run CONTINUES into the
-//! battle, exactly the documented GTW-419 contract. The pin is a dev-only QA affordance: it
-//! never runs in a normal build.
+//! and this scene deliberately gains NO exit: the run CONTINUES into the battle, exactly the
+//! documented GTW-419 contract. The pin is a dev-only QA affordance: it never runs in a normal
+//! build.
 
 use bevy::prelude::*;
 use gdtf_screenshot::{
@@ -92,8 +92,8 @@ fn pin_generation_until_shot(
 /// [`settle_then_capture`] (GTW-577 C4): pin, then settle-tick, every Generation frame. The
 /// capture is additionally gated on the [`LoadingScreenRoot`] being present, so it never
 /// captures a blank frame — and retries until the screen exists instead of silently skipping
-/// (the GTW-577 retirement of the old `!= SETTLE_FRAMES` exact-match skip). There is NO
-/// `poll_then_quit` here — this scene's documented contract is capture-and-CONTINUE (the pin
+/// (the GTW-577 retirement of the old `!= SETTLE_FRAMES` exact-match skip). There is no
+/// capture-exit here — this scene's documented contract is capture-and-CONTINUE (the pin
 /// releases and the app proceeds `Generation → AnimateIn` into the battle). NOTE: the shared
 /// [`CapturePath`] / [`SettleFrames`] resources mean ONE scene-capture env var per run (the QA
 /// workflow's existing shape).

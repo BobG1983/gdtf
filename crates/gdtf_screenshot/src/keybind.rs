@@ -3,8 +3,8 @@
 //! Unlike the env-var capture-then-exit path (for unattended QA runs), this is an INTERACTIVE dev
 //! affordance — a human running the app presses a key and a PNG lands under `target/screenshots/`
 //! with a per-press-unique name ([`timestamped_path`](crate::path::timestamped_path)), the app
-//! keeps running. The consuming binary adds it ONLY under a debug/dev gate (like the procgen viz),
-//! so it is compiled OUT of release.
+//! keeps running. The consuming binary adds it ONLY under a debug/dev gate, so it is compiled OUT
+//! of release.
 
 use bevy::{
     prelude::*,
@@ -43,8 +43,8 @@ impl CaptureTag {
 /// timestamped PNG under `target/screenshots/`, without exiting.
 ///
 /// The consuming binary adds this ONLY under a debug/dev cfg gate (`cfg!(debug_assertions)` or the
-/// `dev_capture` double-gate), so it is compiled OUT of release exactly like the procgen viz. It
-/// holds a [`CaptureTag`] for the filename prefix.
+/// `dev_capture` double-gate), so it is compiled OUT of release. It holds a [`CaptureTag`] for the
+/// filename prefix.
 pub struct KeyboardCapturePlugin {
     /// The scene tag prefixed onto each captured filename.
     tag: CaptureTag,

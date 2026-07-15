@@ -18,8 +18,13 @@
 //! sim's canonical [`Situation`](crate::situation::Situation) as the terrain entries it
 //! holds inline, connectivity by-construction via the seam lattice). A tested core with no
 //! live trigger yet is the intended staged build, NOT a dead-feature split. NOTHING here
-//! wires a live battle request (the loading-state driver is GTW-433; the debug visualizer
-//! is GTW-434).
+//! wires a live battle request (the loading-state driver is GTW-433).
+//!
+//! The `staged` submodule (GTW-655) exposes the SAME three functions as a resumable,
+//! one-stage-at-a-time [`StagedProcgen`] driver — the seam the app-side dev-tools load-time
+//! stepper drives, so a developer can pause between stages and inspect the intermediate
+//! placement. It calls exactly the functions above with the SAME ruled defaults; it is an
+//! alternate schedule over the existing pipeline, never a second implementation of it.
 //!
 //! # The locked design (the GTW-424 rulings + authorized defaults — see the concern docs)
 //!
@@ -51,6 +56,7 @@ mod fill;
 mod findings;
 mod geometry;
 mod packer;
+mod staged;
 mod tuning;
 
 #[cfg(test)]
@@ -67,6 +73,7 @@ pub use geometry::{
     RegionRect,
 };
 pub use packer::{MaxRectsPacker, SplitMode};
+pub use staged::{ProcgenStage, StagedProcgen, StagedProcgenRegistries};
 pub use tuning::{
     DeadRectScatterCount, LargePrefabAreaThreshold, MinDensityFloor, ProcgenTuning, ScatterCount,
 };

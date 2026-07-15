@@ -2,5 +2,7 @@
 # One entry per line: <repo-relative-path> — <one-paragraph why> (approved: GTW-N, <date>).
 # Entries require prior USER approval; the clause-7 conformance test honors this file and
 # FAILS on stale entries (path missing or no longer violating) — remove entries when moot.
-crates/gdtf_ui/src/widgets/core/text_field.rs — deletion-pending (the GTW-636 census found procgen_viz still consumes it, so deletion now rides the GTW-655 procgen-stepper migration); exempted from S10 splitting (approved: GTW-583 amendment, 2026-07-05; delete when GTW-655 lands)
-crates/gdtf_ui/src/widgets/core/dropdown.rs — deletion-pending (the GTW-636 census found procgen_viz still consumes it, so deletion now rides the GTW-655 procgen-stepper migration); exempted from S10 splitting (approved: GTW-583 amendment, 2026-07-05; delete when GTW-655 lands)
+#
+# The text_field.rs / dropdown.rs deletion-pending entries (GTW-583 amendment, 2026-07-05)
+# were removed 2026-07-11: GTW-655 retired the GTW-434 procgen visualizer (their only
+# remaining consumer) and deleted both widget files outright.

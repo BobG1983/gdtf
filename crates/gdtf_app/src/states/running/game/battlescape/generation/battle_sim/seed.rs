@@ -25,7 +25,12 @@ const SEED_ENV_VAR: &str = "GDTF_BATTLE_SEED";
 /// Called once per `OnEnter(Generation)` — the composition root owns all
 /// entropy. The resolved value is injected into the sim via
 /// [`SetupBattleRequested`](gdtf_battle_sim::battle::SetupBattleRequested).
-pub(super) fn resolve_root_seed() -> BattleSeed {
+///
+/// `pub(crate)`, not `pub(super)`: the GTW-655 dev-tools stepper
+/// (`crate::dev::procgen_stepper`) resolves the SAME seed (falling back to it only when no
+/// [`BattleSeed`] override resource is present) so its staged drive matches
+/// `request_battle_setup`'s seed resolution exactly.
+pub(crate) fn resolve_root_seed() -> BattleSeed {
     let seed = if let Ok(raw) = std::env::var(SEED_ENV_VAR) {
         if let Some(n) = parse_seed(&raw) {
             info!(

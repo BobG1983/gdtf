@@ -56,42 +56,12 @@
 //! [`UiPlugin`](crate::UiPlugin); the bar and pips have no per-frame system (they are
 //! updated by the caller through their `set_*` helpers).
 //!
-//! ## Dropdown / combobox (GTW-410)
-//!
-//! - [`Dropdown<T>`](dropdown::Dropdown): a themed closed control showing the current
-//!   selection; clicking opens a FLOATING option list ABOVE sibling panels (via
-//!   [`GlobalZIndex`](bevy::ui::GlobalZIndex) strictly above the contextual panel — the
-//!   bevy-traps #8 occlusion guard). Selecting an option closes the list, mutates the shown
-//!   label in place, and emits a typed [`DropdownSelectionChanged<T>`](dropdown::DropdownSelectionChanged);
-//!   an outside click (a full-screen backdrop) dismisses without changing the selection.
-//!   Generic over the option IDENTITY; keyboard focus / arrow-nav / Enter / Esc all reuse the
-//!   existing [`focus_nav`](crate::focus_nav) helpers. Its open / select / dismiss / position
-//!   drivers are registered by [`UiPlugin`](crate::UiPlugin) per option-id type.
-//!
-//! ## Editable text / numeric fields (GTW-411)
-//!
-//! - [`TextField`](text_field::TextField) ([`spawn_text_field`]): a themed, focus-driven
-//!   editable text box assembled from the [`bevy_input_focus`](bevy::input_focus) primitives
-//!   (it predates Bevy's first-party `EditableText` text widget (`bevy_text`, driven by `bevy_ui_widgets`'s `EditableTextInputPlugin`)). Pressing it captures focus; typed characters
-//!   APPEND to its [`EditBuffer`](text_field::EditBuffer), Backspace pops, a rendered
-//!   [`Caret`](text_field::Caret) sits at the text END. Enter / blur commit a typed
-//!   [`CommittedTextValue`](text_field::CommittedTextValue) in a
-//!   [`TextFieldCommitted`](text_field::TextFieldCommitted) message; Escape reverts.
-//! - [`NumericField`](text_field::NumericField) ([`spawn_numeric_field`]): the same editing
-//!   model, but it CLAMPS the parsed buffer to a [`NumericRange`](text_field::NumericRange) and
-//!   commits a typed [`CommittedNumericValue`](text_field::CommittedNumericValue) in a
-//!   [`NumericFieldCommitted`](text_field::NumericFieldCommitted) message; invalid / empty
-//!   input reverts to the last-good value (never panics).
-//!
-//! The type-agnostic pieces ride [`register_text_field`]; each numeric `N` registers via
-//! [`register_numeric_field::<N>`].
-//!
-//! (The GTW-412 `ScrollList` container and the GTW-416 `Accordion` were RETIRED by
-//! GTW-636: their only consumer — the in-game gang editor — moved to the content-editor
-//! binary's egui GANG mode, and the widget census found no other user.)
+//! (The GTW-410 `Dropdown<T>` combobox, the GTW-411 `TextField`/`NumericField` editable
+//! fields, the GTW-412 `ScrollList` container, and the GTW-416 `Accordion` were RETIRED by
+//! GTW-655/GTW-636: their only consumers — the GTW-434 procgen visualizer and the in-game
+//! gang editor — moved off / were retired, and the widget census found no other user.)
 
 mod builders;
-mod dropdown;
 mod markers;
 mod orientation;
 mod paint;
@@ -101,18 +71,8 @@ mod segmented_control;
 mod switch;
 #[cfg(test)]
 pub(crate) mod test_support;
-mod text_field;
 
 pub use builders::{spawn_button, spawn_panel};
-pub use dropdown::{
-    Dropdown, DropdownAnchor, DropdownBackdrop, DropdownColors, DropdownDismissRequest,
-    DropdownItem, DropdownItemMarker, DropdownLabel, DropdownOption, DropdownOptionLabel,
-    DropdownOptions, DropdownPopup, DropdownSelectionChanged, DropdownState, OptionId,
-    SelectedIndex, activate_focused_option, any_dropdown_open, close_dropdowns_on_dismiss_request,
-    dismiss_dropdowns_on_escape, dismiss_on_backdrop_press, open_dropdown,
-    paint_dropdown_option_highlight, position_dropdown_popups, select_option_on_press,
-    spawn_dropdown,
-};
 pub use markers::{ActiveButton, ButtonLabel, DisabledButton};
 pub use orientation::Orientation;
 pub use paint::{paint_active_buttons, paint_disabled_buttons};
@@ -128,11 +88,4 @@ pub use segmented_control::{
 pub use switch::{
     Switch, SwitchColors, SwitchKnob, SwitchOrientation, SwitchState, ToggleFlipped,
     drive_switches, spawn_switch,
-};
-pub use text_field::{
-    Caret, CommittedNumericValue, CommittedTextValue, EditBuffer, FieldColors, FieldText,
-    NumericField, NumericFieldCommitted, NumericRange, NumericValue, TextField, TextFieldCommitted,
-    commit_on_focus_lost, focus_field_on_press, gate_caret_visibility, handle_text_field_key,
-    register_numeric_field, register_text_field, spawn_numeric_field, spawn_text_field,
-    sync_edit_buffer_to_text,
 };

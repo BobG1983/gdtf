@@ -48,8 +48,8 @@ impl MapEditorApp {
 
 /// Wire the GTW-510 interactive F10 screenshot keybind, DEV-only.
 ///
-/// Gated on `cfg!(debug_assertions)` (the procgen-viz keybind precedent), so a release editor never
-/// compiles it in. On F10 the `gdtf_screenshot` crate captures the primary window to a timestamped
+/// Gated on `cfg!(debug_assertions)`, so a release editor never compiles it in. On F10 the
+/// `gdtf_screenshot` crate captures the primary window to a timestamped
 /// PNG under `target/screenshots/editor-<secs>.png` WITHOUT exiting — an interactive dev capture,
 /// distinct from the env-gated `EditorCapturePlugin` capture-then-exit QA path.
 ///
