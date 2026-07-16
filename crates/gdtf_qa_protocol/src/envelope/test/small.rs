@@ -1,0 +1,82 @@
+//! Exhaustive round-trip + parity-forcing pins for the small envelope enums — the
+//! inject receipt, reject reason, error, and screenshot result (GTW-734).
+
+use crate::{
+    envelope::{
+        HelloFacts, InjectReceipt, ProtocolVersion, QaError, RejectReason, ScreenshotPathNet,
+        ScreenshotResult, ServerNameNet,
+    },
+    test_support::assert_ron_round_trip,
+};
+
+/// Every [`RejectReason`] round-trips; the witness forces new variants in.
+#[test]
+fn reject_reason_round_trips_every_variant() {
+    for reason in [
+        RejectReason::NoBattle,
+        RejectReason::NotOffered,
+        RejectReason::UnknownEntity,
+        RejectReason::BadFireMode,
+        RejectReason::StaleToken,
+    ] {
+        match reason {
+            RejectReason::NoBattle
+            | RejectReason::NotOffered
+            | RejectReason::UnknownEntity
+            | RejectReason::BadFireMode
+            | RejectReason::StaleToken => {}
+        }
+        assert_ron_round_trip(&reason);
+    }
+}
+
+/// Both [`InjectReceipt`] variants round-trip; the witness forces new variants in.
+#[test]
+fn inject_receipt_round_trips_every_variant() {
+    for receipt in [
+        InjectReceipt::Queued,
+        InjectReceipt::Rejected(RejectReason::NotOffered),
+    ] {
+        match receipt {
+            InjectReceipt::Queued | InjectReceipt::Rejected(_) => {}
+        }
+        assert_ron_round_trip(&receipt);
+    }
+}
+
+/// Every [`QaError`] round-trips; the witness forces new variants in.
+#[test]
+fn qa_error_round_trips_every_variant() {
+    for error in [
+        QaError::Busy,
+        QaError::VersionMismatch,
+        QaError::NoBattle,
+        QaError::BadRequest,
+    ] {
+        match error {
+            QaError::Busy | QaError::VersionMismatch | QaError::NoBattle | QaError::BadRequest => {}
+        }
+        assert_ron_round_trip(&error);
+    }
+}
+
+/// Both [`ScreenshotResult`] variants + the [`HelloFacts`] handshake round-trip; the
+/// witness forces new screenshot variants in.
+#[test]
+fn screenshot_result_and_hello_facts_round_trip() {
+    for result in [
+        ScreenshotResult::Saved(ScreenshotPathNet::new(
+            "target/qa_screenshots/x.png".to_owned(),
+        )),
+        ScreenshotResult::TimedOut,
+    ] {
+        match result {
+            ScreenshotResult::Saved(_) | ScreenshotResult::TimedOut => {}
+        }
+        assert_ron_round_trip(&result);
+    }
+    assert_ron_round_trip(&HelloFacts::new(
+        ProtocolVersion::new(3),
+        ServerNameNet::new("gdtf-dev".to_owned()),
+    ));
+}

@@ -1,0 +1,85 @@
+//! Exhaustive per-variant round-trip + parity-forcing pins for [`QaResponse`]
+//! (GTW-734).
+
+use crate::{
+    envelope::{
+        HelloFacts, InjectReceipt, ProtocolVersion, QaError, QaResponse, ScreenshotResult,
+        ServerNameNet,
+    },
+    events::{DroppedCount, EventBatch},
+    test_support::assert_ron_round_trip,
+    view::{
+        AppFlowView, AppStateNet, BattleActiveNet, BattleView, FactionNet, FogView, GridHeightNet,
+        GridLevelsNet, GridSizeNet, GridWidthNet, SelectionView, TerrainSummaryView, TurnView,
+    },
+};
+
+/// A minimal (empty-field) battle snapshot — enough to exercise the `Battle` reply's
+/// round-trip without rebuilding the full ganger fixture (that lives in the `view`
+/// suite).
+fn an_empty_battle() -> BattleView {
+    BattleView::new(
+        vec![],
+        TerrainSummaryView::new(
+            GridSizeNet::new(
+                GridWidthNet::new(1),
+                GridHeightNet::new(1),
+                GridLevelsNet::new(1),
+            ),
+            vec![],
+            vec![],
+        ),
+        FogView::new(vec![], vec![]),
+        SelectionView::new(None),
+        TurnView::new(FactionNet::new(0), FactionNet::new(0)),
+    )
+}
+
+/// Every [`QaResponse`] variant — the round-trip table, kept in lock-step with the enum
+/// by [`qa_response_is_exhaustive`].
+fn qa_response_cases() -> Vec<QaResponse> {
+    vec![
+        QaResponse::HelloOk(HelloFacts::new(
+            ProtocolVersion::new(1),
+            ServerNameNet::new("gdtf".to_owned()),
+        )),
+        QaResponse::AppFlow(AppFlowView::new(
+            AppStateNet::Running,
+            BattleActiveNet::new(false),
+        )),
+        QaResponse::Battle(an_empty_battle()),
+        QaResponse::Injected(InjectReceipt::Queued),
+        QaResponse::Screenshot(ScreenshotResult::TimedOut),
+        QaResponse::Output(EventBatch::new(vec![], DroppedCount::new(0))),
+        QaResponse::Error(QaError::Busy),
+    ]
+}
+
+/// The wildcard-free witness — adding a [`QaResponse`] variant breaks this `match`
+/// until it (and [`qa_response_cases`]) gain the new arm.
+fn qa_response_is_exhaustive(response: &QaResponse) {
+    match response {
+        QaResponse::HelloOk(_)
+        | QaResponse::AppFlow(_)
+        | QaResponse::Battle(_)
+        | QaResponse::Injected(_)
+        | QaResponse::Screenshot(_)
+        | QaResponse::Output(_)
+        | QaResponse::Error(_) => {}
+    }
+}
+
+/// Every [`QaResponse`] variant round-trips through compact RON identically.
+#[test]
+fn qa_response_round_trips_every_variant() {
+    let cases = qa_response_cases();
+    assert_eq!(
+        cases.len(),
+        7,
+        "the case table lists every QaResponse variant"
+    );
+    for case in &cases {
+        qa_response_is_exhaustive(case);
+        assert_ron_round_trip(case);
+    }
+}

@@ -2924,6 +2924,15 @@ name = "gdtf_hivescape_sim"
 version = "0.1.0"
 
 [[package]]
+name = "gdtf_qa_protocol"
+version = "0.1.0"
+dependencies = [
+ "bevy_derive",
+ "ron",
+ "serde",
+]
+
+[[package]]
 name = "gdtf_screenshot"
 version = "0.1.0"
 dependencies = [

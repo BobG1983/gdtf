@@ -1,0 +1,22 @@
+[package]
+name = "gdtf_qa_protocol"
+version = "0.1.0"
+edition = "2024"
+
+# The GTW-734 QA-net T1 crate: the shared TYPED wire contract between the game's
+# future `net_qa` server (`gdtf_app/src/dev/net_qa`, T3) and the future
+# `bins/gdtf_qa_mcp` MCP bridge (T8). It compiles WITHOUT the Bevy engine — serde
+# for the wire encoding, ron for the compact on-wire text, and `bevy_derive` ALONE
+# (the `Deref` derive) for the no-bare-types newtypes. NO bevy engine dep, NO tokio,
+# NO transport/IO — pure data + a pure framing codec.
+[dependencies]
+# The wire encoding: every request/response/view/event type is serde-derived.
+serde = { workspace = true }
+# The compact on-wire text form — the framing codec's payload is compact RON.
+ron = { workspace = true }
+# The `Deref` derive ONLY (proc-macro crate, no engine) — the house-style newtype
+# accessor. Direct dep for this crate alone (see the workspace comment).
+bevy_derive = { workspace = true }
+
+[lints]
+workspace = true
