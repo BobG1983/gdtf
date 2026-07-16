@@ -11,7 +11,7 @@ use gdtf_battle_sim::{
     prelude::{Faction, Position},
 };
 
-use crate::selection::cell_order_key;
+use crate::{SelectedShooter, selection::cell_order_key};
 
 /// The `*Requested` act [`MessageWriter`]s [`dispatch_act_intents`](super::dispatch_act_intents) emits onto,
 /// grouped into ONE [`SystemParam`] so the drain's parameter list stays under
@@ -48,24 +48,35 @@ pub struct ActWriters<'w> {
     pub(super) end_turn: MessageWriter<'w, EndTurnRequested>,
 }
 
-/// The READ-ONLY world the [`ActIntent::SelectNext`](super::ActIntent::SelectNext) / [`ActIntent::SelectPrev`](super::ActIntent::SelectPrev) cycle arms
-/// read, grouped into ONE [`SystemParam`] so [`dispatch_act_intents`](super::dispatch_act_intents) stays under clippy's
+/// The READ-ONLY world the selection intents read — the
+/// [`ActIntent::SelectNext`](super::ActIntent::SelectNext) /
+/// [`ActIntent::SelectPrev`](super::ActIntent::SelectPrev) cycle arms AND the GTW-735
+/// direct [`ActIntent::Select`](super::ActIntent::Select) arm — grouped into ONE
+/// [`SystemParam`] so [`dispatch_act_intents`](super::dispatch_act_intents) stays under clippy's
 /// argument-count gate (GTW-458 — the [`ActWriters`] precedent).
 ///
-/// Bundles the player faction the cycle gates on and the read-only
-/// `Query<(`[`Entity`]`, &`[`Faction`]`, &`[`Position`]`)>` over every ganger, so the drain
-/// can build the deterministic player-faction order on demand. Optional reads
+/// Bundles the player faction the selection gates on, the read-only
+/// `Query<(`[`Entity`]`, &`[`Faction`]`, &`[`Position`]`)>` over every ganger (so the drain
+/// can build the deterministic player-faction cycle order on demand), and a plain
+/// `Query<&`[`Faction`]`>` (so the direct-select arm can resolve ONE token's faction, mirroring
+/// [`decide_left_click`](crate::decide_left_click)'s `Query<&Faction>`). Optional reads
 /// (`Option<Res<PlayerFaction>>`) so the drain stays valid when no battle has inserted the
-/// faction yet — the cycle arms then no-op (`bevy-traps.md` #1). A transparent system-param
+/// faction yet — the selection arms then no-op (`bevy-traps.md` #1). A transparent system-param
 /// bundle, not itself a wrapped domain scalar.
 #[derive(SystemParam)]
 pub struct SelectionCycleReads<'w, 's> {
-    /// The faction the player controls — the cycle considers ONLY gangers whose own
+    /// The faction the player controls — the selection considers ONLY gangers whose own
     /// [`Faction`] equals this (enemies excluded). `Option` so the arm no-ops pre-battle.
-    player:  Option<Res<'w, PlayerFaction>>,
+    player:   Option<Res<'w, PlayerFaction>>,
     /// Every ganger's `(`[`Entity`]`, &`[`Faction`]`, &`[`Position`]`)` — read-only, the
     /// cycle filters to the player faction and sorts by [`cell_order_key`].
-    gangers: Query<'w, 's, (Entity, &'static Faction, &'static Position)>,
+    gangers:  Query<'w, 's, (Entity, &'static Faction, &'static Position)>,
+    /// Every ganger's `&`[`Faction`] keyed by [`Entity`] — read-only, the direct-select
+    /// [`ActIntent::Select`](super::ActIntent::Select) gate resolves ONE token's faction through
+    /// it (mirroring [`decide_left_click`](crate::decide_left_click)'s `Query<&Faction>`). A
+    /// second IMMUTABLE `Faction` read alongside `gangers` (read-read never conflicts, so no
+    /// B0001), so the token lookup does not require the target to also carry a [`Position`].
+    factions: Query<'w, 's, &'static Faction>,
 }
 
 impl SelectionCycleReads<'_, '_> {
@@ -88,5 +99,26 @@ impl SelectionCycleReads<'_, '_> {
             .collect();
         ordered.sort_by_key(|(_, position)| cell_order_key(position));
         ordered.into_iter().map(|(entity, _)| entity).collect()
+    }
+
+    /// Resolves a DIRECT actor-selection token ([`ActIntent::Select`](super::ActIntent::Select))
+    /// to the [`SelectedShooter`] to write, applying the SAME player-faction gate
+    /// [`decide_left_click`](crate::decide_left_click)'s SELECT clause enforces
+    /// (`faction == player`) — a faithful mirror, NOT a variant of it.
+    ///
+    /// Returns `Some(SelectedShooter::new(entity))` iff `entity` is a LIVE ganger whose
+    /// [`Faction`] equals the [`PlayerFaction`], else `None` — FAIL-CLOSED: a dead / despawned
+    /// token (the `factions` query lookup errors), a non-ganger entity (no [`Faction`]), an
+    /// ENEMY-faction ganger, or a pre-battle absent [`PlayerFaction`] all refuse the selection,
+    /// with NO panic (the deny-lints forbid `unwrap`/`expect`). The caller (the drain) then
+    /// writes the returned selection only on a real change (the `set_selection`
+    /// change-detection hygiene the cycle arms share).
+    pub(super) fn select_target(&self, entity: Entity) -> Option<SelectedShooter> {
+        // `***player`: `&Res` → `Res<PlayerFaction>` → `PlayerFaction` → `Faction` (its inner).
+        let player_faction: Faction = ***self.player.as_ref()?;
+        // A dead / despawned token (or a non-ganger without `Faction`) errors the lookup → None.
+        let faction = self.factions.get(entity).ok()?;
+        // The SAME `faction == player` gate `decide_left_click`'s SELECT clause enforces.
+        (*faction == player_faction).then(|| SelectedShooter::new(entity))
     }
 }

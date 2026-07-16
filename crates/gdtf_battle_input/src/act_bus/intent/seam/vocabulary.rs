@@ -1,6 +1,7 @@
 //! The classic [`ActIntent`] vocabulary — it changes when a press gains or loses an intent
 //! variant.
 
+use bevy::prelude::Entity;
 use gdtf_battle_sim::{
     acts::{FireRequested, MoveRequested, SetFacingRequested},
     prelude::StanceKind,
@@ -115,4 +116,21 @@ pub enum ActIntent {
     /// the LAST; an EMPTY player gang is a no-op. `Shift+Tab` and the on-bar Prev button push
     /// this through the ONE seam.
     SelectPrev,
+    /// SELECT the carried ganger DIRECTLY as the [`SelectedShooter`](crate::SelectedShooter) — a
+    /// by-entity actor pick, drained in [`dispatch_act_intents`](super::dispatch_act_intents)
+    /// under the SAME player-faction gate the left-click SELECT clause
+    /// ([`decide_left_click`](crate::decide_left_click)) enforces (GTW-735). The drain resolves
+    /// the token's [`Faction`](gdtf_battle_sim::prelude::Faction) and sets
+    /// [`SelectedShooter`](crate::SelectedShooter) ONLY when it equals the
+    /// [`PlayerFaction`](gdtf_battle_sim::battle::PlayerFaction) (enemies, non-gangers, and a
+    /// dead / despawned token are all REFUSED — fail-closed, the selection is left untouched),
+    /// and writes only on a real change (the `set_selection` change-detection hygiene the cycle
+    /// arms share). The direct-select twin of the direct-clear
+    /// [`SelectionClear`](Self::SelectionClear).
+    ///
+    /// This variant has NO LOCAL producer yet: the keyboard / action-bar / mouse surfaces are
+    /// UNCHANGED — its producer is the GTW-694 T4 network inject path (a QA harness picking an
+    /// actor by token). Local play never pushes it, so it is a pure drain-side addition with zero
+    /// behaviour change for the existing surfaces.
+    Select(Entity),
 }

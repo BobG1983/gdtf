@@ -78,6 +78,17 @@ use crate::{
 /// [`SelectionCycleReads`] bundle, writing [`SelectedShooter`] only on a real change
 /// (change-detection hygiene — the `set_selection` precedent).
 ///
+/// The GTW-735 DIRECT-select intent picks an actor BY ENTITY token, under the SAME
+/// player-faction gate the left-click SELECT clause ([`decide_left_click`](crate::decide_left_click)) enforces:
+///
+/// - [`ActIntent::Select`] sets [`SelectedShooter`] to the carried entity ONLY when it is a LIVE
+///   player-faction ganger (`SelectionCycleReads::select_target` — the SAME `faction == player`
+///   gate `decide_left_click`'s clause 2 uses); an ENEMY, a non-ganger, or a DEAD / despawned
+///   token is REFUSED (fail-closed — the selection is left untouched, no panic), and it writes
+///   only on a real change (the same `set_selection` hygiene the cycle arms use). It has NO local
+///   producer — the keyboard / UI / mouse surfaces are UNCHANGED; its producer is the GTW-694 T4
+///   network inject path.
+///
 /// With NO [`SelectedShooter`] the posture cycle intents are no-ops (nothing to act on); a
 /// cycle intent for a selected entity that lacks the relevant component is skipped
 /// (fail-closed, no panic) via the query lookup. Param-only (`bevy-traps.md` #7):
@@ -184,6 +195,21 @@ pub fn dispatch_act_intents(
             }
             ActIntent::SelectPrev => {
                 cycle_selection(&mut selected, &cycle_reads, CycleDirection::Prev);
+            }
+            ActIntent::Select(actor) => {
+                // GTW-735 DIRECT actor selection: apply the SAME player-faction gate the
+                // left-click SELECT clause (`decide_left_click`) enforces via `select_target`
+                // (`faction == player`), plus the `set_selection` change-detection hygiene — write
+                // SelectedShooter ONLY on a real change. A dead / despawned token, a non-ganger, an
+                // enemy, or a pre-battle absent PlayerFaction all refuse the selection
+                // (fail-closed, no panic). The drain stays the SOLE writer of SelectedShooter for
+                // intent-driven selection. `*selected` is the whole SelectedShooter (one deref for
+                // `ResMut`); assigning through it trips change-detection for the highlight + sync.
+                if let Some(next) = cycle_reads.select_target(actor)
+                    && *selected != next
+                {
+                    *selected = next;
+                }
             }
         }
     }
