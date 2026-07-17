@@ -17,14 +17,23 @@
 //!   [`Busy`](gdtf_qa_protocol::envelope::QaError::Busy) on a second, two-sided timeouts).
 //! - [`pending`] — the typed pending queues + the frame-deadline sweep.
 //! - [`router`] — the always-on request router.
-//! - [`plugin`] — the [`NetQaPlugin`] registration seam (`from_env` / `with_channels`).
+//! - [`convert`] — the wildcard-free [`NetIntent`](gdtf_qa_protocol::intent::NetIntent)
+//!   classification (T4).
+//! - [`resolve`] — the inject path's `SystemParam` bundles + fail-closed token/fire-mode
+//!   resolvers + offer gate (T4).
+//! - [`inject`] — the [`apply_injects`](inject::apply_injects) pump that wires injected
+//!   intents into the same public input queues the local surfaces use (T4).
+//! - [`plugin`] — the [`NetQaPlugin`] registration (`from_env` / `with_channels`).
 
 mod channel;
 mod config;
+mod convert;
 mod env;
+mod inject;
 mod listener;
 mod pending;
 mod plugin;
+mod resolve;
 mod router;
 
 // `NetQaPlugin` is the item the binary consumes (via the dev aggregate plugin,

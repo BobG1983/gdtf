@@ -1,4 +1,4 @@
-//! [`NetQaPlugin`] — the DEV-ONLY QA network control channel's registration seam
+//! [`NetQaPlugin`] — the DEV-ONLY QA network control channel's registration
 //! (GTW-736).
 //!
 //! ## Two gates, both must hold to activate (the `dev_capture` strictness class)
@@ -27,12 +27,14 @@
 use std::{sync::mpsc, thread};
 
 use bevy::prelude::*;
-use gdtf_battle_input::InputSystems;
+use gdtf_battle_input::{ContextualActSystems, InputSystems, dispatch_act_intents};
+use gdtf_battle_sim::prelude::BattleInProgress;
 
 use super::{
     channel::{IncomingRequest, NetInbox},
     config::{DEFAULT_IO_TIMEOUT, NetIoTimeout, NetQaPort},
     env::{net_qa_enabled, port_from_env},
+    inject::apply_injects,
     listener::{bind_listener, run_listener},
     pending::{
         InjectPayload, OutputPayload, PendingQueue, ScreenshotPayload, SnapshotPayload,
@@ -109,7 +111,7 @@ impl NetQaPlugin {
 
     /// Bind the REAL loopback listener on an OS-assigned ephemeral port and spawn its
     /// accept loop, returning the bound port and the request receiver — the transport
-    /// test seam.
+    /// test entry point.
     ///
     /// The test connects to the returned port and drives a stand-in for the Bevy side off
     /// the returned receiver (the router itself is covered by
@@ -178,8 +180,8 @@ impl Plugin for NetQaPlugin {
     }
 }
 
-/// Init the five typed pending queues and register the sweeps + router in the
-/// [`InputSystems::Gather`] band (sweeps chained before the router).
+/// Init the five typed pending queues and register the sweeps + router + the T4 inject
+/// pump in the [`InputSystems::Gather`] band (sweeps chained before the router).
 fn register_router(app: &mut App) {
     app.init_resource::<PendingQueue<InjectPayload>>()
         .init_resource::<PendingQueue<SnapshotPayload>>()
@@ -198,5 +200,22 @@ fn register_router(app: &mut App) {
         )
             .chain()
             .in_set(InputSystems::Gather),
+    );
+    // GTW-737 — the T4 inject pump. In the SAME `InputSystems::Gather` band, ordered
+    // `.after(route_requests)` (so it drains the request the router just routed) and
+    // `.before` BOTH intent drains ([`ContextualActSystems::Drain`] and
+    // [`dispatch_act_intents`]) — so an intent it pushes is drained, and its `*Requested`
+    // sim-consumed, the SAME frame (the co-schedule same-frame guarantee). Gated on a live
+    // battle (the only state its input-queue resources exist in; the router already rejects
+    // off-battle injects `NoBattle`), so it never runs — nor validates its params — when a
+    // battle is absent (`bevy-traps.md` #1).
+    app.add_systems(
+        Update,
+        apply_injects
+            .in_set(InputSystems::Gather)
+            .after(route_requests)
+            .before(ContextualActSystems::Drain)
+            .before(dispatch_act_intents)
+            .run_if(resource_exists::<BattleInProgress>),
     );
 }

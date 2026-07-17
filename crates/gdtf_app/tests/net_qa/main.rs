@@ -13,7 +13,13 @@
 //! - [`transport`] drives the REAL loopback listener over a real `TcpStream` — a framed
 //!   Hello round-trip, the one-client-at-a-time `Busy` rejection, and the read-timeout
 //!   reap.
+//! - [`inject`] drives the REAL T4 `apply_injects` pump (GTW-737) on a live-battle
+//!   `BattleAppBuilder` app: same-frame drain of a classic + a contextual intent, the
+//!   `NotOffered` offer-gate rejection, the fail-closed `UnknownEntity` token rejection,
+//!   and the outcome-decoupled `Queued` receipt — its harness lives in [`inject_support`].
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
+mod inject;
+mod inject_support;
 mod routing;
 mod transport;

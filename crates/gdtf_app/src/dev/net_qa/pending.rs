@@ -58,6 +58,12 @@ impl InjectPayload {
     pub(super) const fn new(intent: NetIntent) -> Self {
         Self(intent)
     }
+
+    /// The wrapped intent — the T4 [`apply_injects`](super::inject::apply_injects)
+    /// consumer's read ([`NetIntent`] is `Copy`, so this borrows without consuming).
+    pub(super) const fn intent(&self) -> NetIntent {
+        self.0
+    }
 }
 
 impl OutputPayload {
@@ -186,6 +192,19 @@ impl<P: Send + Sync + 'static> PendingQueue<P> {
     /// Enqueue a payload with the standard deadline and its reply channel.
     pub(super) fn push_new(&mut self, payload: P, responder: Responder) {
         self.0.push_back(Pending::new(payload, responder));
+    }
+
+    /// Drain every currently-queued request, yielding each payload with its
+    /// [`Responder`] — the same-frame consumer's read (the T4 injection pump). The
+    /// deadline [`sweep_pending`] only reaps entries left UNCLAIMED; a consumer that
+    /// answers a request the frame it is routed pulls them here first (running
+    /// `.after` the router, so it sees this frame's pushes), so a consumed entry never
+    /// reaches the sweep.
+    pub(super) fn drain_ready(&mut self) -> Vec<(P, Responder)> {
+        self.0
+            .drain(..)
+            .map(|entry| (entry.payload, entry.responder))
+            .collect()
     }
 
     /// Tick every entry once; answer [`Timeout`](gdtf_qa_protocol::envelope::QaError::Timeout)
