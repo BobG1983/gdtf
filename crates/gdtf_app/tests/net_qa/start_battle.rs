@@ -54,8 +54,9 @@ const REQUESTED_SEED: u64 = 0x00C0_FFEE_D15E_A5E5;
 /// and start-battle consumer wired to an injected inbox, and every persistent `Load`
 /// resource the deep descent needs pre-seeded (a `MinimalPlugins` app has no
 /// `AssetServer` to resolve them). Returns the app and the sender the test pushes
-/// requests on (exactly as the listener thread would).
-fn menu_app_with_net_qa() -> (App, mpsc::Sender<IncomingRequest>) {
+/// requests on (exactly as the listener thread would). Shared with the affordance-parity
+/// suite, which reuses it as its menu-state fixture.
+pub(crate) fn menu_app_with_net_qa() -> (App, mpsc::Sender<IncomingRequest>) {
     let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
         .build();

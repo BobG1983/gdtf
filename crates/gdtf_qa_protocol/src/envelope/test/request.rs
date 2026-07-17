@@ -6,6 +6,7 @@ use crate::{
     ids::{EventCap, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
     test_support::assert_ron_round_trip,
+    view::RequestKindNet,
 };
 
 /// Every [`QaRequest`] variant — the round-trip table, kept in lock-step with the enum
@@ -67,4 +68,30 @@ fn optional_request_fields_round_trip_when_absent() {
         situation: SituationRef::new("ambush".to_owned()),
         seed:      None,
     });
+}
+
+/// Every [`QaRequest`] variant maps to a DISTINCT [`RequestKindNet`], and a full case
+/// table maps onto exactly [`RequestKindNet::ALL`] — so the request vocabulary and the
+/// affordance vocabulary cannot drift apart. Adding a `QaRequest` variant without a
+/// matching kind breaks [`QaRequest::kind`]'s wildcard-free `match`, which this exercises.
+#[test]
+fn every_request_maps_to_a_distinct_kind() {
+    let kinds: Vec<RequestKindNet> = qa_request_cases().iter().map(QaRequest::kind).collect();
+    // One kind per case, and every kind distinct.
+    assert_eq!(kinds.len(), RequestKindNet::ALL.len());
+    for (index, first) in kinds.iter().enumerate() {
+        for second in &kinds[index + 1..] {
+            assert_ne!(
+                first, second,
+                "each QaRequest variant must map to a distinct RequestKindNet",
+            );
+        }
+    }
+    // The case table's kinds cover exactly RequestKindNet::ALL.
+    for kind in RequestKindNet::ALL {
+        assert!(
+            kinds.contains(&kind),
+            "the QaRequest case table must cover {kind:?}",
+        );
+    }
 }

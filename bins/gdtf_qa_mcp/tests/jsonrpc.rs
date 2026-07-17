@@ -23,6 +23,7 @@ impl GameLink for CannedGame {
             QaRequest::GetAppFlow => Ok(QaResponse::AppFlow(AppFlowView::new(
                 AppStateNet::Running,
                 BattleActiveNet::new(true),
+                Vec::new(),
             ))),
             QaRequest::Inject(_) => Ok(QaResponse::Injected(InjectReceipt::Queued)),
             _ => Ok(QaResponse::Error(QaError::BadRequest)),

@@ -90,7 +90,10 @@ impl ToolName {
             }
             Self::AppFlow => {
                 "Read the app-lifecycle snapshot (which AppState, whether a battle is \
-                 running) as JSON. No arguments."
+                 running, and an `available` list of the request kinds the game will \
+                 service right now) as JSON. Call this first and act only on what its \
+                 `available` list advertises: the battle-only requests (query_state, \
+                 send_input, get_output) are absent until a battle is running. No arguments."
             }
             Self::LaunchGame => {
                 "Launch the game as a child process with the net_qa control channel \

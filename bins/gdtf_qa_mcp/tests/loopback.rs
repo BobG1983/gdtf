@@ -72,6 +72,7 @@ fn serve_one(listener: &TcpListener) {
             Ok(QaRequest::GetAppFlow) => QaResponse::AppFlow(AppFlowView::new(
                 AppStateNet::Running,
                 BattleActiveNet::new(true),
+                Vec::new(),
             )),
             Ok(_) => QaResponse::Error(QaError::BadRequest),
             Err(_) => return,

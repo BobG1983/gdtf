@@ -13,8 +13,8 @@ use crate::{
         EmplacementMannedNet, EmplacementView, FactionNet, FireModeLabel, FireModeView, FogView,
         GangerNameNet, GangerView, GridHeightNet, GridLevelsNet, GridSizeNet, GridWidthNet,
         HpMaxNet, HpNet, InjuryEntryNet, InjuryNameNet, InjurySummaryNet, LifeStateNet,
-        SelectionView, SeverityNet, TerrainSummaryView, TuMaxNet, TuNet, TurnView, WeaponNameNet,
-        WeaponView, WoundsMaxNet, WoundsNet,
+        RequestKindNet, SelectionView, SeverityNet, TerrainSummaryView, TuMaxNet, TuNet, TurnView,
+        WeaponNameNet, WeaponView, WoundsMaxNet, WoundsNet,
     },
 };
 
@@ -102,14 +102,44 @@ fn battle_view_round_trips() {
     assert_ron_round_trip(&a_battle());
 }
 
-/// The app-flow snapshot and an empty selection round-trip.
+/// The app-flow snapshot (with a populated affordance list) and an empty selection
+/// round-trip; the empty-affordance form round-trips too.
 #[test]
 fn app_flow_and_empty_selection_round_trip() {
     assert_ron_round_trip(&AppFlowView::new(
         AppStateNet::Running,
         BattleActiveNet::new(true),
+        RequestKindNet::ALL.to_vec(),
+    ));
+    assert_ron_round_trip(&AppFlowView::new(
+        AppStateNet::Intro,
+        BattleActiveNet::new(false),
+        Vec::new(),
     ));
     assert_ron_round_trip(&SelectionView::new(None));
+}
+
+/// Every [`RequestKindNet`] round-trips, and the witness forces new variants in — kept in
+/// lock-step with the [`RequestKindNet::ALL`] table the server filters.
+#[test]
+fn request_kind_round_trips_every_variant() {
+    assert_eq!(
+        RequestKindNet::ALL.len(),
+        7,
+        "RequestKindNet::ALL lists every request kind"
+    );
+    for kind in RequestKindNet::ALL {
+        match kind {
+            RequestKindNet::Hello
+            | RequestKindNet::GetAppFlow
+            | RequestKindNet::GetBattleState
+            | RequestKindNet::Inject
+            | RequestKindNet::TakeScreenshot
+            | RequestKindNet::GetOutput
+            | RequestKindNet::StartBattle => {}
+        }
+        assert_ron_round_trip(&kind);
+    }
 }
 
 /// Every [`LifeStateNet`] variant round-trips; the witness forces new variants in.

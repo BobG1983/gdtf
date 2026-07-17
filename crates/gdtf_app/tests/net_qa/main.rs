@@ -29,8 +29,13 @@
 //! - [`deadline`] drives the generic frame-deadline `Timeout` sweep on a live-battle
 //!   `BattleAppBuilder` app via the one still-unclaimed queue (`GetOutput`, the T6 drain);
 //!   it reuses [`inject_support`]'s harness.
+//! - [`affordance`] drives the REAL router (GTW-746) across three state fixtures (no
+//!   battle, the menu, a live battle) and asserts the `available` list `GetAppFlow`
+//!   advertises agrees with what the router actually accepts / rejects `NoBattle`; it
+//!   reuses [`inject_support`]'s live-battle harness and [`start_battle`]'s menu fixture.
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
+mod affordance;
 mod deadline;
 mod inject;
 mod inject_support;

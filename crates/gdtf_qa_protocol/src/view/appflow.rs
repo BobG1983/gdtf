@@ -40,25 +40,82 @@ impl BattleActiveNet {
     }
 }
 
-/// The app-flow **snapshot** — the lifecycle state plus whether a battle is running.
+/// A request **kind** — the discriminant of a [`QaRequest`](crate::envelope::QaRequest)
+/// without its payload.
 ///
-/// The reply to a [`GetAppFlow`](crate::envelope::QaRequest::GetAppFlow). Serde default
-/// shape.
+/// One variant per `QaRequest` variant, kept in lock-step with it by
+/// [`QaRequest::kind`](crate::envelope::QaRequest::kind) (a wildcard-free map that fails
+/// to compile until a newly-added request grows a matching kind). This is the vocabulary
+/// [`AppFlowView::available`] advertises: the request kinds the server will service in the
+/// current app state, so a QA client can read "where am I, what can I send you" from one
+/// snapshot instead of probing each request. An independent serde enum.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum RequestKindNet {
+    /// The [`Hello`](crate::envelope::QaRequest::Hello) handshake.
+    Hello,
+    /// The [`GetAppFlow`](crate::envelope::QaRequest::GetAppFlow) lifecycle read.
+    GetAppFlow,
+    /// The [`GetBattleState`](crate::envelope::QaRequest::GetBattleState) snapshot read.
+    GetBattleState,
+    /// An [`Inject`](crate::envelope::QaRequest::Inject) of one battle intent.
+    Inject,
+    /// A [`TakeScreenshot`](crate::envelope::QaRequest::TakeScreenshot) capture.
+    TakeScreenshot,
+    /// A [`GetOutput`](crate::envelope::QaRequest::GetOutput) combat-event drain.
+    GetOutput,
+    /// A [`StartBattle`](crate::envelope::QaRequest::StartBattle) navigation.
+    StartBattle,
+}
+
+impl RequestKindNet {
+    /// Every request kind, in [`QaRequest`](crate::envelope::QaRequest) declaration order.
+    ///
+    /// The canonical list the game server filters to build [`AppFlowView::available`], and
+    /// the list the round-trip suite walks to prove each kind round-trips. The per-variant
+    /// round-trip witness keeps this array complete — a new kind that is not listed here
+    /// fails that test.
+    pub const ALL: [Self; 7] = [
+        Self::Hello,
+        Self::GetAppFlow,
+        Self::GetBattleState,
+        Self::Inject,
+        Self::TakeScreenshot,
+        Self::GetOutput,
+        Self::StartBattle,
+    ];
+}
+
+/// The app-flow **snapshot** — the lifecycle state, whether a battle is running, and the
+/// requests the server will service right now.
+///
+/// The reply to a [`GetAppFlow`](crate::envelope::QaRequest::GetAppFlow). A QA client reads
+/// [`available`](Self::available) to learn which requests are valid in the current state
+/// (the trio of battle-only reads is absent until a battle is running); it is meant to be
+/// polled first, before acting on what it lists. Serde default shape.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct AppFlowView {
     /// The app's lifecycle state.
     pub state:         AppStateNet,
     /// Whether a battle is currently in progress.
     pub battle_active: BattleActiveNet,
+    /// The request kinds the server will service in this state — the affordances a QA
+    /// client can act on right now.
+    pub available:     Vec<RequestKindNet>,
 }
 
 impl AppFlowView {
-    /// Build an app-flow snapshot from the lifecycle state and battle-active flag.
+    /// Build an app-flow snapshot from the lifecycle state, the battle-active flag, and the
+    /// request kinds serviceable right now.
     #[must_use]
-    pub const fn new(state: AppStateNet, battle_active: BattleActiveNet) -> Self {
+    pub const fn new(
+        state: AppStateNet,
+        battle_active: BattleActiveNet,
+        available: Vec<RequestKindNet>,
+    ) -> Self {
         Self {
             state,
             battle_active,
+            available,
         }
     }
 }

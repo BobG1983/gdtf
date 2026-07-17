@@ -23,7 +23,7 @@ use gdtf_qa_protocol::{
 
 use super::{
     pending::{PendingQueue, StartBattlePayload},
-    router::app_state_to_net,
+    router::{app_state_to_net, available_requests},
 };
 use crate::states::{AppState, RunningState, running::menu::StartBattleRequested};
 
@@ -76,8 +76,9 @@ pub(super) fn drive_start_battle(
         .as_deref()
         .map(State::get)
         .is_some_and(|state| matches!(state, RunningState::Menu));
+    let in_battle = battle.is_some();
     for (payload, responder) in queue.drain_ready() {
-        if battle.is_some() || !at_menu {
+        if in_battle || !at_menu {
             responder.reply(QaResponse::Error(QaError::BadRequest));
             continue;
         }
@@ -91,9 +92,13 @@ pub(super) fn drive_start_battle(
         // and performs the `Menu → Game` transition.
         let seed = payload.seed().map(|seed| BattleSeed::new(*seed));
         start.write(StartBattleRequested::new(seed));
+        // Acknowledge with the current app-flow snapshot (still at the menu — the descent
+        // is deferred), reporting the affordances the same predicate the router uses
+        // advertises for this state.
         responder.reply(QaResponse::AppFlow(AppFlowView::new(
             app_state_to_net(app_state.get()),
-            BattleActiveNet::new(battle.is_some()),
+            BattleActiveNet::new(in_battle),
+            available_requests(in_battle),
         )));
     }
 }

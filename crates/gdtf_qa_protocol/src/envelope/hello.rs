@@ -15,6 +15,15 @@ use serde::{Deserialize, Serialize};
 pub struct ProtocolVersion(u32);
 
 impl ProtocolVersion {
+    /// The wire protocol version this build of the contract speaks.
+    ///
+    /// Bumped to `2` when [`AppFlowView`](crate::view::AppFlowView) gained its `available`
+    /// affordance list (GTW-746) — an existing wire shape changed, so a client negotiating
+    /// the old version `1` now gets a
+    /// [`VersionMismatch`](crate::envelope::QaError::VersionMismatch) rather than a snapshot
+    /// missing the field. The game server negotiates a `Hello` against this value.
+    pub const CURRENT: Self = Self::new(2);
+
     /// Build a protocol version from its number.
     #[must_use]
     pub const fn new(version: u32) -> Self {

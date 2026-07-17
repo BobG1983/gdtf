@@ -17,10 +17,12 @@ crate::support_item! {
     /// A [`Hello`](gdtf_qa_protocol::envelope::QaRequest::Hello) carrying THIS version
     /// negotiates successfully ([`HelloOk`](gdtf_qa_protocol::envelope::QaResponse::HelloOk));
     /// any other version is rejected
-    /// [`VersionMismatch`](gdtf_qa_protocol::envelope::QaError::VersionMismatch). Bumped
-    /// on any breaking envelope change. Widened to `pub` under `test-support` so the
-    /// routing test can assert the negotiated version without hard-coding a literal.
-    const NET_QA_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::new(1);
+    /// [`VersionMismatch`](gdtf_qa_protocol::envelope::QaError::VersionMismatch). It tracks
+    /// the protocol crate's [`ProtocolVersion::CURRENT`], which is bumped on any breaking
+    /// envelope change (GTW-746 bumped it to `2` for the `AppFlowView.available` field).
+    /// Widened to `pub` under `test-support` so the routing test can assert the negotiated
+    /// version without hard-coding a literal.
+    const NET_QA_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::CURRENT;
 }
 
 /// The server's self-identifying name returned in the handshake facts.
