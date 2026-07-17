@@ -119,6 +119,15 @@ pub fn seed_load_gate(asset_server: Option<Res<AssetServer>>, mut commands: Comm
     seed_load_fallbacks(asset_server, commands);
 }
 
+// GTW-736: the QA net_qa server's transport + router test surface. Gated exactly like the
+// module itself — `all(debug_assertions, feature = "net_qa")` — so a build without the
+// feature (the CI static suite) omits both the module and this re-export. `NetQaPlugin`
+// carries the `with_channels` / `spawn_test_listener` test constructors; the rest are the
+// channel + config types the GTW-736 integration suite names directly.
+#[cfg(all(debug_assertions, feature = "net_qa"))]
+pub use crate::dev::net_qa::{
+    IncomingRequest, NET_QA_PROTOCOL_VERSION, NetIoTimeout, NetQaPlugin, NetQaPort, Responder,
+};
 // The GTW-655 procgen-stepper command/latch types + its forced-enable test constructor —
 // `dev_tools`-gated because the whole stepper module compiles out unless that feature is on
 // (it pulls in `bevy_egui`). Retired the GTW-434/GTW-498 procgen-visualizer ledger entry this

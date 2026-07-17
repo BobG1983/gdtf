@@ -20,4 +20,8 @@ pub enum QaError {
     NoBattle,
     /// The request was malformed or nonsensical in the current state.
     BadRequest,
+    /// The request was accepted but no consumer answered it before its
+    /// deadline — the game side swept it and returned this instead of leaving
+    /// the client hanging (the GTW-694 `FrameDeadline` sweep; GTW-736).
+    Timeout,
 }

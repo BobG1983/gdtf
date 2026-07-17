@@ -2814,6 +2814,7 @@ dependencies = [
  "gdtf_battle_presenter",
  "gdtf_battle_sim",
  "gdtf_content_families",
+ "gdtf_qa_protocol",
  "gdtf_screenshot",
  "gdtf_state_scoped",
  "gdtf_test_utils",

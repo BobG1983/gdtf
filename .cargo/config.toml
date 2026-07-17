@@ -12,19 +12,26 @@
 # runtime (no behavior change) unless `GDTF_PROCGEN_STEPPER` is set truthy — see
 # `crate::dev::procgen_stepper` in `gdtf_app`. CI's static suite does not enable
 # `dynamic_linking` or `dev_tools`.
+#
+# GTW-736: every dev alias ALSO enables `net_qa` (the DEV-ONLY QA network control channel,
+# the GTW-694 architecture's T3), mirroring the `dev_tools` threading above, so the dev/gate
+# loop always compiles, lints, and tests the loopback transport + request router. It stays
+# inert at runtime unless `GDTF_NET_QA` is set truthy (its `from_env` gate) AND is additionally
+# `cfg!(debug_assertions)`-gated at its wiring site (it opens a listener). CI's static suite
+# enables neither `dynamic_linking` nor `net_qa`.
 
 # Run / build the game with dynamic linking.
-drun = "run -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools"
-dbuild = "build -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools"
+drun = "run -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools,net_qa"
+dbuild = "build -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools,net_qa"
 
 # Run / build the content editor (bins/gdtf_content_editor) with dynamic linking.
 edrun = "run -p gdtf_content_editor_bin --features dynamic_linking"
 edbuild = "build -p gdtf_content_editor_bin --features dynamic_linking"
 
 # Workspace-wide dev checks with dynamic linking.
-dcheck = "check --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools"
-dclippy = "clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools"
-dtest = "test --workspace --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools"
+dcheck = "check --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa"
+dclippy = "clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa"
+dtest = "test --workspace --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa"
 
 [unstable]
 checksum-freshness = true

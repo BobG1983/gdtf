@@ -46,6 +46,12 @@ ron = { workspace = true }
 # their per-scene env vars + drive; the game also adds the crate's F10 debug keybind. All under
 # `cfg!(all(debug_assertions, feature = "dev_capture"))`, so a release binary never links it.
 gdtf_screenshot = { path = "../gdtf_screenshot", optional = true }
+# GTW-736: the bevy-FREE typed wire contract (GTW-734, T1) the `net_qa` QA-net server
+# (`crate::dev::net_qa`, T3) speaks — the request/response envelope, the view/event DTOs,
+# and the pure framing codec. OPTIONAL — pulled in ONLY by the `net_qa` feature (below),
+# so a release binary (and any build without `net_qa`) never links it. The net_qa module
+# is the sole consumer; it never reimplements framing, it calls this crate's pure codec.
+gdtf_qa_protocol = { path = "../gdtf_qa_protocol", optional = true }
 # GTW-655: the dev-tools procgen load-time stepper's egui overlay. OPTIONAL — pulled in ONLY
 # by the `dev_tools` feature (below), so a release binary never links egui. Same version spec
 # as `gdtf_content_editor`'s (non-optional) `bevy_egui` dependency — that crate did not
@@ -134,6 +140,19 @@ file_watcher = ["bevy/file_watcher"]
 #
 # NOT in the default feature set and NEVER enabled for CI / release builds.
 dev_tools = ["dep:bevy_egui"]
+# GTW-736: DEV-ONLY QA network control channel (the GTW-694 architecture's T3). Pulls in
+# the bevy-free wire contract (`dep:gdtf_qa_protocol`) plus the in-engine self-capture crate
+# (`dep:gdtf_screenshot`, reused by the later T7 screenshot child), and compiles in
+# `crate::dev::net_qa` — a loopback-only (`Ipv4Addr::LOCALHOST`) TCP listener + request router
+# a coding-agent QA harness drives. Like `dev_capture` (and UNLIKE `dev_tools`), its wiring site
+# is ADDITIONALLY double-gated on `cfg!(debug_assertions)` — it opens a listener, the
+# `dev_capture` strictness class — so a release artifact never sees it even with the feature on.
+# It is inert at runtime until `GDTF_NET_QA` is set truthy (its own `from_env` gate), so even a
+# `net_qa`-enabled dev build reaches a battle exactly as before unless a developer opts in; the
+# listen port is `GDTF_NET_QA_PORT` (port only — the interface is never configurable).
+#
+# NOT in the default feature set and NEVER enabled for CI / release builds.
+net_qa = ["dep:gdtf_qa_protocol", "dep:gdtf_screenshot"]
 
 [lints]
 workspace = true

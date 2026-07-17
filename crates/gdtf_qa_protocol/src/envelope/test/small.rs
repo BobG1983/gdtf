@@ -52,9 +52,14 @@ fn qa_error_round_trips_every_variant() {
         QaError::VersionMismatch,
         QaError::NoBattle,
         QaError::BadRequest,
+        QaError::Timeout,
     ] {
         match error {
-            QaError::Busy | QaError::VersionMismatch | QaError::NoBattle | QaError::BadRequest => {}
+            QaError::Busy
+            | QaError::VersionMismatch
+            | QaError::NoBattle
+            | QaError::BadRequest
+            | QaError::Timeout => {}
         }
         assert_ron_round_trip(&error);
     }

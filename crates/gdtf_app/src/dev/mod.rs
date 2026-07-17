@@ -41,5 +41,13 @@ pub(crate) mod drive;
 #[cfg(feature = "dev_tools")]
 pub(crate) mod procgen_stepper;
 
+// The DEV-ONLY QA network control channel (GTW-736): a loopback TCP listener + request
+// router a coding-agent QA harness drives. Double-gated exactly like `capture`/`drive` —
+// compiled only under the opt-in `net_qa` feature (which pulls in the bevy-free wire
+// contract + the self-capture crate), and only wired in under `debug_assertions` (it
+// opens a listener). A release artifact never links it.
+#[cfg(all(debug_assertions, feature = "net_qa"))]
+pub(crate) mod net_qa;
+
 mod plugin;
 pub(crate) use plugin::DevAffordancesPlugin;

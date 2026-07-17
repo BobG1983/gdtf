@@ -34,6 +34,13 @@ use bevy::prelude::*;
 /// (a battle loads exactly as it does without `dev_tools`) until `GDTF_PROCGEN_STEPPER` is
 /// set truthy (its own `from_env` gate, mirroring the auto-battle affordance's).
 ///
+/// GTW-736: the QA network control channel (`super::net_qa`, the GTW-694 architecture's
+/// T3) rides the SAME double gate as the capture affordances —
+/// `cfg!(all(debug_assertions, feature = "net_qa"))` — because it opens a loopback TCP
+/// listener. It too is inert at runtime until `GDTF_NET_QA` is set truthy (its own
+/// `from_env` gate); the listen port is `GDTF_NET_QA_PORT` (port only — the interface is
+/// always `Ipv4Addr::LOCALHOST`).
+///
 /// A release build's `build` registers NOTHING — the plugin is indistinguishable
 /// from not being added at all.
 pub(crate) struct DevAffordancesPlugin;
@@ -50,6 +57,11 @@ impl Plugin for DevAffordancesPlugin {
         // doc) — its own `from_env` env-var gate keeps it inert at runtime by default.
         #[cfg(feature = "dev_tools")]
         app.add_plugins(super::procgen_stepper::ProcgenStepperPlugin::from_env());
+        // GTW-736: the QA network control channel. DOUBLE-gated `all(debug_assertions,
+        // feature = "net_qa")` (the `dev_capture` strictness class — it opens a listener);
+        // its own `from_env` `GDTF_NET_QA` gate keeps it inert at runtime by default.
+        #[cfg(all(debug_assertions, feature = "net_qa"))]
+        app.add_plugins(super::net_qa::NetQaPlugin::from_env());
         #[cfg(not(debug_assertions))]
         let _ = app;
     }

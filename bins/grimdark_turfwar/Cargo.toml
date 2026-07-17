@@ -40,6 +40,12 @@ dev_capture = ["gdtf_app/dev_capture"]
 # stays inert until `GDTF_PROCGEN_STEPPER` is set truthy, so a release binary never links egui
 # and a normal dev launch is unaffected. Never enabled for release/CI.
 dev_tools = ["gdtf_app/dev_tools"]
+# GTW-736: DEV-ONLY QA network control channel (the GTW-694 architecture's T3); chains through
+# to gdtf_app -> net_qa -> the bevy-free wire contract + the self-capture crate. Like
+# `dev_capture`, its wiring site is ADDITIONALLY double-gated on `cfg!(debug_assertions)` (it
+# opens a listener), and it stays inert until `GDTF_NET_QA` is set truthy, so a release binary
+# never sees it and a normal dev launch is unaffected. Never enabled for release/CI.
+net_qa = ["gdtf_app/net_qa"]
 
 [lints]
 workspace = true
