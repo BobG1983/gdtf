@@ -91,6 +91,20 @@ impl StartBattlePayload {
     pub(super) const fn new(situation: SituationRef, seed: Option<SeedNet>) -> Self {
         Self { situation, seed }
     }
+
+    /// The situation the client asked to start — the T9
+    /// [`drive_start_battle`](super::start_battle::drive_start_battle) consumer resolves
+    /// it against the shipped-situation catalog (borrows without consuming).
+    pub(super) const fn situation(&self) -> &SituationRef {
+        &self.situation
+    }
+
+    /// The seed the client asked to pin, or `None` for a server-chosen seed — the T9
+    /// consumer maps it onto a [`BattleSeed`](gdtf_battle_sim::rng::BattleSeed) override
+    /// ([`SeedNet`] is `Copy`, so this reads without consuming).
+    pub(super) const fn seed(&self) -> Option<SeedNet> {
+        self.seed
+    }
 }
 
 // Manual `Debug` impls (NOT derived) so the sweep's timeout diagnostic — the sole T3

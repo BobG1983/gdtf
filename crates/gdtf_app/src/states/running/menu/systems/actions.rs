@@ -38,7 +38,10 @@ use gdtf_ui::{DisabledButton, focus_nav::FocusActivated};
 
 use crate::states::{
     RunningState,
-    running::menu::components::{BattlescapeButton, OptionsButton, QuitButton},
+    running::menu::{
+        StartBattleRequested,
+        components::{BattlescapeButton, OptionsButton, QuitButton},
+    },
 };
 
 /// The [`RunningState`] a menu button activation transitions to.
@@ -47,12 +50,15 @@ use crate::states::{
 /// the system internals (no-bare-types rule): it names the value's role — "the
 /// screen this menu action opens" — and is the single place the marker→state
 /// mapping is expressed, shared by both activation paths.
+///
+/// Battlescape is NOT a member: GTW-742 routes the Battlescape button through
+/// [`StartBattleRequested`] (the shared start-battle request the network QA path
+/// also produces) rather than a direct `NextState` write, so its transition is
+/// applied by [`apply_start_battle`](super::super::apply_start_battle), not here.
 #[derive(Deref, Clone, Copy, PartialEq, Eq, Debug)]
 struct MenuActionTarget(RunningState);
 
 impl MenuActionTarget {
-    /// Battlescape launches a mission → [`RunningState::Game`].
-    const BATTLESCAPE: Self = Self(RunningState::Game);
     /// Options opens the options screen → [`RunningState::Options`].
     const OPTIONS: Self = Self(RunningState::Options);
     /// Quit exits the game → [`RunningState::Quit`].
@@ -77,28 +83,33 @@ const fn is_press(interaction: Interaction) -> bool {
     matches!(interaction, Interaction::Pressed)
 }
 
-/// Drives [`RunningState`] transitions from **mouse** button presses.
+/// Drives menu actions from **mouse** button presses (GTW-122 / GTW-742).
 ///
 /// For each enabled menu button whose [`Interaction`](bevy::ui::Interaction)
-/// changed to [`Pressed`](bevy::ui::Interaction::Pressed) this frame, sets
-/// [`NextState<RunningState>`] to the button's mapped target. The three marker
-/// queries are disjoint (each filtered to one role marker and
-/// `Without<DisabledButton>`), so they never conflict; the disabled `HiveScape`
-/// is excluded by the `Without<DisabledButton>` filter and so produces no
-/// transition under a mouse press.
+/// changed to [`Pressed`](bevy::ui::Interaction::Pressed) this frame: Battlescape
+/// writes a [`StartBattleRequested`] (the shared start-battle request
+/// [`apply_start_battle`](super::super::apply_start_battle) applies), while Options
+/// and Quit set [`NextState<RunningState>`] directly to their mapped target. The
+/// three marker queries are disjoint (each filtered to one role marker and
+/// `Without<DisabledButton>`), so they never conflict; the disabled `HiveScape` is
+/// excluded by the `Without<DisabledButton>` filter and so produces no action under
+/// a mouse press.
 ///
 /// `Changed<Interaction>` limits each query to the frame a press *lands*, so a
-/// held button does not re-request the transition every frame. Registered under
+/// held button does not re-request the action every frame. Registered under
 /// `run_if(in_state(RunningState::Menu))` by
 /// [`MenuScenePlugin`](super::super::plugin).
 pub(in crate::states::running::menu) fn mouse_button_actions(
     mut next: ResMut<NextState<RunningState>>,
+    mut start_battle: MessageWriter<StartBattleRequested>,
     battlescape: Query<&Interaction, PressedButton<BattlescapeButton>>,
     options: Query<&Interaction, PressedButton<OptionsButton>>,
     quit: Query<&Interaction, PressedButton<QuitButton>>,
 ) {
     if battlescape.iter().copied().any(is_press) {
-        next.set(*MenuActionTarget::BATTLESCAPE);
+        // No pinned seed from the local button — the normal env-var / wall-clock
+        // seed path applies (only the network QA path pins a seed).
+        start_battle.write(StartBattleRequested::new(None));
     }
     if options.iter().copied().any(is_press) {
         next.set(*MenuActionTarget::OPTIONS);
@@ -108,14 +119,17 @@ pub(in crate::states::running::menu) fn mouse_button_actions(
     }
 }
 
-/// Drives [`RunningState`] transitions from **keyboard / gamepad** activation.
+/// Drives menu actions from **keyboard / gamepad** activation (GTW-122 / GTW-742).
 ///
 /// Drains the [`FocusActivated`] messages the GTW-119 focus-nav bridge raises on
 /// `Enter` / gamepad South while a button holds focus, and for each activated
-/// [`Entity`] requests the mapped transition. The activated entity is mapped to
-/// its role by testing the three enabled marker queries (each filtered
-/// `Without<DisabledButton>`) with [`Query::contains`]: an activation aimed at
-/// the disabled `HiveScape` matches none of them and is therefore a no-op.
+/// [`Entity`] requests the mapped action: Battlescape writes a
+/// [`StartBattleRequested`] (applied by
+/// [`apply_start_battle`](super::super::apply_start_battle)), while Options and Quit
+/// set [`NextState<RunningState>`] directly. The activated entity is mapped to its
+/// role by testing the three enabled marker queries (each filtered
+/// `Without<DisabledButton>`) with [`Query::contains`]: an activation aimed at the
+/// disabled `HiveScape` matches none of them and is therefore a no-op.
 ///
 /// Read with [`MessageReader`] because [`FocusActivated`] is a Bevy 0.18
 /// [`Message`](bevy::ecs::message::Message), not an observer event (bevy-traps
@@ -126,6 +140,7 @@ pub(in crate::states::running::menu) fn mouse_button_actions(
 pub(in crate::states::running::menu) fn focus_activated_actions(
     mut activations: MessageReader<FocusActivated>,
     mut next: ResMut<NextState<RunningState>>,
+    mut start_battle: MessageWriter<StartBattleRequested>,
     battlescape: Query<(), (With<BattlescapeButton>, Without<DisabledButton>)>,
     options: Query<(), (With<OptionsButton>, Without<DisabledButton>)>,
     quit: Query<(), (With<QuitButton>, Without<DisabledButton>)>,
@@ -133,7 +148,8 @@ pub(in crate::states::running::menu) fn focus_activated_actions(
     for activated in activations.read() {
         let entity = **activated;
         if battlescape.contains(entity) {
-            next.set(*MenuActionTarget::BATTLESCAPE);
+            // No pinned seed from the local button (see `mouse_button_actions`).
+            start_battle.write(StartBattleRequested::new(None));
         } else if options.contains(entity) {
             next.set(*MenuActionTarget::OPTIONS);
         } else if quit.contains(entity) {
@@ -141,6 +157,6 @@ pub(in crate::states::running::menu) fn focus_activated_actions(
         }
         // Any other entity (notably the disabled `HiveScape`, which carries
         // `DisabledButton` and so matches none of the filtered queries) is
-        // intentionally ignored — no transition.
+        // intentionally ignored — no action.
     }
 }

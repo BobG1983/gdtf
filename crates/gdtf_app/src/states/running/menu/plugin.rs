@@ -3,7 +3,7 @@ use gdtf_ui::focus_nav::FocusNavSystems;
 
 use crate::states::{
     RunningState,
-    running::menu::systems::*,
+    running::menu::{StartBattleRequested, apply_start_battle, systems::*},
     scaffold::{SceneLabel, log_scene_enter, log_scene_exit},
 };
 
@@ -30,18 +30,30 @@ fn add_systems(app: &mut App) {
         (log_scene_exit(label), clear_nav_map),
     );
 
-    // GTW-122: map an ENABLED menu button's activation to a RunningState change.
-    // Both run only while the menu is active. `focus_activated_actions` is ordered
-    // `.after(FocusNavSystems::Bridge)` — the set that *writes* `FocusActivated`
-    // (gdtf_ui focus-nav) — so an Enter / gamepad-South activation raised this
-    // frame is consumed the same frame, never one frame late (bevy-traps rule 3).
-    // `mouse_button_actions` reads `Changed<Interaction>` independently of the
-    // focus-nav pipeline, so it needs no ordering relative to it.
+    // GTW-122 / GTW-742: map an ENABLED menu button's activation to a RunningState
+    // change. Both action systems run only while the menu is active.
+    // `focus_activated_actions` is ordered `.after(FocusNavSystems::Bridge)` — the
+    // set that *writes* `FocusActivated` (gdtf_ui focus-nav) — so an Enter /
+    // gamepad-South activation raised this frame is consumed the same frame, never
+    // one frame late (bevy-traps rule 3). `mouse_button_actions` reads
+    // `Changed<Interaction>` independently of the focus-nav pipeline, so it needs no
+    // ordering relative to it.
+    //
+    // GTW-742: the Battlescape button now writes `StartBattleRequested` rather than
+    // `NextState<RunningState>` directly, and `apply_start_battle` — the ONE consumer
+    // the network QA path shares — performs the `Menu → Game` transition. It is
+    // ordered AFTER both action systems so a button press is applied the SAME update
+    // (bevy-traps rule 3), and menu-gated like them (the message is only ever written
+    // at the menu).
+    app.add_message::<StartBattleRequested>();
     app.add_systems(
         Update,
         (
             mouse_button_actions,
             focus_activated_actions.after(FocusNavSystems::Bridge),
+            apply_start_battle
+                .after(mouse_button_actions)
+                .after(focus_activated_actions),
         )
             .run_if(in_state(RunningState::Menu)),
     );
