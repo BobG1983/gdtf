@@ -28,7 +28,7 @@ use std::{sync::mpsc, thread};
 
 use bevy::prelude::*;
 use gdtf_battle_input::{ContextualActSystems, InputSystems, dispatch_act_intents};
-use gdtf_battle_sim::prelude::BattleInProgress;
+use gdtf_battle_sim::{occupancy_sync::SimSystems, prelude::BattleInProgress};
 
 use super::{
     channel::{IncomingRequest, NetInbox},
@@ -41,6 +41,7 @@ use super::{
         StartBattlePayload, sweep_pending,
     },
     router::route_requests,
+    snapshot::build_snapshots,
 };
 
 /// How a [`NetQaPlugin`] instance activates on `build`.
@@ -216,6 +217,19 @@ fn register_router(app: &mut App) {
             .after(route_requests)
             .before(ContextualActSystems::Drain)
             .before(dispatch_act_intents)
+            .run_if(resource_exists::<BattleInProgress>),
+    );
+    // GTW-738 — the T5 snapshot service. Registered `.after(SimSystems::Simulate)` (the
+    // post-Simulate observation point), so it reads the LIVE post-Simulate world: a
+    // `GetBattleState` routed this frame (the router runs in `InputSystems::Gather`, ordered
+    // before `SimSystems::Simulate`) is drained and answered the SAME frame, reflecting that
+    // frame's mutations rather than a stale cache. Gated on a live battle (its battle-lifetime
+    // resources exist only then, and the router already rejects off-battle `GetBattleState`
+    // `NoBattle`), so it never runs — nor validates its params — off-battle (`bevy-traps.md` #1).
+    app.add_systems(
+        Update,
+        build_snapshots
+            .after(SimSystems::Simulate)
             .run_if(resource_exists::<BattleInProgress>),
     );
 }

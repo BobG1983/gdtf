@@ -23,6 +23,8 @@
 //!   resolvers + offer gate (T4).
 //! - [`inject`] — the [`apply_injects`](inject::apply_injects) pump that wires injected
 //!   intents into the same public input queues the local surfaces use (T4).
+//! - [`snapshot`] — the on-demand battle-state view service that answers `GetBattleState`
+//!   with a curated [`BattleView`](gdtf_qa_protocol::view::BattleView) read post-Simulate (T5).
 //! - [`plugin`] — the [`NetQaPlugin`] registration (`from_env` / `with_channels`).
 
 mod channel;
@@ -35,6 +37,7 @@ mod pending;
 mod plugin;
 mod resolve;
 mod router;
+mod snapshot;
 
 // `NetQaPlugin` is the item the binary consumes (via the dev aggregate plugin,
 // `crate::dev::plugin`), so it re-exports in BOTH configurations at the `test-support`

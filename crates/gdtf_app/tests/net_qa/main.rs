@@ -17,9 +17,15 @@
 //!   `BattleAppBuilder` app: same-frame drain of a classic + a contextual intent, the
 //!   `NotOffered` offer-gate rejection, the fail-closed `UnknownEntity` token rejection,
 //!   and the outcome-decoupled `Queued` receipt — its harness lives in [`inject_support`].
+//! - [`snapshot`] drives the REAL T5 `build_snapshots` view service (GTW-738) on a
+//!   live-battle `BattleAppBuilder` app: the curated `GetBattleState` `BattleView` CONTENT
+//!   (ganger cards + indexed fire modes, terrain token handout, fog / selection / turn), the
+//!   round-tripping tokens, and the post-Simulate SAME-FRAME consistency an injected intent
+//!   proves; it reuses [`inject_support`]'s harness.
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
 mod inject;
 mod inject_support;
 mod routing;
+mod snapshot;
 mod transport;
