@@ -45,6 +45,7 @@ use super::{
     router::route_requests,
     screenshot::{InFlightShots, QaShotDir, ShotPollBudget, ShotSequence, drive_screenshots},
     snapshot::build_snapshots,
+    start_battle::drive_start_battle,
 };
 
 /// How a [`NetQaPlugin`] instance activates on `build`.
@@ -254,6 +255,20 @@ fn register_router(app: &mut App) {
     app.add_systems(
         Update,
         drive_screenshots
+            .in_set(InputSystems::Gather)
+            .after(route_requests),
+    );
+    // GTW-742 — the T9 start-battle navigation consumer. In the `InputSystems::Gather`
+    // band ordered `.after(route_requests)` so it drains the `StartBattle` the router just
+    // routed the SAME frame. It produces the SAME `StartBattleRequested` the menu's
+    // Battlescape button produces (the menu's `apply_start_battle` performs the actual
+    // transition + seed install), so both the network path and the local UI path share one
+    // truth. Runs unconditionally: it must be able to reject a `StartBattle` that arrives in
+    // the wrong state (not at the menu, or mid-battle) with a typed error rather than leave
+    // it to the deadline sweep.
+    app.add_systems(
+        Update,
+        drive_start_battle
             .in_set(InputSystems::Gather)
             .after(route_requests),
     );

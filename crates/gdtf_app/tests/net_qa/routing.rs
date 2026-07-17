@@ -10,7 +10,6 @@ use gdtf_app::test_support::{
 };
 use gdtf_qa_protocol::{
     envelope::{ProtocolVersion, QaError, QaRequest, QaResponse, ScreenshotResult},
-    ids::SituationRef,
     view::AppStateNet,
 };
 use gdtf_test_utils::GdtfTestAppBuilder;
@@ -100,33 +99,6 @@ fn battle_dependent_request_is_rejected_no_battle() {
     assert!(
         matches!(&reply, Ok(QaResponse::Error(QaError::NoBattle))),
         "a battle-dependent request off-battle must be rejected NoBattle, got {reply:?}",
-    );
-}
-
-/// A request enqueued for a (not-yet-built) consumer times out: with no consumer, the
-/// deadline sweep answers [`Timeout`](QaError::Timeout) once the entry's `FrameDeadline`
-/// expires. `StartBattle` is not battle-dependent, so it always enqueues, and its T9
-/// consumer is not built yet — so it still reaches the generic sweep. (`TakeScreenshot` no
-/// longer does: the T7 pump now claims it and runs its own multi-frame poll timeout.)
-#[test]
-fn queued_request_past_its_deadline_answers_timeout() {
-    let (mut app, tx) = build_router_app();
-    let reply = send(
-        &tx,
-        QaRequest::StartBattle {
-            situation: SituationRef::new("unclaimed".to_owned()),
-            seed:      None,
-        },
-    );
-    // The enqueue lands on the first update; each later update's sweep ticks the deadline.
-    // Pump well past the frame budget so the sweep fires deterministically.
-    for _ in 0..16 {
-        app.update();
-    }
-    let reply = reply.try_recv();
-    assert!(
-        matches!(&reply, Ok(QaResponse::Error(QaError::Timeout))),
-        "an unclaimed queued request must answer Timeout after its deadline, got {reply:?}",
     );
 }
 

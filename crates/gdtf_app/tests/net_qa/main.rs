@@ -8,8 +8,8 @@
 //!
 //! - [`routing`] drives the REAL router headless via
 //!   [`NetQaPlugin::with_channels`](gdtf_app::test_support::NetQaPlugin) against a
-//!   `GdtfTestAppBuilder` app — Hello negotiation, `GetAppFlow` outside battle, the
-//!   `NoBattle` route-time rejection, and the frame-deadline `Timeout` sweep.
+//!   `GdtfTestAppBuilder` app — Hello negotiation, `GetAppFlow` outside battle, and the
+//!   `NoBattle` route-time rejection.
 //! - [`transport`] drives the REAL loopback listener over a real `TcpStream` — a framed
 //!   Hello round-trip, the one-client-at-a-time `Busy` rejection, and the read-timeout
 //!   reap.
@@ -22,10 +22,19 @@
 //!   (ganger cards + indexed fire modes, terrain token handout, fog / selection / turn), the
 //!   round-tripping tokens, and the post-Simulate SAME-FRAME consistency an injected intent
 //!   proves; it reuses [`inject_support`]'s harness.
+//! - [`start_battle`] drives the REAL T9 `drive_start_battle` consumer (GTW-742) on a
+//!   menu-resting `GdtfTestAppBuilder` app: a `StartBattle` descends the real machine to
+//!   `BattleRunning` with the REQUESTED seed (the `ShotRng::from_root` determinism
+//!   fingerprint), and an unknown situation ref is rejected `BadRequest`.
+//! - [`deadline`] drives the generic frame-deadline `Timeout` sweep on a live-battle
+//!   `BattleAppBuilder` app via the one still-unclaimed queue (`GetOutput`, the T6 drain);
+//!   it reuses [`inject_support`]'s harness.
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
+mod deadline;
 mod inject;
 mod inject_support;
 mod routing;
 mod snapshot;
+mod start_battle;
 mod transport;

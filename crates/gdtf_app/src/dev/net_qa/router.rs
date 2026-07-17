@@ -103,8 +103,10 @@ fn reject_no_battle(responder: Responder) {
     responder.reply(QaResponse::Error(QaError::NoBattle));
 }
 
-/// Map the game's top-level [`AppState`] onto its wire mirror.
-const fn app_state_to_net(state: &AppState) -> AppStateNet {
+/// Map the game's top-level [`AppState`] onto its wire mirror. Shared with the T9
+/// [`drive_start_battle`](super::start_battle::drive_start_battle) consumer, which
+/// answers an accepted `StartBattle` with the same app-flow snapshot.
+pub(super) const fn app_state_to_net(state: &AppState) -> AppStateNet {
     match state {
         AppState::Init => AppStateNet::Init,
         AppState::Load => AppStateNet::Load,

@@ -27,6 +27,8 @@
 //!   with a curated [`BattleView`](gdtf_qa_protocol::view::BattleView) read post-Simulate (T5).
 //! - [`screenshot`] — the deferred capture pump that answers `TakeScreenshot` by capturing
 //!   the real presenter frame and replying only after the confined PNG lands on disk (T7).
+//! - [`start_battle`] — the navigation consumer that answers `StartBattle` by producing the
+//!   SAME start-battle request the menu's Battlescape button produces (T9).
 //! - [`plugin`] — the [`NetQaPlugin`] registration (`from_env` / `with_channels`).
 
 mod channel;
@@ -41,6 +43,7 @@ mod resolve;
 mod router;
 mod screenshot;
 mod snapshot;
+mod start_battle;
 
 // `NetQaPlugin` is the item the binary consumes (via the dev aggregate plugin,
 // `crate::dev::plugin`), so it re-exports in BOTH configurations at the `test-support`
@@ -62,3 +65,8 @@ pub use config::{NET_QA_PROTOCOL_VERSION, NetIoTimeout, NetQaPort};
 // `screenshot`'s own `support_use!` re-export; gated to `test-support` like the rest.
 #[cfg(feature = "test-support")]
 pub use screenshot::{QaShotDir, ShotPollBudget};
+// GTW-742: the shipped-situation name the T9 `StartBattle` consumer accepts, exposed so the
+// T9 integration test names a VALID situation ref without hard-coding the literal. Gated to
+// `test-support` like the rest.
+#[cfg(feature = "test-support")]
+pub use start_battle::SHIPPED_SITUATION;
