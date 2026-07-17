@@ -102,6 +102,12 @@ pub trait GameLink {
     /// [`McpError`] when the link cannot be opened, the frame will not encode/decode, or
     /// the socket breaks before a whole response arrives.
     fn request(&mut self, request: QaRequest) -> Result<QaResponse, McpError>;
+
+    /// Re-point the link at `port` — used after `launch_game` selects the port the game
+    /// bound, so the following tool calls reach the child that was just started.
+    ///
+    /// The default is a no-op for links whose target is fixed (a test double).
+    fn retarget(&mut self, _port: GamePort) {}
 }
 
 /// An open loopback connection plus its incremental frame decoder.
@@ -187,6 +193,14 @@ impl GameClient {
 }
 
 impl GameLink for GameClient {
+    fn retarget(&mut self, port: GamePort) {
+        if self.port != port {
+            self.port = port;
+            // Drop any open connection so the next request reconnects to the new port.
+            self.conn = None;
+        }
+    }
+
     fn request(&mut self, request: QaRequest) -> Result<QaResponse, McpError> {
         let frame = encode(&request).map_err(McpError::Wire)?;
         self.ensure_connected()?;

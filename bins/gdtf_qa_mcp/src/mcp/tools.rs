@@ -1,10 +1,11 @@
-//! The MCP tool registry — the five tools this bridge exposes (GTW-741).
+//! The MCP tool registry — the tools this bridge exposes (GTW-741, GTW-745).
 //!
-//! Each tool maps 1:1 onto a [`QaRequest`](gdtf_qa_protocol::envelope::QaRequest). The
-//! [`ToolName`] enum is the single place the tool set is enumerated: `tools/list` walks
-//! it, and [`ToolName::from_wire`] resolves a `tools/call` name. Adding the future
-//! `start_battle` tool (T9) is a one-variant addition here plus one arm in the request
-//! builder — not a redesign.
+//! Five tools ([`SendInput`](ToolName::SendInput) … [`AppFlow`](ToolName::AppFlow)) map
+//! 1:1 onto a [`QaRequest`](gdtf_qa_protocol::envelope::QaRequest) forwarded to a running
+//! game; two more ([`LaunchGame`](ToolName::LaunchGame) / [`StopGame`](ToolName::StopGame))
+//! are host-local — they start and stop the game process itself and never reach the wire.
+//! The [`ToolName`] enum is the single place the tool set is enumerated: `tools/list`
+//! walks it, and [`ToolName::from_wire`] resolves a `tools/call` name.
 
 use serde_json::{Value, json};
 
@@ -27,6 +28,11 @@ pub enum ToolName {
     TakeScreenshot,
     /// Read the app-lifecycle snapshot — maps to `QaRequest::GetAppFlow`.
     AppFlow,
+    /// Launch the game as a child process and wait for it to answer — host-local, no
+    /// wire request.
+    LaunchGame,
+    /// Stop the running game child — host-local, no wire request.
+    StopGame,
 }
 
 /// Every tool, in listing order — the one enumeration `tools/list` and any future
@@ -37,6 +43,8 @@ const ALL: &[ToolName] = &[
     ToolName::GetOutput,
     ToolName::TakeScreenshot,
     ToolName::AppFlow,
+    ToolName::LaunchGame,
+    ToolName::StopGame,
 ];
 
 impl ToolName {
@@ -49,6 +57,8 @@ impl ToolName {
             Self::GetOutput => "get_output",
             Self::TakeScreenshot => "take_screenshot",
             Self::AppFlow => "app_flow",
+            Self::LaunchGame => "launch_game",
+            Self::StopGame => "stop_game",
         }
     }
 
@@ -82,6 +92,17 @@ impl ToolName {
                 "Read the app-lifecycle snapshot (which AppState, whether a battle is \
                  running) as JSON. No arguments."
             }
+            Self::LaunchGame => {
+                "Launch the game as a child process with the net_qa control channel \
+                 enabled, then wait for it to answer before returning its port and pid. \
+                 If a game is already running, returns the existing one (no second \
+                 launch). Optional argument `port` picks the loopback port."
+            }
+            Self::StopGame => {
+                "Stop the running game child (graceful SIGTERM, then SIGKILL fallback) and \
+                 reap it. Returns a typed result when there is nothing to stop. No \
+                 arguments."
+            }
         }
     }
 
@@ -98,9 +119,17 @@ impl ToolName {
                 },
                 "required": ["intent"]
             }),
-            Self::QueryState | Self::AppFlow => json!({
+            Self::QueryState | Self::AppFlow | Self::StopGame => json!({
                 "type": "object",
                 "properties": {}
+            }),
+            Self::LaunchGame => json!({
+                "type": "object",
+                "properties": {
+                    "port": { "type": "integer", "minimum": 0, "maximum": 65535,
+                              "description": "Loopback port for the game's net_qa \
+                               listener; omit for the default." }
+                }
             }),
             Self::GetOutput => json!({
                 "type": "object",
@@ -140,14 +169,15 @@ pub fn tools_list_result() -> Value {
 mod tests {
     use super::{ToolName, tools_list_result};
 
-    /// `tools/list` advertises exactly the five implemented tools, and NOT `start_battle`.
+    /// `tools/list` advertises exactly the seven implemented tools (the five forwarding
+    /// tools plus the two lifecycle tools), and NOT `start_battle`.
     #[test]
-    fn lists_the_five_tools_without_start_battle() {
+    fn lists_every_tool_without_start_battle() {
         let result = tools_list_result();
         let Some(tools) = result["tools"].as_array() else {
             unreachable!("tools/list result carries a `tools` array");
         };
-        assert_eq!(tools.len(), 5);
+        assert_eq!(tools.len(), 7);
         let names: Vec<&str> = tools
             .iter()
             .filter_map(|tool| tool["name"].as_str())
@@ -157,6 +187,8 @@ mod tests {
         assert!(names.contains(&"get_output"));
         assert!(names.contains(&"take_screenshot"));
         assert!(names.contains(&"app_flow"));
+        assert!(names.contains(&"launch_game"));
+        assert!(names.contains(&"stop_game"));
         assert!(!names.contains(&"start_battle"));
     }
 
@@ -170,6 +202,8 @@ mod tests {
             ToolName::GetOutput,
             ToolName::TakeScreenshot,
             ToolName::AppFlow,
+            ToolName::LaunchGame,
+            ToolName::StopGame,
         ] {
             assert_eq!(ToolName::from_wire(tool.wire_name()), Some(tool));
         }

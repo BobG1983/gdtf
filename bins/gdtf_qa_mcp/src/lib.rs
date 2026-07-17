@@ -12,25 +12,34 @@
 //! - [`rpc`] — JSON-RPC 2.0 envelope building + method dispatch.
 //! - [`mcp`] — the MCP method semantics: `initialize`, the tool registry, `tools/call`.
 //! - [`game`] — the [`GameLink`] to the running game and its real [`GameClient`].
+//! - [`lifecycle`] — starting and stopping the game process for the `launch_game` /
+//!   `stop_game` tools (`std::process::Command` + threads, no tokio).
 //! - [`base64`] / [`error`] — the image-content encoder and the link error vocabulary.
 //!
 //! # Tools
 //!
-//! Five tools map 1:1 onto [`QaRequest`](gdtf_qa_protocol::envelope::QaRequest)s:
-//! `send_input`, `query_state`, `get_output`, `take_screenshot`, and `app_flow` (the
-//! [`mcp::tools`] registry names each request it forwards). The `start_battle` tool is
-//! deliberately NOT exposed yet — its wire request exists but the game-side consumer
-//! lands in T9; adding it later is one [`ToolName`](mcp::ToolName) variant plus one
-//! request-builder arm.
+//! Five forwarding tools map 1:1 onto
+//! [`QaRequest`](gdtf_qa_protocol::envelope::QaRequest)s: `send_input`, `query_state`,
+//! `get_output`, `take_screenshot`, and `app_flow` (the [`mcp::tools`] registry names each
+//! request it forwards). Two host-local tools — `launch_game` and `stop_game` — start and
+//! stop the game process itself through the [`lifecycle::GameManager`] (GTW-745). The
+//! `start_battle` tool is deliberately NOT exposed — its wire request exists but is not
+//! surfaced here.
 
 pub mod base64;
 pub mod error;
 pub mod game;
+pub mod lifecycle;
 pub mod mcp;
 pub mod rpc;
 pub mod serve;
 
 pub use error::McpError;
 pub use game::{GameClient, GameLink, GamePort};
+pub use lifecycle::{
+    BootTimeout, CargoSpawner, ChildPid, GameChild, GameLifecycle, GameManager, GameSpawner,
+    KillGrace, LaunchFailure, LaunchOutcome, LifecycleConfig, PollInterval, ProbeTimeout,
+    ProcessChild, StderrTail, StopOutcome,
+};
 pub use rpc::dispatch;
 pub use serve::run_stdio;

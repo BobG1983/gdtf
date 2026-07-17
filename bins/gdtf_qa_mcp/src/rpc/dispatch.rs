@@ -13,6 +13,7 @@ use serde_json::Value;
 use super::envelope::{RpcError, error_line, success_line};
 use crate::{
     game::GameLink,
+    lifecycle::GameLifecycle,
     mcp::{ToolCallOutcome, handle_tool_call, initialize_result, tools_list_result},
 };
 
@@ -20,9 +21,14 @@ use crate::{
 ///
 /// Returns `None` when there is nothing to answer: a blank line, or a JSON-RPC
 /// notification (a message with no `id`), which the spec answers with silence. `game` is
-/// the link a `tools/call` reaches through; `initialize` / `tools/list` never touch it.
+/// the link a forwarding `tools/call` reaches through; `lifecycle` is what the host-local
+/// `launch_game` / `stop_game` tools drive. `initialize` / `tools/list` touch neither.
 #[must_use]
-pub fn dispatch(line: &str, game: &mut dyn GameLink) -> Option<String> {
+pub fn dispatch(
+    line: &str,
+    game: &mut dyn GameLink,
+    lifecycle: &mut dyn GameLifecycle,
+) -> Option<String> {
     let trimmed = line.trim();
     if trimmed.is_empty() {
         return None;
@@ -43,7 +49,7 @@ pub fn dispatch(line: &str, game: &mut dyn GameLink) -> Option<String> {
     let line = match method {
         "initialize" => success_line(&id, initialize_result(params)),
         "tools/list" => success_line(&id, tools_list_result()),
-        "tools/call" => match handle_tool_call(params, game) {
+        "tools/call" => match handle_tool_call(params, game, lifecycle) {
             ToolCallOutcome::Result(result) => success_line(&id, result),
             ToolCallOutcome::Invalid(message) => error_line(&id, RpcError::InvalidParams, &message),
         },

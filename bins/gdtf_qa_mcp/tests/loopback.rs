@@ -13,13 +13,27 @@ use std::{
     thread,
 };
 
-use gdtf_qa_mcp::{GameClient, GamePort, dispatch};
+use gdtf_qa_mcp::{GameClient, GameLifecycle, GamePort, LaunchOutcome, StopOutcome, dispatch};
 use gdtf_qa_protocol::{
     envelope::{QaError, QaRequest, QaResponse},
     framing::{FrameDecoder, encode},
     view::{AppFlowView, AppStateNet, BattleActiveNet},
 };
 use serde_json::Value;
+
+/// A lifecycle the loopback test never invokes — only present so `dispatch` has its
+/// argument.
+struct NoLifecycle;
+
+impl GameLifecycle for NoLifecycle {
+    fn launch(&mut self, _port: GamePort) -> LaunchOutcome {
+        unreachable!("the loopback test never launches");
+    }
+
+    fn stop(&mut self) -> StopOutcome {
+        StopOutcome::NotRunning
+    }
+}
 
 /// Bind a loopback listener on an OS-assigned port and serve exactly one framed request
 /// on a background thread, replying with a framed `QaResponse`. Returns the bound port.
@@ -76,7 +90,7 @@ fn app_flow_round_trips_through_the_real_client() {
     let port = spawn_fake_game();
     let mut client = GameClient::new(GamePort::new(port));
     let line = r#"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"app_flow","arguments":{}}}"#;
-    let Some(response) = dispatch(line, &mut client) else {
+    let Some(response) = dispatch(line, &mut client, &mut NoLifecycle) else {
         unreachable!("tools/call yields a response");
     };
     let parsed: Value = serde_json::from_str(&response).unwrap_or(Value::Null);

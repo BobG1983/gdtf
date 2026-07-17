@@ -12,10 +12,18 @@ use gdtf_qa_protocol::{
     ids::{EventCap, ShotName},
     intent::NetIntent,
 };
-use serde::Serialize;
 use serde_json::{Value, json};
 
-use crate::{base64::encode_standard, game::GameLink, mcp::tools::ToolName};
+use crate::{
+    base64::encode_standard,
+    game::GameLink,
+    lifecycle::GameLifecycle,
+    mcp::{
+        content::{image_content, text_content, tool_error},
+        control,
+        tools::ToolName,
+    },
+};
 
 /// The outcome of handling a `tools/call` — either a JSON-RPC `result` object (which may
 /// itself carry an MCP tool error), or an invalid-params rejection the caller renders as a
@@ -28,14 +36,19 @@ pub enum ToolCallOutcome {
     Invalid(String),
 }
 
-/// Handle a `tools/call` request: resolve the tool, build the game request, carry it over
-/// the link, and render the reply.
+/// Handle a `tools/call` request: resolve the tool, then either drive the game lifecycle
+/// (the two host-local tools) or build the game request, carry it over the link, and
+/// render the reply.
 ///
 /// A missing `params`, a missing / unknown tool name, or an un-buildable request is an
-/// [`Invalid`](ToolCallOutcome::Invalid) (JSON-RPC invalid-params). A link failure is a
-/// tool error inside a normal result.
+/// [`Invalid`](ToolCallOutcome::Invalid) (JSON-RPC invalid-params). A link or lifecycle
+/// failure is a tool error inside a normal result.
 #[must_use]
-pub fn handle_tool_call(params: Option<&Value>, game: &mut dyn GameLink) -> ToolCallOutcome {
+pub fn handle_tool_call(
+    params: Option<&Value>,
+    game: &mut dyn GameLink,
+    lifecycle: &mut dyn GameLifecycle,
+) -> ToolCallOutcome {
     let Some(params) = params else {
         return ToolCallOutcome::Invalid("`tools/call` needs `params`".to_owned());
     };
@@ -47,12 +60,19 @@ pub fn handle_tool_call(params: Option<&Value>, game: &mut dyn GameLink) -> Tool
     };
     let empty = json!({});
     let args = params.get("arguments").unwrap_or(&empty);
-    match build_request(tool, args) {
-        Ok(request) => match game.request(request) {
-            Ok(response) => ToolCallOutcome::Result(render_response(tool, &response)),
-            Err(err) => ToolCallOutcome::Result(tool_error(&err.to_string())),
+    match tool {
+        // The two host-local tools start / stop the game process rather than forwarding a
+        // request to a running one.
+        ToolName::LaunchGame => control::handle_launch(args, game, lifecycle),
+        ToolName::StopGame => control::handle_stop(lifecycle),
+        // The five forwarding tools map onto a `QaRequest` carried over the link.
+        _ => match build_request(tool, args) {
+            Ok(request) => match game.request(request) {
+                Ok(response) => ToolCallOutcome::Result(render_response(tool, &response)),
+                Err(err) => ToolCallOutcome::Result(tool_error(&err.to_string())),
+            },
+            Err(message) => ToolCallOutcome::Invalid(message),
         },
-        Err(message) => ToolCallOutcome::Invalid(message),
     }
 }
 
@@ -72,6 +92,11 @@ pub fn build_request(tool: ToolName, args: &Value) -> Result<QaRequest, String> 
             name: parse_name(args)?,
         }),
         ToolName::AppFlow => Ok(QaRequest::GetAppFlow),
+        // The lifecycle tools are handled before this point (in `handle_tool_call`), so
+        // they never map onto a wire request; reaching here would be a routing bug.
+        ToolName::LaunchGame | ToolName::StopGame => {
+            Err("launch_game / stop_game are host-local tools, not game requests".to_owned())
+        }
     }
 }
 
@@ -148,26 +173,6 @@ fn render_screenshot(result: &ScreenshotResult) -> Value {
     }
 }
 
-/// A pretty-JSON text content block (the successful, non-image tool payload).
-fn text_content<T: Serialize>(value: &T) -> Value {
-    let text =
-        serde_json::to_string_pretty(value).unwrap_or_else(|_| "<unserializable>".to_owned());
-    json!({ "content": [ { "type": "text", "text": text } ], "isError": false })
-}
-
-/// A base64 PNG image content block.
-fn image_content(data: &str) -> Value {
-    json!({
-        "content": [ { "type": "image", "data": data, "mimeType": "image/png" } ],
-        "isError": false
-    })
-}
-
-/// A tool-error content block (`isError: true`) carrying a human-readable reason.
-fn tool_error(message: &str) -> Value {
-    json!({ "content": [ { "type": "text", "text": message } ], "isError": true })
-}
-
 /// A human-readable message for a game-side protocol error.
 fn qa_error_message(error: QaError) -> String {
     format!("the game rejected the request: {error:?}")
@@ -183,7 +188,8 @@ mod tests {
     };
     use serde_json::json;
 
-    use super::{ToolName, build_request, render_response, tool_error};
+    use super::{ToolName, build_request, render_response};
+    use crate::mcp::content::tool_error;
 
     /// `send_input` accepts a compact-RON intent string.
     #[test]
