@@ -78,6 +78,12 @@ impl ScreenshotPayload {
     pub(super) const fn new(name: Option<ShotName>) -> Self {
         Self(name)
     }
+
+    /// The wrapped stem — the T7 [`drive_screenshots`](super::screenshot::drive_screenshots)
+    /// consumer's read (borrows without consuming; the pump confines it into a path).
+    pub(super) const fn name(&self) -> Option<&ShotName> {
+        self.0.as_ref()
+    }
 }
 
 impl StartBattlePayload {

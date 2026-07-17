@@ -123,10 +123,14 @@ pub fn seed_load_gate(asset_server: Option<Res<AssetServer>>, mut commands: Comm
 // module itself — `all(debug_assertions, feature = "net_qa")` — so a build without the
 // feature (the CI static suite) omits both the module and this re-export. `NetQaPlugin`
 // carries the `with_channels` / `spawn_test_listener` test constructors; the rest are the
-// channel + config types the GTW-736 integration suite names directly.
+// channel + config types the GTW-736 integration suite names directly. GTW-740 adds
+// `QaShotDir` / `ShotPollBudget` — the T7 pump's confinement-directory + poll-budget config
+// Resources — so the T7 integration test injects a temp directory + a tiny budget (test
+// config injection, like `NetIoTimeout` / `NetQaPort`).
 #[cfg(all(debug_assertions, feature = "net_qa"))]
 pub use crate::dev::net_qa::{
-    IncomingRequest, NET_QA_PROTOCOL_VERSION, NetIoTimeout, NetQaPlugin, NetQaPort, Responder,
+    IncomingRequest, NET_QA_PROTOCOL_VERSION, NetIoTimeout, NetQaPlugin, NetQaPort, QaShotDir,
+    Responder, ShotPollBudget,
 };
 // The GTW-655 procgen-stepper command/latch types + its forced-enable test constructor —
 // `dev_tools`-gated because the whole stepper module compiles out unless that feature is on

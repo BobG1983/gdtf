@@ -25,6 +25,8 @@
 //!   intents into the same public input queues the local surfaces use (T4).
 //! - [`snapshot`] — the on-demand battle-state view service that answers `GetBattleState`
 //!   with a curated [`BattleView`](gdtf_qa_protocol::view::BattleView) read post-Simulate (T5).
+//! - [`screenshot`] — the deferred capture pump that answers `TakeScreenshot` by capturing
+//!   the real presenter frame and replying only after the confined PNG lands on disk (T7).
 //! - [`plugin`] — the [`NetQaPlugin`] registration (`from_env` / `with_channels`).
 
 mod channel;
@@ -37,6 +39,7 @@ mod pending;
 mod plugin;
 mod resolve;
 mod router;
+mod screenshot;
 mod snapshot;
 
 // `NetQaPlugin` is the item the binary consumes (via the dev aggregate plugin,
@@ -54,3 +57,8 @@ crate::support_use!(plugin::NetQaPlugin;);
 pub use channel::{IncomingRequest, Responder};
 #[cfg(feature = "test-support")]
 pub use config::{NET_QA_PROTOCOL_VERSION, NetIoTimeout, NetQaPort};
+// GTW-740: the T7 pump's confinement-directory + poll-budget config Resources, exposed for
+// the integration test to inject a temp directory + a tiny budget. Widened through
+// `screenshot`'s own `support_use!` re-export; gated to `test-support` like the rest.
+#[cfg(feature = "test-support")]
+pub use screenshot::{QaShotDir, ShotPollBudget};

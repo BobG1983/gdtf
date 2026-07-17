@@ -57,6 +57,12 @@ gdtf_qa_protocol = { path = "../gdtf_qa_protocol", optional = true }
 # as `gdtf_content_editor`'s (non-optional) `bevy_egui` dependency — that crate did not
 # workspace-dep it either, so this stays a per-crate pin rather than a promotion.
 bevy_egui = { version = "0.41", optional = true }
+# GTW-740: the T7 screenshot pump verifies a captured PNG is DECODABLE (not just present and
+# non-empty) before replying "saved" — a truncated, mid-flush file must not read as done. This
+# is the minimal-format `image` decoder (PNG only), already compiled transitively via
+# `bevy_image`. OPTIONAL — pulled in ONLY by the `net_qa` feature (below), so a release binary
+# never links it. `crate::dev::net_qa::screenshot` is the sole consumer.
+image = { version = "0.25", default-features = false, features = ["png"], optional = true }
 
 [dev-dependencies]
 # Dev-only cycle gdtf_app -> gdtf_test_utils -> gdtf_app is permitted by Cargo
@@ -152,7 +158,7 @@ dev_tools = ["dep:bevy_egui"]
 # listen port is `GDTF_NET_QA_PORT` (port only — the interface is never configurable).
 #
 # NOT in the default feature set and NEVER enabled for CI / release builds.
-net_qa = ["dep:gdtf_qa_protocol", "dep:gdtf_screenshot"]
+net_qa = ["dep:gdtf_qa_protocol", "dep:gdtf_screenshot", "dep:image"]
 
 [lints]
 workspace = true

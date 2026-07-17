@@ -2819,6 +2819,7 @@ dependencies = [
  "gdtf_state_scoped",
  "gdtf_test_utils",
  "gdtf_ui",
+ "image",
  "ron",
  "serde",
  "tempfile",

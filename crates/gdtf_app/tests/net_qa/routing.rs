@@ -5,10 +5,12 @@ use std::sync::mpsc;
 
 use bevy::app::App;
 use gdtf_app::test_support::{
-    AppState, IncomingRequest, NET_QA_PROTOCOL_VERSION, NetQaPlugin, Responder,
+    AppState, IncomingRequest, NET_QA_PROTOCOL_VERSION, NetQaPlugin, QaShotDir, Responder,
+    ShotPollBudget,
 };
 use gdtf_qa_protocol::{
-    envelope::{ProtocolVersion, QaError, QaRequest, QaResponse},
+    envelope::{ProtocolVersion, QaError, QaRequest, QaResponse, ScreenshotResult},
+    ids::SituationRef,
     view::AppStateNet,
 };
 use gdtf_test_utils::GdtfTestAppBuilder;
@@ -101,13 +103,21 @@ fn battle_dependent_request_is_rejected_no_battle() {
     );
 }
 
-/// A request enqueued for a (not-yet-built) consumer times out: with no T3 consumer, the
+/// A request enqueued for a (not-yet-built) consumer times out: with no consumer, the
 /// deadline sweep answers [`Timeout`](QaError::Timeout) once the entry's `FrameDeadline`
-/// expires. `TakeScreenshot` is not battle-dependent, so it always enqueues.
+/// expires. `StartBattle` is not battle-dependent, so it always enqueues, and its T9
+/// consumer is not built yet — so it still reaches the generic sweep. (`TakeScreenshot` no
+/// longer does: the T7 pump now claims it and runs its own multi-frame poll timeout.)
 #[test]
 fn queued_request_past_its_deadline_answers_timeout() {
     let (mut app, tx) = build_router_app();
-    let reply = send(&tx, QaRequest::TakeScreenshot { name: None });
+    let reply = send(
+        &tx,
+        QaRequest::StartBattle {
+            situation: SituationRef::new("unclaimed".to_owned()),
+            seed:      None,
+        },
+    );
     // The enqueue lands on the first update; each later update's sweep ticks the deadline.
     // Pump well past the frame budget so the sweep fires deterministically.
     for _ in 0..16 {
@@ -117,5 +127,39 @@ fn queued_request_past_its_deadline_answers_timeout() {
     assert!(
         matches!(&reply, Ok(QaResponse::Error(QaError::Timeout))),
         "an unclaimed queued request must answer Timeout after its deadline, got {reply:?}",
+    );
+}
+
+/// A [`TakeScreenshot`](QaRequest::TakeScreenshot) routed through the LIVE plugin is claimed
+/// by the T7 screenshot pump — NOT the generic deadline sweep (the screenshot queue has none)
+/// — which runs its OWN multi-frame poll and, with no GPU to flush a PNG, answers the pump's
+/// typed [`ScreenshotResult::TimedOut`] rather than the sweep's [`QaError::Timeout`]. Confined
+/// to a temp directory + a tiny poll budget so it is fast and leaves no artifact in the tree.
+/// This exercises the live `register_router` pump wiring: drop the pump + its resources from
+/// it and this test fails (the request would be enqueued and never answered).
+#[test]
+fn take_screenshot_is_claimed_by_the_live_pump_and_times_out() {
+    let Ok(tmp) = tempfile::TempDir::new() else {
+        return;
+    };
+    let (mut app, tx) = build_router_app();
+    // Inject the pump's config Resources: a temp confinement dir (no tree artifact) + a tiny
+    // budget (fast timeout) — exactly the Resources `register_router` inits, overridden here.
+    app.insert_resource(QaShotDir::new(tmp.path().to_path_buf()));
+    app.insert_resource(ShotPollBudget::new(2));
+    let reply = send(&tx, QaRequest::TakeScreenshot { name: None });
+    // The route enqueues on the first update; the pump claims it that frame and polls from the
+    // next. With no GPU the PNG never lands, so the pump's own budget elapses to a timeout.
+    for _ in 0..12 {
+        app.update();
+    }
+    let reply = reply.try_recv();
+    assert!(
+        matches!(
+            &reply,
+            Ok(QaResponse::Screenshot(ScreenshotResult::TimedOut))
+        ),
+        "the live T7 pump must claim a routed TakeScreenshot and answer its own \
+         ScreenshotResult::TimedOut, got {reply:?}",
     );
 }

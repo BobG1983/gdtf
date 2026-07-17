@@ -22,7 +22,9 @@
 //! - Inits the five typed [`PendingQueue`]s and registers the deadline
 //!   [`sweep_pending`] pumps + the always-on [`route_requests`] router, all in the
 //!   [`InputSystems::Gather`] band (sweeps chained before the router so a freshly-enqueued
-//!   request gets its full deadline budget).
+//!   request gets its full deadline budget). The screenshot queue is the ONE exception — it
+//!   has no sweep; the T7 [`drive_screenshots`] pump owns its lifetime end to end (it claims
+//!   every screenshot the frame it is routed and runs its own multi-frame poll timeout).
 
 use std::{sync::mpsc, thread};
 
@@ -41,6 +43,7 @@ use super::{
         StartBattlePayload, sweep_pending,
     },
     router::route_requests,
+    screenshot::{InFlightShots, QaShotDir, ShotPollBudget, ShotSequence, drive_screenshots},
     snapshot::build_snapshots,
 };
 
@@ -188,14 +191,24 @@ fn register_router(app: &mut App) {
         .init_resource::<PendingQueue<SnapshotPayload>>()
         .init_resource::<PendingQueue<OutputPayload>>()
         .init_resource::<PendingQueue<ScreenshotPayload>>()
-        .init_resource::<PendingQueue<StartBattlePayload>>();
+        .init_resource::<PendingQueue<StartBattlePayload>>()
+        // GTW-740 — the T7 screenshot pump's own state: the captures in-flight across
+        // frames, the poll budget, the confinement directory, and the monotonic sequence
+        // that makes every capture's output path unique.
+        .init_resource::<InFlightShots>()
+        .init_resource::<ShotPollBudget>()
+        .init_resource::<QaShotDir>()
+        .init_resource::<ShotSequence>();
+    // NOTE: the `ScreenshotPayload` queue has NO deadline sweep — the T7 pump
+    // (`drive_screenshots`, below) claims every screenshot the frame it is routed and owns
+    // its own multi-frame poll timeout, so a sweep would only ever answer the wrong reply
+    // type. Every OTHER queue keeps its sweep.
     app.add_systems(
         Update,
         (
             sweep_pending::<InjectPayload>,
             sweep_pending::<SnapshotPayload>,
             sweep_pending::<OutputPayload>,
-            sweep_pending::<ScreenshotPayload>,
             sweep_pending::<StartBattlePayload>,
             route_requests,
         )
@@ -231,5 +244,17 @@ fn register_router(app: &mut App) {
         build_snapshots
             .after(SimSystems::Simulate)
             .run_if(resource_exists::<BattleInProgress>),
+    );
+    // GTW-740 — the T7 screenshot pump. In the `InputSystems::Gather` band ordered
+    // `.after(route_requests)` so it claims the `TakeScreenshot` the router just routed the
+    // SAME frame, then holds it across frames while the GPU readback flushes the PNG (the
+    // reply is genuinely deferred — see `drive_screenshots`). Runs unconditionally: a
+    // screenshot needs no live battle, and `TakeScreenshot` is not battle-dependent at the
+    // router.
+    app.add_systems(
+        Update,
+        drive_screenshots
+            .in_set(InputSystems::Gather)
+            .after(route_requests),
     );
 }
