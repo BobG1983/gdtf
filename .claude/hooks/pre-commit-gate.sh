@@ -96,8 +96,14 @@ esac
 
 C_DIR="${DETECT#COMMIT}"
 C_DIR="${C_DIR#?}"        # strip the tab (empty when no -C was given)
-REPO_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
-TARGET_DIR="${C_DIR:-$REPO_DIR}"   # `git -C <dir> commit` is judged against <dir>
+FALLBACK_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
+TARGET_DIR="${C_DIR:-$FALLBACK_DIR}"   # `git -C <dir> commit` is judged against <dir>
+# REPO_DIR follows TARGET_DIR's own toplevel (correct inside a linked worktree,
+# where the gate-pass and the suite must run against THAT tree, not the main one)
+# rather than the fixed CLAUDE_PROJECT_DIR — a worktree-rooted commit with its own
+# legitimate .claude/.gate-pass was otherwise always judged against the main
+# tree's gate-pass and its suite ran against the main tree's code (GTW-753).
+REPO_DIR="$(git -C "$TARGET_DIR" rev-parse --show-toplevel 2>/dev/null || echo "$FALLBACK_DIR")"
 
 # --- (1) Branch guard: never commit on develop or main. ---
 BRANCH="$(git -C "$TARGET_DIR" branch --show-current 2>/dev/null || true)"
