@@ -33,6 +33,7 @@ Binding rules live in `.claude/rules/` — short, read them, follow them:
 - [`bevy-traps.md`](.claude/rules/bevy-traps.md) — Rust/Bevy ECS gotchas (system ordering, change detection, schedules, state transitions, query conflicts).
 - [`no-bare-types.md`](.claude/rules/no-bare-types.md) — no bare Rust/std type for a domain value; wrap each in a named newtype that `Deref`s to it.
 - [`module-layout.md`](.claude/rules/module-layout.md) — a module is a directory; mod.rs is wiring-only (no fns); warn >300 / block >400 lines in every band; exemptions via the registry; enforced by the clause-7 conformance test.
+- [`plain-language.md`](.claude/rules/plain-language.md) — banned words: "seam", "sanctioned", "byte identical"/"byte-identical"; name the real mechanism, no jargon in tickets, code, comments, or chat.
 
 ## The one definition of green
 
