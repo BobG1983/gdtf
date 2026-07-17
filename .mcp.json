@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "gdtf-qa": {
+      "command": "cargo",
+      "args": ["run", "-p", "gdtf_qa_mcp"]
+    }
+  }
+}

@@ -2926,6 +2926,16 @@ name = "gdtf_hivescape_sim"
 version = "0.1.0"
 
 [[package]]
+name = "gdtf_qa_mcp"
+version = "0.1.0"
+dependencies = [
+ "gdtf_qa_protocol",
+ "ron",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "gdtf_qa_protocol"
 version = "0.1.0"
 dependencies = [
