@@ -14,7 +14,7 @@ description: >-
 # tree can't independently judge it. Bash can't be sub-scoped in frontmatter, so
 # that constraint is binding in the body below.
 tools: Read, Grep, Glob, Bash
-model: fable
+model: opus
 # memory: `project` accumulates recurring violation patterns across sessions.
 # The dir (.claude/agent-memory/) is GITIGNORED per project decision: memory
 # persists locally across sessions but is not shared via git — clean trees won
