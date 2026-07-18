@@ -85,13 +85,20 @@ impl GameManager {
                 return LaunchOutcome::Launched { port, pid };
             }
             if matches!(child.poll(), ChildStatus::Exited) {
-                let tail = child.stderr_tail();
+                // Reap FIRST, then read the tail: reaping joins the stderr reader thread,
+                // which finishes draining the closed pipe into the ring. Reading first can
+                // catch the reader mid-drain and miss the child's final lines (GTW-756).
                 child.reap();
+                let tail = child.stderr_tail();
                 return LaunchOutcome::Failed(LaunchFailure::ExitedEarly(tail));
             }
             if Instant::now() >= deadline {
-                let tail = child.stderr_tail();
+                // Shut down FIRST, then read the tail: `shutdown` kills and reaps the
+                // child, and reaping joins the stderr reader thread, so the pipe is fully
+                // drained before it is read. Reading first can catch the reader mid-drain
+                // and truncate the diagnosis this failure exists to carry (GTW-756).
                 shutdown(child.as_mut(), self.config.kill_grace());
+                let tail = child.stderr_tail();
                 return LaunchOutcome::Failed(LaunchFailure::Timeout(tail));
             }
             std::thread::sleep(*self.config.poll_interval());
