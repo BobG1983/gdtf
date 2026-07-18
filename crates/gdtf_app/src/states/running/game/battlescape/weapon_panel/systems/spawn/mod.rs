@@ -13,8 +13,11 @@
 //!   (bottom 1/4 height).
 //!
 //! The **Combined Weapon Panel** is ONE bordered box: a FULL-WIDTH [`WeaponImage`](super::super::components::WeaponImage) placeholder
-//! (top 1/2 height) over an info row of [the [`WeaponContent`](super::super::components::WeaponContent) weapon-text column (name +
-//! magazine, the FLEX SPONGE) | the LIVE [`ReloadButton`](super::super::components::ReloadButton) (pinned right)] (bottom 1/2 height).
+//! (top 1/2 height) over an info block (bottom 1/2 height) of the FULL-WIDTH
+//! [`WeaponContent`](super::super::components::WeaponContent) weapon-text block (name + magazine)
+//! STACKED OVER the LIVE [`ReloadButton`](super::super::components::ReloadButton)'s own row
+//! (pinned right) below it — GTW-733: Reload moved out of the name's row into its own row so a
+//! long shipped weapon name and the button never occupy the same pixels.
 //! The **Item Panel** holds two stacked DISABLED [`WeaponItemButton`](super::super::components::WeaponItemButton)s (1/2 height each, full
 //! width). The **Firemode / Aim** panels host the controls RELOCATED from the action bar
 //! (GTW-298): the firemode 3-toggle [`spawn_mode_panel`](crate::states::running::game::battlescape::action_bar::spawn_mode_panel) column fills the Firemode cell, and the

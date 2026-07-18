@@ -1,13 +1,14 @@
 //! The **Combined Weapon Panel** builders (top-left grid cell): the full-width
-//! weapon-image placeholder over the weapon-text / Reload info row. Split out of the
-//! monolithic `spawn.rs` (GTW-583); the authoritative layout doc lives on the parent
-//! `spawn` module.
+//! weapon-image placeholder over the weapon-text block STACKED OVER the Reload row (GTW-733 —
+//! Reload got its own row below the name/magazine text rather than sharing a row beside it, so
+//! the two never occupy the same pixels). Split out of the monolithic `spawn.rs` (GTW-583); the
+//! authoritative layout doc lives on the parent `spawn` module.
 
 use bevy::{
     ecs::template::template,
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
-    text::{FontSize, TextColor as UiTextColor, TextFont},
+    text::{FontSize, LineBreak, TextColor as UiTextColor, TextFont, TextLayout},
     ui::{Display, Node, Overflow, OverflowAxis, UiRect, Val},
 };
 use gdtf_ui::{
@@ -16,7 +17,9 @@ use gdtf_ui::{
     themed::{ThemeRole, Themed},
 };
 
-use super::geometry::{CONTENT_MIN_H_VH, GAP_VH, GAP_VW, INFO_ROW_H_PCT, TEXT_COL_PCT};
+use super::geometry::{
+    CONTENT_MIN_H_VH, GAP_VH, INFO_RELOAD_H_PCT, INFO_ROW_H_PCT, INFO_TEXT_H_PCT,
+};
 use crate::states::running::game::battlescape::weapon_panel::components::{
     CombinedWeaponPanel, ReloadButton, WeaponContent, WeaponImage, WeaponMagazineText,
     WeaponNameText,
@@ -99,27 +102,40 @@ fn spawn_text(
         .id()
 }
 
-/// Builds the Combined panel's INFO ROW (bottom 1/2) — the [`WeaponContent`] weapon-text column
-/// (name + magazine, 3/4 width) beside the LIVE [`ReloadButton`] (1/4 width).
+/// Builds the Combined panel's INFO BLOCK (bottom 1/2) — the [`WeaponContent`] weapon-text
+/// block (name + magazine, FULL width, top [`INFO_TEXT_H_PCT`] share) STACKED OVER the LIVE
+/// [`ReloadButton`]'s OWN row (full width, bottom [`INFO_RELOAD_H_PCT`] share).
 ///
-/// The text column `flex_grow`s / CLIPS (`min_width: 0` + [`Overflow`] hidden) rather than
-/// pushing Reload; the Reload cell is `flex_shrink: 0` (never collapses) and pinned to the
-/// row's RIGHT END, so Reload can never float past the Combined panel's right edge into the Item
-/// panel (contract: Reload INSIDE the Combined panel). Returns the info-row entity.
-fn spawn_info_row(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
+/// GTW-733 (weapon-block-too-narrow bug fix): Reload previously shared a ROW with the
+/// weapon-text column (a 3/4-width text column beside a 1/4-width Reload cell), so a long
+/// shipped identifier (e.g. `grenade_launcher`, `volatile_charge` — `snake_case`, so it has no
+/// space `bevy_text` can word-wrap at) had nowhere to go but INTO Reload's cell. Stacking Reload
+/// into its OWN row below the text — rather than beside it — means the name row and the Reload
+/// button never share the same pixels, REGARDLESS of how long a shipped name gets: the two are
+/// disjoint rects by construction, not by hoping the name fits. The text block still `Overflow`s
+/// hidden + wraps [`LineBreak::WordOrCharacter`] (so an even longer future name breaks onto a
+/// second line inside its OWN box rather than bleeding out of it) as the graceful-degradation
+/// fallback under [`CONTENT_MIN_H_VH`]'s two-line floor. Returns the info-block entity.
+fn spawn_info_block(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
     let name = spawn_text(commands, theme, WeaponNameText, "—");
+    // GTW-733: the name may be a long, space-free snake_case identifier the default
+    // `LineBreak::WordBoundary` cannot wrap at all (no break opportunity) — `WordOrCharacter`
+    // wraps at a word boundary when one exists, else falls back to breaking mid-word, so an
+    // over-long name degrades to a second line INSIDE its own box instead of overflowing past it.
+    commands
+        .entity(name)
+        .insert(TextLayout::linebreak(LineBreak::WordOrCharacter));
     let magazine = spawn_text(commands, theme, WeaponMagazineText, "0/0");
     // GTW-322 — `WeaponContent` rides the `bsn!` macro inline; its runtime-valued `Node`
-    // (the flex-sponge text column) + `Visibility::Hidden` are composed with `template_value`.
+    // (the FULL-WIDTH text block, GTW-733) + `Visibility::Hidden` are composed with
+    // `template_value`.
     let content_node = Node {
-        width: Val::Percent(TEXT_COL_PCT),
-        height: Val::Percent(100.0),
-        // The GTW-275 overflow floor: a RESPONSIVE (`Val::Vh`) min height so the
-        // auto-sized panel cannot mismeasure the weapon-text against near-zero text.
+        width: Val::Percent(100.0),
+        height: Val::Percent(INFO_TEXT_H_PCT),
+        // The GTW-275 overflow floor (doubled by GTW-733 to hold a two-line wrapped name): a
+        // RESPONSIVE (`Val::Vh`) min height so the auto-sized panel cannot mismeasure the
+        // weapon-text against near-zero text.
         min_height: Val::Vh(CONTENT_MIN_H_VH),
-        flex_grow: 1.0,
-        flex_shrink: 1.0,
-        min_width: Val::ZERO,
         flex_direction: FlexDirection::Column,
         justify_content: JustifyContent::Center,
         row_gap: Val::Vh(GAP_VH),
@@ -142,40 +158,44 @@ fn spawn_info_row(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
     commands.entity(content).add_children(&[name, magazine]);
 
     let reload = spawn_button(commands, theme, ButtonLabel::new("Reload"), ReloadButton);
-    // GTW-322 — plain layout `Node`s (no markers); composed via `template_value`.
-    let reload_cell_node = Node {
-        width: Val::Percent(100.0 - TEXT_COL_PCT),
-        flex_shrink: 0.0,
+    // GTW-733 — Reload's OWN full-width row (below the text block, not beside it); the button
+    // itself stays RIGHT-anchored within it, matching its prior position in the row.
+    // GTW-322 — plain layout `Node` (no marker); composed via `template_value`.
+    let reload_row_node = Node {
+        width: Val::Percent(100.0),
+        height: Val::Percent(INFO_RELOAD_H_PCT),
         flex_direction: FlexDirection::Row,
         justify_content: JustifyContent::FlexEnd,
         align_items: AlignItems::Center,
         ..default()
     };
-    let reload_cell = commands.spawn_scene(template_value(reload_cell_node)).id();
-    commands.entity(reload_cell).add_children(&[reload]);
+    let reload_row = commands.spawn_scene(template_value(reload_row_node)).id();
+    commands.entity(reload_row).add_children(&[reload]);
 
-    let info_row_node = Node {
+    // GTW-733: a COLUMN (was a Row) — the text block stacks OVER the Reload row, so the two
+    // never occupy the same pixels.
+    let info_block_node = Node {
         width: Val::Percent(100.0),
         height: Val::Percent(INFO_ROW_H_PCT),
-        flex_direction: FlexDirection::Row,
-        column_gap: Val::Vw(GAP_VW),
-        align_items: AlignItems::Center,
+        flex_direction: FlexDirection::Column,
+        row_gap: Val::Vh(GAP_VH),
         overflow: Overflow {
             x: OverflowAxis::Hidden,
             y: OverflowAxis::Hidden,
         },
         ..default()
     };
-    let info_row = commands.spawn_scene(template_value(info_row_node)).id();
+    let info_block = commands.spawn_scene(template_value(info_block_node)).id();
     commands
-        .entity(info_row)
-        .add_children(&[content, reload_cell]);
-    info_row
+        .entity(info_block)
+        .add_children(&[content, reload_row]);
+    info_block
 }
 
 /// Builds the **Combined Weapon Panel** (top-left grid cell) — ONE bordered box of the
-/// FULL-WIDTH [`WeaponImage`] (top 1/2) over the info row (bottom 1/2: weapon-text column |
-/// Reload). Sized `width` × `height` (responsive). Returns the panel [`Entity`].
+/// FULL-WIDTH [`WeaponImage`] (top 1/2) over the info block (bottom 1/2: the FULL-WIDTH
+/// weapon-text block stacked over Reload's own row, GTW-733). Sized `width` × `height`
+/// (responsive). Returns the panel [`Entity`].
 pub(super) fn spawn_combined_panel(
     commands: &mut Commands,
     theme: &GdtfTheme,
@@ -183,7 +203,7 @@ pub(super) fn spawn_combined_panel(
     height: Val,
 ) -> Entity {
     let image = spawn_image(commands, theme, Val::Percent(INFO_ROW_H_PCT));
-    let info_row = spawn_info_row(commands, theme);
+    let info_block = spawn_info_block(commands, theme);
     // GTW-322 — `CombinedWeaponPanel` + `Themed` ride the `bsn!` macro inline; the
     // runtime-valued `Node`, `BackgroundColor`, and `BorderColor` are composed with
     // `template_value`.
@@ -212,6 +232,6 @@ pub(super) fn spawn_combined_panel(
             template_value(border),
         ))
         .id();
-    commands.entity(panel).add_children(&[image, info_row]);
+    commands.entity(panel).add_children(&[image, info_block]);
     panel
 }

@@ -10,8 +10,10 @@
 //! (same height, fixed-% width), wrapping the three stance toggles.
 //!
 //! The Combined Weapon Panel is ONE bordered box: a full-width [`WeaponImage`] placeholder
-//! (top 1/2 height) over an info row of [the [`WeaponContent`] weapon-text column (name +
-//! magazine, 3/4 width) | the LIVE [`ReloadButton`] (1/4 width)] (bottom 1/2 height). The Item
+//! (top 1/2 height) over an info block (bottom 1/2 height) of the [`WeaponContent`] weapon-text
+//! block (name + magazine, FULL width) STACKED OVER the LIVE [`ReloadButton`]'s own row (GTW-733
+//! — Reload moved out of the name's row into its own row below, so a long shipped weapon name
+//! and the button never occupy the same pixels). The Item
 //! Panel holds two stacked DISABLED [`WeaponItemButton`]s (items are not modeled yet). The
 //! Firemode / Aim / Stance panels host the controls RELOCATED from the action bar (GTW-298):
 //! the firemode toggles, the aim toggle, and the stance toggles keep their action-bar markers
@@ -38,10 +40,11 @@ crate::support_item! {
 }
 
 crate::support_item! {
-    /// Marks the weapon cluster's **content container** — the weapon-text column inside the
-    /// Combined Weapon Panel's info row holding the name / magazine lines (the
-    /// [`WeaponImage`] + the [`ReloadButton`] are SIBLINGS, not children, so they stay framed
-    /// in the empty state), hidden as a unit when there is no selection / no weapon (AC9 empty
+    /// Marks the weapon cluster's **content container** — the FULL-WIDTH weapon-text block
+    /// inside the Combined Weapon Panel's info block holding the name / magazine lines (the
+    /// [`ReloadButton`] sits in its OWN row below, a SIBLING of this block, not a child, so it
+    /// stays framed in the empty state — GTW-733: Reload moved out of the name's row so the two
+    /// never share pixels), hidden as a unit when there is no selection / no weapon (AC9 empty
     /// state, via [`Display::None`](bevy::ui::Display)). A unit marker: presence on an entity
     /// is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -50,9 +53,10 @@ crate::support_item! {
 
 crate::support_item! {
     /// Marks the **Combined Weapon Panel** (top-left grid cell, top 3/4 height) — the ONE
-    /// bordered box wrapping the full-width [`WeaponImage`] over the info row of [the
-    /// [`WeaponContent`] weapon-text column | the LIVE [`ReloadButton`]]. A structural marker
-    /// letting the AC tests assert the grid cell exists (no-bare-types rule).
+    /// bordered box wrapping the full-width [`WeaponImage`] over the info block of [the
+    /// [`WeaponContent`] weapon-text block, stacked over the LIVE [`ReloadButton`]'s own row
+    /// (GTW-733)]. A structural marker letting the AC tests assert the grid cell exists
+    /// (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct CombinedWeaponPanel;
 }

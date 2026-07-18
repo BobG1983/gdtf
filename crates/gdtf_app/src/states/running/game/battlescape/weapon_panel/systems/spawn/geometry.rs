@@ -79,22 +79,32 @@ pub(super) const LEFT_COL_PCT: f32 = 75.0;
 /// `const` layout plumbing value, NOT a fixed px.
 pub(super) const RIGHT_COL_PCT: f32 = 25.0;
 
-/// The weapon-text column / Reload's height as a `Percent` of the Combined panel — the bottom
-/// 1/2 (the [`WeaponImage`](crate::states::running::game::battlescape::weapon_panel::components::WeaponImage) takes the top 1/2). A `const` layout plumbing value, NOT a fixed px.
+/// The weapon-text block / Reload row's combined height as a `Percent` of the Combined panel —
+/// the bottom 1/2 (the [`WeaponImage`](crate::states::running::game::battlescape::weapon_panel::components::WeaponImage) takes the top 1/2). A `const` layout plumbing value, NOT a fixed px.
 pub(super) const INFO_ROW_H_PCT: f32 = 50.0;
 
-/// The weapon-text column's width as a `Percent` of the info row — the 3/4 share beside the
-/// 1/4-width Reload button. A `const` layout plumbing value, NOT a fixed px.
-pub(super) const TEXT_COL_PCT: f32 = 75.0;
+/// The weapon-text block's height as a `Percent` of the info block — the 65% share above the
+/// 35%-height Reload row (GTW-733: the Reload button moved OUT of the name's row into its OWN
+/// row below, so the two never share pixels regardless of name length — the same 65/35 split
+/// [`TOP_CELL_PCT`]/[`BOTTOM_CELL_PCT`] already uses for the grid bands). A `const` layout
+/// plumbing value, NOT a fixed px.
+pub(super) const INFO_TEXT_H_PCT: f32 = 65.0;
 
-/// The minimum height of the weapon-text column, as a fraction of the WINDOW HEIGHT
+/// The Reload row's height as a `Percent` of the info block — the 35% share below the
+/// 65%-height weapon-text block (GTW-733). A `const` layout plumbing value, NOT a fixed px.
+pub(super) const INFO_RELOAD_H_PCT: f32 = 35.0;
+
+/// The minimum height of the weapon-text block, as a fraction of the WINDOW HEIGHT
 /// ([`Val::Vh`](bevy::ui::Val)).
 ///
 /// A `const`, layout plumbing fed to a [`Node`](bevy::ui::Node). The GTW-275 overflow floor: it floors the
 /// weapon-text height so the absolutely-positioned, auto-sized root cannot mismeasure against
-/// near-zero-height text and push the rows below the panel border. Responsive (`vh`), NOT a
-/// fixed px.
-pub(super) const CONTENT_MIN_H_VH: f32 = 3.0;
+/// near-zero-height text and push the rows below the panel border. GTW-733 doubled it (3.0 ->
+/// 6.0): the name line now wraps to a SECOND line rather than clipping when even the FULL-WIDTH
+/// block (GTW-733 gave the name the whole panel width, not just 3/4 of it) can't fit a long
+/// shipped identifier on one line, so the floor must hold two text lines' worth of height, not
+/// one. Responsive (`vh`), NOT a fixed px.
+pub(super) const CONTENT_MIN_H_VH: f32 = 6.0;
 
 /// The VERTICAL gap between weapon-cluster sub-nodes (row gaps), as a fraction of the window
 /// HEIGHT ([`Val::Vh`](bevy::ui::Val) — GTW-296 responsive ruling). A `const`, layout plumbing

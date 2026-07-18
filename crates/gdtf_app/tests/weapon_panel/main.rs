@@ -17,10 +17,18 @@
 //!   relocated firemode / aim / stance controls present in their new panels, and all sizing
 //!   RESPONSIVE (`Val::Vw`/`Val::Vh`/`Val::Percent`, NOT a fixed `Val::Px`); the empty-state
 //!   hide uses `Display::None` (removed from layout) so a hidden weapon block takes no space.
+//! - **GTW-733** — the weapon block is wide enough for a real shipped weapon name: Reload moved
+//!   out of the name's row into its own row below, so the two never share pixels. Unlike the rest
+//!   of this file's `MinimalPlugins`/declared-`Node`-field tests, `layout_geometry` drives a
+//!   SEPARATE REAL-layout harness (`real_layout_harness`, a headless `DefaultPlugins` app with a
+//!   real window + a real loaded font) so it can assert on ACTUAL computed pixel geometry against
+//!   the LONGEST shipped ranged weapon name (read from the real `.ron` files, not hardcoded).
 
 mod aim_stance_layout;
 mod bottom_bar;
 mod harness;
+mod layout_geometry;
 mod panel_content;
+mod real_layout_harness;
 mod reload_button;
 mod structure;
