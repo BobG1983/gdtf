@@ -38,13 +38,15 @@ serde = { workspace = true }
 # serialize/write seam in GTW-577, so no non-test code here calls `ron::ser` anymore; the dep
 # stays normal because the `#[cfg(test)]` modules ride the lib target.
 ron = { workspace = true }
-# GTW-510: the reusable in-engine self-capture crate. OPTIONAL — pulled in ONLY by the `dev_capture`
-# feature (below), matching the existing `crate::dev::capture` gating discipline. Since GTW-577 the
-# game's scene capture hooks (currently just the loading screen — GTW-655 retired the
-# procgen-visualizer hook alongside its scene) run ON its primitives — `parse_shot_path` for the
-# env-var path gate and `settle_then_capture` for the settle-then-`Screenshot` spawn — keeping only
-# their per-scene env vars + drive; the game also adds the crate's F10 debug keybind. All under
-# `cfg!(all(debug_assertions, feature = "dev_capture"))`, so a release binary never links it.
+# GTW-510: the reusable in-engine self-capture crate. OPTIONAL — pulled in ONLY by the `net_qa`
+# feature (below; GTW-749 retired the `dev_capture` feature this used to ride, folding its two
+# remaining consumers onto `net_qa`'s own gate). Since GTW-577 the game's scene capture hooks
+# (currently just the loading screen — GTW-655 retired the procgen-visualizer hook alongside its
+# scene) run ON its primitives — `parse_shot_path` for the env-var path gate and
+# `settle_then_capture` for the settle-then-`Screenshot` spawn — keeping only their per-scene env
+# vars + drive; the game also adds the crate's F10 debug keybind, and the T7 `net_qa` screenshot
+# pump reuses its `CapturePath` type. All under `cfg!(all(debug_assertions, feature = "net_qa"))`,
+# so a release binary never links it.
 gdtf_screenshot = { path = "../gdtf_screenshot", optional = true }
 # GTW-736: the bevy-FREE typed wire contract (GTW-734, T1) the `net_qa` QA-net server
 # (`crate::dev::net_qa`, T3) speaks — the request/response envelope, the view/event DTOs,
@@ -81,9 +83,10 @@ gdtf_state_scoped = { path = "../gdtf_state_scoped" }
 # `test-support` on for the sim across the workspace test build — fine: it is test/dev
 # only and the binary build enables it nowhere.)
 gdtf_battle_sim = { path = "../gdtf_battle_sim", features = ["test-support"] }
-# The dev-capture schedule/loudness tests (`src/dev/capture/test/`) write their capture
-# PNGs into a unique TempDir — never into the version-controlled tree. TempDir auto-cleans
-# on drop (the GTW-555 isolation precedent).
+# The `net_qa` T7/T15 screenshot tests (`src/dev/net_qa/screenshot/test/`,
+# `tests/net_qa/`) write their capture PNGs into a unique TempDir — never into the
+# version-controlled tree. TempDir auto-cleans on drop (the GTW-555 isolation
+# precedent).
 tempfile = "3"
 
 [features]
@@ -94,26 +97,6 @@ dynamic_linking = ["bevy/dynamic_linking"]
 # the real state machine (the states + ScenesPlugin are pub(crate) otherwise).
 # Test/dev only — never enabled for release artifacts or by the binary crate.
 test-support = []
-# DEV / LOCAL-only screenshot / visual-QA capture (GTW-297). Compiles in the
-# `crate::dev::capture` affordance, which is ADDITIONALLY double-gated on
-# `cfg!(debug_assertions)` at the wiring site, so a release binary never sees it even
-# with the feature on. `Screenshot` / `save_to_disk` live in `bevy_render` (already
-# present via `DefaultPlugins`), so no extra bevy feature is required. The affordance
-# is inert at runtime until `GDTF_CAPTURE_PATH` is set.
-#
-# NOT in the default feature set and NEVER enabled for CI / release builds. Since
-# GTW-590 the BINARY's `dynamic_linking` dev feature folds this in
-# (`grimdark_turfwar/dynamic_linking` -> `gdtf_app/dev_capture`), so the dynamic-linked
-# dev/gate suite (dclippy/dtest/dbuild) compiles + lints + tests the capture code on
-# every run — the pinned QA repro works verbatim and the capture-gated tests can never
-# be an invisible red again. The CI static suite and release builds never enable
-# `dynamic_linking`, so they still never see it.
-#
-# GTW-510/GTW-577: this feature ALSO pulls in the reusable `gdtf_screenshot` crate — the game's
-# scene capture hooks delegate their path gate (`parse_shot_path`) and their settle-then-capture
-# pipeline (`settle_then_capture`) to it, and the game gains the F10 debug keybind — all still
-# double-gated on `cfg!(debug_assertions)` at their wiring sites.
-dev_capture = ["dep:gdtf_screenshot"]
 # DEV / LOCAL-only asset hot-reload. Enables Bevy's asset file watcher: with the
 # default `AssetPlugin { watch_for_changes_override: None, .. }`, Bevy starts the
 # watcher iff its internal `watch` cfg is set, which `bevy/file_watcher` activates
@@ -137,7 +120,7 @@ dev_capture = ["dep:gdtf_screenshot"]
 file_watcher = ["bevy/file_watcher"]
 # GTW-655: DEV-ONLY procgen load-time stepper (an egui Next/Auto/Skip overlay over the
 # sim's staged procgen driver). Pulls in `bevy_egui` (optional above) ONLY behind this
-# feature, so a release binary never links egui. Unlike the `dev_capture` affordances, its
+# feature, so a release binary never links egui. Unlike the `net_qa` affordance below, its
 # wiring site (`crate::dev::plugin`) gates it on this Cargo feature ONLY — there is NO
 # `cfg!(debug_assertions)` double-gate, because `dev_tools` is itself never enabled for a
 # release/CI build. It is inert at runtime until the `GDTF_PROCGEN_STEPPER` env var is set
@@ -146,16 +129,17 @@ file_watcher = ["bevy/file_watcher"]
 #
 # NOT in the default feature set and NEVER enabled for CI / release builds.
 dev_tools = ["dep:bevy_egui"]
-# GTW-736: DEV-ONLY QA network control channel (the GTW-694 architecture's T3). Pulls in
+# GTW-736: DEV-ONLY QA network control channel (the GTW-694 architecture's T3 onward,
+# extended through GTW-749 — the ONE capture / drive path in the workspace). Pulls in
 # the bevy-free wire contract (`dep:gdtf_qa_protocol`) plus the in-engine self-capture crate
-# (`dep:gdtf_screenshot`, reused by the later T7 screenshot child), and compiles in
-# `crate::dev::net_qa` — a loopback-only (`Ipv4Addr::LOCALHOST`) TCP listener + request router
-# a coding-agent QA harness drives. Like `dev_capture` (and UNLIKE `dev_tools`), its wiring site
-# is ADDITIONALLY double-gated on `cfg!(debug_assertions)` — it opens a listener, the
-# `dev_capture` strictness class — so a release artifact never sees it even with the feature on.
-# It is inert at runtime until `GDTF_NET_QA` is set truthy (its own `from_env` gate), so even a
-# `net_qa`-enabled dev build reaches a battle exactly as before unless a developer opts in; the
-# listen port is `GDTF_NET_QA_PORT` (port only — the interface is never configurable).
+# (`dep:gdtf_screenshot`, reused by the T7 screenshot pump, the T15 `screenshot_after` child,
+# and the F10 debug keybind), and compiles in `crate::dev::net_qa` — a loopback-only
+# (`Ipv4Addr::LOCALHOST`) TCP listener + request router a coding-agent QA harness drives. Its
+# wiring site is ADDITIONALLY double-gated on `cfg!(debug_assertions)` — it opens a listener —
+# so a release artifact never sees it even with the feature on. It is inert at runtime until
+# `GDTF_NET_QA` is set truthy (its own `from_env` gate), so even a `net_qa`-enabled dev build
+# reaches a battle exactly as before unless a developer opts in; the listen port is
+# `GDTF_NET_QA_PORT` (port only — the interface is never configurable).
 #
 # NOT in the default feature set and NEVER enabled for CI / release builds.
 net_qa = ["dep:gdtf_qa_protocol", "dep:gdtf_screenshot", "dep:image"]

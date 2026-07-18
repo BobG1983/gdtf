@@ -3,15 +3,15 @@
 //!
 //! This is **not shipping behavior**. It exists so QA (or a coding agent) can drive the app and
 //! capture the rendered LOADING SCREEN frame — proving AC2 (no partial-level frame) visually,
-//! which the headless tests structurally cannot observe. It mirrors the GTW-297
-//! [`DevCapturePlugin`](crate::dev::capture) gating discipline but fires DURING
+//! which the headless tests structurally cannot observe. It mirrors the GTW-297 capture
+//! discipline (env-var gated, double-gated on a debug cfg) but fires DURING
 //! [`BattleScapeState::Generation`](crate::states::BattleScapeState) rather than `BattleRunning`.
 //!
 //! ## Two gates, both must hold to activate
 //!
 //! 1. **Dev cfg.** Wired into [`LoadingScreenPlugin`](super::plugin::LoadingScreenPlugin) only
-//!    under `cfg!(all(debug_assertions, feature = "dev_capture"))`; a release / default build
-//!    never compiles it.
+//!    under `cfg!(all(debug_assertions, feature = "net_qa"))` (GTW-749 retired the
+//!    `dev_capture` feature this used to ride); a release / default build never compiles it.
 //! 2. **Opt-in env var.** Even when compiled in it is inert until `GDTF_LOADING_SHOT=/abs/out.png`
 //!    is set: with it unset the hook registers nothing.
 //!
@@ -41,7 +41,7 @@ use crate::states::{
 };
 
 /// The `GDTF_LOADING_SHOT` env var: the absolute path of the output PNG. Setting it (in a
-/// `dev_capture` debug build) opts into the loading-screen capture hook.
+/// `net_qa` debug build) opts into the loading-screen capture hook.
 const LOADING_SHOT_ENV: &str = "GDTF_LOADING_SHOT";
 
 /// This scene's calibrated settle window: 4 `Generation` frames, so the UI layout has flushed
@@ -85,7 +85,7 @@ fn pin_generation_until_shot(
 /// Register the loading-screen capture hook IF its env-var gate is set.
 ///
 /// Called by [`LoadingScreenPlugin`](super::plugin::LoadingScreenPlugin) only under
-/// `cfg!(all(debug_assertions, feature = "dev_capture"))`. When [`loading_shot_path`] returns
+/// `cfg!(all(debug_assertions, feature = "net_qa"))`. When [`loading_shot_path`] returns
 /// `None` it registers nothing (the hook is fully inert, exactly like a build without it).
 ///
 /// The per-scene DRIVE ([`pin_generation_until_shot`]) is chained AHEAD of the shared

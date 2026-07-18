@@ -7,14 +7,18 @@
 //!
 //! - A request the router cannot service now is rejected [`NoBattle`](QaError::NoBattle)
 //!   at ROUTE time via `Option<Res<BattleInProgress>>` — never a panic on the missing
-//!   resource (bevy-traps #1). Today the only reason a request is unserviceable is the
-//!   battle-dependent trio ([`Inject`](QaRequest::Inject) /
-//!   [`GetBattleState`](QaRequest::GetBattleState) / [`GetOutput`](QaRequest::GetOutput))
-//!   arriving with no battle running.
+//!   resource (bevy-traps #1). Today the reason a request is unserviceable is the
+//!   battle-dependent quartet ([`Inject`](QaRequest::Inject) /
+//!   [`GetBattleState`](QaRequest::GetBattleState) / [`GetOutput`](QaRequest::GetOutput) /
+//!   [`ScreenshotAfter`](QaRequest::ScreenshotAfter)) arriving with no battle running —
+//!   `ScreenshotAfter` embeds an intent, so it is gated exactly like a bare `Inject`
+//!   (GTW-749): a rejection there is the SAME route-time `NoBattle`, never a stale
+//!   capture.
 //! - A serviceable request is then answered directly ([`Hello`](QaRequest::Hello) /
 //!   [`GetAppFlow`](QaRequest::GetAppFlow)) or enqueued for its (later) consumer
 //!   ([`Inject`](QaRequest::Inject) / [`GetBattleState`](QaRequest::GetBattleState) /
 //!   [`GetOutput`](QaRequest::GetOutput) / [`TakeScreenshot`](QaRequest::TakeScreenshot) /
+//!   [`ScreenshotAfter`](QaRequest::ScreenshotAfter) /
 //!   [`StartBattle`](QaRequest::StartBattle)).
 //!
 //! The `GetAppFlow` answer reports the same set — [`available_requests`] filters
@@ -36,8 +40,8 @@ use super::{
     channel::{NetInbox, Responder},
     config::{NET_QA_PROTOCOL_VERSION, SERVER_NAME},
     pending::{
-        InjectPayload, OutputPayload, PendingQueues, ScreenshotPayload, SnapshotPayload,
-        StartBattlePayload,
+        InjectPayload, OutputPayload, PendingQueues, ScreenshotAfterPayload, ScreenshotPayload,
+        SnapshotPayload, StartBattlePayload,
     },
 };
 use crate::states::AppState;
@@ -46,14 +50,19 @@ use crate::states::AppState;
 ///
 /// The single predicate that governs BOTH the route-time accept/reject below and the
 /// advertised [`available_requests`] set, so the two can never drift. The battle-dependent
-/// trio needs a battle in progress; every other request kind is serviceable regardless of
-/// state. `in_battle` is the only fact accept/reject keys on today — the app state is read
-/// only to fill the snapshot, not to gate requests.
+/// quartet needs a battle in progress; every other request kind is serviceable regardless
+/// of state. `in_battle` is the only fact accept/reject keys on today — the app state is
+/// read only to fill the snapshot, not to gate requests.
+///
+/// [`ScreenshotAfter`](RequestKindNet::ScreenshotAfter) joins the battle-dependent group
+/// (GTW-749): it embeds a battle intent, so it needs exactly what a bare
+/// [`Inject`](RequestKindNet::Inject) needs — a live battle to inject into.
 const fn request_available(kind: RequestKindNet, in_battle: bool) -> bool {
     match kind {
-        RequestKindNet::Inject | RequestKindNet::GetBattleState | RequestKindNet::GetOutput => {
-            in_battle
-        }
+        RequestKindNet::Inject
+        | RequestKindNet::GetBattleState
+        | RequestKindNet::GetOutput
+        | RequestKindNet::ScreenshotAfter => in_battle,
         RequestKindNet::Hello
         | RequestKindNet::GetAppFlow
         | RequestKindNet::TakeScreenshot
@@ -113,6 +122,16 @@ pub(super) fn route_requests(
                 queues
                     .screenshot
                     .push_new(ScreenshotPayload::new(name), responder);
+            }
+            QaRequest::ScreenshotAfter {
+                intent,
+                frame_delay,
+                name,
+            } => {
+                queues.screenshot_after.push_new(
+                    ScreenshotAfterPayload::new(intent, frame_delay, name),
+                    responder,
+                );
             }
             QaRequest::StartBattle { situation, seed } => {
                 queues

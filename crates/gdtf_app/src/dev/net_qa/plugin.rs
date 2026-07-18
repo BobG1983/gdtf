@@ -1,12 +1,12 @@
 //! [`NetQaPlugin`] — the DEV-ONLY QA network control channel's registration
 //! (GTW-736).
 //!
-//! ## Two gates, both must hold to activate (the `dev_capture` strictness class)
+//! ## Two gates, both must hold to activate
 //!
 //! 1. **`cfg(all(debug_assertions, feature = "net_qa"))`.** The wiring site
 //!    ([`crate::dev::plugin`]) only adds the plugin under a debug build AND the opt-in
-//!    `net_qa` feature — it opens a listener, so it earns the same double gate as
-//!    `dev_capture` (a release artifact never sees it, even with the feature on).
+//!    `net_qa` feature — it opens a listener, so a release artifact never sees it, even
+//!    with the feature on.
 //! 2. **Opt-in env var.** Even in a `net_qa` debug build the plugin is INERT by default:
 //!    [`from_env`](NetQaPlugin::from_env) reads `GDTF_NET_QA` and registers NOTHING unless
 //!    it is set truthy, so a normal `cargo run` reaches a battle exactly as before.
@@ -39,11 +39,12 @@ use super::{
     inject::apply_injects,
     listener::{bind_listener, run_listener},
     pending::{
-        InjectPayload, OutputPayload, PendingQueue, ScreenshotPayload, SnapshotPayload,
-        StartBattlePayload, sweep_pending,
+        InjectPayload, OutputPayload, PendingQueue, ScreenshotAfterPayload, ScreenshotPayload,
+        SnapshotPayload, StartBattlePayload, sweep_pending,
     },
     router::route_requests,
     screenshot::{InFlightShots, QaShotDir, ShotPollBudget, ShotSequence, drive_screenshots},
+    screenshot_after::{AfterShotQueue, claim_screenshot_after, tick_after_shots},
     snapshot::build_snapshots,
     start_battle::drive_start_battle,
 };
@@ -192,6 +193,7 @@ fn register_router(app: &mut App) {
         .init_resource::<PendingQueue<SnapshotPayload>>()
         .init_resource::<PendingQueue<OutputPayload>>()
         .init_resource::<PendingQueue<ScreenshotPayload>>()
+        .init_resource::<PendingQueue<ScreenshotAfterPayload>>()
         .init_resource::<PendingQueue<StartBattlePayload>>()
         // GTW-740 — the T7 screenshot pump's own state: the captures in-flight across
         // frames, the poll budget, the confinement directory, and the monotonic sequence
@@ -199,11 +201,17 @@ fn register_router(app: &mut App) {
         .init_resource::<InFlightShots>()
         .init_resource::<ShotPollBudget>()
         .init_resource::<QaShotDir>()
-        .init_resource::<ShotSequence>();
-    // NOTE: the `ScreenshotPayload` queue has NO deadline sweep — the T7 pump
-    // (`drive_screenshots`, below) claims every screenshot the frame it is routed and owns
-    // its own multi-frame poll timeout, so a sweep would only ever answer the wrong reply
-    // type. Every OTHER queue keeps its sweep.
+        .init_resource::<ShotSequence>()
+        // GTW-749 — the T15 screenshot-after child's own state: the accepted requests
+        // counting down to their fire frame.
+        .init_resource::<AfterShotQueue>();
+    // NOTE: neither the `ScreenshotPayload` nor the `ScreenshotAfterPayload` queue has a
+    // deadline sweep — the T7 pump (`drive_screenshots`, below) claims every screenshot
+    // the frame it is routed and owns its own multi-frame poll timeout, and the T15
+    // `claim_screenshot_after` claims every screenshot-after the frame it is routed too
+    // (answering `Rejected` immediately or handing it to `AfterShotQueue`'s OWN countdown)
+    // — a generic sweep would only ever answer the wrong reply type for either. Every
+    // OTHER queue keeps its sweep.
     app.add_systems(
         Update,
         (
@@ -257,6 +265,32 @@ fn register_router(app: &mut App) {
         drive_screenshots
             .in_set(InputSystems::Gather)
             .after(route_requests),
+    );
+    // GTW-749 — the T15 screenshot-after child. `tick_after_shots` runs UNCONDITIONALLY
+    // (a capture already queued must keep counting down and fire even past a battle
+    // ending) `.after(route_requests)`; `claim_screenshot_after` runs `.after` it (so a
+    // freshly-claimed entry is never ticked the frame it is created — the T7
+    // poll-before-claim discipline applied here too) and shares `apply_injects`'
+    // ordering + battle gate: `.before(ContextualActSystems::Drain)` +
+    // `.before(dispatch_act_intents)` (the T4 same-frame co-schedule guarantee for the
+    // intent it injects) and `run_if(resource_exists::<BattleInProgress>)` (the router
+    // already rejects an off-battle `ScreenshotAfter` `NoBattle` before it is ever
+    // queued, exactly like a bare `Inject`).
+    app.add_systems(
+        Update,
+        tick_after_shots
+            .in_set(InputSystems::Gather)
+            .after(route_requests),
+    );
+    app.add_systems(
+        Update,
+        claim_screenshot_after
+            .in_set(InputSystems::Gather)
+            .after(route_requests)
+            .after(tick_after_shots)
+            .before(ContextualActSystems::Drain)
+            .before(dispatch_act_intents)
+            .run_if(resource_exists::<BattleInProgress>),
     );
     // GTW-742 — the T9 start-battle navigation consumer. In the `InputSystems::Gather`
     // band ordered `.after(route_requests)` so it drains the `StartBattle` the router just

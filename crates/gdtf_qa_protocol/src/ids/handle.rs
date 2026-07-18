@@ -101,6 +101,27 @@ impl SeedNet {
     }
 }
 
+/// The number of frames a
+/// [`ScreenshotAfter`](crate::envelope::QaRequest::ScreenshotAfter) waits, after its
+/// embedded intent is queued, before the game captures the deferred shot (GTW-749).
+///
+/// The game counts these frames itself (request/response latency cannot land on a
+/// specific frame), so a client can catch a transient effect — a muzzle flash, an
+/// impact flash — mid-animation rather than settled. `0` means "capture on the very
+/// next frame after the intent is queued". A private-inner newtype (no-bare-types),
+/// serde-transparent over `u32`.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct FrameDelay(u32);
+
+impl FrameDelay {
+    /// Build a frame delay from its frame count.
+    #[must_use]
+    pub const fn new(frames: u32) -> Self {
+        Self(frames)
+    }
+}
+
 /// A client-chosen **correlation id** for a request/response pair — lets the T8 MCP
 /// bridge match a reply to the call that produced it (GTW-734, the "`RequestId` if
 /// needed" id).

@@ -1,8 +1,9 @@
 //! The typed pending queues + the frame-deadline sweep (GTW-736).
 //!
 //! Requests the router cannot answer synchronously (an [`Inject`], a snapshot, an event
-//! drain, a screenshot, a battle start) land in a per-kind [`PendingQueue`] where a
-//! LATER child (T4-T7 / T9) consumes them. Every entry carries a [`FrameDeadline`]
+//! drain, a screenshot, a screenshot-after, a battle start) land in a per-kind
+//! [`PendingQueue`] where a LATER child (T4-T7 / T9 / T15) consumes them. Every entry
+//! carries a [`FrameDeadline`]
 //! countdown; the [`sweep_pending`] pump decrements it each frame and answers the client
 //! with a [`Timeout`](gdtf_qa_protocol::envelope::QaError::Timeout) when it expires
 //! unclaimed — so a request never leaves the client hanging, and (until the consumers
@@ -13,7 +14,7 @@ use std::collections::VecDeque;
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_qa_protocol::{
     envelope::{QaError, QaResponse},
-    ids::{EventCap, SeedNet, ShotName, SituationRef},
+    ids::{EventCap, FrameDelay, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
 };
 
@@ -43,6 +44,19 @@ pub(super) struct OutputPayload(Option<EventCap>);
 /// The pending payload for a [`TakeScreenshot`](gdtf_qa_protocol::envelope::QaRequest::TakeScreenshot)
 /// — consumed by the T7 screenshot child. The optional file stem the client asked for.
 pub(super) struct ScreenshotPayload(Option<ShotName>);
+
+/// The pending payload for a
+/// [`ScreenshotAfter`](gdtf_qa_protocol::envelope::QaRequest::ScreenshotAfter) —
+/// consumed by the T15 screenshot-after child: the embedded intent to inject, how many
+/// frames to wait after it queues before capturing, and the optional file stem.
+pub(super) struct ScreenshotAfterPayload {
+    /// The intent to inject before counting down to the capture.
+    intent:      NetIntent,
+    /// How many frames to wait, after the intent queues, before capturing.
+    frame_delay: FrameDelay,
+    /// The screenshot's file stem, or `None` for a server-chosen name.
+    name:        Option<ShotName>,
+}
 
 /// The pending payload for a [`StartBattle`](gdtf_qa_protocol::envelope::QaRequest::StartBattle)
 /// — consumed by the T9 navigation child.
@@ -86,6 +100,37 @@ impl ScreenshotPayload {
     }
 }
 
+impl ScreenshotAfterPayload {
+    /// Pair the embedded intent with its frame delay and optional stem.
+    pub(super) const fn new(
+        intent: NetIntent,
+        frame_delay: FrameDelay,
+        name: Option<ShotName>,
+    ) -> Self {
+        Self {
+            intent,
+            frame_delay,
+            name,
+        }
+    }
+
+    /// The embedded intent — the T15 consumer's read ([`NetIntent`] is `Copy`, so this
+    /// borrows without consuming).
+    pub(super) const fn intent(&self) -> NetIntent {
+        self.intent
+    }
+
+    /// How many frames to wait, after the intent queues, before capturing.
+    pub(super) const fn frame_delay(&self) -> FrameDelay {
+        self.frame_delay
+    }
+
+    /// The wrapped stem — borrows without consuming.
+    pub(super) const fn name(&self) -> Option<&ShotName> {
+        self.name.as_ref()
+    }
+}
+
 impl StartBattlePayload {
     /// Pair the situation with its optional seed.
     pub(super) const fn new(situation: SituationRef, seed: Option<SeedNet>) -> Self {
@@ -125,6 +170,16 @@ impl core::fmt::Debug for OutputPayload {
 impl core::fmt::Debug for ScreenshotPayload {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_tuple("ScreenshotPayload").field(&self.0).finish()
+    }
+}
+
+impl core::fmt::Debug for ScreenshotAfterPayload {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ScreenshotAfterPayload")
+            .field("intent", &self.intent)
+            .field("frame_delay", &self.frame_delay)
+            .field("name", &self.name)
+            .finish()
     }
 }
 
@@ -252,15 +307,18 @@ impl<P: Send + Sync + 'static> PendingQueue<P> {
 #[derive(SystemParam)]
 pub(super) struct PendingQueues<'w> {
     /// Injected intents (T4).
-    pub(super) inject:       ResMut<'w, PendingQueue<InjectPayload>>,
+    pub(super) inject:           ResMut<'w, PendingQueue<InjectPayload>>,
     /// Battle-state snapshots (T5).
-    pub(super) snapshot:     ResMut<'w, PendingQueue<SnapshotPayload>>,
+    pub(super) snapshot:         ResMut<'w, PendingQueue<SnapshotPayload>>,
     /// Event drains (T6).
-    pub(super) output:       ResMut<'w, PendingQueue<OutputPayload>>,
+    pub(super) output:           ResMut<'w, PendingQueue<OutputPayload>>,
     /// Screenshots (T7).
-    pub(super) screenshot:   ResMut<'w, PendingQueue<ScreenshotPayload>>,
+    pub(super) screenshot:       ResMut<'w, PendingQueue<ScreenshotPayload>>,
+    /// Screenshot-after requests (T15) — battle-dependent (the embedded intent needs a
+    /// live battle), gated at route time exactly like a bare `Inject`.
+    pub(super) screenshot_after: ResMut<'w, PendingQueue<ScreenshotAfterPayload>>,
     /// Battle starts (T9).
-    pub(super) start_battle: ResMut<'w, PendingQueue<StartBattlePayload>>,
+    pub(super) start_battle:     ResMut<'w, PendingQueue<StartBattlePayload>>,
 }
 
 /// The deadline pump for ONE pending-queue kind — ticks every entry and times out any

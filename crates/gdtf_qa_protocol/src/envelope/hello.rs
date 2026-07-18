@@ -21,8 +21,15 @@ impl ProtocolVersion {
     /// affordance list (GTW-746) — an existing wire shape changed, so a client negotiating
     /// the old version `1` now gets a
     /// [`VersionMismatch`](crate::envelope::QaError::VersionMismatch) rather than a snapshot
-    /// missing the field. The game server negotiates a `Hello` against this value.
-    pub const CURRENT: Self = Self::new(2);
+    /// missing the field. Bumped to `3` when
+    /// [`QaRequest::ScreenshotAfter`](crate::envelope::QaRequest::ScreenshotAfter) /
+    /// [`QaResponse::ScreenshotAfter`](crate::envelope::QaResponse::ScreenshotAfter) /
+    /// [`RequestKindNet::ScreenshotAfter`](crate::view::RequestKindNet::ScreenshotAfter)
+    /// were added (GTW-749) — a new closed-enum variant everywhere the envelope matches
+    /// exhaustively, so an old client negotiating version `2` gets a `VersionMismatch`
+    /// rather than a wire shape it cannot decode. The game server negotiates a `Hello`
+    /// against this value.
+    pub const CURRENT: Self = Self::new(3);
 
     /// Build a protocol version from its number.
     #[must_use]

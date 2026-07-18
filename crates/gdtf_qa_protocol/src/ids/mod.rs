@@ -13,7 +13,7 @@ pub mod handle;
 pub mod token;
 
 pub use cell::{CellLevelNet, CellNet, CellXNet, CellYNet, LevelNet};
-pub use handle::{EventCap, FireModeIndex, RequestId, SeedNet, ShotName, SituationRef};
+pub use handle::{EventCap, FireModeIndex, FrameDelay, RequestId, SeedNet, ShotName, SituationRef};
 pub use token::{DoorToken, EmplacementToken, GangerToken};
 
 #[cfg(test)]

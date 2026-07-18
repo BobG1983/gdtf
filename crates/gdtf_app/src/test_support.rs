@@ -26,12 +26,11 @@
 //! instead of silently shadowing.
 //!
 //! The state enums ([`AppState`] / [`RunningState`] / [`GameState`] /
-//! [`BattleScapeState`] / [`AfterMathState`]), [`ScenesPlugin`],
-//! [`LoadedSituation`], `BottomBarRoot`, and the `dev::auto_battle` items are
-//! deliberately NOT part of the panel ledger: they keep their `support_use!`
-//! climbs because the GTW-321 co-location contract keeps `crate::states::<Enum>`
-//! nameable at the states root and/or the production binary reads the same
-//! re-export (see `crate::support`).
+//! [`BattleScapeState`] / [`AfterMathState`]), [`ScenesPlugin`], and
+//! [`LoadedSituation`] are deliberately NOT part of the panel ledger: they keep
+//! their `support_use!` climbs because the GTW-321 co-location contract keeps
+//! `crate::states::<Enum>` nameable at the states root and/or the production
+//! binary reads the same re-export (see `crate::support`).
 
 use bevy::{
     app::App,
@@ -95,9 +94,13 @@ pub fn load_released(app: &App) -> bool {
 ///
 /// # Why the delta lives here and not in `seed_load_fallbacks`
 ///
-/// `seed_load_fallbacks` has a PRODUCTION caller — `AutoBattlePlugin` registers
-/// it at `Startup` — so widening it is an auto-battle runtime behavior change,
-/// out of GTW-580's scope. Its asset-less branch omits the gate-blocking
+/// At the time this wrapper was introduced, `seed_load_fallbacks` had a
+/// PRODUCTION caller — the (since-retired, GTW-749) `AutoBattlePlugin`
+/// registered it at `Startup` — so widening it was an auto-battle runtime
+/// behavior change, out of GTW-580's scope; `seed_load_fallbacks` is TEST-ONLY
+/// now, but the delta stays split out here rather than folded back in, so this
+/// wrapper's own gate-completeness reasoning stays legible on its own. Its
+/// asset-less branch omits the gate-blocking
 /// [`GangerStatTuning`] (a latent gap: the GTW-384 gate clause landed without the
 /// matching fallback seed, invisible in production because the GUI launch always
 /// has an `AssetServer`), so swapped in unmodified it leaves a tier-(a) walk
@@ -141,52 +144,47 @@ pub use crate::dev::procgen_stepper::{
     AutoRunning, AutoStepDelay, PendingStepCommand, ProcgenStepperPlugin, StepCommand,
     stage_summary, stepper_enabled,
 };
-pub use crate::{
-    dev::auto_battle::{AutoBattleActive, AutoBattlePlugin, auto_battle_enabled},
-    states::{
-        AfterMathState, AppState, BattleScapeState, GameState, LoadedSituation, RunningState,
-        ScenesPlugin,
-        running::{
-            game::battlescape::{
-                BottomBarRoot,
-                action_bar::test_support::{
-                    AimToggleButton, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
-                    ModeBurstButton, ModeControl, ModeFullButton, ModePanelRoot, ModeSingleButton,
-                    StanceControl, StanceKneelingButton, StancePanelRoot, StanceProneButton,
-                    StanceStandingButton,
-                },
-                battle_running::test_support::BattleRunningComplete,
-                combat_log::test_support::{CombatLogLine, CombatLogRoot},
-                contextual_panel::test_support::{
-                    ContextualPanelRoot, EnterEmplacementButton, ExecuteButton,
-                    ExitEmplacementButton, MeleeButton, OpenDoorButton, ShoveButton,
-                    StabilizeButton, ThrowGrenadeButton,
-                },
-                generation::loading_screen::test_support::LoadingScreenRoot,
-                inspect_panel::test_support::{
-                    InspectObjectBar, InspectObjectBlock, InspectObjectHardness,
-                    InspectObjectHeight, InspectObjectProtection, InspectObjectText,
-                    InspectPanelRoot, InspectStatBlockHost,
-                },
-                select_cycle::test_support::{SelectCycleRoot, SelectNextButton, SelectPrevButton},
-                stat_block::test_support::{
-                    StatFaction, StatHpBar, StatHpLabel, StatInjuryLine, StatInjuryList, StatName,
-                    StatPortrait, StatStance, StatTuBar, StatTuLabel, StatWoundLine, StatWoundList,
-                    StatWoundsPips, portrait_index_for_name,
-                },
-                status_panel::stability_readout::test_support::StabilityBar,
-                weapon_panel::test_support::{
-                    AimLabel, AimPanel, CombinedWeaponPanel, ReloadButton, WeaponContent,
-                    WeaponImage, WeaponItemButton, WeaponItemPanel, WeaponMagazineText,
-                    WeaponNameText, WeaponPanelRoot,
-                },
+pub use crate::states::{
+    AfterMathState, AppState, BattleScapeState, GameState, LoadedSituation, RunningState,
+    ScenesPlugin,
+    running::{
+        game::battlescape::{
+            BottomBarRoot,
+            action_bar::test_support::{
+                AimToggleButton, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
+                ModeBurstButton, ModeControl, ModeFullButton, ModePanelRoot, ModeSingleButton,
+                StanceControl, StanceKneelingButton, StancePanelRoot, StanceProneButton,
+                StanceStandingButton,
             },
-            menu::test_support::{
-                BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton,
+            battle_running::test_support::BattleRunningComplete,
+            combat_log::test_support::{CombatLogLine, CombatLogRoot},
+            contextual_panel::test_support::{
+                ContextualPanelRoot, EnterEmplacementButton, ExecuteButton, ExitEmplacementButton,
+                MeleeButton, OpenDoorButton, ShoveButton, StabilizeButton, ThrowGrenadeButton,
+            },
+            generation::loading_screen::test_support::LoadingScreenRoot,
+            inspect_panel::test_support::{
+                InspectObjectBar, InspectObjectBlock, InspectObjectHardness, InspectObjectHeight,
+                InspectObjectProtection, InspectObjectText, InspectPanelRoot, InspectStatBlockHost,
+            },
+            select_cycle::test_support::{SelectCycleRoot, SelectNextButton, SelectPrevButton},
+            stat_block::test_support::{
+                StatFaction, StatHpBar, StatHpLabel, StatInjuryLine, StatInjuryList, StatName,
+                StatPortrait, StatStance, StatTuBar, StatTuLabel, StatWoundLine, StatWoundList,
+                StatWoundsPips, portrait_index_for_name,
+            },
+            status_panel::stability_readout::test_support::StabilityBar,
+            weapon_panel::test_support::{
+                AimLabel, AimPanel, CombinedWeaponPanel, ReloadButton, WeaponContent, WeaponImage,
+                WeaponItemButton, WeaponItemPanel, WeaponMagazineText, WeaponNameText,
+                WeaponPanelRoot,
             },
         },
-        seed_load_fallbacks,
+        menu::test_support::{
+            BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton,
+        },
     },
+    seed_load_fallbacks,
 };
 
 /// Registers the full headless GDTF state stack on `app`.

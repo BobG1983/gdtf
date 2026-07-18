@@ -42,9 +42,9 @@ impl CaptureTag {
 /// The debug-keybind capture plugin: press `CAPTURE_KEY` (F10) to capture the primary window to a
 /// timestamped PNG under `target/screenshots/`, without exiting.
 ///
-/// The consuming binary adds this ONLY under a debug/dev cfg gate (`cfg!(debug_assertions)` or the
-/// `dev_capture` double-gate), so it is compiled OUT of release. It holds a [`CaptureTag`] for the
-/// filename prefix.
+/// The consuming binary adds this ONLY under its own debug/dev cfg gate (e.g. `gdtf_app` gates it
+/// on `cfg!(all(debug_assertions, feature = "net_qa"))`), so it is compiled OUT of release. It
+/// holds a [`CaptureTag`] for the filename prefix.
 pub struct KeyboardCapturePlugin {
     /// The scene tag prefixed onto each captured filename.
     tag: CaptureTag,

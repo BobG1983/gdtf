@@ -30,7 +30,10 @@ use bevy::{
     prelude::*,
     render::view::window::screenshot::{Screenshot, save_to_disk},
 };
-use gdtf_qa_protocol::envelope::{QaResponse, ScreenshotPathNet, ScreenshotResult};
+use gdtf_qa_protocol::{
+    envelope::{QaResponse, ScreenshotAfterResult, ScreenshotPathNet, ScreenshotResult},
+    ids::ShotName,
+};
 use gdtf_screenshot::CapturePath;
 
 use super::{
@@ -41,6 +44,19 @@ use crate::dev::net_qa::{
     channel::Responder,
     pending::{PendingQueue, ScreenshotPayload},
 };
+
+/// Which wire reply an in-flight capture answers with once it lands or times out — the
+/// one difference between a plain [`TakeScreenshot`](gdtf_qa_protocol::envelope::QaRequest::TakeScreenshot)
+/// capture and a [`ScreenshotAfter`](gdtf_qa_protocol::envelope::QaRequest::ScreenshotAfter)'s
+/// deferred capture (GTW-749): the capture + poll mechanics are IDENTICAL, only the
+/// wire envelope differs.
+pub(in crate::dev::net_qa) enum ReplyKind {
+    /// A `TakeScreenshot` capture — replies [`QaResponse::Screenshot`].
+    Direct,
+    /// A `ScreenshotAfter` capture (its embedded intent already queued) — replies
+    /// [`QaResponse::ScreenshotAfter`].
+    After,
+}
 
 crate::support_item! {
     /// The number of frames a capture may poll the disk before the pump gives up and reports
@@ -114,12 +130,15 @@ impl PollFramesLeft {
 }
 
 /// One capture spawned and awaiting its PNG: the confined, unique output path, the reply
-/// channel, and the poll countdown after which the pump answers a timeout.
+/// channel, which wire envelope its outcome replies with, and the poll countdown after
+/// which the pump answers a timeout.
 struct InFlightShot {
     /// Where the capture is being written (confined + unique under [`QaShotDir`]).
     path:      CapturePath,
     /// The reply channel back to the client.
     responder: Responder,
+    /// Which wire reply this capture's outcome answers with.
+    kind:      ReplyKind,
     /// Frames remaining before the pump reports a timeout.
     remaining: PollFramesLeft,
 }
@@ -161,9 +180,8 @@ pub(in crate::dev::net_qa) fn drive_screenshots(
     );
 }
 
-/// Drain every routed request this frame: hand it a unique confined path, delete any stale
-/// file already at that path, ensure the directory exists, spawn the real capture, and start
-/// tracking it for the poll (which begins next frame).
+/// Drain every routed request this frame: hand each a unique confined path and start
+/// tracking it for the poll (which begins next frame) via [`spawn_capture`].
 fn claim_requests(
     pending: &mut PendingQueue<ScreenshotPayload>,
     in_flight: &mut InFlightShots,
@@ -173,21 +191,68 @@ fn claim_requests(
     commands: &mut Commands,
 ) {
     for (payload, responder) in pending.drain_ready() {
-        let path = next_capture_path(dir, payload.name(), sequence);
-        ensure_dir(&path);
-        // Delete-before-spawn: a stale PNG at this exact path (a prior run's leftover at a
-        // reused sequence) must never be mistaken for THIS capture's output. After the
-        // delete, the only file that can appear here is the one this capture writes.
-        purge_existing(&path);
-        commands
-            .spawn(Screenshot::primary_window())
-            .observe(save_to_disk((*path).clone()));
-        in_flight.0.push(InFlightShot {
-            path,
+        spawn_capture(
+            payload.name(),
             responder,
-            remaining: PollFramesLeft::new(*budget),
-        });
+            ReplyKind::Direct,
+            CaptureSink {
+                in_flight: &mut *in_flight,
+                budget,
+                dir,
+                sequence: &mut *sequence,
+                commands: &mut *commands,
+            },
+        );
     }
+}
+
+/// The capture-launch bundle every confined capture spawns through: the in-flight
+/// tracking set, the poll budget, the confinement directory, the path-uniqueness
+/// sequence, and [`Commands`]. Bundled into ONE param so [`spawn_capture`] stays under
+/// the clippy argument-count ceiling; shared by the T7 claim path
+/// ([`claim_requests`]) and the T15 `screenshot_after` child's fire-when-due hand-off
+/// (GTW-749).
+pub(in crate::dev::net_qa) struct CaptureSink<'a, 'w, 's> {
+    /// The captures in-flight across frames, this one joins.
+    pub(in crate::dev::net_qa) in_flight: &'a mut InFlightShots,
+    /// The frames a capture may poll the disk before timing out.
+    pub(in crate::dev::net_qa) budget:    ShotPollBudget,
+    /// The directory every capture is confined under.
+    pub(in crate::dev::net_qa) dir:       &'a QaShotDir,
+    /// The monotonic per-capture uniqueness counter.
+    pub(in crate::dev::net_qa) sequence:  &'a mut ShotSequence,
+    /// The command queue the real capture entity spawns through.
+    pub(in crate::dev::net_qa) commands:  &'a mut Commands<'w, 's>,
+}
+
+/// Hand `responder` a unique confined path, delete any stale file already at that path,
+/// ensure the directory exists, spawn the real capture, and start tracking it in
+/// `sink`'s in-flight set for the poll (which begins next frame).
+///
+/// Shared by [`claim_requests`] (a `TakeScreenshot`, [`ReplyKind::Direct`]) and the T15
+/// `screenshot_after` child (an accepted `ScreenshotAfter`'s deferred capture,
+/// [`ReplyKind::After`], GTW-749) — ONE capture pipeline, never a shadow copy.
+pub(in crate::dev::net_qa) fn spawn_capture(
+    name: Option<&ShotName>,
+    responder: Responder,
+    kind: ReplyKind,
+    sink: CaptureSink<'_, '_, '_>,
+) {
+    let path = next_capture_path(sink.dir, name, sink.sequence);
+    ensure_dir(&path);
+    // Delete-before-spawn: a stale PNG at this exact path (a prior run's leftover at a
+    // reused sequence) must never be mistaken for THIS capture's output. After the
+    // delete, the only file that can appear here is the one this capture writes.
+    purge_existing(&path);
+    sink.commands
+        .spawn(Screenshot::primary_window())
+        .observe(save_to_disk((*path).clone()));
+    sink.in_flight.0.push(InFlightShot {
+        path,
+        responder,
+        kind,
+        remaining: PollFramesLeft::new(*sink.budget),
+    });
 }
 
 /// Poll every in-flight capture: reply [`Saved`](ScreenshotResult::Saved) once its PNG
@@ -202,14 +267,24 @@ fn poll_in_flight(in_flight: &mut InFlightShots) {
         match inspect_shot(&shot.path) {
             ShotFile::Ready => {
                 let saved = ScreenshotPathNet::new(shot.path.to_string_lossy().into_owned());
-                shot.responder
-                    .reply(QaResponse::Screenshot(ScreenshotResult::Saved(saved)));
+                let response = match shot.kind {
+                    ReplyKind::Direct => QaResponse::Screenshot(ScreenshotResult::Saved(saved)),
+                    ReplyKind::After => {
+                        QaResponse::ScreenshotAfter(ScreenshotAfterResult::Saved(saved))
+                    }
+                };
+                shot.responder.reply(response);
             }
             ShotFile::NotReady => match shot.remaining.tick() {
                 PollTick::Expired => {
                     debug!(path = %shot.path.display(), "net_qa: screenshot capture timed out");
-                    shot.responder
-                        .reply(QaResponse::Screenshot(ScreenshotResult::TimedOut));
+                    let response = match shot.kind {
+                        ReplyKind::Direct => QaResponse::Screenshot(ScreenshotResult::TimedOut),
+                        ReplyKind::After => {
+                            QaResponse::ScreenshotAfter(ScreenshotAfterResult::TimedOut)
+                        }
+                    };
+                    shot.responder.reply(response);
                 }
                 PollTick::Live => kept.push(shot),
             },

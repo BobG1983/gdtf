@@ -21,7 +21,7 @@ use bevy::app::App;
 use gdtf_app::test_support::{AppState, IncomingRequest, NET_QA_PROTOCOL_VERSION, NetQaPlugin};
 use gdtf_qa_protocol::{
     envelope::{QaError, QaRequest, QaResponse},
-    ids::SituationRef,
+    ids::{FrameDelay, SituationRef},
     intent::NetIntent,
     view::RequestKindNet,
 };
@@ -45,13 +45,18 @@ fn no_battle_app() -> (App, mpsc::Sender<IncomingRequest>) {
     (app, tx)
 }
 
-/// The test's own ground truth of which kinds need a battle in progress — the trio of
-/// battle-only reads/writes. Kept independent of the router so a drift between the router
-/// and its advertised set is caught rather than trusted away.
+/// The test's own ground truth of which kinds need a battle in progress — the
+/// battle-only reads/writes/injects, `ScreenshotAfter` among them (GTW-749: it embeds an
+/// intent, so it needs exactly what a bare `Inject` needs). Kept independent of the
+/// router so a drift between the router and its advertised set is caught rather than
+/// trusted away.
 const fn is_battle_dependent(kind: RequestKindNet) -> bool {
     matches!(
         kind,
-        RequestKindNet::Inject | RequestKindNet::GetBattleState | RequestKindNet::GetOutput
+        RequestKindNet::Inject
+            | RequestKindNet::GetBattleState
+            | RequestKindNet::GetOutput
+            | RequestKindNet::ScreenshotAfter
     )
 }
 
@@ -68,6 +73,11 @@ fn probe_request(kind: RequestKindNet) -> QaRequest {
         RequestKindNet::GetBattleState => QaRequest::GetBattleState,
         RequestKindNet::Inject => QaRequest::Inject(NetIntent::Reload),
         RequestKindNet::TakeScreenshot => QaRequest::TakeScreenshot { name: None },
+        RequestKindNet::ScreenshotAfter => QaRequest::ScreenshotAfter {
+            intent:      NetIntent::Reload,
+            frame_delay: FrameDelay::new(0),
+            name:        None,
+        },
         RequestKindNet::GetOutput => QaRequest::GetOutput { max: None },
         RequestKindNet::StartBattle => QaRequest::StartBattle {
             situation: SituationRef::new("affordance-probe-unknown".to_owned()),

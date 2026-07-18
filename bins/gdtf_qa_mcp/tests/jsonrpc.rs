@@ -93,7 +93,7 @@ fn initialize_returns_capabilities_and_echoes_version() {
     assert!(response["result"]["serverInfo"]["name"].is_string());
 }
 
-/// `tools/list` advertises every implemented tool — the five forwarding tools plus the
+/// `tools/list` advertises every implemented tool — the six forwarding tools plus the
 /// two lifecycle tools — and NOT `start_battle`.
 #[test]
 fn tools_list_returns_every_tool() {
@@ -102,12 +102,13 @@ fn tools_list_returns_every_tool() {
         unreachable!("tools/list carries a tools array");
     };
     let names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
-    assert_eq!(names.len(), 7);
+    assert_eq!(names.len(), 8);
     for expected in [
         "send_input",
         "query_state",
         "get_output",
         "take_screenshot",
+        "screenshot_after",
         "app_flow",
         "launch_game",
         "stop_game",

@@ -61,7 +61,12 @@ pub(super) fn apply_injects(
 
 /// Classify one injected intent and push it onto its input queue, returning its HONEST
 /// receipt — `Queued` once it enters the queue, or the typed wire-layer rejection.
-fn receipt_for(
+///
+/// `pub(super)` (not private): the T15 `screenshot_after` child (GTW-749) reuses this
+/// EXACT classification, so a `ScreenshotAfter`'s embedded intent goes through the same
+/// receipt gates a bare [`Inject`](gdtf_qa_protocol::envelope::QaRequest::Inject) does,
+/// never a shadow copy.
+pub(super) fn receipt_for(
     intent: NetIntent,
     queues: &mut InjectQueues,
     actors: &InjectActors,

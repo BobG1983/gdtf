@@ -23,11 +23,10 @@ crate::support_item! {
     ///
     /// Reads the [`PROCGEN_STEPPER_ENV`] (`GDTF_PROCGEN_STEPPER`) environment variable and
     /// treats `1` / `true` / `yes` / `on` (case-insensitive, trimmed) as enabled; anything
-    /// else — including the variable being unset or empty — is disabled. Mirrors
-    /// [`auto_battle_enabled`](crate::dev::auto_battle::auto_battle_enabled)'s
-    /// recognised-truthy set (the house convention); kept as its own parser rather than a
-    /// shared helper (short of the rule of three — see `auto_battle`'s own doc for why it
-    /// stays intra-module too).
+    /// else — including the variable being unset or empty — is disabled. Mirrors the house
+    /// recognised-truthy convention every other `GDTF_*` gate in this crate uses (e.g.
+    /// `net_qa`'s `net_qa_enabled`); kept as its own parser rather than a shared helper
+    /// (short of the rule of three — each gate's doc explains why it stays intra-module).
     ///
     /// Pure (no `World`, no side effects), so [`super::plugin`]'s `from_env` gate can call it
     /// with no side effects: a normal `cargo run` (even a `dev_tools` build) leaves the var

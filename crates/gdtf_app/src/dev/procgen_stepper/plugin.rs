@@ -1,7 +1,7 @@
 //! [`ProcgenStepperPlugin`] — the DEV-ONLY procgen load-time stepper's registration seam
 //! (GTW-655).
 //!
-//! ## Two gates, both must hold to activate (mirrors `crate::dev::auto_battle`)
+//! ## Two gates, both must hold to activate
 //!
 //! 1. **`dev_tools` cfg.** This module (and every item in it) compiles ONLY under the
 //!    opt-in `dev_tools` Cargo feature (see `super::super::mod`'s `#[cfg(feature =

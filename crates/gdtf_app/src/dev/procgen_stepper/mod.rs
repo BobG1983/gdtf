@@ -21,7 +21,7 @@ mod ui;
 // `ProcgenStepperPlugin` is the only item the binary consumes (via the dev aggregate
 // plugin, `crate::dev::plugin`), so it is re-exported in BOTH configurations, at the same
 // `test-support` visibility flip the type itself uses (`support_item!` in `plugin`) —
-// mirrors `crate::dev::auto_battle`'s `AutoBattlePlugin` precedent exactly.
+// mirrors the `net_qa` plugin's own `support_item!` re-export precedent exactly.
 crate::support_use!(plugin::ProcgenStepperPlugin;);
 
 // `battle_setup_runs_directly` is consumed by `battle_sim::plugin` (the run condition that
@@ -29,8 +29,8 @@ crate::support_use!(plugin::ProcgenStepperPlugin;);
 // outside this module, so it stays `pub(crate)` unconditionally (not test-support-gated).
 // The command/latch types + the env-var gate reader are consumed ONLY by the GTW-655
 // integration test (which drives the ENGAGED path directly, bypassing egui — the egui
-// closure never runs headlessly — and unit-checks the gate mirrors `from_env`, the
-// `auto_battle_enabled` precedent). `pub` under `test-support` (the `test_support`
+// closure never runs headlessly — and unit-checks the gate mirrors `from_env`, the house
+// recognised-truthy convention). `pub` under `test-support` (the `test_support`
 // re-export needs them), `pub(crate)` otherwise (the production egui panel + drive systems
 // + this plugin's own `from_env` still use them in-crate).
 #[cfg(feature = "test-support")]

@@ -17,9 +17,9 @@ const NET_QA_PORT_ENV: &str = "GDTF_NET_QA_PORT";
 /// Whether `value` spells "enabled": `1` / `true` / `yes` / `on` after trimming,
 /// case-insensitive; anything else is disabled.
 ///
-/// Deliberately intra-module — the workspace already has two production truthy parsers
-/// (`crate::dev::auto_battle`'s and the presenter overlay's), short of the rule of three,
-/// so there is no shared cross-crate helper to reach for.
+/// Deliberately intra-module — the workspace already has other production truthy parsers
+/// (the procgen stepper's `stepper_enabled` and the presenter overlay's), short of the
+/// rule of three, so there is no shared cross-crate helper to reach for.
 #[must_use]
 fn recognised_truthy(value: &str) -> bool {
     matches!(

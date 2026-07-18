@@ -30,7 +30,9 @@ pub(crate) mod test_support {
 }
 
 // The DEV-ONLY loading-screen self-screenshot QA hook (the GTW-297 capture discipline): compiled
-// in ONLY under a debug build with the opt-in `dev_capture` feature, and inert unless its env var
-// is set. A release / default build never compiles it.
-#[cfg(all(debug_assertions, feature = "dev_capture"))]
+// in ONLY under a debug build with the opt-in `net_qa` feature (GTW-749 retired the `dev_capture`
+// feature this used to ride; `net_qa` already pulls in the `gdtf_screenshot` crate this hook
+// builds on, so it rides that gate now), and inert unless its env var is set. A release / default
+// build never compiles it.
+#[cfg(all(debug_assertions, feature = "net_qa"))]
 mod capture;

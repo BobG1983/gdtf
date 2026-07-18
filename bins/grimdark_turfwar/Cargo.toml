@@ -10,41 +10,25 @@ gdtf_app = { path = "../../crates/gdtf_app" }
 # Bevy dynamic linking for fast dev builds; chains through to gdtf_app -> bevy.
 # Enable for non-release builds (e.g. `cargo run --features dynamic_linking`);
 # leave off for `--release` so it never ships in release artifacts.
-#
-# GTW-590: the dev flow ALSO folds in `gdtf_app/dev_capture`, so every dynamic-linked
-# dev invocation (`cargo run/drun/dbuild`, the dclippy/dtest gate suite) compiles the
-# QA capture affordance in and the pinned QA repro
-# (`GDTF_AUTOBATTLE=1 GDTF_CAPTURE_PATH=... cargo run -p grimdark_turfwar --features
-# dynamic_linking`) works verbatim — no separate feature to remember. Before the fold
-# the capture env vars were SILENTLY ignored on that exact invocation (the GTW-590
-# symptom: four QA runs, zero PNGs, zero log lines). Release / CI static builds never
-# enable `dynamic_linking`, so the capture code still never reaches them; the capture
-# module stays additionally `debug_assertions`-gated at its wiring site.
-dynamic_linking = ["gdtf_app/dynamic_linking", "gdtf_app/dev_capture"]
+dynamic_linking = ["gdtf_app/dynamic_linking"]
 # DEV / LOCAL-only asset hot-reload; chains through to gdtf_app -> bevy/file_watcher.
 # Enable locally (e.g. `cargo run --features dynamic_linking,file_watcher`) to make
 # editing a loose asset on disk live-reload it; never enabled for release/CI.
 file_watcher = ["gdtf_app/file_watcher"]
-# DEV / LOCAL-only screenshot / visual-QA capture (GTW-297); chains through to
-# gdtf_app -> dev_capture. The capture affordances are ADDITIONALLY double-gated on
-# `cfg!(debug_assertions)` at their wiring sites and stay inert until their env var
-# (e.g. `GDTF_CAPTURE_PATH` / `GDTF_LOADING_SHOT`) is set, so a release binary
-# never sees them even with the feature on. Enable locally to run a QA capture
-# (e.g. `cargo run --features dynamic_linking,dev_capture`); never enabled for release/CI.
-dev_capture = ["gdtf_app/dev_capture"]
 # GTW-655: DEV-ONLY procgen load-time stepper; chains through to gdtf_app -> dev_tools ->
-# bevy_egui, mirroring the `dev_capture` forwarding above (its own feature, not folded into
-# `dynamic_linking`, so the egui dependency is opted into explicitly). Unlike `dev_capture`,
-# its wiring site gates on this Cargo feature ONLY — there is NO `cfg!(debug_assertions)`
-# double-gate, because `dev_tools` is itself never enabled for a release/CI build — and it
-# stays inert until `GDTF_PROCGEN_STEPPER` is set truthy, so a release binary never links egui
-# and a normal dev launch is unaffected. Never enabled for release/CI.
+# bevy_egui. Its wiring site gates on this Cargo feature ONLY — there is NO
+# `cfg!(debug_assertions)` double-gate, because `dev_tools` is itself never enabled for a
+# release/CI build — and it stays inert until `GDTF_PROCGEN_STEPPER` is set truthy, so a
+# release binary never links egui and a normal dev launch is unaffected. Never enabled for
+# release/CI.
 dev_tools = ["gdtf_app/dev_tools"]
-# GTW-736: DEV-ONLY QA network control channel (the GTW-694 architecture's T3); chains through
-# to gdtf_app -> net_qa -> the bevy-free wire contract + the self-capture crate. Like
-# `dev_capture`, its wiring site is ADDITIONALLY double-gated on `cfg!(debug_assertions)` (it
-# opens a listener), and it stays inert until `GDTF_NET_QA` is set truthy, so a release binary
-# never sees it and a normal dev launch is unaffected. Never enabled for release/CI.
+# GTW-736: DEV-ONLY QA network control channel (the GTW-694 architecture's T3 onward,
+# extended through GTW-749 — the ONE capture / drive path in the workspace, replacing the
+# GTW-590-era `dev_capture` feature this file used to also declare); chains through to
+# gdtf_app -> net_qa -> the bevy-free wire contract + the self-capture crate. Its wiring
+# site is ADDITIONALLY double-gated on `cfg!(debug_assertions)` (it opens a listener), and
+# it stays inert until `GDTF_NET_QA` is set truthy, so a release binary never sees it and a
+# normal dev launch is unaffected. Never enabled for release/CI.
 net_qa = ["gdtf_app/net_qa"]
 
 [lints]

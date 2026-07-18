@@ -3,7 +3,7 @@
 
 use crate::{
     envelope::{ProtocolVersion, QaRequest},
-    ids::{EventCap, SeedNet, ShotName, SituationRef},
+    ids::{EventCap, FrameDelay, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
     test_support::assert_ron_round_trip,
     view::RequestKindNet,
@@ -19,6 +19,11 @@ fn qa_request_cases() -> Vec<QaRequest> {
         QaRequest::Inject(NetIntent::Reload),
         QaRequest::TakeScreenshot {
             name: Some(ShotName::new("aim_check".to_owned())),
+        },
+        QaRequest::ScreenshotAfter {
+            intent:      NetIntent::Reload,
+            frame_delay: FrameDelay::new(15),
+            name:        Some(ShotName::new("post_reload".to_owned())),
         },
         QaRequest::GetOutput {
             max: Some(EventCap::new(16)),
@@ -39,6 +44,7 @@ fn qa_request_is_exhaustive(request: &QaRequest) {
         | QaRequest::GetBattleState
         | QaRequest::Inject(_)
         | QaRequest::TakeScreenshot { .. }
+        | QaRequest::ScreenshotAfter { .. }
         | QaRequest::GetOutput { .. }
         | QaRequest::StartBattle { .. } => {}
     }
@@ -50,7 +56,7 @@ fn qa_request_round_trips_every_variant() {
     let cases = qa_request_cases();
     assert_eq!(
         cases.len(),
-        7,
+        8,
         "the case table lists every QaRequest variant"
     );
     for case in &cases {
@@ -63,6 +69,11 @@ fn qa_request_round_trips_every_variant() {
 #[test]
 fn optional_request_fields_round_trip_when_absent() {
     assert_ron_round_trip(&QaRequest::TakeScreenshot { name: None });
+    assert_ron_round_trip(&QaRequest::ScreenshotAfter {
+        intent:      NetIntent::EndTurn,
+        frame_delay: FrameDelay::new(0),
+        name:        None,
+    });
     assert_ron_round_trip(&QaRequest::GetOutput { max: None });
     assert_ron_round_trip(&QaRequest::StartBattle {
         situation: SituationRef::new("ambush".to_owned()),

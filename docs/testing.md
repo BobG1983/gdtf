@@ -47,24 +47,17 @@ Three repo-wide **guard suites** live in `crates/gdtf_test_utils/tests/` and rid
 
 Every dev / QA / test affordance in the workspace is opted into by a `GDTF_*` environment
 variable. They are ALL non-shipping: each is additionally gated on a debug build and/or a
-dev-only cargo feature (`dev_capture`) at its wiring site, so a release binary ignores the
-lot. Since GTW-590 the game binary's `dynamic_linking` dev feature folds `dev_capture` in,
-so the standard dev invocation captures with no extra feature flag:
+dev-only cargo feature at its wiring site, so a release binary ignores the lot.
 
-```bash
-GDTF_AUTOBATTLE=1 GDTF_CAPTURE_PATH=/abs/out.png GDTF_CAPTURE_FRAMES="10,60,150,300" \
-  cargo run -p grimdark_turfwar --features dynamic_linking
-```
-
-(a debug build WITHOUT `dynamic_linking` still ignores the capture vars — the affordance
-rides the dev feature). Every capture run is LOUD: activation, per-frame trigger, and
-per-frame write each log a `capture`-greppable line, and a set-but-ineffective
-`GDTF_CAPTURE_*` / trigger var `warn!`s at startup. The capture-gated tests ride the same
-fold — `cargo dtest` compiles + runs them; the targeted recipe is
-`cargo test -p gdtf_app --features test-support,dev_capture --lib`, so that combination
-can never be an invisible
-red again. Census command (run from the repo root; re-run it when adding a flag and keep
-this table in step):
+GTW-749 retired the env-var battle capture/drive rig outright (`GDTF_AUTOBATTLE`,
+`GDTF_CAPTURE_PATH` / `GDTF_CAPTURE_FRAME` / `GDTF_CAPTURE_FRAMES`, `GDTF_FIRE_AT_FRAME` /
+`GDTF_FIRE_MODE` / `GDTF_FALL_AT_FRAME`) — not deprecated, deleted. The one capture / drive
+path now is the `net_qa` loopback QA network control channel (`GDTF_NET_QA`): a coding-agent
+QA harness (`gdtf_qa_mcp`, or any client speaking `gdtf_qa_protocol`) launches the game,
+drives it over the wire (`StartBattle`, intent injection, `TakeScreenshot` /
+`ScreenshotAfter` frame-exact deferred capture, event drains), and stops it — one capture
+path, no env-var-scripted battle drive left in the workspace. Census command (run from the
+repo root; re-run it when adding a flag and keep this table in step):
 
 ```bash
 grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
@@ -73,26 +66,21 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 | Variable | Owner crate | Effect |
 | --- | --- | --- |
 | `GDTF_ASSETS_CLEAN_ROOT` | `gdtf_test_utils` | Overrides the repo root the assets-tree-clean guard test scans (guard-test hook). |
-| `GDTF_AUTOBATTLE` | `gdtf_app` | Truthy (`1`/`true`/`yes`/`on`) drives a debug launch straight into a live battle (the GTW-223 QA affordance). |
 | `GDTF_BATTLE_SEED` | `gdtf_app` (consumed by `gdtf_battle_sim`; honored by the `gdtf_test_utils` battle harness) | Pins the root battle RNG seed for a reproducible replay; unset = wall-clock entropy, logged at `info!`. |
-| `GDTF_CAPTURE_FRAME` | `gdtf_app` | Battle capture: how many `BattleRunning` frames to wait before capturing ONE frame. |
-| `GDTF_CAPTURE_FRAMES` | `gdtf_app` | Battle capture: comma-separated list of `BattleRunning` frames, one PNG each (wins over `GDTF_CAPTURE_FRAME`). |
-| `GDTF_CAPTURE_PATH` | `gdtf_app` | Output PNG path; setting it (in a `dev_capture` debug build — `dynamic_linking` implies it since GTW-590) opts into the battle capture affordance. |
 | `GDTF_DEBUG_REACHABLE_OVERLAY` | `gdtf_battle_presenter` (mirrored by `gdtf_battle_input` docs) | Truthy renders the reachable-range debug overlay in a debug build (GTW-450; default off — visual noise). |
 | `GDTF_DOCS_PATH_ROOT` | `gdtf_test_utils` | Overrides the repo root the docs path-truth guard test scans (guard-test hook). |
 | `GDTF_EDITOR_ATTACHMENT` | `gdtf_content_editor` | Content-editor capture: pre-load a NAMED attachment item (a registry key / file stem, e.g. `scoped_sight`) into the ATTACHMENT form before the shot (GTW-669); unset keeps the sorted-first autoload. |
 | `GDTF_EDITOR_MELEE_WEAPON` | `gdtf_content_editor` | Content-editor capture: pre-load a NAMED melee weapon (a registry key / file stem, e.g. `chainsword`) into the MELEE form before the shot (GTW-671); unset keeps the sorted-first autoload. |
 | `GDTF_EDITOR_MODE` | `gdtf_content_editor` | Content-editor capture: force the Workbench mode (`terrain`/`theme`/`prefab`/`gang`/`armor`/`injury`/`sprite`/`attachment`/`weapon`/`melee_weapon`) before the shot. |
-| `GDTF_EDITOR_SHOT` | `gdtf_content_editor` | Content-editor capture: output PNG path; setting it opts the standalone editor into screenshot-then-exit. |
+| `GDTF_EDITOR_SHOT` | `gdtf_content_editor` | Content-editor capture: output PNG path; setting it opts the standalone editor into screenshot-then-exit. NOT part of the `net_qa` migration (T14/GTW-748 is its own follow-up). |
 | `GDTF_EDITOR_TERRAIN_KIND` | `gdtf_content_editor` | Content-editor capture: pre-select the TERRAIN form's kind segment (`wall`/`cover`/`slab`/`emplacement`). |
 | `GDTF_EDITOR_VIEW` | `gdtf_content_editor` | Content-editor capture: `full` forces the prefab-viewport full view (lifting the GTW-594 Isolate default, which wins over it); `isolate` stages the GTW-594 three-class Isolate shot (edit storey lifted to the painted upper storey). Unset keeps the editor defaults (Isolate on, one onion below). |
 | `GDTF_EDITOR_WEAPON` | `gdtf_content_editor` | Content-editor capture: pre-load a NAMED weapon (a registry key / file stem, e.g. `heavy_bolter`) into the WEAPON form before the shot (GTW-670); unset keeps the sorted-first autoload. |
 | `GDTF_EDITOR_ZOOM` | `gdtf_content_editor` | Content-editor capture: force a non-`1.0` prefab canvas zoom (`0.25`–`4.0`, clamped). |
-| `GDTF_FALL_AT_FRAME` | `gdtf_app` | Battle capture trigger: the `BattleRunning` frame at which a player ganger is forced to FALL via the real fall path (fall-FX QA). |
-| `GDTF_FIRE_AT_FRAME` | `gdtf_app` | Battle capture trigger: the `BattleRunning` frame at which the selected ganger fires at the nearest enemy via the real fire path. |
-| `GDTF_FIRE_MODE` | `gdtf_app` | Battle capture trigger: fire-mode override for the fire trigger (`single`/`burst`/`full`). |
-| `GDTF_LOADING_SHOT` | `gdtf_app` | Loading-screen capture: output PNG path (the GTW-419 capture hook). |
+| `GDTF_LOADING_SHOT` | `gdtf_app` | Loading-screen capture: output PNG path (the GTW-419 capture hook; rides the `net_qa` debug feature gate since GTW-749). |
 | `GDTF_MODULE_LAYOUT_ROOT` | `gdtf_test_utils` | Overrides the repo root the module-layout conformance guard test scans (guard-test hook). |
+| `GDTF_NET_QA` | `gdtf_app` | Truthy (`1`/`true`/`yes`/`on`) opts a `net_qa` debug build into the loopback QA network control channel (GTW-736 onward) — the ONE capture / drive path (`launch_game` → `StartBattle` → `send_input` / `take_screenshot` / `screenshot_after` → `stop_game`, driven via `gdtf_qa_mcp` or any `gdtf_qa_protocol` client). |
+| `GDTF_NET_QA_PORT` | `gdtf_app` | Picks the `net_qa` loopback listen port; unset = the default. Port only — the interface is always `Ipv4Addr::LOCALHOST`. |
 | `GDTF_PROCGEN_STEPPER` | `gdtf_app` | Truthy (`1`/`true`/`yes`/`on`) opts a `dev_tools` build into the load-time procgen stepper (an egui Next/Auto/Skip overlay pausing `BattleScapeState::Generation` between the sim's staged assemble/fill/emit stages, GTW-655); unset = the normal to-completion path. |
 | `GDTF_SCREENSHOT_TEST_DEFINITELY_UNSET_VAR` | `gdtf_screenshot` | Test-only sentinel: a deliberately-never-set name proving `from_env` stays inert when its var is unset. Never set it. |
 | `GDTF_TEST_FORCE_NO_GPU` | `gdtf_test_utils` | Forces the GPU-adapter probe to report Absent, driving the exact no-GPU skip path on a GPU machine (GTW-527). |

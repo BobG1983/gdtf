@@ -32,13 +32,6 @@ pub(in crate::states) use intro::IntroScenePlugin;
 
 mod load;
 pub(in crate::states) use load::LoadScenePlugin;
-// GTW-590: extend the GTW-582 re-export ladder one rung further — the
-// `dev::capture` loudness pins live OUTSIDE `states`, and must drive their
-// emission asserts through the ONE shared, poison-proof log-capture scaffold
-// (a second CaptureLayer copy would lose the process-global-default race and
-// capture nothing).
-#[cfg(test)]
-pub(crate) use load::hot_reload_test_support;
 // The resolved authored battlefield resource (GTW-205 / E10.3), re-exported here so
 // it is nameable from OUTSIDE `states` — `test_support` widens it to `pub` for the
 // AC7 real-asset harness (`crate::states::LoadedSituation`), and the GTW-655 DEV
@@ -55,10 +48,13 @@ pub(crate) use load::hot_reload_test_support;
 #[cfg(any(feature = "test-support", feature = "dev_tools"))]
 crate::support_use!(load::LoadedSituation;);
 // The bespoke headless Load-fallback seed (GTW-629), re-exported here so it is
-// nameable from OUTSIDE `states` — the GTW-223 DEV auto-battle affordance
-// (`crate::dev::auto_battle`) registers it on `Startup`, and `test_support`
-// widens it to `pub` for the load-suite gate seed.
-crate::support_use!(load::seed_load_fallbacks;);
+// nameable from OUTSIDE `states` as `crate::states::seed_load_fallbacks`.
+// TEST-ONLY (GTW-749 retired its only production caller, the GTW-223 DEV
+// auto-battle affordance, outright): `pub` under `test-support` only, tracking
+// the item's own gate in lockstep — `test_support` re-exports this for the
+// load-suite gate seed.
+#[cfg(feature = "test-support")]
+pub use load::seed_load_fallbacks;
 
 // `pub(crate)` so the crate-root test-support ledger can name the panel `test_support`
 // submodules under it (GTW-569 one-hop ledger — markers no longer climb through here).

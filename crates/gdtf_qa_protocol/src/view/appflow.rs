@@ -61,6 +61,9 @@ pub enum RequestKindNet {
     Inject,
     /// A [`TakeScreenshot`](crate::envelope::QaRequest::TakeScreenshot) capture.
     TakeScreenshot,
+    /// A [`ScreenshotAfter`](crate::envelope::QaRequest::ScreenshotAfter) frame-exact
+    /// deferred capture.
+    ScreenshotAfter,
     /// A [`GetOutput`](crate::envelope::QaRequest::GetOutput) combat-event drain.
     GetOutput,
     /// A [`StartBattle`](crate::envelope::QaRequest::StartBattle) navigation.
@@ -74,12 +77,13 @@ impl RequestKindNet {
     /// the list the round-trip suite walks to prove each kind round-trips. The per-variant
     /// round-trip witness keeps this array complete — a new kind that is not listed here
     /// fails that test.
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::Hello,
         Self::GetAppFlow,
         Self::GetBattleState,
         Self::Inject,
         Self::TakeScreenshot,
+        Self::ScreenshotAfter,
         Self::GetOutput,
         Self::StartBattle,
     ];

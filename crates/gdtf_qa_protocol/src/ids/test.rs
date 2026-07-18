@@ -3,7 +3,8 @@
 use crate::{
     ids::{
         CellLevelNet, CellNet, CellXNet, CellYNet, DoorToken, EmplacementToken, EventCap,
-        FireModeIndex, GangerToken, LevelNet, RequestId, SeedNet, ShotName, SituationRef,
+        FireModeIndex, FrameDelay, GangerToken, LevelNet, RequestId, SeedNet, ShotName,
+        SituationRef,
     },
     test_support::assert_ron_round_trip,
 };
@@ -29,6 +30,7 @@ fn id_newtypes_round_trip() {
     assert_ron_round_trip(&SituationRef::new("skirmish".to_owned()));
     assert_ron_round_trip(&SeedNet::new(0xDEAD_BEEF));
     assert_ron_round_trip(&RequestId::new(1));
+    assert_ron_round_trip(&FrameDelay::new(15));
 }
 
 /// A `#[serde(transparent)]` token rides the wire as its bare inner scalar, not a

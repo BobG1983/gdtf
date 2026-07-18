@@ -60,9 +60,10 @@ fn real_asset_resolves_armor_registry_keyed_by_filename() {
     suite::real_asset_resolves_registry::<ArmorFamily>();
 }
 
-/// GTW-269 (mirroring GTW-297 `AC3b`) — the REAL auto-battle path: the Load-owned
-/// `seed_load_fallbacks` (registered on `Startup` by `AutoBattlePlugin`) runs AND a
-/// real `AssetServer` is present (the GUI auto-battle launch). NO empty
+/// GTW-269 (mirroring GTW-297 `AC3b`) — the REAL auto-battle path (the affordance
+/// itself was retired GTW-749; this test reproduces its Startup seed directly,
+/// below): the Load-owned `seed_load_fallbacks` runs AND a real `AssetServer` is
+/// present (the GUI auto-battle launch's precondition). NO empty
 /// `ArmorRegistry::default()` may shadow the real folder resolve: with an
 /// `AssetServer` present neither the bespoke seed nor the GTW-629 seam rider (the
 /// registry's fallback now lives on its `register_content_family` line) may insert
@@ -72,7 +73,8 @@ fn real_asset_resolves_armor_registry_keyed_by_filename() {
 /// This reproduces the bug's exact preconditions on the real code path: a
 /// `GdtfLoadTestAppBuilder` app (live `AssetServer` rooted at the workspace `assets/`)
 /// with the genuine `seed_load_fallbacks` system registered on `Startup`, exactly as
-/// `AutoBattlePlugin::build` wires it. The assertions encode the fix.
+/// the (now-retired) `AutoBattlePlugin::build` used to wire it. The assertions
+/// encode the fix.
 ///
 /// PIN: if ANY seed path — a revived seam-family arm, or a seam rider gone
 /// unconditional — inserts `ArmorRegistry::default()` while a server is present,
@@ -84,8 +86,9 @@ fn seeded_startup_does_not_shadow_real_armor_resolution() {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
-    // Wire the REAL auto-battle Startup seed (the path AutoBattlePlugin registers),
-    // minus the unrelated `drive_past_menu` that needs the RunningState machinery.
+    // Wire the REAL auto-battle Startup seed (the path the now-retired
+    // AutoBattlePlugin used to register), minus the unrelated `drive_past_menu` that
+    // needs the RunningState machinery.
     app.add_systems(Startup, seed_load_fallbacks);
 
     // Signal-poll the ArmorRegistry insert (not a fixed frame count): the real resolve

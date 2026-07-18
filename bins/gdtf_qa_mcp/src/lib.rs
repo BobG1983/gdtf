@@ -18,13 +18,13 @@
 //!
 //! # Tools
 //!
-//! Five forwarding tools map 1:1 onto
+//! Six forwarding tools map 1:1 onto
 //! [`QaRequest`](gdtf_qa_protocol::envelope::QaRequest)s: `send_input`, `query_state`,
-//! `get_output`, `take_screenshot`, and `app_flow` (the [`mcp::tools`] registry names each
-//! request it forwards). Two host-local tools — `launch_game` and `stop_game` — start and
-//! stop the game process itself through the [`lifecycle::GameManager`] (GTW-745). The
-//! `start_battle` tool is deliberately NOT exposed — its wire request exists but is not
-//! surfaced here.
+//! `get_output`, `take_screenshot`, `screenshot_after` (GTW-749), and `app_flow` (the
+//! [`mcp::tools`] registry names each request it forwards). Two host-local tools —
+//! `launch_game` and `stop_game` — start and stop the game process itself through the
+//! [`lifecycle::GameManager`] (GTW-745). The `start_battle` tool is deliberately NOT
+//! exposed — its wire request exists but is not surfaced here.
 
 pub mod base64;
 pub mod error;

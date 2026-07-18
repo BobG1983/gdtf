@@ -4,8 +4,8 @@
 //! QA harness drives, speaking the bevy-free wire contract (`gdtf_qa_protocol`). NONE of
 //! it is shipping behavior: the whole module compiles ONLY under
 //! `cfg(all(debug_assertions, feature = "net_qa"))` (its wiring site in
-//! [`crate::dev::plugin`] applies that double gate — it opens a listener, the
-//! `dev_capture` strictness class), and even then it is inert until `GDTF_NET_QA` is set.
+//! [`crate::dev::plugin`] applies that double gate — it opens a listener), and even then
+//! it is inert until `GDTF_NET_QA` is set.
 //!
 //! ## Members (one concern per file, per module-layout)
 //!
@@ -27,6 +27,9 @@
 //!   with a curated [`BattleView`](gdtf_qa_protocol::view::BattleView) read post-Simulate (T5).
 //! - [`screenshot`] — the deferred capture pump that answers `TakeScreenshot` by capturing
 //!   the real presenter frame and replying only after the confined PNG lands on disk (T7).
+//! - [`screenshot_after`] — the frame-exact deferred capture that answers `ScreenshotAfter`
+//!   by injecting its embedded intent through the T4 path, then firing the T7 capture
+//!   pipeline once its `frame_delay` countdown elapses (T15).
 //! - [`start_battle`] — the navigation consumer that answers `StartBattle` by producing the
 //!   SAME start-battle request the menu's Battlescape button produces (T9).
 //! - [`plugin`] — the [`NetQaPlugin`] registration (`from_env` / `with_channels`).
@@ -42,6 +45,7 @@ mod plugin;
 mod resolve;
 mod router;
 mod screenshot;
+mod screenshot_after;
 mod snapshot;
 mod start_battle;
 
@@ -49,13 +53,13 @@ mod start_battle;
 // `crate::dev::plugin`), so it re-exports in BOTH configurations at the `test-support`
 // visibility flip the item itself uses (`support_item!` in `plugin`): `pub` under
 // `test-support` (the `test_support` ledger needs it), `pub(crate)` otherwise —
-// `unreachable_pub`-clean either way. Mirrors `crate::dev::auto_battle`.
+// `unreachable_pub`-clean either way.
 crate::support_use!(plugin::NetQaPlugin;);
 
 // The transport + router TEST surface is consumed ONLY through the `test_support` ledger
 // (the GTW-736 integration suite). The binary never names these, so re-exporting them in
 // a non-`test-support` build would be an unused `pub(crate) use`; gate the re-export to
-// the same feature, `pub` because the ledger needs it. Mirrors the `auto_battle` split.
+// the same feature, `pub` because the ledger needs it.
 #[cfg(feature = "test-support")]
 pub use channel::{IncomingRequest, Responder};
 #[cfg(feature = "test-support")]

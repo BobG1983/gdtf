@@ -2,9 +2,9 @@
 //!
 //! [`support_item`] / [`support_use`] declare an item / re-export a path with `pub`
 //! visibility when the `test-support` feature is enabled and `pub(crate)` otherwise,
-//! so the state enums, [`ScenesPlugin`](crate::states::ScenesPlugin), and the GTW-223
-//! auto-battle affordance can widen to `pub` for the external test harness while
-//! staying `pub(crate)` (and `unreachable_pub`-clean) in the production binary.
+//! so the state enums, [`ScenesPlugin`](crate::states::ScenesPlugin), and the GTW-736
+//! `net_qa` plugin can widen to `pub` for the external test harness while staying
+//! `pub(crate)` (and `unreachable_pub`-clean) in the production binary.
 //!
 //! # Where `support_use!` still climbs — and where it must NOT (GTW-569)
 //!
@@ -24,8 +24,8 @@
 //!   in-crate consumers since the `procgen_viz` scene (its last unconditional reader)
 //!   was retired;
 //! - the dual-use re-exports the production binary also reads: the bottom-bar root
-//!   (`set_world_viewport` measures it) and the auto-battle plugin
-//!   (`crate::dev::auto_battle`).
+//!   (`set_world_viewport` measures it) and the `net_qa` plugin
+//!   (`crate::dev::net_qa`).
 
 /// Declares an item with `pub` visibility when the `test-support` feature is
 /// enabled, and `pub(crate)` visibility otherwise.
@@ -36,10 +36,10 @@
 /// to *name* them through [`test_support`](crate::test_support), so their definitions
 /// widen to `pub`. Wrapping each definition in this macro keeps the visibility flip in
 /// one place and lets `unreachable_pub` stay satisfied in both configurations. It wraps
-/// `enum` / `struct` item definitions, free / inherent `fn` items (the GTW-223
-/// auto-battle affordance widens its `auto_battle_enabled` gate + its `from_env`
-/// constructor this way), and associated `const` items (the GTW-428 `BaseAttribute::ALL`
-/// / `DerivedStat::ALL` display-order arrays an external test iterates). The `const fn`
+/// `enum` / `struct` item definitions, free / inherent `fn` items (the GTW-736 `net_qa`
+/// plugin widens its `from_env` constructor this way), and associated `const` items
+/// (the GTW-428 `BaseAttribute::ALL` / `DerivedStat::ALL` display-order arrays an
+/// external test iterates). The `const fn`
 /// arm exists because clippy `missing_const_for_fn` (denied) forces a const-eligible
 /// constructor to be `const` — a plain `fn` arm cannot express that (e.g.
 /// `LoadedSituation::new`); the bare `const` arm follows it so `const fn` is matched

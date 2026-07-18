@@ -19,7 +19,7 @@ pub use hello::{HelloFacts, ProtocolVersion, ServerNameNet};
 pub use receipt::{InjectReceipt, RejectReason};
 pub use request::QaRequest;
 pub use response::QaResponse;
-pub use screenshot::{ScreenshotPathNet, ScreenshotResult};
+pub use screenshot::{ScreenshotAfterResult, ScreenshotPathNet, ScreenshotResult};
 
 #[cfg(test)]
 mod test;

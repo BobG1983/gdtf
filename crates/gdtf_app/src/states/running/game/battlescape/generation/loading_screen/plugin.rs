@@ -28,7 +28,7 @@ use crate::states::{
 /// - The root's `DespawnOnExit(Generation)` despawns the whole subtree on `OnExit(Generation)`
 ///   (the transition to `AnimateIn`) — no explicit cleanup system needed (`bevy-traps.md` #1,
 ///   applied to entities).
-/// - Under `cfg!(all(debug_assertions, feature = "dev_capture"))` ONLY, the env-gated
+/// - Under `cfg!(all(debug_assertions, feature = "net_qa"))` ONLY, the env-gated
 ///   loading-screen capture hook ([`register_loading_capture`](super::capture::register_loading_capture))
 ///   is also registered — inert unless `GDTF_LOADING_SHOT` is set (the QA hook for AC2 / C2).
 pub(in crate::states::running::game::battlescape::generation) struct LoadingScreenPlugin;
@@ -39,7 +39,7 @@ impl Plugin for LoadingScreenPlugin {
 
         // DEV-ONLY QA hook: the loading-screen self-screenshot, double-gated on the dev cfg + its
         // own env var (the GTW-297 capture discipline). Inert in a normal build.
-        #[cfg(all(debug_assertions, feature = "dev_capture"))]
+        #[cfg(all(debug_assertions, feature = "net_qa"))]
         super::capture::register_loading_capture(app);
     }
 }

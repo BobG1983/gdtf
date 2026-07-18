@@ -33,6 +33,11 @@
 //!   battle, the menu, a live battle) and asserts the `available` list `GetAppFlow`
 //!   advertises agrees with what the router actually accepts / rejects `NoBattle`; it
 //!   reuses [`inject_support`]'s live-battle harness and [`start_battle`]'s menu fixture.
+//! - [`screenshot_after`] drives the REAL T15 `claim_screenshot_after` +
+//!   `tick_after_shots` systems (GTW-749) on a live-battle `BattleAppBuilder` app: the
+//!   embedded intent drains through the SAME input queue a bare `Inject` uses the same
+//!   frame it is claimed, a rejected intent takes no capture ever, and an accepted
+//!   intent's capture fires exactly `frame_delay` frames after the claim frame.
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
 mod affordance;
@@ -40,6 +45,7 @@ mod deadline;
 mod inject;
 mod inject_support;
 mod routing;
+mod screenshot_after;
 mod snapshot;
 mod start_battle;
 mod transport;

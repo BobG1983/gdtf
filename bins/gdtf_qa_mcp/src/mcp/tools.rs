@@ -1,7 +1,7 @@
-//! The MCP tool registry — the tools this bridge exposes (GTW-741, GTW-745).
+//! The MCP tool registry — the tools this bridge exposes (GTW-741, GTW-745, GTW-749).
 //!
-//! Five tools ([`SendInput`](ToolName::SendInput) … [`AppFlow`](ToolName::AppFlow)) map
-//! 1:1 onto a [`QaRequest`](gdtf_qa_protocol::envelope::QaRequest) forwarded to a running
+//! Six tools ([`SendInput`](ToolName::SendInput) … [`ScreenshotAfter`](ToolName::ScreenshotAfter))
+//! map 1:1 onto a [`QaRequest`](gdtf_qa_protocol::envelope::QaRequest) forwarded to a running
 //! game; two more ([`LaunchGame`](ToolName::LaunchGame) / [`StopGame`](ToolName::StopGame))
 //! are host-local — they start and stop the game process itself and never reach the wire.
 //! The [`ToolName`] enum is the single place the tool set is enumerated: `tools/list`
@@ -26,6 +26,9 @@ pub enum ToolName {
     GetOutput,
     /// Capture a screenshot — maps to `QaRequest::TakeScreenshot`.
     TakeScreenshot,
+    /// Inject one battle intent, then capture a screenshot a fixed number of frames
+    /// later — maps to `QaRequest::ScreenshotAfter` (GTW-749).
+    ScreenshotAfter,
     /// Read the app-lifecycle snapshot — maps to `QaRequest::GetAppFlow`.
     AppFlow,
     /// Launch the game as a child process and wait for it to answer — host-local, no
@@ -42,6 +45,7 @@ const ALL: &[ToolName] = &[
     ToolName::QueryState,
     ToolName::GetOutput,
     ToolName::TakeScreenshot,
+    ToolName::ScreenshotAfter,
     ToolName::AppFlow,
     ToolName::LaunchGame,
     ToolName::StopGame,
@@ -56,6 +60,7 @@ impl ToolName {
             Self::QueryState => "query_state",
             Self::GetOutput => "get_output",
             Self::TakeScreenshot => "take_screenshot",
+            Self::ScreenshotAfter => "screenshot_after",
             Self::AppFlow => "app_flow",
             Self::LaunchGame => "launch_game",
             Self::StopGame => "stop_game",
@@ -87,6 +92,18 @@ impl ToolName {
             Self::TakeScreenshot => {
                 "Capture a screenshot of the running game and return it as an image. \
                  Optional argument `name` picks the file stem."
+            }
+            Self::ScreenshotAfter => {
+                "Inject one battle intent (a NetIntent), then capture a screenshot \
+                 `frame_delay` frames after it queues, returning the image — the \
+                 frame-exact way to catch a transient effect (a muzzle flash, an impact \
+                 flash) mid-animation, since a request/response round-trip cannot land on \
+                 a specific frame itself. Argument `intent` is a NetIntent as a JSON \
+                 object or a compact-RON string. Argument `frame_delay` is the frame \
+                 count to wait (0 captures on the very next frame). If the intent is \
+                 rejected (e.g. an unoffered target), NO screenshot is taken and the tool \
+                 reports the rejection reason instead. Optional argument `name` picks the \
+                 file stem."
             }
             Self::AppFlow => {
                 "Read the app-lifecycle snapshot (which AppState, whether a battle is \
@@ -148,6 +165,21 @@ impl ToolName {
                               "description": "Screenshot file stem; omit for a chosen name." }
                 }
             }),
+            Self::ScreenshotAfter => json!({
+                "type": "object",
+                "properties": {
+                    "intent": {
+                        "description": "A NetIntent, as a JSON object (e.g. \
+                         {\"Reload\": null}) or a compact-RON string (e.g. \"Reload\")."
+                    },
+                    "frame_delay": { "type": "integer", "minimum": 0,
+                                     "description": "Frames to wait, after the intent \
+                                      queues, before capturing (0 = the very next frame)." },
+                    "name": { "type": "string",
+                              "description": "Screenshot file stem; omit for a chosen name." }
+                },
+                "required": ["intent", "frame_delay"]
+            }),
         }
     }
 
@@ -172,7 +204,7 @@ pub fn tools_list_result() -> Value {
 mod tests {
     use super::{ToolName, tools_list_result};
 
-    /// `tools/list` advertises exactly the seven implemented tools (the five forwarding
+    /// `tools/list` advertises exactly the eight implemented tools (the six forwarding
     /// tools plus the two lifecycle tools), and NOT `start_battle`.
     #[test]
     fn lists_every_tool_without_start_battle() {
@@ -180,7 +212,7 @@ mod tests {
         let Some(tools) = result["tools"].as_array() else {
             unreachable!("tools/list result carries a `tools` array");
         };
-        assert_eq!(tools.len(), 7);
+        assert_eq!(tools.len(), 8);
         let names: Vec<&str> = tools
             .iter()
             .filter_map(|tool| tool["name"].as_str())
@@ -189,6 +221,7 @@ mod tests {
         assert!(names.contains(&"query_state"));
         assert!(names.contains(&"get_output"));
         assert!(names.contains(&"take_screenshot"));
+        assert!(names.contains(&"screenshot_after"));
         assert!(names.contains(&"app_flow"));
         assert!(names.contains(&"launch_game"));
         assert!(names.contains(&"stop_game"));
@@ -204,6 +237,7 @@ mod tests {
             ToolName::QueryState,
             ToolName::GetOutput,
             ToolName::TakeScreenshot,
+            ToolName::ScreenshotAfter,
             ToolName::AppFlow,
             ToolName::LaunchGame,
             ToolName::StopGame,

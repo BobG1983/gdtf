@@ -3,8 +3,8 @@
 
 use crate::{
     envelope::{
-        HelloFacts, InjectReceipt, ProtocolVersion, QaError, RejectReason, ScreenshotPathNet,
-        ScreenshotResult, ServerNameNet,
+        HelloFacts, InjectReceipt, ProtocolVersion, QaError, RejectReason, ScreenshotAfterResult,
+        ScreenshotPathNet, ScreenshotResult, ServerNameNet,
     },
     test_support::assert_ron_round_trip,
 };
@@ -84,4 +84,24 @@ fn screenshot_result_and_hello_facts_round_trip() {
         ProtocolVersion::new(3),
         ServerNameNet::new("gdtf-dev".to_owned()),
     ));
+}
+
+/// Every [`ScreenshotAfterResult`] variant round-trips; the witness forces new
+/// variants in.
+#[test]
+fn screenshot_after_result_round_trips_every_variant() {
+    for result in [
+        ScreenshotAfterResult::Rejected(RejectReason::NoBattle),
+        ScreenshotAfterResult::Saved(ScreenshotPathNet::new(
+            "target/qa_screenshots/y.png".to_owned(),
+        )),
+        ScreenshotAfterResult::TimedOut,
+    ] {
+        match result {
+            ScreenshotAfterResult::Rejected(_)
+            | ScreenshotAfterResult::Saved(_)
+            | ScreenshotAfterResult::TimedOut => {}
+        }
+        assert_ron_round_trip(&result);
+    }
 }

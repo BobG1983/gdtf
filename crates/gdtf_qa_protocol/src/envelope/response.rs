@@ -3,7 +3,10 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    error::QaError, hello::HelloFacts, receipt::InjectReceipt, screenshot::ScreenshotResult,
+    error::QaError,
+    hello::HelloFacts,
+    receipt::InjectReceipt,
+    screenshot::{ScreenshotAfterResult, ScreenshotResult},
 };
 use crate::{
     events::EventBatch,
@@ -17,8 +20,10 @@ use crate::{
 /// [`Error`](Self::Error): [`HelloOk`](Self::HelloOk) (the handshake facts),
 /// [`AppFlow`](Self::AppFlow) / [`Battle`](Self::Battle) (the two snapshots),
 /// [`Injected`](Self::Injected) (the inject receipt), [`Screenshot`](Self::Screenshot)
-/// (the capture result), [`Output`](Self::Output) (the drained event batch), and
-/// [`Error`](Self::Error) (a protocol-level [`QaError`]). An independent serde enum.
+/// (the capture result), [`ScreenshotAfter`](Self::ScreenshotAfter) (the deferred
+/// frame-exact capture's folded intent + capture outcome), [`Output`](Self::Output)
+/// (the drained event batch), and [`Error`](Self::Error) (a protocol-level
+/// [`QaError`]). An independent serde enum.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum QaResponse {
     /// The handshake succeeded — the negotiated facts.
@@ -31,6 +36,9 @@ pub enum QaResponse {
     Injected(InjectReceipt),
     /// The screenshot result.
     Screenshot(ScreenshotResult),
+    /// The `ScreenshotAfter` result: the embedded intent's rejection, or the deferred
+    /// capture's outcome.
+    ScreenshotAfter(ScreenshotAfterResult),
     /// The drained event batch.
     Output(EventBatch),
     /// A protocol-level error.
