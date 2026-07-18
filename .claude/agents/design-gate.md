@@ -13,7 +13,12 @@ description: >-
 # read-only measurement (wc -l, the wiring greps) — a reviewer that can mutate the
 # tree can't independently judge it. Bash can't be sub-scoped in frontmatter, so
 # that constraint is binding in the body below.
-tools: Read, Grep, Glob, Bash
+# The mcp__gdtf-qa__* tools are for VERIFICATION only — driving and observing the live
+# game (launch_game/query_state/take_screenshot/screenshot_after/send_input/get_output/
+# stop_game) to check runtime behavior first-hand, the same posture as the Bash
+# green-suite runs. They drive a dev-only game PROCESS; they never mutate the repo/tree,
+# so the read-only-judge constraint still holds.
+tools: mcp__gdtf-qa__*, Read, Grep, Glob, Bash
 model: opus
 # memory: `project` accumulates recurring violation patterns across sessions.
 # The dir (.claude/agent-memory/) is GITIGNORED per project decision: memory

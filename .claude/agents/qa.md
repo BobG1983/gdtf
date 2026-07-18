@@ -11,7 +11,7 @@ description: >-
 # Bash is granted because the only way to verify Bevy runtime behavior is to RUN
 # the app (no Godot-style live-engine MCP exists). QA is trusted NOT to mutate the
 # project (verify only) — that constraint is enforced in the body, not by tool scoping.
-tools: Read, Grep, Glob, Bash
+tools: mcp__gdtf-qa__*, Read, Grep, Glob, Bash
 model: opus
 ---
 

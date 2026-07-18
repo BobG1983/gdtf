@@ -7,7 +7,7 @@ description: >-
   built — new mechanics, systems, components, scene-plugins, sim/presenter work,
   refactors — and you want it done compiling, lint-clean (-D warnings), and
   tested. Reports back concisely; the orchestrating workflow relays to the user.
-tools: Read, Edit, Write, Grep, Glob, Bash
+tools: mcp__gdtf-qa__*, Read, Edit, Write, Grep, Glob, Bash
 model: opus
 memory: project
 ---
