@@ -24,7 +24,12 @@ pub fn render_response(tool: ToolName, response: &QaResponse) -> Value {
         (ToolName::SendInput, QaResponse::Injected(receipt)) => text_content(receipt),
         (ToolName::QueryState, QaResponse::Battle(view)) => text_content(view),
         (ToolName::GetOutput, QaResponse::Output(batch)) => text_content(batch),
-        (ToolName::AppFlow, QaResponse::AppFlow(view)) => text_content(view),
+        // `start_battle` is answered with an app-flow snapshot, not a bespoke reply: the
+        // useful thing to hand back is the state the navigation reached, which is exactly
+        // what `app_flow` reports (`net_qa::start_battle::drive_start_battle`).
+        (ToolName::AppFlow | ToolName::StartBattle, QaResponse::AppFlow(view)) => {
+            text_content(view)
+        }
         (ToolName::TakeScreenshot, QaResponse::Screenshot(result)) => render_screenshot(result),
         (ToolName::ScreenshotAfter, QaResponse::ScreenshotAfter(result)) => {
             render_screenshot_after(result)
@@ -79,9 +84,12 @@ fn qa_error_message(error: QaError) -> String {
 
 #[cfg(test)]
 mod tests {
-    use gdtf_qa_protocol::envelope::{
-        InjectReceipt, QaError, QaResponse, RejectReason, ScreenshotAfterResult, ScreenshotPathNet,
-        ScreenshotResult,
+    use gdtf_qa_protocol::{
+        envelope::{
+            InjectReceipt, QaError, QaResponse, RejectReason, ScreenshotAfterResult,
+            ScreenshotPathNet, ScreenshotResult,
+        },
+        view::{AppFlowView, AppStateNet, BattleActiveNet, RequestKindNet},
     };
     use serde_json::json;
 
@@ -107,6 +115,24 @@ mod tests {
             unreachable!("a tool error carries a text reason");
         };
         assert!(content.contains("timed out"));
+    }
+
+    /// A `start_battle` reply is an app-flow snapshot and must render as normal text
+    /// content. Without its arm it fell into the catch-all and a SUCCESSFUL navigation
+    /// reported "the game returned a response that does not match the request" (GTW-760).
+    #[test]
+    fn render_response_start_battle_renders_the_app_flow_snapshot() {
+        let view = AppFlowView::new(
+            AppStateNet::Running,
+            BattleActiveNet::new(true),
+            vec![RequestKindNet::GetBattleState],
+        );
+        let rendered = render_response(ToolName::StartBattle, &QaResponse::AppFlow(view));
+        assert_eq!(rendered["isError"], json!(false));
+        let Some(text) = rendered["content"][0]["text"].as_str() else {
+            unreachable!("an app-flow reply carries text content");
+        };
+        assert!(text.contains("Running"));
     }
 
     /// An injected-intent receipt renders as non-error text content.

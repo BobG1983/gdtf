@@ -93,8 +93,12 @@ fn initialize_returns_capabilities_and_echoes_version() {
     assert!(response["result"]["serverInfo"]["name"].is_string());
 }
 
-/// `tools/list` advertises every implemented tool — the six forwarding tools plus the
-/// two lifecycle tools — and NOT `start_battle`.
+/// `tools/list` advertises every implemented tool — the seven forwarding tools plus the
+/// two lifecycle tools, `start_battle` among them.
+///
+/// `start_battle` is listed over the real JSON-RPC surface, which is what an MCP client
+/// actually reads: the game has serviced `QaRequest::StartBattle` since T9 (GTW-742), but
+/// no client tool sent it, so an agent could never reach a battle at all (GTW-760).
 #[test]
 fn tools_list_returns_every_tool() {
     let response = dispatch_json(r#"{"jsonrpc":"2.0","id":2,"method":"tools/list"}"#);
@@ -102,7 +106,7 @@ fn tools_list_returns_every_tool() {
         unreachable!("tools/list carries a tools array");
     };
     let names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
-    assert_eq!(names.len(), 8);
+    assert_eq!(names.len(), 9);
     for expected in [
         "send_input",
         "query_state",
@@ -110,12 +114,12 @@ fn tools_list_returns_every_tool() {
         "take_screenshot",
         "screenshot_after",
         "app_flow",
+        "start_battle",
         "launch_game",
         "stop_game",
     ] {
         assert!(names.contains(&expected), "missing tool {expected}");
     }
-    assert!(!names.contains(&"start_battle"));
 }
 
 /// `tools/call app_flow` forwards to the game and renders the reply as text content.
@@ -163,13 +167,24 @@ fn tools_call_stop_game_renders_stopped() {
     assert!(text.contains("stopped"), "rendered: {text}");
 }
 
-/// `tools/call` with an unknown tool name is a JSON-RPC invalid-params error.
+/// `tools/call` with an unknown tool name is a JSON-RPC invalid-params error naming the
+/// tool that could not be resolved.
+///
+/// The probe name must be one no tool will ever claim: this test used to probe with
+/// `start_battle` back when that tool did not exist, which quietly stopped testing
+/// name resolution the moment it did (GTW-760 added it, and the call then failed one step
+/// later on the missing `situation` argument — the same `-32602` code for a different
+/// reason). Asserting the message, not just the code, keeps the two apart.
 #[test]
 fn tools_call_unknown_tool_is_invalid_params() {
     let response = dispatch_json(
-        r#"{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"start_battle","arguments":{}}}"#,
+        r#"{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"no_such_tool","arguments":{}}}"#,
     );
     assert_eq!(response["error"]["code"], json!(-32602));
+    assert_eq!(
+        response["error"]["message"],
+        json!("unknown tool: no_such_tool")
+    );
 }
 
 /// An unknown method is answered `MethodNotFound`.

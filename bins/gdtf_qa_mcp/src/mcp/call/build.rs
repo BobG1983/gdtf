@@ -2,7 +2,7 @@
 
 use gdtf_qa_protocol::{
     envelope::QaRequest,
-    ids::{EventCap, FrameDelay, ShotName},
+    ids::{EventCap, FrameDelay, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
 };
 use serde_json::Value;
@@ -30,6 +30,10 @@ pub fn build_request(tool: ToolName, args: &Value) -> Result<QaRequest, String> 
             name:        parse_name(args)?,
         }),
         ToolName::AppFlow => Ok(QaRequest::GetAppFlow),
+        ToolName::StartBattle => Ok(QaRequest::StartBattle {
+            situation: parse_situation(args)?,
+            seed:      parse_seed(args)?,
+        }),
         // The lifecycle tools are handled before this point (in `handle_tool_call`), so
         // they never map onto a wire request; reaching here would be a routing bug.
         ToolName::LaunchGame | ToolName::StopGame => {
@@ -76,6 +80,32 @@ fn parse_name(args: &Value) -> Result<Option<ShotName>, String> {
     }
 }
 
+/// Parse the required `start_battle` `situation` name.
+///
+/// The name is passed through as the client wrote it: which situations exist is the
+/// game's to know, and it answers an unknown one with a typed rejection. Validating a
+/// shipped-situation list here too would be a second copy of that truth, free to drift.
+fn parse_situation(args: &Value) -> Result<SituationRef, String> {
+    match args.get("situation") {
+        None | Some(Value::Null) => Err("`start_battle` needs a `situation` argument".to_owned()),
+        Some(Value::String(name)) => Ok(SituationRef::new(name.clone())),
+        Some(_) => Err("`situation` must be a string".to_owned()),
+    }
+}
+
+/// Parse the optional `start_battle` `seed`, which pins the procgen RNG.
+fn parse_seed(args: &Value) -> Result<Option<SeedNet>, String> {
+    match args.get("seed") {
+        None | Some(Value::Null) => Ok(None),
+        Some(value) => {
+            let Some(raw) = value.as_u64() else {
+                return Err("`seed` must be a non-negative integer".to_owned());
+            };
+            Ok(Some(SeedNet::new(raw)))
+        }
+    }
+}
+
 /// Parse the required `screenshot_after` `frame_delay` argument.
 fn parse_frame_delay(args: &Value) -> Result<FrameDelay, String> {
     let Some(value) = args.get("frame_delay") else {
@@ -92,7 +122,11 @@ fn parse_frame_delay(args: &Value) -> Result<FrameDelay, String> {
 
 #[cfg(test)]
 mod tests {
-    use gdtf_qa_protocol::{envelope::QaRequest, ids::FrameDelay, intent::NetIntent};
+    use gdtf_qa_protocol::{
+        envelope::QaRequest,
+        ids::{FrameDelay, SeedNet, SituationRef},
+        intent::NetIntent,
+    };
     use serde_json::json;
 
     use super::build_request;
@@ -149,5 +183,59 @@ mod tests {
     fn build_request_screenshot_after_requires_frame_delay() {
         let args = json!({ "intent": "EndTurn" });
         assert!(build_request(ToolName::ScreenshotAfter, &args).is_err());
+    }
+
+    /// `start_battle` builds a `QaRequest::StartBattle` carrying the situation and the
+    /// optional seed — the client half of the navigation path an agent needs to reach a
+    /// battle at all (GTW-760).
+    #[test]
+    fn build_request_parses_start_battle_with_seed() {
+        let args = json!({ "situation": "skirmish", "seed": 42 });
+        let request = build_request(ToolName::StartBattle, &args);
+        assert_eq!(
+            request,
+            Ok(QaRequest::StartBattle {
+                situation: SituationRef::new("skirmish".to_owned()),
+                seed:      Some(SeedNet::new(42)),
+            })
+        );
+    }
+
+    /// An omitted `seed` leaves the game to choose one.
+    #[test]
+    fn build_request_start_battle_seed_is_optional() {
+        let args = json!({ "situation": "skirmish" });
+        let request = build_request(ToolName::StartBattle, &args);
+        assert_eq!(
+            request,
+            Ok(QaRequest::StartBattle {
+                situation: SituationRef::new("skirmish".to_owned()),
+                seed:      None,
+            })
+        );
+    }
+
+    /// `start_battle` rejects a missing or non-string `situation` rather than inventing
+    /// a default — which situation to start is never guessed on the client's behalf.
+    #[test]
+    fn build_request_start_battle_requires_a_situation() {
+        assert!(build_request(ToolName::StartBattle, &json!({})).is_err());
+        assert!(build_request(ToolName::StartBattle, &json!({ "situation": 7 })).is_err());
+    }
+
+    /// An unknown situation name is passed through to the game, not rejected here — the
+    /// game owns which situations exist and answers with a typed rejection, so this
+    /// builder never holds a second copy of that list.
+    #[test]
+    fn build_request_start_battle_passes_an_unknown_situation_through() {
+        let args = json!({ "situation": "no-such-situation" });
+        let request = build_request(ToolName::StartBattle, &args);
+        assert_eq!(
+            request,
+            Ok(QaRequest::StartBattle {
+                situation: SituationRef::new("no-such-situation".to_owned()),
+                seed:      None,
+            })
+        );
     }
 }

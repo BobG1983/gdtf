@@ -1,6 +1,6 @@
 //! The MCP tool registry — the tools this bridge exposes (GTW-741, GTW-745, GTW-749).
 //!
-//! Six tools ([`SendInput`](ToolName::SendInput) … [`ScreenshotAfter`](ToolName::ScreenshotAfter))
+//! Seven tools ([`SendInput`](ToolName::SendInput) … [`StartBattle`](ToolName::StartBattle))
 //! map 1:1 onto a [`QaRequest`](gdtf_qa_protocol::envelope::QaRequest) forwarded to a running
 //! game; two more ([`LaunchGame`](ToolName::LaunchGame) / [`StopGame`](ToolName::StopGame))
 //! are host-local — they start and stop the game process itself and never reach the wire.
@@ -10,12 +10,6 @@
 use serde_json::{Value, json};
 
 /// One MCP tool the bridge exposes.
-///
-/// Deliberately does NOT include `start_battle`: the wire request
-/// [`QaRequest::StartBattle`](gdtf_qa_protocol::envelope::QaRequest::StartBattle) exists
-/// but the game-side consumer for it lands in T9, so exposing it now would hang against
-/// nothing. When T9 lands, add a `StartBattle` variant here (plus its `from_wire` name,
-/// `descriptor` entry, and a request-builder arm) and nothing else changes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToolName {
     /// Inject one battle intent — maps to `QaRequest::Inject`.
@@ -31,6 +25,11 @@ pub enum ToolName {
     ScreenshotAfter,
     /// Read the app-lifecycle snapshot — maps to `QaRequest::GetAppFlow`.
     AppFlow,
+    /// Start a battle from a situation — maps to `QaRequest::StartBattle`. The
+    /// navigation step that takes a cold-started game from the menu into a battle, so
+    /// the battle-only tools become available (GTW-742's required path, reached from
+    /// the client half by GTW-760).
+    StartBattle,
     /// Launch the game as a child process and wait for it to answer — host-local, no
     /// wire request.
     LaunchGame,
@@ -47,6 +46,7 @@ const ALL: &[ToolName] = &[
     ToolName::TakeScreenshot,
     ToolName::ScreenshotAfter,
     ToolName::AppFlow,
+    ToolName::StartBattle,
     ToolName::LaunchGame,
     ToolName::StopGame,
 ];
@@ -62,6 +62,7 @@ impl ToolName {
             Self::TakeScreenshot => "take_screenshot",
             Self::ScreenshotAfter => "screenshot_after",
             Self::AppFlow => "app_flow",
+            Self::StartBattle => "start_battle",
             Self::LaunchGame => "launch_game",
             Self::StopGame => "stop_game",
         }
@@ -111,6 +112,23 @@ impl ToolName {
                  service right now) as JSON. Call this first and act only on what its \
                  `available` list advertises: the battle-only requests (query_state, \
                  send_input, get_output) are absent until a battle is running. No arguments."
+            }
+            Self::StartBattle => {
+                "Start a battle from a situation, taking a freshly launched game from \
+                 the menu into a running battle — the step that makes the battle-only \
+                 tools (query_state, send_input, get_output) available. Argument \
+                 `situation` is the situation name to start; the game currently ships \
+                 one, \"skirmish\", and rejects any other name. Optional argument `seed` \
+                 pins the procgen RNG so a run is reproducible; omit it for a \
+                 game-chosen seed. Only accepted once the game has booted through to the \
+                 menu: call `app_flow` first and wait until it reports `state: \"Running\"` \
+                 with `battle_active: false` — sent earlier (while `state` is still Init, \
+                 Load, or Intro) the request is rejected with the same BadRequest an \
+                 unknown situation gets. The reply is the app-flow snapshot as of the \
+                 moment the request was ACCEPTED, so it still reports \
+                 `battle_active: false` — generating the battle takes a moment. Poll \
+                 `app_flow` until `battle_active` is true before calling the battle-only \
+                 tools."
             }
             Self::LaunchGame => {
                 "Launch the game as a child process with the net_qa control channel \
@@ -180,6 +198,18 @@ impl ToolName {
                 },
                 "required": ["intent", "frame_delay"]
             }),
+            Self::StartBattle => json!({
+                "type": "object",
+                "properties": {
+                    "situation": { "type": "string",
+                                   "description": "The situation to start. The game \
+                                    currently ships one, \"skirmish\"." },
+                    "seed": { "type": "integer", "minimum": 0,
+                              "description": "Deterministic procgen seed; omit for a \
+                               game-chosen seed." }
+                },
+                "required": ["situation"]
+            }),
         }
     }
 
@@ -204,15 +234,20 @@ pub fn tools_list_result() -> Value {
 mod tests {
     use super::{ToolName, tools_list_result};
 
-    /// `tools/list` advertises exactly the eight implemented tools (the six forwarding
-    /// tools plus the two lifecycle tools), and NOT `start_battle`.
+    /// `tools/list` advertises exactly the nine implemented tools — the seven forwarding
+    /// tools plus the two lifecycle tools.
+    ///
+    /// `start_battle` is asserted PRESENT: the game has serviced `QaRequest::StartBattle`
+    /// since T9 (GTW-742), but no client tool sent it, so an agent could never reach a
+    /// battle over the wire and the battle-only tools stayed unavailable forever. That
+    /// gap survived a green suite because the only coverage was game-side (GTW-760).
     #[test]
-    fn lists_every_tool_without_start_battle() {
+    fn lists_every_tool_including_start_battle() {
         let result = tools_list_result();
         let Some(tools) = result["tools"].as_array() else {
             unreachable!("tools/list result carries a `tools` array");
         };
-        assert_eq!(tools.len(), 8);
+        assert_eq!(tools.len(), 9);
         let names: Vec<&str> = tools
             .iter()
             .filter_map(|tool| tool["name"].as_str())
@@ -225,7 +260,7 @@ mod tests {
         assert!(names.contains(&"app_flow"));
         assert!(names.contains(&"launch_game"));
         assert!(names.contains(&"stop_game"));
-        assert!(!names.contains(&"start_battle"));
+        assert!(names.contains(&"start_battle"));
     }
 
     /// Every wire name round-trips through `from_wire`, and an unknown name resolves to
@@ -239,12 +274,12 @@ mod tests {
             ToolName::TakeScreenshot,
             ToolName::ScreenshotAfter,
             ToolName::AppFlow,
+            ToolName::StartBattle,
             ToolName::LaunchGame,
             ToolName::StopGame,
         ] {
             assert_eq!(ToolName::from_wire(tool.wire_name()), Some(tool));
         }
-        assert_eq!(ToolName::from_wire("start_battle"), None);
         assert_eq!(ToolName::from_wire("nope"), None);
     }
 }

@@ -2,7 +2,7 @@
 //! (GTW-745).
 //!
 //! These two tools are host-local: they do NOT forward a `QaRequest` to a running game
-//! the way the other five do — they start and stop the game process itself through the
+//! the way the other seven do — they start and stop the game process itself through the
 //! [`GameLifecycle`]. On a successful launch the game link is re-pointed at the port the
 //! child bound, so the following forwarding calls reach it. Every path renders a normal
 //! MCP content block: a launch or stop failure is a tool error, never a crash.
