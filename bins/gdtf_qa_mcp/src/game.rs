@@ -194,20 +194,50 @@ impl GameClient {
 
 impl GameLink for GameClient {
     fn retarget(&mut self, port: GamePort) {
-        if self.port != port {
-            self.port = port;
-            // Drop any open connection so the next request reconnects to the new port.
-            self.conn = None;
-        }
+        // A (re)launch puts a NEW game process behind the port — even when the port
+        // NUMBER is unchanged (the default is reused across a stop/launch cycle). So
+        // ALWAYS drop any open connection: reusing a socket to the old, now-dead process
+        // would fail the next request with a broken pipe. The next request reconnects to
+        // the process this launch ensured (GTW-755).
+        self.port = port;
+        self.conn = None;
     }
 
     fn request(&mut self, request: QaRequest) -> Result<QaResponse, McpError> {
         let frame = encode(&request).map_err(McpError::Wire)?;
+        // A connection carried over from a previous call may have been closed underneath
+        // us: the game reaps a client left idle past its socket timeout, and a relaunch
+        // replaces the process behind the port. Such a stale connection fails the exchange
+        // at the transport level BEFORE the game processes the request, so on a REUSED
+        // connection we reconnect once and retry — the retry cannot double-execute, since
+        // the first attempt never reached a live handler. A FRESH connection's failure is
+        // a real error (the game is genuinely unreachable) and is NOT retried, keeping the
+        // reconnect bounded to a single fresh attempt (GTW-755).
+        let reused = self.conn.is_some();
+        match self.try_exchange(&frame) {
+            Err(McpError::Io(_) | McpError::Disconnected) if reused => {
+                // Drop the dead carried-over connection and try exactly once on a fresh one.
+                self.conn = None;
+                self.try_exchange(&frame)
+            }
+            other => other,
+        }
+    }
+}
+
+impl GameClient {
+    /// Open the connection if needed, own it for ONE exchange, and put it back on success
+    /// (dropping it on any failure so the next call reconnects). A single attempt — the
+    /// retry policy lives in [`request`](GameLink::request).
+    ///
+    /// # Errors
+    ///
+    /// [`McpError::Connect`] if the connection cannot be opened, or the exchange's own
+    /// [`McpError`] (`Io` / `Disconnected` / `Wire`).
+    fn try_exchange(&mut self, frame: &[u8]) -> Result<QaResponse, McpError> {
         self.ensure_connected()?;
-        // Own the connection for the exchange: on success it goes back for reuse; on any
-        // failure it is dropped here (closing the socket) so the next call reconnects.
         let mut conn = self.conn.take().ok_or(McpError::Disconnected)?;
-        let result = conn.exchange(&frame);
+        let result = conn.exchange(frame);
         if result.is_ok() {
             self.conn = Some(conn);
         }
