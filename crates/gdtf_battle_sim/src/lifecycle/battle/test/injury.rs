@@ -30,7 +30,7 @@ use crate::{
 /// with the SAME injury (a `Modify(Aim, -2)`), so ANY non-graze, non-fatal wound — on any
 /// part, at any tabled severity — rolls a known, stat-shifting injury. The shared key
 /// resolves to one [`InjuryDef`] in the registry.
-fn aim_debuff_catalog() -> (InjuryRegistry, InjuryTables) {
+pub(super) fn aim_debuff_catalog() -> (InjuryRegistry, InjuryTables) {
     let key = InjuryName::new("aim_debuff".to_owned());
     let def = InjuryDef {
         name:         key.clone(),
@@ -68,7 +68,7 @@ fn aim_debuff_catalog() -> (InjuryRegistry, InjuryTables) {
 /// LOW-toughness faction-1 target at the adjacent `(6, 5, 0)` — so a fired shot reliably
 /// LANDS a wound (point-blank, low toughness), the precondition the injury roll is gated
 /// on.
-fn duel_situation() -> Situation {
+pub(super) fn duel_situation() -> Situation {
     let shooter = GangerSpawnBuilder::new()
         .at(CellLevel::new(Cell::new(5, 5), Level::new(0)))
         .faction(Faction::new(0))
@@ -89,7 +89,7 @@ fn duel_situation() -> Situation {
 }
 
 /// The faction-0 shooter entity + the faction-1 target entity from the spawned battle.
-fn duel_entities(app: &mut App) -> (Entity, Entity) {
+pub(super) fn duel_entities(app: &mut App) -> (Entity, Entity) {
     let world = app.world_mut();
     let mut q = world.query::<(Entity, &Faction)>();
     let (mut shooter, mut target) = (Entity::PLACEHOLDER, Entity::PLACEHOLDER);
@@ -123,7 +123,7 @@ struct BattleRun {
 /// most wounds to Fatal, which is NOT tabled). With pen ≈ 12, a target Toughness of 15,
 /// and the §6 edges (e0=1 … e3=15), the score `12 − 15 + part_mod + roll(0..10)` lands
 /// mostly Minor/Major across parts + seeds — a tabled (rollable) wound.
-fn penetrating_weapon_registry() -> crate::weapon::WeaponRegistry {
+pub(super) fn penetrating_weapon_registry() -> crate::weapon::WeaponRegistry {
     use crate::weapon::{
         Accuracy, BaseSpread, FatalBias, FireMode, Kickback, WeaponName, WeaponPunch,
         WeaponRegistry, WeaponShred, WeaponSpec,
@@ -144,7 +144,7 @@ fn penetrating_weapon_registry() -> crate::weapon::WeaponRegistry {
 
 /// A ZERO-protection armor suit keyed to the test armor key — so a hit lands as full
 /// weapon damage (the wound is reliably non-graze; the injury roll's precondition holds).
-fn paper_armor_registry() -> crate::armor::ArmorRegistry {
+pub(super) fn paper_armor_registry() -> crate::armor::ArmorRegistry {
     use crate::armor::{
         ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
         ArmorRegistry, ArmorSpec, ArmorType,
