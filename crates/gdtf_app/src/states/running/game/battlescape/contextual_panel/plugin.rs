@@ -38,15 +38,18 @@ use gdtf_battle_sim::prelude::BattleInProgress;
 
 use crate::states::{
     BattleScapeState,
-    running::game::battlescape::contextual_panel::{
-        acts,
-        registrar::{
-            ContextualPanelActAppExt, ContextualPanelSpawnSystems, ContextualPanelSystems,
-            configure_contextual_panel_sets,
-        },
-        systems::{
-            despawn_contextual_panel, order_contextual_buttons, spawn_contextual_panel,
-            sync_panel_root_visibility,
+    running::game::battlescape::{
+        bottom_bar::{despawn_bottom_bar, spawn_bottom_bar},
+        contextual_panel::{
+            acts,
+            registrar::{
+                ContextualPanelActAppExt, ContextualPanelSpawnSystems, ContextualPanelSystems,
+                configure_contextual_panel_sets,
+            },
+            systems::{
+                despawn_contextual_panel, order_contextual_buttons, spawn_contextual_panel,
+                sync_panel_root_visibility,
+            },
         },
     },
 };
@@ -66,7 +69,13 @@ impl Plugin for ContextualPanelPlugin {
         app.add_systems(
             OnEnter(BattleScapeState::BattleRunning),
             (
-                spawn_contextual_panel.in_set(ContextualPanelSpawnSystems::Root),
+                // Ordered `.after(spawn_bottom_bar)` (GTW-726): the bottom-bar root must exist so
+                // `spawn_contextual_panel` can parent the panel box INSIDE it (the stance-panel
+                // precedent). Both run on the same `OnEnter` boundary, so the order must be
+                // explicit (`bevy-traps.md` #3).
+                spawn_contextual_panel
+                    .in_set(ContextualPanelSpawnSystems::Root)
+                    .after(spawn_bottom_bar),
                 // The deterministic slot-order re-parent — after every per-act button
                 // spawn (the set chain), so the column order never depends on system
                 // scheduling (bevy-traps.md #3).
@@ -75,7 +84,10 @@ impl Plugin for ContextualPanelPlugin {
         )
         .add_systems(
             OnExit(BattleScapeState::BattleRunning),
-            despawn_contextual_panel,
+            // Ordered `.before(despawn_bottom_bar)` (GTW-726): the panel root is a CHILD of the
+            // bar, so it must be despawned (and unlinked from the bar's children) before the bar's
+            // own recursive despawn runs — otherwise both would target it (a double despawn).
+            despawn_contextual_panel.before(despawn_bottom_bar),
         )
         .add_systems(
             Update,

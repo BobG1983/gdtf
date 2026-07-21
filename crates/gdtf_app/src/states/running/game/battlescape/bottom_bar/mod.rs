@@ -19,8 +19,13 @@ pub(in crate::states::running::game::battlescape) use components::{
 pub(in crate::states::running::game::battlescape) use plugin::GameBattleScapeBottomBarScenePlugin;
 // Re-exported so the sibling weapon-panel plugin can order `spawn_weapon_panel`
 // `.after(spawn_bottom_bar)` — the bottom-bar root must exist before the weapon panel parents the
-// Stance Panel under it (D4, the 2026-06-18 screenshot review).
-pub(in crate::states::running::game::battlescape) use systems::spawn_bottom_bar;
+// Stance Panel under it (D4, the 2026-06-18 screenshot review). `despawn_bottom_bar` is likewise
+// re-exported so the contextual-panel plugin can order its own despawn `.before(despawn_bottom_bar)`
+// — the contextual root is a CHILD of the bar (GTW-726), so it must be torn down (and unlinked from
+// the bar) before the bar's recursive despawn, avoiding a double despawn.
+pub(in crate::states::running::game::battlescape) use systems::{
+    despawn_bottom_bar, spawn_bottom_bar,
+};
 
 // The bottom-bar ROOT marker — `pub` under `test-support` (the AC tests assert + measure it),
 // `pub(crate)` otherwise (reachable by the sibling `set_world_viewport` system that measures its
