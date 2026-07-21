@@ -9,9 +9,9 @@ use crate::{
     events::{DroppedCount, EventBatch},
     test_support::assert_ron_round_trip,
     view::{
-        AppFlowView, AppStateNet, BattleActiveNet, BattleView, CaughtUpNet, FactionNet, FogView,
-        GridHeightNet, GridLevelsNet, GridSizeNet, GridWidthNet, RequestKindNet, SelectionView,
-        TerrainSummaryView, TurnView,
+        AppFlowView, AppStateNet, BattleActiveNet, BattleView, CaughtUpNet, ExploredCellCountNet,
+        FactionNet, FogView, GridHeightNet, GridLevelsNet, GridSizeNet, GridWidthNet,
+        RequestKindNet, SelectionView, TerrainSummaryView, TurnView, VisibleCellCountNet,
     },
 };
 
@@ -30,7 +30,7 @@ fn an_empty_battle() -> BattleView {
             vec![],
             vec![],
         ),
-        FogView::new(vec![], vec![]),
+        FogView::new(VisibleCellCountNet::new(0), ExploredCellCountNet::new(0)),
         SelectionView::new(None),
         TurnView::new(FactionNet::new(0), FactionNet::new(0)),
     )

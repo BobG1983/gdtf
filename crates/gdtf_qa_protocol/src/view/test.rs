@@ -10,12 +10,12 @@ use crate::{
     test_support::assert_ron_round_trip,
     view::{
         AppFlowView, AppStateNet, BattleActiveNet, BattleView, BodyPartNet, CaughtUpNet,
-        DoorOpenNet, DoorView, EmplacementMannedNet, EmplacementView, FactionNet, FireModeLabel,
-        FireModeView, FogView, GangerNameNet, GangerView, GridHeightNet, GridLevelsNet,
-        GridSizeNet, GridWidthNet, HpMaxNet, HpNet, InjuryEntryNet, InjuryNameNet,
+        DoorOpenNet, DoorView, EmplacementMannedNet, EmplacementView, ExploredCellCountNet,
+        FactionNet, FireModeLabel, FireModeView, FogView, GangerNameNet, GangerView, GridHeightNet,
+        GridLevelsNet, GridSizeNet, GridWidthNet, HpMaxNet, HpNet, InjuryEntryNet, InjuryNameNet,
         InjurySummaryNet, LifeStateNet, RequestKindNet, SelectionView, SeverityNet,
-        TerrainSummaryView, TuMaxNet, TuNet, TurnView, WeaponNameNet, WeaponView, WoundsMaxNet,
-        WoundsNet,
+        TerrainSummaryView, TuMaxNet, TuNet, TurnView, VisibleCellCountNet, WeaponNameNet,
+        WeaponView, WoundsMaxNet, WoundsNet,
     },
 };
 
@@ -91,7 +91,7 @@ fn a_battle() -> BattleView {
     BattleView::new(
         vec![a_ganger()],
         a_terrain(),
-        FogView::new(vec![a_key()], vec![a_key()]),
+        FogView::new(VisibleCellCountNet::new(1), ExploredCellCountNet::new(1)),
         SelectionView::new(Some(GangerToken::new(100))),
         TurnView::new(FactionNet::new(0), FactionNet::new(0)),
     )
@@ -101,6 +101,31 @@ fn a_battle() -> BattleView {
 #[test]
 fn battle_view_round_trips() {
     assert_ron_round_trip(&a_battle());
+}
+
+/// [`FogView`] is a FIXED size regardless of how much the squad can see: it carries two
+/// counts, never per-cell lists. Even a fully-visible `60×60×8` grid (`28_800` cells)
+/// serializes to a tiny string. This FAILS the instant anyone reverts the counts to
+/// `Vec<CellLevelNet>` (a list that long serializes to tens of thousands of chars).
+/// See GTW-763.
+#[test]
+fn fog_view_is_constant_size_regardless_of_visibility() {
+    /// The `60×60×8` grid's total cell count — the ceiling a fully-visible squad reaches.
+    const FULL_GRID_CELLS: u32 = 60 * 60 * 8;
+
+    let fog = FogView::new(
+        VisibleCellCountNet::new(FULL_GRID_CELLS),
+        ExploredCellCountNet::new(FULL_GRID_CELLS),
+    );
+    let Ok(encoded) = ron::ser::to_string(&fog) else {
+        unreachable!("a fog view serializes to compact RON: {fog:?}");
+    };
+    assert!(
+        encoded.len() < 200,
+        "a fully-visible fog view must stay compact (counts, not cell lists); \
+         got {} chars: {encoded}",
+        encoded.len()
+    );
 }
 
 /// The app-flow snapshot (with a populated affordance list) and an empty selection

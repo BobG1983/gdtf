@@ -33,9 +33,14 @@ impl ProtocolVersion {
     /// [`QaError`](crate::envelope::QaError) gained a `NotCaughtUp` variant (the same class
     /// of closed-enum addition as the 2 → 3 bump). Negotiation is exact equality with no
     /// capability handshake, so leaving this at `3` would let a version-3 client negotiate
-    /// SUCCESSFULLY and then fail to decode the very reply it asked for. The game server
-    /// negotiates a `Hello` against this value.
-    pub const CURRENT: Self = Self::new(4);
+    /// SUCCESSFULLY and then fail to decode the very reply it asked for. Bumped to `5`
+    /// (GTW-763) when [`FogView`](crate::view::FogView) changed from full `visible` /
+    /// `explored` cell LISTS to `visible_count` / `explored_count` COUNTS — an existing wire
+    /// shape changed (the same class as the 1 → 2 field change), so a client negotiating
+    /// version `4` now gets a `VersionMismatch` rather than a `BattleView` reply whose fog it
+    /// decodes against the old list shape and fails on ("frame payload was not valid compact
+    /// RON"). The game server negotiates a `Hello` against this value.
+    pub const CURRENT: Self = Self::new(5);
 
     /// Build a protocol version from its number.
     #[must_use]

@@ -21,7 +21,7 @@ pub mod weapon;
 
 pub use appflow::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet, RequestKindNet};
 pub use battle::{BattleView, TurnView};
-pub use fog::FogView;
+pub use fog::{ExploredCellCountNet, FogView, VisibleCellCountNet};
 pub use ganger::GangerView;
 pub use injury::{BodyPartNet, InjuryEntryNet, InjuryNameNet, InjurySummaryNet, SeverityNet};
 pub use life::LifeStateNet;

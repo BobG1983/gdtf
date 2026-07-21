@@ -25,9 +25,9 @@ use gdtf_qa_protocol::{
     envelope::QaResponse,
     ids::{DoorToken, EmplacementToken, GangerToken},
     view::{
-        BattleView, DoorOpenNet, DoorView, EmplacementMannedNet, EmplacementView, FogView,
-        GridHeightNet, GridLevelsNet, GridSizeNet, GridWidthNet, SelectionView, TerrainSummaryView,
-        TurnView,
+        BattleView, DoorOpenNet, DoorView, EmplacementMannedNet, EmplacementView,
+        ExploredCellCountNet, FogView, GridHeightNet, GridLevelsNet, GridSizeNet, GridWidthNet,
+        SelectionView, TerrainSummaryView, TurnView, VisibleCellCountNet,
     },
 };
 
@@ -113,17 +113,23 @@ fn terrain_view(world: &SnapshotWorld) -> TerrainSummaryView {
 }
 
 /// Project the squad fog into its [`FogView`] — the visible + explored `(cell, level)`
-/// lists.
+/// key COUNTS.
+///
+/// Counts, not the per-cell lists: an open map keeps thousands of cells visible and the
+/// explored set grows every turn, so the lists overflowed a QA client's context (GTW-763).
+/// The counts still answer the QA signal (fog limits sight when `visible_count` is below
+/// the grid total) while keeping the snapshot a fixed size.
 fn fog_view(fog: &SquadVisibility) -> FogView {
-    let visible = fog
-        .visible_cells()
-        .map(|cell| cell_level_net(*cell))
-        .collect();
-    let explored = fog
-        .explored_cells()
-        .map(|cell| cell_level_net(*cell))
-        .collect();
-    FogView::new(visible, explored)
+    FogView::new(
+        VisibleCellCountNet::new(cell_count(fog.visible_cells().count())),
+        ExploredCellCountNet::new(cell_count(fog.explored_cells().count())),
+    )
+}
+
+/// Widen a `usize` fog cell count to the wire count newtypes' inner `u32`, saturating (the
+/// `60×60×8` grid's `28_800`-cell ceiling always fits).
+fn cell_count(count: usize) -> u32 {
+    u32::try_from(count).unwrap_or(u32::MAX)
 }
 
 /// Project the current selection into its [`SelectionView`] — the selected ganger's token,

@@ -74,10 +74,25 @@ fn get_battle_state_answers_a_populated_battle_view() {
         "the terrain summary must carry real grid dimensions",
     );
 
-    // The fog invariant: every VISIBLE cell is also EXPLORED (visible ⊆ explored).
+    // The fog invariant: the visible set is a subset of the explored set, so the visible
+    // count never exceeds the explored count.
     assert!(
-        view.fog.visible.len() <= view.fog.explored.len(),
+        *view.fog.visible_count <= *view.fog.explored_count,
         "visible cells are a subset of explored cells",
+    );
+
+    // SIZE (GTW-763): the whole curated BattleView stays compact on a real live battle. The
+    // fog was the only unbounded field and now carries counts, so the snapshot is
+    // low-thousands of wire bytes, not the ~93k full-fog dump that made query_state unusable.
+    // Pinning the WHOLE view size (not just fog) also trips if a future field re-introduces an
+    // unbounded per-cell list.
+    let Ok(encoded) = gdtf_qa_protocol::framing::encode(&view) else {
+        unreachable!("a live battle view encodes to the wire: {view:?}");
+    };
+    assert!(
+        encoded.len() < 8_000,
+        "the curated battle view must stay compact (GTW-763); got {} wire bytes",
+        encoded.len(),
     );
 
     // The battle auto-selects a player ganger, so the selection is populated and its token

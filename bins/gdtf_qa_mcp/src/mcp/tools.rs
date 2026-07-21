@@ -83,8 +83,11 @@ impl ToolName {
                  compact-RON string."
             }
             Self::QueryState => {
-                "Read the whole battle snapshot (gangers, terrain, fog, selection, turn) \
-                 as JSON. No arguments."
+                "Read a compact curated battle snapshot (gangers, terrain, fog, selection, \
+                 turn) as JSON. Terrain is summarized (grid dims plus sparse doors and \
+                 emplacements), and fog is summarized as visible/explored CELL COUNTS, not \
+                 per-cell lists — so the snapshot stays a fixed, small size on any map. No \
+                 arguments."
             }
             Self::GetOutput => {
                 "Drain buffered combat events as JSON. Optional argument `max` caps how \
