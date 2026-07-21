@@ -18,7 +18,7 @@ use super::commands::{AutoRunning, AutoStepTimer, PendingStepCommand, StepComman
 use crate::states::{
     LoadedSituation,
     running::game::battlescape::generation::battle_sim::{
-        outcome_from_emitted, outcome_from_packing_error, resolve_root_seed,
+        deploy_over_generated, outcome_from_packing_error, resolve_root_seed,
     },
 };
 
@@ -127,9 +127,11 @@ pub(super) fn advance_stepper_drive(
 }
 
 /// `Update`, registered only while the stepper is enabled, ordered `.after(advance_stepper_drive)`:
-/// once the drive is done, finish it through the SAME merge / finding-conversion helpers
-/// `request_battle_setup` uses, write the SAME `SetupBattleRequested`, and clear every
-/// stepper resource this Generation span inserted.
+/// once the drive is done, finish it through the SAME deploy / finding-conversion helpers
+/// `request_battle_setup` uses — including DEPLOYING the authored roster onto the generated map
+/// ([`deploy_over_generated`], GTW-765) so a stepper-started battle has gangers, not terrain
+/// alone — write the SAME `SetupBattleRequested`, and clear every stepper resource this
+/// Generation span inserted.
 pub(super) fn finish_stepper_drive(
     driver: Option<Res<StagedProcgen>>,
     context: Option<Res<ProcgenStepperContext>>,
@@ -145,7 +147,11 @@ pub(super) fn finish_stepper_drive(
     }
 
     let outcome = if let Some(emitted) = driver.emitted() {
-        outcome_from_emitted(context.authored.clone(), emitted.clone())
+        // GTW-765: DEPLOY the roster onto the generated map (the same fail-closed
+        // `deploy_over_generated` the normal path runs), not the terrain-only merge — so a
+        // stepper-started battle has gangers. A deployment failure rides `outcome.deployment_error`
+        // exactly as the normal path handles it (below), never a panic.
+        deploy_over_generated(context.authored.clone(), emitted.clone(), context.seed)
     } else if let Some(err) = driver.failure() {
         outcome_from_packing_error(context.authored.clone(), err)
     } else {
@@ -160,6 +166,22 @@ pub(super) fn finish_stepper_drive(
             report.record(finding);
         }
     }
+
+    // GTW-765 / GTW-744: FAIL CLOSED on a typed roster-deployment failure exactly as the normal
+    // `request_battle_setup` does — write NO `SetupBattleRequested`, so the sim never signals
+    // `BattleReady` and the machine stays in Generation rather than starting a battle with no
+    // deployed gangers. Clear the stepper resources first so this per-`Update` system stops
+    // re-running (unlike the normal one-shot `OnEnter` path, it would otherwise re-record the
+    // finding every frame).
+    if let Some(err) = &outcome.deployment_error {
+        error!(
+            "procgen could not deploy the roster into its deployment zone ({err}); the \
+             stepper-started battle will not set up (staying in Generation)"
+        );
+        remove_stepper_resources(&mut commands);
+        return;
+    }
+
     setup.write(SetupBattleRequested::new(outcome.situation, context.seed));
 
     remove_stepper_resources(&mut commands);

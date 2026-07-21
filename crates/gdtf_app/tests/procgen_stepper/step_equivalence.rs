@@ -16,7 +16,7 @@ use gdtf_test_utils::advance_until;
 
 use super::harness::{
     BUDGET, FIXED_SEED, app_engaged_in_generation, app_ready_for_battle, battlescape_state,
-    drive_into_battle_running, terrain_fingerprint,
+    deployed_ganger_count, drive_into_battle_running, terrain_fingerprint,
 };
 
 /// The load-bearing step-equivalence test (C5a): engaging the stepper and driving it ONE STAGE
@@ -63,6 +63,61 @@ fn stepper_engaged_path_matches_the_normal_fingerprint() {
         actual, expected,
         "the stepper-engaged, stepped-to-completion drive must produce the SAME terrain \
          fingerprint as the normal to-completion path for the same seed",
+    );
+}
+
+/// GTW-765 regression: the stepper-engaged finish must DEPLOY the authored roster onto the
+/// generated map, not just its terrain. Driving the staged pipeline to `BattleRunning` (the SAME
+/// one-`Next`-per-stage latch the egui panel writes) must leave the SAME non-zero count of
+/// deployed ganger entities the normal to-completion path deploys for the same seed — the pre-fix
+/// terrain-only `finish_stepper_drive` left ZERO gangers, which `terrain_fingerprint` (terrain
+/// entities only) could not catch.
+#[test]
+fn stepper_engaged_path_deploys_the_same_roster() {
+    let expected = {
+        let mut app = app_ready_for_battle(FIXED_SEED);
+        drive_into_battle_running(&mut app);
+        deployed_ganger_count(&mut app)
+    };
+    assert!(
+        expected > 0,
+        "the normal path must deploy a non-empty roster for the fixed seed (guarding the test \
+         itself); got {expected} deployed gangers",
+    );
+
+    let mut app = app_engaged_in_generation(FIXED_SEED);
+
+    // Drive every stage (assemble -> fill -> emit) one Next press at a time — the SAME latch the
+    // egui panel writes to, bypassing egui entirely (the closure never runs headlessly).
+    for _ in 0..3 {
+        let pending = app.world_mut().get_resource_mut::<PendingStepCommand>();
+        assert!(
+            pending.is_some(),
+            "PendingStepCommand must exist while the stepper is engaged in Generation",
+        );
+        if let Some(mut pending) = pending {
+            pending.request(StepCommand::Next);
+        }
+        app.update();
+    }
+
+    let reached_running = advance_until(
+        &mut app,
+        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
+        BUDGET,
+    );
+    assert!(
+        reached_running,
+        "the stepper-engaged path must reach BattleRunning once its staged drive completes; last \
+         observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+
+    let actual = deployed_ganger_count(&mut app);
+    assert_eq!(
+        actual, expected,
+        "the stepper-engaged finish must DEPLOY the same roster the normal path does (GTW-765): \
+         the pre-fix terrain-only finish left {actual} deployed gangers, expected {expected}",
     );
 }
 

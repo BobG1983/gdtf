@@ -3,8 +3,9 @@ pub(in crate::states::running) use plugin::GameBattleScapeGenerationScenePlugin;
 mod resources;
 
 // `pub(crate)`, not private: the GTW-655 dev-tools stepper (`crate::dev::procgen_stepper`)
-// names `battle_sim::{outcome_from_emitted, ProcgenOutcome}` to finish its staged drive
-// through the SAME merge + finding-conversion logic `request_battle_setup` uses.
+// names `battle_sim::{deploy_over_generated, outcome_from_packing_error}` to finish its staged
+// drive through the SAME deploy + finding-conversion logic `request_battle_setup` uses
+// (GTW-765: it DEPLOYS the roster onto the generated map, matching the normal path).
 pub(crate) mod battle_sim;
 
 // The GTW-419 LOADING SCREEN: the themed full-viewport overlay shown while the sim assembles the

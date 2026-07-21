@@ -4,7 +4,7 @@
 
 use bevy::{app::App, prelude::NextState, state::state::State};
 use gdtf_app::test_support::{AppState, BattleScapeState, ProcgenStepperPlugin, RunningState};
-use gdtf_battle_sim::{rng::BattleSeed, terrain::entity::TerrainIndex};
+use gdtf_battle_sim::{ganger::GangerName, rng::BattleSeed, terrain::entity::TerrainIndex};
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
 /// A generous budget for the real `DefaultPlugins` async asset loads + the full state descent
@@ -35,6 +35,17 @@ pub(crate) fn terrain_fingerprint(app: &App) -> Option<usize> {
     app.world()
         .get_resource::<TerrainIndex>()
         .map(TerrainIndex::len)
+}
+
+/// The count of deployed ganger entities in the battle — the DEPLOYMENT fingerprint the GTW-765
+/// test compares across the normal and stepper-engaged paths. `terrain_fingerprint` counts only
+/// terrain, so it could not catch a battle whose terrain generated but whose roster never
+/// deployed; this counts the [`GangerName`] every spawned ganger carries. Takes `&mut App`
+/// because building a `QueryState` needs `&mut World`.
+pub(crate) fn deployed_ganger_count(app: &mut App) -> usize {
+    let world = app.world_mut();
+    let mut query = world.query::<&GangerName>();
+    query.iter(world).count()
 }
 
 /// Build the REAL Load flow (populating the prefab / theme / terrain registries from shipped

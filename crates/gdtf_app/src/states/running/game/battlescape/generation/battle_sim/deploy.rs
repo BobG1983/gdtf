@@ -30,8 +30,13 @@ use super::procgen::{ProcgenOutcome, outcome_from_emitted};
 /// it records a finding + sets [`ProcgenOutcome::deployment_error`] so the caller aborts setup
 /// (no under-populated battle). The deploy reads `outcome.situation` (procgen terrain + any
 /// authored gangers), so standability + existing-ganger non-overlap are correct.
+///
+/// `pub(crate)`, not `pub(super)`: the GTW-655 dev-tools stepper (`crate::dev::procgen_stepper`)
+/// is a SECOND caller — GTW-765 makes its staged-drive finish DEPLOY the roster through this
+/// same function (re-exported from the module `mod.rs` under `dev_tools`), rather than the
+/// terrain-only [`outcome_from_emitted`], so a stepper-started battle has gangers on the map.
 #[must_use]
-pub(super) fn deploy_over_generated(
+pub(crate) fn deploy_over_generated(
     authored: Situation,
     emitted: EmittedLevel,
     seed: BattleSeed,

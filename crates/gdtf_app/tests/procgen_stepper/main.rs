@@ -1,6 +1,6 @@
 //! GTW-655: the dev-tools procgen load-time stepper.
 //!
-//! Six tests, all against the REAL `GdtfLoadTestAppBuilder` Load flow (a live `AssetServer`
+//! Seven tests, all against the REAL `GdtfLoadTestAppBuilder` Load flow (a live `AssetServer`
 //! rooted at the workspace `assets/`, so the prefab / theme / terrain registries are populated
 //! from SHIPPED content — the same real-registries proof `procgen_battle.rs` uses) and a FIXED
 //! injected `BattleSeed` so the app instances draw identically. Shared setup lives in
@@ -15,7 +15,10 @@
 //!   `stepper_engaged_path_matches_the_normal_fingerprint` drives the SAME seed ONE STAGE AT A
 //!   TIME via `PendingStepCommand::request` (bypassing egui entirely — the closure never runs
 //!   headlessly, bevy-traps #8) and reaches `BattleRunning` with the IDENTICAL terrain-entity
-//!   count as the normal path; `stage_summary_reflects_the_real_driver_at_each_stage` reads the
+//!   count as the normal path; `stepper_engaged_path_deploys_the_same_roster` (GTW-765) drives
+//!   that same stepped path and asserts the finish DEPLOYS the roster — the same non-zero count of
+//!   deployed ganger entities the normal path produces, not the ZERO the pre-fix terrain-only
+//!   finish left; `stage_summary_reflects_the_real_driver_at_each_stage` reads the
 //!   live `StagedProcgen` resource through `stage_summary` (the panel's pure formatter,
 //!   `crate::dev::procgen_stepper::summary` in `gdtf_app`) after each stage, proving it names the
 //!   REAL driver state the shipped registries just produced, not a synthetic fixture.
