@@ -7,6 +7,7 @@ use serde::Deserialize;
 use super::{
     piece_spawns::{CoverSpawn, FieldSpawn, FloorSpawn, SlabSpawn},
     placed_ganger::PlacedGanger,
+    roster_member::RosterMember,
 };
 use crate::{
     ganger::Faction,
@@ -75,7 +76,27 @@ pub struct Situation {
     /// member REF (resolved against the [`GangRegistry`](crate::ganger::GangRegistry) at
     /// setup for identity / attributes / equipment) plus the situation-supplied placement
     /// (`at` / `facing` / `stance` / `aiming` / `life_state`) and `faction`.
+    ///
+    /// GTW-744: this is now the BACK-COMPAT carrier — a fixture / test may still author
+    /// EXACT placement cells here, and [`setup_battle`](crate::situation::setup_battle) reads
+    /// it directly. SHIPPED content no longer authors cells here: it lists its combatants in
+    /// [`rosters`](Situation::rosters) and the procgen deploy step
+    /// ([`deploy_rosters`](crate::procgen::deploy_rosters)) derives each member's placement
+    /// from the generated map's deployment zones and EXTENDS this list before setup.
     pub gangers:        Vec<PlacedGanger>,
+    /// The situation's **roster members** (GTW-744) — each a pure `(gang, member, faction)`
+    /// [`RosterMember`] reference with NO authored cell. The procgen deploy step
+    /// ([`deploy_rosters`](crate::procgen::deploy_rosters)) derives each member's spawn
+    /// `(cell, level)` / facing / stance DETERMINISTICALLY (by the battle
+    /// [`BattleSeed`](crate::rng::BattleSeed)) from the generated map's player / enemy
+    /// deployment zones and turns it into a [`PlacedGanger`] appended to
+    /// [`gangers`](Situation::gangers).
+    ///
+    /// This is the SHIPPED-content deployment shape (`skirmish.ron` authors `rosters`, zero
+    /// cells). The struct-level `#[serde(default)]` gives an empty list, so every
+    /// authored-cell fixture (which populates `gangers` instead) stays parse-valid — the two
+    /// fields coexist for back-compat.
+    pub rosters:        Vec<RosterMember>,
     /// The level THEME this battlefield draws from — the stable UUID-keyed reference to a
     /// migrated [`UuidThemeDef`](crate::level::UuidThemeDef), resolvable in the
     /// [`UuidThemeRegistry`](crate::level::UuidThemeRegistry).

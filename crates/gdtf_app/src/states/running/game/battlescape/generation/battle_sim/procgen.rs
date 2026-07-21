@@ -3,10 +3,11 @@
 //! terrain with the authored situation's gangers / spawn data.
 //!
 //! This is the LIVE trigger that makes procgen drive real battles. The authored
-//! [`Situation`] now carries only `theme` + `grid_size` + the placed gangers (GTW-433 C1:
-//! `skirmish.ron` no longer authors inline terrain); the terrain is GENERATED here by
-//! calling the sim-owned [`generate_level`] and pouring its result back over the authored
-//! gangers.
+//! [`Situation`] now carries only `theme` + `grid_size` + `rosters` (GTW-433 C1 +
+//! GTW-744: `skirmish.ron` authors NO inline terrain AND NO placement cells); the terrain is
+//! GENERATED here by calling the sim-owned [`generate_level`], and each roster member is then
+//! DEPLOYED onto the generated map's deployment zones ([`deploy_rosters`], deterministic in the
+//! battle seed) and appended to the situation's gangers before setup.
 //!
 //! # The UUID model (GTW-492)
 //!
@@ -109,10 +110,16 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) struct
 pub(crate) struct ProcgenOutcome {
     /// The situation the battle is built from (generated terrain merged over
     /// the authored gangers, or the authored situation on the C4 fallback).
-    pub situation: Situation,
+    pub situation:        Situation,
     /// The degraded resolutions / last-resort fallbacks the generation took
     /// (GTW-582 C3(d)/C5) — already `warn!`ed here; the caller reports them.
-    pub findings:  Vec<ContentFinding>,
+    pub findings:         Vec<ContentFinding>,
+    /// The typed roster-DEPLOYMENT failure (GTW-744), when a deployment zone could not
+    /// stand its whole roster — `None` on success (incl. the terrain-only stepper path and
+    /// the C4 fallbacks, which never deploy). The caller
+    /// (`request_battle_setup`) FAILS CLOSED on `Some`: it writes NO `SetupBattleRequested`,
+    /// so the machine stays in Generation rather than starting an under-populated battle.
+    pub deployment_error: Option<PackingError>,
 }
 
 /// Turn a successfully-[`generate_level`]d [`EmittedLevel`](gdtf_battle_sim::procgen::EmittedLevel)
@@ -140,6 +147,7 @@ pub(crate) fn outcome_from_emitted(authored: Situation, emitted: EmittedLevel) -
     ProcgenOutcome {
         situation: merge_procgen_terrain(authored, emitted.situation),
         findings,
+        deployment_error: None,
     }
 }
 
@@ -181,8 +189,9 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn pro
         (registries.prefabs, registries.themes, registries.terrain)
     else {
         return ProcgenOutcome {
-            situation: authored,
-            findings:  Vec::new(),
+            situation:        authored,
+            findings:         Vec::new(),
+            deployment_error: None,
         };
     };
 
@@ -209,7 +218,7 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn pro
         &mut rng,
         &tuning,
     ) {
-        Ok(emitted) => outcome_from_emitted(authored, emitted),
+        Ok(emitted) => super::deploy::deploy_over_generated(authored, emitted, seed),
         Err(err) => outcome_from_packing_error(authored, &err),
     }
 }
@@ -242,8 +251,9 @@ pub(crate) fn outcome_from_packing_error(
         )),
     };
     ProcgenOutcome {
-        situation: authored,
-        findings:  vec![finding],
+        situation:        authored,
+        findings:         vec![finding],
+        deployment_error: None,
     }
 }
 
@@ -298,8 +308,11 @@ fn convert_procgen_finding(finding: ProcgenFinding) -> ContentFinding {
 /// from `authored`.
 fn merge_procgen_terrain(authored: Situation, generated: Situation) -> Situation {
     Situation {
-        // Authored placement data — the rosters + spawn the situation file owns.
+        // Authored placement data — the gangers + spawn the situation file owns. The
+        // GTW-744 `rosters` are deployed into `gangers` by `deploy_over_generated` AFTER this
+        // merge, so the merged situation carries an empty `rosters` (setup reads `gangers`).
         gangers:        authored.gangers,
+        rosters:        Vec::new(),
         player_faction: authored.player_faction,
         // GTW-545: authored area-damage-field placements are situation-owned placement data
         // (a seeded hazard, like a ganger), so they carry through the procgen merge unchanged.

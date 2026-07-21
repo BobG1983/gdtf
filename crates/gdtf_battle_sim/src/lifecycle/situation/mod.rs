@@ -20,7 +20,14 @@
 //!   read-only [`SourceArmor`](crate::armor::SourceArmor) record (`armor_by_part`) and a
 //!   [`weapon`](GangerSpawn::weapon) KEY resolved against the
 //!   [`WeaponRegistry`](crate::weapon::WeaponRegistry) into the spawned
-//!   [`WeaponBundle`](crate::weapon::WeaponBundle) (GTW-257).
+//!   [`WeaponBundle`](crate::weapon::WeaponBundle) (GTW-257). Since GTW-744 the `gangers`
+//!   list is the BACK-COMPAT placement carrier (fixtures may still author exact cells);
+//!   shipped content lists its combatants in `rosters` instead.
+//! - **rosters** ([`RosterMember`]): each a pure `(gang, member, faction)` ref with NO
+//!   authored cell (GTW-744). The procgen deploy step
+//!   ([`deploy_rosters`](crate::procgen::deploy_rosters)) derives each member's spawn cell /
+//!   facing / stance from the generated map's deployment zones and appends the result to
+//!   `gangers` before setup. This is the SHIPPED-content shape (zero authored cells).
 //! - **walls** + **scatter/props** ([`CoverSpawn`], the same schema for both): each
 //!   a `(cell, level)`, a [`TerrainKind`](crate::occupancy::TerrainKind), the cover's
 //!   max [`CoverHp`](crate::cover::CoverHp), its [`HeightBand`](crate::cover::HeightBand),
@@ -63,5 +70,6 @@ pub use setup::{
     BattleRegistries, BattleSetup, GangerCount, StackedGangers, has_stacked_gangers, setup_battle,
 };
 pub use spawn::{
-    CoverSpawn, FieldSpawn, FloorSpawn, GangerSpawn, PlacedGanger, Placement, Situation, SlabSpawn,
+    CoverSpawn, FieldSpawn, FloorSpawn, GangerSpawn, PlacedGanger, Placement, RosterMember,
+    Situation, SlabSpawn,
 };

@@ -85,6 +85,7 @@
 
 use super::{
     assembler::{PlacedPrefab, assemble_placement_with},
+    deploy::{DeploymentZone, DeploymentZones},
     error::PackingError,
     fill::{FilledPlacement, fill_placement_with},
     findings::{EmittedLevel, ProcgenFinding},
@@ -243,9 +244,17 @@ pub fn emit_level(
         floor_region(*rect, default_floor, &mut situation);
     }
 
+    // GTW-744: surface the two opposing deployment zones (the player + enemy prefab regions
+    // the assembler placed) so the app-side driver can deploy the roster onto the map.
+    let zones = DeploymentZones::new(
+        DeploymentZone::new(placement.player().anchor(), placement.player().region()),
+        DeploymentZone::new(placement.enemy().anchor(), placement.enemy().region()),
+    );
+
     EmittedLevel {
         situation,
         findings,
+        zones,
     }
 }
 

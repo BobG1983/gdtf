@@ -2,7 +2,7 @@
 
 How a playable battle is authored: a THEME nominates the terrain palette,
 PREFABS are the reusable level fragments procgen packs, a SITUATION requests
-the battle (theme + board size + placed gangers + hazards), and GANGS are the
+the battle (theme + board size + roster + hazards), and GANGS are the
 reusable rosters the situation fields. Everything is UUID- or key-referenced;
 the reference graph is validated at the end of `Load`
 ([reference-integrity.md](reference-integrity.md)).
@@ -70,9 +70,9 @@ registry — `crates/gdtf_app/src/states/load/systems/resolve/prefab.rs`,
 building the `PrefabRegistry` bucketed per `(theme, size, role)` key,
 `crates/gdtf_battle_sim/src/level/prefab/registry.rs`). At
 battle generation, procgen packs fragments for the requested theme/size into
-the board and merges the situation's gangers over the result. The content
-editor (`cargo edrun`) authors and saves prefabs to the same tree with the
-same one-owner path consts.
+the board and DEPLOYS the situation's roster members into the resulting
+player/enemy deployment zones (GTW-744). The content editor (`cargo edrun`)
+authors and saves prefabs to the same tree with the same one-owner path consts.
 
 ## Part 3 — Situations (the battle request)
 
@@ -90,18 +90,11 @@ so a bad file never strands `Load`
 (
     theme: "00000000-0000-0000-0000-01840a900001",   // ThemeUuid — the terrain family to generate from
     grid_size: (width: 30, height: 30, levels: 4),   // the procgen board (≤ 60×60×8)
-    gangers: [
-        (
-            gang:       "gang_0",       // gang ROSTER ref — a assets/content/gangs/ file stem
-            member:     "Alex Mercer",  // member within that gang, by roster display name
-            at:         (cell: (x: 5, y: 6), level: 0),  // spawn (cell, level)
-            faction:    0,              // SIDE for this battle (placement, not roster)
-            facing:     East,           // one of the 8 grid directions
-            stance:     Standing,       // Standing | Crouching | Prone
-            aiming:     false,          // aim-mode flag
-            life_state: Alive,          // terminal life state
-        ),
-        // … more placed gangers …
+    rosters: [                           // the combatants — gang + member + side refs, NO cells
+        (gang: "gang_0", member: "Alex Mercer", faction: 0),  // gang ROSTER ref + member + SIDE
+        (gang: "gang_0", member: "Kira Vann",   faction: 0),  // faction 0 → the player deployment zone
+        (gang: "gang_1", member: "Vex 1",       faction: 1),  // faction 1 → the enemy deployment zone
+        // … more roster members …
     ],
     fields: [                            // optional initial hazards (GTW-545)
         (at: (cell: (x: 9, y: 8), level: 0), field: "toxic_waste_pool"),
@@ -109,13 +102,20 @@ so a bad file never strands `Load`
 )
 ```
 
-The situation authors ONLY theme + board size + placements (+ initial
-fields): since GTW-433 the TERRAIN is procgen-generated from `theme` +
-`grid_size` against the loaded prefab library, driven by the battle's
-deterministic seed; the legacy inline-terrain fields are `#[serde(default)]`
-and stay unauthored. A placed ganger is a REFERENCE — the roster (identity,
+The situation authors ONLY theme + board size + roster (+ initial fields):
+since GTW-433 the TERRAIN is procgen-generated from `theme` + `grid_size`
+against the loaded prefab library, and since GTW-744 each roster member's SPAWN
+CELL / facing / stance is procgen-DERIVED too — `deploy_rosters` places each
+member into its side's deployment zone (faction == `player_faction` → the
+player zone, else the enemy zone) DETERMINISTICALLY by the battle's seed. So a
+shipped situation authors NO placement cells and NO inline terrain (both are
+`#[serde(default)]`). A roster member is a REFERENCE — the roster (identity,
 attributes, equipment) resolves against the `GangRegistry` at setup; the
-situation assigns only placement + faction.
+situation assigns only which member and which side.
+
+A `gangers:` list of fully-placed `PlacedGanger`s (each with `at` / `facing` /
+`stance` / …) is STILL accepted (`#[serde(default)]`) for TEST fixtures that
+need exact cells — but shipped content authors `rosters`.
 
 Note the gang path's TWO key schemes: `gang:` is a FILE-STEM key, `member:` is
 that roster's DISPLAY-NAME — the reference report names which scheme failed

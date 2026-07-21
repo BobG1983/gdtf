@@ -150,6 +150,17 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) fn req
             report.record(finding);
         }
     }
+    // GTW-744: FAIL CLOSED on a typed roster-deployment failure — write NO SetupBattleRequested,
+    // so the sim never signals BattleReady and `gate_generation_complete` never inserts the
+    // marker: the machine stays in Generation rather than starting an under-populated battle
+    // (the same no-BattleReady contract a bad situation already relies on).
+    if let Some(err) = &outcome.deployment_error {
+        error!(
+            "procgen could not deploy the roster into its deployment zone ({err}); the battle \
+             will not set up (staying in Generation)"
+        );
+        return;
+    }
     setup.write(SetupBattleRequested::new(outcome.situation, seed));
 }
 

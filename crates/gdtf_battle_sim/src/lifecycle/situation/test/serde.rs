@@ -7,6 +7,11 @@
 use bevy::platform::collections::HashSet;
 
 use super::support::*;
+use crate::{
+    metric::Cell,
+    procgen::{Anchor, DeploymentZone, DeploymentZones, Footprint, RegionRect, deploy_rosters},
+    rng::BattleSeed,
+};
 
 /// GTW-205 AC1 — an inline RON `Situation` containing ≥1 ganger, ≥1 wall, ≥1
 /// scatter piece, ≥1 slab, and ≥1 vertical link deserializes to `Ok`, and the
@@ -69,14 +74,13 @@ fn situation_deserializes_from_inline_ron_with_each_section() {
     );
 }
 
-/// GTW-205 AC3 / GTW-433 C1 — the shipped situation file parses back into a `Situation`
-/// (value-agnostic round-trip). Since the GTW-433 theme+size procgen migration the shipped
-/// `skirmish.ron` authors ONLY `theme` + `grid_size` + the placed gangers and NO inline
-/// terrain (the walls / scatter / slabs / vertical links / `default_floor` / floors are now
-/// PROCGEN-generated at Generation, not authored). So the structural assertions are:
-/// gangers non-empty, ≥2 distinct factions present, a real (non-empty) theme catalog key, a
-/// validated `grid_size`, and ZERO inline terrain entries — NEVER a pinned magnitude (authored
-/// data, not pinned by the test).
+/// GTW-205 AC3 / GTW-433 C1 / GTW-744 — the shipped situation file parses back into a
+/// `Situation` (value-agnostic round-trip). Since the GTW-433 theme+size procgen migration the
+/// shipped `skirmish.ron` authors NO inline terrain, and since GTW-744 it authors its combatants
+/// as `rosters` (gang + member + faction refs, NO placement cells — procgen derives them) and
+/// ZERO placed `gangers`. So the structural assertions are: rosters non-empty, ≥2 distinct
+/// factions present among the rosters, ZERO placed gangers, and ZERO inline terrain entries —
+/// NEVER a pinned magnitude (authored data, not pinned by the test).
 #[test]
 fn shipped_situation_ron_deserializes_with_required_structure() {
     let Some(situation) = shipped_situation() else {
@@ -84,11 +88,18 @@ fn shipped_situation_ron_deserializes_with_required_structure() {
     };
 
     assert!(
-        !situation.gangers.is_empty(),
-        "the shipped file must author at least one ganger",
+        !situation.rosters.is_empty(),
+        "the shipped file must author at least one roster member",
+    );
+    // GTW-744: the shipped file authors NO placement cells — the deploy step derives them.
+    assert!(
+        situation.gangers.is_empty(),
+        "the shipped file must author NO placed gangers (GTW-744: procgen derives the cells); \
+         found {}",
+        situation.gangers.len(),
     );
     // ≥2 distinct factions present (two gangs face off).
-    let distinct_factions: HashSet<_> = situation.gangers.iter().map(|g| g.faction).collect();
+    let distinct_factions: HashSet<_> = situation.rosters.iter().map(|m| m.faction).collect();
     assert!(
         distinct_factions.len() >= 2,
         "the shipped file must author at least two distinct factions, found {}",
@@ -157,13 +168,14 @@ fn shipped_situation_player_faction_defaults_to_gang_zero() {
     );
 }
 
-/// GTW-205 AC4 / GTW-257 AC5 / GTW-269 — the shipped file's vertical links validate AND
-/// every authored ganger's weapon key resolves against the SHIPPED weapons registry AND
-/// every authored ganger's armor key resolves against the SHIPPED armor registry,
-/// proving it is a setup-able, fully-armed, fully-armored situation. Deserialize the
-/// shipped file, run `setup_battle` on a `MinimalPlugins` app against the shipped weapon
-/// and armor registries, and assert it returns `Ok(BattleSetup)` with `ganger_count()`
-/// equal to the authored ganger count AND exactly that many `Wears`-carrying gangers
+/// GTW-205 AC4 / GTW-257 AC5 / GTW-269 / GTW-744 — the shipped file's vertical links validate
+/// AND every shipped ROSTER member's weapon key resolves against the SHIPPED weapons registry
+/// AND its armor key resolves against the SHIPPED armor registry, proving it is a setup-able,
+/// fully-armed, fully-armored situation. Deserialize the shipped file, DEPLOY its rosters into
+/// placed gangers via the REAL [`deploy_rosters`](crate::procgen::deploy_rosters)
+/// (`deploy_shipped_rosters`), run `setup_battle` on a `MinimalPlugins` app against the shipped
+/// weapon and armor registries, and assert it returns `Ok(BattleSetup)` with `ganger_count()`
+/// equal to the roster count AND exactly that many `Wears`-carrying gangers
 /// (the armor relationship) AND exactly that many ARMED (wielded-weapon) entities.
 /// Count-equality plus Ok proves the links validate, the file drives the real setup
 /// path, each ganger ends up armed from the shipped weapon files, and each ganger ends
@@ -189,7 +201,11 @@ fn shipped_situation_ron_drives_the_real_setup_path() {
     // terrain registry is never actually resolved against; supply it to satisfy the setup
     // signature.
     let terrain = shipped_terrain_registry();
-    let authored_ganger_count = situation.gangers.len();
+    // GTW-744: the shipped file authors `rosters` (no placement cells), so DEPLOY them into
+    // placed gangers via the REAL deploy_rosters before setup — the count to spawn is the
+    // roster count.
+    let authored_ganger_count = situation.rosters.len();
+    let situation = deploy_shipped_rosters(situation);
 
     let Some((mut app, setup)) = run_setup_with(situation, gangs, registry, armor, Some(&terrain))
     else {
@@ -231,10 +247,11 @@ fn shipped_situation_ron_drives_the_real_setup_path() {
 /// `skirmish.ron` ↔ `assets/content/gangs/*.gang.ron` ↔ `assets/content/weapons/ranged/*.ron`
 /// references are consistent, so the setup never hits `WeaponNotFound`.
 ///
-/// GTW-414/415: the weapon key now lives on the gang-ROSTER member, not the placement.
-/// Each placed ganger's `(gang, member)` ref is resolved against the shipped gang
-/// registry to its [`GangMember`](crate::ganger::GangMember), whose `weapon` key is then
-/// checked — proving the full placement → roster → weapon chain resolves.
+/// GTW-414/415 + GTW-744: the weapon key lives on the gang-ROSTER member; each shipped
+/// [`RosterMember`](crate::situation::RosterMember)'s `(gang, member)` ref is resolved
+/// against the shipped gang registry to its [`GangMember`](crate::ganger::GangMember),
+/// whose `weapon` key is then checked — proving the full roster → member → weapon chain
+/// resolves.
 #[test]
 fn every_shipped_ganger_references_a_loaded_weapon() {
     let Some(situation) = shipped_situation() else {
@@ -246,21 +263,21 @@ fn every_shipped_ganger_references_a_loaded_weapon() {
     let Some(registry) = shipped_registry() else {
         return;
     };
-    for placed in &situation.gangers {
-        // Resolve placement → roster member → its weapon key against the shipped registry,
+    for roster in &situation.rosters {
+        // Resolve roster ref → roster member → its weapon key against the shipped registry,
         // in one chain. `Some(true)` means the full chain resolved AND the weapon key is
         // present; anything else (member missing, or weapon key absent) is the failure.
         let weapon_resolves = gangs
-            .roster(&placed.gang)
-            .and_then(|roster| roster.member(&placed.member))
+            .roster(&roster.gang)
+            .and_then(|gang_roster| gang_roster.member(&roster.member))
             .map(|member| registry.spec(&member.weapon).is_some());
         assert_eq!(
             weapon_resolves,
             Some(true),
-            "shipped placed ganger {:?}/{:?} must resolve its roster member AND that member's \
+            "shipped roster member {:?}/{:?} must resolve its gang member AND that member's \
              weapon key against the shipped registry",
-            placed.gang,
-            placed.member,
+            roster.gang,
+            roster.member,
         );
     }
 }
@@ -271,9 +288,10 @@ fn every_shipped_ganger_references_a_loaded_weapon() {
 /// consistent, so the setup never hits `ArmorNotFound` (the armor mirror of the weapon-key
 /// consistency check).
 ///
-/// GTW-414/415: the armor key now lives on the gang-ROSTER member, not the placement — so
-/// each placed ganger's `(gang, member)` ref is resolved against the shipped gang registry
-/// to its [`GangMember`](crate::ganger::GangMember), whose `armor` key is then checked.
+/// GTW-414/415 + GTW-744: the armor key lives on the gang-ROSTER member — so each shipped
+/// [`RosterMember`](crate::situation::RosterMember)'s `(gang, member)` ref is resolved against
+/// the shipped gang registry to its [`GangMember`](crate::ganger::GangMember), whose `armor`
+/// key is then checked.
 #[test]
 fn every_shipped_ganger_references_a_loaded_armor() {
     let Some(situation) = shipped_situation() else {
@@ -285,20 +303,20 @@ fn every_shipped_ganger_references_a_loaded_armor() {
     let Some(armor) = shipped_armor_registry() else {
         return;
     };
-    for placed in &situation.gangers {
-        // Resolve placement → roster member → its armor key against the shipped registry,
+    for roster in &situation.rosters {
+        // Resolve roster ref → roster member → its armor key against the shipped registry,
         // in one chain (the armor mirror of the weapon check above).
         let armor_resolves = gangs
-            .roster(&placed.gang)
-            .and_then(|roster| roster.member(&placed.member))
+            .roster(&roster.gang)
+            .and_then(|gang_roster| gang_roster.member(&roster.member))
             .map(|member| armor.spec(&member.armor).is_some());
         assert_eq!(
             armor_resolves,
             Some(true),
-            "shipped placed ganger {:?}/{:?} must resolve its roster member AND that member's \
+            "shipped roster member {:?}/{:?} must resolve its gang member AND that member's \
              armor key against the shipped armor registry",
-            placed.gang,
-            placed.member,
+            roster.gang,
+            roster.member,
         );
     }
 }
@@ -342,4 +360,38 @@ fn shipped_situation_ron_is_per_line_commented() {
             "every value-bearing line must carry a `//` comment; bare line: {trimmed:?}",
         );
     }
+}
+
+/// Deploy the shipped situation's GTW-744 ROSTER members into placed gangers via the REAL
+/// [`deploy_rosters`](crate::procgen::deploy_rosters) over hand-built deployment zones — so
+/// [`shipped_situation_ron_drives_the_real_setup_path`] exercises `setup_battle` on the DEPLOYED
+/// gangers (the shipped file now authors `rosters`, not placed `gangers`).
+///
+/// The zones are two non-overlapping 10×10 corners of the shipped 30×30 board (ample standable
+/// room for the four-member roster). This drives the REAL deploy function (not a shadow);
+/// deployment CORRECTNESS over the real `generate_level` zones is separately pinned by
+/// `procgen::test::deploy`. Deterministic (fixed seed). Returns the situation with its `gangers`
+/// extended by the deployed set (an empty roster leaves it unchanged). Local to this file — its
+/// sole consumer — per the module-layout single-consumer-helper rule.
+fn deploy_shipped_rosters(mut situation: Situation) -> Situation {
+    let zones = DeploymentZones::new(
+        DeploymentZone::new(
+            Anchor::BottomLeft,
+            RegionRect::new(Cell::new(0, 0), Footprint::new(10, 10)),
+        ),
+        DeploymentZone::new(
+            Anchor::TopRight,
+            RegionRect::new(Cell::new(20, 20), Footprint::new(10, 10)),
+        ),
+    );
+    if let Ok(placed) = deploy_rosters(
+        &zones,
+        &situation,
+        &situation.rosters,
+        situation.player_faction,
+        BattleSeed::new(0x0744),
+    ) {
+        situation.gangers.extend(placed);
+    }
+    situation
 }

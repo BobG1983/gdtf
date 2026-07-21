@@ -1,215 +1,134 @@
-//! GTW-414 / GTW-415 — the REAL-ASSET live-battle-start proof (the gangs
-//! family's bespoke migration pin, split from `load_gangs.rs` under the repo
-//! file caps by GTW-580 — kept verbatim, never genericized).
+//! GTW-414 / GTW-415 / GTW-744 — the REAL-ASSET live-battle-start proof (the gangs
+//! family's bespoke migration pin, split from `load_gangs.rs` under the repo file caps
+//! by GTW-580 — kept verbatim, then repointed by GTW-744 to the deploy path).
 //!
-//! This is the feature-completeness proof the seeded-fixture regression test
-//! (`gdtf_battle_sim`'s `shipped_situation_ron_drives_the_real_setup_path`, which
-//! synthesizes its rosters via `SituationBuilder::build_with_gangs` /
-//! `test_gang_registry`) cannot give: it drives the WHOLE real Load flow — the genuine
-//! `AssetServer` rooted at the workspace `assets/` loads `assets/content/gangs/*.gang.ron`
-//! into a `GangRegistry`, WITHOUT seeding any default registry — and then proves the
-//! REAL shipped `skirmish.ron` + that real `GangRegistry` (+ the real weapon / armor /
-//! terrain registries + stat tuning, also resolved by the Load flow) spawn the CONCRETE
-//! expected ganger set through the authoritative `setup_battle`.
+//! This is the feature-completeness proof the seeded-fixture regression tests cannot give:
+//! it drives the WHOLE real menu→Load→battle flow — the genuine `AssetServer` rooted at the
+//! workspace `assets/` loads `assets/content/gangs/*.gang.ron` into a `GangRegistry`, the real
+//! prefab / theme / terrain registries, and the shipped `skirmish.ron` — WITHOUT seeding any
+//! default registry, and proves the REAL shipped situation spawns the CONCRETE expected ganger
+//! set through the authoritative live path.
 //!
-//! It would FAIL closed if the GTW-415 loader were missing (the registry stays empty,
-//! every placed ganger's `(gang, member)` ref fails to resolve → `GangNotFound` → no
-//! gangers spawn) — so it is the live-battle-start-is-whole proof. Asserting the
-//! migrated values match the pre-migration inline list is the EXPLICIT exception to the
-//! "loaders must not pin shipped magnitudes" rule — it proves the migration preserved
-//! them verbatim. The expected set + its field-for-field assertions live in
+//! GTW-744 (procgen deployment): `skirmish.ron` now authors its combatants as `rosters` (gang +
+//! member + faction refs, NO placement cells). So the placement is DERIVED by the procgen deploy
+//! step (from the generated map's deployment zones), not authored — this test therefore drives
+//! the FULL app to `BattleRunning` (the live `generate_level` → `deploy_rosters` → `setup_battle`
+//! path) rather than calling `setup_battle` directly on the raw situation. What the migration
+//! PRESERVES verbatim — the four ganger IDENTITIES, their eight attributes, their weapon / armor
+//! keys, and their FACTION — is asserted field-for-field (the explicit pin-the-migrated-values
+//! exception to the no-pinning rule); the SPAWN CELLS are procgen-derived, so the test asserts
+//! only that all four deployed to distinct, live positions.
+//!
+//! It would FAIL closed if the GTW-415 loader were missing (the registry stays empty, every
+//! roster member's `(gang, member)` ref fails to resolve → no gangers deploy/spawn → the battle
+//! never reaches `BattleRunning`). The expected set + its field-for-field assertions live in
 //! [`expected`].
 
-/// The expected shipped spawn set + its field-for-field assertions (split
-/// under the repo file caps). `#[path]` because a test-crate ROOT resolves a
-/// bare `mod` beside itself in `tests/`, not in a same-named subdirectory.
+/// The expected shipped spawn set + its field-for-field assertions (split under the repo
+/// file caps). `#[path]` because a test-crate ROOT resolves a bare `mod` beside itself in
+/// `tests/`, not in a same-named subdirectory.
 #[path = "load_gangs_spawn/expected.rs"]
 mod expected;
 
+use std::collections::HashMap;
+
 use bevy::{
     app::App,
-    asset::AssetPlugin,
-    ecs::system::RunSystemOnce,
-    prelude::{Commands, Entity, MinimalPlugins, World},
-    scene::ScenePlugin,
+    prelude::{Entity, NextState, World},
+    state::state::State,
 };
-use gdtf_app::test_support::{AppState, LoadedSituation};
-use gdtf_battle_sim::{
-    armor::ArmorRegistry,
-    def::TerrainDefRegistry,
-    ganger::{GangRegistry, GangerName},
-    situation::{BattleRegistries, Situation, setup_battle},
-    tuning::{CombatTuning, GangerStatTuning},
-    weapon::WeaponRegistry,
-};
-use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
+use gdtf_app::test_support::{AppState, BattleScapeState, RunningState};
+use gdtf_battle_sim::ganger::{GangRegistry, GangerName};
+use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
-/// Generous SAFETY-NET cap for the real-asset `advance_until` waits gated on an async
-/// asset load resolving — a safety net against a genuine never-resolve hang, not a timing
-/// budget (the GTW-305 / `load_weapons` precedent).
-const LOAD_SAFETY_NET: u32 = 10_000;
+/// A generous budget for the real `DefaultPlugins` async asset loads + the full state descent
+/// under contention (the `real_battle_panel.rs` / `procgen_battle.rs` precedent).
+const BUDGET: u32 = 512;
 
-/// Part (b) — the REAL shipped `skirmish.ron` + the real `GangRegistry` (both resolved by
-/// the genuine Load flow) drive the authoritative `setup_battle` to spawn the CONCRETE
-/// expected ganger set: same `GangerName`s (Alex Mercer / Vex 1 / Vex 2), same eight
-/// attribute values, same weapon, same placement (position / facing / stance / aiming /
-/// life state) and faction as the pre-migration inline list.
+/// Reads the current [`RunningState`] if it is active.
+fn running_state(app: &App) -> Option<RunningState> {
+    app.world()
+        .get_resource::<State<RunningState>>()
+        .map(|state| *state.get())
+}
+
+/// Reads the current [`BattleScapeState`] if it is active.
+fn battlescape_state(app: &App) -> Option<BattleScapeState> {
+    app.world()
+        .get_resource::<State<BattleScapeState>>()
+        .map(|state| *state.get())
+}
+
+/// Part (b) — the REAL shipped `skirmish.ron` + the real `GangRegistry` (both resolved by the
+/// genuine Load flow) drive the authoritative live path to spawn the CONCRETE expected ganger
+/// set: same `GangerName`s (Alex Mercer / Kira Vann / Vex 1 / Vex 2), same eight attribute
+/// values, same weapon, same armor key, and same faction as the pre-migration inline list.
+///
+/// GTW-744: the SPAWN CELLS are procgen-derived (the deploy step places each roster member into
+/// its side's zone), so this asserts distinct live positions rather than authored cells; the
+/// roster VALUES (identity + attributes + weapon/armor + faction) are the migration-preserved
+/// data and are pinned field-for-field.
 ///
 /// This is the live-battle-start-is-whole proof: it FAILS closed if the gang refs fail to
-/// resolve (no gangers spawn). Asserting the migrated values match the pre-migration ones
-/// is the deliberate exception to the no-pinning rule — it proves the GTW-414/415
-/// migration preserved them verbatim.
-///
-/// PIN: it fails if the loader is missing (empty registry → `GangNotFound` → zero
-/// gangers), if a roster value drifted from the pre-migration inline list, or if the
-/// placement / faction were lost in the split.
+/// resolve (no gangers deploy → the battle never reaches `BattleRunning`).
 #[test]
 fn real_skirmish_with_real_gangs_spawns_the_expected_set() {
-    // 1. Drive the real Load flow until every resource setup_battle needs is resolved
-    //    from the real assets (NO seeded defaults — these come from disk).
+    // 1. Drive the REAL menu→Load→battle path (a live `AssetServer` rooted at the workspace
+    //    `assets/`, no seeded defaults) to the running battle.
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
-    advance_until_resource_exists::<GangRegistry>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<LoadedSituation>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<ArmorRegistry>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<TerrainDefRegistry>(&mut app, LOAD_SAFETY_NET);
-    advance_until_resource_exists::<GangerStatTuning>(&mut app, LOAD_SAFETY_NET);
-    // GTW-545: the FieldDefRegistry catalog too — the shipped skirmish.ron now authors a
-    // `fields:` toxic-pool placement, so setup_battle must resolve its key against the loaded
-    // catalog (else FieldNotFound).
-    advance_until_resource_exists::<gdtf_battle_sim::effects::fields::FieldDefRegistry>(
+
+    let reached_menu = advance_until(
         &mut app,
-        LOAD_SAFETY_NET,
+        |app| running_state(app) == Some(RunningState::Menu),
+        BUDGET,
+    );
+    assert!(
+        reached_menu,
+        "the real Load flow must reach RunningState::Menu within {BUDGET} updates; last observed \
+         RunningState was {:?}",
+        running_state(&app),
     );
 
-    // 2. Read the resolved-from-disk resources out of the loaded world (all Clone), so a
-    //    FRESH headless app can run setup_battle against the REAL data. Every one must be
-    //    present (the gate waited for them) — assert that, then unpack panic-free.
-    let world = app.world();
-    let situation = world
-        .get_resource::<LoadedSituation>()
-        .map(|s| (**s).clone());
-    let gangs = world.get_resource::<GangRegistry>().cloned();
-    let weapons = world.get_resource::<WeaponRegistry>().cloned();
-    let armor = world.get_resource::<ArmorRegistry>().cloned();
-    let terrain = world.get_resource::<TerrainDefRegistry>().cloned();
-    let stat_tuning = world.get_resource::<GangerStatTuning>().cloned();
-    let field_defs = world
-        .get_resource::<gdtf_battle_sim::effects::fields::FieldDefRegistry>()
-        .cloned();
-    let all_present = situation.is_some()
-        && gangs.is_some()
-        && weapons.is_some()
-        && armor.is_some()
-        && terrain.is_some()
-        && stat_tuning.is_some()
-        && field_defs.is_some();
-    assert!(
-        all_present,
-        "every real Load resource setup_battle needs must be present",
+    app.world_mut()
+        .resource_mut::<NextState<RunningState>>()
+        .set(RunningState::Game);
+    let reached_battle = advance_until(
+        &mut app,
+        |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
+        BUDGET,
     );
-    let (
-        Some(situation),
-        Some(gangs),
-        Some(weapons),
-        Some(armor),
-        Some(terrain),
-        Some(stat_tuning),
-        Some(field_defs),
-    ) = (
-        situation,
-        gangs,
-        weapons,
-        armor,
-        terrain,
-        stat_tuning,
-        field_defs,
-    )
-    else {
+    assert!(
+        reached_battle,
+        "the real skirmish must generate + DEPLOY its roster and reach BattleRunning within \
+         {BUDGET} updates (a missing gang ref would leave zero gangers and never reach it); last \
+         observed BattleScapeState was {:?}",
+        battlescape_state(&app),
+    );
+
+    // 2. Read the real, resolved-from-disk `GangRegistry` (the roster-key data proof resolves
+    //    against it). It survives into the battle as a persistent Load resource.
+    let gangs = app.world().get_resource::<GangRegistry>().cloned();
+    assert!(
+        gangs.is_some(),
+        "the real Load flow must resolve a GangRegistry from the shipped gangs",
+    );
+    let Some(gangs) = gangs else {
         return;
     };
 
-    // 3. Run the authoritative setup_battle on a fresh MinimalPlugins+Scene app against the
-    //    REAL skirmish + REAL gang/weapon/armor/terrain registries, then drive SpawnScene.
-    let Some(mut battle) = run_real_setup(
-        situation,
-        &gangs,
-        weapons,
-        armor,
-        terrain,
-        stat_tuning,
-        &field_defs,
-    ) else {
-        return;
-    };
-
-    // 4. Build a name → spawned-entity map in one query, then assert each expected ganger
-    //    spawned with its concrete migrated values (placement + attributes + weapon), and
-    //    the migrated weapon + armor KEYS (data-level, via the real gang registry).
-    let spawned = ganger_entities(battle.world_mut());
-    expected::assert_expected_set(battle.world(), &spawned, &gangs);
+    // 3. Build a name → spawned-entity map in one query, then assert each expected ganger
+    //    spawned with its concrete migrated values (attributes + weapon + faction), the migrated
+    //    weapon + armor KEYS (data-level, via the real gang registry), and a distinct deployed
+    //    position.
+    let spawned = ganger_entities(app.world_mut());
+    expected::assert_expected_set(app.world(), &spawned, &gangs);
 }
 
-/// Run the authoritative `setup_battle` on a fresh `MinimalPlugins` + `AssetPlugin` +
-/// `ScenePlugin` app against the REAL skirmish + registries, driving the `SpawnScene`
-/// schedule so the deferred `bsn!` ganger components materialize. Returns the live app, or
-/// `None` (asserting first) if setup did not succeed.
-fn run_real_setup(
-    situation: Situation,
-    gangs: &GangRegistry,
-    weapons: WeaponRegistry,
-    armor: ArmorRegistry,
-    terrain: TerrainDefRegistry,
-    stat_tuning: GangerStatTuning,
-    field_defs: &gdtf_battle_sim::effects::fields::FieldDefRegistry,
-) -> Option<App> {
-    let fallback_floor_cost = CombatTuning::default().move_costs.open;
-    let mut battle = App::new();
-    battle.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
-    let gangs = gangs.clone();
-    // GTW-505: the melee registry (with the `fists` default) so each ganger's melee weapon
-    // resolves at setup (these gangers author none → `fists`).
-    let melee = gdtf_battle_sim::test_support::test_melee_weapon_registry();
-    // GTW-545: the loaded field catalog so the shipped skirmish's authored toxic-pool field
-    // resolves its key (else FieldNotFound).
-    let field_defs = field_defs.clone();
-    let outcome = battle
-        .world_mut()
-        .run_system_once(move |mut commands: Commands| {
-            setup_battle(
-                &situation,
-                BattleRegistries::new(
-                    &gangs,
-                    &weapons,
-                    &melee,
-                    &armor,
-                    &stat_tuning,
-                    Some(&terrain),
-                )
-                .with_field_defs(&field_defs),
-                fallback_floor_cost,
-                &mut commands,
-            )
-        });
-    let succeeded = matches!(outcome, Ok(Ok(_)));
-    assert!(
-        succeeded,
-        "setup_battle must succeed on the REAL skirmish + REAL gangs (a missing gang ref \
-         would abort with GangNotFound); outcome was {outcome:?}",
-    );
-    if !succeeded {
-        return None;
-    }
-    // Drive the SpawnScene schedule so the deferred `bsn!` ganger components materialize.
-    battle.update();
-    Some(battle)
-}
-
-/// Collect every spawned ganger entity keyed by its [`GangerName`] string — one query so
-/// the per-ganger assertions read from a `&World` (no per-lookup `&mut World`).
-fn ganger_entities(world: &mut World) -> std::collections::HashMap<String, Entity> {
+/// Collect every spawned ganger entity keyed by its [`GangerName`] string — one query so the
+/// per-ganger assertions read from a `&World` (no per-lookup `&mut World`).
+fn ganger_entities(world: &mut World) -> HashMap<String, Entity> {
     let mut query = world.query::<(Entity, &GangerName)>();
     query
         .iter(world)

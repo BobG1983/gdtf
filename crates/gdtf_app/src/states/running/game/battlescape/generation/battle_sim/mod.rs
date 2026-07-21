@@ -5,6 +5,7 @@
 mod plugin;
 pub(in crate::states::running::game::battlescape::generation) use plugin::BattleSimPlugin;
 
+mod deploy;
 mod procgen;
 // `pub(crate)`, not private, and ONLY under `dev_tools`: the GTW-655 dev-tools stepper
 // (`crate::dev::procgen_stepper`) is the sole consumer of this wider path — it finishes its

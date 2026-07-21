@@ -50,6 +50,7 @@
 
 mod anchor;
 mod assembler;
+mod deploy;
 mod emit;
 mod error;
 mod fill;
@@ -64,8 +65,9 @@ mod test;
 
 pub use anchor::Anchor;
 pub use assembler::{PlacedPrefab, Placement, assemble_placement, assemble_placement_with};
+pub use deploy::{DeploymentZone, DeploymentZones, Standable, deploy_rosters, facing_for_anchor};
 pub use emit::{emit_level, generate_level};
-pub use error::PackingError;
+pub use error::{PackingError, RosterDemand, ZoneCapacity};
 pub use fill::{FilledPlacement, fill_placement, fill_placement_with};
 pub use findings::{EmittedLevel, ProcgenFinding};
 pub use geometry::{

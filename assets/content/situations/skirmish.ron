@@ -14,14 +14,16 @@
 // for THIS battle. The roster (identity + 8 attributes + weapon + armor) is resolved at
 // setup against the GangRegistry built from the gangs folder.
 //
-// GTW-433 (theme+size procgen migration): this situation authors ONLY the THEME + the
-// coarse GRID SIZE + the placed gangers. It NO LONGER authors inline terrain (walls /
-// scatter / slabs / default_floor / floors / vertical_links): the TERRAIN is PROCGEN-
-// generated at BattleScapeState::Generation from `theme` + `grid_size` against the loaded
-// prefab library (the sim's `generate_level`, GTW-431), driven by the battle's deterministic
-// seed. The authored gangers are merged over that generated terrain. The Situation schema's
-// terrain fields are `#[serde(default)]` (GTW-414 v2), so omitting them parses to empty —
-// the procgen step fills them in.
+// GTW-433 (theme+size procgen migration) + GTW-744 (procgen deployment): this situation
+// authors ONLY the THEME + the coarse GRID SIZE + the ROSTER (gang + member refs). It authors
+// NO inline terrain (walls / scatter / slabs / default_floor / floors / vertical_links) AND NO
+// placement cells. Both are DERIVED at BattleScapeState::Generation from `theme` + `grid_size`:
+// the sim's `generate_level` (GTW-431) packs the theme's prefab fragments into the board, and
+// `deploy_rosters` (GTW-744) places each roster member into its side's deployment zone
+// DETERMINISTICALLY by the battle's seed (facing derived from the zone's orientation, Standing /
+// Alive). The Situation schema's terrain fields AND `gangers` are `#[serde(default)]`, so
+// omitting them parses to empty — procgen fills them in. (A test/fixture may still author exact
+// `gangers` cells for back-compat; shipped content authors `rosters`.)
 (
     // The level THEME (GTW-491) — now the UUID-keyed reference to the migrated IndustrialHive
     // UuidThemeDef (assets/content/terrain/industrial_hive/industrial_hive.terrain_theme.ron), resolvable
@@ -35,58 +37,19 @@
     // theme's prefab fragments into (a 30×30×4 board comfortably holds the IndustrialHive
     // player + enemy deployment prefabs at opposite corners with the inter-prefab seam).
     grid_size: (width: 30, height: 30, levels: 4),  // coarse grid extent (w × h × storeys) — the procgen board
-    // The placed gangers (GTW-414 schema v2) — each REFERENCES a gang + member by name and
-    // supplies its placement + faction. The roster (attributes / weapon / armor) is resolved
-    // against the gangs folder at setup. Two gangs (faction 0 and faction 1) face off. These
-    // placements survive procgen (the generated terrain is merged OVER them — GTW-433).
-    gangers: [
-        // --- Gang 0: a standing rifleman on the ground floor, facing east. ---
-        (
-            gang:       "gang_0",      // gang ROSTER ref — resolves to assets/content/gangs/gang_0.gang.ron
-            member:     "Alex Mercer", // member within gang_0 — its identity + 8 attributes + weapon + armor come from there
-            at:         (cell: (x: 5, y: 6), level: 0),  // (cell, level) it spawns at — its Position
-            faction:    0,            // SIDE assignment for this battle — gang 0 (placement, not roster)
-            facing:     East,         // which of the 8 grid directions it faces
-            stance:     Standing,     // posture — upright (full silhouette, full stability gate)
-            aiming:     false,        // aim-mode flag — hip-firing, not aimed
-            life_state: Alive,        // terminal life state — up and fighting
-        ),
-        // --- Gang 0: a grenadier beside Alex, facing east — carries the ARC grenade launcher, so
-        // the contextual THROW act is LIVE in the shipped playable skirmish (GTW-546). Player
-        // faction (0): the AI never acts for the player, so this does NOT perturb the seeded
-        // autobattle enemy path. ---
-        (
-            gang:       "gang_0",      // gang ROSTER ref — resolves to assets/content/gangs/gang_0.gang.ron
-            member:     "Kira Vann",   // the grenadier member within gang_0 — wields the grenade_launcher (TrajectoryStyle::Arc)
-            at:         (cell: (x: 5, y: 8), level: 0),  // (cell, level) it spawns at — beside Alex on the player side
-            faction:    0,            // SIDE assignment for this battle — gang 0 (the player side)
-            facing:     East,         // faces toward the enemy deployment
-            stance:     Standing,     // posture — upright
-            aiming:     false,        // aim-mode flag — hip-firing (the blind arc throw ignores aim anyway)
-            life_state: Alive,        // terminal life state — up and fighting
-        ),
-        // --- Gang 1: a crouching, aimed defender across the floor, facing west. ---
-        (
-            gang:       "gang_1",      // gang ROSTER ref — resolves to assets/content/gangs/gang_1.gang.ron
-            member:     "Vex 1",       // member within gang_1
-            at:         (cell: (x: 12, y: 9), level: 0),  // (cell, level) it spawns at
-            faction:    1,            // SIDE assignment — gang 1 (the opposing side)
-            facing:     West,         // faces back toward gang 0
-            stance:     Crouching,    // posture — kneeling (compressed silhouette, steadier)
-            aiming:     true,         // aim-mode flag — aimed shot (narrows the cone at a TU premium)
-            life_state: Alive,        // terminal life state — up and fighting
-        ),
-        // --- Gang 1: a second crouching, aimed defender, facing west. ---
-        (
-            gang:       "gang_1",      // gang ROSTER ref — the SAME gang_1 roster as Vex 1
-            member:     "Vex 2",       // member within gang_1
-            at:         (cell: (x: 12, y: 12), level: 0),  // (cell, level) it spawns at
-            faction:    1,            // SIDE assignment — gang 1 (the opposing side)
-            facing:     West,         // faces back toward gang 0
-            stance:     Crouching,    // posture — kneeling (compressed silhouette, steadier)
-            aiming:     true,         // aim-mode flag — aimed shot (narrows the cone at a TU premium)
-            life_state: Alive,        // terminal life state — up and fighting
-        ),
+    // The ROSTER (GTW-744) — each member REFERENCES a gang + member by name and its side
+    // (faction); NO cell / facing / stance. The roster (attributes / weapon / armor) is resolved
+    // against the gangs folder at setup; the SPAWN cell / facing / stance are DERIVED by
+    // `deploy_rosters` from the generated map's deployment zones (faction 0 in the player zone,
+    // faction 1 in the enemy zone — opposite corners). Two gangs (faction 0 and faction 1) face off.
+    rosters: [
+        // --- Gang 0 (player side): the rifleman + the grenadier (the grenade_launcher's ARC Throw
+        // act is LIVE in the shipped playable skirmish, GTW-546). Both deploy into the player zone. ---
+        (gang: "gang_0", member: "Alex Mercer", faction: 0),  // gang_0 roster ref — identity + 8 attributes + weapon + armor
+        (gang: "gang_0", member: "Kira Vann",   faction: 0),  // the grenadier — wields grenade_launcher (TrajectoryStyle::Arc)
+        // --- Gang 1 (enemy side): two defenders. Both deploy into the enemy zone (opposite corner). ---
+        (gang: "gang_1", member: "Vex 1",       faction: 1),  // gang_1 roster ref
+        (gang: "gang_1", member: "Vex 2",       faction: 1),  // the SAME gang_1 roster as Vex 1
     ],
     // NOTE (GTW-433): NO terrain fields are authored here. walls / scatter / slabs /
     // default_floor / floors / vertical_links are GENERATED by procgen at Generation from

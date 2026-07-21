@@ -8,9 +8,9 @@
 //! Two tests:
 //!
 //! 1. [`skirmish_ron_authors_no_terrain`] — the SHIPPED `assets/content/situations/skirmish.ron`
-//!    authors theme + `grid_size` + gangers and NO inline terrain (GTW-433 C1: the migration
-//!    removed walls / scatter / slabs / `default_floor` / floors / `vertical_links`). Parses the
-//!    real asset file directly (no app).
+//!    authors theme + `grid_size` + `rosters` and NO inline terrain (GTW-433 C1: the migration
+//!    removed walls / scatter / slabs / `default_floor` / floors / `vertical_links`) AND NO placed
+//!    `gangers` cells (GTW-744: procgen derives them). Parses the real asset file directly (no app).
 //! 2. [`procgen_battle_reaches_running_with_populated_terrain`] — the full REAL app walk
 //!    (`GdtfLoadTestAppBuilder` → live `AssetServer` rooted at the workspace `assets/`) drives
 //!    `Load` to completion, asserts the v2 [`PrefabRegistry`] was POPULATED via the resolve
@@ -72,16 +72,25 @@ fn skirmish_ron_authors_no_terrain() {
         return;
     };
 
-    // Theme + size + gangers are authored (the kept fields). GTW-491: `theme` is now the
+    // Theme + size + rosters are authored (the kept fields). GTW-491: `theme` is now the
     // UUID-keyed IndustrialHive ThemeUuid (reconciled from the GTW-490 `theme_uuid`).
     assert_eq!(
         situation.theme,
         industrial_hive_theme(),
         "skirmish.ron must author its theme (the IndustrialHive ThemeUuid)",
     );
+    // GTW-744: the shipped file authors its combatants as `rosters` (gang + member + faction
+    // refs, NO placement cells) and authors ZERO placed `gangers` — the deploy step derives the
+    // cells from the generated map. Re-authoring a `gangers` cell here (un-reducing it) turns
+    // this red.
     assert!(
-        !situation.gangers.is_empty(),
-        "skirmish.ron must keep its placed gangers (GTW-414 gang-name refs intact)",
+        !situation.rosters.is_empty(),
+        "skirmish.ron must author its roster members (GTW-744 gang-name refs, no cells)",
+    );
+    assert!(
+        situation.gangers.is_empty(),
+        "skirmish.ron must author NO placed gangers (GTW-744: zero authored cells; the deploy \
+         step derives them)",
     );
 
     // NO inline terrain remains (the GTW-433 migration removed all of it).

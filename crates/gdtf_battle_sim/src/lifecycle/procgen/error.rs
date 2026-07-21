@@ -1,14 +1,18 @@
-//! The typed [`PackingError`] — the no-panic, fail-closed procgen-abort contract
-//! (GTW-424), mirroring [`BattleSetupError`](crate::situation::BattleSetupError).
+//! The typed [`PackingError`] — the no-panic, fail-closed generation-abort contract
+//! (GTW-424 / GTW-744), mirroring [`BattleSetupError`](crate::situation::BattleSetupError).
 //!
-//! Every way the space-packing assembler can fail to produce a valid placement is a named
-//! variant here. The assembler returns these in the `Err` arm of a [`Result`] — it NEVER
-//! `unwrap`/`expect`/`panic`s. OQ-5 prefers REJECTING an over-large player footprint at
+//! Every way generation can fail to produce a valid placement is a named variant here —
+//! the space-packing assembler's footprint failures (GTW-424) AND the GTW-744 roster
+//! DEPLOYMENT failure (a zone too small to stand its whole roster). The assembler / deploy
+//! step return these in the `Err` arm of a [`Result`] — they NEVER
+//! `unwrap`/`expect`/`panic`. OQ-5 prefers REJECTING an over-large player footprint at
 //! GTW-418 load time so runtime is always valid; these variants are the runtime
 //! fail-closed backstop for the cases load-time rejection cannot cover (e.g. an empty
 //! prefab registry, or a chosen footprint that does not fit). GTW-497 removed the OQ-4
 //! disconnection variant: connectivity is by-construction via the 1-cell `default_floor`
 //! seam, so there is no disconnection to report.
+
+use bevy::prelude::Deref;
 
 use super::{
     anchor::Anchor,
@@ -16,10 +20,43 @@ use super::{
 };
 use crate::level::{SpawnRole, ThemeUuid};
 
-/// The typed ways the GTW-424 packer can fail — the no-panic, fail-closed procgen-abort
-/// contract.
+/// A **count of roster members** a deployment zone must stand (GTW-744) — the demand side
+/// of the [`PackingError::DeploymentZoneTooSmall`] capacity check.
 ///
-/// A named domain enum (no-bare-types: a packing failure is a domain value, not a bare
+/// A named newtype over `usize` (no-bare-types: a member count is a domain quantity, not a
+/// bare integer, and distinct from the capacity it is compared against). Private inner +
+/// derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RosterDemand(usize);
+
+impl RosterDemand {
+    /// Build a roster demand from its member count.
+    #[must_use]
+    pub const fn new(members: usize) -> Self {
+        Self(members)
+    }
+}
+
+/// A **count of standable cells** a deployment zone offers (GTW-744) — the capacity side of
+/// the [`PackingError::DeploymentZoneTooSmall`] check.
+///
+/// A named newtype over `usize` (no-bare-types rule 3: distinct from [`RosterDemand`] even
+/// over the same inner — a capacity is never a demand). Private inner + derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ZoneCapacity(usize);
+
+impl ZoneCapacity {
+    /// Build a zone capacity from its standable-cell count.
+    #[must_use]
+    pub const fn new(cells: usize) -> Self {
+        Self(cells)
+    }
+}
+
+/// The typed ways generation can fail — the no-panic, fail-closed generation-abort
+/// contract (GTW-424 packing + GTW-744 deployment).
+///
+/// A named domain enum (no-bare-types: a generation failure is a domain value, not a bare
 /// string/`()`), the [`BattleSetupError`](crate::situation::BattleSetupError) precedent.
 /// Each variant names the offending input so a caller can log exactly why generation
 /// could not produce a valid level. Validated BEFORE any [`Situation`](crate::situation::Situation)
@@ -58,6 +95,19 @@ pub enum PackingError {
         /// The minimum side it failed to clear (the OQ-5 floor, in cells).
         min_side:  MinPlayerSide,
     },
+    /// A deployment zone cannot stand its whole roster (GTW-744) — the zone offers fewer
+    /// STANDABLE cells (in-bounds, unblocked, unoccupied) than the roster has members to
+    /// place. Fail-closed: [`deploy_rosters`](crate::procgen::deploy_rosters) returns this
+    /// rather than dropping members or stacking them, so the app can abort setup (staying in
+    /// Generation) rather than start an under-populated battle.
+    DeploymentZoneTooSmall {
+        /// The anchor of the zone that could not fit its roster.
+        anchor:   Anchor,
+        /// How many roster members needed placing in the zone.
+        demand:   RosterDemand,
+        /// How many standable cells the zone actually offered.
+        capacity: ZoneCapacity,
+    },
 }
 
 impl std::fmt::Display for PackingError {
@@ -87,6 +137,16 @@ impl std::fmt::Display for PackingError {
                 footprint.width(),
                 footprint.height(),
                 *min_side.cells(),
+            ),
+            Self::DeploymentZoneTooSmall {
+                anchor,
+                demand,
+                capacity,
+            } => write!(
+                f,
+                "the {anchor:?} deployment zone has {} standable cells but must stand {} roster \
+                 members",
+                **capacity, **demand,
             ),
         }
     }

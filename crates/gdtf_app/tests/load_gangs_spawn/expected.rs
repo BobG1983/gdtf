@@ -1,26 +1,30 @@
 //! The concrete expected spawn set + its field-for-field assertions — the
-//! pre-GTW-414 inline values the migration must have preserved verbatim (the
-//! explicit pin-the-migrated-values exception to the no-pinning rule), split
-//! from the `load_gangs_spawn.rs` test body under the repo file caps.
+//! pre-GTW-414 inline ROSTER values the migration must have preserved verbatim
+//! (identity + attributes + weapon/armor keys + faction), split from the
+//! `load_gangs_spawn.rs` test body under the repo file caps.
+//!
+//! GTW-744: the spawn CELLS are no longer authored (the deploy step derives them from the
+//! generated map), so this no longer pins exact positions/facing/stance — only the migration-
+//! preserved roster VALUES field-for-field, plus that all four members deployed to distinct,
+//! live positions.
 
 use std::collections::HashMap;
 
 use bevy::prelude::{Entity, World};
 use gdtf_battle_sim::{
     ganger::{
-        Aim, Aiming, Cool, Facing, GangName, GangRegistry, GangerName, Grit, Luck, Reflexes, Speed,
+        Aim, Cool, GangName, GangRegistry, GangerName, Grit, Luck, Position, Reflexes, Speed,
         Strength, Toughness,
     },
-    prelude::{
-        Cell, CellLevel, Direction, Faction, Level, LifeState, Position, Stance, StanceKind,
-    },
+    prelude::{Faction, LifeState},
     weapon::{WeaponName, Wields},
 };
 
-/// The concrete, expected spawn record for one ganger — the pre-GTW-414 inline value an
-/// authored ganger carried, now sourced from the migrated gang roster + situation
-/// placement. Compared field-for-field against the spawned entity so the migration's
-/// value-preservation is proven exactly (the explicit pin-the-migrated-values exception).
+/// The concrete, expected spawn record for one ganger — the pre-GTW-414 inline ROSTER value an
+/// authored ganger carried, now sourced from the migrated gang roster + situation faction.
+/// Compared field-for-field against the spawned entity so the migration's value-preservation is
+/// proven exactly (the explicit pin-the-migrated-values exception). GTW-744: placement fields
+/// (cell / facing / stance / aiming) are DROPPED — the deploy step derives them.
 struct Expected {
     name:       &'static str,
     /// The eight direct attributes (`speed, aim, strength, toughness, reflexes, cool,
@@ -31,17 +35,14 @@ struct Expected {
     /// The gang the situation references this member through (`gang_0` / `gang_1`) — the
     /// key the data-level weapon + armor assertions resolve the roster member against.
     gang:       &'static str,
-    position:   CellLevel,
     faction:    u8,
-    facing:     Direction,
-    stance:     StanceKind,
-    aiming:     bool,
     life_state: LifeState,
 }
 
-/// Assert the whole expected shipped set spawned: exactly the expected count, and each
-/// expected ganger spawned with its concrete migrated values (placement + attributes +
-/// weapon) plus the migrated weapon + armor KEYS (data-level, via the real gang registry).
+/// Assert the whole expected shipped set spawned: exactly the expected count, each expected
+/// ganger spawned with its concrete migrated values (attributes + weapon + faction) plus the
+/// migrated weapon + armor KEYS (data-level, via the real gang registry), and every member
+/// deployed to a distinct, live position (the procgen deploy step placed them — GTW-744).
 pub(crate) fn assert_expected_set(
     world: &World,
     spawned: &HashMap<String, Entity>,
@@ -51,7 +52,7 @@ pub(crate) fn assert_expected_set(
     assert_eq!(
         spawned.len(),
         expected.len(),
-        "setup_battle must spawn exactly the {} expected gangers from the real skirmish + gangs",
+        "the live path must spawn exactly the {} expected gangers from the real skirmish + gangs",
         expected.len(),
     );
     for want in &expected {
@@ -66,13 +67,39 @@ pub(crate) fn assert_expected_set(
         assert_ganger(world, entity, want);
         assert_roster_keys(gangs, want);
     }
+
+    // GTW-744: every member deployed to a distinct, live position (procgen placement).
+    let mut positions: Vec<(i32, i32, i32)> = Vec::new();
+    for want in &expected {
+        let Some(&entity) = spawned.get(want.name) else {
+            continue;
+        };
+        let cell = world.get::<Position>(entity).map(|p| {
+            let cl = **p;
+            (cl.x, cl.y, cl.z)
+        });
+        assert!(
+            cell.is_some(),
+            "{}: must carry a deployed Position component",
+            want.name,
+        );
+        let Some(cell) = cell else {
+            continue;
+        };
+        assert!(
+            !positions.contains(&cell),
+            "{}: deployed position {cell:?} must be distinct (no two gangers stacked)",
+            want.name,
+        );
+        positions.push(cell);
+    }
 }
 
-/// The expected shipped ganger set (the migrated gang rosters + situation placements): the
-/// three original gangers plus the GTW-546 grenadier "Kira Vann" (a player-faction member of
-/// `gang_0` wielding the ARC `grenade_launcher`, so the contextual Throw act is live in the shipped
+/// The expected shipped ganger set (the migrated gang rosters + situation factions): the three
+/// original gangers plus the GTW-546 grenadier "Kira Vann" (a player-faction member of `gang_0`
+/// wielding the ARC `grenade_launcher`, so the contextual Throw act is live in the shipped
 /// skirmish).
-fn expected_set() -> [Expected; 4] {
+const fn expected_set() -> [Expected; 4] {
     [
         Expected {
             name:       "Alex Mercer",
@@ -82,27 +109,19 @@ fn expected_set() -> [Expected; 4] {
             weapon:     "volatile_charge",
             armor:      "flak_vest",
             gang:       "gang_0",
-            position:   cell(5, 6, 0),
             faction:    0,
-            facing:     Direction::East,
-            stance:     StanceKind::Standing,
-            aiming:     false,
             life_state: LifeState::Alive,
         },
         // GTW-546: the grenadier — a player-faction (gang_0) member wielding the ARC
-        // grenade_launcher, placed beside Alex, so the contextual THROW act is live in the shipped
-        // skirmish. Same attributes / flak_vest as Alex (a survivable grenadier).
+        // grenade_launcher, so the contextual THROW act is live in the shipped skirmish. Same
+        // attributes / flak_vest as Alex (a survivable grenadier).
         Expected {
             name:       "Kira Vann",
             attributes: [3.0, 3.0, 4.0, 12.0, 3.0, 6.0, 19.0, 1.0],
             weapon:     "grenade_launcher",
             armor:      "flak_vest",
             gang:       "gang_0",
-            position:   cell(5, 8, 0),
             faction:    0,
-            facing:     Direction::East,
-            stance:     StanceKind::Standing,
-            aiming:     false,
             life_state: LifeState::Alive,
         },
         Expected {
@@ -111,11 +130,7 @@ fn expected_set() -> [Expected; 4] {
             weapon:     "las_carbine",
             armor:      "carapace_plate",
             gang:       "gang_1",
-            position:   cell(12, 9, 0),
             faction:    1,
-            facing:     Direction::West,
-            stance:     StanceKind::Crouching,
-            aiming:     true,
             life_state: LifeState::Alive,
         },
         Expected {
@@ -124,31 +139,17 @@ fn expected_set() -> [Expected; 4] {
             weapon:     "las_carbine",
             armor:      "carapace_plate",
             gang:       "gang_1",
-            position:   cell(12, 12, 0),
             faction:    1,
-            facing:     Direction::West,
-            stance:     StanceKind::Crouching,
-            aiming:     true,
             life_state: LifeState::Alive,
         },
     ]
 }
 
-/// A `(cell, level)` key for an expected position.
-fn cell(x: i32, y: i32, z: u8) -> CellLevel {
-    CellLevel::new(Cell::new(x, y), Level::new(z))
-}
-
-/// Assert the spawned ganger entity carries the concrete migrated placement + attribute
-/// + weapon values from `want` (field-for-field — the migration-preserved-them proof).
+/// Assert the spawned ganger entity carries the concrete migrated ROSTER + faction values from
+/// `want` (field-for-field — the migration-preserved-them proof). GTW-744: placement is
+/// procgen-derived, so only faction / attributes / weapon / life-state are pinned.
 fn assert_ganger(world: &World, entity: Entity, want: &Expected) {
-    // Placement is components on the ganger entity.
-    assert_eq!(
-        world.get::<Position>(entity).map(|p| **p),
-        Some(want.position),
-        "{}: spawned Position must match the migrated placement",
-        want.name,
-    );
+    // Faction is the side the situation assigned (roster-authored in `rosters`, preserved).
     assert_eq!(
         world.get::<Faction>(entity).map(|f| **f),
         Some(want.faction),
@@ -156,27 +157,9 @@ fn assert_ganger(world: &World, entity: Entity, want: &Expected) {
         want.name,
     );
     assert_eq!(
-        world.get::<Facing>(entity).map(|f| **f),
-        Some(want.facing),
-        "{}: spawned Facing must match the migrated placement",
-        want.name,
-    );
-    assert_eq!(
-        world.get::<Stance>(entity).map(|s| **s),
-        Some(want.stance),
-        "{}: spawned Stance must match the migrated placement",
-        want.name,
-    );
-    assert_eq!(
-        world.get::<Aiming>(entity).map(|a| **a),
-        Some(want.aiming),
-        "{}: spawned Aiming must match the migrated placement",
-        want.name,
-    );
-    assert_eq!(
         world.get::<LifeState>(entity).copied(),
         Some(want.life_state),
-        "{}: spawned LifeState must match the migrated placement",
+        "{}: spawned LifeState must be Alive (the deploy default)",
         want.name,
     );
 

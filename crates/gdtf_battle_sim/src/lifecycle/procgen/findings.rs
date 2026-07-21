@@ -9,6 +9,7 @@
 //! (never silent). Per-family finding types live with their family (gate
 //! directive P10): these are the PROCGEN family's.
 
+use super::deploy::DeploymentZones;
 use crate::{level::ThemeUuid, situation::Situation, terrain::def::TerrainUuid};
 
 /// One degraded resolution the procgen emit took while pouring a level — a
@@ -46,4 +47,10 @@ pub struct EmittedLevel {
     /// Every degraded resolution the pour took, deduplicated and in
     /// deterministic (first-encounter) order; EMPTY on a fully-resolved pour.
     pub findings:  Vec<ProcgenFinding>,
+    /// The two opposing **deployment zones** the assembler placed (GTW-744) — the
+    /// player-spawn and enemy-spawn prefab regions. The app-side procgen driver
+    /// hands these to
+    /// [`deploy_rosters`](crate::procgen::deploy_rosters) to place the situation's
+    /// roster members onto the generated map.
+    pub zones:     DeploymentZones,
 }

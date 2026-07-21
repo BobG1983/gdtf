@@ -25,12 +25,15 @@
 //! | [`SeverityRng`] | §6 roll term |
 //! | [`LootRng`] | reserved |
 //! | [`InjuryRng`] | in-battle injury roll (GTW-438) |
-//! | [`ProcgenRng`] | reserved |
+//! | [`ProcgenRng`] | procedural level terrain generation (fill draws) |
 //! | [`ReactionRng`] | reserved — reaction-fire (GTW-466 substrate) |
 //! | [`FightRng`] | melee opposed-Fight roll — two draws per resolve (GTW-506) |
 //!
-//! All seven are inserted at battle setup (from [`BattleSeed`]) and removed at
-//! teardown. Reserved streams draw nothing and cannot perturb active streams.
+//! All seven of the above are inserted at battle setup (from [`BattleSeed`]) and
+//! removed at teardown. Reserved streams draw nothing and cannot perturb active
+//! streams. [`DeploymentRng`] (GTW-744) is a GENERATION-TIME stream constructed
+//! directly in [`deploy_rosters`](crate::procgen::deploy_rosters) — NOT a
+//! battle-lifetime resource, so it is not in the setup/teardown set above.
 //!
 //! ## Draw surface — `impl_sim_stream!`
 //!
@@ -53,4 +56,6 @@ pub(super) mod streams;
 mod test;
 
 pub use seeded::BattleSeed;
-pub use streams::{FightRng, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng};
+pub use streams::{
+    DeploymentRng, FightRng, InjuryRng, LootRng, ProcgenRng, ReactionRng, SeverityRng, ShotRng,
+};

@@ -11,11 +11,16 @@
 //! [`EmittedLevel::findings`](crate::procgen::EmittedLevel), deduplicated — never silent);
 //! plus the GTW-655 staged-driver pins ([`staged`]: a stepped-to-completion drive produces an
 //! IDENTICAL result to a one-shot `generate_level` call, each `advance` runs exactly one
-//! stage, and a finished/failed drive is idempotent under a repeat `advance`). Wiring only:
-//! `mod` declarations, no test bodies.
+//! stage, and a finished/failed drive is idempotent under a repeat `advance`); plus the
+//! GTW-744 roster-deployment pins ([`deploy`]: [`deploy_rosters`](crate::procgen::deploy_rosters)
+//! deploys deterministically by seed over the REAL `generate_level` zones, every placement is
+//! valid/standable/distinct/in-zone across seeds, and a too-small zone fails closed with a
+//! typed [`PackingError`](crate::procgen::PackingError)). Wiring only: `mod` declarations, no
+//! test bodies.
 
 mod anchor;
 mod assembler;
+mod deploy;
 mod emit;
 mod fill;
 mod findings;

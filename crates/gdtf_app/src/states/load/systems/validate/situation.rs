@@ -16,10 +16,14 @@ use gdtf_battle_sim::{
 
 use crate::states::load::{plugin::SITUATION_RON_PATH, resources::LoadedSituation};
 
-/// `Check`: every placed ganger's `gang` ref resolves in the [`GangRegistry`]
+/// `Check`: every situation combatant's `gang` ref resolves in the [`GangRegistry`]
 /// (by file STEM) and its `member` ref resolves in that gang's roster (by
 /// roster DISPLAY-NAME) — the two coexisting key schemes on the gang path, each
 /// finding naming WHICH scheme failed (GTW-582 C2).
+///
+/// GTW-744: this checks BOTH the back-compat placed `gangers` AND the reduced `rosters` — the
+/// shipped file authors its combatants as `rosters` (gang + member refs, no cells), so their
+/// gang/member refs must surface here too, not only at setup.
 ///
 /// Plain `Res` params are safe here: the `Check` set's window condition
 /// (`reference_graph_ready`) verified every one of them present (bevy-traps #1,
@@ -29,27 +33,39 @@ pub(super) fn check_situation_gang_refs(
     gangs: Res<GangRegistry>,
     mut report: ResMut<ContentIntegrityReport>,
 ) {
-    for placed in &situation.gangers {
-        let Some(roster) = gangs.roster(&placed.gang) else {
+    // Both ref carriers yield `(&GangName, &GangerName)` — the placed `gangers` (back-compat)
+    // and the reduced `rosters` (the shipped shape).
+    let combatant_refs = situation
+        .gangers
+        .iter()
+        .map(|placed| (&placed.gang, &placed.member))
+        .chain(
+            situation
+                .rosters
+                .iter()
+                .map(|member| (&member.gang, &member.member)),
+        );
+    for (gang, member) in combatant_refs {
+        let Some(roster) = gangs.roster(gang) else {
             report.record(ContentFinding::DanglingRef {
                 referrer: FindingReferrer::new(format!(
-                    "{SITUATION_RON_PATH}: placed ganger `{}`",
-                    *placed.member,
+                    "{SITUATION_RON_PATH}: situation ganger `{}`",
+                    **member,
                 )),
-                target:   FindingTarget::new((*placed.gang).clone()),
+                target:   FindingTarget::new((**gang).clone()),
                 family:   FindingFamily::new("GangRegistry".to_owned()),
                 scheme:   ReferenceKeyScheme::FileStem,
             });
             continue;
         };
-        if roster.member(&placed.member).is_none() {
+        if roster.member(member).is_none() {
             report.record(ContentFinding::DanglingRef {
                 referrer: FindingReferrer::new(format!(
-                    "{SITUATION_RON_PATH}: placed ganger of gang `{}`",
-                    *placed.gang,
+                    "{SITUATION_RON_PATH}: situation ganger of gang `{}`",
+                    **gang,
                 )),
-                target:   FindingTarget::new((*placed.member).clone()),
-                family:   FindingFamily::new(format!("GangRegistry roster `{}`", *placed.gang)),
+                target:   FindingTarget::new((**member).clone()),
+                family:   FindingFamily::new(format!("GangRegistry roster `{}`", **gang)),
                 scheme:   ReferenceKeyScheme::DisplayName,
             });
         }

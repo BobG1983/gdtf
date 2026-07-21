@@ -107,7 +107,8 @@ fn situation_loader_no_ops_cleanly_without_asset_server() {
 /// 'resource available' is closed.
 ///
 /// Value-agnostic per the de-brittle principle: it asserts the resource is
-/// PRESENT and round-trips to a `Situation` with NON-EMPTY gangers, never a
+/// PRESENT and round-trips to a `Situation` with a NON-EMPTY roster (GTW-744:
+/// the shipped skirmish authors `rosters`, not placed `gangers`), never a
 /// pinned hp/tu/armor magnitude.
 ///
 /// Pin: this fails if the kick-off path/loader regresses (the situation never
@@ -125,12 +126,15 @@ fn real_asset_resolves_persistent_loaded_situation() {
     // signal), not a fixed frame count. Cap is a safety net (GTW-305).
     advance_until_resource_exists::<LoadedSituation>(&mut app, LOAD_SAFETY_NET);
 
-    // The resolved situation round-trips to a Situation with non-empty gangers
-    // (presence + non-empty, never a magnitude).
+    // The resolved situation round-trips to a Situation with a non-empty ROSTER
+    // (presence + non-empty, never a magnitude). GTW-744: the shipped skirmish authors
+    // its combatants as `rosters` (procgen derives the placement cells), so the real
+    // situation is distinguished from the empty default by non-empty `rosters`, not
+    // `gangers` (both the real skirmish AND the default author zero placed `gangers`).
     if let Some(loaded) = app.world().get_resource::<LoadedSituation>() {
         assert!(
-            !loaded.gangers.is_empty(),
-            "the resolved LoadedSituation must carry the authored (non-empty) gangers",
+            !loaded.rosters.is_empty(),
+            "the resolved LoadedSituation must carry the authored (non-empty) roster members",
         );
     }
 
@@ -156,9 +160,9 @@ fn real_asset_resolves_persistent_loaded_situation() {
 /// AC2 / GTW-261 — the Load→Intro transition GATES on the situation: with a real
 /// `AssetServer`, the machine reaches `Intro` only once a `GdtfTheme` AND a
 /// `LoadedSituation` are both present, and the situation present at Intro is the REAL
-/// shipped skirmish (non-empty gangers) — proving Load WAITED for the real situation
-/// rather than racing to the empty default (the empty-battle-race fix). This reverses
-/// the pre-GTW-261 "theme-only / situation-non-blocking" behavior on purpose.
+/// shipped skirmish (non-empty ROSTER — GTW-744) — proving Load WAITED for the real
+/// situation rather than racing to the empty default (the empty-battle-race fix). This
+/// reverses the pre-GTW-261 "theme-only / situation-non-blocking" behavior on purpose.
 ///
 /// Pin: this fails if the situation were dropped from the transition gate (then Load
 /// could reach Intro with an empty/absent situation — the original bug), or if the
@@ -190,9 +194,10 @@ fn real_asset_gate_waits_for_the_real_situation() {
     );
     if let Some(loaded) = loaded {
         assert!(
-            !loaded.gangers.is_empty(),
+            !loaded.rosters.is_empty(),
             "the situation that cleared the gate must be the real (non-empty) skirmish, not the \
-             empty default — Load waited for the real situation",
+             empty default — Load waited for the real situation (GTW-744: distinguished by its \
+             non-empty roster, since the shipped skirmish authors `rosters`, not placed `gangers`)",
         );
     }
 }

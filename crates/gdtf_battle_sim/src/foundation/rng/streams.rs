@@ -12,7 +12,8 @@
 //! | [`SeverityRng`] | §6 roll term (the ONE draw per hit) |
 //! | [`LootRng`] | reserved — loot generation (no draw sites yet) |
 //! | [`InjuryRng`] | in-battle injury roll — one draw per non-graze, non-fatal wound (GTW-438) |
-//! | [`ProcgenRng`] | reserved — procedural level generation (no draw sites yet) |
+//! | [`ProcgenRng`] | procedural level terrain generation (fill draws) |
+//! | [`DeploymentRng`] | roster deployment — zone shuffle (GTW-744; generation-time, not inserted at setup) |
 //!
 //! ## Derivation — the crux
 //!
@@ -254,6 +255,27 @@ impl_sim_stream!(
     /// No system may take `Res<ProcgenRng>` — see the module binding constraint.
     ProcgenRng,
     b"gdtf.rng.procgen.v1"
+);
+
+impl_sim_stream!(
+    /// The **roster-deployment** RNG stream (GTW-744).
+    ///
+    /// Draw site: [`deploy_rosters`](crate::procgen::deploy_rosters) draws it to shuffle a
+    /// deployment zone's standable cells (a Fisher-Yates over the zone) so roster members
+    /// spread across the zone deterministically by the battle
+    /// [`BattleSeed`](crate::rng::BattleSeed). Unlike the other streams, this is a
+    /// GENERATION-TIME stream — it is constructed with
+    /// [`from_root`](Self::from_root) INSIDE `deploy_rosters` (which runs at
+    /// `BattleScapeState::Generation`, BEFORE setup), NOT inserted as a battle-lifetime
+    /// resource by `insert_battle_runtime`. It has its OWN label so deployment draws stay
+    /// independent of the terrain-fill [`ProcgenRng`] draws — a fill-tuning change never
+    /// reshuffles spawns (the per-concern isolation doctrine, see the [`FightRng`]
+    /// argument). Adding this stream does NOT perturb any existing stream's seed (each
+    /// depends only on its own label via the FNV-1a-64 derivation).
+    ///
+    /// No system may take `Res<DeploymentRng>` — see the module binding constraint.
+    DeploymentRng,
+    b"gdtf.rng.deploy.v1"
 );
 
 impl_sim_stream!(
