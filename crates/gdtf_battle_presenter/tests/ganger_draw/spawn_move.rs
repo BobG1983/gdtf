@@ -4,7 +4,7 @@
 use bevy::{app::App, math::Vec2, prelude::Entity, time::TimeUpdateStrategy};
 use gdtf_battle_presenter::{CELL_PX, GangerSprites, Layer, cell_to_world_layered};
 use gdtf_battle_sim::{
-    prelude::{Cell, CellLevel, Direction, Faction, Level, Position},
+    prelude::{Cell, CellLevel, Direction, Faction, Level},
     test_support::SituationBuilder,
 };
 
@@ -153,12 +153,11 @@ fn changed_position_moves_the_same_sprite() {
         "the map links the sim ganger to its one sprite",
     );
 
-    // Move the ganger (mutate its Position — the real Changed<Position> trigger).
+    // Move the ganger on the presenter's OWN clock: its DrawnPosition mirror — the cell the
+    // playback cursor has shown it at, the GTW-727 C17 trigger `move_ganger_sprites` now reads
+    // (the live Position remains authoritative for the sim, but the sprite follows the mirror).
     let dest = CellLevel::new(Cell::new(7, 8), Level::new(0));
-    let mut pos_q = app.world_mut().query::<&mut Position>();
-    if let Ok(mut pos) = pos_q.get_mut(app.world_mut(), sim) {
-        *pos = Position::new(dest);
-    }
+    set_drawn_position(&mut app, sim, dest);
     // GTW-359 (C4): the move is now GLIDED (a re-targeting tween), not snapped — so the
     // sprite reaches the new cell over a few frames, not in one update. Settle the glide
     // (bounded), then assert it landed exactly on the new cell.

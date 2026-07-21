@@ -44,7 +44,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_input::dispatch_act_intents;
-use gdtf_battle_presenter::ActiveLevel;
+use gdtf_battle_presenter::{ActiveLevel, playback_caught_up};
 use gdtf_battle_sim::prelude::BattleInProgress;
 use gdtf_ui::{drive_switches, repaint_segments, select_segment_on_press, themed::UiSystems};
 
@@ -75,8 +75,9 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
                     // guarantee the keyboard writers get (they are registered `.before`
                     // the drain in `gdtf_battle_input`). Without this the press could be
                     // queued AFTER the drain ran and only take effect a frame late.
+                    // GTW-727 C24: blocked at the PUSH site while the presenter catches up.
                     .before(dispatch_act_intents)
-                    .run_if(resource_exists::<BattleInProgress>),
+                    .run_if(resource_exists::<BattleInProgress>.and_then(playback_caught_up)),
             )
             // GTW-293: `sync_level_button_bounds` greys (inserts `DisabledButton` on) the
             // **Level −** button at the floor storey (0) and the **Level +** button at the
@@ -118,10 +119,10 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
                     // READS the `ToggleFlipped` message `drive_switches` writes this update, so
                     // it must run AFTER the widget driver to see the same-update flip — and
                     // BEFORE the intent drain so the pushed intent is drained this update
-                    // (`bevy-traps.md` #3).
+                    // (`bevy-traps.md` #3). GTW-727 C24: blocked while catching up.
                     .after(drive_switches)
                     .before(dispatch_act_intents)
-                    .run_if(resource_exists::<BattleInProgress>),
+                    .run_if(resource_exists::<BattleInProgress>.and_then(playback_caught_up)),
             )
             .add_systems(
                 Update,
@@ -142,10 +143,10 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
                     // READS the `SegmentSelected` message `select_segment_on_press` writes this
                     // update, so it runs AFTER the widget driver to see the same-update select —
                     // and BEFORE the intent drain so the pushed intent is drained this update
-                    // (`bevy-traps.md` #3).
+                    // (`bevy-traps.md` #3). GTW-727 C24: blocked while catching up.
                     .after(select_segment_on_press)
                     .before(dispatch_act_intents)
-                    .run_if(resource_exists::<BattleInProgress>),
+                    .run_if(resource_exists::<BattleInProgress>.and_then(playback_caught_up)),
             )
             .add_systems(
                 Update,
@@ -166,18 +167,24 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
             .add_systems(
                 Update,
                 (
-                    // `mode_segment_write` READS the `SegmentSelected` message
-                    // `select_segment_on_press` writes this update → run AFTER the widget driver
-                    // (`bevy-traps.md` #3). `sync_mode_active_segment` READS `SelectedFireMode`
-                    // that the write produces → run AFTER it AND `.before(repaint_segments)` so
-                    // the highlight repaints the same frame.
-                    mode_segment_write.after(select_segment_on_press),
                     tag_mode_segments,
                     sync_mode_active_segment
                         .after(mode_segment_write)
                         .before(repaint_segments),
                 )
                     .run_if(resource_exists::<BattleInProgress>),
+            )
+            // GTW-727 C24: `mode_segment_write` is blocked while the presenter catches up.
+            // It bypasses the intent queue entirely and writes `SelectedFireMode` directly,
+            // so it changes what a SUBSEQUENT Fire does — which makes it an act-shaping
+            // press, not a view control, and it must not land against a stale screen.
+            .add_systems(
+                Update,
+                mode_segment_write
+                    // READS the `SegmentSelected` message `select_segment_on_press` writes
+                    // this update → run AFTER the widget driver (`bevy-traps.md` #3).
+                    .after(select_segment_on_press)
+                    .run_if(resource_exists::<BattleInProgress>.and_then(playback_caught_up)),
             )
             // GTW-277 / GTW-284: `rebuild_mode_segments` MUTATES the three FIXED Mode segments'
             // per-segment `Display` (via `gdtf_ui::set_segment_visible`) on a selection change

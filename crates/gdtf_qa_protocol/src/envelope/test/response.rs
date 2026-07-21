@@ -9,8 +9,8 @@ use crate::{
     events::{DroppedCount, EventBatch},
     test_support::assert_ron_round_trip,
     view::{
-        AppFlowView, AppStateNet, BattleActiveNet, BattleView, FactionNet, FogView, GridHeightNet,
-        GridLevelsNet, GridSizeNet, GridWidthNet, RequestKindNet, SelectionView,
+        AppFlowView, AppStateNet, BattleActiveNet, BattleView, CaughtUpNet, FactionNet, FogView,
+        GridHeightNet, GridLevelsNet, GridSizeNet, GridWidthNet, RequestKindNet, SelectionView,
         TerrainSummaryView, TurnView,
     },
 };
@@ -48,6 +48,7 @@ fn qa_response_cases() -> Vec<QaResponse> {
             AppStateNet::Running,
             BattleActiveNet::new(false),
             RequestKindNet::ALL.to_vec(),
+            CaughtUpNet::new(true),
         )),
         QaResponse::Battle(an_empty_battle()),
         QaResponse::Injected(InjectReceipt::Queued),

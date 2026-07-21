@@ -27,9 +27,15 @@ impl ProtocolVersion {
     /// [`RequestKindNet::ScreenshotAfter`](crate::view::RequestKindNet::ScreenshotAfter)
     /// were added (GTW-749) — a new closed-enum variant everywhere the envelope matches
     /// exhaustively, so an old client negotiating version `2` gets a `VersionMismatch`
-    /// rather than a wire shape it cannot decode. The game server negotiates a `Hello`
-    /// against this value.
-    pub const CURRENT: Self = Self::new(3);
+    /// rather than a wire shape it cannot decode. Bumped to `4` (GTW-727) for TWO breaking
+    /// changes at once: [`AppFlowView`](crate::view::AppFlowView) gained a `caught_up` fact
+    /// (the same class of field addition as the 1 → 2 bump) and
+    /// [`QaError`](crate::envelope::QaError) gained a `NotCaughtUp` variant (the same class
+    /// of closed-enum addition as the 2 → 3 bump). Negotiation is exact equality with no
+    /// capability handshake, so leaving this at `3` would let a version-3 client negotiate
+    /// SUCCESSFULLY and then fail to decode the very reply it asked for. The game server
+    /// negotiates a `Hello` against this value.
+    pub const CURRENT: Self = Self::new(4);
 
     /// Build a protocol version from its number.
     #[must_use]

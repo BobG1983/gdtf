@@ -2,6 +2,7 @@
 //! gamepad cursor/act surfaces.
 
 use bevy::{ecs::message::Messages, prelude::*, window::CursorMoved};
+use gdtf_battle_presenter::playback_caught_up;
 use gdtf_battle_sim::prelude::BattleInProgress;
 
 use super::build::battle_act_gate;
@@ -77,11 +78,14 @@ pub(super) fn register_gamepad_systems(app: &mut App) {
     )
     .add_systems(
         Update,
+        // GTW-727 C24: both gamepad ACT surfaces are blocked at the push site while the
+        // presenter is catching up. The gamepad CURSOR motion below stays live (C25) —
+        // moving the cursor changes nothing and is part of watching.
         (gamepad_click_act, gamepad_turn)
             .in_set(InputSystems::Gather)
             .before(pick_hovered_cell)
             .before(dispatch_act_intents)
-            .run_if(battle_act_gate()),
+            .run_if(battle_act_gate().and_then(playback_caught_up)),
     )
     .add_systems(
         Update,

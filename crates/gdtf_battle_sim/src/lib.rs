@@ -236,11 +236,24 @@
 //!   [`battle::BattleWon`] / [`battle::BattleLost`] signal messages (a sim SIGNAL only —
 //!   the app-side consumer that ends the battle is GTW-239).
 //!
+//! - [`act_log`] — the GTW-727 **act log**: the sim's ordered, sim-owned record of
+//!   everything that happened, so a view can show acts one at a time without ever gating
+//!   the sim. [`act_log::ActLog`] is a battle-lifetime ring of [`act_log::ActEntry`]s (WHO
+//!   / WHAT / WHY / WHEN — [`act_log::ActDeed`] and [`act_log::ActProvenance`]), appended
+//!   by exactly one system ([`act_log::record_acts`], in the new
+//!   [`occupancy_sync::SimSystems::Record`] band strictly after `Simulate`) whose six
+//!   per-family recorders run in a fixed SOURCE order, so the log is reproducible run to
+//!   run for one seed. Every mutating deed carries the AFTER value of what it changed, so
+//!   a consumer APPLIES recorded state rather than re-reading live state. The sim writes
+//!   and returns: no back-pressure, no capacity block, no presenter type named anywhere —
+//!   the one-way model → view dependency is untouched.
+//!
 //! Design canon: `docs/combat/` (notably `battle-space.md`, `resolution.md`) and
 //! ADR-0001 (`docs/decisions/0001-rust-bevy-rewrite.md`) — the model/view split
 //! this crate sits inside as the authoritative, render-free model.
 
 // ── Parent concern modules ───────────────────────────────────────────────────
+pub mod act_log;
 pub mod acts;
 pub mod ai;
 pub mod combatants;

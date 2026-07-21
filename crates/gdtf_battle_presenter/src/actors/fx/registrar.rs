@@ -33,14 +33,21 @@ use crate::{PresenterSystems, TopDownAtlases};
 /// registration line a transient FX reader needs — mirroring
 /// [`ConsequenceFctAppExt`](super::ConsequenceFctAppExt).
 pub trait FxReaderAppExt {
-    /// Register `reader` — a system draining `Messages<M>` — into the
+    /// Register `reader` — a system draining `Messages<`[`Played`](crate::playback::Played)`<M>>`
+    /// (GTW-727: FX fire when the presenter SHOWS the fact, not when the sim produced it) — into the
     /// [`PresenterSystems::Overlay`] stage (its ordering comes from STAGE MEMBERSHIP,
     /// never a pairwise edge — GTW-623 C1/C2) with today's gate shape:
     /// `BattleInProgress` (FX belong to a live battle) AND the [`EffectRoles`] data
     /// table AND [`TopDownAtlases`] (the render resources every flash spawn reads;
     /// absent under `MinimalPlugins`, so a no-asset app simply does not draw —
-    /// `bevy-traps.md` #1) AND the REAL `Messages<M>` buffer gate (a `MessageReader<M>`
-    /// panics param validation without its buffer — `bevy-traps.md` #4).
+    /// `bevy-traps.md` #1) AND the REAL `Messages<M>` buffer gate.
+    ///
+    /// **The buffer gate stays on the SIM buffer `M`, deliberately** (GTW-727 C16). The
+    /// reader's own buffer `Messages<Played<M>>` is presenter-owned and always present
+    /// wherever this renderer is, so gating on THAT would be trivially true and the
+    /// inertness convention below would quietly stop meaning anything. Gating on `M`
+    /// keeps the property it was written for: a harness that omits the producer keeps
+    /// this reader inert.
     ///
     /// NEVER calls `add_message`: the sim's plugins register every sim-owned buffer in
     /// a live battle, and a presenter-only headless harness that omits the buffer keeps

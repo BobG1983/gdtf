@@ -20,6 +20,15 @@ pub enum QaError {
     NoBattle,
     /// The request was malformed or nonsensical in the current state.
     BadRequest,
+    /// The request needs the game to have finished SHOWING what already happened, and it
+    /// has not (GTW-727 C43).
+    ///
+    /// The presenter is mid-playback: an exchange is being replayed on screen and the game
+    /// is refusing act-bearing input until it finishes, exactly as it refuses the player's.
+    /// Distinct from [`NoBattle`](Self::NoBattle), which would be a lie here — the battle is
+    /// very much running. A client either waits for
+    /// [`AppFlowView::caught_up`](crate::view::AppFlowView) or simply polls and retries.
+    NotCaughtUp,
     /// The request was accepted but no consumer answered it before its
     /// deadline — the game side swept it and returned this instead of leaving
     /// the client hanging (the GTW-694 `FrameDeadline` sweep; GTW-736).

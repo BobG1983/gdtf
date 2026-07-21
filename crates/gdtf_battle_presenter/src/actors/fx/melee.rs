@@ -21,7 +21,7 @@ use bevy::prelude::*;
 use gdtf_battle_sim::{acts::MeleeResolved, weapon::DamageType};
 
 use super::{readers::spawn_flash, roles::EffectRoles};
-use crate::{TopDownAtlases, cell_to_world, fx::readers::fx_sprite};
+use crate::{TopDownAtlases, cell_to_world, fx::readers::fx_sprite, playback::Played};
 
 /// The strike-glyph tint for a melee hit's [`DamageType`] — a per-type colour hint so the
 /// strike reads as the wielded weapon's flavour (a blunt Kinetic thud vs a Rend power-edge
@@ -74,7 +74,7 @@ pub fn read_melee_resolved(
     mut commands: Commands,
     atlases: Res<TopDownAtlases>,
     roles: Res<EffectRoles>,
-    mut resolved: MessageReader<MeleeResolved>,
+    mut resolved: MessageReader<Played<MeleeResolved>>,
 ) {
     for msg in resolved.read() {
         // MeleeResolved.at is a CellLevel; its typed Cell / Level via the canonical

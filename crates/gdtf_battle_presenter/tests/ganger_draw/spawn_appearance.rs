@@ -15,10 +15,14 @@
 //! gap probe — a plain reading on ANY frame fails), and the settled tint + atlas index
 //! are compared against the expected non-neutral verdict.
 
-use bevy::{app::App, color::Color, ecs::message::Messages};
+use bevy::{
+    app::App,
+    color::Color,
+    ecs::{message::Messages, system::RunSystemOnce},
+};
 use gdtf_battle_presenter::GangerSprites;
 use gdtf_battle_sim::{
-    battle::SetupBattleRequested,
+    battle::{SetupBattleRequested, setup_battle_on_request},
     ganger::{Aiming, Suppressed, SuppressorCell},
     prelude::{Cell, CellLevel, Direction, Level, Stance, StanceKind},
     rng::{BattleSeed, ShotRng},
@@ -120,27 +124,32 @@ fn spawn_trace(
         .write(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
     let mut trace = Vec::new();
     let mut frame: u32 = 0;
-    // Phase 1: run the setup to its flush. ShotRng is inserted on the Ok setup path; it
-    // and the ganger spawns land in the same end-of-update command flush, so once it is
-    // visible the sim entity exists but the presenter has NOT yet observed the ganger
-    // (its Added<Position> fires on the next update).
-    let mut setup_done = false;
-    for _ in 0..MAX_UPDATES {
-        app.update();
-        frame += 1;
-        let color = color_of_ganger_at(app, subject_at);
-        trace.push(FrameTint { frame, color });
-        if app.world().get_resource::<ShotRng>().is_some() {
-            setup_done = true;
-            break;
-        }
-    }
-    assert!(setup_done, "setup_battle must complete");
     if suppress {
+        // Run setup in ISOLATION — before any presenter update — so the ganger entities exist
+        // and the subject can be marked Suppressed BEFORE the presenter's spawn / seed systems
+        // first observe it. Setup and the draw share the harness's `Update`, so a normal update
+        // runs both together and the draw would seed a PLAIN sprite (the ganger is not yet
+        // suppressed) the same frame — the very gap this suite forbids. (GTW-727 collapsed the
+        // spawn into the same update as setup; the pre-C17 shape had `Added<Position>` lag a
+        // frame, which gave the old insert-after-flush its window.) `run_system_once` applies
+        // setup's spawn Commands, so the ganger is present to mark and the FIRST recorded update
+        // is the presenter's first sight of an already-suppressed ganger.
+        let ran = app
+            .world_mut()
+            .run_system_once(setup_battle_on_request)
+            .is_ok();
+        assert!(ran, "setup_battle_on_request must run in isolation");
+        // The one-shot run drained the request through its OWN reader cursor, but the message
+        // lingers in the double-buffer, so the harness's registered `setup_battle_on_request`
+        // would read it again next update and spawn a SECOND ganger at the same cell. Clear the
+        // buffer so setup runs exactly once (the isolated run).
+        app.world_mut()
+            .resource_mut::<Messages<SetupBattleRequested>>()
+            .clear();
         let sim = sim_entity_at(app, subject_at);
         assert!(
             sim.is_some(),
-            "the subject sim ganger must exist at the setup flush"
+            "the subject sim ganger must exist after setup"
         );
         if let Some(sim) = sim {
             let from = CellLevel::new(Cell::new(1, 1), Level::new(0));
@@ -148,6 +157,22 @@ fn spawn_trace(
                 .entity_mut(sim)
                 .insert(Suppressed::new(SuppressorCell::new(from)));
         }
+    } else {
+        // Phase 1: run the setup to its flush via updates, recording each pre-materialization
+        // frame. ShotRng is inserted on the Ok setup path; it and the ganger spawns land in the
+        // same end-of-update command flush, so once it is visible the sim entity exists.
+        let mut setup_done = false;
+        for _ in 0..MAX_UPDATES {
+            app.update();
+            frame += 1;
+            let color = color_of_ganger_at(app, subject_at);
+            trace.push(FrameTint { frame, color });
+            if app.world().get_resource::<ShotRng>().is_some() {
+                setup_done = true;
+                break;
+            }
+        }
+        assert!(setup_done, "setup_battle must complete");
     }
     // Phase 2: the per-frame probe across the deferred materialization window — record
     // every update until the Sprite component exists.

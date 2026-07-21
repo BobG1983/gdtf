@@ -64,6 +64,11 @@ crate::support_use!(plugin::NetQaPlugin;);
 pub use channel::{IncomingRequest, Responder};
 #[cfg(feature = "test-support")]
 pub use config::{NET_QA_PROTOCOL_VERSION, NetIoTimeout, NetQaPort};
+// GTW-727: the ONE availability predicate, exposed so the input-gate suite can assert the
+// catch-up gating directly. It is the same function the router's accept/reject and the
+// advertised `available` list both call, so a test against it cannot drift from either.
+#[cfg(feature = "test-support")]
+pub use router::request_available as request_available_for;
 // GTW-740: the T7 pump's confinement-directory + poll-budget config Resources, exposed for
 // the integration test to inject a temp directory + a tiny budget. Widened through
 // `screenshot`'s own `support_use!` re-export; gated to `test-support` like the rest.

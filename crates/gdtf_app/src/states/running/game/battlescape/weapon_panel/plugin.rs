@@ -28,6 +28,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_input::{InputSystems, dispatch_act_intents};
+use gdtf_battle_presenter::playback_caught_up;
 use gdtf_battle_sim::prelude::BattleInProgress;
 use gdtf_ui::themed::UiSystems;
 
@@ -76,9 +77,10 @@ impl Plugin for GameBattleScapeWeaponPanelScenePlugin {
                 // Ordered `.before` the ONE intent drain (`bevy-traps.md` #3): a press
                 // queued THIS update is drained THIS update (the action-bar same-frame
                 // guarantee). Gated on the live-battle witness so a press is inert when
-                // no battle is live.
+                // no battle is live, and (GTW-727 C24) on the presenter having caught up,
+                // so a reload is never even queued against a screen that is out of date.
                 .before(dispatch_act_intents)
-                .run_if(resource_exists::<BattleInProgress>),
+                .run_if(resource_exists::<BattleInProgress>.and_then(playback_caught_up)),
         )
         // GTW-298 (screenshot review 2026-06-18): the post-theme fit pass — tighten the Item
         // Panel's horizontal padding (so the item buttons are wider) and shrink the cluster's

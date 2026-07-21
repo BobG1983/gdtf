@@ -1,9 +1,10 @@
 //! The per-(actor, reactor) interrupt evaluation — the C2 eligibility gates, the
 //! C3 opposed check, and the C4 fire + halt + count emission (GTW-468).
 
-use bevy::prelude::{Entity, MessageWriter, Query, With};
+use bevy::prelude::{Entity, Query, With};
 
 use super::{
+    declared::{InterruptDeclared, InterruptSignals},
     ledger::{InterruptCommit, PendingSpendLedger},
     snapshot::{ReactionRow, row_cell_level},
 };
@@ -105,8 +106,7 @@ pub(super) fn try_reaction(
     cover: &CoverLedger,
     rng: &mut ReactionRng,
     is_dead: &impl Fn(Entity) -> bool,
-    fire_writer: &mut MessageWriter<FireRequested>,
-    halt_writer: &mut MessageWriter<ReactionShotFired>,
+    signals: &mut InterruptSignals,
 ) -> Option<InterruptCommit> {
     // The canonical CellLevel accessors through Position's deref (GTW-565).
     let actor_cell = actor.position.cell();
@@ -228,7 +228,7 @@ pub(super) fn try_reaction(
     //  (i) the REAL interrupt shot (single mode) — dispatch_fire → fire() resolves a
     //      NORMAL shot (full dispersion + damage, no reaction modifier — AC7) AND
     //      spends the reactor's TU (so we never double-charge here).
-    fire_writer.write(FireRequested::new(
+    signals.fire.write(FireRequested::new(
         reactor.entity,
         mode,
         actor_cell,
@@ -236,7 +236,16 @@ pub(super) fn try_reaction(
     ));
     //  (ii) halt a walking actor at its current cell (the GTW-355 orphan's producer).
     //       A non-walking actor's advance_walk read is a harmless no-op.
-    halt_writer.write(ReactionShotFired::new(actor.entity));
+    signals.halt.write(ReactionShotFired::new(actor.entity));
+    //  (ii-b) GTW-727 C5: EXPOSE that this shot is an interrupt, and whose act provoked
+    //       it. The FireRequested above is indistinguishable from a commanded or AI shot
+    //       once dispatch_fire has it, and ReactionShotFired names the INTERRUPTED walker
+    //       rather than the reactor — so neither states the pair. Pure exposure of a
+    //       decision already made: every gate has passed and the opposed roll is taken, so
+    //       this adds no draw, reads no fire result, and changes no outcome.
+    signals
+        .declared
+        .write(InterruptDeclared::new(reactor.entity, actor.entity));
     //  (iii) consume the reactor's per-turn cap so the next may_interrupt sees it —
     //       both for a later actor this tick AND the LIVE read above for this same pass.
     //       The spend's ONE owner stays here (GTW-646): the gates above already read

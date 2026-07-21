@@ -18,6 +18,7 @@
 
 use bevy::{prelude::*, ui::Display};
 use gdtf_battle_input::SelectedShooter;
+use gdtf_battle_presenter::DrawnMagazine;
 use gdtf_battle_sim::{
     magazine::Magazine,
     weapon::{MeleeWeapon, WeaponName, WieldedBy, Wields},
@@ -43,6 +44,11 @@ pub(in crate::states::running::game::battlescape::weapon_panel) struct WeaponDat
     name:     Option<&'static WeaponName>,
     /// The wielded weapon's magazine grouping (absent if the weapon carries none).
     magazine: Option<&'static Magazine>,
+    /// The CURSOR-TIME magazine the presenter is currently SHOWING (GTW-727 C27), if the
+    /// playback mirror is present — preferred over the live one, so the ammo readout drops
+    /// when the shot is SHOWN rather than when the sim spent the round. `Option` because
+    /// the mirror exists only where the top-down presenter does.
+    drawn:    Option<&'static DrawnMagazine>,
 }
 
 /// Query filter selecting the content column's `&mut Visibility`, disjoint from the
@@ -168,7 +174,12 @@ pub(in crate::states::running::game::battlescape) fn update_weapon_panel(
         Some(item) => {
             let has_weapon = item.name.is_some() || item.magazine.is_some();
             let name = item.name.map(|n| (**n).clone()).unwrap_or_default();
-            let (mag_line, has_magazine) = item.magazine.map_or((String::new(), false), |m| {
+            // GTW-727 C27: prefer the drawn magazine, fall back to the live one.
+            let magazine = item
+                .drawn
+                .map(DrawnMagazine::magazine)
+                .or_else(|| item.magazine.copied());
+            let (mag_line, has_magazine) = magazine.map_or((String::new(), false), |m| {
                 let size = *m.size();
                 if size > 0 {
                     (format!("{}/{}", *m.rounds(), size), true)

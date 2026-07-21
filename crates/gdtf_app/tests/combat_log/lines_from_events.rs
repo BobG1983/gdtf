@@ -65,11 +65,10 @@ fn a_movement_message_appends_a_line_with_the_classified_text() {
         "the log starts empty",
     );
 
-    app.world_mut().write_message(MovementOccurred::new(
-        ganger,
-        Cell::new(3, 4),
-        Cell::new(3, 6),
-    ));
+    play(
+        &mut app,
+        MovementOccurred::new(ganger, Cell::new(3, 4), Cell::new(3, 6)),
+    );
     app.update();
 
     let texts = line_texts::<CombatLogLine>(&mut app);
@@ -113,22 +112,25 @@ fn an_injury_message_appends_a_line_in_the_severity_colour() {
     // plugin in a live battle). The combat log reads only the target (→ LogName), log_text, and
     // severity; the gained ledger + popup / inspect texts are filler (they drive other surfaces).
     let name = InjuryName::new("Lost Eye".to_owned());
-    app.world_mut().write_message(InjuryInflicted {
-        target: ganger,
-        gained: GainedInjury::new(
-            name.clone(),
-            BodyPart::Head,
-            Severity::Critical,
-            Vec::new(),
-            InspectText::new("Lost Eye -- -2 Aim".to_owned()),
-        ),
-        name,
-        part: BodyPart::Head,
-        severity: Severity::Critical,
-        popup_text: PopupText::new("LOST EYE".to_owned()),
-        log_text: LogText::new("loses an eye".to_owned()),
-        inspect_text: InspectText::new("Lost Eye -- -2 Aim".to_owned()),
-    });
+    play(
+        &mut app,
+        InjuryInflicted {
+            target: ganger,
+            gained: GainedInjury::new(
+                name.clone(),
+                BodyPart::Head,
+                Severity::Critical,
+                Vec::new(),
+                InspectText::new("Lost Eye -- -2 Aim".to_owned()),
+            ),
+            name,
+            part: BodyPart::Head,
+            severity: Severity::Critical,
+            popup_text: PopupText::new("LOST EYE".to_owned()),
+            log_text: LogText::new("loses an eye".to_owned()),
+            inspect_text: InspectText::new("Lost Eye -- -2 Aim".to_owned()),
+        },
+    );
     app.update();
 
     // POSITIVE assertion: the registered drain appended one line reading "<name> <log_text>" in
@@ -163,7 +165,7 @@ fn a_turn_message_appends_the_player_turn_boundary_line() {
         "the live battle must have a PlayerFaction resolved"
     );
     let player = player.unwrap_or_default();
-    app.world_mut().write_message(TurnStarted::new(*player));
+    play(&mut app, TurnStarted::new(*player));
     app.update();
 
     let texts = line_texts::<CombatLogLine>(&mut app);

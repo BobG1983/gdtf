@@ -89,7 +89,7 @@ mod tests {
             InjectReceipt, QaError, QaResponse, RejectReason, ScreenshotAfterResult,
             ScreenshotPathNet, ScreenshotResult,
         },
-        view::{AppFlowView, AppStateNet, BattleActiveNet, RequestKindNet},
+        view::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet, RequestKindNet},
     };
     use serde_json::json;
 
@@ -126,6 +126,7 @@ mod tests {
             AppStateNet::Running,
             BattleActiveNet::new(true),
             vec![RequestKindNet::GetBattleState],
+            CaughtUpNet::new(true),
         );
         let rendered = render_response(ToolName::StartBattle, &QaResponse::AppFlow(view));
         assert_eq!(rendered["isError"], json!(false));

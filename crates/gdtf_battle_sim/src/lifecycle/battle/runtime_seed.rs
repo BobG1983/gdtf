@@ -1,12 +1,12 @@
 //! [`insert_battle_runtime`] — the battle-lifetime resource SEED set (RNG streams,
-//! gate witness, factions, AI pacing, fog) inserted on
+//! gate witness, factions, act log, fog) inserted on
 //! [`setup_battle_on_request`](super::setup_battle_on_request)'s `Ok` path — the
 //! mirror of [`teardown`](super::teardown_battle_on_request)'s remove set.
 
 use bevy::prelude::Commands;
 
 use crate::{
-    ai::{ActCadence, EnemyActCooldown},
+    act_log::ActLog,
     battle::{
         messages::SetupBattleRequested,
         resources::{BattleInProgress, BattleRoster, PlayerFaction},
@@ -63,14 +63,15 @@ pub(super) fn insert_battle_runtime(commands: &mut Commands, request: &SetupBatt
     // first), sharing the BattleInProgress lifetime (removed together on
     // teardown) so the turn-cycle engine's ActiveFaction read is panic-free.
     commands.insert_resource(ActiveFaction::new(request.situation.player_faction));
-    // GTW-461: insert the enemy-act COOLDOWN ready-to-act (0 ticks) + the default
-    // ActCadence on this same Ok path, sharing the BattleInProgress lifetime
-    // (removed together on teardown). The cooldown paces `enemy_ai_turn` to at
-    // most one enemy act per cadence-step, so the enemy turn resolves act-by-act
-    // on screen instead of as a one-frame volley. Seeded `ready()` (0) so the
-    // enemy's FIRST act is immediate — the dwell only applies BETWEEN acts.
-    commands.insert_resource(EnemyActCooldown::ready());
-    commands.insert_resource(ActCadence::default());
+    // GTW-727: insert the EMPTY act log on this same Ok path, sharing the
+    // BattleInProgress lifetime (removed together on teardown). Per-battle
+    // lifetime is what makes sequence numbering restart at zero and the
+    // transition-detection prior-value maps reset for free — no separate reset
+    // pass, and no chance of a previous battle's last-known posture seeding the
+    // next battle's first recorded change. It replaces the GTW-461 enemy-act
+    // cadence resources this slot used to hold: pacing is no longer the sim's
+    // job, so the sim no longer carries pacing state.
+    commands.insert_resource(ActLog::default());
     // GTW-341: insert an EMPTY SquadVisibility on this same Ok path, sharing
     // the BattleInProgress lifetime. It starts empty; the BattleReady we write
     // below trips recompute_visibility (the SOLE writer) on the next update,

@@ -52,6 +52,7 @@ fn qa_error_round_trips_every_variant() {
         QaError::VersionMismatch,
         QaError::NoBattle,
         QaError::BadRequest,
+        QaError::NotCaughtUp,
         QaError::Timeout,
     ] {
         match error {
@@ -59,6 +60,7 @@ fn qa_error_round_trips_every_variant() {
             | QaError::VersionMismatch
             | QaError::NoBattle
             | QaError::BadRequest
+            | QaError::NotCaughtUp
             | QaError::Timeout => {}
         }
         assert_ron_round_trip(&error);

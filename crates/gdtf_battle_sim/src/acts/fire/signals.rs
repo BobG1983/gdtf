@@ -4,7 +4,7 @@
 
 use bevy::{
     ecs::system::SystemParam,
-    prelude::{Entity, Message, MessageWriter, Query},
+    prelude::{Deref, Entity, Message, MessageWriter, Query},
 };
 
 use crate::{
@@ -15,9 +15,44 @@ use crate::{
     weapon::ModeKind,
 };
 
+/// How many ROUNDS one fire act actually emitted — the length of the volley behind a
+/// single [`FireDeclaration`].
+///
+/// A burst declares ONCE and fires several rounds, and the count is not knowable from the
+/// request: the mode's nominal burst is CLAMPED to the magazine
+/// ([`clamp_burst`](crate::magazine::clamp_burst)), so a half-empty weapon fires fewer
+/// rounds than its mode names. Carrying the ACTUAL emitted count on the declaration is
+/// what lets a consumer pair a declaration with exactly its own rounds even when one
+/// shooter owns two declarations in the same tick (a reactor whose per-turn interrupt cap
+/// is 2 or more).
+///
+/// A named newtype over the round count (`no-bare-types.md`): the inner is PRIVATE, read
+/// through the derived [`Deref`].
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub struct RoundCount(u32);
+
+impl RoundCount {
+    /// No rounds — a declaration whose volley emitted nothing.
+    pub const NONE: Self = Self(0);
+
+    /// Build a round count from its total.
+    #[must_use]
+    pub const fn new(rounds: u32) -> Self {
+        Self(rounds)
+    }
+
+    /// Build a round count from a volley's emitted-round length, saturating at
+    /// [`u32::MAX`] (a volley can never approach it — the saturation exists so the
+    /// conversion is total rather than a lossy cast).
+    #[must_use]
+    pub fn from_emitted(rounds: usize) -> Self {
+        Self(u32::try_from(rounds).unwrap_or(u32::MAX))
+    }
+}
+
 /// A **fire was declared** — the combat-log signal that `shooter` fired `mode` at
 /// `target` (GTW-328), emitted ONCE per [`FireRequested`](crate::acts::request::FireRequested) that passes the firing-arc gate,
-/// BEFORE the shot rolls.
+/// carrying the [`RoundCount`] its volley actually emitted.
 ///
 /// The combat-text LOG event for a shot declaration ("`<name>` fired <Single/Burst/Full> at
 /// `<target>`") — the user-facing announcement that a shot is being taken, distinct from the
@@ -26,9 +61,17 @@ use crate::{
 /// the [`shooter`](FireDeclaration::shooter) ref, the resolved [`target`](FireDeclaration::target)
 /// occupant entity (if the aimed cell holds one, else `None`), and the
 /// [`mode`](FireDeclaration::mode) [`ModeKind`] (read off the request's
-/// [`FireModeSpec`](crate::weapon::FireModeSpec) kind). It adds **no** fire-result logic,
+/// [`FireModeSpec`](crate::weapon::FireModeSpec) kind) — plus, since GTW-727, the
+/// [`rounds`](FireDeclaration::rounds) the volley emitted. It adds **no** fire-result logic,
 /// performs **no** RNG draw, and re-resolves nothing — the determinism property is
 /// untouched (`docs/combat/resolution.md` §"What's pure math vs sim").
+///
+/// **Emission point (GTW-727).** It used to be written BEFORE `fire()` rolled the volley;
+/// it is now written immediately AFTER the per-round signals are emitted, because the
+/// round count is not knowable until the volley exists (the mode's nominal burst is
+/// clamped to the magazine). Nothing observes the declaration mid-volley — every consumer
+/// drains it later in the same update — so the move is invisible to them; what it buys is
+/// an exact declaration→rounds pairing.
 ///
 /// A buffered Bevy [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`), written
 /// with [`MessageWriter`] and read with [`MessageReader`](bevy::prelude::MessageReader), mirroring [`ShotFired`] /
@@ -50,17 +93,28 @@ pub struct FireDeclaration {
     /// request's [`FireModeSpec`](crate::weapon::FireModeSpec) kind; the log renders its
     /// [`Display`](std::fmt::Display) label.
     pub mode:    ModeKind,
+    /// How many rounds this declaration's volley actually emitted (GTW-727) — the count of
+    /// [`ShotFired`] messages that belong to THIS declaration, so a consumer can pair the
+    /// two exactly even when one shooter declares twice in a tick.
+    pub rounds:  RoundCount,
 }
 
 impl FireDeclaration {
     /// Build a fire-declaration signal for `shooter` firing `mode` at `target` (the
-    /// resolved occupant entity, or `None` for an empty-cell shot).
+    /// resolved occupant entity, or `None` for an empty-cell shot), whose volley emitted
+    /// `rounds` rounds.
     #[must_use]
-    pub const fn new(shooter: Entity, target: Option<Entity>, mode: ModeKind) -> Self {
+    pub const fn new(
+        shooter: Entity,
+        target: Option<Entity>,
+        mode: ModeKind,
+        rounds: RoundCount,
+    ) -> Self {
         Self {
             shooter,
             target,
             mode,
+            rounds,
         }
     }
 }

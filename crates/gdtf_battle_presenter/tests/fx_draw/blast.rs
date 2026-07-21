@@ -1,9 +1,6 @@
 //! Throw-resolved grenade blast through the impact pipeline (GTW-546).
 
-use bevy::{
-    app::App, ecs::message::Messages, sprite::Sprite, time::TimeUpdateStrategy,
-    transform::components::Transform,
-};
+use bevy::{app::App, sprite::Sprite, time::TimeUpdateStrategy, transform::components::Transform};
 use gdtf_battle_presenter::{ShotProjectile, cell_to_world};
 use gdtf_battle_sim::{
     acts::ThrowResolved,
@@ -68,9 +65,7 @@ fn throw_resolved_draws_the_blast_impact_at_the_landing_cell() {
     // (Blast, the concussion node). read_throw_resolved seeds the impact THIS update; the
     // spawn_scene seed materializes on the SpawnScene schedule and animate_impact consumes it
     // the NEXT update (the same one-update handoff a shot's arrived projectile uses).
-    app.world_mut()
-        .resource_mut::<Messages<ThrowResolved>>()
-        .write(ThrowResolved::new(landing, DamageType::Blast));
+    play(&mut app, ThrowResolved::new(landing, DamageType::Blast));
 
     // Update 1: read_throw_resolved drains the signal + seeds the PendingImpact (materializes on
     // SpawnScene). Update 2: animate_impact consumes the seed, spawns the impact glyph, emits the
@@ -102,9 +97,7 @@ fn throw_resolved_blast_impact_carries_no_shot_verdict() {
     let level = Level::new(0);
     let landing = CellLevel::new(cell, level);
 
-    app.world_mut()
-        .resource_mut::<Messages<ThrowResolved>>()
-        .write(ThrowResolved::new(landing, DamageType::Chem));
+    play(&mut app, ThrowResolved::new(landing, DamageType::Chem));
 
     // Update 1 seeds the impact; update 2 resolves it and emits the signal — drain it then.
     app.world_mut()

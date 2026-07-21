@@ -15,7 +15,7 @@ use super::{
     flash::{FlashTtl, FxFlash},
     roles::EffectRoles,
 };
-use crate::{CELL_PX, SheetRole, TileIndex, TopDownAtlases, cell_to_world};
+use crate::{CELL_PX, SheetRole, TileIndex, TopDownAtlases, cell_to_world, playback::Played};
 
 /// The bleed-flash tint, as a relation to the bleeding ganger's remaining [`Wounds`].
 ///
@@ -131,7 +131,7 @@ pub fn read_bleeding(
     mut commands: Commands,
     atlases: Res<TopDownAtlases>,
     roles: Res<EffectRoles>,
-    mut bleeds: MessageReader<Bleeding>,
+    mut bleeds: MessageReader<Played<Bleeding>>,
     positions: Query<&Position>,
     wounds: Query<&Wounds>,
 ) {
@@ -164,7 +164,7 @@ pub fn read_armor_broken(
     mut commands: Commands,
     atlases: Res<TopDownAtlases>,
     roles: Res<EffectRoles>,
-    mut broken: MessageReader<ArmorBroken>,
+    mut broken: MessageReader<Played<ArmorBroken>>,
     positions: Query<&Position>,
 ) {
     for msg in broken.read() {
@@ -200,7 +200,7 @@ pub fn read_cover_destroyed(
     mut commands: Commands,
     atlases: Res<TopDownAtlases>,
     roles: Res<EffectRoles>,
-    mut destroyed: MessageReader<CoverDestroyed>,
+    mut destroyed: MessageReader<Played<CoverDestroyed>>,
 ) {
     for msg in destroyed.read() {
         // CoverDestroyed.at is a CellLevel; its typed Cell / Level via the canonical

@@ -24,10 +24,9 @@
 //! ```
 //!
 //! The coefficients are the [`ReactionCapBase`] / [`ReactionCapPerReactions`]
-//! tunable leaves. Defaults are **defensible-but-arbitrary** starting points,
-//! following the `ActCadence::DEFAULT` precedent — balance data, never pinned by
-//! a magnitude test. Tests assert only **invariants** (monotone, clamp-edge
-//! boundary), never magnitudes.
+//! tunable leaves. Defaults are **defensible-but-arbitrary** starting points —
+//! balance data, never pinned by a magnitude test. Tests assert only
+//! **invariants** (monotone, clamp-edge boundary), never magnitudes.
 
 use bevy::prelude::Deref;
 use serde::Deserialize;
@@ -67,8 +66,8 @@ impl ReactionCap {
 /// Even a ganger with zero [`Reactions`] may still gain one interrupt if
 /// `cap_base ≥ 1.0` (a guaranteed minimum cap that keeps reaction fire alive
 /// for low-Reactions gangers). Default `1.0` — a defensible-but-arbitrary
-/// starting point mirroring the `ActCadence::DEFAULT` precedent; tests assert
-/// only the monotone invariant, never this magnitude.
+/// starting point; tests assert only the monotone invariant, never this
+/// magnitude.
 /// `#[serde(transparent)]` lets it parse a bare RON scalar; private inner +
 /// derived [`Deref`].
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]

@@ -6,22 +6,24 @@
 //! [`FireDeclaration`](crate::acts::FireDeclaration)), finds every eligible OPPOSING
 //! reactor with a clear shot at the acting ganger, runs the GTW-467 opposed check, and on
 //! success emits a REAL [`FireRequested`](crate::acts::FireRequested) (the interrupt shot)
-//! plus a [`ReactionShotFired`] (halting a walking actor), then increments the reactor's
+//! plus a [`ReactionShotFired`](crate::acts::movement::ReactionShotFired) (halting a walking
+//! actor), then increments the reactor's
 //! [`ReactionsUsed`] per-turn counter. It reimplements no combat — it WRAPS the landed
 //! verbs (`bevy-traps.md` #7 — param-only, no `&mut World`).
 
 use bevy::{
     platform::collections::HashSet,
-    prelude::{Changed, Entity, MessageReader, MessageWriter, Query, Res, ResMut, With},
+    prelude::{Changed, Entity, MessageReader, Query, Res, ResMut, With},
 };
 
 use super::{
+    declared::InterruptSignals,
     interrupt::try_reaction,
     ledger::PendingSpendLedger,
     snapshot::{ReactionGangers, ReactionRow, cell_order},
 };
 use crate::{
-    acts::{FireDeclaration, FireRequested, WeaponProbes, movement::ReactionShotFired},
+    acts::{FireDeclaration, WeaponProbes},
     cover::CoverLedger,
     fire::WieldsQuery,
     ganger::{LifeState, Position, Suppressed},
@@ -58,8 +60,9 @@ use crate::{
 ///
 /// ## C5 — ordering (the critical wiring, `bevy-traps.md` #3)
 ///
-/// This system emits a [`FireRequested`] that [`dispatch_fire`](crate::acts::dispatch_fire)
-/// must consume AND a [`ReactionShotFired`] that
+/// This system emits a [`FireRequested`](crate::acts::FireRequested) that
+/// [`dispatch_fire`](crate::acts::dispatch_fire)
+/// must consume AND a [`ReactionShotFired`](crate::acts::movement::ReactionShotFired) that
 /// [`advance_walk`](crate::acts::movement::advance_walk) must consume — both the SAME tick.
 /// `dispatch_fire` runs EARLY in the Simulate band; `advance_walk` runs LATE
 /// (`.after(dispatch_move)`). A system cannot be `.after(advance_walk)` AND
@@ -140,9 +143,10 @@ pub fn reaction_trigger(
     // `Option<Res<InjuryTables>>` precedent). With it ABSENT no opposed check can roll, so no
     // interrupt fires — a safe, defined fallback, never a panic.
     rng: Option<ResMut<ReactionRng>>,
-    // C4: the interrupt shot + the walking-actor halt.
-    mut fire_writer: MessageWriter<FireRequested>,
-    mut halt_writer: MessageWriter<ReactionShotFired>,
+    // C4 + GTW-727 C5: the interrupt shot, the walking-actor halt, and the interrupt
+    // exposure signal — bundled into ONE SystemParam so this system stays under Bevy's
+    // 16-param arity (the `FireSignals` bundling precedent).
+    mut signals: InterruptSignals,
 ) {
     // bevy-traps.md #1: without the seeded reaction stream no opposed check can roll, so no
     // interrupt can fire — fail closed (no panic) rather than reading an absent resource. In
@@ -258,8 +262,7 @@ pub fn reaction_trigger(
                 &cover,
                 &mut rng,
                 is_dead,
-                &mut fire_writer,
-                &mut halt_writer,
+                &mut signals,
             ) {
                 ledger.commit(commit);
             }

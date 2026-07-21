@@ -33,11 +33,10 @@ fn a_fresh_line_fades_in_rather_than_snapping_to_full_opacity() {
     let ganger = spawn_named(&mut app, "Vex");
     app.update();
 
-    app.world_mut().write_message(MovementOccurred::new(
-        ganger,
-        Cell::new(3, 4),
-        Cell::new(3, 6),
-    ));
+    play(
+        &mut app,
+        MovementOccurred::new(ganger, Cell::new(3, 4), Cell::new(3, 6)),
+    );
     // The drain frame: the line spawns (transparent) and the fade system ramps it a sliver.
     app.update();
     assert_eq!(
@@ -93,11 +92,10 @@ fn a_log_line_draws_at_the_larger_tuned_size_not_the_body_text() {
     let ganger = spawn_named(&mut app, "Alex Mercer");
     app.update();
 
-    app.world_mut().write_message(MovementOccurred::new(
-        ganger,
-        Cell::new(15, 11),
-        Cell::new(14, 12),
-    ));
+    play(
+        &mut app,
+        MovementOccurred::new(ganger, Cell::new(15, 11), Cell::new(14, 12)),
+    );
     app.update();
 
     let size = first_line_font_px(&mut app);
@@ -125,11 +123,10 @@ fn a_log_line_reserves_its_full_glyph_box_so_it_is_not_clipped() {
     let ganger = spawn_named(&mut app, "Alex Mercer");
     app.update();
 
-    app.world_mut().write_message(MovementOccurred::new(
-        ganger,
-        Cell::new(15, 11),
-        Cell::new(14, 12),
-    ));
+    play(
+        &mut app,
+        MovementOccurred::new(ganger, Cell::new(15, 11), Cell::new(14, 12)),
+    );
     app.update();
 
     let lines = all_with::<CombatLogLine>(&mut app);

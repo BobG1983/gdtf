@@ -24,7 +24,7 @@ use gdtf_qa_mcp::{GameClient, GameLink, GamePort};
 use gdtf_qa_protocol::{
     envelope::{QaError, QaRequest, QaResponse},
     framing::{FrameDecoder, encode},
-    view::{AppFlowView, AppStateNet, BattleActiveNet},
+    view::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet},
 };
 
 /// Bind a loopback listener on an OS-assigned port; return it and the bound port number.
@@ -46,6 +46,7 @@ const fn app_flow_reply() -> QaResponse {
         AppStateNet::Running,
         BattleActiveNet::new(true),
         Vec::new(),
+        CaughtUpNet::new(true),
     ))
 }
 

@@ -8,6 +8,7 @@ use bevy::{
     prelude::*,
 };
 use gdtf_battle_input::{contextual::ContextualActSystems, pick_hovered_cell};
+use gdtf_battle_presenter::playback_caught_up;
 use gdtf_battle_sim::prelude::BattleInProgress;
 
 use crate::states::{
@@ -140,9 +141,18 @@ impl ContextualPanelActAppExt for App {
                 (
                     offer.in_set(ContextualPanelSystems::Offer),
                     sync_contextual_button_visibility::<A>.in_set(ContextualPanelSystems::Toggle),
-                    press_contextual_button::<A>.in_set(ContextualPanelSystems::Press),
                 )
                     .run_if(resource_exists::<BattleInProgress>),
+            )
+            // GTW-727 C24: the PRESS is blocked at the push site while the presenter is
+            // catching up, so a contextual act is never queued against a stale screen. The
+            // OFFER and the button's visibility stay live above — the panel keeps showing
+            // WHAT is available, it just cannot be pressed until the screen is current.
+            .add_systems(
+                Update,
+                press_contextual_button::<A>
+                    .in_set(ContextualPanelSystems::Press)
+                    .run_if(resource_exists::<BattleInProgress>.and_then(playback_caught_up)),
             )
     }
 }

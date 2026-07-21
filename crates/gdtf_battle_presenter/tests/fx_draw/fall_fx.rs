@@ -1,6 +1,6 @@
 //! Fall impact flash + Fell FCT pop (GTW-524).
 
-use bevy::{ecs::message::Messages, transform::components::Transform};
+use bevy::transform::components::Transform;
 use gdtf_battle_presenter::{FctValence, FloatingCombatText, cell_to_world, valence_color};
 use gdtf_battle_sim::{
     falls::{FallOccurred, StoreysFallen},
@@ -38,9 +38,10 @@ fn fall_occurred_spawns_one_flash_at_landing_cell_and_a_fell_fct_pop() {
 
     // Write the FallOccurred message and run one update — the registered `read_fall_occurred`
     // drains it and spawns the flash + FCT pop on this frame's SpawnScene schedule.
-    app.world_mut()
-        .resource_mut::<Messages<FallOccurred>>()
-        .write(FallOccurred::new(ganger, from_level, to_level, storeys));
+    play(
+        &mut app,
+        FallOccurred::new(ganger, from_level, to_level, storeys),
+    );
     app.update();
 
     // C1: EXACTLY ONE FxFlash at the landing cell's world position.
@@ -107,14 +108,10 @@ fn fall_occurred_spawns_one_flash_at_landing_cell_and_a_fell_fct_pop() {
         "the fall-impact flash must have expired"
     );
     let bare = app.world_mut().spawn_empty().id();
-    app.world_mut()
-        .resource_mut::<Messages<FallOccurred>>()
-        .write(FallOccurred::new(
-            bare,
-            from_level,
-            to_level,
-            StoreysFallen::new(1),
-        ));
+    play(
+        &mut app,
+        FallOccurred::new(bare, from_level, to_level, StoreysFallen::new(1)),
+    );
     app.update();
     assert_eq!(
         fx_count(&mut app),

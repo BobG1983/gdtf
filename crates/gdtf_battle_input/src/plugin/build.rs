@@ -3,7 +3,7 @@
 //! data-driven keybinds, the shared act-intent seam, and the gamepad software cursor.
 
 use bevy::prelude::*;
-use gdtf_battle_presenter::{GamepadCursorMoved, HighlightRequest};
+use gdtf_battle_presenter::{GamepadCursorMoved, HighlightRequest, playback_caught_up};
 use gdtf_battle_sim::{
     acts::{
         EndTurnRequested, FireRequested, MoveRequested, ReloadRequested, SetAimingRequested,
@@ -104,6 +104,14 @@ pub(super) fn battle_act_gate() -> impl SystemCondition<()> {
 }
 
 impl Plugin for GdtfBattleInputPlugin {
+    #[expect(
+        clippy::too_many_lines,
+        reason = "GTW-727 split the keyboard registration in two (the VIEW keys stay live \
+                  while the presenter catches up; the ACT keys are blocked at the push \
+                  site), which pushed this over the line gate. It is one flat registration \
+                  list whose per-entry comments ARE the wiring documentation; the \
+                  independent surfaces are already extracted into `register_*` helpers"
+    )]
     fn build(&self, app: &mut App) {
         // GTW-245 — anchor the whole input band BEFORE the sim band, realizing the
         // one-way `input -> sim -> presenter` loop (ADR-0001) inside one `Update`.
@@ -203,13 +211,27 @@ impl Plugin for GdtfBattleInputPlugin {
         // (`bevy-traps.md` #1). Ordered `.before(pick_hovered_cell)` (`bevy-traps.md` #3 —
         // they act on the cell resolved last update, deterministic consume->resolve order)
         // and `.before(dispatch_act_intents)` (the drain).
+        // GTW-727 C24: `right_click_turn_to_face` is a pure act push, so it is BLOCKED
+        // outright while the presenter is catching up — the turn is never even queued.
+        // `left_click_act` is only PARTIALLY gated and therefore keeps running: it applies
+        // two independent decisions, and only the ACT half (`decide_left_click`) is blocked
+        // inside the system. The inspect-panel PIN half stays live, because pinning a
+        // ganger to read its card is how a player watches the exchange that closed the gate.
         .add_systems(
             Update,
-            (left_click_act, right_click_turn_to_face)
+            left_click_act
                 .in_set(InputSystems::Gather)
                 .before(pick_hovered_cell)
                 .before(dispatch_act_intents)
                 .run_if(battle_act_gate()),
+        )
+        .add_systems(
+            Update,
+            right_click_turn_to_face
+                .in_set(InputSystems::Gather)
+                .before(pick_hovered_cell)
+                .before(dispatch_act_intents)
+                .run_if(battle_act_gate().and_then(playback_caught_up)),
         )
         .add_systems(
             Update,
@@ -236,20 +258,27 @@ impl Plugin for GdtfBattleInputPlugin {
         // `cycle_selection_keys` (the `Tab` / `Shift+Tab` Prev/Next cycle) to the same band —
         // it is NOT gated on a selection (cycling makes a first selection), unlike
         // `posture_keys`.
+        // GTW-727 C25: the two VIEW keys stay LIVE while the presenter catches up. They
+        // change nothing in the world, and they are the player's means of WATCHING the
+        // reaction fire that closed the gate — locking them out would remove the very
+        // affordance this pacing exists to serve.
         .add_systems(
             Update,
-            (
-                level_keys,
-                // GTW-521 — the full-view toggle key. Like `level_keys` it is a GLOBAL
-                // presenter-view control (not gated on a selection); it reads `Keybinds` and
-                // pushes `ActIntent::ToggleFullView` onto the shared seam.
-                full_view_key,
-                select_clear_key,
-                posture_keys,
-                cycle_selection_keys,
-            )
+            (level_keys, full_view_key)
                 .in_set(InputSystems::Gather)
                 .run_if(resource_exists::<BattleInProgress>.and_then(resource_exists::<Keybinds>)),
+        )
+        // GTW-727 C24: the act / selection keys are BLOCKED while catching up, at the PUSH
+        // site — so the intent is never queued at all, rather than queued and discarded.
+        .add_systems(
+            Update,
+            (select_clear_key, posture_keys, cycle_selection_keys)
+                .in_set(InputSystems::Gather)
+                .run_if(
+                    resource_exists::<BattleInProgress>
+                        .and_then(resource_exists::<Keybinds>)
+                        .and_then(playback_caught_up),
+                ),
         )
         // The ONE intent drain — after EVERY intent writer (the keyboard keys + GTW-238's
         // left-click decision + right-click turn surface) so it sees this update's pushes;

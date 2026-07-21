@@ -20,6 +20,7 @@ mod components;
 mod labels;
 mod portrait;
 mod update;
+mod writers;
 
 #[cfg(test)]
 mod test;

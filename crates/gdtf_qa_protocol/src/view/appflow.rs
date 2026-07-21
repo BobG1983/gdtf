@@ -40,6 +40,35 @@ impl BattleActiveNet {
     }
 }
 
+/// Whether the presenter has SHOWN everything the sim has done (GTW-727 C46).
+///
+/// A private-inner newtype over `bool` (no-bare-types), serde-transparent.
+///
+/// A QA agent now sees THREE clocks and needs to reconcile them, so this fact is on the
+/// wire deliberately rather than left to be inferred:
+///
+/// * [`GetBattleState`](crate::envelope::QaRequest::GetBattleState) reads **sim time** —
+///   the live post-simulation world, which is what a test asserting an outcome wants.
+/// * [`GetOutput`](crate::envelope::QaRequest::GetOutput) reads **log time** — the ordered
+///   record of what happened.
+/// * A screenshot shows **cursor time** — what is currently on screen, which may lag the
+///   other two while an exchange plays out.
+///
+/// The divergence is accepted and documented, not removed. `caught_up` is the fact that
+/// says whether the three currently agree — and, because acting is gated on it, whether an
+/// [`Inject`](crate::envelope::QaRequest::Inject) will be serviced at all.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct CaughtUpNet(bool);
+
+impl CaughtUpNet {
+    /// Build a catch-up answer — `true` when the screen shows everything the sim has done.
+    #[must_use]
+    pub const fn new(caught_up: bool) -> Self {
+        Self(caught_up)
+    }
+}
+
 /// A request **kind** — the discriminant of a [`QaRequest`](crate::envelope::QaRequest)
 /// without its payload.
 ///
@@ -94,8 +123,9 @@ impl RequestKindNet {
 ///
 /// The reply to a [`GetAppFlow`](crate::envelope::QaRequest::GetAppFlow). A QA client reads
 /// [`available`](Self::available) to learn which requests are valid in the current state
-/// (the trio of battle-only reads is absent until a battle is running); it is meant to be
-/// polled first, before acting on what it lists. Serde default shape.
+/// (the battle-only reads are absent until a battle is running; the act-bearing kinds are
+/// absent while the presenter is still replaying an exchange — GTW-727 C42); it is meant to
+/// be polled first, before acting on what it lists. Serde default shape.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct AppFlowView {
     /// The app's lifecycle state.
@@ -105,21 +135,29 @@ pub struct AppFlowView {
     /// The request kinds the server will service in this state — the affordances a QA
     /// client can act on right now.
     pub available:     Vec<RequestKindNet>,
+    /// Whether the presenter has shown everything the sim has done (GTW-727).
+    ///
+    /// While this is `false` the game is replaying an exchange, and the act-bearing request
+    /// kinds are absent from [`available`](Self::available) — so a polling client is told
+    /// directly rather than having to infer it from a rejection.
+    pub caught_up:     CaughtUpNet,
 }
 
 impl AppFlowView {
-    /// Build an app-flow snapshot from the lifecycle state, the battle-active flag, and the
-    /// request kinds serviceable right now.
+    /// Build an app-flow snapshot from the lifecycle state, the battle-active flag, the
+    /// request kinds serviceable right now, and whether the screen is caught up.
     #[must_use]
     pub const fn new(
         state: AppStateNet,
         battle_active: BattleActiveNet,
         available: Vec<RequestKindNet>,
+        caught_up: CaughtUpNet,
     ) -> Self {
         Self {
             state,
             battle_active,
             available,
+            caught_up,
         }
     }
 }

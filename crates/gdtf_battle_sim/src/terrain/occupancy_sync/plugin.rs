@@ -28,6 +28,13 @@ pub enum SimSystems {
     /// The band containing the authoritative sim's world-mutation systems — today the
     /// change-driven occupancy-maintenance chain, tomorrow the per-act dispatch systems.
     Simulate,
+    /// The band containing the act-log RECORDER (GTW-727) — the read-only pass that writes
+    /// this tick's acts into the [`ActLog`](crate::act_log::ActLog), ordered strictly
+    /// `.after(`[`Simulate`](SimSystems::Simulate)`)` so it observes a settled world. It
+    /// mutates nothing but the log, so a view can order `.after(SimSystems::Record)` and be
+    /// guaranteed that both the world AND its record of how the world got there are final
+    /// for the tick.
+    Record,
 }
 
 /// Wires the three change-driven occupancy-maintenance systems and the
@@ -97,6 +104,14 @@ impl Plugin for OccupancyMaintenancePlugin {
             // (here) and producer (dispatch_fire) plugins can name it.
             .add_message::<GroundAccrued>()
             .configure_sets(Update, SimSystems::Simulate)
+            // GTW-727 C12: the act-log recorder band, ordered strictly after the mutation
+            // band so `record_acts` reads a SETTLED world — every after-value it records
+            // (position, posture, vitals, magazine, life state) is the value the tick
+            // actually reached. Configured here because this plugin OWNS the `SimSystems`
+            // anchor; the band's live-battle gate is configured separately beside
+            // `Simulate`'s in `BattleSimPlugin` (a sibling set variant inherits neither the
+            // ordering nor the run condition of its siblings).
+            .configure_sets(Update, SimSystems::Record.after(SimSystems::Simulate))
             // GTW-501 C3 / GTW-502 C4: `project_path_blocking` then `project_vision_blocking`
             // are APPENDED to the OccupancyGrid chain (move → die → cover → PATH → VISION).
             // BOTH take `ResMut<OccupancyGrid>`, so they MUST be ordered against the three

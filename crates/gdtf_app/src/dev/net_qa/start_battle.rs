@@ -18,7 +18,7 @@ use gdtf_battle_sim::{prelude::BattleInProgress, rng::BattleSeed};
 use gdtf_qa_protocol::{
     envelope::{QaError, QaResponse},
     ids::SituationRef,
-    view::{AppFlowView, BattleActiveNet},
+    view::{AppFlowView, BattleActiveNet, CaughtUpNet},
 };
 
 use super::{
@@ -26,6 +26,13 @@ use super::{
     router::{app_state_to_net, available_requests},
 };
 use crate::states::{AppState, RunningState, running::menu::StartBattleRequested};
+
+/// The catch-up fact reported on a `StartBattle` acknowledgement.
+///
+/// Always `true`: the acknowledgement is sent from the MENU, before the descent into the
+/// battle, so there is nothing being replayed and nothing to be behind on. Named rather
+/// than written as a bare literal so the reason travels with the value.
+const CAUGHT_UP_AT_MENU: bool = true;
 
 /// The one authored situation the game currently ships — the stem of the Load scene's
 /// `content/situations/skirmish.ron`. `drive_start_battle` accepts a
@@ -98,7 +105,8 @@ pub(super) fn drive_start_battle(
         responder.reply(QaResponse::AppFlow(AppFlowView::new(
             app_state_to_net(app_state.get()),
             BattleActiveNet::new(in_battle),
-            available_requests(in_battle),
+            available_requests(in_battle, CAUGHT_UP_AT_MENU),
+            CaughtUpNet::new(CAUGHT_UP_AT_MENU),
         )));
     }
 }

@@ -10,6 +10,7 @@
 
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
 use gdtf_app::test_support::{AppState, BattleScapeState, CombatLogLine, RunningState};
+use gdtf_battle_presenter::Played;
 use gdtf_battle_sim::{
     acts::MeleeStruck,
     armor::BodyPart,
@@ -119,6 +120,21 @@ fn spawn_named(app: &mut App, name: &str) -> Entity {
     app.world_mut().spawn(GangerName::new(name.to_owned())).id()
 }
 
+/// PLAYS `fact` — writes it onto the `Played<M>` buffer the combat-log forwarders drain
+/// (GTW-727 C16/C28). Since `forward_log_source::<S>` reads `Played<S>` (not the raw sim
+/// message), a test that drives a log line hands its fact to the same buffer the playback
+/// cursor would write — the reader, its gate and every assertion are unchanged, only the
+/// buffer the fact arrives on moves. The write is ASSERTED so an unregistered buffer surfaces
+/// as a wiring failure rather than a silent "the line never appeared".
+fn play<M: Message + Clone>(app: &mut App, fact: M) {
+    let written = app.world_mut().write_message(Played::new(fact)).is_some();
+    assert!(
+        written,
+        "the Played<{}> buffer must be registered by the presenter's playback registration",
+        core::any::type_name::<M>(),
+    );
+}
+
 /// A ground-floor `(cell, level)` key.
 fn ground(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(0))
@@ -132,12 +148,10 @@ fn a_fall_occurred_appends_the_fell_line() {
     let ganger = spawn_named(&mut app, "Vex");
     app.update();
 
-    app.world_mut().write_message(FallOccurred::new(
-        ganger,
-        Level::new(2),
-        Level::new(0),
-        StoreysFallen::new(2),
-    ));
+    play(
+        &mut app,
+        FallOccurred::new(ganger, Level::new(2), Level::new(0), StoreysFallen::new(2)),
+    );
     app.update();
 
     assert_eq!(
@@ -157,8 +171,10 @@ fn a_melee_struck_appends_the_damage_line() {
     let target = spawn_named(&mut app, "Skar");
     app.update();
 
-    app.world_mut()
-        .write_message(MeleeStruck::new(attacker, target, HpDamage::new(4)));
+    play(
+        &mut app,
+        MeleeStruck::new(attacker, target, HpDamage::new(4)),
+    );
     app.update();
 
     assert_eq!(
@@ -178,8 +194,7 @@ fn an_on_death_appends_the_named_dies_line_and_a_cover_death_does_not() {
     let ganger = spawn_named(&mut app, "Vex");
     app.update();
 
-    app.world_mut()
-        .write_message(OnDeathOccurred::new(ganger, ground(4, 4)));
+    play(&mut app, OnDeathOccurred::new(ganger, ground(4, 4)));
     app.update();
     assert_eq!(
         count_of(&mut app, "Vex dies"),
@@ -189,8 +204,9 @@ fn an_on_death_appends_the_named_dies_line_and_a_cover_death_does_not() {
     );
 
     // A COVER death — Entity::PLACEHOLDER — must yield NO line at all (never "Someone dies").
-    app.world_mut()
-        .write_message(OnDeathOccurred::cover(ground(5, 5)));
+    // Played through the cursor's buffer like a real death so the forwarder is genuinely
+    // reached and its placeholder-skip is what suppresses the line (not a missed message).
+    play(&mut app, OnDeathOccurred::cover(ground(5, 5)));
     app.update();
     app.update();
     assert_eq!(
@@ -209,11 +225,10 @@ fn a_suppression_applied_appends_the_suppressed_line() {
     let ganger = spawn_named(&mut app, "Vex");
     app.update();
 
-    app.world_mut()
-        .write_message(gdtf_battle_sim::suppression::SuppressionApplied::new(
-            ganger,
-            ground(3, 3),
-        ));
+    play(
+        &mut app,
+        gdtf_battle_sim::suppression::SuppressionApplied::new(ganger, ground(3, 3)),
+    );
     app.update();
 
     assert_eq!(
@@ -231,8 +246,7 @@ fn an_armor_broken_appends_the_armor_broken_line() {
     let ganger = spawn_named(&mut app, "Vex");
     app.update();
 
-    app.world_mut()
-        .write_message(ArmorBroken::new(ganger, BodyPart::Torso));
+    play(&mut app, ArmorBroken::new(ganger, BodyPart::Torso));
     app.update();
 
     assert_eq!(
@@ -252,8 +266,7 @@ fn a_dot_affliction_logs_once_at_start_and_never_on_a_tick() {
     let ganger = spawn_named(&mut app, "Vex");
     app.update();
 
-    app.world_mut()
-        .write_message(DotAfflicted::new(ganger, DotDamage::new(2)));
+    play(&mut app, DotAfflicted::new(ganger, DotDamage::new(2)));
     app.update();
     assert_eq!(
         count_of(&mut app, "Vex is afflicted (-2/turn)"),
@@ -286,8 +299,7 @@ fn a_field_exposure_logs_once_at_start_and_never_on_a_tick() {
     let ganger = spawn_named(&mut app, "Vex");
     app.update();
 
-    app.world_mut()
-        .write_message(FieldAfflicted::new(ganger, ground(6, 6)));
+    play(&mut app, FieldAfflicted::new(ganger, ground(6, 6)));
     app.update();
     assert_eq!(
         count_of(&mut app, "Vex is caught in a hazard field"),
@@ -319,7 +331,7 @@ fn a_bleed_span_logs_once_at_start_and_never_on_a_tick() {
     let ganger = spawn_named(&mut app, "Vex");
     app.update();
 
-    app.world_mut().write_message(BleedStarted::new(ganger));
+    play(&mut app, BleedStarted::new(ganger));
     app.update();
     assert_eq!(
         count_of(&mut app, "Vex is bleeding"),

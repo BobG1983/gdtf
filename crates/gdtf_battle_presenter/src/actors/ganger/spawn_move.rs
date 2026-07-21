@@ -18,7 +18,9 @@ use super::{
     tween::SpriteTween,
     visibility::GangerVisibilityFacts,
 };
-use crate::{CELL_PX, Layer, SheetRole, TopDownAtlases, cell_to_world_layered};
+use crate::{
+    CELL_PX, Layer, SheetRole, TopDownAtlases, cell_to_world_layered, playback::DrawnPosition,
+};
 
 /// Build one ganger [`Sprite`] on the character sheet drawn as `appearance` (the GTW-631
 /// classifier's atlas index + tint), via the S3 recipe.
@@ -164,7 +166,9 @@ pub fn spawn_ganger_sprites(
 /// `Update` (`PresenterSystems::Scene`, `.after(spawn_ganger_sprites)`): RE-TARGET the
 /// movement tween (do NOT respawn, do NOT snap) of a ganger whose [`Position`] changed.
 ///
-/// For every ganger whose [`Position`] is [`Changed`], look the presenter sprite up
+/// For every ganger whose [`DrawnPosition`] is [`Changed`] — the cell the playback cursor
+/// has SHOWN it at, not the cell the sim has already moved it to (GTW-727 C17) — look the
+/// presenter sprite up
 /// through [`GangerSprites`] and RE-TARGET its [`SpriteTween`] (GTW-359 C4) — source = the
 /// sprite's CURRENT (possibly mid-glide) [`Transform`] translation, target = the new
 /// [`Layer::Actor`](crate::Layer) projection of the cell
@@ -194,10 +198,11 @@ pub fn spawn_ganger_sprites(
 /// the presenter-sprite [`Transform`] / [`SpriteTween`] query.
 pub fn move_ganger_sprites(
     sprites: Res<GangerSprites>,
-    moved: Query<(Entity, &Position), Changed<Position>>,
+    moved: Query<(Entity, &DrawnPosition), Changed<DrawnPosition>>,
     mut presenters: Query<(&Transform, &mut SpriteTween), With<GangerSprite>>,
 ) {
-    for (entity, pos) in &moved {
+    for (entity, drawn) in &moved {
+        let pos = drawn.position();
         let Some(presenter) = sprites.sprite_for(entity) else {
             continue;
         };

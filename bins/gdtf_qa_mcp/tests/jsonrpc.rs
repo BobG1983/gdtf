@@ -9,7 +9,7 @@ use gdtf_qa_mcp::{
 };
 use gdtf_qa_protocol::{
     envelope::{InjectReceipt, QaError, QaRequest, QaResponse},
-    view::{AppFlowView, AppStateNet, BattleActiveNet},
+    view::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet},
 };
 use serde_json::{Value, json};
 
@@ -24,6 +24,7 @@ impl GameLink for CannedGame {
                 AppStateNet::Running,
                 BattleActiveNet::new(true),
                 Vec::new(),
+                CaughtUpNet::new(true),
             ))),
             QaRequest::Inject(_) => Ok(QaResponse::Injected(InjectReceipt::Queued)),
             _ => Ok(QaResponse::Error(QaError::BadRequest)),

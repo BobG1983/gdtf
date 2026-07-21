@@ -57,7 +57,11 @@ pub(super) fn register_combat_log_forwarders(app: &mut App) {
     app.add_combat_log_source::<FireDeclaration>()
         .add_combat_log_source::<MovementOccurred>()
         .add_combat_log_source::<MoveRejected>()
-        .add_combat_log_source::<ShotImpactResolved>()
+        // The one UNPACED source (GTW-727): `ShotImpactResolved` is the presenter's own
+        // per-impact signal, emitted when a bolt actually lands — already cursor time,
+        // and unreplayable (at play time the impact has not happened yet). Forwarding it
+        // live is what makes a shot's outcome line land exactly as its bolt arrives.
+        .add_live_combat_log_source::<ShotImpactResolved>()
         .add_combat_log_source::<ReloadResult>()
         .add_combat_log_source::<InjuryInflicted>()
         .add_combat_log_source::<FallOccurred>()

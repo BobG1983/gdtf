@@ -22,7 +22,9 @@ use super::{
     },
     travel::{ProjectileTravel, ShotProjectile},
 };
-use crate::{GangerSprite, GangerSprites, TopDownAtlases, cell_to_world, sim_pos_to_world};
+use crate::{
+    GangerSprite, GangerSprites, TopDownAtlases, cell_to_world, playback::Played, sim_pos_to_world,
+};
 
 /// `Update` (`PresenterSystems::Overlay`): spawn the traveling DIRECTIONAL projectile per
 /// [`ShotFired`] round.
@@ -53,22 +55,20 @@ use crate::{GangerSprite, GangerSprites, TopDownAtlases, cell_to_world, sim_pos_
 /// TRANSLATES it. A missing effects sheet skips the spawn fail-closed (`fx_sprite_scaled`
 /// returns [`None`]).
 ///
-/// A burst / full-auto shot emits one [`ShotFired`] per round in ONE frame, so this spawns one
-/// projectile per round — and STAGGERS them (GTW-308): each round's read-order index (0, 1, 2, …)
-/// × the tuning's [`InterShotSeconds`](super::super::tuning::InterShotSeconds) is its
-/// [`ProjectileTravel`] launch delay, so the volley animates shot-by-shot rather than as a
-/// single fat bolt. Each round spawns [`Visibility::Hidden`] (held invisible at the muzzle);
-/// [`advance_projectiles`](super::advance::advance_projectiles) reveals it once its launch
-/// delay elapses. The read-order index
-/// counts every round drained this call (across multiple bursts in one frame, too), which is
-/// the order the rounds leave the muzzle.
+/// Since GTW-727 C33 this drains [`Played<ShotFired>`](crate::playback::Played), not the raw sim
+/// [`ShotFired`] buffer: the playback cursor is the ONE writer of a `Played<ShotFired>`, and it
+/// releases at most one round per frame. So the per-volley launch STAGGER that used to live here
+/// (`index × InterShotSeconds`) is GONE — every bolt drained this call launches at once (delay
+/// [`Duration::ZERO`](std::time::Duration::ZERO)), because the cursor already paces the volley by
+/// releasing one round per frame, each earning its own dwell. Each round still spawns
+/// [`Visibility::Hidden`] at the muzzle; [`advance_projectiles`](super::advance::advance_projectiles)
+/// reveals it immediately (the zero launch delay has already elapsed).
 ///
-/// The draw scale, the constant flight
+/// The draw scale and the constant flight
 /// [`ProjectileVelocity`](super::super::tuning::ProjectileVelocity) each [`ProjectileTravel`]
-/// captures, and the inter-shot stagger are ALL read here from the resident [`FxTuning`]
-/// resource (the migrated-from-`const`, hot-reloadable `.ron` table), so a live edit to
-/// `assets/core_tuning/fx.tuning.ron` re-tunes the next shot's size / speed / spacing without a
-/// rebuild.
+/// captures are read here from the resident [`FxTuning`] resource (the migrated-from-`const`,
+/// hot-reloadable `.ron` table), so a live edit to `assets/core_tuning/fx.tuning.ron` re-tunes the
+/// next shot's size / speed without a rebuild.
 ///
 /// GTW-327 (slice 2): each round's classified floating-combat-text pops are computed HERE
 /// ([`classify_report`] of its [`HitReport`](gdtf_battle_sim::resolve_and_apply::HitReport)) + their anchor cell
@@ -104,16 +104,21 @@ pub fn spawn_shot_projectiles(
     ganger_sprites: Res<GangerSprites>,
     ganger_transforms: Query<&Transform, With<GangerSprite>>,
     positions: Query<&Position>,
-    mut shots: MessageReader<ShotFired>,
+    mut shots: MessageReader<Played<ShotFired>>,
 ) {
     // The hot-reloadable tuning the whole volley reads (captured per spawn so a later edit
     // re-tunes the NEXT shot, not in-flight ones).
     let draw_scale = *tuning.projectile_draw_scale;
     let velocity = tuning.projectile_velocity;
-    let inter_shot = *tuning.inter_shot_seconds;
-    // The read-order index of each round drained this call — its position in the volley, which
-    // sets its stagger offset so successive rounds leave the muzzle one step apart.
-    for (round, msg) in shots.read().enumerate() {
+    // GTW-727 C33: the per-volley launch STAGGER is gone from here. It used to compute
+    // `index × inter_shot` so successive rounds of one volley left the muzzle a beat apart —
+    // but the act log now carries one entry per ROUND and the playback cursor paces each with
+    // its own dwell, so keeping this would be a second pacing mechanism running underneath the
+    // first. The `InterShotSeconds` tuning field survives as the documented origin of
+    // `RoundSeconds::DEFAULT`, so `fx.tuning.ron` needs no change and the burst's feel is
+    // unchanged — the beat simply comes from the cursor now. Every bolt drained here launches
+    // at once, because the cursor only ever plays ONE round per frame.
+    for msg in shots.read() {
         let muzzle_world = sim_pos_to_world(msg.muzzle);
         // Where the bolt flies: a ganger hit aims at the hit entity's CURRENT rendered
         // position (its Transform already encodes its stance/silhouette height), so a
@@ -140,11 +145,9 @@ pub fn spawn_shot_projectiles(
             spawn_pops_at_anchor(&mut commands, &pops, anchor, &tuning);
             continue;
         };
-        // This round's launch delay = its read-order index × the inter-shot step (round 0 = 0,
-        // launches at once). Scaling a `Duration` by the `u32` index keeps it exact with no `as`
-        // float cast (`Duration` implements `Mul<u32>`).
-        let round_index = u32::try_from(round).unwrap_or(u32::MAX);
-        let launch_delay = std::time::Duration::from_secs_f32(inter_shot) * round_index;
+        // No launch delay: the cursor released exactly one round this frame, so this bolt
+        // leaves the muzzle now (GTW-727 C33).
+        let launch_delay = std::time::Duration::ZERO;
         // GTW-322 — authored as a `bsn!` scene (the SAME entity tree, only the spawn SHAPE
         // changed). The atlas-indexed `Sprite` is NOT `Unpin` (its `Option<Handle>` fields),
         // and the `ProjectileTravel` flight (a `Timer` + the owned `Vec<ClassifiedPop>`) has no

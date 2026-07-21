@@ -30,10 +30,11 @@
 //! but the system itself never blinks in and out.
 
 use bevy::prelude::*;
+use gdtf_battle_presenter::PlaybackGate;
 use gdtf_battle_sim::prelude::BattleInProgress;
 use gdtf_qa_protocol::{
     envelope::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
-    view::{AppFlowView, AppStateNet, BattleActiveNet, RequestKindNet},
+    view::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet, RequestKindNet},
 };
 
 use super::{
@@ -46,27 +47,39 @@ use super::{
 };
 use crate::states::AppState;
 
-/// Whether the router will service `kind` given the state facts it keys accept/reject on.
-///
-/// The single predicate that governs BOTH the route-time accept/reject below and the
-/// advertised [`available_requests`] set, so the two can never drift. The battle-dependent
-/// quartet needs a battle in progress; every other request kind is serviceable regardless
-/// of state. `in_battle` is the only fact accept/reject keys on today — the app state is
-/// read only to fill the snapshot, not to gate requests.
-///
-/// [`ScreenshotAfter`](RequestKindNet::ScreenshotAfter) joins the battle-dependent group
-/// (GTW-749): it embeds a battle intent, so it needs exactly what a bare
-/// [`Inject`](RequestKindNet::Inject) needs — a live battle to inject into.
-const fn request_available(kind: RequestKindNet, in_battle: bool) -> bool {
-    match kind {
-        RequestKindNet::Inject
-        | RequestKindNet::GetBattleState
-        | RequestKindNet::GetOutput
-        | RequestKindNet::ScreenshotAfter => in_battle,
-        RequestKindNet::Hello
-        | RequestKindNet::GetAppFlow
-        | RequestKindNet::TakeScreenshot
-        | RequestKindNet::StartBattle => true,
+crate::support_item! {
+    /// Whether the router will service `kind` given the state facts it keys accept/reject on.
+    ///
+    /// The single predicate that governs BOTH the route-time accept/reject below and the
+    /// advertised [`available_requests`] set, so the two can never drift. The battle-dependent
+    /// quartet needs a battle in progress; every other request kind is serviceable regardless
+    /// of state. `in_battle` is the only fact accept/reject keys on today — the app state is
+    /// read only to fill the snapshot, not to gate requests.
+    ///
+    /// [`ScreenshotAfter`](RequestKindNet::ScreenshotAfter) joins the battle-dependent group
+    /// (GTW-749): it embeds a battle intent, so it needs exactly what a bare
+    /// [`Inject`](RequestKindNet::Inject) needs — a live battle to inject into.
+    ///
+    /// Widened to `pub` under `test-support` (the GTW-727 input-gate suite asserts the
+    /// catch-up gating against this exact function) and `pub(crate)` otherwise, so the
+    /// binary — which never names it from outside this module — stays `unreachable_pub`-clean.
+    #[must_use]
+    const fn request_available(kind: RequestKindNet, in_battle: bool, caught_up: bool) -> bool {
+        match kind {
+            // ACT-BEARING (GTW-727 C42): these carry a battle intent, so they need what the
+            // player needs — a live battle AND a screen that is current. Injecting an act while
+            // an exchange is still being replayed is the QA-side of exactly the defect this
+            // pacing exists to fix: acting on information the screen has not shown.
+            RequestKindNet::Inject | RequestKindNet::ScreenshotAfter => in_battle && caught_up,
+            // READS: a live battle is enough. `GetOutput` in particular is NEVER gated on
+            // catch-up (C44) — it is the client's observation channel, and throttling it while
+            // pacing happens would make an agent unable to watch the very thing it is testing.
+            RequestKindNet::GetBattleState | RequestKindNet::GetOutput => in_battle,
+            RequestKindNet::Hello
+            | RequestKindNet::GetAppFlow
+            | RequestKindNet::TakeScreenshot
+            | RequestKindNet::StartBattle => true,
+        }
     }
 }
 
@@ -74,10 +87,10 @@ const fn request_available(kind: RequestKindNet, in_battle: bool) -> bool {
 /// through [`request_available`]. This is exactly what [`GetAppFlow`](QaRequest::GetAppFlow)
 /// advertises, and what an accepted [`StartBattle`](QaRequest::StartBattle) acknowledgement
 /// reports (see [`drive_start_battle`](super::start_battle::drive_start_battle)).
-pub(super) fn available_requests(in_battle: bool) -> Vec<RequestKindNet> {
+pub(super) fn available_requests(in_battle: bool, caught_up: bool) -> Vec<RequestKindNet> {
     RequestKindNet::ALL
         .into_iter()
-        .filter(|kind| request_available(*kind, in_battle))
+        .filter(|kind| request_available(*kind, in_battle, caught_up))
         .collect()
 }
 
@@ -86,17 +99,22 @@ pub(super) fn route_requests(
     inbox: Res<NetInbox>,
     app_state: Res<State<AppState>>,
     battle: Option<Res<BattleInProgress>>,
+    playback: PlaybackGate,
     mut queues: PendingQueues,
 ) {
     let in_battle = battle.is_some();
+    let caught_up = playback.is_open();
     for incoming in inbox.drain() {
         let (request, responder) = incoming.into_parts();
-        // A request the router cannot service in this state is rejected at route time. The
-        // only current unavailability reason is a battle-dependent request with no battle
-        // running, answered NoBattle — reading `battle` as an `Option` so the missing
-        // resource is never a panic (bevy-traps #1).
-        if !request_available(request.kind(), in_battle) {
-            reject_no_battle(responder);
+        // A request the router cannot service in this state is rejected AT ROUTE TIME, not
+        // queued: the pending-queue deadline is a few frames, far shorter than a catch-up
+        // window, so holding a gated inject would time out virtually every one of them and
+        // force a deadline retune for every other request kind too.
+        //
+        // Rejecting here also preserves the honest-receipt contract: a client is never told
+        // `Queued` for an act the drain will silently discard.
+        if !request_available(request.kind(), in_battle, caught_up) {
+            reject_unavailable(request.kind(), in_battle, responder);
             continue;
         }
         match request {
@@ -105,7 +123,8 @@ pub(super) fn route_requests(
                 let view = AppFlowView::new(
                     app_state_to_net(app_state.get()),
                     BattleActiveNet::new(in_battle),
-                    available_requests(in_battle),
+                    available_requests(in_battle, caught_up),
+                    CaughtUpNet::new(caught_up),
                 );
                 responder.reply(QaResponse::AppFlow(view));
             }
@@ -156,9 +175,25 @@ fn answer_hello(client_version: ProtocolVersion, responder: Responder) {
     }
 }
 
-/// Reject a battle-dependent request that arrived with no battle in progress.
-fn reject_no_battle(responder: Responder) {
-    responder.reply(QaResponse::Error(QaError::NoBattle));
+/// Reject an unavailable request with an ACCURATE reason (GTW-727 C43).
+///
+/// There are now two reasons a request can be refused at route time, and answering the
+/// wrong one is a lie a client cannot recover from: `NoBattle` during a live battle would
+/// send an agent off to start a battle that is already running. So the reason is derived
+/// from the same facts the availability predicate used — no battle means
+/// [`NoBattle`](QaError::NoBattle); anything else can only be the catch-up gate, which is
+/// [`NotCaughtUp`](QaError::NotCaughtUp).
+fn reject_unavailable(kind: RequestKindNet, in_battle: bool, responder: Responder) {
+    let error = if in_battle {
+        QaError::NotCaughtUp
+    } else {
+        QaError::NoBattle
+    };
+    // Naming the kind keeps this a total function over the two reasons rather than a
+    // guess: every kind that can reach here is either battle-dependent or catch-up
+    // dependent, and both are covered above.
+    let _ = kind;
+    responder.reply(QaResponse::Error(error));
 }
 
 /// Map the game's top-level [`AppState`] onto its wire mirror. Shared with the T9

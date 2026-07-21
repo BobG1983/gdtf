@@ -41,6 +41,7 @@
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
 mod affordance;
+mod caught_up;
 mod deadline;
 mod inject;
 mod inject_support;

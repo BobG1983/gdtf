@@ -25,6 +25,7 @@ use crate::{
     },
     falls::FallOccurred,
     occupancy_sync::{CoverDestroyed, GroundAccrued, SlabDestroyed},
+    reaction::InterruptDeclared,
     shot_fired::ShotFired,
     suppression::SuppressionApplied,
     terrain::{emplacement::SetEmplacement, openable::SetOpenable},
@@ -215,6 +216,14 @@ pub(super) fn register_messages(app: &mut App) {
         // the PRODUCER is GTW-38-future reaction fire / overwatch (the orchestrator will
         // log this); this slice builds the RECEIVING hook only (bevy-traps.md #4 / #5).
         .add_message::<ReactionShotFired>()
+        // GTW-727 C5: the reaction-fire EXPOSURE signal — WHICH reactor is interrupting WHOSE
+        // act. `reaction_trigger` writes it (through its InterruptSignals bundle), and this
+        // plugin is what registers `reaction_trigger`, so this is the producer registering its
+        // own buffer: without it EVERY harness that wires SimActsPlugin fails the writer's
+        // param validation ("Message not initialized") the moment the trigger runs
+        // (bevy-traps.md #1 / #4). IDEMPOTENT with `wire_act_log`'s own registration on the
+        // consumer side — the same both-sides shape SlabDestroyed / GroundAccrued already use.
+        .add_message::<InterruptDeclared>()
         // GTW-526: the presenter-facing suppression signal `apply_suppression` emits once
         // per ganger freshly suppressed this tick (an idempotent refresh emits nothing).
         // Registering the buffer here makes `apply_suppression`'s

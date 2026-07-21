@@ -19,7 +19,9 @@ crate::support_item! {
     /// any other version is rejected
     /// [`VersionMismatch`](gdtf_qa_protocol::envelope::QaError::VersionMismatch). It tracks
     /// the protocol crate's [`ProtocolVersion::CURRENT`], which is bumped on any breaking
-    /// envelope change (GTW-746 bumped it to `2` for the `AppFlowView.available` field).
+    /// envelope change (GTW-746 bumped it to `2` for the `AppFlowView.available` field;
+    /// GTW-749 to `3` for the `ScreenshotAfter` request; GTW-727 to `4` for the
+    /// `AppFlowView.caught_up` field + the `NotCaughtUp` error).
     /// Widened to `pub` under `test-support` so the routing test can assert the negotiated
     /// version without hard-coding a literal.
     const NET_QA_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::CURRENT;

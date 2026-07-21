@@ -64,6 +64,9 @@ mod plugin;
 pub mod actors;
 /// Input-bridge overlay seam: highlight, path preview, fire target, and the shared targeting gate.
 pub mod overlays;
+/// The presenter's own clock over the sim's act log: the playback cursor, the drawn-state
+/// mirrors it writes, and the catch-up predicate the input gate keys on (GTW-727).
+pub mod playback;
 /// Static rendering foundation: top-down projection/atlases, world camera, terrain draw.
 pub mod render;
 
@@ -83,9 +86,9 @@ pub use actors::{
         LogLine, LogName, OnDeathFct, PendingImpact, PopAnchor, ProjectileDrawScale,
         ProjectileTravel, ProjectileVelocity, ShotImpactResolved, ShotProjectile, SuppressionFct,
         advance_projectiles, animate_floating_text, animate_impact, classify_log_event,
-        expire_flashes, forward_log_source, forward_turn_started, nearest_direction_index,
-        read_armor_broken, read_bleeding, read_consequence_fct, read_cover_destroyed,
-        read_fall_occurred, read_melee_resolved, read_throw_resolved,
+        expire_flashes, forward_live_log_source, forward_log_source, forward_turn_started,
+        nearest_direction_index, read_armor_broken, read_bleeding, read_consequence_fct,
+        read_cover_destroyed, read_fall_occurred, read_melee_resolved, read_throw_resolved,
         register_consequence_fct_core, reset_fct_stacks, severity_color, spawn_shot_projectiles,
         valence_color,
     },
@@ -116,6 +119,14 @@ pub use overlays::{
     highlight::{HighlightRequest, HoverHighlight, draw_highlight_on_request},
     path_preview::{PathPreview, PathStepSprite, PathTargetLabel, draw_path_preview},
     targeting_gate::{CellVisibility, cell_squad_visible},
+};
+pub use playback::{
+    ActHold, ActHoldPhase, ConsequenceSeconds, DrawnLife, DrawnMagazine, DrawnPose, DrawnPosition,
+    DrawnVitals, DrawnWriters, FireBeatSeconds, FxPipelineProbe, FxSeenBusy, ImpactCapSeconds,
+    LifeChangeSeconds, MinorSeconds, PlaybackCursor, PlaybackGate, PlaybackTuning, Played,
+    PlayedSignals, PostureSeconds, ReactionBeatSeconds, ReloadSeconds, RoundSeconds, SkippedActs,
+    StepSeconds, TurnBeatSeconds, advance_playback, playback_caught_up, register_playback,
+    seed_drawn_state,
 };
 pub use plugin::{
     BattlePresenterMode, BattlePresenterPlugin, IsoRendererPlugin, TopDownRendererActive,

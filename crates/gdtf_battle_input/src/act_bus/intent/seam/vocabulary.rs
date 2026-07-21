@@ -134,3 +134,23 @@ pub enum ActIntent {
     /// behaviour change for the existing surfaces.
     Select(Entity),
 }
+
+impl ActIntent {
+    /// Whether acting on this intent requires the screen to be CAUGHT UP with the sim
+    /// (GTW-727 C23).
+    ///
+    /// `true` for everything that acts on the world or moves the selection: the player
+    /// chose it against whatever the screen was showing, so executing it against a world
+    /// that has since moved on is exactly the "acting on unshown information" this gate
+    /// exists to prevent.
+    ///
+    /// `false` for the presenter-owned VIEW controls — cycling the drawn storey and
+    /// toggling the full-view mode. Those change nothing in the world; more to the point,
+    /// they are the player's means of WATCHING the reaction fire that closed the gate in
+    /// the first place, so locking them out during playback would remove the affordance
+    /// this whole feature exists to serve.
+    #[must_use]
+    pub const fn needs_caught_up(&self) -> bool {
+        !matches!(self, Self::LevelUp | Self::LevelDown | Self::ToggleFullView)
+    }
+}

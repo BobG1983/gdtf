@@ -31,6 +31,7 @@
 //! owns the button-side descriptor + offer scan. The registrars stitch the layers.
 
 use bevy::{ecs::message::Message, prelude::*};
+use gdtf_battle_presenter::PlaybackGate;
 use gdtf_battle_sim::prelude::BattleInProgress;
 
 use crate::{InputSystems, SelectedShooter, intent::dispatch_act_intents};
@@ -153,12 +154,21 @@ pub enum ContextualActSystems {
 /// module doc). Param-only (`bevy-traps.md` #7): the act's queue, the read-only
 /// selection, and the act's [`MessageWriter`] (`bevy-traps.md` #4 — buffered messages).
 pub fn drain_contextual_intents<A: ContextualAct>(
+    gate: PlaybackGate,
     mut pending: ResMut<PendingContextualIntents<A>>,
     selected: Res<SelectedShooter>,
     mut requests: MessageWriter<A::Requested>,
 ) {
+    // GTW-727 C23: drain unconditionally, discard while the presenter is catching up. The
+    // queue is a `mem::take`, so skipping the drain would accumulate a backlog that fires in
+    // one burst the moment the gate opens — deferred staleness, not prevented staleness.
+    // Every contextual act mutates the world, so none of them survives a closed gate.
+    let gate_open = gate.is_open();
     for target in pending.drain() {
         let Some(actor) = **selected else { continue };
+        if !gate_open {
+            continue;
+        }
         requests.write(A::request(actor, target));
     }
 }

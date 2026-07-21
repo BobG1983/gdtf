@@ -2,6 +2,7 @@
 //! MOVE → CLEAR decision) and [`right_click_turn_to_face`], both gated to the player's faction.
 
 use bevy::prelude::*;
+use gdtf_battle_presenter::PlaybackGate;
 use gdtf_battle_sim::{
     battle::PlayerFaction,
     fire::MeleeQuery,
@@ -82,6 +83,7 @@ use crate::{
               the melee one; LeftClickReads already bundles the Res-only reads"
 )]
 pub fn left_click_act(
+    gate: PlaybackGate,
     reads: LeftClickReads,
     factions: Query<&Faction>,
     shooters: Query<ShooterFireData>,
@@ -101,13 +103,24 @@ pub fn left_click_act(
     // (the pin / target writes borrow `inspect` / `target` mutably, so the read-only decisions
     // must finish before them — the GTW-300 InspectTarget precedent, now also for the GTW-356
     // PathPreviewTarget two-click state machine).
-    let outcome = decide_left_click(
-        &reads, &inspect, &target, &factions, &shooters, &wields, &weapons, &melee, &selected,
-    );
+    // GTW-727 C24: the ACT half is gated, the PIN half is not. This is the one PARTIAL
+    // guard in the input layer, and it is partial precisely because the two halves are
+    // already independent decisions over the same click: `decide_left_click` fires /
+    // selects / moves (all of which act on state the player may not have seen yet), while
+    // `decide_pin` only changes which ganger's card the inspect panel shows — which is how
+    // the player READS the exchange that closed the gate.
+    let gate_open = gate.is_open();
+    let outcome = gate_open.then(|| {
+        decide_left_click(
+            &reads, &inspect, &target, &factions, &shooters, &wields, &weapons, &melee, &selected,
+        )
+    });
     let pin = decide_pin(&reads, &inspect, &factions);
     // GTW-356 — `apply_left_click` ALSO commits the two-click move target (set on click-1,
     // cleared on commit / select / clear / fire).
-    apply_left_click(outcome, &mut selected, &mut pending, &mut target);
+    if let Some(outcome) = outcome {
+        apply_left_click(outcome, &mut selected, &mut pending, &mut target);
+    }
     // GTW-300 — the parallel pin effect (orthogonal to the act/selection effect above).
     apply_pin(pin, &mut inspect);
 }

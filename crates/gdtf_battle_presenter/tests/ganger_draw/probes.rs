@@ -7,8 +7,14 @@ use bevy::{
     sprite::Sprite,
     transform::components::Transform,
 };
-use gdtf_battle_presenter::{CharacterRoles, GangerSprite, GangerSprites, facing_frame};
-use gdtf_battle_sim::prelude::{CellLevel, Direction, Faction, Position};
+use gdtf_battle_presenter::{
+    CharacterRoles, DrawnLife, DrawnPose, DrawnPosition, GangerSprite, GangerSprites, facing_frame,
+};
+use gdtf_battle_sim::{
+    act_log::{PoseFacts, SuppressedNow},
+    ganger::{Aiming, Facing},
+    prelude::{CellLevel, Direction, Faction, LifeState, Position, Stance, StanceKind},
+};
 
 /// The resolved `CharacterRoles` resource as a clone, or `None` if absent.
 pub(crate) fn character_roles(app: &App) -> Option<CharacterRoles> {
@@ -135,6 +141,89 @@ pub(crate) fn saturation(color: Option<bevy::color::Color>) -> f32 {
 pub(crate) fn sprite_translation(app: &mut App, entity: Entity) -> Option<bevy::math::Vec3> {
     let mut q = app.world_mut().query::<&Transform>();
     q.get(app.world(), entity).ok().map(|t| t.translation)
+}
+
+/// Sim ganger `sim`'s current drawn-pose mirror ([`DrawnPose`]), if it has been seeded.
+fn drawn_pose(app: &App, sim: Entity) -> Option<DrawnPose> {
+    app.world().entity(sim).get::<DrawnPose>().copied()
+}
+
+/// Overwrite the ganger's [`DrawnPose`] mirror with a new `facing`, keeping the other pose
+/// fields. GTW-727 C17: the appearance resolver reads the DRAWN pose (what the playback
+/// cursor has shown), so a focused presenter test drives that mirror rather than the live
+/// sim component — the same role the cursor's `advance_playback` write plays in a real battle.
+pub(crate) fn set_drawn_facing(app: &mut App, sim: Entity, facing: Direction) {
+    if let Some(p) = drawn_pose(app, sim) {
+        app.world_mut()
+            .entity_mut(sim)
+            .insert(DrawnPose::new(PoseFacts::new(
+                Facing::new(facing),
+                p.stance(),
+                p.aiming(),
+                SuppressedNow::new(p.suppressed()),
+            )));
+    }
+}
+
+/// Overwrite the ganger's [`DrawnPose`] mirror with a new `stance`, keeping the other fields
+/// (GTW-727 C17 — see [`set_drawn_facing`]).
+pub(crate) fn set_drawn_stance(app: &mut App, sim: Entity, stance: StanceKind) {
+    if let Some(p) = drawn_pose(app, sim) {
+        app.world_mut()
+            .entity_mut(sim)
+            .insert(DrawnPose::new(PoseFacts::new(
+                p.facing(),
+                Stance::new(stance),
+                p.aiming(),
+                SuppressedNow::new(p.suppressed()),
+            )));
+    }
+}
+
+/// Overwrite the ganger's [`DrawnPose`] mirror with a new `aiming` flag, keeping the other
+/// fields (GTW-727 C17 — see [`set_drawn_facing`]).
+pub(crate) fn set_drawn_aiming(app: &mut App, sim: Entity, aiming: bool) {
+    if let Some(p) = drawn_pose(app, sim) {
+        app.world_mut()
+            .entity_mut(sim)
+            .insert(DrawnPose::new(PoseFacts::new(
+                p.facing(),
+                p.stance(),
+                Aiming::new(aiming),
+                SuppressedNow::new(p.suppressed()),
+            )));
+    }
+}
+
+/// Overwrite the ganger's [`DrawnPose`] mirror with a new `suppressed` flag, keeping the
+/// other fields. GTW-727 C17 made suppression a `DrawnPose` FIELD (the
+/// `RemovedComponents<Suppressed>` drain is gone), so both an apply and a clear are ordinary
+/// pose value changes the resolver observes.
+pub(crate) fn set_drawn_suppressed(app: &mut App, sim: Entity, suppressed: bool) {
+    if let Some(p) = drawn_pose(app, sim) {
+        app.world_mut()
+            .entity_mut(sim)
+            .insert(DrawnPose::new(PoseFacts::new(
+                p.facing(),
+                p.stance(),
+                p.aiming(),
+                SuppressedNow::new(suppressed),
+            )));
+    }
+}
+
+/// Overwrite the ganger's [`DrawnLife`] mirror — the cursor-time life state the appearance
+/// resolver and the death despawn now read (GTW-727 C17 — see [`set_drawn_facing`]).
+pub(crate) fn set_drawn_life(app: &mut App, sim: Entity, life: LifeState) {
+    app.world_mut().entity_mut(sim).insert(DrawnLife::new(life));
+}
+
+/// Overwrite the ganger's [`DrawnPosition`] mirror — the cell the sprite mover now glides to
+/// (GTW-727 C17 — see [`set_drawn_facing`]).
+pub(crate) fn set_drawn_position(app: &mut App, sim: Entity, at: CellLevel) {
+    app.world_mut()
+        .entity_mut(sim)
+        .insert(DrawnPosition::seeded(Position::new(at)));
 }
 
 /// The visibility of the presenter sprite mirroring sim ganger `sim` (via the map).

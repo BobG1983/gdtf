@@ -6,7 +6,7 @@
 use bevy::prelude::{Commands, MessageReader};
 
 use crate::{
-    ai::{ActCadence, EnemyActCooldown},
+    act_log::ActLog,
     battle::{
         messages::TeardownBattleRequested,
         resources::{BattleInProgress, BattleRoster, PlayerFaction},
@@ -57,8 +57,7 @@ fn remove_rng_streams(commands: &mut bevy::prelude::Commands) {
 /// [`FloorCostGrid`]), the [`BattleInProgress`] witness (closing the
 /// [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) gate so the
 /// bundled runtime goes inert again), the [`PlayerFaction`], the [`BattleRoster`], the
-/// [`ActiveFaction`] turn-cycle resource, the [`EnemyActCooldown`] + [`ActCadence`]
-/// AI-pacing resources (GTW-461), the
+/// [`ActiveFaction`] turn-cycle resource, the [`ActLog`] act log (GTW-727), the
 /// [`SquadVisibility`](crate::visibility::SquadVisibility) squad fog (GTW-341), and the
 /// [`OmniscientFog`](crate::visibility::OmniscientFog) AI move fog (GTW-70) (all
 /// lifetimes track [`BattleInProgress`], so they are removed in the same teardown).
@@ -138,11 +137,11 @@ pub fn teardown_battle_on_request(
         // Remove the ActiveFaction alongside, so the turn cycle's lifetime stays identical
         // to BattleInProgress (the turn-cycle engine reads it within that window; GTW-309).
         commands.remove_resource::<ActiveFaction>();
-        // GTW-461: remove the enemy-act cooldown + cadence alongside, so the AI-pacing
-        // resources' lifetime stays identical to BattleInProgress (the brain reads them
-        // within that window).
-        commands.remove_resource::<EnemyActCooldown>();
-        commands.remove_resource::<ActCadence>();
+        // GTW-727: remove the act log alongside, so its lifetime stays identical to
+        // BattleInProgress — sequence numbering and the transition-detection prior-value
+        // maps therefore restart clean on the next battle. It occupies the slot the
+        // retired GTW-461 enemy-act cadence resources vacated.
+        commands.remove_resource::<ActLog>();
         // Remove the SquadVisibility alongside, so the squad fog's lifetime stays identical
         // to BattleInProgress (recompute_visibility — the sole writer — reads its
         // ResMut within that window; GTW-341).

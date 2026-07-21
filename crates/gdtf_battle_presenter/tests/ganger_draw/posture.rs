@@ -1,50 +1,24 @@
 //! Facing reframe + stance/aim retint on the same sprite; the facing-frame API
 //! surface.
 
-use bevy::{app::App, prelude::Entity};
 use gdtf_battle_presenter::{FacingFrame, GangerSprites};
 use gdtf_battle_sim::{
-    ganger::{Aiming, Facing},
-    prelude::{Cell, CellLevel, Direction, Level, Stance, StanceKind},
+    prelude::{Cell, CellLevel, Direction, Level, StanceKind},
     test_support::SituationBuilder,
 };
 
 use super::{harness::*, probes::*};
 
-/// Set the `Facing` of sim ganger `sim` (the real `Changed<Facing>` reframe trigger).
-fn set_facing(app: &mut App, sim: Entity, facing: Direction) {
-    let mut q = app.world_mut().query::<&mut Facing>();
-    if let Ok(mut f) = q.get_mut(app.world_mut(), sim) {
-        *f = Facing::new(facing);
-    }
-}
-
-/// Set the `Stance` of sim ganger `sim` (the real `Changed<Stance>` re-tint trigger).
-fn set_stance(app: &mut App, sim: Entity, stance: StanceKind) {
-    let mut q = app.world_mut().query::<&mut Stance>();
-    if let Ok(mut s) = q.get_mut(app.world_mut(), sim) {
-        *s = Stance::new(stance);
-    }
-}
-
-/// Set the `Aiming` flag of sim ganger `sim` (the real `Changed<Aiming>` re-tint trigger).
-fn set_aiming(app: &mut App, sim: Entity, aiming: bool) {
-    let mut q = app.world_mut().query::<&mut Aiming>();
-    if let Ok(mut a) = q.get_mut(app.world_mut(), sim) {
-        *a = Aiming::new(aiming);
-    }
-}
-
 /// Reframe / re-tint (the contract's "asserted to match" clause, identical phrasing to
-/// the Death clause AC4 asserts) — drive the REAL change path on the live presenter
-/// sprite:
+/// the Death clause AC4 asserts) — drive the change path through the presenter's OWN
+/// posture mirror ([`DrawnPose`](gdtf_battle_presenter::DrawnPose)), which GTW-727 C17
+/// re-sourced the resolver onto (what the cursor has SHOWN, not the state the sim reached):
 ///
-/// - `Changed<Facing>` recomputes the atlas index via the 8->4 map: the sprite re-indexes
+/// - a facing change recomputes the atlas index via the 8->4 map: the sprite re-indexes
 ///   to `base_for(faction) + facing_frame(new_facing)` read STRUCTURALLY (never a
 ///   literal), distinct from the spawn frame.
-/// - `Changed<Stance>` (-> `Prone`) dims the tint; `Changed<Aiming>` (-> `true`)
-///   brightens it — both on the SAME presenter sprite, each a distinct, expected-direction
-///   re-tint.
+/// - a stance change (-> `Prone`) dims the tint; an aim change (-> `true`) brightens it —
+///   both on the SAME presenter sprite, each a distinct, expected-direction re-tint.
 ///
 /// This pins `resolve_ganger_appearance` + its tint composition on the real path: deleting
 /// the appearance resolver (or no-opping its atlas/color writes) FAILS this test.
@@ -87,7 +61,7 @@ fn changed_facing_reframes_and_stance_aiming_retints_the_same_sprite() {
         "spawn frame = faction_0 base + East(RIGHT) offset",
     );
 
-    set_facing(&mut app, sim, Direction::North);
+    set_drawn_facing(&mut app, sim, Direction::North);
     app.update();
 
     let index_north = atlas_index_of_sim(&mut app, sim);
@@ -104,7 +78,7 @@ fn changed_facing_reframes_and_stance_aiming_retints_the_same_sprite() {
 
     // --- Stance re-tint: Standing -> Prone dims. ---
     let color_standing = sprite_color(&mut app, sprite);
-    set_stance(&mut app, sim, StanceKind::Prone);
+    set_drawn_stance(&mut app, sim, StanceKind::Prone);
     app.update();
     let color_prone = sprite_color(&mut app, sprite);
     assert!(
@@ -117,7 +91,7 @@ fn changed_facing_reframes_and_stance_aiming_retints_the_same_sprite() {
     );
 
     // --- Aiming re-tint: not-aiming -> aiming brightens (from the Prone baseline). ---
-    set_aiming(&mut app, sim, true);
+    set_drawn_aiming(&mut app, sim, true);
     app.update();
     let color_prone_aiming = sprite_color(&mut app, sprite);
     assert!(

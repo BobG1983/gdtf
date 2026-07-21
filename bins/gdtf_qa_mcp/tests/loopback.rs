@@ -17,7 +17,7 @@ use gdtf_qa_mcp::{GameClient, GameLifecycle, GamePort, LaunchOutcome, StopOutcom
 use gdtf_qa_protocol::{
     envelope::{QaError, QaRequest, QaResponse},
     framing::{FrameDecoder, encode},
-    view::{AppFlowView, AppStateNet, BattleActiveNet},
+    view::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet},
 };
 use serde_json::Value;
 
@@ -73,6 +73,7 @@ fn serve_one(listener: &TcpListener) {
                 AppStateNet::Running,
                 BattleActiveNet::new(true),
                 Vec::new(),
+                CaughtUpNet::new(true),
             )),
             Ok(_) => QaResponse::Error(QaError::BadRequest),
             Err(_) => return,

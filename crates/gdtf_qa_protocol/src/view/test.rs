@@ -9,12 +9,13 @@ use crate::{
     intent::{AimNet, FacingNet, StanceNet},
     test_support::assert_ron_round_trip,
     view::{
-        AppFlowView, AppStateNet, BattleActiveNet, BattleView, BodyPartNet, DoorOpenNet, DoorView,
-        EmplacementMannedNet, EmplacementView, FactionNet, FireModeLabel, FireModeView, FogView,
-        GangerNameNet, GangerView, GridHeightNet, GridLevelsNet, GridSizeNet, GridWidthNet,
-        HpMaxNet, HpNet, InjuryEntryNet, InjuryNameNet, InjurySummaryNet, LifeStateNet,
-        RequestKindNet, SelectionView, SeverityNet, TerrainSummaryView, TuMaxNet, TuNet, TurnView,
-        WeaponNameNet, WeaponView, WoundsMaxNet, WoundsNet,
+        AppFlowView, AppStateNet, BattleActiveNet, BattleView, BodyPartNet, CaughtUpNet,
+        DoorOpenNet, DoorView, EmplacementMannedNet, EmplacementView, FactionNet, FireModeLabel,
+        FireModeView, FogView, GangerNameNet, GangerView, GridHeightNet, GridLevelsNet,
+        GridSizeNet, GridWidthNet, HpMaxNet, HpNet, InjuryEntryNet, InjuryNameNet,
+        InjurySummaryNet, LifeStateNet, RequestKindNet, SelectionView, SeverityNet,
+        TerrainSummaryView, TuMaxNet, TuNet, TurnView, WeaponNameNet, WeaponView, WoundsMaxNet,
+        WoundsNet,
     },
 };
 
@@ -110,11 +111,13 @@ fn app_flow_and_empty_selection_round_trip() {
         AppStateNet::Running,
         BattleActiveNet::new(true),
         RequestKindNet::ALL.to_vec(),
+        CaughtUpNet::new(true),
     ));
     assert_ron_round_trip(&AppFlowView::new(
         AppStateNet::Intro,
         BattleActiveNet::new(false),
         Vec::new(),
+        CaughtUpNet::new(false),
     ));
     assert_ron_round_trip(&SelectionView::new(None));
 }

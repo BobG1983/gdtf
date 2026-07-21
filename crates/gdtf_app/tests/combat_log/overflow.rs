@@ -32,11 +32,10 @@ fn overflow_fifo_despawns_the_oldest_lines() {
     // highest indices.
     let total: i32 = DEFAULT_MAX_VISIBLE_I32 + 3;
     for y in 0..total {
-        app.world_mut().write_message(MovementOccurred::new(
-            ganger,
-            Cell::new(0, 0),
-            Cell::new(0, y),
-        ));
+        play(
+            &mut app,
+            MovementOccurred::new(ganger, Cell::new(0, 0), Cell::new(0, y)),
+        );
     }
     // Two updates: the first drains all events + appends + trims; a second settles any deferred
     // despawns from the trim so the visible set is stable for the assert.

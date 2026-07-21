@@ -106,7 +106,11 @@ impl Plugin for TopDownRendererPlugin {
         // The shared presenter draw band. Defined ONCE via `configure_sets`
         // (`bevy-traps.md` #5), ordered after the sim's world mutations
         // (`bevy-traps.md` #3) so a draw observes a settled sim state.
-        app.configure_sets(Update, PresenterSystems::Draw.after(SimSystems::Simulate));
+        // GTW-727: the draw band is re-anchored `.after(SimSystems::Record)` (which is
+        // itself `.after(Simulate)`), so a draw observes not only a settled sim state but a
+        // settled RECORD of how the sim reached it — the playback cursor in `Replay` can
+        // therefore consume this tick's entries in the same update they were written.
+        app.configure_sets(Update, PresenterSystems::Draw.after(SimSystems::Record));
         // GTW-623: the three chained DRAW STAGES inside that band — Scene (the drawn
         // world: terrain + swaps + gangers) → Compose (fog: the final material +
         // visibility writer) → Overlay (highlight / path / fire / field / reachable +
@@ -120,6 +124,7 @@ impl Plugin for TopDownRendererPlugin {
         app.configure_sets(
             Update,
             (
+                PresenterSystems::Replay,
                 PresenterSystems::Scene,
                 PresenterSystems::Compose,
                 PresenterSystems::Overlay,
@@ -127,6 +132,12 @@ impl Plugin for TopDownRendererPlugin {
                 .chain()
                 .in_set(PresenterSystems::Draw),
         );
+
+        // GTW-727: the playback cursor — its two process-lifetime resources, every
+        // `Played<M>` buffer, the hot-reloadable dwell table, and the two `Replay`-stage
+        // systems. Registered ONLY here, so an app without this renderer has no cursor at
+        // all and the input gate can never close there (clause (d), structurally).
+        crate::playback::register_playback(app);
 
         // GTW-218 (S4): the static terrain draw.
         super::terrain::register_terrain_draw(app);

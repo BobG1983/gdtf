@@ -15,7 +15,7 @@ use bevy::{
     winit::WinitPlugin,
 };
 use gdtf_battle_presenter::{
-    CharacterRoles, EffectRoles, FxTuning, ShotImpactResolved, TopDownAtlases,
+    CharacterRoles, EffectRoles, FxTuning, Played, ShotImpactResolved, TopDownAtlases,
     TopDownRendererPlugin,
 };
 use gdtf_battle_sim::{
@@ -111,6 +111,31 @@ pub(crate) fn headless_renderer_app() -> App {
     // behavior instead of an intermittent headless panic.
     app.set_error_handler(warn);
     app
+}
+
+/// PLAYS `fact` — writes it onto the `Played<M>` buffer the PACED FX readers drain.
+///
+/// Since GTW-727 C16 the six flash-family readers and `spawn_shot_projectiles` fire when the
+/// presenter SHOWS a fact, not when the sim produced it, so they read `Played<M>` and the
+/// playback cursor is the only thing that writes one. A focused FX test therefore hands its
+/// fact to the same buffer the cursor would: the reader under test, its gate, and every
+/// assertion about what it draws are unchanged — only the buffer the fact arrives on moves.
+///
+/// The CONSEQUENCE-FCT family readers (`read_consequence_fct::<C>`) are deliberately NOT in
+/// that set — their pops ride the projectile → `PendingImpact` → `animate_impact` pipeline,
+/// which is already cursor-paced because the bolt only spawns when the cursor plays its
+/// round. Those tests keep writing the raw sim buffer directly.
+///
+/// The write is ASSERTED rather than ignored: `World::write_message` merely logs and returns
+/// `None` on an unregistered buffer, which would read here as "the FX never drew" — a wiring
+/// failure wearing a behavioural failure's clothes.
+pub(crate) fn play<M: bevy::ecs::message::Message + Clone>(app: &mut App, fact: M) {
+    let written = app.world_mut().write_message(Played::new(fact)).is_some();
+    assert!(
+        written,
+        "the Played<{}> buffer must be registered by the presenter's playback registration",
+        core::any::type_name::<M>(),
+    );
 }
 
 /// Drives `update()`s until `EffectRoles` + `TopDownAtlases` + `FxTuning` + `CharacterRoles`

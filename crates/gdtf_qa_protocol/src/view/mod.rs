@@ -19,7 +19,7 @@ pub mod stat;
 pub mod terrain;
 pub mod weapon;
 
-pub use appflow::{AppFlowView, AppStateNet, BattleActiveNet, RequestKindNet};
+pub use appflow::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet, RequestKindNet};
 pub use battle::{BattleView, TurnView};
 pub use fog::FogView;
 pub use ganger::GangerView;

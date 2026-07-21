@@ -11,7 +11,7 @@ use super::{
     arc::{FireArcDecision, decide_fire_arc},
     emit::emit_round_signals,
     params::{BattleGridsParam, TurnQuery, WeaponProbes},
-    signals::{FireDeclaration, FireSignals},
+    signals::{FireDeclaration, FireSignals, RoundCount},
 };
 use crate::{
     acts::request::FireRequested,
@@ -206,20 +206,14 @@ pub fn dispatch_fire(
             FireArcDecision::FireInArc => {} // direct shot: no turn, fall through to fire()
         }
 
-        // (3b) GTW-328: declare the shot for the combat-text LOG — ONCE per fire request
-        //      that proceeds (the Reject arm `continue`d above, so a rejected/unaffordable
-        //      shot logs nothing). Emitted BEFORE the shot rolls, carrying ONLY data the
-        //      dispatch already holds: the shooter ref, the resolved target occupant at the
-        //      aimed (cell, level) (a single O(1) occupancy peek — NOT a fresh raycast or
-        //      re-resolve), and the request's mode kind. No RNG draw, no fire-result logic
-        //      — the determinism property is untouched.
+        // (3b) GTW-328: resolve the declaration's target occupant — the ganger standing at
+        //      the aimed (cell, level), a single O(1) occupancy peek of data the dispatch
+        //      already reads (NOT a fresh raycast or re-resolve). Read HERE, before the
+        //      volley mutates the world, so the declaration names who was aimed at rather
+        //      than who survived. The declaration itself is WRITTEN at (5b) below, once the
+        //      volley's round count is known (GTW-727 C10).
         let aim_cell_level = CellLevel::new(request.target_cell, request.target_level);
         let target = grids.occupant_at(aim_cell_level);
-        signals.declarations.write(FireDeclaration::new(
-            request.shooter,
-            target,
-            request.mode.kind,
-        ));
 
         // (4) Run the landed verb ONCE (REUSED verbatim) — it spends the fire TU and
         //     resolves the shot. The volley's effects are the in-world mutations
@@ -255,6 +249,23 @@ pub fn dispatch_fire(
         //     all PURE EXPOSURE of the volley the fire already produced (no recompute, no
         //     extra draw). Extracted to keep dispatch_fire under clippy's line gate.
         emit_round_signals(request.shooter, damage, &volley, &mut signals);
+
+        // (5b) GTW-328 / GTW-727 C10: declare the shot for the combat-text LOG — ONCE per
+        //      fire request that proceeds (the Reject arm `continue`d above, so a
+        //      rejected/unaffordable shot logs nothing). Written HERE, immediately after
+        //      (5), because the declaration carries the number of rounds the volley
+        //      ACTUALLY emitted, and that is not knowable before the volley exists: the
+        //      mode's nominal burst is clamped to the magazine, so a half-empty weapon
+        //      fires fewer rounds than its mode names. Every consumer drains the buffer
+        //      later in the same update, so moving the write past the volley changes
+        //      nothing they observe; it makes the declaration→rounds pairing exact. Still
+        //      no RNG draw and no fire-result logic — the determinism property is untouched.
+        signals.declarations.write(FireDeclaration::new(
+            request.shooter,
+            target,
+            request.mode.kind,
+            RoundCount::from_emitted(volley.shots.len()),
+        ));
 
         // (6) GTW-525 C3: the RANGED weapon-tag auto-shove. If the firing weapon carries the
         //     `shove` tag AND a round CONNECTED with a ganger, knock that target back one cell

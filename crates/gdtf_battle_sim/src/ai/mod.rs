@@ -23,9 +23,14 @@
 //!   the engage/advance/hold pass and ends the turn back to the player when done. Param-only
 //!   (no `&mut World`, `bevy-traps.md` #7); wired into the sim by
 //!   [`SimActsPlugin`](crate::acts::SimActsPlugin).
-//! - `cadence` — the GTW-461 tick-count act cadence ([`ActCadence`] / [`EnemyActCooldown`])
-//!   that paces the brain to AT MOST ONE act per cadence-step, so the enemy turn resolves
-//!   act-by-act on screen instead of as a one-frame volley.
+//!
+//! **Pacing is NOT the brain's job** (GTW-727). The brain used to carry a tick-count act
+//! cadence that made it wait between enemy acts, so that each act's world mutation landed
+//! on its own frame and every `Changed<T>` view paced for free. That coupled how FAST the
+//! sim resolved a turn to how READABLE the turn looked, which could only ever pace the one
+//! act family it gated and never the several facts a single act produces. The presenter now
+//! owns pacing outright, replaying the sim's act log at its own speed, so the brain runs at
+//! full speed and holds no pacing state at all.
 //!
 //! **Scope (minimal, GTW-70 §F).** Cover-seeking, target *scoring* (lowest-HP /
 //! best-hit-chance), a symmetric enemy fog-of-war (planning on last-seen positions, not the
@@ -34,7 +39,6 @@
 
 mod advance;
 mod brain;
-mod cadence;
 mod decide;
 mod engage;
 mod snapshot;
@@ -43,5 +47,4 @@ mod snapshot;
 mod test;
 
 pub use brain::enemy_ai_turn;
-pub use cadence::{ActCadence, ActPacing, ActReady, EnemyActCooldown};
 pub use decide::{AiTarget, pick_nearest, plan_advance};

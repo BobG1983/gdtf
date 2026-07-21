@@ -2,7 +2,7 @@
 //! helper.
 
 use bevy::prelude::*;
-use gdtf_battle_presenter::{ActiveLevel, ViewMode};
+use gdtf_battle_presenter::{ActiveLevel, PlaybackGate, ViewMode};
 use gdtf_battle_sim::{
     acts::{
         AimRequest, EndTurnRequested, ReloadRequested, SetAimingRequested, SetFacingRequested,
@@ -99,7 +99,16 @@ use crate::{
 /// cycle.
 /// Registered `.after` the intent WRITERS (`bevy-traps.md` #3) so it drains the same
 /// update's pushes.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "GTW-727 adds the playback gate to a signature that was already at the ceiling; \
+              every param is a distinct, independently-borrowed access the drain genuinely \
+              needs, and the two multi-read groups are ALREADY bundled (`ActWriters` / \
+              `SelectionCycleReads`). Bundling the gate into one of those would attach it to \
+              an unrelated concern"
+)]
 pub fn dispatch_act_intents(
+    gate: PlaybackGate,
     mut pending: ResMut<PendingActIntent>,
     mut selected: ResMut<SelectedShooter>,
     mut active_level: ResMut<ActiveLevel>,
@@ -108,7 +117,20 @@ pub fn dispatch_act_intents(
     mut acts: ActWriters,
     cycle_reads: SelectionCycleReads,
 ) {
+    // GTW-727 C23: the queue is ALWAYS drained, even while the presenter is still catching
+    // up. It must be: `PendingActIntent::drain` is a `mem::take`, so a skipped drain does not
+    // defer the intents — it accumulates them, and the instant the gate opens the whole
+    // backlog fires at once. That is "acting on unshown information", merely delayed.
+    //
+    // So the gate is applied PER ARM instead, and it DISCARDS. An intent the player formed
+    // against a screen that was already out of date is stale whenever it eventually executes;
+    // holding it only makes it stale AND surprising. The arms that survive a closed gate are
+    // the ones that change nothing about the world — the presenter-owned view controls.
+    let gate_open = gate.is_open();
     for intent in pending.drain() {
+        if !gate_open && intent.needs_caught_up() {
+            continue;
+        }
         match intent {
             ActIntent::SelectionClear => {
                 if selected.is_some() {

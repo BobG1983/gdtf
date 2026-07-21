@@ -45,7 +45,7 @@ use bevy::{
 use gdtf_battle_sim::acts::ThrowResolved;
 
 use super::projectile::PendingImpact;
-use crate::cell_to_world;
+use crate::{cell_to_world, playback::Played};
 
 /// `Update` (`PresenterSystems::Overlay`): draw the grenade BLAST explosion per
 /// [`ThrowResolved`](gdtf_battle_sim::acts::ThrowResolved) (GTW-546).
@@ -83,7 +83,10 @@ use crate::cell_to_world;
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`] and
 /// [`MessageReader<ThrowResolved>`](gdtf_battle_sim::acts::ThrowResolved).
-pub fn read_throw_resolved(mut commands: Commands, mut resolved: MessageReader<ThrowResolved>) {
+pub fn read_throw_resolved(
+    mut commands: Commands,
+    mut resolved: MessageReader<Played<ThrowResolved>>,
+) {
     for msg in resolved.read() {
         // ThrowResolved.at is a CellLevel; its typed Cell / Level via the canonical
         // CellLevel::split decompose (GTW-565).

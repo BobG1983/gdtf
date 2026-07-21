@@ -2,6 +2,7 @@
 
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State};
 use gdtf_app::test_support::{AppState, BattleScapeState, RunningState};
+use gdtf_battle_presenter::Played;
 use gdtf_battle_sim::{ganger::GangerName, injuries::InjuryRegistry, tuning::CombatTuning};
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -92,6 +93,27 @@ pub(crate) fn line_texts<M: Component>(app: &mut App) -> Vec<String> {
         .into_iter()
         .filter_map(|e| app.world().get::<Text>(e).map(|t| t.as_str().to_owned()))
         .collect()
+}
+
+/// PLAYS `fact` — writes it onto the `Played<M>` buffer the combat-log forwarders drain.
+///
+/// Since GTW-727 C28 a log line appears when the presenter SHOWS a fact, not when the sim
+/// produced it: `forward_log_source::<S>` reads `Played<S>`, and the playback cursor is the
+/// only thing that writes one. A test driving the log therefore hands the fact to the same
+/// buffer the cursor would — the pipeline under test is unchanged and every assertion below
+/// still pins the same user-visible property (which line, which text, which colour, in which
+/// order), just at the point the pipeline now reads.
+///
+/// The write is ASSERTED rather than ignored: `World::write_message` merely logs and returns
+/// `None` when the buffer is unregistered, which is precisely the silent-drop that would make
+/// these tests read "no lines appeared" for a wiring reason instead of a behavioural one.
+pub(crate) fn play<M: Message + Clone>(app: &mut App, fact: M) {
+    let written = app.world_mut().write_message(Played::new(fact)).is_some();
+    assert!(
+        written,
+        "the Played<{}> buffer must be registered by the presenter's playback registration",
+        core::any::type_name::<M>(),
+    );
 }
 
 /// Spawns a NAMED ganger (so the log can resolve its `Entity` to a `GangerName`) and returns its

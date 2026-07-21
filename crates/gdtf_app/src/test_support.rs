@@ -133,7 +133,7 @@ pub fn seed_load_gate(asset_server: Option<Res<AssetServer>>, mut commands: Comm
 #[cfg(all(debug_assertions, feature = "net_qa"))]
 pub use crate::dev::net_qa::{
     IncomingRequest, NET_QA_PROTOCOL_VERSION, NetIoTimeout, NetQaPlugin, NetQaPort, QaShotDir,
-    Responder, SHIPPED_SITUATION, ShotPollBudget,
+    Responder, SHIPPED_SITUATION, ShotPollBudget, request_available_for,
 };
 // The GTW-655 procgen-stepper command/latch types + its forced-enable test constructor —
 // `dev_tools`-gated because the whole stepper module compiles out unless that feature is on

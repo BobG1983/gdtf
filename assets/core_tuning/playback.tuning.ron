@@ -1,0 +1,58 @@
+// PLAYBACK dwells (GTW-727) — how long the presenter's playback cursor holds on each kind
+// of act before showing the next one.
+//
+// The sim resolves an exchange in one tick; these numbers decide how long that exchange
+// takes to WATCH. They are pure presentation: nothing here changes an outcome, a roll, or
+// a cost. Hot-reloadable — edit and save while the game runs, and the very next hold uses
+// the new value.
+//
+// All values are SECONDS. Every field is optional: an omitted one falls back to the
+// shipped default compiled into `PlaybackTuning`.
+(
+    // After ONE round of a volley has landed, before the next entry plays.
+    // 0.35 is the value the old projectile-spawner stagger used, so a burst reads at
+    // exactly the cadence it always did.
+    round_seconds: 0.35,
+
+    // A REACTION-fire declaration — an out-of-turn interrupt the player did not order.
+    // Deliberately longer than an ordinary shot: the whole complaint this pacing exists to
+    // fix is that two reactors firing on one player step read as a single indistinguishable
+    // event. Raise this if interrupts still blur together.
+    reaction_beat_seconds: 0.45,
+
+    // An ordinary fire declaration, before its first round resolves — the beat between
+    // raising the weapon and the shot leaving it.
+    fire_beat_seconds: 0.15,
+
+    // One walk step, so a multi-cell walk reads cell by cell rather than as a slide.
+    step_seconds: 0.20,
+
+    // A posture change: turning to face, going prone, taking aim, being suppressed.
+    posture_seconds: 0.18,
+
+    // A resolved reload.
+    reload_seconds: 0.30,
+
+    // A consequence — damage numbers, an injury, a fall, a broken plate, a fresh
+    // affliction.
+    consequence_seconds: 0.25,
+
+    // A life-state change: going down, dying, being revived. The longest ordinary dwell,
+    // because it is the most consequential thing that happens to a ganger.
+    life_change_seconds: 0.50,
+
+    // A turn boundary, so the handover between sides reads as a break.
+    turn_beat_seconds: 0.60,
+
+    // A minor ordered fact: a refused move, an ammo readout change, a per-round bleed
+    // drain. Long enough to be sequenced, short enough not to be dwelt on.
+    minor_seconds: 0.10,
+
+    // NOT a dwell — the hard upper bound on waiting for a round's bolt to fly and land.
+    // The projectile spawner legitimately spawns no bolt when its effects sheet is missing,
+    // and a projectile_velocity of 0 in fx.tuning.ron would leave one in flight forever;
+    // without this cap either case would hold the cursor, and the input gate, indefinitely.
+    // 2.0 comfortably exceeds a full-diagonal shot at the shipped velocity, so it never
+    // truncates a real bolt. Do not lower it below the longest possible flight time.
+    impact_cap_seconds: 2.0,
+)

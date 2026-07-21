@@ -73,8 +73,8 @@ mod test;
 pub use downed::{dispatch_execute_downed, dispatch_stabilize_downed};
 pub use enter_emplacement::{dispatch_enter_emplacement, dispatch_exit_emplacement};
 pub use fire::{
-    BattleGridsParam, CanEngage, FireArcDecision, FireDeclaration, WeaponProbes, can_engage,
-    decide_fire_arc, dispatch_fire,
+    BattleGridsParam, CanEngage, FireArcDecision, FireDeclaration, RoundCount, WeaponProbes,
+    can_engage, decide_fire_arc, dispatch_fire,
 };
 pub use injury::{InjuryInflicted, apply_injury};
 pub use melee::dispatch_melee;

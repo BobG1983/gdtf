@@ -72,9 +72,9 @@ pub use fct::{
     CombatLogSystems, CombatText, ConsequenceFct, ConsequenceFctAppExt, ConsequenceFctSystems,
     ConsequencePop, DotFct, FctEmphasis, FctStackCounter, FctStackIndex, FctValence, FieldFct,
     FloatingCombatText, InjuryFct, InjuryLogText, LogLine, LogName, OnDeathFct, PopAnchor,
-    SuppressionFct, animate_floating_text, classify_log_event, forward_log_source,
-    forward_turn_started, read_consequence_fct, register_consequence_fct_core, reset_fct_stacks,
-    severity_color, spawn_floating_text, valence_color,
+    SuppressionFct, animate_floating_text, classify_log_event, forward_live_log_source,
+    forward_log_source, forward_turn_started, read_consequence_fct, register_consequence_fct_core,
+    reset_fct_stacks, severity_color, spawn_floating_text, valence_color,
 };
 pub use flash::{FlashTtl, FxFlash, expire_flashes};
 pub use impact::{ShotImpactResolved, animate_impact};

@@ -29,6 +29,7 @@ use gdtf_battle_sim::{
 };
 
 use super::event::{CombatLogEvent, LogName};
+use crate::playback::Played;
 
 /// The combat-log scheduling set (GTW-572 C5): every per-source
 /// [`Forward`](Self::Forward)er runs in this set, and `gdtf_app`'s ONE appender orders
@@ -50,7 +51,7 @@ pub enum CombatLogSystems {
 /// the message into ONE [`CombatLogEvent`] with every [`Entity`](bevy::prelude::Entity)
 /// already resolved to a [`LogName`] via `names` — or [`None`] for a message that logs
 /// nothing (e.g. a COVER on-death, whose placeholder entity is no ganger).
-pub trait CombatLogSource: Message {
+pub trait CombatLogSource: Message + Clone {
     /// Resolve this fact into its log event, or [`None`] when it yields no line at all.
     fn to_event(&self, names: &Query<&GangerName>) -> Option<CombatLogEvent>;
 }
@@ -73,6 +74,27 @@ pub(super) fn name_of(entity: bevy::prelude::Entity, names: &Query<&GangerName>)
 /// registrar gates it on `BattleInProgress` + `Messages<S>` so the reader param is always
 /// valid.
 pub fn forward_log_source<S: CombatLogSource>(
+    mut source: MessageReader<Played<S>>,
+    names: Query<&GangerName>,
+    mut events: MessageWriter<CombatLogEvent>,
+) {
+    for message in source.read() {
+        if let Some(event) = message.to_event(&names) {
+            events.write(event);
+        }
+    }
+}
+
+/// `Update` ([`CombatLogSystems::Forward`](CombatLogSystems)): the UNPACED forwarder —
+/// drain source `S` straight off its own buffer, with no playback wrapper.
+///
+/// Used for exactly one source: [`ShotImpactResolved`](crate::ShotImpactResolved). That
+/// signal is the PRESENTER's own, emitted by the impact animation at the moment a bolt
+/// actually lands — and the bolt only spawns when the cursor plays its round, so the signal
+/// is already at cursor time by construction. It also could not be replayed even in
+/// principle: at the moment the cursor shows the round, the impact has not happened yet.
+/// Leaving it unpaced is what makes a shot's outcome line land exactly as its bolt arrives.
+pub fn forward_live_log_source<S: CombatLogSource>(
     mut source: MessageReader<S>,
     names: Query<&GangerName>,
     mut events: MessageWriter<CombatLogEvent>,
@@ -92,7 +114,7 @@ pub fn forward_log_source<S: CombatLogSource>(
 /// boundary cannot be labelled, so the message is DRAINED-and-dropped (the reader cursor
 /// advances either way — drain-don't-replay, the pre-GTW-572 `.clear()` semantics).
 pub fn forward_turn_started(
-    mut turns: MessageReader<TurnStarted>,
+    mut turns: MessageReader<Played<TurnStarted>>,
     player: Option<Res<PlayerFaction>>,
     mut events: MessageWriter<CombatLogEvent>,
 ) {
@@ -112,11 +134,22 @@ pub fn forward_turn_started(
 /// The per-source registrar (GTW-572 C5): `app.add_combat_log_source::<Source>()` is the
 /// ONE registration line a log source needs.
 pub trait CombatLogSourceAppExt {
-    /// Register source `S`'s generic forwarder in `CombatLogSystems::Forward`, gated on the
-    /// live-battle witness + the source's `Messages<S>` buffer (a [`MessageReader`] panics
-    /// param validation without it — `bevy-traps.md` #1 / #4). NEVER calls `add_message`:
-    /// the producer registers its own buffer.
+    /// Register source `S`'s PACED forwarder in `CombatLogSystems::Forward` — it drains
+    /// [`Played<S>`](Played), so its line appears when the presenter SHOWS the fact rather
+    /// than when the sim produced it (GTW-727 C28). This is what stops a whole reaction
+    /// exchange's lines landing on one frame together.
+    ///
+    /// Gated on the live-battle witness + the source's own `Messages<S>` buffer (a
+    /// [`MessageReader`] panics param validation without its buffer — `bevy-traps.md`
+    /// #1 / #4). The gate stays on the SIM buffer `S` deliberately: the reader's
+    /// `Messages<Played<S>>` is presenter-owned and always present here, so gating on it
+    /// would be trivially true and would quietly retire the inertness convention. NEVER
+    /// calls `add_message` for `S`: the producer registers its own buffer.
     fn add_combat_log_source<S: CombatLogSource>(&mut self) -> &mut Self;
+
+    /// Register source `S`'s UNPACED forwarder — for a source that is ALREADY at cursor
+    /// time because the presenter itself emits it (see [`forward_live_log_source`]).
+    fn add_live_combat_log_source<S: CombatLogSource>(&mut self) -> &mut Self;
 }
 
 impl CombatLogSourceAppExt for App {
@@ -124,6 +157,18 @@ impl CombatLogSourceAppExt for App {
         self.add_systems(
             Update,
             forward_log_source::<S>
+                .in_set(CombatLogSystems::Forward)
+                .run_if(
+                    resource_exists::<BattleInProgress>.and_then(resource_exists::<Messages<S>>),
+                ),
+        );
+        self
+    }
+
+    fn add_live_combat_log_source<S: CombatLogSource>(&mut self) -> &mut Self {
+        self.add_systems(
+            Update,
+            forward_live_log_source::<S>
                 .in_set(CombatLogSystems::Forward)
                 .run_if(
                     resource_exists::<BattleInProgress>.and_then(resource_exists::<Messages<S>>),

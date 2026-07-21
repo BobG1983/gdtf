@@ -13,9 +13,9 @@
 //! unrepresentable rather than conventioned — the same shape as the GTW-627 visibility
 //! resolver next door.
 
-use bevy::{ecs::lifecycle::RemovedComponents, prelude::*};
+use bevy::prelude::*;
 use gdtf_battle_sim::{
-    ganger::{Aiming, Facing, Suppressed},
+    ganger::{Aiming, Facing},
     prelude::{Faction, LifeState, Stance},
 };
 
@@ -25,6 +25,7 @@ use super::{
     sprite_map::{GangerSprite, GangerSprites},
     tint::stance_aiming_tint,
 };
+use crate::playback::{DrawnLife, DrawnPose};
 
 /// The full drawn appearance of one ganger sprite — which atlas tile it shows and the
 /// tint it is modulated by — the ONE classifier's verdict, stamped onto both `Sprite`
@@ -88,49 +89,39 @@ pub(super) fn ganger_sprite_appearance(
 type AppearanceData = (
     Entity,
     &'static Faction,
-    &'static Facing,
-    &'static Stance,
-    &'static Aiming,
-    &'static LifeState,
-    Option<&'static Suppressed>,
+    &'static DrawnPose,
+    &'static DrawnLife,
 );
 
 /// The "any of facing / stance / aiming / suppressed changed" [`QueryFilter`] — the
 /// pre-GTW-631 reframe union, kept as its own named term inside [`AppearanceChanged`].
 ///
-/// [`Changed<Suppressed>`](Suppressed) catches suppression being APPLIED (the sim inserts
-/// the component — GTW-526 C2); a suppressed ganger's auto-stance drop (C5) ALSO trips
-/// [`Changed<Stance>`], so the tint is doubly guaranteed to refresh on application.
-/// Suppression being CLEARED is a component REMOVAL (the sim `remove`s it — C6), which
-/// `Changed` does NOT observe, so [`resolve_ganger_appearance`] additionally drains
-/// [`RemovedComponents<Suppressed>`](RemovedComponents) to un-tint a no-longer-suppressed
-/// ganger.
+/// The full "this ganger's LOOK may have changed" trigger (GTW-631 C2, re-sourced in
+/// GTW-727 C17): [`Changed<DrawnPose>`](DrawnPose) or [`Changed<DrawnLife>`](DrawnLife) —
+/// the posture and life state the playback cursor has SHOWN, not the ones the sim has
+/// already reached.
+///
+/// This replaces a five-way `Or` over the live `Facing` / `Stance` / `Aiming` /
+/// `Suppressed` / `LifeState` components. It also RETIRES the
+/// `RemovedComponents<Suppressed>` drain the resolver used to need: suppression clearing
+/// was a component REMOVAL, which `Changed` cannot observe, but it is an ordinary field
+/// of [`DrawnPose`] — so a clear is now just another value change and the whole removal
+/// path is gone.
 ///
 /// [`QueryFilter`]: bevy::ecs::query::QueryFilter
-type ReframeChanged = Or<(
-    Changed<Facing>,
-    Changed<Stance>,
-    Changed<Aiming>,
-    Changed<Suppressed>,
-)>;
-
-/// The full "this ganger's LOOK may have changed" trigger (GTW-631 C2): the
-/// [`ReframeChanged`] union plus [`Changed<LifeState>`](LifeState) — the Downed grey-out
-/// / revive re-tint the life-state system used to own now rides the same writer.
-type AppearanceChanged = Or<(ReframeChanged, Changed<LifeState>)>;
+type AppearanceChanged = Or<(Changed<DrawnPose>, Changed<DrawnLife>)>;
 
 /// `Update` ([`PresenterSystems::Scene`](crate::PresenterSystems), GTW-631 C2): the ONE
 /// writer of every ganger sprite's drawn appearance — atlas index AND tint, stamped
 /// together from the one pure classifier (`ganger_sprite_appearance`).
 ///
-/// Three drive sources, one derivation:
+/// Two drive sources, one derivation:
 ///
-/// * **The changed-state query** (`AppearanceChanged`: facing / stance / aiming /
-///   suppressed / life state) — recompute the changed ganger's appearance in place.
-/// * **[`RemovedComponents<Suppressed>`](RemovedComponents)** — suppression being CLEARED
-///   is a component removal, which `Changed` does not observe; each just-cleared ganger
-///   is re-read through the full-set query (now carrying no [`Suppressed`], so the
-///   classifier sees `suppressed = false`) and returns to its ordinary tint.
+/// * **The changed-state query** ([`AppearanceChanged`]: the DRAWN posture or the DRAWN
+///   life state) — recompute the changed ganger's appearance in place. Since GTW-727 these
+///   are the cursor-time mirrors, so a ganger turning to face its target visibly turns at
+///   the moment its shot is SHOWN, rather than snapping to its post-volley facing the
+///   frame the sim resolved it.
 /// * **A [`CharacterRoles`] change** — the GTW-375 hot-reload (the GTW-564 hot-RON
 ///   redrive) overwrites the resident table, moving each faction's whole 4-frame actor
 ///   run to a new base, so EVERY mapped ganger is re-stamped from the fresh table (the
@@ -151,39 +142,27 @@ type AppearanceChanged = Or<(ReframeChanged, Changed<LifeState>)>;
 /// spawn seeded the SAME classifier's verdict.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Res<GangerSprites>`], [`Res<CharacterRoles>`], the
-/// changed-state ganger query, the full-set ganger query (the removal / roles-change
-/// re-read), the [`RemovedComponents<Suppressed>`](RemovedComponents) drain, and the ONE
-/// `Query<&mut Sprite, With<GangerSprite>>` in the crate (GTW-631 A1).
+/// changed-state ganger query, the full-set ganger query (the roles-change re-read), and
+/// the ONE `Query<&mut Sprite, With<GangerSprite>>` in the crate (GTW-631 A1).
 pub fn resolve_ganger_appearance(
     sprites: Res<GangerSprites>,
     roles: Res<CharacterRoles>,
     changed: Query<AppearanceData, AppearanceChanged>,
     all: Query<AppearanceData>,
-    mut removed: RemovedComponents<Suppressed>,
     mut presenters: Query<&mut Sprite, With<GangerSprite>>,
 ) {
     // The roles-change path: a hot-reloaded table moves every faction base, so re-stamp
-    // EVERY mapped ganger from the fresh table. The full set supersedes the changed and
-    // removal subsets this frame (a removal re-read through `all` already sees the
-    // component gone), so the pending removals are drained and dropped.
+    // EVERY mapped ganger from the fresh table. The full set supersedes the changed subset
+    // this frame.
     if roles.is_changed() {
-        removed.clear();
         for data in &all {
             stamp_appearance(&sprites, &roles, &mut presenters, data);
         }
         return;
     }
-    // The changed-state path: every ganger whose appearance-deciding sim state Changed.
+    // The changed-state path: every ganger whose drawn appearance-deciding state Changed.
     for data in &changed {
         stamp_appearance(&sprites, &roles, &mut presenters, data);
-    }
-    // The suppression-CLEARED path: a removal is not a `Changed`, so drain the removals
-    // and re-stamp each just-cleared ganger from its full-set data. A ganger whose
-    // entity despawned is skipped by the `all.get` miss.
-    for entity in removed.read() {
-        if let Ok(data) = all.get(entity) {
-            stamp_appearance(&sprites, &roles, &mut presenters, data);
-        }
     }
 }
 
@@ -198,17 +177,10 @@ fn stamp_appearance(
     sprites: &GangerSprites,
     roles: &CharacterRoles,
     presenters: &mut Query<&mut Sprite, With<GangerSprite>>,
-    data: (
-        Entity,
-        &Faction,
-        &Facing,
-        &Stance,
-        &Aiming,
-        &LifeState,
-        Option<&Suppressed>,
-    ),
+    data: (Entity, &Faction, &DrawnPose, &DrawnLife),
 ) {
-    let (entity, faction, facing, stance, aiming, life, suppressed) = data;
+    let (entity, faction, pose, life) = data;
+    let life = **life;
     // Death presentation is the despawn discriminator's (GTW-331), never a re-style: a
     // deferred corpse keeps its last-drawn look until its killing tracer lands.
     if matches!(life, LifeState::Dead) {
@@ -222,11 +194,11 @@ fn stamp_appearance(
     };
     let appearance = ganger_sprite_appearance(
         *faction,
-        *facing,
-        *stance,
-        *aiming,
-        *life,
-        suppressed.is_some(),
+        pose.facing(),
+        pose.stance(),
+        pose.aiming(),
+        life,
+        pose.suppressed(),
         roles,
     );
     if let Some(atlas) = sprite.texture_atlas.as_mut() {

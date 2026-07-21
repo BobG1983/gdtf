@@ -1,7 +1,7 @@
 //! Traveling shot projectile: spawn-at-muzzle, no muzzle flash, entity-aim
 //! (GTW-306/307).
 
-use bevy::{app::App, ecs::message::Messages, sprite::Sprite, transform::components::Transform};
+use bevy::{app::App, sprite::Sprite, transform::components::Transform};
 use gdtf_battle_presenter::{
     GangerSprites, ProjectileTravel, ShotProjectile, cell_to_world, sim_pos_to_world,
 };
@@ -63,9 +63,7 @@ fn shot_fired_spawns_directional_projectile_and_no_muzzle_flash() {
         report: None,
     };
 
-    app.world_mut()
-        .resource_mut::<Messages<ShotFired>>()
-        .write(shot);
+    play(&mut app, shot);
     // Pin the firing update's clock delta to ZERO so the just-spawned projectile cannot travel a
     // wall-clock-dependent distance off the muzzle on the read frame: under `Automatic` time, the
     // first update after the variable-length `settle_resources` carries a non-deterministic delta,
@@ -123,9 +121,7 @@ fn shot_fired_miss_still_spawns_projectile_and_no_muzzle_flash() {
         report:       None,
     };
 
-    app.world_mut()
-        .resource_mut::<Messages<ShotFired>>()
-        .write(shot);
+    play(&mut app, shot);
     app.update();
 
     assert_eq!(
@@ -213,9 +209,7 @@ fn shot_fired_at_a_ganger_aims_at_the_hit_entitys_rendered_position() {
         damage: DamageType::Kinetic,
         report: None,
     };
-    app.world_mut()
-        .resource_mut::<Messages<ShotFired>>()
-        .write(shot);
+    play(&mut app, shot);
     app.update();
 
     let arrival = single_projectile_arrival(&mut app);

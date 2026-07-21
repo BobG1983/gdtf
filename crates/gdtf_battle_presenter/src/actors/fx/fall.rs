@@ -49,7 +49,7 @@ use super::{
     readers::spawn_flash,
     roles::EffectRoles,
 };
-use crate::{FxTuning, TopDownAtlases, cell_to_world, fx::readers::fx_sprite};
+use crate::{FxTuning, TopDownAtlases, cell_to_world, fx::readers::fx_sprite, playback::Played};
 
 /// The fall-impact-flash tint as a relation to `storeys` fallen — a visible structural
 /// mapping (analogous to [`bleed_tint`](super::readers::bleed_tint)'s `Wounds` relation).
@@ -106,7 +106,7 @@ pub fn read_fall_occurred(
     atlases: Res<TopDownAtlases>,
     roles: Res<EffectRoles>,
     tuning: Res<FxTuning>,
-    mut falls: MessageReader<FallOccurred>,
+    mut falls: MessageReader<Played<FallOccurred>>,
     positions: Query<&Position>,
 ) {
     for msg in falls.read() {

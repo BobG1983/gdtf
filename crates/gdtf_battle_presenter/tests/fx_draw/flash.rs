@@ -1,7 +1,6 @@
 //! `FxFlash` glyph spawn per consequence message + TTL expiry (GTW-220 AC1-AC5,
 //! GTW-507 melee strike).
 
-use bevy::ecs::message::Messages;
 use gdtf_battle_presenter::cell_to_world;
 use gdtf_battle_sim::{
     acts::MeleeResolved,
@@ -29,9 +28,7 @@ fn bleeding_spawns_one_flash_at_the_ganger_cell_with_the_bleed_index() {
     let level = Level::new(0);
     let ganger = wounded_ganger(&mut app, cell, level, 3);
 
-    app.world_mut()
-        .resource_mut::<Messages<Bleeding>>()
-        .write(Bleeding::new(ganger));
+    play(&mut app, Bleeding::new(ganger));
     app.update();
 
     let roles = effect_roles(&app);
@@ -60,9 +57,7 @@ fn bleeding_spawns_one_flash_at_the_ganger_cell_with_the_bleed_index() {
     advance_past_ttl(&mut app);
     assert_eq!(fx_count(&mut app), 0, "the first flash must have expired");
     let bare = app.world_mut().spawn_empty().id();
-    app.world_mut()
-        .resource_mut::<Messages<Bleeding>>()
-        .write(Bleeding::new(bare));
+    play(&mut app, Bleeding::new(bare));
     app.update();
     assert_eq!(
         fx_count(&mut app),
@@ -83,9 +78,7 @@ fn armor_broken_spawns_one_flash_at_the_armor_break_index() {
     let level = Level::new(0);
     let ganger = wounded_ganger(&mut app, cell, level, 4);
 
-    app.world_mut()
-        .resource_mut::<Messages<ArmorBroken>>()
-        .write(ArmorBroken::new(ganger, BodyPart::Torso));
+    play(&mut app, ArmorBroken::new(ganger, BodyPart::Torso));
     app.update();
 
     let roles = effect_roles(&app);
@@ -126,9 +119,7 @@ fn cover_destroyed_spawns_one_flash_at_the_cover_destroyed_index() {
     let level = Level::new(0);
     let at = CellLevel::new(cell, level);
 
-    app.world_mut()
-        .resource_mut::<Messages<CoverDestroyed>>()
-        .write(CoverDestroyed::new(at));
+    play(&mut app, CoverDestroyed::new(at));
     app.update();
 
     let roles = effect_roles(&app);
@@ -174,9 +165,7 @@ fn melee_resolved_spawns_one_strike_flash_at_the_melee_strike_index() {
     let at = CellLevel::new(cell, level);
 
     // The sim's connecting-melee signal — the struck target cell + the weapon's damage type.
-    app.world_mut()
-        .resource_mut::<Messages<MeleeResolved>>()
-        .write(MeleeResolved::new(at, DamageType::Rend));
+    play(&mut app, MeleeResolved::new(at, DamageType::Rend));
     app.update();
 
     let roles = effect_roles(&app);
@@ -215,9 +204,7 @@ fn flash_expires_after_its_ttl_and_nothing_lingers() {
     app.world_mut().insert_resource(BattleInProgress);
 
     let ganger = wounded_ganger(&mut app, Cell::new(1, 1), Level::new(0), 2);
-    app.world_mut()
-        .resource_mut::<Messages<Bleeding>>()
-        .write(Bleeding::new(ganger));
+    play(&mut app, Bleeding::new(ganger));
     app.update();
     assert_eq!(fx_count(&mut app), 1, "one flash must spawn");
 
@@ -247,11 +234,8 @@ fn two_bleeding_messages_spawn_two_independent_flashes() {
     app.world_mut().insert_resource(BattleInProgress);
 
     let ganger = wounded_ganger(&mut app, Cell::new(7, 7), Level::new(0), 1);
-    {
-        let mut buf = app.world_mut().resource_mut::<Messages<Bleeding>>();
-        buf.write(Bleeding::new(ganger));
-        buf.write(Bleeding::new(ganger));
-    }
+    play(&mut app, Bleeding::new(ganger));
+    play(&mut app, Bleeding::new(ganger));
     app.update();
     assert_eq!(
         fx_count(&mut app),

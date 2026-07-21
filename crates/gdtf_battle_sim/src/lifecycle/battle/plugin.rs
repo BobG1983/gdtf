@@ -4,6 +4,7 @@
 use bevy::prelude::{App, IntoScheduleConfigs, Plugin, Update, resource_exists};
 
 use crate::{
+    act_log::wire_act_log,
     acts::{SimActsPlugin, movement::advance_walk},
     battle::{
         messages::{
@@ -87,7 +88,15 @@ pub struct BattleSimPlugin;
 impl Plugin for BattleSimPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(OccupancyMaintenancePlugin)
-            .add_plugins(SimActsPlugin)
+            .add_plugins(SimActsPlugin);
+        // GTW-727: the ACT LOG — the sim's ordered record of everything that happened, and
+        // the one registered writer that appends to it. Wired AFTER the producer plugins
+        // above so every source buffer it reads is already registered (its own
+        // registrations are idempotent with theirs). The log is a battle-lifetime resource
+        // seeded on the setup Ok path and removed on teardown, so the recorder is inert
+        // outside a live battle.
+        wire_act_log(app);
+        app
             // GTW-503: the openable (door/hatch) toggle — registers the SetOpenable message +
             // apply_openable_toggle (in the Simulate band, .before the GTW-501/502 projection).
             // Toggling adds/removes the BlocksPathfinding + BlocksVision components, which the
@@ -121,6 +130,16 @@ impl Plugin for BattleSimPlugin {
             .configure_sets(
                 Update,
                 SimSystems::Simulate.run_if(resource_exists::<BattleInProgress>),
+            )
+            // GTW-727 C12: gate the act-log RECORD band on the same live-battle witness,
+            // stated SEPARATELY because a sibling `SystemSet` variant inherits nothing from
+            // `Simulate` — neither its run condition nor its ordering (which
+            // `OccupancyMaintenancePlugin`, the band's owner, configures). Outside a live
+            // battle there is no log to write, so the recorder is inert and panic-free
+            // (bevy-traps.md #1).
+            .configure_sets(
+                Update,
+                SimSystems::Record.run_if(resource_exists::<BattleInProgress>),
             )
             // The roster-grounded outcome census joins the gated Simulate band, so it is
             // INERT (and its Res<PlayerFaction>/Res<BattleRoster> reads panic-free) outside

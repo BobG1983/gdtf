@@ -1,43 +1,25 @@
 //! Suppression desaturate + restore (GTW-526 C8).
 
-use bevy::{app::App, prelude::Entity};
 use gdtf_battle_presenter::GangerSprites;
 use gdtf_battle_sim::{
-    ganger::{Suppressed, SuppressorCell},
     prelude::{Cell, CellLevel, Direction, Level},
     test_support::SituationBuilder,
 };
 
 use super::{harness::*, probes::*};
 
-/// Insert `Suppressed` on sim ganger `sim` (the real APPLY transition — `Changed<Suppressed>`
-/// the appearance resolver keys on), anchored to `from` the way the sim producer does.
-fn suppress(app: &mut App, sim: Entity, from: CellLevel) {
-    app.world_mut()
-        .entity_mut(sim)
-        .insert(Suppressed::new(SuppressorCell::new(from)));
-}
-
-/// Remove `Suppressed` from sim ganger `sim` (the real CLEAR transition — a component REMOVAL,
-/// which `Changed` does NOT observe, so `resolve_ganger_appearance` drains it via
-/// `RemovedComponents<Suppressed>`).
-fn unsuppress(app: &mut App, sim: Entity) {
-    app.world_mut().entity_mut(sim).remove::<Suppressed>();
-}
-
-/// GTW-526 C8 — a `Changed<Suppressed>` desaturates + darkens the ganger's sprite (the
-/// distinct "pinned" look), and REMOVING `Suppressed` (a component removal, which `Changed`
-/// does NOT observe) drains through `RemovedComponents<Suppressed>` to restore the ordinary
-/// tint.
+/// GTW-526 C8, re-sourced onto the GTW-727 C17 posture mirror — a suppressed
+/// [`DrawnPose`](gdtf_battle_presenter::DrawnPose) desaturates + darkens the ganger's sprite
+/// (the distinct "pinned" look), and clearing it restores the ordinary tint.
 ///
 /// This pins the appearance resolver's suppression arm on the REAL path:
-/// - APPLY: inserting `Suppressed` trips `Changed<Suppressed>` — the sprite re-tints to a
+/// - APPLY: showing a suppressed pose trips `Changed<DrawnPose>` — the sprite re-tints to a
 ///   colour-drained (lower-saturation) AND dimmer swatch than the un-suppressed tint.
-/// - CLEAR: removing `Suppressed` is a removal, not a `Changed`; the system's
-///   `RemovedComponents<Suppressed>` arm re-tints the sprite BACK to exactly the original
-///   un-suppressed tint.
+/// - CLEAR: showing the un-suppressed pose again is another ordinary `Changed<DrawnPose>`
+///   (GTW-727 C17 made suppression a pose FIELD and deleted the `RemovedComponents<Suppressed>`
+///   drain), re-tinting the sprite BACK to exactly the original un-suppressed tint.
 ///
-/// Deleting the `Changed<Suppressed>` arm (or the removal arm) FAILS this test.
+/// Deleting the suppression arm FAILS this test.
 #[test]
 fn suppression_desaturates_the_sprite_and_clearing_restores_it() {
     let mut app = headless_renderer_app();
@@ -67,9 +49,8 @@ fn suppression_desaturates_the_sprite_and_clearing_restores_it() {
     // The un-suppressed baseline tint.
     let color_clear = sprite_color(&mut app, sprite);
 
-    // --- APPLY: insert Suppressed -> Changed<Suppressed> desaturates + darkens. ---
-    let suppressor = CellLevel::new(Cell::new(9, 6), Level::new(0));
-    suppress(&mut app, sim, suppressor);
+    // --- APPLY: show a suppressed pose -> Changed<DrawnPose> desaturates + darkens. ---
+    set_drawn_suppressed(&mut app, sim, true);
     app.update();
     let color_suppressed = sprite_color(&mut app, sprite);
     assert!(
@@ -89,8 +70,8 @@ fn suppression_desaturates_the_sprite_and_clearing_restores_it() {
         saturation(color_clear),
     );
 
-    // --- CLEAR: remove Suppressed -> RemovedComponents<Suppressed> restores the tint. ---
-    unsuppress(&mut app, sim);
+    // --- CLEAR: show the un-suppressed pose again -> Changed<DrawnPose> restores the tint. ---
+    set_drawn_suppressed(&mut app, sim, false);
     app.update();
     let color_restored = sprite_color(&mut app, sprite);
     // Compare on the linear channels (not variant-equality): the appearance re-stamp emits a
@@ -98,9 +79,8 @@ fn suppression_desaturates_the_sprite_and_clearing_restores_it() {
     // baseline — so assert the linear RGB match within tolerance rather than `==`.
     assert!(
         same_color(color_restored, color_clear),
-        "clearing suppression (a component REMOVAL) must restore the ORIGINAL un-suppressed \
-         tint via the RemovedComponents<Suppressed> arm (restored {color_restored:?} vs \
-         clear {color_clear:?})",
+        "clearing suppression (a DrawnPose field change) must restore the ORIGINAL \
+         un-suppressed tint (restored {color_restored:?} vs clear {color_clear:?})",
     );
     // And it is genuinely BACK to the un-suppressed look, not still washed out.
     assert!(

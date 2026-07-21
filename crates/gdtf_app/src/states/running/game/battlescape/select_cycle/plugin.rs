@@ -22,6 +22,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_input::dispatch_act_intents;
+use gdtf_battle_presenter::playback_caught_up;
 use gdtf_battle_sim::prelude::BattleInProgress;
 
 use crate::states::{
@@ -56,8 +57,9 @@ impl Plugin for GameBattleScapeSelectCycleScenePlugin {
             select_cycle_button_intents
                 // Ordered `.before` the ONE intent drain (`bevy-traps.md` #3): a press queued
                 // THIS update is drained THIS update (the action-bar same-frame guarantee).
+                // GTW-727 C24: a selection change is blocked while the presenter catches up.
                 .before(dispatch_act_intents)
-                .run_if(resource_exists::<BattleInProgress>),
+                .run_if(resource_exists::<BattleInProgress>.and_then(playback_caught_up)),
         );
     }
 }

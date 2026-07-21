@@ -23,7 +23,7 @@
 
 use bevy::{app::App, prelude::*, state::state::State, time::TimeUpdateStrategy};
 use gdtf_app::test_support::{AppState, BattleScapeState, RunningState};
-use gdtf_battle_presenter::{PendingImpact, ShotProjectile};
+use gdtf_battle_presenter::{PendingImpact, Played, ShotProjectile};
 use gdtf_battle_sim::{
     armor::BodyPart,
     battle::{BattleLost, BattleWon},
@@ -169,9 +169,15 @@ fn write_deciding_shot(app: &mut App) {
         damage: gdtf_battle_sim::weapon::DamageType::Kinetic,
         report: Some(lethal_ganger_hit(struck)),
     };
+    // GTW-727: the bolt spawns off `Played<ShotFired>` — the shot at the moment the
+    // presenter SHOWS it — not off the raw sim message. This test asserts the same
+    // user-visible property it always did (the battle does not end until the deciding
+    // tracer lands); it just writes the shot at the point in the chain where the FX
+    // pipeline now reads it. `move_on`'s deciding-shot classifier reads the same signal, so
+    // one write still drives both halves.
     app.world_mut()
-        .resource_mut::<Messages<ShotFired>>()
-        .write(shot);
+        .resource_mut::<Messages<Played<ShotFired>>>()
+        .write(Played::new(shot));
 }
 
 /// Advances the app a fixed number of `step`-sized manual updates (each advancing the virtual

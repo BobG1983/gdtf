@@ -206,14 +206,23 @@ fn ac5_a_player_watcher_interrupts_an_acting_enemy_on_the_enemy_turn() {
     // player watcher's LOS). Give it a generous budget to act + be interrupted + the
     // one-tick cadence to resolve.
     app.world_mut().write_message(EndTurnRequested);
-    // Drive the enemy turn: the brain advances the enemy west toward the watcher; the step
-    // into the watcher's view range is interrupted (the one-tick cadence resolves within a
-    // few ticks of that step). A generous budget so the brain advances + the interrupt fires.
-    step(&mut app, 16);
+    // Drive the enemy turn ONE tick at a time; the brain advances the enemy west toward the
+    // watcher, and the step into the watcher's view range is interrupted. Capture the watcher's
+    // TU the moment its interrupt fires — BEFORE any later turn-boundary TU regen could mask the
+    // debit: with the GTW-461 enemy-act cadence retired (GTW-727 C31) the enemy turn resolves
+    // in ~1 tick/act, fast enough to cycle back to the player within this budget and regenerate
+    // the watcher's TU. The debit is a per-interrupt property, so it is asserted at the interrupt.
+    let mut tu_at_interrupt = None;
+    for _ in 0..16 {
+        app.update();
+        if shots_by(&app, player_watcher_entity) >= 1 {
+            tu_at_interrupt = tu_of(&app, player_watcher_entity);
+            break;
+        }
+    }
 
     // AC5: a player watcher interrupted the acting enemy during the ENEMY turn — a real
-    // ShotFired from the player watcher, and its TU debited (the persistent ShotLog + TU
-    // capture the interrupt regardless of the later turn-boundary cap reset). The enemy was
+    // ShotFired from the player watcher, and its TU debited at the interrupt. The enemy was
     // BRAIN-DRIVEN (its move, not a synthetic emit) — proven by its advance into range.
     assert!(
         shots_by(&app, player_watcher_entity) >= 1,
@@ -221,7 +230,7 @@ fn ac5_a_player_watcher_interrupts_an_acting_enemy_on_the_enemy_turn() {
          the enemy turn (faction symmetry — the mirror of AC1)",
     );
     assert!(
-        tu_of(&app, player_watcher_entity).is_some_and(|tu| tu < watcher_tu_before),
+        tu_at_interrupt.is_some_and(|tu| tu < watcher_tu_before),
         "AC5: the player watcher's TU is debited by its interrupt of the enemy",
     );
     // AC7 mirror: the player watcher's interrupt is also a NORMAL-pipeline shot.

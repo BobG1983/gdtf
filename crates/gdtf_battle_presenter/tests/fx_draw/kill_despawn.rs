@@ -1,7 +1,7 @@
 //! Kill-despawn deferral to the killing impact (GTW-331).
 
-use bevy::{app::App, ecs::message::Messages};
-use gdtf_battle_presenter::{GangerSprite, GangerSprites};
+use bevy::app::App;
+use gdtf_battle_presenter::{DrawnLife, GangerSprite, GangerSprites};
 use gdtf_battle_sim::{
     armor::BodyPart,
     prelude::{BattleInProgress, Cell, Level, LifeState, SimPos},
@@ -22,14 +22,25 @@ fn ganger_sprite_alive(app: &App, sim: bevy::ecs::entity::Entity) -> bool {
         .is_some_and(|sprites| sprites.contains(sim))
 }
 
-/// Set the `LifeState` of sim ganger `sim` directly (the sim-drain `Changed<LifeState>` trigger
-/// the presenter reacts to). GTW-331: this is the moment the bug despawned the sprite — long
-/// before the killing tracer lands.
+/// Set the `LifeState` of sim ganger `sim` directly. GTW-331: this is the moment the bug
+/// despawned the sprite — long before the killing tracer lands.
 fn set_life_state(app: &mut App, sim: bevy::ecs::entity::Entity, state: LifeState) {
     let mut q = app.world_mut().query::<&mut LifeState>();
     if let Ok(mut life) = q.get_mut(app.world_mut(), sim) {
         *life = state;
     }
+}
+
+/// Mark sim ganger `sim` DEAD on the presenter's OWN clock — write its `DrawnLife` mirror,
+/// exactly what [`advance_playback`](gdtf_battle_presenter::advance_playback) does when the
+/// cursor plays a `LifeChanged` deed. GTW-727 C17 moved the death-despawn trigger off the live
+/// `Changed<LifeState>` onto `Changed<DrawnLife>`, so a cursor-less focused harness drives the
+/// death by writing that mirror directly — the component analogue of how the FCT tests hand the
+/// pipeline a `Played<M>` in place of the cursor's own write.
+fn draw_dead(app: &mut App, sim: bevy::ecs::entity::Entity) {
+    app.world_mut()
+        .entity_mut(sim)
+        .insert(DrawnLife::new(LifeState::Dead));
 }
 
 /// GTW-331 — the BUG FIX, deterministic + headless: a SHOT that KILLS a ganger must keep the
@@ -84,9 +95,7 @@ fn a_shot_kill_keeps_the_sprite_until_the_killing_impact_lands() {
         damage: DamageType::Kinetic,
         report: Some(report),
     };
-    app.world_mut()
-        .resource_mut::<Messages<ShotFired>>()
-        .write(shot);
+    play(&mut app, shot);
 
     // The sim-drain frame: drain the ShotFired (spawn the bolt, still parked/short into flight)
     // AND flip the victim's LifeState to Dead, the SAME frame — exactly what the sim does at
@@ -144,9 +153,13 @@ fn a_non_shot_death_despawns_the_sprite_promptly() {
         "the ganger's presenter sprite must be spawned + mapped before it dies",
     );
 
-    // A non-shot death: set LifeState Dead directly (a bleed-out-style death). No tracer is
-    // pending, so the life-state path must despawn it on the next update.
+    // A non-shot death: the ganger dies (sim `LifeState` Dead) and the cursor plays that death,
+    // writing its `DrawnLife` mirror — a bleed-out-style death with NO tracer pending. GTW-727
+    // moved the death-despawn trigger onto `Changed<DrawnLife>`, so this drives the mirror
+    // directly (there is no cursor in this focused harness). The life-state path must despawn it
+    // on the next update, since no killing `Played<ShotFired>` arrived to defer it.
     set_life_state(&mut app, dying, LifeState::Dead);
+    draw_dead(&mut app, dying);
     app.update();
 
     assert!(

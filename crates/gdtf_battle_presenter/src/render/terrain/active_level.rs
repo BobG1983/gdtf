@@ -128,6 +128,12 @@ pub enum PresenterSystems {
     /// External consumers (the app's `move_on` pacing) order against THIS set; the
     /// three chained stages below all live inside it.
     Draw,
+    /// Stage 0 — REPLAY: the GTW-727 playback cursor. It advances at most one act-log
+    /// entry per frame, writing the `Drawn*` mirrors the scene stage draws from and
+    /// emitting the `Played<M>` facts the overlay and log stages react to. It runs FIRST so
+    /// a mirror written this frame is seen as `Changed` by the stages below in the SAME
+    /// frame — no one-frame lag between showing an act and drawing it.
+    Replay,
     /// Stage 1 — the drawn WORLD: the terrain draw, the destruction / emplacement
     /// state swaps, the vertical links, and the ganger spawn / move / tween /
     /// appearance / life-state systems. Everything the fog must observe settled — the GTW-627

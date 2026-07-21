@@ -10,7 +10,7 @@ use bevy::{
     time::TimeUpdateStrategy,
     transform::components::Transform,
 };
-use gdtf_battle_presenter::{GangerSprites, Layer, cell_to_world_layered};
+use gdtf_battle_presenter::{DrawnPosition, GangerSprites, Layer, cell_to_world_layered};
 use gdtf_battle_sim::{
     prelude::{Cell, CellLevel, Direction, Level, Position},
     test_support::SituationBuilder,
@@ -191,12 +191,14 @@ fn moved_sprite_is_intermediate_mid_tween_not_snapped() {
         "the sprite begins at the start cell (got {before:?}, expected {start_world:?})",
     );
 
-    // Move the ganger; advance time by a SMALL fixed step — much less than the tween's own
-    // glide duration — so the glide is mid-flight, NOT settled, this frame.
-    let mut pos_q = app.world_mut().query::<&mut Position>();
-    if let Ok(mut pos) = pos_q.get_mut(app.world_mut(), sim) {
-        *pos = Position::new(dest);
-    }
+    // Move the ganger on the presenter's OWN clock: its DrawnPosition mirror — the GTW-727 C17
+    // trigger `move_ganger_sprites` retargets the glide tween from (the live Position stays the
+    // sim's authority; the sprite follows the shown cell). Then advance time by a SMALL fixed
+    // step — much less than the tween's own glide duration — so the glide is mid-flight, NOT
+    // settled, this frame.
+    app.world_mut()
+        .entity_mut(sim)
+        .insert(DrawnPosition::seeded(Position::new(dest)));
     app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
         30,
     )));

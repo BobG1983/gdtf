@@ -1,6 +1,6 @@
 //! Shot-report FCT classification at impact (GTW-302 s3 / GTW-327 s2).
 
-use bevy::{ecs::message::Messages, transform::components::Transform};
+use bevy::transform::components::Transform;
 use gdtf_battle_presenter::{
     FctValence, FloatingCombatText, cell_to_world, severity_color, valence_color,
 };
@@ -55,9 +55,7 @@ fn shot_fired_with_a_lethal_hit_spawns_the_classified_fct_pops() {
         damage:       DamageType::Kinetic,
         report:       Some(report),
     };
-    app.world_mut()
-        .resource_mut::<Messages<ShotFired>>()
-        .write(shot);
+    play(&mut app, shot);
     // Drain the ShotFired (spawn the bolt) on a zero-delta frame, then fly it to its impact —
     // the pops are spawned at the IMPACT now (GTW-327), so a single drain frame is not enough.
     fire_with_zero_delta(&mut app);
@@ -123,9 +121,7 @@ fn shot_fired_clean_miss_pops_nothing() {
         damage:       DamageType::Kinetic,
         report:       Some(HitReport::no_effect(ShotKind::Miss)),
     };
-    app.world_mut()
-        .resource_mut::<Messages<ShotFired>>()
-        .write(shot);
+    play(&mut app, shot);
     // Drain (spawn the bolt) then fly it all the way to its impact — even the impact-spawn path
     // must emit no pop for a miss.
     fire_with_zero_delta(&mut app);

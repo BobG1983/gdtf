@@ -26,7 +26,8 @@ use crate::{
 /// The brain's **weapon-resolution** [`SystemParam`] bundle — the queries the engage path
 /// keys `enemy → Wields → the weapon dispatch would FIRE` through, grouped into one param so
 /// [`enemy_ai_turn`] stays under Bevy's 16-param `SystemParam`-tuple arity (GTW-505 added the
-/// `melee` probe, which pushed the flat list to 17 — the GTW-461 `ActPacing` bundling precedent).
+/// `melee` probe, which pushed the flat list past the ceiling — the `FireSignals` bundling
+/// precedent).
 ///
 /// Each is the existing query type ([`WieldsQuery`] / the weapon-stat query / the GTW-505
 /// [`MeleeQuery`] marker probe / the GTW-543 [`MountedQuery`] marker probe); the bundle is a

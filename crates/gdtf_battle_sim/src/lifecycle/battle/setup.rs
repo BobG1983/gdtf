@@ -40,9 +40,9 @@ use crate::{
 ///    [`Situation::player_faction`](crate::situation::Situation), the
 ///    [`BattleRoster`](crate::battle::BattleRoster) is captured from the situation's fielded gangers' factions, the
 ///    [`ActiveFaction`](crate::turn::ActiveFaction) turn-cycle resource is seeded to the same player faction (the
-///    player acts first; GTW-309), the [`EnemyActCooldown`](crate::ai::EnemyActCooldown) (ready-to-act) + the default
-///    [`ActCadence`](crate::ai::ActCadence) AI-pacing resources are inserted (GTW-461 — the brain emits at most
-///    one enemy act per cadence-step), an EMPTY
+///    player acts first; GTW-309), an EMPTY [`ActLog`](crate::act_log::ActLog) act log is
+///    inserted (GTW-727 — the sim's ordered record of everything that happens, per-battle
+///    so sequence numbering and its transition-detection maps reset clean), an EMPTY
 ///    [`SquadVisibility`](crate::visibility::SquadVisibility) squad fog is inserted
 ///    (GTW-341), the [`OmniscientFog`](crate::visibility::OmniscientFog) AI move fog is
 ///    inserted (GTW-70 — every in-bounds cell visible+explored) — all sharing

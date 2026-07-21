@@ -9,7 +9,10 @@ use gdtf_battle_sim::{
 };
 
 use super::sprite_map::GangerSprites;
-use crate::ShotImpactResolved;
+use crate::{
+    ShotImpactResolved,
+    playback::{DrawnLife, Played},
+};
 
 /// `Update` (`PresenterSystems::Scene`): despawn the sprite of a ganger whose
 /// [`Changed<LifeState>`] reached [`Dead`](LifeState::Dead) — discriminating a shot-kill
@@ -55,15 +58,19 @@ use crate::ShotImpactResolved;
 pub fn update_ganger_life_state(
     mut commands: Commands,
     mut sprites: ResMut<GangerSprites>,
-    changed: Query<(Entity, &LifeState), Changed<LifeState>>,
-    mut shots: MessageReader<ShotFired>,
+    changed: Query<(Entity, &DrawnLife), Changed<DrawnLife>>,
+    mut shots: MessageReader<Played<ShotFired>>,
 ) {
     // The set of gangers a killing shot arrived for THIS frame — those deaths are pending an
     // incoming tracer, so the despawn is deferred to `despawn_killed_ganger_on_impact`. Built
     // once per run from this frame's `ShotFired` (its own reader cursor; the projectile spawner
     // drains the buffer through a separate cursor).
-    let shot_killed: Vec<Entity> = shots.read().filter_map(shot_kill_victim).collect();
-    for (entity, life) in &changed {
+    let shot_killed: Vec<Entity> = shots
+        .read()
+        .filter_map(|played| shot_kill_victim(played))
+        .collect();
+    for (entity, drawn) in &changed {
+        let life = &**drawn;
         // Only a DEATH is lifecycle-out; the Downed / revive re-tint rides the appearance
         // resolver (GTW-631), which keys on this same `Changed<LifeState>`.
         if !matches!(life, LifeState::Dead) {
