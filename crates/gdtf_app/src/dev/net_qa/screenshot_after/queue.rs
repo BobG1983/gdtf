@@ -13,6 +13,7 @@ use gdtf_qa_protocol::ids::{FrameDelay, ShotName};
 
 use super::super::{
     channel::Responder,
+    present::QaCaptureTarget,
     screenshot::{
         CaptureSink, InFlightShots, QaShotDir, ReplyKind, ShotPollBudget, ShotSequence,
         spawn_capture,
@@ -98,6 +99,7 @@ impl AfterShotQueue {
         budget: ShotPollBudget,
         dir: &QaShotDir,
         sequence: &mut ShotSequence,
+        target: Option<&QaCaptureTarget>,
         commands: &mut Commands,
     ) {
         if self.0.is_empty() {
@@ -116,6 +118,7 @@ impl AfterShotQueue {
                             budget,
                             dir,
                             sequence: &mut *sequence,
+                            target,
                             commands: &mut *commands,
                         },
                     );

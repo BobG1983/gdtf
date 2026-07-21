@@ -14,8 +14,12 @@ use bevy::{
 /// The derived [`Default`] is a **spawn-seed sentinel only** (GTW-322): a fieldless
 /// marker, so its `Default` is the same zero-sized value, present purely so the
 /// reflection-free `bsn!` macro can seed the component slot. It carries no state.
+///
+/// `pub(crate)` (GTW-764) so the DEV-ONLY `net_qa` offscreen-capture retarget system
+/// (`crate::dev::net_qa::present`) can query `With<UiCamera>` to add its render target — a
+/// minimal visibility widening, no logic moved out of this module.
 #[derive(Component, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
-struct UiCamera;
+pub(crate) struct UiCamera;
 
 /// Spawns the single persistent UI [`Camera2d`] on entry to
 /// [`AppState::Running`](crate::states::AppState::Running).

@@ -27,6 +27,10 @@
 //!   with a curated [`BattleView`](gdtf_qa_protocol::view::BattleView) read post-Simulate (T5).
 //! - [`events`] — the outbox that answers `GetOutput` by projecting the GTW-727 act log
 //!   onto the curated wire [`NetEvent`](gdtf_qa_protocol::events::NetEvent) stream (T6).
+//! - [`present`] — the DEV-ONLY offscreen-capture present path (GTW-764): retargets the world
+//!   and UI cameras to an offscreen image the render graph writes every tick, and blits that
+//!   image back to the window, so the T7 pump captures pixels independent of window focus or
+//!   occlusion (a backgrounded macOS window's swapchain reads back BLACK).
 //! - [`screenshot`] — the deferred capture pump that answers `TakeScreenshot` by capturing
 //!   the real presenter frame and replying only after the confined PNG lands on disk (T7).
 //! - [`screenshot_after`] — the frame-exact deferred capture that answers `ScreenshotAfter`
@@ -45,6 +49,7 @@ mod inject;
 mod listener;
 mod pending;
 mod plugin;
+mod present;
 mod resolve;
 mod router;
 mod screenshot;

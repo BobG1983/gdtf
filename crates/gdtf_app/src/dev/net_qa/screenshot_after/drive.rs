@@ -8,6 +8,7 @@ use super::queue::AfterShotQueue;
 use crate::dev::net_qa::{
     inject::receipt_for,
     pending::{PendingQueue, ScreenshotAfterPayload},
+    present::QaCaptureTarget,
     resolve::{InjectActors, InjectQueues},
     screenshot::{InFlightShots, QaShotDir, ShotPollBudget, ShotSequence},
 };
@@ -64,7 +65,17 @@ pub(in crate::dev::net_qa) fn tick_after_shots(
     mut sequence: ResMut<ShotSequence>,
     budget: Res<ShotPollBudget>,
     dir: Res<QaShotDir>,
+    capture_target: Option<Res<QaCaptureTarget>>,
     mut commands: Commands,
 ) {
-    after_shots.fire_due(&mut in_flight, *budget, &dir, &mut sequence, &mut commands);
+    // GTW-764: same offscreen-vs-window capture-source choice as the T7 pump — pass the
+    // present path's target through so a `ScreenshotAfter` capture is never a black window.
+    after_shots.fire_due(
+        &mut in_flight,
+        *budget,
+        &dir,
+        &mut sequence,
+        capture_target.as_deref(),
+        &mut commands,
+    );
 }

@@ -43,6 +43,7 @@ use super::{
         InjectPayload, OutputPayload, PendingQueue, ScreenshotAfterPayload, ScreenshotPayload,
         SnapshotPayload, StartBattlePayload, sweep_pending,
     },
+    present::CapturePresentPlugin,
     router::route_requests,
     screenshot::{InFlightShots, QaShotDir, ShotPollBudget, ShotSequence, drive_screenshots},
     screenshot_after::{AfterShotQueue, claim_screenshot_after, tick_after_shots},
@@ -174,6 +175,12 @@ impl Plugin for NetQaPlugin {
                 thread::spawn(move || run_listener(listener, tx, io_timeout));
                 app.insert_resource(NetInbox::new(rx));
                 register_router(app);
+                // GTW-764: retarget the game cameras to an offscreen image + blit it back to
+                // the window, so `TakeScreenshot` / `ScreenshotAfter` capture pixels the render
+                // graph writes every tick — a backgrounded macOS window's swapchain reads back
+                // BLACK. Only the env-active listener arm gets it (the router-only test arm and
+                // a non-`net_qa` / release build render the normal window swapchain path).
+                app.add_plugins(CapturePresentPlugin);
             }
             #[cfg(feature = "test-support")]
             Wiring::Channels { inbox } => {

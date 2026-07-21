@@ -3,8 +3,10 @@
 //! [`drive_screenshots`] claims each routed
 //! [`TakeScreenshot`](gdtf_qa_protocol::envelope::QaRequest::TakeScreenshot) the T3 router
 //! queues, hands it a UNIQUE, confined output path under `target/qa_screenshots/`, spawns the
-//! REAL render capture ([`Screenshot::primary_window`] + [`save_to_disk`], the
-//! `gdtf_screenshot` machinery), and then POLLS the disk across frames — replying
+//! REAL render capture ([`Screenshot`] + [`save_to_disk`], the `gdtf_screenshot` machinery) —
+//! of the GTW-764 offscreen [`QaCaptureTarget`] image when the present path installed it, else
+//! the window swapchain ([`Screenshot::primary_window`]) — and then POLLS the disk across
+//! frames — replying
 //! [`Saved`](gdtf_qa_protocol::envelope::ScreenshotResult::Saved) ONLY once the PNG verifiably
 //! lands ([`inspect_shot`]: exists, non-empty, decodes) or
 //! [`TimedOut`](gdtf_qa_protocol::envelope::ScreenshotResult::TimedOut) once its frame budget
@@ -43,6 +45,7 @@ use super::{
 use crate::dev::net_qa::{
     channel::Responder,
     pending::{PendingQueue, ScreenshotPayload},
+    present::QaCaptureTarget,
 };
 
 /// Which wire reply an in-flight capture answers with once it lands or times out — the
@@ -157,14 +160,21 @@ pub(in crate::dev::net_qa) struct InFlightShots(Vec<InFlightShot>);
 /// live battle. The POLL runs BEFORE the claim: a capture claimed this frame is only ever
 /// polled from the NEXT frame onward, so the reply is structurally never on the claim frame
 /// (the readback cannot flush the PNG that instant). Param-only (`bevy-traps.md` #7): the
-/// pending queue + in-flight set + sequence counter + the budget / directory config +
-/// [`Commands`], no `&mut World`.
+/// pending queue + in-flight set + sequence counter + the budget / directory config + the
+/// optional offscreen capture target + [`Commands`], no `&mut World`.
+///
+/// GTW-764: when the `net_qa` [`QaCaptureTarget`] exists (the env-active present path
+/// installed it), the capture reads that OFFSCREEN image (`Screenshot::image`) rather than
+/// the window swapchain (`Screenshot::primary_window`) — the swapchain reads back BLACK on a
+/// backgrounded macOS window. `Option`, so a build without the present path falls back to the
+/// window.
 pub(in crate::dev::net_qa) fn drive_screenshots(
     mut pending: ResMut<PendingQueue<ScreenshotPayload>>,
     mut in_flight: ResMut<InFlightShots>,
     mut sequence: ResMut<ShotSequence>,
     budget: Res<ShotPollBudget>,
     dir: Res<QaShotDir>,
+    capture_target: Option<Res<QaCaptureTarget>>,
     mut commands: Commands,
 ) {
     // Poll first: captures claimed on PRIOR frames may now have landed. A capture claimed
@@ -176,6 +186,7 @@ pub(in crate::dev::net_qa) fn drive_screenshots(
         *budget,
         &dir,
         &mut sequence,
+        capture_target.as_deref(),
         &mut commands,
     );
 }
@@ -188,6 +199,7 @@ fn claim_requests(
     budget: ShotPollBudget,
     dir: &QaShotDir,
     sequence: &mut ShotSequence,
+    target: Option<&QaCaptureTarget>,
     commands: &mut Commands,
 ) {
     for (payload, responder) in pending.drain_ready() {
@@ -200,6 +212,7 @@ fn claim_requests(
                 budget,
                 dir,
                 sequence: &mut *sequence,
+                target,
                 commands: &mut *commands,
             },
         );
@@ -221,6 +234,9 @@ pub(in crate::dev::net_qa) struct CaptureSink<'a, 'w, 's> {
     pub(in crate::dev::net_qa) dir:       &'a QaShotDir,
     /// The monotonic per-capture uniqueness counter.
     pub(in crate::dev::net_qa) sequence:  &'a mut ShotSequence,
+    /// The offscreen capture target to read (GTW-764), or `None` to fall back to the window
+    /// swapchain. Present on the env-active `net_qa` path; absent otherwise.
+    pub(in crate::dev::net_qa) target:    Option<&'a QaCaptureTarget>,
     /// The command queue the real capture entity spawns through.
     pub(in crate::dev::net_qa) commands:  &'a mut Commands<'w, 's>,
 }
@@ -244,8 +260,15 @@ pub(in crate::dev::net_qa) fn spawn_capture(
     // reused sequence) must never be mistaken for THIS capture's output. After the
     // delete, the only file that can appear here is the one this capture writes.
     purge_existing(&path);
+    // GTW-764: capture the OFFSCREEN image the render graph writes every tick when the
+    // present path installed it — a backgrounded macOS window's swapchain reads back BLACK.
+    // With no target (a build without the present path), fall back to the window swapchain.
+    let screenshot = match sink.target {
+        Some(target) => Screenshot::image((**target).clone()),
+        None => Screenshot::primary_window(),
+    };
     sink.commands
-        .spawn(Screenshot::primary_window())
+        .spawn(screenshot)
         .observe(save_to_disk((*path).clone()));
     sink.in_flight.0.push(InFlightShot {
         path,

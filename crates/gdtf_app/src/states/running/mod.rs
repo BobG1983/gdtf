@@ -1,6 +1,12 @@
 mod plugin;
 mod systems;
 pub(in crate::states) use plugin::RunningScenePlugin;
+// GTW-764: lift the UI-camera marker to `crate::states::running::UiCamera` so the DEV-ONLY
+// `net_qa` offscreen-capture retarget system can name it crate-wide. cfg-gated to `net_qa`:
+// its only consumers live in `crate::dev::net_qa::present`, so the re-export is unused (and
+// `-D unused-imports` red) in a build without the feature.
+#[cfg(all(debug_assertions, feature = "net_qa"))]
+pub(crate) use systems::UiCamera;
 mod resources;
 
 // The running sub-state enum lives in the folder it governs (GTW-321); this
