@@ -2,7 +2,10 @@
 
 use bevy::prelude::*;
 use gdtf_battle_input::{GdtfBattleInputPlugin, PendingActIntent, SelectedShooter};
-use gdtf_battle_sim::prelude::{Cell, CellLevel, Level, OccupancyGrid};
+use gdtf_battle_sim::{
+    ganger::LifeState,
+    prelude::{Cell, CellLevel, Level, OccupancyGrid},
+};
 use gdtf_test_utils::press_left;
 
 use super::harness::*;
@@ -186,6 +189,46 @@ fn clicking_an_enemy_is_a_no_op_on_the_player_selection() {
         selected(&app),
         None,
         "the enemy click must produce NO transient None — no 'No ganger selected' flash",
+    );
+}
+
+/// GTW-729 — a left-click on a DOWNED own ganger does NOT make it the `SelectedShooter`: a
+/// Downed ganger cannot act, so it is never a selectable ACTOR. Clicking it is a NO-OP that
+/// leaves the acting selection untouched (a downed ally stays a stabilize TARGET the
+/// contextual panel offers, NOT the selected shooter).
+///
+/// Pin-discriminating (verification.md Rule 2): before the GTW-729 life gate, the SELECT
+/// clause matched on `faction == player` alone, so clicking the Downed own ganger returned
+/// `Select(downed)` and moved the selection to it — this assertion would FAIL. With the
+/// `selectable_by_life` gate the click falls to `NoOp` and the selection stays put.
+#[test]
+fn left_click_on_downed_own_ganger_does_not_select_it() {
+    let level = Level::new(0);
+    let mut app = selection_app(level);
+
+    // An ALIVE player ganger, pre-selected (so the GTW-255 auto-select is inert and we can
+    // see the Downed click leave THIS selection untouched, not clear it).
+    let alive_cell = CellLevel::new(Cell::new(2, 2), level);
+    let alive = place_player_ganger(&mut app, alive_cell);
+    app.world_mut().insert_resource(SelectedShooter::new(alive));
+
+    // A DOWNED own ganger at a different cell — the click target.
+    let downed_cell = CellLevel::new(Cell::new(8, 8), level);
+    let downed = place_player_ganger_with_life(&mut app, downed_cell, LifeState::Downed);
+    set_hovered(&mut app, Some(downed_cell));
+
+    press_left(&mut app);
+    app.update();
+
+    assert_ne!(
+        selected(&app),
+        Some(downed),
+        "a Downed own ganger must NEVER become the SelectedShooter (it cannot act)",
+    );
+    assert_eq!(
+        selected(&app),
+        Some(alive),
+        "clicking a Downed ally is a NO-OP — the acting selection is left untouched, not cleared",
     );
 }
 

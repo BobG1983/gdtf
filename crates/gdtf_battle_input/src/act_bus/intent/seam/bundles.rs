@@ -8,6 +8,7 @@ use gdtf_battle_sim::{
         SetFacingRequested, SetStanceRequested,
     },
     battle::PlayerFaction,
+    ganger::LifeState,
     prelude::{Faction, Position},
 };
 
@@ -77,6 +78,12 @@ pub struct SelectionCycleReads<'w, 's> {
     /// second IMMUTABLE `Faction` read alongside `gangers` (read-read never conflicts, so no
     /// B0001), so the token lookup does not require the target to also carry a [`Position`].
     factions: Query<'w, 's, &'static Faction>,
+    /// Every ganger's `&`[`LifeState`] keyed by [`Entity`] — read-only, the GTW-729 Alive gate
+    /// BOTH selection paths share: the direct-select
+    /// [`ActIntent::Select`](super::ActIntent::Select) refuses a non-Alive token, and the
+    /// Prev/Next cycle SKIPS non-Alive gangers (they never enter the ordered gang). A third
+    /// IMMUTABLE read alongside `gangers` / `factions` (read-read never conflicts, so no B0001).
+    lifes:    Query<'w, 's, &'static LifeState>,
 }
 
 impl SelectionCycleReads<'_, '_> {
@@ -93,8 +100,10 @@ impl SelectionCycleReads<'_, '_> {
         let mut ordered: Vec<(Entity, Position)> = self
             .gangers
             .iter()
-            // `**faction` reads the ganger's `Faction` through `&&Faction`.
-            .filter(|(_, faction, _)| **faction == player_faction)
+            // `**faction` reads the ganger's `Faction` through `&&Faction`. GTW-729: SKIP any
+            // ganger that is not Alive — a Downed / Dead ganger never enters the cycle order, so
+            // Prev/Next steps straight past it to the next Alive one (never landing on it).
+            .filter(|(entity, faction, _)| **faction == player_faction && self.is_alive(*entity))
             .map(|(entity, _, position)| (entity, *position))
             .collect();
         ordered.sort_by_key(|(_, position)| cell_order_key(position));
@@ -118,7 +127,24 @@ impl SelectionCycleReads<'_, '_> {
         let player_faction: Faction = ***self.player.as_ref()?;
         // A dead / despawned token (or a non-ganger without `Faction`) errors the lookup → None.
         let faction = self.factions.get(entity).ok()?;
-        // The SAME `faction == player` gate `decide_left_click`'s SELECT clause enforces.
-        (*faction == player_faction).then(|| SelectedShooter::new(entity))
+        // GTW-729: a Downed / Dead ganger is NEVER a selectable ACTOR — refuse it even if it is a
+        // player-faction ganger (it stays a stabilize / execute TARGET, never the SelectedShooter).
+        // The SAME `faction == player` gate `decide_left_click`'s SELECT clause enforces, PLUS the
+        // Alive gate.
+        (*faction == player_faction && self.is_alive(entity)).then(|| SelectedShooter::new(entity))
+    }
+
+    /// Whether `entity` is a SELECTABLE ACTOR by life-state (GTW-729): it is
+    /// [`Alive`](LifeState::Alive), or carries no [`LifeState`] at all.
+    ///
+    /// FAIL-OPEN on an absent [`LifeState`]: a real ganger ALWAYS carries one (seeded at spawn,
+    /// defaulting to [`Alive`](LifeState::Alive)), and a Downed / Dead ganger ALWAYS carries a
+    /// non-Alive [`LifeState`] — so a missing component can only mean Alive (a focused test
+    /// fixture spawning a bare faction marker). Never a panic: a query miss reads as selectable.
+    fn is_alive(&self, entity: Entity) -> bool {
+        match self.lifes.get(entity) {
+            Ok(life) => *life.is_active(),
+            Err(_) => true,
+        }
     }
 }

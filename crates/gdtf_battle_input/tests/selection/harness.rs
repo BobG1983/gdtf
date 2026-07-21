@@ -8,6 +8,7 @@ use gdtf_battle_input::{
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
     battle::PlayerFaction,
+    ganger::LifeState,
     prelude::{BattleInProgress, CellLevel, Faction, Level, OccupancyGrid},
     vertical::VerticalLinkGraph,
 };
@@ -63,6 +64,22 @@ pub(crate) fn selection_app(active_level: Level) -> App {
 /// left-click decision would not select it.
 pub(crate) fn place_player_ganger(app: &mut App, cell: CellLevel) -> Entity {
     let ganger = app.world_mut().spawn(PLAYER_FACTION).id();
+    app.world_mut()
+        .resource_mut::<OccupancyGrid>()
+        .set_occupant(cell, Some(ganger));
+    ganger
+}
+
+/// Spawns a PLAYER-faction occupant carrying `life` at `cell` and seeds occupancy — the
+/// GTW-729 fixture for the click SELECT life gate. A `LifeState::Downed` / `Dead` occupant is
+/// NOT a selectable ACTOR (the click leaves the acting selection untouched), while a `Downed`
+/// ally stays a stabilize TARGET the contextual panel offers.
+pub(crate) fn place_player_ganger_with_life(
+    app: &mut App,
+    cell: CellLevel,
+    life: LifeState,
+) -> Entity {
+    let ganger = app.world_mut().spawn((PLAYER_FACTION, life)).id();
     app.world_mut()
         .resource_mut::<OccupancyGrid>()
         .set_occupant(cell, Some(ganger));

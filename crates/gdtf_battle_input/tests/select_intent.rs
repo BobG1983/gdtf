@@ -25,6 +25,7 @@ use gdtf_battle_input::{ActIntent, GdtfBattleInputPlugin, PendingActIntent, Sele
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
     battle::PlayerFaction,
+    ganger::LifeState,
     prelude::{BattleInProgress, Cell, CellLevel, Faction, Level, OccupancyGrid},
     test_support::GangerEntityBuilder,
     vertical::VerticalLinkGraph,
@@ -96,6 +97,16 @@ fn placed_ganger(app: &mut App, faction: Faction, x: i32, y: i32) -> Entity {
         .spawn(app.world_mut())
 }
 
+/// Spawns a DOWNED ganger of `faction` at the cell `(x, y)` on [`LEVEL`] and returns its
+/// entity — the GTW-729 fixture the direct-select Alive gate must refuse.
+fn placed_downed_ganger(app: &mut App, faction: Faction, x: i32, y: i32) -> Entity {
+    GangerEntityBuilder::new()
+        .faction(faction)
+        .life_state(LifeState::Downed)
+        .at(CellLevel::new(Cell::new(x, y), LEVEL))
+        .spawn(app.world_mut())
+}
+
 /// Pushes an [`ActIntent`] onto the shared seam (the network-inject / keyboard write-point).
 fn push(app: &mut App, intent: ActIntent) {
     app.world_mut()
@@ -149,6 +160,31 @@ fn select_intent_refuses_enemy_faction_ganger() {
         selection(&app),
         Some(g_player),
         "Select(enemy ganger) is REFUSED — the player selection is left untouched",
+    );
+}
+
+/// GTW-729 REJECTION — a `Select` intent for a DOWNED player-faction ganger is refused; the
+/// selection is unchanged. A Downed ganger cannot act, so it is never a selectable ACTOR (it
+/// stays a stabilize / execute TARGET the contextual panel offers, never the `SelectedShooter`).
+///
+/// Pin-discriminating (verification.md Rule 2): before the GTW-729 Alive gate, `select_target`
+/// gated on `faction == player` alone, so `Select(downed)` set the selection to the Downed
+/// ganger — this assertion would FAIL. With the added `is_alive` gate the intent is refused.
+#[test]
+fn select_intent_refuses_downed_player_ganger() {
+    let mut app = select_app();
+    let g_alive = placed_ganger(&mut app, PLAYER_FACTION, 0, 0);
+    let g_downed = placed_downed_ganger(&mut app, PLAYER_FACTION, 5, 5);
+    app.world_mut()
+        .insert_resource(SelectedShooter::new(g_alive));
+
+    push(&mut app, ActIntent::Select(g_downed));
+    app.update();
+
+    assert_eq!(
+        selection(&app),
+        Some(g_alive),
+        "Select(Downed player ganger) is REFUSED — a Downed ganger is never a selectable actor",
     );
 }
 

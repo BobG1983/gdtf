@@ -7,10 +7,15 @@
 //! `bevy-traps.md` #7 carve-out).
 
 use bevy::prelude::*;
-use gdtf_battle_sim::{acts::ShoveRequested, prelude::BattleInProgress};
+use gdtf_battle_sim::{
+    acts::{ShoveRequested, StabilizeDownedRequested},
+    ganger::LifeState,
+    prelude::{BattleInProgress, Cell, CellLevel, Faction, Level},
+    test_support::GangerEntityBuilder,
+};
 use gdtf_test_utils::{MessageProbePlugin, probed};
 
-use super::{ContextualActAppExt, PendingContextualIntents, ShoveAct};
+use super::{ContextualActAppExt, PendingContextualIntents, ShoveAct, StabilizeAct};
 use crate::SelectedShooter;
 
 /// A minimal app with the REAL `add_contextual_act::<ShoveAct>()` registration, the
@@ -87,6 +92,55 @@ fn drain_emits_nothing_without_selection() {
             .resource::<PendingContextualIntents<ShoveAct>>()
             .is_empty(),
         "the queue is still consumed (a stale press never lingers)",
+    );
+}
+
+/// A minimal app with the REAL `add_contextual_act::<StabilizeAct>()` registration + the
+/// live-battle witness + a `StabilizeDownedRequested` probe — the GTW-729 target-path guard.
+fn stabilize_app() -> App {
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins);
+    app.add_contextual_act::<StabilizeAct>();
+    app.init_resource::<SelectedShooter>();
+    app.world_mut().insert_resource(BattleInProgress);
+    app.add_plugins(MessageProbePlugin::<StabilizeDownedRequested>::default());
+    app
+}
+
+/// GTW-729 — a DOWNED ganger is STILL a valid stabilize TARGET: the fix gates the ACTOR /
+/// selection path only, never the target path. With an Alive ally selected as the actor,
+/// pushing a Downed ally as the contextual target drains to exactly one
+/// `StabilizeDownedRequested` carrying that Downed entity — proving a downed ally remains
+/// targetable for the stabilize flow (the sim's `can_stabilize` faction / adjacency guard is
+/// the authoritative check, unchanged by GTW-729).
+#[test]
+fn downed_ganger_stays_a_valid_stabilize_target() {
+    let mut app = stabilize_app();
+    let actor = app.world_mut().spawn_empty().id();
+    // The stabilize TARGET is a DOWNED ally — the offer the contextual panel makes.
+    let downed = GangerEntityBuilder::new()
+        .faction(Faction::new(0))
+        .life_state(LifeState::Downed)
+        .at(CellLevel::new(Cell::new(1, 0), Level::new(0)))
+        .spawn(app.world_mut());
+    app.world_mut().insert_resource(SelectedShooter::new(actor));
+
+    app.world_mut()
+        .resource_mut::<PendingContextualIntents<StabilizeAct>>()
+        .push(downed);
+    app.update();
+
+    let emitted = probed::<StabilizeDownedRequested>(&app);
+    assert_eq!(
+        emitted.len(),
+        1,
+        "a pushed Downed target drains to exactly one stabilize request the same update",
+    );
+    assert_eq!(
+        emitted[0],
+        StabilizeDownedRequested::new(actor, downed),
+        "the Downed ganger is carried through as the stabilize TARGET — the actor/selection \
+         gate never filters the target path",
     );
 }
 

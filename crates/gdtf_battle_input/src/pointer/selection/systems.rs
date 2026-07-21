@@ -6,6 +6,7 @@ use gdtf_battle_presenter::PlaybackGate;
 use gdtf_battle_sim::{
     battle::PlayerFaction,
     fire::MeleeQuery,
+    ganger::LifeState,
     prelude::{Faction, Position},
     weapon::{WieldedBy, Wields},
 };
@@ -86,6 +87,7 @@ pub fn left_click_act(
     gate: PlaybackGate,
     reads: LeftClickReads,
     factions: Query<&Faction>,
+    lifes: Query<&LifeState>,
     shooters: Query<ShooterFireData>,
     wields: Query<&Wields>,
     weapons: Query<WeaponMagazine, With<WieldedBy>>,
@@ -112,7 +114,8 @@ pub fn left_click_act(
     let gate_open = gate.is_open();
     let outcome = gate_open.then(|| {
         decide_left_click(
-            &reads, &inspect, &target, &factions, &shooters, &wields, &weapons, &melee, &selected,
+            &reads, &inspect, &target, &factions, &lifes, &shooters, &wields, &weapons, &melee,
+            &selected,
         )
     });
     let pin = decide_pin(&reads, &inspect, &factions);

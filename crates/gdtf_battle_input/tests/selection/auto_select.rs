@@ -5,6 +5,7 @@ use gdtf_battle_input::{GdtfBattleInputPlugin, SelectedShooter};
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
     battle::PlayerFaction,
+    ganger::LifeState,
     prelude::{Cell, CellLevel, Faction, Level},
     test_support::GangerEntityBuilder,
 };
@@ -212,6 +213,59 @@ fn auto_select_enemy_only_stays_none() {
         selected(&app),
         None,
         "with no player-faction ganger present the selection must stay None",
+    );
+}
+
+/// GTW-729 — a STALE selection clears and ADVANCES when the selected ganger goes Downed
+/// mid-turn (struck down by an enemy reaction while it was the acting unit). A Downed ganger
+/// cannot act, so a selection stranded on it is a dead selection: `clear_downed_selection`
+/// drops it, and `auto_select_first_player_ganger` (ordered `.after`) refills it with the next
+/// Alive player ganger the SAME update (clear → advance).
+///
+/// Pin-discriminating (verification.md Rule 2): without `clear_downed_selection` the selection
+/// would persist on the just-Downed ganger, failing the advance assertion.
+#[test]
+fn a_selection_that_downs_clears_and_advances_to_an_alive_ganger() {
+    let level = Level::new(0);
+    let mut app = selection_app(level);
+
+    // The lower-ordered ALIVE player ganger the auto-select advances the selection to.
+    let advance_to = placed_ganger(
+        &mut app,
+        PLAYER_FACTION,
+        CellLevel::new(Cell::new(0, 0), level),
+    );
+    // The higher-ordered player ganger we select then DOWN — spawned Alive so we can flip its
+    // LifeState in the test body.
+    let downs = GangerEntityBuilder::new()
+        .faction(PLAYER_FACTION)
+        .life_state(LifeState::Alive)
+        .at(CellLevel::new(Cell::new(9, 9), level))
+        .spawn(app.world_mut());
+    app.world_mut().insert_resource(SelectedShooter::new(downs));
+
+    // Settle: while both are Alive the selection holds on the chosen ganger (auto-select only
+    // fills an empty selection, so it never overrides this one).
+    app.update();
+    assert_eq!(
+        selected(&app),
+        Some(downs),
+        "precondition: the higher-ordered ganger is selected while it is Alive",
+    );
+
+    // The selected ganger is struck down (an enemy reaction) mid-turn.
+    app.world_mut().entity_mut(downs).insert(LifeState::Downed);
+    app.update();
+
+    assert_ne!(
+        selected(&app),
+        Some(downs),
+        "a selection stranded on a just-Downed ganger must NOT persist (it cannot act)",
+    );
+    assert_eq!(
+        selected(&app),
+        Some(advance_to),
+        "the stale selection clears and ADVANCES to the next Alive player ganger the same update",
     );
 }
 

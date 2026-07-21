@@ -24,6 +24,7 @@ use gdtf_battle_input::{
 use gdtf_battle_presenter::{ActiveLevel, ViewMode};
 use gdtf_battle_sim::{
     battle::PlayerFaction,
+    ganger::LifeState,
     prelude::{BattleInProgress, Cell, CellLevel, Faction, Level, OccupancyGrid},
     test_support::GangerEntityBuilder,
     vertical::VerticalLinkGraph,
@@ -89,6 +90,16 @@ fn cycle_app() -> App {
 fn placed_ganger(app: &mut App, faction: Faction, x: i32, y: i32) -> Entity {
     GangerEntityBuilder::new()
         .faction(faction)
+        .at(CellLevel::new(Cell::new(x, y), LEVEL))
+        .spawn(app.world_mut())
+}
+
+/// Spawns a DOWNED ganger of `faction` at the cell `(x, y)` on [`LEVEL`] and returns its
+/// entity — the GTW-729 fixture the cycle must SKIP (never land on).
+fn placed_downed_ganger(app: &mut App, faction: Faction, x: i32, y: i32) -> Entity {
+    GangerEntityBuilder::new()
+        .faction(faction)
+        .life_state(LifeState::Downed)
         .at(CellLevel::new(Cell::new(x, y), LEVEL))
         .spawn(app.world_mut())
 }
@@ -239,6 +250,47 @@ fn cycle_ignores_enemy_gangers() {
         selection(&app),
         Some(p_a),
         "Next WRAPS p_b -> p_a (skips enemies)"
+    );
+}
+
+/// GTW-729 — the cycle SKIPS a DOWNED ganger to the next ALIVE one: a Downed ganger cannot
+/// act, so it never enters the ordered gang and Prev/Next step straight PAST it (never landing
+/// on it). Two ALIVE player gangers with a DOWNED one interleaved in cell order between them.
+///
+/// Pin-discriminating (verification.md Rule 2): before the GTW-729 Alive skip,
+/// `ordered_player_gangers` filtered on `faction == player` alone, so the Downed ganger (cell
+/// order between the two Alive) WOULD be the next step from `p_a` — this assertion would FAIL.
+/// With the `is_alive` skip the cycle steps over it to `p_b`.
+#[test]
+fn cycle_skips_downed_gangers() {
+    let mut app = cycle_app();
+    // Cell order: p_a (0,0) < downed (1,0) < p_b (2,0). The Downed ganger sits BETWEEN the two
+    // Alive player gangers, so a step that failed to skip it would land on it.
+    let p_a = placed_ganger(&mut app, PLAYER_FACTION, 0, 0);
+    let downed = placed_downed_ganger(&mut app, PLAYER_FACTION, 1, 0);
+    let p_b = placed_ganger(&mut app, PLAYER_FACTION, 2, 0);
+    app.world_mut().insert_resource(SelectedShooter::new(p_a));
+
+    push(&mut app, ActIntent::SelectNext);
+    app.update();
+    assert_eq!(
+        selection(&app),
+        Some(p_b),
+        "Next SKIPS the Downed ganger (cell-order between p_a and p_b) straight to p_b",
+    );
+    assert_ne!(
+        selection(&app),
+        Some(downed),
+        "the cycle must NEVER land on a Downed ganger",
+    );
+
+    // Next again WRAPS back to p_a — still never the Downed one.
+    push(&mut app, ActIntent::SelectNext);
+    app.update();
+    assert_eq!(
+        selection(&app),
+        Some(p_a),
+        "Next WRAPS p_b -> p_a, still skipping the Downed ganger",
     );
 }
 

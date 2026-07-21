@@ -31,8 +31,9 @@ use crate::{
     keyboard::{cycle_selection_keys, full_view_key, level_keys, posture_keys, select_clear_key},
     picking::{InspectTarget, emit_highlight_request, pick_hovered_cell},
     selection::{
-        PathPreviewTarget, SelectedShooter, auto_select_first_player_ganger, left_click_act,
-        right_click_turn_to_face, update_selection_highlight,
+        PathPreviewTarget, SelectedShooter, auto_select_first_player_ganger,
+        clear_downed_selection, left_click_act, right_click_turn_to_face,
+        update_selection_highlight,
     },
 };
 
@@ -191,8 +192,20 @@ impl Plugin for GdtfBattleInputPlugin {
                 .in_set(InputSystems::Gather)
                 .run_if(resource_exists::<BattleInProgress>),
         )
+        // GTW-729 — drop a STALE selection: when the currently-selected ganger has gone Downed /
+        // Dead (e.g. struck down by an enemy reaction while it was the acting unit), clear the
+        // selection so it never strands on a unit that cannot act. Ordered
+        // `.before(auto_select_first_player_ganger)` so the cleared selection is REFILLED with the
+        // next Alive player ganger the SAME update (clear → advance).
+        .add_systems(
+            Update,
+            clear_downed_selection
+                .in_set(InputSystems::Gather)
+                .before(auto_select_first_player_ganger)
+                .run_if(resource_exists::<BattleInProgress>),
+        )
         // GTW-255 — set the INITIAL selection once: when the battle is live with a
-        // player faction and NOTHING is selected yet, auto-select the deterministic
+        // player faction and NOTHING is selected yet, auto-select the deterministic ALIVE
         // player-faction ganger (lowest `(level, y, x)` cell). Ordered
         // `.before(left_click_act)` so the same update's `sync_fire_mode_on_select` +
         // `update_selection_highlight` react to the new selection exactly as for a click.

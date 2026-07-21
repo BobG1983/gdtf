@@ -149,6 +149,7 @@ type DecideParams<'w, 's> = (
     Res<'w, InspectTarget>,
     Res<'w, PathPreviewTarget>,
     Query<'w, 's, &'static Faction>,
+    Query<'w, 's, &'static LifeState>,
     Query<'w, 's, ShooterFireData<'static>>,
     Query<'w, 's, &'static Wields>,
     Query<'w, 's, WeaponMagazine<'static>, With<WieldedBy>>,
@@ -168,8 +169,18 @@ pub(crate) fn decide(app: &mut App) -> LeftClickOutcome {
     // `get` now returns a `Result` (Bevy 0.19); these params always validate, so
     // an `Err` is structurally impossible — fall back to the no-op outcome, which
     // would fail the calling assertion loudly rather than panic.
-    let Ok((reads, inspect, move_target, factions, shooters, wields, weapons, melee, selected)) =
-        state.get(world)
+    let Ok((
+        reads,
+        inspect,
+        move_target,
+        factions,
+        lifes,
+        shooters,
+        wields,
+        weapons,
+        melee,
+        selected,
+    )) = state.get(world)
     else {
         return LeftClickOutcome::NoOp;
     };
@@ -178,6 +189,7 @@ pub(crate) fn decide(app: &mut App) -> LeftClickOutcome {
         &inspect,
         &move_target,
         &factions,
+        &lifes,
         &shooters,
         &wields,
         &weapons,

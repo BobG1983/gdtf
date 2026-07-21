@@ -5,6 +5,7 @@ use bevy::{input::gamepad::Gamepad, prelude::*, window::PrimaryWindow};
 use gdtf_battle_presenter::GamepadCursorMoved;
 use gdtf_battle_sim::{
     fire::MeleeQuery,
+    ganger::LifeState,
     prelude::{Faction, Position},
     weapon::{WieldedBy, Wields},
 };
@@ -124,6 +125,7 @@ pub fn gamepad_click_act(
     gamepads: Query<&Gamepad>,
     reads: LeftClickReads,
     factions: Query<&Faction>,
+    lifes: Query<&LifeState>,
     shooters: Query<ShooterFireData>,
     wields: Query<&Wields>,
     weapons: Query<WeaponMagazine, With<WieldedBy>>,
@@ -144,7 +146,8 @@ pub fn gamepad_click_act(
     // must finish before them — the GTW-300 InspectTarget precedent + the GTW-356 two-click
     // PathPreviewTarget state machine).
     let outcome = decide_left_click(
-        &reads, &inspect, &target, &factions, &shooters, &wields, &weapons, &melee, &selected,
+        &reads, &inspect, &target, &factions, &lifes, &shooters, &wields, &weapons, &melee,
+        &selected,
     );
     let pin = decide_pin(&reads, &inspect, &factions);
     // GTW-356 — the SAME two-click move-target commit the mouse path runs (set/commit/clear of

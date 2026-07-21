@@ -6,6 +6,7 @@ use gdtf_battle_presenter::cell_squad_visible;
 use gdtf_battle_sim::{
     acts::{FireRequested, MoveRequested},
     fire::MeleeQuery,
+    ganger::LifeState,
     prelude::{CellLevel, Faction},
     visibility::FactionRelation,
     weapon::{WieldedBy, Wields},
@@ -94,7 +95,11 @@ pub enum LeftClickOutcome {
 ///    occupant fog relation ([`FactionRelation::Other`]); the cover case uses `relation = None`
 ///    (a structural cell carries no occupant).
 /// 2. **SELECT** — the hovered cell holds one of YOUR gangers
-///    ([`Faction`] `==` [`PlayerFaction`](gdtf_battle_sim::battle::PlayerFaction)) → [`LeftClickOutcome::Select`].
+///    ([`Faction`] `==` [`PlayerFaction`](gdtf_battle_sim::battle::PlayerFaction)) that is ALIVE
+///    ([`LifeState::Alive`](gdtf_battle_sim::ganger::LifeState)) → [`LeftClickOutcome::Select`].
+///    A DOWNED / DEAD own ganger (GTW-729) is NOT a selectable actor: it falls to
+///    [`LeftClickOutcome::NoOp`] (the acting selection is left untouched, a downed ally stays a
+///    stabilize TARGET the contextual panel offers), NEVER SELECT and NEVER CLEAR.
 /// 3. **MOVE (two-click, GTW-356 OQ-5)** — there is a player-faction selection AND the hovered
 ///    cell is a VALID move target: empty (`occupant == None`), in-bounds (a [`Some`] hovered
 ///    cell is always in-grid), unblocked (`!is_blocked`), and NOT a vertical-link tile
@@ -151,6 +156,7 @@ pub enum LeftClickOutcome {
 /// `ResMut` for its write — the pin write on [`InspectTarget`], the two-click target write on
 /// [`PathPreviewTarget`] — without a `Res` + `ResMut` aliasing conflict on the SAME resource
 /// (B0002); the [`InspectTarget`] precedent, GTW-300) + read-only `Query<&Faction>` /
+/// `Query<&`[`LifeState`]`>` (GTW-729 — the SELECT clause's Alive gate) /
 /// `Query<ShooterFireData>` / `Query<&Wields>` / the weapon-[`Magazine`](gdtf_battle_sim::magazine::Magazine)
 /// query + the [`MeleeWeapon`](gdtf_battle_sim::weapon::MeleeWeapon) marker probe ([`MeleeQuery`]) + the
 /// current [`SelectedShooter`], no `&mut World`. The
@@ -164,7 +170,8 @@ pub enum LeftClickOutcome {
     reason = "GTW-356: the two-click move state machine reads the current PathPreviewTarget, which \
               must be passed as a separate `&` (not in LeftClickReads) so the caller holds the \
               ResMut for the target write without a B0002 Res+ResMut alias — the InspectTarget \
-              precedent; on top of the GTW-323 slice-3 Wields + weapon-magazine queries"
+              precedent; on top of the GTW-323 slice-3 Wields + weapon-magazine queries and the \
+              GTW-729 LifeState query gating the SELECT clause"
 )]
 #[must_use]
 pub fn decide_left_click(
@@ -172,6 +179,7 @@ pub fn decide_left_click(
     inspect: &InspectTarget,
     move_target: &PathPreviewTarget,
     factions: &Query<&Faction>,
+    lifes: &Query<&LifeState>,
     shooters: &Query<ShooterFireData>,
     wields: &Query<&Wields>,
     weapons: &Query<WeaponMagazine, With<WieldedBy>>,
@@ -269,11 +277,23 @@ pub fn decide_left_click(
         return LeftClickOutcome::Fire(request); // FIRE AT COVER wins this edge.
     }
 
-    // 2. SELECT — the hovered cell holds one of YOUR gangers.
+    // 2. SELECT — the hovered cell holds one of YOUR gangers, and it is ALIVE (GTW-729: a
+    //    Downed / Dead ganger is never a selectable ACTOR — it can still be a stabilize / execute
+    //    TARGET the contextual panel offers, but a left-click never makes it the SelectedShooter).
     if let (Some(entity), Some(faction)) = (occupant, occupant_faction)
         && faction == player
+        && selectable_by_life(lifes, entity)
     {
         return LeftClickOutcome::Select(entity); // SELECT wins — no act emitted.
+    }
+
+    // 2.5. A DOWNED / DEAD OWN ganger is NOT a selectable actor (GTW-729), and clicking it must
+    //      NOT clear the current selection: a downed ally is a stabilize TARGET the contextual
+    //      panel offers, so the acting selection stays put. Reached only when clause 2 failed the
+    //      life gate for a player-faction occupant (an ALIVE own ganger already returned SELECT).
+    //      Leave everything untouched (NoOp — the GTW-287 own-can't-act-here shape), NOT CLEAR.
+    if occupant_faction.is_some_and(|faction| faction == player) {
+        return LeftClickOutcome::NoOp;
     }
 
     // 3. MOVE (two-click, GTW-356) — a player-faction selection + an empty, in-bounds,
@@ -308,4 +328,19 @@ pub fn decide_left_click(
 
     // 4. CLEAR — none of the above.
     LeftClickOutcome::Clear
+}
+
+/// Whether `entity` is a SELECTABLE ACTOR by life-state (GTW-729): it is
+/// [`Alive`](LifeState::Alive), or carries no [`LifeState`] at all.
+///
+/// FAIL-OPEN on an absent [`LifeState`]: a real ganger ALWAYS carries one (seeded at spawn,
+/// defaulting to [`Alive`](LifeState::Alive)), and a Downed / Dead ganger ALWAYS carries a
+/// non-Alive [`LifeState`] — so a missing component can only mean Alive (e.g. a focused test
+/// fixture that spawns a bare faction marker). Never a panic (the deny-lints forbid
+/// `unwrap`/`expect`): a query miss reads as selectable.
+fn selectable_by_life(lifes: &Query<&LifeState>, entity: Entity) -> bool {
+    match lifes.get(entity) {
+        Ok(life) => *life.is_active(),
+        Err(_) => true,
+    }
 }

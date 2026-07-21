@@ -71,7 +71,7 @@ mod reachable;
 mod resources;
 mod systems;
 
-pub use auto_select::auto_select_first_player_ganger;
+pub use auto_select::{auto_select_first_player_ganger, clear_downed_selection};
 pub use decision::{
     LeftClickOutcome, LeftClickReads, PinOutcome, TurnReads, apply_left_click, apply_pin,
     decide_left_click, decide_pin, decide_turn,
