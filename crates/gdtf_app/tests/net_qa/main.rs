@@ -26,9 +26,14 @@
 //!   menu-resting `GdtfTestAppBuilder` app: a `StartBattle` descends the real machine to
 //!   `BattleRunning` with the REQUESTED seed (the `ShotRng::from_root` determinism
 //!   fingerprint), and an unknown situation ref is rejected `BadRequest`.
-//! - [`deadline`] drives the generic frame-deadline `Timeout` sweep on a live-battle
-//!   `BattleAppBuilder` app via the one still-unclaimed queue (`GetOutput`, the T6 drain);
-//!   it reuses [`inject_support`]'s harness.
+//! - [`output`] drives the REAL T6 outbox pump (`drive_output`, GTW-739) on a live-battle
+//!   `BattleAppBuilder` app: a curated act appended to the sim-owned `ActLog` drains
+//!   through the real pump as its projected wire `NetEvent`, a second drain is empty, a ring
+//!   overflow reports the dropped gap while retaining the newest entries, and an event cap
+//!   bounds the batch while the next drain resumes; it reuses [`inject_support`]'s harness.
+//! - [`deadline`] (GTW-739 retargeted) asserts that `GetOutput` in a live battle now returns
+//!   a real `EventBatch` from the T6 pump the same frame — it no longer falls through to the
+//!   frame-deadline `Timeout` sweep; it reuses [`inject_support`]'s harness.
 //! - [`affordance`] drives the REAL router (GTW-746) across three state fixtures (no
 //!   battle, the menu, a live battle) and asserts the `available` list `GetAppFlow`
 //!   advertises agrees with what the router actually accepts / rejects `NoBattle`; it
@@ -45,6 +50,7 @@ mod caught_up;
 mod deadline;
 mod inject;
 mod inject_support;
+mod output;
 mod routing;
 mod screenshot_after;
 mod snapshot;

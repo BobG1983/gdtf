@@ -249,10 +249,18 @@ pub enum ActDeed {
     /// The actor's LIFE STATE transitioned — the genuine `from → to` edge no sim message
     /// carries today (the wire's `Downed` / `Death` carve-out is sourced from exactly this
     /// change detection). Query-sourced from a transition.
+    ///
+    /// Carries the actor's settled `(cell, level)` [`at`](Self::LifeChanged::at) so a
+    /// consumer projecting a downing / death onto a positioned wire event (the QA
+    /// `Downed` / `Death` events each name the cell it happened at) has the location
+    /// without a second lookup — the life recorder already reads the position for its
+    /// visit ordering, so carrying it costs nothing.
     LifeChanged {
         /// The life state the actor left.
         from: LifeState,
         /// The life state the actor reached.
         to:   LifeState,
+        /// The actor's settled `(cell, level)` when the transition was recorded.
+        at:   PositionFacts,
     },
 }

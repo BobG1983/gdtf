@@ -210,6 +210,7 @@ fn sample_deeds() -> Vec<ActDeed> {
         ActDeed::LifeChanged {
             from: LifeState::Alive,
             to:   LifeState::Downed,
+            at:   position,
         },
     ]
 }

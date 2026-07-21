@@ -36,6 +36,7 @@ use super::{
     channel::{IncomingRequest, NetInbox},
     config::{DEFAULT_IO_TIMEOUT, NetIoTimeout, NetQaPort},
     env::{net_qa_enabled, port_from_env},
+    events::{QaOutputCursor, drive_output, reset_output_cursor_when_idle},
     inject::apply_injects,
     listener::{bind_listener, run_listener},
     pending::{
@@ -204,7 +205,11 @@ fn register_router(app: &mut App) {
         .init_resource::<ShotSequence>()
         // GTW-749 — the T15 screenshot-after child's own state: the accepted requests
         // counting down to their fire frame.
-        .init_resource::<AfterShotQueue>();
+        .init_resource::<AfterShotQueue>()
+        // GTW-739 — the T6 outbox's own read position over the act log. Process-lifetime
+        // (it self-heals across battles), so it is init'd here beside the other pump state
+        // rather than at a battle boundary.
+        .init_resource::<QaOutputCursor>();
     // NOTE: neither the `ScreenshotPayload` nor the `ScreenshotAfterPayload` queue has a
     // deadline sweep — the T7 pump (`drive_screenshots`, below) claims every screenshot
     // the frame it is routed and owns its own multi-frame poll timeout, and the T15
@@ -254,6 +259,28 @@ fn register_router(app: &mut App) {
             .after(SimSystems::Simulate)
             .run_if(resource_exists::<BattleInProgress>),
     );
+    // GTW-739 — the T6 outbox pump. Registered `.after(SimSystems::Record)` (the act-log
+    // write point) so a `GetOutput` routed this frame is drained and answered the SAME
+    // frame, reflecting every act the sim recorded up to now — the router runs in
+    // `InputSystems::Gather`, ordered before `SimSystems::Simulate`, and `Record` runs
+    // after `Simulate`, so the ordering within one update is route → Simulate → Record →
+    // drive_output. Gated on a live battle (the `ActLog` it projects is battle-lifetime,
+    // inserted/removed with `BattleInProgress`, and the router only enqueues `GetOutput`
+    // in a battle), so it never runs — nor validates its params — off-battle
+    // (`bevy-traps.md` #1). Unlike the inject pump it is NOT gated on the presenter
+    // catching up (GTW-727 C44): `GetOutput` is the client's observation channel.
+    app.add_systems(
+        Update,
+        drive_output
+            .after(SimSystems::Record)
+            .run_if(resource_exists::<BattleInProgress>),
+    );
+    // GTW-739 — the T6 cursor's between-battles reset. Runs ALWAYS (not gated on a battle)
+    // so it observes the absent act log between battles and rewinds the cursor to the
+    // battle start, exactly as the presenter's playback cursor self-heals on an absent
+    // `ActLog`. Ordered before `drive_output` so a reset lands before the same frame's
+    // drain; it takes `Option<Res<ActLog>>` and never panics off-battle.
+    app.add_systems(Update, reset_output_cursor_when_idle.before(drive_output));
     // GTW-740 — the T7 screenshot pump. In the `InputSystems::Gather` band ordered
     // `.after(route_requests)` so it claims the `TakeScreenshot` the router just routed the
     // SAME frame, then holds it across frames while the GPU readback flushes the PNG (the

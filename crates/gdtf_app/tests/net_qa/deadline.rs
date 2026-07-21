@@ -1,33 +1,30 @@
-//! The generic frame-deadline sweep (GTW-736's `sweep_pending`) still times out an
-//! UNCLAIMED queued request.
+//! GTW-739 retargeted this file. It previously pinned the generic frame-deadline sweep
+//! (`sweep_pending`) by the one request that had no consumer yet — `GetOutput`, the T6
+//! event drain — and asserted the sweep answered it `Timeout`.
 //!
-//! Every request that has a same-frame consumer is answered before the sweep can fire
-//! (T4 inject, T5 snapshot, T7 screenshot, and T9 start-battle all claim theirs), so
-//! this exercises the remaining unclaimed queue: `GetOutput` (the T6 event drain, whose
-//! consumer is not yet built). Driven on a LIVE-battle `BattleAppBuilder` app so the
-//! battle-dependent `GetOutput` enqueues at all — off-battle it would be rejected
-//! `NoBattle` at route time — then, with nothing to claim it, its `FrameDeadline`
-//! elapses and the sweep answers `Timeout` rather than leaving the client hanging.
+//! Now the T6 outbox pump (`drive_output`) claims and answers `GetOutput` the SAME frame it
+//! is routed (it drains after `SimSystems::Record`, and the router pushes in
+//! `InputSystems::Gather` earlier in the same update), so a `GetOutput` in a live battle
+//! returns a real `EventBatch` and never reaches the deadline sweep. This test asserts that
+//! new contract on the same live-battle harness.
 
-use gdtf_qa_protocol::envelope::{QaError, QaRequest, QaResponse};
+use gdtf_qa_protocol::envelope::{QaRequest, QaResponse};
 
 use crate::inject_support::{inject_battle_app, send};
 
-/// An enqueued `GetOutput` with no T6 consumer is swept to `Timeout` once its deadline
-/// elapses — the generic pump answers rather than leaving the client hanging.
+/// A `GetOutput` in a live battle is answered by the T6 outbox pump with a real event batch
+/// the same frame — it no longer falls through to the deadline sweep's `Timeout`.
 #[test]
-fn unclaimed_queued_request_past_its_deadline_answers_timeout() {
+fn get_output_in_a_battle_returns_a_real_event_batch_not_a_timeout() {
     let Some((mut app, tx)) = inject_battle_app() else {
         return;
     };
     let reply = send(&tx, QaRequest::GetOutput { max: None });
-    // The route enqueues on the first update; each later update's sweep ticks the
-    // deadline. Pump well past the frame budget so the sweep fires deterministically.
-    for _ in 0..16 {
-        app.update();
-    }
+    // The router routes the request in `InputSystems::Gather` and the T6 pump drains it
+    // after `SimSystems::Record`, both in this single update — no wall-clock wait.
+    app.update();
     assert!(
-        matches!(reply.try_recv(), Ok(QaResponse::Error(QaError::Timeout))),
-        "an unclaimed queued request must answer Timeout after its deadline",
+        matches!(reply.try_recv(), Ok(QaResponse::Output(_))),
+        "GetOutput in a battle must answer a real Output batch, not a Timeout",
     );
 }

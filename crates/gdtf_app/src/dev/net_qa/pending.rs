@@ -85,6 +85,13 @@ impl OutputPayload {
     pub(super) const fn new(cap: Option<EventCap>) -> Self {
         Self(cap)
     }
+
+    /// The optional per-drain event cap the client asked for — the T6
+    /// [`drive_output`](super::events::drive_output) consumer's read
+    /// ([`EventCap`] is `Copy`, so this borrows without consuming).
+    pub(super) const fn max(&self) -> Option<EventCap> {
+        self.0
+    }
 }
 
 impl ScreenshotPayload {

@@ -25,6 +25,8 @@
 //!   intents into the same public input queues the local surfaces use (T4).
 //! - [`snapshot`] — the on-demand battle-state view service that answers `GetBattleState`
 //!   with a curated [`BattleView`](gdtf_qa_protocol::view::BattleView) read post-Simulate (T5).
+//! - [`events`] — the outbox that answers `GetOutput` by projecting the GTW-727 act log
+//!   onto the curated wire [`NetEvent`](gdtf_qa_protocol::events::NetEvent) stream (T6).
 //! - [`screenshot`] — the deferred capture pump that answers `TakeScreenshot` by capturing
 //!   the real presenter frame and replying only after the confined PNG lands on disk (T7).
 //! - [`screenshot_after`] — the frame-exact deferred capture that answers `ScreenshotAfter`
@@ -38,6 +40,7 @@ mod channel;
 mod config;
 mod convert;
 mod env;
+mod events;
 mod inject;
 mod listener;
 mod pending;
