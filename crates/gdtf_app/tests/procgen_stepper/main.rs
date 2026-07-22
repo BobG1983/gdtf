@@ -1,4 +1,4 @@
-//! GTW-655: the dev-tools procgen load-time stepper.
+//! GTW-655 / GTW-732: the dev-tools procgen load-time stepper.
 //!
 //! Seven tests, all against the REAL `GdtfLoadTestAppBuilder` Load flow (a live `AssetServer`
 //! rooted at the workspace `assets/`, so the prefab / theme / terrain registries are populated
@@ -11,17 +11,17 @@
 //!   a normal `cargo run`, or a `dev_tools` build where `GDTF_PROCGEN_STEPPER` is unset) and
 //!   `stepper_disabled_plugin_is_indistinguishable_from_absent` (`with_enabled(false)` registers
 //!   nothing, so adding it changes nothing about the normal path either).
-//! - [`step_equivalence`] — the LOAD-BEARING step-equivalence tests:
-//!   `stepper_engaged_path_matches_the_normal_fingerprint` drives the SAME seed ONE STAGE AT A
-//!   TIME via `PendingStepCommand::request` (bypassing egui entirely — the closure never runs
-//!   headlessly, bevy-traps #8) and reaches `BattleRunning` with the IDENTICAL terrain-entity
-//!   count as the normal path; `stepper_engaged_path_deploys_the_same_roster` (GTW-765) drives
-//!   that same stepped path and asserts the finish DEPLOYS the roster — the same non-zero count of
-//!   deployed ganger entities the normal path produces, not the ZERO the pre-fix terrain-only
-//!   finish left; `stage_summary_reflects_the_real_driver_at_each_stage` reads the
-//!   live `StagedProcgen` resource through `stage_summary` (the panel's pure formatter,
-//!   `crate::dev::procgen_stepper::summary` in `gdtf_app`) after each stage, proving it names the
-//!   REAL driver state the shipped registries just produced, not a synthetic fixture.
+//! - [`step_equivalence`] — the LOAD-BEARING step-equivalence tests (GTW-732):
+//!   `stepper_engaged_path_matches_the_normal_fingerprint` drives the SAME seed ONE PREFAB AT A
+//!   TIME to completion via `PendingStepCommand::request` (bypassing egui entirely — the closure
+//!   never runs headlessly, bevy-traps #8) and reaches `BattleRunning` with the IDENTICAL
+//!   terrain-entity count as the normal path; `stepper_engaged_path_deploys_the_same_roster`
+//!   (GTW-765) drives that same stepped path and asserts the finish DEPLOYS the roster — the same
+//!   non-zero count of deployed ganger entities the normal path produces, not the ZERO the pre-fix
+//!   terrain-only finish left; `placed_footprints_grow_one_per_step_over_real_content` drives a
+//!   fresh `StagedProcgen` over the shipped registries and asserts its `placed_footprints`
+//!   (the data the egui schematic draws) grow by AT MOST one per step, proving the map assembles
+//!   one prefab at a time and `emitted` becomes `Some` once done.
 //! - [`commands`] — the Skip / Auto app-wiring tests: `skip_drives_every_remaining_stage_in_one_request`
 //!   proves ONE `StepCommand::Skip` request completes the WHOLE remaining drive, not just one
 //!   stage (discriminating: a Skip that only advanced one stage would strand the app in

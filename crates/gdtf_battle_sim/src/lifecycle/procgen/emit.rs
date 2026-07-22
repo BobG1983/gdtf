@@ -84,13 +84,13 @@
 //! [`ProcgenRng`](crate::rng::ProcgenRng) seed, the whole pipeline is deterministic (C1).
 
 use super::{
-    assembler::{PlacedPrefab, assemble_placement_with},
+    assembler::PlacedPrefab,
     deploy::{DeploymentZone, DeploymentZones},
+    engine::{ProcgenCursor, StagedProcgenRegistries},
     error::PackingError,
-    fill::{FilledPlacement, fill_placement_with},
+    fill::FilledPlacement,
     findings::{EmittedLevel, ProcgenFinding},
-    geometry::{MinPlayerSide, RegionRect},
-    packer::SplitMode,
+    geometry::RegionRect,
     tuning::ProcgenTuning,
 };
 use crate::{
@@ -105,16 +105,17 @@ use crate::{
 };
 
 /// Run the WHOLE space-packing pipeline from one injected seed and emit the assembled
-/// level as a [`Situation`](crate::situation::Situation) (GTW-431 C1/C2; GTW-492 v2 model):
-/// assemble the GTW-424 placement, run the GTW-427 fill, then [`emit_level`] the result.
+/// level as a [`Situation`](crate::situation::Situation) (GTW-431 C1/C2; GTW-492 v2 model) —
+/// the thin NON-INTERACTIVE driver that loops the unified step primitive
+/// (`ProcgenCursor`) to completion (GTW-732).
 ///
 /// This is the deterministic SEED HARNESS the determinism test drives twice: given the
 /// same `prefabs` / `themes` / `terrain_defs` / `theme` / `grid_size` and the SAME `rng`
 /// seed state, it returns an IDENTICAL `Situation` (its terrain entries are equal). The
-/// RULED defaults ([`SplitMode::default`],
-/// [`MinPlayerSide::DEFAULT`](super::geometry::MinPlayerSide::DEFAULT) inside the assembler)
-/// are used; the unit tests drive the explicit-split form via the staged functions directly
-/// when they need to.
+/// cursor uses the RULED defaults ([`SplitMode::default`](super::packer::SplitMode::default),
+/// [`MinPlayerSide::DEFAULT`](super::geometry::MinPlayerSide::DEFAULT)); the interactive
+/// stepper ([`StagedProcgen`](super::staged::StagedProcgen)) loops the SAME cursor one step
+/// per `Next`, so stepped-to-completion equals this looped-to-completion BY CONSTRUCTION.
 ///
 /// GTW-492: `prefabs` is the UUID-keyed [`PrefabRegistry`], `theme` the stable
 /// [`ThemeUuid`]; `themes` ([`UuidThemeRegistry`]) supplies the theme's `default_floor`, and
@@ -124,9 +125,9 @@ use crate::{
 ///
 /// # Errors
 ///
-/// Propagates every [`PackingError`] the assembler / fill can raise (no prefab for a role at
-/// the theme, a footprint that does not fit, or a too-small player footprint). The emit step
-/// itself is infallible (connectivity is by-construction — GTW-497). It NEVER
+/// Propagates every [`PackingError`] the assemble or fill steps can raise (no prefab for a
+/// role at the theme, a footprint that does not fit, or a too-small player footprint). The
+/// emit step itself is infallible (connectivity is by-construction — GTW-497). It NEVER
 /// `unwrap`/`expect`/`panic`s. GTW-582: degraded resolutions (a theme with no registry
 /// default floor, an unresolvable placed piece) are NOT errors — they ride back as the
 /// [`EmittedLevel::findings`] the app-side driver reports.
@@ -139,24 +140,19 @@ pub fn generate_level(
     rng: &mut ProcgenRng,
     tuning: &ProcgenTuning,
 ) -> Result<EmittedLevel, PackingError> {
-    let placement = assemble_placement_with(
+    let registries = StagedProcgenRegistries {
         prefabs,
-        theme,
-        grid_size,
-        rng,
-        SplitMode::default(),
-        MinPlayerSide::DEFAULT,
-    )?;
-    let filled = fill_placement_with(
-        placement,
-        prefabs,
-        theme,
-        grid_size,
+        themes,
+        terrain_defs,
         tuning,
-        rng,
-        SplitMode::default(),
-    )?;
-    Ok(emit_level(&filled, theme, grid_size, themes, terrain_defs))
+    };
+    let mut cursor = ProcgenCursor::new(theme, grid_size);
+    loop {
+        cursor.step(registries, rng)?;
+        if let Some(emitted) = cursor.emitted() {
+            return Ok(emitted.clone());
+        }
+    }
 }
 
 /// Emit a GTW-427 [`FilledPlacement`] into the sim's canonical

@@ -25,6 +25,22 @@ pub struct FilledPlacement {
 }
 
 impl FilledPlacement {
+    /// Build a filled placement from its parts — the GTW-424 assemble placement, the packed
+    /// fill prefabs (in placement order), and the leftover dead-space regions (GTW-732: the
+    /// [`FillCursor`](super::cursor::FillCursor) finalizes into this).
+    #[must_use]
+    pub(in crate::lifecycle::procgen) const fn new(
+        placement: Placement,
+        fill: Vec<PlacedPrefab>,
+        dead_space: Vec<RegionRect>,
+    ) -> Self {
+        Self {
+            placement,
+            fill,
+            dead_space,
+        }
+    }
+
     /// The GTW-424 player + enemy spawn placement.
     #[must_use]
     pub const fn placement(&self) -> &Placement {

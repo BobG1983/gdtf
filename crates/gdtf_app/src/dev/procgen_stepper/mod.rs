@@ -8,15 +8,22 @@ mod commands;
 mod drive;
 mod gate;
 mod plugin;
-// The pure stage-summary formatter `ui` draws — split out (GTW-655 gate-fix) so it compiles,
-// and unit-tests, under `test-support` too, unlike `ui` itself (see `summary`'s module doc).
-mod summary;
+// The pure schematic-overview painter `ui` draws (GTW-732) — NOT gated on `test-support` so its
+// geometry compiles + unit-tests there too, unlike `ui` itself (which needs a primary egui
+// context the headless harness lacks — see `schematic`'s module doc).
+mod schematic;
 // The egui panel itself needs a primary window — excluded from `test-support` builds (the
 // headless integration test's `no_renderer.rs`-style app has none), mirroring the
 // content-editor's own headless harness (see `plugin`'s module doc). The real binary never
 // enables `test-support`, so this never changes shipped wiring.
 #[cfg(not(feature = "test-support"))]
 mod ui;
+// Pins the primary egui context to the captured UI camera (GTW-732) so the schematic lands in
+// the `net_qa` offscreen capture rather than the headless window — see the module doc. Same
+// `test-support` exclusion as `ui` (both name `bevy_egui` context types the headless harness's
+// egui-less build lacks).
+#[cfg(not(feature = "test-support"))]
+mod egui_context;
 
 // `ProcgenStepperPlugin` is the only item the binary consumes (via the dev aggregate
 // plugin, `crate::dev::plugin`), so it is re-exported in BOTH configurations, at the same
@@ -46,5 +53,8 @@ crate::support_use!(commands::{AutoRunning, PendingStepCommand, StepCommand};);
 pub(crate) use gate::battle_setup_runs_directly;
 #[cfg(feature = "test-support")]
 pub use gate::stepper_enabled;
+// The schematic painter (GTW-732) — re-exported under `test-support` so it stays a reachable
+// public API item (keeping its geometry linked + unit-tested even when `ui`, the only in-crate
+// caller, is excluded from headless builds).
 #[cfg(feature = "test-support")]
-pub use summary::stage_summary;
+pub use schematic::draw_schematic;

@@ -45,10 +45,12 @@
 
 use bevy::prelude::*;
 #[cfg(not(feature = "test-support"))]
-use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
+use bevy_egui::{EguiGlobalSettings, EguiPlugin, EguiPrimaryContextPass};
 #[cfg(not(feature = "test-support"))]
 use gdtf_battle_sim::procgen::StagedProcgen;
 
+#[cfg(not(feature = "test-support"))]
+use super::egui_context::bind_primary_egui_context;
 #[cfg(not(feature = "test-support"))]
 use super::ui::draw_stepper_panel;
 use super::{
@@ -134,6 +136,16 @@ impl Plugin for ProcgenStepperPlugin {
         #[cfg(not(feature = "test-support"))]
         {
             app.add_plugins(EguiPlugin::default());
+            // Take control of WHERE the primary egui context lives: `bevy_egui` otherwise
+            // auto-attaches it to the first camera an app spawns, which under the DEV `net_qa`
+            // capture path is the window-targeted present camera — rendering the schematic to a
+            // window a headless QA run never presents, absent from the captured offscreen image.
+            // We bind it to the captured UI camera instead (see `super::egui_context`).
+            app.insert_resource(EguiGlobalSettings {
+                auto_create_primary_context: false,
+                ..default()
+            });
+            app.add_systems(Update, bind_primary_egui_context);
             app.add_systems(
                 EguiPrimaryContextPass,
                 draw_stepper_panel.run_if(resource_exists::<StagedProcgen>),

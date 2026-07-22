@@ -59,6 +59,15 @@ fn driver_stage(app: &App) -> Option<ProcgenStage> {
         .map(StagedProcgen::stage)
 }
 
+/// The number of placements the live staged drive has landed — `None` when no `StagedProcgen`
+/// exists. Under the GTW-732 per-PREFAB granularity, one `Next` lands exactly one placement, so
+/// this is the direct measure that a wire `Next` advanced the real drive by one unit.
+fn driver_placements(app: &App) -> Option<usize> {
+    app.world()
+        .get_resource::<StagedProcgen>()
+        .map(|driver| driver.placed_footprints().len())
+}
+
 /// Push a request onto the router's inbox exactly as the listener thread would, returning the
 /// channel its reply arrives on.
 fn send(tx: &Sender<IncomingRequest>, request: QaRequest) -> Receiver<QaResponse> {
@@ -118,16 +127,21 @@ fn app_with_no_drive() -> (App, Sender<IncomingRequest>) {
 }
 
 /// A `Next` over the wire latches the REAL `PendingStepCommand` — the SAME latch a panel Next
-/// click writes — and the drive advances exactly one stage (the wire path reaches the real
-/// stepper, not a shadow copy).
+/// click writes — and the drive advances exactly one PLACEMENT (the wire path reaches the real
+/// stepper, not a shadow copy). GTW-732: one `Next` lands one prefab (the player, still within
+/// the Assemble stage), so the drive advance is measured as placements landed, not stage change.
 #[test]
 fn stepper_next_over_the_wire_advances_the_real_drive() {
     let (mut app, tx) = app_engaged_with_net_qa(FIXED_SEED);
-    let before = driver_stage(&app);
     assert_eq!(
-        before,
+        driver_stage(&app),
         Some(ProcgenStage::Assemble),
         "a freshly engaged drive sits at the first stage before any command",
+    );
+    assert_eq!(
+        driver_placements(&app),
+        Some(0),
+        "a freshly engaged drive has landed no placements before any command",
     );
 
     let reply = send(&tx, QaRequest::StepperControl(StepperCommandNet::Next));
@@ -142,16 +156,17 @@ fn stepper_next_over_the_wire_advances_the_real_drive() {
     );
 
     // The latch drains once per frame; advance a few so it is definitely consumed. A single
-    // Next latches ONE command, so the drive advances exactly one stage and no further.
+    // Next latches ONE command, so the drive advances exactly ONE placement and no further
+    // (GTW-732 per-prefab granularity: the first Next lands the player prefab).
     for _ in 0..4 {
         app.update();
     }
-    let after = driver_stage(&app);
+    let after = driver_placements(&app);
     assert_eq!(
         after,
-        Some(ProcgenStage::Fill),
-        "the wire Next must reach PendingStepCommand and advance exactly one stage \
-         (Assemble -> Fill); observed {after:?}",
+        Some(1),
+        "the wire Next must reach PendingStepCommand and advance the real drive exactly one \
+         placement (0 -> 1); observed {after:?}",
     );
 }
 

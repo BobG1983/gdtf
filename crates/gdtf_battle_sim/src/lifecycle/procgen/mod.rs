@@ -20,11 +20,13 @@
 //! live trigger yet is the intended staged build, NOT a dead-feature split. NOTHING here
 //! wires a live battle request (the loading-state driver is GTW-433).
 //!
-//! The `staged` submodule (GTW-655) exposes the SAME three functions as a resumable,
-//! one-stage-at-a-time [`StagedProcgen`] driver — the seam the app-side dev-tools load-time
-//! stepper drives, so a developer can pause between stages and inspect the intermediate
-//! placement. It calls exactly the functions above with the SAME ruled defaults; it is an
-//! alternate schedule over the existing pipeline, never a second implementation of it.
+//! The `engine` submodule (GTW-732) holds the UNIFIED step primitive — a resumable
+//! `ProcgenCursor` whose one `step` advances procgen by exactly one
+//! unit of work (place a prefab / finalize the fill / emit). [`generate_level`] is a thin
+//! non-interactive driver that LOOPS this primitive to completion; the `staged` submodule's
+//! [`StagedProcgen`] is the INTERACTIVE driver the app-side dev-tools load-time stepper drives
+//! one placement per `Next`. Because ONE algorithm has two drivers, stepped-to-completion
+//! equals looped-to-completion BY CONSTRUCTION — never a second implementation of the pipeline.
 //!
 //! # The locked design (the GTW-424 rulings + authorized defaults — see the concern docs)
 //!
@@ -52,6 +54,7 @@ mod anchor;
 mod assembler;
 mod deploy;
 mod emit;
+mod engine;
 mod error;
 mod fill;
 mod findings;
@@ -67,6 +70,7 @@ pub use anchor::Anchor;
 pub use assembler::{PlacedPrefab, Placement, assemble_placement, assemble_placement_with};
 pub use deploy::{DeploymentZone, DeploymentZones, Standable, deploy_rosters, facing_for_anchor};
 pub use emit::{emit_level, generate_level};
+pub use engine::{PlacedFootprint, PlacementRole, ProcgenStage, StagedProcgenRegistries};
 pub use error::{PackingError, RosterDemand, ZoneCapacity};
 pub use fill::{FilledPlacement, fill_placement, fill_placement_with};
 pub use findings::{EmittedLevel, ProcgenFinding};
@@ -75,7 +79,7 @@ pub use geometry::{
     RegionRect,
 };
 pub use packer::{MaxRectsPacker, SplitMode};
-pub use staged::{ProcgenStage, StagedProcgen, StagedProcgenRegistries};
+pub use staged::StagedProcgen;
 pub use tuning::{
     DeadRectScatterCount, LargePrefabAreaThreshold, MinDensityFloor, ProcgenTuning, ScatterCount,
 };

@@ -3,8 +3,12 @@
 //! the normal and stepper-engaged paths.
 
 use bevy::{app::App, prelude::NextState, state::state::State};
-use gdtf_app::test_support::{AppState, BattleScapeState, ProcgenStepperPlugin, RunningState};
-use gdtf_battle_sim::{ganger::GangerName, rng::BattleSeed, terrain::entity::TerrainIndex};
+use gdtf_app::test_support::{
+    AppState, BattleScapeState, PendingStepCommand, ProcgenStepperPlugin, RunningState, StepCommand,
+};
+use gdtf_battle_sim::{
+    ganger::GangerName, procgen::StagedProcgen, rng::BattleSeed, terrain::entity::TerrainIndex,
+};
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until};
 
 /// A generous budget for the real `DefaultPlugins` async asset loads + the full state descent
@@ -87,6 +91,29 @@ pub(crate) fn drive_into_battle_running(app: &mut App) {
          BattleScapeState was {:?}",
         battlescape_state(app),
     );
+}
+
+/// Drive the ENGAGED stepper one `Next` press at a time — through the SAME
+/// [`PendingStepCommand`] latch the egui panel's Next button writes to — until its
+/// [`StagedProcgen`] resource is gone (the drive finished and `finish_stepper_drive` removed
+/// it), bounded by [`BUDGET`]. The GTW-732 per-PREFAB granularity makes the step count vary by
+/// seed, so the caller drives to DONE rather than a fixed count (the old `for _ in 0..3`
+/// per-STAGE loop no longer reaches completion once Fill is stepped per prefab).
+pub(crate) fn drive_stepper_to_done(app: &mut App) {
+    for _ in 0..BUDGET {
+        if app.world().get_resource::<StagedProcgen>().is_none() {
+            return;
+        }
+        let pending = app.world_mut().get_resource_mut::<PendingStepCommand>();
+        assert!(
+            pending.is_some(),
+            "PendingStepCommand must exist while the stepper is engaged in Generation",
+        );
+        if let Some(mut pending) = pending {
+            pending.request(StepCommand::Next);
+        }
+        app.update();
+    }
 }
 
 /// Build the REAL Load flow with the stepper plugin FORCED enabled (bypassing the process-global

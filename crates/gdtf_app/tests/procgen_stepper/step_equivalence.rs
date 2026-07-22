@@ -1,11 +1,10 @@
 //! The LOAD-BEARING step-equivalence tests: driving the staged pipeline one `Next` press at a
-//! time (bypassing egui entirely — the closure never runs headlessly, bevy-traps #8) must
-//! produce the IDENTICAL result the normal to-completion path produces, and the panel's pure
-//! summary formatter must name the REAL driver state at every stage transition.
+//! time to completion (bypassing egui entirely — the closure never runs headlessly, bevy-traps
+//! #8) must produce the IDENTICAL result the normal to-completion path produces, and the
+//! schematic's per-placement data (`placed_footprints`) must grow one placement per step over
+//! the real shipped content (GTW-732).
 
-use gdtf_app::test_support::{
-    BattleScapeState, LoadedSituation, PendingStepCommand, StepCommand, stage_summary,
-};
+use gdtf_app::test_support::{BattleScapeState, LoadedSituation};
 use gdtf_battle_sim::{
     level::{PrefabRegistry, UuidThemeRegistry},
     procgen::{ProcgenTuning, StagedProcgen, StagedProcgenRegistries},
@@ -16,12 +15,13 @@ use gdtf_test_utils::advance_until;
 
 use super::harness::{
     BUDGET, FIXED_SEED, app_engaged_in_generation, app_ready_for_battle, battlescape_state,
-    deployed_ganger_count, drive_into_battle_running, terrain_fingerprint,
+    deployed_ganger_count, drive_into_battle_running, drive_stepper_to_done, terrain_fingerprint,
 };
 
-/// The load-bearing step-equivalence test (C5a): engaging the stepper and driving it ONE STAGE
-/// AT A TIME (via the SAME latch the egui panel writes to) for the SAME seed reaches
-/// `BattleRunning` with the IDENTICAL terrain fingerprint the normal path produces.
+/// The load-bearing step-equivalence test (clause 4): engaging the stepper and driving it ONE
+/// PREFAB AT A TIME to completion (via the SAME latch the egui panel writes to) for the SAME
+/// seed reaches `BattleRunning` with the IDENTICAL terrain fingerprint the normal path produces
+/// — a VARIABLE step count now that Fill places one prefab per `Next`.
 #[test]
 fn stepper_engaged_path_matches_the_normal_fingerprint() {
     let expected = {
@@ -31,20 +31,9 @@ fn stepper_engaged_path_matches_the_normal_fingerprint() {
     };
 
     let mut app = app_engaged_in_generation(FIXED_SEED);
-
-    // Drive every stage (assemble -> fill -> emit) one Next press at a time — bypassing egui
-    // entirely (the closure never runs headlessly): each request+update pair mirrors one press.
-    for _ in 0..3 {
-        let pending = app.world_mut().get_resource_mut::<PendingStepCommand>();
-        assert!(
-            pending.is_some(),
-            "PendingStepCommand must exist while the stepper is engaged in Generation",
-        );
-        if let Some(mut pending) = pending {
-            pending.request(StepCommand::Next);
-        }
-        app.update();
-    }
+    // Drive every placement (assemble x2, then each fill prefab, then finalize + emit) one Next
+    // press at a time until the drive completes — bypassing egui entirely.
+    drive_stepper_to_done(&mut app);
 
     let reached_running = advance_until(
         &mut app,
@@ -66,12 +55,12 @@ fn stepper_engaged_path_matches_the_normal_fingerprint() {
     );
 }
 
-/// GTW-765 regression: the stepper-engaged finish must DEPLOY the authored roster onto the
-/// generated map, not just its terrain. Driving the staged pipeline to `BattleRunning` (the SAME
-/// one-`Next`-per-stage latch the egui panel writes) must leave the SAME non-zero count of
-/// deployed ganger entities the normal to-completion path deploys for the same seed — the pre-fix
-/// terrain-only `finish_stepper_drive` left ZERO gangers, which `terrain_fingerprint` (terrain
-/// entities only) could not catch.
+/// GTW-765 regression (must not regress under GTW-732): the stepper-engaged finish must DEPLOY
+/// the authored roster onto the generated map, not just its terrain. Driving the staged pipeline
+/// to `BattleRunning` (the SAME per-prefab latch the egui panel writes) must leave the SAME
+/// non-zero count of deployed ganger entities the normal to-completion path deploys for the same
+/// seed — the pre-fix terrain-only `finish_stepper_drive` left ZERO gangers, which
+/// `terrain_fingerprint` (terrain entities only) could not catch.
 #[test]
 fn stepper_engaged_path_deploys_the_same_roster() {
     let expected = {
@@ -86,20 +75,7 @@ fn stepper_engaged_path_deploys_the_same_roster() {
     );
 
     let mut app = app_engaged_in_generation(FIXED_SEED);
-
-    // Drive every stage (assemble -> fill -> emit) one Next press at a time — the SAME latch the
-    // egui panel writes to, bypassing egui entirely (the closure never runs headlessly).
-    for _ in 0..3 {
-        let pending = app.world_mut().get_resource_mut::<PendingStepCommand>();
-        assert!(
-            pending.is_some(),
-            "PendingStepCommand must exist while the stepper is engaged in Generation",
-        );
-        if let Some(mut pending) = pending {
-            pending.request(StepCommand::Next);
-        }
-        app.update();
-    }
+    drive_stepper_to_done(&mut app);
 
     let reached_running = advance_until(
         &mut app,
@@ -121,18 +97,20 @@ fn stepper_engaged_path_deploys_the_same_roster() {
     );
 }
 
-/// [`stage_summary`] (the panel's pure formatter) names the REAL driver state the shipped
-/// registries produce at every stage transition — not just the two branches reachable with an
-/// empty/fresh driver (`dev::procgen_stepper::summary::test` unit-checks those).
+/// The schematic's per-placement data (GTW-732): driving a FRESH [`StagedProcgen`] one step at a
+/// time over the REAL shipped content grows [`placed_footprints`](StagedProcgen::placed_footprints)
+/// by AT MOST one per step (exactly one per placement; zero on the finalize + emit steps), and
+/// [`emitted`](StagedProcgen::emitted) becomes `Some` once done. This is the data the egui
+/// schematic reads to draw the map assembling piece by piece.
 ///
-/// Drives a FRESH [`StagedProcgen`] directly in the test body (bevy-traps #7 carve-out) rather
+/// Drives a FRESH `StagedProcgen` directly in the test body (bevy-traps #7 carve-out) rather
 /// than through `PendingStepCommand` + `app.update()`: `finish_stepper_drive` removes the
-/// `StagedProcgen` resource in the SAME `Update` pass the emit stage completes in, too narrow a
-/// window to read the "Emitted" summary back out of the world afterward. Reads the SAME
+/// `StagedProcgen` resource in the SAME `Update` pass the emit step completes in, too narrow a
+/// window to read the growing footprint list back out of the world afterward. Reads the SAME
 /// registries + authored theme/grid-size `engage_stepper` would, off the real `Load`-populated
 /// world, so this is the real pipeline over shipped content, not a synthetic fixture.
 #[test]
-fn stage_summary_reflects_the_real_driver_at_each_stage() {
+fn placed_footprints_grow_one_per_step_over_real_content() {
     let app = app_ready_for_battle(FIXED_SEED);
     let world = app.world();
     let resources = (
@@ -162,42 +140,34 @@ fn stage_summary_reflects_the_real_driver_at_each_stage() {
         StagedProcgen::new(BattleSeed::new(FIXED_SEED), loaded.theme, loaded.grid_size);
 
     assert!(
-        stage_summary(&driver).contains("Not started"),
-        "a fresh driver must summarize as not-yet-started",
+        driver.placed_footprints().is_empty(),
+        "a fresh driver has landed no placements yet",
     );
 
-    let assembled = driver.advance(registries);
-    assert!(
-        assembled.is_ok(),
-        "the real shipped registries must assemble successfully for the fixed seed; got \
-         {assembled:?}",
-    );
-    assert!(
-        stage_summary(&driver).contains("Assembled:"),
-        "after the assemble stage, the summary must name the real placement",
-    );
+    let mut prev = 0usize;
+    let mut guard = 0u32;
+    while !driver.is_done() {
+        guard += 1;
+        assert!(guard < BUDGET, "the staged drive must terminate");
+        let advanced = driver.advance(registries);
+        assert!(
+            advanced.is_ok(),
+            "no step must fail over the shipped registries for the fixed seed: {advanced:?}",
+        );
+        let now = driver.placed_footprints().len();
+        assert!(
+            now >= prev && now - prev <= 1,
+            "each step lands AT MOST one placement (was {prev}, now {now})",
+        );
+        prev = now;
+    }
 
-    let filled = driver.advance(registries);
     assert!(
-        filled.is_ok(),
-        "the real shipped registries must fill successfully for the fixed seed; got {filled:?}",
+        driver.emitted().is_some(),
+        "the drive must emit a level once done",
     );
     assert!(
-        stage_summary(&driver).contains("Filled:"),
-        "after the fill stage, the summary must name the real fill counts",
-    );
-
-    let emitted = driver.advance(registries);
-    assert!(
-        emitted.is_ok(),
-        "the real shipped registries must emit successfully for the fixed seed; got {emitted:?}",
-    );
-    assert!(
-        driver.is_done(),
-        "the drive must be done after the emit stage"
-    );
-    assert!(
-        stage_summary(&driver).contains("Emitted:"),
-        "after the emit stage, the summary must name the real terrain counts",
+        prev >= 2,
+        "the assemble stage alone lands two placements (player + enemy); the schematic saw {prev}",
     );
 }

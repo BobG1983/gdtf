@@ -1,6 +1,11 @@
-//! The fill sub-pass engines + placement primitives: candidate partition, the
-//! bounded fill loop, the dead-rect scatter, the largest-free placement, and the
-//! coverage math.
+//! The fill placement PRIMITIVES the [`FillCursor`](super::cursor::FillCursor) drives:
+//! candidate partition, the largest-free placement, the deterministic other-member probe, the
+//! dead-rect count, and the coverage math.
+//!
+//! GTW-732 lifted the whole-stage loops (`run_fill_pass` / `scatter_dead_rects`) out of here
+//! and into the resumable [`FillCursor`](super::cursor::FillCursor), which drives these
+//! primitives one placement at a time; this file keeps only the stateless helpers both the
+//! cursor and the old loop share.
 
 use bevy::prelude::Deref;
 
@@ -9,25 +14,23 @@ use super::super::{
     assembler::PlacedPrefab,
     geometry::{CellCount, Footprint, RegionRect},
     packer::MaxRectsPacker,
-    tuning::{MinDensityFloor, ProcgenTuning, ScatterCount},
+    tuning::ProcgenTuning,
 };
-use crate::{
-    level::{Prefab, PrefabKey, PrefabRegistry, SpawnRole, ThemeUuid},
-    rng::ProcgenRng,
-};
+use crate::level::{Prefab, PrefabKey, PrefabRegistry, SpawnRole, ThemeUuid};
 
 /// The minimum side (in cells) a leftover free rectangle must have on BOTH axes to be a
 /// "dead rect" the scatter sub-pass targets (OQ-6: `>= 4x4`).
 const DEAD_RECT_MIN_SIDE: i32 = 4;
 
 /// The **coverage fraction** the fill loop reaches — placed-prefab cells over total
-/// board cells — compared against the [`MinDensityFloor`] density target.
+/// board cells — compared against the [`MinDensityFloor`](super::super::tuning::MinDensityFloor)
+/// density target.
 ///
 /// A named newtype over `f32` (no-bare-types: a coverage fraction is a domain value,
-/// distinct from the tuning [`MinDensityFloor`] it is checked against). Private inner +
-/// derived [`Deref`].
+/// distinct from the tuning [`MinDensityFloor`](super::super::tuning::MinDensityFloor) it is
+/// checked against). Private inner + derived [`Deref`].
 #[derive(Deref, Debug, Clone, Copy, PartialEq, PartialOrd)]
-struct CoverageFraction(f32);
+pub(super) struct CoverageFraction(f32);
 
 impl CoverageFraction {
     /// Build a coverage fraction from its value.
@@ -42,27 +45,28 @@ impl CoverageFraction {
 /// A named newtype over `usize` (no-bare-types: a bucket index is a domain value).
 /// Private inner + derived [`Deref`].
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
-struct BucketIndex(usize);
+pub(super) struct BucketIndex(usize);
 
 impl BucketIndex {
     /// Wrap a fill-prefab bucket index.
-    const fn new(index: usize) -> Self {
+    pub(super) const fn new(index: usize) -> Self {
         Self(index)
     }
 }
 
-/// Whether the C2 sweep **placed** a prefab — `false` means no bucket member fit
-/// anywhere (the pass is exhausted).
+/// A COUNT of leftover "dead" free rectangles (`>= 4x4` cells) — the population the scatter
+/// sub-pass targets (GTW-732).
 ///
-/// A named newtype over `bool` (no-bare-types: a placement verdict is a domain fact).
-/// Private inner + derived [`Deref`].
+/// A named newtype over `usize` (no-bare-types: a dead-rect population is a domain quantity).
+/// Private inner + derived [`Deref`]. The fill cursor multiplies it by the per-rect cap `k` to
+/// bound the total scatter slots.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
-struct PrefabPlaced(bool);
+pub(super) struct DeadRectCount(usize);
 
-impl PrefabPlaced {
-    /// Build a placement verdict from its boolean state.
-    const fn new(placed: bool) -> Self {
-        Self(placed)
+impl DeadRectCount {
+    /// Wrap a dead-rect count.
+    const fn new(count: usize) -> Self {
+        Self(count)
     }
 }
 
@@ -100,120 +104,43 @@ pub(super) fn partition_fill_candidates(
     (large, small)
 }
 
-/// Run one fill sub-pass: while coverage is below the density floor, draw a random prefab
-/// from `bucket` and place it in the largest fitting free rect; stop when the floor is
-/// reached OR no prefab in the bucket fits anywhere (C1/C2 termination).
+/// Try to place ANY bucket member (other than `skip`) in the largest fitting free rect,
+/// scanning the bucket in deterministic order — returning the placed prefab, or [`None`] if
+/// none fits (the C2 "no more fits" signal).
 ///
-/// BOUNDED: each iteration either places a prefab (strictly consuming free space and
-/// advancing `covered`) or finds nothing fits and breaks — so the loop always terminates.
-pub(super) fn run_fill_pass(
-    bucket: &[Prefab],
-    packer: &mut MaxRectsPacker,
-    fill: &mut Vec<PlacedPrefab>,
-    covered: &mut CellCount,
-    board_cells: CellCount,
-    min_density: MinDensityFloor,
-    rng: &mut ProcgenRng,
-) {
-    if bucket.is_empty() {
-        return;
-    }
-    loop {
-        // C1 termination: stop once the coverage fraction reaches the density floor.
-        if *coverage_fraction(*covered, board_cells) >= *min_density {
-            return;
-        }
-        // Draw a random prefab from the bucket (the one RNG draw per attempt) and try to
-        // place it in the largest fitting free rect.
-        let index = rng.random_range(0..bucket.len());
-        let Some(prefab) = bucket.get(index) else {
-            return;
-        };
-        let Some(placed) = place_in_largest_free(packer, prefab) else {
-            // C2 termination: this draw did not fit. Try every OTHER bucket member once
-            // (deterministic scan); if NONE fits, the pass is exhausted — break.
-            if !*try_any_other(bucket, BucketIndex::new(index), packer, fill, covered) {
-                return;
-            }
-            continue;
-        };
-        *covered += placed.region().cell_count();
-        fill.push(placed);
-    }
-}
-
-/// Try to place ANY bucket member (other than the just-failed `skip` index) in the largest
-/// fitting free rect, scanning the bucket in deterministic order. Returns whether one was
-/// placed — if not, the pass is exhausted (C2: no more prefab fits).
-///
-/// This is the bounded "nothing fits" probe: it makes a single deterministic sweep, so it
-/// adds at most `bucket.len()` work per outer iteration and cannot loop forever.
-fn try_any_other(
+/// NO RNG draw (a deterministic scan), so the [`FillCursor`](super::cursor::FillCursor)'s
+/// per-placement stepping preserves the EXACT draw sequence of the old whole-stage loop: this
+/// is the bounded "nothing fits" probe the old `run_fill_pass` ran inline.
+pub(super) fn try_any_other_once(
     bucket: &[Prefab],
     skip: BucketIndex,
     packer: &mut MaxRectsPacker,
-    fill: &mut Vec<PlacedPrefab>,
-    covered: &mut CellCount,
-) -> PrefabPlaced {
+) -> Option<PlacedPrefab> {
     for (i, prefab) in bucket.iter().enumerate() {
         if i == *skip {
             continue;
         }
         if let Some(placed) = place_in_largest_free(packer, prefab) {
-            *covered += placed.region().cell_count();
-            fill.push(placed);
-            return PrefabPlaced::new(true);
+            return Some(placed);
         }
     }
-    PrefabPlaced::new(false)
+    None
 }
 
-/// Scatter up to `k` small micro-pieces into each `>= 4x4` leftover dead rect (OQ-6
-/// sub-pass 3) — break up big empty halls without clogging them.
-///
-/// Snapshots the dead rects (free rects of `>= 4x4`) first so the scan is over a stable
-/// list, then drops up to `k` random small prefabs into the corner of each. BOUNDED: at
-/// most `k` placements per dead rect, over a fixed snapshot — always terminates.
-pub(super) fn scatter_dead_rects(
-    bucket: &[Prefab],
-    packer: &mut MaxRectsPacker,
-    fill: &mut Vec<PlacedPrefab>,
-    covered: &mut CellCount,
-    k: ScatterCount,
-    rng: &mut ProcgenRng,
-) {
-    if bucket.is_empty() || *k == 0 {
-        return;
-    }
-    // Snapshot the dead rects (>= 4x4) so we iterate a stable list while the packer mutates.
-    let dead_rects: Vec<RegionRect> = packer
+/// Count the leftover free rectangles of `>= 4x4` cells — the dead rects the scatter sub-pass
+/// drops micro-pieces into (OQ-6). The [`FillCursor`](super::cursor::FillCursor) multiplies
+/// this by the per-rect cap `k` to bound the total scatter slots (matching the old
+/// `scatter_dead_rects` dead-rect snapshot, which only ever used the count).
+pub(super) fn dead_rect_count(packer: &MaxRectsPacker) -> DeadRectCount {
+    let count = packer
         .free_rects()
         .iter()
-        .copied()
         .filter(|r| {
             r.footprint().width() >= DEAD_RECT_MIN_SIDE
                 && r.footprint().height() >= DEAD_RECT_MIN_SIDE
         })
-        .collect();
-
-    for _rect in dead_rects {
-        for _ in 0..*k {
-            // Draw a random small micro-piece and try to drop it into the largest fitting
-            // free rect (the snapshot rect may have been split by a prior scatter, so we
-            // re-query the live free list rather than reusing the stale snapshot rect).
-            let index = rng.random_range(0..bucket.len());
-            let Some(prefab) = bucket.get(index) else {
-                continue;
-            };
-            let Some(placed) = place_in_largest_free(packer, prefab) else {
-                // Nothing more fits anywhere — this dead rect (and any after it) cannot
-                // take a scatter piece. Stop scattering entirely.
-                return;
-            };
-            *covered += placed.region().cell_count();
-            fill.push(placed);
-        }
-    }
+        .count();
+    DeadRectCount::new(count)
 }
 
 /// Place `prefab`'s footprint at the min-corner of the LARGEST free rectangle it (plus its
@@ -225,7 +152,10 @@ pub(super) fn scatter_dead_rects(
 /// rect's min-corner anchored [`BottomLeft`](Anchor::BottomLeft) — fill prefabs have no
 /// deployment anchor, so the field names the corner the fragment was packed against and the
 /// GTW-431 emit step reads the region's raw origin.
-fn place_in_largest_free(packer: &mut MaxRectsPacker, prefab: &Prefab) -> Option<PlacedPrefab> {
+pub(super) fn place_in_largest_free(
+    packer: &mut MaxRectsPacker,
+    prefab: &Prefab,
+) -> Option<PlacedPrefab> {
     let footprint = Footprint::of(prefab.spec().size);
     // Find the largest free rect the (seam-padded) footprint fits in, deterministically.
     let mut targets: Vec<RegionRect> = packer.free_rects().to_vec();
@@ -249,7 +179,7 @@ fn place_in_largest_free(packer: &mut MaxRectsPacker, prefab: &Prefab) -> Option
 
 /// The coverage FRACTION (placed cells over board cells) as an `f32` — the value the fill
 /// loop compares against the [`MinDensityFloor`](super::super::tuning::MinDensityFloor).
-fn coverage_fraction(covered: CellCount, board_cells: CellCount) -> CoverageFraction {
+pub(super) fn coverage_fraction(covered: CellCount, board_cells: CellCount) -> CoverageFraction {
     if *board_cells <= 0 {
         return CoverageFraction::new(1.0);
     }

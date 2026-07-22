@@ -38,9 +38,11 @@
 //! The loop is BOUNDED: every iteration either places a prefab (consuming free space) or
 //! ends the pass, so it always terminates (C2 — no infinite loop).
 
+mod cursor;
 mod outcome;
 mod passes;
 mod pipeline;
 
+pub(in crate::lifecycle::procgen) use cursor::{FillCursor, FillStep};
 pub use outcome::FilledPlacement;
 pub use pipeline::{fill_placement, fill_placement_with};
