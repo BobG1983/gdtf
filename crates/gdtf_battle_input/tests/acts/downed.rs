@@ -25,7 +25,7 @@ use super::harness::*;
 /// `StabilizeDownedRequested { actor, target }` through the per-act generic
 /// `drain_contextual_intents` drains, the actor being the `*SelectedShooter` and the
 /// target the carried downed entity (the downed-target affordance surrogate, over the
-/// GTW-571 per-act contextual seam).
+/// GTW-571 per-act contextual queue).
 #[test]
 fn downed_intents_emit_requests_for_selection_over_carried_target() {
     let mut app = acts_app();
@@ -37,7 +37,7 @@ fn downed_intents_emit_requests_for_selection_over_carried_target() {
         Direction::North,
     );
     select_ganger(&mut app, actor);
-    // The downed target entity — only its identity matters at this seam (the sim's
+    // The downed target entity — only its identity matters at this point (the sim's
     // faction/adjacency gate is the authoritative check, not this layer).
     let target = app.world_mut().spawn(ENEMY_FACTION).id();
 

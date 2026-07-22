@@ -146,7 +146,7 @@ pub(crate) fn count_with<M: Component>(app: &mut App) -> usize {
 /// [`SegmentIndex`](gdtf_ui::SegmentIndex) equals its parent control's
 /// [`ActiveSegment`](gdtf_ui::ActiveSegment).
 ///
-/// The widget-seam equivalent of the old `ActiveButton`-on-toggle check: with the migration
+/// The widget-level equivalent of the old `ActiveButton`-on-toggle check: with the migration
 /// to a `SegmentedControl`, the mutually-exclusive active mark is the control's
 /// `ActiveSegment` index (driven + repainted by `gdtf_ui`), so "marker M is active" means
 /// "M's segment index is the control's active index".

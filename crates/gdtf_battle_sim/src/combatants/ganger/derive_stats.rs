@@ -11,7 +11,7 @@
 //! **Rounding rule (documented + consistent).** The weighted attribute sums are `f32`,
 //! but the pools they seed are integers ([`Hp`] `u16`, [`Wounds`] / [`Tu`] / [`Bottle`]
 //! `u8`). Every f32 → integer crossing uses **round-to-nearest** (`f32::round`), clamped
-//! into the target integer's range (the crate's sanctioned no-`unwrap` cast idiom — a
+//! into the target integer's range (the crate's no-`unwrap` cast idiom — a
 //! localized `#[expect]` stating why the cast cannot wrap). [`Shooting`] / [`Fight`] /
 //! [`Reactions`] / [`Morale`] stay `f32` (skill stats, not pools), so they carry the raw
 //! weighted sum with no rounding.

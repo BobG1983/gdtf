@@ -122,7 +122,7 @@ fn slots_edits_fold_back_through_the_loader_ctor() {
     assert_eq!(draft.spec().slots.declarations().len(), 2);
 }
 
-/// The path derivation runs through the family consts + the shared sanitize seam: the
+/// The path derivation runs through the family consts + the shared sanitize helper: the
 /// literal `content/weapons/melee/<stem>.melee_weapon.ron` shape the GTW-505 loader
 /// dispatches on (pinning the LITERALS is the drift alarm — GTW-621), with the
 /// `unnamed_melee_weapon` fallback for a name that sanitizes to nothing.

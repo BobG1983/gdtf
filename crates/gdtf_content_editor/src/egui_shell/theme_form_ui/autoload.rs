@@ -1,4 +1,4 @@
-//! The C3.2 load-existing seam — the theme→draft form load and the session autoload
+//! The C3.2 load-existing path — the theme→draft form load and the session autoload
 //! resolution the shell drives on entering THEME mode / on a top-bar theme pick.
 
 use gdtf_battle_sim::level::{ThemeUuid, UuidThemeDef, UuidThemeRegistry};

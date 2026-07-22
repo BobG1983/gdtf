@@ -5,7 +5,7 @@
 /// Why a terrain save was REJECTED — the handled, no-panic failure of the terrain save path
 /// (GTW-474). A named domain enum (no-bare-types). `pub` because the `pub`
 /// [`serialize_terrain_def`](crate::serialize_terrain_def) returns it (the C4 test reuses the
-/// projection + serialization seam). The domain-validation variants stay bespoke (GTW-577
+/// projection + serialization path). The domain-validation variants stay bespoke (GTW-577
 /// P9); the serialize/write tail collapsed onto the shared
 /// [`RonSaveError`](gdtf_assets::RonSaveError), wrapped by [`Save`](Self::Save).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,14 +18,14 @@ pub enum SaveTerrainError {
     /// def REQUIRES its mounted-weapon registry key, so the projection FAILS CLOSED:
     /// no panic, no silent default weapon, nothing written.
     MissingMountedWeapon,
-    /// The shared serialize/write tail failed (GTW-577 C3) — wraps the seam's
+    /// The shared serialize/write tail failed (GTW-577 C3) — wraps the shared writer's
     /// [`RonSaveError`](gdtf_assets::RonSaveError), whose `Display` names the failed stage.
     Save(gdtf_assets::RonSaveError),
 }
 
 impl From<gdtf_assets::RonSaveError> for SaveTerrainError {
-    /// The per-type conversion off the shared seam error (GTW-577 C3) — lets the save path
-    /// `?` a seam failure straight into the form's error.
+    /// The per-type conversion off the shared writer error (GTW-577 C3) — lets the save path
+    /// `?` a write failure straight into the form's error.
     fn from(err: gdtf_assets::RonSaveError) -> Self {
         Self::Save(err)
     }

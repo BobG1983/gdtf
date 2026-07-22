@@ -11,7 +11,7 @@
 //!   and write one resolved event; the ONE app-side APPENDER (`gdtf_app`'s `bevy_ui` half)
 //!   drains the event buffer, classifies through [`classify_log_event`], and spawns the
 //!   lines.
-//! - [`forward`] / [`sources`] — the forwarder seam (moved down from `gdtf_app` in
+//! - [`forward`] / [`sources`] — the forwarders (moved down from `gdtf_app` in
 //!   GTW-620, so the whole family lives in ONE crate): the [`CombatLogSource`] trait +
 //!   the generic forwarder + the bespoke turn-boundary forwarder in [`forward`], one
 //!   [`CombatLogSource`] impl per fact message in [`sources`]. The renderer plugin

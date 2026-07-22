@@ -1,4 +1,4 @@
-//! Acts through the bootstrapped seam mutate the model: `FireRequested` wounds,
+//! Acts through the bootstrapped act-intent queue mutate the model: `FireRequested` wounds,
 //! `SetStanceRequested` flips.
 
 use gdtf_battle_sim::{

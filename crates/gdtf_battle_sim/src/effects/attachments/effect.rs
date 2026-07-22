@@ -80,7 +80,7 @@ pub enum AttachmentEffect {
     /// cone) — the two are distinct combat levers (`docs/combat/resolution.md` §1b).
     Aim(AimDelta),
     /// **Stability** — a bipod / brace that adds a graduated per-item
-    /// [`WeaponBraceBonus`] of §1a stability-score points (the brace seam — an additive
+    /// [`WeaponBraceBonus`] of §1a stability-score points (the brace bonus — an additive
     /// stability contribution, the [`SuppressionStability`](crate::stability::SuppressionStability) /
     /// emplacement precedent). GRADUATED, not the boolean [`Brace`](AttachmentEffect::Brace)
     /// tag — a per-item magnitude.

@@ -120,7 +120,7 @@ fn chebyshev_heuristic(from: CellLevel, goal: CellLevel) -> PathCost {
 /// terrain floor cost). The SAME scaling the committed walk applies per step, so the
 /// returned [`Path::total`] / [`Path::steps`] (which the walk charges verbatim) make the
 /// previewed cost equal the TU actually charged (preview==charge). An uninjured mover
-/// passes [`MovementCostFactor::IDENTITY`] (`1.0`) — the route is byte-identical to the
+/// passes [`MovementCostFactor::IDENTITY`] (`1.0`) — the route is identical to the
 /// pre-GTW-444 cost.
 ///
 /// PURE (`bevy-traps.md` #7): a free function over the borrowed snapshot — no
@@ -211,7 +211,7 @@ where
 ///
 /// The returned collection is SORTED by the `(z, y, x)` cell key (C4) — the
 /// underlying `HashMap` order never leaks, so two replays over the same snapshot +
-/// budget yield a byte-identical reachable set. This is what the GTW-357
+/// budget yield an identical reachable set. This is what the GTW-357
 /// reachable-range / move-preview overlay consumes.
 ///
 /// **Movement-cost factor (GTW-444 C3).** `factor` is the MOVER'S
@@ -219,7 +219,7 @@ where
 /// scaled by it (`ceil(base × factor)`, never below the base terrain cost), exactly as in
 /// [`find_path`], so the reachable SET a Hampered mover gets is correctly shrunk for the
 /// move-range overlay (a slower mover reaches fewer cells within the same TU budget). The
-/// IDENTITY factor (`1.0`) leaves the flood byte-identical to the pre-GTW-444 reach.
+/// IDENTITY factor (`1.0`) leaves the flood identical to the pre-GTW-444 reach.
 ///
 /// PURE (`bevy-traps.md` #7): a free function over the borrowed snapshot — no
 /// `&mut World`, no system, no RNG, no per-query rebuild (C5).

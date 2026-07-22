@@ -1,5 +1,5 @@
-//! AC for the pure read seams: [`is_ganger_visible`](crate::visibility::is_ganger_visible)
-//! (player always visible, enemy iff its cell is VISIBLE) and the set-lookup seams
+//! AC for the pure read accessors: [`is_ganger_visible`](crate::visibility::is_ganger_visible)
+//! (player always visible, enemy iff its cell is VISIBLE) and the set-lookup accessors
 //! [`is_cell_visible`](crate::visibility::SquadVisibility::is_cell_visible) /
 //! [`is_cell_explored`](crate::visibility::SquadVisibility::is_cell_explored) (GTW-340
 //! clauses 2 / 3 / sixth+seventh ACs).
@@ -47,7 +47,7 @@ fn cell_read_seams_are_pure_set_lookups() {
     assert!(!*fog.is_cell_explored(&unseen_cell));
 }
 
-/// `visible_cells` yields exactly the VISIBLE set — the iterator seam (clause 2).
+/// `visible_cells` yields exactly the VISIBLE set — the iterator read (clause 2).
 #[test]
 fn visible_cells_iterator_yields_the_visible_set() {
     let (fog, visible_cell, explored_only_cell, _unseen) = fixture();

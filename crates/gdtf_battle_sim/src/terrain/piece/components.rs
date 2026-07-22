@@ -57,7 +57,7 @@ impl TerrainName {
 /// (e.g. `"floor"`, `"wall"`, `"cover"`) so the presenter wire-up is trivial.
 ///
 /// Derives [`Component`] so it can be attached to a terrain entity at setup
-/// (GTW-396, Decision E: presentation-hook seam). The presenter queries it to
+/// (GTW-396, Decision E: presentation hook). The presenter queries it to
 /// look up the tile atlas entry for rendering.
 ///
 /// A presentation-hook newtype over [`String`] (no-bare-types rule 1: a domain key
@@ -87,7 +87,7 @@ impl TerrainGraphicKey {
 /// consume it without a schema change.
 ///
 /// Derives [`Component`] so it can be attached to a terrain entity at setup
-/// (GTW-396, Decision E: presentation-hook seam). The future footfall-audio
+/// (GTW-396, Decision E: presentation hook). The future footfall-audio
 /// system reads it to look up and play the correct audio clip when a ganger
 /// steps on the cell (stubbed — no audio system yet; see GTW-XXX: footfall audio).
 ///

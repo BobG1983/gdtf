@@ -1,6 +1,6 @@
 //! GTW-579 AC-3 headless pins: an `AssetEvent::Modified` on a member of EACH of
 //! the editor's FOUR folder families rebuilds the corresponding registry IN
-//! PLACE, AFTER `Load` exited — through the REAL GTW-570 seam systems
+//! PLACE, AFTER `Load` exited — through the REAL GTW-570 content-family systems
 //! [`MapEditorPlugin`] registers (no editor-local redrive survives GTW-579),
 //! from the persistent whole-session [`ContentFolderHandle`]s (GTW-533).
 //!
@@ -8,7 +8,7 @@
 //! `assets/` root) to `Editing`, hot-edits ONE loaded member's in-memory
 //! payload, fires the SAME `AssetEvent::Modified` the file-watcher emits, and
 //! asserts the registry reflects the edit with NO restart — the pre-GTW-579
-//! in-crate redrive pins, rewired onto the seam and extended to all four
+//! in-crate redrive pins, rewired onto the shared content-family path and extended to all four
 //! families.
 
 use bevy::{
@@ -55,7 +55,7 @@ fn advance_to_editing(app: &mut App) {
     );
     assert!(
         reached,
-        "the editor never reached EditorState::Editing — the seam-registered Load pass did not \
+        "the editor never reached EditorState::Editing — the registered Load pass did not \
          resolve the gate resources",
     );
     for _ in 0..4 {
@@ -112,7 +112,7 @@ fn assert_handle_persists_and_fire<F: gdtf_assets::ContentFamily>(
         app.world()
             .get_resource::<ContentFolderHandle<F>>()
             .is_some(),
-        "the seam's persistent ContentFolderHandle must survive past Load (GTW-533)",
+        "the loader's persistent ContentFolderHandle must survive past Load (GTW-533)",
     );
     app.world_mut().write_message(AssetEvent::Modified { id });
 }
@@ -160,7 +160,7 @@ fn modified_weapon_member_rebuilds_weapon_registry_after_load() {
     );
     assert!(
         rebuilt,
-        "the seam redrive must rebuild the WeaponRegistry in place with the edited damage",
+        "the Load redrive must rebuild the WeaponRegistry in place with the edited damage",
     );
 }
 
@@ -205,7 +205,7 @@ fn modified_armor_member_rebuilds_armor_registry_after_load() {
     );
     assert!(
         rebuilt,
-        "the seam redrive must rebuild the ArmorRegistry in place with the edited spec",
+        "the Load redrive must rebuild the ArmorRegistry in place with the edited spec",
     );
 }
 
@@ -254,7 +254,7 @@ fn modified_terrain_def_member_rebuilds_terrain_registry_after_load() {
     );
     assert!(
         rebuilt,
-        "the seam redrive must rebuild the TerrainDefRegistry in place, keyed by the def UUID, \
+        "the Load redrive must rebuild the TerrainDefRegistry in place, keyed by the def UUID, \
          with the edited display name — no restart",
     );
 }
@@ -301,7 +301,7 @@ fn modified_theme_def_member_rebuilds_theme_registry_after_load() {
     );
     assert!(
         rebuilt,
-        "the seam redrive must rebuild the UuidThemeRegistry in place, keyed by the theme UUID, \
+        "the Load redrive must rebuild the UuidThemeRegistry in place, keyed by the theme UUID, \
          with the edited display name — no restart",
     );
 }

@@ -48,8 +48,8 @@ fn end_turn_button_is_enabled_not_disabled() {
 /// `ActIntent::EndTurn`, and the ONE `dispatch_act_intents` drain emits exactly one fieldless
 /// `EndTurnRequested` from it — with NO `SelectedShooter` set (the global turn signal needs no
 /// selection, unlike a per-actor act). This is the load-bearing AC: it drives the REAL stack
-/// (button press → 222a seam → the SAME drain the keyboard surface feeds) and asserts the
-/// end-to-end message, byte-for-byte equal to the message the direct `ActIntent::EndTurn`
+/// (button press → the 222a input queue → the SAME drain the keyboard surface feeds) and asserts the
+/// end-to-end message, identical to the message the direct `ActIntent::EndTurn`
 /// pushes (the `acts.rs` parity idiom).
 ///
 /// Pin-discriminating: removing the new `EndTurnButton` arm in `action_bar_button_intents`
@@ -76,8 +76,8 @@ fn end_turn_button_emits_one_end_turn_requested_without_selection() {
          needed)",
     );
 
-    // Byte-for-byte equal to the message the direct ActIntent::EndTurn (the keyboard surface)
-    // pushes over the SAME seam — proving the button is a parallel surface, not a divergent
+    // Identical to the message the direct ActIntent::EndTurn (the keyboard surface)
+    // pushes over the SAME input queue — proving the button is a parallel surface, not a divergent
     // emission path.
     let mut app2 = battle_running_app();
     add_end_turn_probe(&mut app2);

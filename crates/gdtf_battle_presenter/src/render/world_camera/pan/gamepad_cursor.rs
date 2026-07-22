@@ -1,4 +1,4 @@
-//! The GTW-259 gamepad-software-cursor edge-pan seam: the presenter-defined message
+//! The GTW-259 gamepad-software-cursor edge-pan input: the presenter-defined message
 //! and its reader system.
 
 use bevy::prelude::*;
@@ -26,7 +26,7 @@ use super::{
 /// SAME [`mouse_edge_dir`](super::dir::mouse_edge_dir) / [`pan_velocity`] helpers the
 /// OS-cursor edge-pan uses.
 ///
-/// Mirrors the [`HighlightRequest`](crate::HighlightRequest) seam: the presenter, as the
+/// Mirrors the [`HighlightRequest`](crate::HighlightRequest) message: the presenter, as the
 /// CONSUMER, DEFINES this message (its input API), so the crate edge stays one-way
 /// (`input → presenter`, never a cycle) — input can name a presenter-defined message, the
 /// presenter never names input. The inner [`Vec2`] is framework-math plumbing (a raw screen

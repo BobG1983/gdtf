@@ -3,7 +3,7 @@
 //! and strikes EVERY occupant the template covers through the EXISTING
 //! `resolve_and_apply` damage path — proven END-TO-END on the REAL
 //! `setup_battle_on_request` → `BattleSimPlugin` `Simulate`-band path, driven THROUGH a
-//! buffered `FireRequested` (the same message the input seam writes).
+//! buffered `FireRequested` (the same message the input layer writes).
 //!
 //! The clause contract this covers:
 //!
@@ -11,7 +11,7 @@
 //!   fired at an impact cell damages EVERY ganger in the blast radius (HP / Wounds change
 //!   on MULTIPLE targets from ONE shot) — the direct target AND the splash occupants,
 //!   faction-blind (friendly fire). PIN-DISCRIMINATING (fails if the splash is unwired).
-//! - **`HitType::Single` is byte-identical**: a `Single` weapon fired at the same cluster
+//! - **`HitType::Single` is unchanged**: a `Single` weapon fired at the same cluster
 //!   damages ONLY the direct target — a bystander in an adjacent cell is untouched (no
 //!   splash, the identity property).
 //! - **Determinism**: the same `BattleSeed` reproduces an IDENTICAL multi-target outcome

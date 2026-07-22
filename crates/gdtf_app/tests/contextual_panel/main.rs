@@ -20,7 +20,7 @@
 //! - **Reactive, no respawn** — moving the actor away (or clearing selection) hides the panel
 //!   while the SAME button entities persist (a `Visibility` toggle, never a despawn/respawn).
 //! - **Press → intent** — with an Execute target offered, pressing the Execute button drives
-//!   the REAL GTW-571 seam (button → the act's generic press router → the act's buffered
+//!   the REAL GTW-571 path (button → the act's generic press router → the act's buffered
 //!   `PendingContextualIntents` queue → the act's generic drain) to emit one
 //!   `ExecuteDownedRequested` for the selection as actor over the carried downed target,
 //!   the SAME update (the Q5 same-frame guarantee).

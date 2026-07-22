@@ -6,7 +6,7 @@
 //! [`SquadVisibility`](gdtf_battle_sim::visibility::SquadVisibility) states (VISIBLE / EXPLORED /
 //! UNSEEN) and the [`recompute_visibility`](gdtf_battle_sim::visibility::recompute_visibility)
 //! writer (GTW-341). The presenter never owns fog; it READS the squad sets through the
-//! pure seams ([`SquadVisibility::is_cell_visible`](gdtf_battle_sim::visibility::SquadVisibility::is_cell_visible)
+//! pure queries ([`SquadVisibility::is_cell_visible`](gdtf_battle_sim::visibility::SquadVisibility::is_cell_visible)
 //! / [`SquadVisibility::is_cell_explored`](gdtf_battle_sim::visibility::SquadVisibility::is_cell_explored)
 //! / [`is_ganger_visible`](gdtf_battle_sim::visibility::is_ganger_visible)), then MODULATES the
 //! already-drawn layer in place (`docs/combat/visibility.md` §"Composition with the view
@@ -44,7 +44,7 @@
 //! tiles EXIST (the band draw) and [`present_fog`] modulates every drawn tile; for actor
 //! sprites, ONE pure classifier ANDs both facts and ONE resolver
 //! ([`resolve_ganger_visibility`](crate::resolve_ganger_visibility)) writes the verdict
-//! (GTW-627 — the writes are tick-quiet through the shared `actors/quiet.rs` seam).
+//! (GTW-627 — the writes are tick-quiet through the shared `actors/quiet.rs` write helper).
 //!
 //! # Ordering (the CRITICAL clause)
 //!
@@ -60,7 +60,7 @@
 //! [`TopDownRendererPlugin`](crate::TopDownRendererPlugin).
 //!
 //! It mints NO fire / targeting fog-GATE UX (the reticle / "hold your fire" refusal) —
-//! that is GTW-11, which consumes the SIM read seams, not this presenter writer.
+//! that is GTW-11, which consumes the SIM read queries, not this presenter writer.
 
 mod material;
 mod present;

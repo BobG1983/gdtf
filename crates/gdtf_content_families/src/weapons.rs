@@ -1,4 +1,4 @@
-//! The RANGED-weapons content family (GTW-257, generic seam since GTW-570).
+//! The RANGED-weapons content family (GTW-257, generic machinery since GTW-570).
 
 use gdtf_assets::{ContentFamily, ContentFileStem};
 use gdtf_battle_sim::weapon::{WeaponName, WeaponRegistry, WeaponSpec};

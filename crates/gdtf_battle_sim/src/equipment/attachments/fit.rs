@@ -71,7 +71,7 @@ pub fn attachment_fits(
 /// resolution shares. An empty result is the identity: the post-spawn
 /// [`apply_pending_attachments`](super::apply_pending_attachments) system no-ops.
 ///
-/// This is the ONE resolution seam — `setup_battle`'s ranged AND melee wielded spawns and the
+/// This is the ONE resolution function — `setup_battle`'s ranged AND melee wielded spawns and the
 /// emplacement mounted-weapon spawn all resolve through it, so the fit rule cannot drift
 /// between paths.
 #[must_use]

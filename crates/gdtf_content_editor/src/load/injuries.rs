@@ -1,8 +1,8 @@
 //! The editor's `Load`-pass registration of the bespoke INJURIES family
 //! (GTW-654) — one folder ([`INJURIES_FOLDER`]) resolving into TWO resources
 //! (the [`InjuryRegistry`] + the [`InjuryTables`]), which is why it cannot ride
-//! the generic GTW-570 `register_content_family` seam (a declared seam
-//! exclusion).
+//! the generic GTW-570 `register_content_family` helper (a declared exclusion
+//! from it).
 //!
 //! The folder-walk BUILDER + per-file salvage fold are the host-agnostic
 //! [`gdtf_content_families::injuries`] halves the game's Load resolve also
@@ -57,7 +57,7 @@ pub(crate) struct InjuryAssets<'w> {
 /// dedicated-extension RON loaders, the `Startup` kick-off, the gated resolve,
 /// and the ungated live redrive.
 ///
-/// SELF-GATES on an [`AssetServer`] being present (the seam ext precedent —
+/// SELF-GATES on an [`AssetServer`] being present (the registration helper's precedent —
 /// registering an asset without one panics): a `MinimalPlugins` harness skips
 /// the whole chain and instead seeds the DEFAULT (empty) [`InjuryRegistry`] +
 /// [`InjuryTables`] (the GTW-629 headless-fallback rider), so the
@@ -75,7 +75,7 @@ pub(crate) fn register_injuries(app: &mut App) {
     app.init_ron_asset_with_extensions::<InjuryDef>(vec![INJURY_DEF_EXTENSION]);
     app.init_ron_asset_with_extensions::<InjuryWeighting>(vec![INJURY_WEIGHTING_EXTENSION]);
     // The GTW-582 per-file salvage records malformed members here (idempotent —
-    // the seam families' registrations init the same resource).
+    // the content families' registrations init the same resource).
     app.init_resource::<ContentIntegrityReport>();
     app.add_systems(Startup, kick_off_injuries).add_systems(
         Update,
@@ -96,7 +96,7 @@ pub(crate) fn register_injuries(app: &mut App) {
 }
 
 /// `Startup`: begin the recursive `content/injuries/` folder load and store the
-/// persistent [`InjuriesFolderHandle`] (the bespoke twin of the seam's
+/// persistent [`InjuriesFolderHandle`] (the bespoke twin of the registration helper's
 /// `kick_off_content_family`).
 fn kick_off_injuries(mut commands: Commands, server: Res<AssetServer>) {
     commands.insert_resource(InjuriesFolderHandle(server.load_folder(INJURIES_FOLDER)));

@@ -1,4 +1,4 @@
-//! GTW-579 headless pins for the editor's seam-registered `Load` pass.
+//! GTW-579 headless pins for the editor's content-family-registered `Load` pass.
 //!
 //! AC-2 (as AMENDED by GTW-625; extended by GTW-636 with the gangs + melee
 //! families the GANG mode edits, by GTW-654 with the bespoke injuries pair the
@@ -11,7 +11,7 @@
 //! workspace `assets/` root) reaches [`EditorState::Editing`] with ALL TEN
 //! resolved resources present — through
 //! the actual GTW-570 content-family / bespoke-injuries
-//! registrations, not an editor-local mirror — and the seam's persistent handles
+//! registrations, not an editor-local mirror — and the shared registrations' persistent handles
 //! survive past `Load` (the GTW-533 whole-session persistence the live
 //! hot-reload rides). The game's `GdtfTheme` is NOT among the gate resources:
 //! the egui shell styles itself, so the editor neither registers the theme
@@ -123,7 +123,7 @@ fn advance_to_editing(app: &mut App) {
     );
     assert!(
         reached,
-        "the editor never reached EditorState::Editing — the seam-registered Load pass did not \
+        "the editor never reached EditorState::Editing — the registered Load pass did not \
          resolve (or fall back) every gate resource",
     );
     for _ in 0..4 {
@@ -134,11 +134,11 @@ fn advance_to_editing(app: &mut App) {
 /// AC-2 (as amended by GTW-625; extended by GTW-636 + GTW-654 + GTW-663 +
 /// GTW-669; the GTW-665 chain retirement shrank the set from ten to nine and
 /// the GTW-669 attachments family grew it back to ten): the
-/// real seam path resolves the editor's whole gate set — the app reaches
+/// real content-family path resolves the editor's whole gate set — the app reaches
 /// `Editing` with the eight folder registries plus the bespoke injuries pair
 /// (each NON-empty, so the shipped content genuinely resolved — no count pins)
 /// all present, plus the eight PERSISTENT
-/// seam handles (GTW-533 C4a: no `OnExit(Load)` cleanup exists, so the live
+/// content-family handles (GTW-533 C4a: no `OnExit(Load)` cleanup exists, so the live
 /// hot-reload substrate survives). No game-theme resource exists to gate on —
 /// the editor no longer depends on the game's hand-rolled UI crate, so reaching
 /// `Editing` here IS the boots-without-the-theme proof.
@@ -217,12 +217,12 @@ fn load_pass_resolves_all_ten_resources_through_the_real_seams() {
     assert_seam_handles_persist(world);
 }
 
-/// C4a: the seam's persistent handles survive past `Load` — whole-session handle
+/// C4a: the content-family registrations' persistent handles survive past `Load` — whole-session handle
 /// persistence (GTW-533; no `OnExit(Load)` cleanup exists), the substrate the
 /// live redrives rebuild from: the eight folder families' [`ContentFolderHandle`]s
 /// (the tile-roles hot-RON handle retired with its chain — GTW-665). Read-only
 /// `&World` assertions off the
-/// same post-`Editing` world the resolve proof reads (the sanctioned
+/// same post-`Editing` world the resolve proof reads (the accepted
 /// `app.world()`-in-a-test idiom, not a `&mut World` system — `bevy-traps.md` #7).
 fn assert_seam_handles_persist(world: &World) {
     assert!(

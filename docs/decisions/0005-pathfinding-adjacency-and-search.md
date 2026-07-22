@@ -340,7 +340,7 @@ question 7; the mapping below is by responsibility, not asserted IDs.)
 4. **Path representation at the API boundary:** does the search return a full
    `Vec<CellLevel>` route (fits the current one-message-per-step dispatch and easy
    preview) or a richer route handle with per-step cost metadata? Affects the
-   pathfinder ↔ dispatch seam, not the economy.
+   pathfinder ↔ dispatch interface, not the economy.
 5. **Visibility coupling (defer to GTW-13):** §48 plans routes on *true geometry* but
    bends around *visible-or-remembered* blocking scatter only. GTW-12's core can stay
    FOV-agnostic; confirm the scatter-visibility filter is layered in by the FOV ticket,

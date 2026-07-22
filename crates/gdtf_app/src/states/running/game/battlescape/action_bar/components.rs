@@ -20,7 +20,7 @@
 //!
 //! The level markers ([`LevelUpButton`] / [`LevelDownButton`]) and the
 //! [`AimToggleButton`] each route a press to the matching
-//! [`ActIntent`](gdtf_battle_input::ActIntent) on the shared 222a seam. The three
+//! [`ActIntent`](gdtf_battle_input::ActIntent) on the shared 222a queue. The three
 //! STANCE toggle markers ([`StanceStandingButton`] / [`StanceKneelingButton`] /
 //! [`StanceProneButton`], GTW-267) and the three MODE toggle markers
 //! ([`ModeSingleButton`] / [`ModeBurstButton`] / [`ModeFullButton`], GTW-265) are the
@@ -36,7 +36,7 @@
 //! 222b); explicit-target fire is GTW-11. The end-turn act ([`EndTurnButton`]) is a LIVE
 //! button since GTW-309 (the turn-cycle engine landed): it carries NO `DisabledButton`, so
 //! the `Without<DisabledButton>` action filter INCLUDES it and its press pushes
-//! [`ActIntent::EndTurn`](gdtf_battle_input::ActIntent::EndTurn) onto the shared seam — the
+//! [`ActIntent::EndTurn`](gdtf_battle_input::ActIntent::EndTurn) onto the shared queue — the
 //! GTW-228 placeholder disablement was removed. (Reload was a `DisabledButton` stub here
 //! until GTW-275 made it a LIVE button in the weapon panel — see the `weapon_panel` module.)
 
@@ -184,7 +184,7 @@ crate::support_item! {
     ///
     /// Unlike the five sim-act buttons, flee is NOT routed through the
     /// [`PendingActIntent`](gdtf_battle_input::PendingActIntent) /
-    /// [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents) sim seam: that seam
+    /// [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents) sim dispatch: that dispatch
     /// carries only sim `*Requested` acts against the `SelectedShooter`, and flee is not a
     /// sim verb (no actor, no TU, no `*Requested`). Like the LIVE
     /// [`EndTurnButton`] (GTW-309), flee is ENABLED — it carries NO

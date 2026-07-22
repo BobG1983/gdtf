@@ -3,13 +3,13 @@
 //! PENETRATES armour attaches (or REFRESHES) a [`Dot`] on the struck ganger; a fully-soaked
 //! hit attaches nothing; a non-DOT weapon attaches nothing — proven END-TO-END on the REAL
 //! `setup_battle_on_request` → `BattleSimPlugin` `Simulate`-band path, driven THROUGH a
-//! buffered `FireRequested` (the same message the input seam writes).
+//! buffered `FireRequested` (the same message the input layer writes).
 //!
 //! The clause contract this covers:
 //!
 //! - **(a) a penetrating DOT shot ATTACHES a Dot**: a shot from a DOT weapon that penetrates
 //!   armour attaches a [`Dot`] on the struck ganger (PIN-DISCRIMINATING — fails if the
-//!   attach seam is unwired).
+//!   attach path is unwired).
 //! - **(b) a fully-soaked shot attaches NO Dot**: a DOT shot against a target whose armour
 //!   fully soaks the hit (penetrating damage `0`) attaches NO [`Dot`] — even though HP may
 //!   still bruise.
@@ -19,7 +19,7 @@
 //!   weapon with no `DotProfile` leaves the target with no [`Dot`].
 //!
 //! The per-round `tick_dot` drain (HP-decrement / removal / the DOT-kills gate) is covered by
-//! the in-crate unit tests (`effects::dot::test`); this file owns the attach seam.
+//! the in-crate unit tests (`effects::dot::test`); this file owns the attach path.
 //!
 //! HARNESS NOTE (the `aoe_hittype` idiom): the sim crate is the LOW crate, so it cannot dev-dep
 //! `gdtf_test_utils` (a cycle). The established sim-crate battle-integration idiom drives
@@ -283,7 +283,7 @@ fn a_penetrating_dot_shot_attaches_a_dot() {
         attached,
         Some(Dot::from_profile(dot_profile())),
         "a penetrating hit from a DOT weapon attaches a Dot built from the weapon's profile \
-         (PIN-DISCRIMINATING: fails if the attach seam is unwired)",
+         (PIN-DISCRIMINATING: fails if the attach path is unwired)",
     );
 }
 

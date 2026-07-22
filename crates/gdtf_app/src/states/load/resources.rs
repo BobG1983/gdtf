@@ -93,9 +93,9 @@ impl PrefabsFolderHandle {
 /// `OnEnter(Load)` and removed `OnExit(Load)` (it has no meaning outside `Load`).
 ///
 /// GTW-564 moved the four single-file RON chains (situation, combat / stat /
-/// procgen tuning) onto the generic hot-RON seam, GTW-570 moved the seven
+/// procgen tuning) onto the generic hot-RON registration, GTW-570 moved the seven
 /// folder content families (ranged/melee weapons, armor, fields, gangs,
-/// terrain + theme defs) onto the generic content-family seam, and GTW-619
+/// terrain + theme defs) onto the generic content-family registration, and GTW-619
 /// moved the attachments folder the same way — their kick-off / resolve /
 /// redrive now live in `gdtf_assets`, registered by one ext call each
 /// in the Load plugin, so their Load-scoped handles left this set. The THEME

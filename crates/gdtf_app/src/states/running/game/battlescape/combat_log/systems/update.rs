@@ -1,7 +1,7 @@
 //! The combat-log per-frame ANIMATIONS (GTW-328 slice B): the three-phase line fade, the
 //! slide-into-slot ease, and the panel-height ease.
 //!
-//! (The event drain + append + FIFO trim moved to the GTW-572 forwarder → appender seam:
+//! (The event drain + append + FIFO trim moved to the GTW-572 forwarder → appender pipeline:
 //! [`forward`](super::forward) writes resolved
 //! [`CombatLogEvent`](gdtf_battle_presenter::CombatLogEvent)s, [`append`](super::append)
 //! drains them into lines. This module owns only the mutate-in-place animations.)

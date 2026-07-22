@@ -29,7 +29,7 @@ pub struct Shooter<'a> {
     /// is pinned under opposing fire, `None` otherwise. When `Some`, the composer feeds
     /// the negated tunable suppression penalty into `stability` as a subtractive
     /// [`SuppressionStability`](crate::stability::SuppressionStability) term (a wider
-    /// cone); when `None`, it passes the zero identity so the score is byte-identical to
-    /// a run without the seam.
+    /// cone); when `None`, it passes the zero identity so the score is identical to
+    /// a run without the term.
     pub suppressed: Option<&'a Suppressed>,
 }

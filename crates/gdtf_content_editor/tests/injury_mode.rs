@@ -181,7 +181,7 @@ fn saved_injury_and_weighting_round_trip_through_the_real_injuries_loader() {
 
     let world = app.world();
     // The two state-scoped INJURY drafts seeded on entering Editing (bevy-traps #1
-    // via the GTW-575 seam).
+    // via the GTW-575 shared registration).
     assert!(
         world.get_resource::<InjuryDraft>().is_some(),
         "the InjuryDraft must be seeded OnEnter(Editing)",

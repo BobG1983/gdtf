@@ -23,7 +23,7 @@ use crate::{
 ///
 /// Returns an EMPTY `Vec` for a [`HitType::Single`](crate::weapon::HitType::Single) round
 /// WITHOUT calling the resolver or taking any RNG draw — so the single-target path is
-/// byte-identical (the GTW-541 identity property). Otherwise it enumerates the affected
+/// identical (the GTW-541 identity property). Otherwise it enumerates the affected
 /// `(cell, level)` set ([`aoe_affected`](crate::aoe::aoe_affected), from the primary
 /// impact cell, the shooter origin, and the mode's [`HitType`](crate::weapon::HitType))
 /// and, in that CANONICAL sorted order (so the seeded RNG stream is deterministic), routes

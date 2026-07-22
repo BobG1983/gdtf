@@ -35,7 +35,7 @@ const CLEAR_TEXEL: [u8; 4] = [0, 0, 0, 0];
 /// A named [`Resource`] (a framework type; the handles it holds are framework plumbing,
 /// read through named accessors). State-scoped by hand (inserted `OnEnter(Editing)`,
 /// removed `OnExit(Editing)` — bevy-traps #1) because building the images needs
-/// [`Assets<Image>`], which the shared seed-closure seam cannot reach.
+/// [`Assets<Image>`], which the shared seed closure cannot reach.
 #[derive(Resource, Debug, Clone)]
 pub(crate) struct PreviewOverlayImages {
     /// The 2×2-px-block checker sheet the below-ghost stipple overlay draws.

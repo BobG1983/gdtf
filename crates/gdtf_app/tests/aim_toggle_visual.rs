@@ -6,7 +6,7 @@
 //! down to `BattleScapeState::BattleRunning`, where the real weapon-panel module spawns the
 //! `AimToggleButton` switch and the action-bar plugin's `Update` `sync_aim_switch_state`
 //! (gated on `BattleInProgress`) mirrors the selected ganger's `Aiming` onto the switch's
-//! `SwitchState`. They cover AC4 (adapted to the widget seam — the visual CONTRACT is
+//! `SwitchState`. They cover AC4 (adapted to the widget model — the visual CONTRACT is
 //! unchanged: the control reflects whether the selected ganger is aiming):
 //!
 //! - a selected ganger with `Aiming(true)` → the `AimToggleButton` switch is `SwitchState::On`;

@@ -1,4 +1,4 @@
-//! [`ProcgenStepperPlugin`] — the DEV-ONLY procgen load-time stepper's registration seam
+//! [`ProcgenStepperPlugin`] — the DEV-ONLY procgen load-time stepper's registration
 //! (GTW-655).
 //!
 //! ## Two gates, both must hold to activate

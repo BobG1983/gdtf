@@ -73,7 +73,7 @@ fn source_projections_split_sheet_and_file() {
 
 /// GTW-665 C1 — `single_rect_layout` carries EXACTLY the authored region at index 0:
 /// the material's UV bake reads `layout.textures[0]`, so this is the rect the shader
-/// samples — byte-identical to a grid layout's entry for a grid-aligned rect.
+/// samples — identical to a grid layout's entry for a grid-aligned rect.
 #[test]
 fn single_rect_layout_carries_exactly_the_authored_region() {
     let def = sheet_def(208, 16, 16, 16, 8, 8);

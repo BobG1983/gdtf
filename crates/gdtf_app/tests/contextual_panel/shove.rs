@@ -26,7 +26,7 @@ fn shoves(app: &App) -> Vec<ShoveRequested> {
 
 // ---------------------------------------------------------------------------------
 // GTW-525 — the SHOVE button: detection (an 8-adjacent alive opposing ganger reveals it,
-// WEAKER than Melee — no LOS / no weapon) and press → ShoveRequested through the REAL seam.
+// WEAKER than Melee — no LOS / no weapon) and press → ShoveRequested through the REAL input queue.
 // ---------------------------------------------------------------------------------
 
 /// SHOVE detection: a selected actor (any ganger — the plain `spawn_actor`, which carries NO

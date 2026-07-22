@@ -31,7 +31,7 @@ pub(super) const SAVED_SPAWN_ROLE: SpawnRole = SpawnRole::Fill;
 ///
 /// A named domain enum (no-bare-types: the rejection reason is a domain value). The
 /// domain-validation variants stay bespoke here (GTW-577 P9); the duplicated serialize/write
-/// tail collapsed onto the shared [`RonSaveError`] seam error, wrapped by
+/// tail collapsed onto the shared [`RonSaveError`], wrapped by
 /// [`Save`](Self::Save) (GTW-577 C3).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SavePrefabError {
@@ -42,13 +42,13 @@ pub enum SavePrefabError {
     /// (C3) — the save is rejected so a written prefab never contains an illegal cell. Names the
     /// offending slot.
     IllegalCell(CellLevel),
-    /// The shared serialize/write tail failed (GTW-577 C3) — wraps the seam's
+    /// The shared serialize/write tail failed (GTW-577 C3) — wraps the shared serialize/write path's
     /// [`RonSaveError`], whose `Display` names the failed stage exactly once.
     Save(RonSaveError),
 }
 
 impl From<RonSaveError> for SavePrefabError {
-    /// The per-type conversion off the shared seam error (GTW-577 C3) — lets the save path
+    /// The per-type conversion off the shared serialize/write error (GTW-577 C3) — lets the save path
     /// `?` a [`write_ron_pretty`](gdtf_assets::write_ron_pretty) /
     /// [`serialize_ron_pretty`](gdtf_assets::serialize_ron_pretty) failure straight into the
     /// form's error.

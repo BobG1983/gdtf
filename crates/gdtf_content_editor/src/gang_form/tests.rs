@@ -114,7 +114,7 @@ fn add_and_remove_member_own_the_list_structure() {
 }
 
 /// The GTW-429 identity round-trip through the GANG mode's projection: an edited draft
-/// → [`draft_to_roster`] → serialize (the shared pretty-RON seam) → deserialize the way
+/// → [`draft_to_roster`] → serialize (the shared pretty-RON writer) → deserialize the way
 /// `RonAsset<GangRoster>` does → key by the saved file's stem (the loader's `.gang`
 /// strip) → reload into a fresh draft → structural equality, INCLUDING the authored
 /// `melee_weapon` key the retired editor dropped. No pinned magnitudes — identity, not
@@ -143,7 +143,7 @@ fn edited_gang_round_trips_through_the_loader_schema() {
         return;
     };
 
-    // Key by the file STEM minus the `.gang` infix — the family seam's stem keying.
+    // Key by the file STEM minus the `.gang` infix — the family loader's stem keying.
     let file_name = gang_file_name(&name);
     let stem = file_name.strip_suffix(".ron").unwrap_or(&file_name);
     let key = stem.strip_suffix(".gang").unwrap_or(stem).to_owned();
@@ -163,7 +163,7 @@ fn edited_gang_round_trips_through_the_loader_schema() {
 
 /// The save file name derives its compound suffix from [`GangsFamily::EXTENSION`] (the
 /// one-owner extension discriminant — GTW-621), a path-hostile name sanitizes through
-/// the shared seam, and an unnameable gang falls back to the documented `unnamed_gang`
+/// the shared helper, and an unnameable gang falls back to the documented `unnamed_gang`
 /// stem; the resolved path lands under [`GangsFamily::FOLDER`].
 #[test]
 fn save_file_name_and_path_derive_from_the_one_owner_spellings() {

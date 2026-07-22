@@ -1,4 +1,4 @@
-//! The GTW-570 **content-family** seam: one generic kick-off / resolve /
+//! The GTW-570 **content-family** machinery: one generic kick-off / resolve /
 //! redrive chain turning a folder of loose `.ron` files into a live registry
 //! [`Resource`](bevy::prelude::Resource).
 //!

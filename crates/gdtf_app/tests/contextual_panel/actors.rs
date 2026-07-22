@@ -14,7 +14,7 @@ use super::harness::*;
 
 // ---------------------------------------------------------------------------------
 // Live slice helpers — spawn an actor + downed neighbours, select, read targets, and
-// drive a press through the real seam.
+// drive a press through the real input queue.
 // ---------------------------------------------------------------------------------
 
 /// A ground-level [`Position`] at cell `(x, y)`.
@@ -68,7 +68,7 @@ pub(crate) fn spawn_alive_enemy(app: &mut App, x: i32, y: i32, gang: u8) -> Enti
         .id()
 }
 
-/// The per-act `ContextualOffer` seams are not directly readable across the crate boundary
+/// The per-act `ContextualOffer` records are not directly readable across the crate boundary
 /// (their contents are private), so detection coverage reads the panel's observable effects —
 /// the per-button [`Visibility`] — and the press tests read the emitted `*Requested` (e.g.
 /// [`ExecuteDownedRequested`]). This helper reads the Execute button visibility.

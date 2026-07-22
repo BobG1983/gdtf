@@ -24,7 +24,7 @@ use gdtf_content_families::sprites::SpriteDefRegistry;
 /// weapon→attachment edge in GTW-669), bundled into one
 /// `#[derive(SystemParam)]` (the load gate's `GateResources` pattern) so the
 /// re-arm system's signature stays legible as families accrue. Every field is
-/// `Option` — a registry arrives only once its seam resolve (or fallback)
+/// `Option` — a registry arrives only once its loader resolve (or fallback)
 /// fires (`bevy-traps.md` #1).
 #[derive(SystemParam)]
 pub(super) struct WatchedRegistries<'w> {
@@ -44,7 +44,7 @@ pub(super) struct WatchedRegistries<'w> {
     /// injuries redrive overwrites the registry AND the tables together on ANY
     /// member edit (def OR weighting), so watching the registry alone re-arms
     /// on both artifact kinds; the built `InjuryTables` is read by no check,
-    /// so per the seam invariant it is not watched.
+    /// so per the watch-set invariant it is not watched.
     injuries:      Option<Res<'w, InjuryRegistry>>,
     /// The sprite-def registry — read by the terrain `graphic_name` edge
     /// (GTW-663), so authoring or deleting a `.spritedef.ron` member re-runs
@@ -90,7 +90,7 @@ impl WatchedRegistries<'_> {
 /// ([`ContentValidationDone`] present), a change to ANY registry the editor's
 /// registered checks read ([`WatchedRegistries`]) re-arms it — the report is
 /// replaced with a fresh empty one and both monotonic markers are removed, so
-/// the seam's `Check` → `Publish` chain runs again over the CURRENT content
+/// the validation pass's `Check` → `Publish` chain runs again over the CURRENT content
 /// and re-publishes one consolidated report (the game's report shape,
 /// re-emitted at the edit). One watch set, one report: an edit to EITHER side
 /// of an edge — the gang file OR the weapons/armor/melee folder it references

@@ -9,7 +9,7 @@
 //! extensions come from the injuries family's one-owner layout consts
 //! ([`INJURIES_FOLDER`] / [`category_dir`] / [`WEIGHTING_SUBFOLDER`] /
 //! [`INJURY_DEF_EXTENSION`] / [`INJURY_WEIGHTING_EXTENSION`]); and the def stem
-//! runs through the shared [`sanitize_file_stem`] seam. The projections and path
+//! runs through the shared [`sanitize_file_stem`] helper. The projections and path
 //! fns are PURE (no IO) so tests round-trip them without touching the assets tree;
 //! the filesystem writes live in the root-parameterized `write_*_in` cores (the
 //! GTW-555 `write_terrain_in` precedent, so tests aim them at a `TempDir`) and
@@ -60,9 +60,9 @@ pub fn draft_to_weighting(draft: &WeightingDraft) -> InjuryWeighting {
 /// The compound suffix is DERIVED from [`INJURY_DEF_EXTENSION`] (the ONE canonical
 /// extension discriminant the injuries loader dispatches on — GTW-621: a re-spelled
 /// extension drifts and every saved file silently vanishes on reload). The stem
-/// runs through the shared [`sanitize_file_stem`] seam (GTW-577) so a path-hostile
+/// runs through the shared [`sanitize_file_stem`] helper (GTW-577) so a path-hostile
 /// key can never reach the filesystem raw; a key that sanitizes to NOTHING falls
-/// back to the documented `unnamed_injury` stem (minted through the SAME seam —
+/// back to the documented `unnamed_injury` stem (minted through the SAME helper —
 /// the gang/armor save parity). The loader keys an injury by its file stem with
 /// the `.injury` infix stripped, so a saved def reloads keyed by exactly its
 /// sanitized stem.
@@ -129,13 +129,13 @@ pub fn weighting_save_path_in(root: &Path, category: InjuryCategory) -> PathBuf 
 /// authored `category` ([`injury_save_path_in`]).
 ///
 /// Resolves the sanitized path and hands the serialize → mkdir → write chain to
-/// the shared [`write_ron_pretty`] seam (GTW-577 C2). Returns the written path on
+/// the shared [`write_ron_pretty`] helper (GTW-577 C2). Returns the written path on
 /// success so the caller can log it. Debug-only (the terrain / theme / gang /
 /// armor save precedent): the fs write never compiles into a release binary.
 ///
 /// # Errors
 ///
-/// The seam's [`RonSaveError`], whose `Display` names the failed stage (serialize
+/// The shared writer's [`RonSaveError`], whose `Display` names the failed stage (serialize
 /// vs write).
 #[cfg(debug_assertions)]
 pub fn write_injury_in(
@@ -149,14 +149,14 @@ pub fn write_injury_in(
 }
 
 /// Write an injury def to the workspace `assets/` tree — [`write_injury_in`] under
-/// the shared [`WORKSPACE_ASSETS_ROOT`] owner (byte-identical to the app's
+/// the shared [`WORKSPACE_ASSETS_ROOT`] owner (identical to the app's
 /// `AssetPlugin.file_path` by construction), so the saved def lands exactly where
 /// the GTW-437 folder loader reads. The thin root-supplying wrapper the Save
 /// button calls.
 ///
 /// # Errors
 ///
-/// The seam's [`RonSaveError`] (see [`write_injury_in`]).
+/// The shared writer's [`RonSaveError`] (see [`write_injury_in`]).
 #[cfg(debug_assertions)]
 pub fn write_injury(key: &InjuryName, def: &InjuryDef) -> Result<PathBuf, RonSaveError> {
     write_injury_in(Path::new(WORKSPACE_ASSETS_ROOT), key, def)
@@ -170,7 +170,7 @@ pub fn write_injury(key: &InjuryName, def: &InjuryDef) -> Result<PathBuf, RonSav
 ///
 /// # Errors
 ///
-/// The seam's [`RonSaveError`] (see [`write_injury_in`]).
+/// The shared writer's [`RonSaveError`] (see [`write_injury_in`]).
 #[cfg(debug_assertions)]
 pub fn write_weighting_in(
     root: &Path,
@@ -187,7 +187,7 @@ pub fn write_weighting_in(
 ///
 /// # Errors
 ///
-/// The seam's [`RonSaveError`] (see [`write_injury_in`]).
+/// The shared writer's [`RonSaveError`] (see [`write_injury_in`]).
 #[cfg(debug_assertions)]
 pub fn write_weighting(weighting: &InjuryWeighting) -> Result<PathBuf, RonSaveError> {
     write_weighting_in(Path::new(WORKSPACE_ASSETS_ROOT), weighting)

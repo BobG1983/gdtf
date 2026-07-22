@@ -89,7 +89,7 @@ pub fn test_weapon_spec() -> WeaponSpec {
         slots:       WeaponSlots::default(),
         attachments: Vec::new(),
         // GTW-544: no DOT profile on the shared test weapon (a DOT-bearing variant is built
-        // per-test); `None` is a non-DOT weapon, byte-identical to before this slice.
+        // per-test); `None` is a non-DOT weapon, identical to before this slice.
         dot:         None,
         on_death:    None,
     }

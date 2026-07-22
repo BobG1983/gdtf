@@ -64,12 +64,12 @@ fn add_plugins(app: &mut App) {
         .add_plugins(GameBattleScapeBattleRunningScenePlugin)
         .add_plugins(GameBattleScapeAnimateOutScenePlugin)
         .add_plugins(GameBattleScapeAfterMathScenePlugin)
-        // The GTW-48 presenter seam (GTW-215): the VIEW that mirrors the sim. Its
+        // The GTW-48 presenter (GTW-215): the VIEW that mirrors the sim. Its
         // `build` runs here when the scene plugins register; the default mode
         // builds the TopDown renderer (GTW-217 renamed it from CP437; it loads the
         // sprite atlases but draws no sprite yet — that is S4/S5/S6).
         .add_plugins(gdtf_battle_presenter::BattlePresenterPlugin::default())
-        // The GTW-48 S7 input seam (GTW-221): the HEAD of the
+        // The GTW-48 S7 input plugin (GTW-221): the HEAD of the
         // `input -> presenter -> sim` chain. Its `build` runs here beside the
         // presenter; its picking + hover-highlight systems run in `Update` gated
         // on the sim's `BattleInProgress` witness, so the cursor is inert until a
@@ -79,18 +79,18 @@ fn add_plugins(app: &mut App) {
         // The GTW-48 S9 / 222c action-bar (GTW-228): a themed `gdtf_ui` button surface
         // on the GTW-120 UI camera. It spawns/despawns on the `BattleScapeState::
         // BattleRunning` boundary and its button-action system writes the SAME 222a
-        // `PendingActIntent` seam the input crate's keyboard surface writes — buttons +
+        // `PendingActIntent` queue the input crate's keyboard surface writes — buttons +
         // keys are PARALLEL surfaces over the ONE drain. It deps `gdtf_ui` (the spawn
-        // helpers) + `gdtf_battle_input` (the intent seam), both already on the app's
+        // helpers) + `gdtf_battle_input` (the intent queue), both already on the app's
         // edge; the chain stays acyclic.
         .add_plugins(GameBattleScapeActionBarScenePlugin)
         // The GTW-252 status HUD panel: a themed `gdtf_ui` panel on the GTW-120 UI
         // camera showing the selected player ganger's vitals. Like the action-bar it
         // spawns/despawns on the `BattleScapeState::BattleRunning` boundary; its repaint
-        // system reads `Res<SelectedShooter>` (the input crate's selection seam) + the
+        // system reads `Res<SelectedShooter>` (the input crate's selection resource) + the
         // sim's on-entity vital components and is gated on the `BattleInProgress`
         // witness. UI/view only — no sim/input change, no act. It deps `gdtf_ui` (the
-        // spawn helpers) + `gdtf_battle_input` (the selection seam), both already on the
+        // spawn helpers) + `gdtf_battle_input` (the selection resource), both already on the
         // app's edge; the chain stays acyclic.
         .add_plugins(GameBattleScapeStatusPanelScenePlugin)
         // The GTW-274 inspect panel: the twin of the status panel, anchored top-right.
@@ -110,17 +110,17 @@ fn add_plugins(app: &mut App) {
         // placeholder + name + magazine cur/max) + a LIVE Reload button + throwable
         // placeholders. Same `BattleRunning` lifecycle + `BattleInProgress` gate; its repaint
         // reads `Res<SelectedShooter>` + the sim's `WeaponName` / `Magazine` components, and
-        // its Reload button WRITES the input crate's act-intent seam (→ `ReloadRequested` →
+        // its Reload button WRITES the input crate's act-intent queue (→ `ReloadRequested` →
         // the sim's `dispatch_reload`). It deps `gdtf_ui` (spawn helpers) + `gdtf_battle_input`
-        // (selection + intent seam), both already on the app's edge; the chain stays acyclic.
+        // (selection + intent queue), both already on the app's edge; the chain stays acyclic.
         .add_plugins(GameBattleScapeWeaponPanelScenePlugin)
         // The GTW-458 SELECTION-CYCLE cluster (bottom-bar far RIGHT): the vertical Prev/Next
         // button pair that cycles the SelectedShooter through the player gang in (z,y,x) order,
         // wrapping. Same `BattleRunning` lifecycle as the panels (spawned `.after` the bottom
         // bar so it parents inside it); its press router writes the SAME `PendingActIntent`
-        // seam the input crate's `Tab` / `Shift+Tab` keyboard surface writes (ADR-0001 — one
-        // dispatch). View-only — no sim/input change beyond the shared intent seam. It deps
-        // `gdtf_ui` (spawn helpers) + `gdtf_battle_input` (the intent seam), both already on
+        // queue the input crate's `Tab` / `Shift+Tab` keyboard surface writes (ADR-0001 — one
+        // dispatch). View-only — no sim/input change beyond the shared intent queue. It deps
+        // `gdtf_ui` (spawn helpers) + `gdtf_battle_input` (the intent queue), both already on
         // the app's edge; the chain stays acyclic.
         .add_plugins(GameBattleScapeSelectCycleScenePlugin)
         // The GTW-294 CONTEXTUAL PANEL (bottom-right): one themed button per registered

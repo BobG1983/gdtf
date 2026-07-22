@@ -16,7 +16,7 @@ pub(in crate::states) struct SceneLabel(&'static str);
 impl SceneLabel {
     /// Wraps a scene's display name (the exact text the scene's old
     /// hand-stamped `print_state.rs` printed, so the log lines stay
-    /// byte-identical across the GTW-575 sweep).
+    /// identical across the GTW-575 sweep).
     pub(in crate::states) const fn new(label: &'static str) -> Self {
         Self(label)
     }

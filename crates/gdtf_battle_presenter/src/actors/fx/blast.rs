@@ -14,7 +14,7 @@
 //! cell + the grenade's [`DamageType`](gdtf_battle_sim::weapon::DamageType).
 //!
 //! [`read_throw_resolved`] drains that signal and, at the landing cell, SEEDS a
-//! [`PendingImpact`](super::projectile::PendingImpact) — the SAME seam a straight shot's arrived
+//! [`PendingImpact`](super::projectile::PendingImpact) — the SAME marker a straight shot's arrived
 //! bolt hands off — so the EXISTING [`animate_impact`](super::impact::animate_impact) plays the
 //! grenade's damage-type 3-frame impact/shockwave strip
 //! ([`EffectRoles::fx_for`](super::roles::EffectRoles::fx_for)`(damage).impact`, the expanding
@@ -34,7 +34,7 @@
 //!
 //! Pure VIEW (ADR-0001): it READS the sim's [`ThrowResolved`](gdtf_battle_sim::acts::ThrowResolved)
 //! signal + the data-driven [`EffectRoles`](super::roles::EffectRoles) impact strip (via the
-//! shared impact seam) and draws a sprite; it NEVER writes the sim (the one-way `sim → presenter`
+//! shared impact marker) and draws a sprite; it NEVER writes the sim (the one-way `sim → presenter`
 //! dep — the sim never reads the presenter). Param-only throughout (`bevy-traps.md` #7).
 
 use bevy::{
@@ -92,7 +92,7 @@ pub fn read_throw_resolved(
         // CellLevel::split decompose (GTW-565).
         let (cell, level) = msg.at.split();
         let at = cell_to_world(cell, level);
-        // Seed the SHARED impact seam at the landing so `animate_impact` plays the grenade's
+        // Seed the SHARED impact marker at the landing so `animate_impact` plays the grenade's
         // damage-type 3-frame expanding-shockwave strip there — the existing AoE hit FX, reused.
         // No pops / no verdict: the blast's numbers ride the per-ganger wound/injury FCT signals.
         let pending = PendingImpact::for_blast(at, msg.damage);

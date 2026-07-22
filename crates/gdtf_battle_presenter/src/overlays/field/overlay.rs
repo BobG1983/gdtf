@@ -6,7 +6,7 @@
 //!
 //! # One-way sim read (ADR-0001)
 //!
-//! Unlike the presenter-owned `ReachableCells` read-seam (which the INPUT
+//! Unlike the presenter-owned `ReachableCells` read-side resource (which the INPUT
 //! crate populates), this overlay reads the AUTHORITATIVE sim
 //! [`FieldRegistry`](gdtf_battle_sim::effects::fields::FieldRegistry) resource DIRECTLY (a battle-lifetime
 //! [`Resource`](bevy::prelude::Resource) `setup_battle` inserts), the `input → presenter → sim`

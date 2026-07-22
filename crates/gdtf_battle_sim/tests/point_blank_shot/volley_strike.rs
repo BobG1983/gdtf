@@ -1,4 +1,4 @@
-//! The end-to-end `fire()` seam: a full-app point-blank volley strikes the
+//! The end-to-end `fire()` path: a full-app point-blank volley strikes the
 //! adjacent PRONE enemy (the representative standing-vs-prone case).
 
 use bevy::{
@@ -62,7 +62,7 @@ fn equip_thin_armor(app: &mut App, ganger: Entity) {
     }
 }
 
-// --- The end-to-end fire() seam: the representative standing-vs-prone case. ---
+// --- The end-to-end fire() path: the representative standing-vs-prone case. ---
 
 /// Build the real-path app: `MinimalPlugins` + `OccupancyMaintenancePlugin` (whose
 /// `sync_moved_gangers` publishes each occupant's stance-derived silhouette band off

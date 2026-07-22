@@ -1,5 +1,5 @@
 //! The DATA-DRIVEN per-faction base-actor table and its hot-RON chain
-//! registration (the GTW-564 generic seam).
+//! registration (the GTW-564 generic registration helper).
 
 use bevy::prelude::*;
 use gdtf_assets::HotRonAppExt;
@@ -15,7 +15,7 @@ use crate::TileIndex;
 /// [`RonAsset<T>`](gdtf_assets::RonAsset) loader and resolved into a presenter-owned
 /// [`CharacterRoles`] resource before battle time (the GTW-564 generic hot-RON
 /// chain, registered by [`register_character_roles_hot_ron`]), exactly mirroring the
-/// GTW-564 generic hot-RON seam (the retired S4 terrain table's mechanism, kept by the
+/// GTW-564 generic hot-RON registration helper (the retired S4 terrain table's mechanism, kept by the
 /// character/effect tables). Each faction's actor is a contiguous run of 4 cells in the sheet; the drawn
 /// index is `base + facing_frame` ([`facing_frame`](super::facing_frame)). Every index
 /// is data the engineer eyeballs against the sheet and may adjust — nothing about the
@@ -57,7 +57,7 @@ impl CharacterRoles {
 const CHARACTER_ROLES_RON_PATH: &str = "sprites/character_roles.spritedef.ron";
 
 /// Registers the [`CharacterRoles`] hot-RON chain — ONE ext call onto the
-/// GTW-564 generic seam (kick-off / gated resolve / live redrive, keyed by the
+/// GTW-564 generic registration helper (kick-off / gated resolve / live redrive, keyed by the
 /// generic [`HotRonHandle`](gdtf_assets::HotRonHandle)`<CharacterRoles>`),
 /// replacing the per-site handle newtype + load/resolve/redrive triple.
 /// Self-gates on the [`AssetServer`](bevy::asset::AssetServer)

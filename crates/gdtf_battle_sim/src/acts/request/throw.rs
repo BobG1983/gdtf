@@ -11,7 +11,7 @@ use crate::{metric::CellLevel, weapon::DamageType};
 ///
 /// A buffered [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`) carrying the
 /// throwing ganger [`Entity`] + the target [`CellLevel`] the grenade is lobbed at. The
-/// player-only contextual Throw button writes this from the input seam (the GTW-571 per-act
+/// player-only contextual Throw button writes this from the input queue (the GTW-571 per-act
 /// contextual queue -> `ThrowGrenadeRequested`) when the selected ganger wields an
 /// `Arc` weapon. The throw is BLIND — there is NO line-of-sight / facing / arc gate (a lob
 /// need not see its target), so the target payload is a CELL AT RANGE (a [`CellLevel`], like
@@ -55,7 +55,7 @@ impl ThrowGrenadeRequested {
 /// math. The presenter reads it through a [`MessageReader`](bevy::prelude::MessageReader) (the
 /// one-way sim → presenter dep). The blast's HP/wound mutations are applied to the struck
 /// gangers' components and observed via change-detection; this signal is the dedicated
-/// *grenade-landed* moment (the seam/app + presenter phase draws it).
+/// *grenade-landed* moment (the app + presenter phase draws it).
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ThrowResolved {
     /// The `(cell, level)` the grenade landed at — the arc's landing (the impact / blast FX

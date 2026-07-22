@@ -8,7 +8,7 @@
 //! 222b consumes these to build the
 //! [`SetStanceRequested`](gdtf_battle_sim::acts::SetStanceRequested) /
 //! [`SetFacingRequested`](gdtf_battle_sim::acts::SetFacingRequested) it writes to
-//! the intent seam.
+//! the intent queue.
 
 mod orders;
 

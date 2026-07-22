@@ -15,7 +15,7 @@
 //!
 //! Shared by `gdtf_app`'s scene scaffolds and the content editor's
 //! `Editing`-scoped model resources (the editor does not depend on `gdtf_app`,
-//! so the seam lives in this tiny crate below both).
+//! so the shared helper lives in this tiny crate below both).
 
 use bevy::{
     prelude::{App, Commands, OnEnter, OnExit, Resource},

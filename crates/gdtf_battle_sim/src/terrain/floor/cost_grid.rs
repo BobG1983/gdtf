@@ -20,7 +20,7 @@ use crate::{metric::CellLevel, tuning::MoveCost};
 /// `(cell, level)` → [`MoveCost`] overrides for cells that author a different floor
 /// piece (the situation's `floors` list). The pathfinder calls
 /// [`FloorCostGrid::cost`] for every planar DESTINATION cell — this replaces
-/// `move_costs.cost(grid.terrain(&neighbour))` as the sole floor cost seam.
+/// `move_costs.cost(grid.terrain(&neighbour))` as the sole floor cost source.
 ///
 /// A Bevy [`Resource`] — inserted at `setup_battle` and removed at teardown, sharing
 /// the [`BattleInProgress`](crate::battle::BattleInProgress) lifetime.
@@ -55,7 +55,7 @@ impl FloorCostGrid {
     /// The move cost for the given `(cell, level)` — the override if one is authored,
     /// otherwise the default.
     ///
-    /// This is the pathfinder's SOLE cost seam: `pathable_neighbors` calls `cost(&neighbour)`
+    /// This is the pathfinder's SOLE cost source: `pathable_neighbors` calls `cost(&neighbour)`
     /// for every planar destination cell instead of `move_costs.cost(grid.terrain(&neighbour))`.
     #[must_use]
     pub fn cost(&self, at: &CellLevel) -> MoveCost {

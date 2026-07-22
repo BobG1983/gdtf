@@ -1,4 +1,4 @@
-//! Level cycling + selection clear through the act-intent seam, bound and
+//! Level cycling + selection clear through the act-intent queue, bound and
 //! unbound keys (AC6/AC9).
 
 use bevy::{input::ButtonInput, prelude::*};
@@ -11,7 +11,7 @@ use super::harness::*;
 
 /// Builds a selection app that ALSO has the keyboard press surface live: the
 /// asset-loaded [`Keybinds`] table is inserted DIRECTLY (the keybinds.rs docs'
-/// sanctioned headless idiom — "a test that wants them inserts `Keybinds`
+/// headless idiom — "a test that wants them inserts `Keybinds`
 /// directly") and an empty [`ButtonInput<KeyCode>`] is seeded so `level_keys` /
 /// `select_clear_key` (which `Res`-read that buffer) run instead of failing param
 /// validation under `MinimalPlugins` (no `InputPlugin`).
@@ -48,11 +48,11 @@ pub(crate) fn active_level(app: &App) -> Option<Level> {
 }
 
 // ---------------------------------------------------------------------------------
-// AC6/AC9 — level cycling THROUGH the shared intent seam.
+// AC6/AC9 — level cycling THROUGH the shared intent queue.
 // ---------------------------------------------------------------------------------
 
 /// AC9 + AC6 — writing a `LevelUp` intent and updating drains it through the ONE
-/// `dispatch_act_intents` system and mutates `ActiveLevel` (the seam is real).
+/// `dispatch_act_intents` system and mutates `ActiveLevel` (the queue is real).
 #[test]
 fn level_up_intent_raises_active_level_through_the_seam() {
     let level = Level::new(0);
@@ -76,7 +76,7 @@ fn level_up_intent_raises_active_level_through_the_seam() {
 }
 
 /// AC6 — level-up SATURATES at `MAX_LEVELS - 1` and level-down FLOORS at 0, through
-/// the seam.
+/// the queue.
 #[test]
 fn level_cycling_saturates_and_floors() {
     // Up from the top storey stays at the top.
@@ -105,7 +105,7 @@ fn level_cycling_saturates_and_floors() {
     }
 }
 
-/// AC9 — a `SelectionClear` intent through the seam clears `SelectedShooter`.
+/// AC9 — a `SelectionClear` intent through the queue clears `SelectedShooter`.
 #[test]
 fn selection_clear_intent_clears_through_the_seam() {
     let level = Level::new(0);

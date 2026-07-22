@@ -3,7 +3,7 @@
 //! [`has_los`](gdtf_battle_sim::los::has_los) / [`has_los_peeking`](gdtf_battle_sim::los::has_los_peeking)
 //! consumer.
 //!
-//! Proves the producer half of the GTW-393 wall-peek seam:
+//! Proves the producer half of the GTW-393 wall-peek path:
 //!
 //! 1. **A ganger at a wall corner is AUTOMATICALLY given a peek toward the open edge**,
 //!    and that populated value CAUSES around-corner sight a centred ganger CANNOT get

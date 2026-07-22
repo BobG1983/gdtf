@@ -1,4 +1,4 @@
-//! Integration tests for the GTW-564 hot-RON seam's REDRIVE half — the live
+//! Integration tests for the GTW-564 hot-RON machinery's REDRIVE half — the live
 //! `Modified` re-derive, its four encoded traps, and its reload log line.
 //!
 //! Each app registers the WHOLE chain through the real
@@ -53,7 +53,7 @@ const CHAIN_PATH: &str = "test/hot_ron_fixture.ron";
 /// `AssetPlugin` (a real `AssetServer`, the `Assets` collection, and the
 /// `AssetEvent` message buffer), then the one
 /// [`init_hot_ron_resource`](gdtf_assets::HotRonAppExt::init_hot_ron_resource)
-/// call — kick-off, resolve, and redrive all registered by the seam itself.
+/// call — kick-off, resolve, and redrive all registered by the machinery itself.
 fn app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)

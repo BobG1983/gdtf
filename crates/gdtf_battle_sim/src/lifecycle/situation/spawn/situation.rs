@@ -164,7 +164,7 @@ pub struct Situation {
     /// [`FieldRegistry`](crate::effects::fields::FieldRegistry) at
     /// [`setup_battle`](crate::situation::setup_battle) (e.g. a toxic-waste pool as initial
     /// terrain). `#[serde(default)]` gives an empty list, so every EXISTING situation `.ron`
-    /// deserializes byte-identical (a battlefield with no hazards omits the field entirely).
+    /// deserializes unchanged (a battlefield with no hazards omits the field entirely).
     pub fields:         Vec<FieldSpawn>,
 }
 

@@ -47,7 +47,7 @@ fn melees(app: &App) -> Vec<MeleeRequested> {
 
 // ---------------------------------------------------------------------------------
 // GTW-507 — the MELEE button: detection (alive + 8-adjacent + LOS enemy reveals it) and
-// press → MeleeRequested through the REAL seam.
+// press → MeleeRequested through the REAL input queue.
 // ---------------------------------------------------------------------------------
 
 /// MELEE detection: a selected actor with an 8-adjacent, ALIVE, in-LOS ENEMY offers Melee — the

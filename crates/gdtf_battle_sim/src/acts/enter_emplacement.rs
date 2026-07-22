@@ -4,7 +4,7 @@
 //! ONE weapon emplacement by RE-GATING in the sim and REUSING the GTW-543 toggle mechanism.
 //!
 //! These MIRROR the open-door dispatch ([`dispatch_open_door`](super::open_door::dispatch_open_door),
-//! GTW-315) exactly — the deliberate act's input-seam offer is advisory, so the sim RE-GATES three
+//! GTW-315) exactly — the deliberate act's input offer is advisory, so the sim RE-GATES three
 //! facts before acting, spends a TU leaf, and writes a
 //! [`SetEmplacement`](crate::terrain::emplacement::SetEmplacement) that the GTW-543
 //! [`apply_emplacement_toggle`](crate::terrain::emplacement::apply_emplacement_toggle) mechanism

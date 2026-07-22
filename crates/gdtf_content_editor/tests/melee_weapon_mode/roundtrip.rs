@@ -8,7 +8,7 @@
 //!
 //! Also pins the GTW-671 lifecycle riders: the editor reaches `Editing` with the
 //! `MeleeWeaponRegistry` gate resource present and the state-scoped `MeleeWeaponDraft`
-//! seeded (salvage / fallback behavior itself is the seam's parameterized family
+//! seeded (salvage / fallback behavior itself is the shared registration's parameterized family
 //! contract — `register_content_family::<MeleeWeaponsFamily>` inherits it, no
 //! per-family re-pin here). RE-VALIDATION on a melee save is FREE and already pinned:
 //! the `MeleeWeaponRegistry` is in the editor's re-arm watch set (`validate/rearm.rs`
@@ -112,7 +112,7 @@ fn saved_melee_weapons_round_trip_through_the_real_melee_loader() {
 
     let world = app.world();
     // The state-scoped MELEE draft seeded on entering Editing (bevy-traps #1 via the
-    // GTW-575 seam) — the A2 state-scoped pin's in-state half; the full
+    // GTW-575 shared registration) — the A2 state-scoped pin's in-state half; the full
     // absent→seeded→removed lifecycle rides the `state_scoped_resources` suite.
     assert!(
         world.get_resource::<MeleeWeaponDraft>().is_some(),

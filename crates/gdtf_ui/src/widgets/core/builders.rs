@@ -1,4 +1,4 @@
-//! The reusable theme-seam spawn helpers: [`spawn_panel`] and [`spawn_button`].
+//! The reusable themed-widget spawn helpers: [`spawn_panel`] and [`spawn_button`].
 //!
 //! The helpers build a widget's *tree* (its [`Node`](bevy::ui::Node) layout, its
 //! [`Button`](bevy::ui::widget::Button) interaction plumbing, its text child) and attach
@@ -34,7 +34,7 @@ use crate::{
     themed::{ThemeRole, Themed},
 };
 
-/// Spawns a theme-seam panel box and returns its [`Entity`].
+/// Spawns a themed panel box and returns its [`Entity`].
 ///
 /// Builds a [`Node`](bevy::ui::Node) with a
 /// [`BackgroundColor`](bevy::ui::BackgroundColor),
@@ -67,7 +67,7 @@ pub fn spawn_panel(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
         .id()
 }
 
-/// Spawns a theme-seam button and returns its [`Entity`].
+/// Spawns a themed button and returns its [`Entity`].
 ///
 /// Builds a [`Button`](bevy::ui::widget::Button) tree — a node with
 /// [`Interaction`](bevy::ui::Interaction) (required by `Button`),
@@ -86,7 +86,7 @@ pub fn spawn_panel(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
 /// the button (a focus/action marker, a [`DisabledButton`](super::DisabledButton),
 /// etc.). All base colors come from the button sub-theme, not literals, and are
 /// re-derived by [`apply_theme`](crate::themed::apply_theme) every run (the Themed
-/// seam).
+/// paint pass).
 pub fn spawn_button(
     commands: &mut Commands,
     theme: &GdtfTheme,

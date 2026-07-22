@@ -5,7 +5,7 @@
 //! `gdtf_app::test_support::seed_load_gate` (the production
 //! `seed_load_fallbacks` plus its documented delta), so adding a gate-blocking
 //! bespoke resource touches the seed source only — never a test file. The
-//! seam-family registries are NOT seeded here at all: each is seeded at APP
+//! content-family registries are NOT seeded here at all: each is seeded at APP
 //! BUILD by its own `register_content_family` line (the GTW-629
 //! headless-fallback rider), so a new content family touches nothing. A
 //! tier-(a) negative test withholds ONE resource by seeding everything and

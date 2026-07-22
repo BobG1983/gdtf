@@ -43,8 +43,8 @@ impl WeaponBraceBonus {
 }
 
 /// **Stability** — fits the weapon a graduated per-item [`WeaponBraceBonus`] of §1a
-/// stability-score points (the NEW clean brace seam GTW-549 introduces, `::none()`-identity —
-/// NOT the ripped-out sight-stability seam). GRADUATED, distinct from the boolean
+/// stability-score points (the NEW clean brace bonus GTW-549 introduces, `::none()`-identity —
+/// NOT the ripped-out sight-stability coupling). GRADUATED, distinct from the boolean
 /// [`ApplyBrace`](super::ApplyBrace) tag.
 ///
 /// Inserts the bonus as a `Component` (the §1a stability composer folds it as an additive
@@ -75,7 +75,7 @@ mod tests {
     use super::{ApplyAttachmentEffect, ApplyStability, WeaponBraceBonus};
 
     /// `ApplyStability` INSERTS a positive graduated `WeaponBraceBonus` — the NEW clean brace
-    /// seam. Asserts the component lands with a positive magnitude (not a shipped value).
+    /// bonus. Asserts the component lands with a positive magnitude (not a shipped value).
     #[test]
     fn stability_inserts_weapon_brace_bonus() {
         let mut world = World::new();

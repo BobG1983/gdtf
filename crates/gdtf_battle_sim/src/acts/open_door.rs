@@ -2,7 +2,7 @@
 //! buffered [`OpenDoorRequested`] and, per message, opens ONE adjacent CLOSED door by
 //! RE-GATING in the sim and REUSING the GTW-503 open mechanism.
 //!
-//! The deliberate OPEN-DOOR act (the player-only input-seam contextual Open-Door press, F4) re-gates
+//! The deliberate OPEN-DOOR act (the player-only contextual Open-Door press, F4) re-gates
 //! three facts — the actor exists + can afford the [`OpenDoorTu`](crate::tuning::OpenDoorTu)
 //! leaf, and the `door` entity carries an [`OpenState`] that is CLOSED and is 8-adjacent to the
 //! actor — then, on pass, spends the [`OpenDoorTu`](crate::tuning::OpenDoorTu) off the actor's TU

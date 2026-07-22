@@ -105,7 +105,7 @@ mod tests {
     };
 
     /// Whether an occupant wearing ONE piece of `worn_type` is exempted by a field whose
-    /// immune set is `immune`. Bare-`World` + `SystemState` is the sanctioned pure-sim
+    /// immune set is `immune`. Bare-`World` + `SystemState` is the pure-sim
     /// unit-test idiom (`bevy-traps.md` #7 carve-out (b)); the worn piece relates back
     /// via [`WornBy`], populating the ganger's [`Wears`] collection.
     fn exempts(worn_type: ArmorType, immune: &[ArmorType]) -> bool {

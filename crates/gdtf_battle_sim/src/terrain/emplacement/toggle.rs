@@ -36,7 +36,7 @@
 //! [`MountedWeaponEntity`] component on the emplacement. The
 //! ranged-firing read PREFERS that [`MountedWeapon`]-marked entity
 //! (`Wields::mounted_weapon` before `Wields::ranged_weapon`), so the manning ganger fires the
-//! mount, and the [`EmplacementStability`](crate::stability::EmplacementStability) seam steadies
+//! mount, and the [`EmplacementStability`](crate::stability::EmplacementStability) mechanism steadies
 //! its deliberately-wide cone. On VACATE the toggle DESPAWNS that recorded mounted-weapon entity
 //! (the [`WieldedBy`] edge goes with it), reverting the occupant to its
 //! own carried gun. A missing [`WeaponRegistry`] / an unresolved
@@ -259,7 +259,7 @@ pub fn apply_emplacement_toggle(
 /// [`apply_pending_attachments`](crate::equipment::attachments::apply_pending_attachments) system applies via
 /// the [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon) extension — the
 /// SAME path the `setup_battle` spawn uses. GTW-554: the resolution is slot-gated
-/// ([`resolve_pending_attachments`] — the ONE shared seam): an item only fits a slot the
+/// ([`resolve_pending_attachments`] — the ONE shared resolver): an item only fits a slot the
 /// mounted weapon's spec declares, with free capacity.
 fn spawn_mounted_weapon(
     commands: &mut Commands,
@@ -272,7 +272,7 @@ fn spawn_mounted_weapon(
     let spec = weapons?.spec(key)?;
     // GTW-549: resolve the mounted weapon's authored attachment keys into a PendingAttachments
     // marker (empty when it authors none / the registry is absent — the fail-safe). GTW-554:
-    // through the shared SLOT-GATED seam (`resolve_pending_attachments`), so a mount rejects a
+    // through the shared SLOT-GATED resolver (`resolve_pending_attachments`), so a mount rejects a
     // wrong-slot / over-capacity item exactly like the setup_battle spawn. The
     // WeaponSpawnSiblings (dot / on_death) are carried into the scene by setup_battle only; a
     // directly-spawned mount composes just the bundle + relationship + pending marker.

@@ -65,7 +65,7 @@ pub(crate) mod weapon_panel;
 pub(in crate::states::running::game::battlescape) use weapon_panel::GameBattleScapeWeaponPanelScenePlugin;
 
 // The GTW-458 SELECTION-CYCLE cluster (bottom-bar far RIGHT): the vertical Prev/Next button
-// pair that cycles the SelectedShooter through the player gang in (z,y,x) order (the SAME seam
+// pair that cycles the SelectedShooter through the player gang in (z,y,x) order (the SAME intents
 // Tab / Shift+Tab push — ADR-0001). It sits INSIDE the bottom bar's padding (does not change the
 // bar height); its root + button markers climb so the AC tests can assert its presence + width.
 pub(crate) mod select_cycle;

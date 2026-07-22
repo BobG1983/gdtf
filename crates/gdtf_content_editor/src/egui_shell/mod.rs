@@ -22,7 +22,7 @@
 //! [`damage_edit`](self::damage_edit) group + [`slots_edit`](self::slots_edit) lists
 //! both weapon forms draw; the per-mode
 //! RIGHT-form + CENTRAL-panel dispatches live in [`mode_panels`](self::mode_panels)
-//! (the GTW-670 band seam); the pre-panel
+//! (the GTW-670 band boundary); the pre-panel
 //! per-mode autoload/model-sync runners live in [`autoload`](self::autoload). The shell
 //! registers ONE UI system in the
 //! [`EguiPrimaryContextPass`](bevy_egui::EguiPrimaryContextPass) schedule (NOT `Update` —
@@ -55,7 +55,7 @@ mod armor_form_ui;
 // (the gang / armor / sprite form split: model module + `*_form_ui` sibling).
 mod attachment_form_ui;
 // The shell's PRE-PANEL per-mode model-sync / autoload runners, split out of
-// `shell.rs` at the GTW-479-flagged seam (GTW-654 — module-layout bands).
+// `shell.rs` at the GTW-479-flagged split point (GTW-654 — module-layout bands).
 mod autoload;
 // The shell's mode-agnostic top/bottom-bar chrome (mode tabs + global theme combo +
 // status line), split out of `shell.rs` (GTW-636 — module-layout bands).
@@ -80,7 +80,7 @@ mod injury_form_ui;
 // sibling).
 mod melee_weapon_form_ui;
 // GTW-670: the per-mode RIGHT-form + CENTRAL-panel dispatches (one arm per Workbench
-// mode), split out of `shell.rs` at the band seam.
+// mode), split out of `shell.rs` at the band boundary.
 mod mode_panels;
 // The shell system's per-mode model-borrow SystemParam bundles (PrefabParams /
 // GangParams), split out of `shell.rs` (GTW-636 — module-layout bands).
@@ -99,7 +99,7 @@ mod sprite_form_ui;
 mod sprite_thumb;
 mod terrain_form_ui;
 // The shell's PRE-PANEL egui texture-id resolution, split out of `shell.rs` at the
-// GTW-664 seam (module-layout bands): it changes when a mode's TEXTURE surface does.
+// GTW-664 boundary (module-layout bands): it changes when a mode's TEXTURE surface does.
 mod textures;
 mod theme_combo;
 mod theme_form_ui;

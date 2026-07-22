@@ -61,7 +61,7 @@ pub(super) fn wire_reaction_suppression(app: &mut App) {
     // marks each OPPOSING ganger within the tuning SuppressionRadius of the shot's target
     // as Suppressed (anchored to the shooter's origin), emitting a SuppressionApplied on a
     // fresh application. Ordered `.after(dispatch_fire)` so ALL of this frame's
-    // FireRequested are visible before it reads (bevy-traps.md #3): the input seam, the
+    // FireRequested are visible before it reads (bevy-traps.md #3): player input, the
     // enemy AI (`.before(dispatch_fire)`), and the reaction trigger
     // (`.before(dispatch_fire)`) all write FireRequested, and — because each MessageReader
     // has its OWN cursor and messages persist the frame — dispatch_fire draining them does

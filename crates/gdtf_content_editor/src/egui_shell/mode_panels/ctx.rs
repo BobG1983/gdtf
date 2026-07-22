@@ -31,7 +31,7 @@ use crate::{
 
 /// The per-mode model borrows the RIGHT-form + CENTRAL-panel dispatches thread —
 /// borrowed from the shell's params for the duration of the two panel calls (GTW-670;
-/// the module-layout seam continuation: the dispatch roster grows one arm per Workbench
+/// continuing the module-layout split: the dispatch roster grows one arm per Workbench
 /// mode, so the whole dispatch lives HERE and the shell only changes when the PANEL
 /// LAYOUT does).
 pub(in crate::egui_shell) struct ModePanelsCtx<

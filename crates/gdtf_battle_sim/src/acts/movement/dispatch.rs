@@ -120,7 +120,7 @@ pub fn dispatch_move(
     // GTW-537: the mover's suppression state (if any). A DISJOINT read-only query (the actor
     // query never reads `Suppressed`), used to gate a PINNED mover's destination BEFORE the
     // walk starts. An UNSUPPRESSED mover has no `Suppressed` component, so `get` errs and the
-    // gate is skipped — the identity path, byte-identical to the pre-GTW-537 dispatch.
+    // gate is skipped — the identity path, identical to the pre-GTW-537 dispatch.
     suppressed: Query<&'static Suppressed>,
     grid: Res<OccupancyGrid>,
     links: Res<VerticalLinkGraph>,
@@ -133,7 +133,7 @@ pub fn dispatch_move(
     // GTW-70: the faction-aware move-gate inputs. The player faction (to know if the mover
     // IS the player) and the AI's omniscient move fog, both battle-lifetime — taken as
     // `Option<Res<_>>` so a harness without them (no live battle) falls back to the player
-    // fog, keeping player movement byte-identical to the pre-GTW-70 single-fog gate
+    // fog, keeping player movement identical to the pre-GTW-70 single-fog gate
     // (`bevy-traps.md` #1).
     player: Option<Res<PlayerFaction>>,
     omniscient: Option<Res<OmniscientFog>>,
@@ -163,7 +163,7 @@ pub fn dispatch_move(
         let start: CellLevel = **position;
 
         // GTW-70: select the planning fog by MOVER FACTION through the shared `move_fog`
-        // selector — the player moves on the squad fog (byte-identical to GTW-353), a
+        // selector — the player moves on the squad fog (unchanged from GTW-353), a
         // non-player mover (the AI) on the omniscient fog so it routes toward the player's
         // true cell without being gated by the *player's* fog (the reposition-soft-lock
         // fix). The enemy AI pre-checks against the IDENTICAL `move_fog` selection, so
@@ -208,7 +208,7 @@ pub fn dispatch_move(
         // SuppressorCell (the sim's Chebyshev metric) AND ends behind cover relative to the
         // suppressor. An illegal destination is a HARD reject — no clamp, no partial step. An
         // UNSUPPRESSED mover has no `Suppressed` component (the `get` errs), so this gate is
-        // skipped entirely: the identity path (byte-identical to the pre-GTW-537 dispatch). The
+        // skipped entirely: the identity path (identical to the pre-GTW-537 dispatch). The
         // check is against `request.dest` (the CHOSEN destination), applied BEFORE the walk is
         // started, so a rejected suppressed mover never takes a step.
         if let Ok(suppressed) = suppressed.get(request.actor) {

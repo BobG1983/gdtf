@@ -72,7 +72,7 @@ impl WeightedInjuryEntry {
 ///
 /// Derives [`Serialize`] too (GTW-654): the content editor's INJURY authoring mode
 /// WRITES an edited weighting table back to a `.weighting.ron` through the shared
-/// RON save seam (the [`ArmorSpec`](crate::armor::ArmorSpec) / `GangRoster` write
+/// RON save path (the [`ArmorSpec`](crate::armor::ArmorSpec) / `GangRoster` write
 /// precedent), so the authoring struct serialises to exactly the shape it
 /// deserialises from.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TypePath)]

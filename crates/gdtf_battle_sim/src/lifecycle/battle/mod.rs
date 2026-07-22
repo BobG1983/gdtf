@@ -3,7 +3,7 @@
 //! [`App`](bevy::prelude::App), plus the three message-driven lifecycle types the app
 //! drives it with (E10.5 / GTW-207).
 //!
-//! This module is the model's OWN integration seam
+//! This module is where the model integrates with the app
 //! (`docs/decisions/0001-rust-bevy-rewrite.md`: the model is the authoritative
 //! render-free sim, consumed ONE-WAY by the app). Because the dependency edge is
 //! `gdtf_app -> gdtf_battle_sim` (E10.1), the sim CANNOT and MUST NOT name any

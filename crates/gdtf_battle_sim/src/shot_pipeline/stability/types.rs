@@ -20,7 +20,7 @@ use crate::{
 /// NEXT additive stability term is ONE new field here (with its zero-identity
 /// [`Default`]) instead of a ~50-call-site positional sweep. Every field's
 /// [`default`](Self::default) is its **zero identity** — the value under which the
-/// score is byte-identical to a shot with no such term — so call sites spell only
+/// score is identical to a shot with no such term — so call sites spell only
 /// the terms that are actually engaged, via struct-update:
 ///
 /// ```ignore
@@ -49,7 +49,7 @@ pub struct StabilityTerms {
 
 impl Default for StabilityTerms {
     /// Every term at its **zero identity** — the all-identity bundle under which the
-    /// §1a score is byte-identical to a shot that predates every seam (pinned by the
+    /// §1a score is identical to a shot that predates every added term (pinned by the
     /// `stability` tests' zero-identity-default case).
     fn default() -> Self {
         Self {
@@ -63,10 +63,10 @@ impl Default for StabilityTerms {
 
 /// The **emplacement stability contribution** — the points a fixed emplacement
 /// (bipod / tripod / mounted position) adds to the score (resolution.md §1a:
-/// "+ an emplacement seam (no entities yet)").
+/// "+ an emplacement term (no entities yet)").
 ///
 /// The emplacement system is unbuilt, so callers pass [`EmplacementStability::none`]
-/// (the zero/identity term) today; the seam exists so the
+/// (the zero/identity term) today; the term exists so the
 /// [`crate::stability::stability`] signature is complete and the term lands
 /// without a later signature change. An INPUT to [`crate::stability::stability`],
 /// distinct from the other three contributions. Private inner + derived [`Deref`].
@@ -95,11 +95,11 @@ impl EmplacementStability {
 ///
 /// A pinned shooter shoots worse: the tunable suppression penalty is a **negative**
 /// additive contribution lowering the stability score, so the cone-mult curve reads
-/// a *higher* [`ConeMult`] (a **wider** dispersion cone). The seam mirrors
+/// a *higher* [`ConeMult`] (a **wider** dispersion cone). The term mirrors
 /// [`EmplacementStability`] EXACTLY — a fourth additive term summed by
 /// [`crate::stability::stability`] with an [`SuppressionStability::none`] zero/identity
 /// constructor callers pass when the shooter is un-suppressed, so an un-suppressed
-/// shooter's score is **byte-identical** to before the seam existed.
+/// shooter's score is **identical** to before the term existed.
 ///
 /// The magnitude is the tunable
 /// [`SuppressionStabilityPenalty`](crate::tuning::SuppressionStabilityPenalty) leaf,
@@ -123,7 +123,7 @@ impl SuppressionStability {
 
     /// The identity suppression contribution — **zero** points, the value every
     /// un-suppressed shooter passes (so the additive term vanishes and the score is
-    /// byte-identical to a run without the seam).
+    /// identical to a run without the term).
     #[must_use]
     pub const fn none() -> Self {
         Self(0.0)

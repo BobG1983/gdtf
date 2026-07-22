@@ -51,7 +51,7 @@ fn dangling_theme_terrain_refs_surface_in_the_editor_at_authoring_time() {
     );
 }
 
-/// The LIVE authoring half: hot-editing the loaded theme (the seam redrive
+/// The LIVE authoring half: hot-editing the loaded theme (the hot-reload redrive
 /// path) re-arms the pass — the report is RESET, re-checked against the edited
 /// content, and re-published. The superseded `default_floor` finding is gone,
 /// the edited (still-dangling) one is present, and the untouched palette
@@ -87,7 +87,7 @@ fn theme_hot_edit_rearms_validation_and_republishes_current_findings() {
         app.world()
             .get_resource::<ContentFolderHandle<ThemeDefsFamily>>()
             .is_some(),
-        "the seam's persistent theme-defs ContentFolderHandle must survive past Load (GTW-533)",
+        "the loader's persistent theme-defs ContentFolderHandle must survive past Load (GTW-533)",
     );
     app.world_mut()
         .write_message(AssetEvent::Modified { id: handle.id() });

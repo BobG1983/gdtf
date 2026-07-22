@@ -1,5 +1,5 @@
 //! The [`InjuryInflicted`] message + the [`apply_injury`] boundary system — the GTW-438
-//! seam that turns a frozen [`GangerVerdict::injury`](crate::resolve_and_apply::GangerVerdict::injury)
+//! boundary that turns a frozen [`GangerVerdict::injury`](crate::resolve_and_apply::GangerVerdict::injury)
 //! roll into a persistent injury on the wounded ganger.
 //!
 //! The roll itself is PURE + in-fold ([`roll_injury`](crate::injuries::roll_injury), frozen

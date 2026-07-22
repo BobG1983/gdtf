@@ -1,5 +1,5 @@
 //! GTW-377 C3 / C6b — the CLICK→FIRE→DEPLETE bridge: a left-click on a shootable cover cell
-//! fires the REAL `FireRequested` toward that cell through the production input seam, and the
+//! fires the REAL `FireRequested` toward that cell through the production input queue, and the
 //! WIRED sim fire dispatch + occupancy maintenance resolve it — DEPLETING the cover until the
 //! cell is freed.
 //!
@@ -86,7 +86,7 @@ fn bridge_app() -> App {
     // (`insert_resource` replaces).
     app.insert_resource(PlayerFaction::new(PLAYER_FACTION));
     app.insert_resource(ButtonInput::<MouseButton>::default());
-    // The presenter-owned highlight seam the input populate gates on (no renderer plugin here).
+    // The presenter-owned highlight resource the input populate gates on (no renderer plugin here).
     app.insert_resource(FireTargetHighlight::cleared());
     app
 }

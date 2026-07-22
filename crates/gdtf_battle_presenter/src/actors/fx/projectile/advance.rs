@@ -22,7 +22,7 @@ use super::{
 /// sprite never stretched/scaled. The instant the bolt has flown the whole `from → to` distance
 /// ([`ProjectileTravel::advance`] returns `true`), it `Commands::entity(e).despawn`s the
 /// projectile AND `Commands::spawn`s a [`PendingImpact`] at the arrival point carrying the shot's
-/// damage type — the seam FX-B's [`animate_impact`](super::super::impact::animate_impact) reads.
+/// damage type — the marker FX-B's [`animate_impact`](super::super::impact::animate_impact) reads.
 /// It
 /// touches ONLY [`ShotProjectile`]-marked entities; it needs no `BattleInProgress` gate (inert
 /// with no projectiles — the query is empty — so a projectile spawned during a battle still
@@ -60,7 +60,7 @@ pub fn advance_projectiles(
             // FCT pops + their anchor (GTW-327) so the numbers appear with THIS bolt's impact,
             // then despawn the bolt (its pops are MOVED into the impact, not duplicated).
             //
-            // GTW-322 — the seam entity carries ONLY `PendingImpact`, which owns the pop `Vec`
+            // GTW-322 — the handoff entity carries ONLY `PendingImpact`, which owns the pop `Vec`
             // (no `Default`), so it is spawned as a single-`bsn!` scene via the
             // `template(move |_| Ok(value.clone()))` closure escape hatch (the bare entity the
             // old `commands.spawn(PendingImpact { .. })` produced — same component, deferred to

@@ -15,7 +15,7 @@ use super::{actors::*, harness::*};
 // ---------------------------------------------------------------------------------
 // GTW-546 — the THROW button: detection (a selection wielding a TrajectoryStyle::Arc
 // weapon + a hovered target cell reveals it, a Straight-weapon / no-hover selection does
-// NOT) and press → ThrowGrenadeRequested for the hovered cell through the REAL seam.
+// NOT) and press → ThrowGrenadeRequested for the hovered cell through the REAL input queue.
 // ---------------------------------------------------------------------------------
 
 /// Spawns the THROW actor — a ganger carrying the components the throw path reads (its

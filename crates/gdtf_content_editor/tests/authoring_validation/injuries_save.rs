@@ -5,7 +5,7 @@
 //! editor-registered `check_injury_weighting_refs` (the GTW-630/651 edge set,
 //! extended by GTW-654).
 //!
-//! THE SEAM, noted per the convention: the file-watcher is NOT active in this
+//! THE RELOAD TRIGGER, noted per the convention: the file-watcher is NOT active in this
 //! headless harness (`file_watcher` is a binary-propagated feature, never in test
 //! builds), so the ONE watcher-owned step — "a changed file on disk triggers its
 //! reload" — is driven directly via [`AssetServer::reload`]; everything else is
@@ -41,7 +41,7 @@ const SAVED_DANGLING_INJURY: &str = "saved_missing_injury";
 const RESAVED_DANGLING_INJURY: &str = "resaved_missing_injury";
 
 /// Push one Minor row naming `key` onto a fresh Head-context draft through the
-/// REAL model mutators (the model seam the weighting panel edits through).
+/// REAL model mutators (the model API the weighting panel edits through).
 fn weighting_draft_with_row(key: &str) -> WeightingDraft {
     let mut draft = WeightingDraft::default();
     draft.load_category(InjuryCategory::Head, &InjuryTables::default());

@@ -29,7 +29,7 @@ crate::support_item! {
 crate::support_item! {
     /// Marks the **Next** selection-cycle button (GTW-458) — a press pushes
     /// [`ActIntent::SelectNext`](gdtf_battle_input::ActIntent::SelectNext) onto the shared
-    /// act-intent seam (the SAME intent the `Tab` key pushes — ADR-0001, keys + buttons share
+    /// act-intent queue (the SAME intent the `Tab` key pushes — ADR-0001, keys + buttons share
     /// one dispatch). Cycles the [`SelectedShooter`](gdtf_battle_input::SelectedShooter) to the
     /// next player ganger in `(z, y, x)` order, wrapping.
     ///
@@ -41,7 +41,7 @@ crate::support_item! {
 crate::support_item! {
     /// Marks the **Prev** selection-cycle button (GTW-458) — a press pushes
     /// [`ActIntent::SelectPrev`](gdtf_battle_input::ActIntent::SelectPrev) onto the shared
-    /// act-intent seam (the SAME intent `Shift+Tab` pushes — ADR-0001). Cycles the
+    /// act-intent queue (the SAME intent `Shift+Tab` pushes — ADR-0001). Cycles the
     /// [`SelectedShooter`](gdtf_battle_input::SelectedShooter) to the previous player ganger in
     /// `(z, y, x)` order, wrapping.
     ///

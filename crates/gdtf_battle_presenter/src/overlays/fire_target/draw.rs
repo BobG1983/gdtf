@@ -1,18 +1,18 @@
-//! The fire-target highlight (GTW-371 · C2): the presenter-owned read-seam
+//! The fire-target highlight (GTW-371 · C2): the presenter-owned read-side
 //! [`FireTargetHighlight`] resource (the hovered fireable-enemy cell + the fire TU cost), its
 //! draw system ([`draw_fire_target`] — the RED under-actor tile + the OPAQUE TU-cost label),
 //! and the single pooled tile / label markers.
 //!
-//! # The C2 read-seam (input → presenter → sim)
+//! # The C2 read path (input → presenter → sim)
 //!
-//! The PRESENTER owns the read-seam ([`FireTargetHighlight`], the hovered fireable-enemy
+//! The PRESENTER owns the read-side resource ([`FireTargetHighlight`], the hovered fireable-enemy
 //! [`CellLevel`] + the [`Tu`] fire cost) plus this draw system; the INPUT crate (which alone
 //! may read `SelectedShooter` + `SelectedFireMode` + the hovered cell) decides the fireable
 //! verdict (mirroring `decide_left_click`'s FIRE rung), computes the cost via
 //! [`mode_tu_cost`](gdtf_battle_sim::magazine::mode_tu_cost), and POPULATES this resource (clearing it
 //! off any non-fireable hover). Selection / fire-mode / hover NEVER enter the sim, and the
 //! dependency direction stays `input → presenter → sim` — the SAME shape as the
-//! [`PathPreview`](crate::PathPreview) seam.
+//! [`PathPreview`](crate::PathPreview) resource.
 //!
 //! # Under the actor (the contract's "rendered UNDER the enemy sprite")
 //!
@@ -41,7 +41,7 @@ use crate::{
     overlays::pool::draw_pool,
 };
 
-/// The presenter-owned fire-target highlight read-seam — the hovered fireable-enemy cell the
+/// The presenter-owned fire-target highlight read-side resource — the hovered fireable-enemy cell the
 /// SELECTED shooter could fire on, plus the fire TU cost (C2).
 ///
 /// A named domain value (no-bare-types: the fire-target affordance is a domain value), holding
@@ -181,7 +181,7 @@ const COST_LABEL_LIFT_PX: f32 = CELL_PX * 0.55;
 /// highlight — the SINGLE RED tile UNDER the hovered enemy + the SINGLE OPAQUE TU-cost label
 /// (C2).
 ///
-/// Reads the presenter-owned [`FireTargetHighlight`] read-seam (populated by the input crate)
+/// Reads the presenter-owned [`FireTargetHighlight`] resource (populated by the input crate)
 /// and the [`ActiveLevel`], then maintains ONE pooled [`FireTargetTile`] sprite + ONE pooled
 /// [`FireTargetLabel`] cost label:
 ///

@@ -21,7 +21,7 @@
 //!
 //! - [`plugin`] — the [`GdtfBattleInputPlugin`] wiring (the `add_systems` ordering) + its marker.
 //! - [`act_bus`] — the act-intent data bus and the key/binding surfaces that feed it:
-//!   [`sets`], [`intent`], [`contextual`] (the GTW-571 generic contextual-act seam),
+//!   [`sets`], [`intent`], [`contextual`] (the GTW-571 generic contextual-act registration machinery),
 //!   [`keyboard`], [`keybinds`], [`cycle`].
 //! - [`mod@pointer`] — the cursor->cell->selection control surface and the fire decision pair:
 //!   [`picking`], [`selection`], [`gamepad`], [`fire_mode`], [`fire_surface`].
@@ -44,7 +44,7 @@ mod plugin;
 // `crate::selection::...`, etc. as sub-module paths.  These re-exports preserve every
 // `crate::<child>::...` reference without touching the moved source files.
 
-/// Re-export of [`act_bus::contextual`] — the GTW-571 generic contextual-act seam —
+/// Re-export of [`act_bus::contextual`] — the GTW-571 generic contextual-act registration machinery —
 /// for `crate::contextual::...` paths.
 pub use act_bus::contextual;
 /// Re-export of [`act_bus::cycle`] for intra-crate `crate::cycle::...` paths.

@@ -46,7 +46,7 @@
 //! predicates operate on component values, the acts mutate component references; no
 //! renderer, no pixel.
 //!
-//! The `dispatch` submodule holds the E10.2 AC5 message-driven seam: the
+//! The `dispatch` submodule holds the E10.2 AC5 message-driven boundary: the
 //! [`dispatch_stabilize_downed`] / [`dispatch_execute_downed`] systems drain each
 //! buffered `*Requested` message and run the landed verb once per message.
 

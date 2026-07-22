@@ -1,6 +1,6 @@
 //! The GTW-582 **per-file folder salvage** — the fail-closed-per-FILE
 //! replacement for the old fail-closed-per-FAMILY `Failed`-folder path (C4),
-//! written ONCE here for the generic seam AND the bespoke resolvers.
+//! written ONCE here for the generic content-family machinery AND the bespoke resolvers.
 //!
 //! # Why a salvage pass exists
 //!
@@ -105,7 +105,7 @@ where
 /// family-unique (every family claims its own spec type), so two folders can
 /// never collide on one salvage resource.
 ///
-/// Inserted by the failing resolve (seam or bespoke) and NEVER removed: after
+/// Inserted by the failing resolve (generic or bespoke) and NEVER removed: after
 /// the salvage settles it keeps the member assets resident (the
 /// [`ContentFolderHandle`](crate::ContentFolderHandle)'s strong-reference role,
 /// which the failed folder load no longer plays) and serves as the redrive's
@@ -191,8 +191,8 @@ where
 /// INDIVIDUAL typed load for each (GTW-582 C4).
 ///
 /// The extension filter keeps a MIXED folder's other-family members (and stray
-/// files) out of this family's salvage — the path-level twin of the seam's
-/// `TypeId` member filter.
+/// files) out of this family's salvage — the path-level twin of the generic
+/// machinery's `TypeId` member filter.
 ///
 /// # Errors
 ///
@@ -284,8 +284,8 @@ where
 
 /// `warn!` each salvaged-around malformed member and record it in the
 /// [`ContentIntegrityReport`] (when the host carries one) — the C4 loud,
-/// non-fatal per-file failure surface, written ONCE for the generic seam AND
-/// the bespoke (non-seam) folder resolvers.
+/// non-fatal per-file failure surface, written ONCE for the generic content-family
+/// machinery AND the bespoke (non-generic) folder resolvers.
 pub fn report_malformed_members(
     report: Option<&mut ContentIntegrityReport>,
     family: &FindingFamily,

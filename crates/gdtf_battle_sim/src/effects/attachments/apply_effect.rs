@@ -27,7 +27,7 @@ pub trait ApplyAttachmentEffect {
     /// Apply this effect to the (already-spawned) `weapon` entity — its whole behaviour.
     ///
     /// Runs inside a deferred [`EntityCommand`](bevy::ecs::system::EntityCommand) with
-    /// exclusive access to the ONE weapon entity (the ticket's sanctioned
+    /// exclusive access to the ONE weapon entity (the ticket's
     /// [`EntityWorldMut`] carve-out). An implementation reads / inserts / rebuilds the
     /// weapon's own components ONLY; it never spawns or touches another entity. When the
     /// target component is absent (a mis-seeded weapon) the effect is a NO-OP rather than a

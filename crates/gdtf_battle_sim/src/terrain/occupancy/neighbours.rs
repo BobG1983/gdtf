@@ -25,7 +25,7 @@
 //! Scope: same-storey planar adjacency + step cost ONLY. Cross-storey hops are
 //! GTW-351; route assembly (search over these edges) is GTW-352.
 //!
-//! ## GTW-396 cost-seam change
+//! ## GTW-396 cost-source change
 //!
 //! The step cost is now read from [`FloorCostGrid::cost`] for the DESTINATION cell
 //! instead of `move_costs.cost(grid.terrain(&neighbour))`. This replaces the coarse

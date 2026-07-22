@@ -1,5 +1,5 @@
 //! The injuries family's GTW-582 C4 **per-file salvage** halves — the salvage
-//! MACHINERY itself is the ONE shared `gdtf_assets` seam; these two fns are
+//! MACHINERY itself lives ONCE in `gdtf_assets`; these two fns are
 //! only the injuries-shaped fold over it (one folder → two asset types → two
 //! resources, settled atomically). Moved host-agnostic from the game's `Load`
 //! resolve in GTW-654 (the GTW-630 `validate` precedent) so the content

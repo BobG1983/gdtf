@@ -1,4 +1,4 @@
-//! Presenter-seam POPULATE registrations: the route path preview, the fire-target highlight,
+//! Presenter-resource POPULATE registrations: the route path preview, the fire-target highlight,
 //! and the debug-only reachable-range overlay.
 
 use bevy::prelude::*;

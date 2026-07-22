@@ -55,7 +55,7 @@ pub fn app_state(app: &App) -> AppState {
 }
 
 /// True once `Load` has RELEASED — the machine reached [`AppState::Intro`] or the
-/// state past it ([`AppState::Running`]). The ONLY sanctioned "did Load release"
+/// state past it ([`AppState::Running`]). The ONLY "did Load release"
 /// probe (GTW-601).
 ///
 /// [`AppState::Intro`] is a TRANSIENT stop: its `FixedUpdate` marker+advance
@@ -78,12 +78,12 @@ pub fn load_released(app: &App) -> bool {
 
 /// The ONE test-side Load-gate seed source (GTW-580): the production
 /// [`seed_load_fallbacks`] plus the [`GangerStatTuning`] delta — together with
-/// the GTW-629 seam rider this covers the WHOLE `transition_to_intro` gate.
+/// the GTW-629 registration-path rider this covers the WHOLE `transition_to_intro` gate.
 ///
 /// Since GTW-629 the production seed carries the BESPOKE loads only (injuries
 /// pair / prefab / situation / tunings / theme); the eight generic content
 /// families are seeded at APP BUILD by their own `register_content_family`
-/// line (the seam's headless-fallback rider), so under a `GdtfTestAppBuilder`
+/// line (the registration path's headless-fallback rider), so under a `GdtfTestAppBuilder`
 /// app the family registries are already present before this system ever runs.
 ///
 /// Every tier-(a) `MinimalPlugins` load test seeds the gate through this system
@@ -208,7 +208,7 @@ pub use crate::states::{
 ///    0.19 the `InputDispatchPlugin` that owns `InputFocus` ships in
 ///    `DefaultPlugins`, not in `UiPlugin`; this `MinimalPlugins` harness never
 ///    gets it — only the focus-nav bridge + `DirectionalNavigationPlugin`.)
-/// 6. [`UiPlugin`], the UI registration seam — added here to keep this headless
+/// 6. [`UiPlugin`], the UI registration — added here to keep this headless
 ///    path a faithful mirror of [`crate::GdtfApp`], which also adds it. A
 ///    harness test can then assert `is_plugin_added::<UiPlugin>()` and prove the
 ///    real registration path wires the UI, not merely that `gdtf_ui` compiles.
@@ -244,9 +244,9 @@ pub fn register_headless(app: &mut App) {
 /// 1. [`AppState`] as the top-level state ([`init_state`](AppExtStates::init_state)).
 /// 2. [`ScenesPlugin`], whose scene plugins register their own sub-states in
 ///    parent-before-child order (idempotent in Bevy 0.18).
-/// 3. [`UiPlugin`], the UI registration seam.
+/// 3. [`UiPlugin`], the UI registration.
 ///
-/// This is the seam the GTW-134 real-asset harness builds on to drive the `Load`
+/// This is the function the GTW-134 real-asset harness builds on to drive the `Load`
 /// scene with a real `AssetServer` (`bevy-traps.md` rule 1: the kick-off needs
 /// an `AssetServer`, which `MinimalPlugins` lacks).
 pub fn register_scenes_with_default_plugins(app: &mut App) {

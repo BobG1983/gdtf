@@ -63,13 +63,13 @@ fn aim_effect_raises_accuracy() {
 
 #[test]
 fn stability_effect_inserts_a_weapon_brace_bonus() {
-    // Stability maps to the brace seam — a graduated WeaponBraceBonus component.
+    // Stability maps to a graduated WeaponBraceBonus component (the brace bonus).
     let (app, weapon) = spawn_lone_player_weapon(vec![AttachmentEffect::Stability(
         WeaponBraceBonus::new(12.0),
     )]);
     assert!(
         app.world().get::<WeaponBraceBonus>(weapon).is_some(),
-        "a Stability attachment inserts a WeaponBraceBonus (the §1a brace seam) on the weapon",
+        "a Stability attachment inserts a WeaponBraceBonus (the §1a brace bonus) on the weapon",
     );
     // The un-braced baseline carries NO such component.
     let (base_app, base_weapon) = spawn_lone_player_weapon(Vec::new());

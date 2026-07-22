@@ -14,7 +14,7 @@
 //! than a parse error. The four resolve into one presenter-owned [`FxTuning`]
 //! resource the projectile + impact systems READ (never a `const`), so an edit to
 //! the `.ron` re-derives [`FxTuning`] live through the GTW-564 generic hot-RON
-//! seam ([`register_fx_tuning_hot_ron`]) — mirroring the UI theme hot-reload.
+//! registration helper ([`register_fx_tuning_hot_ron`]) — mirroring the UI theme hot-reload.
 
 use bevy::prelude::*;
 use gdtf_assets::HotRonAppExt;
@@ -261,7 +261,7 @@ pub struct FxTuning {
 const FX_TUNING_RON_PATH: &str = "core_tuning/fx.tuning.ron";
 
 /// Registers the [`FxTuning`] hot-RON chain — ONE ext call onto the GTW-564
-/// generic seam (kick-off / gated resolve / live redrive, keyed by the generic
+/// generic registration helper (kick-off / gated resolve / live redrive, keyed by the generic
 /// [`HotRonHandle`](gdtf_assets::HotRonHandle)`<FxTuning>`), replacing the
 /// per-site handle newtype + load/resolve/redrive triple. Self-gates on the
 /// [`AssetServer`](bevy::asset::AssetServer) (`bevy-traps.md` #1), so a

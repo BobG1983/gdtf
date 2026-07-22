@@ -1,5 +1,5 @@
 //! The resolved [`CombatLogTuning`] table and its hot-RON registration onto the GTW-564
-//! generic seam. Split out of the monolithic `tuning.rs` (GTW-583); the tuning
+//! generic hot-RON path. Split out of the monolithic `tuning.rs` (GTW-583); the tuning
 //! rationale lives on the parent `tuning` module.
 
 use bevy::prelude::*;
@@ -59,7 +59,7 @@ pub(crate) struct CombatLogTuning {
 const COMBAT_LOG_RON_PATH: &str = "core_tuning/combat_log.tuning.ron";
 
 /// Registers the [`CombatLogTuning`] hot-RON chain — ONE ext call onto the
-/// GTW-564 generic seam (kick-off / gated resolve / live redrive, keyed by the
+/// GTW-564 generic hot-RON path (kick-off / gated resolve / live redrive, keyed by the
 /// generic [`HotRonHandle`](gdtf_assets::HotRonHandle)`<CombatLogTuning>`),
 /// replacing the per-site handle newtype + load/resolve/redrive triple.
 /// Self-gates on the [`AssetServer`](bevy::asset::AssetServer)

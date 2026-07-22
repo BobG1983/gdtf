@@ -8,10 +8,10 @@
 //! `SystemParam` bundles the orchestrator reads.
 //!
 //! GTW-564 moved the four SINGLE-FILE chains (situation + combat / stat /
-//! procgen tuning) onto the generic hot-RON seam, GTW-570 moved the seven
+//! procgen tuning) onto the generic hot-RON registration, GTW-570 moved the seven
 //! FOLDER content families (ranged/melee weapons, armor, fields, gangs, terrain
-//! and theme defs) onto the generic content-family seam, and GTW-619 moved the
-//! attachments folder (GTW-549) onto the same seam — their resolve/redrive
+//! and theme defs) onto the generic content-family registration, and GTW-619 moved the
+//! attachments folder (GTW-549) onto the same registration — their resolve/redrive
 //! modules are gone; the Load plugin registers each with one ext call. The
 //! two modules here are the DECLARED GTW-570 exclusions, bespoke by design
 //! (injuries is one folder → two resources; prefabs is a UUID multimap).

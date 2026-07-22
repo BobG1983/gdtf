@@ -1,4 +1,4 @@
-//! The full-view `ViewMode` toggle through the intent seam (GTW-521).
+//! The full-view `ViewMode` toggle through the intent queue (GTW-521).
 
 use bevy::prelude::*;
 use gdtf_battle_input::{ActIntent, PendingActIntent};
@@ -8,7 +8,7 @@ use gdtf_test_utils::{clear_keys, press_key};
 use super::harness::*;
 
 // =================================================================================
-// GTW-521 — the full-view toggle input seam: the ViewMode flip through the ONE
+// GTW-521 — the full-view toggle input queue: the ViewMode flip through the ONE
 // `dispatch_act_intents` drain, and the bound key that pushes `ActIntent::ToggleFullView`.
 // =================================================================================
 
@@ -25,7 +25,7 @@ fn view_mode(app: &App) -> ViewMode {
 /// presenter-owned [`ViewMode`] through the REAL `dispatch_act_intents` drain, and a second
 /// toggle flips it back (the round-trip). It does NOT touch [`ActiveLevel`] (C5).
 ///
-/// Drives the genuine intent -> drain -> presenter-resource path (the shared act-intent seam,
+/// Drives the genuine intent -> drain -> presenter-resource path (the shared act-intent queue,
 /// the same one the level keys / buttons use), not a direct resource write — so it proves the
 /// drain arm is wired end-to-end.
 #[test]
@@ -75,7 +75,7 @@ fn toggle_full_view_intent_flips_view_mode_and_round_trips() {
 }
 
 /// GTW-521 C4 — a `just_pressed` of the BOUND full-view key (`toggle_full_view`) PUSHES
-/// exactly one [`ActIntent::ToggleFullView`] onto the shared [`PendingActIntent`] seam
+/// exactly one [`ActIntent::ToggleFullView`] onto the shared [`PendingActIntent`] queue
 /// (the keyboard-reader precedent — the level keys' `press_key` -> intent test).
 ///
 /// Reads the bound key off [`Keybinds`] (NO `KeyCode` literal), presses it, and — because

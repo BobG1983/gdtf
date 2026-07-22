@@ -1,8 +1,8 @@
 //! The squad three-state fog model — the [`SquadVisibility`] resource (the
 //! VISIBLE / EXPLORED sets, UNSEEN the implicit complement) and its **pure read
-//! seams** (GTW-340, leaf 4 of the GTW-13 FOV epic).
+//! accessors** (GTW-340, leaf 4 of the GTW-13 FOV epic).
 //!
-//! These are the seams the consumers read — the GTW-11 fog gate, the GTW-70 AI, and
+//! These are the accessors the consumers read — the GTW-11 fog gate, the GTW-70 AI, and
 //! the GTW-38 reaction fire — never recompute logic (that is GTW-341). Every read
 //! here is a set lookup: no geometry, no march, no grid / tuning input.
 
@@ -17,7 +17,7 @@ use crate::{metric::CellLevel, occupancy::OccupancyGrid};
 /// ganger sees it right now (GTW-340 clause 2).
 ///
 /// A named domain answer (no bare `bool`): the fog reads it to draw a cell lit, and
-/// the plan/render seams gate on it. Private inner + derived [`Deref`]; build one via
+/// the plan and render reads gate on it. Private inner + derived [`Deref`]; build one via
 /// [`CellVisible::new`].
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CellVisible(bool);
@@ -71,7 +71,7 @@ impl GangerVisible {
 ///
 /// A named domain enum (no-bare-types: the friend/foe relation of a watched ganger
 /// to the player squad is a domain value, not a bare boolean). It is the EXACT
-/// consumption seam the "rendered-only planning" reads use
+/// relation the "rendered-only planning" reads consume
 /// (`docs/combat/visibility.md` §"Rendered-only planning"): GTW-230's walk-time
 /// **bump-stop** and the pathfinder's **enemy-route-blocking** read both ask
 /// [`is_ganger_visible`] whether a ganger should block / show, passing the relation of
@@ -99,7 +99,7 @@ pub enum FactionRelation {
 /// writes it on each trigger is GTW-341.
 ///
 /// The two inner sets are private (house style for a set-carrying domain value); they
-/// are read ONLY through the pure seams below
+/// are read ONLY through the pure accessors below
 /// ([`is_cell_visible`](SquadVisibility::is_cell_visible) /
 /// [`is_cell_explored`](SquadVisibility::is_cell_explored) /
 /// [`visible_cells`](SquadVisibility::visible_cells)) and replaced wholesale by the
@@ -165,7 +165,7 @@ impl SquadVisibility {
         CellExplored::new(self.explored.contains(cell))
     }
 
-    /// The squad-VISIBLE cells — the iterator/query seam over the VISIBLE set (GTW-340
+    /// The squad-VISIBLE cells — the iterator/query over the VISIBLE set (GTW-340
     /// clause 2). A pure read: it borrows the set and yields each currently-seen
     /// `(cell, level)`, in no defined order (a `HashSet`). The fog presenter (GTW-342)
     /// and any consumer that needs to walk what the squad sees read it through this.
@@ -173,7 +173,7 @@ impl SquadVisibility {
         self.visible.iter()
     }
 
-    /// The squad-EXPLORED cells — the iterator/query seam over the (monotone) EXPLORED
+    /// The squad-EXPLORED cells — the iterator/query over the (monotone) EXPLORED
     /// set. A pure read mirroring [`visible_cells`](SquadVisibility::visible_cells): it
     /// borrows the set and yields each ever-seen `(cell, level)`, in no defined order.
     /// The accrual fold ([`accrue`](crate::visibility::accrue)) reads the previous
@@ -195,8 +195,8 @@ impl SquadVisibility {
 ///   is squad-VISIBLE — the SAME read [`SquadVisibility::is_cell_visible`] performs that
 ///   shows / hides its entity, so plan and render can never disagree.
 ///
-/// `relation` is the explicit faction-relation predicate the spec pins as the
-/// consumption seam: GTW-230's walk-time **bump-stop** (an enemy ahead reveals iff the
+/// `relation` is the explicit faction-relation predicate the spec pins as these
+/// reads' input: GTW-230's walk-time **bump-stop** (an enemy ahead reveals iff the
 /// mover's sight reaches it) and the **pathfinder's** enemy-route-blocking read call
 /// this with the ganger's relation to the player squad. No geometry, no recompute — a
 /// set lookup gated by the relation.

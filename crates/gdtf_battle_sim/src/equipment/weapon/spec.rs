@@ -95,7 +95,7 @@ pub struct WeaponSpec {
     /// field. `#[serde(default)]` (defaulting to [`TrajectoryStyle::Straight`]) so an omitted
     /// field is a flat-firing weapon: the field is OPT-IN (the `shove` / `attachments`
     /// `#[serde(default)]` precedent), so EVERY existing weapon `.ron` — none of which author
-    /// it — deserializes and spawns BYTE-IDENTICAL. A grenade / grenade launcher authors
+    /// it — deserializes and spawns IDENTICALLY. A grenade / grenade launcher authors
     /// `trajectory: Arc`, spawning a [`TrajectoryStyle::Arc`] component the throw path reads to
     /// lob the round via [`march_arc`](crate::march::march_arc) with no LOS gate.
     #[serde(default)]
@@ -118,7 +118,7 @@ pub struct WeaponSpec {
     /// the `attachments:` `.weapon.ron` field. `#[serde(default)]` so an omitted field falls
     /// back to an EMPTY list (a weapon with no attachments): the field is OPT-IN (the
     /// [`Shove`] `#[serde(default)]` precedent), so EVERY existing weapon `.ron` — none of which
-    /// author it — deserializes and spawns BYTE-IDENTICAL. At battle setup each key is resolved
+    /// author it — deserializes and spawns IDENTICALLY. At battle setup each key is resolved
     /// against the [`AttachmentRegistry`](crate::equipment::attachments::AttachmentRegistry) — GATED by the GTW-554
     /// slot fit ([`resolve_pending_attachments`](crate::equipment::attachments::resolve_pending_attachments)): an item
     /// whose [`slot`](crate::equipment::attachments::AttachmentSpec::slot) is undeclared in [`slots`](Self::slots) or
@@ -134,9 +134,9 @@ pub struct WeaponSpec {
     /// authored as the `dot:` `.weapon.ron` field. `#[serde(default)]` (defaulting to `None`)
     /// so an omitted field is a NON-DOT weapon: the field is OPT-IN (the `attachments` /
     /// [`Shove`] `#[serde(default)]` precedent), so EVERY existing weapon `.ron` — none of
-    /// which author it — deserializes and spawns BYTE-IDENTICAL. When present,
+    /// which author it — deserializes and spawns IDENTICALLY. When present,
     /// [`into_bundle`](WeaponSpec::into_bundle) carries it into the resolved
-    /// [`WeaponSpawnSiblings`] as the `dot` sibling the wielded-weapon scene seam composes onto
+    /// [`WeaponSpawnSiblings`] as the `dot` sibling the wielded-weapon scene composes onto
     /// the weapon entity, so a penetrating hit from this weapon attaches a
     /// [`Dot`](super::Dot) on the struck ganger.
     #[serde(default)]
@@ -147,9 +147,9 @@ pub struct WeaponSpec {
     /// `.weapon.ron` field. `#[serde(default)]` (defaulting to `None`) so an omitted field is a
     /// weapon with no death effect: the field is OPT-IN (the `dot` / `attachments` /
     /// [`Shove`] `#[serde(default)]` precedent), so EVERY existing weapon `.ron` — none of which
-    /// author it — deserializes and spawns BYTE-IDENTICAL. When present,
+    /// author it — deserializes and spawns IDENTICALLY. When present,
     /// [`into_bundle`](WeaponSpec::into_bundle) carries it into the resolved
-    /// [`WeaponSpawnSiblings`] as the `on_death` sibling the wielded-weapon scene seam composes
+    /// [`WeaponSpawnSiblings`] as the `on_death` sibling the wielded-weapon scene composes
     /// onto the weapon entity (as an [`OnDeath`](crate::effects::on_death::OnDeath) component), so
     /// [`resolve_on_death`](crate::effects::on_death::resolve_on_death) fans it when the ganger dies.
     #[serde(default)]
@@ -169,7 +169,7 @@ impl WeaponSpec {
     /// NOT folded here — attachment effects are applied to the SPAWNED weapon entity via the
     /// [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon) commands extension at
     /// setup (SUPERSEDES the GTW-542 pre-spawn leaf-fold model). A weapon with no attachments,
-    /// `dot`, or `on_death` resolves BYTE-IDENTICAL to before the attachment model existed.
+    /// `dot`, or `on_death` resolves IDENTICALLY to before the attachment model existed.
     ///
     /// The spawned [`Magazine`] is built FULL (loaded to `size`) from the authored `size` +
     /// `reload_tu` (the GTW-275 "full magazine at spawn" path). Consumes the spec by value (it
@@ -195,27 +195,27 @@ impl WeaponSpec {
             .with_trajectory(self.trajectory),
         );
         // GTW-544 / GTW-547: carry the authored `dot` / `on_death` optional siblings the
-        // wielded-weapon scene seam composes onto the weapon entity. A `None` (a weapon with no
+        // wielded-weapon scene composes onto the weapon entity. A `None` (a weapon with no
         // DOT / death effect) leaves the sibling record identity, so the weapon spawns
-        // byte-identical.
+        // identically.
         let siblings = WeaponSpawnSiblings::new(self.dot, self.on_death);
         (bundle, siblings)
     }
 }
 
 /// The resolved spawn-side **optional sibling components** of a weapon spec — the `dot` /
-/// `on_death` siblings the wielded-weapon scene seam composes onto the spawned weapon entity
+/// `on_death` siblings the wielded-weapon scene composes onto the spawned weapon entity
 /// (GTW-549; the slimmed successor of the GTW-542 `AttachmentEffects` accumulator, now that
 /// attachment effects are applied via the [`attach_to_weapon`](crate::equipment::attachments::AttachToWeaponExt::attach_to_weapon)
 /// commands extension rather than pre-spawn leaf rewrites).
 ///
 /// Built by [`into_bundle`](WeaponSpec::into_bundle) from the spec's optional `dot` /
 /// `on_death` fields. An identity record (both `None`) composes NO sibling, so a weapon with
-/// neither spawns byte-identical.
+/// neither spawns identically.
 ///
 /// NOT `Copy` (the `on_death` field carries an [`OnDeath`](crate::effects::on_death::OnDeath) whose
 /// `OnDeathEffect::LeaveField` owns a `FieldKey` [`String`]); it is `Clone`, moved through the
-/// spawn seam once.
+/// spawn path once.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct WeaponSpawnSiblings {
     /// The weapon's [`DotProfile`](super::DotProfile) sibling to add (GTW-544), or `None`

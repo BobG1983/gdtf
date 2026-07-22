@@ -1,9 +1,9 @@
-//! Pure-logic unit tests for the reachable-range read-seam + the `reachable_draws`
+//! Pure-logic unit tests for the reachable-range read-side resource + the `reachable_draws`
 //! resolution (GTW-387 C3 / D3).
 //!
 //! The DRAW-system behaviour (the actual sprites rendered at the right cells, hard-cut
 //! to the active storey) is the headless integration proof in the `gdtf_battle_input`
-//! integration tests (the `tests/reachable.rs` pattern). These cover the read-seam +
+//! integration tests (the `tests/reachable.rs` pattern). These cover the read-side resource +
 //! the `reachable_draws` pure decision (active-storey hard-cut) that do not need an app.
 
 use gdtf_battle_sim::prelude::{Cell, CellLevel, Level, Tu};

@@ -1,9 +1,9 @@
-//! Pure-logic unit tests for the fire-target highlight read-seam + the cost-label text.
+//! Pure-logic unit tests for the fire-target highlight read-side resource + the cost-label text.
 //!
 //! The DRAW-system behaviour (the red tile rendered UNDER the actor at the named cell, the
 //! opaque cost label, hard-cut to the active storey, hidden off a fireable hover) is the
 //! headless integration proof in `tests/fire_target.rs` (the `path_preview.rs` pattern) — that
-//! wires the REAL `FireTargetHighlight` → draw system. These cover the read-seam accessors + the
+//! wires the REAL `FireTargetHighlight` → draw system. These cover the read-side accessors + the
 //! cost-label format that do not need an app.
 
 use gdtf_battle_sim::prelude::{Cell, CellLevel, Level, Tu};

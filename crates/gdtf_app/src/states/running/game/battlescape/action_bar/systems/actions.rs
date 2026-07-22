@@ -1,8 +1,8 @@
-//! Routes an action-bar button press to the shared 222a act-intent seam (GTW-228 /
+//! Routes an action-bar button press to the shared 222a act-intent queue (GTW-228 /
 //! GTW-48 S9 / 222c).
 //!
 //! This is the pure interaction→intent layer: buttons + keys are PARALLEL surfaces
-//! over the ONE [`PendingActIntent`] data seam, not a re-derived inline mapping. Each
+//! over the ONE [`PendingActIntent`] data queue, not a re-derived inline mapping. Each
 //! per-act button, when pressed, [`push`](PendingActIntent::push)es the SAME
 //! [`ActIntent`] the equivalent KEY pushes (the `gdtf_battle_input` keyboard surface),
 //! and the SINGLE [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents)
@@ -11,7 +11,7 @@
 //! ADR-0001). The `gdtf_app` button systems do NOT independently emit any
 //! `gdtf_battle_sim::acts::*Requested`; they only write the intent.
 //!
-//! ## The GTW-122 MECHANISM (mouse-press read), routed to the intent seam
+//! ## The GTW-122 MECHANISM (mouse-press read), routed to the intent queue
 //!
 //! Each action system is one disjoint per-marker query filtered
 //! [`PressedButton<M>`] `= (Changed<Interaction>, With<M>, Without<DisabledButton>)`,
@@ -32,7 +32,7 @@
 //!
 //! Registered `run_if(resource_exists::<BattleInProgress>)` by the action-bar plugin —
 //! the same live-battle witness the S7 input + presenter draws gate on — so a press is
-//! inert when no battle is live (it never even reaches the seam). It runs in `Update`
+//! inert when no battle is live (it never even reaches the queue). It runs in `Update`
 //! ordered explicitly `.before` `gdtf_battle_input`'s `dispatch_act_intents` drain
 //! (`bevy-traps.md` #3), so a button press queued this update is drained this update —
 //! the same-frame guarantee the keyboard writers get (they too are registered `.before`
@@ -76,7 +76,7 @@ pub(in crate::states::running::game::battlescape::action_bar) const fn is_press(
 }
 
 /// Routes each enabled action-bar button press to its [`ActIntent`] on the shared
-/// 222a seam.
+/// 222a queue.
 ///
 /// For each enabled act button whose [`Interaction`] changed to
 /// [`Pressed`](Interaction::Pressed) this frame, [`push`](PendingActIntent::push)es the
@@ -95,7 +95,7 @@ pub(in crate::states::running::game::battlescape::action_bar) const fn is_press(
 /// NOT this `Changed<Interaction>` button-press router — which now handles the two LEVEL
 /// buttons and the LIVE end-turn button (GTW-309). The MODE control sets
 /// [`SelectedFireMode`](gdtf_battle_input::SelectedFireMode) directly via its own
-/// `mode_panel` message listener, NOT the intent seam (unchanged from GTW-265). The three
+/// `mode_panel` message listener, NOT the intent queue (unchanged from GTW-265). The three
 /// queries are disjoint per marker (each filtered to one role marker and
 /// `Without<DisabledButton>`), so they never conflict. The buttons write NO `*Requested`
 /// directly — the ONE [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents)

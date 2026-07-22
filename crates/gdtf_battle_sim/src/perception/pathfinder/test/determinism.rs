@@ -1,5 +1,5 @@
-//! C6 — DETERMINISM replay: the same inputs produce a byte-identical
-//! [`Path`](crate::pathfinder::Path) AND a byte-identical
+//! C6 — DETERMINISM replay: the same inputs produce an identical
+//! [`Path`](crate::pathfinder::Path) AND an identical
 //! [`reachable_within`](crate::pathfinder::reachable_within) set, asserted across
 //! repeated calls. No RNG; the `(cost, (z, y, x) cell_key)` frontier tie-break + the
 //! pre-sorted GTW-350/351 edge enumeration pin the result.
@@ -16,7 +16,7 @@ use crate::{
 };
 
 /// `find_path` over a non-trivial multi-storey grid (a wall to detour, a link to
-/// climb) returns the SAME route on every call — byte-identical `Path` (cells AND
+/// climb) returns the SAME route on every call — identical `Path` (cells AND
 /// total), proving the search is replay-stable.
 #[test]
 fn find_path_is_byte_identical_across_replays() {
@@ -69,13 +69,13 @@ fn find_path_is_byte_identical_across_replays() {
     );
 
     assert!(first.is_ok(), "the fixture has a route: {first:?}");
-    // Byte-identical across all three replays (the whole Path: cells + total).
+    // Identical across all three replays (the whole Path: cells + total).
     assert_eq!(first, second, "replay 2 differs from replay 1");
     assert_eq!(second, third, "replay 3 differs from replay 2");
 }
 
 /// `reachable_within` over the same multi-storey grid returns the SAME reachable set
-/// (cells AND costs, in the SAME sorted order) on every call — byte-identical, so the
+/// (cells AND costs, in the SAME sorted order) on every call — identical, so the
 /// GTW-357 overlay it feeds is replay-stable.
 #[test]
 fn reachable_within_is_byte_identical_across_replays() {
@@ -116,10 +116,10 @@ fn reachable_within_is_byte_identical_across_replays() {
         &planning,
     );
 
-    // Byte-identical: same cells, same costs, same ORDER (the (z, y, x) sort).
+    // Identical: same cells, same costs, same ORDER (the (z, y, x) sort).
     assert_eq!(
         first, second,
-        "the reachable set must be byte-identical across replays (same cells, costs, order)",
+        "the reachable set must be identical across replays (same cells, costs, order)",
     );
     assert!(!first.is_empty(), "the start reaches at least itself");
 

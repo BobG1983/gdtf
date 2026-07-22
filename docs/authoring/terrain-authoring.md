@@ -195,7 +195,7 @@ Each theme folder carries ONE theme file, deserializing into `UuidThemeDef`
 |-------|-----------|----------|-------|
 | `key` | `ThemeUuid` | UUID string | The theme's stable key (prefabs / `skirmish.ron` reference it). |
 | `display_name` | `ThemeDisplayName` | bare string | Human label (the editor's theme picker). |
-| `default_floor` | `TerrainUuid` | UUID string | The terrain def a generated level fills empty ground with — a floor is just a def the theme nominates (authored as a walkable `Slab`; the move-cost-through-terrain seam is future work, see [terrain-content-migration.md](terrain-content-migration.md)). |
+| `default_floor` | `TerrainUuid` | UUID string | The terrain def a generated level fills empty ground with — a floor is just a def the theme nominates (authored as a walkable `Slab`; move-cost-through-terrain is future work, see [terrain-content-migration.md](terrain-content-migration.md)). |
 | `terrain` | `Vec<TerrainUuid>` | list of UUID strings | The theme's palette — the defs a generated level / the editor draws from. |
 
 ### 1g. Worked example — a new cover piece
@@ -262,7 +262,7 @@ vary per-def WITHOUT a new sim kind — killing the old "Step 3" code excursion
 
 When present, an override WINS over both the additive tag (1e) and the kind
 default. Both fields are `#[serde(default)]`, so EVERY shipped `.ron` (none of
-which author them) deserializes byte-identical and derives EXACTLY as before —
+which author them) deserializes identically and derives EXACTLY as before —
 zero migration.
 
 **Kind-derived defaults** (what an omitted field falls back to):
@@ -368,7 +368,7 @@ clean.
 
 ## Part 3 — Hot-reload
 
-Terrain hot-reload rides the generic content-family seam (GTW-570): editing
+Terrain hot-reload rides the generic content-family loader (GTW-570): editing
 any `*.terrain_def.ron` / `*.terrain_theme.ron` under
 `assets/content/terrain/` while the game is running fires the generic
 `redrive_content_family::<TerrainDefsFamily>` (resp. `::<ThemeDefsFamily>`)

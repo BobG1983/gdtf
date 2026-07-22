@@ -2,7 +2,7 @@
 //! loop — a save writes the file where the loader reads, and the resulting
 //! registry rebuild re-arms the pass.
 //!
-//! THE SEAM, noted per the contract: the file-watcher is NOT active in this
+//! THE RELOAD TRIGGER, noted per the contract: the file-watcher is NOT active in this
 //! headless harness (`file_watcher` is a binary-propagated feature, never in
 //! test builds — the crate's documented convention covers the deterministic
 //! injected-reload path instead of the OS watcher thread). So the ONE

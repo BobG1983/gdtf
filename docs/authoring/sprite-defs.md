@@ -80,7 +80,7 @@ The full shape, including the two optional fields no seed authors yet:
 
 ## Part 3 — How it registers, resolves, and hot-reloads
 
-The family rides the generic content-family seam
+The family rides the generic content-family loader
 ([content-families.md](content-families.md)) — one
 `register_content_family::<SpriteDefsFamily>()` line per host (the game's
 `Load` plugin AND the content editor's `Load` pass) buys the dedicated-

@@ -22,7 +22,7 @@
 //! The lifecycle is state-scoped (bevy-traps #1): the target + camera spawn `OnEnter(Editing)` and
 //! despawn `OnExit(Editing)`; the owned [`PreviewPan`](view::PreviewPan) target is inserted /
 //! removed by the plugin's `init_state_scoped_resource` registration (GTW-575, the shared
-//! `gdtf_state_scoped` seam) alongside the kept [`CanvasZoom`](crate::canvas::CanvasZoom).
+//! `gdtf_state_scoped` helper) alongside the kept [`CanvasZoom`](crate::canvas::CanvasZoom).
 
 pub(crate) mod coords;
 pub(crate) mod overlay;

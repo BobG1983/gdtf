@@ -29,7 +29,7 @@ pub(crate) fn mint_entity() -> Entity {
 /// gate, an empty `OccupancyGrid`, `CombatTuning`, an empty `ButtonInput<MouseButton>`,
 /// and the `PlayerFaction` the GTW-238 click decision gates on. (The keybind table is
 /// asset-loaded, so under `MinimalPlugins` no `Keybinds` resolves — the keyboard systems
-/// simply do not run; the level/seam tests push intents directly.)
+/// simply do not run; the level/intent-queue tests push intents directly.)
 pub(crate) fn selection_app(active_level: Level) -> App {
     use gdtf_battle_sim::tuning::CombatTuning;
     let mut app = App::new();

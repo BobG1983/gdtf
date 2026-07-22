@@ -137,7 +137,7 @@ fn resolve_root_seed_drives_streams_and_logs() {
         "the env-pinned Generation must insert a ShotRng stream (resolve_root_seed path)",
     );
 
-    // The world's resolved ShotRng (untouched — no fire act ran) must be byte-identical
+    // The world's resolved ShotRng (untouched — no fire act ran) must be identical
     // to a fresh stream derived from the pinned env seed: GDTF_BATTLE_SEED drove it.
     let world_first = app.world_mut().resource_mut::<ShotRng>().next_u64();
     let mut expected = ShotRng::from_root(BattleSeed::new(PINNED));

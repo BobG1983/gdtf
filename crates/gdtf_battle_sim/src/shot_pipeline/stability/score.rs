@@ -21,9 +21,9 @@ use crate::{
 /// brace contribution (applied when `faced`'s cover [`crate::cover::HeightBand`]
 /// satisfies `stance`'s min-height gate **OR** the weapon is `stable` **OR** the
 /// shooter has a [`TerrainBraced`](crate::stability::TerrainBraced) stair brace,
-/// GTW-392), the GTW-543 emplacement seam, the GTW-526 `suppression` seam (a
+/// GTW-392), the GTW-543 emplacement contribution, the GTW-526 `suppression` contribution (a
 /// **negative** term when the shooter is [`Suppressed`](crate::ganger::Suppressed),
-/// zero otherwise), and the GTW-549 per-item brace seam (a **positive** term when
+/// zero otherwise), and the GTW-549 per-item brace contribution (a **positive** term when
 /// the weapon carries a data-driven
 /// [`WeaponBraceBonus`](crate::effects::attachments::WeaponBraceBonus) attachment, zero otherwise)
 /// — then **clamps/normalises** the sum into the `0..=100` [`StabilityScore`]
@@ -39,8 +39,8 @@ use crate::{
 /// — GTW-573 C7): the weapon's `stable` tag, the GTW-392 terrain-brace decision, the
 /// GTW-549 per-item brace points, and the GTW-543 emplacement points. Each is
 /// pure-additive (or gate-only), so a term at its zero-identity
-/// [`default`](StabilityTerms::default) leaves the score byte-identical to a shot
-/// without that seam — the zero-identity-default test pins it. `faced` is the
+/// [`default`](StabilityTerms::default) leaves the score identical to a shot
+/// without that added term — the zero-identity-default test pins it. `faced` is the
 /// [`CoverEntry`] of the cell the shooter faces (the brace gate reads its
 /// `height_band` directly), or `None` when no cover is faced — in which case the
 /// brace contribution is withheld for a non-stable, non-terrain-braced weapon.
@@ -63,15 +63,15 @@ pub fn stability(
 
     // Sum the §1a contributions: per-stance + brace (when the faced cover
     // satisfies the per-stance gate OR the weapon is stable OR terrain-braced) +
-    // the emplacement seam + the GTW-526 suppression seam (a negative term when the
-    // shooter is Suppressed, zero otherwise) + the GTW-549 per-item brace seam (a positive
+    // the emplacement contribution + the GTW-526 suppression contribution (a negative term when the
+    // shooter is Suppressed, zero otherwise) + the GTW-549 per-item brace contribution (a positive
     // term carried by a data-driven `Stability` attachment's `WeaponBraceBonus`, zero
     // otherwise). The brace_engages bool is OR-combined so all three UNCONDITIONAL brace
     // sources produce exactly ONE brace_contribution quantum — never a sum; the per-item
     // `brace_bonus` is a SEPARATE graduated additive term (a magnitude, not a boolean gate).
     // suppression and brace_bonus are BOTH pure-additive identity (0.0) when absent, so an
     // un-suppressed weapon with no brace attachment has a raw sum — and thus its clamped
-    // score and both curve reads — byte-identical to before either seam landed.
+    // score and both curve reads — identical to before either term landed.
     let brace = if *brace_engages(terms.stable, terms.terrain_braced, posture, faced, tuning) {
         *tuning.brace_contribution
     } else {

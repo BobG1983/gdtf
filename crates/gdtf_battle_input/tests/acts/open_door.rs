@@ -23,8 +23,8 @@ use super::harness::*;
 /// selected player actor emits EXACTLY one `OpenDoorRequested { actor, door }` through the
 /// act's generic `drain_contextual_intents` drain, the actor being the `*SelectedShooter`
 /// and the door the carried openable entity (the Open-Door affordance surrogate, over the
-/// GTW-571 per-act contextual seam). The sim's `dispatch_open_door` gate (CLOSED +
-/// 8-adjacent + affords `OpenDoorTu`) is the authoritative check, not this seam.
+/// GTW-571 per-act contextual queue). The sim's `dispatch_open_door` gate (CLOSED +
+/// 8-adjacent + affords `OpenDoorTu`) is the authoritative check, not this layer.
 #[test]
 fn open_door_intent_emits_request_for_selection_over_carried_door() {
     let mut app = acts_app();
@@ -36,7 +36,7 @@ fn open_door_intent_emits_request_for_selection_over_carried_door() {
         Direction::North,
     );
     select_ganger(&mut app, actor);
-    // The door target entity — only its identity matters at this seam (the sim's
+    // The door target entity — only its identity matters at this point (the sim's
     // OpenState/adjacency/TU gate is the authoritative check, not this layer).
     let door = app.world_mut().spawn_empty().id();
 

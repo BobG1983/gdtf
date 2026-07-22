@@ -123,7 +123,7 @@ pub(crate) fn synthetic_camera() -> Camera {
 /// reads, `CombatTuning`, a `Keybinds` table, seeded `ButtonInput` buffers, and a
 /// SYNTHETIC `WorldCamera` + `Window` so the REAL `pick_hovered_cell` resolves a cursor
 /// to an in-grid cell (driving the genuine cursor -> `InspectTarget` -> select/fire chain,
-/// not an injected cell). The keybinds are inserted directly (the sanctioned headless
+/// not an injected cell). The keybinds are inserted directly (the headless
 /// idiom — no `AssetServer` under `MinimalPlugins`).
 pub(crate) fn acts_app() -> App {
     let mut app = App::new();

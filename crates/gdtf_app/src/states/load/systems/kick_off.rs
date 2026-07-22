@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use gdtf_assets::{HotRonHandle, RonAsset};
 // GTW-634 C4: the two bespoke families' folders are IMPORTED from their single owning
 // declarations (beside the family layout vocabulary in `gdtf_content_families`), never
-// re-spelled here — the same one-owner rule the seam families get from `FOLDER`.
+// re-spelled here — the same one-owner rule the content families get from `FOLDER`.
 use gdtf_content_families::{injuries::INJURIES_FOLDER, prefabs::PREFABS_FOLDER};
 use gdtf_ui::theme::GdtfThemeSpec;
 
@@ -47,7 +47,7 @@ const FONTS_FOLDER_PATH: &str = "fonts";
 /// [`ContentFolderHandle`](gdtf_assets::ContentFolderHandle), its gated resolve
 /// publishes the registry the Load gate still requires, and its redrive
 /// hot-reloads it) — and GTW-619 moved the attachments folder onto the same
-/// seam. Only the theme + fonts and the bespoke folders (injuries, prefabs —
+/// registration. Only the theme + fonts and the bespoke folders (injuries, prefabs —
 /// the declared GTW-570 exclusions) remain in this kick-off.
 ///
 /// It takes `Option<Res<AssetServer>>`: a `MinimalPlugins` headless app has **no**

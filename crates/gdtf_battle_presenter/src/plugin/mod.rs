@@ -1,4 +1,4 @@
-//! The presenter plugin seam: the [`BattlePresenterPlugin`] mode selector and the two
+//! The presenter plugin entry point: the [`BattlePresenterPlugin`] mode selector and the two
 //! renderer plugins (the real [`TopDownRendererPlugin`] and the [`IsoRendererPlugin`]
 //! stub) it builds.
 

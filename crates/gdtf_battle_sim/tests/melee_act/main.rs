@@ -2,7 +2,7 @@
 //! from 8-adjacency with clear LOS against an alive opposing ganger, resolved through the §7
 //! opposed-Fight → §5 damage → §6 wound synthesis. Proven END-TO-END on the REAL
 //! `setup_battle_on_request` → `BattleSimPlugin` `Simulate`-band path, driven THROUGH a
-//! buffered `MeleeRequested` (the same message the input seam writes).
+//! buffered `MeleeRequested` (the same message the input layer writes).
 //!
 //! The acceptance criteria (C6 a / b / c / e):
 //!

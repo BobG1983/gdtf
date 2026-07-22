@@ -1,4 +1,4 @@
-//! The [`MapEditorPlugin`] — the editor's single registration seam.
+//! The [`MapEditorPlugin`] — the editor's single registration point.
 //!
 //! Wires the editor's own [`EditorState`] machine, its slim `Load` asset pass
 //! ([`register_load`](crate::load::register_load)), the [`Editing`](EditorState::Editing) scene's
@@ -64,7 +64,7 @@ use crate::{
 /// - the `Load` pass (the weapon/armor/gang/melee/injury registries, the UUID-keyed
 ///   terrain/theme registries, and the GTW-663 sprite defs every terrain graphic resolves
 ///   through since GTW-665) — registered through the SAME generic content-family
-///   seams the game uses (GTW-579), WITHOUT pulling the game scene graph.
+///   loaders the game uses (GTW-579), WITHOUT pulling the game scene graph.
 /// - `OnEnter(Editing)` → the standalone editor camera, plus the FULL
 ///   state-scoped model/resource lifecycle — the Workbench mode, the authoring session, the
 ///   paintable map, the level / zoom selectors, the terrain / theme drafts, the hovered-cell
@@ -112,7 +112,7 @@ impl Plugin for MapEditorPlugin {
         // GTW-575: the nineteen `Editing`-scoped MODEL resources register their whole
         // OnEnter-insert + OnExit-remove lifecycle through ONE
         // `init_state_scoped_resource` call each (bevy-traps #1 via the shared
-        // `gdtf_state_scoped` seam) — same `OnEnter(Editing)` / `OnExit(Editing)`
+        // `gdtf_state_scoped` helper) — same `OnEnter(Editing)` / `OnExit(Editing)`
         // placement, same seed values the hand-stamped `editor_resources.rs` pairs had.
         //
         // The state-scoped Workbench mode, seeded to the default `Prefab` mode so the
@@ -216,14 +216,14 @@ impl Plugin for MapEditorPlugin {
 
         // GTW-681: the three `ButtonInput<KeyCode>` hotkey drives — the mode digits, the prefab
         // level nav, and the prefab view-mode flip. They ALL share ONE keyboard-focus guard here at
-        // the wiring seam: `not(egui_wants_any_keyboard_input)` consults `bevy_egui`'s shipped
+        // the wiring point: `not(egui_wants_any_keyboard_input)` consults `bevy_egui`'s shipped
         // `EguiWantsInput` resource (populated by `EguiPlugin`), so while an egui `TextEdit` holds
         // keyboard focus — e.g. typing `8` into the prefab width/height field — egui owns the
         // keypress and none of these systems act (chained `.run_if`s AND-combine with the `Editing`
         // gate). The guard reads the value `bevy_egui` wrote in the PREVIOUS frame's `PostUpdate`
         // (one frame of latency, inherent to the plugin's own wiring — acceptable here), so it is
         // NOT egui-imported into `mode.rs` / `nav.rs`; those systems stay UI-agnostic and the guard
-        // lives only at this seam.
+        // lives only at this wiring point.
         app.add_systems(
             Update,
             (mode_hotkeys, level_nav_hotkeys, view_mode_hotkey)

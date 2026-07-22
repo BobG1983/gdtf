@@ -1,8 +1,8 @@
-//! The shared RON **save seam** (GTW-577): the one file-stem sanitizer and the one
+//! The shared RON **save helpers** (GTW-577): the one file-stem sanitizer and the one
 //! serialize → mkdir → write chain every editor-side saver delegates to.
 //!
-//! Before GTW-577 the prefab / terrain / theme / gang savers each carried a byte-identical
-//! slug filter and a byte-identical `to_string_pretty` → `create_dir_all` → `fs::write`
+//! Before GTW-577 the prefab / terrain / theme / gang savers each carried an identical
+//! slug filter and an identical `to_string_pretty` → `create_dir_all` → `fs::write`
 //! chain. Both halves now exist ONCE, here:
 //!
 //! - [`sanitize_file_stem`] → [`FileStem`] — the ONE slug policy a display name folds

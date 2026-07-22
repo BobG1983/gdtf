@@ -1,7 +1,7 @@
 //! The battlescape combat-text LOG (GTW-328, slice 3, bottom-left, ABOVE the weapon panel): a
 //! battle-scoped strip of the most-recent combat events that scroll up and fade.
 //!
-//! GTW-572 (C5/C6): the log is a FORWARDER → APPENDER message seam. The forwarder half
+//! GTW-572 (C5/C6): the log is a FORWARDER → APPENDER message pipeline. The forwarder half
 //! lives in the PRESENTER since GTW-620 (`gdtf_battle_presenter`'s
 //! `actors/fx/fct/log_event/`, beside the vocabulary + classifier it feeds): one thin
 //! forwarder per log SOURCE drains its sim fact message, resolves each

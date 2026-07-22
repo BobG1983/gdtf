@@ -27,7 +27,7 @@
 //!   — the shared, clamped [`HpDamage`](crate::resolve_hit::HpDamage) →
 //!   [`CoverDamage`](crate::cover::CoverDamage) glue the ranged `apply_cover_hit` routes
 //!   through, imported, never re-written.
-//! - The §7 melee multiplier seam ([`apply_melee_multiplier`](crate::melee::apply_melee_multiplier),
+//! - The §7 melee multiplier step ([`apply_melee_multiplier`](crate::melee::apply_melee_multiplier),
 //!   GTW-506) — scaling the resolved [`HitResult`](crate::resolve_hit::HitResult) by the
 //!   FORK-4a structural multiplier (`mult_max` — see [`StructuralMult`]). This is the ONE
 //!   step the ranged path lacks (a structural blow is multiplied); it sits BETWEEN the
@@ -72,7 +72,7 @@ use crate::{
 /// [`MeleeDamageMult`](crate::melee::MeleeDamageMult) so the uncontested structural
 /// multiplier is never confused with a rolled contested one (no-bare-types rule 3),
 /// though it converts INTO a [`MeleeDamageMult`] to reuse the shared
-/// [`apply_melee_multiplier`](crate::melee::apply_melee_multiplier) seam verbatim. It
+/// [`apply_melee_multiplier`](crate::melee::apply_melee_multiplier) function verbatim. It
 /// reuses the existing `mult_max` tuning value and pins NO new magic number. A domain
 /// math value — **zero pixels**; private inner + a named constructor (no public `Deref`
 /// — read it only through [`as_melee_mult`](StructuralMult::as_melee_mult)).
@@ -86,17 +86,17 @@ impl StructuralMult {
     ///
     /// Reads the EXISTING `mult_max` constant, introducing no new tunable; if `MeleeTuning`
     /// ever grows a dedicated structural field, this is the single place to switch the
-    /// source (the fork's documented seam).
+    /// source (the fork's documented change point).
     #[must_use]
     pub fn from_tuning(tuning: &MeleeTuning) -> Self {
         Self(*tuning.mult_max)
     }
 
     /// This multiplier as the shared [`MeleeDamageMult`](crate::melee::MeleeDamageMult)
-    /// the [`apply_melee_multiplier`](crate::melee::apply_melee_multiplier) seam consumes.
+    /// the [`apply_melee_multiplier`](crate::melee::apply_melee_multiplier) function consumes.
     ///
     /// The one read-out — the structural verb scales the resolved cover
-    /// [`HitResult`](crate::resolve_hit::HitResult) through the SAME multiplier seam the
+    /// [`HitResult`](crate::resolve_hit::HitResult) through the SAME multiplier function the
     /// ganger path uses, so no parallel scaling math exists.
     #[must_use]
     pub const fn as_melee_mult(self) -> MeleeDamageMult {
@@ -117,7 +117,7 @@ impl StructuralMult {
 ///    REUSED verbatim — no parallel formula.
 /// 2. **Multiply (FORK 4a)** — the resolved [`HitResult`](crate::resolve_hit::HitResult)
 ///    is scaled by the [`StructuralMult`] (`mult_max`) through the SAME
-///    [`apply_melee_multiplier`](crate::melee::apply_melee_multiplier) seam the contested
+///    [`apply_melee_multiplier`](crate::melee::apply_melee_multiplier) function the contested
 ///    ganger path uses, so the strike lands at the top of the melee damage range.
 /// 3. **Deplete** — that scaled HP-loss, converted to a [`CoverDamage`](crate::cover::CoverDamage)
 ///    (clamped at zero — a fully-soaked hit removes no HP; cover HP is a non-negative pool), is
@@ -164,7 +164,7 @@ pub fn resolve_structural_melee(
     );
 
     // (2) FORK 4a — scale by the uncontested structural multiplier (mult_max) through the
-    //     SAME melee multiplier seam the contested ganger path uses (GTW-506).
+    //     SAME melee multiplier function the contested ganger path uses (GTW-506).
     let mult = StructuralMult::from_tuning(&tuning.melee).as_melee_mult();
     let hit = apply_melee_multiplier(raw_hit, mult);
 

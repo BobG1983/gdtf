@@ -5,7 +5,7 @@
 //! sim state and renders it; the sim never reads the presenter.
 //!
 //! GTW-215 (the first GTW-48 slice) stands up the empty *home* every later slice
-//! plugs into. It lands the [`BattlePresenterPlugin`] seam and the
+//! plugs into. It lands the [`BattlePresenterPlugin`] entry point and the
 //! [`BattlePresenterMode`] selector between the real top-down renderer
 //! ([`TopDownRendererPlugin`]) and a no-op iso stub ([`IsoRendererPlugin`], a
 //! placeholder for the future iso renderer, GTW-49 / GTW-10). It spawned no camera
@@ -55,14 +55,14 @@
 //! sprites in place (never despawn + respawn) and is ordered `.after`
 //! [`draw_static_battlefield`] / [`swap_destroyed_cover`] so it always colours the LIVE
 //! terrain, even after an [`ActiveLevel`] cycle. The sim owns the fog; this is the VIEW
-//! that mirrors it (the public [`present_fog`] seam). It mints NO fire / targeting
+//! that mirrors it (the public [`present_fog`] writer). It mints NO fire / targeting
 //! fog-gate UX (GTW-11).
 
 mod plugin;
 
 /// Dynamic per-entity view layer: character sprites, fog-of-war view, transient combat FX.
 pub mod actors;
-/// Input-bridge overlay seam: highlight, path preview, fire target, and the shared targeting gate.
+/// Input-bridge overlays: highlight, path preview, fire target, and the shared targeting gate.
 pub mod overlays;
 /// The presenter's own clock over the sim's act log: the playback cursor, the drawn-state
 /// mirrors it writes, and the catch-up predicate the input gate keys on (GTW-727).
@@ -104,7 +104,7 @@ pub use actors::{
     },
 };
 // GTW-450 — the reachable-range overlay is the DEBUG-only overlay: every public item
-// (the read-seam, the flag, the draw system) compiles only under `#[cfg(debug_assertions)]`
+// (the read-side resource, the flag, the draw system) compiles only under `#[cfg(debug_assertions)]`
 // (C1), so the re-export is debug-gated too — in release nothing references these.
 #[cfg(debug_assertions)]
 pub use overlays::reachable::{

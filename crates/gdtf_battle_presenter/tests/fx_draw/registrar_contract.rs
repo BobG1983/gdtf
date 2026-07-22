@@ -211,7 +211,7 @@ fn a_presenter_only_app_with_no_family_buffers_stays_inert() {
     }
 }
 
-/// GTW-623 C4 / A2 — the ONE sanctioned sim-owned `add_message` exception, pinned: the
+/// GTW-623 C4 / A2 — the ONE allowed sim-owned `add_message` exception, pinned: the
 /// presenter registers `Messages<ShotFired>` itself (in `plugin/topdown/gangers.rs`, the
 /// documented exception) so `update_ganger_life_state`'s `MessageReader<ShotFired>` stays
 /// valid — and the ganger batch keeps running — in a fire-less presenter-only harness (the

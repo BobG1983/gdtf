@@ -6,7 +6,7 @@
 //!
 //! Also pins the GTW-479 lifecycle riders: the editor reaches `Editing` with the
 //! `ArmorRegistry` gate resource present and the state-scoped `ArmorDraft` seeded
-//! (salvage / fallback behavior itself is the seam's parameterized family contract —
+//! (salvage / fallback behavior itself is the shared registration's parameterized family contract —
 //! `register_content_family::<ArmorFamily>` inherits it, no per-family re-pin here).
 
 use std::path::Path;
@@ -137,7 +137,7 @@ fn saved_armor_round_trips_through_the_real_armor_family_loader() {
 
     let world = app.world();
     // The state-scoped ARMOR draft seeded on entering Editing (bevy-traps #1 via the
-    // GTW-575 seam).
+    // GTW-575 shared registration).
     assert!(
         world.get_resource::<ArmorDraft>().is_some(),
         "the ArmorDraft must be seeded OnEnter(Editing)",

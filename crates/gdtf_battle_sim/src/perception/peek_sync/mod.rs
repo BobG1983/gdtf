@@ -1,5 +1,5 @@
 //! The automatic positional [`PeekOffset`](crate::los::PeekOffset) populator — GTW-406,
-//! the producer half of the GTW-393 wall-peek seam.
+//! the producer half of the GTW-393 wall-peek feature.
 //!
 //! GTW-393 ([`crate::los`]) shipped the [`PeekOffset`](crate::los::PeekOffset) component
 //! and the [`has_los_peeking`](crate::los::has_los_peeking) consumer but **no populator**

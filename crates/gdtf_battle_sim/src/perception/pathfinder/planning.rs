@@ -27,7 +27,7 @@
 //! ## The within-routable blocking predicate (C2)
 //!
 //! On a routable cell the blocking rule is visibility-aware, reusing the GTW-13
-//! [`is_ganger_visible`] read seam (`visibility.md` §40):
+//! [`is_ganger_visible`] read (`visibility.md` §40):
 //!
 //! - **Walls + floor geometry ALWAYS block** regardless of visibility — true geometry
 //!   (`visibility.md` §42): [`OccupancyGrid::is_blocked`] (a wall, or standing,
@@ -92,14 +92,14 @@ impl Routable {
 }
 
 /// The borrowed squad-fog view + occupant-faction resolver the planning gate reads as
-/// a SNAPSHOT — the visibility-aware blocking seam threaded into both search entry
+/// a SNAPSHOT — the visibility-aware blocking predicate threaded into both search entry
 /// points (C2).
 ///
 /// A read-only view bundling the GTW-13 [`SquadVisibility`] (the VISIBLE / EXPLORED
 /// sets) with `relation_of`, the caller's map from an occupant [`Entity`] to its
 /// [`FactionRelation`] to the player squad. The resolver is supplied by the caller
 /// because the occupancy grid stores only the occupant `Entity` handle (never a
-/// faction), and the faction lives on the ganger's components — so the seam stays
+/// faction), and the faction lives on the ganger's components — so the view stays
 /// pure (no world access) by taking the lookup as a closure. It is framework plumbing
 /// (a borrow bundle + a resolver), not a domain value.
 ///
@@ -124,7 +124,7 @@ where
     R: Fn(Entity) -> FactionRelation,
 {
     /// Build a planning view from the squad fog and an occupant-faction resolver — the
-    /// visibility-aware blocking seam the search threads (C2).
+    /// visibility-aware blocking predicate the search threads (C2).
     #[must_use]
     pub const fn new(squad: &'a SquadVisibility, relation_of: R) -> Self {
         Self { squad, relation_of }

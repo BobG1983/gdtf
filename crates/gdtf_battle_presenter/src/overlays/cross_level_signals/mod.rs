@@ -5,7 +5,7 @@
 //! (`ConnectorDelta`).
 //!
 //! One presenter-side DERIVE system ([`derive_cross_level_signals`](crate::derive_cross_level_signals))
-//! reads the sim through the SAME pure fog seams [`present_fog`](crate::present_fog) /
+//! reads the sim through the SAME pure fog queries [`present_fog`](crate::present_fog) /
 //! [`resolve_ganger_visibility`](crate::resolve_ganger_visibility) already use
 //! (never a parallel visibility check), aggregating + capping into the
 //! [`CrossLevelSignals`](crate::CrossLevelSignals) resource (the RESOLVED SPEC's
@@ -14,7 +14,7 @@
 //! change-driven off EITHER that resource OR the active storey (a badge's drawn
 //! Z-band is hard-cut to [`ActiveLevel`](crate::ActiveLevel), so a level switch
 //! must redraw even on the rare frame where the two storeys' derived signal sets
-//! happen to be byte-identical).
+//! happen to be identical).
 
 mod aggregate;
 mod connector;

@@ -12,7 +12,7 @@ use crate::{
     },
 };
 
-/// One-call registration of a folder-loaded content family — the GTW-570 seam.
+/// One-call registration of a folder-loaded content family — the GTW-570 registration trait.
 ///
 /// [`register_content_family`](Self::register_content_family) wires ONE
 /// family: the dedicated-extension [`RonAsset`](crate::RonAsset) loader, a
@@ -24,7 +24,7 @@ use crate::{
 /// [`ContentFamily`] marker impl plus one of these calls plus a content
 /// folder — see the trait's add-one-family recipe.
 ///
-/// The Load→Intro gating stays the HOST's: this seam publishes the registry
+/// The Load→Intro gating stays the HOST's: this registration publishes the registry
 /// resource; the host's transition run-condition chain keeps requiring it
 /// explicitly (`resource_exists::<F::Registry>`), exactly as before (GTW-570
 /// C3).
@@ -47,9 +47,10 @@ pub trait ContentFamilyAppExt {
 impl ContentFamilyAppExt for App {
     fn register_content_family<F: ContentFamily>(&mut self) -> &mut Self {
         if self.world().get_resource::<AssetServer>().is_none() {
-            // THE shadow-avoidance invariant (stated once, here at the seam):
-            // the resolve above only runs while the registry is ABSENT, so
-            // with a server present the seam must seed NOTHING — a pre-seeded
+            // THE shadow-avoidance invariant (stated once, here in this
+            // registration function): the resolve above only runs while the
+            // registry is ABSENT, so with a server present the registration
+            // must seed NOTHING — a pre-seeded
             // default would shadow the real folder resolve (the GTW-297 AC3b
             // class). With no server there is nothing to shadow, and the
             // default IS the registry: the headless fallback that keeps a
@@ -63,7 +64,7 @@ impl ContentFamilyAppExt for App {
         // dispatch unambiguous among GDTF's many `.ron` loaders (GTW-257).
         self.init_ron_asset_with_extensions::<F::Spec>(vec![F::EXTENSION]);
         // GTW-582 C4: the per-file salvage records each malformed member into
-        // the content-integrity report, so every seam host carries one
+        // the content-integrity report, so every host that registers a family carries one
         // (idempotent init — the game's Load plugin installs the full
         // validation pass on top; the editor gets the report alone).
         self.init_resource::<ContentIntegrityReport>();

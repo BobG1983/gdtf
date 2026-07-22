@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 /// reads it to pick the STRAIGHT [`march_vector`](crate::march::march_vector) or the
 /// lobbed [`march_arc`](crate::march::march_arc). It also rides on the authoring
 /// [`WeaponSpec`](super::WeaponSpec) (a `#[serde(default)]` field), so every EXISTING
-/// weapon `.ron` — none of which author a `trajectory:` field — deserializes byte-identical
+/// weapon `.ron` — none of which author a `trajectory:` field — deserializes identically
 /// to a `Straight` weapon (the identity property, mirroring
 /// [`HitType::Single`](super::HitType) / [`Shove`](super::Shove) opt-in defaults).
 ///

@@ -92,7 +92,7 @@ fn a_ganger_killed_in_melee_fans_its_on_death_explode() {
     };
     let neighbour0 = vitals(&app, neighbour);
 
-    // Strike the victim in melee THROUGH the buffered MeleeRequested (the input-seam message).
+    // Strike the victim in melee THROUGH the buffered MeleeRequested (the input-layer message).
     app.world_mut()
         .write_message(MeleeRequested::new(attacker, victim));
     step(&mut app, 4);

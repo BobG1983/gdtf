@@ -11,7 +11,7 @@
 //! through [`Deref`](std::ops::Deref) and a [`Default`] carrying the shipped value, so a missing `.ron` field
 //! degrades to the default rather than a parse error. The four resolve into one
 //! [`CombatLogTuning`] resource the spawn + update systems READ (never a `const`), re-derived
-//! in place on a hot edit through the GTW-564 generic hot-RON seam
+//! in place on a hot edit through the GTW-564 generic hot-RON registration
 //! ([`register_combat_log_hot_ron`]) — mirroring the presenter's
 //! [`FxTuning`](gdtf_battle_presenter::FxTuning) hot-reload and the UI theme's.
 

@@ -81,7 +81,7 @@ fn near_zero_pen_cannot_reach_severe_buckets() {
     );
 
     // STRICT (pins pen_term into the score): at a fixed same-seed RNG the roll
-    // term is byte-identical, so high − low pen score is deterministically
+    // term is identical, so high − low pen score is deterministically
     // j·Δpen = j·100 (> 0 for the default scaling). `>` fails iff `pen_term`
     // is reverted out of the score — the non-strict bucket relation above is
     // satisfied by a pen-constant (reverted) score, this raw-score check is not.
@@ -131,7 +131,7 @@ fn luck_is_directional() {
     );
 
     // STRICT (pins shooter_term into the score): at a fixed same-seed RNG the
-    // roll term is byte-identical, so high − low shooter score is
+    // roll term is identical, so high − low shooter score is
     // deterministically I·Δluck = I·6.0 (> 0 for the default scaling). `>`
     // fails iff `shooter_term` is reverted out of the score — the bucket
     // relation above is vacuous on revert (equal scores), this is not.
@@ -183,7 +183,7 @@ fn head_hit_outscores_leg_hit() {
         &scaling,
         &mut leg_rng,
     );
-    // STRICT: at a fixed same-seed RNG the roll term is byte-identical, so
+    // STRICT: at a fixed same-seed RNG the roll term is identical, so
     // head_score − leg_score is deterministically +12.0 (head +12 vs leg 0).
     // `>` (not `>=`) is therefore always correct here AND fails iff the
     // `+ part_mod` term is reverted out of the score — pinning the wiring.

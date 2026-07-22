@@ -11,7 +11,7 @@
 //! `match`, no ledger arm, no authoring step scattered across the tree), and this
 //! enum's own [`ApplyInjuryEffect`] impl delegates every verb through the ONE
 //! purely-mechanical `with_behaviour` match — the ONLY sim-side match over this
-//! vocabulary. GTW-550 IS the "registry seam" the GTW-437 spike deferred: the palette
+//! vocabulary. GTW-550 IS the effect registry the GTW-437 spike deferred: the palette
 //! trait replaces the central exhaustive match that made every new effect a multi-file
 //! ritual.
 //!
@@ -58,7 +58,7 @@ use crate::injuries::StatTarget;
 ///
 /// Derives [`Serialize`] too (GTW-654): the content editor's INJURY authoring mode
 /// WRITES an edited def's effects list back to a `.injury.ron` through the shared
-/// RON save seam (the `ArmorSpec` / `GangRoster` write precedent) — behavior-inert
+/// RON save path (the `ArmorSpec` / `GangRoster` write precedent) — behavior-inert
 /// for the sim.
 #[derive(Clone, Copy, PartialEq, Debug, Deserialize, Serialize)]
 pub enum InjuryEffect {

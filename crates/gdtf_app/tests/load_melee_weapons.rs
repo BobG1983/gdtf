@@ -2,7 +2,7 @@
 //! wrapper over the generic per-family suite (`load_suite::suite`).
 //!
 //! New coverage with GTW-580: the melee family was GTW-570-migrated onto the
-//! generic content-family seam but never had its own load test — the generic
+//! generic content-family loader but never had its own load test — the generic
 //! suite gives it the same tier structure as every other folder family for
 //! the cost of this wrapper. VALUE-AGNOSTIC: registry presence + the authored
 //! filename-stem keys (`fists` is load-bearing — it is the default melee

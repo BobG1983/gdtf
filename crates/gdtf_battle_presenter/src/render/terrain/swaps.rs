@@ -28,7 +28,7 @@ use crate::TerrainFogMaterial;
 /// this the unchanged cell center). The fog-driven `saturation` / `brightness` are
 /// deliberately left alone (the Compose-stage fog writer owns them per frame). KEEPS the
 /// entity (the UI mutate-not-respawn rule). The writes ride the ONE tick-quiet stamp
-/// seam ([`stamp_tile_quiet`], GTW-666 — shared with the registry-change restamp):
+/// helper ([`stamp_tile_quiet`], GTW-666 — shared with the registry-change restamp):
 /// a REAL retarget `get_mut`s the material so the UV-transform uniform re-uploads next
 /// frame, an already-correct tile (e.g. the emplacement `Changed` first-observation)
 /// writes nothing. The [`StampedGraphic`] records the role key so a later def

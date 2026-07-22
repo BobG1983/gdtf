@@ -20,7 +20,7 @@
 //!   draws, attacker then defender) → a [`FightOutcome`] (`connect` + [`FightMargin`]).
 //! - [`melee_damage_mult`] — the margin → [`MeleeDamageMult`] curve, clamped to
 //!   `[mult_min, mult_max]`.
-//! - [`apply_melee_multiplier`] — the PURE seam that scales a resolved
+//! - [`apply_melee_multiplier`] — the PURE step that scales a resolved
 //!   [`HitResult`](crate::resolve_hit::HitResult) by the multiplier, between
 //!   [`resolve_hit`](crate::resolve_hit::resolve_hit) and the §6 wound step.
 //!

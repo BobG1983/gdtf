@@ -38,7 +38,7 @@ impl StatDeltaSum {
         Self(self.0.saturating_add(delta.raw() as i16))
     }
 
-    /// Fold one [`StatDelta`] back OUT of this running sum (the GTW-550 heal seam's
+    /// Fold one [`StatDelta`] back OUT of this running sum (the GTW-550 heal path's
     /// exact inverse of [`add`](StatDeltaSum::add)), saturating — exact unless the
     /// sum ever saturated, which takes 256+ worst-case same-sign stacked deltas.
     #[must_use]
@@ -56,7 +56,7 @@ impl StatDeltaSum {
 /// POST-derivation). A no-bare-types newtype over the fixed `[StatDeltaSum; 16]`
 /// array (the store is a domain value; each element is a typed sum, keyed by index):
 /// private inner + derived [`Deref`] (read the slice); the only mutations are
-/// [`add_delta`](StatDeltaLedger::add_delta) and its heal-seam inverse
+/// [`add_delta`](StatDeltaLedger::add_delta) and its heal-path inverse
 /// [`remove_delta`](StatDeltaLedger::remove_delta). Defaults to all-zero.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StatDeltaLedger([StatDeltaSum; StatTarget::COUNT]);
@@ -75,7 +75,7 @@ impl StatDeltaLedger {
     }
 
     /// Fold one [`StatDelta`] back OUT of the running sum for `stat` (saturating) —
-    /// the GTW-550 heal seam's exact inverse of [`add_delta`](StatDeltaLedger::add_delta).
+    /// the GTW-550 heal path's exact inverse of [`add_delta`](StatDeltaLedger::add_delta).
     pub const fn remove_delta(&mut self, stat: StatTarget, delta: StatDelta) {
         let i = stat.index();
         self.0[i] = self.0[i].subtract(delta);
@@ -125,7 +125,7 @@ impl BleedAfflicted {
     }
 
     /// Fold one [`BleedAmount`] back OUT of the accrued per-turn bleed (saturating) —
-    /// the GTW-550 heal seam's exact inverse of [`accumulate`](BleedAfflicted::accumulate).
+    /// the GTW-550 heal path's exact inverse of [`accumulate`](BleedAfflicted::accumulate).
     #[must_use]
     pub const fn relieve(self, amount: BleedAmount) -> Self {
         Self(self.0.saturating_sub(amount.raw() as u16))

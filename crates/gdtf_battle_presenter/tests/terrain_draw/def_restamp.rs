@@ -49,7 +49,7 @@ fn wall_def_v2() -> String {
 }
 
 /// The stamped material's IMAGE id for the tile at `key` — the TEXTURE third of
-/// the C3(a) probe, read through the SAME material the stamp seam writes
+/// the C3(a) probe, read through the SAME material the stamp helper writes
 /// (single consumer, so it stays local to this suite per module-layout Rule 6).
 fn sprite_image_at(app: &mut App, key: CellLevel) -> Option<AssetId<Image>> {
     let mut q = app
@@ -146,7 +146,7 @@ fn def_resave_restamps_the_drawn_tile_in_place() {
     );
     // The TEXTURE third (C3(a) / C1 "re-applies texture"): the v2 def re-targets
     // its SOURCE PATH, so the stamped material's image must re-resolve to the NEW
-    // sheet's path-keyed handle — asserted through the restamp seam on the drawn
+    // sheet's path-keyed handle — asserted through the restamp system on the drawn
     // tile, not the draw-spawn path.
     let image_after = sprite_image_at(&mut app, wall_key);
     let v2_sheet: Handle<Image> = app.world().resource::<AssetServer>().load(WALL_SHEET_V2);

@@ -28,7 +28,7 @@ use crate::{
 /// every ranged-only cone/handling field (`base_spread` / `accuracy` / `kickback` /
 /// `magazine` / `stable`). GTW-554 adds FULL attachment support — the [`slots`](Self::slots)
 /// declaration + the [`attachments`](Self::attachments) key list, the ranged mirror —
-/// resolved at setup through the same slot-gated seam (not folded in
+/// resolved at setup through the same slot-gated fit path (not folded in
 /// [`into_bundle`](Self::into_bundle)).
 ///
 /// Every shared field is its existing weapon-number newtype authored as its
@@ -88,7 +88,7 @@ pub struct MeleeWeaponSpec {
     /// [`attachments`](crate::weapon::WeaponSpec::attachments) mirror. `#[serde(default)]`
     /// (an omitted field fits nothing). At battle setup the keys resolve through the SAME
     /// slot-gated [`resolve_pending_attachments`](crate::equipment::attachments::resolve_pending_attachments)
-    /// seam as the ranged path and ride onto the spawned MELEE weapon entity as a
+    /// function as the ranged path and ride onto the spawned MELEE weapon entity as a
     /// [`PendingAttachments`](crate::weapon::PendingAttachments) marker the post-spawn
     /// applier consumes.
     #[serde(default)]

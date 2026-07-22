@@ -1,4 +1,4 @@
-//! The [`UiPlugin`] registration seam and its theme-asset message-buffer gate.
+//! The [`UiPlugin`] registration point and its theme-asset message-buffer gate.
 
 use bevy::prelude::*;
 use gdtf_assets::{RonAsset, redrive_hot_ron_resource};
@@ -33,11 +33,11 @@ use crate::{
 /// production path (bevy-traps rule 1).
 type ThemeAssetMessages = Messages<AssetEvent<RonAsset<GdtfThemeSpec>>>;
 
-/// The GDTF UI plugin — the single registration seam for the hand-rolled UI.
+/// The GDTF UI plugin — the single registration point for the hand-rolled UI.
 ///
 /// Added once by `gdtf_app::GdtfApp` (and mirrored by the headless test-support
 /// path), this is where every later UI ticket hangs its systems, resources, and
-/// observers. Keeping the seam in place from the start means downstream wiring
+/// observers. Keeping the plugin in place from the start means downstream wiring
 /// changes touch only [`build`](UiPlugin::build), never the app's plugin list.
 ///
 /// It currently installs the focus-navigation layer
@@ -53,7 +53,7 @@ type ThemeAssetMessages = Messages<AssetEvent<RonAsset<GdtfThemeSpec>>>;
 ///
 /// (The GTW-410 `Dropdown<T>` combobox — with its type-agnostic message + `Escape` emitter +
 /// popup positioner this plugin used to install, plus the per-option-id `register_dropdown::<T>`
-/// caller seam — the GTW-411 `TextField`/`NumericField` editable fields, the GTW-412
+/// caller registration function — the GTW-411 `TextField`/`NumericField` editable fields, the GTW-412
 /// `ScrollList` — with its guarded `ScrollAreaPlugin` / `ScrollbarPlugin` adds — and the
 /// GTW-416 `Accordion` driver were RETIRED by GTW-655/GTW-636: their only consumers, the
 /// GTW-434 procgen visualizer and the in-game gang editor, moved off / were retired.)

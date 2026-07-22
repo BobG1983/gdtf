@@ -1,5 +1,5 @@
 //! The shell's PRE-PANEL per-mode model-sync / autoload block — split out of
-//! `shell.rs` at the GTW-479-flagged natural seam (GTW-654; module-layout warn
+//! `shell.rs` at the GTW-479-flagged natural boundary (GTW-654; module-layout warn
 //! band): these runners change when a MODE's open-with-content behavior does, the
 //! shell when the PANEL layout does. Each runner self-gates on its mode and on its
 //! model borrows being present, and each is idempotent under the egui multipass
@@ -39,7 +39,7 @@ use crate::{
 
 /// The per-mode model bundles the sync fan-out below reads — borrowed from the shell's
 /// `SystemParam` bundles for the duration of [`run_form_syncs`] (GTW-669; the
-/// module-layout seam continuation: the sync ROSTER grows with every new mode, so the
+/// continuing the module-layout split: the sync ROSTER grows with every new mode, so the
 /// whole fan-out lives HERE with the sync runners, and the shell only changes when the
 /// PANEL layout does). Each bundle keeps its OWN world lifetime — a `&mut` is invariant
 /// over its type parameter, so one shared `'w` would force the shell's independently

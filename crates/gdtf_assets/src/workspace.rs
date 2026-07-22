@@ -4,10 +4,10 @@
 //! the three editor-form savers, and the gang-editor saver), so the GTW-562
 //! change-class — move an authored-content root — was a multi-site sweep the
 //! compiler could not force. It now exists exactly once, here, beside the
-//! shared save seam ([`sanitize_file_stem`](crate::sanitize_file_stem) /
+//! shared save helpers ([`sanitize_file_stem`](crate::sanitize_file_stem) /
 //! `write_ron_pretty`): every host's `AssetPlugin.file_path` and every
 //! editor-side saver import the SAME string, so read and write roots are
-//! byte-identical by construction.
+//! identical by construction.
 
 /// Absolute path to the workspace-root `assets/` directory (ADR 0003) — the
 /// ONE spelling every host and saver shares.

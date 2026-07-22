@@ -15,7 +15,7 @@
 //! [`ClassifiedPop`](classified::ClassifiedPop) list + anchor THROUGH the staggered projectile
 //! → impact pipeline so each shot's pops appear when THAT shot's impact lands (see
 //! [`projectile`](super::super::projectile) / [`impact`](super::super::impact)). This also sets
-//! up GTW-328's shared event → text layer (the classification is a clean, reusable seam).
+//! up GTW-328's shared event → text layer (the classification is a clean, reusable step).
 //!
 //! For each round [`classify_report`](classify::classify_report) CLASSIFIES its
 //! [`report`](gdtf_battle_sim::shot_fired::ShotFired::report)

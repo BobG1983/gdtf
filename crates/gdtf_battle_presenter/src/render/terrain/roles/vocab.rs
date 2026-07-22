@@ -14,7 +14,7 @@
 /// re-listing key strings. GTW-665: the role→atlas-index TABLE this enum used to
 /// index into is RETIRED — each key now resolves through the sprite-def registry
 /// ([`resolve_sprite`](crate::render::terrain::resolve::resolve_sprite)); the enum
-/// stays the closed vocabulary/concern seam. The sim's
+/// stays the closed vocabulary/concern boundary. The sim's
 /// [`TerrainGraphicKey`](gdtf_battle_sim::piece::TerrainGraphicKey) stays an opaque string
 /// newtype — this type never crosses into the sim (the render-free boundary); the
 /// presenter classifies the sim's string at its own edge.

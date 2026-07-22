@@ -2,7 +2,7 @@
 //! loop — a saved armor file satisfies the gang-equipment armor edge through the
 //! REAL loader, and an armor RE-SAVE re-arms the pass and re-publishes findings.
 //!
-//! THE SEAM, noted per the GTW-651 contract convention: the file-watcher is NOT
+//! THE RELOAD TRIGGER, noted per the GTW-651 contract convention: the file-watcher is NOT
 //! active in this headless harness (`file_watcher` is binary-propagated, never
 //! in test builds), so the ONE watcher-owned step — "a changed file on disk
 //! triggers its reload" — is driven directly via [`AssetServer::reload`];

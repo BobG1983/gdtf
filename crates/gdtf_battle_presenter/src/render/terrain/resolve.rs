@@ -8,7 +8,7 @@
 //! (`assets/content/sprites/*.spritedef.ron`). The
 //! [`TileRole`](super::roles::TileRole) enum STAYS the closed renderer
 //! vocabulary (the sim-fact → role fallback mapping and the editor's picker
-//! filter) — what retired is the role→index TABLE, not the role concern seam.
+//! filter) — what retired is the role→index TABLE, not the role concern boundary.
 //!
 //! A name that resolves NO def draws the LOUD [`MissingTileTexture`] magenta
 //! marker (C4 — the Level-Rail missing-marker precedent): never a panic, never

@@ -13,7 +13,7 @@
 //! stand↔HIGH) **OR** the weapon carries the [`crate::weapon::Stable`] tag (a
 //! stable weapon engages the brace UNCONDITIONALLY — bipod-mounted /
 //! braced-by-design — regardless of faced cover or stance); and the
-//! **emplacement** seam ([`EmplacementStability`] — no entities yet, a
+//! **emplacement** term ([`EmplacementStability`] — no entities yet, a
 //! zero/identity term carried so the signature is complete) — then
 //! **clamps/normalises** the sum into the `0..=100` domain ([`StabilityScore`])
 //! and reads **both** [`crate::tuning::StabilityCurves`] at that score: the

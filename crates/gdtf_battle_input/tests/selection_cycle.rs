@@ -1,4 +1,4 @@
-//! GTW-458: headless integration tests for the Prev/Next selection-cycle seam — pushing
+//! GTW-458: headless integration tests for the Prev/Next selection-cycle queue — pushing
 //! `ActIntent::SelectNext` / `SelectPrev` over the REAL `GdtfBattleInputPlugin` drain
 //! (`dispatch_act_intents` → `SelectedShooter`), and the `Tab` / `Shift+Tab` keyboard surface
 //! (`cycle_selection_keys` → the same intents).
@@ -11,7 +11,7 @@
 //! - C2 — `SelectNext` / `SelectPrev` cycle through the player gang in deterministic
 //!   `(z, y, x)` order, WRAPPING, ignoring enemy gangers, and making a first selection from
 //!   `None`.
-//! - C3 — `Tab` pushes `SelectNext` and `Shift+Tab` pushes `SelectPrev` via the SAME intent seam.
+//! - C3 — `Tab` pushes `SelectNext` and `Shift+Tab` pushes `SelectPrev` via the SAME intent queue.
 //! - Empty player gang → no-op.
 //!
 //! Every `app.world_mut()` mutation is in a TEST BODY — the accepted headless idiom
@@ -104,7 +104,7 @@ fn placed_downed_ganger(app: &mut App, faction: Faction, x: i32, y: i32) -> Enti
         .spawn(app.world_mut())
 }
 
-/// Pushes a cycle [`ActIntent`] onto the shared seam (the keyboard / button write-point).
+/// Pushes a cycle [`ActIntent`] onto the shared queue (the keyboard / button write-point).
 fn push(app: &mut App, intent: ActIntent) {
     app.world_mut()
         .resource_mut::<PendingActIntent>()
@@ -327,7 +327,7 @@ fn empty_player_gang_cycle_is_noop() {
 }
 
 /// C3 — `Tab` pushes `SelectNext` and `Shift+Tab` pushes `SelectPrev` through the SAME intent
-/// seam (`cycle_selection_keys` → the drain). Driven by the REAL keyboard surface (a `Keybinds`
+/// queue (`cycle_selection_keys` → the drain). Driven by the REAL keyboard surface (a `Keybinds`
 /// resource + a synthesized `ButtonInput<KeyCode>` just-press), proving the key path end-to-end.
 #[test]
 fn tab_cycles_next_and_shift_tab_cycles_prev() {

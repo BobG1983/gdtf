@@ -1,4 +1,4 @@
-//! The armor content family (GTW-269, generic seam since GTW-570).
+//! The armor content family (GTW-269, generic machinery since GTW-570).
 
 use gdtf_assets::{ContentFamily, ContentFileStem};
 use gdtf_battle_sim::armor::{ArmorName, ArmorRegistry, ArmorSpec};

@@ -1,8 +1,8 @@
-//! The input-populated [`PathPreview`] read-seam resource (E7 · GTW-12j).
+//! The input-populated [`PathPreview`] read-side resource (E7 · GTW-12j).
 //!
-//! # The C6 read-seam (input → presenter → sim)
+//! # The C6 read path (input → presenter → sim)
 //!
-//! The PRESENTER owns the read-seam ([`PathPreview`], the route [`CellLevel`] list +
+//! The PRESENTER owns the read-side resource ([`PathPreview`], the route [`CellLevel`] list +
 //! the previewed [`Tu`] cost) plus the draw system; the INPUT crate (which alone may
 //! read `SelectedShooter` + the new `PathPreviewTarget`, and which builds the GTW-353
 //! [`PlanningView`](gdtf_battle_sim::pathfinder::PlanningView) from the sim's `SquadVisibility`)
@@ -11,7 +11,7 @@
 //! Selection + target are NEVER pushed into the authoritative sim model, and the
 //! dependency direction stays `input → presenter → sim` — the SAME shape as the
 //! [`HighlightRequest`](crate::HighlightRequest)
-//! seam (the presenter DEFINES the type; the input crate WRITES it). The route the
+//! message (the presenter DEFINES the type; the input crate WRITES it). The route the
 //! input crate computes uses the SAME [`find_path`](gdtf_battle_sim::pathfinder::find_path) +
 //! `PlanningView` the move dispatch ([`dispatch_move`](gdtf_battle_sim::acts::dispatch_move))
 //! uses, so the previewed route + its cost EXACTLY match what a commit will accept
@@ -26,7 +26,7 @@
 use bevy::prelude::*;
 use gdtf_battle_sim::prelude::{CellLevel, Tu};
 
-/// The presenter-owned route path-preview read-seam — the cells of the
+/// The presenter-owned route path-preview read-side resource — the cells of the
 /// [`find_path`](gdtf_battle_sim::pathfinder::find_path) route from the SELECTED ganger to the target,
 /// plus the previewed TU cost (C1 / C6).
 ///

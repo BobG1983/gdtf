@@ -1,5 +1,5 @@
 //! The authored key vocabulary, the resolved keybind table, and its hot-RON
-//! chain registration (the GTW-564 generic seam).
+//! chain registration (the GTW-564 generic hot-RON load path).
 
 use bevy::prelude::*;
 use gdtf_assets::HotRonAppExt;
@@ -160,7 +160,7 @@ pub struct Keybinds {
     /// (GTW-458). The Prev half of the cycle chord — bound to the SAME key as
     /// [`select_next`](Self::select_next), differentiated by the held `Shift` modifier
     /// (`Tab` = Next, `Shift+Tab` = Prev). The on-bar Prev BUTTON pushes
-    /// [`ActIntent::SelectPrev`](crate::ActIntent::SelectPrev) through the same seam.
+    /// [`ActIntent::SelectPrev`](crate::ActIntent::SelectPrev) through the same queue.
     pub select_prev:      BoundKey,
 }
 
@@ -241,7 +241,7 @@ impl Keybinds {
 }
 
 /// Registers the [`Keybinds`] hot-RON chain — ONE ext call onto the GTW-564
-/// generic seam (kick-off / gated resolve / live redrive, keyed by the generic
+/// generic hot-RON load path (kick-off / gated resolve / live redrive, keyed by the generic
 /// [`HotRonHandle`](gdtf_assets::HotRonHandle)`<Keybinds>`), replacing the
 /// per-site handle newtype + load/resolve/redrive triple. Self-gates on the
 /// [`AssetServer`](bevy::asset::AssetServer) (`bevy-traps.md` #1), so a

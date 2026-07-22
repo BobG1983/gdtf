@@ -23,7 +23,7 @@ fn cover_ledger_seeded_from_fixture_wall() {
     };
     // The wall entry is present and seeded from the test-wall registry piece
     // ("test-wall": hp=120, High, prot=8, hard=4 — the test registry values, not
-    // shipped balance; asserting the seam carried the registry values through).
+    // shipped balance; asserting the setup path carried the registry values through).
     let expected = CoverEntry::seeded(
         CoverHp::new(120),       // test-wall hp (test registry, not a balance pin)
         HeightBand::High,        // test-wall band

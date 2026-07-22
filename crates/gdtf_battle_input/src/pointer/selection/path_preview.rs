@@ -1,8 +1,8 @@
-//! The route path-preview seam + POPULATE system (E7 · GTW-12j, C6): the input-crate half
+//! The route path-preview resource + POPULATE system (E7 · GTW-12j, C6): the input-crate half
 //! of the move-route preview.
 //!
-//! The presenter owns the [`PathPreview`] read-seam + the draw system; this module defines
-//! the NEW [`PathPreviewTarget`] seam (the target cell the route previews TO) and POPULATES
+//! The presenter owns the [`PathPreview`] read resource + the draw system; this module defines
+//! the NEW [`PathPreviewTarget`] resource (the target cell the route previews TO) and POPULATES
 //! the presenter resource for the SELECTED ganger → that target. It is the ONLY place
 //! [`SelectedShooter`] + [`PathPreviewTarget`] feed the route preview — keeping selection +
 //! target out of the authoritative sim model (the `input → presenter → sim` direction; the
@@ -53,7 +53,7 @@ use crate::{SelectedFireMode, selection::resources::SelectedShooter};
 ///
 /// # The GTW-356 boundary (FLAGGED)
 ///
-/// THIS ticket DEFINES this seam (default [`None`]); the GTW-356 two-click flow SETS it on the
+/// THIS ticket DEFINES this resource (default [`None`]); the GTW-356 two-click flow SETS it on the
 /// first click (target select). Until then it stays [`None`] and the preview is empty — the
 /// populate path is fully wired and unit-tested by authoring this resource directly. It lives
 /// in the INPUT crate (beside [`SelectedShooter`]) so selection + target both stay out of the
@@ -93,7 +93,7 @@ impl PathPreviewTarget {
 /// This MIRRORS how the fire-target highlight is cleared on de-selection: rather than the
 /// presenter clearing its own draw, the input layer resets the SOURCE state
 /// ([`PathPreviewTarget`]) and the populate system recomputes the empty preview — keeping the
-/// `input → presenter → sim` direction (the input crate writes the target seam; the presenter
+/// `input → presenter → sim` direction (the input crate writes the target resource; the presenter
 /// reads it and draws). It NEVER touches [`PathPreview`] directly.
 ///
 /// It reacts on a USER fire-mode toggle — a [`Changed<SelectedFireMode>`](Changed) — but NOT on

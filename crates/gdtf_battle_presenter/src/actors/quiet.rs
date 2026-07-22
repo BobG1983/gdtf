@@ -1,4 +1,4 @@
-//! The tick-quiet write seam (GTW-627 C4): the ONE place owning the fog/resolver write
+//! The tick-quiet write helper (GTW-627 C4): the ONE place owning the fog/resolver write
 //! discipline, so it cannot be re-derived per call site.
 //!
 //! Two writers share it — the terrain arm of [`present_fog`](super::fog::present_fog) and
@@ -6,13 +6,13 @@
 //! ([`resolve_ganger_visibility`](super::ganger::resolve_ganger_visibility)) — and both
 //! run EVERY frame over their full entity sets, so an unconditional write would re-mark
 //! everything changed each tick (re-triggering visibility propagation, and re-uploading
-//! each material uniform — the exact re-dirty class the GTW-568 pooled-overlay seam
+//! each material uniform — the exact re-dirty class the GTW-568 pooled-overlay helper
 //! documents in `overlays/pool/draw.rs`). The discipline:
 //!
 //! * **Visibility flips go through [`set_if_neq`](DetectChangesMut::set_if_neq)** — an
 //!   already-correct entity's change ticks stay untouched. The projection takes the
 //!   [`Mut`] WRAPPER (never a bare `&mut Visibility`): merely deref-projecting through
-//!   [`Mut`] would itself mark the component changed, defeating the seam (the GTW-568
+//!   [`Mut`] would itself mark the component changed, defeating the discipline (the GTW-568
 //!   lesson).
 //! * **Material knobs compare-before-mutate** — read through the immutable
 //!   [`Assets::get`] path (no resource-tick poke through [`ResMut`]'s `Deref`), and take
@@ -42,7 +42,7 @@ pub(super) fn set_visibility_quiet(visibility: &mut Mut<Visibility>, target: Vis
 /// the store's resource tick BEFORE any compare. The knob compare is bitwise
 /// (`f32::to_bits`) — the fog writes only the named constant magnitudes, so bit equality
 /// is exact and dodges the float-compare pitfalls. A tile whose material is not in the
-/// store (still loading) is skipped, exactly as the pre-seam writer skipped a failed
+/// store (still loading) is skipped, exactly as the earlier writer skipped a failed
 /// `get_mut`.
 pub(super) fn set_fog_knobs_quiet(
     materials: &mut ResMut<Assets<TerrainFogMaterial>>,

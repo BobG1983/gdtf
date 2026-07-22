@@ -13,7 +13,7 @@
 //!   `run_if(resource_exists::<BattleInProgress>)`, the SAME live-battle witness the
 //!   action-bar / input / presenter gate on (`bevy-traps.md` #1), so it is inert when
 //!   no battle is live. It reads `Res<SelectedShooter>` (the input crate's selection
-//!   seam) and repaints the lines from the selected ganger's vital components. It is
+//!   resource) and repaints the lines from the selected ganger's vital components. It is
 //!   ordered `.after(InputSystems::Gather)` (GTW-264) so it observes the SAME update's
 //!   `auto_select_first_player_ganger` write to `SelectedShooter` — otherwise it read the
 //!   selection before auto-select filled it and painted the empty state every frame

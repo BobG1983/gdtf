@@ -16,7 +16,7 @@
 //! - `git diff --stat -- assets/` — the worktree-vs-index diff, i.e. UNSTAGED
 //!   modifications to tracked files.
 //!
-//! HONEST SEMANTICS: cargo schedules tests in parallel, so this guard catches
+//! SEMANTICS: cargo schedules tests in parallel, so this guard catches
 //! PERSISTENT mutations — the observed incident class, where the dirt survived
 //! the run — not necessarily a same-run transient write-then-revert. Per-test
 //! isolation (every write-path test rooted in a `TempDir`, the GTW-555/636

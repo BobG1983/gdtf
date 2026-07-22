@@ -55,7 +55,7 @@ fn explicit_end_marker_advances_to_animate_out() {
         return;
     };
 
-    // Insert the explicit end-signal marker (the seam victory/flee will drive).
+    // Insert the explicit end-signal marker (the one victory or flee will drive).
     app.world_mut().insert_resource(BattleRunningComplete);
 
     let reached_animate_out = advance_until(

@@ -1,6 +1,6 @@
 //! GTW-259: tests for the gamepad software cursor — the SHARED decision (AC2), the picker
 //! arbitration (AC3), the mouse-reclaims-pointer logic (AC4), and the gamepad acts reusing
-//! the intent seam (AC6, by construction + the shared decision).
+//! the intent queue (AC6, by construction + the shared decision).
 //!
 //! HONESTY (the contract / `verification.md`): real `Gamepad` stick / button STATE is
 //! device-event-driven in Bevy 0.18 and cannot be cleanly driven headlessly (the same

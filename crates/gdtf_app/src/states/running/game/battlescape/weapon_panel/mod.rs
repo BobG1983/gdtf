@@ -8,13 +8,13 @@
 //!
 //! The Reload button is the VIEW end of the real, TU-costed reload act (the sim's
 //! `dispatch_reload`): a press pushes [`ActIntent::Reload`](gdtf_battle_input::ActIntent::Reload)
-//! onto the shared act-intent seam, draining to a
+//! onto the shared act-intent queue, draining to a
 //! [`ReloadRequested`](gdtf_battle_sim::acts::ReloadRequested) for the selection. The relocated
 //! firemode / aim / stance controls (GTW-298) keep their action-bar markers, so the existing
 //! press → intent + active-mark systems drive them parent-agnostically.
 //!
 //! UI/view only: it reads the sim's weapon components + the input crate's `SelectedShooter`,
-//! owns no combat rule, and its ONLY write is the act-intent seam. Mutate-in-place on
+//! owns no combat rule, and its ONLY write is the act-intent queue. Mutate-in-place on
 //! selection change ([[ui-mutate-not-respawn]]).
 
 mod components;

@@ -4,7 +4,7 @@
 //! fans a GTW-541 `HitType::Blast` at the landing cell through the EXISTING
 //! `resolve_and_apply` damage path. Proven END-TO-END on the REAL
 //! `setup_battle_on_request` → `BattleSimPlugin` `Simulate`-band path, driven THROUGH a
-//! buffered `ThrowGrenadeRequested` (the same message the input seam writes), plus pure
+//! buffered `ThrowGrenadeRequested` (the same message the input layer writes), plus pure
 //! `march_arc` unit tests for the deterministic arc geometry.
 //!
 //! The clause contract this covers:

@@ -181,7 +181,7 @@ impl Default for FadeOutSeconds {
 /// a heavier WEIGHT (and a small size bump) on top of this — see the spawn system's emphasis
 /// scaling. The default `20.0` pt is clearly larger than the theme's `18.0` pt body text, so a line
 /// like `"Alex Mercer moved (15, 11) -> (14, 12)"` is legible at a glance. RON-tunable, so the user
-/// can dial it without a rebuild. Font size in pt is the sanctioned `ui-responsive-not-px` carve-out
+/// can dial it without a rebuild. Font size in pt is the `ui-responsive-not-px` carve-out
 /// (`.claude/rules/ui-responsive-not-px.md` — a glyph size is intrinsically a point measure).
 ///
 /// A named newtype over the `f32` pt (`.claude/rules/no-bare-types.md`): the inner is PRIVATE,

@@ -1,7 +1,7 @@
 //! GTW-387 C3 (DRAW side, positive): headless presenter integration proof that the
 //! reachable-range overlay actually RENDERS on the upper storey after a level switch.
 //!
-//! The sibling pure-logic tests (`overlays/reachable/test.rs`) pin the read-seam +
+//! The sibling pure-logic tests (`overlays/reachable/test.rs`) pin the read-side resource +
 //! the `reachable_draws` active-storey hard-cut WITHOUT an app, and the input crate
 //! unit-tests the producer (`ReachableCells` population). What no test covered until
 //! now is the DRAW system spawning a `Visible`, world-positioned `ReachableCellSprite`

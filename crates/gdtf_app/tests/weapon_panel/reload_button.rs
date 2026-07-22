@@ -56,7 +56,7 @@ fn reload_button_visible_with_a_magazine_hidden_without_a_weapon() {
 }
 
 // ---------------------------------------------------------------------------------
-// AC6 — pressing Reload emits ActIntent::Reload → ReloadRequested through the seam.
+// AC6 — pressing Reload emits ActIntent::Reload → ReloadRequested through the input queue.
 // ---------------------------------------------------------------------------------
 
 #[test]
@@ -104,7 +104,7 @@ fn pressing_reload_emits_a_reload_requested_for_the_selection() {
     assert_eq!(
         reloads.len(),
         1,
-        "pressing Reload must emit exactly one ReloadRequested through the seam",
+        "pressing Reload must emit exactly one ReloadRequested through the dispatch path",
     );
     assert_eq!(
         reloads[0].actor, ganger,

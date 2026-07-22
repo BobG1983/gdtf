@@ -6,7 +6,7 @@ use bevy::prelude::{Entity, Message};
 ///
 /// A buffered [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`) carrying the acting
 /// ganger [`Entity`] + the openable-piece (door / hatch) [`Entity`]. The player-only
-/// contextual Open-Door button writes this from the input seam when the selected ganger is
+/// contextual Open-Door button writes this from the input queue when the selected ganger is
 /// adjacent to a CLOSED door (F4 player-only; detect offers CLOSED doors only).
 /// [`dispatch_open_door`](crate::acts::open_door::dispatch_open_door) drains it and RE-GATES in the
 /// sim (the input layer's offer is advisory, never authoritative): the actor exists + can

@@ -1,4 +1,4 @@
-//! The GTW-564 hot-RON seam: ONE generic handle + config + system triplet for
+//! The GTW-564 hot-RON machinery: ONE generic handle + config + system triplet for
 //! every hot-reloadable single-file RON resource.
 //!
 //! Wiring-only module. The pieces live in focused submodules: [`mod@handle`]

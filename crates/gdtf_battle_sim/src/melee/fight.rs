@@ -267,7 +267,7 @@ fn scale_damage(component: DamageMagnitude, mult: MeleeDamageMult) -> DamageMagn
     round_to_i32(DamageReal::new(*component as f32 * *mult))
 }
 
-/// Apply the §7 [`MeleeDamageMult`] to a resolved [`HitResult`] — the seam between
+/// Apply the §7 [`MeleeDamageMult`] to a resolved [`HitResult`] — the step between
 /// [`resolve_hit`](crate::resolve_hit::resolve_hit) and the §6 wound step
 /// (`docs/combat/resolution.md` §7 line 153: "a connecting hit's damage is
 /// multiplied by `damage_mult`, then runs the normal damage → wound steps").

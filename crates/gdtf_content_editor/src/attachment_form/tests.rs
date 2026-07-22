@@ -32,7 +32,7 @@ fn authored_spec() -> AttachmentSpec {
 
 /// A fresh draft seeds the legal COSMETIC IDENTITY: zero effects (GTW-669 C2 — the
 /// schema's `#[serde(default)]` empty list), an empty display name, and the palette's
-/// first slot; the effects list edits down to EMPTY through the one `spec_mut` seam (no
+/// first slot; the effects list edits down to EMPTY through the one `spec_mut` path (no
 /// `effects >= 1` floor — the injuries contrast).
 #[test]
 fn empty_effects_list_is_legal_and_reachable() {
@@ -87,7 +87,7 @@ fn load_is_verbatim_and_projection_trims_the_name() {
     );
 }
 
-/// A `GainFireMode` payload edits in place through the one `spec_mut` seam — the nested
+/// A `GainFireMode` payload edits in place through the one `spec_mut` path — the nested
 /// [`FireModeSpec`] row editor's model path (GTW-669 C2).
 #[test]
 fn gain_fire_mode_payload_edits_in_place() {
@@ -112,7 +112,7 @@ fn gain_fire_mode_payload_edits_in_place() {
     assert_eq!(*mode.shots, 3, "the shots edit landed");
 }
 
-/// The path derivation runs through the family consts + the shared sanitize seam: the
+/// The path derivation runs through the family consts + the shared sanitize helper: the
 /// literal `content/attachments/<stem>.attachment.ron` shape the GTW-619 loader
 /// dispatches on (pinning the LITERALS is the drift alarm — GTW-621), with the
 /// `unnamed_attachment` fallback for a name that sanitizes to nothing.

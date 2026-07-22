@@ -11,7 +11,7 @@ use crate::{InspectTarget, SelectedFireMode, selection::SelectedShooter};
 
 /// The read-only resources [`decide_left_click`](super::decide_left_click) consults, grouped into ONE [`bevy::ecs::system::SystemParam`]
 /// so a consuming system's parameter list stays under clippy's argument-count gate (the sim's
-/// `BattleGridsParam` / the seam's `ActWriters` precedent).
+/// `BattleGridsParam` / the intent drain's `ActWriters` precedent).
 ///
 /// Grouping the cohesive `Res<…>` reads into one param keeps
 /// [`left_click_act`](crate::left_click_act) at five parameters. A transparent system-param

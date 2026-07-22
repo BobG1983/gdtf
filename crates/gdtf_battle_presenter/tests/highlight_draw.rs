@@ -1,5 +1,5 @@
 //! GTW-251: headless draw-LOGIC tests for the message-driven hover-highlight — the
-//! PRESENTER half of the seam.
+//! PRESENTER half of the request path.
 //!
 //! The presenter DEFINES the `HighlightRequest` message and DRAWS from it
 //! (`draw_highlight_on_request`). This test proves AC2 end of the contract: sending a

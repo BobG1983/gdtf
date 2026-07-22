@@ -76,7 +76,7 @@ pub(super) const fn validation_graph_ready(graph: ValidationGraphResources) -> b
         && graph.attachments.is_some()
 }
 
-/// Install the reference-integrity pass on the editor: the seam plumbing
+/// Install the reference-integrity pass on the editor: the base plumbing
 /// ([`ContentValidationAppExt::init_content_validation`]), the `Check`-set
 /// window (every read registry resolved, not yet checked), one
 /// [`register_reference_check`](ContentValidationAppExt::register_reference_check)

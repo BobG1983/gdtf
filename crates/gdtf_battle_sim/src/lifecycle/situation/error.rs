@@ -111,9 +111,10 @@ pub enum BattleSetupError {
     /// Decision B). Validated BEFORE any entity is spawned (abort-first).
     ///
     /// GTW-491: NOT produced this slice — the new [`TerrainSimKind`](crate::terrain::def::TerrainSimKind)
-    /// model carries no per-piece floor move cost (the move-cost-from-`default_floor` seam is
-    /// GTW-482), so floor cost is the uniform `fallback_floor_cost`. The variant is retained for
-    /// the GTW-482 seam that will re-introduce per-floor move-cost validation.
+    /// model carries no per-piece floor move cost (per-floor move cost derived from
+    /// `default_floor` is deferred to GTW-482), so floor cost is the uniform
+    /// `fallback_floor_cost`. The variant is retained for the GTW-482 work that will re-introduce
+    /// per-floor move-cost validation.
     FloorCostBelowMinimum {
         /// The terrain piece whose `move_cost` is too low.
         piece:   TerrainUuid,

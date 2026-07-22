@@ -3,7 +3,7 @@
 //! (NO opposed Fight roll, NO `FightRng` draw) that applies multiplied weapon damage to the
 //! structure's HP through the EXISTING cover ledger. Proven END-TO-END on the REAL
 //! `setup_battle_on_request` → `BattleSimPlugin` `Simulate`-band path, driven THROUGH a buffered
-//! `MeleeRequested::new_structural` (the same message + constructor the input seam writes).
+//! `MeleeRequested::new_structural` (the same message + constructor the input layer writes).
 //!
 //! The clause contract this covers:
 //!

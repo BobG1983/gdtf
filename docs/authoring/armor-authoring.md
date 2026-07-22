@@ -174,7 +174,7 @@ Armor stats that change per-hit flow through:
 
 Test fixtures that build `ArmorSpec` inline will need the new field. Update
 any sim-side test support (the bespoke per-family loader test submodule was
-retired with the GTW-570 generic content-family seam).
+retired with the GTW-570 generic content-family loader).
 
 ### Step 6 — Update authoring docs
 

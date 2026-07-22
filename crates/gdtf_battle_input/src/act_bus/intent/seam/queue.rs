@@ -1,10 +1,10 @@
-//! The buffered [`PendingActIntent`] queue seam — the cross-crate write point.
+//! The buffered [`PendingActIntent`] queue — the cross-crate write point.
 
 use bevy::prelude::*;
 
 use super::ActIntent;
 
-/// The shared intent QUEUE — the buffered seam both input surfaces write.
+/// The shared intent QUEUE — the buffered write point both input surfaces write.
 ///
 /// A named newtype over a `Vec<ActIntent>` (no-bare-types: a pending-intent queue is
 /// a domain value; the inner `Vec` is the collection-of-domain-values carve-out),

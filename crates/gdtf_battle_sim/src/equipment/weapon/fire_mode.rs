@@ -184,7 +184,7 @@ impl ConeHalfAngle {
 ///
 /// [`Single`](Self::Single) is the DEFAULT (`#[serde(default)]` on the
 /// [`FireModeSpec`] field) so every existing weapon `.ron` — which never authors a
-/// `hit_type` — deserializes byte-identically to a direct single-target shot, and the
+/// `hit_type` — deserializes identically to a direct single-target shot, and the
 /// live fire path takes the unchanged single-target branch for it (the IDENTITY
 /// property, GTW-541 AC). `Copy`/`Eq` where the fields allow, so [`FireModeSpec`] stays
 /// `Copy` and the message payload owns it.
@@ -236,7 +236,7 @@ impl Default for HitType {
 /// `String` mode name was dropped — GTW-260; it was only `Clone`-not-`Copy` because
 /// of the old owned name). The [`hit_type`](FireModeSpec::hit_type) is
 /// `#[serde(default)]` = [`HitType::Single`], so every existing weapon `.ron` (which
-/// authors no `hit_type`) parses byte-identically (GTW-541 IDENTITY).
+/// authors no `hit_type`) parses identically (GTW-541 IDENTITY).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct FireModeSpec {
     /// Which mode this is — its closed kind (`Single` / `Burst` / `Full`); the

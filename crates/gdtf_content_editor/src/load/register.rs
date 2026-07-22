@@ -15,7 +15,7 @@ use crate::{
 
 /// Registers the editor's `Load` asset pass onto `app` — eight family registrations,
 /// the bespoke injuries pass (GTW-654), plus the transition gate (see the
-/// [module docs](super) for the seam-vs-policy split).
+/// [module docs](super) for the registration-vs-policy split).
 ///
 /// Each ext call wires its family's/chain's WHOLE generic kick-off (`Startup`,
 /// storing the persistent handle), gated resolve (inserts the resource exactly
@@ -32,17 +32,17 @@ pub(crate) fn register_load(app: &mut App) {
     // registered here: the egui shell styles itself, so the editor reads no
     // theme field — GTW-625, the GTW-579 AC2 amendment).
 
-    // The eight folder families (GTW-570 seam) — the SAME glue-crate family
-    // definitions the game registers, so game and editor build each registry
-    // through literally one function. The terrain + theme defs share the ONE
-    // MIXED `content/terrain/` tree; the seam's unconditional TypeId filter
-    // keeps each walk to its own members.
+    // The eight folder families (the GTW-570 registration helper) — the SAME
+    // glue-crate family definitions the game registers, so game and editor build
+    // each registry through literally one function. The terrain + theme defs share
+    // the ONE MIXED `content/terrain/` tree; the helper's unconditional TypeId
+    // filter keeps each walk to its own members.
     app.register_content_family::<WeaponsFamily>();
     app.register_content_family::<ArmorFamily>();
     app.register_content_family::<TerrainDefsFamily>();
     app.register_content_family::<ThemeDefsFamily>();
-    // GTW-636 C2: the GANG mode's registry — the GTW-629 seam brings the loader,
-    // salvage, validation window, and headless fallback with this one line.
+    // GTW-636 C2: the GANG mode's registry — the GTW-629 registration helper brings
+    // the loader, salvage, validation window, and headless fallback with this one line.
     app.register_content_family::<GangsFamily>();
     // GTW-636 C1: the melee-weapons registry — the member model carries a
     // `melee_weapon` key (GTW-505), so the Gang mode's melee dropdown needs the
@@ -59,8 +59,9 @@ pub(crate) fn register_load(app: &mut App) {
     app.register_content_family::<AttachmentsFamily>();
 
     // GTW-654: the BESPOKE injuries family (one folder → the InjuryRegistry +
-    // InjuryTables pair — a declared GTW-570 seam exclusion, so it registers
-    // through its own thin pass instead of `register_content_family`). The
+    // InjuryTables pair — a declared exclusion from the GTW-570 registration
+    // helper, so it registers through its own thin pass instead of
+    // `register_content_family`). The
     // INJURY mode's load combo / effects palette / weighting tables read these.
     register_injuries(app);
 

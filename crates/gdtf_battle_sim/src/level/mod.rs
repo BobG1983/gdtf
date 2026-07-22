@@ -11,7 +11,7 @@
 //!   [`TerrainPlacementEntry`]), [`PrefabRegistry`] of [`Prefab`]s keyed by
 //!   [`PrefabKey`] (`(ThemeUuid, GridSize, SpawnRole)`) (GTW-486/488), and the shared vocab:
 //!   [`SpawnRole`] + [`PrefabName`]. Sole model after GTW-496; openings removed in GTW-497
-//!   (connectivity is by-construction via the 1-cell `default_floor` seam).
+//!   (connectivity is by-construction via the 1-cell `default_floor` reservation).
 //!
 //! Mirrors the `terrain/piece` dir-module layout (memory: *code-health-module-layout*):
 //! `mod.rs` is wiring-only; per-concern files carry the types; `test/` houses the unit

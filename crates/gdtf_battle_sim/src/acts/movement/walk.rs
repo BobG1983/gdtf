@@ -195,7 +195,7 @@ impl WalkInProgress {
 /// The squad-VISIBLE enemy `(cell, level)`s right now — the cells of every NON-mover
 /// ganger whose cell is squad-VISIBLE, relative to `mover_faction` (GTW-355, C5(a)).
 ///
-/// The reveal-detection seam reused at walk start (the baseline) and each tick (the
+/// The reveal-detection helper reused at walk start (the baseline) and each tick (the
 /// current set). It walks every ganger's `(Position, Faction)`, classifies its relation
 /// to the mover ([`FactionRelation::Other`] for an enemy, [`FactionRelation::OwnSquad`]
 /// for the mover's own gang), and keeps the enemy cells that

@@ -169,7 +169,7 @@ impl SpriteResolveCtx<'_> {
     ///
     /// `def.source` picks the texture: a `Sheet` source loads the sheet image by its
     /// authored path and carries the authored rect as a
-    /// [`single_rect_layout`] at index `0` (byte-identical UV math to the retired grid
+    /// [`single_rect_layout`] at index `0` (identical UV math to the retired grid
     /// layout for a grid-aligned rect — the identical-pixels claim); a `File` source
     /// loads the standalone image with NO layout (identity UV). `def.anchor` drives
     /// placement (C2): the returned offset displaces the sprite's CENTER so the authored

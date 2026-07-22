@@ -102,7 +102,7 @@ const LABEL_LIFT_PX: f32 = CELL_PX * 0.55;
 /// marker at the active-storey cell where the route leaves the storey, AND the SINGLE
 /// target-cell TU-cost label (C1 / C2 / C3 / C5).
 ///
-/// Reads the presenter-owned [`PathPreview`] read-seam (populated by the input crate, C6),
+/// Reads the presenter-owned [`PathPreview`] resource (populated by the input crate, C6),
 /// the [`ActiveLevel`], and the sim's [`SquadVisibility`] (the §53 VISIBLE-vs-EXPLORED read,
 /// the [`present_fog`](crate::present_fog) precedent), then maintains a POOL of
 /// [`PathStepSprite`] sprites plus the ONE [`PathTargetLabel`] cost label:

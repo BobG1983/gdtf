@@ -7,7 +7,7 @@
 // variant and `TerrainDef` carries no per-piece move cost, so `setup_battle` no longer
 // resolves floor move costs against the registry (the floor grid is the uniform
 // `fallback_floor_cost`; per-floor move-cost validation returns with the GTW-482
-// move-cost-from-`default_floor` seam). The behaviour those tests pinned no longer exists in
+// move-cost-from-`default_floor` work). The behaviour those tests pinned no longer exists in
 // this slice, so they were removed rather than left asserting a retired path.
 
 mod equipment;

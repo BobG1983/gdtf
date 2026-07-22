@@ -1,7 +1,7 @@
 //! [`BattleSimPlugin`] — the thin app-side glue that drives the SIM-OWNED
 //! `gdtf_battle_sim::battle::BattleSimPlugin` across the battle lifecycle (E10.5 / GTW-207).
 //!
-//! It is the VIEW-side seam (`docs/decisions/0001-rust-bevy-rewrite.md`: the model is
+//! It is the VIEW-side glue (`docs/decisions/0001-rust-bevy-rewrite.md`: the model is
 //! the authoritative render-free sim, consumed ONE-WAY by the app). The sim owns its
 //! own integration plugin and names NO app type; this app-side plugin adds that sim
 //! plugin (one line) and the THIN trigger / gate / teardown systems that bridge the
@@ -45,7 +45,7 @@ use crate::states::{
 ///    `Generation` entry and `crate::dev::procgen_stepper`'s own `OnEnter(Generation)`
 ///    system drives the battle instead, one stage at a time, finishing through the SAME
 ///    `SetupBattleRequested` write. Without `dev_tools` compiled in at all, this line does
-///    not exist and the registration below is byte-identical to before GTW-655.
+///    not exist and the registration below is identical to before GTW-655.
 /// 3. `Update`, presence-gated and ordered `.after(SimSystems::Simulate)`:
 ///    [`gate_generation_complete`](super::systems::gate_generation_complete) inserts
 ///    [`GenerationComplete`] on the sim's `BattleReady` signal — strictly after the
@@ -65,7 +65,7 @@ impl Plugin for BattleSimPlugin {
         // GTW-655: gate `request_battle_setup` off exactly while the dev-tools procgen
         // stepper is engaged for this process — see the doc above. Without `dev_tools`
         // compiled, this registration is UNCHANGED (no run_if at all), so a non-`dev_tools`
-        // build behaves byte-identically to before this ticket.
+        // build behaves identically to before this ticket.
         #[cfg(feature = "dev_tools")]
         app.add_systems(
             OnEnter(BattleScapeState::Generation),

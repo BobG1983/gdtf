@@ -154,7 +154,7 @@ fn shipped_situation_ron_deserializes_with_required_structure() {
 
 /// GTW-226 AC6 — the shipped `skirmish.ron` omits `player_faction`, so the
 /// struct-level `#[serde(default)]` supplies [`Faction::default`] = `Faction(0)`
-/// (gang 0 = the player, by convention). Documents the data-driven serde seam: no
+/// (gang 0 = the player, by convention). Documents the data-driven serde defaulting: no
 /// `.ron` edit is needed for this slice, and the omitted field defaults cleanly.
 #[test]
 fn shipped_situation_player_faction_defaults_to_gang_zero() {

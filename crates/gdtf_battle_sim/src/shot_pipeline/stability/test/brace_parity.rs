@@ -1,4 +1,4 @@
-//! Brace-source parity/identity seams (GTW-199 AC3, GTW-392, GTW-549, GTW-573)
+//! Brace-source parity/identity pins (GTW-199 AC3, GTW-392, GTW-549, GTW-573)
 //! — the pins that share one change-reason: a new brace source or additive term.
 
 use super::support::*;
@@ -15,13 +15,13 @@ use crate::{
     weapon::Stable,
 };
 
-/// GTW-549 — the additive per-item BRACE seam steadies the shot: a POSITIVE
+/// GTW-549 — the additive per-item BRACE term steadies the shot: a POSITIVE
 /// [`WeaponBraceBonus`] contribution (a weapon with a data-driven `Stability` attachment)
 /// yields a strictly LOWER [`ConeMult`] (a tighter cone) than the [`WeaponBraceBonus::none`]
 /// identity, all else equal. RELATION only — never a pinned magnitude. Also proves the
-/// identity: [`WeaponBraceBonus::none`] leaves the score byte-identical to the pre-seam sum
-/// (the pure-additive property, mirroring the GTW-526 suppression identity). This is the seam
-/// that SUPERSEDES the GTW-542 sight-stability seam (a sight now boosts AIM, not stability).
+/// identity: [`WeaponBraceBonus::none`] leaves the score identical to the sum before it was added
+/// (the pure-additive property, mirroring the GTW-526 suppression identity). This is the term
+/// that SUPERSEDES the GTW-542 sight-stability term (a sight now boosts AIM, not stability).
 #[test]
 fn a_positive_brace_bonus_yields_a_strictly_tighter_cone() {
     let tuning = ConeStabilityTuning::default();
@@ -53,7 +53,7 @@ fn a_positive_brace_bonus_yields_a_strictly_tighter_cone() {
         *baseline_cone,
     );
 
-    // IDENTITY: WeaponBraceBonus::none() is byte-identical to a run without the seam — proven
+    // IDENTITY: WeaponBraceBonus::none() is identical to a run without the term — proven
     // by re-computing the baseline with the same identity term and asserting bit-equality.
     let (identity_cone, _) = stability(
         StabilityTerms::default(),
@@ -65,7 +65,7 @@ fn a_positive_brace_bonus_yields_a_strictly_tighter_cone() {
     assert_eq!(
         (*identity_cone).to_bits(),
         (*baseline_cone).to_bits(),
-        "a weapon with no brace attachment reads a byte-identical cone_mult under the \
+        "a weapon with no brace attachment reads an identical cone_mult under the \
          zero-identity brace term",
     );
 }
@@ -222,9 +222,9 @@ fn terrain_brace_and_stable_yield_identical_stability_output() {
 }
 
 /// GTW-573 C7 — the zero-identity DEFAULT: `StabilityTerms::default()` reads a
-/// byte-identical `(cone_mult, recoil_growth)` to the same call with every term
+/// identical `(cone_mult, recoil_growth)` to the same call with every term
 /// spelled at its explicit zero identity, across all three stances — so a defaulted
-/// bundle IS the no-seam baseline, and a future additive term (one new field with a
+/// bundle IS the baseline before any term is added, and a future additive term (one new field with a
 /// zero-identity default) cannot shift any existing score.
 #[test]
 fn default_terms_are_the_byte_identical_zero_identity() {
@@ -257,12 +257,12 @@ fn default_terms_are_the_byte_identical_zero_identity() {
         assert_eq!(
             (*default_cone).to_bits(),
             (*explicit_cone).to_bits(),
-            "{kind:?}: the defaulted terms must read a byte-identical cone_mult",
+            "{kind:?}: the defaulted terms must read an identical cone_mult",
         );
         assert_eq!(
             (*default_recoil).to_bits(),
             (*explicit_recoil).to_bits(),
-            "{kind:?}: the defaulted terms must read a byte-identical recoil_growth",
+            "{kind:?}: the defaulted terms must read an identical recoil_growth",
         );
     }
 }

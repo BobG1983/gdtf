@@ -121,7 +121,7 @@ fn real_asset_resolves_new_terrain_and_theme_registries_by_uuid() {
 
     // --- Load gate WAITED for both new registries -----------------------------------------
     // Intro is a TRANSIENT stop the resource-wait loops above can race past — probe via
-    // `load_released` (the ONE sanctioned "did Load release" probe; see its doc for the
+    // `load_released` (the ONE "did Load release" probe; see its doc for the
     // full GTW-589/GTW-601 race anatomy), never `== Intro`.
     let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
     assert!(

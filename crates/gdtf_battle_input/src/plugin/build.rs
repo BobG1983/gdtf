@@ -1,6 +1,6 @@
 //! The input plugin (GTW-221 / GTW-225 / GTW-238 / GTW-251 / GTW-255 / GTW-259): wires
 //! cursor->cell picking, the hover-highlight emitter, ganger selection, level cycling, the
-//! data-driven keybinds, the shared act-intent seam, and the gamepad software cursor.
+//! data-driven keybinds, the shared act-intent queue, and the gamepad software cursor.
 
 use bevy::prelude::*;
 use gdtf_battle_presenter::{GamepadCursorMoved, HighlightRequest, playback_caught_up};
@@ -46,7 +46,7 @@ use crate::{
 pub struct GdtfBattleInputActive;
 
 /// The input plugin: cursor->cell picking + hover-highlight (S7), ganger selection,
-/// level cycling, the data-driven keybinds, and the shared act-intent seam (S8).
+/// level cycling, the data-driven keybinds, and the shared act-intent queue (S8).
 ///
 /// Added by `gdtf_app`'s `GameBattleScapeScenePlugin` BESIDE
 /// `BattlePresenterPlugin::default()`, so its `build` runs when the scene plugins register.
@@ -63,7 +63,7 @@ pub struct GdtfBattleInputActive;
 ///   ([`update_selection_highlight`]), the 222b fire-mode default-on-select
 ///   ([`sync_fire_mode_on_select`]), the keyboard press surface, and the ONE intent drain
 ///   ([`dispatch_act_intents`]); and
-/// - loads the data-driven keybind table through the GTW-564 generic hot-RON seam
+/// - loads the data-driven keybind table through the GTW-564 generic hot-RON load path
 ///   ([`register_keybinds_hot_ron`](crate::keybinds)), self-gated on an
 ///   [`AssetServer`](bevy::asset::AssetServer) so a `MinimalPlugins` headless app no-ops
 ///   (`bevy-traps.md` #1).
@@ -78,7 +78,7 @@ pub struct GdtfBattleInputActive;
 /// `.before(pick_hovered_cell)` (the cell resolved last update) and
 /// `.before(dispatch_act_intents)` (the drain). The intent drain runs `.after` EVERY intent
 /// WRITER (the keyboard press systems + the click decision) so it drains the same update's
-/// pushes — and the 222c `gdtf_app` buttons that push the same seam run in `Update` upstream
+/// pushes — and the 222c `gdtf_app` buttons that push the same queue run in `Update` upstream
 /// of it.
 pub struct GdtfBattleInputPlugin;
 
@@ -148,7 +148,7 @@ impl Plugin for GdtfBattleInputPlugin {
         .init_resource::<InspectTarget>()
         .init_resource::<SelectedShooter>()
         .init_resource::<SelectedFireMode>()
-        // GTW-358 — the route path-preview TARGET seam (the cell the preview previews TO).
+        // GTW-358 — the route path-preview TARGET resource (the cell the preview previews TO).
         // Its `Default` is the empty target (`None` → no preview); the GTW-356 two-click flow
         // SETS it on click-1 (target select). THIS ticket only DEFINES + wires it.
         .init_resource::<PathPreviewTarget>()
@@ -157,7 +157,7 @@ impl Plugin for GdtfBattleInputPlugin {
         // `GamepadCursor` inits to its window-centre default; `ActivePointer` to `Mouse`.
         .init_resource::<GamepadCursor>()
         .init_resource::<ActivePointer>()
-        // The seam EMITS these `*Requested` messages — register every buffer the ONE
+        // The drain EMITS these `*Requested` messages — register every buffer the ONE
         // `dispatch_act_intents` drain writes into so its `MessageWriter`s pass param
         // validation whether or not the sim's `SimActsPlugin` is present (`bevy-traps.md`
         // #4). `add_message` is IDEMPOTENT, so this coexists with E10's `BattleSimPlugin`.
@@ -319,7 +319,7 @@ impl Plugin for GdtfBattleInputPlugin {
         );
 
         // GTW-571 — the CONTEXTUAL acts: configure the ONE explicitly-ordered drain set,
-        // then one compile-time registration line per act (the descriptor/registrar seam;
+        // then one compile-time registration line per act (the descriptor/registrar machinery;
         // extracted to keep `build` under the `too_many_lines` lint).
         register_contextual_acts(app);
 
@@ -335,7 +335,7 @@ impl Plugin for GdtfBattleInputPlugin {
         register_path_preview_population(app);
 
         // GTW-450 — the reachable-range overlay POPULATE system is DEBUG-only (C1): it exists
-        // solely to fill the debug overlay's read-seam, so it compiles only under
+        // solely to fill the debug overlay's read resource, so it compiles only under
         // `#[cfg(debug_assertions)]`. A release build excludes it (the move feedback is the
         // click-to-target route preview alone, C4). Calls `reachable_within` for the selected
         // ganger; extracted to keep `build` under the `too_many_lines` lint.
@@ -347,7 +347,7 @@ impl Plugin for GdtfBattleInputPlugin {
         // `too_many_lines` lint).
         register_fire_target_population(app);
 
-        // The data-driven keybind table loads through the GTW-564 generic hot-RON seam —
+        // The data-driven keybind table loads through the GTW-564 generic hot-RON load path —
         // ONE ext call at its owning module (kick-off / gated resolve / live GTW-533
         // redrive), self-gated on the `AssetServer` so a `MinimalPlugins` app skips it
         // (no load, no panic — `bevy-traps.md` #1).

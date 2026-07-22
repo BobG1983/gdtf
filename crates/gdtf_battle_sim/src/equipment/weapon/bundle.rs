@@ -50,15 +50,15 @@ pub struct WeaponStats<'a> {
     /// [`Stability`](crate::effects::attachments::AttachmentEffect::Stability) attachment fitted a
     /// [`WeaponBraceBonus`] component, feeding its graduated additive §1a stability
     /// contribution into the cone read; `None` for a weapon with no brace attachment (the
-    /// zero-identity term, byte-identical to before the attachment). An `Option` because the
+    /// zero-identity term, identical to before the attachment). An `Option` because the
     /// component is present only when a brace attachment is fitted (unlike the always-present
-    /// [`Stable`] tag). SUPERSEDES the GTW-542 sight-stability seam — a sight now boosts AIM
+    /// [`Stable`] tag). SUPERSEDES the GTW-542 sight-stability term — a sight now boosts AIM
     /// (the [`Accuracy`] stat), not stability.
     pub brace_bonus: Option<&'a WeaponBraceBonus>,
     /// The GTW-544 optional **damage-over-time profile** — `Some` when the weapon carries a
     /// [`DotProfile`] sibling (a DOT weapon), feeding the fold's DOT-attach decision: a hit
     /// that PENETRATES armor attaches (or REFRESHES) a [`Dot`](super::Dot) on the struck
-    /// ganger built from this profile. `None` for a non-DOT weapon (no attach, byte-identical
+    /// ganger built from this profile. `None` for a non-DOT weapon (no attach, identical
     /// to before this slice). An `Option` because the [`DotProfile`] sibling is present only
     /// on a DOT weapon (like the optional `Silenced` attachment tag).
     pub dot:         Option<&'a DotProfile>,
@@ -202,7 +202,7 @@ impl HandlingProfile {
     /// The [`TrajectoryStyle`] (GTW-546) defaults to [`TrajectoryStyle::Straight`] (a flat
     /// ray — every existing weapon), OVERRIDDEN by [`with_trajectory`](HandlingProfile::with_trajectory)
     /// for a lobbed grenade. Keeping the base ctor's arity unchanged means the many existing
-    /// callers (tests + the spawn seam) spawn byte-identical `Straight` weapons untouched.
+    /// callers (tests + the spawn path) spawn identical `Straight` weapons untouched.
     #[must_use]
     pub const fn new(
         magazine: Magazine,
@@ -294,7 +294,7 @@ impl WeaponBundle {
             brace_bonus: None,
             // A WeaponBundle carries no DOT profile (the DotProfile sibling is spawned
             // separately from the spec's `dot` field, GTW-544), so a bundle-derived view
-            // never attaches a Dot — a non-DOT read, byte-identical to before the slice.
+            // never attaches a Dot — a non-DOT read, identical to before the slice.
             dot:         None,
         }
     }

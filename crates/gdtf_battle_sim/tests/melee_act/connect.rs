@@ -72,7 +72,7 @@ fn broken_facts(app: &App) -> Vec<ArmorBroken> {
 /// many pieces were reduced (the caller asserts the fixture actually wears armor).
 ///
 /// The §5 formula never reads integrity magnitude (only the `> 0` protects gate), so
-/// this leaves the connect test's damage / wound / TU outcomes byte-identical — it only
+/// this leaves the connect test's damage / wound / TU outcomes unchanged — it only
 /// guarantees the connecting strike's positive wear (`min(protection, damage) ≥ 2` for
 /// the test armor) CROSSES the struck piece protecting→broken.
 fn wear_pieces_near_broken(app: &mut App, ganger: Entity) -> usize {
@@ -130,7 +130,7 @@ fn connect_applies_damage_and_emits_resolved() {
         "fixture precondition: the target wears the test armor (pieces to reduce)",
     );
 
-    // Drive the strike THROUGH the buffered MeleeRequested (the message the input seam writes).
+    // Drive the strike THROUGH the buffered MeleeRequested (the message the input layer writes).
     app.world_mut()
         .write_message(MeleeRequested::new(attacker, target));
     step(&mut app, 3);

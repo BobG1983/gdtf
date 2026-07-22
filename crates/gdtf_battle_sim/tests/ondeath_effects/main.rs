@@ -4,7 +4,7 @@
 //! authors an `OnDeathEffect::LeaveField` is DESTROYED by fire and leaves a GTW-545 field at
 //! its cell. Both proven END-TO-END on the REAL `setup_battle_on_request` → `BattleSimPlugin`
 //! `Simulate`-band path, driven THROUGH a buffered `FireRequested` (the same message the
-//! input seam writes) — so the `resolve_on_death` resolver runs in its real schedule slot.
+//! input layer writes) — so the `resolve_on_death` resolver runs in its real schedule slot.
 //!
 //! The clause contract this covers:
 //!

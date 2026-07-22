@@ -7,7 +7,7 @@
 //! ## Why a commands extension (the user ruling, 2026-07-02)
 //!
 //! An [`AttachmentEffect`](crate::effects::attachments::AttachmentEffect) is applied to a
-//! weapon that already exists (spawned by the BSN wielded-weapon scene). The natural seam is
+//! weapon that already exists (spawned by the BSN wielded-weapon scene). The natural approach is
 //! therefore a DEFERRED command against that entity — `commands.attach_to_weapon(weapon,
 //! effect)` — which Bevy runs at the next command flush with exclusive access to the entity
 //! via an [`EntityWorldMut`](bevy::prelude::EntityWorldMut). The effect's
@@ -29,14 +29,14 @@ use crate::effects::attachments::ApplyAttachmentEffect;
 /// resolves a weapon's attachment-item keys against the
 /// [`AttachmentRegistry`](super::AttachmentRegistry), then calls this once per effect. It is
 /// a trait on [`Commands`] (the ext-trait idiom) rather than a free function so the call
-/// reads as `commands.attach_to_weapon(..)` at the seam.
+/// reads as `commands.attach_to_weapon(..)` at the call site.
 pub trait AttachToWeaponExt {
     /// Queue `effect` to be applied to the `weapon` entity at the next command flush.
     ///
     /// The `effect` is moved into a deferred
     /// [`EntityCommand`](bevy::ecs::system::EntityCommand) closure that Bevy runs with
     /// exclusive access to the `weapon` entity (an
-    /// [`EntityWorldMut`](bevy::prelude::EntityWorldMut) — the ticket's sanctioned
+    /// [`EntityWorldMut`](bevy::prelude::EntityWorldMut) — the ticket's
     /// carve-out); the closure just forwards to the effect's
     /// [`apply_to_weapon`](crate::effects::attachments::ApplyAttachmentEffect::apply_to_weapon).
     /// Because it is DEFERRED, the caller may spawn the weapon and attach its effects in the

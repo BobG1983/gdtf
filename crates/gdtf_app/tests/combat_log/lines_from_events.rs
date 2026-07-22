@@ -84,7 +84,7 @@ fn a_movement_message_appends_a_line_with_the_classified_text() {
 }
 
 /// GTW-439, QA-gap remediation — the REAL system path: a genuine `InjuryInflicted` MESSAGE
-/// written to the live buffer drives the registered forwarder → appender seam (GTW-572) to APPEND one
+/// written to the live buffer drives the registered forwarder → appender chain (GTW-572) to APPEND one
 /// combat-log line reading `"<name> <log_text>"` (the wounded target resolved to its
 /// `GangerName`, the authored log clause as the predicate) in the severity-scaled wound amber
 /// (`severity_color`). NOT the pure `classify_log_event` classifier (covered by its own unit

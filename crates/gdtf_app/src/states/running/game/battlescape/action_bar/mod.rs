@@ -1,6 +1,6 @@
 //! The battle action-bar (GTW-228 / GTW-48 S9 / 222c): a themed `gdtf_ui` button
-//! surface that writes the SAME 222a act-intent seam the keyboard surface writes —
-//! buttons + keys are PARALLEL surfaces over ONE data seam, not two divergent mappings.
+//! surface that writes the SAME 222a act-intent queue the keyboard surface writes —
+//! buttons + keys are PARALLEL surfaces over ONE data queue, not two divergent mappings.
 
 mod components;
 mod plugin;
@@ -11,7 +11,7 @@ mod systems;
 // separate inset). The marker stays internal to this module (used by `spawn_action_bar` /
 // `despawn_action_bar` via the `components::` path).
 pub(in crate::states::running::game::battlescape) use plugin::GameBattleScapeActionBarScenePlugin;
-// GTW-298 — the relocated-controls spawn seam. The Firemode / Aim / Stance constructors are
+// GTW-298 — the relocated-controls spawn helpers. The Firemode / Aim / Stance constructors are
 // carried to the battlescape neighborhood so the sibling weapon-panel module can spawn the
 // relocated controls INTO the weapon cluster (the Firemode / Aim / Stance panels), reusing this
 // module's button logic + the gdtf_battle_input intents. The press → intent router

@@ -2,7 +2,7 @@
 //! fixtures live in [`support`]. No `App`, no RNG — hand-built grids (the sim-unit
 //! idiom): construct observer component sets + grids + tuning, call
 //! [`union_fov`](crate::visibility::union_fov) / [`accrue`](crate::visibility::accrue)
-//! directly, and read the pure seams.
+//! directly, and read the pure accessors.
 
 mod support;
 

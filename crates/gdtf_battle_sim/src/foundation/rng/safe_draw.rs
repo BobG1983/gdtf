@@ -42,7 +42,7 @@ impl RangeSample {
 /// Draw uniformly from a tunable-driven `f32` range — NEVER panicking and ALWAYS
 /// consuming exactly one draw, even when the range is empty or inverted.
 ///
-/// - A LIVE range (`start < end`) draws byte-identically to a plain
+/// - A LIVE range (`start < end`) draws identically to a plain
 ///   `random_range` — existing seeded replays over valid ranges are untouched.
 /// - A DEGENERATE range (`start >= end` — empty or inverted) still consumes
 ///   exactly one uniform draw (burned on the never-empty unit range, which
@@ -62,7 +62,7 @@ impl RangeSample {
 /// pillar (GTW-644's defect was a guard that SKIPPED the degenerate draw).
 pub(super) fn uniform_or_midpoint(rng: &mut impl Rng, range: Range<f32>) -> RangeSample {
     if range.start < range.end {
-        // Live range: the plain uniform draw — byte-identical to `random_range`.
+        // Live range: the plain uniform draw — identical to `random_range`.
         return RangeSample::new(rng.random_range(range));
     }
     // Degenerate (empty or inverted): CONSUME the one draw anyway, then collapse
@@ -81,7 +81,7 @@ mod test {
     /// An arbitrary fixed seed — determinism is the property, the value is irrelevant.
     const SEED: u64 = 0x0640_0644_5AFE_D4A3;
 
-    /// A live range draws BYTE-IDENTICALLY to a plain `random_range` — the helper
+    /// A live range draws IDENTICALLY to a plain `random_range` — the helper
     /// changes nothing for valid ranges (existing seeded replays are untouched).
     #[test]
     fn live_range_is_byte_identical_to_plain_random_range() {
@@ -94,7 +94,7 @@ mod test {
             assert_eq!(
                 helper_draw.to_bits(),
                 plain_draw.to_bits(),
-                "a live range must draw byte-identically to random_range",
+                "a live range must draw identically to random_range",
             );
         }
     }

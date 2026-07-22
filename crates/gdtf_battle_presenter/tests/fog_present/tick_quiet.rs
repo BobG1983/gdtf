@@ -6,7 +6,7 @@
 //! terrain tile and every mapped actor sprite, and took `Assets::get_mut` per shown tile
 //! per frame — re-marking components/assets changed every tick and re-uploading the
 //! material uniform each frame (the exact re-dirty class GTW-568 fixed in the pooled
-//! overlays). GTW-627 routes both arms through the one tick-quiet write seam
+//! overlays). GTW-627 routes both arms through the one tick-quiet write helper
 //! (`set_if_neq` visibility flips; compare-before-`get_mut` material knobs), so a steady
 //! frame writes nothing.
 //!
@@ -97,7 +97,7 @@ fn record_quiet_probe(
 ///
 /// Pin-discriminating: the pre-GTW-627 writer assigned `*visibility` unconditionally and
 /// `get_mut` every shown tile per frame, so this observes non-zero counts on every frame
-/// against that code (RED before the GTW-627 write seam, GREEN after).
+/// against that code (RED before the GTW-627 write helper, GREEN after).
 #[test]
 fn steady_frame_leaves_fog_visibility_and_material_ticks_untouched() {
     let mut app = headless_renderer_app();

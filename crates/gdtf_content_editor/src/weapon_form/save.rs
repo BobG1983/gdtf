@@ -6,7 +6,7 @@
 //! Every path segment is DERIVED, never re-spelled (GTW-621/634): the root is the shared
 //! [`WORKSPACE_ASSETS_ROOT`] owner, the folder / compound extension come from
 //! [`WeaponsFamily`]'s `FOLDER` / `EXTENSION`, and the stem runs through the shared
-//! [`sanitize_file_stem`] seam. [`draft_to_weapon_spec`] / [`weapon_file_name`] /
+//! [`sanitize_file_stem`] helper. [`draft_to_weapon_spec`] / [`weapon_file_name`] /
 //! [`weapon_save_path_in`] are PURE (no IO) so tests can round-trip them without
 //! touching the assets tree; the filesystem write lives in [`write_weapon_in`]
 //! (root-parameterized — the GTW-555 `write_terrain_in` precedent, so tests aim it at a
@@ -51,9 +51,9 @@ pub fn draft_to_weapon_spec(draft: &WeaponDraft) -> (WeaponName, WeaponSpec) {
 /// The suffix is DERIVED from [`WeaponsFamily::EXTENSION`] (the ONE canonical extension
 /// discriminant the ranged-weapons folder loader dispatches on — GTW-621: a re-spelled
 /// extension drifts and every saved file silently vanishes on reload). The stem runs
-/// through the shared [`sanitize_file_stem`] seam (GTW-577) so a path-hostile weapon
+/// through the shared [`sanitize_file_stem`] helper (GTW-577) so a path-hostile weapon
 /// name can never reach the filesystem raw; a name that sanitizes to NOTHING falls back
-/// to the documented `unnamed_weapon` stem (minted through the SAME seam — the gang /
+/// to the documented `unnamed_weapon` stem (minted through the SAME helper — the gang /
 /// armor / sprite / attachment save parity). The loader keys a weapon by its file stem,
 /// so a saved weapon reloads keyed by exactly its sanitized stem.
 ///
@@ -88,14 +88,14 @@ pub fn weapon_save_path_in(root: &Path, name: &WeaponName) -> PathBuf {
 /// REAL ranged-weapons folder walk, never polluting the shipped `assets/` tree.
 ///
 /// Resolves the sanitized path ([`weapon_save_path_in`]) and hands the serialize →
-/// mkdir → write chain to the shared [`write_ron_pretty`] seam (GTW-577 C2). Returns
+/// mkdir → write chain to the shared [`write_ron_pretty`] writer (GTW-577 C2). Returns
 /// the written path on success so the caller can log it. Debug-only (the terrain /
 /// theme / gang / armor / sprite / attachment save precedent): the fs write never
 /// compiles into a release binary.
 ///
 /// # Errors
 ///
-/// The seam's [`RonSaveError`], whose `Display` names the failed stage (serialize vs
+/// The writer's [`RonSaveError`], whose `Display` names the failed stage (serialize vs
 /// write).
 #[cfg(debug_assertions)]
 pub fn write_weapon_in(
@@ -109,14 +109,14 @@ pub fn write_weapon_in(
 }
 
 /// Write a weapon to the workspace `assets/` tree — [`write_weapon_in`] under the
-/// shared [`WORKSPACE_ASSETS_ROOT`] owner (byte-identical to the app's
+/// shared [`WORKSPACE_ASSETS_ROOT`] owner (identical to the app's
 /// `AssetPlugin.file_path` by construction), so the saved weapon lands exactly where
 /// the GTW-257 folder loader reads. The thin root-supplying wrapper the Save button
 /// calls.
 ///
 /// # Errors
 ///
-/// The seam's [`RonSaveError`] (see [`write_weapon_in`]).
+/// The writer's [`RonSaveError`] (see [`write_weapon_in`]).
 #[cfg(debug_assertions)]
 pub fn write_weapon(name: &WeaponName, spec: &WeaponSpec) -> Result<PathBuf, RonSaveError> {
     write_weapon_in(Path::new(WORKSPACE_ASSETS_ROOT), name, spec)

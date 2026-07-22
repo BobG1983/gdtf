@@ -26,7 +26,7 @@ use crate::{
     forward_turn_started,
 };
 
-/// Registers the GTW-572 C5 forwarder seam (moved down from `gdtf_app` in GTW-620): the
+/// Registers the GTW-572 C5 forwarders (moved down from `gdtf_app` in GTW-620): the
 /// buffered [`CombatLogEvent`] the forwarders write, one
 /// [`add_combat_log_source`](CombatLogSourceAppExt::add_combat_log_source) registrar line
 /// per log source, and the bespoke turn-boundary forwarder.
@@ -40,7 +40,7 @@ use crate::{
 /// convention): the sim plugins / this renderer register those, and a focused harness
 /// that omits one keeps that forwarder inert (`bevy-traps.md` #1 / #4).
 pub(super) fn register_combat_log_forwarders(app: &mut App) {
-    // GTW-620: the presenter OWNS the resolved-event seam — the forwarders write the
+    // GTW-620: the presenter OWNS the resolved-event buffer — the forwarders write the
     // buffered CombatLogEvent, so its buffer is registered unconditionally here (the
     // producer registering its own buffer, the ShotImpactResolved precedent in `fx.rs`).
     // The downstream appender in gdtf_app gates on this buffer EXISTING instead of

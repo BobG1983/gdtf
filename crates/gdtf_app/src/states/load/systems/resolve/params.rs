@@ -23,7 +23,7 @@ use gdtf_ui::theme::{GdtfTheme, GdtfThemeSpec};
 ///
 /// GTW-570 shrank this bundle to the BESPOKE branches (injuries / prefabs —
 /// the declared exclusions): the generic content families (GTW-619 moved the
-/// attachments onto that seam too) read their collections through their own
+/// attachments onto that registration too) read their collections through their own
 /// generic resolve systems now.
 ///
 /// Each is `Option<Res<…>>` because a `MinimalPlugins` headless app has no
@@ -74,7 +74,7 @@ pub(in crate::states::load) struct ResolvedResources<'w> {
 ///
 /// Each salvage is `Option<Res<…>>`: absent until that branch's folder walk
 /// FAILED and the branch began salvaging its members per-file (the C4
-/// fail-closed-per-file contract, shared with the generic seam through
+/// fail-closed-per-file contract, shared with the generic registration through
 /// `gdtf_assets`). The report is `Option<ResMut<…>>` (bevy-traps rule 1) — the
 /// Load plugin init's it unconditionally, but a bespoke harness might not.
 #[derive(SystemParam)]

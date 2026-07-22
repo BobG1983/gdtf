@@ -1,4 +1,4 @@
-//! The combat-log FORWARDER seam (GTW-572 C5; moved down from `gdtf_app` beside the
+//! The combat-log FORWARDERS (GTW-572 C5; moved down from `gdtf_app` beside the
 //! vocabulary it feeds in GTW-620): the [`CombatLogSource`] trait, the ONE generic
 //! per-source forwarder system, the bespoke turn-boundary forwarder, and the
 //! compile-time registrar.
@@ -70,7 +70,7 @@ pub(super) fn name_of(entity: bevy::prelude::Entity, names: &Query<&GangerName>)
 ///
 /// Param-only (`bevy-traps.md` #7): the [`MessageReader`], the read-only name query, and
 /// the event [`MessageWriter`] (its `Messages<CombatLogEvent>` buffer is registered
-/// unconditionally by the renderer plugin's combat-log registrar — the seam's owner). The
+/// unconditionally by the renderer plugin's combat-log registrar — the buffer's owner). The
 /// registrar gates it on `BattleInProgress` + `Messages<S>` so the reader param is always
 /// valid.
 pub fn forward_log_source<S: CombatLogSource>(

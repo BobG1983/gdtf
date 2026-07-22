@@ -6,8 +6,8 @@ use bevy::prelude::{Entity, Message};
 ///
 /// A buffered [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`) carrying the
 /// shoving ganger [`Entity`] + the shoved target [`Entity`]. The deliberate SHOVE act (any
-/// ganger, adjacent to an opposing alive target) writes this from the input seam
-/// (the GTW-571 per-act contextual seam: `PendingContextualIntents<ShoveAct>` ->
+/// ganger, adjacent to an opposing alive target) writes this from the input queue
+/// (the GTW-571 per-act contextual queue: `PendingContextualIntents<ShoveAct>` ->
 /// `ShoveRequested`, GTW-525 C4); the WEAPON-TAG auto-shove hooks
 /// write it internally on a connecting attack (a melee strike OR a ranged shot connect,
 /// GTW-525 C3). [`dispatch_shove`](crate::acts::shove::dispatch_shove) drains it, and — per the
@@ -53,7 +53,7 @@ pub enum ShoveSource {
 }
 
 impl ShoveRequested {
-    /// Build a DELIBERATE shove request for `shover` knocking `target` back (the input-seam
+    /// Build a DELIBERATE shove request for `shover` knocking `target` back (the input-queue
     /// contextual-act form) — the gated, TU-costed act.
     #[must_use]
     pub const fn new(shover: Entity, target: Entity) -> Self {

@@ -13,7 +13,7 @@
 //!   the referenced [`TerrainDef`](crate::terrain::def::TerrainDef), so a placement carries
 //!   only *which* piece goes *where*;
 //! - carries NO authored-opening field and NO per-prefab validation path — inter-fragment
-//!   connectivity is by-construction in the assembler (the 1-cell `default_floor` seam every
+//!   connectivity is by-construction in the assembler (the 1-cell `default_floor` every
 //!   placement reserves; the old per-prefab opening machinery was removed in GTW-497), not
 //!   authored per-prefab and validated fail-closed.
 //!

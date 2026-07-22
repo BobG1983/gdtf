@@ -1,5 +1,5 @@
 //! The sprite-defs [`ContentFamily`] marker — the GTW-663 binding of the
-//! generic folder→registry seam to the in-crate sprite model.
+//! generic folder→registry machinery to the in-crate sprite model.
 
 use gdtf_assets::{ContentFamily, ContentFileStem};
 

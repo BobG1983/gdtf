@@ -180,7 +180,7 @@ fn moving_actor_away_hides_panel_without_respawn() {
 
 // ---------------------------------------------------------------------------------
 // Press → intent AC — a contextual button press routes the carried target through the
-// REAL GTW-571 per-act seam (button -> generic press router -> the act's buffered queue
+// REAL GTW-571 per-act path (button -> generic press router -> the act's buffered queue
 // -> the act's generic drain, all the same update).
 // ---------------------------------------------------------------------------------
 

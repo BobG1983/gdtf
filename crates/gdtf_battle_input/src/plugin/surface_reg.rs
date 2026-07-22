@@ -58,7 +58,7 @@ pub(super) fn register_contextual_acts(app: &mut App) {
 ///   message (last-moved-wins); additionally gated on its `Messages<CursorMoved>` buffer so
 ///   its [`MessageReader`](bevy::ecs::message::MessageReader) validates under `MinimalPlugins`.
 /// - [`gamepad_click_act`] (South) + [`gamepad_turn`] (East) reuse the SHARED decision the
-///   mouse uses and the SAME [`PendingActIntent`](crate::PendingActIntent) seam, ordered `.before(pick_hovered_cell)`
+///   mouse uses and the SAME [`PendingActIntent`](crate::PendingActIntent) queue, ordered `.before(pick_hovered_cell)`
 ///   and `.before(dispatch_act_intents)`.
 /// - [`emit_gamepad_cursor_move`] writes [`GamepadCursorMoved`](gdtf_battle_presenter::GamepadCursorMoved) for the presenter's edge-pan
 ///   when the gamepad is the active pointer.

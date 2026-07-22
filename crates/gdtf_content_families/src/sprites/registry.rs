@@ -27,7 +27,7 @@ impl SpriteName {
 
 /// The **sprite-def registry** — a [`SpriteName`]→[`SpriteDef`] map
 /// (GTW-663), resolved from the `content/sprites/` folder by the generic
-/// content-family seam.
+/// content-family machinery.
 ///
 /// A named [`Resource`] newtype over the foundation
 /// [`Registry`]`<`[`SpriteName`]`, `[`SpriteDef`]`>` catalog map — see

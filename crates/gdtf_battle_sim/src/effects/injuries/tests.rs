@@ -2,7 +2,7 @@
 //! [`InjuryEffect`](super::InjuryEffect) vocabulary parses from RON by variant name
 //! (the serde bridge), and the enum's THIN delegation `impl ApplyInjuryEffect` routes
 //! each variant to its isolated behaviour (folded directly through the trait against a
-//! [`LedgerAccumulators`](super::LedgerAccumulators) view, the seam the ledger's `gain`
+//! [`LedgerAccumulators`](super::LedgerAccumulators) view, the surface the ledger's `gain`
 //! wraps).
 //!
 //! Per-effect fold/heal semantics are asserted in each effect file's own

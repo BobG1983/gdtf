@@ -17,7 +17,7 @@ pub(super) fn spawn_entity() -> Entity {
 }
 
 /// A resolver mapping the single occupant `entity` to `relation`, anything else to
-/// [`FactionRelation::Other`] — the GTW-353 occupant-faction seam, hand-seeded.
+/// [`FactionRelation::Other`] — the GTW-353 occupant-faction resolver, hand-seeded.
 pub(super) fn resolve_as(
     entity: Entity,
     relation: FactionRelation,

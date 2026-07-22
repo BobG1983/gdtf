@@ -123,7 +123,7 @@ fn a_clean_miss_yields_the_explicit_missed_line() {
 }
 
 /// GTW-559 — a `None` report is NOT a miss: it carries no ganger-shot verdict (the grenade
-/// blast's detonation seed rides the impact seam with a placeholder shooter + `None`
+/// blast's detonation seed rides the impact handoff with a placeholder shooter + `None`
 /// report), so it yields NO log line at all. PIN-DISCRIMINATING: the old classifier rendered
 /// it as `"<actor> missed"` — the phantom `"Someone missed"` every detonation appended.
 /// A REAL clean miss keeps its line (it always carries `Some(HitReport)` with

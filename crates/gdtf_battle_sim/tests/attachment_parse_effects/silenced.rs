@@ -1,4 +1,4 @@
-//! The `Silenced` integration seam — a silenced shot yields no suppression where an
+//! The `Silenced` integration — a silenced shot yields no suppression where an
 //! un-silenced one does, and the shared gate reads the wielded ranged weapon tag.
 
 use bevy::{

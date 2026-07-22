@@ -1,7 +1,7 @@
 # Combat Log Authoring Guide
 
 How the battlescape combat log gets its lines — the sources, the
-presenter-side forwarder seam, the classify layer, the coverage contract, and
+presenter-side forwarder, the classify layer, the coverage contract, and
 how to add a new log source (GTW-328 / GTW-572; the forwarder half moved
 presenter-side in GTW-620 so the whole family lives in ONE crate).
 

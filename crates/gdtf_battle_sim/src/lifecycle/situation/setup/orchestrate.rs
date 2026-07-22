@@ -41,8 +41,8 @@ use crate::{
 ///
 /// The floor cost grid uses the caller-supplied `fallback_floor_cost` uniformly: the new
 /// [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) model has no `Floor` variant and
-/// carries no per-piece move cost this slice (the move-cost-from-`default_floor` seam is
-/// GTW-482), so the legacy registry-driven floor-cost path is retired. The situation's
+/// carries no per-piece move cost this slice (per-piece move cost derived from `default_floor`
+/// is deferred to GTW-482), so the legacy registry-driven floor-cost path is retired. The situation's
 /// `default_floor` / `floors` UUID references are carried forward but their move cost is not
 /// resolved here.
 ///
@@ -144,8 +144,8 @@ pub fn setup_battle(
     let field_registry = resolve::build_field_registry(situation, fields)?;
 
     // GTW-491: the new `TerrainSimKind` model has no `Floor` variant (a walkable floor is a
-    // `Slab` def) and `TerrainDef` carries no move cost this slice — the per-cell
-    // move-cost-from-default-floor seam is GTW-482. So the floor cost grid uses the
+    // `Slab` def) and `TerrainDef` carries no move cost this slice — per-cell move cost derived
+    // from default-floor is deferred to GTW-482. So the floor cost grid uses the
     // caller-supplied `fallback_floor_cost` uniformly; the situation's `floors`/`default_floor`
     // terrain references are carried forward but their move cost is NOT resolved here (the
     // legacy `resolve_floor_costs` registry path is retired with the per-file floor-kind

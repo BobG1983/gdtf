@@ -1,6 +1,6 @@
 //! GTW-116 regression: the headless app built by the real test-support wiring
 //! has [`UiPlugin`] registered — proving the registration path actually adds the
-//! UI seam, not merely that `gdtf_ui` compiles.
+//! UI plugin, not merely that `gdtf_ui` compiles.
 //!
 //! This is a *pin-discriminating* test. [`gdtf_app::test_support::register_headless`]
 //! mirrors [`gdtf_app::GdtfApp`]; both add `UiPlugin`. If a refactor dropped the
@@ -16,7 +16,7 @@ use gdtf_test_utils::GdtfTestAppBuilder;
 ///
 /// Pin: this fails if the `UiPlugin` registration is removed from
 /// `register_headless` (and, by mirror, from `GdtfApp::add_plugins`), turning a
-/// silently-unwired UI seam into a red test instead of a runtime surprise.
+/// silently-unwired UI plugin into a red test instead of a runtime surprise.
 #[test]
 fn headless_app_registers_ui_plugin() {
     let app = GdtfTestAppBuilder::new().default_start().build();

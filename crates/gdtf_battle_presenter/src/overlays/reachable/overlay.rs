@@ -1,17 +1,17 @@
-//! The reachable-range overlay (GTW-387 C3): the presenter-owned read-seam
+//! The reachable-range overlay (GTW-387 C3): the presenter-owned read-side
 //! [`ReachableCells`] resource (the cells the selected ganger can reach within its
 //! remaining TU), its draw system ([`draw_reachable_overlay`]), and the cell-keyed
 //! sprite marker.
 //!
-//! # The C6 read-seam (input → presenter → sim)
+//! # The C6 read path (input → presenter → sim)
 //!
-//! The PRESENTER owns the read-seam ([`ReachableCells`], the reachable `(cell, level)` +
+//! The PRESENTER owns the read-side resource ([`ReachableCells`], the reachable `(cell, level)` +
 //! accumulated TU-cost list) plus this draw system; the INPUT crate calls
 //! [`reachable_within`](gdtf_battle_sim::pathfinder::reachable_within) for the SELECTED ganger and
 //! POPULATES this resource (clearing it when no ganger is selected). Selection and
 //! [`ActiveLevel`](crate::ActiveLevel) are NEVER pushed into the authoritative sim model
 //! — the dependency direction stays `input → presenter → sim`, the SAME shape as the
-//! [`PathPreview`](crate::PathPreview) seam.
+//! [`PathPreview`](crate::PathPreview) resource.
 //!
 //! # Active-storey hard-cut
 //!
@@ -90,9 +90,9 @@ impl ReachableOverlayEnabled {
     }
 }
 
-/// The presenter-owned reachable-range overlay read-seam — the cells the SELECTED
+/// The presenter-owned reachable-range overlay read-side resource — the cells the SELECTED
 /// ganger can reach within its remaining TU, each with its cheapest accumulated cost
-/// (GTW-387 C3, the `input → presenter → sim` seam).
+/// (GTW-387 C3, on the `input → presenter → sim` read path).
 ///
 /// A named domain value (no-bare-types: the reachable set is a domain value; the
 /// `(CellLevel, Tu)` pair is the domain cost-annotated cell). `init_resource`-d by the
@@ -192,7 +192,7 @@ pub(super) fn reachable_draws(reachable: &ReachableCells, active_level: Level) -
 /// reachable-range overlay — one cell-keyed [`Sprite`] per reachable cell on the active
 /// storey (GTW-387 C3).
 ///
-/// Reads the presenter-owned [`ReachableCells`] read-seam (populated by the input crate,
+/// Reads the presenter-owned [`ReachableCells`] resource (populated by the input crate,
 /// C6) and the [`ActiveLevel`] (the active-storey hard-cut), then maintains a POOL of
 /// [`ReachableCellSprite`] sprites:
 ///

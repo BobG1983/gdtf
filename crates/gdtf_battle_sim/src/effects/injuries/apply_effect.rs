@@ -62,7 +62,7 @@ pub struct LedgerAccumulators<'a> {
 }
 
 /// Why one effect's [`heal`](ApplyInjuryEffect::heal) could NOT inverse-fold its gain
-/// out of the accumulators (GTW-550 — the extensible heal seam GTW-23 Healing will
+/// out of the accumulators (GTW-550 — the extensible heal verb GTW-23 Healing will
 /// drive).
 ///
 /// A real, well-defined verdict — never a panic and never a silent wrong answer: a
@@ -97,7 +97,7 @@ pub enum HealError {
 /// - **project** ([`disables_hand`](Self::disables_hand)) — the read-side projections
 ///   the ledger's on-demand folds ask of each effect (defaulted, so only the effect
 ///   that carries the projection overrides it).
-/// - **heal** ([`heal`](Self::heal)) — the extensible second verb (the GTW-23 seam):
+/// - **heal** ([`heal`](Self::heal)) — the extensible second verb (the GTW-23 extension point):
 ///   the exact inverse of the gain fold where one exists, a documented no-op `Ok` where
 ///   nothing was accumulated, or [`HealError::NeedsRefold`] where the fold is
 ///   non-invertible. Never a `todo!`/`unimplemented!`.
@@ -121,7 +121,7 @@ pub trait ApplyInjuryEffect {
 
     /// **Heal** this effect back OUT of the accumulators — the inverse of
     /// [`fold_on_gain`](Self::fold_on_gain), the extensible second verb the future
-    /// GTW-23 Healing runtime drives (no runtime caller exists yet; the seam is
+    /// GTW-23 Healing runtime drives (no runtime caller exists yet; the verb is
     /// exercised by the palette's unit tests).
     ///
     /// Returns `Ok(())` when the inverse fold was applied (or when there is,

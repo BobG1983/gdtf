@@ -1,4 +1,4 @@
-//! The live-retheme seam: re-derive [`GdtfTheme`](crate::theme::GdtfTheme) when
+//! The live-retheme pass: re-derive [`GdtfTheme`](crate::theme::GdtfTheme) when
 //! the theme asset changes.
 //!
 //! GTW-137 makes the data-driven theme **hot-reloadable** in memory. When the

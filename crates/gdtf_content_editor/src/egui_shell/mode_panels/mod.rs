@@ -1,8 +1,8 @@
 //! The per-mode RIGHT-form + CENTRAL-panel **dispatches** — split out of `shell.rs` at
-//! the GTW-670 band seam (module-layout: `shell.rs` sat one arm from the block band;
+//! the GTW-670 band boundary (module-layout: `shell.rs` sat one arm from the block band;
 //! these two dispatches are the parts that grow an arm per Workbench mode, so they live
 //! together here and the shell only changes when the PANEL LAYOUT does — the
-//! `autoload.rs` / `textures.rs` seam continuation).
+//! continuing the `autoload.rs` / `textures.rs` split).
 //!
 //! Wiring-only module. The borrow context the shell builds once lives in [`ctx`]; the
 //! RIGHT mode-form dispatch (panel-4 slot) lives in [`right`]; the CENTRAL

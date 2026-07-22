@@ -1,5 +1,5 @@
 //! The shell's mode-agnostic **chrome** — the top-bar mode tabs + global theme
-//! `ComboBox` and the bottom status line (split out of `shell.rs` at the GTW-636 seam:
+//! `ComboBox` and the bottom status line (split out of `shell.rs` at the GTW-636 boundary:
 //! the chrome changes when the Workbench's frame does, the shell when the per-mode
 //! panel layout does).
 

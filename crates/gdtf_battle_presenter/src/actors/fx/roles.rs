@@ -1,5 +1,5 @@
 //! The DATA-DRIVEN FX-role table and its hot-RON chain registration (the
-//! GTW-564 generic seam).
+//! GTW-564 generic registration helper).
 
 use bevy::{math::Vec3, prelude::*};
 use gdtf_assets::HotRonAppExt;
@@ -93,7 +93,7 @@ pub struct DamageTypeFx {
 /// [`RonAsset<T>`](gdtf_assets::RonAsset) loader and resolved into a presenter-owned
 /// [`EffectRoles`] resource before battle time (the GTW-564 generic hot-RON
 /// chain, registered by [`register_effect_roles_hot_ron`]), mirroring S4's
-/// GTW-564 generic hot-RON seam (the mechanism the retired S4 terrain table used).
+/// GTW-564 generic hot-RON registration helper (the mechanism the retired S4 terrain table used).
 ///
 /// GTW-306 reshaped the firing-FX half from the old single stretched-`tracer`
 /// index into a PER-DAMAGE-TYPE model: each of the four authored color rows
@@ -209,7 +209,7 @@ pub fn nearest_direction_index(trajectory: Vec3) -> usize {
 const EFFECT_ROLES_RON_PATH: &str = "sprites/effect_roles.spritedef.ron";
 
 /// Registers the [`EffectRoles`] hot-RON chain — ONE ext call onto the GTW-564
-/// generic seam (kick-off / gated resolve / live redrive, keyed by the generic
+/// generic registration helper (kick-off / gated resolve / live redrive, keyed by the generic
 /// [`HotRonHandle`](gdtf_assets::HotRonHandle)`<EffectRoles>`), replacing the
 /// per-site handle newtype + load/resolve/redrive triple. Self-gates on the
 /// [`AssetServer`](bevy::asset::AssetServer) (`bevy-traps.md` #1), so a

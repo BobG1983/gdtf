@@ -7,7 +7,7 @@
 //! the save is a copy, never a parallel schema (the GTW-636 gang-draft precedent:
 //! holding the loader type means every authored field round-trips by construction).
 //! Field edits flow through [`spec_mut`](AttachmentDraft::spec_mut) — the one field-edit
-//! seam (the `InjuryDraft::def_mut` parity); an EMPTY `effects` list is LEGAL (the
+//! path (the `InjuryDraft::def_mut` parity); an EMPTY `effects` list is LEGAL (the
 //! schema's cosmetic identity — GTW-669 C2: no `effects >= 1` floor exists to enforce).
 
 use bevy::prelude::*;
@@ -57,7 +57,7 @@ enum AutoloadState {
 /// documented `GangDraft` `name` exception); it folds into an [`AttachmentName`] on
 /// projection. The spec is the sim's own [`AttachmentSpec`] record (see the module
 /// docs). Private fields with named accessors / mutators (no-bare-types rule 5);
-/// [`spec_mut`](AttachmentDraft::spec_mut) is the one field-edit seam — the effects list
+/// [`spec_mut`](AttachmentDraft::spec_mut) is the one field-edit path — the effects list
 /// is edited directly through the sim `Vec` (the `InjuryDraft` effects precedent). NOT
 /// `Eq`: several effect payloads carry an `f32`.
 #[derive(Resource, Clone, PartialEq, Debug)]
@@ -126,7 +126,7 @@ impl AttachmentDraft {
         &self.spec
     }
 
-    /// The ONE field-edit seam (the `InjuryDraft::def_mut` parity): the form's controls
+    /// The ONE field-edit path (the `InjuryDraft::def_mut` parity): the form's controls
     /// write the display name / slot / effects list directly through the sim record, so
     /// the edited model IS the loader schema by construction.
     pub const fn spec_mut(&mut self) -> &mut AttachmentSpec {

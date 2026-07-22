@@ -99,12 +99,12 @@ impl Plugin for LoadScenePlugin {
         // `weapon.ron`), making the dispatch unambiguous regardless of registration
         // order. GTW-570: for the seven generic content families that dedicated
         // extension now rides the `register_content_family` call (each family names
-        // its own; GTW-619 moved the attachments folder onto the same seam, the
+        // its own; GTW-619 moved the attachments folder onto the same registration, the
         // eighth); the bespoke folder loaders below still register theirs by hand.
         if app.world().get_resource::<AssetServer>().is_some() {
             app.init_ron_asset::<GdtfThemeSpec>();
             // GTW-564: the four SINGLE-FILE gate-blocking chains register through the
-            // generic hot-RON seam — ONE ext call each wires the `Startup` kick-off (the
+            // generic hot-RON registration — ONE ext call each wires the `Startup` kick-off (the
             // persistent generic handle), the gated resolve (inserts the resource ONCE, on
             // Loaded — or the fallback on a genuine Failed, so Load never strands), and
             // the ungated live redrive (the GTW-374/GTW-533 hot-reloads, preserved). The
@@ -158,7 +158,7 @@ impl Plugin for LoadScenePlugin {
             add_hot_reload_systems(app);
         }
         // GTW-570: the FOLDER-loaded content families register through the generic
-        // content-family seam — ONE ext call each wires the dedicated-extension
+        // content-family registration — ONE ext call each wires the dedicated-extension
         // loader, the `Startup` folder kick-off (the persistent generic
         // `ContentFolderHandle`), the gated resolve (inserts the registry ONCE, on
         // Loaded — or the EMPTY registry on a genuine Failed, so Load never
@@ -166,7 +166,7 @@ impl Plugin for LoadScenePlugin {
         // preserved). The `transition_to_intro` gate below still requires every
         // resolved registry, so the Load-gating semantics are unchanged (C3).
         //
-        // Deliberately OUTSIDE the `AssetServer` guard (GTW-629): the seam
+        // Deliberately OUTSIDE the `AssetServer` guard (GTW-629): the registration
         // SELF-GATES — with a server it wires the full chain; without one it seeds
         // the family's default registry as the headless fallback instead, so a
         // `MinimalPlugins` walk keeps traversing `Load` with zero per-family seed
@@ -178,11 +178,11 @@ impl Plugin for LoadScenePlugin {
         app.register_content_family::<GangsFamily>();
         // The terrain + theme defs are the PAYLOAD-KEYED families sharing the ONE
         // MIXED `content/terrain/` tree — each walk skips the other family's
-        // members via the seam's unconditional TypeId filter (GTW-487 precedent).
+        // members via the registration's unconditional TypeId filter (GTW-487 precedent).
         app.register_content_family::<TerrainDefsFamily>();
         app.register_content_family::<ThemeDefsFamily>();
         // GTW-619: the data-driven attachment items (GTW-549) ride the SAME generic
-        // seam — the ext call claims their dedicated `attachment.ron` compound
+        // registration — the ext call claims their dedicated `attachment.ron` compound
         // extension (files are `assets/content/attachments/*.attachment.ron`), so the
         // bespoke loader registration + kick-off / resolve / redrive chain is gone.
         app.register_content_family::<AttachmentsFamily>();
@@ -199,7 +199,7 @@ impl Plugin for LoadScenePlugin {
 fn add_systems(app: &mut App) {
     let label = SceneLabel::new("Load");
     // GTW-582: install the unified end-of-Load reference-integrity pass — the
-    // per-edge check hooks, the seam's Check→Publish plumbing, and the window
+    // per-edge check hooks, the validation pass's Check→Publish plumbing, and the window
     // condition that opens it once every graph registry has resolved. Registered
     // UNCONDITIONALLY (not inside the AssetServer guard): under MinimalPlugins
     // the seeded gate resources open the window, so the ContentValidationDone
@@ -343,9 +343,9 @@ fn add_hot_reload_systems(app: &mut App) {
         Update,
         (
             // GTW-564: the situation + combat / stat / procgen tuning redrives moved
-            // onto the generic hot-RON seam; GTW-570 moved the seven folder-family
+            // onto the generic hot-RON registration; GTW-570 moved the seven folder-family
             // redrives (weapons / melee / armor / fields / gangs / terrain + theme
-            // defs) onto the generic content-family seam, and GTW-619 moved the
+            // defs) onto the generic content-family registration, and GTW-619 moved the
             // attachments redrive the same way (all registered by the ext calls in
             // `build`). This set now carries the BESPOKE folder redrives only.
             // GTW-437: the injury hot-reload — rebuilds BOTH the InjuryRegistry and the

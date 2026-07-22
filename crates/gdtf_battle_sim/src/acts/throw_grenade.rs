@@ -6,7 +6,7 @@
 //! ([`resolve_blast`](crate::fire::resolve_blast)).
 //!
 //! This MIRRORS the shove / enter-emplacement dispatch precedents — the deliberate act's
-//! input-seam offer is advisory, so the sim RE-GATES before acting, spends a TU leaf, and
+//! input offer is advisory, so the sim RE-GATES before acting, spends a TU leaf, and
 //! resolves the effect. The throw differs in ONE way: it is a BLIND lob, so there is NO
 //! line-of-sight / facing / arc gate (unlike ranged fire's `decide_fire_arc`) — a grenade may
 //! be thrown over walls at an unseen cell (`docs/combat/combat.md` names lobbed grenades among
@@ -343,7 +343,7 @@ pub fn dispatch_throw_grenade(
             &mut world.injury_rng,
         );
 
-        // (4) Signal the landing for the presenter's impact / blast FX (the seam/app phase draws
+        // (4) Signal the landing for the presenter's impact / blast FX (the app phase draws
         //     it). The blast's HP/wound mutations are observed via change-detection.
         resolved.write(ThrowResolved::new(landing, grenade.damage_type));
     }

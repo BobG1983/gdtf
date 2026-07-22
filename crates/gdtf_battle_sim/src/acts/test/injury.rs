@@ -1,4 +1,4 @@
-//! GTW-550 — the SAME-TICK seam proof for the injury message-drain path: an
+//! GTW-550 — the SAME-TICK proof for the injury message-drain path: an
 //! [`InjuryInflicted`](crate::acts::InjuryInflicted) drained by
 //! [`apply_injury`](crate::acts::apply_injury) folds through the palette trait
 //! SYNCHRONOUSLY (never a deferred command), so the gain trips

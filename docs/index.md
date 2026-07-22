@@ -25,7 +25,7 @@ Pointer index for the game's design and engineering docs. **GDTF (GrimDark TurF 
 
 ## Authoring
 
-- [authoring/](authoring/index.md) — how to author EVERY data-driven surface: weapons (ranged + melee), armor, attachments, injuries, on-death effects, fields, terrain & themes, prefabs/situations/gangs, floating combat text, the combat log, the generic content-family seam, and the reference-integrity contract — plus pointers to the engineer-facing rustdoc recipes (contextual acts, FCT families, effect palettes, test harness, scene scaffolds).
+- [authoring/](authoring/index.md) — how to author EVERY data-driven surface: weapons (ranged + melee), armor, attachments, injuries, on-death effects, fields, terrain & themes, prefabs/situations/gangs, floating combat text, the combat log, the generic content-family loader, and the reference-integrity contract — plus pointers to the engineer-facing rustdoc recipes (contextual acts, FCT families, effect palettes, test harness, scene scaffolds).
 
 ## Engineering
 

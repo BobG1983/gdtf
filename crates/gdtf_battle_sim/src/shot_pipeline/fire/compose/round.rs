@@ -120,7 +120,7 @@ pub(in crate::shot_pipeline::fire) struct RoundSetup<'a> {
 ///
 /// Returns the frozen primary [`HitReport`], the `AoE` **splash** reports (GTW-541 —
 /// EMPTY for a [`HitType::Single`](crate::weapon::HitType::Single) round, so the
-/// single-target path is byte-identical), **and** the round's
+/// single-target path is identical), **and** the round's
 /// [`ShotOutcome`](crate::resolve_coarse::ShotOutcome) — the already-computed E2
 /// trajectory geometry [`fire`](super::super::fire) collects so
 /// [`dispatch_fire`](crate::acts::dispatch_fire) can emit a per-round
@@ -264,7 +264,7 @@ pub(in crate::shot_pipeline::fire) fn resolve_round(
 
     // GTW-541 (`AoE` CORE): if the fired mode carries a non-Single HitType, splash the
     // template's other affected cells. `Single` short-circuits (empty splash, no
-    // resolver call, no extra draw) so the single-target path is byte-identical.
+    // resolver call, no extra draw) so the single-target path is identical.
     let splash = apply_aoe_splash(
         &outcome,
         setup.mode.hit_type,

@@ -155,7 +155,7 @@ fn blocks_pathing_override_serializes_transparently() {
         assert!(
             !text.contains("BlocksPathingOverride"),
             "the newtype is #[serde(transparent)] — its name must NOT appear in the RON wire form \
-             (the override rides as a bare bool, byte-identical to the pre-wrap Option<bool>): \
+             (the override rides as a bare bool, identical to the pre-wrap Option<bool>): \
              {text}",
         );
         match over {

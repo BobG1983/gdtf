@@ -17,7 +17,7 @@ use super::harness::*;
 /// AC1 — a `BattleWon` written DURING `BattleRunning` ends the battle → `AnimateOut`.
 ///
 /// Drives into `BattleRunning` (GTW-236 persistence applied), writes ONE
-/// `gdtf_battle_sim::battle::BattleWon` into the world's buffer (the sanctioned test-body
+/// `gdtf_battle_sim::battle::BattleWon` into the world's buffer (the test-body
 /// message-write), then advances: `end_battle_on_outcome` reads the outcome and inserts
 /// `BattleRunningComplete`, and the marker-gated `move_on` advances `BattleRunning → AnimateOut`.
 /// Pin-discriminating: with `end_battle_on_outcome` unwired the marker is never inserted, so the

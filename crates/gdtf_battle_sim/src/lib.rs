@@ -153,7 +153,7 @@
 //! - [`visibility`] — the GTW-340 squad fog-of-war three-state model (leaf 4 of the
 //!   GTW-13 FOV epic): the [`visibility::SquadVisibility`] resource (the VISIBLE /
 //!   EXPLORED [`metric::CellLevel`] sets, UNSEEN the implicit complement; EXPLORED is
-//!   monotone), the PURE read seams the GTW-11 fog gate / GTW-70 AI / GTW-38 reaction
+//!   monotone), the PURE read accessors the GTW-11 fog gate / GTW-70 AI / GTW-38 reaction
 //!   fire consume ([`visibility::SquadVisibility::is_cell_visible`] /
 //!   [`visibility::SquadVisibility::is_cell_explored`] /
 //!   [`visibility::SquadVisibility::visible_cells`] and
@@ -199,7 +199,7 @@
 //!   [`melee::opposed_fight`] (two [`rng::FightRng`] draws → a [`melee::FightOutcome`]
 //!   of `connect` + [`melee::FightMargin`]), [`melee::melee_damage_mult`] (the
 //!   margin → clamped [`melee::MeleeDamageMult`] curve), and [`melee::apply_melee_multiplier`]
-//!   (the PURE seam scaling a [`resolve_hit::HitResult`] by the multiplier between
+//!   (the PURE step scaling a [`resolve_hit::HitResult`] by the multiplier between
 //!   [`mod@resolve_hit`] and the §6 wound step). Pure functions + a dedicated seeded
 //!   stream; the live melee ACT is GTW-507.
 //! - [`mod@fire`] — the E4.5 capstone firing act ([`fire::fire`]): a query-based Bevy

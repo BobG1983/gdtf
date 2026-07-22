@@ -156,7 +156,7 @@ impl GangerVisibilityFacts<'_> {
 /// moves the sprites (GTW-623 stage membership — no pairwise `.after` edges), so it always
 /// resolves against the frame's settled sim state. For each live sim ganger it looks the
 /// presenter sprite up through [`GangerSprites`] and writes the classifier's verdict via
-/// the shared tick-quiet seam (`set_if_neq` — an unchanged sprite's change ticks stay
+/// the shared tick-quiet write helper (`set_if_neq` — an unchanged sprite's change ticks stay
 /// untouched, GTW-627 C3). A not-yet-materialized sprite (the deferred `spawn_scene`,
 /// GTW-322) is skipped and picked up the frame its components exist; its spawn-seeded
 /// value came through the same classifier, so there is no first-frame flicker.

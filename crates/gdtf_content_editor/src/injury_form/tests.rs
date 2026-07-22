@@ -87,14 +87,14 @@ fn default_is_pristine_and_load_injury_fills_the_form() {
 }
 
 /// The identity round-trip through the def projection: an edited draft →
-/// [`draft_to_def`] → serialize (the shared pretty-RON seam) → deserialize the way
+/// [`draft_to_def`] → serialize (the shared pretty-RON writer) → deserialize the way
 /// the loader does → reload into a fresh draft → structural equality across every
 /// field INCLUDING all four effect variants. No pinned magnitudes.
 #[test]
 fn edited_def_round_trips_through_the_loader_schema() {
     let mut edited = InjuryDraft::new_injury();
     edited.load_injury(&InjuryName::new("test_wound".to_owned()), &fixture_def());
-    // Push a fresh effect through the mutator seam too (the Add-effect path).
+    // Push a fresh effect through the mutator too (the Add-effect path).
     edited.def_mut().effects.push(InjuryEffect::Modify {
         stat:   StatTarget::Grit,
         amount: StatDelta::new(3),
@@ -152,7 +152,7 @@ fn fixture_tables() -> InjuryTables {
 
 /// [`WeightingDraft::load_category`] loads exactly the picked category's three
 /// buckets (an unauthored bucket loads empty) and ends the autoload; the row
-/// mutator seam adds/removes rows on the addressed bucket only.
+/// mutator adds/removes rows on the addressed bucket only.
 #[test]
 fn load_category_fills_exactly_the_picked_context() {
     let tables = fixture_tables();
@@ -184,7 +184,7 @@ fn load_category_fills_exactly_the_picked_context() {
         "another category's rows must not leak in",
     );
 
-    // Row edits through the mutator seam land on the addressed bucket only.
+    // Row edits through the mutator land on the addressed bucket only.
     draft.weighting_mut().major.push(WeightedInjuryEntry::new(
         InjuryName::new("bruise".to_owned()),
         InjuryWeight::new(5),
@@ -240,7 +240,7 @@ fn edited_weighting_round_trips_through_the_loader_schema() {
 /// (GTW-634): the def's compound suffix from `INJURY_DEF_EXTENSION` with the
 /// category subfolder from `category_dir`, the weighting's from
 /// `INJURY_WEIGHTING_EXTENSION` under `WEIGHTING_SUBFOLDER`; a path-hostile key
-/// sanitizes through the shared seam and an unnameable one falls back to the
+/// sanitizes through the shared helper and an unnameable one falls back to the
 /// documented `unnamed_injury` stem.
 #[test]
 fn save_file_names_and_paths_derive_from_the_one_owner_spellings() {

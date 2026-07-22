@@ -21,8 +21,8 @@ use crate::EditorState;
 /// [`MeleeWeaponRegistry`], the (GTW-654) INJURY mode's [`InjuryRegistry`] /
 /// [`InjuryTables`] pair, the (GTW-663) [`SpriteDefRegistry`] — since GTW-665 also the
 /// resolution source for every terrain graphic — and the (GTW-669) ATTACHMENT mode's
-/// [`AttachmentRegistry`] are all inserted (each seam
-/// resolve inserts its resource on success OR on its empty failure fallback —
+/// [`AttachmentRegistry`] are all inserted (each family registration
+/// inserts its resource on success OR on its empty failure fallback —
 /// GTW-579 C4b — so this is reached even on a bad asset folder: the no-strand guarantee).
 /// The game's `GdtfTheme` is NOT gated on — the egui shell styles itself, so the editor
 /// resolves no theme (GTW-625; the GTW-579 AC2 amendment).
@@ -37,7 +37,7 @@ pub(crate) fn transition_to_editing(gate: GateResources, mut next: ResMut<NextSt
 /// The ten resolved-resource borrows the transition gates on, bundled into one
 /// `#[derive(SystemParam)]` (the shell's `PrefabParams` pattern) so the gate system's
 /// signature stays legible as families accrue. Every field is `Option` — each resource
-/// arrives only once its seam resolve (or fallback) fires (bevy-traps #1).
+/// arrives only once its registration (or fallback) fires (bevy-traps #1).
 #[derive(bevy::ecs::system::SystemParam)]
 pub(crate) struct GateResources<'w> {
     /// The ranged-weapons registry (`WeaponsFamily`).

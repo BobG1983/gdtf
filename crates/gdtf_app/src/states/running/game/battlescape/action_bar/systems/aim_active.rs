@@ -7,7 +7,7 @@
 //! keeps the [`AimToggleButton`] identity marker so the relocated control is found
 //! parent-agnostically wherever the weapon-panel module parents it (GTW-298).
 //!
-//! ## Press → intent (the 222a seam, byte-equal to the key surface)
+//! ## Press → intent (the 222a queue, byte-equal to the key surface)
 //!
 //! Clicking the switch makes `gdtf_ui`'s [`drive_switches`](gdtf_ui::drive_switches) flip
 //! it and emit a [`ToggleFlipped`](gdtf_ui::ToggleFlipped) message carrying the switch's
@@ -115,7 +115,7 @@ fn off_track_color(button: Color) -> Color {
 /// Reads [`ToggleFlipped`](gdtf_ui::ToggleFlipped) messages (emitted by
 /// [`drive_switches`](gdtf_ui::drive_switches) on a real click), and for each whose
 /// flipped switch carries the [`AimToggleButton`] marker, [`push`](PendingActIntent::push)es
-/// the SAME [`ActIntent::AimToggle`] the aim KEY pushes onto the shared 222a seam — so the
+/// the SAME [`ActIntent::AimToggle`] the aim KEY pushes onto the shared 222a queue — so the
 /// switch + key surfaces stay parallel over the ONE drain (the byte-equal parity the
 /// `aim_button_toggles_and_matches_direct_intent` test pins). The buttons write NO
 /// `*Requested` directly; the ONE [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents)

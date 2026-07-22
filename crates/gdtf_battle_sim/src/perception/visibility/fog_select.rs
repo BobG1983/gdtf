@@ -57,7 +57,7 @@ impl OmniscientFog {
 /// fog for any given mover and cannot drift:
 ///
 /// - **Player mover** (`mover_faction == player_faction`) → `player_fog`: player movement
-///   stays byte-identical to the GTW-353 visibility-gated routing (plan only through what
+///   stays identical to the GTW-353 visibility-gated routing (plan only through what
 ///   the squad has seen).
 /// - **Non-player mover** → `omniscient`: an enemy navigates toward the player's TRUE cell
 ///   through routable space, gated only by real geometry/occupancy, never by the *player's*

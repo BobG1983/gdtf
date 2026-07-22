@@ -2,7 +2,7 @@
 //! wrapper over the generic per-family suite (`load_suite::suite`) PLUS the
 //! GTW-619 deep-behavior extension (`load_suite/behaviors.rs`, included
 //! standalone), proving the migration off the bespoke resolve/redrive chain
-//! onto the GTW-570 generic content-family seam preserved every seam behavior:
+//! onto the GTW-570 generic content-family loader preserved every load behavior:
 //! salvage parity, fail-closed-empty, never-publish-partial, and the live
 //! redrive. The family-bespoke shipped weapon-key / slot-fit pins live in
 //! `load_attachment_fit.rs`.
@@ -102,7 +102,7 @@ fn load_does_not_leave_without_an_attachment_registry() {
 }
 
 /// Tier (b) — the REAL `assets/content/attachments/` folder resolves into a
-/// stem-keyed [`AttachmentRegistry`] through the GTW-619 generic seam
+/// stem-keyed [`AttachmentRegistry`] through the GTW-619 generic content-family
 /// registration in the Load plugin.
 #[test]
 fn real_asset_resolves_attachment_registry_keyed_by_filename() {

@@ -62,7 +62,7 @@ fn door_state(app: &App, door: Entity) -> Option<OpenState> {
 // ---------------------------------------------------------------------------------
 // GTW-315 — the OPEN DOOR button: detection (an 8-adjacent CLOSED door reveals it, an
 // already-open / non-adjacent door does NOT) and press → the door's OpenState toggles
-// to Open through the REAL seam + the app-wired sim.
+// to Open through the REAL input queue + the app-wired sim.
 // ---------------------------------------------------------------------------------
 
 /// OPEN-DOOR detection: a selected player actor with an 8-adjacent CLOSED door offers Open Door —
@@ -145,7 +145,7 @@ fn open_or_non_adjacent_door_does_not_offer_open_door() {
 /// the app-wired sim `dispatch_open_door` ->
 /// `SetOpenable::toggle` -> `apply_openable_toggle`) so the SPECIFIC carried door's `OpenState`
 /// flips CLOSED -> Open (GTW-315). Driven THROUGH the button/intent/sim path end to end — never a
-/// synthetic `SetOpenable` emit — proving the correct door entity was carried across the seam.
+/// synthetic `SetOpenable` emit — proving the correct door entity was carried through the input queue.
 ///
 /// The door flip settles one frame after the toggle message (the GTW-503 documented one-frame
 /// settle: `dispatch_open_door` writes `SetOpenable`, `apply_openable_toggle` flips `OpenState` and
@@ -189,7 +189,7 @@ fn pressing_open_door_toggles_the_door_open() {
     assert!(
         opened,
         "pressing Open Door on the carried CLOSED door must toggle its OpenState to Open through \
-         the real seam + sim; last was {:?}",
+         the real dispatch path + sim; last was {:?}",
         door_state(&app, door),
     );
 }

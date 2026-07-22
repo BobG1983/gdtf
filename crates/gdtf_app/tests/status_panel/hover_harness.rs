@@ -25,7 +25,7 @@ pub(crate) fn force_hover(desired: Res<DesiredHover>, mut target: ResMut<Inspect
     target.set_hovered(desired.0);
 }
 
-/// Builds the battle app with the hover-forcing seam wired in.
+/// Builds the battle app with the hover-forcing system wired in.
 pub(crate) fn hover_app() -> App {
     let mut app = battle_running_app();
     app.world_mut().insert_resource(DesiredHover::default());

@@ -6,7 +6,7 @@
 //! (the GTW-393/406 feature-completeness lesson), not just in a constructed message.
 //!
 //! These exercise the production path (no stubs): the situation goes through the real
-//! `SetupBattleRequested` seam, and the fire goes through the real message dispatch.
+//! `SetupBattleRequested` message, and the fire goes through the real message dispatch.
 
 use bevy::prelude::{App, Entity, Messages};
 

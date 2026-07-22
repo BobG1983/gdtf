@@ -36,7 +36,7 @@ use crate::theme_dir::theme_dir;
 // reads BY CONSTRUCTION (the GTW-621 gang-extension bug class, closed for terrain).
 
 /// Sanitize the entered display name into a file-name STEM — since GTW-577 a thin
-/// delegation to the shared [`gdtf_assets::sanitize_file_stem`] seam (the prefab
+/// delegation to the shared [`gdtf_assets::sanitize_file_stem`] helper (the prefab
 /// `sanitize_name` sibling).
 ///
 /// Returns an empty [`FileStem`] for a name that sanitizes to nothing (the caller treats it
@@ -144,12 +144,12 @@ pub fn draft_to_terrain_def(
 
 /// Serialize a built [`TerrainDef`] to its `.terrain_def.ron`-shaped RON text — the SAME schema
 /// the GTW-487 terrain loader deserializes (C3). Delegates to the shared
-/// [`serialize_ron_pretty`] seam (GTW-577 C2), so a saved def stays human-editable like the
+/// [`serialize_ron_pretty`] helper (GTW-577 C2), so a saved def stays human-editable like the
 /// shipped `assets/content/terrain/**/*.terrain_def.ron`.
 ///
 /// # Errors
 ///
-/// [`SaveTerrainError::Save`] wrapping the seam's serialize failure.
+/// [`SaveTerrainError::Save`] wrapping the shared serializer's failure.
 pub fn serialize_terrain_def(def: &TerrainDef) -> Result<String, SaveTerrainError> {
     serialize_ron_pretty(def).map_err(SaveTerrainError::Save)
 }
@@ -162,15 +162,15 @@ pub fn serialize_terrain_def(def: &TerrainDef) -> Result<String, SaveTerrainErro
 /// [`WORKSPACE_ASSETS_ROOT`] (via [`write_terrain`]); tests pass a unique `tempfile::TempDir` root
 /// so no test ever writes into the version-controlled `assets/` tree.
 ///
-/// Sanitizes the entered name to a file stem (the shared seam), projects the draft to a
+/// Sanitizes the entered name to a file stem (the shared helper), projects the draft to a
 /// [`TerrainDef`] keyed by `uuid`, and hands the serialize → mkdir → write chain to the shared
-/// [`gdtf_assets::write_ron_pretty`] seam (GTW-577 C2). Returns the resolved [`PathBuf`] on
+/// [`gdtf_assets::write_ron_pretty`] writer (GTW-577 C2). Returns the resolved [`PathBuf`] on
 /// success so the caller can log it or read it back.
 ///
 /// # Errors
 ///
 /// Any [`SaveTerrainError`] from name validation, the fail-closed Emplacement projection
-/// (GTW-574 C6 — a missing mounted weapon writes NOTHING), or the seam's serialization /
+/// (GTW-574 C6 — a missing mounted weapon writes NOTHING), or the shared writer's serialization /
 /// file write.
 #[cfg(debug_assertions)]
 pub fn write_terrain_in(

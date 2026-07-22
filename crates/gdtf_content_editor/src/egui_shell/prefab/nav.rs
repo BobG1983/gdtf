@@ -4,7 +4,7 @@
 //! Egui-import-free (plain `Update` systems reading [`ButtonInput`], NOT egui), mirroring the kept
 //! [`mode_hotkeys`](crate::mode::mode_hotkeys). Their keyboard reads the plugin SUPPRESSES while an
 //! egui text field holds keyboard focus — both systems here share the ONE
-//! `not(egui_wants_any_keyboard_input)` guard the plugin wires at its `add_systems` seam (GTW-681),
+//! `not(egui_wants_any_keyboard_input)` guard the plugin wires at its `add_systems` call (GTW-681),
 //! so a `]` / `[` / `F` keypress while typing into a form field does nothing. It uses the SAME clamp
 //! the GTW-595 level rail's
 //! click/scrub uses — [`CurrentEditLevel::stepped`], which saturates the result into

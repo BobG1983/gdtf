@@ -4,7 +4,7 @@
 //! intent, pushes it through the SAME public input queues the local surfaces use —
 //! [`PendingActIntent`] for the classic acts, the per-act `PendingContextualIntents<A>` for
 //! the contextual ones (the SAME write-points the local keyboard / button / panel surfaces
-//! use, never a raw `*Requested`) — then answers each request with an HONEST
+//! use, never a raw `*Requested`) — then answers each request with an
 //! [`InjectReceipt`]: `Queued` the moment it enters the queue, or a typed wire-layer
 //! rejection. The receipt says
 //! nothing about the act's eventual outcome (that is observed downstream via the T5/T6
@@ -59,7 +59,7 @@ pub(super) fn apply_injects(
     }
 }
 
-/// Classify one injected intent and push it onto its input queue, returning its HONEST
+/// Classify one injected intent and push it onto its input queue, returning its
 /// receipt — `Queued` once it enters the queue, or the typed wire-layer rejection.
 ///
 /// `pub(super)` (not private): the T15 `screenshot_after` child (GTW-749) reuses this

@@ -1,7 +1,7 @@
 # Content Families — adding a folder-loaded content family
 
 How GDTF turns a folder of loose `.ron` files into a registry resource, and
-what ONE registration line buys you (GTW-570 generic seam; GTW-582 per-file
+what ONE registration line buys you (GTW-570 generic loader; GTW-582 per-file
 salvage + integrity report; GTW-629 headless fallback; GTW-630 shared
 validation; GTW-621/634 one-owner path spellings). This is the guide for
 engineers adding a NEW content family; each existing family's authoring guide
@@ -48,7 +48,7 @@ registry types; `gdtf_app` cannot host the impls because the content editor
 needs the SAME families without depending on the game. So the marker impls
 live in the shared glue crate — the module rustdoc of
 `crates/gdtf_content_families/src/lib.rs` is the canonical statement of this
-seam (link, don't fork).
+mechanism (link, don't fork).
 
 The shipped families vary on ONE axis — where a member's key comes from:
 
@@ -71,9 +71,9 @@ invisible to the loader):
 
 - The workspace assets root: `gdtf_assets::WORKSPACE_ASSETS_ROOT`
   (`crates/gdtf_assets/src/workspace.rs`).
-- Seam families: `<Family>::FOLDER` / `<Family>::EXTENSION` — the assoc consts
+- Generic families: `<Family>::FOLDER` / `<Family>::EXTENSION` — the assoc consts
   on each marker impl in `crates/gdtf_content_families/src/`.
-- The two bespoke (non-seam) families, which have no `ContentFamily` impl to
+- The two bespoke (non-generic) families, which have no `ContentFamily` impl to
   carry consts: `gdtf_content_families::prefabs::{PREFABS_FOLDER,
   PREFAB_EXTENSION}` and `gdtf_content_families::injuries::{INJURIES_FOLDER,
   INJURY_DEF_EXTENSION, INJURY_WEIGHTING_EXTENSION}` (declared once, imported

@@ -132,7 +132,7 @@ fn a_vertical_lob_cannot_pass_its_own_intact_ceiling() {
 fn a_steep_drop_stops_at_the_highest_roof_in_flight_order() {
     // GTW-645 flight-order pin (the covered case): a steep DESCENT (5 storeys down over 1
     // cell) crosses z=3 and z=2 in one sample segment. With intact roofs at BOTH planes
-    // (authored in both columns, so the pin is float-robust at the column seam), the lob
+    // (authored in both columns, so the pin is float-robust at the column boundary), the lob
     // must stop at the HIGHEST plane — the first crossed while falling — never the lower.
     let mut surface = SurfaceGrid::new();
     for x in [5, 6] {

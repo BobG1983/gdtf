@@ -1,4 +1,4 @@
-//! The GENERIC contextual-act seam (GTW-571): the [`ContextualAct`] descriptor trait,
+//! The GENERIC contextual-act machinery (GTW-571): the [`ContextualAct`] descriptor trait,
 //! the per-act buffered [`PendingContextualIntents`] queue, the per-act generic
 //! [`drain_contextual_intents`] system, and the compile-time [`ContextualActAppExt`]
 //! registrar.
@@ -62,7 +62,7 @@ impl SlotRank {
 }
 
 /// A CONTEXTUAL act's input-layer descriptor (GTW-571) — the compile-time contract the
-/// generic seam is stamped over, one impl per act (one vertical act module per crate
+/// generic machinery is stamped over, one impl per act (one vertical act module per crate
 /// layer, stitched by [`ContextualActAppExt::add_contextual_act`]).
 ///
 /// A contextual act is activated on an OFFERED target (Execute / Stabilize / Melee /

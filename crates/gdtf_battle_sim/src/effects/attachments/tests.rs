@@ -2,7 +2,7 @@
 //! [`AttachmentEffect`](super::AttachmentEffect) vocabulary parses from RON by variant name
 //! (the serde bridge), and the enum's THIN delegation `impl ApplyAttachmentEffect` routes each
 //! variant to its isolated `ApplyX` behaviour (applied directly through the trait against an
-//! [`EntityWorldMut`], the seam the mechanics' commands extension wraps).
+//! [`EntityWorldMut`], the surface the mechanics' commands extension wraps).
 //!
 //! Per-effect mapping/direction is asserted in each effect file's own `#[cfg(test)]`; this
 //! suite proves the enum bridge (parse + delegation), not the individual stat maths. Per the

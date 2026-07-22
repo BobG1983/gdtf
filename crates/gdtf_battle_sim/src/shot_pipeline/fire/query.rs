@@ -66,7 +66,7 @@ pub type ShooterQuery<'world, 'state> = Query<
             // pinned under opposing fire. Read into the ShooterSnapshot so cone_for /
             // stability_for widen the shooter's dispersion cone by the tunable suppression
             // penalty. `Option` because an un-suppressed shooter carries no such component
-            // (an absent component = the zero-identity suppression term, byte-identical to
+            // (an absent component = the zero-identity suppression term, identical to
             // the pre-GTW-526 path).
             Option<&'static Suppressed>,
         ),
@@ -121,7 +121,7 @@ pub type MeleeQuery<'world, 'state> = Query<'world, 'state, (), With<MeleeWeapon
 /// (`wields.mounted_weapon(..).or_else(|| wields.ranged_weapon(..))`), so a manning ganger fires
 /// the mount and reverts to its own weapon when it exits (the mount edge despawned). A ganger
 /// with no mounted weapon (the common case) resolves nothing here and falls back to
-/// [`ranged_weapon`](crate::weapon::Wields::ranged_weapon) — byte-identical to the pre-GTW-543
+/// [`ranged_weapon`](crate::weapon::Wields::ranged_weapon) — identical to the pre-GTW-543
 /// path.
 pub type MountedQuery<'world, 'state> = Query<'world, 'state, (), With<MountedWeapon>>;
 
@@ -154,7 +154,7 @@ pub type WeaponQuery<'world, 'state> = Query<
         // WeaponStats borrow-view so cone_for / stability_for fold the additive graduated brace
         // bonus into the burst's dispersion cone. `Option` because the component is present only
         // when a data-driven `Stability` attachment is fitted (an absent component = the
-        // zero-identity brace term, byte-identical to a weapon with no brace). SUPERSEDES the
+        // zero-identity brace term, identical to a weapon with no brace). SUPERSEDES the
         // GTW-542 Scoped / WeaponSightBonus columns — a sight now boosts AIM (Accuracy), not
         // stability.
         Option<&'static WeaponBraceBonus>,
@@ -165,7 +165,7 @@ pub type WeaponQuery<'world, 'state> = Query<
         // GTW-544: the weapon's optional DotProfile — read into the WeaponStats borrow-view
         // so the fold can attach a Dot on a penetrating hit. `Option` because the DotProfile
         // sibling is present only on a DOT weapon (an absent component = a non-DOT weapon, no
-        // attach — byte-identical to before this slice, the Scoped `Option` precedent).
+        // attach — identical to before this slice, the Scoped `Option` precedent).
         Option<&'static DotProfile>,
     ),
     With<WieldedBy>,
@@ -235,7 +235,7 @@ pub type PieceQuery<'world, 'state> = Query<'world, 'state, PieceArmorMut, With<
 /// argument-count gate.
 ///
 /// The three grids [`resolve_coarse`](crate::resolve_coarse::resolve_coarse) reads
-/// (never rebuilds — the change-driven contract; the change-driven sim↔app seam
+/// (never rebuilds — the change-driven contract; the change-driven sim↔app boundary
 /// recorded in ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`): the coarse
 /// [`OccupancyGrid`], the persistent [`SurfaceGrid`], and the model [`CoverLedger`].
 /// The GTW-392 [`BraceStairCells`] resource is also bundled here — the lower-endpoint

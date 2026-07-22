@@ -169,7 +169,7 @@ fn stair_facing_invariant() {
 /// non-stair path is a provable no-op (GTW-390 C6c).
 ///
 /// Verifies that `OccupancyGrid::stair_eye_offset_at` returns the zero default and
-/// that the resulting eye is byte-identical to the non-stair baseline, confirming the
+/// that the resulting eye is identical to the non-stair baseline, confirming the
 /// stair feature touches nothing on non-stair cells.
 #[test]
 fn non_stair_cell_yields_zero_offset() {

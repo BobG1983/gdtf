@@ -8,7 +8,7 @@ use bevy::prelude::{Entity, Message};
 ///
 /// A buffered [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`) carrying the acting
 /// ganger [`Entity`] + the emplacement-piece [`Entity`]. The player-only contextual Enter button
-/// writes this from the input seam when the selected ganger is 8-adjacent to a VACANT emplacement.
+/// writes this from the input queue when the selected ganger is 8-adjacent to a VACANT emplacement.
 /// [`dispatch_enter_emplacement`](crate::acts::enter_emplacement::dispatch_enter_emplacement) drains it
 /// and RE-GATES in the sim (the input layer's offer is advisory, never authoritative): the actor
 /// exists + can afford the [`EnterEmplacementTu`](crate::tuning::EnterEmplacementTu) leaf, and the
@@ -48,7 +48,7 @@ impl EnterEmplacementRequested {
 ///
 /// A buffered [`Message`] (`bevy-traps.md` #4 — NOT the observer `Event`) carrying the acting
 /// ganger [`Entity`] + the emplacement-piece [`Entity`]. The player-only contextual Exit button
-/// writes this from the input seam when the selected ganger IS the emplacement's occupant. Exit is
+/// writes this from the input queue when the selected ganger IS the emplacement's occupant. Exit is
 /// a SEPARATE TU-costed context action — there is NO force-eject (a ganger leaves the mount only
 /// by spending [`ExitEmplacementTu`](crate::tuning::ExitEmplacementTu)).
 /// [`dispatch_exit_emplacement`](crate::acts::enter_emplacement::dispatch_exit_emplacement) drains it and

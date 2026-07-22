@@ -1,10 +1,10 @@
-//! GTW-735: headless integration tests for the DIRECT actor-selection seam — pushing
+//! GTW-735: headless integration tests for the DIRECT actor-selection queue — pushing
 //! `ActIntent::Select(Entity)` over the REAL `GdtfBattleInputPlugin` drain
 //! (`dispatch_act_intents` → `SelectedShooter`).
 //!
 //! These drive the SAME drain the keyboard / action-bar / mouse surfaces feed; the `Select`
 //! variant has no local producer yet (its producer is the GTW-694 T4 network inject path), so
-//! the tests push it directly onto the shared `PendingActIntent` seam — the ONE write-point.
+//! the tests push it directly onto the shared `PendingActIntent` queue — the ONE write-point.
 //!
 //! Coverage:
 //!
@@ -61,7 +61,7 @@ fn record_selection_changes(
 /// `PlayerFaction` the select gates on, seeded `ButtonInput<KeyCode>`, and the change-detection
 /// probe in `Last`. Deliberately does NOT insert `ButtonInput<MouseButton>`, so the mouse-click
 /// surfaces stay gated off (build.rs's `resource_exists::<ButtonInput<MouseButton>>` guard) and
-/// only the intent seam under test drives `SelectedShooter`.
+/// only the intent queue under test drives `SelectedShooter`.
 fn select_app() -> App {
     let mut app = App::new();
     // `update_selection_highlight` (in `GdtfBattleInputPlugin`) spawns its reticle via
@@ -107,7 +107,7 @@ fn placed_downed_ganger(app: &mut App, faction: Faction, x: i32, y: i32) -> Enti
         .spawn(app.world_mut())
 }
 
-/// Pushes an [`ActIntent`] onto the shared seam (the network-inject / keyboard write-point).
+/// Pushes an [`ActIntent`] onto the shared queue (the network-inject / keyboard write-point).
 fn push(app: &mut App, intent: ActIntent) {
     app.world_mut()
         .resource_mut::<PendingActIntent>()

@@ -4,7 +4,7 @@
 //! the action-bar / status-panel / presenter / input plugins. The panel shows the selected
 //! player ganger's weapon (graphic placeholder + name + magazine `cur/max`) and a LIVE
 //! Reload button — UI/view only (it reads the sim's weapon components + the input crate's
-//! `SelectedShooter` selection seam; its ONLY write is the input crate's act-intent seam).
+//! `SelectedShooter` selection resource; its ONLY write is the input crate's act-intent queue).
 //!
 //! - **Lifecycle** (mirrors the sibling status panel) — `spawn_weapon_panel`
 //!   `OnEnter(BattleScapeState::BattleRunning)`, `despawn_weapon_panel`
@@ -18,12 +18,12 @@
 //! - **Reload press** — `reload_button_pressed` runs in `Update` under the same live-battle
 //!   gate, ordered `.before(dispatch_act_intents)` so a press queued this update is drained
 //!   this update (the action-bar same-frame guarantee, `bevy-traps.md` #3). It WRITES the
-//!   shared `PendingActIntent` seam (buttons + keys are PARALLEL surfaces over the ONE
+//!   shared `PendingActIntent` queue (buttons + keys are PARALLEL surfaces over the ONE
 //!   drain) — the only write into the sim/input the panel makes.
 //!
-//! The panel reaches the sim acts ONLY via the `gdtf_app -> gdtf_battle_input` DATA seam
+//! The panel reaches the sim acts ONLY via the `gdtf_app -> gdtf_battle_input` data boundary
 //! (the act-intent queue), never a reverse edge or a cross-crate fn (ADR-0001). It deps
-//! `gdtf_ui` (spawn helpers) + `gdtf_battle_input` (the selection + intent seam) + reads the
+//! `gdtf_ui` (spawn helpers) + `gdtf_battle_input` (the selection + intent queue) + reads the
 //! sim's weapon components, all already on the app's edge; the chain stays acyclic.
 
 use bevy::prelude::*;

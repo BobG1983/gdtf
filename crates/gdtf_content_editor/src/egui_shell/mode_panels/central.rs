@@ -1,5 +1,5 @@
 //! The CENTRAL primary-panel dispatch — one arm per Workbench mode (moved out of
-//! `shell.rs` at the GTW-670 band seam alongside [`right`](super::right)). The central
+//! `shell.rs` at the GTW-670 band boundary alongside [`right`](super::right)). The central
 //! panel is declared LAST by the shell's order contract: egui fills the residual space
 //! with it, so this dispatch must run after every other panel is declared.
 

@@ -75,13 +75,13 @@ impl Plugin for TopDownRendererPlugin {
             // change day one; C3). The storey-treatment classifier composes it with the
             // ViewMode; while On it WINS over the two-state mode (the C3 precedence).
             .init_resource::<IsolateView>()
-            // GTW-358 — the route path-preview read-seam (the find_path route from the selected
+            // GTW-358 — the route path-preview read-side resource (the find_path route from the selected
             // ganger to the target + its §48 total cost). Present for the whole battle span: the
             // input crate POPULATES it (clearing it when there is no target or it is
             // unreachable); the draw system READS it. Its Default is the empty preview, so a
             // battle with no target draws no route.
             .init_resource::<PathPreview>()
-            // GTW-371 — the fire-target highlight read-seam (the hovered fireable-enemy cell +
+            // GTW-371 — the fire-target highlight read-side resource (the hovered fireable-enemy cell +
             // the fire TU cost). Present for the whole battle span: the input crate POPULATES it
             // (clearing it off any non-fireable hover); the draw system READS it. Its Default is
             // the empty highlight, so a battle with no fireable hover draws no fire target.
@@ -96,7 +96,7 @@ impl Plugin for TopDownRendererPlugin {
                     .run_if(resource_exists::<Assets<bevy::image::TextureAtlasLayout>>),
             );
 
-        // GTW-564: each hot-RON table registers through the generic seam at its OWNING
+        // GTW-564: each hot-RON table registers through the generic registration helper at its OWNING
         // module — one ext call per chain, gathered by `register_hot_ron_chains` below
         // (which replaced the old `register_ron_tables` wall of per-site
         // load/resolve/redrive registrations; extracted to keep `build` under the
@@ -199,7 +199,7 @@ impl Plugin for TopDownRendererPlugin {
         super::combat_log::register_combat_log_forwarders(app);
 
         // GTW-450: the reachable-range overlay is the DEBUG-only overlay (visual noise in
-        // normal play). EVERY overlay-render-only item — the `ReachableCells` read-seam, the
+        // normal play). EVERY overlay-render-only item — the `ReachableCells` read-side resource, the
         // `ReachableOverlayEnabled` flag (seeded ONCE here from the env var), and the DRAW
         // system (`run_if` the flag) — compiles ONLY under `#[cfg(debug_assertions)]` (C1).
         // A release build (debug_assertions=false) excludes all of it; the move feedback is
@@ -215,14 +215,14 @@ impl Plugin for TopDownRendererPlugin {
         super::overlays::register_fire_target_systems(app);
 
         // GTW-596: the cross-level tactical badges — the CrossLevelSignals DERIVE (Compose,
-        // reading the SAME fog seams present_fog / the ganger-visibility resolver use) + the
+        // reading the SAME fog resources present_fog / the ganger-visibility resolver use) + the
         // badge DRAW (Overlay, change-driven off the resource). Extracted to keep `build`
         // under the `too_many_lines` lint.
         super::overlays::register_cross_level_signals_systems(app);
     }
 }
 
-/// Gathers the per-module hot-RON chain registrations (GTW-564): one generic-seam
+/// Gathers the per-module hot-RON chain registrations (GTW-564): one generic-registration
 /// ext call per table —
 /// [`CharacterRoles`](crate::CharacterRoles), [`EffectRoles`](crate::EffectRoles),
 /// [`FxTuning`](crate::FxTuning), [`PanTuning`](crate::PanTuning) — plus the one

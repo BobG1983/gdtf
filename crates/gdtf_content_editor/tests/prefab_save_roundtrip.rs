@@ -6,9 +6,9 @@
 //! fragment back structurally identical into the [`PrefabRegistry`].
 //!
 //! This is the FIRST test to exercise `write_prefab`'s filesystem half (the GTW-653 census
-//! finding): before GTW-662 the writer had no `TempDir` seam, so its fs half was untestable
+//! finding): before GTW-662 the writer had no `TempDir` injection point, so its fs half was untestable
 //! without polluting the version-controlled `assets/` tree. Prefabs are a declared GTW-570
-//! seam EXCLUSION — their loader is the game's bespoke Load branch (`gdtf_app`), not a
+//! content-family EXCLUSION — their loader is the game's bespoke Load branch (`gdtf_app`), not a
 //! `ContentFamily` — so the reload half boots the game's Load orchestration via
 //! [`GdtfLoadTestAppBuilder`] (the `load_prefab.rs` harness) instead of the editor app the
 //! sibling `*_mode.rs` round-trips boot. Only `content/maps/` is materialized, so every

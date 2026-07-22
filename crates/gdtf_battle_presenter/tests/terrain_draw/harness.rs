@@ -214,7 +214,7 @@ pub(crate) const CENTER_WALL_DEF: &str = r#"(
 )"#;
 
 /// Write one sprite-def member under `root`'s `content/sprites/` folder (the
-/// GTW-666 restamp suites' `TempDir` authoring seam).
+/// GTW-666 restamp suites' `TempDir` authoring helper).
 pub(crate) fn write_sprite_def(root: &std::path::Path, file: &str, payload: &str) {
     let dir = root.join("content").join("sprites");
     let created = std::fs::create_dir_all(&dir);
@@ -252,7 +252,7 @@ pub(crate) fn draw_one_wall(app: &mut App, key: CellLevel) {
 
 /// Spawns ONE sim-side terrain entity at `key` carrying its per-def
 /// [`TerrainGraphicKey`] (and an OPTIONAL [`FootfallSound`]) — mirroring exactly what the
-/// sim's `setup_battle` spawns onto every terrain entity (GTW-491). This is the seam the
+/// sim's `setup_battle` spawns onto every terrain entity (GTW-491). This is the sim fact the
 /// GTW-493 presenter reads: the per-def graphic the draw resolves the cell's sprite def
 /// from, ahead of the `TileRole` fallback keyed only on `TerrainKind`.
 pub(crate) fn spawn_terrain_entity(

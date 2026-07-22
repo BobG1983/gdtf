@@ -18,7 +18,7 @@ use super::{harness::*, probes::*};
 /// weapon SHOWS the Single + Burst segments (`Display::Flex`) and HIDES Full
 /// (`Display::None`, the mode it does not offer). The active mark sits on the live mode
 /// (`single()` default on selection) — the control's `ActiveSegment`. (Adapted to the
-/// GTW-277 widget seam: "visible" = `Display::Flex`, "active" = the control's active
+/// GTW-277 widget model: "visible" = `Display::Flex`, "active" = the control's active
 /// segment; the only-offered-visible + active-mark CONTRACTS are unchanged.)
 #[test]
 fn mode_panel_spawns_only_offered_modes_and_marks_active() {

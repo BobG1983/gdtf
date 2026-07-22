@@ -1,4 +1,4 @@
-//! The presenter mode selector — which battle renderer the seam builds (the real
+//! The presenter mode selector — which battle renderer the plugin builds (the real
 //! top-down renderer or the iso stub).
 
 use bevy::prelude::*;
@@ -18,7 +18,7 @@ pub enum BattlePresenterMode {
     Iso,
 }
 
-/// The battle presenter seam: selects and builds one battle renderer per its
+/// The battle presenter entry point: selects and builds one battle renderer per its
 /// [`BattlePresenterMode`].
 ///
 /// Added by `GameBattleScapeScenePlugin` so its `build` runs when the scene plugins

@@ -4,9 +4,9 @@
 //! Per ADR-0001 (the presenter owns ALL sim→view drawing; the sim never reads the
 //! presenter) and the `input → presenter → sim` dependency direction, this is split the
 //! SAME way as the [`PathPreview`](crate::PathPreview) / [`HighlightRequest`](crate::HighlightRequest)
-//! seams:
+//! resources:
 //!
-//! - the PRESENTER (this module) DEFINES the read-seam [`FireTargetHighlight`] resource (the
+//! - the PRESENTER (this module) DEFINES the read-side [`FireTargetHighlight`] resource (the
 //!   hovered fireable-enemy CELL + the fire TU cost) and the draw system [`draw_fire_target`]
 //!   (the RED tile drawn UNDER the enemy at [`Layer::FireTarget`](crate::Layer) + the OPAQUE
 //!   world-space TU-cost label), hard-cut to the active storey, mutated in place;

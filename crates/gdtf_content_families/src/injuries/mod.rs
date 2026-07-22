@@ -1,5 +1,5 @@
 //! The INJURIES family — the bespoke one-folder → two-resources content family
-//! (a declared GTW-570 seam EXCLUSION), shared by BOTH hosts (GTW-654).
+//! (a declared GTW-570 machinery EXCLUSION), shared by BOTH hosts (GTW-654).
 //!
 //! One recursive folder ([`INJURIES_FOLDER`]) carries TWO asset types — the
 //! per-injury `<category>/*.injury.ron` defs and the per-category

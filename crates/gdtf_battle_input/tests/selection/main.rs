@@ -1,5 +1,5 @@
 //! GTW-225 (GTW-48 S8): headless integration tests for ganger selection, the
-//! selection highlight, level cycling, and the shared act-intent seam — updated for the
+//! selection highlight, level cycling, and the shared act-intent queue — updated for the
 //! GTW-238 PlayerFaction-gated unified left-click decision (`left_click_act` replaces
 //! `select_on_click`).
 //!
@@ -11,7 +11,7 @@
 //!   faction (an enemy occupant is NOT selected — covered in `control.rs`).
 //! - drives `update_selection_highlight`: the one `SelectionHighlight` sprite snaps to
 //!   `cell_to_world(selected cell)` visible, and hides on clear.
-//! - AC6/AC9 drive level cycling THROUGH the seam: pushing a level-up intent +
+//! - AC6/AC9 drive level cycling THROUGH the queue: pushing a level-up intent +
 //!   update mutates `ActiveLevel`, saturating at `MAX_LEVELS - 1` and flooring at 0.
 //! - AC6 (keyboard real path) drives the REAL `level_keys` / `select_clear_key`
 //!   systems: with a `Keybinds` resource inserted, a synthesized

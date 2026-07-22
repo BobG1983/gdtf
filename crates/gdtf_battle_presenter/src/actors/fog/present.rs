@@ -1,4 +1,4 @@
-//! The [`present_fog`] writer system: the public seam that desaturates the rendered
+//! The [`present_fog`] writer system: the public writer that desaturates the rendered
 //! terrain layer (GTW-348) and dims lower drawn storeys (GTW-519) from the sim's
 //! [`SquadVisibility`](gdtf_battle_sim::visibility::SquadVisibility).
 //!
@@ -101,11 +101,11 @@ pub(super) fn context_below_brightness(depth: ContextDepth) -> Brightness {
 /// `Update` ([`PresenterSystems::Compose`](crate::PresenterSystems) — the fog-composition
 /// stage, chained strictly after the `Scene` stage that holds the terrain draw and the
 /// destruction swaps, GTW-623): the presenter TERRAIN fog writer — the documented public
-/// seam GTW-342 exposes.
+/// writer GTW-342 exposes.
 ///
 /// It is the terrain VIEW arm of the squad fog (`docs/combat/visibility.md`): the sim owns
 /// the three [`SquadVisibility`] states and recomputes them; this system READS them through
-/// the pure seams and MODULATES the already-drawn layer in place — it never owns fog and
+/// the pure queries and MODULATES the already-drawn layer in place — it never owns fog and
 /// never repaints from a snapshot (the rendered layer IS the fog mask). Actor sprites are
 /// NOT written here: the ganger-visibility resolver
 /// ([`resolve_ganger_visibility`](crate::resolve_ganger_visibility), also in `Compose`)
@@ -132,7 +132,7 @@ pub(super) fn context_below_brightness(depth: ContextDepth) -> Brightness {
 ///
 /// # Tick-quiet writes (GTW-627 C4)
 ///
-/// Every write goes through the shared seam in `actors/quiet.rs`, the same discipline the
+/// Every write goes through the shared write helper in `actors/quiet.rs`, the same discipline the
 /// ganger resolver uses: [`Visibility`] flips via `set_if_neq` (an already-correct tile is
 /// not re-dirtied), and the material knobs are COMPARED through the immutable
 /// [`Assets::get`](bevy::asset::Assets::get) first — the change-marking

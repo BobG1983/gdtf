@@ -60,7 +60,7 @@ From the shipped
 
 There is NO authored-opening / connectivity field: inter-fragment connectivity
 is by-construction in the procgen assembler (every placement reserves a 1-cell
-`default_floor` seam). The level-wide floor is the THEME's `default_floor`,
+`default_floor` border). The level-wide floor is the THEME's `default_floor`,
 never a prefab placement.
 
 ### 2c. Loading, procgen, and the editor

@@ -2,11 +2,11 @@
 //! adjacent VACANT emplacement (a TU-costed context act), which mans the mount (state Occupied,
 //! occupant band forced HIGH, the bolted-down mounted gun spawned + wielded), FIRES that mounted
 //! gun through the real fire path (the ranged read PREFERS the `MountedWeapon` while occupied, the
-//! `EmplacementStability` seam steadies it), then EXITS (a separate TU-costed act: band restored, the
+//! `EmplacementStability` steadies it), then EXITS (a separate TU-costed act: band restored, the
 //! mounted-weapon edge despawned, the occupant's own gun resolves again). Proven END-TO-END on the
 //! REAL `setup_battle_on_request` → `BattleSimPlugin` `Simulate`-band path, driven THROUGH the same
 //! buffered `EnterEmplacementRequested` / `ExitEmplacementRequested` / `FireRequested` messages the
-//! input seam writes.
+//! input layer writes.
 //!
 //! Clause contract:
 //!

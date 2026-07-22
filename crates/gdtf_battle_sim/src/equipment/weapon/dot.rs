@@ -12,7 +12,7 @@
 //!   an `assets/content/weapons/ranged/*.weapon.ron` optionally authors (the `dot:` field
 //!   on [`WeaponSpec`](super::WeaponSpec)). It rides on the armed entity as an
 //!   `Option<DotProfile>` sibling component (like the [`Silenced`](super::Silenced)
-//!   attachment tag), so a weapon without a DOT profile is byte-identical to before this slice.
+//!   attachment tag), so a weapon without a DOT profile is identical to before this slice.
 //! - [`Dot`] is the **battle-state** side — the `{ remaining_turns, per_turn_damage,
 //!   damage_type }` component the fire path attaches (or REFRESHES) onto a struck ganger
 //!   when a penetrating hit lands. The per-turn drain + terminal gate is
@@ -114,7 +114,7 @@ impl DotTurns {
 ///
 /// The weapon-authoring side of the DOT model: an `Option<DotProfile>` sibling component on
 /// the armed entity (the `dot:` field on [`WeaponSpec`](super::WeaponSpec), `#[serde(default)]`
-/// so an omitted field is `None` — a non-DOT weapon, byte-identical to before this slice).
+/// so an omitted field is `None` — a non-DOT weapon, identical to before this slice).
 /// When a shot from a DOT weapon lands a hit that PENETRATES armor
 /// ([`PenetratingDamage`](crate::resolve_hit::PenetratingDamage) `> 0`), the fire path
 /// builds a [`Dot`] from this profile and attaches (or REFRESHES) it on the struck ganger.
@@ -152,7 +152,7 @@ impl DotProfile {
 }
 
 impl Default for DotProfile {
-    /// The sentinel the GTW-542 `template_value` spawn seam requires (`Clone + Default +
+    /// The sentinel the GTW-542 `template_value` spawn path requires (`Clone + Default +
     /// Unpin`): a zero-damage, MINIMAL one-turn no-op profile — one turn, not zero,
     /// because a zero-turn duration is unrepresentable (GTW-643). Never authored and never
     /// attached (an omitted `dot:` field is `None`, not a default profile); hand-written

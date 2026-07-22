@@ -65,7 +65,7 @@ impl Shove {
 /// Private inner + derived [`Deref`]; `#[serde(transparent)]`. A `#[derive(Component)]`
 /// (GTW-200) — a sibling component on the armed entity, present ONLY when a suppressor
 /// is fitted; both producers gate on its presence via `shooter → Wields → weapon →
-/// Option<&Silenced>` (absent = a normal, LOUD shot, byte-identical to before this
+/// Option<&Silenced>` (absent = a normal, LOUD shot, identical to before this
 /// tag).
 /// `Default` (`Silenced(true)`) is the `bsn!` spawn-seed sentinel (GTW-322); the
 /// component is inserted only when a suppressor is fitted, so `true` is the only

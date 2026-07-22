@@ -1,4 +1,4 @@
-//! Integration tests for the GTW-570 content-family seam — the ext-registered
+//! Integration tests for the GTW-570 content-family machinery — the ext-registered
 //! kick-off / resolve / redrive chain on a REAL `AssetServer` + the on-disk
 //! fixture folder (`assets/test/content_family/`).
 //!

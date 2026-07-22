@@ -44,7 +44,7 @@ pub use resolve::{floor_candidates, resolved_stats, slab_floor_candidates};
 pub use save::{draft_to_theme_def, serialize_theme_def, validate_for_save};
 // The debug-only fs write (validates + projects + serializes + writes the `.terrain_theme.ron`) —
 // kept for the C3 child's egui save-press re-point (GTW-512). Re-exporting it keeps its path helpers
-// reachable. GTW-662: `write_theme_in` is the root-parameterized core (the TempDir-test seam);
+// reachable. GTW-662: `write_theme_in` is the root-parameterized core (what the TempDir test drives);
 // `write_theme` is its thin production wrapper (WORKSPACE_ASSETS_ROOT).
 #[cfg(debug_assertions)]
 pub use save::{write_theme, write_theme_in};

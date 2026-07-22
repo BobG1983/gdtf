@@ -72,7 +72,7 @@ pub(super) struct ResolvedCoverPiece {
     /// → `High`) by default while a `Cover`/`Emplacement` occludes only up to its own band; an
     /// explicit `BlocksVision` tag or a `blocks_los` override can retune it, and a `Slab`
     /// derives none unless tagged. Every SHIPPED wall authors `height_band: High`, so its
-    /// derived band is byte-identical to the pre-587 own-band rule (zero regression). Carried
+    /// derived band is identical to the pre-587 own-band rule (zero regression). Carried
     /// forward so the spawn loop attaches the component (at this band) without re-reading the
     /// registry.
     pub(super) occludes_vision:  Option<HeightBand>,

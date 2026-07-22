@@ -1,4 +1,4 @@
-//! The [`PendingImpact`] arrival seam FX-B reads to play the 3-frame impact —
+//! The [`PendingImpact`] arrival marker FX-B reads to play the 3-frame impact —
 //! including the GTW-546 blast seed.
 
 use bevy::prelude::*;
@@ -10,7 +10,7 @@ use gdtf_battle_sim::{
 
 use super::super::fct::ClassifiedPop;
 
-/// A projectile has ARRIVED — the SEAM FX-B reads to play the 3-frame impact.
+/// A projectile has ARRIVED — the marker FX-B reads to play the 3-frame impact.
 ///
 /// [`advance_projectiles`](super::advance::advance_projectiles) spawns one of these (a bare
 /// entity carrying ONLY this
@@ -60,7 +60,7 @@ pub struct PendingImpact {
 
 impl PendingImpact {
     /// Seed a BLAST impact at a lobbed grenade's landing world point `at` carrying `damage`
-    /// (GTW-546) — the seam [`animate_impact`](super::super::impact::animate_impact) reads to
+    /// (GTW-546) — the marker [`animate_impact`](super::super::impact::animate_impact) reads to
     /// play the
     /// grenade's damage-type 3-frame expanding-shockwave strip at the detonation point.
     ///
@@ -77,7 +77,7 @@ impl PendingImpact {
     /// `pub(in crate::actors::fx)` so only the sibling blast reader
     /// ([`read_throw_resolved`](super::super::blast::read_throw_resolved)) constructs it (the FX
     /// layer
-    /// owns the seam).
+    /// owns the marker).
     #[must_use]
     pub(in crate::actors::fx) const fn for_blast(at: Vec3, damage: DamageType) -> Self {
         Self {

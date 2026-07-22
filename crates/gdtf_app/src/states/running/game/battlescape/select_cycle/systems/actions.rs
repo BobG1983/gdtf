@@ -1,7 +1,7 @@
-//! Routes a Prev/Next cycle button press to the shared act-intent seam (GTW-458).
+//! Routes a Prev/Next cycle button press to the shared act-intent queue (GTW-458).
 //!
 //! Buttons + keys are PARALLEL surfaces over the ONE
-//! [`PendingActIntent`](gdtf_battle_input::PendingActIntent) data seam (ADR-0001 — keys +
+//! [`PendingActIntent`](gdtf_battle_input::PendingActIntent) data queue (ADR-0001 — keys +
 //! buttons share one dispatch, never two divergent mappings). Pressing **Next** pushes the
 //! SAME [`ActIntent::SelectNext`](gdtf_battle_input::ActIntent::SelectNext) the `Tab` key
 //! pushes; pressing **Prev** pushes the SAME
@@ -42,7 +42,7 @@ const fn is_press(interaction: Interaction) -> bool {
     matches!(interaction, Interaction::Pressed)
 }
 
-/// Routes each cycle button press to its [`ActIntent`] on the shared act-intent seam (GTW-458).
+/// Routes each cycle button press to its [`ActIntent`] on the shared act-intent queue (GTW-458).
 ///
 /// For the **Next** / **Prev** button whose [`Interaction`] changed to
 /// [`Pressed`](Interaction::Pressed) this frame, [`push`](PendingActIntent::push)es the

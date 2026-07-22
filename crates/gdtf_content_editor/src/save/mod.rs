@@ -25,7 +25,7 @@
 //! ## No authored openings (GTW-495)
 //!
 //! The schema carries NO authored-opening field — inter-fragment connectivity is
-//! by-construction in the assembler (the 1-cell `default_floor` seam every placement reserves),
+//! by-construction in the assembler (the 1-cell `default_floor` margin every placement reserves),
 //! not authored per-prefab — so the saver derives NONE (the legacy opening-derivation + zero-opening
 //! rejection are GONE; the underlying machinery was removed in GTW-497). A zero-placement prefab is
 //! a valid prefab (the infallible `Prefab::new`).
@@ -71,7 +71,7 @@ mod tests;
 // (`lib.rs`) so the egui save control (C4.9) + the in-crate save tests reach it (GTW-512 / GTW-515).
 // GTW-515 C4.9 / C4.10: the debug-only fs-write the egui "Save prefab" button calls — the deleted
 // `bevy_ui` `systems` writer, re-added on the egui path. GTW-662: `write_prefab_in` is the
-// root-parameterized core (the TempDir-test seam); `write_prefab` is its thin production wrapper.
+// root-parameterized core (what the TempDir test drives); `write_prefab` is its thin production wrapper.
 pub use project::{
     editor_map_to_prefab, prefab_save_path, prefab_save_path_in, sanitize_name, serialize_prefab,
 };

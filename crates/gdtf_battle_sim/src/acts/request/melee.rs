@@ -9,7 +9,7 @@ use crate::{metric::CellLevel, resolve_hit::HpDamage, weapon::DamageType};
 /// STRUCTURE (a Cover / Wall cell) (GTW-508, child GTW-37d of GTW-37).
 ///
 /// A named domain enum (no-bare-types: a melee target is a domain value, not a bare
-/// `Entity`-or-`CellLevel` union). The shared act-intent seam routes a structural-melee
+/// `Entity`-or-`CellLevel` union). The shared act-intent path routes a structural-melee
 /// target the SAME way it routes a ganger target — a melee intent carries either an
 /// enemy-actor target ([`Ganger`](Self::Ganger)) or an adjacent-structure cell target
 /// ([`Structure`](Self::Structure)); [`dispatch_melee`](crate::acts::melee::dispatch_melee)

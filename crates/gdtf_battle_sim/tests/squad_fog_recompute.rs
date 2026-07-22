@@ -5,7 +5,7 @@
 //! Proves the writer system [`recompute_visibility`] is the SOLE
 //! [`SquadVisibility`](gdtf_battle_sim::visibility::SquadVisibility) mutator, triggered on every
 //! event that can change what the squad sees, and the resource is inserted/removed at the
-//! real battle seams:
+//! real battle lifecycle points:
 //!
 //! 1. **Inserted on setup, filled by the spawn-FOV trigger** — after the
 //!    `SetupBattleRequested` Ok path runs (and `BattleReady` drains),

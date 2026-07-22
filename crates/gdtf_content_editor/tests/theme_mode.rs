@@ -5,7 +5,7 @@
 //! `ThemeDefsFamily` folder walk loads the saved theme back structurally identical.
 //!
 //! This is the FIRST test to exercise `write_theme`'s filesystem half (the GTW-653 census
-//! finding): before GTW-662 the writer had no `TempDir` seam, so its fs half was untestable
+//! finding): before GTW-662 the writer had no `TempDir` injection point, so its fs half was untestable
 //! without polluting the version-controlled `assets/` tree. Only `content/terrain/` is
 //! materialized here (one theme file), so every other family fails closed to its empty
 //! registry (the no-strand guarantee, the `armor_mode.rs` precedent); the theme's palette

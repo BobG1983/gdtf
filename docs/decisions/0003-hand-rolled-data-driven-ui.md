@@ -13,7 +13,7 @@ GTW-114) and the loose-asset decision recorded under GTW-117.
 `Amended` — 2026-07-05 (GTW-635), per USER RULING adopting the game-UI-stack
 research recommendation. See [Amendment — 2026-07-05](#amendment--2026-07-05-gtw-635)
 below: first-party widget primitives are now PREFERRED over hand-rolling, new
-screens are `bsn!`-authored, and `egui` is sanctioned for dev-only surfaces. The
+screens are `bsn!`-authored, and `egui` is used for dev-only surfaces. The
 data-driven-theming, one-way-crate-graph, loose-asset, and hot-reload clauses are
 unchanged.
 
@@ -128,7 +128,7 @@ policy) is UNCHANGED.
    this policy if it holds on authoring velocity — or BREAKS it if it does not
    (see clause 3).
 3. **`egui` is dev-only, plus a pre-approved meta-screen fallback.** `egui` (via
-   `bevy_egui`) is the sanctioned stack for DEV-ONLY surfaces — the content editor
+   `bevy_egui`) is the stack for DEV-ONLY surfaces — the content editor
    is the established precedent. It is ALSO the pre-approved fallback for NEW
    form-heavy META screens, but ONLY if the GTW-637 `bsn!` Options pilot fails on
    authoring velocity. It is NEVER used for the built battlescape HUD.

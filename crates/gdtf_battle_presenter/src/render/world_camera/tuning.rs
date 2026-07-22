@@ -13,7 +13,7 @@
 //! new `0.3` s choice), so a missing `.ron` field degrades to the prior behaviour rather than a
 //! parse error. The three resolve into one presenter-owned [`PanTuning`] resource the pan systems
 //! READ (never a `const`), so an edit to the `.ron` re-derives [`PanTuning`] live
-//! through the GTW-564 generic hot-RON seam ([`register_pan_tuning_hot_ron`]) —
+//! through the GTW-564 generic hot-RON registration helper ([`register_pan_tuning_hot_ron`]) —
 //! mirroring the FX table's [`FxTuning`](crate::FxTuning) hot-reload.
 
 use bevy::prelude::*;
@@ -131,7 +131,7 @@ pub struct PanTuning {
 const PAN_TUNING_RON_PATH: &str = "core_tuning/pan.tuning.ron";
 
 /// Registers the [`PanTuning`] hot-RON chain — ONE ext call onto the GTW-564
-/// generic seam (kick-off / gated resolve / live redrive, keyed by the generic
+/// generic registration helper (kick-off / gated resolve / live redrive, keyed by the generic
 /// [`HotRonHandle`](gdtf_assets::HotRonHandle)`<PanTuning>`), replacing the
 /// per-site handle newtype + load/resolve/redrive triple. Self-gates on the
 /// [`AssetServer`](bevy::asset::AssetServer) (`bevy-traps.md` #1), so a

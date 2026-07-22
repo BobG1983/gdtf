@@ -51,7 +51,7 @@ fn run_degenerate_variance_strike() -> (Option<u16>, Option<u8>, Option<u8>, usi
         unreachable!("setup spawns one player attacker and one enemy target");
     };
 
-    // Drive the strike THROUGH the buffered MeleeRequested (the message the input seam
+    // Drive the strike THROUGH the buffered MeleeRequested (the message the input layer
     // writes) — the REAL dispatch_melee → resolve_melee_strike → opposed_fight path.
     app.world_mut()
         .write_message(MeleeRequested::new(attacker, target));

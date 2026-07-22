@@ -129,7 +129,7 @@ fn dot_turns_fold_floors_zero_at_one() {
     assert_eq!(*seed.damage, *DotDamage::new(0));
 }
 
-/// The path derivation runs through the family consts + the shared sanitize seam: the
+/// The path derivation runs through the family consts + the shared sanitize helper: the
 /// literal `content/weapons/ranged/<stem>.weapon.ron` shape the GTW-257 loader
 /// dispatches on (pinning the LITERALS is the drift alarm — GTW-621), with the
 /// `unnamed_weapon` fallback for a name that sanitizes to nothing.

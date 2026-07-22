@@ -1,8 +1,8 @@
-//! The shared ACT-INTENT data seam (GTW-225 / GTW-48 S8 AC9): the ONE buffered
+//! The shared ACT-INTENT data queue (GTW-225 / GTW-48 S8 AC9): the ONE buffered
 //! intent surface BOTH input surfaces write — the 222b keyboard systems AND the
 //! 222c `gdtf_app` action-bar buttons — drained by ONE dispatch system.
 //!
-//! # Why a DATA seam, not a shared `fn`
+//! # Why a DATA queue, not a shared `fn`
 //!
 //! "Buttons + keys are parallel surfaces over the SAME act dispatch" must be REAL
 //! across the crate boundary. A `SystemParam`-taking dispatch system in
@@ -20,7 +20,7 @@
 //! [`ActIntent::LevelUp`] / [`ActIntent::LevelDown`] — drained here directly
 //! (clearing [`SelectedShooter`](crate::SelectedShooter) / clamping
 //! [`ActiveLevel`](gdtf_battle_presenter::ActiveLevel)). The act-bearing variants
-//! ([`ActIntent::StanceCycle`] etc.) were DECLARED there so the seam's shape
+//! ([`ActIntent::StanceCycle`] etc.) were DECLARED there so the queue's shape
 //! is fixed from the start; 222b (GTW-227) FILLS their drain arms — emitting the
 //! matching `gdtf_battle_sim::acts::*Requested` for the
 //! [`SelectedShooter`](crate::SelectedShooter), reading the actor's CURRENT

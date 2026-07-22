@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 // Every newtype below also derives `Serialize` (GTW-654): the content editor's
 // INJURY authoring mode writes an edited `InjuryDef` / `InjuryWeighting` back to
-// disk through the shared RON save seam (the `ArmorSpec` / `GangRoster`
+// disk through the shared RON save path (the `ArmorSpec` / `GangRoster`
 // precedent), and these are their string leaves — behavior-inert for the sim.
 
 /// An injury's **name** — serving BOTH roles the schema needs: the human display

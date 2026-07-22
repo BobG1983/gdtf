@@ -22,8 +22,8 @@ use super::keying::{injury_key_from_stem, warn_on_subfolder_mismatch};
 /// Build BOTH the [`InjuryRegistry`] and the [`InjuryTables`] from a loaded
 /// `injuries/` [`LoadedFolder`], or [`None`] if the folder (or any member asset) is
 /// not yet in its collection — the bespoke two-resource counterpart of the shared
-/// folder walk the GTW-570 content-family seam runs for its single-registry
-/// families (injuries stay off the seam by design: one folder resolves into TWO
+/// folder walk the GTW-570 content-family machinery runs for its single-registry
+/// families (injuries stay off the generic machinery by design: one folder resolves into TWO
 /// resources).
 ///
 /// Shared by both hosts' one-time resolve AND their GTW-374 live redrive (a hot

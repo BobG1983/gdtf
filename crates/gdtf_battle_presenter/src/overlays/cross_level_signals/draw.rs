@@ -2,7 +2,7 @@
 //! ON the active storey, change-driven off EITHER [`CrossLevelSignals`] OR
 //! [`ActiveLevel`] (a badge's drawn Z-band is hard-cut to the active storey, so a
 //! level switch must redraw even when the two storeys' derived signal sets
-//! happen to be byte-identical — see [`draw_cross_level_signals`]).
+//! happen to be identical — see [`draw_cross_level_signals`]).
 //!
 //! # ART DEPENDENCY (placeholder art, per the ticket's explicit allowance)
 //!

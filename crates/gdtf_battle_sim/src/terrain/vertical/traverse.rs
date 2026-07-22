@@ -10,7 +10,7 @@
 //! enforces directionality: a one-way link is indexed under its
 //! [`from`](crate::vertical::VerticalLink::from) endpoint ONLY, so
 //! `links_from(to)` simply never yields it) with the single
-//! [`LinkTu`]→[`Tu`] cost seam.
+//! [`LinkTu`]→[`Tu`] cost conversion.
 //!
 //! Scope: the traversal GATE + cost only — what cross-storey neighbours leave a
 //! cell and at what TU price. Route assembly (pathfinding over these hops) is
@@ -47,7 +47,7 @@ pub fn traversable_links(
     graph: &VerticalLinkGraph,
     link_tu: LinkTu,
 ) -> impl Iterator<Item = (CellLevel, Tu)> {
-    // The single LinkTu -> Tu cost seam: LinkTu derefs to its inner `u8`
+    // The single LinkTu -> Tu cost conversion: LinkTu derefs to its inner `u8`
     // magnitude, which `Tu::new` wraps — mirroring the MoveCost -> Tu lookup-site
     // conversion (`Tu::new(*cost)`). ONE flat cost for every link kind (§48).
     let cost = Tu::new(*link_tu);

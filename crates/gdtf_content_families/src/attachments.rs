@@ -1,4 +1,4 @@
-//! The ATTACHMENTS content family (GTW-549 items, generic seam since GTW-619).
+//! The ATTACHMENTS content family (GTW-549 items, generic machinery since GTW-619).
 
 use gdtf_assets::{ContentFamily, ContentFileStem};
 use gdtf_battle_sim::equipment::attachments::{AttachmentName, AttachmentRegistry, AttachmentSpec};
@@ -10,7 +10,7 @@ use gdtf_battle_sim::equipment::attachments::{AttachmentName, AttachmentRegistry
 ///
 /// STEM-KEYED: `scoped_sight.attachment.ron` keys `scoped_sight` (the
 /// [`AttachmentName`] key the weapon RONs reference). The last GTW-570 folder
-/// hold-out: its bespoke resolve/redrive chain predated the seam and was
+/// hold-out: its bespoke resolve/redrive chain predated the generic machinery and was
 /// byte-shape-identical to
 /// [`MeleeWeaponsFamily`](crate::MeleeWeaponsFamily)'s, so GTW-619 collapsed
 /// it onto this one impl.

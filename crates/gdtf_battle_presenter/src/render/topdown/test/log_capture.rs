@@ -1,5 +1,5 @@
 //! The process-global `tracing` capture the redrive log pin rides — split from
-//! `redrive.rs` at its natural concern seam (module-layout warn band): this file
+//! `redrive.rs` at its natural concern boundary (module-layout warn band): this file
 //! changes when the CAPTURE recipe does, `redrive.rs` when the redrive behavior
 //! does.
 

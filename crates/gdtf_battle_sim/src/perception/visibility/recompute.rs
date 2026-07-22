@@ -7,7 +7,7 @@
 //! player-faction observer, calls GTW-340's [`union_fov`](crate::visibility::union_fov)
 //! then [`accrue`](crate::visibility::accrue), and writes the resource back. Every
 //! downstream consumer (the GTW-11 fog gate, GTW-70 AI, GTW-38 reaction fire) is
-//! READ-ONLY — they read the pure seams, never write.
+//! READ-ONLY — they read the pure accessors, never write.
 //!
 //! **Ambush invariant** (`docs/combat/visibility.md` §"Rendered-only planning"): each
 //! accepted move step writes the mover's new [`Position`], which trips
@@ -132,7 +132,7 @@ pub fn should_recompute_visibility(
 /// disc-bounded authored/occupied candidate set, banding each candidate the shot-pipeline
 /// way) and then [`accrue`](crate::visibility::accrue) (VISIBLE replaces, EXPLORED grows
 /// monotonically), and writes the result back into the [`SquadVisibility`] resource. This
-/// is the SOLE mutator: every consumer reads the pure seams and never writes (clause 1).
+/// is the SOLE mutator: every consumer reads the pure accessors and never writes (clause 1).
 ///
 /// The observer set is restricted to the [`PlayerFaction`] here (only the player's side
 /// has a squad fog); [`union_fov`](crate::visibility::union_fov) further restricts to the

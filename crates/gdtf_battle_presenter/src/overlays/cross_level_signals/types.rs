@@ -113,14 +113,14 @@ pub const BADGE_CAP_PER_CELL: usize = 3;
 ///
 /// A Bevy [`Resource`] recomputed each frame by
 /// [`derive_cross_level_signals`](super::derive::derive_cross_level_signals) from
-/// the SAME pure fog seams [`present_fog`](crate::present_fog) reads, then written
+/// the SAME pure fog queries [`present_fog`](crate::present_fog) reads, then written
 /// through [`DetectChangesMut::set_if_neq`](bevy::prelude::DetectChangesMut::set_if_neq)
 /// so it is change-tick-quiet: the draw system
 /// ([`draw_cross_level_signals`](super::draw::draw_cross_level_signals)) re-walks
 /// its pool only when this resource's `is_changed()` reads true OR the active
 /// storey itself changed (a badge's drawn Z-band is hard-cut to the active
 /// storey, so a level switch redraws even on the rare frame where the two
-/// storeys' derived sets are byte-identical), so a steady-state frame with
+/// storeys' derived sets are identical), so a steady-state frame with
 /// nothing new to surface touches no pooled sprite. Keyed by [`Cell`] alone (not
 /// `CellLevel`) — the resource always describes the CURRENT active storey;
 /// badges never persist across a level switch, they are recomputed fresh for the

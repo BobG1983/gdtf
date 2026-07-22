@@ -1,6 +1,6 @@
 //! The squad fog-of-war **three-state visibility model** — VISIBLE / EXPLORED /
 //! UNSEEN per `(cell, level)`, keyed [`CellLevel`](crate::metric::CellLevel) — its
-//! resource, its **pure read seams**, and the **pure union / accrual helpers**
+//! resource, its **pure read accessors**, and the **pure union / accrual helpers**
 //! (GTW-340, leaf 4 of the GTW-13 FOV epic; `docs/combat/visibility.md`).
 //!
 //! Computed model-side from the **squad-combined** point of view: one fog for the
@@ -14,7 +14,7 @@
 //! - [`SquadVisibility`] — the Bevy [`Resource`](bevy::prelude::Resource) holding the
 //!   VISIBLE and EXPLORED [`HashSet`](bevy::platform::collections::HashSet)`<`[`CellLevel`](crate::metric::CellLevel)`>`
 //!   (UNSEEN is the implicit complement of EXPLORED; EXPLORED is **monotone**).
-//! - The pure **read seams** the consumers (GTW-11 fog gate, GTW-70 AI, GTW-38
+//! - The pure **read accessors** the consumers (GTW-11 fog gate, GTW-70 AI, GTW-38
 //!   reaction fire) call — all set lookups, no geometry / recompute / grid input:
 //!   [`SquadVisibility::is_cell_visible`], [`SquadVisibility::is_cell_explored`],
 //!   [`SquadVisibility::visible_cells`], and [`is_ganger_visible`] (gated by an

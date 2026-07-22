@@ -21,7 +21,7 @@
 //! The two PER-MODE dispatches (panels 4 + 5) live in the
 //! [`mode_panels`](super::mode_panels) sibling since GTW-670 (module-layout bands: they
 //! grow one arm per Workbench mode; the shell only changes when the panel LAYOUT does —
-//! the `autoload.rs` / `textures.rs` seam continuation). The mode tabs are egui
+//! continuing the `autoload.rs` / `textures.rs` split). The mode tabs are egui
 //! [`selectable_value`](bevy_egui::egui::Ui::selectable_value)s over the kept
 //! [`EditorMode`](crate::mode::EditorMode) resource; the `1`–`9` + `0` hotkeys are still handled by
 //! [`mode_hotkeys`](crate::mode::mode_hotkeys) in `Update` (UI-agnostic, kept). The theme
@@ -104,7 +104,7 @@ pub(crate) fn editor_egui_ui(
     };
 
     // The PRE-PANEL per-mode model-sync / autoload FAN-OUT (split into
-    // `egui_shell::autoload` at the GTW-479-flagged seam — GTW-654; the whole roster
+    // `egui_shell::autoload` at the GTW-479-flagged split point — GTW-654; the whole roster
     // call moved there in GTW-669): each runner self-gates on its mode + borrows and
     // is multipass-idempotent (bevy-traps #8). Runs BEFORE the texture-id resolution
     // below so the sprite autoload's seeded source is what the preview resolver loads
@@ -127,7 +127,7 @@ pub(crate) fn editor_egui_ui(
 
     // Resolve the egui texture ids the panels draw (the palette sprite sheet, the prefab
     // preview render target, and the GTW-664 sprite-source preview) BEFORE borrowing
-    // `ctx_mut()` — split into `egui_shell::textures` at the GTW-664 natural seam.
+    // `ctx_mut()` — split into `egui_shell::textures` at the GTW-664 natural boundary.
     let textures = resolve_panel_textures(&mut contexts, *mode, &prefab, &mut sprite_mode);
 
     let ctx = contexts.ctx_mut()?;
@@ -196,7 +196,7 @@ pub(crate) fn editor_egui_ui(
 
     // 4 + 5. RIGHT (the active mode's form) then CENTRAL (the primary region, LAST —
     // egui fills the residual space with it): the per-mode dispatches, moved to
-    // `egui_shell::mode_panels` at the GTW-670 band seam. One borrow context threads
+    // `egui_shell::mode_panels` at the GTW-670 band boundary. One borrow context threads
     // every per-mode model into both.
     let mut panel_ctx = ModePanelsCtx {
         session:          &mut session,

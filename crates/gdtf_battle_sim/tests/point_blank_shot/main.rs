@@ -21,7 +21,7 @@
 //!    target-stance point-blank combination (the precise mechanism — RED pre-fix for
 //!    every lower-stanced target), and
 //!  * the public `fire()` volley for the representative standing-vs-prone case (the
-//!    end-to-end seam the act layer drives).
+//!    end-to-end path the act layer drives).
 //!
 //! Both are DETERMINISTIC: a ZERO base spread collapses the cone to the central axis,
 //! so whether the round connects is purely geometric, independent of the RNG stream.

@@ -116,7 +116,7 @@ mod tests {
 
     /// Run `ApplyDrain(damage).drain_occupant` once against a fresh occupant at
     /// `start_hp`, returning `(hp, life, ticks, deaths)` after the drain. Bare-`World` +
-    /// `SystemState` is the sanctioned pure-sim unit-test idiom (`bevy-traps.md` #7
+    /// `SystemState` is the pure-sim unit-test idiom (`bevy-traps.md` #7
     /// carve-out (b)); the message buffers are world resources the writers validate
     /// against.
     fn drained(damage: u16, start_hp: u16) -> (u16, LifeState, usize, usize) {

@@ -99,7 +99,7 @@ impl SlabSpawn {
 /// GTW-491 migration (T07a): the [`piece`](FloorSpawn::piece) field switches from the
 /// legacy [`TerrainName`](crate::terrain::piece::TerrainName) key to the UUID-keyed
 /// [`TerrainUuid`]. (The new [`TerrainSimKind`](crate::terrain::def::TerrainSimKind) model
-/// has no `Floor` variant — a walkable floor is a `Slab` def; the per-cell move-cost seam is
+/// has no `Floor` variant — a walkable floor is a `Slab` def; the per-cell move-cost work is
 /// GTW-482, so this slice carries the reference forward without resolving its move cost.)
 ///
 /// Derives [`Deserialize`] so an authored situation `.ron` writes each override as

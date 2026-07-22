@@ -8,7 +8,7 @@
 //! - **Each effect applies to the CORRECT stat on the REAL spawn** — a ganger wielding an
 //!   attachment-bearing weapon has, after the post-spawn application: `Silenced` present
 //!   (`Silence`), `Accuracy` RAISED (`Aim` → the HEADLINE fix, a sight boosts AIM not
-//!   stability), `WeaponBraceBonus` present (`Stability` → the brace seam), `Magazine.size`
+//!   stability), `WeaponBraceBonus` present (`Stability` → the brace bonus), `Magazine.size`
 //!   grown (`ExtraAmmo`), `Magazine.reload_tu` lowered (`ReloadTime`).
 //! - **The Silenced dual-producer gate** — a `Silence` attachment yields NO `SuppressionApplied`
 //!   where an identical un-silenced shot does; the shared `shooter_weapon_silenced` gate reads

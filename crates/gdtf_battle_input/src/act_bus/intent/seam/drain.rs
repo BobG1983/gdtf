@@ -20,7 +20,7 @@ use crate::{
 };
 
 /// **Dispatch** the queued [`ActIntent`]s — the CLASSIC-intent drain over the shared
-/// [`PendingActIntent`] seam (the Q5 invariant: per-act generic drains in one
+/// [`PendingActIntent`] queue (the Q5 invariant: per-act generic drains in one
 /// explicitly-ordered `SystemSet`, same-frame semantics preserved — this drain is the
 /// classic half; the contextual acts' per-act generic drains live in
 /// [`crate::contextual`] and run `.before` this one).

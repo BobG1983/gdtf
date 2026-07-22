@@ -44,7 +44,7 @@ impl SlabLedger {
         }
     }
 
-    /// Insert (or replace) the slab entry at `key` — the test/programmatic seam to
+    /// Insert (or replace) the slab entry at `key` — the test/programmatic entry point to
     /// register a slab's `max_hp` / armor before any hit (mirrors
     /// [`CoverLedger::insert`](crate::cover::CoverLedger::insert)).
     ///
@@ -96,11 +96,11 @@ impl SlabLedger {
     /// [`SlabDefaults`] **tuning** leaf (C7), since slabs are uniform level structure
     /// with no per-piece authored HP.
     ///
-    /// This is the genuinely-consumed read of the tuning seam: every depletion of a
+    /// This is the genuinely-consumed read of the tuning leaf: every depletion of a
     /// never-before-hit slab seeds its `max_hp` / armor from `defaults` here, so the
     /// `.ron` leaf is on the live path (NOT a dead leaf). The `key` parameter is
     /// reserved for a future per-level / per-position prototype variation; today the
-    /// defaults are uniform, so it is unused — kept in the signature so the seam reads
+    /// defaults are uniform, so it is unused — kept in the signature so this accessor reads
     /// the same shape as the cover prototype (`(key, defaults) → entry`).
     #[must_use]
     pub fn prototype_for(_key: CellLevel, defaults: &SlabDefaults) -> SlabEntry {

@@ -128,7 +128,7 @@ fn one_overkill_hit_destroys_and_saturates_at_zero() {
     );
 }
 
-/// The C7 seam is GENUINELY CONSUMED: `prototype_for` builds the lazy-seed prototype
+/// The C7 tuning read is GENUINELY CONSUMED: `prototype_for` builds the lazy-seed prototype
 /// from the [`SlabDefaults`] tuning leaf (not a hardcoded value), so depleting an
 /// untouched slab seeds its `max_hp` / armor from the tuning. Value-agnostic — it
 /// asserts the prototype mirrors the tuning leaf, never a shipped magnitude.

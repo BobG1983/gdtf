@@ -1,4 +1,4 @@
-//! The hot-reload seam: the [`Themed`] marker and the central [`apply_theme`]
+//! The hot-reload paint pass: the [`Themed`] marker and the central [`apply_theme`]
 //! system that paints theme-derived visuals onto themed entities.
 //!
 //! An entity opts into centralized theming by carrying a [`Themed`] component,
@@ -28,7 +28,7 @@
 //!
 //! [`apply_theme`] resolves its values from the [`GdtfTheme`](crate::theme::GdtfTheme) resource *every
 //! run*, not at spawn time. Re-running it after the resource is mutated re-paints
-//! every [`Themed`] entity with the new palette — that is the seam the live
+//! every [`Themed`] entity with the new palette — that is what the live
 //! hot-reload hangs on.
 //!
 //! ## Boundary with interaction state

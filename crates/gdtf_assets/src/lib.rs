@@ -37,7 +37,7 @@
 //!   keyed by the one generic persistent [`ContentFolderHandle`].
 //! - [`sanitize_file_stem`] / [`FileStem`] + [`serialize_ron_pretty`] /
 //!   `write_ron_pretty` / [`RonSaveError`] (GTW-577) — the shared RON **save**
-//!   seam: the ONE file-stem slug policy and the ONE serialize → mkdir → write
+//!   helpers: the ONE file-stem slug policy and the ONE serialize → mkdir → write
 //!   chain (dev-only) every editor-side saver delegates to.
 //! - [`WORKSPACE_ASSETS_ROOT`] (GTW-634) — the ONE owning definition of the
 //!   workspace `assets/` root every host's `AssetPlugin` and every editor-side

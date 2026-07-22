@@ -2,7 +2,7 @@
 //! struct per Workbench mode that threads more than a couple of borrows, so
 //! [`editor_egui_ui`](super::shell::editor_egui_ui)'s argument list stays legible
 //! (bundling distinct `SystemParam`s is the standard Bevy pattern for a system that
-//! would otherwise take too many). Split out of `shell.rs` at the GTW-636 seam: the
+//! would otherwise take too many). Split out of `shell.rs` at the GTW-636 boundary: the
 //! bundles change when a MODE's model surface changes, the shell when the PANEL layout
 //! does.
 
@@ -40,8 +40,8 @@ use crate::{
 /// at the GTW-671 growth point: the whole-editor egui system crossed Bevy's 16-param
 /// function-system ceiling when the MELEE bundle joined, and these three shared reads
 /// are the natural single bundle (they change together with the `Load` pass, not with
-/// any one mode). Every field is `Option` — a registry arrives only once its seam
-/// resolve (or fallback) fires (bevy-traps #1).
+/// any one mode). Every field is `Option` — a registry arrives only once its
+/// registration (or fallback) fires (bevy-traps #1).
 #[derive(bevy::ecs::system::SystemParam)]
 pub(crate) struct SharedRegistries<'w> {
     /// The UUID-keyed theme registry (the global theme combo + option sources + the

@@ -14,10 +14,10 @@
 //! registry, the situation, the tunings, the theme). The eight generic content
 //! families (weapons / melee / armor / fields / gangs / terrain + theme defs /
 //! attachments) get their headless fallback from their ONE
-//! `register_content_family` line — the seam seeds `Registry::default()` when
+//! `register_content_family` line — the registration seeds `Registry::default()` when
 //! there is no [`AssetServer`] (the GTW-629 rider; the shadow-avoidance
-//! invariant is stated once, at that seam), so this file carries ZERO
-//! seam-family arms.
+//! invariant is stated once, at that registration), so this file carries ZERO
+//! content-family fallback arms.
 
 #[cfg(feature = "test-support")]
 use bevy::prelude::*;

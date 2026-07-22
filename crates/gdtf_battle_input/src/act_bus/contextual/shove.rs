@@ -12,7 +12,7 @@ use super::seam::ContextualAct;
 /// input layer's whole per-act surface. The carried target is the opposing ganger
 /// [`Entity`] the panel offered; the drain emits
 /// [`ShoveRequested::new`](ShoveRequested::new) — the DELIBERATE, gated, TU-costed form
-/// (the weapon-tag auto-shove is a sim-internal producer, never this seam's) — and the
+/// (the weapon-tag auto-shove is a sim-internal producer, never this queue's) — and the
 /// sim's `dispatch_shove` gate (8-adjacent + opposing + alive) is the authoritative
 /// check. Pure displacement: the fall, if any, does the harm.
 #[derive(Debug, Clone, Copy)]

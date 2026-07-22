@@ -51,7 +51,7 @@ pub(super) fn register_messages(app: &mut App) {
         .add_message::<MoveRequested>()
         .add_message::<ReloadRequested>()
         // GTW-315: the OPEN-DOOR act's input message — drained by dispatch_open_door. The
-        // player-only contextual Open-Door button writes it (the input seam's per-act queue).
+        // player-only contextual Open-Door button writes it (the per-act input queue).
         // Registering the buffer here makes dispatch_open_door's MessageReader<OpenDoorRequested>
         // param valid (bevy-traps.md #4 / #5).
         .add_message::<OpenDoorRequested>()
@@ -65,19 +65,19 @@ pub(super) fn register_messages(app: &mut App) {
         .add_message::<SetOpenable>()
         // GTW-543: the ENTER/EXIT-EMPLACEMENT acts' input messages — drained by
         // dispatch_enter_emplacement / dispatch_exit_emplacement. The player-only contextual
-        // Enter/Exit buttons write them (input seam). Registering the buffers here makes those
+        // Enter/Exit buttons write them (the per-act input queue). Registering the buffers here makes those
         // dispatchers' MessageReader params valid (bevy-traps.md #4 / #5).
         .add_message::<EnterEmplacementRequested>()
         .add_message::<ExitEmplacementRequested>()
         // GTW-546: the THROW-GRENADE act's input message — drained by dispatch_throw_grenade.
-        // The player-only contextual Throw button writes it (the input seam's per-act queue).
+        // The player-only contextual Throw button writes it (the per-act input queue).
         // Registering the buffer here makes dispatch_throw_grenade's
         // MessageReader<ThrowGrenadeRequested> param valid (bevy-traps.md #4 / #5).
         .add_message::<ThrowGrenadeRequested>()
         // GTW-546: dispatch_throw_grenade emits ThrowResolved per resolved throw (the presenter's
         // impact / blast FX keys off it). Registering the buffer here makes its
         // MessageWriter<ThrowResolved> param valid + creates the Messages<ThrowResolved> buffer the
-        // presenter's throw-FX reader (SeamApp phase) gates on (the MeleeResolved precedent).
+        // presenter's throw-FX reader gates on (the MeleeResolved precedent).
         .add_message::<ThrowResolved>()
         // GTW-543: the enter/exit dispatchers WRITE SetEmplacement (the GTW-543 toggle mechanism
         // they reuse). Registering the buffer here makes their MessageWriter<SetEmplacement> valid
@@ -102,7 +102,7 @@ pub(super) fn register_messages(app: &mut App) {
         // creates the Messages<MeleeStruck> buffer the app's log forwarder is gated on.
         .add_message::<MeleeStruck>()
         // GTW-525: the SHOVE act's input message — drained by dispatch_shove. Carries the
-        // deliberate act (the input seam's contextual Shove press) AND the weapon-tag auto-shove the
+        // deliberate act (the player's contextual Shove press) AND the weapon-tag auto-shove the
         // melee / fire connect hooks write internally. Registering the buffer here makes
         // dispatch_shove's MessageReader<ShoveRequested> param valid (bevy-traps.md #4/#5).
         .add_message::<ShoveRequested>()

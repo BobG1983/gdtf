@@ -1,7 +1,7 @@
-//! The fire-target highlight seam + POPULATE system (GTW-371 · C2; GTW-377): the input-crate
+//! The fire-target highlight resource + POPULATE system (GTW-371 · C2; GTW-377): the input-crate
 //! half of the hover-on-a-fireable-target affordance.
 //!
-//! The presenter owns the [`FireTargetHighlight`] read-seam + the draw system; this module
+//! The presenter owns the [`FireTargetHighlight`] read resource + the draw system; this module
 //! POPULATES it for the SELECTED shooter hovering a FIREABLE TARGET (an ENEMY *or*, since
 //! GTW-377, a shootable COVER / WALL cell). It is the ONLY place [`SelectedShooter`] +
 //! [`SelectedFireMode`] + the hovered cell feed the fire-target affordance — keeping selection /

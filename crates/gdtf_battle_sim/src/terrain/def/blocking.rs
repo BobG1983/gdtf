@@ -134,7 +134,7 @@ pub const fn sim_kind_blocks_path(sim_kind: &TerrainSimKind) -> PathBlocked {
 /// existing occlusion EXACTLY. A `Wall`'s kind default is [`Full`](LosBlocking::Full) →
 /// [`HeightBand::High`] (the GTW-587 model, "walls occlude fully"); every SHIPPED wall def
 /// authors `height_band: High`, so its derived High band EQUALS its ledger band and shipped
-/// behaviour is byte-identical (AC1). The derivation and the ledger use an identical band
+/// behaviour is identical (AC1). The derivation and the ledger use an identical band
 /// test, so on an intact piece they can only agree (the cover-ledger clause fires first in
 /// `impact_at`, same destroyed-cover exclusion). The NET-NEW behaviours are the explicit-tag
 /// opt-in for a `Slab` (which the ledger never held) and — for a hypothetical untagged

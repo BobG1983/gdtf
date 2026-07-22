@@ -1,4 +1,4 @@
-//! The [`DotApplied`] boundary message + the [`apply_dot`] applier — the GTW-544 seam that
+//! The [`DotApplied`] boundary message + the [`apply_dot`] applier — the GTW-544 message boundary that
 //! turns a frozen [`GangerVerdict::dot_applied`](crate::resolve_and_apply::GangerVerdict::dot_applied)
 //! attach decision into a persistent [`Dot`](crate::weapon::Dot) on the struck ganger.
 //!

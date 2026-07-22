@@ -16,7 +16,7 @@
 //!   battle witness is present.
 //! - **Aim control** (GTW-253 / GTW-277) — a `gdtf_ui` `Switch`. `aim_switch_flip_intent`
 //!   reads the widget's `ToggleFlipped` message and pushes `ActIntent::AimToggle` on the
-//!   SAME 222a seam the aim key does; `sync_aim_switch_state` mirrors the selected ganger's
+//!   SAME 222a queue the aim key does; `sync_aim_switch_state` mirrors the selected ganger's
 //!   `Aiming` onto the switch's `SwitchState` (+ re-derives the track look) so the switch
 //!   visibly shows ON/OFF, under the `run_if(resource_exists::<BattleInProgress>)` gate.
 //! - **Stance control** (GTW-267 / GTW-277) — a `gdtf_ui` vertical `SegmentedControl`
@@ -34,12 +34,12 @@
 //!   `ActiveSegment`. This REPLACED the GTW-254 popup picker (no modal, no scrim).
 //!
 //! The bar WRITES the shared 222a [`PendingActIntent`](gdtf_battle_input::PendingActIntent)
-//! seam that `gdtf_battle_input`'s keyboard surface also writes (parallel surfaces, one
+//! queue that `gdtf_battle_input`'s keyboard surface also writes (parallel surfaces, one
 //! drain). The action system runs UPSTREAM of
 //! `gdtf_battle_input::dispatch_act_intents` (registered `.after` its keyboard writers,
 //! draining the same update's pushes), so a button press queued this update is drained
 //! this update — exactly like a key press. The bar reaches the sim acts ONLY via the
-//! `gdtf_app -> gdtf_battle_input` DATA seam, never a reverse edge or a cross-crate fn
+//! `gdtf_app -> gdtf_battle_input` data boundary, never a reverse edge or a cross-crate fn
 //! (ADR-0001).
 
 use bevy::prelude::*;
@@ -100,7 +100,7 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
             // persisting battle. Gated on the SAME live-battle witness so a press is inert
             // outside a live battle (AC3). It needs NO `.before(dispatch_act_intents)` ordering
             // — it writes the `BattleRunningComplete` lifecycle marker directly (via the typed
-            // `insert_battle_running_complete` door), never the intent seam — so it is ordered
+            // `insert_battle_running_complete` door), never the intent queue — so it is ordered
             // independently.
             .add_systems(
                 Update,
@@ -108,7 +108,7 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
             )
             // GTW-277 AIM (a `gdtf_ui` `Switch`): `aim_switch_flip_intent` reads the
             // widget's `ToggleFlipped` message and pushes `ActIntent::AimToggle` on the SAME
-            // 222a seam the aim key does. It is ordered `.before(dispatch_act_intents)` so a
+            // 222a queue the aim key does. It is ordered `.before(dispatch_act_intents)` so a
             // flip queued this update is drained this update (the byte-equal same-frame
             // guarantee). `sync_aim_switch_state` mirrors the selected ganger's `Aiming` onto
             // the switch's `SwitchState` + re-derives the track look (a sim-driven set, never
@@ -130,7 +130,7 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
             )
             // GTW-277 STANCE (a `gdtf_ui` vertical `SegmentedControl`): `stance_segment_intent`
             // reads the widget's `SegmentSelected` message and pushes a DIRECT
-            // `ActIntent::SetStance(kind)` on the 222a seam (ordered `.before` the drain like
+            // `ActIntent::SetStance(kind)` on the 222a queue (ordered `.before` the drain like
             // the aim flip). `sync_stance_active_segment` writes the control's `ActiveSegment`
             // from the selected ganger's `Stance`, ordered `.before(repaint_segments)` so the
             // active-segment highlight repaints the SAME frame the selection changes
@@ -158,7 +158,7 @@ impl Plugin for GameBattleScapeActionBarScenePlugin {
             )
             // GTW-277 MODE (a `gdtf_ui` horizontal `SegmentedControl`): `mode_segment_write`
             // reads the widget's `SegmentSelected` message and sets `SelectedFireMode` DIRECTLY
-            // to the chosen mode's read-back spec (Mode does NOT use the intent seam — GTW-265).
+            // to the chosen mode's read-back spec (Mode does NOT use the intent queue — GTW-265).
             // `sync_mode_active_segment` writes the control's `ActiveSegment` from
             // `SelectedFireMode`, ordered `.after(mode_segment_write)` (read-after-write — the
             // active mark moves the SAME update a select lands) AND `.before(repaint_segments)`

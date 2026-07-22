@@ -1,4 +1,4 @@
-//! Integration tests for the GTW-564 hot-RON seam's LOAD half — the
+//! Integration tests for the GTW-564 hot-RON machinery's LOAD half — the
 //! ext-registered kick-off + resolve chain on a REAL `AssetServer` + the real
 //! on-disk fixtures (`assets/test/hot_ron_*.ron`).
 //!
@@ -151,7 +151,7 @@ fn mapped_chain_derives_resource_with_asset_server_access() {
     );
 }
 
-/// C8 / C4: with the fallback opted in, a GENUINE `LoadState::Failed` (the
+/// C8 / C4: with the fallback opted in, a genuine `LoadState::Failed` (the
 /// malformed fixture) inserts the fallback default — the chain still publishes
 /// a resource, so a presence-gated flow is never stranded.
 #[test]
@@ -191,7 +191,7 @@ fn good_load_with_fallback_resolves_the_file_not_the_default() {
 }
 
 /// C8: WITHOUT a fallback, a failed load leaves the resource absent — exactly
-/// the per-site behavior of the presenter role/tuning chains this seam
+/// the per-site behavior of the presenter role/tuning chains this machinery
 /// replaced (consumers stay gated on the resource's presence).
 #[test]
 fn failed_load_without_fallback_leaves_the_resource_absent() {

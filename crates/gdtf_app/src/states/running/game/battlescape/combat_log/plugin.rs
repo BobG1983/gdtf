@@ -1,5 +1,5 @@
 //! The combat-log scene-plugin (GTW-328, slice 3, bottom-left, ABOVE the weapon panel;
-//! GTW-572 rebuilds the drain as the forwarder → appender message seam; GTW-620 moves the
+//! GTW-572 rebuilds the drain as the forwarder → appender message pipeline; GTW-620 moves the
 //! forwarder half down into the presenter).
 //!
 //! Registers the battle-scoped combat-text LOG in the battlescape neighborhood. The log
@@ -16,7 +16,7 @@
 //! change.
 //!
 //! - **RON tuning** — the hot-reloadable [`CombatLogTuning`](super::tuning::CombatLogTuning)
-//!   table registers through the GTW-564 generic hot-RON seam
+//!   table registers through the GTW-564 generic hot-RON registration
 //!   ([`register_combat_log_hot_ron`](super::tuning::register_combat_log_hot_ron)); it
 //!   self-gates on an [`AssetServer`](bevy::asset::AssetServer), so a `MinimalPlugins`
 //!   headless app skips it and the log runs on the defaults (`bevy-traps.md` #1).
@@ -59,7 +59,7 @@ pub(in crate::states::running::game::battlescape) struct GameBattleScapeCombatLo
 impl Plugin for GameBattleScapeCombatLogScenePlugin {
     fn build(&self, app: &mut App) {
         // The hot-reloadable combat-log tuning registers through the GTW-564 generic
-        // hot-RON seam — ONE ext call at its owning module, self-gated on the `AssetServer`
+        // hot-RON registration — ONE ext call at its owning module, self-gated on the `AssetServer`
         // so a `MinimalPlugins` headless app skips it (`bevy-traps.md` #1).
         register_combat_log_hot_ron(app);
         add_systems(app);

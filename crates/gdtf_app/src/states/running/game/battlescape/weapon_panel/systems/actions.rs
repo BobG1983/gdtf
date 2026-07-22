@@ -1,8 +1,8 @@
-//! Routes the weapon panel's LIVE Reload button press to the shared act-intent seam
+//! Routes the weapon panel's LIVE Reload button press to the shared act-intent queue
 //! (GTW-275).
 //!
 //! Mirrors the action-bar `action_bar_button_intents` mechanism: the Reload button is a
-//! parallel surface over the ONE [`PendingActIntent`] data seam (keys + buttons share one
+//! parallel surface over the ONE [`PendingActIntent`] data queue (keys + buttons share one
 //! dispatch, ADR-0001). A press [`push`](PendingActIntent::push)es
 //! [`ActIntent::Reload`](gdtf_battle_input::ActIntent::Reload); the SINGLE
 //! [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents) drain emits a
@@ -20,7 +20,7 @@ use gdtf_battle_input::{ActIntent, PendingActIntent};
 
 use crate::states::running::game::battlescape::weapon_panel::components::ReloadButton;
 
-/// Routes a fresh Reload-button press to [`ActIntent::Reload`] on the shared seam.
+/// Routes a fresh Reload-button press to [`ActIntent::Reload`] on the shared queue.
 ///
 /// For the [`ReloadButton`] whose [`Interaction`] changed to
 /// [`Pressed`](Interaction::Pressed) this frame, [`push`](PendingActIntent::push)es

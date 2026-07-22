@@ -1,4 +1,4 @@
-//! Reusable, theme-seam widget builders, the button markers, and their paint
+//! Reusable, themed widget builders, the button markers, and their paint
 //! passes.
 //!
 //! This module owns the two spawn helpers the menu / HUD work builds its UI
@@ -6,7 +6,7 @@
 //! [`ActiveButton`] markers and the [`paint_disabled_buttons`] /
 //! [`paint_active_buttons`] systems that paint them.
 //!
-//! ## The Themed seam (no captured colors)
+//! ## The Themed paint pass (no captured colors)
 //!
 //! The builders attach the [`Themed`](crate::themed::Themed) marker (GTW-135) and
 //! write only *initial* theme-derived colors; the central

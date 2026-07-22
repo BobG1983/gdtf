@@ -84,7 +84,7 @@ pub(super) const fn reference_graph_ready(graph: ReferenceGraphResources) -> boo
 }
 
 /// Install the GTW-582 reference-integrity pass on the game's `Load` chain:
-/// the seam plumbing ([`ContentValidationAppExt::init_content_validation`]),
+/// the validation plumbing ([`ContentValidationAppExt::init_content_validation`]),
 /// the `Check`-set window (in `Load`, every graph resource resolved, not yet
 /// checked), and one [`register_reference_check`] hook per content-graph edge
 /// (gate directive P1 — edge/family N+1 is ONE more hook here, never a shared

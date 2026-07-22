@@ -27,7 +27,7 @@
 //! - the host's per-edge check systems, registered through
 //!   [`ContentValidationAppExt::register_reference_check`] (one hook per edge —
 //!   family N+1 registers one more system, never edits a shared walker);
-//! - the seam's per-file fail-closed salvage
+//! - the content-family machinery's per-file fail-closed salvage
 //!   ([`resolve_content_family`](crate::resolve_content_family)), which records a
 //!   [`ContentFinding::MalformedFile`] for each member that failed to parse;
 //! - post-`Load` last-resort fallbacks (e.g. the procgen empty-board fallback),

@@ -1,13 +1,13 @@
 //! GTW-526 suppression composer tests — a [`Suppressed`](crate::ganger::Suppressed)
 //! shooter's `stability_for` reads a LOWER stability (higher `ConeMult`) and its
 //! `cone_for` is WIDER than an otherwise-identical un-suppressed shooter (C4a), an
-//! un-suppressed shooter is BYTE-IDENTICAL to a run without the seam (C4b), and the
+//! un-suppressed shooter is IDENTICAL to a run without the term (C4b), and the
 //! first-round cone difference traces entirely to `cone_mult` — the recoil term is the
 //! ×1 identity on round 0 (C4c).
 //!
 //! Every assertion is a RELATION / bit-equality, never a pinned magnitude: the shipped
 //! `suppression_penalty` (default 40.0) is a tunable balance value, so these tests only
-//! prove the seam's DIRECTION (suppressed = shakier = wider) and its pure-additive
+//! prove the term's DIRECTION (suppressed = shakier = wider) and its pure-additive
 //! IDENTITY when absent.
 
 use crate::{
@@ -37,7 +37,7 @@ fn suppressed_shooter_is_shakier_and_wider() {
     let empty = CoverLedger::new();
 
     // Identical shooters bar the Suppressed component; the suppressor origin is arbitrary
-    // (the stability seam reads only WHETHER the shooter is suppressed, not from where).
+    // (the stability term reads only WHETHER the shooter is suppressed, not from where).
     let plain_state = ShooterState::new(10, 10, 0, StanceKind::Standing, false, Direction::North);
     let pinned_state = ShooterState::new(10, 10, 0, StanceKind::Standing, false, Direction::North)
         .suppressed_from(9, 10, 0);
@@ -89,9 +89,9 @@ fn suppressed_shooter_is_shakier_and_wider() {
     );
 }
 
-/// C4b — IDENTITY: an UN-suppressed shooter's `stability_for` output is BYTE-IDENTICAL to
+/// C4b — IDENTITY: an UN-suppressed shooter's `stability_for` output is IDENTICAL to
 /// a direct [`stability`] call passing [`SuppressionStability::none`] (the pure-additive
-/// identity), proving the seam vanishes when absent — the un-suppressed path is unchanged
+/// identity), proving the term vanishes when absent — the un-suppressed path is unchanged
 /// from before GTW-526. Driven over a real faced-cover lookup so every other term is live.
 #[test]
 fn unsuppressed_shooter_is_byte_identical_to_the_no_seam_path() {
@@ -134,12 +134,12 @@ fn unsuppressed_shooter_is_byte_identical_to_the_no_seam_path() {
     assert_eq!(
         (*composer_cone).to_bits(),
         (*no_seam_cone).to_bits(),
-        "an un-suppressed shooter's cone_mult must be byte-identical to the zero-addend path",
+        "an un-suppressed shooter's cone_mult must be identical to the zero-addend path",
     );
     assert_eq!(
         (*composer_recoil).to_bits(),
         (*no_seam_recoil).to_bits(),
-        "an un-suppressed shooter's recoil_growth must be byte-identical to the zero-addend path",
+        "an un-suppressed shooter's recoil_growth must be identical to the zero-addend path",
     );
 }
 

@@ -76,7 +76,7 @@ The new `TerrainSimKind` is `Wall` / `Cover` / `Slab` ONLY (no `Floor`, no
   the SAME theme (industrial_hive `deck_floor` <- `deck_slab` 120/4/2; underhive
   `rockcrete_floor` <- `gantry_slab` 35/4/2; sump_waste `sludge_floor` <-
   `gantry_slab` 35/4/2). The real authored move-cost value (4 / 5 / 6) is carried
-  FORWARD as a documented note in each floor def file until the T07 move-cost seam
+  FORWARD as a documented note in each floor def file until the T07 move-cost work
   lands — it is recorded, not silently dropped.
 - **`Scatter` folds into `Cover`** (the new model has no `Scatter` variant):
   `barricade` (already flat-Cover), `debris_pile`, `scrap_barricade`,

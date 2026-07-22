@@ -27,7 +27,7 @@ use crate::{
 /// - **Scatter folds into `Cover`** (there is no `Scatter` variant; loose debris is a
 ///   low cover prop, same structural model).
 /// - The legacy **`Floor` kind is RETIRED** (there is no `Floor` variant): a floor's
-///   move cost will live on the theme `default_floor` seam, NOT on a terrain kind.
+///   move cost will live on the theme `default_floor` field, NOT on a terrain kind.
 ///
 /// Every variant is a **STRUCT variant** so RON serialises as the named-struct form
 /// (`Slab(hp: 120, ...)`), never the double-paren tuple form `Slab((...))` a payload-struct
@@ -91,7 +91,7 @@ pub enum TerrainSimKind {
     ///
     /// While OCCUPIED, the occupant reads as HIGH cover (its published silhouette band is
     /// forced to [`HeightBand::High`](crate::cover::HeightBand::High)) and the mounted gun is
-    /// steadied by the [`EmplacementStability`](crate::stability::EmplacementStability) seam.
+    /// steadied by the [`EmplacementStability`](crate::stability::EmplacementStability) mechanism.
     /// Enter/exit is modelled on the door precedent (GTW-315/503) as a stateful toggle, not
     /// on the terrain-def side; this variant carries the STATIC stats + the mounted-weapon
     /// key the enter act resolves.

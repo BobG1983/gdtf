@@ -29,7 +29,7 @@ impl GdtfApp {
 
     #[must_use]
     fn add_bevy_plugins(mut self) -> Self {
-        // This default `AssetPlugin` construction is intentionally byte-identical
+        // This default `AssetPlugin` construction is intentionally identical
         // regardless of features: with `watch_for_changes_override: None` (the
         // default), Bevy starts its asset file watcher iff its internal `watch`
         // cfg is set. The dev-only `file_watcher` feature (gdtf_app ->

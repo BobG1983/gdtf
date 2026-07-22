@@ -9,7 +9,7 @@ carries per-line comments.
 
 Start here if you are adding a whole NEW family:
 [content-families.md](content-families.md) — the one-line folder→registry
-seam, its guarantees (per-file salvage, hot-reload, headless fallback,
+loader, its guarantees (per-file salvage, hot-reload, headless fallback,
 validation window), and the one-owner path-spelling rule.
 
 ## Equipment
@@ -71,7 +71,7 @@ validation window), and the one-owner path-spelling rule.
   `crates/gdtf_battle_presenter/src/actors/fx/fct/families/mod.rs`.
 - **Combat-log sources** — module rustdoc of
   `crates/gdtf_battle_presenter/src/actors/fx/fct/log_event/mod.rs`.
-- **Content-family seam** — trait rustdoc in
+- **Content-family loader** — trait rustdoc in
   `crates/gdtf_assets/src/family/def.rs` and the glue-crate overview in
   `crates/gdtf_content_families/src/lib.rs`.
 - **Effect palettes** — module rustdocs of

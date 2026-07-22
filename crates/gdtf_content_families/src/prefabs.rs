@@ -1,10 +1,10 @@
 //! The PREFABS family's authored-content layout vocabulary (GTW-634 C4).
 //!
-//! Prefabs are one of the two declared GTW-570 seam EXCLUSIONS: the fragments
+//! Prefabs are one of the two declared GTW-570 machinery EXCLUSIONS: the fragments
 //! live in a NESTED `<theme>/<size>/` tree and resolve into a bucketed
 //! multimap registry, so there is no `ContentFamily` impl to hang the folder /
 //! extension on. Its layout consts therefore live here as plain consts — the
-//! same one-owner rule as the seam families' `FOLDER` / `EXTENSION` associated
+//! same one-owner rule as the generic-machinery families' `FOLDER` / `EXTENSION` associated
 //! consts — imported by BOTH the game's bespoke Load chain (kick-off, resolve,
 //! salvage, loader registration) and the map editor's save path, so the write
 //! side can never drift from the read side (the GTW-621 gang-extension bug

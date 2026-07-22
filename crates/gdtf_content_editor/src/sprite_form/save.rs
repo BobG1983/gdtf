@@ -6,7 +6,7 @@
 //! Every path segment is DERIVED, never re-spelled (GTW-621/634): the root is the shared
 //! [`WORKSPACE_ASSETS_ROOT`] owner, the folder / compound extension come from
 //! [`SpriteDefsFamily`]'s `FOLDER` / `EXTENSION`, and the stem runs through the shared
-//! [`sanitize_file_stem`] seam. [`draft_to_sprite_def`] / [`sprite_file_name`] /
+//! [`sanitize_file_stem`] helper. [`draft_to_sprite_def`] / [`sprite_file_name`] /
 //! [`sprite_save_path_in`] are PURE (no IO) so tests can round-trip them without
 //! touching the assets tree; the filesystem write lives in [`write_sprite_in`]
 //! (root-parameterized — the GTW-555 `write_terrain_in` precedent, so tests aim it at a
@@ -48,9 +48,9 @@ pub fn draft_to_sprite_def(draft: &SpriteDraft) -> (SpriteName, SpriteDef) {
 /// The suffix is DERIVED from [`SpriteDefsFamily::EXTENSION`] (the ONE canonical
 /// extension discriminant the sprite-defs folder loader dispatches on — GTW-621: a
 /// re-spelled extension drifts and every saved file silently vanishes on reload). The
-/// stem runs through the shared [`sanitize_file_stem`] seam (GTW-577) so a path-hostile
+/// stem runs through the shared [`sanitize_file_stem`] helper (GTW-577) so a path-hostile
 /// sprite name can never reach the filesystem raw; a name that sanitizes to NOTHING
-/// falls back to the documented `unnamed_sprite` stem (minted through the SAME seam —
+/// falls back to the documented `unnamed_sprite` stem (minted through the SAME helper —
 /// the gang / armor save parity). The loader keys a sprite by its file stem, so a saved
 /// def reloads keyed by exactly its sanitized stem.
 ///
@@ -84,13 +84,13 @@ pub fn sprite_save_path_in(root: &Path, name: &SpriteName) -> PathBuf {
 /// through the REAL sprite-defs folder walk, never polluting the shipped `assets/` tree.
 ///
 /// Resolves the sanitized path ([`sprite_save_path_in`]) and hands the serialize →
-/// mkdir → write chain to the shared [`write_ron_pretty`] seam (GTW-577 C2). Returns the
+/// mkdir → write chain to the shared [`write_ron_pretty`] writer (GTW-577 C2). Returns the
 /// written path on success so the caller can log it. Debug-only (the terrain / theme /
 /// gang / armor save precedent): the fs write never compiles into a release binary.
 ///
 /// # Errors
 ///
-/// The seam's [`RonSaveError`], whose `Display` names the failed stage (serialize vs
+/// The writer's [`RonSaveError`], whose `Display` names the failed stage (serialize vs
 /// write).
 #[cfg(debug_assertions)]
 pub fn write_sprite_in(
@@ -104,13 +104,13 @@ pub fn write_sprite_in(
 }
 
 /// Write a sprite def to the workspace `assets/` tree — [`write_sprite_in`] under the
-/// shared [`WORKSPACE_ASSETS_ROOT`] owner (byte-identical to the app's
+/// shared [`WORKSPACE_ASSETS_ROOT`] owner (identical to the app's
 /// `AssetPlugin.file_path` by construction), so the saved def lands exactly where the
 /// GTW-663 folder loader reads. The thin root-supplying wrapper the Save button calls.
 ///
 /// # Errors
 ///
-/// The seam's [`RonSaveError`] (see [`write_sprite_in`]).
+/// The writer's [`RonSaveError`] (see [`write_sprite_in`]).
 #[cfg(debug_assertions)]
 pub fn write_sprite(name: &SpriteName, def: &SpriteDef) -> Result<PathBuf, RonSaveError> {
     write_sprite_in(Path::new(WORKSPACE_ASSETS_ROOT), name, def)

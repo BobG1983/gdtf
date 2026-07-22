@@ -93,7 +93,7 @@ mod tests {
     }
 
     /// Run `ApplyLeaveField(key).fan_at(at, …)` against `defs`, returning the placement
-    /// registry after the fan. Bare-`World` + `SystemState` is the sanctioned pure-sim
+    /// registry after the fan. Bare-`World` + `SystemState` is the pure-sim
     /// unit-test idiom (`bevy-traps.md` #7 carve-out (b)).
     fn fan(key: &FieldKey, defs: Option<&FieldDefRegistry>, at: CellLevel) -> FieldRegistry {
         let mut world = World::new();

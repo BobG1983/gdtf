@@ -112,7 +112,7 @@ pub(super) fn resolve_melee_bundles(
             return Err(BattleSetupError::MeleeWeaponNotFound { weapon: melee_key });
         };
         // GTW-554: melee weapons gain FULL attachment support — resolve the melee spec's
-        // authored attachment keys through the SAME slot-gated seam as the ranged path (a
+        // authored attachment keys through the SAME slot-gated resolution as the ranged path (a
         // Counterweight/Pommel item fits only a melee weapon declaring that slot; ranged-style
         // items find no slot and are cleanly rejected). The resolved effects ride onto the
         // spawned MELEE weapon entity as its own PendingAttachments marker.

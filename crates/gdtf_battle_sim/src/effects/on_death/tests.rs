@@ -2,7 +2,7 @@
 //! [`OnDeathEffect`](super::OnDeathEffect) vocabulary parses from RON by variant name (the
 //! serde bridge, in the exact shipped authoring forms), and the enum's THIN delegation
 //! `impl ApplyOnDeathEffect` routes each variant to its isolated behaviour (fanned directly
-//! through the trait against a [`DeathFanOut`](super::DeathFanOut) surface, the seam
+//! through the trait against a [`DeathFanOut`](super::DeathFanOut) surface
 //! [`resolve_on_death`](crate::effects::on_death::resolve_on_death) drives).
 //!
 //! Per-effect fan semantics are asserted in each effect file's own `#[cfg(test)]`; this

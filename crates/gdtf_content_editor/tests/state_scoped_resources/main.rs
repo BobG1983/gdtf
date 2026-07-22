@@ -2,7 +2,7 @@
 //! resources (the GTW-636 `GangDraft`, the GTW-479 `ArmorDraft`, the GTW-654
 //! `InjuryDraft` + `WeightingDraft`, the GTW-664 `SpriteDraft`, the GTW-669
 //! `AttachmentDraft`, the GTW-670 `WeaponDraft`, the GTW-671 `MeleeWeaponDraft`, and
-//! the GTW-594 `IsolateView` included) ride the shared `gdtf_state_scoped` seam with
+//! the GTW-594 `IsolateView` included) ride the shared `gdtf_state_scoped` wiring with
 //! their EXACT lifecycle — absent in `Load`, inserted `OnEnter(Editing)` with the
 //! registered seed values, and removed `OnExit(Editing)`.
 //!

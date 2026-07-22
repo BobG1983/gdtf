@@ -1,10 +1,10 @@
 //! Hand-rolled `bevy_ui` layer for GDTF.
 //!
-//! This crate is the seam the menu / HUD work hangs on. It owns no combat rules
+//! This crate is the layer the menu / HUD work hangs on. It owns no combat rules
 //! (those live in `gdtf_battle_sim`) and deliberately depends on **bevy only**,
 //! so `gdtf_app` can depend on it without forming a dependency cycle.
 //!
-//! [`UiPlugin`] is the single registration seam: today it installs the
+//! [`UiPlugin`] is the single registration point: today it installs the
 //! [`focus_nav`] sub-plugin ([`FocusNavPlugin`](focus_nav::FocusNavPlugin)) and
 //! nothing else. Later tickets attach further UI systems, resources, and assets
 //! to [`UiPlugin`].
@@ -18,7 +18,7 @@
 //! resolution; population of that resource lands with later tickets.
 //!
 //! The [`themed`] module owns the [`Themed`](themed::Themed) marker and the
-//! central [`apply_theme`](themed::apply_theme) system — the hot-reload seam that
+//! central [`apply_theme`](themed::apply_theme) system — the hot-reload system that
 //! paints theme-derived visuals onto themed entities from the live
 //! [`GdtfTheme`](theme::GdtfTheme).
 //!
@@ -46,7 +46,7 @@
 //! GTW-410 `Dropdown<T>` combobox and the GTW-411 `TextField`/`NumericField` editable fields
 //! were RETIRED by GTW-655 — the GTW-434 procgen visualizer was their only consumer.)
 //!
-//! The [`UiPlugin`] registration seam itself lives in the private `plugin`
+//! The [`UiPlugin`] registration point itself lives in the private `plugin`
 //! submodule and is re-exported here unchanged.
 
 pub mod focus_nav;

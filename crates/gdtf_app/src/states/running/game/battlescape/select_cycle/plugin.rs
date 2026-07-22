@@ -14,11 +14,11 @@
 //!   `run_if(resource_exists::<BattleInProgress>)` (the live-battle witness the input + other
 //!   bars gate on, `bevy-traps.md` #1), so a press is inert when no battle is live.
 //!
-//! The cluster WRITES the shared [`PendingActIntent`](gdtf_battle_input::PendingActIntent) seam
+//! The cluster WRITES the shared [`PendingActIntent`](gdtf_battle_input::PendingActIntent) queue
 //! the `gdtf_battle_input` keyboard surface also writes (parallel surfaces, one drain — ADR-0001).
-//! It reaches the sim acts ONLY via the `gdtf_app -> gdtf_battle_input` DATA seam, never a
+//! It reaches the sim acts ONLY via the `gdtf_app -> gdtf_battle_input` data boundary, never a
 //! reverse edge or a cross-crate fn. It deps `gdtf_ui` (spawn helpers) + `gdtf_battle_input`
-//! (the intent seam), both already on the app's edge; the chain stays acyclic.
+//! (the intent queue), both already on the app's edge; the chain stays acyclic.
 
 use bevy::prelude::*;
 use gdtf_battle_input::dispatch_act_intents;

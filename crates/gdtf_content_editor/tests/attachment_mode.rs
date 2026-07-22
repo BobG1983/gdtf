@@ -8,7 +8,7 @@
 //!
 //! Also pins the GTW-669 lifecycle riders: the editor reaches `Editing` with the
 //! `AttachmentRegistry` gate resource present and the state-scoped `AttachmentDraft`
-//! seeded (salvage / fallback behavior itself is the seam's parameterized family
+//! seeded (salvage / fallback behavior itself is the shared registration's parameterized family
 //! contract — `register_content_family::<AttachmentsFamily>` inherits it, no per-family
 //! re-pin here). The editor's weapon→attachment VALIDATION wiring (the registered
 //! `check_weapon_attachment_refs` + the `AttachmentRegistry` watch-set re-arm,
@@ -163,7 +163,7 @@ fn saved_attachment_round_trips_through_the_real_attachments_loader() {
 
     let world = app.world();
     // The state-scoped ATTACHMENT draft seeded on entering Editing (bevy-traps #1 via
-    // the GTW-575 seam).
+    // the GTW-575 shared registration).
     assert!(
         world.get_resource::<AttachmentDraft>().is_some(),
         "the AttachmentDraft must be seeded OnEnter(Editing)",

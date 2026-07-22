@@ -133,7 +133,7 @@ fn session() -> MapEditorSession {
 }
 
 /// `sanitize_name` folds a free-form name to the file-stem convention (via the shared
-/// GTW-577 [`gdtf_assets::sanitize_file_stem`] seam) and yields the empty stem for a blank
+/// GTW-577 [`gdtf_assets::sanitize_file_stem`] helper) and yields the empty stem for a blank
 /// name (the `EmptyName` rejection input).
 #[test]
 fn sanitize_name_folds_to_stem() {

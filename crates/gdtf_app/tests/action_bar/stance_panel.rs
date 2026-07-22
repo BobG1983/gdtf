@@ -89,7 +89,7 @@ fn prone_toggle_sets_stance_prone_directly() {
         "the Prone toggle DIRECT-sets the prone posture (not a cycle step)",
     );
 
-    // Byte-for-byte equal to the direct SetStance(Prone) intent over the SAME seam.
+    // Identical to the direct SetStance(Prone) intent over the SAME input queue.
     let mut app2 = battle_running_app();
     add_probes(&mut app2);
     let _ganger2 = arm_and_select(

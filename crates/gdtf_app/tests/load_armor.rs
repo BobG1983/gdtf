@@ -65,7 +65,7 @@ fn real_asset_resolves_armor_registry_keyed_by_filename() {
 /// below): the Load-owned `seed_load_fallbacks` runs AND a real `AssetServer` is
 /// present (the GUI auto-battle launch's precondition). NO empty
 /// `ArmorRegistry::default()` may shadow the real folder resolve: with an
-/// `AssetServer` present neither the bespoke seed nor the GTW-629 seam rider (the
+/// `AssetServer` present neither the bespoke seed nor the GTW-629 fallback rider (the
 /// registry's fallback now lives on its `register_content_family` line) may insert
 /// an empty registry, so the generic content-family resolve (which only runs while
 /// the registry is ABSENT) populates it from `assets/content/armor/*.armor.ron`.
@@ -76,7 +76,7 @@ fn real_asset_resolves_armor_registry_keyed_by_filename() {
 /// the (now-retired) `AutoBattlePlugin::build` used to wire it. The assertions
 /// encode the fix.
 ///
-/// PIN: if ANY seed path — a revived seam-family arm, or a seam rider gone
+/// PIN: if ANY seed path — a revived content-family arm, or a fallback rider gone
 /// unconditional — inserts `ArmorRegistry::default()` while a server is present,
 /// the registry exists early, the absence-gated resolve SKIPS the folder, the
 /// registry stays empty, `spec("flak_vest")` returns `None`, and this test goes

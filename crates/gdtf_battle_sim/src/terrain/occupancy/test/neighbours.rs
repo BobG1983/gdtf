@@ -176,7 +176,7 @@ fn diagonal_absent_when_both_shared_edges_blocked() {
 ///
 /// GTW-396 Decision B / C1: the cost comes from `FloorCostGrid::cost` for the ENTERED
 /// cell, NOT from `move_costs.cost(terrain)` — this test is the correctness pin for
-/// that seam.
+/// that cost source.
 #[test]
 fn step_cost_orthogonal_is_terrain_diagonal_is_octile() {
     use std::f32::consts::SQRT_2;
@@ -234,7 +234,7 @@ fn step_cost_orthogonal_is_terrain_diagonal_is_octile() {
 /// C5 — neighbour iteration order is DETERMINISTIC, sorted by the `(z, y, x)`
 /// cell key (the `auto_select` precedent). Asserted on the OPEN interior cell's
 /// full eight neighbours: the emitted sequence equals the `(z, y, x)`-sorted
-/// order, and a second call is byte-identical.
+/// order, and a second call is identical.
 #[test]
 fn neighbour_order_is_z_y_x_sorted() {
     let grid = OccupancyGrid::new();
@@ -254,7 +254,7 @@ fn neighbour_order_is_z_y_x_sorted() {
         "neighbours are emitted in (z, y, x) cell-key order"
     );
 
-    // Replay-stable: a second enumeration is byte-identical.
+    // Replay-stable: a second enumeration is identical.
     let again: Vec<(i32, i32, i32)> = neighbours_of(origin, &grid, &floor_costs)
         .into_iter()
         .map(|(cell, _)| cell)

@@ -9,7 +9,7 @@ use crate::effects::{fields::FieldKey, on_death::OnDeathEffect};
 /// The **authoring component** carrying a weapon / gear entity's [`OnDeathEffect`]
 /// (GTW-547).
 ///
-/// Composed onto the wielded-weapon entity at the wielded-weapon scene seam (the GTW-544
+/// Composed onto the wielded-weapon entity at the wielded-weapon spawn (the GTW-544
 /// [`Dot`](crate::weapon::Dot) sibling precedent) from the authored
 /// [`WeaponSpec::on_death`](crate::weapon::WeaponSpec) field. When the WIELDING ganger dies,
 /// [`resolve_on_death`](super::resolve_on_death) reads this off the ganger's
@@ -26,8 +26,8 @@ use crate::effects::{fields::FieldKey, on_death::OnDeathEffect};
 /// A newtype [`Component`] over the domain [`OnDeathEffect`] (no-bare-types: the wrapped
 /// value is a domain enum). Private inner + derived [`Deref`]; derives [`Default`] (an
 /// [`OnDeathEffect::LeaveField`] with an empty key — a spawn-seed sentinel that never fires:
-/// the seam only composes this component when the spec authored a real effect) so the
-/// `template_value` sibling seam's `Clone + Default` bound is satisfied.
+/// the spawn only composes this component when the spec authored a real effect) so the
+/// `template_value` sibling composition's `Clone + Default` bound is satisfied.
 #[derive(Component, Deref, Debug, Clone, PartialEq)]
 pub struct OnDeath(OnDeathEffect);
 
@@ -50,7 +50,7 @@ impl OnDeath {
 impl Default for OnDeath {
     /// The spawn-seed sentinel: a [`LeaveField`](OnDeathEffect::LeaveField) with an empty
     /// [`FieldKey`] (never resolves to a field, so it fires nothing). Never authored — the
-    /// wielded-weapon scene seam composes this component ONLY when the weapon spec authored a
+    /// wielded-weapon spawn composes this component ONLY when the weapon spec authored a
     /// real [`on_death`](crate::weapon::WeaponSpec) effect; the default exists only so the
     /// `template_value` sibling composition's `Default` bound is satisfied (the
     /// [`DotProfile`](crate::weapon::DotProfile) default-sentinel precedent).

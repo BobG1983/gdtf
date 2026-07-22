@@ -131,7 +131,7 @@ impl ArmorBroken {
 ///    "useless at `≤ 0`"); and
 /// 3. reads the **post**-wear integrity (broken iff `≤ 0`).
 ///
-/// The mutation in step 2 is byte-identical to the pre-GTW-323 array-slot wear — only
+/// The mutation in step 2 is identical to the pre-GTW-323 array-slot wear — only
 /// the storage moved from a `WornArmor` slot to the piece entity's component. The
 /// return classification is unchanged from GTW-313:
 ///
@@ -165,7 +165,7 @@ pub fn wear_armor(
     let was_protecting = **integrity > 0;
 
     // Apply the wear in place on the battle-local piece component (may drop to ≤ 0).
-    // BYTE-IDENTICAL to the pre-GTW-323 array-slot mutation — only the storage moved.
+    // IDENTICAL to the pre-GTW-323 array-slot mutation — only the storage moved.
     *integrity = ArmorIntegrity::new(**integrity - *wear);
 
     // Is the piece broken now? (integrity ≤ 0)

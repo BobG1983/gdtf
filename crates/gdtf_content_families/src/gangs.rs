@@ -1,4 +1,4 @@
-//! The gangs content family (GTW-415, generic seam since GTW-570).
+//! The gangs content family (GTW-415, generic machinery since GTW-570).
 
 use gdtf_assets::{ContentFamily, ContentFileStem};
 use gdtf_battle_sim::ganger::{GangName, GangRegistry, GangRoster};

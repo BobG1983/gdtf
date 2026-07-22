@@ -14,7 +14,7 @@
 //! sampled trajectory unit-direction.
 //!
 //! **The change-driven contract (the GTW-6 / GTW-12 ruling; the headless,
-//! change-driven sim↔app seam recorded in ADR-0001,
+//! change-driven sim↔app boundary recorded in ADR-0001,
 //! `docs/decisions/0001-rust-bevy-rewrite.md`).** `resolve_coarse` TAKES the
 //! already-maintained
 //! [`OccupancyGrid`] / [`SurfaceGrid`] / [`CoverLedger`] as parameters and
@@ -139,7 +139,7 @@ pub struct ShotOutcome {
 /// the config ([`CombatTuning`]), and the entropy ([`ShotRng`]) — those stay their
 /// own [`resolve_coarse`] parameters because they are NOT part of the shot
 /// description (the §"change-driven contract" boundary; the change-driven sim↔app
-/// seam recorded in ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`). Every
+/// boundary recorded in ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`). Every
 /// field is a named domain value (no-bare-types): no bare primitive
 /// or `glam` leaf, each reusing the existing E1/E2 newtype.
 ///

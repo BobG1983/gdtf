@@ -9,7 +9,7 @@
 //!
 //! Also pins the GTW-670 lifecycle riders: the editor reaches `Editing` with the
 //! `WeaponRegistry` gate resource present and the state-scoped `WeaponDraft` seeded
-//! (salvage / fallback behavior itself is the seam's parameterized family contract —
+//! (salvage / fallback behavior itself is the shared registration's parameterized family contract —
 //! `register_content_family::<WeaponsFamily>` inherits it, no per-family re-pin here).
 //! RE-VALIDATION on a weapon save is FREE and already pinned: the `WeaponRegistry` is
 //! in the editor's re-arm watch set (`validate/rearm.rs` `WatchedRegistries::weapons`)
@@ -208,7 +208,7 @@ fn minimal_draft() -> WeaponDraft {
 
 /// A `LeaveField` on-death also survives the projection + serialize chain (the second
 /// closed variant — the app boot below only reloads the two written files, so this one
-/// is pinned at the pure serialize layer through the SAME `ron` seam the writer uses).
+/// is pinned at the pure serialize layer through the SAME `ron` serialize path the writer uses).
 #[test]
 fn leave_field_on_death_round_trips_through_ron() {
     let mut draft = WeaponDraft::new_weapon();
@@ -261,7 +261,7 @@ fn saved_weapons_round_trip_through_the_real_weapons_loader() {
 
     let world = app.world();
     // The state-scoped WEAPON draft seeded on entering Editing (bevy-traps #1 via the
-    // GTW-575 seam).
+    // GTW-575 shared registration).
     assert!(
         world.get_resource::<WeaponDraft>().is_some(),
         "the WeaponDraft must be seeded OnEnter(Editing)",

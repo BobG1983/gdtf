@@ -18,7 +18,7 @@ use super::harness::*;
 // ---------------------------------------------------------------------------------
 
 /// The two ways to drive one posture act — a synthesized KEY press, or a direct
-/// `ActIntent` push (the 222c-button surrogate over the SAME seam). Not `Copy`:
+/// `ActIntent` push (the 222c-button surrogate over the SAME queue). Not `Copy`:
 /// [`Drive::Intent`] holds an `ActIntent`, which is no longer `Copy`.
 #[derive(Clone)]
 enum Drive {
@@ -54,7 +54,7 @@ fn drive_one_act(drive: Drive) -> (App, Entity) {
 
 /// AC5 — the stance-cycle KEY emits one `SetStanceRequested` for `*SelectedShooter` with
 /// the next-of-cycle stance, byte-for-byte EQUAL to the message the direct `StanceCycle`
-/// intent produces over the SAME seam. (The keyboard keeps the blind cycle; the GTW-267
+/// intent produces over the SAME queue. (The keyboard keeps the blind cycle; the GTW-267
 /// action-bar replaced its BLIND-cycle button with direct-set `SetStance` toggles.)
 #[test]
 fn stance_key_emits_next_of_cycle_and_matches_direct_intent() {
@@ -135,7 +135,7 @@ fn facing_key_emits_next_of_cycle_and_matches_direct_intent() {
 }
 
 /// GTW-275 AC4 — pushing `ActIntent::Reload` emits exactly one `ReloadRequested` for
-/// the `*SelectedShooter` through the `gdtf_battle_input` seam (the weapon panel's Reload
+/// the `*SelectedShooter` through the `gdtf_battle_input` queue (the weapon panel's Reload
 /// button surrogate, over the SAME `dispatch_act_intents` drain the other intents use).
 #[test]
 fn reload_intent_emits_one_reload_requested_for_the_selection() {

@@ -87,7 +87,7 @@ impl VerticalLinkGraph {
     /// Every validated link in the graph, in author order (each authored link
     /// yielded once, regardless of how many directions it is indexed under).
     ///
-    /// The whole-graph read seam — distinct from
+    /// The whole-graph read accessor — distinct from
     /// [`links_from`](VerticalLinkGraph::links_from), which yields only the links
     /// departing a given `origin`. The GTW-359 presenter draw iterates this to render
     /// one stair / ladder tile per link endpoint on the active storey (it needs every

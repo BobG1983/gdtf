@@ -26,7 +26,7 @@ use crate::states::load::{
 /// - If the theme RON reached [`LoadState::Failed`] **or** the fonts folder
 ///   reached [`RecursiveDependencyLoadState::Failed`], records the failed path in
 ///   a typed [`LoadFailed`] resource, `warn!`s naming it, and inserts the
-///   const-fallback [`default_theme`] — the ADR-0003 sanctioned error-path
+///   const-fallback [`default_theme`] — the ADR-0003 error-path
 ///   safety-net — so the app never hangs and never leaves `Load` themeless.
 /// - Else once the theme RON is [`LoadState::Loaded`] **and** the fonts folder's
 ///   [`RecursiveDependencyLoadState`] is `Loaded` (recursive, so every font in
@@ -55,7 +55,7 @@ use crate::states::load::{
 /// SAME gate-blocking registry with the SAME never-publish-partial +
 /// genuine-`Failed`-only empty-registry semantics; the `transition_to_intro`
 /// gate chain still requires every one of them, unchanged. GTW-619: the
-/// attachments branch (GTW-549) left it onto the same content-family seam.
+/// attachments branch (GTW-549) left it onto the same content-family registration.
 ///
 /// The BESPOKE folder branches that remain — the declared GTW-570 exclusions —
 /// each run on their OWN absence guard, so none starves another:
@@ -67,10 +67,10 @@ use crate::states::load::{
 ///   [`PrefabRegistry`](gdtf_battle_sim::level::PrefabRegistry) multimap.
 ///
 /// On each failure path the branch `warn!`s and — GTW-582 C4 — SALVAGES the
-/// folder per-file through the shared `gdtf_assets` salvage seam (well-formed
+/// folder per-file through the shared `gdtf_assets` salvage path (well-formed
 /// siblings still load; each malformed member is reported), falling back to an
 /// empty registry only when the folder cannot be enumerated at all, preserving
-/// the no-strand guarantee either way — the same semantics the generic seam
+/// the no-strand guarantee either way — the same semantics the generic registration
 /// applies to its families.
 ///
 /// Guarded by `run_if(resource_exists::<LoadHandles>)` plus the per-resource

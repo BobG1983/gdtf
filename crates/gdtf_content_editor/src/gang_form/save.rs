@@ -6,7 +6,7 @@
 //! Every path segment is DERIVED, never re-spelled (GTW-621/634): the root is the shared
 //! [`WORKSPACE_ASSETS_ROOT`] owner, the folder / compound extension come from
 //! [`GangsFamily`]'s `FOLDER` / `EXTENSION`, and the stem runs through the shared
-//! [`sanitize_file_stem`] seam. [`draft_to_roster`] / [`gang_file_name`] /
+//! [`sanitize_file_stem`] helper. [`draft_to_roster`] / [`gang_file_name`] /
 //! [`gang_save_path_in`] are PURE (no IO) so tests can round-trip them without touching
 //! the assets tree; the filesystem write lives in [`write_gang_in`] (root-parameterized —
 //! the GTW-555 `write_terrain_in` precedent, so tests aim it at a `TempDir`) and its thin
@@ -42,9 +42,9 @@ pub fn draft_to_roster(draft: &GangDraft) -> (GangName, GangRoster) {
 /// The suffix is DERIVED from [`GangsFamily::EXTENSION`] (the ONE canonical extension
 /// discriminant the gangs folder loader dispatches on — GTW-621: the pre-derivation
 /// `<stem>.ron` write drifted and every saved gang silently vanished on reload). The stem
-/// runs through the shared [`sanitize_file_stem`] seam (GTW-577) so a path-hostile gang
+/// runs through the shared [`sanitize_file_stem`] helper (GTW-577) so a path-hostile gang
 /// name can never reach the filesystem raw; a name that sanitizes to NOTHING falls back
-/// to the documented `unnamed_gang` stem (minted through the SAME seam — the retired
+/// to the documented `unnamed_gang` stem (minted through the SAME helper — the retired
 /// in-game editor's convention, kept for parity). The loader keys a gang by its file stem
 /// with the `.gang` infix stripped, so a saved gang reloads keyed by exactly its
 /// sanitized stem.
@@ -78,13 +78,13 @@ pub fn gang_save_path_in(root: &Path, name: &GangName) -> PathBuf {
 /// back through the REAL gangs folder walk, never polluting the shipped `assets/` tree.
 ///
 /// Resolves the sanitized path ([`gang_save_path_in`]) and hands the serialize → mkdir →
-/// write chain to the shared [`write_ron_pretty`] seam (GTW-577 C2). Returns the written
+/// write chain to the shared [`write_ron_pretty`] writer (GTW-577 C2). Returns the written
 /// path on success so the caller can log it. Debug-only (the terrain / theme save
 /// precedent): the fs write never compiles into a release binary.
 ///
 /// # Errors
 ///
-/// The seam's [`RonSaveError`], whose `Display` names the failed stage (serialize vs
+/// The writer's [`RonSaveError`], whose `Display` names the failed stage (serialize vs
 /// write).
 #[cfg(debug_assertions)]
 pub fn write_gang_in(
@@ -98,13 +98,13 @@ pub fn write_gang_in(
 }
 
 /// Write a gang roster to the workspace `assets/` tree — [`write_gang_in`] under the
-/// shared [`WORKSPACE_ASSETS_ROOT`] owner (byte-identical to the app's
+/// shared [`WORKSPACE_ASSETS_ROOT`] owner (identical to the app's
 /// `AssetPlugin.file_path` by construction), so the saved gang lands exactly where the
 /// GTW-415 folder loader reads. The thin root-supplying wrapper the Save button calls.
 ///
 /// # Errors
 ///
-/// The seam's [`RonSaveError`] (see [`write_gang_in`]).
+/// The writer's [`RonSaveError`] (see [`write_gang_in`]).
 #[cfg(debug_assertions)]
 pub fn write_gang(name: &GangName, roster: &GangRoster) -> Result<PathBuf, RonSaveError> {
     write_gang_in(Path::new(WORKSPACE_ASSETS_ROOT), name, roster)

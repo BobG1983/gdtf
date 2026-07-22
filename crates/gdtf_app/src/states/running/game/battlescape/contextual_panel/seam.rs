@@ -1,4 +1,4 @@
-//! The panel-side contextual-act descriptor seam (GTW-571): the [`ContextualPanelAct`]
+//! The panel-side contextual-act descriptor types (GTW-571): the [`ContextualPanelAct`]
 //! trait, the per-act [`ContextualOffer`] resource the offer scans write, the
 //! value-carrying [`ContextualActButton`] component every act button wears, and the
 //! [`PanelSlot`] ordering key.

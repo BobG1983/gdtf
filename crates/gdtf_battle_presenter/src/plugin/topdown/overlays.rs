@@ -1,4 +1,4 @@
-//! Input-seam overlay draw registration: hover highlight, route path preview, fire
+//! Input-bridge overlay draw registration: hover highlight, route path preview, fire
 //! target, area-damage field wash, and the debug-only reachable-range overlay.
 
 use bevy::prelude::*;
@@ -50,7 +50,7 @@ pub(super) fn register_highlight_systems(app: &mut App) {
 /// Registers the GTW-358 / GTW-368 route path-preview DRAW system into the
 /// [`PresenterSystems::Overlay`] stage.
 ///
-/// The PRESENTER owns the [`PathPreview`](crate::PathPreview) read-seam (`init_resource`-d
+/// The PRESENTER owns the [`PathPreview`](crate::PathPreview) read-side resource (`init_resource`-d
 /// on build) plus this draw system; the INPUT crate POPULATES the resource by calling
 /// [`find_path`](gdtf_battle_sim::pathfinder::find_path) for the selected ganger → the target — the
 /// [`HighlightRequest`] precedent, where the presenter DEFINES the type and input WRITES it,
@@ -86,7 +86,7 @@ pub(super) fn register_path_preview_systems(app: &mut App) {
 /// Registers the GTW-371 fire-target highlight DRAW system into the
 /// [`PresenterSystems::Overlay`] stage.
 ///
-/// The PRESENTER owns the [`FireTargetHighlight`](crate::FireTargetHighlight) read-seam
+/// The PRESENTER owns the [`FireTargetHighlight`](crate::FireTargetHighlight) read-side resource
 /// (`init_resource`-d on build) plus this draw system; the INPUT crate POPULATES the resource
 /// by deciding the fireable-enemy verdict (mirroring `decide_left_click`'s FIRE rung) +
 /// computing the [`mode_tu_cost`](gdtf_battle_sim::magazine::mode_tu_cost) — the [`HighlightRequest`]
@@ -103,7 +103,7 @@ pub(super) fn register_path_preview_systems(app: &mut App) {
 /// gate the highlight / path-preview draws use (the inert-pre-battle requirement,
 /// `bevy-traps.md` #1). It needs NO render resource (a solid-tint sprite + a `Text2d`, not an
 /// atlas tile) and NO `SquadVisibility` (the input populate applies the fog gate before writing
-/// the seam — the draw only reads the resolved highlight + the always-present `init_resource`-d
+/// the resource — the draw only reads the resolved highlight + the always-present `init_resource`-d
 /// [`FireTargetHighlight`](crate::FireTargetHighlight) / [`ActiveLevel`](crate::ActiveLevel)). Its
 /// `Overlay` stage membership (chained after `Compose` — GTW-623) makes the red tile composite
 /// OVER the fogged battlefield (and, being at [`Layer::FireTarget`](crate::Layer), UNDER the
@@ -163,7 +163,7 @@ pub(super) fn register_field_overlay_systems(app: &mut App) {
 /// [`present_fog`](crate::present_fog) / the ganger-visibility resolver occupy, so it reads
 /// their settled facts) and the badge DRAW system (into [`PresenterSystems::Overlay`]).
 ///
-/// [`derive_cross_level_signals`] reads the sim through the SAME pure fog seams
+/// [`derive_cross_level_signals`] reads the sim through the SAME pure fog queries
 /// `present_fog` / `resolve_ganger_visibility` use (never a parallel visibility check),
 /// aggregating a fog-gated cross-level Threat scan, a hole/ledge `DropDepth` scan, and a
 /// vertical-link `ConnectorDelta` scan into the [`CrossLevelSignals`] resource
@@ -182,7 +182,7 @@ pub(super) fn register_field_overlay_systems(app: &mut App) {
 /// set (the resource is change-tick-quiet via `set_if_neq`) OR [`ActiveLevel`] itself
 /// changed (a badge's drawn Z-band is hard-cut to the active storey, so a level switch
 /// must redraw even on the rare frame where the newly-derived signal set happens to be
-/// byte-identical to the old storey's — the check lives INSIDE
+/// identical to the old storey's — the check lives INSIDE
 /// [`draw_cross_level_signals`] itself, the
 /// [`draw_static_battlefield`](crate::draw_static_battlefield) multi-trigger precedent,
 /// not encoded into this `run_if`).
@@ -206,14 +206,14 @@ pub(super) fn register_cross_level_signals_systems(app: &mut App) {
 }
 
 /// Registers the GTW-387 / GTW-450 reachable-range DEBUG overlay: the [`ReachableCells`]
-/// read-seam, the [`ReachableOverlayEnabled`] flag (seeded from the env var), and the DRAW
+/// read-side resource, the [`ReachableOverlayEnabled`] flag (seeded from the env var), and the DRAW
 /// system into the [`PresenterSystems::Overlay`] stage.
 ///
 /// DEBUG-ONLY (GTW-450 C1): this whole fn — and every item it names — compiles only under
 /// `#[cfg(debug_assertions)]`. A release build excludes it, so the overlay never renders
 /// in shipping play (it washes the FOV green — visual noise the user ruled out).
 ///
-/// The PRESENTER owns the [`ReachableCells`] read-seam (`init_resource`-d here) plus this
+/// The PRESENTER owns the [`ReachableCells`] read-side resource (`init_resource`-d here) plus this
 /// draw system; the INPUT crate POPULATES the resource by calling
 /// [`reachable_within`](gdtf_battle_sim::pathfinder::reachable_within) for the selected ganger — the
 /// [`PathPreview`](crate::PathPreview) precedent, where the presenter DEFINES the type
@@ -242,7 +242,7 @@ pub(super) fn register_cross_level_signals_systems(app: &mut App) {
 pub(super) fn register_reachable_overlay_systems(app: &mut App) {
     // GTW-450 C3 — read the env var ONCE at startup (NOT per-frame) into the flag resource.
     app.insert_resource(ReachableOverlayEnabled::from_env())
-        // GTW-387 — the reachable-range overlay read-seam (the cells the selected ganger can
+        // GTW-387 — the reachable-range overlay read-side resource (the cells the selected ganger can
         // reach within its remaining TU). Its Default is the empty set; the input crate
         // POPULATES it (clearing it when no ganger is selected).
         .init_resource::<ReachableCells>()

@@ -149,7 +149,7 @@ impl EditorMode {
 /// optional [`EditorMode`] (state-scoped — bevy-traps #1). The egui tabs and these keys both write
 /// the same resource, and the next-frame egui draw reflects the change; this system holds NO egui
 /// import — it reads only `ButtonInput`. Focus-suppression (GTW-681): the plugin gates this system
-/// on `not(egui_wants_any_keyboard_input)` at the wiring seam, so it does NOT act while an egui text
+/// on `not(egui_wants_any_keyboard_input)` at the wiring point, so it does NOT act while an egui text
 /// field holds keyboard focus (e.g. typing `8` into the prefab width/height field inserts the digit
 /// rather than switching to the ATTACHMENT tab). That guard lives in `plugin.rs`, not here, so this
 /// stays egui-import-free.

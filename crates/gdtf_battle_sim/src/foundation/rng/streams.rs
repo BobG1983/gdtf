@@ -175,7 +175,7 @@ macro_rules! impl_sim_stream {
             /// authored / hot-reloadable data — which makes the bounds attacker-controlled
             /// at runtime: a documented-legal tuning edit (e.g. a fight variance of `0.0`)
             /// can degenerate such a range mid-session. A LIVE range (`start < end`) draws
-            /// byte-identically to [`random_range`](Self::random_range); a DEGENERATE
+            /// identically to [`random_range`](Self::random_range); a DEGENERATE
             /// range (`start >= end`) still consumes exactly one uniform draw and returns
             /// the bounds' MIDPOINT (so the §7 band `[1 − v, 1 + v]` with `v <= 0.0`
             /// collapses to factor `1.0`).

@@ -24,7 +24,7 @@ use crate::{
 };
 
 /// Sanitize the entered prefab name into a file-name STEM (GTW-432) — since GTW-577 a thin
-/// delegation to the shared [`sanitize_file_stem`] seam (trimmed, lowercased, separators →
+/// delegation to the shared [`sanitize_file_stem`] helper (trimmed, lowercased, separators →
 /// underscores, anything outside `[a-z0-9_]` dropped).
 ///
 /// Returns an empty [`FileStem`] for a name that sanitizes to nothing, which the caller
@@ -75,7 +75,7 @@ pub fn prefab_save_path(theme_display: &str, size: GridSize, stem: &str) -> Path
 /// [`TerrainDef`](gdtf_battle_sim::terrain::def::TerrainDef)). The prefab's theme / size come from
 /// the `session`; the spawn role is the [`SAVED_SPAWN_ROLE`] default. There is NO authored-opening
 /// derivation — the schema carries none (connectivity is by-construction in the assembler:
-/// the 1-cell `default_floor` seam every placement reserves).
+/// the 1-cell `default_floor` margin every placement reserves).
 ///
 /// # Errors
 ///
@@ -112,12 +112,12 @@ pub fn editor_map_to_prefab(
 
 /// Serialize a built [`PrefabSpec`] to its `.prefab.ron`-shaped RON text — the SAME schema
 /// the GTW-489 loader deserializes (C2). Delegates to the shared
-/// [`serialize_ron_pretty`] seam (GTW-577 C2), so a saved prefab stays human-editable like
+/// [`serialize_ron_pretty`] helper (GTW-577 C2), so a saved prefab stays human-editable like
 /// the shipped `assets/content/maps/**/*.prefab.ron`.
 ///
 /// # Errors
 ///
-/// [`SavePrefabError::Save`] wrapping the seam's serialize failure.
+/// [`SavePrefabError::Save`] wrapping the shared serializer's failure.
 pub fn serialize_prefab(spec: &PrefabSpec) -> Result<String, SavePrefabError> {
     serialize_ron_pretty(spec).map_err(SavePrefabError::Save)
 }
@@ -132,12 +132,12 @@ pub fn serialize_prefab(spec: &PrefabSpec) -> Result<String, SavePrefabError> {
 /// [`WORKSPACE_ASSETS_ROOT`] (via [`write_prefab`]); tests pass a unique `tempfile::TempDir`
 /// root so no test ever writes into the version-controlled `assets/` tree.
 ///
-/// Sanitizes the entered prefab name to a file stem (the shared [`sanitize_file_stem`] seam),
+/// Sanitizes the entered prefab name to a file stem (the shared [`sanitize_file_stem`] helper),
 /// projects the map to a [`PrefabSpec`] via [`editor_map_to_prefab`] (which re-checks every
 /// painted cell through the shared [`evaluate_placement`] — C3 illegal-cell guard, reused
 /// verbatim), resolves the themed/sized path via [`prefab_save_path_in`], and hands the
 /// serialize → mkdir → write chain to the shared
-/// [`write_ron_pretty`](gdtf_assets::write_ron_pretty) seam (GTW-577 C2). Returns the resolved
+/// [`write_ron_pretty`](gdtf_assets::write_ron_pretty) helper (GTW-577 C2). Returns the resolved
 /// [`PathBuf`] on success so the caller can log it. Debug-only — the whole save path is gated
 /// `#[cfg(debug_assertions)]` (the GTW-429 gang-save precedent), so it never compiles into a
 /// release binary.
@@ -149,7 +149,7 @@ pub fn serialize_prefab(spec: &PrefabSpec) -> Result<String, SavePrefabError> {
 /// # Errors
 ///
 /// [`SavePrefabError::EmptyName`] if the sanitized name is empty; [`SavePrefabError::IllegalCell`]
-/// if a painted cell is illegal; [`SavePrefabError::Save`] from the seam's serialization / file
+/// if a painted cell is illegal; [`SavePrefabError::Save`] from the shared helper's serialization / file
 /// write.
 #[cfg(debug_assertions)]
 pub fn write_prefab_in(
@@ -175,14 +175,14 @@ pub fn write_prefab_in(
 /// typed [`SavePrefabError`] (never a panic).
 ///
 /// Thin wrapper around [`write_prefab_in`] that supplies the workspace `assets/` root
-/// ([`WORKSPACE_ASSETS_ROOT`]) — byte-identical paths for production callers (GTW-662 C3).
+/// ([`WORKSPACE_ASSETS_ROOT`]) — identical paths for production callers (GTW-662 C3).
 /// This is the function the egui "Save prefab" button calls; the file lands exactly where the
 /// GTW-489 folder loader reads from.
 ///
 /// # Errors
 ///
 /// Any [`SavePrefabError`] from name validation, the projection's illegal-cell guard, or the
-/// seam's serialization / file write (see [`write_prefab_in`]).
+/// shared helper's serialization / file write (see [`write_prefab_in`]).
 #[cfg(debug_assertions)]
 pub fn write_prefab(
     map: &EditorMap,

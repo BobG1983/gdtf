@@ -33,7 +33,7 @@ use crate::weapon::WeaponName;
 ///   [`EmplacementOccupant`]). While occupied, the occupant's published silhouette band is
 ///   FORCED to [`HeightBand::High`](crate::cover::HeightBand::High) so it reads as HIGH cover,
 ///   and the mounted gun is steadied by the
-///   [`EmplacementStability`](crate::stability::EmplacementStability) seam (Phase 2).
+///   [`EmplacementStability`](crate::stability::EmplacementStability) mechanism (Phase 2).
 ///
 /// `Default` is [`Vacant`](EmplacementState::Vacant): a freshly-spawned emplacement is
 /// unmanned.

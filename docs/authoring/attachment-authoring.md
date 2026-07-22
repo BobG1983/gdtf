@@ -160,7 +160,7 @@ with one `register_content_family::<AttachmentsFamily>()` line in
 (`crates/gdtf_battle_sim/src/equipment/attachments/registry.rs`), keyed by
 file stem.
 
-Hot-reload rides the same seam: run `cargo drun` (the alias enables the
+Hot-reload works the same way: run `cargo drun` (the alias enables the
 `file_watcher` feature), edit any `*.attachment.ron`, and the generic redrive
 rebuilds the registry live, logging an `info!` line naming the reload. The next
 battle setup fits the edited items.

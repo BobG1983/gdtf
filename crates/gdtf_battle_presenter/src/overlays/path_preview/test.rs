@@ -1,10 +1,10 @@
-//! Pure-logic unit tests for the path-preview read-seam + the `preview_draws` resolution.
+//! Pure-logic unit tests for the path-preview read-side resource + the `preview_draws` resolution.
 //!
 //! The DRAW-system behaviour (the step sprites actually rendered at the right cells,
 //! hard-cut to the active storey, §53-dimmed on EXPLORED) is the headless integration proof
 //! in `tests/path_preview.rs` (the `fog_present.rs` pattern) and the pixel proof in
 //! `tests/path_preview_readback.rs` (the `fog_shader_readback.rs` pattern) — those wire the
-//! REAL `PathPreview` → draw system. These cover the read-seam + the `preview_draws` pure
+//! REAL `PathPreview` → draw system. These cover the read-side resource + the `preview_draws` pure
 //! decision (§53 + hard-cut + C5 link marker) that do not need an app.
 
 use bevy::{platform::collections::HashSet, prelude::Alpha};

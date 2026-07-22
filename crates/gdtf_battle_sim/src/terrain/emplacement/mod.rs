@@ -25,7 +25,7 @@
 //! `TerrainSimKind::Emplacement` kind, the spawn (a cover-like structure carrying the
 //! enter/exit components), and the band-forcing toggle. The mounted-weapon SPAWN/DESPAWN on
 //! the occupant + the `EmplacementStability` engage + the `MountedWeapon`-prefer ranged read
-//! are **Phase 2** — the [`apply_emplacement_toggle`] system leaves a clear seam (the
+//! are **Phase 2** — the [`apply_emplacement_toggle`] system leaves a clear extension point (the
 //! occupant + key records are exactly what Phase 2 reads).
 
 pub mod state;

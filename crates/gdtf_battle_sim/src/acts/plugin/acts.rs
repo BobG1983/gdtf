@@ -133,7 +133,7 @@ pub(super) fn wire_acts(app: &mut App) {
             .in_set(SimSystems::Simulate),
     );
     // GTW-525: the SHOVE dispatch — drains ShoveRequested (the deliberate act from the
-    // input seam AND the weapon-tag auto-shove the connect hooks write) and resolves the
+    // input queue AND the weapon-tag auto-shove the connect hooks write) and resolves the
     // one-cell displacement (pure; the fall it may trigger routes through the shared
     // GTW-523 fork). Ordered (bevy-traps.md #3) `.after(dispatch_fire)` AND
     // `.after(dispatch_melee)` so a SAME-FRAME weapon-tag ShoveRequested — written by the
@@ -177,7 +177,7 @@ pub(super) fn wire_acts(app: &mut App) {
     // (bevy-traps.md #3; realistically the marker materializes turns before the player fires). It
     // joins the `BattleInProgress`-gated Simulate band; its Query + Commands are always valid, so
     // it needs no extra `run_if`. Param-only, no `&mut World` (bevy-traps.md #7 — the effect
-    // closures' `EntityWorldMut` access is the ticket's sanctioned carve-out).
+    // closures' `EntityWorldMut` access is the ticket's carve-out).
     app.add_systems(
         Update,
         apply_pending_attachments

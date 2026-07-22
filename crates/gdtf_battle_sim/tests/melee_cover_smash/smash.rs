@@ -32,7 +32,7 @@ fn smash_reduces_adjacent_cover_hp_and_emits_resolved() {
     };
 
     // Drive the smash THROUGH the buffered MeleeRequested::new_structural (the structural form
-    // the input seam writes).
+    // the input layer writes).
     app.world_mut()
         .write_message(MeleeRequested::new_structural(attacker_entity, cover));
     step(&mut app, 3);

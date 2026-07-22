@@ -2,7 +2,7 @@
 //! host of the GTW-582 unified dangling-reference contract.
 //!
 //! The editor registers the SAME host-agnostic per-edge checks the game runs
-//! ([`gdtf_content_families::validate`]) through the same seam
+//! ([`gdtf_content_families::validate`]) through the same registration API
 //! ([`ContentValidationAppExt`](gdtf_assets::ContentValidationAppExt)), for
 //! exactly the edges over families the editor loads: theme → terrain-def
 //! UUIDs, emplacement → mounted-weapon keys, — since the GTW-636 Gang

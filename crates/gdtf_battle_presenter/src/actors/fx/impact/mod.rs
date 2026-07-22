@@ -3,7 +3,7 @@
 //! This module is the stub FX-A created so FX-B fills only the body (no `mod.rs`
 //! edit collision): FX-A already declares + registers [`animate_impact`](animate::animate_impact)
 //! in [`fx::mod`](super) and wires it into the `PresenterSystems::Overlay` band, and
-//! defines the [`PendingImpact`](super::projectile::PendingImpact) SEAM
+//! defines the [`PendingImpact`](super::projectile::PendingImpact) marker
 //! [`advance_projectiles`](super::projectile::advance_projectiles) spawns at a
 //! projectile's arrival point (carrying the arrival world position + the shot's
 //! [`DamageType`](gdtf_battle_sim::weapon::DamageType)).
@@ -18,7 +18,7 @@
 //! flash + traveling projectile stay sane in their own systems (FX-A); this slice
 //! ONLY animates the impact.
 //!
-//! Pure VIEW (ADR-0001): it READS the [`PendingImpact`](super::projectile::PendingImpact) seam +
+//! Pure VIEW (ADR-0001): it READS the [`PendingImpact`](super::projectile::PendingImpact) marker +
 //! the data-driven
 //! [`EffectRoles`](super::roles::EffectRoles) table and draws sprites; it never writes the sim.
 //! Param-only throughout (`bevy-traps.md` #7).

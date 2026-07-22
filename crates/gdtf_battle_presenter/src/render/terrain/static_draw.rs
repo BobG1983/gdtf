@@ -170,7 +170,7 @@ pub fn draw_static_battlefield(
                 // FootfallSound, and a Slab def may omit it. ABSENT footfall is handled here
                 // with NO panic and a DOCUMENTED default — there is NO footfall-audio system
                 // yet (the sim stays guns-only), so a present key is logged at `debug` (so a
-                // future footfall pass has a wired seam to consume) and an absent one is the
+                // future footfall pass has a wired hook to consume) and an absent one is the
                 // SILENT default (no clip).
                 if let Some((_graphic, Some(footfall))) = graphic_facts.get(&key) {
                     let footfall_key: &str = footfall;

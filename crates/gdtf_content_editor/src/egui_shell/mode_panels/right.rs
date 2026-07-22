@@ -1,5 +1,5 @@
 //! The RIGHT mode-form panel dispatch — one arm per Workbench mode (moved out of
-//! `shell.rs` at the GTW-670 band seam: this dispatch grows an arm per mode, the shell
+//! `shell.rs` at the GTW-670 band boundary: this dispatch grows an arm per mode, the shell
 //! only changes when the panel LAYOUT does). The bodies are the per-mode `*_form_ui`
 //! modules; this file owns only the branch.
 

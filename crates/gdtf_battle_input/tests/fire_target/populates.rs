@@ -108,7 +108,7 @@ fn fireable_enemy_cost_resolves_off_weapon_and_is_nonzero() {
 /// blocking, squad-VISIBLE) populates the presenter-owned highlight with the hovered cover cell
 /// and a cost EXACTLY equal to `mode_tu_cost` — the SAME treatment a fireable enemy gets (the
 /// red-tile + TU-cost highlight the presenter draws). The discriminator recognizes the cover
-/// cell as a valid fire target (C1) and the highlight read-seam is positively populated for it
+/// cell as a valid fire target (C1) and the highlight read resource is positively populated for it
 /// (C6c). No magnitude pin — the cost is computed independently in-test.
 #[test]
 fn hovering_shootable_cover_populates_cell_and_mode_tu_cost() {

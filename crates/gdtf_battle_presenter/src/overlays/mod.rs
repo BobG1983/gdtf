@@ -1,4 +1,4 @@
-//! Input-bridge overlay seam: highlight, path preview, fire target, reachable-range, the
+//! Input-bridge overlays: highlight, path preview, fire target, reachable-range, the
 //! area-damage-field zone, the cross-level tactical badges, and the shared targeting gate.
 
 /// The GTW-596 cross-level tactical badges — "Signals, Not Scenery" (GTW-593 Option 2):

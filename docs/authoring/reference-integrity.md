@@ -88,7 +88,7 @@ resolve SALVAGES the folder per-file: every well-formed sibling still loads,
 and the malformed file alone fails, loudly, as a `malformed file:` finding on
 the same report. A folder that cannot be enumerated at all (a missing
 directory) still fails closed to the empty registry. The content editor
-(`crates/gdtf_content_editor/`) loads through the same seam, so it inherits the
+(`crates/gdtf_content_editor/`) loads through the same loader, so it inherits the
 per-file behavior unchanged.
 
 ## Last-resort fallbacks are never silent

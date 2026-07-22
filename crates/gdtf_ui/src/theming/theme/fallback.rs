@@ -31,7 +31,7 @@ pub(super) const SHIPPED_GRIMDARK_RON: &str = include_str!(concat!(
 
 /// The last-resort, code-level default [`GdtfTheme`].
 ///
-/// **ADR-0003 sanctioned exception (GTW-143):** ADR 0003 clause 4 forbids
+/// **ADR-0003 exception (GTW-143):** ADR 0003 clause 4 forbids
 /// hardcoding theme *values* as `const Color`s — `assets/core_tuning/ui_theme.tuning.ron`
 /// remains the single styling source of truth on the success path. This function
 /// is the deliberately-narrow exception: it is the error-path safety-net the
@@ -57,7 +57,7 @@ pub fn default_theme() -> GdtfTheme {
 /// The hardcoded final safety-net [`GdtfTheme`], reached only if even the
 /// embedded [`SHIPPED_GRIMDARK_RON`] fails to parse.
 ///
-/// **ADR-0003 sanctioned exception (GTW-143):** these are the only hardcoded
+/// **ADR-0003 exception (GTW-143):** these are the only hardcoded
 /// theme values in the codebase, and they exist solely so the error path can
 /// always hand back *some* legible theme. The values mirror the shipped grimdark
 /// palette so the unreachable-in-practice fallback still reads as the intended

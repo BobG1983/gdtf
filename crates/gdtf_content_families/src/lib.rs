@@ -1,6 +1,6 @@
 //! The GDTF **content-family marker impls** (GTW-570) — one tiny
 //! [`ContentFamily`](gdtf_assets::ContentFamily) impl per folder-loaded
-//! content family, binding the generic folder→registry seam in `gdtf_assets`
+//! content family, binding the generic folder→registry machinery in `gdtf_assets`
 //! to the sim-owned registry types.
 //!
 //! # Why a separate glue crate
@@ -8,7 +8,7 @@
 //! `gdtf_assets` is a deliberate LEAF (bevy/ron/serde only) and cannot name
 //! the sim's registry types; `gdtf_app` cannot host the impls either, because
 //! the content editor needs the SAME families without depending on the game
-//! app. This crate is the seam both hosts share: a host registers a family
+//! app. This crate is the glue both hosts share: a host registers a family
 //! with one line —
 //! `app.register_content_family::<WeaponsFamily>()`
 //! (see [`ContentFamilyAppExt`](gdtf_assets::ContentFamilyAppExt)) — and the
@@ -29,11 +29,11 @@
 //!
 //! Beside the family impls, [`validate`] hosts the HOST-AGNOSTIC per-edge
 //! reference checks of the GTW-582 unified dangling-reference contract
-//! (GTW-630) — the same one-crate seam logic, shared by both hosts.
+//! (GTW-630) — the same one-crate reference-check logic, shared by both hosts.
 //!
 //! # The two bespoke families (GTW-634 / GTW-654)
 //!
-//! The two declared GTW-570 seam EXCLUSIONS — [`prefabs`] (a nested
+//! The two declared GTW-570 machinery EXCLUSIONS — [`prefabs`] (a nested
 //! `<theme>/<size>/` tree into a bucketed multimap) and [`injuries`] (one
 //! folder, two asset types, two resources) — have no `ContentFamily` impl to
 //! carry a `FOLDER` / `EXTENSION`, so their folder + extension consts are

@@ -66,8 +66,8 @@ use crate::{
 /// PERSISTENT `Load` resource, present throughout the battle for the acts to read. It
 /// IS read here as `Option<Res<_>>` to supply the `fallback_floor_cost`
 /// (`CombatTuning::move_costs.open`) used as the uniform floor cost (GTW-491 retires the
-/// per-floor registry move-cost resolution; the move-cost-from-`default_floor` seam is
-/// GTW-482).
+/// per-floor registry move-cost resolution; per-floor move cost derived from `default_floor`
+/// is deferred to GTW-482).
 #[expect(
     clippy::too_many_arguments,
     reason = "the params are the message reader + writer, the gang / weapon / MELEE-weapon \

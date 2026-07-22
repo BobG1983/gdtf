@@ -8,7 +8,7 @@
 //! the ONE [`PendingActIntent`] queue and interpreted by the ONE
 //! [`dispatch_act_intents`] drain. The CONTEXTUAL acts (Execute / Stabilize / Melee /
 //! Shove / Open Door / Enter / Exit Emplacement / Throw Grenade) ride the GTW-571
-//! generic seam instead — one buffered [`PendingContextualIntents<A>`] queue and one
+//! generic machinery instead — one buffered [`PendingContextualIntents<A>`] queue and one
 //! generic [`drain_contextual_intents::<A>`] per act, all in the explicitly-ordered
 //! [`ContextualActSystems::Drain`] set, which runs `.before` this drain (see
 //! [`crate::contextual`]). Both halves preserve the same-frame press -> `*Requested`

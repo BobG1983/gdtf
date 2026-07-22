@@ -2,7 +2,7 @@
 //! `BattleSimPlugin` spawn + `apply_pending_attachments` post-spawn path (the
 //! `attachment_liveness_sweep` harness shape). The pure fit rule's five contract cases (accept /
 //! wrong-slot / cap-1 full / multi-cap up-to / one-over) are unit-covered on the shared
-//! resolution seam in `equipment::attachments::fit`; THIS file proves the gate is LIVE on the
+//! resolution logic in `equipment::attachments::fit`; THIS file proves the gate is LIVE on the
 //! spawned weapon entities:
 //!
 //! - **Compatible item applies** — a Sight item on a Sight-declaring weapon raises Accuracy.

@@ -8,8 +8,8 @@
 //! - [`blocked`] — an unreachable goal yields [`PathBlocked`](super::PathBlocked).
 //! - [`bit_identity`] — the [`Path`](super::Path) total EQUALS the summed per-step
 //!   edge costs along the route (the §48 bit-identity).
-//! - [`determinism`] — same inputs → byte-identical [`Path`](super::Path) AND
-//!   byte-identical [`reachable_within`](super::reachable_within) set, asserted twice.
+//! - [`determinism`] — same inputs → identical [`Path`](super::Path) AND
+//!   identical [`reachable_within`](super::reachable_within) set, asserted twice.
 //! - [`budget`] — [`reachable_within`](super::reachable_within) respects the budget
 //!   (a cell just over budget excluded, one within included).
 //! - [`visibility_gated`] — GTW-353: UNSEEN cells are non-routable (route around them /

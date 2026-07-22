@@ -23,11 +23,11 @@
 //! Real device input (an actual gamepad South press, an actual mouse click that
 //! *produces* `Interaction::Pressed`) is **TBD (Bevy harness)** — there is no
 //! window / GPU / HID under `MinimalPlugins`. The bridge that turns `Enter` /
-//! gamepad South into a `FocusActivated` is GTW-119's seam and is tested there
+//! gamepad South into a `FocusActivated` is added by GTW-119 and is tested there
 //! with synthesized intent; mouse *production* of `Pressed` is GTW-141. Here we
 //! drive the action layer's real code path with the synthesized
 //! `FocusActivated` message and an injected `Interaction::Pressed`, which is the
-//! exact input those upstream seams hand it.
+//! exact input those upstream producers hand it.
 
 use bevy::{
     ecs::entity::Entity,
@@ -107,7 +107,7 @@ fn mouse_press_on_enabled_button_requests_mapped_transition() {
 }
 
 /// Focus-activation path: a `FocusActivated` for each ENABLED button (the Enter /
-/// gamepad-South seam) requests its mapped transition (AC#2b).
+/// gamepad-South bridge) requests its mapped transition (AC#2b).
 ///
 /// Pin: dropping the `FocusActivated` reader, the `.after(Bridge)` ordering, or a
 /// wrong mapping fails the assert.

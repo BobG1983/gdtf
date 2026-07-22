@@ -16,7 +16,7 @@ use super::{actors::*, harness::*};
 // ---------------------------------------------------------------------------------
 // GTW-543 — the ENTER / EXIT EMPLACEMENT buttons: detection (an 8-adjacent VACANT
 // emplacement reveals Enter; Exit reveals ONLY for the occupant) and press → the
-// emplacement's EmplacementState flips VACANT -> Occupied through the REAL seam + sim.
+// emplacement's EmplacementState flips VACANT -> Occupied through the REAL input queue + sim.
 // ---------------------------------------------------------------------------------
 
 /// Spawns the EMPLACEMENT actor — a ganger carrying exactly the components the enter/exit path
@@ -189,7 +189,7 @@ fn exit_offered_only_to_the_occupant() {
 /// `dispatch_enter_emplacement` -> `SetEmplacement::occupy` -> `apply_emplacement_toggle`) so the
 /// SPECIFIC carried emplacement's `EmplacementState` flips VACANT -> Occupied (GTW-543). Driven
 /// THROUGH the button/intent/sim path end to end — never a synthetic `SetEmplacement` emit —
-/// proving the correct emplacement entity was carried across the seam.
+/// proving the correct emplacement entity was carried through the input queue.
 ///
 /// The occupy settles a couple frames after the toggle message (the one-frame settle:
 /// `dispatch_enter_emplacement` writes `SetEmplacement`, `apply_emplacement_toggle` flips
@@ -233,7 +233,7 @@ fn pressing_enter_mans_the_emplacement() {
     assert!(
         manned,
         "pressing Enter on the carried VACANT emplacement must flip its EmplacementState to \
-         Occupied through the real seam + sim; last was {:?}",
+         Occupied through the real dispatch path + sim; last was {:?}",
         emplacement_state(&app, emplacement),
     );
 

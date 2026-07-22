@@ -1,4 +1,4 @@
-//! Tests of the traveling-projectile flight: constant velocity, the arrival seam,
+//! Tests of the traveling-projectile flight: constant velocity, the arrival handoff,
 //! and the GTW-308 burst stagger (mirrors the `projectile` module).
 
 use std::time::Duration;
@@ -32,14 +32,14 @@ const TEST_VELOCITY: f32 = ProjectileVelocity::DEFAULT;
 const TEST_INTER_SHOT: f32 = InterShotSeconds::DEFAULT;
 
 /// A throw-away anchor `(cell, level)` for the projectile-FLIGHT unit tests, which exercise the
-/// muzzle→target travel + arrival seam, not the GTW-327 FCT pops (those rides empty in these
+/// muzzle→target travel + arrival handoff, not the GTW-327 FCT pops (those rides empty in these
 /// tests; the pop-staggering is proven on the real registered-system path in `fx_draw.rs`).
 fn test_anchor() -> (Cell, Level) {
     (Cell::new(0, 0), Level::new(0))
 }
 
 /// A throw-away firing entity for the projectile-FLIGHT unit tests — the GTW-328 shooter the bolt
-/// threads to its `PendingImpact`; these flight-only tests exercise the travel + arrival seam, not
+/// threads to its `PendingImpact`; these flight-only tests exercise the travel + arrival handoff, not
 /// the shot-impact signal (its staggering is proven on the real path in `fx_draw.rs`).
 fn test_shooter() -> bevy::ecs::entity::Entity {
     bevy::ecs::entity::Entity::PLACEHOLDER

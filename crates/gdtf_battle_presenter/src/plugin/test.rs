@@ -1,4 +1,4 @@
-//! Unit tests for the presenter plugin seam (mode selection + the renderer-active marker)
+//! Unit tests for the presenter plugin entry point (mode selection + the renderer-active marker)
 //! and the GTW-623 chained draw-stage contract.
 
 use bevy::prelude::*;

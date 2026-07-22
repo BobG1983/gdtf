@@ -1,4 +1,4 @@
-//! The GENERIC contextual-act seam + one input-layer descriptor module per act
+//! The GENERIC contextual-act machinery + one input-layer descriptor module per act
 //! (GTW-571).
 //!
 //! The `seam` submodule owns the [`ContextualAct`] descriptor trait, the per-act

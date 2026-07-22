@@ -84,7 +84,7 @@ impl CoverOnDeathRegistry {
 ///
 /// 1. **Resolve the source's authored effect** — a GANGER death (a real
 ///    [`entity`](OnDeathOccurred::entity)) reads the [`OnDeath`] component off the ganger's
-///    [`Wields`] weapon entity (the wielded-weapon scene seam composed it from the weapon
+///    [`Wields`] weapon entity (the wielded-weapon spawn composed it from the weapon
 ///    spec's [`on_death`](crate::weapon::WeaponSpec) field); a COVER death (an
 ///    [`Entity::PLACEHOLDER`]) looks up the [`CoverOnDeathRegistry`] by the death
 ///    [`at`](OnDeathOccurred::at) cell. A source with no authored effect fans nothing.
@@ -176,7 +176,7 @@ pub fn resolve_on_death(
         };
 
         // (2) Fan the effect at the death cell generically through the palette trait (the
-        //     GTW-552 seam): the enum's thin delegation routes to the isolated per-effect
+        //     GTW-552 palette): the enum's thin delegation routes to the isolated per-effect
         //     behaviour over this borrowed surface — DIRECT, same-frame invocation (never a
         //     deferred command), so a lethal fan's kills land on `queue` before the next pop
         //     and the cascade cadence is unchanged. NO effect logic lives here.

@@ -1,4 +1,4 @@
-//! Tests for the GENERIC contextual-act seam (GTW-571): the registrar wires the queue +
+//! Tests for the GENERIC contextual-act machinery (GTW-571): the registrar wires the queue +
 //! message buffer + drain, the drain emits `A::request(actor, target)` for the
 //! selection the SAME update a push lands, and it fails closed without a selection.
 //!

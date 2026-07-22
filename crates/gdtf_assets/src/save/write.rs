@@ -1,7 +1,7 @@
 //! [`write_ron_pretty`] — the ONE serialize → mkdir → write chain (GTW-577 C2) — and the
 //! shared [`RonSaveError`] it (and the pure [`serialize_ron_pretty`] half) fail with.
 //!
-//! The error lives WITH the write seam (GTW-577 P10), not in a central types file: the
+//! The error lives WITH the write chain (GTW-577 P10), not in a central types file: the
 //! per-form save errors (`SavePrefabError` / `SaveTerrainError` / `SaveThemeError`) keep
 //! their bespoke domain-validation variants and WRAP this error for the serialize/write
 //! tail, so the two tail `Display` arms exist exactly once — here.
@@ -17,7 +17,7 @@ use serde::Serialize;
 /// derive `Clone` + `PartialEq` + `Eq` (their tests compare rejections structurally), and
 /// neither underlying error type is `Clone` or `Eq` — the same trade-off the per-form
 /// `Serialize(String)` / `Write(String)` variants made before they collapsed onto this
-/// seam.
+/// shared error.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RonSaveError {
     /// Serializing the payload to pretty RON failed.
@@ -38,7 +38,7 @@ impl std::fmt::Display for RonSaveError {
 
 impl std::error::Error for RonSaveError {}
 
-/// Serialize `value` to pretty-printed RON text — the pure half of the seam, shared by
+/// Serialize `value` to pretty-printed RON text — the pure half of the save chain, shared by
 /// [`write_ron_pretty`] and by the standalone per-form serializers (the live RON preview +
 /// the in-memory round-trip tests use these WITHOUT touching the filesystem, so this half
 /// compiles in every profile).

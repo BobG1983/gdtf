@@ -76,7 +76,7 @@ fn dangling_gang_equipment_refs_surface_in_the_editor_at_authoring_time() {
     );
 }
 
-/// C3(b): hot-editing the loaded gang (the seam redrive path — the same
+/// C3(b): hot-editing the loaded gang (the hot-reload redrive path — the same
 /// `Modified` message the file watcher emits) re-arms the pass: the report is
 /// RESET, re-checked against the edited content, and re-published. The
 /// superseded weapon finding is gone, the edited (still-dangling) key is
@@ -118,7 +118,7 @@ fn gang_hot_edit_rearms_validation_and_republishes_current_findings() {
         app.world()
             .get_resource::<ContentFolderHandle<GangsFamily>>()
             .is_some(),
-        "the seam's persistent gangs ContentFolderHandle must survive past Load (GTW-533)",
+        "the loader's persistent gangs ContentFolderHandle must survive past Load (GTW-533)",
     );
     app.world_mut()
         .write_message(AssetEvent::Modified { id: handle.id() });

@@ -1,7 +1,7 @@
 //! GTW-238: headless integration tests for the `PlayerFaction`-gated control surface —
 //! the ONE disambiguated left-click decision (`left_click_act`: FIRE -> SELECT -> MOVE
 //! -> CLEAR) and the right-click turn-to-face surface (`right_click_turn_to_face`), over
-//! the REAL `GdtfBattleInputPlugin` seam (its click systems -> the ONE
+//! the REAL `GdtfBattleInputPlugin` drain (its click systems -> the ONE
 //! `dispatch_act_intents` drain -> the emitted `*Requested`).
 //!
 //! Tests are headless `GdtfBattleInputPlugin` apps: synth `ButtonInput<MouseButton>` +

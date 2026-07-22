@@ -18,7 +18,7 @@ use crate::{
 /// panic. Two wildly over-100 sums whose RAW totals differ (different stance /
 /// brace) must still produce the SAME outputs, proving both clamp to the score
 /// ceiling (and never a panic / NaN). The over-100 sum is driven by the
-/// emplacement seam — there is no weapon-points term any more.
+/// emplacement term — there is no weapon-points term any more.
 #[test]
 fn over_100_sum_clamps_and_does_not_run_off_the_curve() {
     let tuning = ConeStabilityTuning::default();

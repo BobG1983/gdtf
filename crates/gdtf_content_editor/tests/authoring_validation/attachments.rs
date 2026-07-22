@@ -6,7 +6,7 @@
 //! re-arms the pass and re-publishes the CURRENT weapon-edge findings — the
 //! GTW-651 recipe over the GTW-619 family).
 //!
-//! THE SEAM, noted per the GTW-651 contract convention: the file-watcher is NOT
+//! THE RELOAD TRIGGER, noted per the GTW-651 contract convention: the file-watcher is NOT
 //! active in this headless harness (`file_watcher` is binary-propagated, never
 //! in test builds), so the ONE watcher-owned step — "a changed file on disk
 //! triggers its reload" — is driven directly via [`AssetServer::reload`];

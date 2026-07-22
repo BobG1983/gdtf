@@ -1,4 +1,4 @@
-//! The MELEE-weapons content family (GTW-505, generic seam since GTW-570).
+//! The MELEE-weapons content family (GTW-505, generic machinery since GTW-570).
 
 use gdtf_assets::{ContentFamily, ContentFileStem};
 use gdtf_battle_sim::weapon::{MeleeWeaponRegistry, MeleeWeaponSpec, WeaponName};

@@ -111,7 +111,7 @@ fn fire_commit_is_refused_into_a_non_visible_cell() {
 }
 
 /// Applies `outcome` and asserts ZERO mutation: no `ActIntent` pushed, the `SelectedShooter` +
-/// `SelectedFireMode` unchanged, and the shooter `Tu` + weapon loaded rounds byte-identical to
+/// `SelectedFireMode` unchanged, and the shooter `Tu` + weapon loaded rounds identical to
 /// `tu_before` / `loaded_before` (the C6(1) "zero TU, zero rounds, zero model mutation, targeting
 /// stays armed" assertion). Drives the apply via a `SystemState` over `app.world_mut()` (carve-out
 /// (a)).
@@ -151,16 +151,16 @@ fn apply_and_assert_inert(
         fire_mode_before,
         "the fire mode must be UNCHANGED by a refused fire commit",
     );
-    // Tu + ammo byte-identical (no model mutation — the shooter never paid for the refused shot).
+    // Tu + ammo unchanged (no model mutation — the shooter never paid for the refused shot).
     assert_eq!(
         shooter_tu(app, shooter),
         tu_before,
-        "the shooter's TU must be byte-identical (zero TU spent on a refused fire)",
+        "the shooter's TU must be unchanged (zero TU spent on a refused fire)",
     );
     assert_eq!(
         weapon_loaded(app),
         loaded_before,
-        "the weapon's loaded rounds must be byte-identical (zero rounds spent on a refused fire)",
+        "the weapon's loaded rounds must be unchanged (zero rounds spent on a refused fire)",
     );
 }
 

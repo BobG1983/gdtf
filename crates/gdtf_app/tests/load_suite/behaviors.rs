@@ -1,5 +1,5 @@
 //! The GTW-619 DEEP-BEHAVIOR extension of the GTW-580 per-family load suite —
-//! ONE parameterized encoding of the four seam behaviors a family migrated
+//! ONE parameterized encoding of the four load behaviors a family migrated
 //! onto the GTW-570 generic content-family chain must preserve: per-file
 //! SALVAGE parity (GTW-582 C4), fail-closed-EMPTY on an unenumerable folder,
 //! NEVER-publish-partial, and the live REDRIVE rebuild. Every walk drives the
@@ -85,7 +85,7 @@ pub(crate) trait FamilyBehaviorContract: ContentFamily {
     fn mutation_visible(registry: &Self::Registry, label: &str) -> bool;
 }
 
-/// SALVAGE PARITY (GTW-582 C4 through the generic seam) — a family folder
+/// SALVAGE PARITY (GTW-582 C4 through the generic loader) — a family folder
 /// carrying one malformed `.ron` beside well-formed siblings still resolves a
 /// registry holding every sibling; the malformed file alone fails, loudly, as
 /// a [`ContentFinding::MalformedFile`] naming the family; and `Load` still

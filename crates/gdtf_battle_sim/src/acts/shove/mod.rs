@@ -6,7 +6,7 @@
 //! Three trigger paths share ONE displacement resolution (`docs/combat/resolution.md` §7 /
 //! §Falls; the GTW-525 settled design):
 //!
-//! - **The deliberate SHOVE act** (any ganger — NOT weapon-gated): the input seam's
+//! - **The deliberate SHOVE act** (any ganger — NOT weapon-gated): the player's
 //!   contextual Shove press writes a [`ShoveRequested`](crate::acts::request::ShoveRequested)
 //!   `{ shover, target, Deliberate }`; [`dispatch_shove`] gates 8-adjacency + opposing + alive
 //!   and spends the [`ShoveTu`](crate::tuning::ShoveTu) leaf.

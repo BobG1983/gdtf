@@ -12,9 +12,9 @@
 //! `GdtfLoadTestAppBuilder` (`DefaultPlugins`, a live `AssetServer` rooted at the workspace
 //! `assets/`, the whole battlescape incl. the presenter FX pipeline and the combat log) descends
 //! to `BattleScapeState::BattleRunning`; a hand-armed thrower's buffered `ThrowGrenadeRequested`
-//! (the same message the input seam writes — `bevy-traps.md` #7 carve-out (a)) is re-gated and
+//! (the same message the input queue carries — `bevy-traps.md` #7 carve-out (a)) is re-gated and
 //! resolved by the sim's `dispatch_throw_grenade` (`march_arc` + `resolve_blast`, a REAL blast),
-//! whose `ThrowResolved` the presenter turns into the shared impact seam's `ShotImpactResolved`,
+//! whose `ThrowResolved` the presenter turns into the shared impact path's `ShotImpactResolved`,
 //! which the app's combat log drains into rendered lines. The assertion: the rendered log holds
 //! NO `"Someone missed"` line for the blast. Only the blast's placeholder shooter can resolve to
 //! `"Someone"` (every real battle ganger carries a `GangerName`), so that exact text is the
@@ -169,7 +169,7 @@ fn log_line_texts(app: &mut App) -> Vec<String> {
 
 /// GTW-559 — a REAL grenade detonation, driven through the sim (`ThrowGrenadeRequested` →
 /// `dispatch_throw_grenade` → `resolve_blast` → `ThrowResolved`) and the presenter's shared
-/// impact seam into the live combat log, renders NO `"Someone missed"` line.
+/// impact path into the live combat log, renders NO `"Someone missed"` line.
 ///
 /// PIN-DISCRIMINATING: before the fix, the blast's placeholder-shooter / `None`-report
 /// `ShotImpactResolved` classified as a miss and the log rendered the phantom

@@ -22,7 +22,7 @@ use crate::{
 /// Whether this shot is fired from a **mounted** (emplacement) weapon — `true` when
 /// the shooter is MANNING an emplacement and firing its bolted-down gun (GTW-543),
 /// `false` for a normal carried-weapon shot. Records which weapon the shared firing
-/// preference resolved, so the emplacement-stability seam engages for a mounted shot
+/// preference resolved, so the emplacement-stability term engages for a mounted shot
 /// only.
 ///
 /// A named verdict (no-bare-types) rather than a bare `bool`. Private inner + derived
@@ -76,14 +76,14 @@ pub(in crate::shot_pipeline::fire) struct ShooterSnapshot {
     pub(super) suppressed:  Option<Suppressed>,
     // GTW-543: whether the shooter's RESOLVED ranged weapon is a MountedWeapon — `true` when the
     // ganger is MANNING an emplacement and firing its bolted-down gun. Feeds the emplacement
-    // stability seam (cone_for / the recoil-recompute stability_for), steadying the deliberately
+    // stability term (cone_for / the recoil-recompute stability_for), steadying the deliberately
     // inaccurate mount. `false` (an un-mounted / normal shot) resolves the zero-identity
-    // EmplacementStability, so the shot is byte-identical to before the seam engaged.
+    // EmplacementStability, so the shot is identical to before the term engaged.
     pub(super) mounted:     MountedShot,
     // GTW-544: the weapon's optional DamageProfile-over-time (`DotProfile`), snapshotted so
     // `weapon_stats` hands out its `Option<&DotProfile>` borrow to the fold — a penetrating hit
     // from a DOT weapon attaches a `Dot` on the struck ganger. `None` = a non-DOT weapon (no
-    // attach, byte-identical). `DotProfile` is `Copy`, so the snapshot owns it.
+    // attach, identical). `DotProfile` is `Copy`, so the snapshot owns it.
     pub(super) dot:         Option<crate::weapon::DotProfile>,
 }
 
@@ -132,7 +132,7 @@ impl ShooterSnapshot {
     /// recoil-recompute [`stability_for`](crate::aim::stability_for) — feed the SAME emplacement term, keeping the cone and
     /// its recoil damping consistent within a round (the GTW-542 `sight_stability` shared-term
     /// precedent). An un-mounted shot resolves the zero identity, so its stability score — and
-    /// thus its cone — is byte-identical to before the seam engaged (the pure-additive property).
+    /// thus its cone — is identical to before the term engaged (the pure-additive property).
     pub(super) fn emplacement_stability(&self, tuning: &CombatTuning) -> EmplacementStability {
         if *self.mounted {
             EmplacementStability::new(*tuning.cone_stability.emplacement_stability_bonus)
@@ -198,12 +198,12 @@ pub(in crate::shot_pipeline::fire) struct ShooterReads {
 /// wielded entity (the `mounted` [`MountedQuery`] probe) when present — so a ganger MANNING an
 /// emplacement fires its bolted-down gun, and reverts to its own carried weapon when it exits
 /// (the mount edge despawned). A ganger with no mounted weapon (the common case) falls straight
-/// through to the GTW-505 ranged resolution, byte-identical to before. GTW-660: both steps run
+/// through to the GTW-505 ranged resolution, identical to before. GTW-660: both steps run
 /// through the ONE shared preference rule,
 /// [`Wields::firing_weapon`](crate::weapon::Wields::firing_weapon) (mounted-first,
 /// melee-excluded) — the same fn `dispatch_fire` and the reaction trigger resolve through. The
 /// [`mounted`](ShooterSnapshot::mounted) flag on the snapshot records which was resolved so the
-/// emplacement stability seam engages for a mounted shot only.
+/// emplacement stability term engages for a mounted shot only.
 pub(in crate::shot_pipeline::fire) fn read_shooter(
     shooter: Entity,
     shooters: &ShooterQuery,
@@ -277,7 +277,7 @@ pub(in crate::shot_pipeline::fire) fn read_shooter(
         // un-suppressed = zero-identity suppression term).
         suppressed:  suppressed.copied(),
         // GTW-543: whether the resolved ranged weapon is the emplacement's mounted gun (the
-        // ganger is manning it) — engages the emplacement stability seam for this shot.
+        // ganger is manning it) — engages the emplacement stability term for this shot.
         mounted:     MountedShot::new(is_mounted),
         // GTW-544: copy the resolved weapon's DOT profile into the snapshot (None = a non-DOT
         // weapon = no attach). Rides through `weapon_stats` to the fold's DOT-attach decision.

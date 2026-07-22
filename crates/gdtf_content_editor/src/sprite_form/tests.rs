@@ -185,7 +185,7 @@ fn animation_rows_add_reorder_retarget_and_remove() {
     assert_eq!(draft.def().animation, None);
 }
 
-/// The path derivation runs through the family consts + the shared sanitize seam: the
+/// The path derivation runs through the family consts + the shared sanitize helper: the
 /// literal `content/sprites/<stem>.spritedef.ron` shape the GTW-663 loader dispatches on
 /// (pinning the LITERALS is the drift alarm — GTW-621), with the `unnamed_sprite`
 /// fallback for a name that sanitizes to nothing.

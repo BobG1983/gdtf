@@ -131,7 +131,7 @@ crate::support_item! {
 crate::support_item! {
     /// Marks the weapon panel's **LIVE Reload button** (GTW-275 — NOT a `DisabledButton`).
     /// A press pushes [`ActIntent::Reload`](gdtf_battle_input::ActIntent::Reload) onto the
-    /// shared act-intent seam (the action-bar button precedent). Shown when the weapon has a
+    /// shared act-intent queue (the action-bar button precedent). Shown when the weapon has a
     /// magazine (`size > 0`), else [`Visibility::Hidden`] (mutated, never despawned). A unit
     /// marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]

@@ -1,4 +1,4 @@
-//! The area-damage-fields content family (GTW-545, generic seam since GTW-570).
+//! The area-damage-fields content family (GTW-545, generic machinery since GTW-570).
 
 use gdtf_assets::{ContentFamily, ContentFileStem};
 use gdtf_battle_sim::effects::fields::{FieldDef, FieldDefRegistry, FieldKey};

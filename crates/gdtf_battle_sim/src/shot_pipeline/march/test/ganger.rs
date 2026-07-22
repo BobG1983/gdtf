@@ -99,7 +99,7 @@ fn upper_shooter_march_terminates_on_stair_upper_cell() {
 /// A stair occupant's lower cell carries its actual stance band (e.g. `High` for
 /// Standing); `register_stair_presence` writes the upper `(cell, level+1)` with `Low`.
 /// A flat shot from level z through the lower cell must terminate on the lower-cell
-/// band, not the upper, proving the lower path is byte-for-byte identical to a
+/// band, not the upper, proving the lower path is identical to a
 /// non-stair control.
 #[test]
 fn ground_shooter_resolves_lower_band_unchanged() {

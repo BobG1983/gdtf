@@ -144,7 +144,7 @@ impl Default for ThemeDraft {
 /// Why a theme save was REJECTED — the handled, no-panic failure of the theme save path
 /// (GTW-475). A named domain enum (no-bare-types). `pub` because the `pub`
 /// [`serialize_theme_def`](crate::serialize_theme_def) returns it (the C7 tests reuse the
-/// projection + serialization seam).
+/// projection + serialization path).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SaveThemeError {
     /// The author entered no display name (an empty / whitespace-only field) — there is no
@@ -156,14 +156,14 @@ pub enum SaveThemeError {
     /// No default floor is chosen, or the chosen one is not in the theme's own terrain palette
     /// (C6 — a saved theme's default floor MUST be one of its terrain UUIDs).
     DefaultFloorNotInTerrain,
-    /// The shared serialize/write tail failed (GTW-577 C3) — wraps the seam's
+    /// The shared serialize/write tail failed (GTW-577 C3) — wraps the shared serialize/write path's
     /// [`RonSaveError`](gdtf_assets::RonSaveError), whose `Display` names the failed stage.
     Save(gdtf_assets::RonSaveError),
 }
 
 impl From<gdtf_assets::RonSaveError> for SaveThemeError {
-    /// The per-type conversion off the shared seam error (GTW-577 C3) — lets the save path
-    /// `?` a seam failure straight into the form's error.
+    /// The per-type conversion off the shared serialize/write error (GTW-577 C3) — lets the save path
+    /// `?` a serialize/write failure straight into the form's error.
     fn from(err: gdtf_assets::RonSaveError) -> Self {
         Self::Save(err)
     }

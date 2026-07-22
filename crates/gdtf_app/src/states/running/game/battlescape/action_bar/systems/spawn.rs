@@ -64,10 +64,10 @@ impl BarGapVw {
 /// 3. Spawns the level-up / level-down buttons — each carrying its own marker so the action
 ///    systems' per-marker queries stay disjoint (the GTW-122 precedent).
 /// 4. Spawns the LIVE end-turn button (GTW-309) — an ENABLED button (NO `DisabledButton`)
-///    whose press pushes `ActIntent::EndTurn` on the shared 222a seam; see the marker docs.
+///    whose press pushes `ActIntent::EndTurn` on the shared 222a queue; see the marker docs.
 /// 5. Spawns the ENABLED [`FleeButton`] (GTW-240; labelled `"Flee"`, D-D) — an app/lifecycle
 ///    button (NO `DisabledButton`) whose press ends the persisting battle via the dedicated
-///    `flee_button_pressed` handler, not the sim intent seam (flee is not a sim act).
+///    `flee_button_pressed` handler, not the sim intent queue (flee is not a sim act).
 /// 6. Parents the four controls under the compact panel, then the panel under the wrapper root.
 ///
 /// GTW-298 RELOCATED the Stance 3-toggle sub-panel, the Aim toggle, and the Firemode 3-toggle
@@ -162,7 +162,7 @@ pub(in crate::states::running::game::battlescape) fn spawn_action_bar(
     // GTW-309: the end-turn button is now LIVE (the turn-cycle engine landed). It is an
     // ENABLED action-bar button (NO `DisabledButton`, so the `Without<DisabledButton>`
     // action filter now INCLUDES it) whose press pushes `ActIntent::EndTurn` onto the shared
-    // 222a seam — the same fieldless GLOBAL turn signal the keyboard surface pushes.
+    // 222a queue — the same fieldless GLOBAL turn signal the keyboard surface pushes.
     let end_turn = spawn_button(
         &mut commands,
         &theme,
@@ -172,7 +172,7 @@ pub(in crate::states::running::game::battlescape) fn spawn_action_bar(
 
     // The flee button — an ENABLED app/lifecycle button (NO DisabledButton, unlike the
     // deferred end-turn button above). Its press ends the persisting battle via the dedicated
-    // `flee_button_pressed` handler (GTW-240), NOT the sim intent seam (flee is not a sim act).
+    // `flee_button_pressed` handler (GTW-240), NOT the sim intent queue (flee is not a sim act).
     let flee = spawn_button(&mut commands, &theme, ButtonLabel::new("Flee"), FleeButton);
 
     // Parent the four controls under the compact PANEL (left-to-right), then parent the panel

@@ -1,5 +1,5 @@
 //! The shell's PRE-PANEL **egui texture-id resolution** — split out of `shell.rs` at
-//! the GTW-664 natural seam (module-layout bands): this block changes when a MODE's
+//! the GTW-664 natural boundary (module-layout bands): this block changes when a MODE's
 //! texture surface changes (a new preview, a new registered sheet), the shell when the
 //! PANEL layout does.
 //!

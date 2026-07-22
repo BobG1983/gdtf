@@ -54,7 +54,7 @@ fn shove_tagged_ranged_connect_knocks_target_back() {
 }
 
 /// A single-shot fire-mode spec matching the ranged test weapon's authored mode (the message
-/// carries an OWNED `FireModeSpec` — the input seam's shape).
+/// carries an OWNED `FireModeSpec` — the input layer's shape).
 const fn single_shot_mode() -> FireModeSpec {
     FireModeSpec::new(
         ModeKind::Single,

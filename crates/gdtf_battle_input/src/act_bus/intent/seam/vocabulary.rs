@@ -107,14 +107,14 @@ pub enum ActIntent {
     /// gangers (enemies excluded), sorts them by the SAME [`cell_order_key`](crate::selection::cell_order_key) the battle-start
     /// auto-select uses, finds the current selection's index, and `set_selection`s the wrapping
     /// `(i + 1) % n` neighbour. With NO selection it makes the FIRST; an EMPTY player gang is a
-    /// no-op. Both the `Tab` key and the on-bar Next button push this through the ONE seam
+    /// no-op. Both the `Tab` key and the on-bar Next button push this through the ONE queue
     /// (ADR-0001 — keys + buttons share one dispatch).
     SelectNext,
     /// CYCLE the [`SelectedShooter`](crate::SelectedShooter) to the PREVIOUS player ganger in `(z, y, x)` order,
     /// wrapping (GTW-458). The [`SelectNext`](Self::SelectNext) twin in reverse: it
     /// `set_selection`s the wrapping `(i + n - 1) % n` neighbour; with NO selection it makes
     /// the LAST; an EMPTY player gang is a no-op. `Shift+Tab` and the on-bar Prev button push
-    /// this through the ONE seam.
+    /// this through the ONE queue.
     SelectPrev,
     /// SELECT the carried ganger DIRECTLY as the [`SelectedShooter`](crate::SelectedShooter) — a
     /// by-entity actor pick, drained in [`dispatch_act_intents`](super::dispatch_act_intents)

@@ -105,14 +105,14 @@ fn wielded_weapon_scene(
     // GTW-544: the OPTIONAL DotProfile sibling — a DOT weapon spawns its `{ damage,
     // DamageType, turns }` profile as a sibling component the fire path reads to attach a
     // `Dot` on a penetrating hit. A `None` (a non-DOT weapon) resolves to an Option-scene
-    // no-op, so a non-DOT weapon spawns byte-identical. `DotProfile` derives Clone + Default
+    // no-op, so a non-DOT weapon spawns unchanged. `DotProfile` derives Clone + Default
     // (from_profile is never called here — the PROFILE is spawned, not a live Dot) so
     // `template_value` applies (the sibling precedent).
     let dot = siblings.dot().map(template_value);
     // GTW-547: the OPTIONAL OnDeath sibling — a weapon authoring an `on_death` effect spawns its
     // OnDeath component so `resolve_on_death` fans it when the wielding ganger dies. A `None` (a
     // weapon with no death effect) resolves to an Option-scene no-op, so it spawns
-    // byte-identical. `OnDeath` derives Clone + Default so `template_value` applies (the GTW-544
+    // unchanged. `OnDeath` derives Clone + Default so `template_value` applies (the GTW-544
     // DotProfile sibling precedent); it is cloned out of the borrowed record (not `Copy`).
     let on_death = siblings.on_death().cloned().map(template_value);
     // GTW-549: the PendingAttachments marker — the resolved effects of the weapon's fitted

@@ -1,7 +1,7 @@
-//! The reachable-range overlay seam + POPULATE system (GTW-387 C3): the input-crate half
+//! The reachable-range overlay resource + POPULATE system (GTW-387 C3): the input-crate half
 //! of the reachable-range draw.
 //!
-//! The presenter owns the [`ReachableCells`] read-seam + the draw system; this module
+//! The presenter owns the [`ReachableCells`] read resource + the draw system; this module
 //! POPULATES the presenter resource for the SELECTED ganger using
 //! [`reachable_within`](gdtf_battle_sim::pathfinder::reachable_within) — the SAME sim API the
 //! dispatch and test harnesses use. It is the ONLY place [`SelectedShooter`] feeds the

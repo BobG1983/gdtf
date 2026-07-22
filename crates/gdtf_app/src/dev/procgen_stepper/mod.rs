@@ -2,7 +2,7 @@
 //! the sim's staged procgen driver, shown at every battle load while active. Replaces the
 //! GTW-434 menu-invoked standalone procgen-visualizer scene (retired in the same change).
 //!
-//! See [`plugin`] for the wiring rationale and the module-doc walk-through of the seam.
+//! See [`plugin`] for the wiring rationale and the module-doc walk-through of the wiring.
 
 mod commands;
 mod drive;

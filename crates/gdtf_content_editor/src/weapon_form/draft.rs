@@ -6,7 +6,7 @@
 //! so the edited model IS the loader schema — projecting to the save is a copy, never a
 //! parallel schema (the GTW-636 gang-draft precedent: holding the loader type means
 //! every authored field round-trips by construction). Field edits flow through
-//! [`spec_mut`](WeaponDraft::spec_mut) — the one field-edit seam (the
+//! [`spec_mut`](WeaponDraft::spec_mut) — the one field-edit path (the
 //! `AttachmentDraft::spec_mut` parity); the list fields whose sim newtypes are
 //! construct-only ([`FireMode`] / [`WeaponSlots`](gdtf_battle_sim::equipment::attachments::WeaponSlots))
 //! are edited by projecting the authored list out, mutating it, and folding it back
@@ -106,7 +106,7 @@ enum AutoloadState {
 /// documented `GangDraft` `name` exception); it folds into a [`WeaponName`] on
 /// projection. The spec is the sim's own [`WeaponSpec`] record (see the module docs).
 /// Private fields with named accessors / mutators (no-bare-types rule 5);
-/// [`spec_mut`](WeaponDraft::spec_mut) is the one field-edit seam. NOT `Eq`: several
+/// [`spec_mut`](WeaponDraft::spec_mut) is the one field-edit path. NOT `Eq`: several
 /// spec fields carry an `f32`.
 #[derive(Resource, Clone, PartialEq, Debug)]
 pub struct WeaponDraft {
@@ -175,7 +175,7 @@ impl WeaponDraft {
         &self.spec
     }
 
-    /// The ONE field-edit seam (the `AttachmentDraft::spec_mut` parity): the form's
+    /// The ONE field-edit path (the `AttachmentDraft::spec_mut` parity): the form's
     /// controls write every authored field directly through the sim record, so the
     /// edited model IS the loader schema by construction.
     pub const fn spec_mut(&mut self) -> &mut WeaponSpec {

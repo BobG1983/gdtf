@@ -30,7 +30,7 @@ use bevy::prelude::{DetectChangesMut, Mut, Visibility};
 /// [`Mut`]`<Visibility>` WRAPPER (not a bare `&mut Visibility`) because merely
 /// deref-projecting through [`Mut`] would itself mark the component changed, defeating
 /// the fix. Non-visibility writes stay in the caller's `show` closure (a shown entity's
-/// transform / tint writes are the caller's business, unchanged by this seam).
+/// transform / tint writes are the caller's business, unchanged by this helper).
 ///
 /// # Draw-order determinism stays the caller's job
 ///
@@ -48,7 +48,7 @@ use bevy::prelude::{DetectChangesMut, Mut, Visibility};
 /// needs a flag splits back to bespoke.
 ///
 /// Closure-generic on purpose (NOT a `SystemParam`-/`Bundle`-generic type): the callers
-/// pool four different component tuples, and thin `FnMut` seams keep the helper oblivious
+/// pool four different component tuples, and thin `FnMut` callbacks keep the helper oblivious
 /// to what a pooled item is beyond its visibility projection (framework plumbing, the
 /// no-bare-types rule-4 carve-out).
 pub fn draw_pool<'v, Item, Draw>(

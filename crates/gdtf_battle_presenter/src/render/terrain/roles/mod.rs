@@ -1,4 +1,4 @@
-//! The terrain tile-role seam (GTW-566): the presenter's CLOSED [`TileRole`]
+//! The terrain tile-role vocabulary (GTW-566): the presenter's CLOSED [`TileRole`]
 //! vocabulary — one variant per authorable graphic-role key, the ONE place a
 //! graphic-role key is spelled in production Rust.
 //!
@@ -6,7 +6,7 @@
 //! (`TileRoles` + the `tile_roles.spritedef.ron` hot-RON chain): a graphic key
 //! now resolves through the sprite-def registry
 //! ([`resolve_sprite`](super::resolve::resolve_sprite)). The ENUM stays the
-//! closed renderer vocabulary/concern seam — the sim-fact → role fallback
+//! closed renderer vocabulary/concern boundary — the sim-fact → role fallback
 //! mapping, the editor's authorable-picker filter, and the prefab connector
 //! pairing all still classify through it.
 //!

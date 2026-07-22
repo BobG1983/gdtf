@@ -93,7 +93,7 @@ impl IncomingRequest {
         self.responder.reply(response);
     }
 
-    /// Split into the request and its responder — the router's destructuring seam.
+    /// Split into the request and its responder — the router's destructuring point.
     pub(super) fn into_parts(self) -> (QaRequest, Responder) {
         (self.request, self.responder)
     }

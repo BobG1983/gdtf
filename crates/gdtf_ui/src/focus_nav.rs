@@ -104,7 +104,7 @@ impl NavigateRequest {
 /// The focused entity has been activated (the player pressed `Enter` / gamepad
 /// South while it held focus).
 ///
-/// This is the activation seam: rather than calling into a menu action inline,
+/// This is the activation message: rather than calling into a menu action inline,
 /// the bridge emits this named [`Message`] newtype over the activated `Entity`.
 /// GTW-122 adds the [`MessageReader<FocusActivated>`](MessageReader) that turns
 /// an activation into a concrete menu effect, so the navigation layer and the

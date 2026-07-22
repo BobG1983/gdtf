@@ -171,7 +171,7 @@ pub fn apply_hit(
     // ADR-0004 / GTW-323), capturing the per-hit ArmorWearOutcome (Broke crossing /
     // Damaged reduction / Unaffected). A struck location with no protecting piece (bare
     // flesh — `integrity == None`) wears nothing, folding to Unaffected. The wear
-    // mutation itself is byte-identical to the pre-GTW-323 array-slot wear.
+    // mutation itself is identical to the pre-GTW-323 array-slot wear.
     let wear_outcome = match target.integrity {
         Some(integrity) => wear_armor(integrity, part, hit.wear, ganger),
         None => ArmorWearOutcome::Unaffected,

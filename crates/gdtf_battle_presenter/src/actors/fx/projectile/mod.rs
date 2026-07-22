@@ -33,7 +33,7 @@
 //!
 //! On arrival, [`advance_projectiles`](advance::advance_projectiles) spawns a
 //! [`PendingImpact`](pending::PendingImpact) at the arrival
-//! point carrying the shot's [`DamageType`](gdtf_battle_sim::weapon::DamageType) — the SEAM
+//! point carrying the shot's [`DamageType`](gdtf_battle_sim::weapon::DamageType) — the marker
 //! FX-B's [`animate_impact`](super::impact::animate_impact) reads to play the
 //! damage type's 3-frame impact animation there. FX-A only HANDS OFF the impact
 //! position + type; FX-B owns the animation.

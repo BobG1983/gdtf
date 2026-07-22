@@ -9,7 +9,7 @@
 //!   components; selecting a different ganger MUTATES in place (stable widget ids).
 //! - **AC6** — the LIVE Reload button is shown when the weapon has a magazine (`size > 0`),
 //!   hidden with no weapon; pressing it emits an `ActIntent::Reload` → `ReloadRequested`
-//!   through the `gdtf_battle_input` seam.
+//!   through the `gdtf_battle_input` act-intent queue.
 //! - **AC9** — no selection / no weapon → the weapon content is `Visibility::Hidden`.
 //! - **AC8** — the action-bar no longer carries a Reload button (the removed marker is gone).
 //! - **GTW-298 rework** — the cluster matches the AUTHORITATIVE structure: the Overall Weapon

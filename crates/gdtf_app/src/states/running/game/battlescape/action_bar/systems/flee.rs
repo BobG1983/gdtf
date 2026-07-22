@@ -2,11 +2,11 @@
 //!
 //! Flee is an APP/LIFECYCLE act, NOT a sim verb. Unlike the five sim-act buttons
 //! (`action_bar_button_intents` → the [`PendingActIntent`](gdtf_battle_input::PendingActIntent)
-//! seam), a flee press is NOT routed through the
+//! queue), a flee press is NOT routed through the
 //! [`dispatch_act_intents`](gdtf_battle_input::dispatch_act_intents) drain: that drain maps each
 //! [`ActIntent`](gdtf_battle_input::ActIntent) to a sim `*Requested` against the
 //! `SelectedShooter`, and flee has no actor, no TU, and no `*Requested` — routing it through the
-//! seam would force a fake non-sim `ActIntent` variant. So this is a SEPARATE handler that ends
+//! queue would force a fake non-sim `ActIntent` variant. So this is a SEPARATE handler that ends
 //! the battle directly: on a fresh press of the ENABLED [`FleeButton`] it inserts the existing
 //! `BattleRunningComplete` end-signal marker (via the typed
 //! [`insert_battle_running_complete`](crate::states::running::game::battlescape::battle_running::insert_battle_running_complete)
@@ -31,7 +31,7 @@
 //! live-battle witness the sim-act button system gates on — so a press is inert when no battle is
 //! live (it never inserts the marker). Unlike `action_bar_button_intents` it needs NO
 //! `.before(dispatch_act_intents)` ordering: it touches the lifecycle marker directly, never the
-//! intent seam.
+//! intent queue.
 
 use bevy::prelude::*;
 

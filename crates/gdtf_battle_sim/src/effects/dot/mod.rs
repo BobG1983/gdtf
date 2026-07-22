@@ -3,7 +3,7 @@
 //! bridges a penetrating DOT hit through, and the [`apply_dot`](crate::effects::dot::apply_dot) system that attaches (or
 //! REFRESHES) a [`Dot`](crate::weapon::Dot) on the struck ganger.
 //!
-//! The DOT model splits along the model/runtime line (mirroring the GTW-438 injury seam):
+//! The DOT model splits along the model/runtime line (mirroring the GTW-438 injury split):
 //!
 //! - The DECISION is PURE + in-fold: [`resolve_and_apply`](crate::resolve_and_apply::resolve_and_apply)
 //!   freezes the [`Dot`](crate::weapon::Dot) to attach onto

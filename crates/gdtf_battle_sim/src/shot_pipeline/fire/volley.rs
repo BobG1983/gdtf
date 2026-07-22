@@ -52,7 +52,7 @@ pub struct Volley {
     /// `i` template covered (its blast / cone / line), each already applied to the world
     /// through the same [`resolve_and_apply`](crate::resolve_and_apply::resolve_and_apply)
     /// path. EMPTY for every [`HitType::Single`](crate::weapon::HitType::Single) round, so
-    /// a non-`AoE` volley is byte-identical to the pre-GTW-541 result (the identity
+    /// a non-`AoE` volley is identical to the pre-GTW-541 result (the identity
     /// property). The struck-target HP / wound mutations are already applied; this vector
     /// EXPOSES the splash verdicts so the fire path can bridge each splashed ganger's
     /// injury signal (mirroring the primary report bridge).
@@ -151,7 +151,7 @@ pub fn fire(
     melee: &MeleeQuery,
     // GTW-543: the mounted-weapon marker probe — `read_shooter` PREFERS a mounted-marked
     // wielded weapon (the ganger manning an emplacement) over its own carried gun, and engages
-    // the emplacement stability seam for the resulting shot.
+    // the emplacement stability term for the resulting shot.
     mounted: &MountedQuery,
     mut grids: BattleGrids,
     tuning: &CombatTuning,

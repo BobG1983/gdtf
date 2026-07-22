@@ -1,7 +1,7 @@
 //! GTW-545 (area-damage fields, child GTW-41f of GTW-41) — the SEEDING path: a situation's
 //! authored `fields:` list is resolved against the [`FieldDefRegistry`] catalog and seeded into
 //! the live [`FieldRegistry`] resource by the REAL `setup_battle` (the authoritative pour), and
-//! the [`Situation`] `.ron` deserializes each field placement + stays byte-identical when the
+//! the [`Situation`] `.ron` deserializes each field placement + stays unchanged when the
 //! list is omitted.
 //!
 //! The clause contract this covers:
@@ -172,7 +172,7 @@ fn situation_without_fields_deserializes_to_an_empty_list() {
     if let Ok(situation) = parsed {
         assert!(
             situation.fields.is_empty(),
-            "an omitted `fields:` list defaults to empty (existing situations stay byte-identical)",
+            "an omitted `fields:` list defaults to empty (existing situations stay unchanged)",
         );
     }
 }

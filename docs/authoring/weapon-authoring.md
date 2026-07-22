@@ -179,7 +179,7 @@ non-shove weapon (`false`).
 default when omitted) or `Arc` (a lobbed grenade parabola with no LOS gate).
 Grenades and grenade launchers author `trajectory: Arc`.
 
-### 1j. `slots` and `attachments` — the attachment seam (GTW-554 / GTW-549, optional)
+### 1j. `slots` and `attachments` — the attachment fields (GTW-554 / GTW-549, optional)
 
 `slots:` declares WHICH attachment slots the weapon offers and how many
 attachments each holds, as a `(slot, capacity)` pair list, e.g.

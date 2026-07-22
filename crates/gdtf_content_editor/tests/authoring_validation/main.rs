@@ -7,7 +7,7 @@
 //! checks the game registers), so a dangling key authored in the editor
 //! surfaces on the [`ContentIntegrityReport`](gdtf_assets::ContentIntegrityReport)
 //! at authoring time, not on the next game launch. Each suite half also pins
-//! the LIVE half of authoring time: a hot-edit of loaded content (the seam
+//! the LIVE half of authoring time: a hot-edit of loaded content (the hot-reload
 //! redrive) RE-ARMS the pass — reset, re-check against the CURRENT content,
 //! re-publish.
 //!

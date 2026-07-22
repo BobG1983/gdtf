@@ -13,7 +13,7 @@
 //!   family's registry to prove it is genuinely gate-blocking.
 //! - **Tier (b)** — headless `DefaultPlugins` via `GdtfLoadTestAppBuilder`: a
 //!   real `AssetServer` drives the WHOLE production Load flow — the GTW-570
-//!   `register_content_family` seam loads the family's real folder from disk
+//!   `register_content_family` registration loads the family's real folder from disk
 //!   into its registry resource through the `AppState::Load` state machine.
 //!   The suite NEVER seeds the registry (seeding would mask the very
 //!   regression under test) and never re-implements the loader: existence of
@@ -34,7 +34,7 @@
 //!    add three one-line `#[test]`s invoking [`loader_no_ops_without_asset_server`],
 //!    [`load_gates_on_registry`], and [`real_asset_resolves_registry`].
 //! 2. Author the family's content folder under `assets/` (tier (b) reads the
-//!    real folder through the real seam — no fixture copy of shipped content).
+//!    real folder through the real loader — no fixture copy of shipped content).
 //! 3. NOTHING else — the family's ONE `register_content_family` line already
 //!    yields its loader, per-file salvage, validation-window membership, and
 //!    the headless fallback (the GTW-629 rider seeds `Registry::default()`
@@ -66,8 +66,8 @@ const TRANSITION_BUDGET: u32 = 32;
 const LOAD_SAFETY_NET: u32 = 10_000;
 
 /// The per-family parameters of the generic load suite: the family's
-/// [`ContentFamily`] marker (folder / extension / registry ride the seam
-/// trait) plus the value-agnostic projections the suite asserts through.
+/// [`ContentFamily`] marker (folder / extension / registry ride the trait)
+/// plus the value-agnostic projections the suite asserts through.
 ///
 /// Implemented by each wrapper file for its `gdtf_content_families` marker —
 /// the impl lives IN the wrapper so family N+1 never edits a shared file.
@@ -170,8 +170,8 @@ pub(crate) fn load_gates_on_registry<F: FamilyLoadContract>() {
     // The flip: with the registry seeded too, the SAME machine advances —
     // proving the registry was the one withheld gate condition. The seed
     // source only re-covers the BESPOKE gate resources (GTW-629 moved the
-    // seam-family arms out of `seed_load_fallbacks`), so the family's own
-    // registry is re-seeded directly — the SAME default the seam rider seeds
+    // content-family arms out of `seed_load_fallbacks`), so the family's own
+    // registry is re-seeded directly — the SAME default the family rider seeds
     // at registration (a build-time seed cannot re-run here).
     gate::seed_full_load_gate(&mut app);
     app.world_mut().insert_resource(F::Registry::default());
@@ -188,7 +188,7 @@ pub(crate) fn load_gates_on_registry<F: FamilyLoadContract>() {
 
 /// Tier (b) — with a real `AssetServer` rooted at the workspace `assets/`,
 /// entering `Load` loads the family's real folder through the GTW-570
-/// `register_content_family` seam end-to-end and builds its registry; each
+/// `register_content_family` registration end-to-end and builds its registry; each
 /// expected authored member key resolves, and the Load gate WAITED for the
 /// registry (the machine releases past `Load` with it present).
 ///
@@ -224,7 +224,7 @@ pub(crate) fn real_asset_resolves_registry<F: FamilyLoadContract>() {
             assert!(
                 F::member_resolves(registry, member),
                 "the {} must resolve the authored `{member}` member (loaded from the real `{}` \
-                 folder through the generic content-family seam)",
+                 folder through the generic content-family loader)",
                 registry_name::<F>(),
                 F::FOLDER,
             );

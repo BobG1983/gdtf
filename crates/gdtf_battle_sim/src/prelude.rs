@@ -10,7 +10,7 @@
 //! import sites at curation time). Grow it only for a type that is genuinely
 //! ubiquitous across consumer crates, never for import convenience.
 //!
-//! This is the ONE sanctioned cross-concern re-export surface below the crate
+//! This is the ONE cross-concern re-export surface below the crate
 //! root: the whole point of a prelude is to gather the ubiquitous names in
 //! one place, which the GTW-628 Q3 user ruling approved explicitly.
 

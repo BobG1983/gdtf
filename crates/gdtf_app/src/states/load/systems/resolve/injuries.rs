@@ -29,7 +29,7 @@ use crate::states::load::resources::{ActiveInjuriesFolderHandle, LoadHandles};
 
 /// GTW-437: builds the [`InjuryRegistry`] + [`InjuryTables`] from the loaded
 /// `assets/content/injuries/` folder — the GTW-257 weapons resolve shape (that family
-/// now rides the GTW-570 generic content-family seam) — one folder, two resources.
+/// now rides the GTW-570 generic content-family registration) — one folder, two resources.
 ///
 /// Called only while no [`InjuryRegistry`] resource exists yet (the caller's
 /// own-absence guard), independently of the other resolve branches:
@@ -38,7 +38,7 @@ use crate::states::load::resources::{ActiveInjuriesFolderHandle, LoadHandles};
 ///   [`RecursiveDependencyLoadState`]`::Loaded` (recursive, so every injury / weighting
 ///   `.ron` in the per-part + `weighting/` subfolders is loaded). On
 ///   [`RecursiveDependencyLoadState::Failed`] it `warn!`s and begins a PER-FILE SALVAGE
-///   (GTW-582 C4, through the ONE shared `gdtf_assets` salvage seam) — one salvage per
+///   (GTW-582 C4, through the ONE shared `gdtf_assets` salvage path) — one salvage per
 ///   asset type (defs + weightings), settled together — so one malformed injury file no
 ///   longer vanishes every sibling; each malformed member is recorded as a loud
 ///   [`MalformedFile`](gdtf_assets::ContentFinding::MalformedFile) finding. A folder that
@@ -132,7 +132,7 @@ pub(super) fn resolve_injuries(
 /// matching [`AssetEvent::Modified`](bevy::asset::AssetEvent::Modified) for ANY member
 /// `*.injury.ron` OR `*.weighting.ron` — the GTW-374 LIVE injury hot-reload, the
 /// injuries analogue of the GTW-257 weapons redrive (that family now rides the
-/// GTW-570 generic seam), generalised to one folder → two resources / two asset types.
+/// GTW-570 generic registration), generalised to one folder → two resources / two asset types.
 ///
 /// A folder load fans out into one `RonAsset<InjuryDef>` / `RonAsset<InjuryWeighting>`
 /// asset PER file, and a hot edit fires an [`AssetEvent`](bevy::asset::AssetEvent)`::Modified`

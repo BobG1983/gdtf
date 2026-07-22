@@ -113,7 +113,7 @@ pub(super) fn register_destruction_swaps(app: &mut App) {
     // GTW-666: the sprite-def hot-reload RESTAMP — when the SpriteDefRegistry changes (the
     // family redrive rebuilt it from a re-saved `.spritedef.ron`), every already-drawn tile
     // re-resolves its StampedGraphic key and re-applies texture/rect/anchor IN PLACE through
-    // the swaps' tick-quiet write seam. Same Scene stage + gates as the swaps; ordered
+    // the swaps' tick-quiet write path. Same Scene stage + gates as the swaps; ordered
     // explicitly AFTER the draw and the three swap writers (bevy-traps #3 — all five touch
     // Assets<TerrainFogMaterial>, so the shared-data order must be pinned, not ambient): on a
     // frame where a swap retargets AND the registry changed, the restamp re-resolves the

@@ -25,7 +25,7 @@
 //!
 //! Drives the REAL `Load` chain over a real `AssetServer`
 //! ([`GdtfLoadTestAppBuilder`]) — the salvage under test is the one the
-//! production seam runs.
+//! production loader runs.
 
 use std::path::PathBuf;
 

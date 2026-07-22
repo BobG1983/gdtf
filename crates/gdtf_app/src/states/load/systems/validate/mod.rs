@@ -5,7 +5,7 @@
 //! per-edge check systems below walk the WHOLE authored content graph and
 //! append a typed finding to the
 //! [`ContentIntegrityReport`](gdtf_assets::ContentIntegrityReport) for every
-//! reference that resolves nothing; the seam-owned publish then emits ONE
+//! reference that resolves nothing; the validation-owned publish then emits ONE
 //! consolidated loud report. Validation is LOUD, never fatal — it can never
 //! strand `Load` (the `audit_unweighted_injuries` precedent, generalized).
 //!

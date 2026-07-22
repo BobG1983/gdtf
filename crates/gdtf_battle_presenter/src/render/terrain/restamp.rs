@@ -5,7 +5,7 @@
 //! and re-applies texture / rect / anchor IN PLACE — the same entity, never a
 //! despawn + respawn (the GTW-631 registry-change restamp shape).
 //!
-//! Tick-quiet by construction (the GTW-627 write-seam discipline, shared with the
+//! Tick-quiet by construction (the GTW-627 tick-quiet write discipline, shared with the
 //! swap reactions through [`stamp_tile_quiet`]): an UNCHANGED def writes nothing —
 //! no material `get_mut`, no `Transform` re-dirty, zero `AssetEvent::Modified` —
 //! so a no-op registry touch or an unrelated-def change leaves unaffected tiles'
@@ -48,7 +48,7 @@ impl StampedGraphic {
 }
 
 /// Tick-quietly apply the resolved stamp for graphic `name` to ONE drawn tile at
-/// `at` — THE shared write seam (GTW-666) behind both the swap reactions'
+/// `at` — THE shared write helper (GTW-666) behind both the swap reactions'
 /// retarget and the registry-change restamp.
 ///
 /// Resolves `name` through the ONE GTW-665 resolution
@@ -100,7 +100,7 @@ pub(super) fn stamp_tile_quiet(
 /// save in the editor host) rebuilds the registry through the family redrive, and
 /// this system re-resolves each tile's [`StampedGraphic`] key against the new
 /// defs, re-applying texture / rect / anchor through the ONE tick-quiet write
-/// seam (`stamp_tile_quiet`): a tile whose def actually changed is re-stamped
+/// helper (`stamp_tile_quiet`): a tile whose def actually changed is re-stamped
 /// in place (mutate-not-respawn — the same entity survives), a tile whose def is
 /// unchanged is left with its change ticks untouched (the tick-quiet witness).
 /// On any frame the registry did NOT change it returns without touching a tile.
@@ -112,7 +112,7 @@ pub(super) fn stamp_tile_quiet(
 ///
 /// Param-only (`bevy-traps.md` #7): the [`SpriteResolveCtx`] resolution bundle,
 /// [`ResMut<Assets<TerrainFogMaterial>>`] (the in-place material retarget — the
-/// swap reactions' seam), and the stamped-tile query.
+/// swap reactions' write helper), and the stamped-tile query.
 pub fn restamp_tiles_on_def_change(
     resolve: SpriteResolveCtx,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,

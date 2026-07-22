@@ -1,5 +1,5 @@
 //! Hover-highlight draw layer: the presenter half of the GTW-251 message-driven
-//! hover-highlight seam.
+//! hover-highlight boundary.
 //!
 //! Per the repo's message-driven I/O boundary (`docs/` ADR-0001 — the presenter
 //! owns ALL sim→view drawing; the sim never reads the presenter) and the user's
@@ -17,7 +17,7 @@
 //! spawned lazily on the first request, moved to [`cell_to_world`](crate::cell_to_world) of
 //! the requested cell + shown on [`Some`], hidden on [`None`] — only the TRIGGER moved
 //! from a `Res<InspectTarget>` read to a [`MessageReader<HighlightRequest>`](bevy::ecs::message::MessageReader)
-//! drain. This is the seam GTW-259 (the gamepad cursor) builds on; this slice adds NO
+//! drain. This is the request path GTW-259 (the gamepad cursor) builds on; this slice adds NO
 //! gamepad read, NO new highlight style, and NO sim change.
 
 mod draw;

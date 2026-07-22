@@ -19,7 +19,7 @@ use crate::level::{GridSize, PrefabName, SpawnRole, ThemeUuid};
 /// Built through [`Prefab::new`], which runs **NO** opening validation — the schema
 /// carries no authored-opening field and no opening-rejection path, because
 /// inter-fragment connectivity is by-construction in the assembler (the 1-cell
-/// `default_floor` seam every placement reserves), not authored per-prefab and validated
+/// `default_floor` every placement reserves), not authored per-prefab and validated
 /// fail-closed (the old machinery was removed in GTW-497). An openingless prefab (a
 /// [`PrefabSpec`] carrying zero placements) is therefore a VALID `Prefab`. Holds the spec
 /// BY VALUE so it survives the loaded folder handle being dropped. `Clone` (it owns the

@@ -7,7 +7,7 @@
 //!
 //! Also pins the GTW-664 lifecycle riders: the editor reaches `Editing` with the
 //! `SpriteDefRegistry` gate resource present and the state-scoped `SpriteDraft` seeded
-//! (salvage / fallback behavior itself is the seam's parameterized family contract —
+//! (salvage / fallback behavior itself is the shared registration's parameterized family contract —
 //! `register_content_family::<SpriteDefsFamily>` inherits it, no per-family re-pin
 //! here). Re-arm on save is likewise NOT re-pinned: the editor's validation watch set
 //! already contains the `SpriteDefRegistry` (GTW-663, `validate/rearm.rs`), so a saved
@@ -170,7 +170,7 @@ fn saved_sprite_round_trips_through_the_real_sprite_defs_loader() {
 
     let world = app.world();
     // The state-scoped SPRITE draft seeded on entering Editing (bevy-traps #1 via the
-    // GTW-575 seam).
+    // GTW-575 shared registration).
     assert!(
         world.get_resource::<SpriteDraft>().is_some(),
         "the SpriteDraft must be seeded OnEnter(Editing)",

@@ -132,7 +132,7 @@ mod tests {
     }
 
     /// Run `effect.fan_at(at, …)` against a world holding `victims`, returning the cascade
-    /// deaths the fan pushed. Bare-`World` + `SystemState` is the sanctioned pure-sim
+    /// deaths the fan pushed. Bare-`World` + `SystemState` is the pure-sim
     /// unit-test idiom (`bevy-traps.md` #7 carve-out (b)) — the resolver's end-to-end path
     /// is proven by the `effects/on_death` suite.
     fn fan(

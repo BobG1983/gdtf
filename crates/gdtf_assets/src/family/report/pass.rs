@@ -24,7 +24,7 @@ use super::finding::ContentFinding;
 ///
 /// Init'd by [`ContentValidationAppExt`] (and by
 /// [`register_content_family`](crate::ContentFamilyAppExt::register_content_family),
-/// so the seam's salvage can record) and NEVER removed — it persists past `Load`
+/// so the per-file salvage can record) and NEVER removed — it persists past `Load`
 /// so post-`Load` findings (procgen fallbacks) land on the same record and tests
 /// can read it whole.
 #[derive(Resource, Debug, Default)]
@@ -148,8 +148,8 @@ pub fn publish_content_integrity_report(
     commands.insert_resource(ContentValidationDone);
 }
 
-/// One-call installation of the unified validation pass — the GTW-582 seam hook
-/// surface (gate directive P1: a new family's validation is ONE
+/// One-call installation of the unified validation pass — the GTW-582 registration
+/// trait (gate directive P1: a new family's validation is ONE
 /// [`register_reference_check`](Self::register_reference_check) call, never an
 /// edit to a shared walker).
 pub trait ContentValidationAppExt {

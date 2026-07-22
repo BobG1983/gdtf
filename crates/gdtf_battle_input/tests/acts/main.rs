@@ -1,6 +1,6 @@
 //! GTW-227 (GTW-48 S8 / 222b): headless integration tests for the core player ACTS —
 //! fire (left-click), posture (stance / aim / facing keys), and fire-mode selection —
-//! over the REAL 222a act-intent seam (`GdtfBattleInputPlugin`'s keyboard / fire-click
+//! over the REAL 222a act-intent queue (`GdtfBattleInputPlugin`'s keyboard / fire-click
 //! systems -> the ONE `dispatch_act_intents` drain -> the emitted `*Requested`).
 //!
 //! - AC1 drives the REAL selection path (synth left-click on an armed occupant) and

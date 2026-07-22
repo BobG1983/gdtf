@@ -23,7 +23,7 @@
 //! It is a general mechanic (runs a weapon's attachments at spawn), so it belongs with the
 //! attachment mechanics, NOT in the act runtime (`crate::acts`). Pure ECS side effect (`bevy-traps.md` #7 —
 //! query / [`Commands`](bevy::prelude::Commands), no `&mut World`); the effect closures'
-//! `EntityWorldMut` access is the ticket's sanctioned carve-out (see the
+//! `EntityWorldMut` access is the ticket's carve-out (see the
 //! [`crate::effects::attachments`] palette docs).
 
 use bevy::prelude::{Commands, Entity, Query};
@@ -49,7 +49,7 @@ use crate::weapon::PendingAttachments;
 ///
 /// A weapon with an EMPTY pending list (a weapon with no attachments) still matches the query
 /// on the frame its scene materialized; the loop applies nothing and the marker is removed —
-/// a no-op, so an un-attached weapon is byte-identical. Fail-safe: the effect closures NO-OP
+/// a no-op, so an un-attached weapon is identical. Fail-safe: the effect closures NO-OP
 /// on an absent target component (a mis-seeded weapon), never panic.
 ///
 /// `bevy-traps.md` #7 — query + [`Commands`] only, no `&mut World`. The removal is queued on

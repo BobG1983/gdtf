@@ -56,7 +56,7 @@ fn input_band_runs_before_sim_band() {
     app.add_plugins(MinimalPlugins)
         .add_plugins(GdtfBattleInputPlugin)
         .init_resource::<OrderLog>()
-        // The test owns the sim set's existence (the sanctioned alternative to adding
+        // The test owns the sim set's existence (the alternative to adding
         // `OccupancyMaintenancePlugin`, whose member systems would need battle-scoped
         // resources). `configure_sets` accumulates (`bevy-traps.md` #5).
         .configure_sets(Update, SimSystems::Simulate)

@@ -1,5 +1,5 @@
 //! The ONE cross-level-signals DERIVE system (GTW-596): reads the sim through the
-//! SAME pure fog seams [`present_fog`](crate::present_fog) /
+//! SAME pure fog queries [`present_fog`](crate::present_fog) /
 //! [`resolve_ganger_visibility`](crate::resolve_ganger_visibility) use, then
 //! aggregates + caps into the [`CrossLevelSignals`] resource.
 

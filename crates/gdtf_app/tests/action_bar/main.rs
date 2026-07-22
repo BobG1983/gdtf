@@ -1,6 +1,6 @@
 //! GTW-228 / GTW-265 / GTW-267 (GTW-48 S9 / 222c): headless integration tests for the
 //! themed UI action-bar — the `gdtf_app`-side button surface over the SAME 222a
-//! act-intent seam the keyboard surface writes, plus the GTW-267 Stance and GTW-265 Mode
+//! act-intent queue the keyboard surface writes, plus the GTW-267 Stance and GTW-265 Mode
 //! 3-toggle sub-panels that REPLACED the blind stance cycle and the fire-mode popup
 //! picker.
 //!

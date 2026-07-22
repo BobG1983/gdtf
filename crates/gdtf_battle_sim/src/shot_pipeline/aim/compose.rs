@@ -24,7 +24,7 @@ use crate::{
 /// via [`CoverLedger::peek`](crate::cover::CoverLedger::peek), never rebuilt), and
 /// calls the landed [`stability`] verbatim with that cover, the shooter's
 /// [`crate::ganger::Stance`], the caller-resolved [`StabilityTerms`], and the
-/// GTW-526 suppression seam. Returns the `(cone_mult, recoil_growth)` pair the §1a
+/// GTW-526 suppression term. Returns the `(cone_mult, recoil_growth)` pair the §1a
 /// cone chain reads.
 ///
 /// GTW-526: the suppression term is resolved HERE from the shooter's
@@ -32,7 +32,7 @@ use crate::{
 /// NEGATED tunable [`SuppressionStabilityPenalty`](crate::tuning::SuppressionStabilityPenalty)
 /// (a subtractive [`SuppressionStability`] term that LOWERS the score → a wider cone),
 /// an un-suppressed shooter passes [`SuppressionStability::none`] (the zero identity, so
-/// the score is byte-identical to before the seam). Both the HUD preview and E4.5
+/// the score is identical to before the term). Both the HUD preview and E4.5
 /// `fire()` reach `stability` through THIS composer, so both reflect the penalty.
 ///
 /// This **wraps** [`stability`], re-deriving none of the §1a math: the brace gate
@@ -49,7 +49,7 @@ use crate::{
 /// GTW-543 [`EmplacementStability`](crate::stability::EmplacementStability) mounted-gun
 /// points. Every field's [`Default`] is its zero identity, so a caller spells only
 /// the engaged terms (struct-update) and an all-default bundle scores
-/// byte-identical to a shot that predates every seam. This composer receives no
+/// identical to a shot that predates every term. This composer receives no
 /// [`crate::weapon::Weapon`] (only the shooter's ganger state), so the caller
 /// sources the weapon-side terms off the weapon it holds — the fire path builds ONE
 /// `terms` per round and feeds it to both [`cone_for`] and this recompute, keeping
@@ -74,13 +74,13 @@ pub fn stability_for(
     // GTW-526: resolve the suppression term from the shooter's Suppressed state. A
     // suppressed shooter loses the tunable penalty (NEGATED into a subtractive
     // contribution — a pinned shooter shoots wider); an un-suppressed shooter passes the
-    // zero identity, so its score is byte-identical to a run without this seam.
+    // zero identity, so its score is identical to a run without this term.
     let suppression = match shooter.suppressed {
         Some(_) => SuppressionStability::new(-*tuning.reaction.suppression_penalty),
         None => SuppressionStability::none(),
     };
     // Wrap the landed verb verbatim — the caller-resolved StabilityTerms carry every
-    // zero-identity seam term (stable / terrain brace / per-item brace / emplacement);
+    // zero-identity stability term (stable / terrain brace / per-item brace / emplacement);
     // only the shooter-derived suppression term is resolved here.
     stability(
         terms,
@@ -117,15 +117,15 @@ pub fn stability_for(
 /// [`StabilityTerms`] bundle (GTW-573 C7): the caller sources the weapon-side terms
 /// (the [`Stable`](crate::weapon::Stable) tag; the GTW-549 per-item
 /// [`WeaponBraceBonus`](crate::effects::attachments::WeaponBraceBonus) attachment, which SUPERSEDES
-/// the GTW-542 sight-stability seam — a sight now boosts AIM, not stability) off the
+/// the GTW-542 sight-stability term — a sight now boosts AIM, not stability) off the
 /// weapon it holds, the GTW-392 [`TerrainBraced`](crate::stability::TerrainBraced)
 /// decision off the live grids, and the GTW-543
 /// [`EmplacementStability`](crate::stability::EmplacementStability) term off the
 /// shooter's [`MountedWeapon`](crate::weapon::MountedWeapon) occupancy — building ONE
 /// `terms` value it feeds to BOTH this cone read and the recoil-recompute
 /// [`stability_for`], so the two stay consistent by construction. A term at its
-/// zero-identity [`Default`] leaves the cone byte-identical to a shot without that
-/// seam. `weapon` supplies only the cone-width factors here ([`BaseSpread`] /
+/// zero-identity [`Default`] leaves the cone identical to a shot without that
+/// term. `weapon` supplies only the cone-width factors here ([`BaseSpread`] /
 /// [`Kickback`]) — never a stability term, so `terms` has exactly one writer.
 /// `mode` is the selected fire mode's [`FireModeSpec`] (its
 /// [`crate::weapon::ModeConeMult`] is the firemode term); `prior_shots` is the count
@@ -147,7 +147,7 @@ pub fn cone_for(
 ) -> ConeAngle {
     // Step 1 — the stability read (faced cell + model cover, inside stability_for);
     // the caller-resolved StabilityTerms carry the stable / terrain-brace / per-item
-    // brace / emplacement seam terms (GTW-573 C7 — one bundle, one writer).
+    // brace / emplacement stability terms (GTW-573 C7 — one bundle, one writer).
     let (cone_mult, recoil_growth) = stability_for(shooter, terms, cover, tuning);
     // Step 2 — the aim term off the shooter's Aiming flag (read from tuning).
     let aim = aim_cone_mult(*shooter.aiming, &tuning.cone_stability);

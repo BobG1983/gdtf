@@ -1,6 +1,6 @@
 //! Regression (gate finding, GTW-596): [`draw_cross_level_signals`] must redraw
 //! when [`ActiveLevel`] changes even on the frame where the newly-derived
-//! [`CrossLevelSignals`] happens to be byte-identical to the old storey's set —
+//! [`CrossLevelSignals`] happens to be identical to the old storey's set —
 //! a badge's drawn Z-band is hard-cut to the active storey
 //! ([`cell_to_world_layered`]), so gating the redraw on
 //! `CrossLevelSignals::is_changed()` ALONE would leave a stale badge drawn at
@@ -117,7 +117,7 @@ fn active_level_change_alone_redraws_the_badge_at_the_new_storeys_z_band() {
 
     // Phase 2 — switch the active storey to 3: link B's lower endpoint is now
     // on-storey, deriving the SAME `ConnectorDelta(+3)` badge at the SAME cell —
-    // `CrossLevelSignals` must be byte-identical to phase 1's (never ticks
+    // `CrossLevelSignals` must be identical to phase 1's (never ticks
     // `Changed`), yet the drawn Z-band must follow the new active storey.
     *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(Level::new(3));
     settle(&mut app);

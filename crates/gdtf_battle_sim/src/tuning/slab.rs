@@ -47,7 +47,7 @@ impl Default for SlabDefaultHp {
 }
 
 /// The **slab-defaults table** — the uniform HP + armor every floor/roof slab lazily
-/// seeds to (the C7 combat-tuning seam, genuinely consumed by
+/// seeds to (the C7 combat-tuning data, genuinely consumed by
 /// [`SlabLedger::prototype_for`](crate::slab::SlabLedger::prototype_for)).
 ///
 /// One field per stat: the structural [`hp`](SlabDefaults::hp), and the slab's own
@@ -57,7 +57,7 @@ impl Default for SlabDefaultHp {
 /// damage formula resolves a slab hit the same way). Uniform across the whole level —
 /// slabs carry no per-piece authored data, so this is the sole HP/armor source for a
 /// struck slab. The accessors return the ledger-facing types (`SlabHp` / the armor
-/// newtypes) so the seam reads the same shape the cover prototype does. The magnitudes
+/// newtypes) so the ledger reads the same shape the cover prototype does. The magnitudes
 /// are **tunable** balance data; tests assert only the mechanism / parse.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub struct SlabDefaults {

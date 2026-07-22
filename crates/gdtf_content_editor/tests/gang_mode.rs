@@ -7,7 +7,7 @@
 //!
 //! Also pins the GTW-636 lifecycle riders: the editor reaches `Editing` with the
 //! `GangRegistry` + `MeleeWeaponRegistry` gate resources present and the state-scoped
-//! `GangDraft` seeded (salvage / fallback behavior itself is the seam's parameterized
+//! `GangDraft` seeded (salvage / fallback behavior itself is the shared registration's parameterized
 //! family contract — `register_content_family::<GangsFamily>` inherits it, no per-family
 //! re-pin here).
 
@@ -158,7 +158,7 @@ fn saved_gang_round_trips_through_the_real_gangs_family_loader() {
         "the MeleeWeaponRegistry gate resource must fail closed to EMPTY on this root",
     );
     // The state-scoped GANG draft seeded on entering Editing (bevy-traps #1 via the
-    // GTW-575 seam).
+    // GTW-575 shared registration).
     assert!(
         world.get_resource::<GangDraft>().is_some(),
         "the GangDraft must be seeded OnEnter(Editing)",

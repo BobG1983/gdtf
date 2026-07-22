@@ -78,7 +78,7 @@ fn default_is_pristine_and_load_armor_fills_the_form() {
 
 /// [`ArmorDraft::piece_mut`] addresses exactly the piece protecting the given part —
 /// an edit through it lands on that slot of the projected spec and nowhere else (the
-/// per-body-part rows edit through this seam).
+/// per-body-part rows edit through this accessor).
 #[test]
 fn piece_mut_edits_exactly_the_addressed_part() {
     let mut draft = ArmorDraft::new_armor();
@@ -97,7 +97,7 @@ fn piece_mut_edits_exactly_the_addressed_part() {
 }
 
 /// The GTW-636-parity identity round-trip through the ARMOR mode's projection: an
-/// edited draft → [`draft_to_spec`] → serialize (the shared pretty-RON seam) →
+/// edited draft → [`draft_to_spec`] → serialize (the shared pretty-RON writer) →
 /// deserialize the way `RonAsset<ArmorSpec>` does → reload into a fresh draft →
 /// structural equality. No pinned magnitudes — identity, not a number lock.
 #[test]
@@ -135,7 +135,7 @@ fn edited_armor_round_trips_through_the_loader_schema() {
 
 /// The save file name derives its compound suffix from [`ArmorFamily::EXTENSION`] (the
 /// one-owner extension discriminant — GTW-621), a path-hostile name sanitizes through
-/// the shared seam, and an unnameable armor falls back to the documented `unnamed_armor`
+/// the shared helper, and an unnameable armor falls back to the documented `unnamed_armor`
 /// stem; the resolved path lands under [`ArmorFamily::FOLDER`].
 #[test]
 fn save_file_name_and_path_derive_from_the_one_owner_spellings() {

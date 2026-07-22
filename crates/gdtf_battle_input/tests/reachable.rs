@@ -144,7 +144,7 @@ fn clears_reachable_when_no_selection() {
 
 /// GTW-450 C5(a) — flag OFF (the default): selecting a unit yields ZERO overlay cells.
 /// The populate system `run_if`s the `ReachableOverlayEnabled` flag VALUE, so with the
-/// flag `false` it NEVER runs and the read-seam stays empty even though a player ganger
+/// flag `false` it NEVER runs and the read resource stays empty even though a player ganger
 /// IS selected with TU budget over a reachable grid.
 ///
 /// PIN-DISCRIMINATION: this goes RED if the C3 flag `run_if` were dropped — then the
@@ -312,7 +312,7 @@ fn click_to_target_path_preview_still_works_with_overlay_off() {
         "the previewed route must reach the clicked target",
     );
 
-    // And the overlay itself stays EMPTY (flag OFF) — the two seams are independent.
+    // And the overlay itself stays EMPTY (flag OFF) — the preview and the overlay are independent.
     assert!(
         app.world().resource::<ReachableCells>().is_empty(),
         "the reachable overlay stays empty with the flag OFF even while the preview is shown",

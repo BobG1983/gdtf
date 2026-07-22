@@ -113,7 +113,7 @@ fn slab_def(tags: Vec<TerrainTag>) -> TerrainDef {
 /// (`LosBlocking::Full` → [`HeightBand::High`], the whole storey) REGARDLESS of its authored
 /// band: an untagged Low/Mid wall STILL occludes at High, because "walls occlude fully" is the
 /// GTW-587 model (in place of the pre-587 own-band derivation). Every SHIPPED wall authors
-/// `height_band: High`, so the High result is byte-identical for all shipped content (AC1); the
+/// `height_band: High`, so the High result is identical for all shipped content (AC1); the
 /// Mid/Low arms pin the NEW rule — a non-`High` untagged wall nonetheless derives `High`, which
 /// no shipped-content fixture would otherwise exercise.
 #[test]

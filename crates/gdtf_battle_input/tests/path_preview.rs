@@ -289,7 +289,7 @@ fn does_not_push_selection_or_target_into_sim() {
 
     // Selection + target live ONLY on the input-crate resources; the produced output is the
     // presenter-owned `PathPreview` (a regression that mirrored either into a sim resource
-    // would need a new sim resource — none exists; this pins the read-seam direction).
+    // would need a new sim resource — none exists; this pins the presenter-read direction).
     assert_eq!(
         **app.world().resource::<PathPreviewTarget>(),
         Some(goal),

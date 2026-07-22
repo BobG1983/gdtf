@@ -32,7 +32,7 @@ use super::types::{SaveThemeError, ThemeDraft};
 
 /// The `snake_case` slug for a theme, derived from its human display name — the TERRAIN form's
 /// `theme_dir` sibling, since GTW-577 a thin delegation to the shared
-/// [`gdtf_assets::sanitize_file_stem`] seam. Both the per-theme DIRECTORY and the file STEM
+/// [`gdtf_assets::sanitize_file_stem`] helper. Both the per-theme DIRECTORY and the file STEM
 /// key on this slug (`"Industrial Hive"` → `industrial_hive`), matching the shipped per-theme
 /// layout (`assets/content/terrain/underhive/underhive.terrain_theme.ron`).
 ///
@@ -88,12 +88,12 @@ pub fn draft_to_theme_def(draft: &ThemeDraft, key: ThemeUuid) -> UuidThemeDef {
 
 /// Serialize a built [`UuidThemeDef`] to its `.terrain_theme.ron`-shaped RON text — the SAME
 /// schema the GTW-487 theme loader (`resolve_theme_defs`) deserializes (C3/C5). Delegates to
-/// the shared [`serialize_ron_pretty`] seam (GTW-577 C2), so a saved def stays human-editable
+/// the shared [`serialize_ron_pretty`] helper (GTW-577 C2), so a saved def stays human-editable
 /// like the shipped `assets/content/terrain/**/*.terrain_theme.ron`.
 ///
 /// # Errors
 ///
-/// [`SaveThemeError::Save`] wrapping the seam's serialize failure.
+/// [`SaveThemeError::Save`] wrapping the shared serializer's failure.
 pub fn serialize_theme_def(def: &UuidThemeDef) -> Result<String, SaveThemeError> {
     serialize_ron_pretty(def).map_err(SaveThemeError::Save)
 }
@@ -134,14 +134,14 @@ pub fn validate_for_save(draft: &ThemeDraft) -> Result<(), SaveThemeError> {
 /// root so no test ever writes into the version-controlled `assets/` tree.
 ///
 /// Validates the draft (the C6 default-floor rule + a non-empty name + a non-empty palette),
-/// slugifies the display name to the dir + file stem (the shared seam), projects the draft to
+/// slugifies the display name to the dir + file stem (the shared helper), projects the draft to
 /// a [`UuidThemeDef`] keyed by `key`, and hands the serialize → mkdir → write chain to the
-/// shared [`gdtf_assets::write_ron_pretty`] seam (GTW-577 C2). Returns the resolved
+/// shared [`gdtf_assets::write_ron_pretty`] helper (GTW-577 C2). Returns the resolved
 /// [`PathBuf`] on success so the caller can log it; the C7 tests reuse the pure halves.
 ///
 /// # Errors
 ///
-/// Any [`SaveThemeError`] from validation or the seam's serialization / file write.
+/// Any [`SaveThemeError`] from validation or the shared helper's serialization / file write.
 #[cfg(debug_assertions)]
 pub fn write_theme_in(
     assets_root: &Path,
@@ -163,13 +163,13 @@ pub fn write_theme_in(
 /// (GTW-475 C5), or return the typed [`SaveThemeError`] (never a panic).
 ///
 /// Thin wrapper around [`write_theme_in`] that supplies the workspace `assets/` root
-/// ([`WORKSPACE_ASSETS_ROOT`]) — byte-identical paths for production callers (GTW-662 C3).
+/// ([`WORKSPACE_ASSETS_ROOT`]) — identical paths for production callers (GTW-662 C3).
 /// This is the function the egui Save button calls; the file lands exactly where the GTW-487
 /// theme loader (`resolve_theme_defs`) reads from.
 ///
 /// # Errors
 ///
-/// Any [`SaveThemeError`] from validation or the seam's serialization / file write
+/// Any [`SaveThemeError`] from validation or the shared helper's serialization / file write
 /// (see [`write_theme_in`]).
 #[cfg(debug_assertions)]
 pub fn write_theme(draft: &ThemeDraft, key: ThemeUuid) -> Result<PathBuf, SaveThemeError> {

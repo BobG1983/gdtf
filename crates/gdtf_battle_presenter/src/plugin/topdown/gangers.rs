@@ -37,7 +37,7 @@ use crate::{
 /// sim buffer at all), where such a gate would silently turn the whole ganger batch's
 /// life-state handling off. So the presenter registers this ONE sim-owned buffer
 /// idempotently here (`add_message` is a no-op when the sim's `BattleSimPlugin` already
-/// registered it in a real battle). It is the SINGLE sanctioned exception to the
+/// registered it in a real battle). It is the SINGLE exception to the
 /// never-`add_message`-a-sim-owned-buffer convention (GTW-572 C4 / GTW-623 C4) — pinned by
 /// `fx_draw/registrar_contract.rs`; every other sim-owned buffer a presenter system drains
 /// is gated `resource_exists::<Messages<M>>` and seeded by the sim (live play) or the

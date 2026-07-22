@@ -12,7 +12,7 @@ use crate::{
     },
 };
 
-/// One-call registration of a HOT-RELOADABLE RON resource — the GTW-564 seam.
+/// One-call registration of a HOT-RELOADABLE RON resource — the GTW-564 registration trait.
 ///
 /// Each method wires ONE chain: the [`RonAsset<T>`](crate::RonAsset) loader,
 /// the per-chain [`HotRonChain`] config, a `Startup` kick-off that stores the
@@ -24,7 +24,7 @@ use crate::{
 /// Registration SELF-GATES on an [`AssetServer`] being present (registering an
 /// asset without one panics), so a `MinimalPlugins` headless app skips the
 /// whole chain — no loader, no systems, no panic (`bevy-traps.md` #1) — the
-/// `register_ron_tables` precedent this seam replaces.
+/// `register_ron_tables` precedent this registration extension replaces.
 pub trait HotRonAppExt {
     /// Registers a PLAIN hot-RON chain: the payload IS the runtime resource
     /// (`Deserialize` + `Resource`), cloned straight out of the loaded asset.
@@ -77,7 +77,7 @@ pub trait HotRonAppExt {
         T: Resource<Mutability = Mutable>;
 
     /// Registers a hot-RON chain from an already-BUILT [`HotRonChain`] config —
-    /// the seam a SECOND host of a published chain installs through (GTW-579).
+    /// the method a SECOND host of a published chain installs through (GTW-579).
     ///
     /// The chain OWNER exports its config constructor (the ui theme's
     /// `theme_hot_ron_chain`) so

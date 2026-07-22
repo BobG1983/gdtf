@@ -182,7 +182,7 @@ fn resolve_steadiness(
     // GTW-549: resolve the additive per-item brace term off the weapon's optional
     // WeaponBraceBonus attachment (the SAME term the fire path reads) so a braced weapon
     // previews a tighter steadiness; a weapon with no brace resolves the zero identity
-    // (byte-identical readout).
+    // (identical readout).
     let brace_bonus = brace_bonus.copied().unwrap_or_else(WeaponBraceBonus::none);
     let cover = cover?;
     let tuning = tuning?;
@@ -207,7 +207,7 @@ fn resolve_steadiness(
     // GTW-543: the readout previews the shooter's OWN carried weapon (it resolves the ranged
     // weapon, not the emplacement mount), so the emplacement term stays at its zero-identity
     // DEFAULT (GTW-573 C7 — the StabilityTerms struct-update spells only the engaged terms) —
-    // the preview is byte-identical to before the seam. The AUTHORITATIVE mounted-shot
+    // the preview is identical to before this change. The AUTHORITATIVE mounted-shot
     // steadiness is applied by the sim `fire()` path; a mounted-weapon HUD preview is out of
     // this slice's scope.
     let (cone_mult, _recoil_growth) = stability_for(

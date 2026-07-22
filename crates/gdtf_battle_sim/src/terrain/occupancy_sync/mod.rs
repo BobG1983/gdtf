@@ -5,7 +5,7 @@
 //! `build_from_occupancy_input` constructor that pours an occupancy input into a
 //! fresh grid. That constructor is the **setup-time** pour, NOT the per-frame
 //! maintenance path: per the **change-driven grid maintenance** thesis (the
-//! GTW-6 / GTW-12 architectural ruling; the change-driven sim↔app seam recorded in
+//! GTW-6 / GTW-12 architectural ruling; the change-driven sim↔app boundary recorded in
 //! ADR-0001, `docs/decisions/0001-rust-bevy-rewrite.md`), the live
 //! battle keeps the grid current by reacting to the **changes** — a ganger moved,
 //! a ganger went down, a piece of cover was smashed — and editing the grid IN
@@ -22,7 +22,7 @@
 //!    its NEW one. Because `Changed<Position>` only ever yields the *new*
 //!    [`Position`](crate::ganger::Position), the system tracks each entity's
 //!    previously-synced slot in a [`PrevSlot`] component it writes itself — that is
-//!    how it knows which old slot to clear (the ticket-sanctioned "track the
+//!    how it knows which old slot to clear (the ticket's "track the
 //!    previous slot" approach).
 //! 2. [`sync_dead_gangers`] reacts to `Changed<`[`LifeState`](crate::ganger::LifeState)`>`
 //!    filtered to ONLY [`LifeState::Dead`](crate::ganger::LifeState::Dead): it clears

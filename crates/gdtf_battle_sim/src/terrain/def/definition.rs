@@ -32,7 +32,7 @@ impl TerrainDisplayName {
 /// A named newtype over `bool` (no-bare-types: an authored path-blocking decision is a domain
 /// value, not a bare boolean). Private inner + derived [`Deref`] (house style);
 /// `#[serde(transparent)]` round-trips it as the bare boolean wire form, so an authored
-/// `blocks_pathing: Some(true)` / `Some(false)` parses and re-serializes byte-identically to the
+/// `blocks_pathing: Some(true)` / `Some(false)` parses and re-serializes identically to the
 /// pre-newtype `Option<bool>` shape (and an omitted field stays `None`, RON-invisible for every
 /// shipped def). Resolved into the sim's typed
 /// [`PathBlocked`](crate::occupancy::PathBlocked) answer by
@@ -101,7 +101,7 @@ pub struct TerrainDef {
     /// (`Explode` / `LeaveField`), e.g. a fuel barrel that leaves a burning field when smashed.
     /// `#[serde(default)]` (defaulting to `None`) so an omitted field is a piece with no death
     /// effect: the field is OPT-IN (the `tags` `#[serde(default)]` precedent), so EVERY existing
-    /// terrain `.ron` — none of which author it — deserializes BYTE-IDENTICAL. Only a
+    /// terrain `.ron` — none of which author it — deserializes UNCHANGED. Only a
     /// destructible cover-like kind (`Cover` / `Wall` / `Emplacement`) meaningfully fires it;
     /// [`setup_battle`](crate::situation::setup_battle) seeds each cover piece's effect (keyed by
     /// cell) into the [`CoverOnDeathRegistry`](crate::effects::on_death::CoverOnDeathRegistry) that
@@ -120,7 +120,7 @@ pub struct TerrainDef {
     /// This lets path-blocking VARY per-def independently of the kind — a low railing that bars
     /// footfall, or a decorative wall you can walk through — WITHOUT a new sim kind (the
     /// terrain-authoring "Step 3" code excursion this ticket kills). `#[serde(default)]` keeps
-    /// every shipped `.ron` (none of which author it) byte-identical: an omitted field is
+    /// every shipped `.ron` (none of which author it) unchanged: an omitted field is
     /// `None` = pure kind default. Resolved by
     /// [`derives_path_blocking`](crate::terrain::def::derives_path_blocking) at battle setup.
     ///
@@ -140,7 +140,7 @@ pub struct TerrainDef {
     /// the whole storey), so the override is the [`LosBlocking`] enum, NOT a flat bool — a glass
     /// wall (blocks pathing, not sight) authors `blocks_pathing: Some(true)` +
     /// `blocks_los: Some(None)`.
-    /// `#[serde(default)]` keeps shipped `.ron` byte-identical. Resolved by
+    /// `#[serde(default)]` keeps shipped `.ron` unchanged. Resolved by
     /// [`derives_vision_occlusion`](crate::terrain::def::derives_vision_occlusion) at battle
     /// setup into the sim's height-aware
     /// [`VisionBlocking`](crate::occupancy::VisionBlocking) occluder surface.

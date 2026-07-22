@@ -118,7 +118,7 @@ fn spawn_weapon(world: &mut World) -> Entity {
         .id()
 }
 
-/// Applying NO effects leaves the weapon's stats byte-identical — the identity property (a
+/// Applying NO effects leaves the weapon's stats identical — the identity property (a
 /// weapon fitting a cosmetic / empty attachment is unchanged). Exercises the REAL commands
 /// path (queue → flush) with an empty list (no `attach_to_weapon` calls).
 #[test]
@@ -235,7 +235,7 @@ fn applies_every_pending_effect() {
 }
 
 /// An EMPTY pending list is the identity — the marker is still removed (one-shot) and no stat
-/// changes, so a weapon with no attachments is byte-identical.
+/// changes, so a weapon with no attachments is identical.
 #[test]
 fn empty_pending_list_is_the_identity() {
     let (mut app, weapon) = app_with_pending(Vec::new());

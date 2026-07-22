@@ -2,9 +2,9 @@
 //!
 //! Per ADR-0001 (the presenter owns ALL sim→view drawing; the sim never reads the
 //! presenter) and the `input → presenter → sim` dependency direction, the preview is
-//! split — the SAME split as the [`HighlightRequest`](crate::HighlightRequest) seam:
+//! split — the SAME split as the [`HighlightRequest`](crate::HighlightRequest) message:
 //!
-//! - the PRESENTER (this module) DEFINES the read-seam [`PathPreview`] resource (the
+//! - the PRESENTER (this module) DEFINES the read-side [`PathPreview`] resource (the
 //!   previewed [`find_path`](gdtf_battle_sim::pathfinder::find_path) route cells + its §48 total cost)
 //!   and the draw system [`draw_path_preview`] (the per-step route sprites + the C5
 //!   off-storey link-cell marker), hard-cut to the active storey, §53-dimmed on EXPLORED

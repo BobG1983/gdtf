@@ -1,4 +1,4 @@
-//! The UUID-keyed terrain-defs content family (GTW-487, generic seam since
+//! The UUID-keyed terrain-defs content family (GTW-487, generic machinery since
 //! GTW-570).
 
 use gdtf_assets::{ContentFamily, ContentFileStem};

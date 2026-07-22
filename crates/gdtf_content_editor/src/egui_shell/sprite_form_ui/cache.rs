@@ -50,7 +50,7 @@ impl SpritePreviewCache {
     /// Whether `path` names an existing FILE under the workspace `assets/` root — the
     /// source-field validity probe (GTW-664 C2's "validated text path"). Checked against
     /// [`WORKSPACE_ASSETS_ROOT`] (the same one-owner root the Save button writes under,
-    /// byte-identical to the editor's `AssetPlugin.file_path`), memoized per distinct
+    /// identical to the editor's `AssetPlugin.file_path`), memoized per distinct
     /// path. Editor-only tooling: the probe reads the developer's working tree, which
     /// is where the standalone editor runs by construction.
     pub(super) fn path_exists(&mut self, path: &SpriteImagePath) -> bool {
