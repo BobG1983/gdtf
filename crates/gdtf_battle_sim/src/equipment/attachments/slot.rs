@@ -17,9 +17,9 @@ use serde::{Deserialize, Serialize};
 ///
 /// CLOSED on purpose: the slot list is the fit-compatibility contract between weapons and
 /// items, so it is a Rust enum (a typo'd slot fails to parse), not an open string. Ranged
-/// weapons typically offer `Muzzle` / `Sight` / `Rail`; melee weapons offer `Counterweight` /
-/// `Pommel` — but the CLASS gating emerges from which slots a weapon declares, never from a
-/// class tag on the item.
+/// weapons typically offer `Muzzle` / `Sight` / `Rail` (and, for magazine-fed guns,
+/// `Magazine`); melee weapons offer `Counterweight` / `Pommel` — but the CLASS gating emerges
+/// from which slots a weapon declares, never from a class tag on the item.
 ///
 /// Derives [`Serialize`] + [`Deserialize`] (RON round-trip stable — authored as the bare
 /// variant name, e.g. `slot: Muzzle`), and `Hash`/`Eq`/`Copy` so occupancy bookkeeping can
@@ -30,9 +30,16 @@ pub enum AttachmentSlot {
     Muzzle,
     /// The sight dovetail — optics that concentrate the in-cone draw (Aim).
     Sight,
-    /// The utility rail — braces, drums, magazines, and jury-rigged mods (the
-    /// general-purpose mount, commonly multi-capacity).
+    /// The utility rail — braces, foregrips, and jury-rigged action mods (the
+    /// general-purpose mount, commonly multi-capacity). Magazine and ammo-feed items
+    /// have their own [`Magazine`](Self::Magazine) well.
     Rail,
+    /// The magazine well (GTW-584) — the mount for a magazine-fed gun's box magazines, drums,
+    /// and ammo feeds (capacity / reload / ammo-quality mods). Only ranged guns that actually
+    /// feed from a detachable magazine declare it; energy- and fluid-fed weapons (power cells,
+    /// plasma flasks, chem tanks) and melee weapons do not, so their magazine items find no
+    /// slot and are cleanly rejected.
+    Magazine,
     /// The melee counterweight socket — balance weights that change how a blade lands.
     Counterweight,
     /// The melee pommel — grip-end fittings on a hilted weapon.
@@ -43,10 +50,11 @@ impl AttachmentSlot {
     /// Every closed-vocabulary slot, in declaration order — the canonical enumeration a
     /// slot-picking UI iterates (GTW-670; the [`DamageType::ALL`](crate::weapon::DamageType::ALL)
     /// precedent), so the editor's combos never hand-copy the palette.
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Muzzle,
         Self::Sight,
         Self::Rail,
+        Self::Magazine,
         Self::Counterweight,
         Self::Pommel,
     ];
@@ -129,6 +137,7 @@ mod tests {
             AttachmentSlot::Muzzle,
             AttachmentSlot::Sight,
             AttachmentSlot::Rail,
+            AttachmentSlot::Magazine,
             AttachmentSlot::Counterweight,
             AttachmentSlot::Pommel,
         ] {

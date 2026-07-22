@@ -4,7 +4,7 @@
 //!
 //! Wiring-only module. The one-shot open-with-an-item seed lives in [`autoload`]; the
 //! RIGHT-panel field stack (load `ComboBox`, name field, New attachment / debug-only
-//! Save) lives in [`fields`]; the CENTRAL primary panel (display name, the closed 5-slot
+//! Save) lives in [`fields`]; the CENTRAL primary panel (display name, the closed 6-slot
 //! combo, and the EFFECTS LIST over the closed 13-effect palette — GTW-669 C2) lives in
 //! [`def_panel`], whose `GainFireMode` rows draw the SHARED
 //! [`fire_mode_edit`](super::fire_mode_edit) widget.

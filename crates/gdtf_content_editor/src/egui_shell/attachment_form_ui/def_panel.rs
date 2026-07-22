@@ -1,6 +1,6 @@
 //! The ATTACHMENT tab's CENTRAL item editor (GTW-669 C2) — the authored
 //! [`AttachmentSpec`](gdtf_battle_sim::equipment::attachments::AttachmentSpec) fields
-//! (display name / the closed 5-slot mount) plus the EFFECTS LIST over the closed
+//! (display name / the closed 6-slot mount) plus the EFFECTS LIST over the closed
 //! 13-effect palette: enum-driven rows (a variant combo + that variant's payload fields)
 //! with add/remove — the injury effects-list authoring shape drawn over the sim's own
 //! [`AttachmentEffect`] enum, with the `GainFireMode` payload drawing the SHARED
@@ -68,7 +68,7 @@ const fn effect_label(effect: &AttachmentEffect) -> &'static str {
 }
 
 /// Draw the ATTACHMENT-mode CENTRAL item editor (GTW-669 C2): the display-name field,
-/// the closed 5-slot combo, and the effects list (one enum-driven row per authored
+/// the closed 6-slot combo, and the effects list (one enum-driven row per authored
 /// effect over the closed 13-effect palette, add/remove — empty is legal). Each change
 /// folds through the matching sim newtype's constructor — the model stays typed end to
 /// end (the injury def-panel pattern).
@@ -93,7 +93,7 @@ fn identity_fields(ui: &mut egui::Ui, draft: &mut AttachmentDraft) {
     });
     ui.horizontal(|ui| {
         ui.label("Slot");
-        // The closed 5-slot palette is the sim's own canonical enumeration
+        // The closed 6-slot palette is the sim's own canonical enumeration
         // (`AttachmentSlot::ALL` — GTW-670 hoisted it beside `DamageType::ALL`, so the
         // WEAPON form's slots rows and this combo share one source).
         egui::ComboBox::from_id_salt("attachment_slot_combo")

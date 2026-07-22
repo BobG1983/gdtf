@@ -184,9 +184,11 @@ Grenades and grenade launchers author `trajectory: Arc`.
 `slots:` declares WHICH attachment slots the weapon offers and how many
 attachments each holds, as a `(slot, capacity)` pair list, e.g.
 `slots: [(Muzzle, 1), (Sight, 1), (Rail, 3)]`. The slot vocabulary is the
-closed `AttachmentSlot` enum: `Muzzle` / `Sight` / `Rail` (ranged) and
-`Counterweight` / `Pommel` (melee) — class gating EMERGES from the declared
-slots, never from a tag on the item. An omitted `slots:` field is the EMPTY
+closed `AttachmentSlot` enum: `Muzzle` / `Sight` / `Rail` / `Magazine` (ranged)
+and `Counterweight` / `Pommel` (melee) — class gating EMERGES from the declared
+slots, never from a tag on the item. Only a magazine-fed gun declares a
+`Magazine` slot (GTW-584); energy- and fluid-fed weapons omit it. An omitted
+`slots:` field is the EMPTY
 declaration: NO attachment fits (fail-closed — a thrown charge takes no
 fittings).
 

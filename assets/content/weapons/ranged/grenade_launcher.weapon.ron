@@ -33,5 +33,9 @@
     slots: [
         (Sight, 1),  // one sight dovetail (a lobbing optic)
         (Rail,  1),  // one utility rail mod
+        // GTW-584: a magazine-fed launcher — the fiction is explicit ("a shoulder-slung,
+        // magazine-fed launcher", "a 6-round magazine feeds repeated lobs"). One magazine
+        // well (capacity 1 — the launcher takes one magazine at a time).
+        (Magazine, 1),
     ],
 )

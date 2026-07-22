@@ -49,6 +49,12 @@
     slots: [
         (Muzzle, 1),  // one muzzle thread (a choke / bore device)
         (Sight,  1),  // one sight dovetail (an optic)
-        (Rail,   3),  // the long utility rail — capacity 3 (drums, braces, feeds together)
+        // GTW-584: capacity 3 UNCHANGED (the multi-cap Rail example) — but magazine drums /
+        // ammo feeds now live on the Magazine slot below, so the long rail hosts braces and
+        // jury-rigged utility mods.
+        (Rail,   3),  // the long utility rail — capacity 3 (braces + utility mods together)
+        // GTW-584: a belt/drum-fed heavy bolter feeds physical bolts — one ammo feed at the
+        // magazine well (capacity 1). Additive: it does NOT touch the multi-cap Rail above.
+        (Magazine, 1),
     ],
 )

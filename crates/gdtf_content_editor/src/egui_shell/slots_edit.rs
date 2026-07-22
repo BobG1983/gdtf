@@ -20,7 +20,7 @@ use gdtf_battle_sim::equipment::attachments::{
 };
 
 /// The SLOTS list — one row per authored `(slot, capacity)` declaration: the slot combo
-/// over the closed 5-slot palette ([`AttachmentSlot::ALL`] — the melee-typical
+/// over the closed 6-slot palette ([`AttachmentSlot::ALL`] — the melee-typical
 /// `Counterweight` / `Pommel` author naturally since the palette is closed, GTW-671 C2)
 /// and the capacity drag (the `u8` type's own range — no documented tighter bound),
 /// plus add/remove. An Add seeds the palette's first slot at capacity 1 (a deliberately

@@ -5,7 +5,10 @@
 // its `attachments:` list; both effects are applied to the spawned weapon post-spawn.
 (
     display_name: "Extended Magazine",
-    slot: Rail,  // GTW-554: clamps to the utility rail (the general-purpose mount) — the Rail slot
+    // GTW-584: re-slotted Rail -> Magazine. It IS a box magazine, so it belongs in the
+    // magazine well now that one exists (GTW-554 homed it on the Rail only because there was
+    // no Magazine slot yet). Fits only a magazine-fed gun declaring a Magazine slot.
+    slot: Magazine,
     effects: [
         ExtraAmmo(8),      // +8 magazine capacity — tunable
         ReloadTime(0.8),   // ×0.8 the weapon's reload_tu (< 1 = faster) — tunable

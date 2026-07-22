@@ -18,7 +18,7 @@
 
 use gdtf_app::test_support::{AppState, app_state};
 use gdtf_battle_sim::{
-    equipment::attachments::{AttachmentName, AttachmentRegistry, attachment_fits},
+    equipment::attachments::{AttachmentName, AttachmentRegistry, AttachmentSlot, attachment_fits},
     weapon::{MeleeWeaponRegistry, WeaponName, WeaponRegistry},
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
@@ -35,7 +35,9 @@ const LOAD_SAFETY_NET: u32 = 10_000;
 /// weapons authored (`scoped_sight` on `las_carbine`, `suppressor` on `stub_pistol`) resolve
 /// — both to the loaded attachment spec AND, transitively, to a NON-EMPTY effect list (so
 /// the live weapon references don't resolve to nothing at runtime). GTW-554: each shipped
-/// weapon's declared `slots:` must FIT the item it authors.
+/// weapon's declared `slots:` must FIT the item it authors. GTW-584: the re-slotted
+/// `extended_mag` (now `slot: Magazine`) fits a magazine-fed gun that declares a Magazine
+/// slot and is cleanly rejected by a melee weapon, through the same fit gate.
 #[test]
 fn shipped_weapon_attachment_keys_resolve_and_fit() {
     let mut app = GdtfLoadTestAppBuilder::new()
@@ -138,5 +140,47 @@ fn shipped_weapon_attachment_keys_resolve_and_fit() {
         melee_pair_fits,
         "the shipped `chainsword` must author the `butchers_weight` key AND declare the \
          Counterweight slot it occupies (the GTW-554 melee attachment support, live)",
+    );
+
+    // GTW-584: the Magazine slot, live through the same fit gate (extracted to keep this
+    // function under the line cap — it still runs on the real shipped registries).
+    assert_magazine_slot_fits_and_rejects(attachments, weapons, melee);
+}
+
+/// GTW-584 — the Magazine slot proven live through the shipped fit gate: a re-slotted
+/// magazine item (`extended_mag`, now `slot: Magazine`) FITS a magazine-fed gun that declares
+/// a Magazine slot (`stub_pistol`), and is cleanly REJECTED by a melee weapon offering only
+/// Counterweight / Pommel (`chainsword`). Value-agnostic: asserts the re-slot + the fit
+/// boolean, never a capacity magnitude.
+fn assert_magazine_slot_fits_and_rejects(
+    attachments: &AttachmentRegistry,
+    weapons: &WeaponRegistry,
+    melee: &MeleeWeaponRegistry,
+) {
+    let Some(mag_item) = attachments.spec(&AttachmentName::new("extended_mag".to_owned())) else {
+        unreachable!("the shipped `extended_mag` attachment must resolve from assets/");
+    };
+    assert_eq!(
+        mag_item.slot,
+        AttachmentSlot::Magazine,
+        "GTW-584: the shipped `extended_mag` must be re-slotted onto the Magazine well",
+    );
+
+    let mag_fits_ranged = weapons
+        .spec(&WeaponName::new("stub_pistol".to_owned()))
+        .is_some_and(|gun| attachment_fits(&gun.slots, &[], mag_item.slot).is_ok());
+    assert!(
+        mag_fits_ranged,
+        "GTW-584: the magazine-fed `stub_pistol` must declare a Magazine slot the \
+         `extended_mag` fits (fit-accepted through the real GTW-554 gate)",
+    );
+
+    let mag_rejected_by_melee = melee
+        .spec(&WeaponName::new("chainsword".to_owned()))
+        .is_some_and(|sword| attachment_fits(&sword.slots, &[], mag_item.slot).is_err());
+    assert!(
+        mag_rejected_by_melee,
+        "GTW-584: the melee `chainsword` offers no Magazine slot, so the `extended_mag` is \
+         cleanly rejected (wrong-slot rejection through the real gate)",
     );
 }

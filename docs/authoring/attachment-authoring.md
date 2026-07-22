@@ -37,7 +37,7 @@ multi-effect item):
 // Extended magazine — adds capacity AND speeds the reload.
 (
     display_name: "Extended Magazine",
-    slot: Rail,  // GTW-554: clamps to the utility rail — fits only a weapon declaring a Rail slot
+    slot: Magazine,  // GTW-584: the magazine well — fits only a magazine-fed gun declaring a Magazine slot
     effects: [
         ExtraAmmo(8),      // +8 magazine capacity — tunable
         ReloadTime(0.8),   // ×0.8 the weapon's reload_tu (< 1 = faster) — tunable
@@ -63,7 +63,8 @@ is closed on purpose — a typo'd slot fails to parse:
 |---------|-------|--------------|
 | `Muzzle` | Muzzle thread | Ranged — suppressors, chokes, bore devices |
 | `Sight` | Sight dovetail | Ranged — optics (Aim) |
-| `Rail` | Utility rail | Ranged — braces, drums, jury-rigged mods (commonly multi-capacity) |
+| `Rail` | Utility rail | Ranged — braces, foregrips, jury-rigged action mods (commonly multi-capacity) |
+| `Magazine` | Magazine well | Ranged — box magazines, drums, ammo feeds on a magazine-fed gun (GTW-584) |
 | `Counterweight` | Counterweight socket | Melee — balance weights |
 | `Pommel` | Grip-end pommel | Melee — hilt fittings |
 
@@ -72,9 +73,13 @@ EMERGES from which slots a weapon declares (a `Muzzle` item finds no slot on a
 chainblade). The weapon side authors `slots: [(Muzzle, 1), (Sight, 1),
 (Rail, 3)]` — see [weapon-authoring.md](weapon-authoring.md) §1j.
 
-**Forward note (GTW-584, post-epic):** a `Magazine` slot is planned but NOT
-built — do not author it; the five variants above are the whole live
-vocabulary today.
+**Magazine slot (GTW-584):** the `Magazine` well is live. Magazine / ammo-feed
+items — `extended_mag`, `gore_sump_drum`, `hexgrind_rounds` — occupy it, and
+only ranged guns that actually feed from a detachable magazine declare a
+`Magazine` slot (energy- and fluid-fed weapons — power cells, plasma flasks,
+chem tanks — and melee weapons do not, so their magazine items find no slot and
+are cleanly rejected). The `Magazine` SLOT (an attachment mount point) is
+distinct from GTW-775's `accepts:` AmmoType (what a weapon loads).
 
 ### 1d. `effects:` — the closed effect vocabulary
 

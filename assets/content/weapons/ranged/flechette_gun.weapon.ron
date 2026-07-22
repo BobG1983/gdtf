@@ -26,5 +26,9 @@
         (Muzzle, 1),  // one muzzle thread
         (Sight,  1),  // one sight dovetail
         (Rail,   2),  // a full-length utility rail — two mods at once
+        // GTW-584: a magazine-fed dart slinger — it slings solid Slug cartridges (razored
+        // darts) from a feed, emptying a full spray. One magazine/drum well (capacity 1 — a
+        // gun holds one magazine at a time).
+        (Magazine, 1),
     ],
 )

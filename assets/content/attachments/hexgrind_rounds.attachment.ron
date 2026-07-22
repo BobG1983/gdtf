@@ -4,7 +4,11 @@
 // by a weapon BY KEY in its `attachments:` list; applied to the weapon post-spawn.
 (
     display_name: "Hexgrind Rounds",
-    slot: Rail,  // GTW-554: a cursed-ammo feed clamped to the utility rail — the Rail slot
+    // GTW-584: re-slotted Rail -> Magazine. The name/fiction read as ammunition ("rounds", a
+    // cursed-ammo feed), so this loaded-ammunition item belongs in the magazine well, not on
+    // the general utility rail where GTW-554 parked it for lack of a Magazine slot. (This is
+    // the MOUNT point for an ammo feed, distinct from GTW-775's AmmoType `accepts:` gate.)
+    slot: Magazine,
     effects: [
         Penetration(6),  // +6 to the weapon's punch (armour ignored) — tunable
     ],

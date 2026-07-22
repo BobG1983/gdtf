@@ -5,7 +5,10 @@
 // multiplier, so > 1.0 makes the swap slower — the drum's bulk; < 1.0 would speed it).
 (
     display_name: "Gore-Sump Drum",
-    slot: Rail,  // GTW-554: the oversized drum hangs off the utility rail — the Rail slot
+    // GTW-584: re-slotted Rail -> Magazine. An oversized ammo drum is a magazine, so it
+    // belongs in the magazine well now that one exists (GTW-554 hung it off the Rail only
+    // because there was no Magazine slot yet). Fits only a gun declaring a Magazine slot.
+    slot: Magazine,
     effects: [
         ExtraAmmo(15),      // +15 magazine capacity — tunable
         ReloadTime(1.5),    // ×1.5 the reload_tu (> 1 = slower swap, the drum's bulk) — tunable

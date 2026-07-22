@@ -65,7 +65,7 @@ mod app;
 // where the GTW-269 armor loader reads (the GTW-636 Gang mode/form precedent).
 mod armor_form;
 // GTW-669: the ATTACHMENT authoring mode of the Workbench — the form that edits an
-// attachment item (display name / the closed 5-slot mount / the closed 13-effect list)
+// attachment item (display name / the closed 6-slot mount / the closed 13-effect list)
 // and saves it to `content/attachments/<name>.attachment.ron` where the GTW-619
 // attachments loader reads (the GTW-479 Armor mode/form precedent).
 mod attachment_form;

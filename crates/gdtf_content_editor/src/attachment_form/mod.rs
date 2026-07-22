@@ -1,5 +1,5 @@
 //! The ATTACHMENT authoring mode's MODEL half (GTW-669) — the Workbench form that edits
-//! an attachment item (`*.attachment.ron`: display name / the closed 5-slot mount / the
+//! an attachment item (`*.attachment.ron`: display name / the closed 6-slot mount / the
 //! closed 13-effect list — the GTW-549/554 authoring schema) and saves it where the
 //! GTW-619 [`AttachmentsFamily`](gdtf_content_families::AttachmentsFamily) folder loader
 //! reads.

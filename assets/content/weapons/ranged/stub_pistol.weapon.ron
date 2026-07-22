@@ -28,6 +28,10 @@
         (Muzzle, 1),  // one muzzle thread (the fitted suppressor occupies it)
         (Sight,  1),  // one sight dovetail (an optic)
         (Rail,   1),  // a short pistol rail — one utility mod
+        // GTW-584: a magazine-fed slug-thrower — the fiction is explicit ("let the whole
+        // magazine go full-auto"), and it accepts solid Slug cartridges. One box magazine
+        // well (a gun holds one magazine at a time, so capacity 1 is the deliberate value).
+        (Magazine, 1),
     ],
     // GTW-549: a threaded suppressor — references the `suppressor` attachment ITEM BY KEY. Its
     // effect (fit the Silenced tag so the shot propagates no suppression / reaction-reveal) is

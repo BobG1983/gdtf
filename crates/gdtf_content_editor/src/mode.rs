@@ -60,7 +60,7 @@ pub enum EditorMode {
     /// precedent).
     Sprite,
     /// ATTACHMENT authoring — edit an attachment item (`*.attachment.ron`: display
-    /// name / the closed 5-slot mount / the closed 13-effect list) and save it where
+    /// name / the closed 6-slot mount / the closed 13-effect list) and save it where
     /// the GTW-619 attachments folder loader reads (GTW-669; the GTW-479 Armor
     /// mode/form precedent).
     Attachment,
