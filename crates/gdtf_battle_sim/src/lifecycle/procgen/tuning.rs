@@ -70,6 +70,47 @@ impl Default for MinDensityFloor {
     }
 }
 
+/// The **maximum coverage cap** — the cell-coverage FRACTION (placed-prefab cells over total
+/// board cells) at or above which the fill pass STOPS drawing more prefabs, even if more would
+/// fit and the density floor has not yet been reached (GTW-767).
+///
+/// The upper-bound COMPANION to [`MinDensityFloor`]: the floor is the coverage the fill AIMS
+/// to reach; this cap is the coverage the fill must NOT exceed. The fill loop stops as soon as
+/// EITHER coverage reaches the floor OR coverage reaches this cap OR no further prefab fits —
+/// whichever comes first — so the level always keeps some open floor even where the space would
+/// admit still more fill. A dimensionless fraction in `0.0..=1.0`: keep it ABOVE the floor (a
+/// cap at or below the floor makes the floor dead, since the cap always wins first) and below
+/// `1.0` (a cap of `1.0` never binds, so the fill runs to exhaustion exactly as it did before
+/// this knob existed).
+///
+/// A distinct domain concept ⇒ its own newtype (no-bare-types rule 3): a coverage-cap fraction,
+/// never a bare `f32`, and distinct from the [`MinDensityFloor`] it sits above. Private inner +
+/// derived [`Deref`](bevy::prelude::Deref); `#[serde(transparent)]` parses a bare RON scalar.
+/// **Tunable** — tests assert only its relation / parse, never the magnitude.
+#[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+#[serde(transparent)]
+pub struct MaxCoverageCap(f32);
+
+impl MaxCoverageCap {
+    /// Build a coverage cap from its coverage fraction (tunable balance data).
+    #[must_use]
+    pub const fn new(fraction: f32) -> Self {
+        Self(fraction)
+    }
+}
+
+impl Default for MaxCoverageCap {
+    fn default() -> Self {
+        // 0.85 — a defensible STARTING POINT set ABOVE the 0.45 density floor: 0.40 of real
+        // headroom for the fill to build well past the floor target on a spacious board before
+        // the cap bites, yet low enough that a densely packable board still keeps roughly the
+        // top ~15% of its cells as open `default_floor` lanes for movement / LOS rather than
+        // packing wall-to-wall. Tunable balance data; value-agnostic tests only, never a pinned
+        // magnitude.
+        Self(0.85)
+    }
+}
+
 /// The **large-prefab area threshold** — the footprint AREA (in cells, width × height)
 /// at or above which a fill prefab is treated as "large" for the `FillLarge` pass that runs
 /// before the smaller-prefab fill (OQ-6).
@@ -174,6 +215,10 @@ pub struct ProcgenTuning {
     /// The minimum cell-coverage fraction the fill pass aims to reach (C1 termination
     /// target).
     pub min_density_floor:           MinDensityFloor,
+    /// The maximum cell-coverage fraction the fill pass may reach before it stops drawing
+    /// more prefabs (the GTW-767 upper bound; the fill stops at the floor, this cap, or when
+    /// nothing more fits — whichever comes first).
+    pub max_coverage_cap:            MaxCoverageCap,
     /// The footprint-area cut-off above which a fill prefab is "large" (the `FillLarge`
     /// pass).
     pub large_prefab_area_threshold: LargePrefabAreaThreshold,

@@ -3,7 +3,7 @@
 //! follows a tuning edit. NO shipped magnitude is pinned (the loader-test rule).
 
 use crate::procgen::{
-    DeadRectScatterCount, LargePrefabAreaThreshold, MinDensityFloor, ProcgenTuning,
+    DeadRectScatterCount, LargePrefabAreaThreshold, MaxCoverageCap, MinDensityFloor, ProcgenTuning,
 };
 
 /// The SHIPPED `assets/core_tuning/procgen.tuning.ron`, included from source for a
@@ -20,11 +20,25 @@ const SHIPPED_PROCGEN_TUNING_RON: &str = include_str!(concat!(
 #[test]
 fn fill_tuning_newtypes_wrap_inner_and_deref() {
     assert_eq!((*MinDensityFloor::new(0.7)).to_bits(), 0.7_f32.to_bits());
+    assert_eq!((*MaxCoverageCap::new(0.6)).to_bits(), 0.6_f32.to_bits());
     assert_eq!(*LargePrefabAreaThreshold::new(99), 99u32);
     assert_eq!(*DeadRectScatterCount::new(5), 5u8);
     // The integer-cast helpers expose the value for the fill arithmetic.
     assert_eq!(*LargePrefabAreaThreshold::new(99).area(), 99i64);
     assert_eq!(*DeadRectScatterCount::new(5).count(), 5usize);
+}
+
+/// The GTW-767 default coverage cap sits ABOVE the default density floor — a RELATION the cap
+/// must satisfy to be meaningful (a cap at or below the floor would make the floor dead, since
+/// the cap would always win first). Asserts only the ordering of the two defaults, never either
+/// magnitude (the loader-test rule), so it auto-follows a re-tune of either default.
+#[test]
+fn default_coverage_cap_sits_above_the_density_floor() {
+    let default = ProcgenTuning::default();
+    assert!(
+        *default.max_coverage_cap > *default.min_density_floor,
+        "the default coverage cap must sit strictly above the default density floor",
+    );
 }
 
 /// The shipped `procgen.tuning.ron` PARSES into a complete [`ProcgenTuning`] — serde

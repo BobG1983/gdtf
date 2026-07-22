@@ -14,8 +14,8 @@ use crate::{
     },
     metric::{Cell, CellLevel, Level},
     procgen::{
-        DeadRectScatterCount, LargePrefabAreaThreshold, MinDensityFloor, ProcgenFinding,
-        ProcgenTuning, generate_level,
+        DeadRectScatterCount, LargePrefabAreaThreshold, MaxCoverageCap, MinDensityFloor,
+        ProcgenFinding, ProcgenTuning, generate_level,
     },
     rng::{BattleSeed, ProcgenRng},
     terrain::def::TerrainUuid,
@@ -44,6 +44,9 @@ const GHOST_PIECE: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_0582_00
 fn tuning() -> ProcgenTuning {
     ProcgenTuning {
         min_density_floor:           MinDensityFloor::new(0.8),
+        // A non-binding cap (1.0 never fires): these findings tests predate GTW-767 and want
+        // the fill's floor/exhaustion termination unchanged.
+        max_coverage_cap:            MaxCoverageCap::new(1.0),
         large_prefab_area_threshold: LargePrefabAreaThreshold::new(49),
         dead_rect_scatter_count_k:   DeadRectScatterCount::new(2),
     }

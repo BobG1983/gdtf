@@ -17,7 +17,7 @@ use super::{
             error::PackingError,
             geometry::{CellCount, Margin, RegionRect},
             packer::{MaxRectsPacker, SplitMode},
-            tuning::{MinDensityFloor, ProcgenTuning, ScatterCount},
+            tuning::{MaxCoverageCap, MinDensityFloor, ProcgenTuning, ScatterCount},
         },
         outcome::FilledPlacement,
         passes::{
@@ -52,6 +52,9 @@ pub(in crate::lifecycle::procgen) struct FillCursor {
     small:       Vec<Prefab>,
     /// The minimum coverage fraction the large/small passes fill toward.
     floor:       MinDensityFloor,
+    /// The maximum coverage fraction the fill must not exceed — stops EVERY sub-pass early once
+    /// reached, even where more prefabs would still fit (GTW-767).
+    cap:         MaxCoverageCap,
     /// The per-dead-rect scatter cap `k`.
     scatter_k:   ScatterCount,
     /// The current sub-pass.
@@ -105,6 +108,7 @@ impl FillCursor {
             large,
             small,
             floor: tuning.min_density_floor,
+            cap: tuning.max_coverage_cap,
             scatter_k: tuning.dead_rect_scatter_count_k.count(),
             pass: FillPass::Large,
         })
@@ -174,6 +178,7 @@ impl FillCursor {
             fill,
             board_cells,
             floor,
+            cap,
             ..
         } = self;
         // Disjoint field borrows: the chosen bucket slice + `&mut packer` / `covered` / `fill`
@@ -185,8 +190,11 @@ impl FillCursor {
         if bucket.is_empty() {
             return SubPassStep::Done;
         }
-        // C1 termination: stop once the coverage fraction reaches the density floor (no draw).
-        if *coverage_fraction(*covered, *board_cells) >= **floor {
+        // Termination: stop once the coverage fraction reaches the density floor (C1) OR the
+        // GTW-767 max coverage cap — either bound, whichever comes first, ends the pass with no
+        // draw (so the cap check consumes no RNG, preserving determinism under a fixed cap).
+        let coverage = coverage_fraction(*covered, *board_cells);
+        if *coverage >= **floor || *coverage >= **cap {
             return SubPassStep::Done;
         }
         // The ONE draw per attempt.
@@ -218,6 +226,12 @@ impl FillCursor {
         if self.small.is_empty() || *self.scatter_k == 0 {
             return FillPass::Exhausted;
         }
+        // GTW-767: if the large/small passes already reached the coverage cap, do not scatter at
+        // all — the scatter sub-pass is coverage-blind by itself and would otherwise overshoot
+        // the cap.
+        if *coverage_fraction(self.covered, self.board_cells) >= *self.cap {
+            return FillPass::Exhausted;
+        }
         let slots = *dead_rect_count(&self.packer) * *self.scatter_k;
         if slots == 0 {
             return FillPass::Exhausted;
@@ -233,6 +247,11 @@ impl FillCursor {
     /// `return`).
     fn scatter_step(&mut self, scatter: &mut ScatterState, rng: &mut ProcgenRng) -> SubPassStep {
         if *scatter.slots_remaining == 0 {
+            return SubPassStep::Done;
+        }
+        // GTW-767: stop scattering the moment coverage reaches the cap, BEFORE the draw — a
+        // cap-driven `Done` consumes no RNG, so a fixed seed + cap yields the same level.
+        if *coverage_fraction(self.covered, self.board_cells) >= *self.cap {
             return SubPassStep::Done;
         }
         let Self {

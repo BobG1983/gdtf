@@ -18,8 +18,9 @@ use crate::{
     },
     metric::{Cell, CellLevel, Level},
     procgen::{
-        DeadRectScatterCount, FilledPlacement, LargePrefabAreaThreshold, MinDensityFloor,
-        MinPlayerSide, ProcgenTuning, SplitMode, assemble_placement_with, fill_placement_with,
+        DeadRectScatterCount, FilledPlacement, LargePrefabAreaThreshold, MaxCoverageCap,
+        MinDensityFloor, MinPlayerSide, ProcgenTuning, SplitMode, assemble_placement_with,
+        fill_placement_with,
     },
     rng::{BattleSeed, ProcgenRng},
     situation::Situation,
@@ -121,6 +122,9 @@ pub(in crate::lifecycle::procgen::test) fn tuning(
 ) -> ProcgenTuning {
     ProcgenTuning {
         min_density_floor:           MinDensityFloor::new(density),
+        // A non-binding cap (1.0 never fires): these emit / staged step-equivalence tests want
+        // the fill's floor/exhaustion termination unchanged from before GTW-767.
+        max_coverage_cap:            MaxCoverageCap::new(1.0),
         large_prefab_area_threshold: LargePrefabAreaThreshold::new(large_area),
         dead_rect_scatter_count_k:   DeadRectScatterCount::new(scatter_k),
     }

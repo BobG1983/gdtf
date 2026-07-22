@@ -81,5 +81,6 @@ pub use geometry::{
 pub use packer::{MaxRectsPacker, SplitMode};
 pub use staged::StagedProcgen;
 pub use tuning::{
-    DeadRectScatterCount, LargePrefabAreaThreshold, MinDensityFloor, ProcgenTuning, ScatterCount,
+    DeadRectScatterCount, LargePrefabAreaThreshold, MaxCoverageCap, MinDensityFloor, ProcgenTuning,
+    ScatterCount,
 };

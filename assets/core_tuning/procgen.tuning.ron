@@ -14,6 +14,13 @@
     // 1.0 = pack until nothing more fits. Bigger = a denser, more built-up level with fewer
     // open lanes. Default 0.45.
     min_density_floor:           0.45,
+    // The MAXIMUM cell-COVERAGE FRACTION the fill pass may reach before it STOPS drawing more
+    // fill prefabs — the upper-bound companion to min_density_floor. The fill stops as soon as
+    // coverage reaches the floor, reaches this cap, OR nothing more fits, whichever comes first,
+    // so the level always keeps some open floor. Keep it ABOVE min_density_floor (at/below it,
+    // the cap always wins and the floor is dead) and below 1.0 (at 1.0 it never binds and fill
+    // runs to exhaustion). Bigger = a denser level before the cap bites. Default 0.85.
+    max_coverage_cap:            0.85,
     // The footprint AREA (in cells, width × height) at/above which a fill prefab is "large"
     // and placed in the FillLarge pass FIRST (before the big contiguous free rectangles get
     // fragmented), ahead of the smaller-prefab fill. 64 ≈ an 8x8 footprint. Bigger = fewer
