@@ -35,4 +35,5 @@ mod melee;
 mod real_layout_harness;
 mod scaffold;
 mod shove;
+mod slot_keys;
 mod throw;

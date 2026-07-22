@@ -36,20 +36,48 @@ use gdtf_battle_sim::prelude::BattleInProgress;
 
 use crate::{InputSystems, SelectedShooter, intent::dispatch_act_intents};
 
+/// A contextual button's 1-based rank among the CURRENTLY-VISIBLE panel buttons
+/// (GTW-563) — the ordinal the digit slot-key binds to: digit N activates the Nth
+/// visible contextual button, left-to-right / slot order (the user's "number maps to
+/// number" rule).
+///
+/// Distinct from a button's fixed compile-time `PanelSlot` (the app-side panel layer):
+/// a `PanelSlot` is the stable column position of EVERY registered act (0-based,
+/// constant), while `SlotRank` is the DYNAMIC 1-based position among only the buttons
+/// visible THIS frame — so the act in `PanelSlot(3)` may be `SlotRank(2)` when only two
+/// lower-slot buttons show. The panel's ranking pass produces it (carried per button by
+/// the app's `VisibleSlotRank` component), and
+/// [`Keybinds::contextual_slot_key`](crate::Keybinds::contextual_slot_key) consumes it to
+/// resolve the bound digit key. A named newtype over the raw ordinal (no-bare-types); the
+/// inner is private and 1-based.
+#[derive(Deref, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct SlotRank(u8);
+
+impl SlotRank {
+    /// Wrap a 1-based visible-slot rank (1 = the topmost visible button).
+    #[must_use]
+    pub const fn new(rank: u8) -> Self {
+        Self(rank)
+    }
+}
+
 /// A CONTEXTUAL act's input-layer descriptor (GTW-571) — the compile-time contract the
 /// generic seam is stamped over, one impl per act (one vertical act module per crate
 /// layer, stitched by [`ContextualActAppExt::add_contextual_act`]).
 ///
-/// A contextual act is a button-only act on an OFFERED target (Execute / Stabilize /
-/// Melee / Shove / Open Door / Enter Emplacement / Exit Emplacement / Throw Grenade):
-/// the `gdtf_app` panel offers a target, a press pushes it onto the act's
-/// [`PendingContextualIntents`] queue, and the act's generic drain emits
-/// [`request`](Self::request)`(actor, target)` for the [`SelectedShooter`] as the actor.
-/// The descriptor carries what the eight acts actually VARY in at this layer — the
-/// target payload type and the sim `*Requested` message — and deliberately carries **NO
-/// keybind field**: contextual acts are button-only (GTW-571 Q8, ruled); revisit only
-/// through play discovery. The typed [`Keybinds`](crate::Keybinds) serde struct is
-/// untouched by this seam.
+/// A contextual act is activated on an OFFERED target (Execute / Stabilize / Melee /
+/// Shove / Open Door / Enter Emplacement / Exit Emplacement / Throw Grenade) EITHER by
+/// clicking its panel button OR by pressing the digit key bound to its visible SLOT
+/// (GTW-563: digit N activates the Nth currently-visible contextual button, 1-based). Both
+/// paths push the offered target onto the act's [`PendingContextualIntents`] queue, and
+/// the act's generic drain emits [`request`](Self::request)`(actor, target)` for the
+/// [`SelectedShooter`] as the actor. The descriptor carries what the eight acts actually
+/// VARY in at this layer — the target payload type and the sim `*Requested` message — and
+/// carries **NO per-act keybind field**: the keyboard binding is per-SLOT, not
+/// per-action (digit N maps to the Nth visible button, resolved at the `gdtf_app` panel
+/// layer through [`Keybinds::contextual_slot_key`](crate::Keybinds::contextual_slot_key)),
+/// so no act names its own key. This REVERSES the GTW-571 Q8 "button-only" ruling — the
+/// keyboard slot-bindings now coexist with mouse clicks, both feeding the one dispatch.
 pub trait ContextualAct: Send + Sync + 'static {
     /// The offered TARGET payload a press carries — a raw [`Entity`] handle for the
     /// entity-targeted acts, a [`CellLevel`](gdtf_battle_sim::metric::CellLevel) for the

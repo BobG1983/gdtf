@@ -12,7 +12,7 @@
 //! `docs/authoring/contextual-act-recipe.md`).
 
 use bevy::prelude::*;
-use gdtf_battle_input::contextual::ContextualAct;
+use gdtf_battle_input::contextual::{ContextualAct, SlotRank};
 use gdtf_ui::ButtonLabel;
 
 /// A CONTEXTUAL act's panel-layer descriptor (GTW-571) — what the eight acts vary in on
@@ -24,8 +24,12 @@ use gdtf_ui::ButtonLabel;
 /// The generic spawn / visibility / press systems are stamped over this trait by
 /// [`add_contextual_act_button`](super::registrar::ContextualPanelActAppExt::add_contextual_act_button)
 /// — compile-time generic registration, never a runtime descriptor table (P4). The
-/// descriptor carries NO keybind field: contextual acts are button-only (GTW-571 Q8,
-/// ruled).
+/// descriptor carries NO per-act keybind field, but the act is no longer button-only: since
+/// GTW-563 a keyboard DIGIT slot-key also activates it (digit N fires the Nth
+/// currently-visible button). That binding is per-SLOT, not per-action — the ranking pass
+/// numbers the visible buttons and each per-act press router resolves its digit from THIS
+/// button's [`VisibleSlotRank`] — so it needs no descriptor field (this reverses the
+/// GTW-571 Q8 "button-only" ruling).
 pub(in crate::states::running::game::battlescape) trait ContextualPanelAct:
     ContextualAct
 {
@@ -75,6 +79,43 @@ impl ContextualActButton {
     #[must_use]
     pub(in crate::states::running::game::battlescape) const fn new(slot: PanelSlot) -> Self {
         Self(slot)
+    }
+}
+
+/// A contextual-act button's 1-based rank among the CURRENTLY-VISIBLE buttons (GTW-563),
+/// or [`None`] when the button is not visible this frame (unranked).
+///
+/// The keyboard slot-binding's per-button state: the act-agnostic
+/// [`rank_visible_contextual_buttons`](super::systems::rank_visible_contextual_buttons)
+/// pass writes each visible button its 1-based position in [`PanelSlot`] order (mutate in
+/// place, write-on-change), and the per-act
+/// [`press_contextual_button_via_key`](super::systems::press_contextual_button_via_key)
+/// reads it to resolve which digit key activates THIS button (digit N = the Nth visible
+/// button). A named newtype over the optional [`SlotRank`] (no-bare-types; the inner is
+/// private, read through [`rank`](Self::rank)). Unranked while hidden, so a digit press
+/// against a not-visible button matches nothing and dispatches nothing.
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub(in crate::states::running::game::battlescape) struct VisibleSlotRank(Option<SlotRank>);
+
+impl VisibleSlotRank {
+    /// The unranked state — the button is not currently visible (the spawn default).
+    #[must_use]
+    pub(in crate::states::running::game::battlescape) const fn unranked() -> Self {
+        Self(None)
+    }
+
+    /// Wrap a possibly-unranked visible-slot rank.
+    #[must_use]
+    pub(in crate::states::running::game::battlescape) const fn new(rank: Option<SlotRank>) -> Self {
+        Self(rank)
+    }
+
+    /// This button's current 1-based visible rank, or [`None`] when it is unranked
+    /// (hidden). The read-point the per-act digit-press system resolves its key from.
+    /// By value — the newtype is a two-byte `Copy` (`trivially_copy_pass_by_ref`).
+    #[must_use]
+    pub(in crate::states::running::game::battlescape) const fn rank(self) -> Option<SlotRank> {
+        self.0
     }
 }
 

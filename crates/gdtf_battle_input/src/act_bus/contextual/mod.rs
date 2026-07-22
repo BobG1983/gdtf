@@ -13,7 +13,7 @@
 mod seam;
 
 pub use seam::{
-    ContextualAct, ContextualActAppExt, ContextualActSystems, PendingContextualIntents,
+    ContextualAct, ContextualActAppExt, ContextualActSystems, PendingContextualIntents, SlotRank,
     configure_contextual_act_drains, drain_contextual_intents,
 };
 

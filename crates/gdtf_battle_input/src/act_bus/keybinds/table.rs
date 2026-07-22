@@ -5,8 +5,31 @@ use bevy::prelude::*;
 use gdtf_assets::HotRonAppExt;
 use serde::Deserialize;
 
+use crate::contextual::SlotRank;
+
 /// The path of the loose keybind RON, relative to the asset source root.
 const KEYBINDS_RON_PATH: &str = "core_tuning/keybinds.tuning.ron";
+
+/// The fixed contextual-slot digit vocabulary (GTW-563): index `i` (0-based) holds the
+/// [`BoundKey`] that activates visible slot rank `i + 1` — digit N activates the Nth
+/// currently-visible contextual button (the user's "number maps to number" rule).
+///
+/// Nine entries — headroom over the eight registered contextual acts. Unlike the authored
+/// ACT keys this mapping is NOT a tunable table field: the slot→digit correspondence is
+/// fixed by the UX rule (a per-slot RON field would let an author break slot = number).
+/// Each entry still resolves its concrete [`KeyCode`] through [`BoundKey::key_code`], so no
+/// [`KeyCode`] literal is ever named at a call site.
+const CONTEXTUAL_SLOT_KEYS: [BoundKey; 9] = [
+    BoundKey::KeyDigit1,
+    BoundKey::KeyDigit2,
+    BoundKey::KeyDigit3,
+    BoundKey::KeyDigit4,
+    BoundKey::KeyDigit5,
+    BoundKey::KeyDigit6,
+    BoundKey::KeyDigit7,
+    BoundKey::KeyDigit8,
+    BoundKey::KeyDigit9,
+];
 
 /// The authored key vocabulary — the named keys a [`Keybinds`] leaf can bind.
 ///
@@ -41,6 +64,24 @@ pub enum BoundKey {
     KeyBracketLeft,
     /// The bracket-right `]` key.
     KeyBracketRight,
+    /// The `1` digit key (contextual slot 1 — GTW-563).
+    KeyDigit1,
+    /// The `2` digit key (contextual slot 2 — GTW-563).
+    KeyDigit2,
+    /// The `3` digit key (contextual slot 3 — GTW-563).
+    KeyDigit3,
+    /// The `4` digit key (contextual slot 4 — GTW-563).
+    KeyDigit4,
+    /// The `5` digit key (contextual slot 5 — GTW-563).
+    KeyDigit5,
+    /// The `6` digit key (contextual slot 6 — GTW-563).
+    KeyDigit6,
+    /// The `7` digit key (contextual slot 7 — GTW-563).
+    KeyDigit7,
+    /// The `8` digit key (contextual slot 8 — GTW-563).
+    KeyDigit8,
+    /// The `9` digit key (contextual slot 9 — GTW-563).
+    KeyDigit9,
 }
 
 impl BoundKey {
@@ -65,6 +106,15 @@ impl BoundKey {
             Self::KeyPageDown => KeyCode::PageDown,
             Self::KeyBracketLeft => KeyCode::BracketLeft,
             Self::KeyBracketRight => KeyCode::BracketRight,
+            Self::KeyDigit1 => KeyCode::Digit1,
+            Self::KeyDigit2 => KeyCode::Digit2,
+            Self::KeyDigit3 => KeyCode::Digit3,
+            Self::KeyDigit4 => KeyCode::Digit4,
+            Self::KeyDigit5 => KeyCode::Digit5,
+            Self::KeyDigit6 => KeyCode::Digit6,
+            Self::KeyDigit7 => KeyCode::Digit7,
+            Self::KeyDigit8 => KeyCode::Digit8,
+            Self::KeyDigit9 => KeyCode::Digit9,
         }
     }
 }
@@ -168,6 +218,25 @@ impl Keybinds {
     #[must_use]
     pub const fn select_prev(&self) -> KeyCode {
         self.select_prev.key_code()
+    }
+
+    /// The digit [`KeyCode`] that activates contextual panel slot `rank` — the Nth
+    /// currently-visible contextual button, 1-based — or [`None`] when `rank` exceeds the
+    /// nine-digit vocabulary (GTW-563).
+    ///
+    /// The slot→digit mapping is FIXED (digit N activates slot N, the user's "number maps
+    /// to number" UX rule), so unlike the authored ACT keys it is a constant translation,
+    /// not a tunable table field — hence an ASSOCIATED function reading nothing off the
+    /// resident table (`Keybinds::contextual_slot_key(rank)`), backed by a fixed nine-key
+    /// digit vocabulary. It still resolves the concrete [`KeyCode`] through
+    /// [`BoundKey::key_code`], so no [`KeyCode`] literal is named at the call site.
+    #[must_use]
+    pub fn contextual_slot_key(rank: SlotRank) -> Option<KeyCode> {
+        // `rank` is 1-based; drop to the 0-based vocabulary index (rank 0 -> no key).
+        let index = (*rank).checked_sub(1)?;
+        CONTEXTUAL_SLOT_KEYS
+            .get(usize::from(index))
+            .map(|key| key.key_code())
     }
 }
 

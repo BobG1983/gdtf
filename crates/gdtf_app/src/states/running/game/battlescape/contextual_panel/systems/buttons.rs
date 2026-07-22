@@ -18,7 +18,7 @@ use gdtf_ui::{DisabledButton, spawn_button, theme::GdtfTheme};
 
 use crate::states::running::game::battlescape::contextual_panel::{
     components::ContextualPanelRoot,
-    seam::{ContextualActButton, ContextualOffer, ContextualPanelAct},
+    seam::{ContextualActButton, ContextualOffer, ContextualPanelAct, VisibleSlotRank},
 };
 
 /// Query filter selecting the ENABLED button carrying marker `M` whose [`Interaction`]
@@ -73,6 +73,9 @@ pub(in crate::states::running::game::battlescape) fn spawn_contextual_button<
         (
             A::Marker::default(),
             ContextualActButton::new(A::SLOT),
+            // Unranked at spawn (Hidden): the ranking pass assigns a 1-based visible rank
+            // once the act's toggle reveals the button (GTW-563).
+            VisibleSlotRank::unranked(),
             Visibility::Hidden,
         ),
     );

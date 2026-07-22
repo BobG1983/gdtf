@@ -5,8 +5,9 @@
 //! beside the action-bar / bottom-bar / weapon-panel plugins:
 //!
 //! - **Set vocabulary** — [`configure_contextual_panel_sets`] configures the panel's
-//!   `SystemSet`s ONCE (P5): the Update chain `Offer -> Toggle -> Press` (a press reads
-//!   the SAME update's freshly-scanned offer), `Offer.before(pick_hovered_cell)` (the
+//!   `SystemSet`s ONCE (P5): the Update chain `Offer -> Toggle -> Rank -> Press` (a press
+//!   reads the SAME update's freshly-scanned offer and freshly-computed visible-slot
+//!   ranks — GTW-563), `Offer.before(pick_hovered_cell)` (the
 //!   consumers-read-the-hover-before-the-picker-rewrites-it idiom), `Press.before(`the
 //!   input layer's [`ContextualActSystems::Drain`](gdtf_battle_input::contextual::ContextualActSystems)`)`
 //!   (the Q5 same-frame press -> `*Requested` edge), and the `OnEnter` chain
@@ -47,7 +48,8 @@ use crate::states::{
                 configure_contextual_panel_sets,
             },
             systems::{
-                despawn_contextual_panel, order_contextual_buttons, spawn_contextual_panel,
+                despawn_contextual_panel, order_contextual_buttons,
+                rank_visible_contextual_buttons, spawn_contextual_panel,
                 sync_panel_root_visibility,
             },
         },
@@ -91,10 +93,15 @@ impl Plugin for ContextualPanelPlugin {
         )
         .add_systems(
             Update,
-            // The panel root shows iff ANY act button is visible — ordered after the
-            // per-act toggles so it reads the SAME update's visibility writes.
-            sync_panel_root_visibility
-                .after(ContextualPanelSystems::Toggle)
+            (
+                // The panel root shows iff ANY act button is visible — ordered after the
+                // per-act toggles so it reads the SAME update's visibility writes.
+                sync_panel_root_visibility.after(ContextualPanelSystems::Toggle),
+                // GTW-563: the act-agnostic pass numbering the currently-visible buttons
+                // 1..N in slot order, so each per-act digit-key press (in the `Press` set,
+                // after `Rank`) can resolve the key bound to its button's rank.
+                rank_visible_contextual_buttons.in_set(ContextualPanelSystems::Rank),
+            )
                 .run_if(resource_exists::<BattleInProgress>),
         );
 

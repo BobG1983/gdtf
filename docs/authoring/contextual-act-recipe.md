@@ -1,9 +1,10 @@
 # Adding a contextual act — the recipe
 
-A **contextual act** is a button-only, target-carrying battlescape act: the panel
-offers a target while one is in reach (Execute / Stabilize / Melee / Shove / Open Door /
-Enter Emplacement / Exit Emplacement / Throw Grenade), a press buffers that target, and
-the sim's bespoke dispatch is the authoritative gate. Since GTW-571 the whole ritual is
+A **contextual act** is a target-carrying battlescape act: the panel offers a target
+while one is in reach (Execute / Stabilize / Melee / Shove / Open Door / Enter
+Emplacement / Exit Emplacement / Throw Grenade), a press — a mouse click on the button OR
+the digit key bound to its visible slot (GTW-563) — buffers that target, and the sim's
+bespoke dispatch is the authoritative gate. Since GTW-571 the whole ritual is
 descriptor + registrar shaped: **adding one act touches ONE new per-act module file per
 crate layer plus ONE registration line per layer** (plus that act's bespoke sim
 dispatch). There is no runtime descriptor table — registration is compile-time generic
@@ -41,9 +42,13 @@ frame (`ContextualPanelSystems::Press` → `ContextualActSystems::Drain` →
   message buffer (idempotent with the sim's), the buffered
   `PendingContextualIntents<A>` queue, and the generic drain in the ONE
   `ContextualActSystems::Drain` set.
-- The descriptor carries **no keybind field** — contextual acts are button-only
-  (GTW-571 Q8, ruled; revisit only through play discovery). The typed `Keybinds` serde
-  struct is untouched.
+- The descriptor carries **no per-act keybind field** — but the act is no longer
+  button-only. Since GTW-563 a keyboard DIGIT slot-key also activates it: digit N fires
+  the Nth currently-visible contextual button (the binding is per-SLOT, not per-action,
+  so it needs no descriptor field — the panel ranks the visible buttons and each per-act
+  digit-press router resolves its key from that rank via `Keybinds::contextual_slot_key`).
+  This reverses the GTW-571 Q8 "button-only" ruling; the keyboard slot-bindings coexist
+  with mouse clicks, both feeding the one `PendingContextualIntents<A>` dispatch.
 
 ### 3. App — the panel button (one file + one line)
 

@@ -62,7 +62,7 @@ pub use act_bus::sets;
 pub use act_bus::{
     contextual::{
         ContextualAct, ContextualActAppExt, ContextualActSystems, EnterEmplacementAct, ExecuteAct,
-        ExitEmplacementAct, MeleeAct, OpenDoorAct, PendingContextualIntents, ShoveAct,
+        ExitEmplacementAct, MeleeAct, OpenDoorAct, PendingContextualIntents, ShoveAct, SlotRank,
         StabilizeAct, ThrowGrenadeAct, drain_contextual_intents,
     },
     intent::{

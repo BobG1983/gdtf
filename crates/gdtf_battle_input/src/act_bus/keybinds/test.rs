@@ -8,7 +8,10 @@
 
 use bevy::prelude::*;
 
-use crate::keybinds::table::{BoundKey, Keybinds};
+use crate::{
+    contextual::SlotRank,
+    keybinds::table::{BoundKey, Keybinds},
+};
 
 /// AC7 — the shipped keybind RON deserializes through the generic
 /// `ron::from_str` path the loader uses, and every declared act name resolves
@@ -89,4 +92,37 @@ fn bound_key_resolves_to_its_key_code() {
     assert_eq!(BoundKey::KeyBracketLeft.key_code(), KeyCode::BracketLeft);
     assert_eq!(BoundKey::KeyBracketRight.key_code(), KeyCode::BracketRight);
     assert_eq!(BoundKey::KeyTab.key_code(), KeyCode::Tab);
+    // GTW-563 — the digit slot-key vocabulary.
+    assert_eq!(BoundKey::KeyDigit1.key_code(), KeyCode::Digit1);
+    assert_eq!(BoundKey::KeyDigit8.key_code(), KeyCode::Digit8);
+    assert_eq!(BoundKey::KeyDigit9.key_code(), KeyCode::Digit9);
+}
+
+/// GTW-563 — the FIXED slot→digit mapping: rank N (1-based) resolves to the Nth digit
+/// key, covering at least the current maximum of 8 registered contextual acts, and a rank
+/// past the nine-digit vocabulary resolves to `None` (a digit beyond the visible count
+/// binds to nothing). Fixed by the user's "number maps to number" UX rule, so unlike the
+/// authored act keys the magnitudes ARE pinned here.
+#[test]
+fn contextual_slot_key_maps_each_rank_to_its_digit() {
+    assert_eq!(
+        Keybinds::contextual_slot_key(SlotRank::new(1)),
+        Some(KeyCode::Digit1),
+        "visible slot rank 1 binds to Digit1",
+    );
+    assert_eq!(
+        Keybinds::contextual_slot_key(SlotRank::new(8)),
+        Some(KeyCode::Digit8),
+        "the 8th visible slot (the current max act count) binds to Digit8",
+    );
+    assert_eq!(
+        Keybinds::contextual_slot_key(SlotRank::new(9)),
+        Some(KeyCode::Digit9),
+        "the vocabulary has headroom to a 9th slot (Digit9)",
+    );
+    assert_eq!(
+        Keybinds::contextual_slot_key(SlotRank::new(10)),
+        None,
+        "a rank past the nine-digit vocabulary binds to nothing (no crash, no wrap)",
+    );
 }
