@@ -1,2 +1,6 @@
 /target
 **/.DS_Store
+mutants.out/
+mutants-runs/
+mutants_core.log
+run_mutants.py
