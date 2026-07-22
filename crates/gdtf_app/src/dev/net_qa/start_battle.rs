@@ -34,6 +34,15 @@ use crate::states::{AppState, RunningState, running::menu::StartBattleRequested}
 /// than written as a bare literal so the reason travels with the value.
 const CAUGHT_UP_AT_MENU: bool = true;
 
+/// The stepper-active fact reported on a `StartBattle` acknowledgement (GTW-766).
+///
+/// Always `false`: the acknowledgement is sent from the MENU, where no battle — and so no
+/// procgen-stepper drive — is in flight, so the DEV
+/// [`StepperControl`](gdtf_qa_protocol::envelope::QaRequest::StepperControl) is not among the
+/// affordances advertised there. Named rather than a bare literal so the reason travels with
+/// the value.
+const STEPPER_INACTIVE_AT_MENU: bool = false;
+
 /// The one authored situation the game currently ships — the stem of the Load scene's
 /// `content/situations/skirmish.ron`. `drive_start_battle` accepts a
 /// [`StartBattle`](gdtf_qa_protocol::envelope::QaRequest::StartBattle) naming this
@@ -105,7 +114,7 @@ pub(super) fn drive_start_battle(
         responder.reply(QaResponse::AppFlow(AppFlowView::new(
             app_state_to_net(app_state.get()),
             BattleActiveNet::new(in_battle),
-            available_requests(in_battle, CAUGHT_UP_AT_MENU),
+            available_requests(in_battle, CAUGHT_UP_AT_MENU, STEPPER_INACTIVE_AT_MENU),
             CaughtUpNet::new(CAUGHT_UP_AT_MENU),
         )));
     }

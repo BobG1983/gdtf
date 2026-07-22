@@ -41,7 +41,7 @@ use super::{
     listener::{bind_listener, run_listener},
     pending::{
         InjectPayload, OutputPayload, PendingQueue, ScreenshotAfterPayload, ScreenshotPayload,
-        SnapshotPayload, StartBattlePayload, sweep_pending,
+        SnapshotPayload, StartBattlePayload, StepperControlPayload, sweep_pending,
     },
     present::CapturePresentPlugin,
     router::route_requests,
@@ -49,6 +49,7 @@ use super::{
     screenshot_after::{AfterShotQueue, claim_screenshot_after, tick_after_shots},
     snapshot::build_snapshots,
     start_battle::drive_start_battle,
+    stepper::drive_stepper_control,
 };
 
 /// How a [`NetQaPlugin`] instance activates on `build`.
@@ -203,6 +204,8 @@ fn register_router(app: &mut App) {
         .init_resource::<PendingQueue<ScreenshotPayload>>()
         .init_resource::<PendingQueue<ScreenshotAfterPayload>>()
         .init_resource::<PendingQueue<StartBattlePayload>>()
+        // GTW-766 — the DEV stepper-drive command queue.
+        .init_resource::<PendingQueue<StepperControlPayload>>()
         // GTW-740 — the T7 screenshot pump's own state: the captures in-flight across
         // frames, the poll budget, the confinement directory, and the monotonic sequence
         // that makes every capture's output path unique.
@@ -231,6 +234,7 @@ fn register_router(app: &mut App) {
             sweep_pending::<SnapshotPayload>,
             sweep_pending::<OutputPayload>,
             sweep_pending::<StartBattlePayload>,
+            sweep_pending::<StepperControlPayload>,
             route_requests,
         )
             .chain()
@@ -337,6 +341,19 @@ fn register_router(app: &mut App) {
     app.add_systems(
         Update,
         drive_start_battle
+            .in_set(InputSystems::Gather)
+            .after(route_requests),
+    );
+    // GTW-766 — the DEV procgen stepper-drive dispatch. In the `InputSystems::Gather` band
+    // ordered `.after(route_requests)` so it drains the `StepperControl` the router just
+    // routed the SAME frame, writing it into the SAME latch the egui panel's Next/Auto/Skip
+    // buttons write. Runs UNCONDITIONALLY (both its `dev_tools` and stub bodies): the router
+    // already route-rejects a `StepperControl` with no live drive (`StepperInactive`), so this
+    // only ever drains a command the router accepted — but it must run even without
+    // `dev_tools` to drain-and-answer the queue rather than leaving it to the deadline sweep.
+    app.add_systems(
+        Update,
+        drive_stepper_control
             .in_set(InputSystems::Gather)
             .after(route_requests),
     );

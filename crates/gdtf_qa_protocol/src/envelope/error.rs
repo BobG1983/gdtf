@@ -33,4 +33,16 @@ pub enum QaError {
     /// deadline — the game side swept it and returned this instead of leaving
     /// the client hanging (the GTW-694 `FrameDeadline` sweep; GTW-736).
     Timeout,
+    /// The request needs the DEV-ONLY procgen stepper to be actively driving (a live
+    /// `StagedProcgen`), and it is not — no drive is in flight (GTW-766).
+    ///
+    /// The route-time refusal of a
+    /// [`StepperControl`](crate::envelope::QaRequest::StepperControl): the stepper is
+    /// drivable only during a battle's procgen `Generation` while it is engaged, and outside
+    /// that window this is the accurate reason — never a
+    /// [`NoBattle`](Self::NoBattle) lie (a battle may well be running) nor
+    /// [`NotCaughtUp`](Self::NotCaughtUp). A client polls
+    /// [`AppFlowView::available`](crate::view::AppFlowView) to learn when the request is
+    /// serviceable.
+    StepperInactive,
 }

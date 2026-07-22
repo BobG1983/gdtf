@@ -20,7 +20,7 @@ use std::sync::mpsc;
 use bevy::app::App;
 use gdtf_app::test_support::{AppState, IncomingRequest, NET_QA_PROTOCOL_VERSION, NetQaPlugin};
 use gdtf_qa_protocol::{
-    envelope::{QaError, QaRequest, QaResponse},
+    envelope::{QaError, QaRequest, QaResponse, StepperCommandNet},
     ids::{FrameDelay, SituationRef},
     intent::NetIntent,
     view::RequestKindNet,
@@ -83,6 +83,7 @@ fn probe_request(kind: RequestKindNet) -> QaRequest {
             situation: SituationRef::new("affordance-probe-unknown".to_owned()),
             seed:      None,
         },
+        RequestKindNet::StepperControl => QaRequest::StepperControl(StepperCommandNet::Next),
     }
 }
 
@@ -98,6 +99,10 @@ fn advertised_available(app: &mut App, tx: &mpsc::Sender<IncomingRequest>) -> Ve
 
 /// The load-bearing invariant: the advertised affordance list and the router's real
 /// accept/reject cannot disagree in this state (see the module doc).
+///
+/// None of these fixtures has a live procgen-stepper drive, so `StepperControl` (GTW-766) is
+/// always unadvertised here and rejected with its OWN reason,
+/// [`QaError::StepperInactive`] — never the battle-dependent `NoBattle`.
 fn assert_affordance_parity(app: &mut App, tx: &mpsc::Sender<IncomingRequest>) {
     let advertised = advertised_available(app, tx);
     for kind in RequestKindNet::ALL {
@@ -105,16 +110,26 @@ fn assert_affordance_parity(app: &mut App, tx: &mpsc::Sender<IncomingRequest>) {
         app.update();
         let reply = probe.try_recv();
         let is_no_battle = matches!(&reply, Ok(QaResponse::Error(QaError::NoBattle)));
+        let is_stepper_inactive = matches!(&reply, Ok(QaResponse::Error(QaError::StepperInactive)));
         if advertised.contains(&kind) {
             assert!(
-                !is_no_battle,
-                "{kind:?} was advertised available but the router rejected it NoBattle: \
+                !is_no_battle && !is_stepper_inactive,
+                "{kind:?} was advertised available but the router rejected it unavailable: \
                  {reply:?}",
+            );
+        } else if kind == RequestKindNet::StepperControl {
+            // Unadvertised because no procgen-stepper drive is in flight — rejected with its
+            // own accurate reason, not a NoBattle lie.
+            assert!(
+                is_stepper_inactive,
+                "StepperControl was not advertised but the router did not reject it \
+                 StepperInactive: {reply:?}",
             );
         } else {
             assert!(
                 is_battle_dependent(kind),
-                "{kind:?} was not advertised, but only battle-dependent kinds may be absent",
+                "{kind:?} was not advertised, but only battle- or stepper-dependent kinds may \
+                 be absent",
             );
             assert!(
                 is_no_battle,

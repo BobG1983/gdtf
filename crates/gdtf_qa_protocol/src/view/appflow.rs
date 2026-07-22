@@ -97,6 +97,9 @@ pub enum RequestKindNet {
     GetOutput,
     /// A [`StartBattle`](crate::envelope::QaRequest::StartBattle) navigation.
     StartBattle,
+    /// A [`StepperControl`](crate::envelope::QaRequest::StepperControl) of the DEV procgen
+    /// stepper.
+    StepperControl,
 }
 
 impl RequestKindNet {
@@ -106,7 +109,7 @@ impl RequestKindNet {
     /// the list the round-trip suite walks to prove each kind round-trips. The per-variant
     /// round-trip witness keeps this array complete — a new kind that is not listed here
     /// fails that test.
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
         Self::Hello,
         Self::GetAppFlow,
         Self::GetBattleState,
@@ -115,6 +118,7 @@ impl RequestKindNet {
         Self::ScreenshotAfter,
         Self::GetOutput,
         Self::StartBattle,
+        Self::StepperControl,
     ];
 }
 

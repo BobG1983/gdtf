@@ -21,7 +21,9 @@ crate::support_item! {
     /// the protocol crate's [`ProtocolVersion::CURRENT`], which is bumped on any breaking
     /// envelope change (GTW-746 bumped it to `2` for the `AppFlowView.available` field;
     /// GTW-749 to `3` for the `ScreenshotAfter` request; GTW-727 to `4` for the
-    /// `AppFlowView.caught_up` field + the `NotCaughtUp` error).
+    /// `AppFlowView.caught_up` field + the `NotCaughtUp` error; GTW-763 to `5` for the
+    /// `FogView` cell COUNTS; GTW-766 to `6` for the `StepperControl` request +
+    /// `StepperInactive` error).
     /// Widened to `pub` under `test-support` so the routing test can assert the negotiated
     /// version without hard-coding a literal.
     const NET_QA_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::CURRENT;

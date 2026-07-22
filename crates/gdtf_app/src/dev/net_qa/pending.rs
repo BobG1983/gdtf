@@ -13,7 +13,7 @@ use std::collections::VecDeque;
 
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_qa_protocol::{
-    envelope::{QaError, QaResponse},
+    envelope::{QaError, QaResponse, StepperCommandNet},
     ids::{EventCap, FrameDelay, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
 };
@@ -66,6 +66,12 @@ pub(super) struct StartBattlePayload {
     /// The seed to pin, or `None` for a server-chosen seed.
     seed:      Option<SeedNet>,
 }
+
+/// The pending payload for a
+/// [`StepperControl`](gdtf_qa_protocol::envelope::QaRequest::StepperControl) — consumed by
+/// the [`drive_stepper_control`](super::stepper::drive_stepper_control) dispatch (GTW-766).
+/// The DEV stepper-drive command to write into the panel's own latch.
+pub(super) struct StepperControlPayload(StepperCommandNet);
 
 impl InjectPayload {
     /// Wrap the injected intent.
@@ -159,6 +165,22 @@ impl StartBattlePayload {
     }
 }
 
+impl StepperControlPayload {
+    /// Wrap the stepper-drive command.
+    pub(super) const fn new(command: StepperCommandNet) -> Self {
+        Self(command)
+    }
+
+    /// The wrapped stepper-drive command — the dispatch's read
+    /// ([`StepperCommandNet`] is `Copy`). Only the `dev_tools` dispatch body reads it (it
+    /// maps the command onto the stepper's latch); the `not(dev_tools)` fallback drains and
+    /// answers `Inactive` without inspecting it, so this accessor is gated to that feature.
+    #[cfg(feature = "dev_tools")]
+    pub(super) const fn command(&self) -> StepperCommandNet {
+        self.0
+    }
+}
+
 // Manual `Debug` impls (NOT derived) so the sweep's timeout diagnostic — the sole T3
 // reader of these forward-declared payloads — genuinely reads each field: a derived
 // `Debug` is ignored by dead-code analysis, an explicit `self.field` read is not.
@@ -195,6 +217,14 @@ impl core::fmt::Debug for StartBattlePayload {
         f.debug_struct("StartBattlePayload")
             .field("situation", &self.situation)
             .field("seed", &self.seed)
+            .finish()
+    }
+}
+
+impl core::fmt::Debug for StepperControlPayload {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_tuple("StepperControlPayload")
+            .field(&self.0)
             .finish()
     }
 }
@@ -326,6 +356,9 @@ pub(super) struct PendingQueues<'w> {
     pub(super) screenshot_after: ResMut<'w, PendingQueue<ScreenshotAfterPayload>>,
     /// Battle starts (T9).
     pub(super) start_battle:     ResMut<'w, PendingQueue<StartBattlePayload>>,
+    /// DEV procgen stepper-drive commands (GTW-766) — gated at route time on a live
+    /// `StagedProcgen` drive, not on a battle.
+    pub(super) stepper_control:  ResMut<'w, PendingQueue<StepperControlPayload>>,
 }
 
 /// The deadline pump for ONE pending-queue kind — ticks every entry and times out any

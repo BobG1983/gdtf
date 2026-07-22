@@ -153,7 +153,7 @@ fn app_flow_and_empty_selection_round_trip() {
 fn request_kind_round_trips_every_variant() {
     assert_eq!(
         RequestKindNet::ALL.len(),
-        8,
+        9,
         "RequestKindNet::ALL lists every request kind"
     );
     for kind in RequestKindNet::ALL {
@@ -165,7 +165,8 @@ fn request_kind_round_trips_every_variant() {
             | RequestKindNet::TakeScreenshot
             | RequestKindNet::ScreenshotAfter
             | RequestKindNet::GetOutput
-            | RequestKindNet::StartBattle => {}
+            | RequestKindNet::StartBattle
+            | RequestKindNet::StepperControl => {}
         }
         assert_ron_round_trip(&kind);
     }

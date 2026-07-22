@@ -1,11 +1,13 @@
-//! The MCP tool registry — the tools this bridge exposes (GTW-741, GTW-745, GTW-749).
+//! The MCP tool registry — the tools this bridge exposes (GTW-741, GTW-745, GTW-749,
+//! GTW-766).
 //!
-//! Seven tools ([`SendInput`](ToolName::SendInput) … [`StartBattle`](ToolName::StartBattle))
-//! map 1:1 onto a [`QaRequest`](gdtf_qa_protocol::envelope::QaRequest) forwarded to a running
-//! game; two more ([`LaunchGame`](ToolName::LaunchGame) / [`StopGame`](ToolName::StopGame))
-//! are host-local — they start and stop the game process itself and never reach the wire.
-//! The [`ToolName`] enum is the single place the tool set is enumerated: `tools/list`
-//! walks it, and [`ToolName::from_wire`] resolves a `tools/call` name.
+//! Eight tools ([`SendInput`](ToolName::SendInput) …
+//! [`StepperControl`](ToolName::StepperControl)) map 1:1 onto a
+//! [`QaRequest`](gdtf_qa_protocol::envelope::QaRequest) forwarded to a running game; two more
+//! ([`LaunchGame`](ToolName::LaunchGame) / [`StopGame`](ToolName::StopGame)) are host-local —
+//! they start and stop the game process itself and never reach the wire. The [`ToolName`]
+//! enum is the single place the tool set is enumerated: `tools/list` walks it, and
+//! [`ToolName::from_wire`] resolves a `tools/call` name.
 
 use serde_json::{Value, json};
 
@@ -30,6 +32,9 @@ pub enum ToolName {
     /// the battle-only tools become available (GTW-742's required path, reached from
     /// the client half by GTW-760).
     StartBattle,
+    /// Drive the DEV procgen load-time stepper (Next / Auto / Skip) — maps to
+    /// `QaRequest::StepperControl` (GTW-766).
+    StepperControl,
     /// Launch the game as a child process and wait for it to answer — host-local, no
     /// wire request.
     LaunchGame,
@@ -47,6 +52,7 @@ const ALL: &[ToolName] = &[
     ToolName::ScreenshotAfter,
     ToolName::AppFlow,
     ToolName::StartBattle,
+    ToolName::StepperControl,
     ToolName::LaunchGame,
     ToolName::StopGame,
 ];
@@ -63,6 +69,7 @@ impl ToolName {
             Self::ScreenshotAfter => "screenshot_after",
             Self::AppFlow => "app_flow",
             Self::StartBattle => "start_battle",
+            Self::StepperControl => "stepper_control",
             Self::LaunchGame => "launch_game",
             Self::StopGame => "stop_game",
         }
@@ -132,6 +139,17 @@ impl ToolName {
                  `battle_active: false` — generating the battle takes a moment. Poll \
                  `app_flow` until `battle_active` is true before calling the battle-only \
                  tools."
+            }
+            Self::StepperControl => {
+                "Drive the DEV-ONLY procgen load-time stepper over the wire: advance one \
+                 stage (Next), toggle Auto free-run on/off, or skip to completion (Skip). \
+                 Argument `command` is the string \"Next\" or \"Skip\", or an object \
+                 {\"Auto\": {\"running\": true}} to start (or {\"running\": false} to stop) \
+                 Auto free-run — as a JSON value or a compact-RON string. Serviceable ONLY \
+                 while a procgen-stepper drive is actually in flight (during a battle's \
+                 Generation, with the stepper engaged via GDTF_PROCGEN_STEPPER); otherwise \
+                 it is rejected StepperInactive. Poll `app_flow` and act only when its \
+                 `available` list includes StepperControl."
             }
             Self::LaunchGame => {
                 "Launch the game as a child process with the net_qa control channel \
@@ -213,6 +231,17 @@ impl ToolName {
                 },
                 "required": ["situation"]
             }),
+            Self::StepperControl => json!({
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "description": "A stepper command: the string \"Next\" or \"Skip\", \
+                         or an object {\"Auto\": {\"running\": true}} to start / stop Auto \
+                         free-run. Accepts a JSON value or a compact-RON string."
+                    }
+                },
+                "required": ["command"]
+            }),
         }
     }
 
@@ -237,20 +266,23 @@ pub fn tools_list_result() -> Value {
 mod tests {
     use super::{ToolName, tools_list_result};
 
-    /// `tools/list` advertises exactly the nine implemented tools — the seven forwarding
+    /// `tools/list` advertises exactly the ten implemented tools — the eight forwarding
     /// tools plus the two lifecycle tools.
     ///
     /// `start_battle` is asserted PRESENT: the game has serviced `QaRequest::StartBattle`
     /// since T9 (GTW-742), but no client tool sent it, so an agent could never reach a
     /// battle over the wire and the battle-only tools stayed unavailable forever. That
     /// gap survived a green suite because the only coverage was game-side (GTW-760).
+    /// `stepper_control` is asserted PRESENT for the SAME reason (GTW-766): the game
+    /// services `QaRequest::StepperControl`, so a missing client tool would be an
+    /// unreachable half.
     #[test]
     fn lists_every_tool_including_start_battle() {
         let result = tools_list_result();
         let Some(tools) = result["tools"].as_array() else {
             unreachable!("tools/list result carries a `tools` array");
         };
-        assert_eq!(tools.len(), 9);
+        assert_eq!(tools.len(), 10);
         let names: Vec<&str> = tools
             .iter()
             .filter_map(|tool| tool["name"].as_str())
@@ -264,6 +296,7 @@ mod tests {
         assert!(names.contains(&"launch_game"));
         assert!(names.contains(&"stop_game"));
         assert!(names.contains(&"start_battle"));
+        assert!(names.contains(&"stepper_control"));
     }
 
     /// Every wire name round-trips through `from_wire`, and an unknown name resolves to
@@ -278,6 +311,7 @@ mod tests {
             ToolName::ScreenshotAfter,
             ToolName::AppFlow,
             ToolName::StartBattle,
+            ToolName::StepperControl,
             ToolName::LaunchGame,
             ToolName::StopGame,
         ] {

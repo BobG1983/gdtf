@@ -1,7 +1,7 @@
 //! [`build_request`] — a tool's `arguments` → the [`QaRequest`] it maps onto.
 
 use gdtf_qa_protocol::{
-    envelope::QaRequest,
+    envelope::{QaRequest, StepperCommandNet},
     ids::{EventCap, FrameDelay, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
 };
@@ -34,6 +34,7 @@ pub fn build_request(tool: ToolName, args: &Value) -> Result<QaRequest, String> 
             situation: parse_situation(args)?,
             seed:      parse_seed(args)?,
         }),
+        ToolName::StepperControl => Ok(QaRequest::StepperControl(parse_stepper_command(args)?)),
         // The lifecycle tools are handled before this point (in `handle_tool_call`), so
         // they never map onto a wire request; reaching here would be a routing bug.
         ToolName::LaunchGame | ToolName::StopGame => {
@@ -106,6 +107,20 @@ fn parse_seed(args: &Value) -> Result<Option<SeedNet>, String> {
     }
 }
 
+/// Parse the required `stepper_control` `command` argument — a JSON value OR a compact-RON
+/// string, exactly the dual shape `parse_intent` accepts.
+fn parse_stepper_command(args: &Value) -> Result<StepperCommandNet, String> {
+    let Some(value) = args.get("command") else {
+        return Err("`stepper_control` needs a `command` argument".to_owned());
+    };
+    match value {
+        Value::String(text) => ron::from_str::<StepperCommandNet>(text)
+            .map_err(|err| format!("could not parse RON stepper command: {err}")),
+        other => serde_json::from_value::<StepperCommandNet>(other.clone())
+            .map_err(|err| format!("could not parse JSON stepper command: {err}")),
+    }
+}
+
 /// Parse the required `screenshot_after` `frame_delay` argument.
 fn parse_frame_delay(args: &Value) -> Result<FrameDelay, String> {
     let Some(value) = args.get("frame_delay") else {
@@ -123,7 +138,7 @@ fn parse_frame_delay(args: &Value) -> Result<FrameDelay, String> {
 #[cfg(test)]
 mod tests {
     use gdtf_qa_protocol::{
-        envelope::QaRequest,
+        envelope::{QaRequest, StepperCommandNet},
         ids::{FrameDelay, SeedNet, SituationRef},
         intent::NetIntent,
     };
@@ -237,5 +252,31 @@ mod tests {
                 seed:      None,
             })
         );
+    }
+
+    /// `stepper_control` accepts a compact-RON command string (`Next` / `Skip`).
+    #[test]
+    fn build_request_parses_ron_stepper_command() {
+        let next = build_request(ToolName::StepperControl, &json!({ "command": "Next" }));
+        assert_eq!(next, Ok(QaRequest::StepperControl(StepperCommandNet::Next)));
+        let skip = build_request(ToolName::StepperControl, &json!({ "command": "Skip" }));
+        assert_eq!(skip, Ok(QaRequest::StepperControl(StepperCommandNet::Skip)));
+    }
+
+    /// `stepper_control` also accepts a JSON-object command — the `Auto` on/off carrier.
+    #[test]
+    fn build_request_parses_json_stepper_auto_command() {
+        let args = json!({ "command": { "Auto": { "running": true } } });
+        let request = build_request(ToolName::StepperControl, &args);
+        let Ok(QaRequest::StepperControl(StepperCommandNet::Auto { running })) = request else {
+            unreachable!("an Auto JSON object parses to a StepperControl(Auto): {request:?}");
+        };
+        assert!(*running, "the Auto command carries its on/off state");
+    }
+
+    /// `stepper_control` rejects a missing `command` rather than inventing a default.
+    #[test]
+    fn build_request_stepper_control_requires_a_command() {
+        assert!(build_request(ToolName::StepperControl, &json!({})).is_err());
     }
 }

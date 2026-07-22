@@ -51,7 +51,7 @@ pub fn handle_tool_call(
         // request to a running one.
         ToolName::LaunchGame => control::handle_launch(args, game, lifecycle),
         ToolName::StopGame => control::handle_stop(lifecycle),
-        // The seven forwarding tools map onto a `QaRequest` carried over the link.
+        // The eight forwarding tools map onto a `QaRequest` carried over the link.
         _ => match build_request(tool, args) {
             Ok(request) => match game.request(request) {
                 Ok(response) => ToolCallOutcome::Result(render_response(tool, &response)),

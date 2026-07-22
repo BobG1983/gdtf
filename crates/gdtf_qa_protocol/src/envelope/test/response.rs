@@ -4,7 +4,7 @@
 use crate::{
     envelope::{
         HelloFacts, InjectReceipt, ProtocolVersion, QaError, QaResponse, ScreenshotAfterResult,
-        ScreenshotResult, ServerNameNet,
+        ScreenshotResult, ServerNameNet, StepperReceipt,
     },
     events::{DroppedCount, EventBatch},
     test_support::assert_ron_round_trip,
@@ -55,6 +55,7 @@ fn qa_response_cases() -> Vec<QaResponse> {
         QaResponse::Screenshot(ScreenshotResult::TimedOut),
         QaResponse::ScreenshotAfter(ScreenshotAfterResult::TimedOut),
         QaResponse::Output(EventBatch::new(vec![], DroppedCount::new(0))),
+        QaResponse::StepperControlled(StepperReceipt::Latched),
         QaResponse::Error(QaError::Busy),
     ]
 }
@@ -70,6 +71,7 @@ fn qa_response_is_exhaustive(response: &QaResponse) {
         | QaResponse::Screenshot(_)
         | QaResponse::ScreenshotAfter(_)
         | QaResponse::Output(_)
+        | QaResponse::StepperControlled(_)
         | QaResponse::Error(_) => {}
     }
 }
@@ -80,7 +82,7 @@ fn qa_response_round_trips_every_variant() {
     let cases = qa_response_cases();
     assert_eq!(
         cases.len(),
-        8,
+        9,
         "the case table lists every QaResponse variant"
     );
     for case in &cases {

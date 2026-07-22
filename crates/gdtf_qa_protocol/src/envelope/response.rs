@@ -7,6 +7,7 @@ use super::{
     hello::HelloFacts,
     receipt::InjectReceipt,
     screenshot::{ScreenshotAfterResult, ScreenshotResult},
+    stepper::StepperReceipt,
 };
 use crate::{
     events::EventBatch,
@@ -22,7 +23,8 @@ use crate::{
 /// [`Injected`](Self::Injected) (the inject receipt), [`Screenshot`](Self::Screenshot)
 /// (the capture result), [`ScreenshotAfter`](Self::ScreenshotAfter) (the deferred
 /// frame-exact capture's folded intent + capture outcome), [`Output`](Self::Output)
-/// (the drained event batch), and [`Error`](Self::Error) (a protocol-level
+/// (the drained event batch), [`StepperControlled`](Self::StepperControlled) (the DEV
+/// stepper-control receipt), and [`Error`](Self::Error) (a protocol-level
 /// [`QaError`]). An independent serde enum.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum QaResponse {
@@ -41,6 +43,8 @@ pub enum QaResponse {
     ScreenshotAfter(ScreenshotAfterResult),
     /// The drained event batch.
     Output(EventBatch),
+    /// The DEV stepper-control command's receipt (GTW-766).
+    StepperControlled(StepperReceipt),
     /// A protocol-level error.
     Error(QaError),
 }

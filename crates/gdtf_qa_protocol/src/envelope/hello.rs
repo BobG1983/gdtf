@@ -39,8 +39,18 @@ impl ProtocolVersion {
     /// shape changed (the same class as the 1 → 2 field change), so a client negotiating
     /// version `4` now gets a `VersionMismatch` rather than a `BattleView` reply whose fog it
     /// decodes against the old list shape and fails on ("frame payload was not valid compact
-    /// RON"). The game server negotiates a `Hello` against this value.
-    pub const CURRENT: Self = Self::new(5);
+    /// RON"). Bumped to `6` (GTW-766) when
+    /// [`QaRequest::StepperControl`](crate::envelope::QaRequest::StepperControl) /
+    /// [`QaResponse::StepperControlled`](crate::envelope::QaResponse::StepperControlled) /
+    /// [`RequestKindNet::StepperControl`](crate::view::RequestKindNet::StepperControl) were
+    /// added — together with the
+    /// [`StepperCommandNet`](crate::envelope::StepperCommandNet) command enum, the
+    /// [`StepperReceipt`](crate::envelope::StepperReceipt) reply, and the
+    /// [`QaError::StepperInactive`](crate::envelope::QaError::StepperInactive) error — a new
+    /// closed-enum variant everywhere the envelope matches exhaustively, so an old client
+    /// negotiating version `5` gets a `VersionMismatch` rather than a wire shape it cannot
+    /// decode. The game server negotiates a `Hello` against this value.
+    pub const CURRENT: Self = Self::new(6);
 
     /// Build a protocol version from its number.
     #[must_use]

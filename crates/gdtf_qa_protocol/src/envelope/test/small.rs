@@ -3,8 +3,9 @@
 
 use crate::{
     envelope::{
-        HelloFacts, InjectReceipt, ProtocolVersion, QaError, RejectReason, ScreenshotAfterResult,
-        ScreenshotPathNet, ScreenshotResult, ServerNameNet,
+        AutoRunNet, HelloFacts, InjectReceipt, ProtocolVersion, QaError, RejectReason,
+        ScreenshotAfterResult, ScreenshotPathNet, ScreenshotResult, ServerNameNet,
+        StepperCommandNet, StepperReceipt,
     },
     test_support::assert_ron_round_trip,
 };
@@ -54,6 +55,7 @@ fn qa_error_round_trips_every_variant() {
         QaError::BadRequest,
         QaError::NotCaughtUp,
         QaError::Timeout,
+        QaError::StepperInactive,
     ] {
         match error {
             QaError::Busy
@@ -61,9 +63,37 @@ fn qa_error_round_trips_every_variant() {
             | QaError::NoBattle
             | QaError::BadRequest
             | QaError::NotCaughtUp
-            | QaError::Timeout => {}
+            | QaError::Timeout
+            | QaError::StepperInactive => {}
         }
         assert_ron_round_trip(&error);
+    }
+}
+
+/// Every [`StepperCommandNet`] form round-trips (the `Next` / `Skip` units and the `Auto`
+/// on/off carrier), as does each [`StepperReceipt`]; the witnesses force new variants in.
+#[test]
+fn stepper_command_and_receipt_round_trip_every_variant() {
+    for command in [
+        StepperCommandNet::Next,
+        StepperCommandNet::Skip,
+        StepperCommandNet::Auto {
+            running: AutoRunNet::new(true),
+        },
+        StepperCommandNet::Auto {
+            running: AutoRunNet::new(false),
+        },
+    ] {
+        match command {
+            StepperCommandNet::Next | StepperCommandNet::Skip | StepperCommandNet::Auto { .. } => {}
+        }
+        assert_ron_round_trip(&command);
+    }
+    for receipt in [StepperReceipt::Latched, StepperReceipt::Inactive] {
+        match receipt {
+            StepperReceipt::Latched | StepperReceipt::Inactive => {}
+        }
+        assert_ron_round_trip(&receipt);
     }
 }
 

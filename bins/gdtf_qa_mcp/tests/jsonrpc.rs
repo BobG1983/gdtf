@@ -94,12 +94,14 @@ fn initialize_returns_capabilities_and_echoes_version() {
     assert!(response["result"]["serverInfo"]["name"].is_string());
 }
 
-/// `tools/list` advertises every implemented tool — the seven forwarding tools plus the
-/// two lifecycle tools, `start_battle` among them.
+/// `tools/list` advertises every implemented tool — the eight forwarding tools plus the
+/// two lifecycle tools, `start_battle` and `stepper_control` among them.
 ///
 /// `start_battle` is listed over the real JSON-RPC surface, which is what an MCP client
 /// actually reads: the game has serviced `QaRequest::StartBattle` since T9 (GTW-742), but
 /// no client tool sent it, so an agent could never reach a battle at all (GTW-760).
+/// `stepper_control` is listed for the SAME reason (GTW-766): the game services
+/// `QaRequest::StepperControl`, so a missing client tool would be an unreachable half.
 #[test]
 fn tools_list_returns_every_tool() {
     let response = dispatch_json(r#"{"jsonrpc":"2.0","id":2,"method":"tools/list"}"#);
@@ -107,7 +109,7 @@ fn tools_list_returns_every_tool() {
         unreachable!("tools/list carries a tools array");
     };
     let names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
-    assert_eq!(names.len(), 9);
+    assert_eq!(names.len(), 10);
     for expected in [
         "send_input",
         "query_state",
@@ -116,6 +118,7 @@ fn tools_list_returns_every_tool() {
         "screenshot_after",
         "app_flow",
         "start_battle",
+        "stepper_control",
         "launch_game",
         "stop_game",
     ] {

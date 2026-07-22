@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::hello::ProtocolVersion;
+use super::{hello::ProtocolVersion, stepper::StepperCommandNet};
 use crate::{
     ids::{EventCap, FrameDelay, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
@@ -59,6 +59,12 @@ pub enum QaRequest {
         /// The RNG seed to pin, or `None` for a server-chosen seed.
         seed:      Option<SeedNet>,
     },
+    /// Drive the DEV procgen load-time stepper (Next / Auto / Skip) — routed to the
+    /// stepper's command latch exactly as an egui button press is (GTW-766). Serviceable
+    /// only while a drive is in flight (a live `StagedProcgen`); otherwise it is answered
+    /// [`StepperInactive`](crate::envelope::QaError::StepperInactive), never a silent no-op
+    /// or a panic.
+    StepperControl(StepperCommandNet),
 }
 
 impl QaRequest {
@@ -81,6 +87,7 @@ impl QaRequest {
             Self::ScreenshotAfter { .. } => RequestKindNet::ScreenshotAfter,
             Self::GetOutput { .. } => RequestKindNet::GetOutput,
             Self::StartBattle { .. } => RequestKindNet::StartBattle,
+            Self::StepperControl(_) => RequestKindNet::StepperControl,
         }
     }
 }

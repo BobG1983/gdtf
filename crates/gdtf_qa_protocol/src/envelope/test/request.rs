@@ -2,7 +2,7 @@
 //! (GTW-734).
 
 use crate::{
-    envelope::{ProtocolVersion, QaRequest},
+    envelope::{ProtocolVersion, QaRequest, StepperCommandNet},
     ids::{EventCap, FrameDelay, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
     test_support::assert_ron_round_trip,
@@ -32,6 +32,7 @@ fn qa_request_cases() -> Vec<QaRequest> {
             situation: SituationRef::new("skirmish".to_owned()),
             seed:      Some(SeedNet::new(7)),
         },
+        QaRequest::StepperControl(StepperCommandNet::Next),
     ]
 }
 
@@ -46,7 +47,8 @@ fn qa_request_is_exhaustive(request: &QaRequest) {
         | QaRequest::TakeScreenshot { .. }
         | QaRequest::ScreenshotAfter { .. }
         | QaRequest::GetOutput { .. }
-        | QaRequest::StartBattle { .. } => {}
+        | QaRequest::StartBattle { .. }
+        | QaRequest::StepperControl(_) => {}
     }
 }
 
@@ -56,7 +58,7 @@ fn qa_request_round_trips_every_variant() {
     let cases = qa_request_cases();
     assert_eq!(
         cases.len(),
-        8,
+        9,
         "the case table lists every QaRequest variant"
     );
     for case in &cases {

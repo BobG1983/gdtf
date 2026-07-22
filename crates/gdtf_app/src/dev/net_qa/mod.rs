@@ -38,6 +38,9 @@
 //!   pipeline once its `frame_delay` countdown elapses (T15).
 //! - [`start_battle`] — the navigation consumer that answers `StartBattle` by producing the
 //!   SAME start-battle request the menu's Battlescape button produces (T9).
+//! - [`stepper`] — the DEV procgen stepper-drive dispatch that answers `StepperControl` by
+//!   writing the wire command into the SAME latch the egui panel's Next/Auto/Skip buttons
+//!   write, serviceable only while a live `StagedProcgen` drive is in flight (GTW-766).
 //! - [`plugin`] — the [`NetQaPlugin`] registration (`from_env` / `with_channels`).
 
 mod channel;
@@ -56,6 +59,7 @@ mod screenshot;
 mod screenshot_after;
 mod snapshot;
 mod start_battle;
+mod stepper;
 
 // `NetQaPlugin` is the item the binary consumes (via the dev aggregate plugin,
 // `crate::dev::plugin`), so it re-exports in BOTH configurations at the `test-support`
