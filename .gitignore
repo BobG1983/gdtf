@@ -4,3 +4,4 @@ mutants.out/
 .mutants-runs/
 mutants_core.log
 run_mutants.py
+mutants_act_bus.log
