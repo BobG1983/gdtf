@@ -5,14 +5,18 @@
 
 use bevy::{prelude::*, text::TextColor as UiTextColor};
 use gdtf_battle_input::InspectTarget;
+use gdtf_battle_presenter::ShownSquadVisibility;
 use gdtf_battle_sim::{
     battle::PlayerFaction, cover::CoverLedger, prelude::OccupancyGrid, visibility::SquadVisibility,
 };
 use gdtf_ui::{ProgressBarFill, theme::GdtfTheme};
 
-use crate::states::running::game::battlescape::inspect_panel::components::{
-    InspectObjectBar, InspectObjectBlock, InspectObjectHardness, InspectObjectHeight,
-    InspectObjectProtection, InspectObjectText, InspectPanelRoot, InspectStatBlockHost,
+use crate::states::running::game::battlescape::inspect_panel::{
+    components::{
+        InspectObjectBar, InspectObjectBlock, InspectObjectHardness, InspectObjectHeight,
+        InspectObjectProtection, InspectObjectText, InspectPanelRoot, InspectStatBlockHost,
+    },
+    shadow::{ShownCoverLedger, ShownOccupancyGrid},
 };
 
 /// The read-only marker→entity lookups the inspect panel needs to find its own nodes.
@@ -48,26 +52,63 @@ pub(in crate::states::running::game::battlescape) struct InspectNodes<'w, 's> {
 ///
 /// A [`SystemParam`] bundle so the update system declares the inspect target + grid + ledger
 /// reads as ONE param (the [`too_many_arguments`](clippy::too_many_arguments) idiom). The grid
-/// and ledger are [`Option`] (state-scoped — present only during a live battle,
-/// `bevy-traps.md` #1). `pub(in …battlescape)` for `private_interfaces`.
+/// / ledger / fog reads are the CURSOR-TIME SHADOWS (GTW-762), NOT the live sim resources:
+/// during closed-gate playback each shadow is frozen at what the cursor has shown, so the
+/// panel describes the cursor's playback position rather than a move / hit / reveal the sim
+/// has already applied but the view has not yet played. Each is [`Option`] (present only when
+/// the battle / presenter registered it, `bevy-traps.md` #1); read them through the
+/// [`occupancy`](InspectReads::occupancy) / [`cover`](InspectReads::cover) /
+/// [`fog`](InspectReads::fog) accessors. `pub(in …battlescape)` for `private_interfaces`.
 #[derive(bevy::ecs::system::SystemParam)]
 pub(in crate::states::running::game::battlescape) struct InspectReads<'w> {
     /// The inspect target (`gdtf_battle_input`) — the panel reads its EFFECTIVE mode
     /// (pinned-else-hovered, GTW-300), NOT the raw cursor cell.
     pub target: Res<'w, InspectTarget>,
-    /// The occupancy / terrain grid (occupant lookup + terrain kind).
-    pub grid:   Option<Res<'w, OccupancyGrid>>,
-    /// The cover ledger (a hovered object's seeded structural stats).
-    pub ledger: Option<Res<'w, CoverLedger>>,
-    /// The squad fog (GTW-378) — the targeting-fog gate read as `Option` so the verdict FAILS
-    /// CLOSED when absent (the SAME fail-closed [`cell_squad_visible`](gdtf_battle_presenter::cell_squad_visible) the reticle + the
+    /// The cursor-time occupancy / terrain grid snapshot (occupant lookup + terrain kind) —
+    /// read through [`occupancy`](InspectReads::occupancy).
+    pub grid:   Option<Res<'w, ShownOccupancyGrid>>,
+    /// The cursor-time cover-ledger snapshot (a hovered object's seeded structural stats) —
+    /// read through [`cover`](InspectReads::cover).
+    pub ledger: Option<Res<'w, ShownCoverLedger>>,
+    /// The cursor-time squad-fog snapshot (GTW-378 / GTW-762) — the targeting-fog gate read as
+    /// `Option` so the verdict FAILS CLOSED when absent (the SAME fail-closed
+    /// [`cell_squad_visible`](gdtf_battle_presenter::cell_squad_visible) the reticle + the
     /// fire-refusal use). A fog-hidden enemy occupant must NOT populate the panel (the
     /// info-leak); a BLOCKING wall / cover still inspects (map geometry / mission memory).
-    pub squad:  Option<Res<'w, SquadVisibility>>,
+    /// Read through [`fog`](InspectReads::fog).
+    pub squad:  Option<Res<'w, ShownSquadVisibility>>,
     /// The player's own faction (GTW-378) — routes a hovered occupant's
     /// [`FactionRelation`](gdtf_battle_sim::visibility::FactionRelation) so [`cell_squad_visible`](gdtf_battle_presenter::cell_squad_visible) decides via `is_ganger_visible`
     /// (own-squad always visible, an enemy iff its cell is currently VISIBLE).
     pub player: Option<Res<'w, PlayerFaction>>,
+}
+
+impl InspectReads<'_> {
+    /// The cursor-time occupancy grid the panel resolves occupants / terrain against, or
+    /// [`None`] when the shadow is not registered (a harness without the battle) — the
+    /// flattened read over the [`ShownOccupancyGrid`] shadow (GTW-762).
+    #[must_use]
+    pub(in crate::states::running::game::battlescape) fn occupancy(
+        &self,
+    ) -> Option<&OccupancyGrid> {
+        self.grid.as_deref().map(ShownOccupancyGrid::grid)
+    }
+
+    /// The cursor-time cover ledger a hovered object's stats seed from, or [`None`] when the
+    /// shadow is not registered — the flattened read over the [`ShownCoverLedger`] shadow
+    /// (GTW-762).
+    #[must_use]
+    pub(in crate::states::running::game::battlescape) fn cover(&self) -> Option<&CoverLedger> {
+        self.ledger.as_deref().map(ShownCoverLedger::ledger)
+    }
+
+    /// The cursor-time squad fog the panel's occupant gate reads, or [`None`] when the shadow
+    /// is not registered (fail-closed) — the flattened read over the [`ShownSquadVisibility`]
+    /// shadow (GTW-762).
+    #[must_use]
+    pub(in crate::states::running::game::battlescape) fn fog(&self) -> Option<&SquadVisibility> {
+        self.squad.as_deref().map(ShownSquadVisibility::visibility)
+    }
 }
 
 /// The faction-tint reads the inspect panel needs to recolor the name line by the hovered

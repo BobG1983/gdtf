@@ -161,6 +161,19 @@ impl GangerVisibilityFacts<'_> {
 /// GTW-322) is skipped and picked up the frame its components exist; its spawn-seeded
 /// value came through the same classifier, so there is no first-frame flicker.
 ///
+/// # It reads the LIVE fog, deliberately — the GTW-762 exemption
+///
+/// GTW-762 gave the TERRAIN fog and the inspect panel a cursor-time SHADOW
+/// ([`ShownSquadVisibility`](crate::ShownSquadVisibility)) that freezes during closed-gate
+/// playback. This resolver is DELIBERATELY exempt: it keeps reading the LIVE
+/// [`SquadVisibility`] (through [`GangerVisibilityFacts`]). Freezing it would re-hide a
+/// ganger that becomes visible on the very walk that triggers its fire — a reactor that
+/// steps into line of sight, fires, and whose tracer would then leave an invisible sprite.
+/// That is the exact GTW-727 "tracer from an invisible shooter" bug. The X-COM model is
+/// binding here: a shooter within line of sight must always be shown firing, so a sprite's
+/// visibility must track the sim's live truth even while the fog terrain lags a beat behind
+/// the cursor.
+///
 /// Param-only (`bevy-traps.md` #7): [`Res<GangerSprites>`], the bundled
 /// [`GangerVisibilityFacts`], the sim-ganger query, and the ONE
 /// `Query<&mut Visibility, With<GangerSprite>>` in the crate (GTW-627 A1).

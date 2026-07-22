@@ -30,7 +30,7 @@ pub(super) fn occupant_squad_visible(
     reads: &InspectReads,
 ) -> bool {
     let relation = occupant_relation(occupant, factions, reads.player.as_deref());
-    cell_squad_visible(reads.squad.as_deref(), &cell, Some(relation)).is_squad_visible()
+    cell_squad_visible(reads.fog(), &cell, Some(relation)).is_squad_visible()
 }
 
 /// The occupant's [`FactionRelation`] to the player squad — [`FactionRelation::OwnSquad`] when

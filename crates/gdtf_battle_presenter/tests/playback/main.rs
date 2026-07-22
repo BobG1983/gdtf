@@ -9,12 +9,16 @@
 //!   and the DRAWN pose lag the sim until their entry is played. A paced combat log with
 //!   snapping sprites is the reported symptom shipped as fixed; these are what make that
 //!   impossible. Plus T15, the gap recovery.
+//! - **`cursor_time_fog`** — GTW-762: the squad-fog SHADOW (`ShownSquadVisibility`) freezes
+//!   during closed-gate playback and promotes the instant the cursor catches up, so the
+//!   terrain fog reads the cursor's playback position, not the sim's live (ahead) state.
 //!
 //! NO WALL-CLOCK WAITS. Every test advances `Time` by an exact duration and runs the cursor
 //! once, so a pacing assertion is deterministic by construction.
 //!
 //! Wiring only.
 
+mod cursor_time_fog;
 mod drawn_lag;
 mod harness;
 mod pacing;

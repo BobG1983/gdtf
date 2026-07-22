@@ -4,7 +4,9 @@
 use bevy::prelude::*;
 use gdtf_battle_sim::{prelude::BattleInProgress, visibility::SquadVisibility};
 
-use crate::{PresenterSystems, TerrainFogMaterial, present_fog};
+use crate::{
+    PresenterSystems, ShownSquadVisibility, TerrainFogMaterial, present_fog, promote_shown_fog,
+};
 
 /// Registers the GTW-342 squad fog TERRAIN writer into the
 /// [`PresenterSystems::Compose`] stage.
@@ -43,12 +45,25 @@ use crate::{PresenterSystems, TerrainFogMaterial, present_fog};
 /// harnesses, a job now owned by the REAL residency facts above (and, for the actor arm,
 /// by the classifier's absent-fog band-only branch).
 pub(super) fn register_fog_systems(app: &mut App) {
+    // GTW-762: the cursor-time fog SHADOW. `init_resource` at build so the fog snapshot
+    // always exists (its empty Default = everything UNSEEN, fail-closed until the first
+    // promote), which lets `present_fog` take a plain `Res<ShownSquadVisibility>`.
+    app.init_resource::<ShownSquadVisibility>();
     app.add_systems(
         Update,
-        present_fog.in_set(PresenterSystems::Compose).run_if(
-            resource_exists::<BattleInProgress>
-                .and_then(resource_exists::<SquadVisibility>)
-                .and_then(resource_exists::<Assets<TerrainFogMaterial>>),
-        ),
+        (
+            // The promote runs `.before` the reader IN the same `Compose` stage, so the
+            // fog it draws is this frame's cursor-time snapshot, never a frame stale. It
+            // reads the live `SquadVisibility`, so it carries the same residency gate.
+            promote_shown_fog
+                .before(present_fog)
+                .run_if(resource_exists::<SquadVisibility>),
+            present_fog.run_if(
+                resource_exists::<BattleInProgress>
+                    .and_then(resource_exists::<SquadVisibility>)
+                    .and_then(resource_exists::<Assets<TerrainFogMaterial>>),
+            ),
+        )
+            .in_set(PresenterSystems::Compose),
     );
 }

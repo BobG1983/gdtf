@@ -68,7 +68,7 @@ pub(in crate::states::running::game::battlescape) fn update_inspect_panel(
     // BLOCKING wall / cover still inspects (it is map geometry / mission memory, not a hidden
     // enemy). FAIL-CLOSED: an absent fog treats every occupant as non-visible.
     let occupant = cell.and_then(|c| {
-        let grid = reads.grid.as_deref()?;
+        let grid = reads.occupancy()?;
         let occupant = grid.occupant(&c)?;
         occupant_squad_visible(c, occupant, &factions, &reads).then_some(occupant)
     });
@@ -89,9 +89,7 @@ pub(in crate::states::running::game::battlescape) fn update_inspect_panel(
         return;
     }
 
-    if let Some(entry) =
-        cell.and_then(|c| object_entry(c, reads.grid.as_deref(), reads.ledger.as_deref()))
-    {
+    if let Some(entry) = cell.and_then(|c| object_entry(c, reads.occupancy(), reads.cover())) {
         // A hovered non-floor OBJECT → show the panel + the object block, hide the ganger block.
         toggle(&mut widgets.visibility, &nodes.root, Visibility::Inherited);
         set_display(&mut nodes.display, host, Display::None);

@@ -74,7 +74,10 @@ pub mod render;
 // tests (e.g. `actors/fx/impact.rs`) keep resolving after the `fx` module moved
 // from the crate root into `actors/`.
 pub use actors::{
-    fog::{Brightness, TerrainFogMaterial, TerrainFogUniform, present_fog},
+    fog::{
+        Brightness, ShownSquadVisibility, TerrainFogMaterial, TerrainFogUniform, present_fog,
+        promote_shown_fog,
+    },
     fx,
     fx::{
         ArmorBrokenFct, BleedingFct, COMPASS_DIRECTIONS, CombatLogEvent, CombatLogSource,

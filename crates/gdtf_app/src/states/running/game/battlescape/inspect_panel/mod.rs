@@ -18,6 +18,7 @@
 
 mod components;
 mod plugin;
+mod shadow;
 mod systems;
 
 #[cfg(test)]

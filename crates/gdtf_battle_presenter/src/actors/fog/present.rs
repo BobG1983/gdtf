@@ -12,8 +12,8 @@ use gdtf_battle_sim::{prelude::CellLevel, visibility::SquadVisibility};
 
 use super::material::Saturation;
 use crate::{
-    Brightness, ContextDepth, IsolateView, StoreyTreatment, StoreyViewMode, TerrainFogMaterial,
-    TerrainSprite, ViewMode,
+    Brightness, ContextDepth, IsolateView, ShownSquadVisibility, StoreyTreatment, StoreyViewMode,
+    TerrainFogMaterial, TerrainSprite, ViewMode,
     actors::quiet::{set_fog_knobs_quiet, set_visibility_quiet},
     storey_treatment,
 };
@@ -144,14 +144,24 @@ pub(super) fn context_below_brightness(depth: ContextDepth) -> Brightness {
 /// matter — and re-driven the run it becomes shown). Mutation stays IN PLACE — never
 /// despawn + respawn (the UI-mutate-not-respawn convention).
 ///
-/// Param-only (`bevy-traps.md` #7): the read [`Res`]ources ([`SquadVisibility`] / the
+/// # Cursor-time fog (GTW-762)
+///
+/// It reads the CURSOR-TIME fog snapshot ([`ShownSquadVisibility`]), NOT the live
+/// [`SquadVisibility`]: during closed-gate playback the shadow is frozen at what the cursor
+/// has actually shown, so the terrain fog never reveals a cell the sim has already unfogged
+/// but the view has not yet played. The shadow is promoted to live the instant the cursor
+/// catches up ([`promote_shown_fog`](super::promote_shown_fog), ordered `.before` this
+/// system in the same `Compose` stage). The ganger-sprite arm stays LIVE — see the
+/// exemption on [`resolve_ganger_visibility`](crate::resolve_ganger_visibility).
+///
+/// Param-only (`bevy-traps.md` #7): the read [`Res`]ources ([`ShownSquadVisibility`] / the
 /// [`ActiveLevel`](crate::ActiveLevel) / the [`ViewMode`] + [`IsolateView`] pair the
 /// classifier's mode composes from), the terrain materials store
 /// ([`ResMut<Assets<TerrainFogMaterial>>`]), and the [`TerrainSprite`] /
 /// [`MeshMaterial2d`] terrain query. It takes no [`Commands`] — every change is an
 /// in-place mutate.
 pub fn present_fog(
-    squad: Res<SquadVisibility>,
+    squad: Res<ShownSquadVisibility>,
     active: Res<crate::ActiveLevel>,
     view: Res<ViewMode>,
     isolate: Res<IsolateView>,
@@ -179,7 +189,7 @@ pub fn present_fog(
             StoreyTreatment::Active => Brightness::FULL,
             StoreyTreatment::ContextBelow(depth) => context_below_brightness(depth),
         };
-        match CellFog::resolve(&squad, &marker.at) {
+        match CellFog::resolve(squad.visibility(), &marker.at) {
             CellFog::Visible => {
                 set_fog_knobs_quiet(
                     &mut materials,
