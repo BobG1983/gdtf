@@ -45,10 +45,8 @@ impl BattleSeed {
         Self(seed)
     }
 
-    /// The raw `u64` root — the `const`-context accessor the [`fnv1a64`] derivation reads
+    /// The raw `u64` root — the `const`-context accessor the `fnv1a64` derivation reads
     /// (the derived [`Deref`](bevy::prelude::Deref) is not usable in a `const fn`).
-    ///
-    /// [`fnv1a64`]: super::derivation::fnv1a64
     #[must_use]
     pub const fn get(self) -> u64 {
         self.0

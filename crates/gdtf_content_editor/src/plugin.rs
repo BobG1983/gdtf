@@ -72,14 +72,14 @@ use crate::{
 ///   `OnEnter(Editing)` insert + `OnExit(Editing)` remove through ONE
 ///   [`init_state_scoped_resource`](gdtf_state_scoped::StateScopedResourceAppExt) call
 ///   (GTW-575; the state-scoped-resource pattern — bevy-traps #1).
-/// - `EguiPrimaryContextPass` (in `Editing`) → [`editor_egui_ui`] draws the whole shell (mode tabs,
+/// - `EguiPrimaryContextPass` (in `Editing`) → `editor_egui_ui` draws the whole shell (mode tabs,
 ///   global theme `ComboBox`, status line, palette/stats placeholder, the active mode's stubbed form,
 ///   the viewport placeholder). egui systems live in `EguiPrimaryContextPass`, NOT `Update`
 ///   (bevy-traps: a `Update` `ctx_mut()` call fights the egui begin/end-pass plumbing).
-/// - `Update` (in `Editing`) → the model drives kept from the old shell: [`seed_default_theme`]
+/// - `Update` (in `Editing`) → the model drives kept from the old shell: `seed_default_theme`
 ///   (seed the session theme to the registry's first theme once it resolves) and the three
-///   `ButtonInput<KeyCode>` hotkeys ([`mode_hotkeys`] — the mode digits; [`level_nav_hotkeys`] and
-///   [`view_mode_hotkey`] — the prefab nav). The theme seed reads no keyboard input and keeps only
+///   `ButtonInput<KeyCode>` hotkeys (`mode_hotkeys` — the mode digits; `level_nav_hotkeys` and
+///   `view_mode_hotkey` — the prefab nav). The theme seed reads no keyboard input and keeps only
 ///   the state gate; the three hotkeys ALSO carry ONE shared keyboard-focus guard
 ///   (`not(egui_wants_any_keyboard_input)`, GTW-681) so they are suppressed while an egui text
 ///   field holds focus (typing `8` into the prefab width/height field inserts the character rather

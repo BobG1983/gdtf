@@ -61,7 +61,7 @@ type DeactivationVisuals = (
 /// [`BorderColor`](bevy::ui::BorderColor) from its current
 /// [`Interaction`](bevy::ui::Interaction) using the SAME button-state → fill
 /// mapping as [`theme_interaction`](crate::theme_interaction) — the
-/// shared [`interaction_fill`] helper, so the mapping is never duplicated (AC2).
+/// shared `interaction_fill` helper, so the mapping is never duplicated (AC2).
 ///
 /// ## Why this system exists
 ///
@@ -154,7 +154,7 @@ type EnabledInteractiveButton = (
 /// reload frame — with no subsequent interaction change — was left showing the new
 /// theme's resting base until the user moved off and re-hovered. This system closes
 /// that gap: it re-derives each enabled button's fill from its CURRENT
-/// [`Interaction`](bevy::ui::Interaction) via the SHARED [`interaction_fill`] helper
+/// [`Interaction`](bevy::ui::Interaction) via the SHARED `interaction_fill` helper
 /// (so the `None`→base / `Hovered`→hover / `Pressed`→pressed mapping is never
 /// duplicated, AC2), and re-affirms its [`BorderColor`](bevy::ui::BorderColor) from
 /// the new button sub-theme.

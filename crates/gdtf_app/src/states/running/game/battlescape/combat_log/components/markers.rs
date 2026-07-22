@@ -10,7 +10,7 @@ crate::support_item! {
     /// tears down the whole log by this one marker, and the per-update append finds the parent
     /// to spawn each new line under.
     ///
-    /// Widened toward `crate::test_support` via [`support_item!`](crate::support_item) so the
+    /// Widened toward `crate::test_support` via `support_item!` so the
     /// AC test can name it to assert the log gains line children. A unit marker: presence on an
     /// entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -26,7 +26,7 @@ crate::support_item! {
     ///
     /// Widened toward `crate::test_support`. A unit marker: presence on an entity is the whole
     /// signal (no-bare-types rule). The line's lifetime / fade state rides the sibling
-    /// [`LogLineFade`](super::fade::LogLineFade) component.
+    /// `LogLineFade` component.
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct CombatLogLine;
 }

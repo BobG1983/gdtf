@@ -31,8 +31,8 @@ use crate::TopDownAtlases;
 ///    [`advance_projectiles`](super::super::projectile::advance_projectiles) spawned, it
 ///    builds the FIRST impact tile of the damage type's strip
 ///    ([`EffectRoles::fx_for`](super::super::roles::EffectRoles::fx_for)`(damage).impact[0]`)
-///    via [`fx_sprite_scaled`](super::super::readers::fx_sprite_scaled) at the impact world
-///    point, spawns it with an [`ImpactAnimation`], SPAWNS the shot's classified
+///    via `fx_sprite_scaled` at the impact world
+///    point, spawns it with an `ImpactAnimation`, SPAWNS the shot's classified
 ///    floating-combat-text pops at their anchor (GTW-327 — so each shot's numbers appear
 ///    when THIS shot's staggered impact lands, fanned out by per-shot
 ///    [`FctStackIndex`](super::super::fct::FctStackIndex)), EMITS the shared
@@ -42,8 +42,8 @@ use crate::TopDownAtlases;
 ///    A missing effects sheet skips the impact SPRITE fail-closed
 ///    (`fx_sprite_scaled` returns [`None`]) but STILL spawns the pops (they are
 ///    [`Text2d`], needing no atlas) and still consumes the seed (no re-attempt pile-up).
-/// 2. **Step the animations.** Each [`ImpactAnimation`] is ticked by the frame
-///    [`Res<Time>`] delta ([`ImpactAnimation::advance`]); on a frame step it swaps
+/// 2. **Step the animations.** Each `ImpactAnimation` is ticked by the frame
+///    [`Res<Time>`] delta (`ImpactAnimation::advance`); on a frame step it swaps
 ///    the sprite to the new frame's tile, and on the last frame finishing it
 ///    despawns the animation entity. A short impact strip degrades gracefully (an
 ///    out-of-range frame skips the redraw, the animation still despawns on finish).

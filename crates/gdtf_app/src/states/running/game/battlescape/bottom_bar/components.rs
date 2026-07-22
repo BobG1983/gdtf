@@ -17,7 +17,7 @@ crate::support_item! {
     /// The bottom bar is the ONLY UI that reduces the world map: `set_world_viewport`
     /// MEASURES this root's [`ComputedNode`](bevy::ui::ComputedNode) HEIGHT and insets the
     /// world-camera viewport's BOTTOM by it (full width, no side / top inset — items 1 / 4).
-    /// Widened toward `crate::test_support` via [`support_item!`](crate::support_item) so the
+    /// Widened toward `crate::test_support` via `support_item!` so the
     /// AC tests can assert the bar's presence + measure, AND re-exported to the battlescape
     /// neighborhood so the sibling viewport system can name it. A unit marker: presence on an
     /// entity is the whole signal (no-bare-types rule).

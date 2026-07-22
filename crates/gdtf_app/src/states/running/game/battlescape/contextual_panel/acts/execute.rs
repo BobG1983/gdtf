@@ -19,7 +19,7 @@ crate::support_item! {
     ///
     /// Spawned [`Visibility::Hidden`](bevy::camera::visibility::Visibility) by the generic
     /// button spawn and revealed IN PLACE by the act's visibility toggle when
-    /// [`offer_execute`] names a target. A unit marker: presence on an entity is the whole
+    /// `offer_execute` names a target. A unit marker: presence on an entity is the whole
     /// signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct ExecuteButton;

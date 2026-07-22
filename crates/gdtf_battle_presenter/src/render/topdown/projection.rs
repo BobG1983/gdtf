@@ -38,7 +38,7 @@ pub const GANGER_Z_BIAS: f32 = 0.1;
 /// highlight &lt; reachable-range &lt; path-preview stacking order lives.
 ///
 /// A domain value (a real named type, not a bare z magnitude), per
-/// `.claude/rules/no-bare-types.md`. Each layer's [`z_bias`](Layer::z_bias) is added on
+/// `.claude/rules/no-bare-types.md`. Each layer's `z_bias` is added on
 /// top of the per-storey level z by [`cell_to_world_layered`] so a sprite draws in front
 /// of the lower layers at its own cell without crossing into the next storey's band (every
 /// bias is strictly `< Z_PER_LEVEL`). This slice wires [`Terrain`](Layer::Terrain) (the
@@ -138,11 +138,11 @@ impl Layer {
 ///
 /// Row 0 sits at the TOP: Bevy's +Y is up, so a larger `cell.y` (further down the
 /// grid) yields a smaller world `y`. `x` grows right by exactly [`CELL_PX`] per cell.
-/// The `z` is a stable per-level draw-z ([`z_for`]) so sprites on different storeys
+/// The `z` is a stable per-level draw-z (`z_for`) so sprites on different storeys
 /// do not z-fight; it is NOT full multi-level stacking (GTW-49 / GTW-10).
 ///
 /// `cell.x` / `cell.y` read through [`Cell`]'s `Deref<Target = IVec2>`; the level
-/// index reads through [`Level`]'s `Deref<Target = u8>` inside [`z_for`].
+/// index reads through [`Level`]'s `Deref<Target = u8>` inside `z_for`.
 #[must_use]
 pub fn cell_to_world(cell: Cell, level: Level) -> Vec3 {
     Vec3::new(
@@ -159,7 +159,7 @@ pub fn cell_to_world(cell: Cell, level: Level) -> Vec3 {
 /// larger `pos.y` yields a smaller world `y`), but for a continuous point rather than a
 /// discrete `(cell, level)`: the GTW-290 muzzle origin is a [`SimPos`] (a fractional 3D
 /// fire point), so the muzzle flash + tracer origin map through this. The `z` scales the
-/// fractional storey by [`Z_PER_LEVEL`] (matching [`z_for`]'s discrete `*level *
+/// fractional storey by `Z_PER_LEVEL` (matching `z_for`'s discrete `*level *
 /// Z_PER_LEVEL`) so a muzzle on storey *n* draws in that storey's band.
 ///
 /// `pos.x` / `pos.y` / `pos.z` read through [`SimPos`]'s `Deref<Target = Vec3>`.
@@ -169,7 +169,7 @@ pub fn sim_pos_to_world(pos: SimPos) -> Vec3 {
 }
 
 /// Projects a sim cell + level into world-space, lifted by `layer`'s within-storey
-/// draw-z bias — the [`cell_to_world`] position with [`Layer::z_bias`] added to `z`.
+/// draw-z bias — the [`cell_to_world`] position with `Layer::z_bias` added to `z`.
 ///
 /// The ONE place a presenter draws a sprite "in front of" the lower layers at the same
 /// cell: [`Terrain`](Layer::Terrain) sits at the bare per-storey z (equivalent to

@@ -32,7 +32,7 @@ use crate::{
 ///   GTW-356 link-tile) does NOTHING at all — no push, no selection write, no target write —
 ///   so a pending target survives a no-op click.
 ///
-/// Each write is guarded so it trips change-detection only on a real change ([`set_selection`]
+/// Each write is guarded so it trips change-detection only on a real change (`set_selection`
 /// for the selection; the `!=` guard for the target), keeping `Changed<PathPreviewTarget>` /
 /// `Changed<SelectedShooter>` honest for the populate / fire-mode-sync systems.
 ///

@@ -42,7 +42,7 @@ pub struct TerrainSprite {
 ///
 /// Fires when ANY of: a [`BattleReady`](gdtf_battle_sim::battle::BattleReady) drained this update,
 /// [`ActiveLevel`] `is_changed()`, [`ViewMode`] `is_changed()` (GTW-521 — the full-view
-/// toggle widens/narrows the [`drawn_band`] ceiling, so the terrain must redraw for the new
+/// toggle widens/narrows the `drawn_band` ceiling, so the terrain must redraw for the new
 /// band), OR [`IsolateView`] `is_changed()` (GTW-594 — the Isolate toggle moves the band's
 /// FLOOR). A sprite-def hot-reload is NOT a redraw trigger since GTW-666: a
 /// `content/sprites/*.spritedef.ron` re-save rebuilds the
@@ -53,7 +53,7 @@ pub struct TerrainSprite {
 /// `alt_tileset_terrain.png` re-save re-prepares the affected tile materials directly
 /// (`redrive_sheet_images_on_asset_event`) — either way the rendered tiles swap, live,
 /// with no restart and no despawn. It despawns ALL existing [`TerrainSprite`]
-/// entities, then (GTW-519) for the whole DRAWN BAND [`drawn_band`] (`0..=active`,
+/// entities, then (GTW-519) for the whole DRAWN BAND `drawn_band` (`0..=active`,
 /// BOTTOM-UP) scans `0..GRID_WIDTH` × `0..GRID_HEIGHT` per storey and spawns one terrain
 /// tile per NON-EMPTY cell as a shared unit-rect [`Mesh2d`] +
 /// [`MeshMaterial2d<TerrainFogMaterial>`] (GTW-348 — the material path so EXPLORED can render
@@ -64,7 +64,7 @@ pub struct TerrainSprite {
 /// [`WORLD_RENDER_LAYER`](crate::WORLD_RENDER_LAYER), with the [`TerrainSprite`] marker. The
 /// ground floor (storey 0) draws its FULL floor field (the pre-GTW-519 single-storey
 /// behaviour); every UPPER storey in the band draws ONLY cells with a real terrain fact
-/// ([`storey_has_terrain`]) so an open/empty upper cell emits nothing and the storey beneath
+/// (`storey_has_terrain`) so an open/empty upper cell emits nothing and the storey beneath
 /// PEEKS THROUGH (C2). Everything strictly ABOVE `active` is culled (the band never enters
 /// it). The per-storey Z ([`z_for`](crate::cell_to_world) via [`cell_to_world`]) gives the
 /// painter's-algorithm occlusion (a higher storey draws in front) with NO new Z math (C3).
@@ -75,7 +75,7 @@ pub struct TerrainSprite {
 /// GTW-665 (C1 — the def-driven resolution): each cell's PIXELS resolve from the
 /// SIM-SPAWNED terrain entity's per-def
 /// [`TerrainGraphicKey`](gdtf_battle_sim::piece::TerrainGraphicKey) FIRST (via
-/// [`graphic_name_at`] → [`SpriteResolveCtx::resolved`] over the
+/// `graphic_name_at` → `SpriteResolveCtx::resolved` over the
 /// [`SpriteDefRegistry`](gdtf_content_families::sprites::SpriteDefRegistry)), falling
 /// back to the [`TileRole`](super::roles::TileRole) key mapped from the cell's
 /// [`TerrainKind`](gdtf_battle_sim::occupancy::TerrainKind) only for the floor field (no

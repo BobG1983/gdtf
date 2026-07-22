@@ -17,7 +17,7 @@ use gdtf_ui::FillFraction;
 crate::support_item! {
     /// Marks the **stability** [`ProgressBar`](gdtf_ui::spawn_progress_bar) track of the
     /// status panel — the bar whose fill the per-update mutate sets to the selected
-    /// shooter's [`Steadiness`].
+    /// shooter's `Steadiness`.
     ///
     /// The update finds this one track by marker (the status panel is the SOLE owner of a
     /// stability readout, so there is exactly one), then mutates its

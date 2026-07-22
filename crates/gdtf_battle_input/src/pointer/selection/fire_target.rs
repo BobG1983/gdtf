@@ -79,7 +79,7 @@ pub struct FireTargetReads<'w> {
 /// fireable TARGET it could fire on — an ENEMY *or* (GTW-377) a shootable COVER / WALL cell —
 /// the cell + the [`mode_tu_cost`](gdtf_battle_sim::magazine::mode_tu_cost) the shot would charge (C2).
 ///
-/// Resolves the fireable verdict via [`resolve_fire_target`] (the SAME FIRE + FIRE-AT-COVER
+/// Resolves the fireable verdict via `resolve_fire_target` (the SAME FIRE + FIRE-AT-COVER
 /// conditions [`decide_left_click`](crate::selection::decide_left_click) gates fire on, plus the
 /// GTW-346 fog gate): a player-faction selection, AND either an ENEMY occupant or intact
 /// blocking cover/wall at the hovered cell, that cell squad-VISIBLE. When it resolves it reads

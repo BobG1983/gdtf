@@ -14,7 +14,7 @@ use crate::TileIndex;
 /// Loaded from the loose `assets/sprites/character_roles.spritedef.ron` through the generic
 /// [`RonAsset<T>`](gdtf_assets::RonAsset) loader and resolved into a presenter-owned
 /// [`CharacterRoles`] resource before battle time (the GTW-564 generic hot-RON
-/// chain, registered by [`register_character_roles_hot_ron`]), exactly mirroring the
+/// chain, registered by `register_character_roles_hot_ron`), exactly mirroring the
 /// GTW-564 generic hot-RON registration helper (the retired S4 terrain table's mechanism, kept by the
 /// character/effect tables). Each faction's actor is a contiguous run of 4 cells in the sheet; the drawn
 /// index is `base + facing_frame` ([`facing_frame`](super::facing_frame)). Every index

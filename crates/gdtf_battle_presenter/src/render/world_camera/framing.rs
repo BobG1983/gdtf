@@ -219,7 +219,7 @@ pub fn frame_camera_on_units(
 /// [`Camera::viewport`]) + its [`Transform`] + its [`Projection`] (the orthographic visible
 /// half-extent) + the primary [`Window`] (the viewport-size fallback before `camera_system`
 /// first computes the projection area) + the battlefield world bounds
-/// ([`battlefield_world_bounds`], from the grid extent via [`cell_to_world`] — never a
+/// (`battlefield_world_bounds`, from the grid extent via [`cell_to_world`] — never a
 /// hardcoded literal), and writes back the clamped `xy` (z is kept). With a not-yet-orthographic
 /// / zero-size viewport it leaves the camera unchanged rather than snapping it.
 ///

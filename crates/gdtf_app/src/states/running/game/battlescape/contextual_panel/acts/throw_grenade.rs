@@ -20,7 +20,7 @@ crate::support_item! {
     ///
     /// Spawned [`Visibility::Hidden`](bevy::camera::visibility::Visibility) by the generic
     /// button spawn and revealed IN PLACE by the act's visibility toggle when
-    /// [`offer_throw_grenade`] names a target cell — offered when the selected PLAYER actor
+    /// `offer_throw_grenade` names a target cell — offered when the selected PLAYER actor
     /// wields a [`TrajectoryStyle::Arc`](gdtf_battle_sim::weapon::TrajectoryStyle) weapon and a
     /// target cell is hovered (a BLIND lob needs no adjacency / LOS gate — F4 player-only).
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).

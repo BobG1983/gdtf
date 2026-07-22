@@ -19,7 +19,7 @@ crate::support_item! {
     ///
     /// Spawned [`Visibility::Hidden`](bevy::camera::visibility::Visibility) by the generic
     /// button spawn and revealed IN PLACE by the act's visibility toggle when
-    /// [`offer_exit_emplacement`] names the emplacement whose
+    /// `offer_exit_emplacement` names the emplacement whose
     /// [`EmplacementOccupant`](gdtf_battle_sim::emplacement::EmplacementOccupant) IS the current selection
     /// — so Exit is offered ONLY to the occupant (there is NO force-eject; exit is a SEPARATE
     /// TU-costed act). A unit marker: presence on an entity is the whole signal

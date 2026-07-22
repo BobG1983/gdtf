@@ -67,7 +67,7 @@ fn retarget_tile(
 ///
 /// Drains [`MessageReader<CoverDestroyed>`](gdtf_battle_sim::occupancy_sync::CoverDestroyed); for each
 /// `CoverDestroyed { at }` WITHIN THE DRAWN BAND `[0..=active]` (GTW-519 C6 — the shared
-/// [`drawn_band`] predicate, so a cover smashed on any drawn lower storey swaps too) it finds
+/// `drawn_band` predicate, so a cover smashed on any drawn lower storey swaps too) it finds
 /// the [`TerrainSprite`] at `at` and retargets its material to the
 /// [`TileRole::Rubble`] sprite def (resolved through the GTW-665
 /// [`SpriteResolveCtx`], never a hardcoded index). A
@@ -122,7 +122,7 @@ pub fn swap_destroyed_cover(
 /// The slab mirror of [`swap_destroyed_cover`] (GTW-367 C1/C3): it drains
 /// [`MessageReader<SlabDestroyed>`](gdtf_battle_sim::occupancy_sync::SlabDestroyed); for each
 /// `SlabDestroyed { at }` WITHIN THE DRAWN BAND `[0..=active]` (GTW-519 C6 — the shared
-/// [`drawn_band`] predicate) it finds the [`TerrainSprite`] at `at` and retargets its
+/// `drawn_band` predicate) it finds the [`TerrainSprite`] at `at` and retargets its
 /// material to the [`TileRole::SlabDestroyed`] sprite def (resolved through the GTW-665
 /// [`SpriteResolveCtx`], never a hardcoded index — the engineer's-choice destroyed-slab
 /// treatment). A

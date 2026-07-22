@@ -192,7 +192,7 @@ pub struct PreviewGrids<'w> {
 /// total cost (C1 / C6).
 ///
 /// When a ganger is selected, a target is set, and the ganger's `(`[`Position`]`,
-/// `[`Faction`]`)` resolves, it delegates to [`route_for`] (the SAME `PlanningView` +
+/// `[`Faction`]`)` resolves, it delegates to `route_for` (the SAME `PlanningView` +
 /// `find_path` construction `dispatch_move` plans with) and writes the route + cost; otherwise
 /// (no selection, no target, missing component, OR [`PathBlocked`](gdtf_battle_sim::pathfinder::PathBlocked)
 /// — unreachable / only-through-UNSEEN) it writes [`PathPreview::cleared`] (the empty preview,

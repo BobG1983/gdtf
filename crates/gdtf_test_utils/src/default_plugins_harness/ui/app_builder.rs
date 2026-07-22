@@ -134,7 +134,7 @@ impl GdtfUiTestAppBuilder<NoCamera> {
     ///    so no window entity is spawned and the app does not exit on zero
     ///    windows.
     /// 4. [`AssetPlugin`] pointed at the **workspace-root** `assets/` directory
-    ///    (see [`workspace_assets_root`]) so tests load loose assets from the same
+    ///    (see `workspace_assets_root`) so tests load loose assets from the same
     ///    root as the running app.
     ///
     /// The app has **no camera yet** — call [`with_ui_camera`](Self::with_ui_camera)

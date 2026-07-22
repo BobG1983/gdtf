@@ -71,8 +71,8 @@ use crate::{
 /// next shot's size / speed without a rebuild.
 ///
 /// GTW-327 (slice 2): each round's classified floating-combat-text pops are computed HERE
-/// ([`classify_report`] of its [`HitReport`](gdtf_battle_sim::resolve_and_apply::HitReport)) + their anchor cell
-/// ([`anchor_cell`], the hit ganger's [`Position`](gdtf_battle_sim::ganger::Position)) and threaded INTO
+/// (`classify_report` of its [`HitReport`](gdtf_battle_sim::resolve_and_apply::HitReport)) + their anchor cell
+/// (`anchor_cell`, the hit ganger's [`Position`](gdtf_battle_sim::ganger::Position)) and threaded INTO
 /// the [`ProjectileTravel`], so each shot's numbers ride its own STAGGERED flight and appear
 /// when THAT shot's impact lands ([`animate_impact`](super::super::impact::animate_impact)) —
 /// not all

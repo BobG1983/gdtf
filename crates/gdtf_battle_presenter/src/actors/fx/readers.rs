@@ -120,7 +120,7 @@ pub(super) fn spawn_flash(commands: &mut Commands, sprite: Sprite, world: Vec3) 
 /// [`Wounds`](gdtf_battle_sim::ganger::Wounds) via `Query<&Wounds>.get(msg.ganger)`, then spawns ONE
 /// FX flash at [`cell_to_world`](crate::cell_to_world) carrying [`FlashTtl`] + [`FxFlash`].
 /// The flash's index is the table's `bleed` [`TileIndex`] (never a literal); its tint is a
-/// RELATION to `*Wounds` ([`bleed_tint`]) — the [`Bleeding`] message carries NO amount. A
+/// RELATION to `*Wounds` (`bleed_tint`) — the [`Bleeding`] message carries NO amount. A
 /// ganger missing its [`Position`] OR its [`Wounds`] is skipped FAIL-CLOSED (`get(..)` is
 /// `Err`, the loop `continue`s — no panic, no flash). NO coalescing: two `Bleeding` for one
 /// ganger in a frame spawn two independent flashes.

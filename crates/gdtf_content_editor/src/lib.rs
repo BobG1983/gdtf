@@ -28,7 +28,7 @@
 //!   the egui shell writes and the (kept) model reads. Swept onto the UUID model (GTW-495): the theme
 //!   is a `ThemeUuid` and the default-floor / paint tile are `TerrainUuid`s.
 //! - [`EditorMode`] is the state-scoped active-mode resource the egui mode tabs + the `1`/`2`/`3`
-//!   hotkeys ([`mode`]) drive; the egui shell branches its right panel on it.
+//!   hotkeys (`mode`) drive; the egui shell branches its right panel on it.
 //! - [`HoveredCell`] is the hovered-cell MODEL the live egui hover (C4) + the QA capture both write,
 //!   so the preview ghost is QA-able headlessly (GTW-512 C1.5).
 //! - The `canvas` module keeps the two MODEL resources the editor's lifecycle inserts —
@@ -53,7 +53,7 @@
 //!   fs-write press are deferred to the C4 child); the projection re-checks every painted cell through
 //!   [`evaluate_placement`] so a saved prefab never contains an illegal cell.
 //! - The `right_panel` module keeps the LIVE size-field value newtype ([`GridSpanInput`] — the
-//!   GTW-464 [`SizeFieldSpans`] view model is built over it) + [`seed_default_theme`](right_panel);
+//!   GTW-464 [`SizeFieldSpans`] view model is built over it) + `seed_default_theme`;
 //!   the dead `bevy_ui` marker types (`SizeFieldAxis` / `ThemeDropdown`) were deleted in GTW-577 C7.
 //! - The GTW-495 `terrain_graphics` module resolves a `TerrainDef`'s `presenter_kind.graphic_name`
 //!   to its SPRITE DEF the way the presenter does (through the presenter's `resolve_sprite` over

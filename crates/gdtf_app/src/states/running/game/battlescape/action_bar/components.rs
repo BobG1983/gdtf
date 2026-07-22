@@ -177,7 +177,7 @@ crate::support_item! {
     /// Marks the **flee-battle** action button — an ENABLED APP/LIFECYCLE button, NOT a
     /// sim act. A press runs the dedicated `flee_button_pressed` handler, which inserts the
     /// `BattleRunningComplete` end-signal marker (via the
-    /// [`insert_battle_running_complete`](crate::states::running::game::battlescape::battle_running::insert_battle_running_complete)
+    /// `insert_battle_running_complete`
     /// door), so the existing marker-gated `move_on` advances
     /// `BattleRunning → AnimateOut → AfterMath` — the player's explicit "I'm leaving" out
     /// (requirement 5(b)).
@@ -214,7 +214,7 @@ crate::support_item! {
     /// [`spawn_panel`](gdtf_ui::spawn_panel) column holding the three stance toggles
     /// ([`StanceStandingButton`] / [`StanceKneelingButton`] / [`StanceProneButton`]). A
     /// stable always-visible sub-panel inside the action bar; spawned with the bar in
-    /// `spawn_action_bar` and torn down with it via the [`ActionBarRoot`] recursive
+    /// `spawn_action_bar` and torn down with it via the `ActionBarRoot` recursive
     /// despawn (it is parented under the bar root).
     ///
     /// Widened through `support_item!` so the integration tests can find the panel.

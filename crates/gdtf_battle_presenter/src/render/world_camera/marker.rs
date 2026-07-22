@@ -67,12 +67,12 @@ pub struct WorldCamera;
 ///
 /// Registered by the app on `OnEnter(GameState::BattleScape)` (the presenter cannot name
 /// `GameState`). It spawns a `Camera2d` carrying the [`WorldCamera`] marker, a
-/// [`Camera`] at [`WORLD_CAMERA_ORDER`] (`-1`, below the UI camera's default `0` so it
+/// [`Camera`] at `WORLD_CAMERA_ORDER` (`-1`, below the UI camera's default `0` so it
 /// renders first / beneath) whose [`Camera::clear_color`] is the GTW-271 margin bg
 /// ([`ClearColorConfig::Custom`]`(MARGIN_BG)` — fills the margins around the map sub-rect),
 /// [`RenderLayers::layer`]`(`[`WORLD_RENDER_LAYER`]`)` so
 /// it renders its own non-zero layer and does not intersect the UI camera's layer 0, and
-/// a [`Projection::Orthographic`] at [`WORLD_CAMERA_SCALE`] (`0.5` — 2x zoom, GTW-263)
+/// a [`Projection::Orthographic`] at `WORLD_CAMERA_SCALE` (`0.5` — 2x zoom, GTW-263)
 /// OVERRIDING the `default_2d` `scale = 1.0` that `Camera2d` would otherwise
 /// `#[require]`.
 ///

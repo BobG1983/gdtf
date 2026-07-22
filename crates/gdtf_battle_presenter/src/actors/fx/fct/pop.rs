@@ -111,7 +111,7 @@ impl ConsequencePop {
 /// A CONSEQUENCE FAMILY in the FCT pop palette (GTW-572 C1) — one sim signal, one classify.
 ///
 /// Implemented by a zero-sized family marker in its own file under
-/// [`families`](super::families) (one file per family: the marker, the classify impl, and
+/// `families` (one file per family: the marker, the classify impl, and
 /// its unit tests — P10/P11). The generic
 /// [`read_consequence_fct`](super::stacked_reader::read_consequence_fct) drains
 /// [`Self::Signal`], calls [`Self::classify`], resolves the anchor (fail-closed on a

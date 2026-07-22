@@ -136,7 +136,7 @@ crate::support_item! {
     /// `cleanup`), so the authored battlefield outlives `Load` for the Generation
     /// consumer (bevy-traps rule 1: a state-scoped-exception resource).
     ///
-    /// Declared through [`crate::support_item!`] so it is `pub` under `test-support`
+    /// Declared through `crate::support_item!` so it is `pub` under `test-support`
     /// (the AC7 real-asset harness names it) and `pub(crate)` in the binary build
     /// (E10.5 consumes it in-crate) — keeping the binary `unreachable_pub`-clean.
     #[derive(Resource, Deref, Clone, Debug)]

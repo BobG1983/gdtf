@@ -20,7 +20,7 @@ crate::support_item! {
     /// A UNIVERSAL act available to EVERY ganger (NO weapon requirement — a pure-displacement
     /// shove, not a weapon strike). Spawned
     /// [`Visibility::Hidden`](bevy::camera::visibility::Visibility) by the generic button
-    /// spawn and revealed IN PLACE by the act's visibility toggle when [`offer_shove`] names
+    /// spawn and revealed IN PLACE by the act's visibility toggle when `offer_shove` names
     /// a target — a WEAKER gate than Melee's (no LOS required: a shove is contact, not a
     /// sighted strike). A unit marker: presence on an entity is the whole signal
     /// (no-bare-types rule).

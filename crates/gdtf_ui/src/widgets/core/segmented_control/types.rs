@@ -144,8 +144,8 @@ pub struct SegmentText;
 /// A second [`Text`](bevy::prelude::Text) node STACKED below the segment's primary
 /// [`SegmentText`] label (the segment [`Button`](bevy::ui::widget::Button) is a centered
 /// [`Column`](bevy::ui::FlexDirection::Column)),
-/// rendered at a SMALLER font ([`SEGMENT_SUB_FONT_PT`](super::style::SEGMENT_SUB_FONT_PT)) and a
-/// DIMMER color ([`sub_line_color`](super::style::sub_line_color))
+/// rendered at a SMALLER font (`SEGMENT_SUB_FONT_PT`) and a
+/// DIMMER color (`sub_line_color`)
 /// than the label so it reads as a quiet secondary line. It is created / removed in place by
 /// [`set_segment_sub_line`](super::set_segment_sub_line) — a segment with no sub-line has NO
 /// node carrying this marker, so it

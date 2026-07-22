@@ -109,7 +109,7 @@ pub enum CombatLogEvent {
         /// The ground cell stepped TO.
         to:    Cell,
     },
-    /// A shot's OUTCOME — the [`classify_report`](super::super::reader::classify_report)
+    /// A shot's OUTCOME — the `classify_report`
     /// lines (`-7` / `Torso Major` / `DOWN` …), or `"<actor> missed"` for a clean miss
     /// (NEVER suppressed — the user wants misses logged). From the presenter's per-impact
     /// [`ShotImpactResolved`](crate::ShotImpactResolved).

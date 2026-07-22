@@ -271,7 +271,7 @@ impl Srgba4 {
 /// resolves into the runtime [`ContentMargin`]. The bare `f32` fields are the
 /// wire-shape carve-out (no-bare-types rule): they are the inner-of-newtype
 /// scalars deserialized from disk, mapped to typed [`MarginVw`] / [`MarginVh`]
-/// edges in [`resolve`](Self::resolve).
+/// edges in `resolve`.
 #[derive(Deserialize, Clone, Copy, PartialEq, Debug)]
 pub struct MarginSpec {
     /// Left edge inset, as a window-WIDTH fraction (`Vw`).

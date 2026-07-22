@@ -130,7 +130,7 @@ impl Default for InterShotSeconds {
 /// A named newtype over the `f32` seconds (`.claude/rules/no-bare-types.md`): the
 /// inner is PRIVATE, read through [`Deref`] and built through [`new`](Self::new) /
 /// [`Default`]. The live per-frame clock IS a separate newtype
-/// ([`ImpactAnimation`](super::impact::ImpactAnimation)); this is the tunable hold it
+/// (`ImpactAnimation`); this is the tunable hold it
 /// runs each frame for.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
@@ -226,7 +226,7 @@ impl Default for FctRiseRate {
 /// systems.
 ///
 /// Loaded from the loose `assets/core_tuning/fx.tuning.ron` through the GTW-564
-/// generic hot-RON chain ([`register_fx_tuning_hot_ron`]) and resolved into a
+/// generic hot-RON chain (`register_fx_tuning_hot_ron`) and resolved into a
 /// presenter-owned [`FxTuning`] resource, then re-derived in place on a hot
 /// edit — the SAME dual-role spec-IS-the-resolved-resource shape
 /// [`EffectRoles`](super::roles::EffectRoles) uses (the value clones straight

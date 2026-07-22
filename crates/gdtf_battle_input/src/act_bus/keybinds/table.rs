@@ -122,7 +122,7 @@ impl BoundKey {
 /// The DATA-DRIVEN keybind table — every bound act → the [`BoundKey`] it is on.
 ///
 /// Loaded from the loose `assets/core_tuning/keybinds.tuning.ron` through the GTW-564
-/// generic hot-RON chain ([`register_keybinds_hot_ron`]) and resolved into a
+/// generic hot-RON chain (`register_keybinds_hot_ron`) and resolved into a
 /// resident [`Keybinds`] resource before battle time.
 /// Every binding is data the engineer edits — nothing about the key choices is
 /// hardcoded in Rust; this struct only names the bound ACTS. Each act resolves to

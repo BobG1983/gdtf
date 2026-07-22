@@ -58,8 +58,8 @@ const PREVIEW_CLEAR: Color = Color::srgb(0.09, 0.10, 0.12);
 /// A state-scoped [`Resource`] (inserted `OnEnter(Editing)`, removed `OnExit(Editing)` —
 /// bevy-traps #1). The handle is a framework plumbing value (no-bare-types clause-4 carve-out); the
 /// resource keeps a STRONG handle alive so the render target + the egui-registered texture outlive
-/// any transient owner. Read by the egui viewport draw ([`image_handle`](PreviewTarget::image_handle))
-/// and by [`apply_preview_view`] indirectly (the camera holds its own [`RenderTarget::Image`]).
+/// any transient owner. Read by the egui viewport draw (`image_handle`)
+/// and by `apply_preview_view` indirectly (the camera holds its own [`RenderTarget::Image`]).
 #[derive(Resource, Debug, Clone)]
 pub struct PreviewTarget {
     /// The `RENDER_ATTACHMENT | TEXTURE_BINDING | COPY_DST` image the preview renders into.

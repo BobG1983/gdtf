@@ -186,14 +186,14 @@ fn cursor_over_ui(ui_nodes: &Query<UiNodeHit>, cursor: Vec2) -> bool {
 /// [`ActivePointer`], the primary window (for the OS cursor in
 /// [`Mouse`](ActivePointer::Mouse) mode), the [`GamepadCursor`] (for
 /// [`Gamepad`](ActivePointer::Gamepad) mode), and EVERY UI node's [`ComputedNode`] geometry (the
-/// GTW-380 over-UI gate); CHOOSES the active cursor ([`active_cursor`]); unprojects it with
+/// GTW-380 over-UI gate); CHOOSES the active cursor (`active_cursor`); unprojects it with
 /// [`Camera::viewport_to_world_2d`]; floors the world point into a cell via [`world_to_cell`]; and
 /// sets the hovered cell to `Some(..)` only when the cell is in `0..60` on both axes — otherwise
 /// `None`. It writes ONLY the hovered cell (via [`set_hovered`](InspectTarget::set_hovered)); the
 /// pin is never touched here.
 ///
 /// GTW-380 — the UI ABSORBS clicks over its own nodes: when the active cursor is over ANY visible
-/// UI node ([`cursor_over_ui`]), the hovered cell resolves to `None`, so the board click decision
+/// UI node (`cursor_over_ui`), the hovered cell resolves to `None`, so the board click decision
 /// (which keys off [`InspectTarget::hovered`]) and the hover reticle (which keys off the same cell)
 /// both see "nothing under the cursor" — the click NEVER reaches the board cell-picker. The bare
 /// `Node` HUD panels carry no [`Interaction`], so this hit-tests the built-in [`ComputedNode`]

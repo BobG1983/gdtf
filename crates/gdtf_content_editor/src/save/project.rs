@@ -73,7 +73,7 @@ pub fn prefab_save_path(theme_display: &str, size: GridSize, stem: &str) -> Path
 /// them into ONE [`placements`](PrefabSpec::placements) list of [`TerrainPlacementEntry`] (the
 /// schema's single list — the per-piece behaviour now lives in the referenced
 /// [`TerrainDef`](gdtf_battle_sim::terrain::def::TerrainDef)). The prefab's theme / size come from
-/// the `session`; the spawn role is the [`SAVED_SPAWN_ROLE`] default. There is NO authored-opening
+/// the `session`; the spawn role is the `SAVED_SPAWN_ROLE` default. There is NO authored-opening
 /// derivation — the schema carries none (connectivity is by-construction in the assembler:
 /// the 1-cell `default_floor` margin every placement reserves).
 ///

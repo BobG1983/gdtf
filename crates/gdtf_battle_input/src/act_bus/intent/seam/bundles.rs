@@ -25,7 +25,7 @@ use crate::{SelectedShooter, selection::cell_order_key};
 /// CONTEXTUAL acts' writers are NOT here — each per-act generic drain in
 /// [`crate::contextual`] holds its own `MessageWriter<A::Requested>` (GTW-571), so
 /// adding a contextual act never widens this bundle. The
-/// [`SetFacingRequested`] writer ([`facing`](Self::facing)) is REUSED by BOTH the
+/// [`SetFacingRequested`] writer (`facing`) is REUSED by BOTH the
 /// keyboard [`ActIntent::FacingCycle`](super::ActIntent::FacingCycle) arm and the right-click
 /// [`ActIntent::Turn`](super::ActIntent::Turn) arm (one set-facing message type, one sim dispatch).
 #[derive(SystemParam)]

@@ -110,7 +110,7 @@ impl SizeFieldSpans {
     /// Fold the (edited) spans back into the session — the KEPT fields → session forward commit
     /// (GTW-515 C4.6, preserved by GTW-464 C1).
     ///
-    /// Clamps through [`clamp_to_grid_size`] into [`MapEditorSession::set_grid_size`], then
+    /// Clamps through `clamp_to_grid_size` into [`MapEditorSession::set_grid_size`], then
     /// re-clamps the [`CurrentEditLevel`] so a shrunk volume never leaves it pointing past the new
     /// extent (the kept level-nav clamp — [`CurrentEditLevel::clamped`]). Set-to-target: committing
     /// spans equal to the session's current size changes nothing.

@@ -142,7 +142,7 @@ fn report_kill_victim(report: Option<&HitReport>) -> Option<Entity> {
 /// here; a non-shot death has no impact signal and is despawned there — so the [`GangerSprites`]
 /// entry is dropped EXACTLY ONCE. A signal for an already-despawned / unmapped ganger (e.g. a
 /// non-lethal hit, or a corpse the life-state path already removed) is a no-op
-/// ([`GangerSprites::remove`] returns [`None`]).
+/// (`GangerSprites::remove` returns [`None`]).
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`], [`ResMut<GangerSprites>`], and the
 /// [`MessageReader<ShotImpactResolved>`](crate::ShotImpactResolved).

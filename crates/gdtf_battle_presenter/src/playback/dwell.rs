@@ -131,7 +131,7 @@ dwell_seconds!(
 /// The resolved playback-dwell table the cursor reads (GTW-727 C20).
 ///
 /// Hot-reloadable through the generic hot-RON registration path
-/// ([`register_playback_tuning_hot_ron`]): an edit
+/// (`register_playback_tuning_hot_ron`): an edit
 /// to the `.ron` overwrites this resource, so the very next hold uses the new value with no
 /// rebuild. Also `init_resource`'d by the renderer plugin, so the cursor always has a table
 /// even before (or without) the asset chain — a `MinimalPlugins` app with no `AssetServer`

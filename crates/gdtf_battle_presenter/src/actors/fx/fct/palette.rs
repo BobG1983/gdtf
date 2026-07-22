@@ -94,29 +94,29 @@ const FIELD_HAZARD_ORANGE: Color = Color::srgb(0.95, 0.50, 0.10);
 /// but the flat swatch remains the fallback for a status pop that carries no severity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FctValence {
-    /// Damage taken — an HP-loss number. Drawn [`DAMAGE_RED`].
+    /// Damage taken — an HP-loss number. Drawn `DAMAGE_RED`.
     Damage,
     /// A status change / caution with no severity tier to scale by — never a
     /// severity-bearing wound (those pick their amber via [`severity_color`]). Drawn the
-    /// flat [`WOUND_AMBER`] base.
+    /// flat `WOUND_AMBER` base.
     Status,
-    /// A neutral / miss pop. Drawn [`NEUTRAL_GREY`].
+    /// A neutral / miss pop. Drawn `NEUTRAL_GREY`.
     Neutral,
-    /// A lethal outcome — a ganger went Downed or Dead. Drawn [`DAMAGE_RED`] (the reader draws
+    /// A lethal outcome — a ganger went Downed or Dead. Drawn `DAMAGE_RED` (the reader draws
     /// it bold + larger via `FctEmphasis::Bold` so it reads as the heaviest pop in the blood
     /// family).
     Lethal,
     /// A suppression event — a ganger was pinned down by incoming fire (GTW-526 C8). Drawn the
-    /// cowed [`SUPPRESSED_BLUE_GREY`], the colour-drained family the suppressed sprite tint
+    /// cowed `SUPPRESSED_BLUE_GREY`, the colour-drained family the suppressed sprite tint
     /// shares, so the `"SUPPRESSED"` pop and the desaturated sprite read as one signal.
     Suppressed,
     /// A damage-over-time tick — a burning / caustic affliction drained flat HP this round
-    /// (GTW-544). Drawn the toxic [`DOT_TOXIC_GREEN`] so the recurring attrition reads as its
+    /// (GTW-544). Drawn the toxic `DOT_TOXIC_GREEN` so the recurring attrition reads as its
     /// own signal, distinct from a fresh weapon hit (RED) or a bleed status tag (AMBER).
     Dot,
     /// An area-damage-field tick — a persistent damage ZONE (toxic pool / electrified floor /
     /// burning ground) drained flat HP off the ganger standing in it this round (GTW-545). Drawn
-    /// the hazard [`FIELD_HAZARD_ORANGE`] so the recurring environmental attrition reads as its
+    /// the hazard `FIELD_HAZARD_ORANGE` so the recurring environmental attrition reads as its
     /// own signal, distinct from a fresh weapon hit (RED) and from the DOT toxic green.
     Field,
 }
@@ -124,12 +124,12 @@ pub enum FctValence {
 /// The FCT swatch for a combat [`FctValence`] — the one valence → color mapping.
 ///
 /// [`Damage`](FctValence::Damage) and [`Lethal`](FctValence::Lethal) share the
-/// [`DAMAGE_RED`] blood family (lethal is drawn heavier by the caller via `FctEmphasis::Bold`,
+/// `DAMAGE_RED` blood family (lethal is drawn heavier by the caller via `FctEmphasis::Bold`,
 /// same hue);
-/// [`Status`](FctValence::Status) is the flat [`WOUND_AMBER`] base; [`Neutral`](FctValence::Neutral)
-/// is [`NEUTRAL_GREY`]; [`Suppressed`](FctValence::Suppressed) is the cowed
-/// [`SUPPRESSED_BLUE_GREY`]; [`Dot`](FctValence::Dot) is the toxic [`DOT_TOXIC_GREEN`];
-/// [`Field`](FctValence::Field) is the hazard [`FIELD_HAZARD_ORANGE`]. A severity-bearing wound
+/// [`Status`](FctValence::Status) is the flat `WOUND_AMBER` base; [`Neutral`](FctValence::Neutral)
+/// is `NEUTRAL_GREY`; [`Suppressed`](FctValence::Suppressed) is the cowed
+/// `SUPPRESSED_BLUE_GREY`; [`Dot`](FctValence::Dot) is the toxic `DOT_TOXIC_GREEN`;
+/// [`Field`](FctValence::Field) is the hazard `FIELD_HAZARD_ORANGE`. A severity-bearing wound
 /// should instead call [`severity_color`] to scale within the amber family.
 #[must_use]
 pub const fn valence_color(valence: FctValence) -> Color {
@@ -148,9 +148,9 @@ pub const fn valence_color(valence: FctValence) -> Color {
 /// Maps the [`Severity`] ladder into the amber family: a [`None`](Severity::None) graze
 /// (HP loss only, no wound spent) reads NEUTRAL (it is not a wound), the wounding tiers
 /// ([`Minor`](Severity::Minor) → [`Critical`](Severity::Critical)) ramp from the light
-/// [`WOUND_AMBER`] base toward the hot [`WOUND_AMBER_DEEP`] as the tier climbs (a worse
+/// `WOUND_AMBER` base toward the hot `WOUND_AMBER_DEEP` as the tier climbs (a worse
 /// wound reads hotter), and a [`Fatal`](Severity::Fatal) hit jumps to the lethal
-/// [`DAMAGE_RED`] (it is a death, not a wound). The ramp uses each tier's
+/// `DAMAGE_RED` (it is a death, not a wound). The ramp uses each tier's
 /// [`Severity::rank`] so the mapping stays in lock-step with the sim's ladder order
 /// without pinning any score magnitude.
 #[must_use]

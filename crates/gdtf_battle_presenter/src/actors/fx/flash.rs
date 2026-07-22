@@ -28,12 +28,12 @@ pub struct FxFlash;
 /// value, not a bare `Timer`), [`Deref`]ing to it so a reader inspects the timer straight
 /// through. THIS countdown is what makes "one-shot" observable: [`expire_flashes`] advances
 /// it each `Update` and despawns the flash the moment it [`Timer::finished`]. A fresh
-/// [`FlashTtl::new`] starts a [`FLASH_SECONDS`] one-shot ([`TimerMode::Once`]) clock.
+/// [`FlashTtl::new`] starts a `FLASH_SECONDS` one-shot ([`TimerMode::Once`]) clock.
 #[derive(Component, Deref, Debug, Clone)]
 pub struct FlashTtl(Timer);
 
 impl FlashTtl {
-    /// Start a fresh one-shot flash clock running for [`FLASH_SECONDS`].
+    /// Start a fresh one-shot flash clock running for `FLASH_SECONDS`.
     ///
     /// [`TimerMode::Once`] so the timer finishes exactly once (it does not loop), which is
     /// the "one-shot" semantics [`expire_flashes`] keys its despawn on.
@@ -46,7 +46,7 @@ impl FlashTtl {
     ///
     /// Wraps [`Timer::tick`] + [`Timer::is_finished`] so the inner [`Timer`] is mutated
     /// through a named method (no `DerefMut` exposed — the lifetime is advanced ONLY here).
-    /// Returns `true` once the [`FLASH_SECONDS`] window has elapsed (a [`TimerMode::Once`]
+    /// Returns `true` once the `FLASH_SECONDS` window has elapsed (a [`TimerMode::Once`]
     /// timer stays finished once it crosses), the signal [`expire_flashes`] despawns on.
     pub fn tick(&mut self, delta: Duration) -> bool {
         self.0.tick(delta).is_finished()
@@ -54,7 +54,7 @@ impl FlashTtl {
 }
 
 impl Default for FlashTtl {
-    /// A fresh [`FLASH_SECONDS`] one-shot clock — same as [`FlashTtl::new`].
+    /// A fresh `FLASH_SECONDS` one-shot clock — same as [`FlashTtl::new`].
     fn default() -> Self {
         Self::new()
     }

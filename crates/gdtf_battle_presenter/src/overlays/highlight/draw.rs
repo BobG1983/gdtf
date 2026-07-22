@@ -120,7 +120,7 @@ const fn tint_for(visibility: CellVisibility) -> Color {
 ///
 /// GTW-11 — the reticle RECOLOURS off the request's carried
 /// [`CellVisibility`](crate::CellVisibility) verdict: a squad-VISIBLE cell keeps the warm
-/// [`HIGHLIGHT_TINT`], a non-VISIBLE cell (UNSEEN / EXPLORED) takes the [`UNSEEN_TINT`]
+/// `HIGHLIGHT_TINT`, a non-VISIBLE cell (UNSEEN / EXPLORED) takes the `UNSEEN_TINT`
 /// ("unseen — hold your fire"). It STILL mutates the ONE [`HoverHighlight`] sprite in
 /// place (its `color` alongside its `Transform` / `Visibility`) — never a second sprite.
 ///

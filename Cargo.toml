@@ -108,6 +108,7 @@ implicit_hasher           = "allow" # Bevy system fns take Local<HashSet<_>> —
 
 [workspace.lints.rustdoc]
 broken_intra_doc_links = "deny"
+private_intra_doc_links = "deny"
 
 [profile.dev]
 opt-level = 1

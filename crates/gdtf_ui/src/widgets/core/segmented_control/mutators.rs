@@ -77,8 +77,8 @@ type SubLineSegment = (&'static SegmentIndex, &'static Children);
 ///
 /// The sub-line is a SECOND [`Text`](bevy::prelude::Text) node ([`SegmentSubText`]) STACKED
 /// below the segment's primary [`SegmentText`](super::SegmentText) label, at a smaller font
-/// ([`SEGMENT_SUB_FONT_PT`](super::style::SEGMENT_SUB_FONT_PT)) and a dimmer color
-/// ([`sub_line_color`] of the segment's base
+/// (`SEGMENT_SUB_FONT_PT`) and a dimmer color
+/// (`sub_line_color` of the segment's base
 /// text) so it reads as a quiet secondary line. It is created / mutated / removed IN PLACE —
 /// never by despawning/respawning the SEGMENT ([[ui-mutate-not-respawn]]):
 ///

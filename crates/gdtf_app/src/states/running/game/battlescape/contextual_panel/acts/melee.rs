@@ -26,7 +26,7 @@ crate::support_item! {
     /// A DEDICATED contextual button (the GTW-507 D1 ruling — NOT a left-click overload).
     /// Spawned [`Visibility::Hidden`](bevy::camera::visibility::Visibility) by the generic
     /// button spawn and revealed IN PLACE by the act's visibility toggle when
-    /// [`offer_melee`] names either target kind. A unit marker: presence on an entity is the
+    /// `offer_melee` names either target kind. A unit marker: presence on an entity is the
     /// whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
     struct MeleeButton;

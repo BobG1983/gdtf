@@ -187,9 +187,9 @@ const COST_LABEL_LIFT_PX: f32 = CELL_PX * 0.55;
 ///
 /// - when the highlight holds a fireable-enemy cell ON the active storey, it moves the pooled
 ///   tile to [`cell_to_world_layered`] at the [`Layer::FireTarget`] band (`z` strictly UNDER the
-///   actor — the tile renders below the enemy sprite), tints it [`FIRE_TARGET_TINT`] (red,
-///   semi-transparent), and shows it; the pooled label is moved [`COST_LABEL_LIFT_PX`] above the
-///   cell, its text rewritten to [`cost_label_text`]`(cost)`, shown OPAQUE;
+///   actor — the tile renders below the enemy sprite), tints it `FIRE_TARGET_TINT` (red,
+///   semi-transparent), and shows it; the pooled label is moved `COST_LABEL_LIFT_PX` above the
+///   cell, its text rewritten to `cost_label_text``(cost)`, shown OPAQUE;
 /// - otherwise (empty highlight / no fireable hover, OR a target off the active storey — the
 ///   hard cut, C5) BOTH pooled entities are [`Visibility::Hidden`] — NEVER despawned (the
 ///   UI-mutate-not-respawn convention, owned by the shared [`draw_pool`] walk).
@@ -200,8 +200,8 @@ const COST_LABEL_LIFT_PX: f32 = CELL_PX * 0.55;
 /// the GTW-120 UI camera.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`] for the lazy pool growth, the
-/// [`FireTargetHighlight`] / [`ActiveLevel`] reads, a [`TileQuery`] for the red tile, and a
-/// [`LabelQuery`] for the cost label. The two pooled-entity queries are `Without` each other's
+/// [`FireTargetHighlight`] / [`ActiveLevel`] reads, a `TileQuery` for the red tile, and a
+/// `LabelQuery` for the cost label. The two pooled-entity queries are `Without` each other's
 /// marker so they are provably disjoint (no B0001 conflict). Battle-gated + in
 /// [`PresenterSystems::Overlay`](crate::PresenterSystems) by the
 /// [`TopDownRendererPlugin`](crate::TopDownRendererPlugin).

@@ -23,8 +23,8 @@ pub struct ShotProjectile;
 /// One projectile's flight — its CONSTANT-VELOCITY travel from the muzzle world point
 /// toward the target world point, after a staggered launch delay.
 ///
-/// A NAMED grouping component (not a bare tuple): [`from`](ProjectileTravel::from) /
-/// [`to`](ProjectileTravel::to) are the endpoints (world-space, the
+/// A NAMED grouping component (not a bare tuple): `from` /
+/// `to` are the endpoints (world-space, the
 /// [`Vec3`](bevy::math::Vec3) inner is the only carve-out the no-bare-types rule
 /// allows — framework geometry the [`Transform`] consumes directly), `damage` is the
 /// shot's [`DamageType`] (carried so the arrival [`PendingImpact`](super::pending::PendingImpact)
@@ -40,10 +40,10 @@ pub struct ShotProjectile;
 /// [`advance`](ProjectileTravel::advance) (no `DerefMut`).
 ///
 /// GTW-327 (slice 2): the bolt ALSO carries this round's classified floating-combat-text
-/// `pops` (the [`ClassifiedPop`] list
-/// [`classify_report`](super::super::fct::classify_report) built from the shot's
+/// `pops` (the `ClassifiedPop` list
+/// `classify_report` built from the shot's
 /// [`HitReport`](gdtf_battle_sim::resolve_and_apply::HitReport) — empty for a clean miss) + the `anchor`
-/// `(cell, level)` the pops sit on ([`anchor_cell`](super::super::fct::anchor_cell) of the
+/// `(cell, level)` the pops sit on (`anchor_cell` of the
 /// hit ganger at the SHOT, not the
 /// impact cell), so each shot's numbers ride its own staggered flight and appear when THAT
 /// shot's impact lands — handed to the arrival [`PendingImpact`](super::pending::PendingImpact).

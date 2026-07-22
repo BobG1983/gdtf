@@ -30,14 +30,14 @@ use super::{
 /// [`World`](bevy::prelude::World) (the forwarders resolve the entities first), so every
 /// variant is unit-testable in isolation. Most events yield exactly one line; a
 /// [`ShotOutcome`](CombatLogEvent::ShotOutcome) on a CONNECTING hit yields the
-/// [`classify_report`] list, an [`AlreadyFull`](gdtf_battle_sim::acts::ReloadOutcome::AlreadyFull)
+/// `classify_report` list, an [`AlreadyFull`](gdtf_battle_sim::acts::ReloadOutcome::AlreadyFull)
 /// reload and a non-suppressed move rejection yield NONE.
 ///
 /// Phrasing (v1 battle-HUD voice):
 ///
 /// - **Fire declaration** → `"<actor> fired <Mode> at <target>"` (neutral GREY).
 /// - **Movement** → `"<actor> moved <from> -> <to>"` (neutral GREY).
-/// - **Shot outcome** → the [`classify_report`] lines (REUSED — never duplicated); only a
+/// - **Shot outcome** → the `classify_report` lines (REUSED — never duplicated); only a
 ///   genuine clean MISS reads `"<actor> missed"` (neutral GREY, NEVER suppressed); a
 ///   `None` report — a blast detonation seed — yields NO line (GTW-559).
 /// - **Reload** → `"<actor> reloaded"` (GREY) / `"<actor>: no TU"` (AMBER); already-full →

@@ -25,7 +25,7 @@ use super::types::ThemeDraft;
 const HP_BAR_CEILING: f32 = 1000.0;
 
 /// Resolve a terrain def into a `(human summary, HP fraction)` for the C3 readout — its kind, HP,
-/// armor, hardness (+ band for Wall / Cover), and the HP fraction against [`HP_BAR_CEILING`]. Pure,
+/// armor, hardness (+ band for Wall / Cover), and the HP fraction against `HP_BAR_CEILING`. Pure,
 /// so the C7 test pins the resolution against a registry fixture.
 #[must_use]
 pub fn resolved_stats(def: &TerrainDef) -> (String, f32) {

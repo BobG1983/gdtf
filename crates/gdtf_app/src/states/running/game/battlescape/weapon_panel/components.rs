@@ -31,7 +31,7 @@ crate::support_item! {
     /// holding the 2×2 grid, so the `OnExit(BattleRunning)` despawn finds and recursively tears
     /// down the whole cluster by this one marker rather than tracking each child.
     ///
-    /// Widened toward `crate::test_support` via [`support_item!`](crate::support_item) so the
+    /// Widened toward `crate::test_support` via `support_item!` so the
     /// AC tests can assert the panel's presence + measure (it sits IN the bottom bar — the
     /// layout-overhaul viewport insets the map by the BOTTOM BAR, not this panel). A unit
     /// marker: presence on an entity is the whole signal (no-bare-types rule).

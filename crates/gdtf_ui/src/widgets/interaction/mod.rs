@@ -53,7 +53,7 @@
 //! never fires for it. It would keep its stale active fill until hovered. Reading
 //! [`RemovedComponents`](bevy::prelude::RemovedComponents)`<ActiveButton>`, this
 //! system repaints each just-de-selected toggle from its CURRENT `Interaction`
-//! via the shared [`interaction_fill`](theme::interaction_fill) helper the SAME
+//! via the shared `interaction_fill` helper the SAME
 //! frame the marker is removed.
 //!
 //! ## Theme-reload repaint (GTW-147)
@@ -67,7 +67,7 @@
 //! the new theme's resting base until re-hovered. Gated on
 //! `resource_changed::<GdtfTheme>`, ordered `.after(UiSystems::ApplyTheme)`, this
 //! system re-derives every ENABLED button's fill from its CURRENT `Interaction` via
-//! the same [`interaction_fill`](theme::interaction_fill) helper.
+//! the same `interaction_fill` helper.
 
 mod focus;
 mod repaint;

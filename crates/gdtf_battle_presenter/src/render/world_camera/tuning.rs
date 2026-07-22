@@ -103,7 +103,7 @@ impl Default for BoundsMarginWorld {
 /// dwell delay, loaded from `assets/core_tuning/pan.tuning.ron` and read live by the pan systems.
 ///
 /// Loaded from the loose `assets/core_tuning/pan.tuning.ron` through the GTW-564 generic
-/// hot-RON chain ([`register_pan_tuning_hot_ron`]) and resolved into a presenter-owned
+/// hot-RON chain (`register_pan_tuning_hot_ron`) and resolved into a presenter-owned
 /// [`PanTuning`] resource, then re-derived in place on a hot edit — the SAME dual-role
 /// spec-IS-the-resolved-resource shape [`FxTuning`](crate::FxTuning) uses (the value
 /// clones straight out of the `RonAsset`, no extra resolve step).

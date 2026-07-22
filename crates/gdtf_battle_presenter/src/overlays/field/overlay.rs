@@ -144,7 +144,7 @@ fn field_draws(fields: &FieldRegistry, active_level: Level) -> Vec<FieldDraw> {
 ///
 /// - for each field cell ON the active storey, it takes (or lazily spawns) a pooled sprite, moves
 ///   it to [`cell_to_world_layered`] at the [`Layer::Field`] band, sets its tint to the field's
-///   [`field_tint`] (per its [`DamageType`]), and shows it;
+///   `field_tint` (per its [`DamageType`]), and shows it;
 /// - every surplus pooled sprite is [`Visibility::Hidden`] — NEVER despawned (the
 ///   UI-mutate-not-respawn convention).
 ///
@@ -152,7 +152,7 @@ fn field_draws(fields: &FieldRegistry, active_level: Level) -> Vec<FieldDraw> {
 /// frame, so after `PageUp` raises `ActiveLevel` to L1 the next Draw renders only L1 fields.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`] for the lazy pool growth, the [`FieldRegistry`] /
-/// [`ActiveLevel`] reads, and the [`FieldSpriteQuery`] for the pooled sprites. Battle-gated in
+/// [`ActiveLevel`] reads, and the `FieldSpriteQuery` for the pooled sprites. Battle-gated in
 /// [`TopDownRendererPlugin`](crate::TopDownRendererPlugin) by `resource_exists::<FieldRegistry>`
 /// (the sim's live-field witness), so it stays inert when no battle has seeded a field registry.
 /// Pure VIEW: it only READS the sim registry and DRAWS; it never writes the sim.

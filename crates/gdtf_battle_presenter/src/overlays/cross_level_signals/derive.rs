@@ -56,15 +56,15 @@ pub struct CrossLevelSimFacts<'w, 's> {
 /// resolver's own composition shape (a fog fact + the settled scene, never a
 /// parallel visibility check):
 ///
-/// - [`gather_threats`] — the fog-gated cross-level enemy scan, through the SAME
+/// - `gather_threats` — the fog-gated cross-level enemy scan, through the SAME
 ///   [`is_ganger_visible`](gdtf_battle_sim::visibility::is_ganger_visible) free fn
 ///   [`present_fog`](crate::present_fog) / the ganger-visibility resolver read;
-/// - [`gather_drop_depth`] — the hole/ledge scan over the live [`SurfaceGrid`] /
+/// - `gather_drop_depth` — the hole/ledge scan over the live [`SurfaceGrid`] /
 ///   [`OccupancyGrid`], fog-gated on squad-EXPLORED (the terrain-draw treatment);
-/// - [`gather_connectors`] — one badge per on-storey [`VerticalLinkGraph`]
+/// - `gather_connectors` — one badge per on-storey [`VerticalLinkGraph`]
 ///   endpoint, same EXPLORED gate.
 ///
-/// [`build_signals`] then dedupes + caps per cell (the RESOLVED SPEC), and the
+/// `build_signals` then dedupes + caps per cell (the RESOLVED SPEC), and the
 /// result is written through
 /// [`ResMut::set_if_neq`](bevy::prelude::DetectChangesMut::set_if_neq) so the
 /// resource is change-tick-quiet: the draw system re-walks its pool when this

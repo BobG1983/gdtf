@@ -39,13 +39,13 @@ pub(super) const SHIPPED_GRIMDARK_RON: &str = include_str!(concat!(
 /// fails to load, so the app never leaves `Load` without a `GdtfTheme` and never
 /// hangs on a bad asset.
 ///
-/// It first reparses the embedded, test-verified [`SHIPPED_GRIMDARK_RON`] (the
+/// It first reparses the embedded, test-verified `SHIPPED_GRIMDARK_RON` (the
 /// authoritative grimdark values, not a fresh palette) and resolves it with a
 /// closure returning the default [`Handle<Font>`] (the fallback has no
 /// `AssetServer` to load fonts). That parse cannot realistically fail — the same
 /// bytes are asserted to deserialize by this module's tests — but to honour the
 /// no-`unwrap`/`expect`/`panic` rule it falls through, on a parse error, to
-/// [`const_fallback_theme`]: the genuinely hardcoded last line of defence.
+/// `const_fallback_theme`: the genuinely hardcoded last line of defence.
 #[must_use]
 pub fn default_theme() -> GdtfTheme {
     match ron::from_str::<GdtfThemeSpec>(SHIPPED_GRIMDARK_RON) {

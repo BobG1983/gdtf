@@ -109,12 +109,12 @@ const LABEL_LIFT_PX: f32 = CELL_PX * 0.55;
 ///
 /// - for each route cell ON the active storey, it takes (or lazily spawns) a pooled sprite,
 ///   moves it to [`cell_to_world_layered`] at the [`Layer::PathPreview`] band, tints it
-///   [`PREVIEW_TINT`](super::resolve::PREVIEW_TINT) (full alpha when squad-VISIBLE,
-///   [`EXPLORED_ALPHA_SCALE`](super::resolve::EXPLORED_ALPHA_SCALE)-reduced when
+///   `PREVIEW_TINT` (full alpha when squad-VISIBLE,
+///   `EXPLORED_ALPHA_SCALE`-reduced when
 ///   squad-EXPLORED-but-not-VISIBLE — the §53 remembered treatment), and shows it;
 /// - if the route LEAVES the active storey (a later route cell is on a DIFFERENT storey), it
 ///   draws ONE extra pooled sprite at the LAST active-storey cell tinted
-///   [`LINK_MARKER_TINT`](super::resolve::LINK_MARKER_TINT)
+///   `LINK_MARKER_TINT`
 ///   — the C5 minimal off-storey-continuation marker (GTW-359 soft dep);
 /// - every surplus pooled sprite is [`Visibility::Hidden`] — NEVER despawned (the
 ///   UI-mutate-not-respawn convention, owned by the shared [`draw_pool`] walk).
@@ -123,7 +123,7 @@ const LABEL_LIFT_PX: f32 = CELL_PX * 0.55;
 ///
 /// It then draws ONE world-space [`Text2d`] showing [`PathPreview::cost`] as `"N TU"` at the
 /// previewed TARGET cell — the LAST cell of [`PathPreview::cells`] (the route destination) —
-/// lifted [`LABEL_LIFT_PX`] ABOVE the cell ([`draw_target_label`]). The single pooled
+/// lifted `LABEL_LIFT_PX` ABOVE the cell (`draw_target_label`). The single pooled
 /// [`PathTargetLabel`] entity is mutated in place (text rewritten, [`Transform`] moved, shown)
 /// — never despawn-respawned. It is HIDDEN when the preview is empty (no target) OR when the
 /// target cell is off the active storey (the same hard cut as the steps). So a click sets a
@@ -136,8 +136,8 @@ const LABEL_LIFT_PX: f32 = CELL_PX * 0.55;
 /// not the GTW-120 UI camera.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`] for the lazy pool growth, the
-/// [`PathPreview`] / [`ActiveLevel`] / [`SquadVisibility`] reads, a [`StepQuery`] for the route
-/// steps, and a [`LabelQuery`] for the single target-cost label. The two pooled-entity queries
+/// [`PathPreview`] / [`ActiveLevel`] / [`SquadVisibility`] reads, a `StepQuery` for the route
+/// steps, and a `LabelQuery` for the single target-cost label. The two pooled-entity queries
 /// are `Without` each other's marker so they are provably disjoint (no B0001 conflict).
 /// Battle-gated + in [`PresenterSystems::Overlay`](crate::PresenterSystems) by the
 /// [`TopDownRendererPlugin`](crate::TopDownRendererPlugin).

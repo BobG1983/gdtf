@@ -96,7 +96,7 @@ const fn link_tile_role(kind: LinkKind, active_z: i32, other_z: i32) -> TileRole
 ///
 /// - for each authored link, it draws the endpoint cell ON the active storey (the hard
 ///   cut, AC4) — taking (or lazily spawning) a pooled sprite, retargeting it to the
-///   endpoint's role sprite def ([`link_tile_role`] → the role key's
+///   endpoint's role sprite def (`link_tile_role` → the role key's
 ///   `content/sprites/<key>.spritedef.ron` def; a missing def draws the LOUD magenta
 ///   marker — C4), moving it to [`cell_to_world_layered`] at the
 ///   [`Layer::VerticalLink`] band plus the def's C2 anchor offset, and showing it;

@@ -54,7 +54,7 @@ const PORTRAIT_VH: f32 = 8.0;
 ///
 /// A named newtype over the bare atlas index (no-bare-types: which face a ganger shows
 /// is a domain value, the `gdtf_ui` `theme` house style — private inner + derived
-/// [`Deref`]). Built ONLY through [`PortraitIndex::for_name`], which guarantees the value
+/// [`Deref`]). Built ONLY through `PortraitIndex::for_name`, which guarantees the value
 /// is in range (`% PORTRAIT_COUNT`), so a constructed [`PortraitIndex`] can always index
 /// the atlas without an out-of-bounds face.
 #[derive(Deref, Clone, Copy, PartialEq, Eq, Debug)]
@@ -88,10 +88,10 @@ impl PortraitIndex {
 }
 
 /// The deterministic portrait atlas index for `name` (the bare `usize` of
-/// [`PortraitIndex::for_name`]).
+/// `PortraitIndex::for_name`).
 ///
 /// Defined ONLY under `test-support` (it has no production caller — the update uses
-/// [`PortraitIndex::for_name`] directly), so the external portrait integration test can
+/// `PortraitIndex::for_name` directly), so the external portrait integration test can
 /// compute the EXPECTED index from the SAME rule the production update applies (the
 /// contract: "compute the expected index in the test from the same hash rule"). Fully gated
 /// behind the feature so the production binary build carries no dead `pub(crate)` fn.

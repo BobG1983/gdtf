@@ -20,12 +20,12 @@
 //! and `CLAUDE.md`) puts `WorldCamera` in the presenter so the input crate can depend
 //! on it.
 //!
-//! The lifecycle splits across five concern modules: [`mod@marker`] (the marker +
-//! spawn/despawn), [`mod@framing`] (the GTW-249 battle-start frame-on-units + the
-//! bounds clamp), [`mod@pan`] (the GTW-250 pan-navigation helpers/systems + the
-//! GTW-259 gamepad-cursor edge-pan message), [`mod@tuning`] (the GTW-299
+//! The lifecycle splits across five concern modules: `marker` (the marker +
+//! spawn/despawn), `framing` (the GTW-249 battle-start frame-on-units + the
+//! bounds clamp), `pan` (the GTW-250 pan-navigation helpers/systems + the
+//! GTW-259 gamepad-cursor edge-pan message), `tuning` (the GTW-299
 //! hot-reloadable edge-pan tuning table + its RON load / resolve / re-derive chain), and
-//! [`mod@dwell`] (the GTW-299 edge-band dwell accumulator + the pure dwell decision).
+//! `dwell` (the GTW-299 edge-band dwell accumulator + the pure dwell decision).
 
 mod dwell;
 mod framing;

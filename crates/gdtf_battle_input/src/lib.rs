@@ -19,7 +19,7 @@
 //!
 //! # Module layout (GTW-201 / GTW-385)
 //!
-//! - [`plugin`] — the [`GdtfBattleInputPlugin`] wiring (the `add_systems` ordering) + its marker.
+//! - `plugin` — the [`GdtfBattleInputPlugin`] wiring (the `add_systems` ordering) + its marker.
 //! - [`act_bus`] — the act-intent data bus and the key/binding surfaces that feed it:
 //!   [`sets`], [`intent`], [`contextual`] (the GTW-571 generic contextual-act registration machinery),
 //!   [`keyboard`], [`keybinds`], [`cycle`].

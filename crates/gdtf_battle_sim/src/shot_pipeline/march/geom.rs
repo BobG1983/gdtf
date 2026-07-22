@@ -110,7 +110,7 @@ impl MarchDir {
 }
 
 /// Whether a voxel-axis coordinate lies **inside** the coarse grid extent — the
-/// answer the march's bounds tests ([`xy_in_grid`] / [`z_in_grid`]) and the `AoE`
+/// answer the march's bounds tests (`xy_in_grid` / `z_in_grid`) and the `AoE`
 /// template's edge-clamp return.
 ///
 /// A named predicate newtype (no-bare-types: "in the grid" is a domain answer, not a

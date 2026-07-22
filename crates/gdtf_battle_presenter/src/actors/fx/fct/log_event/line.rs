@@ -8,7 +8,7 @@ use super::super::text::{CombatText, FctEmphasis};
 /// One rendered combat-log line — its text, its valence color, and its emphasis weight.
 ///
 /// A NAMED grouping struct (not a bare `(CombatText, Color, FctEmphasis)` tuple): mirrors
-/// the FCT [`ClassifiedPop`](super::super::reader::ClassifiedPop) shape but is the log
+/// the FCT `ClassifiedPop` shape but is the log
 /// layer's unit. Reuses the existing FCT vocabulary: [`CombatText`] for the string, the
 /// [`FctValence`](super::super::palette::FctValence) palette via
 /// [`valence_color`](super::super::palette::valence_color) for the color, and

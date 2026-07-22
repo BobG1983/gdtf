@@ -6,7 +6,7 @@
 //! [`SurfaceGrid`](gdtf_battle_sim::surface::SurfaceGrid) slabs — for the presenter-owned
 //! [`ActiveLevel`] and spawns one 16x16 top-down terrain tile per non-empty
 //! `(cell, level)`, resolving each tile's PIXELS from its graphic name's sprite def
-//! (GTW-665 — the [`resolve`] module over the GTW-663
+//! (GTW-665 — the `resolve` module over the GTW-663
 //! [`SpriteDefRegistry`](gdtf_content_families::sprites::SpriteDefRegistry), loaded from
 //! `assets/content/sprites/*.spritedef.ron`). It positions each
 //! sprite via the S3 [`cell_to_world`](crate::cell_to_world) projection (plus the def's

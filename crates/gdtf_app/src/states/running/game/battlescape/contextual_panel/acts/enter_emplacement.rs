@@ -21,7 +21,7 @@ crate::support_item! {
     ///
     /// Spawned [`Visibility::Hidden`](bevy::camera::visibility::Visibility) by the generic
     /// button spawn and revealed IN PLACE by the act's visibility toggle when
-    /// [`offer_enter_emplacement`] names a VACANT emplacement the selected PLAYER actor is
+    /// `offer_enter_emplacement` names a VACANT emplacement the selected PLAYER actor is
     /// 8-adjacent to (F4 player-only). A unit marker: presence on an entity is the whole
     /// signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]

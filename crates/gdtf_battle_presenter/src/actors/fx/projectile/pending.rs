@@ -16,17 +16,17 @@ use super::super::fct::ClassifiedPop;
 /// entity carrying ONLY this
 /// component) at the arrival point the instant a projectile despawns;
 /// [`animate_impact`](super::super::impact::animate_impact) queries for them and steps the
-/// [`damage`](PendingImpact::damage) type's 3 impact frames there (AND, GTW-327, spawns this
-/// shot's floating-combat-text pops at the [`anchor`](PendingImpact::anchor)) before despawning
+/// `damage` type's 3 impact frames there (AND, GTW-327, spawns this
+/// shot's floating-combat-text pops at the `anchor`) before despawning
 /// the impact entity. FX-A defines + spawns this so FX-B's `impact` module only fills the
 /// animation
 /// body (no `mod.rs` collision).
 ///
-/// A NAMED grouping component: [`at`](PendingImpact::at) is the impact world point
+/// A NAMED grouping component: `at` is the impact world point
 /// (the [`Vec3`](bevy::math::Vec3) carve-out — framework geometry), `damage` the
 /// shot's [`DamageType`] (so FX-B picks the matching impact strip), and — GTW-327 —
-/// [`pops`](PendingImpact::pops) the shot's classified floating-combat-text pops +
-/// [`anchor`](PendingImpact::anchor) the `(cell, level)` they sit on, so the numbers appear at
+/// `pops` the shot's classified floating-combat-text pops +
+/// `anchor` the `(cell, level)` they sit on, so the numbers appear at
 /// THIS shot's staggered impact. Not [`Copy`] (it owns the pop [`Vec`]); the
 /// [`fields`](PendingImpact) are `pub(in crate::actors::fx)` so `animate_impact` reads + consumes them
 /// while the type stays sealed to the FX layer.

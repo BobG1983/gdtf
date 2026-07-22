@@ -117,11 +117,11 @@ pub const fn part_severity_mod(part: BodyPart) -> PartSeverityMod {
 }
 
 /// The **§6 severity score** — the scalar the wound-severity roll computes and the
-/// [`bucket`] cutpoints tier into a [`Severity`] (resolution.md §6).
+/// `bucket` cutpoints tier into a [`Severity`] (resolution.md §6).
 ///
 /// A named domain value (no bare `f32`): the score is the weighted sum
 /// `j·pen − k·Toughness + part_mod + fatal_bias + I·Luck_shooter + roll`, produced by
-/// [`severity_score`](super::roll::severity_score) and consumed only by [`bucket`].
+/// `severity_score` and consumed only by `bucket`.
 /// Private inner + derived [`Deref`](std::ops::Deref); build one via
 /// [`SeverityScore::new`]. The magnitudes are unpinned tuning — tests assert the
 /// score's *relations* (monotonicity, directional Luck), never an absolute value.

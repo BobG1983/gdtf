@@ -89,7 +89,7 @@ pub enum LeftClickOutcome {
 ///    (a [`Faction`] `!=` [`PlayerFaction`](gdtf_battle_sim::battle::PlayerFaction)) OR (GTW-377) it holds SHOOTABLE structure (an intact
 ///    wall / cover piece: [`is_blocked`](gdtf_battle_sim::occupancy::OccupancyGrid::is_blocked) AND no
 ///    occupant), the current selection is a player-faction ganger, the cell is squad-VISIBLE, and
-///    the shared [`can_fire`](gdtf_battle_sim::magazine::can_fire) guard passes ([`try_fire_request`]) →
+///    the shared [`can_fire`](gdtf_battle_sim::magazine::can_fire) guard passes (`try_fire_request`) →
 ///    [`LeftClickOutcome::Fire`]. The user ruling: cover AND walls are valid fire targets, not
 ///    just gangers; the sim depletes the cover per the GTW-364 model. The enemy case uses the
 ///    occupant fog relation ([`FactionRelation::Other`]); the cover case uses `relation = None`

@@ -117,7 +117,7 @@ type AppearanceChanged = Or<(Changed<DrawnPose>, Changed<DrawnLife>)>;
 ///
 /// Two drive sources, one derivation:
 ///
-/// * **The changed-state query** ([`AppearanceChanged`]: the DRAWN posture or the DRAWN
+/// * **The changed-state query** (`AppearanceChanged`: the DRAWN posture or the DRAWN
 ///   life state) — recompute the changed ganger's appearance in place. Since GTW-727 these
 ///   are the cursor-time mirrors, so a ganger turning to face its target visibly turns at
 ///   the moment its shot is SHOWN, rather than snapping to its post-volley facing the

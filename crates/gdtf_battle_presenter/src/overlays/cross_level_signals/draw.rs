@@ -29,7 +29,7 @@ use crate::{
 pub struct CrossLevelBadgeTile;
 
 /// Marker for a pooled cross-level-badge [`Text2d`] label (the ASCII sign +
-/// magnitude / count text — see [`badge_label`]).
+/// magnitude / count text — see `badge_label`).
 #[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct CrossLevelBadgeLabel;
 

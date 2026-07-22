@@ -11,10 +11,10 @@
 //!
 //! ## Members (one concern per file, per module-layout)
 //!
-//! - [`handle`] — [`ToolCallOutcome`] + [`handle_tool_call`], the orchestration: resolve
+//! - `handle` — [`ToolCallOutcome`] + [`handle_tool_call`], the orchestration: resolve
 //!   the tool, then either drive the game lifecycle or build + carry + render.
-//! - [`build`] — [`build_request`], mapping a tool's `arguments` onto a `QaRequest`.
-//! - [`render`] — [`render_response`], mapping a game reply onto an MCP content block.
+//! - `build` — [`build_request`], mapping a tool's `arguments` onto a `QaRequest`.
+//! - `render` — [`render_response`], mapping a game reply onto an MCP content block.
 
 mod build;
 mod handle;

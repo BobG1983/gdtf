@@ -30,7 +30,7 @@ crate::support_item! {
 
 crate::support_item! {
     /// Marks the inspect panel's shared ganger stat-block host, so the update finds THIS
-    /// panel's [`StatBlockRefs`](super::super::stat_block::StatBlockRefs) and toggles the
+    /// panel's `StatBlockRefs` and toggles the
     /// ganger sub-block's visibility. Widened to `pub` under `test-support` so the inspect
     /// integration test can find the rendered ganger stat block.
     ///

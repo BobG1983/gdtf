@@ -101,7 +101,7 @@ const FCT_BOLD_FONT_SCALE: f32 = 1.4;
 /// (the default body weight) or [`Bold`](FctEmphasis::Bold) (the heaviest, most-urgent pop —
 /// a lethal DOWN / DEAD). [`spawn_floating_text`] turns this into the pop's [`TextFont`]
 /// `weight` + `font_size`: a [`Bold`](FctEmphasis::Bold) pop is drawn in [`FontWeight::BOLD`]
-/// AND scaled up by [`FCT_BOLD_FONT_SCALE`] (the size bump is the visible lever on the bundled
+/// AND scaled up by `FCT_BOLD_FONT_SCALE` (the size bump is the visible lever on the bundled
 /// non-variable font, the weight is correct on any variable font). This is the styling
 /// attribute the GTW-302 contract's "DOWN / DEAD (RED bold)" clause requires — distinct from
 /// the color, which the caller passes separately.
@@ -111,7 +111,7 @@ pub enum FctEmphasis {
     #[default]
     Normal,
     /// The heaviest pop — a lethal DOWN / DEAD. Drawn [`FontWeight::BOLD`] at
-    /// [`FCT_BOLD_FONT_SCALE`]× the base size.
+    /// `FCT_BOLD_FONT_SCALE`× the base size.
     Bold,
 }
 
@@ -150,7 +150,7 @@ impl FctEmphasis {
 /// `ttl` clock each frame, rises the [`Transform`] by `rise × delta`, and fades the
 /// [`TextColor`] alpha from `base_alpha` toward `0` across the pop's lifetime, despawning
 /// it when the clock finishes. The clock + the elapsed fraction mutate ONLY through
-/// [`advance`](FloatingCombatText::advance) (no `DerefMut`). `base_alpha` is captured at
+/// `advance` (no `DerefMut`). `base_alpha` is captured at
 /// spawn so the fade is a fraction of the pop's STARTING opacity (a caller may spawn a
 /// translucent pop).
 #[derive(Component, Debug, Clone)]
@@ -225,7 +225,7 @@ impl FloatingCombatText {
 /// `const`, so a live `fx.tuning.ron` edit re-tunes the very next pop.
 ///
 /// `emphasis` is the styling WEIGHT ([`FctEmphasis`]): a [`Bold`](FctEmphasis::Bold) pop (the
-/// lethal DOWN / DEAD) is drawn in [`FontWeight::BOLD`] at a larger [`FctEmphasis::font_size`],
+/// lethal DOWN / DEAD) is drawn in [`FontWeight::BOLD`] at a larger `FctEmphasis::font_size`,
 /// so the contract's "RED bold" lethal tag reads as the heaviest pop; an ordinary pop is
 /// [`Normal`](FctEmphasis::Normal). The weight + size are applied to the pop's one [`TextFont`].
 ///
@@ -294,10 +294,10 @@ pub fn spawn_floating_text(
 ///
 /// Advances each [`FloatingCombatText`] by the frame [`Res<Time>`] delta. While the pop is
 /// alive it MUTATES that one entity in place (no respawn): the `y` of its [`Transform`]
-/// becomes its spawn `y` plus the risen distance ([`FloatingCombatText::risen`]), and its
+/// becomes its spawn `y` plus the risen distance (`FloatingCombatText::risen`), and its
 /// [`TextColor`] alpha is set to the remaining-life fraction of its base alpha
-/// ([`FloatingCombatText::alpha`]) — the rise + the fade. The frame the pop's
-/// [`FctTtlSeconds`] lifetime finishes ([`FloatingCombatText::advance`] returns `true`), it
+/// (`FloatingCombatText::alpha`) — the rise + the fade. The frame the pop's
+/// [`FctTtlSeconds`] lifetime finishes (`FloatingCombatText::advance` returns `true`), it
 /// is `Commands::entity(e).despawn`ed. It touches ONLY [`FloatingCombatText`]-marked
 /// entities; it needs no `BattleInProgress` gate (inert with no pops — the query is empty —
 /// so a pop spawned during a battle still completes after it ends), mirroring `expire_flashes`.

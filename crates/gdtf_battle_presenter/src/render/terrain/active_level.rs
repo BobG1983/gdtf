@@ -11,14 +11,14 @@ use gdtf_battle_sim::prelude::Level;
 /// [`FullView`](Self::FullView) rather than a nameless flag. OWNED BY THE PRESENTER CRATE so
 /// the `input -> presenter -> sim` direction holds exactly as [`ActiveLevel`] does: the
 /// terrain draw + the ganger visibility filter READ it (through the shared
-/// [`drawn_band`](super::band::drawn_band) band helper); the input crate's
+/// `drawn_band` band helper); the input crate's
 /// `ToggleFullView` intent — in `gdtf_battle_input`, which depends on the presenter —
 /// MUTATES it. `init_resource`-d by the
 /// [`TopDownRendererPlugin`](crate::TopDownRendererPlugin) on build (its [`Default`] is
 /// [`DownToActive`](Self::DownToActive) — exactly the current GTW-519/520 behaviour) so the
 /// later input toggle has a resource to flip.
 ///
-/// The two modes ONLY differ in the UPPER bound the [`drawn_band`](super::band::drawn_band) helper
+/// The two modes ONLY differ in the UPPER bound the `drawn_band` helper
 /// returns; every other draw / visibility rule (per-storey Z occlusion, the peek-through
 /// floor-gap reveal, the GTW-520 fog hard-cut) is untouched.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -82,7 +82,7 @@ impl ActiveLevel {
     /// the ONE shared storey-treatment classifier
     /// ([`storey_treatment`](super::treatment::storey_treatment)) — a storey is drawn iff
     /// it does not classify [`Hidden`](super::treatment::StoreyTreatment::Hidden) — the
-    /// SAME classification the terrain draw's [`drawn_band`](super::band::drawn_band)
+    /// SAME classification the terrain draw's `drawn_band`
     /// range derives from, so the two can never drift. This is the band fact the GTW-627
     /// ganger-visibility classifier (feeding
     /// [`resolve_ganger_visibility`](crate::resolve_ganger_visibility), the one writer of

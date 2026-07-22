@@ -27,7 +27,7 @@ crate::support_item! {
     /// As a child of the bar it is laid out INSIDE the bottom panel (never floating over the
     /// map) and renders in the bar's own stacking context, on top of the bar's fill, with NO
     /// [`GlobalZIndex`](bevy::ui::GlobalZIndex) of its own (the stance-panel precedent — see
-    /// [`CONTEXTUAL_PANEL_Z`] for the surviving defensive-fallback use). The
+    /// `CONTEXTUAL_PANEL_Z` for the surviving defensive-fallback use). The
     /// `OnExit(BattleRunning)` despawn tears the whole subtree down by THIS marker. Widened
     /// through `support_item!` so the AC tests can assert the box's presence + parent. A unit
     /// marker: presence on an entity is the whole signal (no-bare-types rule).

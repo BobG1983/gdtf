@@ -207,7 +207,7 @@ pub(super) fn reachable_draws(reachable: &ReachableCells, active_level: Level) -
 /// L1 reachable cells.
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`] for the lazy pool growth, the
-/// [`ReachableCells`] / [`ActiveLevel`] reads, and the [`ReachableSpriteQuery`] for the
+/// [`ReachableCells`] / [`ActiveLevel`] reads, and the `ReachableSpriteQuery` for the
 /// pooled sprites. Battle-gated in [`TopDownRendererPlugin`](crate::TopDownRendererPlugin)
 /// by [`PresenterSystems::Overlay`](crate::PresenterSystems).
 pub fn draw_reachable_overlay(
