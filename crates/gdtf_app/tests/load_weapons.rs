@@ -15,7 +15,7 @@ mod load_suite;
 
 use bevy::app::Startup;
 use gdtf_app::test_support::{AppState, app_state, load_released, seed_load_fallbacks};
-use gdtf_battle_sim::weapon::{WeaponName, WeaponRegistry};
+use gdtf_battle_sim::weapon::{HitType, WeaponName, WeaponRegistry};
 use gdtf_content_families::WeaponsFamily;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 use load_suite::suite::{self, FamilyLoadContract};
@@ -138,4 +138,72 @@ fn seeded_startup_does_not_shadow_real_weapon_resolution() {
          real weapons resolve; last AppState was {:?}",
         app_state(&app),
     );
+}
+
+/// GTW-771 (child GTW-41) — the shipped **Cone** and **Line** `AoE` weapons resolve through
+/// the REAL Load folder path, and each one's intended fire mode carries the authored
+/// [`HitType`] shape. Value-agnostic on the tuned range/angle magnitudes (the loader-test
+/// rule): it asserts the shape VARIANT (`Cone` / `Line`) a mode deserializes into, never the
+/// cell/degree numbers.
+///
+/// Drives the genuine `assets/content/weapons/ranged/` folder resolve through the `AppState::Load`
+/// state machine (a live `AssetServer`), exactly as [`real_asset_resolves_weapon_registry_keyed_by_filename`]
+/// does — the real load path, NOT an `include_str!` fixture parse.
+///
+/// PIN — this test could not pass before GTW-771: `las_lance.weapon.ron` did not exist (its
+/// spec resolves `None`), and `chem_sprayer.weapon.ron` authored no `hit_type` (every mode
+/// defaulted to [`HitType::Single`]), so neither the `Cone` nor the `Line` assertion could
+/// hold. It goes red the instant either shipped shape is dropped or reverted to `Single`.
+#[test]
+fn shipped_cone_and_line_weapons_resolve_their_aoe_hit_types() {
+    let mut app = GdtfLoadTestAppBuilder::new()
+        .starting_in(AppState::Load)
+        .build();
+
+    // Signal-poll the async folder load (not a fixed frame count); the cap is a safety net
+    // (GTW-305). The registry is inserted ONLY once fully built from the folder, so its
+    // existence implies the authored weapons — incl. the two new AoE shapes — are present.
+    advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
+
+    let registry = app.world().get_resource::<WeaponRegistry>();
+    assert!(
+        registry.is_some(),
+        "the real weapons folder load must insert a WeaponRegistry within the budget \
+         (last AppState was {:?})",
+        app_state(&app),
+    );
+    if let Some(registry) = registry {
+        // CLAUSE 1 — the converted chem_sprayer offers a Cone spray mode.
+        let chem = registry.spec(&WeaponName::new("chem_sprayer".to_owned()));
+        assert!(
+            chem.is_some(),
+            "the shipped chem_sprayer.weapon.ron must resolve through the real folder load",
+        );
+        if let Some(chem) = chem {
+            assert!(
+                chem.fire_mode
+                    .iter()
+                    .any(|mode| matches!(mode.hit_type, HitType::Cone { .. })),
+                "the chem_sprayer must offer a fire mode whose HitType deserializes as Cone \
+                 (its authored `hit_type: Cone(..)` short-range spray template)",
+            );
+        }
+
+        // CLAUSE 2 — the net-new las_lance offers a Line beam mode.
+        let lance = registry.spec(&WeaponName::new("las_lance".to_owned()));
+        assert!(
+            lance.is_some(),
+            "the net-new las_lance.weapon.ron must resolve through the real folder load",
+        );
+        if let Some(lance) = lance {
+            assert!(
+                lance
+                    .fire_mode
+                    .iter()
+                    .any(|mode| matches!(mode.hit_type, HitType::Line { .. })),
+                "the las_lance must offer a fire mode whose HitType deserializes as Line \
+                 (its authored `hit_type: Line(..)` penetrating beam template)",
+            );
+        }
+    }
 }
