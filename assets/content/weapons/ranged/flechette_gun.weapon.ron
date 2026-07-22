@@ -10,6 +10,7 @@
     punch:         2,   // GTW-374: halved from 5 (floor of 5/2)
     shred:         1,   // GTW-374: halved from 2
     damage_type:   Rend,
+    accepts:       Slug,  // GTW-775: slings solid razored darts (a ballistic-cartridge munition)
     magazine: (
         size:      12,
         reload_tu: 12,

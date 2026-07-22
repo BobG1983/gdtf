@@ -17,6 +17,7 @@
     punch:         6,        // strong penetration — a plasma torch bites through plate
     shred:         2,
     damage_type:   Plasma,   // the matchup-wheel node (a superheated DAMAGE flavour)
+    accepts:       Flask,    // GTW-775: fed by a volatile plasma flask (the munition it accepts)
     magazine: (
         size:      8,
         reload_tu: 14,

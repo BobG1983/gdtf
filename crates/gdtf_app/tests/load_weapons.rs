@@ -15,7 +15,7 @@ mod load_suite;
 
 use bevy::app::Startup;
 use gdtf_app::test_support::{AppState, app_state, load_released, seed_load_fallbacks};
-use gdtf_battle_sim::weapon::{HitType, WeaponName, WeaponRegistry};
+use gdtf_battle_sim::weapon::{AmmoType, HitType, WeaponName, WeaponRegistry};
 use gdtf_content_families::WeaponsFamily;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 use load_suite::suite::{self, FamilyLoadContract};
@@ -203,6 +203,65 @@ fn shipped_cone_and_line_weapons_resolve_their_aoe_hit_types() {
                     .any(|mode| matches!(mode.hit_type, HitType::Line { .. })),
                 "the las_lance must offer a fire mode whose HitType deserializes as Line \
                  (its authored `hit_type: Line(..)` penetrating beam template)",
+            );
+        }
+    }
+}
+
+/// GTW-775 (child GTW-400) — the shipped `assets/content/weapons/ranged/` weapons author an
+/// [`AmmoType`] `accepts:` class that resolves through the REAL Load folder path, one witness
+/// per ammo class so all five variants are covered end-to-end. Value-checking the ammo CLASS
+/// is appropriate here (it is authored content IDENTITY, like the `Cone` / `Line` `HitType`
+/// assertions above, not a tunable magnitude): a swap of an authored class flips this.
+///
+/// Drives the genuine folder resolve through the `AppState::Load` state machine (a live
+/// `AssetServer`), exactly as [`real_asset_resolves_weapon_registry_keyed_by_filename`] does —
+/// the real load path, NOT an `include_str!` fixture parse.
+///
+/// PIN — this could not pass before GTW-775: `WeaponSpec` had no `accepts` field, so the
+/// authored classes did not exist. It goes red the instant a shipped weapon's authored ammo
+/// class is dropped (defaulting silently to `Slug`) or swapped.
+#[test]
+fn shipped_weapons_resolve_their_accepted_ammo_types() {
+    let mut app = GdtfLoadTestAppBuilder::new()
+        .starting_in(AppState::Load)
+        .build();
+
+    // Signal-poll the async folder load; the cap is a safety net (GTW-305). The registry is
+    // inserted ONLY once fully built from the folder, so its existence implies the authored
+    // weapons — including their `accepts:` classes — are present.
+    advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
+
+    let registry = app.world().get_resource::<WeaponRegistry>();
+    assert!(
+        registry.is_some(),
+        "the real weapons folder load must insert a WeaponRegistry within the budget \
+         (last AppState was {:?})",
+        app_state(&app),
+    );
+    let Some(registry) = registry else {
+        return;
+    };
+
+    // One witness per ammo class — all five [`AmmoType`] variants, covered through the real
+    // folder resolve (a solid slug-thrower, an energy-cell weapon, a plasma flask, a chem
+    // canister sprayer, and a grenade).
+    for (stem, expected) in [
+        ("stub_pistol", AmmoType::Slug),
+        ("las_carbine", AmmoType::Cell),
+        ("plasma_pistol", AmmoType::Flask),
+        ("chem_sprayer", AmmoType::Canister),
+        ("frag_grenade", AmmoType::Grenade),
+    ] {
+        let spec = registry.spec(&WeaponName::new(stem.to_owned()));
+        assert!(
+            spec.is_some(),
+            "the shipped {stem}.weapon.ron must resolve through the real folder load",
+        );
+        if let Some(spec) = spec {
+            assert_eq!(
+                spec.accepts, expected,
+                "the shipped {stem} must author `accepts: {expected:?}` (resolved through the loader)",
             );
         }
     }

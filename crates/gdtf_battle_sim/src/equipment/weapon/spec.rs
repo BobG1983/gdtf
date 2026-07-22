@@ -8,9 +8,9 @@ use bevy::{prelude::Component, reflect::TypePath};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    Accuracy, BaseSpread, DamageProfile, DamageType, DotProfile, FatalBias, FireMode, Handedness,
-    HandlingProfile, Kickback, Shove, Stable, TrajectoryStyle, WeaponBundle, WeaponDamage,
-    WeaponName, WeaponPunch, WeaponShred,
+    Accuracy, AmmoType, BaseSpread, DamageProfile, DamageType, DotProfile, FatalBias, FireMode,
+    Handedness, HandlingProfile, Kickback, Shove, Stable, TrajectoryStyle, WeaponBundle,
+    WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
 };
 use crate::{
     effects::attachments::AttachmentEffect,
@@ -66,6 +66,19 @@ pub struct WeaponSpec {
     pub shred:       WeaponShred,
     /// The damage type the weapon emits — its matchup-wheel node.
     pub damage_type: DamageType,
+    /// The **ammunition class the weapon accepts** (GTW-775, child GTW-400) — the
+    /// [`AmmoType`] its magazine may load, authored as the `accepts:` `.weapon.ron`
+    /// field. A magazine can only load / refill ammo of this class (the
+    /// [`ammo_compatible`](crate::magazine::ammo_compatible) gate);
+    /// [`into_bundle`](WeaponSpec::into_bundle) spawns the [`Magazine`] loaded with it
+    /// ([`Magazine::loaded_ammo`](crate::magazine::Magazine::loaded_ammo)). Distinct
+    /// from [`damage_type`](WeaponSpec::damage_type) — the munition a weapon feeds on,
+    /// not the wheel node its hits resolve on. `#[serde(default)]` (defaulting to
+    /// [`AmmoType::Slug`]) so an omitted field is the everyman slug round — the OPT-IN
+    /// field-addition style every recent weapon field (`shove` / `trajectory` / `slots`)
+    /// follows, so a `.weapon.ron` that never authors it still deserializes.
+    #[serde(default)]
+    pub accepts:     AmmoType,
     /// The ammo state — the [`Magazine`] grouping authored as `(size: N, reload_tu: N)`
     /// (the per-weapon round capacity + reload TU cost). The live loaded-rounds count
     /// is NOT authored (it defaults to `0` on deserialize); [`into_bundle`](WeaponSpec::into_bundle)
@@ -172,12 +185,17 @@ impl WeaponSpec {
     /// `dot`, or `on_death` resolves IDENTICALLY to before the attachment model existed.
     ///
     /// The spawned [`Magazine`] is built FULL (loaded to `size`) from the authored `size` +
-    /// `reload_tu` (the GTW-275 "full magazine at spawn" path). Consumes the spec by value (it
-    /// owns the [`FireMode`]); a caller holding a borrowed spec clones it first (the registry's
-    /// specs are `Clone`).
+    /// `reload_tu` (the GTW-275 "full magazine at spawn" path), and loaded with the weapon's
+    /// [`accepts`](WeaponSpec::accepts) ammo class (GTW-775) so a spawned weapon starts on the
+    /// ammo it accepts. Consumes the spec by value (it owns the [`FireMode`]); a caller holding
+    /// a borrowed spec clones it first (the registry's specs are `Clone`).
     #[must_use]
     pub fn into_bundle(self, name: WeaponName) -> (WeaponBundle, WeaponSpawnSiblings) {
-        let magazine = Magazine::loaded(self.magazine.size(), self.magazine.reload_tu());
+        let magazine = Magazine::loaded_with(
+            self.magazine.size(),
+            self.magazine.reload_tu(),
+            self.accepts,
+        );
         let bundle = WeaponBundle::new(
             name,
             self.base_spread,

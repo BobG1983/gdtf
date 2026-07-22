@@ -9,6 +9,7 @@
     punch:         2,   // GTW-374: halved from 5 (floor of 5/2)
     shred:         1,   // GTW-374: halved from 2
     damage_type:   Plasma,
+    accepts:       Flask,  // GTW-775: vents from a volatile plasma flask (the munition it accepts)
     magazine: (
         size:      12,
         reload_tu: 12,

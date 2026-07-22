@@ -15,6 +15,7 @@
     punch:         2,
     shred:         1,
     damage_type:   Blast, // the matchup-wheel node (a DAMAGE flavour) — NOT the hit shape below
+    accepts:       Grenade, // GTW-775: fires self-contained fragmentation charges (the munition)
     magazine: (
         size:      6,
         reload_tu: 16,

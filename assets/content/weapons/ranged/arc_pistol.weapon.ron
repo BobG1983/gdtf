@@ -9,6 +9,7 @@
     punch:         2,   // GTW-374: halved from 5 (floor of 5/2)
     shred:         1,   // GTW-374: halved from 2
     damage_type:   Shock,
+    accepts:       Cell,   // GTW-775: fed by a rechargeable power cell (the munition it accepts)
     magazine: (
         size:      12,
         reload_tu: 12,

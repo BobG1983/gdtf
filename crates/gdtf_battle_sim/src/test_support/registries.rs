@@ -25,7 +25,7 @@ use crate::{
         piece::{FootfallSound, TerrainGraphicKey},
     },
     weapon::{
-        Accuracy, BaseSpread, DamageType, FISTS_KEY, FatalBias, FightMode, FightModeKind,
+        Accuracy, AmmoType, BaseSpread, DamageType, FISTS_KEY, FatalBias, FightMode, FightModeKind,
         FightModeSpec, FireMode, FireModeSpec, Handedness, Kickback, MagazineSize,
         MeleeWeaponRegistry, MeleeWeaponSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent,
         Reach, Shove, Stable, Strikes, TrajectoryStyle, TuCost, WeaponDamage, WeaponName,
@@ -69,6 +69,7 @@ pub fn test_weapon_spec() -> WeaponSpec {
         punch:       WeaponPunch::new(5),
         shred:       WeaponShred::new(3),
         damage_type: DamageType::Kinetic,
+        accepts:     AmmoType::Slug,
         magazine:    Magazine::loaded(MagazineSize::new(30), ReloadTu::new(12)),
         fire_mode:   FireMode::new(vec![FireModeSpec::new(
             ModeKind::Single,

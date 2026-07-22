@@ -17,6 +17,7 @@
     punch:         0,
     shred:         0,
     damage_type:   Chem, // toxin / gas — the matchup-wheel node (a DAMAGE flavour)
+    accepts:       Grenade, // GTW-775: a thrown grenade munition (a Grenade carrying a Chem payload)
     magazine: (
         size:      2,
         reload_tu: 20,

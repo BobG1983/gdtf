@@ -68,8 +68,9 @@ mod test;
 // GTW-558 palette/mechanics split visible at the public surface.
 pub use bundle::{DamageProfile, HandlingProfile, WeaponBundle, WeaponStats};
 pub use components::{
-    Accuracy, BaseSpread, DamageType, FatalBias, Handedness, Kickback, MagazineSize, MountedWeapon,
-    Shove, Silenced, Stable, Weapon, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
+    Accuracy, AmmoType, BaseSpread, DamageType, FatalBias, Handedness, Kickback, MagazineSize,
+    MountedWeapon, Shove, Silenced, Stable, Weapon, WeaponDamage, WeaponName, WeaponPunch,
+    WeaponShred,
 };
 // GTW-544 (child GTW-41e): the damage-over-time model — the weapon-side `DotProfile` a DOT
 // weapon authors + the per-ganger `Dot` affliction a penetrating hit attaches. The runtime

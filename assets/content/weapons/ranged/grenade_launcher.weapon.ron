@@ -17,6 +17,7 @@
     punch:         3,
     shred:         1,
     damage_type:   Blast, // explosives / concussion — the matchup-wheel node (a DAMAGE flavour)
+    accepts:       Grenade, // GTW-775: magazine-fed grenade rounds (the munition it accepts)
     magazine: (
         size:      6,
         reload_tu: 16,

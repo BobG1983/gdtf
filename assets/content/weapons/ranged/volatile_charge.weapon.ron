@@ -16,6 +16,7 @@
     punch:         2,
     shred:         1,
     damage_type:   Kinetic,
+    accepts:       Slug,  // GTW-775: shoots crude solid slugs (a ballistic-cartridge munition)
     magazine: (
         size:      4,
         reload_tu: 18,

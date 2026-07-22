@@ -31,6 +31,7 @@
     punch:         5,     // shreds cover / armor — the mount's role is area denial
     shred:         3,     // chews armor durability
     damage_type:   Kinetic, // mass-reactive bolt rounds — the Kinetic matchup node
+    accepts:       Slug, // GTW-775: belt-fed solid bolt cartridges (a ballistic-cartridge munition)
     magazine: (
         size:      30,    // a belt-fed drum — sustained fire before a long reload
         reload_tu: 24,    // slow to re-belt

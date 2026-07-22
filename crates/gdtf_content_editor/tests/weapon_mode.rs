@@ -35,9 +35,9 @@ use gdtf_battle_sim::{
     },
     equipment::attachments::{AttachmentName, AttachmentSlot, SlotCapacity, WeaponSlots},
     weapon::{
-        Accuracy, AoeRange, BaseSpread, BlastRadius, ConeHalfAngle, DamageType, DotDamage,
-        DotProfile, DotTurns, FatalBias, FireMode, FireModeSpec, Handedness, HitType, Kickback,
-        MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Shove, Stable,
+        Accuracy, AmmoType, AoeRange, BaseSpread, BlastRadius, ConeHalfAngle, DamageType,
+        DotDamage, DotProfile, DotTurns, FatalBias, FireMode, FireModeSpec, Handedness, HitType,
+        Kickback, MagazineSize, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Shove, Stable,
         TrajectoryStyle, WeaponDamage, WeaponName, WeaponPunch, WeaponRegistry, WeaponShred,
     },
 };
@@ -133,6 +133,7 @@ fn maximal_draft() -> WeaponDraft {
     spec.punch = WeaponPunch::new(4);
     spec.shred = WeaponShred::new(2);
     spec.damage_type = DamageType::Plasma;
+    spec.accepts = AmmoType::Cell; // GTW-775: a non-seed accepted ammo class to round-trip
     spec.magazine.size = MagazineSize::new(18);
     spec.magazine.reload_tu = gdtf_battle_sim::magazine::ReloadTu::new(9);
     spec.fire_mode = FireMode::new(vec![

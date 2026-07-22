@@ -19,15 +19,15 @@ use gdtf_battle_sim::{
     equipment::attachments::WeaponSlots,
     magazine::Magazine,
     weapon::{
-        Accuracy, BaseSpread, DamageType, DotTurns, FatalBias, FireMode, FireModeSpec, Handedness,
-        Kickback, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Shove, Stable, TrajectoryStyle,
-        WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WeaponSpec,
+        Accuracy, AmmoType, BaseSpread, DamageType, DotTurns, FatalBias, FireMode, FireModeSpec,
+        Handedness, Kickback, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, Shove, Stable,
+        TrajectoryStyle, WeaponDamage, WeaponName, WeaponPunch, WeaponShred, WeaponSpec,
     },
 };
 
 /// The empty spec a fresh draft seeds — every scalar at its zero magnitude, the
-/// documented vocabulary defaults ([`DamageType::Kinetic`] / [`Handedness::OneHanded`] /
-/// [`TrajectoryStyle::Straight`]), an empty magazine, ONE structural single-shot fire
+/// documented vocabulary defaults ([`DamageType::Kinetic`] / [`AmmoType::Slug`] /
+/// [`Handedness::OneHanded`] / [`TrajectoryStyle::Straight`]), an empty magazine, ONE structural single-shot fire
 /// mode (the [`FireMode`] invariant: "a well-authored weapon lists at least one mode,
 /// with `Single` first" — the same structural mode [`FireMode::single`] falls back to),
 /// and the serde-default identities for every opt-in field (no slots / attachments /
@@ -43,6 +43,7 @@ fn seed_spec() -> WeaponSpec {
         punch:       WeaponPunch::new(0),
         shred:       WeaponShred::new(0),
         damage_type: DamageType::Kinetic,
+        accepts:     AmmoType::Slug,
         magazine:    Magazine::default(),
         fire_mode:   FireMode::new(vec![structural_single_mode()]),
         stable:      Stable::new(false),

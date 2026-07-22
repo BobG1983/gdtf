@@ -15,6 +15,7 @@
     punch:         9,      // deep penetration — the lance bores through plate
     shred:         2,
     damage_type:   Las,    // the matchup-wheel node (a coherent-BEAM flavour)
+    accepts:       Cell,   // GTW-775: fed by a rechargeable capacitor cell (the munition it accepts)
     magazine: (
         size:      4,      // a bulky power cell — few full-charge lances
         reload_tu: 20,     // slow to swap a spent cell

@@ -4,12 +4,14 @@
 //! newtype (no-bare-types): a private inner value, a derived [`Deref`](bevy::prelude::Deref), and
 //! `#[serde(transparent)]` so it round-trips as a bare RON scalar.
 
+mod ammo;
 mod ballistics;
 mod damage;
 mod handling;
 mod markers;
 mod tags;
 
+pub use ammo::AmmoType;
 pub use ballistics::{Accuracy, BaseSpread, Kickback, Stable};
 pub use damage::{DamageType, FatalBias, WeaponDamage, WeaponPunch, WeaponShred};
 pub use handling::{Handedness, MagazineSize, WeaponName};
