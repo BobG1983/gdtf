@@ -19,11 +19,15 @@
 //! which are the rule under test, are fully covered here.
 
 use bevy::{
+    ecs::{
+        message::{MessageReader, Messages},
+        system::RunSystemOnce,
+    },
     input_focus::{InputFocus, directional_navigation::DirectionalNavigationMap},
     math::CompassOctant,
 };
 use gdtf_test_utils::GdtfTestAppBuilder;
-use gdtf_ui::focus_nav::{NavDirection, NavigateRequest, set_initial_focus};
+use gdtf_ui::focus_nav::{FocusCancelled, NavDirection, NavigateRequest, set_initial_focus};
 
 /// `set_initial_focus(commands, entity)` makes that entity the focused one.
 ///
@@ -108,5 +112,108 @@ fn navigate_down_advances_focus() {
         app.world().resource::<InputFocus>().get(),
         Some(bottom),
         "navigate-Down must advance InputFocus to the bottom (South) neighbor",
+    );
+}
+
+/// A synthesized navigate-East, then navigate-West, walks [`InputFocus`] along a
+/// horizontal edge.
+///
+/// Builds a two-node focus graph (left beside right) joined by a symmetrical
+/// East edge, focuses the left node, then writes a [`NavigateRequest`] for
+/// [`NavDirection::EAST`]; `apply_navigation` must move focus to the right node.
+/// A follow-up [`NavDirection::WEST`] must walk it back to the left node.
+///
+/// Pin: this is the discriminating test for the new horizontal directions — if
+/// [`NavDirection::EAST`] / [`NavDirection::WEST`] mapped to the wrong octant (or
+/// `apply_navigation` ignored them), focus would not cross the East/West edge and
+/// an assertion here fails.
+#[test]
+fn navigate_east_then_west_walks_focus_horizontally() {
+    // GTW-322 — see the sibling tests: the `Menu` `spawn_menu` scene needs the
+    // scene resources, so build with scene support.
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
+        .starting_in(gdtf_app::test_support::AppState::Running)
+        .build();
+    app.update();
+
+    let world = app.world_mut();
+    let left = world.spawn_empty().id();
+    let right = world.spawn_empty().id();
+
+    // Manual navigation graph: left --East--> right (and the reverse West).
+    world
+        .resource_mut::<DirectionalNavigationMap>()
+        .add_symmetrical_edge(left, right, CompassOctant::East);
+
+    // Focus starts on the left node.
+    set_initial_focus(&mut world.commands(), left);
+    world.flush();
+    assert_eq!(
+        world.resource::<InputFocus>().get(),
+        Some(left),
+        "focus should start on the left node before navigating",
+    );
+
+    // Navigate East → the right (East) neighbor.
+    world.write_message(NavigateRequest::new(NavDirection::EAST));
+    app.update();
+    assert_eq!(
+        app.world().resource::<InputFocus>().get(),
+        Some(right),
+        "navigate-East must advance InputFocus to the right (East) neighbor",
+    );
+
+    // Navigate West → back to the left (West) neighbor.
+    app.world_mut()
+        .write_message(NavigateRequest::new(NavDirection::WEST));
+    app.update();
+    assert_eq!(
+        app.world().resource::<InputFocus>().get(),
+        Some(left),
+        "navigate-West must walk InputFocus back to the left (West) neighbor",
+    );
+}
+
+/// Counts the [`FocusCancelled`] messages currently in the buffer — the
+/// [`run_system_once`](RunSystemOnce::run_system_once) probe the round-trip test
+/// drains through a real [`MessageReader`].
+fn count_focus_cancelled(mut reader: MessageReader<FocusCancelled>) -> usize {
+    reader.read().count()
+}
+
+/// The framework registers the [`FocusCancelled`] message, and a written one
+/// round-trips through the real buffer.
+///
+/// `FocusNavPlugin` (installed by `UiPlugin`) must `add_message::<FocusCancelled>()`
+/// so the [`Messages<FocusCancelled>`] buffer exists — the first assertion fails
+/// if that registration were dropped. Writing a `FocusCancelled` and reading it
+/// straight back through a real [`MessageReader`] then proves the registered type
+/// carries the message. No key is bound to it (that is a separate ticket); the
+/// test drives the message directly, exactly as the navigate tests synthesize
+/// their requests.
+#[test]
+fn focus_cancelled_message_is_registered_and_round_trips() {
+    // GTW-322 — see the sibling tests: build with scene support.
+    let mut app = GdtfTestAppBuilder::new_with_scene_support()
+        .starting_in(gdtf_app::test_support::AppState::Running)
+        .build();
+    app.update();
+
+    assert!(
+        app.world()
+            .get_resource::<Messages<FocusCancelled>>()
+            .is_some(),
+        "FocusNavPlugin must register the FocusCancelled message buffer",
+    );
+
+    // Round-trip: write one, read it straight back through a real MessageReader.
+    app.world_mut().write_message(FocusCancelled);
+    let seen = app
+        .world_mut()
+        .run_system_once(count_focus_cancelled)
+        .unwrap_or(0);
+    assert_eq!(
+        seen, 1,
+        "a FocusCancelled written to the framework buffer must be readable back",
     );
 }

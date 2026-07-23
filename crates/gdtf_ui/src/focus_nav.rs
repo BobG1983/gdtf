@@ -11,6 +11,19 @@
 //! device input onto it. No ecosystem navigation crate is used; this is
 //! `bevy::input_focus` only, pinned to 0.19.
 //!
+//! ## Scope — the game surfaces, not the content editor
+//!
+//! This framework serves the hand-rolled `bevy_ui` GDTF surfaces (the menu and
+//! the battlescape HUD panels), which have no built-in focus traversal of their
+//! own. The `gdtf_content_editor` deliberately does **not** use it and needs no
+//! bespoke focus layer: the editor's UI is `bevy_egui`, and egui's standard
+//! widgets — `ui.button`, `ui.text_edit_singleline` / `ui.text_edit_multiline`,
+//! `ui.selectable_value`, and `ui.add` — are all egui-focusable and
+//! Tab-navigable for free. Wiring the editor into this module would only
+//! duplicate traversal egui already provides, so the content-editor
+//! focus-navigation question is closed with zero new code in the editor crate
+//! (the egui-for-dev-surfaces decision is ADR 0003, clause 3).
+//!
 //! ## The pipeline (explicitly ordered — see [`FocusNavSystems`])
 //!
 //! 1. **Bridge** ([`FocusNavSystems::Bridge`]): the device-reading systems
@@ -63,10 +76,13 @@ use bevy::{
 /// A focus-navigation direction.
 ///
 /// A named newtype over [`CompassOctant`] so a navigation direction is never a
-/// bare framework enum in a [`Message`] payload (no-bare-types rule). Only the
-/// vertical octants are produced by this module today
-/// ([`NavDirection::UP`] / [`NavDirection::DOWN`]); the type can carry any
-/// octant when horizontal navigation is added.
+/// bare framework enum in a [`Message`] payload (no-bare-types rule). It defines
+/// the four cardinal directions as named constants: the vertical
+/// [`NavDirection::UP`] / [`NavDirection::DOWN`] and the horizontal
+/// [`NavDirection::WEST`] / [`NavDirection::EAST`]. Only the vertical pair is
+/// produced by the bridge systems today; the horizontal pair exists for the
+/// panel-navigation consumers, but is not yet bound to any device input — which
+/// key raises a horizontal navigate is a separate, pending-design ticket.
 #[derive(Deref, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct NavDirection(CompassOctant);
 
@@ -75,6 +91,10 @@ impl NavDirection {
     pub const UP: Self = Self(CompassOctant::North);
     /// Move focus downward — [`CompassOctant::South`].
     pub const DOWN: Self = Self(CompassOctant::South);
+    /// Move focus to the west (leftward) — [`CompassOctant::West`].
+    pub const WEST: Self = Self(CompassOctant::West);
+    /// Move focus to the east (rightward) — [`CompassOctant::East`].
+    pub const EAST: Self = Self(CompassOctant::East);
 
     /// Wrap a [`CompassOctant`] as a focus-navigation direction.
     #[must_use]
@@ -120,6 +140,23 @@ impl FocusActivated {
     }
 }
 
+/// The player has cancelled the current focus interaction — a "back out" /
+/// dismiss signal, the cancel counterpart to [`FocusActivated`].
+///
+/// Where [`FocusActivated`] commits the focused entity, `FocusCancelled` backs
+/// out of the current focus context without committing it; the concrete effect
+/// (closing a panel, clearing a pending choice) is the reading consumer's to
+/// define. It is a typed [`Message`] (bevy-traps rule 4) the framework defines
+/// and registers, so a later consumer reads it with a
+/// `MessageReader<FocusCancelled>`.
+///
+/// This module deliberately does **not** bind it to any key: which device input
+/// raises a cancel is a separate, currently-blocked ticket's decision, pending a
+/// user design ruling on key arbitration. No bridge system here writes it — it
+/// exists as the registered message type only.
+#[derive(Message, Clone, Copy, PartialEq, Eq, Debug)]
+pub struct FocusCancelled;
+
 /// Explicit system-ordering sets for the focus-navigation pipeline.
 ///
 /// [`Bridge`](FocusNavSystems::Bridge) (device → intent messages) is ordered
@@ -156,7 +193,8 @@ pub fn set_initial_focus(commands: &mut Commands, entity: Entity) {
 /// The `InputDispatchPlugin` (and the [`InputFocus`](bevy::input_focus::InputFocus)
 /// resource it owns) is NOT added here: as of Bevy 0.19 it ships in
 /// `DefaultPlugins`, and adding it again would be a double-add panic.
-/// This plugin also registers the [`NavigateRequest`] / [`FocusActivated`] messages, and adds the
+/// This plugin also registers the [`NavigateRequest`] / [`FocusActivated`] /
+/// [`FocusCancelled`] messages, and adds the
 /// bridge + apply systems to [`Update`] with the
 /// [`Bridge`](FocusNavSystems::Bridge)-before-[`Apply`](FocusNavSystems::Apply)
 /// ordering.
@@ -176,6 +214,9 @@ impl Plugin for FocusNavPlugin {
             .init_resource::<InputFocus>()
             .add_message::<NavigateRequest>()
             .add_message::<FocusActivated>()
+            // The cancel signal is registered so a consumer can read it, but this
+            // module binds NO key to it — key arbitration is a separate ticket.
+            .add_message::<FocusCancelled>()
             .configure_sets(
                 Update,
                 FocusNavSystems::Bridge.before(FocusNavSystems::Apply),
