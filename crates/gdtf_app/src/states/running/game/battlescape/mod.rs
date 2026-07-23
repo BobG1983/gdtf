@@ -84,3 +84,10 @@ pub(in crate::states::running::game::battlescape) use combat_log::GameBattleScap
 // the `BattleRunning` boundary with all three buttons `Visibility::Hidden` — no behavior yet.
 pub(crate) mod contextual_panel;
 pub(in crate::states::running::game::battlescape) use contextual_panel::ContextualPanelPlugin;
+
+// The GTW-782 KEYBOARD FOCUS-NAVIGATION wiring: feeds `gdtf_ui`'s focus framework from the
+// typed `Keybinds` while a panel holds focus (Tab drives panel focus-nav / Escape cancels,
+// context-gated against Tab-cycles-gangers), rebuilds the inter-panel Tab chain over the
+// dynamically shown/hidden panel buttons, and draws the focus outline.
+mod focus_nav;
+pub(in crate::states::running::game::battlescape) use focus_nav::GameBattleScapeFocusNavScenePlugin;

@@ -8,9 +8,9 @@ use crate::states::{
         GameBattleScapeAfterMathScenePlugin, GameBattleScapeAnimateInScenePlugin,
         GameBattleScapeAnimateOutScenePlugin, GameBattleScapeBattleRunningScenePlugin,
         GameBattleScapeBottomBarScenePlugin, GameBattleScapeCombatLogScenePlugin,
-        GameBattleScapeGenerationScenePlugin, GameBattleScapeInspectPanelScenePlugin,
-        GameBattleScapeSelectCycleScenePlugin, GameBattleScapeStatusPanelScenePlugin,
-        GameBattleScapeWeaponPanelScenePlugin, systems::*,
+        GameBattleScapeFocusNavScenePlugin, GameBattleScapeGenerationScenePlugin,
+        GameBattleScapeInspectPanelScenePlugin, GameBattleScapeSelectCycleScenePlugin,
+        GameBattleScapeStatusPanelScenePlugin, GameBattleScapeWeaponPanelScenePlugin, systems::*,
     },
     scaffold::{SceneLabel, log_scene_enter, log_scene_exit},
 };
@@ -134,6 +134,14 @@ fn add_plugins(app: &mut App) {
         // on the `BattleInProgress` witness. View-only — it reads the input selection +
         // writes the per-act intent queues.
         .add_plugins(ContextualPanelPlugin)
+        // The GTW-782 keyboard focus-navigation wiring: the typed-`Keybinds` → framework
+        // bridge (Tab drives panel focus-nav / Escape cancels while a panel holds focus,
+        // context-gated against the Tab-cycles-gangers surface), the inter-panel Tab-chain
+        // topology rebuild over the dynamically shown/hidden panel buttons, and the focus
+        // outline. It reads `Keybinds` + `InputFocus` + the panels' `PanelNavOrder` markers
+        // and writes `gdtf_ui`'s `NavigateRequest` / `FocusCancelled` + the nav map — the
+        // legal app-side crossing (`gdtf_ui` must not depend on `gdtf_battle_input`).
+        .add_plugins(GameBattleScapeFocusNavScenePlugin)
         // The GTW-328 COMBAT-TEXT LOG (bottom-left, ABOVE the weapon panel): the scroll-up-and-
         // fade strip of recent combat events. Same `BattleRunning` lifecycle as the panels; it
         // loads its hot-reloadable `combat_log.tuning.ron` tuning (the FX-tuning RON precedent).

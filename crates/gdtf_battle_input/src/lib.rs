@@ -51,6 +51,8 @@ pub use act_bus::contextual;
 pub use act_bus::cycle;
 // ---- flat item re-exports (unchanged public API surface) ------------------------
 pub use act_bus::cycle::{FACING_CYCLE, STANCE_CYCLE, next_facing, next_stance};
+/// Re-export of [`act_bus::focus_bridge`] for intra-crate `crate::focus_bridge::...` paths.
+pub use act_bus::focus_bridge;
 /// Re-export of [`act_bus::intent`] for intra-crate `crate::intent::...` paths.
 pub use act_bus::intent;
 /// Re-export of [`act_bus::keybinds`] for intra-crate `crate::keybinds::...` paths.
@@ -65,6 +67,7 @@ pub use act_bus::{
         ExitEmplacementAct, MeleeAct, OpenDoorAct, PendingContextualIntents, ShoveAct, SlotRank,
         StabilizeAct, ThrowGrenadeAct, drain_contextual_intents,
     },
+    focus_bridge::{PanelNavOrder, focused_panel_button},
     intent::{
         ActIntent, ActWriters, LevelStep, PendingActIntent, SelectionCycleReads,
         dispatch_act_intents, step_level,

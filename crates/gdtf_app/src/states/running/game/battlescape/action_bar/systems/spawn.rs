@@ -26,10 +26,14 @@ use bevy::{
     scene::{CommandsSceneExt, bsn, template_value},
     ui::Val,
 };
+use gdtf_battle_input::PanelNavOrder;
 use gdtf_ui::{ButtonLabel, spawn_button, spawn_panel, theme::GdtfTheme};
 
-use crate::states::running::game::battlescape::action_bar::components::{
-    ActionBarRoot, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
+use crate::states::running::game::battlescape::{
+    action_bar::components::{
+        ActionBarRoot, EndTurnButton, FleeButton, LevelDownButton, LevelUpButton,
+    },
+    focus_nav::ACTION_BAR_NAV_BASE,
 };
 
 /// Horizontal gap between the action-bar's buttons, as a fraction of the viewport WIDTH
@@ -146,17 +150,19 @@ pub(in crate::states::running::game::battlescape) fn spawn_action_bar(
         ..default()
     });
 
+    // GTW-782 — each bar button carries a `PanelNavOrder` so the focus-nav topology
+    // includes it in the Tab chain (the action bar leads the left-to-right traversal).
     let level_up = spawn_button(
         &mut commands,
         &theme,
         ButtonLabel::new("Level +"),
-        LevelUpButton,
+        (LevelUpButton, PanelNavOrder::new(ACTION_BAR_NAV_BASE)),
     );
     let level_down = spawn_button(
         &mut commands,
         &theme,
         ButtonLabel::new("Level -"),
-        LevelDownButton,
+        (LevelDownButton, PanelNavOrder::new(ACTION_BAR_NAV_BASE + 1)),
     );
 
     // GTW-309: the end-turn button is now LIVE (the turn-cycle engine landed). It is an
@@ -167,13 +173,18 @@ pub(in crate::states::running::game::battlescape) fn spawn_action_bar(
         &mut commands,
         &theme,
         ButtonLabel::new("End Turn"),
-        EndTurnButton,
+        (EndTurnButton, PanelNavOrder::new(ACTION_BAR_NAV_BASE + 2)),
     );
 
     // The flee button — an ENABLED app/lifecycle button (NO DisabledButton, unlike the
     // deferred end-turn button above). Its press ends the persisting battle via the dedicated
     // `flee_button_pressed` handler (GTW-240), NOT the sim intent queue (flee is not a sim act).
-    let flee = spawn_button(&mut commands, &theme, ButtonLabel::new("Flee"), FleeButton);
+    let flee = spawn_button(
+        &mut commands,
+        &theme,
+        ButtonLabel::new("Flee"),
+        (FleeButton, PanelNavOrder::new(ACTION_BAR_NAV_BASE + 3)),
+    );
 
     // Parent the four controls under the compact PANEL (left-to-right), then parent the panel
     // under the full-width centering WRAPPER (root) so it is centred at the top-middle (D-C).

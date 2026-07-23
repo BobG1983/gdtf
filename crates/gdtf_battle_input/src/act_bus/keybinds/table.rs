@@ -82,6 +82,23 @@ pub enum BoundKey {
     KeyDigit8,
     /// The `9` digit key (contextual slot 9 — GTW-563).
     KeyDigit9,
+    /// The `Enter` / `Return` key — the focus-navigation ACTIVATE key (GTW-782). The
+    /// focus framework's built-in keyboard bridge already raises a `FocusActivated` on this
+    /// key while an entity holds focus; this variant names it in the typed vocabulary.
+    KeyEnter,
+    /// The up-arrow key — a focus-navigation vertical direction (GTW-782). Handled by the
+    /// framework's built-in keyboard bridge (`ArrowUp` → move focus up); named here so the
+    /// arrow-key focus vocabulary is complete.
+    KeyArrowUp,
+    /// The down-arrow key — a focus-navigation vertical direction (GTW-782). The framework's
+    /// built-in bridge maps it to a downward focus move.
+    KeyArrowDown,
+    /// The left-arrow key — a focus-navigation horizontal direction (GTW-782). The
+    /// battlescape panel-focus bridge maps it to a WEST (previous) focus step.
+    KeyArrowLeft,
+    /// The right-arrow key — a focus-navigation horizontal direction (GTW-782). The
+    /// battlescape panel-focus bridge maps it to an EAST (next) focus step.
+    KeyArrowRight,
 }
 
 impl BoundKey {
@@ -115,6 +132,11 @@ impl BoundKey {
             Self::KeyDigit7 => KeyCode::Digit7,
             Self::KeyDigit8 => KeyCode::Digit8,
             Self::KeyDigit9 => KeyCode::Digit9,
+            Self::KeyEnter => KeyCode::Enter,
+            Self::KeyArrowUp => KeyCode::ArrowUp,
+            Self::KeyArrowDown => KeyCode::ArrowDown,
+            Self::KeyArrowLeft => KeyCode::ArrowLeft,
+            Self::KeyArrowRight => KeyCode::ArrowRight,
         }
     }
 }

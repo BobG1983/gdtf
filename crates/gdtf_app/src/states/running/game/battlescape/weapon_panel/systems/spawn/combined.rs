@@ -11,6 +11,7 @@ use bevy::{
     text::{FontSize, LineBreak, TextColor as UiTextColor, TextFont, TextLayout},
     ui::{Display, Node, Overflow, OverflowAxis, UiRect, Val},
 };
+use gdtf_battle_input::PanelNavOrder;
 use gdtf_ui::{
     ButtonLabel, spawn_button,
     theme::GdtfTheme,
@@ -20,9 +21,12 @@ use gdtf_ui::{
 use super::geometry::{
     CONTENT_MIN_H_VH, GAP_VH, INFO_RELOAD_H_PCT, INFO_ROW_H_PCT, INFO_TEXT_H_PCT,
 };
-use crate::states::running::game::battlescape::weapon_panel::components::{
-    CombinedWeaponPanel, ReloadButton, WeaponContent, WeaponImage, WeaponMagazineText,
-    WeaponNameText,
+use crate::states::running::game::battlescape::{
+    focus_nav::WEAPON_NAV_BASE,
+    weapon_panel::components::{
+        CombinedWeaponPanel, ReloadButton, WeaponContent, WeaponImage, WeaponMagazineText,
+        WeaponNameText,
+    },
 };
 
 /// Builds the FULL-WIDTH [`WeaponImage`] placeholder — a framed box with a small centered
@@ -157,7 +161,16 @@ fn spawn_info_block(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
         .id();
     commands.entity(content).add_children(&[name, magazine]);
 
-    let reload = spawn_button(commands, theme, ButtonLabel::new("Reload"), ReloadButton);
+    // GTW-782 — Reload carries a `PanelNavOrder` so the focus-nav topology includes it in
+    // the Tab chain (after the action bar, before the contextual cluster). When the weapon
+    // has no magazine the panel hides Reload (`Visibility::Hidden`), so it drops out of the
+    // chain — exactly the dynamic-visibility the topology rebuild handles.
+    let reload = spawn_button(
+        commands,
+        theme,
+        ButtonLabel::new("Reload"),
+        (ReloadButton, PanelNavOrder::new(WEAPON_NAV_BASE)),
+    );
     // GTW-733 — Reload's OWN full-width row (below the text block, not beside it); the button
     // itself stays RIGHT-anchored within it, matching its prior position in the row.
     // GTW-322 — plain layout `Node` (no marker); composed via `template_value`.

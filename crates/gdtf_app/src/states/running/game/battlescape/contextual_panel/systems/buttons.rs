@@ -13,12 +13,15 @@
 //! (never despawn/respawn — the `ui-mutate-not-respawn` ruling).
 
 use bevy::{prelude::*, ui::Interaction};
-use gdtf_battle_input::contextual::PendingContextualIntents;
+use gdtf_battle_input::{PanelNavOrder, contextual::PendingContextualIntents};
 use gdtf_ui::{DisabledButton, spawn_button, theme::GdtfTheme};
 
-use crate::states::running::game::battlescape::contextual_panel::{
-    components::ContextualPanelRoot,
-    seam::{ContextualActButton, ContextualOffer, ContextualPanelAct, VisibleSlotRank},
+use crate::states::running::game::battlescape::{
+    contextual_panel::{
+        components::ContextualPanelRoot,
+        seam::{ContextualActButton, ContextualOffer, ContextualPanelAct, VisibleSlotRank},
+    },
+    focus_nav::CONTEXTUAL_NAV_BASE,
 };
 
 /// Query filter selecting the ENABLED button carrying marker `M` whose [`Interaction`]
@@ -76,6 +79,12 @@ pub(in crate::states::running::game::battlescape) fn spawn_contextual_button<
             // Unranked at spawn (Hidden): the ranking pass assigns a 1-based visible rank
             // once the act's toggle reveals the button (GTW-563).
             VisibleSlotRank::unranked(),
+            // GTW-782 — the focus-nav Tab-chain position: the contextual cluster comes last
+            // (after the action bar + weapon panel), each button offset by its stable
+            // `PanelSlot` ordinal so its Tab order matches its top-to-bottom column order. A
+            // not-offered button spawns `Visibility::Hidden`, so it drops out of the chain
+            // until its act's toggle reveals it — the dynamic visibility the rebuild handles.
+            PanelNavOrder::new(CONTEXTUAL_NAV_BASE + u16::from(*A::SLOT)),
             Visibility::Hidden,
         ),
     );

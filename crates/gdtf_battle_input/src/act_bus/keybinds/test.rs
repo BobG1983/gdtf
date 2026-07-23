@@ -96,6 +96,12 @@ fn bound_key_resolves_to_its_key_code() {
     assert_eq!(BoundKey::KeyDigit1.key_code(), KeyCode::Digit1);
     assert_eq!(BoundKey::KeyDigit8.key_code(), KeyCode::Digit8);
     assert_eq!(BoundKey::KeyDigit9.key_code(), KeyCode::Digit9);
+    // GTW-782 — the focus-navigation key vocabulary (Enter + the four arrows).
+    assert_eq!(BoundKey::KeyEnter.key_code(), KeyCode::Enter);
+    assert_eq!(BoundKey::KeyArrowUp.key_code(), KeyCode::ArrowUp);
+    assert_eq!(BoundKey::KeyArrowDown.key_code(), KeyCode::ArrowDown);
+    assert_eq!(BoundKey::KeyArrowLeft.key_code(), KeyCode::ArrowLeft);
+    assert_eq!(BoundKey::KeyArrowRight.key_code(), KeyCode::ArrowRight);
 }
 
 /// GTW-563 — the FIXED slot→digit mapping: rank N (1-based) resolves to the Nth digit

@@ -21,9 +21,12 @@
 //! `AssetServer` never resolves it and these systems simply do not run (no panic) —
 //! a test that wants them inserts [`Keybinds`] directly.
 
-use bevy::prelude::*;
+use bevy::{input_focus::InputFocus, prelude::*};
 
-use crate::{ActIntent, Keybinds, PendingActIntent, SelectedShooter};
+use crate::{
+    ActIntent, Keybinds, PendingActIntent, SelectedShooter,
+    focus_bridge::{PanelNavOrder, focused_panel_button},
+};
 
 /// Reads the level-up / level-down keys and PUSHES the matching level [`ActIntent`].
 ///
@@ -72,11 +75,26 @@ pub fn full_view_key(
 /// drain uses to clear [`SelectedShooter`](crate::SelectedShooter). No `KeyCode`
 /// literal: the bound code is read off the loaded [`Keybinds`] resource. Param-only
 /// (`bevy-traps.md` #7).
+///
+/// GTW-782 CONTEXT GUARD: Escape carries two mutually-exclusive meanings gated on panel
+/// focus. When a battlescape HUD panel currently holds keyboard focus
+/// ([`focused_panel_button`]), Escape backs out of panel focus — handled by the app-side
+/// panel-focus bridge (`gdtf_app`'s `bridge_panel_focus_nav` / `apply_focus_cancel`) — so
+/// this handler SKIPS (it must not ALSO clear the ganger selection). With no panel focused
+/// it keeps its clear-selection meaning exactly as before. [`InputFocus`] is [`Option`] so
+/// a harness without the focus framework reads as "no panel focus" and clears selection as
+/// before.
 pub fn select_clear_key(
     keys: Res<ButtonInput<KeyCode>>,
     binds: Res<Keybinds>,
+    focus: Option<Res<InputFocus>>,
+    panels: Query<(), With<PanelNavOrder>>,
     mut pending: ResMut<PendingActIntent>,
 ) {
+    // A panel holds focus → Escape means "cancel panel focus", not "clear selection".
+    if focused_panel_button(focus.as_deref(), &panels).is_some() {
+        return;
+    }
     if keys.just_pressed(binds.select_clear()) {
         pending.push(ActIntent::SelectionClear);
     }
@@ -130,11 +148,26 @@ pub fn posture_keys(
 /// from `None`). No `KeyCode` literal for the bound cycle key — it is read off the loaded
 /// [`Keybinds`] resource; reading [`KeyCode::ShiftLeft`] / [`KeyCode::ShiftRight`] DIRECTLY is
 /// acceptable framework modifier input (not a bound act). Param-only (`bevy-traps.md` #7).
+///
+/// GTW-782 CONTEXT GUARD: `Tab` carries two mutually-exclusive meanings gated on panel
+/// focus (the user's ruling — the same physical key, mutually-exclusive modes). When a
+/// battlescape HUD panel currently holds keyboard focus ([`focused_panel_button`]), Tab
+/// drives PANEL focus-nav — handled by the app-side panel-focus bridge (`gdtf_app`'s
+/// `bridge_panel_focus_nav`) — so this ganger-cycle handler SKIPS. With no panel focused it
+/// keeps its cycle-ganger meaning exactly as before. [`InputFocus`] is [`Option`] so a
+/// harness without the focus framework reads as "no panel focus" and cycles gangers as
+/// before.
 pub fn cycle_selection_keys(
     keys: Res<ButtonInput<KeyCode>>,
     binds: Res<Keybinds>,
+    focus: Option<Res<InputFocus>>,
+    panels: Query<(), With<PanelNavOrder>>,
     mut pending: ResMut<PendingActIntent>,
 ) {
+    // A panel holds focus → Tab drives panel focus-nav, not ganger cycling.
+    if focused_panel_button(focus.as_deref(), &panels).is_some() {
+        return;
+    }
     if keys.just_pressed(binds.select_next()) {
         // Shift (either side) selects PREVIOUS; otherwise NEXT. Modifier keys are framework
         // input read directly, not a bound act.
