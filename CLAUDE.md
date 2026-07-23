@@ -45,6 +45,7 @@ cargo dclippy -- -D warnings
 cargo dtest
 cargo dbuild
 cargo doc --workspace --no-deps
+cargo doc-full
 ```
 
 Per `.cargo/config.toml`: `dclippy` = `clippy --workspace --all-targets --features
@@ -56,7 +57,12 @@ binary, which `clippy`/`test` never do — so it's the only step that catches an
 keeps the dev/gate loop fast; `--all-features` is not used — it forces a second full bevy build for no
 lint gain. CI green is **static** (no `dynamic_linking`): fmt/clippy/test only — the release-binary
 build (`cargo build -p grimdark_turfwar --release`) is deferred to packaging, not a CI gate.
-`cargo doc` is dev/gate-only (not CI): `broken_intra_doc_links = "deny"` only surfaces under `cargo doc`.
+`cargo doc` is dev/gate-only (not CI): the `broken_intra_doc_links` / `private_intra_doc_links`
+denies only surface under `cargo doc`. It runs TWICE: the default `cargo doc --workspace --no-deps`
+plus `cargo doc-full` (= `doc --workspace --no-deps --features
+grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa`), which enables the `dev_tools`/`net_qa`-gated
+modules so their doc comments are link-checked too — the same both-configs rule the `dclippy` dual
+gate follows (an optional feature must be checked WITH it on, not just off; GTW-790).
 See [`verification.md`](.claude/rules/verification.md).
 
 The workspace `Cargo.toml` denies clippy `all`/`pedantic`/`correctness`/`suspicious` plus

@@ -21,14 +21,14 @@ const PROCGEN_STEPPER_ENV: &str = "GDTF_PROCGEN_STEPPER";
 crate::support_item! {
     /// Whether the DEV-ONLY procgen stepper is enabled for this process.
     ///
-    /// Reads the [`PROCGEN_STEPPER_ENV`] (`GDTF_PROCGEN_STEPPER`) environment variable and
+    /// Reads the `PROCGEN_STEPPER_ENV` (`GDTF_PROCGEN_STEPPER`) environment variable and
     /// treats `1` / `true` / `yes` / `on` (case-insensitive, trimmed) as enabled; anything
     /// else — including the variable being unset or empty — is disabled. Mirrors the house
     /// recognised-truthy convention every other `GDTF_*` gate in this crate uses (e.g.
     /// `net_qa`'s `net_qa_enabled`); kept as its own parser rather than a shared helper
     /// (short of the rule of three — each gate's doc explains why it stays intra-module).
     ///
-    /// Pure (no `World`, no side effects), so [`super::plugin`]'s `from_env` gate can call it
+    /// Pure (no `World`, no side effects), so `super::plugin`'s `from_env` gate can call it
     /// with no side effects: a normal `cargo run` (even a `dev_tools` build) leaves the var
     /// unset, this returns `false`, and a battle loads exactly as it does without
     /// `dev_tools`. `pub` under `test-support` (the integration test unit-checks the parser

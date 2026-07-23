@@ -52,7 +52,7 @@ crate::support_item! {
     /// Whether the router will service `kind` given the state facts it keys accept/reject on.
     ///
     /// The single predicate that governs BOTH the route-time accept/reject below and the
-    /// advertised [`available_requests`] set, so the two can never drift. The battle-dependent
+    /// advertised `available_requests` set, so the two can never drift. The battle-dependent
     /// quartet needs a battle in progress; the DEV
     /// [`StepperControl`](RequestKindNet::StepperControl) needs a live procgen-stepper drive;
     /// every other request kind is serviceable regardless of state. The app state is read only
@@ -64,7 +64,7 @@ crate::support_item! {
     ///
     /// `stepper_active` (GTW-766) is `true` only while a battle's procgen `Generation` is
     /// being driven a stage at a time (a live `StagedProcgen`), NOT merely because the process
-    /// has the DEV stepper feature on — see [`route_requests`] for where it is read.
+    /// has the DEV stepper feature on — see `route_requests` for where it is read.
     ///
     /// Widened to `pub` under `test-support` (the GTW-727 input-gate suite asserts the
     /// catch-up gating against this exact function) and `pub(crate)` otherwise, so the
