@@ -14,7 +14,15 @@
 //! resolution (token liveness, the fire-mode lookup, the offer gate) in
 //! [`resolve`](super::resolve). This file owns only the drain + the per-outcome dispatch.
 
-use bevy::prelude::*;
+use bevy::{
+    input::{
+        ButtonState,
+        keyboard::{Key, KeyCode, KeyboardInput, NativeKey},
+    },
+    input_focus::FocusCause,
+    prelude::*,
+    window::CursorMoved,
+};
 use gdtf_battle_input::{
     ActIntent,
     contextual::{
@@ -25,15 +33,18 @@ use gdtf_battle_input::{
 use gdtf_battle_sim::acts::{FireRequested, MoveRequested, SetFacingRequested};
 use gdtf_qa_protocol::{
     envelope::{InjectReceipt, QaResponse},
+    ids::PointerPosNet,
     intent::NetIntent,
 };
 
 use super::{
-    convert::{ActorIntent, Classified, ContextualIntent, cell_level, classify, direction},
+    convert::{
+        ActorIntent, Classified, ContextualIntent, RawInputIntent, cell_level, classify, direction,
+    },
     pending::{InjectPayload, PendingQueue},
     resolve::{
-        InjectActors, InjectQueues, gate_and_push, resolve_door, resolve_emplacement,
-        resolve_fire_mode, resolve_ganger, resolve_melee,
+        InjectActors, InjectQueues, RawInputSink, gate_and_push, resolve_door, resolve_emplacement,
+        resolve_fire_mode, resolve_focus_target, resolve_ganger, resolve_key, resolve_melee,
     },
 };
 
@@ -52,9 +63,10 @@ pub(super) fn apply_injects(
     mut injects: ResMut<PendingQueue<InjectPayload>>,
     mut queues: InjectQueues,
     actors: InjectActors,
+    mut raw_input: RawInputSink,
 ) {
     for (payload, responder) in injects.drain_ready() {
-        let receipt = receipt_for(payload.intent(), &mut queues, &actors);
+        let receipt = receipt_for(payload.intent(), &mut queues, &actors, &mut raw_input);
         responder.reply(QaResponse::Injected(receipt));
     }
 }
@@ -70,6 +82,7 @@ pub(super) fn receipt_for(
     intent: NetIntent,
     queues: &mut InjectQueues,
     actors: &InjectActors,
+    raw_input: &mut RawInputSink,
 ) -> InjectReceipt {
     match classify(intent) {
         Classified::Classic(act) => {
@@ -85,6 +98,7 @@ pub(super) fn receipt_for(
             Err(reason) => InjectReceipt::Rejected(reason),
         },
         Classified::Contextual(contextual) => push_contextual(contextual, queues, actors),
+        Classified::RawInput(raw) => push_raw_input(raw, raw_input),
     }
 }
 
@@ -214,5 +228,92 @@ fn push_contextual(
     match outcome {
         Ok(()) => InjectReceipt::Queued,
         Err(reason) => InjectReceipt::Rejected(reason),
+    }
+}
+
+/// Realise a GTW-783 raw-input intent through the windowing-input path — a real
+/// `KeyboardInput` press+release pair, the primary window's cursor position + a
+/// `CursorMoved`, or the `InputFocus` resource — never a direct sim mutation.
+///
+/// A keypress / hover always reports [`Queued`](InjectReceipt::Queued): whether the input
+/// stack is present to receive it is an outcome concern, not a wire rejection (the same
+/// stance [`push_actor`] takes when there is no selection). A focus-set is the one arm that
+/// can reject — a malformed / dead focus token is
+/// [`UnknownEntity`](gdtf_qa_protocol::envelope::RejectReason::UnknownEntity), fail-closed.
+pub(super) fn push_raw_input(intent: RawInputIntent, sink: &mut RawInputSink) -> InjectReceipt {
+    match intent {
+        RawInputIntent::Key(press) => {
+            if let Some(key_code) = resolve_key(press, sink) {
+                emit_key_tap(key_code, sink);
+            }
+            InjectReceipt::Queued
+        }
+        RawInputIntent::Hover(pos) => {
+            move_pointer(pos, sink);
+            InjectReceipt::Queued
+        }
+        RawInputIntent::Focus(token) => match resolve_focus_target(token, sink) {
+            Ok(entity) => {
+                if let Some(focus) = sink.focus.as_deref_mut() {
+                    // The SAME write `sync_hover_to_focus` performs; `Navigated` is the
+                    // non-primary-press cause hover-to-focus also uses.
+                    focus.set(entity, FocusCause::Navigated);
+                }
+                InjectReceipt::Queued
+            }
+            Err(reason) => InjectReceipt::Rejected(reason),
+        },
+    }
+}
+
+/// Write a real `KeyboardInput` press+release pair for `key_code` onto the buffered keyboard
+/// message stream — a clean discrete tap Bevy's `keyboard_input_system` folds into
+/// `ButtonInput<KeyCode>` (so a `just_pressed`-reading game system sees the key). Inert if
+/// the stream is absent (no windowing input stack).
+fn emit_key_tap(key_code: KeyCode, sink: &mut RawInputSink) {
+    let window = sink
+        .windows
+        .iter()
+        .next()
+        .map_or(Entity::PLACEHOLDER, |(entity, _)| entity);
+    let Some(events) = sink.key_events.as_deref_mut() else {
+        return;
+    };
+    events.write(key_message(key_code, ButtonState::Pressed, window));
+    events.write(key_message(key_code, ButtonState::Released, window));
+}
+
+/// Build a `KeyboardInput` message for `key_code` in `state` on `window`. The physical
+/// `key_code` and `state` are what `keyboard_input_system` (and the game's keybind reads)
+/// consume; `logical_key` is left unidentified — the QA layer names keys physically, not by
+/// a layout-specific character.
+const fn key_message(key_code: KeyCode, state: ButtonState, window: Entity) -> KeyboardInput {
+    KeyboardInput {
+        key_code,
+        logical_key: Key::Unidentified(NativeKey::Unidentified),
+        state,
+        text: None,
+        repeat: false,
+        window,
+    }
+}
+
+/// Move the primary window's cursor to `pos` (what `bevy_ui`'s hover detection reads) and
+/// write a matching `CursorMoved` message, exactly as the windowing backend would. Inert if
+/// there is no primary window; the `CursorMoved` message is skipped if its stream is absent.
+fn move_pointer(pos: PointerPosNet, sink: &mut RawInputSink) {
+    // `i16` → `f32` is lossless (`f32::from`), so no truncating cast is needed.
+    let position = Vec2::new(f32::from(*pos.x), f32::from(*pos.y));
+    let mut moved_window = None;
+    for (entity, mut window) in &mut sink.windows {
+        window.set_cursor_position(Some(position));
+        moved_window = Some(entity);
+    }
+    if let (Some(window), Some(events)) = (moved_window, sink.cursor_events.as_deref_mut()) {
+        events.write(CursorMoved {
+            window,
+            position,
+            delta: None,
+        });
     }
 }

@@ -9,7 +9,7 @@ use crate::dev::net_qa::{
     inject::receipt_for,
     pending::{PendingQueue, ScreenshotAfterPayload},
     present::QaCaptureTarget,
-    resolve::{InjectActors, InjectQueues},
+    resolve::{InjectActors, InjectQueues, RawInputSink},
     screenshot::{InFlightShots, QaShotDir, ShotPollBudget, ShotSequence},
 };
 
@@ -33,10 +33,11 @@ pub(in crate::dev::net_qa) fn claim_screenshot_after(
     mut pending: ResMut<PendingQueue<ScreenshotAfterPayload>>,
     mut queues: InjectQueues,
     actors: InjectActors,
+    mut raw_input: RawInputSink,
     mut after_shots: ResMut<AfterShotQueue>,
 ) {
     for (payload, responder) in pending.drain_ready() {
-        match receipt_for(payload.intent(), &mut queues, &actors) {
+        match receipt_for(payload.intent(), &mut queues, &actors, &mut raw_input) {
             InjectReceipt::Queued => {
                 after_shots.push(payload.frame_delay(), payload.name().cloned(), responder);
             }

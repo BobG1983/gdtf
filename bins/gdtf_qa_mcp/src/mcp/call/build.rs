@@ -165,6 +165,27 @@ mod tests {
         };
     }
 
+    /// `send_input` forwards a GTW-783 raw-input keypress intent — the MCP host exposes the
+    /// keyboard-drive capability through the same generic injector tool, no per-intent tool.
+    #[test]
+    fn build_request_parses_keypress_intent() {
+        let args = json!({ "intent": { "PressKey": { "key": { "Key": "Tab" } } } });
+        let request = build_request(ToolName::SendInput, &args);
+        let Ok(QaRequest::Inject(NetIntent::PressKey { .. })) = request else {
+            unreachable!("a PressKey JSON object parses to an Inject(PressKey): {request:?}");
+        };
+    }
+
+    /// `send_input` forwards a raw-input hover intent (a window pixel position).
+    #[test]
+    fn build_request_parses_hover_intent() {
+        let args = json!({ "intent": { "Hover": { "at": { "x": 120, "y": 48 } } } });
+        let request = build_request(ToolName::SendInput, &args);
+        let Ok(QaRequest::Inject(NetIntent::Hover { .. })) = request else {
+            unreachable!("a Hover JSON object parses to an Inject(Hover): {request:?}");
+        };
+    }
+
     /// `get_output` maps its optional `max` onto the request.
     #[test]
     fn build_request_reads_output_cap() {

@@ -21,11 +21,15 @@
 //! [`resolve`](super::resolve) / [`inject`](super::inject). Only the pure wire→sim value
 //! mappers ([`cell_level`] / [`direction`] / [`stance_kind`]) live here.
 
+use bevy::input::keyboard::KeyCode;
 use gdtf_battle_input::ActIntent;
 use gdtf_battle_sim::prelude::{Cell, CellLevel, Direction, Level, StanceKind};
 use gdtf_qa_protocol::{
-    ids::{CellLevelNet, DoorToken, EmplacementToken, FireModeIndex, GangerToken},
-    intent::{AimNet, FacingNet, MeleeTargetNet, NetIntent, StanceNet},
+    ids::{
+        CellLevelNet, DoorToken, EmplacementToken, FireModeIndex, FocusTargetNet, GangerToken,
+        PointerPosNet,
+    },
+    intent::{AimNet, FacingNet, KeyNet, KeyPressNet, MeleeTargetNet, NetIntent, StanceNet},
 };
 
 /// The exhaustive outcome of classifying a [`NetIntent`] — split by the resolution it
@@ -39,6 +43,22 @@ pub(super) enum Classified {
     Select(GangerToken),
     /// One of the eight contextual acts — its wire target still to resolve + offer-gate.
     Contextual(ContextualIntent),
+    /// A GTW-783 raw-input intent (keypress / hover / focus-set) — realised through the
+    /// windowing-input path, NOT an act queue (see [`RawInputIntent`]).
+    RawInput(RawInputIntent),
+}
+
+/// A GTW-783 raw-input intent still awaiting its windowing-input realisation — the keypress
+/// key still to resolve (a physical key is pure, a bound action needs the live `Keybinds`),
+/// the hover position, or the focus token still to resolve to a live entity. Handled by
+/// [`push_raw_input`](super::inject::push_raw_input), NOT an act queue.
+pub(super) enum RawInputIntent {
+    /// Tap a key (→ a real `KeyboardInput` press+release pair).
+    Key(KeyPressNet),
+    /// Move the pointer to a window position (→ the primary window cursor + a `CursorMoved`).
+    Hover(PointerPosNet),
+    /// Point UI input focus at an entity (→ the `InputFocus` resource), token still to resolve.
+    Focus(FocusTargetNet),
 }
 
 /// A classic act still awaiting the current `SelectedShooter` to finish building its
@@ -133,6 +153,10 @@ pub(super) const fn classify(intent: NetIntent) -> Classified {
         NetIntent::ExitEmplacement { target } => {
             Classified::Contextual(ContextualIntent::ExitEmplacement(target))
         }
+        // The GTW-783 raw-input family — realised through the windowing-input path.
+        NetIntent::PressKey { key } => Classified::RawInput(RawInputIntent::Key(key)),
+        NetIntent::Hover { at } => Classified::RawInput(RawInputIntent::Hover(at)),
+        NetIntent::SetFocus { target } => Classified::RawInput(RawInputIntent::Focus(target)),
     }
 }
 
@@ -161,5 +185,38 @@ pub(super) const fn stance_kind(net: StanceNet) -> StanceKind {
         StanceNet::Standing => StanceKind::Standing,
         StanceNet::Crouching => StanceKind::Crouching,
         StanceNet::Prone => StanceKind::Prone,
+    }
+}
+
+/// Map a wire [`KeyNet`] physical key onto the Bevy [`KeyCode`] the game reads — the pure,
+/// state-free half of keypress resolution (a bound-action keypress needs the live
+/// `Keybinds`, so it resolves in [`resolve`](super::resolve) instead).
+pub(super) const fn key_code_of(key: KeyNet) -> KeyCode {
+    match key {
+        KeyNet::Escape => KeyCode::Escape,
+        KeyNet::KeyQ => KeyCode::KeyQ,
+        KeyNet::KeyE => KeyCode::KeyE,
+        KeyNet::KeyC => KeyCode::KeyC,
+        KeyNet::KeyF => KeyCode::KeyF,
+        KeyNet::KeyR => KeyCode::KeyR,
+        KeyNet::KeyV => KeyCode::KeyV,
+        KeyNet::Tab => KeyCode::Tab,
+        KeyNet::PageUp => KeyCode::PageUp,
+        KeyNet::PageDown => KeyCode::PageDown,
+        KeyNet::BracketLeft => KeyCode::BracketLeft,
+        KeyNet::BracketRight => KeyCode::BracketRight,
+        KeyNet::Digit1 => KeyCode::Digit1,
+        KeyNet::Digit2 => KeyCode::Digit2,
+        KeyNet::Digit3 => KeyCode::Digit3,
+        KeyNet::Digit4 => KeyCode::Digit4,
+        KeyNet::Digit5 => KeyCode::Digit5,
+        KeyNet::Digit6 => KeyCode::Digit6,
+        KeyNet::Digit7 => KeyCode::Digit7,
+        KeyNet::Digit8 => KeyCode::Digit8,
+        KeyNet::Digit9 => KeyCode::Digit9,
+        KeyNet::ArrowUp => KeyCode::ArrowUp,
+        KeyNet::ArrowDown => KeyCode::ArrowDown,
+        KeyNet::ArrowLeft => KeyCode::ArrowLeft,
+        KeyNet::ArrowRight => KeyCode::ArrowRight,
     }
 }

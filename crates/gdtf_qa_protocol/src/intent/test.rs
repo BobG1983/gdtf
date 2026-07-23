@@ -4,9 +4,12 @@
 use crate::{
     ids::{
         CellLevelNet, CellNet, CellXNet, CellYNet, DoorToken, EmplacementToken, FireModeIndex,
-        GangerToken, LevelNet,
+        FocusTargetNet, GangerToken, LevelNet, PointerPosNet, PointerXNet, PointerYNet,
     },
-    intent::{AimNet, FacingNet, MeleeTargetNet, NetIntent, StanceNet},
+    intent::{
+        AimNet, FacingNet, KeyNet, KeyPressNet, KeybindActionNet, MeleeTargetNet, NetIntent,
+        StanceNet,
+    },
     test_support::assert_ron_round_trip,
 };
 
@@ -77,6 +80,15 @@ fn net_intent_cases() -> Vec<NetIntent> {
         NetIntent::SelectionClear,
         NetIntent::LevelUp,
         NetIntent::LevelDown,
+        NetIntent::PressKey {
+            key: KeyPressNet::Key(KeyNet::Tab),
+        },
+        NetIntent::Hover {
+            at: PointerPosNet::new(PointerXNet::new(120), PointerYNet::new(48)),
+        },
+        NetIntent::SetFocus {
+            target: FocusTargetNet::new(19),
+        },
     ]
 }
 
@@ -105,7 +117,10 @@ fn net_intent_is_exhaustive(intent: &NetIntent) {
         | NetIntent::SelectPrev
         | NetIntent::SelectionClear
         | NetIntent::LevelUp
-        | NetIntent::LevelDown => {}
+        | NetIntent::LevelDown
+        | NetIntent::PressKey { .. }
+        | NetIntent::Hover { .. }
+        | NetIntent::SetFocus { .. } => {}
     }
 }
 
@@ -115,7 +130,7 @@ fn net_intent_round_trips_every_variant() {
     let cases = net_intent_cases();
     assert_eq!(
         cases.len(),
-        21,
+        24,
         "the case table lists every NetIntent variant"
     );
     for case in &cases {
@@ -176,4 +191,109 @@ fn melee_target_and_aim_round_trip() {
     }
     assert_ron_round_trip(&AimNet::new(true));
     assert_ron_round_trip(&AimNet::new(false));
+}
+
+/// Every [`KeyNet`] physical key round-trips; the witness forces new variants in.
+#[test]
+fn key_net_round_trips_every_variant() {
+    for key in [
+        KeyNet::Escape,
+        KeyNet::KeyQ,
+        KeyNet::KeyE,
+        KeyNet::KeyC,
+        KeyNet::KeyF,
+        KeyNet::KeyR,
+        KeyNet::KeyV,
+        KeyNet::Tab,
+        KeyNet::PageUp,
+        KeyNet::PageDown,
+        KeyNet::BracketLeft,
+        KeyNet::BracketRight,
+        KeyNet::Digit1,
+        KeyNet::Digit2,
+        KeyNet::Digit3,
+        KeyNet::Digit4,
+        KeyNet::Digit5,
+        KeyNet::Digit6,
+        KeyNet::Digit7,
+        KeyNet::Digit8,
+        KeyNet::Digit9,
+        KeyNet::ArrowUp,
+        KeyNet::ArrowDown,
+        KeyNet::ArrowLeft,
+        KeyNet::ArrowRight,
+    ] {
+        match key {
+            KeyNet::Escape
+            | KeyNet::KeyQ
+            | KeyNet::KeyE
+            | KeyNet::KeyC
+            | KeyNet::KeyF
+            | KeyNet::KeyR
+            | KeyNet::KeyV
+            | KeyNet::Tab
+            | KeyNet::PageUp
+            | KeyNet::PageDown
+            | KeyNet::BracketLeft
+            | KeyNet::BracketRight
+            | KeyNet::Digit1
+            | KeyNet::Digit2
+            | KeyNet::Digit3
+            | KeyNet::Digit4
+            | KeyNet::Digit5
+            | KeyNet::Digit6
+            | KeyNet::Digit7
+            | KeyNet::Digit8
+            | KeyNet::Digit9
+            | KeyNet::ArrowUp
+            | KeyNet::ArrowDown
+            | KeyNet::ArrowLeft
+            | KeyNet::ArrowRight => {}
+        }
+        assert_ron_round_trip(&key);
+    }
+}
+
+/// Every [`KeybindActionNet`] bound action round-trips; the witness forces new variants in.
+#[test]
+fn keybind_action_net_round_trips_every_variant() {
+    for action in [
+        KeybindActionNet::SelectClear,
+        KeybindActionNet::LevelUp,
+        KeybindActionNet::LevelDown,
+        KeybindActionNet::ToggleFullView,
+        KeybindActionNet::StanceCycle,
+        KeybindActionNet::AimToggle,
+        KeybindActionNet::FacingCycle,
+        KeybindActionNet::SelectNext,
+        KeybindActionNet::SelectPrev,
+    ] {
+        match action {
+            KeybindActionNet::SelectClear
+            | KeybindActionNet::LevelUp
+            | KeybindActionNet::LevelDown
+            | KeybindActionNet::ToggleFullView
+            | KeybindActionNet::StanceCycle
+            | KeybindActionNet::AimToggle
+            | KeybindActionNet::FacingCycle
+            | KeybindActionNet::SelectNext
+            | KeybindActionNet::SelectPrev => {}
+        }
+        assert_ron_round_trip(&action);
+    }
+}
+
+/// Both [`KeyPressNet`] forms + a [`FocusTargetNet`] round-trip.
+#[test]
+fn key_press_and_focus_target_round_trip() {
+    for press in [
+        KeyPressNet::Key(KeyNet::Escape),
+        KeyPressNet::Action(KeybindActionNet::SelectClear),
+    ] {
+        match press {
+            KeyPressNet::Key(_) | KeyPressNet::Action(_) => {}
+        }
+        assert_ron_round_trip(&press);
+    }
+    assert_ron_round_trip(&FocusTargetNet::new(7));
 }

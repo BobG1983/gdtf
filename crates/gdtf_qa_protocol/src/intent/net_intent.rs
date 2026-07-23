@@ -2,8 +2,14 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::payload::{AimNet, FacingNet, MeleeTargetNet, StanceNet};
-use crate::ids::{CellLevelNet, DoorToken, EmplacementToken, FireModeIndex, GangerToken};
+use super::{
+    payload::{AimNet, FacingNet, MeleeTargetNet, StanceNet},
+    raw_input::KeyPressNet,
+};
+use crate::ids::{
+    CellLevelNet, DoorToken, EmplacementToken, FireModeIndex, FocusTargetNet, GangerToken,
+    PointerPosNet,
+};
 
 /// One battle intent a QA client injects — the wire mirror of the `gdtf_battle_input`
 /// act vocabulary (the classic `ActIntent` variants + the eight contextual acts + the
@@ -43,6 +49,17 @@ use crate::ids::{CellLevelNet, DoorToken, EmplacementToken, FireModeIndex, Gange
 /// `ActIntent::FacingCycle` (superseded by the direct [`SetStance`](Self::SetStance) /
 /// [`SetFacing`](Self::SetFacing)), and the presenter-only view toggle
 /// `ActIntent::ToggleFullView`.
+///
+/// # The raw-input family (GTW-783)
+///
+/// Three variants stand APART from the act mirror above — they drive keyboard-shaped
+/// behaviour (focus navigation, hover) that no act-intent covers, so a QA client can
+/// capture in-engine evidence of keyboard-driven features over the wire:
+/// [`PressKey`](Self::PressKey) taps a key, [`Hover`](Self::Hover) moves the pointer, and
+/// [`SetFocus`](Self::SetFocus) points UI input focus at an entity. The game side realises
+/// each through the SAME windowing-input path the backend uses (a `KeyboardInput` /
+/// `CursorMoved` message, the `InputFocus` resource `sync_hover_to_focus` writes) — never a
+/// direct sim mutation, so the one-way input → presenter → sim boundary holds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum NetIntent {
     /// Fire the current selection's weapon in the `mode` at the `target` `(cell, storey)`
@@ -145,4 +162,26 @@ pub enum NetIntent {
     LevelUp,
     /// Lower the presenter's active level one storey (mirrors `ActIntent::LevelDown`).
     LevelDown,
+    /// Tap a key — by named physical key or named bound action (GTW-783). The game side
+    /// resolves it to a `KeyCode` and writes a real `KeyboardInput` press+release pair
+    /// through the windowing-input message stream, exactly as the backend would.
+    PressKey {
+        /// The key to tap (a physical key, or the key a bound action is currently on).
+        key: KeyPressNet,
+    },
+    /// Move the mouse pointer to a window position (GTW-783). The game side sets the primary
+    /// window's cursor position and writes a `CursorMoved` message, so `bevy_ui`'s hover
+    /// detection (and the hover-follows-focus bridge) reacts exactly as to a real move.
+    Hover {
+        /// The window-space logical-pixel position to hover at.
+        at: PointerPosNet,
+    },
+    /// Point UI input focus at an entity directly (GTW-783). The game side sets the
+    /// `InputFocus` resource — the same write `sync_hover_to_focus` performs — so a rejected
+    /// (stale / malformed) token comes back
+    /// [`UnknownEntity`](crate::envelope::RejectReason::UnknownEntity), never a panic.
+    SetFocus {
+        /// The entity to focus, by its wire token.
+        target: FocusTargetNet,
+    },
 }

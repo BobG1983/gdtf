@@ -87,7 +87,14 @@ impl ToolName {
             Self::SendInput => {
                 "Inject one battle intent (a NetIntent) into the running game as the \
                  selected ganger. Argument `intent` is a NetIntent as a JSON object or a \
-                 compact-RON string."
+                 compact-RON string. Besides the act intents (Fire / Move / SetStance / \
+                 Reload / EndTurn / the contextual acts / Select* / Level*), this also \
+                 drives keyboard-shaped behaviour for QA: {\"PressKey\": {\"key\": \
+                 {\"Key\": \"Tab\"}}} taps a physical key (or {\"key\": {\"Action\": \
+                 \"SelectClear\"}} taps whatever key a named keybind is on); {\"Hover\": \
+                 {\"at\": {\"x\": 120, \"y\": 48}}} moves the mouse to a window pixel; \
+                 {\"SetFocus\": {\"target\": <entity-token>}} points UI input focus at an \
+                 entity. Each routes through the same windowing-input path local input uses."
             }
             Self::QueryState => {
                 "Read a compact curated battle snapshot (gangers, terrain, fog, selection, \
@@ -109,7 +116,10 @@ impl ToolName {
                  `frame_delay` frames after it queues, returning the image — the \
                  frame-exact way to catch a transient effect (a muzzle flash, an impact \
                  flash) mid-animation, since a request/response round-trip cannot land on \
-                 a specific frame itself. Argument `intent` is a NetIntent as a JSON \
+                 a specific frame itself. Also the way to capture keyboard-driven behaviour: \
+                 pass a raw-input intent (e.g. {\"PressKey\": {\"key\": {\"Key\": \"Tab\"}}} \
+                 or a {\"Hover\": ...} / {\"SetFocus\": ...}) and screenshot the frames after \
+                 to see focus / hover move. Argument `intent` is a NetIntent as a JSON \
                  object or a compact-RON string. Argument `frame_delay` is the frame \
                  count to wait (0 captures on the very next frame). If the intent is \
                  rejected (e.g. an unoffered target), NO screenshot is taken and the tool \

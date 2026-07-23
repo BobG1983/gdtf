@@ -11,13 +11,20 @@
 
 use core::ops::Deref;
 
-use bevy::{ecs::system::SystemParam, prelude::*};
+use bevy::{
+    ecs::{message::Messages, system::SystemParam},
+    input::keyboard::{KeyCode, KeyboardInput},
+    input_focus::InputFocus,
+    prelude::*,
+    window::{CursorMoved, PrimaryWindow},
+};
 use gdtf_battle_input::{
     PendingActIntent, SelectedShooter,
     contextual::{
         ContextualAct, EnterEmplacementAct, ExecuteAct, ExitEmplacementAct, MeleeAct, OpenDoorAct,
         PendingContextualIntents, ShoveAct, StabilizeAct, ThrowGrenadeAct,
     },
+    keybinds::Keybinds,
 };
 use gdtf_battle_sim::{
     acts::MeleeTarget,
@@ -27,11 +34,11 @@ use gdtf_battle_sim::{
 };
 use gdtf_qa_protocol::{
     envelope::RejectReason,
-    ids::{FireModeIndex, GangerToken},
-    intent::MeleeTargetNet,
+    ids::{FireModeIndex, FocusTargetNet, GangerToken},
+    intent::{KeyPressNet, KeybindActionNet, MeleeTargetNet},
 };
 
-use super::convert::cell_level;
+use super::convert::{cell_level, key_code_of};
 use crate::states::running::game::battlescape::contextual_panel::ContextualOffer;
 
 /// The WRITE-side bundle the inject pump pushes through — the SAME public intent queues the
@@ -104,6 +111,36 @@ pub(super) struct InjectActors<'w, 's> {
     /// Emplacement liveness — a token resolves only to an entity that still holds an
     /// [`EmplacementState`].
     pub(super) emplacements: Query<'w, 's, (), With<EmplacementState>>,
+}
+
+/// The write-side bundle the GTW-783 raw-input pump drives — the SAME windowing-input path
+/// the backend feeds, never a direct sim mutation: the buffered `KeyboardInput` /
+/// `CursorMoved` message streams, the primary window (whose cursor position a hover sets),
+/// the [`InputFocus`] resource a focus-set points, plus the live [`Keybinds`] a bound-action
+/// keypress resolves through and an all-entity liveness probe for the focus token.
+///
+/// Every field a system might touch off-battle or under `MinimalPlugins` is
+/// `Option`-wrapped (the message streams, focus, keybinds) or an empty-safe `Query` (the
+/// window / entity probes), so the pump stays inert-safe when the windowing / focus stack is
+/// absent (`bevy-traps.md` #1) — the real app (with `DefaultPlugins`) always has them.
+#[derive(SystemParam)]
+pub(super) struct RawInputSink<'w, 's> {
+    /// The buffered keyboard-input message stream — where a keypress writes its
+    /// press+release pair, exactly as the windowing backend does (folded into
+    /// `ButtonInput<KeyCode>` by Bevy's `keyboard_input_system`).
+    pub(super) key_events:    Option<ResMut<'w, Messages<KeyboardInput>>>,
+    /// The buffered cursor-moved message stream — where a hover writes its move.
+    pub(super) cursor_events: Option<ResMut<'w, Messages<CursorMoved>>>,
+    /// The primary window — whose cursor position a hover sets (what `bevy_ui`'s hover
+    /// detection reads).
+    pub(super) windows:       Query<'w, 's, (Entity, &'static mut Window), With<PrimaryWindow>>,
+    /// The UI input-focus resource — where a focus-set points, the SAME write
+    /// `sync_hover_to_focus` performs.
+    pub(super) focus:         Option<ResMut<'w, InputFocus>>,
+    /// The live keybind table — a bound-action keypress resolves its key through it.
+    pub(super) keybinds:      Option<Res<'w, Keybinds>>,
+    /// An all-entity liveness probe — a focus token resolves only to an entity that exists.
+    pub(super) entities:      Query<'w, 's, Entity>,
 }
 
 /// Resolve an entity token FAIL-CLOSED (GTW-737 clause 2): [`try_from_bits`] rejects a
@@ -206,4 +243,48 @@ pub(super) fn gate_and_push<A: ContextualAct>(
         }
         _ => Err(RejectReason::NotOffered),
     }
+}
+
+/// Resolve a wire [`KeyPressNet`] to the Bevy [`KeyCode`] it taps (GTW-783).
+///
+/// A physical [`Key`](KeyPressNet::Key) maps directly ([`key_code_of`], pure); a bound
+/// [`Action`](KeyPressNet::Action) reads whatever key the live [`Keybinds`] table currently
+/// binds it to. Returns [`None`] only when a bound-action keypress arrives with no
+/// [`Keybinds`] resource present (off-battle / `MinimalPlugins`) — the caller then emits no
+/// key but still reports the intent queued (an outcome concern, not a wire rejection).
+pub(super) fn resolve_key(press: KeyPressNet, sink: &RawInputSink) -> Option<KeyCode> {
+    match press {
+        KeyPressNet::Key(key) => Some(key_code_of(key)),
+        KeyPressNet::Action(action) => sink
+            .keybinds
+            .as_ref()
+            .map(|keybinds| action_key_code(action, keybinds)),
+    }
+}
+
+/// Map a wire [`KeybindActionNet`] onto the [`KeyCode`] the live [`Keybinds`] binds it to —
+/// the state-dependent half of keypress resolution.
+const fn action_key_code(action: KeybindActionNet, keybinds: &Keybinds) -> KeyCode {
+    match action {
+        KeybindActionNet::SelectClear => keybinds.select_clear(),
+        KeybindActionNet::LevelUp => keybinds.level_up(),
+        KeybindActionNet::LevelDown => keybinds.level_down(),
+        KeybindActionNet::ToggleFullView => keybinds.toggle_full_view(),
+        KeybindActionNet::StanceCycle => keybinds.stance_cycle(),
+        KeybindActionNet::AimToggle => keybinds.aim_toggle(),
+        KeybindActionNet::FacingCycle => keybinds.facing_cycle(),
+        KeybindActionNet::SelectNext => keybinds.select_next(),
+        KeybindActionNet::SelectPrev => keybinds.select_prev(),
+    }
+}
+
+/// Resolve a wire [`FocusTargetNet`] to a live entity FAIL-CLOSED (GTW-783): a malformed bit
+/// pattern (via [`Entity::try_from_bits`], never `from_bits`, which panics) or an entity that
+/// no longer exists is a typed [`RejectReason::UnknownEntity`], never a panic. Unlike the
+/// gameplay tokens a focus target is any UI entity, so its liveness is bare existence.
+pub(super) fn resolve_focus_target(
+    token: FocusTargetNet,
+    sink: &RawInputSink,
+) -> Result<Entity, RejectReason> {
+    resolve_live(token, |entity| sink.entities.contains(entity))
 }

@@ -38,6 +38,12 @@
 //!   battle, the menu, a live battle) and asserts the `available` list `GetAppFlow`
 //!   advertises agrees with what the router actually accepts / rejects `NoBattle`; it
 //!   reuses [`inject_support`]'s live-battle harness and [`start_battle`]'s menu fixture.
+//! - [`raw_input`] drives the REAL GTW-783 raw-input arm of `apply_injects` on a live-battle
+//!   `BattleAppBuilder` app: an injected keypress folds into `ButtonInput<KeyCode>` through
+//!   Bevy's real `keyboard_input_system` (by physical key AND by named keybind action), a
+//!   hover sets the primary window's cursor position, and a focus-set points `InputFocus` at
+//!   a live entity (a dead / malformed token fail-closed to `UnknownEntity`); it reuses
+//!   [`inject_support`]'s harness.
 //! - [`screenshot_after`] drives the REAL T15 `claim_screenshot_after` +
 //!   `tick_after_shots` systems (GTW-749) on a live-battle `BattleAppBuilder` app: the
 //!   embedded intent drains through the SAME input queue a bare `Inject` uses the same
@@ -51,6 +57,7 @@ mod deadline;
 mod inject;
 mod inject_support;
 mod output;
+mod raw_input;
 mod routing;
 mod screenshot_after;
 mod snapshot;

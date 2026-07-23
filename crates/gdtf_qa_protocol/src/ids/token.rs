@@ -71,3 +71,24 @@ impl EmplacementToken {
         Self(bits)
     }
 }
+
+/// A wire handle for a **focus-target** entity — a `u64` carrying its `Entity::to_bits`
+/// pattern.
+///
+/// Echoed back by [`NetIntent::SetFocus`](crate::intent::NetIntent::SetFocus) to point the
+/// game's UI input focus at an entity directly (GTW-783). Unlike the ganger / door /
+/// emplacement tokens, a focus target is any UI entity (a HUD button), so it wears its own
+/// concept name (no-bare-types rule 3). Opaque to the client; the game resolves it via
+/// `Entity::try_from_bits` + a liveness check, fail-closed. A private-inner newtype,
+/// serde-transparent.
+#[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct FocusTargetNet(u64);
+
+impl FocusTargetNet {
+    /// Build a focus-target token from an `Entity::to_bits` value.
+    #[must_use]
+    pub const fn new(bits: u64) -> Self {
+        Self(bits)
+    }
+}
