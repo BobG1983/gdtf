@@ -15,6 +15,8 @@
 //! - [`map`] — the pure sim → wire value/enum mappers (coordinate, faction, facing,
 //!   stance, life, severity, body part).
 //! - [`ganger`] — the per-ganger card projection (living gangers, weapon, injuries).
+//! - [`panel`] — the focus-navigable HUD button token handout (GTW-789, the OBSERVE side
+//!   of GTW-782's focus nav).
 //! - [`build`] — the [`build_snapshots`](build::build_snapshots) service + the top-level
 //!   [`BattleView`](gdtf_qa_protocol::view::BattleView) / terrain / fog / selection / turn
 //!   assembly.
@@ -22,6 +24,7 @@
 mod build;
 mod ganger;
 mod map;
+mod panel;
 mod read;
 
 pub(in crate::dev::net_qa) use build::build_snapshots;

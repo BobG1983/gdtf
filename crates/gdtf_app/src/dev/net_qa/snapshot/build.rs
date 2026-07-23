@@ -34,6 +34,7 @@ use gdtf_qa_protocol::{
 use super::{
     ganger::ganger_views,
     map::{cell_level_net, faction_net},
+    panel::panel_button_views,
     read::SnapshotWorld,
 };
 use crate::dev::net_qa::pending::{PendingQueue, SnapshotPayload};
@@ -61,12 +62,13 @@ pub(in crate::dev::net_qa) fn build_snapshots(
 }
 
 /// Assemble the whole [`BattleView`] from the live read surface: every living ganger card,
-/// the terrain summary + token handout, the squad fog, the current selection, and the turn
-/// state.
+/// the terrain summary + token handout, the focus-navigable HUD button token handout, the
+/// squad fog, the current selection, and the turn state.
 fn build_battle_view(world: &SnapshotWorld) -> BattleView {
     BattleView::new(
         ganger_views(world),
         terrain_view(world),
+        panel_button_views(world),
         fog_view(&world.fog),
         selection_view(*world.selection),
         turn_view(*world.active, *world.player),

@@ -4,7 +4,7 @@
 use crate::{
     ids::{
         CellLevelNet, CellNet, CellXNet, CellYNet, DoorToken, EmplacementToken, FireModeIndex,
-        GangerToken, LevelNet,
+        FocusTargetNet, GangerToken, LevelNet,
     },
     intent::{AimNet, FacingNet, StanceNet},
     test_support::assert_ron_round_trip,
@@ -13,9 +13,9 @@ use crate::{
         DoorOpenNet, DoorView, EmplacementMannedNet, EmplacementView, ExploredCellCountNet,
         FactionNet, FireModeLabel, FireModeView, FogView, GangerNameNet, GangerView, GridHeightNet,
         GridLevelsNet, GridSizeNet, GridWidthNet, HpMaxNet, HpNet, InjuryEntryNet, InjuryNameNet,
-        InjurySummaryNet, LifeStateNet, RequestKindNet, SelectionView, SeverityNet,
-        TerrainSummaryView, TuMaxNet, TuNet, TurnView, VisibleCellCountNet, WeaponNameNet,
-        WeaponView, WoundsMaxNet, WoundsNet,
+        InjurySummaryNet, LifeStateNet, PanelButtonLabelNet, PanelButtonView, PanelNavOrderNet,
+        RequestKindNet, SelectionView, SeverityNet, TerrainSummaryView, TuMaxNet, TuNet, TurnView,
+        VisibleCellCountNet, WeaponNameNet, WeaponView, WoundsMaxNet, WoundsNet,
     },
 };
 
@@ -86,11 +86,29 @@ fn a_terrain() -> TerrainSummaryView {
     )
 }
 
+/// A representative focus-navigable HUD button handout — an action-bar button and the
+/// weapon-panel Reload, each with a focus token, Tab-chain ordinal, and label.
+fn some_buttons() -> Vec<PanelButtonView> {
+    vec![
+        PanelButtonView::new(
+            FocusTargetNet::new(400),
+            PanelNavOrderNet::new(2),
+            PanelButtonLabelNet::new("End Turn".to_owned()),
+        ),
+        PanelButtonView::new(
+            FocusTargetNet::new(401),
+            PanelNavOrderNet::new(100),
+            PanelButtonLabelNet::new("Reload".to_owned()),
+        ),
+    ]
+}
+
 /// A representative whole-battle snapshot.
 fn a_battle() -> BattleView {
     BattleView::new(
         vec![a_ganger()],
         a_terrain(),
+        some_buttons(),
         FogView::new(VisibleCellCountNet::new(1), ExploredCellCountNet::new(1)),
         SelectionView::new(Some(GangerToken::new(100))),
         TurnView::new(FactionNet::new(0), FactionNet::new(0)),
@@ -101,6 +119,15 @@ fn a_battle() -> BattleView {
 #[test]
 fn battle_view_round_trips() {
     assert_ron_round_trip(&a_battle());
+}
+
+/// A focus-button handout (its token, ordinal, and label) round-trips identically
+/// (GTW-789) — so the token a client echoes back to `SetFocus` survives the wire.
+#[test]
+fn panel_button_view_round_trips() {
+    for button in some_buttons() {
+        assert_ron_round_trip(&button);
+    }
 }
 
 /// [`FogView`] is a FIXED size regardless of how much the squad can see: it carries two

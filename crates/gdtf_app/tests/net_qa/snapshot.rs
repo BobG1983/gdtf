@@ -8,8 +8,8 @@
 //! reply reflects that frame's post-Simulate mutation — proving the builder reads live
 //! post-Simulate state, not a stale one-frame-behind cache.
 
-use bevy::prelude::Entity;
-use gdtf_battle_input::SelectedShooter;
+use bevy::prelude::{Entity, Text};
+use gdtf_battle_input::{PanelNavOrder, SelectedShooter};
 use gdtf_battle_sim::{
     emplacement::EmplacementState, entity::TerrainCell, ganger::Aiming, openable::OpenState,
 };
@@ -157,6 +157,76 @@ fn terrain_summary_hands_out_door_and_emplacement_tokens() {
             .iter()
             .any(|e| Entity::try_from_bits(*e.token) == Some(emplacement)),
         "the spawned emplacement must be surfaced with a round-tripping token",
+    );
+}
+
+/// PANEL BUTTON HANDOUT (GTW-789): focus-navigable HUD buttons spawned into the live battle
+/// are surfaced in the `buttons` list — each with a focus token that round-trips to its
+/// entity, its `PanelNavOrder` ordinal, and its caption label READ off the button's `Text`
+/// child (the shape `spawn_button` produces) — sorted by Tab-chain ordinal. So a client can
+/// `SetFocus` onto a real panel button a view handed it (unblocking GTW-782's focus-ring
+/// capture over the `net_qa` wire).
+#[test]
+fn panel_buttons_are_handed_out_with_tokens_ordinals_and_labels() {
+    let Some((mut app, tx)) = inject_battle_app() else {
+        return;
+    };
+    // Spawn two focus-navigable buttons shaped the way `spawn_button` shapes them: a
+    // `PanelNavOrder` root with its caption on a `Text` CHILD. Spawn them OUT of Tab order
+    // (Reload before End Turn) to prove the handout re-sorts by ordinal.
+    let reload_text = app.world_mut().spawn(Text::new("Reload")).id();
+    let reload = app.world_mut().spawn(PanelNavOrder::new(100)).id();
+    app.world_mut().entity_mut(reload).add_child(reload_text);
+    let end_turn_text = app.world_mut().spawn(Text::new("End Turn")).id();
+    let end_turn = app.world_mut().spawn(PanelNavOrder::new(2)).id();
+    app.world_mut()
+        .entity_mut(end_turn)
+        .add_child(end_turn_text);
+    app.update();
+
+    let reply = send(&tx, QaRequest::GetBattleState);
+    app.update();
+    let reply = reply.try_recv();
+    assert!(
+        matches!(&reply, Ok(QaResponse::Battle(_))),
+        "GetBattleState must answer a Battle view, got {reply:?}",
+    );
+    let Ok(QaResponse::Battle(view)) = reply else {
+        return;
+    };
+
+    // Both spawned buttons are surfaced, each token round-tripping to its exact entity.
+    let end_turn_view = view
+        .buttons
+        .iter()
+        .find(|b| Entity::try_from_bits(*b.token) == Some(end_turn));
+    let reload_view = view
+        .buttons
+        .iter()
+        .find(|b| Entity::try_from_bits(*b.token) == Some(reload));
+    assert!(
+        end_turn_view.is_some() && reload_view.is_some(),
+        "every focus button must be surfaced with a token that round-trips to its entity",
+    );
+
+    // The ordinal + label are the REAL ones read off the entities (not fabricated).
+    assert!(
+        end_turn_view.is_none_or(|b| *b.order == 2 && b.label.as_str() == "End Turn"),
+        "the End Turn button carries its PanelNavOrder ordinal + caption label",
+    );
+    assert!(
+        reload_view.is_none_or(|b| *b.order == 100 && b.label.as_str() == "Reload"),
+        "the Reload button carries its PanelNavOrder ordinal + caption label",
+    );
+
+    // The handout is sorted by Tab-chain ordinal (End Turn = 2 before Reload = 100) even
+    // though they were spawned Reload-first — the deterministic wire order the topology walks.
+    let ordinals: Vec<u16> = view.buttons.iter().map(|b| *b.order).collect();
+    let mut sorted = ordinals.clone();
+    sorted.sort_unstable();
+    assert_eq!(
+        ordinals, sorted,
+        "the button handout must be sorted by Tab-chain ordinal, got {ordinals:?}",
     );
 }
 

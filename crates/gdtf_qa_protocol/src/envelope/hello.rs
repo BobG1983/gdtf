@@ -49,8 +49,15 @@ impl ProtocolVersion {
     /// [`QaError::StepperInactive`](crate::envelope::QaError::StepperInactive) error — a new
     /// closed-enum variant everywhere the envelope matches exhaustively, so an old client
     /// negotiating version `5` gets a `VersionMismatch` rather than a wire shape it cannot
-    /// decode. The game server negotiates a `Hello` against this value.
-    pub const CURRENT: Self = Self::new(6);
+    /// decode. Bumped to `7` (GTW-789) when [`BattleView`](crate::view::BattleView) gained a
+    /// `buttons` field — the focus-navigable HUD button token handout
+    /// ([`PanelButtonView`](crate::view::PanelButtonView)) — an existing response shape a
+    /// client decodes changed (the same class of field addition as the 1 → 2 `available`
+    /// and 3 → 4 `caught_up` bumps), so a client negotiating version `6` now gets a
+    /// `VersionMismatch` rather than a `BattleView` reply it decodes against the old
+    /// button-less shape and fails on. The game server negotiates a `Hello` against this
+    /// value.
+    pub const CURRENT: Self = Self::new(7);
 
     /// Build a protocol version from its number.
     #[must_use]

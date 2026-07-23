@@ -14,7 +14,7 @@ use bevy::{
     ecs::{query::QueryData, system::SystemParam},
     prelude::*,
 };
-use gdtf_battle_input::SelectedShooter;
+use gdtf_battle_input::{PanelNavOrder, SelectedShooter};
 use gdtf_battle_sim::{
     battle::PlayerFaction,
     emplacement::EmplacementState,
@@ -106,6 +106,17 @@ pub(in crate::dev::net_qa) struct SnapshotWorld<'w, 's> {
     /// occupancy.
     pub(super) emplacements:
         Query<'w, 's, (Entity, &'static TerrainCell, &'static EmplacementState)>,
+    /// Every focus-navigable battlescape HUD button — its entity (minted into a focus
+    /// token), its Tab-chain [`PanelNavOrder`], and its child nodes (the caption
+    /// [`Text`] the label reads through, looked up in [`button_texts`](Self::button_texts)).
+    /// During a live battle the only [`PanelNavOrder`]-bearing entities are the HUD buttons
+    /// (the menu's are despawned), so this query is battle-scoped by the builder's
+    /// live-battle gate.
+    pub(super) buttons: Query<'w, 's, (Entity, &'static PanelNavOrder, Option<&'static Children>)>,
+    /// The caption text of any UI node — the button label read keys a button's child
+    /// entity through it (`spawn_button` puts the caption on a `Text` child, not the button
+    /// root).
+    pub(super) button_texts: Query<'w, 's, &'static Text>,
     /// The player squad's fog-of-war sets.
     pub(super) fog:          Res<'w, SquadVisibility>,
     /// The current ganger selection.
