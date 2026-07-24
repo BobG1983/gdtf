@@ -29,7 +29,7 @@ crate::support_item! {
     /// The idempotent one-frame command latch.
     ///
     /// The egui panel calls [`request`](Self::request) (an ASSIGNMENT, not a push)
-    /// whenever a button reads pressed this pass; [`super::drive::advance_stepper_drive`]
+    /// whenever a button reads pressed this pass; `super::drive::advance_stepper_drive`
     /// (one `Update` system, so it runs exactly once per frame) [`take`](Self::take)s it
     /// and applies it. Because `request` assigns rather than queues, a multipass frame
     /// that calls it twice with the SAME command leaves the SAME latched value —

@@ -11,7 +11,7 @@ observed GREEN in THIS session, after the final edit, and you saw it pass.
 
 ## The ONE definition of green (dev / gate — dynamic-linked, fast)
 
-Run from the repo root; green = ALL FIVE pass:
+Run from the repo root; green = ALL SIX pass:
 
 ```bash
 cargo fmt --check
@@ -19,12 +19,24 @@ cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linki
 cargo test --workspace --features grimdark_turfwar/dynamic_linking
 cargo build -p grimdark_turfwar --features dynamic_linking,file_watcher
 cargo doc --workspace --no-deps
+cargo doc-full
 ```
 
-`cargo doc` is a dev/gate-only step (not CI): the workspace `broken_intra_doc_links = "deny"` lint
-only surfaces under `cargo doc`, not under `clippy` or `build`, so it requires its own run.
+`cargo doc` is a dev/gate-only step (not CI): the workspace `broken_intra_doc_links` /
+`private_intra_doc_links` lints (both `deny`) only surface under `cargo doc`, not under
+`clippy` or `build`, so they require their own run. It runs TWICE, in two feature configs —
+the same both-configs rule the `dclippy` dual gate follows (an optional-feature module must be
+checked WITH its feature on, not just off):
 
-`cargo dclippy` / `cargo dtest` / `cargo dbuild` / `cargo drun` (aliases in
+- `cargo doc --workspace --no-deps` — the DEFAULT-feature run.
+- `cargo doc-full` (alias for `cargo doc --workspace --no-deps --features
+  grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa`) — enables `dev_tools` + `net_qa` so the
+  doc comments inside those feature-gated modules (`crate::dev::procgen_stepper`,
+  `crate::dev::net_qa`) are link-checked too. Without it a broken intra-doc link inside one of
+  those modules is never compiled by the default `cargo doc`, so it slips past the gate and CI
+  (the exact gap GTW-790 fixed).
+
+`cargo dclippy` / `cargo dtest` / `cargo dbuild` / `cargo drun` / `cargo doc-full` (aliases in
 `.cargo/config.toml`) are the shorthand for these. Dynamic linking via
 `grimdark_turfwar/dynamic_linking` keeps the dev/gate loop fast; `--all-features`
 is NOT used — it forces a second full bevy build and adds no lint value.

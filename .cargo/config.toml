@@ -33,6 +33,17 @@ dcheck = "check --workspace --all-targets --features grimdark_turfwar/dynamic_li
 dclippy = "clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa"
 dtest = "test --workspace --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa"
 
+# GTW-790: the with-features doc-link check. The green suite's plain `cargo doc --workspace
+# --no-deps` runs with DEFAULT features, so the `dev_tools` / `net_qa`-gated modules are never
+# compiled and their doc comments are never link-checked — a `broken_intra_doc_links` /
+# `private_intra_doc_links` regression inside them (both denied workspace-wide) slips past the
+# gate and CI. This alias enables those two features so `cargo doc` checks those modules too;
+# run it ALONGSIDE the default doc step, not instead of it (the same both-configs rule the
+# `dclippy` dual gate follows: an optional-feature module must be checked WITH its feature on,
+# not just off). No `dynamic_linking` — rustdoc never links the binary, so it would only add
+# cold-build cost for no lint gain.
+doc-full = "doc --workspace --no-deps --features grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa"
+
 [unstable]
 checksum-freshness = true
 
