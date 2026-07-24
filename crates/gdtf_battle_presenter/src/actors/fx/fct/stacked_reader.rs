@@ -12,10 +12,10 @@
 //! [`FxTuning`](super::super::FxTuning) lifetime + rise.
 //!
 //! Registration is COMPILE-TIME generic (P4 — no runtime descriptor table):
-//! [`register_consequence_fct_core`] wires the shared pieces ONCE (the counter resource, the
-//! reset system explicitly `.before` the reader set — `bevy-traps.md` #3, the set's
-//! placement in the [`PresenterSystems::Overlay`] stage), and each family is one
-//! [`ConsequenceFctAppExt::add_consequence_fct`] line. The registrar NEVER calls
+//! [`register_consequence_fct_core`] wires the shared pieces ONCE (the reader set's placement
+//! in the [`PresenterSystems::Overlay`] stage, ordered `.after(animate_floating_text)` so the
+//! allocator counts pops after this frame's despawns flush — `bevy-traps.md` #3), and each
+//! family is one [`ConsequenceFctAppExt::add_consequence_fct`] line. The registrar NEVER calls
 //! `add_message` — a presenter-only headless harness that omits a family's `Messages<M>`
 //! buffer keeps that reader INERT (the `run_if` gate), which the inertness tests rely on; in
 //! a live battle the sim's plugins register every buffer.
@@ -33,21 +33,16 @@ use super::{
     super::FxTuning,
     pop::{ConsequenceFct, PopAnchor},
     slot_allocator::FctSlotAllocator,
-    stack::{FctStackCounter, reset_fct_stacks},
     text::{animate_floating_text, spawn_floating_text},
 };
 use crate::PresenterSystems;
 
-/// The consequence-FCT scheduling sets. The [`Read`](Self::Read) set (every generic per-family
+/// The consequence-FCT scheduling set. The [`Read`](Self::Read) set (every generic per-family
 /// reader) is ordered `.after(animate_floating_text)` (GTW-793) so its [`FctSlotAllocator`]
 /// counts pops after this frame's despawns have flushed — the EXPLICIT ordering `bevy-traps.md`
-/// #3 requires. [`Reset`](Self::Reset) still runs strictly before [`Read`](Self::Read), but it
-/// now only clears the retired [`FctStackCounter`] (which the reader no longer draws from —
-/// retirement is GTW-795).
+/// #3 requires.
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ConsequenceFctSystems {
-    /// Clears the retired [`FctStackCounter`] — kept until GTW-795 retires the counter.
-    Reset,
     /// Every generic per-family reader ([`read_consequence_fct::<C>`]).
     Read,
 }
@@ -115,34 +110,21 @@ pub fn read_consequence_fct<C: ConsequenceFct>(
     }
 }
 
-/// Wire the SHARED consequence-FCT core ONCE: the [`ConsequenceFctSystems`] set chain
-/// (`Reset` strictly `.before(Read)`, both inside the [`PresenterSystems::Overlay`] stage
-/// (GTW-623 — the FCT palette draws over the composed scene)) with the [`Read`](ConsequenceFctSystems::Read)
-/// set additionally ordered `.after(animate_floating_text)` (GTW-793 — the reader's
+/// Wire the SHARED consequence-FCT core ONCE: the [`ConsequenceFctSystems::Read`] set is placed
+/// inside the [`PresenterSystems::Overlay`] stage (GTW-623 — the FCT palette draws over the
+/// composed scene) and ordered `.after(animate_floating_text)` (GTW-793 — the reader's
 /// [`FctSlotAllocator`] query must count pops AFTER the despawn system has flushed this frame's
 /// expiries, the ordering convention `bevy-traps.md` #3 / [`FctSlotAllocator`] requires).
 ///
-/// It ALSO still init-registers the retired per-frame [`FctStackCounter`] + [`reset_fct_stacks`]
-/// system: the consequence path no longer reads them (GTW-793 migrated it onto the allocator),
-/// but full retirement of the counter is GTW-795's job, so the resource + reset stay wired for
-/// now. Called once by `TopDownRendererPlugin::build` before the per-family
+/// Called once by `TopDownRendererPlugin::build` before the per-family
 /// [`ConsequenceFctAppExt::add_consequence_fct`] lines.
 pub fn register_consequence_fct_core(app: &mut App) {
-    app.init_resource::<FctStackCounter>()
-        .configure_sets(
-            Update,
-            (
-                ConsequenceFctSystems::Reset.in_set(PresenterSystems::Overlay),
-                ConsequenceFctSystems::Read
-                    .in_set(PresenterSystems::Overlay)
-                    .after(animate_floating_text),
-            )
-                .chain(),
-        )
-        .add_systems(
-            Update,
-            reset_fct_stacks.in_set(ConsequenceFctSystems::Reset),
-        );
+    app.configure_sets(
+        Update,
+        ConsequenceFctSystems::Read
+            .in_set(PresenterSystems::Overlay)
+            .after(animate_floating_text),
+    );
 }
 
 /// The per-family registrar (GTW-572 C4): `app.add_consequence_fct::<Family>()` is the ONE

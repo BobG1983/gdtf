@@ -1,4 +1,4 @@
-//! GTW-572 shared stack counter + registrar buffer-inertness contract.
+//! GTW-572 shared `FctSlotAllocator` + registrar buffer-inertness contract.
 
 use bevy::{
     DefaultPlugins,
@@ -32,7 +32,7 @@ use super::{harness::*, probes::*};
 /// second pop fans out ABOVE the first-frame pop that is still alive on the cell instead of
 /// overlapping it.
 ///
-/// PIN-DISCRIMINATING against the defect the retired per-frame `FctStackCounter` could not
+/// PIN-DISCRIMINATING against the defect the retired per-frame reset counter could not
 /// catch: that counter RESET every frame, so a `DotTicked` "-4" popping the frame AFTER a
 /// still-alive `SuppressionApplied` "SUPPRESSED" reclaimed slot 0 and rendered at the SAME y.
 /// The GTW-792 `FctSlotAllocator` counts the pops CURRENTLY ALIVE on the cell (spanning

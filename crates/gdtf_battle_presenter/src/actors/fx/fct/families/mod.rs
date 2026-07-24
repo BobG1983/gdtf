@@ -10,7 +10,8 @@
 //! 2. **One registrar line** in `TopDownRendererPlugin`
 //!    (`plugin/topdown/fx.rs::register_consequence_fct_families`):
 //!    `app.add_consequence_fct::<YourFamily>()`. Nothing else — the generic reader, the
-//!    shared per-frame stack counter, and the gates are already wired.
+//!    shared lifetime-aware [`FctSlotAllocator`](super::FctSlotAllocator),
+//!    and the gates are already wired.
 //! 3. **If it also logs** (a combat-log line): stay in THIS crate (GTW-620) — one
 //!    [`CombatLogSource`](super::log_event::CombatLogSource) impl in
 //!    `log_event/sources.rs`, one `CombatLogEvent` variant, one classify arm in

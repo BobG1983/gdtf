@@ -168,10 +168,10 @@ pub(super) fn register_fx_flash_systems(app: &mut App) {
     .add_systems(Update, expire_flashes.in_set(PresenterSystems::Overlay));
 }
 
-/// Registers the GTW-572 CONSEQUENCE-FCT PALETTE: the shared core (the per-frame
-/// [`FctStackCounter`](crate::FctStackCounter) + its reset, explicitly ordered before the
-/// reader set — `bevy-traps.md` #3, both inside the [`PresenterSystems::Overlay`] stage)
-/// and then ONE registrar line per consequence family.
+/// Registers the GTW-572 CONSEQUENCE-FCT PALETTE: the shared core (the reader set placed inside
+/// the [`PresenterSystems::Overlay`] stage and ordered `.after(animate_floating_text)` so its
+/// [`FctSlotAllocator`](crate::FctSlotAllocator) counts pops after this frame's despawns flush —
+/// `bevy-traps.md` #3) and then ONE registrar line per consequence family.
 ///
 /// This replaced the per-family reader walls (the old `read_consequence_fct` /
 /// `read_injury_fct` / `read_suppression_fct` / `read_dot_fct` / `read_field_fct` /

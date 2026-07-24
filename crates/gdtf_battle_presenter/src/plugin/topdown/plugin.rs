@@ -115,7 +115,8 @@ impl Plugin for TopDownRendererPlugin {
         // world: terrain + swaps + gangers) → Compose (fog: the final material +
         // visibility writer) → Overlay (highlight / path / fire / field / reachable +
         // FX + the FCT palette). Configured ONCE here (the ConsequenceFctSystems
-        // Reset→Read exemplar); every draw system gets its ordering from STAGE
+        // `Read` set, placed in `Overlay` `.after(animate_floating_text)`, is the
+        // exemplar); every draw system gets its ordering from STAGE
         // MEMBERSHIP, so the old cross-stage pairwise `.after` wall (fog's seven
         // edges, the overlays' four `.after(present_fog)`) is GONE — a NEW scene
         // writer (e.g. a doors state-swap) joins `Scene` and fog + overlays order
@@ -185,7 +186,8 @@ impl Plugin for TopDownRendererPlugin {
         // keep `build` under the `too_many_lines` lint.
         super::overlays::register_field_overlay_systems(app);
 
-        // GTW-572: the CONSEQUENCE-FCT PALETTE — the shared per-frame stack counter + reset,
+        // GTW-572: the CONSEQUENCE-FCT PALETTE — the shared generic reader claiming its stack
+        // slot from the GTW-792 lifetime-aware `FctSlotAllocator` (live-count, span-frames),
         // then one registrar line per consequence family (bleeding / armor-broken / injury /
         // suppression / DOT / field / on-death). Replaces the six hand-rolled per-family
         // reader registrations and the two presenter-side idempotent add_message calls

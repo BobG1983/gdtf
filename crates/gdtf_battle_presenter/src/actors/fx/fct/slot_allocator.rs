@@ -4,15 +4,15 @@
 //!
 //! Three spawn pipelines feed the FCT primitive (the consequence families, the shot damage
 //! numbers, and the fall pop). Each USED to compute its stacking slot on its own — a per-frame
-//! counter ([`FctStackCounter`](super::stack::FctStackCounter)), a per-shot local index, and
-//! a hardcoded `0` respectively — so pops from DIFFERENT pipelines, or from different frames,
+//! reset counter, a per-shot local index, and a hardcoded `0` respectively — so pops from
+//! DIFFERENT pipelines, or from different frames,
 //! collided on the same cell. This module ships the ONE shared allocator that resolves the
 //! collision at its root: it counts the pops CURRENTLY ALIVE on a cell and returns that count
 //! as the new slot, so the next pop always lands one step above the live stack regardless of
 //! which pipeline or frame spawned the others. All three pipelines now claim through it — the
 //! consequence families (GTW-793) and the shot-damage + fall pops (GTW-794).
 //!
-//! Two properties the per-frame [`FctStackCounter`](super::stack::FctStackCounter) cannot give:
+//! Two properties the old per-frame reset counter could not give:
 //!
 //! - **Multi-frame.** A pop spawned last frame that has not yet despawned is still counted
 //!   when a new pop is allocated this frame — the allocator reads the LIVE world, not a

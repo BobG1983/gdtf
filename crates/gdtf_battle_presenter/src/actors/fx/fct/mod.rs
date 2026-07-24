@@ -23,8 +23,7 @@
 //!   [`PopAnchor`], and the [`ConsequenceFct`] trait), [`families`] (ONE file per consequence
 //!   family: bleeding / armor-broken / injury / suppression / DOT / field / on-death — each
 //!   holding its classify impl + unit tests, plus the add-one-consequence recipe in the
-//!   module doc), [`stack`] (the SHARED per-frame [`FctStackCounter`] + its reset — the fix
-//!   for the cross-family same-cell slot-0 overlap), and [`stacked_reader`] (the ONE generic
+//!   module doc), and [`stacked_reader`] (the ONE generic
 //!   [`read_consequence_fct`](stacked_reader::read_consequence_fct) reader + the
 //!   [`ConsequenceFctAppExt::add_consequence_fct`] compile-time registrar that replaced the
 //!   six hand-rolled reader clones and their registration walls).
@@ -52,7 +51,6 @@ mod palette;
 mod pop;
 mod reader;
 mod slot_allocator;
-mod stack;
 mod stacked_reader;
 mod text;
 
@@ -71,7 +69,6 @@ pub use palette::{FctValence, severity_color, valence_color};
 pub use pop::{ConsequenceFct, ConsequencePop, PopAnchor};
 pub(super) use reader::{ClassifiedPop, anchor_cell, classify_report};
 pub use slot_allocator::{FctAnchorCell, FctSlotAllocator};
-pub use stack::{FctStackCounter, reset_fct_stacks};
 pub use stacked_reader::{
     ConsequenceFctAppExt, ConsequenceFctSystems, read_consequence_fct,
     register_consequence_fct_core,

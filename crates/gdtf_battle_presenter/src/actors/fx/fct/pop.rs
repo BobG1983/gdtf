@@ -119,8 +119,8 @@ impl ConsequencePop {
 /// its unit tests — P10/P11). The generic
 /// [`read_consequence_fct`](super::stacked_reader::read_consequence_fct) drains
 /// [`Self::Signal`], calls [`Self::classify`], resolves the anchor (fail-closed on a
-/// [`PopAnchor::GangerPosition`] miss), takes the next slot from the SHARED per-frame
-/// [`FctStackCounter`](super::stack::FctStackCounter), and spawns the pop. Registration is
+/// [`PopAnchor::GangerPosition`] miss), takes the next slot from the lifetime-aware
+/// [`FctSlotAllocator`](super::slot_allocator::FctSlotAllocator), and spawns the pop. Registration is
 /// one [`add_consequence_fct`](super::stacked_reader::ConsequenceFctAppExt::add_consequence_fct)
 /// line (P4 — compile-time generics, no runtime descriptor table).
 pub trait ConsequenceFct: Send + Sync + 'static {

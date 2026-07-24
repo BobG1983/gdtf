@@ -47,15 +47,22 @@ theme: combat valences are not UI chrome.
 - **Signal** — a sim fact message (e.g. `SuppressionApplied`, `FieldTicked`).
 - **Classify** — the family's pure signal → pop mapping (`ConsequenceFct`
   impl): text, valence/color, emphasis, position.
-- **Spawn/stack** — the generic stacked reader spawns the pop; same-frame pops
-  on one cell stack instead of overdrawing
-  (`crates/gdtf_battle_presenter/src/actors/fx/fct/stack.rs` /
-  `stacked_reader.rs`); the primitive animates rise + fade
+- **Spawn/stack** — the generic stacked reader spawns the pop and claims its
+  stacking slot from the ONE lifetime-aware allocator
+  (`crates/gdtf_battle_presenter/src/actors/fx/fct/slot_allocator.rs` /
+  `stacked_reader.rs`): the allocator counts the pops still ALIVE on the cell
+  and lands the new pop one slot above them, so pops on one cell fan out
+  instead of overdrawing — spanning frames (a pop from a prior frame that has
+  not despawned is still counted), not just within a single frame. The
+  primitive animates rise + fade
   (`crates/gdtf_battle_presenter/src/actors/fx/fct/text.rs`).
 
-Two readers stay OUTSIDE the palette by design: the multi-pop shot classifier
-(`crates/gdtf_battle_presenter/src/actors/fx/fct/reader/`) and the fall FX
-reader — see the palette rustdoc for why.
+Two readers stay OUTSIDE the palette dispatch by design: the multi-pop shot
+classifier (`crates/gdtf_battle_presenter/src/actors/fx/fct/reader/`) and the
+fall FX reader — see the palette rustdoc for why. Both now claim their stacking
+slot from the SAME lifetime-aware allocator as the palette families, but they
+remain their own separate readers — they are not merged into the generic
+consequence-family dispatch.
 
 ---
 
