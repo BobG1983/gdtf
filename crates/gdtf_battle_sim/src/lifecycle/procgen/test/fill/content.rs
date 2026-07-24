@@ -1,7 +1,7 @@
 //! Fill-pass CONTENT tests (GTW-427 C1/C3): random same-theme fill draws from the `Fill`
 //! bucket and packs into the free space (C1), the no-fit fallback PADS dead space with
 //! `default_floor` rather than shrinking the playable area (C3), and the fill is DETERMINISTIC
-//! under a seed. Connectivity-by-construction (the 1-cell seam every fill placement reserves)
+//! under a seed. Connectivity-by-construction (the 1-cell margin every fill placement reserves)
 //! is exercised end-to-end by the emit test (`emitted_level_is_in_bounds_and_fully_connected`);
 //! GTW-497 removed the old connectivity flood, so this module no longer re-floods the filled
 //! placement. What STOPS the fill (C2 + the GTW-767 cap) lives in [`termination`](super::termination).
@@ -110,7 +110,7 @@ fn dead_space_is_padded_with_default_floor_not_shrunk() {
         !filled.dead_space().is_empty(),
         "remaining dead space must be padded with default_floor regions (C3), not dropped",
     );
-    // The placed regions are disjoint (the packer's seam guarantees no overlap), and the
+    // The placed regions are disjoint (the packer's margin guarantees no overlap), and the
     // dead-space free rects are disjoint from each other and from placed regions — so the
     // sum of all four must be >= the board (every cell accounted for; nothing lost to a
     // shrink). It can EXCEED the board only if regions overlapped, which the packer

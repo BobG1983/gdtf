@@ -42,14 +42,14 @@ fn candidates(registry: &PrefabRegistry, theme: ThemeUuid, role: SpawnRole) -> V
 }
 
 /// Pick the PLAYER-spawn prefab: the first candidate (largest-first, deterministic) that
-/// clears the OQ-5 minimum side AND fits — with its seam — flush at the player anchor.
+/// clears the OQ-5 minimum side AND fits — with its margin — flush at the player anchor.
 ///
 /// OQ-5's cap is realised here: a fragment too large to leave room for the opposite enemy
 /// region is simply not chosen (it fails the packer fit). Fails closed with
 /// [`PackingError::NoPrefabForRole`] if no player prefab exists at all, or
 /// [`PackingError::PlayerFootprintTooSmall`] if EVERY candidate is below the minimum side,
 /// or [`PackingError::FootprintDoesNotFit`] if every (large-enough) candidate is too large
-/// to fit the board with its seam.
+/// to fit the board with its margin.
 pub(super) fn pick_player_prefab(
     registry: &PrefabRegistry,
     theme: ThemeUuid,
@@ -99,7 +99,7 @@ pub(super) fn pick_player_prefab(
         }))
 }
 
-/// Pick a prefab of `role` that FITS — with its seam — flush at `anchor` against the
+/// Pick a prefab of `role` that FITS — with its margin — flush at `anchor` against the
 /// current free space (the enemy-spawn picker, C2). Largest fitting fragment first.
 ///
 /// Fails closed with [`PackingError::NoPrefabForRole`] if none exists, or

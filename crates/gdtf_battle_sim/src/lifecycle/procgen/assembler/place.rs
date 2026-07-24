@@ -71,7 +71,7 @@ impl PlacedPrefab {
 ///
 /// A named struct (no-bare-types: the placement outcome is a domain value). The C1/C2
 /// deliverable: a `>= 10x10` player-spawn at a deterministically chosen anchor and an
-/// enemy-spawn at its strict opposite, both seam-separated and connectivity-asserted. The
+/// enemy-spawn at its strict opposite, both margin-separated and connectivity-asserted. The
 /// GTW-427 fill pass + GTW-431 emit step consume this.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Placement {
@@ -121,7 +121,7 @@ impl Placement {
 ///   `(theme, size, role)`.
 /// - [`PackingError::PlayerFootprintTooSmall`] if every player prefab is below
 ///   [`MinPlayerSide`].
-/// - [`PackingError::FootprintDoesNotFit`] if the chosen player prefab (plus seam) does not
+/// - [`PackingError::FootprintDoesNotFit`] if the chosen player prefab (plus margin) does not
 ///   fit at the player anchor.
 pub(in crate::lifecycle::procgen) fn place_player(
     registry: &PrefabRegistry,
@@ -138,7 +138,7 @@ pub(in crate::lifecycle::procgen) fn place_player(
     let player_anchor = Anchor::choose(rng);
 
     // C1: pick the player-spawn prefab — the largest registered fragment that clears the OQ-5
-    // minimum AND fits (with its seam) flush at the player anchor.
+    // minimum AND fits (with its margin) flush at the player anchor.
     let player_prefab = pick_player_prefab(
         registry,
         theme,
@@ -170,7 +170,7 @@ pub(in crate::lifecycle::procgen) fn place_player(
 /// The enemy anchor is the zero-draw strict [`opposite`](Anchor::opposite) of the player's
 /// anchor (OQ-2 — fairness is structural). Picks the largest enemy fragment that FITS the
 /// live free space `packer` holds after the player commit, commits it, and re-guards
-/// fail-closed. Connectivity is by-construction via the 1-cell seam every placement reserves
+/// fail-closed. Connectivity is by-construction via the 1-cell margin every placement reserves
 /// (GTW-497 removed the old flood).
 ///
 /// # Errors
@@ -209,8 +209,8 @@ pub(in crate::lifecycle::procgen) fn place_enemy(
 
 /// Assemble the GTW-424 first-half placement with the RULED defaults — choose a player anchor,
 /// place a `>= 10x10` player-spawn prefab there, place an enemy-spawn prefab at the strict
-/// opposite, and reserve the 1-cell seam around both. Connectivity is by-construction via that
-/// seam lattice — no flood, no assertion (GTW-497).
+/// opposite, and reserve the 1-cell margin around both. Connectivity is by-construction via that
+/// margin lattice — no flood, no assertion (GTW-497).
 ///
 /// # Errors
 ///

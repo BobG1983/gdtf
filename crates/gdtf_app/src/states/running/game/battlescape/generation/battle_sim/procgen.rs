@@ -85,7 +85,7 @@ pub(in crate::states::running::game::battlescape::generation::battle_sim) struct
     /// The UUID-keyed prefab library (the GTW-489 Load resolve populates it from the
     /// `maps/<theme>/<size>/*.prefab.ron` content).
     pub prefabs: Option<&'a PrefabRegistry>,
-    /// The UUID-keyed theme registry (the theme's default floor — the seam-lattice floor).
+    /// The UUID-keyed theme registry (the theme's default floor — the margin-lattice floor).
     pub themes:  Option<&'a UuidThemeRegistry>,
     /// The UUID-keyed terrain-definition registry (classifies each placed piece's sim-kind).
     pub terrain: Option<&'a TerrainDefRegistry>,

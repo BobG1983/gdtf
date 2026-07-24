@@ -1,7 +1,7 @@
 //! The **MAXRECTS** free-rectangle packer core (GTW-424, OQ-7).
 //!
 //! A space-packing packer that tracks free ground-plane space as a list of maximal free
-//! [`RegionRect`]s. To place a footprint it finds a free rectangle the (seam-padded)
+//! [`RegionRect`]s. To place a footprint it finds a free rectangle the (margin-padded)
 //! footprint fits in, splits every free rectangle the placement covers into the up-to-four
 //! maximal sub-rectangles around it, then prunes any free rectangle wholly contained in
 //! another (the MAXRECTS "maximal rectangles" invariant). MAXRECTS is the shipped packer
@@ -17,7 +17,7 @@ use bevy::prelude::Deref;
 
 use super::geometry::{Footprint, Margin, RegionRect};
 
-/// Whether a (seam-padded) footprint **fits** somewhere in the packer's current free
+/// Whether a (margin-padded) footprint **fits** somewhere in the packer's current free
 /// space — the C2 pre-commit fit query ([`MaxRectsPacker::fits`]).
 ///
 /// A named newtype over `bool` (no-bare-types: a fit verdict is a domain fact, not a
@@ -34,7 +34,7 @@ impl FootprintFits {
 }
 
 /// Whether a placement was **accepted** — committed to the packer, reserving its
-/// seam-padded space ([`MaxRectsPacker::place`]); `false` means the footprint did not
+/// margin-padded space ([`MaxRectsPacker::place`]); `false` means the footprint did not
 /// fit and the packer is unchanged.
 ///
 /// A named newtype over `bool` (no-bare-types: a placement-accepted verdict is a domain
@@ -73,37 +73,37 @@ pub enum SplitMode {
 /// A named struct (no-bare-types: the packer state is a domain value, not a bare
 /// `Vec<RegionRect>`) holding the current list of maximal free rectangles + the chosen
 /// [`SplitMode`]. Built over the whole board ([`MaxRectsPacker::new`]); each
-/// [`place`](MaxRectsPacker::place) consumes the (seam-padded) footprint's space and
-/// returns where the UN-padded prefab sits. The seam (OQ-3) is reserved by removing the
+/// [`place`](MaxRectsPacker::place) consumes the (margin-padded) footprint's space and
+/// returns where the UN-padded prefab sits. The margin (OQ-3) is reserved by removing the
 /// PADDED rectangle from free space, so no later prefab can abut.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MaxRectsPacker {
-    /// The board the packer fills — the seam-padded footprint is clipped to this before
+    /// The board the packer fills — the margin-padded footprint is clipped to this before
     /// the fit test, so a prefab flush against a board EDGE is not rejected for an outward
-    /// seam that has nowhere to go (the board boundary is already a wall).
-    board: RegionRect,
+    /// margin that has nowhere to go (the board boundary is already a wall).
+    board:  RegionRect,
     /// The current maximal free rectangles. Invariant: none is contained in another
     /// (`MaxRects`) and none is empty.
-    free:  Vec<RegionRect>,
+    free:   Vec<RegionRect>,
     /// The split strategy (shipped MAXRECTS or the A/B guillotine flag).
-    split: SplitMode,
-    /// The seam reserved around every placement (OQ-3).
-    seam:  Margin,
+    split:  SplitMode,
+    /// The margin reserved around every placement (OQ-3).
+    margin: Margin,
 }
 
 impl MaxRectsPacker {
-    /// Build a packer over the whole `board` rectangle with a given split mode and seam.
+    /// Build a packer over the whole `board` rectangle with a given split mode and margin.
     ///
     /// The single free rectangle is the board itself; placements carve it down. The
-    /// `seam` is the [`Margin`] reserved around every placement (OQ-3 — pass
-    /// [`Margin::DEFAULT`] for the RULED 1-cell seam).
+    /// `margin` is the [`Margin`] reserved around every placement (OQ-3 — pass
+    /// [`Margin::DEFAULT`] for the RULED 1-cell margin).
     #[must_use]
-    pub fn new(board: RegionRect, split: SplitMode, seam: Margin) -> Self {
+    pub fn new(board: RegionRect, split: SplitMode, margin: Margin) -> Self {
         Self {
             board,
             free: vec![board],
             split,
-            seam,
+            margin,
         }
     }
 
@@ -114,26 +114,26 @@ impl MaxRectsPacker {
         &self.free
     }
 
-    /// Whether a footprint (PLUS its seam) fits anywhere in the current free space at the
+    /// Whether a footprint (PLUS its margin) fits anywhere in the current free space at the
     /// given preferred origin region — used to test C2 fit before committing.
     ///
-    /// Tests the seam-PADDED footprint against the free list: a placement is only legal if
+    /// Tests the margin-PADDED footprint against the free list: a placement is only legal if
     /// its padded extent is wholly inside some free rectangle, which guarantees the 1-cell
-    /// seam to every previously placed prefab (OQ-3).
+    /// margin to every previously placed prefab (OQ-3).
     #[must_use]
     pub fn fits(&self, candidate: RegionRect) -> FootprintFits {
         // The footprint itself must lie inside the board (an oversize footprint clamped to
-        // the board would otherwise spuriously "fit"); only the outward SEAM ring is
+        // the board would otherwise spuriously "fit"); only the outward MARGIN ring is
         // allowed to be clipped at the board boundary (the edge is already a wall).
         if !*self.board.contains_rect(candidate) {
             return FootprintFits::new(false);
         }
-        let padded = candidate.padded(self.seam).clamped_to(self.board);
+        let padded = candidate.padded(self.margin).clamped_to(self.board);
         FootprintFits::new(self.free.iter().any(|f| *f.contains_rect(padded)))
     }
 
     /// Commit a placement at `candidate` (the UN-padded prefab footprint) — reserving its
-    /// seam-padded extent in the free space (OQ-3) — and return whether it was accepted.
+    /// margin-padded extent in the free space (OQ-3) — and return whether it was accepted.
     ///
     /// Returns `false` (no state change) if the padded footprint does not fit any free
     /// rectangle — the caller then fails closed with a [`PackingError`](super::error::PackingError).
@@ -143,7 +143,7 @@ impl MaxRectsPacker {
         if !*self.fits(candidate) {
             return PlacementAccepted::new(false);
         }
-        let padded = candidate.padded(self.seam).clamped_to(self.board);
+        let padded = candidate.padded(self.margin).clamped_to(self.board);
         self.carve(padded);
         PlacementAccepted::new(true)
     }

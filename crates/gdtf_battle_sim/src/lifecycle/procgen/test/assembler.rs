@@ -1,7 +1,7 @@
 //! End-to-end assembler tests (GTW-424 C1/C2/C3; GTW-492 v2 model): anchor selection,
 //! opposite-side fit, determinism, the OQ-5 minimum size, and the fail-closed errors — all
 //! over the UUID-keyed [`PrefabRegistry`] of [`Prefab`], keyed by a stable [`ThemeUuid`]
-//! (GTW-492 C2/C5). Connectivity is by-construction via the 1-cell `default_floor` seam
+//! (GTW-492 C2/C5). Connectivity is by-construction via the 1-cell `default_floor` margin
 //! (GTW-497 removed the old connectivity flood / fail-closed assertion), so the
 //! by-construction invariant is exercised end-to-end by the emit test
 //! (`emitted_level_is_in_bounds_and_fully_connected`), not by a flood here.
@@ -56,7 +56,7 @@ fn registry(theme: ThemeUuid, player_fp: GridSize, enemy_fp: GridSize) -> Prefab
 fn places_player_and_opposite_enemy() {
     let theme = theme();
     // A 40x40 board with 12x12 deployment fragments — both fit at opposite anchors with a
-    // seam, with plenty of floor between.
+    // margin, with plenty of floor between.
     let (Some(board), Some(player_fp), Some(enemy_fp)) = (size(40, 40), size(12, 12), size(12, 12))
     else {
         return;
@@ -235,11 +235,11 @@ fn connectivity_holds_under_guillotine_split() {
 }
 
 /// C2 (opposite fit fail-closed): an enemy fragment too large for the strict-opposite
-/// region (once the player fragment + seam are placed) is rejected with the typed
+/// region (once the player fragment + margin are placed) is rejected with the typed
 /// `FootprintDoesNotFit` rather than placed overlapping or panicking.
 ///
 /// A 20x20 board with a 12x12 player fragment leaves a strip too narrow for a 12x12 enemy
-/// fragment at the opposite anchor (12 + seam + 12 > 20), so the enemy fails to fit.
+/// fragment at the opposite anchor (12 + margin + 12 > 20), so the enemy fails to fit.
 #[test]
 fn enemy_footprint_that_does_not_fit_is_rejected() {
     let theme = theme();

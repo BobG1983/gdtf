@@ -10,7 +10,7 @@
 //! fail-closed backstop for the cases load-time rejection cannot cover (e.g. an empty
 //! prefab registry, or a chosen footprint that does not fit). GTW-497 removed the OQ-4
 //! disconnection variant: connectivity is by-construction via the 1-cell `default_floor`
-//! seam, so there is no disconnection to report.
+//! margin, so there is no disconnection to report.
 
 use bevy::prelude::Deref;
 

@@ -4,10 +4,10 @@
 //! This is the GTW-424 slice of the staged assembler (424 placement -> 427 fill -> 431
 //! emit/trigger): it picks a player anchor from [`ProcgenRng`](crate::rng::ProcgenRng)
 //! (C1), places a `>= 10x10` player-spawn prefab there (C1/OQ-5), places an enemy-spawn
-//! prefab at the STRICT geometric opposite (C2/OQ-2), and reserves the 1-cell seam around
-//! both (OQ-3). Connectivity is by-construction via that seam lattice — GTW-497 removed the
+//! prefab at the STRICT geometric opposite (C2/OQ-2), and reserves the 1-cell margin around
+//! both (OQ-3). Connectivity is by-construction via that margin lattice — GTW-497 removed the
 //! old OQ-4 fail-closed connectivity flood / rejection (there is nothing to assert or
-//! repair: the seam guarantees every open cell is reachable). It returns the two
+//! repair: the margin guarantees every open cell is reachable). It returns the two
 //! [`PlacedPrefab`]s; the GTW-427 fill pass and the GTW-431 emit-to-`Situation` step build
 //! on top. NOTHING here wires `BattleScapeState` (a later ticket).
 //!

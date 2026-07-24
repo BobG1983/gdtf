@@ -22,7 +22,7 @@
 //! **No opening validation:** this loader builds through the INFALLIBLE [`Prefab::new`] —
 //! the schema carries no authored-opening field and no rejection path, because
 //! inter-fragment connectivity is by-construction in the assembler (the 1-cell
-//! `default_floor` seam every placement reserves; the old per-prefab opening machinery was
+//! `default_floor` margin every placement reserves; the old per-prefab opening machinery was
 //! removed in GTW-497), not authored per-prefab. An openingless (zero-placement) prefab
 //! is therefore INCLUDED in the registry (the GTW-488 design).
 

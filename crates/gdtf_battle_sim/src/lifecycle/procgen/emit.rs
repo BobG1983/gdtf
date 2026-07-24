@@ -69,10 +69,10 @@
 //!
 //! # Connectivity (by construction)
 //!
-//! Connectivity is BY CONSTRUCTION: the 1-cell `default_floor` seam every placement reserves
+//! Connectivity is BY CONSTRUCTION: the 1-cell `default_floor` margin every placement reserves
 //! leaves a walkable corridor lattice around every placed region, so every open board cell is
 //! reachable. GTW-497 removed the old fail-closed connectivity flood / rejection (and the
-//! per-prefab opening machinery) — the v2 model authors no per-prefab openings, so the seam
+//! per-prefab opening machinery) — the v2 model authors no per-prefab openings, so the margin
 //! lattice alone guarantees connectivity and there is nothing to re-flood or assert here.
 //!
 //! # Determinism (C1/C2)
@@ -166,7 +166,7 @@ pub fn generate_level(
 /// this terrain emit); its `theme` is the UUID-keyed [`ThemeUuid`] directly, its `grid_size`
 /// the assembled level's.
 ///
-/// Connectivity is by-construction via the 1-cell `default_floor` seam every placement
+/// Connectivity is by-construction via the 1-cell `default_floor` margin every placement
 /// reserves (GTW-497 removed the old fail-closed connectivity flood), so the emit is
 /// infallible — it returns an [`EmittedLevel`] directly, never a `Result`. GTW-582: every
 /// DEGRADED resolution it takes rides back as an [`EmittedLevel::findings`] entry (never
@@ -199,7 +199,7 @@ pub fn emit_level(
     let placement = filled.placement();
     let mut findings: Vec<ProcgenFinding> = Vec::new();
 
-    // The level-wide default floor: the THEME's nominated ground terrain (GTW-492 — the seam
+    // The level-wide default floor: the THEME's nominated ground terrain (GTW-492 — the margin
     // lattice is this floor). Every open cell — incl. the floored dead space — is this. A
     // theme absent from `themes` (the headless empty-registry harness, or a dangling authored
     // theme) yields the nil sentinel, which skips registry floor resolution at setup — the

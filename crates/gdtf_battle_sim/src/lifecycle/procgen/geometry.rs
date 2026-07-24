@@ -47,23 +47,23 @@ impl std::ops::AddAssign for CellCount {
     }
 }
 
-/// The 1-cell **seam margin** reserved around every placed prefab (OQ-3 RULED).
+/// The 1-cell **margin** reserved around every placed prefab (OQ-3 RULED).
 ///
-/// A named newtype over [`u8`] (no-bare-types: a seam width is a domain value, not a bare
+/// A named newtype over [`u8`] (no-bare-types: a margin width is a domain value, not a bare
 /// integer) with a private inner. NO abutting prefabs: every placed footprint reserves at
-/// least this many `default_floor` cells of clear space on every side, and that seam
+/// least this many `default_floor` cells of clear space on every side, and that margin
 /// lattice is what makes the level connected BY CONSTRUCTION (OQ-4: no doorway carving, no
-/// self-repair — the seam lattice alone joins every open cell). The default is one cell
+/// self-repair — the margin lattice alone joins every open cell). The default is one cell
 /// ([`Margin::DEFAULT`]); the type exists so the value is named and a future tune is a
 /// single edit, not a scattered magic `1`.
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Margin(u8);
 
 impl Margin {
-    /// The RULED default seam: one `default_floor` cell around every prefab (OQ-3).
+    /// The RULED default margin: one `default_floor` cell around every prefab (OQ-3).
     pub const DEFAULT: Self = Self(1);
 
-    /// Build a seam margin from its cell width.
+    /// Build a margin from its cell width.
     #[must_use]
     pub const fn new(cells: u8) -> Self {
         Self(cells)
@@ -228,7 +228,7 @@ impl RegionRect {
     }
 
     /// Whether this rectangle and `other` share any cell — the packer's overlap test
-    /// (no two placed prefabs, nor a prefab and a seam, may overlap).
+    /// (no two placed prefabs, nor a prefab and a margin, may overlap).
     #[must_use]
     pub fn intersects(self, other: Self) -> RectsIntersect {
         RectsIntersect::new(
@@ -239,12 +239,12 @@ impl RegionRect {
         )
     }
 
-    /// This rectangle grown OUTWARD by `margin` cells on every side — the seam-padded
-    /// footprint a placement claims (OQ-3). Used to reserve the 1-cell seam: the packer
+    /// This rectangle grown OUTWARD by `margin` cells on every side — the margin-padded
+    /// footprint a placement claims (OQ-3). Used to reserve the 1-cell margin: the packer
     /// removes the PADDED rectangle from free space, so no later prefab can abut.
     ///
     /// The grown rectangle is clamped to non-negative origin — a placement flush against
-    /// the board edge has no room to grow outward there, which is fine (the seam only has
+    /// the board edge has no room to grow outward there, which is fine (the margin only has
     /// to separate prefabs from EACH OTHER; the board boundary is already a wall).
     #[must_use]
     pub fn padded(self, margin: Margin) -> Self {
@@ -259,9 +259,9 @@ impl RegionRect {
 
     /// This rectangle clipped to lie wholly within `bounds` — the intersection of the two.
     ///
-    /// The seam-padded footprint of a prefab flush against the board edge would extend
-    /// PAST the board there (the outward seam has nowhere to go); the board boundary is
-    /// already a wall, so the seam is only needed BETWEEN prefabs. Clipping the padded
+    /// The margin-padded footprint of a prefab flush against the board edge would extend
+    /// PAST the board there (the outward margin has nowhere to go); the board boundary is
+    /// already a wall, so the margin is only needed BETWEEN prefabs. Clipping the padded
     /// rectangle to the board before the fit test models that correctly. An empty
     /// intersection yields a zero-extent rectangle (caught by [`is_non_empty`](RegionRect::is_non_empty)).
     #[must_use]
@@ -376,7 +376,7 @@ impl RectContains {
 }
 
 /// Whether two [`RegionRect`]s share any cell — the packer's overlap test (no two
-/// placed prefabs, nor a prefab and a seam, may overlap).
+/// placed prefabs, nor a prefab and a margin, may overlap).
 ///
 /// A named newtype over `bool` (no-bare-types: an overlap verdict is a domain fact, not
 /// a bare boolean). Private inner + derived [`Deref`](std::ops::Deref).

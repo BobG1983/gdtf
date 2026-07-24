@@ -1,5 +1,5 @@
 //! C2 — the by-construction connectivity invariant on the real packer output, its
-//! shared flood machinery, and the seam-removal control that proves the pin
+//! shared flood machinery, and the margin-removal control that proves the pin
 //! discriminating.
 
 use super::support::*;
@@ -12,17 +12,17 @@ use crate::{
 /// C2 (the by-construction connectivity INVARIANT): a generated level under a FIXED
 /// [`ProcgenRng`] seed is connected BY CONSTRUCTION — every board cell that is NOT inside a
 /// placed region is reachable, in 4-connectivity, from any single open cell. The open
-/// (non-region) cells form ONE connected component because the 1-cell `default_floor` seam
+/// (non-region) cells form ONE connected component because the 1-cell `default_floor` margin
 /// every placement reserves leaves a continuous walkable corridor lattice between every pair
 /// of placed regions. This is asserted WITHOUT the removed connectivity flood: it floods the
 /// open cells of the REAL packer output (the [`FilledPlacement`]'s placed + filled region
-/// rectangles — the very rectangles the seam is reserved around), then additionally runs the
+/// rectangles — the very rectangles the margin is reserved around), then additionally runs the
 /// full [`generate_level`] entry point and verifies the emitted `Situation`.
 ///
-/// Pin-discriminating: the discrimination is proved by [`seam_separated_regions_stay_connected`],
+/// Pin-discriminating: the discrimination is proved by [`margin_separated_regions_stay_connected`],
 /// which feeds the SAME flood helper a control layout where two regions ABUT (the layout the
-/// packer would produce if [`Margin::DEFAULT`] were dropped to a zero seam) and asserts that
-/// control's open cells split into TWO components. So a packer with the seam removed would
+/// packer would produce if [`Margin::DEFAULT`] were dropped to a zero margin) and asserts that
+/// control's open cells split into TWO components. So a packer with the margin removed would
 /// make this invariant FAIL. (The in-bounds + non-empty-walls checks below additionally pin
 /// that the emit translated the footprint-local cells onto the board.)
 #[test]
@@ -46,7 +46,7 @@ fn emitted_level_is_in_bounds_and_fully_connected() {
 
     // Drive the REAL staged pipeline (the exact functions `generate_level` calls) under a
     // fixed seed to recover the FilledPlacement — its placed + filled region rectangles ARE
-    // the packer's seam-reserved output (the seam is the 1-cell gap BETWEEN these regions).
+    // the packer's margin-reserved output (the margin is the 1-cell gap BETWEEN these regions).
     let seed = BattleSeed::new(0xB0_1234);
     let Some(filled) = run_pipeline(&prefabs, theme, board, seed, &knobs) else {
         return;
@@ -58,14 +58,14 @@ fn emitted_level_is_in_bounds_and_fully_connected() {
 
     // The by-construction connectivity INVARIANT (C2): every cell NOT inside a placed region
     // is reachable. The placed/filled regions are the only ground-plane blockers; the 1-cell
-    // seam reserved around each leaves a walkable lattice, so the open cells are ONE
-    // connected component. (Proved discriminating by `seam_separated_regions_stay_connected`:
-    // remove the seam and the control layout below fails this same helper.)
+    // margin reserved around each leaves a walkable lattice, so the open cells are ONE
+    // connected component. (Proved discriminating by `margin_separated_regions_stay_connected`:
+    // remove the margin and the control layout below fails this same helper.)
     let occupied = occupied_regions(&filled);
     assert!(
         open_cells_form_one_component(&occupied, board_w, board_h),
         "the generated level must be connected BY CONSTRUCTION: every cell outside a placed \
-         region reachable from any open cell (the 1-cell default_floor seam lattice). If a \
+         region reachable from any open cell (the 1-cell default_floor margin lattice). If a \
          placement could wall off part of the board, this would fail.",
     );
 
@@ -148,57 +148,57 @@ fn emitted_level_is_in_bounds_and_fully_connected() {
 }
 
 /// C2 (pin-discrimination): PROVE the by-construction connectivity invariant is sensitive to
-/// the 1-cell `default_floor` seam — that it would FAIL if the packer's [`Margin::DEFAULT`]
-/// seam reservation were removed.
+/// the 1-cell `default_floor` margin — that it would FAIL if the packer's [`Margin::DEFAULT`]
+/// margin reservation were removed.
 ///
 /// Two regions that each span a full board axis with the OTHER axis abutting form a
 /// board-spanning barrier UNLESS a walkable gap separates them. This is exactly what the
-/// packer's seam guarantees: with the 1-cell seam reserved between them, a walkable corridor
-/// remains and the open cells stay ONE component; with NO seam (the zero-margin layout a
-/// seam-less packer would emit) the two regions touch into a solid wall that splits the
+/// packer's margin guarantees: with the 1-cell margin reserved between them, a walkable corridor
+/// remains and the open cells stay ONE component; with NO margin (the zero-margin layout a
+/// margin-less packer would emit) the two regions touch into a solid wall that splits the
 /// board, and the open cells become TWO components.
 ///
 /// The same [`open_cells_form_one_component`] helper that backs the real-pipeline assertion
-/// is exercised here on both layouts: it returns `true` for the seam-separated layout and
+/// is exercised here on both layouts: it returns `true` for the margin-separated layout and
 /// `false` for the abutting one. So the real-pipeline assertion is NOT vacuous — remove the
-/// seam from the packer and the abutting layout (which a seam-less packer would produce)
+/// margin from the packer and the abutting layout (which a margin-less packer would produce)
 /// fails this helper.
 #[test]
-fn seam_separated_regions_stay_connected() {
+fn margin_separated_regions_stay_connected() {
     let board_w = 20;
     let board_h = 20;
-    let seam = *Margin::DEFAULT.cells();
+    let margin = *Margin::DEFAULT.cells();
 
     // Two region blocks side by side across a mid band (rows 5..15), leaving open rows above
     // (0..5) and below (15..20). A LEFT block on columns `0..10`, and a RIGHT block that, with
-    // the 1-cell seam, starts at column `10 + seam` (leaving column 10 as a walkable corridor
-    // through the barrier — the open rows above and below stay joined). With the seam REMOVED
+    // the 1-cell margin, starts at column `10 + margin` (leaving column 10 as a walkable corridor
+    // through the barrier — the open rows above and below stay joined). With the margin REMOVED
     // the right block starts at column 10, abutting the left block into a FULL-WIDTH wall on
     // rows 5..15 that splits the board's open cells into two components (above vs below).
     let left = RegionRect::new(Cell::new(0, 5), Footprint::new(10, 10));
-    let right_with_seam = RegionRect::new(
-        Cell::new(10 + seam, 5),
-        Footprint::new(board_w - 10 - seam, 10),
+    let right_with_margin = RegionRect::new(
+        Cell::new(10 + margin, 5),
+        Footprint::new(board_w - 10 - margin, 10),
     );
     let right_abutting = RegionRect::new(Cell::new(10, 5), Footprint::new(board_w - 10, 10));
 
     assert!(
-        open_cells_form_one_component(&[left, right_with_seam], board_w, board_h),
-        "with the 1-cell seam reserved between two abutting-axis blocks, the open cells stay \
-         ONE connected component (the seam lattice keeps a walkable corridor through the \
+        open_cells_form_one_component(&[left, right_with_margin], board_w, board_h),
+        "with the 1-cell margin reserved between two abutting-axis blocks, the open cells stay \
+         ONE connected component (the margin lattice keeps a walkable corridor through the \
          barrier)",
     );
     assert!(
         !open_cells_form_one_component(&[left, right_abutting], board_w, board_h),
-        "with the seam REMOVED the two blocks abut into a board-spanning wall and the open \
+        "with the margin REMOVED the two blocks abut into a board-spanning wall and the open \
          cells split into TWO components (above vs below) — so the by-construction \
-         connectivity invariant is sensitive to the packer's Margin::DEFAULT seam \
+         connectivity invariant is sensitive to the packer's Margin::DEFAULT margin \
          (pin-discriminating)",
     );
 }
 
 /// Every ground-plane region a [`FilledPlacement`] occupies — the player + enemy spawn
-/// regions and every fill prefab's region (the rectangles the packer reserved the seam
+/// regions and every fill prefab's region (the rectangles the packer reserved the margin
 /// around). The dead-space regions are walkable `default_floor`, so they are NOT occupied.
 fn occupied_regions(filled: &FilledPlacement) -> Vec<RegionRect> {
     let mut out = vec![
@@ -213,11 +213,11 @@ fn occupied_regions(filled: &FilledPlacement) -> Vec<RegionRect> {
 /// board form ONE 4-connected component — the by-construction connectivity invariant (C2).
 ///
 /// A cell inside any `occupied` region blocks the flood; every other cell is open (the
-/// `default_floor` seam lattice + the floored dead space). Floods the open cells from the
+/// `default_floor` margin lattice + the floored dead space). Floods the open cells from the
 /// first open cell found and returns `true` iff the flood reaches every open cell. A board
 /// with no open cell trivially returns `true` (the caller's other assertions pin a non-empty
 /// level). This is the SHARED helper both the real-pipeline assertion and the
-/// pin-discrimination control ([`seam_separated_regions_stay_connected`]) exercise.
+/// pin-discrimination control ([`margin_separated_regions_stay_connected`]) exercise.
 fn open_cells_form_one_component(occupied: &[RegionRect], board_w: i32, board_h: i32) -> bool {
     let width = usize::try_from(board_w.max(0)).unwrap_or(0);
     let height = usize::try_from(board_h.max(0)).unwrap_or(0);

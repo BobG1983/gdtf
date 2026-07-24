@@ -144,7 +144,7 @@ pub(super) fn dead_rect_count(packer: &MaxRectsPacker) -> DeadRectCount {
 }
 
 /// Place `prefab`'s footprint at the min-corner of the LARGEST free rectangle it (plus its
-/// seam) fits in, committing the placement to `packer` and returning the [`PlacedPrefab`].
+/// margin) fits in, committing the placement to `packer` and returning the [`PlacedPrefab`].
 ///
 /// Deterministic: scans free rects largest-first (cell-count DESC, ties by origin) so the
 /// same free list always picks the same target rect. Returns `None` if the footprint fits
@@ -157,7 +157,7 @@ pub(super) fn place_in_largest_free(
     prefab: &Prefab,
 ) -> Option<PlacedPrefab> {
     let footprint = Footprint::of(prefab.spec().size);
-    // Find the largest free rect the (seam-padded) footprint fits in, deterministically.
+    // Find the largest free rect the (margin-padded) footprint fits in, deterministically.
     let mut targets: Vec<RegionRect> = packer.free_rects().to_vec();
     targets.sort_by(|a, b| {
         b.cell_count()

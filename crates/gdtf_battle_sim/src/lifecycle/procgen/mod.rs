@@ -16,7 +16,7 @@
 //! [`ProcgenTuning`] knobs); GTW-431 adds the THIRD (`emit` — the deterministic seed
 //! harness [`generate_level`] + [`emit_level`], which pours a [`FilledPlacement`] into the
 //! sim's canonical [`Situation`](crate::situation::Situation) as the terrain entries it
-//! holds inline, connectivity by-construction via the seam lattice). A tested core with no
+//! holds inline, connectivity by-construction via the margin lattice). A tested core with no
 //! live trigger yet is the intended staged build, NOT a dead-feature split. NOTHING here
 //! wires a live battle request (the loading-state driver is GTW-433).
 //!
@@ -32,13 +32,13 @@
 //!
 //! - **OQ-7 (packer):** [`MaxRectsPacker`] is the shipped, denser packer; a
 //!   [`SplitMode::Guillotine`] alternative is INCLUDED behind a flag for A/B comparison.
-//! - **OQ-3 (seam):** a 1-cell [`Margin::DEFAULT`] `default_floor` seam is reserved around
+//! - **OQ-3 (margin):** a 1-cell [`Margin::DEFAULT`] `default_floor` margin is reserved around
 //!   every placed prefab — NO abutting prefabs.
 //! - **OQ-4 (connectivity):** connectivity is BY CONSTRUCTION — the 1-cell `default_floor`
-//!   seam every placement reserves leaves a walkable corridor lattice around every placed
+//!   margin every placement reserves leaves a walkable corridor lattice around every placed
 //!   region, so every open board cell is reachable. GTW-497 removed the old fail-closed
 //!   connectivity flood / rejection (and the per-prefab opening machinery): there is nothing
-//!   to assert or repair — the seam guarantees it structurally.
+//!   to assert or repair — the margin guarantees it structurally.
 //! - **OQ-2 (opposite):** the enemy anchor is the STRICT geometric [`Anchor::opposite`] of
 //!   the player anchor, with ZERO RNG draw (fairness is structural). The PLAYER anchor is
 //!   the one RNG choice ([`Anchor::choose`], from [`ProcgenRng`](crate::rng::ProcgenRng)).

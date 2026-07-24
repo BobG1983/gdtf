@@ -20,7 +20,7 @@ use crate::{
 fn fill_terminates_when_nothing_fits() {
     let theme = theme();
     // A 24x24 board with 10x10 deployment pads at opposite corners. The only Fill prefab is
-    // a 20x20 — padded with its 1-cell seam it is 22x22, which cannot fit any free rectangle
+    // a 20x20 — padded with its 1-cell margin it is 22x22, which cannot fit any free rectangle
     // left once the two pads occupy opposite corners. So the fill places nothing and must
     // TERMINATE (the loop cannot spin forever retrying an unfittable prefab).
     let (Some(board), Some(player_fp), Some(enemy_fp)) = (size(24, 24), size(10, 10), size(10, 10))

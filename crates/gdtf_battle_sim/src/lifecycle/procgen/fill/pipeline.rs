@@ -16,7 +16,7 @@ use crate::{
 /// with open `default_floor` (C1/C3).
 ///
 /// The RULED-defaults wrapper over [`fill_placement_with`]: the shipped [`SplitMode`], the
-/// 1-cell [`Margin::DEFAULT`](super::super::geometry::Margin::DEFAULT) seam (OQ-3), and the
+/// 1-cell [`Margin::DEFAULT`](super::super::geometry::Margin::DEFAULT) margin (OQ-3), and the
 /// passed [`ProcgenTuning`] knobs (OQ-6).
 ///
 /// # Errors
@@ -50,7 +50,7 @@ pub fn fill_placement(
 /// A thin loop over the resumable `FillCursor`: step it until it
 /// reports the fill exhausted, then finalize it into a [`FilledPlacement`] (GTW-732). The
 /// cursor is the ONE fill algorithm — a stepped drive and this looped drive place identically.
-/// The 1-cell [`Margin::DEFAULT`](super::super::geometry::Margin::DEFAULT) seam (OQ-3) is
+/// The 1-cell [`Margin::DEFAULT`](super::super::geometry::Margin::DEFAULT) margin (OQ-3) is
 /// RULED, so it is NOT a parameter.
 ///
 /// # Errors
