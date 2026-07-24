@@ -90,24 +90,37 @@ pub(crate) fn battlescape_state(app: &bevy::app::App) -> Option<BattleScapeState
         .map(|state| *state.get())
 }
 
-/// Stands in for the player at the menu: advances the walk until
-/// [`RunningState::Menu`] is reached, then queues the `Menu → Options`
-/// transition (the menu no longer auto-advances since GTW-121).
+/// Stands in for the player driving `Menu → Options → Game`: advances the walk
+/// until [`RunningState::Menu`] is reached and queues `Menu → Options` (the menu no
+/// longer auto-advances since GTW-121), then advances into the Options screen and —
+/// since it is a real interactive stop that no longer auto-advances (GTW-637) —
+/// stands in for its Continue button by queuing `Options → Game`.
 ///
-/// Returns whether `Menu` was reached and the transition queued within budget.
-/// After this returns `true`, one more `update()` (driven by the caller's
-/// `advance_until`) applies the queued `NextState` and the rest of the chain
-/// continues through its scaffolds.
+/// Returns whether the Options screen was reached and `Options → Game` queued
+/// within budget. After this returns `true`, one more `update()` (driven by the
+/// caller's `advance_until`) applies the queued `NextState` and the rest of the
+/// chain continues through its scaffolds.
 pub(crate) fn drive_past_menu(app: &mut App) -> bool {
     let reached_menu = advance_until(
         app,
         |app| running_state(app) == Some(RunningState::Menu),
         WALK_BUDGET,
     );
-    if reached_menu {
+    if !reached_menu {
+        return false;
+    }
+    app.world_mut()
+        .resource_mut::<NextState<RunningState>>()
+        .set(RunningState::Options);
+    let reached_options = advance_until(
+        app,
+        |app| running_state(app) == Some(RunningState::Options),
+        WALK_BUDGET,
+    );
+    if reached_options {
         app.world_mut()
             .resource_mut::<NextState<RunningState>>()
-            .set(RunningState::Options);
+            .set(RunningState::Game);
     }
-    reached_menu
+    reached_options
 }

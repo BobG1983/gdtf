@@ -116,7 +116,9 @@ fn walk_app() -> bevy::app::App {
 
 /// Drives the app from the default start until [`GameState::BattleScape`] is active
 /// (it rests in `BattleScapeState::Generation`). Stands in for the player at the menu
-/// (which no longer auto-advances, GTW-121) by queuing `Menu → Options` once `Menu` rests.
+/// (which no longer auto-advances, GTW-121) by queuing `Menu → Options` once `Menu` rests,
+/// then — since the Options screen is a real interactive stop that no longer auto-advances
+/// (GTW-637) — standing in for the Continue button by queuing `Options → Game`.
 fn drive_into_battlescape(app: &mut bevy::app::App) -> bool {
     let reached_menu = advance_until(
         app,
@@ -129,6 +131,17 @@ fn drive_into_battlescape(app: &mut bevy::app::App) -> bool {
     app.world_mut()
         .resource_mut::<bevy::state::state::NextState<RunningState>>()
         .set(RunningState::Options);
+    let reached_options = advance_until(
+        app,
+        |app| running_state(app) == Some(RunningState::Options),
+        BUDGET,
+    );
+    if !reached_options {
+        return false;
+    }
+    app.world_mut()
+        .resource_mut::<bevy::state::state::NextState<RunningState>>()
+        .set(RunningState::Game);
     advance_until(
         app,
         |app| game_state(app) == Some(GameState::BattleScape),

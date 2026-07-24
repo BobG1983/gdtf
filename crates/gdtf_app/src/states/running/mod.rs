@@ -32,7 +32,10 @@ crate::support_use!(game::GameState;);
 crate::support_use!(game::BattleScapeState;);
 crate::support_use!(game::AfterMathState;);
 
-mod options;
+// `pub(crate)` so the crate-root test-support ledger can name the scene's own
+// `test_support` submodule directly (GTW-569 one-hop ledger — the Options screen
+// markers no longer climb through here), mirroring `menu` / `game`.
+pub(crate) mod options;
 pub(in crate::states::running) use options::OptionsScenePlugin;
 
 mod quit;
