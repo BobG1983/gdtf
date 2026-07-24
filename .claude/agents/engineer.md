@@ -40,24 +40,43 @@ they take, what plugin registers them. Match the real wiring, not a remembered o
 
 ## Prove it compiles — the cargo loop is your primary instrument
 
-Run from the repo root. A task is not done until the workspace is clean:
+Run from the repo root, and **always use this repo's `.cargo/config.toml` ALIASES —
+never hand-type the equivalent long-form flags.** The aliases exist specifically so
+dev iteration uses fast dynamic linking (`dynamic_linking`) instead of a full static
+Bevy relink on every single check — typing the long form is not just verbose, it is
+easy to drop a feature flag and silently fall back to a slow, non-dynamically-linked
+build. If you catch yourself typing `cargo build`, `cargo test`, `cargo clippy`, or
+`cargo check` WITHOUT one of the aliases below, stop and use the alias instead:
 
-- `cargo check` / `cargo build` — does it compile, fast.
-- `cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings`
-  (shorthand `cargo dclippy`) — the
-  workspace `Cargo.toml` denies clippy `all`/`pedantic`/`correctness`/`suspicious`
-  plus `unwrap_used`/`expect_used`/`panic`/`todo`/`unimplemented`/`dbg_macro` and
-  rustc `missing_docs`. So **lint-clean and doc-complete ARE part of "compiles"** —
-  a clippy warning is a build failure here. Never `#[allow(...)]` your way past a
-  lint without a stated reason and the orchestrating workflow's sign-off.
-- `cargo fmt --check` — formatting is part of green; run `cargo fmt` to fix.
-- `cargo test --workspace --features grimdark_turfwar/dynamic_linking` (shorthand
-  `cargo dtest`) — run the suite. gdtf has near-zero tests today, so the
-  suite passes trivially; that is **not** a free pass. Every behavioral ticket must
-  ADD tests that exercise the real code path (see below).
+- `cargo dcheck` — fast compile check (dynamic-linked). Use this for your quick
+  does-it-compile loop while iterating, NOT bare `cargo check`/`cargo build`.
+- `cargo dclippy` — lint-clean is part of "compiles": the workspace `Cargo.toml`
+  denies clippy `all`/`pedantic`/`correctness`/`suspicious` plus
+  `unwrap_used`/`expect_used`/`panic`/`todo`/`unimplemented`/`dbg_macro` and rustc
+  `missing_docs`. Never `#[allow(...)]` your way past a lint without a stated reason
+  and the orchestrating workflow's sign-off.
+- `cargo fmt --check` — formatting is part of green; run `cargo fmt` to fix (no dev
+  alias needed, `fmt` is already fast).
+- `cargo dtest` — run the suite. gdtf has near-zero tests in some areas; that is
+  **not** a free pass. Every behavioral ticket must ADD tests that exercise the real
+  code path (see below).
+- `cargo dbuild` — build + LINK the actual `grimdark_turfwar` binary. This is NOT
+  redundant with `dcheck`/`dclippy`/`dtest`: none of those three actually link the
+  binary (`dtest` only links test binaries), and building `--workspace` masks an
+  `unreachable_pub` that only fires when the binary builds WITHOUT `test-support`
+  unification. `dbuild` is the one step that catches that class of bug, plus real
+  link errors. Do not skip it.
+- `cargo doc --workspace --no-deps` AND `cargo doc-full` — BOTH doc runs, not just
+  one. `broken_intra_doc_links` / `private_intra_doc_links` are `deny`d workspace-wide
+  and only surface under `cargo doc`, never under clippy/build/test. `doc-full`
+  additionally enables the `dev_tools`/`net_qa` features so THEIR doc comments get
+  link-checked too (GTW-790) — running only the plain `cargo doc` leaves that gap
+  wide open again.
 
-That four-command suite (`fmt --check`, `clippy -D warnings`, `test --workspace`) is
-the ONE definition of green. Your bar before reporting done: all of it passes.
+That six-command suite (`fmt --check`, `dclippy`, `dtest`, `dbuild`, `doc
+--workspace --no-deps`, `doc-full`) is the ONE definition of green — see
+`.claude/rules/verification.md` and `CLAUDE.md`. Your bar before reporting done: ALL
+SIX pass, run by you, in this session, after your final edit.
 
 ## How you write code
 
@@ -95,7 +114,7 @@ launching the app, watching the scene-plugin transitions, checking runtime behav
 against acceptance criteria — is **QA's** job. Your bar is: the green suite passes and
 you've written a precise **how-to-verify** spec. There is no Godot MCP and no rich
 runtime harness yet; the verification method is to **run the app**
-(`cargo run -p grimdark_turfwar --features dynamic_linking`) or a headless Bevy integration test, and observe.
+(`cargo drun`) or a headless Bevy integration test, and observe.
 Mark anything needing richer automation **TBD (Bevy harness)**. Hand the verification
 spec to the orchestrating workflow, which routes it to QA. If QA reports a failure,
 you get the repro and fix it — that hand-off is the loop.
@@ -123,9 +142,9 @@ orchestrating workflow explicitly asks — keep changes in the working tree.
 ## Reporting
 
 Return a tight summary: the files you changed, what each change does, the result of
-your `cargo fmt --check` / `cargo clippy -D warnings` / `cargo test --workspace` run,
-and **exactly how to verify** (which command to run — e.g. `cargo run -p
-grimdark_turfwar --features dynamic_linking` or the named test — what to do, what the user/QA should see). That
+your `cargo fmt --check` / `dclippy` / `dtest` / `dbuild` / `doc` / `doc-full` run
+(all six, not a subset), and **exactly how to verify** (which command to run — e.g.
+`cargo drun` or the named test — what to do, what the user/QA should see). That
 verification spec is what QA acts on. The text you return is all the orchestrating
 workflow sees — it does not see your tool calls. Flag any assumptions or anything you
 couldn't confirm at compile time, and mark engine-specifics you couldn't verify

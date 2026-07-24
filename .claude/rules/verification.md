@@ -11,7 +11,15 @@ observed GREEN in THIS session, after the final edit, and you saw it pass.
 
 ## The ONE definition of green (dev / gate — dynamic-linked, fast)
 
-Run from the repo root; green = ALL SIX pass:
+Run from the repo root; green = ALL SIX pass. **In practice, always invoke these via
+their `.cargo/config.toml` ALIASES (`cargo dclippy`, `cargo dtest`, `cargo dbuild`,
+`cargo doc-full`) — never hand-type the equivalent long-form flags shown below.** The
+block below documents exactly what each alias expands to; typing it out yourself risks
+silently dropping the `dynamic_linking` feature (or a sibling feature) and falling back
+to a slow, fully static rebuild — the one failure mode this whole fast dev/gate loop
+exists to avoid. Every agent definition and skill in this repo (`engineer`,
+`design-gate`, `qa`, `bevy-expert`, `/gate`, `/land`, `/next-task`, `/docs-sync`,
+`/file-bug`, `/health-check`) is expected to use the alias form, not this expansion:
 
 ```bash
 cargo fmt --check

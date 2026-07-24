@@ -43,14 +43,18 @@ Single-ticket is the common path.
 
    ```bash
    cargo fmt --check
-   cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
-   cargo test --workspace --features grimdark_turfwar/dynamic_linking
-   cargo build -p grimdark_turfwar --features dynamic_linking
+   cargo dclippy
+   cargo dtest
+   cargo dbuild
    cargo doc --workspace --no-deps
+   cargo doc-full
    ```
 
-   (`cargo dclippy` / `cargo dtest` / `cargo dbuild` are the shorthand; aliases in `.cargo/config.toml`.)
-   Any one not exiting 0 (fmt drift, a clippy warning, a failing test, a broken intra-doc link) → refuse.
+   **Use these aliases (`.cargo/config.toml`), never hand-typed long-form flags** —
+   typing the flags yourself risks silently dropping `dynamic_linking` and falling back
+   to a slow static rebuild. Any one not exiting 0 (fmt drift, a clippy warning, a
+   failing test, a broken/private intra-doc link — including inside `dev_tools`/`net_qa`,
+   which only `doc-full` compiles) → refuse.
 3. **On a `feature/*` branch.** `git branch --show-current` must be the
    `feature/gtw-N-slug` branch for this ticket. On `develop`, `main`, or anything
    else → refuse.

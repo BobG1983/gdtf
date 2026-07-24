@@ -91,22 +91,25 @@ tests under `crates/<crate>/tests/` — NOT `res://test`, NOT GUT.
 Follow `.claude/rules/verification.md` and `.claude/rules/bevy-traps.md` (ECS
 gotchas: system ordering / schedule placement, `OnEnter`/`OnExit` AppState
 transitions, Query filter conflicts, asset-load timing). For runtime evidence,
-RUN the app: `cargo run -p grimdark_turfwar --features dynamic_linking`, or a
+RUN the app: `cargo drun`, or a
 headless Bevy integration test that drives systems and asserts on world state.
 Richer in-engine automation is **TBD (Bevy harness)**.
 
 The ONE definition of green is the full suite, run from the repo root — green
-is ALL five passing:
+is ALL six passing:
 
 ```bash
 cargo fmt --check
-cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
-cargo test --workspace --features grimdark_turfwar/dynamic_linking
-cargo build -p grimdark_turfwar --features dynamic_linking
+cargo dclippy
+cargo dtest
+cargo dbuild
 cargo doc --workspace --no-deps
+cargo doc-full
 ```
 
-(`cargo dclippy` / `cargo dtest` / `cargo dbuild` in `.cargo/config.toml` are the shorthand.
+**Use these aliases (`.cargo/config.toml`), never hand-typed long-form flags** —
+typing them yourself risks silently dropping `dynamic_linking` and falling back to a
+slow static rebuild.
 `cargo doc` enforces `broken_intra_doc_links = "deny"` — only surfaces under `cargo doc`, not clippy/build.)
 
 The workspace denies clippy all/pedantic/correctness plus

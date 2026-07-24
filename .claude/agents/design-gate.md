@@ -56,18 +56,31 @@ contract wins.
    the ECS systems, components, resources, and schedules it touches (`crates/gdtf_app`,
    `crates/gdtf_battle_sim`, `crates/gdtf_battle_presenter`, `bins/grimdark_turfwar`).
    "The summary says so" is never evidence. Cite `file:line` for everything.
-3. **Run the green suite yourself** — the one definition of green, from the repo root:
+3. **Run the green suite yourself** — the one definition of green, from the repo root.
+   **Use this repo's `.cargo/config.toml` ALIASES, never hand-typed long-form flags** —
+   typing the equivalent flags yourself risks silently dropping the `dynamic_linking`
+   feature and falling back to a slow, fully-static rebuild, which is exactly the drift
+   this instruction exists to stop:
 
    ```bash
    cargo fmt --check
-   cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
-   cargo test --workspace --features grimdark_turfwar/dynamic_linking
+   cargo dclippy
+   cargo dtest
+   cargo dbuild
+   cargo doc --workspace --no-deps
+   cargo doc-full
    ```
 
-   Any failure, error, or crate that fails to compile = **NON-COMPLIANT**, whatever the
-   summary claims. If the summary cites a run, re-run it anyway. The workspace denies clippy
-   all/pedantic/correctness plus unwrap/expect/panic/todo/unimplemented and missing_docs, so
-   a lint or fmt failure IS a green failure — not a style nit you may wave through.
+   ALL SIX, not a subset — `dbuild` is the only step that actually links the real
+   `grimdark_turfwar` binary (catching link errors and an `unreachable_pub` class that
+   `dcheck`/`dclippy`/`dtest` never build), and `doc`/`doc-full` are the only steps that
+   catch a `broken_intra_doc_links`/`private_intra_doc_links` regression (both `deny`d) —
+   `doc-full` additionally covers the `dev_tools`/`net_qa`-gated modules `doc` alone
+   skips. Any failure, error, or crate that fails to compile = **NON-COMPLIANT**,
+   whatever the summary claims. If the summary cites a run, re-run it anyway. The
+   workspace denies clippy all/pedantic/correctness plus
+   unwrap/expect/panic/todo/unimplemented and missing_docs, so a lint or fmt failure IS a
+   green failure — not a style nit you may wave through.
 
 ## Hunt the historical failure modes — explicitly, every review
 

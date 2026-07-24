@@ -36,7 +36,7 @@ Hard rules (non-negotiable):
 
 - Reproduce or pin down the broken behavior. No fixing yet. Reproduce via a
   failing assertion against `gdtf_battle_sim`, or by running the app
-  (`cargo run -p grimdark_turfwar --features dynamic_linking`) and observing the live behavior.
+  (`cargo drun`) and observing the live behavior.
 - Find the exact mechanism: cite **file:line** evidence for the defect (e.g.
   `crates/gdtf_battle_sim/src/<module>.rs:NN`).
 - Find the ticket that shipped the behavior: `git log -S'<token>'` /
@@ -81,16 +81,22 @@ the app runs (sim logic with injected seeded RNG); never a reimplementation of
 the logic inside the test. Then fix; then watch the test pass. Tests exercise
 the real code path per `.claude/rules/verification.md`.
 
-The ONE definition of green is the full suite, run from the repo root — green
-is ALL three passing:
+Quick fast-iteration check while developing the fix, run from the repo root — all
+three must pass before moving to `/gate`:
 
 ```bash
 cargo fmt --check
-cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
-cargo test --workspace --features grimdark_turfwar/dynamic_linking
+cargo dclippy
+cargo dtest
 ```
 
-(`cargo dclippy` / `cargo dtest` / `cargo drun` in `.cargo/config.toml` are the shorthand.)
+This is NOT the authoritative green — it is a fast subset for iterating on the
+regression test and the fix. `/gate`'s full six-step suite (`.claude/rules/verification.md`)
+is still required before `/land`.
+
+**Use these aliases (`.cargo/config.toml`), never hand-typed long-form flags** — typing
+them yourself risks silently dropping `dynamic_linking` and falling back to a slow
+static rebuild.
 
 The workspace denies clippy all/pedantic/correctness plus
 unwrap/expect/panic/todo/unimplemented and missing_docs, so being fmt-clean and

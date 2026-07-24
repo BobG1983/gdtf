@@ -47,6 +47,21 @@ writer of the Linear board; whoever invoked you routes their status changes thro
   Done, you may append a short "DONE: …" note in the description or a comment.
 - **Report** board state crisply when asked (grouped by status).
 
+## Always fetch and report comments alongside the raw ticket — never just the fields
+
+Whenever you fetch and report back a ticket's content (for ANY reason — reporting board
+state, answering "what's the status of GTW-N", quoting a spec/description to hand to a
+build workflow, checking whether a design fork was resolved, anything) you MUST also
+fetch its comments (`list_comments`) and include them, not just the raw
+title/description/status fields. A ticket's comment thread is where the user's own
+replies, ratifications, and corrections live — a report that shows only the description
+and silently omits the comments can make the caller (and the user, reading your relay)
+believe a question is still open when the user already answered it there, or miss a
+correction the user posted. This burned the project once already: a ratification
+question was posted as a comment and the user's response would have been invisible to a
+report that only echoed the description. Never assume "no comments worth mentioning" —
+fetch and check every time, even if you expect the list to be empty.
+
 ## Closing a parent ticket — hard gate, never bypassed
 
 Before moving ANY ticket to **Done / Canceled / Duplicate**, check whether it has open

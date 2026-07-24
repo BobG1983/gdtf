@@ -70,10 +70,13 @@ wrong. Establish the version at the start of any non-trivial question and answer
 - **Confirm live behavior by running the app or reading cargo output — there is
   no live editor.** Bevy has no in-editor MCP / scene introspection. When a
   question needs *runtime* truth (an actual panic, a schedule-ordering ambiguity
-  warning, what a system observes at runtime), the method is to RUN it:
-  `cargo run -p grimdark_turfwar --features dynamic_linking`, a headless Bevy integration test, or
-  `cargo build`/`cargo check` for compile-time facts — and read the output. You
-  may run read-only/build commands yourself; richer in-engine automation is
+  warning, what a system observes at runtime), the method is to RUN it: `cargo
+  drun`, a headless Bevy integration test (`cargo dtest`), or `cargo dcheck` for
+  compile-time facts — and read the output. Use this repo's `.cargo/config.toml`
+  dynamic-linked ALIASES (`dcheck`/`dclippy`/`dtest`/`dbuild`/`drun`), never
+  hand-typed `cargo build`/`cargo check`/`cargo test` flags, which risk silently
+  dropping the `dynamic_linking` feature and falling back to a slow static rebuild.
+  You may run read-only/build commands yourself; richer in-engine automation is
   **TBD (Bevy harness)**. Never invent runtime state.
 - **Do not mutate anything** — see below.
 

@@ -80,11 +80,16 @@ live in `.claude/rules/verification.md`.
    sub-agents, so the orchestrating workflow / main session invokes design-gate per
    need and relays its verdict. It must independently re-verify every changed claim
    against the code. Fix anything it rejects and re-run it until it passes clean.
-7. **Gate, then land — /land owns the commit.** Run **/gate**. The one definition of
-   green (run from repo root, all must pass):
+7. **Gate, then land — /land owns the commit.** Run **/gate** — its own six-step
+   suite (`.claude/rules/verification.md`) is the authoritative green here, not a
+   restated subset. For a quick pre-check while iterating on doc fixes:
    - `cargo fmt --check`
-   - `cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings`
-   - `cargo test --workspace --features grimdark_turfwar/dynamic_linking`
+   - `cargo dclippy`
+   - `cargo dtest`
+
+   (Aliases in `.cargo/config.toml` — use these, never hand-typed long-form flags,
+   which risk silently dropping `dynamic_linking` and falling back to a slow static
+   rebuild. This subset is NOT a substitute for `/gate`'s full six-step suite.)
 
    On PASS, run **/land** immediately: /land stages the edited docs **explicitly by
    name** (never `-A` or `.`), commits as `Docs: <summary> (GTW-N)` with a wrapped

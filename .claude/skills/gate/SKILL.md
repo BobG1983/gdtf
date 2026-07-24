@@ -32,15 +32,24 @@ that canon is part of the contract ALONGSIDE the ticket.
 
    ```bash
    cargo fmt --check
-   cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
-   cargo test --workspace --features grimdark_turfwar/dynamic_linking
-   cargo build -p grimdark_turfwar --features dynamic_linking
+   cargo dclippy
+   cargo dtest
+   cargo dbuild
    cargo doc --workspace --no-deps
+   cargo doc-full
    ```
 
-   (`cargo dclippy` / `cargo dtest` / `cargo dbuild` are the shorthand; aliases in `.cargo/config.toml`.)
-   Green = all five exit 0. `cargo doc` enforces `broken_intra_doc_links = "deny"` (only surfaces
-   under `cargo doc`, not clippy/build). The workspace `Cargo.toml` denies clippy
+   **Use these ALIASES, never hand-typed long-form flags** — `dclippy`/`dtest`/`dbuild`
+   are aliases defined in `.cargo/config.toml` for `clippy`/`test`/`build` with the
+   `dynamic_linking` feature (plus `dev_tools`/`net_qa`) enabled; typing the equivalent
+   flags by hand risks silently dropping a feature and falling back to a slow, fully
+   static rebuild — exactly the drift this instruction exists to prevent. `doc-full`
+   is the same command with `dev_tools`/`net_qa` enabled, catching intra-doc-link
+   regressions inside those feature-gated modules that plain `doc` alone would miss
+   (GTW-790).
+   Green = all SIX exit 0. `cargo doc`/`doc-full` enforce `broken_intra_doc_links` /
+   `private_intra_doc_links` = `"deny"` (only surface under `cargo doc`, not
+   clippy/build/test). The workspace `Cargo.toml` denies clippy
    all/pedantic/correctness plus unwrap/expect/panic/todo/unimplemented and
    missing_docs, so fmt-clean and lint-clean ARE part of green. Red → the gate FAILS
    immediately; fix the suite before anything else.
@@ -78,7 +87,7 @@ that canon is part of the contract ALONGSIDE the ticket.
    (`verification.md` Rules 2–3): a sim clause (`crates/gdtf_battle_sim`) needs a unit
    test with injected seeded RNG; a presenter/scene/view clause needs a headless Bevy
    integration test OR observed in-engine evidence from
-   `cargo run -p grimdark_turfwar --features dynamic_linking`. Candidate-finder:
+   `cargo drun`. Candidate-finder:
 
    ```bash
    # sim fns added/changed in the diff (skip doc/comment lines), then any #[test] for them
@@ -164,7 +173,7 @@ that canon is part of the contract ALONGSIDE the ticket.
    carrying all three lenses (it already encodes 4a–4c). Either way pass the ticket id(s),
    the numbered contract (including 4a–4c), the touched `docs/` paths, the diff, and this
    instruction verbatim: "Verify every clause FIRST-HAND — read the code and run what you
-   must (including `cargo run -p grimdark_turfwar --features dynamic_linking` or a headless
+   must (including `cargo drun` or a headless
    Bevy integration test for runtime behavior); do not trust the implementer's claims or
    this summary; also enforce the test-sufficiency, unwired-systems, and file-size checks
    (4a–4c) and run the green suite yourself." When MULTIPLE tickets were named, the

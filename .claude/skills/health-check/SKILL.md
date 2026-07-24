@@ -111,15 +111,20 @@ persistent team.
    the ticket body.
 6. **Fix via the standard loop — later, not now.** Each ticket is then worked normally:
    **/next-task** → `git flow feature start gtw-N-<slug>` → implement → **/gate** →
-   **/land**. Never batch unrelated findings into one tree. The ONE definition of green
-   the fix must hit, from the repo root:
+   **/land**. Never batch unrelated findings into one tree. `/gate`'s own six-step
+   suite (`.claude/rules/verification.md`) is the authoritative green the fix must
+   hit — for a quick pre-check while iterating, from the repo root:
 
    ```bash
    cargo fmt --check
-   cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
-   cargo test --workspace --features grimdark_turfwar/dynamic_linking
+   cargo dclippy
+   cargo dtest
    ```
 
-   (`cargo dclippy` / `cargo dtest` / `cargo drun` in `.cargo/config.toml` are the shorthand.)
+   (This subset is NOT a substitute for `/gate`'s full six-step suite.)
+
+   **Use these aliases (`.cargo/config.toml`), never hand-typed long-form flags** —
+   typing them yourself risks silently dropping `dynamic_linking` and falling back to a
+   slow static rebuild.
 7. **Report.** Per lens: candidates swept / refuted / confirmed / tickets filed (with
    GTW-N ids), plus anything deliberately left alone (designed-dormant surface) and why.
