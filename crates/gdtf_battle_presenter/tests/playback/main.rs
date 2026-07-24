@@ -12,6 +12,9 @@
 //! - **`cursor_time_fog`** — GTW-762: the squad-fog SHADOW (`ShownSquadVisibility`) freezes
 //!   during closed-gate playback and promotes the instant the cursor catches up, so the
 //!   terrain fog reads the cursor's playback position, not the sim's live (ahead) state.
+//! - **`shipped_tuning`** — GTW-758: the actual shipped `playback.tuning.ron` loads off disk,
+//!   parses into a `PlaybackTuning`, and that parsed table (not the compiled-in default)
+//!   drives the cursor's hold — the hot-reloadable timing source on the real path.
 //!
 //! NO WALL-CLOCK WAITS. Every test advances `Time` by an exact duration and runs the cursor
 //! once, so a pacing assertion is deterministic by construction.
@@ -22,3 +25,4 @@ mod cursor_time_fog;
 mod drawn_lag;
 mod harness;
 mod pacing;
+mod shipped_tuning;
