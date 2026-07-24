@@ -209,6 +209,39 @@ pub(crate) fn fire_with_zero_delta(app: &mut App) {
         .insert_resource(TimeUpdateStrategy::Automatic);
 }
 
+/// Steps the app one `step`-sized manual update at a time (up to `max_steps`) until a live FCT
+/// pop whose string equals `text` first appears, and returns the `(text, world y)` snapshot of
+/// ALL live pops captured on THAT update — the frame the target pop just materialized on its
+/// `SpawnScene` schedule, BEFORE `animate_floating_text` next ticks it, so the target pop's `y`
+/// is still its unshifted spawn `y` (a direct readout of its stacking slot). Returns `None` if
+/// the pop never appears within `max_steps`. Restores `Automatic` time before returning.
+///
+/// This is the deterministic way to observe a SHOT pop's slot at the moment it spawns: the shot
+/// pops ride the projectile → impact pipeline (several fly frames), so a fixed `step_app` count
+/// would read them AFTER they have risen. Catching the exact impact frame keeps the read
+/// rise-free.
+pub(crate) fn step_until_pop(
+    app: &mut App,
+    text: &str,
+    step: std::time::Duration,
+    max_steps: u32,
+) -> Option<Vec<(String, f32)>> {
+    app.world_mut()
+        .insert_resource(TimeUpdateStrategy::ManualDuration(step));
+    let mut found = None;
+    for _ in 0..max_steps {
+        app.update();
+        let snapshot = super::probes::fct_pops_with_y(app);
+        if snapshot.iter().any(|(t, _)| t == text) {
+            found = Some(snapshot);
+            break;
+        }
+    }
+    app.world_mut()
+        .insert_resource(TimeUpdateStrategy::Automatic);
+    found
+}
+
 /// Advances the app a FIXED number of `step`-sized manual updates (each advancing the virtual
 /// clock by `step`), then restores `Automatic` time — the deterministic way to fly a staggered
 /// volley's bolts to their impacts and watch the per-shot FCT pops appear over time.

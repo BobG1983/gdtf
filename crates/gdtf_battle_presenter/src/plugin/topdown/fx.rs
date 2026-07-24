@@ -74,6 +74,14 @@ use crate::{
 /// resource, no message buffer) and is inert with nothing live, so none is gated on
 /// `BattleInProgress` — a flash / bolt / pop spawned during a battle still completes
 /// after the battle ends.
+///
+/// GTW-794: [`spawn_shot_projectiles`], [`animate_impact`], and [`read_fall_occurred`] now claim
+/// their FCT pops' stacking slot from the shared
+/// [`FctSlotAllocator`](crate::FctSlotAllocator), so each is ordered
+/// `.after(animate_floating_text)` — the allocator must count the pops still alive on a cell
+/// AFTER this frame's despawns have flushed (the ordering convention `bevy-traps.md` #3 /
+/// [`FctSlotAllocator`](crate::FctSlotAllocator) requires, the same edge the consequence-FCT
+/// reader set carries).
 pub(super) fn register_fx_flash_systems(app: &mut App) {
     // GTW-328: register the shared per-shot impact-resolved signal buffer `animate_impact`
     // emits (the combat log drains it). This is a PRESENTER-OWNED message (defined in
@@ -92,8 +100,14 @@ pub(super) fn register_fx_flash_systems(app: &mut App) {
         // GTW-507: the close-combat STRIKE flash at the struck target cell.
         .add_fx_reader::<MeleeResolved, _>(read_melee_resolved)
         // GTW-524: the fall-impact flash + "Fell" FCT pop at the landing cell; the FCT pop
-        // reads the hot-reloadable FxTuning, composed onto the shared gate shape here.
-        .add_fx_reader::<FallOccurred, _>(read_fall_occurred.run_if(resource_exists::<FxTuning>))
+        // reads the hot-reloadable FxTuning, composed onto the shared gate shape here. GTW-794:
+        // it now claims the pop's slot from the FctSlotAllocator, so it is ordered
+        // `.after(animate_floating_text)` (the allocator's despawn-flushed ordering, bevy-traps #3).
+        .add_fx_reader::<FallOccurred, _>(
+            read_fall_occurred
+                .after(animate_floating_text)
+                .run_if(resource_exists::<FxTuning>),
+        )
         // GTW-546: the grenade BLAST reader — seeds the PendingImpact `animate_impact` plays.
         .add_fx_reader::<ThrowResolved, _>(read_throw_resolved);
     let render_gate = resource_exists::<BattleInProgress>
@@ -110,6 +124,10 @@ pub(super) fn register_fx_flash_systems(app: &mut App) {
         Update,
         spawn_shot_projectiles
             .in_set(PresenterSystems::Overlay)
+            // GTW-794: the coverage-fallback pops claim their slot from the FctSlotAllocator, so
+            // this consumer is ordered after the despawn animator (the allocator's despawn-flushed
+            // ordering, bevy-traps #3).
+            .after(animate_floating_text)
             .run_if(
                 render_gate
                     .clone()
@@ -128,6 +146,10 @@ pub(super) fn register_fx_flash_systems(app: &mut App) {
         Update,
         animate_impact
             .in_set(PresenterSystems::Overlay)
+            // GTW-794: the impact spawns this shot's pops via the FctSlotAllocator, so it is
+            // ordered after the despawn animator (the allocator's despawn-flushed ordering,
+            // bevy-traps #3).
+            .after(animate_floating_text)
             .run_if(render_gate.and_then(resource_exists::<FxTuning>)),
     )
     // GTW-306: advance every traveling projectile + hand off its impact (unguarded — see the

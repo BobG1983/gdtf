@@ -16,7 +16,11 @@
 //!    over the faller's landing cell, via the EXISTING
 //!    [`spawn_floating_text`](super::fct::spawn_floating_text) helper. This IS the
 //!    "combat-log line + FCT via the EXISTING … `read_consequence_fct` path" C3 requires —
-//!    the same one-shot pop the consequence reader uses. NO new FCT machinery.
+//!    the same one-shot pop the consequence reader uses. NO new FCT machinery. Its stacking
+//!    slot is claimed from the shared lifetime-aware
+//!    [`FctSlotAllocator`](super::fct::FctSlotAllocator) (GTW-794), so two falls landing on one
+//!    cell across frames — or a fall over a live consequence / shot pop — stack instead of both
+//!    reclaiming slot `0`.
 //!
 //! **C2 (tween)**: the faller's [`Changed<Position>`] (the sim's one-shot Position overwrite)
 //! is consumed by the EXISTING [`advance_sprite_tweens`](super::super::ganger::tween) +
@@ -45,7 +49,9 @@ use bevy::prelude::*;
 use gdtf_battle_sim::{falls::FallOccurred, prelude::Position};
 
 use super::{
-    fct::{CombatText, FctEmphasis, FctStackIndex, FctValence, spawn_floating_text, valence_color},
+    fct::{
+        CombatText, FctEmphasis, FctSlotAllocator, FctValence, spawn_floating_text, valence_color,
+    },
     readers::spawn_flash,
     roles::EffectRoles,
 };
@@ -89,18 +95,23 @@ fn fall_tint(storeys: u8) -> Color {
 ///    relation via `fall_tint`. A missing effects sheet skips FAIL-CLOSED.
 /// 3. Spawns ONE `"Fell"` FCT pop in neutral GREY (the one-shot C3 "log line") via the
 ///    EXISTING [`spawn_floating_text`](super::fct::spawn_floating_text) helper, with
-///    [`FctEmphasis::Normal`] and a zero stack slot (one fall per ganger per frame is the
-///    normal case; the slot would need stacking if two falls on one cell ever co-occur,
-///    but a single fall per cell per tick is the model invariant — future stacking is
-///    additive if ever needed). A missing [`FxTuning`] leaves the FCT pop unsprouted (the
-///    gate already requires its presence).
+///    [`FctEmphasis::Normal`] and a stacking slot claimed from the shared lifetime-aware
+///    [`FctSlotAllocator`](super::fct::FctSlotAllocator) (GTW-794) — the slot ABOVE every pop
+///    still ALIVE on the landing cell. So two falls landing on one cell across frames (or a
+///    fall over a live consequence / shot pop) stack instead of both reclaiming slot `0`,
+///    replacing the former hardcoded slot `0`. A missing [`FxTuning`] leaves the FCT pop
+///    unsprouted (the gate already requires its presence).
 ///
 /// The faller's downward Position change (C2) is animated by the EXISTING
 /// `advance_sprite_tweens` re-target path verbatim — no extension needed here.
 ///
+/// ORDERING (`bevy-traps.md` #3): because it consumes the [`FctSlotAllocator`] it is registered
+/// `.after(animate_floating_text)` — the allocator must count pops AFTER this frame's despawns
+/// have flushed (GTW-794 / [`FctSlotAllocator`]).
+///
 /// Param-only (`bevy-traps.md` #7): [`Commands`], [`Res<TopDownAtlases>`],
-/// [`Res<EffectRoles>`], [`Res<FxTuning>`], [`MessageReader<FallOccurred>`], and the
-/// `Position` lookup.
+/// [`Res<EffectRoles>`], [`Res<FxTuning>`], [`MessageReader<FallOccurred>`], the
+/// `Position` lookup, and the [`FctSlotAllocator`].
 pub fn read_fall_occurred(
     mut commands: Commands,
     atlases: Res<TopDownAtlases>,
@@ -108,6 +119,7 @@ pub fn read_fall_occurred(
     tuning: Res<FxTuning>,
     mut falls: MessageReader<Played<FallOccurred>>,
     positions: Query<&Position>,
+    allocator: FctSlotAllocator,
 ) {
     for msg in falls.read() {
         // Resolve the faller's current (landing) cell from its Position — the sim has
@@ -117,8 +129,10 @@ pub fn read_fall_occurred(
         let Ok(pos) = positions.get(msg.ganger) else {
             continue;
         };
-        // The canonical CellLevel::split decompose through Position's deref (GTW-565).
-        let (cell, level) = pos.split();
+        // Position derefs to its CellLevel key (GTW-565) — the allocator's group key and, via
+        // split, the flash/pop world anchor.
+        let at = **pos;
+        let (cell, level) = at.split();
         let world = cell_to_world(cell, level);
 
         // C1 — the impact flash. Data-driven `fall_impact` tile, no literal index.
@@ -129,7 +143,11 @@ pub fn read_fall_occurred(
         }
         // (If the effects sheet is absent the flash is skipped FAIL-CLOSED.)
 
-        // C3 — the FCT "Fell" pop, via the EXISTING spawn_floating_text helper.
+        // C3 — the FCT "Fell" pop, via the EXISTING spawn_floating_text helper. GTW-794: its
+        // stacking slot is the one ABOVE every pop still alive on the landing cell, so
+        // co-occurring falls (or a fall over a live consequence / shot pop) stack rather than
+        // both reclaiming slot 0.
+        let slot = allocator.next_slot(at);
         spawn_floating_text(
             &mut commands,
             CombatText::new("Fell"),
@@ -137,7 +155,7 @@ pub fn read_fall_occurred(
             FctEmphasis::Normal,
             cell,
             level,
-            FctStackIndex::new(0),
+            slot,
             tuning.fct_ttl_seconds,
             tuning.fct_rise_rate,
         );

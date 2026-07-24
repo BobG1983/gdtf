@@ -22,8 +22,9 @@
 //! one `consequence.rs` reader), [`InjuryFct`] (severity-ramp color), [`SuppressionFct`],
 //! [`DotFct`], [`FieldFct`], and [`OnDeathFct`] (the one BOLD family). OUT of the palette
 //! by design (P9): the shot pipeline (`reader.rs::classify_report` — the shared multi-pop
-//! shot classifier) and the fall FX reader (`fx/fall.rs` — glyph/shake FX, not a stacked
-//! pop).
+//! shot classifier) and the fall FX reader (`fx/fall.rs` — a bespoke flash + tween + one-shot
+//! `"Fell"` pop, not a `ConsequenceFct` classify mapping). Both stay their own readers, but
+//! both now claim their pop's stacking slot from the shared `FctSlotAllocator` (GTW-794).
 
 mod armor_broken;
 mod bleeding;

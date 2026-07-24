@@ -156,6 +156,24 @@ pub(crate) fn fct_pop_count(app: &mut App) -> usize {
     q.iter(app.world()).count()
 }
 
+/// The `(text, world y)` of every live `FloatingCombatText` pop — the rendered string and its
+/// `Transform`'s world `y`. A pop's spawn `y` is `cell_to_world(cell, level).y` shifted DOWN by
+/// `stack_slot × STACK_STEP_PX`, so the `y` is a direct readout of the pop's stacking slot when
+/// read on its spawn frame (before `animate_floating_text` has risen it). Unordered.
+pub(crate) fn fct_pops_with_y(app: &mut App) -> Vec<(String, f32)> {
+    let mut q = app
+        .world_mut()
+        .query::<(&FloatingCombatText, &Text2d, &Transform)>();
+    q.iter(app.world())
+        .map(|(_, text, transform)| ((**text).clone(), transform.translation.y))
+        .collect()
+}
+
+/// The world `y` of the (first) live pop whose rendered string equals `text`, or `None`.
+pub(crate) fn pop_y_for(pops: &[(String, f32)], text: &str) -> Option<f32> {
+    pops.iter().find(|(t, _)| t == text).map(|(_, y)| *y)
+}
+
 /// The number of live FCT pops whose rendered string equals `text` (any color) — distinguishes
 /// "exactly one pop was spawned" from "none / many".
 pub(crate) fn pop_count_for(pops: &[(String, bevy::prelude::Color)], text: &str) -> usize {

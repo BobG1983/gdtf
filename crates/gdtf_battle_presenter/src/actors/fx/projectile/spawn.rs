@@ -8,14 +8,17 @@ use bevy::{
     scene::{CommandsSceneExt, bsn, template_value},
 };
 use gdtf_battle_sim::{
-    prelude::{Cell, Level, Position},
+    prelude::{Cell, CellLevel, Level, Position},
     resolve_coarse::ShotKind,
     shot_fired::ShotFired,
 };
 
 use super::{
     super::{
-        fct::{ClassifiedPop, FctStackIndex, anchor_cell, classify_report, spawn_floating_text},
+        fct::{
+            ClassifiedPop, FctSlotAllocator, FctStackIndex, anchor_cell, classify_report,
+            spawn_floating_text,
+        },
         readers::fx_sprite_scaled,
         roles::{EffectRoles, nearest_direction_index},
         tuning::FxTuning,
@@ -88,13 +91,19 @@ use crate::{
 /// Param-only (`bevy-traps.md` #7): [`Commands`], [`Res<TopDownAtlases>`], [`Res<EffectRoles>`],
 /// [`Res<FxTuning>`], [`Res<GangerSprites>`] + the read-only ganger
 /// `Query<&Transform, With<GangerSprite>>` (for the hit-entity aim lookup), the read-only
-/// `Query<&Position>` (GTW-327, for the pop anchor cell), and [`MessageReader<ShotFired>`].
+/// `Query<&Position>` (GTW-327, for the pop anchor cell), the [`FctSlotAllocator`] (GTW-794, for
+/// the coverage-fallback pops' stacking base), and [`MessageReader<ShotFired>`].
+///
+/// ORDERING (`bevy-traps.md` #3): because it consumes the [`FctSlotAllocator`] (in the coverage
+/// fallback) it is registered `.after(animate_floating_text)` — the allocator must count pops
+/// AFTER this frame's despawns have flushed (GTW-794 / [`FctSlotAllocator`]).
 #[expect(
     clippy::too_many_arguments,
     reason = "each is a distinct Bevy system param: the spawn Commands, the three data tables \
               (atlases / effect roles / fx tuning), the two aim lookups (ganger sprite map + \
-              its transforms), the GTW-327 anchor Query<&Position>, and the ShotFired reader — \
-              none can be merged without obscuring the wiring; the System fn IS the bundle"
+              its transforms), the GTW-327 anchor Query<&Position>, the GTW-794 FctSlotAllocator \
+              (the fallback pops' stacking base), and the ShotFired reader — none can be merged \
+              without obscuring the wiring; the System fn IS the bundle"
 )]
 pub fn spawn_shot_projectiles(
     mut commands: Commands,
@@ -104,6 +113,7 @@ pub fn spawn_shot_projectiles(
     ganger_sprites: Res<GangerSprites>,
     ganger_transforms: Query<&Transform, With<GangerSprite>>,
     positions: Query<&Position>,
+    allocator: FctSlotAllocator,
     mut shots: MessageReader<Played<ShotFired>>,
 ) {
     // The hot-reloadable tuning the whole volley reads (captured per spawn so a later edit
@@ -142,7 +152,7 @@ pub fn spawn_shot_projectiles(
             // carry the pops to an impact, so spawn this shot's FCT pops IMMEDIATELY rather
             // than silently dropping them (the Text2d pops need no effects atlas). Coverage
             // fallback: a connecting shot ALWAYS gets its numbers.
-            spawn_pops_at_anchor(&mut commands, &pops, anchor, &tuning);
+            spawn_pops_at_anchor(&mut commands, &allocator, &pops, anchor, &tuning);
             continue;
         };
         // No launch delay: the cursor released exactly one round this frame, so this bolt
@@ -187,24 +197,33 @@ pub fn spawn_shot_projectiles(
 }
 
 /// Spawn one shot's classified floating-combat-text `pops` over `anchor` IMMEDIATELY, each at
-/// the next per-shot vertical stack slot so multiple pops of the one shot fan out.
+/// the next vertical stack slot so multiple pops of the one shot fan out — SEEDED above whatever
+/// pops are already live on the cell (GTW-794).
 ///
 /// The GTW-327 COVERAGE FALLBACK (and the shared spawn used at the impact, see
 /// [`animate_impact`](super::super::impact::animate_impact)): when a shot has no projectile to
 /// thread
 /// its pops through (a missing effects sheet — the [`Text2d`] pops still need no atlas), this
-/// spawns them right away so a connecting shot never loses its numbers. The pops fan DOWN by
-/// their per-shot [`FctStackIndex`] (`0, 1, 2, …`) so the HP number / wound tag / penetration /
-/// DOWN of one shot stack rather than overlap. `ttl` / `rise` come from the resident
-/// hot-reloadable [`FxTuning`].
+/// spawns them right away so a connecting shot never loses its numbers.
+///
+/// GTW-794: the shot's per-pop fan-out BASE is claimed once from the shared lifetime-aware
+/// [`FctSlotAllocator`] — the slot ABOVE every pop still ALIVE on the cell (a consequence pop, a
+/// fall pop, a prior shot's numbers) — so this shot's numbers stack above them instead of
+/// reclaiming slot `0`. The shot's OWN pops then still ascend internally from that base
+/// (`base, base + 1, base + 2, …`) so the HP number / wound tag / penetration / DOWN of one shot
+/// fan out rather than overlap. `ttl` / `rise` come from the resident hot-reloadable [`FxTuning`].
 pub(in crate::actors::fx) fn spawn_pops_at_anchor(
     commands: &mut Commands,
+    allocator: &FctSlotAllocator,
     pops: &[ClassifiedPop],
     anchor: (Cell, Level),
     tuning: &FxTuning,
 ) {
     let (cell, level) = anchor;
-    for (slot, pop) in pops.iter().enumerate() {
+    // GTW-794: the slot above every pop still ALIVE on this cell — this shot's numbers start
+    // there, then ascend internally from it. Claimed ONCE per shot before the fan-out loop.
+    let base = *allocator.next_slot(CellLevel::new(cell, level));
+    for (offset, pop) in pops.iter().enumerate() {
         spawn_floating_text(
             commands,
             pop.text().clone(),
@@ -212,7 +231,7 @@ pub(in crate::actors::fx) fn spawn_pops_at_anchor(
             pop.emphasis(),
             cell,
             level,
-            FctStackIndex::new(slot),
+            FctStackIndex::new(base + offset),
             tuning.fct_ttl_seconds,
             tuning.fct_rise_rate,
         );

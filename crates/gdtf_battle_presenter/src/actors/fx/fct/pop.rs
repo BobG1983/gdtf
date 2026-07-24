@@ -11,7 +11,11 @@
 //! generic reader does the rest. The OUT-of-scope readers stay out by design (P9): the shot
 //! pipeline's [`classify_report`](super::reader::classify_report) is already the shared
 //! multi-pop classifier riding the staggered projectile → impact pipeline, and the fall FX
-//! reader (`fx/fall.rs`) is a glyph/shake FX, not a stacked pop.
+//! reader (`fx/fall.rs`) is a bespoke flash + tween + one-shot `"Fell"` pop, not a
+//! [`ConsequenceFct`] classify mapping. Both stay their OWN readers — but both now claim their
+//! pop's stacking slot from the shared
+//! [`FctSlotAllocator`](super::slot_allocator::FctSlotAllocator) (GTW-794), so their pops stack
+//! above the palette's (and each other's) instead of colliding.
 
 use bevy::prelude::{Color, Message};
 use gdtf_battle_sim::prelude::CellLevel;

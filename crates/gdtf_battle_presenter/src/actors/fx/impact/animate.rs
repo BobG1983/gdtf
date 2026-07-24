@@ -10,8 +10,8 @@ use bevy::{
 
 use super::{
     super::{
-        projectile::spawn_pops_at_anchor, readers::fx_sprite_scaled, roles::EffectRoles,
-        tuning::FxTuning,
+        fct::FctSlotAllocator, projectile::spawn_pops_at_anchor, readers::fx_sprite_scaled,
+        roles::EffectRoles, tuning::FxTuning,
     },
     ImpactAnimation,
     animation::{ImpactStep, impact_frame_scale},
@@ -57,15 +57,21 @@ use crate::TopDownAtlases;
 /// [`Res<TopDownAtlases>`] for the data-driven tiles, [`Res<FxTuning>`] for the
 /// per-frame hold + the pop lifetime / rise, the
 /// [`MessageWriter<ShotImpactResolved>`](bevy::ecs::message::MessageWriter) for the GTW-328
-/// per-shot impact signal, and the disjoint `PendingImpact` (seed) / `ImpactAnimation` (playing)
+/// per-shot impact signal, the [`FctSlotAllocator`] (GTW-794 — the impact pops' stacking base),
+/// and the disjoint `PendingImpact` (seed) / `ImpactAnimation` (playing)
 /// queries. Its registration gates on `BattleInProgress` + `EffectRoles` + `TopDownAtlases` +
 /// `FxTuning` existing (FX-A wired it), so all are present when it runs.
+///
+/// ORDERING (`bevy-traps.md` #3): because it consumes the [`FctSlotAllocator`] (via
+/// `spawn_pops_at_anchor`) it is registered `.after(animate_floating_text)` — the allocator
+/// must count pops AFTER this frame's despawns have flushed (GTW-794 / [`FctSlotAllocator`]).
 #[expect(
     clippy::too_many_arguments,
     reason = "each is a distinct Bevy system param: the spawn Commands, the per-frame Time, the \
               two data tables (effect roles / atlases), the FxTuning read, the GTW-328 \
-              ShotImpactResolved writer, and the two disjoint seed / playing queries — none can \
-              merge without obscuring the wiring; the System fn IS the bundle"
+              ShotImpactResolved writer, the GTW-794 FctSlotAllocator (the impact pops' stacking \
+              base), and the two disjoint seed / playing queries — none can merge without \
+              obscuring the wiring; the System fn IS the bundle"
 )]
 pub fn animate_impact(
     mut commands: Commands,
@@ -74,6 +80,7 @@ pub fn animate_impact(
     atlases: Res<TopDownAtlases>,
     tuning: Res<FxTuning>,
     mut impact_resolved: MessageWriter<ShotImpactResolved>,
+    allocator: FctSlotAllocator,
     seeds: Query<(Entity, &super::super::projectile::PendingImpact)>,
     mut playing: Query<(Entity, &mut Sprite, &mut ImpactAnimation)>,
 ) {
@@ -108,8 +115,16 @@ pub fn animate_impact(
         }
         // GTW-327: spawn this shot's floating-combat-text pops at the impact (independent of the
         // impact SPRITE — the Text2d pops need no atlas, so they still appear when the effects
-        // sheet is absent). Empty for a clean miss (no numbers).
-        spawn_pops_at_anchor(&mut commands, &impact.pops, impact.anchor, &tuning);
+        // sheet is absent). Empty for a clean miss (no numbers). GTW-794: the pops' stacking base
+        // is claimed from the shared allocator (above whatever is live on the cell), then the
+        // shot's own pops ascend internally from it.
+        spawn_pops_at_anchor(
+            &mut commands,
+            &allocator,
+            &impact.pops,
+            impact.anchor,
+            &tuning,
+        );
         // GTW-328: emit the SHARED per-shot impact-resolved signal at this exact (staggered) moment
         // — carrying the shooter + the shot's verdict — so a downstream consumer (the combat-text
         // LOG; GTW-331's death-despawn next) reacts at the SAME cadence the FCT pops do, NOT all at

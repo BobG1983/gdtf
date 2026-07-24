@@ -27,4 +27,5 @@ mod kill_despawn;
 mod probes;
 mod projectile;
 mod registrar_contract;
+mod stack_migration;
 mod volley_stagger;

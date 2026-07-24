@@ -3,13 +3,14 @@
 //! ALIVE on its cell.
 //!
 //! Three spawn pipelines feed the FCT primitive (the consequence families, the shot damage
-//! numbers, and the fall pop) and each computes its stacking slot on its own — a per-frame
+//! numbers, and the fall pop). Each USED to compute its stacking slot on its own — a per-frame
 //! counter ([`FctStackCounter`](super::stack::FctStackCounter)), a per-shot local index, and
 //! a hardcoded `0` respectively — so pops from DIFFERENT pipelines, or from different frames,
-//! collide on the same cell. This module ships the ONE shared allocator that resolves the
+//! collided on the same cell. This module ships the ONE shared allocator that resolves the
 //! collision at its root: it counts the pops CURRENTLY ALIVE on a cell and returns that count
 //! as the new slot, so the next pop always lands one step above the live stack regardless of
-//! which pipeline or frame spawned the others.
+//! which pipeline or frame spawned the others. All three pipelines now claim through it — the
+//! consequence families (GTW-793) and the shot-damage + fall pops (GTW-794).
 //!
 //! Two properties the per-frame [`FctStackCounter`](super::stack::FctStackCounter) cannot give:
 //!
@@ -29,8 +30,9 @@
 //! so it is never double-counted nor handed out a stale slot. Without the edge the allocator
 //! could count a pop that is about to vanish and skip its freed slot.
 //!
-//! GTW-792 ships the primitive ONLY: the three existing pipelines are migrated onto it
-//! separately (GTW-793 / GTW-794). Every pop [`spawn_floating_text`](super::text::spawn_floating_text)
+//! GTW-792 shipped the primitive; its three consumers were migrated onto it separately — the
+//! consequence families (GTW-793) and the shot-damage + fall pipelines (GTW-794). Every pop
+//! [`spawn_floating_text`](super::text::spawn_floating_text)
 //! spawns already carries the [`FctAnchorCell`] this allocator queries (an inert marker until a
 //! consumer reads it), so the migration is a drop-in — no change to the spawn primitive's
 //! pixel-offset math.
