@@ -27,39 +27,46 @@ use gdtf_battle_sim::{
 
 use super::{harness::*, probes::*};
 
-/// GTW-572 C3 (acceptance 3) — the SHARED per-frame stack counter: two DIFFERENT consequence
-/// families popping on the SAME cell in the SAME frame take DISTINCT stack slots, so their
-/// pops fan out vertically instead of overlapping.
+/// GTW-793 (acceptance 1) — the lifetime-aware allocator: two DIFFERENT consequence families
+/// popping on the SAME cell in CONSECUTIVE FRAMES take DISTINCT, ASCENDING stack slots, so the
+/// second pop fans out ABOVE the first-frame pop that is still alive on the cell instead of
+/// overlapping it.
 ///
-/// PIN-DISCRIMINATING against the pre-GTW-572 defect: each family reader used to keep a
-/// LOCAL per-drain counter, so a same-frame cross-family pair (here a `SuppressionApplied`
-/// "SUPPRESSED" tag and a `DotTicked` "-4" number on one cell) each took slot 0 and rendered
-/// at the SAME y — this asserts their world `y`s DIFFER by the stack step.
+/// PIN-DISCRIMINATING against the defect the retired per-frame `FctStackCounter` could not
+/// catch: that counter RESET every frame, so a `DotTicked` "-4" popping the frame AFTER a
+/// still-alive `SuppressionApplied` "SUPPRESSED" reclaimed slot 0 and rendered at the SAME y.
+/// The GTW-792 `FctSlotAllocator` counts the pops CURRENTLY ALIVE on the cell (spanning
+/// frames), so the second pop takes slot 1 — this asserts the two world `y`s DIFFER.
+///
+/// Both updates run under a ZERO clock delta so neither pop RISES or expires: the first-frame
+/// pop stays alive (and at its spawn `y`) to be counted, and any `y` difference between the two
+/// pops is purely the stack-slot offset.
 #[test]
-fn two_families_on_one_cell_in_one_frame_take_distinct_stack_slots() {
+fn two_families_on_one_cell_across_consecutive_frames_take_distinct_stack_slots() {
     let mut app = headless_renderer_app();
     settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
+    app.world_mut()
+        .insert_resource(TimeUpdateStrategy::ManualDuration(
+            std::time::Duration::ZERO,
+        ));
 
     let cell = Cell::new(9, 9);
     let level = Level::new(0);
     let at = CellLevel::new(cell, level);
     let pinned = wounded_ganger(&mut app, cell, level, 2);
 
-    // TWO different families, ONE cell, ONE frame: suppression (carried-cell anchor) + DOT
-    // (carried-cell anchor). Both buffers are in the shared harness.
+    // FRAME 1: the suppression family pops "SUPPRESSED" on the cell (slot 0 — no live pops).
     app.world_mut()
         .resource_mut::<Messages<SuppressionApplied>>()
         .write(SuppressionApplied::new(pinned, at));
+    app.update();
+
+    // FRAME 2: the DOT family pops "-4" on the SAME cell. The suppression pop from frame 1 is
+    // still alive (zero-delta clock), so the allocator counts it and hands the DOT pop slot 1.
     app.world_mut()
         .resource_mut::<Messages<DotTicked>>()
         .write(DotTicked::new(pinned, at, DotDamage::new(4)));
-    // One zero-delta update so both pops spawn on the same frame with no rise applied —
-    // any y difference is purely the stack-slot offset.
-    app.world_mut()
-        .insert_resource(TimeUpdateStrategy::ManualDuration(
-            std::time::Duration::ZERO,
-        ));
     app.update();
     app.world_mut()
         .insert_resource(TimeUpdateStrategy::Automatic);
@@ -74,8 +81,9 @@ fn two_families_on_one_cell_in_one_frame_take_distinct_stack_slots() {
         "the DOT family must pop its number, got {pops:?}",
     );
 
-    // Collect the two pops' world ys — cross-family pops on one cell must sit at DISTINCT
-    // stacked heights (before GTW-572 both took slot 0 and these were EQUAL).
+    // Collect the two pops' world ys — a pop landing on a cell that already carries a live pop
+    // must sit at a DISTINCT stacked height (with the retired per-frame counter both reclaimed
+    // slot 0 across frames and these were EQUAL).
     let mut q = app
         .world_mut()
         .query::<(&Text2d, &FloatingCombatText, &Transform)>();
@@ -94,9 +102,9 @@ fn two_families_on_one_cell_in_one_frame_take_distinct_stack_slots() {
     };
     assert!(
         (suppressed_y - dot_y).abs() > 0.001,
-        "two DIFFERENT families popping one cell in one frame must take DISTINCT stack \
-         slots (distinct ys), got {suppressed_y} == {dot_y} — the shared per-frame \
-         FctStackCounter must hand the second family slot 1",
+        "a family popping a cell that already carries a live pop from a prior frame must take a \
+         DISTINCT stack slot (distinct ys), got {suppressed_y} == {dot_y} — the lifetime-aware \
+         FctSlotAllocator must hand the second-frame pop slot 1",
     );
 }
 

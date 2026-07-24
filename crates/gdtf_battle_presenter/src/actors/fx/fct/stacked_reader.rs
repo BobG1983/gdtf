@@ -5,9 +5,10 @@
 //! through the family's [`ConsequenceFct`] impl, resolve the anchor (FAIL-CLOSED on a
 //! [`PopAnchor::GangerPosition`] whose entity has no live
 //! [`Position`](gdtf_battle_sim::ganger::Position) — the pop is DROPPED, never spawned at a default
-//! position), claim the next slot from the SHARED per-frame
-//! [`FctStackCounter`](super::stack::FctStackCounter) (C3 — cross-family same-cell pops fan
-//! out instead of overlapping), and spawn the pop with the hot-reloadable
+//! position), claim the next slot from the lifetime-aware
+//! [`FctSlotAllocator`](super::slot_allocator::FctSlotAllocator) (GTW-793 — the slot ABOVE
+//! every pop still ALIVE on the cell, so same-cell pops fan out across FRAMES, not just within
+//! one frame like the retired per-frame counter), and spawn the pop with the hot-reloadable
 //! [`FxTuning`](super::super::FxTuning) lifetime + rise.
 //!
 //! Registration is COMPILE-TIME generic (P4 — no runtime descriptor table):
@@ -22,7 +23,7 @@
 use bevy::{
     ecs::{message::Messages, schedule::SystemCondition},
     prelude::{
-        App, Commands, IntoScheduleConfigs, MessageReader, Query, Res, ResMut, SystemSet, Update,
+        App, Commands, IntoScheduleConfigs, MessageReader, Query, Res, SystemSet, Update,
         resource_exists,
     },
 };
@@ -31,17 +32,21 @@ use gdtf_battle_sim::prelude::{BattleInProgress, Position};
 use super::{
     super::FxTuning,
     pop::{ConsequenceFct, PopAnchor},
+    slot_allocator::FctSlotAllocator,
     stack::{FctStackCounter, reset_fct_stacks},
-    text::spawn_floating_text,
+    text::{animate_floating_text, spawn_floating_text},
 };
 use crate::PresenterSystems;
 
-/// The consequence-FCT scheduling sets (GTW-572 C3): the shared counter [`Reset`](Self::Reset)
-/// runs strictly before the whole per-family [`Read`](Self::Read) set — the EXPLICIT ordering
-/// (`bevy-traps.md` #3) that makes the per-frame stack slots well-defined.
+/// The consequence-FCT scheduling sets. The [`Read`](Self::Read) set (every generic per-family
+/// reader) is ordered `.after(animate_floating_text)` (GTW-793) so its [`FctSlotAllocator`]
+/// counts pops after this frame's despawns have flushed — the EXPLICIT ordering `bevy-traps.md`
+/// #3 requires. [`Reset`](Self::Reset) still runs strictly before [`Read`](Self::Read), but it
+/// now only clears the retired [`FctStackCounter`] (which the reader no longer draws from —
+/// retirement is GTW-795).
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ConsequenceFctSystems {
-    /// Clears the shared [`FctStackCounter`] — the frame boundary.
+    /// Clears the retired [`FctStackCounter`] — kept until GTW-795 retires the counter.
     Reset,
     /// Every generic per-family reader ([`read_consequence_fct::<C>`]).
     Read,
@@ -56,12 +61,18 @@ pub enum ConsequenceFctSystems {
 /// [`PopAnchor::Carried`] cell directly, a [`PopAnchor::GangerPosition`] through the
 /// read-only `Query<&Position>` via the canonical
 /// [`CellLevel::split`](gdtf_battle_sim::metric::CellLevel::split) (GTW-565), FAIL-CLOSED: no
-/// `Position` → no pop, no panic — claims the next slot from the SHARED per-frame
-/// [`FctStackCounter`] (C3), and spawns via [`spawn_floating_text`] with the family's
-/// classified emphasis and the hot-reloadable [`FxTuning`] lifetime + rise (GTW-327).
+/// `Position` → no pop, no panic — claims the next slot from the lifetime-aware
+/// [`FctSlotAllocator`] (GTW-793 — the slot ABOVE the pops still ALIVE on the cell, spanning
+/// FRAMES, not the retired per-frame counter), and spawns via [`spawn_floating_text`] with the
+/// family's classified emphasis and the hot-reloadable [`FxTuning`] lifetime + rise (GTW-327).
+///
+/// ORDERING (`bevy-traps.md` #3): the reader's [`ConsequenceFctSystems::Read`] set runs
+/// `.after(animate_floating_text)` (wired in [`register_consequence_fct_core`]) so a pop
+/// expiring this frame is despawned — and its command flushed — BEFORE the allocator counts,
+/// the ordering convention [`FctSlotAllocator`] requires (GTW-792).
 ///
 /// Param-only (`bevy-traps.md` #7): [`Commands`], the [`MessageReader`], the read-only
-/// anchor query, the shared counter, and [`Res<FxTuning>`]. Its registrar gate
+/// anchor query, the [`FctSlotAllocator`], and [`Res<FxTuning>`]. Its registrar gate
 /// ([`ConsequenceFctAppExt::add_consequence_fct`]) adds `BattleInProgress` + the family's
 /// `Messages<C::Signal>` buffer + `FxTuning`, so the params are always valid
 /// (`bevy-traps.md` #1 / #4).
@@ -69,7 +80,7 @@ pub fn read_consequence_fct<C: ConsequenceFct>(
     mut commands: Commands,
     mut signals: MessageReader<C::Signal>,
     positions: Query<&Position>,
-    mut stacks: ResMut<FctStackCounter>,
+    allocator: FctSlotAllocator,
     tuning: Res<FxTuning>,
 ) {
     for signal in signals.read() {
@@ -86,8 +97,9 @@ pub fn read_consequence_fct<C: ConsequenceFct>(
                 **position
             }
         };
-        // The SHARED per-frame counter (C3): cross-family pops on one cell fan out.
-        let slot = stacks.next(at);
+        // The lifetime-aware allocator (GTW-793): the next slot ABOVE every pop still ALIVE on
+        // the cell — so same-cell pops fan out across FRAMES, not just within one frame.
+        let slot = allocator.next_slot(at);
         let (cell, level) = at.split();
         spawn_floating_text(
             &mut commands,
@@ -103,19 +115,27 @@ pub fn read_consequence_fct<C: ConsequenceFct>(
     }
 }
 
-/// Wire the SHARED consequence-FCT core ONCE (GTW-572 C3): the [`FctStackCounter`] resource,
-/// the [`ConsequenceFctSystems`] set chain (`Reset` strictly `.before(Read)`, both inside
-/// the [`PresenterSystems::Overlay`] stage (GTW-623 — the FCT palette draws over the
-/// composed scene) — the EXPLICIT ordering of `bevy-traps.md` #3), and the
-/// [`reset_fct_stacks`] system. Called once by `TopDownRendererPlugin::build` before the
-/// per-family [`ConsequenceFctAppExt::add_consequence_fct`] lines.
+/// Wire the SHARED consequence-FCT core ONCE: the [`ConsequenceFctSystems`] set chain
+/// (`Reset` strictly `.before(Read)`, both inside the [`PresenterSystems::Overlay`] stage
+/// (GTW-623 — the FCT palette draws over the composed scene)) with the [`Read`](ConsequenceFctSystems::Read)
+/// set additionally ordered `.after(animate_floating_text)` (GTW-793 — the reader's
+/// [`FctSlotAllocator`] query must count pops AFTER the despawn system has flushed this frame's
+/// expiries, the ordering convention `bevy-traps.md` #3 / [`FctSlotAllocator`] requires).
+///
+/// It ALSO still init-registers the retired per-frame [`FctStackCounter`] + [`reset_fct_stacks`]
+/// system: the consequence path no longer reads them (GTW-793 migrated it onto the allocator),
+/// but full retirement of the counter is GTW-795's job, so the resource + reset stay wired for
+/// now. Called once by `TopDownRendererPlugin::build` before the per-family
+/// [`ConsequenceFctAppExt::add_consequence_fct`] lines.
 pub fn register_consequence_fct_core(app: &mut App) {
     app.init_resource::<FctStackCounter>()
         .configure_sets(
             Update,
             (
                 ConsequenceFctSystems::Reset.in_set(PresenterSystems::Overlay),
-                ConsequenceFctSystems::Read.in_set(PresenterSystems::Overlay),
+                ConsequenceFctSystems::Read
+                    .in_set(PresenterSystems::Overlay)
+                    .after(animate_floating_text),
             )
                 .chain(),
         )
