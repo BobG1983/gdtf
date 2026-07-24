@@ -183,6 +183,9 @@ pub use crate::states::{
         menu::test_support::{
             BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton,
         },
+        options::test_support::{
+            ContinueButton, OptionsScreenRoot, OptionsTitle, SoundToggle, SoundValueLabel,
+        },
     },
     seed_load_fallbacks,
 };

@@ -57,6 +57,20 @@ fn drive_to_battlescape(app: &mut App) -> bool {
     app.world_mut()
         .resource_mut::<NextState<RunningState>>()
         .set(RunningState::Options);
+    // The Options screen is a real interactive stop that no longer auto-advances
+    // (GTW-637): advance into it, then stand in for its Continue button by queuing
+    // Options -> Game.
+    let reached_options = advance_until(
+        app,
+        |app| running_state(app) == Some(RunningState::Options),
+        BUDGET,
+    );
+    if !reached_options {
+        return false;
+    }
+    app.world_mut()
+        .resource_mut::<NextState<RunningState>>()
+        .set(RunningState::Game);
     advance_until(
         app,
         |app| game_state(app) == Some(GameState::BattleScape),

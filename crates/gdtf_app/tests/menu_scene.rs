@@ -336,6 +336,8 @@ fn leaving_menu_despawns_entities_and_clears_nav_map() {
     let mut app = menu_app();
 
     let battlescape = single_with::<BattlescapeButton>(&mut app).unwrap_or(Entity::PLACEHOLDER);
+    let options = single_with::<OptionsButton>(&mut app).unwrap_or(Entity::PLACEHOLDER);
+    let quit = single_with::<QuitButton>(&mut app).unwrap_or(Entity::PLACEHOLDER);
 
     // Drive Menu -> Options so OnExit(Menu) fires.
     app.world_mut()
@@ -360,14 +362,20 @@ fn leaving_menu_despawns_entities_and_clears_nav_map() {
         assert!(present.is_none(), "{label} must be despawned on menu exit");
     }
 
-    // The nav map no longer references the old menu entities.
+    // The nav map no longer references any of the old menu entities. (The map is a
+    // GLOBAL resource; since GTW-637 the Options screen — the state this test
+    // transitions INTO — is a second user that lays its own edges on entry, so the map
+    // is not globally empty. `clear_nav_map` on menu exit still wipes the MENU's edges,
+    // which is what this test pins: none of the menu's own buttons remain as keys.)
     let map = app.world().resource::<DirectionalNavigationMap>();
-    assert!(
-        map.get_neighbors(battlescape).is_none(),
-        "the old menu entities must be cleared from the nav map",
-    );
-    assert!(
-        map.neighbors.is_empty(),
-        "the nav map must be empty after the menu (its sole user) leaves",
-    );
+    for (label, button) in [
+        ("battlescape", battlescape),
+        ("options", options),
+        ("quit", quit),
+    ] {
+        assert!(
+            map.get_neighbors(button).is_none(),
+            "the old menu {label} button must be cleared from the nav map",
+        );
+    }
 }

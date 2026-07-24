@@ -148,6 +148,20 @@ impl BattleAppBuilder {
             .resource_mut::<NextState<RunningState>>()
             .set(RunningState::Options);
 
+        // The Options screen is a real interactive stop that no longer auto-advances
+        // (GTW-637): advance into it, then stand in for its Continue button by
+        // queuing Options -> Game.
+        if !advance_until(
+            &mut app,
+            |app| running_state(app) == Some(RunningState::Options),
+            DRIVE_BUDGET,
+        ) {
+            return None;
+        }
+        app.world_mut()
+            .resource_mut::<NextState<RunningState>>()
+            .set(RunningState::Game);
+
         // Descend to a live battle: the app's OnEnter(Generation) sends
         // SetupBattleRequested and the sim's setup_battle spawns the gangers via
         // Commands, so resting at BattleRunning means the battle is constructed.

@@ -89,20 +89,33 @@ fn presenter_app() -> bevy::app::App {
     app
 }
 
-/// Stands in for the player at the menu (it no longer auto-advances, GTW-121):
-/// advances until [`RunningState::Menu`] rests, then queues `Menu -> Options`.
+/// Stands in for the player driving `Menu -> Options -> Game` (neither the menu, since
+/// GTW-121, nor the Options screen, since GTW-637, auto-advances): advances until
+/// [`RunningState::Menu`] rests and queues `Menu -> Options`, then advances into the
+/// Options screen and stands in for its Continue button by queuing `Options -> Game`.
 fn drive_past_menu(app: &mut bevy::app::App) -> bool {
     let reached = advance_until(
         app,
         |app| running_state(app) == Some(RunningState::Menu),
         BUDGET,
     );
-    if reached {
+    if !reached {
+        return false;
+    }
+    app.world_mut()
+        .resource_mut::<bevy::state::state::NextState<RunningState>>()
+        .set(RunningState::Options);
+    let reached_options = advance_until(
+        app,
+        |app| running_state(app) == Some(RunningState::Options),
+        BUDGET,
+    );
+    if reached_options {
         app.world_mut()
             .resource_mut::<bevy::state::state::NextState<RunningState>>()
-            .set(RunningState::Options);
+            .set(RunningState::Game);
     }
-    reached
+    reached_options
 }
 
 /// Drives the app from [`AppState::Running`] down to the first update on which
