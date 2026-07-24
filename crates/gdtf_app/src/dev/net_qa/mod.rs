@@ -41,8 +41,12 @@
 //! - [`stepper`] — the DEV procgen stepper-drive dispatch that answers `StepperControl` by
 //!   writing the wire command into the SAME latch the egui panel's Next/Auto/Skip buttons
 //!   write, serviceable only while a live `StagedProcgen` drive is in flight (GTW-766).
+//! - [`activate_menu`] — the menu-item activation consumer that answers `ActivateMenuItem`
+//!   by raising the SAME focus-activation message an `Enter` keypress raises for the token'd
+//!   menu item, fail-closed on a stale token (GTW-787).
 //! - [`plugin`] — the [`NetQaPlugin`] registration (`from_env` / `with_channels`).
 
+mod activate_menu;
 mod channel;
 mod config;
 mod convert;

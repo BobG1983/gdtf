@@ -17,6 +17,7 @@
 //! - [`ganger`] — the per-ganger card projection (living gangers, weapon, injuries).
 //! - [`panel`] — the focus-navigable HUD button token handout (GTW-789, the OBSERVE side
 //!   of GTW-782's focus nav).
+//! - [`menu`] — the generic menu-enumeration handout the app-flow answer folds in (GTW-787).
 //! - [`build`] — the [`build_snapshots`](build::build_snapshots) service + the top-level
 //!   [`BattleView`](gdtf_qa_protocol::view::BattleView) / terrain / fog / selection / turn
 //!   assembly.
@@ -24,7 +25,9 @@
 mod build;
 mod ganger;
 mod map;
+mod menu;
 mod panel;
 mod read;
 
 pub(in crate::dev::net_qa) use build::build_snapshots;
+pub(in crate::dev::net_qa) use menu::{MenuReadWorld, menu_view};

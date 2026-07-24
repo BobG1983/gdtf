@@ -3,6 +3,8 @@
 use bevy_derive::Deref;
 use serde::{Deserialize, Serialize};
 
+use crate::view::MenuView;
+
 /// The app's top-level lifecycle **state** — the wire mirror of the game `AppState`.
 ///
 /// Tells a QA client where the app is in its lifecycle so it can wait for
@@ -100,6 +102,9 @@ pub enum RequestKindNet {
     /// A [`StepperControl`](crate::envelope::QaRequest::StepperControl) of the DEV procgen
     /// stepper.
     StepperControl,
+    /// An [`ActivateMenuItem`](crate::envelope::QaRequest::ActivateMenuItem) menu click
+    /// (GTW-787).
+    ActivateMenuItem,
 }
 
 impl RequestKindNet {
@@ -109,7 +114,7 @@ impl RequestKindNet {
     /// the list the round-trip suite walks to prove each kind round-trips. The per-variant
     /// round-trip witness keeps this array complete — a new kind that is not listed here
     /// fails that test.
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::Hello,
         Self::GetAppFlow,
         Self::GetBattleState,
@@ -119,17 +124,20 @@ impl RequestKindNet {
         Self::GetOutput,
         Self::StartBattle,
         Self::StepperControl,
+        Self::ActivateMenuItem,
     ];
 }
 
-/// The app-flow **snapshot** — the lifecycle state, whether a battle is running, and the
-/// requests the server will service right now.
+/// The app-flow **snapshot** — the lifecycle state, whether a battle is running, the
+/// requests the server will service right now, and the current menu (if any).
 ///
 /// The reply to a [`GetAppFlow`](crate::envelope::QaRequest::GetAppFlow). A QA client reads
 /// [`available`](Self::available) to learn which requests are valid in the current state
 /// (the battle-only reads are absent until a battle is running; the act-bearing kinds are
 /// absent while the presenter is still replaying an exchange — GTW-727 C42); it is meant to
-/// be polled first, before acting on what it lists. Serde default shape.
+/// be polled first, before acting on what it lists. It also reads [`menu`](Self::menu) to
+/// learn "what menu am I on, what can I click" — the generic menu enumeration folded into
+/// this same first poll rather than a separate request (GTW-787). Serde default shape.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct AppFlowView {
     /// The app's lifecycle state.
@@ -145,23 +153,34 @@ pub struct AppFlowView {
     /// kinds are absent from [`available`](Self::available) — so a polling client is told
     /// directly rather than having to infer it from a rejection.
     pub caught_up:     CaughtUpNet,
+    /// The current menu, if the app is on an enumerable one (GTW-787).
+    ///
+    /// `Some` with the menu's identity + its `{token, label, enabled}` items when the app
+    /// is resting on a menu that implements the game-side menu model (the main menu, an
+    /// options screen); `None` mid-battle or on a scene with no menu. A client reads the
+    /// item tokens and echoes one back to
+    /// [`ActivateMenuItem`](crate::envelope::QaRequest::ActivateMenuItem) to click it.
+    pub menu:          Option<MenuView>,
 }
 
 impl AppFlowView {
     /// Build an app-flow snapshot from the lifecycle state, the battle-active flag, the
-    /// request kinds serviceable right now, and whether the screen is caught up.
+    /// request kinds serviceable right now, whether the screen is caught up, and the
+    /// current menu (if any).
     #[must_use]
     pub const fn new(
         state: AppStateNet,
         battle_active: BattleActiveNet,
         available: Vec<RequestKindNet>,
         caught_up: CaughtUpNet,
+        menu: Option<MenuView>,
     ) -> Self {
         Self {
             state,
             battle_active,
             available,
             caught_up,
+            menu,
         }
     }
 }

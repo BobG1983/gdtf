@@ -33,6 +33,7 @@ use gdtf_battle_input::{ContextualActSystems, InputSystems, dispatch_act_intents
 use gdtf_battle_sim::{occupancy_sync::SimSystems, prelude::BattleInProgress};
 
 use super::{
+    activate_menu::drive_activate_menu_item,
     channel::{IncomingRequest, NetInbox},
     config::{DEFAULT_IO_TIMEOUT, NetIoTimeout, NetQaPort},
     env::{net_qa_enabled, port_from_env},
@@ -40,8 +41,9 @@ use super::{
     inject::apply_injects,
     listener::{bind_listener, run_listener},
     pending::{
-        InjectPayload, OutputPayload, PendingQueue, ScreenshotAfterPayload, ScreenshotPayload,
-        SnapshotPayload, StartBattlePayload, StepperControlPayload, sweep_pending,
+        ActivateMenuPayload, InjectPayload, OutputPayload, PendingQueue, ScreenshotAfterPayload,
+        ScreenshotPayload, SnapshotPayload, StartBattlePayload, StepperControlPayload,
+        sweep_pending,
     },
     present::CapturePresentPlugin,
     router::route_requests,
@@ -206,6 +208,8 @@ fn register_router(app: &mut App) {
         .init_resource::<PendingQueue<StartBattlePayload>>()
         // GTW-766 — the DEV stepper-drive command queue.
         .init_resource::<PendingQueue<StepperControlPayload>>()
+        // GTW-787 — the menu-item activation queue.
+        .init_resource::<PendingQueue<ActivateMenuPayload>>()
         // GTW-740 — the T7 screenshot pump's own state: the captures in-flight across
         // frames, the poll budget, the confinement directory, and the monotonic sequence
         // that makes every capture's output path unique.
@@ -235,6 +239,7 @@ fn register_router(app: &mut App) {
             sweep_pending::<OutputPayload>,
             sweep_pending::<StartBattlePayload>,
             sweep_pending::<StepperControlPayload>,
+            sweep_pending::<ActivateMenuPayload>,
             route_requests,
         )
             .chain()
@@ -354,6 +359,19 @@ fn register_router(app: &mut App) {
     app.add_systems(
         Update,
         drive_stepper_control
+            .in_set(InputSystems::Gather)
+            .after(route_requests),
+    );
+    // GTW-787 — the menu-item activation consumer. In the `InputSystems::Gather` band
+    // ordered `.after(route_requests)` so it drains the `ActivateMenuItem` the router just
+    // routed the SAME frame. It raises the SAME `FocusActivated` message a keyboard `Enter`
+    // raises for the token'd menu item — the real activation path — so a scene's own
+    // activation consumer reacts identically. Runs UNCONDITIONALLY (menus exist off-battle):
+    // it must be able to answer a stale token with a typed rejection rather than leave it to
+    // the deadline sweep.
+    app.add_systems(
+        Update,
+        drive_activate_menu_item
             .in_set(InputSystems::Gather)
             .after(route_requests),
     );

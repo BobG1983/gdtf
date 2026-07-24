@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     error::QaError,
     hello::HelloFacts,
+    menu::MenuActivationReceipt,
     receipt::InjectReceipt,
     screenshot::{ScreenshotAfterResult, ScreenshotResult},
     stepper::StepperReceipt,
@@ -24,7 +25,8 @@ use crate::{
 /// (the capture result), [`ScreenshotAfter`](Self::ScreenshotAfter) (the deferred
 /// frame-exact capture's folded intent + capture outcome), [`Output`](Self::Output)
 /// (the drained event batch), [`StepperControlled`](Self::StepperControlled) (the DEV
-/// stepper-control receipt), and [`Error`](Self::Error) (a protocol-level
+/// stepper-control receipt), [`MenuItemActivated`](Self::MenuItemActivated) (the menu-item
+/// activation receipt), and [`Error`](Self::Error) (a protocol-level
 /// [`QaError`]). An independent serde enum.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum QaResponse {
@@ -45,6 +47,8 @@ pub enum QaResponse {
     Output(EventBatch),
     /// The DEV stepper-control command's receipt (GTW-766).
     StepperControlled(StepperReceipt),
+    /// The menu-item activation receipt (GTW-787).
+    MenuItemActivated(MenuActivationReceipt),
     /// A protocol-level error.
     Error(QaError),
 }

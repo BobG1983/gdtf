@@ -2,7 +2,7 @@
 
 use gdtf_qa_protocol::{
     envelope::{QaRequest, StepperCommandNet},
-    ids::{EventCap, FrameDelay, SeedNet, ShotName, SituationRef},
+    ids::{EventCap, FocusTargetNet, FrameDelay, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
 };
 use serde_json::Value;
@@ -35,6 +35,7 @@ pub fn build_request(tool: ToolName, args: &Value) -> Result<QaRequest, String> 
             seed:      parse_seed(args)?,
         }),
         ToolName::StepperControl => Ok(QaRequest::StepperControl(parse_stepper_command(args)?)),
+        ToolName::ActivateMenuItem => Ok(QaRequest::ActivateMenuItem(parse_token(args)?)),
         // The lifecycle tools are handled before this point (in `handle_tool_call`), so
         // they never map onto a wire request; reaching here would be a routing bug.
         ToolName::LaunchGame | ToolName::StopGame => {
@@ -119,6 +120,18 @@ fn parse_stepper_command(args: &Value) -> Result<StepperCommandNet, String> {
         other => serde_json::from_value::<StepperCommandNet>(other.clone())
             .map_err(|err| format!("could not parse JSON stepper command: {err}")),
     }
+}
+
+/// Parse the required `activate_menu_item` `token` argument — the numeric focus token a
+/// menu enumeration handed out.
+fn parse_token(args: &Value) -> Result<FocusTargetNet, String> {
+    let Some(value) = args.get("token") else {
+        return Err("`activate_menu_item` needs a `token` argument".to_owned());
+    };
+    let Some(bits) = value.as_u64() else {
+        return Err("`token` must be a non-negative integer".to_owned());
+    };
+    Ok(FocusTargetNet::new(bits))
 }
 
 /// Parse the required `screenshot_after` `frame_delay` argument.
@@ -299,5 +312,27 @@ mod tests {
     #[test]
     fn build_request_stepper_control_requires_a_command() {
         assert!(build_request(ToolName::StepperControl, &json!({})).is_err());
+    }
+
+    /// `activate_menu_item` builds a `QaRequest::ActivateMenuItem` from its numeric `token`
+    /// — the client half of the menu-click path (GTW-787).
+    #[test]
+    fn build_request_parses_activate_menu_item_token() {
+        let args = json!({ "token": 4_294_967_297_u64 });
+        let request = build_request(ToolName::ActivateMenuItem, &args);
+        assert_eq!(
+            request,
+            Ok(QaRequest::ActivateMenuItem(
+                gdtf_qa_protocol::ids::FocusTargetNet::new(4_294_967_297)
+            ))
+        );
+    }
+
+    /// `activate_menu_item` rejects a missing or non-integer `token` rather than inventing
+    /// one.
+    #[test]
+    fn build_request_activate_menu_item_requires_a_token() {
+        assert!(build_request(ToolName::ActivateMenuItem, &json!({})).is_err());
+        assert!(build_request(ToolName::ActivateMenuItem, &json!({ "token": "x" })).is_err());
     }
 }

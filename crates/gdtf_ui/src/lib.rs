@@ -46,10 +46,16 @@
 //! GTW-410 `Dropdown<T>` combobox and the GTW-411 `TextField`/`NumericField` editable fields
 //! were RETIRED by GTW-655 — the GTW-434 procgen visualizer was their only consumer.)
 //!
+//! The [`menu_nav`] module owns the generic menu-enumeration model — the
+//! [`MenuScreen`](menu_nav::MenuScreen) / [`MenuItem`](menu_nav::MenuItem) markers a scene
+//! tags its menu with so a QA harness can enumerate and activate it over the wire, with no
+//! per-scene wire changes (GTW-787).
+//!
 //! The [`UiPlugin`] registration point itself lives in the private `plugin`
 //! submodule and is re-exported here unchanged.
 
 pub mod focus_nav;
+pub mod menu_nav;
 pub mod theming;
 pub mod widgets;
 
@@ -58,6 +64,7 @@ mod plugin;
 // Module re-exports — preserve `gdtf_ui::theme::*` and `gdtf_ui::themed::*`
 // sub-paths for the 27+ external callers that reach `GdtfTheme`, `default_theme`,
 // `UiSystems`, etc. via the old root-level module path (GTW-385).
+pub use menu_nav::{MenuItem, MenuName, MenuScreen};
 pub use plugin::UiPlugin;
 pub use theming::{
     retheme::{resolve_theme_spec, theme_hot_ron_chain},

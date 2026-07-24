@@ -42,9 +42,10 @@ use super::{
     channel::{NetInbox, Responder},
     config::{NET_QA_PROTOCOL_VERSION, SERVER_NAME},
     pending::{
-        InjectPayload, OutputPayload, PendingQueues, ScreenshotAfterPayload, ScreenshotPayload,
-        SnapshotPayload, StartBattlePayload, StepperControlPayload,
+        ActivateMenuPayload, InjectPayload, OutputPayload, PendingQueues, ScreenshotAfterPayload,
+        ScreenshotPayload, SnapshotPayload, StartBattlePayload, StepperControlPayload,
     },
+    snapshot::{MenuReadWorld, menu_view},
 };
 use crate::states::AppState;
 
@@ -89,10 +90,15 @@ crate::support_item! {
             // The DEV stepper-control request (GTW-766) needs the procgen stepper to be
             // actively driving RIGHT NOW — a live `StagedProcgen` — not just a battle.
             RequestKindNet::StepperControl => stepper_active,
+            // A menu-item activation (GTW-787) is always serviceable at the router level,
+            // exactly like `StartBattle`: whether the token names a live, listed menu item
+            // is the consumer's check (a stale one is answered `Rejected(StaleToken)`), not
+            // a route-time state gate.
             RequestKindNet::Hello
             | RequestKindNet::GetAppFlow
             | RequestKindNet::TakeScreenshot
-            | RequestKindNet::StartBattle => true,
+            | RequestKindNet::StartBattle
+            | RequestKindNet::ActivateMenuItem => true,
         }
     }
 }
@@ -119,6 +125,7 @@ pub(super) fn route_requests(
     battle: Option<Res<BattleInProgress>>,
     staged: Option<Res<StagedProcgen>>,
     playback: PlaybackGate,
+    menu: MenuReadWorld,
     mut queues: PendingQueues,
 ) {
     let in_battle = battle.is_some();
@@ -149,6 +156,7 @@ pub(super) fn route_requests(
                     BattleActiveNet::new(in_battle),
                     available_requests(in_battle, caught_up, stepper_active),
                     CaughtUpNet::new(caught_up),
+                    menu_view(&menu),
                 );
                 responder.reply(QaResponse::AppFlow(view));
             }
@@ -185,6 +193,11 @@ pub(super) fn route_requests(
                 queues
                     .stepper_control
                     .push_new(StepperControlPayload::new(command), responder);
+            }
+            QaRequest::ActivateMenuItem(token) => {
+                queues
+                    .activate_menu
+                    .push_new(ActivateMenuPayload::new(token), responder);
             }
         }
     }

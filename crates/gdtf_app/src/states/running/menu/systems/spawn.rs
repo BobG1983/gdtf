@@ -34,7 +34,7 @@ use bevy::{
     ui::Val,
 };
 use gdtf_ui::{
-    ButtonLabel, DisabledButton,
+    ButtonLabel, DisabledButton, MenuItem, MenuName, MenuScreen,
     focus_nav::set_initial_focus,
     spawn_button, spawn_panel,
     theme::GdtfTheme,
@@ -47,6 +47,10 @@ use crate::states::{
         BattlescapeButton, HiveScapeButton, MenuTitle, OptionsButton, QuitButton,
     },
 };
+
+/// The main menu's stable identity name — the value the [`MenuScreen`] on the root
+/// carries, which the dev-only `net_qa` QA channel reports as the menu identity (GTW-787).
+const MAIN_MENU_ID: &str = "MainMenu";
 
 /// Vertical gap between the menu column's children, as a viewport-height
 /// percentage (`Vh`).
@@ -129,6 +133,14 @@ pub(in crate::states::running::menu) fn spawn_menu(
             template_value(DespawnOnExit(RunningState::Menu)),
         ))
         .id();
+    // `MenuScreen` names this menu so the dev-only `net_qa` QA channel can enumerate it
+    // generically ("what menu am I on"); it rides the root (state-scoped by the same
+    // `DespawnOnExit`), so leaving the menu tears it down and the wire menu view becomes
+    // `None` (GTW-787). Inserted directly (it holds an identity string and has no `Default`,
+    // so it is not a `template_value` candidate).
+    commands
+        .entity(root)
+        .insert(MenuScreen::new(MenuName::new(MAIN_MENU_ID.to_owned())));
 
     // TITLE — a theme-derived heading (ThemeRole::Title), a DIRECT child of the
     // root so it floats on the backdrop above the panel.
@@ -167,17 +179,25 @@ pub(in crate::states::running::menu) fn spawn_menu(
     // The four buttons, each themed + state-scoped via the per-button marker
     // bundle passed to `spawn_button`. Width 100% so the panel's Stretch makes
     // them equal width (= the panel content width).
+    // Each button also carries the generic `MenuItem` marker so the `net_qa` QA channel
+    // enumerates it as an activatable menu item and can activate it by the token it hands
+    // out (GTW-787). The disabled `HiveScape` carries it too — it is LISTED (marked
+    // `enabled == false` on the wire), not hidden.
     let battlescape = spawn_button(
         &mut commands,
         &theme,
         ButtonLabel::new("Battlescape"),
-        (BattlescapeButton, DespawnOnExit(RunningState::Menu)),
+        (
+            BattlescapeButton,
+            MenuItem,
+            DespawnOnExit(RunningState::Menu),
+        ),
     );
     let options = spawn_button(
         &mut commands,
         &theme,
         ButtonLabel::new("Options"),
-        (OptionsButton, DespawnOnExit(RunningState::Menu)),
+        (OptionsButton, MenuItem, DespawnOnExit(RunningState::Menu)),
     );
     // HiveScape: disabled placeholder for the campaign layer, directly above Quit.
     let hivescape = spawn_button(
@@ -186,6 +206,7 @@ pub(in crate::states::running::menu) fn spawn_menu(
         ButtonLabel::new("HiveScape"),
         (
             HiveScapeButton,
+            MenuItem,
             DisabledButton,
             DespawnOnExit(RunningState::Menu),
         ),
@@ -194,7 +215,7 @@ pub(in crate::states::running::menu) fn spawn_menu(
         &mut commands,
         &theme,
         ButtonLabel::new("Quit"),
-        (QuitButton, DespawnOnExit(RunningState::Menu)),
+        (QuitButton, MenuItem, DespawnOnExit(RunningState::Menu)),
     );
 
     // Each button stretches to the panel content width (equal-width buttons).

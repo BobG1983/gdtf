@@ -47,6 +47,7 @@ const fn app_flow_reply() -> QaResponse {
         BattleActiveNet::new(true),
         Vec::new(),
         CaughtUpNet::new(true),
+        None,
     ))
 }
 

@@ -74,6 +74,7 @@ fn serve_one(listener: &TcpListener) {
                 BattleActiveNet::new(true),
                 Vec::new(),
                 CaughtUpNet::new(true),
+                None,
             )),
             Ok(_) => QaResponse::Error(QaError::BadRequest),
             Err(_) => return,

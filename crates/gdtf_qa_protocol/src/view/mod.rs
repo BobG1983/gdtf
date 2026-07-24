@@ -5,8 +5,9 @@
 //! One concern per file: the ganger stat scalars ([`stat`]), the life-state mirror
 //! ([`life`]), the injury summary ([`injury`]), the weapon + indexed fire-mode list
 //! ([`weapon`]), the [`ganger`] card, the [`terrain`] summary (with the door /
-//! emplacement token handout), the [`panel`] button token handout, the [`fog`] view, the
-//! [`appflow`] view, the [`selection`] view, and the top-level [`battle`] aggregate.
+//! emplacement token handout), the [`panel`] button token handout, the [`menu`]
+//! enumeration handout, the [`fog`] view, the [`appflow`] view, the [`selection`] view,
+//! and the top-level [`battle`] aggregate.
 
 pub mod appflow;
 pub mod battle;
@@ -14,6 +15,7 @@ pub mod fog;
 pub mod ganger;
 pub mod injury;
 pub mod life;
+pub mod menu;
 pub mod panel;
 pub mod selection;
 pub mod stat;
@@ -26,6 +28,7 @@ pub use fog::{ExploredCellCountNet, FogView, VisibleCellCountNet};
 pub use ganger::GangerView;
 pub use injury::{BodyPartNet, InjuryEntryNet, InjuryNameNet, InjurySummaryNet, SeverityNet};
 pub use life::LifeStateNet;
+pub use menu::{MenuIdNet, MenuItemEnabledNet, MenuItemLabelNet, MenuItemView, MenuView};
 pub use panel::{PanelButtonLabelNet, PanelButtonView, PanelNavOrderNet};
 pub use selection::SelectionView;
 pub use stat::{

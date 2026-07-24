@@ -110,12 +110,16 @@ pub(super) fn drive_start_battle(
         start.write(StartBattleRequested::new(seed));
         // Acknowledge with the current app-flow snapshot (still at the menu — the descent
         // is deferred), reporting the affordances the same predicate the router uses
-        // advertises for this state.
+        // advertises for this state. The menu view is omitted (`None`): this
+        // acknowledgement marks the accepted transition AWAY from the menu, and a client
+        // that wants the live menu enumeration reads it from a `GetAppFlow` poll (the
+        // router's answer, which builds the menu from the world).
         responder.reply(QaResponse::AppFlow(AppFlowView::new(
             app_state_to_net(app_state.get()),
             BattleActiveNet::new(in_battle),
             available_requests(in_battle, CAUGHT_UP_AT_MENU, STEPPER_INACTIVE_AT_MENU),
             CaughtUpNet::new(CAUGHT_UP_AT_MENU),
+            None,
         )));
     }
 }

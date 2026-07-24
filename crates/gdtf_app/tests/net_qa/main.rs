@@ -49,6 +49,11 @@
 //!   embedded intent drains through the SAME input queue a bare `Inject` uses the same
 //!   frame it is claimed, a rejected intent takes no capture ever, and an accepted
 //!   intent's capture fires exactly `frame_delay` frames after the claim frame.
+//! - [`menu`] drives the REAL router + `drive_activate_menu_item` consumer (GTW-787) on a
+//!   menu-resting `GdtfTestAppBuilder` app: `GetAppFlow` folds in the spawned main menu's
+//!   curated item set, activating the `Battlescape` token leaves the menu via the real
+//!   focus-activation path, and a stale token is rejected `StaleToken`; it reuses
+//!   [`start_battle`]'s menu fixture and [`inject_support`]'s request helper.
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
 mod affordance;
@@ -56,6 +61,7 @@ mod caught_up;
 mod deadline;
 mod inject;
 mod inject_support;
+mod menu;
 mod output;
 mod raw_input;
 mod routing;

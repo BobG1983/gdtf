@@ -25,6 +25,7 @@ impl GameLink for CannedGame {
                 BattleActiveNet::new(true),
                 Vec::new(),
                 CaughtUpNet::new(true),
+                None,
             ))),
             QaRequest::Inject(_) => Ok(QaResponse::Injected(InjectReceipt::Queued)),
             _ => Ok(QaResponse::Error(QaError::BadRequest)),
@@ -109,7 +110,7 @@ fn tools_list_returns_every_tool() {
         unreachable!("tools/list carries a tools array");
     };
     let names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
-    assert_eq!(names.len(), 10);
+    assert_eq!(names.len(), 11);
     for expected in [
         "send_input",
         "query_state",
@@ -119,6 +120,7 @@ fn tools_list_returns_every_tool() {
         "app_flow",
         "start_battle",
         "stepper_control",
+        "activate_menu_item",
         "launch_game",
         "stop_game",
     ] {

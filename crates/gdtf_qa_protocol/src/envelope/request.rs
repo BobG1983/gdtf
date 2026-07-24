@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{hello::ProtocolVersion, stepper::StepperCommandNet};
 use crate::{
-    ids::{EventCap, FrameDelay, SeedNet, ShotName, SituationRef},
+    ids::{EventCap, FocusTargetNet, FrameDelay, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
     view::RequestKindNet,
 };
@@ -65,6 +65,16 @@ pub enum QaRequest {
     /// [`StepperInactive`](crate::envelope::QaError::StepperInactive), never a silent no-op
     /// or a panic.
     StepperControl(StepperCommandNet),
+    /// Activate one enumerated menu item by the [`FocusTargetNet`] token a
+    /// [`MenuView`](crate::view::MenuView) handed out — the generic "click a menu button
+    /// by reference" act (GTW-787).
+    ///
+    /// It activates the item through the game's real focus-activation path (the same
+    /// message an `Enter` keypress raises while the item holds focus), never a bespoke
+    /// state write. A token that does not resolve to a live, listed menu item is answered
+    /// [`Rejected`](crate::envelope::MenuActivationReceipt::Rejected)`(`[`StaleToken`](crate::envelope::RejectReason::StaleToken)`)`
+    /// — never a panic, never a silent no-op.
+    ActivateMenuItem(FocusTargetNet),
 }
 
 impl QaRequest {
@@ -88,6 +98,7 @@ impl QaRequest {
             Self::GetOutput { .. } => RequestKindNet::GetOutput,
             Self::StartBattle { .. } => RequestKindNet::StartBattle,
             Self::StepperControl(_) => RequestKindNet::StepperControl,
+            Self::ActivateMenuItem(_) => RequestKindNet::ActivateMenuItem,
         }
     }
 }

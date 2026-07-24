@@ -84,6 +84,12 @@ fn probe_request(kind: RequestKindNet) -> QaRequest {
             seed:      None,
         },
         RequestKindNet::StepperControl => QaRequest::StepperControl(StepperCommandNet::Next),
+        // A deliberately bogus token: `ActivateMenuItem` is always serviceable at the
+        // router level (like `StartBattle`), so this probes the router's ACCEPT — the
+        // consumer then answers the stale token `Rejected(StaleToken)`, not `NoBattle`.
+        RequestKindNet::ActivateMenuItem => {
+            QaRequest::ActivateMenuItem(gdtf_qa_protocol::ids::FocusTargetNet::new(0))
+        }
     }
 }
 

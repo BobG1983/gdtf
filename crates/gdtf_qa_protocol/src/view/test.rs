@@ -13,7 +13,8 @@ use crate::{
         DoorOpenNet, DoorView, EmplacementMannedNet, EmplacementView, ExploredCellCountNet,
         FactionNet, FireModeLabel, FireModeView, FogView, GangerNameNet, GangerView, GridHeightNet,
         GridLevelsNet, GridSizeNet, GridWidthNet, HpMaxNet, HpNet, InjuryEntryNet, InjuryNameNet,
-        InjurySummaryNet, LifeStateNet, PanelButtonLabelNet, PanelButtonView, PanelNavOrderNet,
+        InjurySummaryNet, LifeStateNet, MenuIdNet, MenuItemEnabledNet, MenuItemLabelNet,
+        MenuItemView, MenuView, PanelButtonLabelNet, PanelButtonView, PanelNavOrderNet,
         RequestKindNet, SelectionView, SeverityNet, TerrainSummaryView, TuMaxNet, TuNet, TurnView,
         VisibleCellCountNet, WeaponNameNet, WeaponView, WoundsMaxNet, WoundsNet,
     },
@@ -164,14 +165,45 @@ fn app_flow_and_empty_selection_round_trip() {
         BattleActiveNet::new(true),
         RequestKindNet::ALL.to_vec(),
         CaughtUpNet::new(true),
+        None,
     ));
     assert_ron_round_trip(&AppFlowView::new(
         AppStateNet::Intro,
         BattleActiveNet::new(false),
         Vec::new(),
         CaughtUpNet::new(false),
+        None,
     ));
     assert_ron_round_trip(&SelectionView::new(None));
+}
+
+/// The app-flow snapshot's folded menu view round-trips — the identity plus a mixed
+/// enabled/disabled item set (GTW-787).
+#[test]
+fn app_flow_menu_view_round_trips() {
+    let menu = MenuView::new(
+        MenuIdNet::new("MainMenu".to_owned()),
+        vec![
+            MenuItemView::new(
+                FocusTargetNet::new(11),
+                MenuItemLabelNet::new("Battlescape".to_owned()),
+                MenuItemEnabledNet::new(true),
+            ),
+            MenuItemView::new(
+                FocusTargetNet::new(12),
+                MenuItemLabelNet::new("HiveScape".to_owned()),
+                MenuItemEnabledNet::new(false),
+            ),
+        ],
+    );
+    assert_ron_round_trip(&menu);
+    assert_ron_round_trip(&AppFlowView::new(
+        AppStateNet::Running,
+        BattleActiveNet::new(false),
+        RequestKindNet::ALL.to_vec(),
+        CaughtUpNet::new(true),
+        Some(menu),
+    ));
 }
 
 /// Every [`RequestKindNet`] round-trips, and the witness forces new variants in — kept in
@@ -180,7 +212,7 @@ fn app_flow_and_empty_selection_round_trip() {
 fn request_kind_round_trips_every_variant() {
     assert_eq!(
         RequestKindNet::ALL.len(),
-        9,
+        10,
         "RequestKindNet::ALL lists every request kind"
     );
     for kind in RequestKindNet::ALL {
@@ -193,7 +225,8 @@ fn request_kind_round_trips_every_variant() {
             | RequestKindNet::ScreenshotAfter
             | RequestKindNet::GetOutput
             | RequestKindNet::StartBattle
-            | RequestKindNet::StepperControl => {}
+            | RequestKindNet::StepperControl
+            | RequestKindNet::ActivateMenuItem => {}
         }
         assert_ron_round_trip(&kind);
     }

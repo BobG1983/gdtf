@@ -35,6 +35,9 @@ pub enum ToolName {
     /// Drive the DEV procgen load-time stepper (Next / Auto / Skip) — maps to
     /// `QaRequest::StepperControl` (GTW-766).
     StepperControl,
+    /// Activate one enumerated menu item by its token — maps to
+    /// `QaRequest::ActivateMenuItem` (GTW-787).
+    ActivateMenuItem,
     /// Launch the game as a child process and wait for it to answer — host-local, no
     /// wire request.
     LaunchGame,
@@ -53,6 +56,7 @@ const ALL: &[ToolName] = &[
     ToolName::AppFlow,
     ToolName::StartBattle,
     ToolName::StepperControl,
+    ToolName::ActivateMenuItem,
     ToolName::LaunchGame,
     ToolName::StopGame,
 ];
@@ -70,6 +74,7 @@ impl ToolName {
             Self::AppFlow => "app_flow",
             Self::StartBattle => "start_battle",
             Self::StepperControl => "stepper_control",
+            Self::ActivateMenuItem => "activate_menu_item",
             Self::LaunchGame => "launch_game",
             Self::StopGame => "stop_game",
         }
@@ -131,7 +136,10 @@ impl ToolName {
                  running, and an `available` list of the request kinds the game will \
                  service right now) as JSON. Call this first and act only on what its \
                  `available` list advertises: the battle-only requests (query_state, \
-                 send_input, get_output) are absent until a battle is running. No arguments."
+                 send_input, get_output) are absent until a battle is running. This also \
+                 answers 'what menu am I on, what can I click': on a menu the `menu` field \
+                 carries its `id` and `items` ({token, label, enabled}) — pass an item's \
+                 `token` to activate_menu_item; `menu` is null off a menu. No arguments."
             }
             Self::StartBattle => {
                 "Start a battle from a situation, taking a freshly launched game from \
@@ -160,6 +168,13 @@ impl ToolName {
                  Generation, with the stepper engaged via GDTF_PROCGEN_STEPPER); otherwise \
                  it is rejected StepperInactive. Poll `app_flow` and act only when its \
                  `available` list includes StepperControl."
+            }
+            Self::ActivateMenuItem => {
+                "Activate (click) one enumerated menu item by reference. Read the current \
+                 menu from `app_flow`'s `menu.items`, then pass an item's `token` here to \
+                 activate it through the game's real focus-activation path (as if pressing \
+                 Enter on that button). A token that no longer names a live, listed menu \
+                 item is rejected StaleToken; a disabled item's activation is a no-op."
             }
             Self::LaunchGame => {
                 "Launch the game as a child process with the net_qa control channel \
@@ -252,6 +267,15 @@ impl ToolName {
                 },
                 "required": ["command"]
             }),
+            Self::ActivateMenuItem => json!({
+                "type": "object",
+                "properties": {
+                    "token": { "type": "integer", "minimum": 0,
+                               "description": "The menu item's numeric token, read from \
+                                `app_flow`'s `menu.items[].token`." }
+                },
+                "required": ["token"]
+            }),
         }
     }
 
@@ -276,7 +300,7 @@ pub fn tools_list_result() -> Value {
 mod tests {
     use super::{ToolName, tools_list_result};
 
-    /// `tools/list` advertises exactly the ten implemented tools — the eight forwarding
+    /// `tools/list` advertises exactly the eleven implemented tools — the nine forwarding
     /// tools plus the two lifecycle tools.
     ///
     /// `start_battle` is asserted PRESENT: the game has serviced `QaRequest::StartBattle`
@@ -285,14 +309,16 @@ mod tests {
     /// gap survived a green suite because the only coverage was game-side (GTW-760).
     /// `stepper_control` is asserted PRESENT for the SAME reason (GTW-766): the game
     /// services `QaRequest::StepperControl`, so a missing client tool would be an
-    /// unreachable half.
+    /// unreachable half. `activate_menu_item` is asserted PRESENT for the SAME reason
+    /// (GTW-787): the game services `QaRequest::ActivateMenuItem`, so a missing client tool
+    /// would leave menu clicks unreachable over the wire.
     #[test]
     fn lists_every_tool_including_start_battle() {
         let result = tools_list_result();
         let Some(tools) = result["tools"].as_array() else {
             unreachable!("tools/list result carries a `tools` array");
         };
-        assert_eq!(tools.len(), 10);
+        assert_eq!(tools.len(), 11);
         let names: Vec<&str> = tools
             .iter()
             .filter_map(|tool| tool["name"].as_str())
@@ -307,6 +333,7 @@ mod tests {
         assert!(names.contains(&"stop_game"));
         assert!(names.contains(&"start_battle"));
         assert!(names.contains(&"stepper_control"));
+        assert!(names.contains(&"activate_menu_item"));
     }
 
     /// Every wire name round-trips through `from_wire`, and an unknown name resolves to
@@ -322,6 +349,7 @@ mod tests {
             ToolName::AppFlow,
             ToolName::StartBattle,
             ToolName::StepperControl,
+            ToolName::ActivateMenuItem,
             ToolName::LaunchGame,
             ToolName::StopGame,
         ] {

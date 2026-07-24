@@ -3,8 +3,8 @@
 
 use crate::{
     envelope::{
-        HelloFacts, InjectReceipt, ProtocolVersion, QaError, QaResponse, ScreenshotAfterResult,
-        ScreenshotResult, ServerNameNet, StepperReceipt,
+        HelloFacts, InjectReceipt, MenuActivationReceipt, ProtocolVersion, QaError, QaResponse,
+        RejectReason, ScreenshotAfterResult, ScreenshotResult, ServerNameNet, StepperReceipt,
     },
     events::{DroppedCount, EventBatch},
     test_support::assert_ron_round_trip,
@@ -50,6 +50,7 @@ fn qa_response_cases() -> Vec<QaResponse> {
             BattleActiveNet::new(false),
             RequestKindNet::ALL.to_vec(),
             CaughtUpNet::new(true),
+            None,
         )),
         QaResponse::Battle(an_empty_battle()),
         QaResponse::Injected(InjectReceipt::Queued),
@@ -57,6 +58,7 @@ fn qa_response_cases() -> Vec<QaResponse> {
         QaResponse::ScreenshotAfter(ScreenshotAfterResult::TimedOut),
         QaResponse::Output(EventBatch::new(vec![], DroppedCount::new(0))),
         QaResponse::StepperControlled(StepperReceipt::Latched),
+        QaResponse::MenuItemActivated(MenuActivationReceipt::Activated),
         QaResponse::Error(QaError::Busy),
     ]
 }
@@ -73,6 +75,7 @@ fn qa_response_is_exhaustive(response: &QaResponse) {
         | QaResponse::ScreenshotAfter(_)
         | QaResponse::Output(_)
         | QaResponse::StepperControlled(_)
+        | QaResponse::MenuItemActivated(_)
         | QaResponse::Error(_) => {}
     }
 }
@@ -83,11 +86,23 @@ fn qa_response_round_trips_every_variant() {
     let cases = qa_response_cases();
     assert_eq!(
         cases.len(),
-        9,
+        10,
         "the case table lists every QaResponse variant"
     );
     for case in &cases {
         qa_response_is_exhaustive(case);
         assert_ron_round_trip(case);
     }
+}
+
+/// The menu-item activation receipt round-trips in both forms — the dispatched
+/// activation and the typed stale-token rejection (GTW-787).
+#[test]
+fn menu_item_activated_round_trips_both_forms() {
+    assert_ron_round_trip(&QaResponse::MenuItemActivated(
+        MenuActivationReceipt::Activated,
+    ));
+    assert_ron_round_trip(&QaResponse::MenuItemActivated(
+        MenuActivationReceipt::Rejected(RejectReason::StaleToken),
+    ));
 }

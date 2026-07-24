@@ -35,6 +35,9 @@ pub fn render_response(tool: ToolName, response: &QaResponse) -> Value {
             render_screenshot_after(result)
         }
         (ToolName::StepperControl, QaResponse::StepperControlled(receipt)) => text_content(receipt),
+        (ToolName::ActivateMenuItem, QaResponse::MenuItemActivated(receipt)) => {
+            text_content(receipt)
+        }
         _ => tool_error("the game returned a response that does not match the request"),
     }
 }
@@ -128,6 +131,7 @@ mod tests {
             BattleActiveNet::new(true),
             vec![RequestKindNet::GetBattleState],
             CaughtUpNet::new(true),
+            None,
         );
         let rendered = render_response(ToolName::StartBattle, &QaResponse::AppFlow(view));
         assert_eq!(rendered["isError"], json!(false));
@@ -146,6 +150,25 @@ mod tests {
         );
         assert_eq!(rendered["isError"], json!(false));
         assert_eq!(rendered["content"][0]["type"], json!("text"));
+    }
+
+    /// A menu-item activation receipt renders as non-error text content. Without its arm it
+    /// would fall into the catch-all and a SUCCESSFUL click would report "the game returned a
+    /// response that does not match the request" (the GTW-760 half-split class, GTW-787).
+    #[test]
+    fn render_response_menu_item_activated_is_text_content() {
+        let rendered = render_response(
+            ToolName::ActivateMenuItem,
+            &QaResponse::MenuItemActivated(
+                gdtf_qa_protocol::envelope::MenuActivationReceipt::Activated,
+            ),
+        );
+        assert_eq!(rendered["isError"], json!(false));
+        assert_eq!(rendered["content"][0]["type"], json!("text"));
+        let Some(text) = rendered["content"][0]["text"].as_str() else {
+            unreachable!("a menu-item activation reply carries text content");
+        };
+        assert!(text.contains("Activated"), "rendered: {text}");
     }
 
     /// A stepper-control receipt renders as non-error text content. Without its arm it would

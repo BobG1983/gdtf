@@ -55,9 +55,18 @@ impl ProtocolVersion {
     /// client decodes changed (the same class of field addition as the 1 → 2 `available`
     /// and 3 → 4 `caught_up` bumps), so a client negotiating version `6` now gets a
     /// `VersionMismatch` rather than a `BattleView` reply it decodes against the old
-    /// button-less shape and fails on. The game server negotiates a `Hello` against this
-    /// value.
-    pub const CURRENT: Self = Self::new(7);
+    /// button-less shape and fails on. Bumped to `8` (GTW-787) for TWO breaking changes at
+    /// once: [`AppFlowView`](crate::view::AppFlowView) gained a `menu` field — the generic
+    /// menu enumeration handout ([`MenuView`](crate::view::MenuView)), the same class of
+    /// field addition as the `available` / `caught_up` / `buttons` bumps — and
+    /// [`QaRequest::ActivateMenuItem`](crate::envelope::QaRequest::ActivateMenuItem) /
+    /// [`QaResponse::MenuItemActivated`](crate::envelope::QaResponse::MenuItemActivated) /
+    /// [`RequestKindNet::ActivateMenuItem`](crate::view::RequestKindNet::ActivateMenuItem)
+    /// (with the [`MenuActivationReceipt`](crate::envelope::MenuActivationReceipt) reply)
+    /// were added — a new closed-enum variant everywhere the envelope matches exhaustively,
+    /// so a client negotiating version `7` now gets a `VersionMismatch` rather than a wire
+    /// shape it cannot decode. The game server negotiates a `Hello` against this value.
+    pub const CURRENT: Self = Self::new(8);
 
     /// Build a protocol version from its number.
     #[must_use]
