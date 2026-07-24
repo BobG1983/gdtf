@@ -1,8 +1,13 @@
-//! The Continue button's activation → leaving the Options screen (GTW-637).
+//! The Continue button's activation → leaving the Options screen (GTW-637, GTW-801).
 //!
 //! The Options screen is a real interactive stop (it no longer auto-advances): the
-//! player leaves it by activating the [`ContinueButton`], which requests
-//! [`RunningState::Game`]. Per the ADR 0003 amendment (2026-07-05, GTW-635) this
+//! player leaves it by activating the [`ContinueButton`], which returns to the Main
+//! Menu ([`RunningState::Menu`]) — the screen it was opened FROM. Options is an
+//! optional, standalone settings screen reached from the menu (GTW-637), NOT a forced
+//! pre-battle gate, so Continue is a plain "back" that reverses the menu's own
+//! `NextState(Options)` transition (GTW-801 fixed the pre-GTW-637 holdover that sent
+//! the player on to [`RunningState::Game`] instead). Per the ADR 0003 amendment
+//! (2026-07-05, GTW-635) this
 //! pilot drives its input through the first-party `bevy_ui_widgets` observer
 //! contract: activation is a [`bevy_ui_widgets::Activate`](Activate) event handled by
 //! an `On<Activate>` observer, rather than a buffered message. Two pieces make that
@@ -20,7 +25,7 @@
 //!    outside this screen, so the battle `cursor_over_ui` / act-bus arbitration cannot
 //!    regress.
 //! 2. [`continue_activated`] — the `On<Activate>` observer that requests
-//!    [`RunningState::Game`] when the Continue button is activated. Registered as a
+//!    [`RunningState::Menu`] when the Continue button is activated. Registered as a
 //!    global observer (once, at plugin build); it filters by the [`ContinueButton`]
 //!    marker so a sound-toggle `Activate` (the other trigger on this screen) is a
 //!    no-op for it.
@@ -65,20 +70,27 @@ pub(in crate::states::running::options) fn bridge_continue_activation(
     }
 }
 
-/// The `On<Activate>` observer that requests [`RunningState::Game`] when the
-/// [`ContinueButton`] is activated.
+/// The `On<Activate>` observer that returns to the Main Menu
+/// ([`RunningState::Menu`]) when the [`ContinueButton`] is activated.
 ///
 /// A global observer (registered once at plugin build): it fires for every
 /// [`Activate`] trigger, so it filters on the [`ContinueButton`] marker and ignores
 /// an `Activate` on any other entity (the sound toggle's activation, on this screen).
 /// This is the pilot's `On<Activate>` INPUT path — the first-party widget observer
 /// contract, not a buffered message.
+///
+/// It requests [`RunningState::Menu`], reversing the menu's own
+/// `NextState(Options)` transition (the menu's Options button maps to
+/// [`RunningState::Options`]; Continue maps back): Options is a standalone settings
+/// screen opened from the menu, so Continue returns there. GTW-801 corrected the
+/// pre-GTW-637 holdover that sent the player on to [`RunningState::Game`], which was
+/// correct only while Options was a forced auto-advancing pre-battle stub.
 pub(in crate::states::running::options) fn continue_activated(
     activate: On<Activate>,
     buttons: Query<(), With<ContinueButton>>,
     mut next: ResMut<NextState<RunningState>>,
 ) {
     if buttons.contains(activate.entity) {
-        next.set(RunningState::Game);
+        next.set(RunningState::Menu);
     }
 }

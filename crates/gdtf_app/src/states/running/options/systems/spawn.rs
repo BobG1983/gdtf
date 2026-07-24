@@ -17,8 +17,9 @@
 //!   builds (the widget is headless) — and a value readout
 //!   ([`Themed(Text)`](gdtf_ui::themed::ThemeRole), marker [`SoundValueLabel`]).
 //! - **Continue button** — [`spawn_button`](gdtf_ui::spawn_button) captioned
-//!   "Continue" (marker [`ContinueButton`]); activating it leaves for
-//!   [`RunningState::Game`](crate::states::RunningState::Game).
+//!   "Continue" (marker [`ContinueButton`]); activating it returns to the Main Menu
+//!   ([`RunningState::Menu`](crate::states::RunningState::Menu)) — the screen Options
+//!   was opened from (GTW-801).
 //!
 //! Every entity carries [`DespawnOnExit(RunningState::Options)`] so the whole tree is
 //! torn down on leave. The sound toggle and the Continue button are joined by a
@@ -31,7 +32,7 @@ use bevy::{
     math::CompassOctant,
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
-    ui::{BorderRadius, Checked, UiRect, Val},
+    ui::{BorderColor as UiBorderColor, BorderRadius, Checked, UiRect, Val},
     ui_widgets::Checkbox,
 };
 use gdtf_ui::{
@@ -83,6 +84,14 @@ const TOGGLE_PAD_VW: f32 = 0.234_375;
 /// The knob diameter, in viewport-width units (14 px / 1280), smaller than the pill's
 /// short dimension so the track frames it.
 const KNOB_DIAMETER_VW: f32 = 1.093_75;
+
+/// The sound value readout's fixed minimum width, in viewport-width units (32 px /
+/// 1280) — sized to comfortably clear the WIDER of the two readout strings ("Off",
+/// 3 chars at the 18 pt body font vs "On"'s 2). Fixing a floor on the label's width
+/// means flipping the toggle never changes the label's intrinsic width, so the
+/// auto-width sound row / panel / centered screen no longer reflows on every toggle
+/// (GTW-800a).
+const SOUND_VALUE_MIN_WIDTH_VW: f32 = 2.5;
 
 /// Builds the full Options screen when [`RunningState::Options`] is entered.
 ///
@@ -176,6 +185,14 @@ pub(in crate::states::running::options) fn spawn_options_screen(
     // observer maps its activation to the typed `SoundSettingChanged` intent.
     let sound_toggle = spawn_sound_toggle(&mut commands, &theme, sound);
 
+    // A fixed min-width floor on the readout so "On" (2 chars) and "Off" (3 chars)
+    // occupy the same width — the toggle flip no longer reflows the centered screen
+    // (GTW-800a). `Text` brings its own default `Node`; this replaces it with one
+    // carrying the floor (the themed Text paint touches color/font, not layout width).
+    let sound_value_node = Node {
+        min_width: Val::Vw(SOUND_VALUE_MIN_WIDTH_VW),
+        ..default()
+    };
     let sound_value = commands
         .spawn_scene((
             bsn! {
@@ -183,6 +200,7 @@ pub(in crate::states::running::options) fn spawn_options_screen(
                 Text::new(sound_value_text(sound))
                 SoundValueLabel
             },
+            template_value(sound_value_node),
             template_value(DespawnOnExit(RunningState::Options)),
         ))
         .id();
@@ -224,8 +242,10 @@ pub(in crate::states::running::options) fn spawn_options_screen(
 /// toggle and returns the checkbox [`Entity`].
 ///
 /// The checkbox is headless, so this builds its whole visual: a rounded track [`Node`]
-/// (colored from the theme for the current on/off state) with one knob child (marker
-/// [`SoundToggleKnob`], justified to the on/off end). It seeds the first-party
+/// (colored from the theme for the current on/off state, with an opaque themed pill
+/// outline so it stays visible against the panel when OFF — GTW-800b) with one knob
+/// child (marker [`SoundToggleKnob`], justified to the on/off end). It seeds the
+/// first-party
 /// [`Checked`](bevy::ui::Checked) state when sound is on, tags the root [`SoundToggle`]
 /// so the native `ValueChange` observer + the theming pass find it, and marks the
 /// whole tree [`DespawnOnExit(RunningState::Options)`].
@@ -238,6 +258,11 @@ fn spawn_sound_toggle(commands: &mut Commands, theme: &GdtfTheme, sound: SoundEn
         padding: UiRect::all(Val::Vw(TOGGLE_PAD_VW)),
         align_items: AlignItems::Center,
         justify_content: knob_justify(sound),
+        // A visible pill outline (from the button sub-theme's border, opaque) so the
+        // track reads against the panel in BOTH states — the OFF fill alone
+        // (theme.button.disabled, near-black at 0.55 alpha) blends into the
+        // semi-transparent panel and the pill was invisible when off (GTW-800b).
+        border: UiRect::all(Val::Vw(*theme.button.border_width)),
         border_radius: BorderRadius::all(Val::Percent(50.0)),
         ..default()
     };
@@ -260,6 +285,7 @@ fn spawn_sound_toggle(commands: &mut Commands, theme: &GdtfTheme, sound: SoundEn
             Checkbox,
             SoundToggle,
             BackgroundColor(colors.track(sound)),
+            UiBorderColor::all(colors.border()),
             track_node,
             DespawnOnExit(RunningState::Options),
         ))

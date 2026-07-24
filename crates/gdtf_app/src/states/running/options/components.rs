@@ -65,9 +65,10 @@ crate::support_item! {
 }
 
 crate::support_item! {
-    /// Marks the **Continue** button — activating it leaves the Options screen for
-    /// [`RunningState::Game`](crate::states::RunningState::Game) (the screen is a
-    /// real interactive stop now, not an auto-advance stub).
+    /// Marks the **Continue** button — activating it returns to the Main Menu
+    /// ([`RunningState::Menu`](crate::states::RunningState::Menu)), the screen Options
+    /// was opened from (the screen is a real interactive stop now, not an auto-advance
+    /// stub, and it is not a pre-battle gate — GTW-801).
     ///
     /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
     #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]

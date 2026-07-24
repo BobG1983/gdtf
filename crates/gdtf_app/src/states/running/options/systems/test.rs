@@ -10,7 +10,7 @@ use bevy::{
     input_focus::directional_navigation::DirectionalNavigationMap,
     prelude::*,
     scene::ScenePlugin,
-    ui::{BackgroundColor, Checked},
+    ui::{BackgroundColor, BorderColor as UiBorderColor, Checked, Node, Val},
     ui_widgets::Checkbox,
 };
 use gdtf_ui::theme::default_theme;
@@ -100,6 +100,60 @@ fn sound_toggle_is_a_real_checkbox_seeded_from_settings_and_themed() {
         track,
         sound_toggle_colors(&default_theme()).track(SoundEnabled::new(false)),
         "the toggle track must be painted from the button sub-theme's off fill",
+    );
+}
+
+/// GTW-800a: the value readout carries a fixed `min_width` floor, so the layout does
+/// not reflow when the label swaps between the different-length "On" / "Off" strings.
+/// The floor is present with sound BOTH Off and On (identical either way).
+#[test]
+fn sound_value_label_has_a_fixed_min_width() {
+    for sound_on in [false, true] {
+        let mut app = spawn_screen(sound_on);
+        let world = app.world_mut();
+        let mut labels = world.query_filtered::<&Node, With<SoundValueLabel>>();
+        let widths: Vec<Val> = labels.iter(world).map(|node| node.min_width).collect();
+        assert_eq!(widths.len(), 1, "exactly one SoundValueLabel");
+        assert!(
+            matches!(widths[0], Val::Vw(w) if w > 0.0),
+            "the value readout must carry a positive Vw min_width floor (sound_on={sound_on}); \
+             got {:?}",
+            widths[0],
+        );
+    }
+}
+
+/// GTW-800b: the OFF sound toggle's track carries an opaque themed pill outline
+/// (`BorderColor`) so it stays visible against the semi-transparent panel — the OFF
+/// FILL alone (near-black at 0.55 alpha) blended into the panel and the pill vanished.
+#[test]
+fn off_sound_toggle_track_has_a_visible_themed_border() {
+    let mut app = spawn_screen(false);
+    let world = app.world_mut();
+    let mut toggles = world.query_filtered::<(&UiBorderColor, &Node), With<SoundToggle>>();
+    let found: Vec<(UiBorderColor, Node)> =
+        toggles.iter(world).map(|(b, n)| (*b, n.clone())).collect();
+    assert_eq!(found.len(), 1, "exactly one sound toggle");
+    let (border, node) = &found[0];
+    // A non-zero border width on every edge — the outline actually renders.
+    for edge in [
+        node.border.left,
+        node.border.right,
+        node.border.top,
+        node.border.bottom,
+    ] {
+        assert!(
+            matches!(edge, Val::Vw(w) if w > 0.0),
+            "the OFF toggle track must have a positive border width on every edge; got {edge:?}",
+        );
+    }
+    // The border color is the theme's (opaque) button border — not a literal, and
+    // fully opaque so it reads against the panel.
+    let expected = *default_theme().button.border_color;
+    assert_eq!(
+        *border,
+        UiBorderColor::all(expected),
+        "the OFF toggle track border must be painted from the button sub-theme's border color",
     );
 }
 

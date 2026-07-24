@@ -4,7 +4,8 @@
 //!
 //! The screen replaces the pre-GTW-637 zero-UI stub that inserted a completion
 //! marker and auto-advanced to `Game`. It is now a real interactive stop: the
-//! player leaves it by activating the Continue button. The persisted
+//! player leaves it by activating the Continue button, which returns to the Main Menu
+//! it was opened from (GTW-801). The persisted
 //! [`GameSettings`] resource is inserted here (app-wide, not scene-scoped) so a
 //! setting survives leaving and re-entering the screen; the screen tree itself is
 //! torn down by its `DespawnOnExit(RunningState::Options)` markers on leave.
@@ -38,7 +39,7 @@ impl Plugin for OptionsScenePlugin {
 /// Registers the screen's activation observers (GTW-637 INPUT clause).
 ///
 /// Global observers (registered once): [`continue_activated`] requests
-/// [`RunningState::Game`] on the Continue button's
+/// [`RunningState::Menu`] on the Continue button's
 /// [`Activate`](bevy::ui_widgets::Activate), and [`sound_activated`] writes the typed
 /// [`SoundSettingChanged`] intent on the sound toggle's native
 /// [`ValueChange<bool>`](bevy::ui_widgets::ValueChange) — the first-party

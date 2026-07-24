@@ -141,31 +141,35 @@ fn options_screen_spawns_root_title_and_widgets() {
     );
 }
 
-/// Mouse path: a press on Continue requests the `Options -> Game` transition.
+/// Mouse path: a press on Continue requests the `Options -> Menu` transition — it
+/// returns to the Main Menu it was opened from, NOT on to `Game` (GTW-801).
 #[test]
-fn continue_mouse_press_requests_game() {
+fn continue_mouse_press_returns_to_menu() {
     let mut app = options_app();
     let button = single_with::<ContinueButton>(&mut app).unwrap_or(Entity::PLACEHOLDER);
     set_interaction(&mut app, button, Interaction::Pressed);
     app.update();
     assert_eq!(
         pending_state(&app),
-        Some(RunningState::Game),
-        "a mouse press on Continue must request RunningState::Game",
+        Some(RunningState::Menu),
+        "a mouse press on Continue must request RunningState::Menu (back to the Main Menu), \
+         not RunningState::Game",
     );
 }
 
-/// Keyboard / gamepad path: a `FocusActivated` for Continue requests `Game`.
+/// Keyboard / gamepad path: a `FocusActivated` for Continue returns to the Main Menu
+/// (`RunningState::Menu`), not on to `Game` (GTW-801).
 #[test]
-fn continue_focus_activation_requests_game() {
+fn continue_focus_activation_returns_to_menu() {
     let mut app = options_app();
     let button = single_with::<ContinueButton>(&mut app).unwrap_or(Entity::PLACEHOLDER);
     app.world_mut().write_message(FocusActivated::new(button));
     app.update();
     assert_eq!(
         pending_state(&app),
-        Some(RunningState::Game),
-        "a focus activation on Continue must request RunningState::Game",
+        Some(RunningState::Menu),
+        "a focus activation on Continue must request RunningState::Menu (back to the Main Menu), \
+         not RunningState::Game",
     );
 }
 

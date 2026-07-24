@@ -12,14 +12,18 @@
 //!   button sub-theme of the live [`GdtfTheme`](gdtf_ui::theme::GdtfTheme). The spawn
 //!   path calls it for the initial paint.
 //! - [`paint_sound_toggle`] re-derives those colors and MUTATES the toggle's track
-//!   [`BackgroundColor`], its track [`Node`] justify (which end the knob sits at), and
+//!   [`BackgroundColor`], its track [`BorderColor`](bevy::ui::BorderColor) pill
+//!   outline, its track [`Node`] justify (which end the knob sits at), and
 //!   its knob's [`BackgroundColor`] in place — no despawn/respawn (the project's
 //!   mutate-in-place UI convention). It runs when EITHER the setting changes (the flip)
 //!   or the theme changes (the hot-reload), so the same code repaints the toggle for a
 //!   toggle and for a live theme swap, staying in step with every
 //!   [`Themed`](gdtf_ui::themed::Themed) node.
 
-use bevy::{prelude::*, ui::BackgroundColor};
+use bevy::{
+    prelude::*,
+    ui::{BackgroundColor, BorderColor as UiBorderColor},
+};
 use gdtf_ui::theme::GdtfTheme;
 
 use crate::states::running::options::{
@@ -35,11 +39,14 @@ use crate::states::running::options::{
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub(in crate::states::running::options) struct ToggleColors {
     /// Track color while OFF.
-    off:  Color,
+    off:    Color,
     /// Track color while ON.
-    on:   Color,
+    on:     Color,
     /// The knob fill color (constant across the flip).
-    knob: Color,
+    knob:   Color,
+    /// The track's pill-outline border color (constant across the flip) — its opaque
+    /// outline is what keeps the OFF track visible against the panel (GTW-800b).
+    border: Color,
 }
 
 impl ToggleColors {
@@ -52,19 +59,27 @@ impl ToggleColors {
     pub(in crate::states::running::options) const fn knob(&self) -> Color {
         self.knob
     }
+
+    /// The track's border (pill-outline) color (constant across the flip).
+    pub(in crate::states::running::options) const fn border(&self) -> Color {
+        self.border
+    }
 }
 
 /// Derives the sound toggle's [`ToggleColors`] from the button sub-theme of `theme`.
 ///
-/// OFF reads the muted disabled fill, ON the engaged active fill (GTW-253), and the
-/// knob the button caption color — all RON-driven, no literals — so the toggle reads
-/// against the panel exactly as the themed buttons do and re-derives identically on a
-/// hot-reload.
+/// OFF reads the muted disabled fill, ON the engaged active fill (GTW-253), the knob
+/// the button caption color, and the pill outline the button border color — all
+/// RON-driven, no literals — so the toggle reads against the panel exactly as the
+/// themed buttons do and re-derives identically on a hot-reload. The opaque border is
+/// what keeps the OFF track (a near-black, semi-transparent fill) distinguishable from
+/// the panel (GTW-800b).
 pub(in crate::states::running::options) fn sound_toggle_colors(theme: &GdtfTheme) -> ToggleColors {
     ToggleColors {
-        off:  *theme.button.disabled,
-        on:   *theme.button.active,
-        knob: *theme.button.text_color,
+        off:    *theme.button.disabled,
+        on:     *theme.button.active,
+        knob:   *theme.button.text_color,
+        border: *theme.button.border_color,
     }
 }
 
@@ -82,11 +97,13 @@ pub(in crate::states::running::options) const fn knob_justify(
     }
 }
 
-/// The sound toggle's mutable paint data: its track fill, its track [`Node`] (for the
-/// knob justify), and its knob children. Aliased to keep [`paint_sound_toggle`]'s
-/// signature legible (clippy `type_complexity`).
+/// The sound toggle's mutable paint data: its track fill, its track pill-outline
+/// [`BorderColor`](bevy::ui::BorderColor), its track [`Node`] (for the knob justify),
+/// and its knob children. Aliased to keep [`paint_sound_toggle`]'s signature legible
+/// (clippy `type_complexity`).
 type SoundToggleVisuals = (
     &'static mut BackgroundColor,
+    &'static mut UiBorderColor,
     &'static mut Node,
     &'static Children,
 );
@@ -112,8 +129,9 @@ pub(in crate::states::running::options) fn paint_sound_toggle(
         return;
     };
     let colors = sound_toggle_colors(&theme);
-    for (mut track, mut node, children) in &mut toggles {
+    for (mut track, mut border, mut node, children) in &mut toggles {
         track.0 = colors.track(settings.sound);
+        *border = UiBorderColor::all(colors.border());
         node.justify_content = knob_justify(settings.sound);
         for child in children {
             if let Ok(mut knob) = knobs.get_mut(*child) {
