@@ -11,6 +11,11 @@ use bevy::prelude::*;
 /// (a battle loads exactly as it does without `dev_tools`) until `GDTF_PROCGEN_STEPPER` is
 /// set truthy (its own `from_env` gate).
 ///
+/// GTW-819: the UI-stack coexistence proof-of-concept (`super::ui_coexistence`) is
+/// `dev_tools`-gated on the same terms as the stepper — it needs the same `bevy_egui`
+/// dependency — but has NO env gate: while it exists it always draws its two spike buttons
+/// over `AppState::Running`, because being seen on screen is the entire point of it.
+///
 /// GTW-736 (extended GTW-749): the QA network control channel (`super::net_qa`, the
 /// GTW-694 architecture's T3 onward) is DOUBLE-gated —
 /// `cfg!(all(debug_assertions, feature = "net_qa"))` — because it opens a loopback TCP
@@ -38,6 +43,14 @@ impl Plugin for DevAffordancesPlugin {
         // doc) — its own `from_env` env-var gate keeps it inert at runtime by default.
         #[cfg(feature = "dev_tools")]
         app.add_plugins(super::procgen_stepper::ProcgenStepperPlugin::from_env());
+        // GTW-819: the UI-stack coexistence proof-of-concept (one `bevy_ui` button + one egui
+        // button alive together in `AppState::Running`). `dev_tools`-gated only, with no env
+        // gate of its own — it is a spike whose whole purpose is to be looked at, and the QA
+        // harness that captures it launches the game without extra environment. Added AFTER
+        // the stepper so the stepper keeps ownership of `EguiPlugin` whenever both are active
+        // (the spike adds egui only if nothing else did — see its plugin doc).
+        #[cfg(feature = "dev_tools")]
+        app.add_plugins(super::ui_coexistence::UiCoexistencePlugin);
         // GTW-736/GTW-749: the QA network control channel — the ONE capture / drive
         // path. DOUBLE-gated `all(debug_assertions, feature = "net_qa")` (it opens a
         // listener); its own `from_env` `GDTF_NET_QA` gate keeps it inert at runtime by

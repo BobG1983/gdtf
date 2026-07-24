@@ -29,6 +29,13 @@
 #[cfg(feature = "dev_tools")]
 pub(crate) mod procgen_stepper;
 
+// The DEV-ONLY UI-stack coexistence proof-of-concept (GTW-819): one `bevy_ui` button and one
+// egui button alive together in `AppState::Running`, answering whether the two UI stacks can
+// coexist at all before the GTW-796 comparison epic builds on the assumption. Compiled ONLY
+// under the opt-in `dev_tools` feature (the one that pulls in `bevy_egui`), like the stepper.
+#[cfg(feature = "dev_tools")]
+pub(crate) mod ui_coexistence;
+
 // The DEV-ONLY QA network control channel (GTW-736): a loopback TCP listener + request
 // router a coding-agent QA harness drives. Double-gated: compiled only under the opt-in
 // `net_qa` feature (which pulls in the bevy-free wire contract + the self-capture crate),

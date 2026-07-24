@@ -144,6 +144,15 @@ pub use crate::dev::procgen_stepper::{
     AutoRunning, AutoStepDelay, PendingStepCommand, ProcgenStepperPlugin, StepCommand,
     draw_schematic, stepper_enabled,
 };
+// The GTW-819 UI-stack coexistence spike's surface: its plugin plus the observables the
+// coexistence suite asserts on — the per-stack tallies, the `bevy_ui` button's marker (to find
+// the one entity whose `Interaction` the test drives) and the egui button's pinned position (to
+// aim the synthetic egui pointer). `dev_tools`-gated exactly like the module, which compiles out
+// without the feature (it needs `bevy_egui`).
+#[cfg(feature = "dev_tools")]
+pub use crate::dev::ui_coexistence::{
+    ClickCount, CoexistenceBevyUiButton, EGUI_PANEL_POS, UiCoexistencePlugin, UiStackClicks,
+};
 pub use crate::states::{
     AfterMathState, AppState, BattleScapeState, GameState, LoadedSituation, RunningState,
     ScenesPlugin,
