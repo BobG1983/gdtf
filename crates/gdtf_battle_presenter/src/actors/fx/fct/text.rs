@@ -27,9 +27,12 @@ use bevy::{
     sprite::Anchor,
     text::{FontSize, FontWeight},
 };
-use gdtf_battle_sim::prelude::{Cell, Level};
+use gdtf_battle_sim::prelude::{Cell, CellLevel, Level};
 
-use super::super::tuning::{FctRiseRate, FctTtlSeconds};
+use super::{
+    super::tuning::{FctRiseRate, FctTtlSeconds},
+    slot_allocator::FctAnchorCell,
+};
 use crate::{Layer, cell_to_world_layered};
 
 /// The combat-text STRING a pop renders — a damage number, a wound tag, a "miss".
@@ -277,16 +280,21 @@ pub fn spawn_floating_text(
     let layers = RenderLayers::layer(crate::WORLD_RENDER_LAYER);
     let pop = FloatingCombatText::new(rise, ttl, base_alpha);
 
-    commands.spawn_scene((
-        bsn! { template(move |_| Ok(text_2d.clone())) },
-        bsn! { template(move |_| Ok(text_font.clone())) },
-        template_value(TextColor(color)),
-        // Bottom-center so the pop sits ON the cell and rises up off it.
-        template_value(Anchor::BOTTOM_CENTER),
-        template_value(transform),
-        template_value(layers),
-        bsn! { template(move |_| Ok(pop.clone())) },
-    ));
+    commands
+        .spawn_scene((
+            bsn! { template(move |_| Ok(text_2d.clone())) },
+            bsn! { template(move |_| Ok(text_font.clone())) },
+            template_value(TextColor(color)),
+            // Bottom-center so the pop sits ON the cell and rises up off it.
+            template_value(Anchor::BOTTOM_CENTER),
+            template_value(transform),
+            template_value(layers),
+            bsn! { template(move |_| Ok(pop.clone())) },
+        ))
+        // GTW-792: record the pop's anchor cell so the lifetime-aware `FctSlotAllocator` can
+        // count the live pops on a cell. Inert until a consumer reads it — no effect on this
+        // pop's rise / fade / despawn or the stack-offset pixel math above.
+        .insert(FctAnchorCell::new(CellLevel::new(cell, level)));
 }
 
 /// `Update` (`PresenterSystems::Overlay`): rise + fade + despawn every live floating-combat-text

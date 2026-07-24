@@ -28,6 +28,11 @@
 //!   [`read_consequence_fct`](stacked_reader::read_consequence_fct) reader + the
 //!   [`ConsequenceFctAppExt::add_consequence_fct`] compile-time registrar that replaced the
 //!   six hand-rolled reader clones and their registration walls).
+//! - [`slot_allocator`] — the GTW-792 LIFETIME-AWARE stacking-slot allocator: the
+//!   [`FctSlotAllocator`] [`SystemParam`](bevy::ecs::system::SystemParam) that counts the pops
+//!   still ALIVE on a cell (via the [`FctAnchorCell`] every pop now carries) and returns the
+//!   next free [`FctStackIndex`] above them — the shared primitive that fixes cross-pipeline /
+//!   cross-frame slot collisions (its consumers land in GTW-793 / GTW-794).
 //! - [`log_event`] — the COMBAT-LOG family (GTW-328 / GTW-572 C5 / GTW-620): the
 //!   [`CombatLogEvent`] buffered [`Message`](bevy::prelude::Message) vocabulary, the
 //!   per-source FORWARDERS that write it (the [`CombatLogSource`] impls + the
@@ -46,6 +51,7 @@ mod log_event;
 mod palette;
 mod pop;
 mod reader;
+mod slot_allocator;
 mod stack;
 mod stacked_reader;
 mod text;
@@ -64,6 +70,7 @@ pub use log_event::{
 pub use palette::{FctValence, severity_color, valence_color};
 pub use pop::{ConsequenceFct, ConsequencePop, PopAnchor};
 pub(super) use reader::{ClassifiedPop, anchor_cell, classify_report};
+pub use slot_allocator::{FctAnchorCell, FctSlotAllocator};
 pub use stack::{FctStackCounter, reset_fct_stacks};
 pub use stacked_reader::{
     ConsequenceFctAppExt, ConsequenceFctSystems, read_consequence_fct,
