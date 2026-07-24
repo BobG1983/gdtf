@@ -47,6 +47,29 @@ writer of the Linear board; whoever invoked you routes their status changes thro
   Done, you may append a short "DONE: …" note in the description or a comment.
 - **Report** board state crisply when asked (grouped by status).
 
+## Closing a parent ticket — hard gate, never bypassed
+
+Before moving ANY ticket to **Done / Canceled / Duplicate**, check whether it has open
+child issues (sub-issues parented to it that are not themselves already
+Done/Canceled/Duplicate). **If it has any open child, REFUSE to close it.** Report back
+the open children instead of completing the status change, and let whoever invoked you
+decide (reparent the children elsewhere, close them individually first, or hold off
+closing the parent) — do not make that call yourself, and do not proceed with the close
+in the meantime. Run this check every single time you close anything that could plausibly
+have children (any Mythos/Epic/Task, or a Ticket you haven't otherwise confirmed is a
+leaf) — even if the caller's request didn't mention children at all. Silence about
+children in the request is not permission to skip the check.
+
+Why this is a hard rule, not a judgment call: Linear silently auto-completes open
+children when their parent closes — no explicit action taken, no log entry, nothing that
+shows up in your own tool-call transcript to warn you. This has already happened twice in
+this project (GTW-388 → GTW-522, and GTW-694 → GTW-747 + GTW-748), each time flipping
+real, never-built work to a false Done with zero trace of why. Worse, undoing it later is
+only a partial fix: Linear archives on completion, an archived issue can become
+effectively unreachable/unrecoverable through the normal UI, and `save_comment` fails
+outright against an archived issue. The only reliable defense is preventing the cascade
+before it happens — never close a parent while it still has open children, full stop.
+
 ## How to prioritise
 
 - Honor explicit dependencies noted in issue bodies ("DEPENDS ON …", "PAIRS WITH …").
