@@ -1,19 +1,24 @@
 //! The **attacker-agnostic wound-synthesis core** (GTW-523 remediation) —
-//! [`synthesize_wound`], the ONE shared §5 → §6 → §8 fold that BOTH the weapon path's
-//! ganger kind module ([`kinds::ganger`](super::kinds::ganger)) and the no-attacker
-//! fall path ([`resolve_fall_hit`](crate::falls::resolve_fall_hit)) route through, so
-//! the wound-math orchestration lives in exactly ONE place and the two paths cannot
+//! [`synthesize_wound`], the ONE shared §5 → §6 → §8 fold that the weapon path's
+//! ganger kind module ([`kinds::ganger`](super::kinds::ganger)), the §7 melee strike
+//! ([`resolve_melee_strike`](crate::melee::resolve_melee_strike)) and the no-attacker
+//! fall path ([`resolve_fall_hit`](crate::falls::resolve_fall_hit)) all route through, so
+//! the wound-math orchestration lives in exactly ONE place and the three paths cannot
 //! drift (`docs/combat/resolution.md` §5 / §6 / §8).
 //!
-//! Both paths reduce to the SAME sequence once the per-path armor resolution is done:
-//! `resolve_hit` → `roll_severity` (one [`SeverityRng`](crate::rng::SeverityRng) draw) →
+//! Every path reduces to the SAME sequence once the per-path armor resolution is done:
+//! `resolve_hit` → the optional §7 [`apply_melee_multiplier`] → `roll_severity` (one
+//! [`SeverityRng`](crate::rng::SeverityRng) draw) →
 //! `apply_hit` → `roll_injury` (one [`InjuryRng`](crate::rng::InjuryRng) draw, gated on
-//! the rolled [`Severity`](crate::severity::Severity)). The ONLY thing the two callers
+//! the rolled [`Severity`](crate::severity::Severity)). The ONLY thing the callers
 //! differ on is the INPUTS they synthesize:
 //!
 //! - the **weapon path** passes its real weapon-derived damage / punch / shred, the
 //!   [`struck_piece`](super::fold)-resolved armored `(ArmorPiece, Matchup)`, the weapon's
 //!   [`FatalBias`](crate::weapon::FatalBias), and the shooter's [`Luck`](crate::ganger::Luck);
+//! - the **melee path** (GTW-821) passes the melee weapon's damage / punch / shred and the
+//!   same armor resolution, PLUS the §7 [`MeleeDamageMult`] its opposed-Fight margin
+//!   produced — the ONE input the other two leave [`None`];
 //! - the **fall path** passes a synthetic no-attacker input set — `per_storey × storeys`
 //!   as the damage, punch `0` / shred `0`, the worn-piece-or-bare-flesh `ArmorPiece` under
 //!   [`Matchup::Neutral`](crate::matchup::Matchup::Neutral), `fatal_bias` `0`, and
@@ -22,8 +27,9 @@
 //! The core takes an already-resolved input BUNDLE (never a long argument list — no bare
 //! types, every field a named domain newtype), performs the **corpse-skip INSIDE the
 //! core** (returns [`None`] so a corpse yields no draw and no mutation), and on a live
-//! target runs the four verbs and returns the [`WoundSynthesis`] verdict both callers
-//! freeze into their own report shapes.
+//! target runs the five verbs (`resolve_hit` → the optional §7 [`apply_melee_multiplier`] →
+//! `roll_severity` → `apply_hit` → `roll_injury`) and returns the [`WoundSynthesis`] verdict
+//! all three callers freeze into their own report shapes.
 
 use bevy::prelude::Entity;
 
@@ -34,6 +40,7 @@ use crate::{
     ganger::{LifeState, Luck},
     injuries::{DamageContext, InjuryRegistry, InjuryTables, RolledInjury, roll_injury},
     matchup::Matchup,
+    melee::{MeleeDamageMult, apply_melee_multiplier},
     resolve_and_apply::report::TargetGanger,
     resolve_hit::{HitResult, resolve_hit},
     rng::{InjuryRng, SeverityRng},
@@ -71,9 +78,19 @@ pub(crate) struct WoundBlow {
     /// The **attacker's** Luck — the §6 nasty-wound term; `0` on a fall (no attacker).
     pub shooter_luck: Luck,
     /// The wound-source [`DamageContext`] — [`Ranged`](DamageContext::Ranged) on the weapon
-    /// fire path, [`Fall`](DamageContext::Fall) on the fall path (GTW-452); selects the
-    /// per-source §8 injury weighting table.
+    /// fire path, [`Melee`](DamageContext::Melee) on the §7 strike path (GTW-821),
+    /// [`Fall`](DamageContext::Fall) on the fall path (GTW-452); selects the per-source §8
+    /// injury weighting table.
     pub context:      DamageContext,
+    /// The §7 melee damage multiplier the opposed-Fight margin produced (GTW-821) —
+    /// `Some` ONLY on the melee path, [`None`] on the ranged / fall paths (no §7 roll).
+    ///
+    /// Applied by [`apply_melee_multiplier`] to the ALREADY-RESOLVED [`HitResult`], i.e.
+    /// POST-armor — the placement GTW-506/507 chose deliberately (it scales HP damage,
+    /// penetrating damage AND integrity wear alike; see `apply_melee_multiplier`'s docs).
+    /// Carrying it here rather than pre-multiplying the blow's `damage` is what keeps that
+    /// decision intact while the melee path reuses this one core.
+    pub damage_mult:  Option<MeleeDamageMult>,
 }
 
 /// The **input bundle** of a [`synthesize_wound`] call — the already-resolved [`WoundBlow`],
@@ -82,7 +99,7 @@ pub(crate) struct WoundBlow {
 /// draw streams the §6 / §8 rolls advance.
 ///
 /// One named struct (no bare types, no 10-argument signature): grouping the borrows here is
-/// what lets the core be a normal function while both callers stay under clippy's
+/// what lets the core be a normal function while all three callers stay under clippy's
 /// argument-count gate. The two draw streams are distinct types ([`SeverityRng`] /
 /// [`InjuryRng`]) so they can never be swapped; both are `&mut` (the core advances each by
 /// exactly one draw on a live target). Lifetime `'a` ties the target/stream borrows to the
@@ -112,12 +129,16 @@ pub(crate) struct WoundCoreInputs<'a> {
 /// [`LifeState`], and the rolled injury.
 ///
 /// A `Copy`-where-possible record of named newtypes (the [`RolledInjury`] carries an owned
-/// `Vec`, so the struct is `Clone` not `Copy`). Both callers build their own report from
-/// these fields: the weapon path's ganger kind module assembles the
+/// `Vec`, so the struct is `Clone` not `Copy`). Each of the three callers builds its own
+/// report from these fields: the weapon path's ganger kind module assembles the
 /// [`AppliedDamage`](super::kinds::ganger::AppliedDamage) (matchup / hit / severity /
 /// life-after + [`wear`](WoundSynthesis::wear) carried DIRECTLY as the closed
 /// [`ArmorWearOutcome`] — GTW-573 C2) inside its boxed
-/// [`GangerVerdict`](super::kinds::ganger::GangerVerdict); the fall path takes only
+/// [`GangerVerdict`](super::kinds::ganger::GangerVerdict); the melee path (GTW-821) takes
+/// [`severity`](WoundSynthesis::severity) / the applied
+/// [`hit`](WoundSynthesis::hit) HP loss / [`wear`](WoundSynthesis::wear) /
+/// [`injury`](WoundSynthesis::injury) into its
+/// [`MeleeStrike`](crate::melee::MeleeStrike) verdict; the fall path takes only
 /// [`injury`](WoundSynthesis::injury) to bridge into the existing `InjuryInflicted`
 /// message. Returned inside a [`Some`] — a corpse-skip returns [`None`] (no draw, no
 /// mutation, so nothing to freeze).
@@ -140,17 +161,20 @@ pub(crate) struct WoundSynthesis {
 }
 
 /// Synthesize a wound from an already-resolved [`WoundCoreInputs`] bundle — the ONE shared
-/// §5 → §6 → §8 fold both the weapon ganger path and the fall path route through
-/// (`docs/combat/resolution.md` §5 / §6 / §8).
+/// §5 → §6 → §8 fold the weapon ganger path, the §7 melee strike (GTW-821) and the fall
+/// path all route through (`docs/combat/resolution.md` §5 / §6 / §8).
 ///
 /// In order:
 ///
 /// 1. **Corpse-skip — before any draw.** A target already at [`LifeState::Dead`] returns
 ///    [`None`] with NO severity draw, NO injury draw, and NO mutation — so a corpse never
-///    consumes an RNG draw and determinism is preserved. This is the SAME corpse-skip both
-///    callers used to run inline; it lives HERE now so it cannot drift.
+///    consumes an RNG draw and determinism is preserved. This is the SAME corpse-skip the
+///    weapon and fall callers used to run inline (and the melee caller ran, post-severity, in
+///    `apply_hit`); it lives HERE now so the three cannot drift.
 /// 2. **Damage (§5).** [`resolve_hit`] over the blow's damage / punch / shred against the
-///    already-resolved `(ArmorPiece, Matchup)`.
+///    already-resolved `(ArmorPiece, Matchup)`, then — on the melee path only — the §7
+///    [`apply_melee_multiplier`] over the RESOLVED hit (GTW-821; the blow's
+///    [`damage_mult`](WoundBlow::damage_mult) is [`None`] elsewhere, leaving the hit as-is).
 /// 3. **Severity — the ONE [`SeverityRng`] draw (§6).** [`roll_severity`] over the assembled
 ///    [`SeverityInputs`] (the hit's penetrating damage, the defender's [`Toughness`], the
 ///    struck part's [`part_severity_mod`], the blow's [`FatalBias`], and BOTH gangers'
@@ -182,14 +206,14 @@ pub(crate) fn synthesize_wound(inputs: WoundCoreInputs<'_>) -> Option<WoundSynth
     } = inputs;
 
     // (1) Corpse-skip BEFORE any draw — a dead target is final (no draw, no mutation). This
-    // is the shared corpse-skip both paths used to run inline; centralizing it here is what
-    // guarantees the two paths cannot drift on the discipline.
+    // is the shared corpse-skip the weapon and fall paths used to run inline; centralizing it
+    // here is what guarantees the three paths cannot drift on the discipline.
     if *target.life == LifeState::Dead {
         return None;
     }
 
     // (2) The per-hit damage formula (§5) — pure, mutates nothing.
-    let hit = resolve_hit(
+    let resolved = resolve_hit(
         blow.damage,
         blow.punch,
         blow.shred,
@@ -197,6 +221,15 @@ pub(crate) fn synthesize_wound(inputs: WoundCoreInputs<'_>) -> Option<WoundSynth
         blow.matchup,
         tuning,
     );
+
+    // (2b) The §7 melee multiplier (GTW-821), applied to the RESOLVED hit — post-armor, the
+    // placement GTW-506/507 chose (HP damage, penetrating damage and integrity wear all
+    // scale). `None` on the ranged / fall paths leaves the resolved hit untouched, so those
+    // two paths take no extra arithmetic and their numbers are unchanged.
+    let hit = match blow.damage_mult {
+        Some(mult) => apply_melee_multiplier(resolved, mult),
+        None => resolved,
+    };
 
     // (3) The ONE severity draw (§6). Both gangers' Luck, the defender's Toughness, the
     // struck part's mod, and the blow's fatal bias feed it; the injected SeverityRng is the

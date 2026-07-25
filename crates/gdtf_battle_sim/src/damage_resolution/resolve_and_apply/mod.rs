@@ -53,11 +53,12 @@ pub use kinds::{
 };
 pub use report::{HitReport, HitVerdict, Protecting, StruckPiece, StruckSurfaces, TargetGanger};
 /// The **attacker-agnostic wound-synthesis core** (GTW-523 remediation): the ONE shared
-/// §5 → §6 → §8 fold both the ganger kind module and the no-attacker fall path
-/// ([`resolve_fall_hit`](crate::falls::resolve_fall_hit)) route through, plus its
-/// input bundle + blow value types. `pub(crate)` re-export (the private `wound_core` module
-/// owns them) so the falls fork imports the ONE definition instead of re-running the
-/// `resolve_hit` → `roll_severity` → `apply_hit` → `roll_injury` orchestration — the two
-/// paths therefore cannot drift. The core's [`WoundSynthesis`](wound_core::WoundSynthesis)
+/// §5 → §6 → §8 fold the ganger kind module, the §7 melee strike
+/// ([`resolve_melee_strike`](crate::melee::resolve_melee_strike), GTW-821) and the
+/// no-attacker fall path ([`resolve_fall_hit`](crate::falls::resolve_fall_hit)) all route
+/// through, plus its input bundle + blow value types. `pub(crate)` re-export (the private
+/// `wound_core` module owns them) so each fork imports the ONE definition instead of
+/// re-running the `resolve_hit` → `roll_severity` → `apply_hit` → `roll_injury`
+/// orchestration — the three paths therefore cannot drift. The core's [`WoundSynthesis`](wound_core::WoundSynthesis)
 /// verdict stays module-local (each caller consumes it in place), so it is not re-exported.
 pub(crate) use wound_core::{WoundBlow, WoundCoreInputs, synthesize_wound};

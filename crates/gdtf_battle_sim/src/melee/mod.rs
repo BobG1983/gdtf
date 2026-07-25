@@ -30,11 +30,14 @@
 //!
 //! GTW-507 adds the `strike` module: [`resolve_melee_strike`] is the pure
 //! connecting-hit synthesis the live melee ACT calls — it COMPOSES this core
-//! (`opposed_fight → melee_damage_mult → apply_melee_multiplier`) with the §4/§5/§6
-//! pieces (`roll_body_part → resolve_hit → roll_severity → apply_hit`), reimplementing
-//! none. The owning [`dispatch_melee`](crate::acts::dispatch_melee) system owns the
-//! `ResMut<FightRng>` / `ResMut<ShotRng>` / `ResMut<SeverityRng>` and gates adjacency +
-//! LOS + alive + opposing faction before calling the verb.
+//! (`opposed_fight → melee_damage_mult`) with the §4 part roll and the SHARED
+//! §5 → §6 → §8 wound core
+//! (`synthesize_wound`: `resolve_hit` →
+//! `apply_melee_multiplier` → `roll_severity` → `apply_hit` → `roll_injury`, GTW-821),
+//! reimplementing none. The owning [`dispatch_melee`](crate::acts::dispatch_melee) system
+//! owns the `ResMut<FightRng>` / `ResMut<ShotRng>` / `ResMut<SeverityRng>` /
+//! `ResMut<InjuryRng>` and gates adjacency + LOS + alive + opposing faction before calling
+//! the verb.
 //!
 //! GTW-508 adds the `structure` module: [`resolve_structural_melee`] is the pure
 //! UNCONTESTED cover-smash synthesis for a melee strike on an adjacent inert STRUCTURE
@@ -55,5 +58,5 @@ pub use fight::{
     Connected, FightMargin, FightOutcome, MeleeDamageMult, apply_melee_multiplier,
     melee_damage_mult, opposed_fight,
 };
-pub use strike::{Combatants, MeleeStrike, MeleeWeaponHit, resolve_melee_strike};
+pub use strike::{Combatants, MeleeStrike, MeleeStrikeEnv, MeleeWeaponHit, resolve_melee_strike};
 pub use structure::{StructuralMult, resolve_structural_melee};

@@ -119,10 +119,14 @@ pub(super) fn wire_turn_clocks(app: &mut App) {
     );
     // GTW-438: the injury applier — drains the InjuryInflicted buffer and folds
     // each rolled injury into its target's InflictedInjuries (via `gain`, tripping
-    // Changed) + syncs the standalone BleedAfflicted component. Ordered
-    // `.after(dispatch_fire)` so a SAME-FRAME injury (the fire act emitted it this
-    // frame) is applied this tick — the resulting Changed<InflictedInjuries> is
-    // then projected by `rederive_stats_on_injury_change`, which is ordered
+    // Changed) + syncs the standalone BleedAfflicted component. Ordered `.after`
+    // EVERY InjuryInflicted producer (bevy-traps.md #3 — explicit ordering, never
+    // registration order): the ranged fire act (dispatch_fire), the GTW-821 melee
+    // act (dispatch_melee) and the fall path (apply_falls, wired in the sibling
+    // FallsPlugin — the ordering is a no-op if that plugin is absent). So an injury
+    // rolled THIS frame, from whichever source, is applied THIS tick — the resulting
+    // Changed<InflictedInjuries> is then projected by
+    // `rederive_stats_on_injury_change`, which is ordered
     // `.after(SimSystems::Simulate)` in BattleSimPlugin (so the ledger gain →
     // projector re-derive settles within the frame, before the next tick's stat
     // reads; bevy-traps.md #3 / #7 — query/Commands/MessageReader, no &mut World).
@@ -132,6 +136,8 @@ pub(super) fn wire_turn_clocks(app: &mut App) {
         Update,
         apply_injury
             .after(dispatch_fire)
+            .after(dispatch_melee)
+            .after(apply_falls)
             .in_set(SimSystems::Simulate),
     );
     wire_clocks(app); // GTW-544/547: the DOT+field clocks + on-death resolver (line-cap split)

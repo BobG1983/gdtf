@@ -6,7 +6,7 @@ use bevy::prelude::Entity;
 use crate::{
     ganger::{Facing, Faction, Fight, Luck, Position, Stance, Tu},
     melee::MeleeWeaponHit,
-    rng::{FightRng, SeverityRng, ShotRng},
+    rng::{FightRng, InjuryRng, SeverityRng, ShotRng},
     weapon::DamageType,
 };
 
@@ -49,7 +49,7 @@ pub(super) struct AttackerSnapshot<'a> {
     pub(super) shove:              crate::weapon::Shove,
 }
 
-/// The three seeded draw streams the §7 / §4 / §6 ganger synthesis advances, threaded by
+/// The four seeded draw streams the §7 / §4 / §6 / §8 ganger synthesis advances, threaded by
 /// `&mut` into [`resolve_ganger_melee`](super::ganger::resolve_ganger_melee) — a transparent borrow bundle of the named stream
 /// resources so the resolver's signature stays under clippy's argument-count gate (the
 /// structural arm takes none — a cover-smash is RNG-free). `pub(super)` — the dispatch module
@@ -61,4 +61,7 @@ pub(super) struct MeleeStreams<'a> {
     pub(super) shot:     &'a mut ShotRng,
     /// The §6 severity-roll stream — one draw per connecting resolve.
     pub(super) severity: &'a mut SeverityRng,
+    /// The §8 injury stream (GTW-821) — one draw per connecting resolve whose §6 wound is
+    /// non-graze / non-fatal; zero draws on a miss / graze / fatal.
+    pub(super) injury:   &'a mut InjuryRng,
 }

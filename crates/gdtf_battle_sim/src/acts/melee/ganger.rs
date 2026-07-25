@@ -4,32 +4,31 @@
 use bevy::prelude::{Entity, MessageWriter, Query, With};
 
 use super::{
-    MeleeFacts, MeleeGrids,
+    MeleeFacts, MeleeWorld,
+    emit::{MeleeConnectSignals, emit_connect_signals},
     queries::{MeleeGeomQuery, MeleeTargetQuery},
     snapshot::{AttackerSnapshot, MeleeStreams},
 };
 use crate::{
     acts::{
         downed::is_8_adjacent,
-        request::{MeleeResolved, MeleeStruck, ShoveRequested},
+        request::{MeleeResolved, ShoveRequested},
     },
     armor::{PieceArmorMut, Wears, WornBy},
-    armor_wear::ArmorWearOutcome,
     ganger::{LifeState, Luck, Toughness, Tu, effective_luck, effective_toughness},
+    injuries::{InjuryRegistry, InjuryTables},
     los::{Observer, PeekOffset, Target, has_los},
-    melee::{Combatants, MeleeStrike, MeleeWeaponHit, resolve_melee_strike},
+    melee::{Combatants, MeleeStrike, MeleeStrikeEnv, MeleeWeaponHit, resolve_melee_strike},
     metric::CellLevel,
     resolve_and_apply::{StruckPiece, TargetGanger},
-    rng::{FightRng, SeverityRng, ShotRng},
     tu::spend_tu,
-    tuning::CombatTuning,
 };
 
 /// Resolve ONE ganger-vs-ganger melee request — the contested §7 opposed-Fight path
 /// (GTW-506/507), extracted from [`dispatch_melee`](super::dispatch_melee)'s target branch
 /// (GTW-508 C6 — file size cap). Gates 8-adjacency + opposing faction + alive + LOS, spends the
-/// fight-mode TU, runs the §7 → §5 → §6 synthesis onto the target, and emits [`MeleeResolved`]
-/// on a connect.
+/// fight-mode TU, runs the §7 → §5 → §6 → §8 synthesis onto the target, and — on a connect —
+/// hands the frozen verdict to [`emit_connect_signals`].
 ///
 /// Fail-closed at every gate (a rejected strike returns early — no spend, no strike, no
 /// signal, never a panic), exactly as the inlined arm did.
@@ -37,8 +36,8 @@ use crate::{
     clippy::too_many_arguments,
     reason = "the ganger arm threads the attacker snapshot, the target entity, the disjoint \
               geometry / attacker-Tu / target-surfaces queries, the two armor relationship \
-              queries, the grouped grids+tuning bundle, the three draw streams, and the \
-              MeleeResolved + ShoveRequested writers and the grouped GTW-572 fact writers \
+              queries, the grouped world reads, the four draw streams, and the \
+              MeleeResolved + ShoveRequested writers and the grouped fact writers \
               (MeleeFacts) — the irreducible per-arm access set (the strike_with_target \
               precedent); bundling further would only hide the access set"
 )]
@@ -50,7 +49,7 @@ pub(super) fn resolve_ganger_melee(
     targets: &mut MeleeTargetQuery,
     wears: &Query<&Wears>,
     pieces: &mut Query<PieceArmorMut, With<WornBy>>,
-    grids: &mut MeleeGrids,
+    world: &mut MeleeWorld,
     streams: MeleeStreams<'_>,
     resolved: &mut MessageWriter<MeleeResolved>,
     facts: &mut MeleeFacts,
@@ -94,7 +93,7 @@ pub(super) fn resolve_ganger_melee(
         position:         &attacker.position,
         stance:           &attacker.stance,
         facing:           &attacker.facing,
-        stair_eye_offset: grids.occupancy.stair_eye_offset_at(&attacker.position),
+        stair_eye_offset: world.occupancy.stair_eye_offset_at(&attacker.position),
         peek_offset:      PeekOffset::default(),
     };
     let los_target = Target {
@@ -105,7 +104,7 @@ pub(super) fn resolve_ganger_melee(
     // pass-through `has_los`/`can_see` take. The predicate borrows `targets` IMMUTABLY only for
     // this `has_los` call; it is dropped before the `&mut targets` fold below (NLL), so the
     // immutable + mutable accesses never overlap. An entity absent from `targets` is no corpse
-    // (defaults `false`). The cover ledger is read through `&*grids.cover` (a `ResMut` derefs to
+    // (defaults `false`). The cover ledger is read through `&*world.cover` (a `ResMut` derefs to
     // `&CoverLedger`).
     let is_dead = |entity: Entity| {
         targets
@@ -115,10 +114,10 @@ pub(super) fn resolve_ganger_melee(
     let sighted = has_los(
         &observer,
         &los_target,
-        &grids.occupancy,
-        &grids.surface,
-        &grids.cover,
-        &grids.tuning,
+        &world.occupancy,
+        &world.surface,
+        &world.cover,
+        &world.tuning,
         is_dead,
     );
     if !*sighted {
@@ -133,8 +132,17 @@ pub(super) fn resolve_ganger_melee(
     };
     spend_tu(&mut attacker_tu, attacker.tu_cost);
 
-    // Run the §7 → §5 → §6 synthesis onto the target. The verb owns the §4 part roll, so the
-    // struck piece cannot be keyed by part before it runs; `strike_with_target` resolves the
+    // GTW-821: the §8 injury content, with EMPTY fallbacks for an asset-less harness (no Load
+    // flow → no InjuryTables / InjuryRegistry) so the roll always has valid content to sample —
+    // it then takes its one draw and rolls nothing (the dispatch_fire / dispatch_shove
+    // fallback precedent), never a panic.
+    let empty_tables = InjuryTables::default();
+    let empty_registry = InjuryRegistry::default();
+    let tables: &InjuryTables = world.tables.as_deref().unwrap_or(&empty_tables);
+    let registry: &InjuryRegistry = world.registry.as_deref().unwrap_or(&empty_registry);
+
+    // Run the §7 → §5 → §6 → §8 synthesis onto the target. The verb owns the §4 part roll, so
+    // the struck piece cannot be keyed by part before it runs; `strike_with_target` resolves the
     // target's worn protection as the verb's armor input (bare flesh if the target wears
     // nothing) and re-borrows the target's `&mut` surfaces for the fold (the snapshot reads
     // above are released — `get_mut` takes a fresh exclusive borrow).
@@ -151,60 +159,37 @@ pub(super) fn resolve_ganger_melee(
         effective_toughness,
         effective_luck,
         attacker.weapon,
-        &grids.tuning,
-        streams.fight,
-        streams.shot,
-        streams.severity,
+        MeleeStrikeEnv {
+            tuning: &world.tuning,
+            tables,
+            registry,
+            fight_rng: streams.fight,
+            shot_rng: streams.shot,
+            severity_rng: streams.severity,
+            injury_rng: streams.injury,
+        },
     );
 
-    // On a connect, emit the presenter strike-glyph signal at the target's cell. A miss deals
-    // no damage and emits nothing (the §7 connect gate).
+    // On a connect, emit the strike's output signals (the presenter glyph, the GTW-572 facts,
+    // the GTW-821 injury bridge, the GTW-547 death gate, the GTW-525 shove). A miss deals no
+    // damage and emits nothing (the §7 connect gate).
     if *strike.connect {
         // The target's own (cell, level) key — Position derefs to CellLevel (the
         // old decompose-then-recompose was the identity on every real key).
         let at: CellLevel = *tgt_pos;
-        resolved.write(MeleeResolved::new(at, attacker.strike_damage_type));
-
-        // GTW-572: the NUMBER-BEARING melee fact — the connecting strike's applied HP loss,
-        // with both combatants, so the combat log can phrase a melee-damage line. The
-        // strike-glyph signal above stays cell+damage-type only (the GTW-507 FX contract).
-        facts.struck.write(MeleeStruck::new(
-            attacker.entity,
+        emit_connect_signals(
+            attacker,
             target_entity,
-            strike.hp_damage,
-        ));
-
-        // GTW-572: a protecting→broken wear crossing (surfaced on the strike verdict — it
-        // was previously computed and dropped inside the verb) emits the SAME ArmorBroken
-        // fact a ranged break does, so a melee break pops and logs identically.
-        if let ArmorWearOutcome::Broke(broken) = strike.wear {
-            facts.breaks.write(broken);
-        }
-
-        // GTW-547: a CONNECTING strike that KILLED the target (its post-fold LifeState is Dead)
-        // emits the terminal-death signal at the target's cell so `resolve_on_death` fans the
-        // dead ganger's on-death effect. Re-read the target's LifeState off the query AFTER the
-        // in-place fold (the SINGLE LifeState read path); a strike that wounded-but-did-not-kill
-        // emits nothing.
-        if targets
-            .get(target_entity)
-            .is_ok_and(|(_, _, &life, ..)| life == LifeState::Dead)
-        {
-            deaths.write(crate::effects::on_death::OnDeathOccurred::new(
-                target_entity,
-                at,
-            ));
-        }
-
-        // GTW-525 C3: a `shove`-tagged weapon KNOCKS BACK the target on a CONNECTING strike
-        // (in addition to the damage above). Write the internal weapon-tag ShoveRequested — the
-        // connect already gated + charged, so dispatch_shove resolves it un-gated / TU-free
-        // (ShoveSource::Weapon). A miss never reaches here (no shove); a non-`shove` weapon
-        // writes nothing. dispatch_shove is ordered `.after(dispatch_melee)`, so the same-frame
-        // message is consumed this tick.
-        if *attacker.shove {
-            shoves.write(ShoveRequested::new_weapon(attacker.entity, target_entity));
-        }
+            at,
+            strike,
+            targets,
+            MeleeConnectSignals {
+                resolved,
+                facts,
+                shoves,
+                deaths,
+            },
+        );
     }
 }
 
@@ -222,8 +207,9 @@ pub(super) fn resolve_ganger_melee(
     clippy::too_many_arguments,
     reason = "the fold threads the target query + the two armor relationship queries + the \
               target entity + the combatants + the projected Toughness/Luck + the weapon + \
-              tuning + the three draw streams — the irreducible input set resolve_melee_strike \
-              takes; bundling would only hide the access set"
+              the grouped strike environment (tuning + injury content + the four draw \
+              streams) — the irreducible input set resolve_melee_strike takes; bundling \
+              further would only hide the access set"
 )]
 fn strike_with_target(
     targets: &mut MeleeTargetQuery,
@@ -234,10 +220,7 @@ fn strike_with_target(
     toughness: Toughness,
     luck: Luck,
     weapon: MeleeWeaponHit<'_>,
-    tuning: &CombatTuning,
-    fight_rng: &mut FightRng,
-    shot_rng: &mut ShotRng,
-    severity_rng: &mut SeverityRng,
+    env: MeleeStrikeEnv<'_>,
 ) -> MeleeStrike {
     // Resolve the target's struck worn piece view — the FIRST worn piece (if any), read off
     // `target → Wears → the piece entity`. The §6 fold wears its `&mut ArmorIntegrity` in
@@ -264,6 +247,7 @@ fn strike_with_target(
             severity:  crate::severity::Severity::None,
             hp_damage: crate::resolve_hit::HpDamage::new(0),
             wear:      crate::armor_wear::ArmorWearOutcome::Unaffected,
+            injury:    None,
         };
     };
     resolve_melee_strike(
@@ -279,9 +263,6 @@ fn strike_with_target(
             luck,
         },
         target_entity,
-        tuning,
-        fight_rng,
-        shot_rng,
-        severity_rng,
+        env,
     )
 }

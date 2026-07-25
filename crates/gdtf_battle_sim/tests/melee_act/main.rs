@@ -20,6 +20,12 @@
 //! - **e — in-engine QA evidence (headless)**: the connect case proves the act resolves AND the
 //!   `MeleeResolved` FX signal emits end-to-end on the real runtime path.
 //!
+//! GTW-821 adds the `injury` module: a connecting, non-graze / non-fatal strike draws its named
+//! injury from the MELEE per-source weighting tables (proven by content only the melee context
+//! can roll), bridges it to the existing `InjuryInflicted`, and lands it on the target's ledger
+//! — plus the draw discipline (graze / fatal / miss take ZERO `InjuryRng` draws, with a
+//! positive control that a wound DOES take its one).
+//!
 //! DETERMINISM: a seeded battle RNG + a degenerate Fight on one side, so the outcome is
 //! variance-INDEPENDENT. (`variance 0` is LEGAL since GTW-640 — the `[1−v, 1+v]` band draws
 //! through the safe-draw verb, collapsing to factor `1.0`; the `degenerate_variance` module
@@ -37,4 +43,6 @@ mod connect;
 mod degenerate_variance;
 mod gates;
 mod harness;
+mod injury;
+mod injury_content;
 mod misses;

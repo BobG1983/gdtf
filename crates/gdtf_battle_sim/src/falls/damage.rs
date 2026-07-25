@@ -213,6 +213,8 @@ pub(crate) fn resolve_fall_hit(
             fatal_bias: FatalBias::new(0.0),
             shooter_luck: Luck::new(0.0),
             context: DamageContext::Fall,
+            // No §7 opposed-Fight margin on a fall — the resolved hit is not scaled (GTW-821).
+            damage_mult: None,
         },
         target,
         target_entity,

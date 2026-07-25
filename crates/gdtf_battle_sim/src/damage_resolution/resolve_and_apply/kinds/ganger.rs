@@ -233,6 +233,8 @@ pub(in crate::damage_resolution::resolve_and_apply) fn fold(
             // The weapon fire path is a RANGED wound (GTW-452) — the §8 injury roll samples
             // the ranged per-source weighting table over the shared pool.
             context: DamageContext::Ranged,
+            // No §7 opposed-Fight margin on a shot — the resolved hit is not scaled (GTW-821).
+            damage_mult: None,
         },
         target,
         target_entity,

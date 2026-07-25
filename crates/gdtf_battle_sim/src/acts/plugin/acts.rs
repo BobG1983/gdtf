@@ -38,13 +38,14 @@ pub(super) fn wire_acts(app: &mut App) {
             dispatch_reload,
             // GTW-507/508: the LIVE melee act. It drains MeleeRequested, gates 8-adjacency
             // (+ LOS/alive/opposing faction on the ganger arm), spends the wielded melee
-            // weapon's fight-mode TU, and either runs the §7 opposed-Fight → §5 → §6
-            // synthesis onto a ganger (GTW-507, REUSING the GTW-506 core + §4/§5/§6 pieces
-            // verbatim) or the GTW-508 UNCONTESTED cover-smash onto an adjacent structure —
-            // multiplied (mult_max) weapon damage through CoverLedger::deplete_cover, firing
-            // the EXISTING CoverDestroyed signal on a lethal smash. It joins the
-            // BattleInProgress-gated Simulate band (its Res grids + tuning + the three ResMut
-            // RNG streams are battle-lifetime — the band's run_if skips it outside a live
+            // weapon's fight-mode TU, and either runs the §7 opposed-Fight → §5 → §6 → §8
+            // synthesis onto a ganger (GTW-507/GTW-821, REUSING the GTW-506 core + the SHARED
+            // `synthesize_wound` wound core) or the GTW-508 UNCONTESTED cover-smash onto an
+            // adjacent structure — multiplied (mult_max) weapon damage through
+            // CoverLedger::deplete_cover, firing the EXISTING CoverDestroyed signal on a lethal
+            // smash. It joins the BattleInProgress-gated Simulate band (its Res grids + tuning +
+            // the four ResMut RNG streams — FightRng / ShotRng / SeverityRng / the GTW-821
+            // InjuryRng — are battle-lifetime, so the band's run_if skips it outside a live
             // battle, bevy-traps.md #1).
             //
             // Ordering (bevy-traps.md #3): GTW-508 promoted its `cover` param to
@@ -58,7 +59,10 @@ pub(super) fn wire_acts(app: &mut App) {
             // its `destroyed` flag is monotonic (set-once), so whichever dispatcher runs
             // first, the ledger and any emitted CoverDestroyed converge to the same state.
             // The presenter's swap_destroyed_cover / read_cover_destroyed react idempotently.
-            // No `.before`/`.after` is needed for correctness.
+            // GTW-821 also made it a PRODUCER of InjuryInflicted; that consumer (`apply_injury`)
+            // carries the matching `.after(dispatch_melee)` at its own registration site
+            // (acts/plugin/turn_clocks.rs), so the producer→consumer order is explicit there.
+            // Within this UNORDERED group no `.before`/`.after` is needed for correctness.
             dispatch_melee,
             // GTW-315: the LIVE open-door act. It drains OpenDoorRequested, re-gates the door
             // (openable + CLOSED + 8-adjacent to the actor) and the actor (exists + affords the

@@ -4,7 +4,7 @@
 use bevy::prelude::{MessageReader, MessageWriter, Query, With};
 
 use super::{
-    MeleeFacts, MeleeGrids, MeleeRngs,
+    MeleeFacts, MeleeRngs, MeleeWorld,
     ganger::resolve_ganger_melee,
     queries::{MeleeGeomQuery, MeleeTargetQuery, MeleeWeaponQuery},
     snapshot::{AttackerSnapshot, MeleeStreams},
@@ -46,15 +46,18 @@ use crate::{
 ///    `&mut Tu` (saturating; the act is taken whether or not the strike connects — a swing
 ///    costs TU regardless, mirroring the ranged `fire()` TU charge).
 /// 5. **Runs** [`resolve_melee_strike`](crate::melee::resolve_melee_strike) — the §7
-///    opposed-Fight → §5 damage (× the §7 margin
-///    multiplier) → §6 wound synthesis (GTW-506 core + the §4/§5/§6 pieces, reused verbatim),
-///    folding the connecting hit onto the target's `&mut` surfaces in place and emitting the
-///    existing wound/injury signals (via [`apply_hit`](crate::apply_hit::apply_hit) +
-///    `InflictedWounds`). The three injected streams (`FightRng` / `ShotRng` / `SeverityRng`)
-///    are the only entropy.
+///    opposed-Fight → the SHARED §5 → §6 → §8 wound core
+///    (`synthesize_wound`: §5 damage × the §7
+///    margin multiplier → §6 severity + [`apply_hit`](crate::apply_hit::apply_hit) →
+///    the §8 injury roll against the MELEE weighting tables, GTW-821), folding the connecting
+///    hit onto the target's `&mut` surfaces in place. The four injected streams (`FightRng` /
+///    `ShotRng` / `SeverityRng` / `InjuryRng`) are the only entropy.
 /// 6. On a **connect**, emits ONE [`MeleeResolved`] carrying the target's struck `(cell, level)`
-///    plus the weapon's [`DamageType`] (the presenter's strike-glyph FX role/color). A MISS
-///    (the opposed roll lost) deals no damage and emits nothing.
+///    plus the weapon's [`DamageType`] (the presenter's strike-glyph FX role/color), and — when
+///    the §8 roll drew one — ONE [`InjuryInflicted`](crate::acts::InjuryInflicted) carrying the
+///    named injury, the EXISTING message the fire and fall paths emit and the `apply_injury`
+///    boundary folds onto the target's ledger (GTW-821). A MISS (the opposed roll lost) deals no
+///    damage and emits nothing.
 ///
 /// # Melee-vs-STRUCTURE (GTW-508)
 ///
@@ -76,16 +79,17 @@ use crate::{
 /// Ordered in [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems) by
 /// [`SimActsPlugin`](crate::acts::SimActsPlugin). Param-only (`bevy-traps.md` #7 — no
 /// `&mut World`); the queries are disjoint (see each `type`'s doc). The `ResMut<FightRng>` /
-/// `ResMut<ShotRng>` / `ResMut<SeverityRng>` are the drawing streams (never `Res` — drawing
-/// advances the cursor; the `rng::streams` binding constraint).
+/// `ResMut<ShotRng>` / `ResMut<SeverityRng>` / `ResMut<InjuryRng>` are the drawing streams
+/// (never `Res` — drawing advances the cursor; the `rng::streams` binding constraint).
 #[expect(
     clippy::too_many_arguments,
     reason = "the melee dispatch needs the request reader, the disjoint geometry / attacker-Tu \
               / target-surfaces ganger queries, the two armor relationship queries, the wields \
-              + melee-marker + melee-weapon-stat relationship queries, the grouped grids+tuning \
-              (MeleeGrids) + draw streams (MeleeRngs) bundles, and the MeleeResolved + \
-              MeleeStruck + CoverDestroyed + ShoveRequested writers — each a distinct Bevy \
-              SystemParam (the dispatch_fire argument-count carve-out)"
+              + melee-marker + melee-weapon-stat relationship queries, the grouped world reads \
+              (MeleeWorld: grids + tuning + injury content) + draw streams (MeleeRngs) \
+              bundles, and the MeleeResolved + MeleeStruck + InjuryInflicted + CoverDestroyed \
+              + ShoveRequested writers — each a distinct Bevy SystemParam (the dispatch_fire \
+              argument-count carve-out)"
 )]
 pub fn dispatch_melee(
     mut requests: MessageReader<MeleeRequested>,
@@ -100,10 +104,11 @@ pub fn dispatch_melee(
     wields: WieldsQuery,
     melee: MeleeQuery,
     weapons: MeleeWeaponQuery,
-    // The LOS gate's read grids + tuning, grouped (MeleeGrids) so the system stays under
-    // Bevy's 16-param limit. `cover` is `ResMut` (the GTW-508 cover-smash spends it).
-    mut grids: MeleeGrids,
-    // The three draw streams the §7 / §4 / §6 synthesis advances, grouped (MeleeRngs).
+    // The LOS gate's read grids + the tuning + the GTW-821 §8 injury content, grouped
+    // (MeleeWorld) so the system stays under Bevy's 16-param limit. `cover` is `ResMut` (the
+    // GTW-508 cover-smash spends it).
+    mut world: MeleeWorld,
+    // The four draw streams the §7 / §4 / §6 / §8 synthesis advances, grouped (MeleeRngs).
     rngs: MeleeRngs,
     mut resolved: MessageWriter<MeleeResolved>,
     // GTW-572: the grouped fact writers — a CONNECTING ganger strike writes one MeleeStruck
@@ -129,8 +134,8 @@ pub fn dispatch_melee(
     // all three are sim-set (inserted at setup), so this never bails there (the `reaction_trigger`
     // `Option<ResMut<ReactionRng>>` precedent). The structural (cover-smash) path takes NO draw,
     // but the streams are always present in a live battle, so gating both arms here is harmless.
-    let (Some(mut fight_rng), Some(mut shot_rng), Some(mut severity_rng)) =
-        (rngs.fight, rngs.shot, rngs.severity)
+    let (Some(mut fight_rng), Some(mut shot_rng), Some(mut severity_rng), Some(mut injury_rng)) =
+        (rngs.fight, rngs.shot, rngs.severity, rngs.injury)
     else {
         return;
     };
@@ -197,11 +202,12 @@ pub fn dispatch_melee(
                 &mut targets,
                 &wears,
                 &mut pieces,
-                &mut grids,
+                &mut world,
                 MeleeStreams {
                     fight:    &mut fight_rng,
                     shot:     &mut shot_rng,
                     severity: &mut severity_rng,
+                    injury:   &mut injury_rng,
                 },
                 &mut resolved,
                 &mut facts,
@@ -214,7 +220,7 @@ pub fn dispatch_melee(
                 &attacker,
                 at,
                 &mut tu_q,
-                &mut grids,
+                &mut world,
                 &mut resolved,
                 &mut cover_destroyed,
                 &mut deaths,

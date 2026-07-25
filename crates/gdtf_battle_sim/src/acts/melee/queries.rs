@@ -1,5 +1,5 @@
 //! The melee dispatch's query aliases + [`SystemParam`] bundles — the geometry /
-//! target-surfaces / weapon-stat query shapes and the grouped grids, draw streams,
+//! target-surfaces / weapon-stat query shapes and the grouped world, draw streams,
 //! and GTW-572 fact writers.
 
 use bevy::{
@@ -8,14 +8,14 @@ use bevy::{
 };
 
 use crate::{
-    acts::request::MeleeStruck,
+    acts::{InjuryInflicted, request::MeleeStruck},
     armor_wear::ArmorBroken,
     cover::CoverLedger,
     ganger::{Facing, Faction, Fight, Hp, LifeState, Luck, Position, Stance, Toughness, Wounds},
     inflicted_wound::InflictedWounds,
-    injuries::InflictedInjuries,
+    injuries::{InflictedInjuries, InjuryRegistry, InjuryTables},
     occupancy::OccupancyGrid,
-    rng::{FightRng, SeverityRng, ShotRng},
+    rng::{FightRng, InjuryRng, SeverityRng, ShotRng},
     surface::SurfaceGrid,
     tuning::CombatTuning,
     weapon::{DamageType, FatalBias, FightMode, Shove, WeaponDamage, WeaponPunch, WeaponShred},
@@ -92,17 +92,20 @@ pub(super) type MeleeWeaponQuery<'world, 'state> = Query<
     ),
 >;
 
-/// The change-driven world grids + tuning the [`has_los`](crate::los::has_los) gate reads, bundled into one
-/// [`SystemParam`] so [`dispatch_melee`](super::dispatch::dispatch_melee) stays under Bevy's 16-param system limit (the
-/// [`crate::acts::BattleGridsParam`] grouping precedent).
+/// The change-driven world state the melee dispatch reads — the three grids the
+/// [`has_los`](crate::los::has_los) gate marches, the [`CombatTuning`], and the §8 injury
+/// content — bundled into one [`SystemParam`] so
+/// [`dispatch_melee`](super::dispatch::dispatch_melee) stays under Bevy's 16-param system
+/// limit (the [`crate::acts::BattleGridsParam`] grouping precedent).
 ///
 /// The three grids the LOS march flies through ([`OccupancyGrid`] / [`SurfaceGrid`] /
 /// [`CoverLedger`]) + the [`CombatTuning`] all the §4/§5/§6/§7 reads consume — every one a
-/// battle-lifetime `Res<T>` (the band's `BattleInProgress` `run_if` keeps them present). A
-/// transparent system-param bundle of named world-state resources, not itself a wrapped domain
-/// scalar.
+/// battle-lifetime `Res<T>` (the band's `BattleInProgress` `run_if` keeps them present) — plus
+/// the GTW-821 §8 injury content, taken `Option<Res<…>>` so an asset-less harness falls back
+/// to EMPTY content instead of panicking. A transparent system-param bundle of named
+/// world-state resources, not itself a wrapped domain scalar.
 #[derive(SystemParam)]
-pub struct MeleeGrids<'w> {
+pub struct MeleeWorld<'w> {
     /// The coarse 3D occupancy grid — the LOS march's collision / occupant-band surface (also
     /// the stair-eye-offset lookup for the observer eye).
     pub(super) occupancy: Res<'w, OccupancyGrid>,
@@ -118,24 +121,34 @@ pub struct MeleeGrids<'w> {
     /// The combat tuning the §4 body-part weights, §5 damage formula, §6 severity scaling, §7
     /// melee curve, and the LOS view geometry all read.
     pub(super) tuning:    Res<'w, CombatTuning>,
+    /// The weighted `(category, context, severity)` injury tables — the §8 roll's pool; a
+    /// connecting strike samples the [`Melee`](crate::injuries::DamageContext::Melee)
+    /// per-source rows (GTW-821). `Option` — an asset-less harness (no `Load` flow) has none,
+    /// and the strike then rolls against EMPTY content (the `dispatch_fire` /
+    /// `dispatch_shove` fallback precedent), never a panic.
+    pub(super) tables:    Option<Res<'w, InjuryTables>>,
+    /// The injury registry — resolves the §8 roll's picked key to its authored def (GTW-821).
+    /// `Option` for the same asset-less-harness reason as [`tables`](MeleeWorld::tables).
+    pub(super) registry:  Option<Res<'w, InjuryRegistry>>,
 }
 
-/// The three seeded draw streams the §7 / §4 / §6 melee synthesis advances, bundled into one
-/// [`SystemParam`] so [`dispatch_melee`](super::dispatch::dispatch_melee) stays under Bevy's 16-param system limit.
+/// The four seeded draw streams the §7 / §4 / §6 / §8 melee synthesis advances, bundled into
+/// one [`SystemParam`] so [`dispatch_melee`](super::dispatch::dispatch_melee) stays under
+/// Bevy's 16-param system limit.
 ///
 /// Every field is a [`ResMut`] (drawing advances the cursor — never `Res`, the `rng::streams`
 /// binding constraint): [`FightRng`] (the two §7 opposed-Fight rolls), [`ShotRng`] (the §4
-/// body-part roll), [`SeverityRng`] (the §6 severity term). A transparent system-param bundle
-/// of the named stream resources, not itself a wrapped domain scalar. All three are battle-set
-/// (inserted at setup alongside the other streams), so the band's `BattleInProgress` `run_if`
-/// keeps them present.
-/// The three seeded draw streams the §7 / §4 / §6 melee synthesis advances, each taken
-/// `Option<ResMut<…>>` so a focused harness that opens `BattleInProgress` WITHOUT the full setup
-/// flow (the fire/cover bridge tests insert only the streams `dispatch_fire` needs) does not
-/// panic this runtime system on a stream's absence (`bevy-traps.md` #1; the `reaction_trigger`
-/// `Option<ResMut<ReactionRng>>` precedent). With ANY of the three absent, [`dispatch_melee`](super::dispatch::dispatch_melee)
-/// resolves no strike (a safe, defined fallback — never a panic). In the real app all three are
-/// sim-set (inserted at `setup_battle`), so the live melee act always has them.
+/// body-part roll), [`SeverityRng`] (the §6 severity term), [`InjuryRng`] (the §8 injury term,
+/// GTW-821). A transparent system-param bundle of the named stream resources, not itself a
+/// wrapped domain scalar.
+///
+/// Each is taken `Option<ResMut<…>>` so a focused harness that opens `BattleInProgress` WITHOUT
+/// the full setup flow (the fire/cover bridge tests insert only the streams `dispatch_fire`
+/// needs) does not panic this runtime system on a stream's absence (`bevy-traps.md` #1; the
+/// `reaction_trigger` `Option<ResMut<ReactionRng>>` precedent). With ANY of the four absent,
+/// [`dispatch_melee`](super::dispatch::dispatch_melee) resolves no strike (a safe, defined
+/// fallback — never a panic). In the real app all four are sim-set (inserted at
+/// `setup_battle`), so the live melee act always has them.
 #[derive(SystemParam)]
 pub struct MeleeRngs<'w> {
     /// The §7 opposed-Fight stream — two draws per resolve (GTW-506).
@@ -144,23 +157,32 @@ pub struct MeleeRngs<'w> {
     pub(super) shot:     Option<ResMut<'w, ShotRng>>,
     /// The §6 severity-roll stream — one draw per CONNECTING resolve (zero on a miss).
     pub(super) severity: Option<ResMut<'w, SeverityRng>>,
+    /// The §8 injury-roll stream (GTW-821) — one draw per CONNECTING resolve whose §6 wound
+    /// is non-graze / non-fatal (zero on a miss / graze / fatal).
+    pub(super) injury:   Option<ResMut<'w, InjuryRng>>,
 }
 
-/// The two GTW-572 melee FACT writers, bundled into one [`SystemParam`] so
-/// [`dispatch_melee`](super::dispatch::dispatch_melee) stays under Bevy's 16-param system limit (the [`MeleeGrids`] /
+/// The melee FACT writers, bundled into one [`SystemParam`] so
+/// [`dispatch_melee`](super::dispatch::dispatch_melee) stays under Bevy's 16-param system limit (the [`MeleeWorld`] /
 /// [`MeleeRngs`] grouping precedent):
 ///
 /// - [`MeleeStruck`] — the NUMBER-BEARING melee fact (attacker + target + applied HP loss)
 ///   the combat log's melee-damage line reads, one per CONNECTING ganger strike;
 /// - [`ArmorBroken`] — the protecting→broken crossing the §6 fold surfaced on the
 ///   [`MeleeStrike`](crate::melee::MeleeStrike) verdict (GTW-572: previously computed and
-///   dropped inside the verb), emitted so a melee break pops/logs exactly like a ranged one.
+///   dropped inside the verb), emitted so a melee break pops/logs exactly like a ranged one;
+/// - [`InjuryInflicted`] — the EXISTING injury message (GTW-821), carrying the named injury
+///   the connecting strike's §8 roll drew, so a melee injury reaches the target's ledger and
+///   the battle report exactly as a ranged or fall one does.
 ///
 /// A transparent system-param bundle of the named writers, not itself a wrapped domain value.
 #[derive(SystemParam)]
 pub struct MeleeFacts<'w> {
     /// The per-connecting-strike number-bearing fact (GTW-572).
-    pub(super) struck: MessageWriter<'w, MeleeStruck>,
+    pub(super) struck:   MessageWriter<'w, MeleeStruck>,
     /// The armor-broken crossing a connecting strike's §6 wear surfaced (GTW-572).
-    pub(super) breaks: MessageWriter<'w, ArmorBroken>,
+    pub(super) breaks:   MessageWriter<'w, ArmorBroken>,
+    /// The injury a connecting strike's §8 roll drew (GTW-821) — the EXISTING message the
+    /// `apply_injury` boundary drains onto the target's ledger.
+    pub(super) injuries: MessageWriter<'w, InjuryInflicted>,
 }

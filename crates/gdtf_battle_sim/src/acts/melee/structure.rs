@@ -3,7 +3,7 @@
 
 use bevy::prelude::{MessageWriter, Query};
 
-use super::{MeleeGrids, snapshot::AttackerSnapshot};
+use super::{MeleeWorld, snapshot::AttackerSnapshot};
 use crate::{
     acts::{downed::is_8_adjacent, request::MeleeResolved},
     cover::CoverEvent,
@@ -30,7 +30,7 @@ pub(super) fn resolve_structure_melee(
     attacker: &AttackerSnapshot<'_>,
     at: CellLevel,
     tu_q: &mut Query<&mut Tu>,
-    grids: &mut MeleeGrids,
+    world: &mut MeleeWorld,
     resolved: &mut MessageWriter<MeleeResolved>,
     cover_destroyed: &mut MessageWriter<CoverDestroyed>,
     deaths: &mut MessageWriter<crate::effects::on_death::OnDeathOccurred>,
@@ -48,7 +48,7 @@ pub(super) fn resolve_structure_melee(
     // either way the smash resolves against a defined entry (the ledger owns the lazy seed). An
     // unregistered cell has no authored HP/armor, so it seeds from the shared no-panic default (a
     // strike on an out-of-bounds / empty cell still resolves defined bookkeeping, never a panic).
-    let prototype = grids
+    let prototype = world
         .cover
         .peek(&at)
         .copied()
@@ -67,8 +67,8 @@ pub(super) fn resolve_structure_melee(
         attacker.weapon,
         &prototype,
         at,
-        &mut grids.cover,
-        &grids.tuning,
+        &mut world.cover,
+        &world.tuning,
     );
 
     // On a lethal smash, fire the EXISTING cover-destroyed signal (the presenter's GTW-386

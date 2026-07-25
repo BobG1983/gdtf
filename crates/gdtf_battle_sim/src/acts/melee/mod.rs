@@ -8,8 +8,10 @@
 //! No combat math is reimplemented here: the ganger path REUSES the GTW-506 opposed-Fight
 //! core ([`opposed_fight`](crate::melee::opposed_fight) /
 //! [`melee_damage_mult`](crate::melee::melee_damage_mult) /
-//! [`apply_melee_multiplier`](crate::melee::apply_melee_multiplier)) and the existing §4/§5/§6
-//! pieces verbatim, composed by [`resolve_melee_strike`](crate::melee::resolve_melee_strike);
+//! [`apply_melee_multiplier`](crate::melee::apply_melee_multiplier)) and the SHARED §5 → §6 →
+//! §8 wound core (`synthesize_wound` — the same
+//! one the ranged fire and fall paths run, GTW-821), composed by
+//! [`resolve_melee_strike`](crate::melee::resolve_melee_strike);
 //! the structural path REUSES [`resolve_structural_melee`](crate::melee::resolve_structural_melee)
 //! (multiplied weapon damage through the EXISTING cover ledger). The gates REUSE
 //! [`is_8_adjacent`](crate::acts::downed::is_8_adjacent) and [`has_los`](crate::los::has_los)
@@ -20,23 +22,27 @@
 //!
 //! Wiring-only `mod.rs`; every concern lives in a focused submodule:
 //!
-//! - `queries` — the query `type` aliases + the [`MeleeGrids`] / [`MeleeRngs`] /
-//!   [`MeleeFacts`] [`SystemParam`](bevy::ecs::system::SystemParam) bundles;
+//! - `queries` — the query `type` aliases + the [`MeleeWorld`] (which also carries the §8
+//!   injury tables + registry) / [`MeleeRngs`] / [`MeleeFacts`]
+//!   [`SystemParam`](bevy::ecs::system::SystemParam) bundles;
 //! - `dispatch` — the [`dispatch_melee`] system (drain → snapshot → weapon resolve →
 //!   arm branch);
 //! - `snapshot` — the shared attacker snapshot + stream-borrow bundles the two arms take;
 //! - `ganger` — the contested §7 opposed-Fight arm (`resolve_ganger_melee`): gate
 //!   8-adjacency + opposing faction + alive + LOS, spend the fight-mode TU, run the
-//!   §7 → §5 → §6 synthesis onto the target, emit the connect signals;
+//!   §7 → §5 → §6 → §8 synthesis onto the target;
+//! - `emit` — the connect-side output of that arm (`emit_connect_signals`): the presenter
+//!   glyph, the GTW-572 facts, the GTW-821 injury bridge, the death gate, the shove;
 //! - `structure` — the UNCONTESTED GTW-508 cover-smash arm (`resolve_structure_melee`):
 //!   gate ONLY 8-adjacency, spend the same TU, apply multiplied (`mult_max`) weapon
 //!   damage through the EXISTING cover ledger — NO opposed roll, NO RNG draw.
 
 mod dispatch;
+mod emit;
 mod ganger;
 mod queries;
 mod snapshot;
 mod structure;
 
 pub use dispatch::dispatch_melee;
-pub(super) use queries::{MeleeFacts, MeleeGrids, MeleeRngs};
+pub(super) use queries::{MeleeFacts, MeleeRngs, MeleeWorld};

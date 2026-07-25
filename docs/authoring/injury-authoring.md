@@ -104,7 +104,7 @@ weights differ.
 | Source (`context:`) | File name | Live producer today |
 |---------------------|-----------|---------------------|
 | `Ranged` | `<category>.weighting.ron` | the ranged fire fold (`resolve_and_apply`) |
-| `Melee` | `<category>.melee.weighting.ron` | **none yet** — see the dormant-table note below |
+| `Melee` | `<category>.melee.weighting.ron` | the §7 melee strike (`melee::resolve_melee_strike`) |
 | `Fall` | `<category>.fall.weighting.ron` | the fall damage path (`falls::resolve_fall_hit`) |
 
 To make a new injury rollable from a given source, add it to the appropriate bucket in
@@ -152,13 +152,11 @@ that source's file:
 - An injury referenced by no bucket in **any** context `warn!`s (it can never be
   rolled) — also never a crash.
 
-**Dormant tables — the melee context (as of GTW-452):** the four
-`*.melee.weighting.ron` files are authored, loaded, and built into the tables, but
-**nothing samples them yet**: the melee strike path (`melee::resolve_melee_strike`)
-resolves damage and a wound severity and stops there — it never runs the §8 injury roll,
-so no code constructs `DamageContext::Melee`. The melee tables are therefore live CONTENT
-waiting on the melee §8 wiring (a separate ticket); editing them changes nothing in play
-until that lands. Ranged and fall tables are both sampled in play today.
+**Every context is sampled in play (GTW-821):** the four `*.melee.weighting.ron` files
+joined the ranged and fall ones as live, sampled content when the melee strike
+(`melee::resolve_melee_strike`) started routing its blow through the shared wound core
+with `DamageContext::Melee` — a connecting strike whose §6 wound is non-graze and
+non-fatal draws from them, so editing them changes play immediately.
 
 **How the struck part maps to the category pool (roll lookup boundary):**
 `BodyPart::injury_category()` in `crates/gdtf_battle_sim/src/equipment/armor/stats.rs`

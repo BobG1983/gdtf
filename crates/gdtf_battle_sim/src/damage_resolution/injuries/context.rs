@@ -23,14 +23,12 @@ use serde::{Deserialize, Serialize};
 /// three variants match exactly what the landed damage paths distinguish today: the ranged
 /// fire fold (GTW-198), the melee strike (GTW-37), and the fall (GTW-39).
 ///
-/// **Which contexts a production path constructs today:** [`Ranged`](DamageContext::Ranged)
-/// on the fire fold and [`Fall`](DamageContext::Fall) on the fall path.
-/// [`Melee`](DamageContext::Melee) is constructed by NO production path yet — the melee
-/// strike ([`resolve_melee_strike`](crate::melee::resolve_melee_strike)) stops at the §6
-/// wound and never runs the §8 injury roll — so the shipped
-/// `weighting/<category>.melee.weighting.ron` tables load and build but are DORMANT until
-/// the melee §8 wiring lands (`docs/combat/resolution.md` §7; the dormant-table note in
-/// `docs/authoring/injury-authoring.md`).
+/// **Which contexts a production path constructs today:** all three —
+/// [`Ranged`](DamageContext::Ranged) on the fire fold, [`Melee`](DamageContext::Melee) on the
+/// §7 strike ([`resolve_melee_strike`](crate::melee::resolve_melee_strike), GTW-821), and
+/// [`Fall`](DamageContext::Fall) on the fall path — each routing its blow through the shared
+/// wound core, so every shipped `weighting/<category>.*.weighting.ron` table is sampled in
+/// play (`docs/combat/resolution.md` §7; `docs/authoring/injury-authoring.md`).
 ///
 /// A pure value enum (no bare integer / string for the source axis). `Hash`/`Eq` so it keys
 /// the [`InjuryTables`](super::InjuryTables) map alongside the category + severity.
@@ -43,9 +41,9 @@ pub enum DamageContext {
     /// A **ranged** hit — a shot from the fire pipeline (GTW-198). The default source.
     #[default]
     Ranged,
-    /// A **melee** hit — a connecting strike from the §7 opposed-Fight (GTW-37). Its
-    /// weighting tables are authored + built but DORMANT: the melee strike path runs no §8
-    /// injury roll yet, so nothing constructs this variant outside tests (see the type docs).
+    /// A **melee** hit — a connecting strike from the §7 opposed-Fight (GTW-37). Constructed
+    /// by [`resolve_melee_strike`](crate::melee::resolve_melee_strike) on every connect
+    /// (GTW-821), so the `<category>.melee.weighting.ron` tables are sampled in play.
     Melee,
     /// A **fall** — an unsupported drop's kinetic landing damage (GTW-39).
     Fall,
