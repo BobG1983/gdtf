@@ -7,9 +7,9 @@ description: How agents discover and invoke state-specific net_qa commands as mo
 
 ## Status
 
-`Proposed` — 2026-07-24, driven by a user design question on GTW-786 (the editor net-QA/MCP
-extension epic). Awaiting user ratification before GTW-805/806 (GTW-786's protocol children)
-lock their wire enums against it.
+`Accepted` — 2026-07-24 (user-ratified on GTW-786), driven by a user design question on GTW-786
+(the editor net-QA/MCP extension epic). Proposed 2026-07-24. GTW-805/806 (GTW-786's protocol
+children) lock their wire enums against it.
 
 ## Context
 
