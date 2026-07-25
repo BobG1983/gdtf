@@ -58,6 +58,11 @@ gdtf_qa_protocol = { path = "../gdtf_qa_protocol", optional = true }
 # by the `dev_tools` feature (below), so a release binary never links egui. Same version spec
 # as `gdtf_content_editor`'s (non-optional) `bevy_egui` dependency — that crate did not
 # workspace-dep it either, so this stays a per-crate pin rather than a promotion.
+#
+# UI-stack boundary (user decision 2026-07-25, recorded in the ADR 0003 amendment; GTW-863):
+# egui is permitted here for `dev_tools` affordances ONLY — currently the procgen stepper. The
+# player-facing game UI is the hand-rolled bevy_ui crate `gdtf_ui`, and egui must never reach it.
+# Written-down convention, not a build-enforced rule: nothing fails if someone crosses the line.
 bevy_egui = { version = "0.41", optional = true }
 # GTW-740: the T7 screenshot pump verifies a captured PNG is DECODABLE (not just present and
 # non-empty) before replying "saved" — a truncated, mid-flush file must not read as done. This
@@ -127,6 +132,11 @@ file_watcher = ["bevy/file_watcher"]
 # developer opts in.
 #
 # NOT in the default feature set and NEVER enabled for CI / release builds.
+#
+# UI-stack boundary (user decision 2026-07-25, recorded in the ADR 0003 amendment; GTW-863):
+# this feature is the ONLY route by which egui enters the game binary, and it is for developer
+# affordances only. The player-facing game UI stays hand-rolled bevy_ui (`gdtf_ui`); no egui
+# widget may be added to it. Written-down convention, not enforced by a test or a build gate.
 dev_tools = ["dep:bevy_egui"]
 # GTW-736: DEV-ONLY QA network control channel (the GTW-694 architecture's T3 onward,
 # extended through GTW-749 — the ONE capture / drive path in the workspace). Pulls in

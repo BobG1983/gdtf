@@ -4,6 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+# UI-stack boundary (user decision 2026-07-25, recorded in the ADR 0003 amendment; GTW-863):
+# gdtf keeps TWO UI stacks and neither crosses into the other. This crate's UI is egui
+# (`bevy_egui`, below); the hand-rolled bevy_ui crate `gdtf_ui` belongs to the player-facing
+# game. So this crate MAY NOT depend on `gdtf_ui` — and today it does not. (The dev-only
+# `gdtf_test_utils` harness under [dev-dependencies] does pull `gdtf_ui` into the test target;
+# that is the harness's own dependency, not editor UI code.) This is a written-down convention,
+# not a build-enforced rule: no test or CI job fails if someone adds the dependency.
 bevy = { workspace = true }
 # GTW-512 (C1 of the GTW-511 egui migration): the editor's UI is now bevy_egui (an immediate-mode
 # egui layer wired into Bevy), a CLEAN SWAP off the hand-rolled bevy_ui shell. bevy_egui 0.41
