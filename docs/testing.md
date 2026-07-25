@@ -30,11 +30,12 @@ Two homes, standard Cargo, placed per the module-layout test convention ([module
 - **In-crate unit tests** — a sibling `test/` directory (or `test.rs` leaf) next to the module under test (an inline `#[cfg(test)] mod test` only while tiny), for white-box coverage of private helpers and tight math. This is where most `gdtf_battle_sim` coverage lives.
 - **Integration tests** — `crates/<crate>/tests/`, one file per system or ticket-sized concern (`tests/<suite>/main.rs` dir-form once a suite outgrows one file), exercising the crate's public surface as a downstream user would (e.g. constructing a battle and driving a volley through the public verbs).
 
-Three repo-wide **guard suites** live in `crates/gdtf_test_utils/tests/` and ride every `cargo dtest` run:
+Four repo-wide **guard suites** live in `crates/gdtf_test_utils/tests/` and ride every `cargo dtest` run:
 
 - **`module_layout`** — the clause-7 module-layout conformance guard: wiring-only `mod.rs`, the warn>300 / block>400 line bands, and the exemption registry.
 - **`docs_path_truth`** — every repo path referenced from `docs/` and `.claude/rules/` must resolve against the live tree, so a module move can't silently strand design canon.
 - **`assets_tree_clean`** — the tracked `assets/` tree must be git-clean when the suite runs, so a test that mutates shipped authored content is caught loudly instead of silently corrupting authored work.
+- **`binary_feature_passthrough`** — a binary package under `bins/` must declare `net_qa = ["<lib>/net_qa"]` for every path-dependency library that declares a `net_qa` feature, so a QA control channel can never again be reachable from a `--features <lib>/net_qa` workspace check but not from a launchable binary (GTW-878).
 
 ## Conventions
 
@@ -68,11 +69,14 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 | --- | --- | --- |
 | `GDTF_ASSETS_CLEAN_ROOT` | `gdtf_test_utils` | Overrides the repo root the assets-tree-clean guard test scans (guard-test hook). |
 | `GDTF_BATTLE_SEED` | `gdtf_app` (consumed by `gdtf_battle_sim`; honored by the `gdtf_test_utils` battle harness) | Pins the root battle RNG seed for a reproducible replay; unset = wall-clock entropy, logged at `info!`. |
+| `GDTF_BIN_PASSTHROUGH_ROOT` | `gdtf_test_utils` | Overrides the repo root the GTW-878 binary-feature-passthrough guard test scans (guard-test hook). |
 | `GDTF_DEBUG_REACHABLE_OVERLAY` | `gdtf_battle_presenter` (mirrored by `gdtf_battle_input` docs) | Truthy renders the reachable-range debug overlay in a debug build (GTW-450; default off — visual noise). |
 | `GDTF_DOCS_PATH_ROOT` | `gdtf_test_utils` | Overrides the repo root the docs path-truth guard test scans (guard-test hook). |
 | `GDTF_EDITOR_ATTACHMENT` | `gdtf_content_editor` | Content-editor capture: pre-load a NAMED attachment item (a registry key / file stem, e.g. `scoped_sight`) into the ATTACHMENT form before the shot (GTW-669); unset keeps the sorted-first autoload. |
 | `GDTF_EDITOR_MELEE_WEAPON` | `gdtf_content_editor` | Content-editor capture: pre-load a NAMED melee weapon (a registry key / file stem, e.g. `chainsword`) into the MELEE form before the shot (GTW-671); unset keeps the sorted-first autoload. |
 | `GDTF_EDITOR_MODE` | `gdtf_content_editor` | Content-editor capture: force the Workbench mode (`terrain`/`theme`/`prefab`/`gang`/`armor`/`injury`/`sprite`/`attachment`/`weapon`/`melee_weapon`) before the shot. |
+| `GDTF_EDITOR_NET_QA` | `gdtf_content_editor` | Truthy (`1`/`true`/`yes`/`on`) opts a `net_qa` debug EDITOR build into the editor's own loopback QA control channel (GTW-804 / GTW-805). Distinct from the game's `GDTF_NET_QA` on purpose — one variable per host, so both can run at once. Reachable from a launchable editor since GTW-878 added the binary feature passthrough; the launch recipe is in [tooling/agent-qa.md](tooling/agent-qa.md). |
+| `GDTF_EDITOR_NET_QA_PORT` | `gdtf_content_editor` | Picks the EDITOR's `net_qa` loopback listen port; unset or unparseable = `7617` (one above the game's `7616`, so the two hosts never contend for a socket). Port only — the interface is always `Ipv4Addr::LOCALHOST`. |
 | `GDTF_EDITOR_SHOT` | `gdtf_content_editor` | Content-editor capture: output PNG path; setting it opts the standalone editor into screenshot-then-exit. NOT part of the `net_qa` migration (T14/GTW-748 is its own follow-up). |
 | `GDTF_EDITOR_TERRAIN_KIND` | `gdtf_content_editor` | Content-editor capture: pre-select the TERRAIN form's kind segment (`wall`/`cover`/`slab`/`emplacement`). |
 | `GDTF_EDITOR_VIEW` | `gdtf_content_editor` | Content-editor capture: `full` forces the prefab-viewport full view (lifting the GTW-594 Isolate default, which wins over it); `isolate` stages the GTW-594 three-class Isolate shot (edit storey lifted to the painted upper storey). Unset keeps the editor defaults (Isolate on, one onion below). |

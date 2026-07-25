@@ -29,19 +29,39 @@
 # linted, doc-checked and run by NOTHING in the gate — both reported "0 tests". Naming the feature
 # on the SAME runs (rather than adding new ones) costs no extra bevy build: these runs already
 # compile the editor crate and both optional deps (`gdtf_qa_protocol`, `gdtf_net_qa_transport`).
-# The editor's listener stays exactly as dev-gated as it was — the editor BINARY crate has no
-# passthrough for this feature, so a release editor build still cannot turn it on.
+#
+# GTW-878 CORRECTS what GTW-877 wrote here. That note said the editor's listener "stays exactly as
+# dev-gated as it was — the editor BINARY crate has no passthrough for this feature, so a release
+# editor build still cannot turn it on". The first half was the point; the second half described a
+# GAP, not a safeguard. `bins/gdtf_content_editor/Cargo.toml` now declares
+# `net_qa = ["gdtf_content_editor/net_qa"]`, exactly as `bins/grimdark_turfwar/Cargo.toml` declares
+# `net_qa = ["gdtf_app/net_qa"]`, so `cargo run -p gdtf_content_editor_bin --features
+# dynamic_linking,net_qa` (the `edqarun` alias below) launches a real editor that opens the port.
+# The listener is STILL dev-only, and for the reasons that always did the work: the feature is
+# opt-in (never in the default set, never named for a release build), its wiring site is
+# `cfg(all(debug_assertions, feature = "net_qa"))`, and even a `net_qa` debug editor stays inert
+# until `GDTF_EDITOR_NET_QA` is set truthy. A conformance test
+# (`crates/gdtf_test_utils/tests/binary_feature_passthrough/`) pins both binaries' declarations.
 
 # Run / build the game with dynamic linking.
 drun = "run -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools,net_qa"
 dbuild = "build -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools,net_qa"
 
 # Run / build the content editor (bins/gdtf_content_editor) with dynamic linking.
-# These two enable neither `dev_tools` nor either `net_qa`: the editor binary crate has no
-# passthrough for the editor's `net_qa` feature (see GTW-877 above), and `dev_tools` is a
-# `grimdark_turfwar` feature that the editor binary does not depend on.
+# These two deliberately stay MINIMAL: no `net_qa` (a plain dev editor should not pay that
+# feature's compile cost — use `edqarun` / `edqabuild` below when you want the QA port), and no
+# `dev_tools`, which is a `grimdark_turfwar` feature the editor binary does not depend on.
 edrun = "run -p gdtf_content_editor_bin --features dynamic_linking"
 edbuild = "build -p gdtf_content_editor_bin --features dynamic_linking"
+
+# GTW-878: run / build the content editor WITH its DEV-ONLY QA control channel compiled in. The
+# feature names are the BINARY package's own (`bins/gdtf_content_editor/Cargo.toml`), which chain
+# to `gdtf_content_editor/net_qa`. Compiling it in is not the same as switching it on: the editor
+# still opens no port until `GDTF_EDITOR_NET_QA` is truthy, and the port is `GDTF_EDITOR_NET_QA_PORT`
+# (default `7617`). Recipe: `GDTF_EDITOR_NET_QA=1 GDTF_EDITOR_NET_QA_PORT=7617 cargo edqarun` —
+# see `docs/tooling/agent-qa.md`. Never for release.
+edqarun = "run -p gdtf_content_editor_bin --features dynamic_linking,net_qa"
+edqabuild = "build -p gdtf_content_editor_bin --features dynamic_linking,net_qa"
 
 # Workspace-wide dev checks with dynamic linking.
 dcheck = "check --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa"
