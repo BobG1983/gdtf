@@ -71,7 +71,7 @@ open a port by accident:
    `crates/gdtf_app/src/dev/net_qa/env.rs` reads `GDTF_NET_QA`: `net_qa_enabled()`
    treats `1` / `true` / `yes` / `on` (trimmed, case-insensitive) as enabled and
    anything else — including unset — as disabled. `NetQaPlugin::from_env`
-   (`crates/gdtf_app/src/dev/net_qa/plugin.rs`) registers nothing unless that
+   (`crates/gdtf_app/src/dev/net_qa/plugin/net_qa_plugin.rs`) registers nothing unless that
    check passes.
 
 The listen **interface** is never configurable — it is hardcoded to
@@ -81,11 +81,11 @@ The listen **interface** is never configurable — it is hardcoded to
 
 ## The tool vocabulary
 
-The MCP host exposes nine tools, enumerated once by the `ToolName` enum in
-`bins/gdtf_qa_mcp/src/mcp/tools.rs`. Seven forward to the game (each maps 1:1
+The MCP host exposes twelve tools, enumerated once by the `ToolName` enum in
+`bins/gdtf_qa_mcp/src/mcp/tools/name.rs`. Ten forward to the game (each maps 1:1
 onto a `QaRequest`, resolved by `build_request` in
-`bins/gdtf_qa_mcp/src/mcp/call/build.rs`); two are host-local and never touch the
-wire.
+`bins/gdtf_qa_mcp/src/mcp/call/build/request.rs`); two are host-local and never
+touch the wire.
 
 | Tool | Kind | Maps to | Arguments |
 | --- | --- | --- | --- |
@@ -96,6 +96,9 @@ wire.
 | `screenshot_after` | forward | `QaRequest::ScreenshotAfter` | `intent`, `frame_delay`, optional `name` |
 | `app_flow` | forward | `QaRequest::GetAppFlow` | none |
 | `start_battle` | forward | `QaRequest::StartBattle` | `situation`, optional `seed` |
+| `stepper_control` | forward | `QaRequest::StepperControl` | `command` (`"Next"` / `"Skip"` / `{"Auto": {"running": true}}`) |
+| `activate_menu_item` | forward | `QaRequest::ActivateMenuItem` | `token` (from `app_flow`'s `menu.items[].token`) |
+| `focus_control` | forward | `QaRequest::FocusControl` | `command` (`{"ActivateTarget": <token>}` / `"Activate"` / `{"Step": "Next"}` / `{"Focus": <token>}`) |
 | `launch_game` | host-local | — (starts the child via `GameManager`) | `port` (optional) |
 | `stop_game` | host-local | — (stops the child via `GameManager`) | none |
 
@@ -104,7 +107,10 @@ Notes an agent relies on:
 - **`app_flow` is the affordance oracle.** Its reply carries an `available` list
   of the request kinds the game will service right now. The battle-only tools
   (`query_state`, `send_input`, `get_output`) are absent until a battle is
-  running, so poll `app_flow` first and act on what it advertises.
+  running, so poll `app_flow` first and act on what it advertises. It also carries
+  the two token handouts an agent clicks through: `menu` (`id` plus `items` of
+  `{token, label, enabled}`) on a menu, and `focus` (`focused` plus `focusables`
+  of `{token, label, kind, enabled, checked}`) on any focus-navigable screen.
 - **`start_battle` is the navigation step** that carries a cold-launched game
   from the menu into a battle. The game currently ships one situation,
   `skirmish`, and rejects any other name; the optional `seed` pins the procgen
@@ -118,6 +124,21 @@ Notes an agent relies on:
 - **`screenshot_after`** injects an intent and then captures a screenshot a fixed
   number of frames later — the frame-exact way to catch a transient effect (a
   muzzle flash) that a request/response round-trip cannot land on itself.
+- **`focus_control` drives the UI OFF-BATTLE** (GTW-802), which `send_input`
+  cannot: `send_input` is serviced only while a battle is running and caught up.
+  Read the controls from `app_flow`'s `focus.focusables` — the enumeration is read
+  off the game's OWN `DirectionalNavigationMap`, so any screen that is
+  keyboard-navigable at all (the Options screen, the menu, the battlescape HUD
+  panels) is listed with no per-screen tagging. `{"ActivateTarget": <token>}`
+  points focus at a control and clicks it; `"Activate"` clicks whatever holds
+  focus; `{"Step": "Next" | "Prev" | "Left" | "Right"}` moves focus; `{"Focus":
+  <token>}` points focus without clicking. Everything runs through the real path —
+  a step writes the same navigate message an arrow key writes, and an activation
+  emits a real `Enter` keypress at the focused control, so the game's own bridges
+  and first-party widget observers react exactly as they do to a player. A token
+  that is not a currently listed focusable is rejected `StaleToken`. The effect
+  lands on the FOLLOWING frame, so re-read `app_flow` to confirm (a checkbox
+  reports its new `checked` value there).
 
 ## The protocol sketch
 

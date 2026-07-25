@@ -42,10 +42,11 @@ use super::{
     channel::{NetInbox, Responder},
     config::{NET_QA_PROTOCOL_VERSION, SERVER_NAME},
     pending::{
-        ActivateMenuPayload, InjectPayload, OutputPayload, PendingQueues, ScreenshotAfterPayload,
-        ScreenshotPayload, SnapshotPayload, StartBattlePayload, StepperControlPayload,
+        ActivateMenuPayload, FocusControlPayload, InjectPayload, OutputPayload, PendingQueues,
+        ScreenshotAfterPayload, ScreenshotPayload, SnapshotPayload, StartBattlePayload,
+        StepperControlPayload,
     },
-    snapshot::{MenuReadWorld, menu_view},
+    snapshot::AppFlowViews,
 };
 use crate::states::AppState;
 
@@ -93,12 +94,15 @@ crate::support_item! {
             // A menu-item activation (GTW-787) is always serviceable at the router level,
             // exactly like `StartBattle`: whether the token names a live, listed menu item
             // is the consumer's check (a stale one is answered `Rejected(StaleToken)`), not
-            // a route-time state gate.
+            // a route-time state gate. A focus drive (GTW-802) joins that group for the same
+            // reason — and deliberately is NOT battle-gated: the screens it drives (Options,
+            // the menu) are off-battle, which is exactly the gap it closes.
             RequestKindNet::Hello
             | RequestKindNet::GetAppFlow
             | RequestKindNet::TakeScreenshot
             | RequestKindNet::StartBattle
-            | RequestKindNet::ActivateMenuItem => true,
+            | RequestKindNet::ActivateMenuItem
+            | RequestKindNet::FocusControl => true,
         }
     }
 }
@@ -125,7 +129,7 @@ pub(super) fn route_requests(
     battle: Option<Res<BattleInProgress>>,
     staged: Option<Res<StagedProcgen>>,
     playback: PlaybackGate,
-    menu: MenuReadWorld,
+    views: AppFlowViews,
     mut queues: PendingQueues,
 ) {
     let in_battle = battle.is_some();
@@ -156,7 +160,8 @@ pub(super) fn route_requests(
                     BattleActiveNet::new(in_battle),
                     available_requests(in_battle, caught_up, stepper_active),
                     CaughtUpNet::new(caught_up),
-                    menu_view(&menu),
+                    views.menu(),
+                    views.focus(),
                 );
                 responder.reply(QaResponse::AppFlow(view));
             }
@@ -198,6 +203,11 @@ pub(super) fn route_requests(
                 queues
                     .activate_menu
                     .push_new(ActivateMenuPayload::new(token), responder);
+            }
+            QaRequest::FocusControl(command) => {
+                queues
+                    .focus_control
+                    .push_new(FocusControlPayload::new(command), responder);
             }
         }
     }

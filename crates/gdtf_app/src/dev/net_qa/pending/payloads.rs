@@ -8,7 +8,7 @@
 //! bundle live in the sibling [`queue`](super::queue) module.
 
 use gdtf_qa_protocol::{
-    envelope::StepperCommandNet,
+    envelope::{FocusCommandNet, StepperCommandNet},
     ids::{EventCap, FocusTargetNet, FrameDelay, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
 };
@@ -64,6 +64,13 @@ pub(in crate::dev::net_qa) struct StepperControlPayload(StepperCommandNet);
 /// by the [`drive_activate_menu_item`](super::super::activate_menu::drive_activate_menu_item)
 /// consumer (GTW-787). The focus-target token naming the menu item to activate.
 pub(in crate::dev::net_qa) struct ActivateMenuPayload(FocusTargetNet);
+
+/// The pending payload for a
+/// [`FocusControl`](gdtf_qa_protocol::envelope::QaRequest::FocusControl) — consumed by the
+/// [`drive_focus_control`](super::super::focus_control::drive_focus_control) consumer
+/// (GTW-802). The focus-drive command to realise through the game's real focus / input
+/// path.
+pub(in crate::dev::net_qa) struct FocusControlPayload(FocusCommandNet);
 
 impl InjectPayload {
     /// Wrap the injected intent.
@@ -175,6 +182,20 @@ impl ActivateMenuPayload {
     }
 }
 
+impl FocusControlPayload {
+    /// Wrap the focus-drive command.
+    pub(in crate::dev::net_qa) const fn new(command: FocusCommandNet) -> Self {
+        Self(command)
+    }
+
+    /// The wrapped focus-drive command — the
+    /// [`drive_focus_control`](super::super::focus_control::drive_focus_control) consumer's
+    /// read ([`FocusCommandNet`] is `Copy`, so this borrows without consuming).
+    pub(in crate::dev::net_qa) const fn command(&self) -> FocusCommandNet {
+        self.0
+    }
+}
+
 impl StepperControlPayload {
     /// Wrap the stepper-drive command.
     pub(in crate::dev::net_qa) const fn new(command: StepperCommandNet) -> Self {
@@ -242,5 +263,11 @@ impl core::fmt::Debug for StepperControlPayload {
 impl core::fmt::Debug for ActivateMenuPayload {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_tuple("ActivateMenuPayload").field(&self.0).finish()
+    }
+}
+
+impl core::fmt::Debug for FocusControlPayload {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_tuple("FocusControlPayload").field(&self.0).finish()
     }
 }

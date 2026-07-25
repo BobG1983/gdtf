@@ -54,11 +54,24 @@
 //!   curated item set, activating the `Battlescape` token leaves the menu via the real
 //!   focus-activation path, and a stale token is rejected `StaleToken`; it reuses
 //!   [`start_battle`]'s menu fixture and [`inject_support`]'s request helper.
+//! - [`focus`] drives the REAL router + `drive_focus_control` consumer (GTW-802) on a
+//!   `MinimalPlugins` app resting on the Options screen: `GetAppFlow` folds in the screen's
+//!   OWN navigation-graph focusables, a `Step` moves focus through the real
+//!   `apply_navigation`, a `Focus` points `InputFocus`, and a malformed / dead /
+//!   live-but-UNLISTED token is rejected `StaleToken`.
+//! - [`focus_activation`] drives the same path END TO END on the `DefaultPlugins` tier
+//!   (GTW-802): activating the enumerated sound-toggle token over the wire flips the real
+//!   checkbox + readout, activating Continue leaves the screen for the Main Menu, and a bare
+//!   `Activate` clicks whatever holds focus. Both focus suites share [`focus_support`]'s
+//!   fixtures.
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
 mod affordance;
 mod caught_up;
 mod deadline;
+mod focus;
+mod focus_activation;
+mod focus_support;
 mod inject;
 mod inject_support;
 mod menu;

@@ -119,6 +119,9 @@ pub(super) fn drive_start_battle(
             BattleActiveNet::new(in_battle),
             available_requests(in_battle, CAUGHT_UP_AT_MENU, STEPPER_INACTIVE_AT_MENU),
             CaughtUpNet::new(CAUGHT_UP_AT_MENU),
+            // The menu (GTW-787) and focus (GTW-802) enumerations are omitted for the same
+            // reason: a client reads them live from a `GetAppFlow` poll.
+            None,
             None,
         )));
     }

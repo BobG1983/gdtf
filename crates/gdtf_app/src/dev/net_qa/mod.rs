@@ -44,6 +44,12 @@
 //! - [`activate_menu`] — the menu-item activation consumer that answers `ActivateMenuItem`
 //!   by raising the SAME focus-activation message an `Enter` keypress raises for the token'd
 //!   menu item, fail-closed on a stale token (GTW-787).
+//! - [`focus_control`] — the focus-drive consumer that answers `FocusControl` by writing the
+//!   SAME navigate message an arrow key writes and emitting a REAL `Enter` keypress at the
+//!   focused control, so ANY focus-navigable screen is drivable, fail-closed on a stale or
+//!   unlisted token (GTW-802).
+//! - [`key_tap`] — the shared real-keypress emitter both the raw-input inject arm and the
+//!   focus-drive activation write through.
 //! - [`plugin`] — the [`NetQaPlugin`] registration (`from_env` / `with_channels`).
 
 mod activate_menu;
@@ -52,7 +58,9 @@ mod config;
 mod convert;
 mod env;
 mod events;
+mod focus_control;
 mod inject;
+mod key_tap;
 mod listener;
 mod pending;
 mod plugin;

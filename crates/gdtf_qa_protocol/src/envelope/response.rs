@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     error::QaError,
+    focus::FocusControlReceipt,
     hello::HelloFacts,
     menu::MenuActivationReceipt,
     receipt::InjectReceipt,
@@ -26,7 +27,8 @@ use crate::{
 /// frame-exact capture's folded intent + capture outcome), [`Output`](Self::Output)
 /// (the drained event batch), [`StepperControlled`](Self::StepperControlled) (the DEV
 /// stepper-control receipt), [`MenuItemActivated`](Self::MenuItemActivated) (the menu-item
-/// activation receipt), and [`Error`](Self::Error) (a protocol-level
+/// activation receipt), [`FocusControlled`](Self::FocusControlled) (the focus-control
+/// receipt), and [`Error`](Self::Error) (a protocol-level
 /// [`QaError`]). An independent serde enum.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum QaResponse {
@@ -49,6 +51,8 @@ pub enum QaResponse {
     StepperControlled(StepperReceipt),
     /// The menu-item activation receipt (GTW-787).
     MenuItemActivated(MenuActivationReceipt),
+    /// The focus-control command's receipt (GTW-802).
+    FocusControlled(FocusControlReceipt),
     /// A protocol-level error.
     Error(QaError),
 }

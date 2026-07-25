@@ -14,15 +14,7 @@
 //! resolution (token liveness, the fire-mode lookup, the offer gate) in
 //! [`resolve`](super::resolve). This file owns only the drain + the per-outcome dispatch.
 
-use bevy::{
-    input::{
-        ButtonState,
-        keyboard::{Key, KeyCode, KeyboardInput, NativeKey},
-    },
-    input_focus::FocusCause,
-    prelude::*,
-    window::CursorMoved,
-};
+use bevy::{input_focus::FocusCause, prelude::*, window::CursorMoved};
 use gdtf_battle_input::{
     ActIntent,
     contextual::{
@@ -41,6 +33,7 @@ use super::{
     convert::{
         ActorIntent, Classified, ContextualIntent, RawInputIntent, cell_level, classify, direction,
     },
+    key_tap::emit_key_tap,
     pending::{InjectPayload, PendingQueue},
     resolve::{
         InjectActors, InjectQueues, RawInputSink, gate_and_push, resolve_door, resolve_emplacement,
@@ -244,7 +237,8 @@ pub(super) fn push_raw_input(intent: RawInputIntent, sink: &mut RawInputSink) ->
     match intent {
         RawInputIntent::Key(press) => {
             if let Some(key_code) = resolve_key(press, sink) {
-                emit_key_tap(key_code, sink);
+                let window = primary_window(sink);
+                emit_key_tap(key_code, window, sink.key_events.as_deref_mut());
             }
             InjectReceipt::Queued
         }
@@ -266,36 +260,13 @@ pub(super) fn push_raw_input(intent: RawInputIntent, sink: &mut RawInputSink) ->
     }
 }
 
-/// Write a real `KeyboardInput` press+release pair for `key_code` onto the buffered keyboard
-/// message stream — a clean discrete tap Bevy's `keyboard_input_system` folds into
-/// `ButtonInput<KeyCode>` (so a `just_pressed`-reading game system sees the key). Inert if
-/// the stream is absent (no windowing input stack).
-fn emit_key_tap(key_code: KeyCode, sink: &mut RawInputSink) {
-    let window = sink
-        .windows
+/// The primary window a raw input is attributed to, or [`Entity::PLACEHOLDER`] when there
+/// is none (headless) — the window field every emitted input message carries.
+fn primary_window(sink: &RawInputSink) -> Entity {
+    sink.windows
         .iter()
         .next()
-        .map_or(Entity::PLACEHOLDER, |(entity, _)| entity);
-    let Some(events) = sink.key_events.as_deref_mut() else {
-        return;
-    };
-    events.write(key_message(key_code, ButtonState::Pressed, window));
-    events.write(key_message(key_code, ButtonState::Released, window));
-}
-
-/// Build a `KeyboardInput` message for `key_code` in `state` on `window`. The physical
-/// `key_code` and `state` are what `keyboard_input_system` (and the game's keybind reads)
-/// consume; `logical_key` is left unidentified — the QA layer names keys physically, not by
-/// a layout-specific character.
-const fn key_message(key_code: KeyCode, state: ButtonState, window: Entity) -> KeyboardInput {
-    KeyboardInput {
-        key_code,
-        logical_key: Key::Unidentified(NativeKey::Unidentified),
-        state,
-        text: None,
-        repeat: false,
-        window,
-    }
+        .map_or(Entity::PLACEHOLDER, |(entity, _)| entity)
 }
 
 /// Move the primary window's cursor to `pos` (what `bevy_ui`'s hover detection reads) and

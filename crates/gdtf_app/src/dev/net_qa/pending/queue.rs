@@ -13,8 +13,8 @@ use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_qa_protocol::envelope::{QaError, QaResponse};
 
 use super::payloads::{
-    ActivateMenuPayload, InjectPayload, OutputPayload, ScreenshotAfterPayload, ScreenshotPayload,
-    SnapshotPayload, StartBattlePayload, StepperControlPayload,
+    ActivateMenuPayload, FocusControlPayload, InjectPayload, OutputPayload, ScreenshotAfterPayload,
+    ScreenshotPayload, SnapshotPayload, StartBattlePayload, StepperControlPayload,
 };
 use crate::dev::net_qa::channel::Responder;
 
@@ -158,6 +158,10 @@ pub(in crate::dev::net_qa) struct PendingQueues<'w> {
     /// Menu-item activations (GTW-787) — always serviceable at route time (the consumer
     /// validates the token against the live menu and answers a stale one).
     pub(in crate::dev::net_qa) activate_menu:    ResMut<'w, PendingQueue<ActivateMenuPayload>>,
+    /// Focus-drive commands (GTW-802) — always serviceable at route time (the consumer
+    /// validates the token against the live focus graph and answers a stale one), and
+    /// NEVER battle-gated: a focus-navigable screen is usually off-battle.
+    pub(in crate::dev::net_qa) focus_control:    ResMut<'w, PendingQueue<FocusControlPayload>>,
 }
 
 /// The deadline pump for ONE pending-queue kind — ticks every entry and times out any

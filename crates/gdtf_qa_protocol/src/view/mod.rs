@@ -6,11 +6,13 @@
 //! ([`life`]), the injury summary ([`injury`]), the weapon + indexed fire-mode list
 //! ([`weapon`]), the [`ganger`] card, the [`terrain`] summary (with the door /
 //! emplacement token handout), the [`panel`] button token handout, the [`menu`]
-//! enumeration handout, the [`fog`] view, the [`appflow`] view, the [`selection`] view,
+//! enumeration handout, the [`focus`] focusable-control enumeration handout, the [`fog`]
+//! view, the [`appflow`] view, the [`selection`] view,
 //! and the top-level [`battle`] aggregate.
 
 pub mod appflow;
 pub mod battle;
+pub mod focus;
 pub mod fog;
 pub mod ganger;
 pub mod injury;
@@ -24,6 +26,10 @@ pub mod weapon;
 
 pub use appflow::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet, RequestKindNet};
 pub use battle::{BattleView, TurnView};
+pub use focus::{
+    FocusView, FocusableCheckedNet, FocusableEnabledNet, FocusableKindNet, FocusableLabelNet,
+    FocusableView, FocusedNet,
+};
 pub use fog::{ExploredCellCountNet, FogView, VisibleCellCountNet};
 pub use ganger::GangerView;
 pub use injury::{BodyPartNet, InjuryEntryNet, InjuryNameNet, InjurySummaryNet, SeverityNet};

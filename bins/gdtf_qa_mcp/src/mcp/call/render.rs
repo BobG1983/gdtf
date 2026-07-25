@@ -38,6 +38,7 @@ pub fn render_response(tool: ToolName, response: &QaResponse) -> Value {
         (ToolName::ActivateMenuItem, QaResponse::MenuItemActivated(receipt)) => {
             text_content(receipt)
         }
+        (ToolName::FocusControl, QaResponse::FocusControlled(receipt)) => text_content(receipt),
         _ => tool_error("the game returned a response that does not match the request"),
     }
 }
@@ -90,8 +91,8 @@ fn qa_error_message(error: QaError) -> String {
 mod tests {
     use gdtf_qa_protocol::{
         envelope::{
-            InjectReceipt, QaError, QaResponse, RejectReason, ScreenshotAfterResult,
-            ScreenshotPathNet, ScreenshotResult, StepperReceipt,
+            FocusControlReceipt, InjectReceipt, QaError, QaResponse, RejectReason,
+            ScreenshotAfterResult, ScreenshotPathNet, ScreenshotResult, StepperReceipt,
         },
         view::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet, RequestKindNet},
     };
@@ -131,6 +132,7 @@ mod tests {
             BattleActiveNet::new(true),
             vec![RequestKindNet::GetBattleState],
             CaughtUpNet::new(true),
+            None,
             None,
         );
         let rendered = render_response(ToolName::StartBattle, &QaResponse::AppFlow(view));
@@ -186,6 +188,23 @@ mod tests {
             unreachable!("a stepper-control reply carries text content");
         };
         assert!(text.contains("Latched"), "rendered: {text}");
+    }
+
+    /// A focus-control receipt renders as non-error text content. Without its arm it would
+    /// fall into the catch-all and a SUCCESSFUL focus drive would report "the game returned a
+    /// response that does not match the request" (the GTW-760 half-split class, GTW-802).
+    #[test]
+    fn render_response_focus_controlled_is_text_content() {
+        let rendered = render_response(
+            ToolName::FocusControl,
+            &QaResponse::FocusControlled(FocusControlReceipt::Applied),
+        );
+        assert_eq!(rendered["isError"], json!(false));
+        assert_eq!(rendered["content"][0]["type"], json!("text"));
+        let Some(text) = rendered["content"][0]["text"].as_str() else {
+            unreachable!("a focus-control reply carries text content");
+        };
+        assert!(text.contains("Applied"), "rendered: {text}");
     }
 
     /// A saved screenshot with a readable file renders as base64 image content.

@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{hello::ProtocolVersion, stepper::StepperCommandNet};
+use super::{focus::FocusCommandNet, hello::ProtocolVersion, stepper::StepperCommandNet};
 use crate::{
     ids::{EventCap, FocusTargetNet, FrameDelay, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
@@ -75,6 +75,23 @@ pub enum QaRequest {
     /// [`Rejected`](crate::envelope::MenuActivationReceipt::Rejected)`(`[`StaleToken`](crate::envelope::RejectReason::StaleToken)`)`
     /// — never a panic, never a silent no-op.
     ActivateMenuItem(FocusTargetNet),
+    /// Drive the focus of ANY focus-navigable screen — move focus a step, point it at one
+    /// enumerated control, or activate the focused / named control (GTW-802).
+    ///
+    /// The generic counterpart to [`ActivateMenuItem`](Self::ActivateMenuItem): where that
+    /// one needs a screen to carry the menu markers, this one drives whatever the game's own
+    /// focus graph lists, so the Options screen (and any future `bevy_ui` screen) is
+    /// drivable with no per-screen wiring. Unlike [`Inject`](Self::Inject) it is NOT
+    /// battle-gated — a focus-navigable screen is usually off-battle.
+    ///
+    /// Every command is realised through the real path: a
+    /// [`Step`](crate::envelope::FocusStepNet) writes the SAME navigate message an arrow key
+    /// writes, and an activation emits a real `Enter` keypress at the focused control, so the
+    /// game's own focus bridges and widget observers react exactly as they do to a player.
+    /// A token that names no currently listed focusable is answered
+    /// [`Rejected`](crate::envelope::FocusControlReceipt::Rejected)`(`[`StaleToken`](crate::envelope::RejectReason::StaleToken)`)`
+    /// — never a panic, never a silent no-op.
+    FocusControl(FocusCommandNet),
 }
 
 impl QaRequest {
@@ -99,6 +116,7 @@ impl QaRequest {
             Self::StartBattle { .. } => RequestKindNet::StartBattle,
             Self::StepperControl(_) => RequestKindNet::StepperControl,
             Self::ActivateMenuItem(_) => RequestKindNet::ActivateMenuItem,
+            Self::FocusControl(_) => RequestKindNet::FocusControl,
         }
     }
 }

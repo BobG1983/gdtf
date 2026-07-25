@@ -20,8 +20,8 @@ use std::sync::mpsc;
 use bevy::app::App;
 use gdtf_app::test_support::{AppState, IncomingRequest, NET_QA_PROTOCOL_VERSION, NetQaPlugin};
 use gdtf_qa_protocol::{
-    envelope::{QaError, QaRequest, QaResponse, StepperCommandNet},
-    ids::{FrameDelay, SituationRef},
+    envelope::{FocusCommandNet, QaError, QaRequest, QaResponse, StepperCommandNet},
+    ids::{FocusTargetNet, FrameDelay, SituationRef},
     intent::NetIntent,
     view::RequestKindNet,
 };
@@ -87,8 +87,13 @@ fn probe_request(kind: RequestKindNet) -> QaRequest {
         // A deliberately bogus token: `ActivateMenuItem` is always serviceable at the
         // router level (like `StartBattle`), so this probes the router's ACCEPT — the
         // consumer then answers the stale token `Rejected(StaleToken)`, not `NoBattle`.
-        RequestKindNet::ActivateMenuItem => {
-            QaRequest::ActivateMenuItem(gdtf_qa_protocol::ids::FocusTargetNet::new(0))
+        RequestKindNet::ActivateMenuItem => QaRequest::ActivateMenuItem(FocusTargetNet::new(0)),
+        // Same shape for the generic focus drive (GTW-802): always serviceable at the
+        // router level — and deliberately NOT battle-gated, which is the gap it closes —
+        // so a bogus token probes the router's ACCEPT and the consumer answers
+        // `Rejected(StaleToken)`, never `NoBattle`.
+        RequestKindNet::FocusControl => {
+            QaRequest::FocusControl(FocusCommandNet::Focus(FocusTargetNet::new(0)))
         }
     }
 }

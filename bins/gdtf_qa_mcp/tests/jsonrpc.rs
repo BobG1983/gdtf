@@ -26,6 +26,7 @@ impl GameLink for CannedGame {
                 Vec::new(),
                 CaughtUpNet::new(true),
                 None,
+                None,
             ))),
             QaRequest::Inject(_) => Ok(QaResponse::Injected(InjectReceipt::Queued)),
             _ => Ok(QaResponse::Error(QaError::BadRequest)),
@@ -103,6 +104,8 @@ fn initialize_returns_capabilities_and_echoes_version() {
 /// no client tool sent it, so an agent could never reach a battle at all (GTW-760).
 /// `stepper_control` is listed for the SAME reason (GTW-766): the game services
 /// `QaRequest::StepperControl`, so a missing client tool would be an unreachable half.
+/// `focus_control` is listed for the SAME reason (GTW-802): without it no off-battle
+/// screen (the Options screen among them) is drivable over the wire at all.
 #[test]
 fn tools_list_returns_every_tool() {
     let response = dispatch_json(r#"{"jsonrpc":"2.0","id":2,"method":"tools/list"}"#);
@@ -110,7 +113,7 @@ fn tools_list_returns_every_tool() {
         unreachable!("tools/list carries a tools array");
     };
     let names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
-    assert_eq!(names.len(), 11);
+    assert_eq!(names.len(), 12);
     for expected in [
         "send_input",
         "query_state",
@@ -121,6 +124,7 @@ fn tools_list_returns_every_tool() {
         "start_battle",
         "stepper_control",
         "activate_menu_item",
+        "focus_control",
         "launch_game",
         "stop_game",
     ] {

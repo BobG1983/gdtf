@@ -3,8 +3,9 @@
 
 use crate::{
     envelope::{
-        HelloFacts, InjectReceipt, MenuActivationReceipt, ProtocolVersion, QaError, QaResponse,
-        RejectReason, ScreenshotAfterResult, ScreenshotResult, ServerNameNet, StepperReceipt,
+        FocusControlReceipt, HelloFacts, InjectReceipt, MenuActivationReceipt, ProtocolVersion,
+        QaError, QaResponse, RejectReason, ScreenshotAfterResult, ScreenshotResult, ServerNameNet,
+        StepperReceipt,
     },
     events::{DroppedCount, EventBatch},
     test_support::assert_ron_round_trip,
@@ -51,6 +52,7 @@ fn qa_response_cases() -> Vec<QaResponse> {
             RequestKindNet::ALL.to_vec(),
             CaughtUpNet::new(true),
             None,
+            None,
         )),
         QaResponse::Battle(an_empty_battle()),
         QaResponse::Injected(InjectReceipt::Queued),
@@ -59,6 +61,7 @@ fn qa_response_cases() -> Vec<QaResponse> {
         QaResponse::Output(EventBatch::new(vec![], DroppedCount::new(0))),
         QaResponse::StepperControlled(StepperReceipt::Latched),
         QaResponse::MenuItemActivated(MenuActivationReceipt::Activated),
+        QaResponse::FocusControlled(FocusControlReceipt::Applied),
         QaResponse::Error(QaError::Busy),
     ]
 }
@@ -76,6 +79,7 @@ fn qa_response_is_exhaustive(response: &QaResponse) {
         | QaResponse::Output(_)
         | QaResponse::StepperControlled(_)
         | QaResponse::MenuItemActivated(_)
+        | QaResponse::FocusControlled(_)
         | QaResponse::Error(_) => {}
     }
 }
@@ -86,7 +90,7 @@ fn qa_response_round_trips_every_variant() {
     let cases = qa_response_cases();
     assert_eq!(
         cases.len(),
-        10,
+        11,
         "the case table lists every QaResponse variant"
     );
     for case in &cases {
@@ -105,4 +109,14 @@ fn menu_item_activated_round_trips_both_forms() {
     assert_ron_round_trip(&QaResponse::MenuItemActivated(
         MenuActivationReceipt::Rejected(RejectReason::StaleToken),
     ));
+}
+
+/// The focus-control receipt round-trips in both forms — the dispatched command and the
+/// typed stale-token rejection (GTW-802).
+#[test]
+fn focus_controlled_round_trips_both_forms() {
+    assert_ron_round_trip(&QaResponse::FocusControlled(FocusControlReceipt::Applied));
+    assert_ron_round_trip(&QaResponse::FocusControlled(FocusControlReceipt::Rejected(
+        RejectReason::StaleToken,
+    )));
 }

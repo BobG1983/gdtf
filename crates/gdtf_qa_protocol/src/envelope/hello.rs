@@ -80,9 +80,21 @@ impl ProtocolVersion {
     /// its `ui_stack` field, `NetIntent` lost its swap variant, and the wire key vocabulary
     /// lost the harness's shortcut key — a removal is as breaking as an addition, so a
     /// client negotiating version `9` now gets a `VersionMismatch` rather than a reply it
-    /// decodes against the stack-bearing shape and fails on. The game server negotiates a
+    /// decodes against the stack-bearing shape and fails on. Bumped to `11` (GTW-802) for
+    /// two breaking changes at once: [`AppFlowView`](crate::view::AppFlowView) gained a
+    /// `focus` field — the focus-navigable control enumeration handout
+    /// ([`FocusView`](crate::view::FocusView)), the same class of field addition as the
+    /// `available` / `caught_up` / `menu` bumps — and
+    /// [`QaRequest::FocusControl`](crate::envelope::QaRequest::FocusControl) /
+    /// [`QaResponse::FocusControlled`](crate::envelope::QaResponse::FocusControlled) /
+    /// [`RequestKindNet::FocusControl`](crate::view::RequestKindNet::FocusControl) were
+    /// added (with the [`FocusCommandNet`](crate::envelope::FocusCommandNet) command enum
+    /// and the [`FocusControlReceipt`](crate::envelope::FocusControlReceipt) reply) — a new
+    /// closed-enum variant everywhere the envelope matches exhaustively, so a client
+    /// negotiating version `10` now gets a `VersionMismatch` rather than a wire shape it
+    /// cannot decode. The game server negotiates a
     /// `Hello` against this value.
-    pub const CURRENT: Self = Self::new(10);
+    pub const CURRENT: Self = Self::new(11);
 
     /// Build a protocol version from its number.
     #[must_use]

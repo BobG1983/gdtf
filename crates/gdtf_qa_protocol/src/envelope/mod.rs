@@ -4,11 +4,13 @@
 //! The outermost wire types: every exchange is one [`QaRequest`] in and one
 //! [`QaResponse`] out. One concern per file — the [`hello`] handshake
 //! ([`ProtocolVersion`] / [`HelloFacts`]),
-//! the inject [`receipt`], the [`menu`]-activation receipt, the [`error`] vocabulary, the
+//! the inject [`receipt`], the [`menu`]-activation receipt, the [`focus`]-control command +
+//! receipt, the [`error`] vocabulary, the
 //! [`screenshot`] result, the DEV [`stepper`]-control command + receipt, and the
 //! [`request`] / [`response`] enums themselves.
 
 pub mod error;
+pub mod focus;
 pub mod hello;
 pub mod menu;
 pub mod receipt;
@@ -18,6 +20,7 @@ pub mod screenshot;
 pub mod stepper;
 
 pub use error::QaError;
+pub use focus::{FocusCommandNet, FocusControlReceipt, FocusStepNet};
 pub use hello::{HelloFacts, ProtocolVersion, ServerNameNet};
 pub use menu::MenuActivationReceipt;
 pub use receipt::{InjectReceipt, RejectReason};

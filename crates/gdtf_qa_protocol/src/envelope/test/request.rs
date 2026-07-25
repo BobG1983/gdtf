@@ -2,7 +2,7 @@
 //! (GTW-734).
 
 use crate::{
-    envelope::{ProtocolVersion, QaRequest, StepperCommandNet},
+    envelope::{FocusCommandNet, FocusStepNet, ProtocolVersion, QaRequest, StepperCommandNet},
     ids::{EventCap, FocusTargetNet, FrameDelay, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
     test_support::assert_ron_round_trip,
@@ -34,6 +34,7 @@ fn qa_request_cases() -> Vec<QaRequest> {
         },
         QaRequest::StepperControl(StepperCommandNet::Next),
         QaRequest::ActivateMenuItem(FocusTargetNet::new(42)),
+        QaRequest::FocusControl(FocusCommandNet::Step(FocusStepNet::Next)),
     ]
 }
 
@@ -50,7 +51,8 @@ fn qa_request_is_exhaustive(request: &QaRequest) {
         | QaRequest::GetOutput { .. }
         | QaRequest::StartBattle { .. }
         | QaRequest::StepperControl(_)
-        | QaRequest::ActivateMenuItem(_) => {}
+        | QaRequest::ActivateMenuItem(_)
+        | QaRequest::FocusControl(_) => {}
     }
 }
 
@@ -60,7 +62,7 @@ fn qa_request_round_trips_every_variant() {
     let cases = qa_request_cases();
     assert_eq!(
         cases.len(),
-        10,
+        11,
         "the case table lists every QaRequest variant"
     );
     for case in &cases {
@@ -83,6 +85,37 @@ fn optional_request_fields_round_trip_when_absent() {
         situation: SituationRef::new("ambush".to_owned()),
         seed:      None,
     });
+}
+
+/// Every [`FocusCommandNet`] variant rides a `FocusControl` request identically — the
+/// four step directions, a bare focus point, a bare activate, and an activate-by-token
+/// (GTW-802). The wildcard-free witness forces a new command variant in.
+#[test]
+fn focus_control_round_trips_every_command() {
+    let steps = [
+        FocusStepNet::Next,
+        FocusStepNet::Prev,
+        FocusStepNet::Left,
+        FocusStepNet::Right,
+    ];
+    let mut commands: Vec<FocusCommandNet> = steps.into_iter().map(FocusCommandNet::Step).collect();
+    commands.push(FocusCommandNet::Focus(FocusTargetNet::new(7)));
+    commands.push(FocusCommandNet::Activate);
+    commands.push(FocusCommandNet::ActivateTarget(FocusTargetNet::new(8)));
+    for command in commands {
+        match command {
+            FocusCommandNet::Step(step) => match step {
+                FocusStepNet::Next
+                | FocusStepNet::Prev
+                | FocusStepNet::Left
+                | FocusStepNet::Right => {}
+            },
+            FocusCommandNet::Focus(_)
+            | FocusCommandNet::Activate
+            | FocusCommandNet::ActivateTarget(_) => {}
+        }
+        assert_ron_round_trip(&QaRequest::FocusControl(command));
+    }
 }
 
 /// Every [`QaRequest`] variant maps to a DISTINCT [`RequestKindNet`], and a full case

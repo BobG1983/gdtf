@@ -3,7 +3,7 @@
 use bevy_derive::Deref;
 use serde::{Deserialize, Serialize};
 
-use crate::view::MenuView;
+use crate::view::{FocusView, MenuView};
 
 /// The app's top-level lifecycle **state** — the wire mirror of the game `AppState`.
 ///
@@ -105,6 +105,9 @@ pub enum RequestKindNet {
     /// An [`ActivateMenuItem`](crate::envelope::QaRequest::ActivateMenuItem) menu click
     /// (GTW-787).
     ActivateMenuItem,
+    /// A [`FocusControl`](crate::envelope::QaRequest::FocusControl) focus move / activation
+    /// on any focus-navigable screen (GTW-802).
+    FocusControl,
 }
 
 impl RequestKindNet {
@@ -114,7 +117,7 @@ impl RequestKindNet {
     /// the list the round-trip suite walks to prove each kind round-trips. The per-variant
     /// round-trip witness keeps this array complete — a new kind that is not listed here
     /// fails that test.
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::Hello,
         Self::GetAppFlow,
         Self::GetBattleState,
@@ -125,6 +128,7 @@ impl RequestKindNet {
         Self::StartBattle,
         Self::StepperControl,
         Self::ActivateMenuItem,
+        Self::FocusControl,
     ];
 }
 
@@ -161,12 +165,24 @@ pub struct AppFlowView {
     /// item tokens and echoes one back to
     /// [`ActivateMenuItem`](crate::envelope::QaRequest::ActivateMenuItem) to click it.
     pub menu:          Option<MenuView>,
+    /// The current screen's focus-navigable controls, if it has a focus graph at all
+    /// (GTW-802).
+    ///
+    /// `Some` with the focused control + every focusable's `{token, label, kind, enabled,
+    /// checked}` row on any screen the player can keyboard-navigate — the Options screen,
+    /// the main menu, the battlescape HUD panels — and `None` on a screen with no focus
+    /// chain. A client reads a token and echoes it back to
+    /// [`FocusControl`](crate::envelope::QaRequest::FocusControl) to point focus at, or
+    /// activate, that control. Unlike [`menu`](Self::menu) this needs no per-screen marker:
+    /// it enumerates the game's own focus graph, so a screen that is navigable at all is
+    /// listed here.
+    pub focus:         Option<FocusView>,
 }
 
 impl AppFlowView {
     /// Build an app-flow snapshot from the lifecycle state, the battle-active flag, the
-    /// request kinds serviceable right now, whether the screen is caught up, and the
-    /// current menu (if any).
+    /// request kinds serviceable right now, whether the screen is caught up, the current
+    /// menu (if any), and the current screen's focusable controls (if any).
     #[must_use]
     pub const fn new(
         state: AppStateNet,
@@ -174,6 +190,7 @@ impl AppFlowView {
         available: Vec<RequestKindNet>,
         caught_up: CaughtUpNet,
         menu: Option<MenuView>,
+        focus: Option<FocusView>,
     ) -> Self {
         Self {
             state,
@@ -181,6 +198,7 @@ impl AppFlowView {
             available,
             caught_up,
             menu,
+            focus,
         }
     }
 }

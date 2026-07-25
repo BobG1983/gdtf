@@ -26,12 +26,12 @@ on the inner one:
 
 1. **Outer (MCP) layer**, between the LLM client and the `gdtf_qa_mcp` host binary. MCP already
    has native discovery: `tools/list` returns every tool's `{name, description, inputSchema}`.
-   gdtf implements this today as a fixed enum walk (`bins/gdtf_qa_mcp/src/mcp/tools.rs:50`,
-   `ToolName::ALL`, 11 tools). gdtf does not declare `listChanged`; the tool list is static per
+   gdtf implements this today as a fixed enum walk (`bins/gdtf_qa_mcp/src/mcp/tools/name.rs`,
+   `ALL`, 12 tools since GTW-802 added `focus_control`). gdtf does not declare `listChanged`; the tool list is static per
    session.
 2. **Inner (net_qa wire) layer**, between the MCP host and the running game process. This is
-   `QaRequest` (`crates/gdtf_qa_protocol/src/envelope/request.rs:23`), a fixed serde enum of 10
-   typed variants. There is no `GetEditorState` variant today — the enum is game-only, and the
+   `QaRequest` (`crates/gdtf_qa_protocol/src/envelope/request.rs`), a fixed serde enum of 11
+   typed variants (GTW-802 added `FocusControl`). There is no `GetEditorState` variant today — the enum is game-only, and the
    editor is not wired into `net_qa` at all yet (that gap is GTW-786's own scope).
 
 A partial capability-advertisement mechanism already exists at the inner layer:
@@ -96,7 +96,7 @@ pub enum BattleQueryKind {
   retires once drivers migrate.
 - Router change is one arm in `router.rs`: match `QueryBattle(kind)` and dispatch to the same
   field-population code that already builds `BattleView`, returning only the relevant sub-struct.
-- The MCP surface (`bins/gdtf_qa_mcp/src/mcp/tools.rs:50`) gets exactly two new fixed tool
+- The MCP surface (`bins/gdtf_qa_mcp/src/mcp/tools/name.rs`) gets exactly two new fixed tool
   entries — `get_battle_query_options`, `query_battle` — not N. `query_battle`'s `inputSchema` is
   the `BattleQueryKind` enum, so an LLM sees the full legal topic list natively at the MCP layer.
 
