@@ -10,14 +10,20 @@
 //! keyboard-shaped behaviour that no act covers; its keyboard vocabulary lives in
 //! [`raw_input`], and the game side writes it through the SAME windowing-input messages the
 //! backend feeds — still never a direct sim mutation.
+//!
+//! The GTW-816 `SwapUiStack` intent stands apart from both families: it drives the DEV
+//! UI-stack swap harness rather than the game world, and its stack name lives in
+//! [`ui_stack`].
 
 pub mod net_intent;
 pub mod payload;
 pub mod raw_input;
+pub mod ui_stack;
 
 pub use net_intent::NetIntent;
 pub use payload::{AimNet, FacingNet, MeleeTargetNet, StanceNet};
 pub use raw_input::{KeyNet, KeyPressNet, KeybindActionNet};
+pub use ui_stack::UiStackNet;
 
 #[cfg(test)]
 mod test;

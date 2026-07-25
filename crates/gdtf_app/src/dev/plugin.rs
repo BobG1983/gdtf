@@ -39,6 +39,13 @@ pub(crate) struct DevAffordancesPlugin;
 
 impl Plugin for DevAffordancesPlugin {
     fn build(&self, app: &mut App) {
+        // GTW-816: the UI-stack swap harness. Added FIRST of the three egui-using
+        // affordances because it is the ONE owner of the `EguiPlugin` decision (Bevy panics
+        // on a duplicate add): it registers egui, turns off `auto_create_primary_context`
+        // and binds the context to the game's UI camera; the two below then guard with
+        // `App::is_plugin_added` and defer to it.
+        #[cfg(feature = "dev_tools")]
+        app.add_plugins(super::ui_swap::UiSwapHarnessPlugin);
         // GTW-655: the procgen load-time stepper. `dev_tools`-gated only (see the module
         // doc) — its own `from_env` env-var gate keeps it inert at runtime by default.
         #[cfg(feature = "dev_tools")]
@@ -46,9 +53,9 @@ impl Plugin for DevAffordancesPlugin {
         // GTW-819: the UI-stack coexistence proof-of-concept (one `bevy_ui` button + one egui
         // button alive together in `AppState::Running`). `dev_tools`-gated only, with no env
         // gate of its own — it is a spike whose whole purpose is to be looked at, and the QA
-        // harness that captures it launches the game without extra environment. Added AFTER
-        // the stepper so the stepper keeps ownership of `EguiPlugin` whenever both are active
-        // (the spike adds egui only if nothing else did — see its plugin doc).
+        // harness that captures it launches the game without extra environment. Added after
+        // the swap harness, which owns the `EguiPlugin` decision (GTW-816) — the spike adds
+        // egui only if nothing else did, so it defers.
         #[cfg(feature = "dev_tools")]
         app.add_plugins(super::ui_coexistence::UiCoexistencePlugin);
         // GTW-736/GTW-749: the QA network control channel — the ONE capture / drive

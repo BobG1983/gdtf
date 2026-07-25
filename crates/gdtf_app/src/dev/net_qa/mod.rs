@@ -64,6 +64,8 @@ mod screenshot_after;
 mod snapshot;
 mod start_battle;
 mod stepper;
+// The wire → DEV-swap-harness bridge for the GTW-816 `SwapUiStack` intent.
+mod ui_swap;
 
 // `NetQaPlugin` is the item the binary consumes (via the dev aggregate plugin,
 // `crate::dev::plugin`), so it re-exports in BOTH configurations at the `test-support`

@@ -34,6 +34,7 @@ fn an_empty_battle() -> BattleView {
         FogView::new(VisibleCellCountNet::new(0), ExploredCellCountNet::new(0)),
         SelectionView::new(None),
         TurnView::new(FactionNet::new(0), FactionNet::new(0)),
+        None,
     )
 }
 

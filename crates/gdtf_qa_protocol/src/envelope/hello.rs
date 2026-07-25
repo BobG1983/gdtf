@@ -65,8 +65,19 @@ impl ProtocolVersion {
     /// (with the [`MenuActivationReceipt`](crate::envelope::MenuActivationReceipt) reply)
     /// were added — a new closed-enum variant everywhere the envelope matches exhaustively,
     /// so a client negotiating version `7` now gets a `VersionMismatch` rather than a wire
-    /// shape it cannot decode. The game server negotiates a `Hello` against this value.
-    pub const CURRENT: Self = Self::new(8);
+    /// shape it cannot decode. Bumped to `9` (GTW-816) for two more breaking changes at
+    /// once: [`BattleView`](crate::view::BattleView) gained a `ui_stack` field — the DEV
+    /// UI-stack swap harness's state ([`UiStackView`](crate::view::UiStackView)), the same
+    /// class of field addition as the `buttons` / `menu` bumps — and
+    /// [`NetIntent::SwapUiStack`](crate::intent::NetIntent::SwapUiStack) was added
+    /// alongside its [`UiStackNet`](crate::intent::UiStackNet) payload and the
+    /// [`RejectReason::Unavailable`](crate::envelope::RejectReason::Unavailable) receipt
+    /// (plus [`KeyNet::F9`](crate::intent::KeyNet::F9), the harness's shortcut key, so the
+    /// KEYBOARD swap is drivable over the wire too),
+    /// so a client negotiating version `8` now gets a `VersionMismatch` rather than a
+    /// `BattleView` reply it decodes against the old stack-less shape and fails on. The
+    /// game server negotiates a `Hello` against this value.
+    pub const CURRENT: Self = Self::new(9);
 
     /// Build a protocol version from its number.
     #[must_use]

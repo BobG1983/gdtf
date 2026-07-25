@@ -19,13 +19,15 @@ fn reject_reason_round_trips_every_variant() {
         RejectReason::UnknownEntity,
         RejectReason::BadFireMode,
         RejectReason::StaleToken,
+        RejectReason::Unavailable,
     ] {
         match reason {
             RejectReason::NoBattle
             | RejectReason::NotOffered
             | RejectReason::UnknownEntity
             | RejectReason::BadFireMode
-            | RejectReason::StaleToken => {}
+            | RejectReason::StaleToken
+            | RejectReason::Unavailable => {}
         }
         assert_ron_round_trip(&reason);
     }

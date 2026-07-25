@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     payload::{AimNet, FacingNet, MeleeTargetNet, StanceNet},
     raw_input::KeyPressNet,
+    ui_stack::UiStackNet,
 };
 use crate::ids::{
     CellLevelNet, DoorToken, EmplacementToken, FireModeIndex, FocusTargetNet, GangerToken,
@@ -60,6 +61,16 @@ use crate::ids::{
 /// each through the SAME windowing-input path the backend uses (a `KeyboardInput` /
 /// `CursorMoved` message, the `InputFocus` resource `sync_hover_to_focus` writes) — never a
 /// direct sim mutation, so the one-way input → presenter → sim boundary holds.
+///
+/// # The DEV UI-stack swap (GTW-816)
+///
+/// [`SwapUiStack`](Self::SwapUiStack) stands apart from both families above: it drives no
+/// act and touches no sim state at all. It names which UI stack the DEV swap harness should
+/// make live, so an agent can drive the same swap a developer drives with the harness's
+/// keyboard shortcut, and then assert behavioural parity across the swap (the live stack is
+/// reported back on [`BattleView::ui_stack`](crate::view::BattleView::ui_stack)). A build
+/// without the harness answers it
+/// [`Rejected(Unavailable)`](crate::envelope::RejectReason::Unavailable).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum NetIntent {
     /// Fire the current selection's weapon in the `mode` at the `target` `(cell, storey)`
@@ -183,5 +194,15 @@ pub enum NetIntent {
     SetFocus {
         /// The entity to focus, by its wire token.
         target: FocusTargetNet,
+    },
+    /// Make a named UI stack the live one in the DEV swap harness (GTW-816) — the wire
+    /// twin of the harness's keyboard shortcut, landing in the SAME single-slot swap
+    /// latch the key and the on-screen swap buttons write.
+    ///
+    /// Absolute (never a flip): naming the already-live stack is a no-op, so a script can
+    /// put the harness in a known stack without reading the current one first.
+    SwapUiStack {
+        /// The stack to make live.
+        stack: UiStackNet,
     },
 }

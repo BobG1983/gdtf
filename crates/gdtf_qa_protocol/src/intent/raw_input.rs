@@ -16,7 +16,8 @@ use serde::{Deserialize, Serialize};
 /// (`Tab`, `Escape`, `ArrowLeft`, `Digit1`). The set is the keyboard the game already binds
 /// (the input crate's `BoundKey` vocabulary — Escape / the act letters / Tab / `PageUp` /
 /// `PageDown` / the brackets / the nine slot digits) PLUS the four arrow keys the focus-
-/// navigation bridge reads (GTW-782's `ArrowLeft`/`ArrowRight` → directional focus). Extend
+/// navigation bridge reads (GTW-782's `ArrowLeft`/`ArrowRight` → directional focus) PLUS
+/// `F9`, the DEV UI-stack swap shortcut (GTW-816). Extend
 /// it as later features read more keys — the same extend-as-needed philosophy the game's own
 /// `BoundKey` documents. The game side maps each variant to its `KeyCode`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -71,6 +72,9 @@ pub enum KeyNet {
     ArrowLeft,
     /// The right-arrow key (directional focus navigation).
     ArrowRight,
+    /// The `F9` function key — the DEV UI-stack swap shortcut (GTW-816), so an agent can
+    /// drive the developer's own keyboard swap rather than only the `SwapUiStack` intent.
+    F9,
 }
 
 /// A named **bound action** — the wire mirror of the game's `Keybinds` table fields.

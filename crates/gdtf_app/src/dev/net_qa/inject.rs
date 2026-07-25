@@ -46,6 +46,7 @@ use super::{
         InjectActors, InjectQueues, RawInputSink, gate_and_push, resolve_door, resolve_emplacement,
         resolve_fire_mode, resolve_focus_target, resolve_ganger, resolve_key, resolve_melee,
     },
+    ui_swap::queue_ui_swap,
 };
 
 /// Drain the routed [`InjectPayload`] queue and process every injected intent through the
@@ -64,9 +65,16 @@ pub(super) fn apply_injects(
     mut queues: InjectQueues,
     actors: InjectActors,
     mut raw_input: RawInputSink,
+    mut commands: Commands,
 ) {
     for (payload, responder) in injects.drain_ready() {
-        let receipt = receipt_for(payload.intent(), &mut queues, &actors, &mut raw_input);
+        let receipt = receipt_for(
+            payload.intent(),
+            &mut queues,
+            &actors,
+            &mut raw_input,
+            &mut commands,
+        );
         responder.reply(QaResponse::Injected(receipt));
     }
 }
@@ -83,6 +91,7 @@ pub(super) fn receipt_for(
     queues: &mut InjectQueues,
     actors: &InjectActors,
     raw_input: &mut RawInputSink,
+    commands: &mut Commands,
 ) -> InjectReceipt {
     match classify(intent) {
         Classified::Classic(act) => {
@@ -99,6 +108,9 @@ pub(super) fn receipt_for(
         },
         Classified::Contextual(contextual) => push_contextual(contextual, queues, actors),
         Classified::RawInput(raw) => push_raw_input(raw, raw_input),
+        // GTW-816: the DEV UI-stack swap — written into the harness's own latch, the SAME
+        // one the harness's keyboard shortcut and on-screen buttons write.
+        Classified::UiSwap(stack) => queue_ui_swap(stack, commands),
     }
 }
 

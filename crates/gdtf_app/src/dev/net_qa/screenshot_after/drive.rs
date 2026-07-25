@@ -35,9 +35,16 @@ pub(in crate::dev::net_qa) fn claim_screenshot_after(
     actors: InjectActors,
     mut raw_input: RawInputSink,
     mut after_shots: ResMut<AfterShotQueue>,
+    mut commands: Commands,
 ) {
     for (payload, responder) in pending.drain_ready() {
-        match receipt_for(payload.intent(), &mut queues, &actors, &mut raw_input) {
+        match receipt_for(
+            payload.intent(),
+            &mut queues,
+            &actors,
+            &mut raw_input,
+            &mut commands,
+        ) {
             InjectReceipt::Queued => {
                 after_shots.push(payload.frame_delay(), payload.name().cloned(), responder);
             }

@@ -7,7 +7,8 @@
 //! ([`weapon`]), the [`ganger`] card, the [`terrain`] summary (with the door /
 //! emplacement token handout), the [`panel`] button token handout, the [`menu`]
 //! enumeration handout, the [`fog`] view, the [`appflow`] view, the [`selection`] view,
-//! and the top-level [`battle`] aggregate.
+//! the DEV UI-stack swap-harness state ([`ui_stack`]), and the top-level [`battle`]
+//! aggregate.
 
 pub mod appflow;
 pub mod battle;
@@ -20,6 +21,7 @@ pub mod panel;
 pub mod selection;
 pub mod stat;
 pub mod terrain;
+pub mod ui_stack;
 pub mod weapon;
 
 pub use appflow::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet, RequestKindNet};
@@ -38,6 +40,7 @@ pub use terrain::{
     DoorOpenNet, DoorView, EmplacementMannedNet, EmplacementView, GridHeightNet, GridLevelsNet,
     GridSizeNet, GridWidthNet, TerrainSummaryView,
 };
+pub use ui_stack::{UiStackPairView, UiStackView};
 pub use weapon::{FireModeLabel, FireModeView, WeaponNameNet, WeaponView};
 
 #[cfg(test)]

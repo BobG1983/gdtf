@@ -36,6 +36,7 @@ use super::{
     map::{cell_level_net, faction_net},
     panel::panel_button_views,
     read::SnapshotWorld,
+    ui_stack::{UiStackRead, ui_stack_view},
 };
 use crate::dev::net_qa::pending::{PendingQueue, SnapshotPayload};
 
@@ -50,12 +51,13 @@ use crate::dev::net_qa::pending::{PendingQueue, SnapshotPayload};
 pub(in crate::dev::net_qa) fn build_snapshots(
     mut snapshots: ResMut<PendingQueue<SnapshotPayload>>,
     world: SnapshotWorld,
+    ui_stack: UiStackRead,
 ) {
     let pending = snapshots.drain_ready();
     if pending.is_empty() {
         return;
     }
-    let view = build_battle_view(&world);
+    let view = build_battle_view(&world, &ui_stack);
     for (_payload, responder) in pending {
         responder.reply(QaResponse::Battle(view.clone()));
     }
@@ -63,8 +65,9 @@ pub(in crate::dev::net_qa) fn build_snapshots(
 
 /// Assemble the whole [`BattleView`] from the live read surface: every living ganger card,
 /// the terrain summary + token handout, the focus-navigable HUD button token handout, the
-/// squad fog, the current selection, and the turn state.
-fn build_battle_view(world: &SnapshotWorld) -> BattleView {
+/// squad fog, the current selection, the turn state, and the DEV UI-stack swap harness's
+/// state (GTW-816 — `None` in a build with no harness).
+fn build_battle_view(world: &SnapshotWorld, ui_stack: &UiStackRead) -> BattleView {
     BattleView::new(
         ganger_views(world),
         terrain_view(world),
@@ -72,6 +75,7 @@ fn build_battle_view(world: &SnapshotWorld) -> BattleView {
         fog_view(&world.fog),
         selection_view(*world.selection),
         turn_view(*world.active, *world.player),
+        ui_stack_view(ui_stack),
     )
 }
 

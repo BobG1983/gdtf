@@ -135,16 +135,23 @@ impl Plugin for ProcgenStepperPlugin {
         // module doc); the real binary never enables that feature.
         #[cfg(not(feature = "test-support"))]
         {
-            app.add_plugins(EguiPlugin::default());
-            // Take control of WHERE the primary egui context lives: `bevy_egui` otherwise
-            // auto-attaches it to the first camera an app spawns, which under the DEV `net_qa`
-            // capture path is the window-targeted present camera — rendering the schematic to a
-            // window a headless QA run never presents, absent from the captured offscreen image.
-            // We bind it to the captured UI camera instead (see `super::egui_context`).
-            app.insert_resource(EguiGlobalSettings {
-                auto_create_primary_context: false,
-                ..default()
-            });
+            // GTW-816: `EguiPlugin` ownership is ONE decision, and the UI-stack swap harness
+            // makes it (the dev aggregate adds that harness first). Bevy panics on a
+            // duplicate plugin add, so the stepper registers egui only if nothing else
+            // already did — the same guard the GTW-819 coexistence proof-of-concept carries.
+            if !app.is_plugin_added::<EguiPlugin>() {
+                app.add_plugins(EguiPlugin::default());
+                // Take control of WHERE the primary egui context lives: `bevy_egui` otherwise
+                // auto-attaches it to the first camera an app spawns, which under the DEV
+                // `net_qa` capture path is the window-targeted present camera — rendering the
+                // schematic to a window a headless QA run never presents, absent from the
+                // captured offscreen image. We bind it to the captured UI camera instead (see
+                // `super::egui_context`).
+                app.insert_resource(EguiGlobalSettings {
+                    auto_create_primary_context: false,
+                    ..default()
+                });
+            }
             app.add_systems(Update, bind_primary_egui_context);
             app.add_systems(
                 EguiPrimaryContextPass,

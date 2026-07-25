@@ -36,6 +36,14 @@ pub(crate) mod procgen_stepper;
 #[cfg(feature = "dev_tools")]
 pub(crate) mod ui_coexistence;
 
+// The DEV-ONLY UI-stack swap harness (GTW-816): the shared mechanism the GTW-796 comparison
+// children plug into — one comparison panel drawn through either stack, swapped live by a
+// keyboard shortcut, by each stack's own on-screen button, or by the `net_qa` `SwapUiStack`
+// intent. Compiled ONLY under the opt-in `dev_tools` feature (the one that pulls in
+// `bevy_egui`), like the stepper and the coexistence proof-of-concept.
+#[cfg(feature = "dev_tools")]
+pub(crate) mod ui_swap;
+
 // The DEV-ONLY QA network control channel (GTW-736): a loopback TCP listener + request
 // router a coding-agent QA harness drives. Double-gated: compiled only under the opt-in
 // `net_qa` feature (which pulls in the bevy-free wire contract + the self-capture crate),

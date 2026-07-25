@@ -6,7 +6,7 @@ use crate::{
         CellLevelNet, CellNet, CellXNet, CellYNet, DoorToken, EmplacementToken, FireModeIndex,
         FocusTargetNet, GangerToken, LevelNet,
     },
-    intent::{AimNet, FacingNet, StanceNet},
+    intent::{AimNet, FacingNet, StanceNet, UiStackNet},
     test_support::assert_ron_round_trip,
     view::{
         AppFlowView, AppStateNet, BattleActiveNet, BattleView, BodyPartNet, CaughtUpNet,
@@ -16,7 +16,8 @@ use crate::{
         InjurySummaryNet, LifeStateNet, MenuIdNet, MenuItemEnabledNet, MenuItemLabelNet,
         MenuItemView, MenuView, PanelButtonLabelNet, PanelButtonView, PanelNavOrderNet,
         RequestKindNet, SelectionView, SeverityNet, TerrainSummaryView, TuMaxNet, TuNet, TurnView,
-        VisibleCellCountNet, WeaponNameNet, WeaponView, WoundsMaxNet, WoundsNet,
+        UiStackPairView, UiStackView, VisibleCellCountNet, WeaponNameNet, WeaponView, WoundsMaxNet,
+        WoundsNet,
     },
 };
 
@@ -113,6 +114,10 @@ fn a_battle() -> BattleView {
         FogView::new(VisibleCellCountNet::new(1), ExploredCellCountNet::new(1)),
         SelectionView::new(Some(GangerToken::new(100))),
         TurnView::new(FactionNet::new(0), FactionNet::new(0)),
+        Some(UiStackView::new(
+            UiStackPairView::new(UiStackNet::BevyUi, UiStackNet::Egui),
+            UiStackNet::Egui,
+        )),
     )
 }
 
@@ -310,4 +315,27 @@ fn app_state_round_trips_every_variant() {
         }
         assert_ron_round_trip(&state);
     }
+}
+
+/// The DEV swap-harness view round-trips both halves — the compared pair AND the live
+/// stack (GTW-816). A snapshot that dropped the pair, or reported the wrong side as live,
+/// fails here.
+#[test]
+fn ui_stack_view_round_trips() {
+    let view = UiStackView::new(
+        UiStackPairView::new(UiStackNet::BevyUi, UiStackNet::Egui),
+        UiStackNet::Egui,
+    );
+    assert_ron_round_trip(&view);
+    assert_eq!(view.live, UiStackNet::Egui);
+    assert_eq!(view.comparison.baseline, UiStackNet::BevyUi);
+}
+
+/// A build with no swap harness reports `None` — and that absence round-trips too, so a
+/// client can tell "no harness in this build" from "the `bevy_ui` stack is live".
+#[test]
+fn battle_view_without_a_swap_harness_round_trips() {
+    let mut battle = a_battle();
+    battle.ui_stack = None;
+    assert_ron_round_trip(&battle);
 }
