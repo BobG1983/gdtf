@@ -11,13 +11,15 @@ use bevy::prelude::*;
 /// (a battle loads exactly as it does without `dev_tools`) until `GDTF_PROCGEN_STEPPER` is
 /// set truthy (its own `from_env` gate).
 ///
-/// GTW-864: this plugin is also the ONE owner of the `EguiPlugin` decision. Bevy panics on a
-/// duplicate plugin add, so exactly one place may add it; the add is guarded with
-/// [`App::is_plugin_added`] and carries its companion context binding
-/// (`super::egui_context`), since disabling `auto_create_primary_context` is what makes an
-/// explicit binding owed. It rides the `dev_tools` gate (that feature is what pulls
-/// `bevy_egui` in at all) and is skipped under `test-support`, where the headless harness has
-/// no primary window for egui to draw into.
+/// GTW-864: this plugin is also the ONE place in `gdtf_app` that adds `EguiPlugin`. With a
+/// single adder there is no duplicate add to defend against: the egui-using affordances
+/// (currently only the procgen stepper) draw into the context created here and add no plugin
+/// of their own. The add carries its companion context binding (`super::egui_context`), since
+/// disabling `auto_create_primary_context` is what makes an explicit binding owed. It rides
+/// the `dev_tools` gate (that feature is what pulls `bevy_egui` in at all), is skipped under
+/// `test-support` (the headless harness has no primary window for egui to draw into), and
+/// needs Bevy's render stack — `EguiPlugin` reads `Assets<Shader>`, which exists only once
+/// [`RenderPlugin`](bevy::render::RenderPlugin) is in the app.
 ///
 /// GTW-736 (extended GTW-749): the QA network control channel (`super::net_qa`, the
 /// GTW-694 architecture's T3 onward) is DOUBLE-gated —
@@ -43,19 +45,25 @@ pub(crate) struct DevAffordancesPlugin;
 impl Plugin for DevAffordancesPlugin {
     fn build(&self, app: &mut App) {
         // GTW-864: the ONE `EguiPlugin` add, made here before any egui-using affordance is
-        // wired (see the struct doc). Bevy panics on a duplicate add, so it is guarded; it
-        // also takes control of WHERE the primary egui context lives, which is why the
-        // companion binding system is registered right beside it.
+        // wired (see the struct doc). It also takes control of WHERE the primary egui context
+        // lives, which is why the companion binding system is registered right beside it.
         #[cfg(all(feature = "dev_tools", not(feature = "test-support")))]
         {
-            if !app.is_plugin_added::<bevy_egui::EguiPlugin>() {
-                app.add_plugins(bevy_egui::EguiPlugin::default());
-                app.insert_resource(bevy_egui::EguiGlobalSettings {
+            use bevy::render::RenderPlugin;
+            use bevy_egui::{EguiGlobalSettings, EguiPlugin};
+
+            // A RENDER-STACK PRECONDITION, not a duplicate-add guard: `EguiPlugin` reads
+            // `Assets<Shader>`, which exists only once Bevy's `RenderPlugin` is in the app, so
+            // adding egui to a `MinimalPlugins` app panics on the first frame. A real binary
+            // always has the render stack, so shipped wiring is unaffected.
+            if app.is_plugin_added::<RenderPlugin>() {
+                app.add_plugins(EguiPlugin::default());
+                app.insert_resource(EguiGlobalSettings {
                     auto_create_primary_context: false,
                     ..default()
                 });
+                app.add_systems(Update, super::egui_context::bind_primary_egui_context);
             }
-            app.add_systems(Update, super::egui_context::bind_primary_egui_context);
         }
         // GTW-655: the procgen load-time stepper. `dev_tools`-gated only (see the module
         // doc) — its own `from_env` env-var gate keeps it inert at runtime by default.
