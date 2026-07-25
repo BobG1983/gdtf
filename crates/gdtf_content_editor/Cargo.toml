@@ -59,6 +59,14 @@ gdtf_screenshot = { path = "../gdtf_screenshot" }
 # Shared with `gdtf_app`'s scene scaffolds (the editor does not depend on `gdtf_app`,
 # so the seam lives in this tiny crate below both).
 gdtf_state_scoped = { path = "../gdtf_state_scoped" }
+# GTW-804 (child 1b of GTW-786): the DEV-ONLY QA control channel for the EDITOR. Both crates are
+# OPTIONAL and pulled in ONLY by the `net_qa` feature below — a default editor build compiles
+# neither. `gdtf_qa_protocol` is the bevy-free typed wire contract (the request/response envelope
+# plus the framing codec); `gdtf_net_qa_transport` is the shared loopback listener + accept loop +
+# one-client-at-a-time gate + inbox lifted in GTW-803, so the editor and the game move bytes
+# through ONE codepath instead of two copies of a socket server.
+gdtf_qa_protocol = { path = "../gdtf_qa_protocol", optional = true }
+gdtf_net_qa_transport = { path = "../gdtf_net_qa_transport", optional = true }
 
 [dev-dependencies]
 # The headless integration test drives the REAL editor plugin on a no-renderer
@@ -89,6 +97,13 @@ dynamic_linking = ["bevy/dynamic_linking"]
 # Propagated from the binary crate (binary -> gdtf_content_editor -> bevy/file_watcher),
 # mirroring the grimdark_turfwar -> gdtf_app chain.
 file_watcher = ["bevy/file_watcher"]
+# GTW-804: the DEV-ONLY QA network control channel for the EDITOR (the GTW-786 editor half of the
+# GTW-694 agent QA harness). Opt-in ONLY — it opens a loopback TCP listener, so it is never in the
+# default feature set and never in a release build: the module is ALSO `cfg(debug_assertions)`-gated
+# at its wiring site (the double gate the game uses), and even then it stays inert until
+# `GDTF_EDITOR_NET_QA` is set truthy. Turning the feature on pulls in the two optional deps above.
+# Mirrors gdtf_app's `net_qa` feature exactly, with the editor's own env vars + its own port.
+net_qa = ["dep:gdtf_qa_protocol", "dep:gdtf_net_qa_transport"]
 
 [lints]
 workspace = true

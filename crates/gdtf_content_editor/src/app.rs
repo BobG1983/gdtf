@@ -4,7 +4,9 @@
 //! `DefaultPlugins` (with the asset source root pointed at the workspace `assets/`), the
 //! [`EguiPlugin`](bevy_egui::EguiPlugin) (GTW-512: the editor's UI is now egui — a CLEAN SWAP off
 //! the game's hand-rolled UI plugin), the editor's own [`MapEditorPlugin`], and the env-gated
-//! QA capture affordance. It is a SEPARATE binary from the game — it shares no scene graph and runs
+//! QA capture affordance — plus, under the GTW-804 `debug_assertions` + `net_qa` double gate, the
+//! env-gated DEV QA network control channel (`NetQaEditorPlugin`). It is a SEPARATE binary from the
+//! game — it shares no scene graph and runs
 //! no battle sim (the GTW-417 housing constraint).
 
 use bevy::{asset::AssetPlugin, prelude::*};
@@ -37,6 +39,14 @@ impl MapEditorApp {
         // unless GDTF_EDITOR_SHOT is set (the env read happens in `from_env`).
         app.add_plugins(EditorCapturePlugin::from_env());
         add_dev_keybind(&mut app);
+        // GTW-804: the DEV-ONLY QA network control channel, under its DOUBLE gate — a debug
+        // build AND the opt-in `net_qa` feature, because it opens a loopback TCP listener, so a
+        // release editor (or a default-feature one) never compiles it in. Even then it is inert
+        // until `GDTF_EDITOR_NET_QA` is set truthy: the env read happens in `from_env`, and an
+        // unset variable registers nothing at all. Written as an attribute on the call rather
+        // than a helper fn so the feature-off build has no empty fn for clippy to flag.
+        #[cfg(all(debug_assertions, feature = "net_qa"))]
+        app.add_plugins(crate::net_qa::NetQaEditorPlugin::from_env());
         Self(app)
     }
 

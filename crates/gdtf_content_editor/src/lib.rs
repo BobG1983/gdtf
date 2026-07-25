@@ -103,6 +103,14 @@ mod melee_weapon_form;
 // GTW-474: the Workbench mode machine (the EditorMode resource) — GTW-512 trimmed it to the enum +
 // the `1`/`2`/`3` hotkeys (the egui shell draws the tabs + branches the right panel in-UI).
 mod mode;
+// GTW-804 (child 1b of GTW-786): the DEV-ONLY QA network control channel for the EDITOR — a
+// loopback listener on the SHARED gdtf_net_qa_transport (GTW-803) that a coding-agent QA client
+// drives. DOUBLE-gated: the module compiles only in a debug build WITH the opt-in `net_qa`
+// feature (it opens a TCP listener, so a release editor never sees it), and even then it stays
+// inert until `GDTF_EDITOR_NET_QA` is set truthy. This child wires Hello/version negotiation
+// only.
+#[cfg(all(debug_assertions, feature = "net_qa"))]
+mod net_qa;
 mod placement;
 mod plugin;
 // GTW-515 C4.3: the prefab preview RENDER MACHINERY — an offscreen render-target image, a dedicated
@@ -229,6 +237,11 @@ pub use melee_weapon_form::{write_melee_weapon, write_melee_weapon_in};
 // GTW-512: only the `EditorMode` enum survives the egui swap (the `bevy_ui` tab / content markers
 // are gone — the egui shell draws the tabs + branches the right panel in-UI).
 pub use mode::EditorMode;
+// GTW-804: the editor's DEV QA channel surface, exported under the SAME double gate the module
+// carries — the plugin the binary wires (and the integration test drives against a real bound
+// listener), its request-drain system set, and the server name the handshake reports.
+#[cfg(all(debug_assertions, feature = "net_qa"))]
+pub use net_qa::{EDITOR_QA_SERVER_NAME, EditorNetQaSystems, NetQaEditorPlugin};
 pub use placement::{
     EditorTileClass, IllegalReason, PlacementVerdict, ProposedPlacement, apply_placement, classify,
     evaluate_placement, names_a_ladder,
