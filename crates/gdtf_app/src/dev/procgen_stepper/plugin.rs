@@ -31,10 +31,11 @@
 //! - `OnExit(BattleScapeState::Generation)`:
 //!   [`cleanup_stepper_drive`](super::drive::cleanup_stepper_drive) — a safety net clearing
 //!   every stepper resource this span may still hold.
-//! - Outside `test-support`: adds [`bevy_egui::EguiPlugin::default()`] — the recommended
-//!   multipass-aware wiring (bevy-traps #8; this is the FIRST `gdtf_app` consumer of egui)
-//!   — and [`EguiPrimaryContextPass`], gated on [`StagedProcgen`] existing:
+//! - Outside `test-support`: [`EguiPrimaryContextPass`], gated on [`StagedProcgen`] existing:
 //!   [`draw_stepper_panel`](super::ui::draw_stepper_panel) draws the Next/Auto/Skip panel.
+//!   The `EguiPlugin` add itself (and the primary-context binding it makes owed) belongs to
+//!   the dev aggregate, `crate::dev::plugin` — one owner, because Bevy panics on a duplicate
+//!   plugin add (GTW-864; bevy-traps #8 for the multipass-aware wiring).
 //!   Skipped under `test-support`: the egui overlay needs a primary window, which the
 //!   GTW-655 headless integration test's `no_renderer.rs`-style app has none of (mirroring
 //!   the content-editor's own headless harness, which excludes its windowed `EguiPlugin`
@@ -45,12 +46,10 @@
 
 use bevy::prelude::*;
 #[cfg(not(feature = "test-support"))]
-use bevy_egui::{EguiGlobalSettings, EguiPlugin, EguiPrimaryContextPass};
+use bevy_egui::EguiPrimaryContextPass;
 #[cfg(not(feature = "test-support"))]
 use gdtf_battle_sim::procgen::StagedProcgen;
 
-#[cfg(not(feature = "test-support"))]
-use super::egui_context::bind_primary_egui_context;
 #[cfg(not(feature = "test-support"))]
 use super::ui::draw_stepper_panel;
 use super::{
@@ -134,30 +133,10 @@ impl Plugin for ProcgenStepperPlugin {
         // The egui overlay needs a primary window — skipped under `test-support` (see the
         // module doc); the real binary never enables that feature.
         #[cfg(not(feature = "test-support"))]
-        {
-            // GTW-816: `EguiPlugin` ownership is ONE decision, and the UI-stack swap harness
-            // makes it (the dev aggregate adds that harness first). Bevy panics on a
-            // duplicate plugin add, so the stepper registers egui only if nothing else
-            // already did — the same guard the GTW-819 coexistence proof-of-concept carries.
-            if !app.is_plugin_added::<EguiPlugin>() {
-                app.add_plugins(EguiPlugin::default());
-                // Take control of WHERE the primary egui context lives: `bevy_egui` otherwise
-                // auto-attaches it to the first camera an app spawns, which under the DEV
-                // `net_qa` capture path is the window-targeted present camera — rendering the
-                // schematic to a window a headless QA run never presents, absent from the
-                // captured offscreen image. We bind it to the captured UI camera instead (see
-                // `super::egui_context`).
-                app.insert_resource(EguiGlobalSettings {
-                    auto_create_primary_context: false,
-                    ..default()
-                });
-            }
-            app.add_systems(Update, bind_primary_egui_context);
-            app.add_systems(
-                EguiPrimaryContextPass,
-                draw_stepper_panel.run_if(resource_exists::<StagedProcgen>),
-            );
-        }
+        app.add_systems(
+            EguiPrimaryContextPass,
+            draw_stepper_panel.run_if(resource_exists::<StagedProcgen>),
+        );
     }
 }
 

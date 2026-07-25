@@ -54,12 +54,6 @@
 //!   curated item set, activating the `Battlescape` token leaves the menu via the real
 //!   focus-activation path, and a stale token is rejected `StaleToken`; it reuses
 //!   [`start_battle`]'s menu fixture and [`inject_support`]'s request helper.
-//! - `ui_swap` (GTW-816, `dev_tools`-gated) drives the REAL swap harness over the wire on a
-//!   live-battle `BattleAppBuilder` app: a `SwapUiStack` intent flips the same live stack
-//!   the keyboard shortcut flips, and `GetBattleState` reports which stack is active. The
-//!   cross-stack behavioural-parity script lives in the `ui_swap` suite instead
-//!   (`tests/ui_swap/parity.rs`), the only app where the harness's egui half is really
-//!   registered.
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
 mod affordance;
@@ -75,8 +69,3 @@ mod screenshot_after;
 mod snapshot;
 mod start_battle;
 mod transport;
-// GTW-816: the wire half of the DEV UI-stack swap harness — the `SwapUiStack` intent and
-// the `query_state` readback. `dev_tools`-gated (the harness module needs `bevy_egui`); the
-// RENDERING half and the parity script live in `tests/ui_swap/`.
-#[cfg(feature = "dev_tools")]
-mod ui_swap;

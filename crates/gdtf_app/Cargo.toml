@@ -88,15 +88,6 @@ gdtf_battle_sim = { path = "../gdtf_battle_sim", features = ["test-support"] }
 # version-controlled tree. TempDir auto-cleans on drop (the GTW-555 isolation
 # precedent).
 tempfile = "3"
-# GTW-819: the UI-stack coexistence suite (`tests/ui_coexistence/`) names egui types directly —
-# it injects into the context's `EguiInput` the pointer events a windowless headless app cannot
-# get from the OS. An integration test is its own crate, so naming `bevy_egui` needs this
-# dev-dependency even though the lib already deps it behind `dev_tools`; dev-dependencies cannot
-# be optional, so it is unconditional here. No extra build cost in practice: `gdtf_content_editor`
-# already deps `bevy_egui` non-optionally, so the workspace test build compiles it either way.
-# The suite itself is `#![cfg(feature = "dev_tools")]`, so without that feature it is empty.
-bevy_egui = "0.41"
-
 [features]
 # Enable Bevy dynamic linking for fast dev builds. Opt-in only — never enabled
 # for release artifacts. Propagated from the binary crate.

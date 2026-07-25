@@ -29,20 +29,12 @@
 #[cfg(feature = "dev_tools")]
 pub(crate) mod procgen_stepper;
 
-// The DEV-ONLY UI-stack coexistence proof-of-concept (GTW-819): one `bevy_ui` button and one
-// egui button alive together in `AppState::Running`, answering whether the two UI stacks can
-// coexist at all before the GTW-796 comparison epic builds on the assumption. Compiled ONLY
-// under the opt-in `dev_tools` feature (the one that pulls in `bevy_egui`), like the stepper.
-#[cfg(feature = "dev_tools")]
-pub(crate) mod ui_coexistence;
-
-// The DEV-ONLY UI-stack swap harness (GTW-816): the shared mechanism the GTW-796 comparison
-// children plug into — one comparison panel drawn through either stack, swapped live by a
-// keyboard shortcut, by each stack's own on-screen button, or by the `net_qa` `SwapUiStack`
-// intent. Compiled ONLY under the opt-in `dev_tools` feature (the one that pulls in
-// `bevy_egui`), like the stepper and the coexistence proof-of-concept.
-#[cfg(feature = "dev_tools")]
-pub(crate) mod ui_swap;
+// Pins the primary egui context to the captured UI camera (GTW-732), beside the ONE
+// `EguiPlugin` add in `plugin` — turning auto-attach off is what makes an explicit binding
+// owed, so both live with the aggregate owner (GTW-864). Excluded from `test-support` builds
+// on the same terms as that add: the headless harness has no primary window for egui.
+#[cfg(all(feature = "dev_tools", not(feature = "test-support")))]
+mod egui_context;
 
 // The DEV-ONLY QA network control channel (GTW-736): a loopback TCP listener + request
 // router a coding-agent QA harness drives. Double-gated: compiled only under the opt-in

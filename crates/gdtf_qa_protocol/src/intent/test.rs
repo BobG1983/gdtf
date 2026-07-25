@@ -8,7 +8,7 @@ use crate::{
     },
     intent::{
         AimNet, FacingNet, KeyNet, KeyPressNet, KeybindActionNet, MeleeTargetNet, NetIntent,
-        StanceNet, UiStackNet,
+        StanceNet,
     },
     test_support::assert_ron_round_trip,
 };
@@ -89,9 +89,6 @@ fn net_intent_cases() -> Vec<NetIntent> {
         NetIntent::SetFocus {
             target: FocusTargetNet::new(19),
         },
-        NetIntent::SwapUiStack {
-            stack: UiStackNet::Egui,
-        },
     ]
 }
 
@@ -123,8 +120,7 @@ fn net_intent_is_exhaustive(intent: &NetIntent) {
         | NetIntent::LevelDown
         | NetIntent::PressKey { .. }
         | NetIntent::Hover { .. }
-        | NetIntent::SetFocus { .. }
-        | NetIntent::SwapUiStack { .. } => {}
+        | NetIntent::SetFocus { .. } => {}
     }
 }
 
@@ -134,7 +130,7 @@ fn net_intent_round_trips_every_variant() {
     let cases = net_intent_cases();
     assert_eq!(
         cases.len(),
-        25,
+        24,
         "the case table lists every NetIntent variant"
     );
     for case in &cases {
@@ -226,7 +222,6 @@ fn key_net_round_trips_every_variant() {
         KeyNet::ArrowDown,
         KeyNet::ArrowLeft,
         KeyNet::ArrowRight,
-        KeyNet::F9,
     ] {
         match key {
             KeyNet::Escape
@@ -253,8 +248,7 @@ fn key_net_round_trips_every_variant() {
             | KeyNet::ArrowUp
             | KeyNet::ArrowDown
             | KeyNet::ArrowLeft
-            | KeyNet::ArrowRight
-            | KeyNet::F9 => {}
+            | KeyNet::ArrowRight => {}
         }
         assert_ron_round_trip(&key);
     }
@@ -302,16 +296,4 @@ fn key_press_and_focus_target_round_trip() {
         assert_ron_round_trip(&press);
     }
     assert_ron_round_trip(&FocusTargetNet::new(7));
-}
-
-/// Every [`UiStackNet`] variant round-trips; the witness forces new variants in — a new
-/// UI stack under comparison must gain its wire name here before the suite goes green.
-#[test]
-fn ui_stack_net_round_trips_every_variant() {
-    for stack in [UiStackNet::BevyUi, UiStackNet::Egui] {
-        match stack {
-            UiStackNet::BevyUi | UiStackNet::Egui => {}
-        }
-        assert_ron_round_trip(&stack);
-    }
 }

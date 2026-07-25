@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     fog::FogView, ganger::GangerView, panel::PanelButtonView, selection::SelectionView,
-    stat::FactionNet, terrain::TerrainSummaryView, ui_stack::UiStackView,
+    stat::FactionNet, terrain::TerrainSummaryView,
 };
 
 /// The turn **state** — which faction is active and which one the player controls.
@@ -52,13 +52,6 @@ pub struct BattleView {
     pub selection: SelectionView,
     /// The turn state.
     pub turn:      TurnView,
-    /// The DEV UI-stack swap harness's state (GTW-816): the two stacks under comparison
-    /// and which one is rendering right now, or `None` in a build that has no swap
-    /// harness compiled in (every release build, and any dev build without `dev_tools`).
-    ///
-    /// A client that swaps stacks with
-    /// [`SwapUiStack`](crate::intent::NetIntent::SwapUiStack) reads the result back here.
-    pub ui_stack:  Option<UiStackView>,
 }
 
 impl BattleView {
@@ -71,7 +64,6 @@ impl BattleView {
         fog: FogView,
         selection: SelectionView,
         turn: TurnView,
-        ui_stack: Option<UiStackView>,
     ) -> Self {
         Self {
             gangers,
@@ -80,7 +72,6 @@ impl BattleView {
             fog,
             selection,
             turn,
-            ui_stack,
         }
     }
 }

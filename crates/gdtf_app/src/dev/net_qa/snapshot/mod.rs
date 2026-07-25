@@ -18,7 +18,6 @@
 //! - [`panel`] — the focus-navigable HUD button token handout (GTW-789, the OBSERVE side
 //!   of GTW-782's focus nav).
 //! - [`menu`] — the generic menu-enumeration handout the app-flow answer folds in (GTW-787).
-//! - [`ui_stack`] — the DEV UI-stack swap-harness read the snapshot folds in (GTW-816).
 //! - [`build`] — the [`build_snapshots`](build::build_snapshots) service + the top-level
 //!   [`BattleView`](gdtf_qa_protocol::view::BattleView) / terrain / fog / selection / turn
 //!   assembly.
@@ -29,7 +28,6 @@ mod map;
 mod menu;
 mod panel;
 mod read;
-mod ui_stack;
 
 pub(in crate::dev::net_qa) use build::build_snapshots;
 pub(in crate::dev::net_qa) use menu::{MenuReadWorld, menu_view};

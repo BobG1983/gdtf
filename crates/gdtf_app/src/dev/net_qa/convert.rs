@@ -29,9 +29,7 @@ use gdtf_qa_protocol::{
         CellLevelNet, DoorToken, EmplacementToken, FireModeIndex, FocusTargetNet, GangerToken,
         PointerPosNet,
     },
-    intent::{
-        AimNet, FacingNet, KeyNet, KeyPressNet, MeleeTargetNet, NetIntent, StanceNet, UiStackNet,
-    },
+    intent::{AimNet, FacingNet, KeyNet, KeyPressNet, MeleeTargetNet, NetIntent, StanceNet},
 };
 
 /// The exhaustive outcome of classifying a [`NetIntent`] — split by the resolution it
@@ -48,9 +46,6 @@ pub(super) enum Classified {
     /// A GTW-783 raw-input intent (keypress / hover / focus-set) — realised through the
     /// windowing-input path, NOT an act queue (see [`RawInputIntent`]).
     RawInput(RawInputIntent),
-    /// The GTW-816 DEV UI-stack swap — realised by writing the swap harness's own latch,
-    /// NOT an act queue and NOT a sim touch: it changes which UI stack draws, nothing else.
-    UiSwap(UiStackNet),
 }
 
 /// A GTW-783 raw-input intent still awaiting its windowing-input realisation — the keypress
@@ -162,8 +157,6 @@ pub(super) const fn classify(intent: NetIntent) -> Classified {
         NetIntent::PressKey { key } => Classified::RawInput(RawInputIntent::Key(key)),
         NetIntent::Hover { at } => Classified::RawInput(RawInputIntent::Hover(at)),
         NetIntent::SetFocus { target } => Classified::RawInput(RawInputIntent::Focus(target)),
-        // The GTW-816 DEV UI-stack swap — the harness's latch, not an act queue.
-        NetIntent::SwapUiStack { stack } => Classified::UiSwap(stack),
     }
 }
 
@@ -225,6 +218,5 @@ pub(super) const fn key_code_of(key: KeyNet) -> KeyCode {
         KeyNet::ArrowDown => KeyCode::ArrowDown,
         KeyNet::ArrowLeft => KeyCode::ArrowLeft,
         KeyNet::ArrowRight => KeyCode::ArrowRight,
-        KeyNet::F9 => KeyCode::F9,
     }
 }

@@ -18,12 +18,6 @@ mod schematic;
 // enables `test-support`, so this never changes shipped wiring.
 #[cfg(not(feature = "test-support"))]
 mod ui;
-// Pins the primary egui context to the captured UI camera (GTW-732) so the schematic lands in
-// the `net_qa` offscreen capture rather than the headless window — see the module doc. Same
-// `test-support` exclusion as `ui` (both name `bevy_egui` context types the headless harness's
-// egui-less build lacks).
-#[cfg(not(feature = "test-support"))]
-mod egui_context;
 
 // `ProcgenStepperPlugin` is the only item the binary consumes (via the dev aggregate
 // plugin, `crate::dev::plugin`), so it is re-exported in BOTH configurations, at the same

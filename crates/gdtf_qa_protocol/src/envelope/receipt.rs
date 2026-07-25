@@ -24,11 +24,12 @@ pub enum RejectReason {
     /// The token was minted for an entity that has since been despawned / replaced (a
     /// stale-generation handle).
     StaleToken,
-    /// The intent drives an affordance this build does not have compiled in — currently
-    /// only [`SwapUiStack`](crate::intent::NetIntent::SwapUiStack) against a build without
-    /// the DEV UI-stack swap harness (GTW-816). Fail-closed and honest: the client is told
-    /// the swap did not happen rather than being answered
-    /// [`Queued`](InjectReceipt::Queued) for something that will never occur.
+    /// The intent drives an affordance this build does not have compiled in — a
+    /// feature-gated dev affordance the running binary was built without. Fail-closed: the
+    /// client is told the intent will not happen rather than being answered
+    /// [`Queued`](InjectReceipt::Queued) for something that never occurs. No intent
+    /// currently answers this (GTW-864 removed the one that did), but the receipt stays in
+    /// the vocabulary for the next feature-gated affordance.
     Unavailable,
 }
 

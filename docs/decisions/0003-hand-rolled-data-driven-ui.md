@@ -221,12 +221,14 @@ headless-tested hot-reload policy) is UNCHANGED.
 - **No UI code change was required.** The shipped state already matched the
   allocation: the game UI is `bevy_ui` + `bsn!`, the editor is `bevy_egui`, and
   neither mixes. This amendment records reality rather than directing work.
-- **The comparison scaffolding is scheduled for removal.** The coexistence proof
-  and the stack-swap harness built to run the abandoned comparison
-  (`crates/gdtf_app/src/dev/ui_coexistence/`,
-  `crates/gdtf_app/src/dev/ui_swap/`, their test suites, and the `bevy_egui`
-  dev-dependency they need) are still in the tree at the time of this
-  amendment; GTW-864 removes them. The comparison notes under
+- **The comparison scaffolding was removed.** The coexistence proof and the
+  stack-swap harness built to run the abandoned comparison — their two `dev`
+  modules under `gdtf_app`, their test suites, the wire swap intent and its
+  `BattleView` field, the `F9` shortcut, and the `bevy_egui` dev-dependency
+  they needed — were still in the tree at the time of this amendment; GTW-864
+  deleted them. `EguiPlugin` ownership moved to the existing dev-affordances
+  plugin, so the `dev_tools` procgen stepper clause 3 preserves still gets its
+  egui context. The comparison notes under
   `docs/ui-stack-comparison/` are removed by GTW-866.
 - **The boundary is a documented convention, not a mechanical check.** The user
   deliberately declined a conformance test in favour of comments on the affected

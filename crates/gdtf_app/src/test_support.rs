@@ -144,25 +144,6 @@ pub use crate::dev::procgen_stepper::{
     AutoRunning, AutoStepDelay, PendingStepCommand, ProcgenStepperPlugin, StepCommand,
     draw_schematic, stepper_enabled,
 };
-// The GTW-819 UI-stack coexistence spike's surface: its plugin plus the observables the
-// coexistence suite asserts on — the per-stack tallies, the `bevy_ui` button's marker (to find
-// the one entity whose `Interaction` the test drives) and the egui button's pinned position (to
-// aim the synthetic egui pointer). `dev_tools`-gated exactly like the module, which compiles out
-// without the feature (it needs `bevy_egui`).
-#[cfg(feature = "dev_tools")]
-pub use crate::dev::ui_coexistence::{
-    ClickCount, CoexistenceBevyUiButton, EGUI_PANEL_POS, UiCoexistencePlugin, UiStackClicks,
-};
-// The GTW-816 UI-stack swap harness's surface: its plugin, the harness state + the swap
-// latch (so a test can assert which stack is live and write the same latch every trigger
-// writes), the `bevy_ui` rendering's markers, its caption, and the egui rendering's pinned
-// position (to aim the synthetic egui pointer). `dev_tools`-gated exactly like the module,
-// which compiles out without the feature (it needs `bevy_egui`).
-#[cfg(feature = "dev_tools")]
-pub use crate::dev::ui_swap::{
-    EGUI_SWAP_PANEL_POS, PendingUiStackSwap, UI_STACK_SWAP_KEY, UI_SWAP_CAPTION, UiStack,
-    UiStackId, UiStackPair, UiSwapBevyUiButton, UiSwapBevyUiPanel, UiSwapHarnessPlugin,
-};
 pub use crate::states::{
     AfterMathState, AppState, BattleScapeState, GameState, LoadedSituation, RunningState,
     ScenesPlugin,

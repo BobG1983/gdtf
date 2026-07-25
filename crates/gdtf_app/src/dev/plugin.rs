@@ -11,10 +11,13 @@ use bevy::prelude::*;
 /// (a battle loads exactly as it does without `dev_tools`) until `GDTF_PROCGEN_STEPPER` is
 /// set truthy (its own `from_env` gate).
 ///
-/// GTW-819: the UI-stack coexistence proof-of-concept (`super::ui_coexistence`) is
-/// `dev_tools`-gated on the same terms as the stepper — it needs the same `bevy_egui`
-/// dependency — but has NO env gate: while it exists it always draws its two spike buttons
-/// over `AppState::Running`, because being seen on screen is the entire point of it.
+/// GTW-864: this plugin is also the ONE owner of the `EguiPlugin` decision. Bevy panics on a
+/// duplicate plugin add, so exactly one place may add it; the add is guarded with
+/// [`App::is_plugin_added`] and carries its companion context binding
+/// (`super::egui_context`), since disabling `auto_create_primary_context` is what makes an
+/// explicit binding owed. It rides the `dev_tools` gate (that feature is what pulls
+/// `bevy_egui` in at all) and is skipped under `test-support`, where the headless harness has
+/// no primary window for egui to draw into.
 ///
 /// GTW-736 (extended GTW-749): the QA network control channel (`super::net_qa`, the
 /// GTW-694 architecture's T3 onward) is DOUBLE-gated —
@@ -39,25 +42,25 @@ pub(crate) struct DevAffordancesPlugin;
 
 impl Plugin for DevAffordancesPlugin {
     fn build(&self, app: &mut App) {
-        // GTW-816: the UI-stack swap harness. Added FIRST of the three egui-using
-        // affordances because it is the ONE owner of the `EguiPlugin` decision (Bevy panics
-        // on a duplicate add): it registers egui, turns off `auto_create_primary_context`
-        // and binds the context to the game's UI camera; the two below then guard with
-        // `App::is_plugin_added` and defer to it.
-        #[cfg(feature = "dev_tools")]
-        app.add_plugins(super::ui_swap::UiSwapHarnessPlugin);
+        // GTW-864: the ONE `EguiPlugin` add, made here before any egui-using affordance is
+        // wired (see the struct doc). Bevy panics on a duplicate add, so it is guarded; it
+        // also takes control of WHERE the primary egui context lives, which is why the
+        // companion binding system is registered right beside it.
+        #[cfg(all(feature = "dev_tools", not(feature = "test-support")))]
+        {
+            if !app.is_plugin_added::<bevy_egui::EguiPlugin>() {
+                app.add_plugins(bevy_egui::EguiPlugin::default());
+                app.insert_resource(bevy_egui::EguiGlobalSettings {
+                    auto_create_primary_context: false,
+                    ..default()
+                });
+            }
+            app.add_systems(Update, super::egui_context::bind_primary_egui_context);
+        }
         // GTW-655: the procgen load-time stepper. `dev_tools`-gated only (see the module
         // doc) — its own `from_env` env-var gate keeps it inert at runtime by default.
         #[cfg(feature = "dev_tools")]
         app.add_plugins(super::procgen_stepper::ProcgenStepperPlugin::from_env());
-        // GTW-819: the UI-stack coexistence proof-of-concept (one `bevy_ui` button + one egui
-        // button alive together in `AppState::Running`). `dev_tools`-gated only, with no env
-        // gate of its own — it is a spike whose whole purpose is to be looked at, and the QA
-        // harness that captures it launches the game without extra environment. Added after
-        // the swap harness, which owns the `EguiPlugin` decision (GTW-816) — the spike adds
-        // egui only if nothing else did, so it defers.
-        #[cfg(feature = "dev_tools")]
-        app.add_plugins(super::ui_coexistence::UiCoexistencePlugin);
         // GTW-736/GTW-749: the QA network control channel — the ONE capture / drive
         // path. DOUBLE-gated `all(debug_assertions, feature = "net_qa")` (it opens a
         // listener); its own `from_env` `GDTF_NET_QA` gate keeps it inert at runtime by

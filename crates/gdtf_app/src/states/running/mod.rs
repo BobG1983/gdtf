@@ -2,11 +2,15 @@ mod plugin;
 mod systems;
 pub(in crate::states) use plugin::RunningScenePlugin;
 // GTW-764: lift the UI-camera marker to `crate::states::running::UiCamera` so the DEV-ONLY
-// `net_qa` offscreen-capture retarget system can name it crate-wide. GTW-819 adds a second
-// consumer under `dev_tools` (`crate::dev::ui_coexistence::egui_context`, which binds the
-// primary egui context to this camera), so the gate is the UNION of the two consumers' gates:
-// with neither feature the re-export is unused (and `-D unused-imports` red).
-#[cfg(any(all(debug_assertions, feature = "net_qa"), feature = "dev_tools"))]
+// `net_qa` offscreen-capture retarget system can name it crate-wide. The second consumer is
+// `crate::dev::egui_context` under `dev_tools` (it binds the primary egui context to this
+// camera, and compiles out under `test-support` with the `EguiPlugin` add it belongs to), so
+// the gate is the UNION of the two consumers' gates: outside both the re-export is unused
+// (and `-D unused-imports` red).
+#[cfg(any(
+    all(debug_assertions, feature = "net_qa"),
+    all(feature = "dev_tools", not(feature = "test-support"))
+))]
 pub(crate) use systems::UiCamera;
 mod resources;
 
