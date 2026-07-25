@@ -228,8 +228,9 @@ headless-tested hot-reload policy) is UNCHANGED.
   they needed — were still in the tree at the time of this amendment; GTW-864
   deleted them. `EguiPlugin` ownership moved to the existing dev-affordances
   plugin, so the `dev_tools` procgen stepper clause 3 preserves still gets its
-  egui context. The comparison notes under
-  `docs/ui-stack-comparison/` are removed by GTW-866.
+  egui context. GTW-866 then retired the comparison notes directory, keeping its
+  one still-live finding as
+  [`../ui-picking-arbitration.md`](../ui-picking-arbitration.md).
 - **The boundary is a documented convention, not a mechanical check.** The user
   deliberately declined a conformance test in favour of comments on the affected
   `Cargo.toml` manifests (GTW-863). A crossing dependency will be caught by

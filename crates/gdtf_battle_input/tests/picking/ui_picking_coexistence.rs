@@ -14,7 +14,7 @@
 //!
 //! Every world mutation is in a TEST BODY — the accepted headless idiom
 //! (`bevy-traps.md` #7 carve-out (a)). See
-//! `docs/ui-stack-comparison/picking-arbitration.md` for the full finding.
+//! `docs/ui-picking-arbitration.md` for the full finding.
 
 use bevy::{
     app::{App, Last, Update},
