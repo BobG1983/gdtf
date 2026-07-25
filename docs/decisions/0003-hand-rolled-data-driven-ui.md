@@ -1,6 +1,6 @@
 ---
 name: "ADR 0003: Hand-rolled, data-driven UI on first-party bevy_ui"
-description: UI is built on first-party bevy_ui, themed from RON via a typed GdtfTheme resource, with loose assets and a headless-tested hot-reload policy. Amended 2026-07-05 (GTW-635) to PREFER Bevy's first-party widget primitives (bevy_ui_widgets), author new screens with bsn!, and sanction egui for dev-only surfaces.
+description: The player-facing game UI is built on first-party bevy_ui, themed from RON via a typed GdtfTheme resource, with loose assets and a headless-tested hot-reload policy. Amended 2026-07-05 (GTW-635) to PREFER Bevy's first-party widget primitives (bevy_ui_widgets) and author new screens with bsn!, and again 2026-07-25 (GTW-865) to settle the stack allocation: hand-rolled bevy_ui for the game, egui for the content editor and dev_tools surfaces, with neither stack crossing into the other's side.
 ---
 
 # 0003. Hand-rolled, data-driven UI on first-party `bevy_ui`
@@ -16,6 +16,15 @@ below: first-party widget primitives are now PREFERRED over hand-rolling, new
 screens are `bsn!`-authored, and `egui` is used for dev-only surfaces. The
 data-driven-theming, one-way-crate-graph, loose-asset, and hot-reload clauses are
 unchanged.
+
+`Amended` — 2026-07-25 (GTW-865), per USER RULING settling which UI stack owns
+which surface. See [Amendment — 2026-07-25](#amendment--2026-07-25-gtw-865)
+below: the player-facing game UI is hand-rolled `bevy_ui`, the content editor is
+`egui`, neither crosses into the other, and `dev_tools`-gated `egui` stays. This
+amendment REVOKES the conditional form-heavy-meta-screen `egui` fallback added by
+the 2026-07-05 amendment. The data-driven-theming, one-way-crate-graph,
+loose-asset, and hot-reload clauses remain unchanged. This ADR stays `Accepted` —
+it is NOT superseded.
 
 ## Context
 
@@ -127,11 +136,102 @@ policy) is UNCHANGED.
    built HUD. GTW-637 (the `bsn!` Options-screen pilot) is the pilot that LOCKS
    this policy if it holds on authoring velocity — or BREAKS it if it does not
    (see clause 3).
+   (AMENDED 2026-07-25, GTW-865 — see the
+   [Amendment](#amendment--2026-07-25-gtw-865): the `bsn!` policy is LOCKED and
+   its conditional escape hatch is removed, because the clause 3 fallback it
+   pointed at is revoked. Every new player-facing screen is `bsn!`-authored.)
 3. **`egui` is dev-only, plus a pre-approved meta-screen fallback.** `egui` (via
    `bevy_egui`) is the stack for DEV-ONLY surfaces — the content editor
    is the established precedent. It is ALSO the pre-approved fallback for NEW
    form-heavy META screens, but ONLY if the GTW-637 `bsn!` Options pilot fails on
    authoring velocity. It is NEVER used for the built battlescape HUD.
+   (AMENDED 2026-07-25, GTW-865 — see the
+   [Amendment](#amendment--2026-07-25-gtw-865): the dev-only grant is CONFIRMED
+   and sharpened — the content editor is now the settled allocation, not merely a
+   precedent, and `dev_tools`-gated `egui` stays permitted. The pre-approved
+   form-heavy-meta-screen fallback is REVOKED: its GTW-637 condition will never
+   be evaluated. The closing "NEVER used for the built battlescape HUD" sentence
+   is confirmed and WIDENED to the whole player-facing game UI.)
+
+## Amendment — 2026-07-25 (GTW-865)
+
+`Amended` — 2026-07-25, per USER RULING settling the UI-stack allocation. The
+2026-07-05 amendment left the question half-open: `egui` was the dev-only stack
+*plus* a conditional fallback for new form-heavy meta screens, with the GTW-637
+`bsn!` Options pilot as the deciding test. A UI-stack comparison programme
+(GTW-796 and its subtree) was then opened to settle it with measurements. That
+programme was **abandoned before producing any**: no comparison demo was built,
+no authoring-velocity or maintenance numbers were collected, and the whole
+comparison subtree — both demo epics, their 20 children, the five shared
+prerequisites, and the GTW-813 ratification — was Canceled. This amendment records a decision made on
+the user's judgement, not on collected evidence. It also REVERSES the 2026-07-24
+"one UI stack, no dev-only exemption" ruling recorded on GTW-822, which was
+conditional on a hand-rolled win that was never demonstrated.
+
+A note on process, so a future reader does not read this as a rule violation to
+"fix": [the index rules](index.md) say an `Accepted` ADR is immutable and is
+replaced by a superseding ADR, not edited. The user explicitly authorised
+amending this `Accepted` ADR in place for this instance (2026-07-25 — "I'm
+overruling the ADR rule for this instance", confirming "Amend 0003 in place").
+That is a **one-time exception**, not a policy change: the index rules are
+unchanged and still govern the next ADR. This ADR remains `Accepted`; ADR number
+`0008` is still free for a genuinely new decision.
+
+The posture is refined as follows; everything else in this ADR (data-driven
+theming, the one-way `gdtf_ui` crate graph, loose assets, and the
+headless-tested hot-reload policy) is UNCHANGED.
+
+1. **The allocation is settled.** `egui` (via `bevy_egui`) is the stack for the
+   **content editor**. Hand-rolled `bevy_ui` — with `bsn!` authoring and Bevy's
+   first-party `bevy_ui_widgets` primitives, per the 2026-07-05 amendment — is
+   the stack for the **player-facing game**: the battlescape HUD and the meta
+   screens. This is no longer a precedent or a default; it is the allocation.
+2. **The boundary runs in BOTH directions.** No `gdtf_ui` or hand-rolled
+   `bevy_ui` in the content editor. No `egui` in the player-facing game UI. Two
+   stacks are acceptable ONLY while that boundary holds — the boundary is the
+   reason two stacks are tolerable at all, so a change that mixes them is a
+   change to this ADR, not a local choice.
+3. **`dev_tools`-gated `egui` remains permitted.** The rule in clause 2 targets
+   the player-facing game UI, not every dev affordance.
+   [`crates/gdtf_app/src/dev/procgen_stepper/`](../../crates/gdtf_app/src/dev/procgen_stepper/)
+   is the live example and stays. The 2026-07-05 amendment's cap holds: a
+   release binary never links `egui`.
+4. **The conditional meta-screen fallback is REVOKED.** The 2026-07-05
+   amendment's clause 3 offered `egui` as a pre-approved fallback for new
+   form-heavy meta screens *if* the GTW-637 `bsn!` Options pilot failed on
+   authoring velocity. That condition will never be evaluated — the allocation
+   is settled by ruling instead — so the fallback is retired outright rather
+   than left dangling. Its companion sentence ("NEVER used for the built
+   battlescape HUD") is confirmed and WIDENED to the whole player-facing game
+   UI by clause 2 above.
+5. **`bsn!`-authoring is LOCKED.** The 2026-07-05 amendment's clause 2 hung the
+   `bsn!` policy on the same GTW-637 pilot, with an escape hatch pointing at the
+   fallback clause 4 has now revoked. With that fallback gone the escape hatch
+   points at nothing, so the policy stands without a condition: every new
+   player-facing screen is `bsn!`-authored.
+6. **Gamepad support bears on the allocation.** The game UI must support gamepad
+   FOCUS NAVIGATION and ACTIVATION; gamepad POINTER emulation is permanently out.
+   The content editor is exempt from the gamepad requirement. This is recorded
+   only because it constrains the allocation — a stack for the game UI has to be
+   drivable by focus movement rather than by a cursor. The input design itself is
+   not this ADR's subject.
+
+### Consequences of this amendment
+
+- **No UI code change was required.** The shipped state already matched the
+  allocation: the game UI is `bevy_ui` + `bsn!`, the editor is `bevy_egui`, and
+  neither mixes. This amendment records reality rather than directing work.
+- **The comparison scaffolding is scheduled for removal.** The coexistence proof
+  and the stack-swap harness built to run the abandoned comparison
+  (`crates/gdtf_app/src/dev/ui_coexistence/`,
+  `crates/gdtf_app/src/dev/ui_swap/`, their test suites, and the `bevy_egui`
+  dev-dependency they need) are still in the tree at the time of this
+  amendment; GTW-864 removes them. The comparison notes under
+  `docs/ui-stack-comparison/` are removed by GTW-866.
+- **The boundary is a documented convention, not a mechanical check.** The user
+  deliberately declined a conformance test in favour of comments on the affected
+  `Cargo.toml` manifests (GTW-863). A crossing dependency will be caught by
+  review against this ADR, not by a failing build.
 
 ## Consequences
 
