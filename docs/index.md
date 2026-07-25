@@ -33,6 +33,10 @@ Pointer index for the game's design and engineering docs. **GDTF (GrimDark TurF 
 - [testing.md](testing.md) — the Rust test suite: how to run it, suite layout, conventions (injected seeded RNG, render-free model tests), and what it pins vs. what it deliberately doesn't.
 - [decisions/](decisions/index.md) — architecture decision records (ADRs): the why behind the structural and engine choices.
 
+## UI stack comparison
+
+- [ui-stack-comparison/picking-arbitration.md](ui-stack-comparison/picking-arbitration.md) — spike finding (GTW-811): Bevy's UI picking backend is already installed by `UiPlugin`, how it coexists with the battle `cursor_over_ui` gate, the minimum arbitration rule, and what keyboard / mouse / gamepad navigation is achievable on `bevy_ui` vs `bevy_egui`.
+
 ## Tooling
 
 - [tooling/agent-qa.md](tooling/agent-qa.md) — the agent QA control channel: how the MCP host launches the game, the `net_qa` feature + `GDTF_NET_QA` env double gate, the nine MCP tools an agent calls, and the JSON-RPC-stdio / framed-RON wire shape.
