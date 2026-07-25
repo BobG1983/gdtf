@@ -18,7 +18,8 @@
 use std::sync::mpsc;
 
 use bevy::{app::App, state::state::State};
-use gdtf_app::test_support::{IncomingRequest, RunningState};
+use gdtf_app::test_support::RunningState;
+use gdtf_net_qa_transport::IncomingRequest;
 use gdtf_qa_protocol::{
     envelope::{MenuActivationReceipt, QaRequest, QaResponse, RejectReason},
     ids::FocusTargetNet,

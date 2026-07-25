@@ -1,15 +1,20 @@
 //! The transport-half registration: the typed pending queues, the cross-frame pump state,
 //! the deadline sweeps, and the always-on router (GTW-736).
+//!
+//! The queue type and the sweep system are the shared transport's
+//! ([`gdtf_net_qa_transport`], GTW-803); this file is where THIS host instantiates them —
+//! one queue and one sweep per battle payload type, in the ordering the router needs.
 
 use bevy::prelude::*;
 use gdtf_battle_input::InputSystems;
+use gdtf_net_qa_transport::{PendingQueue, sweep_pending};
 
 use crate::dev::net_qa::{
     events::QaOutputCursor,
     pending::{
-        ActivateMenuPayload, FocusControlPayload, InjectPayload, OutputPayload, PendingQueue,
+        ActivateMenuPayload, FocusControlPayload, InjectPayload, OutputPayload,
         ScreenshotAfterPayload, ScreenshotPayload, SnapshotPayload, StartBattlePayload,
-        StepperControlPayload, sweep_pending,
+        StepperControlPayload,
     },
     router::route_requests,
     screenshot::{InFlightShots, QaShotDir, ShotPollBudget, ShotSequence},

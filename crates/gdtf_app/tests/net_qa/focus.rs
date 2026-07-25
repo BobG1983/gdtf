@@ -62,7 +62,7 @@ fn row_for(focus: &FocusView, entity: Entity) -> Option<&FocusableView> {
 /// Send one focus command, drive a frame, and read the typed receipt.
 fn focus_control(
     app: &mut App,
-    tx: &std::sync::mpsc::Sender<gdtf_app::test_support::IncomingRequest>,
+    tx: &std::sync::mpsc::Sender<gdtf_net_qa_transport::IncomingRequest>,
     command: FocusCommandNet,
 ) -> FocusControlReceipt {
     let reply = send(tx, QaRequest::FocusControl(command));

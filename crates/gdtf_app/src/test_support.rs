@@ -122,18 +122,22 @@ pub fn seed_load_gate(asset_server: Option<Res<AssetServer>>, mut commands: Comm
     seed_load_fallbacks(asset_server, commands);
 }
 
-// GTW-736: the QA net_qa server's transport + router test surface. Gated exactly like the
+// GTW-736: the QA net_qa server's ROUTER + consumer test surface. Gated exactly like the
 // module itself — `all(debug_assertions, feature = "net_qa")` — so a build without the
 // feature (the CI static suite) omits both the module and this re-export. `NetQaPlugin`
-// carries the `with_channels` / `spawn_test_listener` test constructors; the rest are the
-// channel + config types the GTW-736 integration suite names directly. GTW-740 adds
-// `QaShotDir` / `ShotPollBudget` — the T7 pump's confinement-directory + poll-budget config
-// Resources — so the T7 integration test injects a temp directory + a tiny budget (test
-// config injection, like `NetIoTimeout` / `NetQaPort`).
+// carries the `with_channels` test constructor. GTW-740 adds `QaShotDir` /
+// `ShotPollBudget` — the T7 pump's confinement-directory + poll-budget config Resources —
+// so the T7 integration test injects a temp directory + a tiny budget.
+//
+// GTW-803: the TRANSPORT types (`IncomingRequest` / `Responder` / `NetQaPort` /
+// `NetIoTimeout`) are no longer listed here — they moved to `gdtf_net_qa_transport`, and a
+// test that needs one imports it from that crate directly (an optional dep the `net_qa`
+// feature turns on, so it is on the test target's dependency list). Relaying another
+// crate's items through this ledger would hide the split behind a `gdtf_app` path.
 #[cfg(all(debug_assertions, feature = "net_qa"))]
 pub use crate::dev::net_qa::{
-    IncomingRequest, NET_QA_PROTOCOL_VERSION, NetIoTimeout, NetQaPlugin, NetQaPort, QaShotDir,
-    Responder, SHIPPED_SITUATION, ShotPollBudget, request_available_for,
+    NET_QA_PROTOCOL_VERSION, NetQaPlugin, QaShotDir, SHIPPED_SITUATION, ShotPollBudget,
+    request_available_for,
 };
 // The GTW-655 procgen-stepper command/latch types + its forced-enable test constructor —
 // `dev_tools`-gated because the whole stepper module compiles out unless that feature is on

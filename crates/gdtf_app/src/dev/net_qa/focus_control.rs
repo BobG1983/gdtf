@@ -57,16 +57,14 @@ use bevy::{
     prelude::*,
     window::PrimaryWindow,
 };
+use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::{
     envelope::{FocusCommandNet, FocusControlReceipt, FocusStepNet, QaResponse, RejectReason},
     ids::FocusTargetNet,
 };
 use gdtf_ui::focus_nav::{NavDirection, NavigateRequest};
 
-use super::{
-    key_tap::activation_key_tap,
-    pending::{FocusControlPayload, PendingQueue},
-};
+use super::{key_tap::activation_key_tap, pending::FocusControlPayload};
 
 /// The write-side bundle [`drive_focus_control`] drives — the SAME focus / windowing-input
 /// path the player's own keyboard drives.

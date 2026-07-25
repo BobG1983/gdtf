@@ -21,6 +21,7 @@ use gdtf_battle_sim::{
     turn::ActiveFaction,
     visibility::SquadVisibility,
 };
+use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::{
     envelope::QaResponse,
     ids::{DoorToken, EmplacementToken, GangerToken},
@@ -37,7 +38,7 @@ use super::{
     panel::panel_button_views,
     read::SnapshotWorld,
 };
-use crate::dev::net_qa::pending::{PendingQueue, SnapshotPayload};
+use crate::dev::net_qa::pending::SnapshotPayload;
 
 /// Drain the routed [`SnapshotPayload`] queue and answer each pending
 /// [`GetBattleState`](gdtf_qa_protocol::envelope::QaRequest::GetBattleState) with a fresh

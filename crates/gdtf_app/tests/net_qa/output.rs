@@ -13,11 +13,11 @@
 use std::sync::mpsc;
 
 use bevy::prelude::*;
-use gdtf_app::test_support::IncomingRequest;
 use gdtf_battle_sim::{
     act_log::{ActDeed, ActLog, ActLogCapacity, ActProvenance, RecordedAct},
     acts::MoveRejection,
 };
+use gdtf_net_qa_transport::IncomingRequest;
 use gdtf_qa_protocol::{
     envelope::{QaRequest, QaResponse},
     events::{DroppedCount, EventBatch, MoveRejectionNet, NetEvent},

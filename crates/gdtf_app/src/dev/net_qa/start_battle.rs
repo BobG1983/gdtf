@@ -15,6 +15,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{prelude::BattleInProgress, rng::BattleSeed};
+use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::{
     envelope::{QaError, QaResponse},
     ids::SituationRef,
@@ -22,7 +23,7 @@ use gdtf_qa_protocol::{
 };
 
 use super::{
-    pending::{PendingQueue, StartBattlePayload},
+    pending::StartBattlePayload,
     router::{app_state_to_net, available_requests},
 };
 use crate::states::{AppState, RunningState, running::menu::StartBattleRequested};

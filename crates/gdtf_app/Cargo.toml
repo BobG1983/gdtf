@@ -54,6 +54,13 @@ gdtf_screenshot = { path = "../gdtf_screenshot", optional = true }
 # so a release binary (and any build without `net_qa`) never links it. The net_qa module
 # is the sole consumer; it never reimplements framing, it calls this crate's pure codec.
 gdtf_qa_protocol = { path = "../gdtf_qa_protocol", optional = true }
+# GTW-803: the host-agnostic half of the QA net channel, lifted out of `crate::dev::net_qa`
+# so the game and (later) the content editor drive ONE codepath — the loopback listener +
+# accept loop, the one-client-at-a-time gate, the request/response channel, and the typed
+# pending map with its frame-deadline sweep. Routing, injection, snapshots and the
+# `GDTF_NET_QA` env gate stay here. OPTIONAL — pulled in ONLY by the `net_qa` feature
+# (below), so a release binary (and any build without `net_qa`) never links it.
+gdtf_net_qa_transport = { path = "../gdtf_net_qa_transport", optional = true }
 # GTW-655: the dev-tools procgen load-time stepper's egui overlay. OPTIONAL — pulled in ONLY
 # by the `dev_tools` feature (below), so a release binary never links egui. Same version spec
 # as `gdtf_content_editor`'s (non-optional) `bevy_egui` dependency — that crate did not
@@ -152,7 +159,12 @@ dev_tools = ["dep:bevy_egui"]
 # `GDTF_NET_QA_PORT` (port only — the interface is never configurable).
 #
 # NOT in the default feature set and NEVER enabled for CI / release builds.
-net_qa = ["dep:gdtf_qa_protocol", "dep:gdtf_screenshot", "dep:image"]
+net_qa = [
+    "dep:gdtf_qa_protocol",
+    "dep:gdtf_net_qa_transport",
+    "dep:gdtf_screenshot",
+    "dep:image",
+]
 
 [lints]
 workspace = true

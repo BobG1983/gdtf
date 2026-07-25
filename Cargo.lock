@@ -2814,6 +2814,7 @@ dependencies = [
  "gdtf_battle_presenter",
  "gdtf_battle_sim",
  "gdtf_content_families",
+ "gdtf_net_qa_transport",
  "gdtf_qa_protocol",
  "gdtf_screenshot",
  "gdtf_state_scoped",
@@ -2924,6 +2925,14 @@ version = "0.1.0"
 [[package]]
 name = "gdtf_hivescape_sim"
 version = "0.1.0"
+
+[[package]]
+name = "gdtf_net_qa_transport"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "gdtf_qa_protocol",
+]
 
 [[package]]
 name = "gdtf_qa_mcp"

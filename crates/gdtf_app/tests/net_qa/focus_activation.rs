@@ -25,7 +25,8 @@
 //! dispatched-not-completed contract of `FocusControlReceipt::Applied`.
 
 use bevy::{app::App, ecs::entity::Entity, ui::Checked};
-use gdtf_app::test_support::{ContinueButton, IncomingRequest, RunningState, SoundToggle};
+use gdtf_app::test_support::{ContinueButton, RunningState, SoundToggle};
+use gdtf_net_qa_transport::IncomingRequest;
 use gdtf_qa_protocol::{
     envelope::{FocusCommandNet, FocusControlReceipt, QaRequest, QaResponse},
     ids::FocusTargetNet,

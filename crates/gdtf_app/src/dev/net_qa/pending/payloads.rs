@@ -3,9 +3,10 @@
 //!
 //! One payload type per request kind the router cannot answer synchronously, each carrying
 //! the request's arguments for its LATER consumer (T4-T7 / T9 / T15 / GTW-766 / GTW-787) to
-//! read. The manual `Debug` impls are deliberate (see the note above them). The queue that
-//! holds these, its frame-deadline sweep, and the [`PendingQueues`](super::queue::PendingQueues)
-//! bundle live in the sibling [`queue`](super::queue) module.
+//! read. The manual `Debug` impls are deliberate (see the note above them). The
+//! [`PendingQueues`](super::bundle::PendingQueues) bundle over these lives in the sibling
+//! [`bundle`](super::bundle) module; the queue that holds them and its frame-deadline sweep
+//! are the host-agnostic transport's ([`gdtf_net_qa_transport`], GTW-803).
 
 use gdtf_qa_protocol::{
     envelope::{FocusCommandNet, StepperCommandNet},

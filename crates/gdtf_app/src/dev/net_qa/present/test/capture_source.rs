@@ -6,11 +6,11 @@
 //! `net_qa` suite convention).
 
 use bevy::{camera::RenderTarget, prelude::*, render::view::window::screenshot::Screenshot};
+use gdtf_net_qa_transport::{PendingQueue, Responder};
 
 use super::harness::headless_windowed_app;
 use crate::dev::net_qa::{
-    channel::Responder,
-    pending::{PendingQueue, ScreenshotPayload},
+    pending::ScreenshotPayload,
     present::CapturePresentPlugin,
     screenshot::{InFlightShots, QaShotDir, ShotPollBudget, ShotSequence, drive_screenshots},
 };

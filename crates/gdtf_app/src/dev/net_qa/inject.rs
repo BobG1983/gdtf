@@ -23,6 +23,7 @@ use gdtf_battle_input::{
     },
 };
 use gdtf_battle_sim::acts::{FireRequested, MoveRequested, SetFacingRequested};
+use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::{
     envelope::{InjectReceipt, QaResponse},
     ids::PointerPosNet,
@@ -34,7 +35,7 @@ use super::{
         ActorIntent, Classified, ContextualIntent, RawInputIntent, cell_level, classify, direction,
     },
     key_tap::emit_key_tap,
-    pending::{InjectPayload, PendingQueue},
+    pending::InjectPayload,
     resolve::{
         InjectActors, InjectQueues, RawInputSink, gate_and_push, resolve_door, resolve_emplacement,
         resolve_fire_mode, resolve_focus_target, resolve_ganger, resolve_key, resolve_melee,

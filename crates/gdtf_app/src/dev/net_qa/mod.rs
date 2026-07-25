@@ -9,13 +9,16 @@
 //!
 //! ## Members (one concern per file, per module-layout)
 //!
-//! - [`config`] — the typed transport config ([`NetQaPort`](config::NetQaPort) /
-//!   [`NetIoTimeout`](config::NetIoTimeout)) + the server-identity constants.
+//! The battle-agnostic half — the loopback listener and its accept loop, the
+//! one-client-at-a-time gate ([`Busy`](gdtf_qa_protocol::envelope::QaError::Busy) on a
+//! second client), the request/response channel, the pending queue and its frame-deadline
+//! sweep — was lifted in GTW-803 into the shared [`gdtf_net_qa_transport`] crate, so the
+//! game and (later) the content editor drive ONE codepath. This module is the game's HOST
+//! side of it: the gates, the router, and every consumer.
+//!
+//! - [`config`] — this server's identity constants + its default listen port.
 //! - [`env`] — the `GDTF_NET_QA` / `GDTF_NET_QA_PORT` gates.
-//! - [`channel`] — the listener → router request/response channel plumbing.
-//! - [`listener`] — the loopback `std::thread` TCP transport (one client at a time,
-//!   [`Busy`](gdtf_qa_protocol::envelope::QaError::Busy) on a second, two-sided timeouts).
-//! - [`pending`] — the typed pending queues + the frame-deadline sweep.
+//! - [`pending`] — the typed per-request payloads + the router's queue bundle over them.
 //! - [`router`] — the always-on request router.
 //! - [`convert`] — the wildcard-free [`NetIntent`](gdtf_qa_protocol::intent::NetIntent)
 //!   classification (T4).
@@ -53,7 +56,6 @@
 //! - [`plugin`] — the [`NetQaPlugin`] registration (`from_env` / `with_channels`).
 
 mod activate_menu;
-mod channel;
 mod config;
 mod convert;
 mod env;
@@ -61,7 +63,6 @@ mod events;
 mod focus_control;
 mod inject;
 mod key_tap;
-mod listener;
 mod pending;
 mod plugin;
 mod present;
@@ -80,14 +81,15 @@ mod stepper;
 // `unreachable_pub`-clean either way.
 crate::support_use!(plugin::NetQaPlugin;);
 
-// The transport + router TEST surface is consumed ONLY through the `test_support` ledger
-// (the GTW-736 integration suite). The binary never names these, so re-exporting them in
-// a non-`test-support` build would be an unused `pub(crate) use`; gate the re-export to
-// the same feature, `pub` because the ledger needs it.
+// The router TEST surface is consumed ONLY through the `test_support` ledger (the GTW-736
+// integration suite). The binary never names these, so re-exporting them in a
+// non-`test-support` build would be an unused `pub(crate) use`; gate the re-export to the
+// same feature, `pub` because the ledger needs it. The transport's own types are NOT
+// re-exported here (GTW-803): they belong to `gdtf_net_qa_transport`, and a test that needs
+// one imports it from there — presenting another crate's items as this module's API would
+// erase the split at the public surface (module-layout Rule 7).
 #[cfg(feature = "test-support")]
-pub use channel::{IncomingRequest, Responder};
-#[cfg(feature = "test-support")]
-pub use config::{NET_QA_PROTOCOL_VERSION, NetIoTimeout, NetQaPort};
+pub use config::NET_QA_PROTOCOL_VERSION;
 // GTW-727: the ONE availability predicate, exposed so the input-gate suite can assert the
 // catch-up gating directly. It is the same function the router's accept/reject and the
 // advertised `available` list both call, so a test against it cannot drift from either.

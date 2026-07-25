@@ -18,7 +18,8 @@
 use std::sync::mpsc;
 
 use bevy::app::App;
-use gdtf_app::test_support::{AppState, IncomingRequest, NET_QA_PROTOCOL_VERSION, NetQaPlugin};
+use gdtf_app::test_support::{AppState, NET_QA_PROTOCOL_VERSION, NetQaPlugin};
+use gdtf_net_qa_transport::IncomingRequest;
 use gdtf_qa_protocol::{
     envelope::{FocusCommandNet, QaError, QaRequest, QaResponse, StepperCommandNet},
     ids::{FocusTargetNet, FrameDelay, SituationRef},

@@ -4,12 +4,13 @@
 use std::sync::mpsc;
 
 use bevy::prelude::*;
-use gdtf_app::test_support::{IncomingRequest, NetQaPlugin, Responder};
+use gdtf_app::test_support::NetQaPlugin;
 use gdtf_battle_input::{SelectedShooter, contextual::ContextualActSystems, dispatch_act_intents};
 use gdtf_battle_sim::{
     effects::bleed::BleedingOut,
     prelude::{Cell, CellLevel, Faction, Level, LifeState, Position},
 };
+use gdtf_net_qa_transport::{IncomingRequest, Responder};
 use gdtf_qa_protocol::{
     envelope::{QaRequest, QaResponse},
     ids::{CellLevelNet, CellNet, CellXNet, CellYNet, LevelNet},

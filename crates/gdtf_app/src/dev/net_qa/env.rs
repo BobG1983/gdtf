@@ -5,7 +5,9 @@
 //! `net_qa` build is INERT until `GDTF_NET_QA` is set truthy, and the listen port is
 //! `GDTF_NET_QA_PORT` (port only — the interface is never configurable).
 
-use super::config::{DEFAULT_PORT, NetQaPort};
+use gdtf_net_qa_transport::NetQaPort;
+
+use super::config::DEFAULT_PORT;
 
 /// The environment variable that opts a `net_qa` build into the QA control channel.
 const NET_QA_ENV: &str = "GDTF_NET_QA";

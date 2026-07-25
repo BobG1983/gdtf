@@ -33,13 +33,13 @@
 use bevy::prelude::*;
 use gdtf_battle_presenter::PlaybackGate;
 use gdtf_battle_sim::{prelude::BattleInProgress, procgen::StagedProcgen};
+use gdtf_net_qa_transport::{NetInbox, Responder};
 use gdtf_qa_protocol::{
     envelope::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
     view::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet, RequestKindNet},
 };
 
 use super::{
-    channel::{NetInbox, Responder},
     config::{NET_QA_PROTOCOL_VERSION, SERVER_NAME},
     pending::{
         ActivateMenuPayload, FocusControlPayload, InjectPayload, OutputPayload, PendingQueues,

@@ -21,9 +21,10 @@
 //! cannot arrive.
 
 use bevy::prelude::*;
+use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::envelope::{QaResponse, StepperReceipt};
 
-use super::pending::{PendingQueue, StepperControlPayload};
+use super::pending::StepperControlPayload;
 #[cfg(feature = "dev_tools")]
 use crate::dev::procgen_stepper::{AutoRunning, PendingStepCommand, StepCommand};
 

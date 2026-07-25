@@ -18,13 +18,13 @@ use std::sync::mpsc::{Receiver, Sender};
 
 use bevy::{app::App, prelude::NextState, state::state::State, time::TimeUpdateStrategy};
 use gdtf_app::test_support::{
-    AppState, AutoStepDelay, BattleScapeState, IncomingRequest, NetQaPlugin, ProcgenStepperPlugin,
-    Responder, RunningState,
+    AppState, AutoStepDelay, BattleScapeState, NetQaPlugin, ProcgenStepperPlugin, RunningState,
 };
 use gdtf_battle_sim::{
     procgen::{ProcgenStage, StagedProcgen},
     rng::BattleSeed,
 };
+use gdtf_net_qa_transport::{IncomingRequest, Responder};
 use gdtf_qa_protocol::envelope::{
     AutoRunNet, QaError, QaRequest, QaResponse, StepperCommandNet, StepperReceipt,
 };

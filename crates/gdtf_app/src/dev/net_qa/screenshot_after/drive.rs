@@ -2,12 +2,13 @@
 //! intent-inject, and the unconditional per-frame countdown + fire.
 
 use bevy::prelude::*;
+use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::envelope::{InjectReceipt, QaResponse, ScreenshotAfterResult};
 
 use super::queue::AfterShotQueue;
 use crate::dev::net_qa::{
     inject::receipt_for,
-    pending::{PendingQueue, ScreenshotAfterPayload},
+    pending::ScreenshotAfterPayload,
     present::QaCaptureTarget,
     resolve::{InjectActors, InjectQueues, RawInputSink},
     screenshot::{InFlightShots, QaShotDir, ShotPollBudget, ShotSequence},

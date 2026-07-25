@@ -22,9 +22,8 @@ use bevy::{
     state::state::{NextState, State},
     window::{PrimaryWindow, Window},
 };
-use gdtf_app::test_support::{
-    AppState, IncomingRequest, NetQaPlugin, RunningState, SoundValueLabel,
-};
+use gdtf_app::test_support::{AppState, NetQaPlugin, RunningState, SoundValueLabel};
+use gdtf_net_qa_transport::IncomingRequest;
 use gdtf_qa_protocol::{
     envelope::{QaRequest, QaResponse},
     view::FocusView,

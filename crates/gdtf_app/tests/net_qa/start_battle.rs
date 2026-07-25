@@ -22,8 +22,7 @@ use bevy::{
     state::state::{NextState, State},
 };
 use gdtf_app::test_support::{
-    AppState, BattleScapeState, IncomingRequest, LoadedSituation, NetQaPlugin, Responder,
-    RunningState, SHIPPED_SITUATION,
+    AppState, BattleScapeState, LoadedSituation, NetQaPlugin, RunningState, SHIPPED_SITUATION,
 };
 use gdtf_battle_sim::{
     effects::fields::FieldDefRegistry,
@@ -34,6 +33,7 @@ use gdtf_battle_sim::{
     },
     tuning::{CombatTuning, GangerStatTuning},
 };
+use gdtf_net_qa_transport::{IncomingRequest, Responder};
 use gdtf_qa_protocol::{
     envelope::{QaError, QaRequest, QaResponse},
     ids::{SeedNet, SituationRef},

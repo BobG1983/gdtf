@@ -18,13 +18,14 @@
 //! no-op.
 
 use bevy::{ecs::message::Messages, prelude::*};
+use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::{
     envelope::{MenuActivationReceipt, QaResponse, RejectReason},
     ids::FocusTargetNet,
 };
 use gdtf_ui::{MenuItem, focus_nav::FocusActivated};
 
-use super::pending::{ActivateMenuPayload, PendingQueue};
+use super::pending::ActivateMenuPayload;
 
 /// Drain the routed [`ActivateMenuPayload`] queue and activate each named menu item,
 /// answering every request THIS frame (GTW-787).

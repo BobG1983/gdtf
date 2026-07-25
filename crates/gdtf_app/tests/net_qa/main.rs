@@ -10,9 +10,10 @@
 //!   [`NetQaPlugin::with_channels`](gdtf_app::test_support::NetQaPlugin) against a
 //!   `GdtfTestAppBuilder` app — Hello negotiation, `GetAppFlow` outside battle, and the
 //!   `NoBattle` route-time rejection.
-//! - [`transport`] drives the REAL loopback listener over a real `TcpStream` — a framed
-//!   Hello round-trip, the one-client-at-a-time `Busy` rejection, and the read-timeout
-//!   reap.
+//!   (GTW-803 moved the pure-TRANSPORT suite — the framed round-trip over a real
+//!   `TcpStream`, the one-client-at-a-time `Busy` rejection and the read-timeout reap — into
+//!   the shared `gdtf_net_qa_transport` crate's own `tests/transport/`, beside the code it
+//!   drives.)
 //! - [`inject`] drives the REAL T4 `apply_injects` pump (GTW-737) on a live-battle
 //!   `BattleAppBuilder` app: same-frame drain of a classic + a contextual intent, the
 //!   `NotOffered` offer-gate rejection, the fail-closed `UnknownEntity` token rejection,
@@ -81,4 +82,3 @@ mod routing;
 mod screenshot_after;
 mod snapshot;
 mod start_battle;
-mod transport;

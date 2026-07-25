@@ -15,6 +15,7 @@
 
 use bevy::prelude::*;
 use gdtf_battle_sim::{act_log::ActLog, prelude::BattleInProgress};
+use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::{
     envelope::QaResponse,
     events::{DroppedCount, EventBatch, NetEvent},
@@ -22,7 +23,7 @@ use gdtf_qa_protocol::{
 };
 
 use super::{cursor::QaOutputCursor, map::net_event_for};
-use crate::dev::net_qa::pending::{OutputPayload, PendingQueue};
+use crate::dev::net_qa::pending::OutputPayload;
 
 /// Drain the routed [`OutputPayload`] queue and answer each pending
 /// [`GetOutput`](gdtf_qa_protocol::envelope::QaRequest::GetOutput) with a real

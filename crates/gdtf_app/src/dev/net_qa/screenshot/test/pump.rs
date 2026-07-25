@@ -18,6 +18,7 @@ use std::{
 };
 
 use bevy::prelude::*;
+use gdtf_net_qa_transport::{PendingQueue, Responder};
 use gdtf_qa_protocol::{
     envelope::{QaResponse, ScreenshotResult},
     ids::ShotName,
@@ -28,10 +29,7 @@ use super::super::{
     path::{QaShotDir, ShotSequence, next_capture_path},
     pump::{InFlightShots, ShotPollBudget, drive_screenshots},
 };
-use crate::dev::net_qa::{
-    channel::Responder,
-    pending::{PendingQueue, ScreenshotPayload},
-};
+use crate::dev::net_qa::pending::ScreenshotPayload;
 
 /// Build a `MinimalPlugins` app with the REAL pump registered, confined to `dir`, and the
 /// given poll budget.

@@ -32,6 +32,7 @@ use bevy::{
     prelude::*,
     render::view::window::screenshot::{Screenshot, save_to_disk},
 };
+use gdtf_net_qa_transport::{PendingQueue, Responder};
 use gdtf_qa_protocol::{
     envelope::{QaResponse, ScreenshotAfterResult, ScreenshotPathNet, ScreenshotResult},
     ids::ShotName,
@@ -42,11 +43,7 @@ use super::{
     path::{QaShotDir, ShotSequence, next_capture_path},
     verify::{ShotFile, inspect_shot},
 };
-use crate::dev::net_qa::{
-    channel::Responder,
-    pending::{PendingQueue, ScreenshotPayload},
-    present::QaCaptureTarget,
-};
+use crate::dev::net_qa::{pending::ScreenshotPayload, present::QaCaptureTarget};
 
 /// Which wire reply an in-flight capture answers with once it lands or times out — the
 /// one difference between a plain [`TakeScreenshot`](gdtf_qa_protocol::envelope::QaRequest::TakeScreenshot)

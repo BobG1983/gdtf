@@ -7,7 +7,7 @@
 //!   That accept-loop thread is a DELIBERATE process-lifetime daemon: `build` discards its
 //!   `JoinHandle`, and it runs (with no in-app shutdown / `AppExit` teardown) until the
 //!   process exits and the OS reaps it — a dev-only QA channel's lifetime IS the app's. The
-//!   full rationale is on [`run_listener`](crate::dev::net_qa::listener::run_listener).
+//!   full rationale is on [`run_listener`](gdtf_net_qa_transport::run_listener).
 //! - Registers the transport half ([`register_transport`]: the typed pending queues, the
 //!   pump state, the deadline sweeps + the always-on router) and then every per-request
 //!   consumer ([`register_consumers`]).
@@ -15,13 +15,14 @@
 use std::{sync::mpsc, thread};
 
 use bevy::prelude::*;
+use gdtf_net_qa_transport::{
+    DEFAULT_IO_TIMEOUT, IncomingRequest, NetInbox, NetIoTimeout, NetQaPort, bind_listener,
+    run_listener,
+};
 
 use super::{register_consumers::register_consumers, register_transport::register_transport};
 use crate::dev::net_qa::{
-    channel::{IncomingRequest, NetInbox},
-    config::{DEFAULT_IO_TIMEOUT, NetIoTimeout, NetQaPort},
     env::{net_qa_enabled, port_from_env},
-    listener::{bind_listener, run_listener},
     present::CapturePresentPlugin,
 };
 
@@ -89,31 +90,6 @@ impl NetQaPlugin {
                 inbox: std::sync::Mutex::new(Some(inbox)),
             },
         }
-    }
-
-    /// Bind the REAL loopback listener on an OS-assigned ephemeral port and spawn its
-    /// accept loop, returning the bound port and the request receiver — the transport
-    /// test entry point.
-    ///
-    /// The test connects to the returned port and drives a stand-in for the Bevy side off
-    /// the returned receiver (the router itself is covered by
-    /// [`with_channels`](Self::with_channels)). Binding port `0` yields a fresh port per
-    /// call, so parallel tests never collide.
-    ///
-    /// # Errors
-    ///
-    /// Any [`std::io::Error`] from binding the loopback listener.
-    #[cfg(feature = "test-support")]
-    pub fn spawn_test_listener(
-        io_timeout: NetIoTimeout,
-    ) -> std::io::Result<(NetQaPort, mpsc::Receiver<IncomingRequest>)> {
-        let (tx, rx) = mpsc::channel::<IncomingRequest>();
-        let (listener, port) = bind_listener(NetQaPort::new(0))?;
-        // Detached accept-loop daemon, exactly as the live arm — the discarded
-        // `JoinHandle` is deliberate: the thread runs until the test process exits, which
-        // reaps it (see `run_listener`'s "Thread lifetime & shutdown" note).
-        thread::spawn(move || run_listener(listener, tx, io_timeout));
-        Ok((port, rx))
     }
 }
 

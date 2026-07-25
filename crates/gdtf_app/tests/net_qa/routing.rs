@@ -5,9 +5,9 @@ use std::sync::mpsc;
 
 use bevy::app::App;
 use gdtf_app::test_support::{
-    AppState, IncomingRequest, NET_QA_PROTOCOL_VERSION, NetQaPlugin, QaShotDir, Responder,
-    ShotPollBudget,
+    AppState, NET_QA_PROTOCOL_VERSION, NetQaPlugin, QaShotDir, ShotPollBudget,
 };
+use gdtf_net_qa_transport::{IncomingRequest, Responder};
 use gdtf_qa_protocol::{
     envelope::{ProtocolVersion, QaError, QaRequest, QaResponse, ScreenshotResult},
     view::AppStateNet,

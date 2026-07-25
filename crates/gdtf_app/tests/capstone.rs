@@ -22,15 +22,16 @@ use std::sync::mpsc;
 
 use bevy::{prelude::*, state::state::State};
 use gdtf_app::test_support::{
-    AimToggleButton, BattleScapeState, EndTurnButton, IncomingRequest, LevelDownButton,
-    LevelUpButton, LoadedSituation, NetQaPlugin, Responder, RunningState, SHIPPED_SITUATION,
-    StanceKneelingButton, StanceProneButton, StanceStandingButton,
+    AimToggleButton, BattleScapeState, EndTurnButton, LevelDownButton, LevelUpButton,
+    LoadedSituation, NetQaPlugin, RunningState, SHIPPED_SITUATION, StanceKneelingButton,
+    StanceProneButton, StanceStandingButton,
 };
 use gdtf_battle_input::InspectTarget;
 use gdtf_battle_presenter::WorldCamera;
 use gdtf_battle_sim::{
     injuries::InjuryRegistry, situation::Situation, tuning::CombatTuning, weapon::WeaponRegistry,
 };
+use gdtf_net_qa_transport::{IncomingRequest, Responder};
 use gdtf_qa_protocol::{
     envelope::{QaRequest, QaResponse},
     ids::SituationRef,

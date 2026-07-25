@@ -9,10 +9,10 @@
 //! `Saved` / `TimedOut` reply rides the `ScreenshotAfter` wire envelope.
 
 use bevy::prelude::*;
+use gdtf_net_qa_transport::Responder;
 use gdtf_qa_protocol::ids::{FrameDelay, ShotName};
 
 use super::super::{
-    channel::Responder,
     present::QaCaptureTarget,
     screenshot::{
         CaptureSink, InFlightShots, QaShotDir, ReplyKind, ShotPollBudget, ShotSequence,
