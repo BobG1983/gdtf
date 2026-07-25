@@ -180,7 +180,7 @@ Everything below is additive to what already exists; nothing needs a manifest ch
    installs `UiPickingPlugin`; `DefaultPlugins` already installs `DefaultPickingPlugins`. Do
    **not** add `UiPickingPlugin` yourself — a second add panics.
 2. **Widget activation on meta screens.** The Continue button is *not* a first-party widget
-   today: `crates/gdtf_app/src/states/running/options/systems/spawn.rs` builds it with
+   today: `crates/gdtf_app/src/states/running/options/systems/spawn/screen.rs` builds it with
    `gdtf_ui::spawn_button`, a plain `Node` carrying `Interaction`, so `ButtonPlugin`'s
    pointer observers do not apply to it and the mouse half of `bridge_continue_activation`
    is genuinely load-bearing **as long as that stays true**. The change is therefore a pair,

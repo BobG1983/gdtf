@@ -116,9 +116,9 @@ pub(crate) fn drive_stepper_to_done(app: &mut App) {
     }
 }
 
-/// Build the REAL Load flow with the stepper plugin FORCED enabled (bypassing the process-global
-/// `GDTF_PROCGEN_STEPPER` env var, which would race any other test thread reading it), start the
-/// battle, and advance until the drive has engaged (`BattleScapeState::Generation` reached).
+/// Build the REAL Load flow with the stepper plugin FORCED engaged at plugin build (rather than
+/// driving the Options-screen toggle, which `setting.rs` covers), start the battle, and advance
+/// until the drive has engaged (`BattleScapeState::Generation` reached).
 /// Shared setup for the Skip / Auto app-wiring tests and the step-equivalence test.
 pub(crate) fn app_engaged_in_generation(seed: u64) -> App {
     let mut app = app_ready_for_battle(seed);

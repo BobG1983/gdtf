@@ -26,12 +26,12 @@ mod ui;
 crate::support_use!(plugin::ProcgenStepperPlugin;);
 
 // `battle_setup_runs_directly` is consumed by `battle_sim::plugin` (the run condition that
-// gates `request_battle_setup` off while the stepper is active) — a PRODUCTION consumer
-// outside this module, so it stays `pub(crate)` unconditionally (not test-support-gated).
-// The env-var gate reader + `AutoStepDelay` are consumed ONLY by the GTW-655 integration test
-// (which drives the ENGAGED path directly, bypassing egui — the egui closure never runs
-// headlessly — and unit-checks the gate mirrors `from_env`, the house recognised-truthy
-// convention), so they widen to `pub` only under `test-support`.
+// gates `request_battle_setup` off while the stepper is engaged) and `ProcgenStepperActive` by
+// the Options screen's dev-only stepper toggle (`crate::states::running::options`, GTW-868),
+// which inserts / removes it — both PRODUCTION consumers outside this module, so both stay
+// `pub(crate)` unconditionally (not test-support-gated). `AutoStepDelay` is consumed ONLY by the
+// GTW-655 integration test (which drives the ENGAGED path directly, bypassing egui — the egui
+// closure never runs headlessly), so it widens to `pub` only under `test-support`.
 #[cfg(feature = "test-support")]
 pub use commands::AutoStepDelay;
 // The command/latch TRIO (`StepCommand` / `PendingStepCommand` / `AutoRunning`) has a SECOND
@@ -45,8 +45,7 @@ pub use commands::AutoStepDelay;
 #[cfg(any(feature = "test-support", feature = "net_qa"))]
 crate::support_use!(commands::{AutoRunning, PendingStepCommand, StepCommand};);
 pub(crate) use gate::battle_setup_runs_directly;
-#[cfg(feature = "test-support")]
-pub use gate::stepper_enabled;
+crate::support_use!(gate::ProcgenStepperActive;);
 // The schematic painter (GTW-732) — re-exported under `test-support` so it stays a reachable
 // public API item (keeping its geometry linked + unit-tested even when `ui`, the only in-crate
 // caller, is excluded from headless builds).

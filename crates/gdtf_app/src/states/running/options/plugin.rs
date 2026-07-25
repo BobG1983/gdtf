@@ -33,7 +33,50 @@ impl Plugin for OptionsScenePlugin {
         add_settings(app);
         add_observers(app);
         add_systems(app);
+        #[cfg(feature = "dev_tools")]
+        add_dev_stepper_setting(app);
     }
+}
+
+/// Wires the DEV-ONLY procgen-stepper setting (GTW-868): its typed intent message, its
+/// activation observer, and the apply / engagement / readout / repaint chain.
+///
+/// Present only in a `dev_tools` build — a non-`dev_tools` build registers none of it, and
+/// the screen is exactly what it was. The engagement system
+/// ([`sync_stepper_engagement`]) is what makes the toggle real: it inserts / removes
+/// `ProcgenStepperActive`, the resource the stepper's `OnEnter(Generation)` run condition
+/// reads, so a flip takes effect for the NEXT battle generation. It is ordered
+/// `.after(apply_stepper_setting)` for a deterministic order over the shared intent
+/// (bevy-traps rule 3), though both read the same message independently.
+#[cfg(feature = "dev_tools")]
+fn add_dev_stepper_setting(app: &mut App) {
+    use crate::states::running::options::{
+        settings::ProcgenStepperSettingChanged,
+        systems::{
+            apply_stepper_setting, paint_stepper_toggle, stepper_activated,
+            sync_stepper_engagement, sync_stepper_value_label,
+        },
+    };
+
+    app.add_message::<ProcgenStepperSettingChanged>()
+        .add_observer(stepper_activated);
+    app.add_systems(
+        Update,
+        (
+            apply_stepper_setting,
+            sync_stepper_engagement.after(apply_stepper_setting),
+            sync_stepper_value_label.after(apply_stepper_setting),
+        )
+            .run_if(in_state(RunningState::Options)),
+    );
+    app.add_systems(
+        Update,
+        paint_stepper_toggle.after(apply_stepper_setting).run_if(
+            in_state(RunningState::Options)
+                .and_then(resource_exists::<GdtfTheme>)
+                .and_then(resource_changed::<GameSettings>.or_else(resource_changed::<GdtfTheme>)),
+        ),
+    );
 }
 
 /// Registers the screen's activation observers (GTW-637 INPUT clause).

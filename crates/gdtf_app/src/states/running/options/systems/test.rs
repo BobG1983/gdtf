@@ -15,7 +15,7 @@ use bevy::{
 };
 use gdtf_ui::theme::default_theme;
 
-use super::{paint_sound_toggle, spawn_options_screen, theming::sound_toggle_colors};
+use super::{paint_sound_toggle, spawn_options_screen, theming::toggle_colors};
 use crate::states::running::options::{
     components::{OptionsScreenRoot, OptionsTitle, SoundToggle, SoundValueLabel},
     settings::{GameSettings, SoundEnabled},
@@ -36,9 +36,7 @@ fn spawn_screen(sound_on: bool) -> App {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     app.insert_resource(default_theme());
-    app.insert_resource(GameSettings {
-        sound: SoundEnabled::new(sound_on),
-    });
+    app.insert_resource(GameSettings::default().with_sound(SoundEnabled::new(sound_on)));
     // Under MinimalPlugins the `DirectionalNavigationPlugin` (normally pulled in by
     // `gdtf_ui::UiPlugin`) is absent, so seed the map the spawn system writes into.
     app.init_resource::<DirectionalNavigationMap>();
@@ -98,7 +96,7 @@ fn sound_toggle_is_a_real_checkbox_seeded_from_settings_and_themed() {
     // The track color comes from the theme's off fill, not a literal (THEMING clause).
     assert_eq!(
         track,
-        sound_toggle_colors(&default_theme()).track(SoundEnabled::new(false)),
+        toggle_colors(&default_theme()).track(SoundEnabled::new(false)),
         "the toggle track must be painted from the button sub-theme's off fill",
     );
 }

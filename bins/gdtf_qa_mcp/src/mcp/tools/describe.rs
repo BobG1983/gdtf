@@ -46,7 +46,9 @@ impl ToolName {
                  {\"Auto\": {\"running\": true}} to start (or {\"running\": false} to stop) \
                  Auto free-run — as a JSON value or a compact-RON string. Serviceable ONLY \
                  while a procgen-stepper drive is actually in flight (during a battle's \
-                 Generation, with the stepper engaged via GDTF_PROCGEN_STEPPER); otherwise \
+                 Generation, with the stepper engaged). Engage it first: open the Options \
+                 screen and turn on its dev-only procgen-stepper toggle (it defaults to off, \
+                 and it takes effect for the NEXT battle generation); otherwise \
                  it is rejected StepperInactive. Poll `app_flow` and act only when its \
                  `available` list includes StepperControl."
             }

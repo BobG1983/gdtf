@@ -5,8 +5,9 @@
 //! Four facts are pinned:
 //!
 //! - enumerating the Options screen over `GetAppFlow` returns exactly the controls the
-//!   screen put in its OWN navigation chain — the sound checkbox (with its `checked` value)
-//!   and the Continue button — with the toggle marked focused;
+//!   screen put in its OWN navigation chain — the sound checkbox (with its `checked` value),
+//!   the Continue button, and (in a `dev_tools` build) the GTW-868 dev-only procgen-stepper
+//!   checkbox — with the sound toggle marked focused;
 //! - a `Step` command moves `InputFocus` between them through the game's real
 //!   `apply_navigation` over the screen's real `add_edges` chain;
 //! - a `Focus` command points `InputFocus` at an enumerated control;
@@ -92,10 +93,14 @@ fn enumerates_the_options_screen_focusables() {
     let Some(focus) = read_focus(&mut app, &tx) else {
         unreachable!("a focus-navigable screen must enumerate a FocusView");
     };
+    // Two player-facing controls, plus the dev-only procgen-stepper toggle in a `dev_tools`
+    // build (GTW-868) — which is listed for free precisely because it is NOT a special case:
+    // it rides the same `add_edges` chain, so the generic enumeration picks it up.
+    let expected = if cfg!(feature = "dev_tools") { 3 } else { 2 };
     assert_eq!(
         focus.focusables.len(),
-        2,
-        "exactly the two controls Options put in its navigation chain are listed; got {:?}",
+        expected,
+        "exactly the controls Options put in its navigation chain are listed; got {:?}",
         focus.focusables,
     );
 
@@ -118,6 +123,30 @@ fn enumerates_the_options_screen_focusables() {
         *toggle_row.focused,
         "the screen's set_initial_focus put focus on the toggle",
     );
+
+    // GTW-868: in a `dev_tools` build the dev-only procgen-stepper toggle is enumerated too,
+    // as a Checkbox reporting its (default OFF) value — the proof it got the same focus-nav
+    // treatment as the sound toggle rather than a bespoke one.
+    #[cfg(feature = "dev_tools")]
+    {
+        let Some(stepper) = single_with::<gdtf_app::test_support::ProcgenStepperToggle>(&mut app)
+        else {
+            unreachable!("a dev_tools build spawns exactly one procgen-stepper toggle");
+        };
+        let Some(stepper_row) = row_for(&focus, stepper) else {
+            unreachable!("the dev procgen-stepper toggle is enumerated");
+        };
+        assert_eq!(stepper_row.kind, FocusableKindNet::Checkbox);
+        assert_eq!(
+            stepper_row.checked.map(|checked| *checked),
+            Some(false),
+            "the dev procgen-stepper setting defaults OFF",
+        );
+        assert!(
+            *stepper_row.enabled,
+            "the dev toggle is activatable over the wire"
+        );
+    }
 
     let Some(continue_row) = row_for(&focus, continue_button) else {
         unreachable!("the Continue button is enumerated");
@@ -166,21 +195,38 @@ fn step_moves_focus_along_the_real_navigation_chain() {
         "precondition: focus starts on the sound toggle",
     );
 
-    let receipt = focus_control(&mut app, &tx, FocusCommandNet::Step(FocusStepNet::Next));
-    assert_eq!(receipt, FocusControlReceipt::Applied);
-    assert_eq!(
-        focused_entity(&app),
-        Some(continue_button),
-        "a Next step must walk the real navigation edge to Continue",
-    );
+    // The screen's chain in spawn order: sound toggle, the dev-only procgen-stepper toggle
+    // (only in a `dev_tools` build, GTW-868), then Continue.
+    let mut chain = vec![toggle];
+    #[cfg(feature = "dev_tools")]
+    {
+        let Some(stepper) = single_with::<gdtf_app::test_support::ProcgenStepperToggle>(&mut app)
+        else {
+            unreachable!("a dev_tools build spawns exactly one procgen-stepper toggle");
+        };
+        chain.push(stepper);
+    }
+    chain.push(continue_button);
 
-    let receipt = focus_control(&mut app, &tx, FocusCommandNet::Step(FocusStepNet::Prev));
-    assert_eq!(receipt, FocusControlReceipt::Applied);
-    assert_eq!(
-        focused_entity(&app),
-        Some(toggle),
-        "a Prev step must walk the reverse edge back to the sound toggle",
-    );
+    for expected in chain.iter().skip(1) {
+        let receipt = focus_control(&mut app, &tx, FocusCommandNet::Step(FocusStepNet::Next));
+        assert_eq!(receipt, FocusControlReceipt::Applied);
+        assert_eq!(
+            focused_entity(&app),
+            Some(*expected),
+            "a Next step must walk the real navigation edge to the next control in the chain",
+        );
+    }
+
+    for expected in chain.iter().rev().skip(1) {
+        let receipt = focus_control(&mut app, &tx, FocusCommandNet::Step(FocusStepNet::Prev));
+        assert_eq!(receipt, FocusControlReceipt::Applied);
+        assert_eq!(
+            focused_entity(&app),
+            Some(*expected),
+            "a Prev step must walk the reverse edge back down the chain",
+        );
+    }
 }
 
 /// A `Focus` command points input focus at an enumerated control by its token, without

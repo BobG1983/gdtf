@@ -1,16 +1,20 @@
-//! GTW-655 / GTW-732: the dev-tools procgen load-time stepper.
+//! GTW-655 / GTW-732 / GTW-868: the dev-tools procgen load-time stepper.
 //!
-//! Seven tests, all against the REAL `GdtfLoadTestAppBuilder` Load flow (a live `AssetServer`
+//! Eleven tests, all against the REAL `GdtfLoadTestAppBuilder` Load flow (a live `AssetServer`
 //! rooted at the workspace `assets/`, so the prefab / theme / terrain registries are populated
 //! from SHIPPED content — the same real-registries proof `procgen_battle.rs` uses) and a FIXED
 //! injected `BattleSeed` so the app instances draw identically. Shared setup lives in
 //! [`harness`]; the tests themselves are split by concern:
 //!
-//! - [`regression`] — the un-engaged / disabled-plugin fingerprint pins:
+//! - [`regression`] — the un-engaged fingerprint pins:
 //!   `normal_path_reaches_running_with_a_terrain_fingerprint` (NO stepper plugin added — mirrors
-//!   a normal `cargo run`, or a `dev_tools` build where `GDTF_PROCGEN_STEPPER` is unset) and
-//!   `stepper_disabled_plugin_is_indistinguishable_from_absent` (`with_enabled(false)` registers
-//!   nothing, so adding it changes nothing about the normal path either).
+//!   a build without `dev_tools`) and `stepper_plugin_added_disengaged_leaves_the_normal_path`
+//!   (`with_enabled(false)` — the SHIPPED wiring since GTW-868: its systems register, but with
+//!   the engagement marker absent nothing engages, so the normal path is unchanged).
+//! - [`setting`] — GTW-868: the Options screen's dev-only procgen-stepper toggle drives
+//!   engagement at runtime — flipping it inserts / removes `ProcgenStepperActive`, a flipped-on
+//!   setting steps the NEXT generation, and the default-OFF setting leaves the normal
+//!   to-completion path alone.
 //! - [`step_equivalence`] — the LOAD-BEARING step-equivalence tests (GTW-732):
 //!   `stepper_engaged_path_matches_the_normal_fingerprint` drives the SAME seed ONE PREFAB AT A
 //!   TIME to completion via `PendingStepCommand::request` (bypassing egui entirely — the closure
@@ -40,4 +44,5 @@
 mod commands;
 mod harness;
 mod regression;
+mod setting;
 mod step_equivalence;

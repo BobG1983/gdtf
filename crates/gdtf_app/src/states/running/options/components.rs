@@ -65,6 +65,42 @@ crate::support_item! {
 }
 
 crate::support_item! {
+    /// Marks the DEV-ONLY procgen-stepper toggle
+    /// [`Checkbox`](bevy::ui_widgets::Checkbox) (GTW-868) — the second setting row, present
+    /// ONLY in a `dev_tools` build. Its native
+    /// [`ValueChange<bool>`](bevy::ui_widgets::ValueChange) observer reads this marker to map
+    /// an activation to the typed `ProcgenStepperSettingChanged` intent, and the theming pass
+    /// reads it to paint the toggle from the theme — exactly the sound toggle's treatment, so
+    /// it is not a special case: it gets the same [`DirectionalNavigationMap`](bevy::input_focus::directional_navigation::DirectionalNavigationMap)
+    /// edge and so the same focus-nav reachability the sound toggle and Continue have.
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[cfg(feature = "dev_tools")]
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct ProcgenStepperToggle;
+}
+
+/// Marks the KNOB child of the DEV-ONLY procgen-stepper toggle (GTW-868) — the pip inside
+/// the pill the theming pass repaints and re-justifies, exactly as for the sound toggle.
+///
+/// Screen-internal (no external test names it), so a plain restricted marker rather than a
+/// `support_item!` test-visible one. A unit marker: presence on an entity is the whole
+/// signal (no-bare-types rule).
+#[cfg(feature = "dev_tools")]
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub(in crate::states::running::options) struct ProcgenStepperToggleKnob;
+
+crate::support_item! {
+    /// Marks the text node that reads out the DEV-ONLY procgen-stepper setting's current
+    /// value ("On" / "Off"), mutated in place when the toggle flips (GTW-868).
+    ///
+    /// A unit marker: presence on an entity is the whole signal (no-bare-types rule).
+    #[cfg(feature = "dev_tools")]
+    #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
+    struct ProcgenStepperValueLabel;
+}
+
+crate::support_item! {
     /// Marks the **Continue** button — activating it returns to the Main Menu
     /// ([`RunningState::Menu`](crate::states::RunningState::Menu)), the screen Options
     /// was opened from (the screen is a real interactive stop now, not an auto-advance

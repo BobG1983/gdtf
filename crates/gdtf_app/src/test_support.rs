@@ -141,8 +141,15 @@ pub use crate::dev::net_qa::{
 // module replaces (its `debug_assertions`-gated scene was deleted in the same change).
 #[cfg(feature = "dev_tools")]
 pub use crate::dev::procgen_stepper::{
-    AutoRunning, AutoStepDelay, PendingStepCommand, ProcgenStepperPlugin, StepCommand,
-    draw_schematic, stepper_enabled,
+    AutoRunning, AutoStepDelay, PendingStepCommand, ProcgenStepperActive, ProcgenStepperPlugin,
+    StepCommand, draw_schematic,
+};
+// GTW-868: the DEV-ONLY procgen-stepper toggle's markers on the Options screen. Gated on
+// `dev_tools` exactly like the controls themselves — a non-`dev_tools` build has no such
+// setting, so there is nothing to name.
+#[cfg(feature = "dev_tools")]
+pub use crate::states::running::options::test_support::{
+    ProcgenStepperToggle, ProcgenStepperValueLabel,
 };
 pub use crate::states::{
     AfterMathState, AppState, BattleScapeState, GameState, LoadedSituation, RunningState,

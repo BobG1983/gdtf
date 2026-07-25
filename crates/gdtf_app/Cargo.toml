@@ -127,9 +127,10 @@ file_watcher = ["bevy/file_watcher"]
 # feature, so a release binary never links egui. Unlike the `net_qa` affordance below, its
 # wiring site (`crate::dev::plugin`) gates it on this Cargo feature ONLY — there is NO
 # `cfg!(debug_assertions)` double-gate, because `dev_tools` is itself never enabled for a
-# release/CI build. It is inert at runtime until the `GDTF_PROCGEN_STEPPER` env var is set
-# truthy — so even a `dev_tools`-enabled dev build reaches a battle exactly as before unless a
-# developer opts in.
+# release/CI build. It is DISENGAGED at runtime until a developer turns on the dev-only
+# procgen-stepper toggle on the Options screen (present only in a `dev_tools` build, default
+# OFF, GTW-868) — so even a `dev_tools`-enabled dev build reaches a battle exactly as before
+# unless a developer opts in.
 #
 # NOT in the default feature set and NEVER enabled for CI / release builds.
 #

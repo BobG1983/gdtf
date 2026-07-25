@@ -22,4 +22,8 @@ pub(crate) mod test_support {
     pub use super::components::{
         ContinueButton, OptionsScreenRoot, OptionsTitle, SoundToggle, SoundValueLabel,
     };
+    // The DEV-ONLY procgen-stepper toggle's markers (GTW-868) — `dev_tools`-gated exactly
+    // like the controls themselves, so a non-`dev_tools` test build cannot name them.
+    #[cfg(feature = "dev_tools")]
+    pub use super::components::{ProcgenStepperToggle, ProcgenStepperValueLabel};
 }

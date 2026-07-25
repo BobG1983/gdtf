@@ -114,7 +114,7 @@ fn render_options_to_png(sound: SoundEnabled, out: &Path) -> bool {
     // The real theming pass (paints the Themed backdrop/title/text nodes) + widget drivers.
     app.add_plugins(UiPlugin);
     app.insert_resource(default_theme());
-    app.insert_resource(GameSettings { sound });
+    app.insert_resource(GameSettings::default().with_sound(sound));
 
     // An offscreen render target the UI camera renders into; COPY_SRC so the screenshot
     // readback can copy it out.

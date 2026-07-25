@@ -141,6 +141,31 @@ fn options_screen_spawns_root_title_and_widgets() {
     );
 }
 
+/// GTW-868: the DEV-ONLY procgen-stepper toggle is present in a `dev_tools` build and
+/// ABSENT otherwise — asserted by counting the screen's first-party
+/// [`Checkbox`](bevy::ui_widgets::Checkbox) widgets, which works in BOTH build configs (the
+/// dev-only marker type does not even exist without the feature, so it cannot be named
+/// here). A non-`dev_tools` build shows the screen exactly as it did before that ticket:
+/// one setting toggle, the sound one.
+#[test]
+fn dev_only_stepper_toggle_is_present_exactly_under_dev_tools() {
+    let mut app = options_app();
+    let mut checkboxes = app
+        .world_mut()
+        .query_filtered::<Entity, bevy::ecs::prelude::With<bevy::ui_widgets::Checkbox>>();
+    let count = checkboxes.iter(app.world()).count();
+    #[cfg(feature = "dev_tools")]
+    assert_eq!(
+        count, 2,
+        "a dev_tools build must show TWO setting toggles: sound + the dev procgen stepper",
+    );
+    #[cfg(not(feature = "dev_tools"))]
+    assert_eq!(
+        count, 1,
+        "a non-dev_tools build must show exactly ONE setting toggle (sound) — no dev control",
+    );
+}
+
 /// Mouse path: a press on Continue requests the `Options -> Menu` transition — it
 /// returns to the Main Menu it was opened from, NOT on to `Game` (GTW-801).
 #[test]

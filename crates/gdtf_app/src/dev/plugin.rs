@@ -7,9 +7,11 @@ use bevy::prelude::*;
 ///
 /// GTW-655: the procgen load-time stepper (`super::procgen_stepper`) is `dev_tools`-gated
 /// only (the feature pulls in `bevy_egui`) — no `debug_assertions` double-gate, since
-/// `dev_tools` is itself never enabled for a release/CI build. It stays inert at runtime
-/// (a battle loads exactly as it does without `dev_tools`) until `GDTF_PROCGEN_STEPPER` is
-/// set truthy (its own `from_env` gate).
+/// `dev_tools` is itself never enabled for a release/CI build. GTW-868: it is added
+/// DISENGAGED (`with_enabled(false)`) — its drive systems register, but nothing engages, so
+/// a battle loads exactly as it does without `dev_tools`. Engagement is a runtime toggle on
+/// the Options screen (dev-only, default OFF) that inserts / removes
+/// `ProcgenStepperActive`.
 ///
 /// GTW-864: this plugin is also the ONE place in `gdtf_app` that adds `EguiPlugin`. With a
 /// single adder there is no duplicate add to defend against: the egui-using affordances
@@ -66,9 +68,12 @@ impl Plugin for DevAffordancesPlugin {
             }
         }
         // GTW-655: the procgen load-time stepper. `dev_tools`-gated only (see the module
-        // doc) — its own `from_env` env-var gate keeps it inert at runtime by default.
+        // doc). GTW-868: added DISENGAGED — the Options screen's dev-only toggle owns
+        // engagement from here on, and it defaults to OFF.
         #[cfg(feature = "dev_tools")]
-        app.add_plugins(super::procgen_stepper::ProcgenStepperPlugin::from_env());
+        app.add_plugins(super::procgen_stepper::ProcgenStepperPlugin::with_enabled(
+            false,
+        ));
         // GTW-736/GTW-749: the QA network control channel — the ONE capture / drive
         // path. DOUBLE-gated `all(debug_assertions, feature = "net_qa")` (it opens a
         // listener); its own `from_env` `GDTF_NET_QA` gate keeps it inert at runtime by
