@@ -2,7 +2,8 @@
 # Dynamic linking for fast, non-release iteration.
 # `dynamic_linking` is opt-in and must NEVER be enabled for release builds.
 #
-# GTW-655: every dev alias below also enables `dev_tools` (the procgen load-time stepper's
+# GTW-655: every GAME dev alias below (`drun` / `dbuild`) and every workspace-wide check
+# (`dcheck` / `dclippy` / `dtest`) also enables `dev_tools` (the procgen load-time stepper's
 # egui overlay), so the dev/gate loop always compiles, lints, and tests the stepper's
 # drive/gate/command/summary logic — the non-egui majority of it, including the pure
 # stage-summary formatter (`gdtf_app`'s `dev::procgen_stepper::summary`). Only the egui draw
@@ -13,25 +14,39 @@
 # on the Options screen (default OFF, GTW-868) — see `crate::dev::procgen_stepper` in `gdtf_app`.
 # CI's static suite does not enable `dynamic_linking` or `dev_tools`.
 #
-# GTW-736: every dev alias ALSO enables `net_qa` (the DEV-ONLY QA network control channel,
+# GTW-736: those same aliases ALSO enable `net_qa` (the DEV-ONLY QA network control channel,
 # the GTW-694 architecture's T3), mirroring the `dev_tools` threading above, so the dev/gate
 # loop always compiles, lints, and tests the loopback transport + request router. It stays
 # inert at runtime unless `GDTF_NET_QA` is set truthy (its `from_env` gate) AND is additionally
 # `cfg!(debug_assertions)`-gated at its wiring site (it opens a listener). CI's static suite
 # enables neither `dynamic_linking` nor `net_qa`.
+#
+# GTW-877: the three workspace-wide aliases (`dcheck` / `dclippy` / `dtest`) and `doc-full` ALSO
+# enable `gdtf_content_editor/net_qa` — the EDITOR's own QA control channel (GTW-804 / GTW-805).
+# `grimdark_turfwar/net_qa` reaches only the GAME's `gdtf_app::dev::net_qa`; nothing enabled the
+# editor's, so its entire `src/net_qa/` module and its two `#![cfg(all(debug_assertions, feature =
+# "net_qa"))]` test binaries (`tests/net_qa_hello.rs`, `tests/net_qa_editor_query/`) were compiled,
+# linted, doc-checked and run by NOTHING in the gate — both reported "0 tests". Naming the feature
+# on the SAME runs (rather than adding new ones) costs no extra bevy build: these runs already
+# compile the editor crate and both optional deps (`gdtf_qa_protocol`, `gdtf_net_qa_transport`).
+# The editor's listener stays exactly as dev-gated as it was — the editor BINARY crate has no
+# passthrough for this feature, so a release editor build still cannot turn it on.
 
 # Run / build the game with dynamic linking.
 drun = "run -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools,net_qa"
 dbuild = "build -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools,net_qa"
 
 # Run / build the content editor (bins/gdtf_content_editor) with dynamic linking.
+# These two enable neither `dev_tools` nor either `net_qa`: the editor binary crate has no
+# passthrough for the editor's `net_qa` feature (see GTW-877 above), and `dev_tools` is a
+# `grimdark_turfwar` feature that the editor binary does not depend on.
 edrun = "run -p gdtf_content_editor_bin --features dynamic_linking"
 edbuild = "build -p gdtf_content_editor_bin --features dynamic_linking"
 
 # Workspace-wide dev checks with dynamic linking.
-dcheck = "check --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa"
-dclippy = "clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa"
-dtest = "test --workspace --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa"
+dcheck = "check --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa"
+dclippy = "clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa"
+dtest = "test --workspace --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa"
 
 # GTW-790: the with-features doc-link check. The green suite's plain `cargo doc --workspace
 # --no-deps` runs with DEFAULT features, so the `dev_tools` / `net_qa`-gated modules are never
@@ -41,8 +56,9 @@ dtest = "test --workspace --features grimdark_turfwar/dynamic_linking,grimdark_t
 # run it ALONGSIDE the default doc step, not instead of it (the same both-configs rule the
 # `dclippy` dual gate follows: an optional-feature module must be checked WITH its feature on,
 # not just off). No `dynamic_linking` — rustdoc never links the binary, so it would only add
-# cold-build cost for no lint gain.
-doc-full = "doc --workspace --no-deps --features grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa"
+# cold-build cost for no lint gain. GTW-877 added `gdtf_content_editor/net_qa` for the same
+# reason: the editor's `src/net_qa/` doc comments were never link-checked either.
+doc-full = "doc --workspace --no-deps --features grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa"
 
 [unstable]
 checksum-freshness = true

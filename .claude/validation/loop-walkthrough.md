@@ -57,11 +57,14 @@ run from the repo root, is all three passing:
 
 ```bash
 cargo fmt --check
-cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
-cargo test --workspace --features grimdark_turfwar/dynamic_linking
+cargo dclippy -- -D warnings
+cargo dtest
 ```
 
-(`cargo dclippy` / `cargo dtest` / `cargo drun` in `.cargo/config.toml` are the shorthand.)
+(`dclippy` / `dtest` / `drun` are `.cargo/config.toml` aliases; always invoke the alias, never a
+hand-typed expansion — a hand-typed list drifts and silently drops a feature-gated module from the
+check, which is how the editor's `net_qa` module stayed unchecked for two tickets, GTW-877.
+`verification.md` carries the current expansion.)
 
 Because the workspace `Cargo.toml` denies clippy all/pedantic/correctness plus
 unwrap/expect/panic/todo/unimplemented and missing_docs, **fmt-clean and

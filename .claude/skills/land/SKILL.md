@@ -52,9 +52,11 @@ Single-ticket is the common path.
 
    **Use these aliases (`.cargo/config.toml`), never hand-typed long-form flags** —
    typing the flags yourself risks silently dropping `dynamic_linking` and falling back
-   to a slow static rebuild. Any one not exiting 0 (fmt drift, a clippy warning, a
-   failing test, a broken/private intra-doc link — including inside `dev_tools`/`net_qa`,
-   which only `doc-full` compiles) → refuse.
+   to a slow static rebuild, or dropping one of the feature-gated modules the aliases
+   carry (`dev_tools`, the game's `grimdark_turfwar/net_qa`, and the editor's
+   `gdtf_content_editor/net_qa` — GTW-877). Any one not exiting 0 (fmt drift, a clippy
+   warning, a failing test, a broken/private intra-doc link — including inside
+   `dev_tools`/either `net_qa`, which only `doc-full` compiles) → refuse.
 3. **On a `feature/*` branch.** `git branch --show-current` must be the
    `feature/gtw-N-slug` branch for this ticket. On `develop`, `main`, or anything
    else → refuse.

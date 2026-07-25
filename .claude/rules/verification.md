@@ -23,12 +23,23 @@ exists to avoid. Every agent definition and skill in this repo (`engineer`,
 
 ```bash
 cargo fmt --check
-cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings
-cargo test --workspace --features grimdark_turfwar/dynamic_linking
-cargo build -p grimdark_turfwar --features dynamic_linking,file_watcher
+cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa -- -D warnings
+cargo test --workspace --features grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa
+cargo build -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools,net_qa
 cargo doc --workspace --no-deps
 cargo doc-full
 ```
+
+Note the TWO `net_qa` entries in that feature list. A package-qualified feature turns on only
+THAT package's feature, and the game and the editor each own a separate `net_qa`:
+`grimdark_turfwar/net_qa` reaches the game's `gdtf_app::dev::net_qa`, `gdtf_content_editor/net_qa`
+reaches the editor's `gdtf_content_editor::net_qa`. Until GTW-877 only the game's was named, so
+the editor's entire `src/net_qa/` module (GTW-804 / GTW-805) was compiled, linted, doc-checked and
+tested by NOTHING in the gate, and its two `#![cfg(all(debug_assertions, feature = "net_qa"))]`
+test binaries silently reported "0 tests". The fix names the editor's feature on the runs that
+already existed: NO new suite step, no second bevy build (these runs already compile the editor
+crate and both of the feature's optional deps). Adding a separate editor-only run instead would
+have been redundant — the workspace runs already cover the crate.
 
 `cargo doc` is a dev/gate-only step (not CI): the workspace `broken_intra_doc_links` /
 `private_intra_doc_links` lints (both `deny`) only surface under `cargo doc`, not under
@@ -38,11 +49,12 @@ checked WITH its feature on, not just off):
 
 - `cargo doc --workspace --no-deps` — the DEFAULT-feature run.
 - `cargo doc-full` (alias for `cargo doc --workspace --no-deps --features
-  grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa`) — enables `dev_tools` + `net_qa` so the
-  doc comments inside those feature-gated modules (`crate::dev::procgen_stepper`,
-  `crate::dev::net_qa`) are link-checked too. Without it a broken intra-doc link inside one of
-  those modules is never compiled by the default `cargo doc`, so it slips past the gate and CI
-  (the exact gap GTW-790 fixed).
+  grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa`) — enables
+  `dev_tools` + BOTH `net_qa` features so the doc comments inside those feature-gated modules
+  (`gdtf_app`'s `crate::dev::procgen_stepper` and `crate::dev::net_qa`, and the editor's
+  `gdtf_content_editor::net_qa`) are link-checked too. Without it a broken intra-doc link inside
+  one of those modules is never compiled by the default `cargo doc`, so it slips past the gate and
+  CI (the gap GTW-790 fixed for the game, GTW-877 for the editor).
 
 `cargo dclippy` / `cargo dtest` / `cargo dbuild` / `cargo drun` / `cargo doc-full` (aliases in
 `.cargo/config.toml`) are the shorthand for these. Dynamic linking via
@@ -104,9 +116,7 @@ every behavioral ticket MUST add tests on the real code path.
    it with `app.update()` (or `gdtf_test_utils::advance_until`), and assert on
    `State<…>` / the `World`. The harness exists — reading the code, or "I ran
    it and it looked right", is not verification for state-machine or system
-   logic. Reserve in-engine evidence — RUN the app
-   (`cargo run -p grimdark_turfwar --features dynamic_linking,file_watcher`,
-   i.e. `cargo drun`) and observe
+   logic. Reserve in-engine evidence — RUN the app (`cargo drun`) and observe
    (the app can capture its own screenshot) — for genuinely unautomatable
    checks: actual RENDERING / visual correctness, real input, font / layout.
    Those, and only those, are still **TBD (Bevy harness)** for richer

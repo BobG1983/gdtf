@@ -48,21 +48,28 @@ cargo doc --workspace --no-deps
 cargo doc-full
 ```
 
-Per `.cargo/config.toml`: `dclippy` = `clippy --workspace --all-targets --features
-grimdark_turfwar/dynamic_linking`, `dtest` = `test --workspace --features
-grimdark_turfwar/dynamic_linking`, `dbuild` = `build -p grimdark_turfwar --features
-dynamic_linking,file_watcher` (`drun` = the same with `run`); `dbuild` builds+links the actual
-binary, which `clippy`/`test` never do — so it's the only step that catches an
-`unreachable_pub`/link error in the `grimdark_turfwar` binary. Dynamic linking
+Per `.cargo/config.toml` (quoted here exactly — keep the two in step, GTW-877): the shared
+dev feature list is `grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa`,
+so `dclippy` = `clippy --workspace --all-targets --features <that list>`, `dtest` = `test
+--workspace --features <that list>`, `dcheck` = `check --workspace --all-targets --features
+<that list>`, and `dbuild` = `build -p grimdark_turfwar --features
+dynamic_linking,file_watcher,dev_tools,net_qa` (`drun` = the same with `run`); `dbuild`
+builds+links the actual binary, which `clippy`/`test` never do — so it's the only step that
+catches an `unreachable_pub`/link error in the `grimdark_turfwar` binary. Dynamic linking
 keeps the dev/gate loop fast; `--all-features` is not used — it forces a second full bevy build for no
-lint gain. CI green is **static** (no `dynamic_linking`): fmt/clippy/test only — the release-binary
+lint gain. The two optional features are named on the workspace runs so their gated modules are
+never dark: `grimdark_turfwar/net_qa` reaches the GAME's `gdtf_app::dev::net_qa`, and
+`gdtf_content_editor/net_qa` reaches the EDITOR's own `gdtf_content_editor::net_qa` — a
+package-qualified feature only turns on that package's, so both must be named (GTW-877).
+CI green is **static** (no `dynamic_linking`): fmt/clippy/test only — the release-binary
 build (`cargo build -p grimdark_turfwar --release`) is deferred to packaging, not a CI gate.
 `cargo doc` is dev/gate-only (not CI): the `broken_intra_doc_links` / `private_intra_doc_links`
 denies only surface under `cargo doc`. It runs TWICE: the default `cargo doc --workspace --no-deps`
 plus `cargo doc-full` (= `doc --workspace --no-deps --features
-grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa`), which enables the `dev_tools`/`net_qa`-gated
-modules so their doc comments are link-checked too — the same both-configs rule the `dclippy` dual
-gate follows (an optional feature must be checked WITH it on, not just off; GTW-790).
+grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa`), which enables the
+`dev_tools`/`net_qa`-gated modules so their doc comments are link-checked too — the same
+both-configs rule the `dclippy` dual gate follows (an optional feature must be checked WITH it on,
+not just off; GTW-790, GTW-877).
 See [`verification.md`](.claude/rules/verification.md).
 
 The workspace `Cargo.toml` denies clippy `all`/`pedantic`/`correctness`/`suspicious` plus

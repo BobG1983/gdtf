@@ -3,10 +3,11 @@
 These are validation / self-check notes for the gdtf Claude Code kit (the
 skills, rules, agents, and hook under `.claude/`). They are NOT runtime code and
 NOT transcripts of real ticket runs — they exist to prove the kit is internally
-consistent and obeys the gdtf adaptation spec (Rust + Bevy 0.18, Linear project
+consistent and obeys the gdtf adaptation spec (Rust + Bevy 0.19, Linear project
 GDTF with `GTW-` tickets, the Workflow orchestration model, and the one
-definition of green: `cargo fmt --check` + `cargo clippy … -D warnings` +
-`cargo test --workspace`, dynamic-linked via `grimdark_turfwar/dynamic_linking`).
+definition of green: `cargo fmt --check` + `cargo dclippy -- -D warnings` +
+`cargo dtest` + `cargo dbuild` + `cargo doc --workspace --no-deps` +
+`cargo doc-full` — the dev aliases defined in `.cargo/config.toml`).
 
 ## Docs
 

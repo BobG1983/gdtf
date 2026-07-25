@@ -41,12 +41,14 @@ that canon is part of the contract ALONGSIDE the ticket.
 
    **Use these ALIASES, never hand-typed long-form flags** — `dclippy`/`dtest`/`dbuild`
    are aliases defined in `.cargo/config.toml` for `clippy`/`test`/`build` with the
-   `dynamic_linking` feature (plus `dev_tools`/`net_qa`) enabled; typing the equivalent
-   flags by hand risks silently dropping a feature and falling back to a slow, fully
-   static rebuild — exactly the drift this instruction exists to prevent. `doc-full`
-   is the same command with `dev_tools`/`net_qa` enabled, catching intra-doc-link
-   regressions inside those feature-gated modules that plain `doc` alone would miss
-   (GTW-790).
+   `dynamic_linking` feature enabled, plus `dev_tools` and BOTH `net_qa` features
+   (`grimdark_turfwar/net_qa` for the game's module, `gdtf_content_editor/net_qa` for the
+   editor's — a package-qualified feature turns on only that package's, so both are named;
+   GTW-877). Typing the equivalent flags by hand risks silently dropping a feature and
+   falling back to a slow, fully static rebuild, or leaving a feature-gated module dark —
+   exactly the drift this instruction exists to prevent. `doc-full` is the same command
+   with `dev_tools` + both `net_qa` features enabled, catching intra-doc-link regressions
+   inside those feature-gated modules that plain `doc` alone would miss (GTW-790, GTW-877).
    Green = all SIX exit 0. `cargo doc`/`doc-full` enforce `broken_intra_doc_links` /
    `private_intra_doc_links` = `"deny"` (only surface under `cargo doc`, not
    clippy/build/test). The workspace `Cargo.toml` denies clippy

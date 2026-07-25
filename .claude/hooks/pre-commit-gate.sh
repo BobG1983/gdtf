@@ -134,7 +134,11 @@ fi
 # Green (CLAUDE.md): fmt --check, clippy -D warnings, then cargo test --workspace.
 # All three must pass; run from the repo root. Zero Rust tests passing is NOT
 # red (cargo test exits 0), so there is no empty-suite-is-red check here.
-SUITE_CMD="${PRE_COMMIT_GATE_SUITE_CMD:-cargo fmt --check && cargo clippy --workspace --all-targets --features grimdark_turfwar/dynamic_linking -- -D warnings && cargo test --workspace --features grimdark_turfwar/dynamic_linking && cargo build -p grimdark_turfwar --features dynamic_linking}"
+# GTW-877: use the `.cargo/config.toml` ALIASES rather than hand-typed long-form flags. The
+# hand-typed form here had drifted to `dynamic_linking` alone, so this guard checked NONE of
+# the feature-gated modules the aliases carry (`dev_tools`, the game's `grimdark_turfwar/net_qa`,
+# the editor's `gdtf_content_editor/net_qa`). The aliases cannot drift from themselves.
+SUITE_CMD="${PRE_COMMIT_GATE_SUITE_CMD:-cargo fmt --check && cargo dclippy -- -D warnings && cargo dtest && cargo dbuild}"
 SUITE_OUTPUT="$(cd "$REPO_DIR" && bash -c "$SUITE_CMD" 2>&1)"
 SUITE_STATUS=$?
 if [ "$SUITE_STATUS" -ne 0 ]; then
