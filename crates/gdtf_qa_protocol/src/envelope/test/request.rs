@@ -6,7 +6,7 @@ use crate::{
     ids::{EventCap, FocusTargetNet, FrameDelay, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
     test_support::assert_ron_round_trip,
-    view::RequestKindNet,
+    view::{EditorQueryKind, RequestKindNet},
 };
 
 /// Every [`QaRequest`] variant — the round-trip table, kept in lock-step with the enum
@@ -35,6 +35,8 @@ fn qa_request_cases() -> Vec<QaRequest> {
         QaRequest::StepperControl(StepperCommandNet::Next),
         QaRequest::ActivateMenuItem(FocusTargetNet::new(42)),
         QaRequest::FocusControl(FocusCommandNet::Step(FocusStepNet::Next)),
+        QaRequest::GetEditorQueryOptions,
+        QaRequest::QueryEditor(EditorQueryKind::Draft),
     ]
 }
 
@@ -52,7 +54,9 @@ fn qa_request_is_exhaustive(request: &QaRequest) {
         | QaRequest::StartBattle { .. }
         | QaRequest::StepperControl(_)
         | QaRequest::ActivateMenuItem(_)
-        | QaRequest::FocusControl(_) => {}
+        | QaRequest::FocusControl(_)
+        | QaRequest::GetEditorQueryOptions
+        | QaRequest::QueryEditor(_) => {}
     }
 }
 
@@ -62,7 +66,7 @@ fn qa_request_round_trips_every_variant() {
     let cases = qa_request_cases();
     assert_eq!(
         cases.len(),
-        11,
+        13,
         "the case table lists every QaRequest variant"
     );
     for case in &cases {
@@ -115,6 +119,28 @@ fn focus_control_round_trips_every_command() {
             | FocusCommandNet::ActivateTarget(_) => {}
         }
         assert_ron_round_trip(&QaRequest::FocusControl(command));
+    }
+}
+
+/// Every [`EditorQueryKind`] rides a `QueryEditor` request identically, and
+/// [`EditorQueryKind::ALL`] lists every one of them (GTW-805). The wildcard-free witness
+/// forces a new topic into both.
+#[test]
+fn query_editor_round_trips_every_topic() {
+    assert_eq!(
+        EditorQueryKind::ALL.len(),
+        5,
+        "EditorQueryKind::ALL lists every topic",
+    );
+    for kind in EditorQueryKind::ALL {
+        match kind {
+            EditorQueryKind::Readiness
+            | EditorQueryKind::Mode
+            | EditorQueryKind::Session
+            | EditorQueryKind::Draft
+            | EditorQueryKind::Validation => {}
+        }
+        assert_ron_round_trip(&QaRequest::QueryEditor(kind));
     }
 }
 

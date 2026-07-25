@@ -10,9 +10,11 @@
 //! - [`menu`] — the folded menu enumeration handout.
 //! - [`focus`] — the folded focus-navigable control enumeration handout.
 //! - [`ganger`] — the ganger-card enum witnesses (life state, severity, body part).
+//! - [`editor`] — the editor query family: the per-topic views + their enum witnesses.
 
 mod appflow;
 mod battle;
+mod editor;
 mod focus;
 mod fog;
 mod ganger;

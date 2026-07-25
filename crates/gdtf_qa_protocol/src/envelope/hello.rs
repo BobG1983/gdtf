@@ -92,9 +92,16 @@ impl ProtocolVersion {
     /// and the [`FocusControlReceipt`](crate::envelope::FocusControlReceipt) reply) — a new
     /// closed-enum variant everywhere the envelope matches exhaustively, so a client
     /// negotiating version `10` now gets a `VersionMismatch` rather than a wire shape it
-    /// cannot decode. The game server negotiates a
-    /// `Hello` against this value.
-    pub const CURRENT: Self = Self::new(11);
+    /// cannot decode. Bumped to `12` (GTW-805) for the content editor's ADR 0007 query
+    /// pair: [`QaRequest::GetEditorQueryOptions`](crate::envelope::QaRequest::GetEditorQueryOptions)
+    /// / [`QaRequest::QueryEditor`](crate::envelope::QaRequest::QueryEditor),
+    /// [`QaResponse::EditorQueryOptions`](crate::envelope::QaResponse::EditorQueryOptions) /
+    /// [`QaResponse::EditorQuery`](crate::envelope::QaResponse::EditorQuery), and the two
+    /// matching [`RequestKindNet`](crate::view::RequestKindNet) kinds — new closed-enum
+    /// variants everywhere the envelope matches exhaustively, so a client negotiating
+    /// version `11` now gets a `VersionMismatch` rather than a wire shape it cannot decode.
+    /// BOTH servers — the game's and the editor's — negotiate a `Hello` against this value.
+    pub const CURRENT: Self = Self::new(12);
 
     /// Build a protocol version from its number.
     #[must_use]

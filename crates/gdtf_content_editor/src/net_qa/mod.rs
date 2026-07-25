@@ -26,9 +26,12 @@
 //! - [`config`] — this server's identity constants + its default listen port.
 //! - [`env`] — the `GDTF_EDITOR_NET_QA` / `GDTF_EDITOR_NET_QA_PORT` gates.
 //! - [`schedule`] — the [`EditorNetQaSystems`] set the request drain runs in.
-//! - [`router`] — the request drain: it answers `Hello` and rejects every other request kind
+//! - [`router`] — the request drain: it answers `Hello` and the editor query pair, and
+//!   rejects every other request kind
 //!   [`BadRequest`](gdtf_qa_protocol::envelope::QaError::BadRequest) (the editor services no
-//!   other request yet — those are GTW-805 / GTW-806 / GTW-808).
+//!   other request yet — those are GTW-806 / GTW-808).
+//! - [`snapshot`] — the query service: the one read of the editor's model, the topic
+//!   availability filter, and the per-topic views (GTW-805).
 //! - [`plugin`] — the [`NetQaEditorPlugin`] registration.
 
 mod config;
@@ -36,6 +39,7 @@ mod env;
 mod plugin;
 mod router;
 mod schedule;
+mod snapshot;
 
 pub use config::EDITOR_QA_SERVER_NAME;
 pub use plugin::NetQaEditorPlugin;

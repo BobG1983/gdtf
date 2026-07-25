@@ -103,6 +103,13 @@ crate::support_item! {
             | RequestKindNet::StartBattle
             | RequestKindNet::ActivateMenuItem
             | RequestKindNet::FocusControl => true,
+            // The CONTENT EDITOR's query pair (GTW-805, ADR 0007). One request enum serves
+            // both hosts, and this host is the GAME: it runs no editor and holds none of the
+            // authoring model, so these are never serviceable here, in any state. They are
+            // therefore never advertised, and a client that sends one anyway is answered
+            // `BadRequest` (see `reject_unavailable`) — the editor's own host on its own port
+            // is where they are answered.
+            RequestKindNet::GetEditorQueryOptions | RequestKindNet::QueryEditor => false,
         }
     }
 }
@@ -209,6 +216,13 @@ pub(super) fn route_requests(
                     .focus_control
                     .push_new(FocusControlPayload::new(command), responder);
             }
+            // Unreachable in practice — `request_available` refuses the editor kinds above,
+            // so they are answered `BadRequest` before this match. Listed exhaustively (no
+            // wildcard arm) so a future request variant fails to compile here rather than
+            // being silently swallowed by a catch-all.
+            QaRequest::GetEditorQueryOptions | QaRequest::QueryEditor(_) => {
+                responder.reply(QaResponse::Error(QaError::BadRequest));
+            }
         }
     }
 }
@@ -237,12 +251,20 @@ fn answer_hello(client_version: ProtocolVersion, responder: Responder) {
 /// - [`StepperControl`](RequestKindNet::StepperControl) is gated ONLY on a live stepper drive,
 ///   so reaching here means there is none — [`StepperInactive`](QaError::StepperInactive),
 ///   never a `NoBattle` lie (a battle may well be running);
+/// - the CONTENT EDITOR's query kinds (GTW-805) are not a state gate at all: this host has
+///   no editor to read, in any state — [`BadRequest`](QaError::BadRequest), the same answer
+///   the editor's host gives a game-only request;
 /// - anything else with no battle is [`NoBattle`](QaError::NoBattle);
 /// - anything else with a battle can only be the catch-up gate —
 ///   [`NotCaughtUp`](QaError::NotCaughtUp).
 fn reject_unavailable(kind: RequestKindNet, in_battle: bool, responder: Responder) {
     let error = if matches!(kind, RequestKindNet::StepperControl) {
         QaError::StepperInactive
+    } else if matches!(
+        kind,
+        RequestKindNet::GetEditorQueryOptions | RequestKindNet::QueryEditor
+    ) {
+        QaError::BadRequest
     } else if in_battle {
         QaError::NotCaughtUp
     } else {

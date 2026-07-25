@@ -8,7 +8,9 @@
 //! - every kind the snapshot advertised as available is genuinely accepted by the router in
 //!   that state (never answered [`QaError::NoBattle`](gdtf_qa_protocol::envelope::QaError));
 //! - every kind it did NOT advertise is a battle-dependent kind that the router genuinely
-//!   rejects [`QaError::NoBattle`] in that state.
+//!   rejects [`QaError::NoBattle`] in that state — or one of the CONTENT EDITOR's query
+//!   kinds (GTW-805), which this host never services in any state and rejects
+//!   [`QaError::BadRequest`].
 //!
 //! Because the assertion compares the wire-advertised set against the router's observed
 //! behavior — two independent observations — it FAILS if a future request type's
@@ -24,7 +26,7 @@ use gdtf_qa_protocol::{
     envelope::{FocusCommandNet, QaError, QaRequest, QaResponse, StepperCommandNet},
     ids::{FocusTargetNet, FrameDelay, SituationRef},
     intent::NetIntent,
-    view::RequestKindNet,
+    view::{EditorQueryKind, RequestKindNet},
 };
 use gdtf_test_utils::GdtfTestAppBuilder;
 
@@ -96,7 +98,22 @@ fn probe_request(kind: RequestKindNet) -> QaRequest {
         RequestKindNet::FocusControl => {
             QaRequest::FocusControl(FocusCommandNet::Focus(FocusTargetNet::new(0)))
         }
+        // The CONTENT EDITOR's query pair (GTW-805): one request enum serves both hosts, and
+        // this host is the GAME — it runs no editor, so both are rejected `BadRequest` in
+        // every state.
+        RequestKindNet::GetEditorQueryOptions => QaRequest::GetEditorQueryOptions,
+        RequestKindNet::QueryEditor => QaRequest::QueryEditor(EditorQueryKind::Readiness),
     }
+}
+
+/// The test's own ground truth of which kinds belong to the CONTENT EDITOR's family — the
+/// kinds this (game) host never services, in any state. Kept independent of the router, so a
+/// drift is caught rather than trusted away.
+const fn is_editor_only(kind: RequestKindNet) -> bool {
+    matches!(
+        kind,
+        RequestKindNet::GetEditorQueryOptions | RequestKindNet::QueryEditor
+    )
 }
 
 /// Send `GetAppFlow`, drive one frame, and read the affordance list off the reply.
@@ -123,10 +140,19 @@ fn assert_affordance_parity(app: &mut App, tx: &mpsc::Sender<IncomingRequest>) {
         let reply = probe.try_recv();
         let is_no_battle = matches!(&reply, Ok(QaResponse::Error(QaError::NoBattle)));
         let is_stepper_inactive = matches!(&reply, Ok(QaResponse::Error(QaError::StepperInactive)));
+        let is_bad_request = matches!(&reply, Ok(QaResponse::Error(QaError::BadRequest)));
         if advertised.contains(&kind) {
             assert!(
                 !is_no_battle && !is_stepper_inactive,
                 "{kind:?} was advertised available but the router rejected it unavailable: \
+                 {reply:?}",
+            );
+        } else if is_editor_only(kind) {
+            // Never advertised by this host, and refused with the accurate reason: there is
+            // no editor here to query, which is not a battle or catch-up condition.
+            assert!(
+                is_bad_request,
+                "{kind:?} was not advertised but the router did not reject it BadRequest: \
                  {reply:?}",
             );
         } else if kind == RequestKindNet::StepperControl {
@@ -140,8 +166,8 @@ fn assert_affordance_parity(app: &mut App, tx: &mpsc::Sender<IncomingRequest>) {
         } else {
             assert!(
                 is_battle_dependent(kind),
-                "{kind:?} was not advertised, but only battle- or stepper-dependent kinds may \
-                 be absent",
+                "{kind:?} was not advertised, but only battle-, stepper-dependent or \
+                 editor-only kinds may be absent",
             );
             assert!(
                 is_no_battle,
@@ -169,8 +195,9 @@ fn affordances_match_router_at_the_menu() {
     assert_affordance_parity(&mut app, &tx);
 }
 
-/// In a live battle: every request kind is advertised, and the router accepts all of them
-/// (the trio is now serviceable), so nothing is rejected `NoBattle`.
+/// In a live battle: every game request kind is advertised, and the router accepts all of
+/// them (the trio is now serviceable), so nothing is rejected `NoBattle`. The editor-only
+/// kinds stay unadvertised and `BadRequest` — a battle does not conjure an editor.
 #[test]
 fn affordances_match_router_in_battle() {
     let Some((mut app, tx)) = inject_battle_app() else {

@@ -108,6 +108,12 @@ pub enum RequestKindNet {
     /// A [`FocusControl`](crate::envelope::QaRequest::FocusControl) focus move / activation
     /// on any focus-navigable screen (GTW-802).
     FocusControl,
+    /// A [`GetEditorQueryOptions`](crate::envelope::QaRequest::GetEditorQueryOptions) read
+    /// of the content editor's live query topics (GTW-805).
+    GetEditorQueryOptions,
+    /// A [`QueryEditor`](crate::envelope::QaRequest::QueryEditor) read of ONE content-editor
+    /// topic (GTW-805).
+    QueryEditor,
 }
 
 impl RequestKindNet {
@@ -117,7 +123,7 @@ impl RequestKindNet {
     /// the list the round-trip suite walks to prove each kind round-trips. The per-variant
     /// round-trip witness keeps this array complete — a new kind that is not listed here
     /// fails that test.
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 13] = [
         Self::Hello,
         Self::GetAppFlow,
         Self::GetBattleState,
@@ -129,6 +135,8 @@ impl RequestKindNet {
         Self::StepperControl,
         Self::ActivateMenuItem,
         Self::FocusControl,
+        Self::GetEditorQueryOptions,
+        Self::QueryEditor,
     ];
 }
 

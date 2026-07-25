@@ -33,7 +33,7 @@ fn app_flow_round_trips() {
 fn request_kind_round_trips_every_variant() {
     assert_eq!(
         RequestKindNet::ALL.len(),
-        11,
+        13,
         "RequestKindNet::ALL lists every request kind"
     );
     for kind in RequestKindNet::ALL {
@@ -48,7 +48,9 @@ fn request_kind_round_trips_every_variant() {
             | RequestKindNet::StartBattle
             | RequestKindNet::StepperControl
             | RequestKindNet::ActivateMenuItem
-            | RequestKindNet::FocusControl => {}
+            | RequestKindNet::FocusControl
+            | RequestKindNet::GetEditorQueryOptions
+            | RequestKindNet::QueryEditor => {}
         }
         assert_ron_round_trip(&kind);
     }

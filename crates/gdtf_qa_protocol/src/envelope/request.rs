@@ -6,7 +6,7 @@ use super::{focus::FocusCommandNet, hello::ProtocolVersion, stepper::StepperComm
 use crate::{
     ids::{EventCap, FocusTargetNet, FrameDelay, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
-    view::RequestKindNet,
+    view::{EditorQueryKind, RequestKindNet},
 };
 
 /// A single request a QA client sends the game's `net_qa` server — one request in, one
@@ -16,9 +16,16 @@ use crate::{
 /// snapshots ([`GetAppFlow`](Self::GetAppFlow) / [`GetBattleState`](Self::GetBattleState)),
 /// intent [`Inject`](Self::Inject)ion, a [`TakeScreenshot`](Self::TakeScreenshot), the
 /// frame-exact [`ScreenshotAfter`](Self::ScreenshotAfter), the event
-/// [`GetOutput`](Self::GetOutput) drain, and the T9 navigation
-/// [`StartBattle`](Self::StartBattle) (defined now so T9 does not churn the envelope).
+/// [`GetOutput`](Self::GetOutput) drain, the T9 navigation
+/// [`StartBattle`](Self::StartBattle) (defined now so T9 does not churn the envelope),
+/// and the CONTENT EDITOR's per-family query pair
+/// ([`GetEditorQueryOptions`](Self::GetEditorQueryOptions) /
+/// [`QueryEditor`](Self::QueryEditor), ADR 0007).
 /// An independent serde enum.
+///
+/// One enum serves BOTH hosts — the game's `net_qa` server and the editor's — so a QA
+/// client speaks one vocabulary to either. Each host services the requests it has a model
+/// for and answers the rest [`BadRequest`](crate::envelope::QaError::BadRequest).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum QaRequest {
     /// Open the session — negotiate the protocol version.
@@ -92,6 +99,32 @@ pub enum QaRequest {
     /// [`Rejected`](crate::envelope::FocusControlReceipt::Rejected)`(`[`StaleToken`](crate::envelope::RejectReason::StaleToken)`)`
     /// — never a panic, never a silent no-op.
     FocusControl(FocusCommandNet),
+    /// Ask the CONTENT EDITOR which query topics it will service right now (GTW-805).
+    ///
+    /// The discovery half of ADR 0007's per-family query pair: the reply
+    /// ([`EditorQueryOptions`](crate::envelope::QaResponse::EditorQueryOptions)) lists the
+    /// live [`EditorQueryKind`]s with a one-line description each, filtered by the editor's
+    /// own `EditorState` — the same filter pattern
+    /// [`AppFlowView::available`](crate::view::AppFlowView::available) runs over
+    /// [`RequestKindNet`]. It also carries the editor's `Load` / `Editing` readiness, so a
+    /// client can poll it during the editor's asset pass and learn when the editor is ready
+    /// instead of racing it.
+    ///
+    /// Serviced by the EDITOR host only; the game host answers it
+    /// [`BadRequest`](crate::envelope::QaError::BadRequest) — it runs no editor.
+    GetEditorQueryOptions,
+    /// Ask the CONTENT EDITOR about ONE topic (GTW-805).
+    ///
+    /// The read half of the pair: the reply
+    /// ([`EditorQuery`](crate::envelope::QaResponse::EditorQuery)) carries that topic's
+    /// small, purpose-scoped view plus the editor's readiness. A topic the editor is not
+    /// servicing right now — the model-backed topics during its `Load` asset pass — is
+    /// answered [`BadRequest`](crate::envelope::QaError::BadRequest), never a fabricated
+    /// empty view; poll [`GetEditorQueryOptions`](Self::GetEditorQueryOptions) first.
+    ///
+    /// Serviced by the EDITOR host only; the game host answers it
+    /// [`BadRequest`](crate::envelope::QaError::BadRequest).
+    QueryEditor(EditorQueryKind),
 }
 
 impl QaRequest {
@@ -117,6 +150,8 @@ impl QaRequest {
             Self::StepperControl(_) => RequestKindNet::StepperControl,
             Self::ActivateMenuItem(_) => RequestKindNet::ActivateMenuItem,
             Self::FocusControl(_) => RequestKindNet::FocusControl,
+            Self::GetEditorQueryOptions => RequestKindNet::GetEditorQueryOptions,
+            Self::QueryEditor(_) => RequestKindNet::QueryEditor,
         }
     }
 }

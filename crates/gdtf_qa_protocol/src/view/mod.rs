@@ -8,10 +8,12 @@
 //! emplacement token handout), the [`panel`] button token handout, the [`menu`]
 //! enumeration handout, the [`focus`] focusable-control enumeration handout, the [`fog`]
 //! view, the [`appflow`] view, the [`selection`] view,
-//! and the top-level [`battle`] aggregate.
+//! the top-level [`battle`] aggregate, and the [`editor`] query family (the content
+//! editor's own per-topic read surface — ADR 0007).
 
 pub mod appflow;
 pub mod battle;
+pub mod editor;
 pub mod focus;
 pub mod fog;
 pub mod ganger;
@@ -26,6 +28,14 @@ pub mod weapon;
 
 pub use appflow::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet, RequestKindNet};
 pub use battle::{BattleView, TurnView};
+pub use editor::{
+    EditorDraftFieldNameNet, EditorDraftFieldValueNet, EditorDraftFieldView, EditorDraftView,
+    EditorFindingDetailNet, EditorFindingKindNet, EditorFindingSubjectNet, EditorFindingView,
+    EditorModeLabelNet, EditorModeNet, EditorModeView, EditorQueryKind, EditorQueryOptionsView,
+    EditorQueryReply, EditorQueryTopicView, EditorQueryView, EditorReadinessNet, EditorSessionView,
+    EditorTabIndexNet, EditorTerrainKeyNet, EditorThemeKeyNet, EditorTopicDescriptionNet,
+    EditorValidationView, ValidationChecksCompleteNet,
+};
 pub use focus::{
     FocusView, FocusableCheckedNet, FocusableEnabledNet, FocusableKindNet, FocusableLabelNet,
     FocusableView, FocusedNet,

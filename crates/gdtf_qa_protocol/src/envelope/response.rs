@@ -13,7 +13,7 @@ use super::{
 };
 use crate::{
     events::EventBatch,
-    view::{AppFlowView, BattleView},
+    view::{AppFlowView, BattleView, EditorQueryOptionsView, EditorQueryReply},
 };
 
 /// A single reply the game's `net_qa` server returns for a
@@ -28,7 +28,9 @@ use crate::{
 /// (the drained event batch), [`StepperControlled`](Self::StepperControlled) (the DEV
 /// stepper-control receipt), [`MenuItemActivated`](Self::MenuItemActivated) (the menu-item
 /// activation receipt), [`FocusControlled`](Self::FocusControlled) (the focus-control
-/// receipt), and [`Error`](Self::Error) (a protocol-level
+/// receipt), [`EditorQueryOptions`](Self::EditorQueryOptions) /
+/// [`EditorQuery`](Self::EditorQuery) (the content editor's ADR 0007 query pair), and
+/// [`Error`](Self::Error) (a protocol-level
 /// [`QaError`]). An independent serde enum.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum QaResponse {
@@ -53,6 +55,12 @@ pub enum QaResponse {
     MenuItemActivated(MenuActivationReceipt),
     /// The focus-control command's receipt (GTW-802).
     FocusControlled(FocusControlReceipt),
+    /// The content editor's live query-topic menu — the topics it will service right now,
+    /// plus its `Load` / `Editing` readiness (GTW-805).
+    EditorQueryOptions(EditorQueryOptionsView),
+    /// One content-editor topic's answer, plus the editor's `Load` / `Editing` readiness
+    /// (GTW-805).
+    EditorQuery(EditorQueryReply),
     /// A protocol-level error.
     Error(QaError),
 }

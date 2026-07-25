@@ -10,9 +10,11 @@ use crate::{
     events::{DroppedCount, EventBatch},
     test_support::assert_ron_round_trip,
     view::{
-        AppFlowView, AppStateNet, BattleActiveNet, BattleView, CaughtUpNet, ExploredCellCountNet,
-        FactionNet, FogView, GridHeightNet, GridLevelsNet, GridSizeNet, GridWidthNet,
-        RequestKindNet, SelectionView, TerrainSummaryView, TurnView, VisibleCellCountNet,
+        AppFlowView, AppStateNet, BattleActiveNet, BattleView, CaughtUpNet, EditorQueryKind,
+        EditorQueryOptionsView, EditorQueryReply, EditorQueryTopicView, EditorQueryView,
+        EditorReadinessNet, ExploredCellCountNet, FactionNet, FogView, GridHeightNet,
+        GridLevelsNet, GridSizeNet, GridWidthNet, RequestKindNet, SelectionView,
+        TerrainSummaryView, TurnView, VisibleCellCountNet,
     },
 };
 
@@ -62,6 +64,14 @@ fn qa_response_cases() -> Vec<QaResponse> {
         QaResponse::StepperControlled(StepperReceipt::Latched),
         QaResponse::MenuItemActivated(MenuActivationReceipt::Activated),
         QaResponse::FocusControlled(FocusControlReceipt::Applied),
+        QaResponse::EditorQueryOptions(EditorQueryOptionsView::new(
+            EditorReadinessNet::Load,
+            vec![EditorQueryTopicView::offered(EditorQueryKind::Readiness)],
+        )),
+        QaResponse::EditorQuery(EditorQueryReply::new(
+            EditorReadinessNet::Editing,
+            EditorQueryView::Readiness(EditorReadinessNet::Editing),
+        )),
         QaResponse::Error(QaError::Busy),
     ]
 }
@@ -80,6 +90,8 @@ fn qa_response_is_exhaustive(response: &QaResponse) {
         | QaResponse::StepperControlled(_)
         | QaResponse::MenuItemActivated(_)
         | QaResponse::FocusControlled(_)
+        | QaResponse::EditorQueryOptions(_)
+        | QaResponse::EditorQuery(_)
         | QaResponse::Error(_) => {}
     }
 }
@@ -90,7 +102,7 @@ fn qa_response_round_trips_every_variant() {
     let cases = qa_response_cases();
     assert_eq!(
         cases.len(),
-        11,
+        13,
         "the case table lists every QaResponse variant"
     );
     for case in &cases {
