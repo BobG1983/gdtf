@@ -1,5 +1,7 @@
-//! GTW-437 loader tests — the injury registry + tables build, the WARN-not-fail
-//! handling, the canonical-sort determinism, and the headless hot-reload rebuild.
+//! GTW-437 loader tests — the injury registry + tables build, the per-source
+//! [`DamageContext`](gdtf_battle_sim::injuries::DamageContext) bucket keying (GTW-452),
+//! the WARN-not-fail handling, the canonical-sort determinism, and the headless
+//! hot-reload rebuild.
 //!
 //! These drive the REAL loader code path: the headless hot-reload test runs the actual
 //! [`redrive_injuries_on_asset_event`] system inside a `MinimalPlugins` + `AssetPlugin`
@@ -12,5 +14,6 @@
 mod support;
 
 mod build;
+mod context;
 mod hot_reload;
 mod warns;

@@ -1,0 +1,19 @@
+// GTW-452 FALL per-source weighting for the HEAD pool — the SAME shared head injury defs,
+// weighted for a fall's kinetic landing. No injury def is duplicated; only the weights
+// differ per source (resolution.md injury tables). A fall onto the head concusses far more
+// often than it breaks a nose.
+(
+    category: Head,                                        // the Head category this file weights
+    context:  Fall,                                        // GTW-452: the fall per-source table
+    minor:    [                                            // Minor bucket (light debuffs)
+        (injury: "concussion",  weight: 10),               // -1 Cool (a hard landing)
+        (injury: "scalp_graze", weight: 6),                // -1 Cool
+        (injury: "broken_nose", weight: 2),                // -1 Aim (low from a fall)
+    ],
+    major:    [                                            // Major bucket
+        (injury: "shattered_jaw", weight: 3),              // -2 Cool, -1 Aim
+    ],
+    critical: [                                            // Critical bucket
+        (injury: "lost_eye", weight: 2),                   // -2 Aim, -1 Cool
+    ],
+)

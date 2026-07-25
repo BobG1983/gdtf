@@ -1,20 +1,22 @@
-//! The INJURY tab's CENTRAL weighting SECTION (GTW-654 C2) — pick a context
-//! table (one per [`InjuryCategory`]), then edit its three severity buckets as
-//! `injury key → weight` rows. Row keys come from an injury-name [`ComboBox`]
-//! sourced from the loaded [`InjuryRegistry`], so a DANGLING key is impossible to
-//! author by construction (the combo offers only resolving keys, and Add-row is
-//! disabled while the registry is empty).
+//! The INJURY tab's CENTRAL weighting SECTION (GTW-654 C2) — pick a table by
+//! [`InjuryCategory`] AND by wound SOURCE ([`DamageContext`], GTW-452), then edit its
+//! three severity buckets as `injury key → weight` rows. Row keys come from an
+//! injury-name [`ComboBox`] sourced from the loaded [`InjuryRegistry`], so a DANGLING key
+//! is impossible to author by construction (the combo offers only resolving keys, and
+//! Add-row is disabled while the registry is empty).
 
 use bevy_egui::egui;
 use gdtf_battle_sim::{
     armor::InjuryCategory,
-    injuries::{InjuryName, InjuryRegistry, InjuryTables, InjuryWeight, WeightedInjuryEntry},
+    injuries::{
+        DamageContext, InjuryName, InjuryRegistry, InjuryTables, InjuryWeight, WeightedInjuryEntry,
+    },
     severity::Severity,
 };
 
 use crate::injury_form::WeightingDraft;
 
-/// The display label for a context-table combo row — the category's authored RON
+/// The display label for a category-table combo row — the category's authored RON
 /// variant name (the def panel's `category_label` twin, kept local so each panel
 /// file stays self-contained).
 const fn category_label(category: InjuryCategory) -> &'static str {
@@ -26,11 +28,22 @@ const fn category_label(category: InjuryCategory) -> &'static str {
     }
 }
 
-/// Draw the INJURY-mode WEIGHTING section (GTW-654 C2): the context-table combo
-/// (the four categories — choosing one loads its CURRENT built table through
-/// [`WeightingDraft::load_category`]), the three per-severity bucket editors, and
-/// the debug-only Save press. Falls back to a read-only "(loading…)" label while
-/// the built tables are absent.
+/// The display label for a wound-SOURCE combo row (GTW-452) — the context's authored RON
+/// variant name, so the picked label is exactly the `context:` field the saved file
+/// carries.
+const fn context_label(context: DamageContext) -> &'static str {
+    match context {
+        DamageContext::Ranged => "Ranged",
+        DamageContext::Melee => "Melee",
+        DamageContext::Fall => "Fall",
+    }
+}
+
+/// Draw the INJURY-mode WEIGHTING section (GTW-654 C2): the category combo + the
+/// wound-source combo (GTW-452 — picking either loads that `(category, context)` table's
+/// CURRENT built rows through [`WeightingDraft::load_table`]), the three per-severity
+/// bucket editors, and the debug-only Save press. Falls back to a read-only "(loading…)"
+/// label while the built tables are absent.
 pub(crate) fn weighting_panel(
     ui: &mut egui::Ui,
     draft: &mut WeightingDraft,
@@ -40,7 +53,8 @@ pub(crate) fn weighting_panel(
     ui.heading("Weighting");
     ui.separator();
 
-    context_combo(ui, draft, tables);
+    category_combo(ui, draft, tables);
+    source_combo(ui, draft, tables);
 
     // The sorted registry keys every row's injury combo offers (empty while the
     // registry is absent / holds nothing — Add-row is then disabled, so a key
@@ -57,22 +71,22 @@ pub(crate) fn weighting_panel(
     }
 }
 
-/// The context-table [`ComboBox`] — one row per [`InjuryCategory::ALL`] entry.
+/// The category [`ComboBox`] — one row per [`InjuryCategory::ALL`] entry.
 /// Choosing a DIFFERENT category re-loads the draft from that category's CURRENT
-/// built table (an unpicked category's edits are the author's explicit discard —
-/// the load-combo precedent); re-picking the current one is a no-op, so an open
-/// combo never wipes edits. Disabled to a "(loading…)" label until the built
-/// tables resolve.
-fn context_combo(ui: &mut egui::Ui, draft: &mut WeightingDraft, tables: Option<&InjuryTables>) {
+/// built table, keeping the picked wound source (an unpicked table's edits are the
+/// author's explicit discard — the load-combo precedent); re-picking the current one is a
+/// no-op, so an open combo never wipes edits. Disabled to a "(loading…)" label until the
+/// built tables resolve.
+fn category_combo(ui: &mut egui::Ui, draft: &mut WeightingDraft, tables: Option<&InjuryTables>) {
     ui.horizontal(|ui| {
-        ui.label("Context table");
+        ui.label("Category table");
         let Some(tables) = tables else {
             ui.label("(loading…)");
             return;
         };
         let current = draft.category();
         let mut chosen: Option<InjuryCategory> = None;
-        egui::ComboBox::from_id_salt("weighting_context_combo")
+        egui::ComboBox::from_id_salt("weighting_category_combo")
             .selected_text(category_label(current))
             .show_ui(ui, |ui| {
                 for option in InjuryCategory::ALL {
@@ -86,7 +100,40 @@ fn context_combo(ui: &mut egui::Ui, draft: &mut WeightingDraft, tables: Option<&
                 }
             });
         if let Some(category) = chosen {
-            draft.load_category(category, tables);
+            draft.load_table(category, draft.context(), tables);
+        }
+    });
+}
+
+/// The wound-SOURCE [`ComboBox`] (GTW-452) — one row per [`DamageContext::ALL`] entry.
+/// Choosing a DIFFERENT source re-loads the draft from the SAME category's table for that
+/// source, so an author edits (and saves) the ranged / melee / fall weighting of the ONE
+/// shared injury pool independently. Same discard + no-op-on-re-pick rules as the category
+/// combo; "(loading…)" until the built tables resolve.
+fn source_combo(ui: &mut egui::Ui, draft: &mut WeightingDraft, tables: Option<&InjuryTables>) {
+    ui.horizontal(|ui| {
+        ui.label("Wound source");
+        let Some(tables) = tables else {
+            ui.label("(loading…)");
+            return;
+        };
+        let current = draft.context();
+        let mut chosen: Option<DamageContext> = None;
+        egui::ComboBox::from_id_salt("weighting_source_combo")
+            .selected_text(context_label(current))
+            .show_ui(ui, |ui| {
+                for option in DamageContext::ALL {
+                    if ui
+                        .selectable_label(current == option, context_label(option))
+                        .clicked()
+                        && current != option
+                    {
+                        chosen = Some(option);
+                    }
+                }
+            });
+        if let Some(context) = chosen {
+            draft.load_table(draft.category(), context, tables);
         }
     });
 }
@@ -178,7 +225,8 @@ fn injury_combo(
 /// The debug-only Save button — projects the draft through
 /// [`draft_to_weighting`](crate::injury_form::draft_to_weighting) and writes it
 /// via the one-owner [`write_weighting`](crate::injury_form::write_weighting)
-/// path (`weighting/<category>.weighting.ron`). On a typed error it logs and
+/// path (`weighting/<category>[.<context>].weighting.ron` — the picked wound source picks
+/// the file, GTW-452). On a typed error it logs and
 /// writes nothing (never a panic). Debug-only (the save-path precedent).
 #[cfg(debug_assertions)]
 fn save_button(ui: &mut egui::Ui, draft: &WeightingDraft) {
@@ -188,13 +236,15 @@ fn save_button(ui: &mut egui::Ui, draft: &WeightingDraft) {
     let weighting = crate::injury_form::draft_to_weighting(draft);
     match crate::injury_form::write_weighting(&weighting) {
         Ok(path) => bevy::log::info!(
-            "weighting save: wrote `{}` table to `{}`",
+            "weighting save: wrote `{}` / `{}` table to `{}`",
             category_label(weighting.category),
+            context_label(weighting.context),
             path.display()
         ),
         Err(err) => bevy::log::error!(
-            "weighting save: `{}` table: {err}",
-            category_label(weighting.category)
+            "weighting save: `{}` / `{}` table: {err}",
+            category_label(weighting.category),
+            context_label(weighting.context)
         ),
     }
 }

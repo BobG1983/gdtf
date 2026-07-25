@@ -2,9 +2,10 @@
 //! site on the [`InjuryRng`] stream.
 //!
 //! When a non-graze, non-fatal wound lands on a ganger, the damage fold calls
-//! [`roll_injury`] to pick a named injury from the weighted `(category, severity)`
-//! table (the struck per-side [`BodyPart`] resolved to its category at the lookup) and
-//! freeze the verdict onto the [`HitReport`](crate::resolve_and_apply::HitReport).
+//! [`roll_injury`] to pick a named injury from the weighted `(category, context, severity)`
+//! table (the struck per-side [`BodyPart`] resolved to its category at the lookup, plus the
+//! wound-source [`DamageContext`] — ranged / melee / fall, GTW-452) and freeze the verdict
+//! onto the [`HitReport`](crate::resolve_and_apply::HitReport).
 //!
 //! ## Draw discipline (the GTW-405 §"Determinism / replay" contract)
 //!
@@ -24,12 +25,17 @@
 
 use bevy::log::warn_once;
 
-use super::{InjuryTables, RolledInjury, WeightedInjuryTable};
+use super::{DamageContext, InjuryTables, RolledInjury, WeightedInjuryTable};
 use crate::{armor::BodyPart, injuries::InjuryRegistry, rng::InjuryRng, severity::Severity};
 
-/// Roll a named [`RolledInjury`] for a non-graze, non-fatal `severity` wound to `part`,
-/// resolving the picked key against the [`InjuryRegistry`] (`docs/combat/resolution.md`
-/// injury tables; GTW-405 / GTW-438).
+/// Roll a named [`RolledInjury`] for a non-graze, non-fatal `severity` wound to `part` from a
+/// `context` source (ranged / melee / fall, GTW-452), resolving the picked key against the
+/// [`InjuryRegistry`] (`docs/combat/resolution.md` injury tables; GTW-405 / GTW-438).
+///
+/// The `context` selects WHICH per-source weighting table the SAME shared per-category injury
+/// pool is sampled through — so a `broken_nose` weighted high under [`DamageContext::Melee`]
+/// and near-zero under [`DamageContext::Ranged`] rolls accordingly, with no duplicated injury
+/// def (GTW-452).
 ///
 /// The single [`InjuryRng`] draw site. The draw discipline (the GTW-405 §"Determinism /
 /// replay" contract — see the module docs):
@@ -54,6 +60,7 @@ use crate::{armor::BodyPart, injuries::InjuryRegistry, rng::InjuryRng, severity:
 pub fn roll_injury(
     part: BodyPart,
     severity: Severity,
+    context: DamageContext,
     tables: &InjuryTables,
     registry: &InjuryRegistry,
     rng: &mut InjuryRng,
@@ -69,7 +76,7 @@ pub fn roll_injury(
     // (2) The bucket for this (part, severity). It may be absent (no weighting authored
     //     the bucket) or empty (authored but every key dropped at build) — in EITHER case
     //     we still take the one draw below, for content-independent stream alignment.
-    let table = tables.table(part, severity);
+    let table = tables.table(part, context, severity);
 
     // (3) THE ONE DRAW — taken UNCONDITIONALLY for a tabled severity, before any content
     //     check, so the InjuryRng cursor advances identically whether the bucket has
@@ -83,7 +90,7 @@ pub fn roll_injury(
         // tabled severity with no rollable content can never inflict an injury; warn once
         // (per (part, severity) message) rather than spam every hit.
         warn_once!(
-            "injury roll for ({part:?}, {severity:?}) found no rollable content \
+            "injury roll for ({part:?}, {context:?}, {severity:?}) found no rollable content \
              (empty/missing weighting bucket); the InjuryRng draw was taken and discarded"
         );
         return None;
@@ -94,8 +101,8 @@ pub fn roll_injury(
     //     the draw was already taken, so the stream alignment holds.
     let Some(def) = registry.def(&picked) else {
         warn_once!(
-            "injury roll picked key `{}` for ({part:?}, {severity:?}) but it is not in \
-             the InjuryRegistry; no injury inflicted (the draw was taken)",
+            "injury roll picked key `{}` for ({part:?}, {context:?}, {severity:?}) but it is \
+             not in the InjuryRegistry; no injury inflicted (the draw was taken)",
             &*picked
         );
         return None;

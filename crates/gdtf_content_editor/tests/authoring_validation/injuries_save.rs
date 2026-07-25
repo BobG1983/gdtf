@@ -20,7 +20,7 @@ use bevy::asset::AssetServer;
 use gdtf_assets::ContentIntegrityReport;
 use gdtf_battle_sim::{
     armor::InjuryCategory,
-    injuries::{InjuryName, InjuryTables, InjuryWeight, WeightedInjuryEntry},
+    injuries::{DamageContext, InjuryName, InjuryTables, InjuryWeight, WeightedInjuryEntry},
 };
 use gdtf_content_editor::{
     WeightingDraft, draft_to_weighting, weighting_file_name, write_weighting_in,
@@ -44,7 +44,11 @@ const RESAVED_DANGLING_INJURY: &str = "resaved_missing_injury";
 /// REAL model mutators (the model API the weighting panel edits through).
 fn weighting_draft_with_row(key: &str) -> WeightingDraft {
     let mut draft = WeightingDraft::default();
-    draft.load_category(InjuryCategory::Head, &InjuryTables::default());
+    draft.load_table(
+        InjuryCategory::Head,
+        DamageContext::Ranged,
+        &InjuryTables::default(),
+    );
     draft.weighting_mut().minor.push(WeightedInjuryEntry::new(
         InjuryName::new(key.to_owned()),
         InjuryWeight::new(2),
@@ -104,7 +108,7 @@ fn weighting_save_reload_rearms_validation_with_the_saved_keys() {
     // segment derives from the one-owner spellings (GTW-634).
     let saved_path = format!(
         "{INJURIES_FOLDER}/{WEIGHTING_SUBFOLDER}/{}",
-        weighting_file_name(InjuryCategory::Head),
+        weighting_file_name(InjuryCategory::Head, DamageContext::Ranged),
     );
     app.world().resource::<AssetServer>().reload(saved_path);
 

@@ -47,7 +47,7 @@ mod gate;
 use gdtf_app::test_support::{AppState, app_state, load_released};
 use gdtf_battle_sim::{
     armor::BodyPart,
-    injuries::{InjuryName, InjuryRegistry, InjuryTables},
+    injuries::{DamageContext, InjuryName, InjuryRegistry, InjuryTables},
     severity::Severity,
 };
 use gdtf_test_utils::{
@@ -213,12 +213,16 @@ fn real_asset_resolves_injury_registry_and_tables() {
             "the resolved InjuryTables must carry the authored (non-empty) weighting buckets",
         );
         assert!(
-            tables.table(BodyPart::Head, Severity::Minor).is_some(),
+            tables
+                .table(BodyPart::Head, DamageContext::Ranged, Severity::Minor)
+                .is_some(),
             "the (Head, Minor) bucket must be populated from head.weighting.ron's `minor` list \
              (the scalp_graze row)",
         );
         assert!(
-            tables.table(BodyPart::Head, Severity::Critical).is_some(),
+            tables
+                .table(BodyPart::Head, DamageContext::Ranged, Severity::Critical)
+                .is_some(),
             "the (Head, Critical) bucket must be populated from head.weighting.ron's `critical` \
              list (the lost_eye row)",
         );
@@ -239,7 +243,7 @@ fn real_asset_resolves_injury_registry_and_tables() {
         ] {
             let any_bucket = [Severity::Minor, Severity::Major, Severity::Critical]
                 .into_iter()
-                .any(|sev| tables.table(part, sev).is_some());
+                .any(|sev| tables.table(part, DamageContext::Ranged, sev).is_some());
             assert!(
                 any_bucket,
                 "the {part:?} category pool must have at least one rollable bucket (GTW-440 \
@@ -249,13 +253,13 @@ fn real_asset_resolves_injury_registry_and_tables() {
         // The shared-pool identity: LeftArm and RightArm resolve the SAME Arm Major bucket,
         // LeftLeg and RightLeg the SAME Leg Major bucket (the per-category restructure).
         assert_eq!(
-            tables.table(BodyPart::LeftArm, Severity::Major),
-            tables.table(BodyPart::RightArm, Severity::Major),
+            tables.table(BodyPart::LeftArm, DamageContext::Ranged, Severity::Major),
+            tables.table(BodyPart::RightArm, DamageContext::Ranged, Severity::Major),
             "both arms must resolve the IDENTICAL shared Arm (Major) bucket (GTW-440 C1)",
         );
         assert_eq!(
-            tables.table(BodyPart::LeftLeg, Severity::Major),
-            tables.table(BodyPart::RightLeg, Severity::Major),
+            tables.table(BodyPart::LeftLeg, DamageContext::Ranged, Severity::Major),
+            tables.table(BodyPart::RightLeg, DamageContext::Ranged, Severity::Major),
             "both legs must resolve the IDENTICAL shared Leg (Major) bucket (GTW-440 C1)",
         );
     }

@@ -3,7 +3,7 @@
 
 use gdtf_battle_sim::{
     armor::{BodyPart, InjuryCategory},
-    injuries::InjuryName,
+    injuries::{DamageContext, InjuryName},
     severity::Severity,
 };
 
@@ -44,7 +44,7 @@ fn unknown_weighting_key_is_skipped_not_failed() {
     let Some((_registry, tables)) = built else {
         return;
     };
-    let bucket = tables.table(BodyPart::Head, Severity::Critical);
+    let bucket = tables.table(BodyPart::Head, DamageContext::Ranged, Severity::Critical);
     let keys: Vec<String> = bucket
         .map(|t| t.iter().map(|r| (*r.injury).clone()).collect())
         .unwrap_or_default();
@@ -159,13 +159,15 @@ fn subfolder_mismatch_warns_but_loads_authoritative_category() {
         "the registered category must be the def's own Head, NOT the Torso subfolder",
     );
     // It tables into the (Head, Major) bucket, NEVER the (Torso, Major) bucket.
-    let head_bucket = tables.table(BodyPart::Head, Severity::Major);
+    let head_bucket = tables.table(BodyPart::Head, DamageContext::Ranged, Severity::Major);
     assert!(
         head_bucket.is_some_and(|t| t.iter().any(|r| r.injury == key)),
         "the misfiled injury must table under (Head, Major), its authoritative part",
     );
     assert!(
-        tables.table(BodyPart::Torso, Severity::Major).is_none(),
+        tables
+            .table(BodyPart::Torso, DamageContext::Ranged, Severity::Major)
+            .is_none(),
         "nothing must land in the (Torso, Major) bucket — the subfolder is not authoritative",
     );
 

@@ -1,7 +1,7 @@
 //! GTW-438 — `roll_injury` draw-discipline + determinism.
 
 use super::{
-    super::{InjuryRegistry, InjuryTables, roll_injury},
+    super::{DamageContext, InjuryRegistry, InjuryTables, roll_injury},
     support::*,
 };
 use crate::{armor::BodyPart, severity::Severity};
@@ -14,7 +14,14 @@ fn roll_injury_takes_no_draw_for_none_or_fatal() {
     let (registry, tables) = one_injury_table("hurt", BodyPart::Head, Severity::Minor);
     for severity in [Severity::None, Severity::Fatal] {
         let mut rng = injury_rng();
-        let rolled = roll_injury(BodyPart::Head, severity, &tables, &registry, &mut rng);
+        let rolled = roll_injury(
+            BodyPart::Head,
+            severity,
+            DamageContext::Ranged,
+            &tables,
+            &registry,
+            &mut rng,
+        );
         assert!(
             rolled.is_none(),
             "{severity:?} is not tabled — no injury rolled"
@@ -37,6 +44,7 @@ fn roll_injury_draws_exactly_one_and_resolves_a_tabled_severity() {
     let rolled = roll_injury(
         BodyPart::Torso,
         Severity::Major,
+        DamageContext::Ranged,
         &tables,
         &registry,
         &mut rng,
@@ -82,6 +90,7 @@ fn roll_injury_empty_table_draws_then_discards_content_independent() {
     let empty = roll_injury(
         BodyPart::Head,
         Severity::Minor,
+        DamageContext::Ranged,
         &empty_tables,
         &empty_registry,
         &mut rng_empty,
@@ -92,6 +101,7 @@ fn roll_injury_empty_table_draws_then_discards_content_independent() {
     let full = roll_injury(
         BodyPart::Head,
         Severity::Minor,
+        DamageContext::Ranged,
         &full_tables,
         &full_registry,
         &mut rng_full,
@@ -119,6 +129,7 @@ fn roll_injury_is_deterministic_for_a_fixed_seed() {
     let a = roll_injury(
         BodyPart::LeftLeg,
         Severity::Critical,
+        DamageContext::Ranged,
         &tables,
         &registry,
         &mut rng_a,
@@ -126,6 +137,7 @@ fn roll_injury_is_deterministic_for_a_fixed_seed() {
     let b = roll_injury(
         BodyPart::LeftLeg,
         Severity::Critical,
+        DamageContext::Ranged,
         &tables,
         &registry,
         &mut rng_b,

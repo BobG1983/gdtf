@@ -27,7 +27,8 @@ use bevy::{
 use gdtf_battle_sim::{
     armor::InjuryCategory,
     injuries::{
-        InjuryDef, InjuryName, InjuryRegistry, InjuryTables, InjuryWeight, InjuryWeighting,
+        DamageContext, InjuryDef, InjuryName, InjuryRegistry, InjuryTables, InjuryWeight,
+        InjuryWeighting,
     },
     severity::Severity,
 };
@@ -132,7 +133,11 @@ fn edited_injury() -> InjuryDraft {
 /// construction resolving reference the weighting combos enforce in the UI).
 fn edited_weighting() -> WeightingDraft {
     let mut draft = WeightingDraft::default();
-    draft.load_category(InjuryCategory::Leg, &InjuryTables::default());
+    draft.load_table(
+        InjuryCategory::Leg,
+        gdtf_battle_sim::injuries::DamageContext::Ranged,
+        &InjuryTables::default(),
+    );
     draft
         .weighting_mut()
         .minor
@@ -209,7 +214,8 @@ fn saved_injury_and_weighting_round_trip_through_the_real_injuries_loader() {
     let tables = world.get_resource::<InjuryTables>();
     assert!(tables.is_some(), "the InjuryTables must resolve");
     let Some(tables) = tables else { return };
-    let bucket = tables.table_for_category(InjuryCategory::Leg, Severity::Minor);
+    let bucket =
+        tables.table_for_category(InjuryCategory::Leg, DamageContext::Ranged, Severity::Minor);
     assert!(
         bucket.is_some_and(|rows| {
             rows.iter()
@@ -221,7 +227,11 @@ fn saved_injury_and_weighting_round_trip_through_the_real_injuries_loader() {
     // The unauthored buckets stay absent (nothing leaked across severities).
     assert!(
         tables
-            .table_for_category(InjuryCategory::Leg, Severity::Critical)
+            .table_for_category(
+                InjuryCategory::Leg,
+                DamageContext::Ranged,
+                Severity::Critical
+            )
             .is_none(),
         "an unauthored bucket must not materialize",
     );

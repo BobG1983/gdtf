@@ -6,7 +6,7 @@
 
 use gdtf_battle_sim::{
     armor::InjuryCategory,
-    injuries::{InjuryName, InjuryRegistry, InjuryTables},
+    injuries::{DamageContext, InjuryName, InjuryRegistry, InjuryTables},
 };
 
 use crate::injury_form::{InjuryDraft, WeightingDraft};
@@ -35,14 +35,15 @@ pub(crate) fn autoload_first_injury(draft: &mut InjuryDraft, registry: &InjuryRe
 }
 
 /// Seed a still-pristine [`WeightingDraft`] from the resolved [`InjuryTables`] —
-/// the FIRST canonical category's ([`InjuryCategory::ALL`]`[0]`) current table
+/// the FIRST canonical category's ([`InjuryCategory::ALL`]`[0]`) RANGED table
+/// ([`DamageContext::ALL`]`[0]`, GTW-452: the source combo switches from there)
 /// (empty buckets when no weighting authored it: the table lifecycle is total, so
 /// there is no separate empty branch). Idempotent under the egui multipass re-run.
 pub(crate) fn autoload_weighting_table(draft: &mut WeightingDraft, tables: &InjuryTables) {
     if !draft.autoload_pending() {
         return;
     }
-    draft.load_category(InjuryCategory::ALL[0], tables);
+    draft.load_table(InjuryCategory::ALL[0], DamageContext::ALL[0], tables);
 }
 
 #[cfg(test)]
@@ -50,8 +51,8 @@ mod tests {
     use gdtf_battle_sim::{
         armor::InjuryCategory,
         injuries::{
-            InjuryDef, InjuryName, InjuryRegistry, InjuryTables, InjuryWeight, WeightedInjuryEntry,
-            WeightedInjuryTable,
+            DamageContext, InjuryDef, InjuryName, InjuryRegistry, InjuryTables, InjuryWeight,
+            WeightedInjuryEntry, WeightedInjuryTable,
         },
         severity::Severity,
     };
@@ -112,7 +113,7 @@ mod tests {
             InjuryWeight::new(7),
         );
         let tables = InjuryTables::new([(
-            (InjuryCategory::Head, Severity::Minor),
+            (InjuryCategory::Head, DamageContext::Ranged, Severity::Minor),
             WeightedInjuryTable::new(vec![row.clone()]),
         )]);
         let mut draft = WeightingDraft::default();
@@ -121,8 +122,8 @@ mod tests {
         assert_eq!(draft.weighting().minor, vec![row]);
         assert!(draft.weighting().major.is_empty());
 
-        // A later context switch is not clobbered.
-        draft.load_category(InjuryCategory::Leg, &tables);
+        // A later table switch is not clobbered.
+        draft.load_table(InjuryCategory::Leg, DamageContext::Ranged, &tables);
         autoload_weighting_table(&mut draft, &tables);
         assert_eq!(draft.category(), InjuryCategory::Leg);
     }

@@ -1,0 +1,19 @@
+// GTW-452 MELEE per-source weighting for the TORSO pool — the SAME shared torso injury
+// defs as torso.weighting.ron (ranged), weighted for close combat. No injury def is
+// duplicated; only the weights differ per source (resolution.md injury tables). Melee
+// blades cut, so a deep laceration leads the minor bucket here.
+(
+    category: Torso,                                       // the Torso category this file weights
+    context:  Melee,                                       // GTW-452: the melee per-source table
+    minor:    [                                            // Minor bucket (light debuffs)
+        (injury: "deep_laceration", weight: 10),           // bleeding (a melee cut)
+        (injury: "cracked_rib",     weight: 6),            // -1 Toughness
+    ],
+    major:    [                                            // Major bucket
+        (injury: "punctured_lung",    weight: 4),          // -2 Toughness, bleeding
+        (injury: "fractured_sternum", weight: 4),          // -2 Hp, -1 Toughness
+    ],
+    critical: [                                            // Critical bucket
+        (injury: "gut_wound", weight: 4),                  // -3 Toughness, -2 Hp, bleeding
+    ],
+)

@@ -3,7 +3,7 @@
 
 use gdtf_battle_sim::{
     armor::{BodyPart, InjuryCategory},
-    injuries::InjuryName,
+    injuries::{DamageContext, InjuryName},
     rng::{BattleSeed, InjuryRng},
     severity::Severity,
 };
@@ -42,7 +42,7 @@ fn builds_registry_and_tables_keyed_by_stem() {
     assert!(registry.contains(&key), "lost_eye must resolve by stem");
     assert_eq!(registry.len(), 1, "exactly one injury registered");
     // The weighting folded into the Critical/Head bucket (only tabled buckets exist).
-    let bucket = tables.table(BodyPart::Head, Severity::Critical);
+    let bucket = tables.table(BodyPart::Head, DamageContext::Ranged, Severity::Critical);
     assert!(
         bucket.is_some_and(|t| t.iter().any(|r| r.injury == key)),
         "the Critical/Head bucket must hold lost_eye",
@@ -82,7 +82,7 @@ fn canonical_sort_makes_the_seeded_pick_order_independent() {
         );
         let folder = add_folder(&mut app, &[a_h.untyped(), b_h.untyped(), w_h.untyped()]);
         let (_registry, tables) = build(&app, &folder)?;
-        let table = tables.table(BodyPart::Torso, Severity::Major)?;
+        let table = tables.table(BodyPart::Torso, DamageContext::Ranged, Severity::Major)?;
 
         // A LOCAL seeded cumulative-weight pick over the canonical-sorted rows (the
         // GTW-438 roll's shape, kept local so this test owns no production pick).

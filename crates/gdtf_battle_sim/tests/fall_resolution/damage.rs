@@ -18,14 +18,15 @@ fn injury_fired_for(app: &App, entity: Entity) -> bool {
 }
 
 /// Install a populated Torso injury table + registry so a non-graze torso wound rolls a
-/// named injury (the QA(5) `InjuryInflicted` proof) — the SHARED (category, severity) pool,
-/// used AS-IS (no falling-specific source dimension; GTW-452 owns that).
+/// named injury (the QA(5) `InjuryInflicted` proof) — the shared per-category pool sampled
+/// through the FALL per-source weighting table (GTW-452 — the fall path passes
+/// [`DamageContext::Fall`]).
 fn install_torso_injury_content(app: &mut App) {
     use gdtf_battle_sim::{
         armor::InjuryCategory,
         injuries::{
-            InjuryDef, InjuryName, InjuryRegistry, InjuryTables, InjuryWeight, InspectText,
-            LogText, PopupText, PostHeal, WeightedInjuryEntry, WeightedInjuryTable,
+            DamageContext, InjuryDef, InjuryName, InjuryRegistry, InjuryTables, InjuryWeight,
+            InspectText, LogText, PopupText, PostHeal, WeightedInjuryEntry, WeightedInjuryTable,
         },
         severity::Severity,
     };
@@ -51,9 +52,22 @@ fn install_torso_injury_content(app: &mut App) {
         )])
     };
     app.insert_resource(InjuryTables::new([
-        ((InjuryCategory::Torso, Severity::Minor), table()),
-        ((InjuryCategory::Torso, Severity::Major), table()),
-        ((InjuryCategory::Torso, Severity::Critical), table()),
+        (
+            (InjuryCategory::Torso, DamageContext::Fall, Severity::Minor),
+            table(),
+        ),
+        (
+            (InjuryCategory::Torso, DamageContext::Fall, Severity::Major),
+            table(),
+        ),
+        (
+            (
+                InjuryCategory::Torso,
+                DamageContext::Fall,
+                Severity::Critical,
+            ),
+            table(),
+        ),
     ]));
 }
 

@@ -16,9 +16,9 @@ use crate::{
     armor::InjuryCategory,
     ganger::{Aiming, Direction, Facing, Position, Shooting, Toughness},
     injuries::{
-        InflictedInjuries, InjuryDef, InjuryEffect, InjuryName, InjuryRegistry, InjuryTables,
-        InjuryWeight, InspectText, LogText, PopupText, PostHeal, StatDelta, StatTarget,
-        WeightedInjuryEntry, WeightedInjuryTable,
+        DamageContext, InflictedInjuries, InjuryDef, InjuryEffect, InjuryName, InjuryRegistry,
+        InjuryTables, InjuryWeight, InspectText, LogText, PopupText, PostHeal, StatDelta,
+        StatTarget, WeightedInjuryEntry, WeightedInjuryTable,
     },
     metric::CellLevel,
     severity::Severity,
@@ -53,6 +53,8 @@ pub(super) fn aim_debuff_catalog() -> (InjuryRegistry, InjuryTables) {
         for severity in [Severity::Minor, Severity::Major, Severity::Critical] {
             tables.insert(
                 category,
+                // The live-fire E2E exercises the ranged path (GTW-452).
+                DamageContext::Ranged,
                 severity,
                 WeightedInjuryTable::new(vec![WeightedInjuryEntry::new(
                     key.clone(),

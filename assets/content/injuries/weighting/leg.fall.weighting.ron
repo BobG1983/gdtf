@@ -1,0 +1,22 @@
+// GTW-452 FALL per-source weighting for the LEG pool (both legs share it) — the SAME shared
+// leg injury defs, weighted for a fall's kinetic landing. No injury def is duplicated; only
+// the weights differ per source (resolution.md injury tables).
+//
+// WORKED EXAMPLE (fall half): a `twisted_ankle` is weighted VERY HIGH here (weight 14) —
+// landing on your feet turns an ankle first — the fall-appropriate injury the design insight
+// calls out, over the SAME shared def the ranged / melee tables also draw from.
+(
+    category: Leg,                                         // the shared Leg category this file weights
+    context:  Fall,                                        // GTW-452: the fall per-source table
+    minor:    [                                            // Minor bucket (light debuffs)
+        (injury: "twisted_ankle",  weight: 14),            // MovementCostMul 1.25 (a bad landing)
+        (injury: "torn_hamstring", weight: 5),             // -1 Speed
+    ],
+    major:    [                                            // Major bucket
+        (injury: "shattered_knee",  weight: 7),            // MovementCostMul 1.5 + -1 Speed
+        (injury: "shattered_femur", weight: 6),            // MovementCostMul 1.75 + -2 Speed
+    ],
+    critical: [                                            // Critical bucket
+        (injury: "mangled_leg", weight: 4),                // MovementCostMul 2.5 (crawl) + -3 Speed
+    ],
+)

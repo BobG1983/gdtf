@@ -21,6 +21,12 @@
 //! 6. [`apply_hit`](crate::apply_hit::apply_hit) (§6) — folds HP loss + Wounds-by-tier +
 //!    armor wear + the terminal gates onto the target in place.
 //!
+//! The sequence STOPS at §6: this verb runs **no §8 injury roll**, so a melee wound spends
+//! Wounds but draws no named injury, and nothing constructs
+//! [`DamageContext::Melee`](crate::injuries::DamageContext::Melee). The melee per-source
+//! weighting tables (GTW-452) are authored + loaded against that future wiring and stay
+//! dormant until it lands (`docs/combat/resolution.md` §7).
+//!
 //! Pure model logic: no systems, no `&mut World`, no ECS trigger, no pixel. The owning
 //! [`dispatch_melee`](crate::acts::dispatch_melee) system (GTW-507) assembles the borrow-views
 //! from queried components, gates 8-adjacency + LOS + alive + opposing faction, spends the

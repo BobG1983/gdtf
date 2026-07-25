@@ -5,6 +5,7 @@
 // Torso injuries key to the Toughness / Hp stat map (resolution.md injury tables).
 (
     category: Torso,                                       // the Torso category this file weights
+    context:  Ranged,                                      // GTW-452: the ranged per-source table
     minor:    [                                            // Minor bucket (light debuffs)
         (injury: "cracked_rib",     weight: 10),           // -1 Toughness
         (injury: "deep_laceration", weight: 7),            // bleeding (Hp drain)

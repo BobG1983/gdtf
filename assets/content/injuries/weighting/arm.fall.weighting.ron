@@ -1,0 +1,19 @@
+// GTW-452 FALL per-source weighting for the ARM pool (both arms share it) — the SAME shared
+// arm injury defs, weighted for a fall's kinetic landing. No injury def is duplicated; only
+// the weights differ per source (resolution.md injury tables). Flinging out an arm to break
+// a fall bruises the forearm or dislocates the shoulder.
+(
+    category: Arm,                                         // the shared Arm category this file weights
+    context:  Fall,                                        // GTW-452: the fall per-source table
+    minor:    [                                            // Minor bucket (light debuffs)
+        (injury: "bruised_forearm", weight: 12),           // -1 Strength (bracing the fall)
+        (injury: "torn_muscle",     weight: 4),            // -1 Aim
+    ],
+    major:    [                                            // Major bucket
+        (injury: "dislocated_shoulder", weight: 8),        // -2 Strength, -1 Aim (a caught arm)
+        (injury: "shattered_hand",      weight: 3),        // DisableHand (struck side) + -2 Shooting
+    ],
+    critical: [                                            // Critical bucket
+        (injury: "mangled_arm", weight: 2),                // DisableHand + -3 Strength, -2 Shooting
+    ],
+)

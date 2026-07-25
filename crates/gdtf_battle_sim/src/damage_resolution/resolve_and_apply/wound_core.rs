@@ -32,7 +32,7 @@ use crate::{
     armor::{ArmorPiece, BodyPart},
     armor_wear::ArmorWearOutcome,
     ganger::{LifeState, Luck},
-    injuries::{InjuryRegistry, InjuryTables, RolledInjury, roll_injury},
+    injuries::{DamageContext, InjuryRegistry, InjuryTables, RolledInjury, roll_injury},
     matchup::Matchup,
     resolve_and_apply::report::TargetGanger,
     resolve_hit::{HitResult, resolve_hit},
@@ -70,6 +70,10 @@ pub(crate) struct WoundBlow {
     pub fatal_bias:   FatalBias,
     /// The **attacker's** Luck — the §6 nasty-wound term; `0` on a fall (no attacker).
     pub shooter_luck: Luck,
+    /// The wound-source [`DamageContext`] — [`Ranged`](DamageContext::Ranged) on the weapon
+    /// fire path, [`Fall`](DamageContext::Fall) on the fall path (GTW-452); selects the
+    /// per-source §8 injury weighting table.
+    pub context:      DamageContext,
 }
 
 /// The **input bundle** of a [`synthesize_wound`] call — the already-resolved [`WoundBlow`],
@@ -233,7 +237,14 @@ pub(crate) fn synthesize_wound(inputs: WoundCoreInputs<'_>) -> Option<WoundSynth
     // (5) The ONE injury draw (§8), AFTER apply_hit (Wounds already spent), gated on the
     // rolled severity: a graze / fatal takes NO draw, a Minor/Major/Critical ALWAYS takes
     // EXACTLY ONE (even on an empty/missing table — content-independent stream alignment).
-    let injury = roll_injury(blow.part, severity, tables, registry, injury_rng);
+    let injury = roll_injury(
+        blow.part,
+        severity,
+        blow.context,
+        tables,
+        registry,
+        injury_rng,
+    );
 
     Some(WoundSynthesis {
         matchup: blow.matchup,

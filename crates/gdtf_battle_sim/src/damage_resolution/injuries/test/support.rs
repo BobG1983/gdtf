@@ -3,9 +3,9 @@
 //! concern file reaches via `use super::support::*;`.
 
 use super::super::{
-    GainedInjury, InjuryDef, InjuryEffect, InjuryName, InjuryRegistry, InjuryTables, InjuryWeight,
-    InspectText, LogText, PopupText, PostHeal, StatDelta, StatTarget, WeightedInjuryEntry,
-    WeightedInjuryTable,
+    DamageContext, GainedInjury, InjuryDef, InjuryEffect, InjuryName, InjuryRegistry, InjuryTables,
+    InjuryWeight, InspectText, LogText, PopupText, PostHeal, StatDelta, StatTarget,
+    WeightedInjuryEntry, WeightedInjuryTable,
 };
 use crate::{
     armor::BodyPart,
@@ -46,6 +46,12 @@ pub(super) fn injury_rng() -> InjuryRng {
     InjuryRng::from_root(BattleSeed::new(ROLL_SEED))
 }
 
+/// A fresh [`InjuryRng`] from an arbitrary `seed` — the GTW-452 context-selection tests sweep
+/// many seeds to show a per-context weighting shift in the aggregate pick distribution.
+pub(super) fn injury_rng_from(seed: u64) -> InjuryRng {
+    InjuryRng::from_root(BattleSeed::new(seed))
+}
+
 /// Build a single-entry registry + table for `(part, severity)` keyed by `key`, so a
 /// roll for that bucket resolves a known [`InjuryDef`]. The def carries one `Modify`
 /// effect (the magnitude is irrelevant — the tests assert STRUCTURE, not tuning).
@@ -70,8 +76,11 @@ pub(super) fn one_injury_table(
     };
     let registry = InjuryRegistry::new([(name.clone(), def)]);
     let mut tables = InjuryTables::default();
+    // The roll-discipline fixtures exercise the RANGED per-source table (GTW-452); the
+    // context-selection behaviour has its own fixtures (see `context.rs`).
     tables.insert(
         part.injury_category(),
+        DamageContext::Ranged,
         severity,
         WeightedInjuryTable::new(vec![WeightedInjuryEntry::new(name, InjuryWeight::new(10))]),
     );

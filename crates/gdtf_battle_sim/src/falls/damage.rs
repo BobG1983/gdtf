@@ -33,7 +33,7 @@ use crate::{
     armor::{ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType},
     falls::StoreysFallen,
     ganger::Luck,
-    injuries::{InjuryRegistry, InjuryTables, RolledInjury},
+    injuries::{DamageContext, InjuryRegistry, InjuryTables, RolledInjury},
     matchup::Matchup,
     resolve_and_apply::{TargetGanger, WoundBlow, WoundCoreInputs, synthesize_wound},
     rng::{InjuryRng, SeverityRng},
@@ -197,9 +197,11 @@ pub(crate) fn resolve_fall_hit(
     // (3) The SHARED wound-synthesis core (GTW-523 remediation): corpse-skip → resolve_hit
     // (synthetic weapon: punch 0 / shred 0, Neutral matchup) → roll_severity (the ONE
     // SeverityRng draw, shooter_luck 0 / fatal_bias 0 — no attacker) → apply_hit → roll_injury
-    // (the ONE InjuryRng draw, gated on severity). Reuses the SHARED (part, severity) injury
-    // pool AS-IS — NO new source dimension (GTW-452 owns falling weighting). Returns None on
-    // the corpse-skip (a dead faller — no draw, no mutation), in which case no injury rolled.
+    // (the ONE InjuryRng draw, gated on severity). Samples the shared per-category injury
+    // pool through the FALL per-source weighting table (GTW-452 — the `DamageContext::Fall`
+    // dimension), so a fall weights fall-appropriate injuries (a twisted ankle, a cracked
+    // rib) differently from a ranged shot. Returns None on the corpse-skip (a dead faller —
+    // no draw, no mutation), in which case no injury rolled.
     synthesize_wound(WoundCoreInputs {
         blow: WoundBlow {
             part,
@@ -210,6 +212,7 @@ pub(crate) fn resolve_fall_hit(
             matchup: Matchup::Neutral,
             fatal_bias: FatalBias::new(0.0),
             shooter_luck: Luck::new(0.0),
+            context: DamageContext::Fall,
         },
         target,
         target_entity,

@@ -4,7 +4,7 @@
 //! per-file salvage) AND the editor's write-side save path (GTW-654) import, so
 //! no site hand-maintains a mirror spelling.
 
-use gdtf_battle_sim::armor::InjuryCategory;
+use gdtf_battle_sim::{armor::InjuryCategory, injuries::DamageContext};
 
 /// The injuries content root, relative to the asset source root — one
 /// recursive folder carrying the per-injury `<category>/*.injury.ron` defs AND
@@ -41,5 +41,25 @@ pub const fn category_dir(category: InjuryCategory) -> &'static str {
         InjuryCategory::Torso => "torso",
         InjuryCategory::Arm => "arm",
         InjuryCategory::Leg => "leg",
+    }
+}
+
+/// The per-source file-name INFIX a weighting table's [`DamageContext`] contributes
+/// (GTW-452) — the ONE owner of the shipped
+/// `weighting/<category>[.<context>].weighting.ron` convention.
+///
+/// [`Ranged`](DamageContext::Ranged) contributes NOTHING (`head.weighting.ron`) — it is the
+/// schema's default context, so the pre-GTW-452 file name keeps naming the ranged table;
+/// the other two contribute their lowercase source word (`head.melee.weighting.ron` /
+/// `head.fall.weighting.ron`). The loader dispatches on the trailing
+/// [`INJURY_WEIGHTING_EXTENSION`] alone (Bevy walks the secondary extensions), so the infix
+/// is a naming convention for authors + the editor's save path, never a parse input — the
+/// authored `context:` field inside the file is what keys the built bucket.
+#[must_use]
+pub const fn weighting_context_infix(context: DamageContext) -> Option<&'static str> {
+    match context {
+        DamageContext::Ranged => None,
+        DamageContext::Melee => Some("melee"),
+        DamageContext::Fall => Some("fall"),
     }
 }

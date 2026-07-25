@@ -24,6 +24,8 @@
 //! - [`InjuryWeighting`] / [`WeightedInjuryEntry`] / [`InjuryWeight`] /
 //!   [`WeightedInjuryTable`] ([`weighting`]) — the authored per-category weighting file
 //!   and the built per-bucket table.
+//! - [`DamageContext`] ([`context`]) — the wound-source axis (ranged / melee / fall) the
+//!   weighting tables key on (GTW-452), so the SAME shared pool is weighted per source.
 //! - [`RolledInjury`] / [`GainedInjury`] ([`rolled`]) — the in-fold roll verdict and
 //!   the persistent ledger entry.
 //! - [`InflictedInjuries`] / [`StatDeltaLedger`] / [`StatDeltaSum`] /
@@ -43,6 +45,7 @@
 //! (never applied-once), so a `stat.tuning.ron` hot-reload re-applies them by
 //! construction rather than wiping them.
 
+pub mod context;
 pub mod def;
 pub mod hands;
 pub mod ledger;
@@ -57,6 +60,7 @@ pub mod weighting;
 // The effect vocabulary + per-effect behaviours live in the GTW-550 palette
 // (`crate::effects::injuries`); re-exported here so `crate::injuries::*` and
 // `super::*` paths keep resolving unchanged.
+pub use context::DamageContext;
 pub use def::{InjuryDef, PostHeal};
 pub use hands::HandsAvailable;
 pub use ledger::{BleedAfflicted, InflictedInjuries, StatDeltaLedger, StatDeltaSum};

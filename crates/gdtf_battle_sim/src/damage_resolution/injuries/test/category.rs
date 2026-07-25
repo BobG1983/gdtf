@@ -3,9 +3,9 @@
 
 use super::{
     super::{
-        HandsAvailable, InflictedInjuries, InjuryDef, InjuryEffect, InjuryName, InjuryRegistry,
-        InjuryTables, InjuryWeight, InspectText, LogText, MovementCostFactor, PopupText, PostHeal,
-        WeightedInjuryEntry, WeightedInjuryTable, roll_injury,
+        DamageContext, HandsAvailable, InflictedInjuries, InjuryDef, InjuryEffect, InjuryName,
+        InjuryRegistry, InjuryTables, InjuryWeight, InspectText, LogText, MovementCostFactor,
+        PopupText, PostHeal, WeightedInjuryEntry, WeightedInjuryTable, roll_injury,
     },
     support::*,
 };
@@ -38,6 +38,7 @@ fn shared_arm_table(key: &str) -> (InjuryRegistry, InjuryTables) {
     // (`LeftArm` / `RightArm`) resolves the SAME table.
     tables.insert(
         InjuryCategory::Arm,
+        DamageContext::Ranged,
         Severity::Major,
         WeightedInjuryTable::new(vec![WeightedInjuryEntry::new(name, InjuryWeight::new(10))]),
     );
@@ -57,6 +58,7 @@ fn left_and_right_arm_sample_the_same_shared_arm_pool() {
     let left = roll_injury(
         BodyPart::LeftArm,
         Severity::Major,
+        DamageContext::Ranged,
         &tables,
         &registry,
         &mut rng_left,
@@ -65,6 +67,7 @@ fn left_and_right_arm_sample_the_same_shared_arm_pool() {
     let right = roll_injury(
         BodyPart::RightArm,
         Severity::Major,
+        DamageContext::Ranged,
         &tables,
         &registry,
         &mut rng_right,
@@ -107,6 +110,7 @@ fn disable_hand_side_comes_from_struck_part_not_the_file() {
     let left_pick = roll_injury(
         BodyPart::LeftArm,
         Severity::Major,
+        DamageContext::Ranged,
         &tables,
         &registry,
         &mut rng_left,
@@ -115,6 +119,7 @@ fn disable_hand_side_comes_from_struck_part_not_the_file() {
     let right_pick = roll_injury(
         BodyPart::RightArm,
         Severity::Major,
+        DamageContext::Ranged,
         &tables,
         &registry,
         &mut rng_right,
@@ -187,6 +192,7 @@ fn leg_movement_cost_mul_yields_a_hampered_factor_above_one() {
     let mut tables = InjuryTables::default();
     tables.insert(
         InjuryCategory::Leg,
+        DamageContext::Ranged,
         Severity::Major,
         WeightedInjuryTable::new(vec![WeightedInjuryEntry::new(name, InjuryWeight::new(10))]),
     );
@@ -196,6 +202,7 @@ fn leg_movement_cost_mul_yields_a_hampered_factor_above_one() {
     let pick = roll_injury(
         BodyPart::RightLeg,
         Severity::Major,
+        DamageContext::Ranged,
         &tables,
         &registry,
         &mut rng,

@@ -12,7 +12,7 @@ use crate::{
     },
     armor_wear::ArmorWearOutcome,
     ganger::{LifeState, Luck},
-    injuries::{InjuryRegistry, InjuryTables, RolledInjury},
+    injuries::{DamageContext, InjuryRegistry, InjuryTables, RolledInjury},
     matchup::{Matchup, matchup},
     resolve_and_apply::{
         report::{HitVerdict, StruckPiece, TargetGanger},
@@ -230,6 +230,9 @@ pub(in crate::damage_resolution::resolve_and_apply) fn fold(
             matchup: resolved_matchup,
             fatal_bias: *weapon.fatal_bias,
             shooter_luck,
+            // The weapon fire path is a RANGED wound (GTW-452) — the §8 injury roll samples
+            // the ranged per-source weighting table over the shared pool.
+            context: DamageContext::Ranged,
         },
         target,
         target_entity,

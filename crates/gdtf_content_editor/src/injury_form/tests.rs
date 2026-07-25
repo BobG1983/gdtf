@@ -10,8 +10,8 @@ use gdtf_assets::serialize_ron_pretty;
 use gdtf_battle_sim::{
     armor::InjuryCategory,
     injuries::{
-        InjuryDef, InjuryEffect, InjuryName, InjuryTables, InjuryWeight, InjuryWeighting,
-        StatDelta, StatTarget, WeightedInjuryEntry, WeightedInjuryTable,
+        DamageContext, InjuryDef, InjuryEffect, InjuryName, InjuryTables, InjuryWeight,
+        InjuryWeighting, StatDelta, StatTarget, WeightedInjuryEntry, WeightedInjuryTable,
     },
     severity::Severity,
 };
@@ -134,27 +134,32 @@ fn fixture_tables() -> InjuryTables {
     let row = |key: &str, weight: u32| {
         WeightedInjuryEntry::new(InjuryName::new(key.to_owned()), InjuryWeight::new(weight))
     };
+    // The editor edits the RANGED per-source tables (GTW-452), so key the fixtures under it.
     InjuryTables::new([
         (
-            (InjuryCategory::Arm, Severity::Minor),
+            (InjuryCategory::Arm, DamageContext::Ranged, Severity::Minor),
             WeightedInjuryTable::new(vec![row("bruise", 4), row("sprain", 2)]),
         ),
         (
-            (InjuryCategory::Arm, Severity::Critical),
+            (
+                InjuryCategory::Arm,
+                DamageContext::Ranged,
+                Severity::Critical,
+            ),
             WeightedInjuryTable::new(vec![row("mangled", 1)]),
         ),
         (
-            (InjuryCategory::Leg, Severity::Minor),
+            (InjuryCategory::Leg, DamageContext::Ranged, Severity::Minor),
             WeightedInjuryTable::new(vec![row("limp", 9)]),
         ),
     ])
 }
 
-/// [`WeightingDraft::load_category`] loads exactly the picked category's three
+/// [`WeightingDraft::load_table`] loads exactly the picked `(category, context)`'s three
 /// buckets (an unauthored bucket loads empty) and ends the autoload; the row
 /// mutator adds/removes rows on the addressed bucket only.
 #[test]
-fn load_category_fills_exactly_the_picked_context() {
+fn load_table_fills_exactly_the_picked_category_and_context() {
     let tables = fixture_tables();
     let mut draft = WeightingDraft::default();
     assert!(
@@ -162,7 +167,7 @@ fn load_category_fills_exactly_the_picked_context() {
         "the fresh seed must autoload once"
     );
 
-    draft.load_category(InjuryCategory::Arm, &tables);
+    draft.load_table(InjuryCategory::Arm, DamageContext::Ranged, &tables);
     assert!(!draft.autoload_pending());
     assert_eq!(draft.category(), InjuryCategory::Arm);
     assert_eq!(
@@ -203,7 +208,11 @@ fn load_category_fills_exactly_the_picked_context() {
 #[test]
 fn edited_weighting_round_trips_through_the_loader_schema() {
     let mut edited = WeightingDraft::default();
-    edited.load_category(InjuryCategory::Arm, &fixture_tables());
+    edited.load_table(
+        InjuryCategory::Arm,
+        DamageContext::Ranged,
+        &fixture_tables(),
+    );
     edited
         .weighting_mut()
         .critical
@@ -269,11 +278,19 @@ fn save_file_names_and_paths_derive_from_the_one_owner_spellings() {
     assert_eq!(injury_file_name(&unnameable), "unnamed_injury.injury.ron");
 
     assert_eq!(
-        weighting_file_name(InjuryCategory::Torso),
+        weighting_file_name(InjuryCategory::Torso, DamageContext::Ranged),
         format!("torso.{INJURY_WEIGHTING_EXTENSION}"),
     );
-    let weighting_path =
-        weighting_save_path_in(std::path::Path::new("/tmp/root"), InjuryCategory::Torso);
+    assert_eq!(
+        weighting_file_name(InjuryCategory::Torso, DamageContext::Melee),
+        format!("torso.melee.{INJURY_WEIGHTING_EXTENSION}"),
+        "a per-source pick must save to its OWN file, never overwrite the ranged one",
+    );
+    let weighting_path = weighting_save_path_in(
+        std::path::Path::new("/tmp/root"),
+        InjuryCategory::Torso,
+        DamageContext::Ranged,
+    );
     let expected_tail = std::path::Path::new(INJURIES_FOLDER)
         .join(WEIGHTING_SUBFOLDER)
         .join("torso.weighting.ron");

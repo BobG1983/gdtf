@@ -45,8 +45,8 @@ pub fn check_injury_weighting_refs(
                 if !injuries.contains(&row.injury) {
                     report.record(ContentFinding::DanglingRef {
                         referrer: FindingReferrer::new(format!(
-                            "injury weighting `{:?}` ({severity:?} bucket)",
-                            weighting.category,
+                            "injury weighting `{:?}` ({:?} {severity:?} bucket)",
+                            weighting.category, weighting.context,
                         )),
                         target:   FindingTarget::new((*row.injury).clone()),
                         family:   FindingFamily::new("InjuryRegistry".to_owned()),

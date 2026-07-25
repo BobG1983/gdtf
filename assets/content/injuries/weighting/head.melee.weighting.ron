@@ -1,0 +1,22 @@
+// GTW-452 MELEE per-source weighting for the HEAD pool — the SAME shared head injury
+// defs as head.weighting.ron (ranged), weighted for a close-combat blow. No injury def is
+// duplicated; only the weights differ per source (resolution.md injury tables).
+//
+// WORKED EXAMPLE (melee half): a `broken_nose` from a fist / rifle-butt / blade to the
+// face is weighted HIGH here (weight 12), where the SAME `broken_nose` def is near-zero in
+// the ranged table (head.weighting.ron, weight 1).
+(
+    category: Head,                                        // the Head category this file weights
+    context:  Melee,                                       // GTW-452: the melee per-source table
+    minor:    [                                            // Minor bucket (light debuffs)
+        (injury: "broken_nose", weight: 12),               // -1 Aim (a face-first melee blow)
+        (injury: "concussion",  weight: 8),                // -1 Cool
+        (injury: "scalp_graze", weight: 4),                // -1 Cool
+    ],
+    major:    [                                            // Major bucket
+        (injury: "shattered_jaw", weight: 6),              // -2 Cool, -1 Aim
+    ],
+    critical: [                                            // Critical bucket
+        (injury: "lost_eye", weight: 2),                   // -2 Aim, -1 Cool (rarer in melee)
+    ],
+)

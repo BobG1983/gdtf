@@ -22,11 +22,11 @@ use gdtf_assets::sanitize_file_stem;
 use gdtf_assets::{RonSaveError, WORKSPACE_ASSETS_ROOT, write_ron_pretty};
 use gdtf_battle_sim::{
     armor::InjuryCategory,
-    injuries::{InjuryDef, InjuryName, InjuryWeighting},
+    injuries::{DamageContext, InjuryDef, InjuryName, InjuryWeighting},
 };
 use gdtf_content_families::injuries::{
     INJURIES_FOLDER, INJURY_DEF_EXTENSION, INJURY_WEIGHTING_EXTENSION, WEIGHTING_SUBFOLDER,
-    category_dir,
+    category_dir, weighting_context_infix,
 };
 
 use super::{draft::InjuryDraft, weighting::WeightingDraft};
@@ -97,28 +97,42 @@ pub fn injury_save_path_in(root: &Path, category: InjuryCategory, key: &InjuryNa
 
 /// The on-disk FILE NAME for a saved weighting table —
 /// `<category_dir>.weighting.ron` (the shipped convention: one table per category,
-/// stemmed by the category's canonical directory name — `head.weighting.ron` etc.).
-/// Both halves derive from their one owners ([`category_dir`] /
-/// [`INJURY_WEIGHTING_EXTENSION`]); the stem is a fixed enum projection, so no
-/// sanitize pass is needed.
+/// stemmed by the category's canonical directory name plus the per-source infix —
+/// `head.weighting.ron` for the ranged table, `head.melee.weighting.ron` for the melee
+/// one). Every half derives from its one owner ([`category_dir`] /
+/// [`weighting_context_infix`] / [`INJURY_WEIGHTING_EXTENSION`]); both stems are fixed
+/// enum projections, so no sanitize pass is needed.
+///
+/// Taking the [`DamageContext`] is what keeps a melee / fall save from OVERWRITING the
+/// ranged file of the same category (GTW-452).
 ///
 /// Pure (no IO) so a test can assert the resolved name without writing anything.
 #[must_use]
-pub fn weighting_file_name(category: InjuryCategory) -> String {
-    format!("{}.{INJURY_WEIGHTING_EXTENSION}", category_dir(category))
+pub fn weighting_file_name(category: InjuryCategory, context: DamageContext) -> String {
+    match weighting_context_infix(context) {
+        Some(infix) => format!(
+            "{}.{infix}.{INJURY_WEIGHTING_EXTENSION}",
+            category_dir(category)
+        ),
+        None => format!("{}.{INJURY_WEIGHTING_EXTENSION}", category_dir(category)),
+    }
 }
 
 /// The full on-disk PATH a saved weighting table is written to under an arbitrary
 /// assets `root`: `<root>/`[`INJURIES_FOLDER`]`/`[`WEIGHTING_SUBFOLDER`]`/` joined
-/// with the [`weighting_file_name`] — exactly where the shipped per-category
+/// with the [`weighting_file_name`] — exactly where the shipped per-`(category, context)`
 /// tables live. Root-parameterized (the GTW-555 pattern).
 ///
 /// Pure (no IO) so a test can assert the resolved location without writing.
 #[must_use]
-pub fn weighting_save_path_in(root: &Path, category: InjuryCategory) -> PathBuf {
+pub fn weighting_save_path_in(
+    root: &Path,
+    category: InjuryCategory,
+    context: DamageContext,
+) -> PathBuf {
     root.join(INJURIES_FOLDER)
         .join(WEIGHTING_SUBFOLDER)
-        .join(weighting_file_name(category))
+        .join(weighting_file_name(category, context))
 }
 
 /// Serialize + WRITE an injury def under an arbitrary assets `root` — the
@@ -164,8 +178,9 @@ pub fn write_injury(key: &InjuryName, def: &InjuryDef) -> Result<PathBuf, RonSav
 
 /// Serialize + WRITE a weighting table under an arbitrary assets `root` — the
 /// [`write_injury_in`] parity for the second artifact kind: the target file
-/// derives from the record's own `category` ([`weighting_save_path_in`]), so a
-/// saved table overwrites exactly the shipped per-category file the loader folds.
+/// derives from the record's own `category` + `context` ([`weighting_save_path_in`]), so a
+/// saved table overwrites exactly the shipped per-`(category, context)` file the loader
+/// folds — a melee draft lands on `<category>.melee.weighting.ron`, never on the ranged one.
 /// Debug-only (the same save-precedent gate).
 ///
 /// # Errors
@@ -176,7 +191,7 @@ pub fn write_weighting_in(
     root: &Path,
     weighting: &InjuryWeighting,
 ) -> Result<PathBuf, RonSaveError> {
-    let path = weighting_save_path_in(root, weighting.category);
+    let path = weighting_save_path_in(root, weighting.category, weighting.context);
     write_ron_pretty(&path, weighting)?;
     Ok(path)
 }

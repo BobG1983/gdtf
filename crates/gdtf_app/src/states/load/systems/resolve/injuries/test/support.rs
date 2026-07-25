@@ -11,7 +11,7 @@ use bevy::{
 use gdtf_assets::{RonAsset, RonAssetAppExt};
 use gdtf_battle_sim::{
     armor::InjuryCategory,
-    injuries::{InjuryDef, InjuryRegistry, InjuryTables, InjuryWeighting},
+    injuries::{DamageContext, InjuryDef, InjuryRegistry, InjuryTables, InjuryWeighting},
     severity::Severity,
 };
 // GTW-654: `build_injury_data` moved host-agnostic into the families glue crate
@@ -69,6 +69,41 @@ pub(super) fn weighting(
     assert!(
         parsed.is_ok(),
         "weighting fixture must parse: {:?}",
+        parsed.as_ref().err()
+    );
+    parsed.ok()
+}
+
+/// Parse a sample-shaped `InjuryWeighting` from inline RON that DOES author a
+/// `context:` field (GTW-452) — the melee / fall per-source table shape the shipped
+/// `weighting/<category>.<context>.weighting.ron` files use. The context-LESS
+/// [`weighting`] fixture above is the pre-GTW-452 shape (its `#[serde(default)]`
+/// fallback is the ranged table), so the two fixtures together exercise BOTH RON
+/// parse paths through the real deserializer.
+pub(super) fn weighting_in_context(
+    category: InjuryCategory,
+    context: DamageContext,
+    minor: &[(&str, u32)],
+    major: &[(&str, u32)],
+    critical: &[(&str, u32)],
+) -> Option<InjuryWeighting> {
+    let rows = |list: &[(&str, u32)]| {
+        list.iter()
+            .map(|(k, w)| format!("(injury: \"{k}\", weight: {w})"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    let ron = format!(
+        "(category: {category:?}, context: {context:?}, minor: [{}], major: [{}], \
+         critical: [{}])",
+        rows(minor),
+        rows(major),
+        rows(critical),
+    );
+    let parsed = ron::de::from_str::<InjuryWeighting>(&ron);
+    assert!(
+        parsed.is_ok(),
+        "context weighting fixture must parse: {:?}",
         parsed.as_ref().err()
     );
     parsed.ok()

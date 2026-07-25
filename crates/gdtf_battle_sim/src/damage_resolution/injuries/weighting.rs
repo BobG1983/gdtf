@@ -5,7 +5,7 @@
 use bevy::{prelude::Deref, reflect::TypePath};
 use serde::{Deserialize, Serialize};
 
-use super::InjuryName;
+use super::{DamageContext, InjuryName};
 use crate::armor::InjuryCategory;
 
 /// The **pick weight** of one injury within its `(category, severity)` bucket
@@ -58,13 +58,16 @@ impl WeightedInjuryEntry {
     }
 }
 
-/// The authored **per-category weighting file** — one per category, loaded from
-/// `assets/content/injuries/weighting/<category>.weighting.ron` (`docs/combat/resolution.md`
-/// injury tables; GTW-405).
+/// The authored **per-`(category, context)` weighting file** — one per category per
+/// wound-source [`DamageContext`], loaded from
+/// `assets/content/injuries/weighting/*.weighting.ron` (`docs/combat/resolution.md`
+/// injury tables; GTW-405 / GTW-452).
 ///
 /// The de-serialization target of the `.weighting.ron` schema: the
-/// [`category`](InjuryWeighting::category) this table weights, plus the three
-/// tabled severity lists (`None` graze and `Fatal` death are never tabled). The
+/// [`category`](InjuryWeighting::category) + [`context`](InjuryWeighting::context) this
+/// table weights, plus the three tabled severity lists (`None` graze and `Fatal` death are
+/// never tabled). The same shared injury pool is weighted differently per context (GTW-452);
+/// the
 /// loader (GTW-437) folds these three lists, resolving keys and canonically
 /// **sorting** entries, into the per-`(category, severity)` [`WeightedInjuryTable`]s —
 /// so the authored Vec order never affects the deterministic roll. THIS slice only
@@ -78,8 +81,14 @@ impl WeightedInjuryEntry {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TypePath)]
 pub struct InjuryWeighting {
     /// The injury-pool [`InjuryCategory`] this file weights (one weighting file per
-    /// category — both arms / both legs share one, GTW-453).
+    /// `(category, context)` — both arms / both legs share one, GTW-453).
     pub category: InjuryCategory,
+    /// The wound-source [`DamageContext`] this file weights (GTW-452) — the ranged /
+    /// melee / fall table over the SAME shared per-category pool. `#[serde(default)]`
+    /// (→ [`DamageContext::Ranged`]) so a pre-GTW-452 weighting file with no `context:`
+    /// field parses as a ranged table.
+    #[serde(default)]
+    pub context:  DamageContext,
     /// The `Minor`-bucket weighting rows.
     pub minor:    Vec<WeightedInjuryEntry>,
     /// The `Major`-bucket weighting rows.

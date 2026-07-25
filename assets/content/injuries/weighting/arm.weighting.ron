@@ -6,6 +6,7 @@
 // key to the Strength / Aim / DisableHand stat map (resolution.md injury tables).
 (
     category: Arm,                                         // the shared Arm category this file weights (both arms)
+    context:  Ranged,                                      // GTW-452: the ranged per-source table
     minor:    [                                            // Minor bucket (light debuffs)
         (injury: "bruised_forearm", weight: 10),           // -1 Strength
         (injury: "torn_muscle",     weight: 8),            // -1 Aim

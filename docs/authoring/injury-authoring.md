@@ -95,18 +95,42 @@ both correct and forward-compatible.
 
 ### 1c. The weighting file — adding the injury to a bucket
 
-Each category has one weighting file at
-`assets/content/injuries/weighting/<category>.weighting.ron`. To make a new injury
-rollable, add it to the appropriate bucket in the matching file:
+Weighting files live in `assets/content/injuries/weighting/`, **one per
+`(category, context)`** (GTW-452): a category has one file per wound SOURCE — the
+ranged shot, the melee strike, and the fall — and all of them weight the **same shared
+per-category injury pool**. No injury definition is ever duplicated per source; only the
+weights differ.
+
+| Source (`context:`) | File name | Live producer today |
+|---------------------|-----------|---------------------|
+| `Ranged` | `<category>.weighting.ron` | the ranged fire fold (`resolve_and_apply`) |
+| `Melee` | `<category>.melee.weighting.ron` | **none yet** — see the dormant-table note below |
+| `Fall` | `<category>.fall.weighting.ron` | the fall damage path (`falls::resolve_fall_hit`) |
+
+To make a new injury rollable from a given source, add it to the appropriate bucket in
+that source's file:
 
 ```ron
 // assets/content/injuries/weighting/leg.weighting.ron (abbreviated)
 (
     category: Leg,                 // routes into the Leg category pool; matches the owning subfolder
+    context:  Ranged,              // the wound SOURCE this table weights (Ranged / Melee / Fall)
     minor: [
         (injury: "twisted_ankle",  weight: 8),   // ADD your new injury here
         // ... other minor entries
     ],
+    major: [ /* ... */ ],
+    critical: [ /* ... */ ],
+)
+```
+
+```ron
+// assets/content/injuries/weighting/leg.fall.weighting.ron (abbreviated) — the SAME
+// shared leg defs, weighted for a fall: landing turns an ankle first.
+(
+    category: Leg,
+    context:  Fall,
+    minor: [ (injury: "twisted_ankle", weight: 14) ],
     major: [ /* ... */ ],
     critical: [ /* ... */ ],
 )
@@ -118,9 +142,23 @@ rollable, add it to the appropriate bucket in the matching file:
 - `weight:` is a relative unsigned integer. The roll is a cumulative-weight pick
   over the sorted bucket — higher weight = more likely. The authored order does NOT
   affect determinism (rows are canonically sorted at build time).
+- `context:` names the wound source (`Ranged` / `Melee` / `Fall`). It **defaults to
+  `Ranged`** when the field is omitted (back-compat with pre-GTW-452 files) — so a
+  MISSPELLED `context:` key is silently read as a ranged table and replaces the real
+  ranged one. Spell it exactly, and keep the file name and the `context:` field in step.
+- One file per `(category, context)`: a second file with the same pair replaces the first
+  at build time.
 - An unknown key `warn!`s at load and is skipped — never a crash.
-- An injury registered but unreferenced by any bucket `warn!`s (it can never be
+- An injury referenced by no bucket in **any** context `warn!`s (it can never be
   rolled) — also never a crash.
+
+**Dormant tables — the melee context (as of GTW-452):** the four
+`*.melee.weighting.ron` files are authored, loaded, and built into the tables, but
+**nothing samples them yet**: the melee strike path (`melee::resolve_melee_strike`)
+resolves damage and a wound severity and stops there — it never runs the §8 injury roll,
+so no code constructs `DamageContext::Melee`. The melee tables are therefore live CONTENT
+waiting on the melee §8 wiring (a separate ticket); editing them changes nothing in play
+until that lands. Ranged and fall tables are both sampled in play today.
 
 **How the struck part maps to the category pool (roll lookup boundary):**
 `BodyPart::injury_category()` in `crates/gdtf_battle_sim/src/equipment/armor/stats.rs`

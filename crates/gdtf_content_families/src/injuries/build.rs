@@ -11,8 +11,8 @@ use bevy::{
 use gdtf_assets::RonAsset;
 use gdtf_battle_sim::{
     injuries::{
-        InjuryDef, InjuryName, InjuryRegistry, InjuryTables, InjuryWeighting, WeightedInjuryEntry,
-        WeightedInjuryTable,
+        DamageContext, InjuryDef, InjuryName, InjuryRegistry, InjuryTables, InjuryWeighting,
+        WeightedInjuryEntry, WeightedInjuryTable,
     },
     severity::Severity,
 };
@@ -147,6 +147,7 @@ pub(super) fn build_tables(
             if !resolved.is_empty() {
                 tables.insert(
                     weighting.category,
+                    weighting.context,
                     severity,
                     WeightedInjuryTable::new(resolved),
                 );
@@ -157,16 +158,20 @@ pub(super) fn build_tables(
 }
 
 /// Audit the missing-weighting rule: a registered injury referenced by NO weighting
-/// bucket can never be rolled → `warn!` (a warning, never a load failure — rule C6).
+/// bucket in ANY [`DamageContext`] can never be rolled → `warn!` (a warning, never a load
+/// failure — rule C6). Since GTW-452 an injury is rollable if ANY per-source context
+/// (ranged / melee / fall) weights it, so the audit sweeps every context before warning.
 pub(super) fn audit_unweighted_injuries(registry: &InjuryRegistry, tables: &InjuryTables) {
     for (key, def) in registry.iter() {
-        let weighted = tables
-            .table_for_category(def.category, def.severity)
-            .is_some_and(|table| table.iter().any(|row| row.injury == *key));
+        let weighted = DamageContext::ALL.into_iter().any(|context| {
+            tables
+                .table_for_category(def.category, context, def.severity)
+                .is_some_and(|table| table.iter().any(|row| row.injury == *key))
+        });
         if !weighted {
             warn!(
-                "GDTF Load: injury {:?} ({:?}/{:?}) is in no weighting table; it can \
-                 never be rolled",
+                "GDTF Load: injury {:?} ({:?}/{:?}) is in no weighting table (any context); it \
+                 can never be rolled",
                 &**key, def.category, def.severity,
             );
         }
