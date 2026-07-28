@@ -25,9 +25,10 @@ each file readable in one sitting.
    (a) logic files, (b) in-src test modules (`test.rs`/`tests.rs`, `test/` or
    `tests/` dirs under src, `test_*` basenames, `test_support`), and
    (c) integration files under `crates/*/tests/`.
-   **WARN over 300** lines — split at the next natural seam before landing more
-   growth. **BLOCK over 400** lines — must not land; the clause-7 conformance
-   test (`crates/gdtf_test_utils/tests/module_layout/`) fails the suite.
+   **WARN over 300** lines — split at the next change-reason boundary before
+   landing more growth. **BLOCK over 400** lines — must not land; the clause-7
+   conformance test (`crates/gdtf_test_utils/tests/module_layout/`) fails the
+   suite.
 4. **Crate roots** (`lib.rs`/`src/main.rs`) follow the same bands unless they
    are PURE WIRING (docs + `mod`/`pub mod` decls + re-exports, zero fn/impl) —
    a pure-wiring crate root is the crate-level equivalent of a long wiring
@@ -36,13 +37,14 @@ each file readable in one sitting.
    directory for unit tests; `tests/<suite>/main.rs` dir-form for integration
    suites; an inline `#[cfg(test)] mod test` only while tiny (see the
    decomposition record / TEST CONVENTION).
-6. **Splits are behavior-preserving pure moves.** The only sanctioned edits
+6. **Splits are behavior-preserving pure moves.** The only edits allowed
    beyond the move: visibility (`pub(super)`/`pub(crate)`/`pub(in path)`),
    import paths, and intra-doc-link re-pathing (never link deletion — the
    `cargo doc` gate with `broken_intra_doc_links = deny` is the backstop).
-   Never invent shared abstractions to shrink counts; never move logic across
-   the sim→presenter seam; helpers with 2+ consuming modules live in the shared
-   support/harness module, single-consumer helpers stay local to their consumer.
+   Never invent shared abstractions to shrink counts; never move logic out of
+   `gdtf_battle_sim` into `gdtf_battle_presenter` or back the other way;
+   helpers with 2+ consuming modules live in the shared support/harness
+   module, single-consumer helpers stay local to their consumer.
 7. **A module's `pub use` may lift only from its own DESCENDANTS.** A module
    re-exports its own submodules' items — never a sibling's, a cousin's, or
    another family's (`pub use crate::other_family::…` presented as this
@@ -106,8 +108,8 @@ PYEOF
 2026-07-04 user ruling that rejected the fn-form aggregation carve-out:
 `build`/`name`/`register_*` were all removed. The remaining `Plugin|PluginGroup
 for` impl allowance is inert in practice — any such impl carries a `fn build`
-and is flagged by the fn check — and is kept only so the detector stays
-byte-identical to the guard's.)
+and is flagged by the fn check — and is kept only so this detector matches the
+guard's exactly.)
 
 ## Exemption registry
 
@@ -121,13 +123,14 @@ Lines starting with `#` are comments.
 - The conformance test honors the registry and FAILS on stale entries (a
   registered path that no longer exists or no longer violates) — the registry
   only ever shrinks or is deliberately re-approved.
-- Current approved entries: `crates/gdtf_battle_sim/src/lib.rs` (540-line
-  pure-wiring crate root: module-map doc + mod decls + GTW-385 compatibility
-  re-exports; zero fn/impl; splitting separates no concern; becomes moot when
-  GTW-628 lands — delete the entry then). (The two deletion-pending `gdtf_ui`
-  widget entries the GTW-636 UI-stack ruling added — `text_field.rs` /
-  `dropdown.rs`, kept alive by `procgen_viz` — were REMOVED 2026-07-11: GTW-655
-  retired `procgen_viz` and deleted both widget files outright.)
+- **Current approved entries: NONE.** The registry holds comments only. Every
+  exemption it has ever carried was retired by fixing the file rather than by
+  keeping the carve-out: `crates/gdtf_battle_sim/src/lib.rs` went when GTW-628
+  deleted the crate-root flat name ledger, and the two `gdtf_ui` widgets
+  (`text_field.rs` / `dropdown.rs`) went when GTW-655 retired `procgen_viz` and
+  deleted both files outright. So the registry currently hides nothing — any
+  file over the 400-line limit is a genuine violation the guard did not catch,
+  not an approved one.
 
 ## Enforcement
 
