@@ -37,10 +37,14 @@ pub enum EditorQueryView {
 ///
 /// Readiness rides on EVERY editor query reply, not only on the
 /// [`Readiness`](crate::view::EditorQueryKind::Readiness) topic. The editor boots into
-/// `Load` (its asset pass) and only then reaches `Editing`, and every model resource a topic
-/// reads is scoped to `Editing`; a client that cannot see which phase produced an answer has
-/// no way to tell "the editor is not up yet" from "the editor is up and the answer is
-/// this". Carrying it here is the editor's counterpart of the game's
+/// `Load` (its asset pass) and only then reaches `Editing`, and the phase an answer came
+/// from changes what it means: the mode / session / draft resources exist only in `Editing`,
+/// while the content-integrity report is built into the app before the first frame, so
+/// [`Validation`](crate::view::EditorQueryKind::Validation) is answered during `Load` too,
+/// about an editor still assembling itself — whether its checks have run by then is what
+/// that answer's own `checks_complete` flag reports (GTW-879). A client that cannot see which
+/// phase produced an answer has no way to tell "the editor is not up yet" from "the editor is
+/// up and the answer is this". Carrying it here is the editor's counterpart of the game's
 /// [`AppFlowView`](crate::view::AppFlowView) poll. Serde default shape.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct EditorQueryReply {
@@ -63,10 +67,14 @@ impl EditorQueryReply {
 /// the editor will service RIGHT NOW, with its lifecycle readiness.
 ///
 /// The live half of ADR 0007's two discovery signals (the static half is the MCP layer's
-/// topic schema): during the editor's `Load` pass the model-backed topics are absent from
-/// [`topics`](Self::topics), so a client polls this first and acts only on what it lists —
-/// the same contract [`AppFlowView::available`](crate::view::AppFlowView::available) has on
-/// the game side. Serde default shape.
+/// topic schema): [`topics`](Self::topics) carries what the editor could answer at the
+/// moment it replied and nothing more, so a client polls this first and acts only on what it
+/// lists — the same contract
+/// [`AppFlowView::available`](crate::view::AppFlowView::available) has on the game side.
+/// Which topics that leaves out during the `Load` pass is the editor's own call and not a
+/// fixed list: the topics whose resource is inserted on entering `Editing` are missing there,
+/// the ones backed by a resource built into the app up front are not (GTW-879). Serde default
+/// shape.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct EditorQueryOptionsView {
     /// Where the editor is in its lifecycle.

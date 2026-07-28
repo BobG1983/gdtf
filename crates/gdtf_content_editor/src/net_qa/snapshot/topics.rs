@@ -18,9 +18,23 @@ use super::model::EditorQaModel;
 /// the live-availability list cannot drift apart.
 ///
 /// Readiness is always answerable — it is what a client polls DURING the editor's `Load`
-/// asset pass to learn when the editor is ready. Every other topic reads a model resource
-/// that is scoped to `Editing`, so each is offered exactly when its own resource is present:
-/// a topic is never advertised unless the answer really can be produced.
+/// asset pass to learn when the editor is ready. Every OTHER topic is offered exactly when
+/// the resource it reads is present, and that is NOT the same window for all of them
+/// (GTW-879, which corrected this doc and the test that had copied its earlier claim):
+///
+/// - `Mode` / `Session` / `Draft` read model resources the editor inserts `OnEnter(Editing)`
+///   and removes `OnExit(Editing)` (bevy-traps #1), so they appear only in `Editing`.
+/// - `Validation` reads [`ContentIntegrityReport`](gdtf_assets::ContentIntegrityReport),
+///   which every content-family registration and the validation plumbing `init_resource`
+///   while the app is still being BUILT (`load/injuries.rs`, `gdtf_assets`'s family
+///   registration + `init_content_validation`). So it is offered from the editor's first
+///   frame, `Load` included. That is the DECIDED behavior and the honest one: the report
+///   genuinely exists, and its `checks_complete` flag is precisely what tells a client the
+///   checks have not run yet — an empty finding list during `Load` means "not checked", not
+///   "clean". Scoping the report to `Editing` to keep the older doc true would have hidden a
+///   resource that is really there.
+///
+/// Either way a topic is never advertised unless the answer really can be produced.
 pub(in crate::net_qa) fn topic_available(kind: EditorQueryKind, model: &EditorQaModel) -> bool {
     match kind {
         EditorQueryKind::Readiness => true,

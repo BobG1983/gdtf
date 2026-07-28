@@ -15,11 +15,14 @@
 //! Rejecting immediately is deliberate — the alternative, leaving a request unanswered, hangs
 //! the client until its socket timeout reaps it.
 //!
-//! A `QueryEditor` naming a topic the editor is not servicing right now — every model-backed
-//! topic during the `Load` asset pass — is answered `BadRequest` too, never a fabricated
-//! empty view. The client polls `GetEditorQueryOptions` first; it is answerable in EVERY
-//! editor state and carries the `Load` / `Editing` readiness, so an inject loop can wait for
-//! the asset pass instead of racing it.
+//! A `QueryEditor` naming a topic the editor is not servicing right now — during the `Load`
+//! asset pass, the topics backed by an `Editing`-scoped model resource — is answered
+//! `BadRequest` too, never a fabricated empty view. Which topics those are is the
+//! availability filter's call, not a fixed list: see
+//! [`topic_available`](super::snapshot::topic_available). The client polls
+//! `GetEditorQueryOptions` first; it is answerable in EVERY editor state and carries the
+//! `Load` / `Editing` readiness, so an inject loop can wait for the asset pass instead of
+//! racing it.
 
 use bevy::prelude::*;
 use gdtf_net_qa_transport::{NetInbox, Responder};

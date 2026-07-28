@@ -13,9 +13,11 @@ use crate::{EditorMode, EditorState, MapEditorSession};
 ///
 /// One [`SystemParam`] the request drain takes, rather than a widening parameter list on the
 /// router (bevy-traps: a fn-system's parameters are capped at 16, and this is one concern).
-/// Every model resource is `Option<Res<…>>` because they are state-scoped to `Editing`
-/// (bevy-traps #1) — during the editor's `Load` asset pass they do not exist, and that
-/// absence is REPORTED (the topic is not offered), never papered over with an empty view.
+/// Every model resource is `Option<Res<…>>` because none of them is guaranteed present: the
+/// mode / session / draft resources are state-scoped to `Editing` (bevy-traps #1) and do not
+/// exist during the editor's `Load` asset pass, while the report exists from app-build time
+/// and the checks-complete marker lands mid-`Load`. Whatever is absent is REPORTED (the topic
+/// is not offered), never papered over with an empty view.
 ///
 /// [`State<EditorState>`] is a plain `Res`: the drain's own run condition is
 /// `resource_exists::<State<EditorState>>`, so it is always present when this runs.

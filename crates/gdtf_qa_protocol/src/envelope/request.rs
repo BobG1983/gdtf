@@ -103,12 +103,16 @@ pub enum QaRequest {
     ///
     /// The discovery half of ADR 0007's per-family query pair: the reply
     /// ([`EditorQueryOptions`](crate::envelope::QaResponse::EditorQueryOptions)) lists the
-    /// live [`EditorQueryKind`]s with a one-line description each, filtered by the editor's
-    /// own `EditorState` — the same filter pattern
-    /// [`AppFlowView::available`](crate::view::AppFlowView::available) runs over
-    /// [`RequestKindNet`]. It also carries the editor's `Load` / `Editing` readiness, so a
-    /// client can poll it during the editor's asset pass and learn when the editor is ready
-    /// instead of racing it.
+    /// live [`EditorQueryKind`]s with a one-line description each — exactly the topics the
+    /// editor could answer at the moment it replied, because one predicate decides both what
+    /// this advertises and whether a [`QueryEditor`](Self::QueryEditor) is answered. That is
+    /// the contract [`AppFlowView::available`](crate::view::AppFlowView::available) has over
+    /// [`RequestKindNet`] on the game side. The editor's predicate runs per topic — is the
+    /// resource this topic reads present yet — and is NOT a function of the editor's
+    /// `EditorState`, so which topics drop out during `Load` is the editor's own call rather
+    /// than a fixed list: see [`QueryEditor`](Self::QueryEditor) (GTW-879). It also carries
+    /// the editor's `Load` / `Editing` readiness, so a client can poll it during the
+    /// editor's asset pass and learn when the editor is ready instead of racing it.
     ///
     /// Serviced by the EDITOR host only; the game host answers it
     /// [`BadRequest`](crate::envelope::QaError::BadRequest) — it runs no editor.
@@ -118,9 +122,16 @@ pub enum QaRequest {
     /// The read half of the pair: the reply
     /// ([`EditorQuery`](crate::envelope::QaResponse::EditorQuery)) carries that topic's
     /// small, purpose-scoped view plus the editor's readiness. A topic the editor is not
-    /// servicing right now — the model-backed topics during its `Load` asset pass — is
-    /// answered [`BadRequest`](crate::envelope::QaError::BadRequest), never a fabricated
-    /// empty view; poll [`GetEditorQueryOptions`](Self::GetEditorQueryOptions) first.
+    /// servicing right now is answered
+    /// [`BadRequest`](crate::envelope::QaError::BadRequest), never a fabricated empty view;
+    /// poll [`GetEditorQueryOptions`](Self::GetEditorQueryOptions) first.
+    ///
+    /// Which topics that leaves out during the editor's `Load` asset pass is decided per
+    /// topic and is not a fixed list (GTW-879): a topic reading a resource the editor
+    /// inserts on entering `Editing` is withheld until then, while a topic backed by a
+    /// resource built into the app before its first frame is answered from `Load` onward —
+    /// as [`Validation`](crate::view::EditorQueryKind::Validation) is, about an editor still
+    /// assembling itself. The readiness riding on the reply is what tells those two apart.
     ///
     /// Serviced by the EDITOR host only; the game host answers it
     /// [`BadRequest`](crate::envelope::QaError::BadRequest).

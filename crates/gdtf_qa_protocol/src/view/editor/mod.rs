@@ -8,9 +8,12 @@
 //! [`EditorQueryKind`] — and gets back a small, purpose-scoped view for that topic.
 //!
 //! Both replies carry the editor's [`EditorReadinessNet`]. The editor boots into its `Load`
-//! asset pass and only then reaches `Editing`, where every authoring model resource lives,
-//! so a client that cannot see the phase an answer came from has no way to keep its inject
-//! loop from racing the asset pass.
+//! asset pass and only then reaches `Editing`, where the authoring model resources (the
+//! active mode, the session, the drafts) live, so a client that cannot see the phase an
+//! answer came from has no way to keep its inject loop from racing the asset pass. Not every
+//! topic waits for `Editing` — the validation topic reads a report the editor host builds
+//! into the app up front and is answered from the first frame, so readiness is also what
+//! tells a client that a `Load` answer describes a half-built editor (GTW-879).
 //!
 //! ## Members (one concern per file, per module-layout)
 //!

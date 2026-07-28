@@ -9,9 +9,19 @@
 //! read is a pure function of the model — no world mutation, no ordering against another
 //! system, and unit-reachable from a test that inserts the resources it names.
 //!
-//! Every model resource is read as `Option<Res<…>>` (bevy-traps #1: the authoring model is
-//! scoped to `EditorState::Editing`), and an absent resource means the topic is NOT offered —
-//! never an empty view standing in for an answer.
+//! Every model resource is read as `Option<Res<…>>`, because none of them is guaranteed
+//! present — but they are not absent for the same reason, and NOT over the same window
+//! (GTW-879):
+//!
+//! - `EditorMode` / `MapEditorSession` / the drafts are state-scoped to
+//!   `EditorState::Editing` (bevy-traps #1), so they exist only while the editor is `Editing`.
+//! - [`ContentIntegrityReport`](gdtf_assets::ContentIntegrityReport) is `init_resource`'d
+//!   while the app is still being BUILT, so it exists from the editor's first frame, `Load`
+//!   included; its companion `ContentChecksComplete` marker lands mid-`Load`, once the checks
+//!   have actually run.
+//!
+//! An absent resource means the topic is NOT offered — never an empty view standing in for an
+//! answer. See [`topics`] for what that makes live when.
 //!
 //! ## Members (one concern per file, per module-layout)
 //!
