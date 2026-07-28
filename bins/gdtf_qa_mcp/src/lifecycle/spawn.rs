@@ -1,7 +1,7 @@
-//! How the game child is launched — the [`GameSpawner`] trait and its real
+//! How the game child is launched — the [`ChildSpawner`] trait and its real
 //! [`CargoSpawner`] (GTW-745, parameterized in GTW-875).
 //!
-//! [`GameSpawner`] is the one piece the lifecycle manager takes as a dependency, so a test
+//! [`ChildSpawner`] is the one piece the lifecycle manager takes as a dependency, so a test
 //! can supply a stub that launches a harmless placeholder process while every other part
 //! of the launch / stop logic runs unchanged. [`CargoSpawner`] is the real one: it runs
 //! `cargo run` for whatever [`LaunchSpec`] the caller hands it, with the QA environment
@@ -9,7 +9,9 @@
 //!
 //! The recipe arrives PER LAUNCH rather than being fixed when the spawner is built, so a
 //! single running MCP host can launch a plain build, then a `dev_tools` build, then a
-//! build in a git worktree, without being restarted (GTW-875).
+//! build in a git worktree, without being restarted (GTW-875) — and, since the recipe
+//! also names the two QA-channel variables, the SAME spawner launches the game and the
+//! editor with no per-host branch (GTW-808).
 
 use std::{
     io,
@@ -17,29 +19,23 @@ use std::{
 };
 
 use super::{
-    child::{GameChild, ProcessChild},
+    child::{ManagedChild, ProcessChild},
     launch::LaunchSpec,
 };
-use crate::game::GamePort;
+use crate::link::QaPort;
 
-/// The environment variable that opts the game into the QA control channel.
-const NET_QA_ENV: &str = "GDTF_NET_QA";
-
-/// The environment variable that picks the game's loopback listen port.
-const NET_QA_PORT_ENV: &str = "GDTF_NET_QA_PORT";
-
-/// Launches the game child bound to a chosen port, following a launch recipe.
+/// Launches a child bound to a chosen port, following a launch recipe.
 ///
 /// The manager depends on this trait, not on [`CargoSpawner`], so the readiness / timeout
 /// / stop logic can be driven against a stub process in tests without launching the real
-/// game binary.
-pub trait GameSpawner {
+/// game or editor binary.
+pub trait ChildSpawner {
     /// Spawn the child described by `spec`, telling it to listen on `port`.
     ///
     /// # Errors
     ///
     /// The underlying [`io::Error`] if the child process cannot be spawned.
-    fn spawn(&self, port: GamePort, spec: &LaunchSpec) -> io::Result<Box<dyn GameChild>>;
+    fn spawn(&self, port: QaPort, spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>>;
 }
 
 /// The real spawner — runs `cargo run` for the recipe it is given, with the QA environment
@@ -60,15 +56,17 @@ impl CargoSpawner {
 
 /// Assemble the `cargo run` command for `spec` on `port`.
 ///
-/// The recipe's own environment overrides are applied FIRST and the two QA variables
-/// LAST, so a caller can pass through a dev gate such as `GDTF_BATTLE_SEED` but can
-/// never displace the channel and port the host is about to probe for readiness.
+/// The recipe's own environment overrides are applied FIRST and the two QA variables it
+/// names LAST, so a caller can pass through a dev gate such as `GDTF_BATTLE_SEED` but can
+/// never displace the channel and port the host is about to probe for readiness. WHICH
+/// two variables those are comes from the recipe's [`QaChannel`](super::launch::QaChannel)
+/// — the game's `GDTF_NET_QA` pair or the editor's `GDTF_EDITOR_NET_QA` pair (GTW-808).
 ///
 /// Split out from [`CargoSpawner::spawn`] so the assembled command is inspectable — the
 /// unit tests read back the arguments, directory, and environment this produces rather
 /// than launching a real build.
 #[must_use]
-pub fn build_command(port: GamePort, spec: &LaunchSpec) -> Command {
+pub fn build_command(port: QaPort, spec: &LaunchSpec) -> Command {
     let mut command = Command::new("cargo");
     command.args(["run", "-p", spec.package().as_str()]);
     if let Some(features) = spec.features().render() {
@@ -81,15 +79,15 @@ pub fn build_command(port: GamePort, spec: &LaunchSpec) -> Command {
         command.env(var.name().as_str(), var.value().as_str());
     }
     command
-        .env(NET_QA_ENV, "1")
-        .env(NET_QA_PORT_ENV, format!("{}", *port))
+        .env(spec.channel().enable().as_str(), "1")
+        .env(spec.channel().port().as_str(), format!("{}", *port))
         .stdin(Stdio::null())
         .stdout(Stdio::null());
     command
 }
 
-impl GameSpawner for CargoSpawner {
-    fn spawn(&self, port: GamePort, spec: &LaunchSpec) -> io::Result<Box<dyn GameChild>> {
+impl ChildSpawner for CargoSpawner {
+    fn spawn(&self, port: QaPort, spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
         ProcessChild::spawn(build_command(port, spec))
     }
 }
@@ -98,10 +96,10 @@ impl GameSpawner for CargoSpawner {
 mod tests {
     use std::{ffi::OsStr, path::PathBuf};
 
-    use super::{GamePort, build_command};
+    use super::{QaPort, build_command};
     use crate::lifecycle::launch::{
         EnvOverrides, EnvVar, EnvVarName, EnvVarValue, FeatureList, FeatureName, LaunchSpec,
-        WorkingDir,
+        QaChannel, WorkingDir,
     };
 
     /// The command's arguments, as owned strings, for readable assertions.
@@ -124,7 +122,7 @@ mod tests {
     /// The default recipe reproduces the launch the spawner used to hardcode.
     #[test]
     fn default_recipe_matches_the_previous_hardcoded_launch() {
-        let command = build_command(GamePort::new(7616), &LaunchSpec::game_default());
+        let command = build_command(QaPort::new(7616), &LaunchSpec::game_default());
         assert_eq!(
             args_of(&command),
             vec![
@@ -159,8 +157,9 @@ mod tests {
                 EnvVarName::new("GDTF_BATTLE_SEED".to_owned()),
                 EnvVarValue::new("42".to_owned()),
             )]),
+            QaChannel::game(),
         );
-        let command = build_command(GamePort::new(4321), &spec);
+        let command = build_command(QaPort::new(4321), &spec);
         assert_eq!(
             args_of(&command),
             vec![
@@ -194,8 +193,9 @@ mod tests {
                 EnvVarName::new("GDTF_NET_QA_PORT".to_owned()),
                 EnvVarValue::new("1".to_owned()),
             )]),
+            QaChannel::game(),
         );
-        let command = build_command(GamePort::new(9001), &spec);
+        let command = build_command(QaPort::new(9001), &spec);
         assert_eq!(
             env_of(&command, "GDTF_NET_QA_PORT"),
             Some("9001".to_owned())
@@ -209,5 +209,30 @@ mod tests {
                 "grimdark_turfwar".to_owned()
             ]
         );
+    }
+
+    /// The DEFAULT EDITOR recipe is GTW-878 clause 1's command, with the EDITOR's own two
+    /// QA variables — not the game's. Setting `GDTF_NET_QA` on an editor child would leave
+    /// it inert with no port to probe (GTW-808).
+    #[test]
+    fn editor_recipe_runs_the_editor_binary_with_the_editor_channel() {
+        let command = build_command(QaPort::new(7617), &LaunchSpec::editor_default());
+        assert_eq!(
+            args_of(&command),
+            vec![
+                "run".to_owned(),
+                "-p".to_owned(),
+                "gdtf_content_editor_bin".to_owned(),
+                "--features".to_owned(),
+                "dynamic_linking,net_qa".to_owned(),
+            ]
+        );
+        assert_eq!(env_of(&command, "GDTF_EDITOR_NET_QA"), Some("1".to_owned()));
+        assert_eq!(
+            env_of(&command, "GDTF_EDITOR_NET_QA_PORT"),
+            Some("7617".to_owned())
+        );
+        assert_eq!(env_of(&command, "GDTF_NET_QA"), None);
+        assert_eq!(env_of(&command, "GDTF_NET_QA_PORT"), None);
     }
 }

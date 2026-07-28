@@ -1,8 +1,10 @@
-//! The game-lifecycle manager — owns the one running child and drives launch / stop
-//! (GTW-745).
+//! The host-lifecycle manager — owns the one running child and drives launch / stop
+//! (GTW-745; made host-neutral in GTW-808).
 //!
-//! [`GameLifecycle`] is the surface the MCP tool layer calls; [`GameManager`] is the real
-//! implementation. It enforces ONE game at a time: [`launch`](GameLifecycle::launch) with
+//! [`HostLifecycle`] is the surface the MCP tool layer calls; [`HostManager`] is the real
+//! implementation. ONE manager owns ONE child, so the dual-target host holds two of them —
+//! one for the game, one for the editor — and each enforces one child of its own kind.
+//! [`launch`](HostLifecycle::launch) with
 //! a child already running from the SAME recipe is an ensure-style
 //! [`AlreadyRunning`](LaunchOutcome::AlreadyRunning), never a second spawn (mirroring the
 //! game's own one-client transport rule); with a child running from a DIFFERENT recipe it
@@ -17,24 +19,24 @@
 use std::time::Instant;
 
 use super::{
-    child::GameChild,
+    child::ManagedChild,
     config::LifecycleConfig,
     launch::LaunchSpec,
     outcome::{LaunchFailure, LaunchOutcome, StopOutcome},
     probe::probe_ready,
-    spawn::GameSpawner,
+    spawn::ChildSpawner,
     values::{ChildStatus, KillGrace, Readiness},
 };
-use crate::game::GamePort;
+use crate::link::QaPort;
 
-/// Launch and stop the game child, one at a time.
+/// Launch and stop one host's child, one at a time.
 ///
-/// The MCP tool layer depends on this trait, not on [`GameManager`], so the `launch_game`
-/// / `stop_game` tool handlers can be exercised against a manager driven by a stub
-/// spawner.
-pub trait GameLifecycle {
-    /// Ensure a game is running on `port`, launching one built to `spec` if none is (see
-    /// [`LaunchOutcome`]).
+/// The MCP tool layer depends on this trait, not on [`HostManager`], so the
+/// `launch_game` / `stop_game` / `launch_editor` / `stop_editor` tool handlers can be
+/// exercised against a manager driven by a stub spawner.
+pub trait HostLifecycle {
+    /// Ensure this host's child is running on `port`, launching one built to `spec` if
+    /// none is (see [`LaunchOutcome`]).
     ///
     /// The recipe belongs to the call, not to the manager, so successive launches can ask
     /// for different builds — a `dev_tools` build, or a build in another checkout — and
@@ -44,42 +46,42 @@ pub trait GameLifecycle {
     /// child running from a different one is reported as
     /// [`RecipeMismatch`](LaunchFailure::RecipeMismatch) instead of being passed off as the
     /// build that was asked for.
-    fn launch(&mut self, port: GamePort, spec: &LaunchSpec) -> LaunchOutcome;
+    fn launch(&mut self, port: QaPort, spec: &LaunchSpec) -> LaunchOutcome;
 
-    /// Stop the running game child, if any (see [`StopOutcome`]).
+    /// Stop the running child, if any (see [`StopOutcome`]).
     fn stop(&mut self) -> StopOutcome;
 }
 
 /// A running child together with the port it was launched on and the recipe that built it.
 struct RunningChild {
     /// The owned, managed child process.
-    child:  Box<dyn GameChild>,
+    child:  Box<dyn ManagedChild>,
     /// The loopback port it listens on.
-    port:   GamePort,
+    port:   QaPort,
     /// The recipe it was launched from — which package, features, and checkout.
     recipe: LaunchSpec,
 }
 
-/// The real [`GameLifecycle`] — owns the optional running child and the spawner.
-pub struct GameManager {
+/// The real [`HostLifecycle`] — owns the optional running child and the spawner.
+pub struct HostManager {
     /// How the game child is launched (real cargo run, or a test stub).
-    spawner: Box<dyn GameSpawner>,
+    spawner: Box<dyn ChildSpawner>,
     /// The timing knobs the launch / stop loops wait on.
     config:  LifecycleConfig,
     /// The one running child, or `None` when no game is up.
     running: Option<RunningChild>,
 }
 
-impl GameManager {
+impl HostManager {
     /// Build a manager with the production timing config.
     #[must_use]
-    pub fn new(spawner: Box<dyn GameSpawner>) -> Self {
+    pub fn new(spawner: Box<dyn ChildSpawner>) -> Self {
         Self::with_config(spawner, LifecycleConfig::default())
     }
 
     /// Build a manager with an explicit timing config (the tests' short-fused knobs).
     #[must_use]
-    pub fn with_config(spawner: Box<dyn GameSpawner>, config: LifecycleConfig) -> Self {
+    pub fn with_config(spawner: Box<dyn ChildSpawner>, config: LifecycleConfig) -> Self {
         Self {
             spawner,
             config,
@@ -93,8 +95,8 @@ impl GameManager {
     /// this returns.
     fn await_readiness(
         &mut self,
-        mut child: Box<dyn GameChild>,
-        port: GamePort,
+        mut child: Box<dyn ManagedChild>,
+        port: QaPort,
         recipe: &LaunchSpec,
     ) -> LaunchOutcome {
         let deadline = Instant::now() + *self.config.boot_timeout();
@@ -126,15 +128,18 @@ impl GameManager {
                 // and truncate the diagnosis this failure exists to carry (GTW-756).
                 shutdown(child.as_mut(), self.config.kill_grace());
                 let tail = child.stderr_tail();
-                return LaunchOutcome::Failed(LaunchFailure::Timeout(tail));
+                return LaunchOutcome::Failed(LaunchFailure::Timeout {
+                    tail,
+                    waited: self.config.boot_timeout(),
+                });
             }
             std::thread::sleep(*self.config.poll_interval());
         }
     }
 }
 
-impl GameLifecycle for GameManager {
-    fn launch(&mut self, port: GamePort, spec: &LaunchSpec) -> LaunchOutcome {
+impl HostLifecycle for HostManager {
+    fn launch(&mut self, port: QaPort, spec: &LaunchSpec) -> LaunchOutcome {
         if let Some(running) = &self.running {
             if !running.recipe.is_same_launch_as(spec) {
                 return LaunchOutcome::Failed(LaunchFailure::RecipeMismatch(Box::new(
@@ -165,7 +170,7 @@ impl GameLifecycle for GameManager {
     }
 }
 
-impl Drop for GameManager {
+impl Drop for HostManager {
     fn drop(&mut self) {
         // Last-resort orphan guard on ANY exit path (including an unwind): force-kill and
         // reap a still-owned child so it never outlives the MCP. The graceful SIGTERM path
@@ -179,7 +184,7 @@ impl Drop for GameManager {
 
 /// Stop a child cleanly: SIGTERM, wait the grace period, escalate to SIGKILL if it is
 /// still up, then reap it so it never lingers as a zombie.
-fn shutdown(child: &mut dyn GameChild, grace: KillGrace) {
+fn shutdown(child: &mut dyn ManagedChild, grace: KillGrace) {
     child.terminate();
     if matches!(child.wait_until_exit(grace), ChildStatus::Running) {
         child.kill();

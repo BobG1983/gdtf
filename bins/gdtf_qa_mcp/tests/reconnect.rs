@@ -1,4 +1,4 @@
-//! Connection-resilience integration — the real [`GameClient`] against a bevy-free stub
+//! Connection-resilience integration — the real [`QaClient`] against a bevy-free stub
 //! game that closes connections and is relaunched, proving the client survives both
 //! (GTW-755).
 //!
@@ -6,7 +6,7 @@
 //! a relaunch replaces the process behind the same port. Both leave the client holding a
 //! dead connection. These tests stand up a real loopback [`TcpListener`] stub (reusing the
 //! protocol crate's REAL framing, never reimplementing it) and drive the real
-//! [`GameClient`] through the real [`GameLink`] surface to prove it transparently
+//! [`QaClient`] through the real [`QaLink`] surface to prove it transparently
 //! reconnects instead of surfacing the dead socket as an error.
 
 use std::{
@@ -20,7 +20,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use gdtf_qa_mcp::{GameClient, GameLink, GamePort};
+use gdtf_qa_mcp::{QaClient, QaLink, QaPort};
 use gdtf_qa_protocol::{
     envelope::{QaError, QaRequest, QaResponse},
     framing::{FrameDecoder, encode},
@@ -77,7 +77,7 @@ fn answer_one(stream: &mut TcpStream) -> bool {
 }
 
 /// A `GetAppFlow` request through the real client.
-fn get_app_flow(client: &mut GameClient) -> Result<QaResponse, gdtf_qa_mcp::McpError> {
+fn get_app_flow(client: &mut QaClient) -> Result<QaResponse, gdtf_qa_mcp::McpError> {
     client.request(QaRequest::GetAppFlow)
 }
 
@@ -101,7 +101,7 @@ fn a_reused_connection_the_game_closed_reconnects_and_succeeds() {
         }
     });
 
-    let mut client = GameClient::new(GamePort::new(port));
+    let mut client = QaClient::new(QaPort::new(port));
 
     let first = get_app_flow(&mut client);
     assert!(
@@ -123,7 +123,7 @@ fn a_reused_connection_the_game_closed_reconnects_and_succeeds() {
 }
 
 /// A relaunch replaces the process behind the same port number. After a launch the tool
-/// layer calls [`GameLink::retarget`] with that port; even when the number is unchanged
+/// layer calls [`QaLink::retarget`] with that port; even when the number is unchanged
 /// the client MUST drop any existing connection so the next request reaches the NEW
 /// process rather than reusing a socket to the old one (GTW-755 defect 2). Proven by
 /// counting connections: with the fix, the post-retarget request opens a second
@@ -146,7 +146,7 @@ fn retarget_on_the_same_port_invalidates_the_connection() {
         }
     });
 
-    let mut client = GameClient::new(GamePort::new(port));
+    let mut client = QaClient::new(QaPort::new(port));
 
     let first = get_app_flow(&mut client);
     assert!(
@@ -161,7 +161,7 @@ fn retarget_on_the_same_port_invalidates_the_connection() {
 
     // A relaunch on the SAME port: the connection to the (now-replaced) process must be
     // invalidated.
-    client.retarget(GamePort::new(port));
+    client.retarget(QaPort::new(port));
 
     let second = get_app_flow(&mut client);
     assert!(
@@ -188,7 +188,7 @@ fn an_unreachable_game_fails_promptly_without_retrying_forever() {
     let (listener, port) = bind_loopback();
     drop(listener);
 
-    let mut client = GameClient::new(GamePort::new(port));
+    let mut client = QaClient::new(QaPort::new(port));
     let started = Instant::now();
     let result = get_app_flow(&mut client);
     let elapsed = started.elapsed();

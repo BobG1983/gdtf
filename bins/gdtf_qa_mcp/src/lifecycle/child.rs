@@ -1,7 +1,7 @@
-//! The managed child process — the [`GameChild`] trait and its real [`ProcessChild`]
+//! The managed child process — the [`ManagedChild`] trait and its real [`ProcessChild`]
 //! (GTW-745).
 //!
-//! [`GameChild`] is the small surface the launch / stop logic drives: read the pid, poll
+//! [`ManagedChild`] is the small surface the launch / stop logic drives: read the pid, poll
 //! whether it has exited, ask for a graceful (SIGTERM) or forceful (SIGKILL) stop, wait a
 //! bounded time for it to go, reap it (no zombie), and read the tail of what it wrote to
 //! stderr. [`ProcessChild`] is the one real implementation over [`std::process::Child`];
@@ -34,7 +34,7 @@ const EXIT_POLL_STEP: Duration = Duration::from_millis(50);
 ///
 /// The manager depends on this trait, not on [`ProcessChild`], so the launch / stop logic
 /// can be exercised against a stub process without launching the real game.
-pub trait GameChild {
+pub trait ManagedChild {
     /// The child's operating-system process id.
     fn pid(&self) -> ChildPid;
 
@@ -118,7 +118,7 @@ fn drain_stderr(stderr: ChildStderr, sink: &Arc<Mutex<StderrRing>>) {
     }
 }
 
-/// The real [`GameChild`] over a [`std::process::Child`].
+/// The real [`ManagedChild`] over a [`std::process::Child`].
 pub struct ProcessChild {
     /// The owned child handle.
     child:  Child,
@@ -140,7 +140,7 @@ impl ProcessChild {
     /// # Errors
     ///
     /// The underlying [`io::Error`] if the process cannot be spawned.
-    pub fn spawn(mut command: Command) -> io::Result<Box<dyn GameChild>> {
+    pub fn spawn(mut command: Command) -> io::Result<Box<dyn ManagedChild>> {
         command.stderr(Stdio::piped());
         #[cfg(unix)]
         {
@@ -193,7 +193,7 @@ impl ProcessChild {
     }
 }
 
-impl GameChild for ProcessChild {
+impl ManagedChild for ProcessChild {
     fn pid(&self) -> ChildPid {
         self.pid
     }

@@ -19,7 +19,7 @@ use gdtf_qa_protocol::{
 };
 
 use super::values::{ProbeTimeout, Readiness};
-use crate::game::GamePort;
+use crate::link::QaPort;
 
 /// The protocol version the probe's `Hello` carries. Readiness does not depend on a match
 /// — a version-mismatch reply still proves the listener is up — so any valid version does.
@@ -35,7 +35,7 @@ const READ_CHUNK: usize = 1024;
 /// [`QaResponse`] comes back; any failure along the way is [`NotYet`](Readiness::NotYet),
 /// which the launch loop retries until its own boot timeout.
 #[must_use]
-pub(super) fn probe_ready(port: GamePort, timeout: ProbeTimeout) -> Readiness {
+pub(super) fn probe_ready(port: QaPort, timeout: ProbeTimeout) -> Readiness {
     let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, *port));
     let Ok(mut stream) = TcpStream::connect_timeout(&addr, *timeout) else {
         return Readiness::NotYet;

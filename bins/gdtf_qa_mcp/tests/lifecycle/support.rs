@@ -1,7 +1,7 @@
 //! The externals the lifecycle tests supply — a stub spawner, a fake `net_qa` listener,
 //! and the short-fused timing config (GTW-745).
 //!
-//! Only two externals stand in for the real world here: a stub [`GameSpawner`] that
+//! Only two externals stand in for the real world here: a stub [`ChildSpawner`] that
 //! launches a harmless placeholder process (a `sh` that writes one stderr line then
 //! sleeps) instead of the real game binary, and a fake `net_qa` listener — extending the
 //! loopback harness from `loopback.rs` to answer the [`Hello`](QaRequest::Hello) handshake
@@ -24,8 +24,8 @@ use std::{
 };
 
 use gdtf_qa_mcp::{
-    BootTimeout, GameChild, GamePort, GameSpawner, KillGrace, LaunchSpec, LifecycleConfig,
-    PollInterval, ProbeTimeout, ProcessChild,
+    BootTimeout, ChildSpawner, KillGrace, LaunchSpec, LifecycleConfig, ManagedChild, PollInterval,
+    ProbeTimeout, ProcessChild, QaPort,
 };
 use gdtf_qa_protocol::{
     envelope::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
@@ -57,8 +57,8 @@ const STDERR_SYNC_STEP: Duration = Duration::from_millis(1);
 /// the real [`CargoSpawner`](gdtf_qa_mcp::CargoSpawner), in `recipe.rs` (GTW-875).
 pub(crate) struct StubSpawner;
 
-impl GameSpawner for StubSpawner {
-    fn spawn(&self, _port: GamePort, _spec: &LaunchSpec) -> io::Result<Box<dyn GameChild>> {
+impl ChildSpawner for StubSpawner {
+    fn spawn(&self, _port: QaPort, _spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
         let mut command = Command::new("sh");
         command
             .args(["-c", "echo boot-oops 1>&2; exec sleep 10"])
@@ -76,7 +76,7 @@ impl GameSpawner for StubSpawner {
 /// `spawn` returns without waiting for either. Handing the manager a child whose line is
 /// already captured gives the tests a real happens-before edge, so an assertion about the
 /// tail never races the boot timeout that starts once this returns (GTW-756).
-fn await_captured_stderr(child: &dyn GameChild) {
+fn await_captured_stderr(child: &dyn ManagedChild) {
     let deadline = Instant::now() + STDERR_SYNC_LIMIT;
     while !child.stderr_tail().contains(STUB_STDERR_LINE) {
         if Instant::now() >= deadline {

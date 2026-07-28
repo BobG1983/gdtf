@@ -66,8 +66,66 @@ impl ToolName {
                  reap it. Returns a typed result when there is nothing to stop. No \
                  arguments."
             }
+            Self::GetEditorQueryOptions => Self::EDITOR_QUERY_OPTIONS_DESCRIPTION,
+            Self::QueryEditor => Self::QUERY_EDITOR_DESCRIPTION,
+            Self::LaunchEditor => Self::LAUNCH_EDITOR_DESCRIPTION,
+            Self::StopEditor => {
+                "Stop the running content-editor child (graceful SIGTERM, then SIGKILL \
+                 fallback) and reap it, releasing its port. Independent of stop_game — the \
+                 two children are managed separately, so stopping one leaves the other \
+                 running. Returns a typed result when there is nothing to stop. No \
+                 arguments."
+            }
         }
     }
+
+    /// The `get_editor_query_options` description — the editor's poll-first entry point,
+    /// so it names the readiness gate a client waits on.
+    const EDITOR_QUERY_OPTIONS_DESCRIPTION: &'static str = "Ask the RUNNING CONTENT EDITOR which query topics it will service right \
+         now, and where it is in its lifecycle. Call this first and act only on \
+         what it lists. The reply carries `readiness` (\"Load\" while the \
+         editor's asset pass is running, \"Editing\" once the authoring scene is \
+         up) and `topics`, each {kind, description}. During Load the topics \
+         backed by an Editing-only resource (Mode, Session, Draft) are absent \
+         and asking for one is rejected; Readiness and Validation are answered \
+         from the first frame. Poll this after launch_editor until `readiness` \
+         reads \"Editing\" before driving the editor. No arguments.";
+
+    /// The `query_editor` description — it names every legal topic, because the topic
+    /// vocabulary is what a caller has to guess otherwise.
+    const QUERY_EDITOR_DESCRIPTION: &'static str = "Ask the RUNNING CONTENT EDITOR about ONE topic. Argument `topic` is one \
+         of \"Readiness\" (Load or Editing), \"Mode\" (the active Workbench tab \
+         and its index), \"Session\" (selected theme, resolved default floor, \
+         grid size, paint tile), \"Draft\" (the active mode's in-progress \
+         authoring draft as named fields), or \"Validation\" (whether the \
+         authoring-time content checks ran, and every finding). The reply \
+         carries that topic's view plus the editor's readiness. A topic the \
+         editor is not servicing right now is rejected rather than answered with \
+         an empty view — read get_editor_query_options first and ask only for a \
+         topic it lists.";
+
+    /// The `launch_editor` description — it names the recipe arguments and the cold-build
+    /// wait, because a caller that cannot see them falls back to hand-rolled tooling.
+    const LAUNCH_EDITOR_DESCRIPTION: &'static str = "Launch the CONTENT EDITOR as a child process with its net_qa control \
+         channel enabled, then wait for it to answer before returning its port \
+         and pid, plus the package, features, and directory it was built from. \
+         Independent of launch_game: the two children are managed separately and \
+         can run at the same time, the editor on port 7617 and the game on 7616. \
+         If an editor built from the SAME recipe is already running, returns that \
+         child (no second launch); if one built from a DIFFERENT recipe is \
+         running, the call is rejected and says what is actually up — call \
+         stop_editor first. Optional argument `port` picks the loopback port \
+         (default 7617). Optional `package` picks the cargo package (default \
+         gdtf_content_editor_bin — the BINARY crate, not the library). Optional \
+         `features` picks the cargo features, as an array or a comma-separated \
+         string (default dynamic_linking,net_qa). Optional `working_dir` picks \
+         WHICH CHECKOUT is built: pass a git worktree path to QA that tree \
+         instead of whatever directory this host runs in. Optional `env` is an \
+         object of extra environment variables for the child. The FIRST launch of \
+         a given recipe compiles the editor, which can take many minutes; warm it \
+         with `cargo edqabuild` (or `cargo build -p gdtf_content_editor_bin \
+         --features dynamic_linking,net_qa`) in that checkout to make the launch \
+         prompt.";
 
     /// The `launch_game` description — it names all four recipe arguments, because a
     /// caller that cannot see them falls back to hand-rolled tooling (GTW-875).

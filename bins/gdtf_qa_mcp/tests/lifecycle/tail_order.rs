@@ -2,14 +2,14 @@
 //! before (GTW-756).
 //!
 //! The real [`ProcessChild`](gdtf_qa_mcp::ProcessChild) drains the child's stderr on a
-//! reader thread that [`reap`](GameChild::reap) joins, so a tail read before that join can
+//! reader thread that [`reap`](ManagedChild::reap) joins, so a tail read before that join can
 //! catch the reader mid-drain and hand back a truncated tail — losing the diagnosis a
 //! failed launch exists to carry. Against a real process that ordering only shows up when
 //! the scheduler happens to be slow, which is exactly the timing this suite must not
 //! depend on.
 //!
 //! [`ReapGatedChild`] makes it a rule instead: no process, no clock, a tail that reads
-//! empty until [`reap`](GameChild::reap) has been called, and a record of every lifecycle
+//! empty until [`reap`](ManagedChild::reap) has been called, and a record of every lifecycle
 //! call the manager made. Both failure paths — the boot timeout and the early exit — are
 //! pinned to an exact call sequence, so a manager that reads the tail one step too early
 //! fails every run on every machine.
@@ -20,8 +20,8 @@ use std::{
 };
 
 use gdtf_qa_mcp::{
-    ChildPid, GameChild, GameLifecycle, GameManager, GamePort, GameSpawner, KillGrace,
-    LaunchFailure, LaunchOutcome, LaunchSpec, StderrTail, StopOutcome, lifecycle::ChildStatus,
+    ChildPid, ChildSpawner, HostLifecycle, HostManager, KillGrace, LaunchFailure, LaunchOutcome,
+    LaunchSpec, ManagedChild, QaPort, StderrTail, StopOutcome, lifecycle::ChildStatus,
 };
 
 use crate::support::{fast_config, free_port};
@@ -64,10 +64,10 @@ enum ChildCall {
     ReadStderrTail,
 }
 
-/// A [`GameChild`] with no process behind it, whose stderr tail is gated on being reaped.
+/// A [`ManagedChild`] with no process behind it, whose stderr tail is gated on being reaped.
 ///
-/// It answers [`stderr_tail`](GameChild::stderr_tail) with an empty tail until
-/// [`reap`](GameChild::reap) has been called and with [`GATED_LINE`] afterwards — the same
+/// It answers [`stderr_tail`](ManagedChild::stderr_tail) with an empty tail until
+/// [`reap`](ManagedChild::reap) has been called and with [`GATED_LINE`] afterwards — the same
 /// before/after the real child's reader thread has, made absolute — and records every call
 /// in order. It is also a stubborn child: it never reports an exit, so a stop must
 /// escalate SIGTERM to SIGKILL, putting the whole orphan-kill path in the recorded
@@ -89,7 +89,7 @@ impl ReapGatedChild {
         }
     }
 
-    /// Whether [`reap`](GameChild::reap) has already been called — what gates the tail.
+    /// Whether [`reap`](ManagedChild::reap) has already been called — what gates the tail.
     fn reaped(&self) -> bool {
         self.calls
             .lock()
@@ -97,7 +97,7 @@ impl ReapGatedChild {
     }
 }
 
-impl GameChild for ReapGatedChild {
+impl ManagedChild for ReapGatedChild {
     fn pid(&self) -> ChildPid {
         GATED_PID
     }
@@ -142,8 +142,8 @@ struct ReapGatedSpawner {
     calls:  CallLog,
 }
 
-impl GameSpawner for ReapGatedSpawner {
-    fn spawn(&self, _port: GamePort, _spec: &LaunchSpec) -> io::Result<Box<dyn GameChild>> {
+impl ChildSpawner for ReapGatedSpawner {
+    fn spawn(&self, _port: QaPort, _spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
         Ok(Box::new(ReapGatedChild {
             tail:   StderrTail::new(GATED_LINE.to_owned()),
             status: self.status,
@@ -154,13 +154,13 @@ impl GameSpawner for ReapGatedSpawner {
 
 /// Build a manager over a fake child that reports `status` when polled, together with the
 /// call record that child writes into.
-fn manager_over_gated_child(status: ChildStatus, boot_ms: u64) -> (GameManager, CallLog) {
+fn manager_over_gated_child(status: ChildStatus, boot_ms: u64) -> (HostManager, CallLog) {
     let calls: CallLog = Arc::new(Mutex::new(Vec::new()));
     let spawner = ReapGatedSpawner {
         status,
         calls: Arc::clone(&calls),
     };
-    let manager = GameManager::with_config(Box::new(spawner), fast_config(boot_ms));
+    let manager = HostManager::with_config(Box::new(spawner), fast_config(boot_ms));
     (manager, calls)
 }
 
@@ -178,8 +178,8 @@ fn recorded(calls: &CallLog) -> Vec<ChildCall> {
 fn timeout_reads_the_stderr_tail_after_reaping_the_orphan() {
     let (mut manager, calls) = manager_over_gated_child(ChildStatus::Running, NO_WAIT_BOOT_MS);
 
-    let outcome = manager.launch(GamePort::new(free_port()), &LaunchSpec::game_default());
-    let LaunchOutcome::Failed(LaunchFailure::Timeout(tail)) = outcome else {
+    let outcome = manager.launch(QaPort::new(free_port()), &LaunchSpec::game_default());
+    let LaunchOutcome::Failed(LaunchFailure::Timeout { tail, .. }) = outcome else {
         unreachable!("no readiness endpoint means the launch times out: {outcome:?}");
     };
     assert_eq!(
@@ -208,7 +208,7 @@ fn timeout_reads_the_stderr_tail_after_reaping_the_orphan() {
 fn early_exit_reads_the_stderr_tail_after_reaping_the_child() {
     let (mut manager, calls) = manager_over_gated_child(ChildStatus::Exited, UNREACHED_BOOT_MS);
 
-    let outcome = manager.launch(GamePort::new(free_port()), &LaunchSpec::game_default());
+    let outcome = manager.launch(QaPort::new(free_port()), &LaunchSpec::game_default());
     let LaunchOutcome::Failed(LaunchFailure::ExitedEarly(tail)) = outcome else {
         unreachable!("a child that has exited fails the launch as an early exit: {outcome:?}");
     };

@@ -14,11 +14,11 @@
 //! told everything is fine and would report a pass against code nobody reviewed (GTW-875).
 
 use crate::{
-    game::GamePort,
     lifecycle::{
         launch::LaunchSpec,
-        values::{ChildPid, SpawnError, StderrTail},
+        values::{BootTimeout, ChildPid, SpawnError, StderrTail},
     },
+    link::QaPort,
 };
 
 /// The result of a `launch_game` request.
@@ -27,7 +27,7 @@ pub enum LaunchOutcome {
     /// The game child was spawned and answered the readiness handshake.
     Launched {
         /// The loopback port the game's `net_qa` listener is bound on.
-        port: GamePort,
+        port: QaPort,
         /// The child process's operating-system id.
         pid:  ChildPid,
     },
@@ -35,7 +35,7 @@ pub enum LaunchOutcome {
     /// spawned (ensure-style).
     AlreadyRunning {
         /// The port the already-running child is bound on.
-        port:   GamePort,
+        port:   QaPort,
         /// The already-running child's process id.
         pid:    ChildPid,
         /// The recipe that child was launched from, so the caller can see which package,
@@ -57,7 +57,16 @@ pub enum LaunchFailure {
     Spawn(SpawnError),
     /// The child started but did not answer readiness before the boot timeout; the
     /// orphaned child was killed and reaped before this was returned.
-    Timeout(StderrTail),
+    ///
+    /// It carries the deadline it missed as well as the tail, so the failure message can
+    /// state how long the launcher actually waited instead of leaving the reader to guess
+    /// which host's timeout applied (GTW-808).
+    Timeout {
+        /// The child's captured stderr tail.
+        tail:   StderrTail,
+        /// How long the launcher waited before giving up.
+        waited: BootTimeout,
+    },
     /// The child exited on its own before it became ready.
     ExitedEarly(StderrTail),
     /// A child is already running, but from a DIFFERENT recipe than the one requested —

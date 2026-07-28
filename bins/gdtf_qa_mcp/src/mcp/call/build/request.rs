@@ -9,6 +9,7 @@ use crate::mcp::{
         intent::parse_intent,
         scalars::{
             parse_frame_delay, parse_max, parse_name, parse_seed, parse_situation, parse_token,
+            parse_topic,
         },
     },
     tools::ToolName,
@@ -42,10 +43,16 @@ pub fn build_request(tool: ToolName, args: &Value) -> Result<QaRequest, String> 
         ToolName::StepperControl => Ok(QaRequest::StepperControl(parse_stepper_command(args)?)),
         ToolName::ActivateMenuItem => Ok(QaRequest::ActivateMenuItem(parse_token(args)?)),
         ToolName::FocusControl => Ok(QaRequest::FocusControl(parse_focus_command(args)?)),
+        ToolName::GetEditorQueryOptions => Ok(QaRequest::GetEditorQueryOptions),
+        ToolName::QueryEditor => Ok(QaRequest::QueryEditor(parse_topic(args)?)),
         // The lifecycle tools are handled before this point (in `handle_tool_call`), so
         // they never map onto a wire request; reaching here would be a routing bug.
-        ToolName::LaunchGame | ToolName::StopGame => {
-            Err("launch_game / stop_game are host-local tools, not game requests".to_owned())
-        }
+        ToolName::LaunchGame
+        | ToolName::StopGame
+        | ToolName::LaunchEditor
+        | ToolName::StopEditor => Err(
+            "the launch / stop tools are host-local, not requests carried to a running child"
+                .to_owned(),
+        ),
     }
 }

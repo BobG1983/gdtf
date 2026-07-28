@@ -3,7 +3,8 @@
 use serde_json::{Value, json};
 
 use crate::{
-    lifecycle::{LaunchFailure, LaunchOutcome, LaunchSpec, StopOutcome},
+    hosts::QaHost,
+    lifecycle::{BootTimeout, LaunchFailure, LaunchOutcome, LaunchSpec, StderrTail, StopOutcome},
     mcp::content::{text_content, tool_error},
 };
 
@@ -16,7 +17,11 @@ use crate::{
 /// `already_running` as much as for a fresh launch: the reply names the recipe of the
 /// child that is actually up, which is not necessarily the one this call asked for
 /// (GTW-875).
-pub(super) fn render_launch(outcome: &LaunchOutcome, requested: &LaunchSpec) -> Value {
+pub(super) fn render_launch(
+    host: QaHost,
+    outcome: &LaunchOutcome,
+    requested: &LaunchSpec,
+) -> Value {
     match outcome {
         LaunchOutcome::Launched { port, pid } => text_content(&json!({
             "status": "launched", "port": **port, "pid": **pid,
@@ -30,7 +35,9 @@ pub(super) fn render_launch(outcome: &LaunchOutcome, requested: &LaunchSpec) -> 
             "features": recipe.features().render(),
             "working_dir": resolved_working_dir(recipe),
         })),
-        LaunchOutcome::Failed(failure) => tool_error(&launch_failure_message(failure, requested)),
+        LaunchOutcome::Failed(failure) => {
+            tool_error(&launch_failure_message(host, failure, requested))
+        }
     }
 }
 
@@ -45,15 +52,16 @@ fn resolved_working_dir(spec: &LaunchSpec) -> String {
 
 /// A human-readable message for a launch failure, carrying the child's stderr tail — or,
 /// for a recipe mismatch, both the running recipe and the `requested` one.
-fn launch_failure_message(failure: &LaunchFailure, requested: &LaunchSpec) -> String {
+fn launch_failure_message(host: QaHost, failure: &LaunchFailure, requested: &LaunchSpec) -> String {
+    let label = host.label();
     match failure {
         LaunchFailure::Spawn(reason) => {
-            format!("could not launch the game: {}", reason.as_str())
+            format!("could not launch the {label}: {}", reason.as_str())
         }
         LaunchFailure::RecipeMismatch(running) => format!(
-            "a game is already running from a different recipe, and nothing was launched. \
+            "a {label} is already running from a different recipe, and nothing was launched. \
              running: package {}, features {}, working_dir {}. requested: package {}, \
-             features {}, working_dir {}. Call stop_game first if you want the requested \
+             features {}, working_dir {}. Call {} first if you want the requested \
              build.",
             running.package().as_str(),
             running
@@ -67,17 +75,48 @@ fn launch_failure_message(failure: &LaunchFailure, requested: &LaunchSpec) -> St
                 .render()
                 .unwrap_or_else(|| "none".to_owned()),
             resolved_working_dir(requested),
+            host.stop_tool_name(),
         ),
-        LaunchFailure::Timeout(tail) => format!(
-            "the game did not become ready before the timeout and was stopped. \
-             stderr tail:\n{}",
-            tail.as_str()
-        ),
+        LaunchFailure::Timeout { tail, waited } => timeout_message(host, *waited, requested, tail),
         LaunchFailure::ExitedEarly(tail) => format!(
-            "the game exited before it became ready. stderr tail:\n{}",
+            "the {label} exited before it became ready. stderr tail:\n{}",
             tail.as_str()
         ),
     }
+}
+
+/// The timeout message — it NAMES THE BUILD as the likely cause and gives the warm-up
+/// command, rather than reporting a bare "timed out" (GTW-808 clause 7).
+///
+/// A launcher's wait covers two very different things: `cargo` compiling the package, and
+/// the compiled binary booting. Only the first one takes minutes, and it is invisible in
+/// the child's stderr tail unless the reader already knows to look for `Compiling` lines.
+/// Saying so, with the exact command that removes the wait, is the difference between a
+/// diagnosable failure and a mystery.
+fn timeout_message(
+    host: QaHost,
+    waited: BootTimeout,
+    requested: &LaunchSpec,
+    tail: &StderrTail,
+) -> String {
+    let label = host.label();
+    let features = requested
+        .features()
+        .render()
+        .map_or_else(String::new, |list| format!(" --features {list}"));
+    format!(
+        "the {label} did not answer within {:?} and was stopped. The most likely cause is \
+         the BUILD, not the app: this launch runs `cargo run -p {}{features}`, and a \
+         recipe that has never been compiled in {} spends that whole wait compiling before \
+         it can bind a port. Warm it first with `cargo build -p {}{features}` in that \
+         directory and launch again; the stderr tail below shows how far the build got. \
+         stderr tail:\n{}",
+        *waited,
+        requested.package().as_str(),
+        resolved_working_dir(requested),
+        requested.package().as_str(),
+        tail.as_str()
+    )
 }
 
 /// Render a stop outcome as an MCP content block.

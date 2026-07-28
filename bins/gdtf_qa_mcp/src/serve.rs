@@ -1,4 +1,4 @@
-//! The blocking stdio transport loop (GTW-741, GTW-745).
+//! The blocking stdio transport loop (GTW-741, GTW-745, GTW-808).
 //!
 //! MCP over stdio is newline-delimited JSON-RPC 2.0: each message is one line of JSON on
 //! stdin (no embedded newlines), and each response is one line on stdout. [`run_stdio`]
@@ -6,36 +6,55 @@
 //! response line — blocking `std` I/O, no async runtime. It stops on stdin EOF.
 //!
 //! Stdin EOF is the MCP host's normal shutdown (the client closed the pipe). Because the
-//! host may have launched the game as a child, [`run_stdio`] stops that child gracefully
-//! before returning, so the game never outlives the MCP — and the [`GameManager`]'s
-//! `Drop` force-kills any child that somehow survives that (e.g. on an unwind).
+//! host may have launched BOTH children — the game and the content editor — [`run_stdio`]
+//! stops each of them gracefully before returning, so neither outlives the MCP; and each
+//! [`HostManager`]'s `Drop` force-kills any child that somehow survives that (e.g. on an
+//! unwind).
 
 use std::io::{self, BufRead, Write};
 
 use crate::{
-    game::{GameClient, GameLink},
-    lifecycle::{CargoSpawner, GameLifecycle, GameManager},
+    hosts::{HostPair, HostSet, QaHost},
+    lifecycle::{CargoSpawner, HostLifecycle, HostManager},
+    link::QaClient,
     rpc::dispatch,
 };
 
-/// Run the MCP stdio server against the real game link + lifecycle until stdin closes,
-/// then stop any child the host launched.
+/// Run the MCP stdio server against both hosts' real links + lifecycles until stdin
+/// closes, then stop any children the host launched.
 ///
-/// The game connection is opened lazily on the first forwarding `tools/call`, so
-/// `initialize` and `tools/list` answer even before the game is up. The `launch_game` /
-/// `stop_game` tools drive the [`GameManager`], which owns the child process.
+/// Each child's connection is opened lazily on the first forwarding `tools/call` for that
+/// host, so `initialize` and `tools/list` answer before either process is up. The
+/// `launch_game` / `stop_game` and `launch_editor` / `stop_editor` tools drive the two
+/// [`HostManager`]s, which own the child processes — separately, so a game and an editor
+/// can be running at the same time.
 pub fn run_stdio() {
-    let mut game = GameClient::from_env();
-    let mut lifecycle = GameManager::new(Box::new(CargoSpawner::new()));
+    let mut game_link = QaClient::for_host(QaHost::Game);
+    let mut editor_link = QaClient::for_host(QaHost::Editor);
+    let mut game_lifecycle = HostManager::with_config(
+        Box::new(CargoSpawner::new()),
+        QaHost::Game.lifecycle_config(),
+    );
+    let mut editor_lifecycle = HostManager::with_config(
+        Box::new(CargoSpawner::new()),
+        QaHost::Editor.lifecycle_config(),
+    );
     {
+        let mut hosts = HostSet::new(
+            HostPair::new(&mut game_link, &mut game_lifecycle),
+            HostPair::new(&mut editor_link, &mut editor_lifecycle),
+        );
         let stdin = io::stdin();
         let stdout = io::stdout();
         let reader = stdin.lock();
         let mut writer = stdout.lock();
-        run_loop(reader, &mut writer, &mut game, &mut lifecycle);
+        run_loop(reader, &mut writer, &mut hosts);
     }
-    // Stdin closed: stop a child this host launched, gracefully, so it does not outlive us.
-    let _ = lifecycle.stop();
+    // Stdin closed: stop the children this host launched, gracefully, so neither outlives
+    // us. BOTH are stopped — a game left running because only the editor's stop ran is
+    // exactly the orphan this exists to prevent.
+    let _ = game_lifecycle.stop();
+    let _ = editor_lifecycle.stop();
 }
 
 /// The transport core, generic over its byte streams so it is testable without real
@@ -44,12 +63,7 @@ pub fn run_stdio() {
 /// Reads one line at a time; for each, dispatches and — when there is a response — writes
 /// it followed by a newline and flushes (so the peer sees each message immediately).
 /// Returns on EOF, a read error, or a write error.
-pub fn run_loop<R: BufRead, W: Write>(
-    mut reader: R,
-    writer: &mut W,
-    game: &mut dyn GameLink,
-    lifecycle: &mut dyn GameLifecycle,
-) {
+pub fn run_loop<R: BufRead, W: Write>(mut reader: R, writer: &mut W, hosts: &mut HostSet<'_>) {
     let mut line = String::new();
     loop {
         line.clear();
@@ -57,7 +71,7 @@ pub fn run_loop<R: BufRead, W: Write>(
             Ok(0) | Err(_) => return,
             Ok(_) => {}
         }
-        let Some(response) = dispatch(&line, game, lifecycle) else {
+        let Some(response) = dispatch(&line, hosts) else {
             continue;
         };
         if writeln!(writer, "{response}").is_err() || writer.flush().is_err() {
@@ -76,26 +90,27 @@ mod tests {
     use super::run_loop;
     use crate::{
         error::McpError,
-        game::{GameLink, GamePort},
-        lifecycle::{GameLifecycle, LaunchOutcome, LaunchSpec, StopOutcome},
+        hosts::{HostPair, HostSet},
+        lifecycle::{HostLifecycle, LaunchOutcome, LaunchSpec, StopOutcome},
+        link::{QaLink, QaPort},
     };
 
     /// A link that always fails — the loop's `initialize` / `tools/list` handling never
     /// touches it, so the transport can be exercised with no socket.
     struct DeadLink;
 
-    impl GameLink for DeadLink {
+    impl QaLink for DeadLink {
         fn request(&mut self, _request: QaRequest) -> Result<QaResponse, McpError> {
             Err(McpError::Disconnected)
         }
     }
 
-    /// A lifecycle the transport test never invokes (no `launch_game` / `stop_game` in the
+    /// A lifecycle the transport test never invokes (no launch / stop tool in the
     /// fixture) — it only exists so `run_loop` has its argument.
     struct DeadLifecycle;
 
-    impl GameLifecycle for DeadLifecycle {
-        fn launch(&mut self, _port: GamePort, _spec: &LaunchSpec) -> LaunchOutcome {
+    impl HostLifecycle for DeadLifecycle {
+        fn launch(&mut self, _port: QaPort, _spec: &LaunchSpec) -> LaunchOutcome {
             unreachable!("the transport test never launches");
         }
 
@@ -117,12 +132,13 @@ mod tests {
             "\n",
         );
         let mut out: Vec<u8> = Vec::new();
-        run_loop(
-            Cursor::new(input.as_bytes()),
-            &mut out,
-            &mut DeadLink,
-            &mut DeadLifecycle,
+        let (mut game_link, mut editor_link) = (DeadLink, DeadLink);
+        let (mut game_life, mut editor_life) = (DeadLifecycle, DeadLifecycle);
+        let mut hosts = HostSet::new(
+            HostPair::new(&mut game_link, &mut game_life),
+            HostPair::new(&mut editor_link, &mut editor_life),
         );
+        run_loop(Cursor::new(input.as_bytes()), &mut out, &mut hosts);
         let text = String::from_utf8(out).unwrap_or_default();
         let lines: Vec<&str> = text.lines().collect();
         // The notification (no id) produced no line; the two requests produced one each.

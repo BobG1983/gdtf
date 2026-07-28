@@ -2,15 +2,19 @@
 //!
 //! - [`values`] — the newtypes a recipe is written in: [`CargoPackage`], [`FeatureName`] /
 //!   [`FeatureList`], [`WorkingDir`], and [`EnvVar`] / [`EnvOverrides`].
-//! - [`spec`] — the [`LaunchSpec`] aggregate the spawner reads, plus the default game
-//!   recipe.
+//! - [`channel`] — the [`QaChannel`] pair of environment-variable names one host's QA
+//!   control channel is driven by (GTW-808).
+//! - [`spec`] — the [`LaunchSpec`] aggregate the spawner reads, plus the default game and
+//!   editor recipes.
 
+pub mod channel;
 pub mod spec;
 pub mod values;
 
 #[cfg(test)]
 mod test;
 
+pub use channel::QaChannel;
 pub use spec::LaunchSpec;
 pub use values::{
     CargoPackage, EnvOverrides, EnvVar, EnvVarName, EnvVarValue, FeatureList, FeatureName,

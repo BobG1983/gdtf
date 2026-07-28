@@ -3,7 +3,10 @@
 
 use serde_json::{Value, json};
 
-use crate::mcp::tools::name::{ALL, ToolName};
+use crate::mcp::{
+    editor_topic::topic_wire_names,
+    tools::name::{ALL, ToolName},
+};
 
 /// The `launch_game` argument schema — its five optional arguments (GTW-875).
 ///
@@ -37,6 +40,54 @@ fn launch_game_schema() -> Value {
     })
 }
 
+/// The `launch_editor` argument schema — the same five optional arguments `launch_game`
+/// takes, with the editor's own defaults spelled out (GTW-808).
+///
+/// Pulled out of the [`ToolName::input_schema`] `match` for the same reason
+/// [`launch_game_schema`] is.
+fn launch_editor_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "port": { "type": "integer", "minimum": 0, "maximum": 65535,
+                      "description": "Loopback port for the editor's net_qa \
+                       listener; omit for 7617." },
+            "package": { "type": "string",
+                         "description": "Cargo package to build and run; omit \
+                          for gdtf_content_editor_bin." },
+            "features": { "type": ["array", "string"],
+                          "items": { "type": "string" },
+                          "description": "Cargo features to enable, as an array \
+                           or a comma-separated string; omit for \
+                           dynamic_linking,net_qa." },
+            "working_dir": { "type": "string",
+                             "description": "Directory to run the build in — the \
+                              checkout under test. Omit to use the MCP host's \
+                              own; pass a git worktree path to QA that tree." },
+            "env": { "type": "object",
+                     "additionalProperties": { "type": "string" },
+                     "description": "Extra environment variables for the child." }
+        }
+    })
+}
+
+/// The `query_editor` argument schema — its one required `topic`, enumerated from the
+/// protocol's own topic list so the schema can never advertise a topic the parser rejects
+/// (GTW-808).
+fn query_editor_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "topic": { "type": "string",
+                       "enum": topic_wire_names(),
+                       "description": "The editor topic to ask about. Read the \
+                        topics that are live right now from \
+                        get_editor_query_options." }
+        },
+        "required": ["topic"]
+    })
+}
+
 impl ToolName {
     /// The JSON-Schema for this tool's `arguments` object.
     fn input_schema(self) -> Value {
@@ -51,11 +102,17 @@ impl ToolName {
                 },
                 "required": ["intent"]
             }),
-            Self::QueryState | Self::AppFlow | Self::StopGame => json!({
+            Self::QueryState
+            | Self::AppFlow
+            | Self::StopGame
+            | Self::GetEditorQueryOptions
+            | Self::StopEditor => json!({
                 "type": "object",
                 "properties": {}
             }),
             Self::LaunchGame => launch_game_schema(),
+            Self::LaunchEditor => launch_editor_schema(),
+            Self::QueryEditor => query_editor_schema(),
             Self::GetOutput => json!({
                 "type": "object",
                 "properties": {

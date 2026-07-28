@@ -1,10 +1,13 @@
 //! The scalar argument parsers — the event cap, the file stem, the frame delay, the seed,
-//! the situation name, and the focus token.
+//! the situation name, the focus token, and the editor query topic.
 
-use gdtf_qa_protocol::ids::{
-    EventCap, FocusTargetNet, FrameDelay, SeedNet, ShotName, SituationRef,
+use gdtf_qa_protocol::{
+    ids::{EventCap, FocusTargetNet, FrameDelay, SeedNet, ShotName, SituationRef},
+    view::EditorQueryKind,
 };
 use serde_json::Value;
+
+use crate::mcp::editor_topic::{topic_from_wire, topic_wire_names};
 
 /// Parse the optional `get_output` `max` cap.
 pub(super) fn parse_max(args: &Value) -> Result<Option<EventCap>, String> {
@@ -81,4 +84,26 @@ pub(super) fn parse_frame_delay(args: &Value) -> Result<FrameDelay, String> {
         return Err("`frame_delay` is too large".to_owned());
     };
     Ok(FrameDelay::new(narrow))
+}
+
+/// Read the required `topic` argument of a `query_editor` call.
+///
+/// # Errors
+///
+/// A message listing every legal topic when the argument is missing, is not a string, or
+/// names no topic — never a silent fallback to a default topic, which would answer a
+/// question the caller did not ask (GTW-808).
+pub(super) fn parse_topic(args: &Value) -> Result<EditorQueryKind, String> {
+    let Some(name) = args.get("topic").and_then(Value::as_str) else {
+        return Err(format!(
+            "`topic` is required and must be one of: {}",
+            topic_wire_names().join(", ")
+        ));
+    };
+    topic_from_wire(name).ok_or_else(|| {
+        format!(
+            "unknown editor topic `{name}`; expected one of: {}",
+            topic_wire_names().join(", ")
+        )
+    })
 }

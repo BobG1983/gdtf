@@ -1,4 +1,7 @@
-//! [`ToolName`] — the tool set, its listing order, and the wire-name mapping.
+//! [`ToolName`] — the tool set, its listing order, the wire-name mapping, and which host
+//! each tool acts on.
+
+use crate::hosts::QaHost;
 
 /// One MCP tool the bridge exposes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -36,6 +39,18 @@ pub enum ToolName {
     LaunchGame,
     /// Stop the running game child — host-local, no wire request.
     StopGame,
+    /// Ask the running CONTENT EDITOR which query topics it will service right now —
+    /// maps to `QaRequest::GetEditorQueryOptions` (GTW-805's discovery half, reachable
+    /// from a client since GTW-808).
+    GetEditorQueryOptions,
+    /// Ask the running CONTENT EDITOR about ONE topic — maps to
+    /// `QaRequest::QueryEditor` (GTW-805's read half, reachable since GTW-808).
+    QueryEditor,
+    /// Launch the content editor as a child process and wait for it to answer —
+    /// host-local, no wire request (GTW-808).
+    LaunchEditor,
+    /// Stop the running content-editor child — host-local, no wire request (GTW-808).
+    StopEditor,
 }
 
 /// Every tool, in listing order — the one enumeration `tools/list` and any future
@@ -53,6 +68,10 @@ pub(super) const ALL: &[ToolName] = &[
     ToolName::FocusControl,
     ToolName::LaunchGame,
     ToolName::StopGame,
+    ToolName::GetEditorQueryOptions,
+    ToolName::QueryEditor,
+    ToolName::LaunchEditor,
+    ToolName::StopEditor,
 ];
 
 impl ToolName {
@@ -72,7 +91,52 @@ impl ToolName {
             Self::FocusControl => "focus_control",
             Self::LaunchGame => "launch_game",
             Self::StopGame => "stop_game",
+            Self::GetEditorQueryOptions => "get_editor_query_options",
+            Self::QueryEditor => "query_editor",
+            Self::LaunchEditor => "launch_editor",
+            Self::StopEditor => "stop_editor",
         }
+    }
+
+    /// Which child process this tool acts on.
+    ///
+    /// The one place the tool set is partitioned between the two hosts: a forwarding tool
+    /// travels over THAT host's link, and a launch / stop tool drives THAT host's
+    /// lifecycle. A wildcard-free `match`, so a new tool must state its host rather than
+    /// defaulting to the game's link and failing with a mismatched reply (GTW-808).
+    #[must_use]
+    pub const fn host(self) -> QaHost {
+        match self {
+            Self::SendInput
+            | Self::QueryState
+            | Self::GetOutput
+            | Self::TakeScreenshot
+            | Self::ScreenshotAfter
+            | Self::AppFlow
+            | Self::StartBattle
+            | Self::StepperControl
+            | Self::ActivateMenuItem
+            | Self::FocusControl
+            | Self::LaunchGame
+            | Self::StopGame => QaHost::Game,
+            Self::GetEditorQueryOptions
+            | Self::QueryEditor
+            | Self::LaunchEditor
+            | Self::StopEditor => QaHost::Editor,
+        }
+    }
+
+    /// Whether this tool starts or stops a child process instead of forwarding a request
+    /// to a running one.
+    #[must_use]
+    pub const fn is_launch(self) -> bool {
+        matches!(self, Self::LaunchGame | Self::LaunchEditor)
+    }
+
+    /// Whether this tool stops a child process instead of forwarding a request.
+    #[must_use]
+    pub const fn is_stop(self) -> bool {
+        matches!(self, Self::StopGame | Self::StopEditor)
     }
 
     /// Resolve a `tools/call` name to its [`ToolName`], or `None` for an unknown tool.

@@ -1,13 +1,12 @@
-//! [`handle_tool_call`] — resolve the tool, then either drive the game lifecycle (the
-//! two host-local tools) or build the game request, carry it over the link, and render
-//! the reply.
+//! [`handle_tool_call`] — resolve the tool, pick the host it acts on, then either drive
+//! that host's lifecycle (the four launch / stop tools) or build the request, carry it
+//! over that host's link, and render the reply.
 
 use serde_json::{Value, json};
 
 use super::{build::build_request, render::render_response};
 use crate::{
-    game::GameLink,
-    lifecycle::GameLifecycle,
+    hosts::HostSet,
     mcp::{content::tool_error, control, tools::ToolName},
 };
 
@@ -22,19 +21,19 @@ pub enum ToolCallOutcome {
     Invalid(String),
 }
 
-/// Handle a `tools/call` request: resolve the tool, then either drive the game lifecycle
-/// (the two host-local tools) or build the game request, carry it over the link, and
-/// render the reply.
+/// Handle a `tools/call` request: resolve the tool, take the link + lifecycle belonging to
+/// the host it names, then either drive that host's lifecycle (the four launch / stop
+/// tools) or build the request, carry it over that host's link, and render the reply.
+///
+/// The host comes from [`ToolName::host`], so an editor tool never travels over the game's
+/// link and the two children are driven independently — which is what lets a game and an
+/// editor be up at the same time (GTW-808).
 ///
 /// A missing `params`, a missing / unknown tool name, or an un-buildable request is an
 /// [`Invalid`](ToolCallOutcome::Invalid) (JSON-RPC invalid-params). A link or lifecycle
 /// failure is a tool error inside a normal result.
 #[must_use]
-pub fn handle_tool_call(
-    params: Option<&Value>,
-    game: &mut dyn GameLink,
-    lifecycle: &mut dyn GameLifecycle,
-) -> ToolCallOutcome {
+pub fn handle_tool_call(params: Option<&Value>, hosts: &mut HostSet<'_>) -> ToolCallOutcome {
     let Some(params) = params else {
         return ToolCallOutcome::Invalid("`tools/call` needs `params`".to_owned());
     };
@@ -46,18 +45,22 @@ pub fn handle_tool_call(
     };
     let empty = json!({});
     let args = params.get("arguments").unwrap_or(&empty);
-    match tool {
-        // The two host-local tools start / stop the game process rather than forwarding a
-        // request to a running one.
-        ToolName::LaunchGame => control::handle_launch(args, game, lifecycle),
-        ToolName::StopGame => control::handle_stop(lifecycle),
-        // The eight forwarding tools map onto a `QaRequest` carried over the link.
-        _ => match build_request(tool, args) {
-            Ok(request) => match game.request(request) {
-                Ok(response) => ToolCallOutcome::Result(render_response(tool, &response)),
-                Err(err) => ToolCallOutcome::Result(tool_error(&err.to_string())),
-            },
-            Err(message) => ToolCallOutcome::Invalid(message),
+    let host = tool.host();
+    let pair = hosts.pair(host);
+    if tool.is_launch() {
+        // A launch starts that host's process rather than forwarding a request to it.
+        let (link, lifecycle) = pair.parts();
+        return control::handle_launch(host, args, link, lifecycle);
+    }
+    if tool.is_stop() {
+        return control::handle_stop(pair.lifecycle());
+    }
+    // Every other tool maps onto a `QaRequest` carried over its host's link.
+    match build_request(tool, args) {
+        Ok(request) => match pair.link().request(request) {
+            Ok(response) => ToolCallOutcome::Result(render_response(tool, &response)),
+            Err(err) => ToolCallOutcome::Result(tool_error(&err.to_string())),
         },
+        Err(message) => ToolCallOutcome::Invalid(message),
     }
 }

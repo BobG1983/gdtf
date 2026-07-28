@@ -1,12 +1,16 @@
-//! The game-side link — a [`GameClient`] speaking the protocol's framing over a
-//! loopback [`TcpStream`] to the running game's `net_qa` listener (GTW-741).
+//! The child-side link — a [`QaClient`] speaking the protocol's framing over a loopback
+//! [`TcpStream`] to a running `net_qa` listener (GTW-741; made host-neutral in GTW-808).
 //!
 //! The MCP tool layer sends one [`QaRequest`] and blocks for its one [`QaResponse`]
-//! through the [`GameLink`] trait; [`GameClient`] is the real implementation. It reuses
+//! through the [`QaLink`] trait; [`QaClient`] is the real implementation. It reuses
 //! the protocol crate's length-prefixed compact-RON codec ([`encode()`] +
 //! [`FrameDecoder`]) — it never reimplements framing. The connection is opened LAZILY on
 //! the first request, so the MCP server starts (and answers `initialize` / `tools/list`)
-//! even before the game is up.
+//! even before the child is up.
+//!
+//! Nothing here knows which host it is talking to: the game and the editor speak the same
+//! framing and the same envelope, so one client type serves both and the dual-target host
+//! simply holds two of them, one per port ([`QaHost`](crate::hosts::QaHost)).
 
 use core::{ops::Deref, time::Duration};
 use std::{
@@ -19,48 +23,29 @@ use gdtf_qa_protocol::{
     framing::{FrameDecoder, encode},
 };
 
-use crate::error::McpError;
+use crate::{error::McpError, hosts::QaHost};
 
-/// The environment variable that picks the game's loopback listen port — the same knob
-/// the game reads (`net_qa/env.rs`), so both ends agree without configuration.
-const GAME_PORT_ENV: &str = "GDTF_NET_QA_PORT";
-
-/// The default loopback port, mirroring the game's `net_qa/config.rs` `DEFAULT_PORT`.
-///
-/// The two constants are kept in lock-step by hand (the bin cannot import the game's
-/// private const without pulling Bevy); if the game's default ever changes, change this.
-const DEFAULT_GAME_PORT: GamePort = GamePort::new(7616);
-
-/// The read/write deadline set on the client socket, so a frozen game surfaces as an
+/// The read/write deadline set on the client socket, so a frozen child surfaces as an
 /// error instead of hanging the MCP server forever.
 const LINK_TIMEOUT: LinkTimeout = LinkTimeout::new(Duration::from_secs(10));
 
-/// The loopback TCP **port** the game's `net_qa` listener is bound on.
+/// The loopback TCP **port** a `net_qa` listener is bound on.
 ///
 /// Private-inner newtype over `u16` (no-bare-types). The interface is always
-/// [`Ipv4Addr::LOCALHOST`] — only the port varies, via `GDTF_NET_QA_PORT`.
+/// [`Ipv4Addr::LOCALHOST`] — only the port varies, per host
+/// ([`QaHost::port_from_env`](crate::hosts::QaHost::port_from_env)).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct GamePort(u16);
+pub struct QaPort(u16);
 
-impl GamePort {
+impl QaPort {
     /// Build a port from its number.
     #[must_use]
     pub const fn new(port: u16) -> Self {
         Self(port)
     }
-
-    /// The port from `GDTF_NET_QA_PORT`, or `DEFAULT_GAME_PORT` when the variable is
-    /// unset or does not parse as a `u16` — the same rule the game applies.
-    #[must_use]
-    pub fn from_env() -> Self {
-        std::env::var(GAME_PORT_ENV)
-            .ok()
-            .and_then(|value| value.trim().parse::<u16>().ok())
-            .map_or(DEFAULT_GAME_PORT, Self::new)
-    }
 }
 
-impl Deref for GamePort {
+impl Deref for QaPort {
     type Target = u16;
 
     fn deref(&self) -> &Self::Target {
@@ -68,7 +53,7 @@ impl Deref for GamePort {
     }
 }
 
-/// The two-sided socket **timeout** for the game link.
+/// The two-sided socket **timeout** for a host link.
 ///
 /// Private-inner newtype over [`Duration`] (no-bare-types).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -89,13 +74,13 @@ impl Deref for LinkTimeout {
     }
 }
 
-/// A one-request / one-response link to the running game.
+/// A one-request / one-response link to a running child.
 ///
-/// The tool layer depends on this trait, not on [`GameClient`], so the JSON-RPC dispatch
-/// can be exercised against a fake game without a socket, and the real client can be
+/// The tool layer depends on this trait, not on [`QaClient`], so the JSON-RPC dispatch
+/// can be exercised against a fake host without a socket, and the real client can be
 /// swapped for a test double.
-pub trait GameLink {
-    /// Send one request to the game and block for its single response.
+pub trait QaLink {
+    /// Send one request to the child and block for its single response.
     ///
     /// # Errors
     ///
@@ -103,16 +88,16 @@ pub trait GameLink {
     /// the socket breaks before a whole response arrives.
     fn request(&mut self, request: QaRequest) -> Result<QaResponse, McpError>;
 
-    /// Re-point the link at `port` — used after `launch_game` selects the port the game
+    /// Re-point the link at `port` — used after a launch selects the port the child
     /// bound, so the following tool calls reach the child that was just started.
     ///
     /// The default is a no-op for links whose target is fixed (a test double).
-    fn retarget(&mut self, _port: GamePort) {}
+    fn retarget(&mut self, _port: QaPort) {}
 }
 
 /// An open loopback connection plus its incremental frame decoder.
 struct Connection {
-    /// The loopback socket to the game's `net_qa` listener.
+    /// The loopback socket to the child's `net_qa` listener.
     stream:  TcpStream,
     /// Buffers partial reads until a whole response frame is present.
     decoder: FrameDecoder,
@@ -142,35 +127,36 @@ impl Connection {
     }
 }
 
-/// The real [`GameLink`] — a loopback client for the game's `net_qa` channel.
+/// The real [`QaLink`] — a loopback client for one host's `net_qa` channel.
 ///
-/// Connects lazily on the first [`request`](GameLink::request); a broken connection is
+/// Connects lazily on the first [`request`](QaLink::request); a broken connection is
 /// dropped so the next request transparently reconnects.
-pub struct GameClient {
+pub struct QaClient {
     /// The port to connect to.
-    port: GamePort,
+    port: QaPort,
     /// The open connection, or `None` before the first request / after a failure.
     conn: Option<Connection>,
 }
 
-impl GameClient {
+impl QaClient {
     /// Build a client for an explicit port (the connection opens on first use).
     #[must_use]
-    pub const fn new(port: GamePort) -> Self {
+    pub const fn new(port: QaPort) -> Self {
         Self { port, conn: None }
     }
 
-    /// Build a client for the port in `GDTF_NET_QA_PORT` (or the shared default).
+    /// Build a client for the port `host` reads from ITS own port variable (or that
+    /// host's default).
     #[must_use]
-    pub fn from_env() -> Self {
-        Self::new(GamePort::from_env())
+    pub fn for_host(host: QaHost) -> Self {
+        Self::new(host.port_from_env())
     }
 
     /// Open the loopback connection if it is not already open.
     ///
     /// # Errors
     ///
-    /// [`McpError::Connect`] if the game is not listening, or [`McpError::Io`] if the
+    /// [`McpError::Connect`] if the child is not listening, or [`McpError::Io`] if the
     /// socket timeouts cannot be set.
     fn ensure_connected(&mut self) -> Result<(), McpError> {
         if self.conn.is_some() {
@@ -192,8 +178,8 @@ impl GameClient {
     }
 }
 
-impl GameLink for GameClient {
-    fn retarget(&mut self, port: GamePort) {
+impl QaLink for QaClient {
+    fn retarget(&mut self, port: QaPort) {
         // A (re)launch puts a NEW game process behind the port — even when the port
         // NUMBER is unchanged (the default is reused across a stop/launch cycle). So
         // ALWAYS drop any open connection: reusing a socket to the old, now-dead process
@@ -225,10 +211,10 @@ impl GameLink for GameClient {
     }
 }
 
-impl GameClient {
+impl QaClient {
     /// Open the connection if needed, own it for ONE exchange, and put it back on success
     /// (dropping it on any failure so the next call reconnects). A single attempt — the
-    /// retry policy lives in [`request`](GameLink::request).
+    /// retry policy lives in [`request`](QaLink::request).
     ///
     /// # Errors
     ///

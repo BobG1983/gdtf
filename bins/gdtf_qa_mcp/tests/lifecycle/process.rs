@@ -7,8 +7,8 @@
 //! [`support`](crate::support).
 
 use gdtf_qa_mcp::{
-    CargoPackage, EnvOverrides, FeatureList, FeatureName, GameLifecycle, GameManager, GamePort,
-    LaunchFailure, LaunchOutcome, LaunchSpec, StopOutcome, WorkingDir,
+    CargoPackage, EnvOverrides, FeatureList, FeatureName, HostLifecycle, HostManager,
+    LaunchFailure, LaunchOutcome, LaunchSpec, QaChannel, QaPort, StopOutcome, WorkingDir,
 };
 
 use crate::support::{STUB_STDERR_LINE, StubSpawner, fast_config, free_port, spawn_fake_game};
@@ -18,9 +18,9 @@ use crate::support::{STUB_STDERR_LINE, StubSpawner, fast_config, free_port, spaw
 #[test]
 fn launch_becomes_ready_then_stops() {
     let port = spawn_fake_game();
-    let mut manager = GameManager::with_config(Box::new(StubSpawner), fast_config(2000));
+    let mut manager = HostManager::with_config(Box::new(StubSpawner), fast_config(2000));
 
-    let outcome = manager.launch(GamePort::new(port), &LaunchSpec::game_default());
+    let outcome = manager.launch(QaPort::new(port), &LaunchSpec::game_default());
     let LaunchOutcome::Launched {
         port: ready_port,
         pid,
@@ -50,6 +50,7 @@ fn recipe_with_features(features: &[&str]) -> LaunchSpec {
         ),
         None,
         EnvOverrides::default(),
+        QaChannel::game(),
     )
 }
 
@@ -59,14 +60,14 @@ fn recipe_with_features(features: &[&str]) -> LaunchSpec {
 #[test]
 fn second_launch_is_already_running() {
     let port = spawn_fake_game();
-    let mut manager = GameManager::with_config(Box::new(StubSpawner), fast_config(2000));
+    let mut manager = HostManager::with_config(Box::new(StubSpawner), fast_config(2000));
     let spec = recipe_with_features(&["dynamic_linking", "net_qa", "dev_tools"]);
 
-    let LaunchOutcome::Launched { pid: first_pid, .. } = manager.launch(GamePort::new(port), &spec)
+    let LaunchOutcome::Launched { pid: first_pid, .. } = manager.launch(QaPort::new(port), &spec)
     else {
         unreachable!("the first launch becomes ready");
     };
-    let second = manager.launch(GamePort::new(port), &spec);
+    let second = manager.launch(QaPort::new(port), &spec);
     let LaunchOutcome::AlreadyRunning {
         port: existing_port,
         pid,
@@ -100,16 +101,16 @@ fn second_launch_is_already_running() {
 #[test]
 fn a_second_launch_of_a_different_recipe_is_rejected() {
     let port = spawn_fake_game();
-    let mut manager = GameManager::with_config(Box::new(StubSpawner), fast_config(2000));
+    let mut manager = HostManager::with_config(Box::new(StubSpawner), fast_config(2000));
     let running_recipe = recipe_with_features(&["dynamic_linking", "net_qa"]);
 
     let LaunchOutcome::Launched { pid: first_pid, .. } =
-        manager.launch(GamePort::new(port), &running_recipe)
+        manager.launch(QaPort::new(port), &running_recipe)
     else {
         unreachable!("the first launch becomes ready");
     };
     let second = manager.launch(
-        GamePort::new(port),
+        QaPort::new(port),
         &recipe_with_features(&["dynamic_linking", "net_qa", "dev_tools"]),
     );
     let LaunchOutcome::Failed(LaunchFailure::RecipeMismatch(running)) = second else {
@@ -129,7 +130,7 @@ fn a_second_launch_of_a_different_recipe_is_rejected() {
 #[test]
 fn an_unnamed_directory_matches_the_hosts_own_directory() {
     let port = spawn_fake_game();
-    let mut manager = GameManager::with_config(Box::new(StubSpawner), fast_config(2000));
+    let mut manager = HostManager::with_config(Box::new(StubSpawner), fast_config(2000));
     let Ok(here) = std::env::current_dir() else {
         unreachable!("the test process has a current directory");
     };
@@ -138,12 +139,13 @@ fn an_unnamed_directory_matches_the_hosts_own_directory() {
         LaunchSpec::game_default().features().clone(),
         Some(WorkingDir::new(here)),
         EnvOverrides::default(),
+        QaChannel::game(),
     );
 
-    let LaunchOutcome::Launched { .. } = manager.launch(GamePort::new(port), &named) else {
+    let LaunchOutcome::Launched { .. } = manager.launch(QaPort::new(port), &named) else {
         unreachable!("the first launch becomes ready");
     };
-    let second = manager.launch(GamePort::new(port), &LaunchSpec::game_default());
+    let second = manager.launch(QaPort::new(port), &LaunchSpec::game_default());
     assert!(
         matches!(second, LaunchOutcome::AlreadyRunning { .. }),
         "the same checkout under two spellings is one recipe: {second:?}"
@@ -160,19 +162,30 @@ fn an_unnamed_directory_matches_the_hosts_own_directory() {
 /// assertion tests the chain rather than whether the child won a footrace with the boot
 /// timeout (GTW-756). What the timeout still owns is that the tail SURVIVES the kill and
 /// reap and reaches the caller.
+///
+/// The failure also reports the limit the launcher actually waited out — the manager's own
+/// configured boot timeout, not a constant — because the message built from it tells the
+/// caller how long the build had (GTW-808 clause 7). Asserting it from the REAL manager is
+/// what stops that number drifting away from the config it claims to report.
 #[test]
 fn launch_times_out_and_captures_stderr() {
     let port = free_port();
-    let mut manager = GameManager::with_config(Box::new(StubSpawner), fast_config(800));
+    let config = fast_config(800);
+    let mut manager = HostManager::with_config(Box::new(StubSpawner), config);
 
-    let outcome = manager.launch(GamePort::new(port), &LaunchSpec::game_default());
-    let LaunchOutcome::Failed(LaunchFailure::Timeout(tail)) = outcome else {
+    let outcome = manager.launch(QaPort::new(port), &LaunchSpec::game_default());
+    let LaunchOutcome::Failed(LaunchFailure::Timeout { tail, waited }) = outcome else {
         unreachable!("no listener means the launch times out: {outcome:?}");
     };
     assert!(
         tail.contains(STUB_STDERR_LINE),
         "the failure carries the child's stderr tail: {}",
         tail.as_str()
+    );
+    assert_eq!(
+        waited,
+        config.boot_timeout(),
+        "the failure reports the boot timeout the manager was configured with"
     );
     // The orphaned child was already killed and reaped, so there is nothing left to stop.
     assert_eq!(manager.stop(), StopOutcome::NotRunning);
@@ -181,6 +194,6 @@ fn launch_times_out_and_captures_stderr() {
 /// Stopping with nothing running is a typed no-op, never a hang or a signal to a dead pid.
 #[test]
 fn stop_with_nothing_running_is_not_running() {
-    let mut manager = GameManager::with_config(Box::new(StubSpawner), fast_config(2000));
+    let mut manager = HostManager::with_config(Box::new(StubSpawner), fast_config(2000));
     assert_eq!(manager.stop(), StopOutcome::NotRunning);
 }

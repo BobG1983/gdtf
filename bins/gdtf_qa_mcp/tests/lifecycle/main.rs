@@ -1,7 +1,7 @@
 //! Game-lifecycle integration — the REAL launch / stop logic (GTW-745), and WHEN a failed
 //! launch reads the child's stderr tail (GTW-756).
 //!
-//! The [`GameManager`](gdtf_qa_mcp::GameManager), its readiness poll, timeout handling,
+//! The [`HostManager`](gdtf_qa_mcp::HostManager), its readiness poll, timeout handling,
 //! and SIGTERM→SIGKILL→reap stop sequence are the actual production code throughout; only
 //! the externals are supplied by the test, from the shared harness in [`support`]. Three
 //! concerns, one file each:

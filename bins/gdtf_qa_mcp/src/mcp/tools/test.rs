@@ -1,9 +1,11 @@
 //! Registry pins: the advertised tool set and the wire-name round-trip.
 
+use gdtf_qa_protocol::view::EditorQueryKind;
+
 use crate::mcp::tools::{ToolName, name::ALL, tools_list_result};
 
-/// `tools/list` advertises exactly the twelve implemented tools — the ten forwarding
-/// tools plus the two lifecycle tools.
+/// `tools/list` advertises exactly the sixteen implemented tools — the twelve forwarding
+/// tools plus the four lifecycle tools.
 ///
 /// `start_battle` is asserted PRESENT: the game has serviced `QaRequest::StartBattle`
 /// since T9 (GTW-742), but no client tool sent it, so an agent could never reach a
@@ -13,14 +15,17 @@ use crate::mcp::tools::{ToolName, name::ALL, tools_list_result};
 /// `activate_menu_item` for the SAME reason (GTW-787). `focus_control` is asserted
 /// PRESENT for the SAME reason (GTW-802): the game services `QaRequest::FocusControl`,
 /// so a missing client tool would leave every off-battle screen un-drivable — the exact
-/// gap that ticket was filed for.
+/// gap that ticket was filed for. The four EDITOR tools are asserted PRESENT for the SAME
+/// reason (GTW-808): the editor has answered `GetEditorQueryOptions` / `QueryEditor` since
+/// GTW-805 and no client tool sent either, so a running editor was unreachable from any
+/// agent — the gap the whole GTW-786 epic exists to close.
 #[test]
 fn lists_every_tool_including_focus_control() {
     let result = tools_list_result();
     let Some(tools) = result["tools"].as_array() else {
         unreachable!("tools/list result carries a `tools` array");
     };
-    assert_eq!(tools.len(), 12);
+    assert_eq!(tools.len(), 16);
     let names: Vec<&str> = tools
         .iter()
         .filter_map(|tool| tool["name"].as_str())
@@ -38,6 +43,10 @@ fn lists_every_tool_including_focus_control() {
         "stepper_control",
         "activate_menu_item",
         "focus_control",
+        "get_editor_query_options",
+        "query_editor",
+        "launch_editor",
+        "stop_editor",
     ] {
         assert!(
             names.contains(&expected),
@@ -93,4 +102,86 @@ fn wire_names_round_trip() {
         assert_eq!(ToolName::from_wire(tool.wire_name()), Some(tool));
     }
     assert_eq!(ToolName::from_wire("nope"), None);
+}
+
+/// `launch_editor` ADVERTISES the same five recipe arguments `launch_game` does, and
+/// `query_editor` advertises its topic list as a schema `enum` — a client only sends what
+/// `tools/list` advertises, so an unadvertised topic vocabulary is an unusable tool
+/// (GTW-808).
+#[test]
+fn the_editor_tools_advertise_their_arguments() {
+    let result = tools_list_result();
+    let Some(tools) = result["tools"].as_array() else {
+        unreachable!("tools/list result carries a `tools` array");
+    };
+    let Some(launch) = tools
+        .iter()
+        .find(|tool| tool["name"].as_str() == Some("launch_editor"))
+    else {
+        unreachable!("tools/list advertises launch_editor");
+    };
+    for argument in ["port", "package", "features", "working_dir", "env"] {
+        assert!(
+            launch["inputSchema"]["properties"][argument].is_object(),
+            "launch_editor advertises `{argument}`: {}",
+            launch["inputSchema"]
+        );
+    }
+    let Some(description) = launch["description"].as_str() else {
+        unreachable!("launch_editor carries a description");
+    };
+    assert!(description.contains("7617"), "{description}");
+    assert!(
+        description.contains("gdtf_content_editor_bin"),
+        "{description}"
+    );
+
+    let Some(query) = tools
+        .iter()
+        .find(|tool| tool["name"].as_str() == Some("query_editor"))
+    else {
+        unreachable!("tools/list advertises query_editor");
+    };
+    let Some(topics) = query["inputSchema"]["properties"]["topic"]["enum"].as_array() else {
+        unreachable!(
+            "query_editor advertises its topic enum: {}",
+            query["inputSchema"]
+        );
+    };
+    let names: Vec<&str> = topics.iter().filter_map(|value| value.as_str()).collect();
+    assert_eq!(names.len(), EditorQueryKind::ALL.len());
+    for expected in ["Readiness", "Mode", "Session", "Draft", "Validation"] {
+        assert!(names.contains(&expected), "query_editor offers {expected}");
+    }
+    assert_eq!(
+        query["inputSchema"]["required"],
+        serde_json::json!(["topic"])
+    );
+}
+
+/// Every tool names a host, and the four editor tools name the EDITOR — a tool that
+/// resolved to the game's link would carry an editor request to a process that answers it
+/// `BadRequest` (GTW-808).
+#[test]
+fn every_tool_names_its_host() {
+    use crate::hosts::QaHost;
+
+    for tool in ALL.iter().copied() {
+        let expected = if matches!(
+            tool,
+            ToolName::GetEditorQueryOptions
+                | ToolName::QueryEditor
+                | ToolName::LaunchEditor
+                | ToolName::StopEditor
+        ) {
+            QaHost::Editor
+        } else {
+            QaHost::Game
+        };
+        assert_eq!(tool.host(), expected, "{} names its host", tool.wire_name());
+    }
+    assert!(ToolName::LaunchEditor.is_launch());
+    assert!(ToolName::StopEditor.is_stop());
+    assert!(!ToolName::QueryEditor.is_launch());
+    assert!(!ToolName::QueryEditor.is_stop());
 }

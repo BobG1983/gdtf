@@ -1,8 +1,8 @@
-//! Loopback integration — the real [`GameClient`] against a bevy-free fake game server
+//! Loopback integration — the real [`QaClient`] against a bevy-free fake game server
 //! (GTW-741).
 //!
 //! A small test-only TCP listener speaks the protocol crate's REAL framing (reusing
-//! [`encode`] + [`FrameDecoder`], never reimplementing it). The real [`GameClient`],
+//! [`encode`] + [`FrameDecoder`], never reimplementing it). The real [`QaClient`],
 //! driven through the real [`dispatch`], connects to it and round-trips one
 //! request/response pair — proving the client + framing path end-to-end with NO Bevy in
 //! the test.
@@ -14,7 +14,8 @@ use std::{
 };
 
 use gdtf_qa_mcp::{
-    GameClient, GameLifecycle, GamePort, LaunchOutcome, LaunchSpec, StopOutcome, dispatch,
+    HostLifecycle, HostPair, HostSet, LaunchOutcome, LaunchSpec, McpError, QaClient, QaLink,
+    QaPort, StopOutcome, dispatch,
 };
 use gdtf_qa_protocol::{
     envelope::{QaError, QaRequest, QaResponse},
@@ -27,13 +28,23 @@ use serde_json::Value;
 /// argument.
 struct NoLifecycle;
 
-impl GameLifecycle for NoLifecycle {
-    fn launch(&mut self, _port: GamePort, _spec: &LaunchSpec) -> LaunchOutcome {
+impl HostLifecycle for NoLifecycle {
+    fn launch(&mut self, _port: QaPort, _spec: &LaunchSpec) -> LaunchOutcome {
         unreachable!("the loopback test never launches");
     }
 
     fn stop(&mut self) -> StopOutcome {
         StopOutcome::NotRunning
+    }
+}
+
+/// An editor link the loopback test never reaches — the game tool it calls resolves to the
+/// game's pair, so this one only fills the set's other half.
+struct DeadLink;
+
+impl QaLink for DeadLink {
+    fn request(&mut self, _request: QaRequest) -> Result<QaResponse, McpError> {
+        Err(McpError::Disconnected)
     }
 }
 
@@ -94,9 +105,15 @@ fn serve_one(listener: &TcpListener) {
 #[test]
 fn app_flow_round_trips_through_the_real_client() {
     let port = spawn_fake_game();
-    let mut client = GameClient::new(GamePort::new(port));
+    let mut client = QaClient::new(QaPort::new(port));
+    let mut unused_editor = DeadLink;
+    let (mut game_life, mut editor_life) = (NoLifecycle, NoLifecycle);
+    let mut hosts = HostSet::new(
+        HostPair::new(&mut client, &mut game_life),
+        HostPair::new(&mut unused_editor, &mut editor_life),
+    );
     let line = r#"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"app_flow","arguments":{}}}"#;
-    let Some(response) = dispatch(line, &mut client, &mut NoLifecycle) else {
+    let Some(response) = dispatch(line, &mut hosts) else {
         unreachable!("tools/call yields a response");
     };
     let parsed: Value = serde_json::from_str(&response).unwrap_or(Value::Null);

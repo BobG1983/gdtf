@@ -17,8 +17,8 @@ use std::{fs, path::PathBuf, process, time::SystemTime};
 
 use gdtf_qa_mcp::{
     CargoPackage, CargoSpawner, EnvOverrides, EnvVar, EnvVarName, EnvVarValue, FeatureList,
-    FeatureName, GameLifecycle, GameManager, GamePort, LaunchFailure, LaunchOutcome, LaunchSpec,
-    WorkingDir,
+    FeatureName, HostLifecycle, HostManager, LaunchFailure, LaunchOutcome, LaunchSpec, QaChannel,
+    QaPort, WorkingDir,
 };
 
 use crate::support::{fast_config, free_port};
@@ -64,8 +64,8 @@ fn probe_package_outside_a_workspace(tag: &str) -> PathBuf {
 /// Launch `spec` through the REAL [`CargoSpawner`] and return the stderr of the child's
 /// early exit.
 fn stderr_of_a_failed_launch(spec: &LaunchSpec) -> String {
-    let mut manager = GameManager::with_config(Box::new(CargoSpawner::new()), fast_config(30_000));
-    let outcome = manager.launch(GamePort::new(free_port()), spec);
+    let mut manager = HostManager::with_config(Box::new(CargoSpawner::new()), fast_config(30_000));
+    let outcome = manager.launch(QaPort::new(free_port()), spec);
     let LaunchOutcome::Failed(LaunchFailure::ExitedEarly(tail)) = outcome else {
         unreachable!("cargo rejects the recipe and exits at once: {outcome:?}");
     };
@@ -82,6 +82,7 @@ fn the_recipe_features_reach_the_real_cargo_command() {
         FeatureList::new(vec![FeatureName::new("gtw875_no_such_feature".to_owned())]),
         Some(WorkingDir::new(dir.clone())),
         EnvOverrides::default(),
+        QaChannel::game(),
     );
 
     let tail = stderr_of_a_failed_launch(&spec);
@@ -106,6 +107,7 @@ fn the_recipe_environment_reaches_the_real_child() {
             EnvVarName::new("CARGO_BUILD_TARGET".to_owned()),
             EnvVarValue::new("gtw875-not-a-real-target".to_owned()),
         )]),
+        QaChannel::game(),
     );
 
     let tail = stderr_of_a_failed_launch(&spec);
@@ -127,10 +129,11 @@ fn the_recipe_working_directory_is_where_cargo_runs() {
         FeatureList::default(),
         Some(WorkingDir::new(dir.clone())),
         EnvOverrides::default(),
+        QaChannel::game(),
     );
-    let mut manager = GameManager::with_config(Box::new(CargoSpawner::new()), fast_config(30_000));
+    let mut manager = HostManager::with_config(Box::new(CargoSpawner::new()), fast_config(30_000));
 
-    let outcome = manager.launch(GamePort::new(free_port()), &spec);
+    let outcome = manager.launch(QaPort::new(free_port()), &spec);
     let LaunchOutcome::Failed(LaunchFailure::ExitedEarly(tail)) = outcome else {
         unreachable!("cargo exits at once with no manifest to build: {outcome:?}");
     };
@@ -151,7 +154,7 @@ fn the_recipe_working_directory_is_where_cargo_runs() {
 fn successive_launches_can_name_different_recipes() {
     let first_dir = temp_dir_outside_a_workspace("first");
     let second_dir = temp_dir_outside_a_workspace("second");
-    let mut manager = GameManager::with_config(Box::new(CargoSpawner::new()), fast_config(30_000));
+    let mut manager = HostManager::with_config(Box::new(CargoSpawner::new()), fast_config(30_000));
 
     for dir in [&first_dir, &second_dir] {
         let spec = LaunchSpec::new(
@@ -159,8 +162,9 @@ fn successive_launches_can_name_different_recipes() {
             FeatureList::default(),
             Some(WorkingDir::new(dir.clone())),
             EnvOverrides::default(),
+            QaChannel::game(),
         );
-        let outcome = manager.launch(GamePort::new(free_port()), &spec);
+        let outcome = manager.launch(QaPort::new(free_port()), &spec);
         let LaunchOutcome::Failed(LaunchFailure::ExitedEarly(tail)) = outcome else {
             unreachable!("cargo exits at once with no manifest to build: {outcome:?}");
         };
