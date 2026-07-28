@@ -29,13 +29,34 @@ it in.
 The MCP host launches the game as a child process when the harness calls the
 `launch_game` tool. The launch is owned by the `CargoSpawner` in
 `bins/gdtf_qa_mcp/src/lifecycle/spawn.rs` (behind the `GameSpawner` trait, so
-tests can substitute a stub). It runs:
+tests can substitute a stub). WHAT it launches is the call's own recipe — a
+`LaunchSpec` (`bins/gdtf_qa_mcp/src/lifecycle/launch/`) of four typed values:
+package, features, working directory, environment overrides (GTW-875). Each one
+the call omits falls back to the default game recipe, so a bare `launch_game`
+still runs:
 
 ```bash
 cargo run -p grimdark_turfwar --features dynamic_linking,net_qa
 ```
 
-with two environment variables set on the child:
+in the MCP host's own directory. A call that names them runs what it names —
+this launches a `dev_tools` build of a git worktree, with a dev gate set:
+
+```json
+{"package": "grimdark_turfwar",
+ "features": ["dynamic_linking", "net_qa", "dev_tools"],
+ "working_dir": "/Users/you/dev/gdtf-some-worktree",
+ "env": {"GDTF_BATTLE_SEED": "42"}}
+```
+
+`working_dir` is the one that decides WHICH CHECKOUT is under test: without it
+the build comes from whatever directory the host itself runs in, which is how a
+QA pass gets reported against code that is not the code under review. A
+`working_dir` that is not an existing directory is rejected, never silently
+dropped.
+
+Whatever the recipe, two environment variables are set on the child LAST, so a
+recipe's own `env` can never displace them:
 
 - `GDTF_NET_QA=1` — opts the build into the QA control channel (the runtime gate,
   below).
@@ -47,8 +68,17 @@ The variable names are the `NET_QA_ENV` / `NET_QA_PORT_ENV` constants in
 JSON-RPC channel and must stay clean); its stderr is captured by `ProcessChild`
 for the failure tail. The process is managed by the `GameManager`
 (`bins/gdtf_qa_mcp/src/lifecycle/manager.rs`): `launch_game` starts it and waits
-for it to answer before returning its port and pid, and `stop_game` (plus stdin
-EOF) stops it so the game never outlives the host.
+for it to answer before returning its port and pid — plus the package, features,
+and resolved directory it was built from — and `stop_game` (plus stdin EOF) stops
+it so the game never outlives the host.
+
+One game runs at a time, and the manager remembers the recipe that built it:
+
+- The same recipe again is ensure-style `already_running`, reporting the running
+  child's package, features, and directory (not the ones this call asked for).
+- A DIFFERENT recipe is REJECTED, naming what is actually running. Call
+  `stop_game` first. Answering "already running" to a request for another
+  checkout would hand back a success for a build that was never started.
 
 You do not have to go through the MCP host — the same recipe run by hand from a
 shell brings the channel up identically, and a client can connect to the port
@@ -187,7 +217,7 @@ touch the wire.
 | `stepper_control` | forward | `QaRequest::StepperControl` | `command` (`"Next"` / `"Skip"` / `{"Auto": {"running": true}}`) |
 | `activate_menu_item` | forward | `QaRequest::ActivateMenuItem` | `token` (from `app_flow`'s `menu.items[].token`) |
 | `focus_control` | forward | `QaRequest::FocusControl` | `command` (`{"ActivateTarget": <token>}` / `"Activate"` / `{"Step": "Next"}` / `{"Focus": <token>}`) |
-| `launch_game` | host-local | — (starts the child via `GameManager`) | `port` (optional) |
+| `launch_game` | host-local | — (starts the child via `GameManager`) | all optional: `port`, `package`, `features` (array or comma-separated string), `working_dir`, `env` |
 | `stop_game` | host-local | — (stops the child via `GameManager`) | none |
 
 Notes an agent relies on:

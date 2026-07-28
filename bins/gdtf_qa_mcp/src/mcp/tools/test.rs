@@ -46,6 +46,45 @@ fn lists_every_tool_including_focus_control() {
     }
 }
 
+/// `launch_game` ADVERTISES its four recipe arguments, and its description names
+/// `dev_tools` and `working_dir`.
+///
+/// The same class of gap the four tickets above were filed for, one level down: the host
+/// can parse `package` / `features` / `working_dir` / `env` perfectly and no client will
+/// ever send one, because a client only sends what `tools/list` advertises. That is the
+/// state the resident host was in when GTW-864 gave up on the MCP harness and hand-wrote a
+/// wire client — the server side worked, the advertised argument surface did not carry it
+/// (GTW-875).
+#[test]
+fn launch_game_advertises_every_recipe_argument() {
+    let result = tools_list_result();
+    let Some(tools) = result["tools"].as_array() else {
+        unreachable!("tools/list result carries a `tools` array");
+    };
+    let Some(launch) = tools
+        .iter()
+        .find(|tool| tool["name"].as_str() == Some("launch_game"))
+    else {
+        unreachable!("tools/list advertises launch_game");
+    };
+    let properties = &launch["inputSchema"]["properties"];
+    for argument in ["port", "package", "features", "working_dir", "env"] {
+        assert!(
+            properties[argument].is_object(),
+            "launch_game advertises `{argument}`: {}",
+            launch["inputSchema"]
+        );
+    }
+    assert_eq!(properties["package"]["type"], "string");
+    assert_eq!(properties["working_dir"]["type"], "string");
+    assert_eq!(properties["env"]["type"], "object");
+    let Some(description) = launch["description"].as_str() else {
+        unreachable!("launch_game carries a description");
+    };
+    assert!(description.contains("dev_tools"), "{description}");
+    assert!(description.contains("working_dir"), "{description}");
+}
+
 /// Every wire name round-trips through `from_wire`, and an unknown name resolves to
 /// `None`. Walking `ALL` (rather than a hand-listed table) keeps a newly added tool in.
 #[test]

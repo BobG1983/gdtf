@@ -13,7 +13,9 @@ use std::{
     thread,
 };
 
-use gdtf_qa_mcp::{GameClient, GameLifecycle, GamePort, LaunchOutcome, StopOutcome, dispatch};
+use gdtf_qa_mcp::{
+    GameClient, GameLifecycle, GamePort, LaunchOutcome, LaunchSpec, StopOutcome, dispatch,
+};
 use gdtf_qa_protocol::{
     envelope::{QaError, QaRequest, QaResponse},
     framing::{FrameDecoder, encode},
@@ -26,7 +28,7 @@ use serde_json::Value;
 struct NoLifecycle;
 
 impl GameLifecycle for NoLifecycle {
-    fn launch(&mut self, _port: GamePort) -> LaunchOutcome {
+    fn launch(&mut self, _port: GamePort, _spec: &LaunchSpec) -> LaunchOutcome {
         unreachable!("the loopback test never launches");
     }
 

@@ -77,7 +77,7 @@ mod tests {
     use crate::{
         error::McpError,
         game::{GameLink, GamePort},
-        lifecycle::{GameLifecycle, LaunchOutcome, StopOutcome},
+        lifecycle::{GameLifecycle, LaunchOutcome, LaunchSpec, StopOutcome},
     };
 
     /// A link that always fails — the loop's `initialize` / `tools/list` handling never
@@ -95,7 +95,7 @@ mod tests {
     struct DeadLifecycle;
 
     impl GameLifecycle for DeadLifecycle {
-        fn launch(&mut self, _port: GamePort) -> LaunchOutcome {
+        fn launch(&mut self, _port: GamePort, _spec: &LaunchSpec) -> LaunchOutcome {
             unreachable!("the transport test never launches");
         }
 

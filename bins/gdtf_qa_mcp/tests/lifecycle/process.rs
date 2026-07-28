@@ -7,7 +7,8 @@
 //! [`support`](crate::support).
 
 use gdtf_qa_mcp::{
-    GameLifecycle, GameManager, GamePort, LaunchFailure, LaunchOutcome, StopOutcome,
+    CargoPackage, EnvOverrides, FeatureList, FeatureName, GameLifecycle, GameManager, GamePort,
+    LaunchFailure, LaunchOutcome, LaunchSpec, StopOutcome, WorkingDir,
 };
 
 use crate::support::{STUB_STDERR_LINE, StubSpawner, fast_config, free_port, spawn_fake_game};
@@ -19,7 +20,7 @@ fn launch_becomes_ready_then_stops() {
     let port = spawn_fake_game();
     let mut manager = GameManager::with_config(Box::new(StubSpawner), fast_config(2000));
 
-    let outcome = manager.launch(GamePort::new(port));
+    let outcome = manager.launch(GamePort::new(port), &LaunchSpec::game_default());
     let LaunchOutcome::Launched {
         port: ready_port,
         pid,
@@ -37,26 +38,116 @@ fn launch_becomes_ready_then_stops() {
     assert_eq!(manager.stop(), StopOutcome::NotRunning);
 }
 
-/// A second launch while a child is already running is ensure-style — the same child, no
-/// second spawn.
+/// A recipe naming `features`, so a test can tell one recipe from another.
+fn recipe_with_features(features: &[&str]) -> LaunchSpec {
+    LaunchSpec::new(
+        CargoPackage::new("grimdark_turfwar".to_owned()),
+        FeatureList::new(
+            features
+                .iter()
+                .map(|name| FeatureName::new((*name).to_owned()))
+                .collect(),
+        ),
+        None,
+        EnvOverrides::default(),
+    )
+}
+
+/// A second launch of the SAME recipe while a child is already running is ensure-style —
+/// the same child, no second spawn — and the answer names the RUNNING child's recipe, not
+/// a default: an agent has to be able to read which build it is about to drive.
 #[test]
 fn second_launch_is_already_running() {
     let port = spawn_fake_game();
     let mut manager = GameManager::with_config(Box::new(StubSpawner), fast_config(2000));
+    let spec = recipe_with_features(&["dynamic_linking", "net_qa", "dev_tools"]);
 
-    let LaunchOutcome::Launched { pid: first_pid, .. } = manager.launch(GamePort::new(port)) else {
+    let LaunchOutcome::Launched { pid: first_pid, .. } = manager.launch(GamePort::new(port), &spec)
+    else {
         unreachable!("the first launch becomes ready");
     };
-    let second = manager.launch(GamePort::new(port));
+    let second = manager.launch(GamePort::new(port), &spec);
     let LaunchOutcome::AlreadyRunning {
         port: existing_port,
         pid,
+        recipe,
     } = second
     else {
         unreachable!("a second launch is already-running, not a second spawn: {second:?}");
     };
     assert_eq!(*existing_port, port);
     assert_eq!(pid, first_pid, "already-running reports the same child");
+    assert_eq!(
+        recipe.features().render(),
+        Some("dynamic_linking,net_qa,dev_tools".to_owned()),
+        "already-running names the recipe the running child was launched from"
+    );
+    assert_ne!(
+        *recipe,
+        LaunchSpec::game_default(),
+        "the reported recipe is the running child's, not the default"
+    );
+
+    let _ = manager.stop();
+}
+
+/// A second launch naming a DIFFERENT recipe is rejected, naming the recipe that is
+/// actually running — never a success-shaped answer for a build that was never started.
+///
+/// This is the trap GTW-875 was filed for, one step removed: answering "already running"
+/// to a request for another checkout is how QA reports a pass against code that is not the
+/// code under review.
+#[test]
+fn a_second_launch_of_a_different_recipe_is_rejected() {
+    let port = spawn_fake_game();
+    let mut manager = GameManager::with_config(Box::new(StubSpawner), fast_config(2000));
+    let running_recipe = recipe_with_features(&["dynamic_linking", "net_qa"]);
+
+    let LaunchOutcome::Launched { pid: first_pid, .. } =
+        manager.launch(GamePort::new(port), &running_recipe)
+    else {
+        unreachable!("the first launch becomes ready");
+    };
+    let second = manager.launch(
+        GamePort::new(port),
+        &recipe_with_features(&["dynamic_linking", "net_qa", "dev_tools"]),
+    );
+    let LaunchOutcome::Failed(LaunchFailure::RecipeMismatch(running)) = second else {
+        unreachable!("a different recipe is rejected, not reported as already running: {second:?}");
+    };
+    assert_eq!(*running, running_recipe, "the rejection names what is up");
+
+    // The running child was left alone — the rejection stops nothing.
+    let StopOutcome::Stopped { pid } = manager.stop() else {
+        unreachable!("the first child is still running after the rejection");
+    };
+    assert_eq!(pid, first_pid);
+}
+
+/// A launch that names no directory matches a running child that named the host's own
+/// directory: they are the same checkout, so this is ensure-style, not a mismatch.
+#[test]
+fn an_unnamed_directory_matches_the_hosts_own_directory() {
+    let port = spawn_fake_game();
+    let mut manager = GameManager::with_config(Box::new(StubSpawner), fast_config(2000));
+    let Ok(here) = std::env::current_dir() else {
+        unreachable!("the test process has a current directory");
+    };
+    let named = LaunchSpec::new(
+        CargoPackage::new("grimdark_turfwar".to_owned()),
+        LaunchSpec::game_default().features().clone(),
+        Some(WorkingDir::new(here)),
+        EnvOverrides::default(),
+    );
+
+    let LaunchOutcome::Launched { .. } = manager.launch(GamePort::new(port), &named) else {
+        unreachable!("the first launch becomes ready");
+    };
+    let second = manager.launch(GamePort::new(port), &LaunchSpec::game_default());
+    assert!(
+        matches!(second, LaunchOutcome::AlreadyRunning { .. }),
+        "the same checkout under two spellings is one recipe: {second:?}"
+    );
 
     let _ = manager.stop();
 }
@@ -74,7 +165,7 @@ fn launch_times_out_and_captures_stderr() {
     let port = free_port();
     let mut manager = GameManager::with_config(Box::new(StubSpawner), fast_config(800));
 
-    let outcome = manager.launch(GamePort::new(port));
+    let outcome = manager.launch(GamePort::new(port), &LaunchSpec::game_default());
     let LaunchOutcome::Failed(LaunchFailure::Timeout(tail)) = outcome else {
         unreachable!("no listener means the launch times out: {outcome:?}");
     };

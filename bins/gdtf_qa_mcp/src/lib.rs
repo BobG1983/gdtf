@@ -39,9 +39,10 @@ pub mod serve;
 pub use error::McpError;
 pub use game::{GameClient, GameLink, GamePort};
 pub use lifecycle::{
-    BootTimeout, CargoSpawner, ChildPid, GameChild, GameLifecycle, GameManager, GameSpawner,
-    KillGrace, LaunchFailure, LaunchOutcome, LifecycleConfig, PollInterval, ProbeTimeout,
-    ProcessChild, StderrTail, StopOutcome,
+    BootTimeout, CargoPackage, CargoSpawner, ChildPid, EnvOverrides, EnvVar, EnvVarName,
+    EnvVarValue, FeatureList, FeatureName, GameChild, GameLifecycle, GameManager, GameSpawner,
+    KillGrace, LaunchFailure, LaunchOutcome, LaunchSpec, LifecycleConfig, PollInterval,
+    ProbeTimeout, ProcessChild, StderrTail, StopOutcome, WorkingDir, build_command,
 };
 pub use rpc::dispatch;
 pub use serve::run_stdio;

@@ -5,6 +5,38 @@ use serde_json::{Value, json};
 
 use crate::mcp::tools::name::{ALL, ToolName};
 
+/// The `launch_game` argument schema — its five optional arguments (GTW-875).
+///
+/// Pulled out of the [`ToolName::input_schema`] `match` so no single arm pushes that
+/// function past the clippy `too_many_lines` ceiling.
+fn launch_game_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "port": { "type": "integer", "minimum": 0, "maximum": 65535,
+                      "description": "Loopback port for the game's net_qa \
+                       listener; omit for the default." },
+            "package": { "type": "string",
+                         "description": "Cargo package to build and run; omit \
+                          for grimdark_turfwar." },
+            "features": { "type": ["array", "string"],
+                          "items": { "type": "string" },
+                          "description": "Cargo features to enable, as an array \
+                           or a comma-separated string; omit for \
+                           dynamic_linking,net_qa. Add dev_tools to QA a dev \
+                           build." },
+            "working_dir": { "type": "string",
+                             "description": "Directory to run the build in — the \
+                              checkout under test. Omit to use the MCP host's \
+                              own; pass a git worktree path to QA that tree." },
+            "env": { "type": "object",
+                     "additionalProperties": { "type": "string" },
+                     "description": "Extra environment variables for the child, \
+                      e.g. {\"GDTF_BATTLE_SEED\": \"42\"}." }
+        }
+    })
+}
+
 impl ToolName {
     /// The JSON-Schema for this tool's `arguments` object.
     fn input_schema(self) -> Value {
@@ -23,14 +55,7 @@ impl ToolName {
                 "type": "object",
                 "properties": {}
             }),
-            Self::LaunchGame => json!({
-                "type": "object",
-                "properties": {
-                    "port": { "type": "integer", "minimum": 0, "maximum": 65535,
-                              "description": "Loopback port for the game's net_qa \
-                               listener; omit for the default." }
-                }
-            }),
+            Self::LaunchGame => launch_game_schema(),
             Self::GetOutput => json!({
                 "type": "object",
                 "properties": {

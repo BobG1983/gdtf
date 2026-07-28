@@ -21,7 +21,7 @@ use std::{
 
 use gdtf_qa_mcp::{
     ChildPid, GameChild, GameLifecycle, GameManager, GamePort, GameSpawner, KillGrace,
-    LaunchFailure, LaunchOutcome, StderrTail, StopOutcome, lifecycle::ChildStatus,
+    LaunchFailure, LaunchOutcome, LaunchSpec, StderrTail, StopOutcome, lifecycle::ChildStatus,
 };
 
 use crate::support::{fast_config, free_port};
@@ -143,7 +143,7 @@ struct ReapGatedSpawner {
 }
 
 impl GameSpawner for ReapGatedSpawner {
-    fn spawn(&self, _port: GamePort) -> io::Result<Box<dyn GameChild>> {
+    fn spawn(&self, _port: GamePort, _spec: &LaunchSpec) -> io::Result<Box<dyn GameChild>> {
         Ok(Box::new(ReapGatedChild {
             tail:   StderrTail::new(GATED_LINE.to_owned()),
             status: self.status,
@@ -178,7 +178,7 @@ fn recorded(calls: &CallLog) -> Vec<ChildCall> {
 fn timeout_reads_the_stderr_tail_after_reaping_the_orphan() {
     let (mut manager, calls) = manager_over_gated_child(ChildStatus::Running, NO_WAIT_BOOT_MS);
 
-    let outcome = manager.launch(GamePort::new(free_port()));
+    let outcome = manager.launch(GamePort::new(free_port()), &LaunchSpec::game_default());
     let LaunchOutcome::Failed(LaunchFailure::Timeout(tail)) = outcome else {
         unreachable!("no readiness endpoint means the launch times out: {outcome:?}");
     };
@@ -208,7 +208,7 @@ fn timeout_reads_the_stderr_tail_after_reaping_the_orphan() {
 fn early_exit_reads_the_stderr_tail_after_reaping_the_child() {
     let (mut manager, calls) = manager_over_gated_child(ChildStatus::Exited, UNREACHED_BOOT_MS);
 
-    let outcome = manager.launch(GamePort::new(free_port()));
+    let outcome = manager.launch(GamePort::new(free_port()), &LaunchSpec::game_default());
     let LaunchOutcome::Failed(LaunchFailure::ExitedEarly(tail)) = outcome else {
         unreachable!("a child that has exited fails the launch as an early exit: {outcome:?}");
     };

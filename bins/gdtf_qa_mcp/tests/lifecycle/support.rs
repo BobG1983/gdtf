@@ -24,8 +24,8 @@ use std::{
 };
 
 use gdtf_qa_mcp::{
-    BootTimeout, GameChild, GamePort, GameSpawner, KillGrace, LifecycleConfig, PollInterval,
-    ProbeTimeout, ProcessChild,
+    BootTimeout, GameChild, GamePort, GameSpawner, KillGrace, LaunchSpec, LifecycleConfig,
+    PollInterval, ProbeTimeout, ProcessChild,
 };
 use gdtf_qa_protocol::{
     envelope::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
@@ -48,12 +48,17 @@ const STDERR_SYNC_STEP: Duration = Duration::from_millis(1);
 
 /// A spawner that launches a harmless placeholder process — NOT the game. It writes
 /// [`STUB_STDERR_LINE`] to stderr (so the timeout path has a tail to capture) then sleeps,
-/// ignoring the port (the fake listener binds that separately). It builds a REAL
-/// [`ProcessChild`], so the production child-management logic is what the tests exercise.
+/// ignoring the port (the fake listener binds that separately) and the launch recipe (it
+/// runs a fixed `sh`, not a build). It builds a REAL [`ProcessChild`], so the production
+/// child-management logic is what the tests exercise.
+///
+/// Its job stays narrow on purpose: it backs the timeout and stop-sequence coverage and
+/// nothing else. The launch recipe reaching a REAL launcher is proved separately, against
+/// the real [`CargoSpawner`](gdtf_qa_mcp::CargoSpawner), in `recipe.rs` (GTW-875).
 pub(crate) struct StubSpawner;
 
 impl GameSpawner for StubSpawner {
-    fn spawn(&self, _port: GamePort) -> io::Result<Box<dyn GameChild>> {
+    fn spawn(&self, _port: GamePort, _spec: &LaunchSpec) -> io::Result<Box<dyn GameChild>> {
         let mut command = Command::new("sh");
         command
             .args(["-c", "echo boot-oops 1>&2; exec sleep 10"])

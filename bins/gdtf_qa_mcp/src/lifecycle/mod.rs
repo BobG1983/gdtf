@@ -9,8 +9,10 @@
 //! - [`outcome`] — the typed [`LaunchOutcome`] / [`StopOutcome`] results.
 //! - [`child`] — the [`GameChild`] trait and its real [`ProcessChild`] (stderr capture +
 //!   process-group signalling).
-//! - [`spawn`] — the [`GameSpawner`] trait and its real [`CargoSpawner`] (the dev launch
-//!   recipe).
+//! - [`launch`] — the [`LaunchSpec`] recipe (package, features, working directory,
+//!   environment overrides) one launch runs, and the newtypes it is written in.
+//! - [`spawn`] — the [`GameSpawner`] trait and its real [`CargoSpawner`], which turns a
+//!   recipe into a `cargo run` command.
 //! - [`probe`] — the readiness [`Hello`](gdtf_qa_protocol::envelope::QaRequest::Hello)
 //!   round-trip.
 //! - [`manager`] — the [`GameManager`] that owns the one running child and drives launch /
@@ -18,6 +20,7 @@
 
 pub mod child;
 pub mod config;
+pub mod launch;
 pub mod manager;
 pub mod outcome;
 pub mod probe;
@@ -26,9 +29,13 @@ pub mod values;
 
 pub use child::{GameChild, ProcessChild};
 pub use config::LifecycleConfig;
+pub use launch::{
+    CargoPackage, EnvOverrides, EnvVar, EnvVarName, EnvVarValue, FeatureList, FeatureName,
+    LaunchSpec, WorkingDir,
+};
 pub use manager::{GameLifecycle, GameManager};
 pub use outcome::{LaunchFailure, LaunchOutcome, StopOutcome};
-pub use spawn::{CargoSpawner, GameSpawner};
+pub use spawn::{CargoSpawner, GameSpawner, build_command};
 pub use values::{
     BootTimeout, ChildPid, ChildStatus, KillGrace, PollInterval, ProbeTimeout, Readiness,
     SpawnError, StderrTail,

@@ -1,14 +1,24 @@
 //! The typed results the game-lifecycle tools return (GTW-745).
 //!
 //! [`LaunchOutcome`] and [`StopOutcome`] are the whole answer surface of `launch_game`
-//! and `stop_game`: a launch either came up, was already running (ensure-style — no
-//! second spawn), or [`Failed`](LaunchOutcome::Failed) with a typed [`LaunchFailure`]
-//! carrying the child's captured stderr tail; a stop either stopped the running child or
-//! found nothing to stop. Nothing here panics or hangs — every path is a value.
+//! and `stop_game`: a launch either came up, was already running the SAME recipe
+//! (ensure-style — no second spawn), or [`Failed`](LaunchOutcome::Failed) with a typed
+//! [`LaunchFailure`] carrying the child's captured stderr tail; a stop either stopped the
+//! running child or found nothing to stop. Nothing here panics or hangs — every path is a
+//! value.
+//!
+//! [`AlreadyRunning`](LaunchOutcome::AlreadyRunning) carries the recipe the running child
+//! was built from, and a request for a DIFFERENT recipe is
+//! [`RecipeMismatch`](LaunchFailure::RecipeMismatch) rather than a success-shaped reply —
+//! otherwise an agent asking for a git worktree while a main-checkout child is up would be
+//! told everything is fine and would report a pass against code nobody reviewed (GTW-875).
 
 use crate::{
     game::GamePort,
-    lifecycle::values::{ChildPid, SpawnError, StderrTail},
+    lifecycle::{
+        launch::LaunchSpec,
+        values::{ChildPid, SpawnError, StderrTail},
+    },
 };
 
 /// The result of a `launch_game` request.
@@ -21,12 +31,16 @@ pub enum LaunchOutcome {
         /// The child process's operating-system id.
         pid:  ChildPid,
     },
-    /// A game child was already running — no second child was spawned (ensure-style).
+    /// A game child built from the SAME recipe was already running — no second child was
+    /// spawned (ensure-style).
     AlreadyRunning {
         /// The port the already-running child is bound on.
-        port: GamePort,
+        port:   GamePort,
         /// The already-running child's process id.
-        pid:  ChildPid,
+        pid:    ChildPid,
+        /// The recipe that child was launched from, so the caller can see which package,
+        /// features, and checkout it is about to drive.
+        recipe: Box<LaunchSpec>,
     },
     /// The launch failed; the child (if any) was reaped before this returned.
     Failed(LaunchFailure),
@@ -46,6 +60,10 @@ pub enum LaunchFailure {
     Timeout(StderrTail),
     /// The child exited on its own before it became ready.
     ExitedEarly(StderrTail),
+    /// A child is already running, but from a DIFFERENT recipe than the one requested —
+    /// nothing was spawned and the running child was left alone. Carries the recipe that
+    /// child was launched from so the caller can see what is actually up.
+    RecipeMismatch(Box<LaunchSpec>),
 }
 
 /// The result of a `stop_game` request.

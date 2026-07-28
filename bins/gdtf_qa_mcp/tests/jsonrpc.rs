@@ -5,7 +5,8 @@
 //! without any real game (a canned [`GameLink`]).
 
 use gdtf_qa_mcp::{
-    ChildPid, GameLifecycle, GameLink, GamePort, LaunchOutcome, McpError, StopOutcome, dispatch,
+    ChildPid, GameLifecycle, GameLink, GamePort, LaunchOutcome, LaunchSpec, McpError, StopOutcome,
+    dispatch,
 };
 use gdtf_qa_protocol::{
     envelope::{InjectReceipt, QaError, QaRequest, QaResponse},
@@ -39,7 +40,7 @@ impl GameLink for CannedGame {
 struct NoLifecycle;
 
 impl GameLifecycle for NoLifecycle {
-    fn launch(&mut self, _port: GamePort) -> LaunchOutcome {
+    fn launch(&mut self, _port: GamePort, _spec: &LaunchSpec) -> LaunchOutcome {
         unreachable!("the forwarding-tool fixtures never launch");
     }
 
@@ -53,7 +54,7 @@ impl GameLifecycle for NoLifecycle {
 struct CannedLifecycle;
 
 impl GameLifecycle for CannedLifecycle {
-    fn launch(&mut self, _port: GamePort) -> LaunchOutcome {
+    fn launch(&mut self, _port: GamePort, _spec: &LaunchSpec) -> LaunchOutcome {
         LaunchOutcome::Launched {
             port: GamePort::new(7616),
             pid:  ChildPid::new(4242),

@@ -60,12 +60,7 @@ impl ToolName {
                  item is rejected StaleToken; a disabled item's activation is a no-op."
             }
             Self::FocusControl => Self::FOCUS_CONTROL_DESCRIPTION,
-            Self::LaunchGame => {
-                "Launch the game as a child process with the net_qa control channel \
-                 enabled, then wait for it to answer before returning its port and pid. \
-                 If a game is already running, returns the existing one (no second \
-                 launch). Optional argument `port` picks the loopback port."
-            }
+            Self::LaunchGame => Self::LAUNCH_GAME_DESCRIPTION,
             Self::StopGame => {
                 "Stop the running game child (graceful SIGTERM, then SIGKILL fallback) and \
                  reap it. Returns a typed result when there is nothing to stop. No \
@@ -73,6 +68,24 @@ impl ToolName {
             }
         }
     }
+
+    /// The `launch_game` description — it names all four recipe arguments, because a
+    /// caller that cannot see them falls back to hand-rolled tooling (GTW-875).
+    const LAUNCH_GAME_DESCRIPTION: &'static str = "Launch the game as a child process with the net_qa control channel \
+         enabled, then wait for it to answer before returning its port and pid, \
+         plus the package, features, and directory it was built from. If a game \
+         built from the SAME recipe is already running, returns that child (no \
+         second launch), naming its package, features, and directory; if one \
+         built from a DIFFERENT recipe is running, the call is rejected and says \
+         what is actually up — call stop_game first. Optional argument `port` picks the \
+         loopback port. Optional `package` picks the cargo package (default \
+         grimdark_turfwar). Optional `features` picks the cargo features, as an \
+         array or a comma-separated string (default dynamic_linking,net_qa) — add \
+         dev_tools to reach the dev-only features such as the procgen stepper. \
+         Optional `working_dir` picks WHICH CHECKOUT is built: pass a git worktree \
+         path to QA that tree instead of whatever directory this host runs in. \
+         Optional `env` is an object of extra environment variables for the child, \
+         e.g. {\"GDTF_BATTLE_SEED\": \"42\"}.";
 
     /// The `screenshot_after` description — pulled out of the `match` so no single arm
     /// pushes [`description`](Self::description) past the clippy `too_many_lines` ceiling.

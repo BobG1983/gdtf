@@ -1,17 +1,25 @@
 //! How the game child is launched — the [`GameSpawner`] trait and its real
-//! [`CargoSpawner`] (GTW-745).
+//! [`CargoSpawner`] (GTW-745, parameterized in GTW-875).
 //!
 //! [`GameSpawner`] is the one piece the lifecycle manager takes as a dependency, so a test
 //! can supply a stub that launches a harmless placeholder process while every other part
 //! of the launch / stop logic runs unchanged. [`CargoSpawner`] is the real one: it runs
-//! the dev launch recipe — the `net_qa`-featured build with the QA environment set.
+//! `cargo run` for whatever [`LaunchSpec`] the caller hands it, with the QA environment
+//! set on top.
+//!
+//! The recipe arrives PER LAUNCH rather than being fixed when the spawner is built, so a
+//! single running MCP host can launch a plain build, then a `dev_tools` build, then a
+//! build in a git worktree, without being restarted (GTW-875).
 
 use std::{
     io,
     process::{Command, Stdio},
 };
 
-use super::child::{GameChild, ProcessChild};
+use super::{
+    child::{GameChild, ProcessChild},
+    launch::LaunchSpec,
+};
 use crate::game::GamePort;
 
 /// The environment variable that opts the game into the QA control channel.
@@ -20,22 +28,22 @@ const NET_QA_ENV: &str = "GDTF_NET_QA";
 /// The environment variable that picks the game's loopback listen port.
 const NET_QA_PORT_ENV: &str = "GDTF_NET_QA_PORT";
 
-/// Launches the game child bound to a chosen port.
+/// Launches the game child bound to a chosen port, following a launch recipe.
 ///
 /// The manager depends on this trait, not on [`CargoSpawner`], so the readiness / timeout
 /// / stop logic can be driven against a stub process in tests without launching the real
 /// game binary.
 pub trait GameSpawner {
-    /// Spawn the game child, telling it to listen on `port`.
+    /// Spawn the child described by `spec`, telling it to listen on `port`.
     ///
     /// # Errors
     ///
     /// The underlying [`io::Error`] if the child process cannot be spawned.
-    fn spawn(&self, port: GamePort) -> io::Result<Box<dyn GameChild>>;
+    fn spawn(&self, port: GamePort, spec: &LaunchSpec) -> io::Result<Box<dyn GameChild>>;
 }
 
-/// The real spawner — runs `cargo run` for the `net_qa`-featured dev build with the QA
-/// environment set.
+/// The real spawner — runs `cargo run` for the recipe it is given, with the QA environment
+/// set.
 ///
 /// The child's stdout is discarded (the MCP host's own stdout is the JSON-RPC channel and
 /// must not be polluted); its stderr is captured by [`ProcessChild`] for the failure tail.
@@ -50,21 +58,156 @@ impl CargoSpawner {
     }
 }
 
+/// Assemble the `cargo run` command for `spec` on `port`.
+///
+/// The recipe's own environment overrides are applied FIRST and the two QA variables
+/// LAST, so a caller can pass through a dev gate such as `GDTF_BATTLE_SEED` but can
+/// never displace the channel and port the host is about to probe for readiness.
+///
+/// Split out from [`CargoSpawner::spawn`] so the assembled command is inspectable — the
+/// unit tests read back the arguments, directory, and environment this produces rather
+/// than launching a real build.
+#[must_use]
+pub fn build_command(port: GamePort, spec: &LaunchSpec) -> Command {
+    let mut command = Command::new("cargo");
+    command.args(["run", "-p", spec.package().as_str()]);
+    if let Some(features) = spec.features().render() {
+        command.args(["--features", features.as_str()]);
+    }
+    if let Some(dir) = spec.working_dir() {
+        command.current_dir(&**dir);
+    }
+    for var in spec.env().iter() {
+        command.env(var.name().as_str(), var.value().as_str());
+    }
+    command
+        .env(NET_QA_ENV, "1")
+        .env(NET_QA_PORT_ENV, format!("{}", *port))
+        .stdin(Stdio::null())
+        .stdout(Stdio::null());
+    command
+}
+
 impl GameSpawner for CargoSpawner {
-    fn spawn(&self, port: GamePort) -> io::Result<Box<dyn GameChild>> {
-        let mut command = Command::new("cargo");
+    fn spawn(&self, port: GamePort, spec: &LaunchSpec) -> io::Result<Box<dyn GameChild>> {
+        ProcessChild::spawn(build_command(port, spec))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{ffi::OsStr, path::PathBuf};
+
+    use super::{GamePort, build_command};
+    use crate::lifecycle::launch::{
+        EnvOverrides, EnvVar, EnvVarName, EnvVarValue, FeatureList, FeatureName, LaunchSpec,
+        WorkingDir,
+    };
+
+    /// The command's arguments, as owned strings, for readable assertions.
+    fn args_of(command: &std::process::Command) -> Vec<String> {
         command
-            .args([
-                "run",
-                "-p",
-                "grimdark_turfwar",
-                "--features",
-                "dynamic_linking,net_qa",
-            ])
-            .env(NET_QA_ENV, "1")
-            .env(NET_QA_PORT_ENV, format!("{}", *port))
-            .stdin(Stdio::null())
-            .stdout(Stdio::null());
-        ProcessChild::spawn(command)
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect()
+    }
+
+    /// The value the command sets for `name`, if it sets one.
+    fn env_of(command: &std::process::Command, name: &str) -> Option<String> {
+        command
+            .get_envs()
+            .find(|(key, _)| *key == OsStr::new(name))
+            .and_then(|(_, value)| value)
+            .map(|value| value.to_string_lossy().into_owned())
+    }
+
+    /// The default recipe reproduces the launch the spawner used to hardcode.
+    #[test]
+    fn default_recipe_matches_the_previous_hardcoded_launch() {
+        let command = build_command(GamePort::new(7616), &LaunchSpec::game_default());
+        assert_eq!(
+            args_of(&command),
+            vec![
+                "run".to_owned(),
+                "-p".to_owned(),
+                "grimdark_turfwar".to_owned(),
+                "--features".to_owned(),
+                "dynamic_linking,net_qa".to_owned(),
+            ]
+        );
+        assert_eq!(env_of(&command, "GDTF_NET_QA"), Some("1".to_owned()));
+        assert_eq!(
+            env_of(&command, "GDTF_NET_QA_PORT"),
+            Some("7616".to_owned())
+        );
+        assert!(command.get_current_dir().is_none());
+    }
+
+    /// A recipe naming a package, features, a directory, and environment overrides puts
+    /// all four onto the command.
+    #[test]
+    fn recipe_drives_package_features_directory_and_env() {
+        let spec = LaunchSpec::new(
+            crate::lifecycle::launch::CargoPackage::new("gdtf_content_editor".to_owned()),
+            FeatureList::new(vec![
+                FeatureName::new("dynamic_linking".to_owned()),
+                FeatureName::new("net_qa".to_owned()),
+                FeatureName::new("dev_tools".to_owned()),
+            ]),
+            Some(WorkingDir::new(PathBuf::from("/tmp/a-worktree"))),
+            EnvOverrides::new(vec![EnvVar::new(
+                EnvVarName::new("GDTF_BATTLE_SEED".to_owned()),
+                EnvVarValue::new("42".to_owned()),
+            )]),
+        );
+        let command = build_command(GamePort::new(4321), &spec);
+        assert_eq!(
+            args_of(&command),
+            vec![
+                "run".to_owned(),
+                "-p".to_owned(),
+                "gdtf_content_editor".to_owned(),
+                "--features".to_owned(),
+                "dynamic_linking,net_qa,dev_tools".to_owned(),
+            ]
+        );
+        assert_eq!(
+            command.get_current_dir().and_then(std::path::Path::to_str),
+            Some("/tmp/a-worktree")
+        );
+        assert_eq!(env_of(&command, "GDTF_BATTLE_SEED"), Some("42".to_owned()));
+        assert_eq!(
+            env_of(&command, "GDTF_NET_QA_PORT"),
+            Some("4321".to_owned())
+        );
+    }
+
+    /// An override naming a QA variable cannot displace it: the host's channel and port
+    /// are applied last and win.
+    #[test]
+    fn qa_environment_wins_over_an_override_of_the_same_name() {
+        let spec = LaunchSpec::new(
+            LaunchSpec::game_default().package().clone(),
+            FeatureList::default(),
+            None,
+            EnvOverrides::new(vec![EnvVar::new(
+                EnvVarName::new("GDTF_NET_QA_PORT".to_owned()),
+                EnvVarValue::new("1".to_owned()),
+            )]),
+        );
+        let command = build_command(GamePort::new(9001), &spec);
+        assert_eq!(
+            env_of(&command, "GDTF_NET_QA_PORT"),
+            Some("9001".to_owned())
+        );
+        // An empty feature list passes no `--features` flag at all.
+        assert_eq!(
+            args_of(&command),
+            vec![
+                "run".to_owned(),
+                "-p".to_owned(),
+                "grimdark_turfwar".to_owned()
+            ]
+        );
     }
 }

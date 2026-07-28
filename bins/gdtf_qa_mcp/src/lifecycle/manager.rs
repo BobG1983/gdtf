@@ -3,8 +3,13 @@
 //!
 //! [`GameLifecycle`] is the surface the MCP tool layer calls; [`GameManager`] is the real
 //! implementation. It enforces ONE game at a time: [`launch`](GameLifecycle::launch) with
-//! a child already running is an ensure-style [`AlreadyRunning`](LaunchOutcome::AlreadyRunning),
-//! never a second spawn (mirroring the game's own one-client transport rule). A launch
+//! a child already running from the SAME recipe is an ensure-style
+//! [`AlreadyRunning`](LaunchOutcome::AlreadyRunning), never a second spawn (mirroring the
+//! game's own one-client transport rule); with a child running from a DIFFERENT recipe it
+//! is a [`RecipeMismatch`](LaunchFailure::RecipeMismatch) failure naming what is actually
+//! running, because answering "already running" to a request for another package,
+//! features, or checkout would hand the caller a success for a build it never asked for
+//! (GTW-875). A launch
 //! that times out kills and reaps the orphan before returning the failure, and the
 //! manager's [`Drop`] force-kills and reaps any surviving child so the MCP never outlives
 //! its game silently.
@@ -14,6 +19,7 @@ use std::time::Instant;
 use super::{
     child::GameChild,
     config::LifecycleConfig,
+    launch::LaunchSpec,
     outcome::{LaunchFailure, LaunchOutcome, StopOutcome},
     probe::probe_ready,
     spawn::GameSpawner,
@@ -27,20 +33,31 @@ use crate::game::GamePort;
 /// / `stop_game` tool handlers can be exercised against a manager driven by a stub
 /// spawner.
 pub trait GameLifecycle {
-    /// Ensure a game is running on `port`, launching one if none is (see
+    /// Ensure a game is running on `port`, launching one built to `spec` if none is (see
     /// [`LaunchOutcome`]).
-    fn launch(&mut self, port: GamePort) -> LaunchOutcome;
+    ///
+    /// The recipe belongs to the call, not to the manager, so successive launches can ask
+    /// for different builds — a `dev_tools` build, or a build in another checkout — and
+    /// the recipe is checked on EVERY call, not only when a spawn happens: a child already
+    /// running from the same recipe is kept
+    /// ([`AlreadyRunning`](LaunchOutcome::AlreadyRunning), carrying that recipe), and a
+    /// child running from a different one is reported as
+    /// [`RecipeMismatch`](LaunchFailure::RecipeMismatch) instead of being passed off as the
+    /// build that was asked for.
+    fn launch(&mut self, port: GamePort, spec: &LaunchSpec) -> LaunchOutcome;
 
     /// Stop the running game child, if any (see [`StopOutcome`]).
     fn stop(&mut self) -> StopOutcome;
 }
 
-/// A running child together with the port it was launched on.
+/// A running child together with the port it was launched on and the recipe that built it.
 struct RunningChild {
     /// The owned, managed child process.
-    child: Box<dyn GameChild>,
+    child:  Box<dyn GameChild>,
     /// The loopback port it listens on.
-    port:  GamePort,
+    port:   GamePort,
+    /// The recipe it was launched from — which package, features, and checkout.
+    recipe: LaunchSpec,
 }
 
 /// The real [`GameLifecycle`] — owns the optional running child and the spawner.
@@ -71,9 +88,15 @@ impl GameManager {
     }
 
     /// Wait for the freshly spawned `child` to answer readiness, returning the launch
-    /// outcome. On success the child is retained as the running game; on timeout or an
-    /// early exit the child is reaped before this returns.
-    fn await_readiness(&mut self, mut child: Box<dyn GameChild>, port: GamePort) -> LaunchOutcome {
+    /// outcome. On success the child is retained as the running game, together with the
+    /// `recipe` it was built from; on timeout or an early exit the child is reaped before
+    /// this returns.
+    fn await_readiness(
+        &mut self,
+        mut child: Box<dyn GameChild>,
+        port: GamePort,
+        recipe: &LaunchSpec,
+    ) -> LaunchOutcome {
         let deadline = Instant::now() + *self.config.boot_timeout();
         loop {
             if matches!(
@@ -81,7 +104,11 @@ impl GameManager {
                 Readiness::Ready
             ) {
                 let pid = child.pid();
-                self.running = Some(RunningChild { child, port });
+                self.running = Some(RunningChild {
+                    child,
+                    port,
+                    recipe: recipe.clone(),
+                });
                 return LaunchOutcome::Launched { port, pid };
             }
             if matches!(child.poll(), ChildStatus::Exited) {
@@ -107,15 +134,21 @@ impl GameManager {
 }
 
 impl GameLifecycle for GameManager {
-    fn launch(&mut self, port: GamePort) -> LaunchOutcome {
+    fn launch(&mut self, port: GamePort, spec: &LaunchSpec) -> LaunchOutcome {
         if let Some(running) = &self.running {
+            if !running.recipe.is_same_launch_as(spec) {
+                return LaunchOutcome::Failed(LaunchFailure::RecipeMismatch(Box::new(
+                    running.recipe.clone(),
+                )));
+            }
             return LaunchOutcome::AlreadyRunning {
-                port: running.port,
-                pid:  running.child.pid(),
+                port:   running.port,
+                pid:    running.child.pid(),
+                recipe: Box::new(running.recipe.clone()),
             };
         }
-        match self.spawner.spawn(port) {
-            Ok(child) => self.await_readiness(child, port),
+        match self.spawner.spawn(port, spec) {
+            Ok(child) => self.await_readiness(child, port, spec),
             Err(err) => LaunchOutcome::Failed(LaunchFailure::Spawn(
                 super::values::SpawnError::new(err.to_string()),
             )),
