@@ -31,10 +31,13 @@
 //! - [`support`] — the shared aliases, loop caps and injected tunables.
 //! - [`harness`] — the two real editor apps and the drive-to-`Editing` driver.
 //! - [`client`] — the socket half: one framed request, one reply.
+//! - [`source`] — GTW-917: the capture source the REAL editor app ends up with, so the
+//!   shipped choice cannot change silently.
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
 mod client;
 mod harness;
+mod source;
 mod support;
 
 use std::{

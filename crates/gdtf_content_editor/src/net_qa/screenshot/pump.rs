@@ -240,6 +240,16 @@ fn spawn_capture(path: &CapturePath, source: &EditorShotSource, commands: &mut C
     // file that can appear here is the one this capture writes.
     purge_existing(path);
     let screenshot = match source {
+        // The window-swapchain fallback (GTW-917). No test observes a real window readback
+        // here: a cargo test thread cannot create winit's event loop on macOS, so no test app
+        // has a window to read back, and a pixel assertion would pass or fail on where the
+        // window happened to be. What IS covered is the choice made on this line —
+        // `test/source.rs` asserts this arm spawns a
+        // `Screenshot(RenderTarget::Window(WindowRef::Primary))` and the arm below spawns a
+        // `Screenshot(RenderTarget::Image(..))` naming its handle. Per GTW-764 this source
+        // reads back black from a backgrounded, occluded or minimized macOS window, which is
+        // why GTW-918 gives the editor an offscreen render target and makes the arm below the
+        // source the running editor takes.
         EditorShotSource::PrimaryWindow => Screenshot::primary_window(),
         EditorShotSource::Offscreen(image) => Screenshot::image(image.clone()),
     };

@@ -76,9 +76,21 @@ impl Default for EditorShotPollBudget {
 /// macOS problem that a backgrounded window's swapchain reads back black: point it at an
 /// image a camera renders into and the capture is independent of window presentation. The
 /// integration suite uses it because a headless test app has no window at all.
+///
+/// Which arm is installed is pinned by
+/// `test/source.rs::the_plugin_installs_the_shipped_capture_source`, so this `#[default]`
+/// cannot change without a test changing with it.
 #[derive(Resource, Clone, Debug, Default)]
 pub enum EditorShotSource {
     /// The primary window's swapchain — the running editor's own screen.
+    ///
+    /// GTW-917: no test observes a real window readback through this arm — a test app has no
+    /// window to read back — so the coverage that exists is the target-selection assertion in
+    /// `test/source.rs`, which pins this arm to
+    /// `Screenshot(RenderTarget::Window(WindowRef::Primary))`. Per GTW-764 this source reads
+    /// back black from a backgrounded, occluded or minimized macOS window; GTW-918 is why the
+    /// running editor stops taking it, by giving the editor an offscreen render target and
+    /// making [`Offscreen`](Self::Offscreen) the source it captures through.
     #[default]
     PrimaryWindow,
     /// An offscreen image the render graph writes every tick.

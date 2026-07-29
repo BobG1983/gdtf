@@ -12,6 +12,30 @@
 //! registers [`sweep_pending`](gdtf_net_qa_transport::sweep_pending) for this payload type,
 //! exactly as the game's T7 pump does.
 //!
+//! ## What the offscreen capture source stands in for, and what it does not (GTW-917)
+//!
+//! Every test that watches a capture actually LAND drives
+//! [`EditorShotSource::Offscreen`](config::EditorShotSource::Offscreen) — an image a camera
+//! renders into — because no test app has a window: a cargo test thread cannot create winit's
+//! event loop on macOS, so there is no swapchain to read back.
+//!
+//! The offscreen source stands in for all of this, and these are genuinely covered: the
+//! settle window before a capture is spawned, the delete-before-spawn purge of a stale file at
+//! the target path, the across-frames disk poll loop, the PNG decode check, the reply deferred
+//! until the file verifiably landed, and the whole wire round trip from a framed
+//! `TakeScreenshot` to a framed reply.
+//!
+//! It does NOT stand in for whether a REAL editor window's swapchain yields the egui shell
+//! rather than a black frame — and in particular whether it does so when that window is not
+//! visible. That is a property of the primary-window source alone, and per GTW-764 a
+//! backgrounded, occluded or minimized macOS window reads back black. Observing it needs a
+//! real editor process with a real window, which is what GTW-904 exists to do; GTW-918 removes
+//! the dependency by making the running editor capture an offscreen target too.
+//!
+//! What IS pinned here about the source choice is the mapping itself: `test/source.rs`
+//! asserts each [`EditorShotSource`](config::EditorShotSource) arm spawns the render target it
+//! names, and that `NetQaEditorPlugin` installs the source the shipped editor captures through.
+//!
 //! ## Members (one concern per file, per module-layout)
 //!
 //! - [`payload`] — the queued request's payload (the client's optional file stem).
