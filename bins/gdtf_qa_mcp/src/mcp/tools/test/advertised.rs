@@ -1,8 +1,9 @@
-//! Registry pins: the advertised tool set and the wire-name round-trip.
+//! What `tools/list` advertises: the tool set a client can see, and the argument schemas
+//! and descriptions it reads to use them.
 
 use gdtf_qa_protocol::view::EditorQueryKind;
 
-use crate::mcp::tools::{ToolName, name::ALL, tools_list_result};
+use crate::mcp::tools::tools_list_result;
 
 /// `tools/list` advertises exactly the sixteen implemented tools — the twelve forwarding
 /// tools plus the four lifecycle tools.
@@ -92,16 +93,6 @@ fn launch_game_advertises_every_recipe_argument() {
     };
     assert!(description.contains("dev_tools"), "{description}");
     assert!(description.contains("working_dir"), "{description}");
-}
-
-/// Every wire name round-trips through `from_wire`, and an unknown name resolves to
-/// `None`. Walking `ALL` (rather than a hand-listed table) keeps a newly added tool in.
-#[test]
-fn wire_names_round_trip() {
-    for tool in ALL.iter().copied() {
-        assert_eq!(ToolName::from_wire(tool.wire_name()), Some(tool));
-    }
-    assert_eq!(ToolName::from_wire("nope"), None);
 }
 
 /// `launch_editor` ADVERTISES the same five recipe arguments `launch_game` does, and
@@ -197,31 +188,4 @@ fn the_editor_query_options_description_states_its_load_phase_behaviour() {
         !description.contains("in-process tests"),
         "the description should state the behaviour, not cite what backs it: {description}"
     );
-}
-
-/// Every tool names a host, and the four editor tools name the EDITOR — a tool that
-/// resolved to the game's link would carry an editor request to a process that answers it
-/// `BadRequest` (GTW-808).
-#[test]
-fn every_tool_names_its_host() {
-    use crate::hosts::QaHost;
-
-    for tool in ALL.iter().copied() {
-        let expected = if matches!(
-            tool,
-            ToolName::GetEditorQueryOptions
-                | ToolName::QueryEditor
-                | ToolName::LaunchEditor
-                | ToolName::StopEditor
-        ) {
-            QaHost::Editor
-        } else {
-            QaHost::Game
-        };
-        assert_eq!(tool.host(), expected, "{} names its host", tool.wire_name());
-    }
-    assert!(ToolName::LaunchEditor.is_launch());
-    assert!(ToolName::StopEditor.is_stop());
-    assert!(!ToolName::QueryEditor.is_launch());
-    assert!(!ToolName::QueryEditor.is_stop());
 }
