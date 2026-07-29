@@ -28,7 +28,8 @@ dev_tools = ["gdtf_app/dev_tools"]
 # gdtf_app -> net_qa -> the bevy-free wire contract + the self-capture crate. Its wiring
 # site is ADDITIONALLY double-gated on `cfg!(debug_assertions)` (it opens a listener), and
 # it stays inert until `GDTF_NET_QA` is set truthy, so a release binary never sees it and a
-# normal dev launch is unaffected. Never enabled for release/CI.
+# normal dev launch is unaffected. Never enabled for release builds; CI's clippy and test steps
+# DO enable it (GTW-883) so the module is linted and tested on every PR.
 net_qa = ["gdtf_app/net_qa"]
 
 [lints]

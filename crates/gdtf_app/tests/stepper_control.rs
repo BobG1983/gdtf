@@ -10,8 +10,10 @@
 //! The `#![cfg(all(debug_assertions, feature = "net_qa", feature = "dev_tools"))]` gate
 //! (below, after this crate doc so the doc survives a feature-off build — the `net_qa` /
 //! `procgen_stepper` suite precedent) compiles the whole file to an empty crate without BOTH
-//! features, so the CI static suite and the plain `cargo dtest` (neither enables `net_qa` nor
-//! `dev_tools`) never touch it.
+//! features. `cargo dtest` enables both (its feature list carries `grimdark_turfwar/dev_tools`
+//! and `grimdark_turfwar/net_qa`), so the dev/gate loop DOES run this suite. CI's static suite
+//! does not: it names both `net_qa` features since GTW-883 but deliberately leaves `dev_tools`
+//! off, so this file is still empty there.
 #![cfg(all(debug_assertions, feature = "net_qa", feature = "dev_tools"))]
 
 use std::sync::mpsc::{Receiver, Sender};

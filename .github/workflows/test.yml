@@ -44,5 +44,12 @@ jobs:
         with:
           cache-on-failure: true
 
+      # Both `net_qa` features are named (GTW-883). A package-qualified feature turns on only
+      # that package's feature: `grimdark_turfwar/net_qa` reaches the GAME's
+      # `gdtf_app::dev::net_qa`, `gdtf_content_editor/net_qa` reaches the EDITOR's own
+      # `gdtf_content_editor::net_qa`. Without both, the editor's `src/net_qa/` module and its
+      # two `#![cfg(all(debug_assertions, feature = "net_qa"))]` test binaries
+      # (`tests/net_qa_hello.rs`, `tests/net_qa_editor_query/`) compiled and ran nowhere in CI
+      # and reported "0 tests". No `dynamic_linking` and no `dev_tools` — CI green stays static.
       - name: Run tests
-        run: cargo test --workspace
+        run: cargo test --workspace --features grimdark_turfwar/net_qa,gdtf_content_editor/net_qa

@@ -30,7 +30,12 @@ file_watcher = ["gdtf_content_editor/file_watcher"]
 # (`crates/gdtf_content_editor/src/app.rs`) is ADDITIONALLY double-gated on
 # `cfg!(debug_assertions)` — it opens a listener — and stays inert until `GDTF_EDITOR_NET_QA` is
 # set truthy, so a release editor never sees it and a normal dev launch is unaffected. Never
-# enabled for release/CI. Mirrors the grimdark_turfwar binary's `net_qa` feature wiring.
+# enabled for release builds, and NOT enabled in CI either: this package is named
+# `gdtf_content_editor_bin`, while CI's `--features ...,gdtf_content_editor/net_qa` (GTW-883)
+# names the LIBRARY package `crates/gdtf_content_editor`, and a package-qualified feature only
+# turns on that package's. That library feature is what gets `crates/gdtf_content_editor/src/net_qa/`
+# linted and runs its two gated test binaries on every PR; this bin package's own `net_qa` stays
+# off in CI. Mirrors the grimdark_turfwar binary's `net_qa` feature wiring.
 net_qa = ["gdtf_content_editor/net_qa"]
 
 [lints]

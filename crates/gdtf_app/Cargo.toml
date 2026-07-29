@@ -158,7 +158,9 @@ dev_tools = ["dep:bevy_egui"]
 # reaches a battle exactly as before unless a developer opts in; the listen port is
 # `GDTF_NET_QA_PORT` (port only — the interface is never configurable).
 #
-# NOT in the default feature set and NEVER enabled for CI / release builds.
+# NOT in the default feature set and NEVER enabled for release builds. CI's clippy and test steps
+# DO enable it (`--features grimdark_turfwar/net_qa,gdtf_content_editor/net_qa`, GTW-883) so this
+# module is linted and tested on every PR; the two runtime gates above keep it inert there.
 net_qa = [
     "dep:gdtf_qa_protocol",
     "dep:gdtf_net_qa_transport",

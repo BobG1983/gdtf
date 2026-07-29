@@ -78,17 +78,47 @@ never report a remembered or assumed result.
 
 ## The CI green (static — no dynamic_linking)
 
-CI uses the STATIC suite (no `dynamic_linking` feature):
+CI uses the STATIC suite (no `dynamic_linking` feature, no `dev_tools`):
 
 ```bash
 cargo fmt --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --features grimdark_turfwar/net_qa,gdtf_content_editor/net_qa -- -D warnings
+cargo test --workspace --features grimdark_turfwar/net_qa,gdtf_content_editor/net_qa
 ```
 
 `dynamic_linking` is a dev-iteration speedup ONLY — it is NEVER used for static
 builds. The dev/gate green above is the fast, dynamic-linked loop; this static
 suite is the CI gate.
+
+BOTH `net_qa` features are named on the clippy and test steps (GTW-883,
+`.github/workflows/clippy.yml` and `test.yml`), for the same reason the dev
+aliases name both: a package-qualified feature turns on only that package's
+feature. Before GTW-883 the two CI steps named NO feature, so the game's
+`gdtf_app::dev::net_qa` and the editor's whole `gdtf_content_editor::net_qa`
+module were unlinted and untested on every PR, and the editor's two
+`#![cfg(all(debug_assertions, feature = "net_qa"))]` test binaries reported
+"0 tests". The build-time cost was measured before deciding, and it is small:
+the workspace unit graph is the SAME size either way — 668 units with and
+without both features (`cargo test --workspace --no-run -Z unstable-options
+--unit-graph`), so no extra dependency crate is compiled; the features only
+turn on code inside crates CI already builds. Measured marginal work on a warm
+tree: `cargo check --workspace --all-targets` static took 51.83s, and re-running
+it with `--features grimdark_turfwar/net_qa,gdtf_content_editor/net_qa` took
+8.52s, rebuilding only the feature-affected workspace crates.
+`dev_tools` stays OFF in CI: it is an egui dev overlay the dev/gate loop
+covers, not a QA regression surface.
+
+The two commands are pinned by a guard so the flag cannot be dropped again
+unnoticed: `crates/gdtf_test_utils/tests/ci_workflow_features/` reads every
+tracked `.github/workflows/*.yml`, and any `run:` step invoking a
+`--workspace` cargo command must name both `net_qa` features and must not name
+`dynamic_linking`. Without it, deleting `--features …` from a workflow leaves
+the whole suite green — nothing else in the repo reads `.github/`.
+
+Do NOT add a `#![cfg(feature = "net_qa")]` gate to
+`crates/gdtf_net_qa_transport/tests/transport/main.rs`. That crate declares no
+`net_qa` feature (only `dynamic_linking`), so the gate would never be true and
+would silently delete the transport tests.
 
 The static **release-binary** build (`cargo build -p grimdark_turfwar --release`)
 is NOT a CI gate. It is DEFERRED to the packaging process — a much-later,
