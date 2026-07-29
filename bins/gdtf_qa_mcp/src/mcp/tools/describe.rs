@@ -86,14 +86,13 @@ impl ToolName {
          what it lists. The reply carries `readiness` (\"Load\" while the \
          editor's asset pass is running, \"Editing\" once the authoring scene is \
          up) and `topics`, each {kind, description}. During Load the topics \
-         backed by an Editing-only resource (Mode, Session, Draft) are expected \
-         to be absent, with asking for one rejected, and Readiness and \
-         Validation expected to answer from the first frame — that Load-phase \
-         detail is backed only by in-process tests that build the editor app \
-         inside the test binary, never yet by a launched editor process, so \
-         read what `topics` actually lists rather than relying on it (GTW-902 \
-         confirms or corrects it). Poll this after launch_editor until `readiness` \
-         reads \"Editing\" before driving the editor. No arguments.";
+         backed by an Editing-only resource (Mode, Session, Draft) are absent \
+         and asking for one is rejected; Readiness and Validation answer from \
+         the first frame. Read what `topics` actually lists rather than assuming \
+         a fixed set. Poll this after launch_editor until `readiness` reads \
+         \"Editing\" before driving the editor — the asset pass finishes in a \
+         few frames, so in practice the first reply is already \"Editing\". \
+         No arguments.";
 
     /// The `query_editor` description — it names every legal topic, because the topic
     /// vocabulary is what a caller has to guess otherwise.

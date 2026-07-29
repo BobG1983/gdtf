@@ -159,12 +159,18 @@ fn the_editor_tools_advertise_their_arguments() {
     );
 }
 
-/// `get_editor_query_options` marks its Load-phase topic claim as expected rather than
-/// established, and says what backs it. That claim is only covered by in-process tests that
-/// build the editor app inside the test binary, so the description must not read as a
-/// promise about a launched editor process (GTW-882).
+/// `get_editor_query_options` states its Load-phase behaviour plainly and still tells the
+/// caller to read `topics` rather than assume a fixed set.
+///
+/// The description used to hedge the claim as unconfirmed and point at a follow-up ticket
+/// (GTW-882). That hedge is gone: `crates/gdtf_content_editor/tests/net_qa_editor_query/`
+/// drives the editor's real plugins over a real listener and connects before the first
+/// frame, so it observes the `Load` phase deterministically — better evidence than polling a
+/// launched editor, which is a race the asset pass always wins. This test now guards the
+/// opposite failure: the stale "never yet by a launched editor process" hedge must not come
+/// back (GTW-902).
 #[test]
-fn the_editor_query_options_description_qualifies_its_load_phase_claim() {
+fn the_editor_query_options_description_states_its_load_phase_behaviour() {
     let result = tools_list_result();
     let Some(tools) = result["tools"].as_array() else {
         unreachable!("tools/list result carries a `tools` array");
@@ -178,14 +184,18 @@ fn the_editor_query_options_description_qualifies_its_load_phase_claim() {
     let Some(description) = options["description"].as_str() else {
         unreachable!("get_editor_query_options carries a description");
     };
+    assert!(description.contains("are absent"), "{description}");
     assert!(
-        description.contains("expected to be absent"),
+        description.contains("what `topics` actually lists"),
         "{description}"
     );
-    assert!(description.contains("in-process tests"), "{description}");
     assert!(
-        description.contains("never yet by a launched editor process"),
-        "{description}"
+        !description.contains("never yet by a launched editor process"),
+        "the stale unconfirmed-claim hedge is back: {description}"
+    );
+    assert!(
+        !description.contains("in-process tests"),
+        "the description should state the behaviour, not cite what backs it: {description}"
     );
 }
 
