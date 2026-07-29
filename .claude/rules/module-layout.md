@@ -29,10 +29,14 @@ each file readable in one sitting.
    landing more growth. **BLOCK over 400** lines — must not land; the clause-7
    conformance test (`crates/gdtf_test_utils/tests/module_layout/`) fails the
    suite.
-4. **Crate roots** (`lib.rs`/`src/main.rs`) follow the same bands unless they
-   are PURE WIRING (docs + `mod`/`pub mod` decls + re-exports, zero fn/impl) —
-   a pure-wiring crate root is the crate-level equivalent of a long wiring
-   mod.rs and is exempt via the registry (e.g. `gdtf_battle_sim/src/lib.rs`).
+4. **Crate roots** (`lib.rs`/`src/main.rs`) follow the same bands. A crate root
+   that is PURE WIRING (docs + `mod`/`pub mod` decls + re-exports, zero
+   fn/impl) is the crate-level equivalent of a long wiring mod.rs, so it MAY be
+   exempted — but only the same way any other exemption is granted: proposed,
+   USER-APPROVED first, then written into the registry. The registry currently
+   holds NO entries (see "Exemption registry" below), so no crate root is
+   exempt today; an over-limit crate root is a real violation until an entry
+   for it exists.
 5. **Test placement** follows the GTW-583 test convention: sibling `test/`
    directory for unit tests; `tests/<suite>/main.rs` dir-form for integration
    suites; an inline `#[cfg(test)] mod test` only while tiny (see the
