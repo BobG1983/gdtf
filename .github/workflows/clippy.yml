@@ -43,5 +43,9 @@ jobs:
         with:
           cache-on-failure: true
 
+      # Both `net_qa` features are named (GTW-883) — see the same note in `test.yml`. A
+      # package-qualified feature turns on only that package's feature, so linting the GAME's
+      # `gdtf_app::dev::net_qa` and the EDITOR's `gdtf_content_editor::net_qa` needs both names.
+      # No `dynamic_linking` and no `dev_tools` — CI green stays static.
       - name: Run Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --features grimdark_turfwar/net_qa,gdtf_content_editor/net_qa -- -D warnings

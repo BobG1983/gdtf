@@ -30,9 +30,11 @@ pub(in crate::states::running::game::battlescape) use plugin::ContextualPanelPlu
 /// type crosses the panel boundary; the private submodule keeps the rest local.
 ///
 /// Gated to the SAME double condition as its only consumer, the `net_qa` module
-/// (`crate::dev`, `cfg(all(debug_assertions, feature = "net_qa"))`): with the feature off
-/// — the CI-static build — nothing reads this re-export, so an un-gated `pub(crate) use`
-/// would be an unused import and fail `-D warnings`. The panel's own consumers reach the
+/// (`crate::dev`, `cfg(all(debug_assertions, feature = "net_qa"))`): with the feature off —
+/// a default-feature build, such as the plain `cargo doc --workspace --no-deps` run —
+/// nothing reads this re-export, so an un-gated `pub(crate) use` would be an unused import
+/// and fail `-D warnings`. (CI's clippy step names the feature since GTW-883, so there the
+/// gate is true and the re-export is live.) The panel's own consumers reach the
 /// type through its private path directly, never this re-export.
 #[cfg(all(debug_assertions, feature = "net_qa"))]
 pub(crate) use seam::ContextualOffer;

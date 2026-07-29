@@ -124,7 +124,8 @@ pub fn seed_load_gate(asset_server: Option<Res<AssetServer>>, mut commands: Comm
 
 // GTW-736: the QA net_qa server's ROUTER + consumer test surface. Gated exactly like the
 // module itself — `all(debug_assertions, feature = "net_qa")` — so a build without the
-// feature (the CI static suite) omits both the module and this re-export. `NetQaPlugin`
+// feature omits both the module and this re-export. (CI is not such a build: its clippy
+// and test steps name both `net_qa` features since GTW-883.) `NetQaPlugin`
 // carries the `with_channels` test constructor. GTW-740 adds `QaShotDir` /
 // `ShotPollBudget` — the T7 pump's confinement-directory + poll-budget config Resources —
 // so the T7 integration test injects a temp directory + a tiny budget.

@@ -2,8 +2,9 @@
 //!
 //! The `#![cfg(all(debug_assertions, feature = "net_qa"))]` gate (below, after this crate
 //! doc so the doc survives a feature-off build — the `procgen_stepper` suite precedent)
-//! compiles the whole dir-form suite to an empty crate without the feature (the CI static
-//! build) — the `crate::dev::net_qa` module it exercises does not exist there. Two
+//! compiles the whole dir-form suite to an empty crate without the feature — the
+//! `crate::dev::net_qa` module it exercises does not exist there. CI's test step names the
+//! feature (GTW-883), so this suite runs there rather than collecting nothing. Two
 //! concerns, one file each:
 //!
 //! - [`routing`] drives the REAL router headless via

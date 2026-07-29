@@ -61,8 +61,13 @@ lint gain. The two optional features are named on the workspace runs so their ga
 never dark: `grimdark_turfwar/net_qa` reaches the GAME's `gdtf_app::dev::net_qa`, and
 `gdtf_content_editor/net_qa` reaches the EDITOR's own `gdtf_content_editor::net_qa` — a
 package-qualified feature only turns on that package's, so both must be named (GTW-877).
-CI green is **static** (no `dynamic_linking`): fmt/clippy/test only — the release-binary
-build (`cargo build -p grimdark_turfwar --release`) is deferred to packaging, not a CI gate.
+CI green is **static** (no `dynamic_linking`, no `dev_tools`): fmt/clippy/test only — the
+release-binary build (`cargo build -p grimdark_turfwar --release`) is deferred to packaging, not a
+CI gate. CI's clippy and test steps DO name both `net_qa` features
+(`--features grimdark_turfwar/net_qa,gdtf_content_editor/net_qa` in
+`.github/workflows/clippy.yml` and `test.yml`), so an editor-QA regression fails a PR instead of
+going unlinted and untested (GTW-883); they add no bevy rebuild, since those runs already compile
+the editor crate and both of the feature's optional deps.
 `cargo doc` is dev/gate-only (not CI): the `broken_intra_doc_links` / `private_intra_doc_links`
 denies only surface under `cargo doc`. It runs TWICE: the default `cargo doc --workspace --no-deps`
 plus `cargo doc-full` (= `doc --workspace --no-deps --features

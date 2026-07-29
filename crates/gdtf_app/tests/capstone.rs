@@ -8,8 +8,9 @@
 //! `apply_start_battle` consumer a real network client or the local Battlescape button
 //! drives) descends the real machine `Menu → Game → … → BattleRunning`, exactly as the
 //! retired affordance's own drive did. `#![cfg(...)]` below: this file needs the `net_qa`
-//! feature (the wire path IS the drive now), so it compiles to an empty crate without it
-//! (the CI static suite), mirroring the `tests/net_qa/` suite's own gate.
+//! feature (the wire path IS the drive now), so it compiles to an empty crate without it,
+//! mirroring the `tests/net_qa/` suite's own gate. CI does name the feature (GTW-883), so
+//! this suite runs there.
 //!
 //! Headless `GdtfTestAppBuilder` walk (the `action_bar.rs` / `battle_running_driver.rs`
 //! precedent): `MinimalPlugins` + the real `ScenesPlugin` state machine, the persistent

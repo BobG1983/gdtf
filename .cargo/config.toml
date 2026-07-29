@@ -18,8 +18,9 @@
 # the GTW-694 architecture's T3), mirroring the `dev_tools` threading above, so the dev/gate
 # loop always compiles, lints, and tests the loopback transport + request router. It stays
 # inert at runtime unless `GDTF_NET_QA` is set truthy (its `from_env` gate) AND is additionally
-# `cfg!(debug_assertions)`-gated at its wiring site (it opens a listener). CI's static suite
-# enables neither `dynamic_linking` nor `net_qa`.
+# `cfg!(debug_assertions)`-gated at its wiring site (it opens a listener). CI's static suite does
+# not enable `dynamic_linking`; it DOES enable both `net_qa` features since GTW-883, on its clippy
+# and test steps (`.github/workflows/clippy.yml`, `test.yml`).
 #
 # GTW-877: the three workspace-wide aliases (`dcheck` / `dclippy` / `dtest`) and `doc-full` ALSO
 # enable `gdtf_content_editor/net_qa` — the EDITOR's own QA control channel (GTW-804 / GTW-805).
