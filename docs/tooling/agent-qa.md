@@ -320,15 +320,19 @@ Notes an agent relies on:
   `crates/gdtf_content_editor/src/net_qa/snapshot/topics.rs` tests for already
   exists — the `Load`-phase topic list is asserted against the real editor app
   over its real listener in `crates/gdtf_content_editor/tests/net_qa_editor_query/`.
-  **Verified in-process only.** Everything in this bullet about `Load`-phase
-  behaviour — the absent `Mode` / `Session` / `Draft` topics, the `BadRequest`
-  rejection, `Readiness` and `Validation` answering from the first frame — is
-  backed by that in-process test, which builds the editor app inside the test
-  binary. It has never been observed against a LAUNCHED `gdtf_content_editor`
-  process over `launch_editor` + `get_editor_query_options`. GTW-902 runs that
-  live sequence and either removes this qualifier or corrects the claim; until
-  it does, treat the `Load`-phase detail as a test-backed expectation rather
-  than confirmed behaviour of the running binary.
+  That test is the evidence for every `Load`-phase claim in this bullet — the
+  absent `Mode` / `Session` / `Draft` topics, the `BadRequest` rejection, and
+  `Readiness` / `Validation` answering from the first frame. It is not a
+  stand-in: it runs the editor's own `MapEditorPlugin` and `NetQaEditorPlugin`,
+  binds a real loopback listener, and speaks the real framing codec over a real
+  `TcpStream`. Its client connects BEFORE the app runs a single frame, which is
+  what makes the `Load` observation deterministic.
+
+  Do not try to reproduce it by polling a launched editor. The asset pass ends
+  in a few frames, sooner than an MCP client's next request arrives — across
+  four `launch_editor` cycles the first `get_editor_query_options` reported
+  `Editing` every time. Polling for `Load` is a race the test already wins
+  deterministically (GTW-902).
 - **The two children are independent.** `stop_game` does not touch the editor
   and `stop_editor` does not touch the game; each `HostManager` owns one child
   and enforces one-at-a-time for its own host only. Stdin EOF stops both.
@@ -400,24 +404,37 @@ presenter frame.
 
 ## The smoke sequence — the content editor
 
-The editor's equivalent of the sequence above — with one difference worth
-stating plainly: the game sequence above is a transcript of calls that were
-made, this one is not. The four editor tools are built and tested, but the live
-run cannot happen from the branch that builds them (the connected MCP host is
-spawned from the main checkout, which is on `develop`), so GTW-902 runs it once
-this lands and records the replies here.
+The editor's equivalent of the sequence above. Like that one, this is a
+transcript of calls that were actually made — run against `develop` at
+`154936d7`, with the replies below copied from what came back.
 
 Run `cargo edqabuild` in the checkout first, then:
 
-1. `launch_editor` — start the editor child and wait for it to answer.
-2. `get_editor_query_options`, polled — while the editor's asset pass runs the
-   reply reports `readiness: "Load"` and offers only the topics answerable then;
-   once the pass completes it reports `readiness: "Editing"` with all five
-   topics. The transition is the editor's own
-   (`crates/gdtf_content_editor/src/plugin.rs`); nothing over the wire drives it.
-3. `query_editor` once per topic — `Readiness`, `Mode`, `Session`, `Draft`,
-   `Validation`.
-4. `stop_editor` — stop the child and release the port.
+1. `launch_editor` — starts the child and waits for it to answer. Returned
+   `status: "launched"`, `pid`, `port: 7617`, `package:
+   "gdtf_content_editor_bin"`, `features: "dynamic_linking,net_qa"`. Confirmed
+   independently: `ps` showed `target/debug/gdtf_content_editor` at that pid and
+   `lsof` showed it listening on `127.0.0.1:7617`.
+2. `get_editor_query_options` — `readiness: "Editing"` with all five topics
+   (`Readiness`, `Mode`, `Session`, `Draft`, `Validation`). The `Load`→`Editing`
+   transition is the editor's own (`crates/gdtf_content_editor/src/plugin.rs`);
+   nothing over the wire drives it, and it completes too fast to observe here —
+   see the polling note above.
+3. `query_editor` once per topic, all five answered:
+   - `Readiness` → `"Editing"`
+   - `Mode` → `active: "Prefab"`, `label: "PREFAB"`, `tab_index: 2`
+   - `Session` → theme and resolved `default_floor` UUIDs, `grid_size` 60x60x8,
+     `selected_tile: null`
+   - `Draft` → `mode: "Prefab"`, fields `painted_cells: "0"` and
+     `current_level: "Some(CurrentEditLevel(Level(0)))"`
+   - `Validation` → `checks_complete: true`, `findings: []`
+4. `stop_editor` — `status: "stopped"` with the pid. Confirmed independently:
+   the process was reaped and port 7617 released.
+
+Every value above matches what
+`crates/gdtf_content_editor/tests/net_qa_editor_query/` already asserts
+in-process, which is why that test is the evidence for the `Load` phase rather
+than a launched process.
 
 The two hosts are independent: a `launch_game` child on `7616` and a
 `launch_editor` child on `7617` are tracked by separate `HostManager`s, one per
