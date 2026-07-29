@@ -31,13 +31,17 @@ on the inner one:
    `query_editor`, `launch_editor`, `stop_editor` — to the 12 that GTW-802's `focus_control`
    completed). gdtf does not declare `listChanged`; the tool list is static per
    session.
-2. **Inner (net_qa wire) layer**, between the MCP host and the running game process. This is
-   `QaRequest` (`crates/gdtf_qa_protocol/src/envelope/request.rs`), a fixed serde enum of 11
-   typed variants (GTW-802 added `FocusControl`). There is no `GetEditorState` variant today — the enum is game-only, and the
-   editor is not wired into `net_qa` at all yet (that gap is GTW-786's own scope).
+2. **Inner (net_qa wire) layer**, between the MCP host and the running game process — and,
+   since GTW-808, the running content-editor process too. This is `QaRequest`
+   (`crates/gdtf_qa_protocol/src/envelope/request.rs`), a fixed serde enum of 13 typed variants
+   (GTW-802 added `FocusControl`; GTW-805 added the editor pair). The editor is wired into
+   `net_qa` as of GTW-804/805, and GTW-808 drives it as a second host on default port `7617`:
+   `QaRequest` carries `GetEditorQueryOptions` and `QueryEditor(EditorQueryKind)`, and
+   `crates/gdtf_content_editor/src/net_qa/router.rs` answers them. There is no flat single-view
+   editor request variant and none is planned.
 
 A partial capability-advertisement mechanism already exists at the inner layer:
-`AppFlowView.available: Vec<RequestKindNet>` (`view/appflow.rs:149`) is a runtime, state-filtered
+`AppFlowView.available: Vec<RequestKindNet>` (`view/appflow.rs:161`) is a runtime, state-filtered
 list of which request kinds the server will service right now — battle-only kinds vanish until a
 battle runs, act-bearing kinds vanish while the presenter replays. It runs over a closed,
 compile-time enum, not a self-registering open set.
@@ -126,8 +130,8 @@ router/wiring duplication — observed, not projected.
   nothing mechanically shares it between battle and editor. Accepted, bounded cost.
 - Existing drivers calling `GetBattleState` keep working during the compatibility window; cutover
   to per-topic `QueryBattle` calls is opt-in, not a breaking day-one change.
-- GTW-786's protocol children (GTW-805, the editor's `GetEditorState`) should follow this same
-  two-variant shape rather than a single monolithic view, once ratified.
+- GTW-805 built the editor's two-variant pair against this decision (`GetEditorQueryOptions` /
+  `QueryEditor(EditorQueryKind)`), confirming the recipe transfers across families.
 - A written trigger condition exists for reconsidering candidate 1: a second live state family in
   production QA use that visibly strains the per-family pattern.
 

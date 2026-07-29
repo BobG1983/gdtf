@@ -85,9 +85,12 @@ One game runs at a time, and the manager remembers the recipe that built it:
   `stop_game` first. Answering "already running" to a request for another
   checkout would hand back a success for a build that was never started.
 
-You do not have to go through the MCP host — the same recipe run by hand from a
-shell brings the channel up identically, and a client can connect to the port
-directly.
+QA evidence goes through the MCP host. Hand-writing a socket client against this
+port is not an accepted route — GTW-875 records a QA pass that did exactly that
+and thereby tested the wrong tree. Running the recipe by hand from a shell is
+fine for bringing the editor or game up (and is how GTW-878's evidence is
+produced); driving it is the host's job. If a needed tool is missing, that is a
+defect to file, not a reason to bypass the host.
 
 ## The launch recipe — the content editor
 
@@ -124,13 +127,14 @@ build as the likely cause, prints the exact `cargo build -p … --features …`
 warm-up command for the recipe it ran, and carries the child's stderr tail (which
 shows how far the build got).
 
-You do not have to go through the MCP host. The editor is a separate binary
-package (`bins/gdtf_content_editor/Cargo.toml`, package
-`gdtf_content_editor_bin`) with its own `net_qa` feature, its own two
-environment variables, and its own default port, and running it by hand brings
-the channel up identically. GTW-878 added that binary feature; before it, the
-editor's listener existed only inside workspace-wide `cargo` checks and no
-launchable editor could open a port at all.
+The editor can also be brought UP by hand — driving it still goes through the
+MCP host, per the rule above. It is a separate binary package
+(`bins/gdtf_content_editor/Cargo.toml`, package `gdtf_content_editor_bin`) with
+its own `net_qa` feature, its own two environment variables, and its own default
+port, and running it by hand opens the same channel `launch_editor` opens.
+GTW-878 added that binary feature; before it, the editor's listener existed only
+inside workspace-wide `cargo` checks and no launchable editor could open a port
+at all.
 
 ```bash
 GDTF_EDITOR_NET_QA=1 GDTF_EDITOR_NET_QA_PORT=7617 \
