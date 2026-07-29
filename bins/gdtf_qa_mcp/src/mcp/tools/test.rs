@@ -159,6 +159,36 @@ fn the_editor_tools_advertise_their_arguments() {
     );
 }
 
+/// `get_editor_query_options` marks its Load-phase topic claim as expected rather than
+/// established, and says what backs it. That claim is only covered by in-process tests that
+/// build the editor app inside the test binary, so the description must not read as a
+/// promise about a launched editor process (GTW-882).
+#[test]
+fn the_editor_query_options_description_qualifies_its_load_phase_claim() {
+    let result = tools_list_result();
+    let Some(tools) = result["tools"].as_array() else {
+        unreachable!("tools/list result carries a `tools` array");
+    };
+    let Some(options) = tools
+        .iter()
+        .find(|tool| tool["name"].as_str() == Some("get_editor_query_options"))
+    else {
+        unreachable!("tools/list advertises get_editor_query_options");
+    };
+    let Some(description) = options["description"].as_str() else {
+        unreachable!("get_editor_query_options carries a description");
+    };
+    assert!(
+        description.contains("expected to be absent"),
+        "{description}"
+    );
+    assert!(description.contains("in-process tests"), "{description}");
+    assert!(
+        description.contains("never yet by a launched editor process"),
+        "{description}"
+    );
+}
+
 /// Every tool names a host, and the four editor tools name the EDITOR — a tool that
 /// resolved to the game's link would carry an editor request to a process that answers it
 /// `BadRequest` (GTW-808).
