@@ -10,8 +10,10 @@
 //! - `protocol` — the JSON-RPC surface itself: handshake, tool list, errors, ping.
 //! - `game_tools` — a forwarding and a lifecycle call against the GAME.
 //! - `editor_tools` — the four editor tools (GTW-808).
+//! - `screenshot_host` — `take_screenshot`'s per-call `host` routing (GTW-880).
 
 mod editor_tools;
 mod game_tools;
 mod protocol;
+mod screenshot_host;
 mod support;

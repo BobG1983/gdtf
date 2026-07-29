@@ -3,9 +3,12 @@
 
 use serde_json::{Value, json};
 
-use crate::mcp::{
-    editor_topic::topic_wire_names,
-    tools::name::{ALL, ToolName},
+use crate::{
+    hosts::QaHost,
+    mcp::{
+        editor_topic::topic_wire_names,
+        tools::name::{ALL, ToolName},
+    },
 };
 
 /// The `launch_game` argument schema — its five optional arguments (GTW-875).
@@ -88,6 +91,26 @@ fn query_editor_schema() -> Value {
     })
 }
 
+/// The `take_screenshot` argument schema — its optional file stem and its optional `host`,
+/// enumerated from [`QaHost::label`] so the schema can never advertise a word
+/// [`QaHost::from_label`] rejects (GTW-880).
+///
+/// Pulled out of the [`ToolName::input_schema`] `match` for the same reason
+/// [`launch_game_schema`] is.
+fn take_screenshot_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "name": { "type": "string",
+                      "description": "Screenshot file stem; omit for a chosen name." },
+            "host": { "type": "string",
+                      "enum": [QaHost::Game.label(), QaHost::Editor.label()],
+                      "description": "Which running child to capture; omit for the \
+                       game. Pass \"editor\" to capture the content editor." }
+        }
+    })
+}
+
 impl ToolName {
     /// The JSON-Schema for this tool's `arguments` object.
     fn input_schema(self) -> Value {
@@ -120,13 +143,7 @@ impl ToolName {
                              "description": "Cap on events drained; omit to drain all." }
                 }
             }),
-            Self::TakeScreenshot => json!({
-                "type": "object",
-                "properties": {
-                    "name": { "type": "string",
-                              "description": "Screenshot file stem; omit for a chosen name." }
-                }
-            }),
+            Self::TakeScreenshot => take_screenshot_schema(),
             Self::ScreenshotAfter => json!({
                 "type": "object",
                 "properties": {

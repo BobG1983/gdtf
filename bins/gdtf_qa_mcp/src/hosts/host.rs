@@ -41,6 +41,18 @@ impl QaHost {
         }
     }
 
+    /// Resolve a caller-supplied host word back to the host, or `None` for a word that names
+    /// neither.
+    ///
+    /// The inverse of [`label`](Self::label), and the ONE place a `host` tool argument becomes
+    /// a host: a tool that can be aimed at either child (`take_screenshot`, GTW-880) reads its
+    /// argument through here, so the accepted spellings and the ones a schema advertises can
+    /// never drift apart.
+    #[must_use]
+    pub fn from_label(word: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|host| host.label() == word)
+    }
+
     /// The MCP tool that stops this host's child — named in the recipe-mismatch message,
     /// so the caller is told which of the two stop tools to call.
     #[must_use]

@@ -240,8 +240,14 @@ pub use mode::EditorMode;
 // GTW-804: the editor's DEV QA channel surface, exported under the SAME double gate the module
 // carries — the plugin the binary wires (and the integration test drives against a real bound
 // listener), its request-drain system set, and the server name the handshake reports.
+// GTW-880 adds the capture pump's four tunables to that surface: the confinement directory,
+// the settle window, the poll budget and which pixels a capture reads — so the integration
+// suite can pin a temp directory, a short settle and an offscreen source.
 #[cfg(all(debug_assertions, feature = "net_qa"))]
-pub use net_qa::{EDITOR_QA_SERVER_NAME, EditorNetQaSystems, NetQaEditorPlugin};
+pub use net_qa::{
+    EDITOR_QA_SERVER_NAME, EditorNetQaSystems, EditorQaShotDir, EditorShotPollBudget,
+    EditorShotSettle, EditorShotSource, NetQaEditorPlugin,
+};
 pub use placement::{
     EditorTileClass, IllegalReason, PlacementVerdict, ProposedPlacement, apply_placement, classify,
     evaluate_placement, names_a_ladder,

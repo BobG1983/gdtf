@@ -104,6 +104,10 @@ impl ToolName {
     /// travels over THAT host's link, and a launch / stop tool drives THAT host's
     /// lifecycle. A wildcard-free `match`, so a new tool must state its host rather than
     /// defaulting to the game's link and failing with a mismatched reply (GTW-808).
+    ///
+    /// This is the host a call takes when it names none. A tool that
+    /// [`accepts_host_argument`](Self::accepts_host_argument) may be aimed at the other child
+    /// per call; every other tool is fixed to what this returns.
     #[must_use]
     pub const fn host(self) -> QaHost {
         match self {
@@ -124,6 +128,19 @@ impl ToolName {
             | Self::LaunchEditor
             | Self::StopEditor => QaHost::Editor,
         }
+    }
+
+    /// Whether a call may AIM this tool at a host with a `host` argument instead of taking
+    /// the one [`host`](Self::host) names.
+    ///
+    /// Only `take_screenshot` (GTW-880): both children can capture a frame, and one tool that
+    /// takes `"game"` or `"editor"` is what lets a QA pass screenshot the editor without a
+    /// second, near-identical tool. Every other tool means something on exactly one host — an
+    /// `inject` has no meaning in the editor, a `query_editor` none in the game — so their
+    /// host stays fixed and a `host` argument on them is ignored.
+    #[must_use]
+    pub const fn accepts_host_argument(self) -> bool {
+        matches!(self, Self::TakeScreenshot)
     }
 
     /// Whether this tool starts or stops a child process instead of forwarding a request
