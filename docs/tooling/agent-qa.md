@@ -184,11 +184,15 @@ editor logs `editor net_qa: failed to bind the loopback listener — QA channel
 OFF` at `error` level and carries on with no channel, so an absent listener is
 always visible in the log rather than silent.
 
-The editor answers three request kinds (`route_editor_requests` in
+The editor answers four request kinds (`route_editor_requests` in
 `crates/gdtf_content_editor/src/net_qa/router.rs`): `Hello` version negotiation
 — replying with the server name `gdtf-editor-net-qa`, which is how a client
-tells the two hosts apart — plus the ADR 0007 editor query pair
-`GetEditorQueryOptions` and `QueryEditor`. Every other kind is rejected
+tells the two hosts apart — the ADR 0007 editor query pair
+`GetEditorQueryOptions` and `QueryEditor`, and `TakeScreenshot` (GTW-880), which
+the drain does not answer itself: it queues onto the shared transport's
+`PendingQueue` and the capture pump in
+`crates/gdtf_content_editor/src/net_qa/screenshot/` replies once the PNG has
+landed on disk. Every other kind is rejected
 `BadRequest` immediately rather than left to hang. The wire shape, the framing,
 and the protocol version are the game's — see
 [the protocol sketch](#the-protocol-sketch) — so one client library speaks to
@@ -228,7 +232,7 @@ The listen **interface** is never configurable — it is hardcoded to
 The editor mirrors all three gates with its own names: the binary feature
 `net_qa = ["gdtf_content_editor/net_qa"]` in
 `bins/gdtf_content_editor/Cargo.toml` chains to
-`net_qa = ["dep:gdtf_qa_protocol", "dep:gdtf_net_qa_transport"]` in
+`net_qa = ["dep:gdtf_qa_protocol", "dep:gdtf_net_qa_transport", "dep:image"]` in
 `crates/gdtf_content_editor/Cargo.toml`; the wiring site
 `crates/gdtf_content_editor/src/app.rs` is
 `cfg(all(debug_assertions, feature = "net_qa"))`; and
@@ -245,16 +249,22 @@ The MCP host exposes sixteen tools, enumerated once by the `ToolName` enum in
 `bins/gdtf_qa_mcp/src/mcp/tools/name.rs`. Twelve forward to a running child (each
 maps 1:1 onto a `QaRequest`, resolved by `build_request` in
 `bins/gdtf_qa_mcp/src/mcp/call/build/request.rs`); four are host-local and never
-touch the wire. Every tool names the host it acts on (`ToolName::host`), so an
+touch the wire. Every tool names a default host (`ToolName::host`), so an
 editor tool travels over the editor's link and drives the editor's lifecycle —
-the two children are never confused for one another.
+the two children are never confused for one another. One tool —
+`take_screenshot`, the only one both children can serve — is aimed per call
+instead: `ToolName::accepts_host_argument` lets its optional `host` argument
+(`"game"` / `"editor"`) pick the child, `resolve_host` in
+`bins/gdtf_qa_mcp/src/mcp/call/handle.rs` resolves it, and a `host` value naming
+neither child is rejected as invalid params rather than quietly defaulting, so a
+typo cannot screenshot the wrong process (GTW-880).
 
 | Tool | Kind | Maps to | Arguments |
 | --- | --- | --- | --- |
 | `send_input` | forward | `QaRequest::Inject` | `intent` (a `NetIntent` as a JSON object or a compact-RON string) |
 | `query_state` | forward | `QaRequest::GetBattleState` | none |
 | `get_output` | forward | `QaRequest::GetOutput` | `max` (optional cap on events drained) |
-| `take_screenshot` | forward | `QaRequest::TakeScreenshot` | `name` (optional file stem) |
+| `take_screenshot` | forward | `QaRequest::TakeScreenshot` | `name` (optional file stem), `host` (optional `"game"` — the default — or `"editor"`) |
 | `screenshot_after` | forward | `QaRequest::ScreenshotAfter` | `intent`, `frame_delay`, optional `name` |
 | `app_flow` | forward | `QaRequest::GetAppFlow` | none |
 | `start_battle` | forward | `QaRequest::StartBattle` | `situation`, optional `seed` |

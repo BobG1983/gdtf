@@ -6,7 +6,9 @@ use gdtf_qa_mcp::{
     QaPort, StopOutcome, dispatch,
 };
 use gdtf_qa_protocol::{
-    envelope::{InjectReceipt, QaError, QaRequest, QaResponse},
+    envelope::{
+        InjectReceipt, QaError, QaRequest, QaResponse, ScreenshotPathNet, ScreenshotResult,
+    },
     view::{
         AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet, EditorQueryKind,
         EditorQueryOptionsView, EditorQueryReply, EditorQueryTopicView, EditorQueryView,
@@ -15,12 +17,21 @@ use gdtf_qa_protocol::{
 };
 use serde_json::Value;
 
+/// The path the GAME's canned link reports a capture was saved to. Distinct from
+/// [`EDITOR_SHOT_PATH`], and neither exists on disk, so the rendered reply always names
+/// which link the call actually reached (GTW-880).
+pub(crate) const GAME_SHOT_PATH: &str = "canned/game_shot.png";
+/// The path the EDITOR's canned link reports a capture was saved to.
+pub(crate) const EDITOR_SHOT_PATH: &str = "canned/editor_shot.png";
+
 /// The GAME's canned link: answers `app_flow` with a Running snapshot and `send_input`
 /// with a queued receipt, so `tools/call` can be exercised with no socket.
 ///
 /// It rejects the editor's two requests the way a real game does — the game binary has no
 /// editor to query — which is what makes the fixtures able to tell the two hosts apart: an
-/// editor tool that reached this link renders an error instead of a topic list.
+/// editor tool that reached this link renders an error instead of a topic list. Both links
+/// answer `TakeScreenshot`, since both children can capture — each naming its OWN saved
+/// path, which is how a `take_screenshot` fixture reads back which one it reached.
 struct CannedGame;
 
 impl QaLink for CannedGame {
@@ -35,6 +46,9 @@ impl QaLink for CannedGame {
                 None,
             ))),
             QaRequest::Inject(_) => Ok(QaResponse::Injected(InjectReceipt::Queued)),
+            QaRequest::TakeScreenshot { .. } => Ok(QaResponse::Screenshot(
+                ScreenshotResult::Saved(ScreenshotPathNet::new(GAME_SHOT_PATH.to_owned())),
+            )),
             _ => Ok(QaResponse::Error(QaError::BadRequest)),
         }
     }
@@ -60,6 +74,9 @@ impl QaLink for CannedEditor {
                     EditorQueryView::Readiness(EditorReadinessNet::Editing),
                 )))
             }
+            QaRequest::TakeScreenshot { .. } => Ok(QaResponse::Screenshot(
+                ScreenshotResult::Saved(ScreenshotPathNet::new(EDITOR_SHOT_PATH.to_owned())),
+            )),
             _ => Ok(QaResponse::Error(QaError::BadRequest)),
         }
     }

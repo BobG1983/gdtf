@@ -32,14 +32,18 @@ use std::{
 
 use bevy::prelude::*;
 use gdtf_net_qa_transport::{
-    DEFAULT_IO_TIMEOUT, IncomingRequest, NetInbox, NetIoTimeout, NetQaPort, bind_listener,
-    run_listener,
+    DEFAULT_IO_TIMEOUT, IncomingRequest, NetInbox, NetIoTimeout, NetQaPort, PendingQueue,
+    bind_listener, run_listener, sweep_pending,
 };
 
 use super::{
     env::{editor_net_qa_enabled, editor_port_from_env},
     router::route_editor_requests,
     schedule::EditorNetQaSystems,
+    screenshot::{
+        EditorInFlightShots, EditorQaShotDir, EditorScreenshotPayload, EditorShotPollBudget,
+        EditorShotSequence, EditorShotSettle, EditorShotSource, drive_editor_screenshots,
+    },
 };
 use crate::EditorState;
 
@@ -181,12 +185,32 @@ fn serve(app: &mut App, listener: TcpListener, io_timeout: NetIoTimeout) {
     // shutdown" note for the full rationale.
     thread::spawn(move || run_listener(listener, tx, io_timeout));
     app.insert_resource(NetInbox::new(rx));
+    // The screenshot pump's queue, tracking set, uniqueness counter and three tunables
+    // (GTW-880). `init_resource` leaves a value a caller already inserted alone, so a test
+    // that pins a temp directory / a short settle keeps it.
+    app.init_resource::<PendingQueue<EditorScreenshotPayload>>();
+    app.init_resource::<EditorInFlightShots>();
+    app.init_resource::<EditorShotSequence>();
+    app.init_resource::<EditorQaShotDir>();
+    app.init_resource::<EditorShotSettle>();
+    app.init_resource::<EditorShotPollBudget>();
+    app.init_resource::<EditorShotSource>();
     app.configure_sets(
         Update,
         EditorNetQaSystems::Gather.run_if(resource_exists::<State<EditorState>>),
     );
+    // Chained, in this order: the drain routes a `TakeScreenshot` onto the pending queue, the
+    // pump claims it the SAME frame (so it never reaches the sweep), and the shared
+    // transport's `sweep_pending` answers a typed `Timeout` on anything that somehow went
+    // unclaimed rather than leaving the client hanging.
     app.add_systems(
         Update,
-        route_editor_requests.in_set(EditorNetQaSystems::Gather),
+        (
+            route_editor_requests,
+            drive_editor_screenshots,
+            sweep_pending::<EditorScreenshotPayload>,
+        )
+            .chain()
+            .in_set(EditorNetQaSystems::Gather),
     );
 }

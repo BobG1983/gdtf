@@ -33,8 +33,9 @@ impl ToolName {
                  many events are drained."
             }
             Self::TakeScreenshot => {
-                "Capture a screenshot of the running game and return it as an image. \
-                 Optional argument `name` picks the file stem."
+                "Capture a screenshot of a running child and return it as an image. \
+                 Optional argument `name` picks the file stem; optional argument `host` \
+                 picks which child — \"game\" (the default) or \"editor\"."
             }
             Self::ScreenshotAfter => Self::SCREENSHOT_AFTER_DESCRIPTION,
             Self::AppFlow => Self::APP_FLOW_DESCRIPTION,

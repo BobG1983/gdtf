@@ -67,6 +67,12 @@ gdtf_state_scoped = { path = "../gdtf_state_scoped" }
 # through ONE codepath instead of two copies of a socket server.
 gdtf_qa_protocol = { path = "../gdtf_qa_protocol", optional = true }
 gdtf_net_qa_transport = { path = "../gdtf_net_qa_transport", optional = true }
+# GTW-880: the QA capture pump decodes the written file before it reports the screenshot
+# saved, so a truncated / half-flushed PNG is never mistaken for a finished one. This is the
+# minimal-format `image` decoder (PNG only), already compiled transitively via `bevy_image`.
+# OPTIONAL — pulled in ONLY by the `net_qa` feature below, exactly as `gdtf_app` does for the
+# game's own capture pump.
+image = { version = "0.25", default-features = false, features = ["png"], optional = true }
 
 [dev-dependencies]
 # The headless integration test drives the REAL editor plugin on a no-renderer
@@ -101,9 +107,9 @@ file_watcher = ["bevy/file_watcher"]
 # GTW-694 agent QA harness). Opt-in ONLY — it opens a loopback TCP listener, so it is never in the
 # default feature set and never in a release build: the module is ALSO `cfg(debug_assertions)`-gated
 # at its wiring site (the double gate the game uses), and even then it stays inert until
-# `GDTF_EDITOR_NET_QA` is set truthy. Turning the feature on pulls in the two optional deps above.
+# `GDTF_EDITOR_NET_QA` is set truthy. Turning the feature on pulls in the three optional deps above.
 # Mirrors gdtf_app's `net_qa` feature exactly, with the editor's own env vars + its own port.
-net_qa = ["dep:gdtf_qa_protocol", "dep:gdtf_net_qa_transport"]
+net_qa = ["dep:gdtf_qa_protocol", "dep:gdtf_net_qa_transport", "dep:image"]
 
 [lints]
 workspace = true
