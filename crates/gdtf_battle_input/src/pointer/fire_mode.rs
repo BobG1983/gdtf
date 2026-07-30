@@ -8,8 +8,8 @@
 //! GTW-254 REPLACED the blind cycle (the removed `next_fire_mode` helper + the
 //! fire-mode-cycle key/button) with the `gdtf_app` popup picker, which SETS
 //! [`SelectedFireMode`] directly to a mode read back off the selected weapon's
-//! [`FireMode`](gdtf_battle_sim::weapon::FireMode) selector. This module now owns only the
-//! resource + its default-on-select sync ([`sync_fire_mode_on_select`]).
+//! [`FireMode`] selector. This module now owns only the resource + its
+//! default-on-select sync ([`sync_fire_mode_on_select`]).
 
 use bevy::prelude::*;
 use gdtf_battle_sim::weapon::{FireMode, FireModeSpec, MeleeWeapon, WieldedBy, Wields};

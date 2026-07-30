@@ -10,7 +10,7 @@
 //!
 //! Nothing here knows which host it is talking to: the game and the editor speak the same
 //! framing and the same envelope, so one client type serves both and the dual-target host
-//! simply holds two of them, one per port ([`QaHost`](crate::hosts::QaHost)).
+//! simply holds two of them, one per port ([`QaHost`]).
 
 use core::{ops::Deref, time::Duration};
 use std::{
