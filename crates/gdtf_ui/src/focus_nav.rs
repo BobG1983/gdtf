@@ -2,14 +2,12 @@
 //!
 //! This module is the first-party (bevy-only) focus-navigation layer the menu
 //! work hangs on. It wires Bevy's [`bevy::input_focus`] framework. Focus
-//! tracking via the [`InputFocus`](bevy::input_focus::InputFocus) resource — and
-//! the `InputDispatchPlugin` that owns it — now ships INSIDE `DefaultPlugins` (as
-//! of Bevy 0.19, behind the default-on `bevy_input_focus` feature), so this
-//! module only adds the
-//! [`DirectionalNavigationPlugin`](bevy::input_focus::directional_navigation::DirectionalNavigationPlugin)
-//! (a directed graph of focusable entities; NOT in defaults) and bridges real
-//! device input onto it. No ecosystem navigation crate is used; this is
-//! `bevy::input_focus` only, pinned to 0.19.
+//! tracking via the [`InputFocus`] resource — and the `InputDispatchPlugin` that
+//! owns it — now ships INSIDE `DefaultPlugins` (as of Bevy 0.19, behind the
+//! default-on `bevy_input_focus` feature), so this module only adds the
+//! [`DirectionalNavigationPlugin`] (a directed graph of focusable entities; NOT
+//! in defaults) and bridges real device input onto it. No ecosystem navigation
+//! crate is used; this is `bevy::input_focus` only, pinned to 0.19.
 //!
 //! ## Scope — the game surfaces, not the content editor
 //!
@@ -36,8 +34,7 @@
 //! 2. **Apply** ([`FocusNavSystems::Apply`]): [`apply_navigation`] drains the
 //!    [`NavigateRequest`] messages and calls
 //!    [`DirectionalNavigation::navigate`](bevy::input_focus::directional_navigation::DirectionalNavigation::navigate),
-//!    which moves the [`InputFocus`](bevy::input_focus::InputFocus) resource to
-//!    the neighboring focusable entity.
+//!    which moves the [`InputFocus`] resource to the neighboring focusable entity.
 //!
 //! `Bridge` is ordered strictly `.before()` `Apply` ([`FocusNavPlugin::build`]),
 //! so a navigate intent raised this frame is consumed the same frame — without
@@ -58,9 +55,8 @@
 //! The bridge systems take the input resources as `Option<Res<…>>` /
 //! fallible queries, so under `MinimalPlugins` (no `InputPlugin`) they are inert
 //! rather than panicking. [`apply_navigation`] needs only the
-//! [`DirectionalNavigation`](bevy::input_focus::directional_navigation::DirectionalNavigation)
-//! system param (two resources both initialized by the plugins), so it runs
-//! headless and is what the unit test drives directly with a synthesized
+//! [`DirectionalNavigation`] system param (two resources both initialized by the
+//! plugins), so it runs headless and is what the unit test drives with a synthesized
 //! [`NavigateRequest`].
 
 use bevy::{
@@ -177,10 +173,10 @@ pub enum FocusNavSystems {
 ///
 /// The `set_initial_focus(commands, entity)` helper a scene uses to declare the
 /// first focused element when it builds its menu. It overwrites the
-/// [`InputFocus`](bevy::input_focus::InputFocus) resource via a queued command,
-/// so it composes with the normal `Commands` flow of a UI-spawning system and
-/// applies at the next command-flush. Passing it the entity directly keeps the
-/// caller from having to reach for the resource itself.
+/// [`InputFocus`] resource via a queued command, so it composes with the normal
+/// `Commands` flow of a UI-spawning system and applies at the next command-flush.
+/// Passing it the entity directly keeps the caller from having to reach for the
+/// resource itself.
 pub fn set_initial_focus(commands: &mut Commands, entity: Entity) {
     commands.insert_resource(InputFocus::from_entity(entity));
 }
@@ -189,9 +185,8 @@ pub fn set_initial_focus(commands: &mut Commands, entity: Entity) {
 /// [`UiPlugin`](crate::UiPlugin).
 ///
 /// Installs the navigation half of Bevy's focus framework
-/// ([`DirectionalNavigationPlugin`](bevy::input_focus::directional_navigation::DirectionalNavigationPlugin)).
-/// The `InputDispatchPlugin` (and the [`InputFocus`](bevy::input_focus::InputFocus)
-/// resource it owns) is NOT added here: as of Bevy 0.19 it ships in
+/// ([`DirectionalNavigationPlugin`]). The `InputDispatchPlugin` (and the
+/// [`InputFocus`] resource it owns) is NOT added here: as of Bevy 0.19 it ships in
 /// `DefaultPlugins`, and adding it again would be a double-add panic.
 /// This plugin also registers the [`NavigateRequest`] / [`FocusActivated`] /
 /// [`FocusCancelled`] messages, and adds the
@@ -292,11 +287,10 @@ pub fn bridge_gamepad_navigation(
 ///
 /// For each pending request it calls
 /// [`DirectionalNavigation::navigate`](bevy::input_focus::directional_navigation::DirectionalNavigation::navigate),
-/// which updates the [`InputFocus`](bevy::input_focus::InputFocus) resource to
-/// the neighbor in that direction. A request with no neighbor (or no current
-/// focus) is a no-op — `navigate` returns an error that is intentionally
-/// dropped, since "can't go further that way" is normal navigation, not a
-/// failure to surface.
+/// which updates the [`InputFocus`] resource to the neighbor in that direction. A
+/// request with no neighbor (or no current focus) is a no-op — `navigate` returns
+/// an error that is intentionally dropped, since "can't go further that way" is
+/// normal navigation, not a failure to surface.
 pub fn apply_navigation(
     mut requests: MessageReader<NavigateRequest>,
     mut navigation: DirectionalNavigation,

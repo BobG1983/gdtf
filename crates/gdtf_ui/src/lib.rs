@@ -23,8 +23,7 @@
 //! [`GdtfTheme`](theme::GdtfTheme).
 //!
 //! The [`theming::retheme`] module owns the live-reapply configuration (the
-//! [`resolve_theme_spec`](theming::retheme::resolve_theme_spec) map hook + the
-//! [`theme_hot_ron_chain`](theming::retheme::theme_hot_ron_chain) config the
+//! [`resolve_theme_spec`] map hook + the [`theme_hot_ron_chain`] config the
 //! GTW-564 generic hot-RON redrive runs with): on an
 //! [`AssetEvent`](bevy::asset::AssetEvent)`::Modified` for the active theme
 //! asset it re-derives [`GdtfTheme`](theme::GdtfTheme) in place, and the
@@ -32,24 +31,21 @@
 //! [`Themed`](themed::Themed) entity the same frame — no restart (GTW-137).
 //!
 //! The [`widgets::core`] module owns the reusable spawn helpers
-//! ([`spawn_panel`](widgets::core::spawn_panel) / [`spawn_button`](widgets::core::spawn_button)),
-//! the [`DisabledButton`](widgets::core::DisabledButton) / [`ActiveButton`](widgets::core::ActiveButton)
-//! markers, and their paint passes
-//! ([`paint_disabled_buttons`](widgets::core::paint_disabled_buttons) /
-//! [`paint_active_buttons`](widgets::core::paint_active_buttons)); the [`widgets::interaction`]
+//! ([`spawn_panel`] / [`spawn_button`]), the [`DisabledButton`] / [`ActiveButton`]
+//! markers, and their paint passes ([`paint_disabled_buttons`] /
+//! [`paint_active_buttons`]); the [`widgets::interaction`]
 //! module owns the theme-derived hover/press feedback system. All compose *on top
 //! of* [`apply_theme`](themed::apply_theme)'s base look, ordered after it. It also
 //! owns the GTW-276 generic HUD widgets — [`ProgressBar`](widgets::core::spawn_progress_bar),
-//! [`Pips`](widgets::core::spawn_pips), [`Switch`](widgets::core::Switch), and
-//! [`SegmentedControl`](widgets::core::SegmentedControl) — the color-parameterized,
-//! mutate-in-place building blocks the status / hover panels and the action bar reuse. (The
+//! [`Pips`](widgets::core::spawn_pips), [`Switch`], and [`SegmentedControl`] — the
+//! color-parameterized, mutate-in-place building blocks the status / hover panels and
+//! the action bar reuse. (The
 //! GTW-410 `Dropdown<T>` combobox and the GTW-411 `TextField`/`NumericField` editable fields
 //! were RETIRED by GTW-655 — the GTW-434 procgen visualizer was their only consumer.)
 //!
 //! The [`menu_nav`] module owns the generic menu-enumeration model — the
-//! [`MenuScreen`](menu_nav::MenuScreen) / [`MenuItem`](menu_nav::MenuItem) markers a scene
-//! tags its menu with so a QA harness can enumerate and activate it over the wire, with no
-//! per-scene wire changes (GTW-787).
+//! [`MenuScreen`] / [`MenuItem`] markers a scene tags its menu with so a QA harness
+//! can enumerate and activate it over the wire, with no per-scene wire changes (GTW-787).
 //!
 //! The [`UiPlugin`] registration point itself lives in the private `plugin`
 //! submodule and is re-exported here unchanged.

@@ -16,10 +16,10 @@
 //!   See GTW-305.
 //! - [`advance_until_load_state`] — the same **signal poll** discipline as
 //!   `advance_until_resource_exists`, but for code that observes the
-//!   [`AssetServer`](bevy::asset::AssetServer)'s LOAD STATE directly (rather than
-//!   a resolve system's inserted resource): it drives the app until the asset's
-//!   terminal [`LoadState`](bevy::asset::LoadState) (`Loaded` / `Failed`)
-//!   satisfies a caller predicate, and asserts with a diagnostic on timeout.
+//!   [`AssetServer`]'s LOAD STATE directly (rather than a resolve system's
+//!   inserted resource): it drives the app until the asset's terminal
+//!   [`LoadState`] (`Loaded` / `Failed`) satisfies a caller predicate, and asserts
+//!   with a diagnostic on timeout.
 //!   See GTW-305, GTW-319.
 
 use bevy::{

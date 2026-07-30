@@ -55,8 +55,8 @@ pub fn level_keys(
 /// [`ActIntent::ToggleFullView`] onto the [`PendingActIntent`] queue — the write point the
 /// [`dispatch_act_intents`](crate::dispatch_act_intents) drain flips the presenter-owned
 /// [`ViewMode`](gdtf_battle_presenter::ViewMode) with. Like [`level_keys`] it is a GLOBAL
-/// presenter-view control (NOT gated on a [`SelectedShooter`](crate::SelectedShooter) —
-/// the view mode is battlefield-wide, not per-ganger). No `KeyCode` literal: the bound
+/// presenter-view control (NOT gated on a [`SelectedShooter`] — the view mode is
+/// battlefield-wide, not per-ganger). No `KeyCode` literal: the bound
 /// code is read off the loaded [`Keybinds`] resource. Param-only (`bevy-traps.md` #7).
 pub fn full_view_key(
     keys: Res<ButtonInput<KeyCode>>,
@@ -72,9 +72,8 @@ pub fn full_view_key(
 ///
 /// On a `just_pressed` of the [`Keybinds::select_clear`] key, pushes
 /// [`ActIntent::SelectionClear`] onto the [`PendingActIntent`] queue — the write point the
-/// drain uses to clear [`SelectedShooter`](crate::SelectedShooter). No `KeyCode`
-/// literal: the bound code is read off the loaded [`Keybinds`] resource. Param-only
-/// (`bevy-traps.md` #7).
+/// drain uses to clear [`SelectedShooter`]. No `KeyCode` literal: the bound code is
+/// read off the loaded [`Keybinds`] resource. Param-only (`bevy-traps.md` #7).
 ///
 /// GTW-782 CONTEXT GUARD: Escape carries two mutually-exclusive meanings gated on panel
 /// focus. When a battlescape HUD panel currently holds keyboard focus
@@ -139,8 +138,8 @@ pub fn posture_keys(
 /// On a `just_pressed` of the [`Keybinds::select_next`] key the cycle direction is the held
 /// `Shift` modifier: `Shift+Tab` → [`ActIntent::SelectPrev`], plain `Tab` →
 /// [`ActIntent::SelectNext`]. The ONE [`dispatch_act_intents`](crate::dispatch_act_intents)
-/// drain steps the [`SelectedShooter`](crate::SelectedShooter) through the player gang in the
-/// shared `(z, y, x)` order, wrapping (the same queue the on-bar Prev/Next buttons write —
+/// drain steps the [`SelectedShooter`] through the player gang in the shared
+/// `(z, y, x)` order, wrapping (the same queue the on-bar Prev/Next buttons write —
 /// ADR-0001).
 ///
 /// Unlike [`posture_keys`], this key is NOT gated on an existing selection: cycling must be
