@@ -3,8 +3,8 @@
 //! [`drive_editor_screenshots`] claims each routed
 //! [`TakeScreenshot`](gdtf_qa_protocol::envelope::QaRequest::TakeScreenshot) the editor's
 //! router queued, hands it a UNIQUE, confined output path under [`EditorQaShotDir`], lets the
-//! shell settle, spawns the REAL render capture ([`Screenshot`] + [`save_to_disk`], the
-//! `gdtf_screenshot` machinery), and then POLLS the disk across frames — replying
+//! shell settle, spawns the REAL render capture ([`spawn_capture`] — a `Screenshot` plus
+//! `save_to_disk`, the `gdtf_screenshot` machinery), and then POLLS the disk across frames — replying
 //! [`Saved`](ScreenshotResult::Saved) ONLY once the PNG verifiably lands ([`inspect_shot`]:
 //! exists, non-empty, decodes) or [`TimedOut`](ScreenshotResult::TimedOut) once its poll
 //! budget elapses.
@@ -19,19 +19,15 @@
 //!    THEN [`claim_requests`], so a capture claimed this frame is not advanced until the NEXT
 //!    frame — the reply is structurally never on the claim frame.
 //! 2. **Settle before the capture is even spawned.** A claimed capture spends
-//!    [`EditorShotSettle`] frames in [`ShotStage::Settling`] before the [`Screenshot`] is
-//!    spawned, so the PNG shows a laid-out egui shell rather than a mid-layout frame.
+//!    [`EditorShotSettle`] frames in [`ShotStage::Settling`] before the capture is spawned, so
+//!    the PNG shows a laid-out egui shell rather than a mid-layout frame.
 //! 3. **The reply is driven by the FILE.** [`ShotStage::Capturing`] replies only on
 //!    [`ShotFile::Ready`] — the bytes on disk read back and decoded as a PNG. No timer, no
 //!    optimistic "it should have landed by now".
-//! 4. **Delete-before-spawn.** [`purge_existing`] removes any pre-existing file at the exact
+//! 4. **Delete-before-spawn.** [`spawn_capture`] removes any pre-existing file at the exact
 //!    path before the capture spawns, so the poll can only ever see bytes THIS capture wrote.
 
-use bevy::{
-    ecs::system::SystemParam,
-    prelude::*,
-    render::view::window::screenshot::{Screenshot, save_to_disk},
-};
+use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_net_qa_transport::{PendingQueue, Responder};
 use gdtf_qa_protocol::{
     envelope::{QaResponse, ScreenshotPathNet, ScreenshotResult},
@@ -40,9 +36,11 @@ use gdtf_qa_protocol::{
 use gdtf_screenshot::CapturePath;
 
 use super::{
+    aim::{CaptureAim, EditorCaptureAim},
     config::{EditorShotPollBudget, EditorShotSettle, EditorShotSource},
     path::{EditorQaShotDir, EditorShotSequence, next_capture_path},
     payload::EditorScreenshotPayload,
+    spawn::{ensure_dir, spawn_capture},
     verify::{ShotFile, inspect_shot},
 };
 
@@ -116,6 +114,7 @@ pub(in crate::net_qa) fn drive_editor_screenshots(
     mut in_flight: ResMut<EditorInFlightShots>,
     mut sequence: ResMut<EditorShotSequence>,
     tunables: ShotTunables,
+    aim: EditorCaptureAim,
     mut commands: Commands,
 ) {
     // Advance first: captures claimed on PRIOR frames may now be due to spawn, or may have
@@ -125,6 +124,7 @@ pub(in crate::net_qa) fn drive_editor_screenshots(
         &mut in_flight,
         *tunables.budget,
         &tunables.source,
+        &aim,
         &mut commands,
     );
     claim_requests(
@@ -168,8 +168,8 @@ fn claim_requests(
 }
 
 /// Start tracking ONE claimed capture: its unique confined path, its directory, and its
-/// settle countdown. No [`Screenshot`] is spawned here — that happens when the settle window
-/// elapses, on a later frame.
+/// settle countdown. Nothing is spawned here — that happens when the settle window elapses, on a
+/// later frame.
 fn claim_one(
     name: Option<&ShotName>,
     responder: Responder,
@@ -194,6 +194,7 @@ fn advance_in_flight(
     in_flight: &mut EditorInFlightShots,
     budget: EditorShotPollBudget,
     source: &EditorShotSource,
+    aim: &EditorCaptureAim,
     commands: &mut Commands,
 ) {
     if in_flight.0.is_empty() {
@@ -204,6 +205,20 @@ fn advance_in_flight(
         match &mut shot.stage {
             ShotStage::Settling(remaining) => {
                 if let FrameTick::Expired = remaining.tick() {
+                    // The pre-spawn consistency check (GTW-922): a capture that would read an
+                    // offscreen target the editor's UI camera is not drawing into is REFUSED,
+                    // with the mismatch named, rather than answered with a blank PNG.
+                    if let CaptureAim::Refused(detail) = aim.verify(source) {
+                        warn!(
+                            detail = %detail.as_str(),
+                            "editor net_qa: refusing a screenshot of an offscreen target nothing \
+                             renders into",
+                        );
+                        shot.responder.reply(QaResponse::Screenshot(
+                            ScreenshotResult::TargetNotRendered(detail),
+                        ));
+                        continue;
+                    }
                     spawn_capture(&shot.path, source, commands);
                     shot.stage = ShotStage::Capturing(FramesLeft::new(**budget));
                 }
@@ -230,59 +245,4 @@ fn advance_in_flight(
         }
     }
     in_flight.0 = kept;
-}
-
-/// Delete anything already at the exact capture path, then spawn the REAL capture of whichever
-/// pixels [`EditorShotSource`] names, writing to `path`.
-fn spawn_capture(path: &CapturePath, source: &EditorShotSource, commands: &mut Commands) {
-    // Delete-before-spawn: a stale PNG at this exact path (a prior run's leftover at a reused
-    // sequence) must never be mistaken for THIS capture's output. After the delete, the only
-    // file that can appear here is the one this capture writes.
-    purge_existing(path);
-    let screenshot = match source {
-        // The window-swapchain fallback (GTW-917). No test observes a real window readback
-        // here: a cargo test thread cannot create winit's event loop on macOS, so no test app
-        // has a window to read back, and a pixel assertion would pass or fail on where the
-        // window happened to be. What IS covered is the choice made on this line —
-        // `test/source.rs` asserts this arm spawns a
-        // `Screenshot(RenderTarget::Window(WindowRef::Primary))` and the arm below spawns a
-        // `Screenshot(RenderTarget::Image(..))` naming its handle. Per GTW-764 this source
-        // reads back black from a backgrounded, occluded or minimized macOS window, which is
-        // why GTW-918 gives the editor an offscreen render target and makes the arm below the
-        // source the running editor takes.
-        EditorShotSource::PrimaryWindow => Screenshot::primary_window(),
-        // No offscreen target created yet: the plugin's `init_resource` installs
-        // `EditorShotSource`'s `Default`, whose handle is `Handle::<Image>::default()` — the
-        // `ImagePlugin::build` registers Bevy's 1x1 white `Image::default()` at
-        // (`bevy_image-0.19.0/src/image.rs:220-222`). Capturing THAT would land a 1x1 white PNG
-        // as if it were the editor, or fail the copy outright since its descriptor carries no
-        // `COPY_SRC`. So the pump takes the fallback the game's pump takes when no target
-        // resource exists (`crates/gdtf_app/src/dev/net_qa/screenshot/pump.rs:262-266`): the
-        // window swapchain. Reachable only on the frames before
-        // `ensure_editor_capture_target` has a sized primary window, and in a build wired
-        // without `EditorCapturePresentPlugin`.
-        EditorShotSource::Offscreen(image) if *image == Handle::<Image>::default() => {
-            Screenshot::primary_window()
-        }
-        EditorShotSource::Offscreen(image) => Screenshot::image(image.clone()),
-    };
-    commands
-        .spawn(screenshot)
-        .observe(save_to_disk((**path).clone()));
-}
-
-/// Best-effort: create the confined screenshot directory so the capture can write into it. A
-/// failure here surfaces as the poll never finding the PNG (a clean timeout), never a panic.
-fn ensure_dir(path: &CapturePath) {
-    if let Some(parent) = path.parent() {
-        drop(std::fs::create_dir_all(parent));
-    }
-}
-
-/// Best-effort: remove any pre-existing file at the exact capture path so a stale PNG can
-/// never be mistaken for THIS capture's output. A `NotFound` error is the normal case (the
-/// path is usually fresh) and is ignored, as is any other error — a residual file that could
-/// not be removed simply keeps polling and, absent a fresh landing, times out.
-fn purge_existing(path: &CapturePath) {
-    drop(std::fs::remove_file(&**path));
 }

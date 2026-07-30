@@ -61,6 +61,14 @@ fn render_screenshot(result: &ScreenshotResult) -> Value {
         ScreenshotResult::TimedOut => {
             tool_error("screenshot capture timed out before it landed on disk")
         }
+        // NO image, deliberately: the host refused to spawn a capture it knew would read
+        // pixels nothing draws into, so there is nothing to show. Handing back a blank frame
+        // as a screenshot is the failure GTW-922 exists to remove.
+        ScreenshotResult::TargetNotRendered(detail) => tool_error(&format!(
+            "no screenshot was taken: the offscreen image the capture reads is not what the \
+             app's UI camera renders into — {}",
+            detail.as_str()
+        )),
     }
 }
 

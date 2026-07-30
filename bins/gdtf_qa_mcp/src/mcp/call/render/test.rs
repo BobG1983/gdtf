@@ -2,7 +2,7 @@
 
 use gdtf_qa_protocol::{
     envelope::{
-        FocusControlReceipt, InjectReceipt, QaError, QaResponse, RejectReason,
+        CaptureAimNet, FocusControlReceipt, InjectReceipt, QaError, QaResponse, RejectReason,
         ScreenshotAfterResult, ScreenshotPathNet, ScreenshotResult, StepperReceipt,
     },
     view::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet, RequestKindNet},
@@ -34,6 +34,37 @@ fn render_response_screenshot_timeout_is_tool_error() {
         unreachable!("a tool error carries a text reason");
     };
     assert!(content.contains("timed out"));
+}
+
+/// A refused capture renders as a tool error carrying the host's detail, and NO image block.
+///
+/// This is the surface an agent actually reads. If this arm ever handed back a normal content
+/// block — or dropped the detail — a capture that was never taken would read as a screenshot,
+/// which is the GTW-922 failure (a blank frame answering as a real one) moved one layer out.
+#[test]
+fn render_response_screenshot_target_not_rendered_is_tool_error() {
+    let rendered = render_response(
+        ToolName::TakeScreenshot,
+        &QaResponse::Screenshot(ScreenshotResult::TargetNotRendered(CaptureAimNet::new(
+            "the camera renders into Window(PrimaryWindow)".to_owned(),
+        ))),
+    );
+    assert_eq!(rendered["isError"], json!(true));
+    assert_eq!(rendered["content"][0]["type"], json!("text"));
+    let Some(text) = rendered["content"][0]["text"].as_str() else {
+        unreachable!("a tool error carries a text reason");
+    };
+    assert!(text.contains("no screenshot was taken"), "rendered: {text}");
+    assert!(
+        text.contains("the camera renders into Window(PrimaryWindow)"),
+        "the host's detail must reach the client: {text}"
+    );
+    assert!(
+        rendered["content"]
+            .as_array()
+            .is_some_and(|blocks| blocks.iter().all(|block| block["type"] != json!("image"))),
+        "a refused capture must produce no image content: {rendered}"
+    );
 }
 
 /// A `start_battle` reply is an app-flow snapshot and must render as normal text

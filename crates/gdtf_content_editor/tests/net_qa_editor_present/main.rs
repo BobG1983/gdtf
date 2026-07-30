@@ -80,11 +80,15 @@ fn the_running_editor_captures_the_offscreen_image_its_egui_camera_renders_into(
         "the editor's egui camera must be retargeted to an image once bevy_egui has recorded \
          its input mapping, got {target:?}",
     );
-    let aimed = target.and_then(RenderTarget::as_image);
+    let aimed = match target {
+        Some(RenderTarget::Image(image)) => Some(image.clone()),
+        _ => None,
+    };
     assert!(
-        aimed == named.as_ref(),
-        "the editor's egui camera must render into the very image the capture source names; \
-         camera aims at {aimed:?}, source names {named:?}",
+        aimed.is_some() && aimed == named,
+        "the editor's egui camera must render into the very render target the capture source \
+         names — handle AND scale factor, since Bevy keys a view's output attachment by both \
+         (GTW-922); camera aims at {aimed:?}, source names {named:?}",
     );
     let scale = match target {
         Some(RenderTarget::Image(image)) => Some(image.scale_factor),

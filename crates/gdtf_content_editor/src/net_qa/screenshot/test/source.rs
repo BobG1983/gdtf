@@ -9,9 +9,10 @@
 //! 1. [`the_primary_window_arm_captures_the_primary_window_swapchain`] — the
 //!    [`PrimaryWindow`](EditorShotSource::PrimaryWindow) arm spawns a
 //!    `Screenshot(RenderTarget::Window(WindowRef::Primary))`.
-//! 2. [`the_offscreen_arm_captures_the_image_it_names`] — the
+//! 2. [`the_offscreen_arm_captures_the_whole_render_target_it_names`] — the
 //!    [`Offscreen`](EditorShotSource::Offscreen) arm spawns a
-//!    `Screenshot(RenderTarget::Image(..))` naming THAT handle, not merely some image.
+//!    `Screenshot(RenderTarget::Image(..))` naming THAT handle at THAT scale factor, not merely
+//!    some image (GTW-922).
 //! 3. [`the_plugin_installs_the_shipped_capture_source`] — an app carrying
 //!    [`NetQaEditorPlugin`] and nothing else ends up with the source the shipped editor uses,
 //!    so a silent flip of the enum's `#[default]` is caught.
@@ -29,8 +30,12 @@
 //! standing-in ledger.
 
 use bevy::{
-    asset::Assets, camera::RenderTarget, image::Image, prelude::*,
-    render::view::window::screenshot::Screenshot, window::WindowRef,
+    asset::Assets,
+    camera::{ImageRenderTarget, RenderTarget},
+    image::Image,
+    prelude::*,
+    render::view::window::screenshot::Screenshot,
+    window::WindowRef,
 };
 use gdtf_net_qa_transport::NetQaPort;
 use gdtf_qa_protocol::ids::ShotName;
@@ -90,14 +95,27 @@ fn the_primary_window_arm_captures_the_primary_window_swapchain() {
     );
 }
 
-/// The [`Offscreen`](EditorShotSource::Offscreen) arm captures the IMAGE IT NAMES: the spawned
-/// [`Screenshot`] carries `RenderTarget::Image(..)` holding that exact handle.
+/// The scale factor the offscreen fixtures below carry — deliberately NOT `1.0`, which is what
+/// `ImageRenderTarget`'s `From<Handle<Image>>` (and therefore `Screenshot::image`) hardcodes.
 ///
-/// The handle identity is asserted, not just the variant, so replacing the arm's
-/// `image.clone()` with any other handle (`Handle::default()` included) fails here. Fails, too,
-/// if the two arms are swapped: a primary-window capture carries no image at all.
+/// A capture built through that constructor addresses a DIFFERENT render target from a camera
+/// aimed at the same image at this factor, because Bevy keys each view's output attachment by the
+/// whole `ImageRenderTarget`. That is the GTW-922 black-frame defect, and it is only visible in a
+/// test whose fixture factor is not `1.0`.
+const FIXTURE_SCALE_FACTOR: f32 = 3.0;
+
+/// The [`Offscreen`](EditorShotSource::Offscreen) arm captures the WHOLE RENDER TARGET IT NAMES:
+/// the spawned [`Screenshot`] carries `RenderTarget::Image(..)` holding that exact handle AND that
+/// exact scale factor.
+///
+/// The whole-value identity is asserted, not just the variant and not just the handle. Replacing
+/// the arm's `target.clone()` with `Screenshot::image(target.handle.clone())` still names the
+/// right image, and still fails here, because that constructor rewrites the scale factor to `1.0`
+/// — which is exactly how GTW-918 shipped a capture that read a texture nothing drew into
+/// (GTW-922). Fails, too, if the two arms are swapped: a primary-window capture carries no image
+/// at all.
 #[test]
-fn the_offscreen_arm_captures_the_image_it_names() {
+fn the_offscreen_arm_captures_the_whole_render_target_it_names() {
     let Ok(tmp) = tempfile::TempDir::new() else {
         unreachable!("a temp directory is available");
     };
@@ -109,10 +127,14 @@ fn the_offscreen_arm_captures_the_image_it_names() {
         .world_mut()
         .resource_mut::<Assets<Image>>()
         .add(Image::default());
+    let wanted = ImageRenderTarget {
+        handle,
+        scale_factor: FIXTURE_SCALE_FACTOR,
+    };
 
     let target = capture_target_under(
         &mut app,
-        EditorShotSource::Offscreen(handle.clone()),
+        EditorShotSource::Offscreen(wanted.clone()),
         "offscreen_arm",
     );
 
@@ -121,11 +143,15 @@ fn the_offscreen_arm_captures_the_image_it_names() {
         "EditorShotSource::Offscreen must spawn a capture of an offscreen image \
          (RenderTarget::Image(..)), got {target:?}",
     );
-    let named = target.as_ref().and_then(RenderTarget::as_image);
+    let named = match &target {
+        Some(RenderTarget::Image(image)) => Some(image.clone()),
+        _ => None,
+    };
     assert!(
-        named == Some(&handle),
-        "EditorShotSource::Offscreen must capture the image handle it carries; the spawned \
-         capture named {named:?}",
+        named.as_ref() == Some(&wanted),
+        "EditorShotSource::Offscreen must capture the whole ImageRenderTarget it carries — handle \
+         AND scale factor {FIXTURE_SCALE_FACTOR}, since Bevy keys a view's output attachment by \
+         both. The spawned capture named {named:?}",
     );
 }
 
@@ -150,7 +176,7 @@ fn the_default_placeholder_source_falls_back_to_the_primary_window() {
     let mut app = pump_app(tmp.path().to_path_buf());
     let target = capture_target_under(
         &mut app,
-        EditorShotSource::Offscreen(Handle::<Image>::default()),
+        EditorShotSource::Offscreen(ImageRenderTarget::from(Handle::<Image>::default())),
         "placeholder_source",
     );
     assert!(

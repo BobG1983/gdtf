@@ -11,6 +11,7 @@ use super::{
     retarget::retarget_editor_camera_to_offscreen,
     target::{EditorQaCaptureTarget, ensure_editor_capture_target},
 };
+use crate::net_qa::schedule::EditorNetQaSystems;
 
 /// The DEV-ONLY plugin that retargets the editor's egui camera to an offscreen image and blits
 /// it back to the window, so the capture pump reads pixels the render graph writes EVERY tick —
@@ -39,6 +40,21 @@ impl Plugin for EditorCapturePresentPlugin {
         // the target first, then retarget the egui camera and spawn the present pass (both read
         // the target). `insert_resource` is deferred, so the target is visible from the NEXT
         // frame — a one-frame settle at startup, harmless.
+        //
+        // All three sit in `EditorNetQaSystems::Present`, and that band is ordered BEFORE
+        // `Gather`, where the capture pump reads the egui camera's `RenderTarget` to check that
+        // the pixels a capture would read are the pixels that camera writes. Without this edge
+        // the pump's read and the retarget's deferred write are ambiguous (bevy-traps #3), so a
+        // screenshot settling on the retarget frame would be captured or refused depending on
+        // how the executor happened to order them; the edge is also what makes Bevy insert the
+        // sync point that applies the retarget's `Commands` before the pump runs. Configured
+        // HERE, not at the `Gather` registration, so the constraint travels with the systems it
+        // constrains. An app that adds this plugin and registers no `Gather` system is
+        // unaffected — an empty set has no systems to order.
+        app.configure_sets(
+            Update,
+            EditorNetQaSystems::Present.before(EditorNetQaSystems::Gather),
+        );
         app.add_systems(
             Update,
             (
@@ -46,7 +62,8 @@ impl Plugin for EditorCapturePresentPlugin {
                 retarget_editor_camera_to_offscreen,
                 spawn_editor_present_pass,
             )
-                .chain(),
+                .chain()
+                .in_set(EditorNetQaSystems::Present),
         );
     }
 }

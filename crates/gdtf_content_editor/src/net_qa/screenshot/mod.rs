@@ -45,7 +45,12 @@
 //!   path strictly under [`EditorQaShotDir`], then makes it per-capture UNIQUE
 //!   (`<stem>_<n>.png`) so no two captures share a file to clobber.
 //! - [`config`] — the settle window, the poll budget, and which pixels a capture reads.
+//! - [`aim`] — the pre-spawn consistency check (GTW-922): an offscreen capture whose target the
+//!   editor's UI camera is not rendering into is refused, with the mismatch named, instead of
+//!   landing a blank PNG that reads as a screenshot of the editor.
 //! - [`verify`] — the independent exists + non-empty + PNG-decodes check.
+//! - [`spawn`] — which render target one capture reads, and the delete-before-spawn purge plus
+//!   directory creation around its output file.
 //! - [`pump`] — the [`drive_editor_screenshots`](pump::drive_editor_screenshots) pump
 //!   (advance-before-claim, settle-then-capture, delete-before-spawn) and its
 //!   [`EditorInFlightShots`](pump::EditorInFlightShots) tracking.
@@ -53,10 +58,12 @@
 //!   suite's reach: the delete-before-spawn purge of a stale PNG, the rejection of an
 //!   undecodable file, and the GPU-free landing case.
 
+mod aim;
 mod config;
 mod path;
 mod payload;
 mod pump;
+mod spawn;
 mod verify;
 
 #[cfg(test)]

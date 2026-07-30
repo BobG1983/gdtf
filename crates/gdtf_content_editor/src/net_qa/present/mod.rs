@@ -58,5 +58,8 @@ mod target;
 #[cfg(test)]
 mod test;
 
-// Consumed OUTSIDE `present`: the plugin by the editor `net_qa` wiring (`super::plugin`).
+// Consumed OUTSIDE `present`: the plugin by the editor `net_qa` wiring (`super::plugin`), and
+// the offscreen target plus its whole-target comparison by the capture pump's pre-spawn
+// consistency check (`super::screenshot::aim`, GTW-922).
 pub(in crate::net_qa) use plugin::EditorCapturePresentPlugin;
+pub(in crate::net_qa) use target::{EditorQaCaptureTarget, aims_at};

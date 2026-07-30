@@ -3,8 +3,8 @@
 
 use crate::{
     envelope::{
-        AutoRunNet, HelloFacts, InjectReceipt, ProtocolVersion, QaError, RejectReason,
-        ScreenshotAfterResult, ScreenshotPathNet, ScreenshotResult, ServerNameNet,
+        AutoRunNet, CaptureAimNet, HelloFacts, InjectReceipt, ProtocolVersion, QaError,
+        RejectReason, ScreenshotAfterResult, ScreenshotPathNet, ScreenshotResult, ServerNameNet,
         StepperCommandNet, StepperReceipt,
     },
     test_support::assert_ron_round_trip,
@@ -99,7 +99,7 @@ fn stepper_command_and_receipt_round_trip_every_variant() {
     }
 }
 
-/// Both [`ScreenshotResult`] variants + the [`HelloFacts`] handshake round-trip; the
+/// Every [`ScreenshotResult`] variant + the [`HelloFacts`] handshake round-trip; the
 /// witness forces new screenshot variants in.
 #[test]
 fn screenshot_result_and_hello_facts_round_trip() {
@@ -108,9 +108,14 @@ fn screenshot_result_and_hello_facts_round_trip() {
             "target/qa_screenshots/x.png".to_owned(),
         )),
         ScreenshotResult::TimedOut,
+        ScreenshotResult::TargetNotRendered(CaptureAimNet::new(
+            "the capture would read Image(..) but the UI camera renders into Window(..)".to_owned(),
+        )),
     ] {
         match result {
-            ScreenshotResult::Saved(_) | ScreenshotResult::TimedOut => {}
+            ScreenshotResult::Saved(_)
+            | ScreenshotResult::TimedOut
+            | ScreenshotResult::TargetNotRendered(_) => {}
         }
         assert_ron_round_trip(&result);
     }

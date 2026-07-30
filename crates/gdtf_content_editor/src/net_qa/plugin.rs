@@ -200,7 +200,10 @@ fn serve(app: &mut App, listener: TcpListener, io_timeout: NetIoTimeout) {
     // so an inert plugin (and every non-`net_qa` / release editor) keeps rendering straight to
     // the window with no offscreen target, no present camera and no `WinitSettings` override.
     // It replaces the `init_resource` default's placeholder handle with the real target once the
-    // editor has a sized primary window.
+    // editor has a sized primary window. That plugin also puts its systems in
+    // `EditorNetQaSystems::Present` and orders that band BEFORE `Gather`, so the pump's
+    // consistency check reads the camera's `RenderTarget` after the retarget has written it
+    // (GTW-922 — see `EditorNetQaSystems`).
     app.add_plugins(EditorCapturePresentPlugin);
     app.configure_sets(
         Update,
