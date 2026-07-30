@@ -91,7 +91,7 @@ mod tests {
     use crate::{
         error::McpError,
         hosts::{HostPair, HostSet},
-        lifecycle::{HostLifecycle, LaunchOutcome, LaunchSpec, StopOutcome},
+        lifecycle::{HostLifecycle, LaunchOutcome, LaunchSpec, StopOutcome, WorkingDir},
         link::{QaLink, QaPort},
     };
 
@@ -116,6 +116,10 @@ mod tests {
 
         fn stop(&mut self) -> StopOutcome {
             StopOutcome::NotRunning
+        }
+
+        fn child_working_dir(&self) -> Option<WorkingDir> {
+            None
         }
     }
 

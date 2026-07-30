@@ -3,7 +3,7 @@
 
 use gdtf_qa_mcp::{
     ChildPid, HostLifecycle, HostPair, HostSet, LaunchOutcome, LaunchSpec, McpError, QaLink,
-    QaPort, StopOutcome, dispatch,
+    QaPort, StopOutcome, WorkingDir, dispatch,
 };
 use gdtf_qa_protocol::{
     envelope::{
@@ -94,6 +94,12 @@ impl HostLifecycle for NoLifecycle {
     fn stop(&mut self) -> StopOutcome {
         StopOutcome::NotRunning
     }
+
+    fn child_working_dir(&self) -> Option<WorkingDir> {
+        // No child, so no directory — a saved path renders against the dispatching
+        // process's own directory, which is what the pre-GTW-923 host always did.
+        None
+    }
 }
 
 /// The port + pid the GAME's canned lifecycle reports.
@@ -129,6 +135,10 @@ impl HostLifecycle for CannedLifecycle {
         StopOutcome::Stopped {
             pid: ChildPid::new(self.pid),
         }
+    }
+
+    fn child_working_dir(&self) -> Option<WorkingDir> {
+        None
     }
 }
 
