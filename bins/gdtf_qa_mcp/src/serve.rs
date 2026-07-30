@@ -53,8 +53,8 @@ pub fn run_stdio() {
     // Stdin closed: stop the children this host launched, gracefully, so neither outlives
     // us. BOTH are stopped — a game left running because only the editor's stop ran is
     // exactly the orphan this exists to prevent.
-    let _ = game_lifecycle.stop();
-    let _ = editor_lifecycle.stop();
+    let _ = game_lifecycle.stop_owned();
+    let _ = editor_lifecycle.stop_owned();
 }
 
 /// The transport core, generic over its byte streams so it is testable without real
@@ -114,7 +114,11 @@ mod tests {
             unreachable!("the transport test never launches");
         }
 
-        fn stop(&mut self) -> StopOutcome {
+        fn stop(&mut self, _port: QaPort) -> StopOutcome {
+            StopOutcome::NotRunning
+        }
+
+        fn stop_owned(&mut self) -> StopOutcome {
             StopOutcome::NotRunning
         }
 

@@ -18,6 +18,8 @@
 //!   recipe into a `cargo run` command.
 //! - [`probe`] — the readiness [`Hello`](gdtf_qa_protocol::envelope::QaRequest::Hello)
 //!   round-trip.
+//! - [`orphan`] — the [`OrphanWatch`] that answers who holds a host port when this process
+//!   owns no child, and stops that orphan (GTW-926).
 //! - [`manager`] — the [`HostManager`] that owns one running child and drives launch /
 //!   stop, plus the [`HostLifecycle`] trait the tool layer calls.
 
@@ -25,6 +27,7 @@ pub mod child;
 pub mod config;
 pub mod launch;
 pub mod manager;
+pub mod orphan;
 pub mod outcome;
 pub mod probe;
 pub mod spawn;
@@ -37,6 +40,7 @@ pub use launch::{
     LaunchSpec, QaChannel, WorkingDir,
 };
 pub use manager::{HostLifecycle, HostManager};
+pub use orphan::{OrphanPid, OrphanStop, OrphanTarget, OrphanWatch, PortHold, SystemOrphanWatch};
 pub use outcome::{LaunchFailure, LaunchOutcome, StopOutcome};
 pub use spawn::{CargoSpawner, ChildSpawner, build_command};
 pub use values::{

@@ -14,11 +14,14 @@ use crate::{
 /// the recipe it was handed, so a test can check what the tool asked for.
 pub(super) struct StubLifecycle {
     /// The outcome `launch` returns.
-    pub(super) launch:    LaunchOutcome,
+    pub(super) launch:       LaunchOutcome,
     /// The outcome `stop` returns.
-    pub(super) stop:      StopOutcome,
+    pub(super) stop:         StopOutcome,
     /// The recipe of the last `launch` call, if any.
-    pub(super) last_spec: Option<LaunchSpec>,
+    pub(super) last_spec:    Option<LaunchSpec>,
+    /// The port of the last `stop` call, if any — the fact a stop needs to establish who
+    /// holds the port at all (GTW-926).
+    pub(super) stopped_port: Option<QaPort>,
 }
 
 impl StubLifecycle {
@@ -28,6 +31,7 @@ impl StubLifecycle {
             launch,
             stop: StopOutcome::NotRunning,
             last_spec: None,
+            stopped_port: None,
         }
     }
 }
@@ -38,7 +42,12 @@ impl HostLifecycle for StubLifecycle {
         self.launch.clone()
     }
 
-    fn stop(&mut self) -> StopOutcome {
+    fn stop(&mut self, port: QaPort) -> StopOutcome {
+        self.stopped_port = Some(port);
+        self.stop.clone()
+    }
+
+    fn stop_owned(&mut self) -> StopOutcome {
         self.stop.clone()
     }
 

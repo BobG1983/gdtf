@@ -6,7 +6,7 @@ use serde_json::json;
 use super::support::{RecordingLink, StubLifecycle, a_directory_that_is_not_the_hosts};
 use crate::{
     hosts::QaHost,
-    lifecycle::{ChildPid, LaunchFailure, LaunchOutcome, SpawnError, StopOutcome},
+    lifecycle::{ChildPid, LaunchFailure, LaunchOutcome, OrphanPid, SpawnError, StopOutcome},
     link::QaPort,
     mcp::{
         call::ToolCallOutcome,
@@ -145,22 +145,129 @@ fn handle_launch_for_the_editor_uses_the_editor_recipe() {
     assert!(text.contains("7617"), "rendered: {text}");
 }
 
-/// Stopping with nothing running renders a typed non-error `not_running` result.
+/// Stopping with nothing running renders a typed non-error `not_running` result — and the
+/// handler hands the lifecycle the host's PORT, so that answer rests on an established
+/// fact rather than on the host owning no handle (GTW-926).
 #[test]
 fn handle_stop_not_running_is_typed_result() {
     let mut lifecycle = StubLifecycle::launching(LaunchOutcome::Failed(LaunchFailure::Spawn(
         SpawnError::new("unused".to_owned()),
     )));
-    let ToolCallOutcome::Result(result) = handle_stop(&mut lifecycle) else {
+    let ToolCallOutcome::Result(result) = handle_stop(QaHost::Game, &mut lifecycle) else {
         unreachable!("a stop renders a result block");
     };
     assert_eq!(result["isError"], json!(false));
     assert_eq!(
-        render_stop(&StopOutcome::NotRunning)["isError"],
+        render_stop(QaHost::Game, &StopOutcome::NotRunning)["isError"],
         json!(false)
     );
     let Some(text) = result["content"][0]["text"].as_str() else {
         unreachable!("the stop reply is text content");
     };
     assert!(text.contains("not_running"), "rendered: {text}");
+    assert_eq!(
+        lifecycle.stopped_port,
+        Some(QaHost::Game.port_from_env()),
+        "the stop was told which port to establish the state of"
+    );
+}
+
+/// EACH stop tool is handed ITS OWN host's port (GTW-926 clause 4).
+///
+/// The two hosts listen on different ports, so a handler that probed one fixed port would
+/// leave the other host's orphan invisible — and the reported defect was on the EDITOR's
+/// port, `stop_editor` answering `not_running` about a live child on 7617.
+#[test]
+fn each_stop_tool_is_handed_its_own_hosts_port() {
+    assert_ne!(
+        QaHost::Game.port_from_env(),
+        QaHost::Editor.port_from_env(),
+        "the two hosts listen on different ports, so the port a stop probes is host-specific"
+    );
+    for host in QaHost::ALL {
+        let mut lifecycle = StubLifecycle::launching(LaunchOutcome::Failed(LaunchFailure::Spawn(
+            SpawnError::new("unused".to_owned()),
+        )));
+        let ToolCallOutcome::Result(_) = handle_stop(host, &mut lifecycle) else {
+            unreachable!("a stop renders a result block");
+        };
+        assert_eq!(
+            lifecycle.stopped_port,
+            Some(host.port_from_env()),
+            "{}: the stop establishes the state of that host's own port",
+            host.label()
+        );
+    }
+}
+
+/// A stop that adopted and stopped an ORPHAN reports it as an orphan, with the port and the
+/// process — never as `not_running` (GTW-926).
+#[test]
+fn a_stopped_orphan_is_reported_as_an_orphan() {
+    let rendered = render_stop(
+        QaHost::Editor,
+        &StopOutcome::OrphanStopped {
+            port: QaPort::new(7617),
+            pid:  OrphanPid::Known(ChildPid::new(43744)),
+        },
+    );
+    assert_eq!(rendered["isError"], json!(false));
+    let Some(text) = rendered["content"][0]["text"].as_str() else {
+        unreachable!("the stop reply is text content");
+    };
+    assert!(text.contains("orphan_stopped"), "rendered: {text}");
+    assert!(text.contains("7617"), "rendered: {text}");
+    assert!(text.contains("43744"), "rendered: {text}");
+    assert!(!text.contains("not_running"), "rendered: {text}");
+}
+
+/// An orphan that could NOT be stopped is a tool error naming the port and the host —
+/// the caller's next step is not the same as after a clean stop (GTW-926).
+#[test]
+fn an_orphan_that_survives_is_a_tool_error() {
+    let rendered = render_stop(
+        QaHost::Editor,
+        &StopOutcome::OrphanHeld {
+            port: QaPort::new(7617),
+            pid:  OrphanPid::Unknown,
+        },
+    );
+    assert_eq!(rendered["isError"], json!(true));
+    let Some(text) = rendered["content"][0]["text"].as_str() else {
+        unreachable!("the stop reply is text content");
+    };
+    assert!(text.contains("editor"), "rendered: {text}");
+    assert!(text.contains("7617"), "rendered: {text}");
+    assert!(!text.contains("not_running"), "rendered: {text}");
+}
+
+/// A launch into a port an orphan already holds renders the orphan — the port, the process,
+/// and the stop tool to call — instead of a success (GTW-926). Asserted for the EDITOR
+/// host, whose `stop_editor` the message must name.
+#[test]
+fn a_launch_into_a_held_port_reports_the_orphan() {
+    let mut lifecycle =
+        StubLifecycle::launching(LaunchOutcome::Failed(LaunchFailure::PortHeldByOrphan {
+            port: QaPort::new(7617),
+            pid:  OrphanPid::Known(ChildPid::new(43744)),
+        }));
+    let mut link = RecordingLink { retargeted: None };
+    let ToolCallOutcome::Result(result) =
+        handle_launch(QaHost::Editor, &json!({}), &mut link, &mut lifecycle)
+    else {
+        unreachable!("a launch renders a result block");
+    };
+    assert_eq!(result["isError"], json!(true));
+    let Some(text) = result["content"][0]["text"].as_str() else {
+        unreachable!("the launch reply is text content");
+    };
+    assert!(text.contains("7617"), "rendered: {text}");
+    assert!(text.contains("43744"), "rendered: {text}");
+    assert!(text.contains("stop_editor"), "rendered: {text}");
+    assert!(text.contains("orphan"), "rendered: {text}");
+    assert!(!text.contains("\"status\""), "rendered: {text}");
+    assert_eq!(
+        link.retargeted, None,
+        "a failed launch re-points nothing at the orphan's port"
+    );
 }

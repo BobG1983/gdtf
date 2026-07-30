@@ -81,6 +81,10 @@ mod test {
         HelloFacts, ProtocolVersion, QaRequest, QaResponse, ServerNameNet,
     };
 
+    /// The port the stub lifecycles are asked about — irrelevant to what is asserted, since
+    /// each answers from its own name rather than from any real process.
+    const STUB_PORT: QaPort = QaPort::new(7616);
+
     /// The protocol version the stub links answer with — irrelevant to what is asserted.
     const STUB_PROTOCOL: ProtocolVersion = ProtocolVersion::new(1);
 
@@ -114,7 +118,11 @@ mod test {
             }
         }
 
-        fn stop(&mut self) -> StopOutcome {
+        fn stop(&mut self, _port: QaPort) -> StopOutcome {
+            self.stop_owned()
+        }
+
+        fn stop_owned(&mut self) -> StopOutcome {
             StopOutcome::Stopped {
                 pid: ChildPid::new(self.0),
             }
@@ -136,7 +144,7 @@ mod test {
 
     /// The pid a lifecycle's stop reported, for the assertions below.
     fn stopped_pid(pair: &mut HostPair<'_>) -> u32 {
-        let StopOutcome::Stopped { pid } = pair.lifecycle().stop() else {
+        let StopOutcome::Stopped { pid } = pair.lifecycle().stop(STUB_PORT) else {
             unreachable!("the named lifecycle always reports a stopped pid");
         };
         *pid

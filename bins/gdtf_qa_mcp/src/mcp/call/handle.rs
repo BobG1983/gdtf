@@ -86,7 +86,7 @@ pub fn handle_tool_call(params: Option<&Value>, hosts: &mut HostSet<'_>) -> Tool
         return control::handle_launch(host, args, link, lifecycle);
     }
     if tool.is_stop() {
-        return control::handle_stop(pair.lifecycle());
+        return control::handle_stop(host, pair.lifecycle());
     }
     // Every other tool maps onto a `QaRequest` carried over its host's link. The child's
     // own directory is read BEFORE the request travels, because the render step needs it to

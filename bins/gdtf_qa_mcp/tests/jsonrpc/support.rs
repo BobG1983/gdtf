@@ -91,7 +91,11 @@ impl HostLifecycle for NoLifecycle {
         unreachable!("the forwarding-tool fixtures never launch");
     }
 
-    fn stop(&mut self) -> StopOutcome {
+    fn stop(&mut self, _port: QaPort) -> StopOutcome {
+        StopOutcome::NotRunning
+    }
+
+    fn stop_owned(&mut self) -> StopOutcome {
         StopOutcome::NotRunning
     }
 
@@ -131,7 +135,11 @@ impl HostLifecycle for CannedLifecycle {
         }
     }
 
-    fn stop(&mut self) -> StopOutcome {
+    fn stop(&mut self, _port: QaPort) -> StopOutcome {
+        self.stop_owned()
+    }
+
+    fn stop_owned(&mut self) -> StopOutcome {
         StopOutcome::Stopped {
             pid: ChildPid::new(self.pid),
         }

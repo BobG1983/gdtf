@@ -16,6 +16,7 @@
 use crate::{
     lifecycle::{
         launch::LaunchSpec,
+        orphan::OrphanPid,
         values::{BootTimeout, ChildPid, SpawnError, StderrTail},
     },
     link::QaPort,
@@ -73,9 +74,25 @@ pub enum LaunchFailure {
     /// nothing was spawned and the running child was left alone. Carries the recipe that
     /// child was launched from so the caller can see what is actually up.
     RecipeMismatch(Box<LaunchSpec>),
+    /// This manager owns no child, but the port is already held by a QA listener it never
+    /// spawned — an orphan left behind by an earlier host process. Nothing was spawned:
+    /// a second child would have raced the orphan for the port instead of reporting the
+    /// real state (GTW-926).
+    PortHeldByOrphan {
+        /// The port the orphan is listening on.
+        port: QaPort,
+        /// The process holding it, when the operating system could name it.
+        pid:  OrphanPid,
+    },
 }
 
 /// The result of a `stop_game` request.
+///
+/// The two orphan answers exist because "this manager owns no child" and "nothing is
+/// running" are different facts, and the code used to report the second when only the first
+/// was established: a host replaced mid-run answers a stop about a child that is alive and
+/// still holding the port. A stop now establishes who holds the port before it answers
+/// (GTW-926).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StopOutcome {
     /// The running child was stopped and reaped.
@@ -83,6 +100,22 @@ pub enum StopOutcome {
         /// The stopped child's process id.
         pid: ChildPid,
     },
-    /// There was no game running to stop.
+    /// This manager owned no child, an orphan from an earlier host process was holding the
+    /// port, and it was stopped — the port is free again.
+    OrphanStopped {
+        /// The port the orphan was holding, now free.
+        port: QaPort,
+        /// The process that was holding it, when the operating system could name it.
+        pid:  OrphanPid,
+    },
+    /// This manager owned no child and an orphan is holding the port, but it could not be
+    /// stopped — either no process could be named for the port, or it survived the stop.
+    OrphanHeld {
+        /// The port the orphan is still holding.
+        port: QaPort,
+        /// The process holding it, when the operating system could name it.
+        pid:  OrphanPid,
+    },
+    /// There was no child running to stop, and nothing is holding the port either.
     NotRunning,
 }

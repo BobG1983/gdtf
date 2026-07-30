@@ -64,8 +64,12 @@ impl ToolName {
             Self::LaunchGame => Self::LAUNCH_GAME_DESCRIPTION,
             Self::StopGame => {
                 "Stop the running game child (graceful SIGTERM, then SIGKILL fallback) and \
-                 reap it. Returns a typed result when there is nothing to stop. No \
-                 arguments."
+                 reap it. If this MCP host owns no child but the game port is still held \
+                 by one an EARLIER host process launched — what an MCP host restart leaves \
+                 behind — that orphan is stopped and reported as an orphan when the \
+                 process holding the port can be named; when it cannot, the call is an \
+                 error reporting the port as still held. Neither answer is not_running. \
+                 Returns a typed result when there is nothing to stop. No arguments."
             }
             Self::GetEditorQueryOptions => Self::EDITOR_QUERY_OPTIONS_DESCRIPTION,
             Self::QueryEditor => Self::QUERY_EDITOR_DESCRIPTION,
@@ -74,8 +78,12 @@ impl ToolName {
                 "Stop the running content-editor child (graceful SIGTERM, then SIGKILL \
                  fallback) and reap it, releasing its port. Independent of stop_game — the \
                  two children are managed separately, so stopping one leaves the other \
-                 running. Returns a typed result when there is nothing to stop. No \
-                 arguments."
+                 running. If this MCP host owns no child but the editor port is still held \
+                 by one an EARLIER host process launched — what an MCP host restart leaves \
+                 behind — that orphan is stopped and reported as an orphan when the \
+                 process holding the port can be named; when it cannot, the call is an \
+                 error reporting the port as still held. Neither answer is not_running. \
+                 Returns a typed result when there is nothing to stop. No arguments."
             }
         }
     }

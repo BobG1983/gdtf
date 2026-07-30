@@ -15,12 +15,29 @@
 //!   launches can name different recipes (GTW-875).
 //! - [`child_dir`] asks the real manager WHERE its running child is, the fact the render
 //!   path reads to open a capture the child wrote at a relative path (GTW-923).
+//! - [`orphan`] drives the manager over a port a live listener genuinely holds while it
+//!   owns no child — the state an MCP host restart leaves behind — so a stop reports the
+//!   orphan instead of `not_running` and a launch reports it instead of racing it
+//!   (GTW-926).
+//! - [`production_wiring`] pins the one line those orphan tests cannot reach — the watch
+//!   [`HostManager::with_config`](gdtf_qa_mcp::HostManager::with_config) supplies, which is
+//!   how the shipped MCP host builds both of its managers.
+//! - [`system_watch`] covers the other half of that state — the REAL
+//!   [`SystemOrphanWatch`](gdtf_qa_mcp::SystemOrphanWatch): what its lookup names, and what
+//!   its stop actually signals (the named process, whatever group it leads, AND anything
+//!   that process spawned into its group), against placeholder processes the test spawns
+//!   itself. It is Unix-only because the stop shells out to `kill(1)`, which only exists
+//!   there.
 //! - [`tail_order`] pins the ORDER the two failure paths read that tail in — after the
 //!   child is reaped, never before — against a processless fake child that makes the
 //!   ordering observable with no clock in the assertion.
 
 mod child_dir;
+mod orphan;
 mod process;
+mod production_wiring;
 mod recipe;
 mod support;
+#[cfg(unix)]
+mod system_watch;
 mod tail_order;

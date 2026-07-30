@@ -4,7 +4,10 @@ use serde_json::{Value, json};
 
 use crate::{
     hosts::QaHost,
-    lifecycle::{BootTimeout, LaunchFailure, LaunchOutcome, LaunchSpec, StderrTail, StopOutcome},
+    lifecycle::{
+        BootTimeout, LaunchFailure, LaunchOutcome, LaunchSpec, OrphanPid, StderrTail, StopOutcome,
+    },
+    link::QaPort,
     mcp::content::{text_content, tool_error},
 };
 
@@ -77,6 +80,15 @@ fn launch_failure_message(host: QaHost, failure: &LaunchFailure, requested: &Lau
             resolved_working_dir(requested),
             host.stop_tool_name(),
         ),
+        LaunchFailure::PortHeldByOrphan { port, pid } => format!(
+            "the {label} port {} is already held by a process this MCP host did not start{} \
+             — an orphan — so nothing was started. That is what an MCP host restart leaves \
+             behind: the child outlives the host process that spawned it, so this process \
+             owns no handle to it. Call {} to stop it, then try again.",
+            **port,
+            holder_clause(*pid),
+            host.stop_tool_name(),
+        ),
         LaunchFailure::Timeout { tail, waited } => timeout_message(host, *waited, requested, tail),
         LaunchFailure::ExitedEarly(tail) => format!(
             "the {label} exited before it became ready. stderr tail:\n{}",
@@ -119,10 +131,59 @@ fn timeout_message(
     )
 }
 
+/// The " (process 43744)" clause naming an orphan's holder, or an empty string when the
+/// operating system could not name it.
+fn holder_clause(pid: OrphanPid) -> String {
+    match pid {
+        OrphanPid::Known(child) => format!(" (process {})", *child),
+        OrphanPid::Unknown => String::new(),
+    }
+}
+
+/// The `pid` field of an orphan reply — the number, or `null` when it could not be named.
+fn holder_field(pid: OrphanPid) -> Value {
+    match pid {
+        OrphanPid::Known(child) => json!(*child),
+        OrphanPid::Unknown => Value::Null,
+    }
+}
+
 /// Render a stop outcome as an MCP content block.
-pub(super) fn render_stop(outcome: &StopOutcome) -> Value {
+///
+/// The two orphan answers are reported AS orphans, never as `not_running` (GTW-926): a
+/// caller told "not running" about a child that is alive and holding the port has no route
+/// back to it and no reason to look for one. A stop that could not free the port is a tool
+/// ERROR, because the caller's next step differs — it has to deal with a process this host
+/// cannot signal.
+pub(super) fn render_stop(host: QaHost, outcome: &StopOutcome) -> Value {
     match outcome {
         StopOutcome::Stopped { pid } => text_content(&json!({ "status": "stopped", "pid": **pid })),
+        StopOutcome::OrphanStopped { port, pid } => text_content(&json!({
+            "status": "orphan_stopped", "port": **port, "pid": holder_field(*pid),
+        })),
+        StopOutcome::OrphanHeld { port, pid } => {
+            tool_error(&orphan_held_message(host, *port, *pid))
+        }
         StopOutcome::NotRunning => text_content(&json!({ "status": "not_running" })),
+    }
+}
+
+/// The message for an orphan that is still holding the port after the stop.
+fn orphan_held_message(host: QaHost, port: QaPort, pid: OrphanPid) -> String {
+    let label = host.label();
+    let holder = holder_clause(pid);
+    match pid {
+        OrphanPid::Known(_) => format!(
+            "the {label} port {} is held by a process this MCP host did not start{holder} \
+             — an orphan — and it was signalled but did not go. This host owns no child of \
+             its own.",
+            *port
+        ),
+        OrphanPid::Unknown => format!(
+            "the {label} port {} is held by a process this MCP host did not start — an \
+             orphan — and no process could be named for it, so it could not be stopped. \
+             This host owns no child of its own.",
+            *port
+        ),
     }
 }
