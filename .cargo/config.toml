@@ -26,7 +26,7 @@
 # enable `gdtf_content_editor/net_qa` — the EDITOR's own QA control channel (GTW-804 / GTW-805).
 # `grimdark_turfwar/net_qa` reaches only the GAME's `gdtf_app::dev::net_qa`; nothing enabled the
 # editor's, so its entire `src/net_qa/` module and its two `#![cfg(all(debug_assertions, feature =
-# "net_qa"))]` test binaries (`tests/net_qa_hello.rs`, `tests/net_qa_editor_query/`) were compiled,
+# "net_qa"))]` test binaries (`tests/net_qa_hello/`, `tests/net_qa_editor_query/`) were compiled,
 # linted, doc-checked and run by NOTHING in the gate — both reported "0 tests". Naming the feature
 # on the SAME runs (rather than adding new ones) costs no extra bevy build: these runs already
 # compile the editor crate and both optional deps (`gdtf_qa_protocol`, `gdtf_net_qa_transport`).
