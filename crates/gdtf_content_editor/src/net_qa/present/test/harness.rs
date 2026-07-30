@@ -9,6 +9,7 @@
 use bevy::{
     DefaultPlugins,
     app::{App, PluginGroup},
+    camera::{ImageRenderTarget, RenderTarget},
     ecs::error::warn,
     prelude::*,
     render::{RenderPlugin, settings::WgpuSettings},
@@ -17,9 +18,17 @@ use bevy::{
 };
 use bevy_egui::{PrimaryEguiContext, input::WindowToEguiContextMap};
 
+use crate::net_qa::present::target::EditorQaCaptureTarget;
+
 /// The scale factor the harness window reports — deliberately NOT `1.0`, so a retarget that
 /// took `ImageRenderTarget`'s `From<Handle<Image>>` shortcut (which hardcodes `1.0`) is visible.
-pub(super) const HARNESS_SCALE_FACTOR: f32 = 2.0;
+///
+/// It is also deliberately NOT the `2.0` the real-editor suite's window reports
+/// (`tests/net_qa_editor_present/harness.rs`). The two scale-factor assertions used to share one
+/// fixture value, so a hardcoded `2.0` anywhere in the retarget would have satisfied both
+/// (GTW-922 clause 6). With `1.5` here and `2.0` there, only a value actually read from the
+/// window can pass both.
+pub(super) const HARNESS_SCALE_FACTOR: f32 = 1.5;
 
 /// Build a headless `DefaultPlugins` app with a real primary window at
 /// [`HARNESS_SCALE_FACTOR`], no GPU backend, and no winit event loop.
@@ -88,5 +97,25 @@ pub(super) fn record_egui_window_mapping(app: &mut App, camera: Entity) {
 pub(super) fn settle(app: &mut App) {
     for _ in 0..4 {
         app.update();
+    }
+}
+
+/// The offscreen render target the present path created — the image AND its scale factor — or
+/// [`None`] if it never created one.
+pub(super) fn capture_target(app: &App) -> Option<ImageRenderTarget> {
+    app.world()
+        .get_resource::<EditorQaCaptureTarget>()
+        .map(|target| (**target).clone())
+}
+
+/// The render target of the single camera holding the primary egui context, or [`None`] unless
+/// there is exactly one.
+pub(super) fn egui_camera_target(app: &mut App) -> Option<RenderTarget> {
+    let world = app.world_mut();
+    let mut cameras = world.query_filtered::<&RenderTarget, With<PrimaryEguiContext>>();
+    let targets: Vec<RenderTarget> = cameras.iter(world).cloned().collect();
+    match targets.as_slice() {
+        [one] => Some(one.clone()),
+        _ => None,
     }
 }

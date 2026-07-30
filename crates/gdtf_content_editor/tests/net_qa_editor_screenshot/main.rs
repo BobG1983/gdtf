@@ -17,8 +17,11 @@
 //!
 //! 1. [`take_screenshot_over_the_wire_lands_a_png_on_disk`] — the capture proof, on a REAL
 //!    wgpu device: a `TakeScreenshot { name }` goes out on the wire and a PNG file exists,
-//!    non-empty and PNG-decodable, at the path the reply names. GPU-guarded (GTW-527): a
-//!    runner with no adapter logs a skip and returns before the render app is built.
+//!    non-empty, PNG-decodable, and NOT A BLANK FRAME, at the path the reply names. The blank
+//!    check is GTW-922: the capture used to land a real, decodable, entirely black PNG because it
+//!    read a render target no camera drew into, and every assertion here except that one passed.
+//!    GPU-guarded (GTW-527): a runner with no adapter logs a skip and returns before the render
+//!    app is built.
 //! 2. [`the_reply_waits_for_the_capture_that_never_lands`] — the ordering proof, on the
 //!    no-renderer editor: at the moment the capture is spawned, with the app FROZEN so the
 //!    pump cannot make progress, no reply exists and no file has been written; and because
@@ -149,11 +152,32 @@ fn take_screenshot_over_the_wire_lands_a_png_on_disk() -> TestResult {
         "the PNG at {} is empty — a zero-byte file is not a landed capture",
         png.display(),
     );
+    let decoded = image::load_from_memory_with_format(&bytes, image::ImageFormat::Png);
+    let Ok(decoded) = decoded else {
+        return Err(format!(
+            "the {} bytes at {} do not decode as a PNG: {decoded:?}",
+            bytes.len(),
+            png.display(),
+        )
+        .into());
+    };
+    // GTW-922: the capture must hold PIXELS, not an untouched texture. A `Screenshot` of an
+    // offscreen render target no camera renders into copies out zeroed texture memory, and the
+    // result is a real, correctly-sized, perfectly decodable PNG in which every pixel is black —
+    // which is exactly what the shipped editor returned. Nothing above this line can tell that
+    // apart from a screenshot of the app.
+    let lit = decoded
+        .to_rgba8()
+        .pixels()
+        .filter(|pixel| pixel.0[0] > 0 || pixel.0[1] > 0 || pixel.0[2] > 0)
+        .count();
     assert!(
-        image::load_from_memory_with_format(&bytes, image::ImageFormat::Png).is_ok(),
-        "the {} bytes at {} do not decode as a PNG",
-        bytes.len(),
+        lit > 0,
+        "the capture at {} is a fully black {}x{} frame — the editor's camera is not rendering \
+         into the render target the capture reads (GTW-922), so the PNG shows nothing",
         png.display(),
+        decoded.width(),
+        decoded.height(),
     );
     Ok(())
 }

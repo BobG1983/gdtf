@@ -9,7 +9,7 @@
 //! would make the two capture paths fight over one value. The calibrated NUMBERS are still
 //! the shared crate's — this module wraps them rather than restating them.
 
-use bevy::{image::Image, prelude::*};
+use bevy::{camera::ImageRenderTarget, image::Image, prelude::*};
 use gdtf_screenshot::{PollCap, SettleFrames};
 
 /// How many frames a claimed capture waits before the real capture is spawned.
@@ -99,12 +99,21 @@ pub enum EditorShotSource {
     /// `test/source.rs`, which pins this arm to
     /// `Screenshot(RenderTarget::Window(WindowRef::Primary))`.
     PrimaryWindow,
-    /// An offscreen image the render graph writes every tick — the editor's shipped source.
+    /// An offscreen render target the render graph writes every tick — the editor's shipped
+    /// source.
     ///
-    /// The running editor's handle is created and installed by the present path
+    /// The running editor's target is created and installed by the present path
     /// (`crate::net_qa::present`), which sizes the image to the window, adds `COPY_SRC`, and
     /// retargets the egui camera into it.
-    Offscreen(Handle<Image>),
+    ///
+    /// It carries the whole [`ImageRenderTarget`] — the handle AND the scale factor — rather
+    /// than a bare `Handle<Image>`, and that is load-bearing (GTW-922). Bevy keys a view's
+    /// render-world output attachment by the whole `ImageRenderTarget`, so a capture built from
+    /// the handle alone (whose `From` impl hardcodes `scale_factor: 1.0`) addresses a different
+    /// render target from a camera aimed at that handle at the window's factor, and copies out a
+    /// texture nothing ever drew into — a black PNG. Carrying the pair means the pump captures
+    /// literally the target the camera renders into.
+    Offscreen(ImageRenderTarget),
 }
 
 impl Default for EditorShotSource {
@@ -129,6 +138,6 @@ impl Default for EditorShotSource {
     /// `test/source.rs::the_default_placeholder_source_falls_back_to_the_primary_window`
     /// pins that.
     fn default() -> Self {
-        Self::Offscreen(Handle::default())
+        Self::Offscreen(ImageRenderTarget::from(Handle::<Image>::default()))
     }
 }

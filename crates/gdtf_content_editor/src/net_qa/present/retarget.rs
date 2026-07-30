@@ -6,18 +6,14 @@
 //! camera binding to fix up, and no second egui context is created (a second multipass context
 //! on the same schedule label would panic inside `bevy_egui`).
 
-use bevy::{
-    camera::{ImageRenderTarget, RenderTarget},
-    prelude::*,
-    window::PrimaryWindow,
-};
+use bevy::{camera::RenderTarget, prelude::*};
 use bevy_egui::{PrimaryEguiContext, input::WindowToEguiContextMap};
 
-use super::target::EditorQaCaptureTarget;
+use super::target::{EditorQaCaptureTarget, aims_at};
 
-/// `Update`: point the editor's egui camera at the offscreen [`EditorQaCaptureTarget`] image,
-/// at the WINDOW's scale factor, but only once `bevy_egui` has recorded that camera's input
-/// mapping (GTW-918).
+/// `Update`: point the editor's egui camera at the offscreen [`EditorQaCaptureTarget`] — the
+/// image AND the scale factor it carries — but only once `bevy_egui` has recorded that camera's
+/// input mapping (GTW-918, GTW-922).
 ///
 /// ## Why the mapping gate exists — it keeps editor input alive
 ///
@@ -42,36 +38,35 @@ use super::target::EditorQaCaptureTarget;
 /// documented fallback then is `FocusedNonWindowEguiContext` plus driving
 /// `EguiContextPointerPosition` manually; that is NOT built now.
 ///
-/// ## Why the scale factor is set explicitly
+/// ## Why the whole target comes from the resource
 ///
-/// `impl From<Handle<Image>> for ImageRenderTarget` sets `scale_factor: 1.0`. egui takes
-/// `native_pixels_per_point` from the camera's target scaling factor and derives its screen
-/// rect from it, while pointer positions arrive in LOGICAL window coordinates — so on a 2x
-/// display a `1.0` factor would render the UI at half apparent size in the capture AND land
-/// clicks at half the correct position. The window's own scale factor is written instead.
+/// `impl From<Handle<Image>> for ImageRenderTarget` sets `scale_factor: 1.0`, and egui needs the
+/// WINDOW's factor (see [`EditorQaCaptureTarget`]'s doc for what egui derives from it). This
+/// system used to build its own `ImageRenderTarget` from the handle plus a freshly-read window
+/// scale factor, while the capture pump built a second one from the handle alone. Bevy keys a
+/// view's output attachment by the whole `ImageRenderTarget`, both fields included, so the two
+/// values addressed DIFFERENT render targets and every capture read a texture nothing drew into
+/// — a black PNG (GTW-922). The single [`EditorQaCaptureTarget`] value is now the only
+/// `ImageRenderTarget` in the editor's QA path, and both readers clone it.
 ///
-/// IDEMPOTENT: a camera already aimed at the offscreen image is skipped, so the write never
-/// re-dirties the camera every frame.
+/// IDEMPOTENT: a camera already aimed at exactly that target is skipped, so the write never
+/// re-dirties the camera every frame. The comparison is on the WHOLE target rather than on the
+/// handle, so a camera aimed at the right image at the wrong scale factor is corrected instead of
+/// being left as-is.
 ///
-/// Param-only (`bevy-traps.md` #7): resources + filtered queries + `Commands`, no `&mut World`.
+/// Param-only (`bevy-traps.md` #7): resources + a filtered query + `Commands`, no `&mut World`.
 pub(in crate::net_qa) fn retarget_editor_camera_to_offscreen(
     target: Option<Res<EditorQaCaptureTarget>>,
     map: Option<Res<WindowToEguiContextMap>>,
-    windows: Query<&Window, With<PrimaryWindow>>,
     cameras: Query<(Entity, &RenderTarget), With<PrimaryEguiContext>>,
     mut commands: Commands,
 ) {
     let (Some(target), Some(map)) = (target, map) else {
         return;
     };
-    let Ok(window) = windows.single() else {
-        return;
-    };
-    let scale_factor = window.scale_factor();
-    let handle = &**target;
     for (entity, current) in &cameras {
-        // Already aimed at the offscreen image — nothing to do.
-        if current.as_image() == Some(handle) {
+        // Already aimed at the offscreen target — nothing to do.
+        if aims_at(current, &target) {
             continue;
         }
         // `bevy_egui` has not yet recorded this context's window mapping; retargeting now
@@ -81,9 +76,6 @@ pub(in crate::net_qa) fn retarget_editor_camera_to_offscreen(
         }
         commands
             .entity(entity)
-            .insert(RenderTarget::Image(ImageRenderTarget {
-                handle: handle.clone(),
-                scale_factor,
-            }));
+            .insert(RenderTarget::Image((**target).clone()));
     }
 }

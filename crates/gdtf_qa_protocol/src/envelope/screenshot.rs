@@ -23,12 +23,38 @@ impl ScreenshotPathNet {
     }
 }
 
+/// Why a capture was refused before it was ever spawned: what the capture was about to
+/// read, against what the camera drawing the UI is actually rendering into (GTW-922).
+///
+/// A message newtype over `String` (no-bare-types), serde-transparent. It is a MESSAGE
+/// rather than a structured pair because the host holds the only types that can name the
+/// two render targets (`bevy_camera::RenderTarget`), and the protocol crate must not
+/// depend on the renderer to carry a diagnosis.
+///
+/// Why the outcome exists at all: an offscreen capture of an image that no camera renders
+/// into produces a PNG of untouched texture memory — a fully black frame that looks like a
+/// successful capture. GTW-918 shipped exactly that state and GTW-922 found it live. A
+/// refusal naming the mismatch is the only reply that cannot be mistaken for a screenshot
+/// of the app.
+#[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct CaptureAimNet(String);
+
+impl CaptureAimNet {
+    /// Build the refusal message from the host's description of the mismatch.
+    #[must_use]
+    pub const fn new(detail: String) -> Self {
+        Self(detail)
+    }
+}
+
 /// The reply to a [`TakeScreenshot`](crate::envelope::QaRequest::TakeScreenshot) —
 /// whether the capture landed on disk.
 ///
 /// The GTW-694 screenshot flow only replies once the file `exists()` on disk (or the
 /// frame budget elapses): [`Saved`](Self::Saved) carries the constrained
-/// [`ScreenshotPathNet`], [`TimedOut`](Self::TimedOut) is the capture-timeout outcome.
+/// [`ScreenshotPathNet`], [`TimedOut`](Self::TimedOut) is the capture-timeout outcome, and
+/// [`TargetNotRendered`](Self::TargetNotRendered) is the pre-spawn refusal GTW-922 added.
 /// An independent serde enum.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ScreenshotResult {
@@ -36,6 +62,10 @@ pub enum ScreenshotResult {
     Saved(ScreenshotPathNet),
     /// The capture did not land on disk within the frame budget.
     TimedOut,
+    /// No capture was attempted: the offscreen image it would have read is not what the
+    /// camera drawing the UI renders into, so the PNG would have been a blank frame
+    /// (GTW-922). The carried message names both render targets.
+    TargetNotRendered(CaptureAimNet),
 }
 
 /// The reply to a [`ScreenshotAfter`](crate::envelope::QaRequest::ScreenshotAfter) —
