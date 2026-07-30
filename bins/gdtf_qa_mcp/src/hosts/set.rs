@@ -87,7 +87,7 @@ mod test {
     use super::{HostPair, HostSet, QaHost};
     use crate::{
         error::McpError,
-        lifecycle::{ChildPid, HostLifecycle, LaunchOutcome, LaunchSpec, StopOutcome},
+        lifecycle::{ChildPid, HostLifecycle, LaunchOutcome, LaunchSpec, StopOutcome, WorkingDir},
         link::{QaLink, QaPort},
     };
 
@@ -118,6 +118,10 @@ mod test {
             StopOutcome::Stopped {
                 pid: ChildPid::new(self.0),
             }
+        }
+
+        fn child_working_dir(&self) -> Option<WorkingDir> {
+            None
         }
     }
 

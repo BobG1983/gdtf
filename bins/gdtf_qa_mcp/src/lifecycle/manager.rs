@@ -21,7 +21,7 @@ use std::time::Instant;
 use super::{
     child::ManagedChild,
     config::LifecycleConfig,
-    launch::LaunchSpec,
+    launch::{LaunchSpec, WorkingDir},
     outcome::{LaunchFailure, LaunchOutcome, StopOutcome},
     probe::probe_ready,
     spawn::ChildSpawner,
@@ -50,6 +50,16 @@ pub trait HostLifecycle {
 
     /// Stop the running child, if any (see [`StopOutcome`]).
     fn stop(&mut self) -> StopOutcome;
+
+    /// The directory the running child was launched in, or `None` when no child is running
+    /// (or its directory cannot be named at all).
+    ///
+    /// Read by the render path so a screenshot the CHILD wrote at a relative path is opened
+    /// relative to the child's directory instead of the MCP host's own. Before GTW-923
+    /// nothing asked this question, so a capture taken by a child launched with a
+    /// `working_dir` of its own — a git worktree, the whole point of GTW-875 — came back as
+    /// "could not be read" while the PNG sat on disk.
+    fn child_working_dir(&self) -> Option<WorkingDir>;
 }
 
 /// A running child together with the port it was launched on and the recipe that built it.
@@ -167,6 +177,16 @@ impl HostLifecycle for HostManager {
         let pid = running.child.pid();
         shutdown(running.child.as_mut(), self.config.kill_grace());
         StopOutcome::Stopped { pid }
+    }
+
+    fn child_working_dir(&self) -> Option<WorkingDir> {
+        // The RESOLVED directory, not the recipe's own: a launch that named no directory
+        // still ran somewhere — the host's own current directory — and a caller resolving a
+        // child-written path needs that answer, not `None` (GTW-875 drew the same
+        // distinction for reporting which tree is under test).
+        self.running
+            .as_ref()
+            .and_then(|running| running.recipe.resolved_working_dir())
     }
 }
 

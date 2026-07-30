@@ -6,7 +6,7 @@ use gdtf_qa_protocol::envelope::{QaRequest, QaResponse};
 
 use crate::{
     error::McpError,
-    lifecycle::{HostLifecycle, LaunchOutcome, LaunchSpec, StopOutcome},
+    lifecycle::{HostLifecycle, LaunchOutcome, LaunchSpec, StopOutcome, WorkingDir},
     link::{QaLink, QaPort},
 };
 
@@ -40,6 +40,13 @@ impl HostLifecycle for StubLifecycle {
 
     fn stop(&mut self) -> StopOutcome {
         self.stop.clone()
+    }
+
+    fn child_working_dir(&self) -> Option<WorkingDir> {
+        // The control tools neither read nor render a capture, so these fixtures have no
+        // child directory to report. The screenshot path's use of it is covered where it
+        // matters — `render/test/` and `tests/jsonrpc/screenshot_cwd.rs`.
+        None
     }
 }
 

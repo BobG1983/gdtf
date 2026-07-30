@@ -11,9 +11,12 @@
 //! - `game_tools` — a forwarding and a lifecycle call against the GAME.
 //! - `editor_tools` — the four editor tools (GTW-808).
 //! - `screenshot_host` — `take_screenshot`'s per-call `host` routing (GTW-880).
+//! - `screenshot_cwd` — a capture written by a child running in ANOTHER directory relays as
+//!   an image, for both children (GTW-923).
 
 mod editor_tools;
 mod game_tools;
 mod protocol;
+mod screenshot_cwd;
 mod screenshot_host;
 mod support;

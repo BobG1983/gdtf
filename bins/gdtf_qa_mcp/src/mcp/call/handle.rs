@@ -88,10 +88,16 @@ pub fn handle_tool_call(params: Option<&Value>, hosts: &mut HostSet<'_>) -> Tool
     if tool.is_stop() {
         return control::handle_stop(pair.lifecycle());
     }
-    // Every other tool maps onto a `QaRequest` carried over its host's link.
+    // Every other tool maps onto a `QaRequest` carried over its host's link. The child's
+    // own directory is read BEFORE the request travels, because the render step needs it to
+    // open a capture the child wrote at a relative path (GTW-923) — the host's current
+    // directory is not the child's whenever a launch named a `working_dir` of its own.
+    let child_dir = pair.lifecycle().child_working_dir();
     match build_request(tool, args) {
         Ok(request) => match pair.link().request(request) {
-            Ok(response) => ToolCallOutcome::Result(render_response(tool, &response)),
+            Ok(response) => {
+                ToolCallOutcome::Result(render_response(tool, &response, child_dir.as_ref()))
+            }
             Err(err) => ToolCallOutcome::Result(tool_error(&err.to_string())),
         },
         Err(message) => ToolCallOutcome::Invalid(message),

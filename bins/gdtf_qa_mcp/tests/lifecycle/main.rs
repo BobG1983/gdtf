@@ -13,10 +13,13 @@
 //! - [`recipe`] drives the REAL [`CargoSpawner`](gdtf_qa_mcp::CargoSpawner) to prove a
 //!   launch recipe's working directory is where cargo actually runs, and that successive
 //!   launches can name different recipes (GTW-875).
+//! - [`child_dir`] asks the real manager WHERE its running child is, the fact the render
+//!   path reads to open a capture the child wrote at a relative path (GTW-923).
 //! - [`tail_order`] pins the ORDER the two failure paths read that tail in — after the
 //!   child is reaped, never before — against a processless fake child that makes the
 //!   ordering observable with no clock in the assertion.
 
+mod child_dir;
 mod process;
 mod recipe;
 mod support;

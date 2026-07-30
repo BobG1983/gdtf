@@ -15,7 +15,7 @@ use std::{
 
 use gdtf_qa_mcp::{
     HostLifecycle, HostPair, HostSet, LaunchOutcome, LaunchSpec, McpError, QaClient, QaLink,
-    QaPort, StopOutcome, dispatch,
+    QaPort, StopOutcome, WorkingDir, dispatch,
 };
 use gdtf_qa_protocol::{
     envelope::{QaError, QaRequest, QaResponse},
@@ -35,6 +35,10 @@ impl HostLifecycle for NoLifecycle {
 
     fn stop(&mut self) -> StopOutcome {
         StopOutcome::NotRunning
+    }
+
+    fn child_working_dir(&self) -> Option<WorkingDir> {
+        None
     }
 }
 
