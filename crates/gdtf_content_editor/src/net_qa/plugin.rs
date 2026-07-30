@@ -38,6 +38,7 @@ use gdtf_net_qa_transport::{
 
 use super::{
     env::{editor_net_qa_enabled, editor_port_from_env},
+    present::EditorCapturePresentPlugin,
     router::route_editor_requests,
     schedule::EditorNetQaSystems,
     screenshot::{
@@ -195,6 +196,12 @@ fn serve(app: &mut App, listener: TcpListener, io_timeout: NetIoTimeout) {
     app.init_resource::<EditorShotSettle>();
     app.init_resource::<EditorShotPollBudget>();
     app.init_resource::<EditorShotSource>();
+    // GTW-918: the offscreen capture-target present path. Added HERE, on the listener arm only,
+    // so an inert plugin (and every non-`net_qa` / release editor) keeps rendering straight to
+    // the window with no offscreen target, no present camera and no `WinitSettings` override.
+    // It replaces the `init_resource` default's placeholder handle with the real target once the
+    // editor has a sized primary window.
+    app.add_plugins(EditorCapturePresentPlugin);
     app.configure_sets(
         Update,
         EditorNetQaSystems::Gather.run_if(resource_exists::<State<EditorState>>),

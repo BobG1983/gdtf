@@ -70,29 +70,65 @@ impl Default for EditorShotPollBudget {
 /// render graph writes every tick", and the [`Default`] states which one the editor binary
 /// uses.
 ///
-/// [`PrimaryWindow`](Self::PrimaryWindow) is the default and is what the running editor
-/// captures — the same source the editor's `GDTF_EDITOR_SHOT` affordance has always read.
-/// [`Offscreen`](Self::Offscreen) is the editor's hook for the game's GTW-764 answer to the
-/// macOS problem that a backgrounded window's swapchain reads back black: point it at an
-/// image a camera renders into and the capture is independent of window presentation. The
-/// integration suite uses it because a headless test app has no window at all.
+/// [`Offscreen`](Self::Offscreen) is the DEFAULT (GTW-918) and is what the running editor
+/// captures: an image the editor's egui camera renders into every tick, so a capture is
+/// independent of window presentation. [`PrimaryWindow`](Self::PrimaryWindow) reads the window
+/// swapchain and is now only reachable when a caller inserts it.
 ///
 /// Which arm is installed is pinned by
-/// `test/source.rs::the_plugin_installs_the_shipped_capture_source`, so this `#[default]`
+/// `test/source.rs::the_plugin_installs_the_shipped_capture_source`, so this [`Default`]
 /// cannot change without a test changing with it.
-#[derive(Resource, Clone, Debug, Default)]
+#[derive(Resource, Clone, Debug)]
 pub enum EditorShotSource {
-    /// The primary window's swapchain — the running editor's own screen.
+    /// The primary window's swapchain — the editor's own on-screen window.
     ///
-    /// GTW-917: no test observes a real window readback through this arm — a test app has no
-    /// window to read back — so the coverage that exists is the target-selection assertion in
+    /// NOT what the running editor captures any more (GTW-918). Its remaining role is the one
+    /// the game keeps for the same arm: the FALLBACK for a build that has no present path. Two
+    /// ways it is reached, both deliberate — a caller (a test, or an editor configuration wired
+    /// without `EditorCapturePresentPlugin`) inserting it by name, and the pump's own fallback
+    /// when the [`Offscreen`](Self::Offscreen) arm still carries the [`Default`]'s placeholder
+    /// handle, i.e. before any offscreen target has been created (see `pump.rs`'s
+    /// `spawn_capture` match and the [`Default`] impl below).
+    ///
+    /// Why it is not the default: it works only while the window is VISIBLE. Per GTW-764, on
+    /// macOS a backgrounded, occluded or minimized window's Metal drawable is stale and the
+    /// copy reads back black — and an unattended agent-QA run is exactly that condition.
+    ///
+    /// No test observes a real window readback through this arm (a test app has no window to
+    /// read back), so the coverage that exists is the target-selection assertion in
     /// `test/source.rs`, which pins this arm to
-    /// `Screenshot(RenderTarget::Window(WindowRef::Primary))`. Per GTW-764 this source reads
-    /// back black from a backgrounded, occluded or minimized macOS window; GTW-918 is why the
-    /// running editor stops taking it, by giving the editor an offscreen render target and
-    /// making [`Offscreen`](Self::Offscreen) the source it captures through.
-    #[default]
+    /// `Screenshot(RenderTarget::Window(WindowRef::Primary))`.
     PrimaryWindow,
-    /// An offscreen image the render graph writes every tick.
+    /// An offscreen image the render graph writes every tick — the editor's shipped source.
+    ///
+    /// The running editor's handle is created and installed by the present path
+    /// (`crate::net_qa::present`), which sizes the image to the window, adds `COPY_SRC`, and
+    /// retargets the egui camera into it.
     Offscreen(Handle<Image>),
+}
+
+impl Default for EditorShotSource {
+    /// The wiring default: [`Offscreen`](Self::Offscreen), so the swapchain is unreachable on
+    /// the listener arm unless a caller deliberately asks for it (GTW-918 clause 2).
+    ///
+    /// The handle is a PLACEHOLDER — `#[derive(Default)]` cannot pick a variant that carries
+    /// data, and the plugin installs this value through `init_resource` before any window
+    /// exists to size a real target against. `ensure_editor_capture_target` replaces it with the
+    /// handle of the image the egui camera actually renders into, on the first frame the editor
+    /// has a sized primary window.
+    ///
+    /// What that placeholder handle actually names, stated exactly: `Handle::<Image>::default()`
+    /// is `Handle::Uuid(AssetId::DEFAULT_UUID)`, and `ImagePlugin::build` REGISTERS Bevy's 1x1
+    /// white `Image::default()` at precisely that handle
+    /// (`bevy_image-0.19.0/src/image.rs:220-222`). So it does not name "no image" — capturing
+    /// through it would land a 1x1 white PNG as if it were the editor's shell, or fail the copy
+    /// because that image's descriptor carries no `COPY_SRC`. Neither is acceptable in the path
+    /// agent QA drives, so `pump.rs`'s `spawn_capture` matches the placeholder handle and takes
+    /// the window swapchain instead — the same fallback the game's pump takes when no capture
+    /// target resource exists (`crates/gdtf_app/src/dev/net_qa/screenshot/pump.rs:262-266`).
+    /// `test/source.rs::the_default_placeholder_source_falls_back_to_the_primary_window`
+    /// pins that.
+    fn default() -> Self {
+        Self::Offscreen(Handle::default())
+    }
 }

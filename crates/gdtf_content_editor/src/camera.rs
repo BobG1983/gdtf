@@ -30,8 +30,19 @@ pub(crate) fn disable_egui_auto_context(mut settings: ResMut<EguiGlobalSettings>
 
 /// `OnEnter(Editing)`: spawn the editor's own 2D window camera (the editor never reuses a game
 /// camera), carrying the [`PrimaryEguiContext`] EXPLICITLY (GTW-515 — so egui draws into the window,
-/// never the offscreen preview camera's `Image` target). egui renders against this camera's window
-/// target, and the QA capture reads it back.
+/// never the offscreen preview camera's `Image` target).
+///
+/// The camera is spawned WINDOW-targeted, and that is load-bearing beyond the ordinary case
+/// (GTW-918). `bevy_egui` records this context's entry in `WindowToEguiContextMap` — the resource
+/// every keyboard / pointer / IME event is routed through — once, on `Added<EguiContext>`, and only
+/// for a WINDOW-targeted context. Spawning image-targeted would record nothing and leave the editor
+/// UI rendering while dead to input. So the QA present path retargets this camera to its offscreen
+/// image LATER, and only after that mapping exists.
+///
+/// Which means: on the `net_qa` listener arm, egui renders into the QA capture image rather than
+/// straight at the window (a present camera blits that image back onto the window, so the window
+/// still shows the editor). Everywhere else — a normal editor launch, a release build — egui
+/// renders against this camera's window target and the QA capture reads the window back.
 pub(crate) fn spawn_editor_camera(mut commands: Commands) {
     commands.spawn((Camera2d, PrimaryEguiContext));
 }

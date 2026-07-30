@@ -251,6 +251,19 @@ fn spawn_capture(path: &CapturePath, source: &EditorShotSource, commands: &mut C
         // why GTW-918 gives the editor an offscreen render target and makes the arm below the
         // source the running editor takes.
         EditorShotSource::PrimaryWindow => Screenshot::primary_window(),
+        // No offscreen target created yet: the plugin's `init_resource` installs
+        // `EditorShotSource`'s `Default`, whose handle is `Handle::<Image>::default()` — the
+        // `ImagePlugin::build` registers Bevy's 1x1 white `Image::default()` at
+        // (`bevy_image-0.19.0/src/image.rs:220-222`). Capturing THAT would land a 1x1 white PNG
+        // as if it were the editor, or fail the copy outright since its descriptor carries no
+        // `COPY_SRC`. So the pump takes the fallback the game's pump takes when no target
+        // resource exists (`crates/gdtf_app/src/dev/net_qa/screenshot/pump.rs:262-266`): the
+        // window swapchain. Reachable only on the frames before
+        // `ensure_editor_capture_target` has a sized primary window, and in a build wired
+        // without `EditorCapturePresentPlugin`.
+        EditorShotSource::Offscreen(image) if *image == Handle::<Image>::default() => {
+            Screenshot::primary_window()
+        }
         EditorShotSource::Offscreen(image) => Screenshot::image(image.clone()),
     };
     commands
