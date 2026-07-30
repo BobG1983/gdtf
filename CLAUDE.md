@@ -68,13 +68,22 @@ CI gate. CI's clippy and test steps DO name both `net_qa` features
 `.github/workflows/clippy.yml` and `test.yml`), so an editor-QA regression fails a PR instead of
 going unlinted and untested (GTW-883); they add no bevy rebuild, since those runs already compile
 the editor crate and both of the feature's optional deps.
-`cargo doc` is dev/gate-only (not CI): the `broken_intra_doc_links` / `private_intra_doc_links`
-denies only surface under `cargo doc`. It runs TWICE: the default `cargo doc --workspace --no-deps`
+`cargo doc` is dev/gate-only (not CI): the workspace rustdoc denies only surface under
+`cargo doc`. It runs TWICE: the default `cargo doc --workspace --no-deps`
 plus `cargo doc-full` (= `doc --workspace --no-deps --features
 grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa`), which enables the
 `dev_tools`/`net_qa`-gated modules so their doc comments are link-checked too — the same
 both-configs rule the `dclippy` dual gate follows (an optional feature must be checked WITH it on,
 not just off; GTW-790, GTW-877).
+Since GTW-929 those two runs gate EVERY rustdoc lint: `[workspace.lints.rustdoc]` declares
+`all = { level = "deny", priority = -1 }`, so a rustdoc warning of any kind fails the doc step.
+Before that only `broken_intra_doc_links` and `private_intra_doc_links` were fatal and every other
+rustdoc warning accumulated with both runs still exiting 0. Setting the level in `Cargo.toml`
+covers both runs by construction, so they cannot drift apart; it reaches rustdoc lints only, so
+cargo's own "output filename collision" between the `gdtf_content_editor` bin and the library crate
+of the same name is fixed at its source instead, by `doc = false` on that `[[bin]]` target (no
+built path moves). `crates/gdtf_test_utils/tests/rustdoc_lint_gate/` pins the group deny, the
+`[lints] workspace = true` opt-in in every member that deny depends on, and that `doc = false`.
 See [`verification.md`](.claude/rules/verification.md).
 
 The workspace `Cargo.toml` denies clippy `all`/`pedantic`/`correctness`/`suspicious` plus
