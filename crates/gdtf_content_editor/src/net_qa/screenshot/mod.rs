@@ -12,7 +12,7 @@
 //! registers [`sweep_pending`](gdtf_net_qa_transport::sweep_pending) for this payload type,
 //! exactly as the game's T7 pump does.
 //!
-//! ## What the offscreen capture source stands in for, and what it does not (GTW-917)
+//! ## What the offscreen capture source stands in for, and what it does not (GTW-917, GTW-918)
 //!
 //! Every test that watches a capture actually LAND drives
 //! [`EditorShotSource::Offscreen`](config::EditorShotSource::Offscreen) — an image a camera
@@ -28,9 +28,11 @@
 //! It does NOT stand in for whether a REAL editor window's swapchain yields the egui shell
 //! rather than a black frame — and in particular whether it does so when that window is not
 //! visible. That is a property of the primary-window source alone, and per GTW-764 a
-//! backgrounded, occluded or minimized macOS window reads back black. Observing it needs a
-//! real editor process with a real window, which is what GTW-904 exists to do; GTW-918 removes
-//! the dependency by making the running editor capture an offscreen target too.
+//! backgrounded, occluded or minimized macOS window reads back black. GTW-918 removed the
+//! dependency on that: the running editor now renders its egui camera into an offscreen image
+//! ([`super::present`]) and captures THAT, so window visibility no longer decides whether a
+//! capture shows the shell. Reading the resulting pixels back from a real editor process is
+//! what GTW-904 exists to do.
 //!
 //! What IS pinned here about the source choice is the mapping itself: `test/source.rs`
 //! asserts each [`EditorShotSource`](config::EditorShotSource) arm spawns the render target it

@@ -34,11 +34,15 @@
 //!   availability filter, and the per-topic views (GTW-805).
 //! - [`screenshot`] — the capture pump: settle, capture, and reply only once the PNG has
 //!   landed on disk (GTW-880).
+//! - [`present`] — the offscreen capture target the running editor captures through: the
+//!   window-sized `COPY_SRC` image, the egui-camera retarget, and the present camera that blits
+//!   it back to the window (GTW-918).
 //! - [`plugin`] — the [`NetQaEditorPlugin`] registration.
 
 mod config;
 mod env;
 mod plugin;
+mod present;
 mod router;
 mod schedule;
 mod screenshot;
