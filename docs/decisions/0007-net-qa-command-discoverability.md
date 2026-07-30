@@ -107,9 +107,23 @@ pub enum BattleQueryKind {
   the `BattleQueryKind` enum, so an LLM sees the full legal topic list natively at the MCP layer.
 
 When the editor family needs QA support, repeat the identical two-variant recipe:
-`GetEditorQueryOptions` / `QueryEditor(EditorQueryKind)`, its own router filter clause against
-`EditorState`. This is a deliberate, small, three-file diff per family — an accepted cost, not a
-gap to engineer away preemptively.
+`GetEditorQueryOptions` / `QueryEditor(EditorQueryKind)`, plus its own availability predicate. As
+built (GTW-805) that predicate is `topic_available(kind, model)`, in
+`crates/gdtf_content_editor/src/net_qa/snapshot/topics.rs` — a wildcard-free match on
+`EditorQueryKind` that reads the query model (`EditorQaModel`, with `mode()`, `session()`,
+`drafts()` and `report()`), not the editor's `EditorState`. `Readiness` is always answerable;
+every other topic is offered exactly when the resource it reads is present, and that is not the
+same window for all of them — `Validation` is offered from the editor's first frame, `Load`
+included, because `ContentIntegrityReport` is `init_resource`'d while the app is still being
+built (GTW-879).
+
+The options list and the answer share that one predicate over a single model read:
+`options_view` (same file) filters `EditorQueryKind::ALL` through it, and
+`answer_editor_query` in `crates/gdtf_content_editor/src/net_qa/router.rs` calls it before
+producing a topic's view, refusing with `BadRequest` when it says no. So "advertised" and
+"answerable" cannot drift apart — a stronger guarantee than a separate router-side filter would
+give, and the reason the editor family needs no filter clause of its own. This is still a
+deliberate, small, per-family diff — an accepted cost, not a gap to engineer away preemptively.
 
 We will **not** build the self-registering registry (candidate 1) now. Its central insight —
 that state-scoped discovery needs to generalize across the game and the editor — is correct, and
