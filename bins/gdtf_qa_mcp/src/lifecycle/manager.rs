@@ -15,6 +15,17 @@
 //! that times out kills and reaps the orphan before returning the failure, and the
 //! manager's [`Drop`] force-kills and reaps any surviving child so the MCP never outlives
 //! its game silently.
+//!
+//! A manager that owns NO child says so only after checking who holds the port (GTW-926).
+//! The owned handle lives in this process's memory, so a host process replaced mid-run —
+//! what every `/mcp` reconnect does — starts owning nothing while the previous host's child
+//! is still alive and still listening. Both entry points ask the [`OrphanWatch`] first:
+//! [`stop`](HostLifecycle::stop) stops that orphan and says it was an orphan
+//! ([`OrphanStopped`](StopOutcome::OrphanStopped) /
+//! [`OrphanHeld`](StopOutcome::OrphanHeld)) instead of denying it exists, and
+//! [`launch`](HostLifecycle::launch) reports it
+//! ([`PortHeldByOrphan`](LaunchFailure::PortHeldByOrphan)) instead of racing it for the
+//! socket.
 
 use std::time::Instant;
 
@@ -22,6 +33,7 @@ use super::{
     child::ManagedChild,
     config::LifecycleConfig,
     launch::{LaunchSpec, WorkingDir},
+    orphan::{OrphanPid, OrphanStop, OrphanTarget, OrphanWatch, PortHold, SystemOrphanWatch},
     outcome::{LaunchFailure, LaunchOutcome, StopOutcome},
     probe::probe_ready,
     spawn::ChildSpawner,
@@ -48,8 +60,23 @@ pub trait HostLifecycle {
     /// build that was asked for.
     fn launch(&mut self, port: QaPort, spec: &LaunchSpec) -> LaunchOutcome;
 
-    /// Stop the running child, if any (see [`StopOutcome`]).
-    fn stop(&mut self) -> StopOutcome;
+    /// Stop whatever this host has on `port`: the child this manager owns, or — when it
+    /// owns none — an orphan left listening there by an EARLIER host process (see
+    /// [`StopOutcome`]).
+    ///
+    /// The port is an argument because a manager that owns no child knows no port, and
+    /// "this manager owns nothing" is not the same fact as "nothing is running". Answering
+    /// the second when only the first was established is what let a `/mcp` reconnect strand
+    /// a live, listening child with no route back to it (GTW-926).
+    fn stop(&mut self, port: QaPort) -> StopOutcome;
+
+    /// Stop ONLY the child this manager owns, never adopting an orphan.
+    ///
+    /// The MCP host's own shutdown path: it exists so a host that owns nothing exits
+    /// quietly instead of killing a listener some other process is responsible for.
+    /// A caller asking a stop TOOL for the port back wants the opposite — that is
+    /// [`stop`](Self::stop).
+    fn stop_owned(&mut self) -> StopOutcome;
 
     /// The directory the running child was launched in, or `None` when no child is running
     /// (or its directory cannot be named at all).
@@ -80,6 +107,8 @@ pub struct HostManager {
     config:  LifecycleConfig,
     /// The one running child, or `None` when no game is up.
     running: Option<RunningChild>,
+    /// How the manager learns about — and stops — a child on the port that it does not own.
+    orphans: Box<dyn OrphanWatch>,
 }
 
 impl HostManager {
@@ -92,10 +121,46 @@ impl HostManager {
     /// Build a manager with an explicit timing config (the tests' short-fused knobs).
     #[must_use]
     pub fn with_config(spawner: Box<dyn ChildSpawner>, config: LifecycleConfig) -> Self {
+        Self::with_orphan_watch(spawner, config, Box::new(SystemOrphanWatch::new()))
+    }
+
+    /// Build a manager with an explicit orphan watch as well.
+    ///
+    /// The production path is [`with_config`](Self::with_config), which supplies the real
+    /// [`SystemOrphanWatch`]. This constructor exists so a test can drive the orphan
+    /// DECISIONS against a real listener without any test process signalling a real
+    /// process — the listener a test binds is the test itself.
+    #[must_use]
+    pub fn with_orphan_watch(
+        spawner: Box<dyn ChildSpawner>,
+        config: LifecycleConfig,
+        orphans: Box<dyn OrphanWatch>,
+    ) -> Self {
         Self {
             spawner,
             config,
             running: None,
+            orphans,
+        }
+    }
+
+    /// Who holds `port` right now, when this manager owns no child of its own.
+    fn hold_on(&self, port: QaPort) -> PortHold {
+        self.orphans.inspect(port, self.config.probe_timeout())
+    }
+
+    /// Stop the orphan holding `port`, reporting whether the port came free.
+    ///
+    /// An orphan the operating system cannot name cannot be signalled, so it is reported
+    /// as still held rather than silently passed off as stopped.
+    fn stop_orphan(&self, port: QaPort, pid: OrphanPid) -> StopOutcome {
+        let OrphanPid::Known(known) = pid else {
+            return StopOutcome::OrphanHeld { port, pid };
+        };
+        let target = OrphanTarget::from_config(port, known, self.config);
+        match self.orphans.stop(target) {
+            OrphanStop::Stopped => StopOutcome::OrphanStopped { port, pid },
+            OrphanStop::Survived => StopOutcome::OrphanHeld { port, pid },
         }
     }
 
@@ -162,6 +227,12 @@ impl HostLifecycle for HostManager {
                 recipe: Box::new(running.recipe.clone()),
             };
         }
+        // Nothing owned here: establish whether the port is already held before spawning.
+        // A second child launched into a held port would race the orphan for the socket and
+        // report `launched` for whichever won, hiding the real state (GTW-926).
+        if let PortHold::Orphan(pid) = self.hold_on(port) {
+            return LaunchOutcome::Failed(LaunchFailure::PortHeldByOrphan { port, pid });
+        }
         match self.spawner.spawn(port, spec) {
             Ok(child) => self.await_readiness(child, port, spec),
             Err(err) => LaunchOutcome::Failed(LaunchFailure::Spawn(
@@ -170,7 +241,21 @@ impl HostLifecycle for HostManager {
         }
     }
 
-    fn stop(&mut self) -> StopOutcome {
+    fn stop(&mut self, port: QaPort) -> StopOutcome {
+        // The owned child first: when this manager holds one, that is the child the caller
+        // means and no port lookup is needed. Only when it owns none is "nothing is running"
+        // still unestablished — so ask who holds the port before answering (GTW-926).
+        let owned = self.stop_owned();
+        if !matches!(owned, StopOutcome::NotRunning) {
+            return owned;
+        }
+        match self.hold_on(port) {
+            PortHold::Free => StopOutcome::NotRunning,
+            PortHold::Orphan(pid) => self.stop_orphan(port, pid),
+        }
+    }
+
+    fn stop_owned(&mut self) -> StopOutcome {
         let Some(mut running) = self.running.take() else {
             return StopOutcome::NotRunning;
         };

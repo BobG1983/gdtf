@@ -8,10 +8,10 @@ use crate::{
     hosts::QaHost,
     lifecycle::{
         BootTimeout, CargoPackage, ChildPid, EnvOverrides, FeatureList, FeatureName, LaunchFailure,
-        LaunchOutcome, LaunchSpec, QaChannel, StderrTail, WorkingDir,
+        LaunchOutcome, LaunchSpec, OrphanPid, QaChannel, StderrTail, StopOutcome, WorkingDir,
     },
     link::QaPort,
-    mcp::control::render::render_launch,
+    mcp::control::render::{render_launch, render_stop},
 };
 
 /// An `already_running` answer reports the RUNNING child's recipe — the package,
@@ -118,4 +118,31 @@ fn render_launch_timeout_names_the_build_and_carries_the_tail() {
     );
     assert!(text.contains("600s"), "says how long it waited: {text}");
     assert!(text.contains("editor"), "names the host: {text}");
+}
+
+/// A NAMED orphan that survived its stop renders as a tool error carrying that process id —
+/// the exact shape the bug report showed, where pid 43744 was alive and holding 7617 and
+/// `stop_editor` answered `{"status":"not_running"}` (GTW-926).
+///
+/// The sibling case, an orphan the operating system could not name, is covered in
+/// [`launch`](super::launch); this is the arm a real reconnect hits, since `lsof` names the
+/// holder whenever it is installed.
+#[test]
+fn a_named_orphan_that_survives_is_a_tool_error_naming_the_process() {
+    let rendered = render_stop(
+        QaHost::Editor,
+        &StopOutcome::OrphanHeld {
+            port: QaPort::new(7617),
+            pid:  OrphanPid::Known(ChildPid::new(43744)),
+        },
+    );
+    assert_eq!(rendered["isError"], json!(true));
+    let Some(text) = rendered["content"][0]["text"].as_str() else {
+        unreachable!("a tool error carries a text reason");
+    };
+    assert!(text.contains("editor"), "names the host: {text}");
+    assert!(text.contains("7617"), "names the port: {text}");
+    assert!(text.contains("43744"), "names the process: {text}");
+    assert!(text.contains("orphan"), "says what it is: {text}");
+    assert!(!text.contains("not_running"), "rendered: {text}");
 }

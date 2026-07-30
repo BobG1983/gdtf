@@ -45,12 +45,19 @@ pub fn handle_launch(
     ToolCallOutcome::Result(render_launch(host, &outcome, &spec))
 }
 
-/// Handle a `stop_game` / `stop_editor` call: stop that host's running child (if any) and
+/// Handle a `stop_game` / `stop_editor` call: stop whatever this host has on its port and
 /// render the outcome. The two hosts' managers are separate, so stopping one never
 /// touches the other.
+///
+/// The host's own port is handed to the stop because "no child is owned here" and "nothing
+/// is running" are different facts. A stop that owns nothing checks the port and answers
+/// about the orphan it finds — the child an earlier MCP host process left listening — so a
+/// `/mcp` reconnect no longer strands a live editor or game behind a `not_running` denial
+/// (GTW-926).
 #[must_use]
-pub fn handle_stop(lifecycle: &mut dyn HostLifecycle) -> ToolCallOutcome {
-    ToolCallOutcome::Result(render_stop(&lifecycle.stop()))
+pub fn handle_stop(host: QaHost, lifecycle: &mut dyn HostLifecycle) -> ToolCallOutcome {
+    let outcome = lifecycle.stop(host.port_from_env());
+    ToolCallOutcome::Result(render_stop(host, &outcome))
 }
 
 /// Parse the optional `port` argument, defaulting to the port `host` reads from its own

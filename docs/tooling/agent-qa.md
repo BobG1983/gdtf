@@ -346,6 +346,18 @@ Notes an agent relies on:
 - **The two children are independent.** `stop_game` does not touch the editor
   and `stop_editor` does not touch the game; each `HostManager` owns one child
   and enforces one-at-a-time for its own host only. Stdin EOF stops both.
+- **An MCP host restart leaves the child running, and the stop tools now say
+  so.** Replacing the MCP server process — what every `/mcp` reconnect does —
+  kills the host, not its child: the child is spawned into its own process
+  group and survives, still listening on the fixed port, while the new host
+  process owns no handle to it. A stop with no owned child therefore checks who
+  holds the port before answering (GTW-926): a port answering the QA protocol is
+  an ORPHAN, and the reply says `orphan_stopped` with the port and pid once it
+  is stopped, or is a tool error naming the process when it could not be. Only a
+  port nothing answers on gets `not_running`. A `launch_*` into a held port
+  reports the same orphan and starts nothing, rather than racing it for the
+  socket. Before this, `stop_editor` answered `not_running` about a child that
+  was alive and listening, and a hand-typed `kill` was the only way back.
 
 ## The protocol sketch
 

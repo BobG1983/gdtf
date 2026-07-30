@@ -199,7 +199,10 @@ fn timeout_reads_the_stderr_tail_after_reaping_the_orphan() {
         ],
         "the orphan is stopped and reaped, and only then is its stderr tail read",
     );
-    assert_eq!(manager.stop(), StopOutcome::NotRunning);
+    assert_eq!(
+        manager.stop(QaPort::new(free_port())),
+        StopOutcome::NotRunning
+    );
 }
 
 /// A child that exits on its own is reaped BEFORE its stderr tail is read, for the same
@@ -222,5 +225,8 @@ fn early_exit_reads_the_stderr_tail_after_reaping_the_child() {
         vec![ChildCall::Poll, ChildCall::Reap, ChildCall::ReadStderrTail],
         "the exited child is reaped, and only then is its stderr tail read",
     );
-    assert_eq!(manager.stop(), StopOutcome::NotRunning);
+    assert_eq!(
+        manager.stop(QaPort::new(free_port())),
+        StopOutcome::NotRunning
+    );
 }

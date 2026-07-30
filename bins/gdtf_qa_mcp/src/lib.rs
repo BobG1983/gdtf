@@ -51,8 +51,9 @@ pub use hosts::{HostPair, HostSet, QaHost};
 pub use lifecycle::{
     BootTimeout, CargoPackage, CargoSpawner, ChildPid, ChildSpawner, EnvOverrides, EnvVar,
     EnvVarName, EnvVarValue, FeatureList, FeatureName, HostLifecycle, HostManager, KillGrace,
-    LaunchFailure, LaunchOutcome, LaunchSpec, LifecycleConfig, ManagedChild, PollInterval,
-    ProbeTimeout, ProcessChild, QaChannel, StderrTail, StopOutcome, WorkingDir, build_command,
+    LaunchFailure, LaunchOutcome, LaunchSpec, LifecycleConfig, ManagedChild, OrphanPid, OrphanStop,
+    OrphanTarget, OrphanWatch, PollInterval, PortHold, ProbeTimeout, ProcessChild, QaChannel,
+    StderrTail, StopOutcome, SystemOrphanWatch, WorkingDir, build_command,
 };
 pub use link::{QaClient, QaLink, QaPort};
 pub use rpc::dispatch;

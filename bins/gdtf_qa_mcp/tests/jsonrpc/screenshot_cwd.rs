@@ -73,7 +73,11 @@ impl HostLifecycle for ChildInDirLifecycle {
         }
     }
 
-    fn stop(&mut self) -> StopOutcome {
+    fn stop(&mut self, _port: QaPort) -> StopOutcome {
+        StopOutcome::NotRunning
+    }
+
+    fn stop_owned(&mut self) -> StopOutcome {
         StopOutcome::NotRunning
     }
 

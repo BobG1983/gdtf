@@ -19,6 +19,10 @@ use std::{
     io::{self, Read, Write},
     net::{Ipv4Addr, TcpListener, TcpStream},
     process::{Command, Stdio},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     thread,
     time::Instant,
 };
@@ -57,6 +61,26 @@ const STDERR_SYNC_STEP: Duration = Duration::from_millis(1);
 /// the real [`CargoSpawner`](gdtf_qa_mcp::CargoSpawner), in `recipe.rs` (GTW-875).
 pub(crate) struct StubSpawner;
 
+/// The stub spawner, wired to a gated fake listener: spawning the placeholder process is
+/// what lets that listener start answering, the same order a real child follows (it binds
+/// its port once it is running).
+pub(crate) struct GatedStubSpawner(FakeGameGate);
+
+impl GatedStubSpawner {
+    /// Wire the stub spawner to `gate`, so a spawn opens that fake listener.
+    pub(crate) const fn new(gate: FakeGameGate) -> Self {
+        Self(gate)
+    }
+}
+
+impl ChildSpawner for GatedStubSpawner {
+    fn spawn(&self, port: QaPort, spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
+        let child = StubSpawner.spawn(port, spec)?;
+        self.0.open();
+        Ok(child)
+    }
+}
+
 impl ChildSpawner for StubSpawner {
     fn spawn(&self, _port: QaPort, _spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
         let mut command = Command::new("sh");
@@ -88,9 +112,28 @@ fn await_captured_stderr(child: &dyn ManagedChild) {
     }
 }
 
-/// Bind a loopback listener on an OS-assigned port and answer the `Hello` handshake on a
-/// background thread for as many probes as arrive. Returns the bound port.
-pub(crate) fn spawn_fake_game() -> u16 {
+/// The switch that lets a bound fake listener start ANSWERING.
+///
+/// A launch now establishes who holds the port BEFORE it spawns anything (GTW-926), so a
+/// fixture that answers from the moment it binds is an orphan by the manager's own
+/// definition. This gate models the real order instead: the socket exists, and the listener
+/// behind it starts answering when the CHILD is spawned.
+#[derive(Clone)]
+pub(crate) struct FakeGameGate(Arc<AtomicBool>);
+
+impl FakeGameGate {
+    /// Let the listener start answering probes.
+    pub(crate) fn open(&self) {
+        self.0.store(true, Ordering::SeqCst);
+    }
+}
+
+/// How often the gated listener re-reads its gate before accepting.
+const GATE_POLL_STEP: Duration = Duration::from_millis(1);
+
+/// Bind a loopback listener on an OS-assigned port that answers the `Hello` handshake only
+/// once its gate is opened. Returns the bound port and that gate.
+pub(crate) fn spawn_gated_fake_game() -> (u16, FakeGameGate) {
     let Ok(listener) = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)) else {
         unreachable!("the test can bind a loopback listener");
     };
@@ -98,7 +141,12 @@ pub(crate) fn spawn_fake_game() -> u16 {
         unreachable!("the listener has a local address");
     };
     let port = addr.port();
+    let gate = FakeGameGate(Arc::new(AtomicBool::new(false)));
+    let open = Arc::clone(&gate.0);
     thread::spawn(move || {
+        while !open.load(Ordering::SeqCst) {
+            thread::sleep(GATE_POLL_STEP);
+        }
         for stream in listener.incoming() {
             let Ok(mut stream) = stream else {
                 return;
@@ -106,12 +154,21 @@ pub(crate) fn spawn_fake_game() -> u16 {
             answer_one(&mut stream);
         }
     });
+    (port, gate)
+}
+
+/// Bind a loopback listener that answers the `Hello` handshake straight away — a listener
+/// already up before anything else happens, which is exactly what an orphaned child looks
+/// like. Returns the bound port.
+pub(crate) fn spawn_fake_game() -> u16 {
+    let (port, gate) = spawn_gated_fake_game();
+    gate.open();
     port
 }
 
 /// Read one framed request and answer it: `Hello` becomes `HelloOk`, anything else an
 /// error. One request per connection, matching how the readiness probe connects.
-fn answer_one(stream: &mut TcpStream) {
+pub(crate) fn answer_one(stream: &mut TcpStream) {
     let mut decoder = FrameDecoder::new();
     let mut buf = [0u8; 1024];
     loop {

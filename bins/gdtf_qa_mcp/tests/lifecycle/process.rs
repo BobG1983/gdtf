@@ -11,14 +11,17 @@ use gdtf_qa_mcp::{
     LaunchFailure, LaunchOutcome, LaunchSpec, QaChannel, QaPort, StopOutcome, WorkingDir,
 };
 
-use crate::support::{STUB_STDERR_LINE, StubSpawner, fast_config, free_port, spawn_fake_game};
+use crate::support::{
+    GatedStubSpawner, STUB_STDERR_LINE, StubSpawner, fast_config, free_port, spawn_gated_fake_game,
+};
 
 /// A launch against a listening fake server becomes ready; a stop then reaps the child and
 /// a second stop reports nothing running.
 #[test]
 fn launch_becomes_ready_then_stops() {
-    let port = spawn_fake_game();
-    let mut manager = HostManager::with_config(Box::new(StubSpawner), fast_config(2000));
+    let (port, gate) = spawn_gated_fake_game();
+    let mut manager =
+        HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
 
     let outcome = manager.launch(QaPort::new(port), &LaunchSpec::game_default());
     let LaunchOutcome::Launched {
@@ -30,12 +33,18 @@ fn launch_becomes_ready_then_stops() {
     };
     assert_eq!(*ready_port, port);
 
-    let stopped = manager.stop();
+    let stopped = manager.stop(QaPort::new(port));
     let StopOutcome::Stopped { pid: stopped_pid } = stopped else {
         unreachable!("stop reaps the running child: {stopped:?}");
     };
     assert_eq!(pid, stopped_pid, "stop reaps the child that launched");
-    assert_eq!(manager.stop(), StopOutcome::NotRunning);
+    // Over a port nothing holds, a second stop reports nothing running. The fake server
+    // still holds the launch port, and a stop there is now an ORPHAN answer (GTW-926) —
+    // that state gets its own coverage in `orphan.rs`.
+    assert_eq!(
+        manager.stop(QaPort::new(free_port())),
+        StopOutcome::NotRunning
+    );
 }
 
 /// A recipe naming `features`, so a test can tell one recipe from another.
@@ -59,8 +68,9 @@ fn recipe_with_features(features: &[&str]) -> LaunchSpec {
 /// a default: an agent has to be able to read which build it is about to drive.
 #[test]
 fn second_launch_is_already_running() {
-    let port = spawn_fake_game();
-    let mut manager = HostManager::with_config(Box::new(StubSpawner), fast_config(2000));
+    let (port, gate) = spawn_gated_fake_game();
+    let mut manager =
+        HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
     let spec = recipe_with_features(&["dynamic_linking", "net_qa", "dev_tools"]);
 
     let LaunchOutcome::Launched { pid: first_pid, .. } = manager.launch(QaPort::new(port), &spec)
@@ -89,7 +99,7 @@ fn second_launch_is_already_running() {
         "the reported recipe is the running child's, not the default"
     );
 
-    let _ = manager.stop();
+    let _ = manager.stop(QaPort::new(port));
 }
 
 /// A second launch naming a DIFFERENT recipe is rejected, naming the recipe that is
@@ -100,8 +110,9 @@ fn second_launch_is_already_running() {
 /// code under review.
 #[test]
 fn a_second_launch_of_a_different_recipe_is_rejected() {
-    let port = spawn_fake_game();
-    let mut manager = HostManager::with_config(Box::new(StubSpawner), fast_config(2000));
+    let (port, gate) = spawn_gated_fake_game();
+    let mut manager =
+        HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
     let running_recipe = recipe_with_features(&["dynamic_linking", "net_qa"]);
 
     let LaunchOutcome::Launched { pid: first_pid, .. } =
@@ -119,7 +130,7 @@ fn a_second_launch_of_a_different_recipe_is_rejected() {
     assert_eq!(*running, running_recipe, "the rejection names what is up");
 
     // The running child was left alone — the rejection stops nothing.
-    let StopOutcome::Stopped { pid } = manager.stop() else {
+    let StopOutcome::Stopped { pid } = manager.stop(QaPort::new(port)) else {
         unreachable!("the first child is still running after the rejection");
     };
     assert_eq!(pid, first_pid);
@@ -129,8 +140,9 @@ fn a_second_launch_of_a_different_recipe_is_rejected() {
 /// directory: they are the same checkout, so this is ensure-style, not a mismatch.
 #[test]
 fn an_unnamed_directory_matches_the_hosts_own_directory() {
-    let port = spawn_fake_game();
-    let mut manager = HostManager::with_config(Box::new(StubSpawner), fast_config(2000));
+    let (port, gate) = spawn_gated_fake_game();
+    let mut manager =
+        HostManager::with_config(Box::new(GatedStubSpawner::new(gate)), fast_config(2000));
     let Ok(here) = std::env::current_dir() else {
         unreachable!("the test process has a current directory");
     };
@@ -151,7 +163,7 @@ fn an_unnamed_directory_matches_the_hosts_own_directory() {
         "the same checkout under two spellings is one recipe: {second:?}"
     );
 
-    let _ = manager.stop();
+    let _ = manager.stop(QaPort::new(port));
 }
 
 /// With no readiness endpoint the launch times out, kills the orphaned child, and returns
@@ -188,12 +200,16 @@ fn launch_times_out_and_captures_stderr() {
         "the failure reports the boot timeout the manager was configured with"
     );
     // The orphaned child was already killed and reaped, so there is nothing left to stop.
-    assert_eq!(manager.stop(), StopOutcome::NotRunning);
+    assert_eq!(manager.stop(QaPort::new(port)), StopOutcome::NotRunning);
 }
 
-/// Stopping with nothing running is a typed no-op, never a hang or a signal to a dead pid.
+/// Stopping with nothing running, over a port nothing holds, is a typed no-op — never a
+/// hang or a signal to a dead pid.
 #[test]
 fn stop_with_nothing_running_is_not_running() {
     let mut manager = HostManager::with_config(Box::new(StubSpawner), fast_config(2000));
-    assert_eq!(manager.stop(), StopOutcome::NotRunning);
+    assert_eq!(
+        manager.stop(QaPort::new(free_port())),
+        StopOutcome::NotRunning
+    );
 }
