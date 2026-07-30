@@ -41,11 +41,10 @@ already existed: NO new suite step, no second bevy build (these runs already com
 crate and both of the feature's optional deps). Adding a separate editor-only run instead would
 have been redundant — the workspace runs already cover the crate.
 
-`cargo doc` is a dev/gate-only step (not CI): the workspace `broken_intra_doc_links` /
-`private_intra_doc_links` lints (both `deny`) only surface under `cargo doc`, not under
-`clippy` or `build`, so they require their own run. It runs TWICE, in two feature configs —
-the same both-configs rule the `dclippy` dual gate follows (an optional-feature module must be
-checked WITH its feature on, not just off):
+`cargo doc` is a dev/gate-only step (not CI): the workspace rustdoc lints only surface under
+`cargo doc`, not under `clippy` or `build`, so they require their own run. It runs TWICE, in two
+feature configs — the same both-configs rule the `dclippy` dual gate follows (an optional-feature
+module must be checked WITH its feature on, not just off):
 
 - `cargo doc --workspace --no-deps` — the DEFAULT-feature run.
 - `cargo doc-full` (alias for `cargo doc --workspace --no-deps --features
@@ -55,6 +54,33 @@ checked WITH its feature on, not just off):
   `gdtf_content_editor::net_qa`) are link-checked too. Without it a broken intra-doc link inside
   one of those modules is never compiled by the default `cargo doc`, so it slips past the gate and
   CI (the gap GTW-790 fixed for the game, GTW-877 for the editor).
+
+**What the doc steps gate: EVERY rustdoc lint, since GTW-929.** Before that they gated almost
+nothing. `[workspace.lints.rustdoc]` named only `broken_intra_doc_links` and
+`private_intra_doc_links` as `deny`; every other rustdoc lint kept its default `warn`, and no
+`RUSTDOCFLAGS` promoted them, so both doc runs exited 0 no matter how many rustdoc warnings piled
+up — and they did pile up, unobserved, because nothing could fail on them. Intra-doc link checking
+itself always worked; what did not work was everything else. The workspace `Cargo.toml` now
+declares `all = { level = "deny", priority = -1 }` in that table, so a rustdoc warning of ANY kind
+fails the doc step, the same way `-D warnings` makes every clippy warning fatal. `priority = -1`
+keeps an individual lint listed below the group able to override the group level.
+
+Setting the level in `Cargo.toml` rather than on the aliases is deliberate: it covers both doc runs
+by construction, so they cannot drift apart the way the alias feature flags did (the gap GTW-790
+and GTW-877 each had to close separately). It reaches rustdoc LINTS only — cargo's own
+"output filename collision" warning is not a lint, and no level touches it. That one was real: the
+`gdtf_content_editor` bin target and the library crate of the same name both wrote
+`target/doc/gdtf_content_editor/index.html`, so one replaced the other's rendered page and a reader
+could not tell which crate's docs they had (rust-lang/cargo#6313). It is fixed at its source by
+`doc = false` on the `[[bin]]` target in `bins/gdtf_content_editor/Cargo.toml`, which changes no
+built path — `target/debug/gdtf_content_editor`, the path `docs/tooling/agent-qa.md` names for the
+editor-QA process check, is untouched.
+
+A `[workspace.lints]` table reaches only a crate that declares `[lints] workspace = true`, so the
+group deny is worth exactly as much as that opt-in's coverage.
+`crates/gdtf_test_utils/tests/rustdoc_lint_gate/` pins all three parts — the group deny with its
+priority, the opt-in in every workspace member, and the bin's `doc = false`. Without it, deleting
+any of them leaves the whole suite green while restoring the defect.
 
 `cargo dclippy` / `cargo dtest` / `cargo dbuild` / `cargo drun` / `cargo doc-full` (aliases in
 `.cargo/config.toml`) are the shorthand for these. Dynamic linking via

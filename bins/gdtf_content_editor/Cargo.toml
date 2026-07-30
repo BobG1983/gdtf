@@ -6,6 +6,20 @@ edition = "2024"
 [[bin]]
 name = "gdtf_content_editor"
 path = "src/main.rs"
+# GTW-929: keep this bin OUT of `cargo doc`. This bin target and the library crate
+# `crates/gdtf_content_editor` share the name `gdtf_content_editor`, so both wrote
+# `target/doc/gdtf_content_editor/index.html` — cargo emitted an "output filename
+# collision" warning and whichever finished last silently replaced the other's
+# rendered page, so a reader of the generated docs could not tell which crate they
+# were reading (rust-lang/cargo#6313). `doc = false` ends the collision at its
+# source: only the library renders that path now. Chosen over renaming the bin
+# target because a rename would move the built path `target/debug/gdtf_content_editor`
+# that `docs/tooling/agent-qa.md` documents for the editor-QA process check
+# (GTW-786's evidence rule); `doc = false` changes no built path. This is a doc
+# EXCLUSION, not a lint suppression — the bin is a 7-line wrapper over the library,
+# whose own docs are unaffected — and the bin is still compiled, linted and built by
+# every other suite step.
+doc = false
 
 [dependencies]
 gdtf_content_editor = { path = "../../crates/gdtf_content_editor" }

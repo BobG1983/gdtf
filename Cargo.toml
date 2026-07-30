@@ -107,6 +107,22 @@ cast_possible_truncation  = "allow" # Piercing charges, HP — small non-negativ
 implicit_hasher           = "allow" # Bevy system fns take Local<HashSet<_>> — can't be generic over BuildHasher (trait can't infer S at registration)
 
 [workspace.lints.rustdoc]
+# GTW-929: the WHOLE rustdoc group is fatal, not just the two link lints below.
+# Before this, those two were the only rustdoc lints that could fail a doc run, so
+# `cargo doc --workspace --no-deps` and `cargo doc-full` exited 0 no matter how many
+# other rustdoc warnings piled up — and they piled up unobserved (24 → 32 → 37
+# `redundant_explicit_links` over three measurements). `priority = -1` lets an
+# individual lint named below override the group level, the same shape the clippy
+# table above uses. The group covers ten lints on this toolchain, including three
+# that are `allow` by default and get promoted here (`private_doc_tests`,
+# `missing_crate_level_docs`, `unescaped_backticks`); a census with the whole group
+# on measured ZERO firings from those three, so the promotion costs no cleanup.
+# Setting the level here rather than via RUSTDOCFLAGS covers BOTH doc runs by
+# construction, so the two cannot drift apart the way the alias flags did (GTW-790,
+# GTW-877). Note this reaches rustdoc LINTS only — cargo's own
+# "output filename collision" warning is not a lint and no level touches it; that
+# one is fixed at its source by `doc = false` on the content-editor bin target.
+all = { level = "deny", priority = -1 }
 broken_intra_doc_links = "deny"
 private_intra_doc_links = "deny"
 
