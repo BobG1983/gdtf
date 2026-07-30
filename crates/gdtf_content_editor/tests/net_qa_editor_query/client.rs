@@ -54,7 +54,8 @@ fn exchange(
 ///
 /// The handshake rides at the END of the `Load` phase for the same reason — every frame spent
 /// on it before the options request would be a frame of asset pass the observation has to
-/// outrun. Handshake ORDER is `net_qa_hello.rs`'s subject; this suite's is the query pair.
+/// outrun. Handshake ORDER is the `net_qa_hello/` suite's subject; this suite's is the query
+/// pair.
 ///
 /// The five exchanges AFTER that first reply cannot be made frame-free by pipelining them:
 /// the transport is lockstep per connection. `handle_frame`
