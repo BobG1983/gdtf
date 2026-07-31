@@ -12,6 +12,7 @@ use super::{
     stepper::StepperReceipt,
 };
 use crate::{
+    command::{CommandCatalogue, CommandOutcome},
     events::EventBatch,
     view::{AppFlowView, BattleView, EditorQueryOptionsView, EditorQueryReply},
 };
@@ -29,8 +30,9 @@ use crate::{
 /// stepper-control receipt), [`MenuItemActivated`](Self::MenuItemActivated) (the menu-item
 /// activation receipt), [`FocusControlled`](Self::FocusControlled) (the focus-control
 /// receipt), [`EditorQueryOptions`](Self::EditorQueryOptions) /
-/// [`EditorQuery`](Self::EditorQuery) (the content editor's ADR 0007 query pair), and
-/// [`Error`](Self::Error) (a protocol-level
+/// [`EditorQuery`](Self::EditorQuery) (the content editor's ADR 0007 query pair),
+/// [`Catalogue`](Self::Catalogue) / [`Outcome`](Self::Outcome) (the GTW-939 command
+/// layer's two replies), and [`Error`](Self::Error) (a protocol-level
 /// [`QaError`]). An independent serde enum.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum QaResponse {
@@ -61,6 +63,12 @@ pub enum QaResponse {
     /// One content-editor topic's answer, plus the editor's `Load` / `Editing` readiness
     /// (GTW-805).
     EditorQuery(EditorQueryReply),
+    /// The host's live command catalogue — the reply to
+    /// [`Catalogue`](crate::envelope::QaRequest::Catalogue) (GTW-939).
+    Catalogue(CommandCatalogue),
+    /// What running the named command produced — the reply to
+    /// [`Run`](crate::envelope::QaRequest::Run) (GTW-939).
+    Outcome(CommandOutcome),
     /// A protocol-level error.
     Error(QaError),
 }

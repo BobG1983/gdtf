@@ -17,6 +17,23 @@ ron = { workspace = true }
 # The `Deref` derive ONLY (proc-macro crate, no engine) — the house-style newtype
 # accessor. Direct dep for this crate alone (see the workspace comment).
 bevy_derive = { workspace = true }
+# JSON Schema derivation, OPTIONAL and off by default (GTW-939). A command's argument
+# and reply schemas are derived from the Rust type, so the two hosts turn this on via
+# `gdtf_qa_protocol/schema` to derive `JsonSchema` for types that embed an `ids` type.
+# `bins/gdtf_qa_mcp` must NOT enable it — the courier carries schema documents as opaque
+# text and never links schemars.
+schemars = { version = "1.2.2", optional = true }
+
+[features]
+# Derive `schemars::JsonSchema` for the wire id / handle newtypes, so a host's command
+# argument and reply types can derive their own schemas over them. Off by default.
+schema = ["dep:schemars"]
+
+[dev-dependencies]
+# Test-only JSON parser: the schema tests assert a DERIVED schema document really is
+# parseable JSON. A dev-dependency never reaches a consumer, so the courier stays clear
+# of it.
+serde_json = "1"
 
 [lints]
 workspace = true

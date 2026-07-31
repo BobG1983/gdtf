@@ -72,7 +72,11 @@ pub(super) fn route_editor_requests(
             | QaRequest::StartBattle { .. }
             | QaRequest::StepperControl(_)
             | QaRequest::ActivateMenuItem(_)
-            | QaRequest::FocusControl(_) => {
+            | QaRequest::FocusControl(_)
+            // The GTW-939 command layer: its types are on the wire, but this host has no
+            // command set to publish or run yet — the editor host scaffold builds one.
+            | QaRequest::Catalogue
+            | QaRequest::Run(_) => {
                 responder.reply(QaResponse::Error(QaError::BadRequest));
             }
         }

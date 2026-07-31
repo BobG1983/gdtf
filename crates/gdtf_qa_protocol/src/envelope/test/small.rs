@@ -58,6 +58,8 @@ fn qa_error_round_trips_every_variant() {
         QaError::NotCaughtUp,
         QaError::Timeout,
         QaError::StepperInactive,
+        QaError::Malformed,
+        QaError::NotNegotiated,
     ] {
         match error {
             QaError::Busy
@@ -66,7 +68,9 @@ fn qa_error_round_trips_every_variant() {
             | QaError::BadRequest
             | QaError::NotCaughtUp
             | QaError::Timeout
-            | QaError::StepperInactive => {}
+            | QaError::StepperInactive
+            | QaError::Malformed
+            | QaError::NotNegotiated => {}
         }
         assert_ron_round_trip(&error);
     }

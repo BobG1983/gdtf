@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{focus::FocusCommandNet, hello::ProtocolVersion, stepper::StepperCommandNet};
 use crate::{
+    command::{CommandArgsJson, CommandName},
     ids::{EventCap, FocusTargetNet, FrameDelay, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
     view::{EditorQueryKind, RequestKindNet},
@@ -22,6 +23,12 @@ use crate::{
 /// ([`GetEditorQueryOptions`](Self::GetEditorQueryOptions) /
 /// [`QueryEditor`](Self::QueryEditor), ADR 0007).
 /// An independent serde enum.
+///
+/// The COMMAND layer (GTW-939) rides on two more variants, added beside the rest:
+/// [`Catalogue`](Self::Catalogue) reads a host's live command list, and
+/// [`Run`](Self::Run) runs one command from it by name. A command is not a wire variant —
+/// a host's whole vocabulary is data carried inside those two — so adding a command changes
+/// nothing here.
 ///
 /// One enum serves BOTH hosts — the game's `net_qa` server and the editor's — so a QA
 /// client speaks one vocabulary to either. Each host services the requests it has a model
@@ -136,6 +143,46 @@ pub enum QaRequest {
     /// Serviced by the EDITOR host only; the game host answers it
     /// [`BadRequest`](crate::envelope::QaError::BadRequest).
     QueryEditor(EditorQueryKind),
+    /// Ask the running host what commands it offers and which are available right now
+    /// (GTW-939).
+    ///
+    /// The reply ([`Catalogue`](crate::envelope::QaResponse::Catalogue)) is a
+    /// [`CommandCatalogue`](crate::command::CommandCatalogue): one row per command with its
+    /// name, its one-line summary, the derived JSON Schema of its arguments and of its
+    /// reply, and whether it can run in the state the host is in right now.
+    ///
+    /// This and [`Run`](Self::Run) are the whole command layer's request surface. A host's
+    /// command vocabulary is DATA carried in the reply, never a variant here, so adding a
+    /// command moves neither this enum nor
+    /// [`ProtocolVersion::CURRENT`](crate::envelope::ProtocolVersion::CURRENT).
+    Catalogue,
+    /// Run one command by name with its arguments (GTW-939).
+    ///
+    /// The reply ([`Outcome`](crate::envelope::QaResponse::Outcome)) is a
+    /// [`CommandOutcome`](crate::command::CommandOutcome): what the command produced, why
+    /// it was not admissible, which argument would not decode, or that no command of that
+    /// name exists here.
+    Run(RunCommand),
+}
+
+/// The body of a [`Run`](QaRequest::Run): which command, and its arguments as JSON text.
+///
+/// The arguments are opaque to the envelope and to the MCP courier — only the command's own
+/// `Args` type gives them meaning, and only the host that owns that command decodes them.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct RunCommand {
+    /// The command to run, as its host advertised it in the catalogue.
+    pub command:   CommandName,
+    /// The command's arguments, as a JSON object.
+    pub arguments: CommandArgsJson,
+}
+
+impl RunCommand {
+    /// Build a run request from a command name and its JSON arguments.
+    #[must_use]
+    pub const fn new(command: CommandName, arguments: CommandArgsJson) -> Self {
+        Self { command, arguments }
+    }
 }
 
 impl QaRequest {
@@ -163,6 +210,8 @@ impl QaRequest {
             Self::FocusControl(_) => RequestKindNet::FocusControl,
             Self::GetEditorQueryOptions => RequestKindNet::GetEditorQueryOptions,
             Self::QueryEditor(_) => RequestKindNet::QueryEditor,
+            Self::Catalogue => RequestKindNet::Catalogue,
+            Self::Run(_) => RequestKindNet::Run,
         }
     }
 }

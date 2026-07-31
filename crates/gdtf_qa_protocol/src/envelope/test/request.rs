@@ -2,7 +2,10 @@
 //! (GTW-734).
 
 use crate::{
-    envelope::{FocusCommandNet, FocusStepNet, ProtocolVersion, QaRequest, StepperCommandNet},
+    command::{CommandArgsJson, CommandName},
+    envelope::{
+        FocusCommandNet, FocusStepNet, ProtocolVersion, QaRequest, RunCommand, StepperCommandNet,
+    },
     ids::{EventCap, FocusTargetNet, FrameDelay, SeedNet, ShotName, SituationRef},
     intent::NetIntent,
     test_support::assert_ron_round_trip,
@@ -37,6 +40,11 @@ fn qa_request_cases() -> Vec<QaRequest> {
         QaRequest::FocusControl(FocusCommandNet::Step(FocusStepNet::Next)),
         QaRequest::GetEditorQueryOptions,
         QaRequest::QueryEditor(EditorQueryKind::Draft),
+        QaRequest::Catalogue,
+        QaRequest::Run(RunCommand::new(
+            CommandName::from_static("app.phase"),
+            CommandArgsJson::new("{}".to_owned()),
+        )),
     ]
 }
 
@@ -56,7 +64,9 @@ fn qa_request_is_exhaustive(request: &QaRequest) {
         | QaRequest::ActivateMenuItem(_)
         | QaRequest::FocusControl(_)
         | QaRequest::GetEditorQueryOptions
-        | QaRequest::QueryEditor(_) => {}
+        | QaRequest::QueryEditor(_)
+        | QaRequest::Catalogue
+        | QaRequest::Run(_) => {}
     }
 }
 
@@ -66,7 +76,7 @@ fn qa_request_round_trips_every_variant() {
     let cases = qa_request_cases();
     assert_eq!(
         cases.len(),
-        13,
+        15,
         "the case table lists every QaRequest variant"
     );
     for case in &cases {

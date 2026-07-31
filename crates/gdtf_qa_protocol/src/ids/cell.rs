@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 /// A private-inner newtype (no-bare-types), serde-transparent so it rides the wire as
 /// its bare `i32`. Signed: the sim floors negative positions into negative cells, so a
 /// coordinate can be negative.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct CellXNet(i32);
@@ -33,6 +34,7 @@ impl CellXNet {
 ///
 /// A private-inner newtype (no-bare-types), serde-transparent. Distinct from
 /// [`CellXNet`] by rule 3 even though both wrap `i32`.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct CellYNet(i32);
@@ -51,6 +53,7 @@ impl CellYNet {
 /// A private-inner newtype (no-bare-types), serde-transparent so it rides the wire as
 /// its bare `u8`. The contract does not re-encode the `MAX_LEVELS` bound here; the game
 /// side validates against the live grid extent.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct LevelNet(u8);
@@ -68,6 +71,7 @@ impl LevelNet {
 /// A named-field struct (not a bare tuple) so each coordinate keeps its meaning. Serde
 /// default shape (`(x: .., y: ..)`); its two fields are the typed [`CellXNet`] /
 /// [`CellYNet`] scalars.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CellNet {
     /// The cell's ground-plane x coordinate.
@@ -90,6 +94,7 @@ impl CellNet {
 /// A named-field struct composed of the two listed coordinate types (GTW-734's ids
 /// clause lists [`CellNet`] + [`LevelNet`]; this is their obvious composition — the key
 /// a ganger position / impact cell lives at). Serde default shape.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CellLevelNet {
     /// The ground-plane cell.

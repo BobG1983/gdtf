@@ -24,7 +24,7 @@ pub use focus::{FocusCommandNet, FocusControlReceipt, FocusStepNet};
 pub use hello::{HelloFacts, ProtocolVersion, ServerNameNet};
 pub use menu::MenuActivationReceipt;
 pub use receipt::{InjectReceipt, RejectReason};
-pub use request::QaRequest;
+pub use request::{QaRequest, RunCommand};
 pub use response::QaResponse;
 pub use screenshot::{CaptureAimNet, ScreenshotAfterResult, ScreenshotPathNet, ScreenshotResult};
 pub use stepper::{AutoRunNet, StepperCommandNet, StepperReceipt};

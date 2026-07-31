@@ -53,3 +53,14 @@ jobs:
       # and reported "0 tests". No `dynamic_linking` and no `dev_tools` — CI green stays static.
       - name: Run tests
         run: cargo test --workspace --features grimdark_turfwar/net_qa,gdtf_content_editor/net_qa
+
+      # GTW-939: the `gdtf_qa_protocol` `schema` feature, tested WITH the feature on. Its
+      # `schemars` dependency is optional, so the `#[cfg_attr(feature = "schema", derive(...))]`
+      # derives across `src/ids/` and the whole `src/ids/test/schema.rs` module compile nowhere
+      # in the step above — deleting them would leave this workflow green.
+      #
+      # PACKAGE-SCOPED (`-p gdtf_qa_protocol`), never added to the `--workspace` step: cargo
+      # builds one `gdtf_qa_protocol` library unit per invocation, so naming the feature there
+      # would unify schemars into `bins/gdtf_qa_mcp`, which must never link a schema library.
+      - name: Run the schema-feature tests
+        run: cargo test -p gdtf_qa_protocol --features schema

@@ -100,8 +100,29 @@ impl ProtocolVersion {
     /// matching [`RequestKindNet`](crate::view::RequestKindNet) kinds — new closed-enum
     /// variants everywhere the envelope matches exhaustively, so a client negotiating
     /// version `11` now gets a `VersionMismatch` rather than a wire shape it cannot decode.
+    /// Bumped to `13` (GTW-939) when the COMMAND layer's envelope landed BESIDE the existing
+    /// variants: [`QaRequest::Catalogue`](crate::envelope::QaRequest::Catalogue) /
+    /// [`QaRequest::Run`](crate::envelope::QaRequest::Run) (with
+    /// [`RunCommand`](crate::envelope::RunCommand)),
+    /// [`QaResponse::Catalogue`](crate::envelope::QaResponse::Catalogue) /
+    /// [`QaResponse::Outcome`](crate::envelope::QaResponse::Outcome), the two new
+    /// [`QaError`](crate::envelope::QaError) variants
+    /// [`Malformed`](crate::envelope::QaError::Malformed) and
+    /// [`NotNegotiated`](crate::envelope::QaError::NotNegotiated), and the matching
+    /// [`RequestKindNet`](crate::view::RequestKindNet) kinds — new closed-enum variants
+    /// everywhere the envelope matches exhaustively, so a client negotiating version `12`
+    /// now gets a `VersionMismatch` rather than a wire shape it cannot decode. This is the
+    /// FIRST of the migration's two bumps: the second comes when the old variants are
+    /// deleted and only the command layer is left.
+    ///
+    /// From here on the number covers the ENVELOPE only — the request set, the reply set,
+    /// the error set, and the shapes of the
+    /// [`command`](crate::command) vocabulary. It does NOT cover which command names a host
+    /// offers, any command's argument or reply schema, or the JSON text carried inside
+    /// them: adding a command must never move it.
+    ///
     /// BOTH servers — the game's and the editor's — negotiate a `Hello` against this value.
-    pub const CURRENT: Self = Self::new(12);
+    pub const CURRENT: Self = Self::new(13);
 
     /// Build a protocol version from its number.
     #[must_use]

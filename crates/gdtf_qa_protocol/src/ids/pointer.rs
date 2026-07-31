@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 /// A private-inner newtype (no-bare-types), serde-transparent so it rides the wire as its
 /// bare `i16`. Signed: a hover can be expressed left of the window origin even though a
 /// position outside the window resolves to no hover.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct PointerXNet(i16);
@@ -37,6 +38,7 @@ impl PointerXNet {
 ///
 /// A private-inner newtype (no-bare-types), serde-transparent. Distinct from
 /// [`PointerXNet`] by rule 3 even though both wrap `i16`.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct PointerYNet(i16);
@@ -54,6 +56,7 @@ impl PointerYNet {
 ///
 /// A named-field struct (not a bare tuple) so each axis keeps its meaning; its two fields
 /// are the typed [`PointerXNet`] / [`PointerYNet`] scalars. Serde default shape.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PointerPosNet {
     /// The pointer's window-space x position.

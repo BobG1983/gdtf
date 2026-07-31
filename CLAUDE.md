@@ -46,6 +46,8 @@ cargo dtest
 cargo dbuild
 cargo doc --workspace --no-deps
 cargo doc-full
+cargo clippy-schema -- -D warnings
+cargo test-schema
 ```
 
 Per `.cargo/config.toml` (quoted here exactly — keep the two in step, GTW-877): the shared
@@ -84,6 +86,15 @@ cargo's own "output filename collision" between the `gdtf_content_editor` bin an
 of the same name is fixed at its source instead, by `doc = false` on that `[[bin]]` target (no
 built path moves). `crates/gdtf_test_utils/tests/rustdoc_lint_gate/` pins the group deny, the
 `[lints] workspace = true` opt-in in every member that deny depends on, and that `doc = false`.
+`clippy-schema` (= `clippy -p gdtf_qa_protocol --all-targets --features schema`) and
+`test-schema` (= `test -p gdtf_qa_protocol --features schema`) lint and run
+`gdtf_qa_protocol` WITH its optional `schema` feature on — the same both-configs rule again
+(GTW-939). They are **package-scoped, not workspace-wide**, because cargo builds one
+`gdtf_qa_protocol` library unit per invocation: naming `gdtf_qa_protocol/schema` on a
+`--workspace` command would unify `schemars` into `bins/gdtf_qa_mcp`, which carries schema
+documents as opaque text and must never link a schema library. Both have matching CI steps in
+`.github/workflows/test.yml` and `clippy.yml`, pinned by
+`crates/gdtf_test_utils/tests/ci_workflow_features/schema_step.rs`.
 See [`verification.md`](.claude/rules/verification.md).
 
 The workspace `Cargo.toml` denies clippy `all`/`pedantic`/`correctness`/`suspicious` plus

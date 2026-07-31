@@ -11,9 +11,10 @@ observed GREEN in THIS session, after the final edit, and you saw it pass.
 
 ## The ONE definition of green (dev / gate — dynamic-linked, fast)
 
-Run from the repo root; green = ALL SIX pass. **In practice, always invoke these via
+Run from the repo root; green = ALL EIGHT pass. **In practice, always invoke these via
 their `.cargo/config.toml` ALIASES (`cargo dclippy`, `cargo dtest`, `cargo dbuild`,
-`cargo doc-full`) — never hand-type the equivalent long-form flags shown below.** The
+`cargo doc-full`, `cargo clippy-schema`, `cargo test-schema`) — never hand-type the
+equivalent long-form flags shown below.** The
 block below documents exactly what each alias expands to; typing it out yourself risks
 silently dropping the `dynamic_linking` feature (or a sibling feature) and falling back
 to a slow, fully static rebuild — the one failure mode this whole fast dev/gate loop
@@ -28,6 +29,8 @@ cargo test --workspace --features grimdark_turfwar/dynamic_linking,grimdark_turf
 cargo build -p grimdark_turfwar --features dynamic_linking,file_watcher,dev_tools,net_qa
 cargo doc --workspace --no-deps
 cargo doc-full
+cargo clippy -p gdtf_qa_protocol --all-targets --features schema -- -D warnings
+cargo test -p gdtf_qa_protocol --features schema
 ```
 
 Note the TWO `net_qa` entries in that feature list. A package-qualified feature turns on only
@@ -82,7 +85,33 @@ group deny is worth exactly as much as that opt-in's coverage.
 priority, the opt-in in every workspace member, and the bin's `doc = false`. Without it, deleting
 any of them leaves the whole suite green while restoring the defect.
 
-`cargo dclippy` / `cargo dtest` / `cargo dbuild` / `cargo drun` / `cargo doc-full` (aliases in
+## The `schema` feature steps — PACKAGE-SCOPED on purpose (GTW-939)
+
+The last two steps are `cargo clippy-schema` and `cargo test-schema`, aliases for
+`clippy -p gdtf_qa_protocol --all-targets --features schema` and
+`test -p gdtf_qa_protocol --features schema`. They exist because
+`crates/gdtf_qa_protocol` declares `schemars` as an OPTIONAL dependency behind a `schema`
+feature, and the 19 `#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]` lines
+across `src/ids/{cell,handle,pointer,token}.rs` plus the whole `src/ids/test/schema.rs`
+module are reachable only with that feature on. Nothing else in the gate or in CI turns it
+on, so before these steps every one of those lines could be deleted — or replaced with a
+compile error — and all six commands above, plus both CI workflows, stayed green. That is
+the GTW-790 / GTW-877 defect class in a third crate: an optional-feature module must be
+checked WITH its feature on, not just off.
+
+**Why `-p gdtf_qa_protocol` rather than adding `gdtf_qa_protocol/schema` to the
+`--workspace` feature lists:** cargo builds ONE `gdtf_qa_protocol` library unit per
+invocation and every consumer in that invocation links it. Naming the feature on a
+`--workspace` command therefore puts `schemars` inside `bins/gdtf_qa_mcp` — the MCP courier,
+which carries schema documents as opaque text and must never link a schema library.
+`-p gdtf_qa_protocol` never builds the courier at all. Two guards pin this:
+`crates/gdtf_qa_protocol/tests/engine_free.rs` fails if any `--workspace` line in
+`.cargo/config.toml` or a workflow names `gdtf_qa_protocol/schema`, and
+`crates/gdtf_test_utils/tests/ci_workflow_features/schema_step.rs` fails if either CI step
+disappears or widens its scope.
+
+`cargo dclippy` / `cargo dtest` / `cargo dbuild` / `cargo drun` / `cargo doc-full` /
+`cargo clippy-schema` / `cargo test-schema` (aliases in
 `.cargo/config.toml`) are the shorthand for these. Dynamic linking via
 `grimdark_turfwar/dynamic_linking` keeps the dev/gate loop fast; `--all-features`
 is NOT used — it forces a second full bevy build and adds no lint value.
@@ -110,7 +139,14 @@ CI uses the STATIC suite (no `dynamic_linking` feature, no `dev_tools`):
 cargo fmt --check
 cargo clippy --workspace --all-targets --features grimdark_turfwar/net_qa,gdtf_content_editor/net_qa -- -D warnings
 cargo test --workspace --features grimdark_turfwar/net_qa,gdtf_content_editor/net_qa
+cargo clippy -p gdtf_qa_protocol --all-targets --features schema -- -D warnings
+cargo test -p gdtf_qa_protocol --features schema
 ```
+
+The last two are the GTW-939 `schema`-feature steps described above, mirrored into
+`.github/workflows/clippy.yml` and `test.yml` so the feature-on configuration is not dark on
+a PR either. They stay PACKAGE-SCOPED in CI for the same reason they are locally: a
+`--workspace` run with `schema` on would link schemars into `bins/gdtf_qa_mcp`.
 
 `dynamic_linking` is a dev-iteration speedup ONLY — it is NEVER used for static
 builds. The dev/gate green above is the fast, dynamic-linked loop; this static
@@ -139,7 +175,10 @@ unnoticed: `crates/gdtf_test_utils/tests/ci_workflow_features/` reads every
 tracked `.github/workflows/*.yml`, and any `run:` step invoking a
 `--workspace` cargo command must name both `net_qa` features and must not name
 `dynamic_linking`. Without it, deleting `--features …` from a workflow leaves
-the whole suite green — nothing else in the repo reads `.github/`.
+the whole suite green — nothing else in the repo reads `.github/`. That suite's
+`schema_step.rs` (GTW-939) guards the two package-scoped `schema` steps the same
+way: it fails if either is deleted, and it fails if any workflow step enables
+`--features schema` without `-p gdtf_qa_protocol`.
 
 Do NOT add a `#![cfg(feature = "net_qa")]` gate to
 `crates/gdtf_net_qa_transport/tests/transport/main.rs`. That crate declares no

@@ -33,15 +33,16 @@ on the inner one:
    session.
 2. **Inner (net_qa wire) layer**, between the MCP host and the running game process — and,
    since GTW-808, the running content-editor process too. This is `QaRequest`
-   (`crates/gdtf_qa_protocol/src/envelope/request.rs`), a fixed serde enum of 13 typed variants
-   (GTW-802 added `FocusControl`; GTW-805 added the editor pair). The editor is wired into
+   (`crates/gdtf_qa_protocol/src/envelope/request.rs`), a fixed serde enum of 15 typed variants
+   (GTW-802 added `FocusControl`; GTW-805 added the editor pair; GTW-939 added `Catalogue` and
+   `Run` beside them, the first two of the command layer). The editor is wired into
    `net_qa` as of GTW-804/805, and GTW-808 drives it as a second host on default port `7617`:
    `QaRequest` carries `GetEditorQueryOptions` and `QueryEditor(EditorQueryKind)`, and
    `crates/gdtf_content_editor/src/net_qa/router.rs` answers them. There is no flat single-view
    editor request variant and none is planned.
 
 A partial capability-advertisement mechanism already exists at the inner layer:
-`AppFlowView.available: Vec<RequestKindNet>` (`view/appflow.rs:161`) is a runtime, state-filtered
+`AppFlowView.available: Vec<RequestKindNet>` (`view/appflow.rs:171`) is a runtime, state-filtered
 list of which request kinds the server will service right now — battle-only kinds vanish until a
 battle runs, act-bearing kinds vanish while the presenter replays. It runs over a closed,
 compile-time enum, not a self-registering open set.

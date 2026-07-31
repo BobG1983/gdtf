@@ -9,8 +9,8 @@
 //!   that state (never answered [`QaError::NoBattle`](gdtf_qa_protocol::envelope::QaError));
 //! - every kind it did NOT advertise is a battle-dependent kind that the router genuinely
 //!   rejects [`QaError::NoBattle`] in that state — or one of the CONTENT EDITOR's query
-//!   kinds (GTW-805), which this host never services in any state and rejects
-//!   [`QaError::BadRequest`].
+//!   kinds (GTW-805) or the GTW-939 command kinds, which this host never services in any
+//!   state and rejects [`QaError::BadRequest`].
 //!
 //! Because the assertion compares the wire-advertised set against the router's observed
 //! behavior — two independent observations — it FAILS if a future request type's
@@ -23,7 +23,8 @@ use bevy::app::App;
 use gdtf_app::test_support::{AppState, NET_QA_PROTOCOL_VERSION, NetQaPlugin};
 use gdtf_net_qa_transport::IncomingRequest;
 use gdtf_qa_protocol::{
-    envelope::{FocusCommandNet, QaError, QaRequest, QaResponse, StepperCommandNet},
+    command::{CommandArgsJson, CommandName},
+    envelope::{FocusCommandNet, QaError, QaRequest, QaResponse, RunCommand, StepperCommandNet},
     ids::{FocusTargetNet, FrameDelay, SituationRef},
     intent::NetIntent,
     view::{EditorQueryKind, RequestKindNet},
@@ -103,16 +104,26 @@ fn probe_request(kind: RequestKindNet) -> QaRequest {
         // every state.
         RequestKindNet::GetEditorQueryOptions => QaRequest::GetEditorQueryOptions,
         RequestKindNet::QueryEditor => QaRequest::QueryEditor(EditorQueryKind::Readiness),
+        // The GTW-939 command layer: on the wire, but this host publishes no command set
+        // yet, so both are refused in every state exactly like the editor's kinds.
+        RequestKindNet::Catalogue => QaRequest::Catalogue,
+        RequestKindNet::Run => QaRequest::Run(RunCommand::new(
+            CommandName::from_static("app.phase"),
+            CommandArgsJson::new("{}".to_owned()),
+        )),
     }
 }
 
-/// The test's own ground truth of which kinds belong to the CONTENT EDITOR's family — the
-/// kinds this (game) host never services, in any state. Kept independent of the router, so a
-/// drift is caught rather than trusted away.
-const fn is_editor_only(kind: RequestKindNet) -> bool {
+/// The test's own ground truth of which kinds this (game) host never services in any state:
+/// the CONTENT EDITOR's family, plus the GTW-939 command layer this host has no command set
+/// for yet. Kept independent of the router, so a drift is caught rather than trusted away.
+const fn is_never_serviced(kind: RequestKindNet) -> bool {
     matches!(
         kind,
-        RequestKindNet::GetEditorQueryOptions | RequestKindNet::QueryEditor
+        RequestKindNet::GetEditorQueryOptions
+            | RequestKindNet::QueryEditor
+            | RequestKindNet::Catalogue
+            | RequestKindNet::Run
     )
 }
 
@@ -147,9 +158,10 @@ fn assert_affordance_parity(app: &mut App, tx: &mpsc::Sender<IncomingRequest>) {
                 "{kind:?} was advertised available but the router rejected it unavailable: \
                  {reply:?}",
             );
-        } else if is_editor_only(kind) {
+        } else if is_never_serviced(kind) {
             // Never advertised by this host, and refused with the accurate reason: there is
-            // no editor here to query, which is not a battle or catch-up condition.
+            // no editor here to query and no command set here to run, neither of which is a
+            // battle or catch-up condition.
             assert!(
                 is_bad_request,
                 "{kind:?} was not advertised but the router did not reject it BadRequest: \
@@ -167,7 +179,7 @@ fn assert_affordance_parity(app: &mut App, tx: &mpsc::Sender<IncomingRequest>) {
             assert!(
                 is_battle_dependent(kind),
                 "{kind:?} was not advertised, but only battle-, stepper-dependent or \
-                 editor-only kinds may be absent",
+                 never-serviced kinds may be absent",
             );
             assert!(
                 is_no_battle,

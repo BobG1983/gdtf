@@ -45,4 +45,23 @@ pub enum QaError {
     /// [`AppFlowView::available`](crate::view::AppFlowView) to learn when the request is
     /// serviceable.
     StepperInactive,
+    /// The frame did not decode as a [`QaRequest`](crate::envelope::QaRequest) (GTW-939).
+    ///
+    /// A DECODE failure, distinct from [`BadRequest`](Self::BadRequest): the bytes never
+    /// became a request at all, so no host state was consulted and none could be. Nothing
+    /// writes this value yet: today `handle_frame` answers a decode failure with
+    /// [`BadRequest`](Self::BadRequest). GTW-940 is the ticket that makes the transport
+    /// answer `Malformed` in the listener thread, before the host's inbox is reached; the
+    /// variant lands here first so that ticket has a value to write.
+    Malformed,
+    /// A request other than [`Hello`](crate::envelope::QaRequest::Hello) arrived before the
+    /// protocol version was negotiated (GTW-939).
+    ///
+    /// The enforcement the handshake lacked: the version was carried, replied to, and then
+    /// never consulted again, so a client speaking a stale envelope got a `HelloOk` and then
+    /// silently mis-decoded every later reply. Nothing writes this value yet: GTW-940 is the
+    /// ticket that makes the transport answer it for every non-`Hello` frame on a connection
+    /// that has not negotiated. The variant lands here first so that ticket has a value to
+    /// write.
+    NotNegotiated,
 }
