@@ -37,6 +37,7 @@ use gdtf_net_qa_transport::{
 };
 
 use super::{
+    config::editor_hello_facts,
     env::{editor_net_qa_enabled, editor_port_from_env},
     present::EditorCapturePresentPlugin,
     router::route_editor_requests,
@@ -171,10 +172,12 @@ impl Plugin for NetQaEditorPlugin {
 /// the existence of [`State<EditorState>`] — never the game's `AppState`, which this crate
 /// does not have and must not depend on.
 ///
-/// It is deliberately NOT narrowed to [`EditorState::Editing`]. Version negotiation must be
-/// answerable in EVERY editor state: a client that connects during the `Load` asset pass and
-/// waits for a reply would otherwise be reaped by the socket's own read timeout before the
-/// editor ever reaches `Editing`.
+/// It is deliberately NOT narrowed to [`EditorState::Editing`]. A client that connects during
+/// the `Load` asset pass and waits for a reply would otherwise be reaped by the socket's own
+/// read timeout before the editor ever reaches `Editing` — which is why
+/// `GetEditorQueryOptions`, the readiness poll that tells such a client to wait, is answered in
+/// every state. (Version negotiation no longer depends on this at all: since GTW-940 the
+/// listener thread answers `Hello` without the drain running a single frame.)
 ///
 /// Takes `&mut App` (the ordinary app-builder handle, as [`App::add_plugins`] does); not a
 /// registered system nor a `&mut World` helper, so bevy-traps #7 does not apply.
@@ -184,7 +187,10 @@ fn serve(app: &mut App, listener: TcpListener, io_timeout: NetIoTimeout) {
     // channel's lifetime IS the editor's, so the thread runs for the process lifetime and the
     // OS reaps it (and closes the socket) on exit. See `run_listener`'s "Thread lifetime &
     // shutdown" note for the full rationale.
-    thread::spawn(move || run_listener(listener, tx, io_timeout));
+    // This host's OWN handshake facts: the listener thread negotiates every `Hello` from them
+    // (GTW-940), so a client learns it reached the EDITOR — `gdtf-editor-net-qa` — rather than
+    // the game, from the same transport code both hosts run.
+    thread::spawn(move || run_listener(listener, tx, io_timeout, editor_hello_facts()));
     app.insert_resource(NetInbox::new(rx));
     // The screenshot pump's queue, tracking set, uniqueness counter and three tunables
     // (GTW-880). `init_resource` leaves a value a caller already inserted alone, so a test

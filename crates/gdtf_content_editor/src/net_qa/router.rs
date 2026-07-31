@@ -4,8 +4,7 @@
 //! [`EditorNetQaSystems::Gather`](super::EditorNetQaSystems) band and dispatches each
 //! [`QaRequest`].
 //!
-//! It wires FOUR requests: [`Hello`](QaRequest::Hello) version negotiation, the editor
-//! family's ADR 0007 query pair —
+//! It wires THREE requests — the editor family's ADR 0007 query pair —
 //! [`GetEditorQueryOptions`](QaRequest::GetEditorQueryOptions) (which topics are live right
 //! now) and [`QueryEditor`](QaRequest::QueryEditor) (one topic's answer), both served from
 //! the [`snapshot`](super::snapshot) service (GTW-805) — and
@@ -27,16 +26,22 @@
 //! `GetEditorQueryOptions` first; it is answerable in EVERY editor state and carries the
 //! `Load` / `Editing` readiness, so an inject loop can wait for the asset pass instead of
 //! racing it.
+//!
+//! Version negotiation is NOT here any more (GTW-940). The listener thread answers every
+//! [`Hello`](QaRequest::Hello) against this host's
+//! [`editor_hello_facts()`](super::config::editor_hello_facts) and refuses every other request
+//! [`NotNegotiated`](QaError::NotNegotiated) until one succeeds, so the duplicated
+//! `answer_hello` this file and the game's router each carried is gone — and, since it never
+//! reached this drain, negotiation no longer depends on the editor running a frame at all.
 
 use bevy::prelude::*;
 use gdtf_net_qa_transport::{NetInbox, PendingQueue, Responder};
 use gdtf_qa_protocol::{
-    envelope::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
+    envelope::{QaError, QaRequest, QaResponse},
     view::EditorQueryKind,
 };
 
 use super::{
-    config::{EDITOR_QA_PROTOCOL_VERSION, EDITOR_QA_SERVER_NAME},
     screenshot::EditorScreenshotPayload,
     snapshot::{EditorQaModel, answer_topic, options_view, topic_available},
 };
@@ -50,7 +55,6 @@ pub(super) fn route_editor_requests(
     for incoming in inbox.drain() {
         let (request, responder) = incoming.into_parts();
         match request {
-            QaRequest::Hello(client_version) => answer_hello(client_version, responder),
             QaRequest::GetEditorQueryOptions => {
                 responder.reply(QaResponse::EditorQueryOptions(options_view(&model)));
             }
@@ -64,7 +68,13 @@ pub(super) fn route_editor_requests(
             // EXHAUSTIVELY rather than caught by a `_` wildcard, so a new request variant on
             // the shared envelope fails this match to compile and forces a deliberate
             // decision here (the game's wildcard-free classification convention).
-            QaRequest::GetAppFlow
+            //
+            // `Hello` is in this list for a DIFFERENT reason than the rest, and it is the
+            // GTW-940 change: the listener thread negotiates it against
+            // `editor_hello_facts()` and never forwards it, so no `answer_hello` lives here
+            // any more. Only a request that bypassed the listener could reach this arm.
+            QaRequest::Hello(_)
+            | QaRequest::GetAppFlow
             | QaRequest::GetBattleState
             | QaRequest::Inject(_)
             | QaRequest::ScreenshotAfter { .. }
@@ -98,22 +108,5 @@ fn answer_editor_query(kind: EditorQueryKind, model: &EditorQaModel, responder: 
     match reply {
         Some(reply) => responder.reply(QaResponse::EditorQuery(reply)),
         None => responder.reply(QaResponse::Error(QaError::BadRequest)),
-    }
-}
-
-/// Negotiate the protocol version: reply the handshake facts on a match, or
-/// [`VersionMismatch`](QaError::VersionMismatch) otherwise.
-///
-/// Exact equality, with no capability handshake — the same negotiation the game performs, so
-/// one QA client speaks one version to both hosts.
-fn answer_hello(client_version: ProtocolVersion, responder: Responder) {
-    if client_version == EDITOR_QA_PROTOCOL_VERSION {
-        let facts = HelloFacts::new(
-            EDITOR_QA_PROTOCOL_VERSION,
-            ServerNameNet::new(EDITOR_QA_SERVER_NAME.to_owned()),
-        );
-        responder.reply(QaResponse::HelloOk(facts));
-    } else {
-        responder.reply(QaResponse::Error(QaError::VersionMismatch));
     }
 }

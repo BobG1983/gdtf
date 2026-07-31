@@ -14,8 +14,8 @@
 //!   gated exactly like a bare `Inject`, GTW-749 — never a stale capture); the DEV
 //!   [`StepperControl`](QaRequest::StepperControl) arriving with no live procgen-stepper
 //!   drive is rejected [`StepperInactive`](QaError::StepperInactive) (GTW-766).
-//! - A serviceable request is then answered directly ([`Hello`](QaRequest::Hello) /
-//!   [`GetAppFlow`](QaRequest::GetAppFlow)) or enqueued for its (later) consumer
+//! - A serviceable request is then answered directly ([`GetAppFlow`](QaRequest::GetAppFlow))
+//!   or enqueued for its (later) consumer
 //!   ([`Inject`](QaRequest::Inject) / [`GetBattleState`](QaRequest::GetBattleState) /
 //!   [`GetOutput`](QaRequest::GetOutput) / [`TakeScreenshot`](QaRequest::TakeScreenshot) /
 //!   [`ScreenshotAfter`](QaRequest::ScreenshotAfter) /
@@ -29,18 +29,25 @@
 //!
 //! The system is ALWAYS registered when the plugin is active; per-request behavior varies
 //! but the system itself never blinks in and out.
+//!
+//! [`Hello`](QaRequest::Hello) is NOT in that dispatch (GTW-940). The listener thread
+//! negotiates it against this host's
+//! [`hello_facts()`](super::config::hello_facts) before the inbox is reached, and refuses
+//! every other request [`NotNegotiated`](QaError::NotNegotiated) until it has, so the
+//! duplicated `answer_hello` this file and the editor's router each carried is gone. The kind
+//! stays ADVERTISED as available — the server really does service it — and its match arm is a
+//! `BadRequest` that only a request bypassing the listener could ever reach.
 
 use bevy::prelude::*;
 use gdtf_battle_presenter::PlaybackGate;
 use gdtf_battle_sim::{prelude::BattleInProgress, procgen::StagedProcgen};
 use gdtf_net_qa_transport::{NetInbox, Responder};
 use gdtf_qa_protocol::{
-    envelope::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
+    envelope::{QaError, QaRequest, QaResponse},
     view::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet, RequestKindNet},
 };
 
 use super::{
-    config::{NET_QA_PROTOCOL_VERSION, SERVER_NAME},
     pending::{
         ActivateMenuPayload, FocusControlPayload, InjectPayload, OutputPayload, PendingQueues,
         ScreenshotAfterPayload, ScreenshotPayload, SnapshotPayload, StartBattlePayload,
@@ -168,7 +175,6 @@ pub(super) fn route_requests(
             continue;
         }
         match request {
-            QaRequest::Hello(client_version) => answer_hello(client_version, responder),
             QaRequest::GetAppFlow => {
                 let view = AppFlowView::new(
                     app_state_to_net(app_state.get()),
@@ -224,31 +230,21 @@ pub(super) fn route_requests(
                     .focus_control
                     .push_new(FocusControlPayload::new(command), responder);
             }
-            // Unreachable in practice — `request_available` refuses the editor kinds above,
-            // so they are answered `BadRequest` before this match. Listed exhaustively (no
-            // wildcard arm) so a future request variant fails to compile here rather than
-            // being silently swallowed by a catch-all.
-            QaRequest::GetEditorQueryOptions
+            // Unreachable in practice, for two different reasons. `request_available` refuses
+            // the editor and command kinds above, so they are answered `BadRequest` before
+            // this match. A `Hello` is refused even earlier and by other code: the LISTENER
+            // THREAD negotiates it against the host's `hello_facts()` and never forwards it
+            // (GTW-940), which is why no `answer_hello` lives here any more. Listed
+            // exhaustively (no wildcard arm) so a future request variant fails to compile
+            // here rather than being silently swallowed by a catch-all.
+            QaRequest::Hello(_)
+            | QaRequest::GetEditorQueryOptions
             | QaRequest::QueryEditor(_)
             | QaRequest::Catalogue
             | QaRequest::Run(_) => {
                 responder.reply(QaResponse::Error(QaError::BadRequest));
             }
         }
-    }
-}
-
-/// Negotiate the protocol version: reply the handshake facts on a match, or
-/// [`VersionMismatch`](QaError::VersionMismatch) otherwise.
-fn answer_hello(client_version: ProtocolVersion, responder: Responder) {
-    if client_version == NET_QA_PROTOCOL_VERSION {
-        let facts = HelloFacts::new(
-            NET_QA_PROTOCOL_VERSION,
-            ServerNameNet::new(SERVER_NAME.to_owned()),
-        );
-        responder.reply(QaResponse::HelloOk(facts));
-    } else {
-        responder.reply(QaResponse::Error(QaError::VersionMismatch));
     }
 }
 

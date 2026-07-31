@@ -3,12 +3,12 @@
 use core::fmt::{self, Display};
 use std::io;
 
-use gdtf_qa_protocol::framing::WireError;
+use gdtf_qa_protocol::{envelope::QaError, framing::WireError};
 
 /// A failure the MCP bridge meets while exchanging one request with the game's
 /// `net_qa` server.
 ///
-/// Distinct from a protocol-level [`QaError`](gdtf_qa_protocol::envelope::QaError) the
+/// Distinct from a protocol-level [`QaError`] the
 /// game deliberately returns (that rides back inside a normal
 /// [`QaResponse`](gdtf_qa_protocol::envelope::QaResponse) and becomes an MCP tool error):
 /// an [`McpError`] is the LINK itself failing — the game is not up, the socket broke, or
@@ -26,6 +26,15 @@ pub enum McpError {
     Wire(WireError),
     /// The game closed the connection before answering the request.
     Disconnected,
+    /// The opening `Hello` on a freshly opened connection was refused, so the connection
+    /// never became usable (GTW-940).
+    ///
+    /// Every connection negotiates its protocol version before it carries a tool's request;
+    /// the listener refuses anything else until it has. A
+    /// [`VersionMismatch`](QaError::VersionMismatch) here means this build of the MCP bridge
+    /// and the running child speak different envelopes — the child must be rebuilt from the
+    /// same tree, since no request could be trusted across that gap.
+    Handshake(QaError),
     /// The game answered, but with a response variant that does not match the request
     /// that was sent (a protocol confusion).
     UnexpectedResponse,
@@ -42,6 +51,12 @@ impl Display for McpError {
             Self::Io(err) => write!(f, "net_qa connection I/O failed: {err}"),
             Self::Wire(err) => write!(f, "net_qa framing failed: {err}"),
             Self::Disconnected => f.write_str("the game closed the net_qa connection"),
+            Self::Handshake(err) => write!(
+                f,
+                "the net_qa handshake was refused ({err:?}) — the child speaks a different \
+                 protocol version than this build of the MCP bridge; rebuild it from the same \
+                 tree"
+            ),
             Self::UnexpectedResponse => {
                 f.write_str("the game answered with an unexpected response kind")
             }
@@ -54,7 +69,7 @@ impl std::error::Error for McpError {
         match self {
             Self::Connect(err) | Self::Io(err) => Some(err),
             Self::Wire(err) => Some(err),
-            Self::Disconnected | Self::UnexpectedResponse => None,
+            Self::Disconnected | Self::UnexpectedResponse | Self::Handshake(_) => None,
         }
     }
 }

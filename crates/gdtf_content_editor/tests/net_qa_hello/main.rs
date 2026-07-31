@@ -30,6 +30,14 @@
 //! `Hello(CURRENT + 1)` is refused `VersionMismatch`, and `GetAppFlow` is refused `BadRequest`
 //! (the editor runs no battle).
 //!
+//! Since GTW-940 the first two of those are answered in the LISTENER THREAD, from the facts
+//! [`NetQaEditorPlugin`](gdtf_content_editor::NetQaEditorPlugin) hands
+//! [`run_listener`](gdtf_net_qa_transport::run_listener) — so what they pin here is that the
+//! editor hands over ITS OWN facts (the reply names `gdtf-editor-net-qa`, never the game).
+//! The third still exercises the editor's drain, and now also proves the connection genuinely
+//! negotiated: a `GetAppFlow` on a connection that had not would come back `NotNegotiated`
+//! from the transport instead of `BadRequest` from the editor.
+//!
 //! The three GTW-896 cases put ONE request each on the wire while the editor is still in
 //! [`EditorState::Load`](gdtf_content_editor::EditorState::Load) — the state an agent's
 //! poll-until-ready loop actually handshakes in.
@@ -43,7 +51,9 @@
 //!   the editor's own `Load` → `Editing` gate takes SEVEN frames in this harness, so the
 //!   answering frame is deep inside the asset pass.
 //! - ONE request per connection, one connection per case: the transport is lockstep per client,
-//!   so every extra exchange would spend another frame of that margin.
+//!   so every extra exchange would spend another frame of that margin. The handshake each
+//!   connection now opens with (GTW-940) is not such an exchange — the listener thread answers
+//!   it without the drain running, so it spends no frame.
 //! - The reply is paired with the editor state of the frame that answered it (`drive.rs`), and
 //!   [`hello_load_readiness_matches_the_editor_state`] cross-checks that pairing against the
 //!   readiness the editor itself puts on the wire.
@@ -111,7 +121,8 @@ fn hello_negotiates_over_the_real_editor_listener() -> TestResult {
 ///
 /// The claim the ticket exists for: a handler that branched on `EditorState` — refusing or
 /// altering the handshake during the asset pass — fails HERE, and passed everything before this
-/// case existed.
+/// case existed. GTW-940 makes that structurally impossible rather than merely observed: the
+/// handshake is answered in the listener thread and cannot read the editor's state at all.
 #[test]
 fn hello_negotiates_while_the_editor_is_still_loading() -> TestResult {
     let (reply, _) = reply_answered_during_load(

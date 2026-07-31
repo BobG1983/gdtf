@@ -12,7 +12,7 @@ use std::{
 };
 
 use gdtf_qa_protocol::{
-    envelope::{QaError, QaResponse},
+    envelope::{HelloFacts, QaError, QaResponse},
     framing::encode,
 };
 
@@ -21,6 +21,15 @@ use crate::{channel::IncomingRequest, config::NetIoTimeout};
 
 /// Run the accept loop for the whole process lifetime: serve one client at a time,
 /// reject concurrent connections with [`Busy`](QaError::Busy).
+///
+/// `facts` are the HOST's handshake facts — the protocol version it speaks and the name it
+/// identifies itself as. They are taken here, rather than being answered by each host's
+/// router, because the listener thread answers every [`Hello`](gdtf_qa_protocol::envelope::QaRequest::Hello)
+/// itself (GTW-940): a `Hello` never reaches a host inbox, and every other request is refused
+/// [`NotNegotiated`](QaError::NotNegotiated) until one succeeds. A whole [`HelloFacts`] rather
+/// than a bare version, because the server NAME is per-host policy (the game's `SERVER_NAME`,
+/// the editor's `EDITOR_QA_SERVER_NAME`) — one version parameter could not carry it, and the
+/// duplicated `answer_hello` in both hosts' routers would have had to stay.
 ///
 /// A shared `busy` flag admits exactly one active client: the acquiring connection spawns
 /// a handler thread that clears the flag on exit; any connection that finds the flag
@@ -55,6 +64,7 @@ pub fn run_listener(
     listener: TcpListener,
     request_tx: Sender<IncomingRequest>,
     io_timeout: NetIoTimeout,
+    facts: HelloFacts,
 ) {
     let busy = Arc::new(AtomicBool::new(false));
     for stream in listener.incoming() {
@@ -69,12 +79,15 @@ pub fn run_listener(
         }
         let tx = request_tx.clone();
         let busy = Arc::clone(&busy);
+        // One copy per handler thread: the facts are read-only host policy, so each
+        // connection answers its own `Hello` without sharing state with any other.
+        let facts = facts.clone();
         // Detached per-client handler (JoinHandle discarded deliberately): it is
         // self-reaping — it clears `busy` and returns on EOF / timeout / transport error
         // (`handle_client`), so it needs no join, and it dies with the process alongside
         // the accept loop (see this fn's "Thread lifetime & shutdown" note).
         thread::spawn(move || {
-            handle_client(stream, &tx, io_timeout);
+            handle_client(stream, &tx, io_timeout, &facts);
             busy.store(false, Ordering::Release);
         });
     }

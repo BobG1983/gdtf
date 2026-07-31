@@ -89,7 +89,9 @@ crate::support_use!(plugin::NetQaPlugin;);
 // one imports it from there — presenting another crate's items as this module's API would
 // erase the split at the public surface (module-layout Rule 7).
 #[cfg(feature = "test-support")]
-pub use config::NET_QA_PROTOCOL_VERSION;
+pub use config::{
+    NET_QA_PROTOCOL_VERSION, SERVER_NAME as NET_QA_SERVER_NAME, hello_facts as net_qa_hello_facts,
+};
 // GTW-727: the ONE availability predicate, exposed so the input-gate suite can assert the
 // catch-up gating directly. It is the same function the router's accept/reject and the
 // advertised `available` list both call, so a test against it cannot drift from either.

@@ -52,12 +52,12 @@ fn exchange(
 /// yet. Waiting to connect until after the app started ticking would instead race the asset
 /// pass, which finishes in as few as six frames under parallel `cargo` contention.
 ///
-/// The handshake rides at the END of the `Load` phase for the same reason — every frame spent
-/// on it before the options request would be a frame of asset pass the observation has to
-/// outrun. Handshake ORDER is the `net_qa_hello/` suite's subject; this suite's is the query
-/// pair.
+/// The handshake rides at the FRONT since GTW-940 — the transport refuses every other request
+/// on a connection that has not negotiated — and it costs the window nothing, because the
+/// listener thread answers it with no app frame at all. Handshake ORDER is the `net_qa_hello/`
+/// suite's subject; this suite's is the query pair.
 ///
-/// The five exchanges AFTER that first reply cannot be made frame-free by pipelining them:
+/// The four exchanges AFTER that first reply cannot be made frame-free by pipelining them:
 /// the transport is lockstep per connection. `handle_frame`
 /// (`crates/gdtf_net_qa_transport/src/listener/serve.rs`) blocks on the responder channel for
 /// request N's reply before it decodes request N+1, so a request is not even queued into the
@@ -81,6 +81,17 @@ pub(crate) fn drive(
     // tail of the previous one, and the decoder owns that leftover.
     let mut decoder = FrameDecoder::new();
 
+    // The handshake goes FIRST since GTW-940: every other request on a connection that has not
+    // negotiated is answered `NotNegotiated` in the listener thread, before the editor's inbox.
+    // It costs the `Load` window NOTHING — the listener thread answers it without the drain
+    // running, so no app frame is spent here and the options request below is still the first
+    // thing the editor itself ever sees.
+    let hello = exchange(
+        &mut stream,
+        &mut decoder,
+        QaRequest::Hello(ProtocolVersion::CURRENT),
+    )?;
+
     stream.write_all(&encode(&QaRequest::GetEditorQueryOptions)?)?;
     opened.send(())?;
 
@@ -89,6 +100,7 @@ pub(crate) fn drive(
     // `assertions::assert_load_phase` destructures — adding an exchange here without giving it
     // an assertion arm there does not compile.
     let load_phase: [QaResponse; LOAD_PHASE_REPLIES] = [
+        hello,
         read_response(&mut stream, &mut decoder)?,
         exchange(
             &mut stream,
@@ -106,11 +118,6 @@ pub(crate) fn drive(
             QaRequest::QueryEditor(EditorQueryKind::Validation),
         )?,
         exchange(&mut stream, &mut decoder, QaRequest::GetEditorQueryOptions)?,
-        exchange(
-            &mut stream,
-            &mut decoder,
-            QaRequest::Hello(ProtocolVersion::CURRENT),
-        )?,
     ];
     phases.send(Ok(Vec::from(load_phase)))?;
 

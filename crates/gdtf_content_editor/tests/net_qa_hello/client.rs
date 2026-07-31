@@ -104,6 +104,12 @@ pub(crate) fn exchange_while_editing(port: NetQaPort) -> ClientResult {
 /// lockstep per client (`handle_frame` in `crates/gdtf_net_qa_transport/src/listener/serve.rs`
 /// blocks on request N's reply before it decodes request N + 1).
 ///
+/// The handshake that precedes it is the ONE exception, and it costs no frame at all: since
+/// GTW-940 the listener thread answers `Hello` itself, without the editor's drain ever seeing
+/// it. It is required because the same change refuses every pre-handshake request
+/// `NotNegotiated` before the inbox — so a `Load`-phase case that skipped it would measure the
+/// gate rather than the editor.
+///
 /// # Errors
 ///
 /// Any socket, codec or channel failure.
@@ -113,6 +119,11 @@ pub(crate) fn exchange_during_load(
     request: QaRequest,
 ) -> Result<QaResponse, TestError> {
     let mut client = Client::connect(port)?;
+    let negotiated = client.exchange(&QaRequest::Hello(ProtocolVersion::CURRENT))?;
+    assert!(
+        matches!(negotiated, QaResponse::HelloOk(_)),
+        "the connection must negotiate before the measured request goes out, got {negotiated:?}",
+    );
     client.send(&request)?;
     opened.send(())?;
     client.read()

@@ -9,12 +9,18 @@
 //!
 //! - [`routing`] drives the REAL router headless via
 //!   [`NetQaPlugin::with_channels`](gdtf_app::test_support::NetQaPlugin) against a
-//!   `GdtfTestAppBuilder` app — Hello negotiation, `GetAppFlow` outside battle, and the
-//!   `NoBattle` route-time rejection.
+//!   `GdtfTestAppBuilder` app — the router's refusal to answer a `Hello` (GTW-940 moved that
+//!   to the listener thread), `GetAppFlow` outside battle, and the `NoBattle` route-time
+//!   rejection.
 //!   (GTW-803 moved the pure-TRANSPORT suite — the framed round-trip over a real
 //!   `TcpStream`, the one-client-at-a-time `Busy` rejection and the read-timeout reap — into
 //!   the shared `gdtf_net_qa_transport` crate's own `tests/transport/`, beside the code it
 //!   drives.)
+//! - [`hello_socket`] drives the GAME's REAL listener (GTW-940) over a REAL `TcpStream` via
+//!   [`NetQaPlugin::listening`](gdtf_app::test_support::NetQaPlugin): the handshake carries
+//!   the GAME's own version and server name, and a negotiated `GetAppFlow` crosses the same
+//!   socket into the real router. This is the only test that reaches the facts the game's
+//!   plugin hands `run_listener` — the injected-inbox suite spawns no listener at all.
 //! - [`inject`] drives the REAL T4 `apply_injects` pump (GTW-737) on a live-battle
 //!   `BattleAppBuilder` app: same-frame drain of a classic + a contextual intent, the
 //!   `NotOffered` offer-gate rejection, the fail-closed `UnknownEntity` token rejection,
@@ -74,6 +80,7 @@ mod deadline;
 mod focus;
 mod focus_activation;
 mod focus_support;
+mod hello_socket;
 mod inject;
 mod inject_support;
 mod menu;

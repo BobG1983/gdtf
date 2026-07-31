@@ -9,7 +9,7 @@ use std::{
 
 use gdtf_net_qa_transport::NetQaPort;
 use gdtf_qa_protocol::{
-    envelope::{QaRequest, QaResponse},
+    envelope::{ProtocolVersion, QaRequest, QaResponse},
     framing::{FrameDecoder, encode},
     ids::ShotName,
 };
@@ -37,16 +37,22 @@ fn read_response(
     }
 }
 
-/// Connect, put ONE `TakeScreenshot { name }` on the wire, and forward the single reply.
+/// Connect, negotiate, put ONE `TakeScreenshot { name }` on the wire, and forward the single
+/// reply.
 ///
-/// `opened` is signalled the moment the request is on the wire, before the test body has run
-/// a frame — so the test's frame counting starts from a request that is already pending.
-/// `reply` carries the one reply the editor sends, so the test body can watch, frame by
-/// frame, for the moment it appears.
+/// The handshake first is required since GTW-940 — the transport refuses every request on a
+/// connection that has not negotiated — and it costs the test nothing: the listener thread
+/// answers it without the editor running a frame, so `opened` is still signalled before the
+/// test body has run one.
+///
+/// `opened` is signalled the moment the screenshot request is on the wire, before the test body
+/// has run a frame — so the test's frame counting starts from a request that is already
+/// pending. `reply` carries the one reply the editor sends, so the test body can watch, frame
+/// by frame, for the moment it appears.
 ///
 /// # Errors
 ///
-/// Any socket, codec or channel failure.
+/// Any socket, codec or channel failure, or a handshake the editor refused.
 pub(crate) fn request_screenshot(
     port: NetQaPort,
     name: &str,
@@ -56,6 +62,11 @@ pub(crate) fn request_screenshot(
     let mut stream = TcpStream::connect((Ipv4Addr::LOCALHOST, *port))?;
     stream.set_read_timeout(Some(CLIENT_READ_TIMEOUT))?;
     let mut decoder = FrameDecoder::new();
+    stream.write_all(&encode(&QaRequest::Hello(ProtocolVersion::CURRENT))?)?;
+    let negotiated = read_response(&mut stream, &mut decoder)?;
+    if !matches!(negotiated, QaResponse::HelloOk(_)) {
+        return Err(format!("the editor refused the handshake: {negotiated:?}").into());
+    }
     let request = QaRequest::TakeScreenshot {
         name: Some(ShotName::new(name.to_owned())),
     };

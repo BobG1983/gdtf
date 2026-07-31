@@ -7,7 +7,7 @@
 //! hosts bind and time out the same way while choosing different ports.
 
 use gdtf_net_qa_transport::NetQaPort;
-use gdtf_qa_protocol::envelope::ProtocolVersion;
+use gdtf_qa_protocol::envelope::{HelloFacts, ProtocolVersion, ServerNameNet};
 
 /// The wire protocol version this editor `net_qa` server speaks.
 ///
@@ -37,3 +37,20 @@ pub const EDITOR_QA_SERVER_NAME: &str = "gdtf-editor-net-qa";
 /// QA session may well run at the same time, and two hosts on one port means whichever starts
 /// second fails to bind. Adjacent numbers keep the pair memorable while staying distinct.
 pub(super) const DEFAULT_EDITOR_PORT: NetQaPort = NetQaPort::new(7617);
+
+/// The handshake facts THIS host answers a `Hello` with — the version it speaks paired with
+/// the name it identifies itself as.
+///
+/// Handed to [`run_listener`](gdtf_net_qa_transport::run_listener) by
+/// [`NetQaEditorPlugin`](super::NetQaEditorPlugin), because the listener thread answers every
+/// `Hello` itself (GTW-940). That is why the transport takes the whole facts rather than a bare
+/// version: the version is the same one the game negotiates, but
+/// [`EDITOR_QA_SERVER_NAME`] is this host's alone — which is exactly how a client tells the two
+/// apart. The editor's drain no longer negotiates anything; a `Hello` never reaches its inbox.
+#[must_use]
+pub(super) fn editor_hello_facts() -> HelloFacts {
+    HelloFacts::new(
+        EDITOR_QA_PROTOCOL_VERSION,
+        ServerNameNet::new(EDITOR_QA_SERVER_NAME.to_owned()),
+    )
+}
