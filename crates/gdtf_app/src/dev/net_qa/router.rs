@@ -109,7 +109,15 @@ crate::support_item! {
             // therefore never advertised, and a client that sends one anyway is answered
             // `BadRequest` (see `reject_unavailable`) — the editor's own host on its own port
             // is where they are answered.
-            RequestKindNet::GetEditorQueryOptions | RequestKindNet::QueryEditor => false,
+            //
+            // The GTW-939 command layer joins them for the same reason: its types are on the
+            // wire, but this host has no command set to publish or run yet — that arrives
+            // with the game host scaffold and `app.phase`. Advertising either would be a lie,
+            // so they are refused in every state and answered `BadRequest` too.
+            RequestKindNet::GetEditorQueryOptions
+            | RequestKindNet::QueryEditor
+            | RequestKindNet::Catalogue
+            | RequestKindNet::Run => false,
         }
     }
 }
@@ -220,7 +228,10 @@ pub(super) fn route_requests(
             // so they are answered `BadRequest` before this match. Listed exhaustively (no
             // wildcard arm) so a future request variant fails to compile here rather than
             // being silently swallowed by a catch-all.
-            QaRequest::GetEditorQueryOptions | QaRequest::QueryEditor(_) => {
+            QaRequest::GetEditorQueryOptions
+            | QaRequest::QueryEditor(_)
+            | QaRequest::Catalogue
+            | QaRequest::Run(_) => {
                 responder.reply(QaResponse::Error(QaError::BadRequest));
             }
         }
@@ -253,7 +264,9 @@ fn answer_hello(client_version: ProtocolVersion, responder: Responder) {
 ///   never a `NoBattle` lie (a battle may well be running);
 /// - the CONTENT EDITOR's query kinds (GTW-805) are not a state gate at all: this host has
 ///   no editor to read, in any state — [`BadRequest`](QaError::BadRequest), the same answer
-///   the editor's host gives a game-only request;
+///   the editor's host gives a game-only request; the GTW-939 command kinds
+///   ([`Catalogue`](RequestKindNet::Catalogue) / [`Run`](RequestKindNet::Run)) answer the
+///   same way, for the same reason: this host publishes no command set yet;
 /// - anything else with no battle is [`NoBattle`](QaError::NoBattle);
 /// - anything else with a battle can only be the catch-up gate —
 ///   [`NotCaughtUp`](QaError::NotCaughtUp).
@@ -262,7 +275,10 @@ fn reject_unavailable(kind: RequestKindNet, in_battle: bool, responder: Responde
         QaError::StepperInactive
     } else if matches!(
         kind,
-        RequestKindNet::GetEditorQueryOptions | RequestKindNet::QueryEditor
+        RequestKindNet::GetEditorQueryOptions
+            | RequestKindNet::QueryEditor
+            | RequestKindNet::Catalogue
+            | RequestKindNet::Run
     ) {
         QaError::BadRequest
     } else if in_battle {

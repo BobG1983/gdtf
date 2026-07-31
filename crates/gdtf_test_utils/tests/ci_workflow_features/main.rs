@@ -36,6 +36,14 @@
 //! via the `GDTF_CI_WORKFLOW_ROOT` env var (the sibling guards' recipe, for
 //! pointing the built guard at another checkout).
 
+//! GTW-939 added a second guard in `schema_step.rs`, over the same workflow
+//! files but the opposite scope: the two PACKAGE-SCOPED `-p gdtf_qa_protocol
+//! --features schema` steps must exist, and no step may enable that feature
+//! more widely. The walk above cannot cover them — they deliberately carry no
+//! `--workspace`, because a workspace build with `schema` on would unify
+//! schemars into `bins/gdtf_qa_mcp`.
+
 mod check;
 mod run_steps;
+mod schema_step;
 mod tree;

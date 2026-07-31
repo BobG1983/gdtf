@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 /// [`WeaponView`](crate::view::WeaponView), picks an index, and the game side resolves
 /// it back to the real spec. A private-inner newtype, serde-transparent over `u32` (a
 /// stable wire width for a small list index).
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct FireModeIndex(u32);
@@ -34,6 +35,7 @@ impl FireModeIndex {
 /// The game side constrains the actual path under `target/qa_screenshots/` (GTW-694);
 /// this is only the stem the client asks for. A name newtype over `String`
 /// (no-bare-types), serde-transparent. `Clone`-not-`Copy` (holds a `String`).
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ShotName(String);
@@ -51,6 +53,7 @@ impl ShotName {
 ///
 /// A private-inner newtype (no-bare-types), serde-transparent over `u32`. When a
 /// request omits it (`None`) the game drains the whole outbox.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct EventCap(u32);
@@ -71,6 +74,7 @@ impl EventCap {
 /// authored situations from `.ron` by name, so a ref is a name string, not a numeric
 /// id. A name newtype over `String` (no-bare-types), serde-transparent.
 /// `Clone`-not-`Copy`.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct SituationRef(String);
@@ -89,6 +93,7 @@ impl SituationRef {
 ///
 /// A private-inner newtype (no-bare-types), serde-transparent over `u64`. When a
 /// request omits it (`None`) the game picks its own seed.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct SeedNet(u64);
@@ -110,6 +115,7 @@ impl SeedNet {
 /// impact flash — mid-animation rather than settled. `0` means "capture on the very
 /// next frame after the intent is queued". A private-inner newtype (no-bare-types),
 /// serde-transparent over `u32`.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct FrameDelay(u32);
@@ -130,6 +136,7 @@ impl FrameDelay {
 /// transport is one-at-a-time request/response); defined here so the T8 bridge has a
 /// typed correlation handle when it multiplexes. A private-inner newtype
 /// (no-bare-types), serde-transparent over `u64`.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct RequestId(u64);

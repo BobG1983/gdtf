@@ -114,6 +114,14 @@ pub enum RequestKindNet {
     /// A [`QueryEditor`](crate::envelope::QaRequest::QueryEditor) read of ONE content-editor
     /// topic (GTW-805).
     QueryEditor,
+    /// A [`Catalogue`](crate::envelope::QaRequest::Catalogue) read of the host's live
+    /// command list (GTW-939).
+    Catalogue,
+    /// A [`Run`](crate::envelope::QaRequest::Run) of one command by name (GTW-939).
+    ///
+    /// One kind for the WHOLE command vocabulary: which commands a host offers, and which
+    /// of them can run right now, is answered by the catalogue rather than by this list.
+    Run,
 }
 
 impl RequestKindNet {
@@ -123,7 +131,7 @@ impl RequestKindNet {
     /// the list the round-trip suite walks to prove each kind round-trips. The per-variant
     /// round-trip witness keeps this array complete — a new kind that is not listed here
     /// fails that test.
-    pub const ALL: [Self; 13] = [
+    pub const ALL: [Self; 15] = [
         Self::Hello,
         Self::GetAppFlow,
         Self::GetBattleState,
@@ -137,6 +145,8 @@ impl RequestKindNet {
         Self::FocusControl,
         Self::GetEditorQueryOptions,
         Self::QueryEditor,
+        Self::Catalogue,
+        Self::Run,
     ];
 }
 

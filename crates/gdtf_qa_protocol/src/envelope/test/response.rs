@@ -2,6 +2,10 @@
 //! (GTW-734).
 
 use crate::{
+    command::{
+        ArgSchemaJson, CommandAvailability, CommandCatalogue, CommandEntry, CommandName,
+        CommandOutcome, CommandReplyJson, CommandSummary, ReplySchemaJson,
+    },
     envelope::{
         FocusControlReceipt, HelloFacts, InjectReceipt, MenuActivationReceipt, ProtocolVersion,
         QaError, QaResponse, RejectReason, ScreenshotAfterResult, ScreenshotResult, ServerNameNet,
@@ -72,6 +76,20 @@ fn qa_response_cases() -> Vec<QaResponse> {
             EditorReadinessNet::Editing,
             EditorQueryView::Readiness(EditorReadinessNet::Editing),
         )),
+        QaResponse::Catalogue(CommandCatalogue::new(
+            ServerNameNet::new("gdtf-net-qa".to_owned()),
+            vec![CommandEntry::new(
+                CommandName::from_static("app.phase"),
+                CommandSummary::from_static("Read the whole state tuple."),
+                ArgSchemaJson::new(r#"{"type":"object"}"#.to_owned()),
+                ReplySchemaJson::new(r#"{"type":"object"}"#.to_owned()),
+                CommandAvailability::Available,
+            )],
+        )),
+        QaResponse::Outcome(CommandOutcome::Ran {
+            reply:       CommandReplyJson::new(r#"{"app":"Running"}"#.to_owned()),
+            attachments: vec![],
+        }),
         QaResponse::Error(QaError::Busy),
     ]
 }
@@ -92,6 +110,8 @@ fn qa_response_is_exhaustive(response: &QaResponse) {
         | QaResponse::FocusControlled(_)
         | QaResponse::EditorQueryOptions(_)
         | QaResponse::EditorQuery(_)
+        | QaResponse::Catalogue(_)
+        | QaResponse::Outcome(_)
         | QaResponse::Error(_) => {}
     }
 }
@@ -102,7 +122,7 @@ fn qa_response_round_trips_every_variant() {
     let cases = qa_response_cases();
     assert_eq!(
         cases.len(),
-        13,
+        15,
         "the case table lists every QaResponse variant"
     );
     for case in &cases {

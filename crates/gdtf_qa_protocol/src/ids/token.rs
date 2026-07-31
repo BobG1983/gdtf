@@ -22,6 +22,7 @@ use serde::{Deserialize, Serialize};
 /// Stabilize / Execute / …). Opaque to the client; the game resolves it via
 /// `Entity::try_from_bits` + liveness. A private-inner newtype (no-bare-types), serde-
 /// transparent so it rides the wire as its bare `u64`.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct GangerToken(u64);
@@ -41,6 +42,7 @@ impl GangerToken {
 /// and echoed back by [`NetIntent::OpenDoor`](crate::intent::NetIntent::OpenDoor).
 /// Without this handout the open-door intent would be dead wire surface (GTW-694). A
 /// private-inner newtype, serde-transparent.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DoorToken(u64);
@@ -60,6 +62,7 @@ impl DoorToken {
 /// emplacement list and echoed back by the enter / exit emplacement
 /// [`NetIntent`](crate::intent::NetIntent) variants. Without this handout those intents
 /// would be dead wire surface (GTW-694). A private-inner newtype, serde-transparent.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct EmplacementToken(u64);
@@ -84,6 +87,7 @@ impl EmplacementToken {
 /// button), so it wears its own concept name (no-bare-types rule 3). Opaque to the client;
 /// the game resolves it via `Entity::try_from_bits` + a liveness check, fail-closed. A
 /// private-inner newtype, serde-transparent.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct FocusTargetNet(u64);

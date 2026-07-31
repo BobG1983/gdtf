@@ -81,6 +81,23 @@ dtest = "test --workspace --features grimdark_turfwar/dynamic_linking,grimdark_t
 # reason: the editor's `src/net_qa/` doc comments were never link-checked either.
 doc-full = "doc --workspace --no-deps --features grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa"
 
+# GTW-939: the `gdtf_qa_protocol` `schema` feature, checked WITH the feature on. The crate's
+# `schemars` dependency is optional; the 19 `#[cfg_attr(feature = "schema", derive(...))]` lines
+# across `src/ids/` and the whole `src/ids/test/schema.rs` module are reachable only through it.
+# Nothing above turns it on, so without these two aliases every one of those lines could be
+# deleted and all six green-suite commands would still pass — the same both-configs gap GTW-790
+# closed for the game and GTW-877 for the editor.
+#
+# PACKAGE-SCOPED (`-p gdtf_qa_protocol`) on purpose, NOT added to the `--workspace` feature lists
+# above. Cargo builds ONE `gdtf_qa_protocol` library unit per invocation, so naming
+# `gdtf_qa_protocol/schema` on a `--workspace` command would unify schemars into every consumer
+# including `bins/gdtf_qa_mcp` — the courier carries schema documents as opaque text and must
+# never link a schema library. `-p gdtf_qa_protocol` never builds the courier at all.
+# `crates/gdtf_qa_protocol/tests/engine_free.rs` pins that: it fails if any `--workspace` line in
+# this file or in a workflow names the feature.
+clippy-schema = "clippy -p gdtf_qa_protocol --all-targets --features schema"
+test-schema = "test -p gdtf_qa_protocol --features schema"
+
 [unstable]
 checksum-freshness = true
 

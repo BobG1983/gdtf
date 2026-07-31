@@ -29,6 +29,10 @@
 //!   the curated combat-event outbox subset.
 //! - [`envelope`] — [`QaRequest`](envelope::QaRequest) /
 //!   [`QaResponse`](envelope::QaResponse), the top-level request/response protocol.
+//! - [`command`] — the command vocabulary (GTW-939): a host's live
+//!   [`CommandCatalogue`](command::CommandCatalogue), the JSON argument / reply bodies a
+//!   call carries, the derived schemas a catalogue row publishes, whether a command can run
+//!   right now, and what running it produced. A command is DATA here, never a wire variant.
 //! - [`framing`] — the length-prefixed frame codec as pure functions (encode + an
 //!   incremental, split-read-tolerant decoder).
 //!
@@ -38,6 +42,7 @@
 //! (`ron::ser::to_string` → `ron::de::from_str`), proven by the per-module
 //! round-trip suites — the property both halves rely on.
 
+pub mod command;
 pub mod envelope;
 pub mod events;
 pub mod framing;
