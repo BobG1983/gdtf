@@ -1,6 +1,6 @@
 //! Injury-inflicted severity-coloured FCT pop (GTW-439 C1).
 
-use bevy::{ecs::message::Messages, transform::components::Transform};
+use bevy::transform::components::Transform;
 use gdtf_battle_presenter::{FloatingCombatText, cell_to_world, severity_color};
 use gdtf_battle_sim::{
     acts::InjuryInflicted,
@@ -75,9 +75,10 @@ fn injury_inflicted_message_spawns_the_severity_coloured_fct_pop() {
 
     // Write a REAL InjuryInflicted to the live buffer and run one update — the registered
     // the injury family reader drains it and spawns the pop on this frame's SpawnScene schedule.
-    app.world_mut()
-        .resource_mut::<Messages<InjuryInflicted>>()
-        .write(injury_message(target, "LOST EYE", Severity::Critical));
+    play(
+        &mut app,
+        injury_message(target, "LOST EYE", Severity::Critical),
+    );
     app.update();
 
     // POSITIVE assertion: the system spawned a FloatingCombatText pop reading the popup_text

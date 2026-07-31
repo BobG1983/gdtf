@@ -9,6 +9,9 @@
 //!   and the DRAWN pose lag the sim until their entry is played. A paced combat log with
 //!   snapping sprites is the reported symptom shipped as fixed; these are what make that
 //!   impossible. Plus T15, the gap recovery.
+//! - **`affliction_ticks`** — GTW-889: the DOT / field per-round drains are recorded deeds,
+//!   so their floating-text pops sit behind the cursor like every other consequence instead
+//!   of firing at sim time.
 //! - **`cursor_time_fog`** — GTW-762: the squad-fog SHADOW (`ShownSquadVisibility`) freezes
 //!   during closed-gate playback and promotes the instant the cursor catches up, so the
 //!   terrain fog reads the cursor's playback position, not the sim's live (ahead) state.
@@ -21,6 +24,7 @@
 //!
 //! Wiring only.
 
+mod affliction_ticks;
 mod cursor_time_fog;
 mod drawn_lag;
 mod harness;

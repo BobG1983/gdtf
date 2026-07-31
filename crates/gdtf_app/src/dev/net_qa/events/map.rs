@@ -82,6 +82,8 @@ pub(super) fn net_event_for(entry: &ActEntry) -> Option<NetEvent> {
         | ActDeed::FieldStarted { .. }
         | ActDeed::BleedStarted
         | ActDeed::Bled
+        | ActDeed::DotTicked { .. }
+        | ActDeed::FieldTicked { .. }
         | ActDeed::CoverSmashed { .. }
         | ActDeed::MeleeLanded { .. }
         | ActDeed::ThrowLanded { .. } => None,

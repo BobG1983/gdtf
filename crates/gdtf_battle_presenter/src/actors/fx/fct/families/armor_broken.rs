@@ -4,8 +4,9 @@
 //!
 //! The destroy CROSSING reads heavier than ordinary wear, so it pops the damage RED (the
 //! contract's "AMBER/RED", drawn the redder of the two), alongside the `read_armor_broken`
-//! spark flash. It anchors at the ganger's live position ([`PopAnchor::GangerPosition`],
-//! fail-closed). The numeric `"Armor -N"` variant stays DEFERRED: [`ArmorBroken`] carries no
+//! spark flash. It anchors at the cell the ganger is DRAWN at ([`PopAnchor::GangerPosition`],
+//! which the reader resolves from the [`DrawnPosition`](crate::DrawnPosition) mirror,
+//! GTW-889; fail-closed). The numeric `"Armor -N"` variant stays DEFERRED: [`ArmorBroken`] carries no
 //! integrity-delta amount (only the `{ ganger, part }` crossing).
 
 use gdtf_battle_sim::armor_wear::ArmorBroken;
@@ -43,7 +44,7 @@ mod test {
 
     /// An `ArmorBroken` consequence classifies to the RED `"Armor Broken"` pop — the destroy
     /// crossing reads heavier than ordinary wear, distinct from the AMBER wound family — and
-    /// anchors at the ganger's live position.
+    /// anchors on the ganger (the reader resolves that to its DRAWN cell).
     #[test]
     fn an_armor_broken_classifies_to_a_red_armor_broken_tag() {
         // The classify never dereferences the entity — a placeholder handle drives the path.
@@ -67,7 +68,7 @@ mod test {
         assert_eq!(
             pop.anchor(),
             PopAnchor::GangerPosition(ganger),
-            "the armor-broken pop anchors at the ganger's live position",
+            "the armor-broken pop anchors on the ganger (drawn cell, resolved by the reader)",
         );
     }
 }

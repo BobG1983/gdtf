@@ -3,8 +3,9 @@
 //! sim's per-tick [`Bleeding`](gdtf_battle_sim::effects::bleed::Bleeding) message.
 //!
 //! The pop sits ALONGSIDE the `read_bleeding` blood flash (the flash is the splash, this is
-//! the labelled tag) and anchors at the ganger's live position — the message carries no
-//! cell, so the anchor is [`PopAnchor::GangerPosition`] (fail-closed: a `Position`-less
+//! the labelled tag) and anchors at the cell the ganger is DRAWN at — the message carries no
+//! cell, so the anchor is [`PopAnchor::GangerPosition`], which the reader resolves from the
+//! [`DrawnPosition`](crate::DrawnPosition) mirror (GTW-889; fail-closed: a `Position`-less
 //! ganger pops nothing). The flat wound AMBER (not the severity ramp) because the message
 //! carries no severity to ramp by.
 
@@ -42,8 +43,8 @@ mod test {
     };
 
     /// A `Bleeding` consequence classifies to the AMBER `"Bleeding"` status pop (the flat
-    /// wound/status swatch — no severity to ramp by), anchored at the ganger's live
-    /// position (fail-closed in the reader when the ganger has none).
+    /// wound/status swatch — no severity to ramp by), anchored on the ganger (the reader
+    /// resolves that to its DRAWN cell, fail-closed when the ganger has no position).
     #[test]
     fn a_bleeding_classifies_to_an_amber_bleeding_tag_on_the_ganger() {
         // The classify never dereferences the entity — a placeholder handle drives the path.
@@ -62,7 +63,7 @@ mod test {
         assert_eq!(
             pop.anchor(),
             PopAnchor::GangerPosition(ganger),
-            "the bleeding pop anchors at the ganger's live position",
+            "the bleeding pop anchors on the ganger (drawn cell, resolved by the reader)",
         );
     }
 }

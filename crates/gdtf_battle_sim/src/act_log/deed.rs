@@ -6,6 +6,7 @@ use super::facts::{MagazineFacts, PoseFacts, PositionFacts, VitalsFacts};
 use crate::{
     acts::{InjuryInflicted, MoveRejection, ReloadOutcome, RoundCount},
     armor::BodyPart,
+    effects::fields::FieldDamage,
     falls::StoreysFallen,
     ganger::{Faction, LifeState},
     metric::{Cell, CellLevel, Level},
@@ -27,11 +28,14 @@ use crate::{
 /// * the three query-sourced state snapshots the drawn world needs
 ///   ([`PostureChanged`](Self::PostureChanged) / [`VitalsChanged`](Self::VitalsChanged) /
 ///   [`MagazineChanged`](Self::MagazineChanged));
-/// * the four facts the presenter's transient-FX readers drive off, which are NOT combat-log
-///   sources ([`Bled`](Self::Bled) / [`CoverSmashed`](Self::CoverSmashed) /
+/// * the six facts the presenter's transient-FX readers drive off, which are NOT combat-log
+///   sources ([`Bled`](Self::Bled) / [`DotTicked`](Self::DotTicked) /
+///   [`FieldTicked`](Self::FieldTicked) / [`CoverSmashed`](Self::CoverSmashed) /
 ///   [`MeleeLanded`](Self::MeleeLanded) / [`ThrowLanded`](Self::ThrowLanded)). Without a
 ///   deed apiece those readers would have nothing to pace against, so their flashes would
-///   keep firing at sim time while everything around them played at cursor time.
+///   keep firing at sim time while everything around them played at cursor time — the
+///   defect GTW-889 found still live for the DOT and field per-round drains, whose pops
+///   had no deed until it added the two tick variants beside [`Bled`](Self::Bled).
 ///
 /// **Every mutating variant carries the AFTER value of what it changed** (C4). A consumer
 /// APPLIES those values in log order; it never re-derives them from live world state,
@@ -218,6 +222,28 @@ pub enum ActDeed {
     /// once-per-span start above (the log line fires once; the pop fires every round).
     /// From [`Bleeding`](crate::effects::bleed::Bleeding).
     Bled,
+
+    /// The actor took one round of DAMAGE-OVER-TIME drain — the per-round tick, distinct
+    /// from the once-per-affliction [`DotStarted`](Self::DotStarted) above (the log line
+    /// fires once; the pop fires every round).
+    /// From [`DotTicked`](crate::effects::dot::DotTicked).
+    DotTicked {
+        /// The cell the actor stood in when the tick landed — the pop's anchor.
+        at:     CellLevel,
+        /// The flat HP the tick drained this round.
+        amount: DotDamage,
+    },
+
+    /// The actor took one round of drain from the FIELD it is standing in — the per-round
+    /// tick, distinct from the once-per-exposure [`FieldStarted`](Self::FieldStarted)
+    /// above.
+    /// From [`FieldTicked`](crate::effects::fields::FieldTicked).
+    FieldTicked {
+        /// The draining field's cell — the pop's anchor.
+        at:     CellLevel,
+        /// The flat HP the tick drained this round.
+        amount: FieldDamage,
+    },
 
     /// A piece of COVER was smashed at a cell. The actor is the destroying shooter where
     /// one is known, else [`Entity::PLACEHOLDER`] (cover is not an entity).

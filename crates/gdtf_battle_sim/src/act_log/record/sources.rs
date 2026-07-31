@@ -20,8 +20,8 @@ use crate::{
     combatants::ganger::{Aiming, Facing, Hp, Position, Stance, Tu, Wounds},
     effects::{
         bleed::{BleedStarted, Bleeding},
-        dot::DotAfflicted,
-        fields::FieldAfflicted,
+        dot::{DotAfflicted, DotTicked},
+        fields::{FieldAfflicted, FieldTicked},
         on_death::OnDeathOccurred,
     },
     falls::FallOccurred,
@@ -177,6 +177,12 @@ pub struct ConsequenceMessages<'w, 's> {
     /// Each per-round bleed DRAIN this tick — the transient-FX fact, distinct from the
     /// once-per-span start above.
     pub(super) bleed_ticks:   MessageReader<'w, 's, Bleeding>,
+    /// Each per-round damage-over-time DRAIN this tick — the transient-FX fact, distinct
+    /// from the once-per-affliction start above.
+    pub(super) dot_ticks:     MessageReader<'w, 's, DotTicked>,
+    /// Each per-round FIELD drain this tick — the transient-FX fact, distinct from the
+    /// once-per-exposure start above.
+    pub(super) field_ticks:   MessageReader<'w, 's, FieldTicked>,
     /// Each piece of cover smashed this tick.
     pub(super) cover_smashed: MessageReader<'w, 's, CoverDestroyed>,
     /// Each close-combat strike that LANDED this tick (the strike-FX fact).

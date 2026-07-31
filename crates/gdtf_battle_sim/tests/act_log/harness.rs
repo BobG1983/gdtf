@@ -11,7 +11,7 @@ use bevy::{
     scene::ScenePlugin,
 };
 use gdtf_battle_sim::{
-    act_log::{ActDeed, ActLog, ActProvenance, ActSeq},
+    act_log::{ActDeed, ActEntry, ActLog, ActProvenance, ActSeq},
     battle::{BattleSimPlugin, SetupBattleRequested},
     ganger::{Cool, Direction, Facing, GangRegistry, Grit, Reflexes, Speed, Toughness},
     metric::{Cell, CellLevel, Level},
@@ -175,6 +175,8 @@ pub(crate) const fn deed_name(deed: &ActDeed) -> &'static str {
         ActDeed::FieldStarted { .. } => "FieldStarted",
         ActDeed::BleedStarted => "BleedStarted",
         ActDeed::Bled => "Bled",
+        ActDeed::DotTicked { .. } => "DotTicked",
+        ActDeed::FieldTicked { .. } => "FieldTicked",
         ActDeed::CoverSmashed { .. } => "CoverSmashed",
         ActDeed::MeleeLanded { .. } => "MeleeLanded",
         ActDeed::ThrowLanded { .. } => "ThrowLanded",
@@ -194,6 +196,24 @@ pub(crate) fn logged(app: &App) -> Vec<LoggedFact> {
                     provenance: entry.provenance(),
                     deed:       deed_name(entry.deed()),
                 })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Every retained deed named `name`, cloned WHOLE.
+///
+/// [`LoggedFact`] deliberately flattens a deed down to its variant NAME so an order
+/// assertion never has to compare `f32`-bearing payloads. That drops the payload, and the
+/// payload is the part a consumer APPLIES — so a mapping assertion needs the deed itself.
+pub(crate) fn deeds_of(app: &App, name: &str) -> Vec<ActDeed> {
+    app.world()
+        .get_resource::<ActLog>()
+        .map(|log| {
+            log.since(ActSeq::START)
+                .map(ActEntry::deed)
+                .filter(|deed| deed_name(deed) == name)
+                .cloned()
                 .collect()
         })
         .unwrap_or_default()

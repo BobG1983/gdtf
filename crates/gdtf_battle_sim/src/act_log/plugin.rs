@@ -11,8 +11,8 @@ use crate::{
     armor_wear::ArmorBroken,
     effects::{
         bleed::{BleedStarted, Bleeding},
-        dot::DotAfflicted,
-        fields::FieldAfflicted,
+        dot::{DotAfflicted, DotTicked},
+        fields::{FieldAfflicted, FieldTicked},
         on_death::OnDeathOccurred,
     },
     falls::FallOccurred,
@@ -57,7 +57,9 @@ pub fn wire_act_log(app: &mut App) {
         .add_message::<SuppressionApplied>()
         .add_message::<ArmorBroken>()
         .add_message::<DotAfflicted>()
+        .add_message::<DotTicked>()
         .add_message::<FieldAfflicted>()
+        .add_message::<FieldTicked>()
         .add_message::<BleedStarted>()
         .add_message::<Bleeding>()
         .add_message::<CoverDestroyed>()

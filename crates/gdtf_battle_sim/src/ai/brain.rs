@@ -204,6 +204,12 @@ pub fn enemy_ai_turn(
     for enemy in &enemies {
         // Skip a Downed/Dead enemy (cannot act) and one mid-walk (its one act resolves
         // across frames — it stays "busy" until advance_walk finishes; GTW-70 §D.3).
+        //
+        // GTW-889 traced the "enemy 1 moved… enemy 2 moved… enemy 1 moved" log interleave
+        // to THIS shape and ruled it correct, not a defect: several enemies hold walks at
+        // once, each pass serves one act from the first non-busy enemy in the `cell_order`
+        // sort above, so the interleave is a pure function of game state and never of
+        // system run order.
         if !*enemy.life.is_active() || *enemy.walking {
             continue;
         }

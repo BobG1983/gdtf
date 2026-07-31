@@ -29,6 +29,31 @@ use crate::{
 /// Extracted verbatim from [`enemy_ai_turn`](super::brain::enemy_ai_turn)'s per-enemy
 /// loop so that system stays under the line cap; returns the planned destination, or
 /// `None` when no reachable step improves on the enemy's cell (the brain then HOLDs).
+///
+/// # Ruling: an advance CAN retrace a cell, and this is where it comes from (GTW-889)
+///
+/// GTW-889 reported an enemy stepping back onto a cell it had just left before moving
+/// forward again. That is NOT a draw-order artifact: the sprite moves off
+/// `Changed<DrawnPosition>`, the presenter writes that mirror only from act-log entries in
+/// log order (its gap recovery jumps forward to the head and never rewinds), and
+/// [`advance_walk`](crate::acts::movement::advance_walk) pops an accepted route's cells in
+/// order, so
+/// a committed walk cannot reverse mid-route. The drawn sequence IS the sim's step
+/// sequence.
+///
+/// It comes from THIS function having no memory. Every act re-plans from the enemy's
+/// current cell over a freshly computed reachable set, and the goal handed in is
+/// [`pick_nearest`](super::decide::pick_nearest) re-evaluated from that same cell — so
+/// when the nearest opposing ganger changes, the next plan can lead back the way the
+/// enemy came. [`plan_advance`](super::decide::plan_advance) only guarantees the
+/// DESTINATION strictly reduces the Chebyshev distance to the goal; the route
+/// [`find_path`](crate::pathfinder::find_path) takes there does not have to, so a detour
+/// around terrain can re-enter a just-left cell too. Both are pure functions of game
+/// state, never of system run order.
+///
+/// So it is a planning-quality behaviour, not a timing or ordering defect, and it is
+/// tracked as GTW-936 (a child of the GTW-71 tactical-AI epic): carry a committed advance
+/// plan across acts rather than rebuilding one after every step.
 #[expect(
     clippy::too_many_arguments,
     reason = "the plan borrows the brain's own reads (the enemy + snapshot rows, the \

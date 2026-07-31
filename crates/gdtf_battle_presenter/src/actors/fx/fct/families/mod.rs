@@ -9,10 +9,17 @@
 //!    pre-existing test file beyond its registration line). Wire it in this `mod.rs`.
 //! 2. **One registrar line** in `TopDownRendererPlugin`
 //!    (`plugin/topdown/fx.rs::register_consequence_fct_families`):
-//!    `app.add_consequence_fct::<YourFamily>()`. Nothing else — the generic reader, the
-//!    shared lifetime-aware [`FctSlotAllocator`](super::FctSlotAllocator),
-//!    and the gates are already wired.
-//! 3. **If it also logs** (a combat-log line): stay in THIS crate (GTW-620) — one
+//!    `app.add_consequence_fct::<YourFamily>()`. That wires the generic reader and the
+//!    shared lifetime-aware [`FctSlotAllocator`](super::FctSlotAllocator).
+//! 3. **The PLAYED path for that signal** (GTW-889 — the reader drains
+//!    `Played<Signal>`, not the raw sim buffer, so a family without one never pops and
+//!    its reader's gate never opens): an `ActDeed` variant carrying the fact, the
+//!    recorder arm that appends it, a `show_entry` arm in
+//!    `crates/gdtf_battle_presenter/src/playback/apply.rs` that writes
+//!    `Played::new(<signal>)`, its `PlayedSignals` writer field, and its
+//!    `register_played_messages` line
+//!    (`crates/gdtf_battle_presenter/src/playback/emit.rs`).
+//! 4. **If it also logs** (a combat-log line): stay in THIS crate (GTW-620) — one
 //!    [`CombatLogSource`](super::log_event::CombatLogSource) impl in
 //!    `log_event/sources.rs`, one `CombatLogEvent` variant, one classify arm in
 //!    [`classify_log_event`](super::log_event::classify_log_event), and one

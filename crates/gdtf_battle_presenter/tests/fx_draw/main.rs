@@ -18,6 +18,7 @@
 mod blast;
 mod consequence_fct;
 mod death_and_fields;
+mod drawn_anchor;
 mod fall_fx;
 mod flash;
 mod harness;
