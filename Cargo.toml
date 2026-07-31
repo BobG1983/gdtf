@@ -32,6 +32,13 @@ bevy = { version = "0.19.0", default-features = false, features = ["2d", "ui", "
 # `bevy`; this makes it a direct edge for that one crate). Pinned to the workspace Bevy
 # version so the derive stays in lock-step with `bevy::prelude::Deref`.
 bevy_derive = "0.19.0"
+# JSON Schema derivation. `gdtf_qa_command` takes it outright — a command's argument and
+# reply schemas are derived from its two associated types — and `gdtf_qa_protocol` takes it
+# OPTIONALLY behind its `schema` feature, which `gdtf_qa_command` turns on so an argument
+# type can embed a wire id and still derive. Both arrive through this table so the two
+# cannot drift onto different schemars versions and start disagreeing about the documents a
+# catalogue publishes.
+schemars = "1.2.2"
 
 [workspace.lints.rust]
 missing_docs           = "deny"

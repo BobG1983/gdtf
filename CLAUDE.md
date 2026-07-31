@@ -92,9 +92,15 @@ built path moves). `crates/gdtf_test_utils/tests/rustdoc_lint_gate/` pins the gr
 (GTW-939). They are **package-scoped, not workspace-wide**, because cargo builds one
 `gdtf_qa_protocol` library unit per invocation: naming `gdtf_qa_protocol/schema` on a
 `--workspace` command would unify `schemars` into `bins/gdtf_qa_mcp`, which carries schema
-documents as opaque text and must never link a schema library. Both have matching CI steps in
+documents as opaque text. Both have matching CI steps in
 `.github/workflows/test.yml` and `clippy.yml`, pinned by
 `crates/gdtf_test_utils/tests/ci_workflow_features/schema_step.rs`.
+Since GTW-941 a MANIFEST edge does what no command line does: `crates/gdtf_qa_command`
+requires `gdtf_qa_protocol/schema` unconditionally, so every `--workspace` run unifies the
+feature on and the courier's unit links schemars on `cargo dclippy` / `cargo dtest`. The
+shipped property is unaffected — `bins/gdtf_qa_mcp` enables no schema feature in its own
+manifest and depends on no crate that does, so `cargo build -p gdtf_qa_mcp` links no schemars
+— but neither guard reads a manifest, so neither can see this. GTW-946 widens them.
 See [`verification.md`](.claude/rules/verification.md).
 
 The workspace `Cargo.toml` denies clippy `all`/`pedantic`/`correctness`/`suspicious` plus

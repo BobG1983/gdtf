@@ -2944,6 +2944,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "gdtf_qa_command"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "gdtf_net_qa_transport",
+ "gdtf_qa_command",
+ "gdtf_qa_protocol",
+ "schemars",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "gdtf_qa_mcp"
 version = "0.1.0"
 dependencies = [
