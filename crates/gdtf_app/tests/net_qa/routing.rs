@@ -5,11 +5,12 @@ use std::sync::mpsc;
 
 use bevy::app::App;
 use gdtf_app::test_support::{
-    AppState, NET_QA_PROTOCOL_VERSION, NetQaPlugin, QaShotDir, ShotPollBudget,
+    AppState, NET_QA_PROTOCOL_VERSION, NET_QA_SERVER_NAME, NetQaPlugin, QaShotDir, ShotPollBudget,
+    net_qa_hello_facts,
 };
 use gdtf_net_qa_transport::{IncomingRequest, Responder};
 use gdtf_qa_protocol::{
-    envelope::{ProtocolVersion, QaError, QaRequest, QaResponse, ScreenshotResult},
+    envelope::{QaError, QaRequest, QaResponse, ScreenshotResult},
     view::AppStateNet,
 };
 use gdtf_test_utils::GdtfTestAppBuilder;
@@ -36,36 +37,42 @@ fn send(tx: &mpsc::Sender<IncomingRequest>, request: QaRequest) -> mpsc::Receive
     reply_rx
 }
 
-/// A [`Hello`](QaRequest::Hello) carrying the server's version negotiates successfully —
-/// the reply is [`HelloOk`](QaResponse::HelloOk) with that exact version.
+/// GTW-940: the game's handshake facts are the ONE place its identity is stated — the version
+/// it speaks paired with its own server name — and they are what
+/// [`NetQaPlugin`](gdtf_app::test_support::NetQaPlugin) hands
+/// [`run_listener`](gdtf_net_qa_transport::run_listener).
+///
+/// The negotiation itself is the TRANSPORT's, proven over a real socket in
+/// `crates/gdtf_net_qa_transport/src/listener/test/session.rs` (which passes deliberately
+/// non-default facts, so it proves the listener answers with whatever facts it was given).
+/// What this host owes is that the facts it hands over are its own.
 #[test]
-fn hello_is_answered_with_the_server_version() {
+fn the_hosts_hello_facts_are_its_own_version_and_name() {
+    let facts = net_qa_hello_facts();
+    assert_eq!(
+        facts.protocol, NET_QA_PROTOCOL_VERSION,
+        "the game must negotiate the version it declares it speaks",
+    );
+    assert_eq!(
+        *facts.server, NET_QA_SERVER_NAME,
+        "the game must identify itself by its own server name, so a client can tell which \
+         host it reached",
+    );
+}
+
+/// GTW-940: the router no longer negotiates. A [`Hello`](QaRequest::Hello) is answered in the
+/// listener thread and never reaches the inbox — so the duplicated `answer_hello` is gone, and
+/// one that somehow bypassed the listener is refused rather than quietly answered here.
+#[test]
+fn the_router_no_longer_answers_hello() {
     let (mut app, tx) = build_router_app();
     let reply = send(&tx, QaRequest::Hello(NET_QA_PROTOCOL_VERSION));
     app.update();
     let reply = reply.try_recv();
     assert!(
-        matches!(
-            &reply,
-            Ok(QaResponse::HelloOk(facts)) if facts.protocol == NET_QA_PROTOCOL_VERSION
-        ),
-        "expected HelloOk echoing the negotiated version, got {reply:?}",
-    );
-}
-
-/// A [`Hello`](QaRequest::Hello) carrying a foreign version is rejected
-/// [`VersionMismatch`](QaError::VersionMismatch).
-#[test]
-fn hello_with_a_foreign_version_is_rejected() {
-    let (mut app, tx) = build_router_app();
-    // A version the server does not speak (its own + a large offset).
-    let foreign = ProtocolVersion::new(*NET_QA_PROTOCOL_VERSION + 1000);
-    let reply = send(&tx, QaRequest::Hello(foreign));
-    app.update();
-    let reply = reply.try_recv();
-    assert!(
-        matches!(&reply, Ok(QaResponse::Error(QaError::VersionMismatch))),
-        "a foreign protocol version must be rejected VersionMismatch, got {reply:?}",
+        matches!(&reply, Ok(QaResponse::Error(QaError::BadRequest))),
+        "a Hello that reached the router must NOT be negotiated here — the listener thread \
+         owns the handshake — got {reply:?}",
     );
 }
 

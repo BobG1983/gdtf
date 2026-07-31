@@ -10,6 +10,7 @@
 use std::{
     io::{Read, Write},
     net::{Ipv4Addr, TcpListener},
+    sync::mpsc::{self, Receiver, Sender},
     thread,
 };
 
@@ -18,7 +19,7 @@ use gdtf_qa_mcp::{
     QaPort, StopOutcome, WorkingDir, dispatch,
 };
 use gdtf_qa_protocol::{
-    envelope::{QaError, QaRequest, QaResponse},
+    envelope::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
     framing::{FrameDecoder, encode},
     view::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet},
 };
@@ -56,9 +57,16 @@ impl QaLink for DeadLink {
     }
 }
 
-/// Bind a loopback listener on an OS-assigned port and serve exactly one framed request
-/// on a background thread, replying with a framed `QaResponse`. Returns the bound port.
-fn spawn_fake_game() -> u16 {
+/// Bind a loopback listener on an OS-assigned port and serve one client on a background
+/// thread. Returns the bound port and a receiver reporting every request the fake server
+/// decoded, in arrival order, so a test can assert what the client sent and when.
+fn spawn_fake_game() -> (u16, Receiver<QaRequest>) {
+    spawn_fake_game_with(answer)
+}
+
+/// [`spawn_fake_game`] with an explicit answering rule, so a test can stand up a server that
+/// refuses the handshake.
+fn spawn_fake_game_with(answerer: fn(&QaRequest) -> QaResponse) -> (u16, Receiver<QaRequest>) {
     let listener = match TcpListener::bind((Ipv4Addr::LOCALHOST, 0)) {
         Ok(listener) => listener,
         Err(err) => unreachable!("the test can bind a loopback listener: {err}"),
@@ -67,12 +75,23 @@ fn spawn_fake_game() -> u16 {
         Ok(addr) => addr.port(),
         Err(err) => unreachable!("the listener has a local address: {err}"),
     };
-    thread::spawn(move || serve_one(&listener));
-    port
+    let (seen_tx, seen_rx) = mpsc::channel();
+    thread::spawn(move || serve_one(&listener, &seen_tx, answerer));
+    (port, seen_rx)
 }
 
-/// Accept one client, decode one framed [`QaRequest`], and frame back a [`QaResponse`].
-fn serve_one(listener: &TcpListener) {
+/// Accept one client and serve its framed requests until it goes away, reporting each
+/// decoded [`QaRequest`] on `seen`.
+///
+/// It answers a `Hello` whose version matches with `HelloOk` and refuses one that differs,
+/// exactly as the real listener does — the client MUST negotiate before it sends anything
+/// else (GTW-940), so a fake that answered a bare `GetAppFlow` would prove nothing about the
+/// real path.
+fn serve_one(
+    listener: &TcpListener,
+    seen: &Sender<QaRequest>,
+    answerer: fn(&QaRequest) -> QaResponse,
+) {
     let Ok((mut stream, _)) = listener.accept() else {
         return;
     };
@@ -84,35 +103,59 @@ fn serve_one(listener: &TcpListener) {
             Ok(count) => count,
         };
         decoder.push(&buf[..read]);
-        let frame = match decoder.next_frame() {
-            Ok(Some(frame)) => frame,
-            Ok(None) => continue,
-            Err(_) => return,
-        };
-        let response = match frame.decode::<QaRequest>() {
-            Ok(QaRequest::GetAppFlow) => QaResponse::AppFlow(AppFlowView::new(
-                AppStateNet::Running,
-                BattleActiveNet::new(true),
-                Vec::new(),
-                CaughtUpNet::new(true),
-                None,
-                None,
-            )),
-            Ok(_) => QaResponse::Error(QaError::BadRequest),
-            Err(_) => return,
-        };
-        if let Ok(out) = encode(&response) {
-            drop(stream.write_all(&out));
+        loop {
+            let frame = match decoder.next_frame() {
+                Ok(Some(frame)) => frame,
+                Ok(None) => break,
+                Err(_) => return,
+            };
+            let Ok(request) = frame.decode::<QaRequest>() else {
+                return;
+            };
+            drop(seen.send(request.clone()));
+            let response = answerer(&request);
+            if let Ok(out) = encode(&response)
+                && stream.write_all(&out).is_err()
+            {
+                return;
+            }
         }
-        return;
+    }
+}
+
+/// The fake server's reply to one decoded request: the handshake, the one tool request this
+/// suite drives, and a refusal for everything else.
+fn answer(request: &QaRequest) -> QaResponse {
+    match request {
+        QaRequest::Hello(version) if *version == ProtocolVersion::CURRENT => {
+            QaResponse::HelloOk(HelloFacts::new(
+                ProtocolVersion::CURRENT,
+                ServerNameNet::new("fake-game".to_owned()),
+            ))
+        }
+        QaRequest::Hello(_) => QaResponse::Error(QaError::VersionMismatch),
+        QaRequest::GetAppFlow => QaResponse::AppFlow(AppFlowView::new(
+            AppStateNet::Running,
+            BattleActiveNet::new(true),
+            Vec::new(),
+            CaughtUpNet::new(true),
+            None,
+            None,
+        )),
+        _ => QaResponse::Error(QaError::BadRequest),
     }
 }
 
 /// The real client + real framing carry a `tools/call app_flow` to the fake server and
 /// back, and the reply renders as the expected content.
+///
+/// It also pins the ORDER the server saw: the client's very first frame on the connection is
+/// the `Hello`, and the tool's request only follows once the handshake was answered. Against
+/// the real listener a tool request sent first would come back
+/// [`NotNegotiated`](QaError::NotNegotiated) (GTW-940).
 #[test]
 fn app_flow_round_trips_through_the_real_client() {
-    let port = spawn_fake_game();
+    let (port, seen) = spawn_fake_game();
     let mut client = QaClient::new(QaPort::new(port));
     let mut unused_editor = DeadLink;
     let (mut game_life, mut editor_life) = (NoLifecycle, NoLifecycle);
@@ -131,4 +174,45 @@ fn app_flow_round_trips_through_the_real_client() {
     };
     assert!(text.contains("Running"), "rendered: {text}");
     assert!(text.contains("battle_active"), "rendered: {text}");
+
+    let first = seen.recv().ok();
+    assert!(
+        matches!(first, Some(QaRequest::Hello(version)) if version == ProtocolVersion::CURRENT),
+        "the client's FIRST frame on a fresh connection must be the handshake, got {first:?}"
+    );
+    let second = seen.recv().ok();
+    assert!(
+        matches!(second, Some(QaRequest::GetAppFlow)),
+        "the tool's request must follow the handshake, got {second:?}"
+    );
+}
+
+/// A server that refuses every handshake — a child built from a different tree.
+const fn refuse_everything(_request: &QaRequest) -> QaResponse {
+    QaResponse::Error(QaError::VersionMismatch)
+}
+
+/// A refused handshake fails the request with [`McpError::Handshake`], and the tool's own
+/// request is never put on the wire: a connection the child would answer
+/// [`NotNegotiated`](QaError::NotNegotiated) is not kept.
+#[test]
+fn a_refused_handshake_fails_the_request_and_sends_nothing_else() {
+    let (port, seen) = spawn_fake_game_with(refuse_everything);
+    let mut client = QaClient::new(QaPort::new(port));
+
+    let result = client.request(QaRequest::GetAppFlow);
+    assert!(
+        matches!(result, Err(McpError::Handshake(QaError::VersionMismatch))),
+        "a version-mismatched child must surface as a handshake error, got {result:?}"
+    );
+
+    let first = seen.recv().ok();
+    assert!(
+        matches!(first, Some(QaRequest::Hello(_))),
+        "the handshake is what the server saw, got {first:?}"
+    );
+    assert!(
+        seen.recv().is_err(),
+        "nothing may follow a refused handshake — the connection is dropped, not reused"
+    );
 }

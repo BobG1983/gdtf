@@ -22,7 +22,7 @@ use std::{
 
 use gdtf_qa_mcp::{QaClient, QaLink, QaPort};
 use gdtf_qa_protocol::{
-    envelope::{QaError, QaRequest, QaResponse},
+    envelope::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
     framing::{FrameDecoder, encode},
     view::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet},
 };
@@ -52,28 +52,80 @@ const fn app_flow_reply() -> QaResponse {
     ))
 }
 
-/// Read one framed [`QaRequest`] from `stream` and frame an [`app_flow_reply`] back.
-/// Returns whether a whole request was served (false on EOF / a broken stream).
-fn answer_one(stream: &mut TcpStream) -> bool {
-    let mut decoder = FrameDecoder::new();
-    let mut buf = [0u8; 1024];
-    loop {
-        let read = match stream.read(&mut buf) {
-            Ok(0) | Err(_) => return false,
-            Ok(count) => count,
-        };
-        decoder.push(&buf[..read]);
-        match decoder.next_frame() {
-            Ok(Some(_frame)) => {
-                let Ok(out) = encode(&app_flow_reply()) else {
-                    return false;
-                };
-                return stream.write_all(&out).is_ok();
+/// The stub's reply to one decoded request.
+///
+/// A `Hello` is answered `HelloOk`, as the real listener does — the client negotiates the
+/// protocol version on EVERY connection it opens, including each reconnect (GTW-940), so a
+/// stub that answered an [`app_flow_reply`] to the handshake would fail the client's
+/// handshake and prove nothing about reconnecting.
+fn answer(request: &QaRequest) -> QaResponse {
+    match request {
+        QaRequest::Hello(_) => QaResponse::HelloOk(HelloFacts::new(
+            ProtocolVersion::CURRENT,
+            ServerNameNet::new("reconnect-stub".to_owned()),
+        )),
+        _ => app_flow_reply(),
+    }
+}
+
+/// A stub connection: one decoder over the whole stream, so nothing read ahead is lost
+/// between the handshake and the request that follows it.
+struct StubConn<'stream> {
+    /// The accepted client socket.
+    stream:  &'stream mut TcpStream,
+    /// Buffers partial reads across calls.
+    decoder: FrameDecoder,
+}
+
+impl StubConn<'_> {
+    /// Read one framed [`QaRequest`] and frame its [`answer`] back. Returns whether a whole
+    /// request was served (false on EOF / a broken stream).
+    fn answer_one(&mut self) -> bool {
+        let mut buf = [0u8; 1024];
+        loop {
+            match self.decoder.next_frame() {
+                Ok(Some(frame)) => {
+                    let Ok(request) = frame.decode::<QaRequest>() else {
+                        return false;
+                    };
+                    let Ok(out) = encode(&answer(&request)) else {
+                        return false;
+                    };
+                    return self.stream.write_all(&out).is_ok();
+                }
+                Ok(None) => {}
+                Err(_) => return false,
             }
-            Ok(None) => {}
-            Err(_) => return false,
+            let read = match self.stream.read(&mut buf) {
+                Ok(0) | Err(_) => return false,
+                Ok(count) => count,
+            };
+            self.decoder.push(&buf[..read]);
         }
     }
+}
+
+/// Serve `frames` requests on one accepted connection (the handshake counts as one), then
+/// return so the caller can close it.
+fn answer_frames(stream: &mut TcpStream, frames: usize) {
+    let mut conn = StubConn {
+        stream,
+        decoder: FrameDecoder::new(),
+    };
+    for _ in 0..frames {
+        if !conn.answer_one() {
+            return;
+        }
+    }
+}
+
+/// Serve requests on one accepted connection until the client goes away.
+fn answer_until_gone(stream: &mut TcpStream) {
+    let mut conn = StubConn {
+        stream,
+        decoder: FrameDecoder::new(),
+    };
+    while conn.answer_one() {}
 }
 
 /// A `GetAppFlow` request through the real client.
@@ -95,7 +147,8 @@ fn a_reused_connection_the_game_closed_reconnects_and_succeeds() {
             let Ok((mut stream, _)) = listener.accept() else {
                 return;
             };
-            answer_one(&mut stream);
+            // Two frames per connection: the client's handshake, then its one request.
+            answer_frames(&mut stream, 2);
             // `stream` drops here — the connection closes, exactly like the reaped game
             // handler.
         }
@@ -142,7 +195,7 @@ fn retarget_on_the_same_port_invalidates_the_connection() {
                 return;
             };
             seen.fetch_add(1, Ordering::SeqCst);
-            while answer_one(&mut stream) {}
+            answer_until_gone(&mut stream);
         }
     });
 

@@ -62,13 +62,21 @@ fn offered_topics(reply: &QaResponse) -> Vec<EditorQueryKind> {
 /// it — including both phases' — on every run.
 pub(crate) fn assert_load_phase(replies: &[QaResponse; LOAD_PHASE_REPLIES]) {
     let [
+        hello,
         first_options,
         readiness,
         mode,
         validation,
         closing_options,
-        hello,
     ] = replies;
+
+    // The handshake opens the connection (GTW-940) and is answered in the LISTENER THREAD, so
+    // it spends no frame of the `Load` window the rest of this phase measures — and the facts
+    // it carries are the editor's own, handed to the listener by the plugin.
+    assert!(
+        matches!(hello, QaResponse::HelloOk(facts) if facts.protocol == ProtocolVersion::CURRENT),
+        "expected the editor's HelloOk at the CURRENT protocol version, got {hello:?}",
+    );
 
     assert_eq!(
         options(first_options).readiness,
@@ -147,11 +155,6 @@ pub(crate) fn assert_load_phase(replies: &[QaResponse; LOAD_PHASE_REPLIES]) {
         "a Validation reply carrying readiness Editing must report checks_complete — the \
          checks' window opens no later than the frame the Load → Editing transition is set: \
          got {validation:?}",
-    );
-
-    assert!(
-        matches!(hello, QaResponse::HelloOk(facts) if facts.protocol == ProtocolVersion::CURRENT),
-        "expected the editor's HelloOk at the CURRENT protocol version, got {hello:?}",
     );
 }
 

@@ -1,4 +1,5 @@
-//! A framed round-trip over a real socket + the one-client-at-a-time gate (GTW-736).
+//! A framed handshake + a forwarded round-trip over a real socket, plus the
+//! one-client-at-a-time gate (GTW-736; the forwarded leg is GTW-940).
 
 use std::{
     net::{Ipv4Addr, TcpStream},
@@ -9,11 +10,13 @@ use gdtf_net_qa_transport::NetIoTimeout;
 use gdtf_qa_protocol::envelope::{ProtocolVersion, QaError, QaRequest, QaResponse};
 
 use super::harness::{
-    TestResult, read_response, spawn_fake_host_side, spawn_listener, write_request,
+    TestResult, host_reply_facts, read_response, spawn_fake_host_side, spawn_listener, test_facts,
+    write_request,
 };
 
-/// A framed Hello round-trips over a real socket, and a SECOND concurrent client — while
-/// the first holds the single slot — receives a typed [`Busy`](QaError::Busy) frame.
+/// A framed Hello round-trips over a real socket, a following request is FORWARDED to the
+/// stand-in host side and its reply comes back, and a SECOND concurrent client — while the
+/// first holds the single slot — receives a typed [`Busy`](QaError::Busy) frame.
 #[test]
 fn hello_round_trips_and_a_second_client_is_busy() -> TestResult {
     // Generous timeout: client A must stay alive (hold the slot) while B connects.
@@ -28,9 +31,22 @@ fn hello_round_trips_and_a_second_client_is_busy() -> TestResult {
     assert!(
         matches!(
             &response_a,
-            QaResponse::HelloOk(facts) if facts.protocol == ProtocolVersion::CURRENT
+            QaResponse::HelloOk(facts) if *facts == test_facts()
         ),
-        "expected HelloOk for client A, got {response_a:?}",
+        "expected the LISTENER's own HelloOk for client A, got {response_a:?}",
+    );
+
+    // The connection is now negotiated, so the next request is forwarded to the host inbox
+    // and correlated with the host's reply — which carries the stand-in host's server name,
+    // never the listener's, so the reply can only have come back through the inbox.
+    write_request(&mut client_a, &QaRequest::Catalogue)?;
+    let forwarded = read_response(&mut client_a)?;
+    assert!(
+        matches!(
+            &forwarded,
+            QaResponse::HelloOk(facts) if *facts == host_reply_facts()
+        ),
+        "expected the forwarded request to be answered by the host side, got {forwarded:?}",
     );
 
     // Client B connects while A holds the slot -> the listener answers Busy and closes it.

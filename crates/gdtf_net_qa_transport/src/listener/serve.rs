@@ -1,5 +1,5 @@
-//! The per-connection conversation: read → decode → hand to the host → frame the reply
-//! back (GTW-736).
+//! The per-connection conversation: read → decode → negotiate or hand to the host → frame
+//! the reply back (GTW-736; the handshake gate is GTW-940).
 
 use core::ops::ControlFlow;
 use std::{
@@ -9,26 +9,33 @@ use std::{
 };
 
 use gdtf_qa_protocol::{
-    envelope::{QaError, QaRequest, QaResponse},
+    envelope::{HelloFacts, QaError, QaRequest, QaResponse},
     framing::{FrameDecoder, encode},
 };
 
+use super::session::{FrameVerdict, SessionState};
 use crate::{
     channel::{IncomingRequest, Responder},
     config::NetIoTimeout,
 };
 
-/// Serve one client: read frames, correlate each request with its reply, frame the reply
-/// back. Returns (the thread ends) on EOF, a timeout, or any transport error.
+/// Serve one client: read frames, negotiate the handshake, correlate every other request with
+/// its reply, frame the reply back. Returns (the thread ends) on EOF, a timeout, or any
+/// transport error.
+///
+/// The [`SessionState`] is created here and lives exactly as long as this connection, so a
+/// reconnect starts [`Fresh`](SessionState::Fresh) again.
 pub(super) fn handle_client(
     mut stream: TcpStream,
     request_tx: &Sender<IncomingRequest>,
     io_timeout: NetIoTimeout,
+    facts: &HelloFacts,
 ) {
     // Two-sided timeouts (bevy-traps: no panic — a failure to set them is non-fatal).
     drop(stream.set_read_timeout(Some(*io_timeout)));
     drop(stream.set_write_timeout(Some(*io_timeout)));
     let mut decoder = FrameDecoder::new();
+    let mut session = SessionState::Fresh;
     let mut buf = [0u8; 4096];
     loop {
         let read = match stream.read(&mut buf) {
@@ -44,29 +51,63 @@ pub(super) fn handle_client(
                 // An oversize prefix desynchronizes the stream irrecoverably — close.
                 Err(_) => return,
             };
-            if handle_frame(&mut stream, &frame, request_tx, io_timeout).is_break() {
+            if handle_frame(
+                &mut stream,
+                &frame,
+                request_tx,
+                io_timeout,
+                facts,
+                &mut session,
+            )
+            .is_break()
+            {
                 return;
             }
         }
     }
 }
 
-/// Decode one frame, route it to the host side, and frame the reply back.
+/// Decode one frame, decide it against the connection's [`SessionState`], and frame the reply
+/// back.
 ///
-/// Returns [`ControlFlow::Break`] when the connection must close (the host side is gone
-/// or the write failed) and [`ControlFlow::Continue`] otherwise. A malformed payload is
-/// answered [`BadRequest`](QaError::BadRequest) without closing the connection.
+/// Returns [`ControlFlow::Break`] when the connection must close (the host side is gone or the
+/// write failed) and [`ControlFlow::Continue`] otherwise. Two answers never reach the host at
+/// all: a frame that does not decode as a [`QaRequest`] is answered
+/// [`Malformed`](QaError::Malformed), and any request other than [`Hello`](QaRequest::Hello)
+/// on a connection that has not negotiated is answered
+/// [`NotNegotiated`](QaError::NotNegotiated). Neither closes the connection.
 fn handle_frame(
     stream: &mut TcpStream,
     frame: &gdtf_qa_protocol::framing::Frame,
     request_tx: &Sender<IncomingRequest>,
     io_timeout: NetIoTimeout,
+    facts: &HelloFacts,
+    session: &mut SessionState,
 ) -> ControlFlow<()> {
     let Ok(request) = frame.decode::<QaRequest>() else {
-        // Advise the client but keep the connection (best-effort write).
-        drop(write_frame(stream, &QaResponse::Error(QaError::BadRequest)));
+        // A DECODE failure: the bytes never became a request, so no host state was consulted
+        // and none could be. Advise the client but keep the connection (best-effort write).
+        drop(write_frame(stream, &QaResponse::Error(QaError::Malformed)));
         return ControlFlow::Continue(());
     };
+    match session.admit(&request, facts) {
+        FrameVerdict::Answer(response) => match write_frame(stream, &response) {
+            Ok(()) => ControlFlow::Continue(()),
+            Err(_) => ControlFlow::Break(()),
+        },
+        FrameVerdict::Forward => forward_to_host(stream, request, request_tx, io_timeout),
+    }
+}
+
+/// Hand one negotiated request to the host's inbox and frame the host's reply back.
+///
+/// Returns [`ControlFlow::Break`] when the host side is gone or the write failed.
+fn forward_to_host(
+    stream: &mut TcpStream,
+    request: QaRequest,
+    request_tx: &Sender<IncomingRequest>,
+    io_timeout: NetIoTimeout,
+) -> ControlFlow<()> {
     let (responder, reply_rx) = Responder::channel();
     if request_tx
         .send(IncomingRequest::new(request, responder))

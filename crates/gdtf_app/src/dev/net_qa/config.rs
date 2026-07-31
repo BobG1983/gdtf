@@ -9,7 +9,7 @@
 //! different switch but binds and times out the same way.
 
 use gdtf_net_qa_transport::NetQaPort;
-use gdtf_qa_protocol::envelope::ProtocolVersion;
+use gdtf_qa_protocol::envelope::{HelloFacts, ProtocolVersion, ServerNameNet};
 
 crate::support_item! {
     /// The wire protocol version this `net_qa` server speaks.
@@ -29,13 +29,38 @@ crate::support_item! {
     const NET_QA_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::CURRENT;
 }
 
-/// The server's self-identifying name returned in the handshake facts.
-///
-/// Purely informational — a client logs what it connected to. Not a domain value
-/// (a fixed build label), so it stays a bare `&str` const here and is wrapped in a
-/// [`ServerNameNet`](gdtf_qa_protocol::envelope::ServerNameNet) at the reply boundary.
-pub(super) const SERVER_NAME: &str = "gdtf-net-qa";
+crate::support_item! {
+    /// The server's self-identifying name returned in the handshake facts.
+    ///
+    /// Purely informational — a client logs what it connected to. Not a domain value
+    /// (a fixed build label), so it stays a bare `&str` const here and is wrapped in a
+    /// [`ServerNameNet`] at the reply boundary.
+    /// Widened to `pub` under `test-support` so the routing test can assert the identity this
+    /// host hands the listener without hard-coding the literal.
+    const SERVER_NAME: &str = "gdtf-net-qa";
+}
 
 /// The default loopback port the listener binds when `GDTF_NET_QA_PORT` is unset or
 /// unparseable — an arbitrary high port unlikely to collide with a common service.
 pub(super) const DEFAULT_PORT: NetQaPort = NetQaPort::new(7616);
+
+crate::support_item! {
+    /// The handshake facts THIS host answers a `Hello` with — the version it speaks paired
+    /// with the name it identifies itself as.
+    ///
+    /// Handed to [`run_listener`](gdtf_net_qa_transport::run_listener) by
+    /// [`NetQaPlugin`](super::plugin::NetQaPlugin), because the listener thread answers every
+    /// `Hello` itself (GTW-940). That is why the transport takes the whole facts rather than a
+    /// bare version: the version is shared with the editor, but [`SERVER_NAME`] is this host's
+    /// alone. The router no longer negotiates anything — a `Hello` never reaches its inbox.
+    ///
+    /// Widened to `pub` under `test-support` so a test can assert the facts the game passes
+    /// without restating the two literals.
+    #[must_use]
+    fn hello_facts() -> HelloFacts {
+        HelloFacts::new(
+            NET_QA_PROTOCOL_VERSION,
+            ServerNameNet::new(SERVER_NAME.to_owned()),
+        )
+    }
+}

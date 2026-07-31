@@ -137,8 +137,8 @@ pub fn seed_load_gate(asset_server: Option<Res<AssetServer>>, mut commands: Comm
 // crate's items through this ledger would hide the split behind a `gdtf_app` path.
 #[cfg(all(debug_assertions, feature = "net_qa"))]
 pub use crate::dev::net_qa::{
-    NET_QA_PROTOCOL_VERSION, NetQaPlugin, QaShotDir, SHIPPED_SITUATION, ShotPollBudget,
-    request_available_for,
+    NET_QA_PROTOCOL_VERSION, NET_QA_SERVER_NAME, NetQaPlugin, QaShotDir, SHIPPED_SITUATION,
+    ShotPollBudget, net_qa_hello_facts, request_available_for,
 };
 // The GTW-655 procgen-stepper command/latch types + its forced-enable test constructor —
 // `dev_tools`-gated because the whole stepper module compiles out unless that feature is on

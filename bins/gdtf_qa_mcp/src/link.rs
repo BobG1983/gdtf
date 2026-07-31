@@ -8,6 +8,11 @@
 //! the first request, so the MCP server starts (and answers `initialize` / `tools/list`)
 //! even before the child is up.
 //!
+//! Every connection NEGOTIATES before it carries a tool's request: the first frame on a fresh
+//! socket is always a `Hello(ProtocolVersion::CURRENT)` and the connection is kept only if the
+//! child answers `HelloOk`. The listener refuses every other frame on a connection that has
+//! not negotiated (GTW-940), so this is the client's half of that gate, not a courtesy.
+//!
 //! Nothing here knows which host it is talking to: the game and the editor speak the same
 //! framing and the same envelope, so one client type serves both and the dual-target host
 //! simply holds two of them, one per port ([`QaHost`]).
@@ -19,7 +24,7 @@ use std::{
 };
 
 use gdtf_qa_protocol::{
-    envelope::{QaRequest, QaResponse},
+    envelope::{ProtocolVersion, QaRequest, QaResponse},
     framing::{FrameDecoder, encode},
 };
 
@@ -27,7 +32,20 @@ use crate::{error::McpError, hosts::QaHost};
 
 /// The read/write deadline set on the client socket, so a frozen child surfaces as an
 /// error instead of hanging the MCP server forever.
-const LINK_TIMEOUT: LinkTimeout = LinkTimeout::new(Duration::from_secs(10));
+///
+/// The ONE place this number lives. It is a DEFAULT, not a fixed value:
+/// [`QaClient::with_timeout`] takes a [`LinkTimeout`], so a caller passes whatever it needs
+/// and only the fallback is edited here — [`QaClient::new`] and [`QaClient::for_host`] use
+/// this one.
+///
+/// **Open question Q3 is UNRESOLVED.** The QA protocol rewrite proposes raising this to 200 s
+/// (with the transport's `DEFAULT_IO_TIMEOUT` at 180 s) so the command layer's 120 s
+/// `MAX_AWAIT_BUDGET` sits strictly inside both and a long wait answers its own deadline error
+/// instead of surfacing as a socket timeout; the counter-lever is halving that budget to 60 s
+/// and taking the two timeouts to 90 s / 100 s. The cost of the raise is that a genuinely
+/// frozen child takes ~200 s to surface instead of ~10 s. No user ruling has been made, so the
+/// value stays at the 10 s it has always been until one is.
+pub const LINK_TIMEOUT: LinkTimeout = LinkTimeout::new(Duration::from_secs(10));
 
 /// The loopback TCP **port** a `net_qa` listener is bound on.
 ///
@@ -55,13 +73,16 @@ impl Deref for QaPort {
 
 /// The two-sided socket **timeout** for a host link.
 ///
-/// Private-inner newtype over [`Duration`] (no-bare-types).
+/// Private-inner newtype over [`Duration`] (no-bare-types). Carried on the [`QaClient`] rather
+/// than read from the const at each connect, so the value is passed in and
+/// [`LINK_TIMEOUT`] is only its default (see that const for open question Q3).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct LinkTimeout(Duration);
+pub struct LinkTimeout(Duration);
 
 impl LinkTimeout {
     /// Build a link timeout from its duration.
-    const fn new(timeout: Duration) -> Self {
+    #[must_use]
+    pub const fn new(timeout: Duration) -> Self {
         Self(timeout)
     }
 }
@@ -125,24 +146,63 @@ impl Connection {
             self.decoder.push(&buf[..read]);
         }
     }
+
+    /// Negotiate the protocol version on this freshly opened connection (GTW-940).
+    ///
+    /// The listener answers every non-`Hello` frame on a connection that has not negotiated
+    /// with [`NotNegotiated`](gdtf_qa_protocol::envelope::QaError::NotNegotiated), so this is
+    /// what makes the connection able to carry a tool's request at all. It runs inside
+    /// [`ensure_connected`](QaClient::ensure_connected), so a reconnect re-negotiates too.
+    ///
+    /// # Errors
+    ///
+    /// The exchange's own [`McpError`] (`Io` / `Disconnected` / `Wire`),
+    /// [`McpError::Handshake`] when the child refuses the version, or
+    /// [`McpError::UnexpectedResponse`] on a non-`HelloOk` reply kind.
+    fn negotiate(&mut self) -> Result<(), McpError> {
+        let frame = encode(&QaRequest::Hello(ProtocolVersion::CURRENT)).map_err(McpError::Wire)?;
+        match self.exchange(&frame)? {
+            QaResponse::HelloOk(_) => Ok(()),
+            QaResponse::Error(err) => Err(McpError::Handshake(err)),
+            _ => Err(McpError::UnexpectedResponse),
+        }
+    }
 }
 
 /// The real [`QaLink`] — a loopback client for one host's `net_qa` channel.
 ///
-/// Connects lazily on the first [`request`](QaLink::request); a broken connection is
-/// dropped so the next request transparently reconnects.
+/// Connects lazily on the first [`request`](QaLink::request) and negotiates the protocol
+/// version on that connection before sending anything else; a broken connection is dropped so
+/// the next request transparently reconnects (and re-negotiates).
 pub struct QaClient {
     /// The port to connect to.
-    port: QaPort,
+    port:    QaPort,
+    /// The two-sided deadline set on every connection this client opens.
+    timeout: LinkTimeout,
     /// The open connection, or `None` before the first request / after a failure.
-    conn: Option<Connection>,
+    conn:    Option<Connection>,
 }
 
 impl QaClient {
-    /// Build a client for an explicit port (the connection opens on first use).
+    /// Build a client for an explicit port with the default [`LINK_TIMEOUT`] (the connection
+    /// opens on first use).
     #[must_use]
     pub const fn new(port: QaPort) -> Self {
-        Self { port, conn: None }
+        Self::with_timeout(port, LINK_TIMEOUT)
+    }
+
+    /// Build a client for an explicit port and an explicit socket deadline.
+    ///
+    /// The timeout is a parameter rather than a read of [`LINK_TIMEOUT`] so the value can be
+    /// changed in one place, or overridden per client, without editing this type — see that
+    /// const for open question Q3.
+    #[must_use]
+    pub const fn with_timeout(port: QaPort, timeout: LinkTimeout) -> Self {
+        Self {
+            port,
+            timeout,
+            conn: None,
+        }
     }
 
     /// Build a client for the port `host` reads from ITS own port variable (or that
@@ -152,12 +212,18 @@ impl QaClient {
         Self::new(host.port_from_env())
     }
 
-    /// Open the loopback connection if it is not already open.
+    /// Open the loopback connection if it is not already open, and negotiate the protocol
+    /// version on it before it is stored.
+    ///
+    /// The connection is only kept once [`Connection::negotiate`] has succeeded, so every
+    /// connection this client hands to an exchange is already `Negotiated` on the listener's
+    /// side and a tool's request can never be the first frame (GTW-940).
     ///
     /// # Errors
     ///
-    /// [`McpError::Connect`] if the child is not listening, or [`McpError::Io`] if the
-    /// socket timeouts cannot be set.
+    /// [`McpError::Connect`] if the child is not listening, [`McpError::Io`] if the socket
+    /// timeouts cannot be set, or the handshake's own error (see
+    /// [`negotiate`](Connection::negotiate)).
     fn ensure_connected(&mut self) -> Result<(), McpError> {
         if self.conn.is_some() {
             return Ok(());
@@ -165,15 +231,17 @@ impl QaClient {
         let stream =
             TcpStream::connect((Ipv4Addr::LOCALHOST, *self.port)).map_err(McpError::Connect)?;
         stream
-            .set_read_timeout(Some(*LINK_TIMEOUT))
+            .set_read_timeout(Some(*self.timeout))
             .map_err(McpError::Io)?;
         stream
-            .set_write_timeout(Some(*LINK_TIMEOUT))
+            .set_write_timeout(Some(*self.timeout))
             .map_err(McpError::Io)?;
-        self.conn = Some(Connection {
+        let mut conn = Connection {
             stream,
             decoder: FrameDecoder::new(),
-        });
+        };
+        conn.negotiate()?;
+        self.conn = Some(conn);
         Ok(())
     }
 }

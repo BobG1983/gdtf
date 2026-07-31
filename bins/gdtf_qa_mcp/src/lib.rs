@@ -55,6 +55,6 @@ pub use lifecycle::{
     OrphanTarget, OrphanWatch, PollInterval, PortHold, ProbeTimeout, ProcessChild, QaChannel,
     StderrTail, StopOutcome, SystemOrphanWatch, WorkingDir, build_command,
 };
-pub use link::{QaClient, QaLink, QaPort};
+pub use link::{LINK_TIMEOUT, LinkTimeout, QaClient, QaLink, QaPort};
 pub use rpc::dispatch;
 pub use serve::run_stdio;

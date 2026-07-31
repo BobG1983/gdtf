@@ -184,12 +184,17 @@ editor logs `editor net_qa: failed to bind the loopback listener — QA channel
 OFF` at `error` level and carries on with no channel, so an absent listener is
 always visible in the log rather than silent.
 
-The editor answers four request kinds (`route_editor_requests` in
-`crates/gdtf_content_editor/src/net_qa/router.rs`): `Hello` version negotiation
-— replying with the server name `gdtf-editor-net-qa`, which is how a client
-tells the two hosts apart — the ADR 0007 editor query pair
-`GetEditorQueryOptions` and `QueryEditor`, and `TakeScreenshot` (GTW-880), which
-the drain does not answer itself: it queues onto the shared transport's
+The `Hello` handshake never reaches the editor's drain at all: the shared
+transport's listener thread answers it from the `HelloFacts` the editor passed
+to `run_listener` (`editor_hello_facts()` in
+`crates/gdtf_content_editor/src/net_qa/config.rs`), which is where the server
+name `gdtf-editor-net-qa` — how a client tells the two hosts apart — now comes
+from (GTW-940).
+
+The editor itself answers three request kinds (`route_editor_requests` in
+`crates/gdtf_content_editor/src/net_qa/router.rs`): the ADR 0007 editor query
+pair `GetEditorQueryOptions` and `QueryEditor`, and `TakeScreenshot` (GTW-880),
+which the drain does not answer itself: it queues onto the shared transport's
 `PendingQueue` and the capture pump in
 `crates/gdtf_content_editor/src/net_qa/screenshot/` replies once the PNG has
 landed on disk. Every other kind is rejected
@@ -388,9 +393,16 @@ shape:
   `crates/gdtf_qa_protocol/src/envelope/` (`request.rs` / `response.rs`). One
   request in, one response out. A session opens with a `Hello(ProtocolVersion)`
   handshake; the server replies `HelloOk(HelloFacts)` on a version match or a
-  `VersionMismatch` error otherwise.
+  `VersionMismatch` error otherwise. The handshake is REQUIRED, not optional
+  (GTW-940): the listener thread answers it itself, and until a connection has
+  negotiated, every other frame on it is refused `NotNegotiated` without ever
+  reaching the host — so a client that sends a request first gets that error, not
+  a reply. A frame that does not decode as a `QaRequest` is answered `Malformed`,
+  negotiated or not. Both are per CONNECTION: a reconnect must negotiate again,
+  which is why `QaClient::ensure_connected` in `bins/gdtf_qa_mcp/src/link.rs`
+  sends the `Hello` on every connection it opens.
 - **The wire protocol version** — `ProtocolVersion::CURRENT` in
-  `crates/gdtf_qa_protocol/src/envelope/hello.rs`, currently `4`. It is bumped on
+  `crates/gdtf_qa_protocol/src/envelope/hello.rs`. It is bumped on
   any breaking envelope change; negotiation is exact equality with no capability
   handshake.
 - **The framing codec** — pure functions in

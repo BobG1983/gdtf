@@ -12,6 +12,19 @@ use bevy::prelude::Deref;
 
 /// The default two-sided socket timeout — the read/write deadline set on the client
 /// socket so a stuck or idle client cannot hold the single client slot forever.
+///
+/// The ONE place this number lives (the QA protocol rewrite's `QA_IO_TIMEOUT`). It is a
+/// DEFAULT, not a fixed value: [`run_listener`](crate::run_listener) takes a
+/// [`NetIoTimeout`] parameter, so a host — or a test — passes whatever it needs and only the
+/// fallback is edited here.
+///
+/// **Open question Q3 is UNRESOLVED.** The rewrite's design proposes raising this to 180 s
+/// (with the courier's `LINK_TIMEOUT` at 200 s) so the command layer's 120 s
+/// `MAX_AWAIT_BUDGET` sits strictly inside both and a long wait answers its own deadline
+/// error instead of surfacing as a socket
+/// [`Timeout`](gdtf_qa_protocol::envelope::QaError::Timeout); the counter-lever is halving
+/// that budget to 60 s and taking the two timeouts to 90 s / 100 s. No user ruling has been
+/// made, so the value stays at the 5 s it has always been until one is.
 pub const DEFAULT_IO_TIMEOUT: NetIoTimeout = NetIoTimeout::new(Duration::from_secs(5));
 
 /// A loopback TCP **port** the QA listener binds on.
