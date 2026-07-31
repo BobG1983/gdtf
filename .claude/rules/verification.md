@@ -103,12 +103,23 @@ checked WITH its feature on, not just off.
 `--workspace` feature lists:** cargo builds ONE `gdtf_qa_protocol` library unit per
 invocation and every consumer in that invocation links it. Naming the feature on a
 `--workspace` command therefore puts `schemars` inside `bins/gdtf_qa_mcp` — the MCP courier,
-which carries schema documents as opaque text and must never link a schema library.
-`-p gdtf_qa_protocol` never builds the courier at all. Two guards pin this:
+which carries schema documents as opaque text. `-p gdtf_qa_protocol` never builds the courier
+at all. Two guards pin the command lines:
 `crates/gdtf_qa_protocol/tests/engine_free.rs` fails if any `--workspace` line in
 `.cargo/config.toml` or a workflow names `gdtf_qa_protocol/schema`, and
 `crates/gdtf_test_utils/tests/ci_workflow_features/schema_step.rs` fails if either CI step
 disappears or widens its scope.
+
+**What that does NOT buy, since GTW-941.** A dependency edge enables a feature just as a
+command line does, and neither guard reads a manifest. `crates/gdtf_qa_command` requires
+`gdtf_qa_protocol/schema` unconditionally — the GTW-941 ticket mandates it, the crate derives
+every command's argument and reply schema — and `crates/*` is a member glob, so every
+`--workspace` run (`cargo dclippy`, `cargo dtest`) now unifies `schema` on and the courier's
+unit DOES link schemars on those dev runs. The property that still holds is the shipped one:
+`bins/gdtf_qa_mcp` enables no schema feature in its own manifest and depends on no crate that
+does, so a courier-only build (`cargo build -p gdtf_qa_mcp`, and the packaging build) links no
+schemars. Widening the guard to manifest edges is GTW-946; until it lands, do not read
+`engine_free.rs` as proof that a workspace run keeps the courier clear.
 
 `cargo dclippy` / `cargo dtest` / `cargo dbuild` / `cargo drun` / `cargo doc-full` /
 `cargo clippy-schema` / `cargo test-schema` (aliases in

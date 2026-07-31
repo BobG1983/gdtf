@@ -175,9 +175,16 @@ fn workspace_command_files() -> Vec<(String, String)> {
 /// `gdtf_qa_protocol/schema` on ANY `--workspace` command — a `.cargo/config.toml` alias or
 /// a CI workflow step — puts schemars in the courier, no matter what the courier's own
 /// manifest says. The feature belongs on crate-scoped runs
-/// (`cargo test -p gdtf_qa_protocol --features schema`) and on the two hosts, which do not
-/// build the courier. This walks every line that carries `--workspace` in those files and
-/// fails if one names the feature.
+/// (`cargo test -p gdtf_qa_protocol --features schema`). This walks every line that carries
+/// `--workspace` in those files and fails if one names the feature.
+///
+/// What this guard does NOT cover, and did not cover before GTW-941 either: a MANIFEST edge.
+/// `crates/gdtf_qa_command` requires `gdtf_qa_protocol/schema` unconditionally, so every
+/// `--workspace` run already unifies the feature on and the courier's unit already links
+/// schemars on `cargo dclippy` / `cargo dtest`, with no command line naming the feature. The
+/// property that survives is the shipped one: `bins/gdtf_qa_mcp` enables no schema feature in
+/// its own manifest and depends on no crate that does, so a courier-only build links no
+/// schemars. Widening this guard to manifest edges is filed separately — see GTW-946.
 #[test]
 fn no_workspace_wide_command_enables_the_schema_feature() {
     let mut violations: Vec<String> = Vec::new();

@@ -20,9 +20,13 @@ bevy_derive = { workspace = true }
 # JSON Schema derivation, OPTIONAL and off by default (GTW-939). A command's argument
 # and reply schemas are derived from the Rust type, so the two hosts turn this on via
 # `gdtf_qa_protocol/schema` to derive `JsonSchema` for types that embed an `ids` type.
-# `bins/gdtf_qa_mcp` must NOT enable it — the courier carries schema documents as opaque
-# text and never links schemars.
-schemars = { version = "1.2.2", optional = true }
+# `bins/gdtf_qa_mcp` does NOT enable it in its own manifest — the courier carries schema
+# documents as opaque text — so a courier-only build (`cargo build -p gdtf_qa_mcp`) links no
+# schemars. A whole-workspace build is different, and has been since GTW-941: the new
+# `crates/gdtf_qa_command` requires `gdtf_qa_protocol/schema` unconditionally, and cargo
+# builds ONE shared `gdtf_qa_protocol` unit per invocation, so `cargo dclippy` / `cargo dtest`
+# unify the feature on and the courier's unit links schemars on those dev runs.
+schemars = { workspace = true, optional = true }
 
 [features]
 # Derive `schemars::JsonSchema` for the wire id / handle newtypes, so a host's command

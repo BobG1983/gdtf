@@ -43,6 +43,6 @@ new ADRs here from the 0000 template.
 | [0004](0004-equipment-as-entities-relationships.md) | Equipment as entities related to the ganger | Proposed |
 | [0005](0005-pathfinding-adjacency-and-search.md) | Grid pathfinding — adjacency, search, and vertical stitching | Accepted |
 | [0006](0006-handedness-always-on-aim-penalty.md) | Hand-disabling injury carries an always-on aim penalty | Accepted |
-| [0007](0007-net-qa-command-discoverability.md) | net_qa command discoverability — per-family query enums over a runtime registry | Accepted |
+| [0007](0007-net-qa-command-discoverability.md) | net_qa command discoverability — per-family query enums over a runtime registry | Accepted (reversed by the GTW-934 ruling; flips to `Superseded by 0008` in GTW-943) |
 
 Template: [0000-template.md](0000-template.md).

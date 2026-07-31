@@ -1,0 +1,59 @@
+[package]
+name = "gdtf_qa_command"
+version = "0.1.0"
+edition = "2024"
+
+# GTW-941 (phase A3 of the GTW-938 QA protocol rewrite): the SHARED plumbing that turns a
+# host's list of typed commands into a catalogue, an admission decision, a decode step and
+# a typed handler call. It knows nothing about a battle, an editor draft, or a socket — the
+# game host and the editor host each own their own facts type, their own command list and
+# their own router, and both pull this crate behind their own `net_qa` feature. Dev-only in
+# practice for exactly that reason.
+[dependencies]
+# The command plumbing is ECS plumbing: `CommandInbox` / `DeferredReplies<C>` are Bevy
+# resources, `claim_calls::<C>` is a Bevy system, and `QaCommandSystems` is a `SystemSet`.
+bevy = { workspace = true }
+# The reply types a command declares are serde types; `CommandResponder<C>` serialises one.
+serde = { workspace = true }
+# A command's arguments and reply travel as JSON text (`CommandArgsJson` /
+# `CommandReplyJson`), so the decode and encode steps are serde_json's.
+serde_json = "1"
+# JSON Schema derivation. A command's argument and reply schemas are DERIVED from its two
+# associated types and never written by hand, which is what stops a host advertising a
+# shape it does not accept.
+schemars = { workspace = true }
+# The bevy-free wire contract: the command vocabulary (`CommandName`, `CommandCatalogue`,
+# `CommandAvailability`, `CommandOutcome`, `RunOptions`) and the envelope this plumbing
+# answers into.
+#
+# `schema` is ON, as GTW-941 specifies. It is what makes the wire id newtypes in
+# `gdtf_qa_protocol::ids` derive `JsonSchema`, so a command's argument and reply types can
+# embed a wire id and still derive their own schema over it — the fake `fake.cell` command
+# does exactly that with `ids::CellNet`. Without it, every host would have to restate the
+# wire ids as private look-alike types purely to get a schema, which is the duplication the
+# feature was added (GTW-939) to prevent.
+gdtf_qa_protocol = { path = "../gdtf_qa_protocol", features = ["schema"] }
+# The transport's host-side half: `Responder` (the one-shot reply channel a command answers
+# on), `PendingQueue<P>` (the per-command typed queue) and its `sweep_pending` deadline pump.
+gdtf_net_qa_transport = { path = "../gdtf_net_qa_transport" }
+
+[features]
+# Bevy dynamic linking for fast dev builds. Opt-in only — never for release artifacts.
+# Propagated to the transport so one flag covers the whole QA stack.
+dynamic_linking = ["bevy/dynamic_linking", "gdtf_net_qa_transport/dynamic_linking"]
+# Expose `test_support` — the fake command set, the fake facts type, the bare-`App`
+# harness, and the two conformance assertions (`assert_unique_names`,
+# `assert_schemas_parse`). Those two assertions have to be callable from EACH HOST's own
+# test suite, because the assertion needs that host's slice, so they live on this crate
+# behind this feature rather than in a test file here. Test/dev only.
+test-support = []
+
+[dev-dependencies]
+# Test-only self-dependency with `test-support` ON, so `tests/command_set/` — a separate
+# compilation unit that links this crate built WITHOUT `--cfg test` — reaches the fake
+# command set and the assertions. The crate's own in-src `#[cfg(test)]` tests already see
+# the module through its `any(test, feature = "test-support")` cfg.
+gdtf_qa_command = { path = ".", features = ["test-support"] }
+
+[lints]
+workspace = true
