@@ -1,42 +1,92 @@
-# Plain language — no jargon in tickets, code, or comments
+# Write Like an Engineer, Not a Consultant
 
-Why this rule exists: words like "seam" and "sanctioned" spread through Linear
-tickets, then got copied verbatim into a shipped code comment
-("returning its HONEST receipt"). Jargon written in a planning doc doesn't stay
-there — an agent building from that ticket repeats it in the code. Plain
-words describing the actual mechanism don't have this problem.
+Writing exists to communicate, not to sound sophisticated.
 
-## Banned outright — never use these, anywhere (tickets, code, comments, chat)
+## Rules
 
-- **"seam"** as a stand-in for a queue, API, or integration point. Name the
-  real thing: "the input queue", "the drain", `PendingActIntent`, the actual
-  type or function.
-- **"sanctioned"**. Drop the adjective. Say what the code does — "the same
-  push path local UI uses" — without an approval flourish.
-- **"byte identical" / "byte-identical"**. Say what's actually true:
-  "identical", "unchanged", "matches exactly", or name the specific
-  comparison being made.
+- Prefer plain English over technical-sounding language.
+- Use technical terms only when they are the correct, precise term.
+- State what changed before explaining why.
+- Write the shortest text that conveys all necessary information.
+- Delete filler, narration, and obvious observations.
+- Never use abstractions where a concrete noun or verb works.
+- Assume the reader is competent. Do not over-explain.
 
-## The general principle behind the ban
+## Avoid
 
-- No metaphor standing in for a technical term (seam, spine, backbone, rail).
-  Name the actual mechanism.
-- No institutional or value-laden adjective standing in for a plain
-  description (sanctioned, canonical-when-unnecessary, blessed).
-- No capitalized word used as rhetorical emphasis instead of a real
-  qualifier (HONEST, GENUINE, REAL used as tone, not content).
-- If a sentence reads the same or clearer with the impressive word deleted,
-  delete it.
+Do not inflate ordinary ideas into architectural prose.
 
-## Where this applies
+Bad:
+- "The seam between these components..."
+- "The integration surface..."
+- "The operating envelope..."
+- "This enables a first-class experience..."
+- "Leverage..."
+- "Mental model..."
+- "Canonical..."
+- "Orthogonal..."
+- "Byte-identical..." (unless literal bytes are being discussed)
+- "Paradigm", "synergy", "holistic", "robust" when a simpler word is accurate.
 
-- Linear ticket titles, descriptions, and comments.
-- Code comments and doc comments.
-- Commit messages.
-- Assistant chat output.
+Instead write what actually happens.
 
-## Non-scope
+Bad:
+> Introduce a typed boundary between the host and the application.
 
-This rule governs writing going forward. It does not, by itself, require
-rewriting already-shipped code comments — that sweep is tracked separately
-(GTW-751).
+Good:
+> The host calls the app through a typed interface.
+
+Bad:
+> This change reduces the cognitive load required to reason about the system.
+
+Good:
+> This makes the code easier to understand.
+
+Bad:
+> We leverage a shared abstraction.
+
+Good:
+> Both systems use the same interface.
+
+Bad:
+> Delete the legacy QA surface.
+
+Good:
+> Remove the old QA API.
+
+Every sentence should earn its place. If removing it loses no information, remove it.
+
+## The "Normal Engineer" Test
+
+Before writing a sentence, ask:
+
+"Would an experienced engineer naturally say this in a code review?"
+
+If not, rewrite it.
+
+Prefer:
+- "use"
+over
+- "leverage"
+
+Prefer:
+- "remove"
+over
+- "deprecate" (unless you mean "keep but discourage")
+
+Prefer:
+- "works with"
+over
+- "integrates with"
+
+Prefer:
+- "limit"
+over
+- "operating envelope"
+
+Prefer:
+- "connection" or "interface"
+over
+- "seam"
+
+Write like you're explaining the code to a teammate sitting next to you, not presenting at a software architecture conference.
