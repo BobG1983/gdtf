@@ -12,13 +12,18 @@ use crate::act_log::{ActDeed, ActLog, RecordedAct};
 /// this function's source code, not of the scheduler, which is what makes the whole log
 /// reproducible run to run (`bevy-traps.md` #3).
 ///
-/// The three affliction families record their once-per-span START facts only
+/// The three affliction families record BOTH their once-per-span START fact
 /// ([`DotAfflicted`](crate::effects::dot::DotAfflicted) /
 /// [`FieldAfflicted`](crate::effects::fields::FieldAfflicted) /
-/// [`BleedStarted`](crate::effects::bleed::BleedStarted)); their per-tick drain signals
-/// have no deed at all, exactly as they have no combat-log line. The per-tick HP those
-/// drains take still reaches a consumer — through the vitals transition recorded beside
-/// this function.
+/// [`BleedStarted`](crate::effects::bleed::BleedStarted)) and their per-round DRAIN
+/// ([`Bleeding`](crate::effects::bleed::Bleeding) /
+/// [`DotTicked`](crate::effects::dot::DotTicked) /
+/// [`FieldTicked`](crate::effects::fields::FieldTicked)). A drain carries no combat-log
+/// line, but the presenter pops floating text for every one, so each needs an entry to be
+/// paced against: with no deed to sit behind, a drain's pop could only fire when the SIM
+/// produced it — ahead of the shots and turn beats the cursor was still working through
+/// (GTW-889). The per-round HP itself also reaches a consumer through the vitals
+/// transition recorded beside this function.
 pub(in crate::act_log::record) fn record_consequence_messages(
     log: &mut ActLog,
     messages: &mut ConsequenceMessages,
@@ -122,6 +127,26 @@ fn record_afflictions(log: &mut ActLog, messages: &mut ConsequenceMessages) {
             bleed.ganger,
             ProvenanceSources::clock(),
             ActDeed::Bled,
+        ));
+    }
+    for dot in messages.dot_ticks.read() {
+        log.append(RecordedAct::new(
+            dot.ganger,
+            ProvenanceSources::clock(),
+            ActDeed::DotTicked {
+                at:     dot.at,
+                amount: dot.amount,
+            },
+        ));
+    }
+    for field in messages.field_ticks.read() {
+        log.append(RecordedAct::new(
+            field.occupant,
+            ProvenanceSources::clock(),
+            ActDeed::FieldTicked {
+                at:     field.at,
+                amount: field.amount,
+            },
         ));
     }
     for smashed in messages.cover_smashed.read() {

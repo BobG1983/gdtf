@@ -57,16 +57,12 @@ fn two_families_on_one_cell_across_consecutive_frames_take_distinct_stack_slots(
     let pinned = wounded_ganger(&mut app, cell, level, 2);
 
     // FRAME 1: the suppression family pops "SUPPRESSED" on the cell (slot 0 — no live pops).
-    app.world_mut()
-        .resource_mut::<Messages<SuppressionApplied>>()
-        .write(SuppressionApplied::new(pinned, at));
+    play(&mut app, SuppressionApplied::new(pinned, at));
     app.update();
 
     // FRAME 2: the DOT family pops "-4" on the SAME cell. The suppression pop from frame 1 is
     // still alive (zero-delta clock), so the allocator counts it and hands the DOT pop slot 1.
-    app.world_mut()
-        .resource_mut::<Messages<DotTicked>>()
-        .write(DotTicked::new(pinned, at, DotDamage::new(4)));
+    play(&mut app, DotTicked::new(pinned, at, DotDamage::new(4)));
     app.update();
     app.world_mut()
         .insert_resource(TimeUpdateStrategy::Automatic);

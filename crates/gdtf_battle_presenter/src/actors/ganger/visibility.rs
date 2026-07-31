@@ -20,6 +20,7 @@ use gdtf_battle_sim::{
 use super::sprite_map::{GangerSprite, GangerSprites};
 use crate::{
     ActiveLevel, IsolateView, StoreyViewMode, ViewMode, actors::quiet::set_visibility_quiet,
+    playback::DrawnLife,
 };
 
 /// The fog-side facts the classifier composes when the fog resources are RESIDENT.
@@ -159,7 +160,26 @@ impl GangerVisibilityFacts<'_> {
 /// the shared tick-quiet write helper (`set_if_neq` — an unchanged sprite's change ticks stay
 /// untouched, GTW-627 C3). A not-yet-materialized sprite (the deferred `spawn_scene`,
 /// GTW-322) is skipped and picked up the frame its components exist; its spawn-seeded
-/// value came through the same classifier, so there is no first-frame flicker.
+/// value came through the same classifier, so there is no first-frame flicker. The seed
+/// site ([`spawn_ganger_sprites`](super::spawn_ganger_sprites)) hands that classifier the
+/// LIVE [`LifeState`] rather than the drawn mirror read below, and the two inputs still
+/// agree there: a ganger's `Added<Position>` frame is its FIRST frame, and
+/// [`seed_drawn_state`](crate::playback::seed_drawn_state) seeds [`DrawnLife`] from that
+/// same live value in the earlier `Replay` stage, so the mirror cannot yet have fallen
+/// behind. Divergence needs the sim to change a life the cursor has not shown, which takes
+/// at least one later frame — by which time this resolver, not the seed, owns the sprite.
+///
+/// # The LIFE it classifies on is the DRAWN one (GTW-889)
+///
+/// The `life` handed to the classifier is the ganger's [`DrawnLife`] — what the playback
+/// cursor has SHOWN — falling back to the live [`LifeState`] for a ganger the cursor has
+/// not seeded a mirror for yet. Classifying on the live state hid a player ganger the
+/// instant the SIM killed him: his relation flipped from
+/// [`OwnSquad`](FactionRelation::OwnSquad) to [`Other`](FactionRelation::Other), the fog
+/// gate closed over his cell, and the sprite vanished while the shots that killed him were
+/// still queued behind the cursor. Reading the drawn life can only ever DELAY that flip —
+/// the mirror lags the sim, never leads it — so it keeps a sprite shown longer and can
+/// never hide one earlier, which leaves the live-fog exemption below intact.
 ///
 /// # It reads the LIVE fog, deliberately — the GTW-762 exemption
 ///
@@ -180,16 +200,19 @@ impl GangerVisibilityFacts<'_> {
 pub fn resolve_ganger_visibility(
     sprites: Res<GangerSprites>,
     facts: GangerVisibilityFacts,
-    gangers: Query<(Entity, &Position, &Faction, &LifeState)>,
+    gangers: Query<(Entity, &Position, &Faction, &LifeState, Option<&DrawnLife>)>,
     mut actors: Query<&mut Visibility, With<GangerSprite>>,
 ) {
-    for (entity, pos, faction, life) in &gangers {
+    for (entity, pos, faction, life, drawn) in &gangers {
         let Some(sprite) = sprites.sprite_for(entity) else {
             continue;
         };
         let Ok(mut visibility) = actors.get_mut(sprite) else {
             continue;
         };
-        set_visibility_quiet(&mut visibility, facts.classify(pos, *faction, *life));
+        // The SHOWN life (GTW-889); the live state only while the cursor has seeded no
+        // mirror for this ganger yet.
+        let shown_life = drawn.map_or(*life, |drawn| **drawn);
+        set_visibility_quiet(&mut visibility, facts.classify(pos, *faction, shown_life));
     }
 }

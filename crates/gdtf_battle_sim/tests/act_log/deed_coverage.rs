@@ -42,6 +42,8 @@ const fn disposition(deed: &ActDeed) -> Disposition {
         | ActDeed::FieldStarted { .. }
         | ActDeed::BleedStarted
         | ActDeed::Bled
+        | ActDeed::DotTicked { .. }
+        | ActDeed::FieldTicked { .. }
         | ActDeed::CoverSmashed { .. }
         | ActDeed::MeleeLanded { .. }
         | ActDeed::ThrowLanded { .. } => Disposition::Replayed,
@@ -117,23 +119,26 @@ fn every_sampled_deed_round_trips_through_the_log() {
     );
 }
 
+/// The vocabulary [`sample_deeds`] builds its samples from. It sits at module scope rather
+/// than inside that function because the two deeds GTW-889 added push the function's body
+/// past clippy's `too_many_lines` limit with the import block in it.
+use gdtf_battle_sim::{
+    act_log::{MagazineFacts, PoseFacts, PositionFacts, SuppressedNow, VitalsFacts},
+    acts::{MoveRejection, ReloadOutcome, RoundCount},
+    armor::BodyPart,
+    effects::fields::FieldDamage,
+    falls::StoreysFallen,
+    ganger::{
+        Aiming, Direction, Facing, Faction, Hp, LifeState, Position, Stance, StanceKind, Tu, Wounds,
+    },
+    magazine::Magazine,
+    metric::{Cell, CellLevel, Level},
+    resolve_hit::HpDamage,
+    weapon::{DamageType, DotDamage, ModeKind},
+};
+
 /// One sample of each deed variant, built from cheap defaults.
 fn sample_deeds() -> Vec<ActDeed> {
-    use gdtf_battle_sim::{
-        act_log::{MagazineFacts, PoseFacts, PositionFacts, SuppressedNow, VitalsFacts},
-        acts::{MoveRejection, ReloadOutcome, RoundCount},
-        armor::BodyPart,
-        falls::StoreysFallen,
-        ganger::{
-            Aiming, Direction, Facing, Faction, Hp, LifeState, Position, Stance, StanceKind, Tu,
-            Wounds,
-        },
-        magazine::Magazine,
-        metric::{Cell, CellLevel, Level},
-        resolve_hit::HpDamage,
-        weapon::{DamageType, DotDamage, ModeKind},
-    };
-
     let cell = Cell::new(1, 1);
     let level = Level::new(0);
     let at = CellLevel::new(cell, level);
@@ -198,6 +203,14 @@ fn sample_deeds() -> Vec<ActDeed> {
         ActDeed::FieldStarted { at },
         ActDeed::BleedStarted,
         ActDeed::Bled,
+        ActDeed::DotTicked {
+            at,
+            amount: DotDamage::new(1),
+        },
+        ActDeed::FieldTicked {
+            at,
+            amount: FieldDamage::new(1),
+        },
         ActDeed::CoverSmashed { at },
         ActDeed::MeleeLanded {
             at,

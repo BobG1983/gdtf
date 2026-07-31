@@ -45,6 +45,12 @@ theme: combat valences are not UI chrome.
 ## Part 2 — The pipeline (what a family plugs into)
 
 - **Signal** — a sim fact message (e.g. `SuppressionApplied`, `FieldTicked`).
+  The reader drains it wrapped as `Played<Signal>` — the fact at the moment the
+  playback cursor SHOWS it, not the moment the sim produced it (GTW-889). The
+  sim resolves a whole exchange in one tick, so a family that drained the raw
+  buffer popped its tag ahead of the shots that caused it. Every family signal
+  therefore needs an act-log deed behind it; the DOT and field per-round drains
+  gained theirs in GTW-889.
 - **Classify** — the family's pure signal → pop mapping (`ConsequenceFct`
   impl): text, valence/color, emphasis, position.
 - **Spawn/stack** — the generic stacked reader spawns the pop and claims its

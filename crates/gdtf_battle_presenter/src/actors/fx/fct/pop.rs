@@ -27,14 +27,17 @@ use super::text::{CombatText, FctEmphasis};
 /// A named domain enum (no bare tuple / flag): a family whose sim message already carries
 /// the cell resolves [`Carried`](Self::Carried) with no `World` read; a family whose message
 /// names only the ganger resolves [`GangerPosition`](Self::GangerPosition), which the
-/// generic reader looks up via `Query<&Position>` — FAIL-CLOSED: an unresolvable ganger
+/// generic reader looks up on the DRAWN cell — FAIL-CLOSED: an unresolvable ganger
 /// DROPS the pop (no pop at a default position, never a panic).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PopAnchor {
     /// The message carried its own `(cell, level)` — anchor there directly.
     Carried(CellLevel),
-    /// Anchor at this ganger's live [`Position`](gdtf_battle_sim::ganger::Position); if the entity
-    /// has none (despawned / minimal harness) the pop is dropped fail-closed.
+    /// Anchor at the cell this ganger is currently DRAWN at — its
+    /// [`DrawnPosition`](crate::DrawnPosition) mirror, not the
+    /// [`Position`](gdtf_battle_sim::ganger::Position) the sim has already run ahead to
+    /// (GTW-889). If the entity has no `Position` at all (despawned / minimal harness) the
+    /// pop is dropped fail-closed.
     GangerPosition(bevy::prelude::Entity),
 }
 
@@ -58,7 +61,7 @@ pub struct ConsequencePop {
     color:    Color,
     /// The styling weight — [`FctEmphasis::Bold`] only for the terminal on-death marker.
     emphasis: FctEmphasis,
-    /// Where the pop anchors — a carried cell or a ganger's live position (fail-closed).
+    /// Where the pop anchors — a carried cell or a ganger's drawn cell (fail-closed).
     anchor:   PopAnchor,
 }
 
@@ -125,7 +128,11 @@ impl ConsequencePop {
 /// line (P4 — compile-time generics, no runtime descriptor table).
 pub trait ConsequenceFct: Send + Sync + 'static {
     /// The sim message this family drains — the presenter reads it one-way (ADR-0001).
-    type Signal: Message;
+    ///
+    /// [`Clone`] because the reader drains it wrapped in
+    /// [`Played<Signal>`](crate::playback::Played), the presenter's cursor-time wrapper
+    /// (GTW-889), which carries an owned fact.
+    type Signal: Message + Clone;
 
     /// Classify one drained signal into its pop — the pure, `World`-free mapping every
     /// family unit-tests in its own file. Exactly one pop per signal: every current family

@@ -11,9 +11,10 @@ use bevy::prelude::Entity;
 use gdtf_battle_sim::{
     act_log::{ActDeed, ActLog, ActLogCapacity, ActProvenance, PositionFacts, RecordedAct},
     acts::MoveRejection,
+    effects::fields::FieldDamage,
     ganger::{LifeState, Position},
     metric::{Cell, CellLevel, Level},
-    weapon::DamageType,
+    weapon::{DamageType, DotDamage},
 };
 
 use super::map::net_event_for;
@@ -45,6 +46,8 @@ fn is_wire_event(deed: &ActDeed) -> bool {
         | ActDeed::FieldStarted { .. }
         | ActDeed::BleedStarted
         | ActDeed::Bled
+        | ActDeed::DotTicked { .. }
+        | ActDeed::FieldTicked { .. }
         | ActDeed::CoverSmashed { .. }
         | ActDeed::MeleeLanded { .. }
         | ActDeed::ThrowLanded { .. } => false,
@@ -94,6 +97,16 @@ fn net_event_for_agrees_with_the_wildcard_free_classifier() {
         },
         ActDeed::Suppressed { at },
         ActDeed::BleedStarted,
+        // GTW-889's two new deeds: both are drawn-only ticks, so the projection must
+        // return `None` for them. Sampled here so flipping either to a wire event fails.
+        ActDeed::DotTicked {
+            at,
+            amount: DotDamage::new(1),
+        },
+        ActDeed::FieldTicked {
+            at,
+            amount: FieldDamage::new(1),
+        },
         ActDeed::MeleeLanded {
             at,
             damage: DamageType::Kinetic,

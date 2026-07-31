@@ -7,8 +7,10 @@
 //! by the rolled tier (a worse injury reads hotter; `Minor` the light amber base, `Critical`
 //! the hot orange-red one shy of the lethal red) — NOT a flat
 //! [`valence_color`](super::super::palette::valence_color) swatch: the injury family is the
-//! one palette member riding the ramp. It anchors at the wounded ganger's live position
-//! ([`PopAnchor::GangerPosition`], fail-closed). The transient flash is the message's ONLY
+//! one palette member riding the ramp. It anchors at the cell the wounded ganger is DRAWN at
+//! ([`PopAnchor::GangerPosition`], fail-closed — the reader resolves it from the
+//! [`DrawnPosition`](crate::DrawnPosition) mirror, not the position the sim has already run
+//! ahead to, GTW-889). The transient flash is the message's ONLY
 //! presenter job: the durable per-ganger injury LIST is the
 //! [`InflictedInjuries`](gdtf_battle_sim::injuries::InflictedInjuries) ledger in the inspect panel.
 
@@ -73,7 +75,7 @@ mod test {
 
     /// The injury FCT pop renders the authored `popup_text` verbatim, draws it in the
     /// `severity_color` ramp scaled by the rolled tier (C1: valence BY SEVERITY), and
-    /// anchors at the wounded ganger's live position.
+    /// anchors on the wounded ganger (the reader resolves that to its DRAWN cell).
     #[test]
     fn an_injury_pop_renders_the_popup_text_in_the_severity_color() {
         let pop = InjuryFct::classify(&injury("LOST EYE", Severity::Critical));
@@ -90,7 +92,7 @@ mod test {
         assert_eq!(
             pop.anchor(),
             PopAnchor::GangerPosition(Entity::PLACEHOLDER),
-            "the injury pop anchors at the wounded ganger's live position",
+            "the injury pop anchors on the wounded ganger (drawn cell, resolved by the reader)",
         );
     }
 

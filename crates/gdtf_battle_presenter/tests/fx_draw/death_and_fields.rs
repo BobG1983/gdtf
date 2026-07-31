@@ -1,6 +1,6 @@
 //! Field-overlay draw + on-death BOOM marker + `LeaveField` end-to-end (GTW-545/547).
 
-use bevy::{app::App, ecs::message::Messages, transform::components::Transform};
+use bevy::{app::App, transform::components::Transform};
 use gdtf_battle_presenter::{
     FctValence, FieldCellSprite, FloatingCombatText, cell_to_world, valence_color,
 };
@@ -98,9 +98,7 @@ fn on_death_occurred_pops_the_lethal_boom_marker_at_the_cell() {
     let at = CellLevel::new(cell, level);
     let ganger = wounded_ganger(&mut app, cell, level, 0);
 
-    app.world_mut()
-        .resource_mut::<Messages<OnDeathOccurred>>()
-        .write(OnDeathOccurred::new(ganger, at));
+    play(&mut app, OnDeathOccurred::new(ganger, at));
     app.update();
 
     // POSITIVE: the system spawned a FloatingCombatText marker reading "BOOM" in the LETHAL
@@ -140,9 +138,7 @@ fn a_cover_on_death_still_pops_the_marker_at_the_cover_cell() {
     let at = CellLevel::new(cell, level);
 
     // A cover death: OnDeathOccurred::cover uses Entity::PLACEHOLDER — no ganger entity needed.
-    app.world_mut()
-        .resource_mut::<Messages<OnDeathOccurred>>()
-        .write(OnDeathOccurred::cover(at));
+    play(&mut app, OnDeathOccurred::cover(at));
     app.update();
 
     let pops = fct_pops(&mut app);
@@ -177,9 +173,7 @@ fn a_leave_field_on_death_draws_the_field_overlay_and_the_marker() {
     registry.spawn(at, toxic_pool_def());
     app.world_mut().insert_resource(registry);
     // (2) The on-death occurrence at the same (cover) cell — a smashed crate that left the field.
-    app.world_mut()
-        .resource_mut::<Messages<OnDeathOccurred>>()
-        .write(OnDeathOccurred::cover(at));
+    play(&mut app, OnDeathOccurred::cover(at));
     app.update();
 
     // The field rides the EXISTING overlay with no new infra: exactly one visible hazard tile.

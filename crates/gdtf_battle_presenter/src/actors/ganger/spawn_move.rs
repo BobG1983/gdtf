@@ -81,6 +81,15 @@ type SpawnedGanger = (
 /// while the resolver has not yet seen the sprite. A hidden ganger's sprite is recorded in
 /// the map too, so the resolver can show it later without a respawn.
 ///
+/// GTW-889 moved the resolver onto the SHOWN life
+/// ([`DrawnLife`](crate::DrawnLife)); this seed keeps reading the live [`LifeState`],
+/// and the two classifier inputs still agree here. `Added<Position>` is true only on a
+/// ganger's FIRST frame, and [`seed_drawn_state`](crate::playback::seed_drawn_state) gives
+/// it its `DrawnLife` from that same live value in the earlier `Replay` stage of that
+/// frame — so the mirror cannot yet have fallen behind. A drawn/live divergence needs the
+/// sim to change a life the cursor has not shown, which takes a later frame, and by then
+/// the resolver owns this sprite's `Visibility`.
+///
 /// Param-only (`bevy-traps.md` #7): [`Commands`], [`ResMut<GangerSprites>`], the read
 /// resources (the classifier inputs bundled as [`GangerVisibilityFacts`]), and the
 /// [`Added<Position>`] ganger query.

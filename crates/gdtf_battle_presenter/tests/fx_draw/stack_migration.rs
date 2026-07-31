@@ -15,7 +15,7 @@
 
 use std::time::Duration;
 
-use bevy::{ecs::message::Messages, math::Vec3};
+use bevy::math::Vec3;
 use gdtf_battle_presenter::cell_to_world;
 use gdtf_battle_sim::{
     armor::BodyPart,
@@ -86,9 +86,7 @@ fn a_shot_pop_stacks_above_a_live_consequence_pop_on_the_same_cell() {
 
     // FRAME 1: the suppression family pops "SUPPRESSED" on the cell (slot 0 — no live pops). It
     // materializes on this frame's SpawnScene schedule, so it is alive + counted from frame 2 on.
-    app.world_mut()
-        .resource_mut::<Messages<SuppressionApplied>>()
-        .write(SuppressionApplied::new(struck, at));
+    play(&mut app, SuppressionApplied::new(struck, at));
     app.update();
     assert!(
         fct_pop_count(&mut app) >= 1,
@@ -148,9 +146,7 @@ fn a_single_shots_multi_pop_fan_out_ascends_seeded_above_a_live_pop() {
     let struck = wounded_ganger(&mut app, CELL, LEVEL, 2);
 
     // FRAME 1: a live consequence pop on the cell (slot 0), materialized before the shot.
-    app.world_mut()
-        .resource_mut::<Messages<SuppressionApplied>>()
-        .write(SuppressionApplied::new(struck, at));
+    play(&mut app, SuppressionApplied::new(struck, at));
     app.update();
 
     // A lethal, penetrating, Critical torso hit: "-9", "Torso Critical", "Armor pierced", "DEAD".

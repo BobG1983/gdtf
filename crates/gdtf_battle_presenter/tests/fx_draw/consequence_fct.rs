@@ -1,7 +1,9 @@
 //! Consequence-family FCT tag pops: bleeding / armor / suppression / DOT / field
-//! tick (GTW-302 s4, 526, 544, 545).
+//! tick (GTW-302 s4, 526, 544, 545), each driven through the PACED buffer the family
+//! reader drains (`Played<M>` — GTW-889), plus the regression guard that the RAW sim
+//! message pops nothing.
 
-use bevy::{ecs::message::Messages, transform::components::Transform};
+use bevy::transform::components::Transform;
 use gdtf_battle_presenter::{FctValence, FloatingCombatText, cell_to_world, valence_color};
 use gdtf_battle_sim::{
     armor::BodyPart,
@@ -32,9 +34,7 @@ fn bleeding_pops_the_amber_bleeding_fct_tag() {
     let level = Level::new(0);
     let ganger = wounded_ganger(&mut app, cell, level, 2);
 
-    app.world_mut()
-        .resource_mut::<Messages<Bleeding>>()
-        .write(Bleeding::new(ganger));
+    play(&mut app, Bleeding::new(ganger));
     app.update();
 
     let pops = fct_pops(&mut app);
@@ -72,9 +72,7 @@ fn armor_broken_pops_the_red_armor_broken_fct_tag() {
     let level = Level::new(0);
     let ganger = wounded_ganger(&mut app, cell, level, 5);
 
-    app.world_mut()
-        .resource_mut::<Messages<ArmorBroken>>()
-        .write(ArmorBroken::new(ganger, BodyPart::Torso));
+    play(&mut app, ArmorBroken::new(ganger, BodyPart::Torso));
     app.update();
 
     let pops = fct_pops(&mut app);
@@ -105,9 +103,7 @@ fn suppression_applied_pops_the_suppressed_fct_tag_at_the_cell() {
     let at = CellLevel::new(cell, level);
     let pinned = wounded_ganger(&mut app, cell, level, 2);
 
-    app.world_mut()
-        .resource_mut::<Messages<SuppressionApplied>>()
-        .write(SuppressionApplied::new(pinned, at));
+    play(&mut app, SuppressionApplied::new(pinned, at));
     app.update();
 
     // POSITIVE: the system spawned a FloatingCombatText pop reading "SUPPRESSED" in the cowed
@@ -147,9 +143,7 @@ fn dot_ticked_pops_the_toxic_minus_amount_fct_tag_at_the_cell() {
     let at = CellLevel::new(cell, level);
     let ganger = wounded_ganger(&mut app, cell, level, 3);
 
-    app.world_mut()
-        .resource_mut::<Messages<DotTicked>>()
-        .write(DotTicked::new(ganger, at, DotDamage::new(4)));
+    play(&mut app, DotTicked::new(ganger, at, DotDamage::new(4)));
     app.update();
 
     // POSITIVE: the system spawned a FloatingCombatText pop reading "-4" (the drained HP) in the
@@ -193,9 +187,10 @@ fn field_ticked_pops_the_hazard_minus_amount_fct_tag_at_the_cell() {
     let at = CellLevel::new(cell, level);
     let occupant = wounded_ganger(&mut app, cell, level, 2);
 
-    app.world_mut()
-        .resource_mut::<Messages<FieldTicked>>()
-        .write(FieldTicked::new(occupant, at, FieldDamage::new(3)));
+    play(
+        &mut app,
+        FieldTicked::new(occupant, at, FieldDamage::new(3)),
+    );
     app.update();
 
     // POSITIVE: the system spawned a FloatingCombatText pop reading "-3" (the drained HP) in the
@@ -217,5 +212,56 @@ fn field_ticked_pops_the_hazard_minus_amount_fct_tag_at_the_cell() {
         any_at_cell,
         "the field tick pop must anchor at the field cell x ({})",
         anchor.x,
+    );
+}
+
+/// GTW-889 — the regression guard: a RAW sim signal, written straight to its own buffer,
+/// pops NOTHING.
+///
+/// This is the reported defect stated as a test. The sim resolves a whole exchange in one
+/// tick, so a `SuppressionApplied` reaches its buffer long before the playback cursor has
+/// shown the shots that caused it. While the family reader drained that raw buffer, the
+/// `"SUPPRESSED"` tag appeared at the top of the enemy turn with no shot on screen — which
+/// is exactly what was reported. The reader now drains `Played<SuppressionApplied>`, so the
+/// raw write is inert and the pop can no longer precede its cause.
+///
+/// Pin-discriminating: reverting the reader to `MessageReader<C::Signal>` pops the tag here
+/// and FAILS.
+#[test]
+fn a_raw_unplayed_consequence_signal_pops_nothing() {
+    let mut app = headless_renderer_app();
+    settle_resources(&mut app);
+    app.world_mut().insert_resource(BattleInProgress);
+
+    let cell = Cell::new(11, 4);
+    let level = Level::new(0);
+    let at = CellLevel::new(cell, level);
+    let pinned = wounded_ganger(&mut app, cell, level, 2);
+
+    // The SIM's own buffer — what the sim writes the instant it resolves the suppression.
+    let written = app
+        .world_mut()
+        .write_message(SuppressionApplied::new(pinned, at))
+        .is_some();
+    assert!(
+        written,
+        "the raw SuppressionApplied buffer must exist for this guard to mean anything",
+    );
+    app.update();
+
+    let pops = fct_pops(&mut app);
+    assert!(
+        !has_fct_pop(&pops, "SUPPRESSED", valence_color(FctValence::Suppressed)),
+        "a consequence the cursor has NOT played must pop nothing, got {pops:?}",
+    );
+
+    // And the same fact, PLAYED, does pop — so the guard above is about pacing, not about a
+    // reader that stopped working.
+    play(&mut app, SuppressionApplied::new(pinned, at));
+    app.update();
+    let pops = fct_pops(&mut app);
+    assert!(
+        has_fct_pop(&pops, "SUPPRESSED", valence_color(FctValence::Suppressed)),
+        "the PLAYED fact must still pop its tag, got {pops:?}",
     );
 }

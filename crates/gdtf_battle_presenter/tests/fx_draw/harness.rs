@@ -121,10 +121,13 @@ pub(crate) fn headless_renderer_app() -> App {
 /// fact to the same buffer the cursor would: the reader under test, its gate, and every
 /// assertion about what it draws are unchanged — only the buffer the fact arrives on moves.
 ///
-/// The CONSEQUENCE-FCT family readers (`read_consequence_fct::<C>`) are deliberately NOT in
-/// that set — their pops ride the projectile → `PendingImpact` → `animate_impact` pipeline,
-/// which is already cursor-paced because the bolt only spawns when the cursor plays its
-/// round. Those tests keep writing the raw sim buffer directly.
+/// Since GTW-889 the CONSEQUENCE-FCT family readers (`read_consequence_fct::<C>`) drain
+/// `Played<C::Signal>` too, so every consequence-FCT test hands its fact to this helper as
+/// well. They previously wrote the raw sim buffer, on the belief that their pops were
+/// already paced by the projectile → `PendingImpact` → `animate_impact` pipeline. That was
+/// wrong: a pop is spawned from the SIGNAL, not from the impact, so an unpaced buffer put
+/// the "SUPPRESSED" tag and the injury names on screen at sim time — ahead of the shots
+/// that caused them, the GTW-889 symptom.
 ///
 /// The write is ASSERTED rather than ignored: `World::write_message` merely logs and returns
 /// `None` on an unregistered buffer, which would read here as "the FX never drew" — a wiring

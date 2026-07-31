@@ -10,8 +10,8 @@ use gdtf_battle_sim::{
     armor_wear::ArmorBroken,
     effects::{
         bleed::{BleedStarted, Bleeding},
-        dot::DotAfflicted,
-        fields::FieldAfflicted,
+        dot::{DotAfflicted, DotTicked},
+        fields::{FieldAfflicted, FieldTicked},
         on_death::OnDeathOccurred,
     },
     falls::FallOccurred,
@@ -82,8 +82,12 @@ pub struct PlayedSignals<'w> {
     pub(super) armor_broken:  MessageWriter<'w, Played<ArmorBroken>>,
     /// A started damage-over-time affliction reached the screen.
     pub(super) dot:           MessageWriter<'w, Played<DotAfflicted>>,
+    /// One round of damage-over-time drain reached the screen.
+    pub(super) dot_tick:      MessageWriter<'w, Played<DotTicked>>,
     /// A started field exposure reached the screen.
     pub(super) field:         MessageWriter<'w, Played<FieldAfflicted>>,
+    /// One round of field drain reached the screen.
+    pub(super) field_tick:    MessageWriter<'w, Played<FieldTicked>>,
     /// A started bleed span reached the screen.
     pub(super) bleed_started: MessageWriter<'w, Played<BleedStarted>>,
     /// A per-round bleed drain reached the screen.
@@ -115,7 +119,9 @@ pub(super) fn register_played_messages(app: &mut App) {
         .add_message::<Played<SuppressionApplied>>()
         .add_message::<Played<ArmorBroken>>()
         .add_message::<Played<DotAfflicted>>()
+        .add_message::<Played<DotTicked>>()
         .add_message::<Played<FieldAfflicted>>()
+        .add_message::<Played<FieldTicked>>()
         .add_message::<Played<BleedStarted>>()
         .add_message::<Played<Bleeding>>()
         .add_message::<Played<CoverDestroyed>>()

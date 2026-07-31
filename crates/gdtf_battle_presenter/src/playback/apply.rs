@@ -11,8 +11,8 @@ use gdtf_battle_sim::{
     armor_wear::ArmorBroken,
     effects::{
         bleed::{BleedStarted, Bleeding},
-        dot::DotAfflicted,
-        fields::FieldAfflicted,
+        dot::{DotAfflicted, DotTicked},
+        fields::{FieldAfflicted, FieldTicked},
         on_death::OnDeathOccurred,
     },
     falls::FallOccurred,
@@ -198,6 +198,18 @@ pub(super) fn show_entry(
                 .field
                 .write(Played::new(FieldAfflicted::new(actor, *at)));
             ActHold::timed(*tuning.consequence_seconds)
+        }
+        ActDeed::DotTicked { at, amount } => {
+            played
+                .dot_tick
+                .write(Played::new(DotTicked::new(actor, *at, *amount)));
+            ActHold::timed(*tuning.minor_seconds)
+        }
+        ActDeed::FieldTicked { at, amount } => {
+            played
+                .field_tick
+                .write(Played::new(FieldTicked::new(actor, *at, *amount)));
+            ActHold::timed(*tuning.minor_seconds)
         }
         ActDeed::BleedStarted => {
             played

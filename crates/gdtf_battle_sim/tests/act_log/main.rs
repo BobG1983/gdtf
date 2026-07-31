@@ -15,6 +15,9 @@
 //! - **`spawn_quiet`** — the spawn-flood cure (T4): setting up a roster records nothing.
 //!   Plus T7: a battle with no presenter runs to an outcome, so clause (d) is asserted
 //!   rather than assumed.
+//! - **`affliction_drains`** — GTW-889: the DOT / field per-round drains are recorded
+//!   entries, in the recorder's fixed source order beside the bleed drain, so a consumer
+//!   can pace their floating text instead of firing it at sim time.
 //! - **`deed_coverage`** — the completeness bar (T8): a new deed fails to compile until it
 //!   is consciously classified.
 //!
@@ -30,6 +33,7 @@
 //!
 //! Wiring only.
 
+mod affliction_drains;
 mod deed_coverage;
 mod determinism;
 mod harness;
