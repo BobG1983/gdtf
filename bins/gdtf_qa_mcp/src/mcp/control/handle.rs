@@ -1,17 +1,17 @@
-//! The two host-local entry points — [`handle_launch`] and [`handle_stop`] — and the
-//! `port` argument they read.
+//! The three host-local entry points — [`handle_launch`], [`handle_stop`] and
+//! [`handle_logs`] — and the arguments they read.
 
 use serde_json::Value;
 
-use super::render::{render_launch, render_stop};
+use super::render::{render_launch, render_logs, render_stop};
 use crate::{
     hosts::QaHost,
-    lifecycle::{HostLifecycle, LaunchOutcome},
+    lifecycle::{HostLifecycle, LaunchOutcome, TailLines},
     link::{QaLink, QaPort},
-    mcp::{call::ToolCallOutcome, launch_args::parse_launch_spec},
+    mcp::{ToolCallOutcome, launch_args::parse_launch_spec},
 };
 
-/// Handle a `launch_game` / `launch_editor` call: read the launch recipe, ensure `host`'s
+/// Handle a `launch` call: read the launch recipe, ensure `host`'s
 /// child is running on the chosen port, re-point that host's link at it, and render the
 /// outcome.
 ///
@@ -45,7 +45,7 @@ pub fn handle_launch(
     ToolCallOutcome::Result(render_launch(host, &outcome, &spec))
 }
 
-/// Handle a `stop_game` / `stop_editor` call: stop whatever this host has on its port and
+/// Handle a `stop` call: stop whatever this host has on its port and
 /// render the outcome. The two hosts' managers are separate, so stopping one never
 /// touches the other.
 ///
@@ -58,6 +58,42 @@ pub fn handle_launch(
 pub fn handle_stop(host: QaHost, lifecycle: &mut dyn HostLifecycle) -> ToolCallOutcome {
     let outcome = lifecycle.stop(host.port_from_env());
     ToolCallOutcome::Result(render_stop(host, &outcome))
+}
+
+/// Handle a `logs` call: read the tail of what `host`'s running child printed, and render
+/// it.
+///
+/// The tail is BOTH output streams in the order they were written, captured at spawn — the
+/// host discards neither, because its own stdout is the JSON-RPC channel and the child's had
+/// nowhere else to go. A host owning no child answers `not_running` rather than an empty
+/// log, which would read as a silent process.
+#[must_use]
+pub fn handle_logs(
+    host: QaHost,
+    args: &Value,
+    lifecycle: &mut dyn HostLifecycle,
+) -> ToolCallOutcome {
+    let max = match parse_max_lines(args) {
+        Ok(max) => max,
+        Err(message) => return ToolCallOutcome::Invalid(message),
+    };
+    ToolCallOutcome::Result(render_logs(host, max, lifecycle.child_output(max).as_ref()))
+}
+
+/// Parse the optional `max_lines` argument, defaulting to [`TailLines::DEFAULT`].
+fn parse_max_lines(args: &Value) -> Result<TailLines, String> {
+    match args.get("max_lines") {
+        None | Some(Value::Null) => Ok(TailLines::default()),
+        Some(value) => {
+            let Some(raw) = value.as_u64() else {
+                return Err("`max_lines` must be a non-negative integer".to_owned());
+            };
+            let Ok(narrow) = usize::try_from(raw) else {
+                return Err("`max_lines` is larger than this platform can address".to_owned());
+            };
+            Ok(TailLines::new(narrow))
+        }
+    }
 }
 
 /// Parse the optional `port` argument, defaulting to the port `host` reads from its own

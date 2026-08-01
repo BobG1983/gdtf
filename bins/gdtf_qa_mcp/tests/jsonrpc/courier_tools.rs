@@ -18,7 +18,9 @@
 
 use serde_json::{Value, json};
 
-use crate::support::{CANNED_ARG_SCHEMA, CANNED_COMMAND, CANNED_REPLY_SCHEMA, dispatch_json};
+use crate::support::{
+    CANNED_ARG_SCHEMA, CANNED_COMMAND, CANNED_REPLY_SCHEMA, EDITOR_HOST_NAME, dispatch_json,
+};
 
 /// The parsed JSON body of a rendered tool result's first text block.
 ///
@@ -193,29 +195,42 @@ fn run_without_a_command_is_invalid_params() {
     );
 }
 
-/// Both courier tools are AIMED by their `host` argument: pointed at the editor, they reach
-/// the editor's link, which offers no command layer and answers `BadRequest`.
+/// Both command tools are AIMED by their `host` argument: pointed at the editor, they reach
+/// the EDITOR's link, which publishes an empty catalogue under its own host name and knows
+/// no command by any name.
 ///
 /// Without the aim they would silently reach the game and report the GAME's catalogue as the
-/// editor's — the exact failure `accepts_host_argument` exists to prevent (GTW-880).
+/// editor's — the exact failure the uniform `host` argument exists to prevent (GTW-880).
 #[test]
 fn the_courier_tools_are_aimed_by_their_host_argument() {
-    for line in [
+    let catalogue = dispatch_json(
         r#"{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"commands","arguments":{"host":"editor"}}}"#,
+    );
+    let Some(text) = catalogue["result"]["content"][0]["text"].as_str() else {
+        unreachable!("the catalogue carries text: {catalogue}");
+    };
+    assert!(
+        text.contains(EDITOR_HOST_NAME),
+        "the call must have reached the EDITOR's link, got: {text}",
+    );
+    assert!(
+        !text.contains(CANNED_COMMAND),
+        "the GAME's one command must not appear in the EDITOR's catalogue: {text}",
+    );
+
+    let outcome = dispatch_json(
         r#"{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"run","arguments":{"host":"editor","command":"app.phase"}}}"#,
-    ] {
-        let response = dispatch_json(line);
-        assert_eq!(
-            response["result"]["isError"],
-            json!(true),
-            "the editor link answers the command layer BadRequest: {response}",
-        );
-        let Some(text) = response["result"]["content"][0]["text"].as_str() else {
-            unreachable!("the refusal carries text: {response}");
-        };
-        assert!(
-            text.contains("BadRequest"),
-            "the call must have reached the EDITOR's link, got: {text}",
-        );
-    }
+    );
+    assert_eq!(
+        outcome["result"]["isError"],
+        json!(true),
+        "a command the EDITOR does not offer is a tool error: {outcome}",
+    );
+    let Some(text) = outcome["result"]["content"][0]["text"].as_str() else {
+        unreachable!("the refusal carries text: {outcome}");
+    };
+    assert!(
+        text.contains("Unknown"),
+        "the EDITOR knows no command by that name, so the outcome is Unknown: {text}",
+    );
 }

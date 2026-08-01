@@ -12,20 +12,24 @@ use crate::{
         CommandOutcome, CommandReplyJson, CommandSummary, CommandTiming, RefusalNote,
         ReplyAttachment, ReplySchemaJson, RunOptions, UnavailableCode,
     },
-    envelope::ServerNameNet,
     ids::ShotName,
+    message::ServerNameNet,
     test_support::assert_ron_round_trip,
 };
 
 /// A REAL derived JSON Schema document: the text `schemars::schema_for!` produced for
-/// [`GangerToken`](crate::ids::GangerToken) under the `schema` feature, copied verbatim.
+/// [`ShotName`](crate::ids::ShotName) under the `schema` feature, copied verbatim.
 ///
 /// Kept as a literal so the JSON-inside-RON case is pinned in the DEFAULT feature
 /// configuration, where `schemars` is not linked at all; the `schema`-feature suite
 /// (`ids/test/schema.rs`) re-proves the same property against a schema it derives at run
 /// time. This text is exactly what a catalogue row has to survive carrying: nested quotes,
 /// braces, `$`-prefixed keys, escaped newlines and non-ASCII characters.
-const DERIVED_ARG_SCHEMA: &str = r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"GangerToken","description":"A wire handle for a **ganger** entity — a `u64` carrying its `Entity::to_bits`\npattern.\n\nHanded out by every [`GangerView`](crate::view::GangerView) and echoed back by the\nentity-targeted [`NetIntent`](crate::intent::NetIntent) variants (Select / Shove /\nStabilize / Execute / …). Opaque to the client; the game resolves it via\n`Entity::try_from_bits` + liveness. A private-inner newtype (no-bare-types), serde-\ntransparent so it rides the wire as its bare `u64`.","type":"integer","format":"uint64","minimum":0}"#;
+///
+/// It used to be `GangerToken`'s schema; GTW-943 moved that type to the game host, so the
+/// literal was regenerated from a type this crate still owns rather than left as text
+/// nothing here can produce.
+const DERIVED_ARG_SCHEMA: &str = r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"ShotName","description":"A requested capture's **file stem** — the caller-chosen name a\n[`CaptureRider`](crate::command::CaptureRider) writes under.\n\nThe host constrains the actual path under its own capture directory (GTW-694); this is\nonly the stem the client asks for. A name newtype over `String` (no-bare-types),\nserde-transparent. `Clone`-not-`Copy` (holds a `String`).","type":"string"}"#;
 
 /// A derived REPLY schema document, produced the same way for
 /// [`LevelNet`](crate::ids::LevelNet).

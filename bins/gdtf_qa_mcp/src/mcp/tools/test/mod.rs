@@ -1,9 +1,7 @@
-//! Registry pins, one file per change-reason (GTW-905).
+//! Tests for the tool registry (GTW-943).
 //!
-//! - `advertised` — what `tools/list` puts in front of a client.
-//! - `routing` — the wire-name mapping and the host each tool acts on.
-//! - `module_doc` — the parent module doc and its counts, pinned against `ALL`.
+//! - [`courier`] — the set is exactly five, each takes `host`, each advertises the
+//!   arguments its handler reads, the module doc names them all, and no schema or
+//!   description names a command.
 
-mod advertised;
-mod module_doc;
-mod routing;
+mod courier;

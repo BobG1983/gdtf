@@ -167,7 +167,7 @@ fn an_unnamed_directory_matches_the_hosts_own_directory() {
 }
 
 /// With no readiness endpoint the launch times out, kills the orphaned child, and returns
-/// a typed failure carrying the child's captured stderr tail.
+/// a typed failure carrying the child's captured output tail.
 ///
 /// The tail is captured through the whole real chain — the child's write, the pipe, the
 /// reader thread, the ring — and the spawner already waited for that capture, so this
@@ -191,7 +191,7 @@ fn launch_times_out_and_captures_stderr() {
     };
     assert!(
         tail.contains(STUB_STDERR_LINE),
-        "the failure carries the child's stderr tail: {}",
+        "the failure carries the child's output tail: {}",
         tail.as_str()
     );
     assert_eq!(

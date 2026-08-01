@@ -22,9 +22,9 @@ use std::{
 
 use gdtf_qa_mcp::{QaClient, QaLink, QaPort};
 use gdtf_qa_protocol::{
-    envelope::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
+    command::CommandCatalogue,
     framing::{FrameDecoder, encode},
-    view::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet},
+    message::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
 };
 
 /// Bind a loopback listener on an OS-assigned port; return it and the bound port number.
@@ -40,15 +40,11 @@ fn bind_loopback() -> (TcpListener, u16) {
     (listener, port)
 }
 
-/// A canned [`QaResponse::AppFlow`] reply — the stub's answer to every request it serves.
-const fn app_flow_reply() -> QaResponse {
-    QaResponse::AppFlow(AppFlowView::new(
-        AppStateNet::Running,
-        BattleActiveNet::new(true),
+/// A canned [`QaResponse::Catalogue`] reply — the stub's answer to every request it serves.
+fn catalogue_reply() -> QaResponse {
+    QaResponse::Catalogue(CommandCatalogue::new(
+        ServerNameNet::new("fake-game".to_owned()),
         Vec::new(),
-        CaughtUpNet::new(true),
-        None,
-        None,
     ))
 }
 
@@ -56,7 +52,7 @@ const fn app_flow_reply() -> QaResponse {
 ///
 /// A `Hello` is answered `HelloOk`, as the real listener does — the client negotiates the
 /// protocol version on EVERY connection it opens, including each reconnect (GTW-940), so a
-/// stub that answered an [`app_flow_reply`] to the handshake would fail the client's
+/// stub that answered a [`catalogue_reply`] to the handshake would fail the client's
 /// handshake and prove nothing about reconnecting.
 fn answer(request: &QaRequest) -> QaResponse {
     match request {
@@ -64,7 +60,7 @@ fn answer(request: &QaRequest) -> QaResponse {
             ProtocolVersion::CURRENT,
             ServerNameNet::new("reconnect-stub".to_owned()),
         )),
-        _ => app_flow_reply(),
+        _ => catalogue_reply(),
     }
 }
 
@@ -128,9 +124,9 @@ fn answer_until_gone(stream: &mut TcpStream) {
     while conn.answer_one() {}
 }
 
-/// A `GetAppFlow` request through the real client.
-fn get_app_flow(client: &mut QaClient) -> Result<QaResponse, gdtf_qa_mcp::McpError> {
-    client.request(QaRequest::GetAppFlow)
+/// A `Catalogue` request through the real client.
+fn request_catalogue(client: &mut QaClient) -> Result<QaResponse, gdtf_qa_mcp::McpError> {
+    client.request(QaRequest::Catalogue)
 }
 
 /// The game reaps a connection between requests (its idle socket timeout): it answers one
@@ -156,17 +152,17 @@ fn a_reused_connection_the_game_closed_reconnects_and_succeeds() {
 
     let mut client = QaClient::new(QaPort::new(port));
 
-    let first = get_app_flow(&mut client);
+    let first = request_catalogue(&mut client);
     assert!(
-        matches!(first, Ok(QaResponse::AppFlow(_))),
+        matches!(first, Ok(QaResponse::Catalogue(_))),
         "the first request opens a fresh connection and succeeds: {first:?}"
     );
 
     // The stub has now closed connection 1. Today the client reuses the dead connection
     // and this fails with Disconnected / Io; the fix reconnects and it succeeds.
-    let second = get_app_flow(&mut client);
+    let second = request_catalogue(&mut client);
     assert!(
-        matches!(second, Ok(QaResponse::AppFlow(_))),
+        matches!(second, Ok(QaResponse::Catalogue(_))),
         "a request on a connection the game already closed must reconnect and succeed, \
          not surface the dead socket: {second:?}"
     );
@@ -201,9 +197,9 @@ fn retarget_on_the_same_port_invalidates_the_connection() {
 
     let mut client = QaClient::new(QaPort::new(port));
 
-    let first = get_app_flow(&mut client);
+    let first = request_catalogue(&mut client);
     assert!(
-        matches!(first, Ok(QaResponse::AppFlow(_))),
+        matches!(first, Ok(QaResponse::Catalogue(_))),
         "the first request succeeds on connection 1: {first:?}"
     );
     assert_eq!(
@@ -216,9 +212,9 @@ fn retarget_on_the_same_port_invalidates_the_connection() {
     // invalidated.
     client.retarget(QaPort::new(port));
 
-    let second = get_app_flow(&mut client);
+    let second = request_catalogue(&mut client);
     assert!(
-        matches!(second, Ok(QaResponse::AppFlow(_))),
+        matches!(second, Ok(QaResponse::Catalogue(_))),
         "the post-relaunch request succeeds: {second:?}"
     );
     assert_eq!(
@@ -243,7 +239,7 @@ fn an_unreachable_game_fails_promptly_without_retrying_forever() {
 
     let mut client = QaClient::new(QaPort::new(port));
     let started = Instant::now();
-    let result = get_app_flow(&mut client);
+    let result = request_catalogue(&mut client);
     let elapsed = started.elapsed();
 
     assert!(
@@ -256,7 +252,7 @@ fn an_unreachable_game_fails_promptly_without_retrying_forever() {
     );
     // Sanity: a real protocol rejection is NOT what happens here — this is a link failure.
     assert!(
-        !matches!(result, Ok(QaResponse::Error(QaError::BadRequest))),
+        !matches!(result, Ok(QaResponse::Error(QaError::Malformed))),
         "an unreachable game is a link error, not a protocol rejection"
     );
 }

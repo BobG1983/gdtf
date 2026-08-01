@@ -12,10 +12,7 @@ use bevy::{
     prelude::*,
 };
 use bevy_egui::PrimaryEguiContext;
-use gdtf_qa_protocol::{
-    envelope::{QaResponse, ScreenshotResult},
-    ids::ShotName,
-};
+use gdtf_qa_protocol::{command::CommandOutcome, ids::ShotName, message::QaResponse};
 
 use super::{
     super::config::EditorShotSource,
@@ -66,9 +63,9 @@ fn reply_or_capture(
 /// holding the primary egui context is still WINDOW-targeted.
 ///
 /// This is the state a retarget that never fires leaves behind, and the state that produced a
-/// pure-black PNG live. No `Screenshot` may be spawned, and the reply must be the typed
-/// `TargetNotRendered` naming both render targets — an outcome an agent cannot mistake for a
-/// screenshot of the editor.
+/// pure-black PNG live. No `Screenshot` may be spawned, and the reply must be an `Unavailable`
+/// outcome whose `RefusalNote` names both render targets — an answer an agent cannot mistake for
+/// a screenshot of the editor.
 #[test]
 fn a_capture_of_an_unrendered_target_is_refused_with_a_message() {
     let Ok(tmp) = tempfile::TempDir::new() else {
@@ -86,20 +83,18 @@ fn a_capture_of_an_unrendered_target_is_refused_with_a_message() {
     assert!(
         matches!(
             reply,
-            Some(QaResponse::Screenshot(ScreenshotResult::TargetNotRendered(
-                _
-            )))
+            Some(QaResponse::Outcome(CommandOutcome::Unavailable { .. }))
         ),
         "a capture of an offscreen target the UI camera does not render into must be refused as \
-         TargetNotRendered, never spawned and never answered Saved; got {reply:?}",
+         Unavailable, never spawned and never answered with an attachment; got {reply:?}",
     );
     assert!(
         spawned_captures(&mut app) == 0,
         "no Screenshot may be spawned for a refused capture — a spawned one lands a blank PNG",
     );
     let detail = match reply {
-        Some(QaResponse::Screenshot(ScreenshotResult::TargetNotRendered(detail))) => {
-            detail.as_str().to_owned()
+        Some(QaResponse::Outcome(CommandOutcome::Unavailable { note, .. })) => {
+            note.as_str().to_owned()
         }
         _ => String::new(),
     };
@@ -157,9 +152,7 @@ fn a_camera_at_the_wrong_scale_factor_is_refused() {
     assert!(
         matches!(
             reply,
-            Some(QaResponse::Screenshot(ScreenshotResult::TargetNotRendered(
-                _
-            )))
+            Some(QaResponse::Outcome(CommandOutcome::Unavailable { .. }))
         ),
         "a UI camera aimed at the capture image at a DIFFERENT scale factor renders into a \
          different render target, so the capture must be refused; got {reply:?}",

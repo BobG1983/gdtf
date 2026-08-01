@@ -2,11 +2,16 @@
 //! was handed, a link that records its re-pointing, and a directory that is not the test
 //! process's own.
 
-use gdtf_qa_protocol::envelope::{QaRequest, QaResponse};
+use core::cell::Cell;
+
+use gdtf_qa_protocol::message::{QaRequest, QaResponse};
 
 use crate::{
     error::McpError,
-    lifecycle::{HostLifecycle, LaunchOutcome, LaunchSpec, StopOutcome, WorkingDir},
+    lifecycle::{
+        HostLifecycle, LaunchFailure, LaunchOutcome, LaunchSpec, OutputTail, SpawnError,
+        StopOutcome, TailLines, WorkingDir,
+    },
     link::{QaLink, QaPort},
 };
 
@@ -22,6 +27,15 @@ pub(super) struct StubLifecycle {
     /// The port of the last `stop` call, if any — the fact a stop needs to establish who
     /// holds the port at all (GTW-926).
     pub(super) stopped_port: Option<QaPort>,
+    /// What the child has printed, or `None` for a stub owning no child (GTW-943).
+    pub(super) output:       Option<OutputTail>,
+    /// The line cap the last `child_output` call was handed.
+    ///
+    /// Recorded rather than applied: the cap is the RING's to apply, so what a fixture can
+    /// prove is that the parsed argument reaches the lifecycle at all. Without this, a
+    /// handler that dropped the caller's cap and asked for the default would still render
+    /// the cap it echoes, and nothing would fail (GTW-943).
+    pub(super) asked_for:    Cell<Option<TailLines>>,
 }
 
 impl StubLifecycle {
@@ -32,6 +46,22 @@ impl StubLifecycle {
             stop: StopOutcome::NotRunning,
             last_spec: None,
             stopped_port: None,
+            output: None,
+            asked_for: Cell::new(None),
+        }
+    }
+
+    /// A stub whose child has printed `output` — or, for `None`, one owning no child.
+    ///
+    /// Its launch outcome is never read: a `logs` call touches only `child_output`.
+    pub(super) const fn printing(output: Option<OutputTail>) -> Self {
+        Self {
+            launch: LaunchOutcome::Failed(LaunchFailure::Spawn(SpawnError::new(String::new()))),
+            stop: StopOutcome::NotRunning,
+            last_spec: None,
+            stopped_port: None,
+            output,
+            asked_for: Cell::new(None),
         }
     }
 }
@@ -53,9 +83,19 @@ impl HostLifecycle for StubLifecycle {
 
     fn child_working_dir(&self) -> Option<WorkingDir> {
         // The control tools neither read nor render a capture, so these fixtures have no
-        // child directory to report. The screenshot path's use of it is covered where it
-        // matters — `render/test/` and `tests/jsonrpc/screenshot_cwd.rs`.
+        // child directory to report. The attachment path's use of it is covered where it
+        // matters — `tests/jsonrpc/courier_attach.rs` and `tests/jsonrpc/screenshot_cwd.rs`.
         None
+    }
+
+    fn child_output(&self, max: TailLines) -> Option<OutputTail> {
+        // The line CAP is the ring's to apply (`ProcessChild::output_tail`), so this fixture
+        // RECORDS what it was handed and returns what it was built with. Recording is the
+        // half that matters here: `tests/lifecycle/child_output.rs` proves the real manager
+        // applies the cap, and this proves the handler passes the caller's value down rather
+        // than its own default.
+        self.asked_for.set(Some(max));
+        self.output.clone()
     }
 }
 

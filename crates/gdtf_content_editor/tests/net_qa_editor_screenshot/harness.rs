@@ -82,7 +82,7 @@ pub(crate) fn headless_editor_app(shot_dir: PathBuf) -> Result<(App, NetQaPort),
 /// retargets the editor's egui camera into it once `bevy_egui` has recorded that camera's input
 /// mapping, and points the pump at it — so the PNG this app lands holds whatever production code
 /// actually drew. That is what makes the pixel assertion in
-/// `take_screenshot_over_the_wire_lands_a_png_on_disk` meaningful: a hand-rigged camera and a
+/// `a_claimed_capture_lands_a_png_on_disk` meaningful: a hand-rigged camera and a
 /// hand-inserted source would have proved only that the test wired itself up correctly.
 ///
 /// Two things still differ from the shipped editor, and neither touches the capture: no winit

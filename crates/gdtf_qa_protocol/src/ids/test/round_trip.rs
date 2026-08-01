@@ -1,21 +1,14 @@
-//! Round-trip + transparency pins for the id / handle newtypes (GTW-734).
+//! Round-trip + transparency pins for the surviving id newtypes (GTW-734).
 
 use crate::{
-    ids::{
-        CellLevelNet, CellNet, CellXNet, CellYNet, DoorToken, EmplacementToken, EventCap,
-        FireModeIndex, FrameDelay, GangerToken, LevelNet, RequestId, SeedNet, ShotName,
-        SituationRef,
-    },
+    ids::{CellLevelNet, CellNet, CellXNet, CellYNet, LevelNet, ShotName},
     test_support::assert_ron_round_trip,
 };
 
-/// Every token / coordinate / handle newtype survives a compact-RON round-trip,
-/// including negative cell coordinates (the floor-into-negative-cells case).
+/// Every coordinate / name newtype survives a compact-RON round-trip, including negative
+/// cell coordinates (the floor-into-negative-cells case).
 #[test]
 fn id_newtypes_round_trip() {
-    assert_ron_round_trip(&GangerToken::new(42));
-    assert_ron_round_trip(&DoorToken::new(7));
-    assert_ron_round_trip(&EmplacementToken::new(9));
     assert_ron_round_trip(&CellXNet::new(-3));
     assert_ron_round_trip(&CellYNet::new(58));
     assert_ron_round_trip(&LevelNet::new(4));
@@ -24,23 +17,17 @@ fn id_newtypes_round_trip() {
         CellNet::new(CellXNet::new(5), CellYNet::new(6)),
         LevelNet::new(3),
     ));
-    assert_ron_round_trip(&FireModeIndex::new(2));
     assert_ron_round_trip(&ShotName::new("aim_check".to_owned()));
-    assert_ron_round_trip(&EventCap::new(64));
-    assert_ron_round_trip(&SituationRef::new("skirmish".to_owned()));
-    assert_ron_round_trip(&SeedNet::new(0xDEAD_BEEF));
-    assert_ron_round_trip(&RequestId::new(1));
-    assert_ron_round_trip(&FrameDelay::new(15));
 }
 
-/// A `#[serde(transparent)]` token rides the wire as its bare inner scalar, not a
+/// A `#[serde(transparent)]` newtype rides the wire as its bare inner scalar, not a
 /// wrapper tuple — the compact-wire guarantee.
 #[test]
-fn tokens_serialize_transparently() {
-    let Ok(encoded) = ron::ser::to_string(&GangerToken::new(42)) else {
-        unreachable!("a GangerToken serializes");
+fn scalars_serialize_transparently() {
+    let Ok(encoded) = ron::ser::to_string(&LevelNet::new(4)) else {
+        unreachable!("a LevelNet serializes");
     };
-    assert_eq!(encoded, "42", "the token is a bare scalar on the wire");
+    assert_eq!(encoded, "4", "the level is a bare scalar on the wire");
 }
 
 /// A `CellNet` rides the wire as a named-field pair of bare scalars.

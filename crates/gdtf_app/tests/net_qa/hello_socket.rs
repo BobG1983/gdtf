@@ -23,8 +23,7 @@ use std::{sync::mpsc, thread};
 use gdtf_app::test_support::{NET_QA_PROTOCOL_VERSION, NET_QA_SERVER_NAME};
 use gdtf_qa_protocol::{
     command::{CommandArgsJson, CommandName},
-    envelope::{ProtocolVersion, QaError, QaRequest, QaResponse, RunCommand},
-    view::AppStateNet,
+    message::{ProtocolVersion, QaError, QaRequest, QaResponse, RunCommand},
 };
 
 use super::socket_support::{
@@ -124,7 +123,7 @@ fn a_stale_version_is_refused_and_leaves_the_connection_fresh() -> TestResult {
 /// back framed — the inbox half of the wiring, over the same socket.
 ///
 /// Both replies are collected on the client thread while the test body drives frames: the
-/// handshake costs no frame (the listener thread answers it), but the `GetAppFlow` reply only
+/// handshake costs no frame (the listener thread answers it), but the `Catalogue` reply only
 /// exists once the router's drain has run.
 #[test]
 fn a_negotiated_request_reaches_the_games_real_router() -> TestResult {
@@ -135,25 +134,21 @@ fn a_negotiated_request_reaches_the_games_real_router() -> TestResult {
             let mut client = Client::connect(port)?;
             Ok([
                 client.exchange(&QaRequest::Hello(NET_QA_PROTOCOL_VERSION))?,
-                client.exchange(&QaRequest::GetAppFlow)?,
+                client.exchange(&QaRequest::Catalogue)?,
             ])
         })();
         let _sent = tx.send(collected);
     });
 
-    let [hello, app_flow] = drive_until_reported(&mut app, &rx)?;
+    let [hello, catalogue] = drive_until_reported(&mut app, &rx)?;
     assert!(
         matches!(&hello, QaResponse::HelloOk(_)),
         "the connection must negotiate before the measured request goes out, got {hello:?}",
     );
     assert!(
-        matches!(
-            &app_flow,
-            QaResponse::AppFlow(view)
-                if view.state == AppStateNet::Running && !*view.battle_active
-        ),
-        "a negotiated GetAppFlow must be answered by the game's real router with \
-         AppFlow(Running, battle_active=false), got {app_flow:?}",
+        matches!(&catalogue, QaResponse::Catalogue(published) if !published.entries.is_empty()),
+        "a negotiated Catalogue must be answered by the game's real router with the host's \
+         own command list, got {catalogue:?}",
     );
     Ok(())
 }

@@ -12,7 +12,7 @@ use gdtf_qa_command::{
         FAKE_COMMANDS_STALLED, FakeStall, fake_app, fake_facts_loaded, run_fake_command,
     },
 };
-use gdtf_qa_protocol::envelope::{QaError, QaResponse};
+use gdtf_qa_protocol::message::{QaError, QaResponse};
 
 use crate::support::{answer, args, no_answer_yet, plain};
 

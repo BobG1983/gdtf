@@ -9,21 +9,18 @@
 //! different switch but binds and times out the same way.
 
 use gdtf_net_qa_transport::NetQaPort;
-use gdtf_qa_protocol::envelope::{HelloFacts, ProtocolVersion, ServerNameNet};
+use gdtf_qa_protocol::message::{HelloFacts, ProtocolVersion, ServerNameNet};
 
 crate::support_item! {
     /// The wire protocol version this `net_qa` server speaks.
     ///
-    /// A [`Hello`](gdtf_qa_protocol::envelope::QaRequest::Hello) carrying THIS version
-    /// negotiates successfully ([`HelloOk`](gdtf_qa_protocol::envelope::QaResponse::HelloOk));
+    /// A [`Hello`](gdtf_qa_protocol::message::QaRequest::Hello) carrying THIS version
+    /// negotiates successfully ([`HelloOk`](gdtf_qa_protocol::message::QaResponse::HelloOk));
     /// any other version is rejected
-    /// [`VersionMismatch`](gdtf_qa_protocol::envelope::QaError::VersionMismatch). It tracks
-    /// the protocol crate's [`ProtocolVersion::CURRENT`], which is bumped on any breaking
-    /// envelope change (GTW-746 bumped it to `2` for the `AppFlowView.available` field;
-    /// GTW-749 to `3` for the `ScreenshotAfter` request; GTW-727 to `4` for the
-    /// `AppFlowView.caught_up` field + the `NotCaughtUp` error; GTW-763 to `5` for the
-    /// `FogView` cell COUNTS; GTW-766 to `6` for the `StepperControl` request +
-    /// `StepperInactive` error).
+    /// [`VersionMismatch`](gdtf_qa_protocol::message::QaError::VersionMismatch). It tracks
+    /// the protocol crate's [`ProtocolVersion::CURRENT`], which moves on any breaking
+    /// change to a message shape — that crate's own doc carries the reasoning, and the git
+    /// history carries the bumps.
     /// Widened to `pub` under `test-support` so the routing test can assert the negotiated
     /// version without hard-coding a literal.
     const NET_QA_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::CURRENT;

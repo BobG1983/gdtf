@@ -9,8 +9,8 @@
 //! for the editor), so it only names a real file when read relative to the directory the
 //! child RAN IN. Reading it against the host's directory worked purely by coincidence —
 //! whenever the two happened to be the same checkout — and failed the moment a launch named
-//! a `working_dir` of its own, which is the whole point of `launch_editor working_dir:` /
-//! `launch_game working_dir:` (GTW-875). A capture taken in a git worktree came back as
+//! a `working_dir` of its own, which is the whole point of `launch`'s `working_dir`
+//! argument (GTW-875). A capture taken in a git worktree came back as
 //! "screenshot saved to … but could not be read: No such file or directory" while the PNG
 //! sat on disk, correct and complete.
 //!
@@ -23,28 +23,21 @@
 use core::ops::Deref;
 use std::path::{Path, PathBuf};
 
-use gdtf_qa_protocol::{command::ArtifactPath, envelope::ScreenshotPathNet};
+use gdtf_qa_protocol::command::ArtifactPath;
 
 use crate::lifecycle::WorkingDir;
 
 /// A path a CHILD reported, in the child's own words — the input side of the resolve.
 ///
-/// Two wire types carry one and they mean the same thing here: [`ScreenshotPathNet`] (a
-/// saved capture) and [`ArtifactPath`] (a command reply's attachment). One borrowed newtype
-/// covers both, so [`resolve_child_path`] states in its signature what it accepts instead of
+/// [`ArtifactPath`] — a command reply's attachment — is what carries one. A borrowed newtype
+/// over it, so [`resolve_child_path`] states in its signature what it accepts instead of
 /// taking a bare `&str` that any string would satisfy.
 ///
-/// The two `From` impls below are the ONLY ways to build one. That is the point: a
+/// The `From` impl below is the ONLY way to build one. That is the point: a
 /// [`ChildFilePath`] turned back into text cannot be handed to [`resolve_child_path`],
 /// which is the mistake GTW-923 fixed and this type keeps fixed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) struct ChildReportedPath<'a>(&'a str);
-
-impl<'a> From<&'a ScreenshotPathNet> for ChildReportedPath<'a> {
-    fn from(path: &'a ScreenshotPathNet) -> Self {
-        Self(path.as_str())
-    }
-}
 
 impl<'a> From<&'a ArtifactPath> for ChildReportedPath<'a> {
     fn from(path: &'a ArtifactPath) -> Self {
@@ -64,7 +57,7 @@ impl Deref for ChildReportedPath<'_> {
 /// reported path resolved against the directory the child ran in.
 ///
 /// Private-inner newtype over `PathBuf` (no-bare-types). Distinct from
-/// `ScreenshotPathNet` / `ArtifactPath` on purpose: those are what the CHILD reported, in
+/// `ArtifactPath` on purpose: that is what the CHILD reported, in
 /// the child's own terms, and this one is what the HOST may hand to [`std::fs::read`].
 /// Collapsing them is exactly the mistake GTW-923 fixes.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -88,10 +81,8 @@ impl Deref for ChildFilePath {
 
 /// Resolve the path a child reported into the path the HOST reads.
 ///
-/// Takes a [`ChildReportedPath`] because the two things a child reports a path for — a
-/// screenshot ([`ScreenshotPathNet`]) and a command's attachment ([`ArtifactPath`]) — are
-/// different wire types with the same meaning here, and one rule has to cover both
-/// (GTW-942). Neither is a host-side path, which is what the return type says.
+/// Takes a [`ChildReportedPath`] because a command's attachment ([`ArtifactPath`]) is not a
+/// host-side path, which is what this signature and its return type say.
 ///
 /// An already-absolute reported path is taken as it stands — the child named a file
 /// system-wide and no directory can improve on that. A RELATIVE reported path is joined onto

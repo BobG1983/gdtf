@@ -5,9 +5,8 @@
 //! resolves it stands in for. TEST-ONLY (GTW-749): the dev-only `AutoBattlePlugin`
 //! was this system's one production registrar, calling it on `Startup` to let a
 //! debug GUI launch reach a battle without a real content pipeline; GTW-749
-//! retired that affordance outright (the network `StartBattle` path replaces its
-//! boot-into-battle role), so [`seed_load_fallbacks`] has no production caller
-//! left — only the headless integration tests below that register it on their
+//! retired that affordance outright, so [`seed_load_fallbacks`] has no production
+//! caller left — only the headless integration tests below that register it on their
 //! own `Startup` schedule, and [`crate::test_support::seed_load_gate`]'s wrapper.
 //!
 //! Only the BESPOKE loads are seeded here (the injuries pair, the prefab

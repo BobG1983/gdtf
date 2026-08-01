@@ -6,7 +6,7 @@
 //! ordering run in a nondeterministic order (bevy-traps #3), and Bevy only guarantees one
 //! system's deferred commands are applied before another runs when there is an explicit ordering
 //! between them. Unordered, a screenshot that settles on the very frame the retarget fires is
-//! either captured or refused `TargetNotRendered` depending on how the executor scheduled the
+//! either captured or refused as `Unavailable` depending on how the executor scheduled the
 //! two — a one-frame-off flake, and a loud refusal of a capture that would have been correct.
 //!
 //! `EditorNetQaSystems::Present` before `EditorNetQaSystems::Gather` (configured by
@@ -33,10 +33,7 @@ use bevy::{
 };
 use bevy_egui::{PrimaryEguiContext, input::WindowToEguiContextMap};
 use gdtf_net_qa_transport::PendingQueue;
-use gdtf_qa_protocol::{
-    envelope::{QaResponse, ScreenshotResult},
-    ids::ShotName,
-};
+use gdtf_qa_protocol::{command::CommandOutcome, ids::ShotName, message::QaResponse};
 use gdtf_screenshot::{PollCap, SettleFrames};
 
 use super::{
@@ -155,7 +152,7 @@ fn record_egui_window_mapping(app: &mut App, camera: Entity) {
 /// frame carries both the retarget's write and the pump's consistency check. With
 /// `Present`-before-`Gather` the check reads the target the retarget just installed and the
 /// capture spawns. Without that ordering the check can read the stale
-/// `RenderTarget::Window` from the same frame and answer `TargetNotRendered` — the flake this
+/// `RenderTarget::Window` from the same frame and answer `Unavailable` — the flake this
 /// pins, and the reason the ordering is explicit rather than inherited from registration order.
 #[test]
 fn a_shot_settling_on_the_retarget_frame_is_captured_not_refused() {
@@ -212,9 +209,7 @@ fn a_shot_settling_on_the_retarget_frame_is_captured_not_refused() {
     assert!(
         !matches!(
             reply,
-            Some(QaResponse::Screenshot(ScreenshotResult::TargetNotRendered(
-                _
-            )))
+            Some(QaResponse::Outcome(CommandOutcome::Unavailable { .. }))
         ),
         "a shot whose settle expired on the retarget frame must NOT be refused: the pump's target \
          read runs after the retarget's write, so it sees the image the camera was just aimed at. \

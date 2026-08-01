@@ -1,87 +1,57 @@
-//! The DEV-ONLY QA network control channel — the GTW-694 architecture's T3 (GTW-736).
+//! The DEV-ONLY QA network control channel — the GTW-694 architecture's T3 (GTW-736), now
+//! the GAME's command host (GTW-942, GTW-943).
 //!
-//! A loopback-only (`Ipv4Addr::LOCALHOST`) TCP listener + request router a coding-agent
+//! A loopback-only (`Ipv4Addr::LOCALHOST`) TCP listener + request drain a coding-agent
 //! QA harness drives, speaking the bevy-free wire contract (`gdtf_qa_protocol`). NONE of
 //! it is shipping behavior: the whole module compiles ONLY under
 //! `cfg(all(debug_assertions, feature = "net_qa"))` (its wiring site in
 //! [`crate::dev::plugin`] applies that double gate — it opens a listener), and even then
 //! it is inert until `GDTF_NET_QA` is set.
 //!
+//! # What the channel answers
+//!
+//! Three requests, and only three: the `Hello` handshake (answered in the listener thread),
+//! `Catalogue` (this host's live command list), and `Run` (one of those commands, by name).
+//! Everything this host can DO is a command in [`commands`] — a file plus one line in that
+//! list — so adding one moves no protocol version, adds no wire variant, and needs no
+//! courier change.
+//!
 //! ## Members (one concern per file, per module-layout)
 //!
 //! The battle-agnostic half — the loopback listener and its accept loop, the
-//! one-client-at-a-time gate ([`Busy`](gdtf_qa_protocol::envelope::QaError::Busy) on a
+//! one-client-at-a-time gate ([`Busy`](gdtf_qa_protocol::message::QaError::Busy) on a
 //! second client), the request/response channel, the pending queue and its frame-deadline
 //! sweep — was lifted in GTW-803 into the shared [`gdtf_net_qa_transport`] crate, so the
-//! game and (later) the content editor drive ONE codepath. This module is the game's HOST
-//! side of it: the gates, the router, and every consumer.
+//! game and the content editor drive ONE codepath. This module is the game's HOST side of
+//! it: the gates, the drain, and the command set.
 //!
 //! - [`config`] — this server's identity constants + its default listen port.
 //! - [`env`] — the `GDTF_NET_QA` / `GDTF_NET_QA_PORT` gates.
-//! - [`pending`] — the typed per-request payloads + the router's queue bundle over them.
-//! - [`router`] — the always-on request router.
-//! - [`convert`] — the wildcard-free [`NetIntent`](gdtf_qa_protocol::intent::NetIntent)
-//!   classification (T4).
-//! - [`resolve`] — the inject path's `SystemParam` bundles + fail-closed token/fire-mode
-//!   resolvers + offer gate (T4).
-//! - [`inject`] — the [`apply_injects`](inject::apply_injects) pump that wires injected
-//!   intents into the same public input queues the local surfaces use (T4).
-//! - [`snapshot`] — the on-demand battle-state view service that answers `GetBattleState`
-//!   with a curated [`BattleView`](gdtf_qa_protocol::view::BattleView) read post-Simulate (T5).
-//! - [`events`] — the outbox that answers `GetOutput` by projecting the GTW-727 act log
-//!   onto the curated wire [`NetEvent`](gdtf_qa_protocol::events::NetEvent) stream (T6).
+//! - [`router`] — the ONE drain of the inbox.
 //! - [`present`] — the DEV-ONLY offscreen-capture present path (GTW-764): retargets the world
 //!   and UI cameras to an offscreen image the render graph writes every tick, and blits that
-//!   image back to the window, so the T7 pump captures pixels independent of window focus or
+//!   image back to the window, so a capture reads pixels independent of window focus or
 //!   occlusion (a backgrounded macOS window's swapchain reads back BLACK).
-//! - [`screenshot`] — the deferred capture pump that answers `TakeScreenshot` by capturing
-//!   the real presenter frame and replying only after the confined PNG lands on disk (T7).
-//! - [`screenshot_after`] — the frame-exact deferred capture that answers `ScreenshotAfter`
-//!   by injecting its embedded intent through the T4 path, then firing the T7 capture
-//!   pipeline once its `frame_delay` countdown elapses (T15).
-//! - [`start_battle`] — the navigation consumer that answers `StartBattle` by producing the
-//!   SAME start-battle request the menu's Battlescape button produces (T9).
-//! - [`stepper`] — the DEV procgen stepper-drive dispatch that answers `StepperControl` by
-//!   writing the wire command into the SAME latch the egui panel's Next/Auto/Skip buttons
-//!   write, serviceable only while a live `StagedProcgen` drive is in flight (GTW-766).
-//! - [`activate_menu`] — the menu-item activation consumer that answers `ActivateMenuItem`
-//!   by raising the SAME focus-activation message an `Enter` keypress raises for the token'd
-//!   menu item, fail-closed on a stale token (GTW-787).
-//! - [`focus_control`] — the focus-drive consumer that answers `FocusControl` by writing the
-//!   SAME navigate message an arrow key writes and emitting a REAL `Enter` keypress at the
-//!   focused control, so ANY focus-navigable screen is drivable, fail-closed on a stale or
-//!   unlisted token (GTW-802).
-//! - [`key_tap`] — the shared real-keypress emitter both the raw-input inject arm and the
-//!   focus-drive activation write through.
+//! - [`screenshot`] — the deferred capture pump: capture the real presenter frame and answer
+//!   only after the confined PNG lands on disk.
 //! - [`plugin`] — the [`NetQaPlugin`] registration (`from_env` / `with_channels`).
-//! - [`wire`] — this host's OWN wire types: [`AppPhaseNet`](wire::AppPhaseNet) and the five
-//!   state mirrors a command's reply schema is derived over (GTW-942).
+//! - [`wire`] — this host's OWN wire types: the app-phase mirrors a command's reply schema is
+//!   derived over, and the act / key / token / pointer vocabulary later commands take as
+//!   arguments (GTW-942, GTW-943).
 //! - [`facts`] — [`GameFacts`](facts::GameFacts), the per-frame facts every command reads,
 //!   and the `SystemParam` that samples them once a frame (GTW-942).
 //! - [`commands`] — the ONE command list, its registration walk, and the commands
 //!   themselves. Adding a command is a file plus one line in that list; it moves no
 //!   protocol version and adds no wire variant (GTW-942).
 
-mod activate_menu;
 mod commands;
 mod config;
-mod convert;
 mod env;
-mod events;
 mod facts;
-mod focus_control;
-mod inject;
-mod key_tap;
-mod pending;
 mod plugin;
 mod present;
-mod resolve;
 mod router;
 mod screenshot;
-mod screenshot_after;
-mod snapshot;
-mod start_battle;
-mod stepper;
 mod wire;
 
 // `NetQaPlugin` is the item the binary consumes (via the dev aggregate plugin,
@@ -91,7 +61,7 @@ mod wire;
 // `unreachable_pub`-clean either way.
 crate::support_use!(plugin::NetQaPlugin;);
 
-// The router TEST surface is consumed ONLY through the `test_support` ledger (the GTW-736
+// The TEST surface is consumed ONLY through the `test_support` ledger (the GTW-736
 // integration suite). The binary never names these, so re-exporting them in a
 // non-`test-support` build would be an unused `pub(crate) use`; gate the re-export to the
 // same feature, `pub` because the ledger needs it. The transport's own types are NOT
@@ -108,18 +78,9 @@ pub use commands::{assert_game_command_set_is_conformant, game_command_names};
 pub use config::{
     NET_QA_PROTOCOL_VERSION, SERVER_NAME as NET_QA_SERVER_NAME, hello_facts as net_qa_hello_facts,
 };
-// GTW-727: the ONE availability predicate, exposed so the input-gate suite can assert the
-// catch-up gating directly. It is the same function the router's accept/reject and the
-// advertised `available` list both call, so a test against it cannot drift from either.
+// GTW-740: the capture pump's confinement-directory + poll-budget config Resources and its
+// queue payload, exposed so the capture suite can inject a temp directory + a tiny budget and
+// enqueue a capture through the real queue. Widened through `screenshot`'s own `support_use!`
+// re-export; gated to `test-support` like the rest.
 #[cfg(feature = "test-support")]
-pub use router::request_available as request_available_for;
-// GTW-740: the T7 pump's confinement-directory + poll-budget config Resources, exposed for
-// the integration test to inject a temp directory + a tiny budget. Widened through
-// `screenshot`'s own `support_use!` re-export; gated to `test-support` like the rest.
-#[cfg(feature = "test-support")]
-pub use screenshot::{QaShotDir, ShotPollBudget};
-// GTW-742: the shipped-situation name the T9 `StartBattle` consumer accepts, exposed so the
-// T9 integration test names a VALID situation ref without hard-coding the literal. Gated to
-// `test-support` like the rest.
-#[cfg(feature = "test-support")]
-pub use start_battle::SHIPPED_SITUATION;
+pub use screenshot::{QaShotDir, ScreenshotPayload, ShotPollBudget};

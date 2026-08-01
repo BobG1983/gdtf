@@ -3,7 +3,7 @@
 //! A request the host cannot answer synchronously lands in a per-kind [`PendingQueue`]
 //! where a later consumer claims it. Every entry carries a frame-deadline countdown; the
 //! [`sweep_pending`] pump answers the client with a
-//! [`Timeout`](gdtf_qa_protocol::envelope::QaError::Timeout) when it expires unclaimed — so
+//! [`Timeout`](gdtf_qa_protocol::message::QaError::Timeout) when it expires unclaimed — so
 //! a request never leaves the client hanging. The payload types a queue holds are the
 //! host's: this module is generic over `P` and never names one.
 //!

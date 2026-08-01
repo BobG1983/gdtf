@@ -4,8 +4,8 @@
 //! listener a coding-agent QA client drives, speaking the bevy-free wire contract
 //! ([`gdtf_qa_protocol`]). It runs on the SHARED transport ([`gdtf_net_qa_transport`],
 //! GTW-803) — the game and the editor move bytes through ONE codepath — and this module is
-//! the editor's HOST side of it: the activation gates, the request drain, and (in this child)
-//! exactly one answered request, [`Hello`](gdtf_qa_protocol::envelope::QaRequest::Hello).
+//! the editor's HOST side of it: the activation gates, the request drain, and the capture
+//! pump.
 //!
 //! NONE of it is shipping behavior. The whole module compiles ONLY under
 //! `cfg(all(debug_assertions, feature = "net_qa"))` (the wiring site in `crate::app` applies
@@ -26,12 +26,9 @@
 //! - [`config`] — this server's identity constants + its default listen port.
 //! - [`env`] — the `GDTF_EDITOR_NET_QA` / `GDTF_EDITOR_NET_QA_PORT` gates.
 //! - [`schedule`] — the [`EditorNetQaSystems`] set the request drain runs in.
-//! - [`router`] — the request drain: it answers `Hello` and the editor query pair, queues a
-//!   `TakeScreenshot` for the capture pump, and rejects every other request kind
-//!   [`BadRequest`](gdtf_qa_protocol::envelope::QaError::BadRequest) (the editor services no
-//!   other request yet — those are GTW-806).
-//! - [`snapshot`] — the query service: the one read of the editor's model, the topic
-//!   availability filter, and the per-topic views (GTW-805).
+//! - [`router`] — the request drain: it answers `Catalogue` with this host's (still empty)
+//!   command list and every `Run` `Unknown`, because the editor's own command set is the
+//!   next editor ticket.
 //! - [`screenshot`] — the capture pump: settle, capture, and reply only once the PNG has
 //!   landed on disk (GTW-880).
 //! - [`present`] — the offscreen capture target the running editor captures through: the
@@ -46,9 +43,11 @@ mod present;
 mod router;
 mod schedule;
 mod screenshot;
-mod snapshot;
 
 pub use config::EDITOR_QA_SERVER_NAME;
 pub use plugin::NetQaEditorPlugin;
 pub use schedule::EditorNetQaSystems;
-pub use screenshot::{EditorQaShotDir, EditorShotPollBudget, EditorShotSettle, EditorShotSource};
+pub use screenshot::{
+    EditorQaShotDir, EditorScreenshotPayload, EditorShotPollBudget, EditorShotSettle,
+    EditorShotSource,
+};

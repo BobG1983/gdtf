@@ -2,7 +2,7 @@
 
 use gdtf_qa_protocol::{
     command::{CommandCatalogue, CommandEntry},
-    envelope::ServerNameNet,
+    message::ServerNameNet,
 };
 
 use crate::command::ErasedCommand;

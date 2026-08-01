@@ -34,16 +34,14 @@ crate::support_use!(plugin::ProcgenStepperPlugin;);
 // closure never runs headlessly), so it widens to `pub` only under `test-support`.
 #[cfg(feature = "test-support")]
 pub use commands::AutoStepDelay;
-// The command/latch TRIO (`StepCommand` / `PendingStepCommand` / `AutoRunning`) has a SECOND
-// out-of-module consumer since GTW-766: the `net_qa` stepper-drive dispatch
-// (`crate::dev::net_qa::stepper`) writes the same latch the egui panel writes. So the re-export
-// exists under EITHER feature — `support_use!` widens it to `pub` under `test-support` (the
-// `test_support` ledger needs it) and `pub(crate)` otherwise (the net_qa dispatch names it
-// crate-wide). Gated on `any(...)` (not unconditional) so a plain `dev_tools`-only build stays
-// warning-clean: the trio is reached in-crate via `super::commands::…` (drive / ui), so an
-// unconditional re-export would be an unused `pub(crate) use`.
-#[cfg(any(feature = "test-support", feature = "net_qa"))]
-crate::support_use!(commands::{AutoRunning, PendingStepCommand, StepCommand};);
+// The command/latch TRIO (`StepCommand` / `PendingStepCommand` / `AutoRunning`) is reached
+// in-crate via `super::commands::…` (drive / ui) and out of it only by the `test_support`
+// ledger. GTW-766's `net_qa` stepper-drive dispatch was its second consumer; GTW-943 deleted
+// that dispatch with the `StepperControl` request it served, so the re-export is now
+// `test-support` only — an unconditional one would be an unused `pub(crate) use` in a plain
+// `dev_tools` build.
+#[cfg(feature = "test-support")]
+pub use commands::{AutoRunning, PendingStepCommand, StepCommand};
 pub(crate) use gate::battle_setup_runs_directly;
 crate::support_use!(gate::ProcgenStepperActive;);
 // The schematic painter (GTW-732) — re-exported under `test-support` so it stays a reachable

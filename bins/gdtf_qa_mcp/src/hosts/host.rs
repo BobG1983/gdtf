@@ -45,21 +45,20 @@ impl QaHost {
     /// neither.
     ///
     /// The inverse of [`label`](Self::label), and the ONE place a `host` tool argument becomes
-    /// a host: a tool that can be aimed at either child (`take_screenshot`, GTW-880) reads its
-    /// argument through here, so the accepted spellings and the ones a schema advertises can
-    /// never drift apart.
+    /// a host: EVERY tool reads its `host` argument through here, so the accepted spellings
+    /// and the ones a schema advertises can never drift apart.
     #[must_use]
     pub fn from_label(word: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|host| host.label() == word)
     }
 
-    /// The MCP tool that stops this host's child — named in the recipe-mismatch message,
-    /// so the caller is told which of the two stop tools to call.
+    /// The MCP call that stops this host's child — named in the recipe-mismatch message, so
+    /// the caller is told exactly what to send rather than which tool to look up.
     #[must_use]
     pub const fn stop_tool_name(self) -> &'static str {
         match self {
-            Self::Game => "stop_game",
-            Self::Editor => "stop_editor",
+            Self::Game => "stop(host=\"game\")",
+            Self::Editor => "stop(host=\"editor\")",
         }
     }
 

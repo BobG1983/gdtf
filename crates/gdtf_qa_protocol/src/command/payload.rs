@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 
 /// A command call's **arguments**, as JSON object text.
 ///
-/// Opaque to the envelope and to the MCP courier: only the command's own `Args` type gives
+/// Opaque to the [`message`](crate::message) types and to the MCP courier: only the
+/// command's own `Args` type gives
 /// them meaning, and only the host that owns that command decodes them. Private-inner
 /// newtype over `String` (no-bare-types), serde-transparent.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

@@ -2,7 +2,7 @@
 
 use gdtf_qa_protocol::{
     command::{CommandName, CommandOutcome},
-    envelope::QaResponse,
+    message::QaResponse,
 };
 
 use super::CommandRefusal;

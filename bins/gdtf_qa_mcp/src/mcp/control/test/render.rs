@@ -7,8 +7,8 @@ use super::support::a_directory_that_is_not_the_hosts;
 use crate::{
     hosts::QaHost,
     lifecycle::{
-        BootTimeout, CargoPackage, ChildPid, EnvOverrides, FeatureList, FeatureName, LaunchFailure,
-        LaunchOutcome, LaunchSpec, OrphanPid, QaChannel, StderrTail, StopOutcome, WorkingDir,
+        BootTimeout, CargoPackage, ChildPid, EnvOverrides, FailureTail, FeatureList, FeatureName,
+        LaunchFailure, LaunchOutcome, LaunchSpec, OrphanPid, QaChannel, StopOutcome, WorkingDir,
     },
     link::QaPort,
     mcp::control::render::{render_launch, render_stop},
@@ -84,10 +84,13 @@ fn a_recipe_mismatch_is_a_tool_error_naming_both_recipes() {
         text.contains("gdtf_content_editor"),
         "names what was asked for: {text}"
     );
-    assert!(text.contains("stop_game"), "says how to proceed: {text}");
+    assert!(
+        text.contains("stop(host=\"game\")"),
+        "says how to proceed: {text}"
+    );
 }
 
-/// A boot-timeout failure renders as a tool error carrying the stderr tail — and NAMES
+/// A boot-timeout failure renders as a tool error carrying the output tail — and NAMES
 /// THE BUILD as the likely cause, with the warm-up command, rather than reporting a bare
 /// "timed out" (GTW-808 clause 7).
 #[test]
@@ -95,7 +98,7 @@ fn render_launch_timeout_names_the_build_and_carries_the_tail() {
     let rendered = render_launch(
         QaHost::Editor,
         &LaunchOutcome::Failed(LaunchFailure::Timeout {
-            tail:   StderrTail::new("Compiling gdtf_content_editor".to_owned()),
+            tail:   FailureTail::new("Compiling gdtf_content_editor".to_owned()),
             waited: BootTimeout::new(core::time::Duration::from_secs(600)),
         }),
         &LaunchSpec::editor_default(),
@@ -122,7 +125,7 @@ fn render_launch_timeout_names_the_build_and_carries_the_tail() {
 
 /// A NAMED orphan that survived its stop renders as a tool error carrying that process id —
 /// the exact shape the bug report showed, where pid 43744 was alive and holding 7617 and
-/// `stop_editor` answered `{"status":"not_running"}` (GTW-926).
+/// a `stop(host="editor")` answered `{"status":"not_running"}` (GTW-926).
 ///
 /// The sibling case, an orphan the operating system could not name, is covered in
 /// [`launch`](super::launch); this is the arm a real reconnect hits, since `lsof` names the

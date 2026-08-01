@@ -137,9 +137,9 @@ pub(in crate::states::running::game::battlescape) fn order_contextual_buttons(
 /// set, after the act's offer scan. ONE query per system — no disjointness filters needed
 /// (see the module doc).
 ///
-/// "Show" drives BOTH the button's [`Visibility`] (the offer signal the AC tests /
-/// [`sync_panel_root_visibility`] / the `net_qa` inject gate read) AND its
-/// [`Node::display`] (the layout collapse) — see [`set_button_shown`].
+/// "Show" drives BOTH the button's [`Visibility`] (the offer signal the AC tests and
+/// [`sync_panel_root_visibility`] read) AND its [`Node::display`] (the layout collapse) —
+/// see [`set_button_shown`].
 pub(in crate::states::running::game::battlescape) fn sync_contextual_button_visibility<
     A: ContextualPanelAct,
 >(
@@ -218,9 +218,9 @@ fn set_visibility<F: bevy::ecs::query::QueryFilter>(
 }
 
 /// Shows/hides every matched contextual BUTTON in place — sets BOTH its [`Visibility`]
-/// (the offer signal the AC tests / [`sync_panel_root_visibility`] / the `net_qa` inject
-/// gate read) AND its [`Node::display`]: a hidden button is [`Display::None`] so it
-/// COLLAPSES its layout row, a shown one is [`Display::Flex`].
+/// (the offer signal the AC tests and [`sync_panel_root_visibility`] read) AND its
+/// [`Node::display`]: a hidden button is [`Display::None`] so it COLLAPSES its layout row,
+/// a shown one is [`Display::Flex`].
 ///
 /// Collapsing the hidden buttons is the GTW-726 fix: a `Visibility::Hidden` node still
 /// RESERVES its layout box, so the eight-button column stayed eight rows tall no matter

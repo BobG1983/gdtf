@@ -1,8 +1,8 @@
 //! The generic menu-enumeration model (GTW-787).
 //!
-//! A tiny, scene-agnostic marker vocabulary that lets a QA harness ask "what menu am I
-//! on, what can I click?" over the `net_qa` wire and click by reference — without any
-//! per-scene wiring on the wire side.
+//! A tiny, scene-agnostic marker vocabulary that lets a QA client ask "what menu am I on,
+//! what can I click?" and click by reference — without any per-scene wiring on the reading
+//! side.
 //!
 //! A scene opts in by tagging its UI with two markers:
 //!
@@ -10,24 +10,28 @@
 //! - [`MenuItem`] on each activatable button entity — marks it as an enumerable,
 //!   activatable menu item.
 //!
-//! The `net_qa` snapshot builder reads these generically: the (single) [`MenuScreen`] is
-//! the menu identity, and every [`MenuItem`] entity is projected into a wire item (its
-//! `Entity` minted into a focus token, its caption read off its child `Text`, its enabled
-//! flag read from the absence of [`DisabledButton`](crate::DisabledButton)). Activation
-//! echoes the token back and raises the SAME focus-activation message an `Enter` keypress
-//! raises ([`FocusActivated`](crate::focus_nav::FocusActivated)), so any scene that already
+//! A reader walks them generically: the (single) [`MenuScreen`] is the menu identity, and
+//! every [`MenuItem`] entity is one listed item (its caption read off its child `Text`, its
+//! enabled flag read from the absence of [`DisabledButton`](crate::DisabledButton)).
+//! Activating one raises the SAME focus-activation message an `Enter` keypress raises
+//! ([`FocusActivated`](crate::focus_nav::FocusActivated)), so any scene that already
 //! consumes that message gets QA activation for free.
 //!
+//! **Nothing reads these markers today.** GTW-943 removed the QA request that enumerated
+//! them along with the rest of the pre-command wire; the menu QA command that replaces it is
+//! a later ticket in the same epic. The markers stay on the UI so that command needs no
+//! per-scene edit when it arrives.
+//!
 //! Both markers are state-scoped by the scene's normal `DespawnOnExit`, so no resource
-//! lifecycle is needed — leaving a menu tears the markers down with the rest of the tree,
-//! and the wire menu view becomes `None`.
+//! lifecycle is needed — leaving a menu tears the markers down with the rest of the tree, and
+//! a scene with no live [`MenuScreen`] has no menu up.
 
 use bevy::prelude::*;
 
 /// The active menu's **identity** — a stable, human-readable name (e.g. `"MainMenu"`).
 ///
 /// A named newtype over the identity string (no-bare-types), `Deref`ing to `&str` for
-/// read access; the `net_qa` snapshot builder mints it into the wire `MenuIdNet`.
+/// read access.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MenuName(String);
 
@@ -43,9 +47,9 @@ impl MenuName {
 /// "which menu am I on".
 ///
 /// Placed on the scene's menu-root node (state-scoped via the scene's `DespawnOnExit`, so
-/// it is torn down on leave). The `net_qa` snapshot builder expects at most one live
-/// `MenuScreen`; its [`name`](MenuScreen::name) is the menu identity, and the presence of a
-/// `MenuScreen` is what makes the wire menu view `Some` rather than `None`.
+/// it is torn down on leave). At most one `MenuScreen` is live at a time; its
+/// [`name`](MenuScreen::name) is the menu identity, and no live `MenuScreen` means no menu
+/// is up.
 #[derive(Component, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MenuScreen {
     /// The active menu's identity name.
@@ -59,7 +63,7 @@ impl MenuScreen {
         Self { name }
     }
 
-    /// The menu's identity name — the `net_qa` snapshot builder's read.
+    /// The menu's identity name.
     #[must_use]
     pub const fn name(&self) -> &MenuName {
         &self.name
@@ -68,10 +72,9 @@ impl MenuScreen {
 
 /// Marks one **activatable menu button** as an enumerable menu item.
 ///
-/// Placed on each menu button entity (state-scoped via the scene's `DespawnOnExit`). The
-/// `net_qa` snapshot builder projects every live `MenuItem` entity into a wire menu item,
-/// and the wire `ActivateMenuItem` request resolves a token back to a live `MenuItem` to
-/// activate it. A unit marker: presence on an entity is the whole signal (no-bare-types
-/// rule).
+/// Placed on each menu button entity (state-scoped via the scene's `DespawnOnExit`). A
+/// reader lists every live `MenuItem` entity and activates one by raising
+/// [`FocusActivated`](crate::focus_nav::FocusActivated) on it. A unit marker: presence on an
+/// entity is the whole signal (no-bare-types rule).
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct MenuItem;

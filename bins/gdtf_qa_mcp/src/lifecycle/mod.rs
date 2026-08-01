@@ -1,22 +1,23 @@
 //! The child-lifecycle layer — launching and stopping a managed child (GTW-745; made
 //! host-neutral in GTW-808).
 //!
-//! Backs the `launch_game` / `stop_game` and `launch_editor` / `stop_editor` MCP tools:
+//! Backs the `launch` / `stop` / `logs` MCP tools:
 //! one [`HostManager`] per host, each owning at most one child. Everything is blocking `std` —
 //! [`std::process::Command`] + [`std::thread`], no tokio. The pieces:
 //!
-//! - [`values`] — the small newtypes the layer talks in (pid, stderr tail, timing knobs)
-//!   plus the [`ChildStatus`] / [`Readiness`] status answers.
+//! - [`values`] — the small newtypes the layer talks in (pid, the two output tails and the
+//!   line cap a caller asks for, timing knobs) plus the [`ChildStatus`] / [`Readiness`]
+//!   status answers.
 //! - [`config`] — the [`LifecycleConfig`] timing knobs.
 //! - [`outcome`] — the typed [`LaunchOutcome`] / [`StopOutcome`] results.
-//! - [`child`] — the [`ManagedChild`] trait and its real [`ProcessChild`] (stderr capture +
-//!   process-group signalling).
+//! - [`child`] — the [`ManagedChild`] trait and its real [`ProcessChild`] (stdout + stderr
+//!   capture into one ring + process-group signalling).
 //! - [`launch`] — the [`LaunchSpec`] recipe (package, features, working directory,
 //!   environment overrides, and the [`QaChannel`] variable names) one launch runs, and
 //!   the newtypes it is written in.
 //! - [`spawn`] — the [`ChildSpawner`] trait and its real [`CargoSpawner`], which turns a
 //!   recipe into a `cargo run` command.
-//! - [`probe`] — the readiness [`Hello`](gdtf_qa_protocol::envelope::QaRequest::Hello)
+//! - [`probe`] — the readiness [`Hello`](gdtf_qa_protocol::message::QaRequest::Hello)
 //!   round-trip.
 //! - [`orphan`] — the [`OrphanWatch`] that answers who holds a host port when this process
 //!   owns no child, and stops that orphan (GTW-926).
@@ -33,7 +34,7 @@ pub mod probe;
 pub mod spawn;
 pub mod values;
 
-pub use child::{ManagedChild, ProcessChild};
+pub use child::{ManagedChild, OUTPUT_TAIL_LINES, ProcessChild};
 pub use config::LifecycleConfig;
 pub use launch::{
     CargoPackage, EnvOverrides, EnvVar, EnvVarName, EnvVarValue, FeatureList, FeatureName,
@@ -44,6 +45,6 @@ pub use orphan::{OrphanPid, OrphanStop, OrphanTarget, OrphanWatch, PortHold, Sys
 pub use outcome::{LaunchFailure, LaunchOutcome, StopOutcome};
 pub use spawn::{CargoSpawner, ChildSpawner, build_command};
 pub use values::{
-    BootTimeout, ChildPid, ChildStatus, KillGrace, PollInterval, ProbeTimeout, Readiness,
-    SpawnError, StderrTail,
+    BootTimeout, ChildPid, ChildStatus, FailureTail, KillGrace, OutputTail, PollInterval,
+    ProbeTimeout, Readiness, SpawnError, TailLines,
 };

@@ -9,8 +9,8 @@
 //! derivation, the delete-before-spawn purge, the poll loop, the timeout accounting, and the
 //! decode-verify + reply. The tests stand in for the GPU by planting a file at the pump's
 //! exact target path — and pin four behaviours: the deferral (never a claim-frame reply), a
-//! PNG that lands AFTER the claim frame is reported Saved, a STALE PNG already at the path is
-//! purged and never served, and an existing-but-UNDECODABLE file is rejected (not "saved").
+//! PNG that lands AFTER the claim frame is handed back as an attachment, a STALE PNG already
+//! at the path is purged and never served, and an existing-but-UNDECODABLE file is rejected.
 
 use std::{
     path::PathBuf,
@@ -20,16 +20,17 @@ use std::{
 use bevy::prelude::*;
 use gdtf_net_qa_transport::{PendingQueue, Responder};
 use gdtf_qa_protocol::{
-    envelope::{QaResponse, ScreenshotResult},
+    command::{AttachmentKind, CommandOutcome},
     ids::ShotName,
+    message::{QaError, QaResponse},
 };
 use gdtf_screenshot::CapturePath;
 
 use super::super::{
     path::{QaShotDir, ShotSequence, next_capture_path},
+    payload::ScreenshotPayload,
     pump::{InFlightShots, ShotPollBudget, drive_screenshots},
 };
-use crate::dev::net_qa::pending::ScreenshotPayload;
 
 /// Build a `MinimalPlugins` app with the REAL pump registered, confined to `dir`, and the
 /// given poll budget.
@@ -45,7 +46,7 @@ fn pump_app(dir: PathBuf, budget: ShotPollBudget) -> App {
     app
 }
 
-/// Enqueue a screenshot request exactly as the router would, returning the reply channel.
+/// Enqueue a capture through the REAL queue, returning the reply channel.
 fn enqueue(app: &mut App, name: Option<ShotName>) -> Receiver<QaResponse> {
     let (responder, reply_rx) = Responder::channel();
     app.world_mut()
@@ -77,7 +78,7 @@ fn plant_decodable_png(path: &CapturePath) {
 }
 
 /// Write NON-PNG bytes at `path` — a truncated / garbage file the decode-verify must reject
-/// (exists + non-empty is not enough to be "saved").
+/// (exists + non-empty is not enough to be a landed capture).
 fn plant_garbage(path: &CapturePath) {
     if let Some(parent) = path.parent() {
         drop(std::fs::create_dir_all(parent));
@@ -89,8 +90,25 @@ fn plant_garbage(path: &CapturePath) {
     );
 }
 
+/// Whether `reply` is the typed capture timeout.
+fn is_timeout(reply: &Result<QaResponse, TryRecvError>) -> bool {
+    matches!(reply, Ok(QaResponse::Error(QaError::Timeout)))
+}
+
+/// The PNG path a landed reply attached, if it is one.
+fn attached_png(reply: &Result<QaResponse, TryRecvError>) -> Option<String> {
+    let Ok(QaResponse::Outcome(CommandOutcome::Ran { attachments, .. })) = reply else {
+        return None;
+    };
+    let attachment = attachments.first()?;
+    if attachment.kind != AttachmentKind::Png {
+        return None;
+    }
+    Some(attachment.path.as_str().to_owned())
+}
+
 /// A capture whose PNG never lands (no GPU) is answered
-/// [`TimedOut`](ScreenshotResult::TimedOut) once its frame budget elapses — and NOT before,
+/// [`Timeout`](QaError::Timeout) once its frame budget elapses — and NOT before,
 /// proving the reply is genuinely deferred across frames.
 #[test]
 fn capture_that_never_lands_answers_timed_out() {
@@ -114,19 +132,16 @@ fn capture_that_never_lands_answers_timed_out() {
     }
     let reply = reply_rx.try_recv();
     assert!(
-        matches!(
-            reply,
-            Ok(QaResponse::Screenshot(ScreenshotResult::TimedOut))
-        ),
-        "a capture whose PNG never lands must answer TimedOut, got {reply:?}",
+        is_timeout(&reply),
+        "a capture whose PNG never lands must answer Timeout, got {reply:?}",
     );
 }
 
-/// A PNG that lands at the confined path AFTER the claim frame is answered
-/// [`Saved`](ScreenshotResult::Saved) at that exact path — the pump's poll + decode-verify +
-/// reply all run for real, on a later frame than the claim.
+/// A PNG that lands at the confined path AFTER the claim frame comes back as a PNG
+/// attachment naming that exact path — the pump's poll + decode-verify + reply all run for
+/// real, on a later frame than the claim.
 #[test]
-fn a_png_landing_after_the_claim_frame_is_reported_saved() {
+fn a_png_landing_after_the_claim_frame_is_attached_to_the_reply() {
     let Ok(tmp) = tempfile::TempDir::new() else {
         return;
     };
@@ -151,20 +166,18 @@ fn a_png_landing_after_the_claim_frame_is_reported_saved() {
     app.update();
     let expected = path.to_string_lossy().into_owned();
     let reply = reply_rx.try_recv();
-    assert!(
-        matches!(
-            &reply,
-            Ok(QaResponse::Screenshot(ScreenshotResult::Saved(saved))) if **saved == expected
-        ),
-        "a PNG landing after the claim frame must be reported Saved at its confined path, got \
-         {reply:?}",
+    assert_eq!(
+        attached_png(&reply),
+        Some(expected),
+        "a PNG landing after the claim frame must come back as an attachment at its confined \
+         path, got {reply:?}",
     );
 }
 
 /// A decodable PNG ALREADY sitting at the pump's target path (a leftover from a prior run at
 /// a reused sequence) is PURGED on claim and never served — with no fresh capture, the pump
-/// times out rather than replying Saved from stale bytes. Fails if delete-before-spawn (or
-/// the poll-before-claim deferral) is removed.
+/// times out rather than attaching stale bytes. Fails if delete-before-spawn (or the
+/// poll-before-claim deferral) is removed.
 #[test]
 fn a_stale_png_already_at_the_path_is_never_served() {
     let Ok(tmp) = tempfile::TempDir::new() else {
@@ -184,7 +197,7 @@ fn a_stale_png_already_at_the_path_is_never_served() {
     app.update();
     assert!(
         matches!(reply_rx.try_recv(), Err(TryRecvError::Empty)),
-        "a pre-existing PNG must NOT be reported saved on the claim frame — never a stale guess",
+        "a pre-existing PNG must NOT be attached on the claim frame — never a stale guess",
     );
 
     // No fresh capture lands (no GPU), so the pump times out rather than serving stale bytes.
@@ -193,21 +206,18 @@ fn a_stale_png_already_at_the_path_is_never_served() {
     }
     let reply = reply_rx.try_recv();
     assert!(
-        matches!(
-            reply,
-            Ok(QaResponse::Screenshot(ScreenshotResult::TimedOut))
-        ),
+        is_timeout(&reply),
         "a stale PNG at the path must be purged, never served — the capture times out, got \
          {reply:?}",
     );
 }
 
 /// A file that exists and is non-empty but does NOT decode as a PNG (a truncated / mid-flush
-/// write) is rejected — the pump keeps polling and times out, never reporting it Saved. Fails
+/// write) is rejected — the pump keeps polling and times out, never attaching it. Fails
 /// if the decode-verify is weakened to a bare `exists()` check (the clause justifying the
 /// `image` dependency).
 #[test]
-fn an_undecodable_file_is_not_reported_saved() {
+fn an_undecodable_file_is_never_attached() {
     let Ok(tmp) = tempfile::TempDir::new() else {
         return;
     };
@@ -226,7 +236,7 @@ fn an_undecodable_file_is_not_reported_saved() {
     );
 
     // A non-PNG file appears at the path. `exists()` + non-empty is TRUE, but the decode fails
-    // — so the pump must keep polling and time out, never reporting it Saved.
+    // — so the pump must keep polling and time out, never attaching it.
     plant_garbage(&path);
 
     for _ in 0..8 {
@@ -234,11 +244,7 @@ fn an_undecodable_file_is_not_reported_saved() {
     }
     let reply = reply_rx.try_recv();
     assert!(
-        matches!(
-            reply,
-            Ok(QaResponse::Screenshot(ScreenshotResult::TimedOut))
-        ),
-        "an existing-but-undecodable file must never be reported Saved — it times out, got \
-         {reply:?}",
+        is_timeout(&reply),
+        "an existing-but-undecodable file must never be attached — it times out, got {reply:?}",
     );
 }

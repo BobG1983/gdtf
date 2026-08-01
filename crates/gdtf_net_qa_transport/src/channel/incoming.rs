@@ -1,7 +1,7 @@
 //! The decoded-request + responder pair that crosses the listener → host thread
 //! boundary (GTW-736).
 
-use gdtf_qa_protocol::envelope::{QaRequest, QaResponse};
+use gdtf_qa_protocol::message::{QaRequest, QaResponse};
 
 use super::Responder;
 

@@ -52,9 +52,9 @@ use crate::states::{
 /// mapping is expressed, shared by both activation paths.
 ///
 /// Battlescape is NOT a member: GTW-742 routes the Battlescape button through
-/// [`StartBattleRequested`] (the shared start-battle request the network QA path
-/// also produces) rather than a direct `NextState` write, so its transition is
-/// applied by [`apply_start_battle`](super::super::apply_start_battle), not here.
+/// [`StartBattleRequested`] (the shared start-battle request) rather than a direct
+/// `NextState` write, so its transition is applied by
+/// [`apply_start_battle`](super::super::apply_start_battle), not here.
 #[derive(Deref, Clone, Copy, PartialEq, Eq, Debug)]
 struct MenuActionTarget(RunningState);
 

@@ -10,8 +10,9 @@ use std::{
 
 use gdtf_net_qa_transport::NetQaPort;
 use gdtf_qa_protocol::{
-    envelope::{ProtocolVersion, QaRequest, QaResponse},
+    command::{CommandArgsJson, CommandName},
     framing::{FrameDecoder, encode},
+    message::{ProtocolVersion, QaRequest, QaResponse, RunCommand},
 };
 
 use crate::support::{ClientResult, TestError};
@@ -67,6 +68,15 @@ impl Client {
     }
 }
 
+/// A `Run` naming a command the editor does not offer — the third exchange, which must reach
+/// the editor's OWN drain rather than the listener thread.
+pub(crate) fn run_a_command_the_editor_has_not_built() -> QaRequest {
+    QaRequest::Run(RunCommand::new(
+        CommandName::from_static("editor.phase"),
+        CommandArgsJson::new("{}".to_owned()),
+    ))
+}
+
 /// A version one above the one both hosts speak — the value a mismatched client sends.
 pub(crate) fn wrong_version() -> ProtocolVersion {
     ProtocolVersion::new(*ProtocolVersion::CURRENT + 1)
@@ -86,7 +96,7 @@ pub(crate) fn exchange_while_editing(port: NetQaPort) -> ClientResult {
     Ok(vec![
         client.exchange(&QaRequest::Hello(ProtocolVersion::CURRENT))?,
         client.exchange(&QaRequest::Hello(wrong_version()))?,
-        client.exchange(&QaRequest::GetAppFlow)?,
+        client.exchange(&run_a_command_the_editor_has_not_built())?,
     ])
 }
 

@@ -1,12 +1,11 @@
 //! The editor's screenshot capture pump (GTW-880).
 //!
-//! [`drive_editor_screenshots`] claims each routed
-//! [`TakeScreenshot`](gdtf_qa_protocol::envelope::QaRequest::TakeScreenshot) the editor's
-//! router queued, hands it a UNIQUE, confined output path under [`EditorQaShotDir`], lets the
+//! [`drive_editor_screenshots`] claims each queued capture, hands it a UNIQUE, confined
+//! output path under [`EditorQaShotDir`], lets the
 //! shell settle, spawns the REAL render capture ([`spawn_capture`] — a `Screenshot` plus
 //! `save_to_disk`, the `gdtf_screenshot` machinery), and then POLLS the disk across frames — replying
-//! [`Saved`](ScreenshotResult::Saved) ONLY once the PNG verifiably lands ([`inspect_shot`]:
-//! exists, non-empty, decodes) or [`TimedOut`](ScreenshotResult::TimedOut) once its poll
+//! with the PNG as an attachment ONLY once it verifiably lands ([`inspect_shot`]:
+//! exists, non-empty, decodes) or [`Timeout`](QaError::Timeout) once its poll
 //! budget elapses.
 //!
 //! ## Why the reply can never come before the PNG
@@ -30,8 +29,12 @@
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_net_qa_transport::{PendingQueue, Responder};
 use gdtf_qa_protocol::{
-    envelope::{QaResponse, ScreenshotPathNet, ScreenshotResult},
+    command::{
+        ArtifactPath, AttachmentKind, CommandOutcome, CommandReplyJson, RefusalNote,
+        ReplyAttachment, UnavailableCode,
+    },
     ids::ShotName,
+    message::{QaError, QaResponse},
 };
 use gdtf_screenshot::CapturePath;
 
@@ -186,10 +189,29 @@ fn claim_one(
     }
 }
 
-/// Advance every in-flight capture one frame: spawn a settled capture, reply
-/// [`Saved`](ScreenshotResult::Saved) once a spawned capture's PNG verifiably landed,
-/// [`TimedOut`](ScreenshotResult::TimedOut) once its poll budget elapses, and keep the rest
-/// for the next frame.
+/// The reply body a landed capture carries.
+///
+/// The PNG itself rides as a [`ReplyAttachment`], which is how the command layer hands a file
+/// back without the courier knowing what a screenshot is. There is no other body to report
+/// yet — the editor command that declares one is the editor-host ticket — so the body is JSON
+/// `null` rather than an invented shape.
+const CAPTURE_REPLY_BODY: &str = "null";
+
+/// The reply for a capture that verifiably landed at `path`.
+fn landed_reply(path: &CapturePath) -> QaResponse {
+    QaResponse::Outcome(CommandOutcome::Ran {
+        reply:       CommandReplyJson::new(CAPTURE_REPLY_BODY.to_owned()),
+        attachments: vec![ReplyAttachment::new(
+            AttachmentKind::Png,
+            ArtifactPath::new(path.to_string_lossy().into_owned()),
+        )],
+    })
+}
+
+/// Advance every in-flight capture one frame: spawn a settled capture, hand back the PNG as
+/// an attachment once a spawned capture verifiably landed, answer
+/// [`Timeout`](QaError::Timeout) once its poll budget elapses, and keep the rest for the next
+/// frame.
 fn advance_in_flight(
     in_flight: &mut EditorInFlightShots,
     budget: EditorShotPollBudget,
@@ -214,9 +236,11 @@ fn advance_in_flight(
                             "editor net_qa: refusing a screenshot of an offscreen target nothing \
                              renders into",
                         );
-                        shot.responder.reply(QaResponse::Screenshot(
-                            ScreenshotResult::TargetNotRendered(detail),
-                        ));
+                        shot.responder
+                            .reply(QaResponse::Outcome(CommandOutcome::Unavailable {
+                                code: UnavailableCode::WrongState,
+                                note: RefusalNote::from_owned(detail.as_str().to_owned()),
+                            }));
                         continue;
                     }
                     spawn_capture(&shot.path, source, commands);
@@ -226,9 +250,7 @@ fn advance_in_flight(
             }
             ShotStage::Capturing(remaining) => match inspect_shot(&shot.path) {
                 ShotFile::Ready => {
-                    let saved = ScreenshotPathNet::new(shot.path.to_string_lossy().into_owned());
-                    shot.responder
-                        .reply(QaResponse::Screenshot(ScreenshotResult::Saved(saved)));
+                    shot.responder.reply(landed_reply(&shot.path));
                 }
                 ShotFile::NotReady => match remaining.tick() {
                     FrameTick::Expired => {
@@ -236,8 +258,7 @@ fn advance_in_flight(
                             path = %shot.path.display(),
                             "editor net_qa: screenshot capture timed out",
                         );
-                        shot.responder
-                            .reply(QaResponse::Screenshot(ScreenshotResult::TimedOut));
+                        shot.responder.reply(QaResponse::Error(QaError::Timeout));
                     }
                     FrameTick::Live => kept.push(shot),
                 },

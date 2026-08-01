@@ -6,7 +6,7 @@ use gdtf_qa_protocol::{
     command::{
         ArtifactPath, AttachmentKind, CommandOutcome, RefusalNote, ReplyAttachment, UnavailableCode,
     },
-    envelope::QaResponse,
+    message::QaResponse,
 };
 
 use crate::{

@@ -32,7 +32,7 @@ use bevy::prelude::*;
 /// retired the `GDTF_AUTOBATTLE` auto-enter-battle drive and the `GDTF_CAPTURE_*` /
 /// `GDTF_FIRE_AT_FRAME` / `GDTF_FIRE_MODE` env-var capture/drive rig outright, so a
 /// coding-agent QA harness now boots the game and drives it entirely over this channel
-/// (`launch_game` → `StartBattle` → `send_input` / `screenshot_after` → `stop_game`).
+/// (`launch` → `commands` → `run` → `stop`).
 ///
 /// GTW-510: the interactive F10 screenshot keybind (captures the primary window to a
 /// timestamped `target/screenshots/game-<secs>.png` without exiting) rides the SAME

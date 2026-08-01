@@ -3,7 +3,7 @@
 use std::collections::VecDeque;
 
 use bevy::prelude::*;
-use gdtf_qa_protocol::envelope::{QaError, QaResponse};
+use gdtf_qa_protocol::message::{QaError, QaResponse};
 
 use super::deadline::{DEADLINE_BUDGET, DeadlineTick, FrameDeadline};
 use crate::channel::Responder;

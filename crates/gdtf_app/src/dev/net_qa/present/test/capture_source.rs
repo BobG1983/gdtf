@@ -10,9 +10,11 @@ use gdtf_net_qa_transport::{PendingQueue, Responder};
 
 use super::harness::headless_windowed_app;
 use crate::dev::net_qa::{
-    pending::ScreenshotPayload,
     present::CapturePresentPlugin,
-    screenshot::{InFlightShots, QaShotDir, ShotPollBudget, ShotSequence, drive_screenshots},
+    screenshot::{
+        InFlightShots, QaShotDir, ScreenshotPayload, ShotPollBudget, ShotSequence,
+        drive_screenshots,
+    },
 };
 
 /// Register the T7 pump's resources (confined to `dir`, tiny budget) + the pump system so a

@@ -2964,7 +2964,6 @@ name = "gdtf_qa_mcp"
 version = "0.1.0"
 dependencies = [
  "gdtf_qa_protocol",
- "ron",
  "serde",
  "serde_json",
 ]

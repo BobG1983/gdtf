@@ -15,13 +15,13 @@ use std::{
 };
 
 use gdtf_qa_mcp::{
-    HostLifecycle, HostPair, HostSet, LaunchOutcome, LaunchSpec, McpError, QaClient, QaLink,
-    QaPort, StopOutcome, WorkingDir, dispatch,
+    HostLifecycle, HostPair, HostSet, LaunchOutcome, LaunchSpec, McpError, OutputTail, QaClient,
+    QaLink, QaPort, StopOutcome, TailLines, WorkingDir, dispatch,
 };
 use gdtf_qa_protocol::{
-    envelope::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
+    command::CommandCatalogue,
     framing::{FrameDecoder, encode},
-    view::{AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet},
+    message::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
 };
 use serde_json::Value;
 
@@ -43,6 +43,10 @@ impl HostLifecycle for NoLifecycle {
     }
 
     fn child_working_dir(&self) -> Option<WorkingDir> {
+        None
+    }
+
+    fn child_output(&self, _max: TailLines) -> Option<OutputTail> {
         None
     }
 }
@@ -85,7 +89,7 @@ fn spawn_fake_game_with(answerer: fn(&QaRequest) -> QaResponse) -> (u16, Receive
 ///
 /// It answers a `Hello` whose version matches with `HelloOk` and refuses one that differs,
 /// exactly as the real listener does — the client MUST negotiate before it sends anything
-/// else (GTW-940), so a fake that answered a bare `GetAppFlow` would prove nothing about the
+/// else (GTW-940), so a fake that answered a bare `Catalogue` would prove nothing about the
 /// real path.
 fn serve_one(
     listener: &TcpListener,
@@ -134,19 +138,15 @@ fn answer(request: &QaRequest) -> QaResponse {
             ))
         }
         QaRequest::Hello(_) => QaResponse::Error(QaError::VersionMismatch),
-        QaRequest::GetAppFlow => QaResponse::AppFlow(AppFlowView::new(
-            AppStateNet::Running,
-            BattleActiveNet::new(true),
+        QaRequest::Catalogue => QaResponse::Catalogue(CommandCatalogue::new(
+            ServerNameNet::new("fake-game".to_owned()),
             Vec::new(),
-            CaughtUpNet::new(true),
-            None,
-            None,
         )),
-        _ => QaResponse::Error(QaError::BadRequest),
+        QaRequest::Run(_) => QaResponse::Error(QaError::Malformed),
     }
 }
 
-/// The real client + real framing carry a `tools/call app_flow` to the fake server and
+/// The real client + real framing carry a `tools/call commands` to the fake server and
 /// back, and the reply renders as the expected content.
 ///
 /// It also pins the ORDER the server saw: the client's very first frame on the connection is
@@ -154,7 +154,7 @@ fn answer(request: &QaRequest) -> QaResponse {
 /// the real listener a tool request sent first would come back
 /// [`NotNegotiated`](QaError::NotNegotiated) (GTW-940).
 #[test]
-fn app_flow_round_trips_through_the_real_client() {
+fn a_catalogue_round_trips_through_the_real_client() {
     let (port, seen) = spawn_fake_game();
     let mut client = QaClient::new(QaPort::new(port));
     let mut unused_editor = DeadLink;
@@ -163,17 +163,17 @@ fn app_flow_round_trips_through_the_real_client() {
         HostPair::new(&mut client, &mut game_life),
         HostPair::new(&mut unused_editor, &mut editor_life),
     );
-    let line = r#"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"app_flow","arguments":{}}}"#;
+    let line = r#"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"commands","arguments":{}}}"#;
     let Some(response) = dispatch(line, &mut hosts) else {
         unreachable!("tools/call yields a response");
     };
     let parsed: Value = serde_json::from_str(&response).unwrap_or(Value::Null);
     assert_eq!(parsed["result"]["isError"], serde_json::json!(false));
     let Some(text) = parsed["result"]["content"][0]["text"].as_str() else {
-        unreachable!("the app_flow reply renders as text content: {parsed}");
+        unreachable!("the catalogue reply renders as text content: {parsed}");
     };
-    assert!(text.contains("Running"), "rendered: {text}");
-    assert!(text.contains("battle_active"), "rendered: {text}");
+    assert!(text.contains("fake-game"), "rendered: {text}");
+    assert!(text.contains("commands"), "rendered: {text}");
 
     let first = seen.recv().ok();
     assert!(
@@ -182,7 +182,7 @@ fn app_flow_round_trips_through_the_real_client() {
     );
     let second = seen.recv().ok();
     assert!(
-        matches!(second, Some(QaRequest::GetAppFlow)),
+        matches!(second, Some(QaRequest::Catalogue)),
         "the tool's request must follow the handshake, got {second:?}"
     );
 }
@@ -200,7 +200,7 @@ fn a_refused_handshake_fails_the_request_and_sends_nothing_else() {
     let (port, seen) = spawn_fake_game_with(refuse_everything);
     let mut client = QaClient::new(QaPort::new(port));
 
-    let result = client.request(QaRequest::GetAppFlow);
+    let result = client.request(QaRequest::Catalogue);
     assert!(
         matches!(result, Err(McpError::Handshake(QaError::VersionMismatch))),
         "a version-mismatched child must surface as a handshake error, got {result:?}"

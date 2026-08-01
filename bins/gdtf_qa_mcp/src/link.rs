@@ -24,8 +24,8 @@ use std::{
 };
 
 use gdtf_qa_protocol::{
-    envelope::{ProtocolVersion, QaRequest, QaResponse},
     framing::{FrameDecoder, encode},
+    message::{ProtocolVersion, QaRequest, QaResponse},
 };
 
 use crate::{error::McpError, hosts::QaHost};
@@ -150,7 +150,7 @@ impl Connection {
     /// Negotiate the protocol version on this freshly opened connection (GTW-940).
     ///
     /// The listener answers every non-`Hello` frame on a connection that has not negotiated
-    /// with [`NotNegotiated`](gdtf_qa_protocol::envelope::QaError::NotNegotiated), so this is
+    /// with [`NotNegotiated`](gdtf_qa_protocol::message::QaError::NotNegotiated), so this is
     /// what makes the connection able to carry a tool's request at all. It runs inside
     /// [`ensure_connected`](QaClient::ensure_connected), so a reconnect re-negotiates too.
     ///

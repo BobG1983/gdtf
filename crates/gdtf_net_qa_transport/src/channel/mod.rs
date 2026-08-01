@@ -1,7 +1,7 @@
 //! The request/response channel plumbing between the listener thread and the host
 //! (GTW-736; lifted in GTW-803).
 //!
-//! The listener thread decodes a [`QaRequest`](gdtf_qa_protocol::envelope::QaRequest) off
+//! The listener thread decodes a [`QaRequest`](gdtf_qa_protocol::message::QaRequest) off
 //! the socket and hands it to the host side as an [`IncomingRequest`] carrying a
 //! [`Responder`] — the one-shot reply channel back to the socket. The [`NetInbox`] resource
 //! holds the receiving end.

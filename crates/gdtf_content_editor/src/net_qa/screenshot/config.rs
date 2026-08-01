@@ -38,7 +38,7 @@ impl Default for EditorShotSettle {
 }
 
 /// How many frames a spawned capture may poll the disk before the pump gives up and reports
-/// [`TimedOut`](gdtf_qa_protocol::envelope::ScreenshotResult::TimedOut).
+/// [`Timeout`](gdtf_qa_protocol::message::QaError::Timeout).
 ///
 /// Named-newtype [`Resource`] over the shared [`PollCap`] (no-bare-types); the inner is
 /// PRIVATE. The [`Default`] is [`PollCap::DEFAULT`] — generous for a real GPU readback, and

@@ -10,8 +10,8 @@
 //!
 //! This crate is DEV / DEBUG infrastructure. It carries no gate of its own — the consuming crate
 //! adds it behind its own debug/dev feature gate (`gdtf_app` gates it on
-//! `cfg!(all(debug_assertions, feature = "net_qa"))`, reusing it for the T7 `net_qa` screenshot
-//! pump, the T15 `screenshot_after` deferred capture, the loading-screen QA hook, and the F10
+//! `cfg!(all(debug_assertions, feature = "net_qa"))`, reusing it for the `net_qa` screenshot
+//! pump, the loading-screen QA hook, and the F10
 //! keybind) or a `cfg!(debug_assertions)` keybind gate, so it is compiled OUT of release.
 //!
 //! ## What it exposes

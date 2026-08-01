@@ -2,7 +2,7 @@
 //!
 //! Four optional arguments name what to launch — `package`, `features`, `working_dir`,
 //! `env` — and each omitted one falls back to the HOST'S OWN default recipe, so a bare
-//! `launch_game` launches the game and a bare `launch_editor` launches the editor, each
+//! `launch` launches the game and a bare `launch(host="editor")` launches the editor, each
 //! over its own QA channel. Every rejection is a message the caller sees as
 //! invalid-params, never a silent default: a typo'd working directory that quietly
 //! launched the wrong checkout is the exact failure this parsing exists to remove.
@@ -130,7 +130,7 @@ mod tests {
     use super::parse_launch_spec;
     use crate::lifecycle::LaunchSpec;
 
-    /// Parse against the GAME's defaults — what `launch_game` does.
+    /// Parse against the GAME's defaults — what a `launch` naming no host does.
     fn parse_game(args: &serde_json::Value) -> Result<LaunchSpec, String> {
         parse_launch_spec(&LaunchSpec::game_default(), args)
     }
@@ -211,7 +211,7 @@ mod tests {
         assert!(message.contains("working_dir"), "message: {message}");
     }
 
-    /// A bare `launch_editor` gets the EDITOR's recipe, not the game's — the defaults are
+    /// A bare `launch(host="editor")` gets the EDITOR's recipe, not the game's — the defaults are
     /// the host's, not a single hardcoded set (GTW-808).
     #[test]
     fn empty_arguments_against_the_editor_defaults_are_the_editor_recipe() {

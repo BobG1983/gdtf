@@ -5,7 +5,7 @@ use core::time::Duration;
 use std::{collections::VecDeque, time::Instant};
 
 use bevy::prelude::*;
-use gdtf_qa_protocol::envelope::{QaError, QaResponse};
+use gdtf_qa_protocol::message::{QaError, QaResponse};
 
 use super::CommandResponder;
 use crate::command::QaCommand;

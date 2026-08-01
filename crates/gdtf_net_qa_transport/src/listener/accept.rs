@@ -12,8 +12,8 @@ use std::{
 };
 
 use gdtf_qa_protocol::{
-    envelope::{HelloFacts, QaError, QaResponse},
     framing::encode,
+    message::{HelloFacts, QaError, QaResponse},
 };
 
 use super::serve::handle_client;
@@ -24,7 +24,7 @@ use crate::{channel::IncomingRequest, config::NetIoTimeout};
 ///
 /// `facts` are the HOST's handshake facts — the protocol version it speaks and the name it
 /// identifies itself as. They are taken here, rather than being answered by each host's
-/// router, because the listener thread answers every [`Hello`](gdtf_qa_protocol::envelope::QaRequest::Hello)
+/// router, because the listener thread answers every [`Hello`](gdtf_qa_protocol::message::QaRequest::Hello)
 /// itself (GTW-940): a `Hello` never reaches a host inbox, and every other request is refused
 /// [`NotNegotiated`](QaError::NotNegotiated) until one succeeds. A whole [`HelloFacts`] rather
 /// than a bare version, because the server NAME is per-host policy (the game's `SERVER_NAME`,

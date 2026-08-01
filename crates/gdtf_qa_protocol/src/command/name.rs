@@ -6,7 +6,7 @@ use bevy_derive::Deref;
 use serde::{Deserialize, Serialize};
 
 /// A command's **name** — the word a client puts in a
-/// [`RunCommand`](crate::envelope::RunCommand).
+/// [`RunCommand`](crate::message::RunCommand).
 ///
 /// A private-inner newtype over `Cow<'static, str>` (no-bare-types), serde-transparent so
 /// it rides the wire as a plain string. The `Cow` is what lets a host declare it as an

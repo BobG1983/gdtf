@@ -27,16 +27,16 @@
 //! [`hello_negotiates_over_the_real_editor_listener`] drives the editor to
 //! [`EditorState::Editing`](gdtf_content_editor::EditorState::Editing) through its own asset pass
 //! first, then runs three exchanges over ONE connection: `Hello(CURRENT)` negotiates,
-//! `Hello(CURRENT + 1)` is refused `VersionMismatch`, and `GetAppFlow` is refused `BadRequest`
-//! (the editor runs no battle).
+//! `Hello(CURRENT + 1)` is refused `VersionMismatch`, and a `Run` naming a command the editor
+//! has not built comes back `Unknown` (its command set is the next editor ticket).
 //!
 //! Since GTW-940 the first two of those are answered in the LISTENER THREAD, from the facts
 //! [`NetQaEditorPlugin`](gdtf_content_editor::NetQaEditorPlugin) hands
 //! [`run_listener`](gdtf_net_qa_transport::run_listener) — so what they pin here is that the
 //! editor hands over ITS OWN facts (the reply names `gdtf-editor-net-qa`, never the game).
 //! The third still exercises the editor's drain, and now also proves the connection genuinely
-//! negotiated: a `GetAppFlow` on a connection that had not would come back `NotNegotiated`
-//! from the transport instead of `BadRequest` from the editor.
+//! negotiated: a `Run` on a connection that had not would come back `NotNegotiated` from the
+//! transport instead of `Unknown` from the editor.
 //!
 //! The three GTW-896 cases put ONE request each on the wire while the editor is still in
 //! [`EditorState::Load`](gdtf_content_editor::EditorState::Load) — the state an agent's
@@ -55,8 +55,8 @@
 //!   connection now opens with (GTW-940) is not such an exchange — the listener thread answers
 //!   it without the drain running, so it spends no frame.
 //! - The reply is paired with the editor state of the frame that answered it (`drive.rs`), and
-//!   [`hello_load_readiness_matches_the_editor_state`] cross-checks that pairing against the
-//!   readiness the editor itself puts on the wire.
+//!   [`the_editors_own_drain_answers_while_it_is_still_loading`] cross-checks that pairing
+//!   against a reply only the editor's own drain can produce.
 //!
 //! ## Members (one concern per file)
 //!
@@ -77,12 +77,11 @@ mod support;
 
 use std::{sync::mpsc, thread};
 
-use gdtf_qa_protocol::envelope::{ProtocolVersion, QaRequest};
+use gdtf_qa_protocol::message::{ProtocolVersion, QaRequest};
 
 use crate::{
     assertions::{
-        assert_hello_ok, assert_readiness_matches_state, assert_unsupported,
-        assert_version_mismatch,
+        assert_editor_catalogue, assert_hello_ok, assert_unknown_command, assert_version_mismatch,
     },
     client::{exchange_while_editing, wrong_version},
     drive::drive_until_batched,
@@ -109,10 +108,10 @@ fn hello_negotiates_over_the_real_editor_listener() -> TestResult {
         let _sent = tx.send(exchange_while_editing(port));
     });
 
-    let [hello, mismatch, unsupported] = drive_until_batched(&mut app, &rx)?;
+    let [hello, mismatch, unknown] = drive_until_batched(&mut app, &rx)?;
     assert_hello_ok(&hello);
     assert_version_mismatch(&mismatch);
-    assert_unsupported(&unsupported);
+    assert_unknown_command(&unknown);
     Ok(())
 }
 
@@ -146,17 +145,17 @@ fn a_wrong_version_is_refused_while_the_editor_is_still_loading() -> TestResult 
     Ok(())
 }
 
-/// GTW-896: the wire's own account of the same window — the readiness the editor reports to a
-/// polling client is the state its own machine was in on the answering frame.
+/// GTW-896: the wire's own account of the same window — the editor's OWN drain answers a
+/// request while its asset pass is still running (GTW-943 retargeted this off the deleted
+/// readiness reply onto the catalogue).
 ///
 /// This is what makes the two cases above readings of the editor rather than of the test's
-/// bookkeeping: the state they tag their reply with is the state the editor itself publishes.
+/// bookkeeping: the reply comes from a system the editor runs under its own state machine,
+/// not from the listener thread.
 #[test]
-fn hello_load_readiness_matches_the_editor_state() -> TestResult {
-    let (reply, during) = reply_answered_during_load(
-        QaRequest::GetEditorQueryOptions,
-        "the readiness options request",
-    )?;
-    assert_readiness_matches_state(&reply, during.as_ref());
+fn the_editors_own_drain_answers_while_it_is_still_loading() -> TestResult {
+    let (reply, during) =
+        reply_answered_during_load(QaRequest::Catalogue, "the catalogue request")?;
+    assert_editor_catalogue(&reply, during.as_ref());
     Ok(())
 }

@@ -8,9 +8,9 @@
 //!   `JoinHandle`, and it runs (with no in-app shutdown / `AppExit` teardown) until the
 //!   process exits and the OS reaps it — a dev-only QA channel's lifetime IS the app's. The
 //!   full rationale is on [`run_listener`](gdtf_net_qa_transport::run_listener).
-//! - Registers the transport half ([`register_transport`]: the typed pending queues, the
-//!   pump state, the deadline sweeps + the always-on router) and then every per-request
-//!   consumer ([`register_consumers`]).
+//! - Registers the transport half ([`register_transport`]: the capture queue, the pump's
+//!   cross-frame state, the always-on router and the game's command set) and then the one
+//!   consumer that hangs off it, the capture pump ([`register_consumers`]).
 
 use std::{net::TcpListener, sync::mpsc, thread};
 
@@ -158,10 +158,10 @@ fn serve(app: &mut App, listener: TcpListener, io_timeout: NetIoTimeout) {
     register_transport(app);
     register_consumers(app);
     // GTW-764: retarget the game cameras to an offscreen image + blit it back to
-    // the window, so `TakeScreenshot` / `ScreenshotAfter` capture pixels the render
-    // graph writes every tick — a backgrounded macOS window's swapchain reads back
-    // BLACK. Only the listener arms get it (the router-only test arm and a
-    // non-`net_qa` / release build render the normal window swapchain path).
+    // the window, so a QA capture reads pixels the render graph writes every tick
+    // — a backgrounded macOS window's swapchain reads back BLACK. Only the
+    // listener arms get it (the router-only test arm and a non-`net_qa` / release
+    // build render the normal window swapchain path).
     app.add_plugins(CapturePresentPlugin);
 }
 

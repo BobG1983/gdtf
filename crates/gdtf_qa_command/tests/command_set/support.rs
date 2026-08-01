@@ -5,7 +5,7 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 
 use gdtf_qa_protocol::{
     command::{CommandArgsJson, CommandOutcome, RunOptions},
-    envelope::QaResponse,
+    message::QaResponse,
 };
 
 /// A call's arguments, from JSON text.

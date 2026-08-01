@@ -17,8 +17,8 @@ use std::{
 };
 
 use gdtf_qa_protocol::{
-    envelope::{HelloFacts, ProtocolVersion, QaRequest, QaResponse, ServerNameNet},
     framing::{FrameDecoder, encode},
+    message::{HelloFacts, ProtocolVersion, QaRequest, QaResponse, ServerNameNet},
 };
 
 use crate::{

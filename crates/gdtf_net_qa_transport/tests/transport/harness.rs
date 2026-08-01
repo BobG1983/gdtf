@@ -13,8 +13,8 @@ use gdtf_net_qa_transport::{
     IncomingRequest, NetIoTimeout, NetQaPort, bind_listener, run_listener,
 };
 use gdtf_qa_protocol::{
-    envelope::{HelloFacts, ProtocolVersion, QaRequest, QaResponse, ServerNameNet},
     framing::{FrameDecoder, encode},
+    message::{HelloFacts, ProtocolVersion, QaRequest, QaResponse, ServerNameNet},
 };
 
 /// A boxed error so a test's `?` can span both `io::Error` and the codec `WireError`.

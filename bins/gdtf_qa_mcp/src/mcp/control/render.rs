@@ -5,7 +5,8 @@ use serde_json::{Value, json};
 use crate::{
     hosts::QaHost,
     lifecycle::{
-        BootTimeout, LaunchFailure, LaunchOutcome, LaunchSpec, OrphanPid, StderrTail, StopOutcome,
+        BootTimeout, FailureTail, LaunchFailure, LaunchOutcome, LaunchSpec, OrphanPid, OutputTail,
+        StopOutcome, TailLines,
     },
     link::QaPort,
     mcp::content::{text_content, tool_error},
@@ -53,7 +54,7 @@ fn resolved_working_dir(spec: &LaunchSpec) -> String {
     )
 }
 
-/// A human-readable message for a launch failure, carrying the child's stderr tail — or,
+/// A human-readable message for a launch failure, carrying the child's output tail — or,
 /// for a recipe mismatch, both the running recipe and the `requested` one.
 fn launch_failure_message(host: QaHost, failure: &LaunchFailure, requested: &LaunchSpec) -> String {
     let label = host.label();
@@ -91,7 +92,8 @@ fn launch_failure_message(host: QaHost, failure: &LaunchFailure, requested: &Lau
         ),
         LaunchFailure::Timeout { tail, waited } => timeout_message(host, *waited, requested, tail),
         LaunchFailure::ExitedEarly(tail) => format!(
-            "the {label} exited before it became ready. stderr tail:\n{}",
+            "the {label} exited before it became ready. output tail (stdout and stderr, \
+             interleaved):\n{}",
             tail.as_str()
         ),
     }
@@ -102,14 +104,14 @@ fn launch_failure_message(host: QaHost, failure: &LaunchFailure, requested: &Lau
 ///
 /// A launcher's wait covers two very different things: `cargo` compiling the package, and
 /// the compiled binary booting. Only the first one takes minutes, and it is invisible in
-/// the child's stderr tail unless the reader already knows to look for `Compiling` lines.
+/// the child's output tail unless the reader already knows to look for `Compiling` lines.
 /// Saying so, with the exact command that removes the wait, is the difference between a
 /// diagnosable failure and a mystery.
 fn timeout_message(
     host: QaHost,
     waited: BootTimeout,
     requested: &LaunchSpec,
-    tail: &StderrTail,
+    tail: &FailureTail,
 ) -> String {
     let label = host.label();
     let features = requested
@@ -121,8 +123,8 @@ fn timeout_message(
          the BUILD, not the app: this launch runs `cargo run -p {}{features}`, and a \
          recipe that has never been compiled in {} spends that whole wait compiling before \
          it can bind a port. Warm it first with `cargo build -p {}{features}` in that \
-         directory and launch again; the stderr tail below shows how far the build got. \
-         stderr tail:\n{}",
+         directory and launch again; the output tail below shows how far the build got. \
+         output tail (stdout and stderr, interleaved):\n{}",
         *waited,
         requested.package().as_str(),
         resolved_working_dir(requested),
@@ -186,4 +188,30 @@ fn orphan_held_message(host: QaHost, port: QaPort, pid: OrphanPid) -> String {
             *port
         ),
     }
+}
+
+/// Render a `logs` outcome as an MCP content block.
+///
+/// A host that owns no child answers `not_running` rather than an empty log: "this process
+/// printed nothing" and "there is no process" are different facts, and a caller acts on them
+/// differently. A child that really has printed nothing yet answers an empty `lines` list
+/// under `running`, which says so honestly.
+pub(super) fn render_logs(host: QaHost, max: TailLines, tail: Option<&OutputTail>) -> Value {
+    let Some(tail) = tail else {
+        return text_content(&json!({
+            "status": "not_running",
+            "host": host.label(),
+        }));
+    };
+    let lines: Vec<&str> = if tail.is_empty() {
+        Vec::new()
+    } else {
+        tail.lines().collect()
+    };
+    text_content(&json!({
+        "status": "running",
+        "host": host.label(),
+        "max_lines": *max,
+        "lines": lines,
+    }))
 }

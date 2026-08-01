@@ -1,8 +1,8 @@
 //! The small value types the game-lifecycle layer talks in (GTW-745).
 //!
 //! Newtypes over the plumbing primitives (no-bare-types): the child's [`ChildPid`], the
-//! captured [`StderrTail`], a [`SpawnError`] message, and the four `Duration` knobs the
-//! launch/stop logic waits on. Plus the two status answers the polling loops read —
+//! captured [`FailureTail`] and [`OutputTail`] with the [`TailLines`] cap a caller asks for,
+//! a [`SpawnError`] message, and the four `Duration` knobs the launch/stop logic waits on. Plus the two status answers the polling loops read —
 //! [`ChildStatus`] (has the child exited?) and [`Readiness`] (is the game answering?).
 
 use core::{ops::Deref, time::Duration};
@@ -30,24 +30,84 @@ impl Deref for ChildPid {
     }
 }
 
-/// The tail of a failed child's captured standard-error output.
+/// The whole retained output of a failed child — the launch failure's diagnosis.
 ///
 /// Private-inner newtype over `String` (no-bare-types). When a launch fails, this carries
-/// the last lines the child wrote to stderr so a caller sees WHY it never came up, instead
-/// of a bare "boot failed".
+/// every line the child wrote that the ring still holds, so a caller sees WHY it never came
+/// up instead of a bare "boot failed". BOTH pipes feed that ring, so the text interleaves
+/// stdout with stderr in the order the child wrote them — which is why the name says
+/// FAILURE, not stderr (GTW-943).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
-pub struct StderrTail(String);
+pub struct FailureTail(String);
 
-impl StderrTail {
-    /// Build a stderr tail from the captured text.
+impl FailureTail {
+    /// Build a failure tail from the captured text.
     #[must_use]
     pub const fn new(tail: String) -> Self {
         Self(tail)
     }
 }
 
-impl Deref for StderrTail {
+impl Deref for FailureTail {
     type Target = String;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+/// The tail of a running child's captured output — stdout and stderr interleaved.
+///
+/// Private-inner newtype over `String` (no-bare-types). Distinct from [`FailureTail`], which
+/// is the whole retained ring a FAILED launch reports as its diagnosis: this is the last N
+/// lines a caller asked the `logs` tool for, from a child that is (usually) still running.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub struct OutputTail(String);
+
+impl OutputTail {
+    /// Build an output tail from the captured text.
+    #[must_use]
+    pub const fn new(tail: String) -> Self {
+        Self(tail)
+    }
+}
+
+impl Deref for OutputTail {
+    type Target = String;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+/// How many trailing output lines a caller asked for.
+///
+/// Private-inner newtype over `usize` (no-bare-types). A caller that names none gets
+/// [`DEFAULT`](Self::DEFAULT), which is enough to see what a child has been doing without
+/// pushing kilobytes of log through one tool reply.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TailLines(usize);
+
+impl TailLines {
+    /// The tail a call that names no cap gets.
+    pub const DEFAULT: Self = Self(120);
+
+    /// Build a line cap from the count a caller asked for.
+    #[must_use]
+    pub const fn new(lines: usize) -> Self {
+        Self(lines)
+    }
+}
+
+impl Default for TailLines {
+    /// The wiring default: [`TailLines::DEFAULT`].
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+impl Deref for TailLines {
+    type Target = usize;
 
     fn deref(&self) -> &Self::Target {
         &self.0

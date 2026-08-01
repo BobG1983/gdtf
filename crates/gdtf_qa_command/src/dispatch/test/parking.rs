@@ -6,7 +6,7 @@
 //! is exercised here.
 
 use gdtf_net_qa_transport::Responder;
-use gdtf_qa_protocol::{command::CommandOutcome, envelope::QaResponse};
+use gdtf_qa_protocol::{command::CommandOutcome, message::QaResponse};
 
 use crate::{
     dispatch::{CommandResponder, DeferredDelivery, DeferredReplies},

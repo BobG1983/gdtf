@@ -245,8 +245,8 @@ pub use mode::EditorMode;
 // suite can pin a temp directory, a short settle and an offscreen source.
 #[cfg(all(debug_assertions, feature = "net_qa"))]
 pub use net_qa::{
-    EDITOR_QA_SERVER_NAME, EditorNetQaSystems, EditorQaShotDir, EditorShotPollBudget,
-    EditorShotSettle, EditorShotSource, NetQaEditorPlugin,
+    EDITOR_QA_SERVER_NAME, EditorNetQaSystems, EditorQaShotDir, EditorScreenshotPayload,
+    EditorShotPollBudget, EditorShotSettle, EditorShotSource, NetQaEditorPlugin,
 };
 pub use placement::{
     EditorTileClass, IllegalReason, PlacementVerdict, ProposedPlacement, apply_placement, classify,

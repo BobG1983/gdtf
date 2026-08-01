@@ -7,29 +7,26 @@
 //! could hand back `None` for every nested level and the menu case would still pass.
 //!
 //! So this suite carries the app all the way into a battle through the REAL menu → battle
-//! descent ([`start_battle`](super::start_battle)'s fixture and the real `StartBattle`
-//! consumer), then asks over the REAL router and asserts all five levels by VALUE against the
-//! live `State<…>` resources the same app holds.
+//! descent ([`battle_fixture`](super::battle_fixture)'s app and the menu's own
+//! `StartBattleRequested`), then asks over the REAL router and asserts all five levels by
+//! VALUE against the live `State<…>` resources the same app holds.
 
 use std::sync::mpsc;
 
 use bevy::{app::App, state::state::State};
-use gdtf_app::test_support::{
-    AppState, BattleScapeState, GameState, RunningState, SHIPPED_SITUATION,
-};
+use gdtf_app::test_support::{AppState, BattleScapeState, GameState, RunningState};
 use gdtf_net_qa_transport::{IncomingRequest, Responder};
 use gdtf_qa_protocol::{
     command::{CommandArgsJson, CommandName, CommandOutcome, RunOptions},
-    envelope::{QaRequest, QaResponse, RunCommand},
-    ids::SituationRef,
+    message::{QaRequest, QaResponse, RunCommand},
 };
 use gdtf_test_utils::advance_until;
 use serde_json::Value;
 
-use super::{command_exchange::APP_PHASE, start_battle::menu_app_with_net_qa};
-
-/// The frame budget for the menu → battle descent (the same one the start-battle suite uses).
-const DRIVE_BUDGET: u32 = 128;
+use super::{
+    battle_fixture::{DRIVE_BUDGET, menu_app_with_net_qa, request_battle},
+    command_exchange::APP_PHASE,
+};
 
 /// Push a request onto the router's inbox and return the channel its reply arrives on.
 fn send(tx: &mpsc::Sender<IncomingRequest>, request: QaRequest) -> mpsc::Receiver<QaResponse> {
@@ -81,18 +78,8 @@ fn live_name<S: bevy::state::state::States + core::fmt::Debug>(app: &App) -> Opt
 fn app_phase_reports_every_live_level_from_inside_a_battle() {
     let (mut app, tx) = menu_app_with_net_qa();
 
-    let accepted = send(
-        &tx,
-        QaRequest::StartBattle {
-            situation: SituationRef::new(SHIPPED_SITUATION.to_owned()),
-            seed:      None,
-        },
-    );
+    request_battle(&mut app);
     app.update();
-    assert!(
-        matches!(accepted.try_recv(), Ok(QaResponse::AppFlow(_))),
-        "an accepted StartBattle must answer with the app-flow snapshot",
-    );
     let reached = advance_until(
         &mut app,
         |app| live_name::<BattleScapeState>(app).as_deref() == Some("BattleRunning"),

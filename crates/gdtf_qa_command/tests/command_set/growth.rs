@@ -13,7 +13,7 @@ use gdtf_qa_command::{
         fake_facts_loaded, fake_host_name, run_fake_command,
     },
 };
-use gdtf_qa_protocol::{command::CommandName, envelope::ProtocolVersion};
+use gdtf_qa_protocol::{command::CommandName, message::ProtocolVersion};
 
 use crate::support::{args, plain, ran};
 

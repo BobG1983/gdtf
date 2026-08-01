@@ -79,7 +79,8 @@ fn recorded(log: &StopLog) -> Vec<QaPort> {
 /// A manager that owns nothing, over a port a live listener holds, must NOT answer
 /// `not_running` — it answers about the orphan, and stops it.
 ///
-/// This is the reported defect: after the MCP host was replaced mid-run, `stop_editor`
+/// This is the reported defect: after the MCP host was replaced mid-run, a `stop` aimed at
+/// the editor
 /// answered `{"status":"not_running"}` while pid 43744 was still alive and still listening
 /// on 7617, and the only way out was a hand-typed `kill`.
 #[test]

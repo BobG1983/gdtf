@@ -48,7 +48,7 @@ impl CaptureRider {
     }
 }
 
-/// The riders one [`Run`](crate::envelope::QaRequest::Run) may carry — how long to wait
+/// The riders one [`Run`](crate::message::QaRequest::Run) may carry — how long to wait
 /// for admission, and whether to capture the screen afterwards.
 ///
 /// [`Default`] is both riders absent: run the command now, capture nothing. That default

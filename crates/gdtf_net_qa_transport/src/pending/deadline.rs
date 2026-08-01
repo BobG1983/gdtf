@@ -5,13 +5,13 @@
 ///
 /// A real consumer picks its queue entry up within a frame or two; this budget only bounds
 /// how long an UNCLAIMED request waits before the client gets a prompt
-/// [`Timeout`](gdtf_qa_protocol::envelope::QaError::Timeout) instead of a hang.
+/// [`Timeout`](gdtf_qa_protocol::message::QaError::Timeout) instead of a hang.
 pub(crate) const DEADLINE_BUDGET: FrameDeadline = FrameDeadline::new(4);
 
 /// A frames-remaining countdown after which an unclaimed pending request times out.
 ///
 /// Private-inner newtype over `u32` (no-bare-types): the sweep [`tick`](Self::tick)s it
-/// once per frame and answers [`Timeout`](gdtf_qa_protocol::envelope::QaError::Timeout)
+/// once per frame and answers [`Timeout`](gdtf_qa_protocol::message::QaError::Timeout)
 /// on the tick it reaches zero.
 #[derive(Debug, Clone, Copy)]
 pub(super) struct FrameDeadline(u32);

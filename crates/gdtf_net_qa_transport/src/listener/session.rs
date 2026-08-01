@@ -1,6 +1,6 @@
 //! The per-connection handshake state and the pre-handshake gate (GTW-940).
 
-use gdtf_qa_protocol::envelope::{HelloFacts, QaError, QaRequest, QaResponse};
+use gdtf_qa_protocol::message::{HelloFacts, QaError, QaRequest, QaResponse};
 
 /// Whether this connection has negotiated its protocol version yet.
 ///

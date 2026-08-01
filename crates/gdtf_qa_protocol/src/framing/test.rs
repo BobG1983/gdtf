@@ -2,8 +2,8 @@
 //! and the empty / max-size payload edges (GTW-734).
 
 use crate::{
-    envelope::{ProtocolVersion, QaRequest},
     framing::{Frame, FrameDecoder, MAX_FRAME_LEN, WireError, encode, encode_frame},
+    message::{ProtocolVersion, QaRequest},
 };
 
 /// A representative message to frame in the codec pins.
