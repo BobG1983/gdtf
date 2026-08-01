@@ -1,15 +1,58 @@
-//! [`NetIntent`] — the act vocabulary a command takes (GTW-734, moved here by GTW-943).
+//! The act vocabulary — [`NetIntent`], the acts a command takes (GTW-734, moved here by
+//! GTW-943), and [`ActSeqNet`], the log position an act's effects land at (GTW-944).
 
-use gdtf_qa_protocol::ids::CellLevelNet;
+use bevy::prelude::Deref;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::{
     act_payload::{AimNet, FacingNet, MeleeTargetNet, StanceNet},
+    cell::CellLevelNet,
     key::KeyPressNet,
     misc::FireModeIndex,
     pointer::PointerPosNet,
     token::{DoorToken, EmplacementToken, FocusTargetNet, GangerToken},
 };
+
+/// One act-log entry's **sequence number** — its position in the battle's ordered log, the
+/// wire mirror of the sim `ActSeq`.
+///
+/// **Read one from** the C8 `log.read`: every entry carries its own `seq`, and the reply's
+/// `head` / `oldest_seq` bound the window the ring still holds. The C10 acts publish them
+/// too — the shared `ActReply` answers `Accepted { from_seq, to_seq }`, which is how a
+/// caller correlates the act it asked for with the entries it produced, reaction interrupts
+/// included. Hand one back as the C8 `log.read`'s `since` cursor or the C3
+/// `wait { LogAtLeast { seq } }` condition.
+///
+/// A `u64` for the same reason the sim's is: gap detection (a cursor that fell behind the
+/// ring's oldest entry) and battle-restart detection are plain subtraction, and it cannot
+/// wrap in a session. Numbering starts at `0` and restarts per battle. A private-inner
+/// newtype (no-bare-types), serde-transparent, and `Ord` so a client can compare two
+/// cursors without unwrapping them.
+#[derive(
+    Deref,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    JsonSchema,
+)]
+#[serde(transparent)]
+pub struct ActSeqNet(u64);
+
+impl ActSeqNet {
+    /// Build a sequence number from its ordinal.
+    #[must_use]
+    pub const fn new(seq: u64) -> Self {
+        Self(seq)
+    }
+}
 
 /// One battle intent a QA client injects — the wire mirror of the `gdtf_battle_input`
 /// act vocabulary (the classic `ActIntent` variants + the eight contextual acts + the
@@ -59,8 +102,8 @@ use super::{
 /// each through the SAME windowing-input path the backend uses (a `KeyboardInput` /
 /// `CursorMoved` message, the `InputFocus` resource `sync_hover_to_focus` writes) — never a
 /// direct sim mutation, so the one-way input → presenter → sim boundary holds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub(crate) enum NetIntent {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+pub enum NetIntent {
     /// Fire the current selection's weapon in the `mode` at the `target` `(cell, storey)`
     /// (mirrors `ActIntent::Fire` — the sim `FireRequested` carries `target_cell` +
     /// `target_level`). The wire names the fire mode by index into the weapon's list,
@@ -177,8 +220,8 @@ pub(crate) enum NetIntent {
     },
     /// Point UI input focus at an entity directly (GTW-783). The game side sets the
     /// `InputFocus` resource — the same write `sync_hover_to_focus` performs — so a rejected
-    /// (stale / malformed) token comes back
-    /// a typed unknown-entity rejection, never a panic.
+    /// (stale / malformed) token comes back as a typed unknown-entity rejection, never a
+    /// panic.
     SetFocus {
         /// The entity to focus, by its wire token.
         target: FocusTargetNet,

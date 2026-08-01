@@ -155,7 +155,12 @@ impl AfterMathPhaseNet {
 /// holds the variant that sources it, so `None` is a real answer rather than a missing
 /// value: "the app is not in a running game at all" and "the app is in a running game
 /// whose layer I could not read" must not look the same to a client.
+///
+/// `deny_unknown_fields`, like every other struct-shaped type in the `wire` module: the
+/// derived schema then publishes `additionalProperties: false`, so a client generating
+/// against it is told which five keys exist and nothing else is accepted (GTW-944).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct AppPhaseNet {
     /// The top-level lifecycle phase — always present.
     app:         LifecyclePhaseNet,

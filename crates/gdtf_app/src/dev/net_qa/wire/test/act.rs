@@ -1,11 +1,10 @@
 //! Exhaustive per-variant round-trip + parity-forcing pins for [`NetIntent`] and its
 //! payload enums (GTW-734, moved into the game host by GTW-943).
 
-use gdtf_qa_protocol::ids::{CellLevelNet, CellNet, CellXNet, CellYNet, LevelNet};
-
 use crate::dev::net_qa::wire::{
     act::NetIntent,
     act_payload::{AimNet, FacingNet, MeleeTargetNet, StanceNet},
+    cell::{CellLevelNet, CellNet, CellXNet, CellYNet, LevelNet},
     key::{KeyNet, KeyPressNet, KeybindActionNet},
     misc::FireModeIndex,
     pointer::{PointerPosNet, PointerXNet, PointerYNet},
@@ -127,7 +126,7 @@ fn net_intent_is_exhaustive(intent: &NetIntent) {
 /// Every [`NetIntent`] variant round-trips through compact RON identically.
 #[test]
 fn net_intent_round_trips_every_variant() {
-    let cases = net_intent_cases();
+    let cases: Vec<NetIntent> = net_intent_cases();
     assert_eq!(
         cases.len(),
         24,

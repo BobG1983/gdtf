@@ -36,8 +36,8 @@
 //!   only after the confined PNG lands on disk.
 //! - [`plugin`] — the [`NetQaPlugin`] registration (`from_env` / `with_channels`).
 //! - [`wire`] — this host's OWN wire types: the app-phase mirrors a command's reply schema is
-//!   derived over, and the act / key / token / pointer vocabulary later commands take as
-//!   arguments (GTW-942, GTW-943).
+//!   derived over, and the cell / act / key / token / pointer / act-log vocabulary later
+//!   commands take as arguments and publish in their replies (GTW-942, GTW-943, GTW-944).
 //! - [`facts`] — [`GameFacts`](facts::GameFacts), the per-frame facts every command reads,
 //!   and the `SystemParam` that samples them once a frame (GTW-942).
 //! - [`commands`] — the ONE command list, its registration walk, and the commands
@@ -52,7 +52,10 @@ mod plugin;
 mod present;
 mod router;
 mod screenshot;
-mod wire;
+// `pub` because the crate root re-exports it as `gdtf_app::qa_wire` (GTW-944): the wire
+// vocabulary lands complete, ahead of the commands that take it, and a public path is what
+// keeps that from reading as dead code without silencing the lint.
+pub mod wire;
 
 // `NetQaPlugin` is the item the binary consumes (via the dev aggregate plugin,
 // `crate::dev::plugin`), so it re-exports in BOTH configurations at the `test-support`

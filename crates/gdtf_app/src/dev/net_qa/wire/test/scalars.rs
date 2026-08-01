@@ -1,6 +1,6 @@
 //! Round-trip + transparency pins for the scalar wire newtypes — the entity tokens, the
-//! pointer axes and the [`misc`](super::super::misc) handles (GTW-734, moved into the game
-//! host by GTW-943).
+//! [`pointer`](super::super::pointer) vocabulary and the [`misc`](super::super::misc)
+//! handles (GTW-734, moved into the game host by GTW-943).
 //!
 //! These pins moved WITH the types. `act.rs` reaches most of the tokens only as fields
 //! inside a [`NetIntent`](super::super::act::NetIntent) round-trip, and that cannot see a
@@ -10,8 +10,8 @@
 
 use super::assert_ron_round_trip;
 use crate::dev::net_qa::wire::{
-    misc::{EventCap, FireModeIndex, FrameDelay, RequestId, SeedNet, SituationRef},
-    pointer::{PointerPosNet, PointerXNet, PointerYNet},
+    misc::{FireModeIndex, FrameDelay, RequestId, SeedNet, SituationRef},
+    pointer::{MouseButtonNet, PointerPosNet, PointerXNet, PointerYNet},
     token::{DoorToken, EmplacementToken, FocusTargetNet, GangerToken},
 };
 
@@ -38,7 +38,6 @@ fn entity_tokens_round_trip() {
 #[test]
 fn scalar_handles_round_trip() {
     assert_ron_round_trip(&FireModeIndex::new(2));
-    assert_ron_round_trip(&EventCap::new(64));
     assert_ron_round_trip(&SituationRef::new("skirmish".to_owned()));
     assert_ron_round_trip(&SeedNet::new(0xDEAD_BEEF));
     assert_ron_round_trip(&FrameDelay::new(15));
@@ -57,6 +56,20 @@ fn pointer_positions_round_trip() {
     ));
 }
 
+/// Both [`MouseButtonNet`] buttons round-trip; the wildcard-free witness fails to compile
+/// the moment a third is added, forcing it into this table first.
+#[test]
+fn mouse_buttons_round_trip() {
+    for button in [MouseButtonNet::Left, MouseButtonNet::Right] {
+        match button {
+            MouseButtonNet::Left | MouseButtonNet::Right => {}
+        }
+        assert_ron_round_trip(&button);
+    }
+    assert_eq!(encoded(&MouseButtonNet::Left), "Left");
+    assert_eq!(encoded(&MouseButtonNet::Right), "Right");
+}
+
 /// Every `#[serde(transparent)]` scalar rides the wire as its BARE inner value, not a
 /// wrapper tuple — the compact-wire guarantee a round trip alone cannot see.
 ///
@@ -69,7 +82,6 @@ fn every_scalar_serializes_transparently() {
     assert_eq!(encoded(&EmplacementToken::new(9)), "9");
     assert_eq!(encoded(&FocusTargetNet::new(11)), "11");
     assert_eq!(encoded(&FireModeIndex::new(2)), "2");
-    assert_eq!(encoded(&EventCap::new(64)), "64");
     assert_eq!(
         encoded(&SituationRef::new("skirmish".to_owned())),
         "\"skirmish\""
