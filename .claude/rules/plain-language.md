@@ -17,6 +17,7 @@ Writing exists to communicate, not to sound sophisticated.
 Do not inflate ordinary ideas into architectural prose.
 
 Bad:
+
 - "The seam between these components..."
 - "The integration surface..."
 - "The operating envelope..."
@@ -65,26 +66,31 @@ Before writing a sentence, ask:
 If not, rewrite it.
 
 Prefer:
+
 - "use"
 over
 - "leverage"
 
 Prefer:
+
 - "remove"
 over
 - "deprecate" (unless you mean "keep but discourage")
 
 Prefer:
+
 - "works with"
 over
 - "integrates with"
 
 Prefer:
+
 - "limit"
 over
 - "operating envelope"
 
 Prefer:
+
 - "connection" or "interface"
 over
 - "seam"

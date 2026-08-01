@@ -50,58 +50,10 @@ cargo clippy-schema -- -D warnings
 cargo test-schema
 ```
 
-Per `.cargo/config.toml` (quoted here exactly — keep the two in step, GTW-877): the shared
-dev feature list is `grimdark_turfwar/dynamic_linking,grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa`,
-so `dclippy` = `clippy --workspace --all-targets --features <that list>`, `dtest` = `test
---workspace --features <that list>`, `dcheck` = `check --workspace --all-targets --features
-<that list>`, and `dbuild` = `build -p grimdark_turfwar --features
-dynamic_linking,file_watcher,dev_tools,net_qa` (`drun` = the same with `run`); `dbuild`
-builds+links the actual binary, which `clippy`/`test` never do — so it's the only step that
-catches an `unreachable_pub`/link error in the `grimdark_turfwar` binary. Dynamic linking
-keeps the dev/gate loop fast; `--all-features` is not used — it forces a second full bevy build for no
-lint gain. The two optional features are named on the workspace runs so their gated modules are
-never dark: `grimdark_turfwar/net_qa` reaches the GAME's `gdtf_app::dev::net_qa`, and
-`gdtf_content_editor/net_qa` reaches the EDITOR's own `gdtf_content_editor::net_qa` — a
-package-qualified feature only turns on that package's, so both must be named (GTW-877).
-CI green is **static** (no `dynamic_linking`, no `dev_tools`): fmt/clippy/test only — the
-release-binary build (`cargo build -p grimdark_turfwar --release`) is deferred to packaging, not a
-CI gate. CI's clippy and test steps DO name both `net_qa` features
-(`--features grimdark_turfwar/net_qa,gdtf_content_editor/net_qa` in
-`.github/workflows/clippy.yml` and `test.yml`), so an editor-QA regression fails a PR instead of
-going unlinted and untested (GTW-883); they add no bevy rebuild, since those runs already compile
-the editor crate and both of the feature's optional deps.
-`cargo doc` is dev/gate-only (not CI): the workspace rustdoc denies only surface under
-`cargo doc`. It runs TWICE: the default `cargo doc --workspace --no-deps`
-plus `cargo doc-full` (= `doc --workspace --no-deps --features
-grimdark_turfwar/dev_tools,grimdark_turfwar/net_qa,gdtf_content_editor/net_qa`), which enables the
-`dev_tools`/`net_qa`-gated modules so their doc comments are link-checked too — the same
-both-configs rule the `dclippy` dual gate follows (an optional feature must be checked WITH it on,
-not just off; GTW-790, GTW-877).
-Since GTW-929 those two runs gate EVERY rustdoc lint: `[workspace.lints.rustdoc]` declares
-`all = { level = "deny", priority = -1 }`, so a rustdoc warning of any kind fails the doc step.
-Before that only `broken_intra_doc_links` and `private_intra_doc_links` were fatal and every other
-rustdoc warning accumulated with both runs still exiting 0. Setting the level in `Cargo.toml`
-covers both runs by construction, so they cannot drift apart; it reaches rustdoc lints only, so
-cargo's own "output filename collision" between the `gdtf_content_editor` bin and the library crate
-of the same name is fixed at its source instead, by `doc = false` on that `[[bin]]` target (no
-built path moves). `crates/gdtf_test_utils/tests/rustdoc_lint_gate/` pins the group deny, the
-`[lints] workspace = true` opt-in in every member that deny depends on, and that `doc = false`.
-`clippy-schema` (= `clippy -p gdtf_qa_protocol --all-targets --features schema`) and
-`test-schema` (= `test -p gdtf_qa_protocol --features schema`) lint and run
-`gdtf_qa_protocol` WITH its optional `schema` feature on — the same both-configs rule again
-(GTW-939). They are **package-scoped, not workspace-wide**, because cargo builds one
-`gdtf_qa_protocol` library unit per invocation: naming `gdtf_qa_protocol/schema` on a
-`--workspace` command would unify `schemars` into `bins/gdtf_qa_mcp`, which carries schema
-documents as opaque text. Both have matching CI steps in
-`.github/workflows/test.yml` and `clippy.yml`, pinned by
-`crates/gdtf_test_utils/tests/ci_workflow_features/schema_step.rs`.
-Since GTW-941 a MANIFEST edge does what no command line does: `crates/gdtf_qa_command`
-requires `gdtf_qa_protocol/schema` unconditionally, so every `--workspace` run unifies the
-feature on and the courier's unit links schemars on `cargo dclippy` / `cargo dtest`. The
-shipped property is unaffected — `bins/gdtf_qa_mcp` enables no schema feature in its own
-manifest and depends on no crate that does, so `cargo build -p gdtf_qa_mcp` links no schemars
-— but neither guard reads a manifest, so neither can see this. GTW-946 widens them.
-See [`verification.md`](.claude/rules/verification.md).
+The aliases and their exact feature lists live in `.cargo/config.toml` — keep the list above in
+step with it (GTW-877). The reasoning behind each step (why both `net_qa` features are named, why
+the doc run happens twice, why the two `schema` steps are package-scoped) is in
+[`verification.md`](.claude/rules/verification.md), which is always loaded.
 
 The workspace `Cargo.toml` denies clippy `all`/`pedantic`/`correctness`/`suspicious` plus
 `unwrap`/`expect`/`panic`/`todo`/`unimplemented` and `missing_docs`, so **lint-clean and fmt-clean
@@ -142,19 +94,9 @@ opt-in `dynamic_linking` feature (binary → `gdtf_app` → `bevy/dynamic_linkin
 
 ## Project structure
 
-A cargo workspace (resolver 3), `crates/*` + `bins/*`:
-
-```text
-crates/gdtf_app/             the Bevy App
-  src/app/gdtf_app.rs        GdtfApp wrapper: init_state::<AppState>() + add ScenesPlugin
-  src/states/app_state.rs    AppState enum: Init, Load, Intro, Running, Teardown
-  src/states/<scene>/        one module per scene; plugin.rs (OnEnter/OnExit) + systems/
-  src/states/plugin.rs       ScenesPlugin registers every scene plugin
-crates/gdtf_battle_sim/      the AUTHORITATIVE, render-free combat sim (the MODEL)
-crates/gdtf_battle_presenter/  the VIEW/presenter that mirrors the sim
-bins/grimdark_turfwar/       binary entry point (src/main.rs)
-docs/                        design canon (pillars/, combat/, decisions/ ADRs, glossary, litmus-tests)
-```
+A cargo workspace (resolver 3), `crates/*` + `bins/*`. The Bevy app is `crates/gdtf_app`
+(`src/app/gdtf_app.rs`, `src/states/app_state.rs`, one `src/states/<scene>/` module per scene);
+design canon is `docs/`.
 
 The **sim** (`gdtf_battle_sim`) is the source of combat truth — render-free, deterministic, unit-testable
 with injected seeded RNG. The **presenter** (`gdtf_battle_presenter`) is a pure view that mirrors sim

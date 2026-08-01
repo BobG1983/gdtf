@@ -1,3 +1,7 @@
+---
+paths: ["**/*.rs"]
+---
+
 # Module layout — a module is a DIRECTORY; mod.rs is wiring-only; files stay small
 
 Why this rule exists: GTW-583's census found 117 files past the 400-line block
