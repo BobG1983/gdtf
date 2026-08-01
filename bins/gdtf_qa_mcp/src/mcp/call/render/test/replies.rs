@@ -8,6 +8,7 @@ use gdtf_qa_protocol::{
 };
 use serde_json::json;
 
+use super::args::no_args;
 use crate::mcp::{call::render::render_response, content::tool_error, tools::ToolName};
 
 /// A game-side error renders as an MCP tool error, not a normal payload.
@@ -16,6 +17,7 @@ fn render_response_maps_game_error_to_tool_error() {
     let rendered = render_response(
         ToolName::QueryState,
         &QaResponse::Error(QaError::NoBattle),
+        &no_args(),
         None,
     );
     assert_eq!(rendered["isError"], json!(true));
@@ -34,7 +36,12 @@ fn render_response_start_battle_renders_the_app_flow_snapshot() {
         None,
         None,
     );
-    let rendered = render_response(ToolName::StartBattle, &QaResponse::AppFlow(view), None);
+    let rendered = render_response(
+        ToolName::StartBattle,
+        &QaResponse::AppFlow(view),
+        &no_args(),
+        None,
+    );
     assert_eq!(rendered["isError"], json!(false));
     let Some(text) = rendered["content"][0]["text"].as_str() else {
         unreachable!("an app-flow reply carries text content");
@@ -48,6 +55,7 @@ fn render_response_injected_is_text_content() {
     let rendered = render_response(
         ToolName::SendInput,
         &QaResponse::Injected(InjectReceipt::Queued),
+        &no_args(),
         None,
     );
     assert_eq!(rendered["isError"], json!(false));
@@ -64,6 +72,7 @@ fn render_response_menu_item_activated_is_text_content() {
         &QaResponse::MenuItemActivated(
             gdtf_qa_protocol::envelope::MenuActivationReceipt::Activated,
         ),
+        &no_args(),
         None,
     );
     assert_eq!(rendered["isError"], json!(false));
@@ -82,6 +91,7 @@ fn render_response_stepper_controlled_is_text_content() {
     let rendered = render_response(
         ToolName::StepperControl,
         &QaResponse::StepperControlled(StepperReceipt::Latched),
+        &no_args(),
         None,
     );
     assert_eq!(rendered["isError"], json!(false));
@@ -100,6 +110,7 @@ fn render_response_focus_controlled_is_text_content() {
     let rendered = render_response(
         ToolName::FocusControl,
         &QaResponse::FocusControlled(FocusControlReceipt::Applied),
+        &no_args(),
         None,
     );
     assert_eq!(rendered["isError"], json!(false));
@@ -127,6 +138,7 @@ fn render_response_editor_query_replies_are_text_content() {
             EditorReadinessNet::Load,
             vec![EditorQueryTopicView::offered(EditorQueryKind::Validation)],
         )),
+        &no_args(),
         None,
     );
     assert_eq!(options["isError"], json!(false));
@@ -142,6 +154,7 @@ fn render_response_editor_query_replies_are_text_content() {
             EditorReadinessNet::Editing,
             EditorQueryView::Readiness(EditorReadinessNet::Editing),
         )),
+        &no_args(),
         None,
     );
     assert_eq!(query["isError"], json!(false));

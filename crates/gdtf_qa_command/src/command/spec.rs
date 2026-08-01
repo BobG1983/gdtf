@@ -3,7 +3,7 @@
 use core::fmt::Debug;
 
 use bevy::prelude::App;
-use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary};
+use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary, CommandTiming};
 use schemars::JsonSchema;
 use serde::{Serialize, de::DeserializeOwned};
 
@@ -51,6 +51,16 @@ pub trait QaCommand: Sized + Send + Sync + 'static {
 
     /// One line telling a client what the command does and when to reach for it.
     const SUMMARY: CommandSummary;
+
+    /// When this command answers, relative to the frame its handler claims the call.
+    ///
+    /// A DECLARATION, not a measurement: a handler that answers inside
+    /// [`take_calls`](crate::dispatch::take_calls) says
+    /// [`Immediate`](CommandTiming::Immediate), and one that parks its responder in
+    /// [`DeferredReplies`](crate::dispatch::DeferredReplies) says
+    /// [`Deferred`](CommandTiming::Deferred). It rides on the catalogue row so a client
+    /// knows before it calls whether the answer costs it a frame or a wait.
+    const TIMING: CommandTiming;
 
     /// Whether the command can run right now, and if not, which precondition is missing.
     ///

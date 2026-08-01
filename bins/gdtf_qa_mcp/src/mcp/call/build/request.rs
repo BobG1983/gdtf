@@ -12,6 +12,7 @@ use crate::mcp::{
             parse_topic,
         },
     },
+    courier::parse_run,
     tools::ToolName,
 };
 
@@ -45,6 +46,11 @@ pub fn build_request(tool: ToolName, args: &Value) -> Result<QaRequest, String> 
         ToolName::FocusControl => Ok(QaRequest::FocusControl(parse_focus_command(args)?)),
         ToolName::GetEditorQueryOptions => Ok(QaRequest::GetEditorQueryOptions),
         ToolName::QueryEditor => Ok(QaRequest::QueryEditor(parse_topic(args)?)),
+        // The two COURIER tools (GTW-942). `commands` carries no argument to the host at all
+        // — the detail level and the one-command filter are read at RENDER time, because the
+        // wire request is a bare `Catalogue` and a host has no detail level to honour.
+        ToolName::Commands => Ok(QaRequest::Catalogue),
+        ToolName::Run => Ok(QaRequest::Run(parse_run(args)?)),
         // The lifecycle tools are handled before this point (in `handle_tool_call`), so
         // they never map onto a wire request; reaching here would be a routing bug.
         ToolName::LaunchGame

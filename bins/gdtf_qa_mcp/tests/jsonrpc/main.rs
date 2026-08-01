@@ -13,7 +13,16 @@
 //! - `screenshot_host` — `take_screenshot`'s per-call `host` routing (GTW-880).
 //! - `screenshot_cwd` — a capture written by a child running in ANOTHER directory relays as
 //!   an image, for both children (GTW-923).
+//! - `courier_tools` — the two command-layer tools: the catalogue at both detail levels and
+//!   every outcome a `run` can answer with (GTW-942).
+//! - `courier_riders` — the `await_ready` / `capture` riders: that each reaches the host, and
+//!   carries its value (GTW-942).
+//! - `courier_attach` — what a command's ATTACHMENTS render as: the image block, its order,
+//!   and the child-directory read they share with `take_screenshot` (GTW-942).
 
+mod courier_attach;
+mod courier_riders;
+mod courier_tools;
 mod editor_tools;
 mod game_tools;
 mod protocol;

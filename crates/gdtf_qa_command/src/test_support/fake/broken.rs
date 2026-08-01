@@ -3,7 +3,7 @@
 
 use bevy::prelude::App;
 use gdtf_qa_protocol::command::{
-    ArgSchemaJson, CommandAvailability, CommandName, CommandSummary, ReplySchemaJson,
+    ArgSchemaJson, CommandAvailability, CommandName, CommandSummary, CommandTiming, ReplySchemaJson,
 };
 
 use super::facts::FakeFacts;
@@ -32,6 +32,10 @@ impl ErasedCommand<FakeFacts> for FakeBrokenSchema {
 
     fn summary(&self) -> CommandSummary {
         CommandSummary::from_static("Publishes an argument document that is not JSON.")
+    }
+
+    fn timing(&self) -> CommandTiming {
+        CommandTiming::Immediate
     }
 
     fn arg_schema(&self) -> ArgSchemaJson {

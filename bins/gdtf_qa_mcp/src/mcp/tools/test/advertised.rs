@@ -5,7 +5,102 @@ use gdtf_qa_protocol::view::EditorQueryKind;
 
 use crate::mcp::tools::tools_list_result;
 
-/// `tools/list` advertises exactly the sixteen implemented tools — the twelve forwarding
+/// The two courier tools name NO command — not in their schemas, not in their descriptions.
+///
+/// The property the whole command layer rests on: a host's vocabulary is read from the
+/// RUNNING host and carried as data, so the courier must be able to reach a command it has
+/// never heard of. A schema that enumerated command names, or a description that listed
+/// them, would be a second copy of that vocabulary — stale the moment either host gains a
+/// command, and a client only ever sends what `tools/list` advertises.
+///
+/// It checks the whole descriptor as text, not just the `command` property, because the
+/// leak this guards against is a name written anywhere a client reads.
+#[test]
+fn neither_courier_tool_names_a_command() {
+    let result = tools_list_result();
+    let Some(tools) = result["tools"].as_array() else {
+        unreachable!("tools/list result carries a `tools` array");
+    };
+    for wire_name in ["commands", "run"] {
+        let Some(tool) = tools
+            .iter()
+            .find(|tool| tool["name"].as_str() == Some(wire_name))
+        else {
+            unreachable!("tools/list advertises {wire_name}");
+        };
+        assert!(
+            tool["inputSchema"]["properties"]["command"]["enum"].is_null(),
+            "{wire_name} must not enumerate command names: {}",
+            tool["inputSchema"],
+        );
+        let descriptor = tool.to_string();
+        // `app.phase` is the only command that exists today, so it is the only name that
+        // COULD have leaked; the dotted shape is what every later command will share.
+        assert!(
+            !descriptor.contains("app.phase"),
+            "{wire_name} names a command: {descriptor}"
+        );
+    }
+}
+
+/// `run` advertises the two per-call riders and leaves `arguments` unshaped.
+///
+/// A client only sends what `tools/list` advertises, so an unadvertised `await_ready` is an
+/// unreachable rider (the GTW-875 lesson: the host parsed five launch arguments perfectly
+/// and no client ever sent one). `arguments` carries no `properties` on purpose — its shape
+/// is the COMMAND's, published by `commands` at `detail: "Full"`.
+#[test]
+fn run_advertises_its_riders_and_leaves_arguments_unshaped() {
+    let result = tools_list_result();
+    let Some(tools) = result["tools"].as_array() else {
+        unreachable!("tools/list result carries a `tools` array");
+    };
+    let Some(run) = tools
+        .iter()
+        .find(|tool| tool["name"].as_str() == Some("run"))
+    else {
+        unreachable!("tools/list advertises run");
+    };
+    let properties = &run["inputSchema"]["properties"];
+    for argument in ["command", "arguments", "host", "await_ready", "capture"] {
+        assert!(
+            properties[argument].is_object(),
+            "run advertises `{argument}`: {}",
+            run["inputSchema"],
+        );
+    }
+    assert_eq!(
+        run["inputSchema"]["required"],
+        serde_json::json!(["command"])
+    );
+    assert!(
+        properties["arguments"]["properties"].is_null(),
+        "`arguments` is the command's shape, not one written into the tool: {}",
+        run["inputSchema"],
+    );
+}
+
+/// `commands` advertises its detail level as a schema `enum` drawn from the parser's own
+/// levels, so the schema cannot offer a word the parser rejects.
+#[test]
+fn commands_advertises_its_detail_levels() {
+    let result = tools_list_result();
+    let Some(tools) = result["tools"].as_array() else {
+        unreachable!("tools/list result carries a `tools` array");
+    };
+    let Some(commands) = tools
+        .iter()
+        .find(|tool| tool["name"].as_str() == Some("commands"))
+    else {
+        unreachable!("tools/list advertises commands");
+    };
+    assert_eq!(
+        commands["inputSchema"]["properties"]["detail"]["enum"],
+        serde_json::json!(["Summary", "Full"]),
+    );
+}
+
+/// `tools/list` advertises exactly the eighteen implemented tools — the fourteen forwarding
 /// tools plus the four lifecycle tools.
 ///
 /// `start_battle` is asserted PRESENT: the game has serviced `QaRequest::StartBattle`
@@ -20,13 +115,17 @@ use crate::mcp::tools::tools_list_result;
 /// reason (GTW-808): the editor has answered `GetEditorQueryOptions` / `QueryEditor` since
 /// GTW-805 and no client tool sent either, so a running editor was unreachable from any
 /// agent — the gap the whole GTW-786 epic exists to close.
+/// The two COURIER tools are asserted PRESENT for the SAME reason (GTW-942): the game host
+/// answers `QaRequest::Catalogue` and `QaRequest::Run`, so without a client tool for each,
+/// its whole command layer would be unreachable from any agent — and every command added
+/// after it, forever, since the pair is the only route to one.
 #[test]
 fn lists_every_tool_including_focus_control() {
     let result = tools_list_result();
     let Some(tools) = result["tools"].as_array() else {
         unreachable!("tools/list result carries a `tools` array");
     };
-    assert_eq!(tools.len(), 16);
+    assert_eq!(tools.len(), 18);
     let names: Vec<&str> = tools
         .iter()
         .filter_map(|tool| tool["name"].as_str())
@@ -48,6 +147,8 @@ fn lists_every_tool_including_focus_control() {
         "query_editor",
         "launch_editor",
         "stop_editor",
+        "commands",
+        "run",
     ] {
         assert!(
             names.contains(&expected),

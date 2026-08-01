@@ -9,8 +9,8 @@ use crate::{
     command::{
         ArgSchemaJson, ArgumentFault, ArtifactPath, AttachmentKind, AwaitBudget, CaptureRider,
         CommandArgsJson, CommandAvailability, CommandCatalogue, CommandEntry, CommandName,
-        CommandOutcome, CommandReplyJson, CommandSummary, RefusalNote, ReplyAttachment,
-        ReplySchemaJson, RunOptions, UnavailableCode,
+        CommandOutcome, CommandReplyJson, CommandSummary, CommandTiming, RefusalNote,
+        ReplyAttachment, ReplySchemaJson, RunOptions, UnavailableCode,
     },
     envelope::ServerNameNet,
     ids::ShotName,
@@ -259,6 +259,7 @@ fn populated_catalogue() -> CommandCatalogue {
             CommandEntry::new(
                 CommandName::from_static("app.phase"),
                 CommandSummary::from_static("Read the whole state tuple plus readiness."),
+                CommandTiming::Immediate,
                 ArgSchemaJson::new(DERIVED_ARG_SCHEMA.to_owned()),
                 ReplySchemaJson::new(DERIVED_REPLY_SCHEMA.to_owned()),
                 CommandAvailability::Available,
@@ -266,6 +267,7 @@ fn populated_catalogue() -> CommandCatalogue {
             CommandEntry::new(
                 CommandName::from_static("act.fire"),
                 CommandSummary::from_static("Fire the selected ganger's weapon at a cell."),
+                CommandTiming::Deferred,
                 ArgSchemaJson::new(DERIVED_ARG_SCHEMA.to_owned()),
                 ReplySchemaJson::new(DERIVED_REPLY_SCHEMA.to_owned()),
                 CommandAvailability::Unavailable {

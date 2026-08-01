@@ -45,9 +45,10 @@ on the inner one:
 1. **Outer (MCP) layer**, between the LLM client and the `gdtf_qa_mcp` host binary. MCP already
    has native discovery: `tools/list` returns every tool's `{name, description, inputSchema}`.
    gdtf implements this today as a fixed enum walk (`bins/gdtf_qa_mcp/src/mcp/tools/name.rs`,
-   `ALL`, 16 tools since GTW-808 added the four editor tools — `get_editor_query_options`,
-   `query_editor`, `launch_editor`, `stop_editor` — to the 12 that GTW-802's `focus_control`
-   completed). gdtf does not declare `listChanged`; the tool list is static per
+   `ALL`, 18 tools: GTW-802's `focus_control` completed the first 12, GTW-808 added the four
+   editor tools — `get_editor_query_options`, `query_editor`, `launch_editor`, `stop_editor` —
+   and GTW-942 added `commands` and `run` beside them, the courier's half of the command
+   layer). gdtf does not declare `listChanged`; the tool list is static per
    session.
 2. **Inner (net_qa wire) layer**, between the MCP host and the running game process — and,
    since GTW-808, the running content-editor process too. This is `QaRequest`

@@ -16,6 +16,20 @@
 //!   `TcpStream`, the one-client-at-a-time `Busy` rejection and the read-timeout reap — into
 //!   the shared `gdtf_net_qa_transport` crate's own `tests/transport/`, beside the code it
 //!   drives.)
+//! - [`commands`] drives the GAME's REAL command layer (GTW-942) over a REAL `TcpStream`: the
+//!   one-entry catalogue with its derived schemas, `app.phase` answering the five-level state
+//!   tuple, and the three refusals a `Run` can come back with — an unknown name, an argument
+//!   the command does not declare, and a rider this build has not implemented. Bullets 1-6 of
+//!   that ticket's evidence list; 7-8 are the two gate cases in [`hello_socket`].
+//! - [`app_phase_depth`] answers `app.phase` from INSIDE a real battle (GTW-942), so the four
+//!   nested levels are asserted live rather than as the `null`s the menu legitimately reports:
+//!   each reported level is compared against the app's own `State<…>` resource.
+//! - [`command_set`] pins what no request can see (GTW-942): the two per-host conformance
+//!   assertions over the REAL `GAME_COMMANDS` slice, the set being exactly `app.phase`, and
+//!   clause 10 — that exactly ONE system drains `Res<NetInbox>`, source and schedule alike.
+//! - [`socket_support`] owns the client half both real-listener suites share: the headless
+//!   game with its listener bound, the framed client, and the frame pump; [`command_exchange`]
+//!   adds the one step above it the command cases share — negotiate, then send and collect.
 //! - [`hello_socket`] drives the GAME's REAL listener (GTW-940) over a REAL `TcpStream` via
 //!   [`NetQaPlugin::listening`](gdtf_app::test_support::NetQaPlugin): the handshake carries
 //!   the GAME's own version and server name, and a negotiated `GetAppFlow` crosses the same
@@ -75,7 +89,11 @@
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
 mod affordance;
+mod app_phase_depth;
 mod caught_up;
+mod command_exchange;
+mod command_set;
+mod commands;
 mod deadline;
 mod focus;
 mod focus_activation;
@@ -89,4 +107,5 @@ mod raw_input;
 mod routing;
 mod screenshot_after;
 mod snapshot;
+mod socket_support;
 mod start_battle;

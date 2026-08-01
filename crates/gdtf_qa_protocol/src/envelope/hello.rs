@@ -111,18 +111,31 @@ impl ProtocolVersion {
     /// [`NotNegotiated`](crate::envelope::QaError::NotNegotiated), and the matching
     /// [`RequestKindNet`](crate::view::RequestKindNet) kinds — new closed-enum variants
     /// everywhere the envelope matches exhaustively, so a client negotiating version `12`
-    /// now gets a `VersionMismatch` rather than a wire shape it cannot decode. This is the
-    /// FIRST of the migration's two bumps: the second comes when the old variants are
-    /// deleted and only the command layer is left.
+    /// now gets a `VersionMismatch` rather than a wire shape it cannot decode. That was the
+    /// first of the migration's bumps; the last comes when the old variants are deleted and
+    /// only the command layer is left.
+    /// Bumped to `14` (GTW-942) when two shipped command-layer shapes each gained a field:
+    /// [`RunCommand`](crate::envelope::RunCommand) gained `options`
+    /// ([`RunOptions`](crate::command::RunOptions) — the per-call riders, so a rider written
+    /// by a client actually reaches the host that must refuse or honour it) and
+    /// [`CommandEntry`](crate::command::CommandEntry) gained `timing`
+    /// ([`CommandTiming`](crate::command::CommandTiming) — whether a command answers on the
+    /// claiming frame or a later one). Both are `#[serde(default)]`, so a NEW decoder reads an
+    /// OLD frame with its previous meaning — but the other direction loses data silently:
+    /// `RunCommand` has no `deny_unknown_fields`, so a version-13 host handed a `Run` carrying
+    /// `options` would drop the riders without a word and run the command anyway, which is the
+    /// exact silent narrowing the `NotBuilt` refusal exists to prevent. Moving the number is
+    /// what stops those two builds from negotiating at all. Same class as the 1 → 2
+    /// `available` bump: a field added to an existing shape.
     ///
-    /// From here on the number covers the ENVELOPE only — the request set, the reply set,
+    /// The number covers the ENVELOPE only — the request set, the reply set,
     /// the error set, and the shapes of the
     /// [`command`](crate::command) vocabulary. It does NOT cover which command names a host
     /// offers, any command's argument or reply schema, or the JSON text carried inside
     /// them: adding a command must never move it.
     ///
     /// BOTH servers — the game's and the editor's — negotiate a `Hello` against this value.
-    pub const CURRENT: Self = Self::new(13);
+    pub const CURRENT: Self = Self::new(14);
 
     /// Build a protocol version from its number.
     #[must_use]

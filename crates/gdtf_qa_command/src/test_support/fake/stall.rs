@@ -2,7 +2,7 @@
 //! queue's frame deadline has something to reap.
 
 use bevy::prelude::*;
-use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary};
+use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary, CommandTiming};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -63,6 +63,8 @@ impl QaCommand for FakeStall {
     const NAME: CommandName = CommandName::from_static("fake.stall");
     const SUMMARY: CommandSummary =
         CommandSummary::from_static("Queue a call and never drain it. Test fixture only.");
+
+    const TIMING: CommandTiming = CommandTiming::Immediate;
 
     fn availability(_facts: &FakeFacts) -> CommandAvailability {
         CommandAvailability::Available

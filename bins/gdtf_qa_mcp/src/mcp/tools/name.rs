@@ -51,6 +51,14 @@ pub enum ToolName {
     LaunchEditor,
     /// Stop the running content-editor child — host-local, no wire request (GTW-808).
     StopEditor,
+    /// Read a host's live command catalogue — maps to `QaRequest::Catalogue` (GTW-942).
+    ///
+    /// One of the two COURIER tools: it names no command, because a host's vocabulary is
+    /// data in the reply rather than a shape written here.
+    Commands,
+    /// Run one command from a host's catalogue by name — maps to `QaRequest::Run`
+    /// (GTW-942). The other courier tool, and equally command-agnostic.
+    Run,
 }
 
 /// Every tool, in listing order — the one enumeration `tools/list` and any future
@@ -72,6 +80,8 @@ pub(super) const ALL: &[ToolName] = &[
     ToolName::QueryEditor,
     ToolName::LaunchEditor,
     ToolName::StopEditor,
+    ToolName::Commands,
+    ToolName::Run,
 ];
 
 impl ToolName {
@@ -95,6 +105,8 @@ impl ToolName {
             Self::QueryEditor => "query_editor",
             Self::LaunchEditor => "launch_editor",
             Self::StopEditor => "stop_editor",
+            Self::Commands => "commands",
+            Self::Run => "run",
         }
     }
 
@@ -122,7 +134,12 @@ impl ToolName {
             | Self::ActivateMenuItem
             | Self::FocusControl
             | Self::LaunchGame
-            | Self::StopGame => QaHost::Game,
+            | Self::StopGame
+            // The two courier tools default to the game and are AIMED per call
+            // (`accepts_host_argument`), because a command layer is a property both hosts
+            // have rather than a thing only one of them does (GTW-942).
+            | Self::Commands
+            | Self::Run => QaHost::Game,
             Self::GetEditorQueryOptions
             | Self::QueryEditor
             | Self::LaunchEditor
@@ -133,14 +150,19 @@ impl ToolName {
     /// Whether a call may AIM this tool at a host with a `host` argument instead of taking
     /// the one [`host`](Self::host) names.
     ///
-    /// Only `take_screenshot` (GTW-880): both children can capture a frame, and one tool that
-    /// takes `"game"` or `"editor"` is what lets a QA pass screenshot the editor without a
-    /// second, near-identical tool. Every other tool means something on exactly one host — an
-    /// `inject` has no meaning in the editor, a `query_editor` none in the game — so their
-    /// host stays fixed and a `host` argument on them is ignored.
+    /// `take_screenshot` (GTW-880), because both children can capture a frame and one tool
+    /// that takes `"game"` or `"editor"` is what lets a QA pass screenshot the editor without
+    /// a second, near-identical tool; and the two COURIER tools (GTW-942), because a command
+    /// layer is something BOTH hosts have — a `commands` fixed to the game could never read
+    /// the editor's catalogue, and duplicating the pair per host is exactly the growth this
+    /// design removes.
+    ///
+    /// Every other tool means something on exactly one host — an `inject` has no meaning in
+    /// the editor, a `query_editor` none in the game — so their host stays fixed and a `host`
+    /// argument on them is ignored.
     #[must_use]
     pub const fn accepts_host_argument(self) -> bool {
-        matches!(self, Self::TakeScreenshot)
+        matches!(self, Self::TakeScreenshot | Self::Commands | Self::Run)
     }
 
     /// Whether this tool starts or stops a child process instead of forwarding a request

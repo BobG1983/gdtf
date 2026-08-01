@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::command::{
-    CommandAvailability, CommandName, CommandSummary, RefusalNote, UnavailableCode,
+    CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote, UnavailableCode,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -65,6 +65,8 @@ impl QaCommand for FakeEcho {
     const NAME: CommandName = CommandName::from_static("fake.echo");
     const SUMMARY: CommandSummary =
         CommandSummary::from_static("Echo text back. Needs a level above zero.");
+
+    const TIMING: CommandTiming = CommandTiming::Immediate;
 
     fn availability(facts: &FakeFacts) -> CommandAvailability {
         if *facts.level() > 0 {

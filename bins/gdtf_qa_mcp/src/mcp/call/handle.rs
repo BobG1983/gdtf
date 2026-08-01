@@ -96,7 +96,7 @@ pub fn handle_tool_call(params: Option<&Value>, hosts: &mut HostSet<'_>) -> Tool
     match build_request(tool, args) {
         Ok(request) => match pair.link().request(request) {
             Ok(response) => {
-                ToolCallOutcome::Result(render_response(tool, &response, child_dir.as_ref()))
+                ToolCallOutcome::Result(render_response(tool, &response, args, child_dir.as_ref()))
             }
             Err(err) => ToolCallOutcome::Result(tool_error(&err.to_string())),
         },

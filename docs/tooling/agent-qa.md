@@ -250,19 +250,31 @@ launchable process.
 
 ## The tool vocabulary
 
-The MCP host exposes sixteen tools, enumerated once by the `ToolName` enum in
-`bins/gdtf_qa_mcp/src/mcp/tools/name.rs`. Twelve forward to a running child (each
+The MCP host exposes eighteen tools, enumerated once by the `ToolName` enum in
+`bins/gdtf_qa_mcp/src/mcp/tools/name.rs`. Fourteen forward to a running child (each
 maps 1:1 onto a `QaRequest`, resolved by `build_request` in
 `bins/gdtf_qa_mcp/src/mcp/call/build/request.rs`); four are host-local and never
 touch the wire. Every tool names a default host (`ToolName::host`), so an
 editor tool travels over the editor's link and drives the editor's lifecycle —
-the two children are never confused for one another. One tool —
-`take_screenshot`, the only one both children can serve — is aimed per call
-instead: `ToolName::accepts_host_argument` lets its optional `host` argument
+the two children are never confused for one another. Three tools are aimed per
+call instead: `take_screenshot`, which both children can serve, and the two
+command-layer tools `commands` / `run` (GTW-942), since a command layer is
+something both hosts have rather than a thing only one of them does.
+`ToolName::accepts_host_argument` lets their optional `host` argument
 (`"game"` / `"editor"`) pick the child, `resolve_host` in
 `bins/gdtf_qa_mcp/src/mcp/call/handle.rs` resolves it, and a `host` value naming
 neither child is rejected as invalid params rather than quietly defaulting, so a
 typo cannot screenshot the wrong process (GTW-880).
+
+The two command-layer tools name no command. What a host can be asked to do is
+read from the host itself — `commands` returns its live catalogue, `run` calls one
+entry by name — so adding a command to a host adds nothing here. The editor has no
+command set yet and answers both `BadRequest`; that lands with the rest of ADR
+0008's B-phase. `run`'s two riders, `await_ready` and `capture`, are declared but
+not built: a call carrying either comes back `Unavailable { code: NotBuilt }`
+rather than running the command with the rider dropped. See
+[ADR 0008](../decisions/0008-qa-command-courier.md) and
+[the command guide](qa-commands.md).
 
 | Tool | Kind | Maps to | Arguments |
 | --- | --- | --- | --- |
@@ -282,6 +294,8 @@ typo cannot screenshot the wrong process (GTW-880).
 | `query_editor` | forward (editor) | `QaRequest::QueryEditor` | `topic` (`"Readiness"` / `"Mode"` / `"Session"` / `"Draft"` / `"Validation"`) |
 | `launch_editor` | host-local | — (starts the editor child via the editor's `HostManager`) | all optional: `port`, `package`, `features`, `working_dir`, `env` |
 | `stop_editor` | host-local | — (stops the editor child via the editor's `HostManager`) | none |
+| `commands` | forward | `QaRequest::Catalogue` | `host` (optional `"game"` — the default — or `"editor"`), `command` (optional name filter), `detail` (`"Summary"` — the default — or `"Full"`, which adds the two schemas) |
+| `run` | forward | `QaRequest::Run` | `command` (required, from `commands`), `arguments` (optional object, default `{}`), `host` (optional), `await_ready` (optional whole seconds), `capture` (optional `true` or a file stem) |
 
 Notes an agent relies on:
 

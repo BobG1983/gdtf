@@ -2,7 +2,7 @@
 //! something real to fail on.
 
 use bevy::prelude::*;
-use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary};
+use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary, CommandTiming};
 
 use super::{
     facts::FakeFacts,
@@ -27,6 +27,8 @@ impl QaCommand for FakePhaseTwin {
     const NAME: CommandName = FakePhase::NAME;
     const SUMMARY: CommandSummary =
         CommandSummary::from_static("A deliberate name collision. Never wired into a real set.");
+
+    const TIMING: CommandTiming = CommandTiming::Immediate;
 
     fn availability(_facts: &FakeFacts) -> CommandAvailability {
         CommandAvailability::Available

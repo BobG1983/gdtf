@@ -8,8 +8,10 @@
 use bevy::prelude::*;
 use gdtf_battle_input::InputSystems;
 use gdtf_net_qa_transport::{PendingQueue, sweep_pending};
+use gdtf_qa_command::dispatch::QaCommandSystems;
 
 use crate::dev::net_qa::{
+    commands::register_game_commands,
     events::QaOutputCursor,
     pending::{
         ActivateMenuPayload, FocusControlPayload, InjectPayload, OutputPayload,
@@ -68,9 +70,17 @@ pub(super) fn register_transport(app: &mut App) {
             sweep_pending::<StepperControlPayload>,
             sweep_pending::<ActivateMenuPayload>,
             sweep_pending::<FocusControlPayload>,
-            route_requests,
+            // GTW-942 — the router IS the command layer's `Route` band, because it is the ONE
+            // system that drains the inbox: the `Catalogue` and `Run` arms live inside it, so
+            // the decode steps `register_game_commands` wires are ordered after THIS system
+            // rather than after a second router that must never exist. The membership is
+            // declared HERE, on the single registration, rather than in a second
+            // `add_systems` call — that would register a SECOND copy of `route_requests` and
+            // manufacture the double drain by hand.
+            route_requests.in_set(QaCommandSystems::Route),
         )
             .chain()
             .in_set(InputSystems::Gather),
     );
+    register_game_commands(app);
 }
