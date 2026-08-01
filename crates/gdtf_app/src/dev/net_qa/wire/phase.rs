@@ -13,9 +13,9 @@
 //!
 //! # Why five levels, not one
 //!
-//! [`AppFlowView`](gdtf_qa_protocol::view::AppFlowView) reports only the TOP-level
-//! [`AppState`], so "which battle phase is the app in" — the question every QA pass
-//! actually asks — was unanswerable over the wire. The four sub-states are nested: each is
+//! The old app-flow snapshot reported only the TOP-level [`AppState`], so "which battle
+//! phase is the app in" — the question every QA pass actually asks — was unanswerable over
+//! the wire. The four sub-states are nested: each is
 //! present only while its parent holds the variant that sources it, which is exactly what
 //! the `Option`s below say.
 

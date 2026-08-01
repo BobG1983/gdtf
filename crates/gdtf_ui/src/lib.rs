@@ -44,8 +44,9 @@
 //! were RETIRED by GTW-655 — the GTW-434 procgen visualizer was their only consumer.)
 //!
 //! The [`menu_nav`] module owns the generic menu-enumeration model — the
-//! [`MenuScreen`] / [`MenuItem`] markers a scene tags its menu with so a QA harness
-//! can enumerate and activate it over the wire, with no per-scene wire changes (GTW-787).
+//! [`MenuScreen`] / [`MenuItem`] markers a scene tags its menu with so a QA client can
+//! enumerate and activate it with no per-scene wiring (GTW-787). Nothing reads them today;
+//! see that module for why they stay.
 //!
 //! The [`UiPlugin`] registration point itself lives in the private `plugin`
 //! submodule and is re-exported here unchanged.

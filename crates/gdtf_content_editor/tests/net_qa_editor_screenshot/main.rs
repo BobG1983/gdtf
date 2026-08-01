@@ -1,23 +1,24 @@
-//! GTW-880: the editor answers `TakeScreenshot` over its REAL net-QA listener, and the reply
-//! comes only after the capture has landed.
+//! GTW-880: the editor's capture pump answers only after the capture has landed (GTW-943
+//! retargeted the drive off the deleted `TakeScreenshot` request onto the pump's own queue).
 //!
 //! The `#![cfg(all(debug_assertions, feature = "net_qa"))]` gate (below, after this crate doc
 //! so the doc survives a feature-off build — the GTW-804 `net_qa_hello` precedent) compiles
 //! the whole dir-form suite to an empty crate without the feature. Run it with the feature
 //! on: `cargo test -p gdtf_content_editor --features net_qa --test net_qa_editor_screenshot`.
 //!
-//! Everything goes through the production path on both sides. The socket half: the editor's
-//! own `NetQaEditorPlugin` binds a REAL loopback listener on an OS-assigned port, the client
-//! is a REAL `TcpStream` speaking the REAL framing codec, and the reply comes from the
-//! plugin's REAL request drain and capture pump. The editor half is the REAL `MapEditorPlugin`
-//! reaching `EditorState::Editing` through its own `Load` pass and `OnEnter(Editing)`
-//! lifecycle, with a live `AssetServer` — no hand-inserted model state, no `MinimalPlugins`.
+//! Everything on the host side goes through the production path: the editor is the REAL
+//! `MapEditorPlugin` reaching `EditorState::Editing` through its own `Load` pass and
+//! `OnEnter(Editing)` lifecycle, with a live `AssetServer` — no hand-inserted model state, no
+//! `MinimalPlugins` — and the capture is claimed off the SAME `PendingQueue` the router used
+//! to push onto, by the same pump, answering through the same `Responder`. What is gone is
+//! only the socket in front of it: the `TakeScreenshot` request went with the rest of the
+//! pre-command vocabulary, and the editor's own capture command is the next editor ticket.
 //!
 //! Two tests, one per half of the contract:
 //!
-//! 1. [`take_screenshot_over_the_wire_lands_a_png_on_disk`] — the capture proof, on a REAL
-//!    wgpu device: a `TakeScreenshot { name }` goes out on the wire and a PNG file exists,
-//!    non-empty, PNG-decodable, and NOT A BLANK FRAME, at the path the reply names. The blank
+//! 1. [`a_claimed_capture_lands_a_png_on_disk`] — the capture proof, on a REAL
+//!    wgpu device: a capture is queued under a caller-chosen name and a PNG file exists,
+//!    non-empty, PNG-decodable, and NOT A BLANK FRAME, at the path the reply attaches. The blank
 //!    check is GTW-922: the capture used to land a real, decodable, entirely black PNG because it
 //!    read a render target no camera drew into, and every assertion here except that one passed.
 //!    GPU-guarded (GTW-527): a runner with no adapter logs a skip and returns before the render
@@ -25,7 +26,7 @@
 //! 2. [`the_reply_waits_for_the_capture_that_never_lands`] — the ordering proof, on the
 //!    no-renderer editor: at the moment the capture is spawned, with the app FROZEN so the
 //!    pump cannot make progress, no reply exists and no file has been written; and because
-//!    that app can never flush a PNG, the pump answers the typed `TimedOut` — never `Saved`.
+//!    that app can never flush a PNG, the pump answers `QaError::Timeout` — never a saved path.
 //!    A handler that replied on the claim frame, or that assumed its capture landed, fails
 //!    both halves.
 //!
@@ -33,100 +34,90 @@
 //!
 //! - [`support`] — the shared aliases, loop caps and injected tunables.
 //! - [`harness`] — the two real editor apps and the drive-to-`Editing` driver.
-//! - [`client`] — the socket half: one framed request, one reply.
+//! - [`enqueue`] — the drive: one capture onto the real queue, one reply channel.
 //! - [`source`] — GTW-917: the capture source the REAL editor app ends up with, so the
 //!   shipped choice cannot change silently.
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
-mod client;
+mod enqueue;
 mod harness;
 mod source;
 mod support;
 
 use std::{
     path::PathBuf,
-    sync::mpsc::{self, Receiver, RecvTimeoutError},
-    thread,
+    sync::mpsc::{Receiver, TryRecvError},
 };
 
 use bevy::prelude::*;
-use gdtf_net_qa_transport::NetQaPort;
-use gdtf_qa_protocol::envelope::{QaResponse, ScreenshotResult};
+use gdtf_qa_protocol::{
+    command::{AttachmentKind, CommandOutcome},
+    message::{QaError, QaResponse},
+};
 use gdtf_test_utils::gpu_probe::gpu_adapter_probe;
 
 use crate::{
-    client::request_screenshot,
+    enqueue::enqueue_capture,
     harness::{advance_to_editing, gpu_editor_app, headless_editor_app, spawned_captures},
-    support::{
-        DRIVE_UPDATES, FROZEN_WATCH, OPEN_WAIT, POLL_STEP, ReplyReport, TEST_SETTLE, TestError,
-        TestResult,
-    },
+    support::{DRIVE_UPDATES, TEST_SETTLE, TestError, TestResult},
 };
 
 /// The file stem both tests ask for — proves the wire-supplied name reaches the path.
 const SHOT_NAME: &str = "editor_shell";
 
-/// Start the client half on its own thread and hand back its two channels: one signalling the
-/// request is on the wire, one carrying the single reply.
-fn start_client(port: NetQaPort) -> Result<Receiver<ReplyReport>, TestError> {
-    let (opened_tx, opened_rx) = mpsc::channel();
-    let (reply_tx, reply_rx) = mpsc::channel();
-    thread::spawn(move || {
-        if let Err(failure) = request_screenshot(port, SHOT_NAME, &opened_tx, &reply_tx) {
-            let _sent = reply_tx.send(Err(failure));
-        }
-    });
-    // NOT ONE FRAME before the request is on the wire. The accept loop is its own thread, so
-    // this wait costs the app nothing, and it makes the frame counting below start from a
-    // request that is already pending.
-    opened_rx.recv_timeout(OPEN_WAIT)?;
-    Ok(reply_rx)
-}
-
-/// Drive one frame per iteration until the client half reports its reply.
-fn drive_until_reply(app: &mut App, rx: &Receiver<ReplyReport>) -> Result<QaResponse, TestError> {
+/// Drive one frame per iteration until the pump answers.
+fn drive_until_reply(app: &mut App, rx: &Receiver<QaResponse>) -> Result<QaResponse, TestError> {
     for _ in 0..DRIVE_UPDATES {
         app.update();
-        match rx.recv_timeout(POLL_STEP) {
-            Ok(report) => return report,
-            Err(RecvTimeoutError::Timeout) => {}
-            Err(RecvTimeoutError::Disconnected) => break,
+        match rx.try_recv() {
+            Ok(reply) => return Ok(reply),
+            Err(TryRecvError::Empty) => {}
+            Err(TryRecvError::Disconnected) => break,
         }
     }
-    Err("the editor never answered the TakeScreenshot".into())
+    Err("the editor never answered the queued capture".into())
 }
 
-/// Clause 1 — the editor answers `TakeScreenshot` and a PNG LANDS.
+/// The PNG path a landed reply attached, if it is one.
+fn attached_png(reply: &QaResponse) -> Option<String> {
+    let QaResponse::Outcome(CommandOutcome::Ran { attachments, .. }) = reply else {
+        return None;
+    };
+    let attachment = attachments.first()?;
+    if attachment.kind != AttachmentKind::Png {
+        return None;
+    }
+    Some(attachment.path.as_str().to_owned())
+}
+
+/// Clause 1 — a claimed capture LANDS a PNG.
 ///
-/// A `TakeScreenshot { name }` travels the real wire to the real editor, and the reply names
-/// a path at which a real file exists, is non-empty, and decodes as a PNG. Every assertion
-/// below reads the file the running editor wrote; none of them is satisfied by the reply
-/// alone.
+/// A capture queued under a caller-chosen name is claimed by the real pump, and the reply
+/// attaches a path at which a real file exists, is non-empty, and decodes as a PNG. Every
+/// assertion below reads the file the running editor wrote; none of them is satisfied by the
+/// reply alone.
 #[test]
-fn take_screenshot_over_the_wire_lands_a_png_on_disk() -> TestResult {
+fn a_claimed_capture_lands_a_png_on_disk() -> TestResult {
     if gpu_adapter_probe().should_skip() {
         eprintln!(
-            "SKIP take_screenshot_over_the_wire_lands_a_png_on_disk: no usable wgpu adapter \
+            "SKIP a_claimed_capture_lands_a_png_on_disk: no usable wgpu adapter \
              (GPU-less runner). The ordering half of the contract is covered by \
              the_reply_waits_for_the_capture_that_never_lands, which needs no GPU.",
         );
         return Ok(());
     }
     let tmp = tempfile::TempDir::new()?;
-    let (mut app, port) = gpu_editor_app(tmp.path().to_path_buf())?;
+    let (mut app, _port) = gpu_editor_app(tmp.path().to_path_buf())?;
     advance_to_editing(&mut app);
 
-    let reply_rx = start_client(port)?;
+    let reply_rx = enqueue_capture(&mut app, SHOT_NAME);
     let reply = drive_until_reply(&mut app, &reply_rx)?;
 
-    let saved = match reply {
-        QaResponse::Screenshot(ScreenshotResult::Saved(path)) => path,
-        other => {
-            return Err(format!(
-                "the editor must answer Saved once its capture lands, not {other:?}"
-            )
-            .into());
-        }
+    let Some(saved) = attached_png(&reply) else {
+        return Err(format!(
+            "the editor must attach the PNG once its capture lands, not {reply:?}"
+        )
+        .into());
     };
     let png = PathBuf::from(saved.as_str());
     assert!(
@@ -142,8 +133,7 @@ fn take_screenshot_over_the_wire_lands_a_png_on_disk() -> TestResult {
     );
     assert!(
         png.exists(),
-        "the editor answered Saved({}) but no file is there — the reply must name a PNG that \
-         exists",
+        "the editor attached {} but no file is there — the reply must name a PNG that exists",
         png.display(),
     );
     let bytes = std::fs::read(&png)?;
@@ -190,18 +180,18 @@ fn take_screenshot_over_the_wire_lands_a_png_on_disk() -> TestResult {
 ///    advance a single frame further — no reply has been sent and the confinement directory
 ///    holds no file. Anything arriving in that window was sent before any capture could land.
 /// 2. This app has no render backend, so its capture can NEVER flush a PNG. The pump must
-///    therefore answer the typed `TimedOut`. A handler that replied immediately, or that
-///    assumed its capture landed, would answer `Saved` with a path holding nothing.
+///    therefore answer `QaError::Timeout`. A handler that replied immediately, or that
+///    assumed its capture landed, would attach a path holding nothing.
 ///
 /// The capture also has to wait out the settle window before it is spawned at all, which the
 /// frame count asserts.
 #[test]
 fn the_reply_waits_for_the_capture_that_never_lands() -> TestResult {
     let tmp = tempfile::TempDir::new()?;
-    let (mut app, port) = headless_editor_app(tmp.path().to_path_buf())?;
+    let (mut app, _port) = headless_editor_app(tmp.path().to_path_buf())?;
     advance_to_editing(&mut app);
 
-    let reply_rx = start_client(port)?;
+    let reply_rx = enqueue_capture(&mut app, SHOT_NAME);
 
     // Drive frame by frame until the pump spawns its capture, counting the frames it took.
     let mut spawned_at = None;
@@ -225,8 +215,8 @@ fn the_reply_waits_for_the_capture_that_never_lands() -> TestResult {
     // FROZEN: nothing ticks the app from here, so the pump cannot make progress and no
     // legitimate reply can appear. Anything that arrives was sent earlier than the contract
     // allows.
-    match reply_rx.recv_timeout(FROZEN_WATCH) {
-        Err(RecvTimeoutError::Timeout) => {}
+    match reply_rx.try_recv() {
+        Err(TryRecvError::Empty) => {}
         Ok(early) => {
             return Err(format!(
                 "the editor replied {early:?} at the moment its capture was spawned — before \
@@ -234,8 +224,8 @@ fn the_reply_waits_for_the_capture_that_never_lands() -> TestResult {
             )
             .into());
         }
-        Err(RecvTimeoutError::Disconnected) => {
-            return Err("the client half died before the editor answered".into());
+        Err(TryRecvError::Disconnected) => {
+            return Err("the reply channel closed before the editor answered".into());
         }
     }
     let written = std::fs::read_dir(tmp.path())?.count();
@@ -248,8 +238,9 @@ fn the_reply_waits_for_the_capture_that_never_lands() -> TestResult {
     // the pump reports that as a typed timeout rather than claiming a save.
     let reply = drive_until_reply(&mut app, &reply_rx)?;
     assert!(
-        matches!(reply, QaResponse::Screenshot(ScreenshotResult::TimedOut)),
-        "a capture whose PNG never lands must be answered TimedOut, never Saved; got {reply:?}",
+        matches!(reply, QaResponse::Error(QaError::Timeout)),
+        "a capture whose PNG never lands must be answered Timeout, never an attachment; got \
+         {reply:?}",
     );
     Ok(())
 }

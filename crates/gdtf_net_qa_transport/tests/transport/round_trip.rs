@@ -7,7 +7,7 @@ use std::{
 };
 
 use gdtf_net_qa_transport::NetIoTimeout;
-use gdtf_qa_protocol::envelope::{ProtocolVersion, QaError, QaRequest, QaResponse};
+use gdtf_qa_protocol::message::{ProtocolVersion, QaError, QaRequest, QaResponse};
 
 use super::harness::{
     TestResult, host_reply_facts, read_response, spawn_fake_host_side, spawn_listener, test_facts,

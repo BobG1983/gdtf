@@ -9,12 +9,12 @@ use crate::command::{
 };
 
 /// What running a command produced — the reply to
-/// [`Run`](crate::envelope::QaRequest::Run).
+/// [`Run`](crate::message::QaRequest::Run).
 ///
 /// FOUR variants, host-neutral. Note there is no `Refused`: a command that runs and says
 /// no does so inside its OWN declared reply type, whose schema the catalogue publishes.
 /// "The act was refused because the target is not adjacent" is domain vocabulary and
-/// belongs to the command, not to the envelope.
+/// belongs to the command, not to the [`message`](crate::message) types that carry it.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CommandOutcome {
     /// The command ran. `reply` is its declared reply type, as JSON.

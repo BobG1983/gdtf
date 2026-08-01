@@ -3,14 +3,14 @@
 use core::fmt::{self, Display};
 use std::io;
 
-use gdtf_qa_protocol::{envelope::QaError, framing::WireError};
+use gdtf_qa_protocol::{framing::WireError, message::QaError};
 
 /// A failure the MCP bridge meets while exchanging one request with the game's
 /// `net_qa` server.
 ///
 /// Distinct from a protocol-level [`QaError`] the
 /// game deliberately returns (that rides back inside a normal
-/// [`QaResponse`](gdtf_qa_protocol::envelope::QaResponse) and becomes an MCP tool error):
+/// [`QaResponse`](gdtf_qa_protocol::message::QaResponse) and becomes an MCP tool error):
 /// an [`McpError`] is the LINK itself failing — the game is not up, the socket broke, or
 /// a frame would not encode/decode. The tool layer turns it into an MCP tool error so a
 /// client sees the reason instead of a crash. The inner `io::Error` / [`WireError`] are

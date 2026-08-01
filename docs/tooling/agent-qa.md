@@ -1,17 +1,19 @@
 # Agent QA — driving the game over MCP
 
-A language-model harness can drive a running battle end-to-end: launch the game,
-navigate it into a battle, inject player intents, read the resulting combat
-events, and capture the presenter frame. This is the QA control channel built
-across the QA-net ticket run (the GTW-694 epic). It has three processes and one
-shared wire contract:
+A language-model harness can drive the game and the content editor from the
+outside: launch a child process, read the list of commands that host publishes,
+run one, read what the child printed, and stop it. WHAT a host can be asked to do
+is that published list, read at run time — not a fixed tool set. See
+[qa-commands.md](qa-commands.md) for how a command is added. This is the QA
+control channel built across the QA-net ticket run (the GTW-694 epic). It has
+three processes and one shared wire contract:
 
 - **The game**, built with the `net_qa` feature, opens a loopback TCP listener
-  that services typed requests against the live battle.
+  that publishes its own command list and runs a named command against the live
+  app.
 - **The content editor**, built with ITS `net_qa` feature, opens a SECOND
-  loopback listener on its own port, servicing the editor query family
-  (GTW-804 / GTW-805). It is a separate process from the game and can run at the
-  same time.
+  loopback listener on its own port, publishing its own command list. It is a
+  separate process from the game and can run at the same time.
 - **The MCP host** (`gdtf_qa_mcp`) speaks a hand-rolled JSON-RPC 2.0 subset on
   stdin/stdout to the model harness and forwards each tool call to the game or
   the editor over that loopback socket. ONE host binary manages BOTH children
@@ -19,7 +21,7 @@ shared wire contract:
   `7616` and an editor on `7617` can be up and driven at the same time.
 - **`gdtf_qa_protocol`** is the bevy-free crate all three link — `crates/gdtf_app`
   for the game, `crates/gdtf_content_editor` for the editor, and `bins/gdtf_qa_mcp`
-  for the host. It carries the typed request/response envelope, the read-model
+  for the host. It carries the typed request/response message shapes, the command
   DTOs, and the framing codec.
 
 The channel is a **dev-only** affordance: it never compiles into a release build,
@@ -29,12 +31,12 @@ it in.
 ## The launch recipe — the game
 
 The MCP host launches the game as a child process when the harness calls the
-`launch_game` tool. The launch is owned by the `CargoSpawner` in
+`launch` tool. The launch is owned by the `CargoSpawner` in
 `bins/gdtf_qa_mcp/src/lifecycle/spawn.rs` (behind the `ChildSpawner` trait, so
 tests can substitute a stub). WHAT it launches is the call's own recipe — a
 `LaunchSpec` (`bins/gdtf_qa_mcp/src/lifecycle/launch/`) of four typed values:
 package, features, working directory, environment overrides (GTW-875). Each one
-the call omits falls back to the default game recipe, so a bare `launch_game`
+the call omits falls back to the default game recipe, so a bare `launch`
 still runs:
 
 ```bash
@@ -69,12 +71,13 @@ The variable names come from the launch recipe's `QaChannel`
 (`bins/gdtf_qa_mcp/src/lifecycle/launch/channel.rs`), which carries one pair per
 host — `GDTF_NET_QA` / `GDTF_NET_QA_PORT` for the game, `GDTF_EDITOR_NET_QA` /
 `GDTF_EDITOR_NET_QA_PORT` for the editor — so the spawner needs no per-host
-branch. The child's stdout is discarded (the host's own stdout is the
-JSON-RPC channel and must stay clean); its stderr is captured by `ProcessChild`
-for the failure tail. The process is managed by the `HostManager`
-(`bins/gdtf_qa_mcp/src/lifecycle/manager.rs`): `launch_game` starts it and waits
+branch. BOTH of the child's output streams are piped and drained into one ring by
+`ProcessChild` — the host's own stdout is the JSON-RPC channel, so the child's
+cannot share it. The `logs` tool reads the tail of that ring, and a failed launch
+reports it as the diagnosis. The process is managed by the `HostManager`
+(`bins/gdtf_qa_mcp/src/lifecycle/manager.rs`): `launch` starts it and waits
 for it to answer before returning its port and pid — plus the package, features,
-and resolved directory it was built from — and `stop_game` (plus stdin EOF) stops
+and resolved directory it was built from — and `stop` (plus stdin EOF) stops
 it so the game never outlives the host.
 
 One game runs at a time, and the manager remembers the recipe that built it:
@@ -82,7 +85,7 @@ One game runs at a time, and the manager remembers the recipe that built it:
 - The same recipe again is ensure-style `already_running`, reporting the running
   child's package, features, and directory (not the ones this call asked for).
 - A DIFFERENT recipe is REJECTED, naming what is actually running. Call
-  `stop_game` first. Answering "already running" to a request for another
+  `stop` first. Answering "already running" to a request for another
   checkout would hand back a success for a build that was never started.
 
 QA evidence goes through the MCP host. Hand-writing a socket client against this
@@ -94,9 +97,9 @@ defect to file, not a reason to bypass the host.
 
 ## The launch recipe — the content editor
 
-`launch_editor` is the editor's `launch_game` (GTW-808): the same host, the same
+`launch(host="editor")` is the editor's launch (GTW-808): the same host, the same
 `CargoSpawner`, the same five recipe arguments — with the editor's own defaults.
-A bare `launch_editor` runs:
+A bare `launch(host="editor")` runs:
 
 ```bash
 cargo run -p gdtf_content_editor_bin --features dynamic_linking,net_qa
@@ -114,24 +117,24 @@ on the port the launcher is about to probe.
 **Warm the build first.** The editor's `dynamic_linking,net_qa` combination is
 one nothing else in the repo produces — `cargo dbuild` builds the GAME binary,
 and the workspace checks never link an editor binary — so the first
-`launch_editor` against a given checkout is usually a COLD BUILD of the whole
+`launch(host="editor")` against a given checkout is usually a COLD BUILD of the whole
 editor. Two things follow:
 
 - The editor's boot timeout is **600 seconds**, not the game's 180
   (`bins/gdtf_qa_mcp/src/lifecycle/config.rs`).
 - Run `cargo edqabuild` in the checkout you are about to QA before calling
-  `launch_editor`, and the launch answers in seconds instead.
+  `launch(host="editor")`, and the launch answers in seconds instead.
 
 If a launch does time out, the failure is not a bare "timed out": it names the
 build as the likely cause, prints the exact `cargo build -p … --features …`
-warm-up command for the recipe it ran, and carries the child's stderr tail (which
-shows how far the build got).
+warm-up command for the recipe it ran, and carries the child's output tail — both
+streams, interleaved — which shows how far the build got.
 
 The editor can also be brought UP by hand — driving it still goes through the
 MCP host, per the rule above. It is a separate binary package
 (`bins/gdtf_content_editor/Cargo.toml`, package `gdtf_content_editor_bin`) with
 its own `net_qa` feature, its own two environment variables, and its own default
-port, and running it by hand opens the same channel `launch_editor` opens.
+port, and running it by hand opens the same channel that launch opens.
 GTW-878 added that binary feature; before it, the editor's listener existed only
 inside workspace-wide `cargo` checks and no launchable editor could open a port
 at all.
@@ -191,15 +194,14 @@ to `run_listener` (`editor_hello_facts()` in
 name `gdtf-editor-net-qa` — how a client tells the two hosts apart — now comes
 from (GTW-940).
 
-The editor itself answers three request kinds (`route_editor_requests` in
-`crates/gdtf_content_editor/src/net_qa/router.rs`): the ADR 0007 editor query
-pair `GetEditorQueryOptions` and `QueryEditor`, and `TakeScreenshot` (GTW-880),
-which the drain does not answer itself: it queues onto the shared transport's
-`PendingQueue` and the capture pump in
-`crates/gdtf_content_editor/src/net_qa/screenshot/` replies once the PNG has
-landed on disk. Every other kind is rejected
-`BadRequest` immediately rather than left to hang. The wire shape, the framing,
-and the protocol version are the game's — see
+The editor itself answers the two command-layer requests (`route_editor_requests`
+in `crates/gdtf_content_editor/src/net_qa/router/route.rs`): a `Catalogue`, with
+an EMPTY command list under its own host name, and a `Run`, with `Unknown` —
+because the editor publishes no commands yet. Building its set is the next editor
+ticket. Its capture pump
+(`crates/gdtf_content_editor/src/net_qa/screenshot/`) is still there and still
+tested, waiting for the capture command that will fill its queue. The wire shape,
+the framing, and the protocol version are the game's — see
 [the protocol sketch](#the-protocol-sketch) — so one client library speaks to
 both.
 
@@ -250,133 +252,77 @@ launchable process.
 
 ## The tool vocabulary
 
-The MCP host exposes eighteen tools, enumerated once by the `ToolName` enum in
-`bins/gdtf_qa_mcp/src/mcp/tools/name.rs`. Fourteen forward to a running child (each
-maps 1:1 onto a `QaRequest`, resolved by `build_request` in
-`bins/gdtf_qa_mcp/src/mcp/call/build/request.rs`); four are host-local and never
-touch the wire. Every tool names a default host (`ToolName::host`), so an
-editor tool travels over the editor's link and drives the editor's lifecycle —
-the two children are never confused for one another. Three tools are aimed per
-call instead: `take_screenshot`, which both children can serve, and the two
-command-layer tools `commands` / `run` (GTW-942), since a command layer is
-something both hosts have rather than a thing only one of them does.
-`ToolName::accepts_host_argument` lets their optional `host` argument
-(`"game"` / `"editor"`) pick the child, `resolve_host` in
-`bins/gdtf_qa_mcp/src/mcp/call/handle.rs` resolves it, and a `host` value naming
-neither child is rejected as invalid params rather than quietly defaulting, so a
-typo cannot screenshot the wrong process (GTW-880).
+The MCP host exposes FIVE tools, enumerated once by the `ToolName` enum in
+`bins/gdtf_qa_mcp/src/mcp/tools/name.rs`. Three drive a child process — `launch`,
+`stop`, `logs` — and two carry that child's own command layer: `commands` and
+`run`. Every one takes the same optional `host` argument (`"game"` — the default
+— or `"editor"`), so which child a call reaches is the CALL's to say rather than
+the tool's. `resolve_host` in `bins/gdtf_qa_mcp/src/mcp/courier/handle.rs`
+resolves it, and a `host` value naming neither child is rejected as invalid
+params rather than quietly defaulting, so a typo cannot drive the wrong process
+(GTW-880).
 
-The two command-layer tools name no command. What a host can be asked to do is
-read from the host itself — `commands` returns its live catalogue, `run` calls one
-entry by name — so adding a command to a host adds nothing here. The editor has no
-command set yet and answers both `BadRequest`; that lands with the rest of ADR
-0008's B-phase. `run`'s two riders, `await_ready` and `capture`, are declared but
-not built: a call carrying either comes back `Unavailable { code: NotBuilt }`
-rather than running the command with the rider dropped. See
+**The two command tools name no command.** What a host can be asked to do is read
+from the host itself — `commands` returns its live catalogue, `run` calls one
+entry by name — so adding a command to a host adds nothing here, needs no courier
+rebuild, and needs no MCP reconnect. That is the whole point of the design; see
 [ADR 0008](../decisions/0008-qa-command-courier.md) and
 [the command guide](qa-commands.md).
 
 | Tool | Kind | Maps to | Arguments |
 | --- | --- | --- | --- |
-| `send_input` | forward | `QaRequest::Inject` | `intent` (a `NetIntent` as a JSON object or a compact-RON string) |
-| `query_state` | forward | `QaRequest::GetBattleState` | none |
-| `get_output` | forward | `QaRequest::GetOutput` | `max` (optional cap on events drained) |
-| `take_screenshot` | forward | `QaRequest::TakeScreenshot` | `name` (optional file stem), `host` (optional `"game"` — the default — or `"editor"`) |
-| `screenshot_after` | forward | `QaRequest::ScreenshotAfter` | `intent`, `frame_delay`, optional `name` |
-| `app_flow` | forward | `QaRequest::GetAppFlow` | none |
-| `start_battle` | forward | `QaRequest::StartBattle` | `situation`, optional `seed` |
-| `stepper_control` | forward | `QaRequest::StepperControl` | `command` (`"Next"` / `"Skip"` / `{"Auto": {"running": true}}`) |
-| `activate_menu_item` | forward | `QaRequest::ActivateMenuItem` | `token` (from `app_flow`'s `menu.items[].token`) |
-| `focus_control` | forward | `QaRequest::FocusControl` | `command` (`{"ActivateTarget": <token>}` / `"Activate"` / `{"Step": "Next"}` / `{"Focus": <token>}`) |
-| `launch_game` | host-local | — (starts the child via the game's `HostManager`) | all optional: `port`, `package`, `features` (array or comma-separated string), `working_dir`, `env` |
-| `stop_game` | host-local | — (stops the child via the game's `HostManager`) | none |
-| `get_editor_query_options` | forward (editor) | `QaRequest::GetEditorQueryOptions` | none |
-| `query_editor` | forward (editor) | `QaRequest::QueryEditor` | `topic` (`"Readiness"` / `"Mode"` / `"Session"` / `"Draft"` / `"Validation"`) |
-| `launch_editor` | host-local | — (starts the editor child via the editor's `HostManager`) | all optional: `port`, `package`, `features`, `working_dir`, `env` |
-| `stop_editor` | host-local | — (stops the editor child via the editor's `HostManager`) | none |
-| `commands` | forward | `QaRequest::Catalogue` | `host` (optional `"game"` — the default — or `"editor"`), `command` (optional name filter), `detail` (`"Summary"` — the default — or `"Full"`, which adds the two schemas) |
-| `run` | forward | `QaRequest::Run` | `command` (required, from `commands`), `arguments` (optional object, default `{}`), `host` (optional), `await_ready` (optional whole seconds), `capture` (optional `true` or a file stem) |
+| `launch` | host-local | — (starts the child via that host's `HostManager`) | all optional: `host`, `port`, `package`, `features` (array or comma-separated string), `working_dir`, `env` |
+| `stop` | host-local | — (stops the child via that host's `HostManager`) | optional `host` |
+| `logs` | host-local | — (reads the child's captured output) | optional `host`, `max_lines` (trailing lines to return) |
+| `commands` | forward | `QaRequest::Catalogue` | optional `host`, `command` (name filter), `detail` (`"Summary"` — the default — or `"Full"`, which adds the two derived schemas) |
+| `run` | forward | `QaRequest::Run` | `command` (required, from `commands`), `arguments` (optional object, default `{}`), optional `host`, `await_ready` (whole seconds), `capture` (`true` or a file stem) |
 
 Notes an agent relies on:
 
-- **`app_flow` is the affordance oracle.** Its reply carries an `available` list
-  of the request kinds the game will service right now. The battle-only tools
-  (`query_state`, `send_input`, `get_output`) are absent until a battle is
-  running, so poll `app_flow` first and act on what it advertises. It also carries
-  the two token handouts an agent clicks through: `menu` (`id` plus `items` of
-  `{token, label, enabled}`) on a menu, and `focus` (`focused` plus `focusables`
-  of `{token, label, kind, enabled, checked}`) on any focus-navigable screen.
-- **`start_battle` is the navigation step** that carries a cold-launched game
-  from the menu into a battle. The game currently ships one situation,
-  `skirmish`, and rejects any other name; the optional `seed` pins the procgen
-  RNG for a reproducible run. Generating the battle takes a moment — poll
-  `app_flow` until it reports the battle is active before calling the battle-only
-  tools.
-- **`send_input`** injects one `NetIntent` as the selected ganger. The intent
-  vocabulary lives in `crates/gdtf_qa_protocol/src/intent/net_intent.rs` and
-  includes `Fire`, `Move`, `SetStance`, `SetFacing`, `Reload`, `EndTurn`,
-  `Melee`, `Select`, `SelectNext`, and more.
-- **`screenshot_after`** injects an intent and then captures a screenshot a fixed
-  number of frames later — the frame-exact way to catch a transient effect (a
-  muzzle flash) that a request/response round-trip cannot land on itself.
-- **`focus_control` drives the UI OFF-BATTLE** (GTW-802), which `send_input`
-  cannot: `send_input` is serviced only while a battle is running and caught up.
-  Read the controls from `app_flow`'s `focus.focusables` — the enumeration is read
-  off the game's OWN `DirectionalNavigationMap`, so any screen that is
-  keyboard-navigable at all (the Options screen, the menu, the battlescape HUD
-  panels) is listed with no per-screen tagging. `{"ActivateTarget": <token>}`
-  points focus at a control and clicks it; `"Activate"` clicks whatever holds
-  focus; `{"Step": "Next" | "Prev" | "Left" | "Right"}` moves focus; `{"Focus":
-  <token>}` points focus without clicking. Everything runs through the real path —
-  a step writes the same navigate message an arrow key writes, and an activation
-  emits a real `Enter` keypress at the focused control, so the game's own bridges
-  and first-party widget observers react exactly as they do to a player. A token
-  that is not a currently listed focusable is rejected `StaleToken`. The effect
-  lands on the FOLLOWING frame, so re-read `app_flow` to confirm (a checkbox
-  reports its new `checked` value there).
-- **`get_editor_query_options` is the editor's affordance oracle**, the exact
-  counterpart of `app_flow` on the game side. Its reply carries `readiness`
-  (`"Load"` while the editor's asset pass runs, `"Editing"` once the authoring
-  scene is up) and `topics` — the topics the editor will answer RIGHT NOW, each
-  with a one-line description. Poll it after `launch_editor` until `readiness`
-  reads `"Editing"`, then ask `query_editor` only for a topic it lists. During
-  `Load` the topics backed by an `Editing`-only resource (`Mode`, `Session`,
-  `Draft`) are absent and asking for one is rejected `BadRequest`, never
-  answered with a fabricated empty view; `Readiness` and `Validation` are
-  answered from the first frame, because `ContentIntegrityReport` is
-  `init_resource`'d while the app is built
-  (`crates/gdtf_content_editor/src/load/injuries.rs`), so the resource
-  `crates/gdtf_content_editor/src/net_qa/snapshot/topics.rs` tests for already
-  exists — the `Load`-phase topic list is asserted against the real editor app
-  over its real listener in `crates/gdtf_content_editor/tests/net_qa_editor_query/`.
-  That test is the evidence for every `Load`-phase claim in this bullet — the
-  absent `Mode` / `Session` / `Draft` topics, the `BadRequest` rejection, and
-  `Readiness` / `Validation` answering from the first frame. It is not a
-  stand-in: it runs the editor's own `MapEditorPlugin` and `NetQaEditorPlugin`,
-  binds a real loopback listener, and speaks the real framing codec over a real
-  `TcpStream`. Its client connects BEFORE the app runs a single frame, which is
-  what makes the `Load` observation deterministic.
-
-  Do not try to reproduce it by polling a launched editor. The asset pass ends
-  in a few frames, sooner than an MCP client's next request arrives — across
-  four `launch_editor` cycles the first `get_editor_query_options` reported
-  `Editing` every time. Polling for `Load` is a race the test already wins
-  deterministically (GTW-902).
-- **The two children are independent.** `stop_game` does not touch the editor
-  and `stop_editor` does not touch the game; each `HostManager` owns one child
-  and enforces one-at-a-time for its own host only. Stdin EOF stops both.
-- **An MCP host restart leaves the child running, and the stop tools now say
-  so.** Replacing the MCP server process — what every `/mcp` reconnect does —
-  kills the host, not its child: the child is spawned into its own process
-  group and survives, still listening on the fixed port, while the new host
-  process owns no handle to it. A stop with no owned child therefore checks who
-  holds the port before answering (GTW-926): a port answering the QA protocol is
-  an ORPHAN, and the reply says `orphan_stopped` with the port and pid once it
-  is stopped, or is a tool error naming the process when it could not be. Only a
-  port nothing answers on gets `not_running`. A `launch_*` into a held port
-  reports the same orphan and starts nothing, rather than racing it for the
-  socket. Before this, `stop_editor` answered `not_running` about a child that
-  was alive and listening, and a hand-typed `kill` was the only way back.
+- **`commands` is the affordance oracle.** Its reply is that host's live
+  catalogue: one row per command with its name, a one-line summary, when it
+  answers (`Immediate` or `Deferred`), and whether it can run RIGHT NOW in the
+  state the host is in. A command that needs a battle reports `Unavailable` with
+  the precondition named until one is running. Start every session here, and act
+  on what it advertises — it is the truth about the build in front of you, and it
+  changes with the host rather than with this document.
+- **`detail: "Full"`** adds each row's derived argument and reply schemas — the
+  documents you read to build a `run` call. They are DERIVED from the command's
+  own Rust types by the host, so they cannot drift from what it accepts.
+- **`run`'s three refusals each self-correct in one round trip.** A name the host
+  does not know comes back `Unknown` listing every name it does offer; arguments
+  it will not decode come back `BadArguments` carrying the schema they failed
+  against; a command that cannot run in this state comes back `Unavailable` with
+  the precondition named.
+- **`run`'s two riders** are `await_ready` (keep re-testing admission for that
+  many seconds instead of deciding once) and `capture` (take a screenshot after
+  the command has run). Neither is built yet: a call carrying either comes back
+  `Unavailable { code: NotBuilt }` rather than running the command with the rider
+  silently dropped.
+- **What the channel answers today.** The GAME host publishes one command,
+  `app.phase` — where the app is at every level of its state machine. The EDITOR
+  host publishes none yet and answers every `run` `Unknown`. That is the expected
+  state mid-epic (GTW-943), not a regression: the surface that used to sit here
+  was deleted before the commands that replace it were written, so any gap is a
+  compile error rather than a silent fallback.
+- **`logs` is the first thing to try when a launch came up but the app is not
+  behaving.** Both of the child's output streams are captured at spawn into one
+  buffer, in the order they were written, so the reply is what the process
+  actually said. `max_lines` bounds it. A host owning no child answers
+  `not_running` rather than an empty log.
+- **The two children are independent.** A `stop` aimed at the game does not touch
+  the editor and vice versa; each `HostManager` owns one child and enforces
+  one-at-a-time for its own host only. Stdin EOF stops both.
+- **An MCP host restart leaves the child running, and `stop` says so.** Replacing
+  the MCP server process — what every `/mcp` reconnect does — kills the host, not
+  its child: the child is spawned into its own process group and survives, still
+  listening on the fixed port, while the new host process owns no handle to it. A
+  stop with no owned child therefore checks who holds the port before answering
+  (GTW-926): a port answering the QA protocol is an ORPHAN, and the reply says
+  `orphan_stopped` with the port and pid once it is stopped, or is a tool error
+  naming the process when it could not be. Only a port nothing answers on gets
+  `not_running`. A `launch` into a held port reports the same orphan and starts
+  nothing, rather than racing it for the socket.
 
 ## The protocol sketch
 
@@ -403,8 +349,9 @@ in `bins/gdtf_qa_mcp/src/hosts/host.rs` and carried by the `QaClient` in
 and `bevy_derive` (the `Deref` derive), so neither half pulls in the engine. Its
 shape:
 
-- **The envelope** — `QaRequest` and `QaResponse` in
-  `crates/gdtf_qa_protocol/src/envelope/` (`request.rs` / `response.rs`). One
+- **The message** — `QaRequest` and `QaResponse` in
+  `crates/gdtf_qa_protocol/src/message/` (`request.rs` / `response.rs`). Three
+  requests, four responses, five errors, and that is the whole wire. One
   request in, one response out. A session opens with a `Hello(ProtocolVersion)`
   handshake; the server replies `HelloOk(HelloFacts)` on a version match or a
   `VersionMismatch` error otherwise. The handshake is REQUIRED, not optional
@@ -416,8 +363,8 @@ shape:
   which is why `QaClient::ensure_connected` in `bins/gdtf_qa_mcp/src/link.rs`
   sends the `Hello` on every connection it opens.
 - **The wire protocol version** — `ProtocolVersion::CURRENT` in
-  `crates/gdtf_qa_protocol/src/envelope/hello.rs`. It is bumped on
-  any breaking envelope change; negotiation is exact equality with no capability
+  `crates/gdtf_qa_protocol/src/message/hello.rs`. It is bumped on
+  any breaking change to a message shape; negotiation is exact equality with no capability
   handshake.
 - **The framing codec** — pure functions in
   `crates/gdtf_qa_protocol/src/framing/`. Each message is a 4-byte big-endian
@@ -429,63 +376,28 @@ shape:
 Every public type in `gdtf_qa_protocol` round-trips through compact RON
 identically, proven by the crate's per-module round-trip tests.
 
-## The validated smoke sequence
+## The smoke sequence
 
-The epic capstone (GTW-743) ran this sequence live against the real game over
-MCP, with seed `4242`:
+The sequence an agent runs against either child. Every step is a real call
+against the shipped five-tool surface:
 
-1. `launch_game` — start the game child and wait for it to answer.
-2. `app_flow` — read the lifecycle snapshot and its `available` list.
-3. `start_battle` with `{ situation: "skirmish", seed: 4242 }` — navigate into a
-   battle.
-4. `query_state` — read the whole battle snapshot.
-5. `send_input` with a `Select` intent — pick a ganger.
-6. `send_input` with a `Move` intent.
-7. `send_input` with a `Fire` intent.
-8. `get_output` — drain the combat events.
-9. `take_screenshot` — capture the presenter frame.
+1. `launch` — start the child and wait for its QA channel to answer. Add
+   `host: "editor"` for the editor.
+2. `commands` — read that host's live catalogue: what it offers, and what is
+   available right now.
+3. `commands` with `detail: "Full"` and a `command` filter — read one command's
+   derived argument and reply schemas.
+4. `run` with that command and its arguments — do the thing.
+5. `logs` — if a step surprised you, read what the child printed.
+6. `stop` — stop the child and release the port.
 
-All nine calls answered. `get_output` returned five real events — a
-`MoveCompleted`, two reaction `ShotFired`s, an `Injury`, and the player's
-`ShotFired` — with correct identities, and the screenshot showed the real
-presenter frame.
+On the game host today step 4 is `run { command: "app.phase" }`, which answers
+the five-level state tuple (`app`, `running`, `game`, `battlescape`,
+`aftermath`, the nested four `null` where they are not live). Steps 2-4 are what
+change as commands land; steps 1, 5 and 6 never do.
 
-## The smoke sequence — the content editor
-
-The editor's equivalent of the sequence above. Like that one, this is a
-transcript of calls that were actually made — run against `develop` at
-`154936d7`, with the replies below copied from what came back.
-
-Run `cargo edqabuild` in the checkout first, then:
-
-1. `launch_editor` — starts the child and waits for it to answer. Returned
-   `status: "launched"`, `pid`, `port: 7617`, `package:
-   "gdtf_content_editor_bin"`, `features: "dynamic_linking,net_qa"`. Confirmed
-   independently: `ps` showed `target/debug/gdtf_content_editor` at that pid and
-   `lsof` showed it listening on `127.0.0.1:7617`.
-2. `get_editor_query_options` — `readiness: "Editing"` with all five topics
-   (`Readiness`, `Mode`, `Session`, `Draft`, `Validation`). The `Load`→`Editing`
-   transition is the editor's own (`crates/gdtf_content_editor/src/plugin.rs`);
-   nothing over the wire drives it, and it completes too fast to observe here —
-   see the polling note above.
-3. `query_editor` once per topic, all five answered:
-   - `Readiness` → `"Editing"`
-   - `Mode` → `active: "Prefab"`, `label: "PREFAB"`, `tab_index: 2`
-   - `Session` → theme and resolved `default_floor` UUIDs, `grid_size` 60x60x8,
-     `selected_tile: null`
-   - `Draft` → `mode: "Prefab"`, fields `painted_cells: "0"` and
-     `current_level: "Some(CurrentEditLevel(Level(0)))"`
-   - `Validation` → `checks_complete: true`, `findings: []`
-4. `stop_editor` — `status: "stopped"` with the pid. Confirmed independently:
-   the process was reaped and port 7617 released.
-
-Every value above matches what
-`crates/gdtf_content_editor/tests/net_qa_editor_query/` already asserts
-in-process, which is why that test is the evidence for the `Load` phase rather
-than a launched process.
-
-The two hosts are independent: a `launch_game` child on `7616` and a
-`launch_editor` child on `7617` are tracked by separate `HostManager`s, one per
-host, constructed in `bins/gdtf_qa_mcp/src/serve.rs` and looked up by
-`HostSet::pair` in `bins/gdtf_qa_mcp/src/hosts/set.rs`. Each tool reaches its own
-child and `stop_editor` never touches the game.
+The two hosts are independent: a game child on `7616` and an editor child on
+`7617` are tracked by separate `HostManager`s, one per host, constructed in
+`bins/gdtf_qa_mcp/src/serve.rs` and looked up by `HostSet::pair` in
+`bins/gdtf_qa_mcp/src/hosts/set.rs`. Each call reaches the child its `host`
+argument names, and a `stop` aimed at the editor never touches the game.

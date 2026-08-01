@@ -3,7 +3,7 @@
 use std::sync::mpsc::{Receiver, TryRecvError};
 
 use bevy::prelude::*;
-use gdtf_qa_protocol::envelope::{QaError, QaResponse};
+use gdtf_qa_protocol::message::{QaError, QaResponse};
 
 use crate::{
     Responder,
@@ -88,14 +88,11 @@ fn a_claimed_entry_is_answered_by_its_claimer_and_never_swept() {
         .unwrap_or_default();
     assert_eq!(claimed.len(), 1, "the push must be drainable");
     for (_payload, responder) in claimed {
-        responder.reply(QaResponse::Error(QaError::BadRequest));
+        responder.reply(QaResponse::Error(QaError::Busy));
     }
 
     assert!(
-        matches!(
-            reply_rx.try_recv(),
-            Ok(QaResponse::Error(QaError::BadRequest))
-        ),
+        matches!(reply_rx.try_recv(), Ok(QaResponse::Error(QaError::Busy))),
         "the claimer's reply must reach the client",
     );
 

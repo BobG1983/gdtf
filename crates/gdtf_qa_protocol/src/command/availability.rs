@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 /// No host computes this value yet — the admission path is GTW-941's (A3) work. It is
 /// typed here so that path and the catalogue can share it: what a host advertises in its
 /// [`CommandCatalogue`](crate::command::CommandCatalogue) and what it will accept on a
-/// [`Run`](crate::envelope::QaRequest::Run) are meant to come from one predicate per
+/// [`Run`](crate::message::QaRequest::Run) are meant to come from one predicate per
 /// command rather than one central match that can drift from the list it advertises.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CommandAvailability {

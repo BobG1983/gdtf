@@ -91,9 +91,9 @@ The last two steps are `cargo clippy-schema` and `cargo test-schema`, aliases fo
 `clippy -p gdtf_qa_protocol --all-targets --features schema` and
 `test -p gdtf_qa_protocol --features schema`. They exist because
 `crates/gdtf_qa_protocol` declares `schemars` as an OPTIONAL dependency behind a `schema`
-feature, and the 19 `#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]` lines
-across `src/ids/{cell,handle,pointer,token}.rs` plus the whole `src/ids/test/schema.rs`
-module are reachable only with that feature on. Nothing else in the gate or in CI turns it
+feature, and the 6 `#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]` lines across
+`src/ids/{cell,shot}.rs` plus the whole `src/ids/test/schema.rs` module are reachable only with
+that feature on. Nothing else in the gate or in CI turns it
 on, so before these steps every one of those lines could be deleted — or replaced with a
 compile error — and all six commands above, plus both CI workflows, stayed green. That is
 the GTW-790 / GTW-877 defect class in a third crate: an optional-feature module must be

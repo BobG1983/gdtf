@@ -9,7 +9,7 @@
 //!
 //! Each case here goes through `dispatch` → `handle_tool_call` → `render_outcome` →
 //! `attachment_blocks`, with the file existing only under a temp directory the lifecycle
-//! reports as the child's — the same setup `screenshot_cwd` uses for `take_screenshot`.
+//! reports as the child's — the same setup `screenshot_cwd` uses for both children.
 
 use std::{
     fs,
@@ -20,12 +20,12 @@ use std::{
 };
 
 use gdtf_qa_mcp::{
-    ChildPid, HostLifecycle, HostPair, HostSet, LaunchOutcome, LaunchSpec, McpError, QaLink,
-    QaPort, StopOutcome, WorkingDir, base64::encode_standard, dispatch,
+    ChildPid, HostLifecycle, HostPair, HostSet, LaunchOutcome, LaunchSpec, McpError, OutputTail,
+    QaLink, QaPort, StopOutcome, TailLines, WorkingDir, base64::encode_standard, dispatch,
 };
 use gdtf_qa_protocol::{
     command::{ArtifactPath, AttachmentKind, CommandOutcome, CommandReplyJson, ReplyAttachment},
-    envelope::{QaError, QaRequest, QaResponse},
+    message::{QaError, QaRequest, QaResponse},
 };
 use serde_json::{Value, json};
 
@@ -55,7 +55,7 @@ impl QaLink for AttachingLink {
                 reply:       CommandReplyJson::new(ATTACHING_REPLY.to_owned()),
                 attachments: self.0.clone(),
             })),
-            _ => Ok(QaResponse::Error(QaError::BadRequest)),
+            _ => Ok(QaResponse::Error(QaError::Malformed)),
         }
     }
 }
@@ -81,6 +81,10 @@ impl HostLifecycle for ChildInDirLifecycle {
 
     fn child_working_dir(&self) -> Option<WorkingDir> {
         self.0.clone().map(WorkingDir::new)
+    }
+
+    fn child_output(&self, _max: TailLines) -> Option<OutputTail> {
+        None
     }
 }
 

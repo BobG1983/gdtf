@@ -51,7 +51,7 @@ pub struct FakeStallReply {
 /// `PendingQueue<CommandCall<FakeStall>>` with nobody to drain it. Without the
 /// `sweep_pending::<CommandCall<C>>` registration in
 /// [`register_command`](crate::dispatch::register_command) that call would hang the client's
-/// socket instead of being answered [`Timeout`](gdtf_qa_protocol::envelope::QaError::Timeout),
+/// socket instead of being answered [`Timeout`](gdtf_qa_protocol::message::QaError::Timeout),
 /// which is exactly what the stalled-call test observes.
 pub struct FakeStall;
 

@@ -10,7 +10,7 @@ edition = "2024"
 # (the `Deref` derive) for the no-bare-types newtypes. NO bevy engine dep, NO tokio,
 # NO transport/IO — pure data + a pure framing codec.
 [dependencies]
-# The wire encoding: every request/response/view/event type is serde-derived.
+# The wire encoding: every request, response and command DTO is serde-derived.
 serde = { workspace = true }
 # The compact on-wire text form — the framing codec's payload is compact RON.
 ron = { workspace = true }

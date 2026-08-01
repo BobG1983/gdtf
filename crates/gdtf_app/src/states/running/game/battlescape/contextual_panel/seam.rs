@@ -132,12 +132,13 @@ impl VisibleSlotRank {
 /// touch-points). `PartialEq` is hand-written over the inner target (a derive would
 /// wrongly bound the act TOKEN `A: PartialEq` — the GTW-567 generic-derive lesson).
 ///
-/// `pub(crate)` (widened from `pub(in …battlescape)` for GTW-737): the dev-only `net_qa`
-/// inject pump ([`crate::dev`]'s `net_qa`) reads each per-act offer to OFFER-GATE an
-/// injected contextual act, and it lives outside the `battlescape` subtree. Re-exported
-/// from the [`contextual_panel`](super) module's `mod.rs` for that read.
+/// GTW-737 widened this to `pub(crate)` so the `net_qa` act-injection pump, which lived
+/// outside the `battlescape` subtree, could offer-gate an injected act. GTW-943 deleted that
+/// pump, so every reader is back inside `battlescape` and the visibility is narrowed to match.
 #[derive(Resource, Debug)]
-pub(crate) struct ContextualOffer<A: ContextualAct>(Option<A::Target>);
+pub(in crate::states::running::game::battlescape) struct ContextualOffer<A: ContextualAct>(
+    Option<A::Target>,
+);
 
 impl<A: ContextualAct> Default for ContextualOffer<A> {
     fn default() -> Self {
@@ -160,12 +161,10 @@ impl<A: ContextualAct> ContextualOffer<A> {
         Self(target)
     }
 
-    /// The offered target, or [`None`] when the act is not offered.
-    ///
-    /// `pub(crate)` (widened for GTW-737) so the `net_qa` inject pump can read the offer
-    /// to gate an injected contextual act.
+    /// The offered target, or [`None`] when the act is not offered — what the button press
+    /// and the slot-key press act on.
     #[must_use]
-    pub(crate) const fn target(&self) -> Option<A::Target> {
+    pub(in crate::states::running::game::battlescape) const fn target(&self) -> Option<A::Target> {
         self.0
     }
 

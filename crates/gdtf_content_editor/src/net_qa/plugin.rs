@@ -172,11 +172,12 @@ impl Plugin for NetQaEditorPlugin {
 /// the existence of [`State<EditorState>`] — never the game's `AppState`, which this crate
 /// does not have and must not depend on.
 ///
-/// It is deliberately NOT narrowed to [`EditorState::Editing`]. A client that connects during
-/// the `Load` asset pass and waits for a reply would otherwise be reaped by the socket's own
-/// read timeout before the editor ever reaches `Editing` — which is why
-/// `GetEditorQueryOptions`, the readiness poll that tells such a client to wait, is answered in
-/// every state. (Version negotiation no longer depends on this at all: since GTW-940 the
+/// It is deliberately NOT narrowed to [`EditorState::Editing`]. A `Catalogue` or `Run` sent
+/// while the editor is still in the `Load` asset pass would otherwise sit in the inbox
+/// unanswered until `Editing`, and the socket's own read timeout would reap the client first.
+/// Both are answerable from any state — the catalogue is a fixed list and an unknown name is
+/// unknown whatever the editor is doing — so the drain runs in every state and the client gets
+/// a real reply. (Version negotiation no longer depends on this at all: since GTW-940 the
 /// listener thread answers `Hello` without the drain running a single frame.)
 ///
 /// Takes `&mut App` (the ordinary app-builder handle, as [`App::add_plugins`] does); not a
@@ -215,10 +216,16 @@ fn serve(app: &mut App, listener: TcpListener, io_timeout: NetIoTimeout) {
         Update,
         EditorNetQaSystems::Gather.run_if(resource_exists::<State<EditorState>>),
     );
-    // Chained, in this order: the drain routes a `TakeScreenshot` onto the pending queue, the
-    // pump claims it the SAME frame (so it never reaches the sweep), and the shared
+    // Chained, in this order: the drain answers the inbox, the pump claims anything already on
+    // the capture queue the SAME frame (so it never reaches the sweep), and the shared
     // transport's `sweep_pending` answers a typed `Timeout` on anything that somehow went
     // unclaimed rather than leaving the client hanging.
+    //
+    // GTW-943 removed the request that pushed onto that queue, so nothing production-side
+    // fills it today — the editor's capture COMMAND is the editor-host ticket, and it pushes
+    // from inside the drain, which is why the pump stays ordered after it. Until then the pump
+    // and the sweep are exercised by `tests/net_qa_editor_screenshot/`, which pushes onto the
+    // real queue directly.
     app.add_systems(
         Update,
         (

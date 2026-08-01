@@ -22,7 +22,7 @@ use bevy::prelude::Deref;
 /// (with the courier's `LINK_TIMEOUT` at 200 s) so the command layer's 120 s
 /// `MAX_AWAIT_BUDGET` sits strictly inside both and a long wait answers its own deadline
 /// error instead of surfacing as a socket
-/// [`Timeout`](gdtf_qa_protocol::envelope::QaError::Timeout); the counter-lever is halving
+/// [`Timeout`](gdtf_qa_protocol::message::QaError::Timeout); the counter-lever is halving
 /// that budget to 60 s and taking the two timeouts to 90 s / 100 s. No user ruling has been
 /// made, so the value stays at the 5 s it has always been until one is.
 pub const DEFAULT_IO_TIMEOUT: NetIoTimeout = NetIoTimeout::new(Duration::from_secs(5));

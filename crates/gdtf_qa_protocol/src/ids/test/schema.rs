@@ -16,7 +16,7 @@ use crate::{
         ArgSchemaJson, CommandAvailability, CommandEntry, CommandName, CommandSummary,
         CommandTiming, ReplySchemaJson,
     },
-    ids::{CellLevelNet, GangerToken, ShotName},
+    ids::{CellLevelNet, CellNet, ShotName},
     test_support::assert_ron_round_trip,
 };
 
@@ -24,8 +24,8 @@ use crate::{
 /// crate's id newtypes, deriving `JsonSchema` exactly as a host's `Args` type does.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct ProbeArgs {
-    /// The ganger the probe act belongs to.
-    actor: GangerToken,
+    /// The ground cell the probe act starts from.
+    actor: CellNet,
     /// The cell and storey it targets.
     at:    CellLevelNet,
     /// An optional capture stem, so the derive is exercised over an `Option` too.

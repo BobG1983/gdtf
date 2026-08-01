@@ -34,12 +34,13 @@ part of playing. The line: **a command helps an agent play or author, or it does
 exist.** If its only use is asserting something no player could see, it belongs in the
 test suite.
 
-Replies stay small and scoped. The old surface's `query_state` answered with the entire
-app state — tens of thousands of tokens, mostly irrelevant to the question asked, filling
-the caller's context. That is the trap: one convenient dump instead of many scoped reads.
-A command answers the one question it names; if a reply could run to pages, the command
-is too broad — split it the way a player's perception is split: which screen, what has
-focus, what is in view.
+Replies stay small and scoped. The surface this one replaced had a `query_state` tool
+that answered with the entire app state — tens of thousands of tokens, mostly irrelevant
+to the question asked, filling the caller's context. GTW-943 deleted it; the trap it
+stands for did not go away — one convenient dump instead of many scoped reads. A command
+answers the one question it names; if a reply could run to pages, the command is too
+broad — split it the way a player's perception is split: which screen, what has focus,
+what is in view.
 
 ## The three edits
 

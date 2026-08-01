@@ -10,7 +10,7 @@
 use std::{sync::mpsc, thread};
 
 use gdtf_content_editor::EditorState;
-use gdtf_qa_protocol::envelope::{QaRequest, QaResponse};
+use gdtf_qa_protocol::message::{QaRequest, QaResponse};
 
 use crate::{
     assertions::assert_answered_during_load,

@@ -14,8 +14,8 @@ use std::{
 };
 
 use gdtf_qa_protocol::{
-    envelope::{ProtocolVersion, QaRequest, QaResponse},
     framing::{FrameDecoder, encode},
+    message::{ProtocolVersion, QaRequest, QaResponse},
 };
 
 use super::values::{ProbeTimeout, Readiness};

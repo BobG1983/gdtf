@@ -25,7 +25,7 @@ use crate::{
 ///
 /// Each child's connection is opened lazily on the first forwarding `tools/call` for that
 /// host, so `initialize` and `tools/list` answer before either process is up. The
-/// `launch_game` / `stop_game` and `launch_editor` / `stop_editor` tools drive the two
+/// `launch` / `stop` / `logs` tools drive the two
 /// [`HostManager`]s, which own the child processes — separately, so a game and an editor
 /// can be running at the same time.
 pub fn run_stdio() {
@@ -84,14 +84,17 @@ pub fn run_loop<R: BufRead, W: Write>(mut reader: R, writer: &mut W, hosts: &mut
 mod tests {
     use std::io::Cursor;
 
-    use gdtf_qa_protocol::envelope::{QaRequest, QaResponse};
+    use gdtf_qa_protocol::message::{QaRequest, QaResponse};
     use serde_json::Value;
 
     use super::run_loop;
     use crate::{
         error::McpError,
         hosts::{HostPair, HostSet},
-        lifecycle::{HostLifecycle, LaunchOutcome, LaunchSpec, StopOutcome, WorkingDir},
+        lifecycle::{
+            HostLifecycle, LaunchOutcome, LaunchSpec, OutputTail, StopOutcome, TailLines,
+            WorkingDir,
+        },
         link::{QaLink, QaPort},
     };
 
@@ -123,6 +126,10 @@ mod tests {
         }
 
         fn child_working_dir(&self) -> Option<WorkingDir> {
+            None
+        }
+
+        fn child_output(&self, _max: TailLines) -> Option<OutputTail> {
             None
         }
     }

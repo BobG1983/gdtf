@@ -8,14 +8,14 @@
 //! that channel at all, and only a test holding the channel itself can see that.
 //!
 //! The facts the listener is given ([`host_facts`]) carry a version that is NOT
-//! [`ProtocolVersion::CURRENT`](gdtf_qa_protocol::envelope::ProtocolVersion::CURRENT) and a
+//! [`ProtocolVersion::CURRENT`](gdtf_qa_protocol::message::ProtocolVersion::CURRENT) and a
 //! name neither host uses, so a `HelloOk` carrying them can only have come from the facts
 //! passed in — the negotiation is against the HOST's facts, not against a crate constant.
 
 use gdtf_qa_protocol::{
     command::{CommandArgsJson, CommandName},
-    envelope::{QaError, QaRequest, QaResponse, RunCommand},
     framing::encode_frame,
+    message::{QaError, QaRequest, QaResponse, RunCommand},
 };
 
 use super::socket::{
@@ -69,10 +69,10 @@ fn a_matching_hello_negotiates_the_connection() -> TestResult {
         "the host must receive the request that was sent, got {:?}",
         incoming.request(),
     );
-    incoming.respond(QaResponse::Error(QaError::BadRequest));
+    incoming.respond(QaResponse::Error(QaError::Busy));
     let reply = read_response(&mut client)?;
     assert!(
-        matches!(reply, QaResponse::Error(QaError::BadRequest)),
+        matches!(reply, QaResponse::Error(QaError::Busy)),
         "the host's reply must come back down the same socket, got {reply:?}",
     );
     Ok(())
@@ -121,7 +121,7 @@ fn a_run_before_hello_is_refused_and_never_reaches_the_inbox() -> TestResult {
 }
 
 /// **Clause 5 (`Fresh`).** A frame that does not decode as a `QaRequest` is answered
-/// `Malformed` — not `BadRequest` — and never reaches the host.
+/// `Malformed`, and never reaches the host.
 #[test]
 fn an_undecodable_frame_is_malformed_on_a_fresh_connection() -> TestResult {
     let (mut client, inbox) = connected_client()?;
@@ -182,10 +182,10 @@ fn catalogue_and_run_reach_the_inbox_after_a_successful_hello() -> TestResult {
             format!("{expected:?}"),
             "the host must receive exactly the request that was sent",
         );
-        incoming.respond(QaResponse::Error(QaError::NoBattle));
+        incoming.respond(QaResponse::Error(QaError::Busy));
         let reply = read_response(&mut client)?;
         assert!(
-            matches!(reply, QaResponse::Error(QaError::NoBattle)),
+            matches!(reply, QaResponse::Error(QaError::Busy)),
             "the host's own reply must be framed back to the client, got {reply:?}",
         );
     }

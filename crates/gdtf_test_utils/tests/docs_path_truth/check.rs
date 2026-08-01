@@ -12,7 +12,7 @@ use crate::{
 /// Pinned `(file, reference)` pairs that are DELIBERATELY unresolvable — each
 /// entry names a path whose absence is the documented point, not stranded
 /// canon. Grow this list only with a stated reason.
-const SKIP_PAIRS: [(&str, &str); 2] = [
+const SKIP_PAIRS: [(&str, &str); 6] = [
     // ADR-0001 RECORDS the deliberate deletion of docs/architecture.md
     // (commit 5d5dcef) — the deleted path is the subject of the record.
     (
@@ -22,6 +22,27 @@ const SKIP_PAIRS: [(&str, &str); 2] = [
     // The gate-pass marker is a transient artifact written by /gate and
     // consumed by /land — it legitimately does not exist between gate runs.
     (".claude/rules/git-workflow.md", ".claude/.gate-pass"),
+    // ADR-0007 is `Superseded by 0008`, and GTW-943 deleted the very surface it
+    // describes — the per-family editor query pair, the fifteen-variant request
+    // enum, and the battle read-model. Its Context and Decision sections quote
+    // those files by path, and this directory's rule 2 keeps a decided ADR's
+    // body exactly as written, so the paths stay and the absence is the point.
+    (
+        "docs/decisions/0007-net-qa-command-discoverability.md",
+        "crates/gdtf_content_editor/src/net_qa/router.rs",
+    ),
+    (
+        "docs/decisions/0007-net-qa-command-discoverability.md",
+        "crates/gdtf_content_editor/src/net_qa/snapshot/topics.rs",
+    ),
+    (
+        "docs/decisions/0007-net-qa-command-discoverability.md",
+        "crates/gdtf_qa_protocol/src/envelope/request.rs",
+    ),
+    (
+        "docs/decisions/0007-net-qa-command-discoverability.md",
+        "crates/gdtf_qa_protocol/src/view/battle.rs",
+    ),
 ];
 
 /// Whether a root-anchored `reference` resolves — from the repo root, or (for

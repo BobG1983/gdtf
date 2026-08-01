@@ -15,8 +15,8 @@
 //! ## Members (one concern per file)
 //!
 //! - [`net_qa_plugin`] — the [`NetQaPlugin`] type, its constructors, and its `Plugin` impl.
-//! - [`register_transport`] — the inbox / pending-queue / pump-state / sweep + router
-//!   registration.
+//! - [`register_transport`] — the capture queue, the pump's cross-frame state, the router
+//!   and the game's command set.
 //! - [`register_consumers`] — the per-consumer system registrations and their ordering.
 
 mod net_qa_plugin;

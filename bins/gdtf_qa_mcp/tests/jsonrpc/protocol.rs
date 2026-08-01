@@ -18,20 +18,12 @@ fn initialize_returns_capabilities_and_echoes_version() {
     assert!(response["result"]["serverInfo"]["name"].is_string());
 }
 
-/// `tools/list` advertises every implemented tool — the twelve forwarding tools plus the
-/// four lifecycle tools, `start_battle` and `stepper_control` among them.
+/// `tools/list` advertises the five tools, over the real JSON-RPC surface — which is what
+/// an MCP client actually reads.
 ///
-/// `start_battle` is listed over the real JSON-RPC surface, which is what an MCP client
-/// actually reads: the game has serviced `QaRequest::StartBattle` since T9 (GTW-742), but
-/// no client tool sent it, so an agent could never reach a battle at all (GTW-760).
-/// `stepper_control` is listed for the SAME reason (GTW-766): the game services
-/// `QaRequest::StepperControl`, so a missing client tool would be an unreachable half.
-/// `focus_control` is listed for the SAME reason (GTW-802): without it no off-battle
-/// screen (the Options screen among them) is drivable over the wire at all. The four
-/// editor tools are listed for the SAME reason (GTW-808): the editor has answered
-/// `GetEditorQueryOptions` / `QueryEditor` since GTW-805 and no client tool sent either,
-/// so no agent could reach a running editor at all. `commands` and `run` are listed for the
-/// SAME reason (GTW-942): they are the ONLY route to a host's command layer, so without them
+/// The registry's own suite asserts the set from inside the crate; this one asserts it
+/// arrives intact through `dispatch`, which is the only thing a client ever sees. `commands`
+/// and `run` matter most: they are the ONLY route to a host's command layer, so without them
 /// `app.phase` — and every command added after it — is unreachable from any agent.
 #[test]
 fn tools_list_returns_every_tool() {
@@ -40,27 +32,8 @@ fn tools_list_returns_every_tool() {
         unreachable!("tools/list carries a tools array");
     };
     let names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
-    assert_eq!(names.len(), 18);
-    for expected in [
-        "send_input",
-        "query_state",
-        "get_output",
-        "take_screenshot",
-        "screenshot_after",
-        "app_flow",
-        "start_battle",
-        "stepper_control",
-        "activate_menu_item",
-        "focus_control",
-        "launch_game",
-        "stop_game",
-        "get_editor_query_options",
-        "query_editor",
-        "launch_editor",
-        "stop_editor",
-        "commands",
-        "run",
-    ] {
+    assert_eq!(names.len(), 5);
+    for expected in ["launch", "stop", "logs", "commands", "run"] {
         assert!(names.contains(&expected), "missing tool {expected}");
     }
 }
@@ -68,11 +41,10 @@ fn tools_list_returns_every_tool() {
 /// `tools/call` with an unknown tool name is a JSON-RPC invalid-params error naming the
 /// tool that could not be resolved.
 ///
-/// The probe name must be one no tool will ever claim: this test used to probe with
-/// `start_battle` back when that tool did not exist, which quietly stopped testing
-/// name resolution the moment it did (GTW-760 added it, and the call then failed one step
-/// later on the missing `situation` argument — the same `-32602` code for a different
-/// reason). Asserting the message, not just the code, keeps the two apart.
+/// The probe name must be one no tool will ever claim: a probe that later becomes a real
+/// tool quietly stops testing name resolution the moment it does — the call then fails one
+/// step later, on a missing argument, with the same `-32602` code for a different reason.
+/// Asserting the message, not just the code, keeps the two apart.
 #[test]
 fn tools_call_unknown_tool_is_invalid_params() {
     let response = dispatch_json(

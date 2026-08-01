@@ -2,8 +2,8 @@
 //! helpers every test calls.
 
 use gdtf_qa_mcp::{
-    ChildPid, HostLifecycle, HostPair, HostSet, LaunchOutcome, LaunchSpec, McpError, QaLink,
-    QaPort, StopOutcome, WorkingDir, dispatch,
+    ChildPid, HostLifecycle, HostPair, HostSet, LaunchOutcome, LaunchSpec, McpError, OutputTail,
+    QaLink, QaPort, StopOutcome, TailLines, WorkingDir, dispatch,
 };
 use gdtf_qa_protocol::{
     command::{
@@ -11,24 +11,12 @@ use gdtf_qa_protocol::{
         CommandName, CommandOutcome, CommandReplyJson, CommandSummary, CommandTiming, RefusalNote,
         ReplySchemaJson, RunOptions, UnavailableCode,
     },
-    envelope::{
-        InjectReceipt, QaError, QaRequest, QaResponse, RunCommand, ScreenshotPathNet,
-        ScreenshotResult, ServerNameNet,
-    },
-    view::{
-        AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet, EditorQueryKind,
-        EditorQueryOptionsView, EditorQueryReply, EditorQueryTopicView, EditorQueryView,
-        EditorReadinessNet,
-    },
+    message::{QaError, QaRequest, QaResponse, RunCommand, ServerNameNet},
 };
 use serde_json::Value;
 
-/// The path the GAME's canned link reports a capture was saved to. Distinct from
-/// [`EDITOR_SHOT_PATH`], and neither exists on disk, so the rendered reply always names
-/// which link the call actually reached (GTW-880).
-pub(crate) const GAME_SHOT_PATH: &str = "canned/game_shot.png";
-/// The path the EDITOR's canned link reports a capture was saved to.
-pub(crate) const EDITOR_SHOT_PATH: &str = "canned/editor_shot.png";
+/// The name the canned EDITOR host answers its (empty) catalogue under.
+pub(crate) const EDITOR_HOST_NAME: &str = "gdtf-editor-net-qa";
 
 /// The one command the canned GAME host offers — the same name the real game's
 /// `GAME_COMMANDS` publishes.
@@ -117,62 +105,37 @@ fn canned_run(run: &RunCommand) -> CommandOutcome {
     }
 }
 
-/// The GAME's canned link: answers `app_flow` with a Running snapshot and `send_input`
-/// with a queued receipt, so `tools/call` can be exercised with no socket.
-///
-/// It rejects the editor's two requests the way a real game does — the game binary has no
-/// editor to query — which is what makes the fixtures able to tell the two hosts apart: an
-/// editor tool that reached this link renders an error instead of a topic list. Both links
-/// answer `TakeScreenshot`, since both children can capture — each naming its OWN saved
-/// path, which is how a `take_screenshot` fixture reads back which one it reached.
+/// The GAME's canned link: it publishes the one-command catalogue and answers a `Run`
+/// exactly as the real host's admission order does, so `tools/call` can be exercised with no
+/// socket.
 struct CannedGame;
 
 impl QaLink for CannedGame {
     fn request(&mut self, request: QaRequest) -> Result<QaResponse, McpError> {
         match request {
-            QaRequest::GetAppFlow => Ok(QaResponse::AppFlow(AppFlowView::new(
-                AppStateNet::Running,
-                BattleActiveNet::new(true),
-                Vec::new(),
-                CaughtUpNet::new(true),
-                None,
-                None,
-            ))),
-            QaRequest::Inject(_) => Ok(QaResponse::Injected(InjectReceipt::Queued)),
-            QaRequest::TakeScreenshot { .. } => Ok(QaResponse::Screenshot(
-                ScreenshotResult::Saved(ScreenshotPathNet::new(GAME_SHOT_PATH.to_owned())),
-            )),
             QaRequest::Catalogue => Ok(QaResponse::Catalogue(canned_catalogue())),
             QaRequest::Run(run) => Ok(QaResponse::Outcome(canned_run(&run))),
-            _ => Ok(QaResponse::Error(QaError::BadRequest)),
+            QaRequest::Hello(_) => Ok(QaResponse::Error(QaError::Malformed)),
         }
     }
 }
 
-/// The EDITOR's canned link: answers the options query with a Load-phase topic list and a
-/// `Readiness` query with `Editing`, and rejects the game's requests — the mirror image of
-/// [`CannedGame`], so a game tool that reached the editor link renders an error.
+/// The EDITOR's canned link: it publishes an EMPTY catalogue under its own host name and
+/// answers every `Run` `Unknown` — the mirror image of [`CannedGame`], so a call that
+/// reached the wrong link is visible in the reply rather than silent.
 struct CannedEditor;
 
 impl QaLink for CannedEditor {
     fn request(&mut self, request: QaRequest) -> Result<QaResponse, McpError> {
         match request {
-            QaRequest::GetEditorQueryOptions => {
-                Ok(QaResponse::EditorQueryOptions(EditorQueryOptionsView::new(
-                    EditorReadinessNet::Load,
-                    vec![EditorQueryTopicView::offered(EditorQueryKind::Validation)],
-                )))
-            }
-            QaRequest::QueryEditor(EditorQueryKind::Readiness) => {
-                Ok(QaResponse::EditorQuery(EditorQueryReply::new(
-                    EditorReadinessNet::Editing,
-                    EditorQueryView::Readiness(EditorReadinessNet::Editing),
-                )))
-            }
-            QaRequest::TakeScreenshot { .. } => Ok(QaResponse::Screenshot(
-                ScreenshotResult::Saved(ScreenshotPathNet::new(EDITOR_SHOT_PATH.to_owned())),
-            )),
-            _ => Ok(QaResponse::Error(QaError::BadRequest)),
+            QaRequest::Catalogue => Ok(QaResponse::Catalogue(CommandCatalogue::new(
+                ServerNameNet::new(EDITOR_HOST_NAME.to_owned()),
+                Vec::new(),
+            ))),
+            QaRequest::Run(_) => Ok(QaResponse::Outcome(CommandOutcome::Unknown {
+                known: Vec::new(),
+            })),
+            QaRequest::Hello(_) => Ok(QaResponse::Error(QaError::Malformed)),
         }
     }
 }
@@ -195,11 +158,23 @@ impl HostLifecycle for NoLifecycle {
     }
 
     fn child_working_dir(&self) -> Option<WorkingDir> {
-        // No child, so no directory — a saved path renders against the dispatching
+        // No child, so no directory — a reported path renders against the dispatching
         // process's own directory, which is what the pre-GTW-923 host always did.
         None
     }
+
+    fn child_output(&self, _max: TailLines) -> Option<OutputTail> {
+        None
+    }
 }
+
+/// The two lines the GAME's canned lifecycle reports its child printed.
+pub(crate) const GAME_LOG: &str = "first line from the game\nsecond line from the game";
+/// The two lines the EDITOR's canned lifecycle reports its child printed.
+///
+/// Different text from [`GAME_LOG`] for the same reason the ports and pids differ: a `logs`
+/// call that reached the wrong lifecycle has to be visible in the reply, not silent.
+pub(crate) const EDITOR_LOG: &str = "first line from the editor\nsecond line from the editor";
 
 /// The port + pid the GAME's canned lifecycle reports.
 pub(crate) const GAME_PORT: u16 = 7616;
@@ -210,16 +185,19 @@ pub(crate) const EDITOR_PORT: u16 = 7617;
 /// The pid the EDITOR's canned lifecycle reports.
 pub(crate) const EDITOR_PID: u32 = 5150;
 
-/// A lifecycle with canned launch / stop outcomes, so the two host-local tools can be
+/// A lifecycle with canned launch / stop outcomes, so the three host-local tools can be
 /// exercised through the real dispatch without spawning a process.
 ///
-/// Each host gets one carrying its OWN port and pid, so a launch or stop reply names which
-/// lifecycle actually ran — without that a swapped host lookup is invisible.
+/// Each host gets one carrying its OWN port, pid and log text, so a launch, stop or logs
+/// reply names which lifecycle actually ran — without that a swapped host lookup is
+/// invisible.
 struct CannedLifecycle {
     /// The port this lifecycle's launch reports.
     port: u16,
     /// The pid this lifecycle's launch and stop report.
     pid:  u32,
+    /// What this lifecycle's child "printed", read by `logs`.
+    log:  &'static str,
 }
 
 impl HostLifecycle for CannedLifecycle {
@@ -243,6 +221,10 @@ impl HostLifecycle for CannedLifecycle {
     fn child_working_dir(&self) -> Option<WorkingDir> {
         None
     }
+
+    fn child_output(&self, _max: TailLines) -> Option<OutputTail> {
+        Some(OutputTail::new(self.log.to_owned()))
+    }
 }
 
 /// Dispatch a literal line through the real dispatch with canned hosts, returning the
@@ -253,10 +235,12 @@ pub(crate) fn dispatch_line(line: &str, lifecycles: bool) -> Option<String> {
         let mut game_life = CannedLifecycle {
             port: GAME_PORT,
             pid:  GAME_PID,
+            log:  GAME_LOG,
         };
         let mut editor_life = CannedLifecycle {
             port: EDITOR_PORT,
             pid:  EDITOR_PID,
+            log:  EDITOR_LOG,
         };
         let mut hosts = HostSet::new(
             HostPair::new(&mut game_link, &mut game_life),

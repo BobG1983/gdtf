@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::{
     command::{ArgSchemaJson, ArgumentFault, CommandOutcome},
-    envelope::QaResponse,
+    message::QaResponse,
 };
 
 use super::{CommandCall, CommandInbox};

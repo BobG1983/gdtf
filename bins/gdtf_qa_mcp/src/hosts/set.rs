@@ -49,9 +49,9 @@ impl<'a> HostPair<'a> {
 
 /// Both hosts' pairs, resolved by [`QaHost`].
 ///
-/// The one place the "which host" question is answered for the whole dispatch path: a
-/// tool names its host ([`ToolName::host`](crate::mcp::ToolName::host)) and this hands
-/// back that host's pair, so no handler below it branches on game-versus-editor.
+/// The one place the "which host" question is answered for the whole dispatch path: a call
+/// names its host with the `host` argument every tool takes, and this hands back that host's
+/// pair, so no handler below it branches on game-versus-editor.
 pub struct HostSet<'a> {
     /// The game's link + lifecycle.
     game:   HostPair<'a>,
@@ -77,7 +77,7 @@ impl<'a> HostSet<'a> {
 
 #[cfg(test)]
 mod test {
-    use gdtf_qa_protocol::envelope::{
+    use gdtf_qa_protocol::message::{
         HelloFacts, ProtocolVersion, QaRequest, QaResponse, ServerNameNet,
     };
 
@@ -91,7 +91,10 @@ mod test {
     use super::{HostPair, HostSet, QaHost};
     use crate::{
         error::McpError,
-        lifecycle::{ChildPid, HostLifecycle, LaunchOutcome, LaunchSpec, StopOutcome, WorkingDir},
+        lifecycle::{
+            ChildPid, HostLifecycle, LaunchOutcome, LaunchSpec, OutputTail, StopOutcome, TailLines,
+            WorkingDir,
+        },
         link::{QaLink, QaPort},
     };
 
@@ -129,6 +132,10 @@ mod test {
         }
 
         fn child_working_dir(&self) -> Option<WorkingDir> {
+            None
+        }
+
+        fn child_output(&self, _max: TailLines) -> Option<OutputTail> {
             None
         }
     }

@@ -18,7 +18,7 @@ use gdtf_qa_protocol::{
     command::{
         AwaitBudget, CommandAvailability, CommandName, CommandOutcome, CommandTiming, RunOptions,
     },
-    envelope::{QaRequest, QaResponse},
+    message::{QaRequest, QaResponse},
 };
 use serde_json::Value;
 

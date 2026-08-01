@@ -11,7 +11,7 @@ use std::{sync::mpsc, thread};
 use gdtf_app::test_support::NET_QA_PROTOCOL_VERSION;
 use gdtf_qa_protocol::{
     command::{CommandArgsJson, CommandName, RunOptions},
-    envelope::{QaRequest, QaResponse, RunCommand},
+    message::{QaRequest, QaResponse, RunCommand},
 };
 
 use super::socket_support::{Client, TestError, drive_until_reported, game_app_listening};

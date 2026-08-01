@@ -5,8 +5,8 @@ use gdtf_qa_protocol::{
     command::{
         AwaitBudget, CaptureRider, CommandArgsJson, CommandName, CommandOutcome, RunOptions,
     },
-    envelope::RunCommand,
     ids::ShotName,
+    message::RunCommand,
 };
 use serde_json::{Value, json};
 

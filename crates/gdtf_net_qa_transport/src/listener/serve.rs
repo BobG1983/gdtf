@@ -9,8 +9,8 @@ use std::{
 };
 
 use gdtf_qa_protocol::{
-    envelope::{HelloFacts, QaError, QaRequest, QaResponse},
     framing::{FrameDecoder, encode},
+    message::{HelloFacts, QaError, QaRequest, QaResponse},
 };
 
 use super::session::{FrameVerdict, SessionState};

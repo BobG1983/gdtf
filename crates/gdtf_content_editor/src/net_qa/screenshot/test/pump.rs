@@ -21,8 +21,9 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 
 use bevy::prelude::*;
 use gdtf_qa_protocol::{
-    envelope::{QaResponse, ScreenshotResult},
+    command::{AttachmentKind, CommandOutcome},
     ids::ShotName,
+    message::{QaError, QaResponse},
 };
 
 use super::{
@@ -96,10 +97,7 @@ fn a_stale_png_already_at_the_path_is_never_served() {
     // reach back for the bytes it purged.
     let reply = drive_until_reply(&mut app, &reply_rx);
     assert!(
-        matches!(
-            reply,
-            Some(QaResponse::Screenshot(ScreenshotResult::TimedOut))
-        ),
+        matches!(reply, Some(QaResponse::Error(QaError::Timeout))),
         "a stale PNG at the target path must be purged, never served — the capture times out, \
          got {reply:?}",
     );
@@ -109,7 +107,7 @@ fn a_stale_png_already_at_the_path_is_never_served() {
 /// mid-flush write) is rejected: the pump keeps polling and times out rather than reporting a
 /// capture no client can read.
 #[test]
-fn an_undecodable_file_at_the_path_is_not_reported_saved() {
+fn an_undecodable_file_at_the_path_is_never_attached() {
     let Ok(tmp) = tempfile::TempDir::new() else {
         unreachable!("a temp directory is available");
     };
@@ -129,11 +127,8 @@ fn an_undecodable_file_at_the_path_is_not_reported_saved() {
 
     let reply = drive_until_reply(&mut app, &reply_rx);
     assert!(
-        matches!(
-            reply,
-            Some(QaResponse::Screenshot(ScreenshotResult::TimedOut))
-        ),
-        "bytes that do not decode as a PNG must never be reported Saved, got {reply:?}",
+        matches!(reply, Some(QaResponse::Error(QaError::Timeout))),
+        "bytes that do not decode as a PNG must never come back attached, got {reply:?}",
     );
 }
 
@@ -164,12 +159,17 @@ fn a_png_landing_after_the_capture_is_spawned_is_reported_saved() {
 
     let expected = path.to_string_lossy().into_owned();
     let reply = drive_until_reply(&mut app, &reply_rx);
-    assert!(
-        matches!(
-            &reply,
-            Some(QaResponse::Screenshot(ScreenshotResult::Saved(saved))) if **saved == expected
-        ),
-        "a PNG landing after the capture was spawned must be reported Saved at that exact \
+    let attached = match &reply {
+        Some(QaResponse::Outcome(CommandOutcome::Ran { attachments, .. })) => attachments
+            .first()
+            .filter(|attachment| attachment.kind == AttachmentKind::Png)
+            .map(|attachment| attachment.path.as_str().to_owned()),
+        _ => None,
+    };
+    assert_eq!(
+        attached,
+        Some(expected),
+        "a PNG landing after the capture was spawned must come back attached at that exact \
          path, got {reply:?}",
     );
 }

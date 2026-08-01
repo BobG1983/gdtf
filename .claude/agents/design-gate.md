@@ -14,9 +14,9 @@ description: >-
 # tree can't independently judge it. Bash can't be sub-scoped in frontmatter, so
 # that constraint is binding in the body below.
 # The mcp__gdtf-qa__* tools are for VERIFICATION only — driving and observing the live
-# game (launch_game/query_state/take_screenshot/screenshot_after/send_input/get_output/
-# stop_game) to check runtime behavior first-hand, the same posture as the Bash
-# green-suite runs. They drive a dev-only game PROCESS; they never mutate the repo/tree,
+# game or editor (launch/stop/logs/commands/run, each taking a host of "game" or
+# "editor") to check runtime behavior first-hand, the same posture as the Bash
+# green-suite runs. They drive a dev-only PROCESS; they never mutate the repo/tree,
 # so the read-only-judge constraint still holds.
 tools: mcp__gdtf-qa__*, Read, Grep, Glob, Bash
 model: opus

@@ -69,7 +69,7 @@ impl MaxFrameLen {
 
 /// The frame-length cap — 16 MiB.
 ///
-/// Generous enough for a whole [`BattleView`](crate::view::BattleView) snapshot on a
+/// Generous enough for a whole battle-roster reply on a
 /// large grid, small enough that a single corrupt prefix can never trigger a runaway
 /// allocation.
 pub const MAX_FRAME_LEN: MaxFrameLen = MaxFrameLen::new(16 * 1024 * 1024);

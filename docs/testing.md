@@ -53,12 +53,16 @@ dev-only cargo feature at its wiring site, so a release binary ignores the lot.
 
 GTW-749 retired the env-var battle capture/drive rig outright (`GDTF_AUTOBATTLE`,
 `GDTF_CAPTURE_PATH` / `GDTF_CAPTURE_FRAME` / `GDTF_CAPTURE_FRAMES`, `GDTF_FIRE_AT_FRAME` /
-`GDTF_FIRE_MODE` / `GDTF_FALL_AT_FRAME`) — not deprecated, deleted. The one capture / drive
-path now is the `net_qa` loopback QA network control channel (`GDTF_NET_QA`): a coding-agent
-QA harness (`gdtf_qa_mcp`, or any client speaking `gdtf_qa_protocol`) launches the game,
-drives it over the wire (`StartBattle`, intent injection, `TakeScreenshot` /
-`ScreenshotAfter` frame-exact deferred capture, event drains), and stops it — one capture
-path, no env-var-scripted battle drive left in the workspace. Census command (run from the
+`GDTF_FIRE_MODE` / `GDTF_FALL_AT_FRAME`) — not deprecated, deleted. The one drive path now is
+the `net_qa` loopback QA network control channel (`GDTF_NET_QA`): a coding-agent QA harness
+(`gdtf_qa_mcp`, or any client speaking `gdtf_qa_protocol`) launches the game, negotiates the
+protocol version, reads the command list that build publishes, runs one by name, and stops it
+— no env-var-scripted battle drive left in the workspace. GTW-943 cut the old fixed request
+vocabulary (start a battle, inject an act, the two capture requests, the event drain) to
+three — `Hello`, `Catalogue`, `Run` — so WHAT the game can be asked to do is now its command
+list, read at run time. That list is being rebuilt one command per ticket and today holds
+`app.phase` alone; adding to it is [tooling/qa-commands.md](tooling/qa-commands.md), and
+driving it is [tooling/agent-qa.md](tooling/agent-qa.md). Census command (run from the
 repo root; re-run it when adding a flag and keep this table in step):
 
 ```bash
@@ -84,7 +88,7 @@ grep -rhoE 'GDTF_[A-Z_0-9]+' crates/ bins/ --include='*.rs' | sort -u
 | `GDTF_EDITOR_ZOOM` | `gdtf_content_editor` | Content-editor capture: force a non-`1.0` prefab canvas zoom (`0.25`–`4.0`, clamped). |
 | `GDTF_LOADING_SHOT` | `gdtf_app` | Loading-screen capture: output PNG path (the GTW-419 capture hook; rides the `net_qa` debug feature gate since GTW-749). |
 | `GDTF_MODULE_LAYOUT_ROOT` | `gdtf_test_utils` | Overrides the repo root the module-layout conformance guard test scans (guard-test hook). |
-| `GDTF_NET_QA` | `gdtf_app` | Truthy (`1`/`true`/`yes`/`on`) opts a `net_qa` debug build into the loopback QA network control channel (GTW-736 onward) — the ONE capture / drive path (`launch_game` → `StartBattle` → `send_input` / `take_screenshot` / `screenshot_after` → `stop_game`, driven via `gdtf_qa_mcp` or any `gdtf_qa_protocol` client). |
+| `GDTF_NET_QA` | `gdtf_app` | Truthy (`1`/`true`/`yes`/`on`) opts a `net_qa` debug build into the loopback QA network control channel (GTW-736 onward) — the ONE drive path (`launch` → `commands` → `run` → `stop`, driven via `gdtf_qa_mcp` or any `gdtf_qa_protocol` client). |
 | `GDTF_NET_QA_PORT` | `gdtf_app` | Picks the `net_qa` loopback listen port; unset = the default. Port only — the interface is always `Ipv4Addr::LOCALHOST`. |
 | `GDTF_SCREENSHOT_TEST_DEFINITELY_UNSET_VAR` | `gdtf_screenshot` | Test-only sentinel: a deliberately-never-set name proving `from_env` stays inert when its var is unset. Never set it. |
 | `GDTF_TEST_FORCE_NO_GPU` | `gdtf_test_utils` | Forces the GPU-adapter probe to report Absent, driving the exact no-GPU skip path on a GPU machine (GTW-527). |

@@ -6,7 +6,7 @@
 //! [`IncomingRequest`], and frames the host's reply back. The host-side half is the
 //! [`NetInbox`] resource it drains, plus a typed [`PendingQueue`] per request kind and the
 //! [`sweep_pending`] pump that answers
-//! [`Timeout`](gdtf_qa_protocol::envelope::QaError::Timeout) on an entry nothing claimed —
+//! [`Timeout`](gdtf_qa_protocol::message::QaError::Timeout) on an entry nothing claimed —
 //! so a client is never left hanging.
 //!
 //! ## What this crate deliberately does NOT hold

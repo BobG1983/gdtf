@@ -39,7 +39,7 @@ mod target;
 mod test;
 
 // Consumed OUTSIDE `present`: the plugin by `net_qa`'s wiring (`super::plugin`), and the
-// capture-target resource by the T7 screenshot pump + the T15 `screenshot_after` child (both
-// pick `Screenshot::image` over `primary_window` when it exists).
+// capture-target resource by the T7 screenshot pump, which picks `Screenshot::image` over
+// `primary_window` when it exists.
 pub(in crate::dev::net_qa) use plugin::CapturePresentPlugin;
 pub(in crate::dev::net_qa) use target::QaCaptureTarget;

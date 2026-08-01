@@ -8,7 +8,7 @@ use super::limits::{FrameLen, MaxFrameLen};
 /// panicking.
 ///
 /// Local to the codec (it never crosses the wire — a protocol error the peer should
-/// SEE is a [`QaError`](crate::envelope::QaError)). `Copy` because every field is a
+/// SEE is a [`QaError`](crate::message::QaError)). `Copy` because every field is a
 /// `Copy` newtype.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum WireError {

@@ -7,27 +7,23 @@ description: How agents discover and invoke state-specific net_qa commands as mo
 
 ## Status
 
-`Accepted` — 2026-07-24 (user-ratified on GTW-786), driven by a user design question on GTW-786
-(the editor net-QA/MCP extension epic). Proposed 2026-07-24. GTW-805/806 (GTW-786's protocol
-children) lock their wire enums against it.
+`Superseded by 0008` — 2026-08-01 (GTW-943). Accepted 2026-07-24 (user-ratified on GTW-786),
+proposed the same day, driven by a user design question on GTW-786 (the editor net-QA/MCP
+extension epic).
 
-**REVERSED by a later user ruling (2026-07-30) — the status flip is pending, and this note is
-the record until it happens.** The Decision below rejects the self-registering command registry
-(candidate 1). That rejection no longer holds: the user's design ruling on GTW-934, carried into
-the GTW-938 epic, adopts exactly that shape — one shared crate, `register_command::<C>(app)`
-over each host's own `&[&dyn ErasedCommand<F>]`, invoked through `Run { command, arguments }`.
-GTW-941 built that crate (`crates/gdtf_qa_command/`), which is why this note is being written
-here rather than left for a reader to discover. The trigger condition this ADR wrote for itself
-— "a second live state family in production QA use that visibly strains the per-family pattern"
-— is the reason given: the editor family arrived, and the strain is recorded in the epic's
-design material.
+The Decision below rejects the self-registering command registry (candidate 1). That rejection
+was reversed by the user's design ruling on GTW-934, carried into the GTW-938 epic, which adopts
+exactly that shape — one shared crate, `register_command::<C>(app)` over each host's own
+`&[&dyn ErasedCommand<F>]`, invoked through `Run { command, arguments }`. The trigger condition
+this ADR wrote for itself — "a second live state family in production QA use that visibly
+strains the per-family pattern" — is the reason given: the editor family arrived, and the strain
+is recorded in the epic's design material.
 
-The Status line still reads `Accepted` because the per-family `Get*QueryOptions` / `Query*(kind)`
-pair it describes is still the shipped code. GTW-943 deletes that surface and, in its clause 7,
-flips this ADR to `Superseded by 0008` and lands a new ADR 0008 in this directory.
-Until then, read the Decision, Consequences and Alternatives sections below as the record of a
-decision that has been reversed, not as current canon. Per this directory's rule 2 (an Accepted
-ADR is immutable) those sections are left exactly as written.
+GTW-943 deleted the per-family `Get*QueryOptions` / `Query*(kind)` pair this ADR describes, so
+none of it is shipped code any more. Read the Decision, Consequences and Alternatives sections
+below as the record of a decision that has been superseded, not as current canon;
+[ADR 0008](0008-qa-command-courier.md) is what replaced it. Per this directory's rule 2 (an
+Accepted ADR is immutable) those sections are left exactly as written.
 
 ## Context
 

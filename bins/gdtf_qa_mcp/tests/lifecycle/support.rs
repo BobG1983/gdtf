@@ -32,8 +32,8 @@ use gdtf_qa_mcp::{
     ProbeTimeout, ProcessChild, QaPort,
 };
 use gdtf_qa_protocol::{
-    envelope::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
     framing::{FrameDecoder, encode},
+    message::{HelloFacts, ProtocolVersion, QaError, QaRequest, QaResponse, ServerNameNet},
 };
 
 /// The one line the placeholder process writes to stderr before it sleeps — what the
@@ -102,7 +102,7 @@ impl ChildSpawner for StubSpawner {
 /// tail never races the boot timeout that starts once this returns (GTW-756).
 fn await_captured_stderr(child: &dyn ManagedChild) {
     let deadline = Instant::now() + STDERR_SYNC_LIMIT;
-    while !child.stderr_tail().contains(STUB_STDERR_LINE) {
+    while !child.failure_tail().contains(STUB_STDERR_LINE) {
         if Instant::now() >= deadline {
             unreachable!(
                 "the placeholder process writes {STUB_STDERR_LINE} to stderr and it is captured"
@@ -187,7 +187,7 @@ pub(crate) fn answer_one(stream: &mut TcpStream) {
                 ProtocolVersion::new(1),
                 ServerNameNet::new("fake-net-qa".to_owned()),
             )),
-            Ok(_) => QaResponse::Error(QaError::BadRequest),
+            Ok(_) => QaResponse::Error(QaError::Malformed),
             Err(_) => return,
         };
         if let Ok(out) = encode(&response) {

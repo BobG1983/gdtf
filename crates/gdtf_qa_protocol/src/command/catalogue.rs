@@ -8,13 +8,13 @@ use crate::{
         ArgSchemaJson, CommandAvailability, CommandName, CommandSummary, CommandTiming,
         ReplySchemaJson,
     },
-    envelope::ServerNameNet,
+    message::ServerNameNet,
 };
 
 /// The live command catalogue a host publishes — the reply to
-/// [`Catalogue`](crate::envelope::QaRequest::Catalogue).
+/// [`Catalogue`](crate::message::QaRequest::Catalogue).
 ///
-/// This is what [`AppFlowView::available`](crate::view::AppFlowView) could never be: that
+/// This is what the old app-flow `available` list could never be: that
 /// listed request discriminants, so it could only say "you may send this kind". An entry
 /// here says what the command is, what it takes, what it returns, and whether it can run
 /// right now — read from the running app, which is the only authority an agent has.

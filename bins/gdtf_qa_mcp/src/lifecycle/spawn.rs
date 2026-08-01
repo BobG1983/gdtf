@@ -41,8 +41,9 @@ pub trait ChildSpawner {
 /// The real spawner — runs `cargo run` for the recipe it is given, with the QA environment
 /// set.
 ///
-/// The child's stdout is discarded (the MCP host's own stdout is the JSON-RPC channel and
-/// must not be polluted); its stderr is captured by [`ProcessChild`] for the failure tail.
+/// BOTH of the child's output streams are captured by [`ProcessChild`] — the failure tail a
+/// launch reports and the running tail the `logs` tool reads are the same ring. Neither
+/// reaches the MCP host's own stdout, which is the JSON-RPC channel.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct CargoSpawner;
 
@@ -81,8 +82,7 @@ pub fn build_command(port: QaPort, spec: &LaunchSpec) -> Command {
     command
         .env(spec.channel().enable().as_str(), "1")
         .env(spec.channel().port().as_str(), format!("{}", *port))
-        .stdin(Stdio::null())
-        .stdout(Stdio::null());
+        .stdin(Stdio::null());
     command
 }
 

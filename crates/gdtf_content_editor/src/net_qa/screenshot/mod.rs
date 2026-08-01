@@ -1,11 +1,13 @@
 //! The editor's screenshot capture service (GTW-880, child of GTW-786).
 //!
-//! Answers the routed
-//! [`TakeScreenshot`](gdtf_qa_protocol::envelope::QaRequest::TakeScreenshot) requests the
-//! editor's router queues by capturing a REAL rendered frame to a PNG and replying only after
-//! that PNG verifiably lands on disk (or a poll budget elapses). The reply is genuinely
-//! DEFERRED across frames — the shell settles first, and the GPU readback cannot flush the
-//! file the instant it is requested.
+//! Captures a REAL rendered frame to a PNG and answers only after that PNG verifiably lands
+//! on disk (or a poll budget elapses). The reply is genuinely DEFERRED across frames — the
+//! shell settles first, and the GPU readback cannot flush the file the instant it is
+//! requested.
+//!
+//! Nothing on the wire fills the queue today (GTW-943 deleted the `TakeScreenshot` request
+//! with the rest of the pre-command vocabulary); the editor's own capture command is what
+//! fills it next.
 //!
 //! The deferred-reply machinery is the SHARED transport's, not a second copy: the router
 //! pushes onto a [`PendingQueue`](gdtf_net_qa_transport::PendingQueue) and the plugin
@@ -21,9 +23,10 @@
 //!
 //! The offscreen source stands in for all of this, and these are genuinely covered: the
 //! settle window before a capture is spawned, the delete-before-spawn purge of a stale file at
-//! the target path, the across-frames disk poll loop, the PNG decode check, the reply deferred
-//! until the file verifiably landed, and the whole wire round trip from a framed
-//! `TakeScreenshot` to a framed reply.
+//! the target path, the across-frames disk poll loop, the PNG decode check, and the reply
+//! deferred until the file verifiably landed. The suite drives from the pump's own queue, not
+//! a socket — GTW-943 deleted the request that was the socket half, so everything from the
+//! `PendingQueue` down is real and nothing routes onto it yet.
 //!
 //! It does NOT stand in for whether a REAL editor window's swapchain yields the egui shell
 //! rather than a black frame — and in particular whether it does so when that window is not
@@ -75,5 +78,5 @@ mod test;
 pub use config::{EditorShotPollBudget, EditorShotSettle, EditorShotSource};
 pub use path::EditorQaShotDir;
 pub(super) use path::EditorShotSequence;
-pub(super) use payload::EditorScreenshotPayload;
+pub use payload::EditorScreenshotPayload;
 pub(super) use pump::{EditorInFlightShots, drive_editor_screenshots};

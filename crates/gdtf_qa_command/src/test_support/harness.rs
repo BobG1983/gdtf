@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use gdtf_net_qa_transport::Responder;
 use gdtf_qa_protocol::{
     command::{CommandArgsJson, CommandName, RunOptions},
-    envelope::QaResponse,
+    message::QaResponse,
 };
 
 use super::fake::FakeFacts;

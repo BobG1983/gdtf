@@ -133,11 +133,12 @@ pub(in crate::states::running::menu) fn spawn_menu(
             template_value(DespawnOnExit(RunningState::Menu)),
         ))
         .id();
-    // `MenuScreen` names this menu so the dev-only `net_qa` QA channel can enumerate it
-    // generically ("what menu am I on"); it rides the root (state-scoped by the same
-    // `DespawnOnExit`), so leaving the menu tears it down and the wire menu view becomes
-    // `None` (GTW-787). Inserted directly (it holds an identity string and has no `Default`,
-    // so it is not a `template_value` candidate).
+    // `MenuScreen` names this menu so a QA client can enumerate it generically ("what menu am
+    // I on"); it rides the root (state-scoped by the same `DespawnOnExit`), so leaving the
+    // menu tears it down (GTW-787). Nothing reads it today — the QA request that did went with
+    // GTW-943's cut and the replacement command is a later ticket; see `gdtf_ui::menu_nav`.
+    // Inserted directly (it holds an identity string and has no `Default`, so it is not a
+    // `template_value` candidate).
     commands
         .entity(root)
         .insert(MenuScreen::new(MenuName::new(MAIN_MENU_ID.to_owned())));
@@ -179,10 +180,9 @@ pub(in crate::states::running::menu) fn spawn_menu(
     // The four buttons, each themed + state-scoped via the per-button marker
     // bundle passed to `spawn_button`. Width 100% so the panel's Stretch makes
     // them equal width (= the panel content width).
-    // Each button also carries the generic `MenuItem` marker so the `net_qa` QA channel
-    // enumerates it as an activatable menu item and can activate it by the token it hands
-    // out (GTW-787). The disabled `HiveScape` carries it too — it is LISTED (marked
-    // `enabled == false` on the wire), not hidden.
+    // Each button also carries the generic `MenuItem` marker so a QA client lists it as an
+    // activatable menu item (GTW-787). The disabled `HiveScape` carries it too — it is
+    // LISTED (marked disabled), not hidden.
     let battlescape = spawn_button(
         &mut commands,
         &theme,

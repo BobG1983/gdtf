@@ -24,20 +24,6 @@ mod seam;
 mod systems;
 
 pub(in crate::states::running::game::battlescape) use plugin::ContextualPanelPlugin;
-/// The per-act [`ContextualOffer`](seam::ContextualOffer) offer resource, lifted to
-/// `pub(crate)` so the dev-only `net_qa` inject pump (`crate::dev::net_qa`, GTW-737) can
-/// read each act's current offer to OFFER-GATE an injected contextual act. Only this one
-/// type crosses the panel boundary; the private submodule keeps the rest local.
-///
-/// Gated to the SAME double condition as its only consumer, the `net_qa` module
-/// (`crate::dev`, `cfg(all(debug_assertions, feature = "net_qa"))`): with the feature off —
-/// a default-feature build, such as the plain `cargo doc --workspace --no-deps` run —
-/// nothing reads this re-export, so an un-gated `pub(crate) use` would be an unused import
-/// and fail `-D warnings`. (CI's clippy step names the feature since GTW-883, so there the
-/// gate is true and the re-export is live.) The panel's own consumers reach the
-/// type through its private path directly, never this re-export.
-#[cfg(all(debug_assertions, feature = "net_qa"))]
-pub(crate) use seam::ContextualOffer;
 
 /// Test-support re-exports for this panel (GTW-569 one-hop ledger): the contextual
 /// panel's root marker plus each act's button marker (declared in the act's own module

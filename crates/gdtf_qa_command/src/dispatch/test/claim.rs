@@ -3,7 +3,7 @@
 use gdtf_net_qa_transport::Responder;
 use gdtf_qa_protocol::{
     command::{CommandArgsJson, CommandName, CommandOutcome},
-    envelope::QaResponse,
+    message::QaResponse,
 };
 
 use crate::{

@@ -1,16 +1,13 @@
 //! The GTW-48 capstone: headless proof that the WHOLE presenter + input + action-bar
 //! stack composes to `BattleScapeState::BattleRunning`.
 //!
-//! GTW-749: this used to be driven by the DEV-ONLY `GDTF_AUTOBATTLE` auto-enter-battle
-//! affordance (its own gate + drive logic — GTW-223), which that ticket retired outright.
-//! The composition proof survives, migrated onto the wire path: a `StartBattle` request
-//! sent through [`NetQaPlugin::with_channels`] (the SAME `drive_start_battle` (T9) /
-//! `apply_start_battle` consumer a real network client or the local Battlescape button
-//! drives) descends the real machine `Menu → Game → … → BattleRunning`, exactly as the
-//! retired affordance's own drive did. `#![cfg(...)]` below: this file needs the `net_qa`
-//! feature (the wire path IS the drive now), so it compiles to an empty crate without it,
-//! mirroring the `tests/net_qa/` suite's own gate. CI does name the feature (GTW-883), so
-//! this suite runs there.
+//! GTW-749 moved the drive off the retired `GDTF_AUTOBATTLE` affordance onto the QA wire's
+//! `StartBattle` request; GTW-943 deleted that request with the rest of the pre-command
+//! vocabulary, so the drive is now the menu's own `StartBattleRequested` — the SAME message
+//! the Battlescape button writes and `apply_start_battle` applies, one step earlier on the
+//! path the wire used to join. The composition proof is unchanged: the real machine descends
+//! `Menu → Game → … → BattleRunning`. `#![cfg(...)]` below keeps this file on the `net_qa`
+//! feature, where its `NetQaPlugin` wiring lives; CI names the feature (GTW-883).
 //!
 //! Headless `GdtfTestAppBuilder` walk (the `action_bar.rs` / `battle_running_driver.rs`
 //! precedent): `MinimalPlugins` + the real `ScenesPlugin` state machine, the persistent
@@ -24,18 +21,13 @@ use std::sync::mpsc;
 use bevy::{prelude::*, state::state::State};
 use gdtf_app::test_support::{
     AimToggleButton, BattleScapeState, EndTurnButton, LevelDownButton, LevelUpButton,
-    LoadedSituation, NetQaPlugin, RunningState, SHIPPED_SITUATION, StanceKneelingButton,
-    StanceProneButton, StanceStandingButton,
+    LoadedSituation, NetQaPlugin, RunningState, StanceKneelingButton, StanceProneButton,
+    StanceStandingButton, StartBattleRequested,
 };
 use gdtf_battle_input::InspectTarget;
 use gdtf_battle_presenter::WorldCamera;
 use gdtf_battle_sim::{
     injuries::InjuryRegistry, situation::Situation, tuning::CombatTuning, weapon::WeaponRegistry,
-};
-use gdtf_net_qa_transport::{IncomingRequest, Responder};
-use gdtf_qa_protocol::{
-    envelope::{QaRequest, QaResponse},
-    ids::SituationRef,
 };
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
@@ -58,14 +50,6 @@ fn battlescape_state(app: &App) -> Option<BattleScapeState> {
     app.world()
         .get_resource::<State<BattleScapeState>>()
         .map(|state| *state.get())
-}
-
-/// Push a request onto the router's inbox and return the channel its reply arrives on.
-fn send(tx: &mpsc::Sender<IncomingRequest>, request: QaRequest) -> mpsc::Receiver<QaResponse> {
-    let (responder, reply_rx) = Responder::channel();
-    let sent = tx.send(IncomingRequest::new(request, responder));
-    assert!(sent.is_ok(), "the router inbox must be open");
-    reply_rx
 }
 
 /// Seeds the four persistent `Load` resources a headless walk lacks (no
@@ -123,17 +107,20 @@ fn seed_load(app: &mut App) {
 ///   `BattleRunning` without panicking (under `MinimalPlugins` the atlas stack is
 ///   absent so the draw no-ops by design; the live sprite COUNT is the AC5 carve-out).
 ///
-/// GTW-749: the descent from the menu into the battle is driven over the REAL wire path
-/// — a `StartBattle` request through [`NetQaPlugin::with_channels`], the SAME
-/// `drive_start_battle` (T9) consumer + the menu's `apply_start_battle` a real QA client
-/// or the local Battlescape button drives — replacing the retired `AutoBattlePlugin`.
+/// GTW-749, retargeted by GTW-943: the descent from the menu into the battle is driven by
+/// the menu's OWN `StartBattleRequested` message + `apply_start_battle` — the same message
+/// the local Battlescape button writes — replacing the retired `AutoBattlePlugin`. It used
+/// to be driven by a `StartBattle` wire request; that request and its consumer are gone, so
+/// the shared message is now the deepest point a QA command will reach. The app still adds
+/// [`NetQaPlugin::with_channels`], so what this composes is a build with the QA channel
+/// wired in.
 #[test]
 fn full_stack_composes_to_battle_running() {
     let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .default_start()
         .build();
     seed_load(&mut app);
-    let (tx, rx) = mpsc::channel();
+    let (_tx, rx) = mpsc::channel();
     app.add_plugins(NetQaPlugin::with_channels(rx));
 
     // Descend Init -> Load -> Intro -> Running -> Menu automatically.
@@ -148,20 +135,11 @@ fn full_stack_composes_to_battle_running() {
         running_state(&app),
     );
 
-    // Drive Menu -> Game -> ... -> BattleRunning over the wire, exactly as a real QA
-    // client (or the local Battlescape button, via the same shared consumer) would.
-    let reply = send(
-        &tx,
-        QaRequest::StartBattle {
-            situation: SituationRef::new(SHIPPED_SITUATION.to_owned()),
-            seed:      None,
-        },
-    );
+    // Drive Menu -> Game -> ... -> BattleRunning through the menu's own start-battle
+    // request — the same message the local Battlescape button writes.
+    app.world_mut()
+        .write_message(StartBattleRequested::new(None));
     app.update();
-    assert!(
-        matches!(reply.try_recv(), Ok(QaResponse::AppFlow(_))),
-        "an accepted StartBattle must answer with the app-flow snapshot",
-    );
 
     assert!(
         advance_until(

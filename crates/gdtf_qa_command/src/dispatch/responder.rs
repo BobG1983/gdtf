@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use gdtf_net_qa_transport::Responder;
 use gdtf_qa_protocol::{
     command::{CommandOutcome, CommandReplyJson, RefusalNote, ReplyAttachment, UnavailableCode},
-    envelope::{QaError, QaResponse},
+    message::{QaError, QaResponse},
 };
 
 use crate::command::QaCommand;
@@ -44,9 +44,9 @@ impl<C: QaCommand> CommandResponder<C> {
     /// Answer with the declared reply plus files the caller should receive.
     ///
     /// An encode failure cannot produce the declared reply and must not panic, so it is
-    /// answered [`BadRequest`](QaError::BadRequest) — "malformed or nonsensical in the
-    /// current state", which is what a reply the host could not serialise is — and logged
-    /// at `error` so it is visible in the host's own output rather than only on the wire.
+    /// answered [`Malformed`](QaError::Malformed) — the frame the host would have written
+    /// is not a decodable reply — and logged at `error` so it is visible in the host's own
+    /// output rather than only on the wire.
     pub fn answer_with(self, reply: &C::Reply, attachments: Vec<ReplyAttachment>) {
         match serde_json::to_string(reply) {
             Ok(json) => self.inner.reply(QaResponse::Outcome(CommandOutcome::Ran {
@@ -59,7 +59,7 @@ impl<C: QaCommand> CommandResponder<C> {
                     %fault,
                     "net_qa: a command's declared reply would not serialise"
                 );
-                self.inner.reply(QaResponse::Error(QaError::BadRequest));
+                self.inner.reply(QaResponse::Error(QaError::Malformed));
             }
         }
     }

@@ -61,7 +61,7 @@ gdtf_screenshot = { path = "../gdtf_screenshot" }
 gdtf_state_scoped = { path = "../gdtf_state_scoped" }
 # GTW-804 (child 1b of GTW-786): the DEV-ONLY QA control channel for the EDITOR. Both crates are
 # OPTIONAL and pulled in ONLY by the `net_qa` feature below — a default editor build compiles
-# neither. `gdtf_qa_protocol` is the bevy-free typed wire contract (the request/response envelope
+# neither. `gdtf_qa_protocol` is the bevy-free typed wire contract (the request/response messages
 # plus the framing codec); `gdtf_net_qa_transport` is the shared loopback listener + accept loop +
 # one-client-at-a-time gate + inbox lifted in GTW-803, so the editor and the game move bytes
 # through ONE codepath instead of two copies of a socket server.

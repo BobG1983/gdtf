@@ -129,7 +129,7 @@ impl LaunchSpec {
             && self.resolved_working_dir() == other.resolved_working_dir()
     }
 
-    /// The recipe a `launch_game` call runs when it names nothing of its own: the game
+    /// The recipe a `launch(host="game")` call runs when it names nothing of its own: the game
     /// package with dynamic linking and the QA channel, in the host's own directory, with
     /// no extra environment. This is exactly what the launcher hardcoded before GTW-875.
     #[must_use]
@@ -143,7 +143,7 @@ impl LaunchSpec {
         )
     }
 
-    /// The recipe a `launch_editor` call runs when it names nothing of its own: the editor
+    /// The recipe a `launch(host="editor")` call runs when it names nothing of its own: the editor
     /// BINARY package with dynamic linking and its own QA channel, in the host's own
     /// directory, with no extra environment (GTW-808). It is the `cargo edqarun` alias's
     /// command, which is what GTW-878 clause 1 shipped.

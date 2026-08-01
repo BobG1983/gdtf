@@ -3,10 +3,16 @@
 //!
 //! [`ManagedChild`] is the small surface the launch / stop logic drives: read the pid, poll
 //! whether it has exited, ask for a graceful (SIGTERM) or forceful (SIGKILL) stop, wait a
-//! bounded time for it to go, reap it (no zombie), and read the tail of what it wrote to
-//! stderr. [`ProcessChild`] is the one real implementation over [`std::process::Child`];
+//! bounded time for it to go, reap it (no zombie), and read the tail of what it wrote.
+//! [`ProcessChild`] is the one real implementation over [`std::process::Child`];
 //! injecting the trait is what lets a test drive this exact logic against a stub process
 //! instead of the real game binary.
+//!
+//! BOTH of the child's output streams are piped and drained into one ring (GTW-943). Before
+//! that only stderr was, and only a FAILED launch ever read it — stdout went to
+//! `Stdio::null()`, so a child that came up fine and then logged something interesting had
+//! nowhere to say it. The `logs` tool reads [`ManagedChild::output_tail`], which is that ring
+//! and both streams, interleaved in the order the reader threads observed them.
 //!
 //! The child is spawned into its OWN process group (on Unix) so a stop signals the WHOLE
 //! group — the `cargo run` launcher AND the game it spawns as a grandchild — rather than
@@ -16,16 +22,21 @@ use core::time::Duration;
 use std::{
     collections::VecDeque,
     io::{self, BufRead, BufReader},
-    process::{Child, ChildStderr, Command, Stdio},
+    process::{Child, Command, Stdio},
     sync::{Arc, Mutex},
     thread::{self, JoinHandle},
     time::Instant,
 };
 
-use super::values::{ChildPid, ChildStatus, KillGrace, StderrTail};
+use super::values::{ChildPid, ChildStatus, FailureTail, KillGrace, OutputTail, TailLines};
 
-/// How many trailing stderr lines a failed child's tail keeps.
-const STDERR_TAIL_LINES: usize = 64;
+/// How many trailing output lines a child's ring keeps.
+///
+/// Deep enough that a `logs` call after a few minutes of play still holds the interesting
+/// part, and bounded so a chatty child cannot grow the host's memory without limit. Public
+/// so the eviction test can drive the ring PAST it without pinning the number — the depth is
+/// a tuning knob, the bound is the behaviour.
+pub const OUTPUT_TAIL_LINES: TailLines = TailLines::new(512);
 
 /// The step the bounded exit-wait sleeps between polls.
 const EXIT_POLL_STEP: Duration = Duration::from_millis(50);
@@ -54,8 +65,18 @@ pub trait ManagedChild {
     /// Block until the child is reaped, so it never lingers as a zombie.
     fn reap(&mut self);
 
-    /// The tail of what the child has written to stderr.
-    fn stderr_tail(&self) -> StderrTail;
+    /// The whole retained tail of what the child has written — a failed launch's diagnosis.
+    ///
+    /// Both pipes feed one ring (see [`output_tail`](Self::output_tail)), so this interleaves
+    /// stdout with stderr. That is deliberate: a boot failure's cause is often the last normal
+    /// line before the error, and splitting the two loses the ordering between them.
+    fn failure_tail(&self) -> FailureTail;
+
+    /// The last `max` lines the child wrote to stdout or stderr, newest last.
+    ///
+    /// One ring over BOTH streams: a caller reading a child's output wants what the process
+    /// said, in order, not two lists it has to merge itself.
+    fn output_tail(&self, max: TailLines) -> OutputTail;
 }
 
 /// Which stop signal to deliver to the child's process group.
@@ -77,13 +98,13 @@ impl StopSignal {
     }
 }
 
-/// A bounded ring of the child's most recent stderr lines.
-struct StderrRing {
+/// A bounded ring of the child's most recent output lines, from both streams.
+struct OutputRing {
     /// The retained trailing lines, oldest first.
     lines: VecDeque<String>,
 }
 
-impl StderrRing {
+impl OutputRing {
     /// An empty ring.
     const fn new() -> Self {
         Self {
@@ -93,7 +114,7 @@ impl StderrRing {
 
     /// Append one line, dropping the oldest once the cap is reached.
     fn push_line(&mut self, line: String) {
-        if self.lines.len() == STDERR_TAIL_LINES {
+        if self.lines.len() >= *OUTPUT_TAIL_LINES {
             self.lines.pop_front();
         }
         self.lines.push_back(line);
@@ -103,11 +124,22 @@ impl StderrRing {
     fn render(&self) -> String {
         self.lines.iter().cloned().collect::<Vec<_>>().join("\n")
     }
+
+    /// Render the LAST `max` retained lines as one newline-joined string.
+    fn render_tail(&self, max: TailLines) -> String {
+        let keep = self.lines.len().saturating_sub(*max);
+        self.lines
+            .iter()
+            .skip(keep)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
 }
 
-/// Read the child's stderr line by line into the shared ring until the pipe closes.
-fn drain_stderr(stderr: ChildStderr, sink: &Arc<Mutex<StderrRing>>) {
-    let reader = BufReader::new(stderr);
+/// Read one of the child's pipes line by line into the shared ring until it closes.
+fn drain_pipe<R: std::io::Read>(pipe: R, sink: &Arc<Mutex<OutputRing>>) {
+    let reader = BufReader::new(pipe);
     for line in reader.lines() {
         let Ok(text) = line else {
             return;
@@ -121,26 +153,28 @@ fn drain_stderr(stderr: ChildStderr, sink: &Arc<Mutex<StderrRing>>) {
 /// The real [`ManagedChild`] over a [`std::process::Child`].
 pub struct ProcessChild {
     /// The owned child handle.
-    child:  Child,
+    child:   Child,
     /// The child's process id, captured once at spawn (stable across reaping).
-    pid:    ChildPid,
-    /// The shared tail of the child's stderr, filled by the reader thread.
-    tail:   Arc<Mutex<StderrRing>>,
-    /// The stderr reader thread, joined on reap.
-    reader: Option<JoinHandle<()>>,
+    pid:     ChildPid,
+    /// The shared tail of the child's output, filled by the reader threads.
+    tail:    Arc<Mutex<OutputRing>>,
+    /// The two output reader threads, joined on reap.
+    readers: Vec<JoinHandle<()>>,
 }
 
 impl ProcessChild {
     /// Spawn `command` as a managed child.
     ///
-    /// The caller sets the program, arguments, environment, and stdout; this forces
-    /// stderr to a pipe (so the tail can be captured) and, on Unix, puts the child in its
-    /// own process group (so a later stop can signal the whole group).
+    /// The caller sets the program, arguments and environment; this forces BOTH output
+    /// streams to pipes (so the tail can be captured — the host's own stdout is the JSON-RPC
+    /// channel and must never carry the child's) and, on Unix, puts the child in its own
+    /// process group (so a later stop can signal the whole group).
     ///
     /// # Errors
     ///
     /// The underlying [`io::Error`] if the process cannot be spawned.
     pub fn spawn(mut command: Command) -> io::Result<Box<dyn ManagedChild>> {
+        command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
         #[cfg(unix)]
         {
@@ -149,16 +183,21 @@ impl ProcessChild {
         }
         let mut child = command.spawn()?;
         let pid = ChildPid::new(child.id());
-        let tail = Arc::new(Mutex::new(StderrRing::new()));
-        let reader = child.stderr.take().map(|stderr| {
+        let tail = Arc::new(Mutex::new(OutputRing::new()));
+        let mut readers = Vec::with_capacity(2);
+        if let Some(stdout) = child.stdout.take() {
             let sink = Arc::clone(&tail);
-            thread::spawn(move || drain_stderr(stderr, &sink))
-        });
+            readers.push(thread::spawn(move || drain_pipe(stdout, &sink)));
+        }
+        if let Some(stderr) = child.stderr.take() {
+            let sink = Arc::clone(&tail);
+            readers.push(thread::spawn(move || drain_pipe(stderr, &sink)));
+        }
         Ok(Box::new(Self {
             child,
             pid,
             tail,
-            reader,
+            readers,
         }))
     }
 
@@ -228,17 +267,26 @@ impl ManagedChild for ProcessChild {
 
     fn reap(&mut self) {
         drop(self.child.wait());
-        if let Some(handle) = self.reader.take() {
+        for handle in self.readers.drain(..) {
             drop(handle.join());
         }
     }
 
-    fn stderr_tail(&self) -> StderrTail {
+    fn failure_tail(&self) -> FailureTail {
         let text = self
             .tail
             .lock()
             .map(|ring| ring.render())
             .unwrap_or_default();
-        StderrTail::new(text)
+        FailureTail::new(text)
+    }
+
+    fn output_tail(&self, max: TailLines) -> OutputTail {
+        let text = self
+            .tail
+            .lock()
+            .map(|ring| ring.render_tail(max))
+            .unwrap_or_default();
+        OutputTail::new(text)
     }
 }

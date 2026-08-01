@@ -3,7 +3,7 @@
 use std::{error::Error, time::Duration};
 
 use gdtf_content_editor::EditorState;
-use gdtf_qa_protocol::envelope::QaResponse;
+use gdtf_qa_protocol::message::QaResponse;
 
 /// A boxed error so a test's `?` spans `io::Error`, the codec's error type and a bare
 /// message. `Send + Sync` because the client half's result crosses a thread boundary back to

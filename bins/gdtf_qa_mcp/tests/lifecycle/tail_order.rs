@@ -1,10 +1,10 @@
-//! WHEN a failed launch reads the child's stderr tail — after the child is reaped, never
-//! before (GTW-756).
+//! WHEN a failed launch reads the child's captured output tail — after the child is reaped,
+//! never before (GTW-756).
 //!
-//! The real [`ProcessChild`](gdtf_qa_mcp::ProcessChild) drains the child's stderr on a
-//! reader thread that [`reap`](ManagedChild::reap) joins, so a tail read before that join can
-//! catch the reader mid-drain and hand back a truncated tail — losing the diagnosis a
-//! failed launch exists to carry. Against a real process that ordering only shows up when
+//! The real [`ProcessChild`](gdtf_qa_mcp::ProcessChild) drains both of the child's output
+//! streams on reader threads that [`reap`](ManagedChild::reap) joins, so a tail read before
+//! that join can catch a reader mid-drain and hand back a truncated tail — losing the
+//! diagnosis a failed launch exists to carry. Against a real process that ordering only shows up when
 //! the scheduler happens to be slow, which is exactly the timing this suite must not
 //! depend on.
 //!
@@ -20,8 +20,9 @@ use std::{
 };
 
 use gdtf_qa_mcp::{
-    ChildPid, ChildSpawner, HostLifecycle, HostManager, KillGrace, LaunchFailure, LaunchOutcome,
-    LaunchSpec, ManagedChild, QaPort, StderrTail, StopOutcome, lifecycle::ChildStatus,
+    ChildPid, ChildSpawner, FailureTail, HostLifecycle, HostManager, KillGrace, LaunchFailure,
+    LaunchOutcome, LaunchSpec, ManagedChild, OutputTail, QaPort, StopOutcome, TailLines,
+    lifecycle::ChildStatus,
 };
 
 use crate::support::{fast_config, free_port};
@@ -57,24 +58,24 @@ enum ChildCall {
     WaitUntilExit,
     /// `kill` — the SIGKILL escalation for a child that ignored SIGTERM.
     Kill,
-    /// `reap` — the wait that joins a real child's stderr reader thread.
+    /// `reap` — the wait that joins a real child's two output reader threads.
     Reap,
-    /// `stderr_tail` — the read whose order against [`Reap`](ChildCall::Reap) these tests
+    /// `failure_tail` — the read whose order against [`Reap`](ChildCall::Reap) these tests
     /// pin.
-    ReadStderrTail,
+    ReadFailureTail,
 }
 
-/// A [`ManagedChild`] with no process behind it, whose stderr tail is gated on being reaped.
+/// A [`ManagedChild`] with no process behind it, whose output tail is gated on being reaped.
 ///
-/// It answers [`stderr_tail`](ManagedChild::stderr_tail) with an empty tail until
+/// It answers [`failure_tail`](ManagedChild::failure_tail) with an empty tail until
 /// [`reap`](ManagedChild::reap) has been called and with [`GATED_LINE`] afterwards — the same
 /// before/after the real child's reader thread has, made absolute — and records every call
 /// in order. It is also a stubborn child: it never reports an exit, so a stop must
 /// escalate SIGTERM to SIGKILL, putting the whole orphan-kill path in the recorded
 /// sequence.
 struct ReapGatedChild {
-    /// The stderr text, readable only once the child has been reaped.
-    tail:   StderrTail,
+    /// The captured text, readable only once the child has been reaped.
+    tail:   FailureTail,
     /// What the child reports when polled — whether it exited on its own.
     status: ChildStatus,
     /// The shared record of calls, in the order they were made.
@@ -124,13 +125,17 @@ impl ManagedChild for ReapGatedChild {
         self.record(ChildCall::Reap);
     }
 
-    fn stderr_tail(&self) -> StderrTail {
-        self.record(ChildCall::ReadStderrTail);
+    fn failure_tail(&self) -> FailureTail {
+        self.record(ChildCall::ReadFailureTail);
         if self.reaped() {
             self.tail.clone()
         } else {
-            StderrTail::default()
+            FailureTail::default()
         }
+    }
+
+    fn output_tail(&self, _max: TailLines) -> OutputTail {
+        OutputTail::new((*self.failure_tail()).clone())
     }
 }
 
@@ -145,7 +150,7 @@ struct ReapGatedSpawner {
 impl ChildSpawner for ReapGatedSpawner {
     fn spawn(&self, _port: QaPort, _spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>> {
         Ok(Box::new(ReapGatedChild {
-            tail:   StderrTail::new(GATED_LINE.to_owned()),
+            tail:   FailureTail::new(GATED_LINE.to_owned()),
             status: self.status,
             calls:  Arc::clone(&self.calls),
         }))
@@ -172,10 +177,10 @@ fn recorded(calls: &CallLog) -> Vec<ChildCall> {
     log.clone()
 }
 
-/// A launch that times out kills and reaps the orphan BEFORE it reads the stderr tail, so
+/// A launch that times out kills and reaps the orphan BEFORE it reads the output tail, so
 /// the failure carries the child's last words rather than whatever had been drained so far.
 #[test]
-fn timeout_reads_the_stderr_tail_after_reaping_the_orphan() {
+fn timeout_reads_the_output_tail_after_reaping_the_orphan() {
     let (mut manager, calls) = manager_over_gated_child(ChildStatus::Running, NO_WAIT_BOOT_MS);
 
     let outcome = manager.launch(QaPort::new(free_port()), &LaunchSpec::game_default());
@@ -195,9 +200,9 @@ fn timeout_reads_the_stderr_tail_after_reaping_the_orphan() {
             ChildCall::WaitUntilExit,
             ChildCall::Kill,
             ChildCall::Reap,
-            ChildCall::ReadStderrTail,
+            ChildCall::ReadFailureTail,
         ],
-        "the orphan is stopped and reaped, and only then is its stderr tail read",
+        "the orphan is stopped and reaped, and only then is its output tail read",
     );
     assert_eq!(
         manager.stop(QaPort::new(free_port())),
@@ -205,10 +210,10 @@ fn timeout_reads_the_stderr_tail_after_reaping_the_orphan() {
     );
 }
 
-/// A child that exits on its own is reaped BEFORE its stderr tail is read, for the same
-/// reason — reaping is what finishes draining the closed pipe.
+/// A child that exits on its own is reaped BEFORE its output tail is read, for the same
+/// reason — reaping is what finishes draining the closed pipes.
 #[test]
-fn early_exit_reads_the_stderr_tail_after_reaping_the_child() {
+fn early_exit_reads_the_output_tail_after_reaping_the_child() {
     let (mut manager, calls) = manager_over_gated_child(ChildStatus::Exited, UNREACHED_BOOT_MS);
 
     let outcome = manager.launch(QaPort::new(free_port()), &LaunchSpec::game_default());
@@ -222,8 +227,8 @@ fn early_exit_reads_the_stderr_tail_after_reaping_the_child() {
     );
     assert_eq!(
         recorded(&calls),
-        vec![ChildCall::Poll, ChildCall::Reap, ChildCall::ReadStderrTail],
-        "the exited child is reaped, and only then is its stderr tail read",
+        vec![ChildCall::Poll, ChildCall::Reap, ChildCall::ReadFailureTail],
+        "the exited child is reaped, and only then is its output tail read",
     );
     assert_eq!(
         manager.stop(QaPort::new(free_port())),

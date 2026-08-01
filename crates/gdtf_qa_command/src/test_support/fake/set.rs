@@ -1,6 +1,6 @@
 //! The fake host's slices — the ONE list shape a real host uses, three times over.
 
-use gdtf_qa_protocol::envelope::ServerNameNet;
+use gdtf_qa_protocol::message::ServerNameNet;
 
 use super::{
     broken::FakeBrokenSchema, cell::FakeCell, echo::FakeEcho, facts::FakeFacts, phase::FakePhase,

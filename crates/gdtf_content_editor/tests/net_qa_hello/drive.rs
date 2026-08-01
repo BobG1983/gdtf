@@ -11,7 +11,7 @@ use std::{
 };
 
 use bevy::prelude::*;
-use gdtf_qa_protocol::envelope::QaResponse;
+use gdtf_qa_protocol::message::QaResponse;
 
 use crate::{
     harness::editor_state,

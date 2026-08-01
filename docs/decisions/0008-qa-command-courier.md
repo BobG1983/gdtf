@@ -7,15 +7,15 @@ description: A host publishes its own list of typed QA commands; two frozen enve
 
 ## Status
 
-`Proposed` — 2026-07-31, driven by the user's design ruling on GTW-934 and the GTW-938 epic
-that carries it. Built in phase A by GTW-939 (the wire vocabulary), GTW-940 (the handshake
-gate), GTW-941 (`crates/gdtf_qa_command`) and GTW-942 (the game host scaffold, `app.phase`,
-and the courier's two tools).
+`Accepted` — 2026-08-01 (GTW-943). Proposed 2026-07-31, driven by the user's design ruling on
+GTW-934 and the GTW-938 epic that carries it. Built in phase A by GTW-939 (the wire vocabulary),
+GTW-940 (the handshake gate), GTW-941 (`crates/gdtf_qa_command`) and GTW-942 (the game host
+scaffold, `app.phase`, and the courier's two tools).
 
-It moves to `Accepted` in GTW-943, which also deletes the surface
-[ADR 0007](0007-net-qa-command-discoverability.md) describes and flips that ADR to
-`Superseded by 0008`. Until then 0007's per-family query pair is still shipped code and both
-surfaces exist side by side.
+GTW-943 is what moved it here: it deleted the surface
+[ADR 0007](0007-net-qa-command-discoverability.md) describes — the per-family query pair, the
+ten other request variants, and the twelve per-request MCP tools — leaving the command layer as
+the only QA surface. The two designs no longer exist side by side.
 
 ## Context
 

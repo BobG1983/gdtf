@@ -20,8 +20,8 @@ use bevy::app::App;
 use gdtf_app::test_support::{AppState, NetQaPlugin};
 use gdtf_net_qa_transport::NetQaPort;
 use gdtf_qa_protocol::{
-    envelope::{QaRequest, QaResponse},
     framing::{FrameDecoder, encode},
+    message::{QaRequest, QaResponse},
 };
 use gdtf_test_utils::GdtfLoadTestAppBuilder;
 

@@ -1,9 +1,9 @@
 //! The command vocabulary — the data a host's command set rides on (GTW-939).
 //!
 //! The point of this module: **a command is not a wire variant.** Adding a command adds
-//! no [`QaRequest`](crate::envelope::QaRequest) variant, no
-//! [`QaResponse`](crate::envelope::QaResponse) variant, and no field — it adds a row to a
-//! host's [`CommandCatalogue`] and a name a [`Run`](crate::envelope::QaRequest::Run) can
+//! no [`QaRequest`](crate::message::QaRequest) variant, no
+//! [`QaResponse`](crate::message::QaResponse) variant, and no field — it adds a row to a
+//! host's [`CommandCatalogue`] and a name a [`Run`](crate::message::QaRequest::Run) can
 //! carry. One concern per file: a command's identity ([`name`]), the JSON bodies it
 //! carries ([`payload`]), its derived JSON Schemas ([`schema`]), the catalogue it is
 //! published in ([`catalogue`]), whether it can run right now ([`availability`]), when it

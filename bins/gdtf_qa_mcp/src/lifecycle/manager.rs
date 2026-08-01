@@ -37,14 +37,14 @@ use super::{
     outcome::{LaunchFailure, LaunchOutcome, StopOutcome},
     probe::probe_ready,
     spawn::ChildSpawner,
-    values::{ChildStatus, KillGrace, Readiness},
+    values::{ChildStatus, KillGrace, OutputTail, Readiness, TailLines},
 };
 use crate::link::QaPort;
 
 /// Launch and stop one host's child, one at a time.
 ///
 /// The MCP tool layer depends on this trait, not on [`HostManager`], so the
-/// `launch_game` / `stop_game` / `launch_editor` / `stop_editor` tool handlers can be
+/// `launch` / `stop` / `logs` tool handlers can be
 /// exercised against a manager driven by a stub spawner.
 pub trait HostLifecycle {
     /// Ensure this host's child is running on `port`, launching one built to `spec` if
@@ -87,6 +87,15 @@ pub trait HostLifecycle {
     /// `working_dir` of its own — a git worktree, the whole point of GTW-875 — came back as
     /// "could not be read" while the PNG sat on disk.
     fn child_working_dir(&self) -> Option<WorkingDir>;
+
+    /// The last `max` lines the running child wrote to stdout or stderr, or `None` when this
+    /// manager owns no child.
+    ///
+    /// `None` is the honest answer for "there is nothing to read here", and it is what the
+    /// `logs` tool turns into "no child is running" rather than an empty log that reads like
+    /// a silent process. An ORPHAN's output is unreadable by construction: the pipes belong
+    /// to the host process that spawned it, which is gone.
+    fn child_output(&self, max: TailLines) -> Option<OutputTail>;
 }
 
 /// A running child together with the port it was launched on and the recipe that built it.
@@ -189,20 +198,20 @@ impl HostManager {
                 return LaunchOutcome::Launched { port, pid };
             }
             if matches!(child.poll(), ChildStatus::Exited) {
-                // Reap FIRST, then read the tail: reaping joins the stderr reader thread,
-                // which finishes draining the closed pipe into the ring. Reading first can
+                // Reap FIRST, then read the tail: reaping joins the output reader threads,
+                // which finishes draining the closed pipes into the ring. Reading first can
                 // catch the reader mid-drain and miss the child's final lines (GTW-756).
                 child.reap();
-                let tail = child.stderr_tail();
+                let tail = child.failure_tail();
                 return LaunchOutcome::Failed(LaunchFailure::ExitedEarly(tail));
             }
             if Instant::now() >= deadline {
                 // Shut down FIRST, then read the tail: `shutdown` kills and reaps the
-                // child, and reaping joins the stderr reader thread, so the pipe is fully
+                // child, and reaping joins the output reader threads, so the pipes are fully
                 // drained before it is read. Reading first can catch the reader mid-drain
                 // and truncate the diagnosis this failure exists to carry (GTW-756).
                 shutdown(child.as_mut(), self.config.kill_grace());
-                let tail = child.stderr_tail();
+                let tail = child.failure_tail();
                 return LaunchOutcome::Failed(LaunchFailure::Timeout {
                     tail,
                     waited: self.config.boot_timeout(),
@@ -272,6 +281,12 @@ impl HostLifecycle for HostManager {
         self.running
             .as_ref()
             .and_then(|running| running.recipe.resolved_working_dir())
+    }
+
+    fn child_output(&self, max: TailLines) -> Option<OutputTail> {
+        self.running
+            .as_ref()
+            .map(|running| running.child.output_tail(max))
     }
 }
 

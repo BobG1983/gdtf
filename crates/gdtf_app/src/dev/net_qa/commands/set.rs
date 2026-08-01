@@ -1,7 +1,7 @@
 //! [`GAME_COMMANDS`] — the ONE list of commands this host offers (GTW-942).
 
 use gdtf_qa_command::command::ErasedCommand;
-use gdtf_qa_protocol::envelope::ServerNameNet;
+use gdtf_qa_protocol::message::ServerNameNet;
 
 use super::read::AppPhase;
 use crate::dev::net_qa::{config::SERVER_NAME, facts::GameFacts};

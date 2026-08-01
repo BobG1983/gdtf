@@ -1,16 +1,22 @@
 //! A capture written by a child running in a DIFFERENT directory than the host comes back
-//! as an image, over the real JSON-RPC surface — for BOTH children (GTW-923).
+//! as an image, over the real JSON-RPC surface — for BOTH children (GTW-923, retargeted
+//! onto `run` by GTW-943).
 //!
-//! These go through `dispatch` → `handle_tool_call` → `render_response`, so they cover the
-//! whole read path, not the resolution helper on its own. The setup is the defect's exact
-//! shape: the child reports the RELATIVE path its own default produces
-//! (`target/qa_screenshots/…` for the game, `target/editor_qa_screenshots/…` for the
-//! editor), the PNG exists only under a temp directory that is NOT the test process's
-//! current directory, and the lifecycle reports that temp directory as the child's. Before
-//! the fix the host read the reported path against its own directory, found nothing, and
-//! answered with "could not be read" text instead of the image.
+//! These go through `dispatch` → `handle_tool_call` → `render_outcome` →
+//! `attachment_blocks`, so they cover the whole read path, not the resolution helper on its
+//! own. The setup is the defect's exact shape: the child reports the RELATIVE path its own
+//! default produces (`target/qa_screenshots/…` for the game,
+//! `target/editor_qa_screenshots/…` for the editor), the PNG exists only under a temp
+//! directory that is NOT the test process's current directory, and the lifecycle reports
+//! that temp directory as the child's. Before the fix the host read the reported path
+//! against its own directory, found nothing, and answered with "could not be read" text
+//! instead of the image.
 //!
-//! The two children carry DIFFERENT bytes, so a reply proves which child's file was read.
+//! The per-request capture tool this used to drive went with the rest of the per-request tool
+//! set; what carries a capture now is an ATTACHMENT on a command's reply, and the host-side
+//! resolution is the same one. The two children carry DIFFERENT bytes, so a reply proves
+//! which child's file was read — which is the property
+//! [`courier_attach`](crate::courier_attach), driving the game alone, cannot show.
 
 use std::{
     fs,
@@ -20,11 +26,12 @@ use std::{
 };
 
 use gdtf_qa_mcp::{
-    ChildPid, HostLifecycle, HostPair, HostSet, LaunchOutcome, LaunchSpec, McpError, QaLink,
-    QaPort, StopOutcome, WorkingDir, base64::encode_standard, dispatch,
+    ChildPid, HostLifecycle, HostPair, HostSet, LaunchOutcome, LaunchSpec, McpError, OutputTail,
+    QaLink, QaPort, StopOutcome, TailLines, WorkingDir, base64::encode_standard, dispatch,
 };
-use gdtf_qa_protocol::envelope::{
-    QaError, QaRequest, QaResponse, ScreenshotAfterResult, ScreenshotPathNet, ScreenshotResult,
+use gdtf_qa_protocol::{
+    command::{ArtifactPath, AttachmentKind, CommandOutcome, CommandReplyJson, ReplyAttachment},
+    message::{QaError, QaRequest, QaResponse},
 };
 use serde_json::{Value, json};
 
@@ -42,21 +49,24 @@ const GAME_SHOT_BYTES: &[u8] = b"gtw923-game-png-bytes";
 /// The bytes standing in for the EDITOR's PNG.
 const EDITOR_SHOT_BYTES: &[u8] = b"gtw923-editor-png-bytes";
 
-/// A link that answers both capture requests with one saved RELATIVE path — what a real
-/// child reports, since neither default is absolute.
+/// The reply body the canned command answers with, beside its attachment.
+const CAPTURE_REPLY: &str = "null";
+
+/// A link whose one command RUNS and attaches one capture at the RELATIVE path it carries —
+/// what a real child reports, since neither default is absolute.
 struct RelativeShotLink(&'static str);
 
 impl QaLink for RelativeShotLink {
     fn request(&mut self, request: QaRequest) -> Result<QaResponse, McpError> {
-        let path = ScreenshotPathNet::new(self.0.to_owned());
         match request {
-            QaRequest::TakeScreenshot { .. } => {
-                Ok(QaResponse::Screenshot(ScreenshotResult::Saved(path)))
-            }
-            QaRequest::ScreenshotAfter { .. } => Ok(QaResponse::ScreenshotAfter(
-                ScreenshotAfterResult::Saved(path),
-            )),
-            _ => Ok(QaResponse::Error(QaError::BadRequest)),
+            QaRequest::Run(_) => Ok(QaResponse::Outcome(CommandOutcome::Ran {
+                reply:       CommandReplyJson::new(CAPTURE_REPLY.to_owned()),
+                attachments: vec![ReplyAttachment::new(
+                    AttachmentKind::Png,
+                    ArtifactPath::new(self.0.to_owned()),
+                )],
+            })),
+            _ => Ok(QaResponse::Error(QaError::Malformed)),
         }
     }
 }
@@ -83,6 +93,10 @@ impl HostLifecycle for ChildInDirLifecycle {
 
     fn child_working_dir(&self) -> Option<WorkingDir> {
         Some(WorkingDir::new(self.0.clone()))
+    }
+
+    fn child_output(&self, _max: TailLines) -> Option<OutputTail> {
+        None
     }
 }
 
@@ -141,70 +155,58 @@ fn dispatch_with_child_in(line: &str, child_dir: &Path) -> Value {
     serde_json::from_str(&response).unwrap_or(Value::Null)
 }
 
-/// Assert `response` carries exactly `bytes` as PNG image content.
+/// Assert `response` carries exactly `bytes` as PNG image content, after the reply's own
+/// text block.
 fn assert_image_of(response: &Value, bytes: &[u8]) {
     assert_eq!(
         response["result"]["isError"],
         json!(false),
         "the capture must render as an image, not an error: {response}",
     );
-    assert_eq!(response["result"]["content"][0]["type"], json!("image"));
+    assert_eq!(response["result"]["content"][1]["type"], json!("image"));
     assert_eq!(
-        response["result"]["content"][0]["mimeType"],
+        response["result"]["content"][1]["mimeType"],
         json!("image/png")
     );
     assert_eq!(
-        response["result"]["content"][0]["data"],
+        response["result"]["content"][1]["data"],
         json!(encode_standard(bytes)),
         "the image must be the bytes the CHILD's file holds: {response}",
     );
 }
 
-/// `take_screenshot` against the GAME: the child ran elsewhere, and its capture still comes
+/// A `run` against the GAME: the child ran elsewhere, and its attached capture still comes
 /// back as the image.
 #[test]
 fn a_game_capture_from_another_directory_relays_as_an_image() {
     let root = a_child_tree_holding_both_captures();
     let response = dispatch_with_child_in(
-        r#"{"jsonrpc":"2.0","id":40,"method":"tools/call","params":{"name":"take_screenshot","arguments":{}}}"#,
+        r#"{"jsonrpc":"2.0","id":40,"method":"tools/call","params":{"name":"run","arguments":{"command":"capture.screenshot"}}}"#,
         &root,
     );
     assert_image_of(&response, GAME_SHOT_BYTES);
     drop(fs::remove_dir_all(&root));
 }
 
-/// `take_screenshot` aimed at the EDITOR: the same property, on the host GTW-875's
+/// The same `run` aimed at the EDITOR: the same property, on the host GTW-875's
 /// `working_dir` was added for. A host-side resolution covers both children with one rule,
 /// which is why the editor needs no separate fix (GTW-923 clause 5).
 #[test]
 fn an_editor_capture_from_another_directory_relays_as_an_image() {
     let root = a_child_tree_holding_both_captures();
     let response = dispatch_with_child_in(
-        r#"{"jsonrpc":"2.0","id":41,"method":"tools/call","params":{"name":"take_screenshot","arguments":{"host":"editor"}}}"#,
+        r#"{"jsonrpc":"2.0","id":41,"method":"tools/call","params":{"name":"run","arguments":{"command":"capture.screenshot","host":"editor"}}}"#,
         &root,
     );
     assert_image_of(&response, EDITOR_SHOT_BYTES);
     drop(fs::remove_dir_all(&root));
 }
 
-/// `screenshot_after`'s capture reads the same way — the second read site, which had its own
-/// copy of the host-relative read (GTW-923 clause 4).
+/// A capture that is genuinely absent from the child's directory is STILL reported, naming
+/// both paths — the reported one and the one the host opened. Removing a false failure must
+/// not introduce a false success (GTW-923 clause 6).
 #[test]
-fn a_screenshot_after_capture_from_another_directory_relays_as_an_image() {
-    let root = a_child_tree_holding_both_captures();
-    let response = dispatch_with_child_in(
-        r#"{"jsonrpc":"2.0","id":42,"method":"tools/call","params":{"name":"screenshot_after","arguments":{"intent":"EndTurn","frame_delay":2}}}"#,
-        &root,
-    );
-    assert_image_of(&response, GAME_SHOT_BYTES);
-    drop(fs::remove_dir_all(&root));
-}
-
-/// A capture that is genuinely absent from the child's directory is STILL a tool error
-/// naming both paths — the reported one and the one the host opened. Removing a false
-/// failure must not introduce a false success (GTW-923 clause 6).
-#[test]
-fn a_missing_capture_is_still_a_tool_error_naming_both_paths() {
+fn a_missing_capture_is_still_reported_naming_both_paths() {
     let root = a_child_tree_holding_both_captures();
     let file = root.join(GAME_RELATIVE_SHOT);
     let Ok(()) = fs::remove_file(&file) else {
@@ -212,16 +214,11 @@ fn a_missing_capture_is_still_a_tool_error_naming_both_paths() {
     };
 
     let response = dispatch_with_child_in(
-        r#"{"jsonrpc":"2.0","id":43,"method":"tools/call","params":{"name":"take_screenshot","arguments":{}}}"#,
+        r#"{"jsonrpc":"2.0","id":43,"method":"tools/call","params":{"name":"run","arguments":{"command":"capture.screenshot"}}}"#,
         &root,
     );
-    assert_eq!(
-        response["result"]["isError"],
-        json!(true),
-        "a missing file must not render as an image: {response}",
-    );
-    let Some(text) = response["result"]["content"][0]["text"].as_str() else {
-        unreachable!("a tool error carries text content");
+    let Some(text) = response["result"]["content"][1]["text"].as_str() else {
+        unreachable!("an unreadable attachment renders as a text block: {response}");
     };
     assert!(text.contains(GAME_RELATIVE_SHOT), "rendered: {text}");
     let Some(shown) = file.to_str() else {
@@ -229,7 +226,7 @@ fn a_missing_capture_is_still_a_tool_error_naming_both_paths() {
     };
     assert!(
         text.contains(shown),
-        "the error names the path the host actually opened: {text}",
+        "the message names the path the host actually opened: {text}",
     );
     assert!(
         response["result"]["content"]

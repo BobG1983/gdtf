@@ -49,7 +49,7 @@ ron = { workspace = true }
 # so a release binary never links it.
 gdtf_screenshot = { path = "../gdtf_screenshot", optional = true }
 # GTW-736: the bevy-FREE typed wire contract (GTW-734, T1) the `net_qa` QA-net server
-# (`crate::dev::net_qa`, T3) speaks — the request/response envelope, the view/event DTOs,
+# (`crate::dev::net_qa`, T3) speaks — the request/response messages, the command DTOs,
 # and the pure framing codec. OPTIONAL — pulled in ONLY by the `net_qa` feature (below),
 # so a release binary (and any build without `net_qa`) never links it. The net_qa module
 # is the sole consumer; it never reimplements framing, it calls this crate's pure codec.
@@ -57,7 +57,7 @@ gdtf_qa_protocol = { path = "../gdtf_qa_protocol", optional = true }
 # GTW-803: the host-agnostic half of the QA net channel, lifted out of `crate::dev::net_qa`
 # so the game and (later) the content editor drive ONE codepath — the loopback listener +
 # accept loop, the one-client-at-a-time gate, the request/response channel, and the typed
-# pending map with its frame-deadline sweep. Routing, injection, snapshots and the
+# pending map with its frame-deadline sweep. Routing, the command set and the
 # `GDTF_NET_QA` env gate stay here. OPTIONAL — pulled in ONLY by the `net_qa` feature
 # (below), so a release binary (and any build without `net_qa`) never links it.
 gdtf_net_qa_transport = { path = "../gdtf_net_qa_transport", optional = true }
@@ -105,8 +105,8 @@ gdtf_state_scoped = { path = "../gdtf_state_scoped" }
 # `test-support` on for the sim across the workspace test build — fine: it is test/dev
 # only and the binary build enables it nowhere.)
 gdtf_battle_sim = { path = "../gdtf_battle_sim", features = ["test-support"] }
-# The `net_qa` T7/T15 screenshot tests (`src/dev/net_qa/screenshot/test/`,
-# `tests/net_qa/`) write their capture PNGs into a unique TempDir — never into the
+# The `net_qa` capture tests (`src/dev/net_qa/screenshot/test/`,
+# `src/dev/net_qa/present/test/`) write their PNGs into a unique TempDir — never into the
 # version-controlled tree. TempDir auto-cleans on drop (the GTW-555 isolation
 # precedent).
 tempfile = "3"
@@ -174,8 +174,8 @@ dev_tools = ["dep:bevy_egui"]
 # GTW-736: DEV-ONLY QA network control channel (the GTW-694 architecture's T3 onward,
 # extended through GTW-749 — the ONE capture / drive path in the workspace). Pulls in
 # the bevy-free wire contract (`dep:gdtf_qa_protocol`) plus the in-engine self-capture crate
-# (`dep:gdtf_screenshot`, reused by the T7 screenshot pump, the T15 `screenshot_after` child,
-# and the F10 debug keybind), and compiles in `crate::dev::net_qa` — a loopback-only
+# (`dep:gdtf_screenshot`, reused by the T7 screenshot pump and the F10 debug keybind), and
+# compiles in `crate::dev::net_qa` — a loopback-only
 # (`Ipv4Addr::LOCALHOST`) TCP listener + request router a coding-agent QA harness drives. Its
 # wiring site is ADDITIONALLY double-gated on `cfg!(debug_assertions)` — it opens a listener —
 # so a release artifact never sees it even with the feature on. It is inert at runtime until

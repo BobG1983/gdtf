@@ -2,7 +2,7 @@
 
 use std::sync::mpsc::{self, Receiver, Sender};
 
-use gdtf_qa_protocol::envelope::QaResponse;
+use gdtf_qa_protocol::message::QaResponse;
 
 /// The one-shot reply channel back to the socket for a single request.
 ///

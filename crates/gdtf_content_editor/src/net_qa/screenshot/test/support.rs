@@ -13,7 +13,7 @@ use std::{path::PathBuf, sync::mpsc::Receiver};
 
 use bevy::{prelude::*, render::view::window::screenshot::Screenshot};
 use gdtf_net_qa_transport::{PendingQueue, Responder};
-use gdtf_qa_protocol::{envelope::QaResponse, ids::ShotName};
+use gdtf_qa_protocol::{ids::ShotName, message::QaResponse};
 use gdtf_screenshot::{CapturePath, PollCap, SettleFrames};
 
 use super::super::{
@@ -54,9 +54,13 @@ pub(super) fn pump_app(dir: PathBuf) -> App {
     app
 }
 
-/// Queue a screenshot request exactly as the editor's router does — the same
-/// [`PendingQueue::push_new`] call `route_editor_requests` makes — and hand back the reply
-/// channel.
+/// Queue a capture on the REAL [`PendingQueue`] and hand back the reply channel.
+///
+/// [`PendingQueue::push_new`] is the one way a payload reaches the pump, so this is the
+/// production entry point even though no request routes onto the queue today: GTW-943 removed
+/// the request that did, and the editor's capture COMMAND (the editor-host ticket) pushes
+/// through this same call from inside the drain. Everything under the push — the queue, the
+/// pump, the responder — is the real thing.
 pub(super) fn enqueue(app: &mut App, name: ShotName) -> Receiver<QaResponse> {
     let (responder, reply_rx) = Responder::channel();
     app.world_mut()
