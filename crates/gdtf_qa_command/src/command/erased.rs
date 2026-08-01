@@ -2,7 +2,7 @@
 
 use bevy::prelude::App;
 use gdtf_qa_protocol::command::{
-    ArgSchemaJson, CommandAvailability, CommandName, CommandSummary, ReplySchemaJson,
+    ArgSchemaJson, CommandAvailability, CommandName, CommandSummary, CommandTiming, ReplySchemaJson,
 };
 
 use super::{QaCommand, schema::schema_text};
@@ -32,7 +32,9 @@ use super::{QaCommand, schema::schema_text};
 /// ```compile_fail
 /// use bevy::prelude::App;
 /// use gdtf_qa_command::command::{ErasedCommand, QaCommand};
-/// use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary};
+/// use gdtf_qa_protocol::command::{
+///     CommandAvailability, CommandName, CommandSummary, CommandTiming,
+/// };
 ///
 /// #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 /// struct NoArgs {}
@@ -49,6 +51,7 @@ use super::{QaCommand, schema::schema_text};
 ///     type Reply = NoReply;
 ///     const NAME: CommandName = CommandName::from_static("host_a.only");
 ///     const SUMMARY: CommandSummary = CommandSummary::from_static("a host A command");
+///     const TIMING: CommandTiming = CommandTiming::Immediate;
 ///     fn availability(_facts: &HostAFacts) -> CommandAvailability {
 ///         CommandAvailability::Available
 ///     }
@@ -75,6 +78,8 @@ pub trait ErasedCommand<F>: Send + Sync {
     fn name(&self) -> CommandName;
     /// The command's one-line summary.
     fn summary(&self) -> CommandSummary;
+    /// When the command answers, relative to the frame its handler claims the call.
+    fn timing(&self) -> CommandTiming;
     /// The JSON Schema derived from the command's argument type.
     fn arg_schema(&self) -> ArgSchemaJson;
     /// The JSON Schema derived from the command's reply type.
@@ -97,6 +102,10 @@ impl<C: QaCommand> ErasedCommand<C::Facts> for C {
 
     fn summary(&self) -> CommandSummary {
         C::SUMMARY
+    }
+
+    fn timing(&self) -> CommandTiming {
+        C::TIMING
     }
 
     fn arg_schema(&self) -> ArgSchemaJson {

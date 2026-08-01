@@ -12,7 +12,7 @@
 //! ## Members (one concern per file, per module-layout)
 //!
 //! - [`fake`] — the fake facts type, the fake commands, and the slices they form.
-//! - [`assert`] — the two conformance assertions and the checks underneath them.
+//! - [`mod@assert`] — the two conformance assertions and the checks underneath them.
 //! - [`harness`] — a bare `App` wired with a fake set, and the router stand-in that drives
 //!   one call through it.
 

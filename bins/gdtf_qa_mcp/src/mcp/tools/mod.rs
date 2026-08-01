@@ -22,9 +22,16 @@
 //! HOST-LOCAL tool never reaches a wire, because it starts or stops the child process
 //! itself ([`ToolName::is_launch`] / [`ToolName::is_stop`]).
 //!
-//! `take_screenshot` is the one tool a call may aim at either child with a `host` argument
-//! ([`ToolName::accepts_host_argument`], GTW-880); every other tool stays on the host
-//! [`ToolName::host`] names.
+//! Three tools may be aimed at either child with a `host` argument
+//! ([`ToolName::accepts_host_argument`]): `take_screenshot` (GTW-880), because both children
+//! can capture a frame, and the two COURIER tools [`Commands`](ToolName::Commands) /
+//! [`Run`](ToolName::Run) (GTW-942), because a command layer is something both hosts have.
+//! Every other tool stays on the host [`ToolName::host`] names.
+//!
+//! The courier pair is listed under the game because that is the host a call reaches when it
+//! names none. Neither tool names a COMMAND anywhere — not in its schema and not in its
+//! description: a host's command vocabulary is read from the running host and carried as
+//! data, so adding a command to either host changes nothing in this registry.
 //!
 //! ## The `game` host — loopback port 7616
 //!
@@ -33,7 +40,8 @@
 //! [`ScreenshotAfter`](ToolName::ScreenshotAfter), [`AppFlow`](ToolName::AppFlow),
 //! [`StartBattle`](ToolName::StartBattle), [`StepperControl`](ToolName::StepperControl),
 //! [`ActivateMenuItem`](ToolName::ActivateMenuItem),
-//! [`FocusControl`](ToolName::FocusControl).
+//! [`FocusControl`](ToolName::FocusControl), [`Commands`](ToolName::Commands),
+//! [`Run`](ToolName::Run).
 //!
 //! Host-local — [`LaunchGame`](ToolName::LaunchGame), [`StopGame`](ToolName::StopGame).
 //!

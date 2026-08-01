@@ -5,12 +5,13 @@ use gdtf_qa_protocol::envelope::{
 };
 use serde_json::Value;
 
-use super::shot_file::resolve_shot_path;
 use crate::{
     base64::encode_standard,
     lifecycle::WorkingDir,
     mcp::{
+        child_path::{ChildReportedPath, resolve_child_path},
         content::{image_content, text_content, tool_error},
+        courier::{parse_detail, parse_filter, render_catalogue, render_outcome},
         tools::ToolName,
     },
 };
@@ -23,13 +24,20 @@ use crate::{
 /// reply variant that does not match the tool is itself a tool error.
 ///
 /// `child_dir` is the directory the child that answered was launched in. The two screenshot
-/// arms read their PNG relative to THAT directory rather than to the MCP host's own current
-/// directory (GTW-923) — the sibling `shot_file` module records why the child's directory is
-/// the only one a child-written path means anything against.
+/// arms — and a command reply's attachments — read their file relative to THAT directory
+/// rather than to the MCP host's own current directory (GTW-923);
+/// `crate::mcp::child_path` records why the child's directory is the only one a
+/// child-written path means anything against.
+///
+/// `args` are the CALL's own arguments. Most arms ignore them, but the `commands` arm cannot
+/// (GTW-942): the wire `Catalogue` request carries no detail level and no filter — a host
+/// publishes its whole list and has nothing to narrow — so `detail` and `command` are honoured
+/// HERE, on the reply, which is the only place they mean anything.
 #[must_use]
 pub fn render_response(
     tool: ToolName,
     response: &QaResponse,
+    args: &Value,
     child_dir: Option<&WorkingDir>,
 ) -> Value {
     match (tool, response) {
@@ -58,6 +66,14 @@ pub fn render_response(
             text_content(view)
         }
         (ToolName::QueryEditor, QaResponse::EditorQuery(reply)) => text_content(reply),
+        // The two COURIER arms (GTW-942).
+        (ToolName::Commands, QaResponse::Catalogue(catalogue)) => {
+            match (parse_detail(args), parse_filter(args)) {
+                (Ok(detail), Ok(filter)) => render_catalogue(catalogue, detail, filter.as_ref()),
+                (Err(message), _) | (_, Err(message)) => tool_error(&message),
+            }
+        }
+        (ToolName::Run, QaResponse::Outcome(outcome)) => render_outcome(outcome, child_dir),
         _ => tool_error("the host returned a response that does not match the request"),
     }
 }
@@ -71,7 +87,7 @@ pub fn render_response(
 /// directory. The error names BOTH paths, what the child reported and what the host actually
 /// opened, because a directory mismatch is invisible from either one alone.
 fn render_saved_shot(path: &ScreenshotPathNet, child_dir: Option<&WorkingDir>) -> Value {
-    let resolved = resolve_shot_path(path, child_dir);
+    let resolved = resolve_child_path(ChildReportedPath::from(path), child_dir);
     match std::fs::read(&*resolved) {
         Ok(bytes) => image_content(&encode_standard(&bytes)),
         Err(err) => tool_error(&format!(

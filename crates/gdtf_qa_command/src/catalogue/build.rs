@@ -29,6 +29,7 @@ pub fn catalogue<F>(
             CommandEntry::new(
                 command.name(),
                 command.summary(),
+                command.timing(),
                 command.arg_schema(),
                 command.reply_schema(),
                 command.availability(facts),

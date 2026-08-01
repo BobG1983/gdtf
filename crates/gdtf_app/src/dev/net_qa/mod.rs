@@ -54,12 +54,21 @@
 //! - [`key_tap`] — the shared real-keypress emitter both the raw-input inject arm and the
 //!   focus-drive activation write through.
 //! - [`plugin`] — the [`NetQaPlugin`] registration (`from_env` / `with_channels`).
+//! - [`wire`] — this host's OWN wire types: [`AppPhaseNet`](wire::AppPhaseNet) and the five
+//!   state mirrors a command's reply schema is derived over (GTW-942).
+//! - [`facts`] — [`GameFacts`](facts::GameFacts), the per-frame facts every command reads,
+//!   and the `SystemParam` that samples them once a frame (GTW-942).
+//! - [`commands`] — the ONE command list, its registration walk, and the commands
+//!   themselves. Adding a command is a file plus one line in that list; it moves no
+//!   protocol version and adds no wire variant (GTW-942).
 
 mod activate_menu;
+mod commands;
 mod config;
 mod convert;
 mod env;
 mod events;
+mod facts;
 mod focus_control;
 mod inject;
 mod key_tap;
@@ -73,6 +82,7 @@ mod screenshot_after;
 mod snapshot;
 mod start_battle;
 mod stepper;
+mod wire;
 
 // `NetQaPlugin` is the item the binary consumes (via the dev aggregate plugin,
 // `crate::dev::plugin`), so it re-exports in BOTH configurations at the `test-support`
@@ -88,6 +98,12 @@ crate::support_use!(plugin::NetQaPlugin;);
 // re-exported here (GTW-803): they belong to `gdtf_net_qa_transport`, and a test that needs
 // one imports it from there — presenting another crate's items as this module's API would
 // erase the split at the public surface (module-layout Rule 7).
+// GTW-942: the two conformance entry points, which run `gdtf_qa_command::test_support`'s
+// per-host assertions over the REAL `GAME_COMMANDS` slice and report the names it publishes.
+// The slice itself is NOT exported — its type names this host's internal facts and wire
+// vocabulary, and two assertions are not a reason to put that on the crate's public surface.
+#[cfg(feature = "test-support")]
+pub use commands::{assert_game_command_set_is_conformant, game_command_names};
 #[cfg(feature = "test-support")]
 pub use config::{
     NET_QA_PROTOCOL_VERSION, SERVER_NAME as NET_QA_SERVER_NAME, hello_facts as net_qa_hello_facts,

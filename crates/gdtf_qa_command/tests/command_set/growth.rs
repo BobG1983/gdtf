@@ -58,10 +58,11 @@ fn the_added_command_resolves_and_runs() {
 
 /// The protocol version is unchanged by any of the above.
 ///
-/// `13` is the value GTW-939 froze the command-carrying envelope at. Adding fake commands
-/// #3 and #4 above changed no request variant, no response variant and no field, so this
-/// number has no reason to move — and a change to it would be a change to the very thing
-/// this design exists to stop touching.
+/// `14` is where the command-carrying envelope stands: GTW-939 landed it at `13`, and GTW-942
+/// moved it once, for two FIELDS added to shipped shapes (`RunCommand.options` and
+/// `CommandEntry.timing`) — not for a command. Adding fake commands #3 and #4 above changed no
+/// request variant, no response variant and no field, so this number has no reason to move —
+/// and a change to it would be a change to the very thing this design exists to stop touching.
 #[test]
 fn adding_a_command_moves_no_version() {
     let observed = *ProtocolVersion::CURRENT;
@@ -77,12 +78,12 @@ fn adding_a_command_moves_no_version() {
         &mut app,
         FAKE_COMMANDS_GROWN,
         &FakeEcho::NAME,
-        &args("{\"text\":\"still 13\"}"),
+        &args("{\"text\":\"still 14\"}"),
         &plain(),
     );
     app.update();
     let reply: FakeEchoReply = ran(&channel);
-    assert_eq!(reply.text.as_str(), "still 13");
+    assert_eq!(reply.text.as_str(), "still 14");
 
     assert_eq!(
         *ProtocolVersion::CURRENT,
@@ -91,8 +92,8 @@ fn adding_a_command_moves_no_version() {
     );
     assert_eq!(
         *ProtocolVersion::CURRENT,
-        13,
-        "the command-carrying envelope is frozen at 13"
+        14,
+        "the command-carrying envelope stands at 14"
     );
 }
 

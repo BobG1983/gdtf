@@ -9,8 +9,8 @@
 //!   that state (never answered [`QaError::NoBattle`](gdtf_qa_protocol::envelope::QaError));
 //! - every kind it did NOT advertise is a battle-dependent kind that the router genuinely
 //!   rejects [`QaError::NoBattle`] in that state — or one of the CONTENT EDITOR's query
-//!   kinds (GTW-805) or the GTW-939 command kinds, which this host never services in any
-//!   state and rejects [`QaError::BadRequest`].
+//!   kinds (GTW-805), which this host never services in any state and rejects
+//!   [`QaError::BadRequest`].
 //!
 //! Because the assertion compares the wire-advertised set against the router's observed
 //! behavior — two independent observations — it FAILS if a future request type's
@@ -104,8 +104,9 @@ fn probe_request(kind: RequestKindNet) -> QaRequest {
         // every state.
         RequestKindNet::GetEditorQueryOptions => QaRequest::GetEditorQueryOptions,
         RequestKindNet::QueryEditor => QaRequest::QueryEditor(EditorQueryKind::Readiness),
-        // The GTW-939 command layer: on the wire, but this host publishes no command set
-        // yet, so both are refused in every state exactly like the editor's kinds.
+        // The command layer. Since GTW-942 this host publishes `GAME_COMMANDS`, so both are
+        // serviceable in every state: `Catalogue` reads a list that always exists, and a
+        // `Run`'s preconditions belong to the command it names, not to a route-time gate.
         RequestKindNet::Catalogue => QaRequest::Catalogue,
         RequestKindNet::Run => QaRequest::Run(RunCommand::new(
             CommandName::from_static("app.phase"),
@@ -115,15 +116,14 @@ fn probe_request(kind: RequestKindNet) -> QaRequest {
 }
 
 /// The test's own ground truth of which kinds this (game) host never services in any state:
-/// the CONTENT EDITOR's family, plus the GTW-939 command layer this host has no command set
-/// for yet. Kept independent of the router, so a drift is caught rather than trusted away.
+/// the CONTENT EDITOR's family, and only that. Kept independent of the router, so a drift is
+/// caught rather than trusted away. The command layer left this list in GTW-942, when the game
+/// gained a command set — a kind that stays here after its host can service it would let the
+/// router advertise nothing and still pass.
 const fn is_never_serviced(kind: RequestKindNet) -> bool {
     matches!(
         kind,
-        RequestKindNet::GetEditorQueryOptions
-            | RequestKindNet::QueryEditor
-            | RequestKindNet::Catalogue
-            | RequestKindNet::Run
+        RequestKindNet::GetEditorQueryOptions | RequestKindNet::QueryEditor
     )
 }
 
@@ -160,8 +160,7 @@ fn assert_affordance_parity(app: &mut App, tx: &mpsc::Sender<IncomingRequest>) {
             );
         } else if is_never_serviced(kind) {
             // Never advertised by this host, and refused with the accurate reason: there is
-            // no editor here to query and no command set here to run, neither of which is a
-            // battle or catch-up condition.
+            // no editor here to query, which is neither a battle nor a catch-up condition.
             assert!(
                 is_bad_request,
                 "{kind:?} was not advertised but the router did not reject it BadRequest: \

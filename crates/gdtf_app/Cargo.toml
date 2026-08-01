@@ -61,6 +61,16 @@ gdtf_qa_protocol = { path = "../gdtf_qa_protocol", optional = true }
 # `GDTF_NET_QA` env gate stay here. OPTIONAL — pulled in ONLY by the `net_qa` feature
 # (below), so a release binary (and any build without `net_qa`) never links it.
 gdtf_net_qa_transport = { path = "../gdtf_net_qa_transport", optional = true }
+# GTW-941/GTW-942: the shared QA command plumbing — the `QaCommand` / `ErasedCommand` traits,
+# the catalogue build, admission, the decode step and the typed responder. It is what turns
+# `crate::dev::net_qa::commands`' ONE list into everything a QA client sees. OPTIONAL — pulled
+# in ONLY by the `net_qa` feature (below), so a release binary never links it. It requires
+# `gdtf_qa_protocol/schema`, so a build that enables `net_qa` also links `schemars`.
+gdtf_qa_command = { path = "../gdtf_qa_command", optional = true }
+# GTW-942: the JSON Schema derivation a command's argument and reply types ride on. A schema is
+# DERIVED from the Rust type and never written by hand, which is what stops this host
+# advertising a shape it does not accept. OPTIONAL — pulled in ONLY by the `net_qa` feature.
+schemars = { workspace = true, optional = true }
 # GTW-655: the dev-tools procgen load-time stepper's egui overlay. OPTIONAL — pulled in ONLY
 # by the `dev_tools` feature (below), so a release binary never links egui. Same version spec
 # as `gdtf_content_editor`'s (non-optional) `bevy_egui` dependency — that crate did not
@@ -100,6 +110,15 @@ gdtf_battle_sim = { path = "../gdtf_battle_sim", features = ["test-support"] }
 # version-controlled tree. TempDir auto-cleans on drop (the GTW-555 isolation
 # precedent).
 tempfile = "3"
+# GTW-942: the two per-host conformance assertions (`assert_unique_names`,
+# `assert_schemas_parse`) live behind `gdtf_qa_command`'s `test-support` feature, because each
+# needs the HOST's own slice — `crates/gdtf_app/tests/net_qa/command_set.rs` runs both over
+# `GAME_COMMANDS`. Dev-only: the binary enables the feature nowhere.
+gdtf_qa_command = { path = "../gdtf_qa_command", features = ["test-support"] }
+# GTW-942: `crates/gdtf_app/tests/net_qa/commands.rs` reads a command's DERIVED argument and
+# reply schemas — and its reply body — as JSON, because pinning derived schema TEXT would
+# break on any `schemars` release without a behaviour changing. Test-only.
+serde_json = "1"
 [features]
 # Enable Bevy dynamic linking for fast dev builds. Opt-in only — never enabled
 # for release artifacts. Propagated from the binary crate.
@@ -107,7 +126,13 @@ dynamic_linking = ["bevy/dynamic_linking"]
 # Expose the `test_support` module so an external crate can build and assert on
 # the real state machine (the states + ScenesPlugin are pub(crate) otherwise).
 # Test/dev only — never enabled for release artifacts or by the binary crate.
-test-support = []
+#
+# It turns on `gdtf_qa_command`'s own `test-support` WEAKLY (`?`), so it reaches that crate
+# only in a build that already enabled `net_qa` — a `test-support` build without `net_qa`
+# pulls in no QA crate at all. The GTW-942 conformance entry points
+# (`crate::dev::net_qa::commands::conformance`) call the two per-host assertions that live
+# behind it.
+test-support = ["gdtf_qa_command?/test-support"]
 # DEV / LOCAL-only asset hot-reload. Enables Bevy's asset file watcher: with the
 # default `AssetPlugin { watch_for_changes_override: None, .. }`, Bevy starts the
 # watcher iff its internal `watch` cfg is set, which `bevy/file_watcher` activates
@@ -164,8 +189,10 @@ dev_tools = ["dep:bevy_egui"]
 net_qa = [
     "dep:gdtf_qa_protocol",
     "dep:gdtf_net_qa_transport",
+    "dep:gdtf_qa_command",
     "dep:gdtf_screenshot",
     "dep:image",
+    "dep:schemars",
 ]
 
 [lints]

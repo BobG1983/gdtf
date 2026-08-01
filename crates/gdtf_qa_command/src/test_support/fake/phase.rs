@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 use gdtf_net_qa_transport::PendingQueue;
-use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary};
+use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary, CommandTiming};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -44,6 +44,8 @@ impl QaCommand for FakePhase {
     const NAME: CommandName = CommandName::from_static("fake.phase");
     const SUMMARY: CommandSummary =
         CommandSummary::from_static("Read the fake host's facts. Always available.");
+
+    const TIMING: CommandTiming = CommandTiming::Immediate;
 
     fn availability(_facts: &FakeFacts) -> CommandAvailability {
         CommandAvailability::Available

@@ -30,7 +30,9 @@ fn initialize_returns_capabilities_and_echoes_version() {
 /// screen (the Options screen among them) is drivable over the wire at all. The four
 /// editor tools are listed for the SAME reason (GTW-808): the editor has answered
 /// `GetEditorQueryOptions` / `QueryEditor` since GTW-805 and no client tool sent either,
-/// so no agent could reach a running editor at all.
+/// so no agent could reach a running editor at all. `commands` and `run` are listed for the
+/// SAME reason (GTW-942): they are the ONLY route to a host's command layer, so without them
+/// `app.phase` — and every command added after it — is unreachable from any agent.
 #[test]
 fn tools_list_returns_every_tool() {
     let response = dispatch_json(r#"{"jsonrpc":"2.0","id":2,"method":"tools/list"}"#);
@@ -38,7 +40,7 @@ fn tools_list_returns_every_tool() {
         unreachable!("tools/list carries a tools array");
     };
     let names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
-    assert_eq!(names.len(), 16);
+    assert_eq!(names.len(), 18);
     for expected in [
         "send_input",
         "query_state",
@@ -56,6 +58,8 @@ fn tools_list_returns_every_tool() {
         "query_editor",
         "launch_editor",
         "stop_editor",
+        "commands",
+        "run",
     ] {
         assert!(names.contains(&expected), "missing tool {expected}");
     }

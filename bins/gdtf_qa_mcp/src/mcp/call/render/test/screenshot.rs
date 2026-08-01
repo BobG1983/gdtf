@@ -19,6 +19,7 @@ use gdtf_qa_protocol::envelope::{
 };
 use serde_json::json;
 
+use super::args::no_args;
 use crate::{
     base64::encode_standard,
     lifecycle::WorkingDir,
@@ -88,6 +89,7 @@ fn a_relative_capture_is_read_under_the_childs_directory() {
         &QaResponse::Screenshot(ScreenshotResult::Saved(ScreenshotPathNet::new(
             relative.to_owned(),
         ))),
+        &no_args(),
         Some(&WorkingDir::new(root.clone())),
     );
 
@@ -108,6 +110,7 @@ fn a_relative_screenshot_after_capture_is_read_under_the_childs_directory() {
         &QaResponse::ScreenshotAfter(ScreenshotAfterResult::Saved(ScreenshotPathNet::new(
             relative.to_owned(),
         ))),
+        &no_args(),
         Some(&WorkingDir::new(root.clone())),
     );
 
@@ -133,6 +136,7 @@ fn an_absolute_capture_ignores_the_childs_directory() {
         &QaResponse::Screenshot(ScreenshotResult::Saved(ScreenshotPathNet::new(
             shown.to_owned(),
         ))),
+        &no_args(),
         Some(&WorkingDir::new(root.clone())),
     );
 
@@ -154,6 +158,7 @@ fn a_missing_capture_is_a_tool_error_naming_both_paths() {
         &QaResponse::Screenshot(ScreenshotResult::Saved(ScreenshotPathNet::new(
             relative.to_owned(),
         ))),
+        &no_args(),
         Some(&WorkingDir::new(root.clone())),
     );
 
@@ -188,6 +193,7 @@ fn an_unknown_child_directory_leaves_the_reported_path_alone() {
         &QaResponse::Screenshot(ScreenshotResult::Saved(ScreenshotPathNet::new(
             "target/qa_screenshots/gtw923_no_child.png".to_owned(),
         ))),
+        &no_args(),
         None,
     );
     assert_eq!(rendered["isError"], json!(true));
@@ -206,6 +212,7 @@ fn render_response_screenshot_timeout_is_tool_error() {
     let rendered = render_response(
         ToolName::TakeScreenshot,
         &QaResponse::Screenshot(ScreenshotResult::TimedOut),
+        &no_args(),
         None,
     );
     assert_eq!(rendered["isError"], json!(true));
@@ -227,6 +234,7 @@ fn render_response_screenshot_target_not_rendered_is_tool_error() {
         &QaResponse::Screenshot(ScreenshotResult::TargetNotRendered(CaptureAimNet::new(
             "the camera renders into Window(PrimaryWindow)".to_owned(),
         ))),
+        &no_args(),
         None,
     );
     assert_eq!(rendered["isError"], json!(true));
@@ -254,6 +262,7 @@ fn render_response_screenshot_after_rejected_is_tool_error() {
     let rendered = render_response(
         ToolName::ScreenshotAfter,
         &QaResponse::ScreenshotAfter(ScreenshotAfterResult::Rejected(RejectReason::NotOffered)),
+        &no_args(),
         None,
     );
     assert_eq!(rendered["isError"], json!(true));

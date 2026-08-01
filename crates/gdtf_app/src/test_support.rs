@@ -135,10 +135,15 @@ pub fn seed_load_gate(asset_server: Option<Res<AssetServer>>, mut commands: Comm
 // test that needs one imports it from that crate directly (an optional dep the `net_qa`
 // feature turns on, so it is on the test target's dependency list). Relaying another
 // crate's items through this ledger would hide the split behind a `gdtf_app` path.
+// GTW-942 adds the two command-set conformance entry points: one runs
+// `gdtf_qa_command::test_support`'s per-host assertions over the REAL `GAME_COMMANDS` slice,
+// the other reports the names that slice publishes. The slice itself stays inside
+// `crate::dev::net_qa` — its type names that module's own facts and wire vocabulary.
 #[cfg(all(debug_assertions, feature = "net_qa"))]
 pub use crate::dev::net_qa::{
     NET_QA_PROTOCOL_VERSION, NET_QA_SERVER_NAME, NetQaPlugin, QaShotDir, SHIPPED_SITUATION,
-    ShotPollBudget, net_qa_hello_facts, request_available_for,
+    ShotPollBudget, assert_game_command_set_is_conformant, game_command_names, net_qa_hello_facts,
+    request_available_for,
 };
 // The GTW-655 procgen-stepper command/latch types + its forced-enable test constructor —
 // `dev_tools`-gated because the whole stepper module compiles out unless that feature is on

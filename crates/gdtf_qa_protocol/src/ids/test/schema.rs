@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     command::{
         ArgSchemaJson, CommandAvailability, CommandEntry, CommandName, CommandSummary,
-        ReplySchemaJson,
+        CommandTiming, ReplySchemaJson,
     },
     ids::{CellLevelNet, GangerToken, ShotName},
     test_support::assert_ron_round_trip,
@@ -84,6 +84,7 @@ fn a_derived_schema_survives_the_ron_round_trip_inside_a_catalogue_row() {
     let entry = CommandEntry::new(
         CommandName::from_static("probe.act"),
         CommandSummary::from_static("A stand-in command whose schemas are really derived."),
+        CommandTiming::Immediate,
         arguments.clone(),
         reply.clone(),
         CommandAvailability::Available,

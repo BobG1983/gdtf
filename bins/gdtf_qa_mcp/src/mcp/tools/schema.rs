@@ -6,6 +6,7 @@ use serde_json::{Value, json};
 use crate::{
     hosts::QaHost,
     mcp::{
+        courier::commands::CatalogueDetail,
         editor_topic::topic_wire_names,
         tools::name::{ALL, ToolName},
     },
@@ -111,6 +112,62 @@ fn take_screenshot_schema() -> Value {
     })
 }
 
+/// The `commands` argument schema — a host, an optional one-command filter, and the detail
+/// level, enumerated from [`CatalogueDetail`] so the schema can never advertise a word the
+/// parser rejects (GTW-942).
+///
+/// The `command` property is a FREE STRING with no `enum`: which commands exist is read from
+/// the running host, and enumerating them here would be a second copy of that truth, stale
+/// the moment either host gains one. `tests/jsonrpc/courier_tools.rs` pins the absence.
+fn commands_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "host": { "type": "string",
+                      "enum": [QaHost::Game.label(), QaHost::Editor.label()],
+                      "description": "Which running child to ask; omit for the game." },
+            "command": { "type": "string",
+                         "description": "Narrow the reply to one command by name; omit \
+                          for the whole catalogue. Names come from this tool." },
+            "detail": { "type": "string",
+                        "enum": CatalogueDetail::labels(),
+                        "description": "How much of each row to return; omit for \
+                         Summary. Full also carries each command's derived argument \
+                         and reply schemas." }
+        }
+    })
+}
+
+/// The `run` argument schema — the command name, its opaque argument object, the host, and
+/// the two per-call riders (GTW-942).
+///
+/// `command` carries no `enum` and `arguments` no `properties`, for the same reason: both are
+/// the HOST's to define, per command, and only the host that owns the command can say what it
+/// accepts. A shape written here could only ever drift from the one the host derives.
+fn run_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "command": { "type": "string",
+                         "description": "The command to run, as `commands` named it." },
+            "arguments": { "type": "object",
+                           "description": "The command's arguments, shaped by its own \
+                            `schemas.arguments` from `commands`; omit for a command \
+                            that takes none." },
+            "host": { "type": "string",
+                      "enum": [QaHost::Game.label(), QaHost::Editor.label()],
+                      "description": "Which running child to run it on; omit for the game." },
+            "await_ready": { "type": "integer", "minimum": 0,
+                             "description": "Whole seconds to keep re-testing admission \
+                              before giving up; omit to decide once." },
+            "capture": { "type": ["boolean", "string"],
+                         "description": "Capture the screen once the command has run: \
+                          true for a host-chosen file stem, or a string to pick one." }
+        },
+        "required": ["command"]
+    })
+}
+
 impl ToolName {
     /// The JSON-Schema for this tool's `arguments` object.
     fn input_schema(self) -> Value {
@@ -205,6 +262,8 @@ impl ToolName {
                 },
                 "required": ["command"]
             }),
+            Self::Commands => commands_schema(),
+            Self::Run => run_schema(),
         }
     }
 

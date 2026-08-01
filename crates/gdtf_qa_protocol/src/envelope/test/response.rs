@@ -4,7 +4,7 @@
 use crate::{
     command::{
         ArgSchemaJson, CommandAvailability, CommandCatalogue, CommandEntry, CommandName,
-        CommandOutcome, CommandReplyJson, CommandSummary, ReplySchemaJson,
+        CommandOutcome, CommandReplyJson, CommandSummary, CommandTiming, ReplySchemaJson,
     },
     envelope::{
         FocusControlReceipt, HelloFacts, InjectReceipt, MenuActivationReceipt, ProtocolVersion,
@@ -81,6 +81,7 @@ fn qa_response_cases() -> Vec<QaResponse> {
             vec![CommandEntry::new(
                 CommandName::from_static("app.phase"),
                 CommandSummary::from_static("Read the whole state tuple."),
+                CommandTiming::Immediate,
                 ArgSchemaJson::new(r#"{"type":"object"}"#.to_owned()),
                 ReplySchemaJson::new(r#"{"type":"object"}"#.to_owned()),
                 CommandAvailability::Available,

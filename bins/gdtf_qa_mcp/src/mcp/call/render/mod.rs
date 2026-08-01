@@ -5,11 +5,13 @@
 //! ## Members (one concern per file, per module-layout)
 //!
 //! - `response` — the reply → content-block mapping itself.
-//! - `shot_file` — where a saved capture is read from: the child's reported path resolved
-//!   against the directory the CHILD ran in, never the MCP host's own (GTW-923).
+//!
+//! Where a saved capture is READ from — the child's reported path resolved against the
+//! directory the CHILD ran in, never the MCP host's own (GTW-923) — moved up to
+//! [`child_path`](crate::mcp::child_path) in GTW-942, when a command's reply attachment
+//! became a second consumer of the same rule.
 
 mod response;
-mod shot_file;
 
 #[cfg(test)]
 mod test;

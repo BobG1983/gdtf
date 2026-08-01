@@ -37,6 +37,8 @@ impl ToolName {
                  Optional argument `name` picks the file stem; optional argument `host` \
                  picks which child — \"game\" (the default) or \"editor\"."
             }
+            Self::Commands => Self::COMMANDS_DESCRIPTION,
+            Self::Run => Self::RUN_DESCRIPTION,
             Self::ScreenshotAfter => Self::SCREENSHOT_AFTER_DESCRIPTION,
             Self::AppFlow => Self::APP_FLOW_DESCRIPTION,
             Self::StartBattle => Self::START_BATTLE_DESCRIPTION,
@@ -205,6 +207,41 @@ impl ToolName {
          `battle_active: false` — generating the battle takes a moment. Poll \
          `app_flow` until `battle_active` is true before calling the battle-only \
          tools.";
+
+    /// The `commands` description — the discovery half of the command layer.
+    ///
+    /// It names NO command, deliberately (GTW-942): which commands a host offers is read
+    /// from the running host, and a list written here would be a second copy of that truth
+    /// that goes stale the moment either host gains one. The description teaches the
+    /// WORKFLOW instead — call this, then call `run` with a name it gave you.
+    const COMMANDS_DESCRIPTION: &'static str = "List the commands a running host offers right now, with what each one takes \
+         and returns. Optional argument `host` picks which child — \"game\" (the \
+         default) or \"editor\". Each row carries `command` (the name to pass to \
+         `run`), `summary`, `timing` (\"Immediate\" if it answers at once, \
+         \"Deferred\" if it answers on a later frame), and `availability` — either \
+         \"Available\" or an object naming the precondition that is missing, read \
+         from the host's live state at the moment it replied. Optional argument \
+         `detail` is \"Summary\" (the default: no schemas) or \"Full\" (each row \
+         also carries `schemas.arguments` and `schemas.reply`, the JSON Schemas \
+         derived from the command's own Rust types). Optional argument `command` \
+         narrows the reply to one row — the usual way to fetch a single command's \
+         schemas before calling it. Call this FIRST: the set is read from the \
+         running host, so it is the only accurate account of what you can call.";
+
+    /// The `run` description — the call half of the command layer, equally command-agnostic.
+    const RUN_DESCRIPTION: &'static str = "Run one command from a host's catalogue. Argument `command` is a name read \
+         from `commands`; optional argument `arguments` is the JSON object that \
+         command's `schemas.arguments` describes (omit it for a command that takes \
+         none). Optional argument `host` picks which child — \"game\" (the default) \
+         or \"editor\". Optional argument `await_ready` is a whole-second budget to \
+         keep re-testing admission before giving up; optional argument `capture` is \
+         `true`, or a file-stem string, to capture the screen once the command has \
+         run. A command that RAN answers with its own reply plus any file it \
+         attached. Four things can go wrong and each tells you how to fix it in one \
+         round trip: `Unknown` lists every name this host does offer, `BadArguments` \
+         carries the schema your arguments failed against, `Unavailable` names the \
+         precondition that is missing, and a rider this build has not implemented is \
+         refused `Unavailable` with code `NotBuilt` rather than run without it.";
 
     /// The `focus_control` description — the whole off-battle UI-drive workflow, spelled
     /// out because discoverability from the tool list alone is the point (ADR 0007).

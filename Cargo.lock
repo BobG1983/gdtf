@@ -2821,6 +2821,7 @@ dependencies = [
  "gdtf_battle_sim",
  "gdtf_content_families",
  "gdtf_net_qa_transport",
+ "gdtf_qa_command",
  "gdtf_qa_protocol",
  "gdtf_screenshot",
  "gdtf_state_scoped",
@@ -2828,7 +2829,9 @@ dependencies = [
  "gdtf_ui",
  "image",
  "ron",
+ "schemars",
  "serde",
+ "serde_json",
  "tempfile",
 ]
 

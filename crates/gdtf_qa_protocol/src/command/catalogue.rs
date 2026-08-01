@@ -4,7 +4,10 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    command::{ArgSchemaJson, CommandAvailability, CommandName, CommandSummary, ReplySchemaJson},
+    command::{
+        ArgSchemaJson, CommandAvailability, CommandName, CommandSummary, CommandTiming,
+        ReplySchemaJson,
+    },
     envelope::ServerNameNet,
 };
 
@@ -42,6 +45,13 @@ pub struct CommandEntry {
     pub command:      CommandName,
     /// One line saying what it does.
     pub summary:      CommandSummary,
+    /// Whether the command answers on the claiming frame or on a later one.
+    ///
+    /// `#[serde(default)]` so a frame encoded before this field existed still decodes, as
+    /// [`Immediate`](CommandTiming::Immediate) — the timing every command written before
+    /// the field was added actually has.
+    #[serde(default)]
+    pub timing:       CommandTiming,
     /// The JSON Schema of its arguments, derived from the Rust type.
     pub arguments:    ArgSchemaJson,
     /// The JSON Schema of its reply, derived from the Rust type.
@@ -51,12 +61,13 @@ pub struct CommandEntry {
 }
 
 impl CommandEntry {
-    /// Build a catalogue row from a command's name, summary, two derived schemas, and its
-    /// availability at the moment the catalogue was read.
+    /// Build a catalogue row from a command's name, summary, declared timing, two derived
+    /// schemas, and its availability at the moment the catalogue was read.
     #[must_use]
     pub const fn new(
         command: CommandName,
         summary: CommandSummary,
+        timing: CommandTiming,
         arguments: ArgSchemaJson,
         reply: ReplySchemaJson,
         availability: CommandAvailability,
@@ -64,6 +75,7 @@ impl CommandEntry {
         Self {
             command,
             summary,
+            timing,
             arguments,
             reply,
             availability,

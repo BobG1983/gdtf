@@ -4,7 +4,10 @@
 use bevy::prelude::*;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::{
-    command::{CommandAvailability, CommandName, CommandSummary, RefusalNote, UnavailableCode},
+    command::{
+        CommandAvailability, CommandName, CommandSummary, CommandTiming, RefusalNote,
+        UnavailableCode,
+    },
     ids::CellNet,
 };
 use schemars::JsonSchema;
@@ -54,6 +57,8 @@ impl QaCommand for FakeCell {
     const NAME: CommandName = CommandName::from_static("fake.cell");
     const SUMMARY: CommandSummary =
         CommandSummary::from_static("Read one cell. Needs the fake model loaded.");
+
+    const TIMING: CommandTiming = CommandTiming::Immediate;
 
     fn availability(facts: &FakeFacts) -> CommandAvailability {
         if *facts.ready() {

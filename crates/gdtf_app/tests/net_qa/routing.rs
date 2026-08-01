@@ -63,6 +63,11 @@ fn the_hosts_hello_facts_are_its_own_version_and_name() {
 /// GTW-940: the router no longer negotiates. A [`Hello`](QaRequest::Hello) is answered in the
 /// listener thread and never reaches the inbox — so the duplicated `answer_hello` is gone, and
 /// one that somehow bypassed the listener is refused rather than quietly answered here.
+///
+/// The refusal is [`Malformed`](QaError::Malformed), not `BadRequest` (GTW-942): a handshake in
+/// the inbox got past the only code that answers a handshake, so what is wrong is the FRAME on
+/// this connection, not the request. `BadRequest` is what this host answers a kind it services
+/// on other terms, and reading the two apart is the whole point of having both.
 #[test]
 fn the_router_no_longer_answers_hello() {
     let (mut app, tx) = build_router_app();
@@ -70,7 +75,7 @@ fn the_router_no_longer_answers_hello() {
     app.update();
     let reply = reply.try_recv();
     assert!(
-        matches!(&reply, Ok(QaResponse::Error(QaError::BadRequest))),
+        matches!(&reply, Ok(QaResponse::Error(QaError::Malformed))),
         "a Hello that reached the router must NOT be negotiated here — the listener thread \
          owns the handshake — got {reply:?}",
     );

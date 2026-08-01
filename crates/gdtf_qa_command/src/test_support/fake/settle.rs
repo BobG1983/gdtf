@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 use gdtf_net_qa_transport::PendingQueue;
-use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary};
+use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary, CommandTiming};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -100,6 +100,10 @@ impl QaCommand for FakeSettle {
     const NAME: CommandName = CommandName::from_static("fake.settle");
     const SUMMARY: CommandSummary =
         CommandSummary::from_static("Answer on a later frame, once the fake signal is raised.");
+
+    /// Parks its responder and answers on a later frame — the fixture the Deferred
+    /// timing exists to describe.
+    const TIMING: CommandTiming = CommandTiming::Deferred;
 
     fn availability(_facts: &FakeFacts) -> CommandAvailability {
         CommandAvailability::Available

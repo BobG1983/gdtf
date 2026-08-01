@@ -6,8 +6,14 @@ use gdtf_qa_mcp::{
     QaPort, StopOutcome, WorkingDir, dispatch,
 };
 use gdtf_qa_protocol::{
+    command::{
+        ArgSchemaJson, ArgumentFault, CommandAvailability, CommandCatalogue, CommandEntry,
+        CommandName, CommandOutcome, CommandReplyJson, CommandSummary, CommandTiming, RefusalNote,
+        ReplySchemaJson, RunOptions, UnavailableCode,
+    },
     envelope::{
-        InjectReceipt, QaError, QaRequest, QaResponse, ScreenshotPathNet, ScreenshotResult,
+        InjectReceipt, QaError, QaRequest, QaResponse, RunCommand, ScreenshotPathNet,
+        ScreenshotResult, ServerNameNet,
     },
     view::{
         AppFlowView, AppStateNet, BattleActiveNet, CaughtUpNet, EditorQueryKind,
@@ -23,6 +29,93 @@ use serde_json::Value;
 pub(crate) const GAME_SHOT_PATH: &str = "canned/game_shot.png";
 /// The path the EDITOR's canned link reports a capture was saved to.
 pub(crate) const EDITOR_SHOT_PATH: &str = "canned/editor_shot.png";
+
+/// The one command the canned GAME host offers — the same name the real game's
+/// `GAME_COMMANDS` publishes.
+pub(crate) const CANNED_COMMAND: &str = "app.phase";
+/// The canned host's argument schema for [`CANNED_COMMAND`], carrying the
+/// `"additionalProperties": false` a `deny_unknown_fields` argument type derives.
+///
+/// A LITERAL, not a derivation: this crate carries schema documents as opaque TEXT and links
+/// no `schemars`. That the REAL game derives this shape is proved game-side, in
+/// `crates/gdtf_app/tests/net_qa/commands.rs`; what these fixtures prove is what the courier
+/// does with whatever document arrives.
+pub(crate) const CANNED_ARG_SCHEMA: &str = r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"AppPhaseArgs","type":"object","properties":{},"additionalProperties":false}"#;
+/// The canned host's reply schema for [`CANNED_COMMAND`] — a nested record, as the real one is.
+pub(crate) const CANNED_REPLY_SCHEMA: &str = r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"AppPhaseReply","type":"object","properties":{"phase":{"type":"object"}},"required":["phase"]}"#;
+/// The reply body the canned host answers a successful [`CANNED_COMMAND`] call with — the
+/// five-level tuple, with the four nested levels absent because the canned host is at its menu.
+pub(crate) const CANNED_REPLY: &str = r#"{"phase":{"app":"Running","running":"Menu","game":null,"battlescape":null,"aftermath":null}}"#;
+
+/// The canned GAME host's one-command catalogue.
+fn canned_catalogue() -> CommandCatalogue {
+    CommandCatalogue::new(
+        ServerNameNet::new("gdtf-net-qa".to_owned()),
+        vec![CommandEntry::new(
+            CommandName::from_static(CANNED_COMMAND),
+            CommandSummary::from_static("Read where the app is at every level."),
+            CommandTiming::Immediate,
+            ArgSchemaJson::new(CANNED_ARG_SCHEMA.to_owned()),
+            ReplySchemaJson::new(CANNED_REPLY_SCHEMA.to_owned()),
+            CommandAvailability::Available,
+        )],
+    )
+}
+
+/// Spell out the riders that reached the host, and what each one carried.
+///
+/// The real host's `rider_refusal` names WHICH rider it has not built; this goes one step
+/// further and reports each rider's VALUE, because that is the only way a fixture can tell
+/// "the courier sent the rider" from "the courier sent the rider with the wrong payload" —
+/// a `capture` whose file stem was dropped would otherwise read exactly like one that kept it.
+fn riders_that_arrived(options: &RunOptions) -> String {
+    let mut named = Vec::new();
+    if let Some(budget) = options.await_ready.as_ref() {
+        named.push(format!("await_ready={}", **budget));
+    }
+    if let Some(capture) = options.capture.as_ref() {
+        named.push(match capture.name.as_ref() {
+            Some(stem) => format!("capture={}", stem.as_str()),
+            None => "capture=<host-chosen>".to_owned(),
+        });
+    }
+    format!(
+        "this build has no rider, and these arrived: {}",
+        named.join(", ")
+    )
+}
+
+/// The canned GAME host's answer to one `Run`, mirroring the REAL host's admission order.
+///
+/// It decides from the frame the COURIER built, which is what makes these fixtures able to
+/// see a courier that dropped an argument or a rider: an unknown NAME is reported first, a
+/// rider this build has not implemented next, and only then are the arguments decoded.
+fn canned_run(run: &RunCommand) -> CommandOutcome {
+    if run.command.as_str() != CANNED_COMMAND {
+        return CommandOutcome::Unknown {
+            known: vec![CommandName::from_static(CANNED_COMMAND)],
+        };
+    }
+    if !run.options.is_plain() {
+        return CommandOutcome::Unavailable {
+            code: UnavailableCode::NotBuilt,
+            note: RefusalNote::from_owned(riders_that_arrived(&run.options)),
+        };
+    }
+    if run.arguments.as_str() != "{}" {
+        return CommandOutcome::BadArguments {
+            detail: ArgumentFault::new(format!(
+                "unknown field, expected no fields: {}",
+                run.arguments.as_str()
+            )),
+            schema: ArgSchemaJson::new(CANNED_ARG_SCHEMA.to_owned()),
+        };
+    }
+    CommandOutcome::Ran {
+        reply:       CommandReplyJson::new(CANNED_REPLY.to_owned()),
+        attachments: Vec::new(),
+    }
+}
 
 /// The GAME's canned link: answers `app_flow` with a Running snapshot and `send_input`
 /// with a queued receipt, so `tools/call` can be exercised with no socket.
@@ -49,6 +142,8 @@ impl QaLink for CannedGame {
             QaRequest::TakeScreenshot { .. } => Ok(QaResponse::Screenshot(
                 ScreenshotResult::Saved(ScreenshotPathNet::new(GAME_SHOT_PATH.to_owned())),
             )),
+            QaRequest::Catalogue => Ok(QaResponse::Catalogue(canned_catalogue())),
+            QaRequest::Run(run) => Ok(QaResponse::Outcome(canned_run(&run))),
             _ => Ok(QaResponse::Error(QaError::BadRequest)),
         }
     }
