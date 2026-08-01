@@ -1,6 +1,5 @@
 ---
-paths:
-  - "**/*"
+paths: ["**/*.rs"]
 ---
 
 # Bevy traps — engine/Rust/wgpu/cargo gotchas that have burned real sessions
