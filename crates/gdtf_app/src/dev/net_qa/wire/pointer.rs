@@ -1,15 +1,23 @@
-//! The pointer-position wire types — [`PointerXNet`] / [`PointerYNet`] and the composed
-//! [`PointerPosNet`] window coordinate (GTW-783).
+//! The pointer wire types — [`PointerXNet`] / [`PointerYNet`], the composed
+//! [`PointerPosNet`] window coordinate (GTW-783) and [`MouseButtonNet`] (GTW-944).
 //!
 //! The wire mirror of a window-space cursor position in LOGICAL pixels — the coordinate a
-//! [`Hover`](super::act::NetIntent::Hover) drives the pointer to. Kept as INDEPENDENT
-//! serde types (never a leak of a `bevy_math` `Vec2`, so this crate stays bevy-free), and
-//! each axis is an `i16`: deliberately INTEGER (whole-pixel precision is enough to place a
-//! hover over a UI node, and an integer keeps [`NetIntent`](super::act::NetIntent)
-//! `Eq`/`Hash` — an `f32` would drop both across the whole act vocabulary), and deliberately
-//! `i16` so the game side widens it to `f32` LOSSLESSLY (`f32::from`, no truncating cast) —
-//! its ±32767 range comfortably covers any window's pixel extent. Each axis is its own
-//! newtype (no-bare-types rule 3: an x is not a y).
+//! [`Hover`](super::act::NetIntent::Hover) drives the pointer to — plus the button a click
+//! names. Independent serde types (never a leak of a `bevy_math` `Vec2` or a Bevy
+//! `MouseButton`), and each axis is an `i16`: deliberately INTEGER (whole-pixel precision
+//! is enough to place a hover over a UI node, and an integer keeps
+//! [`NetIntent`](super::act::NetIntent) `Eq`/`Hash` — an `f32` would drop both across the
+//! whole act vocabulary), and deliberately `i16` so the game side widens it to `f32`
+//! LOSSLESSLY (`f32::from`, no truncating cast) — its ±32767 range comfortably covers any
+//! window's pixel extent. Each axis is its own newtype (no-bare-types rule 3: an x is not a
+//! y).
+//!
+//! # Where a caller gets one
+//!
+//! A pointer position and a mouse button are both CHOSEN by the caller, not read off a
+//! reply: a QA client decides where to hover and which button to click. The C9 `view.read`
+//! publishes the viewport's pixel size, which is what bounds a legal position; the C14
+//! `input.hover` and `input.click_cell` are the commands that take these two.
 
 use bevy::prelude::Deref;
 use schemars::JsonSchema;
@@ -23,12 +31,12 @@ use serde::{Deserialize, Serialize};
 /// position outside the window resolves to no hover.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(transparent)]
-pub(crate) struct PointerXNet(i16);
+pub struct PointerXNet(i16);
 
 impl PointerXNet {
     /// Build a pointer x-position from its logical-pixel value.
     #[must_use]
-    pub(crate) const fn new(x: i16) -> Self {
+    pub const fn new(x: i16) -> Self {
         Self(x)
     }
 }
@@ -40,12 +48,12 @@ impl PointerXNet {
 /// [`PointerXNet`] by rule 3 even though both wrap `i16`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(transparent)]
-pub(crate) struct PointerYNet(i16);
+pub struct PointerYNet(i16);
 
 impl PointerYNet {
     /// Build a pointer y-position from its logical-pixel value.
     #[must_use]
-    pub(crate) const fn new(y: i16) -> Self {
+    pub const fn new(y: i16) -> Self {
         Self(y)
     }
 }
@@ -54,9 +62,12 @@ impl PointerYNet {
 /// [`Hover`](super::act::NetIntent::Hover) moves the cursor to.
 ///
 /// A named-field struct (not a bare tuple) so each axis keeps its meaning; its two fields
-/// are the typed [`PointerXNet`] / [`PointerYNet`] scalars. Serde default shape.
+/// are the typed [`PointerXNet`] / [`PointerYNet`] scalars. `deny_unknown_fields`, so the
+/// derived schema publishes `additionalProperties: false` and a misspelt axis is a decode
+/// error rather than a hover at the origin.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
-pub(crate) struct PointerPosNet {
+#[serde(deny_unknown_fields)]
+pub struct PointerPosNet {
     /// The pointer's window-space x position.
     pub x: PointerXNet,
     /// The pointer's window-space y position.
@@ -66,7 +77,30 @@ pub(crate) struct PointerPosNet {
 impl PointerPosNet {
     /// Build a window pointer position from its `x`/`y` logical-pixel coordinates.
     #[must_use]
-    pub(crate) const fn new(x: PointerXNet, y: PointerYNet) -> Self {
+    pub const fn new(x: PointerXNet, y: PointerYNet) -> Self {
         Self { x, y }
     }
+}
+
+/// Which mouse button a click names — the wire mirror of the Bevy `MouseButton` subset the
+/// game reads.
+///
+/// A caller CHOOSES it; no command publishes one. It is the `button` argument of the C14
+/// `input.click_cell`, which routes the same two click paths the local UI does — a
+/// [`Left`](Self::Left) press reaches `decide_left_click` (select / move / fire, whichever
+/// the click decision picks) and a [`Right`](Self::Right) press reaches
+/// `right_click_turn_to_face`.
+///
+/// Exactly two variants, because exactly two are read: `gdtf_battle_input`'s pointer
+/// systems test `MouseButton::Left` and `MouseButton::Right` and nothing else, so a
+/// `Middle` / `Back` / `Forward` variant would be wire surface no code could act on. Extend
+/// it as later features read more buttons — the same extend-as-needed rule
+/// [`KeyNet`](super::key::KeyNet) documents. An independent serde enum; the game side maps
+/// each variant to its `MouseButton`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
+pub enum MouseButtonNet {
+    /// The primary (left) button — the select / move / fire click.
+    Left,
+    /// The secondary (right) button — the turn-to-face click.
+    Right,
 }

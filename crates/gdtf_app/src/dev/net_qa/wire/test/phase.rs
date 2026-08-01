@@ -1,11 +1,18 @@
-//! Every arm of the five state mirrors, and the nesting `AppPhaseNet` carries (GTW-942).
+//! Every arm of the five state mirrors, and the nesting `AppPhaseNet` carries (GTW-942,
+//! round-trip cases added by GTW-944).
 //!
 //! The mirrors are the one place a state can be renamed on the wire without the compiler
 //! noticing: `from_state` is wildcard-free, so a MISSING arm fails to build, but a SWAPPED
 //! arm (`RunningState::Menu => Self::Options`) builds and ships a lie. These cases pin each
 //! arm by name — the mirror's variant name must equal the state's — and then pin that the
 //! two are one-to-one, so no future arm can quietly fold two states onto one mirror.
+//!
+//! The name cases never touch serde, so they are only half the story: a `serde(skip)` on a
+//! variant, or a broken `Deserialize`, ships an `app.phase` that cannot encode a real phase
+//! while every name case still passes. The round-trip and wire-text cases below are the
+//! other half, and they are what clause 5 of GTW-944 owes for these six types.
 
+use super::assert_ron_round_trip;
 use crate::{
     dev::net_qa::wire::{
         AfterMathPhaseNet, AppPhaseNet, BattleScapePhaseNet, GamePhaseNet, LifecyclePhaseNet,
@@ -13,6 +20,16 @@ use crate::{
     },
     states::{AfterMathState, AppState, BattleScapeState, GameState, RunningState},
 };
+
+/// The compact RON `value` encodes to.
+///
+/// Fails loudly (the house `let Ok(..) else { unreachable!() }` idiom) if it cannot encode.
+fn encoded<T: serde::Serialize>(value: &T) -> String {
+    let Ok(text) = ron::ser::to_string(value) else {
+        unreachable!("a phase value serializes to compact RON");
+    };
+    text
+}
 
 /// Every [`AppState`], in declaration order.
 const LIFECYCLE: [AppState; 5] = [
@@ -120,6 +137,79 @@ fn every_aftermath_state_mirrors_to_its_own_name() {
         &AFTERMATH,
         |state| AfterMathPhaseNet::from_state(*state),
         "AfterMathState",
+    );
+}
+
+/// EVERY arm of all five mirrors survives a compact-RON round trip — value → text → value.
+///
+/// One case per arm rather than one representative: `serde` attributes are per-variant, so a
+/// representative proves nothing about its neighbours. The arm tables above are the same
+/// ones the name cases walk, so an arm added to a state is round-tripped the moment its
+/// `from_state` arm exists.
+#[test]
+fn every_state_mirror_arm_round_trips() {
+    for state in &LIFECYCLE {
+        assert_ron_round_trip(&LifecyclePhaseNet::from_state(state));
+    }
+    for state in RUNNING {
+        assert_ron_round_trip(&RunningPhaseNet::from_state(state));
+    }
+    for state in GAME {
+        assert_ron_round_trip(&GamePhaseNet::from_state(state));
+    }
+    for state in BATTLESCAPE {
+        assert_ron_round_trip(&BattleScapePhaseNet::from_state(state));
+    }
+    for state in AFTERMATH {
+        assert_ron_round_trip(&AfterMathPhaseNet::from_state(state));
+    }
+}
+
+/// The composed [`AppPhaseNet`] round-trips in both shapes `app.phase` publishes — every
+/// level live, and the four nested levels absent.
+///
+/// The all-live case is what catches a lost nested level: a dropped `Option` field decodes
+/// as `None` under a laxer struct and the value would come back CHANGED.
+#[test]
+fn the_five_level_phase_round_trips() {
+    assert_ron_round_trip(&AppPhaseNet::new(
+        LifecyclePhaseNet::Running,
+        Some(RunningPhaseNet::Game),
+        Some(GamePhaseNet::BattleScape),
+        Some(BattleScapePhaseNet::AfterMath),
+        Some(AfterMathPhaseNet::DisplayAftermath),
+    ));
+    assert_ron_round_trip(&AppPhaseNet::new(
+        LifecyclePhaseNet::Init,
+        None,
+        None,
+        None,
+        None,
+    ));
+}
+
+/// Each phase rides the wire under its OWN variant name, and the composed record as the
+/// five named fields — neither of which a round trip alone can see, because a
+/// `serde(rename)` round-trips perfectly while changing what a client reads.
+#[test]
+fn phase_values_serialize_under_their_own_names() {
+    assert_eq!(encoded(&LifecyclePhaseNet::Running), "Running");
+    assert_eq!(encoded(&RunningPhaseNet::Game), "Game");
+    assert_eq!(encoded(&GamePhaseNet::BattleScape), "BattleScape");
+    assert_eq!(encoded(&BattleScapePhaseNet::AfterMath), "AfterMath");
+    assert_eq!(
+        encoded(&AfterMathPhaseNet::DisplayAftermath),
+        "DisplayAftermath"
+    );
+    assert_eq!(
+        encoded(&AppPhaseNet::new(
+            LifecyclePhaseNet::Init,
+            None,
+            None,
+            None,
+            None
+        )),
+        "(app:Init,running:None,game:None,battlescape:None,aftermath:None)",
     );
 }
 
