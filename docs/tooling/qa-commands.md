@@ -16,6 +16,31 @@ Everything below is written from the ONE command that exists today,
 Read that file alongside this one: every shape shown here is in it, at that path. Nothing
 here describes a command nobody has written.
 
+## What the QA channel is for
+
+The MCP host exists so an agent can play the game the way a developer would: launch it,
+look at it, press the buttons, watch what happens, screenshot it. Same for the editor:
+open it, drive the authoring flow, see the result.
+
+It is not a test harness. Anything provable without rendering — sim outcomes, state
+transitions, data loading, rule legality — is proven by unit and headless integration
+tests, which are cheaper, deterministic, and run in the gate. A QA command that exists to
+read internal state so an agent can verify correctness is a test that costs more and
+proves less. Write the test instead.
+
+Commands may expose what a player could see or do — which screen is up, what has focus,
+what the menu offers — because the agent cannot see pixels cheaply, and orientation is
+part of playing. The line: **a command helps an agent play or author, or it does not
+exist.** If its only use is asserting something no player could see, it belongs in the
+test suite.
+
+Replies stay small and scoped. The old surface's `query_state` answered with the entire
+app state — tens of thousands of tokens, mostly irrelevant to the question asked, filling
+the caller's context. That is the trap: one convenient dump instead of many scoped reads.
+A command answers the one question it names; if a reply could run to pages, the command
+is too broad — split it the way a player's perception is split: which screen, what has
+focus, what is in view.
+
 ## The three edits
 
 1. **A file** under the host's `commands/` directory — one command per file, grouped by
