@@ -1,15 +1,20 @@
+//! Hot-reloadable FX timing and projectile scale.
+
 use bevy::prelude::*;
 use gdtf_assets::HotRonAppExt;
 use serde::Deserialize;
 
+/// Projectile sprite scale as a fraction of a cell.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct ProjectileDrawScale(f32);
 
 impl ProjectileDrawScale {
-        pub const DEFAULT: f32 = 0.5;
+    /// Shipped default scale.
+    pub const DEFAULT: f32 = 0.5;
 
-        #[must_use]
+    /// Build from a scale fraction.
+    #[must_use]
     pub const fn new(fraction: f32) -> Self {
         Self(fraction)
     }
@@ -21,14 +26,17 @@ impl Default for ProjectileDrawScale {
     }
 }
 
+/// Projectile flight speed in pixels per second.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct ProjectileVelocity(f32);
 
 impl ProjectileVelocity {
-        pub const DEFAULT: f32 = 480.0;
+    /// Shipped default velocity.
+    pub const DEFAULT: f32 = 480.0;
 
-        #[must_use]
+    /// Build from pixels per second.
+    #[must_use]
     pub const fn new(pixels_per_second: f32) -> Self {
         Self(pixels_per_second)
     }
@@ -40,14 +48,17 @@ impl Default for ProjectileVelocity {
     }
 }
 
+/// Stagger between burst rounds (legacy; cursor dwell owns cadence now).
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct InterShotSeconds(f32);
 
 impl InterShotSeconds {
-        pub const DEFAULT: f32 = 0.35;
+    /// Shipped default stagger.
+    pub const DEFAULT: f32 = 0.35;
 
-        #[must_use]
+    /// Build from seconds.
+    #[must_use]
     pub const fn new(seconds: f32) -> Self {
         Self(seconds)
     }
@@ -59,14 +70,17 @@ impl Default for InterShotSeconds {
     }
 }
 
+/// Hold per impact animation frame.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct ImpactFrameSeconds(f32);
 
 impl ImpactFrameSeconds {
-        pub const DEFAULT: f32 = 0.08;
+    /// Shipped default frame hold.
+    pub const DEFAULT: f32 = 0.08;
 
-        #[must_use]
+    /// Build from seconds.
+    #[must_use]
     pub const fn new(seconds: f32) -> Self {
         Self(seconds)
     }
@@ -78,14 +92,17 @@ impl Default for ImpactFrameSeconds {
     }
 }
 
+/// Floating combat text lifetime.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct FctTtlSeconds(f32);
 
 impl FctTtlSeconds {
-            pub const DEFAULT: f32 = 1.5;
+    /// Shipped default lifetime.
+    pub const DEFAULT: f32 = 1.5;
 
-        #[must_use]
+    /// Build from seconds.
+    #[must_use]
     pub const fn new(seconds: f32) -> Self {
         Self(seconds)
     }
@@ -97,14 +114,17 @@ impl Default for FctTtlSeconds {
     }
 }
 
+/// Floating combat text rise speed in pixels per second.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct FctRiseRate(f32);
 
 impl FctRiseRate {
-            pub const DEFAULT: f32 = 40.0;
+    /// Shipped default rise rate.
+    pub const DEFAULT: f32 = 40.0;
 
-        #[must_use]
+    /// Build from pixels per second.
+    #[must_use]
     pub const fn new(px_per_second: f32) -> Self {
         Self(px_per_second)
     }
@@ -116,16 +136,22 @@ impl Default for FctRiseRate {
     }
 }
 
-/// Each field is `#[serde(default)]` so a `.ron` that omits a field falls back to the
+/// All FX timing knobs, hot-loaded from RON.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Deserialize, TypePath, Default)]
 #[serde(default)]
 pub struct FxTuning {
-        pub projectile_draw_scale: ProjectileDrawScale,
-        pub projectile_velocity:   ProjectileVelocity,
-        pub inter_shot_seconds:    InterShotSeconds,
-        pub impact_frame_seconds:  ImpactFrameSeconds,
-        pub fct_ttl_seconds:       FctTtlSeconds,
-        pub fct_rise_rate:         FctRiseRate,
+    /// Projectile sprite scale.
+    pub projectile_draw_scale: ProjectileDrawScale,
+    /// Projectile flight speed.
+    pub projectile_velocity: ProjectileVelocity,
+    /// Inter-shot stagger (legacy).
+    pub inter_shot_seconds: InterShotSeconds,
+    /// Impact frame hold.
+    pub impact_frame_seconds: ImpactFrameSeconds,
+    /// Floating text lifetime.
+    pub fct_ttl_seconds: FctTtlSeconds,
+    /// Floating text rise rate.
+    pub fct_rise_rate: FctRiseRate,
 }
 
 const FX_TUNING_RON_PATH: &str = "core_tuning/fx.tuning.ron";
@@ -141,7 +167,7 @@ mod test {
         ProjectileDrawScale, ProjectileVelocity,
     };
 
-                #[test]
+    #[test]
     fn shipped_fx_tuning_ron_parses() {
         const SHIPPED: &str = include_str!("../../../../../assets/core_tuning/fx.tuning.ron");
         let parsed: Result<FxTuning, _> = ron::de::from_str(SHIPPED);
@@ -152,7 +178,7 @@ mod test {
         );
     }
 
-                    #[test]
+    #[test]
     fn default_fx_tuning_matches_the_travel_slice_consts() {
         let tuning = FxTuning::default();
         assert!(
@@ -181,7 +207,6 @@ mod test {
         );
     }
 
-            /// `#[serde(default)]` contract that lets a user tune one number without restating the rest.
     #[test]
     fn partial_fx_tuning_ron_falls_back_to_defaults() {
         let parsed: Result<FxTuning, _> = ron::de::from_str("(projectile_velocity: 1234.0)");

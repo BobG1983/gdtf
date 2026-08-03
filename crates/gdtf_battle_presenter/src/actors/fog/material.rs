@@ -1,3 +1,5 @@
+//! Terrain fog material: saturation and brightness per cell.
+
 use bevy::{
     image::TextureAtlasLayout,
     math::Affine2,
@@ -13,20 +15,23 @@ use bevy::{
 
 const TERRAIN_FOG_SHADER: &str = "shaders/terrain_fog_material.wgsl";
 
+/// Brightness scale applied after saturation in the fog shader.
 #[derive(Deref, Debug, Clone, Copy, PartialEq)]
 pub struct Brightness(f32);
 
 impl Brightness {
-        pub const FULL: Self = Self(1.0);
+    /// Full brightness (active storey, visible cells).
+    pub const FULL: Self = Self(1.0);
 
-        #[must_use]
+    /// Build from a linear scale.
+    #[must_use]
     pub const fn new(scale: f32) -> Self {
         Self(scale)
     }
 }
 
 impl Default for Brightness {
-                fn default() -> Self {
+    fn default() -> Self {
         Self::FULL
     }
 }
@@ -35,34 +40,46 @@ impl Default for Brightness {
 pub(crate) struct Saturation(f32);
 
 impl Saturation {
-        pub(crate) const fn new(factor: f32) -> Self {
+    pub(crate) const fn new(factor: f32) -> Self {
         Self(factor)
     }
 }
 
+/// 2D material that samples a terrain sheet with fog knobs.
 #[derive(Asset, AsBindGroup, TypePath, Debug, Clone)]
 #[uniform(0, TerrainFogUniform)]
 pub struct TerrainFogMaterial {
-        #[texture(1)]
+    /// Sheet or file image.
+    #[texture(1)]
     #[sampler(2)]
-    pub image:        Handle<Image>,
-                    pub atlas_layout: Option<TextureAtlasLayout>,
-        pub atlas_index:  usize,
-        pub custom_size:  Option<Vec2>,
-            pub saturation:   f32,
-                        pub brightness:   Brightness,
+    pub image: Handle<Image>,
+    /// Optional atlas layout for sheet tiles.
+    pub atlas_layout: Option<TextureAtlasLayout>,
+    /// Atlas tile index when using a layout.
+    pub atlas_index: usize,
+    /// Drawn size in world units.
+    pub custom_size: Option<Vec2>,
+    /// Color saturation (1 = full, 0 = grey explored).
+    pub saturation: f32,
+    /// Brightness scale after saturation.
+    pub brightness: Brightness,
 }
 
+/// GPU uniform matching the terrain fog shader.
 #[derive(ShaderType, Default)]
 pub struct TerrainFogUniform {
-            pub uv_transform: Mat3,
-        pub vertex_scale: Vec2,
-        pub saturation:   f32,
-                    pub brightness:   f32,
+    /// UV affine for atlas region.
+    pub uv_transform: Mat3,
+    /// Vertex scale in world units.
+    pub vertex_scale: Vec2,
+    /// Saturation knob.
+    pub saturation: f32,
+    /// Brightness knob.
+    pub brightness: f32,
 }
 
 impl AsBindGroupShaderType<TerrainFogUniform> for TerrainFogMaterial {
-                            fn as_bind_group_shader_type(&self, images: &RenderAssets<GpuImage>) -> TerrainFogUniform {
+    fn as_bind_group_shader_type(&self, images: &RenderAssets<GpuImage>) -> TerrainFogUniform {
         let Some(image) = images.get(self.image.id()) else {
             return TerrainFogUniform::default();
         };

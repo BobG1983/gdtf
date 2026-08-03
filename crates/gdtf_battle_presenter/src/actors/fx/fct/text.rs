@@ -1,3 +1,5 @@
+//! Floating combat text spawn and rise animation.
+
 use std::time::Duration;
 
 use bevy::{
@@ -16,23 +18,28 @@ use super::{
 };
 use crate::{Layer, cell_to_world_layered};
 
+/// Display string for a floating combat pop.
 #[derive(Debug, Clone, PartialEq, Eq, Deref)]
 pub struct CombatText(String);
 
 impl CombatText {
-        #[must_use]
+    /// Build from any string-like value.
+    #[must_use]
     pub fn new(text: impl Into<String>) -> Self {
         Self(text.into())
     }
 }
 
+/// Vertical stack slot when multiple pops share a cell.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deref)]
 pub struct FctStackIndex(usize);
 
 impl FctStackIndex {
-        pub const BASE: Self = Self(0);
+    /// Bottom-most slot.
+    pub const BASE: Self = Self(0);
 
-        #[must_use]
+    /// Build from a zero-based stack index.
+    #[must_use]
     pub const fn new(index: usize) -> Self {
         Self(index)
     }
@@ -44,15 +51,19 @@ const FCT_FONT_PT: f32 = 14.0;
 
 const FCT_BOLD_FONT_SCALE: f32 = 1.4;
 
+/// Font weight emphasis for a pop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum FctEmphasis {
-        #[default]
+    /// Regular weight.
+    #[default]
     Normal,
-            Bold,
+    /// Bold weight (lethal / critical).
+    Bold,
 }
 
 impl FctEmphasis {
-                                    #[must_use]
+    /// Bevy font weight for this emphasis.
+    #[must_use]
     pub const fn weight(self) -> FontWeight {
         match self {
             Self::Normal => FontWeight::NORMAL,
@@ -60,7 +71,7 @@ impl FctEmphasis {
         }
     }
 
-            #[must_use]
+    #[must_use]
     fn font_size(self) -> f32 {
         match self {
             Self::Normal => FCT_FONT_PT,
@@ -69,15 +80,16 @@ impl FctEmphasis {
     }
 }
 
+/// Component driving rise and fade of a floating combat text entity.
 #[derive(Component, Debug, Clone)]
 pub struct FloatingCombatText {
-        rise:       FctRiseRate,
-        ttl:        Timer,
-        base_alpha: f32,
+    rise: FctRiseRate,
+    ttl: Timer,
+    base_alpha: f32,
 }
 
 impl FloatingCombatText {
-                            #[must_use]
+    #[must_use]
     fn new(rise: FctRiseRate, ttl: FctTtlSeconds, base_alpha: f32) -> Self {
         Self {
             rise,
@@ -86,16 +98,16 @@ impl FloatingCombatText {
         }
     }
 
-                        fn advance(&mut self, delta: Duration) -> bool {
+    fn advance(&mut self, delta: Duration) -> bool {
         self.ttl.tick(delta).is_finished()
     }
 
-                #[must_use]
+    #[must_use]
     fn risen(&self) -> f32 {
         self.rise.mul_add(self.ttl.elapsed_secs(), 0.0)
     }
 
-                            #[must_use]
+    #[must_use]
     fn alpha(&self) -> f32 {
         self.base_alpha * self.ttl.fraction_remaining()
     }
@@ -106,6 +118,7 @@ impl FloatingCombatText {
     reason = "the FCT pop's content, color, weight, world anchor, stack slot, and now its \
               hot-reloadable lifetime + rise are all distinct caller-chosen inputs"
 )]
+/// Spawn a floating combat text pop at a cell.
 pub fn spawn_floating_text(
     commands: &mut Commands,
     text: CombatText,
@@ -145,6 +158,7 @@ pub fn spawn_floating_text(
         .insert(FctAnchorCell::new(CellLevel::new(cell, level)));
 }
 
+/// Rise and fade floating combat text; despawn when expired.
 pub fn animate_floating_text(
     mut commands: Commands,
     time: Res<Time>,

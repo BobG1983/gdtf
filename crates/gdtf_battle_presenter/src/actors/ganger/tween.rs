@@ -1,3 +1,5 @@
+//! Smooth sprite translation between cells.
+
 use std::time::Duration;
 
 use bevy::prelude::*;
@@ -6,15 +8,17 @@ use super::sprite_map::GangerSprite;
 
 const TWEEN_SECONDS: f32 = 0.2;
 
+/// Linear tween from source to target world position.
 #[derive(Component, Debug, Clone)]
 pub struct SpriteTween {
-        source: Vec3,
-        target: Vec3,
-        clock:  Timer,
+    source: Vec3,
+    target: Vec3,
+    clock: Timer,
 }
 
 impl SpriteTween {
-                                #[must_use]
+    /// A finished tween sitting at `position`.
+    #[must_use]
     pub fn settled(position: Vec3) -> Self {
         let mut clock = Timer::from_seconds(TWEEN_SECONDS, TimerMode::Once);
         clock.tick(Duration::from_secs_f32(TWEEN_SECONDS));
@@ -25,13 +29,15 @@ impl SpriteTween {
         }
     }
 
-                                        pub fn retarget(&mut self, from: Vec3, to: Vec3) {
+    /// Restart the tween from `from` toward `to`.
+    pub fn retarget(&mut self, from: Vec3, to: Vec3) {
         self.source = from;
         self.target = to;
         self.clock.reset();
     }
 
-                                                    pub fn advance(&mut self, delta: Duration) -> Vec3 {
+    /// Advance by `delta` and return the interpolated position.
+    pub fn advance(&mut self, delta: Duration) -> Vec3 {
         if self.clock.tick(delta).is_finished() {
             return self.target;
         }
@@ -40,6 +46,7 @@ impl SpriteTween {
     }
 }
 
+/// Tick every ganger sprite tween each frame.
 pub fn advance_sprite_tweens(
     time: Res<Time>,
     mut tweens: Query<(&mut Transform, &mut SpriteTween), With<GangerSprite>>,
@@ -58,7 +65,7 @@ mod test {
 
     use super::{SpriteTween, TWEEN_SECONDS};
 
-            #[test]
+    #[test]
     fn settled_tween_holds_position() {
         let at = Vec3::new(3.0, -4.0, 0.1);
         let mut tween = SpriteTween::settled(at);
@@ -69,7 +76,7 @@ mod test {
         );
     }
 
-                #[test]
+    #[test]
     fn retargeted_tween_is_intermediate_then_settles() {
         let source = Vec3::new(0.0, 0.0, 0.1);
         let target = Vec3::new(10.0, 0.0, 0.1);
@@ -93,7 +100,7 @@ mod test {
         );
     }
 
-                    #[test]
+    #[test]
     fn retarget_mid_glide_starts_from_current_position() {
         let a = Vec3::new(0.0, 0.0, 0.1);
         let b = Vec3::new(10.0, 0.0, 0.1);

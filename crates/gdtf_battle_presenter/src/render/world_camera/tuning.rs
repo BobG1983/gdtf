@@ -1,18 +1,24 @@
+//! Hot-reloadable pan tuning resource.
+
 use bevy::prelude::*;
 use gdtf_assets::HotRonAppExt;
 use serde::Deserialize;
 
 use super::pan::{EdgeBandPx, PanSpeed};
 
+/// Seconds the cursor must dwell on a screen edge before edge-pan starts.
+///
 /// `#[serde(transparent)]` so the `.ron` authors the inner number directly.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct DwellDelaySeconds(f32);
 
 impl DwellDelaySeconds {
-        pub const DEFAULT: f32 = 0.3;
+    /// Shipped default dwell delay in seconds.
+    pub const DEFAULT: f32 = 0.3;
 
-        #[must_use]
+    /// Build from a seconds value.
+    #[must_use]
     pub const fn new(seconds: f32) -> Self {
         Self(seconds)
     }
@@ -24,15 +30,19 @@ impl Default for DwellDelaySeconds {
     }
 }
 
-/// `#[serde(transparent)]` so the `.ron` authors the inner number directly; the live consumer
+/// World-unit margin beyond map bounds the camera may still reach.
+///
+/// `#[serde(transparent)]` so the `.ron` authors the inner number directly.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct BoundsMarginWorld(f32);
 
 impl BoundsMarginWorld {
-                pub const DEFAULT: f32 = 128.0;
+    /// Shipped default margin in world units.
+    pub const DEFAULT: f32 = 128.0;
 
-        #[must_use]
+    /// Build from a world-unit margin.
+    #[must_use]
     pub const fn new(world_units: f32) -> Self {
         Self(world_units)
     }
@@ -44,14 +54,20 @@ impl Default for BoundsMarginWorld {
     }
 }
 
-/// Each field is `#[serde(default)]` so a `.ron` that omits a field falls back to the shipped
+/// Camera pan speeds, edge band, dwell, and bounds margin.
+///
+/// Each field is `#[serde(default)]` so a `.ron` that omits a field falls back to the shipped default.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Deserialize, TypePath, Default)]
 #[serde(default)]
 pub struct PanTuning {
-        pub edge_band_px:        EdgeBandPx,
-        pub pan_speed:           PanSpeed,
-        pub dwell_delay_seconds: DwellDelaySeconds,
-        pub bounds_margin_world: BoundsMarginWorld,
+    /// Pixel width of the screen-edge pan band.
+    pub edge_band_px: EdgeBandPx,
+    /// World units per second when panning at full stick/key.
+    pub pan_speed: PanSpeed,
+    /// Cursor dwell before edge pan engages.
+    pub dwell_delay_seconds: DwellDelaySeconds,
+    /// Extra world margin past map edges.
+    pub bounds_margin_world: BoundsMarginWorld,
 }
 
 const PAN_TUNING_RON_PATH: &str = "core_tuning/pan.tuning.ron";
@@ -65,7 +81,7 @@ mod test {
     use super::{BoundsMarginWorld, DwellDelaySeconds, PanTuning};
     use crate::{EdgeBandPx, PanSpeed};
 
-                #[test]
+    #[test]
     fn shipped_pan_tuning_ron_parses() {
         const SHIPPED: &str = include_str!("../../../../../assets/core_tuning/pan.tuning.ron");
         let parsed: Result<PanTuning, _> = ron::de::from_str(SHIPPED);
@@ -76,10 +92,10 @@ mod test {
         );
     }
 
-                                            #[test]
+    #[test]
     fn default_pan_tuning_matches_the_consts() {
-                        const PRIOR_PAN_SPEED: f32 = 400.0;
-                const PRIOR_EDGE_BAND_PX: f32 = 24.0;
+        const PRIOR_PAN_SPEED: f32 = 400.0;
+        const PRIOR_EDGE_BAND_PX: f32 = 24.0;
 
         let tuning = PanTuning::default();
         assert!(
@@ -114,8 +130,8 @@ mod test {
         }
     }
 
-        /// and falling back to the shipped default for every omitted field — the `#[serde(default)]`
-                #[test]
+    /// Partial RON falls back to defaults for omitted fields.
+    #[test]
     fn partial_pan_tuning_ron_falls_back_to_defaults() {
         let parsed: Result<PanTuning, _> = ron::de::from_str("(dwell_delay_seconds: 0.75)");
         assert!(

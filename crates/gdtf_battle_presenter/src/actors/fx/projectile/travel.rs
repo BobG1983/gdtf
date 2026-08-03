@@ -1,3 +1,5 @@
+//! In-flight shot projectile motion.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     prelude::{Cell, Level},
@@ -7,25 +9,27 @@ use gdtf_battle_sim::{
 
 use super::super::{fct::ClassifiedPop, tuning::ProjectileVelocity};
 
+/// Marker on a flying shot projectile entity.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ShotProjectile;
 
+/// Flight path, stagger, and payload for a shot projectile.
 #[derive(Component, Debug, Clone)]
 pub struct ProjectileTravel {
-        from:     Vec3,
-        to:       Vec3,
-                damage:   DamageType,
-                    launch:   Timer,
-                    velocity: ProjectileVelocity,
-                traveled: f32,
-                    pops:     Vec<ClassifiedPop>,
-                    anchor:   (Cell, Level),
-                                    shooter:  Entity,
-                        report:   Option<HitReport>,
+    from: Vec3,
+    to: Vec3,
+    damage: DamageType,
+    launch: Timer,
+    velocity: ProjectileVelocity,
+    traveled: f32,
+    pops: Vec<ClassifiedPop>,
+    anchor: (Cell, Level),
+    shooter: Entity,
+    report: Option<HitReport>,
 }
 
 impl ProjectileTravel {
-                                                                                                                                            #[expect(
+    #[expect(
         clippy::too_many_arguments,
         reason = "each is a distinct flight datum: the two endpoints, the damage type, the \
                   velocity, the stagger launch delay, the GTW-327 pops + anchor, and the GTW-328 \
@@ -57,12 +61,13 @@ impl ProjectileTravel {
         }
     }
 
-        #[must_use]
+    #[must_use]
     fn distance(&self) -> f32 {
         self.from.distance(self.to)
     }
 
-                                                pub fn advance(&mut self, delta: std::time::Duration) -> bool {
+    /// Advance flight. Returns `true` when the projectile has arrived.
+    pub fn advance(&mut self, delta: std::time::Duration) -> bool {
         if !self.launch.tick(delta).is_finished() {
             return false;
         }
@@ -70,12 +75,14 @@ impl ProjectileTravel {
         self.traveled >= self.distance()
     }
 
-                #[must_use]
+    /// Whether the launch stagger has finished.
+    #[must_use]
     pub fn launched(&self) -> bool {
         self.launch.is_finished()
     }
 
-                    #[must_use]
+    /// Fraction of the path traveled, clamped to `[0, 1]`.
+    #[must_use]
     pub fn fraction(&self) -> f32 {
         let distance = self.distance();
         if distance <= f32::EPSILON {
@@ -84,37 +91,40 @@ impl ProjectileTravel {
         (self.traveled / distance).clamp(0.0, 1.0)
     }
 
-            #[must_use]
+    /// Current interpolated world position.
+    #[must_use]
     pub fn position(&self) -> Vec3 {
         self.from.lerp(self.to, self.fraction())
     }
 
-        #[must_use]
+    /// Arrival world position.
+    #[must_use]
     pub const fn arrival(&self) -> Vec3 {
         self.to
     }
 
-            #[must_use]
+    /// Damage type for impact FX.
+    #[must_use]
     pub const fn damage(&self) -> DamageType {
         self.damage
     }
 
-                    #[must_use]
+    #[must_use]
     pub(super) fn take_pops(&mut self) -> Vec<ClassifiedPop> {
         std::mem::take(&mut self.pops)
     }
 
-            #[must_use]
+    #[must_use]
     pub(super) const fn anchor(&self) -> (Cell, Level) {
         self.anchor
     }
 
-                #[must_use]
+    #[must_use]
     pub(super) const fn shooter(&self) -> Entity {
         self.shooter
     }
 
-                    #[must_use]
+    #[must_use]
     pub(super) fn report(&self) -> Option<HitReport> {
         self.report.clone()
     }

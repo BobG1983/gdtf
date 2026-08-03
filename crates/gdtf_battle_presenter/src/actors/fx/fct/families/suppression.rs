@@ -1,3 +1,5 @@
+//! Suppression floating combat text.
+
 use gdtf_battle_sim::suppression::SuppressionApplied;
 
 use super::super::{
@@ -6,6 +8,7 @@ use super::super::{
     text::CombatText,
 };
 
+/// Consequence family for [`SuppressionApplied`].
 #[derive(Debug, Clone, Copy)]
 pub struct SuppressionFct;
 
@@ -33,7 +36,7 @@ mod test {
         super::super::pop::ConsequenceFct, FctValence, PopAnchor, SuppressionFct, valence_color,
     };
 
-            #[test]
+    #[test]
     fn a_suppression_classifies_to_a_cowed_suppressed_tag_at_the_cell() {
         let at = CellLevel::new(Cell::new(11, 4), Level::new(0));
         let pop = SuppressionFct::classify(&SuppressionApplied::new(Entity::PLACEHOLDER, at));

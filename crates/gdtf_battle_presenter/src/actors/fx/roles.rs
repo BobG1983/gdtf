@@ -1,3 +1,5 @@
+//! Hot-loaded effect sheet tile indices and damage-type FX blocks.
+
 use bevy::{math::Vec3, prelude::*};
 use gdtf_assets::HotRonAppExt;
 use gdtf_battle_sim::weapon::DamageType;
@@ -5,45 +7,62 @@ use serde::Deserialize;
 
 use crate::TileIndex;
 
+/// Number of compass directions on the effects sheet.
 pub const DIRECTION_COUNT: usize = 8;
 
+/// Frames in an impact animation strip.
 pub const IMPACT_FRAME_COUNT: usize = 3;
 
+/// Unit vectors for the eight compass directions used by projectile frames.
 pub const COMPASS_DIRECTIONS: [Vec2; DIRECTION_COUNT] = {
     const D: f32 = 0.707_106_77;
     [
-        Vec2::new(1.0, 0.0),  
-        Vec2::new(D, -D),     
-        Vec2::new(0.0, -1.0), 
-        Vec2::new(-D, -D),    
-        Vec2::new(0.0, 1.0),  
-        Vec2::new(-D, D),     
-        Vec2::new(-1.0, 0.0), 
-        Vec2::new(D, D),      
+        Vec2::new(1.0, 0.0),
+        Vec2::new(D, -D),
+        Vec2::new(0.0, -1.0),
+        Vec2::new(-D, -D),
+        Vec2::new(0.0, 1.0),
+        Vec2::new(-D, D),
+        Vec2::new(-1.0, 0.0),
+        Vec2::new(D, D),
     ]
 };
 
+/// Directional projectile frames and impact strip for one damage family.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct DamageTypeFx {
-                pub directions: [TileIndex; DIRECTION_COUNT],
-                pub impact:     [TileIndex; IMPACT_FRAME_COUNT],
+    /// One tile per compass direction.
+    pub directions: [TileIndex; DIRECTION_COUNT],
+    /// Impact animation frames.
+    pub impact: [TileIndex; IMPACT_FRAME_COUNT],
 }
 
+/// Authored tile indices for all effect families.
 #[derive(Resource, Debug, Clone, PartialEq, Eq, Deserialize, TypePath)]
 pub struct EffectRoles {
-        pub bleed:           TileIndex,
-        pub armor_break:     TileIndex,
-        pub cover_destroyed: TileIndex,
-                pub melee_strike:    TileIndex,
-                pub fall_impact:     TileIndex,
-        pub orange:          DamageTypeFx,
-        pub blue:            DamageTypeFx,
-        pub green:           DamageTypeFx,
-        pub purple:          DamageTypeFx,
+    /// Bleed tick flash.
+    pub bleed: TileIndex,
+    /// Armor break flash.
+    pub armor_break: TileIndex,
+    /// Cover destroyed flash.
+    pub cover_destroyed: TileIndex,
+    /// Melee strike flash.
+    pub melee_strike: TileIndex,
+    /// Fall impact flash.
+    pub fall_impact: TileIndex,
+    /// Kinetic / blast projectile family.
+    pub orange: DamageTypeFx,
+    /// Las / shock projectile family.
+    pub blue: DamageTypeFx,
+    /// Chem projectile family.
+    pub green: DamageTypeFx,
+    /// Plasma / rend projectile family.
+    pub purple: DamageTypeFx,
 }
 
 impl EffectRoles {
-                                            #[must_use]
+    /// FX block for a damage type.
+    #[must_use]
     pub const fn fx_for(&self, damage: DamageType) -> &DamageTypeFx {
         match damage {
             DamageType::Kinetic | DamageType::Blast => &self.orange,
@@ -53,12 +72,14 @@ impl EffectRoles {
         }
     }
 
-                                #[must_use]
+    /// Fallback when a specific family is missing.
+    #[must_use]
     pub const fn fallback(&self) -> &DamageTypeFx {
         &self.orange
     }
 }
 
+/// Index of the compass direction closest to `trajectory`.
 #[must_use]
 pub fn nearest_direction_index(trajectory: Vec3) -> usize {
     let heading = trajectory.truncate();

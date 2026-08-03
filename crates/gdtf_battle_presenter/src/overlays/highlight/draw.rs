@@ -1,3 +1,5 @@
+//! Hover-cell highlight sprite.
+
 use bevy::{
     camera::visibility::RenderLayers,
     ecs::template::template,
@@ -8,25 +10,29 @@ use gdtf_battle_sim::prelude::CellLevel;
 
 use crate::{CELL_PX, CellVisibility, WORLD_RENDER_LAYER, cell_to_world};
 
+/// Request to show or clear the hover highlight on a cell.
 #[derive(Message, Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HighlightRequest {
-            #[deref]
-    cell:       Option<CellLevel>,
-            visibility: CellVisibility,
+    #[deref]
+    cell: Option<CellLevel>,
+    visibility: CellVisibility,
 }
 
 impl HighlightRequest {
-            #[must_use]
+    /// Build a highlight request for an optional cell and its visibility.
+    #[must_use]
     pub const fn new(cell: Option<CellLevel>, visibility: CellVisibility) -> Self {
         Self { cell, visibility }
     }
 
-            #[must_use]
+    /// Squad-visibility of the requested cell.
+    #[must_use]
     pub const fn visibility(self) -> CellVisibility {
         self.visibility
     }
 }
 
+/// Marker on the single hover-highlight sprite entity.
 #[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct HoverHighlight;
 
@@ -42,6 +48,7 @@ const fn tint_for(visibility: CellVisibility) -> Color {
     }
 }
 
+/// Apply the latest [`HighlightRequest`] to the hover sprite (spawn if needed).
 pub fn draw_highlight_on_request(
     mut commands: Commands,
     mut requests: MessageReader<HighlightRequest>,

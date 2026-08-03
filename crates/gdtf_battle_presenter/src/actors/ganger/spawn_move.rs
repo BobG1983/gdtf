@@ -1,3 +1,5 @@
+//! Spawn ganger sprites and retarget tweens on drawn position changes.
+
 use bevy::{
     camera::visibility::RenderLayers,
     ecs::template::template,
@@ -26,7 +28,7 @@ fn ganger_sprite(appearance: GangerAppearance, atlases: &TopDownAtlases) -> Opti
         chars.image.clone(),
         TextureAtlas {
             layout: chars.layout.clone(),
-            index:  appearance.atlas_index,
+            index: appearance.atlas_index,
         },
     );
     sprite.custom_size = Some(Vec2::splat(CELL_PX));
@@ -45,6 +47,7 @@ type SpawnedGanger = (
     Option<&'static Suppressed>,
 );
 
+/// Spawn a presenter sprite for each newly positioned living ganger.
 pub fn spawn_ganger_sprites(
     mut commands: Commands,
     mut sprites: ResMut<GangerSprites>,
@@ -89,6 +92,7 @@ pub fn spawn_ganger_sprites(
     }
 }
 
+/// Retarget sprite tweens when drawn position changes.
 pub fn move_ganger_sprites(
     sprites: Res<GangerSprites>,
     moved: Query<(Entity, &DrawnPosition), Changed<DrawnPosition>>,

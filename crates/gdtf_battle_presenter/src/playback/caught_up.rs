@@ -1,16 +1,20 @@
+//! Input gate: open only when playback has caught the act-log head.
+
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_sim::act_log::ActLog;
 
 use super::cursor::PlaybackCursor;
 
+/// System-param view of whether player input may proceed.
 #[derive(SystemParam)]
 pub struct PlaybackGate<'w> {
-        cursor: Option<Res<'w, PlaybackCursor>>,
-        log:    Option<Res<'w, ActLog>>,
+    cursor: Option<Res<'w, PlaybackCursor>>,
+    log: Option<Res<'w, ActLog>>,
 }
 
 impl PlaybackGate<'_> {
-                        #[must_use]
+    /// `true` when not holding and shown past or at the log head.
+    #[must_use]
     pub fn is_open(&self) -> bool {
         let (Some(cursor), Some(log)) = (self.cursor.as_deref(), self.log.as_deref()) else {
             return true;
@@ -19,6 +23,7 @@ impl PlaybackGate<'_> {
     }
 }
 
+/// Standalone check used by `run_if` filters.
 #[must_use]
 pub fn playback_caught_up(cursor: Option<Res<PlaybackCursor>>, log: Option<Res<ActLog>>) -> bool {
     let (Some(cursor), Some(log)) = (cursor, log) else {

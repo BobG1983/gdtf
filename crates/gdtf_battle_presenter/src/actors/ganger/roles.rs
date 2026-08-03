@@ -1,3 +1,5 @@
+//! Hot-loaded base tile indices per faction on the characters sheet.
+
 use bevy::prelude::*;
 use gdtf_assets::HotRonAppExt;
 use gdtf_battle_sim::prelude::Faction;
@@ -5,14 +7,18 @@ use serde::Deserialize;
 
 use crate::TileIndex;
 
+/// Authored base indices for faction 0 and faction 1 character blocks.
 #[derive(Resource, Debug, Clone, PartialEq, Eq, Deserialize, TypePath)]
 pub struct CharacterRoles {
-        pub faction_0: TileIndex,
-            pub faction_1: TileIndex,
+    /// First tile of faction 0's four-facing block.
+    pub faction_0: TileIndex,
+    /// First tile of faction 1's four-facing block.
+    pub faction_1: TileIndex,
 }
 
 impl CharacterRoles {
-                                    #[must_use]
+    /// Base tile index for a faction (defaults to faction 0 for any non-1 id).
+    #[must_use]
     pub fn base_for(&self, faction: Faction) -> TileIndex {
         match *faction {
             1 => self.faction_1,

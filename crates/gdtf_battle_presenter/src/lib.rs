@@ -1,9 +1,14 @@
-//! This is the VIEW that mirrors the authoritative, render-free combat sim
+//! View that mirrors the authoritative, render-free combat sim.
+
 mod plugin;
 
+/// Ganger actors, fog, and combat FX.
 pub mod actors;
+/// Targeting, path, field, and other HUD overlays.
 pub mod overlays;
+/// Act-log playback cursor and drawn-state seed.
 pub mod playback;
+/// Terrain, camera, and top-down projection.
 pub mod render;
 
 pub use actors::{

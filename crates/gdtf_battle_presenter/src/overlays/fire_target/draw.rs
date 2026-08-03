@@ -1,3 +1,5 @@
+//! Fire-mode target cell tile and TU cost label.
+
 use bevy::{camera::visibility::RenderLayers, prelude::*, text::TextColor};
 use gdtf_battle_sim::prelude::{CellLevel, Level, Tu};
 
@@ -6,25 +8,29 @@ use crate::{
     overlays::pool::draw_pool,
 };
 
+/// Current fire-target cell and shot cost, if any.
 #[derive(Resource, Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct FireTargetHighlight {
-            target: Option<(CellLevel, Tu)>,
+    target: Option<(CellLevel, Tu)>,
 }
 
 impl FireTargetHighlight {
-            #[must_use]
+    /// Highlight `cell` at the given TU cost.
+    #[must_use]
     pub const fn new(cell: CellLevel, cost: Tu) -> Self {
         Self {
             target: Some((cell, cost)),
         }
     }
 
-            #[must_use]
+    /// No fire target selected.
+    #[must_use]
     pub const fn cleared() -> Self {
         Self { target: None }
     }
 
-        #[must_use]
+    /// Selected cell, if any.
+    #[must_use]
     pub const fn cell(&self) -> Option<CellLevel> {
         match self.target {
             Some((cell, _)) => Some(cell),
@@ -32,7 +38,8 @@ impl FireTargetHighlight {
         }
     }
 
-            #[must_use]
+    /// Shot cost for the selected cell, if any.
+    #[must_use]
     pub const fn cost(&self) -> Option<Tu> {
         match self.target {
             Some((_, cost)) => Some(cost),
@@ -40,15 +47,18 @@ impl FireTargetHighlight {
         }
     }
 
-        #[must_use]
+    /// Whether no target is selected.
+    #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.target.is_none()
     }
 }
 
+/// Marker on the fire-target tint tile.
 #[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct FireTargetTile;
 
+/// Marker on the fire-target cost label.
 #[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct FireTargetLabel;
 
@@ -70,7 +80,6 @@ type LabelQuery<'w, 's> = Query<
     (With<FireTargetLabel>, Without<FireTargetTile>),
 >;
 
-/// (the `CELL_PX`-class const carve-out, the [`PREVIEW_TINT`](crate::path_preview) precedent).
 const FIRE_TARGET_TINT: Color = Color::srgba(1.0, 0.15, 0.1, 0.5);
 
 const COST_LABEL_COLOR: Color = Color::srgb(0.95, 1.0, 0.95);
@@ -79,6 +88,7 @@ const COST_LABEL_FONT_PX: f32 = 9.0;
 
 const COST_LABEL_LIFT_PX: f32 = CELL_PX * 0.55;
 
+/// Draw or hide the fire-target tile and cost label for the active storey.
 pub fn draw_fire_target(
     mut commands: Commands,
     highlight: Res<FireTargetHighlight>,

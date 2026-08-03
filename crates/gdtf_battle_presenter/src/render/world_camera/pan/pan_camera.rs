@@ -1,3 +1,5 @@
+//! Keyboard, stick, and mouse-edge camera pan system.
+
 use bevy::{input::gamepad::Gamepad, prelude::*, window::PrimaryWindow};
 
 use super::{
@@ -10,6 +12,7 @@ use super::{
     tunables::{EdgeBandPx, PanSpeed, STICK_DEADZONE},
 };
 
+/// Apply keyboard, gamepad stick, and dwelt mouse-edge pan to the world camera.
 pub fn pan_camera(
     keys: Res<ButtonInput<KeyCode>>,
     windows: Query<&Window, With<PrimaryWindow>>,

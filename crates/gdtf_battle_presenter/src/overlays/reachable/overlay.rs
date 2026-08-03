@@ -1,3 +1,5 @@
+//! Debug-only reachable-range cell tint (GTW-450).
+
 use bevy::{camera::visibility::RenderLayers, prelude::*};
 use gdtf_battle_sim::prelude::{CellLevel, Level, Tu};
 
@@ -6,23 +8,25 @@ use crate::{
     overlays::pool::draw_pool,
 };
 
+/// Env var that enables the reachable overlay in debug builds.
 #[cfg(debug_assertions)]
 pub const REACHABLE_OVERLAY_ENV: &str = "GDTF_DEBUG_REACHABLE_OVERLAY";
 
 /// Whether the reachable-range DEBUG overlay renders this process (GTW-450 C3).
-/// Lives behind `#[cfg(debug_assertions)]` — the overlay it gates is debug-only, so
 #[cfg(debug_assertions)]
 #[derive(Resource, Debug, Clone, Copy, Default, PartialEq, Eq, Deref)]
 pub struct ReachableOverlayEnabled(bool);
 
 #[cfg(debug_assertions)]
 impl ReachableOverlayEnabled {
-        #[must_use]
+    /// Build from an explicit flag.
+    #[must_use]
     pub const fn new(enabled: bool) -> Self {
         Self(enabled)
     }
 
-                #[must_use]
+    /// Read enablement from [`REACHABLE_OVERLAY_ENV`].
+    #[must_use]
     pub fn from_env() -> Self {
         Self(std::env::var(REACHABLE_OVERLAY_ENV).is_ok_and(|value| {
             matches!(
@@ -33,11 +37,13 @@ impl ReachableOverlayEnabled {
     }
 }
 
+/// Cells currently in the selected ganger's reach, with TU costs.
 #[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
 pub struct ReachableCells(Vec<ReachableCell>);
 
 impl ReachableCells {
-            #[must_use]
+    /// Build from cell/cost pairs.
+    #[must_use]
     pub fn new(cells: impl IntoIterator<Item = (CellLevel, Tu)>) -> Self {
         Self(
             cells
@@ -47,16 +53,19 @@ impl ReachableCells {
         )
     }
 
-            #[must_use]
+    /// Empty reach set.
+    #[must_use]
     pub const fn cleared() -> Self {
         Self(Vec::new())
     }
 
-        pub fn cells(&self) -> impl Iterator<Item = (CellLevel, Tu)> + '_ {
+    /// Iterate reachable cells and their costs.
+    pub fn cells(&self) -> impl Iterator<Item = (CellLevel, Tu)> + '_ {
         self.0.iter().map(|r| (r.cell, r.cost))
     }
 
-        #[must_use]
+    /// Whether no cells are reachable.
+    #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -64,10 +73,11 @@ impl ReachableCells {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ReachableCell {
-        cell: CellLevel,
-        cost: Tu,
+    cell: CellLevel,
+    cost: Tu,
 }
 
+/// Marker on a reachable-range tint sprite.
 #[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct ReachableCellSprite;
 
@@ -85,6 +95,7 @@ pub(super) fn reachable_draws(reachable: &ReachableCells, active_level: Level) -
         .collect()
 }
 
+/// Draw reachable-range tints for the active storey.
 pub fn draw_reachable_overlay(
     mut commands: Commands,
     reachable: Res<ReachableCells>,

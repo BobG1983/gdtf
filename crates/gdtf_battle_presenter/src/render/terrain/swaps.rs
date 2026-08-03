@@ -1,3 +1,5 @@
+//! Live terrain graphic swaps for destruction and emplacement occupancy.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     emplacement::EmplacementState,
@@ -45,6 +47,7 @@ fn retarget_tile(
     }
 }
 
+/// Swap cover tiles to rubble when [`CoverDestroyed`] fires.
 pub fn swap_destroyed_cover(
     active: Res<ActiveLevel>,
     view: Res<ViewMode>,
@@ -74,6 +77,7 @@ pub fn swap_destroyed_cover(
     }
 }
 
+/// Swap slab tiles to the destroyed graphic when [`SlabDestroyed`] fires.
 pub fn swap_destroyed_slab(
     active: Res<ActiveLevel>,
     view: Res<ViewMode>,
@@ -103,6 +107,7 @@ pub fn swap_destroyed_slab(
     }
 }
 
+/// Swap emplacement tiles between empty and occupied graphics.
 pub fn indicate_emplacement_occupied(
     active: Res<ActiveLevel>,
     view: Res<ViewMode>,

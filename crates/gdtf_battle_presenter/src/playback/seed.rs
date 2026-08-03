@@ -1,3 +1,5 @@
+//! Seed drawn components from live sim state at battle start.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     act_log::{MagazineFacts, PoseFacts, SuppressedNow, VitalsFacts},
@@ -29,6 +31,7 @@ type WeaponSeedData = (Entity, &'static Magazine);
 
 type UnseededWeapon = (With<WieldedBy>, Without<DrawnMagazine>);
 
+/// Insert drawn mirrors for gangers and weapons that lack them.
 pub fn seed_drawn_state(
     mut commands: Commands,
     gangers: Query<SeedData, Without<DrawnPosition>>,

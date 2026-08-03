@@ -1,25 +1,31 @@
+//! Stack-slot allocation for pops sharing a cell.
+
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_sim::prelude::CellLevel;
 
 use super::text::{FctStackIndex, FloatingCombatText};
 
+/// Cell a live floating combat text is anchored to.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Deref)]
 pub struct FctAnchorCell(CellLevel);
 
 impl FctAnchorCell {
-        #[must_use]
+    /// Anchor a pop to this cell.
+    #[must_use]
     pub const fn new(at: CellLevel) -> Self {
         Self(at)
     }
 }
 
+/// Counts live pops per cell to assign the next stack index.
 #[derive(SystemParam)]
 pub struct FctSlotAllocator<'w, 's> {
-        live_pops: Query<'w, 's, &'static FctAnchorCell, With<FloatingCombatText>>,
+    live_pops: Query<'w, 's, &'static FctAnchorCell, With<FloatingCombatText>>,
 }
 
 impl FctSlotAllocator<'_, '_> {
-                                #[must_use]
+    /// Next free stack slot at `at`.
+    #[must_use]
     pub fn next_slot(&self, at: CellLevel) -> FctStackIndex {
         let alive = self
             .live_pops
@@ -51,18 +57,18 @@ mod test {
         animate_floating_text,
     };
 
-            const TEST_TTL: FctTtlSeconds = FctTtlSeconds::new(0.15);
+    const TEST_TTL: FctTtlSeconds = FctTtlSeconds::new(0.15);
 
-            const LONG_TTL: FctTtlSeconds = FctTtlSeconds::new(1_000.0);
+    const LONG_TTL: FctTtlSeconds = FctTtlSeconds::new(1_000.0);
 
-                #[derive(Resource, Default)]
+    #[derive(Resource, Default)]
     struct AllocProbe {
-                target:   Option<CellLevel>,
-                ttl:      FctTtlSeconds,
-                recorded: Vec<FctStackIndex>,
+        target: Option<CellLevel>,
+        ttl: FctTtlSeconds,
+        recorded: Vec<FctStackIndex>,
     }
 
-                fn probe_system(
+    fn probe_system(
         mut commands: Commands,
         allocator: FctSlotAllocator,
         mut probe: ResMut<AllocProbe>,
@@ -86,7 +92,7 @@ mod test {
         );
     }
 
-                fn alloc_app(delta: Duration, ttl: FctTtlSeconds) -> App {
+    fn alloc_app(delta: Duration, ttl: FctTtlSeconds) -> App {
         let mut app = App::new();
         app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin))
             .insert_resource(TimeUpdateStrategy::ManualDuration(delta))
@@ -105,29 +111,29 @@ mod test {
         app
     }
 
-        fn request(app: &mut App, at: CellLevel) {
+    fn request(app: &mut App, at: CellLevel) {
         if let Some(mut probe) = app.world_mut().get_resource_mut::<AllocProbe>() {
             probe.target = Some(at);
         }
     }
 
-        fn recorded(app: &App) -> Vec<FctStackIndex> {
+    fn recorded(app: &App) -> Vec<FctStackIndex> {
         app.world()
             .get_resource::<AllocProbe>()
             .map(|p| p.recorded.clone())
             .unwrap_or_default()
     }
 
-        fn at(x: i32, y: i32, z: u8) -> CellLevel {
+    fn at(x: i32, y: i32, z: u8) -> CellLevel {
         CellLevel::new(Cell::new(x, y), Level::new(z))
     }
 
-        fn pop_count(app: &mut App) -> usize {
+    fn pop_count(app: &mut App) -> usize {
         let mut q = app.world_mut().query::<&FloatingCombatText>();
         q.iter(app.world()).count()
     }
 
-            #[test]
+    #[test]
     fn pops_on_one_cell_across_frames_ascend() {
         let mut app = alloc_app(Duration::ZERO, LONG_TTL);
         let cell = at(3, 4, 0);
@@ -147,7 +153,7 @@ mod test {
         );
     }
 
-            #[test]
+    #[test]
     fn a_despawned_pop_frees_its_slot() {
         let mut app = alloc_app(Duration::from_millis(100), TEST_TTL);
         let cell = at(5, 5, 0);
@@ -181,7 +187,7 @@ mod test {
         );
     }
 
-                    #[test]
+    #[test]
     fn a_pop_mid_despawn_this_frame_is_not_counted() {
         let mut app = alloc_app(Duration::from_millis(100), TEST_TTL);
         let cell = at(7, 8, 0);

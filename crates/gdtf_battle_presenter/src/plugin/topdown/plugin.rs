@@ -1,3 +1,5 @@
+//! Top-down renderer plugin wiring.
+
 use bevy::{prelude::*, sprite_render::Material2dPlugin};
 use gdtf_battle_sim::occupancy_sync::SimSystems;
 
@@ -12,9 +14,11 @@ use crate::{
     render::{topdown::register_sheet_image_redrive, world_camera::register_pan_tuning_hot_ron},
 };
 
+/// Marker resource present while the top-down renderer is active.
 #[derive(Resource)]
 pub struct TopDownRendererActive;
 
+/// Installs top-down draw, playback, overlays, FX, and camera systems.
 pub struct TopDownRendererPlugin;
 
 impl Plugin for TopDownRendererPlugin {

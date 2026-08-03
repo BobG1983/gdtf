@@ -1,3 +1,5 @@
+//! Register playback resources and systems.
+
 use bevy::prelude::*;
 
 use super::{
@@ -9,6 +11,7 @@ use super::{
 };
 use crate::PresenterSystems;
 
+/// Init cursor/tuning, register played messages, and chain seed + advance in Replay.
 pub fn register_playback(app: &mut App) {
     app.init_resource::<PlaybackCursor>()
         .init_resource::<PlaybackTuning>();

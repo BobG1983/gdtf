@@ -1,51 +1,67 @@
+//! Act-log playback cursor and hold phases.
+
 use std::time::Duration;
 
 use bevy::prelude::*;
 use gdtf_battle_sim::act_log::ActSeq;
 
+/// Whether the FX pipeline has been observed busy during an impact wait.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct FxSeenBusy(bool);
 
 impl FxSeenBusy {
-        #[must_use]
+    /// Build from a seen-busy flag.
+    #[must_use]
     pub const fn new(seen: bool) -> Self {
         Self(seen)
     }
 }
 
+/// Count of act-log entries skipped by a catch-up jump.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct SkippedActs(u32);
 
 impl SkippedActs {
-        #[must_use]
+    /// Build from a skip count.
+    #[must_use]
     pub const fn new(skipped: u32) -> Self {
         Self(skipped)
     }
 
-        pub const fn add(&mut self, count: u32) {
+    /// Add to the skip count, saturating at `u32::MAX`.
+    pub const fn add(&mut self, count: u32) {
         self.0 = self.0.saturating_add(count);
     }
 }
 
+/// How the cursor is currently holding before the next act.
 #[derive(Debug, Clone)]
 pub enum ActHoldPhase {
-        Timed {
-                remaining: Timer,
+    /// Fixed-duration dwell timer.
+    Timed {
+        /// Time remaining on the dwell.
+        remaining: Timer,
     },
-                            AwaitingImpact {
-                seen_busy: FxSeenBusy,
-                cap:       Timer,
-                        beat:      Duration,
+    /// Wait for projectile/impact FX, then a short beat.
+    AwaitingImpact {
+        /// Whether the FX pipeline was seen busy at least once.
+        seen_busy: FxSeenBusy,
+        /// Hard cap on how long to wait for impact.
+        cap: Timer,
+        /// Beat after impact (or cap) before releasing.
+        beat: Duration,
     },
 }
 
+/// Active hold attached to the playback cursor.
 #[derive(Debug, Clone)]
 pub struct ActHold {
-        phase: ActHoldPhase,
+    phase: ActHoldPhase,
 }
 
 impl ActHold {
-        #[must_use]
+    /// Hold for a fixed number of seconds.
+    #[must_use]
     pub fn timed(seconds: f32) -> Self {
         Self {
             phase: ActHoldPhase::Timed {
@@ -54,23 +70,26 @@ impl ActHold {
         }
     }
 
-        #[must_use]
+    /// Hold until impact FX clears or `cap_seconds`, then beat for `beat_seconds`.
+    #[must_use]
     pub fn awaiting_impact(cap_seconds: f32, beat_seconds: f32) -> Self {
         Self {
             phase: ActHoldPhase::AwaitingImpact {
                 seen_busy: FxSeenBusy::new(false),
-                cap:       Timer::from_seconds(cap_seconds.max(0.0), TimerMode::Once),
-                beat:      Duration::from_secs_f32(beat_seconds.max(0.0)),
+                cap: Timer::from_seconds(cap_seconds.max(0.0), TimerMode::Once),
+                beat: Duration::from_secs_f32(beat_seconds.max(0.0)),
             },
         }
     }
 
-        #[must_use]
+    /// Current hold phase.
+    #[must_use]
     pub const fn phase(&self) -> &ActHoldPhase {
         &self.phase
     }
 
-                                #[must_use]
+    /// Advance the hold by `delta`. Returns `None` when the hold is finished.
+    #[must_use]
     pub fn advanced(mut self, delta: Duration, pipeline_busy: bool) -> Option<Self> {
         match &mut self.phase {
             ActHoldPhase::Timed { remaining } => {
@@ -106,45 +125,53 @@ impl ActHold {
     }
 }
 
+/// Where the view has read in the act log, and any active hold.
 #[derive(Resource, Debug, Default)]
 pub struct PlaybackCursor {
-            shown:   ActSeq,
-        holding: Option<ActHold>,
-        skipped: SkippedActs,
+    shown: ActSeq,
+    holding: Option<ActHold>,
+    skipped: SkippedActs,
 }
 
 impl PlaybackCursor {
-        #[must_use]
+    /// Sequence of the next act the view will show.
+    #[must_use]
     pub const fn shown(&self) -> ActSeq {
         self.shown
     }
 
-        #[must_use]
+    /// Whether a hold is currently active.
+    #[must_use]
     pub const fn is_holding(&self) -> bool {
         self.holding.is_some()
     }
 
-        #[must_use]
+    /// Active hold, if any.
+    #[must_use]
     pub const fn hold(&self) -> Option<&ActHold> {
         self.holding.as_ref()
     }
 
-        #[must_use]
+    /// Acts skipped by catch-up jumps.
+    #[must_use]
     pub const fn skipped(&self) -> SkippedActs {
         self.skipped
     }
 
-        pub fn reset(&mut self) {
+    /// Reset to the start of the log with no hold.
+    pub fn reset(&mut self) {
         self.shown = ActSeq::START;
         self.holding = None;
         self.skipped = SkippedActs::default();
     }
 
-        pub const fn hold_for(&mut self, hold: ActHold) {
+    /// Begin holding with the given phase.
+    pub const fn hold_for(&mut self, hold: ActHold) {
         self.holding = Some(hold);
     }
 
-            pub fn tick_hold(&mut self, delta: Duration, pipeline_busy: bool) -> bool {
+    /// Tick the active hold. Returns `true` when the cursor is free to advance.
+    pub fn tick_hold(&mut self, delta: Duration, pipeline_busy: bool) -> bool {
         match self.holding.take() {
             None => true,
             Some(hold) => {
@@ -154,11 +181,13 @@ impl PlaybackCursor {
         }
     }
 
-        pub const fn advance_past_shown(&mut self) {
+    /// Move past the act just shown.
+    pub const fn advance_past_shown(&mut self) {
         self.shown = self.shown.next();
     }
 
-        pub fn jump_to(&mut self, oldest: ActSeq) {
+    /// Jump the cursor to `oldest`, counting skipped acts.
+    pub fn jump_to(&mut self, oldest: ActSeq) {
         self.skipped
             .add(u32::try_from(oldest.distance_from(self.shown)).unwrap_or(u32::MAX));
         self.shown = oldest;

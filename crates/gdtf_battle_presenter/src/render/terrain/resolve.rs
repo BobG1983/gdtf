@@ -1,3 +1,5 @@
+//! Sprite-def resolution helpers and missing-tile texture.
+
 use bevy::{
     asset::RenderAssetUsages,
     image::{Image, TextureAtlasLayout},
@@ -9,11 +11,13 @@ use gdtf_content_families::sprites::{
     SpriteDef, SpriteDefRegistry, SpriteImagePath, SpriteName, SpriteRect, SpriteSource,
 };
 
+/// Look up a sprite def by name.
 #[must_use]
 pub fn resolve_sprite<'a>(defs: &'a SpriteDefRegistry, name: &str) -> Option<&'a SpriteDef> {
     defs.def(&SpriteName::new(name.to_owned()))
 }
 
+/// Split a sprite source into image path and optional sheet rect.
 #[must_use]
 pub const fn source_parts(source: &SpriteSource) -> (&SpriteImagePath, Option<&SpriteRect>) {
     match source {
@@ -22,6 +26,7 @@ pub const fn source_parts(source: &SpriteSource) -> (&SpriteImagePath, Option<&S
     }
 }
 
+/// Convert an authored sprite rect to a Bevy `URect`.
 #[must_use]
 pub fn source_urect(rect: &SpriteRect) -> URect {
     let min = UVec2::new(*rect.x, *rect.y);
@@ -31,6 +36,7 @@ pub fn source_urect(rect: &SpriteRect) -> URect {
     }
 }
 
+/// Pixel size of a sheet-sourced sprite, if any.
 #[must_use]
 pub fn source_px_size(source: &SpriteSource) -> Option<UVec2> {
     match source {
@@ -39,6 +45,7 @@ pub fn source_px_size(source: &SpriteSource) -> Option<UVec2> {
     }
 }
 
+/// Single-region atlas layout covering `region`.
 #[must_use]
 pub fn single_rect_layout(region: URect) -> TextureAtlasLayout {
     let mut layout = TextureAtlasLayout::new_empty(region.max);
@@ -46,6 +53,7 @@ pub fn single_rect_layout(region: URect) -> TextureAtlasLayout {
     layout
 }
 
+/// World-space offset from cell center for an authored anchor.
 #[must_use]
 pub fn anchor_world_offset(def: &SpriteDef, sprite_px: UVec2, drawn_size: Vec2) -> Vec2 {
     if sprite_px.x == 0 || sprite_px.y == 0 {
@@ -61,11 +69,13 @@ pub fn anchor_world_offset(def: &SpriteDef, sprite_px: UVec2, drawn_size: Vec2) 
     )
 }
 
+/// Magenta 1×1 placeholder used when a sprite def is missing.
 #[derive(Resource, Debug, Clone)]
 pub struct MissingTileTexture(Handle<Image>);
 
 impl MissingTileTexture {
-        #[must_use]
+    /// Clone of the placeholder image handle.
+    #[must_use]
     pub fn handle(&self) -> Handle<Image> {
         self.0.clone()
     }
@@ -73,11 +83,12 @@ impl MissingTileTexture {
 
 const MISSING_TEXEL: [u8; 4] = [200, 60, 200, 255];
 
+/// Insert the missing-tile placeholder texture resource.
 pub fn setup_missing_tile_texture(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
     let image = Image::new_fill(
         Extent3d {
-            width:                 1,
-            height:                1,
+            width: 1,
+            height: 1,
             depth_or_array_layers: 1,
         },
         TextureDimension::D2,
