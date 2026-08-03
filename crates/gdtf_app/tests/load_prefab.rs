@@ -65,7 +65,6 @@ fn real_asset_resolves_prefab_registry_by_theme_uuid() {
     );
     assert!(
         app.world().get_resource::<PrefabRegistry>().is_some(),
-        "a PrefabRegistry must be present when Load reaches Intro (the GTW-489 gate clause \
-         waited for it — not a hand-seeded default)",
+        "a PrefabRegistry must be present when Load reaches Intro (the gate waited for it — not a hand-seeded default)",
     );
 }

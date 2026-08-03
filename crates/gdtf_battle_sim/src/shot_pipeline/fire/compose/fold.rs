@@ -29,11 +29,7 @@ fn struck_piece_entity(
 /// Resolve the primary impact of a round into a `HitReport`.
 #[expect(
     clippy::too_many_arguments,
-    reason = "this is the exact irreducible fold set resolve_round passed inline before \
-              GTW-541 (outcome / snapshot / grids + the disjoint wears/pieces queries + \
-              tuning + the severity/injury RNG streams + the injury tables/registry); \
-              bundling the queries would obscure the GTW-323 disjointness the ParamSet-free \
-              coexistence relies on — the same reason fold_ganger_round documents"
+    reason = "wears/pieces stay disjoint; severity and injury RNGs stay separate"
 )]
 pub(super) fn resolve_primary_report(
     outcome: &crate::resolve_coarse::ShotOutcome,
@@ -86,11 +82,7 @@ pub(super) fn resolve_primary_report(
 /// Apply damage to a living combatant hit by this round.
 #[expect(
     clippy::too_many_arguments,
-    reason = "the ganger fold needs the outcome / struck entity / snapshot / grids plus \
-              the disjoint wears+pieces queries + tuning + severity-rng, and GTW-438 adds \
-              the injury-roll inputs (InjuryTables + InjuryRegistry + the &mut InjuryRng \
-              draw stream); bundling the queries would obscure the GTW-323 disjointness \
-              the ParamSet-free coexistence relies on"
+    reason = "wears/pieces stay disjoint; severity and injury RNGs stay separate"
 )]
 pub(super) fn fold_ganger_round(
     outcome: &crate::resolve_coarse::ShotOutcome,

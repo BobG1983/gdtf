@@ -71,8 +71,7 @@ fn shipped_weapon_attachment_keys_resolve_and_fit() {
         };
         assert!(
             item_fits,
-            "the shipped `{weapon_key}` must declare a slot the fitted `{attachment_key}` \
-             occupies (the GTW-554 slot gate would otherwise cleanly reject the live fitting)",
+            "the shipped `{weapon_key}` must declare a slot the fitted `{attachment_key}` occupies",
         );
     }
 
@@ -92,8 +91,7 @@ fn shipped_weapon_attachment_keys_resolve_and_fit() {
     };
     assert!(
         melee_pair_fits,
-        "the shipped `chainsword` must author the `butchers_weight` key AND declare the \
-         Counterweight slot it occupies (the GTW-554 melee attachment support, live)",
+        "the shipped `chainsword` must author the `butchers_weight` key AND declare the Counterweight slot it occupies",
     );
 
     assert_magazine_slot_fits_and_rejects(attachments, weapons, melee);
@@ -110,7 +108,7 @@ fn assert_magazine_slot_fits_and_rejects(
     assert_eq!(
         mag_item.slot,
         AttachmentSlot::Magazine,
-        "GTW-584: the shipped `extended_mag` must be re-slotted onto the Magazine well",
+        "the shipped `extended_mag` must be re-slotted onto the Magazine well",
     );
 
     let mag_fits_ranged = weapons
@@ -118,8 +116,7 @@ fn assert_magazine_slot_fits_and_rejects(
         .is_some_and(|gun| attachment_fits(&gun.slots, &[], mag_item.slot).is_ok());
     assert!(
         mag_fits_ranged,
-        "GTW-584: the magazine-fed `stub_pistol` must declare a Magazine slot the \
-         `extended_mag` fits (fit-accepted through the real GTW-554 gate)",
+        "the magazine-fed `stub_pistol` must declare a Magazine slot the `extended_mag` fits",
     );
 
     let mag_rejected_by_melee = melee
@@ -127,7 +124,6 @@ fn assert_magazine_slot_fits_and_rejects(
         .is_some_and(|sword| attachment_fits(&sword.slots, &[], mag_item.slot).is_err());
     assert!(
         mag_rejected_by_melee,
-        "GTW-584: the melee `chainsword` offers no Magazine slot, so the `extended_mag` is \
-         cleanly rejected (wrong-slot rejection through the real gate)",
+        "the melee `chainsword` offers no Magazine slot, so the `extended_mag` is cleanly rejected",
     );
 }

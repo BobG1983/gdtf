@@ -1,4 +1,4 @@
-//! GTW-205 (E10.3): `AppState::Load` loads the authored `Situation` `.ron`
+//! `AppState::Load` loads the authored `Situation` `.ron`.
 #[path = "load_suite/gate.rs"]
 mod gate;
 
@@ -101,8 +101,7 @@ fn real_asset_gate_waits_for_the_real_situation() {
         assert!(
             !loaded.rosters.is_empty(),
             "the situation that cleared the gate must be the real (non-empty) skirmish, not the \
-             empty default — Load waited for the real situation (GTW-744: distinguished by its \
-             non-empty roster, since the shipped skirmish authors `rosters`, not placed `gangers`)",
+             empty default — Load waited for the real situation (distinguished by its non-empty roster)",
         );
     }
 }

@@ -31,9 +31,7 @@ pub struct ProjectileTravel {
 impl ProjectileTravel {
     #[expect(
         clippy::too_many_arguments,
-        reason = "each is a distinct flight datum: the two endpoints, the damage type, the \
-                  velocity, the stagger launch delay, the GTW-327 pops + anchor, and the GTW-328 \
-                  shooter + report threaded to the impact signal — the ctor IS the bundle"
+        reason = "endpoints, damage, velocity, pops, anchor, shooter, and report are the flight payload"
     )]
     #[must_use]
     pub(in crate::actors::fx) fn new(

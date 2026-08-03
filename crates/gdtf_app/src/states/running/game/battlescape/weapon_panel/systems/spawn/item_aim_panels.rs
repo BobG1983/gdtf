@@ -1,4 +1,4 @@
-//! (GTW-583); the authoritative layout doc lives on the parent `spawn` module.
+//! Item and aim sub-panels for the weapon panel.
 
 use bevy::{
     ecs::template::template,

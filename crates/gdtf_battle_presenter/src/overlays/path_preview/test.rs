@@ -47,7 +47,7 @@ fn new_preview_holds_route_and_cost() {
     assert_eq!(
         *preview.cost(),
         16,
-        "the preview exposes the §48 total cost (Path::total) unchanged",
+        "the preview exposes the total cost unchanged",
     );
 }
 
@@ -76,8 +76,7 @@ fn visible_steps_full_alpha_explored_steps_dimmer() {
     );
     assert!(
         exp_alpha < vis_alpha,
-        "the EXPLORED (remembered) step draws at a REDUCED alpha vs the VISIBLE step (§53): \
-         explored={exp_alpha:?} visible={vis_alpha:?}",
+        "the EXPLORED step draws at a reduced alpha vs the VISIBLE step: explored={exp_alpha:?} visible={vis_alpha:?}",
     );
 }
 
@@ -94,14 +93,12 @@ fn route_tile_is_half_alpha_but_cost_label_stays_opaque() {
         .map(|d| d.tint.alpha());
     assert!(
         tile_alpha.is_some_and(|a| (a - 0.5).abs() < 0.001),
-        "the VISIBLE route TILE draws at EXACTLY 0.5 alpha (GTW-371 C1): the route tiles are \
-         ~half transparent; got {tile_alpha:?}",
+        "the VISIBLE route TILE draws at EXACTLY 0.5 alpha; got {tile_alpha:?}",
     );
 
     assert!(
         (LABEL_COLOR.alpha() - 1.0).abs() < 0.001,
-        "the cost LABEL colour stays FULLY OPAQUE (alpha 1.0) — transparency is on the route \
-         tiles only, never the cost text (GTW-371 C1); got {}",
+        "the cost LABEL colour stays FULLY OPAQUE (alpha 1.0); got {}",
         LABEL_COLOR.alpha(),
     );
 }
@@ -118,16 +115,15 @@ fn off_storey_steps_hard_cut_with_link_marker() {
     assert_eq!(
         draws.len(),
         3,
-        "two active-storey steps + one off-storey link marker (storey-1 cells hard-cut)",
+        "two active-storey steps + one off-storey link marker",
     );
     assert!(
         draws.iter().all(|d| d.cell.z == 0),
-        "no off-storey cell is drawn (the hard cut, C5)",
+        "no off-storey cell is drawn",
     );
     assert!(
         draws.iter().filter(|d| d.cell == last_active).count() == 2,
-        "the link marker is drawn at the last active-storey cell ({last_active:?}) — its step \
-         sprite plus the off-storey-continuation marker",
+        "the link marker is drawn at the last active-storey cell",
     );
 }
 
@@ -176,11 +172,11 @@ fn target_cell_is_the_route_destination() {
     assert_eq!(
         preview.cells().last().copied(),
         Some(goal),
-        "the previewed target cell is the route's last cell (the destination)",
+        "the previewed target cell is the route's last cell",
     );
     assert_eq!(
         label_text(preview.cost()),
         "16 TU",
-        "the target-cell label shows the previewed route cost (Path::total)",
+        "the target-cell label shows the previewed route cost",
     );
 }

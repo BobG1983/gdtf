@@ -12,8 +12,7 @@ pub mod highlight;
 pub mod path_preview;
 /// Shared sprite-pool grow/hide helper.
 pub mod pool;
-/// The reachable-range DEBUG overlay (GTW-450) — render-only, so the whole module
-/// compiles ONLY in a debug build (`#[cfg(debug_assertions)]`, C1). In a release
+/// Reachable-range DEBUG overlay — render-only; compiles only in debug builds.
 #[cfg(debug_assertions)]
 pub mod reachable;
 /// Whether a cell is squad-visible for targeting UI.

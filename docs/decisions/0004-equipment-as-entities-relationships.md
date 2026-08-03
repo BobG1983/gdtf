@@ -7,21 +7,20 @@ description: Model weapons and armor as their own entities related to the ganger
 
 ## Status
 
-`Accepted` — 2026-06-21, driven by [GTW-323](https://linear.app/robert-gardner/issue/GTW-323).
+`Accepted` — 2026-06-21.
 
-Implemented across GTW-323's three slices: slice 1 (armor-as-entities), slice 2
-(weapon-as-entity), and slice 3 (presenter reads through the relationships + removal
-of the transient on-ganger shapes). Equipment now lives exclusively on the related
-weapon (`Wields`) and armor-piece (`Wears`) entities — no equipment stat data is stored
-on the ganger.
+Implemented across three slices: armor-as-entities, weapon-as-entity, and presenter
+reads through the relationships with removal of the transient on-ganger shapes.
+Equipment now lives exclusively on the related weapon (`Wields`) and armor-piece
+(`Wears`) entities — no equipment stat data is stored on the ganger.
 
 ## Context
 
 GDTF's core loop is *fight → consequences on survivors → carry the scarred
 roster forward → fight again, changed* ([../index.md](../index.md)). Persistent
 gear across battles — loot it, transfer it between gangers, drop it, pick it up,
-mod it ([GTW-41](https://linear.app/robert-gardner/issue/GTW-41)), carry it onto
-the next map — is a first-class part of that loop, not a battle-only detail.
+mod it, carry it onto the next map — is a first-class part of that loop, not a
+battle-only detail.
 
 Today equipment is **stored on the ganger entity**, and inconsistently:
 
@@ -29,23 +28,20 @@ Today equipment is **stored on the ganger entity**, and inconsistently:
   a fixed-size array of the six body-part pieces (`armor/worn.rs`).
 - **Weapon** is *decomposed into a bundle of components on the ganger* — a
   `Weapon` marker plus one stat component per number, plus `WeaponName`,
-  `Magazine`, `FireMode`, etc. (the
-  [GTW-198](https://linear.app/robert-gardner/issue/GTW-198) decomposition).
+  `Magazine`, `FireMode`, etc.
 
 So armor is one packed component and the weapon is a scatter of components, both
 living **on the ganger**. Neither models a *thing the ganger has* that could be
 removed, swapped, transferred, or extended (mods) — they are properties of the
 ganger, copied as blobs.
 
-The data-driven loaders for both already landed:
-[GTW-257](https://linear.app/robert-gardner/issue/GTW-257) (`WeaponRegistry` +
+The data-driven loaders for both already landed: `WeaponRegistry` +
 `WeaponSpec` from `assets/content/weapons/ranged/*.weapon.ron`; melee weapons are the
-GTW-505 sibling — `MeleeWeaponRegistry` + `MeleeWeaponSpec` from
-`assets/content/weapons/melee/*.melee_weapon.ron`, related via the SAME `Wields`) and
-[GTW-269](https://linear.app/robert-gardner/issue/GTW-269) (`ArmorRegistry` +
-`ArmorSpec` from `assets/content/armor/*.armor.ron`). `setup_battle` currently resolves a
-ganger's weapon/armor *keys* against those registries and **seeds the resolved
-values onto the ganger** (a `WeaponBundle` insert; `WornArmor::seed_from`).
+sibling — `MeleeWeaponRegistry` + `MeleeWeaponSpec` from
+`assets/content/weapons/melee/*.melee_weapon.ron`, related via the SAME `Wields` — and
+`ArmorRegistry` + `ArmorSpec` from `assets/content/armor/*.armor.ron`. `setup_battle`
+currently resolves a ganger's weapon/armor *keys* against those registries and **seeds
+the resolved values onto the ganger** (a `WeaponBundle` insert; `WornArmor::seed_from`).
 
 Bevy 0.19.0 has first-class **ECS relationships** (a `Relationship` component +
 its `RelationshipTarget` collection, with automatic back-reference maintenance
@@ -67,27 +63,23 @@ ECS relationships, instead of as components stored on the ganger.**
   armor-piece entities — one entity per worn `ArmorPiece`, each tagged with its
   `BodyPart`. The piece's stat components (`ArmorFloor`/`ArmorProtection`/
   `ArmorIntegrity`/`ArmorHardness`/`ArmorType`) live **on the piece entity**.
-- `ganger --Wields--> weapon` entity — the weapon's stat components (the
-  GTW-198 decomposition) move **off the ganger onto the weapon entity**, leaving
-  room for a future mod sub-hierarchy (`weapon --HasMod--> mod` entities,
-  GTW-41) and for multiple wielded/stowed weapons + throwables as additional
-  related entities.
+- `ganger --Wields--> weapon` entity — the weapon's stat components move **off
+  the ganger onto the weapon entity**, leaving room for a future mod sub-hierarchy
+  (`weapon --HasMod--> mod` entities) and for multiple wielded/stowed weapons +
+  throwables as additional related entities.
 
 Concretely: custom relationship component pairs `WornBy`/`Wears` (armor pieces) and
 `WieldedBy`/`Wields` (the weapon), defined against the pinned Bevy 0.19.0
 `#[relationship]` / `#[relationship_target(linked_spawn)]` API. `setup_battle`
 **spawns** an armor-piece entity per `ArmorSpec` piece and a weapon entity from
-the `WeaponSpec` (via `bsn!` `queue_spawn_related_scenes`, post-GTW-322), then
-**relates** them to the ganger — instead of inserting a `WornArmor`/`WeaponBundle`
-onto the ganger. The
-[GTW-257](https://linear.app/robert-gardner/issue/GTW-257)/[GTW-269](https://linear.app/robert-gardner/issue/GTW-269)
-registries → spec lookups are **reused unchanged**; only the terminal "seed onto
+the `WeaponSpec` (via `bsn!` `queue_spawn_related_scenes`), then **relates** them
+to the ganger — instead of inserting a `WornArmor`/`WeaponBundle` onto the ganger.
+The registries → spec lookups are **reused unchanged**; only the terminal "seed onto
 the ganger" step becomes "spawn equipment entity + relate".
 
-This supersedes the [GTW-198](https://linear.app/robert-gardner/issue/GTW-198)
-direction for *where* the decomposed weapon components live (they move from the
-ganger onto the weapon entity); the decomposition itself (one component per
-number, queryable) stays.
+This supersedes the earlier direction for *where* the decomposed weapon components
+live (they move from the ganger onto the weapon entity); the decomposition itself
+(one component per number, queryable) stays.
 
 ## Consequences
 
@@ -96,12 +88,10 @@ number, queryable) stays.
 - Loot / transfer / drop / pick-up / persistent gear across battles become
   **re-targeting a relationship** (or re-parenting an entity), not copying
   component blobs. Aligns the ECS shape with the campaign/roster layer
-  ([GTW-67](https://linear.app/robert-gardner/issue/GTW-67) equipment & loadout,
-  [GTW-100](https://linear.app/robert-gardner/issue/GTW-100) gear catalog).
-- Weapon modding/attachments ([GTW-41](https://linear.app/robert-gardner/issue/GTW-41))
-  becomes a sub-hierarchy hanging off the weapon entity; multiple weapons +
-  throwables become additional related entities — neither expressible cleanly
-  with components-on-the-ganger.
+  (equipment & loadout, gear catalog).
+- Weapon modding/attachments becomes a sub-hierarchy hanging off the weapon
+  entity; multiple weapons + throwables become additional related entities —
+  neither expressible cleanly with components-on-the-ganger.
 - Removes the armor-vs-weapon asymmetry: both are entities the ganger relates to.
 
 **Cost / new constraints:**
@@ -117,30 +107,29 @@ number, queryable) stays.
 - The lookup is no longer an O(1) array index — it's a relationship traversal +
   a keyed `Query::get` on the piece entity. Cheap, but a new access pattern.
 
-**Determinism — NOT a risk (this corrects GTW-323's original framing):** the
-seeded byte-equal-volley property holds. The sim reads equipment by **key**
-(part → piece, ganger → weapon), never by order-dependent iteration over a
-component array, so the looked-up value is identical regardless of entity
-storage. RNG draws are per-round sequential (the march draws none), and the sim
-already avoids `Entity`-id-order dependence (e.g. `auto_select` sorts by the
-`(z, y, x)` cell key). Bevy's `RelationshipTarget` collection is
-insertion-ordered. The remodel changes *where a value is stored*, not *what
-value a keyed lookup returns* or *the RNG draw order*. **Keep one seeded-replay
-regression test as cheap insurance**, but determinism is not the gating concern.
+**Determinism — NOT a risk:** the seeded byte-equal-volley property holds. The
+sim reads equipment by **key** (part → piece, ganger → weapon), never by
+order-dependent iteration over a component array, so the looked-up value is
+identical regardless of entity storage. RNG draws are per-round sequential (the
+march draws none), and the sim already avoids `Entity`-id-order dependence (e.g.
+`auto_select` sorts by the `(z, y, x)` cell key). Bevy's `RelationshipTarget`
+collection is insertion-ordered. The remodel changes *where a value is stored*,
+not *what value a keyed lookup returns* or *the RNG draw order*. **Keep one
+seeded-replay regression test as cheap insurance**, but determinism is not the
+gating concern.
 
-**Mitigations already in place:** [GTW-269](https://linear.app/robert-gardner/issue/GTW-269)
-(loaders/registries/specs) and [GTW-324](https://linear.app/robert-gardner/issue/GTW-324)
-(central `test_support` builders — `GangerSpawnBuilder`/`SituationBuilder`/
-`BattleAppBuilder`) both landed; the latter means the harness ripple from this
-remodel is absorbed by the builders rather than ~30 inline test sites.
+**Mitigations already in place:** the loaders/registries/specs and the central
+`test_support` builders (`GangerSpawnBuilder`/`SituationBuilder`/`BattleAppBuilder`)
+both landed; the latter means the harness ripple from this remodel is absorbed by
+the builders rather than ~30 inline test sites.
 
-**Suggested slices (refine when accepted):**
+**Suggested slices:**
 
 1. Relationship types (`Wears`/`Wears`-target, `Wields`/`Wields`-target) +
    armor-as-entities: `setup_battle` spawns+relates armor pieces; `resolve_hit`/
    `struck_piece` + `apply_hit`/`wear_armor` read/mutate the piece entity; a
    seeded-replay determinism regression test.
-2. Weapon-as-entity: the GTW-198 weapon components move onto the weapon entity;
+2. Weapon-as-entity: the weapon components move onto the weapon entity;
    `fire()` reads them via `Wields`; `setup_battle` spawns+relates the weapon.
 3. Presenter reads: weapon-panel / status-panel resolve the ganger's wielded
    weapon / worn pieces through the relationships.
@@ -156,13 +145,13 @@ note once this is Accepted (link, don't duplicate).
   `Wears` relation with a per-piece `BodyPart` tag (keyed `ganger → Wears →
   BodyPart-tagged piece` at the `struck_piece` lookup), NOT per-slot relations — keyed
   access keeps determinism (allocation-order-independent) and reads cleanest.
-- **`WornArmor` / the on-ganger `WeaponBundle` are fully REMOVED** (GTW-323 slice 3).
-  Slices 1 + 2 kept them as a transient on-ganger authoring copy so the sim could
-  migrate ahead of the presenter; slice 3 migrated the presenter + input reads to the
-  relationships and removed the on-ganger shapes (the `WornArmor` type is deleted; the
-  weapon stat components no longer ride on the ganger). The `WeaponBundle`/`ArmorSpec`
-  resolved-spec carriers remain — they are the values `setup_battle` spawns the related
-  entities FROM, never stored on the ganger.
+- **`WornArmor` / the on-ganger `WeaponBundle` are fully REMOVED.** Early slices kept
+  them as a transient on-ganger authoring copy so the sim could migrate ahead of the
+  presenter; the final slice migrated the presenter + input reads to the relationships
+  and removed the on-ganger shapes (the `WornArmor` type is deleted; the weapon stat
+  components no longer ride on the ganger). The `WeaponBundle`/`ArmorSpec` resolved-spec
+  carriers remain — they are the values `setup_battle` spawns the related entities FROM,
+  never stored on the ganger.
 
 ## Alternatives considered
 
@@ -181,6 +170,5 @@ note once this is Accepted (link, don't duplicate).
   these entities".
 - **Defer the remodel; build new equipment work on the components-on-ganger
   model.** Rejected for new equipment work, but note the data-driven loaders
-  (GTW-257/269) were deliberately built model-agnostic and land *as-is* — only
-  the terminal seeding step changes here, so nothing was wasted by sequencing
-  the loaders first.
+  were deliberately built model-agnostic and land *as-is* — only the terminal
+  seeding step changes here, so nothing was wasted by sequencing the loaders first.

@@ -87,7 +87,7 @@ fn the_expiring_tick_removes_the_dot_not_an_inert_component() {
     );
     assert!(
         dot_of(&app, ganger).is_none(),
-        "the expiring tick must REMOVE the Dot component (decrement-or-REMOVE, GTW-643)",
+        "the expiring tick must REMOVE the Dot component (decrement-or-REMOVE)",
     );
 }
 
@@ -115,7 +115,7 @@ fn a_dot_tick_that_empties_hp_flips_the_ganger_to_dead() {
     assert_eq!(
         life_of(&app, ganger),
         LifeState::Dead,
-        "the GTW-544 locked design: a DOT tick that empties HP KILLS (Dead, not Downed)",
+        "a DOT tick that empties HP KILLS (Dead, not Downed)",
     );
     assert!(
         dot_of(&app, ganger).is_none(),

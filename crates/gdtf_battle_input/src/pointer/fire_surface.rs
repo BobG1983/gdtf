@@ -28,9 +28,7 @@ pub type WeaponMagazine<'a> = (&'a Magazine, &'a Handedness);
 
 #[expect(
     clippy::too_many_arguments,
-    reason = "GTW-505 C5: the ranged-weapon resolution adds the MeleeWeapon marker probe on top of \
-              the GTW-323 slice-3 Wields + weapon-magazine queries, so the gun's magazine resolves \
-              excluding the melee weapon the ganger also wields"
+    reason = "melee probe plus Wields and magazine queries so the ranged weapon resolves cleanly"
 )]
 #[must_use]
 pub(crate) fn try_fire_request(

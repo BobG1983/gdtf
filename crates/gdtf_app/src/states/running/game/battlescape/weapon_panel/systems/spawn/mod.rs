@@ -1,4 +1,4 @@
-//! [`gdtf_ui`] panel group on the GTW-120 UI camera to the AUTHORITATIVE layout (GTW-298, user
+//! Weapon panel spawn on the UI camera.
 mod columns;
 mod combined;
 mod geometry;

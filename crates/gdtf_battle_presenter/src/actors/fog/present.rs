@@ -121,7 +121,7 @@ mod tests {
             assert_eq!(
                 context_below_brightness(ContextDepth::new(depth)),
                 tier_two,
-                "depth {depth} must clamp to tier two (a <=2-tier ramp — GTW-594 C3)",
+                "depth {depth} must clamp to tier two (a <=2-tier ramp)",
             );
         }
         assert_eq!(
@@ -131,8 +131,7 @@ mod tests {
         );
         assert_eq!(
             CONTEXT_TIER_ONE, CONTEXT_TIER_TWO,
-            "day one the ramp is FLAT (both tiers equal) — the GTW-594 promotion changes \
-             no battlescape pixel (C3)",
+            "day one the ramp is FLAT (both tiers equal)",
         );
     }
 }

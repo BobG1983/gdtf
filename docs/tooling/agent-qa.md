@@ -5,8 +5,7 @@ outside: launch a child process, read the list of commands that host publishes,
 run one, read what the child printed, and stop it. WHAT a host can be asked to do
 is that published list, read at run time — not a fixed tool set. See
 [qa-commands.md](qa-commands.md) for how a command is added. This is the QA
-control channel built across the QA-net ticket run (the GTW-694 epic). It has
-three processes and one shared wire contract:
+control channel. It has three processes and one shared wire contract:
 
 - **The game**, built with the `net_qa` feature, opens a loopback TCP listener
   that publishes its own command list and runs a named command against the live
@@ -16,8 +15,8 @@ three processes and one shared wire contract:
   separate process from the game and can run at the same time.
 - **The MCP host** (`gdtf_qa_mcp`) speaks a hand-rolled JSON-RPC 2.0 subset on
   stdin/stdout to the model harness and forwards each tool call to the game or
-  the editor over that loopback socket. ONE host binary manages BOTH children
-  (GTW-808): it holds a link and a lifecycle manager per host, so a game on
+  the editor over that loopback socket. ONE host binary manages BOTH children:
+  it holds a link and a lifecycle manager per host, so a game on
   `7616` and an editor on `7617` can be up and driven at the same time.
 - **`gdtf_qa_protocol`** is the bevy-free crate all three link — `crates/gdtf_app`
   for the game, `crates/gdtf_content_editor` for the editor, and `bins/gdtf_qa_mcp`
@@ -35,7 +34,7 @@ The MCP host launches the game as a child process when the harness calls the
 `bins/gdtf_qa_mcp/src/lifecycle/spawn.rs` (behind the `ChildSpawner` trait, so
 tests can substitute a stub). WHAT it launches is the call's own recipe — a
 `LaunchSpec` (`bins/gdtf_qa_mcp/src/lifecycle/launch/`) of four typed values:
-package, features, working directory, environment overrides (GTW-875). Each one
+package, features, working directory, environment overrides. Each one
 the call omits falls back to the default game recipe, so a bare `launch`
 still runs:
 
@@ -89,15 +88,14 @@ One game runs at a time, and the manager remembers the recipe that built it:
   checkout would hand back a success for a build that was never started.
 
 QA evidence goes through the MCP host. Hand-writing a socket client against this
-port is not an accepted route — GTW-875 records a QA pass that did exactly that
-and thereby tested the wrong tree. Running the recipe by hand from a shell is
-fine for bringing the editor or game up (and is how GTW-878's evidence is
-produced); driving it is the host's job. If a needed tool is missing, that is a
-defect to file, not a reason to bypass the host.
+port is not an accepted route — that path tested the wrong tree once and is how
+to get it wrong again. Running the recipe by hand from a shell is fine for
+bringing the editor or game up; driving it is the host's job. If a needed tool
+is missing, that is a defect to file, not a reason to bypass the host.
 
 ## The launch recipe — the content editor
 
-`launch(host="editor")` is the editor's launch (GTW-808): the same host, the same
+`launch(host="editor")` is the editor's launch: the same host, the same
 `CargoSpawner`, the same five recipe arguments — with the editor's own defaults.
 A bare `launch(host="editor")` runs:
 
@@ -135,9 +133,9 @@ MCP host, per the rule above. It is a separate binary package
 (`bins/gdtf_content_editor/Cargo.toml`, package `gdtf_content_editor_bin`) with
 its own `net_qa` feature, its own two environment variables, and its own default
 port, and running it by hand opens the same channel that launch opens.
-GTW-878 added that binary feature; before it, the editor's listener existed only
-inside workspace-wide `cargo` checks and no launchable editor could open a port
-at all.
+The binary feature passthrough is what makes that possible; without it the
+editor's listener existed only inside workspace-wide `cargo` checks and no
+launchable editor could open a port at all.
 
 ```bash
 GDTF_EDITOR_NET_QA=1 GDTF_EDITOR_NET_QA_PORT=7617 \
@@ -192,16 +190,15 @@ transport's listener thread answers it from the `HelloFacts` the editor passed
 to `run_listener` (`editor_hello_facts()` in
 `crates/gdtf_content_editor/src/net_qa/config.rs`), which is where the server
 name `gdtf-editor-net-qa` — how a client tells the two hosts apart — now comes
-from (GTW-940).
+from.
 
 The editor itself answers the two command-layer requests (`route_editor_requests`
 in `crates/gdtf_content_editor/src/net_qa/router/route.rs`): a `Catalogue`, with
 an EMPTY command list under its own host name, and a `Run`, with `Unknown` —
-because the editor publishes no commands yet. Building its set is the next editor
-ticket. Its capture pump
-(`crates/gdtf_content_editor/src/net_qa/screenshot/`) is still there and still
-tested, waiting for the capture command that will fill its queue. The wire shape,
-the framing, and the protocol version are the game's — see
+because the editor publishes no commands yet. Building its set is follow-on work.
+Its capture pump (`crates/gdtf_content_editor/src/net_qa/screenshot/`) is still
+there and still tested, waiting for the capture command that will fill its queue.
+The wire shape, the framing, and the protocol version are the game's — see
 [the protocol sketch](#the-protocol-sketch) — so one client library speaks to
 both.
 
@@ -246,9 +243,7 @@ The editor mirrors all three gates with its own names: the binary feature
 `NetQaEditorPlugin::from_env` reads `GDTF_EDITOR_NET_QA`. That binary feature is
 pinned by a conformance test —
 `crates/gdtf_test_utils/tests/binary_feature_passthrough/` fails the suite if a
-binary over a `net_qa`-bearing library stops declaring the passthrough, which is
-exactly how the editor's listener spent GTW-804 and GTW-805 unreachable from any
-launchable process.
+binary over a `net_qa`-bearing library stops declaring the passthrough.
 
 ## The tool vocabulary
 
@@ -259,8 +254,7 @@ The MCP host exposes FIVE tools, enumerated once by the `ToolName` enum in
 — or `"editor"`), so which child a call reaches is the CALL's to say rather than
 the tool's. `resolve_host` in `bins/gdtf_qa_mcp/src/mcp/courier/handle.rs`
 resolves it, and a `host` value naming neither child is rejected as invalid
-params rather than quietly defaulting, so a typo cannot drive the wrong process
-(GTW-880).
+params rather than quietly defaulting, so a typo cannot drive the wrong process.
 
 **The two command tools name no command.** What a host can be asked to do is read
 from the host itself — `commands` returns its live catalogue, `run` calls one
@@ -302,9 +296,9 @@ Notes an agent relies on:
 - **What the channel answers today.** The GAME host publishes one command,
   `app.phase` — where the app is at every level of its state machine. The EDITOR
   host publishes none yet and answers every `run` `Unknown`. That is the expected
-  state mid-epic (GTW-943), not a regression: the surface that used to sit here
-  was deleted before the commands that replace it were written, so any gap is a
-  compile error rather than a silent fallback.
+  state mid-epic, not a regression: the surface that used to sit here was deleted
+  before the commands that replace it were written, so any gap is a compile error
+  rather than a silent fallback.
 - **`logs` is the first thing to try when a launch came up but the app is not
   behaving.** Both of the child's output streams are captured at spawn into one
   buffer, in the order they were written, so the reply is what the process
@@ -317,8 +311,8 @@ Notes an agent relies on:
   the MCP server process — what every `/mcp` reconnect does — kills the host, not
   its child: the child is spawned into its own process group and survives, still
   listening on the fixed port, while the new host process owns no handle to it. A
-  stop with no owned child therefore checks who holds the port before answering
-  (GTW-926): a port answering the QA protocol is an ORPHAN, and the reply says
+  stop with no owned child therefore checks who holds the port before answering:
+  a port answering the QA protocol is an ORPHAN, and the reply says
   `orphan_stopped` with the port and pid once it is stopped, or is a tool error
   naming the process when it could not be. Only a port nothing answers on gets
   `not_running`. A `launch` into a held port reports the same orphan and starts
@@ -354,8 +348,8 @@ shape:
   requests, four responses, five errors, and that is the whole wire. One
   request in, one response out. A session opens with a `Hello(ProtocolVersion)`
   handshake; the server replies `HelloOk(HelloFacts)` on a version match or a
-  `VersionMismatch` error otherwise. The handshake is REQUIRED, not optional
-  (GTW-940): the listener thread answers it itself, and until a connection has
+  `VersionMismatch` error otherwise. The handshake is REQUIRED, not optional:
+  the listener thread answers it itself, and until a connection has
   negotiated, every other frame on it is refused `NotNegotiated` without ever
   reaching the host — so a client that sends a request first gets that error, not
   a reply. A frame that does not decode as a `QaRequest` is answered `Malformed`,

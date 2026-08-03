@@ -1,4 +1,4 @@
-//! The egui TERRAIN-mode authoring form (GTW-513 C2) — the real terrain form that replaces the
+//! Terrain mode egui form.
 mod blocking;
 mod fields;
 mod panel;

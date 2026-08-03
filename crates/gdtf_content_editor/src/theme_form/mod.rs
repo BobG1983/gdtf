@@ -1,4 +1,4 @@
-//! The THEME authoring mode of the Workbench editor (GTW-475) — the MODEL + SAVE for authoring a
+//! Theme authoring mode — model and save for a theme definition.
 mod resolve;
 mod save;
 mod types;

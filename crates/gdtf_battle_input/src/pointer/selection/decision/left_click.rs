@@ -37,11 +37,7 @@ pub enum LeftClickOutcome {
 
 #[expect(
     clippy::too_many_arguments,
-    reason = "GTW-356: the two-click move state machine reads the current PathPreviewTarget, which \
-              must be passed as a separate `&` (not in LeftClickReads) so the caller holds the \
-              ResMut for the target write without a B0002 Res+ResMut alias — the InspectTarget \
-              precedent; on top of the GTW-323 slice-3 Wields + weapon-magazine queries and the \
-              GTW-729 LifeState query gating the SELECT clause"
+    reason = "PathPreviewTarget stays a separate arg so the caller can hold ResMut without aliasing LeftClickReads"
 )]
 /// Decide what a left-click should do given hover, selection, and fire mode.
 #[must_use]

@@ -12,9 +12,7 @@ use crate::states::load::resources::{ActiveInjuriesFolderHandle, LoadHandles};
 
 #[expect(
     clippy::too_many_arguments,
-    reason = "one folder carries two asset types, so the resolve reads two Assets \
-              collections AND (GTW-582) two per-type salvage states + the shared report; \
-              the single-type resolvers need only one of each"
+    reason = "one folder carries two asset types, so resolve reads two Assets collections plus two salvage states and the shared report"
 )]
 pub(super) fn resolve_injuries(
     commands: &mut Commands,
@@ -69,9 +67,7 @@ pub(super) fn resolve_injuries(
 
 #[expect(
     clippy::too_many_arguments,
-    reason = "one folder carries two asset types, so the redrive reads two AssetEvent \
-              readers + two Assets collections + two rebuilt resources; the weapons \
-              mirror needs only one of each"
+    reason = "one folder carries two asset types, so the redrive reads two AssetEvent readers plus two Assets collections and two rebuilt resources"
 )]
 pub(in crate::states::load) fn redrive_injuries_on_asset_event(
     mut def_events: MessageReader<AssetEvent<RonAsset<InjuryDef>>>,

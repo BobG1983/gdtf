@@ -36,7 +36,7 @@ test suite.
 
 Replies stay small and scoped. The surface this one replaced had a `query_state` tool
 that answered with the entire app state — tens of thousands of tokens, mostly irrelevant
-to the question asked, filling the caller's context. GTW-943 deleted it; the trap it
+to the question asked, filling the caller's context. That dump was deleted; the trap it
 stands for did not go away — one convenient dump instead of many scoped reads. A command
 answers the one question it names; if a reply could run to pages, the command is too
 broad — split it the way a player's perception is split: which screen, what has focus,

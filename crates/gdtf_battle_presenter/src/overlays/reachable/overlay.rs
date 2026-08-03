@@ -1,4 +1,4 @@
-//! Debug-only reachable-range cell tint (GTW-450).
+//! Debug-only reachable-range cell tint.
 
 use bevy::{camera::visibility::RenderLayers, prelude::*};
 use gdtf_battle_sim::prelude::{CellLevel, Level, Tu};
@@ -12,7 +12,7 @@ use crate::{
 #[cfg(debug_assertions)]
 pub const REACHABLE_OVERLAY_ENV: &str = "GDTF_DEBUG_REACHABLE_OVERLAY";
 
-/// Whether the reachable-range DEBUG overlay renders this process (GTW-450 C3).
+/// Whether the reachable-range overlay renders this process.
 #[cfg(debug_assertions)]
 #[derive(Resource, Debug, Clone, Copy, Default, PartialEq, Eq, Deref)]
 pub struct ReachableOverlayEnabled(bool);

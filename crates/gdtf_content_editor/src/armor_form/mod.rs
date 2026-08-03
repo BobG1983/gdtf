@@ -1,4 +1,4 @@
-//! The ARMOR authoring mode's MODEL half (GTW-479) — the Workbench form that edits an
+//! Armor authoring mode — form draft and save for an armor suit.
 mod draft;
 mod save;
 

@@ -1,4 +1,4 @@
-//! GTW-582: the authored **situation's** outbound reference edges — gang/member
+//! Situation outbound reference edges — gang, theme, terrain, and field keys.
 use bevy::prelude::{Res, ResMut};
 use gdtf_assets::{
     ContentFinding, ContentIntegrityReport, FindingFamily, FindingReferrer, FindingTarget,
@@ -53,7 +53,7 @@ pub(super) fn check_situation_gang_refs(
     }
 }
 
-/// documented `#[serde(default)]`), so it is skipped — a nil theme is an
+/// Nil theme is allowed (serde default); skip when unset.
 pub(super) fn check_situation_theme_ref(
     situation: Res<LoadedSituation>,
     themes: Res<UuidThemeRegistry>,

@@ -8,8 +8,7 @@ use crate::states::running::game::battlescape::action_bar::components::ModeContr
 
 #[allow(
     clippy::too_many_arguments,
-    reason = "GTW-505 C5 adds the MeleeWeapon marker probe on top of the GTW-323 slice-3 Wields + \
-    weapon-entity queries so the RANGED weapon's mode resolves excluding the melee weapon"
+    reason = "melee probe plus Wields and weapon queries so the ranged mode resolves cleanly"
 )]
 pub(in crate::states::running::game::battlescape) fn mode_segment_write(
     mut chosen: MessageReader<SegmentSelected>,

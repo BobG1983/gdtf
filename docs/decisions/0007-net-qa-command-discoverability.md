@@ -7,23 +7,23 @@ description: How agents discover and invoke state-specific net_qa commands as mo
 
 ## Status
 
-`Superseded by 0008` — 2026-08-01 (GTW-943). Accepted 2026-07-24 (user-ratified on GTW-786),
-proposed the same day, driven by a user design question on GTW-786 (the editor net-QA/MCP
-extension epic).
+`Superseded by 0008` — 2026-08-01. Accepted 2026-07-24 (user-ratified),
+proposed the same day, driven by a user design question on the editor net-QA/MCP
+extension epic.
 
 The Decision below rejects the self-registering command registry (candidate 1). That rejection
-was reversed by the user's design ruling on GTW-934, carried into the GTW-938 epic, which adopts
-exactly that shape — one shared crate, `register_command::<C>(app)` over each host's own
-`&[&dyn ErasedCommand<F>]`, invoked through `Run { command, arguments }`. The trigger condition
-this ADR wrote for itself — "a second live state family in production QA use that visibly
-strains the per-family pattern" — is the reason given: the editor family arrived, and the strain
-is recorded in the epic's design material.
+was reversed by a later design ruling, which adopts exactly that shape — one shared crate,
+`register_command::<C>(app)` over each host's own `&[&dyn ErasedCommand<F>]`, invoked through
+`Run { command, arguments }`. The trigger condition this ADR wrote for itself — "a second live
+state family in production QA use that visibly strains the per-family pattern" — is the reason
+given: the editor family arrived, and the strain is recorded in the epic's design material.
 
-GTW-943 deleted the per-family `Get*QueryOptions` / `Query*(kind)` pair this ADR describes, so
+The per-family `Get*QueryOptions` / `Query*(kind)` pair this ADR describes was deleted, so
 none of it is shipped code any more. Read the Decision, Consequences and Alternatives sections
 below as the record of a decision that has been superseded, not as current canon;
 [ADR 0008](0008-qa-command-courier.md) is what replaced it. Per this directory's rule 2 (an
-Accepted ADR is immutable) those sections are left exactly as written.
+Accepted ADR is immutable) those sections are left exactly as written, aside from removing
+ticket-id citations.
 
 ## Context
 
@@ -41,20 +41,11 @@ on the inner one:
 1. **Outer (MCP) layer**, between the LLM client and the `gdtf_qa_mcp` host binary. MCP already
    has native discovery: `tools/list` returns every tool's `{name, description, inputSchema}`.
    gdtf implements this today as a fixed enum walk (`bins/gdtf_qa_mcp/src/mcp/tools/name.rs`,
-   `ALL`, 18 tools: GTW-802's `focus_control` completed the first 12, GTW-808 added the four
-   editor tools — `get_editor_query_options`, `query_editor`, `launch_editor`, `stop_editor` —
-   and GTW-942 added `commands` and `run` beside them, the courier's half of the command
-   layer). gdtf does not declare `listChanged`; the tool list is static per
-   session.
-2. **Inner (net_qa wire) layer**, between the MCP host and the running game process — and,
-   since GTW-808, the running content-editor process too. This is `QaRequest`
-   (`crates/gdtf_qa_protocol/src/envelope/request.rs`), a fixed serde enum of 15 typed variants
-   (GTW-802 added `FocusControl`; GTW-805 added the editor pair; GTW-939 added `Catalogue` and
-   `Run` beside them, the first two of the command layer). The editor is wired into
-   `net_qa` as of GTW-804/805, and GTW-808 drives it as a second host on default port `7617`:
-   `QaRequest` carries `GetEditorQueryOptions` and `QueryEditor(EditorQueryKind)`, and
-   `crates/gdtf_content_editor/src/net_qa/router.rs` answers them. There is no flat single-view
-   editor request variant and none is planned.
+   `ALL`). gdtf does not declare `listChanged`; the tool list is static per session.
+2. **Inner (net_qa wire) layer**, between the MCP host and the running game process — and the
+   running content-editor process too. This is `QaRequest`
+   (`crates/gdtf_qa_protocol/src/envelope/request.rs`), a fixed serde enum. The editor is wired
+   into `net_qa` as a second host on default port `7617`.
 
 A partial capability-advertisement mechanism already exists at the inner layer:
 `AppFlowView.available: Vec<RequestKindNet>` (`view/appflow.rs:171`) is a runtime, state-filtered
@@ -62,7 +53,7 @@ list of which request kinds the server will service right now — battle-only ki
 battle runs, act-bearing kinds vanish while the presenter replays. It runs over a closed,
 compile-time enum, not a self-registering open set.
 
-A user design comment on GTW-786 (2026-07-24) proposed generalizing this into a self-registering
+A user design comment (2026-07-24) proposed generalizing this into a self-registering
 command registry: state-specific commands revealed via a `get_available_commands` call and
 invoked via `submit_command`, with each state/scene registering its own commands to a shared
 crate (`app.register_command(state, command)`), reusable across the game and the editor. The
@@ -124,14 +115,14 @@ pub enum BattleQueryKind {
 
 When the editor family needs QA support, repeat the identical two-variant recipe:
 `GetEditorQueryOptions` / `QueryEditor(EditorQueryKind)`, plus its own availability predicate. As
-built (GTW-805) that predicate is `topic_available(kind, model)`, in
+built that predicate is `topic_available(kind, model)`, in
 `crates/gdtf_content_editor/src/net_qa/snapshot/topics.rs` — a wildcard-free match on
 `EditorQueryKind` that reads the query model (`EditorQaModel`, with `mode()`, `session()`,
 `drafts()` and `report()`), not the editor's `EditorState`. `Readiness` is always answerable;
 every other topic is offered exactly when the resource it reads is present, and that is not the
 same window for all of them — `Validation` is offered from the editor's first frame, `Load`
 included, because `ContentIntegrityReport` is `init_resource`'d while the app is still being
-built (GTW-879).
+built.
 
 The options list and the answer share that one predicate over a single model read:
 `options_view` (same file) filters `EditorQueryKind::ALL` through it, and
@@ -160,7 +151,7 @@ router/wiring duplication — observed, not projected.
   nothing mechanically shares it between battle and editor. Accepted, bounded cost.
 - Existing drivers calling `GetBattleState` keep working during the compatibility window; cutover
   to per-topic `QueryBattle` calls is opt-in, not a breaking day-one change.
-- GTW-805 built the editor's two-variant pair against this decision (`GetEditorQueryOptions` /
+- The editor's two-variant pair was built against this decision (`GetEditorQueryOptions` /
   `QueryEditor(EditorQueryKind)`), confirming the recipe transfers across families.
 - A written trigger condition exists for reconsidering candidate 1: a second live state family in
   production QA use that visibly strains the per-family pattern.

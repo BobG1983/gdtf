@@ -1,38 +1,21 @@
 ---
 name: "ADR 0003: Hand-rolled, data-driven UI on first-party bevy_ui"
-description: The player-facing game UI is built on first-party bevy_ui, themed from RON via a typed GdtfTheme resource, with loose assets and a headless-tested hot-reload policy. Amended 2026-07-05 (GTW-635) to PREFER Bevy's first-party widget primitives (bevy_ui_widgets) and author new screens with bsn!, and again 2026-07-25 (GTW-865) to settle the stack allocation: hand-rolled bevy_ui for the game, egui for the content editor and dev_tools surfaces, with neither stack crossing into the other's side.
+description: The player-facing game UI is built on first-party bevy_ui, themed from RON via a typed GdtfTheme resource, with loose assets and a headless-tested hot-reload policy. Amended 2026-07-05 to prefer Bevy's first-party widget primitives and bsn! authoring, and again 2026-07-25 to settle the stack allocation: hand-rolled bevy_ui for the game, egui for the content editor and dev_tools surfaces, with neither stack crossing into the other's side.
 ---
 
 # 0003. Hand-rolled, data-driven UI on first-party `bevy_ui`
 
 ## Status
 
-`Accepted` — 2026-06-13. Driven by the main-menu UI block (GTW-112 / GTW-113 /
-GTW-114) and the loose-asset decision recorded under GTW-117.
+`Accepted` — 2026-06-13. Driven by the main-menu UI block and the loose-asset decision.
 
-`Amended` — 2026-07-05 (GTW-635), per USER RULING adopting the game-UI-stack
-research recommendation. See [Amendment — 2026-07-05](#amendment--2026-07-05-gtw-635)
-below: first-party widget primitives are now PREFERRED over hand-rolling, new
-screens are `bsn!`-authored, and `egui` is used for dev-only surfaces. The
-data-driven-theming, one-way-crate-graph, loose-asset, and hot-reload clauses are
-unchanged.
+`Amended` — 2026-07-05, per USER RULING adopting the game-UI-stack research recommendation. See [Amendment — 2026-07-05](#amendment--2026-07-05) below: first-party widget primitives are now PREFERRED over hand-rolling, new screens are `bsn!`-authored, and `egui` is used for dev-only surfaces. The data-driven-theming, one-way-crate-graph, loose-asset, and hot-reload clauses are unchanged.
 
-`Amended` — 2026-07-25 (GTW-865), per USER RULING settling which UI stack owns
-which surface. See [Amendment — 2026-07-25](#amendment--2026-07-25-gtw-865)
-below: the player-facing game UI is hand-rolled `bevy_ui`, the content editor is
-`egui`, neither crosses into the other, and `dev_tools`-gated `egui` stays. This
-amendment REVOKES the conditional form-heavy-meta-screen `egui` fallback added by
-the 2026-07-05 amendment. The data-driven-theming, one-way-crate-graph,
-loose-asset, and hot-reload clauses remain unchanged. This ADR stays `Accepted` —
-it is NOT superseded.
+`Amended` — 2026-07-25, per USER RULING settling which UI stack owns which surface. See [Amendment — 2026-07-25](#amendment--2026-07-25) below: the player-facing game UI is hand-rolled `bevy_ui`, the content editor is `egui`, neither crosses into the other, and `dev_tools`-gated `egui` stays. This amendment REVOKES the conditional form-heavy-meta-screen `egui` fallback added by the 2026-07-05 amendment. The data-driven-theming, one-way-crate-graph, loose-asset, and hot-reload clauses remain unchanged. This ADR stays `Accepted` — it is NOT superseded.
 
 ## Context
 
-GDTF is entering its first UI work: the main-menu block (GTW-112 / GTW-113 /
-GTW-114) that rebuilds the *grimdark* menu in Bevy. Before any of those tickets
-lands, the UI/theme posture for the *whole* block needs to be fixed once, so
-every menu ticket is built against the same binding contract rather than
-re-litigating dependencies, theming, and asset strategy per ticket.
+GDTF is entering its first UI work: the main-menu block that rebuilds the *grimdark* menu in Bevy. Before any of that lands, the UI/theme posture for the *whole* block needs to be fixed once, so every menu ticket is built against the same binding contract rather than re-litigating dependencies, theming, and asset strategy per ticket.
 
 The forces at play:
 
@@ -71,10 +54,9 @@ hot-reload policy. Specifically:
    Bevy-ecosystem UI or styling crate — no `iyes_*`, no `bevy-ui-*`, no
    third-party widget/styling/layout framework. A change that adds such a
    dependency violates this ADR.
-   (AMENDED 2026-07-05, GTW-635 — see the
-   [Amendment](#amendment--2026-07-05-gtw-635): Bevy's own first-party widget
-   primitives in `bevy_ui_widgets` are now PREFERRED over hand-rolling. The
-   third-party-ecosystem ban this clause exists for is unchanged —
+   (AMENDED 2026-07-05 — see the [Amendment](#amendment--2026-07-05): Bevy's own
+   first-party widget primitives in `bevy_ui_widgets` are now PREFERRED over
+   hand-rolling. The third-party-ecosystem ban this clause exists for is unchanged —
    `bevy_ui_widgets` is FIRST-PARTY Bevy, not a Bevy-ecosystem crate.)
 2. **Ordinary Rust crates are permitted.** This ban is on *Bevy-ecosystem UI*
    crates, not on general-purpose libraries. Plain Rust crates the UI needs —
@@ -97,8 +79,7 @@ hot-reload policy. Specifically:
    repo-root `assets/` directory and are loaded through Bevy's `AssetServer`. We
    will NOT use `embedded_asset!` or any asset-embedding mechanism anywhere at
    this stage. Embedding is **deferred to packaging time** as a later, separate
-   decision (this is why the earlier embed-first framing carried by GTW-117 is
-   dropped). Recorded as a user decision on 2026-06-13.
+   decision. Recorded as a user decision on 2026-06-13.
 6. **Hot-reload with a headless-tested policy.** Live theme reapply — re-running
    `apply_theme` when the theme asset changes — ships in the first menu. The OS
    file-watcher that detects on-disk edits is fenced behind a **local/dev binary
@@ -108,7 +89,7 @@ hot-reload policy. Specifically:
    `MessageReader` MESSAGE (not `EventReader`), so the test drives it as a
    message. Visual confirmation of a live retheme is **local-only**.
 
-## Amendment — 2026-07-05 (GTW-635)
+## Amendment — 2026-07-05
 
 `Amended` — 2026-07-05, per USER RULING adopting the game-UI-stack research
 recommendation. The original decision predates two things maturing in Bevy: the
@@ -133,39 +114,33 @@ policy) is UNCHANGED.
    still stands.
 2. **New screens are `bsn!`-authored.** Every NEW screen is authored with the
    `bsn!` scene macro, following the proven action-bar pattern already used by the
-   built HUD. GTW-637 (the `bsn!` Options-screen pilot) is the pilot that LOCKS
-   this policy if it holds on authoring velocity — or BREAKS it if it does not
-   (see clause 3).
-   (AMENDED 2026-07-25, GTW-865 — see the
-   [Amendment](#amendment--2026-07-25-gtw-865): the `bsn!` policy is LOCKED and
-   its conditional escape hatch is removed, because the clause 3 fallback it
-   pointed at is revoked. Every new player-facing screen is `bsn!`-authored.)
+   built HUD. The `bsn!` Options-screen pilot is the pilot that LOCKS this policy
+   if it holds on authoring velocity — or BREAKS it if it does not (see clause 3).
+   (AMENDED 2026-07-25 — see the [Amendment](#amendment--2026-07-25): the `bsn!`
+   policy is LOCKED and its conditional escape hatch is removed, because the clause 3
+   fallback it pointed at is revoked. Every new player-facing screen is `bsn!`-authored.)
 3. **`egui` is dev-only, plus a pre-approved meta-screen fallback.** `egui` (via
    `bevy_egui`) is the stack for DEV-ONLY surfaces — the content editor
    is the established precedent. It is ALSO the pre-approved fallback for NEW
-   form-heavy META screens, but ONLY if the GTW-637 `bsn!` Options pilot fails on
+   form-heavy META screens, but ONLY if the `bsn!` Options pilot fails on
    authoring velocity. It is NEVER used for the built battlescape HUD.
-   (AMENDED 2026-07-25, GTW-865 — see the
-   [Amendment](#amendment--2026-07-25-gtw-865): the dev-only grant is CONFIRMED
-   and sharpened — the content editor is now the settled allocation, not merely a
-   precedent, and `dev_tools`-gated `egui` stays permitted. The pre-approved
-   form-heavy-meta-screen fallback is REVOKED: its GTW-637 condition will never
-   be evaluated. The closing "NEVER used for the built battlescape HUD" sentence
-   is confirmed and WIDENED to the whole player-facing game UI.)
+   (AMENDED 2026-07-25 — see the [Amendment](#amendment--2026-07-25): the dev-only
+   grant is CONFIRMED and sharpened — the content editor is now the settled allocation,
+   not merely a precedent, and `dev_tools`-gated `egui` stays permitted. The pre-approved
+   form-heavy-meta-screen fallback is REVOKED. The closing "NEVER used for the built
+   battlescape HUD" sentence is confirmed and WIDENED to the whole player-facing game UI.)
 
-## Amendment — 2026-07-25 (GTW-865)
+## Amendment — 2026-07-25
 
 `Amended` — 2026-07-25, per USER RULING settling the UI-stack allocation. The
 2026-07-05 amendment left the question half-open: `egui` was the dev-only stack
-*plus* a conditional fallback for new form-heavy meta screens, with the GTW-637
-`bsn!` Options pilot as the deciding test. A UI-stack comparison programme
-(GTW-796 and its subtree) was then opened to settle it with measurements. That
-programme was **abandoned before producing any**: no comparison demo was built,
-no authoring-velocity or maintenance numbers were collected, and the whole
-comparison subtree — both demo epics, their 20 children, the five shared
-prerequisites, and the GTW-813 ratification — was Canceled. This amendment records a decision made on
-the user's judgement, not on collected evidence. It also REVERSES the 2026-07-24
-"one UI stack, no dev-only exemption" ruling recorded on GTW-822, which was
+*plus* a conditional fallback for new form-heavy meta screens, with the `bsn!`
+Options pilot as the deciding test. A UI-stack comparison programme was then
+opened to settle it with measurements. That programme was **abandoned before
+producing any**: no comparison demo was built, no authoring-velocity or maintenance
+numbers were collected, and the whole comparison subtree was canceled. This amendment
+records a decision made on the user's judgement, not on collected evidence. It also
+REVERSES the 2026-07-24 "one UI stack, no dev-only exemption" ruling, which was
 conditional on a hand-rolled win that was never demonstrated.
 
 A note on process, so a future reader does not read this as a rule violation to
@@ -174,8 +149,7 @@ replaced by a superseding ADR, not edited. The user explicitly authorised
 amending this `Accepted` ADR in place for this instance (2026-07-25 — "I'm
 overruling the ADR rule for this instance", confirming "Amend 0003 in place").
 That is a **one-time exception**, not a policy change: the index rules are
-unchanged and still govern the next ADR. This ADR remains `Accepted`; ADR number
-`0008` is still free for a genuinely new decision.
+unchanged and still govern the next ADR. This ADR remains `Accepted`.
 
 The posture is refined as follows; everything else in this ADR (data-driven
 theming, the one-way `gdtf_ui` crate graph, loose assets, and the
@@ -198,14 +172,14 @@ headless-tested hot-reload policy) is UNCHANGED.
    release binary never links `egui`.
 4. **The conditional meta-screen fallback is REVOKED.** The 2026-07-05
    amendment's clause 3 offered `egui` as a pre-approved fallback for new
-   form-heavy meta screens *if* the GTW-637 `bsn!` Options pilot failed on
+   form-heavy meta screens *if* the `bsn!` Options pilot failed on
    authoring velocity. That condition will never be evaluated — the allocation
    is settled by ruling instead — so the fallback is retired outright rather
    than left dangling. Its companion sentence ("NEVER used for the built
    battlescape HUD") is confirmed and WIDENED to the whole player-facing game
    UI by clause 2 above.
 5. **`bsn!`-authoring is LOCKED.** The 2026-07-05 amendment's clause 2 hung the
-   `bsn!` policy on the same GTW-637 pilot, with an escape hatch pointing at the
+   `bsn!` policy on the same Options pilot, with an escape hatch pointing at the
    fallback clause 4 has now revoked. With that fallback gone the escape hatch
    points at nothing, so the policy stands without a condition: every new
    player-facing screen is `bsn!`-authored.
@@ -225,16 +199,14 @@ headless-tested hot-reload policy) is UNCHANGED.
   stack-swap harness built to run the abandoned comparison — their two `dev`
   modules under `gdtf_app`, their test suites, the wire swap intent and its
   `BattleView` field, the `F9` shortcut, and the `bevy_egui` dev-dependency
-  they needed — were still in the tree at the time of this amendment; GTW-864
-  deleted them. `EguiPlugin` ownership moved to the existing dev-affordances
-  plugin, so the `dev_tools` procgen stepper clause 3 preserves still gets its
-  egui context. GTW-866 then retired the comparison notes directory, keeping its
-  one still-live finding as
+  they needed — were deleted. `EguiPlugin` ownership moved to the existing
+  dev-affordances plugin, so the `dev_tools` procgen stepper clause 3 preserves
+  still gets its egui context. The one still-live finding was kept as
   [`../ui-picking-arbitration.md`](../ui-picking-arbitration.md).
 - **The boundary is a documented convention, not a mechanical check.** The user
   deliberately declined a conformance test in favour of comments on the affected
-  `Cargo.toml` manifests (GTW-863). A crossing dependency will be caught by
-  review against this ADR, not by a failing build.
+  `Cargo.toml` manifests. A crossing dependency will be caught by review against
+  this ADR, not by a failing build.
 
 ## Consequences
 
@@ -286,8 +258,7 @@ headless-tested hot-reload policy) is UNCHANGED.
 - **Embed assets now via `embedded_asset!`.** Rejected for this stage. Embedding
   is a packaging concern at a different lifecycle than building the menu; loose
   files under `assets/` keep dev iteration and hot-reload simple. Embedding is
-  deferred to a packaging-time decision rather than baked in early (superseding
-  the earlier GTW-117 embed framing).
+  deferred to a packaging-time decision rather than baked in early.
 - **Exercise the OS file-watcher in CI.** Rejected. A live file-watcher makes CI
   depend on OS filesystem-event timing — flaky and slow. Injecting
   `AssetEvent::Modified` headlessly verifies the reapply logic deterministically;

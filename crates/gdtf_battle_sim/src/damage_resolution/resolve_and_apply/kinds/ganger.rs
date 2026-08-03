@@ -80,12 +80,7 @@ fn struck_piece(piece: Option<&StruckPiece<'_>>, weapon: WeaponStats<'_>) -> (Ar
 /// Resolve and apply a ganger hit, or return `NoEffect` when the target is missing/dead.
 #[expect(
     clippy::too_many_arguments,
-    reason = "GTW-438 threads the injury-roll inputs (the InjuryTables + InjuryRegistry \
-              reads + the &mut InjuryRng draw stream) onto the wound fold alongside the \
-              irreducible outcome / weapon / luck / target / entity / tuning / severity-rng \
-              set; the target ganger surfaces are ALREADY grouped in the TargetGanger \
-              bundle. The §5 → §6 → §8 wound math itself is the shared synthesize_wound core \
-              (GTW-523) — this is only the weapon-path input resolution + verdict freeze"
+    reason = "TargetGanger already groups the target; injury tables and InjuryRng are separate streams"
 )]
 pub(in crate::damage_resolution::resolve_and_apply) fn fold(
     outcome: &ShotOutcome,

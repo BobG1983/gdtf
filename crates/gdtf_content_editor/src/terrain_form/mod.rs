@@ -1,4 +1,4 @@
-//! The TERRAIN authoring mode of the Workbench editor (GTW-474) — the MODEL + SAVE for authoring a
+//! Terrain authoring mode — draft and save.
 mod draft;
 mod error;
 mod inputs;

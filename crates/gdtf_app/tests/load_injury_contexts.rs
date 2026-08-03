@@ -68,8 +68,7 @@ fn the_same_shared_pool_is_weighted_differently_per_source() {
 
     assert_ne!(
         ranged, melee,
-        "the ranged and melee Head/Minor tables must DIFFER — the per-source weighting is \
-         the whole point (GTW-452)",
+        "the ranged and melee Head/Minor tables must DIFFER — the per-source weighting is the whole point",
     );
     assert!(
         ranged

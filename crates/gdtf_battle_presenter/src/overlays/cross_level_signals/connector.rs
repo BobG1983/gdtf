@@ -1,4 +1,4 @@
-//! Connector-delta gathering (GTW-596): one badge per authored vertical-link
+//! Connector-delta gathering: one badge per authored vertical-link endpoint on the active storey.
 use gdtf_battle_sim::{
     prelude::{Cell, Level},
     vertical::VerticalLinkGraph,

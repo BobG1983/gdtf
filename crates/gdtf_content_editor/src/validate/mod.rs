@@ -1,4 +1,4 @@
-//! The editor's **authoring-time content validation** (GTW-630) — the second
+//! Authoring-time content validation for the editor.
 mod rearm;
 mod register;
 
