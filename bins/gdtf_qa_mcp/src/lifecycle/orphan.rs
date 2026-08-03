@@ -1,3 +1,5 @@
+//! Detect and stop processes holding a QA port that we did not launch.
+
 use std::process::{Command, Stdio};
 
 use super::{
@@ -7,35 +9,46 @@ use super::{
 };
 use crate::link::QaPort;
 
+/// Whether a port is free or held by an unknown process.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PortHold {
-        Free,
-        Orphan(OrphanPid),
+    /// Nothing listening.
+    Free,
+    /// Something else is listening.
+    Orphan(OrphanPid),
 }
 
+/// Pid of an orphan, if known.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum OrphanPid {
-        Known(ChildPid),
-            Unknown,
+    /// Resolved via lsof (or similar).
+    Known(ChildPid),
+    /// Could not resolve.
+    Unknown,
 }
 
+/// Result of trying to stop an orphan.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum OrphanStop {
-        Stopped,
-        Survived,
+    /// Port is free now.
+    Stopped,
+    /// Still listening after kill attempts.
+    Survived,
 }
 
+/// Parameters for stopping a known orphan pid on a port.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OrphanTarget {
-        port:  QaPort,
-        pid:   ChildPid,
-        grace: KillGrace,
-        probe: ProbeTimeout,
-        poll:  PollInterval,
+    port: QaPort,
+    pid: ChildPid,
+    grace: KillGrace,
+    probe: ProbeTimeout,
+    poll: PollInterval,
 }
 
 impl OrphanTarget {
-        #[must_use]
+    /// Build from explicit fields.
+    #[must_use]
     pub const fn new(
         port: QaPort,
         pid: ChildPid,
@@ -52,7 +65,8 @@ impl OrphanTarget {
         }
     }
 
-            #[must_use]
+    /// Build from a lifecycle config.
+    #[must_use]
     pub const fn from_config(port: QaPort, pid: ChildPid, config: LifecycleConfig) -> Self {
         Self::new(
             port,
@@ -63,42 +77,52 @@ impl OrphanTarget {
         )
     }
 
-        #[must_use]
+    /// Port held by the orphan.
+    #[must_use]
     pub const fn port(&self) -> QaPort {
         self.port
     }
 
-        #[must_use]
+    /// Orphan process id.
+    #[must_use]
     pub const fn pid(&self) -> ChildPid {
         self.pid
     }
 
-        #[must_use]
+    /// Kill grace period.
+    #[must_use]
     pub const fn grace(&self) -> KillGrace {
         self.grace
     }
 
-        #[must_use]
+    /// Probe timeout while waiting for the port to free.
+    #[must_use]
     pub const fn probe(&self) -> ProbeTimeout {
         self.probe
     }
 
-        #[must_use]
+    /// Poll interval while waiting.
+    #[must_use]
     pub const fn poll(&self) -> PollInterval {
         self.poll
     }
 }
 
+/// Inspect and stop orphans on a port.
 pub trait OrphanWatch {
-        fn inspect(&self, port: QaPort, timeout: ProbeTimeout) -> PortHold;
+    /// Check whether something is listening on `port`.
+    fn inspect(&self, port: QaPort, timeout: ProbeTimeout) -> PortHold;
 
-        fn stop(&self, target: OrphanTarget) -> OrphanStop;
+    /// Attempt to stop a known orphan.
+    fn stop(&self, target: OrphanTarget) -> OrphanStop;
 }
 
+/// System implementation using probe + `kill` / `lsof` on Unix.
 pub struct SystemOrphanWatch;
 
 impl SystemOrphanWatch {
-        #[must_use]
+    /// Create the system watch.
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }
@@ -130,12 +154,12 @@ impl OrphanWatch for SystemOrphanWatch {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StopSignal {
-        Terminate,
-        Kill,
+    Terminate,
+    Kill,
 }
 
 impl StopSignal {
-        const fn flag(self) -> &'static str {
+    const fn flag(self) -> &'static str {
         match self {
             Self::Terminate => "-TERM",
             Self::Kill => "-KILL",

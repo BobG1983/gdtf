@@ -1,4 +1,5 @@
-//!   double-gates its wiring site on `cfg(all(debug_assertions, feature = "net_qa"))` and
+//! TCP transport for the net QA protocol between game/editor hosts and the MCP bridge.
+
 mod channel;
 mod config;
 mod listener;

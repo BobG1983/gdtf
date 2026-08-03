@@ -1,14 +1,20 @@
+//! Horizontal vs vertical layout for widgets.
+
 use bevy::ui::FlexDirection;
 
+/// Widget axis.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum Orientation {
-            #[default]
+    /// Left to right.
+    #[default]
     Horizontal,
-            Vertical,
+    /// Top to bottom.
+    Vertical,
 }
 
 impl Orientation {
-            #[must_use]
+    /// Matching Bevy flex direction.
+    #[must_use]
     pub const fn flex_direction(self) -> FlexDirection {
         match self {
             Self::Horizontal => FlexDirection::Row,

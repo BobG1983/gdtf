@@ -1,3 +1,5 @@
+//! Mutate segment visibility and sub-line text.
+
 use bevy::{
     ecs::template::template,
     prelude::*,
@@ -11,6 +13,7 @@ use super::{
     types::{Segment, SegmentColors, SegmentIndex, SegmentSubLabel, SegmentSubText},
 };
 
+/// Show or hide the segment at `index` under `control`. Returns whether it was found.
 pub fn set_segment_visible(
     control: Entity,
     index: usize,
@@ -42,6 +45,7 @@ pub fn set_segment_visible(
 
 type SubLineSegment = (&'static SegmentIndex, &'static Children);
 
+/// Set, replace, or clear the sub-line under a segment. Returns whether the segment was found.
 #[allow(
     clippy::type_complexity,
     reason = "param tuple aliased where possible; the spawn/mutate/clear paths fix the \

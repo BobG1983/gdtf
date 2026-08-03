@@ -1,41 +1,51 @@
+//! Borrowed link + lifecycle pair for each host.
+
 use super::host::QaHost;
 use crate::{lifecycle::HostLifecycle, link::QaLink};
 
+/// Link and lifecycle for one host.
 pub struct HostPair<'a> {
-        link:      &'a mut dyn QaLink,
-        lifecycle: &'a mut dyn HostLifecycle,
+    link: &'a mut dyn QaLink,
+    lifecycle: &'a mut dyn HostLifecycle,
 }
 
 impl<'a> HostPair<'a> {
-        pub fn new(link: &'a mut dyn QaLink, lifecycle: &'a mut dyn HostLifecycle) -> Self {
+    /// Pair a link with its lifecycle manager.
+    pub fn new(link: &'a mut dyn QaLink, lifecycle: &'a mut dyn HostLifecycle) -> Self {
         Self { link, lifecycle }
     }
 
-        pub fn link(&mut self) -> &mut dyn QaLink {
+    /// Mutable link.
+    pub fn link(&mut self) -> &mut dyn QaLink {
         self.link
     }
 
-        pub fn lifecycle(&mut self) -> &mut dyn HostLifecycle {
+    /// Mutable lifecycle manager.
+    pub fn lifecycle(&mut self) -> &mut dyn HostLifecycle {
         self.lifecycle
     }
 
-                pub fn parts(&mut self) -> (&mut dyn QaLink, &mut dyn HostLifecycle) {
+    /// Both handles at once.
+    pub fn parts(&mut self) -> (&mut dyn QaLink, &mut dyn HostLifecycle) {
         (self.link, self.lifecycle)
     }
 }
 
+/// Game and editor pairs together.
 pub struct HostSet<'a> {
-        game:   HostPair<'a>,
-        editor: HostPair<'a>,
+    game: HostPair<'a>,
+    editor: HostPair<'a>,
 }
 
 impl<'a> HostSet<'a> {
-        #[must_use]
+    /// Build from both pairs.
+    #[must_use]
     pub const fn new(game: HostPair<'a>, editor: HostPair<'a>) -> Self {
         Self { game, editor }
     }
 
-        pub const fn pair(&mut self, host: QaHost) -> &mut HostPair<'a> {
+    /// Select the pair for a host.
+    pub const fn pair(&mut self, host: QaHost) -> &mut HostPair<'a> {
         match host {
             QaHost::Game => &mut self.game,
             QaHost::Editor => &mut self.editor,
@@ -49,9 +59,9 @@ mod test {
         HelloFacts, ProtocolVersion, QaRequest, QaResponse, ServerNameNet,
     };
 
-            const STUB_PORT: QaPort = QaPort::new(7616);
+    const STUB_PORT: QaPort = QaPort::new(7616);
 
-        const STUB_PROTOCOL: ProtocolVersion = ProtocolVersion::new(1);
+    const STUB_PROTOCOL: ProtocolVersion = ProtocolVersion::new(1);
 
     use super::{HostPair, HostSet, QaHost};
     use crate::{
@@ -63,7 +73,7 @@ mod test {
         link::{QaLink, QaPort},
     };
 
-        struct NamedLink(&'static str);
+    struct NamedLink(&'static str);
 
     impl QaLink for NamedLink {
         fn request(&mut self, _request: QaRequest) -> Result<QaResponse, McpError> {
@@ -74,7 +84,7 @@ mod test {
         }
     }
 
-        struct NamedLifecycle(u32);
+    struct NamedLifecycle(u32);
 
     impl HostLifecycle for NamedLifecycle {
         fn launch(&mut self, port: QaPort, _spec: &LaunchSpec) -> LaunchOutcome {
@@ -103,7 +113,7 @@ mod test {
         }
     }
 
-        fn answered_by(pair: &mut HostPair<'_>) -> ServerNameNet {
+    fn answered_by(pair: &mut HostPair<'_>) -> ServerNameNet {
         let Ok(QaResponse::HelloOk(facts)) = pair.link().request(QaRequest::Hello(STUB_PROTOCOL))
         else {
             unreachable!("the named link always answers HelloOk");
@@ -111,14 +121,14 @@ mod test {
         facts.server
     }
 
-        fn stopped_pid(pair: &mut HostPair<'_>) -> u32 {
+    fn stopped_pid(pair: &mut HostPair<'_>) -> u32 {
         let StopOutcome::Stopped { pid } = pair.lifecycle().stop(STUB_PORT) else {
             unreachable!("the named lifecycle always reports a stopped pid");
         };
         *pid
     }
 
-                                    #[test]
+    #[test]
     fn each_host_resolves_to_its_own_link_and_lifecycle() {
         let (mut game_link, mut editor_link) = (NamedLink("game"), NamedLink("editor"));
         let (mut game_life, mut editor_life) = (NamedLifecycle(7616), NamedLifecycle(7617));

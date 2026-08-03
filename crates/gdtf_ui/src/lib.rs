@@ -1,6 +1,12 @@
+//! Shared UI widgets, theming, and focus navigation for GDTF apps.
+
+/// Keyboard/gamepad focus navigation.
 pub mod focus_nav;
+/// Named menu screens and items.
 pub mod menu_nav;
+/// Theme resources and themed component roles.
 pub mod theming;
+/// Core widgets (buttons, switches, bars, segments).
 pub mod widgets;
 
 mod plugin;

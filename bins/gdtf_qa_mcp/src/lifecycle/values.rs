@@ -1,10 +1,14 @@
+//! Small value types for child lifecycle.
+
 use core::{ops::Deref, time::Duration};
 
+/// OS process id of a managed child.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ChildPid(u32);
 
 impl ChildPid {
-        #[must_use]
+    /// Wrap a pid.
+    #[must_use]
     pub const fn new(pid: u32) -> Self {
         Self(pid)
     }
@@ -18,11 +22,13 @@ impl Deref for ChildPid {
     }
 }
 
+/// Captured stderr/stdout tail when a launch fails.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct FailureTail(String);
 
 impl FailureTail {
-        #[must_use]
+    /// Wrap the captured text.
+    #[must_use]
     pub const fn new(tail: String) -> Self {
         Self(tail)
     }
@@ -36,11 +42,13 @@ impl Deref for FailureTail {
     }
 }
 
+/// Recent child process output for the logs tool.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct OutputTail(String);
 
 impl OutputTail {
-        #[must_use]
+    /// Wrap the captured text.
+    #[must_use]
     pub const fn new(tail: String) -> Self {
         Self(tail)
     }
@@ -54,20 +62,23 @@ impl Deref for OutputTail {
     }
 }
 
+/// How many trailing log lines to keep.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TailLines(usize);
 
 impl TailLines {
-        pub const DEFAULT: Self = Self(120);
+    /// Default line budget.
+    pub const DEFAULT: Self = Self(120);
 
-        #[must_use]
+    /// Wrap a line count.
+    #[must_use]
     pub const fn new(lines: usize) -> Self {
         Self(lines)
     }
 }
 
 impl Default for TailLines {
-        fn default() -> Self {
+    fn default() -> Self {
         Self::DEFAULT
     }
 }
@@ -80,11 +91,13 @@ impl Deref for TailLines {
     }
 }
 
+/// Why spawning a child failed.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SpawnError(String);
 
 impl SpawnError {
-        #[must_use]
+    /// Wrap a reason string.
+    #[must_use]
     pub const fn new(reason: String) -> Self {
         Self(reason)
     }
@@ -98,11 +111,13 @@ impl Deref for SpawnError {
     }
 }
 
+/// How long to wait for the host to accept connections after spawn.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BootTimeout(Duration);
 
 impl BootTimeout {
-        #[must_use]
+    /// Wrap a duration.
+    #[must_use]
     pub const fn new(timeout: Duration) -> Self {
         Self(timeout)
     }
@@ -116,11 +131,13 @@ impl Deref for BootTimeout {
     }
 }
 
+/// How often to poll readiness or exit during boot/kill.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PollInterval(Duration);
 
 impl PollInterval {
-        #[must_use]
+    /// Wrap a duration.
+    #[must_use]
     pub const fn new(interval: Duration) -> Self {
         Self(interval)
     }
@@ -134,11 +151,13 @@ impl Deref for PollInterval {
     }
 }
 
+/// Time to wait after SIGTERM before SIGKILL.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct KillGrace(Duration);
 
 impl KillGrace {
-        #[must_use]
+    /// Wrap a duration.
+    #[must_use]
     pub const fn new(grace: Duration) -> Self {
         Self(grace)
     }
@@ -152,11 +171,13 @@ impl Deref for KillGrace {
     }
 }
 
+/// Timeout for a single readiness probe.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ProbeTimeout(Duration);
 
 impl ProbeTimeout {
-        #[must_use]
+    /// Wrap a duration.
+    #[must_use]
     pub const fn new(timeout: Duration) -> Self {
         Self(timeout)
     }
@@ -170,14 +191,20 @@ impl Deref for ProbeTimeout {
     }
 }
 
+/// Whether a child is still running.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ChildStatus {
-        Running,
-        Exited,
+    /// Still alive.
+    Running,
+    /// Has exited.
+    Exited,
 }
 
+/// Result of a readiness probe.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Readiness {
-        Ready,
-        NotYet,
+    /// Host accepted a connection.
+    Ready,
+    /// Not accepting yet.
+    NotYet,
 }

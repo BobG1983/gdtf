@@ -1,3 +1,5 @@
+//! Resolve RON theme specs into runtime themes.
+
 mod system;
 #[cfg(test)]
 mod test;

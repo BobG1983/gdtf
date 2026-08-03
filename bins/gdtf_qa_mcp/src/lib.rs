@@ -1,10 +1,20 @@
+//! MCP bridge that launches game/editor hosts and forwards QA tool calls over net QA.
+
+/// Standard base64 encoding for tool payloads.
 pub mod base64;
+/// Bridge error types.
 pub mod error;
+/// Game and editor host handles.
 pub mod hosts;
+/// Child process lifecycle (launch, stop, orphans).
 pub mod lifecycle;
+/// TCP link to a host's net QA channel.
 pub mod link;
+/// MCP protocol handlers and tool schemas.
 pub mod mcp;
+/// JSON-RPC dispatch over stdio.
 pub mod rpc;
+/// Stdio serve loop.
 pub mod serve;
 
 pub use error::McpError;
