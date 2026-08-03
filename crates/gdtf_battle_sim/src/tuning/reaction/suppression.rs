@@ -1,14 +1,16 @@
-//! are authored under `reaction:` in `assets/core_tuning/combat.tuning.ron` and
+//! Suppression radius and stability penalty.
+
 use bevy::prelude::Deref;
 use serde::Deserialize;
 
-/// leaf parses, never this magnitude. `#[serde(transparent)]` lets it parse a bare RON
+/// Cells around a suppressor that apply the pinned-move gate.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 #[serde(transparent)]
 pub struct SuppressionRadius(u8);
 
 impl SuppressionRadius {
-                            #[must_use]
+    /// Wrap a radius.
+    #[must_use]
     pub const fn new(radius: u8) -> Self {
         Self(radius)
     }
@@ -20,13 +22,14 @@ impl Default for SuppressionRadius {
     }
 }
 
-/// `#[serde(transparent)]` lets it parse a bare RON scalar; private inner + derived
+/// Stability points lost while suppressed.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct SuppressionStabilityPenalty(f32);
 
 impl SuppressionStabilityPenalty {
-                                    #[must_use]
+    /// Wrap a penalty.
+    #[must_use]
     pub const fn new(points: f32) -> Self {
         Self(points)
     }

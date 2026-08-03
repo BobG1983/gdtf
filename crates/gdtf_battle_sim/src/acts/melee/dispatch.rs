@@ -1,3 +1,5 @@
+//! Process melee requests against gangers or structure cells.
+
 use bevy::prelude::{MessageReader, MessageWriter, Query, With};
 
 use super::{
@@ -27,6 +29,7 @@ use crate::{
               + ShoveRequested writers — each a distinct Bevy SystemParam (the dispatch_fire \
               argument-count carve-out)"
 )]
+/// Resolve each melee request against a ganger or structure.
 pub fn dispatch_melee(
     mut requests: MessageReader<MeleeRequested>,
     geom: MeleeGeomQuery,
@@ -103,10 +106,10 @@ pub fn dispatch_melee(
                 &mut pieces,
                 &mut world,
                 MeleeStreams {
-                    fight:    &mut fight_rng,
-                    shot:     &mut shot_rng,
+                    fight: &mut fight_rng,
+                    shot: &mut shot_rng,
                     severity: &mut severity_rng,
-                    injury:   &mut injury_rng,
+                    injury: &mut injury_rng,
                 },
                 &mut resolved,
                 &mut facts,
