@@ -29,10 +29,10 @@ use crate::{
 
 #[expect(
     clippy::too_many_arguments,
-    reason = "the GTW-323 armor + weapon relationships add the disjoint wears/pieces + \
-              wields/weapons system params to the dispatch_fire signature; each is a \
-              distinct, independently-borrowed Bevy SystemParam that cannot be bundled \
-              without a custom SystemParam struct that would only obscure the access set"
+    reason = "armor + weapon relationships add the disjoint wears/pieces + wields/weapons system \
+              params to the dispatch_fire signature; each is a distinct, independently-borrowed \
+              Bevy SystemParam that cannot be bundled without a custom SystemParam struct that \
+              would only obscure the access set"
 )]
 /// Read fire requests, turn if needed, run the shot pipeline, emit signals.
 pub fn dispatch_fire(
