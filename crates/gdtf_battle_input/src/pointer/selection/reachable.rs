@@ -1,4 +1,5 @@
-//! reachable-range overlay — keeping selection out of the authoritative sim model (the
+//! Reachable-cells overlay for the selected shooter (debug).
+
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::ReachableCells;
 use gdtf_battle_sim::{
@@ -13,6 +14,7 @@ use gdtf_battle_sim::{
 
 use crate::selection::resources::SelectedShooter;
 
+/// Recompute cells reachable within the selected shooter's TU budget.
 pub fn populate_reachable_overlay(
     selected: Res<SelectedShooter>,
     actors: Query<(&Position, &Tu, &Faction, Option<&InflictedInjuries>)>,
@@ -79,11 +81,12 @@ fn relation_to(
     }
 }
 
+/// Grid resources needed for reachable-cell planning.
 #[derive(SystemParam)]
 pub struct ReachableGrids<'w> {
-        pub(crate) grid:        Res<'w, OccupancyGrid>,
-        pub(crate) links:       Res<'w, VerticalLinkGraph>,
-        pub(crate) squad:       Res<'w, SquadVisibility>,
-        pub(crate) tuning:      Res<'w, CombatTuning>,
-            pub(crate) floor_costs: Res<'w, FloorCostGrid>,
+    pub(crate) grid: Res<'w, OccupancyGrid>,
+    pub(crate) links: Res<'w, VerticalLinkGraph>,
+    pub(crate) squad: Res<'w, SquadVisibility>,
+    pub(crate) tuning: Res<'w, CombatTuning>,
+    pub(crate) floor_costs: Res<'w, FloorCostGrid>,
 }

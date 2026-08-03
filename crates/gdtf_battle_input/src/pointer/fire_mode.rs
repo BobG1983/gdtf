@@ -1,20 +1,24 @@
+//! Selected fire mode resource and sync on selection change.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::weapon::{FireMode, FireModeSpec, MeleeWeapon, WieldedBy, Wields};
 
 use crate::SelectedShooter;
 
+/// Currently selected fire mode for the active shooter.
 #[derive(Resource, Deref, Debug, Clone, Copy, PartialEq)]
 pub struct SelectedFireMode(FireModeSpec);
 
 impl SelectedFireMode {
-        #[must_use]
+    /// Wrap a fire mode spec.
+    #[must_use]
     pub const fn new(spec: FireModeSpec) -> Self {
         Self(spec)
     }
 }
 
 impl Default for SelectedFireMode {
-                        fn default() -> Self {
+    fn default() -> Self {
         Self(FireModeSpec::new(
             gdtf_battle_sim::weapon::ModeKind::Single,
             gdtf_battle_sim::weapon::ModeConeMult::new(1.0),
@@ -24,6 +28,7 @@ impl Default for SelectedFireMode {
     }
 }
 
+/// Copy the selected shooter's ranged weapon fire mode into the resource.
 pub fn sync_fire_mode_on_select(
     selected: Res<SelectedShooter>,
     wields: Query<&Wields>,
