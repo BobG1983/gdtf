@@ -1,3 +1,5 @@
+//! Segmented control (radio-style button group).
+
 mod interaction;
 mod mutators;
 mod spawn;
