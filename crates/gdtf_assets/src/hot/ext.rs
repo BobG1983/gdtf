@@ -1,3 +1,5 @@
+//! App extension to register hot-RON resources.
+
 use bevy::{app::App, asset::AssetServer, ecs::component::Mutable, prelude::*, reflect::TypePath};
 use serde::Deserialize;
 
@@ -10,12 +12,15 @@ use crate::{
     },
 };
 
+/// Register hot-reloadable RON-backed resources on a Bevy app.
 pub trait HotRonAppExt {
-                        fn init_hot_ron_resource<T>(&mut self, path: &'static str) -> &mut Self
+    /// Load `T` from RON at `path` (identity map).
+    fn init_hot_ron_resource<T>(&mut self, path: &'static str) -> &mut Self
     where
         T: Resource<Mutability = Mutable> + Clone + for<'de> Deserialize<'de> + TypePath;
 
-                        fn init_hot_ron_resource_with_fallback<T>(
+    /// Identity load with a fallback if the asset fails.
+    fn init_hot_ron_resource_with_fallback<T>(
         &mut self,
         path: &'static str,
         fallback: HotRonFallbackFn<T>,
@@ -23,7 +28,8 @@ pub trait HotRonAppExt {
     where
         T: Resource<Mutability = Mutable> + Clone + for<'de> Deserialize<'de> + TypePath;
 
-                        fn init_hot_ron_resource_mapped<Spec, T>(
+    /// Load `Spec` from RON and map into resource `T`.
+    fn init_hot_ron_resource_mapped<Spec, T>(
         &mut self,
         path: &'static str,
         map: HotRonMapFn<Spec, T>,
@@ -32,7 +38,8 @@ pub trait HotRonAppExt {
         Spec: for<'de> Deserialize<'de> + TypePath + Send + Sync + 'static,
         T: Resource<Mutability = Mutable>;
 
-                    fn init_hot_ron_resource_mapped_with_fallback<Spec, T>(
+    /// Mapped load with fallback.
+    fn init_hot_ron_resource_mapped_with_fallback<Spec, T>(
         &mut self,
         path: &'static str,
         map: HotRonMapFn<Spec, T>,
@@ -42,7 +49,8 @@ pub trait HotRonAppExt {
         Spec: for<'de> Deserialize<'de> + TypePath + Send + Sync + 'static,
         T: Resource<Mutability = Mutable>;
 
-                                            fn init_hot_ron_chain<Spec, T>(&mut self, chain: HotRonChain<Spec, T>) -> &mut Self
+    /// Install a pre-built [`HotRonChain`].
+    fn init_hot_ron_chain<Spec, T>(&mut self, chain: HotRonChain<Spec, T>) -> &mut Self
     where
         Spec: for<'de> Deserialize<'de> + TypePath + Send + Sync + 'static,
         T: Resource<Mutability = Mutable>;
