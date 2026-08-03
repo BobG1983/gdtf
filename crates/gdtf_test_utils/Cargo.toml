@@ -6,20 +6,8 @@ edition = "2024"
 [dependencies]
 bevy = { workspace = true }
 gdtf_app = { path = "../gdtf_app", features = ["test-support"] }
-# The canonical shared sim test builders (GTW-324). `gdtf_test_utils` sits ABOVE the
-# sim, so this is a NORMAL dependency (no cycle) — the `BattleAppBuilder` seeds a
-# battle app with the sim's `test_weapon_registry` / `test_armor_registry` and a
-# default `Situation` fixture. The `test-support` feature exposes
-# `gdtf_battle_sim::test_support`.
 gdtf_battle_sim = { path = "../gdtf_battle_sim", features = ["test-support"] }
-# `BattleAppBuilder` inserts the default UI theme (the battle scene's panels need it)
-# so a driven battle app reaches BattleRunning the same way the per-app tests do.
 gdtf_ui = { path = "../gdtf_ui" }
-# GTW-527: the NON-panicking GPU-adapter probe (`gpu_probe`) queries wgpu for a usable
-# adapter BEFORE the readback tests build a real render `App`, so a GPU-less CI runner
-# skips gracefully instead of panicking inside `app.finish()`. Pinned to the EXACT
-# workspace `Cargo.lock` version `bevy_render` links (29.0.3) so Cargo unifies the two
-# into ONE `wgpu` crate instance — the probe's query mirrors bevy's own adapter request.
 wgpu = "=29.0.3"
 
 [lints]

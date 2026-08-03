@@ -1,6 +1,3 @@
-//! Live-resource retheme tests: `apply_theme` re-reads `GdtfTheme` each run
-//! (never a spawn snapshot), and an absent theme is safely inert.
-
 use bevy::{
     prelude::*,
     text::{FontSize, TextFont},
@@ -13,13 +10,6 @@ use super::{
 };
 use crate::theme::GdtfTheme;
 
-/// Mutating the in-memory `GdtfTheme` and re-running `apply_theme` re-themes
-/// the already-spawned entities with the NEW palette — proving the system
-/// reads the resource live each run, never snapshots at spawn.
-///
-/// Pin-discriminating: if `apply_theme` captured values at spawn instead of
-/// reading `Res<GdtfTheme>` per run, the colors after the second update would
-/// still be the first palette and these asserts would fail.
 #[test]
 fn re_theme_after_resource_mutation_repaints_with_new_palette()
 -> Result<(), ron::error::SpannedError> {
@@ -43,7 +33,6 @@ fn re_theme_after_resource_mutation_repaints_with_new_palette()
 
     app.update();
 
-    // Swap to a deliberately different button palette and scalars.
     let new_button = Color::srgb(0.50, 0.10, 0.30);
     let new_border = Color::srgb(0.99, 0.40, 0.00);
     app.insert_resource(theme(
@@ -87,22 +76,14 @@ fn re_theme_after_resource_mutation_repaints_with_new_palette()
     Ok(())
 }
 
-/// With NO `GdtfTheme` resource inserted, an `app.update()` must not panic:
-/// the `run_if(resource_exists)` guard keeps `apply_theme` from running, so
-/// the absent theme (pre-`Load`) is safe (bevy-traps rule 1).
-///
-/// Pin-discriminating: dropping the run condition (or taking `Res<GdtfTheme>`
-/// without the guard) would make this update panic on the missing resource.
 #[test]
 fn absent_theme_does_not_panic() {
     let mut app = app_with_apply_theme();
     app.world_mut()
         .spawn((Themed::new(ThemeRole::Panel), Node::default()));
 
-    // No GdtfTheme inserted. The guard must keep apply_theme from running.
     app.update();
 
-    // Reaching here without a panic is the assertion; make it explicit.
     assert!(
         app.world().get_resource::<GdtfTheme>().is_none(),
         "test precondition: GdtfTheme must be absent for this guard check",

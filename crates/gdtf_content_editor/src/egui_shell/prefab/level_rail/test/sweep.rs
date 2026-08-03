@@ -1,6 +1,3 @@
-//! A1 — the pure CPU occupancy sweep: storey scoping, role-hued texels, and the
-//! current-extent bounds rule.
-
 use bevy_egui::egui;
 use gdtf_battle_sim::{
     level::{GridHeight, GridLevels, GridSize, GridWidth},
@@ -14,8 +11,6 @@ use crate::{
     egui_shell::prefab::level_rail::occupancy::{storey_image, storey_key},
 };
 
-/// The sweep is storey-scoped: each storey counts + draws ONLY its own painted cells,
-/// at the row-major top-left-origin texel of its `(x, y)`.
 #[test]
 fn sweep_is_storey_scoped_and_counts() {
     let size = size();
@@ -56,9 +51,6 @@ fn sweep_is_storey_scoped_and_counts() {
     );
 }
 
-/// Texels are ROLE-hued through the preview's resolution chain: two defs with different
-/// graphic roles draw different hues, the same role draws the same hue, and an
-/// unresolvable key still draws (the loud fallback — a paint is never hidden).
 #[test]
 fn sweep_hues_by_resolved_role() {
     let size = size();
@@ -92,8 +84,6 @@ fn sweep_hues_by_resolved_role() {
     );
 }
 
-/// Paints stranded outside the CURRENT grid (a shrink after painting) render nowhere:
-/// excluded from the texels AND the count.
 #[test]
 fn sweep_ignores_out_of_bounds_stale_paints() {
     let big = size();

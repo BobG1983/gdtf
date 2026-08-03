@@ -1,7 +1,3 @@
-//! GTW-670 C4: form-model headless tests over the WEAPON draft's pure mutators, the
-//! list-edit fold-backs, the `DotTurns` min-1 fold, and the path derivation (the armor
-//! / injury / sprite / attachment form-test parity).
-
 use std::path::Path;
 
 use gdtf_battle_sim::{
@@ -17,9 +13,6 @@ use super::{
     save::{draft_to_weapon_spec, weapon_file_name, weapon_save_path_in},
 };
 
-/// A fresh draft seeds the structural minimum: ONE `Single` fire mode (the documented
-/// [`FireMode`] "at least one mode, `Single` first" invariant), the serde-default
-/// identities for every opt-in field, and the documented vocabulary defaults.
 #[test]
 fn new_weapon_seeds_the_structural_minimum() {
     let draft = WeaponDraft::new_weapon();
@@ -40,9 +33,6 @@ fn new_weapon_seeds_the_structural_minimum() {
     assert!(spec.on_death.is_none(), "no on-death effect");
 }
 
-/// The load path copies an authored spec VERBATIM and ends the one-shot autoload; the
-/// projection trims the name buffer into the registry-key [`WeaponName`] and copies the
-/// working spec.
 #[test]
 fn load_is_verbatim_and_projection_trims_the_name() {
     let mut authored = WeaponDraft::new_weapon();
@@ -68,9 +58,6 @@ fn load_is_verbatim_and_projection_trims_the_name() {
     );
 }
 
-/// The FIRE-MODE list edits by projecting the authored list out, mutating it, and
-/// folding it back through [`FireMode::new`] — the exact model path the form's
-/// add/remove rows run (the sim newtype is construct-only, GTW-670 C2).
 #[test]
 fn fire_mode_list_edits_fold_back_through_the_loader_ctor() {
     let mut draft = WeaponDraft::new_weapon();
@@ -84,8 +71,6 @@ fn fire_mode_list_edits_fold_back_through_the_loader_ctor() {
     draft.spec_mut().fire_mode = FireMode::new(modes);
     assert_eq!(draft.spec().fire_mode.len(), 2, "the added row landed");
 
-    // Remove the added row again — the one-mode floor is form policy, so the model
-    // path itself stays symmetric.
     let mut modes: Vec<FireModeSpec> = draft.spec().fire_mode.to_vec();
     modes.remove(1);
     draft.spec_mut().fire_mode = FireMode::new(modes);
@@ -96,9 +81,6 @@ fn fire_mode_list_edits_fold_back_through_the_loader_ctor() {
     );
 }
 
-/// The SLOTS declaration edits by projecting [`WeaponSlots::declarations`] out and
-/// folding back through [`WeaponSlots::new`] — the form's add/remove rows' model path,
-/// including the contract's multi-capacity `(Rail, 3)` shape.
 #[test]
 fn slots_edits_fold_back_through_the_loader_ctor() {
     let mut draft = WeaponDraft::new_weapon();
@@ -113,26 +95,17 @@ fn slots_edits_fold_back_through_the_loader_ctor() {
     assert_eq!(draft.spec().slots.declarations().len(), 1);
 }
 
-/// The DOT sub-form's turns fold keeps an authored zero UNREPRESENTABLE (GTW-643 /
-/// GTW-670 C2): a raw `0` becomes the minimum ONE turn, a positive raw value is
-/// preserved exactly.
 #[test]
 fn dot_turns_fold_floors_zero_at_one() {
     assert_eq!(dot_turns_from_raw(0).get(), 1, "zero floors to one turn");
     assert_eq!(dot_turns_from_raw(1).get(), 1);
     assert_eq!(dot_turns_from_raw(7).get(), 7, "a positive count survives");
 
-    // The enable-checkbox seed carries the same floor: the sim's minimal profile is
-    // one turn, never zero.
     let seed = DotProfile::default();
     assert_eq!(seed.turns.get(), 1, "the DOT seed is the minimal ONE turn");
     assert_eq!(*seed.damage, *DotDamage::new(0));
 }
 
-/// The path derivation runs through the family consts + the shared sanitize helper: the
-/// literal `content/weapons/ranged/<stem>.weapon.ron` shape the GTW-257 loader
-/// dispatches on (pinning the LITERALS is the drift alarm — GTW-621), with the
-/// `unnamed_weapon` fallback for a name that sanitizes to nothing.
 #[test]
 fn save_path_derives_from_the_family_consts() {
     let name = WeaponName::new("Mag-Lock Ripper (mk II)".to_owned());

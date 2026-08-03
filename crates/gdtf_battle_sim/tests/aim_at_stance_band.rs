@@ -1,35 +1,3 @@
-//! GTW-314 AIM-AT-STANCE-BAND regression test: a standing shooter HITS a crouching /
-//! prone target on the central axis instead of sailing over it.
-//!
-//! The bug: `fire/compose.rs::TargetGeometry::compose` hardcoded the target's aim
-//! stance to `StanceKind::Standing` regardless of the target's REAL stance. That fed
-//! `ShotInputs::target_stance` → `target_aim_point`, which picked the standing
-//! silhouette-top (~0.95 of a level), so a standing muzzle's central axis arrived at
-//! the target cell in the HIGH band. The §2 clearance test
-//! (`round_clears_occupant`) then saw a HIGH round vs a MID (crouch) / LOW (prone)
-//! occupant — strictly higher → the round CLEARS (sails over) → a systematic miss
-//! against any non-standing target. (GTW-306 fixed only the presenter sprite; the
-//! sim trajectory was never fixed.)
-//!
-//! The fix routes the target's PUBLISHED silhouette band (GTW-304's
-//! `OccupancyGrid::occupant_band`) through `target_aim_point`'s band-midpoint branch,
-//! so the central axis lands squarely INSIDE the band the clearance test compares
-//! against (Crouch → MID midpoint, Prone → LOW midpoint).
-//!
-//! This test exercises the REAL fix path — the public `fire()` volley, which calls
-//! `TargetGeometry::compose` internally — never reaching for the crate-private
-//! geometry. It is DETERMINISTIC: the shooter's weapon has a ZERO base spread, so the
-//! composed cone is ≈ 0 and the trajectory is dead-center on the muzzle→aim central
-//! axis regardless of the RNG stream; whether that axis impacts the occupant
-//! (`ShotKind::Ganger`) or sails over it (`ShotKind::Miss`) is then purely geometric.
-//!
-//! On the PRE-FIX code the aim is forced Standing (HIGH), so the central axis sails
-//! over a crouching / prone occupant → `ShotKind::Miss` → these tests FAIL. After the
-//! fix the aim lands in the occupant's own band → `ShotKind::Ganger` → they pass. A
-//! standing-vs-standing control proves the fix does not regress the already-working
-//! case. Every `app.world_mut()` mutation is in a TEST BODY (`bevy-traps.md` #7
-//! carve-out (a)); no function here takes `&mut World` / `&World`.
-
 use bevy::{
     app::App,
     ecs::system::SystemState,
@@ -65,20 +33,14 @@ use gdtf_battle_sim::{
     },
 };
 
-/// The shooter's cell.
 fn shooter_cell() -> CellLevel {
     CellLevel::new(Cell::new(5, 6), Level::new(0))
 }
 
-/// The target's cell — a flat East shot from the shooter, same storey.
 fn target_cell() -> CellLevel {
     CellLevel::new(Cell::new(12, 6), Level::new(0))
 }
 
-/// Equip a ganger's six worn-armor-piece entities (GTW-323 / ADR-0004) at the thin
-/// uniform stats, related via `WornBy` so `fire()` resolves the struck location through
-/// `ganger → Wears → the BodyPart-tagged piece` (the relationship hook populates `Wears`
-/// synchronously in a bare `World` spawn).
 fn equip_thin_armor(app: &mut App, ganger: Entity) {
     for part in BodyPart::ALL {
         app.world_mut().spawn((
@@ -93,10 +55,6 @@ fn equip_thin_armor(app: &mut App, ganger: Entity) {
     }
 }
 
-/// Build the real-path app: `MinimalPlugins` + `OccupancyMaintenancePlugin` (whose
-/// `sync_moved_gangers` publishes each occupant's stance-derived silhouette band off
-/// the grid), plus the sim resources `fire()` reads. NO `set_occupant_band` call —
-/// the band that drives the aim is published by REAL code.
 fn aim_band_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
@@ -107,17 +65,11 @@ fn aim_band_app() -> App {
     app
 }
 
-/// Spawn an armed, alive, loaded, aiming, STANDING shooter at the shooter cell facing
-/// the target. The weapon's `BaseSpread` is ZERO, so the composed cone is ≈ 0 and the
-/// sampled trajectory is the muzzle→aim central axis EXACTLY — the geometric HIT/MISS
-/// is then deterministic regardless of the seed.
 fn spawn_standing_shooter(app: &mut App, facing: Direction) -> Entity {
     let bundle = WeaponBundle::new(
         WeaponName::new("probe-weapon".to_owned()),
-        // ZERO spread: the cone collapses to the central axis (cone 0 = the axis).
         BaseSpread::new(0.0),
         Accuracy::new(4.0),
-        // ZERO kickback so there is no recoil widening across the (single) round.
         Kickback::new(0.0),
         FatalBias::new(0.0),
         DamageProfile::new(
@@ -133,8 +85,6 @@ fn spawn_standing_shooter(app: &mut App, facing: Direction) -> Entity {
                 ReloadTu::new(12),
             ),
             FireMode::new(vec![single_mode(0.2, 1)]),
-            // `stable` so the brace engages unconditionally — keeps the cone tight,
-            // though the ZERO base spread already collapses it to the axis.
             Stable::new(true),
             Shove::new(false),
             Handedness::OneHanded,
@@ -160,16 +110,10 @@ fn spawn_standing_shooter(app: &mut App, facing: Direction) -> Entity {
             ),
         ))
         .id();
-    // GTW-323 slice 2: the weapon rides on a related weapon entity (`Wields`); the
-    // `WieldedBy` insert hook populates the ganger's `Wields` synchronously in a bare
-    // `World` spawn so the very next `fire()` resolves it.
     app.world_mut().spawn((WieldedBy::new(shooter), bundle));
     shooter
 }
 
-/// Spawn a target ganger at the target cell holding `stance` (so the production
-/// `sync_moved_gangers` publishes its silhouette band — Standing→HIGH, Crouching→MID,
-/// Prone→LOW), carrying the full `TargetQuery` battle-surface set.
 fn spawn_target(app: &mut App, stance: StanceKind) -> Entity {
     app.world_mut()
         .spawn((
@@ -185,15 +129,8 @@ fn spawn_target(app: &mut App, stance: StanceKind) -> Entity {
         .id()
 }
 
-/// Fire ONE volley at the target cell with seed `seed`, returning the resolved
-/// [`Volley`]. Reads the maintained grids straight off the world (cloned read views so
-/// the two disjoint fire queries can borrow the world mutably without aliasing the
-/// resources).
 fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
-    /// The `fire()` query tuple, aliased so the `SystemState` type stays under clippy's
-    /// `type_complexity` gate (the GTW-543 mounted-weapon `MountedQuery` addition tipped it over).
-    /// Declared FIRST in the fn so it precedes the `let`s (`items_after_statements`).
-    type FireQueries<'w, 's> = (
+                type FireQueries<'w, 's> = (
         ShooterQuery<'w, 's>,
         TargetQuery<'w, 's>,
         WearsQuery<'w, 's>,
@@ -231,8 +168,6 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
         .unwrap_or_default();
 
     let mut state: SystemState<FireQueries> = SystemState::new(app.world_mut());
-    // `get_mut` now returns a `Result` (Bevy 0.19); the params always validate, so
-    // an `Err` is structurally impossible — assert loudly rather than firing nothing.
     let access = state.get_mut(app.world_mut());
     assert!(access.is_ok(), "shooter/target queries must validate");
     let volley = match access {
@@ -277,15 +212,10 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
     volley
 }
 
-/// The struck [`ShotKind`] of the volley's single round, or `None` if it fired no
-/// rounds (keeps the test panic-free — all `unwrap`/`expect`/`panic` are denied here).
 fn single_shot_kind(volley: &Volley) -> Option<ShotKind> {
     volley.shots.first().map(|outcome| outcome.kind)
 }
 
-/// Stand the scene up: a standing shooter facing the `stance` target, one `update()`
-/// so the production occupancy-maintenance chain publishes the target's band off the
-/// grid, then return `(app, shooter, target)`. The aim band is published by REAL code.
 fn scene_with_target(stance: StanceKind) -> (App, Entity, Entity) {
     let mut app = aim_band_app();
     let facing = Direction::from_cells(
@@ -295,24 +225,16 @@ fn scene_with_target(stance: StanceKind) -> (App, Entity, Entity) {
     .unwrap_or(Direction::East);
     let shooter = spawn_standing_shooter(&mut app, facing);
     let target = spawn_target(&mut app, stance);
-    // GTW-323: equip each ganger's worn-armor PIECE entities (the `fire()` armor path).
     equip_thin_armor(&mut app, shooter);
     equip_thin_armor(&mut app, target);
-    // ONE update: `sync_moved_gangers` sees both fresh Positions as `Changed` and
-    // publishes each occupant's stance-derived silhouette band off the grid.
     app.update();
     (app, shooter, target)
 }
 
-/// GTW-314 — a standing shooter HITS a CROUCHING target on the central axis. The
-/// crouching target's published band is MID; the fix aims the central axis at the MID
-/// midpoint, so the round impacts it (`ShotKind::Ganger`). PRE-FIX the aim was forced
-/// Standing (HIGH) and the round sailed over → `ShotKind::Miss` → this test FAILED.
 #[test]
 fn standing_shooter_hits_a_crouching_target_on_the_central_axis() {
     let (mut app, shooter, target) = scene_with_target(StanceKind::Crouching);
 
-    // Sanity: the production sync published the crouching target's MID band.
     let band = app
         .world()
         .get_resource::<OccupancyGrid>()
@@ -332,10 +254,6 @@ fn standing_shooter_hits_a_crouching_target_on_the_central_axis() {
     );
 }
 
-/// GTW-314 — a standing shooter HITS a PRONE target on the central axis. The prone
-/// target's published band is LOW; the fix aims the central axis at the LOW midpoint,
-/// so the round impacts it. PRE-FIX the aim was forced Standing (HIGH) → the round
-/// sailed over → `ShotKind::Miss` → this test FAILED.
 #[test]
 fn standing_shooter_hits_a_prone_target_on_the_central_axis() {
     let (mut app, shooter, target) = scene_with_target(StanceKind::Prone);
@@ -359,11 +277,6 @@ fn standing_shooter_hits_a_prone_target_on_the_central_axis() {
     );
 }
 
-/// GTW-314 control — a standing shooter still HITS a STANDING target on the central
-/// axis (the already-working case is NOT regressed). The standing target's published
-/// band is HIGH; the fix aims the central axis at the HIGH midpoint (vs the old
-/// silhouette-top ~0.95), which still lands in the HIGH band, so the clearance verdict
-/// is unchanged — the round impacts.
 #[test]
 fn standing_shooter_still_hits_a_standing_target_on_the_central_axis() {
     let (mut app, shooter, target) = scene_with_target(StanceKind::Standing);

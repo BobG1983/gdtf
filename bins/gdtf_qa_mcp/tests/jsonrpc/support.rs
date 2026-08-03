@@ -1,6 +1,3 @@
-//! The canned links and lifecycles the fixtures dispatch against, and the two dispatch
-//! helpers every test calls.
-
 use gdtf_qa_mcp::{
     ChildPid, HostLifecycle, HostPair, HostSet, LaunchOutcome, LaunchSpec, McpError, OutputTail,
     QaLink, QaPort, StopOutcome, TailLines, WorkingDir, dispatch,
@@ -15,27 +12,13 @@ use gdtf_qa_protocol::{
 };
 use serde_json::Value;
 
-/// The name the canned EDITOR host answers its (empty) catalogue under.
 pub(crate) const EDITOR_HOST_NAME: &str = "gdtf-editor-net-qa";
 
-/// The one command the canned GAME host offers — the same name the real game's
-/// `GAME_COMMANDS` publishes.
 pub(crate) const CANNED_COMMAND: &str = "app.phase";
-/// The canned host's argument schema for [`CANNED_COMMAND`], carrying the
-/// `"additionalProperties": false` a `deny_unknown_fields` argument type derives.
-///
-/// A LITERAL, not a derivation: this crate carries schema documents as opaque TEXT and links
-/// no `schemars`. That the REAL game derives this shape is proved game-side, in
-/// `crates/gdtf_app/tests/net_qa/commands.rs`; what these fixtures prove is what the courier
-/// does with whatever document arrives.
 pub(crate) const CANNED_ARG_SCHEMA: &str = r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"AppPhaseArgs","type":"object","properties":{},"additionalProperties":false}"#;
-/// The canned host's reply schema for [`CANNED_COMMAND`] — a nested record, as the real one is.
 pub(crate) const CANNED_REPLY_SCHEMA: &str = r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"AppPhaseReply","type":"object","properties":{"phase":{"type":"object"}},"required":["phase"]}"#;
-/// The reply body the canned host answers a successful [`CANNED_COMMAND`] call with — the
-/// five-level tuple, with the four nested levels absent because the canned host is at its menu.
 pub(crate) const CANNED_REPLY: &str = r#"{"phase":{"app":"Running","running":"Menu","game":null,"battlescape":null,"aftermath":null}}"#;
 
-/// The canned GAME host's one-command catalogue.
 fn canned_catalogue() -> CommandCatalogue {
     CommandCatalogue::new(
         ServerNameNet::new("gdtf-net-qa".to_owned()),
@@ -50,12 +33,6 @@ fn canned_catalogue() -> CommandCatalogue {
     )
 }
 
-/// Spell out the riders that reached the host, and what each one carried.
-///
-/// The real host's `rider_refusal` names WHICH rider it has not built; this goes one step
-/// further and reports each rider's VALUE, because that is the only way a fixture can tell
-/// "the courier sent the rider" from "the courier sent the rider with the wrong payload" —
-/// a `capture` whose file stem was dropped would otherwise read exactly like one that kept it.
 fn riders_that_arrived(options: &RunOptions) -> String {
     let mut named = Vec::new();
     if let Some(budget) = options.await_ready.as_ref() {
@@ -73,11 +50,6 @@ fn riders_that_arrived(options: &RunOptions) -> String {
     )
 }
 
-/// The canned GAME host's answer to one `Run`, mirroring the REAL host's admission order.
-///
-/// It decides from the frame the COURIER built, which is what makes these fixtures able to
-/// see a courier that dropped an argument or a rider: an unknown NAME is reported first, a
-/// rider this build has not implemented next, and only then are the arguments decoded.
 fn canned_run(run: &RunCommand) -> CommandOutcome {
     if run.command.as_str() != CANNED_COMMAND {
         return CommandOutcome::Unknown {
@@ -105,9 +77,6 @@ fn canned_run(run: &RunCommand) -> CommandOutcome {
     }
 }
 
-/// The GAME's canned link: it publishes the one-command catalogue and answers a `Run`
-/// exactly as the real host's admission order does, so `tools/call` can be exercised with no
-/// socket.
 struct CannedGame;
 
 impl QaLink for CannedGame {
@@ -120,9 +89,6 @@ impl QaLink for CannedGame {
     }
 }
 
-/// The EDITOR's canned link: it publishes an EMPTY catalogue under its own host name and
-/// answers every `Run` `Unknown` — the mirror image of [`CannedGame`], so a call that
-/// reached the wrong link is visible in the reply rather than silent.
 struct CannedEditor;
 
 impl QaLink for CannedEditor {
@@ -140,8 +106,6 @@ impl QaLink for CannedEditor {
     }
 }
 
-/// A lifecycle the forwarding-tool fixtures never invoke — only present so `dispatch` has
-/// its argument.
 struct NoLifecycle;
 
 impl HostLifecycle for NoLifecycle {
@@ -158,8 +122,6 @@ impl HostLifecycle for NoLifecycle {
     }
 
     fn child_working_dir(&self) -> Option<WorkingDir> {
-        // No child, so no directory — a reported path renders against the dispatching
-        // process's own directory, which is what the pre-GTW-923 host always did.
         None
     }
 
@@ -168,36 +130,18 @@ impl HostLifecycle for NoLifecycle {
     }
 }
 
-/// The two lines the GAME's canned lifecycle reports its child printed.
 pub(crate) const GAME_LOG: &str = "first line from the game\nsecond line from the game";
-/// The two lines the EDITOR's canned lifecycle reports its child printed.
-///
-/// Different text from [`GAME_LOG`] for the same reason the ports and pids differ: a `logs`
-/// call that reached the wrong lifecycle has to be visible in the reply, not silent.
 pub(crate) const EDITOR_LOG: &str = "first line from the editor\nsecond line from the editor";
 
-/// The port + pid the GAME's canned lifecycle reports.
 pub(crate) const GAME_PORT: u16 = 7616;
-/// The pid the GAME's canned lifecycle reports.
 pub(crate) const GAME_PID: u32 = 4242;
-/// The port the EDITOR's canned lifecycle reports.
 pub(crate) const EDITOR_PORT: u16 = 7617;
-/// The pid the EDITOR's canned lifecycle reports.
 pub(crate) const EDITOR_PID: u32 = 5150;
 
-/// A lifecycle with canned launch / stop outcomes, so the three host-local tools can be
-/// exercised through the real dispatch without spawning a process.
-///
-/// Each host gets one carrying its OWN port, pid and log text, so a launch, stop or logs
-/// reply names which lifecycle actually ran — without that a swapped host lookup is
-/// invisible.
 struct CannedLifecycle {
-    /// The port this lifecycle's launch reports.
-    port: u16,
-    /// The pid this lifecycle's launch and stop report.
-    pid:  u32,
-    /// What this lifecycle's child "printed", read by `logs`.
-    log:  &'static str,
+        port: u16,
+        pid:  u32,
+        log:  &'static str,
 }
 
 impl HostLifecycle for CannedLifecycle {
@@ -227,8 +171,6 @@ impl HostLifecycle for CannedLifecycle {
     }
 }
 
-/// Dispatch a literal line through the real dispatch with canned hosts, returning the
-/// raw response line (or `None` for a notification).
 pub(crate) fn dispatch_line(line: &str, lifecycles: bool) -> Option<String> {
     let (mut game_link, mut editor_link) = (CannedGame, CannedEditor);
     if lifecycles {
@@ -256,7 +198,6 @@ pub(crate) fn dispatch_line(line: &str, lifecycles: bool) -> Option<String> {
     dispatch(line, &mut hosts)
 }
 
-/// Dispatch a literal line and parse the response line to a JSON value.
 pub(crate) fn dispatch_json(line: &str) -> Value {
     let Some(response) = dispatch_line(line, false) else {
         unreachable!("a request with an id yields a response line");
@@ -264,7 +205,6 @@ pub(crate) fn dispatch_json(line: &str) -> Value {
     serde_json::from_str(&response).unwrap_or(Value::Null)
 }
 
-/// Dispatch a literal line against the canned lifecycle and parse the response.
 pub(crate) fn dispatch_lifecycle_json(line: &str) -> Value {
     let Some(response) = dispatch_line(line, true) else {
         unreachable!("a request with an id yields a response line");

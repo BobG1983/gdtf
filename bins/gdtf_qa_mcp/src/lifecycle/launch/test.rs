@@ -1,6 +1,3 @@
-//! Unit tests for the launch recipe's values and the two default recipes (GTW-875,
-//! GTW-808).
-
 use std::path::PathBuf;
 
 use super::{
@@ -9,8 +6,6 @@ use super::{
     values::{EnvOverrides, EnvVar, EnvVarName, EnvVarValue, FeatureList, FeatureName, WorkingDir},
 };
 
-/// A feature list renders as the comma-joined `--features` value; an empty one renders as
-/// nothing at all, so the caller omits the flag rather than passing an empty string.
 #[test]
 fn feature_list_renders_comma_joined_and_empty_is_none() {
     let features = FeatureList::new(vec![
@@ -25,8 +20,6 @@ fn feature_list_renders_comma_joined_and_empty_is_none() {
     assert_eq!(FeatureList::default().render(), None);
 }
 
-/// The default recipe is the pre-GTW-875 hardcoded launch: the game package, dynamic
-/// linking plus the QA channel, no directory of its own, no extra environment.
 #[test]
 fn game_default_is_the_previous_hardcoded_recipe() {
     let spec = LaunchSpec::game_default();
@@ -39,8 +32,6 @@ fn game_default_is_the_previous_hardcoded_recipe() {
     assert!(spec.env().is_empty());
 }
 
-/// A recipe that names no directory resolves to the host's own, so two recipes that name
-/// the same checkout two ways are ONE recipe — and any other difference is not.
 #[test]
 fn recipes_match_on_the_resolved_directory_and_differ_on_anything_else() {
     let Ok(here) = std::env::current_dir() else {
@@ -94,8 +85,6 @@ fn recipes_match_on_the_resolved_directory_and_differ_on_anything_else() {
         "different environment"
     );
 
-    // A recipe differing ONLY in its QA channel is a different launch: the same package
-    // and features told to open a different channel is a different child (GTW-808).
     let other_channel = LaunchSpec::new(
         unnamed.package().clone(),
         unnamed.features().clone(),
@@ -109,8 +98,6 @@ fn recipes_match_on_the_resolved_directory_and_differ_on_anything_else() {
     );
 }
 
-/// The default EDITOR recipe is the `edqarun` command with the editor's own QA channel —
-/// the binary package, not the library crate (GTW-808).
 #[test]
 fn editor_default_is_the_editor_binary_over_the_editor_channel() {
     let spec = LaunchSpec::editor_default();
@@ -129,7 +116,6 @@ fn editor_default_is_the_editor_binary_over_the_editor_channel() {
     );
 }
 
-/// A recipe keeps the working directory and environment pairs it was built with, in order.
 #[test]
 fn spec_keeps_working_dir_and_env_overrides() {
     let spec = LaunchSpec::new(

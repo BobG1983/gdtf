@@ -1,16 +1,3 @@
-//! GTW-579 AC-3 headless pins: an `AssetEvent::Modified` on a member of EACH of
-//! the editor's FOUR folder families rebuilds the corresponding registry IN
-//! PLACE, AFTER `Load` exited — through the REAL GTW-570 content-family systems
-//! [`MapEditorPlugin`] registers (no editor-local redrive survives GTW-579),
-//! from the persistent whole-session [`ContentFolderHandle`]s (GTW-533).
-//!
-//! Each test drives the real editor app (no-renderer harness, live workspace
-//! `assets/` root) to `Editing`, hot-edits ONE loaded member's in-memory
-//! payload, fires the SAME `AssetEvent::Modified` the file-watcher emits, and
-//! asserts the registry reflects the edit with NO restart — the pre-GTW-579
-//! in-crate redrive pins, rewired onto the shared content-family path and extended to all four
-//! families.
-
 use bevy::{
     asset::{AssetEvent, AssetServer, Assets},
     prelude::*,
@@ -26,23 +13,16 @@ use gdtf_content_editor::{EditorState, MapEditorPlugin};
 use gdtf_content_families::{ArmorFamily, TerrainDefsFamily, ThemeDefsFamily, WeaponsFamily};
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
-/// A generous frame cap for the async Load resolve — a SAFETY NET, not a timing
-/// budget (the tests poll the `EditorState::Editing` signal).
 const MAX_UPDATES: u32 = 10_000;
 
-/// A small cap for the post-edit redrive settle (polled by signal, never slept).
 const REDRIVE_UPDATES: u32 = 100;
 
-/// The real editor app on the no-renderer `DefaultPlugins` UI harness (live
-/// `AssetServer` rooted at the workspace `assets/`).
 fn editor_app() -> App {
     let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
     app.add_plugins(MapEditorPlugin);
     app
 }
 
-/// Drives the app until [`EditorState::Editing`] (Load exited), then a few
-/// settle frames so the `OnEnter(Editing)` command flushes apply.
 fn advance_to_editing(app: &mut App) {
     let reached = advance_until(
         app,
@@ -63,8 +43,6 @@ fn advance_to_editing(app: &mut App) {
     }
 }
 
-/// A stub_pistol-shaped [`WeaponSpec`] with the given `damage`, parsed from
-/// inline RON; [`None`] (assert-fail) on a parse error, never a denied `unwrap`.
 fn weapon_spec(damage: i32) -> Option<WeaponSpec> {
     let ron = format!(
         "(base_spread: 0.10, accuracy: 1.0, kickback: 0.05, fatal_bias: 0.0, \
@@ -82,8 +60,6 @@ fn weapon_spec(damage: i32) -> Option<WeaponSpec> {
     parsed.ok()
 }
 
-/// A flak_vest-shaped [`ArmorSpec`] whose torso protection is the given distinct
-/// sentinel; [`None`] (assert-fail) on a parse error, never a denied `unwrap`.
 fn armor_spec(torso_protection: i32) -> Option<ArmorSpec> {
     let ron = format!(
         "(head:      (floor: 2, protection: 3, integrity: 50, hardness: 1, armor_type: Flak), \
@@ -102,8 +78,6 @@ fn armor_spec(torso_protection: i32) -> Option<ArmorSpec> {
     parsed.ok()
 }
 
-/// Asserts the family's [`ContentFolderHandle`] survived past `Load` (GTW-533
-/// whole-session persistence), then fires the given `Modified` id.
 fn assert_handle_persists_and_fire<F: gdtf_assets::ContentFamily>(
     app: &mut App,
     id: bevy::asset::AssetId<RonAsset<F::Spec>>,
@@ -117,9 +91,6 @@ fn assert_handle_persists_and_fire<F: gdtf_assets::ContentFamily>(
     app.world_mut().write_message(AssetEvent::Modified { id });
 }
 
-/// AC-3 (weapons): a `Modified` for the loaded `stub_pistol.weapon.ron` member
-/// rebuilds the [`WeaponRegistry`] in place — keyed by file stem — reflecting
-/// the edited damage, after `Load` exited.
 #[test]
 fn modified_weapon_member_rebuilds_weapon_registry_after_load() {
     let mut app = editor_app();
@@ -164,9 +135,6 @@ fn modified_weapon_member_rebuilds_weapon_registry_after_load() {
     );
 }
 
-/// AC-3 (armor): a `Modified` for the loaded `flak_vest.armor.ron` member
-/// rebuilds the [`ArmorRegistry`] in place — keyed by file stem — reflecting the
-/// edited spec, after `Load` exited.
 #[test]
 fn modified_armor_member_rebuilds_armor_registry_after_load() {
     let mut app = editor_app();
@@ -209,9 +177,6 @@ fn modified_armor_member_rebuilds_armor_registry_after_load() {
     );
 }
 
-/// AC-3 (terrain defs): a `Modified` for a loaded `*.terrain_def.ron` member
-/// rebuilds the [`TerrainDefRegistry`] in place — keyed by the def's OWN UUID —
-/// reflecting the edited display name, after `Load` exited.
 #[test]
 fn modified_terrain_def_member_rebuilds_terrain_registry_after_load() {
     let mut app = editor_app();
@@ -220,13 +185,10 @@ fn modified_terrain_def_member_rebuilds_terrain_registry_after_load() {
     let handle = app
         .world()
         .resource::<AssetServer>()
-        // GTW-634 A1: the folder segment is DERIVED from the family's owning const.
         .load::<RonAsset<TerrainDef>>(format!(
             "{}/underhive/scrap_barricade.terrain_def.ron",
             TerrainDefsFamily::FOLDER
         ));
-    // Edit IN PLACE under the def's own (payload) key, so the assertion needs no
-    // shipped-UUID pin.
     let key = {
         let mut defs = app
             .world_mut()
@@ -259,9 +221,6 @@ fn modified_terrain_def_member_rebuilds_terrain_registry_after_load() {
     );
 }
 
-/// AC-3 (theme defs): a `Modified` for a loaded `*.terrain_theme.ron` member
-/// rebuilds the [`UuidThemeRegistry`] in place — keyed by the theme's OWN UUID —
-/// reflecting the edited display name, after `Load` exited.
 #[test]
 fn modified_theme_def_member_rebuilds_theme_registry_after_load() {
     let mut app = editor_app();

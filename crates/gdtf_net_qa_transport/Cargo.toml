@@ -3,25 +3,11 @@ name = "gdtf_net_qa_transport"
 version = "0.1.0"
 edition = "2024"
 
-# GTW-803: the host-agnostic half of the DEV QA network control channel, lifted out of
-# `gdtf_app/src/dev/net_qa/` so the game and (later) the content editor share ONE
-# codepath. It holds the loopback listener + accept loop, the one-client-at-a-time gate,
-# the request/response channel, the typed pending map and its frame-deadline sweep — and
-# nothing that knows about a battle, an `AppState`, or a request's meaning. Routing, the
-# command set, and the env/`cfg` activation gates stay with the host.
 [dependencies]
-# `NetInbox` and `PendingQueue<P>` are Bevy `Resource`s and `sweep_pending` is a Bevy
-# system, so the host-side half of the transport is an ECS citizen. (The bevy-FREE layer of
-# this stack is `gdtf_qa_protocol`, below — it already exists and is not duplicated here.)
 bevy = { workspace = true }
-# The bevy-free typed wire contract (GTW-734): the request/response messages this transport
-# moves and the PURE framing codec it CALLS. This crate never reimplements framing — the
-# `u32` BE length prefix, the encoder and the decoder all live there (GTW-803 prohibition).
 gdtf_qa_protocol = { path = "../gdtf_qa_protocol" }
 
 [features]
-# Enable Bevy dynamic linking for fast dev builds. Opt-in only — never enabled for release
-# artifacts. Propagated from the consuming crates, mirroring `gdtf_screenshot`'s entry.
 dynamic_linking = ["bevy/dynamic_linking"]
 
 [lints]

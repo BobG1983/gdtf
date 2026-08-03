@@ -1,25 +1,15 @@
 use super::support::*;
 
-/// AC3 — bare-flesh path: wearing the struck piece to integrity ≤ 0 first
-/// (`protects(part) == false`) makes the hit resolve with NO protection /
-/// hardness. Asserts the report's matchup is `Neutral` (no armor type to match)
-/// AND the HP-loss equals the FULL weapon damage (zeroed soak) — distinct from
-/// the armored case on the same weapon, where protection soaks.
 #[test]
 fn bare_flesh_uses_no_protection_or_hardness() {
     let tuning = CombatTuning::default();
     let entity = an_entity();
     let part = BodyPart::RightArm;
-    // A weapon whose damage is small enough that real protection WOULD soak it
-    // below itself — so the bare-flesh full-damage result is unmistakable.
     let weapon = a_weapon(10, 3, 0, DamageType::Kinetic);
 
-    // --- Bare flesh: the struck piece is worn through (integrity 0). ---
     let mut hp = Hp::new(50);
     let mut wounds = Wounds::new(9);
     let mut life = LifeState::Alive;
-    // integrity 0 ⇒ protects() == false ⇒ bare flesh, despite real
-    // protection/hardness numbers on the (broken) piece.
     let mut integrity = piece_integrity(0);
     let mut inflicted = InflictedWounds::default();
     assert!(
@@ -61,25 +51,19 @@ fn bare_flesh_uses_no_protection_or_hardness() {
         Matchup::Neutral,
         "bare flesh has no armor type to match → Neutral (no wheel advantage)",
     );
-    // Zeroed soak ⇒ HP-loss == full weapon damage (no protection eats it).
     assert_eq!(
         *applied.hit.hp_damage, *weapon.damage,
         "bare flesh deals full weapon damage (no protection / hardness)",
     );
-    // Bare flesh wears no piece — there is nothing to break OR to wear, so the wear
-    // outcome is Unaffected (GTW-313: a hit on an unarmored part emits neither signal;
-    // the closed ArmorWearOutcome carries that as ONE variant — GTW-573 C2).
     assert_eq!(
         applied.wear,
         ArmorWearOutcome::Unaffected,
         "bare flesh wears no piece — the wear outcome must be Unaffected",
     );
 
-    // --- Armored counterpart: the same weapon vs a protecting piece soaks. ---
     let mut hp2 = Hp::new(50);
     let mut wounds2 = Wounds::new(9);
     let mut life2 = LifeState::Alive;
-    // High protection, intact (protects == true) ⇒ the soak is in play.
     let mut integrity2 = piece_integrity(50);
     let mut inflicted2 = InflictedWounds::default();
     assert!(
@@ -114,8 +98,6 @@ fn bare_flesh_uses_no_protection_or_hardness() {
     let Some(applied2) = applied_of(&report2) else {
         return;
     };
-    // The armored HP-loss is strictly below the bare-flesh full damage: real
-    // protection soaked it. (Pins that bare flesh truly bypassed the soak.)
     assert!(
         *applied2.hit.hp_damage < *applied.hit.hp_damage,
         "the armored hit must take less HP-loss than bare flesh: {} >= {}",

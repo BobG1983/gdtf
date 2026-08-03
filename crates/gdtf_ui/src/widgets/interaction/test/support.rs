@@ -1,7 +1,3 @@
-//! Shared fixtures for the interaction-layer tests: the caller-parameterized
-//! `theme` RON fixture, the production-ordered `app_with_interaction` harness,
-//! and the headless `set_interaction` pointer stand-in.
-
 use bevy::{MinimalPlugins, asset::AssetPlugin, prelude::*, scene::ScenePlugin, ui::Interaction};
 
 use super::super::theme_interaction;
@@ -10,11 +6,6 @@ use crate::{
     themed::{UiSystems, apply_theme},
 };
 
-/// Builds a [`GdtfTheme`] with caller-chosen button resting / hover / pressed
-/// colors through the real resolution path (deserialize the nested spec, then
-/// [`GdtfThemeSpec::resolve`]) with a defaulted-font resolver. Returns the
-/// `ron` error so a malformed literal surfaces via `?` rather than a denied
-/// `unwrap`/`panic`.
 pub(super) fn theme(
     button_color: [f32; 4],
     hover: [f32; 4],
@@ -44,13 +35,6 @@ pub(super) fn theme(
     Ok(spec.resolve(|_| Handle::<Font>::default()))
 }
 
-/// Builds a minimal app with the real production schedule: `apply_theme`
-/// (in its named set) before `theme_interaction`, both under the live run
-/// condition — mirroring [`UiPlugin`](crate::UiPlugin)'s wiring.
-///
-/// Includes `MinimalPlugins` + `AssetPlugin` + `ScenePlugin` (GTW-322) so the
-/// widget `bsn!` builders' `Commands::spawn_scene` resolves on flush instead of
-/// panicking on the missing scene/asset resources.
 pub(super) fn app_with_interaction() -> App {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
@@ -65,9 +49,6 @@ pub(super) fn app_with_interaction() -> App {
     app
 }
 
-/// Sets a button's [`Interaction`] in the world (the swap a real pointer
-/// would otherwise drive), so the test can exercise the state transitions
-/// headlessly.
 pub(super) fn set_interaction(app: &mut App, button: Entity, state: Interaction) {
     if let Some(mut interaction) = app.world_mut().get_mut::<Interaction>(button) {
         *interaction = state;

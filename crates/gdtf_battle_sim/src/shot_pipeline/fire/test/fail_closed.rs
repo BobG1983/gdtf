@@ -1,10 +1,5 @@
-//! AC2 — fail-closed cases: an empty magazine or a downed shooter fires nothing and
-//! mutates nothing.
-
 use super::support::*;
 
-/// AC2 — fail-closed when the magazine is empty: an empty volley, NO TU charge,
-/// NO draw, NO mutation.
 #[test]
 fn empty_magazine_fires_nothing_and_mutates_nothing() {
     let mut world = World::new();
@@ -73,13 +68,11 @@ fn empty_magazine_fires_nothing_and_mutates_nothing() {
         volley.reports.is_empty() && volley.shots.is_empty(),
         "an empty magazine must fire nothing",
     );
-    // No draw was taken — the used ShotRng matches a fresh stream's next draw.
     assert_eq!(
         shot_r.next_u64(),
         fresh_shot.next_u64(),
         "no draw on a fail-closed fire"
     );
-    // No TU charged — the pool is unchanged.
     let tu = world.get::<Tu>(shooter).copied();
     assert_eq!(
         tu,
@@ -88,8 +81,6 @@ fn empty_magazine_fires_nothing_and_mutates_nothing() {
     );
 }
 
-/// AC2 — fail-closed when the shooter is not Alive (Downed): an empty volley,
-/// no charge, no draw.
 #[test]
 fn dead_shooter_fires_nothing() {
     let mut world = World::new();
@@ -107,7 +98,6 @@ fn dead_shooter_fires_nothing() {
             aiming: false,
         },
     );
-    // Down the shooter — can_fire requires Alive.
     if let Some(mut life) = world.get_mut::<LifeState>(shooter) {
         *life = LifeState::Downed;
     }

@@ -1,24 +1,13 @@
-//! The pinned census detectors — band classification, raw line counting, and
-//! the comment-stripped `mod.rs` logic scanners, mirroring the census command
-//! in `.claude/rules/module-layout.md` byte-for-byte so the guard and the
-//! census can never disagree.
-
-/// The census band a tracked `.rs` file falls into (pinned precedence).
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Band {
-    /// `mod.rs` wiring files — checked for logic, never for line count.
-    Mod,
-    /// Integration-test files directly under `crates/<crate>/tests/`.
-    Integration,
-    /// In-src test modules.
-    SrcTest,
-    /// Everything else — production logic.
-    Logic,
+        Mod,
+        Integration,
+        SrcTest,
+        Logic,
 }
 
 impl Band {
-    /// The census label used in violation lines.
-    pub(crate) const fn label(self) -> &'static str {
+        pub(crate) const fn label(self) -> &'static str {
         match self {
             Self::Mod => "mod",
             Self::Integration => "integration",
@@ -28,7 +17,6 @@ impl Band {
     }
 }
 
-/// Classify `path` (repo-relative, forward slashes) with the census precedence.
 pub(crate) fn band(path: &str) -> Band {
     let base = path.rsplit('/').next().unwrap_or(path);
     if base == "mod.rs" {
@@ -53,7 +41,6 @@ pub(crate) fn band(path: &str) -> Band {
     Band::Logic
 }
 
-/// Raw `wc -l`-equivalent line count over the file bytes.
 pub(crate) fn raw_line_count(bytes: &[u8]) -> usize {
     let newlines = bytes.split(|&b| b == b'\n').count().saturating_sub(1);
     if bytes.last().is_some_and(|b| *b != b'\n') {
@@ -63,13 +50,10 @@ pub(crate) fn raw_line_count(bytes: &[u8]) -> usize {
     }
 }
 
-/// Whether `b` is a `\w` word byte (for the census regexes' `\b` boundaries).
 const fn is_word(b: u8) -> bool {
     b.is_ascii_alphanumeric() || b == b'_'
 }
 
-/// Strip `/* … */` block comments (single left-to-right pass, non-nested — the
-/// pinned census regex semantics), then everything from `//` to end-of-line.
 fn strip_comments(src: &str) -> String {
     let mut blocks = String::with_capacity(src.len());
     let mut rest = src;
@@ -92,7 +76,6 @@ fn strip_comments(src: &str) -> String {
         .join("\n")
 }
 
-/// The census `\bfn\s+(\w+)` matcher — every fn name in comment-stripped source.
 fn fn_names(stripped: &str) -> Vec<String> {
     let bytes = stripped.as_bytes();
     let mut names = Vec::new();
@@ -108,7 +91,7 @@ fn fn_names(stripped: &str) -> Vec<String> {
             i += 1;
         }
         if i == at + 2 {
-            continue; // the census regex requires `\s+` after `fn`
+            continue; 
         }
         let start = i;
         while bytes.get(i).is_some_and(|b| is_word(*b)) {
@@ -121,7 +104,6 @@ fn fn_names(stripped: &str) -> Vec<String> {
     names
 }
 
-/// Word-boundary substring search (`\b<word>\b`).
 fn has_word(text: &str, word: &str) -> bool {
     let bytes = text.as_bytes();
     let mut from = 0;
@@ -137,8 +119,6 @@ fn has_word(text: &str, word: &str) -> bool {
     false
 }
 
-/// Whether an impl-header segment matches the census
-/// `\b(Plugin|PluginGroup)\s+for\b` allowance.
 fn plugin_for(seg: &str) -> bool {
     let bytes = seg.as_bytes();
     for word in ["Plugin", "PluginGroup"] {
@@ -154,7 +134,7 @@ fn plugin_for(seg: &str) -> bool {
                 i += 1;
             }
             if i == at + word.len() {
-                continue; // needs `\s+` — also rejects `PluginGroup` read as `Plugin`
+                continue; 
             }
             if bytes.get(i..i + 3) == Some(b"for") && bytes.get(i + 3).is_none_or(|b| !is_word(*b))
             {
@@ -165,8 +145,6 @@ fn plugin_for(seg: &str) -> bool {
     false
 }
 
-/// The census `\bimpl\b[^{;]*` matcher — impl headers that are not
-/// `Plugin for` / `PluginGroup for`.
 fn bad_impls(stripped: &str) -> Vec<String> {
     let bytes = stripped.as_bytes();
     let mut found = Vec::new();
@@ -192,7 +170,6 @@ fn bad_impls(stripped: &str) -> Vec<String> {
     found
 }
 
-/// The census `add_systems\s*\([^)]*\|` matcher — an inline closure system.
 fn closure_in_add_systems(stripped: &str) -> bool {
     let bytes = stripped.as_bytes();
     let mut from = 0;
@@ -218,9 +195,6 @@ fn closure_in_add_systems(stripped: &str) -> bool {
     false
 }
 
-/// The census `modrs_logic` detector — the reasons a `mod.rs` is logic-bearing.
-/// The fn allowlist is EMPTY (`build`/`name`/`register_*` were all removed by
-/// the 2026-07-04 user ruling rejecting the fn-form aggregation carve-out).
 pub(crate) fn modrs_reasons(src: &str) -> Vec<String> {
     let stripped = strip_comments(src);
     let mut reasons = Vec::new();
@@ -239,7 +213,6 @@ pub(crate) fn modrs_reasons(src: &str) -> Vec<String> {
     reasons
 }
 
-/// Whether a crate root is PURE WIRING — zero `fn`/`impl` after comment stripping.
 pub(crate) fn pure_wiring(src: &str) -> bool {
     let stripped = strip_comments(src);
     !has_word(&stripped, "fn") && !has_word(&stripped, "impl")

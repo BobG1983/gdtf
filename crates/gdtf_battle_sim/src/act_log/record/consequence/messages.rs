@@ -1,29 +1,8 @@
-//! The message-sourced half of the CONSEQUENCE family — everything an act left behind
-//! that a sim signal already announces (GTW-727 C9, family 5 of 6).
-
 use bevy::prelude::Entity;
 
 use super::super::sources::{ConsequenceMessages, ProvenanceSources};
 use crate::act_log::{ActDeed, ActLog, RecordedAct};
 
-/// Record every consequence signal emitted this tick, in a fixed source order.
-///
-/// The order below IS the intra-tick ordering guarantee for this family — a property of
-/// this function's source code, not of the scheduler, which is what makes the whole log
-/// reproducible run to run (`bevy-traps.md` #3).
-///
-/// The three affliction families record BOTH their once-per-span START fact
-/// ([`DotAfflicted`](crate::effects::dot::DotAfflicted) /
-/// [`FieldAfflicted`](crate::effects::fields::FieldAfflicted) /
-/// [`BleedStarted`](crate::effects::bleed::BleedStarted)) and their per-round DRAIN
-/// ([`Bleeding`](crate::effects::bleed::Bleeding) /
-/// [`DotTicked`](crate::effects::dot::DotTicked) /
-/// [`FieldTicked`](crate::effects::fields::FieldTicked)). A drain carries no combat-log
-/// line, but the presenter pops floating text for every one, so each needs an entry to be
-/// paced against: with no deed to sit behind, a drain's pop could only fire when the SIM
-/// produced it — ahead of the shots and turn beats the cursor was still working through
-/// (GTW-889). The per-round HP itself also reaches a consumer through the vitals
-/// transition recorded beside this function.
 pub(in crate::act_log::record) fn record_consequence_messages(
     log: &mut ActLog,
     messages: &mut ConsequenceMessages,
@@ -92,12 +71,6 @@ pub(in crate::act_log::record) fn record_consequence_messages(
     record_afflictions(log, messages);
 }
 
-/// Record the once-per-span AFFLICTION starts and the per-round drains.
-///
-/// Split from the act-consequence half above at the family's own change-reason boundary: an
-/// affliction is a CLOCK beat about a ganger rather than something an actor did to it, so
-/// its provenance is fixed and its sources are the per-round tick signals rather than an
-/// act's output.
 fn record_afflictions(log: &mut ActLog, messages: &mut ConsequenceMessages) {
     for dot in messages.dots.read() {
         log.append(RecordedAct::new(
@@ -150,8 +123,6 @@ fn record_afflictions(log: &mut ActLog, messages: &mut ConsequenceMessages) {
         ));
     }
     for smashed in messages.cover_smashed.read() {
-        // Cover is not an entity, so the deed names the cell and the entry's actor is the
-        // placeholder — the same convention the cover on-death signal already uses.
         log.append(RecordedAct::new(
             Entity::PLACEHOLDER,
             ProvenanceSources::clock(),

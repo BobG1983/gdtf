@@ -1,5 +1,3 @@
-//! The selection-highlight sprite snaps to the selected cell and hides on clear.
-
 use bevy::{camera::visibility::RenderLayers, prelude::*};
 use gdtf_battle_input::{ActIntent, SelectionHighlight};
 use gdtf_battle_presenter::{CELL_PX, WORLD_RENDER_LAYER, cell_to_world};
@@ -8,14 +6,7 @@ use gdtf_test_utils::{clear_mouse, press_left};
 
 use super::harness::*;
 
-// ---------------------------------------------------------------------------------
-// AC5 — the selection highlight snaps to the selected cell + hides on clear.
-// ---------------------------------------------------------------------------------
 
-/// Exactly ONE `SelectionHighlight` sprite is drawn at `cell_to_world(selected cell)`,
-/// visible, on the world render layer at one-cell size; clearing the selection (via the
-/// `SelectionClear` intent — a player selection no longer clears on an empty-cell click,
-/// it MOVEs) hides it (still one entity).
 #[test]
 fn selection_highlight_snaps_to_cell_and_hides_on_clear() {
     let level = Level::new(0);
@@ -47,11 +38,6 @@ fn selection_highlight_snaps_to_cell_and_hides_on_clear() {
         "the selection highlight must be CELL_PX-sized on the WORLD_RENDER_LAYER",
     );
 
-    // Clear the selection through the queue and confirm the highlight hides. (A
-    // player-faction selection + an empty-cell click MOVEs under GTW-238, so the clear
-    // is driven by the SelectionClear intent, not an empty click.) The drain clears the
-    // selection in `dispatch_act_intents`, which is unordered vs the highlight system, so
-    // a SECOND update lets the highlight observe the cleared selection.
     clear_mouse(&mut app);
     push_intent(&mut app, ActIntent::SelectionClear);
     app.update();
@@ -73,7 +59,6 @@ fn selection_highlight_snaps_to_cell_and_hides_on_clear() {
     );
 }
 
-/// Whether the one selection-highlight sprite is `CELL_PX`-sized + on the world layer.
 fn highlight_on_world_layer_at_cell_size(app: &mut App) -> bool {
     let mut q = app
         .world_mut()

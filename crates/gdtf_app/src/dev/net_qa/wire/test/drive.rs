@@ -1,18 +1,9 @@
-//! Round-trip + wire-text pins for the two drive vocabularies a caller chooses —
-//! [`FocusStepNet`] and [`StepperCommandNet`] with its [`AutoRunNet`] flag (GTW-944).
-//!
-//! Both were deleted from the shared protocol crate by GTW-943 and re-minted in `wire/`
-//! here, so their old round-trip cases went with them. These are the replacements.
-
 use super::assert_ron_round_trip;
 use crate::dev::net_qa::wire::{
     key::FocusStepNet,
     misc::{AutoRunNet, StepperCommandNet},
 };
 
-/// The compact RON `value` encodes to.
-///
-/// Fails loudly (the house `let Ok(..) else { unreachable!() }` idiom) if it cannot encode.
 fn encoded<T: serde::Serialize>(value: &T) -> String {
     let Ok(text) = ron::ser::to_string(value) else {
         unreachable!("a drive command serializes to compact RON");
@@ -20,8 +11,6 @@ fn encoded<T: serde::Serialize>(value: &T) -> String {
     text
 }
 
-/// Every [`FocusStepNet`] direction round-trips; the wildcard-free witness fails to compile
-/// the moment a fifth is added, forcing it into this table first.
 #[test]
 fn focus_steps_round_trip_every_direction() {
     for step in [
@@ -37,8 +26,6 @@ fn focus_steps_round_trip_every_direction() {
     }
 }
 
-/// Every [`StepperCommandNet`] variant round-trips, including BOTH [`AutoRunNet`] states —
-/// the Auto arm carries a payload, so one of the two proves nothing about the other.
 #[test]
 fn stepper_commands_round_trip_every_variant() {
     for command in [
@@ -60,7 +47,6 @@ fn stepper_commands_round_trip_every_variant() {
     assert_ron_round_trip(&AutoRunNet::new(false));
 }
 
-/// Each drive value rides the wire under its own name, and [`AutoRunNet`] as a BARE `bool` —
 /// a round trip alone cannot see a lost `#[serde(transparent)]` or a `serde(rename)`.
 #[test]
 fn drive_values_serialize_under_their_own_names() {

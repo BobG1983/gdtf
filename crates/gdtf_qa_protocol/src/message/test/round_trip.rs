@@ -1,6 +1,3 @@
-//! Round-trip pins for every message variant (GTW-939, narrowed to the three-variant wire
-//! by GTW-943).
-
 use crate::{
     command::{
         ArgSchemaJson, ArgumentFault, ArtifactPath, AttachmentKind, AwaitBudget, CommandArgsJson,
@@ -14,8 +11,6 @@ use crate::{
     test_support::assert_ron_round_trip,
 };
 
-/// A two-row catalogue whose schema fields hold JSON documents — the reply payload both
-/// the response test and the outcome test lean on.
 fn catalogue() -> CommandCatalogue {
     CommandCatalogue::new(
         ServerNameNet::new("gdtf-net-qa".to_owned()),
@@ -45,8 +40,6 @@ fn catalogue() -> CommandCatalogue {
     )
 }
 
-/// Every [`QaRequest`] variant round-trips, `Run` carrying a real command name and JSON
-/// arguments.
 #[test]
 fn the_requests_round_trip() {
     assert_ron_round_trip(&QaRequest::Hello(ProtocolVersion::CURRENT));
@@ -61,11 +54,6 @@ fn the_requests_round_trip() {
     )));
 }
 
-/// A `Run` CARRYING its riders round-trips, and a plain one leaves them absent.
-///
-/// The riders were typed by GTW-939 and the host-side refusal built by GTW-941, but until
-/// GTW-942 no wire field carried the value from a client to a host, so a caller asking for
-/// `await_ready` was answered as though it had asked for nothing.
 #[test]
 fn a_run_carries_its_riders_over_the_wire() {
     let plain = RunCommand::new(
@@ -91,10 +79,7 @@ fn a_run_carries_its_riders_over_the_wire() {
     assert_ron_round_trip(&QaRequest::Run(with_budget));
 }
 
-/// A `Run` encoded WITHOUT an `options` field still decodes, with both riders absent.
-///
 /// The compatibility claim the `#[serde(default)]` on that field makes: this is the exact
-/// text a pre-GTW-942 client put on the wire.
 #[test]
 fn a_run_encoded_without_options_decodes_as_a_plain_call() {
     let legacy = r#"Run((command:"app.phase",arguments:"{}"))"#;
@@ -110,8 +95,6 @@ fn a_run_encoded_without_options_decodes_as_a_plain_call() {
     );
 }
 
-/// Every [`QaResponse`] variant round-trips — the handshake facts, a populated catalogue,
-/// every outcome shape a `Run` can answer with, and an error.
 #[test]
 fn the_responses_round_trip() {
     assert_ron_round_trip(&QaResponse::HelloOk(HelloFacts::new(

@@ -1,6 +1,3 @@
-//! The end-to-end `fire()` path: a full-app point-blank volley strikes the
-//! adjacent PRONE enemy (the representative standing-vs-prone case).
-
 use bevy::{
     app::App,
     ecs::system::SystemState,
@@ -38,16 +35,10 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-/// The cell immediately East of the shooter — the point-blank enemy cell for the
-/// representative `fire()` assertion (an East-facing shooter).
 fn east_enemy_cell() -> CellLevel {
     CellLevel::new(Cell::new(6, 6), Level::new(0))
 }
 
-/// Equip a ganger's six worn-armor-piece entities (GTW-323 / ADR-0004) at the thin
-/// uniform stats, related via `WornBy` so `fire()` resolves the struck location through
-/// `ganger → Wears → the BodyPart-tagged piece` (the relationship hook populates `Wears`
-/// synchronously in a bare `World` spawn).
 fn equip_thin_armor(app: &mut App, ganger: Entity) {
     for part in BodyPart::ALL {
         app.world_mut().spawn((
@@ -62,11 +53,7 @@ fn equip_thin_armor(app: &mut App, ganger: Entity) {
     }
 }
 
-// --- The end-to-end fire() path: the representative standing-vs-prone case. ---
 
-/// Build the real-path app: `MinimalPlugins` + `OccupancyMaintenancePlugin` (whose
-/// `sync_moved_gangers` publishes each occupant's stance-derived silhouette band off
-/// the grid), plus the sim resources `fire()` reads.
 fn point_blank_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
@@ -77,8 +64,6 @@ fn point_blank_app() -> App {
     app
 }
 
-/// Spawn an armed, alive, loaded, aiming, STANDING shooter at the shooter cell facing
-/// East. ZERO base spread, so the trajectory is the muzzle→aim central axis EXACTLY.
 fn spawn_standing_shooter(app: &mut App) -> Entity {
     let bundle = WeaponBundle::new(
         WeaponName::new("probe-weapon".to_owned()),
@@ -124,15 +109,10 @@ fn spawn_standing_shooter(app: &mut App) -> Entity {
             ),
         ))
         .id();
-    // GTW-323 slice 2: the weapon rides on a related weapon entity (`Wields`); the
-    // `WieldedBy` insert hook populates the ganger's `Wields` synchronously in a bare
-    // `World` spawn so the very next `fire()` resolves it.
     app.world_mut().spawn((WieldedBy::new(shooter), bundle));
     shooter
 }
 
-/// Spawn a PRONE enemy at the point-blank cell immediately East (the production
-/// `sync_moved_gangers` publishes its LOW silhouette band).
 fn spawn_prone_enemy(app: &mut App) -> Entity {
     app.world_mut()
         .spawn((
@@ -148,13 +128,8 @@ fn spawn_prone_enemy(app: &mut App) -> Entity {
         .id()
 }
 
-/// Fire ONE volley at the enemy cell with seed `seed`, returning the resolved
-/// [`Volley`].
 fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
-    /// The `fire()` query tuple, aliased so the `SystemState` type stays under clippy's
-    /// `type_complexity` gate (the GTW-543 mounted-weapon `MountedQuery` addition tipped it over).
-    /// Declared FIRST in the fn so it precedes the `let`s (`items_after_statements`).
-    type FireQueries<'w, 's> = (
+                type FireQueries<'w, 's> = (
         ShooterQuery<'w, 's>,
         TargetQuery<'w, 's>,
         WearsQuery<'w, 's>,
@@ -236,26 +211,17 @@ fn fire_one_volley(app: &mut App, shooter: Entity, seed: u64) -> Volley {
     volley
 }
 
-/// The struck [`ShotKind`] of the volley's single round, or `None` if it fired no
-/// rounds (keeps the test panic-free).
 fn single_shot_kind(volley: &Volley) -> Option<ShotKind> {
     volley.shots.first().map(|outcome| outcome.kind)
 }
 
-/// GTW-329 end-to-end — a standing shooter at point-blank STRIKES the prone enemy in
-/// the immediately-adjacent cell via the public `fire()` volley. The prone enemy's
-/// published band is LOW; the round dips into the LOW band inside the adjacent cell,
-/// so it must impact (`ShotKind::Ganger`). PRE-FIX the round cleared the prone enemy
-/// at the entry boundary (still MID/HIGH there) and dove into the ground → MISS.
 #[test]
 fn point_blank_fire_strikes_the_adjacent_prone_enemy() {
     let mut app = point_blank_app();
     let shooter = spawn_standing_shooter(&mut app);
     let enemy = spawn_prone_enemy(&mut app);
-    // GTW-323: equip each ganger's worn-armor PIECE entities (the `fire()` armor path).
     equip_thin_armor(&mut app, shooter);
     equip_thin_armor(&mut app, enemy);
-    // ONE update: `sync_moved_gangers` publishes each occupant's band off the grid.
     app.update();
 
     let band = app

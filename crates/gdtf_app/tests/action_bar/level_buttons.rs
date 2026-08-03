@@ -1,5 +1,3 @@
-//! GTW-293 level up/down buttons: stepping + disabled-at-bounds.
-
 use gdtf_app::test_support::{LevelDownButton, LevelUpButton};
 use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{metric::MAX_LEVELS, prelude::Level};
@@ -7,8 +5,6 @@ use gdtf_test_utils::press_ui_button;
 
 use super::{harness::*, probes::*};
 
-/// AC3 — pressing the level-up button raises `ActiveLevel` by one storey (the same
-/// `ActiveLevel` mutation the `LevelUp` intent drives), and level-down lowers it.
 #[test]
 fn level_buttons_step_active_level_like_the_intent() {
     let mut app = battle_running_app();
@@ -38,18 +34,7 @@ fn level_buttons_step_active_level_like_the_intent() {
     );
 }
 
-// ---------------------------------------------------------------------------------
-// GTW-293 — the level buttons are VISUALLY disabled (greyed via the `gdtf_ui`
-// `DisabledButton` marker) at the storey bounds: **Level −** at the floor (0), **Level +**
-// at the ceiling (`MAX_LEVELS - 1`), and NEITHER at a mid storey. The same marker disables
-// the look AND makes the press router's `Without<DisabledButton>` filter ignore the bounded
-// button, so the bound is enforced visually + in the input path, not just clamped in
-// `step_level`. Drives the REAL `sync_level_button_bounds` system by mutating `ActiveLevel`
-// and settling an update.
-// ---------------------------------------------------------------------------------
 
-/// GTW-293 — at the FLOOR storey (0), the **Level −** button is disabled and the **Level +**
-/// button is NOT (a step Down is a no-op there; a step Up is still valid).
 #[test]
 fn level_down_disabled_at_floor() {
     let mut app = battle_running_app();
@@ -65,8 +50,6 @@ fn level_down_disabled_at_floor() {
     );
 }
 
-/// GTW-293 — at the CEILING storey (`MAX_LEVELS - 1`), the **Level +** button is disabled
-/// and the **Level −** button is NOT (a step Up is a no-op there; a step Down is still valid).
 #[test]
 fn level_up_disabled_at_ceiling() {
     let mut app = battle_running_app();
@@ -83,14 +66,9 @@ fn level_up_disabled_at_ceiling() {
     );
 }
 
-/// GTW-293 — at a MID storey (neither floor nor ceiling), NEITHER level button is disabled
-/// (both steps are valid). The discriminating case: a system that always disabled (or never
-/// disabled) would fail one of the three tests.
 #[test]
 fn neither_level_button_disabled_mid_range() {
     let mut app = battle_running_app();
-    // A storey strictly between the floor (0) and the ceiling (MAX_LEVELS - 1). MAX_LEVELS is
-    // 8, so storey 1 is safely mid-range (0 < 1 < 7).
     set_active_level(&mut app, 1);
 
     assert!(
@@ -103,9 +81,6 @@ fn neither_level_button_disabled_mid_range() {
     );
 }
 
-/// GTW-293 — the disable state is REACTIVE: re-enabled when `ActiveLevel` leaves the bound.
-/// Drive floor → mid → ceiling and assert the markers move (proving `sync_level_button_bounds`
-/// removes `DisabledButton` off the bound, not just inserts it once — UI-mutate-in-place).
 #[test]
 fn level_button_disable_tracks_active_level() {
     let mut app = battle_running_app();

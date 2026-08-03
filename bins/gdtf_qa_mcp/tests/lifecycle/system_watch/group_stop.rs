@@ -1,12 +1,3 @@
-//! The stop reaches a process the named one SPAWNED, not just the named one.
-//!
-//! This is the half only the process-group target can carry, and it is the reason the real
-//! child is launched in a group of its own: a `cargo run` launcher spawns the app and stays
-//! in the same group, so a stop that signalled only the pid it was handed would kill the
-//! launcher and leave the app running — still holding the QA port, which is the whole defect
-//! this ticket is about. Dropping the group target from
-//! [`SystemOrphanWatch::stop`](gdtf_qa_mcp::SystemOrphanWatch) fails this test and no other.
-
 use std::{
     io::{BufRead, BufReader},
     os::unix::process::CommandExt,
@@ -22,20 +13,11 @@ use super::{
     placeholder::{EXIT_LIMIT, RECHECK, group_of, spawn, still_listed, target_on},
 };
 
-/// A launcher placeholder leading its own process group, plus the pid of the process it
-/// spawned into that same group.
 struct Launcher {
-    /// The group leader — the process the stop is actually told about.
-    leader:  Child,
-    /// The process the leader spawned, which the stop is never told about.
-    spawned: u32,
+        leader:  Child,
+        spawned: u32,
 }
 
-/// Stopping the leader of a group also stops what that leader spawned into the group.
-///
-/// The assertion is about the SPAWNED process: the leader dies either way (the bare pid
-/// reaches it), so only the spawned process discriminates between signalling the group and
-/// signalling one pid.
 #[test]
 fn the_real_stop_reaches_a_process_the_group_leader_spawned() {
     let mut launcher = spawn_a_leader_with_a_process_of_its_own();
@@ -58,11 +40,6 @@ fn the_real_stop_reaches_a_process_the_group_leader_spawned() {
     drop(launcher.leader.wait());
 }
 
-/// Spawn a `sh` in a process group of its own that starts a long-running process in that
-/// same group and reports its pid on stdout, then waits — the shape a launcher leaves.
-///
-/// The pid is read back before the test returns, so the spawned process is known to exist
-/// (and to be readable by `ps`) before anything is signalled.
 fn spawn_a_leader_with_a_process_of_its_own() -> Launcher {
     let mut command = Command::new("sh");
     command
@@ -86,7 +63,6 @@ fn spawn_a_leader_with_a_process_of_its_own() -> Launcher {
     Launcher { leader, spawned }
 }
 
-/// Wait until the operating system no longer lists `pid`, failing loudly if it never stops.
 fn await_gone(pid: u32) {
     let deadline = Instant::now() + EXIT_LIMIT;
     while still_listed(pid) {

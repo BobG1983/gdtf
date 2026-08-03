@@ -1,16 +1,3 @@
-//! A command's ATTACHMENTS come back as content blocks, over the real JSON-RPC surface
-//! (GTW-942).
-//!
-//! `attachment_blocks` is the courier's whole answer to "how does a capture get back without
-//! the courier knowing what a capture is", and it is a SECOND consumer of the GTW-923 rule
-//! that a child-written relative path is read against the CHILD's directory, not the host's.
-//! Neither property is visible from the outcome cases in
-//! [`courier_tools`](crate::courier_tools), whose canned host attaches nothing.
-//!
-//! Each case here goes through `dispatch` → `handle_tool_call` → `render_outcome` →
-//! `attachment_blocks`, with the file existing only under a temp directory the lifecycle
-//! reports as the child's — the same setup `screenshot_cwd` uses for both children.
-
 use std::{
     fs,
     path::PathBuf,
@@ -29,23 +16,16 @@ use gdtf_qa_protocol::{
 };
 use serde_json::{Value, json};
 
-/// The relative path the canned command reports it wrote its capture to — relative, because
-/// that is what a real child's shot directory produces.
 const ATTACHED_SHOT: &str = "target/qa_screenshots/gtw942_attached.png";
 
-/// A second attachment, so the ORDER the host declared can be read back.
 const SECOND_SHOT: &str = "target/qa_screenshots/gtw942_second.png";
 
-/// The bytes standing in for the first capture's PNG.
 const ATTACHED_BYTES: &[u8] = b"gtw942-attached-png-bytes";
 
-/// The bytes standing in for the second capture's PNG.
 const SECOND_BYTES: &[u8] = b"gtw942-second-png-bytes";
 
-/// The reply body the canned command answers with, beside its attachments.
 const ATTACHING_REPLY: &str = r#"{"phase":{"app":"Running"}}"#;
 
-/// A link whose one command RUNS and hands back the attachments it was built with.
 struct AttachingLink(Vec<ReplyAttachment>);
 
 impl QaLink for AttachingLink {
@@ -60,7 +40,6 @@ impl QaLink for AttachingLink {
     }
 }
 
-/// A lifecycle reporting a running child launched in the directory it carries.
 struct ChildInDirLifecycle(Option<PathBuf>);
 
 impl HostLifecycle for ChildInDirLifecycle {
@@ -88,13 +67,8 @@ impl HostLifecycle for ChildInDirLifecycle {
     }
 }
 
-/// Hands out a distinct number per call, so two cases running in parallel never build the same
-/// directory — the clock alone is not enough resolution to guarantee that, and a shared
-/// directory means one case's cleanup deletes another's files mid-run.
 static TREE_SERIAL: AtomicU32 = AtomicU32::new(0);
 
-/// A fresh temp directory holding both captures at the relative paths the child reports,
-/// asserted to be a different directory than the test process's own.
 fn a_child_tree_holding_the_captures() -> PathBuf {
     let nanos = SystemTime::UNIX_EPOCH
         .elapsed()
@@ -125,13 +99,10 @@ fn a_child_tree_holding_the_captures() -> PathBuf {
     root
 }
 
-/// A PNG attachment at `path`.
 fn png(path: &str) -> ReplyAttachment {
     ReplyAttachment::new(AttachmentKind::Png, ArtifactPath::new(path.to_owned()))
 }
 
-/// Dispatch one `run` call against a host whose command attaches `attachments`, with the child
-/// reported as running in `child_dir`.
 fn run_attaching(attachments: Vec<ReplyAttachment>, child_dir: Option<PathBuf>) -> Value {
     let (mut game_link, mut editor_link) = (AttachingLink(attachments), AttachingLink(Vec::new()));
     let (mut game_life, mut editor_life) = (
@@ -149,8 +120,6 @@ fn run_attaching(attachments: Vec<ReplyAttachment>, child_dir: Option<PathBuf>) 
     serde_json::from_str(&response).unwrap_or(Value::Null)
 }
 
-/// A command that ran and attached a PNG comes back as the reply text FOLLOWED BY the image,
-/// with the file read under the CHILD's directory.
 #[test]
 fn an_attached_capture_comes_back_as_an_image_read_under_the_childs_directory() {
     let root = a_child_tree_holding_the_captures();
@@ -179,8 +148,6 @@ fn an_attached_capture_comes_back_as_an_image_read_under_the_childs_directory() 
     drop(fs::remove_dir_all(&root));
 }
 
-/// Two attachments come back in the order the HOST declared them — a before and an after
-/// capture must not arrive swapped.
 #[test]
 fn attachments_come_back_in_the_order_the_host_declared() {
     let root = a_child_tree_holding_the_captures();
@@ -202,12 +169,6 @@ fn attachments_come_back_in_the_order_the_host_declared() {
     drop(fs::remove_dir_all(&root));
 }
 
-/// An attachment that is genuinely absent renders as text naming BOTH paths — the one the
-/// command reported and the one the host actually opened — and never as an image.
-///
-/// The child directory here is an EMPTY one, which is what makes the two paths differ: a
-/// directory mismatch is invisible from either path alone, and that is the whole reason the
-/// GTW-923 message names both. Removing a false failure must not introduce a false success.
 #[test]
 fn an_attachment_the_host_cannot_read_names_both_paths_and_emits_no_image() {
     let root = a_child_tree_holding_the_captures();

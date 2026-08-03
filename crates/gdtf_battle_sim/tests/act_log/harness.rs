@@ -1,9 +1,3 @@
-//! Shared fixture for the act-log suite: a live battle app on the REAL
-//! `setup_battle_on_request` → `BattleSimPlugin` path, plus act-log readers.
-//!
-//! Modelled on the `reaction_trigger` suite's harness (each integration suite is its own
-//! crate, so the fixture is rebuilt here rather than shared across suites).
-
 use bevy::{
     app::App,
     asset::AssetPlugin,
@@ -27,24 +21,17 @@ use gdtf_battle_sim::{
     },
 };
 
-/// An arbitrary (not shipped tuning) seed for the test battle's RNG streams.
 pub(crate) const SEED: u64 = 0x4EAC_7104;
 
-/// Gang `0` is the player; gang `1` is the enemy.
 pub(crate) const PLAYER: u8 = 0;
-/// The opposing gang.
 pub(crate) const ENEMY: u8 = 1;
 
-/// A view range that lights a local field a few cells out.
 const TEST_VIEW_RANGE: u16 = 6;
 
-/// A ground-floor `(cell, level)` key.
 pub(crate) fn ground(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(0))
 }
 
-/// A `ReactionTuning` that FORCES every opposed check to succeed and caps interrupts at
-/// `cap` per turn — so a reaction test's geometry, not its dice, decides the outcome.
 #[expect(
     clippy::cast_precision_loss,
     reason = "the test caps are tiny (1 or 8), so the u32 -> f32 conversion is exact"
@@ -60,7 +47,6 @@ pub(crate) const fn forced_reaction_tuning(cap: u32) -> ReactionTuning {
     }
 }
 
-/// Build the full live-runtime harness with the given reaction tuning.
 pub(crate) fn battle_app(reaction: ReactionTuning) -> App {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
@@ -76,7 +62,6 @@ pub(crate) fn battle_app(reaction: ReactionTuning) -> App {
     app
 }
 
-/// Drive a setup through the REAL `setup_battle_on_request` Ok path and settle it.
 pub(crate) fn drive_setup(app: &mut App, situation_and_gangs: (Situation, GangRegistry)) {
     let (situation, gangs) = situation_and_gangs;
     app.world_mut().insert_resource(gangs);
@@ -87,7 +72,6 @@ pub(crate) fn drive_setup(app: &mut App, situation_and_gangs: (Situation, GangRe
     }
 }
 
-/// The entity of the ganger currently standing at `at`.
 pub(crate) fn ganger_at(app: &mut App, at: CellLevel) -> Option<Entity> {
     let world = app.world_mut();
     let mut query = world.query::<(Entity, &Position)>();
@@ -97,7 +81,6 @@ pub(crate) fn ganger_at(app: &mut App, at: CellLevel) -> Option<Entity> {
         .map(|(entity, _)| entity)
 }
 
-/// Overwrite `entity`'s current TU pool.
 pub(crate) fn set_tu(app: &mut App, entity: Entity, value: u8) {
     let Some(mut tu) = app.world_mut().get_mut::<Tu>(entity) else {
         unreachable!("the fixture ganger carries a Tu pool");
@@ -105,7 +88,6 @@ pub(crate) fn set_tu(app: &mut App, entity: Entity, value: u8) {
     *tu = Tu::new(value);
 }
 
-/// A high-Reactions standing watcher with a fat HP pool, facing `facing`.
 pub(crate) fn watcher(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn {
     GangerSpawnBuilder::new()
         .at(at)
@@ -120,8 +102,6 @@ pub(crate) fn watcher(at: CellLevel, faction: u8, facing: Direction) -> GangerSp
         .build()
 }
 
-/// A mover with an ample TU pool and a fat HP pool (so an interrupt cannot down it
-/// mid-walk and truncate the fixture).
 pub(crate) fn tough_mover(at: CellLevel, faction: u8, facing: Direction) -> GangerSpawn {
     GangerSpawnBuilder::new()
         .at(at)
@@ -136,24 +116,15 @@ pub(crate) fn tough_mover(at: CellLevel, faction: u8, facing: Direction) -> Gang
         .build()
 }
 
-/// One act-log entry flattened into the facts an assertion cares about.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct LoggedFact {
-    /// The entry's sequence number.
-    pub(crate) seq:        ActSeq,
-    /// The acting entity.
-    pub(crate) actor:      Entity,
-    /// Why it happened.
-    pub(crate) provenance: ActProvenance,
-    /// A stable NAME for the deed's variant — enough to assert order and kind without
-    /// comparing `f32`-bearing payloads.
-    pub(crate) deed:       &'static str,
+        pub(crate) seq:        ActSeq,
+        pub(crate) actor:      Entity,
+        pub(crate) provenance: ActProvenance,
+            pub(crate) deed:       &'static str,
 }
 
-/// The stable variant name of a deed.
 pub(crate) const fn deed_name(deed: &ActDeed) -> &'static str {
-    // A wildcard-free match, so a NEW deed variant fails to compile here until it is given
-    // a name — the same forcing shape the wire projection will use.
     match *deed {
         ActDeed::TurnBegan { .. } => "TurnBegan",
         ActDeed::PostureChanged { .. } => "PostureChanged",
@@ -184,7 +155,6 @@ pub(crate) const fn deed_name(deed: &ActDeed) -> &'static str {
     }
 }
 
-/// Every retained act-log entry, flattened.
 pub(crate) fn logged(app: &App) -> Vec<LoggedFact> {
     app.world()
         .get_resource::<ActLog>()
@@ -201,11 +171,6 @@ pub(crate) fn logged(app: &App) -> Vec<LoggedFact> {
         .unwrap_or_default()
 }
 
-/// Every retained deed named `name`, cloned WHOLE.
-///
-/// [`LoggedFact`] deliberately flattens a deed down to its variant NAME so an order
-/// assertion never has to compare `f32`-bearing payloads. That drops the payload, and the
-/// payload is the part a consumer APPLIES — so a mapping assertion needs the deed itself.
 pub(crate) fn deeds_of(app: &App, name: &str) -> Vec<ActDeed> {
     app.world()
         .get_resource::<ActLog>()
@@ -219,7 +184,6 @@ pub(crate) fn deeds_of(app: &App, name: &str) -> Vec<ActDeed> {
         .unwrap_or_default()
 }
 
-/// Every logged entry whose deed is named `name`.
 pub(crate) fn logged_of(app: &App, name: &str) -> Vec<LoggedFact> {
     logged(app)
         .into_iter()

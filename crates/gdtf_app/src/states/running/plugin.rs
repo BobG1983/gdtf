@@ -17,12 +17,6 @@ impl Plugin for RunningScenePlugin {
 }
 
 fn add_systems(app: &mut App) {
-    // The persistent UI camera is spawned on entry to `AppState::Running` and is
-    // owned by the app shell (this scene plugin), not by `gdtf_ui`: its lifetime
-    // is tied to the `Running` phase as a whole — every `RunningState` screen
-    // renders against it — rather than to any one sub-state or widget. It carries
-    // no scene-scoped despawn marker, so it outlives every `RunningState`
-    // transition.
     let label = SceneLabel::new("Running");
     app.add_systems(
         OnEnter(AppState::Running),

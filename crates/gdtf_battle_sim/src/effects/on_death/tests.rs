@@ -1,14 +1,5 @@
-//! Palette-level behaviour suite for the GTW-552 on-death effect palette: the closed
-//! [`OnDeathEffect`](super::OnDeathEffect) vocabulary parses from RON by variant name (the
 //! serde bridge, in the exact shipped authoring forms), and the enum's THIN delegation
-//! `impl ApplyOnDeathEffect` routes each variant to its isolated behaviour (fanned directly
-//! through the trait against a [`DeathFanOut`](super::DeathFanOut) surface
-//! [`resolve_on_death`](crate::effects::on_death::resolve_on_death) drives).
-//!
 //! Per-effect fan semantics are asserted in each effect file's own `#[cfg(test)]`; this
-//! suite proves the enum bridge (parse + delegation), not the drain / spawn maths. Per the
-//! brittle-test rule, assertions check the MAPPING + DIRECTION, never a shipped magnitude.
-
 use bevy::{
     ecs::system::SystemState,
     prelude::{Query, World},
@@ -27,19 +18,13 @@ use crate::{
     weapon::{BlastRadius, DamageType, HitType},
 };
 
-/// A ground-floor `(cell, level)` key at `(x, y)`.
 fn ground(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(0))
 }
 
-/// The closed [`OnDeathEffect`] vocabulary deserializes each variant from RON by name, in
-/// the exact shipped authoring forms (`volatile_charge.weapon.ron` /
-/// `waste_drum.terrain_def.ron`) — payload newtypes as bare scalars (the
 /// `#[serde(transparent)]` bridge). Pin-discriminating: a mis-named variant or a wrong
-/// payload shape fails to parse. Asserts the MAPPING, not a magnitude.
 #[test]
 fn each_effect_variant_parses_from_ron() {
-    // Explode authors as a struct variant: an AoE template + bare damage + wheel node.
     let Ok(explode) = ron::de::from_str::<OnDeathEffect>(
         "Explode(hit_type: Blast(radius: 1), damage: 8, damage_type: Blast)",
     ) else {
@@ -50,7 +35,6 @@ fn each_effect_variant_parses_from_ron() {
         "Explode maps to the Explode variant"
     );
 
-    // LeaveField authors as a struct variant with a bare string key.
     let Ok(leave) = ron::de::from_str::<OnDeathEffect>("LeaveField(field: \"toxic_waste_pool\")")
     else {
         unreachable!("LeaveField(field:) must parse");
@@ -61,11 +45,6 @@ fn each_effect_variant_parses_from_ron() {
     );
 }
 
-/// The [`OnDeathEffect`] enum's THIN delegation `impl ApplyOnDeathEffect` routes each
-/// variant to its isolated behaviour — fanning `Explode` through the enum drains the same
-/// victim the isolated `ApplyExplode` does, and fanning `LeaveField` spawns the same field
-/// the isolated `ApplyLeaveField` does. Proves the bridge forwards, not that the enum
-/// carries logic.
 #[test]
 fn enum_delegates_to_the_isolated_behaviour() {
     let mut world = World::new();
@@ -98,7 +77,6 @@ fn enum_delegates_to_the_isolated_behaviour() {
             cascade:    &mut cascade,
         };
 
-        // The Explode arm delegates to ApplyExplode: the adjacent victim's Hp moved.
         OnDeathEffect::Explode {
             hit_type:    HitType::Blast {
                 radius: BlastRadius::new(1),
@@ -108,7 +86,6 @@ fn enum_delegates_to_the_isolated_behaviour() {
         }
         .fan_at(ground(5, 5), &mut fan_out);
 
-        // The LeaveField arm delegates to ApplyLeaveField: the referenced field spawned.
         OnDeathEffect::LeaveField {
             field: FieldKey::new("burning".to_owned()),
         }

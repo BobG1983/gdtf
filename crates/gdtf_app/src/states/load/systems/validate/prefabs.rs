@@ -1,8 +1,3 @@
-//! GTW-582: the **prefab fragments'** outbound reference edges — each
-//! fragment's theme UUID (the prefab → theme agreement: a fragment bucketed
-//! under a theme no registry holds can never pour that theme's floor) and every
-//! placed piece's terrain-def UUID (the fail-open pour's root cause, C3(d)).
-
 use bevy::prelude::{Res, ResMut};
 use gdtf_assets::{
     ContentFinding, ContentIntegrityReport, FindingFamily, FindingReferrer, FindingTarget,
@@ -13,13 +8,6 @@ use gdtf_battle_sim::{
     terrain::def::TerrainDefRegistry,
 };
 
-/// `Check`: every prefab fragment's `theme` UUID resolves in the
-/// [`UuidThemeRegistry`], and every placed piece's terrain UUID resolves in the
-/// [`TerrainDefRegistry`] (deduplicated per fragment — a repeated wall piece is
-/// ONE finding).
-///
-/// Plain `Res` params are safe here: the `Check` set's window condition
-/// verified them present (bevy-traps #1, guarded once at the set).
 pub(super) fn check_prefab_refs(
     prefabs: Res<PrefabRegistry>,
     themes: Res<UuidThemeRegistry>,

@@ -1,5 +1,3 @@
-//! Grid build/pour from `OccupancyInput` + the extent/bounds structure.
-
 use bevy::ecs::world::World;
 
 use super::{
@@ -11,18 +9,8 @@ use super::{
 };
 use crate::{cover::HeightBand, metric::MAX_LEVELS};
 
-/// C8(a) — `build_from_occupancy_input` from a HAND-BUILT input (entities
-/// spawned in a real Bevy `World`, terrain placed) populates terrain + occupant
-/// slots correctly, asserted CELL-BY-CELL.
-///
-/// Spawns two real entities, hand-builds an `OccupancyInput` with a wall, a
-/// cover, and those two occupants at distinct `(cell, level)`s, builds the grid,
-/// then walks every authored slot and asserts BOTH its terrain marker and its
-/// occupant handle, plus that an untouched slot is `Open` / empty. The occupant
-/// is the spawned `Entity` handle, never a numeric id (GTW-10 / GTW-12).
 #[test]
 fn build_from_input_populates_terrain_and_occupant_cell_by_cell() {
-    // Real entities from a real World (the C8(a) requirement).
     let mut world = World::new();
     let alice = world.spawn_empty().id();
     let bob = world.spawn_empty().id();
@@ -46,7 +34,6 @@ fn build_from_input_populates_terrain_and_occupant_cell_by_cell() {
 
     let grid = OccupancyGrid::build_from_occupancy_input(&input, &no_stair_cells());
 
-    // Terrain, cell by cell.
     assert_eq!(
         grid.terrain(&wall_at),
         TerrainKind::Wall,
@@ -57,7 +44,6 @@ fn build_from_input_populates_terrain_and_occupant_cell_by_cell() {
         TerrainKind::Cover,
         "the cover slot must carry TerrainKind::Cover",
     );
-    // Occupants, cell by cell — the exact spawned Entity handles.
     assert_eq!(
         grid.occupant(&alice_at),
         Some(alice),
@@ -68,8 +54,6 @@ fn build_from_input_populates_terrain_and_occupant_cell_by_cell() {
         Some(bob),
         "bob's slot must hold bob's Entity handle",
     );
-    // The silhouette band is poured TOGETHER with the occupant (GTW-304): a placed
-    // occupant must carry its band so the march can strike it.
     assert_eq!(
         grid.occupant_band(&alice_at),
         Some(HeightBand::High),
@@ -80,7 +64,6 @@ fn build_from_input_populates_terrain_and_occupant_cell_by_cell() {
         Some(HeightBand::Low),
         "bob's slot must carry his placement band (poured with the occupant)",
     );
-    // A slot the situation never touched is Open with no occupant.
     assert_eq!(
         grid.terrain(&empty_at),
         TerrainKind::Open,
@@ -96,15 +79,10 @@ fn build_from_input_populates_terrain_and_occupant_cell_by_cell() {
         None,
         "an untouched slot must have no published band",
     );
-    // A terrain slot carries no occupant and an occupant slot is Open terrain —
-    // the two facts are independent per slot.
     assert_eq!(grid.occupant(&wall_at), None);
     assert_eq!(grid.terrain(&alice_at), TerrainKind::Open);
 }
 
-/// Out-of-range coordinates are handled gracefully — no panic, and they read as
-/// Open / empty / not-blocked. Probes negative and past-extent coordinates on
-/// every axis.
 #[test]
 fn out_of_range_coords_are_graceful() {
     let mut grid = OccupancyGrid::new();
@@ -122,16 +100,12 @@ fn out_of_range_coords_are_graceful() {
             "an out-of-range cell must not block"
         );
         assert!(grid.slot(&oob).is_none());
-        // Setting on an out-of-range key is a graceful no-op (no panic).
         grid.set_terrain(oob, TerrainKind::Wall);
         grid.set_occupant(oob, None);
         assert_eq!(grid.terrain(&oob), TerrainKind::Open);
     }
 }
 
-/// The grid spans the full 60×60×8 extent — the structural constants. The corner
-/// `(59, 59, 7)` is in-range (last valid slot) and `(60, 60, 8)` is out — pinning
-/// the STRUCTURAL dimensions (system definition, not balance tuning).
 #[test]
 fn grid_spans_full_extent() {
     assert_eq!(GRID_WIDTH, 60);
@@ -153,9 +127,6 @@ fn grid_spans_full_extent() {
     assert!(grid.slot(&past).is_none(), "(60,60,8) is out of range");
 }
 
-/// A later occupant placement at the same `(cell, level)` overwrites an earlier
-/// one — the pour applies placements in order. (Two occupants on one cell is the
-/// situation author's concern, E1.8; the grid just stores the last write.)
 #[test]
 fn later_occupant_placement_wins() {
     let mut world = World::new();

@@ -1,9 +1,3 @@
-//! GTW-666 — sprite-def hot-reload RESTAMP, the tick-quiet half (A2): an
-//! UNRELATED def change (or a no-op registry touch) leaves every drawn tile's
-//! change ticks untouched — the cumulative quiet witness, the
-//! `fog_present/tick_quiet.rs` shape (the in-place half lives in
-//! `def_restamp.rs`).
-
 use bevy::{
     app::{App, Update},
     asset::{AssetEvent, AssetServer, Assets},
@@ -21,7 +15,6 @@ use gdtf_test_utils::{advance_until, advance_until_resource_exists};
 
 use super::harness::*;
 
-/// The UNRELATED def (no drawn tile is stamped with it) as first authored.
 const RUBBLE_DEF_V1: &str = r#"(
     source: Sheet(
         sheet: "sprites/alt_tileset_terrain.png",
@@ -30,8 +23,6 @@ const RUBBLE_DEF_V1: &str = r#"(
     anchor: (x: 8, y: 8),
 )"#;
 
-/// The unrelated def as RE-SAVED: a different rect, so the registry REBUILD is
-/// observable — while the `wall` tile it does NOT touch must stay tick-quiet.
 const RUBBLE_DEF_V2: &str = r#"(
     source: Sheet(
         sheet: "sprites/alt_tileset_terrain.png",
@@ -40,36 +31,22 @@ const RUBBLE_DEF_V2: &str = r#"(
     anchor: (x: 8, y: 8),
 )"#;
 
-/// How many probed tiles had their `Transform` change-flagged since the probe was
-/// armed — the re-dirty witness (named domain count, private inner).
 #[derive(Default, Deref, DerefMut, Clone, Copy)]
 struct RedirtyCount(usize);
 
-/// Whether the `Assets<TerrainFogMaterial>` RESOURCE tick advanced on any armed
-/// frame — the store-level poke witness.
 #[derive(Default, Deref, DerefMut, Clone, Copy)]
 struct StorePoked(bool);
 
-/// How many [`AssetEvent::Modified`] messages for [`TerrainFogMaterial`] were
-/// drained since arming — each one re-uploads a tile's uniform.
 #[derive(Default, Deref, DerefMut, Clone, Copy)]
 struct ModifiedCount(usize);
 
-/// The CUMULATIVE quiet witness the probe accumulates each frame after the draw
-/// band ran (reset via `world.resource_mut` to arm a fresh window).
 #[derive(Resource, Default)]
 struct QuietProbe {
-    /// Terrain tiles whose `Transform` was change-flagged in the armed window.
-    terrain_redirtied: RedirtyCount,
-    /// Whether the material store's resource tick advanced in the armed window.
-    store_poked:       StorePoked,
-    /// `AssetEvent::Modified` messages drained in the armed window.
-    modified_events:   ModifiedCount,
+        terrain_redirtied: RedirtyCount,
+        store_poked:       StorePoked,
+        modified_events:   ModifiedCount,
 }
 
-/// Per-frame probe (`.after(PresenterSystems::Draw)`): accumulate the frame's
-/// terrain-owned change-tick activity — `Ref::is_changed` is relative to this
-/// probe's own last run, so it sees exactly each frame's writes.
 fn record_quiet_probe(
     terrain: Query<Ref<Transform>, With<TerrainSprite>>,
     materials: Res<Assets<TerrainFogMaterial>>,
@@ -84,12 +61,10 @@ fn record_quiet_probe(
         .count();
 }
 
-/// Reset (arm) the cumulative probe.
 fn arm_probe(app: &mut App) {
     *app.world_mut().resource_mut::<QuietProbe>() = QuietProbe::default();
 }
 
-/// Assert the armed window recorded ZERO terrain-owned change-tick activity.
 fn assert_quiet(app: &App, window: &str) {
     let probe = app.world().resource::<QuietProbe>();
     assert_eq!(
@@ -108,13 +83,6 @@ fn assert_quiet(app: &App, window: &str) {
     );
 }
 
-/// GTW-666 A2/C3(a) — an UNRELATED def change (and a plain no-op registry touch)
-/// leaves every drawn tile tick-quiet: no `Transform` re-dirty, no material-store
-/// poke, zero `AssetEvent::Modified` — and the tile entity survives untouched.
-///
-/// RED before GTW-666: `draw_static_battlefield` reacted to ANY registry change by
-/// despawning + respawning every tile (fresh entities, fresh materials — the store
-/// poked and every Transform tick new).
 #[test]
 fn unrelated_def_change_leaves_drawn_tiles_tick_quiet() {
     let dir = tempfile::tempdir();
@@ -138,17 +106,12 @@ fn unrelated_def_change_leaves_drawn_tiles_tick_quiet() {
     );
     let rect_before = sprite_rect_at(&mut app, wall_key);
 
-    // Let the draw's own writes settle, then prove a STEADY frame is quiet (the
-    // baseline that makes the post-mutation quiet asserts meaningful).
     app.update();
     app.update();
     arm_probe(&mut app);
     app.update();
     assert_quiet(&app, "steady baseline frame");
 
-    // The UNRELATED change: re-save the `rubble` def (no drawn tile is stamped with
-    // it) and reload through the real redrive path. The registry REBUILDS — and the
-    // wall tile must stay tick-quiet through the rebuild + restamp frames.
     arm_probe(&mut app);
     write_sprite_def(dir.path(), "rubble.spritedef.ron", RUBBLE_DEF_V2);
     app.world()
@@ -172,8 +135,6 @@ fn unrelated_def_change_leaves_drawn_tiles_tick_quiet() {
     app.update();
     assert_quiet(&app, "unrelated-def rebuild window");
 
-    // The NO-OP registry touch (a `set_changed` with identical defs — the A2
-    // "no-op registry touch" arm): still all-quiet.
     arm_probe(&mut app);
     app.world_mut()
         .resource_mut::<SpriteDefRegistry>()
@@ -182,7 +143,6 @@ fn unrelated_def_change_leaves_drawn_tiles_tick_quiet() {
     app.update();
     assert_quiet(&app, "no-op registry touch window");
 
-    // The tile itself is untouched: same entity, same rect.
     assert_eq!(
         sprite_entity_at(&mut app, wall_key),
         entity_before,

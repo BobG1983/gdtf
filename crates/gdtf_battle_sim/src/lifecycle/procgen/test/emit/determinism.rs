@@ -1,5 +1,3 @@
-//! C2 — the seed-determinism pin on the full assemble -> fill -> emit pipeline.
-
 use super::support::*;
 use crate::{
     procgen::generate_level,
@@ -7,14 +5,6 @@ use crate::{
     situation::Situation,
 };
 
-/// C2 (determinism): the FULL pipeline (assemble -> fill -> emit) is deterministic under a
-/// fixed seed — two runs from the SAME seed emit terrain-EQUAL situations, AND two runs from
-/// DIFFERENT seeds emit terrain-DIFFERENT situations (so the determinism pin is not vacuous:
-/// it would pass trivially if every seed produced the same empty/identical level).
-///
-/// Discriminating: a non-deterministic pipeline (unsorted map iteration, non-seeded draw)
-/// would make the same-seed runs differ; a pipeline that ignored the seed would make the
-/// different-seed runs identical. The test fails either way.
 #[test]
 fn pipeline_emit_is_deterministic_under_a_seed() {
     let theme = theme();
@@ -58,14 +48,9 @@ fn pipeline_emit_is_deterministic_under_a_seed() {
         "the same seed must emit an IDENTICAL assembled level (C2 determinism)",
     );
 
-    // A different seed must emit DIFFERENT terrain (the player anchor — the one RNG draw —
-    // differs, so the placed origins, and thus the translated wall cells, differ). This
-    // makes the determinism pin discriminating, not vacuously equal.
     let Some(c) = run(BattleSeed::new(0xD1FF_4311)) else {
         return;
     };
-    // Try several alternative seeds — at least one must diverge from `a` (the anchor draw is
-    // a small enum, so a given pair could collide; the pin holds if ANY differs).
     let differs = !terrain_eq(&a, &c)
         || [1u64, 2, 3, 5, 8, 13, 21, 34]
             .into_iter()

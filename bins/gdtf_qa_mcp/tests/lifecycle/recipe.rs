@@ -1,18 +1,3 @@
-//! The launch recipe reaching the REAL launcher — the working directory, the features, and
-//! the environment overrides (GTW-875).
-//!
-//! The stub spawner in [`support`](crate::support) runs a fixed `sh` placeholder, so it
-//! can say nothing about whether a recipe's directory, features, or environment ever reach
-//! a launcher. These tests use the production [`CargoSpawner`] and read cargo's own reply
-//! back out of the child's captured stderr: a recipe pointed at a directory with no
-//! `Cargo.toml` fails THERE, naming that directory; a recipe naming a feature the package
-//! does not have fails naming that feature; a recipe setting `CARGO_BUILD_TARGET` to a
-//! target triple that does not exist fails naming that triple. Each of those messages is
-//! only reachable if the corresponding part of the recipe was applied to the real command.
-//!
-//! Nothing here builds the game: every launch dies in the time cargo takes to reject its
-//! own arguments.
-
 use std::{fs, path::PathBuf, process, time::SystemTime};
 
 use gdtf_qa_mcp::{
@@ -23,10 +8,8 @@ use gdtf_qa_mcp::{
 
 use crate::support::{fast_config, free_port};
 
-/// The package name the throwaway manifest below declares.
 const PROBE_PACKAGE: &str = "gtw875_probe";
 
-/// Make a fresh directory under the system temp directory, outside any cargo workspace.
 fn temp_dir_outside_a_workspace(tag: &str) -> PathBuf {
     let nanos = SystemTime::UNIX_EPOCH
         .elapsed()
@@ -38,11 +21,6 @@ fn temp_dir_outside_a_workspace(tag: &str) -> PathBuf {
     path
 }
 
-/// Make a directory holding the smallest possible cargo package, outside any workspace.
-///
-/// It exists so cargo gets PAST "no manifest here" and rejects the recipe's own parts
-/// instead — a feature the package does not declare, or a target triple that does not
-/// exist. It is never built: both rejections happen before any compilation.
 fn probe_package_outside_a_workspace(tag: &str) -> PathBuf {
     let path = temp_dir_outside_a_workspace(tag);
     let Ok(()) = fs::create_dir_all(path.join("src")) else {
@@ -61,8 +39,6 @@ fn probe_package_outside_a_workspace(tag: &str) -> PathBuf {
     path
 }
 
-/// Launch `spec` through the REAL [`CargoSpawner`] and return the stderr of the child's
-/// early exit.
 fn stderr_of_a_failed_launch(spec: &LaunchSpec) -> String {
     let mut manager = HostManager::with_config(Box::new(CargoSpawner::new()), fast_config(30_000));
     let outcome = manager.launch(QaPort::new(free_port()), spec);
@@ -72,8 +48,6 @@ fn stderr_of_a_failed_launch(spec: &LaunchSpec) -> String {
     tail.as_str().to_owned()
 }
 
-/// The recipe's FEATURES reach the real launcher: cargo rejects a feature the package does
-/// not declare, and names it.
 #[test]
 fn the_recipe_features_reach_the_real_cargo_command() {
     let dir = probe_package_outside_a_workspace("features");
@@ -93,9 +67,6 @@ fn the_recipe_features_reach_the_real_cargo_command() {
     drop(fs::remove_dir_all(&dir));
 }
 
-/// The recipe's ENVIRONMENT OVERRIDES reach the real child: cargo reads
-/// `CARGO_BUILD_TARGET` from its own environment, and rejects a triple that does not
-/// exist, naming it.
 #[test]
 fn the_recipe_environment_reaches_the_real_child() {
     let dir = probe_package_outside_a_workspace("env");
@@ -118,9 +89,6 @@ fn the_recipe_environment_reaches_the_real_child() {
     drop(fs::remove_dir_all(&dir));
 }
 
-/// The recipe's working directory reaches the real launcher: cargo runs THERE, fails to
-/// find a manifest, and names that very directory in the stderr the launch failure
-/// carries.
 #[test]
 fn the_recipe_working_directory_is_where_cargo_runs() {
     let dir = temp_dir_outside_a_workspace("cwd");
@@ -148,8 +116,6 @@ fn the_recipe_working_directory_is_where_cargo_runs() {
     drop(fs::remove_dir_all(&dir));
 }
 
-/// Two launches in a row can name different recipes: the recipe belongs to the call, not
-/// to the spawner, so one running host can drive one build and then another.
 #[test]
 fn successive_launches_can_name_different_recipes() {
     let first_dir = temp_dir_outside_a_workspace("first");

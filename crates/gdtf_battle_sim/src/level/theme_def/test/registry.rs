@@ -1,11 +1,6 @@
-//! C3 — the [`UuidThemeRegistry`] holds a [`UuidThemeDef`] inserted by-key, looks it up
-//! by [`ThemeUuid`], RESOLVES its `default_floor` [`TerrainUuid`], and ENUMERATES its
-//! terrain UUID list — exercised through the REAL registry, not unreachable dead code.
-
 use super::super::{ThemeDisplayName, ThemeUuid, UuidThemeDef, UuidThemeRegistry};
 use crate::terrain::def::TerrainUuid;
 
-/// Build a fixture theme definition with the given key, default floor, and palette.
 fn theme_def(
     key: ThemeUuid,
     default_floor: TerrainUuid,
@@ -19,10 +14,6 @@ fn theme_def(
     }
 }
 
-/// C3 — insert a theme under its [`ThemeUuid`] key, look it up, resolve its default-floor
-/// [`TerrainUuid`], and enumerate its terrain UUID list. Built directly from
-/// [`UuidThemeRegistry::insert`] (the sim-unit shape — no `AssetServer`). No magnitude
-/// assertions — key routing / resolve / enumeration only.
 #[test]
 fn registry_inserts_resolves_floor_and_enumerates_terrain() {
     let key = ThemeUuid::generate();
@@ -45,7 +36,6 @@ fn registry_inserts_resolves_floor_and_enumerates_terrain() {
     );
     assert!(!registry.is_empty(), "a one-theme registry is non-empty");
 
-    // Look up by ThemeUuid.
     assert_eq!(
         registry.def(&key),
         Some(&def),
@@ -56,7 +46,6 @@ fn registry_inserts_resolves_floor_and_enumerates_terrain() {
         "a fresh, never-inserted key resolves to None",
     );
 
-    // RESOLVE the default-floor TerrainUuid.
     assert_eq!(
         registry.default_floor(&key),
         Some(floor),
@@ -67,7 +56,6 @@ fn registry_inserts_resolves_floor_and_enumerates_terrain() {
         "an absent key resolves to no default floor",
     );
 
-    // ENUMERATE the terrain UUID list.
     assert_eq!(
         registry.terrain(&key),
         Some([floor, extra].as_slice()),
@@ -78,7 +66,6 @@ fn registry_inserts_resolves_floor_and_enumerates_terrain() {
         "an absent key enumerates no terrain",
     );
 
-    // The registry-wide enumeration sees the one theme.
     assert_eq!(
         registry.defs().count(),
         1,
@@ -86,8 +73,6 @@ fn registry_inserts_resolves_floor_and_enumerates_terrain() {
     );
 }
 
-/// C3 — the `(key, def)` constructor builds a registry keyed by [`ThemeUuid`] (the loader
-/// shape) and resolves the inserted key.
 #[test]
 fn registry_new_keys_by_uuid() {
     let key = ThemeUuid::generate();

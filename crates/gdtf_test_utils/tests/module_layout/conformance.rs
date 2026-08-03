@@ -1,8 +1,3 @@
-//! The clause-7 conformance test — applies the census detectors over the
-//! enumerated tree, honors the exemption registry (and fails its stale
-//! entries), prints warn/violation lines deterministically, and carries the
-//! full violation list in one final assert.
-
 use std::{collections::BTreeSet, fs};
 
 use crate::{
@@ -10,19 +5,15 @@ use crate::{
     tree::{registry_paths, tracked_rs, workspace_root},
 };
 
-/// BLOCK band: a file over this many raw lines must not land.
 const BLOCK_LINES: usize = 400;
-/// WARN band: a file over this many raw lines is flagged (non-fatal).
 const WARN_LINES: usize = 300;
 
-/// A rendered violation line plus its `(-lines, path)` sort key.
 struct Violation {
     lines: usize,
     path:  String,
     text:  String,
 }
 
-/// The clause-7 conformance guard (see the suite doc in `main.rs`).
 #[test]
 fn module_layout_conformance() {
     let root = workspace_root();
@@ -40,7 +31,7 @@ fn module_layout_conformance() {
     }
     for path in &files {
         let Ok(bytes) = fs::read(root.join(path)) else {
-            continue; // tracked but deleted from the working tree — nothing to measure
+            continue; 
         };
         let lines = raw_line_count(&bytes);
         let file_band = band(path);

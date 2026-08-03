@@ -1,6 +1,3 @@
-//! Non-ganger shot outcomes: miss trajectory, cover entry, ground exit, and
-//! `ShotOutcome` variant construction (AC #4 / AC #1).
-
 use bevy::prelude::World;
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection, BodyPart},
@@ -17,11 +14,7 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-// --- AC #4 — Miss / Cover / Ground over composed geometry. ---
 
-/// A shot that clears everything returns a `Miss` (no struck object), and the
-/// trajectory is still carried for presenter FX. Empty grids, flat East: nothing in
-/// the path, the round leaves laterally.
 #[test]
 fn clearing_shot_returns_miss_carrying_trajectory() {
     let tuning = CombatTuning::default();
@@ -50,7 +43,6 @@ fn clearing_shot_returns_miss_carrying_trajectory() {
         outcome.body_part.is_none(),
         "a non-ganger outcome carries no body part",
     );
-    // The trajectory is a real unit vector (carried for FX even on a miss).
     let traj = outcome.trajectory.vec();
     assert!(
         (traj.length() - 1.0).abs() < 1.0e-4,
@@ -58,8 +50,6 @@ fn clearing_shot_returns_miss_carrying_trajectory() {
     );
 }
 
-/// A shot into cover returns a `Cover` outcome carrying the struck `CoverEntry`. A
-/// MID cover stands in the path; the round (dead-center on the aim axis) impacts it.
 #[test]
 fn shot_into_cover_returns_cover_entry() {
     let tuning = CombatTuning::default();
@@ -78,7 +68,6 @@ fn shot_into_cover_returns_cover_entry() {
 
     let mut rng = shot_rng(99);
 
-    // Aim at the cover cell's own band midpoint (a deliberately-shot crate).
     let shot = standing_shot(
         key(2, 2, 0),
         cover_cell,
@@ -106,8 +95,6 @@ fn shot_into_cover_returns_cover_entry() {
     );
 }
 
-/// A downward shot off the grid bottom returns a `Ground` outcome carrying the
-/// surface cell it exited through. Straight down (-z) from (4,4,0).
 #[test]
 fn downward_shot_off_bottom_returns_ground() {
     let tuning = CombatTuning::default();
@@ -117,8 +104,6 @@ fn downward_shot_off_bottom_returns_ground() {
     let mut rng = shot_rng(13);
     let (prior_shots, recoil_climb, recoil_growth) = no_recoil();
 
-    // Target directly below the shooter so the muzzle→aim axis points down (-z).
-    // North-facing (not the East helper) to keep this geometry identical to GTW-172.
     let shot = ShotInputs {
         shooter_position: Position::new(key(4, 4, 1)),
         shooter_facing: Facing::new(Direction::North),
@@ -153,10 +138,7 @@ fn downward_shot_off_bottom_returns_ground() {
     );
 }
 
-// --- AC #1 — each ShotOutcome variant constructs and inspects. ---
 
-/// Each `ShotKind` variant constructs and its struck payload reads back, and a
-/// `ShotOutcome` carries every named field — the type-surface check (AC #1).
 #[test]
 fn shot_outcome_variants_construct_and_inspect() {
     let mut probe_world = World::new();
@@ -169,7 +151,6 @@ fn shot_outcome_variants_construct_and_inspect() {
     );
     let surface_cell = key(3, 4, 2);
 
-    // Ganger variant — carries the Entity; the body part is Some only here.
     let ganger = ShotOutcome {
         kind:       ShotKind::Ganger(entity),
         cell:       Cell::new(3, 4),
@@ -184,7 +165,6 @@ fn shot_outcome_variants_construct_and_inspect() {
     assert_eq!(ganger.cell, Cell::new(3, 4));
     assert_eq!(ganger.level, Level::new(2));
 
-    // Cover / Slab / Ground / Miss variants carry their struck object (or none).
     assert!(matches!(ShotKind::Cover(entry), ShotKind::Cover(_)));
     assert_eq!(ShotKind::Slab(surface_cell), ShotKind::Slab(surface_cell));
     assert_eq!(
@@ -194,9 +174,6 @@ fn shot_outcome_variants_construct_and_inspect() {
     assert_eq!(ShotKind::Miss, ShotKind::Miss);
 }
 
-/// A unit-X `ShotDir` for the type-surface test — built through the public cone
-/// sampler under a zero cone (dead-center on a +X aim axis), so it exercises the
-/// real `ShotDir` constructor rather than a hand-built private value.
 fn trajectory_unit_x() -> gdtf_battle_sim::sample_cone::ShotDir {
     use gdtf_battle_sim::{
         central_axis::climb_aim_dir, prelude::SimPos, sample_cone::sample_cone_vector,

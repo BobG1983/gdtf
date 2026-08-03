@@ -1,23 +1,3 @@
-//! GTW-345 — the battlescape status-panel STABILITY READOUT, driven through the REAL app
-//! stack.
-//!
-//! These headless `GdtfTestAppBuilder` integration tests drive the genuine state machine down
-//! to `BattleScapeState::BattleRunning`, where the real status-panel plugin spawns the
-//! stability-readout bar and its update system repaints it under the `BattleInProgress` gate.
-//! The bar is a HUD `Node` widget — there is no shader to render-readback, so the Node/fill
-//! component-state assert IS the binding proof (an in-engine VISUAL screenshot is owed-but-TBD
-//! because the dev capture is broken; see the C9 note in the ticket).
-//!
-//! They cover:
-//!
-//! - **C6(1)** — an armed, selected shooter over a known faced cover → the bar's fill is the
-//!   value derived from the authoritative `stability_for` `ConeMult` for that shooter (computed
-//!   DIRECTLY from the sim surface in the test body and compared to the DISPLAYED fill, so a
-//!   wrong source/value diverges).
-//! - **C6(2)** — no selection → the bar shows the EMPTY (zero) state.
-//! - **C6(3)** — mutating the shooter's Stance and updating → the bar fill CHANGES (it tracks
-//!   the live shooter state).
-
 use bevy::{ecs::entity::Entity, prelude::*, state::state::State, ui::Val};
 use gdtf_app::test_support::{AppState, BattleScapeState, RunningState, StabilityBar};
 use gdtf_battle_input::SelectedShooter;
@@ -44,27 +24,20 @@ use gdtf_battle_sim::{
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::{ProgressBarFill, theme::default_theme};
 
-/// A budget large enough to drive the deep walk into the battlescape, bounded so a machine that
-/// never reaches the predicate fails instead of hanging.
 const BUDGET: u32 = 96;
 
-/// Reads the current [`BattleScapeState`] if active.
 fn battlescape_state(app: &App) -> Option<BattleScapeState> {
     app.world()
         .get_resource::<State<BattleScapeState>>()
         .map(|state| *state.get())
 }
 
-/// Reads the current [`RunningState`] if active.
 fn running_state(app: &App) -> Option<RunningState> {
     app.world()
         .get_resource::<State<RunningState>>()
         .map(|state| *state.get())
 }
 
-/// Drives the real stack to `BattleScapeState::BattleRunning`, where the status panel is live.
-/// (The `weapon_panel.rs` harness precedent — a ganger-free default battle still reaches
-/// `BattleRunning` with `BattleInProgress` present, and the test spawns its own shooter.)
 fn battle_running_app() -> App {
     let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .starting_in(AppState::Running)
@@ -73,8 +46,6 @@ fn battle_running_app() -> App {
     app.world_mut().insert_resource(CombatTuning::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::WeaponRegistry::default());
-    // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
-    // seed for this ganger-free / hand-seeded harness, mirroring the WeaponRegistry seed).
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
     app.world_mut()
@@ -82,13 +53,10 @@ fn battle_running_app() -> App {
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
-    // GTW-415: the Load→Intro gate also requires a GangRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-489: the NEW gate-blocking PrefabRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
-    // GTW-487: the NEW gate-blocking TerrainDefRegistry + UuidThemeRegistry.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());
     app.world_mut()
@@ -116,7 +84,6 @@ fn battle_running_app() -> App {
     app
 }
 
-/// The single entity carrying marker `M`, or `None` if not exactly one.
 fn single_with<M: Component>(app: &mut App) -> Option<Entity> {
     let mut q = app.world_mut().query_filtered::<Entity, With<M>>();
     let found: Vec<Entity> = q.iter(app.world()).collect();
@@ -126,8 +93,6 @@ fn single_with<M: Component>(app: &mut App) -> Option<Entity> {
     }
 }
 
-/// The fill PERCENT of the `ProgressBar` rooted at `track` — reads the `ProgressBarFill` child's
-/// `Node.width`. `None` if missing.
 fn bar_fill_at(app: &App, track: Entity) -> Option<f32> {
     let kids: Vec<Entity> = app
         .world()
@@ -145,22 +110,15 @@ fn bar_fill_at(app: &App, track: Entity) -> Option<f32> {
     None
 }
 
-/// The fill PERCENT of the status-panel stability bar.
 fn stability_fill(app: &mut App) -> Option<f32> {
     let track = single_with::<StabilityBar>(app)?;
     bar_fill_at(app, track)
 }
 
-/// The DISPLAY normalization the readout uses, reproduced here so the test compares the
-/// displayed fill against a value derived from the live sim surface (the documented contract:
-/// lower cone = steadier = fuller bar; steadiness = the narrowing complement `1 - cone_mult`,
-/// clamped, as a PERCENT).
 fn expected_fill_percent(cone_mult: ConeMult) -> f32 {
     (1.0 - *cone_mult).clamp(0.0, 1.0) * 100.0
 }
 
-/// A shooter's grid placement + posture, grouped so the spawn helper stays under the arg-count
-/// gate.
 struct ShooterPlacement {
     cell:   Cell,
     facing: Direction,
@@ -168,8 +126,6 @@ struct ShooterPlacement {
     aiming: bool,
 }
 
-/// A weapon kit (arbitrary magnitudes — not shipped tuning), with the `stable` tag exposed so a
-/// test can pin a known stability contribution.
 fn weapon_kit(stable: bool) -> WeaponBundle {
     WeaponBundle::new(
         WeaponName::new("Autogun".to_owned()),
@@ -202,9 +158,6 @@ fn weapon_kit(stable: bool) -> WeaponBundle {
     )
 }
 
-/// Spawns an armed ganger (the full `Shooter` view: Stance/Aiming/Position/Facing) wielding a
-/// weapon on a related WEAPON entity (`WieldedBy` → the `Wields` insert hook), SELECTS it, and
-/// returns its entity. (The `weapon_panel.rs` `spawn_armed_and_select` precedent.)
 fn spawn_armed_and_select(app: &mut App, place: ShooterPlacement) -> Entity {
     let ganger = app
         .world_mut()
@@ -226,7 +179,6 @@ fn spawn_armed_and_select(app: &mut App, place: ShooterPlacement) -> Entity {
     ganger
 }
 
-/// A HIGH-band cover entry — a tall wall, the brace-engaging band the stability tests use.
 const fn high_cover() -> CoverEntry {
     CoverEntry::seeded(
         CoverHp::new(100),
@@ -236,9 +188,6 @@ const fn high_cover() -> CoverEntry {
     )
 }
 
-/// Inserts a [`CoverLedger`] with a HIGH cover at the cell the shooter at `cell`/`facing` faces
-/// (the same faced cell `stability_for` reads internally), so the brace gate has something to
-/// engage.
 fn seed_faced_cover(app: &mut App, cell: Cell, facing: Direction) {
     let mut ledger = CoverLedger::new();
     let (faced_cell_xy, faced_level) = faced_cell(
@@ -249,9 +198,6 @@ fn seed_faced_cover(app: &mut App, cell: Cell, facing: Direction) {
     app.world_mut().insert_resource(ledger);
 }
 
-// ---------------------------------------------------------------------------------
-// C6(1) — the bar carries the stability_for-derived ConeMult for the selected shooter.
-// ---------------------------------------------------------------------------------
 
 #[test]
 fn stability_readout_shows_the_stability_for_value() {
@@ -270,9 +216,6 @@ fn stability_readout_shows_the_stability_for_value() {
     );
     app.update();
 
-    // Compute the expected ConeMult DIRECTLY from the live sim surface (the same inputs the
-    // system assembles): the shooter view, the weapon's `stable` tag (false here), the model
-    // cover ledger, and the tuning.
     let stance = Stance::new(StanceKind::Standing);
     let aiming = Aiming::new(false);
     let position = Position::new(CellLevel::new(cell, Level::new(0)));
@@ -282,8 +225,6 @@ fn stability_readout_shows_the_stability_for_value() {
         aiming:     &aiming,
         position:   &position,
         facing:     &facing_c,
-        // GTW-526: this readout scenario has an un-suppressed shooter (no Suppressed
-        // component spawned), so the expected value uses the identity suppression term.
         suppressed: None,
     };
     let ledger = {
@@ -293,8 +234,6 @@ fn stability_readout_shows_the_stability_for_value() {
         l
     };
     let tuning = CombatTuning::default();
-    // GTW-392: no stair-brace in this scenario (standard cover test — not a stair cell);
-    // every GTW-573 term at its zero-identity default.
     let (cone_mult, _recoil) = stability_for(&shooter, StabilityTerms::default(), &ledger, &tuning);
     let expected = expected_fill_percent(cone_mult);
 
@@ -304,17 +243,12 @@ fn stability_readout_shows_the_stability_for_value() {
         "stability bar fill must be the stability_for-derived steadiness ({expected}%), got \
          {fill}%",
     );
-    // The cover braces a standing shooter (HIGH band) → a steadier-than-baseline cone → the bar
-    // must read non-empty (a wrong source would read empty / wrong).
     assert!(
         fill > 0.5,
         "a braced shooter must read a non-empty bar, got {fill}%"
     );
 }
 
-// ---------------------------------------------------------------------------------
-// C6(2) — no selection → the EMPTY (zero) state.
-// ---------------------------------------------------------------------------------
 
 #[test]
 fn stability_readout_empty_with_no_selection() {
@@ -329,18 +263,12 @@ fn stability_readout_empty_with_no_selection() {
     );
 }
 
-// ---------------------------------------------------------------------------------
-// C6(3) — mutating the shooter's Stance changes the readout.
-// ---------------------------------------------------------------------------------
 
 #[test]
 fn stability_readout_tracks_stance_change() {
     let mut app = battle_running_app();
     let cell = Cell::new(3, 3);
     let facing = Direction::East;
-    // No faced cover this time, so the brace gate's per-stance band requirement is what moves
-    // the readout: a standing vs prone shooter has a different stance stability contribution,
-    // so the cone_mult — and the bar fill — differ.
     let ganger = spawn_armed_and_select(
         &mut app,
         ShooterPlacement {
@@ -353,7 +281,6 @@ fn stability_readout_tracks_stance_change() {
     app.update();
     let standing = stability_fill(&mut app).unwrap_or(-1.0);
 
-    // Mutate the shooter's stance to Prone (the steadiest posture) and update.
     if let Some(mut stance) = app.world_mut().get_mut::<Stance>(ganger) {
         *stance = Stance::new(StanceKind::Prone);
     }

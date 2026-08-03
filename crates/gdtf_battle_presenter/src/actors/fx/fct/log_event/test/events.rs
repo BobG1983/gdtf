@@ -1,7 +1,3 @@
-//! The GTW-328 combat-event classify pins — the fire / movement / reload / turn /
-//! move-rejection / injury arms (the one-line classifications; the shot-outcome arms
-//! live in [`super::shot_outcomes`]).
-
 use gdtf_battle_sim::{
     acts::{MoveRejection, ReloadOutcome},
     battle::PlayerFaction,
@@ -19,8 +15,6 @@ use super::super::{
     event::{CombatLogEvent, InjuryLogText, LogName},
 };
 
-/// A fire declaration WITH a named target reads `"<actor> fired <Mode> at <target>"`, the
-/// mode title-cased, in neutral GREY.
 #[test]
 fn a_fire_declaration_at_a_target_names_actor_mode_and_target() {
     let event = CombatLogEvent::FireDeclaration {
@@ -35,8 +29,6 @@ fn a_fire_declaration_at_a_target_names_actor_mode_and_target() {
     assert_eq!(lines[0].emphasis(), FctEmphasis::Normal);
 }
 
-/// A fire declaration at NO named target drops the `"at <target>"` tail —
-/// `"<actor> fired <Mode>"`.
 #[test]
 fn a_fire_declaration_at_no_target_omits_the_target_clause() {
     let event = CombatLogEvent::FireDeclaration {
@@ -49,8 +41,6 @@ fn a_fire_declaration_at_no_target_omits_the_target_clause() {
     assert_eq!(&**lines[0].text(), "Vex fired Full");
 }
 
-/// A movement reads `"<actor> moved <from> -> <to>"` with both ground cells' coords, in
-/// neutral GREY.
 #[test]
 fn a_movement_names_actor_and_both_cells() {
     let event = CombatLogEvent::MovementOccurred {
@@ -64,8 +54,6 @@ fn a_movement_names_actor_and_both_cells() {
     assert_eq!(lines[0].color(), valence_color(FctValence::Neutral));
 }
 
-/// GTW-537 — a SUPPRESSED move rejection logs ONE line `"<actor> is pinned"` in wound
-/// AMBER; the Unreachable / Unaffordable reasons log NOTHING (kept silent).
 #[test]
 fn a_suppressed_move_rejection_logs_a_pinned_line_only() {
     let suppressed = CombatLogEvent::MoveRejected {
@@ -85,7 +73,6 @@ fn a_suppressed_move_rejection_logs_a_pinned_line_only() {
         "the pinned line is drawn in the denied-act wound amber",
     );
 
-    // The pre-existing reasons stay SILENT (no line) — no behavior change to them.
     for reason in [MoveRejection::Unreachable, MoveRejection::Unaffordable] {
         let event = CombatLogEvent::MoveRejected {
             actor: LogName::new("Vex"),
@@ -98,8 +85,6 @@ fn a_suppressed_move_rejection_logs_a_pinned_line_only() {
     }
 }
 
-/// A successful reload reads `"<actor> reloaded"` (neutral); a no-TU reload reads
-/// `"<actor>: no TU"` (AMBER); an already-full reload yields NO line.
 #[test]
 fn the_reload_outcomes_each_phrase_distinctly() {
     let reloaded = CombatLogEvent::ReloadResult {
@@ -130,8 +115,6 @@ fn the_reload_outcomes_each_phrase_distinctly() {
     );
 }
 
-/// A turn boundary reads `"— Player turn —"` when the newly-active gang is the player's,
-/// else `"— Enemy turn —"`. Neutral GREY.
 #[test]
 fn a_turn_boundary_labels_player_vs_enemy_by_faction() {
     let player = PlayerFaction::new(Faction::new(0));
@@ -154,8 +137,6 @@ fn a_turn_boundary_labels_player_vs_enemy_by_faction() {
     assert_eq!(&**enemy_lines[0].text(), "— Enemy turn —");
 }
 
-/// GTW-439 — an inflicted injury logs ONE line `"<actor> <log_text>"`, drawn in the
-/// severity-scaled wound AMBER and body weight (not bold).
 #[test]
 fn an_injury_logs_the_actor_and_authored_clause_in_the_severity_color() {
     let event = CombatLogEvent::InjuryInflicted {
@@ -178,8 +159,6 @@ fn an_injury_logs_the_actor_and_authored_clause_in_the_severity_color() {
     assert_eq!(lines[0].emphasis(), FctEmphasis::Normal);
 }
 
-/// GTW-439 — PIN-DISCRIMINATING: the injury line's color TRACKS the rolled tier — a Minor
-/// injury reads a DIFFERENT swatch than a Critical one, so a flat-valence routing fails.
 #[test]
 fn the_injury_log_color_scales_with_severity() {
     let minor = CombatLogEvent::InjuryInflicted {

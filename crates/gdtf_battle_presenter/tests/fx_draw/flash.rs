@@ -1,6 +1,3 @@
-//! `FxFlash` glyph spawn per consequence message + TTL expiry (GTW-220 AC1-AC5,
-//! GTW-507 melee strike).
-
 use gdtf_battle_presenter::cell_to_world;
 use gdtf_battle_sim::{
     acts::MeleeResolved,
@@ -14,10 +11,6 @@ use gdtf_battle_sim::{
 
 use super::{harness::*, probes::*};
 
-/// AC1 — a `Bleeding { ganger }` spawns EXACTLY ONE `FxFlash` at the ganger's cell with the
-/// table's `bleed` atlas index (read structurally from `EffectRoles`, never a literal), and a
-/// `*Wounds`-relation tint. A `Bleeding` for an entity with no `Position`/`Wounds` spawns no
-/// flash and does not panic (fail-closed).
 #[test]
 fn bleeding_spawns_one_flash_at_the_ganger_cell_with_the_bleed_index() {
     let mut app = headless_renderer_app();
@@ -52,8 +45,6 @@ fn bleeding_spawns_one_flash_at_the_ganger_cell_with_the_bleed_index() {
         "the bleed flash's atlas index must equal the table's bleed role index",
     );
 
-    // Fail-closed: a Bleeding for an entity with NO Position/Wounds spawns nothing, no panic.
-    // First clear the existing flash so the count is unambiguous.
     advance_past_ttl(&mut app);
     assert_eq!(fx_count(&mut app), 0, "the first flash must have expired");
     let bare = app.world_mut().spawn_empty().id();
@@ -66,8 +57,6 @@ fn bleeding_spawns_one_flash_at_the_ganger_cell_with_the_bleed_index() {
     );
 }
 
-/// AC2 — an `ArmorBroken { ganger, part }` spawns exactly one `FxFlash` at the ganger's cell
-/// with the table's `armor_break` index.
 #[test]
 fn armor_broken_spawns_one_flash_at_the_armor_break_index() {
     let mut app = headless_renderer_app();
@@ -107,8 +96,6 @@ fn armor_broken_spawns_one_flash_at_the_armor_break_index() {
     );
 }
 
-/// AC3 — a `CoverDestroyed { at }` spawns exactly one `FxFlash` at `cell_to_world(at)` with
-/// the table's `cover_destroyed` index.
 #[test]
 fn cover_destroyed_spawns_one_flash_at_the_cover_destroyed_index() {
     let mut app = headless_renderer_app();
@@ -148,12 +135,6 @@ fn cover_destroyed_spawns_one_flash_at_the_cover_destroyed_index() {
     );
 }
 
-/// GTW-507 — a `MeleeResolved { at, damage }` spawns exactly one `FxFlash` STRIKE glyph at
-/// `cell_to_world(at)` with the table's data-driven `melee_strike` index. This is the in-engine
-/// QA evidence (headless) that the close-combat strike FX renders end-to-end: the sim's
-/// connecting-hit signal drives a one-frame strike glyph at the struck cell, on the real
-/// `TopDownRendererPlugin` Draw band (the `read_melee_resolved` system gated on the live battle
-/// resources + the `Messages<MeleeResolved>` buffer the plugin registers).
 #[test]
 fn melee_resolved_spawns_one_strike_flash_at_the_melee_strike_index() {
     let mut app = headless_renderer_app();
@@ -164,7 +145,6 @@ fn melee_resolved_spawns_one_strike_flash_at_the_melee_strike_index() {
     let level = Level::new(0);
     let at = CellLevel::new(cell, level);
 
-    // The sim's connecting-melee signal — the struck target cell + the weapon's damage type.
     play(&mut app, MeleeResolved::new(at, DamageType::Rend));
     app.update();
 
@@ -194,9 +174,6 @@ fn melee_resolved_spawns_one_strike_flash_at_the_melee_strike_index() {
     );
 }
 
-/// AC4 — `FlashTtl` expiry makes the flash one-shot: a spawned flash is despawned by
-/// `expire_flashes` after its TTL elapses, and a further empty update spawns nothing (the
-/// reader drained its buffer — nothing lingers).
 #[test]
 fn flash_expires_after_its_ttl_and_nothing_lingers() {
     let mut app = headless_renderer_app();
@@ -208,7 +185,6 @@ fn flash_expires_after_its_ttl_and_nothing_lingers() {
     app.update();
     assert_eq!(fx_count(&mut app), 1, "one flash must spawn");
 
-    // Advance Time past the TTL and update -> the flash is despawned.
     advance_past_ttl(&mut app);
     assert_eq!(
         fx_count(&mut app),
@@ -216,7 +192,6 @@ fn flash_expires_after_its_ttl_and_nothing_lingers() {
         "the flash must be despawned once its FlashTtl elapses",
     );
 
-    // A further update with NO new message spawns nothing — the reader drained its buffer.
     app.update();
     assert_eq!(
         fx_count(&mut app),
@@ -225,8 +200,6 @@ fn flash_expires_after_its_ttl_and_nothing_lingers() {
     );
 }
 
-/// AC5 — two `Bleeding` for one ganger in a frame spawn TWO INDEPENDENT flashes (no
-/// coalescing), and both later expire under AC4's clock.
 #[test]
 fn two_bleeding_messages_spawn_two_independent_flashes() {
     let mut app = headless_renderer_app();
@@ -243,7 +216,6 @@ fn two_bleeding_messages_spawn_two_independent_flashes() {
         "two Bleeding for one ganger in a frame must spawn two independent flashes (no coalescing)",
     );
 
-    // Both expire under the same clock.
     advance_past_ttl(&mut app);
     assert_eq!(
         fx_count(&mut app),

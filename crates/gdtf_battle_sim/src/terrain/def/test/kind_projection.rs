@@ -1,8 +1,3 @@
-//! GTW-574 C1 — the canonical-discriminant projections: every [`TerrainSimKind`] /
-//! [`TerrainPresenterKind`] variant projects onto its matching [`TerrainPieceKind`]
-//! via the exhaustive `kind()` projections, and the [`TerrainPieceKind::ALL`]
-//! inventory is complete (the enumerable list the derived vocabularies pin against).
-
 use super::super::{TerrainPresenterKind, TerrainSimKind};
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
@@ -15,9 +10,6 @@ use crate::{
     weapon::WeaponName,
 };
 
-/// A sim-kind fixture per canonical kind — arbitrary magnitudes (nothing pinned), one
-/// variant per [`TerrainPieceKind`]. The match is EXHAUSTIVE on the canonical
-/// discriminant, so a new piece kind breaks this fixture at compile time.
 fn sim_kind_of(kind: TerrainPieceKind) -> TerrainSimKind {
     match kind {
         TerrainPieceKind::Wall => TerrainSimKind::Wall {
@@ -47,8 +39,6 @@ fn sim_kind_of(kind: TerrainPieceKind) -> TerrainSimKind {
     }
 }
 
-/// A presenter-kind fixture per canonical kind — the mirror of [`sim_kind_of`] for the
-/// presenter half.
 fn presenter_kind_of(kind: TerrainPieceKind) -> TerrainPresenterKind {
     let graphic_name = TerrainGraphicKey::new("floor".to_owned());
     match kind {
@@ -62,9 +52,6 @@ fn presenter_kind_of(kind: TerrainPieceKind) -> TerrainPresenterKind {
     }
 }
 
-/// GTW-574 C1 — every [`TerrainSimKind`] variant projects onto ITS canonical
-/// [`TerrainPieceKind`] (the projection is kind-level identity across the whole
-/// inventory).
 #[test]
 fn every_sim_kind_projects_to_its_piece_kind() {
     for kind in TerrainPieceKind::ALL {
@@ -77,8 +64,6 @@ fn every_sim_kind_projects_to_its_piece_kind() {
     }
 }
 
-/// GTW-574 C1 — every [`TerrainPresenterKind`] variant projects onto ITS canonical
-/// [`TerrainPieceKind`] (the presenter half stays in canonical lockstep).
 #[test]
 fn every_presenter_kind_projects_to_its_piece_kind() {
     for kind in TerrainPieceKind::ALL {
@@ -91,14 +76,9 @@ fn every_presenter_kind_projects_to_its_piece_kind() {
     }
 }
 
-/// GTW-574 C1 — the [`TerrainPieceKind::ALL`] inventory is COMPLETE and duplicate-free:
-/// every variant appears exactly once. The `ordinal` match is EXHAUSTIVE, so adding a
-/// variant without growing `ALL` is a compile error here, then a length-assert failure.
 #[test]
 fn piece_kind_inventory_is_complete_and_distinct() {
-    /// The exhaustive per-variant ordinal — the compile-time forcing function: a new
-    /// `TerrainPieceKind` variant breaks this match before the assert can lie.
-    const fn ordinal(kind: TerrainPieceKind) -> usize {
+            const fn ordinal(kind: TerrainPieceKind) -> usize {
         match kind {
             TerrainPieceKind::Wall => 0,
             TerrainPieceKind::Cover => 1,

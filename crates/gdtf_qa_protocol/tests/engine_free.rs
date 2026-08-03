@@ -1,13 +1,3 @@
-//! Compile-level guarantee that `gdtf_qa_protocol` is ENGINE-FREE (GTW-734).
-//!
-//! The crate must link WITHOUT the Bevy engine so both the game-side `net_qa` server
-//! (T3) and the standalone `gdtf_qa_mcp` bridge (T8) can depend on it. This test asserts
-//! the dependency LIST directly: the only Bevy edge permitted is the `bevy_derive`
-//! proc-macro crate (the `Deref` derive), and no async runtime (`tokio`) or the Bevy
-//! ENGINE (`bevy`) may appear. The `/gate` structure lens re-checks the same fact with
-//! `cargo tree`.
-
-/// Read this crate's own `Cargo.toml`.
 fn manifest() -> String {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml");
     let Ok(text) = std::fs::read_to_string(path) else {
@@ -16,22 +6,18 @@ fn manifest() -> String {
     text
 }
 
-/// The dependency NAMES declared under `[dependencies]` (the runtime deps), in order.
 fn runtime_dependency_names(manifest: &str) -> Vec<String> {
     let mut names = Vec::new();
     let mut in_deps = false;
     for line in manifest.lines() {
         let trimmed = line.trim();
         if trimmed.starts_with('[') {
-            // A new table header — we are inside `[dependencies]` only for that exact
-            // table (never `[dev-dependencies]`, `[lints]`, etc.).
             in_deps = trimmed == "[dependencies]";
             continue;
         }
         if !in_deps || trimmed.is_empty() || trimmed.starts_with('#') {
             continue;
         }
-        // A dependency line is `name = ...` — take the token before `=`.
         if let Some((name, _)) = trimmed.split_once('=') {
             names.push(name.trim().to_owned());
         }
@@ -39,8 +25,6 @@ fn runtime_dependency_names(manifest: &str) -> Vec<String> {
     names
 }
 
-/// The runtime dependency list carries the derive crate, never the Bevy engine or an
-/// async runtime.
 #[test]
 fn crate_depends_on_no_bevy_engine_or_tokio() {
     let names = runtime_dependency_names(&manifest());
@@ -57,7 +41,6 @@ fn crate_depends_on_no_bevy_engine_or_tokio() {
         !names.iter().any(|name| name == "tokio"),
         "no async runtime is permitted (got {names:?})"
     );
-    // The whole runtime dependency set is exactly the four the contract allows.
     for name in &names {
         assert!(
             matches!(name.as_str(), "serde" | "ron" | "bevy_derive" | "schemars"),
@@ -66,14 +49,12 @@ fn crate_depends_on_no_bevy_engine_or_tokio() {
     }
 }
 
-/// The repository root, two directories above this crate's manifest.
 fn repo_root() -> std::path::PathBuf {
     std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."))
         .components()
         .collect()
 }
 
-/// Read a repo-relative file, failing loudly if it has moved.
 fn read_repo_file(relative: &str) -> String {
     let path = repo_root().join(relative);
     let Ok(text) = std::fs::read_to_string(&path) else {
@@ -82,12 +63,6 @@ fn read_repo_file(relative: &str) -> String {
     text
 }
 
-/// `schemars` is OPTIONAL and reached only through the `schema` feature (GTW-939).
-///
-/// The courier (`bins/gdtf_qa_mcp`) carries schema documents as opaque text and must never
-/// link a schema library; the two hosts turn the feature on to derive their command
-/// argument / reply schemas. If the dependency ever loses `optional = true`, or the feature
-/// stops naming it, every consumer starts linking schemars — which this pins against.
 #[test]
 fn schemars_is_optional_and_behind_the_schema_feature() {
     let manifest = manifest();
@@ -109,11 +84,6 @@ fn schemars_is_optional_and_behind_the_schema_feature() {
     );
 }
 
-/// The courier does not turn the `schema` feature on (GTW-939).
-///
-/// `bins/gdtf_qa_mcp` moves schema documents as opaque text; it has no reason to derive
-/// one, and a `features = ["schema"]` on its dependency line would make it link schemars on
-/// every build of the courier.
 #[test]
 fn the_courier_does_not_enable_the_schema_feature() {
     let text = read_repo_file("bins/gdtf_qa_mcp/Cargo.toml");
@@ -130,11 +100,8 @@ fn the_courier_does_not_enable_the_schema_feature() {
     );
 }
 
-/// The package-qualified feature name that turns `schema` on from outside this crate.
 const QUALIFIED_SCHEMA_FEATURE: &str = "gdtf_qa_protocol/schema";
 
-/// The build-configuration files that can turn a package feature on for a whole-workspace
-/// command: the shared cargo aliases and every CI workflow.
 fn workspace_command_files() -> Vec<(String, String)> {
     let mut files = vec![(
         ".cargo/config.toml".to_owned(),
@@ -168,23 +135,6 @@ fn workspace_command_files() -> Vec<(String, String)> {
     files
 }
 
-/// No whole-workspace cargo command enables `schema` (GTW-939).
-///
-/// The courier links schemars whenever the one shared `gdtf_qa_protocol` library unit is
-/// built with `schema` on, and cargo builds exactly one such unit per invocation. So naming
-/// `gdtf_qa_protocol/schema` on ANY `--workspace` command — a `.cargo/config.toml` alias or
-/// a CI workflow step — puts schemars in the courier, no matter what the courier's own
-/// manifest says. The feature belongs on crate-scoped runs
-/// (`cargo test -p gdtf_qa_protocol --features schema`). This walks every line that carries
-/// `--workspace` in those files and fails if one names the feature.
-///
-/// What this guard does NOT cover, and did not cover before GTW-941 either: a MANIFEST edge.
-/// `crates/gdtf_qa_command` requires `gdtf_qa_protocol/schema` unconditionally, so every
-/// `--workspace` run already unifies the feature on and the courier's unit already links
-/// schemars on `cargo dclippy` / `cargo dtest`, with no command line naming the feature. The
-/// property that survives is the shipped one: `bins/gdtf_qa_mcp` enables no schema feature in
-/// its own manifest and depends on no crate that does, so a courier-only build links no
-/// schemars. Widening this guard to manifest edges is filed separately — see GTW-946.
 #[test]
 fn no_workspace_wide_command_enables_the_schema_feature() {
     let mut violations: Vec<String> = Vec::new();

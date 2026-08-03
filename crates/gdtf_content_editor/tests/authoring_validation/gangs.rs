@@ -1,8 +1,4 @@
 //! GTW-651: the GANG equipment-refs edge joins the editor's authoring-time
-//! validation — a fixture gang with dangling equipment keys surfaces at editor
-//! launch (C3(a) / A1), and a hot-edit of the loaded gang re-arms the pass and
-//! re-publishes the CURRENT findings (C3(b)).
-
 use bevy::asset::{AssetEvent, AssetServer, Assets};
 use gdtf_assets::{ContentFamily, ContentFolderHandle, ContentIntegrityReport, RonAsset};
 use gdtf_battle_sim::{
@@ -17,26 +13,14 @@ use crate::harness::{
     editor_app_on_fixture_root, has_dangling_ref,
 };
 
-/// The committed fixture gang's file STEM — its registry key, which the
-/// finding's referrer must name (A1: "findings name the gang file").
 const FIXTURE_GANG_STEM: &str = "fixture_gang";
 
-/// The fixture gang member's DANGLING weapon key (no weapons folder in the
-/// fixture root).
 const DANGLING_WEAPON: &str = "missing_weapon";
 
-/// The fixture gang member's DANGLING armor key.
 const DANGLING_ARMOR: &str = "missing_armor";
 
-/// The DISTINCT dangling weapon key the re-arm test hot-edits the member to
-/// (in-memory only — the fixture file is never written).
 const EDITED_DANGLING_WEAPON: &str = "edited_missing_weapon";
 
-/// C3(a) / A1: loading a gang whose member's equipment keys resolve nothing
-/// surfaces each as a `DanglingRef` finding on the [`ContentIntegrityReport`]
-/// in the EDITOR app — naming the gang file (the referrer) and the missing key
-/// (the target). The implicit `fists` melee default the member falls back to
-/// is reported too (the check's documented default-edge behavior).
 #[test]
 fn dangling_gang_equipment_refs_surface_in_the_editor_at_authoring_time() {
     let mut app = editor_app_on_fixture_root();
@@ -49,7 +33,6 @@ fn dangling_gang_equipment_refs_surface_in_the_editor_at_authoring_time() {
     );
     let Some(report) = report else { return };
 
-    // The weapon-key finding names the gang file + the missing key (A1).
     let referrer = dangling_ref_referrer(report, "WeaponRegistry", DANGLING_WEAPON);
     assert!(
         referrer.is_some(),
@@ -76,25 +59,15 @@ fn dangling_gang_equipment_refs_surface_in_the_editor_at_authoring_time() {
     );
 }
 
-/// C3(b): hot-editing the loaded gang (the hot-reload redrive path — the same
-/// `Modified` message the file watcher emits) re-arms the pass: the report is
-/// RESET, re-checked against the edited content, and re-published. The
-/// superseded weapon finding is gone, the edited (still-dangling) key is
-/// present — and the untouched THEME's finding is re-reported, because the
-/// re-arm re-runs EVERY registered check onto the ONE consolidated report
-/// (the A2 same-report behavior).
 #[test]
 fn gang_hot_edit_rearms_validation_and_republishes_current_findings() {
     let mut app = editor_app_on_fixture_root();
     advance_to_published(&mut app);
 
-    // Hot-edit the loaded gang IN MEMORY (the load_redrive.rs recipe), then
-    // fire the same `Modified` message the file watcher emits.
     let handle = app
         .world()
         .resource::<AssetServer>()
         .load::<RonAsset<GangRoster>>(format!(
-            // GTW-634 A1: folder + extension are DERIVED from the family's owning consts.
             "{}/{FIXTURE_GANG_STEM}.{}",
             GangsFamily::FOLDER,
             GangsFamily::EXTENSION,

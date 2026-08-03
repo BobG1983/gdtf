@@ -1,19 +1,3 @@
-//! GTW-811 SPIKE PROBE — does a first-party `bevy_ui_widgets::Button` activate from a REAL
-//! pointer click, with no project-side bridge?
-//!
-//! This is the second half of the spike's evidence. GTW-637 shipped
-//! `bridge_continue_activation` on the Options screen on the stated premise that "the
-//! project does not enable Bevy's `ui_picking` backend", so the widgets' own pointer
-//! observers could never fire
-//! (`crates/gdtf_app/src/states/running/options/systems/actions.rs`). That premise is
-//! wrong: the `ui` feature pulls `picking` → `ui_picking`, and `UiPlugin` installs the
-//! backend. This probe drives real `bevy_picking` press/release input at a real
-//! `bevy_ui_widgets::Button` and observes whether the widget's native
-//! `button_on_pointer_click` path produces an `Activate` with zero bridging code.
-//!
-//! Every world mutation is in a TEST BODY — the accepted headless idiom
-//! (`bevy-traps.md` #7 carve-out (a)).
-
 use bevy::{
     app::App,
     camera::{RenderTarget, visibility::Visibility},
@@ -28,27 +12,19 @@ use gdtf_test_utils::GdtfUiTestAppBuilder;
 
 use super::harness::TARGET_SIZE;
 
-/// The probe button's size in logical px.
 const BUTTON_SIZE: Vec2 = Vec2::new(200.0, 60.0);
 
-/// The probe button's top-left offset from the window origin, in logical px.
 const BUTTON_ORIGIN: Vec2 = Vec2::new(100.0, 100.0);
 
-/// Counts the `Activate` triggers the widget produced — the probe's observable.
 #[derive(Resource, Default, Debug)]
 struct Activations {
-    /// How many `Activate` events named the probe button.
-    count: usize,
+        count: usize,
 }
 
-/// Records every `Activate` trigger, so the test can assert the NATIVE widget path fired.
 fn record_activation(_activate: On<Activate>, mut activations: ResMut<Activations>) {
     activations.count += 1;
 }
 
-/// Builds a `DefaultPlugins` UI app carrying one first-party widget button and an observer
-/// counting its activations. No project input code is added — whatever fires here is
-/// Bevy's own wiring.
 fn widget_app() -> (App, Entity) {
     let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
     app.init_resource::<Activations>();
@@ -85,7 +61,6 @@ fn widget_app() -> (App, Entity) {
     (app, button)
 }
 
-/// The button's laid-out centre, read back from `bevy_ui` rather than predicted.
 fn button_centre(app: &App, button: Entity) -> Option<Vec2> {
     let node = app.world().get::<ComputedNode>(button)?;
     if node.size.x <= 0.0 || node.size.y <= 0.0 {
@@ -94,7 +69,6 @@ fn button_centre(app: &App, button: Entity) -> Option<Vec2> {
     Some(app.world().get::<UiGlobalTransform>(button)?.translation)
 }
 
-/// Writes one `PointerInput` message for the mouse pointer at `position`.
 fn send_pointer(app: &mut App, position: Vec2, action: PointerAction) {
     let Some(window) = app
         .world_mut()
@@ -114,13 +88,6 @@ fn send_pointer(app: &mut App, position: Vec2, action: PointerAction) {
     ));
 }
 
-/// GTW-811 finding 3 — a first-party `bevy_ui_widgets::Button` DOES activate from a real
-/// pointer press/release with NO project-side bridge, because the `ui_picking` backend is
-/// already installed.
-///
-/// This is the fact that retires the GTW-637 premise. Pin-discriminating: the assertion is
-/// a nonzero `Activate` count produced solely by Bevy's `ButtonPlugin` observers — the test
-/// adds no bridge, no `Interaction` write, and no `FocusActivated`.
 #[test]
 fn a_first_party_button_activates_from_a_real_pointer_click() {
     let (mut app, button) = widget_app();
@@ -129,8 +96,6 @@ fn a_first_party_button_activates_from_a_real_pointer_click() {
         unreachable!("bevy_ui must lay the probe button out to a non-degenerate rect");
     };
 
-    // Move onto the button, then press and release over it — the sequence a real mouse
-    // produces. Each message is consumed by `PointerInput::receive` in `PreUpdate`.
     send_pointer(&mut app, centre, PointerAction::Move { delta: Vec2::ZERO });
     app.update();
     send_pointer(

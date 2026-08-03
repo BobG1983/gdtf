@@ -1,17 +1,3 @@
-//! GTW-744 — the roster DEPLOYMENT step: [`deploy_rosters`] places each roster member into
-//! its side's deployment zone, deterministically by seed, on valid/standable/non-overlapping
-//! cells — driven over the REAL `generate_level` pipeline (the same functions the app runs,
-//! no shadow copy), plus a hand-built fail-closed pin.
-//!
-//! Three concerns:
-//!
-//! 1. **Determinism** — the SAME seed deploys an IDENTICAL `Vec<PlacedGanger>`, and DIFFERENT
-//!    seeds can deploy different placements (the pin is discriminating, not vacuous).
-//! 2. **Validity** (multi-seed) — every placed cell is in-bounds, not a terrain wall, distinct,
-//!    inside its side's zone region, facing the zone's centre-ward direction, Standing / Alive.
-//! 3. **Fail-closed** — a zone smaller than its roster returns
-//!    [`PackingError::DeploymentZoneTooSmall`].
-
 use super::emit::support::{registry_with_fill, size, terrain_defs, theme, theme_registry};
 use crate::{
     ganger::{Faction, GangName, GangerName, LifeState, StanceKind},
@@ -24,8 +10,6 @@ use crate::{
     situation::{RosterMember, Situation},
 };
 
-/// A four-member roster mirroring the shipped skirmish: two player-faction (0) members and
-/// two enemy-faction (1) members, in authored order.
 fn skirmish_rosters() -> Vec<RosterMember> {
     let member = |gang: &str, name: &str, faction: u8| {
         RosterMember::new(
@@ -42,8 +26,6 @@ fn skirmish_rosters() -> Vec<RosterMember> {
     ]
 }
 
-/// Run the REAL `generate_level` pipeline for `seed` and return the surfaced deployment zones
-/// paired with the generated terrain (the same inputs the app hands `deploy_rosters`).
 fn generated(seed: BattleSeed) -> Option<(DeploymentZones, Situation)> {
     let theme = theme();
     let (Some(board), Some(player_fp), Some(enemy_fp)) = (size(40, 40), size(12, 12), size(12, 12))
@@ -59,11 +41,8 @@ fn generated(seed: BattleSeed) -> Option<(DeploymentZones, Situation)> {
     Some((emitted.zones, emitted.situation))
 }
 
-/// Concern 1 — determinism: the SAME seed deploys an IDENTICAL placement set, and at least one
-/// DIFFERENT seed deploys a different one (so the pin is discriminating).
 #[test]
 fn deploy_is_deterministic_and_discriminating_by_seed() {
-    // Fix the map (one generate_level) so we isolate the DEPLOY seed's effect on the shuffle.
     let gen_seed = BattleSeed::new(0x0744_0001);
     let Some((zones, terrain)) = generated(gen_seed) else {
         return;
@@ -87,8 +66,6 @@ fn deploy_is_deterministic_and_discriminating_by_seed() {
         "the same seed must deploy an IDENTICAL placement set (determinism)",
     );
 
-    // A different deploy seed shuffles the zone differently — over several seeds at least one
-    // must diverge (the pin is not vacuously equal for all seeds).
     let differs = [1u64, 2, 3, 5, 8, 13, 21, 34]
         .into_iter()
         .filter_map(|s| deploy(BattleSeed::new(s)).ok())
@@ -99,9 +76,6 @@ fn deploy_is_deterministic_and_discriminating_by_seed() {
     );
 }
 
-/// Concern 2 — validity (multi-seed): over several seeds every placed ganger lands on a valid
-/// cell (in-bounds, not a terrain wall, distinct), inside its side's zone, facing the zone's
-/// centre-ward direction, Standing / not-aiming / Alive.
 #[test]
 fn deployment_is_valid_across_seeds() {
     let rosters = skirmish_rosters();
@@ -130,7 +104,6 @@ fn deployment_is_valid_across_seeds() {
         let wall_cells: Vec<CellLevel> = terrain.walls.iter().map(|w| w.at).collect();
         let mut used_cells: Vec<CellLevel> = Vec::new();
         for ganger in &placed {
-            // Distinct cells (no two gangers stacked).
             assert!(
                 !used_cells.contains(&ganger.at),
                 "seed {raw}: deployed cell {:?} is not distinct",
@@ -138,21 +111,18 @@ fn deployment_is_valid_across_seeds() {
             );
             used_cells.push(ganger.at);
 
-            // In-bounds against the generated board.
             assert!(
                 ganger.at.x >= 0 && ganger.at.x < width && ganger.at.y >= 0 && ganger.at.y < height,
                 "seed {raw}: deployed cell {:?} is out of bounds",
                 ganger.at,
             );
 
-            // Not on a terrain wall (standable).
             assert!(
                 !wall_cells.contains(&ganger.at),
                 "seed {raw}: deployed cell {:?} is a terrain wall (not standable)",
                 ganger.at,
             );
 
-            // Inside its side's zone, facing that zone's centre-ward direction.
             let zone = if *ganger.faction == 0 {
                 zones.player()
             } else {
@@ -172,7 +142,6 @@ fn deployment_is_valid_across_seeds() {
                 *ganger.member,
             );
 
-            // The deploy defaults: Standing, not aiming, Alive.
             assert_eq!(*ganger.stance, StanceKind::Standing, "seed {raw}: Standing");
             assert!(!*ganger.aiming, "seed {raw}: not aiming");
             assert_eq!(ganger.life_state, LifeState::Alive, "seed {raw}: Alive");
@@ -180,11 +149,8 @@ fn deployment_is_valid_across_seeds() {
     }
 }
 
-/// Concern 3 — fail-closed: a zone with fewer standable cells than its roster returns
-/// [`PackingError::DeploymentZoneTooSmall`] naming the demand and capacity.
 #[test]
 fn deploy_fails_closed_when_a_zone_cannot_fit_its_roster() {
-    // A 1x1 player zone (capacity 1 standable cell on empty terrain) but TWO player members.
     let zones = DeploymentZones::new(
         DeploymentZone::new(
             Anchor::BottomLeft,
@@ -195,7 +161,7 @@ fn deploy_fails_closed_when_a_zone_cannot_fit_its_roster() {
             RegionRect::new(Cell::new(50, 50), Footprint::new(4, 4)),
         ),
     );
-    let terrain = Situation::new(); // empty (60x60x8 default), so (0,0) is standable
+    let terrain = Situation::new(); 
     let rosters = vec![
         RosterMember::new(
             GangName::new("gang_0".to_owned()),
@@ -233,8 +199,6 @@ fn deploy_fails_closed_when_a_zone_cannot_fit_its_roster() {
     assert_eq!(*capacity, 1, "capacity names the single standable cell");
 }
 
-/// Whether `cell_level`'s x/y lie within `region` (a half-open `[origin, origin+extent)`
-/// rectangle; the storey is ignored — deployment is on the ground plane).
 fn region_contains(region: RegionRect, cell_level: CellLevel) -> bool {
     let origin = region.origin();
     let footprint = region.footprint();

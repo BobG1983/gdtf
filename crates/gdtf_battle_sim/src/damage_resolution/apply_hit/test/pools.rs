@@ -1,11 +1,5 @@
-//! HP-loss + Wounds-by-tier folding (AC1 / AC2): a graze bruises HP and spends no
-//! Wound, Fatal empties the pool, and the tier costs ascend Minor < Major < Critical.
-
 use super::support::*;
 
-/// AC1 — HP loss applies ALWAYS, even on a `Severity::None` graze, and no Wound
-/// is spent. Drives a graze with `hp_damage > 0` onto a healthy ganger and
-/// asserts HP fell by exactly the HP-loss while Wounds is unchanged.
 #[test]
 fn graze_subtracts_hp_and_spends_no_wound() {
     let mut hp = Hp::new(20);
@@ -22,7 +16,6 @@ fn graze_subtracts_hp_and_spends_no_wound() {
         integrity: Some(&mut integrity),
         inflicted: &mut inflicted,
     };
-    // A graze: Severity::None, HP-loss 7, low wear (wears but does not break).
     let ganger = a_ganger();
     let outcome = apply_hit(
         target,
@@ -44,8 +37,6 @@ fn graze_subtracts_hp_and_spends_no_wound() {
         LifeState::Alive,
         "a non-lethal graze must leave the ganger Alive"
     );
-    // A low-wear hit on a fresh suit wears the piece (GTW-313 Damaged(delta=1)) but must
-    // NOT break it — it surfaces Damaged, never Broke.
     assert_eq!(
         outcome,
         ArmorWearOutcome::Damaged(ArmorDamaged::new(
@@ -57,10 +48,6 @@ fn graze_subtracts_hp_and_spends_no_wound() {
     );
 }
 
-/// AC2 (Fatal empties) — a `Severity::Fatal` hit drives `Wounds == 0` regardless
-/// of the prior pool (the mechanism), independent of any tuned cost. Uses a large
-/// starting pool so a per-tier subtraction could never reach 0 — only the
-/// pool-emptying branch can.
 #[test]
 fn fatal_empties_the_wounds_pool_regardless_of_prior() {
     let tuning = CombatTuning::default();
@@ -99,15 +86,9 @@ fn fatal_empties_the_wounds_pool_regardless_of_prior() {
     }
 }
 
-/// AC2 (tier ordering) — Minor < Major < Critical in Wounds cost, as a RELATION
-/// (never a pinned split). Constructs three otherwise-identical hits differing
-/// only in their severity tier, applies each to an identical fresh ganger, and
-/// asserts the post-application Wounds order: more severe ⇒ fewer Wounds left.
 #[test]
 fn wound_cost_orders_minor_lt_major_lt_critical() {
     let tuning = CombatTuning::default();
-    // A pool large enough that even Critical's cost can't reach 0 (so the gate
-    // never collapses the ordering to a shared floor) — an arbitrary fixture.
     let start = Wounds::new(200);
 
     let post_wounds = |severity: Severity| -> u8 {
@@ -138,8 +119,6 @@ fn wound_cost_orders_minor_lt_major_lt_critical() {
     let after_major = post_wounds(Severity::Major);
     let after_critical = post_wounds(Severity::Critical);
 
-    // More severe ⇒ spends MORE Wounds ⇒ leaves FEWER — Minor < Major < Critical
-    // cost, asserted as the relation, never the exact split.
     assert!(
         after_minor > after_major,
         "Major must spend more Wounds than Minor: {after_minor} (minor) <= {after_major} (major)",

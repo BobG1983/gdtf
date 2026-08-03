@@ -1,8 +1,3 @@
-//! GTW-596 `ConnectorDelta` gathering: the per-producer positive assertion
-//! (acceptance clause 2) — a stair/ladder endpoint on the active storey emits the
-//! signed level-delta to its OTHER endpoint, over a REAL `VerticalLinkGraph`
-//! built through `build_vertical_link_graph` (never a hand-rolled stand-in).
-
 use bevy::platform::collections::HashSet;
 use gdtf_battle_sim::{
     prelude::{Cell, CellLevel, Level},
@@ -17,10 +12,6 @@ fn key(x: i32, y: i32, z: u8) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(z))
 }
 
-/// Build the REAL, validated graph for one stair link between `lower` and
-/// `upper` — asserts the build succeeded (denied `unwrap`/`expect`/`panic`, the
-/// `terrain/vertical/test.rs` `ok_graph` idiom) and returns it, or `None` on the
-/// (unexpected) failure path.
 fn stair_graph(lower: CellLevel, upper: CellLevel) -> Option<VerticalLinkGraph> {
     let situation = SituationBuilder::new()
         .slab_at(lower)
@@ -32,8 +23,6 @@ fn stair_graph(lower: CellLevel, upper: CellLevel) -> Option<VerticalLinkGraph> 
     result.ok()
 }
 
-/// Acceptance clause 2 (`ConnectorDelta`): the LOWER stair endpoint on the active
-/// storey emits an ASCENDING (positive) delta to the upper endpoint.
 #[test]
 fn lower_endpoint_on_active_storey_emits_ascending_delta() {
     let lower = key(3, 3, 0);
@@ -54,8 +43,6 @@ fn lower_endpoint_on_active_storey_emits_ascending_delta() {
     );
 }
 
-/// The mirror case: the UPPER stair endpoint on the active storey emits a
-/// DESCENDING (negative) delta to the lower endpoint.
 #[test]
 fn upper_endpoint_on_active_storey_emits_descending_delta() {
     let lower = key(3, 3, 0);
@@ -76,7 +63,6 @@ fn upper_endpoint_on_active_storey_emits_descending_delta() {
     );
 }
 
-/// An unexplored link endpoint emits nothing — terrain facts stay fog-gated.
 #[test]
 fn unexplored_endpoint_emits_no_connector() {
     let lower = key(3, 3, 0);

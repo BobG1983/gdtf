@@ -1,5 +1,3 @@
-//! Enemy hard-cut / player always-shown + the post-level-cycle fog re-apply.
-
 use bevy::prelude::Visibility;
 use gdtf_battle_presenter::ActiveLevel;
 use gdtf_battle_sim::{
@@ -10,8 +8,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-/// AC — actor hard-cut: an enemy on a non-VISIBLE cell is `Visibility::Hidden` (no ghost);
-/// on a VISIBLE cell it shows; a player ganger always shows.
 #[test]
 fn enemy_hard_cuts_player_always_shown() {
     let mut app = headless_renderer_app();
@@ -34,14 +30,11 @@ fn enemy_hard_cuts_player_always_shown() {
         player_sim.is_some() && enemy_sim.is_some(),
         "both gangers must have spawned",
     );
-    // Settle the DEFERRED ganger-sprite spawn (GTW-322) so both actor sprites exist before
-    // the fog assertions (the spawn_scene materialization can lag under parallel load).
     assert!(
         settle_actor(&mut app, player_sim) && settle_actor(&mut app, enemy_sim),
         "both ganger sprites must have materialized",
     );
 
-    // Fog: the player's cell is VISIBLE, the enemy's cell is NOT (only the player cell).
     set_fog(&mut app, &[player_cell], &[]);
     app.update();
 
@@ -56,7 +49,6 @@ fn enemy_hard_cuts_player_always_shown() {
         "an enemy on a non-VISIBLE cell is hard-hidden (no ghost)",
     );
 
-    // Now make the enemy's cell VISIBLE: it pops in (hard cut, no fade).
     set_fog(&mut app, &[player_cell, enemy_cell], &[]);
     app.update();
 
@@ -72,10 +64,6 @@ fn enemy_hard_cuts_player_always_shown() {
     );
 }
 
-/// AC (the CRITICAL ordering proof) — after an `ActiveLevel` CHANGE (which despawns +
-/// respawns every `TerrainSprite`), the fog RE-APPLIES to the freshly-spawned terrain on
-/// the SAME update. If the fog ran BEFORE `draw_static_battlefield`, it would colour the
-/// stale/despawned entities and the new storey's terrain would render un-fogged.
 #[test]
 fn fog_reapplies_after_level_cycle() {
     let mut app = headless_renderer_app();
@@ -83,11 +71,6 @@ fn fog_reapplies_after_level_cycle() {
 
     let l0 = Level::new(0);
     let l1 = Level::new(1);
-    // Two REAL level-1 terrain cells (Present slabs) — GTW-519: an UPPER storey draws only its
-    // authored terrain (peek-through, C2), so a plain floor cell on level 1 emits nothing; the
-    // ordering proof needs cells that actually respawn a tile on the level cycle. One is UNSEEN
-    // on the level we cycle TO (its freshly-drawn tile must be hidden by the re-applied fog),
-    // the other VISIBLE.
     let unseen_l1 = CellLevel::new(Cell::new(8, 8), l1);
     let visible_l1 = CellLevel::new(Cell::new(9, 9), l1);
 
@@ -105,31 +88,21 @@ fn fog_reapplies_after_level_cycle() {
         "the level-0 terrain field must have drawn",
     );
 
-    // Author the two level-1 REAL terrain cells as Present slabs so the level-1 redraw has
-    // tiles to spawn (an upper storey draws only real terrain, GTW-519 C2).
     {
         let mut surface = app.world_mut().resource_mut::<SurfaceGrid>();
         surface.set_slab(unseen_l1, SlabState::Present);
         surface.set_slab(visible_l1, SlabState::Present);
     }
 
-    // Author the level-1 fog: visible_l1 VISIBLE, unseen_l1 neither.
     set_fog(&mut app, &[visible_l1], &[]);
 
-    // Cycle to level 1 (despawns + respawns terrain for the new storey on this update).
     *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(l1);
-    // One update: draw_static_battlefield respawns level-1 terrain, THEN (ordered .after)
-    // present_fog colours it. Drive until the level-1 terrain exists (the respawn lands in
-    // the end-of-update command flush) and then ensure the fog has run on it.
     assert!(
         settle_terrain_at(&mut app, unseen_l1),
         "after the level change, the level-1 terrain field must have respawned",
     );
     app.update();
 
-    // The freshly-respawned level-1 terrain has the fog applied THIS cycle: the VISIBLE
-    // cell is shown at full colour, the UNSEEN cell is hidden — proving present_fog ran
-    // .after the despawn+respawn (not on the stale level-0 entities).
     let visible_terrain = terrain_at(&mut app, visible_l1);
     assert!(
         visible_terrain.is_some(),

@@ -1,6 +1,3 @@
-//! T1 / T2 — the acceptance criterion as a mechanical assertion, and the exact
-//! declaration→rounds pairing that makes it hold when one reactor fires twice.
-
 use gdtf_battle_sim::{
     act_log::{ActDeed, ActLog, ActProvenance, ActSeq},
     acts::{FireRequested, MoveRequested},
@@ -10,23 +7,10 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-/// **T1 — THE ACCEPTANCE CRITERION.** Two reactors interrupting ONE mover's step in ONE
-/// tick must produce TWO separately-identifiable reaction entries: distinct actors, both
-/// naming the mover as the ganger they interrupted, in strictly increasing sequence order.
-///
-/// This is the exact situation the ticket was filed about — "both enemies reaction-fired on
-/// one player step and it was impossible to tell who was shooting". Before the act log the
-/// sim had no way to say it at all: an interrupt writes a plain `FireRequested`
-/// indistinguishable from any other shot, and the only reaction-flavoured signal names the
-/// INTERRUPTED walker rather than the reactor. So this test fails outright if the
-/// provenance discriminator is dropped, and fails on ordering if the two interrupts collapse
-/// into one entry.
 #[test]
 fn two_same_tick_interrupts_append_two_ordered_reaction_entries() {
-    // Cap 8 so neither watcher is cap-limited; forced p == 1.0 so both interrupts fire.
     let mut app = battle_app(forced_reaction_tuning(8));
 
-    // TWO player watchers flanking one enemy mover's path, both facing it, both in range.
     let north_watch = ground(5, 4);
     let south_watch = ground(5, 6);
     let mover_start = ground(7, 5);
@@ -47,7 +31,6 @@ fn two_same_tick_interrupts_append_two_ordered_reaction_entries() {
         unreachable!("setup spawns both watchers and the mover at their fixture cells");
     };
 
-    // Walk the mover past both watchers; each step is an act-in-LOS both of them see.
     app.world_mut()
         .write_message(MoveRequested::new(mover, ground(11, 5)));
     for _ in 0..6 {
@@ -67,8 +50,6 @@ fn two_same_tick_interrupts_append_two_ordered_reaction_entries() {
         logged_of(&app, "Fired"),
     );
 
-    // Both watchers are represented — the entries are separately identifiable, which is the
-    // whole point.
     let actors: Vec<_> = reactions.iter().map(|fact| fact.actor).collect();
     assert!(
         actors.contains(&north) && actors.contains(&south),
@@ -76,8 +57,6 @@ fn two_same_tick_interrupts_append_two_ordered_reaction_entries() {
          must both appear among {actors:?}",
     );
 
-    // Every reaction entry names the MOVER as the ganger it interrupted (the pair the sim
-    // could not state before).
     for fact in &reactions {
         assert_eq!(
             fact.provenance,
@@ -86,7 +65,6 @@ fn two_same_tick_interrupts_append_two_ordered_reaction_entries() {
         );
     }
 
-    // Strictly increasing sequence numbers — the entries are ORDERED, not simultaneous.
     let seqs: Vec<ActSeq> = reactions.iter().map(|fact| fact.seq).collect();
     let mut sorted = seqs.clone();
     sorted.sort_unstable();
@@ -98,21 +76,6 @@ fn two_same_tick_interrupts_append_two_ordered_reaction_entries() {
     );
 }
 
-/// **T2 — C10's greedy-pairing cure.** One shooter that declares TWICE in ONE tick must
-/// have each declaration own exactly its OWN rounds.
-///
-/// A "take the leading run of rounds whose shooter matches this declaration" pairing gives
-/// the FIRST declaration every round of the tick and leaves the second with none. That is
-/// not a hypothetical shape: the reaction trigger documents a reactor evaluated more than
-/// once in a single pass, and the per-turn interrupt cap is at least 2 for a Reactions-2
-/// ganger — so one shooter owning two declarations in one tick is exactly the multi-reaction
-/// case this ticket exists to make readable.
-///
-/// The geometry here drives the hazard through the REAL `dispatch_fire` path with two
-/// `FireRequested` in one tick, which is the same drain the reaction trigger's interrupts
-/// arrive on and is exactly controllable. The cure is that each declaration carries the
-/// round count its OWN volley emitted, so the recorder consumes exactly that many from the
-/// volley-ordered stream.
 #[test]
 fn one_reactor_firing_twice_in_a_tick_pairs_rounds_to_the_right_declaration() {
     let mut app = battle_app(forced_reaction_tuning(8));
@@ -133,17 +96,10 @@ fn one_reactor_firing_twice_in_a_tick_pairs_rounds_to_the_right_declaration() {
     ) else {
         unreachable!("setup spawns the shooter and the target at their fixture cells");
     };
-    // Make TWO shots affordable in ONE tick. A single shot's TU cost scales with the
-    // shooter's TU ceiling, so a high ceiling makes one shot cost most of the pool and the
-    // second silently resolve to nothing — which would leave the pairing hazard
-    // unexercised. Lowering the ceiling first, then filling the pool and the magazine,
-    // makes both volleys genuinely fire.
     set_tu_max(&mut app, shooter, 40);
     set_tu(&mut app, shooter, u8::MAX);
     load_magazine(&mut app, shooter, 12);
 
-    // TWO fire requests drained by ONE `dispatch_fire` pass — two declarations, each with
-    // its own volley, on one tick.
     let mode = single_mode_of(&mut app, shooter);
     let (cell, level) = target_cell.split();
     app.world_mut()
@@ -157,8 +113,6 @@ fn one_reactor_firing_twice_in_a_tick_pairs_rounds_to_the_right_declaration() {
     };
     let entries: Vec<_> = log.since(ActSeq::START).collect();
 
-    // For each declaration, count the rounds recorded IMMEDIATELY after it for the same
-    // actor. That run is the pairing, and it is what a greedy rule gets wrong.
     let mut declarations = 0_usize;
     for (index, entry) in entries.iter().enumerate() {
         if entry.actor() != shooter {
@@ -195,15 +149,12 @@ fn one_reactor_firing_twice_in_a_tick_pairs_rounds_to_the_right_declaration() {
         "the fixture must produce exactly two same-tick declarations from ONE shooter, else \
          the pairing hazard is not exercised at all",
     );
-    // The target really was shot at (the fixture is live, not a no-op).
     assert!(
         !logged_of(&app, "RoundResolved").is_empty(),
         "the fixture must actually resolve rounds; target {target:?}",
     );
 }
 
-/// The shooter's `single`-mode spec, resolved off its wielded ranged weapon — the SAME
-/// source `dispatch_fire` reads, so the fixture arms exactly what the sim will fire.
 fn single_mode_of(
     app: &mut bevy::app::App,
     shooter: bevy::prelude::Entity,
@@ -227,8 +178,6 @@ fn single_mode_of(
     mode
 }
 
-/// Load the shooter's wielded ranged weapon with `rounds` (raising its capacity to match) —
-/// the direct test-body mutator, so a fixture can fire more than once in one tick.
 fn load_magazine(app: &mut bevy::app::App, shooter: bevy::prelude::Entity, rounds: u16) {
     use bevy::ecs::relationship::RelationshipTarget as _;
     use gdtf_battle_sim::{
@@ -258,8 +207,6 @@ fn load_magazine(app: &mut bevy::app::App, shooter: bevy::prelude::Entity, round
     }
 }
 
-/// Lower `entity`'s TU CEILING — the direct test-body mutator. A shot's TU cost is derived
-/// from this ceiling, so it is the knob that decides how many acts fit in one turn.
 fn set_tu_max(app: &mut bevy::app::App, entity: bevy::prelude::Entity, value: u8) {
     let Some(mut tu_max) = app
         .world_mut()

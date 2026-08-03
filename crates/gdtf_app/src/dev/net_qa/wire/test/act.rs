@@ -1,6 +1,3 @@
-//! Exhaustive per-variant round-trip + parity-forcing pins for [`NetIntent`] and its
-//! payload enums (GTW-734, moved into the game host by GTW-943).
-
 use crate::dev::net_qa::wire::{
     act::NetIntent,
     act_payload::{AimNet, FacingNet, MeleeTargetNet, StanceNet},
@@ -12,21 +9,14 @@ use crate::dev::net_qa::wire::{
     token::{DoorToken, EmplacementToken, FocusTargetNet, GangerToken},
 };
 
-/// One sample cell for building intent cases.
 fn a_cell() -> CellNet {
     CellNet::new(CellXNet::new(3), CellYNet::new(4))
 }
 
-/// One sample 3D `(cell, storey)` key for the intents that aim/step/lob in three
-/// dimensions ([`NetIntent::Fire`] / [`NetIntent::Move`] / [`NetIntent::ThrowGrenade`]).
-/// The non-zero storey keeps the round-trip honest — a level-dropping regression fails.
 fn a_cell_level() -> CellLevelNet {
     CellLevelNet::new(a_cell(), LevelNet::new(2))
 }
 
-/// Every [`NetIntent`] variant — the round-trip table. Kept in lock-step with the enum
-/// by [`net_intent_is_exhaustive`]: adding a variant breaks that witness's `match`
-/// until it (and this list) gain the new arm — the parity force.
 fn net_intent_cases() -> Vec<NetIntent> {
     vec![
         NetIntent::Fire {
@@ -91,9 +81,6 @@ fn net_intent_cases() -> Vec<NetIntent> {
     ]
 }
 
-/// The wildcard-free witness: this `match` fails to compile the moment a variant is
-/// added to [`NetIntent`], forcing the new variant into [`net_intent_cases`] (and thus
-/// the round-trip) before the suite can go green again.
 fn net_intent_is_exhaustive(intent: &NetIntent) {
     match intent {
         NetIntent::Fire { .. }
@@ -123,7 +110,6 @@ fn net_intent_is_exhaustive(intent: &NetIntent) {
     }
 }
 
-/// Every [`NetIntent`] variant round-trips through compact RON identically.
 #[test]
 fn net_intent_round_trips_every_variant() {
     let cases: Vec<NetIntent> = net_intent_cases();
@@ -138,7 +124,6 @@ fn net_intent_round_trips_every_variant() {
     }
 }
 
-/// Every [`StanceNet`] variant round-trips; the witness forces new variants in.
 #[test]
 fn stance_net_round_trips_every_variant() {
     for stance in [StanceNet::Standing, StanceNet::Crouching, StanceNet::Prone] {
@@ -149,7 +134,6 @@ fn stance_net_round_trips_every_variant() {
     }
 }
 
-/// Every [`FacingNet`] compass variant round-trips; the witness forces new variants in.
 #[test]
 fn facing_net_round_trips_every_variant() {
     for facing in [
@@ -176,7 +160,6 @@ fn facing_net_round_trips_every_variant() {
     }
 }
 
-/// Both [`MeleeTargetNet`] variants + the [`AimNet`] flag round-trip.
 #[test]
 fn melee_target_and_aim_round_trip() {
     for target in [
@@ -192,7 +175,6 @@ fn melee_target_and_aim_round_trip() {
     assert_ron_round_trip(&AimNet::new(false));
 }
 
-/// Every [`KeyNet`] physical key round-trips; the witness forces new variants in.
 #[test]
 fn key_net_round_trips_every_variant() {
     for key in [
@@ -253,7 +235,6 @@ fn key_net_round_trips_every_variant() {
     }
 }
 
-/// Every [`KeybindActionNet`] bound action round-trips; the witness forces new variants in.
 #[test]
 fn keybind_action_net_round_trips_every_variant() {
     for action in [
@@ -282,7 +263,6 @@ fn keybind_action_net_round_trips_every_variant() {
     }
 }
 
-/// Both [`KeyPressNet`] forms + a [`FocusTargetNet`] round-trip.
 #[test]
 fn key_press_and_focus_target_round_trip() {
     for press in [

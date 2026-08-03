@@ -1,7 +1,3 @@
-//! [`setup_battle`] — pour a [`Situation`](crate::situation::Situation) into the
-//! battle ECS — plus its [`BattleSetup`] result and the
-//! [`has_stacked_gangers`] sanity helper.
-
 mod armor_scenes;
 mod ganger_scene;
 mod orchestrate;

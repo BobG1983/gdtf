@@ -1,15 +1,10 @@
-//! GTW-234/328 — the valid-move dispatch: cost relation, the `MovementOccurred`
-//! signal, the blocked no-op, and the occupancy co-schedule.
-
 use super::support::*;
 
-// GTW-328 — a VALID move emits exactly one MovementOccurred carrying the actor and the
-// actual FROM (pre-write) and TO (post-write) ground cells.
 #[test]
 fn move_dispatch_emits_one_movement_occurred_with_from_and_to() {
     let mut app = headless_app();
     let actor = spawn_move_actor(app.world_mut(), 10, 10, 100);
-    let dest = CellLevel::new(Cell::new(11, 10), Level::new(0)); // Open, empty, in-bounds
+    let dest = CellLevel::new(Cell::new(11, 10), Level::new(0)); 
 
     app.world_mut()
         .write_message(MoveRequested::new(actor, dest));
@@ -37,14 +32,11 @@ fn move_dispatch_emits_one_movement_occurred_with_from_and_to() {
     );
 }
 
-// GTW-328 — a BLOCKED move (the destination is occupied) is a total no-op and emits NO
-// MovementOccurred: the log only announces real steps. A second actor sits on the dest.
 #[test]
 fn blocked_move_emits_no_movement_occurred() {
     let mut app = headless_app();
     let actor = spawn_move_actor(app.world_mut(), 10, 10, 100);
     let dest = CellLevel::new(Cell::new(11, 10), Level::new(0));
-    // Park a blocker on the destination slot so the move's occupancy gate fails.
     let blocker = spawn_move_actor(app.world_mut(), 11, 10, 100);
     if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
         grid.set_occupant(dest, Some(blocker));
@@ -58,7 +50,6 @@ fn blocked_move_emits_no_movement_occurred() {
         drain_movements(&mut app).is_empty(),
         "a blocked (occupied-dest) move is a no-op — it announces no MovementOccurred",
     );
-    // And the actor did NOT move (the no-op contract).
     assert_eq!(
         app.world().get::<Position>(actor).copied(),
         Some(Position::new(CellLevel::new(
@@ -73,11 +64,8 @@ fn blocked_move_emits_no_movement_occurred() {
 fn move_dispatch_steps_the_actor_and_spends_the_dest_terrain_cost() {
     let mut app = headless_app();
     let actor = spawn_move_actor(app.world_mut(), 10, 10, 100);
-    let dest = CellLevel::new(Cell::new(11, 10), Level::new(0)); // Open, empty, in-bounds
+    let dest = CellLevel::new(Cell::new(11, 10), Level::new(0)); 
 
-    // The looked-up cost the dispatch will charge — read off the SAME resource the
-    // dispatch reads (the FloorCostGrid at the destination cell, GTW-396 Decision C1),
-    // a relation never a pinned magnitude.
     let expected_cost = app
         .world()
         .get_resource::<FloorCostGrid>()
@@ -107,19 +95,13 @@ fn move_dispatch_steps_the_actor_and_spends_the_dest_terrain_cost() {
 
 #[test]
 fn move_dispatch_and_occupancy_co_schedule_fills_dest_and_frees_source() {
-    // The canonical acts harness (SimActsPlugin + litany + full vision) plus the live
-    // maintenance layer: OccupancyMaintenancePlugin owns SimSystems::Simulate's
-    // configure_sets, SimActsPlugin only `.in_set`s into it.
     let mut app = headless_app();
     app.add_plugins(OccupancyMaintenancePlugin);
 
     let source = CellLevel::new(Cell::new(10, 10), Level::new(0));
-    let dest = CellLevel::new(Cell::new(11, 10), Level::new(0)); // Open, empty, in-bounds
+    let dest = CellLevel::new(Cell::new(11, 10), Level::new(0)); 
     let actor = spawn_move_actor(app.world_mut(), 10, 10, 100);
 
-    // First update: sync_moved_gangers reacts to the actor's Changed<Position>
-    // (initial placement), marking the source slot. The combined schedule builds +
-    // runs with no ambiguity/access panic (AC7's co-schedule check).
     app.update();
     let source_occupied = app
         .world()
@@ -131,12 +113,10 @@ fn move_dispatch_and_occupancy_co_schedule_fills_dest_and_frees_source() {
         "after initial sync the actor occupies its source slot",
     );
 
-    // Now MOVE — dispatch_move writes Position=dest this update; sync_moved_gangers
-    // reacts to the Changed<Position> next update, marking the dest and freeing source.
     app.world_mut()
         .write_message(MoveRequested::new(actor, dest));
-    app.update(); // dispatch_move writes Position=dest this update
-    app.update(); // sync_moved_gangers reacts to Changed<Position> next update
+    app.update(); 
+    app.update(); 
 
     assert_eq!(
         app.world().get::<Position>(actor).copied(),

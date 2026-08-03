@@ -1,62 +1,32 @@
-//! The **Stability** attachment effect (GTW-549; GTW-558 one-file-per-effect) — its per-item
-//! [`WeaponBraceBonus`] magnitude, the isolated [`ApplyStability`] behaviour, and the `impl`
-//! that inserts the graduated brace bonus onto the weapon.
-
 use bevy::prelude::{Component, Deref, EntityWorldMut};
 use serde::{Deserialize, Serialize};
 
 use super::ApplyAttachmentEffect;
 
-/// A brace's **weapon-brace bonus** — the graduated per-item §1a stability-score
-/// contribution a [`Stability`](super::AttachmentEffect::Stability) attachment adds to the
-/// weapon's cone-stability composition (GTW-549). An additive stability term, the
-/// [`SuppressionStability`](crate::stability::SuppressionStability) / emplacement-stability precedent,
-/// GRADUATED per item (not the boolean [`Stable`](crate::weapon::Stable) tag).
-///
 /// A `#[derive(Component)]` (no-bare-types: private inner + derived [`Deref`];
 /// `#[serde(transparent)]` so it authors as a bare RON scalar — `Stability(12.0)`). The
-/// isolated [`Stability`](super::AttachmentEffect::Stability) effect inserts it onto the
-/// weapon entity and the §1a stability composer reads it as an additive score contribution.
-/// Its magnitude lives HERE, on the attachment item, never in global tuning ([`Serialize`]
-/// so the editor's ATTACHMENT mode saves the same schema it loads — GTW-669). `Default`
-/// (`WeaponBraceBonus(0.0)`) is the identity contribution — a weapon with no brace effect
-/// adds no stability points.
 #[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 pub struct WeaponBraceBonus(f32);
 
 impl WeaponBraceBonus {
-    /// Build a weapon-brace bonus from its §1a stability-score-point magnitude (a positive
-    /// value steadies the weapon — a tighter cone).
-    #[must_use]
+            #[must_use]
     pub const fn new(bonus: f32) -> Self {
         Self(bonus)
     }
 
-    /// The identity brace bonus — zero stability-score points (a weapon with no
-    /// [`Stability`](super::AttachmentEffect::Stability) effect). The `::none()` identity
-    /// the §1a composer folds when no brace bonus is present.
-    #[must_use]
+                #[must_use]
     pub const fn none() -> Self {
         Self(0.0)
     }
 }
 
-/// **Stability** — fits the weapon a graduated per-item [`WeaponBraceBonus`] of §1a
-/// stability-score points (the NEW clean brace bonus GTW-549 introduces, `::none()`-identity —
-/// NOT the ripped-out sight-stability coupling). GRADUATED, distinct from the boolean
-/// [`ApplyBrace`](super::ApplyBrace) tag.
-///
-/// Inserts the bonus as a `Component` (the §1a stability composer folds it as an additive
-/// contribution, the [`SuppressionStability`](crate::stability::SuppressionStability) precedent).
 pub struct ApplyStability {
-    /// The graduated §1a stability-score points this brace contributes.
-    bonus: WeaponBraceBonus,
+        bonus: WeaponBraceBonus,
 }
 
 impl ApplyStability {
-    /// Build the stability effect from its per-item [`WeaponBraceBonus`].
-    #[must_use]
+        #[must_use]
     pub const fn new(bonus: WeaponBraceBonus) -> Self {
         Self { bonus }
     }
@@ -74,9 +44,7 @@ mod tests {
 
     use super::{ApplyAttachmentEffect, ApplyStability, WeaponBraceBonus};
 
-    /// `ApplyStability` INSERTS a positive graduated `WeaponBraceBonus` — the NEW clean brace
-    /// bonus. Asserts the component lands with a positive magnitude (not a shipped value).
-    #[test]
+            #[test]
     fn stability_inserts_weapon_brace_bonus() {
         let mut world = World::new();
         let weapon = world.spawn_empty().id();

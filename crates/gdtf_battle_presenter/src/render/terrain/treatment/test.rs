@@ -1,6 +1,3 @@
-//! Classifier-law unit tests (GTW-594 A1/C3): exactly one Active per frame, the
-//! Isolate-wins precedence, and the per-mode band shapes.
-
 use gdtf_battle_sim::{metric::MAX_LEVELS, prelude::Level};
 
 use super::classify::{
@@ -8,7 +5,6 @@ use super::classify::{
 };
 use crate::{ActiveLevel, ViewMode};
 
-/// Every `(view, isolate)` mode combination the sweep tests walk — the full input matrix.
 fn all_modes() -> Vec<StoreyViewMode> {
     let isolates = [
         IsolateView::Off,
@@ -26,9 +22,6 @@ fn all_modes() -> Vec<StoreyViewMode> {
     modes
 }
 
-/// The A1 invariant law, first half: under EVERY mode × active-level combination,
-/// EXACTLY ONE storey classifies [`StoreyTreatment::Active`] per frame — and it is the
-/// active view storey itself (`Active ⇔ storey == active`).
 #[test]
 fn exactly_one_storey_classifies_active_per_frame() {
     for mode in all_modes() {
@@ -49,9 +42,6 @@ fn exactly_one_storey_classifies_active_per_frame() {
     }
 }
 
-/// C3 — the precedence rule, pinned: while Isolate is ON the two-state [`ViewMode`] is
-/// PREEMPTED — `DownToActive` and `FullView` classify every storey IDENTICALLY; while
-/// Isolate is OFF the two modes genuinely differ (the above-active storeys).
 #[test]
 fn isolate_wins_over_the_two_state_view_mode() {
     let active = ActiveLevel::new(Level::new(3));
@@ -73,8 +63,6 @@ fn isolate_wins_over_the_two_state_view_mode() {
              identically (Isolate WINS — GTW-594 C3)",
         );
     }
-    // The control: with Isolate OFF the two modes differ (storey 5, above active 3, is
-    // hidden in DownToActive and drawn in FullView) — so the equality above is not vacuous.
     let above = Level::new(5);
     assert_ne!(
         storey_treatment(
@@ -91,9 +79,6 @@ fn isolate_wins_over_the_two_state_view_mode() {
     );
 }
 
-/// The Isolate band shape (C2): at active 3 with one onion storey below, storeys 2 and 3
-/// draw (context at depth 1, then Active) and EVERYTHING else — the deeper stack AND
-/// everything above — is hidden. The band FLOOR is `active - depth`, not the ground.
 #[test]
 fn isolate_band_is_the_active_storey_plus_its_onion() {
     let active = ActiveLevel::new(Level::new(3));
@@ -115,7 +100,6 @@ fn isolate_band_is_the_active_storey_plus_its_onion() {
             "storey {hidden} is outside the isolate band (floor = active - onion)",
         );
     }
-    // Isolate at the ground floor: nothing below exists to onion — only the active draws.
     let ground = ActiveLevel::new(Level::new(0));
     assert_eq!(
         storey_treatment(Level::new(0), ground, mode),
@@ -129,9 +113,6 @@ fn isolate_band_is_the_active_storey_plus_its_onion() {
     );
 }
 
-/// The two-state band shapes are UNCHANGED with Isolate off (A3 — the pre-GTW-594
-/// behaviour): `DownToActive` classifies `0..=active` drawn (context below at its true
-/// depth, above hidden); `FullView` classifies EVERY storey drawn.
 #[test]
 fn two_state_modes_are_unchanged_with_isolate_off() {
     let active = ActiveLevel::new(Level::new(2));

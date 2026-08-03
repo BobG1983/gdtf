@@ -1,25 +1,13 @@
-//! AC: asymmetric sight — a low-watcher/tall-target geometry that one direction sees
-//! and the other does not, in the SAME world. The asymmetry falls out of anchoring
-//! eye-vs-aim (the eye is the per-stance/level muzzle height; the aim is the target's
-//! band-midpoint), with no extra rule — folded in HERE (GTW-337).
-
 use super::support::*;
 
-/// A low watcher (prone, on the ground storey) can SEE a tall target (one storey up),
-/// but the tall target — looking back along the SAME line in the SAME world — cannot
-/// see the low one, because an intact HIGH wall on the ground storey sits in the
-/// descending-from-above line but the climbing-from-below line has already risen out
-/// of that storey before it reaches the wall's cell.
 #[test]
 fn low_sees_tall_but_tall_blocked_by_ground_wall() {
     let tuning = CombatTuning::default();
     let surface = SurfaceGrid::new();
     let occupancy = OccupancyGrid::new();
-    // A HIGH wall on the GROUND storey (level 0), one cell short of the elevated entity.
     let mut cover = CoverLedger::new();
     cover.insert(key(7, 5, 0), cover_entry(HeightBand::High));
 
-    // The LOW entity: prone on the ground storey. The TALL entity: prone one storey up.
     let low_pos = position(2, 5, 0);
     let low_stance = stance(StanceKind::Prone);
     let low_facing = facing(Direction::East);

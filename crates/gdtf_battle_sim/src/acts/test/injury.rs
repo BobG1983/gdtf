@@ -1,15 +1,3 @@
-//! GTW-550 — the SAME-TICK proof for the injury message-drain path: an
-//! [`InjuryInflicted`](crate::acts::InjuryInflicted) drained by
-//! [`apply_injury`](crate::acts::apply_injury) folds through the palette trait
-//! SYNCHRONOUSLY (never a deferred command), so the gain trips
-//! `Changed<InflictedInjuries>` and the GTW-436 projector lands the stat delta on the
-//! derived stats within the SAME `Update` pass — the load-bearing ordering the GTW-550
-//! refinement pins (a `Commands`-deferred gain would land a tick late and FAIL this).
-//!
-//! Mirrors the live wiring: `apply_injury` runs in the `SimSystems::Simulate` band and
-//! `rederive_stats_on_injury_change` is ordered `.after(SimSystems::Simulate)` in the
-//! same `Update` schedule — reproduced here as a `.chain()` of the two real systems.
-
 use bevy::{
     MinimalPlugins,
     prelude::{App, Entity, IntoScheduleConfigs, Update, World},
@@ -30,8 +18,6 @@ use crate::{
     tuning::GangerStatTuning,
 };
 
-/// An arbitrary (NOT shipped) set of distinct attribute magnitudes (mirrors the
-/// GTW-436 projector suite's fixture).
 fn sample_attributes() -> GangerAttributes {
     GangerAttributes {
         speed:     Speed::new(4.0),
@@ -45,10 +31,6 @@ fn sample_attributes() -> GangerAttributes {
     }
 }
 
-/// Spawn one ganger carrying its eight attribute components + its derived components
-/// (seeded by the injury-aware projector over an EMPTY ledger) + the empty ledger —
-/// exactly the shape the live setup produces. A unit-test world-mutation carve-out
-/// (bevy-traps #7a).
 fn spawn_statted_ganger(world: &mut World, tuning: &GangerStatTuning) -> Entity {
     let a = sample_attributes();
     let ledger = InflictedInjuries::default();
@@ -78,9 +60,6 @@ fn spawn_statted_ganger(world: &mut World, tuning: &GangerStatTuning) -> Entity 
         .id()
 }
 
-/// Build the [`InjuryInflicted`] the fire-act bridge would emit for one
-/// `Modify(Shooting, penalty)` injury (through the REAL [`RolledInjury`] →
-/// [`InjuryInflicted::from_rolled`] constructor, the GTW-438 path).
 fn shooting_penalty_message(target: Entity, penalty: i8) -> InjuryInflicted {
     InjuryInflicted::from_rolled(
         target,
@@ -99,20 +78,11 @@ fn shooting_penalty_message(target: Entity, penalty: i8) -> InjuryInflicted {
     )
 }
 
-/// THE SAME-TICK PROOF (GTW-550 C2): one buffered `InjuryInflicted`, ONE
-/// `app.update()`, and the derived `Shooting` has ALREADY dropped by exactly the
-/// penalty — the drain-path gain delegates through the palette trait synchronously,
-/// and the `Changed<InflictedInjuries>` projector (ordered after the Simulate band,
-/// same `Update`) lands the delta within that pass. Pin-discriminating: a
-/// `Commands`-deferred gain would leave `Shooting` at its baseline after this single
-/// tick (the projection would slip to the NEXT update), failing the equality.
 #[test]
 fn injury_message_lands_stat_delta_the_same_tick() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .add_message::<InjuryInflicted>()
-        // The live ordering, reproduced: apply_injury (Simulate band) strictly before
-        // the projector (`.after(SimSystems::Simulate)`), in ONE Update schedule.
         .add_systems(
             Update,
             (apply_injury, rederive_stats_on_injury_change).chain(),
@@ -120,19 +90,16 @@ fn injury_message_lands_stat_delta_the_same_tick() {
     let tuning = GangerStatTuning::default();
     app.insert_resource(tuning.clone());
     let entity = spawn_statted_ganger(app.world_mut(), &tuning);
-    // Settle the spawn tick (the fresh ledger's Added-implies-Changed projection).
     app.update();
     let Some(baseline) = app.world().get::<Shooting>(entity).map(|s| **s) else {
         unreachable!("the statted ganger must carry a derived Shooting");
     };
 
-    // Buffer the injury message, then run EXACTLY ONE update.
     let penalty: i8 = -3;
     app.world_mut()
         .write_message(shooting_penalty_message(entity, penalty));
     app.update();
 
-    // SAME TICK: the ledger gained the injury AND the projector landed the delta.
     let gained = app
         .world()
         .get::<InflictedInjuries>(entity)

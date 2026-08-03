@@ -29,9 +29,6 @@ fn add_systems(app: &mut App) {
         )
         .add_systems(
             FixedUpdate,
-            // Terminal of the deepest sub-machine. AfterMath, BattleScape, and Game are
-            // each the last state at their level, so finishing here pops all the way out
-            // of Game to RunningState::Quit, which in turn advances AppState to Teardown.
             advance_state_to(RunningState::Quit).run_if(
                 in_state(AfterMathState::AnimateOut)
                     .and_then(resource_exists::<AfterMathAnimateOutComplete>),

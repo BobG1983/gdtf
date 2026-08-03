@@ -1,8 +1,3 @@
-//! Tests for the GTW-147 theme-change repaint (mirrors `repaint.rs`'s second
-//! writer) plus the hot-reload live-theme-read contract of the same reload
-//! path: a held hover/press repaints from the NEW theme the frame it changes,
-//! and the reload repaint leaves disabled / active buttons to their own paints.
-
 use bevy::{
     MinimalPlugins,
     asset::AssetPlugin,
@@ -18,14 +13,6 @@ use crate::{
     widgets::core::{ActiveButton, ButtonLabel, DisabledButton, spawn_button},
 };
 
-/// Hot-reload contract: after spawn + `apply_theme`, replacing `GdtfTheme`
-/// with a NEW palette repaints the resting button to the NEW base, and a
-/// subsequently-hovered button shows the NEW `HoverBg` — proving the
-/// interaction layer reads the live theme each run, never a spawn snapshot
-/// (AC#4b, test strategy #4).
-///
-/// Pin-discriminating: if `theme_interaction` cached colors at spawn, the
-/// post-reload hover would still show the OLD `HoverBg` and the assert fails.
 #[test]
 fn hot_reload_repaints_resting_and_hovered_from_new_theme() -> Result<(), ron::error::SpannedError>
 {
@@ -44,7 +31,6 @@ fn hot_reload_repaints_resting_and_hovered_from_new_theme() -> Result<(), ron::e
     app.world_mut().flush();
     app.update();
 
-    // Hot-reload: a deliberately different palette.
     let new = theme(
         [0.50, 0.10, 0.30, 1.0],
         [0.90, 0.70, 0.10, 1.0],
@@ -52,7 +38,6 @@ fn hot_reload_repaints_resting_and_hovered_from_new_theme() -> Result<(), ron::e
     )?;
     app.insert_resource(new.clone());
 
-    // Re-run: apply_theme repaints the resting base from the NEW theme.
     app.update();
     assert_eq!(
         app.world().get::<BackgroundColor>(button).map(|c| c.0),
@@ -60,7 +45,6 @@ fn hot_reload_repaints_resting_and_hovered_from_new_theme() -> Result<(), ron::e
         "resting button must reflect the NEW base after hot-reload",
     );
 
-    // A subsequently-hovered button must show the NEW HoverBg.
     set_interaction(&mut app, button, Interaction::Hovered);
     app.update();
     assert_eq!(
@@ -77,23 +61,6 @@ fn hot_reload_repaints_resting_and_hovered_from_new_theme() -> Result<(), ron::e
     Ok(())
 }
 
-/// GTW-147 — a button held `Hovered` across a `GdtfTheme` hot-reload is repainted to the
-/// NEW theme's `hover_bg` the SAME frame the theme changes, WITHOUT its `Interaction` ever
-/// changing.
-///
-/// Drives the REAL [`UiPlugin`] path (`MinimalPlugins` + `InputPlugin` + `UiPlugin`): the
-/// plugin registers `apply_theme` (which on a theme change repaints the button to its base,
-/// IGNORING `Interaction`), `theme_interaction` (which only fires on `Changed<Interaction>`),
-/// and the GTW-147 `repaint_theme_change` in their production ordering. A themed button is
-/// spawned and settled, then hovered so it shows the OLD `hover_bg`. The theme is then
-/// overwritten with a DIFFERENT `hover_bg` WITHOUT touching the button's `Interaction`, and
-/// the app updates ONCE.
-///
-/// Pin-discriminating: because the button's `Interaction` never changes after the hover,
-/// `theme_interaction` (`Changed<Interaction>`) never fires for it on the reload frame; only
-/// `apply_theme` (→ NEW base) and `repaint_theme_change` (→ NEW `hover_bg`) run. Remove
-/// `repaint_theme_change` from [`UiPlugin`] and the button is stuck on the NEW base instead
-/// of the NEW `hover_bg`, and this assert fails.
 #[test]
 fn held_hover_button_repaints_to_new_hover_on_theme_change() -> Result<(), ron::error::SpannedError>
 {
@@ -116,14 +83,9 @@ fn held_hover_button_repaints_to_new_hover_on_theme_change() -> Result<(), ron::
     };
     app.world_mut().flush();
 
-    // Settle the spawn so `Added<Themed>` clears: without this, the reload frame's
-    // `apply_theme` would run regardless and the test still discriminates, but two
-    // settling updates keep the steady-state precondition unambiguous.
     app.update();
     app.update();
 
-    // Hover the button (the swap a real pointer drives) and let `theme_interaction`
-    // land the OLD `hover_bg`.
     set_interaction(&mut app, button, Interaction::Hovered);
     app.update();
     assert_eq!(
@@ -132,10 +94,6 @@ fn held_hover_button_repaints_to_new_hover_on_theme_change() -> Result<(), ron::
         "precondition: the held hover must show the OLD hover_bg before the reload",
     );
 
-    // Hot-reload: overwrite `GdtfTheme` with a deliberately different `hover_bg` (and a
-    // different resting base, so a clobber to the base is detectable). Crucially, the
-    // button's `Interaction` is NOT touched — it stays `Interaction::Hovered` — so only
-    // `repaint_theme_change` can repaint it to the new hover this frame.
     let new = theme(
         [0.50, 0.10, 0.30, 1.0],
         [0.90, 0.70, 0.10, 1.0],
@@ -152,7 +110,6 @@ fn held_hover_button_repaints_to_new_hover_on_theme_change() -> Result<(), ron::
         "test precondition: the NEW hover_bg and resting base must differ",
     );
 
-    // One update is all the fix gets.
     app.update();
 
     assert_eq!(
@@ -170,13 +127,6 @@ fn held_hover_button_repaints_to_new_hover_on_theme_change() -> Result<(), ron::
     Ok(())
 }
 
-/// GTW-147 (pressed analog) — a button held `Pressed` across a `GdtfTheme` hot-reload is
-/// repainted to the NEW theme's `pressed_bg` the SAME frame, without its `Interaction`
-/// changing.
-///
-/// Same shape and discrimination as
-/// [`held_hover_button_repaints_to_new_hover_on_theme_change`]: only `repaint_theme_change`
-/// repaints a `Pressed` button whose `Interaction` is unchanged on the reload frame.
 #[test]
 fn held_pressed_button_repaints_to_new_pressed_on_theme_change()
 -> Result<(), ron::error::SpannedError> {
@@ -227,16 +177,6 @@ fn held_pressed_button_repaints_to_new_pressed_on_theme_change()
     Ok(())
 }
 
-/// GTW-147 — `repaint_theme_change` leaves a `DisabledButton` and an `ActiveButton` on the
-/// fill their own paint owns across a theme reload: a disabled button keeps the disabled
-/// fill (`paint_disabled_buttons`), an active toggle keeps the active fill
-/// (`paint_active_buttons`). The reload-repaint's write set is DISJOINT from those special
-/// paints.
-///
-/// Pin-discriminating: dropping `Without<DisabledButton>`/`Without<ActiveButton>` from
-/// `repaint_theme_change`'s filter would let it write the resting/hover fill over the
-/// disabled / active fill (it runs in the same band, and ordering between the two writers is
-/// unconstrained), and these asserts would fail.
 #[test]
 fn theme_change_repaint_leaves_disabled_and_active_buttons() -> Result<(), ron::error::SpannedError>
 {
@@ -268,7 +208,6 @@ fn theme_change_repaint_leaves_disabled_and_active_buttons() -> Result<(), ron::
     app.update();
     app.update();
 
-    // Hover both (the disabled is skipped by interaction anyway; the active is sticky).
     set_interaction(&mut app, disabled, Interaction::Hovered);
     set_interaction(&mut app, active, Interaction::Hovered);
     app.update();

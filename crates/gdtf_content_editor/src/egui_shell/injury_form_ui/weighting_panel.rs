@@ -1,10 +1,4 @@
-//! The INJURY tab's CENTRAL weighting SECTION (GTW-654 C2) — pick a table by
-//! [`InjuryCategory`] AND by wound SOURCE ([`DamageContext`], GTW-452), then edit its
-//! three severity buckets as `injury key → weight` rows. Row keys come from an
-//! injury-name [`ComboBox`] sourced from the loaded [`InjuryRegistry`], so a DANGLING key
 //! is impossible to author by construction (the combo offers only resolving keys, and
-//! Add-row is disabled while the registry is empty).
-
 use bevy_egui::egui;
 use gdtf_battle_sim::{
     armor::InjuryCategory,
@@ -16,9 +10,6 @@ use gdtf_battle_sim::{
 
 use crate::injury_form::WeightingDraft;
 
-/// The display label for a category-table combo row — the category's authored RON
-/// variant name (the def panel's `category_label` twin, kept local so each panel
-/// file stays self-contained).
 const fn category_label(category: InjuryCategory) -> &'static str {
     match category {
         InjuryCategory::Head => "Head",
@@ -28,9 +19,6 @@ const fn category_label(category: InjuryCategory) -> &'static str {
     }
 }
 
-/// The display label for a wound-SOURCE combo row (GTW-452) — the context's authored RON
-/// variant name, so the picked label is exactly the `context:` field the saved file
-/// carries.
 const fn context_label(context: DamageContext) -> &'static str {
     match context {
         DamageContext::Ranged => "Ranged",
@@ -39,11 +27,6 @@ const fn context_label(context: DamageContext) -> &'static str {
     }
 }
 
-/// Draw the INJURY-mode WEIGHTING section (GTW-654 C2): the category combo + the
-/// wound-source combo (GTW-452 — picking either loads that `(category, context)` table's
-/// CURRENT built rows through [`WeightingDraft::load_table`]), the three per-severity
-/// bucket editors, and the debug-only Save press. Falls back to a read-only "(loading…)"
-/// label while the built tables are absent.
 pub(crate) fn weighting_panel(
     ui: &mut egui::Ui,
     draft: &mut WeightingDraft,
@@ -56,9 +39,6 @@ pub(crate) fn weighting_panel(
     category_combo(ui, draft, tables);
     source_combo(ui, draft, tables);
 
-    // The sorted registry keys every row's injury combo offers (empty while the
-    // registry is absent / holds nothing — Add-row is then disabled, so a key
-    // outside the registry can never be authored).
     let keys = sorted_keys(injuries);
     for severity in [Severity::Minor, Severity::Major, Severity::Critical] {
         bucket_rows(ui, draft, severity, &keys);
@@ -71,12 +51,6 @@ pub(crate) fn weighting_panel(
     }
 }
 
-/// The category [`ComboBox`] — one row per [`InjuryCategory::ALL`] entry.
-/// Choosing a DIFFERENT category re-loads the draft from that category's CURRENT
-/// built table, keeping the picked wound source (an unpicked table's edits are the
-/// author's explicit discard — the load-combo precedent); re-picking the current one is a
-/// no-op, so an open combo never wipes edits. Disabled to a "(loading…)" label until the
-/// built tables resolve.
 fn category_combo(ui: &mut egui::Ui, draft: &mut WeightingDraft, tables: Option<&InjuryTables>) {
     ui.horizontal(|ui| {
         ui.label("Category table");
@@ -105,11 +79,6 @@ fn category_combo(ui: &mut egui::Ui, draft: &mut WeightingDraft, tables: Option<
     });
 }
 
-/// The wound-SOURCE [`ComboBox`] (GTW-452) — one row per [`DamageContext::ALL`] entry.
-/// Choosing a DIFFERENT source re-loads the draft from the SAME category's table for that
-/// source, so an author edits (and saves) the ranged / melee / fall weighting of the ONE
-/// shared injury pool independently. Same discard + no-op-on-re-pick rules as the category
-/// combo; "(loading…)" until the built tables resolve.
 fn source_combo(ui: &mut egui::Ui, draft: &mut WeightingDraft, tables: Option<&InjuryTables>) {
     ui.horizontal(|ui| {
         ui.label("Wound source");
@@ -138,8 +107,6 @@ fn source_combo(ui: &mut egui::Ui, draft: &mut WeightingDraft, tables: Option<&I
     });
 }
 
-/// The sorted registry key list the per-row injury combos offer (empty when the
-/// registry has not resolved / holds nothing).
 fn sorted_keys(injuries: Option<&InjuryRegistry>) -> Vec<InjuryName> {
     let mut keys: Vec<InjuryName> = injuries
         .map(|registry| registry.iter().map(|(key, _)| key.clone()).collect())
@@ -148,11 +115,6 @@ fn sorted_keys(injuries: Option<&InjuryRegistry>) -> Vec<InjuryName> {
     keys
 }
 
-/// One severity BUCKET's editor: a labelled grid of `injury combo | weight drag |
-/// Remove` rows plus its Add-row button (disabled while no registry key exists —
-/// a new row must name a resolving injury). A remove press is folded in AFTER the
-/// loop (one structural edit per frame, the gang member-list precedent); a new
-/// row seeds the FIRST sorted registry key at weight 1.
 fn bucket_rows(
     ui: &mut egui::Ui,
     draft: &mut WeightingDraft,
@@ -165,9 +127,6 @@ fn bucket_rows(
     let rows = match severity {
         Severity::Major => &mut weighting.major,
         Severity::Critical => &mut weighting.critical,
-        // The tabled buckets are Minor/Major/Critical (None/Fatal are never
-        // authored); this panel only iterates those three, so the fallthrough
-        // arm is the Minor bucket.
         _ => &mut weighting.minor,
     };
     let mut remove: Option<usize> = None;
@@ -200,9 +159,6 @@ fn bucket_rows(
     }
 }
 
-/// One row's injury-key [`ComboBox`] — the sorted registry keys only (dangling
-/// names impossible by construction). Salted by bucket + row index so every row
-/// coexists.
 fn injury_combo(
     ui: &mut egui::Ui,
     severity: Severity,
@@ -222,12 +178,6 @@ fn injury_combo(
         });
 }
 
-/// The debug-only Save button — projects the draft through
-/// [`draft_to_weighting`](crate::injury_form::draft_to_weighting) and writes it
-/// via the one-owner [`write_weighting`](crate::injury_form::write_weighting)
-/// path (`weighting/<category>[.<context>].weighting.ron` — the picked wound source picks
-/// the file, GTW-452). On a typed error it logs and
-/// writes nothing (never a panic). Debug-only (the save-path precedent).
 #[cfg(debug_assertions)]
 fn save_button(ui: &mut egui::Ui, draft: &WeightingDraft) {
     if !ui.button("Save weighting").clicked() {

@@ -1,19 +1,10 @@
-//! AC7 — the verbs READ the flat TU cost from tuning (the leaf is genuinely
-//! consulted), without running the TU economy (E4). The shipped-RON parse pin lives
-//! in `tuning::tests`.
-
 use super::support::{
     CombatTuning, ExecuteTu, LifeState, StabilizeTu, execute_downed, execute_pass, run_stabilize,
     stabilize_pass,
 };
 
-/// On success each act returns the cost it READ from tuning — equal to that
-/// tuning leaf (a RELATION to the value, never a pinned magnitude). This proves
-/// the leaf is non-vacuously read.
 #[test]
 fn acts_return_the_tu_cost_read_from_tuning() {
-    // A non-default tuning so the returned cost provably came FROM tuning, not a
-    // hardcoded constant (the values themselves stay arbitrary, not pinned).
     let tuning = CombatTuning {
         stabilize_tu: StabilizeTu::new(9),
         execute_tu: ExecuteTu::new(13),

@@ -1,5 +1,3 @@
-//! GTW-438 — `roll_injury` draw-discipline + determinism.
-
 use super::{
     super::{DamageContext, InjuryRegistry, InjuryTables, roll_injury},
     support::*,
@@ -8,9 +6,6 @@ use crate::{armor::BodyPart, severity::Severity};
 
 #[test]
 fn roll_injury_takes_no_draw_for_none_or_fatal() {
-    // C1/C2 + stream-alignment (#2): a graze (None) and a Fatal take NO InjuryRng draw and
-    // return None. Proof: the rng cursor is UNMOVED — its next raw u64 equals a fresh
-    // stream's next raw u64.
     let (registry, tables) = one_injury_table("hurt", BodyPart::Head, Severity::Minor);
     for severity in [Severity::None, Severity::Fatal] {
         let mut rng = injury_rng();
@@ -26,7 +21,6 @@ fn roll_injury_takes_no_draw_for_none_or_fatal() {
             rolled.is_none(),
             "{severity:?} is not tabled — no injury rolled"
         );
-        // The cursor did NOT advance: next draw equals a fresh stream's first draw.
         assert_eq!(
             rng.next_u64(),
             injury_rng().next_u64(),
@@ -37,8 +31,6 @@ fn roll_injury_takes_no_draw_for_none_or_fatal() {
 
 #[test]
 fn roll_injury_draws_exactly_one_and_resolves_a_tabled_severity() {
-    // C1: a Minor/Major/Critical wound with content takes EXACTLY ONE draw and resolves
-    // the picked key to its InjuryDef.
     let (registry, tables) = one_injury_table("hurt", BodyPart::Torso, Severity::Major);
     let mut rng = injury_rng();
     let rolled = roll_injury(
@@ -64,10 +56,8 @@ fn roll_injury_draws_exactly_one_and_resolves_a_tabled_severity() {
         "the def's single effect is frozen on"
     );
 
-    // EXACTLY ONE draw: the cursor advanced by one sample. A fresh stream that takes ONE
-    // throwaway draw then matches this rng's next draw.
     let mut fresh = injury_rng();
-    let _ = fresh.next_u64(); // one draw (the roll's)
+    let _ = fresh.next_u64(); 
     assert_eq!(
         rng.next_u64(),
         fresh.next_u64(),
@@ -77,15 +67,10 @@ fn roll_injury_draws_exactly_one_and_resolves_a_tabled_severity() {
 
 #[test]
 fn roll_injury_empty_table_draws_then_discards_content_independent() {
-    // C1 + STREAM-ALIGNMENT (#2): the KEY content-independence property. A Minor wound on
-    // an EMPTY/MISSING bucket STILL takes its one draw (then discards → None), so the
-    // InjuryRng cursor ends at the SAME position whether the bucket has content or is
-    // empty — a content hot-edit cannot desync replay.
     let empty_registry = InjuryRegistry::default();
     let empty_tables = InjuryTables::default();
     let (full_registry, full_tables) = one_injury_table("hurt", BodyPart::Head, Severity::Minor);
 
-    // Drive BOTH scenarios from an identical fresh stream.
     let mut rng_empty = injury_rng();
     let empty = roll_injury(
         BodyPart::Head,
@@ -108,9 +93,6 @@ fn roll_injury_empty_table_draws_then_discards_content_independent() {
     );
     assert!(full.is_some(), "a populated bucket rolls an injury");
 
-    // CONTENT-INDEPENDENCE: after one Minor roll each, BOTH cursors are at the SAME
-    // position (each took EXACTLY ONE draw), regardless of whether content existed. The
-    // post-draw streams produce identical next values.
     assert_eq!(
         rng_empty.next_u64(),
         rng_full.next_u64(),
@@ -121,8 +103,6 @@ fn roll_injury_empty_table_draws_then_discards_content_independent() {
 
 #[test]
 fn roll_injury_is_deterministic_for_a_fixed_seed() {
-    // C1: pure given the rng state — the same seed reproduces the same pick. (Determinism
-    // at the roll level; the seeded-replay E2E lives in the acts injury test.)
     let (registry, tables) = one_injury_table("hurt", BodyPart::LeftLeg, Severity::Critical);
     let mut rng_a = injury_rng();
     let mut rng_b = injury_rng();

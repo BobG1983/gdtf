@@ -1,6 +1,3 @@
-//! AC3 — the core `FireRequested` dispatch runs `fire()` and mutates the target,
-//! plus seed determinism on the dispatch path.
-
 use super::support::*;
 
 #[test]
@@ -23,9 +20,6 @@ fn fire_dispatch_runs_fire_and_mutates_the_target() {
     let life_after = app.world().get::<LifeState>(target).copied();
     let tu_after = app.world().get::<Tu>(shooter).copied();
 
-    // The verb RAN: either the target's battle surfaces changed (a real shot effect)
-    // OR (seed-dependent miss) the shooter's Tu strictly decreased (the charge). Never
-    // a pinned magnitude.
     let target_changed =
         hp_after != hp_before || wounds_after != Some(6) || life_after != Some(LifeState::Alive);
     let tu_dropped = matches!((tu_before, tu_after), (Some(b), Some(a)) if *a < *b);
@@ -39,7 +33,6 @@ fn fire_dispatch_runs_fire_and_mutates_the_target() {
 #[test]
 fn fire_dispatch_is_deterministic_for_the_same_seed() {
     let snapshot = |seed_run: u64| {
-        // The seed is fixed by insert_sim_resources; seed_run only labels the call.
         let _ = seed_run;
         let (mut app, shooter, target) = fire_scenario();
         let mode = single_mode(0.2, 1);

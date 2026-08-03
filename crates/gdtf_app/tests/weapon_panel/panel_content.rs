@@ -1,5 +1,3 @@
-//! AC5 panel content: name + magazine, mutate-in-place, hidden/display-none empty states.
-
 use bevy::{prelude::*, ui::Display};
 use gdtf_app::test_support::{WeaponContent, WeaponMagazineText, WeaponNameText};
 use gdtf_battle_input::SelectedShooter;
@@ -10,9 +8,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-// ---------------------------------------------------------------------------------
-// AC5 — name + magazine cur/max reflect the selection; selection change MUTATES in place.
-// ---------------------------------------------------------------------------------
 
 #[test]
 fn weapon_panel_shows_name_and_magazine_for_the_selected_ganger() {
@@ -47,7 +42,6 @@ fn selection_change_mutates_the_panel_in_place() {
     );
     app.update();
 
-    // The widget ids BEFORE the selection change — they must be STABLE across the change.
     let name_id_before = single_with::<WeaponNameText>(&mut app);
     let mag_id_before = single_with::<WeaponMagazineText>(&mut app);
     assert_eq!(
@@ -55,7 +49,6 @@ fn selection_change_mutates_the_panel_in_place() {
         Some("Autogun"),
     );
 
-    // Select a DIFFERENT armed ganger with a distinct weapon + magazine.
     spawn_armed_and_select(
         &mut app,
         weapon_kit(
@@ -94,7 +87,6 @@ fn selection_change_mutates_the_panel_in_place() {
 #[test]
 fn no_selection_hides_the_weapon_content() {
     let mut app = battle_running_app();
-    // Force NO selection (the auto-select may have filled it on the empty default battle).
     app.world_mut().insert_resource(SelectedShooter::cleared());
     app.update();
     assert_eq!(
@@ -104,14 +96,10 @@ fn no_selection_hides_the_weapon_content() {
     );
 }
 
-/// GTW-295 — the empty-state hide removes the content from LAYOUT via `Display::None` (so a
-/// hidden weapon block takes no space), not merely `Visibility::Hidden`. Pin-discriminating:
-/// a revert to a Visibility-only hide leaves `display == Display::Flex` and fails this assert.
 #[test]
 fn empty_state_hides_content_with_display_none() {
     let mut app = battle_running_app();
 
-    // Armed → the content is shown (Display::Flex).
     spawn_armed_and_select(
         &mut app,
         weapon_kit(
@@ -128,7 +116,6 @@ fn empty_state_hides_content_with_display_none() {
         );
     }
 
-    // Unarmed → the content is removed from layout (Display::None).
     spawn_unarmed_and_select(&mut app);
     app.update();
     let node = content_node(&mut app);
@@ -142,7 +129,6 @@ fn empty_state_hides_content_with_display_none() {
         Display::None,
         "an unarmed selection removes the content from layout (Display::None)",
     );
-    // And the existing Visibility contract still holds (GTW-275 not regressed).
     assert_eq!(
         visibility::<WeaponContent>(&mut app),
         Some(Visibility::Hidden),

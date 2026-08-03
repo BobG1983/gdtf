@@ -1,6 +1,3 @@
-//! Unit tests for the [`HitReport`] → pops classification surface (moved whole from
-//! the old `reader.rs` inline `mod test`).
-
 use bevy::ecs::entity::Entity;
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection, BodyPart},
@@ -25,14 +22,10 @@ use super::{
     classify::classify_report,
 };
 
-/// An arbitrary `(cell, level)` key for a structural-hit report (the classifier reads the
-/// verdict / the destruction flag, never the key's coords, so any value drives the path).
 fn struck_key() -> CellLevel {
     CellLevel::new(Cell::new(4, 5), Level::new(2))
 }
 
-/// An arbitrary intact `CoverEntry` for a `ShotKind::Cover` outcome — the classifier only
-/// matches the verdict, never reads the entry's HP, so a seeded prototype is enough.
 fn cover_entry() -> CoverEntry {
     CoverEntry::seeded(
         CoverHp::new(10),
@@ -42,8 +35,6 @@ fn cover_entry() -> CoverEntry {
     )
 }
 
-/// A cover report that DAMAGED but did not destroy the cover (a REAL cover verdict
-/// with `destroyed: None` — GTW-573) — the structural-hit (not-destroyed) path.
 fn cover_damaged_report() -> HitReport {
     HitReport {
         kind:    ShotKind::Cover(cover_entry()),
@@ -51,8 +42,6 @@ fn cover_damaged_report() -> HitReport {
     }
 }
 
-/// A cover report that DESTROYED the cover (the verdict's `destroyed` is `Some`) — the
-/// structural-destruction path.
 fn cover_destroyed_report() -> HitReport {
     HitReport {
         kind:    ShotKind::Cover(cover_entry()),
@@ -62,7 +51,6 @@ fn cover_destroyed_report() -> HitReport {
     }
 }
 
-/// A slab report that DESTROYED the slab (the verdict's `destroyed` is `Some`).
 fn slab_destroyed_report() -> HitReport {
     HitReport {
         kind:    ShotKind::Slab(struck_key()),
@@ -72,8 +60,6 @@ fn slab_destroyed_report() -> HitReport {
     }
 }
 
-/// A `HitResult` carrying `hp` HP loss + `pen` penetrating damage (zero wear — the wear
-/// number is not an FCT input this slice).
 fn hit_result(hp: i32, pen: i32) -> HitResult {
     HitResult {
         penetrating: PenetratingDamage::new(pen),
@@ -82,8 +68,6 @@ fn hit_result(hp: i32, pen: i32) -> HitResult {
     }
 }
 
-/// A ganger-hit `HitReport` for `part` with `hp` HP loss / `pen` penetration / `severity`
-/// tier / `life_after` state — the synthesized report the classifier reads.
 fn ganger_report(
     part: BodyPart,
     hp: i32,
@@ -92,8 +76,6 @@ fn ganger_report(
     life_after: LifeState,
 ) -> HitReport {
     HitReport {
-        // The classifier only matches on the Ganger verdict — it never dereferences the
-        // entity — so a placeholder handle is enough to drive the Ganger branch.
         kind:    ShotKind::Ganger(Entity::PLACEHOLDER),
         verdict: HitVerdict::Ganger(Box::new(GangerVerdict {
             target: Entity::PLACEHOLDER,
@@ -111,8 +93,6 @@ fn ganger_report(
     }
 }
 
-/// The set of `(text, color)` pairs a report classifies into, for order-insensitive
-/// membership asserts.
 fn pop_pairs(report: Option<&HitReport>) -> Vec<(String, bevy::prelude::Color)> {
     classify_report(report)
         .into_iter()
@@ -120,14 +100,12 @@ fn pop_pairs(report: Option<&HitReport>) -> Vec<(String, bevy::prelude::Color)> 
         .collect()
 }
 
-/// Whether the classified pops contain a pop with exactly `text` in exactly `color`.
 fn has_pop(report: Option<&HitReport>, text: &str, color: bevy::prelude::Color) -> bool {
     pop_pairs(report)
         .iter()
         .any(|(t, c)| t == text && *c == color)
 }
 
-/// The [`FctEmphasis`] of the classified pop with exactly `text`, or `None` if absent.
 fn pop_emphasis(report: Option<&HitReport>, text: &str) -> Option<FctEmphasis> {
     classify_report(report)
         .into_iter()
@@ -135,7 +113,6 @@ fn pop_emphasis(report: Option<&HitReport>, text: &str) -> Option<FctEmphasis> {
         .map(|pop| pop.emphasis)
 }
 
-/// A damaging ganger hit yields the RED HP-loss number `-N`.
 #[test]
 fn a_damage_hit_yields_the_red_hp_number() {
     let report = ganger_report(BodyPart::Torso, 7, 5, Severity::Minor, LifeState::Alive);
@@ -146,8 +123,6 @@ fn a_damage_hit_yields_the_red_hp_number() {
     );
 }
 
-/// A wounding hit yields the `"<Part> <Tier>"` pop in the severity AMBER ramp (and the L/R
-/// limb collapses to the side-less label).
 #[test]
 fn a_wound_yields_the_part_tier_pop_in_the_severity_color() {
     let report = ganger_report(BodyPart::LeftArm, 4, 3, Severity::Major, LifeState::Alive);
@@ -158,8 +133,6 @@ fn a_wound_yields_the_part_tier_pop_in_the_severity_color() {
     );
 }
 
-/// A graze (severity `None`) yields the GREY `"Grazed"` pop (HP loss, no Wound), NOT a wound
-/// tag.
 #[test]
 fn a_graze_yields_grey_grazed_not_a_wound() {
     let report = ganger_report(BodyPart::Torso, 2, 0, Severity::None, LifeState::Alive);
@@ -174,8 +147,6 @@ fn a_graze_yields_grey_grazed_not_a_wound() {
     );
 }
 
-/// A clean miss — a non-connecting shot (or a `None` report) — yields NO pops at all: a
-/// missed shot spawns no floating combat text.
 #[test]
 fn a_clean_miss_yields_no_pops() {
     let miss = HitReport::no_effect(ShotKind::Miss);
@@ -184,7 +155,6 @@ fn a_clean_miss_yields_no_pops() {
         pairs.is_empty(),
         "a clean miss must yield no pops, got {pairs:?}"
     );
-    // A round with NO report at all (geometry-only message) is likewise a clean miss.
     let none_pairs = pop_pairs(None);
     assert!(
         none_pairs.is_empty(),
@@ -192,9 +162,6 @@ fn a_clean_miss_yields_no_pops() {
     );
 }
 
-/// A hit that DOWNS the target yields the lethal-RED `"DOWN"` pop; a hit that KILLS yields
-/// `"DEAD"`. Both are drawn [`FctEmphasis::Bold`] (the contract's "RED bold"), distinct from
-/// the ordinary body-weight HP-damage pop. An Alive outcome yields neither.
 #[test]
 fn a_down_and_a_dead_yield_the_lethal_red_bold_tag() {
     let down = ganger_report(BodyPart::Torso, 9, 6, Severity::Critical, LifeState::Downed);
@@ -208,8 +175,6 @@ fn a_down_and_a_dead_yield_the_lethal_red_bold_tag() {
         Some(FctEmphasis::Bold),
         "the \"DOWN\" pop must be BOLD (the contract's \"RED bold\"), not body weight",
     );
-    // The same round's ordinary HP-damage pop stays body weight — bold is reserved for the
-    // lethal tag, so the descope to all-caps-only is no longer the emphasis.
     assert_eq!(
         pop_emphasis(Some(&down), "-9"),
         Some(FctEmphasis::Normal),
@@ -228,7 +193,6 @@ fn a_down_and_a_dead_yield_the_lethal_red_bold_tag() {
         "the \"DEAD\" pop must be BOLD (the contract's \"RED bold\"), not body weight",
     );
 
-    // An Alive outcome yields no DOWN/DEAD tag.
     let alive = ganger_report(BodyPart::Torso, 3, 2, Severity::Minor, LifeState::Alive);
     let alive_pairs = pop_pairs(Some(&alive));
     assert!(
@@ -237,8 +201,6 @@ fn a_down_and_a_dead_yield_the_lethal_red_bold_tag() {
     );
 }
 
-/// The penetration verdict pin-discriminates: a penetrating hit (`pen > 0`) yields the GREY
-/// `"Armor pierced"` pop; a soaked hit (`pen <= 0`) yields the AMBER `"Armor held"` pop.
 #[test]
 fn the_penetration_verdict_discriminates_armor_pierced_from_armor_held() {
     let through = ganger_report(BodyPart::Torso, 5, 4, Severity::Minor, LifeState::Alive);
@@ -264,10 +226,6 @@ fn the_penetration_verdict_discriminates_armor_pierced_from_armor_held() {
     );
 }
 
-/// GTW-386 — a cover hit that DAMAGED (did not destroy) the cover yields a NON-EMPTY
-/// structural pop list (the `"Cover hit"` chip indicator in neutral GREY), NOT the empty /
-/// miss fall-through. PIN-DISCRIMINATING: reverting the classifier's `ShotKind::Cover` branch
-/// (back to the old "non-ganger → empty vec" gate) makes this fail (the list would be empty).
 #[test]
 fn a_cover_damage_hit_yields_a_structural_pop_not_a_miss() {
     let report = cover_damaged_report();
@@ -287,10 +245,6 @@ fn a_cover_damage_hit_yields_a_structural_pop_not_a_miss() {
     );
 }
 
-/// GTW-386 — a cover hit that DESTROYED the cover (`cover_destroyed: Some`) yields the
-/// emphatic lethal-RED BOLD `"Cover Destroyed"` pop (the structural mirror of a ganger's
-/// DOWN / DEAD tag), NOT a plain hit or a miss. PIN-DISCRIMINATING on both the branch and the
-/// destruction-flag read.
 #[test]
 fn a_cover_destroyed_hit_yields_the_bold_destroyed_pop() {
     let report = cover_destroyed_report();
@@ -310,8 +264,6 @@ fn a_cover_destroyed_hit_yields_the_bold_destroyed_pop() {
     );
 }
 
-/// GTW-386 — a SLAB hit that DESTROYED the slab (`slab_destroyed: Some`) yields the lethal-RED
-/// BOLD `"Slab Destroyed"` pop, NOT a miss — the slab mirror of the cover-destroyed case.
 #[test]
 fn a_slab_destroyed_hit_yields_the_bold_destroyed_pop() {
     let report = slab_destroyed_report();
@@ -335,12 +287,8 @@ fn a_slab_destroyed_hit_yields_the_bold_destroyed_pop() {
     );
 }
 
-/// GTW-386 — a GROUND hit yields the cosmetic neutral-GREY `"Dust"` impact cue (a minor
-/// indicator, never a damage number — the ground is damaged, never destroyed), NOT a miss.
 #[test]
 fn a_ground_hit_yields_the_dust_cue_not_a_miss() {
-    // The GTW-573 ground verdict — the sim's Ground arm ALWAYS accrues (an arbitrary
-    // amount here; the classifier reads only the variant).
     let report = HitReport {
         kind:    ShotKind::Ground(struck_key()),
         verdict: gdtf_battle_sim::resolve_and_apply::HitVerdict::Ground(

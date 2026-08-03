@@ -1,6 +1,3 @@
-//! The TERRAIN form's projection / round-trip / footfall-gate / picker-derivation tests
-//! (GTW-474 / GTW-513 / GTW-516 / GTW-566).
-
 use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::terrain::def::{TerrainDef, TerrainPresenterKind, TerrainSimKind, TerrainTag};
 
@@ -10,11 +7,6 @@ use crate::terrain_form::{
     serialize_terrain_def,
 };
 
-/// GTW-566 C5 (AC3) — the picker's offered list is DERIVED from the shared vocabulary:
-/// it equals [`TileRole::ALL`] filtered by [`TileRole::def_authorable`], and it now
-/// contains the GTW-543 emplacement plus the four GTW-470 oriented stairs (the roles the
-/// old hand-mirrored 10-variant list could not author) while still excluding the
-/// runtime-swap / link-direction roles and the unoffered plain door.
 #[test]
 fn picker_offers_exactly_the_def_authorable_vocabulary() {
     let offered = offered_graphic_roles();
@@ -27,7 +19,6 @@ fn picker_offers_exactly_the_def_authorable_vocabulary() {
         "the offered pick list must be TileRole::ALL filtered by def_authorable (C5)",
     );
 
-    // The headline additions: emplacement + the four oriented stairs are NOW authorable.
     for newly_authorable in [
         TileRole::Emplacement,
         TileRole::StairNsUp,
@@ -40,7 +31,6 @@ fn picker_offers_exactly_the_def_authorable_vocabulary() {
             "{newly_authorable:?} must be offered by the derived picker (GTW-566 C5)",
         );
     }
-    // The presenter-picked / unoffered roles stay out of the picker.
     for excluded in [
         TileRole::EmplacementOccupied,
         TileRole::SlabDestroyed,
@@ -55,24 +45,11 @@ fn picker_offers_exactly_the_def_authorable_vocabulary() {
     }
 }
 
-/// GTW-516 C1/C2 — the graphic-role picker's selection wiring: clicking a role's sprite cell calls
-/// `draft.set_graphic(choice)` (the picker's SOLE draft write), which the projection turns into the
-/// def's `presenter_kind.graphic_name`. This drives that EXACT setter for EVERY role the grid
-/// offers (the GTW-566 derived list) and asserts the projected def carries the matching role KEY —
-/// so a click on any cell updates the draft's `graphic_name` to the right role (the sprite grid's
-/// per-role identity).
-///
-/// A grid cell's index resolves through the SAME [`TileRole`] the sprite thumbnail draws with
-/// (`index_in` over the loaded table), so pinning the setter → projected key mapping pins the
-/// click → selection contract without a live egui context (the DRAW is Screenshot-QA-covered).
 #[test]
 fn graphic_picker_selection_updates_the_draft_graphic_name() {
     for choice in offered_graphic_roles() {
         let mut draft = TerrainDraft::default();
-        // A Wall kind so the def projects a `Wall` presenter kind that carries the graphic role
-        // key (the kind does not change the graphic_name — every kind carries it).
         draft.set_kind(TerrainKindChoice::Wall);
-        // The picker's click handler is exactly this call.
         draft.set_graphic(choice);
         assert_eq!(
             draft.graphic(),
@@ -92,8 +69,6 @@ fn graphic_picker_selection_updates_the_draft_graphic_name() {
             "selecting the {choice:?} cell sets the def's graphic_name to that role's key ({})",
             choice.as_key(),
         );
-        // The projected key stays in-vocabulary: the presenter re-classifies it to the SAME
-        // role (the editor + battlescape agree on the sprite).
         assert_eq!(
             TileRole::from_key(graphic_name),
             Some(choice),
@@ -102,18 +77,13 @@ fn graphic_picker_selection_updates_the_draft_graphic_name() {
     }
 }
 
-/// C2 — the footfall field is OFFERED only for the Slab kind: a Slab draft keeps a set footfall,
-/// while a Wall / Cover / Emplacement draft forces it to `None` (the fail-closed gate in
-/// `set_kind`).
 #[test]
 fn footfall_offered_only_for_slab() {
-    // Only Slab offers footfall.
     assert!(TerrainKindChoice::Slab.offers_footfall());
     assert!(!TerrainKindChoice::Wall.offers_footfall());
     assert!(!TerrainKindChoice::Cover.offers_footfall());
     assert!(!TerrainKindChoice::Emplacement.offers_footfall());
 
-    // A Slab draft KEEPS a chosen footfall.
     let mut draft = TerrainDraft::default();
     draft.set_kind(TerrainKindChoice::Slab);
     draft.set_footfall(FootfallChoice::Metal);
@@ -123,7 +93,6 @@ fn footfall_offered_only_for_slab() {
         "a Slab kind keeps the chosen footfall (C2 — offered for Slab)",
     );
 
-    // Switching to a non-slab kind FORCES footfall to None (fail-closed C2).
     draft.set_kind(TerrainKindChoice::Wall);
     assert_eq!(
         draft.footfall(),
@@ -131,7 +100,6 @@ fn footfall_offered_only_for_slab() {
         "switching off Slab forces footfall to None (C2 — not offered for Wall/Cover)",
     );
 
-    // And a stale footfall commit on a non-slab kind is IGNORED (the gate holds fail-closed).
     draft.set_footfall(FootfallChoice::Grate);
     assert_eq!(
         draft.footfall(),
@@ -140,9 +108,6 @@ fn footfall_offered_only_for_slab() {
     );
 }
 
-/// C2/C3 — a Wall draft projects to the right `TerrainDef` shape: a `Wall` sim kind with the
-/// draft's HP / armor / band, a `Wall` presenter kind with the graphic role, and the selected
-/// tags.
 #[test]
 fn wall_draft_projects_to_wall_def() {
     let mut draft = TerrainDraft::default();
@@ -172,8 +137,6 @@ fn wall_draft_projects_to_wall_def() {
     );
 }
 
-/// C2/C3 — a Slab draft with a footfall projects to a `Slab` presenter kind carrying that
-/// footfall (the only kind that does).
 #[test]
 fn slab_draft_projects_with_footfall() {
     let mut draft = TerrainDraft::default();
@@ -198,9 +161,6 @@ fn slab_draft_projects_with_footfall() {
     );
 }
 
-/// C3 — the projected def RON round-trips through the SAME parser the GTW-487 terrain loader uses
-/// (`ron::de::from_str::<TerrainDef>`): the reloaded def EQUALS the saved one (so the loader
-/// resolves it byte-for-byte). Pin-discriminating — any dropped field flips the `assert_eq!`.
 #[test]
 fn terrain_def_round_trips_through_the_loader_parser() {
     let mut draft = TerrainDraft::default();
@@ -234,15 +194,10 @@ fn terrain_def_round_trips_through_the_loader_parser() {
     );
 }
 
-/// GTW-587 (AC3) — the form exposes the two OPTIONAL blocking overrides: setting them on the
-/// draft (the exact writes the `blocking` UNDER controls make) projects them onto the produced
-/// [`TerrainDef`], and they survive the loader-parser round-trip. Also pins the DEFAULT: an
-/// untouched draft projects both as `None` (pure kind default — zero-migration for shipped defs).
 #[test]
 fn blocking_overrides_project_and_round_trip() {
     use gdtf_battle_sim::terrain::def::{BlocksPathingOverride, LosBlocking};
 
-    // Default draft: no overrides authored.
     let default_draft = TerrainDraft::default();
     let Ok(default_def) = draft_to_terrain_def(&default_draft, key()) else {
         unreachable!("a default Wall draft always projects")
@@ -253,7 +208,6 @@ fn blocking_overrides_project_and_round_trip() {
     );
     assert_eq!(default_def.blocks_los, None, "default = kind default (LoS)");
 
-    // Author a glass-wall-style override: blocks pathing, transparent to LoS.
     let mut draft = TerrainDraft::default();
     draft.set_display_name("Glass Wall".to_owned());
     draft.set_kind(TerrainKindChoice::Wall);
@@ -275,7 +229,6 @@ fn blocking_overrides_project_and_round_trip() {
         "AC3: the LoS-blocking override projects onto the def",
     );
 
-    // The overrides survive the loader-parser round-trip.
     let Ok(serialized) = serialize_terrain_def(&def) else {
         unreachable!("serializing the override def must succeed")
     };

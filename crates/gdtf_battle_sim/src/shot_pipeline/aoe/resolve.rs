@@ -1,6 +1,3 @@
-//! The pure `AoE` template resolver — enumerate the affected `(cell, level)` set a
-//! shot's [`HitType`] template covers at its impact cell (GTW-541).
-
 use bevy::{math::Vec2, prelude::Deref};
 
 use crate::{
@@ -10,25 +7,15 @@ use crate::{
     weapon::{AoeRange, BlastRadius, ConeHalfAngle, HitType},
 };
 
-/// A cell's ground-plane **centre point** — the `(x, y)` of its [`cell_center`],
-/// a 2D sim-unit position on the ground plane.
-///
-/// A named newtype over [`Vec2`] (no-bare-types: a ground-plane point is a domain
-/// value, not a bare vector) used only inside the cone-wedge bearing math. Private
-/// inner + derived [`Deref`], dereferenced to the [`Vec2`] for the vector algebra.
 #[derive(Deref, Debug, Clone, Copy, PartialEq)]
 struct GroundPoint(Vec2);
 
 impl GroundPoint {
-    /// Build a ground-plane point from its 2D sim-unit position.
-    const fn new(point: Vec2) -> Self {
+        const fn new(point: Vec2) -> Self {
         Self(point)
     }
 }
 
-/// Whether a ground-plane [`Cell`] lies inside the coarse grid's
-/// [`GRID_WIDTH`] × [`GRID_HEIGHT`] bounds — the edge-clamp guard so a template
-/// centred near an edge never emits an off-grid cell (GTW-541 edge case).
 fn in_bounds(cell: Cell) -> InGrid {
     InGrid::new(
         cell.x >= 0
@@ -38,43 +25,13 @@ fn in_bounds(cell: Cell) -> InGrid {
     )
 }
 
-/// A cell's ground-plane centre as a 2D sim-unit [`GroundPoint`] — the `(x, y)` of its
-/// [`cell_center`] on the given storey. Reuses the metric's cell-centre helper (which
-/// owns the int→float conversion) so this module does no raw `as f32` cast; the storey
-/// is irrelevant to a ground-plane bearing, so any [`Level`] works.
 fn ground_centre(cell: Cell, level: Level) -> GroundPoint {
     let c = cell_center(cell, level);
     GroundPoint::new(Vec2::new(c.x, c.y))
 }
 
-/// Enumerate the set of affected `(cell, level)` a shot's `hit` template covers at its
-/// `impact` cell, given the `shooter` origin (needed for the directional cone / line
-/// shapes) — the pure GTW-541 `AoE` resolver.
-///
-/// Returns a CANONICALLY SORTED `Vec<CellLevel>` (`(z, y, x)` order — the sim's
-/// `cell_key` order) so the caller resolves struck entities in a deterministic order and
-/// the seeded RNG stream stays byte-stable (GTW-541 determinism AC). Takes NO RNG draw —
-/// the geometry is a pure function of `(impact, hit, shooter)`.
-///
-/// Every emitted cell is on the `impact`'s own storey (the 2D-on-level ruling above) and
-/// is clamped to the grid bounds (`in_bounds`); an off-grid candidate is dropped. The
-/// `impact` cell is ALWAYS in the returned set (even for a zero-radius / zero-range
-/// template), so the direct impact-cell occupant is never missed. For
-/// [`HitType::Single`] the set is exactly `[impact]` (the caller short-circuits to the
-/// single-target path for `Single`, so this arm exists only for completeness / testing).
-///
-/// - **Blast{radius}** — the same-storey Chebyshev disc of `radius` around `impact`.
-/// - **Cone{range, angle}** — every cell within `range` (Chebyshev) of `impact` whose
-///   bearing from the `shooter` is within `angle` degrees of the shooter→impact direction,
-///   plus `impact` itself. A degenerate shooter==impact (point-blank) direction falls back
-///   to the full disc (no meaningful direction to wedge along).
-/// - **Line{range}** — `impact` plus up to `range` cells stepping the shooter→impact
-///   ground direction (the discrete [`Direction`](crate::ganger::Direction) cell step). A
-///   degenerate shooter==impact direction yields just `[impact]` (no line to draw).
 #[must_use]
 pub fn aoe_affected(impact: CellLevel, hit: HitType, shooter: CellLevel) -> Vec<CellLevel> {
-    // The canonical CellLevel accessors (GTW-565): the impact's (cell, level) and
-    // the shooter's ground cell.
     let (impact_cell, level) = impact.split();
     let shooter_cell = shooter.cell();
 
@@ -87,8 +44,6 @@ pub fn aoe_affected(impact: CellLevel, hit: HitType, shooter: CellLevel) -> Vec<
         HitType::Line { range } => line_cells(impact_cell, shooter_cell, range),
     };
 
-    // Clamp to grid bounds, lift each to the impact storey, dedup, and sort canonically
-    // ((z, y, x) — the sim cell_key order) so the resolution order is deterministic.
     let mut out: Vec<CellLevel> = cells
         .into_iter()
         .filter(|c| *in_bounds(*c))
@@ -99,8 +54,6 @@ pub fn aoe_affected(impact: CellLevel, hit: HitType, shooter: CellLevel) -> Vec<
     out
 }
 
-/// The same-storey Chebyshev disc of `radius` cells around `centre` (a
-/// [`HitType::Blast`] template). Radius `0` = just `centre`.
 fn blast_cells(centre: Cell, radius: BlastRadius) -> Vec<Cell> {
     let r = i32::from(*radius);
     let mut cells = Vec::new();
@@ -112,13 +65,10 @@ fn blast_cells(centre: Cell, radius: BlastRadius) -> Vec<Cell> {
     cells
 }
 
-/// The [`HitType::Line`] beam — `impact` plus up to `range` cells stepping the
-/// shooter→impact ground [`Direction`](crate::ganger::Direction). A degenerate
-/// shooter==impact direction yields just `[impact]`.
 fn line_cells(impact: Cell, shooter: Cell, range: AoeRange) -> Vec<Cell> {
     let mut cells = vec![impact];
     let Some(dir) = crate::ganger::Direction::from_cells(shooter, impact) else {
-        return cells; // point-blank: no direction, no line
+        return cells; 
     };
     let step = dir.cell_step();
     let mut cursor = impact;
@@ -129,15 +79,6 @@ fn line_cells(impact: Cell, shooter: Cell, range: AoeRange) -> Vec<Cell> {
     cells
 }
 
-/// The [`HitType::Cone`] wedge — cells within `range` (Chebyshev) of `impact` whose
-/// bearing from `shooter` is within `angle` degrees of the shooter→impact direction,
-/// plus `impact` itself. `level` is the impact storey (the ground-plane bearing is
-/// storey-independent, but `ground_centre` needs a [`Level`]).
-///
-/// The wedge apex is the SHOOTER (the fire direction is shooter→impact); a candidate cell
-/// is inside the wedge when the angle between (candidate − shooter) and (impact − shooter)
-/// is ≤ `angle`. A degenerate shooter==impact (point-blank) has no meaningful fire
-/// direction, so it falls back to the full `blast_cells` disc of `range` around `impact`.
 fn cone_cells(
     impact: Cell,
     shooter: Cell,
@@ -147,11 +88,7 @@ fn cone_cells(
 ) -> Vec<Cell> {
     let shooter_c = *ground_centre(shooter, level);
     let impact_c = *ground_centre(impact, level);
-    // The fire direction shooter→impact as a ground-plane vector.
     let fire = impact_c - shooter_c;
-    // Point-blank (shooter == impact): no direction to wedge along → the full disc. The
-    // cone's `range` becomes the disc radius (the doc's "full disc of `range`"): a directed
-    // reach reused as an omnidirectional radius, same cell count.
     if fire.length_squared() <= f32::EPSILON {
         return blast_cells(impact, BlastRadius::new(*range));
     }
@@ -162,16 +99,13 @@ fn cone_cells(
     for dy in -r..=r {
         for dx in -r..=r {
             if dx == 0 && dy == 0 {
-                continue; // impact already included
+                continue; 
             }
             let cell = Cell::new(impact.x + dx, impact.y + dy);
-            // The candidate's bearing from the shooter.
             let cand = *ground_centre(cell, level) - shooter_c;
             if cand.length_squared() <= f32::EPSILON {
-                continue; // the shooter's own cell has no bearing — skip
+                continue; 
             }
-            // cos(θ) = dot / (|fire| · |cand|); inside the wedge iff θ ≤ angle, i.e.
-            // cos(θ) ≥ cos(angle). `Vec2::angle_between` avoids the manual normalize.
             let cos_theta = fire.dot(cand) / (fire.length() * cand.length());
             if cos_theta >= cos_half {
                 cells.push(cell);

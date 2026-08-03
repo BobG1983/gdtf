@@ -1,5 +1,3 @@
-//! GTW-444 — the `MovementCostMul` multiplicative fold (C2 / C4 / C5 / C6).
-
 use super::{
     super::{
         BleedAmount, InflictedInjuries, InjuryDef, InjuryEffect, MovementCostFactor, StatDelta,
@@ -9,8 +7,6 @@ use super::{
 };
 use crate::armor::{BodyPart, InjuryCategory};
 
-/// `f32` equality on a movement factor's inner — exact (the values under test are exactly
-/// representable: 1.0, 1.5, 2.0, 3.0), so `==` is sound here.
 fn factor_eq(a: MovementCostFactor, b: MovementCostFactor, msg: &str) {
     assert!(
         (a.raw() - b.raw()).abs() < f32::EPSILON,
@@ -20,8 +16,6 @@ fn factor_eq(a: MovementCostFactor, b: MovementCostFactor, msg: &str) {
 
 #[test]
 fn movement_cost_factor_none_is_identity() {
-    // C5 (none -> 1.0) + C6 identity: an empty ledger reports the IDENTITY factor (1.0),
-    // so an uninjured mover is never accidentally slowed.
     let ledger = InflictedInjuries::default();
     factor_eq(
         ledger.movement_cost_factor(),
@@ -32,7 +26,6 @@ fn movement_cost_factor_none_is_identity() {
 
 #[test]
 fn movement_cost_factor_one_mul_is_that_factor() {
-    // C5 (one 1.5 -> 1.5): a single MovementCostMul(1.5) folds to exactly 1.5.
     let mut ledger = InflictedInjuries::default();
     ledger.gain(gained_on(
         BodyPart::LeftLeg,
@@ -47,8 +40,6 @@ fn movement_cost_factor_one_mul_is_that_factor() {
 
 #[test]
 fn movement_cost_factor_two_muls_multiply_not_add() {
-    // C4 / C5 — THE SHARPEST PIN: two MovementCostMul (1.5, 2.0) MULTIPLY to 3.0, NOT add
-    // to 3.5 and NOT sum to 3.5. An additive fold would FAIL this (it would give 3.5).
     let mut ledger = InflictedInjuries::default();
     ledger.gain(gained_on(
         BodyPart::LeftLeg,
@@ -67,8 +58,6 @@ fn movement_cost_factor_two_muls_multiply_not_add() {
 
 #[test]
 fn movement_cost_factor_stacking_is_order_independent() {
-    // C4: multiplication is commutative — gaining (2.0, 1.5) gives the SAME 3.0 as
-    // (1.5, 2.0). Order-independent, deterministic.
     let mut a = InflictedInjuries::default();
     a.gain(gained_on(
         BodyPart::LeftLeg,
@@ -87,9 +76,6 @@ fn movement_cost_factor_stacking_is_order_independent() {
 
 #[test]
 fn movement_cost_factor_other_effects_are_inert() {
-    // C5 (a non-MovementCostMul effect -> 1.0): a Bleeding and a DisableHand (and a Modify)
-    // contribute NOTHING to the movement factor — it stays IDENTITY. Pin-discriminating: a
-    // fold that touched the movement accumulator for the wrong variant would FAIL.
     let mut ledger = InflictedInjuries::default();
     ledger.gain(gained_on(
         BodyPart::LeftArm,
@@ -111,8 +97,6 @@ fn movement_cost_factor_other_effects_are_inert() {
 
 #[test]
 fn movement_cost_mul_deserializes_from_ron() {
-    // C1: the MovementCostMul(<f32>) variant parses from an effects Vec — the .injury.ron
-    // shape the Hampered leg injuries use (the authored factor is a bare RON number).
     let ron = r#"(
         name:         "Shattered Knee",
         category:     Leg,

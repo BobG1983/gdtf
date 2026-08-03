@@ -1,6 +1,3 @@
-//! The Silence effect still gates suppression through the isolated-trait path — a silenced
-//! point-blank shot yields NO `SuppressionApplied` where an un-silenced one does.
-
 use bevy::{
     app::App,
     prelude::{Entity, MessageReader, ResMut, Resource},
@@ -12,24 +9,18 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-// ── Silence still gates suppression (the PRESERVED producer gate) ─────────────────
 
-/// A test-local recorder of every `SuppressionApplied` observed across the run.
 #[derive(Resource, Default)]
 struct AppliedLog {
-    /// The number of `SuppressionApplied` signals observed.
-    count: usize,
+        count: usize,
 }
 
-/// Drain `SuppressionApplied` into the recorder (registered after `BattleSimPlugin`).
 fn record_applied(mut msgs: MessageReader<SuppressionApplied>, mut log: ResMut<AppliedLog>) {
     for _msg in msgs.read() {
         log.count += 1;
     }
 }
 
-/// Build a two-ganger app where a PLAYER point-blank-fires at an ADJACENT enemy, recording
-/// `SuppressionApplied`. The player's weapon carries `effects`.
 fn suppression_probe_app(effects: Vec<AttachmentEffect>) -> (App, Entity) {
     let mut app = battle_app(effects);
     app.init_resource::<AppliedLog>();
@@ -49,7 +40,6 @@ fn suppression_probe_app(effects: Vec<AttachmentEffect>) -> (App, Entity) {
 
 #[test]
 fn silence_effect_still_gates_suppression() {
-    // Un-silenced control: the adjacent enemy IS suppressed.
     let (mut loud, loud_shooter) = suppression_probe_app(Vec::new());
     loud.world_mut()
         .write_message(gdtf_battle_sim::acts::FireRequested::new(
@@ -67,7 +57,6 @@ fn silence_effect_still_gates_suppression() {
         "an UN-silenced shot suppresses the adjacent enemy (control: {loud_count} signals)",
     );
 
-    // Silenced: the SAME point-blank shot produces NO SuppressionApplied.
     let (mut quiet, quiet_shooter) = suppression_probe_app(vec![AttachmentEffect::Silence]);
     quiet
         .world_mut()

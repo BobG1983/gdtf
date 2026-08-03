@@ -1,12 +1,5 @@
-//! GTW-317: the dead-occupant skip — a corpse is transparent to the round, a live
-//! (incl. Downed) occupant still stops it. The `is_dead` predicate is read-only and
-//! draws no RNG, so the skip is purely deterministic.
-
 use super::support::*;
 
-/// Two LOW gangers stand in a line on a flat East ray. When the predicate marks the
-/// FIRST one dead, the round passes through that corpse and impacts the SECOND (live)
-/// ganger — returning the second entity, at the second cell.
 #[test]
 fn first_occupant_dead_round_strikes_second_live_occupant() {
     let tuning = CombatTuning::default();
@@ -22,7 +15,6 @@ fn first_occupant_dead_round_strikes_second_live_occupant() {
     grid.set_occupant(second_cell, Some(second));
     grid.set_occupant_band(second_cell, Some(HeightBand::Low));
 
-    // A LOW round flat East through both cells; only the FIRST ganger is a corpse.
     let muzzle = at_height(2, 2, 0, low_above_floor(&tuning));
     let dir = Vec3::new(1.0, 0.0, 0.0);
     let is_dead = move |e: Entity| e == first;
@@ -48,9 +40,6 @@ fn first_occupant_dead_round_strikes_second_live_occupant() {
     );
 }
 
-/// Regression guard: with the predicate marking NEITHER occupant dead, the round
-/// stops on the FIRST occupant exactly as it does today (no behavior change when no
-/// corpse is in the path).
 #[test]
 fn no_occupant_dead_round_strikes_first_as_before() {
     let tuning = CombatTuning::default();
@@ -90,9 +79,6 @@ fn no_occupant_dead_round_strikes_first_as_before() {
     );
 }
 
-/// A dead first occupant with a HIGH cover ("wall") behind it: the round passes
-/// through the corpse and is stopped by the cover, returning a `Cover` kind at the
-/// wall cell.
 #[test]
 fn first_occupant_dead_wall_behind_returns_wall() {
     let tuning = CombatTuning::default();
@@ -105,7 +91,7 @@ fn first_occupant_dead_wall_behind_returns_wall() {
     grid.set_occupant(corpse_cell, Some(corpse));
     grid.set_occupant_band(corpse_cell, Some(HeightBand::Low));
     let mut cover = CoverLedger::new();
-    cover.insert(wall_cell, cover_entry(HeightBand::High)); // a wall-cover behind
+    cover.insert(wall_cell, cover_entry(HeightBand::High)); 
 
     let muzzle = at_height(2, 2, 0, low_above_floor(&tuning));
     let dir = Vec3::new(1.0, 0.0, 0.0);
@@ -131,8 +117,6 @@ fn first_occupant_dead_wall_behind_returns_wall() {
     );
 }
 
-/// A dead first occupant with NOTHING behind it: the round passes through the corpse
-/// and flies off the grid → a clean Miss (it must not strike the corpse).
 #[test]
 fn first_occupant_dead_nothing_behind_misses() {
     let tuning = CombatTuning::default();
@@ -170,8 +154,6 @@ fn first_occupant_dead_nothing_behind_misses() {
     );
 }
 
-/// A SINGLE occupant the predicate marks dead, with nothing behind: the round must
-/// NOT strike the corpse — it sails through to a clean Miss.
 #[test]
 fn single_dead_occupant_is_not_struck() {
     let tuning = CombatTuning::default();

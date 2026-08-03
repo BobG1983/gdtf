@@ -1,12 +1,6 @@
-//! Tests for the [`GridSize`] dimension newtypes (GTW-409 AC1).
-//! Structure / validation only — no shipped magnitudes pinned.
-
 use super::super::*;
 use crate::metric::MAX_LEVELS;
 
-/// AC1 — `GridSize::new` accepts a within-bounds grid and exposes each axis through its
-/// named accessor (the inner-private newtypes `Deref` to their span). Uses the MAX
-/// edges so the boundary is exercised, not a shipped magnitude.
 #[test]
 fn grid_size_accepts_within_bounds() {
     let size = GridSize::new(
@@ -19,16 +13,12 @@ fn grid_size_accepts_within_bounds() {
         "a 60x60x8 grid is the legal maximum: {size:?}"
     );
     if let Ok(size) = size {
-        // Deref reads each axis's span through its newtype.
         assert_eq!(*size.width(), MAX_GRID_SPAN);
         assert_eq!(*size.height(), MAX_GRID_SPAN);
         assert_eq!(*size.levels(), MAX_LEVELS);
     }
 }
 
-/// AC1 — `GridSize::new` REJECTS (handled `Result`, no panic) an over-max span on each
-/// axis, naming the offending axis. The constructor clamps the sim max via the named
-/// `MAX_GRID_SPAN` / `MAX_LEVELS` consts (no scattered magic 60).
 #[test]
 fn grid_size_rejects_over_max_per_axis() {
     let too_wide = GridSize::new(
@@ -62,7 +52,6 @@ fn grid_size_rejects_over_max_per_axis() {
     );
 }
 
-/// AC1 — `GridSize::new` rejects a zero span on any axis (a grid is at least 1x1x1).
 #[test]
 fn grid_size_rejects_empty() {
     let empty = GridSize::new(GridWidth::new(0), GridHeight::new(10), GridLevels::new(4));
@@ -72,10 +61,6 @@ fn grid_size_rejects_empty() {
     );
 }
 
-/// AC1 — a `GridSize` authored in RON deserializes through the validating `try_from`
-/// intermediate: a within-bounds triple parses, an over-max one fails (the bound holds
-/// across deserialization, not just the `new` constructor). Spans here are MECHANISM
-/// fixtures, not shipped tuning.
 #[test]
 fn grid_size_deserializes_through_validation() {
     let ok = ron::de::from_str::<GridSize>("(width: 40, height: 30, levels: 4)");

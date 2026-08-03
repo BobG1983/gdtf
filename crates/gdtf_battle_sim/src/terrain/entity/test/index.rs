@@ -1,6 +1,3 @@
-//! Tests 3 + 6 + 7 — `TerrainIndex` cell keying, the typed-key no-collision, and
-//! the index-to-ledger bridge.
-
 use super::support::*;
 use crate::{
     battle::SetupBattleRequested,
@@ -9,10 +6,7 @@ use crate::{
     test_support::{SituationBuilder, ganger_at},
 };
 
-// ── Test 3 — Queryable by cell (C4) ──────────────────────────────────────────
 
-/// [`TerrainIndex`] resolves `Cover(cell)` and `Slab(cell)` to entities whose
-/// [`TerrainCell`] component matches the resolved cell and [`TerrainPieceKind`] matches.
 #[test]
 fn test3_queryable_by_cell() {
     let wall_cell = cl(2, 2, 0);
@@ -38,7 +32,6 @@ fn test3_queryable_by_cell() {
         return;
     };
 
-    // Cover lookup.
     let cover_entity_opt = index.get(&TerrainIndexKey::Cover(wall_cell));
     assert!(
         cover_entity_opt.is_some(),
@@ -60,7 +53,6 @@ fn test3_queryable_by_cell() {
         "Test 3: wall entity kind must be Wall",
     );
 
-    // Slab lookup.
     let slab_entity_opt = index.get(&TerrainIndexKey::Slab(slab_cell));
     assert!(
         slab_entity_opt.is_some(),
@@ -83,12 +75,7 @@ fn test3_queryable_by_cell() {
     );
 }
 
-// ── Test 6 — Bridge pattern (C3) ─────────────────────────────────────────────
 
-/// [`TerrainIndex`] → entity → static `CoverHp` (max from component);
-/// live HP from [`CoverLedger`] by the same key.
-/// After setup, both the entity's `CoverHp` and the ledger's live HP are at max
-/// (proving HP authority lives in the ledger, but the entity is the static ceiling).
 #[test]
 fn test6_bridge_max_hp_on_entity_live_hp_in_ledger() {
     let wall_cell = cl(2, 2, 0);
@@ -108,7 +95,6 @@ fn test6_bridge_max_hp_on_entity_live_hp_in_ledger() {
 
     let world = app.world_mut();
 
-    // Look up the entity via TerrainIndex.
     let index_opt = world.get_resource::<TerrainIndex>();
     assert!(index_opt.is_some(), "Test 6: TerrainIndex must be present");
     let Some(index) = index_opt else {
@@ -120,7 +106,6 @@ fn test6_bridge_max_hp_on_entity_live_hp_in_ledger() {
         return;
     };
 
-    // The entity's CoverHp is the static max.
     let entity_max = world.get::<CoverHp>(entity).copied();
     assert_eq!(
         entity_max,
@@ -128,7 +113,6 @@ fn test6_bridge_max_hp_on_entity_live_hp_in_ledger() {
         "Test 6 (C3): entity CoverHp must equal authored max",
     );
 
-    // Peek at the ledger — the wall was seeded by setup, so it has an entry at max.
     let ledger_opt = world.get_resource::<CoverLedger>();
     assert!(ledger_opt.is_some(), "Test 6: CoverLedger must be present");
     let Some(ledger) = ledger_opt else {
@@ -147,14 +131,9 @@ fn test6_bridge_max_hp_on_entity_live_hp_in_ledger() {
     );
 }
 
-// ── Test 7 — Typed-key no-collision (major 4) ────────────────────────────────
 
-/// A cover and a slab at the **same `CellLevel`** produce TWO distinct entries in
-/// [`TerrainIndex`] (keyed `Cover(cell)` and `Slab(cell)` respectively) — neither
-/// silently overwrites the other.
 #[test]
 fn test7_typed_key_no_collision_at_shared_cell() {
-    // Place a wall AND a slab at the SAME cell (level 0).
     let shared_cell = cl(5, 5, 0);
 
     let mut app = headless_app();
@@ -177,14 +156,12 @@ fn test7_typed_key_no_collision_at_shared_cell() {
         return;
     };
 
-    // The index must have at least 2 entries (wall + slab) — no silent overwrite.
     assert!(
         index.len() >= 2,
         "Test 7 (major 4): TerrainIndex must have at least 2 entries for a shared-cell \
          wall + slab (Cover(cell) and Slab(cell) are distinct keys)",
     );
 
-    // Both entries are independently resolvable.
     let cover_entity = index.get(&TerrainIndexKey::Cover(shared_cell));
     let slab_entity = index.get(&TerrainIndexKey::Slab(shared_cell));
     assert!(
@@ -196,7 +173,6 @@ fn test7_typed_key_no_collision_at_shared_cell() {
         "Test 7: Slab(shared_cell) must resolve to an entity",
     );
 
-    // They must be DISTINCT entities.
     assert_ne!(
         cover_entity, slab_entity,
         "Test 7: the cover and slab entities at the shared cell must be distinct",

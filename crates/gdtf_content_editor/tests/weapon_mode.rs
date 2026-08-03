@@ -1,21 +1,4 @@
 //! GTW-670 C4: the WEAPON mode's REAL round-trips — author a MAXIMAL spec (multi fire
-//! modes with payload-carrying hit types, a multi-capacity slot list, attachment keys,
-//! a dot profile, and an on-death effect) AND a MINIMAL spec (the serde-default
-//! identities exercised) in the form model, save both through the REAL
-//! root-parameterized write (`write_weapon_in`) into a `TempDir` assets root (the
-//! GTW-555 pattern — the shipped `assets/` tree is NEVER written), then boot the REAL
-//! editor app rooted at that directory and assert the actual `WeaponsFamily` folder
-//! walk loads both saved weapons back structurally identical.
-//!
-//! Also pins the GTW-670 lifecycle riders: the editor reaches `Editing` with the
-//! `WeaponRegistry` gate resource present and the state-scoped `WeaponDraft` seeded
-//! (salvage / fallback behavior itself is the shared registration's parameterized family contract —
-//! `register_content_family::<WeaponsFamily>` inherits it, no per-family re-pin here).
-//! RE-VALIDATION on a weapon save is FREE and already pinned: the `WeaponRegistry` is
-//! in the editor's re-arm watch set (`validate/rearm.rs` `WatchedRegistries::weapons`)
-//! and the weapon→attachment edge has its own suite
-//! (`tests/authoring_validation/attachments.rs`, GTW-669 C4) — no new machinery here.
-
 use std::{num::NonZeroU8, path::Path};
 
 use bevy::{
@@ -46,15 +29,8 @@ use gdtf_content_editor::{
 };
 use gdtf_test_utils::advance_until;
 
-/// A generous frame cap: the async asset loads under parallel `cargo` contention take a
-/// non-deterministic number of frames, so this is a SAFETY NET (not a timing budget) —
-/// the test polls the `EditorState::Editing` SIGNAL.
 const MAX_UPDATES: u32 = 10_000;
 
-/// The real editor app rooted at an ARBITRARY assets directory (the
-/// `attachment_mode.rs` recipe): only `content/weapons/ranged/` is materialized by this
-/// test, so every other family fails closed to its empty registry (the no-strand
-/// guarantee) while the ranged-weapons walk loads the REAL saved files.
 fn editor_app_with_asset_root(root: &Path) -> App {
     let mut app = App::new();
     app.add_plugins(
@@ -68,8 +44,6 @@ fn editor_app_with_asset_root(root: &Path) -> App {
                 ..default()
             })
             .disable::<WinitPlugin>()
-            // Headless-test noise suppression (GTW-139): the deliberate
-            // failure-path asset errors of the unmaterialized families stay quiet.
             .disable::<bevy::log::LogPlugin>()
             .disable::<bevy::app::TerminalCtrlCHandlerPlugin>()
             .disable::<bevy::gizmos::GizmoPlugin>()
@@ -84,17 +58,11 @@ fn editor_app_with_asset_root(root: &Path) -> App {
                 ..default()
             }),
     );
-    // Bevy 0.19 routes a FAILED system-param validation to the global error handler
-    // (default panics); with no render backend some render-provided params cannot
-    // validate. `warn` restores the skip-with-a-log behavior (the shared harness
-    // precedent).
     app.set_error_handler(warn);
     app.add_plugins(MapEditorPlugin);
     app
 }
 
-/// Drives the app until [`EditorState::Editing`], then a few settle frames so the
-/// `OnEnter(Editing)` command flushes apply before the assertions read.
 fn advance_to_editing(app: &mut App) {
     let reached = advance_until(
         app,
@@ -115,12 +83,6 @@ fn advance_to_editing(app: &mut App) {
     }
 }
 
-/// The MAXIMAL edited weapon, authored through the REAL form-model mutators: every one
-/// of the spec's 18 authored fields carries a NON-default value — three fire modes
-/// (two with payload-carrying hit types), a multi-capacity `(Rail, 3)` slot list, two
-/// attachment keys, a dot profile, and a payload-rich `Explode` on-death — so a single
-/// dropped or drifted field cannot round-trip (the gate's field-for-field spot-check
-/// target).
 fn maximal_draft() -> WeaponDraft {
     let mut draft = WeaponDraft::new_weapon();
     draft.set_name("tempdir_ripper_cannon".to_owned());
@@ -133,7 +95,7 @@ fn maximal_draft() -> WeaponDraft {
     spec.punch = WeaponPunch::new(4);
     spec.shred = WeaponShred::new(2);
     spec.damage_type = DamageType::Plasma;
-    spec.accepts = AmmoType::Cell; // GTW-775: a non-seed accepted ammo class to round-trip
+    spec.accepts = AmmoType::Cell; 
     spec.magazine.size = MagazineSize::new(18);
     spec.magazine.reload_tu = gdtf_battle_sim::magazine::ReloadTu::new(9);
     spec.fire_mode = FireMode::new(vec![
@@ -190,10 +152,6 @@ fn maximal_draft() -> WeaponDraft {
     draft
 }
 
-/// The MINIMAL edited weapon: only the REQUIRED fields carry non-seed values; every
-/// opt-in field stays at its serde-default identity (`shove` off, `Straight`
-/// trajectory, no slots / attachments / dot / `on_death`) — so the round-trip exercises
-/// the defaults through the real serialize → parse chain.
 fn minimal_draft() -> WeaponDraft {
     let mut draft = WeaponDraft::new_weapon();
     draft.set_name("tempdir_scrap_tube".to_owned());
@@ -207,9 +165,6 @@ fn minimal_draft() -> WeaponDraft {
     draft
 }
 
-/// A `LeaveField` on-death also survives the projection + serialize chain (the second
-/// closed variant — the app boot below only reloads the two written files, so this one
-/// is pinned at the pure serialize layer through the SAME `ron` serialize path the writer uses).
 #[test]
 fn leave_field_on_death_round_trips_through_ron() {
     let mut draft = WeaponDraft::new_weapon();
@@ -227,20 +182,12 @@ fn leave_field_on_death_round_trips_through_ron() {
     assert_eq!(parsed, spec, "the LeaveField on-death survives verbatim");
 }
 
-/// GTW-670 — create → save BOTH specs (the REAL write into a `TempDir` assets root) →
-/// load through the REAL `WeaponsFamily` folder walk → the registry holds the SAME
-/// specs (structural equality across all 18 authored fields: the maximal record and
-/// the defaults-exercising minimal record), with the `Editing` gate + the scoped
-/// `WeaponDraft` seed along for the ride. The saved bytes never author the live
-/// magazine `rounds` (spawn-only — the reloaded specs' `rounds` is the deserialize
-/// default `0`, exactly what the drafts held).
 #[test]
 fn saved_weapons_round_trip_through_the_real_weapons_loader() {
     let dir = tempfile::tempdir();
     assert!(dir.is_ok(), "creating the TempDir assets root must succeed");
     let Ok(dir) = dir else { return };
 
-    // SAVE both drafts through the real root-parameterized write.
     let (max_name, max_spec) = draft_to_weapon_spec(&maximal_draft());
     let written = write_weapon_in(dir.path(), &max_name, &max_spec);
     assert!(
@@ -256,20 +203,15 @@ fn saved_weapons_round_trip_through_the_real_weapons_loader() {
         written.as_ref().err(),
     );
 
-    // RELOAD through the real editor Load pass rooted at the TempDir.
     let mut app = editor_app_with_asset_root(dir.path());
     advance_to_editing(&mut app);
 
     let world = app.world();
-    // The state-scoped WEAPON draft seeded on entering Editing (bevy-traps #1 via the
-    // GTW-575 shared registration).
     assert!(
         world.get_resource::<WeaponDraft>().is_some(),
         "the WeaponDraft must be seeded OnEnter(Editing)",
     );
 
-    // The REAL folder walk keyed both saved files by their stems and loaded the SAME
-    // specs.
     let registry = world.get_resource::<WeaponRegistry>();
     assert!(registry.is_some(), "the WeaponRegistry must resolve");
     let Some(registry) = registry else { return };

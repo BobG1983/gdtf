@@ -1,15 +1,3 @@
-//! The GENERIC contextual-act machinery + one input-layer descriptor module per act
-//! (GTW-571).
-//!
-//! The `seam` submodule owns the [`ContextualAct`] descriptor trait, the per-act
-//! [`PendingContextualIntents`] queue, the per-act generic
-//! [`drain_contextual_intents`] system in the ONE explicitly-ordered
-//! [`ContextualActSystems::Drain`] set, and the compile-time
-//! [`ContextualActAppExt::add_contextual_act`] registrar. Each act module is the act's
-//! whole input-layer surface — adding a contextual act adds ONE module here plus ONE
-//! `add_contextual_act::<A>()` line in the plugin (see
-//! `docs/authoring/contextual-act-recipe.md`).
-
 mod seam;
 
 pub use seam::{

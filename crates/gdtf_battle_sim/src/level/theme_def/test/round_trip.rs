@@ -1,12 +1,6 @@
-//! C2 — round-trip IDENTITY: `deserialize(serialize(theme_def)) == theme_def`. NO
-//! magnitude pins — identity only.
-
 use super::super::{ThemeDisplayName, ThemeUuid, UuidThemeDef};
 use crate::terrain::def::TerrainUuid;
 
-/// Serialize `def` to RON and parse it back, asserting the round-trip is the identity.
-/// Returns silently (no panic) if either serde step fails, after asserting it succeeded —
-/// the no-`unwrap`/`expect` house style.
 fn assert_round_trips(def: &UuidThemeDef) {
     let serialized = ron::ser::to_string(def);
     assert!(
@@ -28,9 +22,6 @@ fn assert_round_trips(def: &UuidThemeDef) {
     );
 }
 
-/// C2 — a theme definition with a non-empty terrain palette round-trips to itself
-/// (identity), exercising the key UUID, the display name, the default-floor terrain UUID,
-/// and the terrain UUID list through the round-trip.
 #[test]
 fn theme_def_round_trips() {
     let floor = TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_00b1));
@@ -47,8 +38,6 @@ fn theme_def_round_trips() {
     assert_round_trips(&def);
 }
 
-/// C2 — a theme definition with an EMPTY terrain palette round-trips to itself (identity),
-/// exercising the empty-vec path.
 #[test]
 fn empty_palette_theme_def_round_trips() {
     let def = UuidThemeDef {

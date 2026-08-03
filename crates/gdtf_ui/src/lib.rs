@@ -1,56 +1,3 @@
-//! Hand-rolled `bevy_ui` layer for GDTF.
-//!
-//! This crate is the layer the menu / HUD work hangs on. It owns no combat rules
-//! (those live in `gdtf_battle_sim`) and deliberately depends on **bevy only**,
-//! so `gdtf_app` can depend on it without forming a dependency cycle.
-//!
-//! [`UiPlugin`] is the single registration point: today it installs the
-//! [`focus_nav`] sub-plugin ([`FocusNavPlugin`](focus_nav::FocusNavPlugin)) and
-//! nothing else. Later tickets attach further UI systems, resources, and assets
-//! to [`UiPlugin`].
-//!
-//! The [`focus_nav`] module wires Bevy's `input_focus` framework and bridges
-//! keyboard + gamepad input onto directional focus navigation; see its docs for
-//! the activation-message decision.
-//!
-//! The data-driven [`theme`] module defines the on-disk theme schema, the runtime
-//! [`GdtfTheme`](theme::GdtfTheme) resource, and the pure spec-to-resource
-//! resolution; population of that resource lands with later tickets.
-//!
-//! The [`themed`] module owns the [`Themed`](themed::Themed) marker and the
-//! central [`apply_theme`](themed::apply_theme) system — the hot-reload system that
-//! paints theme-derived visuals onto themed entities from the live
-//! [`GdtfTheme`](theme::GdtfTheme).
-//!
-//! The [`theming::retheme`] module owns the live-reapply configuration (the
-//! [`resolve_theme_spec`] map hook + the [`theme_hot_ron_chain`] config the
-//! GTW-564 generic hot-RON redrive runs with): on an
-//! [`AssetEvent`](bevy::asset::AssetEvent)`::Modified` for the active theme
-//! asset it re-derives [`GdtfTheme`](theme::GdtfTheme) in place, and the
-//! change-driven [`apply_theme`](themed::apply_theme) repaints every
-//! [`Themed`](themed::Themed) entity the same frame — no restart (GTW-137).
-//!
-//! The [`widgets::core`] module owns the reusable spawn helpers
-//! ([`spawn_panel`] / [`spawn_button`]), the [`DisabledButton`] / [`ActiveButton`]
-//! markers, and their paint passes ([`paint_disabled_buttons`] /
-//! [`paint_active_buttons`]); the [`widgets::interaction`]
-//! module owns the theme-derived hover/press feedback system. All compose *on top
-//! of* [`apply_theme`](themed::apply_theme)'s base look, ordered after it. It also
-//! owns the GTW-276 generic HUD widgets — [`ProgressBar`](widgets::core::spawn_progress_bar),
-//! [`Pips`](widgets::core::spawn_pips), [`Switch`], and [`SegmentedControl`] — the
-//! color-parameterized, mutate-in-place building blocks the status / hover panels and
-//! the action bar reuse. (The
-//! GTW-410 `Dropdown<T>` combobox and the GTW-411 `TextField`/`NumericField` editable fields
-//! were RETIRED by GTW-655 — the GTW-434 procgen visualizer was their only consumer.)
-//!
-//! The [`menu_nav`] module owns the generic menu-enumeration model — the
-//! [`MenuScreen`] / [`MenuItem`] markers a scene tags its menu with so a QA client can
-//! enumerate and activate it with no per-scene wiring (GTW-787). Nothing reads them today;
-//! see that module for why they stay.
-//!
-//! The [`UiPlugin`] registration point itself lives in the private `plugin`
-//! submodule and is re-exported here unchanged.
-
 pub mod focus_nav;
 pub mod menu_nav;
 pub mod theming;
@@ -58,9 +5,6 @@ pub mod widgets;
 
 mod plugin;
 
-// Module re-exports — preserve `gdtf_ui::theme::*` and `gdtf_ui::themed::*`
-// sub-paths for the 27+ external callers that reach `GdtfTheme`, `default_theme`,
-// `UiSystems`, etc. via the old root-level module path (GTW-385).
 pub use menu_nav::{MenuItem, MenuName, MenuScreen};
 pub use plugin::UiPlugin;
 pub use theming::{

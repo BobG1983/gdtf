@@ -1,14 +1,6 @@
-//! In-crate unit tests for the suppression module's PURE pieces (GTW-526) — the
-//! band→stance mapping and the geometry helpers. The SYSTEM-level end-to-end proofs
-//! (producer / determinism / clear cadence / auto-stance / idempotent refresh) live in
-//! the integration test `crates/gdtf_battle_sim/tests/suppression_core/`, driven
-//! on the real `BattleSimPlugin` runtime (the `reaction_trigger` harness idiom).
-
 use super::stance::stance_for_cover_band;
 use crate::{cover::HeightBand, ganger::StanceKind};
 
-/// C5 — the pure band→stance rule: Low → Prone, Mid → Crouching, High → Crouching (the
-/// stairs-as-High mapping folds into the High arm). Exhaustive over the three bands.
 #[test]
 fn stance_for_cover_band_maps_each_band() {
     assert_eq!(stance_for_cover_band(HeightBand::Low), StanceKind::Prone);

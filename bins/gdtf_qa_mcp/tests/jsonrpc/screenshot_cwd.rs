@@ -1,23 +1,3 @@
-//! A capture written by a child running in a DIFFERENT directory than the host comes back
-//! as an image, over the real JSON-RPC surface — for BOTH children (GTW-923, retargeted
-//! onto `run` by GTW-943).
-//!
-//! These go through `dispatch` → `handle_tool_call` → `render_outcome` →
-//! `attachment_blocks`, so they cover the whole read path, not the resolution helper on its
-//! own. The setup is the defect's exact shape: the child reports the RELATIVE path its own
-//! default produces (`target/qa_screenshots/…` for the game,
-//! `target/editor_qa_screenshots/…` for the editor), the PNG exists only under a temp
-//! directory that is NOT the test process's current directory, and the lifecycle reports
-//! that temp directory as the child's. Before the fix the host read the reported path
-//! against its own directory, found nothing, and answered with "could not be read" text
-//! instead of the image.
-//!
-//! The per-request capture tool this used to drive went with the rest of the per-request tool
-//! set; what carries a capture now is an ATTACHMENT on a command's reply, and the host-side
-//! resolution is the same one. The two children carry DIFFERENT bytes, so a reply proves
-//! which child's file was read — which is the property
-//! [`courier_attach`](crate::courier_attach), driving the game alone, cannot show.
-
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -35,25 +15,16 @@ use gdtf_qa_protocol::{
 };
 use serde_json::{Value, json};
 
-/// The relative path the GAME's child reports, mirroring `QaShotDir::default()` in
-/// `crates/gdtf_app/src/dev/net_qa/screenshot/path.rs`.
 const GAME_RELATIVE_SHOT: &str = "target/qa_screenshots/gtw923_game.png";
 
-/// The relative path the EDITOR's child reports, mirroring `EditorQaShotDir::default()` in
-/// `crates/gdtf_content_editor/src/net_qa/screenshot/path.rs`.
 const EDITOR_RELATIVE_SHOT: &str = "target/editor_qa_screenshots/gtw923_editor.png";
 
-/// The bytes standing in for the GAME's PNG.
 const GAME_SHOT_BYTES: &[u8] = b"gtw923-game-png-bytes";
 
-/// The bytes standing in for the EDITOR's PNG.
 const EDITOR_SHOT_BYTES: &[u8] = b"gtw923-editor-png-bytes";
 
-/// The reply body the canned command answers with, beside its attachment.
 const CAPTURE_REPLY: &str = "null";
 
-/// A link whose one command RUNS and attaches one capture at the RELATIVE path it carries —
-/// what a real child reports, since neither default is absolute.
 struct RelativeShotLink(&'static str);
 
 impl QaLink for RelativeShotLink {
@@ -71,8 +42,6 @@ impl QaLink for RelativeShotLink {
     }
 }
 
-/// A lifecycle reporting a running child launched in the directory it carries — the one
-/// fact the render path needs to open a child-written relative path.
 struct ChildInDirLifecycle(PathBuf);
 
 impl HostLifecycle for ChildInDirLifecycle {
@@ -100,8 +69,6 @@ impl HostLifecycle for ChildInDirLifecycle {
     }
 }
 
-/// A fresh temp directory holding both children's captures at their own relative defaults,
-/// asserted to be a different directory than the test process's own.
 fn a_child_tree_holding_both_captures() -> PathBuf {
     let nanos = SystemTime::UNIX_EPOCH
         .elapsed()
@@ -134,8 +101,6 @@ fn a_child_tree_holding_both_captures() -> PathBuf {
     root
 }
 
-/// Dispatch `line` with both children reporting relative capture paths and both lifecycles
-/// reporting `child_dir` as the running child's directory.
 fn dispatch_with_child_in(line: &str, child_dir: &Path) -> Value {
     let (mut game_link, mut editor_link) = (
         RelativeShotLink(GAME_RELATIVE_SHOT),
@@ -155,8 +120,6 @@ fn dispatch_with_child_in(line: &str, child_dir: &Path) -> Value {
     serde_json::from_str(&response).unwrap_or(Value::Null)
 }
 
-/// Assert `response` carries exactly `bytes` as PNG image content, after the reply's own
-/// text block.
 fn assert_image_of(response: &Value, bytes: &[u8]) {
     assert_eq!(
         response["result"]["isError"],
@@ -175,8 +138,6 @@ fn assert_image_of(response: &Value, bytes: &[u8]) {
     );
 }
 
-/// A `run` against the GAME: the child ran elsewhere, and its attached capture still comes
-/// back as the image.
 #[test]
 fn a_game_capture_from_another_directory_relays_as_an_image() {
     let root = a_child_tree_holding_both_captures();
@@ -188,9 +149,6 @@ fn a_game_capture_from_another_directory_relays_as_an_image() {
     drop(fs::remove_dir_all(&root));
 }
 
-/// The same `run` aimed at the EDITOR: the same property, on the host GTW-875's
-/// `working_dir` was added for. A host-side resolution covers both children with one rule,
-/// which is why the editor needs no separate fix (GTW-923 clause 5).
 #[test]
 fn an_editor_capture_from_another_directory_relays_as_an_image() {
     let root = a_child_tree_holding_both_captures();
@@ -202,9 +160,6 @@ fn an_editor_capture_from_another_directory_relays_as_an_image() {
     drop(fs::remove_dir_all(&root));
 }
 
-/// A capture that is genuinely absent from the child's directory is STILL reported, naming
-/// both paths — the reported one and the one the host opened. Removing a false failure must
-/// not introduce a false success (GTW-923 clause 6).
 #[test]
 fn a_missing_capture_is_still_reported_naming_both_paths() {
     let root = a_child_tree_holding_both_captures();

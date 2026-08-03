@@ -1,7 +1,3 @@
-//! C2 — the SIM-OWNED `tags` vec defaults to EMPTY when omitted (serde default),
-//! round-trips when present, and lives on the sim side of [`TerrainDef`] (reachable
-//! from the sim crate), NOT on [`TerrainPresenterKind`].
-
 use super::super::{TerrainDef, TerrainTag};
 
 /// C2 — an omitted `tags` field parses as the EMPTY vec (`#[serde(default)]`).
@@ -27,9 +23,6 @@ fn tags_default_empty_when_omitted() {
     }
 }
 
-/// C2 — a present `tags` list parses into the sim-owned vec, in order, with the
-/// closed-enum variants. (The field is `def.tags`, read straight from the sim crate —
-/// proving it is on the SIM side of `TerrainDef`, not on `TerrainPresenterKind`.)
 #[test]
 fn tags_round_trip_when_present() {
     let ron = r#"(

@@ -1,15 +1,3 @@
-//! Mechanics tests for the attachment MECHANICS module (GTW-558): the loader-facing schema
-//! ([`AttachmentSpec`](super::AttachmentSpec) parses; the
-//! [`AttachmentRegistry`](super::AttachmentRegistry) keys + looks up by name), the
-//! [`attach_to_weapon`](super::AttachToWeaponExt::attach_to_weapon) commands-extension apply
-//! path (queue → flush; empty-list identity; absent-target no-op), and the post-spawn
-//! [`apply_pending_attachments`](super::apply_pending_attachments) system (applies each
-//! effect + removes the one-shot marker).
-//!
-//! Per-effect stat mapping is asserted in each effect file under
-//! [`crate::effects::attachments`]; these prove the MECHANISM (schema round-trip, generic
-//! trait invocation, the deferred command + spawn-applier), not any shipped magnitude.
-
 use bevy::prelude::{App, Entity, Update, World};
 
 use super::{
@@ -22,11 +10,7 @@ use crate::{
     weapon::{Accuracy, DamageType, MagazineSize, PendingAttachments, Silenced, WeaponName},
 };
 
-// --- schema round-trip (loader-facing) ---------------------------------------------------
 
-/// An [`AttachmentSpec`] parses from a RON item carrying a `display_name` + a `slot` + an
-/// `effects` list of mixed variants. Pin-discriminating: a schema mismatch fails to parse.
-/// Asserts the list is populated (mechanism), not the magnitudes.
 #[test]
 fn attachment_spec_parses_with_effect_list() {
     let ron = "(display_name: \"Whisper Bore\", slot: Muzzle, effects: [Silence, Aim(0.2)])";
@@ -54,10 +38,7 @@ fn attachment_spec_parses_with_effect_list() {
     );
 }
 
-/// A cosmetic [`AttachmentSpec`] that authors NO `effects:` field parses to an EMPTY list
 /// (the `#[serde(default)]` identity) — a weapon fitting it applies nothing. The `slot`
-/// field stays REQUIRED (GTW-554): an item that omits it must FAIL to parse (every item
-/// declares its mount point).
 #[test]
 fn attachment_spec_defaults_to_empty_effects() {
     let Ok(spec) = ron::de::from_str::<AttachmentSpec>("(display_name: \"Bare Rail\", slot: Rail)")
@@ -74,9 +55,6 @@ fn attachment_spec_defaults_to_empty_effects() {
     );
 }
 
-/// The [`AttachmentRegistry`] keys each spec by its [`AttachmentName`] and answers a
-/// lookup — the shape the folder loader (and setup) rely on. A missing key returns [`None`]
-/// (fail-closed). Asserts the map mechanism, not any content.
 #[test]
 fn registry_keys_and_looks_up_by_name() {
     let Ok(spec) = ron::de::from_str::<AttachmentSpec>(
@@ -104,10 +82,7 @@ fn registry_keys_and_looks_up_by_name() {
     );
 }
 
-// --- the commands-extension apply path ---------------------------------------------------
 
-/// Spawn a distinctive-baseline weapon entity (NOT shipped magnitudes) carrying the stat set
-/// the identity / no-op tests touch, and return its id.
 fn spawn_weapon(world: &mut World) -> Entity {
     world
         .spawn((
@@ -118,9 +93,6 @@ fn spawn_weapon(world: &mut World) -> Entity {
         .id()
 }
 
-/// Applying NO effects leaves the weapon's stats identical — the identity property (a
-/// weapon fitting a cosmetic / empty attachment is unchanged). Exercises the REAL commands
-/// path (queue → flush) with an empty list (no `attach_to_weapon` calls).
 #[test]
 fn empty_effect_list_is_the_identity() {
     let mut world = World::new();
@@ -150,10 +122,6 @@ fn empty_effect_list_is_the_identity() {
     );
 }
 
-/// An effect whose TARGET component is absent (a mis-seeded weapon) is a fail-safe NO-OP
-/// through the commands path — it neither panics nor inserts a component the effect only
-/// means to MUTATE. `Aim` reads + re-inserts `Accuracy`, so a weapon with no `Accuracy` gains
-/// none.
 #[test]
 fn absent_target_component_is_a_noop() {
     let mut world = World::new();
@@ -168,10 +136,7 @@ fn absent_target_component_is_a_noop() {
     );
 }
 
-// --- the post-spawn apply_pending_attachments system -------------------------------------
 
-/// Build a minimal app with the system registered and one weapon entity carrying `effects`
-/// as a `PendingAttachments` marker (plus a distinctive-baseline stat set the effects target).
 fn app_with_pending(effects: Vec<AttachmentEffect>) -> (App, Entity) {
     let mut app = App::new();
     app.add_systems(Update, apply_pending_attachments);
@@ -186,8 +151,6 @@ fn app_with_pending(effects: Vec<AttachmentEffect>) -> (App, Entity) {
     (app, weapon)
 }
 
-/// The system applies each pending effect to the weapon (Aim → `Accuracy` raised) AND removes
-/// the `PendingAttachments` marker so the apply is one-shot.
 #[test]
 fn applies_pending_effects_then_removes_the_marker() {
     let (mut app, weapon) = app_with_pending(vec![AttachmentEffect::Aim(AimDelta::new(0.4))]);
@@ -210,8 +173,6 @@ fn applies_pending_effects_then_removes_the_marker() {
     );
 }
 
-/// Multiple pending effects each apply (`Silence` inserts `Silenced`, `ExtraAmmo` grows the
-/// magazine) — the list is applied in full.
 #[test]
 fn applies_every_pending_effect() {
     let (mut app, weapon) = app_with_pending(vec![
@@ -234,8 +195,6 @@ fn applies_every_pending_effect() {
     );
 }
 
-/// An EMPTY pending list is the identity — the marker is still removed (one-shot) and no stat
-/// changes, so a weapon with no attachments is identical.
 #[test]
 fn empty_pending_list_is_the_identity() {
     let (mut app, weapon) = app_with_pending(Vec::new());

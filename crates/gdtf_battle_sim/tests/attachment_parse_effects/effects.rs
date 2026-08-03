@@ -1,6 +1,3 @@
-//! Per-effect spawn application — each attachment effect lands on the CORRECT stat of the
-//! really-spawned weapon entity, and an empty list applies nothing (identity).
-
 use bevy::{app::App, prelude::Entity};
 use gdtf_battle_sim::{
     effects::attachments::{AimDelta, AttachmentEffect, ReloadTimeScale, WeaponBraceBonus},
@@ -12,11 +9,8 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-/// Spawn a lone player wielding the attachment-bearing weapon; return its weapon entity (after
-/// the post-spawn application has settled).
 fn spawn_lone_player_weapon(effects: Vec<AttachmentEffect>) -> (App, Entity) {
     let mut app = battle_app(effects);
-    // A lone player + a distant enemy so setup's win/loss census stays two-sided.
     let situation = SituationBuilder::new()
         .with_gangers([
             player_at(ground(5, 5), Direction::East),
@@ -33,7 +27,6 @@ fn spawn_lone_player_weapon(effects: Vec<AttachmentEffect>) -> (App, Entity) {
     (app, weapon)
 }
 
-// ── Each effect applies to the CORRECT stat on the REAL spawn ────────────────────
 
 #[test]
 fn silence_effect_spawns_the_silenced_component() {
@@ -46,7 +39,6 @@ fn silence_effect_spawns_the_silenced_component() {
 
 #[test]
 fn aim_effect_raises_accuracy() {
-    // The HEADLINE fix: a sight boosts AIM (Accuracy), not stability. Baseline authored 5.0.
     let (base_app, base_weapon) = spawn_lone_player_weapon(Vec::new());
     let base = base_app.world().get::<Accuracy>(base_weapon).map(|a| **a);
     let (aim_app, aim_weapon) =
@@ -63,7 +55,6 @@ fn aim_effect_raises_accuracy() {
 
 #[test]
 fn stability_effect_inserts_a_weapon_brace_bonus() {
-    // Stability maps to a graduated WeaponBraceBonus component (the brace bonus).
     let (app, weapon) = spawn_lone_player_weapon(vec![AttachmentEffect::Stability(
         WeaponBraceBonus::new(12.0),
     )]);
@@ -71,7 +62,6 @@ fn stability_effect_inserts_a_weapon_brace_bonus() {
         app.world().get::<WeaponBraceBonus>(weapon).is_some(),
         "a Stability attachment inserts a WeaponBraceBonus (the §1a brace bonus) on the weapon",
     );
-    // The un-braced baseline carries NO such component.
     let (base_app, base_weapon) = spawn_lone_player_weapon(Vec::new());
     assert!(
         base_app
@@ -127,7 +117,6 @@ fn reload_time_effect_lowers_the_magazine_reload_tu() {
     );
 }
 
-// ── IDENTITY: an empty attachments list spawns with no attachment effects ─────────
 
 #[test]
 fn empty_attachments_spawn_with_no_effects() {
@@ -141,7 +130,6 @@ fn empty_attachments_spawn_with_no_effects() {
         world.get::<WeaponBraceBonus>(weapon).is_none(),
         "an un-attached weapon has NO WeaponBraceBonus",
     );
-    // The authored `stable: false` + DamageType + Accuracy are un-rewritten.
     assert_eq!(
         world.get::<Stable>(weapon).copied(),
         Some(Stable::new(false)),

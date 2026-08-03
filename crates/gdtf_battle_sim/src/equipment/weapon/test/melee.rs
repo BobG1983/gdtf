@@ -1,36 +1,19 @@
-//! GTW-505 — the melee weapon MODEL tests: the shipped `fists.melee_weapon.ron` parses,
-//! a `MeleeWeaponSpec` round-trips, `into_bundle` SHARES the ranged damage components and
-//! LACKS the ranged-only ones, and the `MeleeWeaponRegistry` resolves the `fists` default.
-//!
 //! Value-agnostic on the tunable magnitudes (the authored numbers are DATA, not pinned by
-//! tests — the brittle-data rule); the assertions are STRUCTURAL (which components a melee
-//! bundle carries / lacks, the marker, the registry key resolution).
-
 use super::support::*;
 use crate::weapon::{
     FISTS_KEY, FightModeKind, MeleeWeapon, MeleeWeaponRegistry, MeleeWeaponSpec, Reach,
 };
 
-/// A shipped melee weapon `.melee_weapon.ron`, read at compile time via the same
-/// `include_str!` pattern the ranged shipped weapon test uses — the REAL on-disk authored
-/// file (`assets/content/weapons/melee/fists.melee_weapon.ron`), so a regression in the
-/// authored file turns this red.
 const SHIPPED_FISTS_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../assets/content/weapons/melee/fists.melee_weapon.ron"
 ));
 
-/// A shipped TWO-handed high-shred melee weapon — the chainsword (the authored-melee witness).
 const SHIPPED_CHAINSWORD_RON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../assets/content/weapons/melee/chainsword.melee_weapon.ron"
 ));
 
-/// GTW-505 C6 — the shipped `fists.melee_weapon.ron` parses into a `MeleeWeaponSpec`, and
-/// `into_bundle(name)` yields a `MeleeWeaponBundle` carrying that `WeaponName` + the
-/// `MeleeWeapon` marker + a `FightMode` list offering at least one mode. STRUCTURAL +
-/// value-agnostic: asserts the NAME landed, the marker landed, and the fight-mode offers a
-/// mode whose `primary()` is a known `FightModeKind` — never a tunable magnitude.
 #[test]
 fn shipped_fists_spec_parses_and_converts_to_a_bundle() {
     let parsed = ron::de::from_str::<MeleeWeaponSpec>(SHIPPED_FISTS_RON);
@@ -42,7 +25,6 @@ fn shipped_fists_spec_parses_and_converts_to_a_bundle() {
         return;
     };
 
-    // The file does NOT author a name — the name is the FILE KEY, supplied here.
     let key = WeaponName::new(FISTS_KEY.to_owned());
     let bundle = spec.into_bundle(key);
     assert_eq!(
@@ -57,7 +39,6 @@ fn shipped_fists_spec_parses_and_converts_to_a_bundle() {
         !bundle.fight_mode.is_empty(),
         "the authored fight-mode must offer at least one mode",
     );
-    // The primary mode is one of the closed FightModeKind variants (mechanism, not a value).
     let primary = bundle.fight_mode.primary();
     assert!(
         matches!(primary.kind, FightModeKind::Swing | FightModeKind::Thrust),
@@ -65,10 +46,6 @@ fn shipped_fists_spec_parses_and_converts_to_a_bundle() {
     );
 }
 
-/// GTW-505 C6 — a `MeleeWeaponSpec` round-trips from inline RON (no shipped magnitudes) and
-/// `into_bundle` groups the damage block + carries the melee-only Reach/FightMode
-/// faithfully: a spot value read back off the bundle equals the authored one. Arbitrary
-/// literals (mechanism, not a balance pin).
 #[test]
 fn melee_spec_round_trips_and_into_bundle_groups_faithfully() {
     let authored = r"(
@@ -86,8 +63,6 @@ fn melee_spec_round_trips_and_into_bundle_groups_faithfully() {
     };
 
     let bundle = spec.into_bundle(WeaponName::new("test-blade".to_owned()));
-    // Spot values flowed through the MeleeDamageProfile grouping + the direct fields
-    // (distinct arbitrary literals so a field swap would surface).
     assert_eq!(
         *bundle.damage, 14i32,
         "damage flows through MeleeDamageProfile"
@@ -108,8 +83,6 @@ fn melee_spec_round_trips_and_into_bundle_groups_faithfully() {
     assert_eq!(kinds, vec![FightModeKind::Swing]);
 }
 
-/// GTW-505 C6 — an omitted `reach:` field defaults to `Reach::DEFAULT` (1): the first-slice
-/// "Reach default 1" ruling holds for a weapon that does not author it (the
 /// `#[serde(default)]` on the spec field).
 #[test]
 fn omitted_reach_defaults_to_one() {
@@ -138,8 +111,6 @@ fn omitted_reach_defaults_to_one() {
     );
 }
 
-/// GTW-505 C6 — the shipped `chainsword.melee_weapon.ron` parses (the authored-melee witness)
-/// and resolves to a `TwoHanded` bundle (enum resolution only — no magnitude pin).
 #[test]
 fn shipped_chainsword_parses_two_handed() {
     let parsed = ron::de::from_str::<MeleeWeaponSpec>(SHIPPED_CHAINSWORD_RON);
@@ -158,9 +129,6 @@ fn shipped_chainsword_parses_two_handed() {
     );
 }
 
-/// GTW-505 C6 — a `MeleeWeaponRegistry` keys specs by `WeaponName`, resolves a lookup, and
-/// answers the `fists` default: a present key returns the spec, the `fists` accessor finds
-/// the fists default, an absent key returns `None`.
 #[test]
 fn melee_registry_keys_resolves_and_answers_fists() {
     let Ok(fists) = ron::de::from_str::<MeleeWeaponSpec>(SHIPPED_FISTS_RON) else {

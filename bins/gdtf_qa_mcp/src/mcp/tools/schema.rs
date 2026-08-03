@@ -1,6 +1,3 @@
-//! The per-tool JSON-Schema for its `arguments` object, and the `tools/list` descriptor
-//! assembly.
-
 use serde_json::{Value, json};
 
 use crate::{
@@ -11,10 +8,6 @@ use crate::{
     },
 };
 
-/// The `host` property every tool carries — which child the call acts on.
-///
-/// One builder rather than five copies: the enumeration comes from [`QaHost::label`], so a
-/// schema can never advertise a word [`QaHost::from_label`] rejects.
 fn host_property() -> Value {
     json!({
         "type": "string",
@@ -23,7 +16,6 @@ fn host_property() -> Value {
     })
 }
 
-/// The `launch` argument schema — the host plus the five optional recipe arguments.
 fn launch_schema() -> Value {
     json!({
         "type": "object",
@@ -52,7 +44,6 @@ fn launch_schema() -> Value {
     })
 }
 
-/// The `stop` argument schema — the host, and nothing else.
 fn stop_schema() -> Value {
     json!({
         "type": "object",
@@ -60,7 +51,6 @@ fn stop_schema() -> Value {
     })
 }
 
-/// The `logs` argument schema — the host and an optional line cap.
 fn logs_schema() -> Value {
     json!({
         "type": "object",
@@ -73,13 +63,6 @@ fn logs_schema() -> Value {
     })
 }
 
-/// The `commands` argument schema — the host, an optional one-command filter, and the detail
-/// level, enumerated from [`CatalogueDetail`] so the schema can never advertise a word the
-/// parser rejects.
-///
-/// The `command` property is a FREE STRING with no `enum`: which commands exist is read from
-/// the running host, and enumerating them here would be a second copy of that truth, stale
-/// the moment either host gains one. `test/courier.rs` pins the absence.
 fn commands_schema() -> Value {
     json!({
         "type": "object",
@@ -97,12 +80,6 @@ fn commands_schema() -> Value {
     })
 }
 
-/// The `run` argument schema — the command name, its opaque argument object, the host, and
-/// the two per-call riders.
-///
-/// `command` carries no `enum` and `arguments` no `properties`, for the same reason: both are
-/// the HOST's to define, per command, and only the host that owns the command can say what it
-/// accepts. A shape written here could only ever drift from the one the host derives.
 fn run_schema() -> Value {
     json!({
         "type": "object",
@@ -126,8 +103,7 @@ fn run_schema() -> Value {
 }
 
 impl ToolName {
-    /// The JSON-Schema for this tool's `arguments` object.
-    fn input_schema(self) -> Value {
+        fn input_schema(self) -> Value {
         match self {
             Self::Launch => launch_schema(),
             Self::Stop => stop_schema(),
@@ -137,8 +113,7 @@ impl ToolName {
         }
     }
 
-    /// This tool's `tools/list` descriptor: name, description, and input schema.
-    fn descriptor(self) -> Value {
+        fn descriptor(self) -> Value {
         json!({
             "name": self.wire_name(),
             "description": self.description(),
@@ -147,7 +122,6 @@ impl ToolName {
     }
 }
 
-/// Build the `tools/list` result — the descriptor for every registered tool.
 #[must_use]
 pub fn tools_list_result() -> Value {
     let tools: Vec<Value> = ALL.iter().map(|tool| tool.descriptor()).collect();

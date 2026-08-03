@@ -1,5 +1,3 @@
-//! GTW-443 — the hand-count clause of `can_fire` (handedness x `hands_available`).
-
 use super::support::*;
 use crate::{
     ganger::{Aiming, LifeState, Tu, TuMax},
@@ -10,12 +8,9 @@ use crate::{
     weapon::{Handedness, MagazineSize},
 };
 
-// ── GTW-443: the can_fire hand-count clause (C4 / C5 / C6 / C9) ───────────────
 
 #[test]
 fn two_handed_weapon_refused_below_two_hands() {
-    // C4 (guard half): a TwoHanded weapon at 1 hand fails can_fire even when alive,
-    // affordable, loaded, and in-bounds. (The fire()/no-mutation half is C4's act test.)
     let tuning = CombatTuning::default();
     let size = MagazineSize::new(30);
     let m = mode(0.2, 1);
@@ -44,8 +39,6 @@ fn two_handed_weapon_refused_below_two_hands() {
 
 #[test]
 fn one_handed_weapon_usable_at_one_hand() {
-    // C5 (guard half): a OneHanded weapon stays usable at 1 hand (a one-armed ganger
-    // keeps a pistol). It only fails at 0 hands.
     let tuning = CombatTuning::default();
     let size = MagazineSize::new(30);
     let m = mode(0.2, 1);
@@ -85,8 +78,6 @@ fn one_handed_weapon_usable_at_one_hand() {
 
 #[test]
 fn two_handed_weapon_fires_at_two_hands() {
-    // C6: the gate is CONDITIONAL, not a blanket 2H ban — a TwoHanded weapon fires
-    // normally at the uninjured two-hands default.
     let tuning = CombatTuning::default();
     let size = MagazineSize::new(30);
     let m = mode(0.2, 1);
@@ -113,9 +104,6 @@ fn two_handed_weapon_fires_at_two_hands() {
 
 #[test]
 fn uninjured_default_actor_fires_both_handedness() {
-    // C9 (guard half): the default `actor` helper (OneHanded, two hands) passes — and a
-    // TwoHanded actor at the same default two hands also passes — so the hand-count clause
-    // never spuriously gates an uninjured shooter.
     let tuning = CombatTuning::default();
     let size = MagazineSize::new(30);
     let m = mode(0.2, 1);

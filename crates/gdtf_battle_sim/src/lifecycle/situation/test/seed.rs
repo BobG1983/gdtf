@@ -1,9 +1,5 @@
-//! Resource-seed tests — the cover ledger, surface grid, occupancy grid, and
-//! vertical-link graph each pour from the same fixture.
-
 use super::support::*;
 
-/// C8(d) — the `CoverLedger` is seeded from the SAME fixture: the wall cell
 /// holds a full-HP, not-destroyed entry with the authored band + armor.
 #[test]
 fn cover_ledger_seeded_from_fixture_wall() {
@@ -21,28 +17,22 @@ fn cover_ledger_seeded_from_fixture_wall() {
     let Some(ledger) = ledger else {
         return;
     };
-    // The wall entry is present and seeded from the test-wall registry piece
-    // ("test-wall": hp=120, High, prot=8, hard=4 — the test registry values, not
-    // shipped balance; asserting the setup path carried the registry values through).
     let expected = CoverEntry::seeded(
-        CoverHp::new(120),       // test-wall hp (test registry, not a balance pin)
-        HeightBand::High,        // test-wall band
-        ArmorProtection::new(8), // test-wall protection
-        ArmorHardness::new(4),   // test-wall hardness
+        CoverHp::new(120),       
+        HeightBand::High,        
+        ArmorProtection::new(8), 
+        ArmorHardness::new(4),   
     );
     assert_eq!(
         ledger.peek(&wall_cell).copied(),
         Some(expected),
         "the ledger must hold the authored wall entry at the wall cell",
     );
-    // It is full-HP and not destroyed (seeded shape).
     assert_eq!(
         ledger.peek(&wall_cell).map(|e| e.destroyed),
         Some(Destroyed::new(false)),
         "a freshly seeded wall is not destroyed",
     );
-    // current_hp seeds to the authored max (the C4 seed invariant
-    // current_hp == max_hp) — the GTW-154 precedent, not a magnitude pin.
     assert_eq!(
         ledger.peek(&wall_cell).map(|e| e.current_hp),
         ledger.peek(&wall_cell).map(|e| e.max_hp),
@@ -50,8 +40,6 @@ fn cover_ledger_seeded_from_fixture_wall() {
     );
 }
 
-/// C8(d) — the `SurfaceGrid` is seeded from the SAME fixture: the slab cell
-/// reads Present, an un-authored cell reads Absent.
 #[test]
 fn surface_grid_seeded_from_fixture_slab() {
     let (situation, .., slab_cell) = minimal_fixture();
@@ -79,9 +67,6 @@ fn surface_grid_seeded_from_fixture_slab() {
     );
 }
 
-/// C8(d) — the `OccupancyGrid` is seeded from the SAME fixture: the wall cell
-/// carries Wall terrain and blocks; each ganger cell carries its SPAWNED Entity
-/// handle as the occupant (never a numeric id).
 #[test]
 fn occupancy_grid_seeded_from_fixture() {
     let (situation, alice_at, bob_at, wall_cell, _slab) = minimal_fixture();
@@ -98,7 +83,6 @@ fn occupancy_grid_seeded_from_fixture() {
         return;
     };
 
-    // Terrain slot from the wall.
     assert_eq!(
         grid.terrain(&wall_cell),
         TerrainKind::Wall,
@@ -106,8 +90,6 @@ fn occupancy_grid_seeded_from_fixture() {
     );
     assert!(*grid.is_blocked(&wall_cell), "a standing wall blocks");
 
-    // Occupant slots hold the SPAWNED Entity handles (matching the returned
-    // placements), never a numeric id.
     let alice = setup.occupants[0].occupant;
     let bob = setup.occupants[1].occupant;
     assert_eq!(
@@ -122,13 +104,10 @@ fn occupancy_grid_seeded_from_fixture() {
     );
 }
 
-/// The `VerticalLinkGraph` is built + inserted from a valid authored link, and
-/// is queryable from the world.
 #[test]
 fn setup_inserts_vertical_link_graph() {
     let lower = key(1, 2, 0);
     let upper = key(1, 2, 1);
-    // Author both endpoint cells as slabs so the link does not dangle.
     let situation = SituationBuilder::new()
         .slab_at(lower)
         .slab_at(upper)

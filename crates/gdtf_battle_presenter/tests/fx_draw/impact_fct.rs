@@ -1,5 +1,3 @@
-//! Shot-report FCT classification at impact (GTW-302 s3 / GTW-327 s2).
-
 use bevy::transform::components::Transform;
 use gdtf_battle_presenter::{
     FctValence, FloatingCombatText, cell_to_world, severity_color, valence_color,
@@ -17,18 +15,12 @@ use gdtf_battle_sim::{
 
 use super::{harness::*, probes::*};
 
-/// GTW-302 (slice 3) / GTW-327 (slice 2) — the REAL dispatch path: a `ShotFired` carrying a
-/// damaging, lethal ganger-hit `HitReport` drives the firing pipeline to spawn the
-/// floating-combat-text pops (HP number RED, wound AMBER, penetration verdict, DOWN/DEAD lethal
-/// RED), anchored at the hit ganger's cell — now spawned at the shot's IMPACT (after the bolt
-/// flies), not on the drain frame. Pin-discriminates each pop's text + color.
 #[test]
 fn shot_fired_with_a_lethal_hit_spawns_the_classified_fct_pops() {
     let mut app = headless_renderer_app();
     settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
-    // A struck ganger carrying a Position (the FCT reader anchors the pops at its cell).
     let cell = Cell::new(6, 4);
     let level = Level::new(0);
     let struck = app
@@ -36,7 +28,6 @@ fn shot_fired_with_a_lethal_hit_spawns_the_classified_fct_pops() {
         .spawn(Position::new(CellLevel::new(cell, level)))
         .id();
 
-    // A Critical, DEAD, penetrating torso hit dealing 9 HP.
     let report = ganger_hit_report(
         struck,
         BodyPart::Torso,
@@ -56,17 +47,10 @@ fn shot_fired_with_a_lethal_hit_spawns_the_classified_fct_pops() {
         report:       Some(report),
     };
     play(&mut app, shot);
-    // Drain the ShotFired (spawn the bolt) on a zero-delta frame, then fly it to its impact —
-    // the pops are spawned at the IMPACT now (GTW-327), so a single drain frame is not enough.
     fire_with_zero_delta(&mut app);
-    // A handful of generous steps flies the bolt the muzzle->cell distance to arrival + seeds the
-    // impact (which spawns the pops). One 50ms step is shorter than the FCT lifetime, so they
-    // are still alive when read.
     step_app(&mut app, std::time::Duration::from_millis(50), 8);
 
     let pops = fct_pops(&mut app);
-    // HP number (RED), wound (Critical amber), penetration verdict (GREY "Armor pierced"), DEAD
-    // (lethal RED) — four distinct pops.
     assert!(
         has_fct_pop(&pops, "-9", valence_color(FctValence::Damage)),
         "the 9-HP hit must pop a RED \"-9\", got {pops:?}",
@@ -84,8 +68,6 @@ fn shot_fired_with_a_lethal_hit_spawns_the_classified_fct_pops() {
         "a Dead outcome must pop a lethal-RED \"DEAD\", got {pops:?}",
     );
 
-    // The pops are anchored at the hit ganger's cell (x/y of cell_to_world; the FCT z is the
-    // Highlight band, distinct from the cell z, so compare the planar position).
     let anchor = cell_to_world(cell, level);
     let mut q = app.world_mut().query::<(&FloatingCombatText, &Transform)>();
     let any_at_cell = q
@@ -98,11 +80,6 @@ fn shot_fired_with_a_lethal_hit_spawns_the_classified_fct_pops() {
     );
 }
 
-/// GTW-302 (slice 3) / GTW-327 (slice 2) — a clean MISS `ShotFired` (a non-connecting shot)
-/// spawns NO floating-combat-text pop at all on the real registered-system dispatch path, EVEN
-/// after its tracer flies to the impact: a missed shot gets no pop (per user feedback, there is
-/// no "Miss" popup text). The miss still rides a (numberless) bolt to its impact, so flying it to
-/// completion proves the impact-spawn path emits nothing for an empty-pop shot.
 #[test]
 fn shot_fired_clean_miss_pops_nothing() {
     let mut app = headless_renderer_app();
@@ -122,8 +99,6 @@ fn shot_fired_clean_miss_pops_nothing() {
         report:       Some(HitReport::no_effect(ShotKind::Miss)),
     };
     play(&mut app, shot);
-    // Drain (spawn the bolt) then fly it all the way to its impact — even the impact-spawn path
-    // must emit no pop for a miss.
     fire_with_zero_delta(&mut app);
     step_app(&mut app, std::time::Duration::from_millis(50), 8);
 

@@ -1,9 +1,5 @@
 use super::support::*;
 
-/// The hand-composed `matchup` → `resolve_hit` → `roll_severity` → `apply_hit` steps
-/// the AC1 equivalence test runs as the reference side — returns the composed
-/// [`AppliedDamage`] block PLUS the final mutated ganger state, so the test body stays
-/// the comparison only (one verb chain, no shadowing of the units under test).
 #[expect(
     clippy::too_many_arguments,
     reason = "the reference side mirrors `resolve_and_apply`'s own inputs verbatim so the \
@@ -54,7 +50,6 @@ fn compose_by_hand(
         entity,
         tuning,
     );
-    // The ArmorWearOutcome rides the block DIRECTLY (GTW-573 C2) — no Option split.
     let applied = AppliedDamage {
         matchup: m,
         hit,
@@ -65,12 +60,6 @@ fn compose_by_hand(
     (applied, (hp, wounds, life, integrity, inflicted))
 }
 
-/// AC1 (THE key test) — the fold equals the composition: `resolve_and_apply` on
-/// a `Ganger` outcome produces a report whose damage / severity AND the
-/// resulting ganger state are IDENTICAL to running `matchup` → `resolve_hit` →
-/// `roll_severity` → `apply_hit` by hand, with the SAME seed and the SAME inputs
-/// on a clone of the target. The units under test are NOT shadowed — both sides
-/// call the real verbs; the same single draw makes the RNG streams line up.
 #[test]
 fn fold_equals_the_composed_steps() {
     let tuning = CombatTuning::default();
@@ -80,13 +69,10 @@ fn fold_equals_the_composed_steps() {
     let shooter_luck = Luck::new(2.0);
     let outcome = ganger_outcome(entity, part);
 
-    // The struck piece's stats (the fixture both sides resolve against). Integrity is
-    // held per side so each path wears its OWN piece-entity component (GTW-323).
     let (floor, prot, integ, hard, at) = (1, 8, 30, 2, ArmorType::Void);
     let toughness = Toughness::new(3.0);
     let defender_luck = Luck::new(4.0);
 
-    // --- The folded act ---
     let mut hp_a = Hp::new(40);
     let mut wounds_a = Wounds::new(6);
     let mut life_a = LifeState::Alive;
@@ -116,9 +102,6 @@ fn fold_equals_the_composed_steps() {
         &mut injury_rng(),
     );
 
-    // --- The composed steps, BY HAND, on a clone with the same seed ---
-    // The read-only ArmorPiece value the damage formula consumes (the same value
-    // `struck_piece` assembles from the piece's stat components).
     let piece = ArmorPiece::new(
         ArmorFloor::new(floor),
         ArmorProtection::new(prot),
@@ -137,7 +120,6 @@ fn fold_equals_the_composed_steps() {
         entity,
     );
 
-    // The verdict's damage block matches the hand-composed steps.
     assert_eq!(
         applied_of(&report),
         Some(applied_b),
@@ -149,9 +131,6 @@ fn fold_equals_the_composed_steps() {
         "the verdict carries the struck part"
     );
 
-    // The resulting ganger state matches the hand-composed steps, every mutated
-    // surface at once — the fold mutated the target identically to the composition
-    // (incl. the struck piece's worn integrity and the GTW-279 InflictedWounds record).
     assert_eq!(
         (hp_a, wounds_a, life_a, integrity_a, &inflicted_a),
         (hp_b, wounds_b, life_b, integrity_b, &inflicted_b),
@@ -160,18 +139,12 @@ fn fold_equals_the_composed_steps() {
     );
 }
 
-/// AC1 (counterpart) — the matchup wheel advantage IS felt on an armored ganger
-/// hit: at identical seed and inputs, a Favorable damage-type-vs-armor pairing
-/// yields `>=` penetrating damage than a Resisted one — the report's matchup is
-/// genuinely the wheel lookup, not a hardcoded Neutral.
 #[test]
 fn armored_report_carries_the_real_matchup() {
     let tuning = CombatTuning::default();
     let entity = an_entity();
     let part = BodyPart::Torso;
 
-    // Pick a damage type/armor type pairing and confirm the report names the
-    // wheel's verdict — then a clearly Resisted pairing names Resisted.
     let resolve = |weapon: WeaponBundle, armor_type: ArmorType| {
         let mut hp = Hp::new(50);
         let mut wounds = Wounds::new(9);
@@ -201,9 +174,6 @@ fn armored_report_carries_the_real_matchup() {
         )
     };
 
-    // Kinetic (node 3) is strong against {6, 1, 2} = {Ceramic, Refractive, Flak}
-    // and resisted by the rest. Favorable vs Refractive, Resisted vs Void(3's
-    // own mirror is Neutral, so use Plated node 0 → resisted).
     let weapon = a_weapon(12, 10, 6, DamageType::Kinetic);
     let fav = resolve(weapon.clone(), ArmorType::Refractive);
     let res = resolve(weapon, ArmorType::Plated);

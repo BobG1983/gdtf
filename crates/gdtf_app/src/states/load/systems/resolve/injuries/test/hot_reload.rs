@@ -1,6 +1,3 @@
-//! Headless hot-reload — a member `Modified` rebuilds BOTH injury resources, and the
-//! reload emits its Part C `info!` line (observed under `capture_logs`).
-
 use bevy::{asset::AssetEvent, ecs::system::RunSystemOnce, prelude::*};
 use gdtf_battle_sim::{
     armor::InjuryCategory,
@@ -16,11 +13,6 @@ use crate::states::load::{
     resources::ActiveInjuriesFolderHandle, systems::resolve::hot_reload_test_support::capture_logs,
 };
 
-/// C5: a `Modified` for a member `*.injury.ron` OR `*.weighting.ron` REBUILDS BOTH the
-/// `InjuryRegistry` and the `InjuryTables` from the folder's members, reflecting the
-/// edit — the headless hot-reload path (the weapons mirror, two resources).
-///
-/// Pin-discriminating: dropping the rebuild leaves the OLD (empty) resources.
 #[test]
 fn modified_member_rebuilds_both_resources() {
     let mut app = app();
@@ -36,11 +28,9 @@ fn modified_member_rebuilds_both_resources() {
     let folder = add_folder(&mut app, &[def_h.untyped(), w_h.untyped()]);
     app.world_mut()
         .insert_resource(ActiveInjuriesFolderHandle::new(folder));
-    // Stale baseline (empty) resources the rebuild must overwrite.
     app.world_mut().insert_resource(InjuryRegistry::default());
     app.world_mut().insert_resource(InjuryTables::default());
 
-    // Fire a Modified for the weighting member, rebuild.
     app.world_mut()
         .write_message(AssetEvent::Modified { id: w_id });
     app.update();
@@ -65,11 +55,6 @@ fn modified_member_rebuilds_both_resources() {
     );
 }
 
-/// C5: a hot-reload of an injury member fires the Part C `info!` line naming what
-/// reloaded. Run via `run_system_once` on the calling thread so the thread-local
-/// `tracing` capture sees the emission.
-///
-/// Pin-discriminating: removing the `info!` leaves the capture empty.
 #[test]
 fn injury_hot_reload_logs_an_info_line() {
     let mut app = app();

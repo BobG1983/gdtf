@@ -1,12 +1,5 @@
-//! GTW-328 — the `FireDeclaration` combat-log emission contract on the fire
-//! dispatch.
-
 use super::support::*;
 
-// GTW-328 — a proceeding shot emits exactly ONE FireDeclaration carrying the shooter, the
-// resolved target occupant (the in-line target placed at the aimed cell), and the request's
-// mode kind. One declaration even for a multi-round burst is asserted separately; here a
-// single shot proves the payload wiring.
 #[test]
 fn fire_dispatch_emits_one_fire_declaration_with_shooter_target_and_mode() {
     let (mut app, shooter, target) = fire_scenario();
@@ -44,9 +37,6 @@ fn fire_dispatch_emits_one_fire_declaration_with_shooter_target_and_mode() {
     );
 }
 
-// GTW-328 — a BURST volley declares the shot ONCE (the log announces "fired a burst" a
-// single time) even though it fires multiple rounds (multiple ShotFired). This pins the
-// one-declaration-per-request contract distinct from the per-round outcome signal.
 #[test]
 fn fire_dispatch_emits_one_declaration_per_request_even_for_a_burst() {
     let (mut app, shooter, _target) = fire_scenario();
@@ -76,7 +66,6 @@ fn fire_dispatch_emits_one_declaration_per_request_even_for_a_burst() {
         Some(ModeKind::Burst),
         "the declaration carries the burst mode kind",
     );
-    // Cross-check: the per-round outcome signal still fires three times (3 rounds).
     assert_eq!(
         drain_shots_fired(&mut app).len(),
         3,
@@ -84,8 +73,6 @@ fn fire_dispatch_emits_one_declaration_per_request_even_for_a_burst() {
     );
 }
 
-// GTW-328 — a shot aimed at an EMPTY cell (no occupant placed) declares with target=None:
-// the log says "fired at <cell>" with no target name. The shooter fires up an empty column.
 #[test]
 fn fire_dispatch_declaration_target_is_none_for_an_empty_cell() {
     let mut app = headless_app();
@@ -108,8 +95,6 @@ fn fire_dispatch_declaration_target_is_none_for_an_empty_cell() {
     );
 }
 
-// GTW-328 — a REJECTED out-of-arc shot (cannot afford turn + fire) emits NO FireDeclaration:
-// the log only announces shots that are actually taken. Mirrors the GTW-242 reject fixture.
 #[test]
 fn rejected_shot_emits_no_fire_declaration() {
     let mut app = headless_app();
@@ -120,7 +105,6 @@ fn rejected_shot_emits_no_fire_declaration() {
         );
         return;
     };
-    // fire_cost <= tu < fire_cost + turn_cost: affords the shot, NOT the turn+shot → Reject.
     let tu_start = fire_cost + 1;
     let shooter = spawn_arc_shooter(app.world_mut(), 5, 5, Direction::East, tu_start);
     let _target = place_arc_target(&mut app, 5, 8);
@@ -139,10 +123,6 @@ fn rejected_shot_emits_no_fire_declaration() {
     );
 }
 
-// GTW-328 — the FireDeclaration emit adds NO RNG draw: two same-seed dispatches over
-// identical worlds produce byte-equal post-fire state. (If the declaration path rolled
-// anything, two runs would diverge.) This pins the determinism-preserved clause on the
-// real dispatch path, alongside the existing fire-determinism test.
 #[test]
 fn fire_declaration_emit_preserves_determinism() {
     let snapshot = || {

@@ -1,6 +1,3 @@
-//! What each launch / stop outcome renders — including the recipe-mismatch error and the
-//! timeout message that names the build as the cause (GTW-808 clause 7).
-
 use serde_json::json;
 
 use super::support::a_directory_that_is_not_the_hosts;
@@ -14,9 +11,6 @@ use crate::{
     mcp::control::render::{render_launch, render_stop},
 };
 
-/// An `already_running` answer reports the RUNNING child's recipe — the package,
-/// features, and directory of the build the caller is about to drive — not the recipe this
-/// call happened to ask for.
 #[test]
 fn already_running_reports_the_running_childs_recipe() {
     let dir = a_directory_that_is_not_the_hosts();
@@ -48,8 +42,6 @@ fn already_running_reports_the_running_childs_recipe() {
     assert!(text.contains(shown), "rendered: {text}");
 }
 
-/// A recipe mismatch renders as a tool ERROR naming both the running recipe and the
-/// requested one — never a success-shaped block for a build that was never started.
 #[test]
 fn a_recipe_mismatch_is_a_tool_error_naming_both_recipes() {
     let dir = a_directory_that_is_not_the_hosts();
@@ -90,9 +82,6 @@ fn a_recipe_mismatch_is_a_tool_error_naming_both_recipes() {
     );
 }
 
-/// A boot-timeout failure renders as a tool error carrying the output tail — and NAMES
-/// THE BUILD as the likely cause, with the warm-up command, rather than reporting a bare
-/// "timed out" (GTW-808 clause 7).
 #[test]
 fn render_launch_timeout_names_the_build_and_carries_the_tail() {
     let rendered = render_launch(
@@ -123,13 +112,6 @@ fn render_launch_timeout_names_the_build_and_carries_the_tail() {
     assert!(text.contains("editor"), "names the host: {text}");
 }
 
-/// A NAMED orphan that survived its stop renders as a tool error carrying that process id —
-/// the exact shape the bug report showed, where pid 43744 was alive and holding 7617 and
-/// a `stop(host="editor")` answered `{"status":"not_running"}` (GTW-926).
-///
-/// The sibling case, an orphan the operating system could not name, is covered in
-/// [`launch`](super::launch); this is the arm a real reconnect hits, since `lsof` names the
-/// holder whenever it is installed.
 #[test]
 fn a_named_orphan_that_survives_is_a_tool_error_naming_the_process() {
     let rendered = render_stop(

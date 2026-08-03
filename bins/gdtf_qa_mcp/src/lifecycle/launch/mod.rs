@@ -1,12 +1,3 @@
-//! The launch recipe — what one launch runs, as typed values (GTW-875).
-//!
-//! - [`values`] — the newtypes a recipe is written in: [`CargoPackage`], [`FeatureName`] /
-//!   [`FeatureList`], [`WorkingDir`], and [`EnvVar`] / [`EnvOverrides`].
-//! - [`channel`] — the [`QaChannel`] pair of environment-variable names one host's QA
-//!   control channel is driven by (GTW-808).
-//! - [`spec`] — the [`LaunchSpec`] aggregate the spawner reads, plus the default game and
-//!   editor recipes.
-
 pub mod channel;
 pub mod spec;
 pub mod values;

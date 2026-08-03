@@ -5,31 +5,17 @@ edition = "2024"
 
 [dependencies]
 bevy = { workspace = true }
-# GTW-14: explicit direct dep on rand_chacha so we can name ChaCha12Rng in sim source.
-# The portable rand-family ChaCha12 RNG (rand_core 0.10) — replaces the non-portable
-# `StdRng` for cross-build/cross-platform replay determinism.
 rand_chacha = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
 
 [features]
-# Expose the canonical `test_support` builders (ganger / situation / registry
-# fixtures) to downstream crates' tests. The sim is the LOW-LEVEL crate, so its
-# shared test builders live ON it behind this feature — a downstream crate that
-# needs them adds `gdtf_battle_sim = { ..., features = ["test-support"] }`. The
 # sim's OWN `#[cfg(test)]` unit tests see the module via the `any(test, ...)` cfg
-# on the module, so this feature need add nothing. Test/dev only — the binary
-# build enables it nowhere, so `test_support` is cfg'd out of the binary.
 test-support = []
 
 [dev-dependencies]
-# Test-only: the CombatTuning RON round-trip exercises the real serde path.
 ron = { workspace = true }
-# Test-only self-dependency with `test-support` ON, so the crate's INTEGRATION
-# tests (`tests/*.rs` — a separate compilation unit that links the crate built
-# WITHOUT `--cfg test`) can reach the canonical `test_support` builders. The sim's
 # OWN in-crate `#[cfg(test)]` unit tests already see the module via the
-# `any(test, ...)` cfg; integration tests need the feature explicitly enabled.
 gdtf_battle_sim = { path = ".", features = ["test-support"] }
 
 [lints]

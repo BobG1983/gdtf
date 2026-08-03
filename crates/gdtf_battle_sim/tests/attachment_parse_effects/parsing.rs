@@ -1,17 +1,12 @@
-//! RON round-trip — an `AttachmentSpec` parses its `effects:` list, and a weapon parses its
-//! `attachments:` key list (an omitted field defaults to an empty list).
-
 use gdtf_battle_sim::{
     effects::attachments::{AimDelta, AttachmentEffect},
     equipment::attachments::{AttachmentName, AttachmentSlot, AttachmentSpec, SlotCapacity},
     weapon::WeaponSpec,
 };
 
-// ── RON round-trip ─────────────────────────────────────────────────────────────
 
 #[test]
 fn attachment_spec_parses_effects_from_ron() {
-    // An attachment item's `effects:` list round-trips by variant name, each with its payload.
     let ron = r#"(
         display_name: "Bionic Sight",
         slot: Sight,
@@ -44,7 +39,6 @@ fn attachment_spec_parses_effects_from_ron() {
 
 #[test]
 fn weapon_attachments_and_omitted_field_parse_from_ron() {
-    // A weapon references attachment items BY KEY in its `attachments:` list.
     let with = r#"(
         base_spread: 0.05, accuracy: 5.0, kickback: 0.0, fatal_bias: 3.0,
         damage: 12, punch: 10, shred: 3, damage_type: Kinetic,

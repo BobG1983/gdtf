@@ -3,26 +3,12 @@ name = "gdtf_qa_mcp"
 version = "0.1.0"
 edition = "2024"
 
-# The GTW-741 QA-net T8 binary: the MCP stdio host that bridges a language-model
-# harness to the running game's `net_qa` control channel. It is a MINIMAL dev tool —
-# its dependency set is deliberately tiny so it never taxes the workspace gate build:
-#
-# - `gdtf_qa_protocol` — the shared typed wire contract (T1). The bin READS its
-#   request/response vocabulary and reuses its length-prefixed compact-RON framing
-#   codec; it never reimplements framing.
-# - `serde` / `serde_json` — the MCP side speaks JSON-RPC 2.0, so JSON in/out.
-#
-# Everything is blocking `std` I/O (stdin/stdout for the MCP side, a loopback
-# `TcpStream` for the game side) — NO Bevy, NO tokio, NO async runtime, NO rmcp.
 [package.metadata.gtw]
 ticket = "GTW-741"
 
 [dependencies]
-# The shared wire contract + its framing codec (read-only dependency).
 gdtf_qa_protocol = { path = "../../crates/gdtf_qa_protocol" }
-# The serde trait surface the JSON rendering + the protocol's own derives target.
 serde = { workspace = true }
-# The MCP transport speaks JSON-RPC 2.0 — JSON parsing / building.
 serde_json = "1"
 
 [lints]

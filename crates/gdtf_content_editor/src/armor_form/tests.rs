@@ -1,9 +1,3 @@
-//! ARMOR-mode form-model unit tests (GTW-479 A2): the draft's mutators, the one-shot
-//! autoload lifecycle, the loader-schema projection, and the PURE halves of the save
-//! path (file name / path resolution / serialize round-trip). The REAL folder-walk
-//! round-trip (write into a `TempDir` assets root → the actual [`ArmorFamily`] loader)
-//! lives in `tests/armor_mode.rs`.
-
 use gdtf_assets::{ContentFamily, serialize_ron_pretty};
 use gdtf_battle_sim::armor::{
     ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection, ArmorSpec,
@@ -16,10 +10,6 @@ use super::{
     save::{armor_file_name, armor_save_path_in, draft_to_spec},
 };
 
-/// A per-part-distinct suit fixture. Magnitudes are arbitrary fixture data (NOT pinned
-/// shipped tuning): the tests assert values SURVIVE, never that they equal a shipped
-/// number. Every piece differs from its neighbors so a swapped body-part slot cannot
-/// pass the equality pins.
 fn fixture_spec() -> ArmorSpec {
     let piece = |floor: i32, protection: i32, integrity: i32, hardness: i32, ty: ArmorType| {
         ArmorPiece::new(
@@ -40,9 +30,6 @@ fn fixture_spec() -> ArmorSpec {
     ])
 }
 
-/// The `OnEnter(Editing)` seed is pristine: empty, with the one-shot autoload PENDING;
-/// loading an armor fills the form AND marks the autoload done (so a later frame never
-/// re-seeds over the author's work). "New armor" mints a done-autoload empty form.
 #[test]
 fn default_is_pristine_and_load_armor_fills_the_form() {
     let mut draft = ArmorDraft::default();
@@ -76,9 +63,6 @@ fn default_is_pristine_and_load_armor_fills_the_form() {
     );
 }
 
-/// [`ArmorDraft::piece_mut`] addresses exactly the piece protecting the given part —
-/// an edit through it lands on that slot of the projected spec and nowhere else (the
-/// per-body-part rows edit through this accessor).
 #[test]
 fn piece_mut_edits_exactly_the_addressed_part() {
     let mut draft = ArmorDraft::new_armor();
@@ -91,15 +75,10 @@ fn piece_mut_edits_exactly_the_addressed_part() {
         "the torso edit lands on the torso"
     );
     assert_eq!(spec.left_leg.armor_type, ArmorType::Hazard);
-    // Neighbor slots untouched (a swapped-slot regression would clobber these).
     assert_eq!(*spec.head.protection, 0);
     assert_eq!(spec.right_leg.armor_type, ArmorType::Plated);
 }
 
-/// The GTW-636-parity identity round-trip through the ARMOR mode's projection: an
-/// edited draft → [`draft_to_spec`] → serialize (the shared pretty-RON writer) →
-/// deserialize the way `RonAsset<ArmorSpec>` does → reload into a fresh draft →
-/// structural equality. No pinned magnitudes — identity, not a number lock.
 #[test]
 fn edited_armor_round_trips_through_the_loader_schema() {
     let mut edited = ArmorDraft::new_armor();
@@ -133,10 +112,6 @@ fn edited_armor_round_trips_through_the_loader_schema() {
     );
 }
 
-/// The save file name derives its compound suffix from [`ArmorFamily::EXTENSION`] (the
-/// one-owner extension discriminant — GTW-621), a path-hostile name sanitizes through
-/// the shared helper, and an unnameable armor falls back to the documented `unnamed_armor`
-/// stem; the resolved path lands under [`ArmorFamily::FOLDER`].
 #[test]
 fn save_file_name_and_path_derive_from_the_one_owner_spellings() {
     let name = ArmorName::new("carapace_plate".to_owned());

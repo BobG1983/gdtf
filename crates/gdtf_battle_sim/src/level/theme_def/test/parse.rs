@@ -1,15 +1,6 @@
-//! C1 — a theme RON literal (key uuid, `display_name`, `default_floor` terrain-uuid,
-//! terrain list of uuids) parses into a [`UuidThemeDef`] via [`ron::de::from_str`].
-//!
-//! No magnitude assertions — the UUID fixtures are mechanism, not balance; this test
-//! asserts the RON SHAPE parses and routes into the right fields (the brittle-test rule).
-
 use super::super::UuidThemeDef;
 
-/// C1 — a NAMED-STRUCT RON literal for a theme parses into a [`UuidThemeDef`]. The
-/// `default_floor` is a single terrain UUID string and `terrain` is a list of UUID strings,
 /// proving the [`TerrainUuid`](crate::terrain::def::TerrainUuid) `#[serde(transparent)]` wire
-/// form rides correctly inside the theme.
 #[test]
 fn theme_def_ron_parses() {
     let ron = r#"(

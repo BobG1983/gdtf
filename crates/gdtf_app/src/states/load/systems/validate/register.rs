@@ -1,7 +1,3 @@
-//! The GTW-582 validation-pass **registration surface**: the one call the Load
-//! plugin makes to install the whole reference-integrity pass, plus the window
-//! condition that opens it once every gate registry has resolved.
-
 use bevy::{
     ecs::{schedule::SystemCondition as _, system::SystemParam},
     prelude::{App, IntoScheduleConfigs, Res, Update, in_state, not, resource_exists},
@@ -28,46 +24,22 @@ use gdtf_content_families::{
 use super::{prefabs, situation};
 use crate::states::{AppState, load::resources::LoadedSituation};
 
-/// Presence-probes over every resource the per-edge checks read — bundled into
-/// one [`SystemParam`] so the [`reference_graph_ready`] window condition stays
-/// under clippy's argument-count gate (the `LoadAssetCollections` precedent).
-///
-/// This is deliberately the SAME set the `transition_to_intro` gate requires
-/// (minus the theme/tunings the checks never read): the checks take plain
-/// `Res<…>` because the `Check` set only opens once every probe here is `Some`
-/// (a set's run condition is evaluated once and gates every member — the
-/// bevy-traps #1 guard lives HERE, once, instead of on each check).
 #[derive(SystemParam)]
 pub(super) struct ReferenceGraphResources<'w> {
-    /// The resolved authored situation (the graph's root).
-    situation:     Option<Res<'w, LoadedSituation>>,
-    /// The gang rosters (situation → gang/member refs).
-    gangs:         Option<Res<'w, GangRegistry>>,
-    /// The ranged weapons (member / emplacement refs).
-    weapons:       Option<Res<'w, WeaponRegistry>>,
-    /// The melee weapons (member refs + the implicit `fists` default).
-    melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
-    /// The armor (member refs).
-    armor:         Option<Res<'w, ArmorRegistry>>,
-    /// The attachment items (weapon refs).
-    attachments:   Option<Res<'w, AttachmentRegistry>>,
-    /// The area-damage-field catalog (situation field refs).
-    fields:        Option<Res<'w, FieldDefRegistry>>,
-    /// The injury defs (weighting-row refs).
-    injuries:      Option<Res<'w, InjuryRegistry>>,
-    /// The terrain defs (situation / theme / prefab refs).
-    terrain:       Option<Res<'w, TerrainDefRegistry>>,
-    /// The sprite defs (terrain `graphic_name` refs — GTW-663).
-    sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
-    /// The themes (situation / prefab refs).
-    themes:        Option<Res<'w, UuidThemeRegistry>>,
-    /// The prefab fragments (theme / terrain refs).
-    prefabs:       Option<Res<'w, PrefabRegistry>>,
+        situation:     Option<Res<'w, LoadedSituation>>,
+        gangs:         Option<Res<'w, GangRegistry>>,
+        weapons:       Option<Res<'w, WeaponRegistry>>,
+        melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
+        armor:         Option<Res<'w, ArmorRegistry>>,
+        attachments:   Option<Res<'w, AttachmentRegistry>>,
+        fields:        Option<Res<'w, FieldDefRegistry>>,
+        injuries:      Option<Res<'w, InjuryRegistry>>,
+        terrain:       Option<Res<'w, TerrainDefRegistry>>,
+        sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
+        themes:        Option<Res<'w, UuidThemeRegistry>>,
+        prefabs:       Option<Res<'w, PrefabRegistry>>,
 }
 
-/// The validation WINDOW condition: every resource the reference graph spans
-/// has resolved (each is inserted on its load's success OR failure fallback,
-/// so this always eventually opens — the no-strand guarantee holds).
 pub(super) const fn reference_graph_ready(graph: ReferenceGraphResources) -> bool {
     graph.situation.is_some()
         && graph.gangs.is_some()
@@ -83,19 +55,6 @@ pub(super) const fn reference_graph_ready(graph: ReferenceGraphResources) -> boo
         && graph.prefabs.is_some()
 }
 
-/// Install the GTW-582 reference-integrity pass on the game's `Load` chain:
-/// the validation plumbing ([`ContentValidationAppExt::init_content_validation`]),
-/// the `Check`-set window (in `Load`, every graph resource resolved, not yet
-/// checked), and one [`register_reference_check`] hook per content-graph edge
-/// (gate directive P1 — edge/family N+1 is ONE more hook here, never a shared
-/// walker edit).
-///
-/// Registered UNCONDITIONALLY (no `AssetServer` self-gate): under a headless
-/// `MinimalPlugins` harness the seeded gate resources open the window, the
-/// checks walk the (empty, seeded) graph, and the publish stamps
-/// [`ContentValidationDone`](gdtf_assets::ContentValidationDone) — which the
-/// `transition_to_intro` gate now requires, so the pass is explicitly ordered
-/// before the `Load → Intro` transition on EVERY path.
 pub(in crate::states::load) fn add_content_validation(app: &mut App) {
     app.init_content_validation();
     app.configure_sets(
@@ -110,10 +69,6 @@ pub(in crate::states::load) fn add_content_validation(app: &mut App) {
         .register_reference_check(situation::check_situation_theme_ref)
         .register_reference_check(situation::check_situation_terrain_refs)
         .register_reference_check(situation::check_situation_field_refs)
-        // The six HOST-AGNOSTIC edge checks, shared with the content editor
-        // via gdtf_content_families::validate (GTW-630; the injuries edge
-        // joined the shared set in GTW-654 when the editor started loading
-        // the injuries family; the terrain graphic_name edge in GTW-663).
         .register_reference_check(check_gang_equipment_refs)
         .register_reference_check(check_weapon_attachment_refs)
         .register_reference_check(check_theme_terrain_refs)

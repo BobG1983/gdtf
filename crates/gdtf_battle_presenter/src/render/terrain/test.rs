@@ -1,11 +1,3 @@
-//! Unit tests for the static-battlefield terrain draw's pure helpers.
-//!
-//! The retired role-table serde pins (parse / field-set / round-trip over
-//! `tile_roles.spritedef.ron`) left with the table (GTW-665); the successor data
-//! pins live in `roles/test.rs` (vocabulary↔seeded-catalog lockstep) and the
-//! `terrain_draw` / `vertical_link_draw` integration suites (the drawn rects
-//! against the seeded defs).
-
 use bevy::math::{URect, UVec2, Vec2};
 use gdtf_battle_sim::{
     occupancy::{GRID_HEIGHT, GRID_WIDTH},
@@ -21,7 +13,6 @@ use super::{
     static_map::i32_extent,
 };
 
-/// A Sheet-source def fixture at the given rect + anchor.
 fn sheet_def(x: u32, y: u32, w: u32, h: u32, ax: u32, ay: u32) -> SpriteDef {
     SpriteDef {
         source:    SpriteSource::Sheet {
@@ -42,9 +33,6 @@ fn sheet_def(x: u32, y: u32, w: u32, h: u32, ax: u32, ay: u32) -> SpriteDef {
     }
 }
 
-/// GTW-665 C1 — `source_parts` / `source_px_size` split a Sheet source into its sheet
-/// path + rect (with a knowable pixel extent) and a File source into its path alone
-/// (extent unknowable headlessly — the GTW-664 layered-knowledge rule: no invented dims).
 #[test]
 fn source_projections_split_sheet_and_file() {
     let sheet = sheet_def(96, 0, 16, 16, 8, 8);
@@ -71,9 +59,6 @@ fn source_projections_split_sheet_and_file() {
     );
 }
 
-/// GTW-665 C1 — `single_rect_layout` carries EXACTLY the authored region at index 0:
-/// the material's UV bake reads `layout.textures[0]`, so this is the rect the shader
-/// samples — identical to a grid layout's entry for a grid-aligned rect.
 #[test]
 fn single_rect_layout_carries_exactly_the_authored_region() {
     let def = sheet_def(208, 16, 16, 16, 8, 8);
@@ -96,11 +81,6 @@ fn single_rect_layout_carries_exactly_the_authored_region() {
     );
 }
 
-/// GTW-665 C2 — the anchor offset: a CENTER anchor is exactly `Vec2::ZERO` (the
-/// identical-pixels guarantee for every seeded def), an off-center anchor displaces the
-/// sprite CENTER so the anchor point sits ON the cell position (bottom-center anchor →
-/// the sprite rises by half its drawn height), and a degenerate zero extent is a
-/// documented no-op.
 #[test]
 fn anchor_offset_center_is_zero_and_bottom_anchor_lifts() {
     let drawn = Vec2::splat(16.0);
@@ -111,8 +91,6 @@ fn anchor_offset_center_is_zero_and_bottom_anchor_lifts() {
         "the seeded CENTER anchor must be a zero offset (identical pixels)",
     );
 
-    // Bottom-center ground contact (8, 16): the anchor sits at the sprite's bottom edge,
-    // so the CENTER rises by half the drawn height (+y is up in world space).
     let bottom = sheet_def(0, 0, 16, 16, 8, 16);
     assert_eq!(
         anchor_world_offset(&bottom, UVec2::new(16, 16), drawn),
@@ -128,14 +106,12 @@ fn anchor_offset_center_is_zero_and_bottom_anchor_lifts() {
     );
 }
 
-/// `i32_extent` returns the grid extent unchanged for the real 60x60 grid.
 #[test]
 fn i32_extent_passes_the_real_grid_extents() {
     assert_eq!(i32_extent(GRID_WIDTH), 60, "GRID_WIDTH is 60");
     assert_eq!(i32_extent(GRID_HEIGHT), 60, "GRID_HEIGHT is 60");
 }
 
-/// `ActiveLevel` defaults to the ground floor (level 0).
 #[test]
 fn active_level_defaults_to_level_zero() {
     assert_eq!(

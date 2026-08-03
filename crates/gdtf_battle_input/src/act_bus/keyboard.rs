@@ -1,26 +1,3 @@
-//! The keyboard press surface (GTW-225 / GTW-48 S8 + GTW-227 / 222b): the systems
-//! that read the data-driven [`Keybinds`] and PUSH the matching [`ActIntent`] onto the
-//! shared queue.
-//!
-//! 222a's no-act keys — select-clear, level-up, level-down ([`select_clear_key`] /
-//! [`level_keys`]) — read the bound [`KeyCode`] off the resident [`Keybinds`] resource
-//! ([`BoundKey::key_code`](crate::keybinds::BoundKey::key_code), NO hardcoded literal)
-//! and `push` the intent so the ONE
-//! [`dispatch_act_intents`](crate::dispatch_act_intents) drain acts on it.
-//!
-//! 222b (GTW-227) adds the act-bearing keys — stance-cycle / aim-toggle / facing-cycle
-//! ([`posture_keys`]) — reading the bound [`KeyCode`] off the SAME [`Keybinds`] table
-//! and pushing the act-bearing [`ActIntent`] variants ([`ActIntent::StanceCycle`] /
-//! [`ActIntent::AimToggle`] / [`ActIntent::FacingCycle`]) onto the SAME queue the 222c
-//! buttons write. These act keys only push WHEN a [`SelectedShooter`] is set — with no
-//! selection they write NO intent (AC6). (The blind fire-mode-cycle key was REMOVED in
-//! GTW-254 — fire-mode selection is now the `gdtf_app` popup picker.)
-//!
-//! Gated `run_if(resource_exists::<Keybinds>)` by the plugin (in addition to the
-//! battle gate): the table is asset-loaded, so a `MinimalPlugins` headless app with no
-//! `AssetServer` never resolves it and these systems simply do not run (no panic) —
-//! a test that wants them inserts [`Keybinds`] directly.
-
 use bevy::{input_focus::InputFocus, prelude::*};
 
 use crate::{
@@ -28,14 +5,6 @@ use crate::{
     focus_bridge::{PanelNavOrder, focused_panel_button},
 };
 
-/// Reads the level-up / level-down keys and PUSHES the matching level [`ActIntent`].
-///
-/// On a `just_pressed` of the [`Keybinds::level_up`] / [`Keybinds::level_down`] key,
-/// pushes [`ActIntent::LevelUp`] / [`ActIntent::LevelDown`] onto the
-/// [`PendingActIntent`] queue — the write point the
-/// [`dispatch_act_intents`](crate::dispatch_act_intents) drain clamps into
-/// `ActiveLevel`. No `KeyCode` literal: the bound code is read off the loaded
-/// [`Keybinds`] resource. Param-only (`bevy-traps.md` #7).
 pub fn level_keys(
     keys: Res<ButtonInput<KeyCode>>,
     binds: Res<Keybinds>,
@@ -49,15 +18,6 @@ pub fn level_keys(
     }
 }
 
-/// Reads the full-view toggle key and PUSHES [`ActIntent::ToggleFullView`] (GTW-521).
-///
-/// On a `just_pressed` of the [`Keybinds::toggle_full_view`] key, pushes
-/// [`ActIntent::ToggleFullView`] onto the [`PendingActIntent`] queue — the write point the
-/// [`dispatch_act_intents`](crate::dispatch_act_intents) drain flips the presenter-owned
-/// [`ViewMode`](gdtf_battle_presenter::ViewMode) with. Like [`level_keys`] it is a GLOBAL
-/// presenter-view control (NOT gated on a [`SelectedShooter`] — the view mode is
-/// battlefield-wide, not per-ganger). No `KeyCode` literal: the bound
-/// code is read off the loaded [`Keybinds`] resource. Param-only (`bevy-traps.md` #7).
 pub fn full_view_key(
     keys: Res<ButtonInput<KeyCode>>,
     binds: Res<Keybinds>,
@@ -68,21 +28,6 @@ pub fn full_view_key(
     }
 }
 
-/// Reads the select-clear key and PUSHES [`ActIntent::SelectionClear`].
-///
-/// On a `just_pressed` of the [`Keybinds::select_clear`] key, pushes
-/// [`ActIntent::SelectionClear`] onto the [`PendingActIntent`] queue — the write point the
-/// drain uses to clear [`SelectedShooter`]. No `KeyCode` literal: the bound code is
-/// read off the loaded [`Keybinds`] resource. Param-only (`bevy-traps.md` #7).
-///
-/// GTW-782 CONTEXT GUARD: Escape carries two mutually-exclusive meanings gated on panel
-/// focus. When a battlescape HUD panel currently holds keyboard focus
-/// ([`focused_panel_button`]), Escape backs out of panel focus — handled by the app-side
-/// panel-focus bridge (`gdtf_app`'s `bridge_panel_focus_nav` / `apply_focus_cancel`) — so
-/// this handler SKIPS (it must not ALSO clear the ganger selection). With no panel focused
-/// it keeps its clear-selection meaning exactly as before. [`InputFocus`] is [`Option`] so
-/// a harness without the focus framework reads as "no panel focus" and clears selection as
-/// before.
 pub fn select_clear_key(
     keys: Res<ButtonInput<KeyCode>>,
     binds: Res<Keybinds>,
@@ -90,7 +35,6 @@ pub fn select_clear_key(
     panels: Query<(), With<PanelNavOrder>>,
     mut pending: ResMut<PendingActIntent>,
 ) {
-    // A panel holds focus → Escape means "cancel panel focus", not "clear selection".
     if focused_panel_button(focus.as_deref(), &panels).is_some() {
         return;
     }
@@ -99,25 +43,12 @@ pub fn select_clear_key(
     }
 }
 
-/// Reads the stance-cycle / aim-toggle / facing-cycle keys and PUSHES the matching
-/// act-bearing posture [`ActIntent`] for the [`SelectedShooter`] (GTW-227 / 222b).
-///
-/// On a `just_pressed` of the [`Keybinds::stance_cycle`] / [`Keybinds::aim_toggle`] /
-/// [`Keybinds::facing_cycle`] key — and ONLY while a [`SelectedShooter`] is set —
-/// pushes [`ActIntent::StanceCycle`] / [`ActIntent::AimToggle`] /
-/// [`ActIntent::FacingCycle`] onto the [`PendingActIntent`] queue. The drain reads the
-/// selected actor's CURRENT posture, steps the authored [`crate::cycle`] order, and
-/// emits the matching `gdtf_battle_sim::acts::Set*Requested` — the SAME queue the 222c
-/// buttons write. With no selection it writes NO intent (AC6). No `KeyCode` literal:
-/// the bound codes are read off the loaded [`Keybinds`] resource. Param-only
-/// (`bevy-traps.md` #7).
 pub fn posture_keys(
     keys: Res<ButtonInput<KeyCode>>,
     binds: Res<Keybinds>,
     selected: Res<SelectedShooter>,
     mut pending: ResMut<PendingActIntent>,
 ) {
-    // With no selection these act keys are inert — they write no intent (AC6).
     if selected.is_none() {
         return;
     }
@@ -132,30 +63,6 @@ pub fn posture_keys(
     }
 }
 
-/// Reads the SELECTION-CYCLE key (`Tab`) and PUSHES the matching cycle [`ActIntent`]
-/// (GTW-458): [`ActIntent::SelectPrev`] when `Shift` is held, else [`ActIntent::SelectNext`].
-///
-/// On a `just_pressed` of the [`Keybinds::select_next`] key the cycle direction is the held
-/// `Shift` modifier: `Shift+Tab` → [`ActIntent::SelectPrev`], plain `Tab` →
-/// [`ActIntent::SelectNext`]. The ONE [`dispatch_act_intents`](crate::dispatch_act_intents)
-/// drain steps the [`SelectedShooter`] through the player gang in the shared
-/// `(z, y, x)` order, wrapping (the same queue the on-bar Prev/Next buttons write —
-/// ADR-0001).
-///
-/// Unlike [`posture_keys`], this key is NOT gated on an existing selection: cycling must be
-/// able to MAKE a first selection (the drain's cycle arms select the first/last player ganger
-/// from `None`). No `KeyCode` literal for the bound cycle key — it is read off the loaded
-/// [`Keybinds`] resource; reading [`KeyCode::ShiftLeft`] / [`KeyCode::ShiftRight`] DIRECTLY is
-/// acceptable framework modifier input (not a bound act). Param-only (`bevy-traps.md` #7).
-///
-/// GTW-782 CONTEXT GUARD: `Tab` carries two mutually-exclusive meanings gated on panel
-/// focus (the user's ruling — the same physical key, mutually-exclusive modes). When a
-/// battlescape HUD panel currently holds keyboard focus ([`focused_panel_button`]), Tab
-/// drives PANEL focus-nav — handled by the app-side panel-focus bridge (`gdtf_app`'s
-/// `bridge_panel_focus_nav`) — so this ganger-cycle handler SKIPS. With no panel focused it
-/// keeps its cycle-ganger meaning exactly as before. [`InputFocus`] is [`Option`] so a
-/// harness without the focus framework reads as "no panel focus" and cycles gangers as
-/// before.
 pub fn cycle_selection_keys(
     keys: Res<ButtonInput<KeyCode>>,
     binds: Res<Keybinds>,
@@ -163,13 +70,10 @@ pub fn cycle_selection_keys(
     panels: Query<(), With<PanelNavOrder>>,
     mut pending: ResMut<PendingActIntent>,
 ) {
-    // A panel holds focus → Tab drives panel focus-nav, not ganger cycling.
     if focused_panel_button(focus.as_deref(), &panels).is_some() {
         return;
     }
     if keys.just_pressed(binds.select_next()) {
-        // Shift (either side) selects PREVIOUS; otherwise NEXT. Modifier keys are framework
-        // input read directly, not a bound act.
         let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
         pending.push(if shift {
             ActIntent::SelectPrev

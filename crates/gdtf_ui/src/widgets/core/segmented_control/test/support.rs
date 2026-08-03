@@ -1,7 +1,3 @@
-//! Shared segmented-control-only test fixtures: the `FireMode` identity
-//! marker, the segment/look probes, the discriminating `SEG_COLORS` palette,
-//! and the 3-segment fire-mode spawner.
-
 use bevy::{
     ecs::system::SystemState,
     prelude::*,
@@ -14,11 +10,9 @@ use super::super::{
 };
 use crate::widgets::core::Orientation;
 
-/// A caller-attached identity marker on a segmented control.
 #[derive(Component, Clone, Copy)]
 pub(super) struct FireMode;
 
-/// A four-color segment palette with all four colors distinct so asserts discriminate.
 pub(super) const SEG_COLORS: SegmentColors = SegmentColors {
     active_bg:   Color::srgb(0.2, 0.7, 0.2),
     active_text: Color::srgb(1.0, 1.0, 1.0),
@@ -26,8 +20,6 @@ pub(super) const SEG_COLORS: SegmentColors = SegmentColors {
     base_text:   Color::srgb(0.5, 0.5, 0.5),
 };
 
-/// The segments of the control rooted at `control`, ordered by child order, as
-/// `(entity, index)`.
 pub(super) fn segments_of(app: &mut App, control: Entity) -> Vec<(Entity, usize)> {
     let mut state: SystemState<Query<&Children>> = SystemState::new(app.world_mut());
     let Ok(children) = state.get(app.world()) else {
@@ -46,13 +38,11 @@ pub(super) fn segments_of(app: &mut App, control: Entity) -> Vec<(Entity, usize)
         .collect()
 }
 
-/// The (background color, label weight, label color) of a segment entity.
 pub(super) fn segment_look(app: &mut App, segment: Entity) -> (Color, FontWeight, Color) {
     let bg = app
         .world()
         .get::<BackgroundColor>(segment)
         .map_or(Color::NONE, |c| c.0);
-    // Find the label text child.
     let label = {
         let mut state: SystemState<Query<&Children>> = SystemState::new(app.world_mut());
         let children = state.get(app.world());
@@ -77,7 +67,6 @@ pub(super) fn segment_look(app: &mut App, segment: Entity) -> (Color, FontWeight
     (bg, weight, color)
 }
 
-/// Builds a 3-segment fire-mode control with segment 0 (`Single`) active.
 pub(super) fn spawn_fire_mode(app: &mut App) -> Entity {
     let labels = [
         SegmentLabel::new("Single"),

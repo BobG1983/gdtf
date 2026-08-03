@@ -1,78 +1,11 @@
-//! Presentation layer for GDTFs turn based battle system.
-//!
 //! This is the VIEW that mirrors the authoritative, render-free combat sim
-//! (`gdtf_battle_sim`). The dependency is strictly one-way: the presenter reads
-//! sim state and renders it; the sim never reads the presenter.
-//!
-//! GTW-215 (the first GTW-48 slice) stands up the empty *home* every later slice
-//! plugs into. It lands the [`BattlePresenterPlugin`] entry point and the
-//! [`BattlePresenterMode`] selector between the real top-down renderer
-//! ([`TopDownRendererPlugin`]) and a no-op iso stub ([`IsoRendererPlugin`], a
-//! placeholder for the future iso renderer, GTW-49 / GTW-10). It spawned no camera
-//! (S2), loaded no atlas (S3), drew no sprite (S4/S5/S6), read no sim type by name,
-//! and touched no input (S7/S8).
-//!
-//! GTW-216 (the S2 slice) adds the SHARED world-camera lifecycle in
-//! [`mod@render::world_camera`]: the [`WorldCamera`]-marked `Camera2d` spawned/despawned on the
-//! `GameState::BattleScape` boundary, rendering beneath the GTW-120 UI camera on its own
-//! [`WORLD_RENDER_LAYER`]. It adds no sprite draw, atlas, or sim read.
-//!
-//! GTW-217 (the S3 slice) renames the renderer surface to `TopDown*`
-//! (the dead CP437 8×8-glyph approach is replaced by the landed role-separated 16×16
-//! top-down sprite set, GTW-224) and stands up the px/coordinate bridge in
-//! [`mod@render::topdown`]: the [`CELL_PX`] cell-size const, the [`cell_to_world`] sim→view
-//! projection, and the role-keyed [`TopDownAtlases`] resource loaded ONCE from the
-//! three render sheets (terrain / characters / effects) by [`TopDownRendererPlugin`].
-//! It still spawns NO sprite and draws NOTHING — that is S4/S5/S6.
-//!
-//! GTW-218 (the S4 slice) adds the first VISUAL draw in [`mod@render::terrain`]: the static
-//! battlefield drawn as 16x16 terrain sprites from the three sim-owned static-map
-//! resources for the presenter-owned [`ActiveLevel`], resolving each tile's pixels
-//! from its graphic name's SPRITE DEF (GTW-665 — the
-//! [`SpriteDefRegistry`](gdtf_content_families::sprites::SpriteDefRegistry) loaded from
-//! `assets/content/sprites/*.spritedef.ron` by the HOST's Load pass; the presenter's
-//! [`resolve_sprite`] is the ONE resolution both the battle draw and the content editor
-//! consume). The
-//! [`TopDownRendererPlugin`] inserts the [`ActiveLevel`]
-//! default, defines the [`PresenterSystems::Draw`] set after
-//! `SimSystems::Simulate`, and registers the one-shot [`draw_static_battlefield`] +
-//! the [`swap_destroyed_cover`] reaction (both gated on the sim's `BattleInProgress`).
-//! It draws NO gangers (S5), NO FX (S6), and reads NO input (S7/S8).
-//!
-//! GTW-342 (the squad fog WRITER, leaf 6 of the GTW-13 FOV epic) adds [`mod@actors::fog`]: the
-//! [`present_fog`] system MODULATES the already-drawn layer from the sim's
-//! [`SquadVisibility`](gdtf_battle_sim::visibility::SquadVisibility) — terrain VISIBLE → full colour /
-//! EXPLORED → full-brightness GREYSCALE (GTW-348 — colour-loss as the memory cue, not
-//! brightness-loss) / UNSEEN → hidden. Each actor sprite is hard-cut by
-//! [`is_ganger_visible`](gdtf_battle_sim::visibility::is_ganger_visible) (a player ganger always shown,
-//! an enemy / corpse shown iff its cell is squad-VISIBLE) inside the GTW-627
-//! ganger-visibility resolver ([`resolve_ganger_visibility`]), the one writer of every
-//! ganger sprite's `Visibility`. The terrain renders through a
-//! [`TerrainFogMaterial`] (a [`Material2d`](bevy::sprite_render::Material2d) with a `saturation`
-//! knob the fog writer drives per cell: `1.0` VISIBLE colour, `0.0` EXPLORED greyscale),
-//! because the [`Sprite`](bevy::prelude::Sprite) pipeline's per-channel multiply tint cannot
-//! desaturate (GTW-348); gangers stay on the sprite path. It mutates the existing material /
-//! sprites in place (never despawn + respawn) and is ordered `.after`
-//! [`draw_static_battlefield`] / [`swap_destroyed_cover`] so it always colours the LIVE
-//! terrain, even after an [`ActiveLevel`] cycle. The sim owns the fog; this is the VIEW
-//! that mirrors it (the public [`present_fog`] writer). It mints NO fire / targeting
-//! fog-gate UX (GTW-11).
-
 mod plugin;
 
-/// Dynamic per-entity view layer: character sprites, fog-of-war view, transient combat FX.
 pub mod actors;
-/// Input-bridge overlays: highlight, path preview, fire target, and the shared targeting gate.
 pub mod overlays;
-/// The presenter's own clock over the sim's act log: the playback cursor, the drawn-state
-/// mirrors it writes, and the catch-up predicate the input gate keys on (GTW-727).
 pub mod playback;
-/// Static rendering foundation: top-down projection/atlases, world camera, terrain draw.
 pub mod render;
 
-// Crate-root module re-export so intra-crate `crate::fx::` sub-path references in
-// tests (e.g. `actors/fx/impact.rs`) keep resolving after the `fx` module moved
-// from the crate root into `actors/`.
 pub use actors::{
     fog::{
         Brightness, ShownSquadVisibility, TerrainFogMaterial, TerrainFogUniform, present_fog,
@@ -104,7 +37,6 @@ pub use actors::{
 };
 // GTW-450 — the reachable-range overlay is the DEBUG-only overlay: every public item
 // (the read-side resource, the flag, the draw system) compiles only under `#[cfg(debug_assertions)]`
-// (C1), so the re-export is debug-gated too — in release nothing references these.
 #[cfg(debug_assertions)]
 pub use overlays::reachable::{
     REACHABLE_OVERLAY_ENV, ReachableCellSprite, ReachableCells, ReachableOverlayEnabled,

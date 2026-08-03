@@ -1,7 +1,3 @@
-//! [`handle_tool_call`] — resolve the tool, pick the host it acts on, then either drive that
-//! host's lifecycle (`launch` / `stop` / `logs`) or carry a command-layer request over that
-//! host's link and render the reply.
-
 use gdtf_qa_protocol::message::{QaRequest, QaResponse};
 use serde_json::{Value, json};
 
@@ -14,14 +10,8 @@ use crate::{
     mcp::{content::tool_error, control, tools::ToolName},
 };
 
-/// The tool argument that aims a call at one of the children.
 const HOST_ARG: &str = "host";
 
-/// Which host this call acts on: the `host` argument when the call names one, else the game.
-///
-/// EVERY tool takes it, so this is one rule rather than a per-tool map. A `host` value that
-/// names neither child is rejected as invalid params rather than silently falling back to
-/// the default, so a typo reaches the caller instead of driving the wrong process (GTW-880).
 fn resolve_host(args: &Value) -> Result<QaHost, String> {
     match args.get(HOST_ARG) {
         None | Some(Value::Null) => Ok(QaHost::Game),
@@ -36,23 +26,12 @@ fn resolve_host(args: &Value) -> Result<QaHost, String> {
     }
 }
 
-/// The outcome of handling a `tools/call` — either a JSON-RPC `result` object (which may
-/// itself carry an MCP tool error), or an invalid-params rejection the caller renders as a
-/// JSON-RPC error.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ToolCallOutcome {
-    /// A `tools/call` result object (an MCP content block).
-    Result(Value),
-    /// The call parameters were missing or invalid; the message explains why.
-    Invalid(String),
+        Result(Value),
+        Invalid(String),
 }
 
-/// Handle a `tools/call`: resolve the tool, take the link + lifecycle belonging to the host
-/// the call names, then either drive that host's lifecycle or carry the request across.
-///
-/// A missing `params`, a missing / unknown tool name, or an un-buildable request is an
-/// [`Invalid`](ToolCallOutcome::Invalid) (JSON-RPC invalid-params). A link or lifecycle
-/// failure is a tool error inside a normal result.
 #[must_use]
 pub fn handle_tool_call(params: Option<&Value>, hosts: &mut HostSet<'_>) -> ToolCallOutcome {
     let Some(params) = params else {
@@ -72,8 +51,6 @@ pub fn handle_tool_call(params: Option<&Value>, hosts: &mut HostSet<'_>) -> Tool
     };
     let pair = hosts.pair(host);
     match tool {
-        // The three host-local tools: they drive the child process itself and never reach a
-        // wire.
         ToolName::Launch => {
             let (link, lifecycle) = pair.parts();
             control::handle_launch(host, args, link, lifecycle)
@@ -85,7 +62,6 @@ pub fn handle_tool_call(params: Option<&Value>, hosts: &mut HostSet<'_>) -> Tool
     }
 }
 
-/// Handle a `commands` call: read the host's catalogue and render it at the requested detail.
 fn handle_commands(args: &Value, pair: &mut crate::hosts::HostPair<'_>) -> ToolCallOutcome {
     let detail = match parse_detail(args) {
         Ok(detail) => detail,
@@ -106,11 +82,6 @@ fn handle_commands(args: &Value, pair: &mut crate::hosts::HostPair<'_>) -> ToolC
     }
 }
 
-/// Handle a `run` call: build the request, carry it across, and render the outcome.
-///
-/// The child's own directory is read BEFORE the request travels, because the render step
-/// needs it to open a file the child wrote at a relative path (GTW-923) — the host's current
-/// directory is not the child's whenever a launch named a `working_dir` of its own.
 fn handle_run(args: &Value, pair: &mut crate::hosts::HostPair<'_>) -> ToolCallOutcome {
     let run = match parse_run(args) {
         Ok(run) => run,
@@ -134,8 +105,7 @@ mod test {
 
     use super::{QaHost, resolve_host};
 
-    /// A call naming no host reaches the game; naming one reaches that child.
-    #[test]
+        #[test]
     fn a_call_is_aimed_by_its_host_argument() {
         assert_eq!(resolve_host(&json!({})), Ok(QaHost::Game));
         assert_eq!(resolve_host(&json!({ "host": "game" })), Ok(QaHost::Game));
@@ -145,9 +115,7 @@ mod test {
         );
     }
 
-    /// A `host` value naming neither child is rejected rather than quietly falling back — a
-    /// typo must not drive the wrong process.
-    #[test]
+            #[test]
     fn an_unknown_host_word_is_rejected() {
         assert!(resolve_host(&json!({ "host": "edtior" })).is_err());
         assert!(resolve_host(&json!({ "host": 7 })).is_err());

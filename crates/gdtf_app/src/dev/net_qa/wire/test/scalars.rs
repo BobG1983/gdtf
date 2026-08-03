@@ -1,13 +1,4 @@
-//! Round-trip + transparency pins for the scalar wire newtypes — the entity tokens, the
-//! [`pointer`](super::super::pointer) vocabulary and the [`misc`](super::super::misc)
-//! handles (GTW-734, moved into the game host by GTW-943).
-//!
-//! These pins moved WITH the types. `act.rs` reaches most of the tokens only as fields
-//! inside a [`NetIntent`](super::super::act::NetIntent) round-trip, and that cannot see a
 //! lost `#[serde(transparent)]`: RON round-trips a non-transparent newtype perfectly well,
-//! it just writes `(42)` where the wire contract says `42`. Every type here is therefore
-//! pinned twice — once for the round trip, once for the compact TEXT its encoding produces.
-
 use super::assert_ron_round_trip;
 use crate::dev::net_qa::wire::{
     misc::{FireModeIndex, FrameDelay, RequestId, SeedNet, SituationRef},
@@ -15,9 +6,6 @@ use crate::dev::net_qa::wire::{
     token::{DoorToken, EmplacementToken, FocusTargetNet, GangerToken},
 };
 
-/// The compact RON `value` encodes to.
-///
-/// Fails loudly (the house `let Ok(..) else { unreachable!() }` idiom) if it cannot encode.
 fn encoded<T: serde::Serialize>(value: &T) -> String {
     let Ok(text) = ron::ser::to_string(value) else {
         unreachable!("a wire scalar serializes to compact RON");
@@ -25,7 +13,6 @@ fn encoded<T: serde::Serialize>(value: &T) -> String {
     text
 }
 
-/// Every entity token survives a compact-RON round trip.
 #[test]
 fn entity_tokens_round_trip() {
     assert_ron_round_trip(&GangerToken::new(42));
@@ -34,7 +21,6 @@ fn entity_tokens_round_trip() {
     assert_ron_round_trip(&FocusTargetNet::new(11));
 }
 
-/// Every remaining scalar handle survives a compact-RON round trip.
 #[test]
 fn scalar_handles_round_trip() {
     assert_ron_round_trip(&FireModeIndex::new(2));
@@ -44,8 +30,6 @@ fn scalar_handles_round_trip() {
     assert_ron_round_trip(&RequestId::new(1));
 }
 
-/// The pointer axes and the composed position survive a compact-RON round trip, including
-/// a NEGATIVE x — a hover expressed left of the window origin.
 #[test]
 fn pointer_positions_round_trip() {
     assert_ron_round_trip(&PointerXNet::new(-3));
@@ -56,8 +40,6 @@ fn pointer_positions_round_trip() {
     ));
 }
 
-/// Both [`MouseButtonNet`] buttons round-trip; the wildcard-free witness fails to compile
-/// the moment a third is added, forcing it into this table first.
 #[test]
 fn mouse_buttons_round_trip() {
     for button in [MouseButtonNet::Left, MouseButtonNet::Right] {
@@ -71,10 +53,6 @@ fn mouse_buttons_round_trip() {
 }
 
 /// Every `#[serde(transparent)]` scalar rides the wire as its BARE inner value, not a
-/// wrapper tuple — the compact-wire guarantee a round trip alone cannot see.
-///
-/// One assertion per type rather than one representative: transparency is a per-type
-/// attribute, so a representative proves nothing about its neighbours.
 #[test]
 fn every_scalar_serializes_transparently() {
     assert_eq!(encoded(&GangerToken::new(42)), "42");
@@ -93,8 +71,6 @@ fn every_scalar_serializes_transparently() {
     assert_eq!(encoded(&PointerYNet::new(58)), "58");
 }
 
-/// A [`PointerPosNet`] rides the wire as a named-field pair of bare scalars — the composed
-/// shape, not two loose numbers.
 #[test]
 fn a_pointer_position_serializes_as_a_named_pair() {
     assert_eq!(

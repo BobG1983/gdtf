@@ -1,5 +1,3 @@
-//! GTW-267 stance 3-toggle sub-panel.
-
 use bevy::{ecs::entity::Entity, prelude::*};
 use gdtf_app::test_support::{StanceKneelingButton, StanceProneButton, StanceStandingButton};
 use gdtf_battle_input::{ActIntent, PendingActIntent};
@@ -8,17 +6,10 @@ use gdtf_test_utils::press_ui_button;
 
 use super::{harness::*, probes::*};
 
-// =================================================================================
-// GTW-267 — the Stance 3-toggle sub-panel (replaces the blind cycle).
-// =================================================================================
 
-/// GTW-267 — selecting an armed ganger marks ITS current stance toggle `ActiveButton`
-/// and ONLY that one (mutually exclusive); a fresh selection in another stance moves the
-/// mark. Discriminating: a panel with no sync (the old blind cycle) would mark none.
 #[test]
 fn stance_panel_marks_current_stance_active() {
     let mut app = battle_running_app();
-    // Select a KNEELING ganger.
     arm_and_select(
         &mut app,
         sbf_selector(),
@@ -37,7 +28,6 @@ fn stance_panel_marks_current_stance_active() {
         "the other two stance segments must NOT be active (mutually exclusive)",
     );
 
-    // Selecting a PRONE ganger moves the active mark to Prone.
     arm_and_select(
         &mut app,
         sbf_selector(),
@@ -56,10 +46,6 @@ fn stance_panel_marks_current_stance_active() {
     );
 }
 
-/// GTW-267 — pressing the Prone toggle DIRECT-sets the actor's stance to Prone (one
-/// `SetStanceRequested` for `*SelectedShooter` with `StanceKind::Prone`, byte-for-byte
-/// EQUAL to the direct `SetStance(Prone)` intent), regardless of the current stance — NOT
-/// a blind cycle step.
 #[test]
 fn prone_toggle_sets_stance_prone_directly() {
     let mut app = battle_running_app();
@@ -89,7 +75,6 @@ fn prone_toggle_sets_stance_prone_directly() {
         "the Prone toggle DIRECT-sets the prone posture (not a cycle step)",
     );
 
-    // Identical to the direct SetStance(Prone) intent over the SAME input queue.
     let mut app2 = battle_running_app();
     add_probes(&mut app2);
     let _ganger2 = arm_and_select(
@@ -111,16 +96,9 @@ fn prone_toggle_sets_stance_prone_directly() {
     );
 }
 
-/// GTW-277 (new — the `SegmentSelected` → `SetStance` index→kind MAPPING) — selecting EACH
-/// stance segment pushes the matching `ActIntent::SetStance(kind)` (Stand → Standing, Kneel
-/// → Crouching, Prone → Prone), proving the `stance_segment_intent` listener maps the
-/// widget's segment INDEX to the right `StanceKind`, not just the Prone case.
 #[test]
 fn each_stance_segment_sets_its_stance() {
     for (label, marker_press, start, expected) in [
-        // Start from a stance DIFFERENT from the target so pressing the segment is a REAL
-        // active-segment change (re-pressing the already-active segment is a widget no-op,
-        // the GTW-276 set_if_neq behavior).
         (
             "Stand",
             StanceSegment::Standing,
@@ -143,9 +121,6 @@ fn each_stance_segment_sets_its_stance() {
         let mut app = battle_running_app();
         add_probes(&mut app);
         let ganger = arm_and_select(&mut app, sbf_selector(), start, Direction::North);
-        // Settle the segment tagging + the active-segment sync to the ganger's STARTING
-        // stance, so pressing the target segment is a real change (emits SegmentSelected →
-        // SetStance).
         app.update();
         app.update();
         let Some(segment) = marker_press.entity(&mut app) else {
@@ -168,8 +143,6 @@ fn each_stance_segment_sets_its_stance() {
     }
 }
 
-/// Picks the right stance-segment entity by its per-stance marker for
-/// [`each_stance_segment_sets_its_stance`] (a small dispatch so the loop can press each).
 enum StanceSegment {
     Standing,
     Kneeling,
@@ -177,8 +150,7 @@ enum StanceSegment {
 }
 
 impl StanceSegment {
-    /// The single entity carrying this stance's segment marker, if exactly one exists.
-    fn entity(&self, app: &mut App) -> Option<Entity> {
+        fn entity(&self, app: &mut App) -> Option<Entity> {
         match self {
             Self::Standing => single_with::<StanceStandingButton>(app),
             Self::Kneeling => single_with::<StanceKneelingButton>(app),

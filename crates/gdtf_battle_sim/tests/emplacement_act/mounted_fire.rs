@@ -1,6 +1,3 @@
-//! FIRE while manned — the occupied ganger fires the MOUNTED weapon (not its own gun),
-//! deterministically, with the fire-only `ShotFired` log machinery colocated here.
-
 use bevy::{
     app::App,
     prelude::{Entity, Resource},
@@ -20,15 +17,11 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-/// Every [`ShotFired`] observed across the run (a `MessageReader` only sees the current+previous
-/// update, so a recorder resource accumulates them).
 #[derive(Resource, Default)]
 struct ShotLog {
-    /// One entry per `ShotFired` emitted.
-    shots: Vec<ShotFired>,
+        shots: Vec<ShotFired>,
 }
 
-/// Drain `ShotFired` into the recorder.
 fn record_shots(
     mut fired: bevy::prelude::MessageReader<ShotFired>,
     mut log: bevy::prelude::ResMut<ShotLog>,
@@ -38,22 +31,18 @@ fn record_shots(
     }
 }
 
-/// Add the `ShotFired` recorder (after `BattleSimPlugin`, so the buffer exists).
 fn with_shot_log(app: &mut App) {
     app.init_resource::<ShotLog>();
     app.add_systems(bevy::app::Update, record_shots);
 }
 
-/// The `DamageType` of the FIRST recorded `ShotFired`, if any (discriminates which gun fired).
 fn first_shot_damage_type(app: &App) -> Option<DamageType> {
     app.world()
         .get_resource::<ShotLog>()
         .and_then(|log| log.shots.first().map(|s| s.damage))
 }
 
-// ── FIRE: the occupied ganger fires the MOUNTED weapon (not its own gun) ────────
 
-/// An enemy ganger at `at` facing `facing` (gang 1) — a target for the mounted-gun fire test.
 fn enemy_at(at: CellLevel, facing: Direction) -> GangerSpawn {
     GangerSpawnBuilder::new()
         .at(at)
@@ -65,17 +54,11 @@ fn enemy_at(at: CellLevel, facing: Direction) -> GangerSpawn {
         .build()
 }
 
-/// While OCCUPIED, the ganger's fire resolves the MOUNTED weapon: a `FireRequested` produces a
-/// `ShotFired` carrying the MOUNTED gun's `DamageType` (distinct from the ganger's own gun), through
-/// the real `dispatch_fire` → `fire()` path, and the outcome is seed-DETERMINISTIC (two same-seed
-/// runs agree).
 #[test]
 fn occupied_ganger_fires_the_mounted_weapon_deterministically() {
-    // Run the enter→fire flow and return the FIRST ShotFired's DamageType (the discriminator).
     let run = |seed: u64| -> Option<DamageType> {
         let (mut app, seed) = battle_app(seed);
         with_shot_log(&mut app);
-        // Player at (5,5) facing East; emplacement at (6,5); enemy further East at (7,5) — in arc.
         let situation = SituationBuilder::new()
             .with_gangers([
                 player_at(ground(5, 5), Direction::East),
@@ -84,7 +67,6 @@ fn occupied_ganger_fires_the_mounted_weapon_deterministically() {
             .build_with_gangs();
         drive_setup(&mut app, seed, situation);
         let emplacement = spawn_emplacement(&mut app, ground(6, 5));
-        // The player is the gang-0 ganger at (5,5).
         let world = app.world_mut();
         let mut q = world.query::<(Entity, &Faction, &gdtf_battle_sim::ganger::Position)>();
         let actor = q
@@ -95,7 +77,6 @@ fn occupied_ganger_fires_the_mounted_weapon_deterministically() {
             unreachable!("the player ganger spawned at (5,5)");
         };
 
-        // ENTER — man the emplacement (spawns + wields the mount).
         app.world_mut()
             .write_message(EnterEmplacementRequested::new(actor, emplacement));
         step(&mut app, 3);
@@ -104,7 +85,6 @@ fn occupied_ganger_fires_the_mounted_weapon_deterministically() {
             "precondition: the occupant wields the mount before firing",
         );
 
-        // FIRE at the enemy cell — the ranged read PREFERS the mount while occupied.
         let mode = FireModeSpec::new(
             ModeKind::Single,
             ModeConeMult::new(1.0),

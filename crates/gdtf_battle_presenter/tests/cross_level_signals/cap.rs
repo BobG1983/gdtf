@@ -1,11 +1,3 @@
-//! Aggregation + cap regression coverage (GTW-596 acceptance clause 3, the
-//! RESOLVED SPEC) proven through the REAL registered `derive_cross_level_signals`
-//! and `draw_cross_level_signals` systems — the sibling in-crate `test/cap.rs`
-//! pins the pure `aggregate_threats` / `cap_badges` / `build_signals` helpers
-//! directly; these prove the SAME dedupe + cap rules hold once wired through
-//! live Bevy resources/queries, and that the drawn tile/label POOL itself
-//! reflects the capped set — never the raw candidate count.
-
 use bevy::{platform::collections::HashSet, prelude::App};
 use gdtf_battle_presenter::{
     ActiveLevel, CrossLevelBadgeKind, CrossLevelSignals, LevelDelta, TerrainSprite, ThreatCount,
@@ -26,17 +18,11 @@ fn key(x: i32, y: i32, z: u8) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(z))
 }
 
-/// Spawn a bare enemy ganger — the derive system's Query only reads these three
-/// components (the `threat.rs` precedent).
 fn spawn_enemy(app: &mut App, at: CellLevel) {
     app.world_mut()
         .spawn((Position::new(at), Faction::new(1), LifeState::Alive));
 }
 
-/// Acceptance clause 3: two squad-VISIBLE enemies sharing the SAME level-delta on
-/// one cell collapse into ONE drawn badge with an `x2` count pip — proven through
-/// the REAL registered derive + draw systems (not just the pure `aggregate_threats`
-/// helper `test/cap.rs` pins): exactly one tile, exactly one label reading `"+2 x2"`.
 #[test]
 fn two_enemies_sharing_a_delta_draw_one_capped_count_pip_badge() {
     let mut app = signals_app();
@@ -81,13 +67,6 @@ fn two_enemies_sharing_a_delta_draw_one_capped_count_pip_badge() {
     );
 }
 
-/// Acceptance clause 3: MORE than the 3-badge cap's worth of candidates on one
-/// cell, spanning all three producers (2 Threat + 1 `DropDepth` + 1
-/// `ConnectorDelta` = 4), keep only the top-priority 3 (Threat nearest-first, then
-/// `DropDepth`, then `ConnectorDelta`) — proven DRAWN through the real derive +
-/// draw pipeline (not just the pure `cap_badges` helper `test/cap.rs` pins):
-/// exactly 3 tiles, exactly 3 labels, and the dropped `ConnectorDelta`'s `"+1"`
-/// label never appears.
 #[test]
 fn four_candidates_across_producers_draw_only_the_top_three_in_priority_order() {
     let mut app = signals_app();
@@ -98,10 +77,10 @@ fn four_candidates_across_producers_draw_only_the_top_three_in_priority_order() 
         .insert_resource(ActiveLevel::new(active_level));
 
     let cell = Cell::new(5, 5);
-    let near_enemy = key(5, 5, 2); // delta -1 (magnitude 1)
-    let far_enemy = key(5, 5, 6); // delta +3 (magnitude 3)
-    let hole = key(5, 5, 3); // same active storey — the DropDepth AND ConnectorDelta candidate
-    let floor = key(6, 5, 3); // drawn neighbour, supplies the "built footprint"
+    let near_enemy = key(5, 5, 2); 
+    let far_enemy = key(5, 5, 6); 
+    let hole = key(5, 5, 3); 
+    let floor = key(6, 5, 3); 
 
     let mut surface = SurfaceGrid::new();
     surface.set_slab(floor, SlabState::Present);
@@ -110,12 +89,6 @@ fn four_candidates_across_producers_draw_only_the_top_three_in_priority_order() 
     app.world_mut().insert_resource(OccupancyGrid::default());
     app.world_mut().spawn(TerrainSprite { at: floor });
 
-    // A scratch `Situation` purely to hand `build_vertical_link_graph` a VALID
-    // graph to validate — deliberately unrelated to the `SurfaceGrid` resource
-    // above (the derive system reads the two independently, `derive.rs`'s
-    // documented decoupling): the live world has `hole` as a destroyed slab while
-    // the scratch situation has it as a normal stair landing, and neither
-    // producer cross-checks the other.
     let upper = key(5, 5, 4);
     let situation = SituationBuilder::new()
         .slab_at(hole)

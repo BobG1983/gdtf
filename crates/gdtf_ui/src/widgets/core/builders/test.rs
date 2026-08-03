@@ -1,7 +1,3 @@
-//! Tests for the `spawn_button` / `spawn_panel` structural contract (the
-//! `builders.rs` surface): the interaction plumbing, the box visuals, the
-//! `Themed` role markers, and the themed text child.
-
 use bevy::{
     prelude::*,
     text::{FontSize, FontSource, TextColor as UiTextColor, TextFont},
@@ -18,12 +14,6 @@ use crate::{
     },
 };
 
-/// `spawn_button` builds a button carrying the interaction plumbing
-/// (`Button` + `Interaction`), the button-box visuals (`BackgroundColor` +
-/// `BorderColor`), and the `Themed(Button)` marker.
-///
-/// Pin-discriminating: dropping any of those components, or the Themed
-/// marker, fails an assert.
 #[test]
 fn spawned_button_has_interaction_visuals_and_themed_marker() -> Result<(), ron::error::SpannedError>
 {
@@ -60,7 +50,6 @@ fn spawned_button_has_interaction_visuals_and_themed_marker() -> Result<(), ron:
     Ok(())
 }
 
-/// `spawn_panel` builds a `Themed(Panel)` node with background + border.
 #[test]
 fn spawned_panel_is_themed_with_visuals() -> Result<(), ron::error::SpannedError> {
     let mut app = scene_app();
@@ -91,8 +80,6 @@ fn spawned_panel_is_themed_with_visuals() -> Result<(), ron::error::SpannedError
     Ok(())
 }
 
-/// The text child of a `spawn_button` carries the button sub-theme font handle,
-/// size, and text color, and is itself `Themed(ButtonText)`.
 #[test]
 fn spawned_button_text_child_is_themed_button_text_from_theme()
 -> Result<(), ron::error::SpannedError> {

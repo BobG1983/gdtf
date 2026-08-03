@@ -9,7 +9,6 @@ use crate::states::{
     },
 };
 
-// Initialization plugin for the GDTF app.
 pub(in crate::states) struct InitScenePlugin;
 
 impl Plugin for InitScenePlugin {

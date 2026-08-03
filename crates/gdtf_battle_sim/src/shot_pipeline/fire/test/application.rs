@@ -1,12 +1,5 @@
-//! AC6 — application: an in-line target takes a `Ganger` hit with applied damage,
-//! while a fire into empty space yields only `no_effect` reports.
-
 use super::support::*;
 
-/// AC6 — application: firing at an in-line target yields a `HitReport` with
-/// `ShotKind::Ganger(entity)` + an `AppliedDamage` block, and the target's
-/// Hp/Wounds changed in the world; while a fire into empty space yields only
-/// `no_effect` reports and the (absent) target is untouched.
 #[test]
 #[expect(
     clippy::too_many_lines,
@@ -18,7 +11,6 @@ fn fire_at_in_line_target_applies_damage() {
     let mut world = World::new();
     let tuning = CombatTuning::default();
     let mode = single_mode(0.2, 1);
-    // Shooter at (2,5) facing East; aiming for a tight cone onto the target.
     let shooter = spawn_shooter(
         &mut world,
         ShooterSpec {
@@ -32,18 +24,10 @@ fn fire_at_in_line_target_applies_damage() {
         },
     );
 
-    // A standing (HIGH-band) target directly East at (8,5,0). fire()'s aim point
-    // uses the documented default Standing target stance (the locked target query
-    // carries no Stance), so the round flies at the standing silhouette; a HIGH
-    // occupant band is equal-or-lower than any round band → it impacts (the march
-    // bands the round vs the occupant's published band).
     let target = world.spawn(target_bundle(30, 6)).id();
-    // GTW-323: equip the target's worn-armor PIECE entities (the combat read+wear path) —
-    // the ONLY armor storage (no on-ganger copy, GTW-323 slice 3).
     equip_uniform_armor(&mut world, target, 0, 0, 1, 0);
     let target_at = CellLevel::new(Cell::new(8, 5), Level::new(0));
 
-    // Build the occupancy grid with the target as a HIGH-band occupant in line.
     let mut occupancy = OccupancyGrid::new();
     occupancy.set_occupant(target_at, Some(target));
     occupancy.set_occupant_band(target_at, Some(HeightBand::High));
@@ -104,17 +88,12 @@ fn fire_at_in_line_target_applies_damage() {
         applied_of(report).is_some(),
         "a ganger hit must carry an `AppliedDamage` block",
     );
-    // The target's pools changed in the world (the fold mutated in place).
     let hp = world.get::<Hp>(target).map(|h| **h);
     assert!(
         hp.is_some_and(|h| h < 30),
         "the target's Hp must have dropped from 30, got {hp:?}",
     );
 
-    // GTW-279 — the InflictedWounds record the fire path wrote must match the
-    // resolution's OWN values (the verdict it returned), NOT a hand-set fixture:
-    // a non-graze hit appends exactly one InflictedWound carrying the rolled tier
-    // (the verdict's severity) + the struck part; a graze appends nothing.
     let Some(applied) = applied_of(report) else {
         return;
     };
@@ -139,9 +118,6 @@ fn fire_at_in_line_target_applies_damage() {
     }
 }
 
-/// AC6 (the miss half) — a fire into empty space (no occupant in the path) yields
-/// only a `no_effect` report: one round fired, no `AppliedDamage` block, and (the
-/// target being absent) nothing is mutated.
 #[test]
 fn fire_into_empty_space_is_a_clean_miss() {
     let tuning = CombatTuning::default();
@@ -159,7 +135,7 @@ fn fire_into_empty_space_is_a_clean_miss() {
             aiming: true,
         },
     );
-    let occupancy = OccupancyGrid::new(); // no occupant anywhere
+    let occupancy = OccupancyGrid::new(); 
     let surface = SurfaceGrid::new();
     let mut cover = CoverLedger::new();
     let mut slab = SlabLedger::new();

@@ -1,7 +1,3 @@
-//! The top-down renderer's registration, split per concern: the plugin shell
-//! (`plugin`) plus one registrar module per draw concern (terrain / gangers / fx /
-//! combat-log forwarders / camera / fog / overlays).
-
 mod camera;
 mod combat_log;
 mod fog;

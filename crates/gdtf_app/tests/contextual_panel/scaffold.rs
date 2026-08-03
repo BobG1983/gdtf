@@ -1,5 +1,3 @@
-//! Panel scaffold AC: spawns hidden in battle, despawns outside.
-
 use bevy::prelude::*;
 use gdtf_app::test_support::{
     BattleScapeState, BottomBarRoot, ContextualPanelRoot, ExecuteButton, MeleeButton,
@@ -9,17 +7,7 @@ use gdtf_test_utils::advance_until;
 
 use super::harness::*;
 
-// ---------------------------------------------------------------------------------
-// Scaffold AC — the panel root + the per-act buttons spawn in BattleRunning, each with
-// its marker and `Visibility::Hidden`; they despawn outside BattleRunning.
-// ---------------------------------------------------------------------------------
 
-/// In the live battle the contextual panel has spawned the panel-box root + exactly one
-/// button per contextual act (Execute / Stabilize / Open Door). The box + buttons spawn
-/// `Visibility::Hidden` (no detection reveals them in this state). The root is a CHILD of the
-/// bottom bar (GTW-726) — laid out INSIDE the bottom panel, not floating over the map — and so
-/// needs no `GlobalZIndex` of its own to draw above the bar (a child renders in the bar's own
-/// stacking context).
 #[test]
 fn contextual_panel_spawns_hidden_in_battle() {
     let mut app = battle_running_app();
@@ -46,10 +34,6 @@ fn contextual_panel_spawns_hidden_in_battle() {
         "the Open Door button exists exactly once in BattleRunning",
     );
 
-    // GTW-726: the panel-box root is a CHILD of the BottomBarRoot container (the stance-panel
-    // precedent), so it is laid out INSIDE the bottom panel rather than floating over the map. The
-    // `is_some` assert above already failed loudly if the root is missing; bind without a panic
-    // (restriction lints deny `panic!` even in tests).
     let Some(root) = root else {
         return;
     };
@@ -65,8 +49,6 @@ fn contextual_panel_spawns_hidden_in_battle() {
          free-floating top-level overlay",
     );
 
-    // SCAFFOLD: the panel box AND every button are hidden by default — no detection reveals
-    // them in this state.
     assert_eq!(
         visibility::<ContextualPanelRoot>(&mut app),
         Some(Visibility::Hidden),
@@ -94,9 +76,6 @@ fn contextual_panel_spawns_hidden_in_battle() {
     );
 }
 
-/// Once the battle leaves `BattleRunning` the contextual panel subtree — the panel box and its
-/// three buttons — is despawned (battle-scoped `OnExit` cleanup over the ROOT marker, mirroring
-/// the action bar / bottom bar).
 #[test]
 fn contextual_panel_despawns_outside_battle() {
     let mut app = battle_running_app();
@@ -105,10 +84,6 @@ fn contextual_panel_despawns_outside_battle() {
         "sanity: the contextual panel box is present in BattleRunning before we leave it",
     );
 
-    // Leave BattleRunning: the battlescape PERSISTS (GTW-236), so the test inserts the explicit
-    // `BattleRunningComplete` end-signal marker to trip `move_on` and advance the machine out of
-    // BattleRunning, where `OnExit` despawns the panel. The marker is reached through the same
-    // `test_support` surface the action-bar / weapon-panel tests use.
     app.world_mut()
         .insert_resource(gdtf_app::test_support::BattleRunningComplete);
     let left_battle_running = advance_until(

@@ -1,14 +1,3 @@
-//! GTW-641 — the Downed-ENTRY gate on the §9 Wounds bleed-out: a ganger downed BY
-//! this tick's injury-HP bleed has been down ZERO rounds, so THAT tick drains no
-//! bleed-out Wound (and can never chain Alive→Downed→Dead within one tick). Only a
-//! ganger who ENTERED the tick already Downed drains — which makes the weapon
-//! down-path (downed mid-turn by [`apply_hit`]'s terminal gate) and the
-//! injury-HP-bleed down-path share the SAME first-Downed-tick Wound behavior.
-//!
-//! All three tests drive the REAL production path — the seeded live-runtime
-//! harness ([`super::support::live_app`]: `BattleSimPlugin`, turn cycle, the
-//! `enemy_phase_started`-gated `tick_bleed` registration), not a hand-rolled tick.
-
 use super::support::{
     BleedingOut, PLAYER, bleed_rate, bleeding_ganger, end_turn, life_of, live_app, wounds_of,
 };
@@ -23,28 +12,20 @@ use crate::{
     tuning::CombatTuning,
 };
 
-/// An arbitrary (non-tuned) injury-bleed accrual == starting Hp, so ONE injury-HP
-/// bleed tick empties the pool exactly and downs the ganger.
 const ACCRUAL: u16 = 4;
 
-/// GTW-641 (C1) — a ganger whose injury-HP bleed downs them THIS tick ends the tick
-/// [`LifeState::Downed`] with their §9 bleed-out Wound pool UNTOUCHED: a just-downed
-/// ganger has been down zero rounds, so the same tick must not also drain a Wound.
 #[test]
 fn a_ganger_downed_by_the_injury_bleed_keeps_its_wounds_that_round() {
     let rate = bleed_rate();
-    // A pool well above the rate so a (wrong) same-tick drain would be measurable.
     let start = rate.saturating_add(10);
 
     let mut app = live_app();
     let ganger = bleeding_ganger(&mut app, PLAYER, LifeState::Alive, start);
-    // The GTW-438 injury-HP bleed inputs: an Hp pool the accrued bleed empties in
-    // exactly one tick (accrual == Hp — arbitrary test data, not shipped tuning).
     app.world_mut()
         .entity_mut(ganger)
         .insert((Hp::new(ACCRUAL), BleedAfflicted::new(ACCRUAL)));
 
-    end_turn(&mut app); // one full round — the tick both bleeds Hp and downs them
+    end_turn(&mut app); 
 
     assert_eq!(
         life_of(&app, ganger),
@@ -59,14 +40,9 @@ fn a_ganger_downed_by_the_injury_bleed_keeps_its_wounds_that_round() {
     );
 }
 
-/// GTW-641 (C1) — the lethal chain is impossible: a ganger one Wound-round from death
-/// who is downed by THIS tick's injury-HP bleed must end the tick Downed, never
-/// Alive→Downed→Dead within the single tick.
 #[test]
 fn a_ganger_downed_by_the_injury_bleed_cannot_die_the_same_tick() {
     let rate = bleed_rate();
-    // EXACTLY one bleed-out round in the pool — a (wrong) same-tick Wounds drain
-    // would empty it and kill through the terminal gate.
     let start = rate;
 
     let mut app = live_app();
@@ -90,16 +66,12 @@ fn a_ganger_downed_by_the_injury_bleed_cannot_die_the_same_tick() {
     );
 }
 
-/// Down `ganger` mid-turn through the REAL weapon fold — [`apply_hit`] with a graze
-/// ([`Severity::None`] spends no Wounds) whose HP loss overshoots the pool, tripping
-/// the Hp→0→Downed terminal gate — then persist the folded pools onto the entity.
 fn weapon_down(app: &mut bevy::prelude::App, ganger: bevy::prelude::Entity, start_wounds: u8) {
     let mut hp = Hp::new(ACCRUAL);
     let mut wounds = Wounds::new(start_wounds);
     let mut life = LifeState::Alive;
     let mut inflicted = InflictedWounds::default();
     let tuning = CombatTuning::default();
-    // An overshooting HP loss (arbitrary magnitude) — bare flesh (no worn piece).
     let hit = HitResult {
         penetrating: PenetratingDamage::new(20),
         hp_damage:   HpDamage::new(20),
@@ -121,42 +93,24 @@ fn weapon_down(app: &mut bevy::prelude::App, ganger: bevy::prelude::Entity, star
     );
     assert_eq!(life, LifeState::Downed, "the graze's HP loss must down");
     assert_eq!(*wounds, start_wounds, "a graze spends no Wounds");
-    // Persist ONLY the folded pools — NO hand-inserted BleedingOut. The §9 condition is
-    // reified by the REAL `mark_downed_bleeding` system reacting to this LifeState::Downed
-    // write (GTW-695); the caller drives an `app.update()` to let it fire, so the marker's
-    // appearance and the subsequent drain pin the apply_hit down-gate END-TO-END rather than
-    // bypassing it with a hand-insert.
     app.world_mut()
         .entity_mut(ganger)
         .insert((hp, wounds, life));
 }
 
-/// GTW-641 (A2) — down-path parity: a WEAPON-downed ganger (downed mid-turn, before
-/// the round's bleed tick) and an INJURY-HP-BLEED-downed ganger (downed BY the round's
-/// bleed tick) show the SAME first-Downed-tick Wound behavior — the first tick each
-/// ENTERS already Downed drains exactly one `bleed_rate`, and the tick that CAUSES a
-/// down drains nothing.
 #[test]
 fn weapon_and_injury_downs_share_the_first_downed_tick_wound_behavior() {
     let rate = bleed_rate();
     let start = rate.saturating_mul(2).saturating_add(10);
 
     let mut app = live_app();
-    // The weapon path: downed mid-turn (before any turn boundary) via apply_hit — the
-    // pools are persisted with NO marker.
     let by_weapon = bleeding_ganger(&mut app, PLAYER, LifeState::Alive, start);
     weapon_down(&mut app, by_weapon, start);
-    // The injury path: Alive at the boundary; round 1's tick downs them.
     let by_bleed = bleeding_ganger(&mut app, PLAYER, LifeState::Alive, start);
     app.world_mut()
         .entity_mut(by_bleed)
         .insert((Hp::new(ACCRUAL), BleedAfflicted::new(ACCRUAL)));
 
-    // One sim tick with no turn boundary — the REAL `mark_downed_bleeding` reacts to the
-    // apply_hit LifeState::Downed write and reifies the §9 condition (models the down
-    // happening during a turn, before the round boundary). This pins the apply_hit
-    // down-gate: unwiring/emptying `mark_downed_bleeding` leaves the marker absent, so the
-    // round-1 drain below never happens and this assert fails.
     app.update();
     assert!(
         app.world().get::<BleedingOut>(by_weapon).is_some(),
@@ -164,7 +118,7 @@ fn weapon_and_injury_downs_share_the_first_downed_tick_wound_behavior() {
          condition (no hand-insert)",
     );
 
-    end_turn(&mut app); // round 1
+    end_turn(&mut app); 
     assert_eq!(
         wounds_of(&app, by_weapon),
         start - rate,
@@ -181,7 +135,7 @@ fn weapon_and_injury_downs_share_the_first_downed_tick_wound_behavior() {
         "round 1: the injury-downed ganger was downed BY the tick — it drains nothing",
     );
 
-    end_turn(&mut app); // round 2
+    end_turn(&mut app); 
     assert_eq!(
         wounds_of(&app, by_weapon),
         start - rate * 2,

@@ -1,16 +1,9 @@
-//! `ArmorRegistry` keying/enumeration + the RON round-trip resolve (GTW-269 /
-//! GTW-413).
-
 use crate::armor::{
     ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorName, ArmorPiece, ArmorProtection,
     ArmorRegistry, ArmorSpec, ArmorType, BodyPart,
 };
 
 /// The six pieces the inline-authored `ArmorSpec` RON below is EXPECTED to parse
-/// into, in [`BodyPart::ALL`] order — per-location-DISTINCT arbitrary magnitudes
-/// and a distinct [`ArmorType`] per slot, so a field that lands in the wrong slot
-/// surfaces. The mechanism, not pinned tuning. Mirrors the RON literal field for
-/// field.
 fn expected_round_trip_pieces() -> [ArmorPiece; 6] {
     [
         ArmorPiece::new(
@@ -58,17 +51,8 @@ fn expected_round_trip_pieces() -> [ArmorPiece; 6] {
     ]
 }
 
-/// GTW-413 AC2 — `ArmorRegistry::keys` and `ArmorRegistry::iter` enumerate
-/// exactly the keys and (key, spec) pairs that were inserted. Three distinct
-/// [`ArmorName`]s with an arbitrary uniform [`ArmorSpec`] (mechanism, not pinned
-/// magnitudes): asserts count == 3 AND each expected key is present via
-/// `keys()`; asserts `iter()` yields the same 3 key-spec pairs by key
-/// membership (value-agnostic on the spec side). `HashMap` order is unspecified
-/// — membership is the assertion, not position.
 #[test]
 fn armor_registry_keys_and_iter_enumerate_all_entries() {
-    // A uniform ArmorSpec built from arbitrary magnitudes (not shipped tuning
-    // values) — we only need distinct ArmorName keys; the spec value is incidental.
     let piece = ArmorPiece::new(
         ArmorFloor::new(1),
         ArmorProtection::new(2),
@@ -88,7 +72,6 @@ fn armor_registry_keys_and_iter_enumerate_all_entries() {
         (name_c.clone(), spec),
     ]);
 
-    // keys() — count + membership (order unspecified).
     let all_keys: Vec<&ArmorName> = registry.keys().collect();
     assert_eq!(all_keys.len(), 3, "keys() must yield exactly 3 entries");
     assert!(
@@ -104,7 +87,6 @@ fn armor_registry_keys_and_iter_enumerate_all_entries() {
         "keys() must include name_c (\"carapace\")"
     );
 
-    // iter() — same count, key membership (value-agnostic on the spec side).
     let all_pairs: Vec<(&ArmorName, &ArmorSpec)> = registry.iter().collect();
     assert_eq!(
         all_pairs.len(),
@@ -125,7 +107,6 @@ fn armor_registry_keys_and_iter_enumerate_all_entries() {
         "iter() must include (name_c, _)"
     );
 
-    // IntoIterator for &ArmorRegistry must yield the same count (trait impl proof).
     assert_eq!(
         (&registry).into_iter().count(),
         3,
@@ -133,20 +114,8 @@ fn armor_registry_keys_and_iter_enumerate_all_entries() {
     );
 }
 
-/// GTW-269 (the ticket-required round-trip, mirroring
-/// `weapon_spec_round_trips_and_into_bundle_groups_faithfully`): an authored
-/// 6-piece [`ArmorSpec`] parses from inline RON, an [`ArmorRegistry`] keys it by
-/// [`ArmorName`], `spec()` resolves it back, and every one of the five fields
-/// (floor / protection / integrity / hardness / `armor_type`) of each of the six
-/// pieces matches the authored values — read off [`ArmorSpec::pieces`] in
-/// [`BodyPart::ALL`] order. Per-location-DISTINCT arbitrary magnitudes (the
-/// mechanism, not pinned tuning) prove each named field round-trips into the right
-/// slot.
 #[test]
 fn armor_spec_round_trips_and_registry_resolves_by_name() {
-    // Authored six-piece suit — each field a self-describing line (the per-line
-    // authoring convention). Distinct floor/protection/integrity/hardness per slot
-    // and a distinct ArmorType per slot prove each named field maps to its slot.
     let authored = r"(
         head:      ( floor: 1, protection: 11, integrity: 21, hardness: 31, armor_type: Plated ),
         torso:     ( floor: 2, protection: 12, integrity: 22, hardness: 32, armor_type: Refractive ),
@@ -164,7 +133,6 @@ fn armor_spec_round_trips_and_registry_resolves_by_name() {
         return;
     };
 
-    // Key it into a registry by name and resolve it back (the lookup mechanism).
     let armor_name = ArmorName::new("flak-jacket".to_owned());
     let registry = ArmorRegistry::new([(armor_name.clone(), spec)]);
     assert_eq!(
@@ -188,11 +156,8 @@ fn armor_spec_round_trips_and_registry_resolves_by_name() {
         return;
     };
 
-    // The authored pieces, in BodyPart::ALL order, with their five expected fields.
     let expected = expected_round_trip_pieces();
 
-    // Walk all six parts; assert each of the five fields per piece matches the
-    // authored value (pieces() returns them in BodyPart::ALL order).
     let pieces = resolved.pieces();
     for (i, part) in BodyPart::ALL.into_iter().enumerate() {
         let got = pieces[i];
@@ -211,7 +176,6 @@ fn armor_spec_round_trips_and_registry_resolves_by_name() {
             got.armor_type, want.armor_type,
             "armor_type mismatch at {part:?}"
         );
-        // And the whole piece round-tripped.
         assert_eq!(got, want, "piece mismatch at {part:?}");
     }
 }

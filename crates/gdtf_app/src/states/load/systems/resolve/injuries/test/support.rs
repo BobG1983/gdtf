@@ -1,8 +1,3 @@
-//! Shared fixtures for the injury loader tests — the inline-RON `InjuryDef` /
-//! `InjuryWeighting` parsers, the headless asset app with the real hot-reload wiring,
-//! the member/folder asset registrars, and the [`build`] driver over the real
-//! [`build_injury_data`].
-
 use bevy::{
     MinimalPlugins,
     asset::{AssetPlugin, AssetServer, Assets, Handle, LoadedFolder},
@@ -14,17 +9,12 @@ use gdtf_battle_sim::{
     injuries::{DamageContext, InjuryDef, InjuryRegistry, InjuryTables, InjuryWeighting},
     severity::Severity,
 };
-// GTW-654: `build_injury_data` moved host-agnostic into the families glue crate
-// (the content editor runs the SAME builder); the redrive stays the game host's.
 use gdtf_content_families::injuries::{
     INJURY_DEF_EXTENSION, INJURY_WEIGHTING_EXTENSION, build_injury_data,
 };
 
 use super::super::redrive_injuries_on_asset_event;
 
-/// Parse a sample-shaped `InjuryDef` from inline RON (the schema the loader reads),
-/// asserting it parses rather than a denied `unwrap`. The `category:` field names the
-/// shared injury pool (GTW-453).
 pub(super) fn injury_def(
     name: &str,
     category: InjuryCategory,
@@ -44,9 +34,6 @@ pub(super) fn injury_def(
     parsed.ok()
 }
 
-/// Parse a sample-shaped `InjuryWeighting` from inline RON, asserting it parses. The
-/// `category:` field names the shared injury pool (GTW-453); `minor` / `major` /
-/// `critical` are `(key, weight)` row lists.
 pub(super) fn weighting(
     category: InjuryCategory,
     minor: &[(&str, u32)],
@@ -74,12 +61,7 @@ pub(super) fn weighting(
     parsed.ok()
 }
 
-/// Parse a sample-shaped `InjuryWeighting` from inline RON that DOES author a
-/// `context:` field (GTW-452) — the melee / fall per-source table shape the shipped
-/// `weighting/<category>.<context>.weighting.ron` files use. The context-LESS
 /// [`weighting`] fixture above is the pre-GTW-452 shape (its `#[serde(default)]`
-/// fallback is the ranged table), so the two fixtures together exercise BOTH RON
-/// parse paths through the real deserializer.
 pub(super) fn weighting_in_context(
     category: InjuryCategory,
     context: DamageContext,
@@ -109,23 +91,16 @@ pub(super) fn weighting_in_context(
     parsed.ok()
 }
 
-/// A headless app with the real injury hot-reload wiring: `MinimalPlugins` +
-/// `AssetPlugin` (registers `Assets<RonAsset<InjuryDef>>`, `Assets<RonAsset<InjuryWeighting>>`,
-/// `Assets<LoadedFolder>`, and the `AssetEvent` buffers), BOTH injury RON loaders, and
-/// the redrive system in `Update`.
 pub(super) fn app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .add_plugins(AssetPlugin::default())
-        // GTW-634 C4: the SAME single-owner extension consts production registers with,
-        // so the harness loaders can never drift from the real registration.
         .init_ron_asset_with_extensions::<InjuryDef>(vec![INJURY_DEF_EXTENSION])
         .init_ron_asset_with_extensions::<InjuryWeighting>(vec![INJURY_WEIGHTING_EXTENSION])
         .add_systems(Update, redrive_injuries_on_asset_event);
     app
 }
 
-/// Register a member injury-def asset at `path` carrying `def`, returning its handle.
 pub(super) fn add_def(
     app: &mut App,
     path: &'static str,
@@ -143,7 +118,6 @@ pub(super) fn add_def(
     handle
 }
 
-/// Register a member weighting asset at `path` carrying `weighting`, returning its handle.
 pub(super) fn add_weighting(
     app: &mut App,
     path: &'static str,
@@ -161,8 +135,6 @@ pub(super) fn add_weighting(
     handle
 }
 
-/// Build a `LoadedFolder` over the given member handles (defs + weightings, untyped),
-/// add it, return its handle.
 pub(super) fn add_folder(
     app: &mut App,
     members: &[bevy::asset::UntypedHandle],
@@ -175,8 +147,6 @@ pub(super) fn add_folder(
         .add(folder)
 }
 
-/// Run the real [`build_injury_data`] over the app's current assets + folder, returning
-/// the built `(InjuryRegistry, InjuryTables)`.
 pub(super) fn build(
     app: &App,
     folder: &Handle<LoadedFolder>,

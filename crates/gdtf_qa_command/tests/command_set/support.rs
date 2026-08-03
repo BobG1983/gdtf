@@ -1,6 +1,3 @@
-//! Shared helpers — every case below reads an answer off the same channel the transport
-//! would.
-
 use std::sync::mpsc::{Receiver, TryRecvError};
 
 use gdtf_qa_protocol::{
@@ -8,17 +5,14 @@ use gdtf_qa_protocol::{
     message::QaResponse,
 };
 
-/// A call's arguments, from JSON text.
 pub(crate) fn args(json: &str) -> CommandArgsJson {
     CommandArgsJson::new(json.to_owned())
 }
 
-/// The riders a plain call carries: none.
 pub(crate) fn plain() -> RunOptions {
     RunOptions::default()
 }
 
-/// The answer waiting on this channel, or a loud failure.
 pub(crate) fn answer(channel: &Receiver<QaResponse>) -> QaResponse {
     match channel.try_recv() {
         Ok(response) => response,
@@ -29,7 +23,6 @@ pub(crate) fn answer(channel: &Receiver<QaResponse>) -> QaResponse {
     }
 }
 
-/// Assert nothing has answered yet.
 pub(crate) fn no_answer_yet(channel: &Receiver<QaResponse>) {
     assert_eq!(
         channel.try_recv().err(),
@@ -38,7 +31,6 @@ pub(crate) fn no_answer_yet(channel: &Receiver<QaResponse>) {
     );
 }
 
-/// The [`CommandOutcome`] of an answer, or a loud failure.
 pub(crate) fn outcome(channel: &Receiver<QaResponse>) -> CommandOutcome {
     match answer(channel) {
         QaResponse::Outcome(outcome) => outcome,
@@ -46,7 +38,6 @@ pub(crate) fn outcome(channel: &Receiver<QaResponse>) -> CommandOutcome {
     }
 }
 
-/// The decoded reply body of a `Ran` outcome, or a loud failure.
 pub(crate) fn ran<T: serde::de::DeserializeOwned>(channel: &Receiver<QaResponse>) -> T {
     let outcome = outcome(channel);
     let CommandOutcome::Ran { reply, attachments } = outcome else {

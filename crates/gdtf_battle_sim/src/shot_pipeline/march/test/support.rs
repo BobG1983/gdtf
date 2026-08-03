@@ -1,8 +1,3 @@
-//! Shared fixtures and re-exports for the [`march_vector`](crate::march::march_vector)
-//! tests — the cell/center/height builders, the cover-entry helper, the
-//! tuning-derived band fractions, the spawned-`Entity` helper, and the off-grid
-//! shooter sentinel. Each concern file does `use super::support::*`.
-
 pub(super) use bevy::{ecs::world::World, math::Vec3, prelude::Entity};
 
 pub(super) use crate::{
@@ -18,18 +13,14 @@ pub(super) use crate::{
     tuning::{BandEdge, CombatTuning},
 };
 
-/// A `(cell, level)` key from raw coords.
 pub(super) fn key(x: i32, y: i32, level: u8) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(level))
 }
 
-/// The continuous sim-unit center of `(x, y)` on storey `level`.
 pub(super) fn center(x: i32, y: i32, level: u8) -> SimPos {
     cell_center(Cell::new(x, y), Level::new(level))
 }
 
-/// A `SimPos` at the center of `(x, y, level)` raised to `above_floor` within
-/// that storey — the round's z is `level + above_floor`.
 pub(super) fn at_height(x: i32, y: i32, level: u8, above_floor: f32) -> SimPos {
     SimPos::new(
         x as f32 + 0.5,
@@ -38,8 +29,6 @@ pub(super) fn at_height(x: i32, y: i32, level: u8, above_floor: f32) -> SimPos {
     )
 }
 
-/// An arbitrary cover entry at `band` (NOT shipped magnitudes — the band is what
-/// the clearance test reads; the HP/armor are arbitrary).
 pub(super) fn cover_entry(band: HeightBand) -> CoverEntry {
     CoverEntry::seeded(
         CoverHp::new(50),
@@ -49,42 +38,28 @@ pub(super) fn cover_entry(band: HeightBand) -> CoverEntry {
     )
 }
 
-/// An above-floor fraction that classifies HIGH under the default band edges (a
-/// HIGH round) — derived from the tuning, never a literal.
 pub(super) fn high_above_floor(tuning: &CombatTuning) -> f32 {
     f32::midpoint(*tuning.projectile_band_edges.mid_high, 1.0)
 }
 
-/// An above-floor fraction that classifies LOW under the default band edges.
 pub(super) fn low_above_floor(tuning: &CombatTuning) -> f32 {
     *tuning.projectile_band_edges.low_mid * 0.5
 }
 
-/// A spawned `Entity` from a throwaway `World` — a real Bevy handle, never a
-/// numeric id (GTW-10 / GTW-12).
 pub(super) fn spawn_entity() -> Entity {
     let mut world = World::new();
     world.spawn_empty().id()
 }
 
-/// Two **distinct** spawned `Entity` handles from the SAME `World` — distinct
-/// indices, so equality (`==`) tells them apart. (`spawn_entity` called twice
-/// returns the same `0v0` from two fresh worlds; a dead-skip test that distinguishes
-/// occupants needs genuinely different handles.)
 pub(super) fn spawn_two_entities() -> (Entity, Entity) {
     let mut world = World::new();
     (world.spawn_empty().id(), world.spawn_empty().id())
 }
 
-/// A cell far off the grid so it never coincides with any real cell under test —
-/// the "no shooter cell exception in play" sentinel.
 pub(super) fn far_shooter() -> CellLevel {
     key(59, 59, 7)
 }
 
-/// A no-op `is_dead` predicate — marks no occupant a corpse, so every occupant
-/// stops the round (today's behavior; the GTW-317 dead-skip is off). The dead-skip
-/// tests pass their own closures instead.
 pub(super) fn no_dead() -> impl Fn(Entity) -> bool {
     |_| false
 }

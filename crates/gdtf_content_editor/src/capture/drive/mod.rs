@@ -1,8 +1,3 @@
-//! The capture drive's per-frame SYSTEMS — the env-forced overrides
-//! (`force_capture_*`, in [`force`]) and the model staging drives (`drive_capture_*`, in
-//! [`stage`]) that stage a legible, deterministic scene before the delegated
-//! `gdtf_screenshot` settle + shot. Wiring-only module.
-
 mod force;
 mod stage;
 

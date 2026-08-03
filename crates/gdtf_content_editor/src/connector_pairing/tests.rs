@@ -1,6 +1,3 @@
-//! In-crate tests for the connector auto-pairing (GTW-531; typed GTW-566 C6): the recognition +
-//! counterpart resolution, the fail-closed out-of-vocabulary case, and the C2 pair placement.
-
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     level::{GridHeight, GridLevels, GridSize, GridWidth, ThemeUuid},
@@ -29,14 +26,11 @@ const fn tu(n: u128) -> TerrainUuid {
     TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(n))
 }
 
-/// A `4 × 4 × 3` volume — enough storeys for the N / N+1 pairing, with a fallback.
 fn size() -> GridSize {
     GridSize::new(GridWidth::new(4), GridHeight::new(4), GridLevels::new(3))
         .unwrap_or_else(|_| GridSize::default())
 }
 
-/// A stair-like def (`sim_kind` Slab, per GTW-470) whose graphic name is `graphic`. Magnitudes
-/// are throwaway data (not pinned).
 fn stair_def(key: TerrainUuid, label: &str, graphic: &str) -> TerrainDef {
     TerrainDef {
         key,
@@ -63,7 +57,6 @@ const STAIR_NS_DOWN: TerrainUuid = tu(0x0e);
 const STAIR_EW_UP: TerrainUuid = tu(0x0f);
 const STAIR_EW_DOWN: TerrainUuid = tu(0x10);
 
-/// A registry mirroring the shipped `industrial_hive` stair set (up/down × NS/EW).
 fn registry() -> TerrainDefRegistry {
     TerrainDefRegistry::new([
         (
@@ -89,10 +82,6 @@ fn at(cell: Cell, level: u8) -> CellLevel {
     CellLevel::new(cell, Level::new(level))
 }
 
-/// C1: an up-stair graphic classifies as an up connector; its down counterpart does NOT, and
-/// the counterpart resolves symmetrically by direction. (GTW-566 C6: the assertions are
-/// unchanged from the GTW-531 suffix-surgery era — same names, same outcomes — but the path
-/// under test is now typed: `TileRole::from_key` → `is_up_connector` / `counterpart`.)
 #[test]
 fn up_connector_recognition_and_counterpart_resolution() {
     let reg = registry();
@@ -126,10 +115,6 @@ fn up_connector_recognition_and_counterpart_resolution() {
     );
 }
 
-/// GTW-566 C6 (fail-closed): an OUT-OF-VOCABULARY `*_up` graphic name no longer
-/// phantom-pairs — under the retired suffix surgery a `ladder_up`/`ladder_down` def pair
-/// WOULD have paired; through the typed vocabulary it classifies to no role, so it is not a
-/// connector and resolves no counterpart.
 #[test]
 fn out_of_vocabulary_up_name_does_not_pair() {
     const LADDER_UP: TerrainUuid = tu(0x20);
@@ -155,11 +140,6 @@ fn out_of_vocabulary_up_name_does_not_pair() {
     );
 }
 
-/// C2 (the headline): placing an UP connector at `(x, y, N)` auto-places its paired DOWN
-/// connector at `(x, y, N+1)` through the shared placement predicate.
-///
-/// Pin-discriminating: without the pairing the map would hold ONLY the up connector at N and
-/// nothing at N+1 — every N+1 assertion here would flip.
 #[test]
 fn placing_up_connector_auto_places_down_pair_above() {
     let reg = registry();
@@ -191,15 +171,12 @@ fn placing_up_connector_auto_places_down_pair_above() {
     assert_eq!(map.painted_count(), 2, "both endpoints are present (C2)");
 }
 
-/// C2 fail-closed: placing an up connector on the TOP storey places only it — the pair is
-/// skipped, never placed above the prefab's level range.
 #[test]
 fn up_connector_on_top_storey_skips_pair_fail_closed() {
     let reg = registry();
     let th = theme();
     let mut map = EditorMap::new();
     let cell = Cell::new(2, 2);
-    // size() has 3 levels (0..=2); N = 2 is the top storey, so N+1 = 3 is out of range.
     let placement = ProposedPlacement::new(at(cell, 2), STAIR_EW_UP);
     let outcome = apply_placement_with_pairing(&mut map, &reg, th, &placement, size());
 
@@ -220,14 +197,12 @@ fn up_connector_on_top_storey_skips_pair_fail_closed() {
     );
 }
 
-/// A non-connector placement is a plain single placement (no spurious pair).
 #[test]
 fn non_connector_placement_places_no_pair() {
     let reg = registry();
     let th = theme();
     let mut map = EditorMap::new();
     let cell = Cell::new(0, 0);
-    // stair_ns_down is not an UP connector — placing it pairs nothing.
     let placement = ProposedPlacement::new(at(cell, 0), STAIR_NS_DOWN);
     let outcome = apply_placement_with_pairing(&mut map, &reg, th, &placement, size());
     assert_eq!(

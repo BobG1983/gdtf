@@ -1,12 +1,3 @@
-//! The courier's tool set: exactly five, each taking `host`, and none naming a command
-//! (GTW-943).
-//!
-//! It replaces the three suites the sixteen-tool registry needed (`advertised`,
-//! `module_doc`, `routing`), because there is nothing left to partition: every tool takes
-//! the same `host` argument, so which child a call reaches is a CALL fact rather than a
-//! per-tool one, and the "which host owns this tool" map those suites checked no longer
-//! exists.
-
 use serde_json::Value;
 
 use crate::mcp::{
@@ -14,7 +5,6 @@ use crate::mcp::{
     tools::{ToolName, name::ALL, tools_list_result},
 };
 
-/// Every tool the registry advertises, by wire name.
 fn advertised_names() -> Vec<String> {
     let listed = tools_list_result();
     let Some(tools) = listed.get("tools").and_then(Value::as_array) else {
@@ -27,7 +17,6 @@ fn advertised_names() -> Vec<String> {
         .collect()
 }
 
-/// One tool's advertised descriptor.
 fn descriptor(name: &str) -> Value {
     let listed = tools_list_result();
     let Some(tools) = listed.get("tools").and_then(Value::as_array) else {
@@ -42,11 +31,6 @@ fn descriptor(name: &str) -> Value {
     found.clone()
 }
 
-/// The tool set is EXACTLY these five, in this order.
-///
-/// The count and the set both, because either alone lets a mistake through: a set check
-/// alone would pass with a sixth tool added, and a count alone would pass with one swapped
-/// for another.
 #[test]
 fn the_courier_advertises_exactly_five_tools() {
     assert_eq!(
@@ -67,10 +51,6 @@ fn the_courier_advertises_exactly_five_tools() {
     );
 }
 
-/// EVERY tool takes a `host` argument, enumerated to the two children.
-///
-/// This is what replaced the per-tool host map: a call says which child it means, so no
-/// tool is fixed to one of them and no tool is duplicated per host.
 #[test]
 fn every_tool_takes_a_host_argument() {
     for tool in ALL {
@@ -90,8 +70,6 @@ fn every_tool_takes_a_host_argument() {
     }
 }
 
-/// Every advertised name resolves back through [`ToolName::from_wire`], and nothing else
-/// does.
 #[test]
 fn every_advertised_name_resolves_and_no_other_does() {
     for name in advertised_names() {
@@ -114,10 +92,6 @@ fn every_advertised_name_resolves_and_no_other_does() {
     }
 }
 
-/// The registry's module doc names all five tools.
-///
-/// A doc nothing checks goes stale silently — this one claimed twelve forwarding tools and
-/// one host for months. Reading the doc text at compile time is what keeps it honest.
 #[test]
 fn the_module_doc_names_every_tool() {
     let doc = include_str!("../mod.rs");
@@ -130,14 +104,6 @@ fn the_module_doc_names_every_tool() {
     }
 }
 
-/// Every argument a handler READS is advertised, and the two enumerated ones are drawn from
-/// the parser's own vocabulary.
-///
-/// A client only ever sends what `tools/list` advertises, so an argument the host parses
-/// perfectly and never advertises is unreachable — the GTW-875 gap, where the host read five
-/// launch arguments no client could send. `max_lines` is the same shape one ticket later:
-/// `logs` parses and applies it, and deleting it from the schema would leave the suite green
-/// while making the cap unusable from any client.
 #[test]
 fn every_tool_advertises_the_arguments_its_handler_reads() {
     let properties = |name: &str| descriptor(name)["inputSchema"]["properties"].clone();
@@ -186,17 +152,9 @@ fn every_tool_advertises_the_arguments_its_handler_reads() {
     );
 }
 
-/// No tool's schema or description names a COMMAND.
-///
-/// The property the whole command layer exists for: a host's vocabulary is data it publishes
-/// at runtime, so adding `app.phase`'s successors must never require an edit here — and a
-/// name written into a schema or a description would be exactly that edit, silently stale
-/// the moment the host moved on.
 #[test]
 fn no_tool_names_a_command() {
     let listed = tools_list_result().to_string();
-    // Dotted names only: a bare word like `wait` is also ordinary English, and matching one
-    // would fail on a description that merely uses it.
     for command_ish in [
         "app.phase",
         "battle.roster",

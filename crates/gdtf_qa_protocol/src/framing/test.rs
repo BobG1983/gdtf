@@ -1,18 +1,12 @@
-//! Property pins for the pure framing codec — split reads, oversize / junk rejection,
-//! and the empty / max-size payload edges (GTW-734).
-
 use crate::{
     framing::{Frame, FrameDecoder, MAX_FRAME_LEN, WireError, encode, encode_frame},
     message::{ProtocolVersion, QaRequest},
 };
 
-/// A representative message to frame in the codec pins.
 fn a_message() -> QaRequest {
     QaRequest::Hello(ProtocolVersion::new(1))
 }
 
-/// Drain every frame currently available from `decoder`, failing loudly (no bare
-/// `panic!`) on an unexpected codec error.
 fn drain(decoder: &mut FrameDecoder) -> Vec<Frame> {
     let mut out = Vec::new();
     loop {
@@ -24,7 +18,6 @@ fn drain(decoder: &mut FrameDecoder) -> Vec<Frame> {
     }
 }
 
-/// A message survives the full encode → frame-decode → decode path identically.
 #[test]
 fn round_trips_a_message_through_the_codec() {
     let message = a_message();
@@ -41,8 +34,6 @@ fn round_trips_a_message_through_the_codec() {
     assert_eq!(parsed, message, "the message is unchanged");
 }
 
-/// A read split at ANY byte boundary — mid-prefix or mid-payload — still reassembles
-/// into exactly one frame that decodes to the original.
 #[test]
 fn tolerates_reads_split_at_every_boundary() {
     let message = a_message();
@@ -63,8 +54,6 @@ fn tolerates_reads_split_at_every_boundary() {
     }
 }
 
-/// A prefix declaring more than the cap is rejected with the typed error, from the
-/// prefix alone (before any payload is buffered).
 #[test]
 fn oversize_frame_is_rejected() {
     let Ok(over) = u32::try_from(MAX_FRAME_LEN.as_usize() + 1) else {
@@ -77,15 +66,12 @@ fn oversize_frame_is_rejected() {
         matches!(result, Err(WireError::Oversize { .. })),
         "an oversize prefix is rejected: {result:?}"
     );
-    // The decoder stays latched in the error state.
     assert!(
         matches!(decoder.next_frame(), Err(WireError::Oversize { .. })),
         "the decoder stays poisoned after an oversize prefix"
     );
 }
 
-/// A well-formed frame whose payload is junk (non-RON, or non-UTF-8) decodes to the
-/// typed `Malformed` error, never a panic.
 #[test]
 fn junk_payload_is_rejected_with_the_typed_error() {
     for junk in [b"not <valid> ron @#$".to_vec(), vec![0xFF_u8, 0xFE, 0x00]] {
@@ -104,7 +90,6 @@ fn junk_payload_is_rejected_with_the_typed_error() {
     }
 }
 
-/// An empty payload frames to a bare 4-byte prefix and decodes back as an empty frame.
 #[test]
 fn empty_payload_frames_and_reassembles() {
     let Ok(framed) = encode_frame(&[]) else {
@@ -122,8 +107,6 @@ fn empty_payload_frames_and_reassembles() {
     assert!(out[0].payload().is_empty(), "its payload is empty");
 }
 
-/// A payload of exactly the cap is accepted; one byte over is rejected — the max-size
-/// boundary.
 #[test]
 fn max_size_payload_boundary() {
     let at_cap = vec![b'x'; MAX_FRAME_LEN.as_usize()];

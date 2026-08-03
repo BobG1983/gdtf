@@ -1,4 +1,3 @@
-//! Relocated unit tests for the posture / orientation verbs (GTW-201 wave 22 — moved
 //! verbatim from the former inline `#[cfg(test)] mod tests`).
 
 use crate::{
@@ -7,16 +6,10 @@ use crate::{
     tuning::{StanceChangeTu, TurnTu},
 };
 
-// AC1 — set_aiming toggles the Aiming flag AND leaves the Tu pool unchanged (no
-// charge): the aim cost is the fire-time ×1.5 premium, not a per-toggle charge. The
-// verb takes no Tu at all, so the test holds an unrelated pool and proves it is
-// untouched across both toggle directions.
 
 #[test]
 fn set_aiming_toggles_flag_and_charges_no_tu() {
     let mut aiming = Aiming::new(false);
-    // A pool the verb must never touch (set_aiming takes no Tu — this guards the
-    // contract that toggling aim is free).
     let tu = Tu::new(30);
 
     set_aiming(&mut aiming, Aiming::new(true));
@@ -28,9 +21,6 @@ fn set_aiming_toggles_flag_and_charges_no_tu() {
     assert_eq!(*tu, 30, "toggling aim off must not spend any TU either");
 }
 
-// AC2 — set_stance to a DIFFERENT stance sets the new Stance AND drops Tu by exactly
-// StanceChangeTu (relation: strictly decreased, drop == *cost). Value-agnostic on
-// the cost magnitude (a chosen test cost, asserted only by its relation to the drop).
 
 #[test]
 fn set_stance_to_different_stance_spends_exactly_the_cost() {
@@ -61,8 +51,6 @@ fn set_stance_to_different_stance_spends_exactly_the_cost() {
     );
 }
 
-// AC3 — set_stance to the SAME stance is a no-op on TU (and on the stance): you don't
-// pay to not move. Asserts the pool is unchanged and the verb reports no change.
 
 #[test]
 fn set_stance_to_same_stance_is_a_no_op() {
@@ -87,15 +75,11 @@ fn set_stance_to_same_stance_is_a_no_op() {
     );
 }
 
-// AC4 — a FULLY-affordable turn N steps away charges exactly N * TurnTu (one per
-// 45deg step) and lands on `to`. Relation only — value-agnostic on the magnitude.
-// North -> East is a 2-step short-way turn; North -> South (opposite) is 4 steps.
 
 #[test]
 fn set_facing_to_different_facing_spends_exactly_the_cost() {
     let cost = TurnTu::new(4);
 
-    // A 2-step turn on an AMPLE pool: drop == steps_to * cost, lands on `to`.
     let mut facing = Facing::new(Direction::North);
     let mut tu = Tu::new(50);
     let before = *tu;
@@ -118,7 +102,6 @@ fn set_facing_to_different_facing_spends_exactly_the_cost() {
         "the TU drop must equal exactly (short-way steps) * the per-step TurnTu leaf",
     );
 
-    // An opposite (4-step) turn on a fresh ample pool: drop == 4 * cost, lands on `to`.
     let mut facing = Facing::new(Direction::North);
     let mut tu = Tu::new(50);
     let before = *tu;
@@ -141,8 +124,6 @@ fn set_facing_to_different_facing_spends_exactly_the_cost() {
     );
 }
 
-// AC5 — set_facing to the SAME facing is a no-op on TU (and on the facing): you don't
-// pay to not turn.
 
 #[test]
 fn set_facing_to_same_facing_is_a_no_op() {
@@ -167,18 +148,12 @@ fn set_facing_to_same_facing_is_a_no_op() {
     );
 }
 
-// AC7 — PARTIAL turn: an under-affordable multi-step turn turns AS FAR AS AFFORDED,
-// lands partway, and spends EXACTLY afford * cost. With cost = C and a pool of 2*C,
-// only 2 of a 4-step North -> South turn are affordable, so it turns 2 steps and lands
-// at North.rotated_toward(South, 2) (= East, the 90° partway facing). Relation only.
 
 #[test]
 fn set_facing_partial_turn_spends_exactly_the_afforded_steps() {
-    // A chosen per-step cost C (the magnitude is tuning — only the relation matters).
     let c = 7u8;
     let cost = TurnTu::new(c);
     let mut facing = Facing::new(Direction::North);
-    // A pool that affords exactly 2 whole steps of the 4-step opposite turn.
     let mut tu = Tu::new(2 * c);
     let before = *tu;
 
@@ -193,7 +168,6 @@ fn set_facing_partial_turn_spends_exactly_the_afforded_steps() {
         Direction::North.rotated_toward(Direction::South, RingSteps::new(2)),
         "an under-affordable turn lands partway at the afforded short-way facing",
     );
-    // The partway facing is the 90°-short East (sanity on the rotated_toward landing).
     assert_eq!(
         *facing,
         Direction::East,
@@ -210,13 +184,10 @@ fn set_facing_partial_turn_spends_exactly_the_afforded_steps() {
     );
 }
 
-// AC8 — ZERO affordable steps: a turn the ganger cannot pay one step of is NO turn and
-// NO charge. With cost = C (C >= 2) and a pool of C - 1 (< cost, cannot afford even one
-// step), set_facing returns false, the facing is unchanged, and the pool is untouched.
 
 #[test]
 fn set_facing_with_pool_below_one_step_does_not_turn_or_charge() {
-    let c = 5u8; // C >= 2 so C - 1 is a positive, sub-one-step pool.
+    let c = 5u8; 
     let cost = TurnTu::new(c);
     let mut facing = Facing::new(Direction::North);
     let mut tu = Tu::new(c - 1);
@@ -238,7 +209,6 @@ fn set_facing_with_pool_below_one_step_does_not_turn_or_charge() {
         "no charge is taken when not even one step is affordable",
     );
 
-    // The Tu::new(0) sub-case: a broke ganger likewise cannot turn and is not charged.
     let mut facing = Facing::new(Direction::North);
     let mut tu = Tu::new(0);
     let changed = *set_facing(&mut facing, &mut tu, Direction::South, &cost);
@@ -251,9 +221,6 @@ fn set_facing_with_pool_below_one_step_does_not_turn_or_charge() {
     assert_eq!(*tu, 0, "a broke ganger is not charged");
 }
 
-// The charge goes through the saturating spend_tu — a stance change that costs more
-// than the pool holds floors the pool at 0 (no underflow wrap), while still applying
-// the new stance. Proves the verb inherits E4.0's saturating discipline.
 
 #[test]
 fn set_stance_charge_saturates_when_cost_exceeds_pool() {

@@ -1,6 +1,3 @@
-//! Pure ray-march geometry: the point-blank march connects for EVERY facing x
-//! shooter-stance x target-stance combination.
-
 use bevy::{math::Vec3, prelude::World};
 use gdtf_battle_sim::{
     central_axis::{climb_aim_dir, muzzle_position, target_aim_point},
@@ -16,9 +13,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-/// The published silhouette band a ganger in `stance` presents to the march
-/// (Standing→HIGH, Crouching→MID, Prone→LOW) — mirrors `OccupancyGrid`'s maintained
-/// band so the low-level probe sets the same state the production sync would.
 const fn stance_band(stance: StanceKind) -> HeightBand {
     match stance {
         StanceKind::Standing => HeightBand::High,
@@ -27,13 +21,7 @@ const fn stance_band(stance: StanceKind) -> HeightBand {
     }
 }
 
-// --- The low-level march sweep: the precise mechanism. ---
 
-/// March the point-blank muzzle→aim ray for a `shooter_stance` shooter at a
-/// `target_stance` enemy one cell away along `facing`, and report whether the round
-/// stops on that adjacent occupant. The aim is the enemy's band midpoint (the
-/// production aim, GTW-314) and the cone is dead-center (zero recoil), so the result
-/// is purely the march geometry.
 fn point_blank_march_hits(
     facing: Direction,
     enemy_cell: CellLevel,
@@ -85,13 +73,8 @@ fn point_blank_march_hits(
     result.kind == MarchKind::Ganger(enemy)
 }
 
-/// GTW-329 — a point-blank shot connects for EVERY facing × shooter-stance ×
-/// target-stance combination. PRE-FIX the lower-stanced (crouch / prone) targets all
-/// MISS (the round clears them at the entry boundary and dives to the ground); this
-/// sweep collects and reports every miss, so a regression names the exact case.
 #[test]
 fn point_blank_march_connects_for_every_facing_and_stance() {
-    // Each facing paired with the cell immediately along it from the shooter (5, 6).
     let facings = [
         (Direction::North, Cell::new(5, 5)),
         (Direction::NorthEast, Cell::new(6, 5)),

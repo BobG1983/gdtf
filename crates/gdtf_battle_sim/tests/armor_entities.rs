@@ -1,21 +1,3 @@
-//! GTW-323 slice 1 (ADR-0004) — armor as related entities, end-to-end on the REAL
-//! `setup_battle` → `fire()` path.
-//!
-//! Proves the two clauses the relationship remodel owns:
-//!
-//! 1. **Struck-piece read + wear go through the piece ENTITY** — after a `fire()`
-//!    volley lands on a target spawned by `setup_battle` (whose armor lives on related
-//!    `Wears` piece entities, NOT a `WornArmor` array), the struck location's
-//!    `ArmorIntegrity` **component** has dropped: the wear mutated the piece entity, the
-//!    new combat surface.
-//! 2. **Determinism holds** — two identical seeded `setup_battle` + volley replays
-//!    produce a byte-equal `Volley` (the keyed `ganger → Wears → BodyPart-tagged piece`
-//!    lookup is allocation-order-independent, so the value a struck part resolves to is
-//!    identical regardless of entity storage; ADR-0004 §Determinism).
-//!
-//! The setup spawns gangers as `bsn!` scenes whose `Wears` pieces materialize on the
-//! `SpawnScene` schedule, so each test `app.update()`s once after setup before firing.
-
 use bevy::{
     app::App,
     asset::AssetPlugin,
@@ -44,7 +26,6 @@ use gdtf_battle_sim::{
     tuning::{CombatTuning, GangerStatTuning},
 };
 
-/// The shooter's cell and the enemy's cell — a few cells apart, enemy due East.
 const fn shooter_at() -> bevy::math::IVec2 {
     bevy::math::IVec2::new(5, 6)
 }
@@ -52,20 +33,9 @@ const fn enemy_at() -> bevy::math::IVec2 {
     bevy::math::IVec2::new(9, 6)
 }
 
-/// Build the real battle via `setup_battle` against the central test registries — a
-/// `MinimalPlugins` + `AssetPlugin` + `ScenePlugin` app (the scene infrastructure the
-/// `bsn!` ganger + `Wears` piece spawns need), driven once with `app.update()` so the
-/// deferred scenes materialize. Returns `(app, setup)` or `None` on a setup failure.
-///
-/// The shooter is an East-facing, aiming, high-Shooting + tight-`BaseSpread` ganger so
-/// the cone clusters on the enemy; the enemy is a standing ganger directly East. Both
-/// resolve the central test weapon + armor keys (a paper-thin suit, so a landed round
-/// reliably wears the struck piece).
 fn battle_app() -> Option<(App, BattleSetup)> {
     let (situation, gangs) = SituationBuilder::new()
         .with_gangers([
-            // Shooter: tight cone, aiming, high Aim → high DERIVED Shooting (GTW-384:
-            // Shooting = aim·Aim + reflexes·Reflexes + cool·Cool) — lands reliably.
             GangerSpawnBuilder::new()
                 .at(key(shooter_at().x, shooter_at().y, 0))
                 .faction(Faction::new(0))
@@ -74,7 +44,6 @@ fn battle_app() -> Option<(App, BattleSetup)> {
                 .aiming(Aiming::new(true))
                 .aim(Aim::new(10.0))
                 .build(),
-            // Enemy: standing, due East — the target the shooter aims at.
             GangerSpawnBuilder::new()
                 .at(key(enemy_at().x, enemy_at().y, 0))
                 .faction(Faction::new(1))
@@ -86,14 +55,10 @@ fn battle_app() -> Option<(App, BattleSetup)> {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
     let registry = test_weapon_registry();
-    // GTW-505: the melee registry (with the `fists` default) so each ganger's melee weapon
-    // resolves at setup.
     let melee = test_melee_weapon_registry();
     let armor = test_armor_registry();
     let terrain = gdtf_battle_sim::test_support::test_terrain_registry();
-    // GTW-384: setup derives each ganger's computed stats from the default stat tuning.
     let stat_tuning = GangerStatTuning::default();
-    // GTW-396: fallback floor cost (no default_floor authored in test fixtures).
     let fallback_floor_cost = gdtf_battle_sim::tuning::CombatTuning::default()
         .move_costs
         .open;
@@ -118,21 +83,13 @@ fn battle_app() -> Option<(App, BattleSetup)> {
     let setup = outcome.ok().and_then(Result::ok);
     assert!(setup.is_some(), "setup_battle must succeed");
     let setup = setup?;
-    // Materialize the deferred `bsn!` ganger + `Wears` piece scenes.
     app.update();
-    // A second update so the production occupancy-maintenance is settled and the
-    // materialized Positions are seen (the grids were seeded by setup directly).
     app.update();
     Some((app, setup))
 }
 
-/// Drive ONE seeded `fire()` volley from `shooter` at the enemy cell, reading the
-/// grids `setup_battle` inserted as resources. Returns the frozen `Volley`.
 fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
-    /// The `fire()` query tuple, aliased so the `SystemState` type stays under clippy's
-    /// `type_complexity` gate (the GTW-543 mounted-weapon `MountedQuery` addition tipped it over).
-    /// Declared FIRST in the fn so it precedes the `let`s (`items_after_statements`).
-    type FireQueries<'w, 's> = (
+                type FireQueries<'w, 's> = (
         ShooterQuery<'w, 's>,
         TargetQuery<'w, 's>,
         WearsQuery<'w, 's>,
@@ -222,8 +179,6 @@ fn fire_once(app: &mut App, shooter: Entity, seed: u64) -> Volley {
     volley
 }
 
-/// The minimum `ArmorIntegrity` across a ganger's worn pieces — read off the piece
-/// ENTITY components (the combat surface), so a drop proves the wear hit the entity.
 fn min_piece_integrity(app: &App, ganger: Entity) -> Option<i32> {
     let wears = app.world().get::<Wears>(ganger)?;
     bevy::ecs::relationship::RelationshipTarget::iter(wears)
@@ -231,17 +186,11 @@ fn min_piece_integrity(app: &App, ganger: Entity) -> Option<i32> {
         .min()
 }
 
-/// GTW-323 (clause 3) — a landed `fire()` volley wears the struck piece ENTITY's
-/// `ArmorIntegrity` component (not a `WornArmor` array slot). Fires repeated seeds
-/// until a round lands on the enemy (a `Ganger` outcome), then asserts the enemy's
-/// minimum worn-piece integrity dropped below its spawned value — proving the read +
-/// wear flowed through the related piece entity.
 #[test]
 fn a_landed_shot_wears_the_struck_piece_entity_integrity() {
     let Some((mut app, setup)) = battle_app() else {
         return;
     };
-    // setup.occupants is in authored order: [shooter, enemy].
     assert_eq!(
         setup.occupants.len(),
         2,
@@ -259,8 +208,6 @@ fn a_landed_shot_wears_the_struck_piece_entity_integrity() {
         "the enemy must carry worn-piece integrity components (the Wears entities)",
     );
 
-    // Fire across many seeds until at least one volley LANDS on the enemy (a Ganger
-    // outcome). The struck piece's integrity then must be below its spawned value.
     let mut landed = false;
     for seed in 0..256u64 {
         let volley = fire_once(&mut app, shooter, seed);
@@ -287,11 +234,6 @@ fn a_landed_shot_wears_the_struck_piece_entity_integrity() {
     );
 }
 
-/// GTW-323 (clause 5) — seeded determinism holds through the armor-relationship
-/// remodel: two identical `setup_battle` + same-seed `fire()` runs produce a byte-equal
-/// `Volley`. The keyed `ganger → Wears → BodyPart-tagged piece` lookup is
-/// allocation-order-independent, so the struck-piece value (and therefore the whole
-/// fire result) is reproduced exactly (ADR-0004 §Determinism — cheap insurance).
 #[test]
 fn same_seed_reproduces_a_byte_equal_volley_through_the_relationship() {
     const SEED: u64 = 0xA12_0323;

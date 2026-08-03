@@ -1,7 +1,3 @@
-//! Orientation + GTW-277 V2 connected-control geometry tests: Row/Column
-//! layout, the one-connected-container reading (no gaps, root-owned corners,
-//! leading-edge dividers), and the vertical divider edge.
-
 use bevy::{
     prelude::*,
     ui::{Node, Val},
@@ -13,7 +9,6 @@ use super::{
 };
 use crate::widgets::core::{Orientation, test_support::harness};
 
-/// AC — both Row and Column orientations lay out (the flex-direction differs).
 #[test]
 fn segmented_control_supports_row_and_column() {
     let mut app = harness();
@@ -52,18 +47,6 @@ fn segmented_control_supports_row_and_column() {
     );
 }
 
-/// GTW-277 (screenshot review V2): a `SegmentedControl` renders as ONE connected
-/// container, NOT a stack of detached pills — the segments butt together with NO
-/// inter-segment gap, the ROOT carries the rounded corners + clips its children (so the
-/// inner segment corners are square and the whole control reads as a single rounded box),
-/// and every segment AFTER the first carries a hairline divider on its leading edge (left
-/// for a Row), while the first segment has no leading divider (its leading edge is the
-/// control's outer edge).
-///
-/// Pin-discriminating: a non-zero column/row gap (the old detached-pill look), a missing
-/// root radius/clip, or a leading divider on segment 0 / a missing divider on segment 1
-/// each fails an assert. Asserts layout KIND (gap is zero, divider edge is non-zero), not
-/// px magnitudes.
 #[test]
 fn segmented_control_reads_as_one_connected_control() {
     use bevy::ui::{BorderColor, Overflow};
@@ -71,7 +54,6 @@ fn segmented_control_reads_as_one_connected_control() {
     let mut app = harness();
     let control = spawn_fire_mode(&mut app);
 
-    // The ROOT: no inter-segment gap, a rounded outer container, clipped children.
     let root_node = app.world().get::<Node>(control).cloned();
     assert!(root_node.is_some(), "control root must have a Node");
     let Some(root) = root_node else { return };
@@ -96,8 +78,6 @@ fn segmented_control_reads_as_one_connected_control() {
         "the root (the single container) carries the rounded corner (V2)",
     );
 
-    // The segments: butt together (no per-segment rounding), divider on each leading edge
-    // EXCEPT the first.
     let segments = segments_of(&mut app, control);
     assert_eq!(segments.len(), 3, "must have 3 segments");
     let first = segments[0].0;
@@ -125,7 +105,6 @@ fn segmented_control_reads_as_one_connected_control() {
          control's adjacent dividers, V2)",
     );
 
-    // The divider is the base_text color (a subtle hairline), painted once at spawn.
     let second_border = app.world().get::<BorderColor>(second).map(|b| b.left);
     assert_eq!(
         second_border,
@@ -134,12 +113,6 @@ fn segmented_control_reads_as_one_connected_control() {
     );
 }
 
-/// GTW-277 (V2): a VERTICAL segmented control's dividers run along the TOP edge (the
-/// orientation-correct leading edge), not the left, so a stacked Stand/Kneel/Prone control
-/// reads as one connected vertical control with horizontal dividers between rows.
-///
-/// Pin-discriminating: a vertical control whose divider is on the left (the horizontal
-/// edge) instead of the top fails the assert.
 #[test]
 fn vertical_segmented_control_divides_on_the_top_edge() {
     let mut app = harness();

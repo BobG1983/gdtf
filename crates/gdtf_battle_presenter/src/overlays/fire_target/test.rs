@@ -1,21 +1,11 @@
-//! Pure-logic unit tests for the fire-target highlight read-side resource + the cost-label text.
-//!
-//! The DRAW-system behaviour (the red tile rendered UNDER the actor at the named cell, the
-//! opaque cost label, hard-cut to the active storey, hidden off a fireable hover) is the
-//! headless integration proof in `tests/fire_target.rs` (the `path_preview.rs` pattern) — that
-//! wires the REAL `FireTargetHighlight` → draw system. These cover the read-side accessors + the
-//! cost-label format that do not need an app.
-
 use gdtf_battle_sim::prelude::{Cell, CellLevel, Level, Tu};
 
 use super::draw::{FireTargetHighlight, cost_label_text};
 
-/// A level-0 cell at `(x, y)`.
 fn c0(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(0))
 }
 
-/// The cleared highlight is empty — no fireable hover → nothing drawn.
 #[test]
 fn cleared_highlight_is_empty() {
     let highlight = FireTargetHighlight::cleared();
@@ -27,8 +17,6 @@ fn cleared_highlight_is_empty() {
     assert_eq!(highlight.cost(), None, "no cost when cleared");
 }
 
-/// The `Default` highlight is the empty (cleared) one — a battle with no fireable hover draws
-/// nothing.
 #[test]
 fn default_highlight_is_cleared() {
     assert_eq!(
@@ -38,8 +26,6 @@ fn default_highlight_is_cleared() {
     );
 }
 
-/// `FireTargetHighlight::new` round-trips the hovered cell + the fire cost, readable through the
-/// accessors.
 #[test]
 fn new_highlight_holds_cell_and_cost() {
     let cell = c0(12, 8);
@@ -57,8 +43,6 @@ fn new_highlight_holds_cell_and_cost() {
     );
 }
 
-/// The fire-cost label reads the bare TU count followed by `" TU"` (the firemode / move-cost
-/// convention), so the label shows the EXACT fire cost.
 #[test]
 fn cost_label_text_shows_the_tu_cost() {
     assert_eq!(

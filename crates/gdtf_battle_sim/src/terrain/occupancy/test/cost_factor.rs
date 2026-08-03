@@ -1,18 +1,11 @@
-//! GTW-444 — the `MovementCostFactor` per-step cost scaling (C3 / C5 / C6 /
-//! determinism).
-
 use super::{
     super::{OccupancyGrid, pathable_neighbors},
     support::*,
 };
 use crate::{ganger::Tu, injuries::MovementCostFactor, metric::CellLevel};
 
-/// The ORTHOGONAL step cost into `target` from its left neighbour under `factor`, read off
-/// `pathable_neighbors` (the SAME cost function the route + the committed walk use). The
-/// step from `(x-1, y)` to `(x, y)` is orthogonal, so it carries the entered cell's base
-/// floor cost scaled by `factor` (no octile diagonal). `None` if the target is not yielded.
 fn orthogonal_step_cost(target: CellLevel, factor: MovementCostFactor) -> Option<Tu> {
-    let grid = OccupancyGrid::new(); // all Open
+    let grid = OccupancyGrid::new(); 
     let floor_costs = default_floor_costs();
     let origin = key(target.x - 1, target.y, 0);
     pathable_neighbors(origin, &grid, &floor_costs, factor)
@@ -22,13 +15,9 @@ fn orthogonal_step_cost(target: CellLevel, factor: MovementCostFactor) -> Option
 
 #[test]
 fn identity_factor_leaves_step_cost_at_base_terrain_cost() {
-    // C6 / C3: an uninjured mover (IDENTITY, 1.0) pays exactly the base terrain cost — the
-    // factor never accidentally slows a healthy ganger. Pin: the scaled cost == the
-    // unscaled cost when the factor is 1.0.
     let target = key(5, 5, 0);
     let base = orthogonal_step_cost(target, MovementCostFactor::IDENTITY);
     assert!(base.is_some(), "the open neighbour is reachable");
-    // Re-read WITHOUT scaling (IDENTITY) — must equal the base, the no-slowdown identity.
     assert_eq!(
         base,
         orthogonal_step_cost(target, MovementCostFactor::new(1.0)),
@@ -38,9 +27,6 @@ fn identity_factor_leaves_step_cost_at_base_terrain_cost() {
 
 #[test]
 fn hampered_factor_scales_step_cost_by_ceil_of_product() {
-    // C3 / C5: a Hampered mover's per-step cost == ceil(base × factor). Tested over factors
-    // chosen so base×factor is fractional (forcing the ceil), so this PINS the multiply +
-    // ceil — a site that did not multiply, or that rounded down/truncated, would FAIL.
     let target = key(5, 5, 0);
     let base = orthogonal_step_cost(target, MovementCostFactor::IDENTITY);
     assert!(base.is_some(), "the open neighbour must be reachable");
@@ -66,7 +52,6 @@ fn hampered_factor_scales_step_cost_by_ceil_of_product() {
             expected,
             "a factor of {mult} must scale the step to ceil(base × factor)"
         );
-        // C3: a factor >= 1.0 NEVER reduces the cost below the base terrain cost.
         assert!(
             u32::from(*scaled) >= base,
             "a factor >= 1.0 must never drop the step below the base terrain cost"
@@ -76,8 +61,6 @@ fn hampered_factor_scales_step_cost_by_ceil_of_product() {
 
 #[test]
 fn step_cost_scaling_is_deterministic() {
-    // Determinism (C5): the SAME factor + terrain yields the SAME cost across repeated
-    // reads (a pure ceil(base × factor), no RNG, no map-order dependence).
     let target = key(5, 5, 0);
     let factor = MovementCostFactor::new(1.5);
     let first = orthogonal_step_cost(target, factor);

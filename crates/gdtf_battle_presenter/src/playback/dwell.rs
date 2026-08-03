@@ -1,44 +1,20 @@
-//! [`PlaybackTuning`] — the hot-reloadable per-deed DWELLS the playback cursor holds each
-//! act for (GTW-727 C20).
-//!
 //! Every value is a named newtype with a `DEFAULT` and `#[serde(default)]`, loaded through
-//! the same generic hot-RON registration path `FxTuning` uses, so the whole feel of combat
-//! playback is tunable from `assets/core_tuning/playback.tuning.ron` WITHOUT a rebuild —
-//! which is the only practical way to find the right pacing, since "readable" is a
-//! judgement made by watching, not by reasoning.
-//!
-//! **Dwells are read PER ACT, at hold time — never captured when an entry is enqueued.**
-//! That is deliberate: a later skip / fast-forward affordance then becomes a rate
-//! multiplier applied at the same read, rather than a restructure of how holds are built.
-
 use bevy::prelude::*;
 use gdtf_assets::HotRonAppExt;
 use serde::Deserialize;
 
-/// Declares one dwell newtype: a serde-transparent `f32` seconds value with a private
-/// inner, a `DEFAULT` constant, a `new` constructor and a `Default` impl.
-///
-/// Ten near-identical newtypes differing only in name, default and prose is exactly the
-/// shape a declarative macro exists for; writing them out longhand would be 200 lines in
-/// which a copy-paste slip (a default wired to the wrong constant) is invisible.
 macro_rules! dwell_seconds {
     ($(#[$meta:meta])* $name:ident, $default:expr, $doc:expr) => {
         #[doc = $doc]
-        ///
-        /// Seconds. A named newtype (`no-bare-types.md`): the inner is PRIVATE, read
-        /// through the derived [`Deref`] and built through [`new`](Self::new) /
-        /// [`Default`]. `#[serde(default)]` on the field means an absent `.ron` entry
-        /// degrades to the shipped default rather than failing the parse.
-        #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+                                /// [`Default`]. `#[serde(default)]` on the field means an absent `.ron` entry
+                #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
         #[serde(transparent)]
         pub struct $name(f32);
 
         impl $name {
-            /// The shipped default, in seconds.
-            pub const DEFAULT: f32 = $default;
+                        pub const DEFAULT: f32 = $default;
 
-            /// Build this dwell from a duration in seconds.
-            #[must_use]
+                        #[must_use]
             pub const fn new(seconds: f32) -> Self {
                 Self(seconds)
             }
@@ -128,49 +104,24 @@ dwell_seconds!(
      the shipped velocity, so it never truncates a real bolt."
 );
 
-/// The resolved playback-dwell table the cursor reads (GTW-727 C20).
-///
-/// Hot-reloadable through the generic hot-RON registration path
-/// (`register_playback_tuning_hot_ron`): an edit
-/// to the `.ron` overwrites this resource, so the very next hold uses the new value with no
-/// rebuild. Also `init_resource`'d by the renderer plugin, so the cursor always has a table
-/// even before (or without) the asset chain — a `MinimalPlugins` app with no `AssetServer`
-/// skips the chain entirely and keeps the shipped defaults.
 #[derive(Resource, Debug, Clone, PartialEq, Default, Deserialize, TypePath)]
 #[serde(default)]
 pub struct PlaybackTuning {
-    /// The beat after one round of a volley lands.
-    pub round_seconds:         RoundSeconds,
-    /// The beat on a reaction-fire declaration.
-    pub reaction_beat_seconds: ReactionBeatSeconds,
-    /// The beat on an ordinary fire declaration.
-    pub fire_beat_seconds:     FireBeatSeconds,
-    /// The beat on one walk step.
-    pub step_seconds:          StepSeconds,
-    /// The beat on a posture change.
-    pub posture_seconds:       PostureSeconds,
-    /// The beat on a resolved reload.
-    pub reload_seconds:        ReloadSeconds,
-    /// The beat on a consequence.
-    pub consequence_seconds:   ConsequenceSeconds,
-    /// The beat on a life-state change.
-    pub life_change_seconds:   LifeChangeSeconds,
-    /// The beat on a turn boundary.
-    pub turn_beat_seconds:     TurnBeatSeconds,
-    /// The beat on a minor ordered fact.
-    pub minor_seconds:         MinorSeconds,
-    /// The hard cap on waiting for a projectile to land.
-    pub impact_cap_seconds:    ImpactCapSeconds,
+        pub round_seconds:         RoundSeconds,
+        pub reaction_beat_seconds: ReactionBeatSeconds,
+        pub fire_beat_seconds:     FireBeatSeconds,
+        pub step_seconds:          StepSeconds,
+        pub posture_seconds:       PostureSeconds,
+        pub reload_seconds:        ReloadSeconds,
+        pub consequence_seconds:   ConsequenceSeconds,
+        pub life_change_seconds:   LifeChangeSeconds,
+        pub turn_beat_seconds:     TurnBeatSeconds,
+        pub minor_seconds:         MinorSeconds,
+        pub impact_cap_seconds:    ImpactCapSeconds,
 }
 
-/// The path of the loose playback-tuning RON, relative to the asset source root.
 const PLAYBACK_TUNING_RON_PATH: &str = "core_tuning/playback.tuning.ron";
 
-/// Registers the [`PlaybackTuning`] hot-RON chain — ONE ext call onto the generic hot-RON
-/// registration path, exactly as `register_fx_tuning_hot_ron` does for the FX table.
-///
-/// Self-gates on the [`AssetServer`](bevy::asset::AssetServer) (`bevy-traps.md` #1), so a
-/// `MinimalPlugins` headless app is a no-op and keeps the `init_resource` defaults.
 pub(super) fn register_playback_tuning_hot_ron(app: &mut App) {
     app.init_hot_ron_resource::<PlaybackTuning>(PLAYBACK_TUNING_RON_PATH);
 }

@@ -1,6 +1,3 @@
-//! The prior-value maps: a FIRST observation seeds silently, a later CHANGE reports a
-//! transition, and an unchanged re-observation reports nothing (GTW-727 C11).
-
 use bevy::prelude::Entity;
 
 use crate::{
@@ -8,7 +5,6 @@ use crate::{
     ganger::{Aiming, Direction, Facing, LifeState, Stance, StanceKind},
 };
 
-/// A pose with the given facing, everything else at rest.
 fn pose(direction: Direction) -> PoseFacts {
     PoseFacts::new(
         Facing::new(direction),
@@ -18,10 +14,6 @@ fn pose(direction: Direction) -> PoseFacts {
     )
 }
 
-/// The seed-silently rule, which is what stops a roster spawn from flooding the log:
-/// situation setup writes facing, stance and aiming on every ganger at once, so a
-/// recorder that fired on a first observation would record one entry per ganger before
-/// anybody had acted.
 #[test]
 fn a_first_pose_observation_seeds_without_reporting_a_transition() {
     let mut log = ActLog::default();
@@ -45,8 +37,6 @@ fn a_first_pose_observation_seeds_without_reporting_a_transition() {
     );
 }
 
-/// The life-state map returns the state the ganger LEFT — the `from` half of a genuine
-/// transition, which no post-act snapshot could produce.
 #[test]
 fn a_life_transition_reports_the_state_that_was_left() {
     let mut log = ActLog::default();
@@ -74,7 +64,6 @@ fn a_life_transition_reports_the_state_that_was_left() {
     );
 }
 
-/// Prior values are per-entity: one ganger's change must not mask or trigger another's.
 #[test]
 fn prior_values_are_tracked_per_entity() {
     let mut log = ActLog::default();

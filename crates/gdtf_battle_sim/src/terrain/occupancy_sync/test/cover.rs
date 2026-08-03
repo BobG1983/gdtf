@@ -1,12 +1,5 @@
-//! C5 — the `CoverDestroyed` message sync into the grid's destroyed-cover set.
-
 use super::{super::CoverDestroyed, support::*};
 
-/// C9(c) — emitting a [`CoverDestroyed`] message and ticking once adds the cell
-/// to the grid's destroyed-cover set.
-///
-/// Writes the message into the world buffer, ticks, and asserts the cell now
-/// reads destroyed (and an unrelated cell does not). In place — no rebuild.
 #[test]
 fn cover_destroyed_message_marks_the_cell() {
     let mut app = headless_app();

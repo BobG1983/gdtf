@@ -1,6 +1,3 @@
-//! The assertions over the collected replies (GTW-804; the `Load`-phase ones added in
-//! GTW-896).
-
 use gdtf_content_editor::{EDITOR_QA_SERVER_NAME, EditorState};
 use gdtf_qa_protocol::{
     command::CommandOutcome,
@@ -20,7 +17,6 @@ pub(crate) fn assert_hello_ok(reply: &QaResponse) {
     );
 }
 
-/// A client one version ahead is refused — proving real negotiation rather than a canned reply.
 pub(crate) fn assert_version_mismatch(reply: &QaResponse) {
     assert!(
         matches!(reply, QaResponse::Error(QaError::VersionMismatch)),
@@ -28,12 +24,6 @@ pub(crate) fn assert_version_mismatch(reply: &QaResponse) {
     );
 }
 
-/// A command name the editor does not offer is answered `Unknown`, carrying the names it
-/// does.
-///
-/// The editor publishes no commands yet — building its set is the editor-host ticket — so
-/// every name is unknown and the list is empty. It is still the SELF-CORRECTING shape a typo
-/// gets once there are commands to name, and it is a real answer rather than a hang.
 pub(crate) fn assert_unknown_command(reply: &QaResponse) {
     let QaResponse::Outcome(CommandOutcome::Unknown { known }) = reply else {
         unreachable!(
@@ -46,9 +36,6 @@ pub(crate) fn assert_unknown_command(reply: &QaResponse) {
     );
 }
 
-/// The frame that answered this reply ran under the editor's `Load` asset pass (GTW-896).
-///
-/// `what` names the reply, so a failure says which exchange slipped past the transition.
 pub(crate) fn assert_answered_during_load(state: Option<&EditorState>, what: &str) {
     assert_eq!(
         state,
@@ -60,13 +47,6 @@ pub(crate) fn assert_answered_during_load(state: Option<&EditorState>, what: &st
     );
 }
 
-/// The catalogue the editor put on the wire is the EDITOR's, and it was answered by its own
-/// drain (GTW-896, retargeted by GTW-943).
-///
-/// The WIRE half of the `Load` bracket. The readiness field the old query pair carried went
-/// with that pair, so what a reply proves about the answering frame is now the pairing the
-/// caller made: this asserts the reply really is a catalogue from the editor host, so the
-/// state tagged alongside it is the state of a frame the editor's drain actually ran.
 pub(crate) fn assert_editor_catalogue(reply: &QaResponse, state: Option<&EditorState>) {
     let QaResponse::Catalogue(catalogue) = reply else {
         unreachable!("expected a Catalogue reply to close the window, got {reply:?}");

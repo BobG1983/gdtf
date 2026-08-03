@@ -1,35 +1,16 @@
-//! The shell's mode-agnostic **chrome** — the top-bar mode tabs + global theme
-//! `ComboBox` and the bottom status line (split out of `shell.rs` at the GTW-636 boundary:
-//! the chrome changes when the Workbench's frame does, the shell when the per-mode
-//! panel layout does).
-
 use bevy_egui::egui;
 use gdtf_battle_sim::level::{ThemeUuid, UuidThemeRegistry};
 
 use crate::{egui_shell::theme_combo::ThemeOption, mode::EditorMode, session::MapEditorSession};
 
-/// The placeholder label shown when no theme is selected (the [`ThemeUuid::nil`] sentinel) — the
-/// status line's nil-theme text and the `ComboBox`'s empty preview.
 const NO_THEME: &str = "—";
 
-/// Draw ONE mode tab per Workbench mode as egui
-/// [`selectable_value`](egui::Ui::selectable_value)s over the [`EditorMode`] resource — a click
-/// sets the mode in place (the `1`–`9` + `0` number hotkeys do the same via
-/// [`mode_hotkeys`](crate::mode::mode_hotkeys)). The tab ORDER is [`EditorMode::TAB_ORDER`] and
-/// each label is [`EditorMode::tab_label`], so a new mode variant joins the bar with no edit
-/// here (the roster was hand-enumerated in this doc until GTW-670 — it had already drifted).
 pub(super) fn mode_tabs(ui: &mut egui::Ui, mode: &mut EditorMode) {
     for option in EditorMode::TAB_ORDER {
         ui.selectable_value(mode, option, option.tab_label());
     }
 }
 
-/// Draw the global theme [`ComboBox`](egui::ComboBox) — its options are the sorted
-/// [`theme_options`](crate::egui_shell::theme_combo::theme_options), the currently-selected
-/// theme's display name is the preview, and choosing a
-/// row folds the selection into the session exactly as the old `apply_theme_selection` did
-/// (resolving the chosen theme's default-floor from the registry, then calling
-/// [`MapEditorSession::select_theme`]).
 pub(super) fn theme_combo_box(
     ui: &mut egui::Ui,
     options: &[ThemeOption],
@@ -55,10 +36,6 @@ pub(super) fn theme_combo_box(
         });
 }
 
-/// The status line text — `"Mode: {LABEL}  |  Theme: {name}"`, with a nil / unknown theme shown as
-/// the [`NO_THEME`] placeholder (never a panic). Reuses [`EditorMode::tab_label`] and resolves the
-/// session theme's display name from the registry — the verbatim text the old `refresh_status_bar`
-/// produced.
 pub(super) fn status_line(
     mode: EditorMode,
     session: &MapEditorSession,
@@ -68,8 +45,6 @@ pub(super) fn status_line(
     format!("Mode: {}  |  Theme: {theme_label}", mode.tab_label())
 }
 
-/// Resolve a theme's display name from the registry, or the [`NO_THEME`] placeholder for the nil
-/// sentinel / an unknown / an absent registry (never a panic).
 fn theme_label(theme: ThemeUuid, themes: Option<&UuidThemeRegistry>) -> String {
     if *theme.is_nil() {
         return NO_THEME.to_owned();

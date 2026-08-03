@@ -1,7 +1,3 @@
-//! Tests for the `theme_interaction` hover/press swaps and its exclusion
-//! filters (mirrors the source `theme.rs`): the state → theme-color mapping,
-//! the disabled / active / switch-track skips, and the absent-theme guard.
-
 use bevy::{
     prelude::*,
     ui::{BackgroundColor, Interaction, widget::Button},
@@ -19,11 +15,6 @@ use crate::{
     },
 };
 
-/// `theme_interaction` swaps a hovered button to `HoverBg` and a pressed
-/// button to `PressBg`, both sourced from the theme — AC#4.
-///
-/// Pin-discriminating: a wrong state→color mapping, or hardcoded literals,
-/// fail an assert.
 #[test]
 fn hover_and_press_swap_to_theme_state_colors() -> Result<(), ron::error::SpannedError> {
     let panel = [0.08, 0.08, 0.10, 1.0];
@@ -67,11 +58,6 @@ fn hover_and_press_swap_to_theme_state_colors() -> Result<(), ron::error::Spanne
     Ok(())
 }
 
-/// A `DisabledButton` is skipped by `theme_interaction`: simulating Hovered
-/// leaves its background at the `apply_theme` base, never `HoverBg` — AC#5.
-///
-/// Pin-discriminating: dropping `Without<DisabledButton>` would let the
-/// hover swap fire and this assert would see `HoverBg`.
 #[test]
 fn disabled_button_is_skipped_by_interaction() -> Result<(), ron::error::SpannedError> {
     let panel = [0.08, 0.08, 0.10, 1.0];
@@ -92,7 +78,6 @@ fn disabled_button_is_skipped_by_interaction() -> Result<(), ron::error::Spanned
         )
     };
     app.world_mut().flush();
-    // Establish the base look first.
     app.update();
     let base = app.world().get::<BackgroundColor>(button).map(|c| c.0);
 
@@ -113,14 +98,6 @@ fn disabled_button_is_skipped_by_interaction() -> Result<(), ron::error::Spanned
     Ok(())
 }
 
-/// GTW-266 — `theme_interaction` SKIPS an `ActiveButton`: simulating Hovered (the swap a
-/// real pointer would drive) leaves its background at the `apply_theme` base, never
-/// `HoverBg`. Active is STICKY — the interaction feedback never overrides a toggled-on
-/// button (its color comes solely from `paint_active_buttons`), so the Aim/Mode/Stance
-/// toggle does not flicker hover-vs-active.
-///
-/// Pin-discriminating: dropping the `Without<ActiveButton>` filter from `theme_interaction`
-/// would let the hover swap fire and this assert would see `HoverBg`.
 #[test]
 fn active_button_is_skipped_by_interaction() -> Result<(), ron::error::SpannedError> {
     let panel = [0.08, 0.08, 0.10, 1.0];
@@ -141,7 +118,6 @@ fn active_button_is_skipped_by_interaction() -> Result<(), ron::error::SpannedEr
         )
     };
     app.world_mut().flush();
-    // Establish the base look first (apply_theme paints the resting base).
     app.update();
     let base = app.world().get::<BackgroundColor>(button).map(|c| c.0);
 
@@ -163,9 +139,6 @@ fn active_button_is_skipped_by_interaction() -> Result<(), ron::error::SpannedEr
     Ok(())
 }
 
-/// With no `GdtfTheme`, an `app.update()` does not panic: the
-/// `Option<Res<GdtfTheme>>` guard keeps `theme_interaction` inert
-/// (bevy-traps rule 1).
 #[test]
 fn absent_theme_does_not_panic() {
     let mut app = App::new();
@@ -181,19 +154,6 @@ fn absent_theme_does_not_panic() {
     );
 }
 
-/// GTW-277 (track-visibility fix) — `theme_interaction` SKIPS a `Switch` track: its track
-/// `BackgroundColor` is OWNED by the switch driver / caller, so the resting `button.color`
-/// fill never clobbers the switch's distinct off-track color on the frame its `Interaction`
-/// is added (spawn) or changes (hover).
-///
-/// A switch track IS a `Button` (a click anywhere flips it), so without `Without<Switch>` in
-/// `theme_interaction`'s filter the resting fill would overwrite the off-track color the frame
-/// the switch's `Interaction` was added — leaving the track painted the near-panel
-/// `button.color` and reading as a bare knob with no visible pill (the reported defect).
-///
-/// Pin-discriminating: dropping `Without<Switch>` lets the spawn-frame `Changed<Interaction>`
-/// repaint the track to `button.color`, and BOTH asserts (track keeps its OFF color; track is
-/// NOT `button.color`) fail. The OFF color here is deliberately distinct from `button.color`.
 #[test]
 fn switch_track_is_skipped_by_interaction() -> Result<(), ron::error::SpannedError> {
     let panel = [0.16, 0.16, 0.18, 1.0];
@@ -201,8 +161,6 @@ fn switch_track_is_skipped_by_interaction() -> Result<(), ron::error::SpannedErr
     let press = [0.04, 0.04, 0.06, 1.0];
     let theme_res = theme(panel, hover, press)?;
 
-    // A switch OFF-track color clearly distinct from the resting button fill (so a clobber is
-    // detectable) and from the active/hover/pressed fills.
     let off_track = Color::srgb(0.58, 0.58, 0.59);
     let colors = SwitchColors {
         off:  off_track,
@@ -225,15 +183,11 @@ fn switch_track_is_skipped_by_interaction() -> Result<(), ron::error::SpannedErr
     };
     app.world_mut().flush();
 
-    // Test precondition: the OFF track color and the resting button fill differ, so a clobber
-    // would be visible.
     assert_ne!(
         off_track, *theme_res.button.color,
         "test precondition: the OFF-track color must differ from the resting button fill",
     );
 
-    // The spawn frame adds `Interaction` (Changed) — the frame `theme_interaction` would
-    // clobber the track if the switch were not excluded.
     app.update();
     assert_eq!(
         app.world().get::<BackgroundColor>(switch).map(|c| c.0),
@@ -242,7 +196,6 @@ fn switch_track_is_skipped_by_interaction() -> Result<(), ron::error::SpannedErr
          (theme_interaction skips Switch)",
     );
 
-    // A subsequent hover is another `Changed<Interaction>` — still must not clobber.
     set_interaction(&mut app, switch, Interaction::Hovered);
     app.update();
     assert_eq!(

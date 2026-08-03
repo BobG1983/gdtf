@@ -1,5 +1,3 @@
-//! T4 / T7 — the spawn-flood cure, and clause (d) asserted rather than assumed.
-
 use gdtf_battle_sim::{
     battle::{BattleLost, BattleWon},
     ganger::Direction,
@@ -8,17 +6,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-/// **T4 — THE SPAWN-FLOOD CURE.** Setting up a battle must append NOTHING to the log.
-///
-/// Situation setup writes facing, stance, aiming, position and life state on every ganger
-/// at spawn. A recorder that keyed on `Changed<T>` — the obvious implementation — would
-/// therefore fire for every one of those, for every ganger, on the spawn frame: a roster of
-/// six would open its battle with dozens of entries before anybody had acted, and a
-/// presenter replaying them would spend seconds showing a battle that had not started.
-///
-/// The cure is that a query-sourced recorder emits only on a TRANSITION against a
-/// prior-value map, and a FIRST observation seeds the map silently. This test is what keeps
-/// that rule from being quietly dropped.
 #[test]
 fn spawning_a_roster_appends_no_entries() {
     let mut app = battle_app(forced_reaction_tuning(1));
@@ -42,20 +29,12 @@ fn spawning_a_roster_appends_no_entries() {
     );
 }
 
-/// **T7 — CLAUSE (d), ASSERTED.** A battle with no presenter anywhere runs to an outcome.
-///
-/// The entire pacing mechanism lives in the presenter, and the input gate it drives fails
-/// OPEN when there is no cursor. This is the test that the sim, on its own, is completely
-/// unaffected: no cursor exists, nothing waits, and the battle reaches a decided outcome
-/// exactly as it always did. It is the guard on the single most dangerous line in the
-/// change — the fail-open default.
 #[test]
 fn a_battle_with_no_presenter_runs_to_an_outcome() {
     let mut app = battle_app(forced_reaction_tuning(8));
     app.init_resource::<Outcomes>();
     app.add_systems(bevy::app::Update, record_outcomes);
 
-    // One frail enemy against a watcher that will interrupt it to death as it advances.
     let watch = ground(5, 5);
     let situation = SituationBuilder::new()
         .with_gangers([
@@ -74,8 +53,6 @@ fn a_battle_with_no_presenter_runs_to_an_outcome() {
             ground(6, 5),
         ));
 
-    // Run a generous number of updates. With no presenter there is nothing to wait for, so
-    // the battle resolves at full speed.
     for _ in 0..64 {
         app.update();
     }
@@ -89,14 +66,12 @@ fn a_battle_with_no_presenter_runs_to_an_outcome() {
         "a battle with NO presenter must reach a decided outcome — nothing in the sim waits \
          on a cursor that does not exist",
     );
-    // And the log still recorded the acts, so a headless run is fully observable.
     assert!(
         !logged(&app).is_empty(),
         "the recorder runs headless too — the log is what a QA client and the log tests read",
     );
 }
 
-/// A frail mover: low Grit / Toughness, so a couple of interrupt rounds finish it.
 fn frail_mover(
     at: gdtf_battle_sim::metric::CellLevel,
     faction: u8,
@@ -120,14 +95,11 @@ fn frail_mover(
         .build()
 }
 
-/// Whether the census has declared an outcome at any point in the run.
 #[derive(bevy::prelude::Resource, Default)]
 struct Outcomes {
-    /// Set once a `BattleWon` or `BattleLost` has been observed.
-    decided: bool,
+        decided: bool,
 }
 
-/// Latch the census outcome so the assertion can read it after the run.
 fn record_outcomes(
     mut won: bevy::prelude::MessageReader<BattleWon>,
     mut lost: bevy::prelude::MessageReader<BattleLost>,

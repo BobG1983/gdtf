@@ -1,7 +1,3 @@
-//! The shared click/turn DECISIONS (GTW-238 / GTW-259): the read-only [`decide_left_click`] /
-//! [`apply_left_click`] split and the [`decide_turn`] geometry — ONE precedence implementation
-//! the mouse and the gamepad both use, plus the [`LeftClickReads`] / [`TurnReads`] bundles.
-
 mod apply;
 mod left_click;
 mod pin;

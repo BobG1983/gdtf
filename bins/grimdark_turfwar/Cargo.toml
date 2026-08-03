@@ -7,29 +7,9 @@ edition = "2024"
 gdtf_app = { path = "../../crates/gdtf_app" }
 
 [features]
-# Bevy dynamic linking for fast dev builds; chains through to gdtf_app -> bevy.
-# Enable for non-release builds (e.g. `cargo run --features dynamic_linking`);
-# leave off for `--release` so it never ships in release artifacts.
 dynamic_linking = ["gdtf_app/dynamic_linking"]
-# DEV / LOCAL-only asset hot-reload; chains through to gdtf_app -> bevy/file_watcher.
-# Enable locally (e.g. `cargo run --features dynamic_linking,file_watcher`) to make
-# editing a loose asset on disk live-reload it; never enabled for release/CI.
 file_watcher = ["gdtf_app/file_watcher"]
-# GTW-655: DEV-ONLY procgen load-time stepper; chains through to gdtf_app -> dev_tools ->
-# bevy_egui. Its wiring site gates on this Cargo feature ONLY — there is NO
-# `cfg!(debug_assertions)` double-gate, because `dev_tools` is itself never enabled for a
-# release/CI build — and it stays disengaged until a developer turns on the dev-only
-# procgen-stepper toggle on the Options screen (default OFF, GTW-868), so a release binary
-# never links egui and a normal dev launch is unaffected. Never enabled for release/CI.
 dev_tools = ["gdtf_app/dev_tools"]
-# GTW-736: DEV-ONLY QA network control channel (the GTW-694 architecture's T3 onward,
-# extended through GTW-749 — the ONE capture / drive path in the workspace, replacing the
-# GTW-590-era `dev_capture` feature this file used to also declare); chains through to
-# gdtf_app -> net_qa -> the bevy-free wire contract + the self-capture crate. Its wiring
-# site is ADDITIONALLY double-gated on `cfg!(debug_assertions)` (it opens a listener), and
-# it stays inert until `GDTF_NET_QA` is set truthy, so a release binary never sees it and a
-# normal dev launch is unaffected. Never enabled for release builds; CI's clippy and test steps
-# DO enable it (GTW-883) so the module is linted and tested on every PR.
 net_qa = ["gdtf_app/net_qa"]
 
 [lints]

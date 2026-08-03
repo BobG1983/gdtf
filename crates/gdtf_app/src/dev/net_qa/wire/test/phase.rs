@@ -1,17 +1,3 @@
-//! Every arm of the five state mirrors, and the nesting `AppPhaseNet` carries (GTW-942,
-//! round-trip cases added by GTW-944).
-//!
-//! The mirrors are the one place a state can be renamed on the wire without the compiler
-//! noticing: `from_state` is wildcard-free, so a MISSING arm fails to build, but a SWAPPED
-//! arm (`RunningState::Menu => Self::Options`) builds and ships a lie. These cases pin each
-//! arm by name — the mirror's variant name must equal the state's — and then pin that the
-//! two are one-to-one, so no future arm can quietly fold two states onto one mirror.
-//!
-//! The name cases never touch serde, so they are only half the story: a `serde(skip)` on a
-//! variant, or a broken `Deserialize`, ships an `app.phase` that cannot encode a real phase
-//! while every name case still passes. The round-trip and wire-text cases below are the
-//! other half, and they are what clause 5 of GTW-944 owes for these six types.
-
 use super::assert_ron_round_trip;
 use crate::{
     dev::net_qa::wire::{
@@ -21,9 +7,6 @@ use crate::{
     states::{AfterMathState, AppState, BattleScapeState, GameState, RunningState},
 };
 
-/// The compact RON `value` encodes to.
-///
-/// Fails loudly (the house `let Ok(..) else { unreachable!() }` idiom) if it cannot encode.
 fn encoded<T: serde::Serialize>(value: &T) -> String {
     let Ok(text) = ron::ser::to_string(value) else {
         unreachable!("a phase value serializes to compact RON");
@@ -31,7 +14,6 @@ fn encoded<T: serde::Serialize>(value: &T) -> String {
     text
 }
 
-/// Every [`AppState`], in declaration order.
 const LIFECYCLE: [AppState; 5] = [
     AppState::Init,
     AppState::Load,
@@ -40,7 +22,6 @@ const LIFECYCLE: [AppState; 5] = [
     AppState::Teardown,
 ];
 
-/// Every [`RunningState`], in declaration order.
 const RUNNING: [RunningState; 4] = [
     RunningState::Menu,
     RunningState::Game,
@@ -48,14 +29,12 @@ const RUNNING: [RunningState; 4] = [
     RunningState::Quit,
 ];
 
-/// Every [`GameState`], in declaration order.
 const GAME: [GameState; 3] = [
     GameState::Setup,
     GameState::HiveScape,
     GameState::BattleScape,
 ];
 
-/// Every [`BattleScapeState`], in declaration order.
 const BATTLESCAPE: [BattleScapeState; 5] = [
     BattleScapeState::Generation,
     BattleScapeState::AnimateIn,
@@ -64,18 +43,12 @@ const BATTLESCAPE: [BattleScapeState; 5] = [
     BattleScapeState::AfterMath,
 ];
 
-/// Every [`AfterMathState`], in declaration order.
 const AFTERMATH: [AfterMathState; 3] = [
     AfterMathState::AnimateIn,
     AfterMathState::DisplayAftermath,
     AfterMathState::AnimateOut,
 ];
 
-/// Assert each state maps to the mirror variant of the SAME name, and that the mapping is
-/// one-to-one.
-///
-/// Comparing the two `Debug` names is what catches a swapped arm: the mirror is a rename of
-/// the state, so any arm whose two sides disagree is the defect, whatever the names are.
 fn assert_mirrors_by_name<S: core::fmt::Debug, M: core::fmt::Debug>(
     states: &[S],
     mirror: impl Fn(&S) -> M,
@@ -98,13 +71,11 @@ fn assert_mirrors_by_name<S: core::fmt::Debug, M: core::fmt::Debug>(
     }
 }
 
-/// Every [`AppState`] mirrors to its own [`LifecyclePhaseNet`] name.
 #[test]
 fn every_lifecycle_state_mirrors_to_its_own_name() {
     assert_mirrors_by_name(&LIFECYCLE, LifecyclePhaseNet::from_state, "AppState");
 }
 
-/// Every [`RunningState`] mirrors to its own [`RunningPhaseNet`] name.
 #[test]
 fn every_running_state_mirrors_to_its_own_name() {
     assert_mirrors_by_name(
@@ -114,13 +85,11 @@ fn every_running_state_mirrors_to_its_own_name() {
     );
 }
 
-/// Every [`GameState`] mirrors to its own [`GamePhaseNet`] name.
 #[test]
 fn every_game_state_mirrors_to_its_own_name() {
     assert_mirrors_by_name(&GAME, |state| GamePhaseNet::from_state(*state), "GameState");
 }
 
-/// Every [`BattleScapeState`] mirrors to its own [`BattleScapePhaseNet`] name.
 #[test]
 fn every_battlescape_state_mirrors_to_its_own_name() {
     assert_mirrors_by_name(
@@ -130,7 +99,6 @@ fn every_battlescape_state_mirrors_to_its_own_name() {
     );
 }
 
-/// Every [`AfterMathState`] mirrors to its own [`AfterMathPhaseNet`] name.
 #[test]
 fn every_aftermath_state_mirrors_to_its_own_name() {
     assert_mirrors_by_name(
@@ -140,12 +108,6 @@ fn every_aftermath_state_mirrors_to_its_own_name() {
     );
 }
 
-/// EVERY arm of all five mirrors survives a compact-RON round trip — value → text → value.
-///
-/// One case per arm rather than one representative: `serde` attributes are per-variant, so a
-/// representative proves nothing about its neighbours. The arm tables above are the same
-/// ones the name cases walk, so an arm added to a state is round-tripped the moment its
-/// `from_state` arm exists.
 #[test]
 fn every_state_mirror_arm_round_trips() {
     for state in &LIFECYCLE {
@@ -165,11 +127,6 @@ fn every_state_mirror_arm_round_trips() {
     }
 }
 
-/// The composed [`AppPhaseNet`] round-trips in both shapes `app.phase` publishes — every
-/// level live, and the four nested levels absent.
-///
-/// The all-live case is what catches a lost nested level: a dropped `Option` field decodes
-/// as `None` under a laxer struct and the value would come back CHANGED.
 #[test]
 fn the_five_level_phase_round_trips() {
     assert_ron_round_trip(&AppPhaseNet::new(
@@ -188,9 +145,6 @@ fn the_five_level_phase_round_trips() {
     ));
 }
 
-/// Each phase rides the wire under its OWN variant name, and the composed record as the
-/// five named fields — neither of which a round trip alone can see, because a
-/// `serde(rename)` round-trips perfectly while changing what a client reads.
 #[test]
 fn phase_values_serialize_under_their_own_names() {
     assert_eq!(encoded(&LifecyclePhaseNet::Running), "Running");
@@ -213,10 +167,6 @@ fn phase_values_serialize_under_their_own_names() {
     );
 }
 
-/// A phase serializes with all five levels present, the absent ones as explicit `null`.
-///
-/// "The app is not in a running game" and "I could not read the running screen" must not look
-/// the same to a client, so a level that is not live is a `null` KEY rather than a missing one.
 #[test]
 fn an_absent_level_serializes_as_an_explicit_null() {
     let phase = AppPhaseNet::new(

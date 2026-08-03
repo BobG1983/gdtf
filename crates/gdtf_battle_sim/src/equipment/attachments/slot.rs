@@ -1,56 +1,19 @@
-//! The **attachment-slot vocabulary** (GTW-554) — the closed [`AttachmentSlot`] enum, the
 //! [`SlotCapacity`] count, and the [`WeaponSlots`] declaration a weapon authors. A weapon
-//! declares WHICH slots it offers (and how many attachments each holds); an attachment item
-//! declares the SINGLE slot it occupies ([`slot`](super::AttachmentSpec::slot)); the
-//! [`fit gate`](super::attachment_fits) admits an item only into a declared slot with free
-//! capacity. Class gating EMERGES from slot availability — there is NO ranged/melee tag on an
-//! item (a `Counterweight` cannot fit a gun that offers no counterweight slot; a `Muzzle` can
-//! cannot fit a chainblade).
-
 use bevy::prelude::Deref;
 use serde::{Deserialize, Serialize};
 
-/// The **closed slot vocabulary** (GTW-554) — every mount point an attachment item can
-/// occupy. A weapon offers a subset of these (its authored
-/// [`slots`](crate::weapon::WeaponSpec::slots)); an attachment item occupies exactly ONE
-/// (its authored [`slot`](super::AttachmentSpec::slot)).
-///
-/// CLOSED on purpose: the slot list is the fit-compatibility contract between weapons and
-/// items, so it is a Rust enum (a typo'd slot fails to parse), not an open string. Ranged
-/// weapons typically offer `Muzzle` / `Sight` / `Rail` (and, for magazine-fed guns,
-/// `Magazine`); melee weapons offer `Counterweight` / `Pommel` — but the CLASS gating emerges
-/// from which slots a weapon declares, never from a class tag on the item.
-///
-/// Derives [`Serialize`] + [`Deserialize`] (RON round-trip stable — authored as the bare
-/// variant name, e.g. `slot: Muzzle`), and `Hash`/`Eq`/`Copy` so occupancy bookkeeping can
-/// count and compare slots cheaply.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AttachmentSlot {
-    /// The muzzle thread — suppressors, chokes, bore devices (a shot-exit mount).
-    Muzzle,
-    /// The sight dovetail — optics that concentrate the in-cone draw (Aim).
-    Sight,
-    /// The utility rail — braces, foregrips, and jury-rigged action mods (the
-    /// general-purpose mount, commonly multi-capacity). Magazine and ammo-feed items
-    /// have their own [`Magazine`](Self::Magazine) well.
-    Rail,
-    /// The magazine well (GTW-584) — the mount for a magazine-fed gun's box magazines, drums,
-    /// and ammo feeds (capacity / reload / ammo-quality mods). Only ranged guns that actually
-    /// feed from a detachable magazine declare it; energy- and fluid-fed weapons (power cells,
-    /// plasma flasks, chem tanks) and melee weapons do not, so their magazine items find no
-    /// slot and are cleanly rejected.
-    Magazine,
-    /// The melee counterweight socket — balance weights that change how a blade lands.
-    Counterweight,
-    /// The melee pommel — grip-end fittings on a hilted weapon.
-    Pommel,
+        Muzzle,
+        Sight,
+                Rail,
+                        Magazine,
+        Counterweight,
+        Pommel,
 }
 
 impl AttachmentSlot {
-    /// Every closed-vocabulary slot, in declaration order — the canonical enumeration a
-    /// slot-picking UI iterates (GTW-670; the [`DamageType::ALL`](crate::weapon::DamageType::ALL)
-    /// precedent), so the editor's combos never hand-copy the palette.
-    pub const ALL: [Self; 6] = [
+                pub const ALL: [Self; 6] = [
         Self::Muzzle,
         Self::Sight,
         Self::Rail,
@@ -60,54 +23,30 @@ impl AttachmentSlot {
     ];
 }
 
-/// How many attachments ONE declared slot holds (GTW-554) — the per-slot capacity a weapon
-/// authors next to each offered [`AttachmentSlot`] (e.g. `(Rail, 3)` — a long rail hosting
-/// three mods).
-///
-/// A capacity newtype over `u8` (no-bare-types: a capacity is a domain value, never a bare
 /// integer). Private inner + derived [`Deref`]; `#[serde(transparent)]` so it authors as the
-/// bare RON scalar in the weapon's `slots:` pair list. The fit gate rejects an item once a
-/// slot's occupied count reaches this capacity — cleanly, never by panic or eviction.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct SlotCapacity(u8);
 
 impl SlotCapacity {
-    /// Build a per-slot capacity from its raw count.
-    #[must_use]
+        #[must_use]
     pub const fn new(capacity: u8) -> Self {
         Self(capacity)
     }
 }
 
-/// The **attachment slots a weapon offers** (GTW-554) — the authored
-/// `slots: [(Muzzle, 1), (Sight, 1), (Rail, 3)]` list of a `.weapon.ron` /
-/// `.melee_weapon.ron`, pairing each offered [`AttachmentSlot`] with its [`SlotCapacity`].
-///
-/// A named newtype over the declaration list (no-bare-types: a weapon's slot loadout is a
-/// domain value, not a bare `Vec`). Private inner with a lookup accessor (the
-/// [`AttachmentRegistry`](super::AttachmentRegistry) precedent — it answers a CAPACITY
 /// question, not a raw-list question, so no derived `Deref`). `#[serde(transparent)]` so the
-/// RON field authors the bare pair list. [`Default`] is the EMPTY declaration — a weapon that
-/// authors no `slots:` field offers no slots, so NO attachment fits it (fail-closed; a thrown
-/// grenade or a bare fist takes no fittings).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct WeaponSlots(Vec<(AttachmentSlot, SlotCapacity)>);
 
 impl WeaponSlots {
-    /// Build a slot declaration from its `(slot, capacity)` pairs — the shape the authored
-    /// RON list deserializes into.
-    #[must_use]
+            #[must_use]
     pub const fn new(declarations: Vec<(AttachmentSlot, SlotCapacity)>) -> Self {
         Self(declarations)
     }
 
-    /// The declared [`SlotCapacity`] for `slot`, or [`None`] when the weapon does not offer
-    /// that slot — the fit gate's availability lookup. If a slot is (erroneously) declared
-    /// twice, the FIRST declaration wins (documented authoring-error behavior — never a
-    /// panic).
-    #[must_use]
+                    #[must_use]
     pub fn capacity(&self, slot: AttachmentSlot) -> Option<SlotCapacity> {
         self.0
             .iter()
@@ -115,11 +54,7 @@ impl WeaponSlots {
             .map(|&(_, capacity)| capacity)
     }
 
-    /// The authored `(slot, capacity)` pairs, in authored order — the read surface the
-    /// editor's WEAPON-mode slots rows render from (GTW-670). Edits fold back through
-    /// [`new`](WeaponSlots::new) (the same constructor the loader's deserialize uses),
-    /// so the declaration list stays construct-only.
-    #[must_use]
+                    #[must_use]
     pub fn declarations(&self) -> &[(AttachmentSlot, SlotCapacity)] {
         &self.0
     }
@@ -129,9 +64,7 @@ impl WeaponSlots {
 mod tests {
     use super::{AttachmentSlot, SlotCapacity, WeaponSlots};
 
-    /// Every closed-vocabulary slot round-trips through RON (Serialize → Deserialize →
-    /// identity) — the C1 stability contract for authored content.
-    #[test]
+            #[test]
     fn every_slot_round_trips_through_ron() {
         for slot in [
             AttachmentSlot::Muzzle,
@@ -152,8 +85,7 @@ mod tests {
     }
 
     /// A `SlotCapacity` authors as the bare RON scalar (`#[serde(transparent)]`) and
-    /// round-trips.
-    #[test]
+        #[test]
     fn slot_capacity_is_a_transparent_scalar() {
         let Ok(capacity) = ron::de::from_str::<SlotCapacity>("3") else {
             unreachable!("a bare scalar parses as a SlotCapacity");
@@ -165,9 +97,7 @@ mod tests {
         assert_eq!(ron, "3", "it serializes back to the bare scalar");
     }
 
-    /// A weapon's `slots:` list parses from the authored pair form and answers capacity
-    /// lookups; an undeclared slot answers `None` (the weapon does not offer it).
-    #[test]
+            #[test]
     fn weapon_slots_parse_and_answer_capacity() {
         let Ok(slots) = ron::de::from_str::<WeaponSlots>("[(Muzzle, 1), (Sight, 1), (Rail, 3)]")
         else {
@@ -185,9 +115,7 @@ mod tests {
         );
     }
 
-    /// An omitted `slots:` field defaults to the EMPTY declaration — no slot is offered, so
-    /// nothing fits (fail-closed).
-    #[test]
+            #[test]
     fn default_offers_no_slots() {
         let slots = WeaponSlots::default();
         assert_eq!(
@@ -197,9 +125,7 @@ mod tests {
         );
     }
 
-    /// A (mistakenly) duplicated declaration resolves to the FIRST entry — a documented
-    /// authoring-error fallback, never a panic.
-    #[test]
+            #[test]
     fn duplicate_declaration_first_wins() {
         let slots = WeaponSlots::new(vec![
             (AttachmentSlot::Rail, SlotCapacity::new(2)),

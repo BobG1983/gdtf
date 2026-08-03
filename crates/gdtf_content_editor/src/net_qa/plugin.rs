@@ -1,28 +1,4 @@
-//! [`NetQaEditorPlugin`] — the editor's DEV-ONLY QA network control channel registration
-//! (GTW-804).
-//!
-//! ## Two gates, both must hold to activate
-//!
 //! 1. **`cfg(all(debug_assertions, feature = "net_qa"))`.** The wiring site (`crate::app`)
-//!    only adds the plugin under a debug build AND the opt-in `net_qa` feature — it opens a
-//!    listener, so a release editor never sees it, even with the feature on.
-//! 2. **Opt-in env var.** Even in a `net_qa` debug editor the plugin is INERT by default:
-//!    [`NetQaEditorPlugin::from_env`] reads `GDTF_EDITOR_NET_QA` and registers NOTHING unless
-//!    it is set truthy, so a normal editor launch is unaffected.
-//!
-//! Loopback-only binding and the one-client-at-a-time gate are the shared transport's
-//! (`gdtf_net_qa_transport`, GTW-803) and are not restated here — the editor gets exactly the
-//! game's enforcement because it runs the game's code.
-//!
-//! ## Wiring when active
-//!
-//! - Binds the loopback listener (`Ipv4Addr::LOCALHOST` + `GDTF_EDITOR_NET_QA_PORT`) on a
-//!   `std::thread` and inserts the [`NetInbox`] the listener pushes decoded requests to. That
-//!   accept-loop thread is a DELIBERATE process-lifetime daemon: `build` discards its
-//!   `JoinHandle` and it runs until the process exits, exactly as the game's does — the full
-//!   rationale is on [`run_listener`](gdtf_net_qa_transport::run_listener).
-//! - Registers the request drain in the [`EditorNetQaSystems::Gather`] band.
-
 use std::{
     io,
     net::TcpListener,
@@ -49,44 +25,25 @@ use super::{
 };
 use crate::EditorState;
 
-/// How a [`NetQaEditorPlugin`] instance activates on `build`.
 enum Wiring {
-    /// Inert (the env gate is off) — `build` registers nothing.
-    Disabled,
-    /// Env-driven: bind + spawn the loopback listener on `build`.
-    Listener {
-        /// The loopback port to bind.
-        port:       NetQaPort,
-        /// The two-sided socket timeout.
-        io_timeout: NetIoTimeout,
+        Disabled,
+        Listener {
+                port:       NetQaPort,
+                io_timeout: NetIoTimeout,
     },
-    /// Pre-bound: the listener was bound by [`NetQaEditorPlugin::listening`] before the app
-    /// was built, so the caller already knows the port. `Mutex<Option<…>>` so `build` can
-    /// `take` the non-`Clone` [`TcpListener`] out of `&self`.
-    Bound {
-        /// The already-bound loopback listener, taken on `build`.
-        listener:   Mutex<Option<TcpListener>>,
-        /// The two-sided socket timeout.
-        io_timeout: NetIoTimeout,
+                Bound {
+                listener:   Mutex<Option<TcpListener>>,
+                io_timeout: NetIoTimeout,
     },
 }
 
-/// The editor's DEV-ONLY QA network control channel plugin.
 pub struct NetQaEditorPlugin {
-    /// How this instance activates on `build`.
-    wiring: Wiring,
+        wiring: Wiring,
 }
 
 impl NetQaEditorPlugin {
-    /// Construct the plugin, reading its `GDTF_EDITOR_NET_QA` / `GDTF_EDITOR_NET_QA_PORT` env
-    /// gates.
-    ///
-    /// When `GDTF_EDITOR_NET_QA` is truthy the plugin binds the loopback listener on `build`;
-    /// otherwise it is inert (registers nothing), so a normal launch is unaffected. This is
-    /// the constructor the editor's app wiring (`crate::app`) uses under
-    /// `cfg(all(debug_assertions, feature = "net_qa"))` — the ONLY one the editor binary ever
-    /// reaches.
-    #[must_use]
+                            /// `cfg(all(debug_assertions, feature = "net_qa"))` — the ONLY one the editor binary ever
+        #[must_use]
     pub fn from_env() -> Self {
         let wiring = if editor_net_qa_enabled() {
             Wiring::Listener {
@@ -99,22 +56,8 @@ impl NetQaEditorPlugin {
         Self { wiring }
     }
 
-    /// Construct the plugin around a listener bound RIGHT NOW on `port`, returning it with
-    /// the port actually bound — the integration test's constructor.
-    ///
-    /// Binding eagerly is what makes the test deterministic: it passes port `0`, the OS picks
-    /// a free port (so parallel test binaries never collide), and the caller learns that port
-    /// immediately rather than racing the app's first `build`. It exists because the env gate
-    /// itself cannot be driven from a test — `std::env::set_var` is `unsafe` in edition 2024
-    /// and the workspace forbids `unsafe` — so the alternative would be a test that never
-    /// touches the real listener at all. It does NOT weaken the gate: like everything in this
-    /// module it compiles only under `cfg(all(debug_assertions, feature = "net_qa"))`, and the
-    /// binary always goes through [`from_env`](Self::from_env).
-    ///
-    /// # Errors
-    ///
-    /// Any [`io::Error`] from binding the loopback listener (e.g. `port` already in use).
-    pub fn listening(port: NetQaPort) -> io::Result<(Self, NetQaPort)> {
+                                        /// module it compiles only under `cfg(all(debug_assertions, feature = "net_qa"))`, and the
+                        pub fn listening(port: NetQaPort) -> io::Result<(Self, NetQaPort)> {
         let (listener, bound) = bind_listener(port)?;
         let plugin = Self {
             wiring: Wiring::Bound {
@@ -127,8 +70,7 @@ impl NetQaEditorPlugin {
 }
 
 impl Default for NetQaEditorPlugin {
-    /// The wiring default: read the env-var gate.
-    fn default() -> Self {
+        fn default() -> Self {
         Self::from_env()
     }
 }
@@ -164,38 +106,10 @@ impl Plugin for NetQaEditorPlugin {
     }
 }
 
-/// Spawn the accept loop over an already-bound `listener` and register the host side: the
-/// inbox it pushes into, and the request drain that answers from it.
-///
-/// The drain runs in [`Update`], in the [`EditorNetQaSystems::Gather`] band (see that set for
-/// why it is not in the egui pass), under the EDITOR's own state machine: the run condition is
-/// the existence of [`State<EditorState>`] — never the game's `AppState`, which this crate
-/// does not have and must not depend on.
-///
-/// It is deliberately NOT narrowed to [`EditorState::Editing`]. A `Catalogue` or `Run` sent
-/// while the editor is still in the `Load` asset pass would otherwise sit in the inbox
-/// unanswered until `Editing`, and the socket's own read timeout would reap the client first.
-/// Both are answerable from any state — the catalogue is a fixed list and an unknown name is
-/// unknown whatever the editor is doing — so the drain runs in every state and the client gets
-/// a real reply. (Version negotiation no longer depends on this at all: since GTW-940 the
-/// listener thread answers `Hello` without the drain running a single frame.)
-///
-/// Takes `&mut App` (the ordinary app-builder handle, as [`App::add_plugins`] does); not a
-/// registered system nor a `&mut World` helper, so bevy-traps #7 does not apply.
 fn serve(app: &mut App, listener: TcpListener, io_timeout: NetIoTimeout) {
     let (tx, rx) = mpsc::channel::<IncomingRequest>();
-    // Detached accept-loop daemon — the discarded `JoinHandle` is deliberate: this dev-only
-    // channel's lifetime IS the editor's, so the thread runs for the process lifetime and the
-    // OS reaps it (and closes the socket) on exit. See `run_listener`'s "Thread lifetime &
-    // shutdown" note for the full rationale.
-    // This host's OWN handshake facts: the listener thread negotiates every `Hello` from them
-    // (GTW-940), so a client learns it reached the EDITOR — `gdtf-editor-net-qa` — rather than
-    // the game, from the same transport code both hosts run.
     thread::spawn(move || run_listener(listener, tx, io_timeout, editor_hello_facts()));
     app.insert_resource(NetInbox::new(rx));
-    // The screenshot pump's queue, tracking set, uniqueness counter and three tunables
-    // (GTW-880). `init_resource` leaves a value a caller already inserted alone, so a test
-    // that pins a temp directory / a short settle keeps it.
     app.init_resource::<PendingQueue<EditorScreenshotPayload>>();
     app.init_resource::<EditorInFlightShots>();
     app.init_resource::<EditorShotSequence>();
@@ -203,29 +117,11 @@ fn serve(app: &mut App, listener: TcpListener, io_timeout: NetIoTimeout) {
     app.init_resource::<EditorShotSettle>();
     app.init_resource::<EditorShotPollBudget>();
     app.init_resource::<EditorShotSource>();
-    // GTW-918: the offscreen capture-target present path. Added HERE, on the listener arm only,
-    // so an inert plugin (and every non-`net_qa` / release editor) keeps rendering straight to
-    // the window with no offscreen target, no present camera and no `WinitSettings` override.
-    // It replaces the `init_resource` default's placeholder handle with the real target once the
-    // editor has a sized primary window. That plugin also puts its systems in
-    // `EditorNetQaSystems::Present` and orders that band BEFORE `Gather`, so the pump's
-    // consistency check reads the camera's `RenderTarget` after the retarget has written it
-    // (GTW-922 — see `EditorNetQaSystems`).
     app.add_plugins(EditorCapturePresentPlugin);
     app.configure_sets(
         Update,
         EditorNetQaSystems::Gather.run_if(resource_exists::<State<EditorState>>),
     );
-    // Chained, in this order: the drain answers the inbox, the pump claims anything already on
-    // the capture queue the SAME frame (so it never reaches the sweep), and the shared
-    // transport's `sweep_pending` answers a typed `Timeout` on anything that somehow went
-    // unclaimed rather than leaving the client hanging.
-    //
-    // GTW-943 removed the request that pushed onto that queue, so nothing production-side
-    // fills it today — the editor's capture COMMAND is the editor-host ticket, and it pushes
-    // from inside the drain, which is why the pump stays ordered after it. Until then the pump
-    // and the sweep are exercised by `tests/net_qa_editor_screenshot/`, which pushes onto the
-    // real queue directly.
     app.add_systems(
         Update,
         (

@@ -1,32 +1,9 @@
-//! The two COURIER tools through the REAL dispatch — what a client actually receives for each
-//! catalogue and outcome shape (GTW-942).
-//!
-//! The per-call riders are next door in [`courier_riders`](crate::courier_riders) and the
-//! attachment blocks in [`courier_attach`](crate::courier_attach): both are about what the
-//! courier CARRIES rather than what it renders.
-//!
-//! These are the courier half of the ticket's eight evidence bullets. The GAME half — that a
-//! real running host produces these replies from a real command set, over a real socket —
-//! is `crates/gdtf_app/tests/net_qa/commands.rs`. The split is deliberate: this crate carries
-//! schema documents as opaque text and links no `schemars`, so it can prove what the courier
-//! DOES with a reply but never that the reply was derived.
-//!
-//! Each case is a literal JSON-RPC line through `gdtf_qa_mcp::dispatch` against the canned
-//! game link in [`support`](crate::support), whose `Run` arm decides from the frame the
-//! COURIER built — so a courier that dropped an argument, a rider, or a name is visible here
-//! rather than only against a live game.
-
 use serde_json::{Value, json};
 
 use crate::support::{
     CANNED_ARG_SCHEMA, CANNED_COMMAND, CANNED_REPLY_SCHEMA, EDITOR_HOST_NAME, dispatch_json,
 };
 
-/// The parsed JSON body of a rendered tool result's first text block.
-///
-/// Every courier reply — success and refusal alike — carries its payload as JSON text, so a
-/// caller can act on it rather than scrape prose. Failing to parse is a real failure of that
-/// contract, not a test convenience.
 fn body(response: &Value) -> Value {
     let Some(text) = response["result"]["content"][0]["text"].as_str() else {
         unreachable!("a courier reply carries a text content block: {response}");
@@ -37,11 +14,6 @@ fn body(response: &Value) -> Value {
     parsed
 }
 
-/// **Bullet 1.** `commands(host="game")` returns the catalogue with exactly one entry: name
-/// `app.phase`, `timing: Immediate`, `availability: Available`, `schemas: None`.
-///
-/// `schemas` is `null` rather than absent, so a client reads ONE path at either detail level
-/// and can tell "you did not ask for these" from "this command has none".
 #[test]
 fn commands_returns_the_summary_catalogue() {
     let response = dispatch_json(
@@ -64,12 +36,6 @@ fn commands_returns_the_summary_catalogue() {
     );
 }
 
-/// **Bullet 2.** `commands(host="game", command="app.phase", detail="Full")` returns that one
-/// entry with `arguments` and `reply` as the host's derived schemas, and `arguments` carries
-/// `"additionalProperties": false`.
-///
-/// The schemas arrive as TEXT on the wire and are handed back as real JSON objects, so a
-/// client reads `schemas.arguments.additionalProperties` rather than parsing a string itself.
 #[test]
 fn commands_full_detail_carries_the_derived_schemas() {
     let response = dispatch_json(
@@ -98,11 +64,6 @@ fn commands_full_detail_carries_the_derived_schemas() {
     );
 }
 
-/// A `command` filter naming nothing is a TOOL ERROR listing every known name, not an empty
-/// list.
-///
-/// An empty list reads as "this host offers nothing", which is a different and wrong answer
-/// to a typo — and the caller would have no way to tell the two apart.
 #[test]
 fn an_unknown_command_filter_is_an_error_naming_the_known_ones() {
     let response = dispatch_json(
@@ -116,12 +77,6 @@ fn an_unknown_command_filter_is_an_error_naming_the_known_ones() {
     assert!(text.contains(CANNED_COMMAND), "{text}");
 }
 
-/// **Bullet 3.** `run(host="game", command="app.phase", arguments={})` returns the five-level
-/// state tuple.
-///
-/// The reply body comes back as real JSON, not an escaped string, and every one of the five
-/// levels is present — the four nested ones as explicit `null` where they are not live, which
-/// is what makes "not in a battle" distinguishable from "could not read the battle phase".
 #[test]
 fn run_returns_the_five_level_state_tuple() {
     let response = dispatch_json(
@@ -142,7 +97,6 @@ fn run_returns_the_five_level_state_tuple() {
     }
 }
 
-/// **Bullet 4.** `run(command="app.phasee")` returns `Unknown` listing the one known name.
 #[test]
 fn an_unknown_command_run_lists_the_known_names() {
     let response = dispatch_json(
@@ -158,12 +112,6 @@ fn an_unknown_command_run_lists_the_known_names() {
     assert_eq!(body["known"], json!([CANNED_COMMAND]));
 }
 
-/// **Bullet 5.** `run(command="app.phase", arguments={"nope":1})` returns `BadArguments` with
-/// the schema attached.
-///
-/// The schema rides along so the call is fixable in ONE round trip — and it is the same
-/// document `commands(detail="Full")` publishes, rendered the same way, so a caller never has
-/// to reconcile two accounts of one shape.
 #[test]
 fn bad_arguments_come_back_with_the_schema_attached() {
     let response = dispatch_json(
@@ -183,7 +131,6 @@ fn bad_arguments_come_back_with_the_schema_attached() {
     assert_eq!(body["schema"]["additionalProperties"], json!(false));
 }
 
-/// A `run` with no `command` argument is INVALID PARAMS, not a call to some default.
 #[test]
 fn run_without_a_command_is_invalid_params() {
     let response = dispatch_json(
@@ -195,12 +142,6 @@ fn run_without_a_command_is_invalid_params() {
     );
 }
 
-/// Both command tools are AIMED by their `host` argument: pointed at the editor, they reach
-/// the EDITOR's link, which publishes an empty catalogue under its own host name and knows
-/// no command by any name.
-///
-/// Without the aim they would silently reach the game and report the GAME's catalogue as the
-/// editor's — the exact failure the uniform `host` argument exists to prevent (GTW-880).
 #[test]
 fn the_courier_tools_are_aimed_by_their_host_argument() {
     let catalogue = dispatch_json(

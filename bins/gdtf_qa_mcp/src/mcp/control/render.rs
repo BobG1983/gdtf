@@ -1,5 +1,3 @@
-//! Turning a launch or stop outcome into the MCP content block a caller reads.
-
 use serde_json::{Value, json};
 
 use crate::{
@@ -12,15 +10,6 @@ use crate::{
     mcp::content::{text_content, tool_error},
 };
 
-/// Render a launch outcome as an MCP content block.
-///
-/// EVERY non-error outcome reports the recipe of the child the caller is about to drive,
-/// alongside the port and pid: which package, which features, and — resolved, never left
-/// implicit — which directory the launcher built in. That is what tells a caller WHICH
-/// CHECKOUT is under test instead of leaving it to be assumed, and it has to hold for
-/// `already_running` as much as for a fresh launch: the reply names the recipe of the
-/// child that is actually up, which is not necessarily the one this call asked for
-/// (GTW-875).
 pub(super) fn render_launch(
     host: QaHost,
     outcome: &LaunchOutcome,
@@ -45,8 +34,6 @@ pub(super) fn render_launch(
     }
 }
 
-/// The directory the launcher actually ran in: the recipe's, or the MCP host's own when
-/// the recipe named none.
 fn resolved_working_dir(spec: &LaunchSpec) -> String {
     spec.resolved_working_dir().map_or_else(
         || "<unknown>".to_owned(),
@@ -54,8 +41,6 @@ fn resolved_working_dir(spec: &LaunchSpec) -> String {
     )
 }
 
-/// A human-readable message for a launch failure, carrying the child's output tail — or,
-/// for a recipe mismatch, both the running recipe and the `requested` one.
 fn launch_failure_message(host: QaHost, failure: &LaunchFailure, requested: &LaunchSpec) -> String {
     let label = host.label();
     match failure {
@@ -99,14 +84,6 @@ fn launch_failure_message(host: QaHost, failure: &LaunchFailure, requested: &Lau
     }
 }
 
-/// The timeout message — it NAMES THE BUILD as the likely cause and gives the warm-up
-/// command, rather than reporting a bare "timed out" (GTW-808 clause 7).
-///
-/// A launcher's wait covers two very different things: `cargo` compiling the package, and
-/// the compiled binary booting. Only the first one takes minutes, and it is invisible in
-/// the child's output tail unless the reader already knows to look for `Compiling` lines.
-/// Saying so, with the exact command that removes the wait, is the difference between a
-/// diagnosable failure and a mystery.
 fn timeout_message(
     host: QaHost,
     waited: BootTimeout,
@@ -133,8 +110,6 @@ fn timeout_message(
     )
 }
 
-/// The " (process 43744)" clause naming an orphan's holder, or an empty string when the
-/// operating system could not name it.
 fn holder_clause(pid: OrphanPid) -> String {
     match pid {
         OrphanPid::Known(child) => format!(" (process {})", *child),
@@ -142,7 +117,6 @@ fn holder_clause(pid: OrphanPid) -> String {
     }
 }
 
-/// The `pid` field of an orphan reply — the number, or `null` when it could not be named.
 fn holder_field(pid: OrphanPid) -> Value {
     match pid {
         OrphanPid::Known(child) => json!(*child),
@@ -150,13 +124,6 @@ fn holder_field(pid: OrphanPid) -> Value {
     }
 }
 
-/// Render a stop outcome as an MCP content block.
-///
-/// The two orphan answers are reported AS orphans, never as `not_running` (GTW-926): a
-/// caller told "not running" about a child that is alive and holding the port has no route
-/// back to it and no reason to look for one. A stop that could not free the port is a tool
-/// ERROR, because the caller's next step differs — it has to deal with a process this host
-/// cannot signal.
 pub(super) fn render_stop(host: QaHost, outcome: &StopOutcome) -> Value {
     match outcome {
         StopOutcome::Stopped { pid } => text_content(&json!({ "status": "stopped", "pid": **pid })),
@@ -170,7 +137,6 @@ pub(super) fn render_stop(host: QaHost, outcome: &StopOutcome) -> Value {
     }
 }
 
-/// The message for an orphan that is still holding the port after the stop.
 fn orphan_held_message(host: QaHost, port: QaPort, pid: OrphanPid) -> String {
     let label = host.label();
     let holder = holder_clause(pid);
@@ -190,12 +156,6 @@ fn orphan_held_message(host: QaHost, port: QaPort, pid: OrphanPid) -> String {
     }
 }
 
-/// Render a `logs` outcome as an MCP content block.
-///
-/// A host that owns no child answers `not_running` rather than an empty log: "this process
-/// printed nothing" and "there is no process" are different facts, and a caller acts on them
-/// differently. A child that really has printed nothing yet answers an empty `lines` list
-/// under `running`, which says so honestly.
 pub(super) fn render_logs(host: QaHost, max: TailLines, tail: Option<&OutputTail>) -> Value {
     let Some(tail) = tail else {
         return text_content(&json!({

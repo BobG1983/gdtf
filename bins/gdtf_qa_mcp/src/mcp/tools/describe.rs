@@ -1,11 +1,7 @@
-//! The per-tool human description a client reads to learn what a tool does and how to
-//! sequence it.
-
 use crate::mcp::tools::name::ToolName;
 
 impl ToolName {
-    /// A one-line human description of what the tool does.
-    pub(super) const fn description(self) -> &'static str {
+        pub(super) const fn description(self) -> &'static str {
         match self {
             Self::Launch => {
                 "Start a child process and wait for its QA channel to answer. `host` picks \

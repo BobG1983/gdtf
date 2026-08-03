@@ -1,18 +1,8 @@
-//! Shared fixtures for the `apply_theme` tests: the caller-parameterized theme
-//! builder and the two app harnesses (bare run condition vs the full
-//! production gate).
-
 use bevy::prelude::*;
 
 use super::super::apply_theme;
 use crate::theme::{GdtfTheme, GdtfThemeSpec};
 
-/// Builds a [`GdtfTheme`] from the shipped-shape nested RON with caller-chosen
-/// salient values, through the real production path (deserialize a spec, then
-/// [`GdtfThemeSpec::resolve`] with a defaulted-font resolver). The theme
-/// newtypes have private fields, so this respects encapsulation while
-/// exercising the genuine resolution. Returns the `ron` error so a malformed
-/// literal surfaces via `?` rather than a denied `unwrap`/`panic`.
 pub(super) fn theme(
     button_color: [f32; 3],
     border: [f32; 3],
@@ -43,23 +33,12 @@ pub(super) fn theme(
     Ok(spec.resolve(|_| Handle::<Font>::default()))
 }
 
-/// A minimal app with `apply_theme` registered under the real run condition,
-/// so the test drives the actual production schedule path.
 pub(super) fn app_with_apply_theme() -> App {
     let mut app = App::new();
     app.add_systems(Update, apply_theme.run_if(resource_exists::<GdtfTheme>));
     app
 }
 
-/// A minimal app with `apply_theme` registered under the FULL production run
-/// condition (GTW-144 / GTW-284):
-/// `resource_exists::<GdtfTheme>().and_then(resource_changed::<GdtfTheme>.or_else(any_themed_added))`,
-/// the exact gate [`UiPlugin`](crate::UiPlugin) installs.
-///
-/// The incremental-repaint tests need this real gate (not the bare
-/// `resource_exists`) so that — on a steady theme frame — a NEWLY-spawned `Themed`
-/// entity still triggers `apply_theme` via the `any_themed_added` arm, exactly as
-/// in the running app. Mirrors the `gdtf_ui` test idiom (no `gdtf_test_utils` dep).
 pub(super) fn app_with_production_run_condition() -> App {
     let mut app = App::new();
     app.add_systems(

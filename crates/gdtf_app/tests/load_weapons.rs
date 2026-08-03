@@ -1,16 +1,7 @@
-//! GTW-257 / GTW-580: the RANGED-weapons family's load coverage — the thin
-//! wrapper over the generic per-family suite (`load_suite::suite`), plus the
-//! family-bespoke GTW-297 `AC3b` seed-shadow regression pin.
-//!
-//! The tier structure (`MinimalPlugins` no-op guard + gate pin, headless
-//! real-asset folder resolve) is encoded ONCE in the shared suite; this file
 //! only binds it to [`WeaponsFamily`] with the authored member keys. The
 //! assertions stay VALUE-AGNOSTIC (registry presence + authored filename-stem
 //! keys) — the authored weapon magnitudes are tuning DATA, never pinned (the
 //! brittle-test rule). The field-to-bundle conversion MECHANISM is covered by
-//! the fixture-based sim round-trip
-//! (`weapon::test::weapon_spec_round_trips_and_into_bundle_groups_faithfully`).
-
 mod load_suite;
 
 use bevy::app::Startup;
@@ -20,14 +11,10 @@ use gdtf_content_families::WeaponsFamily;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 use load_suite::suite::{self, FamilyLoadContract};
 
-/// Generous SAFETY-NET cap for the real-asset `advance_until` waits gated on an
-/// async asset load resolving — a safety net against a genuine never-resolve
-/// hang, not a timing budget (GTW-305).
 const LOAD_SAFETY_NET: u32 = 10_000;
 
 impl FamilyLoadContract for WeaponsFamily {
-    /// The canonical shipped stems: `stub_pistol.weapon.ron` / `las_carbine.weapon.ron`.
-    const EXPECTED_MEMBERS: &'static [&'static str] = &["stub_pistol", "las_carbine"];
+        const EXPECTED_MEMBERS: &'static [&'static str] = &["stub_pistol", "las_carbine"];
 
     fn is_empty(registry: &WeaponRegistry) -> bool {
         registry.is_empty()
@@ -38,77 +25,31 @@ impl FamilyLoadContract for WeaponsFamily {
     }
 }
 
-/// AC4 (tier a) — the weapons loader registration + folder kick-off no-op
-/// cleanly under `MinimalPlugins` (bevy-traps rule 1).
 #[test]
 fn weapons_loader_no_ops_cleanly_without_asset_server() {
     suite::loader_no_ops_without_asset_server::<WeaponsFamily>();
 }
 
-/// AC4 (companion, tier a) — the Load→Intro transition GATES on the
-/// [`WeaponRegistry`] (the GTW-257 gate clause: a battle never starts
-/// weapon-less).
 #[test]
 fn load_does_not_leave_without_a_weapon_registry() {
     suite::load_gates_on_registry::<WeaponsFamily>();
 }
 
-/// AC4 (tier b) / GTW-270 — the REAL `assets/content/weapons/ranged/` folder
-/// resolves into a stem-keyed [`WeaponRegistry`] through the Load code path.
 #[test]
 fn real_asset_resolves_weapon_registry_keyed_by_filename() {
     suite::real_asset_resolves_registry::<WeaponsFamily>();
 }
 
-/// GTW-297 (`AC3b`) — the REAL auto-battle path (the affordance itself was
-/// retired GTW-749; this test reproduces its Startup seed directly, below): the
-/// Load-owned `seed_load_fallbacks` runs AND a real `AssetServer` is present (the
-/// GUI auto-battle launch's precondition). NO empty
-/// `WeaponRegistry::default()` may shadow the real folder resolve: with an
-/// `AssetServer` present neither the bespoke seed nor the GTW-629 fallback rider (the
-/// registry's fallback now lives on its `register_content_family` line) may insert
-/// an empty registry, so the generic content-family resolve (which only runs while
-/// the registry is ABSENT) populates it from `assets/content/weapons/ranged/*.weapon.ron`.
-///
-/// This reproduces the bug's exact preconditions on the real code path: a
-/// `GdtfLoadTestAppBuilder` app (live `AssetServer` rooted at the workspace `assets/`)
-/// with the genuine `seed_load_fallbacks` system registered on `Startup`, exactly as
-/// the (now-retired) `AutoBattlePlugin::build` used to wire it. The assertions
-/// encode the fix:
-///
-/// - the resolved `WeaponRegistry` is non-empty and resolves the canonical `stub_pistol`
-///   stem (so battle setup's `weapons.spec("stub_pistol")` would NOT return `None` /
-///   `WeaponNotFound`);
-/// - the machine reaches `Intro` with the registry present (the gate waited for the
-///   REAL registry, not the empty seed).
-///
-/// PIN: if ANY seed path — a revived content-family arm, or a fallback rider gone
-/// unconditional — inserts `WeaponRegistry::default()` while a server is present,
-/// the registry exists early, the absence-gated resolve SKIPS the folder, the
-/// registry stays empty, `spec("stub_pistol")` returns `None`, and this test goes
-/// red — exactly the `AC3b` black-screen failure. Family-bespoke: NEVER genericized
-/// away (GTW-580 P9).
 #[test]
 fn seeded_startup_does_not_shadow_real_weapon_resolution() {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
-    // Wire the REAL auto-battle Startup seed (the path the now-retired
-    // AutoBattlePlugin used to register), minus the unrelated `drive_past_menu` that
-    // needs the RunningState machinery.
     app.add_systems(Startup, seed_load_fallbacks);
 
-    // Signal-poll the WeaponRegistry insert (not a fixed frame count): the real resolve
-    // only inserts the registry ONCE it is fully built from the folder (it stays ABSENT
-    // while members are still resolving), so on the GOOD path existence implies the
-    // authored weapons are present. The cap is a safety net (GTW-305). The seed-shadow
-    // regression instead inserts an EMPTY registry at Startup, which the assertions
-    // below catch immediately.
     advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
 
     if let Some(registry) = app.world().get_resource::<WeaponRegistry>() {
-        // AC3b pin: with the AssetServer present the empty seed must NOT win — the real
-        // folder resolve must populate a registry that holds the authored weapons.
         assert!(
             !registry.is_empty(),
             "the real folder resolve must populate the registry, not leave the empty seed",
@@ -127,10 +68,6 @@ fn seeded_startup_does_not_shadow_real_weapon_resolution() {
         );
     }
 
-    // The gate waited for the REAL registry: the machine releases past Load with it
-    // present (Intro is TRANSIENT — probe via `load_released`, GTW-589/GTW-601), so a
-    // real auto-battle run would advance toward BattleRunning rather than aborting
-    // at Generation with WeaponNotFound.
     let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);
     assert!(
         released,
@@ -140,29 +77,12 @@ fn seeded_startup_does_not_shadow_real_weapon_resolution() {
     );
 }
 
-/// GTW-771 (child GTW-41) — the shipped **Cone** and **Line** `AoE` weapons resolve through
-/// the REAL Load folder path, and each one's intended fire mode carries the authored
-/// [`HitType`] shape. Value-agnostic on the tuned range/angle magnitudes (the loader-test
-/// rule): it asserts the shape VARIANT (`Cone` / `Line`) a mode deserializes into, never the
-/// cell/degree numbers.
-///
-/// Drives the genuine `assets/content/weapons/ranged/` folder resolve through the `AppState::Load`
-/// state machine (a live `AssetServer`), exactly as [`real_asset_resolves_weapon_registry_keyed_by_filename`]
-/// does — the real load path, NOT an `include_str!` fixture parse.
-///
-/// PIN — this test could not pass before GTW-771: `las_lance.weapon.ron` did not exist (its
-/// spec resolves `None`), and `chem_sprayer.weapon.ron` authored no `hit_type` (every mode
-/// defaulted to [`HitType::Single`]), so neither the `Cone` nor the `Line` assertion could
-/// hold. It goes red the instant either shipped shape is dropped or reverted to `Single`.
 #[test]
 fn shipped_cone_and_line_weapons_resolve_their_aoe_hit_types() {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
 
-    // Signal-poll the async folder load (not a fixed frame count); the cap is a safety net
-    // (GTW-305). The registry is inserted ONLY once fully built from the folder, so its
-    // existence implies the authored weapons — incl. the two new AoE shapes — are present.
     advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
 
     let registry = app.world().get_resource::<WeaponRegistry>();
@@ -173,7 +93,6 @@ fn shipped_cone_and_line_weapons_resolve_their_aoe_hit_types() {
         app_state(&app),
     );
     if let Some(registry) = registry {
-        // CLAUSE 1 — the converted chem_sprayer offers a Cone spray mode.
         let chem = registry.spec(&WeaponName::new("chem_sprayer".to_owned()));
         assert!(
             chem.is_some(),
@@ -189,7 +108,6 @@ fn shipped_cone_and_line_weapons_resolve_their_aoe_hit_types() {
             );
         }
 
-        // CLAUSE 2 — the net-new las_lance offers a Line beam mode.
         let lance = registry.spec(&WeaponName::new("las_lance".to_owned()));
         assert!(
             lance.is_some(),
@@ -208,28 +126,12 @@ fn shipped_cone_and_line_weapons_resolve_their_aoe_hit_types() {
     }
 }
 
-/// GTW-775 (child GTW-400) — the shipped `assets/content/weapons/ranged/` weapons author an
-/// [`AmmoType`] `accepts:` class that resolves through the REAL Load folder path, one witness
-/// per ammo class so all five variants are covered end-to-end. Value-checking the ammo CLASS
-/// is appropriate here (it is authored content IDENTITY, like the `Cone` / `Line` `HitType`
-/// assertions above, not a tunable magnitude): a swap of an authored class flips this.
-///
-/// Drives the genuine folder resolve through the `AppState::Load` state machine (a live
-/// `AssetServer`), exactly as [`real_asset_resolves_weapon_registry_keyed_by_filename`] does —
-/// the real load path, NOT an `include_str!` fixture parse.
-///
-/// PIN — this could not pass before GTW-775: `WeaponSpec` had no `accepts` field, so the
-/// authored classes did not exist. It goes red the instant a shipped weapon's authored ammo
-/// class is dropped (defaulting silently to `Slug`) or swapped.
 #[test]
 fn shipped_weapons_resolve_their_accepted_ammo_types() {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
 
-    // Signal-poll the async folder load; the cap is a safety net (GTW-305). The registry is
-    // inserted ONLY once fully built from the folder, so its existence implies the authored
-    // weapons — including their `accepts:` classes — are present.
     advance_until_resource_exists::<WeaponRegistry>(&mut app, LOAD_SAFETY_NET);
 
     let registry = app.world().get_resource::<WeaponRegistry>();
@@ -243,9 +145,6 @@ fn shipped_weapons_resolve_their_accepted_ammo_types() {
         return;
     };
 
-    // One witness per ammo class — all five [`AmmoType`] variants, covered through the real
-    // folder resolve (a solid slug-thrower, an energy-cell weapon, a plasma flask, a chem
-    // canister sprayer, and a grenade).
     for (stem, expected) in [
         ("stub_pistol", AmmoType::Slug),
         ("las_carbine", AmmoType::Cell),

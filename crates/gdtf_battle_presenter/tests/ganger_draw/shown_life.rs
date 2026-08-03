@@ -1,11 +1,3 @@
-//! GTW-889 — the ganger-visibility resolver classifies on the SHOWN life state.
-//!
-//! Reported symptom: "one of my soldiers disappeared and said lacerated even though the
-//! shots themselves hadn't played yet". The resolver read the LIVE `LifeState`, so the
-//! instant the sim killed a player ganger his fog relation flipped from `OwnSquad` to
-//! `Other`, the fog gate closed over his cell, and the sprite vanished — while the shots
-//! that killed him were still queued behind the playback cursor.
-
 use bevy::prelude::{Entity, Visibility};
 use gdtf_battle_presenter::GangerSprites;
 use gdtf_battle_sim::{
@@ -15,22 +7,10 @@ use gdtf_battle_sim::{
 
 use super::{harness::*, probes::*};
 
-/// Kill the ganger in the SIM only — the live `LifeState`, leaving the `DrawnLife` mirror
-/// on whatever the cursor last showed.
 fn set_live_life(app: &mut bevy::app::App, sim: Entity, life: LifeState) {
     app.world_mut().entity_mut(sim).insert(life);
 }
 
-/// A player ganger the SIM has already killed stays SHOWN until his death is PLAYED, and
-/// disappears when it is.
-///
-/// The fog is authored EMPTY, so nothing but the `OwnSquad` relation can keep this sprite
-/// visible — which makes the relation the only variable under test. Alive-and-drawn-alive
-/// he is shown; sim-dead but not yet played he must STILL be shown; once the cursor plays
-/// the death the sprite goes.
-///
-/// Pin-discriminating: classifying on the live `LifeState` (what the resolver did before
-/// GTW-889) hides the sprite at the middle assertion and FAILS.
 #[test]
 fn a_sim_killed_player_ganger_stays_shown_until_the_death_plays() {
     let mut app = headless_renderer_app();
@@ -51,8 +31,6 @@ fn a_sim_killed_player_ganger_stays_shown_until_the_death_plays() {
         "the ganger sprite must have materialized",
     );
 
-    // Fog with NOTHING visible: only the OwnSquad relation (a live PLAYER ganger) can show
-    // this sprite, so every verdict below is about the life state the resolver classifies on.
     set_fog(&mut app, &[], &[]);
     app.update();
     assert_eq!(
@@ -61,8 +39,6 @@ fn a_sim_killed_player_ganger_stays_shown_until_the_death_plays() {
         "a live player ganger is shown regardless of fog (the OwnSquad relation)",
     );
 
-    // The SIM kills him. The cursor has not reached the death, so his DrawnLife is still
-    // Alive — and the sprite must stay on screen with the shots still to play.
     let Some(sim_entity) = sim else { return };
     set_live_life(&mut app, sim_entity, LifeState::Dead);
     app.update();
@@ -72,7 +48,6 @@ fn a_sim_killed_player_ganger_stays_shown_until_the_death_plays() {
         "a ganger the SIM has killed stays shown until the cursor plays his death",
     );
 
-    // Now the death PLAYS: the drawn mirror reaches Dead and the sprite goes.
     set_drawn_life(&mut app, sim_entity, LifeState::Dead);
     app.update();
     let still_mapped = app

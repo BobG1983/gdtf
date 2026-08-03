@@ -1,6 +1,3 @@
-//! SHOWING one act: writing its drawn state and emitting its `Played<M>` (GTW-727 C16 /
-//! C17 / C20).
-
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_sim::{
     act_log::{ActDeed, ActEntry},
@@ -28,36 +25,15 @@ use super::{
     emit::{Played, PlayedSignals},
 };
 
-/// The `Drawn*` mirrors the cursor writes, bundled into ONE [`SystemParam`].
-///
-/// Each query writes a DISTINCT component type, so they are mutually disjoint and need no
-/// [`ParamSet`](bevy::prelude::ParamSet). Every write goes through `set_if_neq`, so
-/// re-applying an unchanged value does not trip change detection and therefore does not
-/// make a mirror repaint for nothing.
 #[derive(SystemParam)]
 pub struct DrawnWriters<'w, 's> {
-    /// The drawn `(cell, level)` of each ganger.
-    pub(super) positions: Query<'w, 's, &'static mut DrawnPosition>,
-    /// The drawn posture of each ganger.
-    pub(super) poses:     Query<'w, 's, &'static mut DrawnPose>,
-    /// The drawn life state of each ganger.
-    pub(super) lives:     Query<'w, 's, &'static mut DrawnLife>,
-    /// The drawn vitals of each ganger.
-    pub(super) vitals:    Query<'w, 's, &'static mut DrawnVitals>,
-    /// The drawn magazine of each wielded weapon.
-    pub(super) magazines: Query<'w, 's, &'static mut DrawnMagazine>,
+        pub(super) positions: Query<'w, 's, &'static mut DrawnPosition>,
+        pub(super) poses:     Query<'w, 's, &'static mut DrawnPose>,
+        pub(super) lives:     Query<'w, 's, &'static mut DrawnLife>,
+        pub(super) vitals:    Query<'w, 's, &'static mut DrawnVitals>,
+        pub(super) magazines: Query<'w, 's, &'static mut DrawnMagazine>,
 }
 
-/// SHOW one act-log entry: write whatever drawn state it settled, emit its `Played<M>`, and
-/// return the hold to serve before the next entry.
-///
-/// The dwell is read HERE, from the live [`PlaybackTuning`], at the moment the hold begins —
-/// never captured when the entry was recorded. That is what keeps a later skip /
-/// fast-forward affordance a multiplier applied at this one read rather than a restructure.
-///
-/// A reaction-fire declaration takes its own longer beat: an interrupt the player did not
-/// order needs a moment to register as its own event rather than as part of the act it
-/// interrupted — which is the whole complaint this ticket exists to fix.
 #[expect(
     clippy::too_many_lines,
     reason = "this is ONE exhaustive match over the act vocabulary — a flat dispatch table \
@@ -122,9 +98,6 @@ pub(super) fn show_entry(
             }
         }
         ActDeed::RoundResolved { shot } => {
-            // Emitting this is what SPAWNS the bolt. Everything the round did — the damage
-            // numbers, the injury, the death — sits behind it in the log, so the impact
-            // hold below is what stops those being drawn while the bolt is still flying.
             played.round.write(Played::new((**shot).clone()));
             ActHold::awaiting_impact(*tuning.impact_cap_seconds, *tuning.round_seconds)
         }

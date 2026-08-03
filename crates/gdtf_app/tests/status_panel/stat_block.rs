@@ -1,5 +1,3 @@
-//! AC1 selected-ganger stat block: numeric HP/TU, wounds, injuries, mutate-in-place, empty state.
-
 use bevy::{ecs::entity::Entity, prelude::*};
 use gdtf_app::test_support::{
     StatHpBar, StatHpLabel, StatInjuryLine, StatInjuryList, StatName, StatPortrait, StatTuBar,
@@ -18,7 +16,6 @@ use gdtf_ui::Pip;
 
 use super::harness::*;
 
-/// Reads the rendered `Text` of the single entity carrying marker `M`.
 fn line_text<M: Component>(app: &mut App) -> Option<String> {
     let entity = single_with::<M>(app)?;
     app.world()
@@ -26,15 +23,11 @@ fn line_text<M: Component>(app: &mut App) -> Option<String> {
         .map(|t| t.as_str().to_owned())
 }
 
-/// The fill PERCENT of the status panel's `ProgressBar` carrying track-marker `M`.
 fn bar_fill_percent<M: Component>(app: &mut App) -> Option<f32> {
     let track = single_with::<M>(app)?;
     bar_fill_at(app, track)
 }
 
-/// The number of VISIBLE filled pips (background != the lost color, visibility not Hidden)
-/// in the single pips row carrying marker `M`. We count visible pips whose visibility is not
-/// Hidden — a discriminating proxy for `WoundsMax` shown / `Wounds` filled.
 fn visible_pip_count<M: Component>(app: &mut App) -> usize {
     let Some(row) = single_with::<M>(app) else {
         return 0;
@@ -52,12 +45,7 @@ fn visible_pip_count<M: Component>(app: &mut App) -> usize {
         .count()
 }
 
-// ---------------------------------------------------------------------------------
-// AC1 — status panel renders the shared stat block; LifeState/Weapon GONE.
-// ---------------------------------------------------------------------------------
 
-/// AC1 — with a selected ganger, the stat block shows its name + a NON-zero TU/HP bar fill +
-/// the right Wounds pips; and there is NO life-state / weapon text line (the removed lines).
 #[test]
 fn status_panel_renders_the_selected_ganger_stat_block() {
     let mut app = battle_running_app();
@@ -73,14 +61,12 @@ fn status_panel_renders_the_selected_ganger_stat_block() {
     let hp = bar_fill_percent::<StatHpBar>(&mut app).unwrap_or(0.0);
     assert!((hp - 50.0).abs() < 0.5, "HP bar = 8/16 = 50% (got {hp})");
 
-    // WoundsMax = 3 visible pips, Wounds = 2 filled (we assert the visible count == 3).
     assert_eq!(
         visible_pip_count::<StatWoundsPips>(&mut app),
         3,
         "WoundsMax (3) pips must be visible",
     );
 
-    // The removed LifeState + Weapon lines: NO text line anywhere reads them.
     let texts: Vec<String> = {
         let mut q = app.world_mut().query::<&Text>();
         q.iter(app.world()).map(|t| t.as_str().to_owned()).collect()
@@ -93,13 +79,9 @@ fn status_panel_renders_the_selected_ganger_stat_block() {
     );
 }
 
-/// GTW-310 — the HP bar and TU bar each carry a numeric `cur/max` label that reads the
-/// seeded ganger's `Hp`/`HpMax` and `Tu`/`TuMax` exactly, and a value change MUTATES the
-/// label in place (no respawn). The displayed number must equal current/max.
 #[test]
 fn stat_block_shows_numeric_hp_and_tu() {
     let mut app = battle_running_app();
-    // default_setup: Tu 7/10, Hp 8/16.
     spawn_and_select(&mut app, default_setup());
     app.update();
 
@@ -108,7 +90,6 @@ fn stat_block_shows_numeric_hp_and_tu() {
     let hp = line_text::<StatHpLabel>(&mut app).unwrap_or_default();
     assert_eq!(hp, "8/16", "the HP label reads Hp/HpMax (got {hp})");
 
-    // A changed selection mutates the SAME label entities in place.
     let tu_label_before = single_with::<StatTuLabel>(&mut app);
     let hp_label_before = single_with::<StatHpLabel>(&mut app);
     let mut other = default_setup();
@@ -142,13 +123,10 @@ fn stat_block_shows_numeric_hp_and_tu() {
     );
 }
 
-/// AC1 — an unwounded ganger hides the wound-name list; a wounded ganger shows it with the
-/// matching "{tier} — {location}" entry.
 #[test]
 fn wound_list_reflects_inflicted_wounds() {
     let mut app = battle_running_app();
 
-    // Unwounded -> the list container is Hidden.
     spawn_and_select(&mut app, default_setup());
     app.update();
     let list = single_with::<StatWoundList>(&mut app);
@@ -161,7 +139,6 @@ fn wound_list_reflects_inflicted_wounds() {
         );
     }
 
-    // Wounded -> the list is shown and a line reads the wound.
     let mut wounded = default_setup();
     wounded.name = GangerName::new("Alex Mercer".to_owned());
     wounded.inflicted = InflictedWounds::new(vec![InflictedWound::new(
@@ -178,7 +155,6 @@ fn wound_list_reflects_inflicted_wounds() {
             "a wounded ganger shows the wound-name list",
         );
     }
-    // Some wound line reads "Minor — Left Arm".
     let lines: Vec<String> = {
         let mut q = app
             .world_mut()
@@ -193,17 +169,10 @@ fn wound_list_reflects_inflicted_wounds() {
     );
 }
 
-/// GTW-439 (C3) — the injury-name list is driven by the DURABLE `InflictedInjuries` ledger
-/// (the persistent per-ganger list), NOT the transient `InjuryInflicted` message: an
-/// uninjured ganger HIDES the list; a ganger whose ledger carries a `GainedInjury` SHOWS it
-/// with a line reading that injury's authored `inspect_text`. PIN-DISCRIMINATING — the line
-/// must read the exact authored text (a list driven by the wrong source, or not driven at
-/// all, fails the content + visibility asserts).
 #[test]
 fn injury_list_reflects_inflicted_injuries() {
     let mut app = battle_running_app();
 
-    // No injuries -> the list container is Hidden.
     spawn_and_select(&mut app, default_setup());
     app.update();
     let list = single_with::<StatInjuryList>(&mut app);
@@ -216,7 +185,6 @@ fn injury_list_reflects_inflicted_injuries() {
         );
     }
 
-    // Injured -> the list is shown and a line reads the durable inspect_text.
     let mut injured = default_setup();
     injured.name = GangerName::new("Alex Mercer".to_owned());
     let mut ledger = InflictedInjuries::default();
@@ -238,7 +206,6 @@ fn injury_list_reflects_inflicted_injuries() {
             "an injured ganger shows the injury-name list",
         );
     }
-    // Some injury line reads the authored inspect_text verbatim (the persistent ledger source).
     let lines: Vec<String> = {
         let mut q = app
             .world_mut()
@@ -251,8 +218,6 @@ fn injury_list_reflects_inflicted_injuries() {
     );
 }
 
-/// AC1 — selecting a DIFFERENT ganger MUTATES the same stat block (stable entity ids — the
-/// portrait/name nodes are the SAME entities, their content changes).
 #[test]
 fn selection_change_mutates_in_place() {
     let mut app = battle_running_app();
@@ -281,8 +246,6 @@ fn selection_change_mutates_in_place() {
     assert!(name.contains("Alex Mercer"), "the name mutated: {name}");
 }
 
-/// AC4-parity — no selection shows the empty state (name = "No ganger selected", bars empty)
-/// and never stale data.
 #[test]
 fn no_selection_shows_empty_state() {
     let mut app = battle_running_app();

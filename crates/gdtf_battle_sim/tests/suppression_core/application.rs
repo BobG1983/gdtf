@@ -1,6 +1,3 @@
-//! Producing suppression: radius + opposing-only targeting, and the idempotent
-//! refresh emitting `SuppressionApplied` exactly once (clauses (a) / (e)).
-
 use bevy::{
     app::App,
     prelude::{MessageReader, Resource},
@@ -16,18 +13,12 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-/// A test-local recorder of every `SuppressionApplied` observed across the run — so the
-/// (e) idempotent-refresh count survives the one-update message lifetime.
 #[derive(Resource, Default)]
 struct AppliedLog {
-    /// One entry per `SuppressionApplied` emitted: the cell it fired for.
-    cells:   Vec<CellLevel>,
-    /// One entry per `SuppressionApplied` emitted: the pinned ganger it carried (GTW-572 —
-    /// the field the combat log's suppression line resolves to a name).
-    gangers: Vec<bevy::prelude::Entity>,
+        cells:   Vec<CellLevel>,
+            gangers: Vec<bevy::prelude::Entity>,
 }
 
-/// Drain `SuppressionApplied` into the `AppliedLog` recorder.
 fn record_applied(
     mut msgs: MessageReader<SuppressionApplied>,
     mut log: bevy::prelude::ResMut<AppliedLog>,
@@ -38,44 +29,33 @@ fn record_applied(
     }
 }
 
-/// Whether some recorded `SuppressionApplied` carried `ganger` (GTW-572 — the signal names
-/// the pinned unit, not just its cell).
 fn applied_carried_ganger(app: &App, ganger: bevy::prelude::Entity) -> bool {
     app.world()
         .get_resource::<AppliedLog>()
         .is_some_and(|log| log.gangers.contains(&ganger))
 }
 
-/// Add the `SuppressionApplied` recorder to the app (after `BattleSimPlugin`, so the
-/// buffer exists).
 fn with_applied_log(app: &mut App) {
     app.init_resource::<AppliedLog>();
     app.add_systems(bevy::app::Update, record_applied);
 }
 
-/// How many `SuppressionApplied` signals fired for `cell` across the run.
 fn applied_count_for(app: &App, cell: CellLevel) -> usize {
     app.world()
         .get_resource::<AppliedLog>()
         .map_or(0, |log| log.cells.iter().filter(|c| **c == cell).count())
 }
 
-// === (a) — the producer suppresses an IN-radius opposing ganger, not out-of-radius, not
-// same-faction. ===
 
 #[test]
 fn producer_suppresses_in_radius_opposing_ganger_only() {
-    // Radius 1: the shot's target cell + its Moore-8 ring are suppressed.
     let mut app = battle_app(1);
     with_applied_log(&mut app);
 
-    // The enemy shooter sits west; the target cell is (8,5). An opposing PLAYER stands ON
-    // the target (in radius), another PLAYER stands far away (out of radius), and a SECOND
-    // ENEMY stands adjacent to the target (same faction as the shooter — never suppressed).
     let target = ground(8, 5);
-    let in_radius_player = target; // radius 1 includes the target cell (Chebyshev 0)
+    let in_radius_player = target; 
     let out_of_radius_player = ground(20, 20);
-    let same_faction_near = ground(8, 6); // Chebyshev 1 of target, but ENEMY faction
+    let same_faction_near = ground(8, 6); 
     let situation = SituationBuilder::new()
         .with_gangers([
             ganger(in_radius_player, PLAYER, Direction::West),
@@ -93,7 +73,6 @@ fn producer_suppresses_in_radius_opposing_ganger_only() {
     let Some(shooter) = ganger_of(&mut app, ENEMY) else {
         unreachable!("an enemy shooter spawned");
     };
-    // Identify the in-radius vs out-of-radius player by position.
     let in_player = players
         .iter()
         .copied()
@@ -112,7 +91,6 @@ fn producer_suppresses_in_radius_opposing_ganger_only() {
         unreachable!("the three tagged gangers resolve by position");
     };
 
-    // Emit a real enemy FireRequested aimed at the target cell.
     let mode = wielded_single_mode(&mut app, shooter);
     app.world_mut().write_message(FireRequested::new(
         shooter,
@@ -120,8 +98,6 @@ fn producer_suppresses_in_radius_opposing_ganger_only() {
         Cell::new(8, 5),
         Level::new(0),
     ));
-    // Settle: dispatch_fire (early) → apply_suppression (.after(dispatch_fire)) → the
-    // Commands insert flushes → next tick the Suppressed component is visible.
     step(&mut app, 3);
 
     assert!(
@@ -140,16 +116,12 @@ fn producer_suppresses_in_radius_opposing_ganger_only() {
         !is_suppressed(&app, shooter),
         "(a) the shooter never suppresses itself",
     );
-    // GTW-572: the fresh SuppressionApplied signal CARRIES the pinned ganger (the field the
-    // combat log's suppression line resolves to a name), not just its cell.
     assert!(
         applied_carried_ganger(&app, in_player),
         "GTW-572: the SuppressionApplied signal must carry the freshly-pinned ganger entity",
     );
 }
 
-// === (e) — idempotent refresh: a second opposing shot on an already-suppressed unit emits
-// SuppressionApplied ONCE, not twice. ===
 
 #[test]
 fn idempotent_refresh_emits_suppression_applied_once() {
@@ -172,7 +144,6 @@ fn idempotent_refresh_emits_suppression_applied_once() {
         unreachable!("two enemy shooters spawned");
     };
 
-    // First shot: a FRESH suppression → one SuppressionApplied for the player's cell.
     let mode1 = wielded_single_mode(&mut app, first_shooter);
     app.world_mut().write_message(FireRequested::new(
         first_shooter,
@@ -186,8 +157,6 @@ fn idempotent_refresh_emits_suppression_applied_once() {
         "(e) precondition: the first shot suppresses the player",
     );
 
-    // Second shot (a DIFFERENT shooter, so it is not de-duplicated as the same fire): the
-    // player is ALREADY suppressed → an idempotent REFRESH → NO second SuppressionApplied.
     let mode2 = wielded_single_mode(&mut app, second_shooter);
     app.world_mut().write_message(FireRequested::new(
         second_shooter,

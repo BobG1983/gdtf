@@ -1,6 +1,3 @@
-//! A payload that will not decode is answered `BadArguments` AT CLAIM TIME, with that
-//! command's own derived schema attached, and never reaches the handler.
-
 use gdtf_qa_command::{
     command::QaCommand,
     test_support::{
@@ -11,7 +8,6 @@ use gdtf_qa_protocol::command::CommandOutcome;
 
 use crate::support::{args, outcome, plain};
 
-/// An unknown field is refused, and the attached schema is the argument type's own.
 #[test]
 fn an_unknown_field_is_answered_bad_arguments_with_the_command_s_schema() {
     let mut app = fake_app(FAKE_COMMANDS, fake_facts_loaded());
@@ -41,7 +37,6 @@ fn an_unknown_field_is_answered_bad_arguments_with_the_command_s_schema() {
     );
 }
 
-/// A wrongly-typed field is refused with the schema of the type it failed against.
 #[test]
 fn a_wrongly_typed_field_is_answered_with_that_command_s_schema() {
     let mut app = fake_app(FAKE_COMMANDS, fake_facts_loaded());
@@ -66,8 +61,6 @@ fn a_wrongly_typed_field_is_answered_with_that_command_s_schema() {
     );
 }
 
-/// The refusal happens at CLAIM time — the handler never runs, so nothing is left queued
-/// and no later frame produces a second answer.
 #[test]
 fn a_bad_payload_never_reaches_the_handler() {
     let mut app = fake_app(FAKE_COMMANDS, fake_facts_loaded());
@@ -83,8 +76,6 @@ fn a_bad_payload_never_reaches_the_handler() {
     let first = outcome(&channel);
     assert!(matches!(first, CommandOutcome::BadArguments { .. }));
 
-    // Several more frames: a queued call would be swept and answered again, a handled one
-    // would answer `Ran`. Neither happens, because the call was answered and dropped.
     for _ in 0..8 {
         app.update();
     }

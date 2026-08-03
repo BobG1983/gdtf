@@ -1,5 +1,3 @@
-//! Kill-despawn deferral to the killing impact (GTW-331).
-
 use bevy::app::App;
 use gdtf_battle_presenter::{DrawnLife, GangerSprite, GangerSprites};
 use gdtf_battle_sim::{
@@ -14,16 +12,12 @@ use gdtf_battle_sim::{
 
 use super::{harness::*, probes::*};
 
-/// Whether sim ganger `sim` currently has a LIVE presenter sprite — its `GangerSprites` entry is
-/// still mapped (GTW-331; the despawn drops the map entry, so a missing entry == despawned).
 fn ganger_sprite_alive(app: &App, sim: bevy::ecs::entity::Entity) -> bool {
     app.world()
         .get_resource::<GangerSprites>()
         .is_some_and(|sprites| sprites.contains(sim))
 }
 
-/// Set the `LifeState` of sim ganger `sim` directly. GTW-331: this is the moment the bug
-/// despawned the sprite — long before the killing tracer lands.
 fn set_life_state(app: &mut App, sim: bevy::ecs::entity::Entity, state: LifeState) {
     let mut q = app.world_mut().query::<&mut LifeState>();
     if let Ok(mut life) = q.get_mut(app.world_mut(), sim) {
@@ -31,12 +25,6 @@ fn set_life_state(app: &mut App, sim: bevy::ecs::entity::Entity, state: LifeStat
     }
 }
 
-/// Mark sim ganger `sim` DEAD on the presenter's OWN clock — write its `DrawnLife` mirror,
-/// exactly what [`advance_playback`](gdtf_battle_presenter::advance_playback) does when the
-/// cursor plays a `LifeChanged` deed. GTW-727 C17 moved the death-despawn trigger off the live
-/// `Changed<LifeState>` onto `Changed<DrawnLife>`, so a cursor-less focused harness drives the
-/// death by writing that mirror directly — the component analogue of how the FCT tests hand the
-/// pipeline a `Played<M>` in place of the cursor's own write.
 fn draw_dead(app: &mut App, sim: bevy::ecs::entity::Entity) {
     app.world_mut()
         .entity_mut(sim)
@@ -44,28 +32,12 @@ fn draw_dead(app: &mut App, sim: bevy::ecs::entity::Entity) {
 }
 
 /// GTW-331 — the BUG FIX, deterministic + headless: a SHOT that KILLS a ganger must keep the
-/// ganger's sprite ALIVE at sim-drain time (when the sim flips its `LifeState` to `Dead`, well
-/// before the staggered killing tracer arrives) and despawn it ONLY after the killing shot's
-/// impact resolves (when the bolt reaches the body).
-///
-/// This drives the FULL FX pipeline: the real `spawn_ganger_sprites` registers the victim's
-/// sprite, a `ShotFired` carrying a lethal (`life_after == Dead`) ganger-hit report spawns the
-/// bolt, and the victim's `LifeState` is set `Dead` on the SAME drain frame (the sim-drain the
-/// bug reacted to). The assertions: (1) at the drain frame the sprite is STILL alive (the bug:
-/// it was already despawned), (2) the bolt is still in flight so it stays alive, (3) once the
-/// bolt flies to its impact and `animate_impact` resolves the kill, the sprite is despawned and
-/// its `GangerSprites` entry dropped.
-///
-/// RED before the fix: `update_ganger_life_state`'s old `Dead` arm despawned at the drain frame,
-/// so assertion (1) (the sprite still alive at drain) fails immediately.
 #[test]
 fn a_shot_kill_keeps_the_sprite_until_the_killing_impact_lands() {
     let mut app = headless_renderer_app();
     settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
-    // The struck ganger sits at a cell a short flight from the muzzle, with a REAL presenter
-    // sprite registered by the production spawn system.
     let cell = Cell::new(8, 5);
     let level = Level::new(0);
     let victim = spawn_sim_ganger_with_sprite(&mut app, cell, level);
@@ -74,8 +46,6 @@ fn a_shot_kill_keeps_the_sprite_until_the_killing_impact_lands() {
         "the victim's presenter sprite must be spawned + mapped before the shot",
     );
 
-    // A lethal (DEAD) penetrating torso hit on the victim, fired from one cell west — a short
-    // flight, so the bolt takes several updates to reach the body.
     let muzzle = SimPos::new(4.0, 5.0, 0.0);
     let report = ganger_hit_report(
         victim,
@@ -97,30 +67,22 @@ fn a_shot_kill_keeps_the_sprite_until_the_killing_impact_lands() {
     };
     play(&mut app, shot);
 
-    // The sim-drain frame: drain the ShotFired (spawn the bolt, still parked/short into flight)
-    // AND flip the victim's LifeState to Dead, the SAME frame — exactly what the sim does at
-    // drain. The bug despawned the sprite here.
     set_life_state(&mut app, victim, LifeState::Dead);
     fire_with_zero_delta(&mut app);
 
     // (1) THE BUG: at the drain frame the sprite must STILL be alive — its killing tracer has
-    // not reached it yet.
     assert!(
         ganger_sprite_alive(&app, victim),
         "a shot-killed ganger's sprite must STILL exist at the sim-drain frame (the bug despawned \
          it here, before the killing tracer arrives)",
     );
 
-    // (2) The bolt is in flight; a couple of small steps keep it short of the impact, so the
-    // sprite stays alive across the flight (the kill is pending the incoming impact).
     step_app(&mut app, std::time::Duration::from_millis(10), 1);
     assert!(
         ganger_sprite_alive(&app, victim),
         "the sprite must stay alive while the killing bolt is still in flight",
     );
 
-    // (3) Fly the bolt the rest of the way to its impact: animate_impact resolves the kill, and
-    // the sprite is despawned + its map entry dropped — at the IMPACT, not at the drain.
     step_app(&mut app, std::time::Duration::from_millis(50), 8);
     assert!(
         !ganger_sprite_alive(&app, victim),
@@ -134,17 +96,12 @@ fn a_shot_kill_keeps_the_sprite_until_the_killing_impact_lands() {
     );
 }
 
-/// GTW-331 — the fix must NOT drop a NON-shot death: a ganger that dies WITHOUT a tracer (its
-/// `LifeState` set `Dead` directly — a bleed-out / direct kill, no `ShotFired`, no projectile)
-/// must STILL have its sprite despawned PROMPTLY at the sim event (there is no incoming impact to
-/// wait for). Guards the deferral from silently dropping deaths that have no killing shot.
 #[test]
 fn a_non_shot_death_despawns_the_sprite_promptly() {
     let mut app = headless_renderer_app();
     settle_resources(&mut app);
     app.world_mut().insert_resource(BattleInProgress);
 
-    // A real presenter sprite, no shot fired at all (no projectile in flight, no PendingImpact).
     let cell = Cell::new(3, 3);
     let level = Level::new(0);
     let dying = spawn_sim_ganger_with_sprite(&mut app, cell, level);
@@ -153,11 +110,6 @@ fn a_non_shot_death_despawns_the_sprite_promptly() {
         "the ganger's presenter sprite must be spawned + mapped before it dies",
     );
 
-    // A non-shot death: the ganger dies (sim `LifeState` Dead) and the cursor plays that death,
-    // writing its `DrawnLife` mirror — a bleed-out-style death with NO tracer pending. GTW-727
-    // moved the death-despawn trigger onto `Changed<DrawnLife>`, so this drives the mirror
-    // directly (there is no cursor in this focused harness). The life-state path must despawn it
-    // on the next update, since no killing `Played<ShotFired>` arrived to defer it.
     set_life_state(&mut app, dying, LifeState::Dead);
     draw_dead(&mut app, dying);
     app.update();

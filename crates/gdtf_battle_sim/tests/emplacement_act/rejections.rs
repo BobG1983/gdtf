@@ -1,6 +1,3 @@
-//! Enter-act gate rejections — unaffordable, non-adjacent, and already-occupied enters are
-//! each a no-op: no charge, no mount, no force-eject.
-
 use bevy::prelude::Entity;
 use gdtf_battle_sim::{
     acts::EnterEmplacementRequested,
@@ -13,10 +10,7 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-// ── Gate rejections: unaffordable / non-adjacent / already-occupied ─────────────
 
-/// An actor that cannot afford the enter leaf is rejected — the emplacement stays Vacant and its
-/// (too-small) TU is untouched.
 #[test]
 fn unaffordable_enter_is_rejected_no_charge() {
     let (mut app, seed) = battle_app(0x5543_0B0B);
@@ -28,7 +22,6 @@ fn unaffordable_enter_is_rejected_no_charge() {
     let Some(actor) = player_ganger(&mut app) else {
         unreachable!("setup spawns one player ganger");
     };
-    // Drain the actor's TU below the enter cost.
     let broke = enter_tu(&app).saturating_sub(1);
     if let Some(mut tu) = app.world_mut().get_mut::<Tu>(actor) {
         *tu = Tu::new(broke);
@@ -55,7 +48,6 @@ fn unaffordable_enter_is_rejected_no_charge() {
     );
 }
 
-/// A non-adjacent actor is rejected — the emplacement stays Vacant and no TU is spent.
 #[test]
 fn non_adjacent_enter_is_rejected_no_charge() {
     let (mut app, seed) = battle_app(0x5543_0C0C);
@@ -63,7 +55,6 @@ fn non_adjacent_enter_is_rejected_no_charge() {
         .with_gangers([player_at(ground(5, 5), Direction::East)])
         .build_with_gangs();
     drive_setup(&mut app, seed, situation);
-    // The emplacement is THREE cells east — outside the 8-adjacent reach.
     let emplacement = spawn_emplacement(&mut app, ground(8, 5));
     let Some(actor) = player_ganger(&mut app) else {
         unreachable!("setup spawns one player ganger");
@@ -86,12 +77,9 @@ fn non_adjacent_enter_is_rejected_no_charge() {
     );
 }
 
-/// Re-entering an ALREADY-occupied emplacement with a second ganger is a no-op (no force-eject) —
-/// the first occupant stays seated and the second spends no TU.
 #[test]
 fn enter_on_occupied_is_rejected_no_force_eject() {
     let (mut app, seed) = battle_app(0x5543_0D0D);
-    // Two adjacent players: first at (5,5), second at (7,5), emplacement between them at (6,5).
     let situation = SituationBuilder::new()
         .with_gangers([
             player_at(ground(5, 5), Direction::East),
@@ -102,7 +90,6 @@ fn enter_on_occupied_is_rejected_no_force_eject() {
     let emp_cell = ground(6, 5);
     let emplacement = spawn_emplacement(&mut app, emp_cell);
 
-    // Resolve the two player entities by their cells.
     let world = app.world_mut();
     let mut q = world.query::<(Entity, &Faction, &gdtf_battle_sim::ganger::Position)>();
     let players: Vec<(Entity, CellLevel)> = q
@@ -123,7 +110,6 @@ fn enter_on_occupied_is_rejected_no_force_eject() {
         unreachable!("both players spawned at their authored cells");
     };
 
-    // The FIRST mans the emplacement.
     app.world_mut()
         .write_message(EnterEmplacementRequested::new(first, emplacement));
     step(&mut app, 3);
@@ -134,7 +120,6 @@ fn enter_on_occupied_is_rejected_no_force_eject() {
     );
     let second_tu_before = tu_of(&app, second);
 
-    // The SECOND tries to enter the already-occupied emplacement.
     app.world_mut()
         .write_message(EnterEmplacementRequested::new(second, emplacement));
     step(&mut app, 3);

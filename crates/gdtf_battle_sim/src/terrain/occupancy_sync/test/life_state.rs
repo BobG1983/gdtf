@@ -1,17 +1,9 @@
-//! GTW-459 — life-state slot retention/release: Dead frees the slot, Downed
-//! (and any still-Alive change) holds it.
-
 use super::support::*;
 use crate::{
     cover::HeightBand,
     ganger::{LifeState, Position, Stance, StanceKind},
 };
 
-/// C9(b) — a ganger DIES: flipping [`LifeState`] to [`LifeState::Dead`] and
-/// ticking once clears its occupant slot.
-///
-/// Spawns + places a ganger, then flips its `LifeState` to `Dead` and ticks.
-/// The slot it occupied must be freed (C4). In place — no rebuild.
 #[test]
 fn dead_ganger_clears_its_slot() {
     let mut app = headless_app();
@@ -40,11 +32,6 @@ fn dead_ganger_clears_its_slot() {
     );
 }
 
-/// GTW-459 — a DOWNED ganger RETAINS its slot AND its band: a downed body is still
-/// on the field (it keeps its `Position`, can be stabilized / executed) so its cell
-/// stays BLOCKED for movement and OCCLUDES fire. Only a truly Dead ganger frees the
-/// cell. Flipped from the pre-GTW-459 behavior, which freed the slot for Downed too
-/// (the live-play bug: an enemy routed onto / through a downed friendly).
 #[test]
 fn downed_ganger_retains_its_slot() {
     let mut app = headless_app();
@@ -70,7 +57,6 @@ fn downed_ganger_retains_its_slot() {
         Some(ganger),
         "a downed ganger HOLDS its occupant slot — only Dead frees it (GTW-459 C1)",
     );
-    // GTW-459 C2/C5: the band is retained too, so the downed body keeps occluding fire.
     assert_eq!(
         grid_band(&app, at),
         Some(HeightBand::High),
@@ -78,8 +64,6 @@ fn downed_ganger_retains_its_slot() {
     );
 }
 
-/// A `LifeState` change that stays [`LifeState::Alive`] does NOT free the slot —
-/// the slot is freed ONLY by a transition to [`LifeState::Dead`] (GTW-459 C1).
 #[test]
 fn still_alive_change_keeps_slot() {
     let mut app = headless_app();
@@ -91,7 +75,6 @@ fn still_alive_change_keeps_slot() {
         .id();
     app.update();
 
-    // Touch LifeState (mark it changed) but leave it Alive.
     if let Some(mut life) = app.world_mut().get_mut::<LifeState>(ganger) {
         *life = LifeState::Alive;
     }

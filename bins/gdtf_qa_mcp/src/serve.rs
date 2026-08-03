@@ -1,16 +1,3 @@
-//! The blocking stdio transport loop (GTW-741, GTW-745, GTW-808).
-//!
-//! MCP over stdio is newline-delimited JSON-RPC 2.0: each message is one line of JSON on
-//! stdin (no embedded newlines), and each response is one line on stdout. [`run_stdio`]
-//! reads lines, hands each to [`dispatch()`], and writes back any
-//! response line — blocking `std` I/O, no async runtime. It stops on stdin EOF.
-//!
-//! Stdin EOF is the MCP host's normal shutdown (the client closed the pipe). Because the
-//! host may have launched BOTH children — the game and the content editor — [`run_stdio`]
-//! stops each of them gracefully before returning, so neither outlives the MCP; and each
-//! [`HostManager`]'s `Drop` force-kills any child that somehow survives that (e.g. on an
-//! unwind).
-
 use std::io::{self, BufRead, Write};
 
 use crate::{
@@ -20,14 +7,6 @@ use crate::{
     rpc::dispatch,
 };
 
-/// Run the MCP stdio server against both hosts' real links + lifecycles until stdin
-/// closes, then stop any children the host launched.
-///
-/// Each child's connection is opened lazily on the first forwarding `tools/call` for that
-/// host, so `initialize` and `tools/list` answer before either process is up. The
-/// `launch` / `stop` / `logs` tools drive the two
-/// [`HostManager`]s, which own the child processes — separately, so a game and an editor
-/// can be running at the same time.
 pub fn run_stdio() {
     let mut game_link = QaClient::for_host(QaHost::Game);
     let mut editor_link = QaClient::for_host(QaHost::Editor);
@@ -50,19 +29,10 @@ pub fn run_stdio() {
         let mut writer = stdout.lock();
         run_loop(reader, &mut writer, &mut hosts);
     }
-    // Stdin closed: stop the children this host launched, gracefully, so neither outlives
-    // us. BOTH are stopped — a game left running because only the editor's stop ran is
-    // exactly the orphan this exists to prevent.
     let _ = game_lifecycle.stop_owned();
     let _ = editor_lifecycle.stop_owned();
 }
 
-/// The transport core, generic over its byte streams so it is testable without real
-/// stdin/stdout.
-///
-/// Reads one line at a time; for each, dispatches and — when there is a response — writes
-/// it followed by a newline and flushes (so the peer sees each message immediately).
-/// Returns on EOF, a read error, or a write error.
 pub fn run_loop<R: BufRead, W: Write>(mut reader: R, writer: &mut W, hosts: &mut HostSet<'_>) {
     let mut line = String::new();
     loop {
@@ -98,9 +68,7 @@ mod tests {
         link::{QaLink, QaPort},
     };
 
-    /// A link that always fails — the loop's `initialize` / `tools/list` handling never
-    /// touches it, so the transport can be exercised with no socket.
-    struct DeadLink;
+            struct DeadLink;
 
     impl QaLink for DeadLink {
         fn request(&mut self, _request: QaRequest) -> Result<QaResponse, McpError> {
@@ -108,9 +76,7 @@ mod tests {
         }
     }
 
-    /// A lifecycle the transport test never invokes (no launch / stop tool in the
-    /// fixture) — it only exists so `run_loop` has its argument.
-    struct DeadLifecycle;
+            struct DeadLifecycle;
 
     impl HostLifecycle for DeadLifecycle {
         fn launch(&mut self, _port: QaPort, _spec: &LaunchSpec) -> LaunchOutcome {
@@ -134,9 +100,7 @@ mod tests {
         }
     }
 
-    /// Two newline-delimited requests in produce two newline-delimited responses out, in
-    /// order, each echoing its own id — the MCP stdio framing.
-    #[test]
+            #[test]
     fn loops_over_newline_delimited_requests() {
         let input = concat!(
             r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#,
@@ -156,7 +120,6 @@ mod tests {
         run_loop(Cursor::new(input.as_bytes()), &mut out, &mut hosts);
         let text = String::from_utf8(out).unwrap_or_default();
         let lines: Vec<&str> = text.lines().collect();
-        // The notification (no id) produced no line; the two requests produced one each.
         assert_eq!(lines.len(), 2, "got: {text}");
         let first: Value = serde_json::from_str(lines[0]).unwrap_or(Value::Null);
         let second: Value = serde_json::from_str(lines[1]).unwrap_or(Value::Null);

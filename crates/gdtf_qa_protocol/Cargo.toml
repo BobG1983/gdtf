@@ -3,40 +3,16 @@ name = "gdtf_qa_protocol"
 version = "0.1.0"
 edition = "2024"
 
-# The GTW-734 QA-net T1 crate: the shared TYPED wire contract between the game's
-# future `net_qa` server (`gdtf_app/src/dev/net_qa`, T3) and the future
-# `bins/gdtf_qa_mcp` MCP bridge (T8). It compiles WITHOUT the Bevy engine — serde
-# for the wire encoding, ron for the compact on-wire text, and `bevy_derive` ALONE
-# (the `Deref` derive) for the no-bare-types newtypes. NO bevy engine dep, NO tokio,
-# NO transport/IO — pure data + a pure framing codec.
 [dependencies]
-# The wire encoding: every request, response and command DTO is serde-derived.
 serde = { workspace = true }
-# The compact on-wire text form — the framing codec's payload is compact RON.
 ron = { workspace = true }
-# The `Deref` derive ONLY (proc-macro crate, no engine) — the house-style newtype
-# accessor. Direct dep for this crate alone (see the workspace comment).
 bevy_derive = { workspace = true }
-# JSON Schema derivation, OPTIONAL and off by default (GTW-939). A command's argument
-# and reply schemas are derived from the Rust type, so the two hosts turn this on via
-# `gdtf_qa_protocol/schema` to derive `JsonSchema` for types that embed an `ids` type.
-# `bins/gdtf_qa_mcp` does NOT enable it in its own manifest — the courier carries schema
-# documents as opaque text — so a courier-only build (`cargo build -p gdtf_qa_mcp`) links no
-# schemars. A whole-workspace build is different, and has been since GTW-941: the new
-# `crates/gdtf_qa_command` requires `gdtf_qa_protocol/schema` unconditionally, and cargo
-# builds ONE shared `gdtf_qa_protocol` unit per invocation, so `cargo dclippy` / `cargo dtest`
-# unify the feature on and the courier's unit links schemars on those dev runs.
 schemars = { workspace = true, optional = true }
 
 [features]
-# Derive `schemars::JsonSchema` for the wire id / handle newtypes, so a host's command
-# argument and reply types can derive their own schemas over them. Off by default.
 schema = ["dep:schemars"]
 
 [dev-dependencies]
-# Test-only JSON parser: the schema tests assert a DERIVED schema document really is
-# parseable JSON. A dev-dependency never reaches a consumer, so the courier stays clear
-# of it.
 serde_json = "1"
 
 [lints]

@@ -1,18 +1,3 @@
-//! Pure THEME-form RESOLUTION helpers (relocated here in the GTW-512 egui swap).
-//!
-//! The pre-egui shell tangled these pure functions inside the `bevy_ui` `render` / `systems`
-//! drive files. The egui swap un-declared those files (the form is deferred to the C3 child), so the
-//! pure logic the in-crate tests pin moves here:
-//!
-//! - [`resolved_stats`] — a terrain def → `(human summary, HP fraction)` for the C3 resolved-stats
-//!   readout (proves the theme stores references, not inlined stats),
-//! - [`floor_candidates`] — the default-floor candidate list for a draft (Slab-kind FIRST — C6),
-//! - [`slab_floor_candidates`] — the Slab-ONLY default-floor candidate list (GTW-530 C3),
-//! - [`sim_kind_label`] — the short Wall / Cover / Slab / Emplacement label (the ONE
-//!   label fn since GTW-574 C7 — the egui theme form imports it instead of mirroring it).
-//!
-//! All three are pure (sim types + std only), so the C7 tests pin them without an app.
-
 use gdtf_battle_sim::terrain::{
     def::{TerrainDef, TerrainDefRegistry, TerrainSimKind, TerrainUuid},
     entity::TerrainPieceKind,
@@ -20,17 +5,10 @@ use gdtf_battle_sim::terrain::{
 
 use super::types::ThemeDraft;
 
-/// The HP-bar ceiling the resolved-stats readout normalizes a structural HP against, for the C3 HP
-/// fraction. A framework display const (not a domain value).
 const HP_BAR_CEILING: f32 = 1000.0;
 
-/// Resolve a terrain def into a `(human summary, HP fraction)` for the C3 readout — its kind, HP,
-/// armor, hardness (+ band for Wall / Cover), and the HP fraction against `HP_BAR_CEILING`. Pure,
-/// so the C7 test pins the resolution against a registry fixture.
 #[must_use]
 pub fn resolved_stats(def: &TerrainDef) -> (String, f32) {
-    // `**hp` is a `u32` structural pool; the documented small-magnitude cast is clippy-clean under
-    // the workspace `cast_precision_loss` allow (the presenter `framing.rs` precedent).
     #[expect(
         clippy::cast_precision_loss,
         reason = "structural HP is a small u32 pool well within f32 exact range; the readout shows \
@@ -72,8 +50,6 @@ pub fn resolved_stats(def: &TerrainDef) -> (String, f32) {
             **armor_hardness,
             None,
         ),
-        // GTW-543: an emplacement is a cover-like structure with a band, plus a mounted-weapon
-        // key. The readout shows its structural stats + band exactly like a Wall/Cover.
         TerrainSimKind::Emplacement {
             hp,
             armor_protection,
@@ -96,8 +72,6 @@ pub fn resolved_stats(def: &TerrainDef) -> (String, f32) {
     (summary, hp / HP_BAR_CEILING)
 }
 
-/// The default-floor candidate list for a draft: its selected terrain, Slab-kind FIRST (C6), each
-/// as `(key, "display name [Kind]")`. Pure, so the C7 test pins the Slab-preference ordering.
 #[must_use]
 pub fn floor_candidates(
     draft: &ThemeDraft,
@@ -110,7 +84,6 @@ pub fn floor_candidates(
             continue;
         };
         let label = format!("{}  [{}]", *def.display_name, sim_kind_label(&def.sim_kind));
-        // A kind-IDENTITY decision (no payload) — read the canonical projection (GTW-574 C2).
         if def.sim_kind.kind() == TerrainPieceKind::Slab {
             slabs.push((*key, label));
         } else {
@@ -121,14 +94,6 @@ pub fn floor_candidates(
     slabs
 }
 
-/// The default-floor candidate list RESTRICTED to Slab-kind terrain (GTW-530 C3) — the walkable
-/// floor is always a slab, so the default-floor picker offers ONLY the draft's selected terrain
-/// whose [`sim_kind`](TerrainDef::sim_kind) is [`TerrainSimKind::Slab`]; every Wall / Cover terrain
-/// is filtered OUT. Each surviving candidate is `(key, "display name [Slab]")`.
-///
-/// Where [`floor_candidates`] merely ORDERS slabs first (keeping non-slabs as trailing options),
-/// this DROPS non-slabs entirely so no Wall / Cover can ever be chosen as the default floor. Pure,
-/// so the C3 test pins the Slab-only filter against a mixed-kind registry fixture.
 #[must_use]
 pub fn slab_floor_candidates(
     draft: &ThemeDraft,
@@ -139,7 +104,6 @@ pub fn slab_floor_candidates(
         .iter()
         .filter_map(|key| {
             let def = terrain.def(key)?;
-            // A kind-IDENTITY decision (no payload) — the canonical projection (GTW-574 C2).
             if def.sim_kind.kind() == TerrainPieceKind::Slab {
                 let label = format!("{}  [{}]", *def.display_name, sim_kind_label(&def.sim_kind));
                 Some((*key, label))
@@ -150,12 +114,6 @@ pub fn slab_floor_candidates(
         .collect()
 }
 
-/// The short human label for a terrain sim kind (Wall / Cover / Slab / Emplacement) — shown
-/// beside each library row's name so the author sees the structural kind at a glance (C2).
-///
-/// The ONE label fn (GTW-574 C7 — the verbatim copy `theme_form_ui` carried is gone), a
-/// kind-identity decision matched EXHAUSTIVELY over the canonical [`TerrainPieceKind`]
-/// projection: a new terrain kind is a compile error here, never a missing label.
 #[must_use]
 pub(crate) const fn sim_kind_label(kind: &TerrainSimKind) -> &'static str {
     match kind.kind() {

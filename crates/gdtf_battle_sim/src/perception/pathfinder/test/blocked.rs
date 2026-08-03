@@ -1,6 +1,3 @@
-//! C6 — an unreachable goal yields the typed [`PathBlocked`](crate::pathfinder::PathBlocked)
-//! `Err`, NEVER a panic and NEVER an empty `Path`.
-
 use super::support::{
     all_other, cell, default_floor_costs, full_vision, grid_with, no_links, tuning,
 };
@@ -9,11 +6,8 @@ use crate::{
     pathfinder::{PathBlocked, PlanningView, find_path},
 };
 
-/// A goal walled off on all eight sides is UNREACHABLE — `find_path` returns
-/// `Err(PathBlocked)`, not a panic and not an empty route.
 #[test]
 fn goal_walled_in_is_path_blocked() {
-    // Wall every one of the eight cells surrounding the goal (5, 5, 0).
     let walls: Vec<_> = [
         (4, 4),
         (5, 4),
@@ -32,7 +26,7 @@ fn goal_walled_in_is_path_blocked() {
     let tuning = tuning();
 
     let start = cell(0, 0, 0);
-    let goal = cell(5, 5, 0); // open, but boxed in by walls
+    let goal = cell(5, 5, 0); 
 
     let floor_costs = default_floor_costs(&tuning);
     let squad = full_vision();
@@ -54,8 +48,6 @@ fn goal_walled_in_is_path_blocked() {
     );
 }
 
-/// A goal on a DIFFERENT storey with no vertical link is unreachable — the typed
-/// `PathBlocked`. (Storeys are stitched ONLY by the link graph.)
 #[test]
 fn other_storey_without_link_is_path_blocked() {
     let grid = grid_with(&[]);
@@ -63,7 +55,7 @@ fn other_storey_without_link_is_path_blocked() {
     let tuning = tuning();
 
     let start = cell(2, 2, 0);
-    let goal = cell(2, 2, 3); // three storeys up, no link
+    let goal = cell(2, 2, 3); 
 
     let floor_costs = default_floor_costs(&tuning);
     let squad = full_vision();
@@ -85,8 +77,6 @@ fn other_storey_without_link_is_path_blocked() {
     );
 }
 
-/// An out-of-grid goal is unreachable (the grid's bounds gate drops every edge that
-/// would leave the grid) — a typed `PathBlocked`, never a panic.
 #[test]
 fn out_of_grid_goal_is_path_blocked() {
     let grid = grid_with(&[]);
@@ -94,7 +84,7 @@ fn out_of_grid_goal_is_path_blocked() {
     let tuning = tuning();
 
     let start = cell(1, 1, 0);
-    let goal = cell(-5, -5, 0); // off the grid
+    let goal = cell(-5, -5, 0); 
 
     let floor_costs = default_floor_costs(&tuning);
     let squad = full_vision();

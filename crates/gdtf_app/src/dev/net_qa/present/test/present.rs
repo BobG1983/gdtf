@@ -1,11 +1,3 @@
-//! Headless tests for the GTW-764 [`CapturePresentPlugin`] wiring: the `WinitSettings`
-//! override, the offscreen target's size / format / `COPY_SRC` usage, the camera retarget,
-//! and the present camera targeting the window.
-//!
-//! No unwrap / expect / panic even in tests (the `net_qa` suite convention) — shape checks use
-//! `assert!(matches!(…))` / `assert!(… .is_some_and(…))`. No non-black-pixel assertion: with
-//! `backends: None` there is no GPU, so that is in-engine QA (the orchestrator runs it).
-
 use bevy::{
     camera::RenderTarget,
     prelude::*,
@@ -22,11 +14,8 @@ use crate::{
     states::running::UiCamera,
 };
 
-/// The present plugin overrides `WinitSettings` to continuous-in-both-focus-states (C5), so a
-/// fresh offscreen frame renders every tick regardless of window focus.
 #[test]
 fn winit_settings_are_continuous_under_net_qa() {
-    // A bare app is enough — `build` inserts the resource without any system running.
     let mut app = App::new();
     app.add_plugins(CapturePresentPlugin);
     let settings = app.world().get_resource::<WinitSettings>();
@@ -38,15 +27,10 @@ fn winit_settings_are_continuous_under_net_qa() {
     );
 }
 
-/// The offscreen [`QaCaptureTarget`] image is created at the primary window's PHYSICAL size,
-/// as `Rgba8UnormSrgb`, and carries `COPY_SRC` — the single silent-failure gotcha (C1): a
-/// missing `COPY_SRC` makes `Screenshot::image` never land.
 #[test]
 fn capture_target_is_window_sized_rgba_with_copy_src() {
     let mut app = headless_windowed_app();
     app.add_plugins(CapturePresentPlugin);
-    // A couple of frames: the target is created on the first tick a window exists, then the
-    // insert-resource command applies.
     for _ in 0..3 {
         app.update();
     }
@@ -71,9 +55,6 @@ fn capture_target_is_window_sized_rgba_with_copy_src() {
     );
 }
 
-/// After the retarget system runs, BOTH a world camera and a UI camera carry
-/// `RenderTarget::Image` pointing at the offscreen target (C2) — so the HUD (a `bevy_ui` tree
-/// bound to the UI camera) is captured, not just the world.
 #[test]
 fn world_and_ui_cameras_are_retargeted_to_the_offscreen_image() {
     let mut app = headless_windowed_app();
@@ -94,8 +75,6 @@ fn world_and_ui_cameras_are_retargeted_to_the_offscreen_image() {
     }
 }
 
-/// A present camera targeting the WINDOW exists (C3), so the window still shows the game (and
-/// what it shows equals what the pump captures).
 #[test]
 fn a_present_camera_targets_the_window() {
     let mut app = headless_windowed_app();
@@ -113,11 +92,6 @@ fn a_present_camera_targets_the_window() {
     );
 }
 
-/// The `UiCamera` is marked `IsDefaultUiCamera` and NO other camera is — so the `bevy_ui` HUD
-/// binds to the offscreen UI camera (renders into the capture) rather than the order-100
-/// present camera (which renders only its own layer, culling the HUD). Regression guard for the
-/// in-engine defect where the HUD was missing from the capture after the present camera was
-/// added.
 #[test]
 fn only_the_ui_camera_is_the_default_ui_camera() {
     let mut app = headless_windowed_app();

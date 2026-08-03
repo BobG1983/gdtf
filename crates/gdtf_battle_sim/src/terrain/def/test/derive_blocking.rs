@@ -1,9 +1,3 @@
-//! GTW-501 (C1 / D2) — the path-blocking DERIVATION rule
-//! ([`derives_path_blocking`](super::super::derives_path_blocking)): a `Wall`/`Cover`
-//! sim-kind blocks the path by default (zero regression), a `Slab` does not, and an
-//! explicit [`BlocksPathfinding`](super::super::TerrainTag) tag ADDS path-blocking to an
-//! otherwise-open kind.
-
 use super::super::{
     TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind, TerrainTag, TerrainUuid,
     derives_path_blocking, sim_kind_blocks_path,
@@ -16,7 +10,6 @@ use crate::{
     weapon::WeaponName,
 };
 
-/// A `Wall` def with the given tags — the high-cover blocking kind.
 fn wall_def(tags: Vec<TerrainTag>) -> TerrainDef {
     TerrainDef {
         key: TerrainUuid::generate(),
@@ -38,7 +31,6 @@ fn wall_def(tags: Vec<TerrainTag>) -> TerrainDef {
     }
 }
 
-/// A `Cover` def with the given tags — the chest-high / scatter blocking kind.
 fn cover_def(tags: Vec<TerrainTag>) -> TerrainDef {
     TerrainDef {
         key: TerrainUuid::generate(),
@@ -60,8 +52,6 @@ fn cover_def(tags: Vec<TerrainTag>) -> TerrainDef {
     }
 }
 
-/// An `Emplacement` def with the given tags — the cover-like mounted-gun kind (GTW-543;
-/// path-blocking + vision-occluding by kind default, like a `Wall`/`Cover`).
 fn emplacement_def(tags: Vec<TerrainTag>) -> TerrainDef {
     TerrainDef {
         key: TerrainUuid::generate(),
@@ -84,7 +74,6 @@ fn emplacement_def(tags: Vec<TerrainTag>) -> TerrainDef {
     }
 }
 
-/// A `Slab` def with the given tags — the floor/roof kind (NOT path-blocking by default).
 fn slab_def(tags: Vec<TerrainTag>) -> TerrainDef {
     TerrainDef {
         key: TerrainUuid::generate(),
@@ -106,8 +95,6 @@ fn slab_def(tags: Vec<TerrainTag>) -> TerrainDef {
     }
 }
 
-/// C1/D2 — a `Wall` with NO tags derives path-blocking (the kind default; existing walls
-/// keep blocking with no content migration — the zero-regression guarantee).
 #[test]
 fn wall_blocks_path_by_kind_default() {
     assert!(
@@ -116,7 +103,6 @@ fn wall_blocks_path_by_kind_default() {
     );
 }
 
-/// C1/D2 — a `Cover` with NO tags derives path-blocking (the kind default).
 #[test]
 fn cover_blocks_path_by_kind_default() {
     assert!(
@@ -125,8 +111,6 @@ fn cover_blocks_path_by_kind_default() {
     );
 }
 
-/// GTW-543 — an `Emplacement` with NO tags derives path-blocking (the kind default: a
-/// cover-like structure fills its cell like a wall/cover).
 #[test]
 fn emplacement_blocks_path_by_kind_default() {
     assert!(
@@ -135,8 +119,6 @@ fn emplacement_blocks_path_by_kind_default() {
     );
 }
 
-/// C1/D2 — a `Slab` with NO tags does NOT derive path-blocking (a slab is a floor/roof you
-/// walk on, not through).
 #[test]
 fn slab_does_not_block_path_by_default() {
     assert!(
@@ -145,8 +127,6 @@ fn slab_does_not_block_path_by_default() {
     );
 }
 
-/// C1 — an EXPLICIT `BlocksPathfinding` tag ADDS path-blocking to an otherwise-open `Slab`
-/// (the opt-in: a barricade / raised-lip slab).
 #[test]
 fn explicit_tag_adds_path_blocking_to_slab() {
     assert!(
@@ -155,9 +135,6 @@ fn explicit_tag_adds_path_blocking_to_slab() {
     );
 }
 
-/// C1 — an unrelated tag does NOT make a `Slab` path-blocking: only the
-/// `BlocksPathfinding` tag (or a blocking kind default) does. Pins that the rule reads the
-/// SPECIFIC tag, not "has any tag".
 #[test]
 fn unrelated_tag_does_not_block_slab() {
     assert!(
@@ -169,8 +146,6 @@ fn unrelated_tag_does_not_block_slab() {
     );
 }
 
-/// C1 — an explicit `BlocksPathfinding` tag on a `Wall` is redundant but harmless (still
-/// blocking) — the union is monotone (a tag can only ADD).
 #[test]
 fn explicit_tag_on_wall_is_still_blocking() {
     assert!(
@@ -179,7 +154,6 @@ fn explicit_tag_on_wall_is_still_blocking() {
     );
 }
 
-/// D2 — the per-kind default helper directly: `Wall`/`Cover` block, `Slab` does not.
 #[test]
 fn sim_kind_default_blocks_wall_and_cover_only() {
     let wall = TerrainSimKind::Wall {

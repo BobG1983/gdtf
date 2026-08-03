@@ -1,7 +1,3 @@
-//! Font override-vs-default key-selection tests: a sub-theme with a `font`
-//! override resolves through the override key, the rest through
-//! `default_font`.
-
 use bevy::prelude::*;
 
 use super::super::{
@@ -12,19 +8,10 @@ use super::super::{
     },
 };
 
-/// **Font override mechanism:** a text-bearing sub-theme with a `font`
-/// override resolves to the **override** key's handle, while a sub-theme
-/// without one resolves to the **`default_font`** key's handle.
-///
-/// Drives `resolve` with a closure that mints a distinct
-/// [`Handle<Font>`] per key (via a path-keyed map), so the test can prove the
-/// override-vs-default key selection without any `AssetServer`.
 #[test]
 fn resolve_picks_override_font_else_default_font() {
     use std::collections::HashMap;
 
-    // Title overrides its font; button and text do not, so they fall to the
-    // default_font. Each distinct key maps to a distinct reserved handle.
     let spec = GdtfThemeSpec {
         default_font: String::from("fonts/default.ttf"),
         background:   BackgroundThemeSpec {
@@ -73,9 +60,6 @@ fn resolve_picks_override_font_else_default_font() {
         },
     };
 
-    // A path-keyed handle source: each distinct key gets its own weak handle
-    // minted from a deterministic-but-distinct UUID, so no `AssetServer` is
-    // needed to prove override-vs-default key selection.
     let mut handles: HashMap<String, Handle<Font>> = HashMap::new();
     for key in ["fonts/default.ttf", "fonts/title-override.ttf"] {
         handles.insert(String::from(key), weak_font_handle(key));
@@ -103,12 +87,6 @@ fn resolve_picks_override_font_else_default_font() {
     );
 }
 
-/// Mints a deterministic-but-distinct weak [`Handle<Font>`] per font key, so
-/// the override test can prove key selection without an `AssetServer`.
-///
-/// Uses the public [`Handle::Uuid`] weak-handle variant with a FNV-1a hash of
-/// the path as the UUID — distinct keys hash to distinct UUIDs, so the
-/// resolved handles compare unequal.
 fn weak_font_handle(key: &str) -> Handle<Font> {
     use std::marker::PhantomData;
 

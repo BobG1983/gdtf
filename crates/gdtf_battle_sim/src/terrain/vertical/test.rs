@@ -10,11 +10,6 @@ use crate::{
     tuning::LinkTu,
 };
 
-/// A situation whose **slabs** occupy every `(cell, level)` in `cells` — a
-/// cell-existence source for the dangling check — plus the given links. Slabs
-/// are the lightest authored-cell carrier (just a `CellLevel`), so they isolate
-/// the vertical-link rules under test from wall / scatter authoring. Built over
-/// the crate-central [`SituationBuilder`] (GTW-324).
 fn situation_with(cells: &[CellLevel], links: Vec<VerticalLink>) -> Situation {
     let mut builder = SituationBuilder::new();
     for &cell in cells {
@@ -26,17 +21,12 @@ fn situation_with(cells: &[CellLevel], links: Vec<VerticalLink>) -> Situation {
     builder.build()
 }
 
-/// Build the graph, asserting it is `Ok`, and return it — or assert-fail and
-/// return `None`. Keeps the Ok-needing tests free of `unwrap`/`expect`/`panic`
-/// (all denied in tests too).
 fn ok_graph(situation: &Situation) -> Option<VerticalLinkGraph> {
     let result = build_vertical_link_graph(situation);
     assert!(result.is_ok(), "expected a valid graph, got {result:?}");
     result.ok()
 }
 
-/// C7(a) — valid links build successfully and `links_from` returns the correct
-/// set, including the REVERSE direction for a bidirectional link.
 #[test]
 fn valid_links_build_and_query_both_directions() {
     let lower = key(5, 5, 0);
@@ -50,7 +40,6 @@ fn valid_links_build_and_query_both_directions() {
 
     assert_eq!(graph.len(), 1, "one authored link");
 
-    // Forward direction: departing the lower endpoint yields the link.
     let from_lower: Vec<_> = graph.links_from(&lower).collect();
     assert_eq!(
         from_lower,
@@ -58,7 +47,6 @@ fn valid_links_build_and_query_both_directions() {
         "the link departs the lower endpoint"
     );
 
-    // Reverse direction: a bidirectional link is ALSO reachable from `to`.
     let from_upper: Vec<_> = graph.links_from(&upper).collect();
     assert_eq!(
         from_upper,
@@ -66,12 +54,9 @@ fn valid_links_build_and_query_both_directions() {
         "a bidirectional link departs the upper endpoint too (reverse direction)",
     );
 
-    // A cell with no link departing it yields nothing.
     assert_eq!(graph.links_from(&key(9, 9, 0)).count(), 0);
 }
 
-/// A ONE-WAY link is indexed from its `from` endpoint ONLY — the reverse
-/// direction is not traversable.
 #[test]
 fn one_way_link_is_forward_only() {
     let lower = key(2, 3, 0);
@@ -101,20 +86,13 @@ fn one_way_link_is_forward_only() {
     );
 }
 
-/// C7(b) — a link with `level_from = MAX_LEVELS` returns
-/// `Err(LevelOutOfRange)`, NOT a panic. (`MAX_LEVELS` is the first
-/// out-of-range storey: valid levels are `0..MAX_LEVELS`.)
 #[test]
 fn level_at_max_levels_is_out_of_range() {
     let bad = key(1, 1, MAX_LEVELS);
     let ok = key(1, 1, 0);
-    // Author the cells so the dangling check would pass — isolating the
-    // level-range rule.
     let link = VerticalLink::new(bad, ok, LinkKind::ladder());
     let situation = situation_with(&[bad, ok], vec![link]);
 
-    // Compare the error directly (the Ok variant `VerticalLinkGraph` is not
-    // `PartialEq`, so compare `.err()` — an `Option<InvalidVerticalLink>`).
     let result = build_vertical_link_graph(&situation);
     assert_eq!(
         result.err(),
@@ -123,14 +101,11 @@ fn level_at_max_levels_is_out_of_range() {
     );
 }
 
-/// C7(c) — a dangling-cell link (an endpoint cell NOT among the situation's
-/// authored cells) returns `Err(DanglingCell)`.
 #[test]
 fn dangling_endpoint_cell_is_rejected() {
     let present = key(4, 4, 0);
-    let missing = key(4, 4, 1); // never authored
+    let missing = key(4, 4, 1); 
     let link = VerticalLink::new(present, missing, LinkKind::stair());
-    // Only `present` is authored — `missing` dangles.
     let situation = situation_with(&[present], vec![link]);
 
     let result = build_vertical_link_graph(&situation);
@@ -141,11 +116,10 @@ fn dangling_endpoint_cell_is_rejected() {
     );
 }
 
-/// C7(d) — `level_from == level_to` returns `Err(SameLevel)`.
 #[test]
 fn same_level_link_is_rejected() {
     let a = key(7, 7, 2);
-    let b = key(8, 8, 2); // same storey, different cell
+    let b = key(8, 8, 2); 
     let link = VerticalLink::new(a, b, LinkKind::stair());
     let situation = situation_with(&[a, b], vec![link]);
 
@@ -157,9 +131,6 @@ fn same_level_link_is_rejected() {
     );
 }
 
-/// An empty situation builds an empty graph (no links, every lookup empty) —
-/// the trivial valid case, and the default for a situation with no authored
-/// vertical links.
 #[test]
 fn empty_situation_builds_empty_graph() {
     let Some(graph) = ok_graph(&Situation::new()) else {
@@ -170,9 +141,6 @@ fn empty_situation_builds_empty_graph() {
     assert_eq!(graph.links_from(&key(0, 0, 0)).count(), 0);
 }
 
-/// `LinkKind` constructors and the one-way predicate behave as documented:
-/// the convenience constructors are bidirectional, the explicit flag is read
-/// back faithfully.
 #[test]
 fn link_kind_one_way_predicate() {
     assert!(!*LinkKind::stair().is_one_way());
@@ -197,9 +165,6 @@ fn link_kind_one_way_predicate() {
     );
 }
 
-/// C4 — a link yields a hop priced at the SINGLE [`LinkTu`] passed in. Asserts
-/// the cost EQUALS the arbitrary test `LinkTu` (relations-only, NOT a shipped
-/// magnitude), and that the reachable neighbour is the link's `to` endpoint.
 #[test]
 fn traversable_link_yields_link_tu_priced_hop() {
     let lower = key(5, 5, 0);
@@ -211,8 +176,6 @@ fn traversable_link_yields_link_tu_priced_hop() {
         return;
     };
 
-    // An ARBITRARY test cost — not a shipped tunable magnitude. The hop must be
-    // priced at exactly this value, whatever it is.
     let link_tu = LinkTu::new(7);
     let hops: Vec<_> = traversable_links(lower, &graph, link_tu).collect();
 
@@ -221,15 +184,10 @@ fn traversable_link_yields_link_tu_priced_hop() {
         vec![(upper, Tu::new(7))],
         "the hop reaches the `to` endpoint at the LinkTu cost"
     );
-    // The cost EQUALS the LinkTu passed in (relation, not magnitude): a LinkTu of
-    // `n` produces a `Tu` of `n`.
     let (_, cost) = hops[0];
     assert_eq!(*cost, *link_tu, "the hop cost equals the LinkTu passed in");
 }
 
-/// C2 — the per-hop cost is the SAME single [`LinkTu`] regardless of stair /
-/// ladder kind (relations-only: both kinds priced at the identical arbitrary
-/// `LinkTu`, no per-kind cost).
 #[test]
 fn cost_is_flat_link_tu_regardless_of_kind() {
     let lower = key(3, 3, 0);
@@ -251,9 +209,6 @@ fn cost_is_flat_link_tu_regardless_of_kind() {
     }
 }
 
-/// C1/C4 — a ONE-WAY link is NOT traversable from its `to` endpoint (only from
-/// `from`). Directionality is honoured by the graph index alone — `links_from`
-/// never yields a one-way link under `to`, so neither does `traversable_links`.
 #[test]
 fn one_way_link_is_not_traversable_from_to() {
     let lower = key(2, 3, 0);
@@ -272,13 +227,11 @@ fn one_way_link_is_not_traversable_from_to() {
     };
     let link_tu = LinkTu::new(5);
 
-    // Forward (from the `from` endpoint): the hop is offered.
     assert_eq!(
         traversable_links(lower, &graph, link_tu).collect::<Vec<_>>(),
         vec![(upper, Tu::new(5))],
         "a one-way link is traversable from its `from` endpoint",
     );
-    // Reverse (from the `to` endpoint): NOTHING — the index does not record it.
     assert_eq!(
         traversable_links(upper, &graph, link_tu).count(),
         0,
@@ -286,8 +239,6 @@ fn one_way_link_is_not_traversable_from_to() {
     );
 }
 
-/// C4 — a BIDIRECTIONAL link is traversable BOTH ways, each direction priced at
-/// the single [`LinkTu`].
 #[test]
 fn bidirectional_link_is_traversable_both_ways() {
     let lower = key(6, 6, 0);
@@ -300,13 +251,11 @@ fn bidirectional_link_is_traversable_both_ways() {
     };
     let link_tu = LinkTu::new(3);
 
-    // Forward: from `from`, reach `to`.
     assert_eq!(
         traversable_links(lower, &graph, link_tu).collect::<Vec<_>>(),
         vec![(upper, Tu::new(3))],
         "a bidirectional link is traversable forward",
     );
-    // Reverse: from `to`, reach `from` — same flat cost.
     assert_eq!(
         traversable_links(upper, &graph, link_tu).collect::<Vec<_>>(),
         vec![(lower, Tu::new(3))],
@@ -314,7 +263,6 @@ fn bidirectional_link_is_traversable_both_ways() {
     );
 }
 
-/// A cell with no departing link yields an empty hop iterator (never a panic).
 #[test]
 fn no_link_yields_no_hops() {
     let Some(graph) = ok_graph(&Situation::new()) else {

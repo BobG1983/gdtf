@@ -1,6 +1,3 @@
-//! The query-sourced half of the CONSEQUENCE family — the settled VITALS and MAGAZINE
-//! after-values no sim message owns (GTW-727 C4 / C9 family 5, C11).
-
 use bevy::ecs::relationship::Relationship;
 
 use super::super::sources::{ConsequenceState, ProvenanceSources, cell_order};
@@ -9,18 +6,6 @@ use crate::act_log::{
     facts::{MagazineFacts, VitalsFacts},
 };
 
-/// Record every ganger whose VITALS settled to new values this tick.
-///
-/// Vitals are query-sourced rather than message-sourced because damage arrives through
-/// paths that share no signal: a shot's in-fold apply, a melee strike, a fall, and the
-/// bleed / DOT / field per-round clocks all mutate HP and wounds directly. One transition
-/// recorder carries the settled numbers from every one of them, so a consumer that mirrors
-/// the stat block applies exactly what the sim reached — in log order, AFTER the deed that
-/// caused it — instead of reading live state and showing a wound before its bolt lands.
-///
-/// Obeys both halves of C11: transitions only (a first observation seeds the prior-value
-/// map and records nothing, so a roster spawn records no vitals), and a deterministic
-/// `(level, y, x)` visit order.
 pub(in crate::act_log::record) fn record_vitals(
     log: &mut ActLog,
     state: &ConsequenceState,
@@ -56,13 +41,6 @@ pub(in crate::act_log::record) fn record_vitals(
     }
 }
 
-/// Record every wielded weapon whose MAGAZINE settled to a new load this tick.
-///
-/// The entry's actor is the WEAPON entity — the same entity the ammo readout resolves
-/// through `ganger → Wields → weapon` — so a consumer applies the recorded load to exactly
-/// what it renders. Weapons are visited in their WIELDER's `(level, y, x)` order, so the
-/// pass orders by the same game-state key the ganger recorders use rather than by entity
-/// index; a weapon whose wielder has no resolvable position sorts last, deterministically.
 pub(in crate::act_log::record) fn record_magazines(
     log: &mut ActLog,
     state: &ConsequenceState,

@@ -1,18 +1,13 @@
-//! The resolver's unit tests — the 12 GTW-541 template-geometry cases.
-
 use super::aoe_affected;
 use crate::{
     metric::{Cell, CellLevel, Level},
     weapon::{AoeRange, BlastRadius, ConeHalfAngle, HitType},
 };
 
-/// A ground-floor `(cell, level)` key at `(x, y)`.
 fn ground(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(0))
 }
 
-/// The set as a sorted `(x, y)` list on the impact storey (level ignored — every
-/// emitted cell is on the impact's own storey by the 2D-on-level ruling).
 fn xy(set: &[CellLevel]) -> Vec<(i32, i32)> {
     set.iter().map(|c| (c.x, c.y)).collect()
 }
@@ -48,7 +43,6 @@ fn blast_radius_one_is_the_moore_9_disc() {
         },
         ground(3, 5),
     );
-    // The Chebyshev disc of radius 1 = the impact + its Moore-8 ring = 9 cells.
     let mut expected: Vec<(i32, i32)> = Vec::new();
     for y in 4..=6 {
         for x in 4..=6 {
@@ -72,12 +66,10 @@ fn blast_is_sorted_canonically_and_all_on_the_impact_storey() {
         },
         CellLevel::new(Cell::new(8, 10), Level::new(3)),
     );
-    // Every emitted cell is on the impact storey (2D-on-level).
     assert!(
         set.iter().all(|c| c.z == 3),
         "every blast cell lies on the impact's own storey",
     );
-    // The set is sorted (z, y, x) — a deterministic resolution order.
     let mut sorted = set.clone();
     sorted.sort_by_key(|c| (c.z, c.y, c.x));
     assert_eq!(
@@ -88,7 +80,6 @@ fn blast_is_sorted_canonically_and_all_on_the_impact_storey() {
 
 #[test]
 fn blast_at_the_grid_corner_clamps_off_grid_cells() {
-    // Impact at the (0,0) corner; a radius-1 blast's off-grid neighbours are dropped.
     let set = aoe_affected(
         ground(0, 0),
         HitType::Blast {
@@ -96,7 +87,6 @@ fn blast_at_the_grid_corner_clamps_off_grid_cells() {
         },
         ground(2, 0),
     );
-    // Only the in-bounds quadrant survives: (0,0),(1,0),(0,1),(1,1).
     assert_eq!(
         xy(&set),
         vec![(0, 0), (1, 0), (0, 1), (1, 1)],
@@ -106,7 +96,6 @@ fn blast_at_the_grid_corner_clamps_off_grid_cells() {
 
 #[test]
 fn line_runs_range_cells_in_the_fire_direction() {
-    // Shooter west of the impact → the fire direction is East; the line runs +x.
     let set = aoe_affected(
         ground(5, 5),
         HitType::Line {
@@ -116,7 +105,6 @@ fn line_runs_range_cells_in_the_fire_direction() {
     );
     assert_eq!(
         xy(&set),
-        // Sorted (y, x): (5,5),(6,5),(7,5) all at y=5.
         vec![(5, 5), (6, 5), (7, 5)],
         "a range-2 line east = the impact + 2 cells further east",
     );
@@ -140,7 +128,6 @@ fn line_range_zero_is_the_impact_cell_only() {
 
 #[test]
 fn line_at_the_edge_clamps() {
-    // Impact at the right edge (x=59) firing further east → the off-grid cells drop.
     let set = aoe_affected(
         ground(59, 5),
         HitType::Line {
@@ -157,8 +144,6 @@ fn line_at_the_edge_clamps() {
 
 #[test]
 fn cone_covers_a_wedge_toward_the_impact_and_excludes_the_flanks() {
-    // Shooter at (5,5) firing East; impact at (8,5). A 30 deg half-angle wedge of
-    // range 2 covers the forward cells but NOT a cell far off-axis.
     let set = aoe_affected(
         ground(8, 5),
         HitType::Cone {
@@ -168,15 +153,11 @@ fn cone_covers_a_wedge_toward_the_impact_and_excludes_the_flanks() {
         ground(5, 5),
     );
     let cells = xy(&set);
-    // The impact is always included.
     assert!(cells.contains(&(8, 5)), "the cone includes the impact cell");
-    // A cell directly ahead (further east, still near the axis) is inside the wedge.
     assert!(
         cells.contains(&(9, 5)) || cells.contains(&(10, 5)),
         "the cone reaches forward along the fire axis: {cells:?}",
     );
-    // A cell sharply off the axis (behind/beside the impact, large bearing angle) is
-    // OUTSIDE a narrow 30 deg wedge — e.g. two cells north of the impact.
     assert!(
         !cells.contains(&(8, 3)),
         "a sharply off-axis cell is outside the narrow wedge: {cells:?}",
@@ -211,8 +192,6 @@ fn a_wide_cone_covers_more_than_a_narrow_one() {
 
 #[test]
 fn point_blank_cone_falls_back_to_the_full_disc() {
-    // Shooter == impact (no fire direction): the cone degrades to the full disc of
-    // `range` around the impact (the documented degenerate fallback).
     let cone = aoe_affected(
         ground(5, 5),
         HitType::Cone {
@@ -236,8 +215,6 @@ fn point_blank_cone_falls_back_to_the_full_disc() {
 
 #[test]
 fn the_resolver_takes_no_rng_and_is_a_pure_function() {
-    // Two identical calls yield an identical set (a pure function — the determinism
-    // property the live path relies on to keep the RNG stream stable).
     let a = aoe_affected(
         ground(5, 5),
         HitType::Blast {

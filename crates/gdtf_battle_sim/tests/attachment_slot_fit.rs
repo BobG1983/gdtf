@@ -1,21 +1,3 @@
-//! GTW-554 — ATTACHMENT SLOTS, proven on the REAL `setup_battle_on_request` →
-//! `BattleSimPlugin` spawn + `apply_pending_attachments` post-spawn path (the
-//! `attachment_liveness_sweep` harness shape). The pure fit rule's five contract cases (accept /
-//! wrong-slot / cap-1 full / multi-cap up-to / one-over) are unit-covered on the shared
-//! resolution logic in `equipment::attachments::fit`; THIS file proves the gate is LIVE on the
-//! spawned weapon entities:
-//!
-//! - **Compatible item applies** — a Sight item on a Sight-declaring weapon raises Accuracy.
-//! - **Wrong slot cleanly rejects** — a Counterweight item on a ranged weapon (which declares
-//!   no such slot) applies NOTHING and panics nowhere: the C6 emergent class gate.
-//! - **Capacity gates the rail** — a capacity-2 Rail fits the first two rail items and
-//!   cleanly rejects the third (no eviction).
-//! - **Melee weapons have FULL support** — a Counterweight item on a Counterweight-declaring
-//!   MELEE weapon raises the spawned melee entity's `WeaponDamage`.
-//!
-//! Every magnitude is a distinctive inline baseline (arbitrary test data), never a shipped
-//! number (the brittle-test rule).
-
 use bevy::{
     app::App,
     asset::AssetPlugin,
@@ -46,16 +28,12 @@ use gdtf_battle_sim::{
     },
 };
 
-/// An arbitrary seed (determinism is asserted elsewhere).
 const SEED: u64 = 0x0554_5107;
 const PLAYER: u8 = 0;
 const ENEMY: u8 = 1;
-/// The ranged weapon key every fixture ganger resolves.
 const WEAPON_KEY: &str = "test-weapon";
-/// The DISTINCTIVE ranged baselines the effects perturb (arbitrary, not shipped).
 const BASE_ACCURACY: f32 = 5.0;
 const BASE_MAG: u16 = 20;
-/// The DISTINCTIVE melee damage baseline (arbitrary, not shipped).
 const BASE_MELEE_DAMAGE: i32 = 9;
 
 fn ground(x: i32, y: i32) -> CellLevel {
@@ -66,7 +44,6 @@ fn name(key: &str) -> AttachmentName {
     AttachmentName::new(key.to_owned())
 }
 
-/// An attachment item occupying `slot` with one discriminating `effect`.
 fn item(slot: AttachmentSlot, effect: AttachmentEffect) -> AttachmentSpec {
     AttachmentSpec {
         display_name: WeaponName::new("Test Item".to_owned()),
@@ -75,8 +52,6 @@ fn item(slot: AttachmentSlot, effect: AttachmentEffect) -> AttachmentSpec {
     }
 }
 
-/// The fixture attachment registry: a Sight optic, a Counterweight, and three Rail items —
-/// each with a discriminating effect (Aim / Damage / Aim+Silence+ExtraAmmo).
 fn attachment_registry() -> AttachmentRegistry {
     AttachmentRegistry::new([
         (
@@ -114,7 +89,6 @@ fn attachment_registry() -> AttachmentRegistry {
     ])
 }
 
-/// A ranged spec declaring `slots` and fitting `keys` — distinctive baselines throughout.
 fn ranged_spec(slots: WeaponSlots, keys: Vec<AttachmentName>) -> WeaponSpec {
     WeaponSpec {
         base_spread: BaseSpread::new(0.05),
@@ -130,7 +104,6 @@ fn ranged_spec(slots: WeaponSlots, keys: Vec<AttachmentName>) -> WeaponSpec {
     }
 }
 
-/// A melee (fists-default) spec declaring `slots` and fitting `keys` — the melee mirror.
 fn melee_spec(slots: WeaponSlots, keys: Vec<AttachmentName>) -> MeleeWeaponSpec {
     MeleeWeaponSpec {
         damage: WeaponDamage::new(BASE_MELEE_DAMAGE),
@@ -140,8 +113,6 @@ fn melee_spec(slots: WeaponSlots, keys: Vec<AttachmentName>) -> MeleeWeaponSpec 
     }
 }
 
-/// Build the live-runtime harness with the chosen ranged + melee slot/fitting loadouts, drive
-/// one setup, and settle the deferred spawn + post-spawn apply cascade.
 fn spawn_battle(
     ranged: (WeaponSlots, Vec<AttachmentName>),
     melee: (WeaponSlots, Vec<AttachmentName>),
@@ -174,15 +145,12 @@ fn spawn_battle(
     app.world_mut().insert_resource(gangs);
     app.world_mut()
         .write_message(SetupBattleRequested::new(situation, BattleSeed::new(SEED)));
-    // Setup(Update) → weapon scenes(SpawnScene) → apply_pending_attachments(next Update) →
-    // queued attach_to_weapon flushes: a generous settle window (the `attachment_liveness_sweep` shape).
     for _ in 0..8 {
         app.update();
     }
     app
 }
 
-/// A standing ganger of `faction` at `at` facing `dir`.
 fn standing(at: CellLevel, faction: u8, dir: Direction) -> GangerSpawn {
     GangerSpawnBuilder::new()
         .at(at)
@@ -196,7 +164,6 @@ fn standing(at: CellLevel, faction: u8, dir: Direction) -> GangerSpawn {
         .build()
 }
 
-/// The player's spawned RANGED weapon entity (the wielded entity carrying `Accuracy`).
 fn player_ranged_weapon(app: &mut App) -> Option<Entity> {
     use bevy::ecs::relationship::Relationship;
     let world = app.world_mut();
@@ -212,7 +179,6 @@ fn player_ranged_weapon(app: &mut App) -> Option<Entity> {
         .map(|(entity, ..)| entity)
 }
 
-/// The player's spawned MELEE weapon entity (the wielded entity carrying `MeleeWeapon`).
 fn player_melee_weapon(app: &mut App) -> Option<Entity> {
     use bevy::ecs::relationship::Relationship;
     let world = app.world_mut();
@@ -233,12 +199,10 @@ fn player_melee_weapon(app: &mut App) -> Option<Entity> {
         .map(|(entity, ..)| entity)
 }
 
-/// One declared slot at `capacity`.
 fn one_slot(slot: AttachmentSlot, capacity: u8) -> WeaponSlots {
     WeaponSlots::new(vec![(slot, SlotCapacity::new(capacity))])
 }
 
-// ── Compatible item applies on the live spawn ─────────────────────────────────────
 
 #[test]
 fn compatible_sight_item_applies_on_the_spawned_weapon() {
@@ -257,13 +221,9 @@ fn compatible_sight_item_applies_on_the_spawned_weapon() {
     );
 }
 
-// ── Wrong slot: the C6 emergent class gate, live ──────────────────────────────────
 
 #[test]
 fn counterweight_is_cleanly_rejected_by_a_ranged_weapon() {
-    // The ranged weapon declares ranged-style slots (Sight only here) — the melee-style
-    // Counterweight item finds NO slot: clean rejection (nothing applied, no panic), with NO
-    // class tag anywhere on the item.
     let mut app = spawn_battle(
         (one_slot(AttachmentSlot::Sight, 1), vec![name("weight")]),
         (WeaponSlots::default(), Vec::new()),
@@ -279,12 +239,9 @@ fn counterweight_is_cleanly_rejected_by_a_ranged_weapon() {
     );
 }
 
-// ── Capacity gates the rail (up to capacity + one over), live ─────────────────────
 
 #[test]
 fn rail_capacity_gates_the_third_item() {
-    // A capacity-2 Rail with THREE authored rail items: the first two (Aim + Silence) fit,
-    // the third (ExtraAmmo) is one OVER capacity — cleanly rejected, no eviction.
     let mut app = spawn_battle(
         (
             one_slot(AttachmentSlot::Rail, 2),
@@ -313,12 +270,9 @@ fn rail_capacity_gates_the_third_item() {
     );
 }
 
-// ── Melee weapons have FULL attachment support, live ──────────────────────────────
 
 #[test]
 fn counterweight_applies_on_the_spawned_melee_weapon() {
-    // The melee (fists-default) weapon declares a Counterweight socket and fits the weight —
-    // the spawned MELEE entity's damage rises (the ranged weapon is untouched).
     let mut app = spawn_battle(
         (WeaponSlots::default(), Vec::new()),
         (

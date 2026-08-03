@@ -1,7 +1,3 @@
-//! `ConnectorDelta` badges: the positive case proven through the REAL registered
-//! derive system reading a live `VerticalLinkGraph` (the sibling in-crate
-//! `test/connector.rs` pins the pure `gather_connectors` helper directly).
-
 use bevy::platform::collections::HashSet;
 use gdtf_battle_presenter::{ActiveLevel, CrossLevelBadgeKind, CrossLevelSignals};
 use gdtf_battle_sim::{
@@ -17,10 +13,6 @@ fn key(x: i32, y: i32, z: u8) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(z))
 }
 
-/// Acceptance clause 2 (`ConnectorDelta`): the LOWER stair endpoint on the active
-/// storey emits an ascending `ConnectorDelta(+1)` badge — asserted on the REAL
-/// `CrossLevelSignals` resource the registered derive system writes, over a
-/// `VerticalLinkGraph` built through the real `build_vertical_link_graph`.
 #[test]
 fn stair_endpoint_on_active_storey_emits_connector_delta() {
     let mut app = signals_app();
@@ -62,13 +54,6 @@ fn stair_endpoint_on_active_storey_emits_connector_delta() {
     );
 }
 
-/// Gate finding (GTW-596 QA lens): every OTHER acceptance-clause integration test
-/// that includes a `ConnectorDelta` candidate happens to have it LOSE the
-/// 3-badge cap (`cap.rs`'s dropped `"+1"`), so nothing yet proved a KEPT
-/// `ConnectorDelta` badge actually reaches the drawn pool. This is the sole
-/// candidate on its cell (no Threat / `DropDepth` competing), so it trivially
-/// wins the cap — asserted DRAWN: exactly one visible tile, exactly one visible
-/// label reading `"+1"`.
 #[test]
 fn stair_endpoint_on_active_storey_draws_its_connector_delta_badge() {
     let mut app = signals_app();

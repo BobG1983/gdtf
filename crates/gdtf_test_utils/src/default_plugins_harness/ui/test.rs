@@ -10,11 +10,6 @@ use super::*;
 fn ui_layout_runs_and_asset_server_present_headless() {
     let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
 
-    // A node with an explicit pixel size: once `bevy_ui` runs its layout, the
-    // entity gains a `ComputedNode` whose `size()` resolves to this extent.
-    // Without `UiPlugin` (i.e. if the headless render/ui stack were not wired)
-    // no `ComputedNode` would ever appear, so this assertion fails if the
-    // harness regresses to a non-UI plugin set — the pin-discriminating check.
     let node = app
         .world_mut()
         .spawn(Node {
@@ -24,8 +19,6 @@ fn ui_layout_runs_and_asset_server_present_headless() {
         })
         .id();
 
-    // A few frames so the asset + render schedules initialise and `bevy_ui`'s
-    // layout system computes the node.
     for _ in 0..3 {
         app.update();
     }

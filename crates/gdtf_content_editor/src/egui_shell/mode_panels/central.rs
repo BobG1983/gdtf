@@ -1,8 +1,3 @@
-//! The CENTRAL primary-panel dispatch — one arm per Workbench mode (moved out of
-//! `shell.rs` at the GTW-670 band boundary alongside [`right`](super::right)). The central
-//! panel is declared LAST by the shell's order contract: egui fills the residual space
-//! with it, so this dispatch must run after every other panel is declared.
-
 use bevy_egui::egui;
 
 use super::ctx::ModePanelsCtx;
@@ -15,13 +10,6 @@ use crate::{
     mode::EditorMode,
 };
 
-/// Declare the CENTRAL panel — the viewport / primary region (the panel-5 slot, LAST).
-/// In TERRAIN mode (GTW-534 C1) it is the PRIMARY focus: the sprite-grid graphic picker
-/// (GTW-516) + the terrain stat field stack. In THEME mode (GTW-530 C1/C2) the terrain
-/// multi-select library with per-row sprite thumbnails. In PREFAB mode (GTW-515 C4) the
-/// render-to-texture viewport (click-to-paint + hover ghost + wheel-zoom + right-drag
-/// pan). The GANG / ARMOR / INJURY / SPRITE / ATTACHMENT / WEAPON / MELEE modes host
-/// their full def editors here (each mode's `*_form_ui` primary panel).
 pub(in crate::egui_shell) fn central_panel(
     viewport_ui: &mut egui::Ui,
     mode: EditorMode,
@@ -49,9 +37,6 @@ pub(in crate::egui_shell) fn central_panel(
             );
         }
         EditorMode::Prefab => prefab_viewport(ui, ctx),
-        // GTW-636: the member-list editor is the GANG mode's PRIMARY focus — one
-        // collapsible per-member editor (name / loadout dropdowns / attributes /
-        // derived stats / remove) over the draft's sim records.
         EditorMode::Gang => {
             if let Some(draft) = ctx.gang.draft.as_deref_mut() {
                 gang_form_ui::members_panel(
@@ -64,17 +49,11 @@ pub(in crate::egui_shell) fn central_panel(
                 );
             }
         }
-        // GTW-479: the per-body-part piece grid is the ARMOR mode's PRIMARY focus —
-        // one row per BodyPart (the four clamped stat drags + the ArmorType combo)
-        // over the draft's sim record.
         EditorMode::Armor => {
             if let Some(draft) = ctx.armor.draft.as_deref_mut() {
                 armor_form_ui::pieces_panel(ui, draft);
             }
         }
-        // GTW-654: the def editor (fields + the closed-palette effects list) and the
-        // weighting section (C2) are the INJURY mode's PRIMARY focus, stacked in one
-        // scroll area over the two drafts' sim records.
         EditorMode::Injury => {
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
@@ -93,9 +72,6 @@ pub(in crate::egui_shell) fn central_panel(
                     }
                 });
         }
-        // GTW-664: the full def editor is the SPRITE mode's PRIMARY focus — source
-        // picker, the visual anchor affordance (crosshair over the shell-resolved
-        // preview), facings overrides, and animation rows, stacked in one scroll area.
         EditorMode::Sprite => {
             if let Some(draft) = ctx.sprite.draft.as_deref_mut() {
                 sprite_form_ui::primary_panel(
@@ -106,9 +82,6 @@ pub(in crate::egui_shell) fn central_panel(
                 );
             }
         }
-        // GTW-669: the item editor (display name / slot / the closed 13-effect list)
-        // is the ATTACHMENT mode's PRIMARY focus, in one scroll area over the draft's
-        // sim record (the injury def-panel shape).
         EditorMode::Attachment => {
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
@@ -118,11 +91,6 @@ pub(in crate::egui_shell) fn central_panel(
                     }
                 });
         }
-        // GTW-670: the full 18-field WeaponSpec editor is the WEAPON mode's PRIMARY
-        // focus — the collapsible-section stack (stats / handling / magazine / fire
-        // modes / slots / attachments / dot / on-death) in one scroll area over the
-        // draft's sim record (the injury / attachment scroll-stack shape), with the
-        // GTW-619 attachment registry as the key combos' option source.
         EditorMode::Weapon => {
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
@@ -132,11 +100,6 @@ pub(in crate::egui_shell) fn central_panel(
                     }
                 });
         }
-        // GTW-671: the full MeleeWeaponSpec editor is the MELEE mode's PRIMARY focus —
-        // the collapsible-section stack (the SHARED damage group / handling / fight
-        // modes / slots / attachments) in one scroll area over the draft's sim record
-        // (the weapon scroll-stack shape), with the GTW-619 attachment registry as the
-        // key combos' option source.
         EditorMode::MeleeWeapon => {
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
@@ -153,10 +116,6 @@ pub(in crate::egui_shell) fn central_panel(
     });
 }
 
-/// The PREFAB central arm — the render-to-texture viewport (GTW-515 C4:
-/// click-to-paint + hover ghost + wheel-zoom + right-drag pan), or the placeholder
-/// while the preview machinery is still preparing. Split out of [`central_panel`]
-/// purely for the `too_many_lines` band as the WEAPON arm joined (GTW-670).
 fn prefab_viewport(
     ui: &mut egui::Ui,
     ctx: &mut ModePanelsCtx<'_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_, '_>,

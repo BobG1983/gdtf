@@ -1,5 +1,3 @@
-//! The full-view toggle changes the drawn tile set (GTW-532).
-
 use bevy::prelude::*;
 use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_battle_sim::{
@@ -11,32 +9,18 @@ use gdtf_content_editor::{CurrentEditLevel, EditorMap, EditorMode, MapEditorSess
 
 use super::harness::*;
 
-/// Count the current preview tile [`Sprite`]s in the world. The harness spawns no other world
-/// sprites (only the editor preview tiles do), so this IS the drawn tile set.
 fn preview_sprite_count(app: &mut App) -> usize {
     app.world_mut().query::<&Sprite>().iter(app.world()).count()
 }
 
-/// GTW-532 C1 / C2 (REAL PATH) — toggling the prefab viewport's [`ViewMode`] from
-/// [`DownToActive`](ViewMode::DownToActive) to [`FullView`](ViewMode::FullView) CHANGES the drawn
-/// tile set: with a distinct block painted on the UPPER storey (culled at the ground edit storey in
-/// `DownToActive`), `FullView` draws MORE tiles than `DownToActive`. Drives the SAME resources the editor
-/// inserts — the reused presenter [`ViewMode`], the [`EditorMap`], the [`CurrentEditLevel`] — and
-/// lets the real `redraw_preview_tiles` system re-run on the `ViewMode::is_changed` trigger.
-///
-/// A green build alone does NOT prove the toggle (C4): this asserts the drawn storey RANGE / tile
-/// count actually differs between the two modes on the real code path.
 #[test]
 fn full_view_toggle_changes_the_drawn_tile_set() {
     let mut app = editor_app();
     advance_to_editing(&mut app);
-    // Let the theme seed so a default floor / palette resolves and the base fill draws.
     for _ in 0..8 {
         app.update();
     }
 
-    // The editor opens in PREFAB mode with the default DownToActive view — and, since
-    // GTW-594, the Isolate toggle ON (one onion below).
     assert_eq!(
         app.world().get_resource::<EditorMode>().copied(),
         Some(EditorMode::Prefab),
@@ -52,9 +36,6 @@ fn full_view_toggle_changes_the_drawn_tile_set() {
         Some(IsolateView::On(ContextDepth::new(1))),
         "the editor opens with the GTW-594 Isolate default (one onion storey below)",
     );
-    // GTW-594 C3: Isolate WINS over the two-state ViewMode, so this test — which pins the
-    // TWO-STATE toggle's drawn-set effect — lifts it explicitly (the same flip the RIGHT-panel
-    // Isolate checkbox applies).
     {
         let world = app.world_mut();
         let Some(mut isolate) = world.get_resource_mut::<IsolateView>() else {
@@ -63,8 +44,6 @@ fn full_view_toggle_changes_the_drawn_tile_set() {
         *isolate = IsolateView::Off;
     }
 
-    // Resolve a real paint tile from the seeded session; soft-skip if the async seed has not
-    // resolved a default floor yet (the tile pipeline is asset-timing dependent).
     let (tile, theme) = {
         let world = app.world();
         let Some(session) = world.get_resource::<MapEditorSession>() else {
@@ -80,9 +59,6 @@ fn full_view_toggle_changes_the_drawn_tile_set() {
         (tile, session.theme())
     };
 
-    // Give the prefab a 2-storey volume and paint a distinct block on the UPPER storey (storey 1).
-    // At the ground edit storey, DownToActive draws only storey 0 (the upper block is CULLED);
-    // FullView draws BOTH storeys (the upper block re-appears) — so the drawn tile count grows.
     {
         let world = app.world_mut();
         let Some(mut session) = world.get_resource_mut::<MapEditorSession>() else {
@@ -95,14 +71,12 @@ fn full_view_toggle_changes_the_drawn_tile_set() {
         let Some(mut map) = world.get_resource_mut::<EditorMap>() else {
             unreachable!("map inserted in Editing");
         };
-        // A distinct upper-storey block that only FullView draws.
         let upper = Level::new(1);
         for x in 0..3 {
             for y in 0..3 {
                 map.paint_at(CellLevel::new(Cell::new(x, y), upper), tile, size);
             }
         }
-        // Stay on the ground edit storey so DownToActive culls the upper block.
         let Some(mut edit_level) = world.get_resource_mut::<CurrentEditLevel>() else {
             unreachable!("edit level inserted in Editing");
         };
@@ -110,7 +84,6 @@ fn full_view_toggle_changes_the_drawn_tile_set() {
     }
     let _ = theme;
 
-    // Settle the DownToActive draw and record its drawn tile count.
     for _ in 0..4 {
         app.update();
     }
@@ -120,8 +93,6 @@ fn full_view_toggle_changes_the_drawn_tile_set() {
         "DownToActive draws the ground-storey fill (a non-empty viewport); got {down_to_active}",
     );
 
-    // Flip the REUSED presenter ViewMode to FullView (the same flip the toggle button / F hotkey
-    // apply) and let the real redraw re-run on the ViewMode::is_changed trigger.
     {
         let world = app.world_mut();
         let Some(mut view) = world.get_resource_mut::<ViewMode>() else {

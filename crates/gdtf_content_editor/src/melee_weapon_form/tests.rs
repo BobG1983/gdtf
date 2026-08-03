@@ -1,7 +1,3 @@
-//! GTW-671 C4: form-model headless tests over the MELEE-WEAPON draft's pure mutators,
-//! the construct-only list-edit fold-backs, and the path derivation (the GTW-670 weapon
-//! form-test parity).
-
 use std::path::Path;
 
 use gdtf_battle_sim::{
@@ -17,10 +13,6 @@ use super::{
     save::{draft_to_melee_weapon_spec, melee_weapon_file_name, melee_weapon_save_path_in},
 };
 
-/// A fresh draft seeds the structural minimum: ONE `Swing` fight mode (the documented
-/// [`FightMode`] "at least one mode" invariant — the [`FightMode::primary`] fallback
-/// shape), the serde-default identities for every opt-in field (reach 1 / shove off /
-/// no slots / no attachment keys), and the documented vocabulary defaults.
 #[test]
 fn new_melee_weapon_seeds_the_structural_minimum() {
     let draft = MeleeWeaponDraft::new_melee_weapon();
@@ -42,9 +34,6 @@ fn new_melee_weapon_seeds_the_structural_minimum() {
     assert!(spec.attachments.is_empty(), "no attachment keys");
 }
 
-/// The load path copies an authored spec VERBATIM and ends the one-shot autoload; the
-/// projection trims the name buffer into the registry-key [`WeaponName`] and copies the
-/// working spec.
 #[test]
 fn load_is_verbatim_and_projection_trims_the_name() {
     let mut authored = MeleeWeaponDraft::new_melee_weapon();
@@ -71,9 +60,6 @@ fn load_is_verbatim_and_projection_trims_the_name() {
     );
 }
 
-/// The FIGHT-MODE list edits by projecting the authored list out, mutating it, and
-/// folding it back through [`FightMode::new`] — the exact model path the form's
-/// add/remove rows run (the sim newtype is construct-only, GTW-671 C2).
 #[test]
 fn fight_mode_list_edits_fold_back_through_the_loader_ctor() {
     let mut draft = MeleeWeaponDraft::new_melee_weapon();
@@ -86,8 +72,6 @@ fn fight_mode_list_edits_fold_back_through_the_loader_ctor() {
     draft.spec_mut().fight_mode = FightMode::new(modes);
     assert_eq!(draft.spec().fight_mode.len(), 2, "the added row landed");
 
-    // Remove the added row again — the one-mode floor is form policy, so the model
-    // path itself stays symmetric.
     let mut modes: Vec<FightModeSpec> = draft.spec().fight_mode.to_vec();
     modes.remove(1);
     draft.spec_mut().fight_mode = FightMode::new(modes);
@@ -98,11 +82,6 @@ fn fight_mode_list_edits_fold_back_through_the_loader_ctor() {
     );
 }
 
-/// The SLOTS declaration edits by projecting [`WeaponSlots::declarations`] out and
-/// folding back through [`WeaponSlots::new`] — the form's add/remove rows' model path,
-/// including the melee-typical `Counterweight` / `Pommel` pair the shipped chainsword
-/// authors (the closed palette needs no melee-only gate — class gating EMERGES from the
-/// declarations, GTW-554).
 #[test]
 fn slots_edits_fold_back_through_the_loader_ctor() {
     let mut draft = MeleeWeaponDraft::new_melee_weapon();
@@ -122,10 +101,6 @@ fn slots_edits_fold_back_through_the_loader_ctor() {
     assert_eq!(draft.spec().slots.declarations().len(), 2);
 }
 
-/// The path derivation runs through the family consts + the shared sanitize helper: the
-/// literal `content/weapons/melee/<stem>.melee_weapon.ron` shape the GTW-505 loader
-/// dispatches on (pinning the LITERALS is the drift alarm — GTW-621), with the
-/// `unnamed_melee_weapon` fallback for a name that sanitizes to nothing.
 #[test]
 fn save_path_derives_from_the_family_consts() {
     let name = WeaponName::new("Pit-Fighter's Cleaver (mk II)".to_owned());
