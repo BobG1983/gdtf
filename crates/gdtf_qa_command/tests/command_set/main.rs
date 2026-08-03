@@ -1,3 +1,5 @@
+//! Command-set conformance, growth, deferred, and admission tests.
+
 mod bad_arguments;
 mod conformance;
 mod deferred;
