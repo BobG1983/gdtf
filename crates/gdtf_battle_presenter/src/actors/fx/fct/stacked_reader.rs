@@ -1,3 +1,5 @@
+//! Read played consequence signals and spawn stacked floating text.
+
 use bevy::{
     ecs::{message::Messages, schedule::SystemCondition},
     prelude::{
@@ -20,11 +22,14 @@ use crate::{
 
 type AnchorData = (&'static Position, Option<&'static DrawnPosition>);
 
+/// System set for consequence FCT readers.
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ConsequenceFctSystems {
-        Read,
+    /// Read played signals and spawn pops.
+    Read,
 }
 
+/// Spawn floating combat text for each played consequence of type `C`.
 pub fn read_consequence_fct<C: ConsequenceFct>(
     mut commands: Commands,
     mut signals: MessageReader<Played<C::Signal>>,
@@ -59,6 +64,7 @@ pub fn read_consequence_fct<C: ConsequenceFct>(
     }
 }
 
+/// Configure the consequence FCT system set.
 pub fn register_consequence_fct_core(app: &mut App) {
     app.configure_sets(
         Update,
@@ -68,8 +74,10 @@ pub fn register_consequence_fct_core(app: &mut App) {
     );
 }
 
+/// App extension to register a consequence FCT family.
 pub trait ConsequenceFctAppExt {
-                                                                            fn add_consequence_fct<C: ConsequenceFct>(&mut self) -> &mut Self;
+    /// Add a reader for consequence family `C`.
+    fn add_consequence_fct<C: ConsequenceFct>(&mut self) -> &mut Self;
 }
 
 impl ConsequenceFctAppExt for App {

@@ -1,3 +1,5 @@
+//! Forward played or live sim messages into combat log events.
+
 use bevy::{
     ecs::{message::Messages, schedule::SystemCondition},
     prelude::{
@@ -12,13 +14,17 @@ use gdtf_battle_sim::{
 use super::event::{CombatLogEvent, LogName};
 use crate::playback::Played;
 
+/// System set for combat log forwarders.
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CombatLogSystems {
-        Forward,
+    /// Forward played/live sources into [`CombatLogEvent`].
+    Forward,
 }
 
+/// Something that can become a combat log event.
 pub trait CombatLogSource: Message + Clone {
-        fn to_event(&self, names: &Query<&GangerName>) -> Option<CombatLogEvent>;
+    /// Convert to a log event using ganger names.
+    fn to_event(&self, names: &Query<&GangerName>) -> Option<CombatLogEvent>;
 }
 
 pub(super) fn name_of(entity: bevy::prelude::Entity, names: &Query<&GangerName>) -> LogName {
@@ -27,6 +33,7 @@ pub(super) fn name_of(entity: bevy::prelude::Entity, names: &Query<&GangerName>)
         .map_or_else(|_| LogName::new("Someone"), LogName::from_ganger)
 }
 
+/// Forward `Played<S>` messages into combat log events.
 pub fn forward_log_source<S: CombatLogSource>(
     mut source: MessageReader<Played<S>>,
     names: Query<&GangerName>,
@@ -39,6 +46,7 @@ pub fn forward_log_source<S: CombatLogSource>(
     }
 }
 
+/// Forward live (non-played) messages into combat log events.
 pub fn forward_live_log_source<S: CombatLogSource>(
     mut source: MessageReader<S>,
     names: Query<&GangerName>,
@@ -51,6 +59,7 @@ pub fn forward_live_log_source<S: CombatLogSource>(
     }
 }
 
+/// Forward turn-started played messages with the player faction.
 pub fn forward_turn_started(
     mut turns: MessageReader<Played<TurnStarted>>,
     player: Option<Res<PlayerFaction>>,
@@ -62,15 +71,18 @@ pub fn forward_turn_started(
         };
         events.write(CombatLogEvent::TurnStarted {
             now_active: turn.now_active,
-            player:     *player,
+            player: *player,
         });
     }
 }
 
+/// App extension to register combat log sources.
 pub trait CombatLogSourceAppExt {
-                                                fn add_combat_log_source<S: CombatLogSource>(&mut self) -> &mut Self;
+    /// Forward `Played<S>` into the combat log.
+    fn add_combat_log_source<S: CombatLogSource>(&mut self) -> &mut Self;
 
-            fn add_live_combat_log_source<S: CombatLogSource>(&mut self) -> &mut Self;
+    /// Forward live `S` into the combat log.
+    fn add_live_combat_log_source<S: CombatLogSource>(&mut self) -> &mut Self;
 }
 
 impl CombatLogSourceAppExt for App {
