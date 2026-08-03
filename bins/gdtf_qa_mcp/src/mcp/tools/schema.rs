@@ -1,3 +1,5 @@
+//! JSON schemas for `tools/list`.
+
 use serde_json::{Value, json};
 
 use crate::{
@@ -103,7 +105,7 @@ fn run_schema() -> Value {
 }
 
 impl ToolName {
-        fn input_schema(self) -> Value {
+    fn input_schema(self) -> Value {
         match self {
             Self::Launch => launch_schema(),
             Self::Stop => stop_schema(),
@@ -113,7 +115,7 @@ impl ToolName {
         }
     }
 
-        fn descriptor(self) -> Value {
+    fn descriptor(self) -> Value {
         json!({
             "name": self.wire_name(),
             "description": self.description(),
@@ -122,6 +124,7 @@ impl ToolName {
     }
 }
 
+/// MCP `tools/list` result listing every tool.
 #[must_use]
 pub fn tools_list_result() -> Value {
     let tools: Vec<Value> = ALL.iter().map(|tool| tool.descriptor()).collect();
