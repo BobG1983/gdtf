@@ -150,6 +150,20 @@ that canon is part of the contract ALONGSIDE the ticket.
    { git diff develop...HEAD --name-only -- '*.rs'; git ls-files -o --exclude-standard -- '*.rs'; } \
      | sort -u | while read -r f; do [ -f "$f" ] && wc -l "$f"; done   # >400 blocks, >300 warns
    ```
+4d. **Blocking check — comment hygiene.**
+    No `GTW-N` (or any ticket id) in any `//`, `///`, or `//!` comment.
+    No banned jargon from `plain-language.md` in comments.
+    Doc comments (`///` / `//!`) max 2 lines; longer = violation unless the
+    ticket explicitly requires a longer contract note.
+    Mechanism (run from repo root):
+
+    ```bash
+    # ticket ids in comments
+    rg -n --type rust '^\s*//.*(GTW-\d+)' crates bins
+    # banned words in comments
+    rg -n --type rust -i '^\s*//.*(seam|byte[- ]identical|sanctioned|leverage|canonical)\b' crates bins
+    # doc blocks longer than 2 lines (3+ consecutive)
+    rg -U --type rust -n '^(//!|///).*\n(//!|///).*\n(//!|///)' crates bins
 
 5. **Verify the diff first-hand via the design-gate workflow.** This is a workflow
    orchestration step, not a standing team. **Default: a 3-lens adversarial fan-out** —
