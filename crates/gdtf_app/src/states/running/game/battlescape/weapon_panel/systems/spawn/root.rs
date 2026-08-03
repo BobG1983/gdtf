@@ -1,4 +1,4 @@
-//! teardown. Split out of the monolithic `spawn.rs` (GTW-583); the authoritative
+//! Weapon panel root spawn and teardown.
 use bevy::{
     prelude::*,
     ui::{GlobalZIndex, Node, Val},
