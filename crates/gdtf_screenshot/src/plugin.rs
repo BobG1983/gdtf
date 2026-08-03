@@ -1,3 +1,5 @@
+//! Bevy plugin that enables env-driven or path-driven auto capture.
+
 use std::env;
 
 use bevy::prelude::*;
@@ -8,14 +10,18 @@ use crate::{
     trigger::{CaptureProgress, poll_then_exit, settle_then_capture},
 };
 
+/// Captures a screenshot after settle frames, then exits when the file lands.
+///
+/// Inactive when no path is configured (`from_env` missing/blank).
 pub struct ScreenshotCapturePlugin {
-            path:   Option<CapturePath>,
-        settle: SettleFrames,
-        poll:   PollCap,
+    path:   Option<CapturePath>,
+    settle: SettleFrames,
+    poll:   PollCap,
 }
 
 impl ScreenshotCapturePlugin {
-                                #[must_use]
+    /// Read the output path from an environment variable.
+    #[must_use]
     pub fn from_env(env_var: &str) -> Self {
         Self {
             path:   parse_shot_path(env::var(env_var).ok().as_deref()),
@@ -24,7 +30,8 @@ impl ScreenshotCapturePlugin {
         }
     }
 
-                #[must_use]
+    /// Capture to an explicit path.
+    #[must_use]
     pub fn with_path(path: CapturePath) -> Self {
         Self {
             path:   Some(path),
@@ -33,19 +40,22 @@ impl ScreenshotCapturePlugin {
         }
     }
 
-            #[must_use]
+    /// Override settle frame count.
+    #[must_use]
     pub const fn settle(mut self, settle: SettleFrames) -> Self {
         self.settle = settle;
         self
     }
 
-        #[must_use]
+    /// Override post-capture poll budget.
+    #[must_use]
     pub const fn poll_cap(mut self, poll: PollCap) -> Self {
         self.poll = poll;
         self
     }
 
-            #[must_use]
+    /// True when a capture path is set.
+    #[must_use]
     pub const fn is_active(&self) -> bool {
         self.path.is_some()
     }
