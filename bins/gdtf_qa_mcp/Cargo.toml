@@ -3,9 +3,6 @@ name = "gdtf_qa_mcp"
 version = "0.1.0"
 edition = "2024"
 
-[package.metadata.gtw]
-ticket = "GTW-741"
-
 [dependencies]
 gdtf_qa_protocol = { path = "../../crates/gdtf_qa_protocol" }
 serde = { workspace = true }
