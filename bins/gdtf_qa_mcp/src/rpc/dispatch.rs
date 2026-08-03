@@ -1,3 +1,5 @@
+//! Route one JSON-RPC request line to MCP handlers.
+
 use serde_json::Value;
 
 use super::envelope::{RpcError, error_line, success_line};
@@ -6,6 +8,7 @@ use crate::{
     mcp::{ToolCallOutcome, handle_tool_call, initialize_result, tools_list_result},
 };
 
+/// Parse and handle one request line; `None` for notifications / empty lines.
 #[must_use]
 pub fn dispatch(line: &str, hosts: &mut HostSet<'_>) -> Option<String> {
     let trimmed = line.trim();

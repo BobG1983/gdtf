@@ -1,11 +1,15 @@
+//! Value types used in a launch recipe.
+
 use core::ops::Deref;
 use std::path::{Path, PathBuf};
 
+/// Cargo package name to run.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CargoPackage(String);
 
 impl CargoPackage {
-        #[must_use]
+    /// Wrap a package name.
+    #[must_use]
     pub const fn new(name: String) -> Self {
         Self(name)
     }
@@ -19,11 +23,13 @@ impl Deref for CargoPackage {
     }
 }
 
+/// One cargo feature name.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FeatureName(String);
 
 impl FeatureName {
-        #[must_use]
+    /// Wrap a feature name.
+    #[must_use]
     pub const fn new(name: String) -> Self {
         Self(name)
     }
@@ -37,16 +43,19 @@ impl Deref for FeatureName {
     }
 }
 
+/// Ordered list of features for `--features`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct FeatureList(Vec<FeatureName>);
 
 impl FeatureList {
-        #[must_use]
+    /// From a list of names.
+    #[must_use]
     pub const fn new(features: Vec<FeatureName>) -> Self {
         Self(features)
     }
 
-                #[must_use]
+    /// Comma-joined string, or `None` if empty.
+    #[must_use]
     pub fn render(&self) -> Option<String> {
         if self.0.is_empty() {
             return None;
@@ -69,11 +78,13 @@ impl Deref for FeatureList {
     }
 }
 
+/// Working directory for the child process.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WorkingDir(PathBuf);
 
 impl WorkingDir {
-        #[must_use]
+    /// Wrap a path.
+    #[must_use]
     pub const fn new(path: PathBuf) -> Self {
         Self(path)
     }
@@ -87,11 +98,13 @@ impl Deref for WorkingDir {
     }
 }
 
+/// Environment variable name.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnvVarName(String);
 
 impl EnvVarName {
-        #[must_use]
+    /// Wrap a name.
+    #[must_use]
     pub const fn new(name: String) -> Self {
         Self(name)
     }
@@ -105,11 +118,13 @@ impl Deref for EnvVarName {
     }
 }
 
+/// Environment variable value.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnvVarValue(String);
 
 impl EnvVarValue {
-        #[must_use]
+    /// Wrap a value.
+    #[must_use]
     pub const fn new(value: String) -> Self {
         Self(value)
     }
@@ -123,34 +138,40 @@ impl Deref for EnvVarValue {
     }
 }
 
+/// One env override pair.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnvVar {
-        name:  EnvVarName,
-        value: EnvVarValue,
+    name: EnvVarName,
+    value: EnvVarValue,
 }
 
 impl EnvVar {
-        #[must_use]
+    /// Build a pair.
+    #[must_use]
     pub const fn new(name: EnvVarName, value: EnvVarValue) -> Self {
         Self { name, value }
     }
 
-        #[must_use]
+    /// Variable name.
+    #[must_use]
     pub const fn name(&self) -> &EnvVarName {
         &self.name
     }
 
-        #[must_use]
+    /// Variable value.
+    #[must_use]
     pub const fn value(&self) -> &EnvVarValue {
         &self.value
     }
 }
 
+/// Extra env vars applied before channel vars.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct EnvOverrides(Vec<EnvVar>);
 
 impl EnvOverrides {
-        #[must_use]
+    /// From a list of pairs.
+    #[must_use]
     pub const fn new(vars: Vec<EnvVar>) -> Self {
         Self(vars)
     }
