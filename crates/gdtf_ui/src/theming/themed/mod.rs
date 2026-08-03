@@ -1,3 +1,5 @@
+//! Themed component roles and apply systems.
+
 mod role;
 mod system;
 #[cfg(test)]

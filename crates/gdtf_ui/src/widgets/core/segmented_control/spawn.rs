@@ -1,3 +1,5 @@
+//! Spawn a segmented control from labels and colors.
+
 use bevy::{
     ecs::template::template,
     prelude::*,
@@ -18,6 +20,7 @@ use super::{
 };
 use crate::widgets::core::Orientation;
 
+/// Spawn a segmented control with one segment per label.
 pub fn spawn_segmented_control(
     commands: &mut Commands,
     labels: &[SegmentLabel],
