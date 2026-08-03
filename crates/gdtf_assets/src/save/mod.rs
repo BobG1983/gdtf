@@ -1,3 +1,5 @@
+//! Pretty RON save helpers and safe file-stem sanitization.
+
 mod stem;
 mod write;
 
