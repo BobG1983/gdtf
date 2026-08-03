@@ -22,7 +22,7 @@ use crate::{
 pub struct SalvageMemberPath(String);
 
 impl SalvageMemberPath {
-        #[must_use]
+    #[must_use]
     pub const fn new(path: String) -> Self {
         Self(path)
     }
@@ -32,7 +32,7 @@ impl SalvageMemberPath {
 pub struct SalvageFolder(String);
 
 impl SalvageFolder {
-        #[must_use]
+    #[must_use]
     pub const fn new(folder: String) -> Self {
         Self(folder)
     }
@@ -43,8 +43,8 @@ struct SalvageMember<T>
 where
     T: TypePath + Send + Sync + 'static,
 {
-        path:   SalvageMemberPath,
-            handle: Handle<RonAsset<T>>,
+    path:   SalvageMemberPath,
+    handle: Handle<RonAsset<T>>,
 }
 
 #[derive(Resource, Debug)]
@@ -52,20 +52,20 @@ pub struct RonFolderSalvage<T>
 where
     T: TypePath + Send + Sync + 'static,
 {
-        folder:  SalvageFolder,
-        members: Vec<SalvageMember<T>>,
+    folder:  SalvageFolder,
+    members: Vec<SalvageMember<T>>,
 }
 
 impl<T> RonFolderSalvage<T>
 where
     T: TypePath + Send + Sync + 'static,
 {
-                #[must_use]
+    #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.members.is_empty()
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn folder(&self) -> &SalvageFolder {
         &self.folder
     }
@@ -75,27 +75,32 @@ pub struct SalvagedMember<'a, T>
 where
     T: TypePath + Send + Sync + 'static,
 {
-        pub path: &'a SalvageMemberPath,
-        pub spec: &'a RonAsset<T>,
+    pub path: &'a SalvageMemberPath,
+    pub spec: &'a RonAsset<T>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MalformedMember {
-        pub path:  FindingReferrer,
-        pub error: FindingDetail,
+    pub path:  FindingReferrer,
+    pub error: FindingDetail,
 }
 
 pub enum RonSalvagePoll<'a, T>
 where
     T: TypePath + Send + Sync + 'static,
 {
-        Pending,
-            Settled {
-                loaded:    Vec<SalvagedMember<'a, T>>,
-                malformed: Vec<MalformedMember>,
+    Pending,
+    Settled {
+        loaded:    Vec<SalvagedMember<'a, T>>,
+        malformed: Vec<MalformedMember>,
     },
 }
 
+/// Start loading every RON under `folder` with the given extension.
+///
+/// # Errors
+///
+/// Returns [`AssetReaderError`] when the default asset source is missing or the folder cannot be listed.
 pub fn begin_ron_folder_salvage<T>(
     asset_server: &AssetServer,
     folder: &str,
