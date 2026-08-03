@@ -1,4 +1,5 @@
-//! target out of the authoritative sim model (the `input → presenter → sim` direction; the
+//! Path preview target and population from selected shooter to goal cell.
+
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::PathPreview;
 use gdtf_battle_sim::{
@@ -14,21 +15,25 @@ use gdtf_battle_sim::{
 
 use crate::{SelectedFireMode, selection::resources::SelectedShooter};
 
+/// Goal cell for the move path preview, if any.
 #[derive(Resource, Deref, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct PathPreviewTarget(Option<CellLevel>);
 
 impl PathPreviewTarget {
-        #[must_use]
+    /// Pin this cell as the move target.
+    #[must_use]
     pub const fn new(cell: CellLevel) -> Self {
         Self(Some(cell))
     }
 
-            #[must_use]
+    /// Clear the move target.
+    #[must_use]
     pub const fn cleared() -> Self {
         Self(None)
     }
 }
 
+/// Clear the path preview target when the fire mode changes (not on select).
 pub fn reset_move_target_on_fire_mode_change(
     fire_mode: Res<SelectedFireMode>,
     selected: Res<SelectedShooter>,
@@ -56,15 +61,17 @@ fn relation_to(
     }
 }
 
+/// Grid resources needed to plan a path preview.
 #[derive(SystemParam)]
 pub struct PreviewGrids<'w> {
-        grid:        Res<'w, OccupancyGrid>,
-        links:       Res<'w, VerticalLinkGraph>,
-        squad:       Res<'w, SquadVisibility>,
-        tuning:      Res<'w, CombatTuning>,
-            floor_costs: Res<'w, FloorCostGrid>,
+    grid: Res<'w, OccupancyGrid>,
+    links: Res<'w, VerticalLinkGraph>,
+    squad: Res<'w, SquadVisibility>,
+    tuning: Res<'w, CombatTuning>,
+    floor_costs: Res<'w, FloorCostGrid>,
 }
 
+/// Recompute the path preview from selected shooter to target cell.
 pub fn populate_path_preview(
     selected: Res<SelectedShooter>,
     target: Res<PathPreviewTarget>,

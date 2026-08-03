@@ -1,11 +1,12 @@
+//! Battle input: keyboard, pointer, gamepad, and act intent bus.
 
+/// Act intent bus, keybinds, keyboard, and contextual acts.
 pub mod act_bus;
 
+/// Pointer, selection, fire mode, and gamepad cursor.
 pub mod pointer;
 
-
 mod plugin;
-
 
 pub use act_bus::contextual;
 pub use act_bus::cycle;

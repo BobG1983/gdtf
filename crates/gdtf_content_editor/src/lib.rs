@@ -1,3 +1,5 @@
+//! Content editor: map, terrain, theme, and equipment form tools.
+
 mod app;
 mod armor_form;
 mod attachment_form;
@@ -19,7 +21,6 @@ mod placement;
 mod plugin;
 mod preview;
 mod right_panel;
-// — is gated `#[cfg(debug_assertions)]` so it never compiles into a release binary.
 #[cfg(debug_assertions)]
 mod save;
 mod session;
@@ -90,7 +91,6 @@ pub use terrain_form::{
     ArmorInput, FootfallChoice, HpInput, SaveTerrainError, TerrainDraft, TerrainKindChoice,
     draft_to_terrain_def, offered_graphic_roles, serialize_terrain_def,
 };
-// thin wrapper (WORKSPACE_ASSETS_ROOT). Both are `cfg(debug_assertions)`-only.
 #[cfg(debug_assertions)]
 pub use terrain_form::{write_terrain, write_terrain_in};
 pub use theme_form::{
