@@ -1,3 +1,5 @@
+//! Headless load fallbacks for tests without an asset server.
+
 #[cfg(feature = "test-support")]
 use bevy::prelude::*;
 #[cfg(feature = "test-support")]
@@ -13,6 +15,7 @@ use gdtf_ui::theme::default_theme;
 #[cfg(feature = "test-support")]
 use crate::states::load::resources::LoadedSituation;
 
+/// Insert default load resources for headless tests when assets are absent.
 #[cfg(feature = "test-support")]
 pub fn seed_load_fallbacks(asset_server: Option<Res<AssetServer>>, mut commands: Commands) {
     commands.insert_resource(default_theme());

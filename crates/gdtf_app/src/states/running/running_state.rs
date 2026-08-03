@@ -1,15 +1,22 @@
+//! Sub-states while the app is in [`AppState::Running`].
+
 use bevy::prelude::*;
 
 use crate::states::AppState;
 
 crate::support_item! {
-        #[derive(SubStates, Default, Debug, Clone, Copy, Eq, PartialEq, Hash)]
+    /// Modes available under Running.
+    #[derive(SubStates, Default, Debug, Clone, Copy, Eq, PartialEq, Hash)]
     #[source(AppState = AppState::Running)]
     enum RunningState {
-                #[default]
+        /// Main menu.
+        #[default]
         Menu,
-                Game,
-                Options,
-                Quit,
+        /// In a game session.
+        Game,
+        /// Options screen.
+        Options,
+        /// Quit requested.
+        Quit,
     }
 }
