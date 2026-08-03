@@ -31,10 +31,7 @@ pub struct TerrainSprite {
 
 #[expect(
     clippy::too_many_arguments,
-    reason = "the GTW-348 material path adds two asset stores (TerrainFogMaterial, Mesh) \
-              to the existing draw params and GTW-665 adds the bundled resolution ctx; \
-              further grouping into SystemParam bundles would not reduce the count and \
-              would obscure the per-arg docs"
+    reason = "material and mesh stores plus resolve ctx are separate Bevy params"
 )]
 /// Despawn and respawn all terrain tiles for the visible storey band.
 pub fn draw_static_battlefield(
@@ -46,7 +43,8 @@ pub fn draw_static_battlefield(
     isolate: Res<IsolateView>,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut quad: Local<Option<Handle<Mesh>>>,
+    mut quad: Local<Option<Handle<Mesh>>>
+    ,
     mut ready: MessageReader<BattleReady>,
     existing: Query<Entity, With<TerrainSprite>>,
 ) {

@@ -23,13 +23,7 @@ use crate::{
 #[must_use]
 #[expect(
     clippy::too_many_arguments,
-    reason = "GTW-365 bundles the two structural HP ledgers (cover + slab) into the \
-              StruckSurfaces param, and GTW-438 threads the injury-roll inputs (the \
-              InjuryTables + InjuryRegistry reads + the &mut InjuryRng draw stream) onto \
-              the wound path; the remaining args are the irreducible \
-              outcome / weapon / luck / target / entity / surfaces / tuning / severity-rng \
-              / injury-tables / injury-registry / injury-rng set; the target ganger \
-              surfaces are ALREADY grouped in the TargetGanger bundle"
+    reason = "StruckSurfaces already groups cover/slab; TargetGanger groups the target; rest are distinct inputs"
 )]
 pub fn resolve_and_apply(
     outcome: &ShotOutcome,

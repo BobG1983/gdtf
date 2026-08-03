@@ -65,11 +65,7 @@ pub(in crate::shot_pipeline::fire) struct RoundSetup<'a> {
 /// Resolve one round: build cone, march, fold primary hit, apply AOE splash.
 #[expect(
     clippy::too_many_arguments,
-    reason = "the GTW-323 armor-relationship adds the disjoint wears/pieces queries to \
-              the per-round verb, and GTW-438 adds the injury-roll inputs (InjuryTables + \
-              InjuryRegistry reads + the &mut InjuryRng draw stream); bundling them would \
-              obscure the query-disjointness + the distinct RNG streams the signature \
-              documents"
+    reason = "wears/pieces stay disjoint; injury tables and InjuryRng are separate streams"
 )]
 pub(in crate::shot_pipeline::fire) fn resolve_round(
     setup: RoundSetup,
