@@ -32,8 +32,7 @@ fn fog_enemy_writes_no_highlight_even_when_armed() {
 
     assert!(
         highlight(&app).is_empty(),
-        "hovering an armed shooter's target on a NON-VISIBLE cell writes NO highlight \
-         (GTW-346 fog gate, fail-closed)",
+        "hovering an armed shooter's target on a NON-VISIBLE cell writes NO highlight (fog gate, fail-closed)",
     );
 }
 
@@ -95,7 +94,7 @@ fn non_visible_enemy_clears_highlight() {
 
     assert!(
         highlight(&app).is_empty(),
-        "hovering an enemy on a NON-VISIBLE cell clears the highlight (GTW-346 fog gate)",
+        "hovering an enemy on a NON-VISIBLE cell clears the highlight (fog gate)",
     );
 }
 
@@ -154,6 +153,6 @@ fn fog_cover_writes_no_highlight() {
 
     assert!(
         highlight(&app).is_empty(),
-        "hovering cover on a NON-VISIBLE cell writes NO highlight (GTW-346 fog gate, fail-closed)",
+        "hovering cover on a NON-VISIBLE cell writes NO highlight (fog gate, fail-closed)",
     );
 }
