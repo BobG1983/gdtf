@@ -1,4 +1,4 @@
-//! Report types and mutable views used by resolve_and_apply.
+//! Report types and mutable views used by `resolve_and_apply`.
 
 use bevy::prelude::{Deref, Entity};
 

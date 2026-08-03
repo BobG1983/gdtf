@@ -58,7 +58,7 @@ pub(super) struct GangerRow {
     pub(super) factor: MovementCostFactor,
 }
 
-/// CellLevel from a position.
+/// `CellLevel` from a position.
 pub(super) fn row_cell_level(position: &Position) -> CellLevel {
     **position
 }
