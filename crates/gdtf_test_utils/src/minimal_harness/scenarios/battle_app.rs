@@ -1,4 +1,4 @@
-//! Drive a headless app into BattleRunning with a seeded situation.
+//! Drive a headless app into `BattleRunning` with a seeded situation.
 
 use bevy::{
     app::App,
@@ -21,7 +21,7 @@ use crate::{GdtfTestAppBuilder, advance_until};
 
 const DRIVE_BUDGET: u32 = 96;
 
-/// Builds a MinimalPlugins app already in [`BattleScapeState::BattleRunning`].
+/// Builds a `MinimalPlugins` app already in [`BattleScapeState::BattleRunning`].
 #[derive(Debug, Clone)]
 pub struct BattleAppBuilder {
     situation: Situation,
@@ -52,7 +52,7 @@ impl BattleAppBuilder {
         self
     }
 
-    /// Drive into BattleRunning, or return `None` if the state transitions timed out.
+    /// Drive into `BattleRunning`, or return `None` if the state transitions timed out.
     #[must_use]
     pub fn build(self) -> Option<App> {
         let mut app = GdtfTestAppBuilder::new_with_scene_support()
