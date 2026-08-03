@@ -80,9 +80,7 @@ fn a_shot_pop_stacks_above_a_live_consequence_pop_on_the_same_cell() {
     );
     assert!(
         shot_y < base_y - 1.0,
-        "the shot-damage pop must be seeded ABOVE the live consequence pop (a distinct slot >= 1, \
-         so its spawn y sits below the slot-0 base y {base_y}), got {shot_y} — the pre-GTW-794 \
-         hardcoded local-0 seed would have placed it AT the base y, colliding: {pops:?}",
+        "the shot-damage pop must be seeded ABOVE the live consequence pop (a distinct slot >= 1, so its spawn y sits below the slot-0 base y {base_y}), got {shot_y}: {pops:?}",
     );
 }
 
@@ -196,7 +194,6 @@ fn two_falls_on_one_cell_across_consecutive_frames_stack() {
     );
     assert!(
         (fell_ys[0] - fell_ys[1]).abs() > 1.0,
-        "two falls co-occurring on one cell must take DISTINCT stack slots (distinct ys), got \
-         {fell_ys:?} — the pre-GTW-794 hardcoded slot 0 put both at the SAME y",
+        "two falls co-occurring on one cell must take DISTINCT stack slots (distinct ys), got {fell_ys:?}",
     );
 }

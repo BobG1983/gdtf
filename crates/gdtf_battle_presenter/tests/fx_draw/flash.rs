@@ -155,7 +155,7 @@ fn melee_resolved_spawns_one_strike_flash_at_the_melee_strike_index() {
     assert_eq!(
         fx_count(&mut app),
         1,
-        "exactly one melee STRIKE flash must spawn for a MeleeResolved (GTW-507)",
+        "exactly one melee STRIKE flash must spawn for a MeleeResolved",
     );
     let flash = single_flash(&mut app);
     assert!(flash.is_some(), "exactly one FxFlash sprite must exist");

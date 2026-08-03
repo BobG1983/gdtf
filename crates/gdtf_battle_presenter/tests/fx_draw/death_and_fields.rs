@@ -136,7 +136,7 @@ fn a_leave_field_on_death_draws_the_field_overlay_and_the_marker() {
     assert_eq!(
         visible_field_sprites(&mut app),
         1,
-        "a LeaveField's field must draw via the existing GTW-545 overlay (one visible tile)",
+        "a LeaveField's field must draw via the field overlay (one visible tile)",
     );
     let pops = fct_pops(&mut app);
     assert!(
