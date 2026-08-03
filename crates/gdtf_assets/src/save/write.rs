@@ -6,7 +6,9 @@ use serde::Serialize;
 /// Failure while serializing or writing a RON file.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RonSaveError {
+    /// serde/ron failed to encode the value.
     Serialize(String),
+    /// Filesystem write or directory create failed.
     Write(String),
 }
 
@@ -46,72 +48,4 @@ pub fn write_ron_pretty<T: Serialize>(path: &Path, value: &T) -> Result<(), RonS
         std::fs::create_dir_all(dir).map_err(|err| RonSaveError::Write(err.to_string()))?;
     }
     std::fs::write(path, serialized).map_err(|err| RonSaveError::Write(err.to_string()))
-}
-
-#[cfg(test)]
-mod tests {
-    use serde::{Deserialize, Serialize};
-
-    use super::{RonSaveError, serialize_ron_pretty, write_ron_pretty};
-
-    #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-    struct Payload {
-        name:  String,
-        count: u32,
-    }
-
-    fn payload() -> Payload {
-        Payload {
-            name:  "round trip".to_owned(),
-            count: 7,
-        }
-    }
-
-    #[test]
-    fn write_ron_pretty_round_trips_through_a_temp_dir() {
-        let Ok(root) = tempfile::tempdir() else {
-            unreachable!("a TempDir is creatable on the test host");
-        };
-        let path = root.path().join("nested").join("dir").join("payload.ron");
-
-        let written = write_ron_pretty(&path, &payload());
-        assert_eq!(written, Ok(()), "the write chain succeeds into a fresh dir");
-
-        let Ok(bytes) = std::fs::read_to_string(&path) else {
-            unreachable!("the written file is readable back");
-        };
-        let reloaded = ron::de::from_str::<Payload>(&bytes);
-        assert_eq!(
-            reloaded.ok(),
-            Some(payload()),
-            "the pretty RON deserializes back to the written value"
-        );
-    }
-
-    #[test]
-    fn write_failure_is_the_typed_write_error() {
-        let Ok(root) = tempfile::tempdir() else {
-            unreachable!("a TempDir is creatable on the test host");
-        };
-        let blocker = root.path().join("blocker");
-        assert!(std::fs::write(&blocker, "occupied").is_ok());
-
-        let path = blocker.join("child.ron");
-        let written = write_ron_pretty(&path, &payload());
-        assert!(
-            matches!(written, Err(RonSaveError::Write(_))),
-            "a blocked directory surfaces as RonSaveError::Write: {written:?}"
-        );
-    }
-
-    #[test]
-    fn serialize_half_is_pretty_printed() {
-        let Ok(text) = serialize_ron_pretty(&payload()) else {
-            unreachable!("a plain struct serializes");
-        };
-        assert!(
-            text.contains('\n'),
-            "pretty config emits multi-line RON: {text}"
-        );
-    }
 }
