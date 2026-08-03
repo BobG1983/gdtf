@@ -1,3 +1,5 @@
+//! Safe uniform draws that keep stream alignment on empty ranges.
+
 use core::ops::Range;
 
 use bevy::prelude::Deref;
@@ -7,12 +9,13 @@ use rand::{Rng, RngExt};
 pub(super) struct RangeSample(f32);
 
 impl RangeSample {
-        #[must_use]
+    #[must_use]
     const fn new(value: f32) -> Self {
         Self(value)
     }
 }
 
+/// Draw from `range`, or midpoint if empty/inverted (still consumes one draw).
 pub(super) fn uniform_or_midpoint(rng: &mut impl Rng, range: Range<f32>) -> RangeSample {
     if range.start < range.end {
         return RangeSample::new(rng.random_range(range));
@@ -28,9 +31,9 @@ mod test {
 
     use super::uniform_or_midpoint;
 
-        const SEED: u64 = 0x0640_0644_5AFE_D4A3;
+    const SEED: u64 = 0x0640_0644_5AFE_D4A3;
 
-            #[test]
+    #[test]
     fn live_range_is_byte_identical_to_plain_random_range() {
         use rand::RngExt as _;
         let mut through_helper = ChaCha12Rng::seed_from_u64(SEED);
@@ -46,7 +49,7 @@ mod test {
         }
     }
 
-            #[test]
+    #[test]
     fn degenerate_range_returns_the_midpoint() {
         let mut rng = ChaCha12Rng::seed_from_u64(SEED);
         assert_eq!(
@@ -61,7 +64,7 @@ mod test {
         );
     }
 
-                #[test]
+    #[test]
     fn degenerate_call_consumes_exactly_one_draw() {
         use rand::RngExt as _;
         let mut through_degenerate = ChaCha12Rng::seed_from_u64(SEED);
