@@ -1,5 +1,4 @@
-//! (the GTW-432 save precedent). Tests call `write_terrain_in` with a unique `tempfile::TempDir` root
-//! so they never pollute the version-controlled `assets/` tree.
+//! Terrain draft conversion and RON save helpers.
 
 #[cfg(debug_assertions)]
 use std::path::{Path, PathBuf};
@@ -21,13 +20,18 @@ use super::{draft::TerrainDraft, error::SaveTerrainError, picks::TerrainKindChoi
 #[cfg(debug_assertions)]
 use crate::theme_dir::theme_dir;
 
-
 #[cfg(debug_assertions)]
 #[must_use]
 pub(crate) fn sanitize_stem(raw: &str) -> FileStem {
     gdtf_assets::sanitize_file_stem(raw)
 }
 
+/// Build a terrain def from a draft and uuid.
+///
+/// # Errors
+///
+/// Returns [`SaveTerrainError::MissingMountedWeapon`] when the kind is emplacement
+/// and no weapon is set.
 pub fn draft_to_terrain_def(
     draft: &TerrainDraft,
     uuid: TerrainUuid,
@@ -36,27 +40,27 @@ pub fn draft_to_terrain_def(
     let (sim_kind, presenter_kind) = match draft.kind() {
         TerrainKindChoice::Wall => (
             TerrainSimKind::Wall {
-                hp:               draft.cover_hp(),
+                hp: draft.cover_hp(),
                 armor_protection: draft.armor_protection(),
-                armor_hardness:   draft.armor_hardness(),
-                height_band:      draft.height_band(),
+                armor_hardness: draft.armor_hardness(),
+                height_band: draft.height_band(),
             },
             TerrainPresenterKind::Wall { graphic_name },
         ),
         TerrainKindChoice::Cover => (
             TerrainSimKind::Cover {
-                hp:               draft.cover_hp(),
+                hp: draft.cover_hp(),
                 armor_protection: draft.armor_protection(),
-                armor_hardness:   draft.armor_hardness(),
-                height_band:      draft.height_band(),
+                armor_hardness: draft.armor_hardness(),
+                height_band: draft.height_band(),
             },
             TerrainPresenterKind::Cover { graphic_name },
         ),
         TerrainKindChoice::Slab => (
             TerrainSimKind::Slab {
-                hp:               draft.slab_hp(),
+                hp: draft.slab_hp(),
                 armor_protection: draft.armor_protection(),
-                armor_hardness:   draft.armor_hardness(),
+                armor_hardness: draft.armor_hardness(),
             },
             TerrainPresenterKind::Slab {
                 graphic_name,
@@ -91,10 +95,20 @@ pub fn draft_to_terrain_def(
     })
 }
 
+/// Serialize a terrain def to pretty RON.
+///
+/// # Errors
+///
+/// Returns [`SaveTerrainError::Save`] if serialization fails.
 pub fn serialize_terrain_def(def: &TerrainDef) -> Result<String, SaveTerrainError> {
     serialize_ron_pretty(def).map_err(SaveTerrainError::Save)
 }
 
+/// Write terrain RON under `assets_root`.
+///
+/// # Errors
+///
+/// Returns [`SaveTerrainError`] on empty name, missing weapon, or write failure.
 #[cfg(debug_assertions)]
 pub fn write_terrain_in(
     assets_root: &Path,
@@ -115,6 +129,11 @@ pub fn write_terrain_in(
     Ok(path)
 }
 
+/// Write terrain RON under the workspace assets root.
+///
+/// # Errors
+///
+/// Returns [`SaveTerrainError`] on empty name, missing weapon, or write failure.
 #[cfg(debug_assertions)]
 pub fn write_terrain(
     draft: &TerrainDraft,
