@@ -1,3 +1,5 @@
+//! Field lifetime: turn counts and permanent.
+
 use std::num::NonZeroU8;
 
 use bevy::prelude::Deref;
@@ -5,18 +7,20 @@ use serde::Deserialize;
 
 use super::{ApplyFieldEffect, FieldExpired};
 
-/// inner + derived [`Deref`]; `#[serde(transparent)]` so a field's authored
+/// Non-zero remaining turns for a field.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
 #[serde(transparent)]
 pub struct FieldTurns(NonZeroU8);
 
 impl FieldTurns {
-        #[must_use]
+    /// Wrap a non-zero turn count.
+    #[must_use]
     pub const fn new(turns: NonZeroU8) -> Self {
         Self(turns)
     }
 
-                    #[must_use]
+    /// One less turn, or `None` when this was the last.
+    #[must_use]
     pub const fn decremented(self) -> Option<Self> {
         match NonZeroU8::new(self.0.get() - 1) {
             Some(next) => Some(Self(next)),
@@ -25,33 +29,37 @@ impl FieldTurns {
     }
 }
 
-/// `duration:` (no `#[serde(default)]`), and nothing in the workspace constructed a
+/// How long a field lasts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 pub enum FieldDuration {
-        Turns(FieldTurns),
-        Permanent,
+    /// Finite turn count.
+    Turns(FieldTurns),
+    /// Never expires.
+    Permanent,
 }
 
+/// Applies duration behaviour to a placed field.
 pub struct ApplyDuration {
-        duration: FieldDuration,
+    duration: FieldDuration,
 }
 
 impl ApplyDuration {
-        #[must_use]
+    /// Build the applicator.
+    #[must_use]
     pub const fn new(duration: FieldDuration) -> Self {
         Self { duration }
     }
 }
 
 impl ApplyFieldEffect for ApplyDuration {
-                    fn initial_countdown(&self) -> Option<FieldTurns> {
+    fn initial_countdown(&self) -> Option<FieldTurns> {
         match self.duration {
             FieldDuration::Turns(turns) => Some(turns),
             FieldDuration::Permanent => None,
         }
     }
 
-                                fn count_down_one_turn(&self, remaining: &mut Option<FieldTurns>) -> FieldExpired {
+    fn count_down_one_turn(&self, remaining: &mut Option<FieldTurns>) -> FieldExpired {
         FieldExpired::new(match self.duration {
             FieldDuration::Turns(_) => match (*remaining).and_then(FieldTurns::decremented) {
                 Some(next) => {
@@ -70,7 +78,7 @@ mod tests {
     use super::{ApplyDuration, FieldDuration};
     use crate::{effects::fields::ApplyFieldEffect, test_support::field_turns};
 
-                    #[test]
+    #[test]
     fn an_authored_zero_turn_duration_fails_deserialization() {
         let parsed = ron::from_str::<FieldDuration>("Turns(0)");
         assert!(
@@ -79,7 +87,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn an_authored_positive_turn_count_parses_unchanged() {
         let parsed = ron::from_str::<FieldDuration>("Turns(3)");
         assert_eq!(
@@ -89,7 +97,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn the_initial_countdown_is_the_authored_turns_count() {
         assert_eq!(
             ApplyDuration::new(FieldDuration::Turns(field_turns(3))).initial_countdown(),
@@ -103,7 +111,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn a_turns_field_counts_down_and_expires_on_its_last_round() {
         let lifetime = ApplyDuration::new(FieldDuration::Turns(field_turns(2)));
         let mut remaining = lifetime.initial_countdown();
@@ -122,7 +130,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn a_permanent_field_never_counts_down_and_never_expires() {
         let lifetime = ApplyDuration::new(FieldDuration::Permanent);
         let mut remaining = lifetime.initial_countdown();

@@ -1,4 +1,5 @@
-//! cover def authors (GTW-547, child GTW-41g; GTW-552 re-homes it into the
+//! Closed set of on-death effects for gangers and cover.
+
 use bevy::reflect::TypePath;
 use serde::{Deserialize, Serialize};
 
@@ -9,20 +10,27 @@ use crate::{
     weapon::{DamageType, HitType},
 };
 
+/// Effect that fires when an entity or cover dies.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, TypePath)]
 pub enum OnDeathEffect {
-                                Explode {
-                                        hit_type:    HitType,
-                damage:      ExplodeDamage,
-                                damage_type: DamageType,
+    /// Explosion at the death cell.
+    Explode {
+        /// Hit geometry.
+        hit_type: HitType,
+        /// Damage amount.
+        damage: ExplodeDamage,
+        /// Damage channel.
+        damage_type: DamageType,
     },
-                    LeaveField {
-                                field: FieldKey,
+    /// Leave a field at the death cell.
+    LeaveField {
+        /// Field key to place.
+        field: FieldKey,
     },
 }
 
 impl ApplyOnDeathEffect for OnDeathEffect {
-                                            fn fan_at(&self, at: CellLevel, fan_out: &mut DeathFanOut<'_, '_, '_>) {
+    fn fan_at(&self, at: CellLevel, fan_out: &mut DeathFanOut<'_, '_, '_>) {
         match self {
             Self::Explode {
                 hit_type, damage, ..
