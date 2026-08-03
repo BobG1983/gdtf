@@ -1,3 +1,5 @@
+//! Errors from packing and deployment placement.
+
 use bevy::prelude::Deref;
 
 use super::{
@@ -6,45 +8,64 @@ use super::{
 };
 use crate::level::{SpawnRole, ThemeUuid};
 
+/// How many roster members need cells.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RosterDemand(usize);
 
 impl RosterDemand {
-        #[must_use]
+    /// Wrap a member count.
+    #[must_use]
     pub const fn new(members: usize) -> Self {
         Self(members)
     }
 }
 
+/// How many standable cells a zone has.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ZoneCapacity(usize);
 
 impl ZoneCapacity {
-        #[must_use]
+    /// Wrap a cell count.
+    #[must_use]
     pub const fn new(cells: usize) -> Self {
         Self(cells)
     }
 }
 
+/// Why packing or deployment failed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PackingError {
-                    NoPrefabForRole {
-                theme: ThemeUuid,
-                role:  SpawnRole,
+    /// No prefab registered for this theme and role.
+    NoPrefabForRole {
+        /// Theme key.
+        theme: ThemeUuid,
+        /// Deployment role.
+        role: SpawnRole,
     },
-                    FootprintDoesNotFit {
-                anchor:    Anchor,
-                footprint: Footprint,
-                region:    RegionRect,
+    /// Prefab does not fit the region at this anchor.
+    FootprintDoesNotFit {
+        /// Anchor tried.
+        anchor: Anchor,
+        /// Prefab size.
+        footprint: Footprint,
+        /// Available region.
+        region: RegionRect,
     },
-                PlayerFootprintTooSmall {
-                footprint: Footprint,
-                min_side:  MinPlayerSide,
+    /// Player zone is smaller than the minimum side.
+    PlayerFootprintTooSmall {
+        /// Actual size.
+        footprint: Footprint,
+        /// Required minimum side.
+        min_side: MinPlayerSide,
     },
-                        DeploymentZoneTooSmall {
-                anchor:   Anchor,
-                demand:   RosterDemand,
-                capacity: ZoneCapacity,
+    /// Zone cannot stand the roster size.
+    DeploymentZoneTooSmall {
+        /// Anchor of the zone.
+        anchor: Anchor,
+        /// Members that need cells.
+        demand: RosterDemand,
+        /// Standable cells available.
+        capacity: ZoneCapacity,
     },
 }
 

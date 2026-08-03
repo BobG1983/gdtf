@@ -1,5 +1,8 @@
-//! The per-tile terrain ECS entity layer — one entity per authored terrain piece
+//! Per-tile terrain ECS entity layer — one entity per authored terrain piece.
+
+/// Component markers and piece kinds.
 pub mod components;
+/// Lookup index from cell to terrain entity.
 pub mod index;
 
 #[cfg(test)]

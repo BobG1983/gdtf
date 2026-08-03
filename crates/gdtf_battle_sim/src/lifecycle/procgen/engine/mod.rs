@@ -1,3 +1,5 @@
+//! Staged procgen cursor and footprint records.
+
 mod cursor;
 mod footprint;
 

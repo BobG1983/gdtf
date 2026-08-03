@@ -1,8 +1,11 @@
+//! Silence attachment effect.
+
 use bevy::prelude::EntityWorldMut;
 
 use super::ApplyAttachmentEffect;
 use crate::weapon::Silenced;
 
+/// Marks the weapon as silenced.
 pub struct ApplySilence;
 
 impl ApplyAttachmentEffect for ApplySilence {
@@ -18,7 +21,7 @@ mod tests {
     use super::{ApplyAttachmentEffect, ApplySilence};
     use crate::weapon::Silenced;
 
-        #[test]
+    #[test]
     fn silence_inserts_silenced_tag() {
         let mut world = World::new();
         let weapon = world.spawn_empty().id();

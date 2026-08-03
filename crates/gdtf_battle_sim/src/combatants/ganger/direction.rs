@@ -44,14 +44,22 @@ impl RingSteps {
 /// Compass facing on the grid.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 pub enum Direction {
+    /// North (-Y).
     #[default]
     North,
+    /// Northeast.
     NorthEast,
+    /// East (+X).
     East,
+    /// Southeast.
     SouthEast,
+    /// South (+Y).
     South,
+    /// Southwest.
     SouthWest,
+    /// West (-X).
     West,
+    /// Northwest.
     NorthWest,
 }
 
@@ -120,7 +128,7 @@ impl Direction {
         RingSteps::new(if d <= 8 - d { d } else { 8 - d })
     }
 
-    /// Direction from one cell toward another (None if same cell).
+    /// Direction from one cell toward another (`None` if same cell).
     #[must_use]
     pub fn from_cells(from: Cell, to: Cell) -> Option<Self> {
         let sx = (to.x - from.x).signum();

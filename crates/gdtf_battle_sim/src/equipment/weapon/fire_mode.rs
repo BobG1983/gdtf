@@ -47,8 +47,11 @@ impl ModeShots {
 /// Fire-mode selector kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ModeKind {
+    /// One shot.
     Single,
+    /// Short burst.
     Burst,
+    /// Full auto.
     Full,
 }
 

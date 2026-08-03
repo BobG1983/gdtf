@@ -1,33 +1,44 @@
+//! Apply DOT profiles to targets from messages.
+
 use bevy::prelude::{Commands, Entity, Message, MessageReader, MessageWriter, Query};
 
 use crate::weapon::{Dot, DotDamage};
 
+/// Request to attach or refresh a DOT on a target.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DotApplied {
-        pub target: Entity,
-            pub dot:    Dot,
+    /// Target entity.
+    pub target: Entity,
+    /// DOT profile to apply.
+    pub dot: Dot,
 }
 
 impl DotApplied {
-            #[must_use]
+    /// Build the message.
+    #[must_use]
     pub const fn new(target: Entity, dot: Dot) -> Self {
         Self { target, dot }
     }
 }
 
+/// A DOT was newly attached to a ganger.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DotAfflicted {
-        pub ganger:   Entity,
-        pub per_turn: DotDamage,
+    /// Ganger entity.
+    pub ganger: Entity,
+    /// Damage per turn.
+    pub per_turn: DotDamage,
 }
 
 impl DotAfflicted {
-        #[must_use]
+    /// Build the message.
+    #[must_use]
     pub const fn new(ganger: Entity, per_turn: DotDamage) -> Self {
         Self { ganger, per_turn }
     }
 }
 
+/// Attach or refresh DOTs from [`DotApplied`] messages.
 pub fn apply_dot(
     mut applied: MessageReader<DotApplied>,
     mut existing: Query<&mut Dot>,

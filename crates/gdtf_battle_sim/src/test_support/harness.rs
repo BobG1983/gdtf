@@ -1,3 +1,5 @@
+//! Bevy app harness for battle_sim unit tests.
+
 use bevy::{
     app::App, asset::AssetPlugin, platform::collections::HashSet, prelude::MinimalPlugins,
     scene::ScenePlugin,
@@ -27,10 +29,13 @@ use crate::{
     visibility::SquadVisibility,
 };
 
+/// Default seed used by the test harness.
 pub const TEST_SEED: u64 = 0x5A1C_AC75;
 
+/// Default player gang index.
 pub const TEST_PLAYER_GANG: u8 = 0;
 
+/// Visibility covering the full grid.
 #[must_use]
 pub fn full_vision() -> SquadVisibility {
     let mut all = HashSet::default();
@@ -51,6 +56,7 @@ pub fn full_vision() -> SquadVisibility {
     SquadVisibility::new(all.clone(), all)
 }
 
+/// Insert core sim resources into an app.
 pub fn insert_sim_resources(app: &mut App, seed: BattleSeed) {
     let tuning = CombatTuning::default();
     let floor_costs = FloorCostGrid::new(tuning.move_costs.open, []);
@@ -73,6 +79,7 @@ pub fn insert_sim_resources(app: &mut App, seed: BattleSeed) {
     app.insert_resource(floor_costs);
 }
 
+/// Builder for a minimal Bevy app with optional sim plugins and resources.
 #[derive(Debug, Clone)]
 #[expect(
     clippy::struct_excessive_bools,
@@ -81,72 +88,82 @@ pub fn insert_sim_resources(app: &mut App, seed: BattleSeed) {
               documented); a state machine would obscure the builder-with-overrides shape"
 )]
 pub struct SimAppBuilder {
-        seed:           u64,
-        acts:           bool,
-        battle:         bool,
-        registries:     bool,
-        full_vision:    bool,
-        player_faction: Option<u8>,
-        tuning:         Option<CombatTuning>,
+    seed: u64,
+    acts: bool,
+    battle: bool,
+    registries: bool,
+    full_vision: bool,
+    player_faction: Option<u8>,
+    tuning: Option<CombatTuning>,
 }
 
 impl SimAppBuilder {
-            #[must_use]
+    /// Defaults: no plugins, fixed test seed.
+    #[must_use]
     pub const fn new() -> Self {
         Self {
-            seed:           TEST_SEED,
-            acts:           false,
-            battle:         false,
-            registries:     false,
-            full_vision:    false,
+            seed: TEST_SEED,
+            acts: false,
+            battle: false,
+            registries: false,
+            full_vision: false,
             player_faction: None,
-            tuning:         None,
+            tuning: None,
         }
     }
 
-        #[must_use]
+    /// Override the RNG seed.
+    #[must_use]
     pub const fn with_seed(mut self, seed: u64) -> Self {
         self.seed = seed;
         self
     }
 
-            #[must_use]
+    /// Add the acts plugin and core resources.
+    #[must_use]
     pub const fn with_acts(mut self) -> Self {
         self.acts = true;
         self
     }
 
-                #[must_use]
+    /// Add the full battle sim plugin.
+    #[must_use]
     pub const fn with_battle(mut self) -> Self {
         self.battle = true;
         self
     }
 
-            #[must_use]
+    /// Insert test weapon/armor/gang/terrain registries.
+    #[must_use]
     pub const fn with_registries(mut self) -> Self {
         self.registries = true;
         self
     }
 
-            #[must_use]
+    /// Cover the whole grid with vision.
+    #[must_use]
     pub const fn with_full_vision(mut self) -> Self {
         self.full_vision = true;
         self
     }
 
-        #[must_use]
+    /// Set the player faction index.
+    #[must_use]
     pub const fn with_player_faction(mut self, gang: u8) -> Self {
         self.player_faction = Some(gang);
         self
     }
 
-            #[must_use]
+    /// Override combat tuning.
+    #[must_use]
     pub fn with_tuning(mut self, tuning: CombatTuning) -> Self {
         self.tuning = Some(tuning);
         self
     }
 
-        pub fn build(self) -> App {
+    /// Build the app.
+    #[must_use]
+    pub fn build(self) -> App {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
         if self.battle {

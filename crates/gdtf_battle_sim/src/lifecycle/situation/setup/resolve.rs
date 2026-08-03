@@ -1,5 +1,5 @@
-//! Abort-first pre-spawn resolution + validation of every authored key — the
-//! authored reference (gang members, weapon / melee / armor keys, cover / slab
+//! Pre-spawn resolution of authored keys against catalogs.
+
 use bevy::{platform::collections::HashSet, prelude::Deref};
 
 use super::super::terrain_resolve::{
@@ -33,7 +33,7 @@ pub(super) fn resolve_members<'s, 'g>(
         };
         let Some(member) = roster.member(&placed.member) else {
             return Err(BattleSetupError::GangMemberNotFound {
-                gang:   placed.gang.clone(),
+                gang: placed.gang.clone(),
                 member: placed.member.clone(),
             });
         };
@@ -168,16 +168,19 @@ pub(super) fn build_field_registry(
     Ok(registry)
 }
 
+/// Whether any two gangers share a spawn cell.
 #[must_use]
 pub fn has_stacked_gangers(situation: &Situation) -> StackedGangers {
     StackedGangers::new(first_stacked_cell(situation).is_some())
 }
 
+/// Flag: at least one cell has stacked gangers.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StackedGangers(bool);
 
 impl StackedGangers {
-        #[must_use]
+    /// Wrap the flag.
+    #[must_use]
     pub const fn new(stacked: bool) -> Self {
         Self(stacked)
     }

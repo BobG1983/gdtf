@@ -34,7 +34,9 @@ impl Strikes {
 /// Swing or thrust.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum FightModeKind {
+    /// Wide swing.
     Swing,
+    /// Straight thrust.
     Thrust,
 }
 

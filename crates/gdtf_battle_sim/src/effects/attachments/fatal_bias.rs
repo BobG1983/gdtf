@@ -1,16 +1,18 @@
-//! The **`FatalBias`** attachment effect (GTW-549 USER-REVIEW extra; GTW-558
+//! Extra fatal-bias attachment effect.
+
 use bevy::prelude::EntityWorldMut;
 
 use super::ApplyAttachmentEffect;
 use crate::weapon::FatalBias;
 
-/// USER-REVIEW extra (defensible default).
+/// Raises the weapon's fatal bias.
 pub struct ApplyFatalBias {
-        bias_bonus: FatalBias,
+    bias_bonus: FatalBias,
 }
 
 impl ApplyFatalBias {
-        #[must_use]
+    /// Build the applicator.
+    #[must_use]
     pub const fn new(bias_bonus: FatalBias) -> Self {
         Self { bias_bonus }
     }
@@ -33,7 +35,7 @@ mod tests {
     use super::{ApplyAttachmentEffect, ApplyFatalBias};
     use crate::weapon::FatalBias;
 
-        #[test]
+    #[test]
     fn fatal_bias_raises_fatal_bias() {
         let mut world = World::new();
         let weapon = world.spawn(FatalBias::new(2.0)).id();

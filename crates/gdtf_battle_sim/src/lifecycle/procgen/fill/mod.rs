@@ -1,3 +1,5 @@
+//! Fill free space after player/enemy placement.
+
 mod cursor;
 mod outcome;
 mod passes;

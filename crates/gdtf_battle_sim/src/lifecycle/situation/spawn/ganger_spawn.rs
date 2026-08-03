@@ -1,4 +1,5 @@
-//! [`GangerSpawn`] — the combined roster-plus-placement authoring helper and its
+//! Combined roster-plus-placement authoring helper.
+
 use serde::Deserialize;
 
 use super::placed_ganger::{PlacedGanger, Placement};
@@ -11,36 +12,48 @@ use crate::{
     weapon::WeaponName,
 };
 
+/// One authored ganger with full stats and placement.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct GangerSpawn {
-        pub at:         CellLevel,
-                    /// situation `.ron` as a bare string ([`GangerName`] is `#[serde(transparent)]`).
-    pub name:       GangerName,
-        pub faction:    Faction,
-        pub facing:     Facing,
-        pub stance:     Stance,
-        pub aiming:     Aiming,
-        pub life_state: LifeState,
-            /// bare scalar ([`Speed`] is `#[serde(transparent)]`).
-    pub speed:      Speed,
-            /// scalar ([`Aim`] is `#[serde(transparent)]`).
-    pub aim:        Aim,
-        /// Fight term. Authored as a bare scalar ([`Strength`] is `#[serde(transparent)]`).
-    pub strength:   Strength,
-                pub toughness:  Toughness,
-            /// `#[serde(transparent)]`).
-    pub reflexes:   Reflexes,
-            /// ([`Cool`] is `#[serde(transparent)]`).
-    pub cool:       Cool,
-            /// ([`Grit`] is `#[serde(transparent)]`).
-    pub grit:       Grit,
-                pub luck:       Luck,
-                                            pub armor:      crate::armor::ArmorName,
-                                                    pub weapon:     WeaponName,
+    /// Spawn cell.
+    pub at: CellLevel,
+    /// Display name.
+    pub name: GangerName,
+    /// Faction index.
+    pub faction: Faction,
+    /// Facing direction.
+    pub facing: Facing,
+    /// Stance.
+    pub stance: Stance,
+    /// Aiming state.
+    pub aiming: Aiming,
+    /// Life state.
+    pub life_state: LifeState,
+    /// Speed stat.
+    pub speed: Speed,
+    /// Aim stat.
+    pub aim: Aim,
+    /// Strength / fight stat.
+    pub strength: Strength,
+    /// Toughness.
+    pub toughness: Toughness,
+    /// Reflexes.
+    pub reflexes: Reflexes,
+    /// Cool.
+    pub cool: Cool,
+    /// Grit.
+    pub grit: Grit,
+    /// Luck.
+    pub luck: Luck,
+    /// Armor key.
+    pub armor: crate::armor::ArmorName,
+    /// Primary weapon key.
+    pub weapon: WeaponName,
 }
 
 impl GangerSpawn {
-                                            #[must_use]
+    /// Split into a placement record and a gang-member catalog entry.
+    #[must_use]
     pub fn split(&self, gang: GangName) -> (PlacedGanger, GangMember) {
         let placed = PlacedGanger::new(
             gang,
@@ -55,17 +68,17 @@ impl GangerSpawn {
             ),
         );
         let member = GangMember {
-            name:         self.name.clone(),
-            speed:        self.speed,
-            aim:          self.aim,
-            strength:     self.strength,
-            toughness:    self.toughness,
-            reflexes:     self.reflexes,
-            cool:         self.cool,
-            grit:         self.grit,
-            luck:         self.luck,
-            armor:        self.armor.clone(),
-            weapon:       self.weapon.clone(),
+            name: self.name.clone(),
+            speed: self.speed,
+            aim: self.aim,
+            strength: self.strength,
+            toughness: self.toughness,
+            reflexes: self.reflexes,
+            cool: self.cool,
+            grit: self.grit,
+            luck: self.luck,
+            armor: self.armor.clone(),
+            weapon: self.weapon.clone(),
             melee_weapon: None,
         };
         (placed, member)

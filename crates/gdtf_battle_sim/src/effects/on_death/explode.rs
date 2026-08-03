@@ -1,3 +1,5 @@
+//! On-death explosion effect.
+
 use bevy::prelude::Deref;
 use serde::{Deserialize, Serialize};
 
@@ -10,32 +12,35 @@ use crate::{
     weapon::HitType,
 };
 
-/// newtype: private inner + derived [`Deref`]; `#[serde(transparent)]` so an authored
+/// Flat damage dealt by an on-death explosion.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct ExplodeDamage(u16);
 
 impl ExplodeDamage {
-        #[must_use]
+    /// Wrap a damage amount.
+    #[must_use]
     pub const fn new(damage: u16) -> Self {
         Self(damage)
     }
 }
 
+/// Fans blast damage to occupants in the hit area.
 pub struct ApplyExplode {
-        hit_type: HitType,
-        damage:   ExplodeDamage,
+    hit_type: HitType,
+    damage: ExplodeDamage,
 }
 
 impl ApplyExplode {
-        #[must_use]
+    /// Build the applicator.
+    #[must_use]
     pub const fn new(hit_type: HitType, damage: ExplodeDamage) -> Self {
         Self { hit_type, damage }
     }
 }
 
 impl ApplyOnDeathEffect for ApplyExplode {
-                                            fn fan_at(&self, at: CellLevel, fan_out: &mut DeathFanOut<'_, '_, '_>) {
+    fn fan_at(&self, at: CellLevel, fan_out: &mut DeathFanOut<'_, '_, '_>) {
         for cell in aoe_affected(at, self.hit_type, at) {
             let Some(occupant) = fan_out.grid.occupant(&cell) else {
                 continue;
@@ -74,11 +79,11 @@ mod tests {
         weapon::{BlastRadius, HitType},
     };
 
-        fn ground(x: i32, y: i32) -> CellLevel {
+    fn ground(x: i32, y: i32) -> CellLevel {
         CellLevel::new(Cell::new(x, y), Level::new(0))
     }
 
-                    fn fan(
+    fn fan(
         world: &mut World,
         grid: &OccupancyGrid,
         effect: &ApplyExplode,
@@ -101,7 +106,7 @@ mod tests {
         cascade
     }
 
-            #[test]
+    #[test]
     fn non_lethal_blast_drains_without_killing() {
         let mut world = World::new();
         let victim = world.spawn((Hp::new(10), LifeState::Alive)).id();
@@ -129,7 +134,7 @@ mod tests {
         assert!(cascade.is_empty(), "a non-lethal fan pushes no cascade");
     }
 
-            #[test]
+    #[test]
     fn lethal_blast_kills_and_pushes_the_cascade_work_item() {
         let mut world = World::new();
         let victim = world.spawn((Hp::new(3), LifeState::Alive)).id();
@@ -156,7 +161,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn a_corpse_in_the_radius_is_skipped() {
         let mut world = World::new();
         let corpse = world.spawn((Hp::new(0), LifeState::Dead)).id();

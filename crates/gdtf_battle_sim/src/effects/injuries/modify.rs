@@ -1,33 +1,39 @@
+//! Stat-modify injury effect.
+
 use bevy::prelude::Deref;
 use serde::{Deserialize, Serialize};
 
 use super::{ApplyInjuryEffect, HealError, LedgerAccumulators};
 use crate::injuries::StatTarget;
 
-/// `#[serde(transparent)]` lets an authored effect name it as a bare RON number
+/// Signed delta applied to a named stat.
 #[derive(Deref, Clone, Copy, PartialEq, Eq, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct StatDelta(i8);
 
 impl StatDelta {
-            #[must_use]
+    /// Wrap an amount.
+    #[must_use]
     pub const fn new(amount: i8) -> Self {
         Self(amount)
     }
 
-            #[must_use]
+    /// Inner value.
+    #[must_use]
     pub const fn raw(self) -> i8 {
         self.0
     }
 }
 
+/// Applies a stat delta on gain and reverses it on heal.
 pub struct ApplyModify {
-        stat:   StatTarget,
-        amount: StatDelta,
+    stat: StatTarget,
+    amount: StatDelta,
 }
 
 impl ApplyModify {
-        #[must_use]
+    /// Build the applicator.
+    #[must_use]
     pub const fn new(stat: StatTarget, amount: StatDelta) -> Self {
         Self { stat, amount }
     }
@@ -38,7 +44,7 @@ impl ApplyInjuryEffect for ApplyModify {
         accumulators.deltas.add_delta(self.stat, self.amount);
     }
 
-                fn heal(&self, accumulators: &mut LedgerAccumulators<'_>) -> Result<(), HealError> {
+    fn heal(&self, accumulators: &mut LedgerAccumulators<'_>) -> Result<(), HealError> {
         accumulators.deltas.remove_delta(self.stat, self.amount);
         Ok(())
     }
@@ -52,14 +58,14 @@ mod tests {
         injuries::{BleedAfflicted, MovementCostFactor, StatDeltaLedger, StatTarget},
     };
 
-            #[test]
+    #[test]
     fn modify_folds_into_the_named_stat_sum() {
         let mut deltas = StatDeltaLedger::default();
         let mut bleed = BleedAfflicted::default();
         let mut movement = MovementCostFactor::IDENTITY;
         let mut acc = LedgerAccumulators {
-            deltas:   &mut deltas,
-            bleed:    &mut bleed,
+            deltas: &mut deltas,
+            bleed: &mut bleed,
             movement: &mut movement,
         };
         ApplyModify::new(StatTarget::Aim, StatDelta::new(-3)).fold_on_gain(&mut acc);
@@ -75,14 +81,14 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn heal_restores_the_pre_gain_sum() {
         let mut deltas = StatDeltaLedger::default();
         let mut bleed = BleedAfflicted::default();
         let mut movement = MovementCostFactor::IDENTITY;
         let mut acc = LedgerAccumulators {
-            deltas:   &mut deltas,
-            bleed:    &mut bleed,
+            deltas: &mut deltas,
+            bleed: &mut bleed,
             movement: &mut movement,
         };
         let effect = ApplyModify::new(StatTarget::Toughness, StatDelta::new(-4));

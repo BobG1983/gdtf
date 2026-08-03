@@ -1,14 +1,18 @@
+//! Extra magazine capacity attachment effect.
+
 use bevy::prelude::EntityWorldMut;
 
 use super::ApplyAttachmentEffect;
 use crate::{magazine::Magazine, weapon::MagazineSize};
 
+/// Grows the weapon magazine by a fixed amount.
 pub struct ApplyExtraAmmo {
-        size_bonus: MagazineSize,
+    size_bonus: MagazineSize,
 }
 
 impl ApplyExtraAmmo {
-            #[must_use]
+    /// Build the applicator.
+    #[must_use]
     pub const fn new(size_bonus: MagazineSize) -> Self {
         Self { size_bonus }
     }
@@ -35,7 +39,7 @@ mod tests {
         weapon::MagazineSize,
     };
 
-        #[test]
+    #[test]
     fn extra_ammo_grows_the_magazine() {
         let mut world = World::new();
         let weapon = world

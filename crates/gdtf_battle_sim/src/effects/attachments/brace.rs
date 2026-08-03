@@ -1,10 +1,11 @@
-//! The **Brace** attachment effect (GTW-549 USER-REVIEW extra; GTW-558 one-file-per-effect)
+//! Brace attachment effect.
+
 use bevy::prelude::EntityWorldMut;
 
 use super::ApplyAttachmentEffect;
 use crate::weapon::Stable;
 
-/// A no-payload unit effect. USER-REVIEW extra (defensible default).
+/// Marks the weapon as stable (braceable).
 pub struct ApplyBrace;
 
 impl ApplyAttachmentEffect for ApplyBrace {
@@ -20,7 +21,7 @@ mod tests {
     use super::{ApplyAttachmentEffect, ApplyBrace};
     use crate::weapon::Stable;
 
-        #[test]
+    #[test]
     fn brace_inserts_stable_tag() {
         let mut world = World::new();
         let weapon = world.spawn_empty().id();

@@ -1,30 +1,40 @@
+//! Placed footprint records for debug / staging views.
+
 use super::super::geometry::RegionRect;
 
+/// Why a footprint was placed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlacementRole {
-        Player,
-        Enemy,
-        Fill,
+    /// Player spawn.
+    Player,
+    /// Enemy spawn.
+    Enemy,
+    /// Fill content.
+    Fill,
 }
 
+/// One placed region with its role.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PlacedFootprint {
-        role:   PlacementRole,
-        region: RegionRect,
+    role: PlacementRole,
+    region: RegionRect,
 }
 
 impl PlacedFootprint {
-        #[must_use]
+    /// Build a footprint record.
+    #[must_use]
     pub const fn new(role: PlacementRole, region: RegionRect) -> Self {
         Self { role, region }
     }
 
-        #[must_use]
+    /// Placement role.
+    #[must_use]
     pub const fn role(&self) -> PlacementRole {
         self.role
     }
 
-        #[must_use]
+    /// Board region.
+    #[must_use]
     pub const fn region(&self) -> RegionRect {
         self.region
     }
