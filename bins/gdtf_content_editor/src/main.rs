@@ -1,3 +1,5 @@
+//! Content editor binary entry point.
+
 use gdtf_content_editor::MapEditorApp;
 
 fn main() {
