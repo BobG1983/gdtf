@@ -5,11 +5,11 @@
     accuracy:      1.0,
     kickback:      0.05,
     fatal_bias:    0.0,
-    damage:        6,   // GTW-374: halved from 12 (combat re-balance, slower lethality)
-    punch:         2,   // GTW-374: halved from 5 (floor of 5/2)
-    shred:         1,   // GTW-374: halved from 2
+    damage:        6,   // halved from 12 (combat re-balance, slower lethality)
+    punch:         2,   // halved from 5 (floor of 5/2)
+    shred:         1,   // halved from 2
     damage_type:   Plasma,
-    accepts:       Flask,  // GTW-775: vents from a volatile plasma flask (the munition it accepts)
+    accepts:       Flask,  // vents from a volatile plasma flask (the munition it accepts)
     magazine: (
         size:      12,
         reload_tu: 12,
@@ -19,8 +19,8 @@
         (kind: Burst,  cone_mult: 1.3, tu_percent: 0.50, shots: 3),
     ],
     stable: false,
-    handedness:    OneHanded,  // GTW-443: a one-handed sidearm - usable with a single working hand
-    // GTW-554: the attachment SLOTS a sidearm offers (no item fitted by default).
+    handedness:    OneHanded,  // a one-handed sidearm - usable with a single working hand
+    // Attachment SLOTS a sidearm offers (no item fitted by default).
     slots: [
         (Muzzle, 1),  // one muzzle thread
         (Sight,  1),  // one sight dovetail
