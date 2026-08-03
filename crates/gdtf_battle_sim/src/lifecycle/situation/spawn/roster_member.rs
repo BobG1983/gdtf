@@ -1,21 +1,23 @@
-//! and on WHICH side, with NO authored placement (procgen derives the cell).
+//! Roster entry without a fixed cell (procgen places it).
 
 use serde::Deserialize;
 
 use crate::ganger::{Faction, GangName, GangerName};
 
+/// One ganger drawn from a gang roster for side placement.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct RosterMember {
-                /// bare string ([`GangName`] is `#[serde(transparent)]`).
-    pub gang:    GangName,
-            /// `#[serde(transparent)]`).
-    pub member:  GangerName,
-                /// gang index ([`Faction`] is `#[serde(transparent)]`).
+    /// Gang key.
+    pub gang: GangName,
+    /// Member key within the gang.
+    pub member: GangerName,
+    /// Faction / side index.
     pub faction: Faction,
 }
 
 impl RosterMember {
-        #[must_use]
+    /// Build a roster member.
+    #[must_use]
     pub const fn new(gang: GangName, member: GangerName, faction: Faction) -> Self {
         Self {
             gang,

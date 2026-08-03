@@ -1,3 +1,5 @@
+//! Errors raised while turning a situation into a live battle.
+
 use crate::{
     armor::ArmorName,
     effects::fields::FieldKey,
@@ -9,49 +11,72 @@ use crate::{
     weapon::WeaponName,
 };
 
+/// Why battle setup failed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BattleSetupError {
-            InvalidLink(InvalidVerticalLink),
-                        GangNotFound {
-                gang: GangName,
+    /// Bad vertical link.
+    InvalidLink(InvalidVerticalLink),
+    /// Gang missing from catalog.
+    GangNotFound {
+        /// Requested gang.
+        gang: GangName,
     },
-                        GangMemberNotFound {
-                gang:   GangName,
-                member: GangerName,
+    /// Member missing from gang roster.
+    GangMemberNotFound {
+        /// Gang that was found.
+        gang: GangName,
+        /// Member that was not.
+        member: GangerName,
     },
-                WeaponNotFound {
-                weapon: WeaponName,
+    /// Weapon missing from catalog.
+    WeaponNotFound {
+        /// Requested weapon.
+        weapon: WeaponName,
     },
-                    ArmorNotFound {
-                armor: ArmorName,
+    /// Armor missing from catalog.
+    ArmorNotFound {
+        /// Requested armor.
+        armor: ArmorName,
     },
-                                        MeleeWeaponNotFound {
-                weapon: WeaponName,
+    /// Melee weapon missing from catalog.
+    MeleeWeaponNotFound {
+        /// Requested melee weapon.
+        weapon: WeaponName,
     },
-                                    TerrainNotFound {
-                piece: TerrainUuid,
+    /// Terrain piece missing from catalog.
+    TerrainNotFound {
+        /// Requested piece.
+        piece: TerrainUuid,
     },
-                                            FloorCostBelowMinimum {
-                piece:   TerrainUuid,
-                cost:    MoveCost,
-                minimum: MoveCost,
+    /// Floor move cost below the minimum.
+    FloorCostBelowMinimum {
+        /// Floor piece.
+        piece: TerrainUuid,
+        /// Authored cost.
+        cost: MoveCost,
+        /// Required minimum.
+        minimum: MoveCost,
     },
-                                                            StackedGangers {
-                        at: CellLevel,
+    /// Two gangers authored on the same cell.
+    StackedGangers {
+        /// Shared cell.
+        at: CellLevel,
     },
-                                FieldNotFound {
-                field: FieldKey,
+    /// Field missing from catalog.
+    FieldNotFound {
+        /// Requested field.
+        field: FieldKey,
     },
 }
 
 impl From<InvalidVerticalLink> for BattleSetupError {
-                    fn from(invalid: InvalidVerticalLink) -> Self {
+    fn from(invalid: InvalidVerticalLink) -> Self {
         Self::InvalidLink(invalid)
     }
 }
 
 impl std::fmt::Display for BattleSetupError {
-                            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::InvalidLink(invalid) => write!(f, "invalid vertical link: {invalid:?}"),
             Self::GangNotFound { gang } => {
