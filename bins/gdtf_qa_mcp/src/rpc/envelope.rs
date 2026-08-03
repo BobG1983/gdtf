@@ -1,19 +1,25 @@
-//! module turns a result / error into that line. The `id`, `method`, and version fields
+//! Build JSON-RPC success and error response lines.
+
 use serde_json::{Value, json};
 
 /// The JSON-RPC protocol version every message carries.
 const JSONRPC_VERSION: &str = "2.0";
 
+/// Standard JSON-RPC error kinds we emit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RpcError {
-        Parse,
-        InvalidRequest,
-        MethodNotFound,
-        InvalidParams,
+    /// Invalid JSON.
+    Parse,
+    /// Missing required fields.
+    InvalidRequest,
+    /// Unknown method.
+    MethodNotFound,
+    /// Bad tool arguments.
+    InvalidParams,
 }
 
 impl RpcError {
-        const fn code(self) -> i64 {
+    const fn code(self) -> i64 {
         match self {
             Self::Parse => -32700,
             Self::InvalidRequest => -32600,
@@ -27,6 +33,7 @@ fn to_line(message: &Value) -> String {
     serde_json::to_string(message).unwrap_or_default()
 }
 
+/// Success response line for `id` with `result`.
 #[must_use]
 pub fn success_line(id: &Value, result: Value) -> String {
     to_line(&json!({
@@ -36,6 +43,7 @@ pub fn success_line(id: &Value, result: Value) -> String {
     }))
 }
 
+/// Error response line for `id`.
 #[must_use]
 pub fn error_line(id: &Value, kind: RpcError, message: &str) -> String {
     to_line(&json!({
@@ -51,7 +59,7 @@ mod tests {
 
     use super::{RpcError, error_line, success_line};
 
-        #[test]
+    #[test]
     fn success_line_echoes_id_and_result() {
         let line = success_line(&json!(7), json!({"ok": true}));
         let parsed: Value = serde_json::from_str(&line).unwrap_or(Value::Null);
@@ -60,7 +68,7 @@ mod tests {
         assert_eq!(parsed["result"], json!({"ok": true}));
     }
 
-        #[test]
+    #[test]
     fn error_line_carries_code_and_message() {
         let line = error_line(&Value::Null, RpcError::MethodNotFound, "nope");
         let parsed: Value = serde_json::from_str(&line).unwrap_or(Value::Null);

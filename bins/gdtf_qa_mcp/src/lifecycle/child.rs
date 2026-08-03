@@ -1,3 +1,5 @@
+//! Managed OS child process with output capture.
+
 use core::time::Duration;
 use std::{
     collections::VecDeque,
@@ -10,36 +12,46 @@ use std::{
 
 use super::values::{ChildPid, ChildStatus, FailureTail, KillGrace, OutputTail, TailLines};
 
+/// Max lines kept in the output ring for failure tails.
 pub const OUTPUT_TAIL_LINES: TailLines = TailLines::new(512);
 
 const EXIT_POLL_STEP: Duration = Duration::from_millis(50);
 
+/// Process we launched and can signal, wait on, and read tails from.
 pub trait ManagedChild {
-        fn pid(&self) -> ChildPid;
+    /// Process id.
+    fn pid(&self) -> ChildPid;
 
-        fn poll(&mut self) -> ChildStatus;
+    /// Non-blocking status check.
+    fn poll(&mut self) -> ChildStatus;
 
-            fn terminate(&mut self);
+    /// Ask the process (group) to exit gracefully.
+    fn terminate(&mut self);
 
-        fn kill(&mut self);
+    /// Force-kill the process (group).
+    fn kill(&mut self);
 
-        fn wait_until_exit(&mut self, within: KillGrace) -> ChildStatus;
+    /// Wait up to `within` for exit; return current status.
+    fn wait_until_exit(&mut self, within: KillGrace) -> ChildStatus;
 
-        fn reap(&mut self);
+    /// Block until the process has been reaped and readers joined.
+    fn reap(&mut self);
 
-                        fn failure_tail(&self) -> FailureTail;
+    /// Full captured output for failure reporting.
+    fn failure_tail(&self) -> FailureTail;
 
-                    fn output_tail(&self, max: TailLines) -> OutputTail;
+    /// Trailing `max` lines of output.
+    fn output_tail(&self, max: TailLines) -> OutputTail;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StopSignal {
-        Terminate,
-        Kill,
+    Terminate,
+    Kill,
 }
 
 impl StopSignal {
-        const fn flag(self) -> &'static str {
+    const fn flag(self) -> &'static str {
         match self {
             Self::Terminate => "-TERM",
             Self::Kill => "-KILL",
@@ -48,28 +60,28 @@ impl StopSignal {
 }
 
 struct OutputRing {
-        lines: VecDeque<String>,
+    lines: VecDeque<String>,
 }
 
 impl OutputRing {
-        const fn new() -> Self {
+    const fn new() -> Self {
         Self {
             lines: VecDeque::new(),
         }
     }
 
-        fn push_line(&mut self, line: String) {
+    fn push_line(&mut self, line: String) {
         if self.lines.len() >= *OUTPUT_TAIL_LINES {
             self.lines.pop_front();
         }
         self.lines.push_back(line);
     }
 
-        fn render(&self) -> String {
+    fn render(&self) -> String {
         self.lines.iter().cloned().collect::<Vec<_>>().join("\n")
     }
 
-        fn render_tail(&self, max: TailLines) -> String {
+    fn render_tail(&self, max: TailLines) -> String {
         let keep = self.lines.len().saturating_sub(*max);
         self.lines
             .iter()
@@ -92,15 +104,21 @@ fn drain_pipe<R: std::io::Read>(pipe: R, sink: &Arc<Mutex<OutputRing>>) {
     }
 }
 
+/// Real OS child with threaded stdout/stderr capture.
 pub struct ProcessChild {
-        child:   Child,
-        pid:     ChildPid,
-        tail:    Arc<Mutex<OutputRing>>,
-        readers: Vec<JoinHandle<()>>,
+    child: Child,
+    pid: ChildPid,
+    tail: Arc<Mutex<OutputRing>>,
+    readers: Vec<JoinHandle<()>>,
 }
 
 impl ProcessChild {
-                                            pub fn spawn(mut command: Command) -> io::Result<Box<dyn ManagedChild>> {
+    /// Spawn `command` with piped stdout/stderr.
+    ///
+    /// # Errors
+    ///
+    /// Returns I/O errors from the underlying spawn.
+    pub fn spawn(mut command: Command) -> io::Result<Box<dyn ManagedChild>> {
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
         #[cfg(unix)]
@@ -128,7 +146,7 @@ impl ProcessChild {
         }))
     }
 
-                                        #[cfg(unix)]
+    #[cfg(unix)]
     fn signal_group(&self, signal: StopSignal) {
         let group_target = format!("-{}", *self.pid);
         let mut command = Command::new("kill");
@@ -142,7 +160,7 @@ impl ProcessChild {
         }
     }
 
-            #[cfg(not(unix))]
+    #[cfg(not(unix))]
     fn signal_group(&mut self, _signal: StopSignal) {
         drop(self.child.kill());
     }

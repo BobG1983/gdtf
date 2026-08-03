@@ -1,4 +1,6 @@
+//! JSON-RPC request dispatch over stdio lines.
+
 pub mod dispatch;
-pub mod envelope;
+mod envelope;
 
 pub use dispatch::dispatch;
