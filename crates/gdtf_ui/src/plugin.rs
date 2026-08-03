@@ -1,3 +1,5 @@
+//! Top-level UI plugin: widgets, theming, focus nav.
+
 use bevy::prelude::*;
 use gdtf_assets::{RonAsset, redrive_hot_ron_resource};
 
@@ -22,10 +24,11 @@ use crate::{
 
 type ThemeAssetMessages = Messages<AssetEvent<RonAsset<GdtfThemeSpec>>>;
 
+/// Registers UI systems, messages, and focus navigation.
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
-                                                                                                                                                                                                                                                                                                                                                                                fn build(&self, app: &mut App) {
+    fn build(&self, app: &mut App) {
         app.add_message::<ToggleFlipped>()
             .add_message::<SegmentSelected>()
             .add_systems(
