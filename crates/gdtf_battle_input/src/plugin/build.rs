@@ -1,3 +1,5 @@
+//! Battle input plugin registration.
+
 use bevy::prelude::*;
 use gdtf_battle_presenter::{GamepadCursorMoved, HighlightRequest, playback_caught_up};
 use gdtf_battle_sim::{
@@ -33,9 +35,11 @@ use crate::{
     },
 };
 
+/// Marker resource inserted while the battle input plugin is active.
 #[derive(Resource)]
 pub struct GdtfBattleInputActive;
 
+/// Registers battle input systems, resources, and messages.
 pub struct GdtfBattleInputPlugin;
 
 pub(super) fn battle_act_gate() -> impl SystemCondition<()> {
@@ -175,8 +179,6 @@ impl Plugin for GdtfBattleInputPlugin {
 
         register_path_preview_population(app);
 
-        // GTW-450 — the reachable-range overlay POPULATE system is DEBUG-only (C1): it exists
-        // `#[cfg(debug_assertions)]`. A release build excludes it (the move feedback is the
         #[cfg(debug_assertions)]
         register_reachable_overlay_population(app);
 
