@@ -95,19 +95,18 @@ This is a clean-room engine rebuild, **not** a port of GDScript:
 ### The landed E10 sim↔app wiring (headless)
 
 The model/view boundary the deleted `docs/architecture.md` used to describe is
-landed (epic E10) as a **headless, message-driven boundary** — no renderer, no
+landed as a **headless, message-driven boundary** — no renderer, no
 window, no camera, no presenter visuals are part of *it*. The render side is a
-separate landed epic (GTW-48): `gdtf_battle_presenter` is **no longer a stub and
+separate landed epic: `gdtf_battle_presenter` is **no longer a stub and
 there is no CP437 renderer** — it is the shipped **top-down 16×16 sprite
 presenter** (drawn from the role-separated `alt_tileset_terrain` /
 `alt_tileset_characters` / `alt_tileset_effects` sheets, one `TextureAtlasLayout`
 each, behind the `BattlePresenterMode` enum, with the isometric renderer deferred
-behind that same enum — GTW-49 / GTW-10). Alongside it the `gdtf_battle_input`
+behind that same enum). Alongside it the `gdtf_battle_input`
 crate is the head of a one-way `gdtf_battle_input → gdtf_battle_presenter →
 gdtf_battle_sim` chain (the sim depends on neither; the presenter depends only on
 the sim), and the `gdtf_app` action-bar is a parallel button surface over the
-same act-intent queue. The documented drain invariant (re-worded in GTW-571, Q5-approved)
-is: **per-act generic drains in one explicitly-ordered SystemSet, same-frame semantics
+same act-intent queue. The documented drain invariant is: **per-act generic drains in one explicitly-ordered SystemSet, same-frame semantics
 preserved** — the classic keyboard/bar/click intents stay buffered on `PendingActIntent`
 and drained by `dispatch_act_intents`, while each CONTEXTUAL act (Execute / Stabilize /
 Melee / Shove / Open Door / Enter / Exit Emplacement / Throw Grenade) is a compile-time
@@ -115,8 +114,7 @@ descriptor with its own buffered `PendingContextualIntents<A>` queue and generic
 `drain_contextual_intents::<A>` drain, all in the one explicitly-ordered
 `ContextualActSystems::Drain` set that precedes `dispatch_act_intents` and the sim band
 (see `docs/authoring/contextual-act-recipe.md`).
-That render/input stack is GTW-48 work, NOT E10 — and it READS the running E10
-battle, adding zero sim plumbing. The E10 boundary below is unchanged by it. The
+That render/input stack READS the running battle, adding zero sim plumbing. The
 shape:
 
 - **`gdtf_battle_sim::BattleSimPlugin`** is the SIM-owned registration unit:
@@ -150,8 +148,7 @@ shape:
 
 Known follow-up (out of scope for the docs reconcile that recorded this note):
 ~48 in-source `gdtf_battle_sim` `.rs` doc-comments still reference the deleted
-`docs/architecture.md` path; repointing those source comments is tracked
-separately (GTW-211).
+`docs/architecture.md` path; repointing those source comments is separate work.
 
 ## Alternatives considered
 
