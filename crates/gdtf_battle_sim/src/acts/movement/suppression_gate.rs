@@ -1,3 +1,5 @@
+//! Suppressed movers may only step farther into cover away from the suppressor.
+
 use bevy::prelude::Deref;
 
 use crate::{
@@ -10,7 +12,7 @@ use crate::{
 struct EndsBehindCover(bool);
 
 impl EndsBehindCover {
-        const fn new(behind_cover: bool) -> Self {
+    const fn new(behind_cover: bool) -> Self {
         Self(behind_cover)
     }
 }
@@ -19,7 +21,7 @@ impl EndsBehindCover {
 pub(super) struct SuppressedMoveLegal(bool);
 
 impl SuppressedMoveLegal {
-        pub(super) const fn new(legal: bool) -> Self {
+    pub(super) const fn new(legal: bool) -> Self {
         Self(legal)
     }
 }
@@ -45,6 +47,7 @@ fn ends_behind_cover(
     EndsBehindCover::new(cover.peek(&CellLevel::new(toward, dest.level())).is_some())
 }
 
+/// Legal when dest is farther from suppressor and ends behind cover toward them.
 pub(super) fn suppressed_move_legal(
     start: &CellLevel,
     dest: &CellLevel,
