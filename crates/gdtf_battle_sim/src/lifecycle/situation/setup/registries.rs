@@ -1,4 +1,4 @@
-//! [`Situation`](crate::situation::Situation)'s authored references against.
+//! Catalog handles and the result of battle setup.
 
 use bevy::prelude::Deref;
 
@@ -13,42 +13,57 @@ use crate::{
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
 
+/// Number of gangers spawned.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GangerCount(usize);
 
 impl GangerCount {
-        #[must_use]
+    /// Wrap a count.
+    #[must_use]
     pub const fn new(count: usize) -> Self {
         Self(count)
     }
 }
 
+/// Result of a successful battle setup.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BattleSetup {
-        pub occupants: Vec<OccupantPlacement>,
+    /// Occupant placements written into the occupancy grid.
+    pub occupants: Vec<OccupantPlacement>,
 }
 
 impl BattleSetup {
-        #[must_use]
+    /// How many gangers were spawned.
+    #[must_use]
     pub const fn ganger_count(&self) -> GangerCount {
         GangerCount::new(self.occupants.len())
     }
 }
 
+/// Borrowed catalogs needed to resolve a situation.
 #[derive(Clone, Copy)]
 pub struct BattleRegistries<'a> {
-        pub gangs:         &'a GangRegistry,
-        pub weapons:       &'a WeaponRegistry,
-                pub melee_weapons: &'a MeleeWeaponRegistry,
-        pub armor:         &'a ArmorRegistry,
-        pub stat_tuning:   &'a GangerStatTuning,
-                pub terrain:       Option<&'a TerrainDefRegistry>,
-                                    pub fields:        Option<&'a FieldDefRegistry>,
-                                        pub attachments:   Option<&'a AttachmentRegistry>,
+    /// Gang rosters.
+    pub gangs: &'a GangRegistry,
+    /// Ranged weapons.
+    pub weapons: &'a WeaponRegistry,
+    /// Melee weapons.
+    pub melee_weapons: &'a MeleeWeaponRegistry,
+    /// Armor pieces.
+    pub armor: &'a ArmorRegistry,
+    /// Ganger stat defaults.
+    pub stat_tuning: &'a GangerStatTuning,
+    /// Terrain piece catalog.
+    pub terrain: Option<&'a TerrainDefRegistry>,
+    /// Area-damage field catalog.
+    pub fields: Option<&'a FieldDefRegistry>,
+    /// Attachment catalog.
+    pub attachments: Option<&'a AttachmentRegistry>,
 }
 
 impl<'a> BattleRegistries<'a> {
-                                #[must_use]
+    /// Core catalogs without optional field/attachment registries.
+    #[must_use]
     pub const fn new(
         gangs: &'a GangRegistry,
         weapons: &'a WeaponRegistry,
@@ -69,13 +84,15 @@ impl<'a> BattleRegistries<'a> {
         }
     }
 
-                            #[must_use]
+    /// Attach a field catalog.
+    #[must_use]
     pub const fn with_field_defs(mut self, fields: &'a FieldDefRegistry) -> Self {
         self.fields = Some(fields);
         self
     }
 
-                            #[must_use]
+    /// Attach an attachment catalog.
+    #[must_use]
     pub const fn with_attachments(mut self, attachments: &'a AttachmentRegistry) -> Self {
         self.attachments = Some(attachments);
         self
