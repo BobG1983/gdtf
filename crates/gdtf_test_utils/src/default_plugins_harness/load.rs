@@ -1,3 +1,5 @@
+//! Test app with DefaultPlugins and scene registration for load tests.
+
 use std::path::PathBuf;
 
 use bevy::{
@@ -20,17 +22,20 @@ fn workspace_assets_root() -> PathBuf {
         .join("assets")
 }
 
+/// Builds a headless DefaultPlugins app with scenes registered.
 pub struct GdtfLoadTestAppBuilder {
-        app: App,
+    app: App,
 }
 
 impl GdtfLoadTestAppBuilder {
-            #[must_use]
+    /// Use the workspace assets directory.
+    #[must_use]
     pub fn new() -> Self {
         Self::with_asset_root(workspace_assets_root())
     }
 
-                                    #[must_use]
+    /// Use an explicit asset root path.
+    #[must_use]
     pub fn with_asset_root(root: PathBuf) -> Self {
         let mut app = App::new();
         app.add_plugins(
@@ -63,7 +68,8 @@ impl GdtfLoadTestAppBuilder {
         Self { app }
     }
 
-                    #[must_use]
+    /// Queue a transition into `state` before the first update.
+    #[must_use]
     pub fn starting_in(mut self, state: AppState) -> Self {
         self.app
             .world_mut()
@@ -72,7 +78,8 @@ impl GdtfLoadTestAppBuilder {
         self
     }
 
-            pub fn build(self) -> App {
+    /// Finish building and return the app.
+    pub fn build(self) -> App {
         self.app
     }
 }
