@@ -1,3 +1,5 @@
+//! Line-of-sight probes and engagement visibility checks.
+
 mod engagement;
 mod probe;
 
