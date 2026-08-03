@@ -1,4 +1,5 @@
-//! `cfg(all(debug_assertions, feature = "net_qa"))` (its wiring site in
+//! Game net QA control channel (`debug_assertions` + `net_qa` feature).
+
 mod commands;
 mod config;
 mod env;
@@ -7,6 +8,7 @@ mod plugin;
 mod present;
 mod router;
 mod screenshot;
+/// Wire types for external QA clients.
 pub mod wire;
 
 crate::support_use!(plugin::NetQaPlugin;);

@@ -1,3 +1,5 @@
+//! Stat-block portrait index and spawn helpers.
+
 use std::hash::{Hash, Hasher};
 
 use bevy::{
@@ -20,7 +22,7 @@ const PORTRAIT_VH: f32 = 8.0;
 pub(in crate::states::running::game::battlescape) struct PortraitIndex(usize);
 
 impl PortraitIndex {
-                                        #[must_use]
+    #[must_use]
     pub(in crate::states::running::game::battlescape) fn for_name(
         name: Option<&GangerName>,
     ) -> Self {
@@ -33,6 +35,7 @@ impl PortraitIndex {
     }
 }
 
+/// Portrait atlas index for a ganger name (test helper).
 #[cfg(feature = "test-support")]
 #[must_use]
 pub fn portrait_index_for_name(name: Option<&GangerName>) -> usize {
