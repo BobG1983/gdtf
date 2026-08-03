@@ -1,3 +1,5 @@
+//! Prefab grid size field state and UI.
+
 use bevy_egui::egui;
 use gdtf_battle_sim::level::{GridHeight, GridLevels, GridSize, GridWidth, MAX_GRID_SPAN};
 
@@ -7,15 +9,17 @@ const SPAN_RANGE: core::ops::RangeInclusive<u8> = 1..=MAX_GRID_SPAN;
 
 const LEVELS_RANGE: core::ops::RangeInclusive<u8> = 1..=gdtf_battle_sim::metric::MAX_LEVELS;
 
+/// Editable width, height, and level spans for the prefab grid.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct SizeFieldSpans {
-        width:  GridSpanInput,
-        height: GridSpanInput,
-        levels: GridSpanInput,
+    width: GridSpanInput,
+    height: GridSpanInput,
+    levels: GridSpanInput,
 }
 
 impl SizeFieldSpans {
-            #[must_use]
+    /// Build from explicit span inputs.
+    #[must_use]
     pub const fn new(width: GridSpanInput, height: GridSpanInput, levels: GridSpanInput) -> Self {
         Self {
             width,
@@ -24,7 +28,8 @@ impl SizeFieldSpans {
         }
     }
 
-                        #[must_use]
+    /// Seed from the current session grid size.
+    #[must_use]
     pub fn from_session(session: &MapEditorSession) -> Self {
         let size = session.grid_size();
         Self::new(
@@ -34,22 +39,26 @@ impl SizeFieldSpans {
         )
     }
 
-        #[must_use]
+    /// Width span.
+    #[must_use]
     pub const fn width(&self) -> GridSpanInput {
         self.width
     }
 
-        #[must_use]
+    /// Height span.
+    #[must_use]
     pub const fn height(&self) -> GridSpanInput {
         self.height
     }
 
-        #[must_use]
+    /// Level count span.
+    #[must_use]
     pub const fn levels(&self) -> GridSpanInput {
         self.levels
     }
 
-                                pub fn commit(self, session: &mut MapEditorSession, edit_level: &mut CurrentEditLevel) {
+    /// Write clamped size into the session and clamp the edit level.
+    pub fn commit(self, session: &mut MapEditorSession, edit_level: &mut CurrentEditLevel) {
         let new_size =
             clamp_to_grid_size(*self.width, *self.height, *self.levels, session.grid_size());
         session.set_grid_size(new_size);
@@ -111,7 +120,7 @@ mod tests {
     use super::{SizeFieldSpans, clamp_to_grid_size};
     use crate::session::MapEditorSession;
 
-                #[test]
+    #[test]
     fn clamp_folds_into_the_system_constant_bands() {
         let previous = GridSize::default();
         let clamped = clamp_to_grid_size(200, 200, 99, previous);
@@ -136,7 +145,7 @@ mod tests {
         assert_eq!(*floored.levels(), 1, "zero levels clamps up to 1");
     }
 
-        #[test]
+    #[test]
     fn clamp_passes_in_range_sizes_through() {
         let previous = GridSize::default();
         let clamped = clamp_to_grid_size(16, 24, 3, previous);
@@ -145,7 +154,7 @@ mod tests {
         assert_eq!(*clamped.levels(), 3);
     }
 
-                    #[test]
+    #[test]
     fn from_session_tracks_a_programmatic_grid_change() {
         let mut session = MapEditorSession::new(ThemeUuid::nil(), None, GridSize::default());
         let seeded = SizeFieldSpans::from_session(&session);

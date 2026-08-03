@@ -1,21 +1,25 @@
+//! Editor QA screenshot output directory and path helpers.
+
 use std::path::{Path, PathBuf};
 
 use bevy::prelude::*;
 use gdtf_qa_protocol::ids::ShotName;
 use gdtf_screenshot::CapturePath;
 
+/// Directory where editor QA screenshots are written.
 #[derive(Resource, Clone, Debug, Deref)]
 pub struct EditorQaShotDir(PathBuf);
 
 impl EditorQaShotDir {
-            #[must_use]
+    /// Build from an output directory path.
+    #[must_use]
     pub const fn new(dir: PathBuf) -> Self {
         Self(dir)
     }
 }
 
 impl Default for EditorQaShotDir {
-        fn default() -> Self {
+    fn default() -> Self {
         Self(PathBuf::from("target/editor_qa_screenshots"))
     }
 }
@@ -24,7 +28,7 @@ impl Default for EditorQaShotDir {
 pub(in crate::net_qa) struct EditorShotSequence(u64);
 
 impl EditorShotSequence {
-            const fn advance(&mut self) -> Self {
+    const fn advance(&mut self) -> Self {
         let current = *self;
         self.0 += 1;
         current
@@ -81,7 +85,7 @@ mod test {
 
     use super::{DEFAULT_STEM, EditorQaShotDir, EditorShotSequence, next_capture_path};
 
-            #[test]
+    #[test]
     fn a_traversing_name_is_confined_to_the_shot_directory() {
         let dir = EditorQaShotDir::new(PathBuf::from("target/test_shots"));
         let mut seq = EditorShotSequence::default();
@@ -107,7 +111,7 @@ mod test {
         );
     }
 
-                #[test]
+    #[test]
     fn a_hostile_charset_is_filtered_out_of_the_stem() {
         let dir = EditorQaShotDir::new(PathBuf::from("target/test_shots"));
         let hostile = ShotName::new("sh ell;$(rm -rf *)&|>'\"`.png".to_owned());
@@ -118,7 +122,7 @@ mod test {
         assert_eq!(file, "shellrm-rf_0.png", "filtered file name: {file}");
     }
 
-            #[test]
+    #[test]
     fn a_repeated_name_still_yields_a_unique_path() {
         let dir = EditorQaShotDir::new(PathBuf::from("target/test_shots"));
         let mut seq = EditorShotSequence::default();
