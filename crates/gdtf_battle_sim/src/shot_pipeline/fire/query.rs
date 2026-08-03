@@ -1,3 +1,5 @@
+//! ECS query types used by the fire path.
+
 use bevy::ecs::{query::With, system::Query};
 
 use crate::{
@@ -22,6 +24,7 @@ use crate::{
     },
 };
 
+/// Shooter components needed to fire.
 pub type ShooterQuery<'world, 'state> = Query<
     'world,
     'state,
@@ -41,12 +44,16 @@ pub type ShooterQuery<'world, 'state> = Query<
     ),
 >;
 
+/// Wielded weapon link on a combatant.
 pub type WieldsQuery<'world, 'state> = Query<'world, 'state, &'static Wields>;
 
+/// Filter for melee weapons.
 pub type MeleeQuery<'world, 'state> = Query<'world, 'state, (), With<MeleeWeapon>>;
 
+/// Filter for mounted weapons.
 pub type MountedQuery<'world, 'state> = Query<'world, 'state, (), With<MountedWeapon>>;
 
+/// Weapon stats and magazine for a wielded weapon.
 pub type WeaponQuery<'world, 'state> = Query<
     'world,
     'state,
@@ -68,6 +75,7 @@ pub type WeaponQuery<'world, 'state> = Query<
     With<WieldedBy>,
 >;
 
+/// Target combatant mutable state for damage apply.
 pub type TargetQuery<'world, 'state> = Query<
     'world,
     'state,
@@ -82,22 +90,34 @@ pub type TargetQuery<'world, 'state> = Query<
     ),
 >;
 
+/// Worn armor set on a combatant.
 pub type WearsQuery<'world, 'state> = Query<'world, 'state, &'static Wears>;
 
+/// Individual armor piece data.
 pub type PieceQuery<'world, 'state> = Query<'world, 'state, PieceArmorMut, With<WornBy>>;
 
+/// Shared battle grids passed into fire resolution.
 #[derive(Debug)]
 pub struct BattleGrids<'a> {
-        pub occupancy:   &'a OccupancyGrid,
-        pub surface:     &'a SurfaceGrid,
-                pub cover:       &'a mut CoverLedger,
-                    pub slab:        &'a mut SlabLedger,
-                pub brace_cells: &'a BraceStairCells,
+    /// Occupancy grid.
+    pub occupancy: &'a OccupancyGrid,
+    /// Surface / slab grid.
+    pub surface: &'a SurfaceGrid,
+    /// Cover ledger (mutable for damage).
+    pub cover: &'a mut CoverLedger,
+    /// Slab ledger (mutable for damage).
+    pub slab: &'a mut SlabLedger,
+    /// Brace-capable stair cells.
+    pub brace_cells: &'a BraceStairCells,
 }
 
+/// One fire order: mode plus target cell/level.
 #[derive(Debug, Clone, Copy)]
 pub struct FireOrder<'a> {
-        pub mode:         &'a FireModeSpec,
-        pub target_cell:  Cell,
-        pub target_level: Level,
+    /// Fire mode being used.
+    pub mode: &'a FireModeSpec,
+    /// Target cell.
+    pub target_cell: Cell,
+    /// Target level.
+    pub target_level: Level,
 }
