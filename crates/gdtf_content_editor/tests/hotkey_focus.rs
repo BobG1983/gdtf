@@ -15,7 +15,7 @@ use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
 const MAX_UPDATES: u32 = 10_000;
 
-const PROBE_ID: &str = "gtw-681-suppression-probe";
+const PROBE_ID: &str = "egui-suppression-probe";
 
 fn editor_app_with_focus_machinery() -> App {
     let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
@@ -94,7 +94,7 @@ fn digit_press_while_egui_focused_does_not_switch_mode() {
     assert_eq!(
         mode(&app),
         Some(EditorMode::Prefab),
-        "a digit press while an egui text field is focused must NOT switch EditorMode (GTW-681 C1)",
+        "a digit press while an egui text field is focused must NOT switch EditorMode",
     );
 }
 
@@ -113,7 +113,7 @@ fn digit_press_switches_mode_when_unfocused() {
     assert_eq!(
         mode(&app),
         Some(EditorMode::Attachment),
-        "an unfocused digit `8` must switch to the ATTACHMENT tab (GTW-681 C2)",
+        "an unfocused digit `8` must switch to the ATTACHMENT tab",
     );
 }
 
@@ -134,7 +134,7 @@ fn f_flips_view_mode_when_unfocused() {
     let after = app.world().get_resource::<ViewMode>().copied();
     assert_ne!(
         after, before,
-        "an unfocused `F` must flip the prefab viewport ViewMode (GTW-681 C2)",
+        "an unfocused `F` must flip the prefab viewport ViewMode",
     );
 }
 
@@ -156,7 +156,7 @@ fn bracket_steps_edit_level_when_unfocused() {
     let after = app.world().get_resource::<CurrentEditLevel>().copied();
     assert_ne!(
         after, before,
-        "an unfocused `]` must step the CurrentEditLevel off the ground storey (GTW-681 C2)",
+        "an unfocused `]` must step the CurrentEditLevel off the ground storey",
     );
 }
 

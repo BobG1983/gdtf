@@ -86,7 +86,7 @@ fn assert_handle_persists_and_fire<F: gdtf_assets::ContentFamily>(
         app.world()
             .get_resource::<ContentFolderHandle<F>>()
             .is_some(),
-        "the loader's persistent ContentFolderHandle must survive past Load (GTW-533)",
+        "the loader's persistent ContentFolderHandle must survive past Load",
     );
     app.world_mut().write_message(AssetEvent::Modified { id });
 }
@@ -199,7 +199,7 @@ fn modified_terrain_def_member_rebuilds_terrain_registry_after_load() {
             "the scrap_barricade member must be resident once Editing is reached",
         );
         let Some(mut asset) = asset else { return };
-        asset.display_name = TerrainDisplayName::new("GTW-579 Edited Terrain".to_owned());
+        asset.display_name = TerrainDisplayName::new("Edited Terrain".to_owned());
         asset.key
     };
     assert_handle_persists_and_fire::<TerrainDefsFamily>(&mut app, handle.id());
@@ -210,7 +210,7 @@ fn modified_terrain_def_member_rebuilds_terrain_registry_after_load() {
             app.world()
                 .get_resource::<TerrainDefRegistry>()
                 .and_then(|r| r.def(&key).map(|d| (*d.display_name).clone()))
-                == Some("GTW-579 Edited Terrain".to_owned())
+                == Some("Edited Terrain".to_owned())
         },
         REDRIVE_UPDATES,
     );
@@ -243,7 +243,7 @@ fn modified_theme_def_member_rebuilds_theme_registry_after_load() {
             "the underhive theme member must be resident once Editing is reached",
         );
         let Some(mut asset) = asset else { return };
-        asset.display_name = ThemeDisplayName::new("GTW-579 Edited Theme".to_owned());
+        asset.display_name = ThemeDisplayName::new("Edited Theme".to_owned());
         asset.key
     };
     assert_handle_persists_and_fire::<ThemeDefsFamily>(&mut app, handle.id());
@@ -254,7 +254,7 @@ fn modified_theme_def_member_rebuilds_theme_registry_after_load() {
             app.world()
                 .get_resource::<UuidThemeRegistry>()
                 .and_then(|r| r.def(&key).map(|d| (*d.display_name).clone()))
-                == Some("GTW-579 Edited Theme".to_owned())
+                == Some("Edited Theme".to_owned())
         },
         REDRIVE_UPDATES,
     );
