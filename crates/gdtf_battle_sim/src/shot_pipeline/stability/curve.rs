@@ -1,9 +1,11 @@
-//! [`StabilityCurve`]'s authored sample points (the curve *form*; the points are
+//! Interpolate authored stability curves.
+
 use crate::{
     stability::types::{CurveOutput, StabilityScore},
     tuning::StabilityCurve,
 };
 
+/// Read a curve at the given stability score (linear interpolation between points).
 pub(super) fn read_curve(curve: &StabilityCurve, score: StabilityScore) -> CurveOutput {
     let s = *score;
     let points: &[_] = curve;

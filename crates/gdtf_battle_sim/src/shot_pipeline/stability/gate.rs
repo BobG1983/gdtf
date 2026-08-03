@@ -1,3 +1,5 @@
+//! Stance contribution and brace engagement checks.
+
 use bevy::prelude::Deref;
 
 use crate::{
@@ -8,11 +10,12 @@ use crate::{
     weapon::Stable,
 };
 
+/// Whether brace is currently engaged.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct BraceEngaged(bool);
 
 impl BraceEngaged {
-        pub(super) const fn new(engaged: bool) -> Self {
+    pub(super) const fn new(engaged: bool) -> Self {
         Self(engaged)
     }
 }
@@ -33,6 +36,7 @@ const fn brace_min_band(stance: StanceKind, tuning: &ConeStabilityTuning) -> Hei
     }
 }
 
+/// Stability points contributed by the current stance.
 pub(super) const fn stance_contribution(
     stance: StanceKind,
     tuning: &ConeStabilityTuning,
@@ -44,6 +48,7 @@ pub(super) const fn stance_contribution(
     }
 }
 
+/// Whether the shooter is braced (weapon stable, terrain braced, or cover high enough).
 pub(super) fn brace_engages(
     stable: Stable,
     terrain_braced: TerrainBraced,
