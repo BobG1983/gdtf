@@ -1,3 +1,5 @@
+//! Apply rolled injuries onto a target's injury ledger.
+
 use bevy::prelude::{Commands, Entity, Message, MessageReader, Query};
 
 use crate::{
@@ -8,20 +10,30 @@ use crate::{
     severity::Severity,
 };
 
+/// Message: an injury was inflicted on a target.
 #[derive(Message, Debug, Clone, PartialEq)]
 pub struct InjuryInflicted {
-        pub target:       Entity,
-                pub gained:       GainedInjury,
-            pub name:         InjuryName,
-        pub part:         BodyPart,
-        pub severity:     Severity,
-            pub popup_text:   PopupText,
-        pub log_text:     LogText,
-        pub inspect_text: InspectText,
+    /// Target entity.
+    pub target: Entity,
+    /// Injury to record.
+    pub gained: GainedInjury,
+    /// Display name.
+    pub name: InjuryName,
+    /// Body part.
+    pub part: BodyPart,
+    /// Severity.
+    pub severity: Severity,
+    /// Popup text.
+    pub popup_text: PopupText,
+    /// Log text.
+    pub log_text: LogText,
+    /// Inspect text.
+    pub inspect_text: InspectText,
 }
 
 impl InjuryInflicted {
-                                #[must_use]
+    /// Build from a rolled injury table result.
+    #[must_use]
     pub fn from_rolled(target: Entity, rolled: RolledInjury) -> Self {
         let name = rolled.name.clone();
         let part = rolled.part;
@@ -42,6 +54,7 @@ impl InjuryInflicted {
     }
 }
 
+/// System: record injuries and refresh bleed state.
 pub fn apply_injury(
     mut inflicted: MessageReader<InjuryInflicted>,
     mut ledgers: Query<&mut InflictedInjuries>,
