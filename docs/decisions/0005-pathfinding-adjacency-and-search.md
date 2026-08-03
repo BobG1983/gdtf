@@ -1,16 +1,15 @@
 ---
 name: "ADR 0005: Grid pathfinding — adjacency, search, and vertical stitching"
-description: Resolve GTW-12's parked pathfinding forks — adjacency/diagonal policy (user-ratified) and the deterministic weighted-search core that serves both point-to-point routing and the reachable-range overlay over per-storey grids stitched by VerticalLinkGraph.
+description: Resolve pathfinding forks — adjacency/diagonal policy (user-ratified) and the deterministic weighted-search core that serves both point-to-point routing and the reachable-range overlay over per-storey grids stitched by VerticalLinkGraph.
 ---
 
 # 0005. Grid pathfinding — adjacency, search, and vertical stitching
 
 ## Status
 
-`Accepted` — 2026-06-22 (user-ratified), driven by [GTW-12](https://linear.app/robert-gardner/issue/GTW-12).
-Proposed 2026-06-21.
+`Accepted` — 2026-06-22 (user-ratified). Proposed 2026-06-21.
 
-This ADR resolves the two design forks that GTW-12 was parked on. **OQ-2 (search
+This ADR resolves the two design forks pathfinding was parked on. **OQ-2 (search
 algorithm + deterministic tie-break)** is an engineering-determined call and is
 **accepted** as recommended below. **OQ-1 (adjacency / diagonal / corner-cutting)**
 is a tactical-feel call the user parked deliberately; the recommendation here was
@@ -27,7 +26,7 @@ x/y are ground-plane cells, z is a storey level, one sim unit = one cell = one
 level, and the canonical identity is `CellLevel` wrapping `IVec3` (`(x, y, level)`)
 (`crates/gdtf_battle_sim/src/foundation/metric/coords.rs`). There are no pixels in the model.
 
-GTW-12 owes the sim two pathfinding deliverables:
+Pathfinding owes the sim two deliverables:
 
 1. **Point-to-point routing** — given a start and a goal `CellLevel`, the cheapest
    legal route across one or more storeys.
@@ -50,17 +49,16 @@ redesign them:
   `open=4, cover=6, wall=8` (`tuning/economy/movement.rs`). **The minimum positive move cost
   on the grid is 4** — load-bearing for the search heuristic below.
 - **The OccupancyGrid** is the authoritative blocked/walkable surface, change-driven
-  (maintained in place, never rebuilt per shot — the GTW-6/GTW-12 ruling)
+  (maintained in place, never rebuilt per shot)
   (`crates/gdtf_battle_sim/src/terrain/occupancy/grid/storage.rs`).
 - **The VerticalLinkGraph** indexes authored stair/ladder links, validated at setup,
   bidirectional unless one-way, queryable via `links_from(origin)`
   (`crates/gdtf_battle_sim/src/terrain/vertical/graph.rs`). It is explicitly **existence-only
-  today — "there is no traversal / pathfinding / movement cost here (that is GTW-12)."**
+  today — traversal / pathfinding / movement cost is this ADR.**
 - **Determinism is a hard constraint**: the sim is seeded-replayable; equal-cost
   choices must resolve in a fixed total order or two replays diverge. Movement reads
   consume no RNG. The established precedent is the `auto_select` cell-key sort by
-  `(z, y, x)` — **not** entity-ID order (the GTW-255 `auto_select_first_player_ganger`
-  precedent, `cell_order_key`).
+  `(z, y, x)` — **not** entity-ID order (`cell_order_key`).
 
 What is **not yet decided**, and why a decision is needed now:
 
@@ -73,8 +71,8 @@ What is **not yet decided**, and why a decision is needed now:
   replay.
 
 There is no pathfinding code today; `move_ganger` steps a single `dest: CellLevel`
-per call (the GTW-234 single-step verb — since evolved into the committed per-tick
-walk, `crates/gdtf_battle_sim/src/acts/movement/walk.rs`). GTW-12 introduces the
+per call (since evolved into the committed per-tick walk,
+`crates/gdtf_battle_sim/src/acts/movement/walk.rs`). This ADR introduces the
 search and the neighbour model; it does not touch the economy.
 
 ## Decision
@@ -159,13 +157,12 @@ deterministic in Rust. We therefore order the priority queue by the tuple:
 ```
 
 where **`cell_key` is the canonical `(z, y, x)` ordering of `CellLevel`** — the same
-total order `auto_select` already uses (the GTW-255 `cell_order_key` precedent). The
-cell key as the **final** component gives a data-only total order that depends on map
-data alone, not heap internals, insertion timing, or `HashMap` iteration. An optional
-straightness/larger-`g` tier may sit *above* the cell key for nicer-looking paths, but
-never *instead* of it. **Neighbour enumeration must also be sorted deterministically**
-(planar neighbours and `links_from` results iterated in a fixed order), or any
-intermediate tier silently reintroduces nondeterminism.
+total order `auto_select` already uses. The cell key as the **final** component gives
+a data-only total order that depends on map data alone, not heap internals, insertion
+timing, or `HashMap` iteration. An optional straightness/larger-`g` tier may sit *above*
+the cell key for nicer-looking paths, but never *instead* of it. **Neighbour enumeration
+must also be sorted deterministically** (planar neighbours and `links_from` results
+iterated in a fixed order), or any intermediate tier silently reintroduces nondeterminism.
 
 ### Vertical stitching *(confirm §48 — not redesigned)*
 
@@ -193,8 +190,7 @@ With a ganger selected, movement is a **two-click** interaction:
    selects it, **reveals the path** to it (the point-to-point route from the OQ-2 core),
    and **shows the planned move's TU cost above the target cell**. Pathing into areas the
    player **cannot see is not allowed** — the route may only run through visible cells, so
-   a target requiring a path through the unseen does not preview a route. (The "what counts
-   as seen" filter is GTW-13's; see open question 6.)
+   a target requiring a path through the unseen does not preview a route.
 2. **Second click — commit + walk.** Clicking again **commits** the move. Commit is the
    **single up-front affordability check** (§48): the move-commit gate verifies the full
    planned route is affordable, once, here — exactly the §48 gate the search feeds. On
@@ -224,26 +220,23 @@ on that storey is the click-target. The route then **routes through the vertical
 (per *Vertical stitching* above), but the link tile itself is **never** the target; the
 destination cell on the other storey is.
 
-### How the GTW-12 children carry each part
+### How the children carry each part
 
-(Child ticket IDs are created/confirmed on the board at GTW-12 breakdown — see open
-question 7; the mapping below is by responsibility, not asserted IDs.)
-
-- **Path-preview child** — first-click route reveal over the OQ-2 point-to-point core,
+- **Path-preview** — first-click route reveal over the OQ-2 point-to-point core,
   including the "no pathing into unseen" constraint.
-- **Range / cost-display child** — the TU cost shown above the target cell (and the
+- **Range / cost-display** — the TU cost shown above the target cell (and the
   reachable-range overlay from the OQ-2 Dijkstra flood).
-- **Dispatch-constrain + commit child** — second-click commit wired to the §48 up-front
+- **Dispatch-constrain + commit** — second-click commit wired to the §48 up-front
   affordability gate, then dispatching the route to the per-step move writers.
-- **Tween + interrupt child** — the tweened per-step walk and the stop-on-enemy-revealed /
+- **Tween + interrupt** — the tweened per-step walk and the stop-on-enemy-revealed /
   stop-on-reaction-shot interrupt.
-- **Cross-storey input child** — click-on-destination-storey targeting (OQ-4): switching
+- **Cross-storey input** — click-on-destination-storey targeting (OQ-4): switching
   the active-level view by storey selection and routing through the link, never targeting
   the link tile.
 
 ## Consequences
 
-- **Both GTW-12 deliverables share one core.** The reachable-range overlay and
+- **Both deliverables share one core.** The reachable-range overlay and
   point-to-point routing differ only by `h` (≡ 0 for the flood, `chebyshev × 4` for
   routing) — one priority-queue, one relaxation, one tie-break to test and maintain.
 - **The economy contract is preserved, not duplicated.** Pathfinding reads
@@ -252,7 +245,7 @@ question 7; the mapping below is by responsibility, not asserted IDs.)
 - **Replay stays byte-equal** as long as the `(cost, …, (z,y,x) cell_key)` order and
   sorted neighbour enumeration are honoured. This is a **testable invariant** — a
   determinism regression (same map + budget → identical route and identical reachable
-  set) should ship with the search-core child ticket.
+  set) should ship with the search core.
 - **Determinism note must be enforced in code**: keyed/cell-based lookups only; no
   `Entity`-ID-order iteration, no raw `HashMap`-order iteration in the hot loop.
 - **With 8-connected ratified**, the build owes the octile cost *and* the
@@ -262,11 +255,9 @@ question 7; the mapping below is by responsibility, not asserted IDs.)
   slower; the heuristic is a pure speed optimization layered on the same core later,
   with no replay impact (it changes which equal-cost path *order* is explored only up
   to the tie-break, which still pins the result).
-- **Unblocks the GTW-12 child work:** the **deterministic neighbour enumeration**
+- **Unblocks the child work:** the **deterministic neighbour enumeration**
   (planar adjacency per OQ-1 + `links_from` edges, sorted) and the **weighted search
-  core** (Dijkstra + tie-break + both query entry points). The exact Linear child
-  ticket IDs are to be created/confirmed on the board when GTW-12 is broken down — not
-  asserted here.
+  core** (Dijkstra + tie-break + both query entry points).
 - **Forecloses** a BFS/uniform-step implementation and any non-keyed tie-break; undoing
   either would require a superseding ADR and would break replay.
 
@@ -298,8 +289,8 @@ question 7; the mapping below is by responsibility, not asserted IDs.)
   2026-06-22 in favour of 8-connected): it under-uses the `Direction` compass and
   diverges from the XCOM feel the project chases. Recorded here as the considered-and-
   rejected alternative; revisiting it would require a superseding ADR.
-- **Do nothing / keep single-step movement.** Rejected: GTW-12 (multi-level path search
-  - reachable-range overlay) is required for the manual-play loop; single-step `move_ganger`
+- **Do nothing / keep single-step movement.** Rejected: multi-level path search and the
+  reachable-range overlay are required for the manual-play loop; single-step `move_ganger`
   cannot preview routes or reachable footprints.
 
 ## Open questions
@@ -313,8 +304,7 @@ question 7; the mapping below is by responsibility, not asserted IDs.)
   below.)
 - **OQ-3 — stairs vertical-link sprite: RESOLVED.** The stairs tile is **atlas index 77**
   (authored as **row 5, column 14**, 1-indexed → 0-based `(5-1) × 16 + (14-1) = 77` on the
-  16-wide atlas). The **ladder stays atlas 235**. The tile-role build that consumes this is
-  **GTW-359** (this ADR only records the resolved index).
+  16-wide atlas). The **ladder stays atlas 235**.
 - **OQ-4 — cross-storey targeting: RESOLVED.** Clicking a vertical-link tile does **not**
   change the active level or target the link; the player clicks a tile **on the destination
   storey** (which switches the active-level view) and the path routes through the link. The
@@ -341,11 +331,8 @@ question 7; the mapping below is by responsibility, not asserted IDs.)
    `Vec<CellLevel>` route (fits the current one-message-per-step dispatch and easy
    preview) or a richer route handle with per-step cost metadata? Affects the
    pathfinder ↔ dispatch interface, not the economy.
-5. **Visibility coupling (defer to GTW-13):** §48 plans routes on *true geometry* but
-   bends around *visible-or-remembered* blocking scatter only. GTW-12's core can stay
-   FOV-agnostic; confirm the scatter-visibility filter is layered in by the FOV ticket,
-   not baked into the search. (This is also the source of the "no pathing into unseen"
-   filter in *Movement interaction* above.)
-6. **Child ticket IDs (Linear):** the GTW-12 breakdown (neighbour enumeration; search
-   core; and the movement-interaction children listed above) needs its child tickets
-   created/confirmed on the board before this ADR cites any specific GTW-* IDs for them.
+5. **Visibility coupling:** §48 plans routes on *true geometry* but bends around
+   *visible-or-remembered* blocking scatter only. The search core can stay FOV-agnostic;
+   the scatter-visibility filter is layered in by FOV work, not baked into the search.
+   (This is also the source of the "no pathing into unseen" filter in *Movement interaction*
+   above.)
