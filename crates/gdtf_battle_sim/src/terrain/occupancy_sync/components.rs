@@ -1,4 +1,4 @@
-//! Messages and components used by occupancy sync.
+//! Messages and markers for occupancy projection.
 
 use bevy::prelude::{Component, Message};
 
@@ -7,7 +7,7 @@ use crate::{
     surface::GroundDamage,
 };
 
-/// Last occupancy slot for a ganger (and optional stair upper cell).
+/// Previous occupancy slots for a moving ganger (lower and optional upper).
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PrevSlot {
     lower: CellLevel,
@@ -15,13 +15,13 @@ pub struct PrevSlot {
 }
 
 impl PrevSlot {
-    /// Single-cell slot.
+    /// Single-cell previous slot.
     #[must_use]
     pub const fn new(lower: CellLevel) -> Self {
         Self { lower, upper: None }
     }
 
-    /// Slot with a stair upper cell.
+    /// Two-cell previous slot (e.g. tall stance).
     #[must_use]
     pub const fn with_upper(lower: CellLevel, upper: CellLevel) -> Self {
         Self {
@@ -36,17 +36,17 @@ impl PrevSlot {
         self.lower
     }
 
-    /// Optional upper stair cell.
+    /// Optional upper cell.
     #[must_use]
     pub const fn upper(self) -> Option<CellLevel> {
         self.upper
     }
 }
 
-/// Cover at this cell was destroyed.
+/// Cover at a cell was destroyed.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CoverDestroyed {
-    /// Destroyed cell.
+    /// Cell of the cover.
     pub at: CellLevel,
 }
 
@@ -58,10 +58,10 @@ impl CoverDestroyed {
     }
 }
 
-/// Slab at this cell was destroyed.
+/// Slab at a cell was destroyed.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SlabDestroyed {
-    /// Destroyed cell.
+    /// Cell of the slab.
     pub at: CellLevel,
 }
 
@@ -76,7 +76,7 @@ impl SlabDestroyed {
 /// Ground damage accrued on a cell.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GroundAccrued {
-    /// Cell that took damage.
+    /// Board cell.
     pub cell: Cell,
     /// Damage amount.
     pub amount: GroundDamage,
