@@ -1,15 +1,23 @@
+//! Wire-level framing failures.
+
 use core::fmt::{self, Display};
 
 use super::limits::{FrameLen, MaxFrameLen};
 
+/// Error while encoding or decoding a length-prefixed frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum WireError {
-                Oversize {
-                declared: FrameLen,
-                max:      MaxFrameLen,
+    /// Declared payload length exceeds [`super::MAX_FRAME_LEN`].
+    Oversize {
+        /// Length claimed in the prefix.
+        declared: FrameLen,
+        /// Configured maximum.
+        max: MaxFrameLen,
     },
-            Malformed,
-        Encode,
+    /// Payload bytes were not valid compact RON (or not UTF-8).
+    Malformed,
+    /// Message could not be serialized to compact RON.
+    Encode,
 }
 
 impl Display for WireError {
