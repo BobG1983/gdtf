@@ -1,3 +1,5 @@
+//! Startup folder load, resolve (including salvage), and hot-redrive.
+
 use core::any::TypeId;
 
 use bevy::{
@@ -19,6 +21,7 @@ use crate::{
     hot::short_type_name,
 };
 
+/// Begin loading the family's folder on startup.
 pub fn kick_off_content_family<F: ContentFamily>(
     mut commands: Commands,
     asset_server: Option<Res<AssetServer>>,
@@ -31,6 +34,7 @@ pub fn kick_off_content_family<F: ContentFamily>(
     ));
 }
 
+/// Build the registry once the folder (or salvage) is ready.
 pub fn resolve_content_family<F: ContentFamily>(
     mut commands: Commands,
     asset_server: Option<Res<AssetServer>>,
@@ -110,6 +114,7 @@ fn record_malformed_members<F: ContentFamily>(
     );
 }
 
+/// Rebuild the registry when any member RON is modified.
 pub fn redrive_content_family<F: ContentFamily>(
     mut events: MessageReader<AssetEvent<RonAsset<F::Spec>>>,
     asset_server: Option<Res<AssetServer>>,
