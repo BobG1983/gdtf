@@ -1,16 +1,23 @@
+//! Inspect-target pin decision for left-click.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::prelude::Faction;
 
 use super::reads::LeftClickReads;
 use crate::InspectTarget;
 
+/// Whether to pin, unpin, or keep the inspect target.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PinOutcome {
-                Pin(gdtf_battle_sim::metric::CellLevel),
-        Unpin,
-                Keep,
+    /// Pin this cell.
+    Pin(gdtf_battle_sim::metric::CellLevel),
+    /// Clear the pin.
+    Unpin,
+    /// Leave the pin unchanged.
+    Keep,
 }
 
+/// Decide pin behavior from the hovered cell occupancy.
 #[must_use]
 pub fn decide_pin(
     reads: &LeftClickReads,
@@ -36,6 +43,7 @@ pub fn decide_pin(
     PinOutcome::Unpin
 }
 
+/// Apply a pin outcome to the inspect target.
 pub fn apply_pin(outcome: PinOutcome, target: &mut ResMut<InspectTarget>) {
     match outcome {
         PinOutcome::Pin(cell) => {

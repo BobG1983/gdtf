@@ -1,3 +1,5 @@
+//! Right-click turn-to-face decision.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     acts::SetFacingRequested,
@@ -6,6 +8,7 @@ use gdtf_battle_sim::{
 
 use crate::{InspectTarget, selection::SelectedShooter};
 
+/// Build a facing request from selected shooter toward the hovered cell.
 #[must_use]
 pub fn decide_turn(
     selected: &SelectedShooter,

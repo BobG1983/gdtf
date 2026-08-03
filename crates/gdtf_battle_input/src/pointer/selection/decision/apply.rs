@@ -1,3 +1,5 @@
+//! Apply a left-click outcome to selection and pending intents.
+
 use bevy::prelude::*;
 
 use super::LeftClickOutcome;
@@ -9,6 +11,7 @@ use crate::{
     },
 };
 
+/// Mutate selection, pending intents, and path preview from a left-click outcome.
 pub fn apply_left_click(
     outcome: LeftClickOutcome,
     selected: &mut ResMut<SelectedShooter>,
