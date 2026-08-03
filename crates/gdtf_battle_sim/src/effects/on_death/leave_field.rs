@@ -1,24 +1,28 @@
+//! On-death leave-field effect.
+
 use super::{ApplyOnDeathEffect, DeathFanOut};
 use crate::{effects::fields::FieldKey, metric::CellLevel};
 
+/// Spawns a field at the death cell from a catalog key.
 pub struct ApplyLeaveField<'k> {
-            field: &'k FieldKey,
+    field: &'k FieldKey,
 }
 
 impl<'k> ApplyLeaveField<'k> {
-        #[must_use]
+    /// Build the applicator.
+    #[must_use]
     pub const fn new(field: &'k FieldKey) -> Self {
         Self { field }
     }
 }
 
 impl ApplyOnDeathEffect for ApplyLeaveField<'_> {
-                            fn fan_at(&self, at: CellLevel, fan_out: &mut DeathFanOut<'_, '_, '_>) {
+    fn fan_at(&self, at: CellLevel, fan_out: &mut DeathFanOut<'_, '_, '_>) {
         let Some(defs) = fan_out.field_defs else {
-            return; 
+            return;
         };
         let Some(def) = defs.def(self.field) else {
-            return; 
+            return;
         };
         fan_out.fields.spawn(at, def.clone());
     }
@@ -46,11 +50,11 @@ mod tests {
         weapon::DamageType,
     };
 
-        fn ground(x: i32, y: i32) -> CellLevel {
+    fn ground(x: i32, y: i32) -> CellLevel {
         CellLevel::new(Cell::new(x, y), Level::new(0))
     }
 
-        fn catalog_with(key: &str) -> FieldDefRegistry {
+    fn catalog_with(key: &str) -> FieldDefRegistry {
         let mut defs = FieldDefRegistry::default();
         defs.insert(
             FieldKey::new(key.to_owned()),
@@ -64,7 +68,7 @@ mod tests {
         defs
     }
 
-                fn fan(key: &FieldKey, defs: Option<&FieldDefRegistry>, at: CellLevel) -> FieldRegistry {
+    fn fan(key: &FieldKey, defs: Option<&FieldDefRegistry>, at: CellLevel) -> FieldRegistry {
         let mut world = World::new();
         let grid = OccupancyGrid::new();
         let mut fields = FieldRegistry::new();
@@ -74,17 +78,17 @@ mod tests {
             unreachable!("a plain Query SystemParam always validates");
         };
         let mut fan_out = DeathFanOut {
-            grid:       &grid,
-            victims:    &mut victims,
-            fields:     &mut fields,
+            grid: &grid,
+            victims: &mut victims,
+            fields: &mut fields,
             field_defs: defs,
-            cascade:    &mut cascade,
+            cascade: &mut cascade,
         };
         ApplyLeaveField::new(key).fan_at(at, &mut fan_out);
         fields
     }
 
-        #[test]
+    #[test]
     fn leave_field_spawns_the_referenced_field_at_the_death_cell() {
         let defs = catalog_with("burning");
         let fields = fan(
@@ -98,7 +102,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn an_absent_catalog_fans_nothing() {
         let fields = fan(&FieldKey::new("burning".to_owned()), None, ground(7, 8));
         assert!(
@@ -107,7 +111,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn an_unresolvable_key_fans_nothing() {
         let defs = catalog_with("burning");
         let fields = fan(
