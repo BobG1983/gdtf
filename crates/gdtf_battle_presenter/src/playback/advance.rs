@@ -1,3 +1,5 @@
+//! Advance the playback cursor through the act log.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     act_log::{ActLog, PositionFacts, VitalsFacts},
@@ -26,14 +28,15 @@ type ResyncData = (
     Option<&'static InflictedInjuries>,
 );
 
+/// Probe for in-flight projectiles and pending impacts.
 #[derive(bevy::ecs::system::SystemParam)]
 pub struct FxPipelineProbe<'w, 's> {
-        projectiles: Query<'w, 's, (), With<ShotProjectile>>,
-        pending:     Query<'w, 's, (), With<PendingImpact>>,
+    projectiles: Query<'w, 's, (), With<ShotProjectile>>,
+    pending: Query<'w, 's, (), With<PendingImpact>>,
 }
 
 impl FxPipelineProbe<'_, '_> {
-        fn is_busy(&self) -> bool {
+    fn is_busy(&self) -> bool {
         !self.projectiles.is_empty() || !self.pending.is_empty()
     }
 }
@@ -46,6 +49,7 @@ impl FxPipelineProbe<'_, '_> {
               two multi-query groups are ALREADY bundled (`FxPipelineProbe` / \
               `DrawnWriters`); bundling the rest would only hide the access set"
 )]
+/// Tick holds and show the next act-log entry when free.
 pub fn advance_playback(
     time: Res<Time>,
     log: Option<Res<ActLog>>,

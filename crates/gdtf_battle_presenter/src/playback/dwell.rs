@@ -1,4 +1,5 @@
-//! Every value is a named newtype with a `DEFAULT` and `#[serde(default)]`, loaded through
+//! Hot-reloadable dwell durations for each act kind.
+
 use bevy::prelude::*;
 use gdtf_assets::HotRonAppExt;
 use serde::Deserialize;
@@ -6,15 +7,18 @@ use serde::Deserialize;
 macro_rules! dwell_seconds {
     ($(#[$meta:meta])* $name:ident, $default:expr, $doc:expr) => {
         #[doc = $doc]
-                                /// [`Default`]. `#[serde(default)]` on the field means an absent `.ron` entry
-                #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
+        ///
+        /// Implements [`Default`]. Absent `.ron` entries fall back via `#[serde(default)]`.
+        #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
         #[serde(transparent)]
         pub struct $name(f32);
 
         impl $name {
-                        pub const DEFAULT: f32 = $default;
+            /// Shipped default in seconds.
+            pub const DEFAULT: f32 = $default;
 
-                        #[must_use]
+            /// Build from a seconds value.
+            #[must_use]
             pub const fn new(seconds: f32) -> Self {
                 Self(seconds)
             }
@@ -104,20 +108,32 @@ dwell_seconds!(
      the shipped velocity, so it never truncates a real bolt."
 );
 
+/// All playback dwell timings, hot-loaded from RON.
 #[derive(Resource, Debug, Clone, PartialEq, Default, Deserialize, TypePath)]
 #[serde(default)]
 pub struct PlaybackTuning {
-        pub round_seconds:         RoundSeconds,
-        pub reaction_beat_seconds: ReactionBeatSeconds,
-        pub fire_beat_seconds:     FireBeatSeconds,
-        pub step_seconds:          StepSeconds,
-        pub posture_seconds:       PostureSeconds,
-        pub reload_seconds:        ReloadSeconds,
-        pub consequence_seconds:   ConsequenceSeconds,
-        pub life_change_seconds:   LifeChangeSeconds,
-        pub turn_beat_seconds:     TurnBeatSeconds,
-        pub minor_seconds:         MinorSeconds,
-        pub impact_cap_seconds:    ImpactCapSeconds,
+    /// Dwell after each landed volley round.
+    pub round_seconds: RoundSeconds,
+    /// Dwell on reaction-fire declarations.
+    pub reaction_beat_seconds: ReactionBeatSeconds,
+    /// Dwell on ordinary fire declarations.
+    pub fire_beat_seconds: FireBeatSeconds,
+    /// Dwell on each walk step.
+    pub step_seconds: StepSeconds,
+    /// Dwell on posture changes.
+    pub posture_seconds: PostureSeconds,
+    /// Dwell on reloads.
+    pub reload_seconds: ReloadSeconds,
+    /// Dwell on injury/fall/armor consequences.
+    pub consequence_seconds: ConsequenceSeconds,
+    /// Dwell on life-state changes.
+    pub life_change_seconds: LifeChangeSeconds,
+    /// Dwell on turn boundaries.
+    pub turn_beat_seconds: TurnBeatSeconds,
+    /// Dwell on minor ordered facts.
+    pub minor_seconds: MinorSeconds,
+    /// Hard cap waiting for projectile impact.
+    pub impact_cap_seconds: ImpactCapSeconds,
 }
 
 const PLAYBACK_TUNING_RON_PATH: &str = "core_tuning/playback.tuning.ron";
