@@ -9,7 +9,7 @@ use gdtf_battle_sim::terrain::def::{TerrainDefRegistry, TerrainPresenterKind};
 
 use crate::sprites::{SpriteDefRegistry, SpriteName};
 
-/// Record dangling terrain graphic_name → sprite references.
+/// Record dangling terrain `graphic_name` → sprite references.
 pub fn check_terrain_graphic_refs(
     terrain: Res<TerrainDefRegistry>,
     sprites: Res<SpriteDefRegistry>,
