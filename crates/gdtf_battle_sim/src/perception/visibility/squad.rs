@@ -12,6 +12,7 @@ use crate::{metric::CellLevel, occupancy::OccupancyGrid};
 pub struct CellVisible(bool);
 
 impl CellVisible {
+    /// Wrap a visible flag.
     #[must_use]
     pub const fn new(visible: bool) -> Self {
         Self(visible)
@@ -23,6 +24,7 @@ impl CellVisible {
 pub struct CellExplored(bool);
 
 impl CellExplored {
+    /// Wrap an explored flag.
     #[must_use]
     pub const fn new(explored: bool) -> Self {
         Self(explored)
@@ -34,6 +36,7 @@ impl CellExplored {
 pub struct GangerVisible(bool);
 
 impl GangerVisible {
+    /// Wrap a visible flag.
     #[must_use]
     pub const fn new(visible: bool) -> Self {
         Self(visible)
