@@ -1,8 +1,11 @@
+//! Paint disabled and active button backgrounds from the theme.
+
 use bevy::{prelude::*, ui::BackgroundColor};
 
 use super::markers::{ActiveButton, DisabledButton};
 use crate::theme::GdtfTheme;
 
+/// Apply the theme disabled color to disabled buttons.
 pub fn paint_disabled_buttons(
     theme: Option<Res<GdtfTheme>>,
     mut disabled: Query<&mut BackgroundColor, With<DisabledButton>>,
@@ -17,6 +20,7 @@ pub fn paint_disabled_buttons(
     }
 }
 
+/// Apply the theme active color to active (non-disabled) buttons.
 pub fn paint_active_buttons(
     theme: Option<Res<GdtfTheme>>,
     mut active: Query<&mut BackgroundColor, (With<ActiveButton>, Without<DisabledButton>)>,
