@@ -1,3 +1,5 @@
+//! Reconnect and retarget behaviour for the QA client.
+
 use std::{
     io::{Read, Write},
     net::{Ipv4Addr, TcpListener, TcpStream},
@@ -46,12 +48,12 @@ fn answer(request: &QaRequest) -> QaResponse {
 }
 
 struct StubConn<'stream> {
-        stream:  &'stream mut TcpStream,
-        decoder: FrameDecoder,
+    stream: &'stream mut TcpStream,
+    decoder: FrameDecoder,
 }
 
 impl StubConn<'_> {
-            fn answer_one(&mut self) -> bool {
+    fn answer_one(&mut self) -> bool {
         let mut buf = [0u8; 1024];
         loop {
             match self.decoder.next_frame() {

@@ -1,5 +1,10 @@
+//! Test-only helpers: assertions, fake commands, and a mini host app.
+
+/// Check unique names and parseable schemas on a command set.
 pub mod assert;
+/// Fake commands and host facts for unit tests.
 pub mod fake;
+/// Build a Bevy app and run a fake command through admission.
 pub mod harness;
 
 pub use assert::{

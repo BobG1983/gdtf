@@ -1,3 +1,5 @@
+//! Loopback tests for catalogue requests against a fake TCP game.
+
 use std::{
     io::{Read, Write},
     net::{Ipv4Addr, TcpListener},

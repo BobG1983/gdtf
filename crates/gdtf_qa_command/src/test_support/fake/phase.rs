@@ -1,3 +1,5 @@
+//! Fake command that reads host ready and level facts.
+
 use bevy::prelude::*;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary, CommandTiming};
@@ -10,16 +12,21 @@ use crate::{
     dispatch::{CommandCall, QaCommandSystems, take_calls},
 };
 
+/// Empty arguments for `fake.phase`.
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct FakePhaseArgs {}
 
+/// Reply for `fake.phase`.
 #[derive(Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct FakePhaseReply {
-        pub ready: FakeReady,
-        pub level: FakeLevel,
+    /// Host ready flag.
+    pub ready: FakeReady,
+    /// Host level.
+    pub level: FakeLevel,
 }
 
+/// Always-available command that returns host facts.
 pub struct FakePhase;
 
 impl QaCommand for FakePhase {

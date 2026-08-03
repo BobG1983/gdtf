@@ -1,3 +1,5 @@
+//! Typed QA command trait that hosts implement once per command.
+
 use core::fmt::Debug;
 
 use bevy::prelude::App;
@@ -5,20 +7,29 @@ use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary
 use schemars::JsonSchema;
 use serde::{Serialize, de::DeserializeOwned};
 
+/// A host command with fixed name, schemas, and a Bevy handler.
 pub trait QaCommand: Sized + Send + Sync + 'static {
-                        type Facts: Send + Sync + 'static;
+    /// Host facts type used for availability checks.
+    type Facts: Send + Sync + 'static;
 
-        type Args: DeserializeOwned + JsonSchema + Debug + Send + Sync + 'static;
+    /// Deserialized argument payload.
+    type Args: DeserializeOwned + JsonSchema + Debug + Send + Sync + 'static;
 
-                                type Reply: Serialize + JsonSchema + Send + Sync + 'static;
+    /// Serialized reply payload.
+    type Reply: Serialize + JsonSchema + Send + Sync + 'static;
 
-                        const NAME: CommandName;
+    /// Stable command name.
+    const NAME: CommandName;
 
-        const SUMMARY: CommandSummary;
+    /// Short human summary.
+    const SUMMARY: CommandSummary;
 
-                                    const TIMING: CommandTiming;
+    /// When the command may run relative to the frame.
+    const TIMING: CommandTiming;
 
-                    fn availability(facts: &Self::Facts) -> CommandAvailability;
+    /// Whether the command is available given host facts.
+    fn availability(facts: &Self::Facts) -> CommandAvailability;
 
-                                fn register_handler(app: &mut App);
+    /// Register the Bevy system that handles this command.
+    fn register_handler(app: &mut App);
 }
