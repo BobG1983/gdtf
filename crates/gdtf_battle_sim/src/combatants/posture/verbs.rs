@@ -1,3 +1,5 @@
+//! Pure helpers to update pose components and spend TU.
+
 use bevy::prelude::Deref;
 
 use crate::{
@@ -6,30 +8,36 @@ use crate::{
     tuning::{StanceChangeTu, TurnTu},
 };
 
+/// Whether stance actually changed.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StanceChanged(bool);
 
 impl StanceChanged {
-        #[must_use]
+    /// Wrap a boolean.
+    #[must_use]
     pub const fn new(changed: bool) -> Self {
         Self(changed)
     }
 }
 
+/// Whether facing actually changed.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FacingChanged(bool);
 
 impl FacingChanged {
-        #[must_use]
+    /// Wrap a boolean.
+    #[must_use]
     pub const fn new(changed: bool) -> Self {
         Self(changed)
     }
 }
 
+/// Set aiming on or off (no TU cost).
 pub const fn set_aiming(aiming: &mut Aiming, on: Aiming) {
     *aiming = on;
 }
 
+/// Change stance if different; spends `cost` TU on success.
 pub fn set_stance(
     stance: &mut Stance,
     tu: &mut Tu,
@@ -44,6 +52,7 @@ pub fn set_stance(
     StanceChanged::new(true)
 }
 
+/// Rotate facing toward `to` as far as TU allows; spends per-step turn cost.
 pub fn set_facing(facing: &mut Facing, tu: &mut Tu, to: Direction, cost: &TurnTu) -> FacingChanged {
     let total = *(**facing).steps_to(to);
     if total == 0 {
