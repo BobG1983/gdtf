@@ -1,3 +1,5 @@
+//! Fire readiness: TU, magazine, bounds, hands.
+
 use bevy::prelude::Deref;
 
 use super::ammo::Magazine;
@@ -11,7 +13,6 @@ use crate::{
     weapon::{FireModeSpec, Handedness},
 };
 
-/// `u8::MAX`. The clamp + localized `#[expect]` is the crate's guarded-cast idiom
 fn charge_to_u8(charge: TuCharge) -> Tu {
     let rounded = charge.round();
     #[expect(
@@ -27,12 +28,13 @@ fn charge_to_u8(charge: TuCharge) -> Tu {
 struct TuCharge(f32);
 
 impl TuCharge {
-        #[must_use]
+    #[must_use]
     const fn new(charge: f32) -> Self {
         Self(charge)
     }
 }
 
+/// TU cost for a fire mode, including aim premium.
 #[must_use]
 pub fn mode_tu_cost(
     mode: &FireModeSpec,
@@ -49,6 +51,7 @@ pub fn mode_tu_cost(
     charge_to_u8(TuCharge::new(charge))
 }
 
+/// True if cell and level are on the battle grid.
 #[must_use]
 pub fn in_bounds(cell: Cell, level: Level) -> InBounds {
     let Ok(x) = usize::try_from(cell.x) else {
@@ -60,20 +63,30 @@ pub fn in_bounds(cell: Cell, level: Level) -> InBounds {
     InBounds(x < GRID_WIDTH && y < GRID_HEIGHT && (*level as usize) < MAX_LEVELS as usize)
 }
 
+/// Grid bounds check result.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InBounds(bool);
 
+/// Inputs needed to decide if a unit can fire a mode.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FireActor<'a> {
-                pub life:            &'a LifeState,
-        pub tu:              &'a Tu,
-            pub tu_max:          &'a TuMax,
-            pub aiming:          &'a Aiming,
-        pub magazine:        &'a Magazine,
-                pub handedness:      Handedness,
-            pub hands_available: HandsAvailable,
+    /// Life state.
+    pub life: &'a LifeState,
+    /// Current TU.
+    pub tu: &'a Tu,
+    /// Max TU.
+    pub tu_max: &'a TuMax,
+    /// Aiming flag.
+    pub aiming: &'a Aiming,
+    /// Magazine.
+    pub magazine: &'a Magazine,
+    /// Weapon handedness.
+    pub handedness: Handedness,
+    /// Available hands.
+    pub hands_available: HandsAvailable,
 }
 
+/// Alive, can afford TU, has ammo, target in bounds, enough hands.
 #[must_use]
 pub fn can_fire(
     actor: &FireActor,
@@ -94,6 +107,7 @@ pub fn can_fire(
     )
 }
 
+/// Whether fire is allowed.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CanFire(bool);
 
