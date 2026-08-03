@@ -1,8 +1,11 @@
+//! Pick an injury from the weighted tables for a body part, context, and severity.
+
 use bevy::log::warn_once;
 
 use super::{DamageContext, InjuryTables, RolledInjury, WeightedInjuryTable};
 use crate::{armor::BodyPart, injuries::InjuryRegistry, rng::InjuryRng, severity::Severity};
 
+/// Roll one injury, or `None` when severity is None/Fatal or the table is empty.
 #[must_use]
 pub fn roll_injury(
     part: BodyPart,
