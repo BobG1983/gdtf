@@ -1,64 +1,73 @@
-//! The authored vertical-link shape — the [`OneWay`] directionality flag, the
-//! an authored situation deserialises.
+//! Authored vertical-link shapes: stairs, ladders, and directionality.
 
 use bevy::prelude::Deref;
 use serde::{Deserialize, Serialize};
 
 use crate::metric::CellLevel;
 
-/// `#[serde(transparent)]` lets an authored directionality parse as a bare boolean.
+/// Whether a link is one-way (true) or bidirectional (false).
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct OneWay(bool);
 
 impl OneWay {
-            #[must_use]
+    #[must_use]
     pub const fn new(one_way: bool) -> Self {
         Self(one_way)
     }
 
-        #[must_use]
+    /// Bidirectional link.
+    #[must_use]
     pub const fn bidirectional() -> Self {
         Self(false)
     }
 
-        #[must_use]
+    /// Forward-only link.
+    #[must_use]
     pub const fn forward_only() -> Self {
         Self(true)
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn is_one_way(self) -> bool {
         self.0
     }
 }
 
+/// Kind of vertical link.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum LinkKind {
-        Stair {
-                        one_way: OneWay,
+    /// Stair link.
+    Stair {
+        /// Directionality.
+        one_way: OneWay,
     },
-        Ladder {
-                        one_way: OneWay,
+    /// Ladder link.
+    Ladder {
+        /// Directionality.
+        one_way: OneWay,
     },
 }
 
 impl LinkKind {
-        #[must_use]
+    /// Bidirectional stair.
+    #[must_use]
     pub const fn stair() -> Self {
         Self::Stair {
             one_way: OneWay::bidirectional(),
         }
     }
 
-        #[must_use]
+    /// Bidirectional ladder.
+    #[must_use]
     pub const fn ladder() -> Self {
         Self::Ladder {
             one_way: OneWay::bidirectional(),
         }
     }
 
-            #[must_use]
+    /// Directionality of this link.
+    #[must_use]
     pub const fn is_one_way(self) -> OneWay {
         match self {
             Self::Stair { one_way } | Self::Ladder { one_way } => one_way,
@@ -66,15 +75,19 @@ impl LinkKind {
     }
 }
 
+/// One authored vertical connection between two cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct VerticalLink {
-        pub from: CellLevel,
-        pub to:   CellLevel,
-        pub kind: LinkKind,
+    /// Origin cell.
+    pub from: CellLevel,
+    /// Destination cell.
+    pub to: CellLevel,
+    /// Stair or ladder, and directionality.
+    pub kind: LinkKind,
 }
 
 impl VerticalLink {
-            #[must_use]
+    #[must_use]
     pub const fn new(from: CellLevel, to: CellLevel, kind: LinkKind) -> Self {
         Self { from, to, kind }
     }
