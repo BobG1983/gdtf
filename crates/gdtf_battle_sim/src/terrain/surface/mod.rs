@@ -1,5 +1,5 @@
-//! Persistent surface grid: the model's authoritative store of floor/roof **slab**
-//! stays destroyed and ground damage accrues (a model-authoritative store in the
+//! Surface grid: present / destroyed / absent slabs and accrued ground damage.
+
 mod grid;
 
 #[cfg(test)]
