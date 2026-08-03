@@ -1,6 +1,6 @@
-//! GTW-207 (E10.5): `BattleSimPlugin` drives the render-free authoritative sim
-//! battle RNG streams (GTW-14), builds the battle from the authored `Situation` via the
-//! authoritative `setup_battle`, gates Generation's state advance on REAL setup
+//! `BattleSimPlugin` drives the render-free authoritative sim: battle RNG streams,
+//! builds the battle from the authored `Situation` via `setup_battle`, and gates
+//! Generation's state advance on real setup completing.
 mod generation_gate;
 mod harness;
 mod seed_logging;
