@@ -1,11 +1,11 @@
-//! Registry of terrain definitions.
+//! Catalog of terrain piece definitions.
 
 use bevy::prelude::Resource;
 
 use super::{TerrainDef, TerrainUuid};
 use crate::registry::Registry;
 
-/// Map from terrain UUID to definition.
+/// Registry of terrain piece definitions by UUID.
 #[derive(Resource, Debug, Clone, Default, PartialEq)]
 pub struct TerrainDefRegistry(Registry<TerrainUuid, TerrainDef>);
 

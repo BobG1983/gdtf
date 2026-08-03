@@ -1,4 +1,4 @@
-//! Lookup from cell to terrain entity.
+//! Cell → entity lookup for cover and slabs.
 
 use bevy::{
     platform::collections::HashMap,
@@ -17,7 +17,7 @@ pub enum TerrainIndexKey {
 }
 
 impl TerrainIndexKey {
-    /// Cell for this key.
+    /// Cell of this key.
     #[must_use]
     pub const fn cell_level(self) -> CellLevel {
         match self {
@@ -26,7 +26,7 @@ impl TerrainIndexKey {
     }
 }
 
-/// Map from index key to terrain entity.
+/// Maps cover/slab cells to their entities.
 #[derive(Resource, Debug, Clone, Default)]
 pub struct TerrainIndex {
     entries: HashMap<TerrainIndexKey, Entity>,
