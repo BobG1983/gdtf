@@ -1,3 +1,5 @@
+//! Content integrity findings and end-of-load validation pass.
+
 mod finding;
 mod pass;
 
