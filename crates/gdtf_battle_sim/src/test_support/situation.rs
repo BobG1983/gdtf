@@ -1,3 +1,5 @@
+//! Situation builders and fixtures for tests.
+
 use super::{
     ganger::{GangerSpawnBuilder, ganger_at},
     registries::key,
@@ -14,63 +16,79 @@ fn gang_name_for(faction: Faction) -> GangName {
     GangName::new(format!("gang_{}", *faction))
 }
 
+/// Stable terrain UUIDs used by test fixtures.
 pub mod test_pieces {
     use bevy::asset::uuid::Uuid;
 
     use crate::terrain::def::TerrainUuid;
 
-        pub const WALL: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0001));
-        pub const SLAB: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0002));
-        pub const COVER: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0003));
-        pub const FLOOR: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0004));
-                pub const VISION_SLAB: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0005));
-                pub const PATH_SLAB: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0006));
-            pub const LOW_VISION_COVER: TerrainUuid =
+    /// Wall piece.
+    pub const WALL: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0001));
+    /// Slab piece.
+    pub const SLAB: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0002));
+    /// Cover piece.
+    pub const COVER: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0003));
+    /// Floor piece.
+    pub const FLOOR: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0004));
+    /// Vision-blocking slab.
+    pub const VISION_SLAB: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0005));
+    /// Path-blocking slab.
+    pub const PATH_SLAB: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0006));
+    /// Low vision cover.
+    pub const LOW_VISION_COVER: TerrainUuid =
         TerrainUuid::new(Uuid::from_u128(0x0149_1491_0000_0007));
 }
 
+/// Wall spawn at a cell.
 #[must_use]
 pub const fn wall_at(at: CellLevel) -> CoverSpawn {
     CoverSpawn::new(at, test_pieces::WALL)
 }
 
+/// Fluent builder for [`Situation`] and optional gang registry.
 #[derive(Debug, Clone, Default)]
 pub struct SituationBuilder {
-            situation: Situation,
-        gangers:   Vec<GangerSpawn>,
+    situation: Situation,
+    gangers: Vec<GangerSpawn>,
 }
 
 impl SituationBuilder {
-            #[must_use]
+    /// Empty builder.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
-        #[must_use]
+    /// Add one ganger spawn.
+    #[must_use]
     pub fn with_ganger(mut self, ganger: GangerSpawn) -> Self {
         self.gangers.push(ganger);
         self
     }
 
-        #[must_use]
+    /// Add several ganger spawns.
+    #[must_use]
     pub fn with_gangers(mut self, gangers: impl IntoIterator<Item = GangerSpawn>) -> Self {
         self.gangers.extend(gangers);
         self
     }
 
-        #[must_use]
+    /// Place a wall at a cell.
+    #[must_use]
     pub fn wall_at(mut self, at: CellLevel) -> Self {
         self.situation.walls.push(wall_at(at));
         self
     }
 
-                #[must_use]
+    /// Add scatter cover.
+    #[must_use]
     pub fn with_scatter(mut self, cover: CoverSpawn) -> Self {
         self.situation.scatter.push(cover);
         self
     }
 
-            #[must_use]
+    /// Place a slab at a cell.
+    #[must_use]
     pub fn slab_at(mut self, at: CellLevel) -> Self {
         self.situation
             .slabs
@@ -78,30 +96,35 @@ impl SituationBuilder {
         self
     }
 
-                    #[must_use]
+    /// Place a specific slab piece at a cell.
+    #[must_use]
     pub fn slab_piece_at(mut self, at: CellLevel, piece: crate::terrain::def::TerrainUuid) -> Self {
         self.situation.slabs.push(SlabSpawn::new(at, piece));
         self
     }
 
-                        #[must_use]
+    /// Add a vertical link.
+    #[must_use]
     pub fn vertical_link(mut self, link: VerticalLink) -> Self {
         self.situation.vertical_links.push(link);
         self
     }
 
-        #[must_use]
+    /// Set the player faction.
+    #[must_use]
     pub const fn player_faction(mut self, faction: Faction) -> Self {
         self.situation.player_faction = faction;
         self
     }
 
-                            #[must_use]
+    /// Build the situation only.
+    #[must_use]
     pub fn build(self) -> Situation {
         self.build_with_gangs().0
     }
 
-                                        #[must_use]
+    /// Build the situation and a matching gang registry.
+    #[must_use]
     pub fn build_with_gangs(mut self) -> (Situation, GangRegistry) {
         let mut rosters: std::collections::BTreeMap<String, GangRoster> =
             std::collections::BTreeMap::new();
@@ -123,32 +146,36 @@ impl SituationBuilder {
     }
 }
 
+/// Registry with a few default test gangs.
 #[must_use]
 pub fn test_gang_registry() -> GangRegistry {
     SituationBuilder::new()
         .with_gangers([
-            GangerSpawnBuilder::new().faction(Faction::new(0)).build(), 
-            GangerSpawnBuilder::new().faction(Faction::new(1)).build(), 
-            GangerSpawnBuilder::new().faction(Faction::new(2)).build(), 
-            ganger_at(key(0, 0, 0), 0),                                 
-            ganger_at(key(0, 0, 0), 1),                                 
-            ganger_at(key(0, 0, 0), 2),                                 
+            GangerSpawnBuilder::new().faction(Faction::new(0)).build(),
+            GangerSpawnBuilder::new().faction(Faction::new(1)).build(),
+            GangerSpawnBuilder::new().faction(Faction::new(2)).build(),
+            ganger_at(key(0, 0, 0), 0),
+            ganger_at(key(0, 0, 0), 1),
+            ganger_at(key(0, 0, 0), 2),
         ])
         .build_with_gangs()
         .1
 }
 
+/// Ready-made situations for common test cases.
 pub mod fixtures {
     use super::{Faction, Situation, SituationBuilder, ganger_at, key};
 
-                #[must_use]
+    /// Two gangers, factions 0 and 1.
+    #[must_use]
     pub fn two_ganger() -> Situation {
         SituationBuilder::new()
             .with_gangers([ganger_at(key(5, 6, 0), 0), ganger_at(key(7, 8, 0), 1)])
             .build()
     }
 
-                #[must_use]
+    /// One player and two enemies.
+    #[must_use]
     pub fn one_player_two_enemies() -> Situation {
         SituationBuilder::new()
             .with_gangers([
@@ -159,14 +186,16 @@ pub mod fixtures {
             .build()
     }
 
-                #[must_use]
+    /// Only player-faction gangers.
+    #[must_use]
     pub fn player_only() -> Situation {
         SituationBuilder::new()
             .with_gangers([ganger_at(key(5, 6, 0), 0), ganger_at(key(7, 8, 0), 0)])
             .build()
     }
 
-                    #[must_use]
+    /// Minimal map with a wall and a slab.
+    #[must_use]
     pub fn minimal_with_cells() -> Situation {
         SituationBuilder::new()
             .with_gangers([ganger_at(key(5, 6, 0), 0), ganger_at(key(7, 8, 0), 1)])
@@ -175,7 +204,8 @@ pub mod fixtures {
             .build()
     }
 
-                #[must_use]
+    /// Two gangers with player faction set to 1.
+    #[must_use]
     pub fn two_ganger_player_faction_one() -> Situation {
         SituationBuilder::new()
             .with_gangers([ganger_at(key(5, 6, 0), 0), ganger_at(key(7, 8, 0), 1)])
