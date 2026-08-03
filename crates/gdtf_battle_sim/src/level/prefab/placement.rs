@@ -1,16 +1,22 @@
+//! One terrain piece placement inside a prefab.
+
 use bevy::reflect::TypePath;
 use serde::{Deserialize, Serialize};
 
 use crate::{metric::CellLevel, terrain::def::TerrainUuid};
 
+/// Place a terrain piece at a cell.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, TypePath)]
 pub struct TerrainPlacementEntry {
-            pub piece: TerrainUuid,
-        pub at:    CellLevel,
+    /// Terrain definition to spawn.
+    pub piece: TerrainUuid,
+    /// Cell where the piece is placed.
+    pub at: CellLevel,
 }
 
 impl TerrainPlacementEntry {
-        #[must_use]
+    /// Build a placement entry.
+    #[must_use]
     pub const fn new(piece: TerrainUuid, at: CellLevel) -> Self {
         Self { piece, at }
     }
