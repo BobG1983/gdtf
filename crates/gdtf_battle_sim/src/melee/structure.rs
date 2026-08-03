@@ -1,3 +1,5 @@
+//! Melee damage against cover pieces.
+
 use crate::{
     cover::{CoverEntry, CoverEvent, CoverLedger},
     matchup::Matchup,
@@ -8,21 +10,25 @@ use crate::{
     tuning::{CombatTuning, MeleeTuning},
 };
 
+/// Structural damage multiplier (from melee max mult).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct StructuralMult(f32);
 
 impl StructuralMult {
-                                #[must_use]
+    /// Use the max melee multiplier from tuning.
+    #[must_use]
     pub fn from_tuning(tuning: &MeleeTuning) -> Self {
         Self(*tuning.mult_max)
     }
 
-                            #[must_use]
+    /// As a melee damage multiplier.
+    #[must_use]
     pub const fn as_melee_mult(self) -> MeleeDamageMult {
         MeleeDamageMult::new(self.0)
     }
 }
 
+/// Resolve a melee hit against cover at `at`.
 #[must_use]
 pub fn resolve_structural_melee(
     weapon: MeleeWeaponHit<'_>,

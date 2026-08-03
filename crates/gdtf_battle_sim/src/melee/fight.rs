@@ -1,3 +1,5 @@
+//! Opposed fight roll and damage multiplier from margin.
+
 use bevy::prelude::Deref;
 
 use crate::{
@@ -9,47 +11,54 @@ use crate::{
     tuning::{FightVariance, MeleeTuning},
 };
 
-
+/// Attacker margin over defender (atk/def - 1).
 #[derive(Deref, Debug, Clone, Copy, PartialEq)]
 pub struct FightMargin(f32);
 
 impl FightMargin {
-                        #[must_use]
+    /// Wrap a margin.
+    #[must_use]
     pub const fn new(margin: f32) -> Self {
         Self(margin)
     }
 }
 
+/// Multiplier applied to melee damage after a connect.
 #[derive(Deref, Debug, Clone, Copy, PartialEq)]
 pub struct MeleeDamageMult(f32);
 
 impl MeleeDamageMult {
-                        #[must_use]
+    /// Wrap a multiplier.
+    #[must_use]
     pub const fn new(mult: f32) -> Self {
         Self(mult)
     }
 }
 
+/// Result of an opposed fight roll.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FightOutcome {
-        pub connect: Connected,
-        pub margin:  FightMargin,
+    /// Whether the attacker connected.
+    pub connect: Connected,
+    /// Margin used for damage scaling.
+    pub margin: FightMargin,
 }
 
+/// Whether the melee attack connected.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Connected(bool);
 
 impl Connected {
-        #[must_use]
+    /// Wrap a boolean.
+    #[must_use]
     pub const fn new(connected: bool) -> Self {
         Self(connected)
     }
 }
 
-
 const DEGENERATE_MARGIN: f32 = 1.0e6;
 
-
+/// Roll variance on both sides; attacker wins when atk > def.
 #[must_use]
 pub fn opposed_fight(
     attacker: Fight,
@@ -68,23 +77,23 @@ pub fn opposed_fight(
     if def <= 0.0 {
         return FightOutcome {
             connect: Connected::new(true),
-            margin:  FightMargin::new(DEGENERATE_MARGIN),
+            margin: FightMargin::new(DEGENERATE_MARGIN),
         };
     }
 
     FightOutcome {
         connect: Connected::new(atk > def),
-        margin:  FightMargin::new(atk / def - 1.0),
+        margin: FightMargin::new(atk / def - 1.0),
     }
 }
 
+/// Map fight margin to a clamped damage multiplier from melee tuning.
 #[must_use]
 pub fn melee_damage_mult(margin: FightMargin, tuning: &MeleeTuning) -> MeleeDamageMult {
     let raw = (*tuning.k_margin).mul_add(*margin, *tuning.mult_min);
     MeleeDamageMult::new(raw.clamp(*tuning.mult_min, *tuning.mult_max))
 }
 
-/// clamp + localized `#[expect]` is the crate's guarded-cast idiom, so no
 const fn round_to_i32(value: DamageReal) -> DamageMagnitude {
     let rounded = value.get().round();
     #[expect(
@@ -103,6 +112,7 @@ fn scale_damage(component: DamageMagnitude, mult: MeleeDamageMult) -> DamageMagn
     round_to_i32(DamageReal::new(*component as f32 * *mult))
 }
 
+/// Scale all components of a hit result by a melee multiplier.
 #[must_use]
 pub fn apply_melee_multiplier(hit: HitResult, mult: MeleeDamageMult) -> HitResult {
     HitResult {
@@ -110,7 +120,7 @@ pub fn apply_melee_multiplier(hit: HitResult, mult: MeleeDamageMult) -> HitResul
             DamageMagnitude::new(*hit.penetrating),
             mult,
         )),
-        hp_damage:   HpDamage::new(*scale_damage(DamageMagnitude::new(*hit.hp_damage), mult)),
-        wear:        IntegrityWear::new(*scale_damage(DamageMagnitude::new(*hit.wear), mult)),
+        hp_damage: HpDamage::new(*scale_damage(DamageMagnitude::new(*hit.hp_damage), mult)),
+        wear: IntegrityWear::new(*scale_damage(DamageMagnitude::new(*hit.wear), mult)),
     }
 }
