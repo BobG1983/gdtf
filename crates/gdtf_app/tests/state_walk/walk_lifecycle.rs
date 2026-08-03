@@ -36,8 +36,7 @@ fn drive_to_teardown() -> App {
         assert_eq!(
             battlescape_state(&app),
             Some(BattleScapeState::BattleRunning),
-            "BattleRunning must PERSIST with no BattleRunningComplete inserted (GTW-236); the \
-             placeholder turn-budget auto-exit must not advance it",
+            "BattleRunning must PERSIST with no BattleRunningComplete inserted; the placeholder turn-budget auto-exit must not advance it",
         );
         assert_ne!(
             app_state(&app),
@@ -89,8 +88,7 @@ fn teardown_emits_app_exit() {
     assert_eq!(
         observed_exit,
         Some(AppExit::Success),
-        "Teardown's move_on must emit AppExit::Success within {WALK_BUDGET} updates of reaching \
-         Teardown (GTW-311); observed {observed_exit:?}",
+        "Teardown's move_on must emit AppExit::Success within {WALK_BUDGET} updates of reaching Teardown; observed {observed_exit:?}",
     );
 }
 

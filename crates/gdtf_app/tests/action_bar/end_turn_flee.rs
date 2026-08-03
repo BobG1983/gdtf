@@ -20,7 +20,7 @@ fn end_turn_button_is_enabled_not_disabled() {
     };
     assert!(
         app.world().get::<DisabledButton>(end_turn).is_none(),
-        "the end-turn button must be ENABLED — it must NOT carry DisabledButton (GTW-309)",
+        "the end-turn button must be ENABLED — it must NOT carry DisabledButton",
     );
     assert!(
         app.world().get::<Button>(end_turn).is_some(),
@@ -101,7 +101,7 @@ fn flee_button_spawns_enabled_in_battle() {
     assert_eq!(
         button_label(&app, flee).as_deref(),
         Some("Flee"),
-        "the flee button must be labelled \"Flee\" (D-D)",
+        "the flee button must be labelled \"Flee\"",
     );
 }
 
@@ -208,7 +208,7 @@ fn end_turn_and_flee_buttons_are_both_enabled() {
     );
     assert!(
         app.world().get::<DisabledButton>(end_turn).is_none(),
-        "the end-turn button is ENABLED since GTW-309 — it must NOT carry DisabledButton",
+        "the end-turn button is ENABLED — it must NOT carry DisabledButton",
     );
     assert!(
         app.world().get::<DisabledButton>(flee).is_none(),
