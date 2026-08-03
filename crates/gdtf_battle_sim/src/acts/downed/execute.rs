@@ -1,3 +1,5 @@
+//! Execute a downed enemy.
+
 use bevy::prelude::Deref;
 
 use super::reach::{Actor, DownedTarget, is_8_adjacent};
@@ -6,16 +8,19 @@ use crate::{
     tuning::{CombatTuning, ExecuteTu},
 };
 
+/// Whether execute is allowed for this pair.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CanExecute(bool);
 
 impl CanExecute {
-        #[must_use]
+    /// Wrap a boolean.
+    #[must_use]
     pub const fn new(allowed: bool) -> Self {
         Self(allowed)
     }
 }
 
+/// Alive actor, adjacent, enemy, and target is downed.
 #[must_use]
 pub fn can_execute(actor: &Actor, target: &DownedTarget) -> CanExecute {
     CanExecute::new(
@@ -26,6 +31,7 @@ pub fn can_execute(actor: &Actor, target: &DownedTarget) -> CanExecute {
     )
 }
 
+/// Kill the target if allowed; returns the TU cost when applied.
 pub fn execute_downed(
     actor: &Actor,
     target: &DownedTarget,
