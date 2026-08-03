@@ -1,4 +1,5 @@
-//! The **TU-economy primitives** the rest of E4 spends through — model-authoritative
+//! Time-unit spend and reset helpers used across the sim.
+
 mod economy;
 #[cfg(test)]
 mod test;
