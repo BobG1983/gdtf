@@ -1,4 +1,5 @@
-//! **coarse occupancy** the authoritative model owns (ADR-0001,
+//! Coarse occupancy grid: who and what occupies each cell, plus path and vision blocking.
+
 mod grid;
 mod input;
 mod kind;
