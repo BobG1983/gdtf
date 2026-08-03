@@ -1,3 +1,5 @@
+//! Path preview pool: surplus hidden sprites must not redirty Visibility every frame.
+
 use std::path::PathBuf;
 
 use bevy::{

@@ -1,3 +1,5 @@
+//! Path preview: route cells and cost match `find_path`; fire-mode switch clears stale preview.
+
 use bevy::{
     asset::AssetPlugin, input::ButtonInput, platform::collections::HashSet, prelude::*,
     scene::ScenePlugin,
