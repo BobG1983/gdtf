@@ -1,3 +1,5 @@
+//! Pure shove outcome: blocked, moved, or fell.
+
 use crate::{
     falls::{DropLanding, resolve_drop},
     ganger::{Direction, Position},
@@ -6,15 +8,22 @@ use crate::{
     surface::SurfaceGrid,
 };
 
+/// Result of resolving a shove into the next cell.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ShoveOutcome {
-                Blocked,
-                Moved {
-                        dest: CellLevel,
+    /// Destination blocked or invalid.
+    Blocked,
+    /// Target moved to dest on the same level.
+    Moved {
+        /// New cell/level.
+        dest: CellLevel,
     },
-                    Fell {
-                        dest:    CellLevel,
-                        landing: DropLanding,
+    /// Target was pushed off unsupported ground and fell.
+    Fell {
+        /// Cell they were shoved into (start of fall).
+        dest: CellLevel,
+        /// Where the fall lands.
+        landing: DropLanding,
     },
 }
 
@@ -32,6 +41,7 @@ fn step_cell(cell: Cell, direction: Direction) -> Cell {
     Cell::new(cell.x + dx, cell.y + dy)
 }
 
+/// Resolve a shove from attacker into target using surface and occupancy.
 #[must_use]
 pub fn resolve_shove(
     attacker: Position,

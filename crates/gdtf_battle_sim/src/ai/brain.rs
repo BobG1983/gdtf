@@ -1,3 +1,5 @@
+//! Enemy turn brain: fire if possible, else advance, else end turn.
+
 use bevy::prelude::{Entity, MessageWriter, Res};
 
 use super::{
@@ -40,6 +42,7 @@ use crate::{
               (is_dead / relation_of) through helpers, obscuring the access set more than the \
               length costs (the setup_battle too_many_lines precedent)"
 )]
+/// One enemy acts: shoot an engageable target, move closer, or end the turn.
 pub fn enemy_ai_turn(
     active: Res<ActiveFaction>,
     player: Option<Res<PlayerFaction>>,
