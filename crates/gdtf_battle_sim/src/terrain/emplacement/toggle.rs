@@ -1,3 +1,5 @@
+//! Occupy / vacate emplacements and spawn or despawn mounted weapons.
+
 use bevy::prelude::{
     App, Commands, Entity, IntoScheduleConfigs, Message, MessageReader, Plugin, Query, Res, ResMut,
     Update, With,
@@ -14,15 +16,16 @@ use crate::{
     weapon::{MountedWeapon, WeaponRegistry, WieldedBy},
 };
 
+/// Request to occupy or vacate an emplacement.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SetEmplacement {
-        emplacement: Entity,
-        ganger:      Entity,
-        state:       EmplacementState,
+    emplacement: Entity,
+    ganger: Entity,
+    state: EmplacementState,
 }
 
 impl SetEmplacement {
-            #[must_use]
+    #[must_use]
     pub const fn new(emplacement: Entity, ganger: Entity, state: EmplacementState) -> Self {
         Self {
             emplacement,
@@ -31,32 +34,35 @@ impl SetEmplacement {
         }
     }
 
-            #[must_use]
+    /// Occupy with this ganger.
+    #[must_use]
     pub const fn occupy(emplacement: Entity, ganger: Entity) -> Self {
         Self::new(emplacement, ganger, EmplacementState::Occupied)
     }
 
-            #[must_use]
+    /// Vacate for this ganger.
+    #[must_use]
     pub const fn vacate(emplacement: Entity, ganger: Entity) -> Self {
         Self::new(emplacement, ganger, EmplacementState::Vacant)
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn emplacement(self) -> Entity {
         self.emplacement
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn ganger(self) -> Entity {
         self.ganger
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn state(self) -> EmplacementState {
         self.state
     }
 }
 
+/// Apply occupy/vacate: update state, occupant, silhouette band, and mounted weapon.
 pub fn apply_emplacement_toggle(
     mut requests: MessageReader<SetEmplacement>,
     mut emplacements: Query<(
@@ -135,6 +141,7 @@ fn spawn_mounted_weapon(
     )
 }
 
+/// Plugin that registers the emplacement toggle system.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct EmplacementTogglePlugin;
 

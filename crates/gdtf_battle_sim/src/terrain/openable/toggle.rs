@@ -1,3 +1,5 @@
+//! Messages and systems that open or close openable terrain.
+
 use bevy::prelude::{
     App, Commands, Entity, IntoScheduleConfigs, Message, MessageReader, Plugin, Query, Update,
 };
@@ -9,44 +11,49 @@ use crate::{
     terrain::entity::{BlocksPathfinding, BlocksVision},
 };
 
+/// Request to set an openable to a specific state.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SetOpenable {
-        entity: Entity,
-            state:  OpenState,
+    entity: Entity,
+    state: OpenState,
 }
 
 impl SetOpenable {
-        #[must_use]
+    #[must_use]
     pub const fn new(entity: Entity, state: OpenState) -> Self {
         Self { entity, state }
     }
 
-        #[must_use]
+    /// Open the entity.
+    #[must_use]
     pub const fn open(entity: Entity) -> Self {
         Self::new(entity, OpenState::Open)
     }
 
-        #[must_use]
+    /// Close the entity.
+    #[must_use]
     pub const fn close(entity: Entity) -> Self {
         Self::new(entity, OpenState::Closed)
     }
 
-                #[must_use]
+    /// Toggle from the current state.
+    #[must_use]
     pub const fn toggle(entity: Entity, current: OpenState) -> Self {
         Self::new(entity, current.toggled())
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn entity(self) -> Entity {
         self.entity
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn state(self) -> OpenState {
         self.state
     }
 }
 
+/// Apply open/close requests: update state and path/vision blocking components.
 pub fn apply_openable_toggle(
     mut requests: MessageReader<SetOpenable>,
     mut doors: Query<(&mut OpenState, &OpenableBlocking)>,
@@ -71,6 +78,7 @@ pub fn apply_openable_toggle(
     }
 }
 
+/// Plugin that registers the openable toggle system.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct OpenableTogglePlugin;
 
