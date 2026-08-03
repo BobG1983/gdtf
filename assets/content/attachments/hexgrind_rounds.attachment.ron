@@ -1,13 +1,11 @@
 // Hexgrind rounds — cursed ammunition that bites deeper: adds penetration (the weapon's
-// WeaponPunch), so the shot ignores more armour. GTW-549 data-driven attachment ITEM (the
+// WeaponPunch), so the shot ignores more armour. Data-driven attachment ITEM (the
 // grimdark "HexgrindRounds" tag, now an item). Magnitude lives HERE on the item. Referenced
 // by a weapon BY KEY in its `attachments:` list; applied to the weapon post-spawn.
 (
     display_name: "Hexgrind Rounds",
-    // GTW-584: re-slotted Rail -> Magazine. The name/fiction read as ammunition ("rounds", a
-    // cursed-ammo feed), so this loaded-ammunition item belongs in the magazine well, not on
-    // the general utility rail where GTW-554 parked it for lack of a Magazine slot. (This is
-    // the MOUNT point for an ammo feed, distinct from GTW-775's AmmoType `accepts:` gate.)
+    // Loaded-ammunition item — belongs in the magazine well, not on a utility rail.
+    // (Mount point for an ammo feed, distinct from the AmmoType `accepts:` gate.)
     slot: Magazine,
     effects: [
         Penetration(6),  // +6 to the weapon's punch (armour ignored) — tunable
