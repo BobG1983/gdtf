@@ -1,4 +1,5 @@
-//! and the [`WeightingDraft`] into the authored [`InjuryWeighting`], resolve the
+//! Injury and weighting draft conversion and RON save helpers.
+
 use std::path::{Path, PathBuf};
 
 use gdtf_assets::sanitize_file_stem;
@@ -15,17 +16,20 @@ use gdtf_content_families::injuries::{
 
 use super::{draft::InjuryDraft, weighting::WeightingDraft};
 
+/// Build an injury name and def from a draft.
 #[must_use]
 pub fn draft_to_def(draft: &InjuryDraft) -> (InjuryName, InjuryDef) {
     let key = InjuryName::new(draft.key().trim().to_owned());
     (key, draft.def().clone())
 }
 
+/// Build a weighting from a draft.
 #[must_use]
 pub fn draft_to_weighting(draft: &WeightingDraft) -> InjuryWeighting {
     draft.weighting().clone()
 }
 
+/// File name for an injury def.
 #[must_use]
 pub fn injury_file_name(key: &InjuryName) -> String {
     let stem = sanitize_file_stem(key.as_str());
@@ -37,6 +41,7 @@ pub fn injury_file_name(key: &InjuryName) -> String {
     format!("{stem}.{INJURY_DEF_EXTENSION}")
 }
 
+/// Full path for an injury def under `root`.
 #[must_use]
 pub fn injury_save_path_in(root: &Path, category: InjuryCategory, key: &InjuryName) -> PathBuf {
     root.join(INJURIES_FOLDER)
@@ -44,6 +49,7 @@ pub fn injury_save_path_in(root: &Path, category: InjuryCategory, key: &InjuryNa
         .join(injury_file_name(key))
 }
 
+/// File name for a weighting asset.
 #[must_use]
 pub fn weighting_file_name(category: InjuryCategory, context: DamageContext) -> String {
     match weighting_context_infix(context) {
@@ -55,6 +61,7 @@ pub fn weighting_file_name(category: InjuryCategory, context: DamageContext) -> 
     }
 }
 
+/// Full path for a weighting asset under `root`.
 #[must_use]
 pub fn weighting_save_path_in(
     root: &Path,
@@ -66,6 +73,11 @@ pub fn weighting_save_path_in(
         .join(weighting_file_name(category, context))
 }
 
+/// Write injury RON under `root`.
+///
+/// # Errors
+///
+/// Returns [`RonSaveError`] if the path cannot be written.
 #[cfg(debug_assertions)]
 pub fn write_injury_in(
     root: &Path,
@@ -77,11 +89,21 @@ pub fn write_injury_in(
     Ok(path)
 }
 
+/// Write injury RON under the workspace assets root.
+///
+/// # Errors
+///
+/// Returns [`RonSaveError`] if the path cannot be written.
 #[cfg(debug_assertions)]
 pub fn write_injury(key: &InjuryName, def: &InjuryDef) -> Result<PathBuf, RonSaveError> {
     write_injury_in(Path::new(WORKSPACE_ASSETS_ROOT), key, def)
 }
 
+/// Write weighting RON under `root`.
+///
+/// # Errors
+///
+/// Returns [`RonSaveError`] if the path cannot be written.
 #[cfg(debug_assertions)]
 pub fn write_weighting_in(
     root: &Path,
@@ -92,6 +114,11 @@ pub fn write_weighting_in(
     Ok(path)
 }
 
+/// Write weighting RON under the workspace assets root.
+///
+/// # Errors
+///
+/// Returns [`RonSaveError`] if the path cannot be written.
 #[cfg(debug_assertions)]
 pub fn write_weighting(weighting: &InjuryWeighting) -> Result<PathBuf, RonSaveError> {
     write_weighting_in(Path::new(WORKSPACE_ASSETS_ROOT), weighting)
