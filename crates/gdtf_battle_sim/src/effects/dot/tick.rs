@@ -1,3 +1,5 @@
+//! Per-turn DOT damage and expiry.
+
 use bevy::prelude::{Entity, Message, MessageWriter, Query};
 
 use crate::{
@@ -15,20 +17,26 @@ type DotRow = (
     &'static Position,
 );
 
+/// One tick of DOT damage was applied.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DotTicked {
-        pub ganger: Entity,
-        pub at:     CellLevel,
-        pub amount: DotDamage,
+    /// Ganger entity.
+    pub ganger: Entity,
+    /// Cell where the tick happened.
+    pub at: CellLevel,
+    /// Damage dealt this tick.
+    pub amount: DotDamage,
 }
 
 impl DotTicked {
-        #[must_use]
+    /// Build the message.
+    #[must_use]
     pub const fn new(ganger: Entity, at: CellLevel, amount: DotDamage) -> Self {
         Self { ganger, at, amount }
     }
 }
 
+/// Drain HP from active DOTs and remove expired ones.
 pub fn tick_dot(
     mut q: Query<DotRow>,
     mut writer: MessageWriter<DotTicked>,
