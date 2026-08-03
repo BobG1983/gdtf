@@ -1,3 +1,5 @@
+//! Closed set of attachment effects.
+
 use bevy::prelude::EntityWorldMut;
 use serde::{Deserialize, Serialize};
 
@@ -10,32 +12,39 @@ use crate::weapon::{
     DamageType, FatalBias, FireModeSpec, MagazineSize, WeaponDamage, WeaponPunch, WeaponShred,
 };
 
-/// per-item magnitude. `#[derive(Deserialize)]` so the list round-trips from RON by
-/// the on-disk form is this closed enum); `#[derive(Serialize)]` so the content editor's
+/// One effect an attachment can apply to a weapon.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum AttachmentEffect {
-                        Aim(AimDelta),
-                        Stability(WeaponBraceBonus),
-                    GainFireMode(FireModeSpec),
-                ExtraAmmo(MagazineSize),
-                            ReloadTime(ReloadTimeScale),
-                    Silence,
-                Penetration(WeaponPunch),
-            DamageTypeOverride(DamageType),
-                /// USER-REVIEW extra (defensible default; ship + log). Reuses the existing weapon
-        Damage(WeaponDamage),
-                /// USER-REVIEW extra (defensible default; ship + log). Reuses the existing weapon
-        Shred(WeaponShred),
-                    /// USER-REVIEW extra (defensible default; ship + log). Reuses the existing weapon
-        FatalBias(FatalBias),
-                        /// USER-REVIEW extra (defensible default; ship + log). Reuses the existing `Stable` tag.
+    /// Raise accuracy.
+    Aim(AimDelta),
+    /// Raise stability / brace bonus.
+    Stability(WeaponBraceBonus),
+    /// Add a fire mode.
+    GainFireMode(FireModeSpec),
+    /// Extra magazine capacity.
+    ExtraAmmo(MagazineSize),
+    /// Scale reload time.
+    ReloadTime(ReloadTimeScale),
+    /// Silence the weapon.
+    Silence,
+    /// Extra penetration (punch).
+    Penetration(WeaponPunch),
+    /// Override damage type.
+    DamageTypeOverride(DamageType),
+    /// Extra damage.
+    Damage(WeaponDamage),
+    /// Extra shred.
+    Shred(WeaponShred),
+    /// Extra fatal bias.
+    FatalBias(FatalBias),
+    /// Mark the weapon as stable (braceable).
     Brace,
-                    /// USER-REVIEW extra (defensible default; ship + log). Reuses the existing `Shove` tag.
+    /// Mark the weapon as shove-capable.
     Shove,
 }
 
 impl ApplyAttachmentEffect for AttachmentEffect {
-                                    fn apply_to_weapon(&self, weapon: &mut EntityWorldMut<'_>) {
+    fn apply_to_weapon(&self, weapon: &mut EntityWorldMut<'_>) {
         match self {
             Self::Aim(delta) => ApplyAim::new(*delta).apply_to_weapon(weapon),
             Self::Stability(bonus) => ApplyStability::new(*bonus).apply_to_weapon(weapon),
