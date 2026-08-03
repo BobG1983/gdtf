@@ -1,3 +1,5 @@
+//! Shot cone angle and the factors that widen or tighten it.
+
 mod angle;
 mod factors;
 
