@@ -1,23 +1,25 @@
-//! authoring shape [`SourceArmorDef`]).
+//! Situation-source armor loadout (deserialized into six pieces).
+
 use serde::Deserialize;
 
 use super::stats::{ArmorPiece, BodyPart};
 
+/// Six pieces indexed by [`BodyPart`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 #[serde(from = "SourceArmorDef")]
 pub struct SourceArmor {
-        pieces: [ArmorPiece; 6],
+    pieces: [ArmorPiece; 6],
 }
 
-/// A serde intermediate (`#[serde(from = "SourceArmorDef")]` on [`SourceArmor`]) so
+/// Serde shape with named fields.
 #[derive(Deserialize)]
 pub struct SourceArmorDef {
-        head:      ArmorPiece,
-        torso:     ArmorPiece,
-        left_arm:  ArmorPiece,
-        right_arm: ArmorPiece,
-        left_leg:  ArmorPiece,
-        right_leg: ArmorPiece,
+    head: ArmorPiece,
+    torso: ArmorPiece,
+    left_arm: ArmorPiece,
+    right_arm: ArmorPiece,
+    left_leg: ArmorPiece,
+    right_leg: ArmorPiece,
 }
 
 impl From<SourceArmorDef> for SourceArmor {
@@ -34,17 +36,20 @@ impl From<SourceArmorDef> for SourceArmor {
 }
 
 impl SourceArmor {
-            #[must_use]
+    /// From ordered pieces.
+    #[must_use]
     pub const fn new(pieces: [ArmorPiece; 6]) -> Self {
         Self { pieces }
     }
 
-                #[must_use]
+    /// Same piece everywhere.
+    #[must_use]
     pub const fn uniform(piece: ArmorPiece) -> Self {
         Self { pieces: [piece; 6] }
     }
 
-        #[must_use]
+    /// Piece at a body part.
+    #[must_use]
     pub const fn at(&self, part: BodyPart) -> ArmorPiece {
         self.pieces[part.index()]
     }
