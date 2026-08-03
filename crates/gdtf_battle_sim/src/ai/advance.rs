@@ -1,3 +1,5 @@
+//! Plan a move that gets closer to a goal target.
+
 use bevy::prelude::Entity;
 
 use super::{
@@ -14,6 +16,7 @@ use crate::{
     visibility::{FactionRelation, SquadVisibility},
 };
 
+/// Best reachable cell that advances toward the goal, or None if none improves distance.
 #[expect(
     clippy::too_many_arguments,
     reason = "the plan borrows the brain's own reads (the enemy + snapshot rows, the \
