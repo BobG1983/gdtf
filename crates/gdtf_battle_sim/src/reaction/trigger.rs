@@ -1,3 +1,5 @@
+//! System: movers and declarers can be interrupted by enemy reactors in LOS.
+
 use bevy::{
     platform::collections::HashSet,
     prelude::{Changed, Entity, MessageReader, Query, Res, ResMut, With},
@@ -22,6 +24,7 @@ use crate::{
     weapon::{FireMode, Handedness, Silenced, shooter_weapon_silenced},
 };
 
+/// On position change or loud fire declaration, try enemy opportunity shots.
 #[expect(
     clippy::too_many_arguments,
     reason = "the trigger reads the two act-in-LOS surfaces (Changed<Position> movers + the \
