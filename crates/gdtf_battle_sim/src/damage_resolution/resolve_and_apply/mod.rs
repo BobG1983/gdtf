@@ -1,4 +1,5 @@
-//! authoritative-model role this crate plays in the model/view split (ADR-0001,
+//! Top-level hit resolution: turn a coarse shot outcome into applied damage and a report.
+
 mod fold;
 mod kinds;
 mod report;
