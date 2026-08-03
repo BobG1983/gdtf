@@ -1,3 +1,5 @@
+//! Systems that wait, capture, then exit once the PNG is on disk.
+
 use bevy::{
     prelude::*,
     render::view::window::screenshot::{Screenshot, save_to_disk},
@@ -8,47 +10,56 @@ use crate::{
     settle::{PollCap, SettleFrames},
 };
 
+/// Frames elapsed since settle began.
 #[derive(Clone, Copy, Default, Debug, Deref)]
 pub struct FrameCount(u32);
 
 impl FrameCount {
-        pub const fn tick(&mut self) {
+    /// Advance by one frame.
+    pub const fn tick(&mut self) {
         self.0 += 1;
     }
 }
 
+/// Whether the screenshot request has already been issued.
 #[derive(Clone, Copy, Default, Debug, Deref)]
 pub struct ShotRequested(bool);
 
 impl ShotRequested {
-        #[must_use]
+    /// Mark as requested.
+    #[must_use]
     pub const fn mark() -> Self {
         Self(true)
     }
 
-        #[must_use]
+    /// True when a shot was requested.
+    #[must_use]
     pub const fn is_marked(self) -> bool {
         self.0
     }
 }
 
+/// Runtime progress for the automated capture path.
 #[derive(Resource, Default, Debug)]
 pub struct CaptureProgress {
-        frames:    FrameCount,
-        requested: ShotRequested,
+    frames:    FrameCount,
+    requested: ShotRequested,
 }
 
 impl CaptureProgress {
-                #[must_use]
+    /// True when the capture has been requested.
+    #[must_use]
     pub const fn is_requested(&self) -> bool {
         self.requested.is_marked()
     }
 }
 
+/// Reset progress (e.g. before a new capture run).
 pub fn reset_progress(mut progress: ResMut<CaptureProgress>) {
     *progress = CaptureProgress::default();
 }
 
+/// After [`SettleFrames`] have passed, spawn a primary-window screenshot.
 pub fn settle_then_capture(
     shot: Res<CapturePath>,
     settle: Res<SettleFrames>,
@@ -68,6 +79,7 @@ pub fn settle_then_capture(
     progress.requested = ShotRequested::mark();
 }
 
+/// Once a shot was requested, exit when the file exists or [`PollCap`] is hit.
 pub fn poll_then_exit(
     shot: Res<CapturePath>,
     progress: Res<CaptureProgress>,
