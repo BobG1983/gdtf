@@ -1,9 +1,14 @@
+//! Advance a test app until a condition holds.
+
 use bevy::{
     app::App,
     asset::{AssetServer, LoadState, UntypedAssetId},
     ecs::resource::Resource,
 };
 
+/// Run `app.update()` until `predicate` is true or `max_updates` is exhausted.
+///
+/// Returns whether the predicate became true.
 pub fn advance_until(app: &mut App, predicate: impl Fn(&App) -> bool, max_updates: u32) -> bool {
     for _ in 0..max_updates {
         app.update();
@@ -14,6 +19,11 @@ pub fn advance_until(app: &mut App, predicate: impl Fn(&App) -> bool, max_update
     false
 }
 
+/// Run updates until resource `T` exists.
+///
+/// # Panics
+///
+/// Panics if `T` is still missing after `max_updates` frames.
 pub fn advance_until_resource_exists<T: Resource>(app: &mut App, max_updates: u32) {
     for _ in 0..max_updates {
         app.update();
@@ -31,6 +41,11 @@ pub fn advance_until_resource_exists<T: Resource>(app: &mut App, max_updates: u3
     );
 }
 
+/// Run updates until the asset at `id` reaches a load state accepted by `predicate`.
+///
+/// # Panics
+///
+/// Panics if the expected load state is never observed within `max_updates` frames.
 pub fn advance_until_load_state(
     app: &mut App,
     id: impl Into<UntypedAssetId>,
