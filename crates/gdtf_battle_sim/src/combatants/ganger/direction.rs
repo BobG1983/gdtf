@@ -1,3 +1,5 @@
+//! Eight-way facing and ring rotation.
+
 use bevy::{
     math::Vec3,
     prelude::{Component, Deref},
@@ -6,11 +8,13 @@ use serde::Deserialize;
 
 use crate::metric::Cell;
 
+/// Unit vector one step along a direction (sim space).
 #[derive(Deref, Debug, Clone, Copy, PartialEq)]
 pub struct ForwardStep(Vec3);
 
 impl ForwardStep {
-        #[must_use]
+    /// Wrap a step vector.
+    #[must_use]
     pub const fn new(step: Vec3) -> Self {
         Self(step)
     }
@@ -20,36 +24,40 @@ impl ForwardStep {
 struct RingOrdinal(u8);
 
 impl RingOrdinal {
-        const fn new(ordinal: u8) -> Self {
+    const fn new(ordinal: u8) -> Self {
         Self(ordinal)
     }
 }
 
+/// Number of 45° ring steps between two directions.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct RingSteps(u8);
 
 impl RingSteps {
-        #[must_use]
+    /// Wrap a step count.
+    #[must_use]
     pub const fn new(steps: u8) -> Self {
         Self(steps)
     }
 }
 
+/// Compass facing on the grid.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 pub enum Direction {
-        #[default]
+    #[default]
     North,
-        NorthEast,
-        East,
-        SouthEast,
-        South,
-        SouthWest,
-        West,
-        NorthWest,
+    NorthEast,
+    East,
+    SouthEast,
+    South,
+    SouthWest,
+    West,
+    NorthWest,
 }
 
 impl Direction {
-                                                    #[must_use]
+    /// Continuous forward step in sim space.
+    #[must_use]
     pub fn forward_step(self) -> ForwardStep {
         let d = core::f32::consts::FRAC_1_SQRT_2;
         ForwardStep::new(match self {
@@ -64,7 +72,8 @@ impl Direction {
         })
     }
 
-                                            #[must_use]
+    /// Integer cell delta for one step.
+    #[must_use]
     pub const fn cell_step(self) -> Cell {
         match self {
             Self::North => Cell::new(0, -1),
@@ -78,7 +87,7 @@ impl Direction {
         }
     }
 
-                                const fn ordinal(self) -> RingOrdinal {
+    const fn ordinal(self) -> RingOrdinal {
         match self {
             Self::North => RingOrdinal::new(0),
             Self::NorthEast => RingOrdinal::new(1),
@@ -91,7 +100,7 @@ impl Direction {
         }
     }
 
-                            const fn from_ordinal(ord: RingOrdinal) -> Self {
+    const fn from_ordinal(ord: RingOrdinal) -> Self {
         match ord.0 % 8 {
             0 => Self::North,
             1 => Self::NorthEast,
@@ -104,18 +113,20 @@ impl Direction {
         }
     }
 
-                                        #[must_use]
+    /// Shortest ring distance to `other`.
+    #[must_use]
     pub const fn steps_to(self, other: Self) -> RingSteps {
         let d = self.ordinal().0.abs_diff(other.ordinal().0);
         RingSteps::new(if d <= 8 - d { d } else { 8 - d })
     }
 
-                                            #[must_use]
+    /// Direction from one cell toward another (None if same cell).
+    #[must_use]
     pub fn from_cells(from: Cell, to: Cell) -> Option<Self> {
         let sx = (to.x - from.x).signum();
         let sy = (to.y - from.y).signum();
         let dir = match (sx, sy) {
-            (0, 0) => return None, 
+            (0, 0) => return None,
             (0, -1) => Self::North,
             (1, -1) => Self::NorthEast,
             (1, 0) => Self::East,
@@ -128,7 +139,8 @@ impl Direction {
         Some(dir)
     }
 
-                                                        #[must_use]
+    /// Rotate up to `steps` toward `target` along the short arc.
+    #[must_use]
     pub const fn rotated_toward(self, target: Self, steps: RingSteps) -> Self {
         let from = self.ordinal().0;
         let to = target.ordinal().0;
@@ -144,13 +156,14 @@ impl Direction {
     }
 }
 
-/// the grid" orientation, not a balance value). `#[serde(transparent)]` lets an
+/// Current facing direction component.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
 pub struct Facing(Direction);
 
 impl Facing {
-                        #[must_use]
+    /// Wrap a direction.
+    #[must_use]
     pub const fn new(direction: Direction) -> Self {
         Self(direction)
     }

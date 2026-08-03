@@ -1,162 +1,181 @@
+//! Runtime vitals and derived combat stats as components.
+
 use bevy::prelude::{Component, Deref};
 use serde::{Deserialize, Serialize};
 
-/// `#[serde(transparent)]` lets an authored situation `.ron`'s `name` parse as a
-/// serde-transparent shape). A `#[derive(Component)]` so the status panel can query
+/// Display name.
 #[derive(Deref, Component, Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct GangerName(String);
 
 impl GangerName {
-                    #[must_use]
+    /// Wrap a name.
+    #[must_use]
     pub const fn new(name: String) -> Self {
         Self(name)
     }
 }
 
-/// system can query `&mut Hp` alone. Defaults to `0`. `#[serde(transparent)]`
+/// Current hit points.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
 pub struct Hp(u16);
 
 impl Hp {
-                    #[must_use]
+    /// Wrap HP.
+    #[must_use]
     pub const fn new(hp: u16) -> Self {
         Self(hp)
     }
 }
 
-/// `#[serde(transparent)]` lets an authored HP ceiling parse as a bare integer (the
+/// Maximum hit points.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
 pub struct HpMax(u16);
 
 impl HpMax {
-                        #[must_use]
+    /// Wrap max HP.
+    #[must_use]
     pub const fn new(hp_max: u16) -> Self {
         Self(hp_max)
     }
 }
 
-/// `#[serde(transparent)]` lets an authored Wounds pool parse as a bare integer.
+/// Current wounds remaining.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
 pub struct Wounds(u8);
 
 impl Wounds {
-                    #[must_use]
+    /// Wrap wounds.
+    #[must_use]
     pub const fn new(wounds: u8) -> Self {
         Self(wounds)
     }
 }
 
-/// `#[serde(transparent)]` lets an authored Wounds ceiling parse as a bare integer (the
+/// Maximum wounds.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
 pub struct WoundsMax(u8);
 
 impl WoundsMax {
-                        #[must_use]
+    /// Wrap max wounds.
+    #[must_use]
     pub const fn new(wounds_max: u8) -> Self {
         Self(wounds_max)
     }
 }
 
-/// `&mut Tu` alone. Defaults to `0`. `#[serde(transparent)]` lets an authored TU
+/// Current time units.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
 pub struct Tu(u8);
 
 impl Tu {
-                    #[must_use]
+    /// Wrap TU.
+    #[must_use]
     pub const fn new(tu: u8) -> Self {
         Self(tu)
     }
 }
 
-/// `#[serde(transparent)]` lets an authored TU ceiling parse as a bare integer (the
+/// Maximum time units.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
 pub struct TuMax(u8);
 
 impl TuMax {
-                    #[must_use]
+    /// Wrap max TU.
+    #[must_use]
     pub const fn new(tu_max: u8) -> Self {
         Self(tu_max)
     }
 }
 
-/// `#[serde(transparent)]` lets an authored Shooting stat parse as a bare scalar.
+/// Derived shooting skill.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Deserialize)]
 #[serde(transparent)]
 pub struct Shooting(f32);
 
 impl Shooting {
-                            #[must_use]
+    /// Wrap shooting.
+    #[must_use]
     pub const fn new(shooting: f32) -> Self {
         Self(shooting)
     }
 }
 
-/// can query `&Toughness` alone. Defaults to `0.0`. `#[serde(transparent)]` lets
+/// Toughness (also an authored attribute).
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Toughness(f32);
 
 impl Toughness {
-                        #[must_use]
+    /// Wrap toughness.
+    #[must_use]
     pub const fn new(toughness: f32) -> Self {
         Self(toughness)
     }
 }
 
-/// `#[serde(transparent)]` lets an authored Luck stat parse as a bare scalar.
+/// Luck (also an authored attribute).
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Luck(f32);
 
 impl Luck {
-                        #[must_use]
+    /// Wrap luck.
+    #[must_use]
     pub const fn new(luck: f32) -> Self {
         Self(luck)
     }
 }
 
+/// Derived melee fight skill.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default)]
 pub struct Fight(f32);
 
 impl Fight {
-                #[must_use]
+    /// Wrap fight.
+    #[must_use]
     pub const fn new(fight: f32) -> Self {
         Self(fight)
     }
 }
 
+/// Derived reaction skill.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default)]
 pub struct Reactions(f32);
 
 impl Reactions {
-                #[must_use]
+    /// Wrap reactions.
+    #[must_use]
     pub const fn new(reactions: f32) -> Self {
         Self(reactions)
     }
 }
 
+/// Derived morale.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Default)]
 pub struct Morale(f32);
 
 impl Morale {
-                #[must_use]
+    /// Wrap morale.
+    #[must_use]
     pub const fn new(morale: f32) -> Self {
         Self(morale)
     }
 }
 
+/// Bottle / break threshold.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct Bottle(u8);
 
 impl Bottle {
-            #[must_use]
+    /// Wrap bottle.
+    #[must_use]
     pub const fn new(bottle: u8) -> Self {
         Self(bottle)
     }
