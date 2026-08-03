@@ -1,3 +1,5 @@
+//! Scene scaffold: Load-scoped resources live only across the Load span.
+
 use bevy::{app::App, ecs::resource::Resource};
 use gdtf_app::test_support::{AppState, LoadedSituation, app_state, load_released};
 use gdtf_battle_sim::{
@@ -15,7 +17,7 @@ const WALK_BUDGET: u32 = 64;
 struct LoadScopedProbe(u8);
 
 impl LoadScopedProbe {
-        const fn seeded() -> Self {
+    const fn seeded() -> Self {
         Self(0xA5)
     }
 }
