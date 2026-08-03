@@ -1,3 +1,5 @@
+//! One-shot fill of free space after player/enemy placement.
+
 use super::{
     super::{assembler::Placement, error::PackingError, packer::SplitMode, tuning::ProcgenTuning},
     cursor::{FillCursor, FillStep},

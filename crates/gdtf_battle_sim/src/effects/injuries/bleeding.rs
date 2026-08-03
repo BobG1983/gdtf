@@ -1,31 +1,37 @@
+//! Bleeding injury effect.
+
 use bevy::prelude::Deref;
 use serde::{Deserialize, Serialize};
 
 use super::{ApplyInjuryEffect, HealError, LedgerAccumulators};
 
-/// [`Deref`]; `#[serde(transparent)]` parses a bare RON number (`amount: 1`). The
+/// Per-turn bleed amount from an injury.
 #[derive(Deref, Clone, Copy, PartialEq, Eq, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct BleedAmount(u8);
 
 impl BleedAmount {
-        #[must_use]
+    /// Wrap an amount.
+    #[must_use]
     pub const fn new(amount: u8) -> Self {
         Self(amount)
     }
 
-            #[must_use]
+    /// Inner value.
+    #[must_use]
     pub const fn raw(self) -> u8 {
         self.0
     }
 }
 
+/// Accrues and relieves bleed on the ledger.
 pub struct ApplyBleeding {
-        amount: BleedAmount,
+    amount: BleedAmount,
 }
 
 impl ApplyBleeding {
-        #[must_use]
+    /// Build the applicator.
+    #[must_use]
     pub const fn new(amount: BleedAmount) -> Self {
         Self { amount }
     }
@@ -36,7 +42,7 @@ impl ApplyInjuryEffect for ApplyBleeding {
         *accumulators.bleed = accumulators.bleed.accumulate(self.amount);
     }
 
-            fn heal(&self, accumulators: &mut LedgerAccumulators<'_>) -> Result<(), HealError> {
+    fn heal(&self, accumulators: &mut LedgerAccumulators<'_>) -> Result<(), HealError> {
         *accumulators.bleed = accumulators.bleed.relieve(self.amount);
         Ok(())
     }
@@ -50,14 +56,14 @@ mod tests {
         injuries::{BleedAfflicted, MovementCostFactor, StatDeltaLedger},
     };
 
-            #[test]
+    #[test]
     fn bleeding_accrues_by_summing() {
         let mut deltas = StatDeltaLedger::default();
         let mut bleed = BleedAfflicted::default();
         let mut movement = MovementCostFactor::IDENTITY;
         let mut acc = LedgerAccumulators {
-            deltas:   &mut deltas,
-            bleed:    &mut bleed,
+            deltas: &mut deltas,
+            bleed: &mut bleed,
             movement: &mut movement,
         };
         ApplyBleeding::new(BleedAmount::new(2)).fold_on_gain(&mut acc);
@@ -65,14 +71,14 @@ mod tests {
         assert_eq!(*bleed, 5, "stacked bleeds sum (2 + 3 = 5)");
     }
 
-            #[test]
+    #[test]
     fn heal_relieves_the_accrued_bleed() {
         let mut deltas = StatDeltaLedger::default();
         let mut bleed = BleedAfflicted::default();
         let mut movement = MovementCostFactor::IDENTITY;
         let mut acc = LedgerAccumulators {
-            deltas:   &mut deltas,
-            bleed:    &mut bleed,
+            deltas: &mut deltas,
+            bleed: &mut bleed,
             movement: &mut movement,
         };
         let effect = ApplyBleeding::new(BleedAmount::new(4));

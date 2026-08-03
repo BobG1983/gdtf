@@ -1,3 +1,5 @@
+//! Staged procgen cursor: assemble → fill → emit.
+
 use super::{
     super::{
         assembler::{PlacedPrefab, Placement, place_enemy, place_player},
@@ -17,47 +19,57 @@ use crate::{
     terrain::def::TerrainDefRegistry,
 };
 
+/// High-level stage of level generation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProcgenStage {
-        Assemble,
-        Fill,
-        Emit,
-        Done,
+    /// Placing player and enemy spawns.
+    Assemble,
+    /// Filling free space with content prefabs.
+    Fill,
+    /// Emitting the situation.
+    Emit,
+    /// Finished (success or failure).
+    Done,
 }
 
+/// Catalogs needed for one staged step.
 #[derive(Clone, Copy)]
 pub struct StagedProcgenRegistries<'a> {
-        pub prefabs:      &'a PrefabRegistry,
-        pub themes:       &'a UuidThemeRegistry,
-        pub terrain_defs: &'a TerrainDefRegistry,
-        pub tuning:       &'a ProcgenTuning,
+    /// Prefab catalog.
+    pub prefabs: &'a PrefabRegistry,
+    /// Theme catalog.
+    pub themes: &'a UuidThemeRegistry,
+    /// Terrain piece catalog.
+    pub terrain_defs: &'a TerrainDefRegistry,
+    /// Density and scatter knobs.
+    pub tuning: &'a ProcgenTuning,
 }
 
 enum Phase {
-        Pending,
-                PlayerPlaced {
-                player: PlacedPrefab,
-                packer: MaxRectsPacker,
+    Pending,
+    PlayerPlaced {
+        player: PlacedPrefab,
+        packer: MaxRectsPacker,
     },
-        Filling(FillCursor),
-            Filled(FilledPlacement),
-            Emitted {
-                filled: FilledPlacement,
-                level:  EmittedLevel,
+    Filling(FillCursor),
+    Filled(FilledPlacement),
+    Emitted {
+        filled: FilledPlacement,
+        level: EmittedLevel,
     },
-            Failed(PackingError),
+    Failed(PackingError),
 }
 
 pub(in crate::lifecycle::procgen) struct ProcgenCursor {
-        theme:           ThemeUuid,
-        grid_size:       GridSize,
-        split:           SplitMode,
-        min_player_side: MinPlayerSide,
-        phase:           Phase,
+    theme: ThemeUuid,
+    grid_size: GridSize,
+    split: SplitMode,
+    min_player_side: MinPlayerSide,
+    phase: Phase,
 }
 
 impl ProcgenCursor {
-            #[must_use]
+    #[must_use]
     pub(in crate::lifecycle::procgen) fn new(theme: ThemeUuid, grid_size: GridSize) -> Self {
         Self {
             theme,
@@ -68,7 +80,7 @@ impl ProcgenCursor {
         }
     }
 
-            #[must_use]
+    #[must_use]
     pub(in crate::lifecycle::procgen) const fn stage(&self) -> ProcgenStage {
         match &self.phase {
             Phase::Pending | Phase::PlayerPlaced { .. } => ProcgenStage::Assemble,
@@ -78,12 +90,12 @@ impl ProcgenCursor {
         }
     }
 
-            #[must_use]
+    #[must_use]
     pub(in crate::lifecycle::procgen) const fn is_done(&self) -> bool {
         matches!(self.stage(), ProcgenStage::Done)
     }
 
-            #[must_use]
+    #[must_use]
     pub(in crate::lifecycle::procgen) const fn emitted(&self) -> Option<&EmittedLevel> {
         match &self.phase {
             Phase::Emitted { level, .. } => Some(level),
@@ -91,7 +103,7 @@ impl ProcgenCursor {
         }
     }
 
-            #[must_use]
+    #[must_use]
     pub(in crate::lifecycle::procgen) const fn failure(&self) -> Option<&PackingError> {
         match &self.phase {
             Phase::Failed(err) => Some(err),
@@ -99,12 +111,12 @@ impl ProcgenCursor {
         }
     }
 
-        #[must_use]
+    #[must_use]
     pub(in crate::lifecycle::procgen) const fn grid_size(&self) -> GridSize {
         self.grid_size
     }
 
-                #[must_use]
+    #[must_use]
     pub(in crate::lifecycle::procgen) fn placed_footprints(&self) -> Vec<PlacedFootprint> {
         match &self.phase {
             Phase::Pending | Phase::Failed(_) => Vec::new(),
@@ -118,7 +130,7 @@ impl ProcgenCursor {
         }
     }
 
-                                                            pub(in crate::lifecycle::procgen) fn step(
+    pub(in crate::lifecycle::procgen) fn step(
         &mut self,
         registries: StagedProcgenRegistries<'_>,
         rng: &mut ProcgenRng,

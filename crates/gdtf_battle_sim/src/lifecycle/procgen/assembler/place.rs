@@ -1,3 +1,5 @@
+//! Place player and enemy spawn prefabs on the board.
+
 use super::{
     super::{
         anchor::Anchor,
@@ -12,6 +14,7 @@ use crate::{
     rng::ProcgenRng,
 };
 
+/// A prefab placed at an anchor region.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlacedPrefab {
     prefab: Prefab,
@@ -20,6 +23,7 @@ pub struct PlacedPrefab {
 }
 
 impl PlacedPrefab {
+    /// Build a placed prefab.
     #[must_use]
     pub const fn new(prefab: Prefab, anchor: Anchor, region: RegionRect) -> Self {
         Self {
@@ -29,29 +33,34 @@ impl PlacedPrefab {
         }
     }
 
+    /// The prefab.
     #[must_use]
     pub const fn prefab(&self) -> &Prefab {
         &self.prefab
     }
 
+    /// Anchor used.
     #[must_use]
     pub const fn anchor(&self) -> Anchor {
         self.anchor
     }
 
+    /// Board region occupied.
     #[must_use]
     pub const fn region(&self) -> RegionRect {
         self.region
     }
 }
 
+/// Player and enemy spawn placements.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Placement {
     player: PlacedPrefab,
-    enemy:  PlacedPrefab,
+    enemy: PlacedPrefab,
 }
 
 impl Placement {
+    /// Pair of placements.
     #[must_use]
     pub(in crate::lifecycle::procgen) const fn new(
         player: PlacedPrefab,
@@ -60,11 +69,13 @@ impl Placement {
         Self { player, enemy }
     }
 
+    /// Player placement.
     #[must_use]
     pub const fn player(&self) -> &PlacedPrefab {
         &self.player
     }
 
+    /// Enemy placement.
     #[must_use]
     pub const fn enemy(&self) -> &PlacedPrefab {
         &self.enemy
@@ -96,9 +107,9 @@ pub(in crate::lifecycle::procgen) fn place_player(
     let player_region = board.place_at_anchor(player_anchor, player_footprint);
     if !*packer.place(player_region) {
         return Err(PackingError::FootprintDoesNotFit {
-            anchor:    player_anchor,
+            anchor: player_anchor,
             footprint: player_footprint,
-            region:    board,
+            region: board,
         });
     }
 
@@ -128,9 +139,9 @@ pub(in crate::lifecycle::procgen) fn place_enemy(
     let enemy_region = board.place_at_anchor(enemy_anchor, enemy_footprint);
     if !*packer.place(enemy_region) {
         return Err(PackingError::FootprintDoesNotFit {
-            anchor:    enemy_anchor,
+            anchor: enemy_anchor,
             footprint: enemy_footprint,
-            region:    board,
+            region: board,
         });
     }
     Ok(PlacedPrefab::new(enemy_prefab, enemy_anchor, enemy_region))

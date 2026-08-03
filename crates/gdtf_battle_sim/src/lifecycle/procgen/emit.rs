@@ -1,3 +1,5 @@
+//! Emit a situation from filled placements.
+
 use super::{
     assembler::PlacedPrefab,
     deploy::{DeploymentZone, DeploymentZones},
@@ -48,6 +50,7 @@ pub fn generate_level(
     }
 }
 
+/// Build a situation from a filled placement.
 #[must_use]
 pub fn emit_level(
     filled: &FilledPlacement,

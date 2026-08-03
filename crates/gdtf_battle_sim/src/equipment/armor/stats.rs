@@ -77,12 +77,18 @@ impl ArmorHardness {
 /// Hit location on the body.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 pub enum BodyPart {
+    /// Head.
     #[default]
     Head,
+    /// Torso.
     Torso,
+    /// Left arm.
     LeftArm,
+    /// Right arm.
     RightArm,
+    /// Left leg.
     LeftLeg,
+    /// Right leg.
     RightLeg,
 }
 
@@ -125,9 +131,13 @@ impl BodyPart {
 /// Coarse category for injury tables.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum InjuryCategory {
+    /// Head injuries.
     Head,
+    /// Torso injuries.
     Torso,
+    /// Arm injuries.
     Arm,
+    /// Leg injuries.
     Leg,
 }
 
@@ -139,13 +149,20 @@ impl InjuryCategory {
 /// Material / construction type for matchup.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default)]
 pub enum ArmorType {
+    /// Plated (default).
     #[default]
     Plated,
+    /// Refractive.
     Refractive,
+    /// Flak.
     Flak,
+    /// Void-hardened.
     Void,
+    /// Hazard suit.
     Hazard,
+    /// Reinforced.
     Reinforced,
+    /// Ceramic.
     Ceramic,
 }
 

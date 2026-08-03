@@ -1,4 +1,5 @@
-//! MECHANICS resolver that fans each buffered death's authored effect generically through
+//! Resolve buffered deaths and fan their authored effects.
+
 use bevy::{
     platform::collections::{HashMap, HashSet},
     prelude::{Entity, MessageReader, Query, Res, ResMut, Resource, With},
@@ -15,35 +16,42 @@ use crate::{
     weapon::{MeleeWeapon, MountedWeapon, Wields},
 };
 
+/// Cover-cell on-death effects keyed by cell.
 #[derive(Resource, Debug, Clone, Default, PartialEq)]
 pub struct CoverOnDeathRegistry(HashMap<CellLevel, OnDeathEffect>);
 
 impl CoverOnDeathRegistry {
-            #[must_use]
+    /// From cell/effect pairs.
+    #[must_use]
     pub fn new(effects: impl IntoIterator<Item = (CellLevel, OnDeathEffect)>) -> Self {
         Self(effects.into_iter().collect())
     }
 
-            pub fn insert(&mut self, at: CellLevel, effect: OnDeathEffect) -> Option<OnDeathEffect> {
+    /// Insert or replace an effect.
+    pub fn insert(&mut self, at: CellLevel, effect: OnDeathEffect) -> Option<OnDeathEffect> {
         self.0.insert(at, effect)
     }
 
-            #[must_use]
+    /// Look up an effect.
+    #[must_use]
     pub fn effect(&self, at: &CellLevel) -> Option<&OnDeathEffect> {
         self.0.get(at)
     }
 
-        #[must_use]
+    /// Number of entries.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
-        #[must_use]
+    /// Whether empty.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 }
 
+/// Fan each buffered death through its weapon or cover on-death effect.
 #[expect(
     clippy::too_many_arguments,
     reason = "the resolver threads the death reader, the three disjoint weapon-resolution \
@@ -90,11 +98,11 @@ pub fn resolve_on_death(
         };
 
         let mut fan_out = DeathFanOut {
-            grid:       &grid,
-            victims:    &mut victims,
-            fields:     &mut fields,
+            grid: &grid,
+            victims: &mut victims,
+            fields: &mut fields,
             field_defs: field_defs.as_deref(),
-            cascade:    &mut queue,
+            cascade: &mut queue,
         };
         effect.fan_at(death.at, &mut fan_out);
     }

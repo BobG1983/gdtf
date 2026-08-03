@@ -1,10 +1,11 @@
+//! Terrain piece content key.
+
 use bevy::{asset::uuid::Uuid, prelude::Deref, reflect::TypePath};
 use serde::{Deserialize, Serialize};
 
 use crate::terrain::piece::TerrainName;
 
-/// `#[serde(transparent)]` round-trips it as the bare `Uuid` wire form (a string in
-/// [`Situation`](crate::situation::Situation) can use `#[serde(default)]` on its
+/// Content key for a terrain piece definition.
 #[derive(
     Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize, Serialize, TypePath,
 )]
@@ -12,39 +13,44 @@ use crate::terrain::piece::TerrainName;
 pub struct TerrainUuid(Uuid);
 
 impl TerrainUuid {
-            #[must_use]
+    /// Wrap a UUID.
+    #[must_use]
     pub const fn new(uuid: Uuid) -> Self {
         Self(uuid)
     }
 
-                    #[must_use]
+    /// Nil sentinel (no piece).
+    #[must_use]
     pub const fn nil() -> Self {
         Self(Uuid::nil())
     }
 
-    /// Whether this key is the [`nil`](TerrainUuid::nil) sentinel — the `#[serde(default)]`
-            #[must_use]
+    /// Whether this is the nil sentinel.
+    #[must_use]
     pub const fn is_nil(&self) -> NilKey {
         NilKey::new(self.0.is_nil())
     }
 
-            #[must_use]
+    /// Fresh random key.
+    #[must_use]
     pub fn generate() -> Self {
         Self(Uuid::new_v4())
     }
 
-                                                    #[must_use]
+    /// Deterministic key from a legacy name string.
+    #[must_use]
     pub fn from_legacy_name(name: &TerrainName) -> Self {
         Self(Uuid::from_u128(*fnv1a64_u128(name.as_bytes())))
     }
 }
 
-/// `#[serde(default)]` an omitted key parses to, signalling "no authored piece".
+/// Whether a terrain key is the nil sentinel.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NilKey(bool);
 
 impl NilKey {
-        #[must_use]
+    /// Wrap the flag.
+    #[must_use]
     pub const fn new(is_nil: bool) -> Self {
         Self(is_nil)
     }
@@ -54,7 +60,7 @@ impl NilKey {
 pub(crate) struct LegacyKeyDigest(u128);
 
 impl LegacyKeyDigest {
-        #[must_use]
+    #[must_use]
     pub(crate) const fn new(digest: u128) -> Self {
         Self(digest)
     }

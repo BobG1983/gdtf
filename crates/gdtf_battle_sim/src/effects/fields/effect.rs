@@ -1,5 +1,5 @@
-//! field's authored [`FieldDef`](crate::effects::fields::FieldDef) means (GTW-545; GTW-553 re-homes
-//! `assets/content/fields/*.field.ron` authors the flat
+//! Closed set of field consequences derived from a [`FieldDef`].
+
 use bevy::prelude::Entity;
 use serde::Deserialize;
 
@@ -9,24 +9,32 @@ use super::{
 };
 use crate::{effects::fields::FieldDef, metric::CellLevel, weapon::DamageType};
 
+/// One consequence a field applies each tick or on placement.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub enum FieldEffect {
-            Drain {
-                damage:      FieldDamage,
-                                        damage_type: DamageType,
+    /// Drain HP from occupants.
+    Drain {
+        /// Damage per tick.
+        damage: FieldDamage,
+        /// Damage channel.
+        damage_type: DamageType,
     },
-                Immunity {
-                armor_types: ImmuneArmorTypes,
+    /// Grant immunity for certain armor types.
+    Immunity {
+        /// Immune armor types.
+        armor_types: ImmuneArmorTypes,
     },
-            Duration(FieldDuration),
+    /// Lifetime of the field.
+    Duration(FieldDuration),
 }
 
 impl FieldEffect {
-                                #[must_use]
+    /// Expand a field def into its consequence list.
+    #[must_use]
     pub fn consequences_of(def: &FieldDef) -> Vec<Self> {
         vec![
             Self::Drain {
-                damage:      def.damage,
+                damage: def.damage,
                 damage_type: def.damage_type,
             },
             Self::Immunity {
@@ -36,7 +44,7 @@ impl FieldEffect {
         ]
     }
 
-                                fn with_behaviour<R>(&self, visit: impl FnOnce(&dyn ApplyFieldEffect) -> R) -> R {
+    fn with_behaviour<R>(&self, visit: impl FnOnce(&dyn ApplyFieldEffect) -> R) -> R {
         match self {
             Self::Drain { damage, .. } => visit(&ApplyDrain::new(*damage)),
             Self::Immunity { armor_types } => visit(&ApplyImmunity::new(armor_types)),
@@ -46,11 +54,11 @@ impl FieldEffect {
 }
 
 impl ApplyFieldEffect for FieldEffect {
-            fn exempts_occupant(&self, armor: &OccupantArmor<'_, '_, '_>) -> DrainExempt {
+    fn exempts_occupant(&self, armor: &OccupantArmor<'_, '_, '_>) -> DrainExempt {
         self.with_behaviour(|behaviour| behaviour.exempts_occupant(armor))
     }
 
-            fn drain_occupant(
+    fn drain_occupant(
         &self,
         at: CellLevel,
         occupant: Entity,
@@ -59,11 +67,11 @@ impl ApplyFieldEffect for FieldEffect {
         self.with_behaviour(|behaviour| behaviour.drain_occupant(at, occupant, drain));
     }
 
-            fn initial_countdown(&self) -> Option<FieldTurns> {
+    fn initial_countdown(&self) -> Option<FieldTurns> {
         self.with_behaviour(|behaviour| behaviour.initial_countdown())
     }
 
-            fn count_down_one_turn(&self, remaining: &mut Option<FieldTurns>) -> FieldExpired {
+    fn count_down_one_turn(&self, remaining: &mut Option<FieldTurns>) -> FieldExpired {
         self.with_behaviour(|behaviour| behaviour.count_down_one_turn(remaining))
     }
 }

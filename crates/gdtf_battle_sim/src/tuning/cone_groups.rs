@@ -1,3 +1,5 @@
+//! Grouped cone and stability tuning structs.
+
 use serde::Deserialize;
 
 use crate::{
@@ -9,11 +11,15 @@ use crate::{
     },
 };
 
+/// Per-stance stability contribution.
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub struct StanceStability {
-        pub prone: StanceContribution,
-        pub kneel: StanceContribution,
-        pub stand: StanceContribution,
+    /// Prone contribution.
+    pub prone: StanceContribution,
+    /// Kneeling contribution.
+    pub kneel: StanceContribution,
+    /// Standing contribution.
+    pub stand: StanceContribution,
 }
 
 impl Default for StanceStability {
@@ -26,11 +32,15 @@ impl Default for StanceStability {
     }
 }
 
+/// Minimum cover height band required to brace per stance.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub struct BraceMinHeight {
-        pub prone: HeightBand,
-        pub kneel: HeightBand,
-        pub stand: HeightBand,
+    /// Prone minimum band.
+    pub prone: HeightBand,
+    /// Kneeling minimum band.
+    pub kneel: HeightBand,
+    /// Standing minimum band.
+    pub stand: HeightBand,
 }
 
 impl Default for BraceMinHeight {
@@ -43,49 +53,57 @@ impl Default for BraceMinHeight {
     }
 }
 
+/// One point on a stability response curve.
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub struct StabilityCurvePoint {
-        pub score:  StabilityCurveCoord,
-        pub output: StabilityCurveCoord,
+    /// Input score.
+    pub score: StabilityCurveCoord,
+    /// Output value.
+    pub output: StabilityCurveCoord,
 }
 
+/// Ordered list of stability curve points.
 #[derive(Debug, Clone, PartialEq, bevy::prelude::Deref, Deserialize)]
 #[serde(transparent)]
 pub struct StabilityCurve(Vec<StabilityCurvePoint>);
 
 impl StabilityCurve {
-        #[must_use]
+    /// Wrap points.
+    #[must_use]
     pub const fn new(points: Vec<StabilityCurvePoint>) -> Self {
         Self(points)
     }
 }
 
+/// Curves used by cone and recoil calculations.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct StabilityCurves {
-            pub cone_mult:     StabilityCurve,
-        pub recoil_growth: StabilityCurve,
+    /// Cone multiplier vs stability score.
+    pub cone_mult: StabilityCurve,
+    /// Recoil growth vs stability score.
+    pub recoil_growth: StabilityCurve,
 }
 
 impl Default for StabilityCurves {
     fn default() -> Self {
         Self {
-            cone_mult:     StabilityCurve::new(vec![
+            cone_mult: StabilityCurve::new(vec![
                 StabilityCurvePoint {
-                    score:  StabilityCurveCoord::new(0.0),
+                    score: StabilityCurveCoord::new(0.0),
                     output: StabilityCurveCoord::new(1.0),
                 },
                 StabilityCurvePoint {
-                    score:  StabilityCurveCoord::new(100.0),
+                    score: StabilityCurveCoord::new(100.0),
                     output: StabilityCurveCoord::new(0.5),
                 },
             ]),
             recoil_growth: StabilityCurve::new(vec![
                 StabilityCurvePoint {
-                    score:  StabilityCurveCoord::new(0.0),
+                    score: StabilityCurveCoord::new(0.0),
                     output: StabilityCurveCoord::new(1.0),
                 },
                 StabilityCurvePoint {
-                    score:  StabilityCurveCoord::new(100.0),
+                    score: StabilityCurveCoord::new(100.0),
                     output: StabilityCurveCoord::new(0.25),
                 },
             ]),
@@ -93,41 +111,51 @@ impl Default for StabilityCurves {
     }
 }
 
+/// Aimed-fire cone and TU adjustments.
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub struct AimMode {
-        pub cone_mult:  AimConeMult,
-        pub tu_premium: AimTuPremium,
+    /// Cone multiplier when aiming.
+    pub cone_mult: AimConeMult,
+    /// Extra TU cost when aiming.
+    pub tu_premium: AimTuPremium,
 }
 
 impl Default for AimMode {
     fn default() -> Self {
         Self {
-            cone_mult:  AimConeMult::new(0.6),
+            cone_mult: AimConeMult::new(0.6),
             tu_premium: AimTuPremium::new(1.5),
         }
     }
 }
 
+/// Concentration base and scale coefficients.
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub struct ConcentrationCoeffs {
-            pub base:  ConcentrationCoeff,
-            pub scale: ConcentrationCoeff,
+    /// Base coefficient.
+    pub base: ConcentrationCoeff,
+    /// Scale coefficient.
+    pub scale: ConcentrationCoeff,
 }
 
 impl Default for ConcentrationCoeffs {
     fn default() -> Self {
         Self {
-            base:  ConcentrationCoeff::new(1.0),
+            base: ConcentrationCoeff::new(1.0),
             scale: ConcentrationCoeff::new(1.0),
         }
     }
 }
 
+/// Per-stance muzzle height.
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub struct MuzzleHeights {
-        pub prone: MuzzleHeight,
-        pub kneel: MuzzleHeight,
-        pub stand: MuzzleHeight,
+    /// Prone height.
+    pub prone: MuzzleHeight,
+    /// Kneeling height.
+    pub kneel: MuzzleHeight,
+    /// Standing height.
+    pub stand: MuzzleHeight,
 }
 
 impl Default for MuzzleHeights {
@@ -140,11 +168,15 @@ impl Default for MuzzleHeights {
     }
 }
 
+/// Per-stance silhouette top height.
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub struct SilhouetteTops {
-        pub prone: SilhouetteTop,
-        pub kneel: SilhouetteTop,
-        pub stand: SilhouetteTop,
+    /// Prone top.
+    pub prone: SilhouetteTop,
+    /// Kneeling top.
+    pub kneel: SilhouetteTop,
+    /// Standing top.
+    pub stand: SilhouetteTop,
 }
 
 impl Default for SilhouetteTops {
@@ -157,37 +189,50 @@ impl Default for SilhouetteTops {
     }
 }
 
+/// All cone and stability tuning knobs in one place.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct ConeStabilityTuning {
-        pub stance_stability:            StanceStability,
-        pub brace_contribution:          BraceContribution,
-                pub emplacement_stability_bonus: EmplacementStabilityBonus,
-        pub brace_min_height:            BraceMinHeight,
-        pub stability_curves:            StabilityCurves,
-        pub aim_mode:                    AimMode,
-        pub recoil_climb:                RecoilClimb,
-        pub concentration:               ConcentrationCoeffs,
-        pub aim_height_frac:             AimHeightFrac,
-        pub muzzle_forward_offset:       MuzzleForwardOffset,
-        pub muzzle_heights:              MuzzleHeights,
-        pub silhouette_tops:             SilhouetteTops,
+    /// Stance contributions.
+    pub stance_stability: StanceStability,
+    /// Brace contribution.
+    pub brace_contribution: BraceContribution,
+    /// Emplacement bonus.
+    pub emplacement_stability_bonus: EmplacementStabilityBonus,
+    /// Brace minimum heights.
+    pub brace_min_height: BraceMinHeight,
+    /// Response curves.
+    pub stability_curves: StabilityCurves,
+    /// Aim mode adjustments.
+    pub aim_mode: AimMode,
+    /// Recoil climb per shot.
+    pub recoil_climb: RecoilClimb,
+    /// Concentration coefficients.
+    pub concentration: ConcentrationCoeffs,
+    /// Aim height fraction.
+    pub aim_height_frac: AimHeightFrac,
+    /// Muzzle forward offset.
+    pub muzzle_forward_offset: MuzzleForwardOffset,
+    /// Muzzle heights by stance.
+    pub muzzle_heights: MuzzleHeights,
+    /// Silhouette tops by stance.
+    pub silhouette_tops: SilhouetteTops,
 }
 
 impl Default for ConeStabilityTuning {
     fn default() -> Self {
         Self {
-            stance_stability:            StanceStability::default(),
-            brace_contribution:          BraceContribution::new(30.0),
+            stance_stability: StanceStability::default(),
+            brace_contribution: BraceContribution::new(30.0),
             emplacement_stability_bonus: EmplacementStabilityBonus::new(40.0),
-            brace_min_height:            BraceMinHeight::default(),
-            stability_curves:            StabilityCurves::default(),
-            aim_mode:                    AimMode::default(),
-            recoil_climb:                RecoilClimb::new(0.01),
-            concentration:               ConcentrationCoeffs::default(),
-            aim_height_frac:             AimHeightFrac::new(1.0),
-            muzzle_forward_offset:       MuzzleForwardOffset::new(0.3),
-            muzzle_heights:              MuzzleHeights::default(),
-            silhouette_tops:             SilhouetteTops::default(),
+            brace_min_height: BraceMinHeight::default(),
+            stability_curves: StabilityCurves::default(),
+            aim_mode: AimMode::default(),
+            recoil_climb: RecoilClimb::new(0.01),
+            concentration: ConcentrationCoeffs::default(),
+            aim_height_frac: AimHeightFrac::new(1.0),
+            muzzle_forward_offset: MuzzleForwardOffset::new(0.3),
+            muzzle_heights: MuzzleHeights::default(),
+            silhouette_tops: SilhouetteTops::default(),
         }
     }
 }

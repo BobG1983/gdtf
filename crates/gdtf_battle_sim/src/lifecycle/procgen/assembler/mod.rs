@@ -1,3 +1,5 @@
+//! Assemble player and enemy spawn placements.
+
 mod pick;
 mod place;
 

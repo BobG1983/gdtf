@@ -1,3 +1,5 @@
+//! Helpers for spawning ganger entities in tests.
+
 use bevy::prelude::{Bundle, Entity, World};
 
 use crate::{
@@ -10,6 +12,7 @@ use crate::{
     weapon::{FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent, WieldedBy},
 };
 
+/// Single-shot fire mode with the given TU percent and shot count.
 #[must_use]
 pub const fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
     FireModeSpec::new(
@@ -20,6 +23,7 @@ pub const fn single_mode(tu_percent: f32, shots: u16) -> FireModeSpec {
     )
 }
 
+/// Minimal alive target with the given HP and wounds.
 #[must_use]
 pub fn target_bundle(hp: u16, wounds: u8) -> impl Bundle {
     (
@@ -32,128 +36,145 @@ pub fn target_bundle(hp: u16, wounds: u8) -> impl Bundle {
     )
 }
 
+/// Spawn a weapon entity wielded by `ganger`.
 pub fn wield(world: &mut World, ganger: Entity, weapon: impl Bundle) -> Entity {
     world.spawn((WieldedBy::new(ganger), weapon)).id()
 }
 
+/// Fluent builder for a ganger entity in a test world.
 #[derive(Debug, Clone, Default)]
 pub struct GangerEntityBuilder {
-        at:               Option<CellLevel>,
-        faction:          Option<Faction>,
-        stance:           Option<StanceKind>,
-        facing:           Option<Direction>,
-        aiming:           Option<bool>,
-        life_state:       Option<LifeState>,
-        tu:               Option<u8>,
-        tu_max:           Option<u8>,
-        hp:               Option<u16>,
-        wounds:           Option<u8>,
-        inflicted_wounds: bool,
-        toughness:        Option<f32>,
-        luck:             Option<f32>,
-        shooting:         Option<f32>,
+    at: Option<CellLevel>,
+    faction: Option<Faction>,
+    stance: Option<StanceKind>,
+    facing: Option<Direction>,
+    aiming: Option<bool>,
+    life_state: Option<LifeState>,
+    tu: Option<u8>,
+    tu_max: Option<u8>,
+    hp: Option<u16>,
+    wounds: Option<u8>,
+    inflicted_wounds: bool,
+    toughness: Option<f32>,
+    luck: Option<f32>,
+    shooting: Option<f32>,
 }
 
 impl GangerEntityBuilder {
-            #[must_use]
+    /// Empty builder.
+    #[must_use]
     pub const fn new() -> Self {
         Self {
-            at:               None,
-            faction:          None,
-            stance:           None,
-            facing:           None,
-            aiming:           None,
-            life_state:       None,
-            tu:               None,
-            tu_max:           None,
-            hp:               None,
-            wounds:           None,
+            at: None,
+            faction: None,
+            stance: None,
+            facing: None,
+            aiming: None,
+            life_state: None,
+            tu: None,
+            tu_max: None,
+            hp: None,
+            wounds: None,
             inflicted_wounds: false,
-            toughness:        None,
-            luck:             None,
-            shooting:         None,
+            toughness: None,
+            luck: None,
+            shooting: None,
         }
     }
 
-        #[must_use]
+    /// Position.
+    #[must_use]
     pub const fn at(mut self, at: CellLevel) -> Self {
         self.at = Some(at);
         self
     }
 
-        #[must_use]
+    /// Faction.
+    #[must_use]
     pub const fn faction(mut self, faction: Faction) -> Self {
         self.faction = Some(faction);
         self
     }
 
-        #[must_use]
+    /// Stance kind.
+    #[must_use]
     pub const fn stance(mut self, stance: StanceKind) -> Self {
         self.stance = Some(stance);
         self
     }
 
-        #[must_use]
+    /// Facing direction.
+    #[must_use]
     pub const fn facing(mut self, facing: Direction) -> Self {
         self.facing = Some(facing);
         self
     }
 
-        #[must_use]
+    /// Aiming flag.
+    #[must_use]
     pub const fn aiming(mut self, aiming: bool) -> Self {
         self.aiming = Some(aiming);
         self
     }
 
-            #[must_use]
+    /// Life state.
+    #[must_use]
     pub const fn life_state(mut self, life_state: LifeState) -> Self {
         self.life_state = Some(life_state);
         self
     }
 
-        #[must_use]
+    /// Current TU.
+    #[must_use]
     pub const fn tu(mut self, tu: u8) -> Self {
         self.tu = Some(tu);
         self
     }
 
-        #[must_use]
+    /// Max TU.
+    #[must_use]
     pub const fn tu_max(mut self, tu_max: u8) -> Self {
         self.tu_max = Some(tu_max);
         self
     }
 
-        #[must_use]
+    /// Hit points.
+    #[must_use]
     pub const fn hp(mut self, hp: u16) -> Self {
         self.hp = Some(hp);
         self
     }
 
-        #[must_use]
+    /// Wound count.
+    #[must_use]
     pub const fn wounds(mut self, wounds: u8) -> Self {
         self.wounds = Some(wounds);
         self
     }
 
-        #[must_use]
+    /// Toughness.
+    #[must_use]
     pub const fn toughness(mut self, toughness: f32) -> Self {
         self.toughness = Some(toughness);
         self
     }
 
-        #[must_use]
+    /// Luck.
+    #[must_use]
     pub const fn luck(mut self, luck: f32) -> Self {
         self.luck = Some(luck);
         self
     }
 
-        #[must_use]
+    /// Shooting skill.
+    #[must_use]
     pub const fn shooting(mut self, shooting: f32) -> Self {
         self.shooting = Some(shooting);
         self
     }
 
-                    #[must_use]
+    /// Set HP, wounds, alive, empty wound list, and baseline toughness/luck.
+    #[must_use]
     pub const fn combat_vitals(mut self, hp: u16, wounds: u8) -> Self {
         self.hp = Some(hp);
         self.wounds = Some(wounds);
@@ -164,7 +185,8 @@ impl GangerEntityBuilder {
         self
     }
 
-                #[must_use]
+    /// Spawn into the world and return the entity id.
+    #[must_use]
     pub fn spawn(self, world: &mut World) -> Entity {
         let mut entity = world.spawn(());
         if let Some(at) = self.at {

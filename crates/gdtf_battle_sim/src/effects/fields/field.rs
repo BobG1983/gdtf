@@ -1,6 +1,7 @@
 //! Catalog authoring for battlefield fields.
 //!
 //! [`FieldDef`] is the catalog side: damage, damage type, immune armor types, duration.
+
 use bevy::reflect::TypePath;
 use serde::Deserialize;
 
@@ -12,13 +13,18 @@ use crate::{
 /// Authored definition of a placeable field type.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, TypePath)]
 pub struct FieldDef {
-    pub damage:             FieldDamage,
-    pub damage_type:        DamageType,
+    /// Damage per tick.
+    pub damage: FieldDamage,
+    /// Damage channel.
+    pub damage_type: DamageType,
+    /// Armor types immune to this field.
     pub immune_armor_types: ImmuneArmorTypes,
-    pub duration:           FieldDuration,
+    /// How long the field lasts.
+    pub duration: FieldDuration,
 }
 
 impl FieldDef {
+    /// Build a field definition.
     #[must_use]
     pub const fn new(
         damage: FieldDamage,

@@ -1,3 +1,5 @@
+//! Per-turn field drain against occupants.
+
 use bevy::prelude::{
     Commands, Component, Entity, Message, MessageWriter, Query, Res, ResMut, With,
 };
@@ -14,15 +16,20 @@ use crate::{
     occupancy::OccupancyGrid,
 };
 
+/// One field tick damaged an occupant.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FieldTicked {
-        pub occupant: Entity,
-        pub at:       CellLevel,
-        pub amount:   FieldDamage,
+    /// Occupant entity.
+    pub occupant: Entity,
+    /// Cell of the field.
+    pub at: CellLevel,
+    /// Damage dealt.
+    pub amount: FieldDamage,
 }
 
 impl FieldTicked {
-        #[must_use]
+    /// Build the message.
+    #[must_use]
     pub const fn new(occupant: Entity, at: CellLevel, amount: FieldDamage) -> Self {
         Self {
             occupant,
@@ -32,22 +39,28 @@ impl FieldTicked {
     }
 }
 
+/// Marker: this entity is currently under field drain.
 #[derive(Component, Debug, Clone, Copy, Default)]
 pub struct FieldOngoing;
 
+/// Field drain just started on an occupant.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FieldAfflicted {
-        pub occupant: Entity,
-        pub at:       CellLevel,
+    /// Occupant entity.
+    pub occupant: Entity,
+    /// Cell of the field.
+    pub at: CellLevel,
 }
 
 impl FieldAfflicted {
-        #[must_use]
+    /// Build the message.
+    #[must_use]
     pub const fn new(occupant: Entity, at: CellLevel) -> Self {
         Self { occupant, at }
     }
 }
 
+/// Drain occupants standing in fields and expire placements.
 #[expect(
     clippy::too_many_arguments,
     reason = "the field clock reads the occupancy grid + the live registry + the occupant / \
@@ -101,9 +114,9 @@ pub fn tick_fields(
         }
 
         let mut drain = OccupantDrain {
-            hp:     &mut hp,
-            life:   &mut life,
-            ticks:  &mut writer,
+            hp: &mut hp,
+            life: &mut life,
+            ticks: &mut writer,
             deaths: &mut deaths,
         };
         for consequence in &consequences {

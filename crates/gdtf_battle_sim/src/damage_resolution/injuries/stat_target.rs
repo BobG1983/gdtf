@@ -5,21 +5,37 @@ use serde::{Deserialize, Serialize};
 /// Stats that injury effects can touch.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Deserialize, Serialize)]
 pub enum StatTarget {
+    /// Movement speed attribute.
     Speed,
+    /// Aim attribute.
     Aim,
+    /// Strength attribute.
     Strength,
+    /// Toughness attribute.
     Toughness,
+    /// Reflexes attribute.
     Reflexes,
+    /// Cool attribute.
     Cool,
+    /// Grit attribute.
     Grit,
+    /// Luck attribute.
     Luck,
+    /// Derived shooting skill.
     Shooting,
+    /// Derived fight skill.
     Fight,
+    /// Derived reactions skill.
     Reactions,
+    /// Derived morale.
     Morale,
+    /// Time-unit pool.
     Tu,
+    /// Hit points.
     Hp,
+    /// Wound count.
     Wounds,
+    /// Bottle / break threshold.
     Bottle,
 }
 

@@ -1,27 +1,32 @@
+//! Reload-time scale attachment effect.
+
 use bevy::prelude::{Deref, EntityWorldMut};
 use serde::{Deserialize, Serialize};
 
 use super::ApplyAttachmentEffect;
 use crate::magazine::{LoadedRounds, Magazine, ReloadTu};
 
-/// `#[serde(transparent)]` so it authors as a bare RON scalar — `ReloadTime(0.5)`;
+/// Multiplier applied to magazine reload TU.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ReloadTimeScale(f32);
 
 impl ReloadTimeScale {
-            #[must_use]
+    /// Wrap a scale factor.
+    #[must_use]
     pub const fn new(scale: f32) -> Self {
         Self(scale)
     }
 }
 
+/// Scales the weapon magazine reload cost.
 pub struct ApplyReloadTime {
-        scale: ReloadTimeScale,
+    scale: ReloadTimeScale,
 }
 
 impl ApplyReloadTime {
-        #[must_use]
+    /// Build the applicator.
+    #[must_use]
     pub const fn new(scale: ReloadTimeScale) -> Self {
         Self { scale }
     }
@@ -60,7 +65,7 @@ mod tests {
         weapon::MagazineSize,
     };
 
-        #[test]
+    #[test]
     fn reload_time_scale_below_one_lowers_reload_tu() {
         let mut world = World::new();
         let weapon = world
@@ -78,7 +83,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn reload_time_scale_above_one_raises_reload_tu() {
         let mut world = World::new();
         let weapon = world

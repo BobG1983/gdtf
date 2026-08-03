@@ -1,3 +1,5 @@
+//! Plugin that keeps occupancy and surface grids in sync.
+
 use bevy::prelude::{App, IntoScheduleConfigs, Plugin, SystemSet, Update};
 
 use crate::{
@@ -8,12 +10,16 @@ use crate::{
     },
 };
 
+/// System sets for occupancy maintenance.
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SimSystems {
-            Simulate,
-                            Record,
+    /// Project moves, deaths, and blocking onto the grid.
+    Simulate,
+    /// Record after simulate.
+    Record,
 }
 
+/// Registers occupancy sync systems and messages.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct OccupancyMaintenancePlugin;
 

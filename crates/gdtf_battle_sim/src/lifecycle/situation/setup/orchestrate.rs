@@ -1,3 +1,5 @@
+//! Top-level battle setup from a situation.
+
 use bevy::prelude::Commands;
 
 use super::{
@@ -84,7 +86,7 @@ pub fn setup_battle(
         .map(|(cover, kind)| TerrainPlacement::new(cover.at, kind))
         .collect();
     let occupancy_input = OccupancyInput {
-        terrain:   terrain_placements,
+        terrain: terrain_placements,
         occupants: setup.occupants.clone(),
     };
     let occupancy_grid =

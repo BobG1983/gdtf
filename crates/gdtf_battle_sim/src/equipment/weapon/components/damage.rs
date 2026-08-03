@@ -64,13 +64,20 @@ impl WeaponShred {
 /// Damage channel for armor matchups.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default)]
 pub enum DamageType {
+    /// Shock.
     Shock,
+    /// Blast / explosive.
     Blast,
+    /// Chemical.
     Chem,
+    /// Kinetic (default).
     #[default]
     Kinetic,
+    /// Plasma.
     Plasma,
+    /// Rend / tearing.
     Rend,
+    /// Laser.
     Las,
 }
 

@@ -1,3 +1,5 @@
+//! Explicitly placed ganger and its placement bag.
+
 use serde::Deserialize;
 
 use crate::{
@@ -5,22 +7,30 @@ use crate::{
     metric::CellLevel,
 };
 
+/// One ganger placed at a fixed cell from a gang roster.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct PlacedGanger {
-                        /// error (no panic). Authored as a bare string ([`GangName`] is `#[serde(transparent)]`).
-    pub gang:       GangName,
-                    /// error (no panic). Authored as a bare string ([`GangerName`] is `#[serde(transparent)]`).
-    pub member:     GangerName,
-        pub at:         CellLevel,
-            pub faction:    Faction,
-        pub facing:     Facing,
-        pub stance:     Stance,
-        pub aiming:     Aiming,
-        pub life_state: LifeState,
+    /// Gang key.
+    pub gang: GangName,
+    /// Member key within the gang.
+    pub member: GangerName,
+    /// Spawn cell.
+    pub at: CellLevel,
+    /// Faction index.
+    pub faction: Faction,
+    /// Facing.
+    pub facing: Facing,
+    /// Stance.
+    pub stance: Stance,
+    /// Aiming state.
+    pub aiming: Aiming,
+    /// Life state.
+    pub life_state: LifeState,
 }
 
 impl PlacedGanger {
-                                    #[must_use]
+    /// From gang, member, and placement bag.
+    #[must_use]
     pub const fn new(gang: GangName, member: GangerName, placement: Placement) -> Self {
         Self {
             gang,
@@ -35,18 +45,26 @@ impl PlacedGanger {
     }
 }
 
+/// Cell and combat state for a placed ganger.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Placement {
-        pub at:         CellLevel,
-        pub faction:    Faction,
-        pub facing:     Facing,
-        pub stance:     Stance,
-        pub aiming:     Aiming,
-        pub life_state: LifeState,
+    /// Spawn cell.
+    pub at: CellLevel,
+    /// Faction index.
+    pub faction: Faction,
+    /// Facing.
+    pub facing: Facing,
+    /// Stance.
+    pub stance: Stance,
+    /// Aiming state.
+    pub aiming: Aiming,
+    /// Life state.
+    pub life_state: LifeState,
 }
 
 impl Placement {
-                #[must_use]
+    /// Build a placement bag.
+    #[must_use]
     pub const fn new(
         at: CellLevel,
         faction: Faction,

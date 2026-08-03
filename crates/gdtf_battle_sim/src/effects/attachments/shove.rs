@@ -1,10 +1,11 @@
-//! The **Shove** attachment effect (GTW-549 USER-REVIEW extra; GTW-558 one-file-per-effect)
+//! Shove attachment effect.
+
 use bevy::prelude::EntityWorldMut;
 
 use super::ApplyAttachmentEffect;
 use crate::weapon::Shove;
 
-/// A no-payload unit effect. USER-REVIEW extra (defensible default).
+/// Marks the weapon as shove-capable.
 pub struct ApplyShove;
 
 impl ApplyAttachmentEffect for ApplyShove {
@@ -20,7 +21,7 @@ mod tests {
     use super::{ApplyAttachmentEffect, ApplyShove};
     use crate::weapon::Shove;
 
-        #[test]
+    #[test]
     fn shove_inserts_shove_tag() {
         let mut world = World::new();
         let weapon = world.spawn_empty().id();

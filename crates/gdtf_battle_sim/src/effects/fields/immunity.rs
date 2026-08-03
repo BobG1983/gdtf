@@ -1,43 +1,51 @@
+//! Field immunity by armor type.
+
 use bevy::platform::collections::HashSet;
 use serde::Deserialize;
 
 use super::{ApplyFieldEffect, DrainExempt, OccupantArmor};
 use crate::armor::ArmorType;
 
+/// Set of armor types immune to a field.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
 pub struct ImmuneArmorTypes(HashSet<ArmorType>);
 
 impl ImmuneArmorTypes {
-            #[must_use]
+    /// From an iterator of armor types.
+    #[must_use]
     pub fn new(types: impl IntoIterator<Item = ArmorType>) -> Self {
         Self(types.into_iter().collect())
     }
 
-                #[must_use]
+    /// Whether a type is immune.
+    #[must_use]
     pub fn contains(&self, armor_type: &ArmorType) -> bool {
         self.0.contains(armor_type)
     }
 
-            #[must_use]
+    /// Whether the set is empty.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 }
 
+/// Exempts occupants wearing any listed armor type.
 pub struct ApplyImmunity<'s> {
-        armor_types: &'s ImmuneArmorTypes,
+    armor_types: &'s ImmuneArmorTypes,
 }
 
 impl<'s> ApplyImmunity<'s> {
-        #[must_use]
+    /// Build the applicator.
+    #[must_use]
     pub const fn new(armor_types: &'s ImmuneArmorTypes) -> Self {
         Self { armor_types }
     }
 }
 
 impl ApplyFieldEffect for ApplyImmunity<'_> {
-                    fn exempts_occupant(&self, armor: &OccupantArmor<'_, '_, '_>) -> DrainExempt {
+    fn exempts_occupant(&self, armor: &OccupantArmor<'_, '_, '_>) -> DrainExempt {
         DrainExempt::new(armor.wears.pieces().any(|piece| {
             armor
                 .worn
@@ -60,7 +68,7 @@ mod tests {
         effects::fields::{ApplyFieldEffect, OccupantArmor},
     };
 
-                    fn exempts(worn_type: ArmorType, immune: &[ArmorType]) -> bool {
+    fn exempts(worn_type: ArmorType, immune: &[ArmorType]) -> bool {
         let mut world = World::new();
         let ganger = world.spawn_empty().id();
         world.spawn((worn_type, WornBy::new(ganger)));
@@ -77,7 +85,7 @@ mod tests {
         *ApplyImmunity::new(&set).exempts_occupant(&armor)
     }
 
-        #[test]
+    #[test]
     fn a_matching_worn_armor_type_exempts_the_occupant() {
         assert!(
             exempts(ArmorType::Flak, &[ArmorType::Flak, ArmorType::Hazard]),
@@ -85,7 +93,7 @@ mod tests {
         );
     }
 
-        #[test]
+    #[test]
     fn a_non_matching_worn_armor_type_does_not_exempt() {
         assert!(
             !exempts(ArmorType::Plated, &[ArmorType::Flak, ArmorType::Hazard]),
@@ -93,7 +101,7 @@ mod tests {
         );
     }
 
-        #[test]
+    #[test]
     fn an_empty_immune_set_exempts_nobody() {
         assert!(
             !exempts(ArmorType::Flak, &[]),

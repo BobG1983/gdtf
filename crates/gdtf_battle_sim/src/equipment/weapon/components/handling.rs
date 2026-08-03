@@ -38,7 +38,9 @@ impl WeaponName {
 /// One- or two-handed grip.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum Handedness {
+    /// One-handed (default).
     #[default]
     OneHanded,
+    /// Two-handed.
     TwoHanded,
 }
