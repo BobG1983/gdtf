@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 pub struct TerrainName(String);
 
 impl TerrainName {
+    /// Wrap a name string.
     #[must_use]
     pub const fn new(name: String) -> Self {
         Self(name)
@@ -27,6 +28,7 @@ impl TerrainName {
 pub struct TerrainGraphicKey(String);
 
 impl TerrainGraphicKey {
+    /// Wrap a graphic key.
     #[must_use]
     pub const fn new(key: String) -> Self {
         Self(key)
@@ -39,6 +41,7 @@ impl TerrainGraphicKey {
 pub struct FootfallSound(String);
 
 impl FootfallSound {
+    /// Wrap a sound key.
     #[must_use]
     pub const fn new(key: String) -> Self {
         Self(key)

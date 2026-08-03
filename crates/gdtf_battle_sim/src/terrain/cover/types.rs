@@ -43,6 +43,7 @@ pub enum HeightBand {
 pub struct Destroyed(bool);
 
 impl Destroyed {
+    /// Wrap a destroyed flag.
     #[must_use]
     pub const fn new(destroyed: bool) -> Self {
         Self(destroyed)
@@ -100,6 +101,7 @@ pub enum CoverEvent {
 pub struct CoverDamage(u32);
 
 impl CoverDamage {
+    /// Wrap a damage amount.
     #[must_use]
     pub const fn new(damage: u32) -> Self {
         Self(damage)

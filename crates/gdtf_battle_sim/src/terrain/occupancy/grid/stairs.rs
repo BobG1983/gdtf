@@ -13,6 +13,7 @@ use crate::{
 pub struct StairEyeOffset(f32);
 
 impl StairEyeOffset {
+    /// Wrap an eye offset.
     #[must_use]
     pub const fn new(offset: f32) -> Self {
         Self(offset)
@@ -24,6 +25,7 @@ impl StairEyeOffset {
 pub struct StairCell(bool);
 
 impl StairCell {
+    /// Wrap a stair-cell flag.
     #[must_use]
     pub const fn new(is_stair: bool) -> Self {
         Self(is_stair)

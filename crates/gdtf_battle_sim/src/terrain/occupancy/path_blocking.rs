@@ -1,4 +1,4 @@
-//! Project entity BlocksPathfinding components onto the occupancy grid.
+//! Project entity `BlocksPathfinding` components onto the occupancy grid.
 
 use bevy::{
     ecs::{entity::Entity, system::SystemParam},
@@ -17,6 +17,7 @@ use crate::{
 pub struct PathBlocking(HashSet<CellLevel>);
 
 impl PathBlocking {
+    /// Empty set.
     #[must_use]
     pub fn new() -> Self {
         Self::default()

@@ -21,6 +21,7 @@ use crate::{
 pub struct PeekOffset(Vec2);
 
 impl PeekOffset {
+    /// Wrap a 2D displacement.
     #[must_use]
     pub const fn new(displacement: Vec2) -> Self {
         Self(displacement)
@@ -56,6 +57,7 @@ pub struct Target<'a> {
 pub struct Sighted(bool);
 
 impl Sighted {
+    /// Wrap a sighted flag.
     #[must_use]
     pub const fn new(sighted: bool) -> Self {
         Self(sighted)

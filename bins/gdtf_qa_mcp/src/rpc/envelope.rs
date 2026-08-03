@@ -7,7 +7,7 @@ const JSONRPC_VERSION: &str = "2.0";
 
 /// Standard JSON-RPC error kinds we emit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RpcError {
+pub(super) enum RpcError {
     /// Invalid JSON.
     Parse,
     /// Missing required fields.
@@ -35,7 +35,7 @@ fn to_line(message: &Value) -> String {
 
 /// Success response line for `id` with `result`.
 #[must_use]
-pub fn success_line(id: &Value, result: Value) -> String {
+pub(super) fn success_line(id: &Value, result: Value) -> String {
     to_line(&json!({
         "jsonrpc": JSONRPC_VERSION,
         "id": id,
@@ -45,7 +45,7 @@ pub fn success_line(id: &Value, result: Value) -> String {
 
 /// Error response line for `id`.
 #[must_use]
-pub fn error_line(id: &Value, kind: RpcError, message: &str) -> String {
+pub(super) fn error_line(id: &Value, kind: RpcError, message: &str) -> String {
     to_line(&json!({
         "jsonrpc": JSONRPC_VERSION,
         "id": id,

@@ -1,4 +1,5 @@
 //! Prefab authoring: [`PrefabSpec`], UUID-keyed level fragment.
+
 use bevy::reflect::TypePath;
 use serde::{Deserialize, Serialize};
 
@@ -10,17 +11,22 @@ const fn default_role() -> SpawnRole {
     SpawnRole::Fill
 }
 
+/// Authoring data for a level fragment.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TypePath)]
 pub struct PrefabSpec {
+    /// Theme this fragment belongs to.
     pub theme: ThemeUuid,
-    pub size:  GridSize,
+    /// Grid size of the fragment.
+    pub size: GridSize,
     /// Role this fragment plays when a level is assembled. Defaults to fill.
     #[serde(default = "default_role")]
-    pub role:       SpawnRole,
+    pub role: SpawnRole,
+    /// Terrain placements inside the fragment.
     pub placements: Vec<TerrainPlacementEntry>,
 }
 
 impl PrefabSpec {
+    /// Build a prefab spec.
     #[must_use]
     pub const fn new(
         theme: ThemeUuid,

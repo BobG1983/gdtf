@@ -9,6 +9,7 @@ use crate::{cover::HeightBand, tuning::CombatTuning};
 pub struct BandFraction(f32);
 
 impl BandFraction {
+    /// Wrap a height fraction.
     #[must_use]
     pub const fn new(fraction: f32) -> Self {
         Self(fraction)
@@ -31,11 +32,13 @@ impl BandFraction {
 pub struct BandRank(u8);
 
 impl BandRank {
+    /// Wrap a rank rung.
     #[must_use]
     pub const fn new(rung: u8) -> Self {
         Self(rung)
     }
 
+    /// Inner rank value.
     #[must_use]
     pub const fn get(self) -> u8 {
         self.0

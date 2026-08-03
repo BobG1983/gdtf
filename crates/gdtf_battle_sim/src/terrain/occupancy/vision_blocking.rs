@@ -1,4 +1,4 @@
-//! Project entity BlocksVision components onto the occupancy grid.
+//! Project entity `BlocksVision` components onto the occupancy grid.
 
 use bevy::{
     ecs::{entity::Entity, system::SystemParam},
@@ -21,6 +21,7 @@ pub type VisionOccluderChanged = Or<(Added<BlocksVision>, Changed<BlocksVision>)
 pub struct VisionBlocking(HashMap<CellLevel, HeightBand>);
 
 impl VisionBlocking {
+    /// Empty map.
     #[must_use]
     pub fn new() -> Self {
         Self::default()

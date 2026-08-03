@@ -19,6 +19,7 @@ pub enum OpenState {
 pub struct DoorOpen(bool);
 
 impl DoorOpen {
+    /// Wrap an open flag.
     #[must_use]
     pub const fn new(open: bool) -> Self {
         Self(open)
@@ -47,6 +48,7 @@ impl OpenState {
 pub struct OpenableBlocking(HeightBand);
 
 impl OpenableBlocking {
+    /// Wrap a height band.
     #[must_use]
     pub const fn new(band: HeightBand) -> Self {
         Self(band)
