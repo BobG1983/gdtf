@@ -11,11 +11,13 @@ use crate::armor::{ArmorHardness, ArmorProtection};
 pub struct SlabHp(u32);
 
 impl SlabHp {
+    /// Wrap an HP value.
     #[must_use]
     pub const fn new(hp: u32) -> Self {
         Self(hp)
     }
 
+    /// Subtract damage without going below zero.
     #[must_use]
     pub fn saturating_sub(self, damage: SlabDamage) -> Self {
         Self(self.0.saturating_sub(*damage))
@@ -27,6 +29,7 @@ impl SlabHp {
 pub struct SlabDestroyedFlag(bool);
 
 impl SlabDestroyedFlag {
+    /// Wrap a destroyed flag.
     #[must_use]
     pub const fn new(destroyed: bool) -> Self {
         Self(destroyed)
@@ -80,6 +83,7 @@ pub enum SlabEvent {
 pub struct SlabDamage(u32);
 
 impl SlabDamage {
+    /// Wrap a damage amount.
     #[must_use]
     pub const fn new(damage: u32) -> Self {
         Self(damage)

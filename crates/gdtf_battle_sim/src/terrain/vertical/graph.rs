@@ -53,11 +53,13 @@ impl VerticalLinkGraph {
         self.links.iter()
     }
 
+    /// Number of links.
     #[must_use]
     pub const fn len(&self) -> usize {
         self.links.len()
     }
 
+    /// Whether the graph has no links.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.links.is_empty()

@@ -11,6 +11,7 @@ use crate::metric::CellLevel;
 pub struct OneWay(bool);
 
 impl OneWay {
+    /// Wrap a one-way flag.
     #[must_use]
     pub const fn new(one_way: bool) -> Self {
         Self(one_way)
@@ -28,6 +29,7 @@ impl OneWay {
         Self(true)
     }
 
+    /// Whether the link is one-way.
     #[must_use]
     pub const fn is_one_way(self) -> bool {
         self.0
@@ -87,6 +89,7 @@ pub struct VerticalLink {
 }
 
 impl VerticalLink {
+    /// Build a link from origin, destination, and kind.
     #[must_use]
     pub const fn new(from: CellLevel, to: CellLevel, kind: LinkKind) -> Self {
         Self { from, to, kind }
