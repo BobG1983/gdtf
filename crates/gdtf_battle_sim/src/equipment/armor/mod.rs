@@ -1,3 +1,5 @@
+//! Body armor: pieces, specs, registry, and wear relationships.
+
 mod registry;
 mod relationship;
 mod spec;

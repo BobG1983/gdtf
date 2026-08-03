@@ -1,8 +1,9 @@
+//! Per-piece armor stats and body-part enum.
+
 use bevy::prelude::{Component, Deref, DerefMut};
 use serde::{Deserialize, Serialize};
 
-/// (house style); a magnitude is TBD tuning. `#[serde(transparent)]` lets an
-/// `#[serde(transparent)]`.
+/// Damage floor for a piece.
 #[derive(
     Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default,
 )]
@@ -10,14 +11,14 @@ use serde::{Deserialize, Serialize};
 pub struct ArmorFloor(i32);
 
 impl ArmorFloor {
-        #[must_use]
+    /// Wrap a floor value.
+    #[must_use]
     pub const fn new(floor: i32) -> Self {
         Self(floor)
     }
 }
 
-/// `#[serde(transparent)]` lets an authored protection parse as a bare integer.
-/// bare integer via `#[serde(transparent)]`.
+/// Protection rating.
 #[derive(
     Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default,
 )]
@@ -25,14 +26,14 @@ impl ArmorFloor {
 pub struct ArmorProtection(i32);
 
 impl ArmorProtection {
-        #[must_use]
+    /// Wrap a protection value.
+    #[must_use]
     pub const fn new(protection: i32) -> Self {
         Self(protection)
     }
 }
 
-/// `#[serde(transparent)]` lets an authored integrity parse as a bare integer.
-/// `#[serde(transparent)]`.
+/// Remaining integrity (mutable under wear).
 #[derive(
     Deref,
     DerefMut,
@@ -51,14 +52,14 @@ impl ArmorProtection {
 pub struct ArmorIntegrity(i32);
 
 impl ArmorIntegrity {
-            #[must_use]
+    /// Wrap an integrity value.
+    #[must_use]
     pub const fn new(integrity: i32) -> Self {
         Self(integrity)
     }
 }
 
-/// a magnitude is TBD tuning. `#[serde(transparent)]` lets an authored hardness
-/// bare integer via `#[serde(transparent)]`.
+/// Hardness rating.
 #[derive(
     Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default,
 )]
@@ -66,25 +67,28 @@ impl ArmorIntegrity {
 pub struct ArmorHardness(i32);
 
 impl ArmorHardness {
-        #[must_use]
+    /// Wrap a hardness value.
+    #[must_use]
     pub const fn new(hardness: i32) -> Self {
         Self(hardness)
     }
 }
 
+/// Hit location on the body.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 pub enum BodyPart {
-        #[default]
+    #[default]
     Head,
-        Torso,
-        LeftArm,
-        RightArm,
-        LeftLeg,
-        RightLeg,
+    Torso,
+    LeftArm,
+    RightArm,
+    LeftLeg,
+    RightLeg,
 }
 
 impl BodyPart {
-            pub const ALL: [Self; 6] = [
+    /// All six parts in index order.
+    pub const ALL: [Self; 6] = [
         Self::Head,
         Self::Torso,
         Self::LeftArm,
@@ -93,7 +97,8 @@ impl BodyPart {
         Self::RightLeg,
     ];
 
-                #[must_use]
+    /// Stable index 0..5.
+    #[must_use]
     pub const fn index(self) -> usize {
         match self {
             Self::Head => 0,
@@ -105,7 +110,8 @@ impl BodyPart {
         }
     }
 
-                                                        #[must_use]
+    /// Injury table category for this part.
+    #[must_use]
     pub const fn injury_category(self) -> InjuryCategory {
         match self {
             Self::Head => InjuryCategory::Head,
@@ -116,32 +122,36 @@ impl BodyPart {
     }
 }
 
+/// Coarse category for injury tables.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum InjuryCategory {
-        Head,
-        Torso,
-        Arm,
-        Leg,
+    Head,
+    Torso,
+    Arm,
+    Leg,
 }
 
 impl InjuryCategory {
-            pub const ALL: [Self; 4] = [Self::Head, Self::Torso, Self::Arm, Self::Leg];
+    /// All categories.
+    pub const ALL: [Self; 4] = [Self::Head, Self::Torso, Self::Arm, Self::Leg];
 }
 
+/// Material / construction type for matchup.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default)]
 pub enum ArmorType {
-        #[default]
+    #[default]
     Plated,
-        Refractive,
-        Flak,
-        Void,
-        Hazard,
-        Reinforced,
-        Ceramic,
+    Refractive,
+    Flak,
+    Void,
+    Hazard,
+    Reinforced,
+    Ceramic,
 }
 
 impl ArmorType {
-                    pub const ALL: [Self; 7] = [
+    /// All types.
+    pub const ALL: [Self; 7] = [
         Self::Plated,
         Self::Refractive,
         Self::Flak,
@@ -151,20 +161,28 @@ impl ArmorType {
         Self::Ceramic,
     ];
 
-                            pub const DEFAULT: Self = Self::Plated;
+    /// Default type.
+    pub const DEFAULT: Self = Self::Plated;
 }
 
+/// One body-part armor piece.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default)]
 pub struct ArmorPiece {
-        pub floor:      ArmorFloor,
-        pub protection: ArmorProtection,
-        pub integrity:  ArmorIntegrity,
-        pub hardness:   ArmorHardness,
-        pub armor_type: ArmorType,
+    /// Damage floor.
+    pub floor: ArmorFloor,
+    /// Protection.
+    pub protection: ArmorProtection,
+    /// Integrity.
+    pub integrity: ArmorIntegrity,
+    /// Hardness.
+    pub hardness: ArmorHardness,
+    /// Armor type.
+    pub armor_type: ArmorType,
 }
 
 impl ArmorPiece {
-        #[must_use]
+    /// Build a piece.
+    #[must_use]
     pub const fn new(
         floor: ArmorFloor,
         protection: ArmorProtection,
