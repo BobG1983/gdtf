@@ -1,3 +1,5 @@
+//! Occupancy publisher: stance and move update the cell height band.
+
 use bevy::{
     app::App,
     math::Vec3,
@@ -73,7 +75,7 @@ fn march_mid_round_through(app: &App, cell: CellLevel) -> MarchKind {
 fn move_plus_stance_change_publishes_current_band_at_new_cell() {
     let mut app = publisher_app();
     let target = spawn_target(&mut app, start_cell(), StanceKind::Standing);
-    app.update(); 
+    app.update();
 
     assert_eq!(
         march_mid_round_through(&app, start_cell()),
@@ -112,7 +114,7 @@ fn move_plus_stance_change_publishes_current_band_at_new_cell() {
 fn vacated_cell_reads_none_after_move() {
     let mut app = publisher_app();
     let target = spawn_target(&mut app, start_cell(), StanceKind::Standing);
-    app.update(); 
+    app.update();
 
     assert_eq!(
         march_mid_round_through(&app, start_cell()),
@@ -146,7 +148,7 @@ fn vacated_cell_reads_none_after_move() {
 fn dead_occupant_cell_reads_none() {
     let mut app = publisher_app();
     let target = spawn_target(&mut app, start_cell(), StanceKind::Standing);
-    app.update(); 
+    app.update();
 
     assert_eq!(
         march_mid_round_through(&app, start_cell()),
