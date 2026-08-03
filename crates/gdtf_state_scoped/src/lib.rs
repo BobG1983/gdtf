@@ -1,10 +1,18 @@
+//! Bevy helpers that insert a resource on state enter and remove it on exit.
+//!
+//! Use when a resource should only exist while a given app state is active.
+
 use bevy::{
     prelude::{App, Commands, OnEnter, OnExit, Resource},
     state::state::States,
 };
 
+/// Extension on [`App`] for state-scoped resources.
 pub trait StateScopedResourceAppExt {
-                                                            fn init_state_scoped_resource<S: States, R: Resource>(
+    /// Insert `R` when entering `state`, remove it when leaving.
+    ///
+    /// `seed` builds the resource value each time the state is entered.
+    fn init_state_scoped_resource<S: States, R: Resource>(
         &mut self,
         state: S,
         seed: impl Fn() -> R + Send + Sync + 'static,
@@ -35,23 +43,23 @@ mod tests {
 
     use super::StateScopedResourceAppExt;
 
-        #[derive(bevy::prelude::States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    #[derive(bevy::prelude::States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
     enum Phase {
-                #[default]
+        #[default]
         Out,
-                In,
+        In,
     }
 
-            #[derive(Resource, Debug, PartialEq, Eq)]
+    #[derive(Resource, Debug, PartialEq, Eq)]
     struct Probe(u8);
 
     impl Probe {
-                const fn seeded() -> Self {
+        const fn seeded() -> Self {
             Self(0xA5)
         }
     }
 
-            fn go(app: &mut App, phase: Phase) {
+    fn go(app: &mut App, phase: Phase) {
         app.world_mut()
             .resource_mut::<NextState<Phase>>()
             .set(phase);
@@ -59,7 +67,7 @@ mod tests {
         assert_eq!(*app.world().resource::<State<Phase>>().get(), phase);
     }
 
-            #[test]
+    #[test]
     fn insert_on_enter_remove_on_exit() {
         let mut app = App::new();
         app.add_plugins(StatesPlugin);
