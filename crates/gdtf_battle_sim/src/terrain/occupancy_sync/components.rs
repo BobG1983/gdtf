@@ -1,3 +1,5 @@
+//! Messages and components used by occupancy sync.
+
 use bevy::prelude::{Component, Message};
 
 use crate::{
@@ -5,19 +7,22 @@ use crate::{
     surface::GroundDamage,
 };
 
+/// Last occupancy slot for a ganger (and optional stair upper cell).
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PrevSlot {
-        lower: CellLevel,
-                upper: Option<CellLevel>,
+    lower: CellLevel,
+    upper: Option<CellLevel>,
 }
 
 impl PrevSlot {
-                    #[must_use]
+    /// Single-cell slot.
+    #[must_use]
     pub const fn new(lower: CellLevel) -> Self {
         Self { lower, upper: None }
     }
 
-                            #[must_use]
+    /// Slot with a stair upper cell.
+    #[must_use]
     pub const fn with_upper(lower: CellLevel, upper: CellLevel) -> Self {
         Self {
             lower,
@@ -25,52 +30,61 @@ impl PrevSlot {
         }
     }
 
-                #[must_use]
+    /// Lower cell.
+    #[must_use]
     pub const fn slot(self) -> CellLevel {
         self.lower
     }
 
-                #[must_use]
+    /// Optional upper stair cell.
+    #[must_use]
     pub const fn upper(self) -> Option<CellLevel> {
         self.upper
     }
 }
 
-/// is pre-0.18 terminology, identical semantics), so it `#[derive(Message)]` and
+/// Cover at this cell was destroyed.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CoverDestroyed {
-            pub at: CellLevel,
+    /// Destroyed cell.
+    pub at: CellLevel,
 }
 
 impl CoverDestroyed {
-        #[must_use]
+    /// Build the message.
+    #[must_use]
     pub const fn new(at: CellLevel) -> Self {
         Self { at }
     }
 }
 
-/// `Message`/`MessageReader` — `bevy-traps.md` #4), so it `#[derive(Message)]` and is
+/// Slab at this cell was destroyed.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SlabDestroyed {
-                pub at: CellLevel,
+    /// Destroyed cell.
+    pub at: CellLevel,
 }
 
 impl SlabDestroyed {
-        #[must_use]
+    /// Build the message.
+    #[must_use]
     pub const fn new(at: CellLevel) -> Self {
         Self { at }
     }
 }
 
-/// `Message`/`MessageReader` — `bevy-traps.md` #4), so it `#[derive(Message)]` and is
+/// Ground damage accrued on a cell.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GroundAccrued {
-            pub cell:   Cell,
-            pub amount: GroundDamage,
+    /// Cell that took damage.
+    pub cell: Cell,
+    /// Damage amount.
+    pub amount: GroundDamage,
 }
 
 impl GroundAccrued {
-            #[must_use]
+    /// Build the message.
+    #[must_use]
     pub const fn new(cell: Cell, amount: GroundDamage) -> Self {
         Self { cell, amount }
     }

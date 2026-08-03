@@ -1,3 +1,5 @@
+//! Systems that project ganger and terrain changes onto occupancy and surface grids.
+
 use bevy::prelude::{Changed, Commands, Entity, MessageReader, Or, Query, ResMut};
 
 use crate::{
@@ -17,6 +19,7 @@ type MovedReads<'a> = (
 
 type MovedOrReposed = Or<(Changed<Position>, Changed<Stance>)>;
 
+/// Update grid occupancy when a ganger moves or changes stance.
 pub fn sync_moved_gangers(
     mut commands: Commands,
     mut grid: ResMut<OccupancyGrid>,
@@ -54,6 +57,7 @@ pub fn sync_moved_gangers(
     }
 }
 
+/// Clear occupancy when a ganger dies.
 pub fn sync_dead_gangers(
     mut grid: ResMut<OccupancyGrid>,
     downed: Query<(Entity, &LifeState, &PrevSlot), Changed<LifeState>>,
@@ -73,6 +77,7 @@ pub fn sync_dead_gangers(
     }
 }
 
+/// Mark cover cells destroyed on the occupancy grid.
 pub fn sync_destroyed_cover(
     mut grid: ResMut<OccupancyGrid>,
     mut destroyed: MessageReader<CoverDestroyed>,
@@ -82,6 +87,7 @@ pub fn sync_destroyed_cover(
     }
 }
 
+/// Destroy slabs on the surface grid.
 pub fn sync_destroyed_slab(
     mut surface: ResMut<SurfaceGrid>,
     mut destroyed: MessageReader<SlabDestroyed>,
@@ -91,6 +97,7 @@ pub fn sync_destroyed_slab(
     }
 }
 
+/// Accrue ground damage on the surface grid.
 pub fn sync_accrued_ground(
     mut surface: ResMut<SurfaceGrid>,
     mut accrued: MessageReader<GroundAccrued>,
