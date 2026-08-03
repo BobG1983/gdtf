@@ -1,3 +1,5 @@
+//! Advance in-flight projectiles and seed impacts on arrival.
+
 use bevy::{
     ecs::template::template,
     prelude::*,
@@ -9,6 +11,7 @@ use super::{
     travel::{ProjectileTravel, ShotProjectile},
 };
 
+/// Move projectiles along their path; spawn [`PendingImpact`] and despawn on arrival.
 pub fn advance_projectiles(
     mut commands: Commands,
     time: Res<Time>,
@@ -32,12 +35,12 @@ pub fn advance_projectiles(
         transform.translation = travel.position();
         if arrived {
             let pending = PendingImpact {
-                at:      travel.arrival(),
-                damage:  travel.damage(),
-                anchor:  travel.anchor(),
+                at: travel.arrival(),
+                damage: travel.damage(),
+                anchor: travel.anchor(),
                 shooter: travel.shooter(),
-                report:  travel.report(),
-                pops:    travel.take_pops(),
+                report: travel.report(),
+                pops: travel.take_pops(),
             };
             commands.spawn_scene(bsn! { template(move |_| Ok(pending.clone())) });
             commands.entity(entity).despawn();

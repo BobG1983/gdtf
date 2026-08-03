@@ -1,3 +1,5 @@
+//! Map combat log events to rendered log lines.
+
 use gdtf_battle_sim::{
     acts::{MoveRejection, ReloadOutcome},
     battle::PlayerFaction,
@@ -19,6 +21,7 @@ use super::{
     line::LogLine,
 };
 
+/// Turn one combat log event into zero or more display lines.
 #[must_use]
 pub fn classify_log_event(event: &CombatLogEvent) -> Vec<LogLine> {
     match event {

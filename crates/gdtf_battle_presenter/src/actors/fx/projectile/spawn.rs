@@ -1,3 +1,5 @@
+//! Spawn shot projectiles from played `ShotFired` messages.
+
 use bevy::{
     camera::visibility::RenderLayers,
     ecs::template::template,
@@ -34,6 +36,7 @@ use crate::{
               (the fallback pops' stacking base), and the ShotFired reader — none can be merged \
               without obscuring the wiring; the System fn IS the bundle"
 )]
+/// Spawn a directional projectile (or immediate pops if the sheet is missing).
 pub fn spawn_shot_projectiles(
     mut commands: Commands,
     atlases: Res<TopDownAtlases>,
