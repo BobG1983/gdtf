@@ -1,3 +1,5 @@
+//! Launch, stop, and orphan handling for host processes.
+
 pub mod child;
 pub mod config;
 pub mod launch;
