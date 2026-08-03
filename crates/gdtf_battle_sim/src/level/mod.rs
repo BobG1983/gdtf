@@ -1,3 +1,5 @@
+//! Level theme, grid size, and terrain prefabs.
+
 mod prefab;
 mod theme;
 mod theme_def;

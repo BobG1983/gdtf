@@ -1,4 +1,5 @@
-//! the authored terrain-piece schema + registry (GTW-394), the per-tile ECS entity
+//! Battle map: occupancy, surfaces, cover, floors, openables, slabs, pieces.
+
 pub mod cover;
 pub mod def;
 pub mod emplacement;
