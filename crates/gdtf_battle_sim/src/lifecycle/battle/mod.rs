@@ -1,4 +1,5 @@
-//! (`docs/decisions/0001-rust-bevy-rewrite.md`: the model is the authoritative
+//! Battle lifecycle: setup, teardown, outcome checks, and in-progress state.
+
 mod messages;
 mod outcome;
 mod plugin;
