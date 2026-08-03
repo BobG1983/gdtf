@@ -1,4 +1,4 @@
-//! AoE / hit-type integration tests.
+//! `AoE` / hit-type integration tests.
 //!
 //! `AoE` damages every occupant in radius: a weapon authored with `HitType::Blast`.
 //!
