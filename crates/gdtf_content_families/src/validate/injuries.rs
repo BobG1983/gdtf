@@ -1,4 +1,4 @@
-//! and a dangling weighting key surfaces at authoring time too.
+//! Cross-check injury weighting keys against the injury registry.
 
 use bevy::prelude::{Assets, Res, ResMut};
 use gdtf_assets::{
@@ -10,6 +10,7 @@ use gdtf_battle_sim::{
     severity::Severity,
 };
 
+/// Record dangling weighting → injury name references.
 pub fn check_injury_weighting_refs(
     weightings: Option<Res<Assets<RonAsset<InjuryWeighting>>>>,
     injuries: Res<InjuryRegistry>,
@@ -31,9 +32,9 @@ pub fn check_injury_weighting_refs(
                             "injury weighting `{:?}` ({:?} {severity:?} bucket)",
                             weighting.category, weighting.context,
                         )),
-                        target:   FindingTarget::new((*row.injury).clone()),
-                        family:   FindingFamily::new("InjuryRegistry".to_owned()),
-                        scheme:   ReferenceKeyScheme::FileStem,
+                        target: FindingTarget::new((*row.injury).clone()),
+                        family: FindingFamily::new("InjuryRegistry".to_owned()),
+                        scheme: ReferenceKeyScheme::FileStem,
                     });
                 }
             }

@@ -1,3 +1,5 @@
+//! Per-file salvage when the injuries folder fails to load as a whole.
+
 use bevy::{
     asset::{AssetServer, Assets},
     prelude::{Commands, warn},
@@ -16,6 +18,7 @@ use super::{
     layout::{INJURIES_FOLDER, INJURY_DEF_EXTENSION, INJURY_WEIGHTING_EXTENSION},
 };
 
+/// When both salvage polls settle, insert the registry and tables.
 pub fn settle_injuries_salvage(
     commands: &mut Commands,
     asset_server: &AssetServer,
@@ -71,6 +74,7 @@ pub fn settle_injuries_salvage(
     }
 }
 
+/// Start per-file salvage of injury defs and weightings after a folder load failure.
 pub fn begin_injuries_salvage(commands: &mut Commands, asset_server: &AssetServer) {
     let def_salvage =
         begin_ron_folder_salvage::<InjuryDef>(asset_server, INJURIES_FOLDER, INJURY_DEF_EXTENSION);
