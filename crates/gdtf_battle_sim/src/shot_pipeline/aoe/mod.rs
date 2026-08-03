@@ -1,3 +1,5 @@
+//! Area-of-effect footprints for blast, cone, and line hits.
+
 mod resolve;
 
 #[cfg(test)]

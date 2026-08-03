@@ -1,3 +1,5 @@
+//! Compute the set of cells affected by an AOE hit type.
+
 use bevy::{math::Vec2, prelude::Deref};
 
 use crate::{
@@ -11,7 +13,7 @@ use crate::{
 struct GroundPoint(Vec2);
 
 impl GroundPoint {
-        const fn new(point: Vec2) -> Self {
+    const fn new(point: Vec2) -> Self {
         Self(point)
     }
 }
@@ -30,6 +32,7 @@ fn ground_centre(cell: Cell, level: Level) -> GroundPoint {
     GroundPoint::new(Vec2::new(c.x, c.y))
 }
 
+/// Cells hit by this AOE type around the impact, excluding out-of-bounds cells.
 #[must_use]
 pub fn aoe_affected(impact: CellLevel, hit: HitType, shooter: CellLevel) -> Vec<CellLevel> {
     let (impact_cell, level) = impact.split();
@@ -68,7 +71,7 @@ fn blast_cells(centre: Cell, radius: BlastRadius) -> Vec<Cell> {
 fn line_cells(impact: Cell, shooter: Cell, range: AoeRange) -> Vec<Cell> {
     let mut cells = vec![impact];
     let Some(dir) = crate::ganger::Direction::from_cells(shooter, impact) else {
-        return cells; 
+        return cells;
     };
     let step = dir.cell_step();
     let mut cursor = impact;
@@ -99,12 +102,12 @@ fn cone_cells(
     for dy in -r..=r {
         for dx in -r..=r {
             if dx == 0 && dy == 0 {
-                continue; 
+                continue;
             }
             let cell = Cell::new(impact.x + dx, impact.y + dy);
             let cand = *ground_centre(cell, level) - shooter_c;
             if cand.length_squared() <= f32::EPSILON {
-                continue; 
+                continue;
             }
             let cos_theta = fire.dot(cand) / (fire.length() * cand.length());
             if cos_theta >= cos_half {
