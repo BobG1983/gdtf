@@ -1,15 +1,21 @@
+//! Find the landing level under a cell when upper support is gone.
+
 use crate::{
     falls::StoreysFallen,
     metric::{Cell, CellLevel, Level},
     surface::{SlabState, SurfaceGrid},
 };
 
+/// Where a drop ends and how far it was.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DropLanding {
-            pub landing: Level,
-            pub storeys: StoreysFallen,
+    /// Level the ganger lands on.
+    pub landing: Level,
+    /// Storeys fallen.
+    pub storeys: StoreysFallen,
 }
 
+/// Walk down from `start` until a supporting slab (or ground) is found.
 #[must_use]
 pub fn resolve_drop(cell: Cell, start: Level, surface: &SurfaceGrid) -> Option<DropLanding> {
     let start_z = *start;
