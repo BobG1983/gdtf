@@ -1,4 +1,5 @@
-//! The authored key vocabulary, the resolved keybind table, and its hot-RON
+//! Keybind vocabulary and hot-loaded keybind table.
+
 use bevy::prelude::*;
 use gdtf_assets::HotRonAppExt;
 use serde::Deserialize;
@@ -19,38 +20,66 @@ const CONTEXTUAL_SLOT_KEYS: [BoundKey; 9] = [
     BoundKey::KeyDigit9,
 ];
 
+/// Named key that can appear in the keybind table.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 pub enum BoundKey {
-        KeyEscape,
-        KeyQ,
-        KeyE,
-        KeyC,
-        KeyF,
-        KeyR,
-        KeyV,
-        KeyTab,
-        KeyPageUp,
-        KeyPageDown,
-        KeyBracketLeft,
-        KeyBracketRight,
-        KeyDigit1,
-        KeyDigit2,
-        KeyDigit3,
-        KeyDigit4,
-        KeyDigit5,
-        KeyDigit6,
-        KeyDigit7,
-        KeyDigit8,
-        KeyDigit9,
-                KeyEnter,
-                KeyArrowUp,
-            KeyArrowDown,
-            KeyArrowLeft,
-            KeyArrowRight,
+    /// Escape.
+    KeyEscape,
+    /// Q.
+    KeyQ,
+    /// E.
+    KeyE,
+    /// C.
+    KeyC,
+    /// F.
+    KeyF,
+    /// R.
+    KeyR,
+    /// V.
+    KeyV,
+    /// Tab.
+    KeyTab,
+    /// Page Up.
+    KeyPageUp,
+    /// Page Down.
+    KeyPageDown,
+    /// `[`.
+    KeyBracketLeft,
+    /// `]`.
+    KeyBracketRight,
+    /// Digit 1.
+    KeyDigit1,
+    /// Digit 2.
+    KeyDigit2,
+    /// Digit 3.
+    KeyDigit3,
+    /// Digit 4.
+    KeyDigit4,
+    /// Digit 5.
+    KeyDigit5,
+    /// Digit 6.
+    KeyDigit6,
+    /// Digit 7.
+    KeyDigit7,
+    /// Digit 8.
+    KeyDigit8,
+    /// Digit 9.
+    KeyDigit9,
+    /// Enter.
+    KeyEnter,
+    /// Arrow up.
+    KeyArrowUp,
+    /// Arrow down.
+    KeyArrowDown,
+    /// Arrow left.
+    KeyArrowLeft,
+    /// Arrow right.
+    KeyArrowRight,
 }
 
 impl BoundKey {
-                            #[must_use]
+    /// Map to a Bevy [`KeyCode`].
+    #[must_use]
     pub const fn key_code(self) -> KeyCode {
         match self {
             Self::KeyEscape => KeyCode::Escape,
@@ -83,66 +112,86 @@ impl BoundKey {
     }
 }
 
+/// Resolved keybind table loaded from RON.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Deserialize, TypePath)]
 pub struct Keybinds {
-        pub select_clear:     BoundKey,
-        pub level_up:         BoundKey,
-        pub level_down:       BoundKey,
-                    pub toggle_full_view: BoundKey,
-        pub stance_cycle:     BoundKey,
-        pub aim_toggle:       BoundKey,
-        pub facing_cycle:     BoundKey,
-                    pub select_next:      BoundKey,
-                        pub select_prev:      BoundKey,
+    /// Clear selection.
+    pub select_clear: BoundKey,
+    /// Step active level up.
+    pub level_up: BoundKey,
+    /// Step active level down.
+    pub level_down: BoundKey,
+    /// Toggle full-view mode.
+    pub toggle_full_view: BoundKey,
+    /// Cycle stance.
+    pub stance_cycle: BoundKey,
+    /// Toggle aiming.
+    pub aim_toggle: BoundKey,
+    /// Cycle facing.
+    pub facing_cycle: BoundKey,
+    /// Select next player ganger.
+    pub select_next: BoundKey,
+    /// Select previous player ganger.
+    pub select_prev: BoundKey,
 }
 
 impl Keybinds {
-        #[must_use]
+    /// Key code for clear selection.
+    #[must_use]
     pub const fn select_clear(&self) -> KeyCode {
         self.select_clear.key_code()
     }
 
-        #[must_use]
+    /// Key code for level up.
+    #[must_use]
     pub const fn level_up(&self) -> KeyCode {
         self.level_up.key_code()
     }
 
-        #[must_use]
+    /// Key code for level down.
+    #[must_use]
     pub const fn level_down(&self) -> KeyCode {
         self.level_down.key_code()
     }
 
-        #[must_use]
+    /// Key code for toggle full view.
+    #[must_use]
     pub const fn toggle_full_view(&self) -> KeyCode {
         self.toggle_full_view.key_code()
     }
 
-        #[must_use]
+    /// Key code for stance cycle.
+    #[must_use]
     pub const fn stance_cycle(&self) -> KeyCode {
         self.stance_cycle.key_code()
     }
 
-        #[must_use]
+    /// Key code for aim toggle.
+    #[must_use]
     pub const fn aim_toggle(&self) -> KeyCode {
         self.aim_toggle.key_code()
     }
 
-        #[must_use]
+    /// Key code for facing cycle.
+    #[must_use]
     pub const fn facing_cycle(&self) -> KeyCode {
         self.facing_cycle.key_code()
     }
 
-        #[must_use]
+    /// Key code for select next.
+    #[must_use]
     pub const fn select_next(&self) -> KeyCode {
         self.select_next.key_code()
     }
 
-            #[must_use]
+    /// Key code for select prev.
+    #[must_use]
     pub const fn select_prev(&self) -> KeyCode {
         self.select_prev.key_code()
     }
 
-                                            #[must_use]
+    /// Digit key for contextual act slot `rank` (1-based), if in range.
+    #[must_use]
     pub fn contextual_slot_key(rank: SlotRank) -> Option<KeyCode> {
         let index = (*rank).checked_sub(1)?;
         CONTEXTUAL_SLOT_KEYS
