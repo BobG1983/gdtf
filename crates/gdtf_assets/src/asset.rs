@@ -1,5 +1,8 @@
+//! Bevy asset wrapper around a RON-deserialized payload.
+
 use bevy::reflect::TypePath;
 
+/// Bevy [`Asset`](bevy::asset::Asset) holding a typed RON value.
 #[derive(bevy::asset::Asset, TypePath)]
 pub struct RonAsset<T>(T)
 where
@@ -9,7 +12,8 @@ impl<T> RonAsset<T>
 where
     T: TypePath + Send + Sync + 'static,
 {
-                                    pub const fn new(value: T) -> Self {
+    /// Wrap a deserialized value.
+    pub const fn new(value: T) -> Self {
         Self(value)
     }
 }
@@ -29,7 +33,7 @@ impl<T> core::ops::DerefMut for RonAsset<T>
 where
     T: TypePath + Send + Sync + 'static,
 {
-                    fn deref_mut(&mut self) -> &mut Self::Target {
+    fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
