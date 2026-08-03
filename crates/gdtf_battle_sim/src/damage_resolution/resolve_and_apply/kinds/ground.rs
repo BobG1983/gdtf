@@ -1,3 +1,5 @@
+//! Accrue damage to open ground.
+
 use crate::{
     metric::{Cell, CellLevel},
     resolve_and_apply::report::HitVerdict,
@@ -5,19 +7,24 @@ use crate::{
     weapon::WeaponStats,
 };
 
+/// Ground damage recorded at a cell.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GroundAccrual {
-        pub cell:   Cell,
-        pub amount: GroundDamage,
+    /// Cell that was hit.
+    pub cell: Cell,
+    /// Damage amount.
+    pub amount: GroundDamage,
 }
 
 impl GroundAccrual {
-            #[must_use]
+    /// Build a ground accrual record.
+    #[must_use]
     pub const fn new(cell: Cell, amount: GroundDamage) -> Self {
         Self { cell, amount }
     }
 }
 
+/// Record ground damage from a weapon hit.
 pub(in crate::damage_resolution::resolve_and_apply) fn fold(
     at: CellLevel,
     weapon: WeaponStats<'_>,
