@@ -1,3 +1,5 @@
+//! Occupancy grid storage: slots, occupants, terrain, and blocking maps.
+
 use bevy::{
     platform::collections::{HashMap, HashSet},
     prelude::{Deref, Entity, Resource},
@@ -14,42 +16,45 @@ use crate::{
 pub(super) struct SlotIndex(usize);
 
 impl SlotIndex {
-        #[must_use]
+    #[must_use]
     pub(super) const fn new(index: usize) -> Self {
         Self(index)
     }
 }
 
+/// Authoritative occupancy grid: terrain, occupants, stairs, path and vision blocking.
 #[derive(Resource, Debug, Clone)]
 pub struct OccupancyGrid {
-                pub(super) slots:           Box<[OccupancySlot]>,
-                    pub(super) destroyed_cover: DestroyedCover,
-                                                    pub(super) occupant_bands:  HashMap<CellLevel, HeightBand>,
-                                            pub(super) stair_cells:     HashSet<CellLevel>,
-                                                        pub(super) path_blocking:   PathBlocking,
-                                                                                            pub(super) vision_blocking: VisionBlocking,
+    pub(super) slots: Box<[OccupancySlot]>,
+    pub(super) destroyed_cover: DestroyedCover,
+    pub(super) occupant_bands: HashMap<CellLevel, HeightBand>,
+    pub(super) stair_cells: HashSet<CellLevel>,
+    pub(super) path_blocking: PathBlocking,
+    pub(super) vision_blocking: VisionBlocking,
 }
 
 impl Default for OccupancyGrid {
-                fn default() -> Self {
+    fn default() -> Self {
         Self {
-            slots:           vec![OccupancySlot::default(); SLOT_COUNT].into_boxed_slice(),
+            slots: vec![OccupancySlot::default(); SLOT_COUNT].into_boxed_slice(),
             destroyed_cover: DestroyedCover::new(),
-            occupant_bands:  HashMap::default(),
-            stair_cells:     HashSet::default(),
-            path_blocking:   PathBlocking::new(),
+            occupant_bands: HashMap::default(),
+            stair_cells: HashSet::default(),
+            path_blocking: PathBlocking::new(),
             vision_blocking: VisionBlocking::new(),
         }
     }
 }
 
 impl OccupancyGrid {
-            #[must_use]
+    /// Empty grid.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
-                                                                                                #[must_use]
+    /// Build a grid from placement input and known stair cells.
+    #[must_use]
     pub fn build_from_occupancy_input(
         input: &OccupancyInput,
         stair_cells: &bevy::platform::collections::HashSet<CellLevel>,
@@ -73,7 +78,7 @@ impl OccupancyGrid {
         grid
     }
 
-                            fn slot_index(key: &CellLevel) -> Option<SlotIndex> {
+    fn slot_index(key: &CellLevel) -> Option<SlotIndex> {
         let x = usize::try_from(key.x).ok()?;
         let y = usize::try_from(key.y).ok()?;
         let level = usize::try_from(key.z).ok()?;
@@ -85,39 +90,46 @@ impl OccupancyGrid {
         ))
     }
 
-            #[must_use]
+    /// Read a slot if the key is in bounds.
+    #[must_use]
     pub fn slot(&self, key: &CellLevel) -> Option<&OccupancySlot> {
         Self::slot_index(key).and_then(|i| self.slots.get(*i))
     }
 
-                            pub fn set_terrain(&mut self, key: CellLevel, terrain: TerrainKind) {
+    /// Set terrain at a cell.
+    pub fn set_terrain(&mut self, key: CellLevel, terrain: TerrainKind) {
         if let Some(slot) = Self::slot_index(&key).and_then(|i| self.slots.get_mut(*i)) {
             slot.terrain = terrain;
         }
     }
 
-                            pub fn set_occupant(&mut self, key: CellLevel, occupant: Option<Entity>) {
+    /// Set or clear the occupant entity at a cell.
+    pub fn set_occupant(&mut self, key: CellLevel, occupant: Option<Entity>) {
         if let Some(slot) = Self::slot_index(&key).and_then(|i| self.slots.get_mut(*i)) {
             slot.occupant = occupant;
         }
     }
 
-            #[must_use]
+    /// Terrain kind at a cell (Open if unset).
+    #[must_use]
     pub fn terrain(&self, key: &CellLevel) -> TerrainKind {
         self.slot(key).map_or(TerrainKind::Open, |s| s.terrain)
     }
 
-                #[must_use]
+    /// Occupant entity at a cell, if any.
+    #[must_use]
     pub fn occupant(&self, key: &CellLevel) -> Option<Entity> {
         self.slot(key).and_then(|s| s.occupant)
     }
 
-                        #[must_use]
+    /// Silhouette height band of the occupant at a cell.
+    #[must_use]
     pub fn occupant_band(&self, key: &CellLevel) -> Option<HeightBand> {
         self.occupant_bands.get(key).copied()
     }
 
-                            pub fn set_occupant_band(&mut self, key: CellLevel, band: Option<HeightBand>) {
+    /// Set or clear the occupant height band.
+    pub fn set_occupant_band(&mut self, key: CellLevel, band: Option<HeightBand>) {
         match band {
             Some(band) => {
                 self.occupant_bands.insert(key, band);

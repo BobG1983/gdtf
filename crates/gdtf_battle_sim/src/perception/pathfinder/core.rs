@@ -1,3 +1,5 @@
+//! Internal A* / flood distance field used by find_path and reachable_within.
+
 use std::{
     cmp::{Ordering, Reverse},
     collections::BinaryHeap,
@@ -25,13 +27,13 @@ fn cell_key(cell: CellLevel) -> CellKey {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct FrontierNode {
-                    priority: PathCost,
-            cost:     PathCost,
-        cell:     CellLevel,
+    priority: PathCost,
+    cost: PathCost,
+    cell: CellLevel,
 }
 
 impl Ord for FrontierNode {
-                fn cmp(&self, other: &Self) -> Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         self.priority
             .cmp(&other.priority)
             .then_with(|| cell_key(self.cell).cmp(&cell_key(other.cell)))
@@ -44,24 +46,24 @@ impl PartialOrd for FrontierNode {
     }
 }
 
+/// Borrowed grids and planning view for one search.
 pub(super) struct SearchGrids<'a, R>
 where
     R: Fn(Entity) -> FactionRelation,
 {
-        pub(super) grid:        &'a OccupancyGrid,
-        pub(super) links:       &'a VerticalLinkGraph,
-        /// NOTE: `move_costs` is no longer read from here for floor steps (GTW-396
-        pub(super) tuning:      &'a CombatTuning,
-            pub(super) floor_costs: &'a FloorCostGrid,
-                        pub(super) factor:      MovementCostFactor,
-            pub(super) planning:    &'a PlanningView<'a, R>,
+    pub(super) grid: &'a OccupancyGrid,
+    pub(super) links: &'a VerticalLinkGraph,
+    pub(super) tuning: &'a CombatTuning,
+    pub(super) floor_costs: &'a FloorCostGrid,
+    pub(super) factor: MovementCostFactor,
+    pub(super) planning: &'a PlanningView<'a, R>,
 }
 
 impl<R> SearchGrids<'_, R>
 where
     R: Fn(Entity) -> FactionRelation,
 {
-                                                                                                                                            fn edges(&self, origin: CellLevel) -> Vec<(CellLevel, Tu)> {
+    fn edges(&self, origin: CellLevel) -> Vec<(CellLevel, Tu)> {
         let planar = pathable_neighbors(origin, self.grid, self.floor_costs, self.factor)
             .filter(|(neighbour, _)| *self.planning.is_routable(*neighbour, self.grid));
         let vertical = traversable_links(origin, self.links, self.tuning.link_tu)
@@ -70,18 +72,19 @@ where
     }
 }
 
+/// Settled costs and predecessors from one relax pass.
 pub(super) struct DistanceField {
-        cost: HashMap<CellLevel, PathCost>,
-                prev: HashMap<CellLevel, Option<CellLevel>>,
+    cost: HashMap<CellLevel, PathCost>,
+    prev: HashMap<CellLevel, Option<CellLevel>>,
 }
 
 impl DistanceField {
-        #[must_use]
+    #[must_use]
     pub(super) fn cost_of(&self, cell: &CellLevel) -> Option<PathCost> {
         self.cost.get(cell).copied()
     }
 
-                        #[must_use]
+    #[must_use]
     pub(super) fn settled_sorted(&self) -> Vec<(CellLevel, PathCost)> {
         let mut out: Vec<(CellLevel, PathCost)> = self
             .cost
@@ -92,7 +95,7 @@ impl DistanceField {
         out
     }
 
-                                                                #[must_use]
+    #[must_use]
     pub(super) fn step_costs(&self, route: &[CellLevel]) -> Vec<Tu> {
         route
             .windows(2)
@@ -104,7 +107,7 @@ impl DistanceField {
             .collect()
     }
 
-                                #[must_use]
+    #[must_use]
     pub(super) fn reconstruct(&self, goal: CellLevel) -> Option<Vec<CellLevel>> {
         self.prev.get(&goal)?;
         let mut route = vec![goal];
@@ -118,6 +121,7 @@ impl DistanceField {
     }
 }
 
+/// Dijkstra / A* relaxation with a stop rule.
 pub(super) fn relax<H, S, R>(
     start: CellLevel,
     grids: SearchGrids<'_, R>,
@@ -139,8 +143,8 @@ where
     field.prev.insert(start, None);
     frontier.push(Reverse(FrontierNode {
         priority: heuristic(start),
-        cost:     PathCost::ZERO,
-        cell:     start,
+        cost: PathCost::ZERO,
+        cell: start,
     }));
 
     while let Some(Reverse(node)) = frontier.pop() {
@@ -167,8 +171,8 @@ where
             field.prev.insert(neighbour, Some(node.cell));
             frontier.push(Reverse(FrontierNode {
                 priority: PathCost::new(*next_cost + *heuristic(neighbour)),
-                cost:     next_cost,
-                cell:     neighbour,
+                cost: next_cost,
+                cell: neighbour,
             }));
         }
     }
@@ -176,9 +180,13 @@ where
     field
 }
 
+/// Controls whether the frontier expands, prunes, or stops.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum StopRule {
-        Done,
-        Prune,
-        Expand,
+    /// Goal reached.
+    Done,
+    /// Beyond budget; skip expansion.
+    Prune,
+    /// Keep expanding.
+    Expand,
 }
