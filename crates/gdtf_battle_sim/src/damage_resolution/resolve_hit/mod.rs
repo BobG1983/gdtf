@@ -1,3 +1,5 @@
+//! Turn weapon stats and armor into penetrating damage, HP loss, and wear.
+
 mod formula;
 mod result;
 

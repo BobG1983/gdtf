@@ -1,3 +1,5 @@
+//! Recorded wounds on a combatant.
+
 mod types;
 
 #[cfg(test)]
