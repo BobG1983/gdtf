@@ -1,4 +1,5 @@
-//! single authority for the **zero-regression** rules (GTW-501 D2 / GTW-502), so the spawn
+//! Path and vision blocking derived from terrain defs.
+
 use bevy::prelude::Deref;
 
 use super::{LosBlocking, TerrainDef, TerrainSimKind, TerrainTag};
@@ -8,17 +9,19 @@ use crate::{
     terrain::entity::TerrainPieceKind,
 };
 
+/// Whether a piece can be opened (door/hatch).
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Openable(bool);
 
 impl Openable {
-        #[must_use]
+    /// Wrap the flag.
+    #[must_use]
     pub const fn new(openable: bool) -> Self {
         Self(openable)
     }
 }
 
-/// field defaults to `None` (`#[serde(default)]`), which falls through to the tag-∪-kind rule
+/// Path blocking for a def (override or tag/kind default).
 #[must_use]
 pub fn derives_path_blocking(def: &TerrainDef) -> PathBlocked {
     if let Some(over) = def.blocks_pathing {
@@ -28,6 +31,7 @@ pub fn derives_path_blocking(def: &TerrainDef) -> PathBlocked {
     PathBlocked::new(explicit || *sim_kind_blocks_path(&def.sim_kind))
 }
 
+/// Default path blocking from sim kind alone.
 #[must_use]
 pub const fn sim_kind_blocks_path(sim_kind: &TerrainSimKind) -> PathBlocked {
     PathBlocked::new(matches!(
@@ -36,12 +40,13 @@ pub const fn sim_kind_blocks_path(sim_kind: &TerrainSimKind) -> PathBlocked {
     ))
 }
 
-/// defaults to `None` (`#[serde(default)]`), which falls through to the tag-then-kind default —
+/// Vision occlusion band for a def, if any.
 #[must_use]
 pub fn derives_vision_occlusion(def: &TerrainDef) -> Option<HeightBand> {
     los_blocking_to_band(resolved_los_blocking(def), &def.sim_kind)
 }
 
+/// Resolved LOS blocking (override, tag, or kind default).
 #[must_use]
 pub fn resolved_los_blocking(def: &TerrainDef) -> LosBlocking {
     if let Some(over) = def.blocks_los {
@@ -56,6 +61,7 @@ pub fn resolved_los_blocking(def: &TerrainDef) -> LosBlocking {
     sim_kind_default_los(&def.sim_kind)
 }
 
+/// Default LOS blocking from sim kind alone.
 #[must_use]
 pub const fn sim_kind_default_los(sim_kind: &TerrainSimKind) -> LosBlocking {
     match sim_kind.kind() {
@@ -65,6 +71,7 @@ pub const fn sim_kind_default_los(sim_kind: &TerrainSimKind) -> LosBlocking {
     }
 }
 
+/// Convert LOS blocking to an optional height band.
 #[must_use]
 pub const fn los_blocking_to_band(
     los: LosBlocking,
@@ -80,6 +87,7 @@ pub const fn los_blocking_to_band(
     }
 }
 
+/// Whether the sim kind occludes vision by default.
 #[must_use]
 pub const fn sim_kind_occludes_vision(sim_kind: &TerrainSimKind) -> OccludesVision {
     OccludesVision::new(matches!(
@@ -97,11 +105,13 @@ const fn sim_kind_band(sim_kind: &TerrainSimKind) -> Option<HeightBand> {
     }
 }
 
+/// Whether the def is tagged openable.
 #[must_use]
 pub fn is_openable(def: &TerrainDef) -> Openable {
     Openable::new(def.tags.contains(&TerrainTag::Openable))
 }
 
+/// Vision band when a closed openable blocks sight.
 #[must_use]
 pub fn closed_openable_vision_band(def: &TerrainDef) -> HeightBand {
     sim_kind_band(&def.sim_kind).unwrap_or(HeightBand::High)

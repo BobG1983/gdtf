@@ -1,3 +1,5 @@
+//! Sim and presenter kinds for terrain pieces.
+
 use bevy::reflect::TypePath;
 use serde::{Deserialize, Serialize};
 
@@ -12,36 +14,58 @@ use crate::{
     weapon::WeaponName,
 };
 
+/// Simulation-facing terrain kind with combat stats.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, TypePath)]
 pub enum TerrainSimKind {
-                Wall {
-                hp:               CoverHp,
-                armor_protection: ArmorProtection,
-                armor_hardness:   ArmorHardness,
-                height_band:      HeightBand,
+    /// Solid wall.
+    Wall {
+        /// Hit points.
+        hp: CoverHp,
+        /// Armor protection.
+        armor_protection: ArmorProtection,
+        /// Armor hardness.
+        armor_hardness: ArmorHardness,
+        /// Height band for vision/brace.
+        height_band: HeightBand,
     },
-                Cover {
-                hp:               CoverHp,
-                armor_protection: ArmorProtection,
-                armor_hardness:   ArmorHardness,
-                height_band:      HeightBand,
+    /// Destructible cover.
+    Cover {
+        /// Hit points.
+        hp: CoverHp,
+        /// Armor protection.
+        armor_protection: ArmorProtection,
+        /// Armor hardness.
+        armor_hardness: ArmorHardness,
+        /// Height band.
+        height_band: HeightBand,
     },
-                Slab {
-                        hp:               SlabHp,
-                armor_protection: ArmorProtection,
-                armor_hardness:   ArmorHardness,
+    /// Walkable slab / floor.
+    Slab {
+        /// Hit points.
+        hp: SlabHp,
+        /// Armor protection.
+        armor_protection: ArmorProtection,
+        /// Armor hardness.
+        armor_hardness: ArmorHardness,
     },
-                                                            Emplacement {
-                        hp:               CoverHp,
-                armor_protection: ArmorProtection,
-                armor_hardness:   ArmorHardness,
-                                height_band:      HeightBand,
-                                        mounted_weapon:   WeaponName,
+    /// Weapon emplacement.
+    Emplacement {
+        /// Hit points.
+        hp: CoverHp,
+        /// Armor protection.
+        armor_protection: ArmorProtection,
+        /// Armor hardness.
+        armor_hardness: ArmorHardness,
+        /// Height band.
+        height_band: HeightBand,
+        /// Mounted weapon key.
+        mounted_weapon: WeaponName,
     },
 }
 
 impl TerrainSimKind {
-                                        #[must_use]
+    /// Coarse piece kind.
+    #[must_use]
     pub const fn kind(&self) -> TerrainPieceKind {
         match self {
             Self::Wall { .. } => TerrainPieceKind::Wall,
@@ -52,25 +76,36 @@ impl TerrainSimKind {
     }
 }
 
+/// Presenter-facing terrain kind with graphics.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, TypePath)]
 pub enum TerrainPresenterKind {
-        Wall {
-                        graphic_name: TerrainGraphicKey,
+    /// Wall graphic.
+    Wall {
+        /// Graphic key.
+        graphic_name: TerrainGraphicKey,
     },
-        Cover {
-                        graphic_name: TerrainGraphicKey,
+    /// Cover graphic.
+    Cover {
+        /// Graphic key.
+        graphic_name: TerrainGraphicKey,
     },
-            Slab {
-                        graphic_name: TerrainGraphicKey,
-                                footfall:     Option<FootfallSound>,
+    /// Slab graphic and optional footfall.
+    Slab {
+        /// Graphic key.
+        graphic_name: TerrainGraphicKey,
+        /// Optional footfall sound.
+        footfall: Option<FootfallSound>,
     },
-                Emplacement {
-                        graphic_name: TerrainGraphicKey,
+    /// Emplacement graphic.
+    Emplacement {
+        /// Graphic key.
+        graphic_name: TerrainGraphicKey,
     },
 }
 
 impl TerrainPresenterKind {
-                                #[must_use]
+    /// Coarse piece kind.
+    #[must_use]
     pub const fn kind(&self) -> TerrainPieceKind {
         match self {
             Self::Wall { .. } => TerrainPieceKind::Wall,
@@ -81,17 +116,26 @@ impl TerrainPresenterKind {
     }
 }
 
+/// Optional behavior tags on a terrain def.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, TypePath)]
 pub enum TerrainTag {
-            Openable,
-            BlocksVision,
-            BlocksPathfinding,
-            Indestructible,
+    /// Can be opened.
+    Openable,
+    /// Blocks vision.
+    BlocksVision,
+    /// Blocks pathfinding.
+    BlocksPathfinding,
+    /// Cannot be destroyed.
+    Indestructible,
 }
 
+/// How a piece blocks line of sight.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, TypePath)]
 pub enum LosBlocking {
-            Full,
-                UpToHeightBand,
-        None,
+    /// Full occlusion.
+    Full,
+    /// Occludes up to the piece height band.
+    UpToHeightBand,
+    /// No occlusion.
+    None,
 }
