@@ -1,4 +1,5 @@
-//! The **authoring spec** — the `WeaponSpec` an `assets/content/weapons/ranged/*.weapon.ron`
+//! Authored ranged weapon content and spawn helpers.
+
 use bevy::{prelude::Component, reflect::TypePath};
 use serde::{Deserialize, Serialize};
 
@@ -13,52 +14,59 @@ use crate::{
     magazine::Magazine,
 };
 
-/// `#[serde(transparent)]` bare RON scalar (the [`crate::tuning`] / GTW-200 house
-/// mirror); the [`Magazine`]'s live `rounds` count is `#[serde(skip_serializing)]` on its
+/// Deserialized weapon definition from content.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TypePath)]
 pub struct WeaponSpec {
-        pub base_spread: BaseSpread,
-        pub accuracy:    Accuracy,
-        pub kickback:    Kickback,
-        pub fatal_bias:  FatalBias,
-        pub damage:      WeaponDamage,
-        pub punch:       WeaponPunch,
-        pub shred:       WeaponShred,
-        pub damage_type: DamageType,
-                                /// not the wheel node its hits resolve on. `#[serde(default)]` (defaulting to
-                #[serde(default)]
-    pub accepts:     AmmoType,
-                    pub magazine:    Magazine,
-                pub fire_mode:   FireMode,
-        pub stable:      Stable,
-        /// connecting shot (in addition to the shot's damage). `#[serde(default)]` so an
-            /// shoving OFF (the [`Reach`](super::Reach) `#[serde(default)]` precedent), unlike
-        #[serde(default)]
-    pub shove:       Shove,
-                    pub handedness:  Handedness,
-            /// field. `#[serde(default)]` (defaulting to [`TrajectoryStyle::Straight`]) so an omitted
-        /// `#[serde(default)]` precedent), so EVERY existing weapon `.ron` — none of which author
-                #[serde(default)]
-    pub trajectory:  TrajectoryStyle,
-                    /// attachments each holds. `#[serde(default)]` so an omitted field is the EMPTY
-                        #[serde(default)]
-    pub slots:       WeaponSlots,
-                /// the `attachments:` `.weapon.ron` field. `#[serde(default)]` so an omitted field falls
-        /// [`Shove`] `#[serde(default)]` precedent), so EVERY existing weapon `.ron` — none of which
-                                        #[serde(default)]
+    /// Base spread.
+    pub base_spread: BaseSpread,
+    /// Accuracy.
+    pub accuracy: Accuracy,
+    /// Kickback.
+    pub kickback: Kickback,
+    /// Fatal bias.
+    pub fatal_bias: FatalBias,
+    /// Damage.
+    pub damage: WeaponDamage,
+    /// Punch.
+    pub punch: WeaponPunch,
+    /// Shred.
+    pub shred: WeaponShred,
+    /// Damage type.
+    pub damage_type: DamageType,
+    /// Accepted ammo class.
+    #[serde(default)]
+    pub accepts: AmmoType,
+    /// Magazine template (size / reload; live rounds filled on spawn).
+    pub magazine: Magazine,
+    /// Fire modes.
+    pub fire_mode: FireMode,
+    /// Stability.
+    pub stable: Stable,
+    /// Shove on hit.
+    #[serde(default)]
+    pub shove: Shove,
+    /// Handedness.
+    pub handedness: Handedness,
+    /// Trajectory.
+    #[serde(default)]
+    pub trajectory: TrajectoryStyle,
+    /// Attachment slots.
+    #[serde(default)]
+    pub slots: WeaponSlots,
+    /// Pre-fitted attachment names.
+    #[serde(default)]
     pub attachments: Vec<AttachmentName>,
-            /// authored as the `dot:` `.weapon.ron` field. `#[serde(default)]` (defaulting to `None`)
-        /// [`Shove`] `#[serde(default)]` precedent), so EVERY existing weapon `.ron` — none of
-                        #[serde(default)]
-    pub dot:         Option<DotProfile>,
-                /// `.weapon.ron` field. `#[serde(default)]` (defaulting to `None`) so an omitted field is a
-        /// [`Shove`] `#[serde(default)]` precedent), so EVERY existing weapon `.ron` — none of which
-                        #[serde(default)]
-    pub on_death:    Option<crate::effects::on_death::OnDeathEffect>,
+    /// Optional DOT on hit.
+    #[serde(default)]
+    pub dot: Option<DotProfile>,
+    /// Optional on-death effect.
+    #[serde(default)]
+    pub on_death: Option<crate::effects::on_death::OnDeathEffect>,
 }
 
 impl WeaponSpec {
-                                                                                #[must_use]
+    /// Build spawn bundle plus optional sibling components.
+    #[must_use]
     pub fn into_bundle(self, name: WeaponName) -> (WeaponBundle, WeaponSpawnSiblings) {
         let magazine = Magazine::loaded_with(
             self.magazine.size(),
@@ -86,14 +94,16 @@ impl WeaponSpec {
     }
 }
 
+/// Extra components to attach after the main bundle (DOT, on-death).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct WeaponSpawnSiblings {
-                dot:      Option<DotProfile>,
-                on_death: Option<crate::effects::on_death::OnDeath>,
+    dot: Option<DotProfile>,
+    on_death: Option<crate::effects::on_death::OnDeath>,
 }
 
 impl WeaponSpawnSiblings {
-            #[must_use]
+    /// Build siblings from optional authored effects.
+    #[must_use]
     pub fn new(
         dot: Option<DotProfile>,
         on_death: Option<crate::effects::on_death::OnDeathEffect>,
@@ -104,27 +114,32 @@ impl WeaponSpawnSiblings {
         }
     }
 
-            #[must_use]
+    /// Optional DOT profile.
+    #[must_use]
     pub const fn dot(&self) -> Option<DotProfile> {
         self.dot
     }
 
-            #[must_use]
+    /// Optional on-death effect.
+    #[must_use]
     pub const fn on_death(&self) -> Option<&crate::effects::on_death::OnDeath> {
         self.on_death.as_ref()
     }
 }
 
+/// Attachment effects waiting to be applied after spawn.
 #[derive(Component, Debug, Clone, PartialEq, Default)]
 pub struct PendingAttachments(Vec<AttachmentEffect>);
 
 impl PendingAttachments {
-            #[must_use]
+    /// Wrap a list of effects.
+    #[must_use]
     pub const fn new(effects: Vec<AttachmentEffect>) -> Self {
         Self(effects)
     }
 
-                #[must_use]
+    /// Borrow the effects.
+    #[must_use]
     pub fn effects(&self) -> &[AttachmentEffect] {
         &self.0
     }
