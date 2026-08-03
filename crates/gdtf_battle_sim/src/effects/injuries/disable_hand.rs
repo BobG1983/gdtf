@@ -1,15 +1,18 @@
+//! Disable-hand injury effect.
+
 use super::{ApplyInjuryEffect, HandDisabling, HealError, LedgerAccumulators};
 
+/// Marks the injury as disabling a hand (no ledger mutation).
 pub struct ApplyDisableHand;
 
 impl ApplyInjuryEffect for ApplyDisableHand {
-            fn fold_on_gain(&self, _accumulators: &mut LedgerAccumulators<'_>) {}
+    fn fold_on_gain(&self, _accumulators: &mut LedgerAccumulators<'_>) {}
 
-        fn disables_hand(&self) -> HandDisabling {
+    fn disables_hand(&self) -> HandDisabling {
         HandDisabling::new(true)
     }
 
-                    fn heal(&self, _accumulators: &mut LedgerAccumulators<'_>) -> Result<(), HealError> {
+    fn heal(&self, _accumulators: &mut LedgerAccumulators<'_>) -> Result<(), HealError> {
         Ok(())
     }
 }
@@ -22,14 +25,14 @@ mod tests {
         injuries::{BleedAfflicted, MovementCostFactor, StatDeltaLedger, StatTarget},
     };
 
-            #[test]
+    #[test]
     fn disable_hand_is_inert_at_gain_and_projects_on_read() {
         let mut deltas = StatDeltaLedger::default();
         let mut bleed = BleedAfflicted::default();
         let mut movement = MovementCostFactor::IDENTITY;
         let mut acc = LedgerAccumulators {
-            deltas:   &mut deltas,
-            bleed:    &mut bleed,
+            deltas: &mut deltas,
+            bleed: &mut bleed,
             movement: &mut movement,
         };
         ApplyDisableHand.fold_on_gain(&mut acc);
