@@ -1,3 +1,5 @@
+//! Build a [`CommandCatalogue`] from erased commands and host facts.
+
 use gdtf_qa_protocol::{
     command::{CommandCatalogue, CommandEntry},
     message::ServerNameNet,
@@ -5,6 +7,7 @@ use gdtf_qa_protocol::{
 
 use crate::command::ErasedCommand;
 
+/// Collect name, summary, timing, schemas, and availability for every command.
 #[must_use]
 pub fn catalogue<F>(
     host: ServerNameNet,
