@@ -13,10 +13,7 @@ type ModeControlChildren = (Entity, &'static Children);
 #[allow(
     clippy::type_complexity,
     clippy::too_many_arguments,
-    reason = "param tuple aliased where possible; the set_segment_visible call signature fixes the \
-    children/segments query shapes, GTW-323 slice 3 adds the Wields relationship query so the \
-    offered modes resolve off the related weapon entity, and GTW-505 C5 adds the MeleeWeapon marker \
-    probe so the RANGED weapon resolves excluding the melee one"
+    reason = "Wields and melee probe resolve offered modes off the ranged weapon entity"
 )]
 pub(in crate::states::running::game::battlescape) fn rebuild_mode_segments(
     selected: Res<SelectedShooter>,
