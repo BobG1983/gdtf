@@ -72,8 +72,6 @@ fn real_asset_resolves_new_terrain_and_theme_registries_by_uuid() {
     assert!(
         app.world().get_resource::<TerrainDefRegistry>().is_some()
             && app.world().get_resource::<UuidThemeRegistry>().is_some(),
-        "both new registries must be present after Load releases (the GTW-487 gate clause \
-         waited for them — not hand-seeded defaults; Load's cleanup deliberately persists \
-         the content registries)",
+        "both new registries must be present after Load releases (the gate waited for them — not hand-seeded defaults)",
     );
 }
