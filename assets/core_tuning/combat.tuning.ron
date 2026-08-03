@@ -69,22 +69,22 @@
     stance_change_tu: 8,  // TU a ganger spends to change posture (stand/kneel/prone), charged on a real change
     turn_tu:          1,  // TU a ganger spends PER 45deg step when turning in place (partial turn, charged per afforded step)
 
-    // Shove act TU cost (GTW-525; resolution.md §7 — a context-sensitive pure-displacement melee
+    // Shove act TU cost (resolution.md §7 — a context-sensitive pure-displacement melee
     // shove any ganger can take against an adjacent opposing alive target). The deliberate SHOVE
     // act (dispatch_shove) spends this when it resolves — it deals NO wound of its own; the FALL
-    // it may trigger (via the shared GTW-523 fall path) does the harm. The weapon-tag auto-shove
+    // it may trigger (via the shared fall path) does the harm. The weapon-tag auto-shove
     // (on a connecting melee strike OR ranged shot) is FREE — bundled into the attack's own TU
     // charge — so only the deliberate act reads this leaf. STARTING POINT (tunable).
     shove_tu:         6,  // TU a ganger spends on a deliberate shove (pure displacement; the fall does the damage)
 
-    // Open-door act TU cost (GTW-315): the flat Time Units the deliberate OPEN-DOOR act
+    // Open-door act TU cost: the flat Time Units the deliberate OPEN-DOOR act
     // (dispatch_open_door) spends when it resolves — an 8-adjacent CLOSED openable piece (door /
     // hatch) that the actor can afford. Opening a door is a quick, uncontested manual interaction
     // (no roll, no wound), so it is cheaper than a committed shove; matched to the cheapest
     // move / single-link "one simple action" baseline. STARTING POINT (tunable).
     open_door_tu:     4,  // TU a ganger spends to open an adjacent closed door (quick uncontested interaction)
 
-    // Emplacement enter/exit TU costs (GTW-543): the deliberate context acts that man / dismount an
+    // Emplacement enter/exit TU costs: the deliberate context acts that man / dismount an
     // adjacent weapon emplacement. Entering is a committed setup (swing into the seat, grip the gun),
     // so it is pricier (matched to the committed-melee shove, 6); exiting is a quicker dismount,
     // matched to the cheapest one-simple-action baseline (like open_door_tu, 4). There is NO
@@ -93,7 +93,7 @@
     enter_emplacement_tu: 6,  // TU a ganger spends to man an adjacent vacant emplacement
     exit_emplacement_tu:  4,  // TU a ganger spends to dismount the emplacement it is manning
 
-    // GTW-546: the throw-grenade TU cost — TU a ganger spends to LOB an Arc grenade / launcher
+    // Throw-grenade TU cost — TU a ganger spends to LOB an Arc grenade / launcher
     // charge at a target cell (a committed one-action blind throw, matched to the committed-setup
     // enter_emplacement_tu / shove_tu baseline of 6). STARTING POINT (tunable balance data).
     throw_tu:             6,  // TU a ganger spends to throw a grenade (arc march + blast at landing)
@@ -111,12 +111,11 @@
         cover: 6,  // step onto a Cover cell — dearer; reachable only once the cover is DESTROYED (then it no longer blocks)
         wall:  8,  // step onto a Wall — placeholder; a wall always blocks, so this is never charged (dead under the gate)
     ),
-    // Per-link traversal cost (E7 · GTW-12a; visibility.md §48: a crossing prices link_tu
+    // Per-link traversal cost (visibility.md §48: a crossing prices link_tu
     // INSTEAD OF terrain): the flat Time Units a step spends when it is a vertical-link hop
     // (stair / ladder) between levels — advance_walk charges THIS at a link hop instead of
     // the entered terrain's move_cost. ONE flat cost for every link kind (no per-kind
-    // stair/ladder split — OQ-6's per-kind variant would need a docs change first).
-    // Consumed later by GTW-351 (vertical-link traversal); this leaf only ADDS the tunable.
+    // stair/ladder split — a per-kind variant would need a docs change first).
     // STARTING POINT (tunable, flagged — matched to the cheapest move-cost baseline).
     link_tu: 4,  // TU a ganger spends to cross one vertical link (stair/ladder hop); flat, all kinds
 
@@ -145,7 +144,7 @@
         ),
         // Points added when the faced cell's cover suits the stance (automatic brace).
         brace_contribution: 30.0,  // +30 to the stability score when braced (resolution.md §1a)
-        // GTW-543 emplacement: points a ganger MANNING a weapon emplacement (firing the
+        // Emplacement: points a ganger MANNING a weapon emplacement (firing the
         // bolted-down mounted gun) adds to the stability score — a fixed mount is the steadiest
         // firing position, offsetting the mounted gun's low base accuracy. A substantial
         // steadying (tops the brace). STARTING POINT (tunable).
@@ -221,7 +220,7 @@
         neutral:   1.0,   // same wheel node / mirror — punch & shred unchanged (×1)
         resisted:  0.34,  // weapon type loses to armor type — punch & shred ×0.34 (−66%)
     ),
-    // Firing arc (GTW-242): the FULL angular width (DEGREES) of the facing cone a shooter
+    // Firing arc: the FULL angular width (DEGREES) of the facing cone a shooter
     // may fire within. A target within ±firing_arc/2 of the facing fires directly; a target
     // OUTSIDE the arc requires the shooter to first turn to face it (paying turn_tu per 45°
     // step) AND afford the shot — else the shot is REJECTED (no spend, no turn, no shot).
@@ -230,7 +229,7 @@
     // STARTING POINT (tunable): 120° = ±60° off the facing.
     firing_arc: 120.0,  // full firing-cone width in degrees (target must be within ±60° to fire without turning)
 
-    // Squad fog-of-war view range (GTW-338; visibility.md §"Tunables"): one ganger's
+    // Squad fog-of-war view range (visibility.md §"Tunables"): one ganger's
     // sight radius in CHEBYSHEV CELLS — the 2D disc bounds per-ganger FOV; the level-aware
     // LOS probe owns the height axis (a ganger sees a cell iff Chebyshev(F,cell) <= this
     // AND has_los). The shipped 60×60 city gets a real fog horizon (the disc is smaller
@@ -238,15 +237,15 @@
     // STARTING POINT (tunable).
     view_range: 14,  // sight radius in Chebyshev cells (60×60 = fog horizon, 12×12 = fully lit)
 
-    // EXPLORED-memory dim factor (GTW-338; visibility.md §"Tunables"): the modulate the
-    // presenter fog writer (GTW-342) applies to EXPLORED terrain — rendered RGB × this,
+    // EXPLORED-memory dim factor (visibility.md §"Tunables"): the modulate the
+    // presenter fog writer applies to EXPLORED terrain — rendered RGB × this,
     // ALPHA UNTOUCHED. Memory shows live terrain dimmed, never a snapshot. A value in
     // 0..=1: dark enough to read "memory, not live sight", bright enough to navigate by.
     // STARTING POINT (tunable).
     explored_dim: 0.55,  // EXPLORED terrain RGB modulate (alpha untouched); 0..=1
 
-    // §8 Reaction-fire tuning (GTW-466 data substrate; resolution.md §8). No system
-    // reads these yet — the opposed-check core is GTW-467 and the live trigger GTW-468.
+    // §8 Reaction-fire tuning (resolution.md §8). Data substrate for the opposed-check
+    // core and the live trigger.
     // cap formula: floor(cap_base + cap_per_reactions × Reactions)
     // DESIGN FORK: cap formula TBD (resolution.md §8 line 192) — defaults are
     // defensible-but-arbitrary starting points, never pinned by magnitude tests.
@@ -256,21 +255,21 @@
         cap_per_reactions: 0.5,  // per-Reactions slope; each whole unit of Reactions adds 0.5 before floor
         p_min:             0.05, // probability floor: P(interrupt) is never below this (resolution.md §8)
         p_max:             0.95, // probability ceiling: P(interrupt) is never above this (resolution.md §8)
-        // GTW-526 suppression radius: Chebyshev cells out from a shot's target that an
+        // Suppression radius: Chebyshev cells out from a shot's target that an
         // opposing ganger is suppressed by. 0 = the target cell only. STARTING POINT (tunable).
         suppression_radius: 1,
-        // GTW-526 suppression stability penalty: stability-score points a SUPPRESSED shooter
+        // Suppression stability penalty: stability-score points a SUPPRESSED shooter
         // loses (negated by the composer into a subtractive stability term), so a pinned shooter
         // shoots with a WIDER dispersion cone. ~40 ≈ the prone stance's steadiness, so heavy
         // suppression undoes a careful posture. STARTING POINT (tunable).
         suppression_penalty: 40.0,
     ),
 
-    // §7 Melee opposed-Fight tuning (GTW-506; resolution.md §7 lines 146-150). The §7
+    // §7 Melee opposed-Fight tuning (resolution.md §7 lines 146-150). The §7
     // damage_mult = clamp(mult_min + k_margin × margin, mult_min, mult_max), where
     // margin = atk/def − 1 is the relative dominance of the opposed Fight roll.
-    // Defaults are DEFENSIBLE-BUT-ARBITRARY starting points (forks the user may tune,
-    // flagged on GTW-37), never pinned by a magnitude test (value-agnostic tests only).
+    // Defaults are DEFENSIBLE-BUT-ARBITRARY starting points (forks the user may tune),
+    // never pinned by a magnitude test (value-agnostic tests only).
     melee: (
         k_margin: 1.0,  // margin → damage-mult slope; 1.0 = a +50% Fight margin adds 0.5 to the multiplier
         mult_min: 0.5,  // the clamp floor — BELOW 1 so a barely-connecting hit GLANCES (resolution.md §7: "may be below 1")
@@ -278,14 +277,14 @@
         variance: 0.2,  // the roll spread v: each side's roll is uniform in [1−v, 1+v] = [0.8, 1.2]
     ),
 
-    // Falls per-storey damage (GTW-523; resolution.md §Falls). When a slab is destroyed
+    // Falls per-storey damage (resolution.md §Falls). When a slab is destroyed
     // under a standing ganger it FALLS: magnitude = per_storey_damage × storeys_fallen,
-    // LINEAR (weight-free — GTW-452 owns weighting). The blow is routed as a Neutral kinetic
+    // LINEAR (weight-free — weighting is separate). The blow is routed as a Neutral kinetic
     // hit through the SAME resolve_hit → roll_severity → apply_hit + injury pipeline a shot
     // takes (armor honored). STARTING POINT (tunable balance data) — value-agnostic tests
     // only (monotone in storeys, a hot-edit shifts the blow), never a pinned magnitude.
     per_storey_damage: 6,  // base fall damage PER STOREY fallen (linear); a 2-storey drop deals ×2
-    // GTW-549: weapon-attachment magnitudes are NO LONGER global tuning — each attachment ITEM
+    // Weapon-attachment magnitudes are NOT global tuning — each attachment ITEM
     // carries its own effect magnitudes in its `assets/content/attachments/*.attachment.ron`.
 
 )
