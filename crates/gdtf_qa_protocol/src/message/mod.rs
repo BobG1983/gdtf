@@ -1,4 +1,5 @@
-//! One concern per file: the [`hello`] handshake ([`ProtocolVersion`] / [`HelloFacts`]),
+//! QA protocol messages: hello handshake, requests, and responses.
+
 pub mod error;
 pub mod hello;
 pub mod request;
