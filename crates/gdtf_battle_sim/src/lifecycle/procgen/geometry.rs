@@ -1,3 +1,5 @@
+//! Rect geometry helpers for packing and placement.
+
 use bevy::math::IVec2;
 
 use super::anchor::Anchor;
@@ -6,11 +8,13 @@ use crate::{
     metric::{Cell, CellUnit},
 };
 
+/// Count of cells in a region.
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CellCount(i64);
 
 impl CellCount {
-        #[must_use]
+    /// Wrap a count.
+    #[must_use]
     pub const fn new(count: i64) -> Self {
         Self(count)
     }
@@ -30,48 +34,58 @@ impl std::ops::AddAssign for CellCount {
     }
 }
 
+/// Padding in cells around a region.
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Margin(u8);
 
 impl Margin {
-        pub const DEFAULT: Self = Self(1);
+    /// Default one-cell margin.
+    pub const DEFAULT: Self = Self(1);
 
-        #[must_use]
+    /// Wrap a cell count.
+    #[must_use]
     pub const fn new(cells: u8) -> Self {
         Self(cells)
     }
 
-            #[must_use]
+    /// As a cell unit.
+    #[must_use]
     pub const fn cells(self) -> CellUnit {
         CellUnit::new(self.0 as i32)
     }
 }
 
+/// Width and height of a placed rect.
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Footprint(IVec2);
 
 impl Footprint {
-        #[must_use]
+    /// From width and height.
+    #[must_use]
     pub const fn new(width: i32, height: i32) -> Self {
         Self(IVec2::new(width, height))
     }
 
-            #[must_use]
+    /// From a grid size.
+    #[must_use]
     pub fn of(size: GridSize) -> Self {
         Self::new(i32::from(*size.width()), i32::from(*size.height()))
     }
 
-        #[must_use]
+    /// Width in cells.
+    #[must_use]
     pub const fn width(self) -> i32 {
         self.0.x
     }
 
-        #[must_use]
+    /// Height in cells.
+    #[must_use]
     pub const fn height(self) -> i32 {
         self.0.y
     }
 
-            #[must_use]
+    /// Smaller of width and height.
+    #[must_use]
     pub const fn min_side(self) -> i32 {
         if self.0.x < self.0.y {
             self.0.x
@@ -80,55 +94,65 @@ impl Footprint {
         }
     }
 
-                #[must_use]
+    /// Area in cells.
+    #[must_use]
     pub const fn area(self) -> CellCount {
         CellCount::new(self.0.x as i64 * self.0.y as i64)
     }
 }
 
+/// Axis-aligned rect on the board.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RegionRect {
-        origin:    Cell,
-        footprint: Footprint,
+    origin: Cell,
+    footprint: Footprint,
 }
 
 impl RegionRect {
-        #[must_use]
+    /// From origin and footprint.
+    #[must_use]
     pub const fn new(origin: Cell, footprint: Footprint) -> Self {
         Self { origin, footprint }
     }
 
-            #[must_use]
+    /// Full board from a grid size.
+    #[must_use]
     pub fn board(size: GridSize) -> Self {
         Self::new(Cell::new(0, 0), Footprint::of(size))
     }
 
-        #[must_use]
+    /// Bottom-left cell.
+    #[must_use]
     pub const fn origin(self) -> Cell {
         self.origin
     }
 
-        #[must_use]
+    /// Size of the rect.
+    #[must_use]
     pub const fn footprint(self) -> Footprint {
         self.footprint
     }
 
-        #[must_use]
+    /// Exclusive max x.
+    #[must_use]
     pub fn max_x(self) -> CellUnit {
         CellUnit::new(self.origin.x + self.footprint.width())
     }
 
-        #[must_use]
+    /// Exclusive max y.
+    #[must_use]
     pub fn max_y(self) -> CellUnit {
         CellUnit::new(self.origin.y + self.footprint.height())
     }
 
-            #[must_use]
+    /// Whether width and height are both positive.
+    #[must_use]
     pub const fn is_non_empty(self) -> RectNonEmpty {
         RectNonEmpty::new(self.footprint.width() > 0 && self.footprint.height() > 0)
     }
 
-                    #[must_use]
+    /// Area in cells (zero if empty).
+    #[must_use]
     pub const fn cell_count(self) -> CellCount {
         let w = if self.footprint.width() > 0 {
             self.footprint.width()
@@ -143,7 +167,8 @@ impl RegionRect {
         CellCount::new(w as i64 * h as i64)
     }
 
-            #[must_use]
+    /// Whether this fully contains another rect.
+    #[must_use]
     pub fn contains_rect(self, other: Self) -> RectContains {
         RectContains::new(
             self.origin.x <= other.origin.x
@@ -153,7 +178,8 @@ impl RegionRect {
         )
     }
 
-            #[must_use]
+    /// Whether this overlaps another rect.
+    #[must_use]
     pub fn intersects(self, other: Self) -> RectsIntersect {
         RectsIntersect::new(
             self.origin.x < *other.max_x()
@@ -163,7 +189,8 @@ impl RegionRect {
         )
     }
 
-                                #[must_use]
+    /// Expand by a margin, clamped to non-negative origin.
+    #[must_use]
     pub fn padded(self, margin: Margin) -> Self {
         let m = *margin.cells();
         let ox = (self.origin.x - m).max(0);
@@ -174,7 +201,8 @@ impl RegionRect {
         Self::new(new_origin, Footprint::new(new_w, new_h))
     }
 
-                                #[must_use]
+    /// Clip this rect to lie inside bounds.
+    #[must_use]
     pub fn clamped_to(self, bounds: Self) -> Self {
         let x0 = self.origin.x.max(bounds.origin.x);
         let y0 = self.origin.y.max(bounds.origin.y);
@@ -186,7 +214,8 @@ impl RegionRect {
         )
     }
 
-                                        #[must_use]
+    /// Place a footprint against an edge/corner of this rect.
+    #[must_use]
     pub fn place_at_anchor(self, anchor: Anchor, footprint: Footprint) -> Self {
         let board_w = self.footprint.width();
         let board_h = self.footprint.height();
@@ -213,48 +242,58 @@ impl RegionRect {
     }
 }
 
+/// Minimum side length for a player deployment zone.
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct MinPlayerSide(GridWidth);
 
 impl MinPlayerSide {
-        pub const DEFAULT: Self = Self(GridWidth::new(10));
+    /// Default ten cells.
+    pub const DEFAULT: Self = Self(GridWidth::new(10));
 
-        #[must_use]
+    /// Wrap a grid width.
+    #[must_use]
     pub const fn new(cells: GridWidth) -> Self {
         Self(cells)
     }
 
-        #[must_use]
+    /// As a cell unit.
+    #[must_use]
     pub fn cells(self) -> CellUnit {
         CellUnit::new(i32::from(*self.0))
     }
 }
 
+/// Whether a rect has positive width and height.
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RectNonEmpty(bool);
 
 impl RectNonEmpty {
-        #[must_use]
+    /// Wrap the flag.
+    #[must_use]
     pub const fn new(non_empty: bool) -> Self {
         Self(non_empty)
     }
 }
 
+/// Whether one rect fully contains another.
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RectContains(bool);
 
 impl RectContains {
-        #[must_use]
+    /// Wrap the flag.
+    #[must_use]
     pub const fn new(contains: bool) -> Self {
         Self(contains)
     }
 }
 
+/// Whether two rects overlap.
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RectsIntersect(bool);
 
 impl RectsIntersect {
-        #[must_use]
+    /// Wrap the flag.
+    #[must_use]
     pub const fn new(intersects: bool) -> Self {
         Self(intersects)
     }

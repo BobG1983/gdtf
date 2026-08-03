@@ -1,26 +1,30 @@
-//! `#[serde(transparent)]` so it round-trips as a bare RON scalar. The values are
+//! Procgen density and scatter knobs.
+
 use bevy::{prelude::Resource, reflect::TypePath};
 use serde::Deserialize;
 
 use super::geometry::CellCount;
 
+/// How many scatter attempts to make.
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScatterCount(usize);
 
 impl ScatterCount {
-        #[must_use]
+    /// Wrap a count.
+    #[must_use]
     pub const fn new(count: usize) -> Self {
         Self(count)
     }
 }
 
-/// `#[serde(transparent)]` parses a bare RON scalar. **Tunable** — tests assert only its
+/// Minimum occupied fraction of the board.
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct MinDensityFloor(f32);
 
 impl MinDensityFloor {
-        #[must_use]
+    /// Wrap a fraction.
+    #[must_use]
     pub const fn new(fraction: f32) -> Self {
         Self(fraction)
     }
@@ -32,13 +36,14 @@ impl Default for MinDensityFloor {
     }
 }
 
-/// derived [`Deref`](bevy::prelude::Deref); `#[serde(transparent)]` parses a bare RON scalar.
+/// Maximum occupied fraction of the board.
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct MaxCoverageCap(f32);
 
 impl MaxCoverageCap {
-        #[must_use]
+    /// Wrap a fraction.
+    #[must_use]
     pub const fn new(fraction: f32) -> Self {
         Self(fraction)
     }
@@ -50,18 +55,20 @@ impl Default for MaxCoverageCap {
     }
 }
 
-/// `#[serde(transparent)]` parses a bare RON scalar. **Tunable** — tests assert only its
+/// Prefabs larger than this area count as "large".
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
 pub struct LargePrefabAreaThreshold(u32);
 
 impl LargePrefabAreaThreshold {
-            #[must_use]
+    /// Wrap an area.
+    #[must_use]
     pub const fn new(area: u32) -> Self {
         Self(area)
     }
 
-            #[must_use]
+    /// As a cell count.
+    #[must_use]
     pub const fn area(self) -> CellCount {
         CellCount::new(self.0 as i64)
     }
@@ -73,18 +80,20 @@ impl Default for LargePrefabAreaThreshold {
     }
 }
 
-/// `#[serde(transparent)]` parses a bare RON scalar. **Tunable** — tests assert only its
+/// Scatter attempts into leftover dead space.
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
 pub struct DeadRectScatterCount(u8);
 
 impl DeadRectScatterCount {
-            #[must_use]
+    /// Wrap a count.
+    #[must_use]
     pub const fn new(k: u8) -> Self {
         Self(k)
     }
 
-            #[must_use]
+    /// As a scatter count.
+    #[must_use]
     pub const fn count(self) -> ScatterCount {
         ScatterCount::new(self.0 as usize)
     }
@@ -96,12 +105,16 @@ impl Default for DeadRectScatterCount {
     }
 }
 
-/// (the same bound `CombatTuning` / the theme spec carry). `#[serde(default)]` so a file
+/// All procgen density and scatter knobs.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Resource, Deserialize, TypePath)]
 #[serde(default)]
 pub struct ProcgenTuning {
-            pub min_density_floor:           MinDensityFloor,
-                pub max_coverage_cap:            MaxCoverageCap,
-            pub large_prefab_area_threshold: LargePrefabAreaThreshold,
-        pub dead_rect_scatter_count_k:   DeadRectScatterCount,
+    /// Minimum board occupancy fraction.
+    pub min_density_floor: MinDensityFloor,
+    /// Maximum board occupancy fraction.
+    pub max_coverage_cap: MaxCoverageCap,
+    /// Area above which a prefab is "large".
+    pub large_prefab_area_threshold: LargePrefabAreaThreshold,
+    /// Scatter attempts into dead rects.
+    pub dead_rect_scatter_count_k: DeadRectScatterCount,
 }
