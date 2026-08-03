@@ -1,7 +1,10 @@
+//! Clear per-ganger reaction use counters on turn change.
+
 use bevy::prelude::{MessageReader, Query};
 
 use crate::tuning::ReactionsUsed;
 
+/// On any [`TurnStarted`](crate::turn::TurnStarted), reset all [`ReactionsUsed`].
 pub fn reset_reactions_used(
     mut turns: MessageReader<crate::turn::TurnStarted>,
     mut used: Query<&mut ReactionsUsed>,

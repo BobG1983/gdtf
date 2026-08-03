@@ -1,3 +1,5 @@
+//! Opportunity fire when enemies move or shoot in LOS.
+
 mod declared;
 mod interrupt;
 mod ledger;

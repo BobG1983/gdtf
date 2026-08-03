@@ -1,3 +1,5 @@
+//! Evaluate one actor/reactor pair for opportunity fire.
+
 use bevy::prelude::{Entity, Query, With};
 
 use super::{
@@ -25,6 +27,7 @@ use crate::{
     weapon::{FireMode, Handedness},
 };
 
+/// Try to interrupt `actor` with `reactor`; returns a commit if fire is declared.
 #[expect(
     clippy::too_many_arguments,
     reason = "the per-pair evaluation borrows the trigger system's own params (the \
@@ -78,15 +81,15 @@ pub(super) fn try_reaction(
     let fire_cost = mode_tu_cost(&mode, &reactor.tu_max, &reactor.aiming, tuning);
 
     let observer = Observer {
-        position:         &reactor.position,
-        stance:           &reactor.stance,
-        facing:           &facing_now,
+        position: &reactor.position,
+        stance: &reactor.stance,
+        facing: &facing_now,
         stair_eye_offset: occupancy.stair_eye_offset_at(&row_cell_level(&reactor.position)),
-        peek_offset:      PeekOffset::default(),
+        peek_offset: PeekOffset::default(),
     };
     let target = Target {
         position: &actor.position,
-        stance:   &actor.stance,
+        stance: &actor.stance,
     };
     if !*can_see(
         &observer,
@@ -157,6 +160,7 @@ pub(super) fn try_reaction(
     ))
 }
 
+/// Resolve the reactor's firing weapon and magazine.
 pub(super) fn reactor_weapon(
     reactor: Entity,
     wields: &WieldsQuery,
