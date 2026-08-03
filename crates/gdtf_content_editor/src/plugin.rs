@@ -1,3 +1,5 @@
+//! Map editor Bevy plugin.
+
 use bevy::prelude::*;
 use bevy_egui::{EguiPrimaryContextPass, input::egui_wants_any_keyboard_input};
 use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
@@ -27,6 +29,7 @@ use crate::{
     weapon_form::WeaponDraft,
 };
 
+/// Registers editor states, scoped resources, and UI systems.
 pub struct MapEditorPlugin;
 
 impl Plugin for MapEditorPlugin {
