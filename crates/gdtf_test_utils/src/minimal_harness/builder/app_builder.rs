@@ -1,4 +1,4 @@
-//! Typed-builder phases for a MinimalPlugins headless app.
+//! Typed-builder phases for a `MinimalPlugins` headless app.
 
 use core::marker::PhantomData;
 
@@ -14,20 +14,20 @@ pub struct NoState;
 /// Builder phase: starting state has been chosen.
 pub struct WithState;
 
-/// MinimalPlugins headless app builder.
+/// `MinimalPlugins` headless app builder.
 pub struct GdtfTestAppBuilder<Phase> {
     app: App,
     _phase: PhantomData<fn() -> Phase>,
 }
 
 impl GdtfTestAppBuilder<NoState> {
-    /// MinimalPlugins only (no scene support).
+    /// `MinimalPlugins` only (no scene support).
     #[must_use]
     pub fn new() -> Self {
         Self::build_core(false)
     }
 
-    /// MinimalPlugins plus AssetPlugin and ScenePlugin.
+    /// `MinimalPlugins` plus `AssetPlugin` and `ScenePlugin`.
     #[must_use]
     pub fn new_with_scene_support() -> Self {
         Self::build_core(true)
@@ -60,7 +60,7 @@ impl GdtfTestAppBuilder<NoState> {
         }
     }
 
-    /// Keep the default AppState and move to the WithState phase.
+    /// Keep the default `AppState` and move to the `WithState` phase.
     #[must_use]
     pub fn default_start(self) -> GdtfTestAppBuilder<WithState> {
         GdtfTestAppBuilder {
