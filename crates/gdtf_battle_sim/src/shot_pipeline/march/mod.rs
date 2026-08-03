@@ -1,3 +1,5 @@
+//! March a ray through the grid until it hits something or leaves the map.
+
 mod arc;
 mod dda;
 mod geom;
