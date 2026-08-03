@@ -1,3 +1,5 @@
+//! App extension to register a content family.
+
 use bevy::{app::App, asset::AssetServer, prelude::*};
 
 use crate::{
@@ -10,8 +12,10 @@ use crate::{
     },
 };
 
+/// Register folder load + resolve + hot-redrive for a [`ContentFamily`].
 pub trait ContentFamilyAppExt {
-                                                    fn register_content_family<F: ContentFamily>(&mut self) -> &mut Self;
+    /// Wire systems and the RON loader for family `F`.
+    fn register_content_family<F: ContentFamily>(&mut self) -> &mut Self;
 }
 
 impl ContentFamilyAppExt for App {

@@ -1,3 +1,5 @@
+//! Per-file salvage when a whole content folder fails to load.
+
 use std::path::{Path, PathBuf};
 
 use bevy::{
@@ -18,20 +20,24 @@ use crate::{
     },
 };
 
+/// Path of a salvage member file.
 #[derive(Deref, Debug, Clone, PartialEq, Eq)]
 pub struct SalvageMemberPath(String);
 
 impl SalvageMemberPath {
+    /// Wrap a path string.
     #[must_use]
     pub const fn new(path: String) -> Self {
         Self(path)
     }
 }
 
+/// Folder being salvaged.
 #[derive(Deref, Debug, Clone, PartialEq, Eq)]
 pub struct SalvageFolder(String);
 
 impl SalvageFolder {
+    /// Wrap a folder string.
     #[must_use]
     pub const fn new(folder: String) -> Self {
         Self(folder)
@@ -43,16 +49,17 @@ struct SalvageMember<T>
 where
     T: TypePath + Send + Sync + 'static,
 {
-    path:   SalvageMemberPath,
+    path: SalvageMemberPath,
     handle: Handle<RonAsset<T>>,
 }
 
+/// In-progress per-file loads for a failed folder.
 #[derive(Resource, Debug)]
 pub struct RonFolderSalvage<T>
 where
     T: TypePath + Send + Sync + 'static,
 {
-    folder:  SalvageFolder,
+    folder: SalvageFolder,
     members: Vec<SalvageMember<T>>,
 }
 
@@ -60,38 +67,51 @@ impl<T> RonFolderSalvage<T>
 where
     T: TypePath + Send + Sync + 'static,
 {
+    /// True when no member paths were found.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.members.is_empty()
     }
 
+    /// Folder being salvaged.
     #[must_use]
     pub const fn folder(&self) -> &SalvageFolder {
         &self.folder
     }
 }
 
+/// One successfully loaded salvage member.
 pub struct SalvagedMember<'a, T>
 where
     T: TypePath + Send + Sync + 'static,
 {
+    /// Member path.
     pub path: &'a SalvageMemberPath,
+    /// Loaded spec.
     pub spec: &'a RonAsset<T>,
 }
 
+/// One member that failed to load during salvage.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MalformedMember {
-    pub path:  FindingReferrer,
+    /// Path of the bad file.
+    pub path: FindingReferrer,
+    /// Load error detail.
     pub error: FindingDetail,
 }
 
+/// Result of polling a salvage batch.
 pub enum RonSalvagePoll<'a, T>
 where
     T: TypePath + Send + Sync + 'static,
 {
+    /// Still loading some members.
     Pending,
+    /// All members resolved (loaded or failed).
     Settled {
-        loaded:    Vec<SalvagedMember<'a, T>>,
+        /// Successfully loaded members.
+        loaded: Vec<SalvagedMember<'a, T>>,
+        /// Failed members.
         malformed: Vec<MalformedMember>,
     },
 }
@@ -126,6 +146,7 @@ where
     })
 }
 
+/// Poll whether all salvage members have finished loading.
 #[must_use]
 pub fn poll_ron_folder_salvage<'a, T>(
     salvage: &'a RonFolderSalvage<T>,
@@ -140,7 +161,7 @@ where
     for member in &salvage.members {
         match asset_server.load_state(member.handle.id()) {
             LoadState::Failed(error) => malformed.push(MalformedMember {
-                path:  FindingReferrer::new(member.path.as_str().to_owned()),
+                path: FindingReferrer::new(member.path.as_str().to_owned()),
                 error: FindingDetail::new(error.to_string()),
             }),
             LoadState::Loaded => {
@@ -158,6 +179,7 @@ where
     RonSalvagePoll::Settled { loaded, malformed }
 }
 
+/// Loaded members only, once salvage has settled (for hot rebuild).
 #[must_use]
 pub fn salvage_members_for_rebuild<'a, T>(
     salvage: &'a RonFolderSalvage<T>,
@@ -173,6 +195,7 @@ where
     }
 }
 
+/// Warn and record malformed salvage members into the integrity report.
 pub fn report_malformed_members(
     report: Option<&mut ContentIntegrityReport>,
     family: &FindingFamily,
@@ -189,7 +212,7 @@ pub fn report_malformed_members(
         );
         if let Some(report) = report.as_deref_mut() {
             report.record(ContentFinding::MalformedFile {
-                path:   member.path,
+                path: member.path,
                 family: family.clone(),
                 detail: member.error,
             });

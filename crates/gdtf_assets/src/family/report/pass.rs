@@ -1,3 +1,5 @@
+//! Collect findings and publish them at end of Load.
+
 use bevy::{
     app::{App, Update},
     ecs::{
@@ -13,54 +15,67 @@ use bevy::{
 
 use super::finding::ContentFinding;
 
+/// Accumulated integrity findings for the current load.
 #[derive(Resource, Debug, Default)]
 pub struct ContentIntegrityReport(Vec<ContentFinding>);
 
 impl ContentIntegrityReport {
-        pub fn record(&mut self, finding: ContentFinding) {
+    /// Append a finding.
+    pub fn record(&mut self, finding: ContentFinding) {
         self.0.push(finding);
     }
 
-        #[must_use]
+    /// Borrow all findings.
+    #[must_use]
     pub fn findings(&self) -> &[ContentFinding] {
         &self.0
     }
 
-        #[must_use]
+    /// True when there are no findings.
+    #[must_use]
     pub const fn is_clean(&self) -> bool {
         self.0.is_empty()
     }
 
-        #[must_use]
+    /// Number of findings.
+    #[must_use]
     pub const fn len(&self) -> usize {
         self.0.len()
     }
 
-        #[must_use]
+    /// True when empty.
+    #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 }
 
+/// Schedule sets for reference checks then publish.
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ContentValidationSet {
-            Check,
-            Publish,
+    /// Run registered reference checks.
+    Check,
+    /// Log the report once checks are done.
+    Publish,
 }
 
 #[derive(Resource, Debug, Default)]
 struct ContentValidationPlumbing;
 
+/// Marker: all reference checks have run this frame cycle.
 #[derive(Resource, Debug, Default)]
 pub struct ContentChecksComplete;
 
+/// Marker: integrity report has been published.
 #[derive(Resource, Debug, Default)]
 pub struct ContentValidationDone;
 
+/// Insert [`ContentChecksComplete`] so publish can run.
 pub fn mark_content_checks_complete(mut commands: Commands) {
     commands.insert_resource(ContentChecksComplete);
 }
 
+/// Log findings (or a clean pass) and mark validation done.
 pub fn publish_content_integrity_report(
     report: Option<Res<ContentIntegrityReport>>,
     mut commands: Commands,
@@ -86,10 +101,13 @@ pub fn publish_content_integrity_report(
     commands.insert_resource(ContentValidationDone);
 }
 
+/// Wire the check → publish pipeline and register extra checks.
 pub trait ContentValidationAppExt {
-                                                        fn init_content_validation(&mut self) -> &mut Self;
+    /// Install the validation sets and publish system once.
+    fn init_content_validation(&mut self) -> &mut Self;
 
-                    fn register_reference_check<M>(
+    /// Add a system to the Check set.
+    fn register_reference_check<M>(
         &mut self,
         check: impl IntoScheduleConfigs<ScheduleSystem, M>,
     ) -> &mut Self;

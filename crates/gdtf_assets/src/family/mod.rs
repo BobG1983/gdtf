@@ -1,3 +1,5 @@
+//! Folder-based content families: load, salvage, validate, hot-rebuild registries.
+
 mod def;
 mod ext;
 mod handle;
