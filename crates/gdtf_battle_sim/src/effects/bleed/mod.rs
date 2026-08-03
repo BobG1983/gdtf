@@ -1,4 +1,5 @@
-//! [`Bleeding`](crate::effects::bleed::Bleeding) is a buffered Bevy **message** (`#[derive(Message)]`), mirroring
+//! Ongoing bleed: start, tick, and downed bleed gating.
+
 mod downgate;
 mod schedule;
 mod tick;
