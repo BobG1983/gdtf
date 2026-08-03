@@ -1,8 +1,11 @@
+//! Reset TU to max for one faction.
+
 use crate::{
     ganger::{Faction, Tu, TuMax},
     tu::reset_tu,
 };
 
+/// Set every ganger on `team` back to full TU.
 pub fn regen_team_tu<'a, I>(gangers: I, team: Faction)
 where
     I: IntoIterator<Item = (&'a Faction, &'a mut Tu, &'a TuMax)>,
