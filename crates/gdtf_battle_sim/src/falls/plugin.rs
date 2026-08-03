@@ -1,3 +1,5 @@
+//! Bevy plugin that runs fall resolution after fire and slab destruction.
+
 use bevy::prelude::{App, IntoScheduleConfigs, Plugin, Update};
 
 use crate::{
@@ -6,6 +8,7 @@ use crate::{
     occupancy_sync::{SimSystems, sync_destroyed_slab},
 };
 
+/// Registers [`FallOccurred`] and the [`apply_falls`] system.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct FallsPlugin;
 
