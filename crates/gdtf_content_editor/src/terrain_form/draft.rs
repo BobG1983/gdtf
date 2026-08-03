@@ -1,4 +1,5 @@
-//! The TERRAIN form's **in-progress authoring draft** (GTW-474; split out of
+//! Terrain form draft resource.
+
 use bevy::prelude::Resource;
 use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::{
@@ -11,40 +12,45 @@ use gdtf_battle_sim::{
 
 use super::picks::{FootfallChoice, TerrainKindChoice};
 
+/// In-progress terrain def being authored.
 #[derive(Resource, Clone, Debug, PartialEq, Eq)]
 pub struct TerrainDraft {
-        display_name:     String,
-        kind:             TerrainKindChoice,
-        cover_hp:         CoverHp,
-        slab_hp:          SlabHp,
-        armor_protection: ArmorProtection,
-        armor_hardness:   ArmorHardness,
-        height_band:      HeightBand,
-        graphic:          TileRole,
-            footfall:         FootfallChoice,
-                        mounted_weapon:   Option<WeaponName>,
-        tags:             Vec<TerrainTag>,
-                blocks_pathing:   Option<bool>,
-                blocks_los:       Option<LosBlocking>,
-            uuid:             Option<TerrainUuid>,
+    display_name: String,
+    kind: TerrainKindChoice,
+    cover_hp: CoverHp,
+    slab_hp: SlabHp,
+    armor_protection: ArmorProtection,
+    armor_hardness: ArmorHardness,
+    height_band: HeightBand,
+    graphic: TileRole,
+    footfall: FootfallChoice,
+    mounted_weapon: Option<WeaponName>,
+    tags: Vec<TerrainTag>,
+    blocks_pathing: Option<bool>,
+    blocks_los: Option<LosBlocking>,
+    uuid: Option<TerrainUuid>,
 }
 
 impl TerrainDraft {
-        #[must_use]
+    /// Display name.
+    #[must_use]
     pub fn display_name(&self) -> &str {
         &self.display_name
     }
 
-        pub fn set_display_name(&mut self, name: String) {
+    /// Set the display name.
+    pub fn set_display_name(&mut self, name: String) {
         self.display_name = name;
     }
 
-        #[must_use]
+    /// Terrain kind choice.
+    #[must_use]
     pub const fn kind(&self) -> TerrainKindChoice {
         self.kind
     }
 
-                    pub fn set_kind(&mut self, kind: TerrainKindChoice) {
+    /// Set kind; clears footfall / mounted weapon when they no longer apply.
+    pub fn set_kind(&mut self, kind: TerrainKindChoice) {
         self.kind = kind;
         if !kind.offers_footfall() {
             self.footfall = FootfallChoice::None;
@@ -54,93 +60,112 @@ impl TerrainDraft {
         }
     }
 
-        #[must_use]
+    /// Presenter graphic role.
+    #[must_use]
     pub const fn graphic(&self) -> TileRole {
         self.graphic
     }
 
-        pub const fn set_graphic(&mut self, graphic: TileRole) {
+    /// Set the graphic role.
+    pub const fn set_graphic(&mut self, graphic: TileRole) {
         self.graphic = graphic;
     }
 
-        #[must_use]
+    /// Footfall choice for slabs.
+    #[must_use]
     pub const fn footfall(&self) -> FootfallChoice {
         self.footfall
     }
 
-                pub const fn set_footfall(&mut self, footfall: FootfallChoice) {
+    /// Set footfall when the kind supports it.
+    pub const fn set_footfall(&mut self, footfall: FootfallChoice) {
         if self.kind.offers_footfall() {
             self.footfall = footfall;
         }
     }
 
-            #[must_use]
+    /// Mounted weapon for emplacements.
+    #[must_use]
     pub const fn mounted_weapon(&self) -> Option<&WeaponName> {
         self.mounted_weapon.as_ref()
     }
 
-                pub fn set_mounted_weapon(&mut self, weapon: Option<WeaponName>) {
+    /// Set mounted weapon when the kind is emplacement.
+    pub fn set_mounted_weapon(&mut self, weapon: Option<WeaponName>) {
         if matches!(self.kind, TerrainKindChoice::Emplacement) {
             self.mounted_weapon = weapon;
         }
     }
 
-        #[must_use]
+    /// Cover / wall HP.
+    #[must_use]
     pub const fn cover_hp(&self) -> CoverHp {
         self.cover_hp
     }
 
-        pub const fn set_cover_hp(&mut self, hp: CoverHp) {
+    /// Set cover HP.
+    pub const fn set_cover_hp(&mut self, hp: CoverHp) {
         self.cover_hp = hp;
     }
 
-        #[must_use]
+    /// Slab HP.
+    #[must_use]
     pub const fn slab_hp(&self) -> SlabHp {
         self.slab_hp
     }
 
-        pub const fn set_slab_hp(&mut self, hp: SlabHp) {
+    /// Set slab HP.
+    pub const fn set_slab_hp(&mut self, hp: SlabHp) {
         self.slab_hp = hp;
     }
 
-        #[must_use]
+    /// Armor protection.
+    #[must_use]
     pub const fn armor_protection(&self) -> ArmorProtection {
         self.armor_protection
     }
 
-        pub const fn set_armor_protection(&mut self, protection: ArmorProtection) {
+    /// Set armor protection.
+    pub const fn set_armor_protection(&mut self, protection: ArmorProtection) {
         self.armor_protection = protection;
     }
 
-        #[must_use]
+    /// Armor hardness.
+    #[must_use]
     pub const fn armor_hardness(&self) -> ArmorHardness {
         self.armor_hardness
     }
 
-        pub const fn set_armor_hardness(&mut self, hardness: ArmorHardness) {
+    /// Set armor hardness.
+    pub const fn set_armor_hardness(&mut self, hardness: ArmorHardness) {
         self.armor_hardness = hardness;
     }
 
-        #[must_use]
+    /// Height band for cover/wall.
+    #[must_use]
     pub const fn height_band(&self) -> HeightBand {
         self.height_band
     }
 
-        pub const fn set_height_band(&mut self, band: HeightBand) {
+    /// Set height band.
+    pub const fn set_height_band(&mut self, band: HeightBand) {
         self.height_band = band;
     }
 
-        #[must_use]
+    /// Terrain tags.
+    #[must_use]
     pub fn tags(&self) -> &[TerrainTag] {
         &self.tags
     }
 
-        #[must_use]
+    /// Whether a tag is selected.
+    #[must_use]
     pub fn has_tag(&self, tag: TerrainTag) -> bool {
         self.tags.contains(&tag)
     }
 
-        pub fn toggle_tag(&mut self, tag: TerrainTag) {
+    /// Toggle a tag on or off.
+    pub fn toggle_tag(&mut self, tag: TerrainTag) {
         if let Some(pos) = self.tags.iter().position(|t| *t == tag) {
             self.tags.remove(pos);
         } else {
@@ -148,51 +173,57 @@ impl TerrainDraft {
         }
     }
 
-            #[must_use]
+    /// Optional pathing override.
+    #[must_use]
     pub const fn blocks_pathing(&self) -> Option<bool> {
         self.blocks_pathing
     }
 
-        pub const fn set_blocks_pathing(&mut self, blocks_pathing: Option<bool>) {
+    /// Set pathing override.
+    pub const fn set_blocks_pathing(&mut self, blocks_pathing: Option<bool>) {
         self.blocks_pathing = blocks_pathing;
     }
 
-            #[must_use]
+    /// Optional LOS override.
+    #[must_use]
     pub const fn blocks_los(&self) -> Option<LosBlocking> {
         self.blocks_los
     }
 
-            pub const fn set_blocks_los(&mut self, blocks_los: Option<LosBlocking>) {
+    /// Set LOS override.
+    pub const fn set_blocks_los(&mut self, blocks_los: Option<LosBlocking>) {
         self.blocks_los = blocks_los;
     }
 
-        #[must_use]
+    /// Assigned terrain uuid, if any.
+    #[must_use]
     pub const fn uuid(&self) -> Option<TerrainUuid> {
         self.uuid
     }
 
-            pub fn ensure_uuid(&mut self) -> TerrainUuid {
+    /// Ensure a uuid exists and return it.
+    pub fn ensure_uuid(&mut self) -> TerrainUuid {
         *self.uuid.get_or_insert_with(TerrainUuid::generate)
     }
 }
 
 impl Default for TerrainDraft {
-                fn default() -> Self {
+    fn default() -> Self {
         Self {
-            display_name:     String::new(),
-            kind:             TerrainKindChoice::default(),
-            cover_hp:         CoverHp::new(40),
-            slab_hp:          SlabHp::new(50),
+            display_name: String::new(),
+            kind: TerrainKindChoice::default(),
+            cover_hp: CoverHp::new(40),
+            slab_hp: SlabHp::new(50),
             armor_protection: ArmorProtection::new(4),
-            armor_hardness:   ArmorHardness::new(2),
-            height_band:      HeightBand::High,
-            graphic:          TileRole::Floor,
-            footfall:         FootfallChoice::default(),
-            mounted_weapon:   None,
-            tags:             Vec::new(),
-            blocks_pathing:   None,
-            blocks_los:       None,
-            uuid:             None,
+            armor_hardness: ArmorHardness::new(2),
+            height_band: HeightBand::High,
+            graphic: TileRole::Floor,
+            footfall: FootfallChoice::default(),
+            mounted_weapon: None,
+            tags: Vec::new(),
+            blocks_pathing: None,
+            blocks_los: None,
+            uuid: None,
         }
     }
 }
