@@ -1,4 +1,5 @@
-//! its inner value and `#[serde(transparent)]` so it round-trips as a bare RON
+//! Authored balance numbers: combat, cone, economy, reaction, stats, wounds.
+
 mod band;
 mod body_part;
 mod combat_tuning;

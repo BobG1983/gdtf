@@ -1,4 +1,5 @@
-//! Battle setup and win/lose lifecycle: the authored situation, the procgen assembler
+//! Battle setup and end: situation, procgen, win/lose.
+
 pub mod battle;
 pub mod procgen;
 pub mod situation;

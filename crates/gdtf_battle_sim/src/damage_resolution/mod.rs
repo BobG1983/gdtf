@@ -1,3 +1,5 @@
+//! Hit location, armor matchup, severity, wounds, and apply-hit.
+
 pub mod apply_hit;
 pub mod hit_location;
 pub mod inflicted_wound;

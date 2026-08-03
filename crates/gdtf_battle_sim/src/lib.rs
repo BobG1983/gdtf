@@ -1,7 +1,5 @@
-//! Authoritative, render-free combat simulation for GDTF's turn-based battle
-//!   MARKER plus one `#[derive(Component)]` newtype per stat
-//!   [`acts::SimActsPlugin`]: six `#[derive(Message)]` `*Requested` types
-//!   three `#[derive(Message)]` lifecycle types the app drives it with
+//! Authoritative, render-free combat simulation for GDTF turn-based battles.
+
 pub mod act_log;
 pub mod acts;
 pub mod ai;

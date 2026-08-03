@@ -1,5 +1,5 @@
-//! E10 drives the authoritative sim from BUFFERED Bevy MESSAGES, not direct calls: a
-//! - `request` — the eight [`#[derive(Message)]`](bevy::prelude::Message) `*Requested`
+//! Player and AI acts driven by buffered request messages.
+
 pub mod downed;
 mod enter_emplacement;
 mod fire;

@@ -1,3 +1,5 @@
+//! Shot resolution: aim, cone, march, AOE, clearance, stability.
+
 pub mod aim;
 pub mod aoe;
 pub mod central_axis;
