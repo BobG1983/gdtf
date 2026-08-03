@@ -1,3 +1,5 @@
+//! Pointer picking: resolve, highlight, UI coexistence, viewport.
+
 mod harness;
 mod highlight_emit;
 mod resolve;
