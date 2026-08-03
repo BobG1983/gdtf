@@ -1,3 +1,5 @@
+//! FOV accrual, fog of war, and squad visibility state.
+
 mod compute;
 mod fog_select;
 mod recompute;

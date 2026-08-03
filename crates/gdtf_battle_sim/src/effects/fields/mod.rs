@@ -1,4 +1,5 @@
-//!   `impl ApplyFieldEffect` + a `#[cfg(test)]` unit test.
+//! Area fields: placement, duration, drain, immunity, and tick.
+
 mod apply_effect;
 mod drain;
 mod duration;
