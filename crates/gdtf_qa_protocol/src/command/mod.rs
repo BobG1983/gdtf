@@ -1,4 +1,5 @@
-//! carry. One concern per file: a command's identity ([`name`]), the JSON bodies it
+//! QA command catalogue: names, schemas, availability, outcomes, and run options.
+
 pub mod availability;
 pub mod catalogue;
 pub mod name;
