@@ -1,3 +1,5 @@
+//! Combatant helpers: ganger components, TU, posture, facing, firing arc.
+
 pub mod faced_cell;
 pub mod firing_arc;
 pub mod ganger;
