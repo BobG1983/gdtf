@@ -1,13 +1,17 @@
+//! Right-panel grid span input and default theme seeding.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::level::{ThemeUuid, UuidThemeRegistry};
 
 use crate::session::MapEditorSession;
 
+/// Grid width/height/levels value entered in the right panel.
 #[derive(Deref, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct GridSpanInput(u8);
 
 impl GridSpanInput {
-        #[must_use]
+    /// Build from a cell count.
+    #[must_use]
     pub const fn new(cells: u8) -> Self {
         Self(cells)
     }
