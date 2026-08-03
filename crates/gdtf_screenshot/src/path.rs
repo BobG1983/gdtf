@@ -1,3 +1,5 @@
+//! Output path helpers for screenshot captures.
+
 use std::{
     path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
@@ -5,16 +7,21 @@ use std::{
 
 use bevy::prelude::*;
 
+/// Destination path for a screenshot PNG.
 #[derive(Resource, Clone, Debug, PartialEq, Eq, Deref)]
 pub struct CapturePath(PathBuf);
 
 impl CapturePath {
-            #[must_use]
+    /// Wrap an owned path.
+    #[must_use]
     pub const fn new(path: PathBuf) -> Self {
         Self(path)
     }
 }
 
+/// Parse an optional path string into a [`CapturePath`].
+///
+/// Returns `None` when the value is missing, empty, or only whitespace.
 #[must_use]
 pub fn parse_shot_path(value: Option<&str>) -> Option<CapturePath> {
     value
@@ -25,6 +32,7 @@ pub fn parse_shot_path(value: Option<&str>) -> Option<CapturePath> {
 
 const SCREENSHOTS_DIR: &str = "target/screenshots";
 
+/// Build a unique path under `target/screenshots` using `name` and the current unix time.
 #[must_use]
 pub fn timestamped_path(name: &str) -> CapturePath {
     let secs = SystemTime::now()
