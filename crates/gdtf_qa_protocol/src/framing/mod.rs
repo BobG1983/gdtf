@@ -1,3 +1,5 @@
+//! Length-prefixed RON frames for the QA wire protocol.
+
 pub mod decoder;
 pub mod encode;
 pub mod error;
