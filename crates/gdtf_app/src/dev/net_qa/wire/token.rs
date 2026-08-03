@@ -1,47 +1,56 @@
-//! `#[serde(transparent)]` `u64` says `{"type":"integer","format":"uint64"}` and nothing
+//! Opaque entity tokens on the wire.
+
 use bevy::prelude::Deref;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// Opaque ganger identity.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(transparent)]
 pub struct GangerToken(u64);
 
 impl GangerToken {
-        #[must_use]
+    /// Build from raw bits.
+    #[must_use]
     pub const fn new(bits: u64) -> Self {
         Self(bits)
     }
 }
 
+/// Opaque door identity.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(transparent)]
 pub struct DoorToken(u64);
 
 impl DoorToken {
-        #[must_use]
+    /// Build from raw bits.
+    #[must_use]
     pub const fn new(bits: u64) -> Self {
         Self(bits)
     }
 }
 
+/// Opaque emplacement identity.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(transparent)]
 pub struct EmplacementToken(u64);
 
 impl EmplacementToken {
-        #[must_use]
+    /// Build from raw bits.
+    #[must_use]
     pub const fn new(bits: u64) -> Self {
         Self(bits)
     }
 }
 
+/// Opaque UI focus target identity.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(transparent)]
 pub struct FocusTargetNet(u64);
 
 impl FocusTargetNet {
-        #[must_use]
+    /// Build from raw bits.
+    #[must_use]
     pub const fn new(bits: u64) -> Self {
         Self(bits)
     }

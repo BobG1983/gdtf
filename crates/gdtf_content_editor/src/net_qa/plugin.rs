@@ -44,7 +44,7 @@ pub struct NetQaEditorPlugin {
 }
 
 impl NetQaEditorPlugin {
-    /// Build from environment: enabled only when the net_qa flag is set.
+    /// Build from environment: enabled only when the `net_qa` flag is set.
     #[must_use]
     pub fn from_env() -> Self {
         let wiring = if editor_net_qa_enabled() {

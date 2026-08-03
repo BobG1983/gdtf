@@ -1,20 +1,25 @@
+//! Bevy app wrapper for the GDTF game binary.
+
 use bevy::{asset::AssetPlugin, prelude::*};
 use gdtf_assets::WORKSPACE_ASSETS_ROOT;
 use gdtf_ui::UiPlugin;
 
 use crate::states::{AppState, ScenesPlugin};
 
+/// Top-level application handle.
 pub struct GdtfApp(App);
 
 impl GdtfApp {
-        #[must_use]
+    /// Build a new app with default plugins and scenes.
+    #[must_use]
     pub fn new() -> Self {
         let app = Self(App::new());
 
         app.add_bevy_plugins().add_states().add_plugins()
     }
 
-        pub fn run(mut self) {
+    /// Run the app until exit.
+    pub fn run(mut self) {
         self.0.run();
     }
 
