@@ -1,4 +1,5 @@
-//! legacy per-file terrain authoring struct + its name-keyed registry resource were deleted
+//! Terrain piece name, graphic key, and footfall sound components.
+
 mod components;
 
 pub use components::{FootfallSound, TerrainGraphicKey, TerrainName};

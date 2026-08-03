@@ -1,3 +1,5 @@
+//! Doors and other openable blockers.
+
 pub mod state;
 pub mod toggle;
 
