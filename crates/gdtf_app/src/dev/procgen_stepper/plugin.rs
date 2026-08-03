@@ -1,4 +1,5 @@
-//!    `#[cfg(feature = "dev_tools")] pub(crate) mod procgen_stepper;`) — a release artifact,
+//! Procgen stepper plugin (`dev_tools`).
+
 use bevy::prelude::*;
 #[cfg(not(feature = "test-support"))]
 use bevy_egui::EguiPrimaryContextPass;
@@ -14,20 +15,21 @@ use super::{
 use crate::states::BattleScapeState;
 
 crate::support_item! {
-        struct ProcgenStepperPlugin {
-                                        enabled: bool,
+    struct ProcgenStepperPlugin {
+        enabled: bool,
     }
 }
 
 impl ProcgenStepperPlugin {
     crate::support_item! {
-                                                                #[must_use]
+        #[must_use]
         const fn with_enabled(enabled: bool) -> Self {
             Self { enabled }
         }
     }
 
-        #[cfg(feature = "test-support")]
+    /// Whether the stepper is enabled.
+    #[cfg(feature = "test-support")]
     #[must_use]
     pub const fn enabled(&self) -> bool {
         self.enabled
@@ -65,7 +67,7 @@ impl Plugin for ProcgenStepperPlugin {
 mod test {
     use super::ProcgenStepperPlugin;
 
-            #[test]
+    #[test]
     fn with_enabled_records_the_flag_verbatim() {
         assert!(ProcgenStepperPlugin::with_enabled(true).enabled());
         assert!(!ProcgenStepperPlugin::with_enabled(false).enabled());

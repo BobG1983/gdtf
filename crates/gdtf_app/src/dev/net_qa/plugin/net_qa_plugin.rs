@@ -1,3 +1,5 @@
+//! Net QA plugin wiring for the game binary.
+
 use std::{net::TcpListener, sync::mpsc, thread};
 
 use bevy::prelude::*;
@@ -14,36 +16,36 @@ use crate::dev::net_qa::{
 };
 
 enum Wiring {
-        Disabled,
-        Listener {
-                port:       NetQaPort,
-                io_timeout: NetIoTimeout,
+    Disabled,
+    Listener {
+        port: NetQaPort,
+        io_timeout: NetIoTimeout,
     },
-                #[cfg(feature = "test-support")]
+    #[cfg(feature = "test-support")]
     Channels {
-                inbox: std::sync::Mutex<Option<mpsc::Receiver<IncomingRequest>>>,
+        inbox: std::sync::Mutex<Option<mpsc::Receiver<IncomingRequest>>>,
     },
-                #[cfg(feature = "test-support")]
+    #[cfg(feature = "test-support")]
     Bound {
-                listener:   std::sync::Mutex<Option<TcpListener>>,
-                io_timeout: NetIoTimeout,
+        listener: std::sync::Mutex<Option<TcpListener>>,
+        io_timeout: NetIoTimeout,
     },
 }
 
 crate::support_item! {
-        struct NetQaPlugin {
-                wiring: Wiring,
+    struct NetQaPlugin {
+        wiring: Wiring,
     }
 }
 
 impl NetQaPlugin {
     crate::support_item! {
-                                                /// `cfg(all(debug_assertions, feature = "net_qa"))`.
+        /// Build from environment under `cfg(all(debug_assertions, feature = "net_qa"))`.
         #[must_use]
         fn from_env() -> Self {
             let wiring = if net_qa_enabled() {
                 Wiring::Listener {
-                    port:       port_from_env(),
+                    port: port_from_env(),
                     io_timeout: DEFAULT_IO_TIMEOUT,
                 }
             } else {
@@ -53,7 +55,8 @@ impl NetQaPlugin {
         }
     }
 
-                        #[cfg(feature = "test-support")]
+    /// Build a plugin that reads from an in-process inbox (tests).
+    #[cfg(feature = "test-support")]
     #[must_use]
     pub const fn with_channels(inbox: mpsc::Receiver<IncomingRequest>) -> Self {
         Self {
@@ -63,12 +66,17 @@ impl NetQaPlugin {
         }
     }
 
-                                                                            #[cfg(feature = "test-support")]
+    /// Bind a loopback listener on `port` for tests.
+    ///
+    /// # Errors
+    ///
+    /// Returns an IO error if the listener cannot bind.
+    #[cfg(feature = "test-support")]
     pub fn listening(port: NetQaPort) -> std::io::Result<(Self, NetQaPort)> {
         let (listener, bound) = bind_listener(port)?;
         let plugin = Self {
             wiring: Wiring::Bound {
-                listener:   std::sync::Mutex::new(Some(listener)),
+                listener: std::sync::Mutex::new(Some(listener)),
                 io_timeout: DEFAULT_IO_TIMEOUT,
             },
         };
@@ -86,7 +94,7 @@ fn serve(app: &mut App, listener: TcpListener, io_timeout: NetIoTimeout) {
 }
 
 impl Default for NetQaPlugin {
-        fn default() -> Self {
+    fn default() -> Self {
         Self::from_env()
     }
 }
