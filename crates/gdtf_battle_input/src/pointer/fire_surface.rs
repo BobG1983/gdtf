@@ -1,3 +1,5 @@
+//! Fire request construction from selected shooter and fire mode.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     acts::FireRequested,
@@ -12,6 +14,7 @@ use gdtf_battle_sim::{
 
 use crate::SelectedFireMode;
 
+/// Query data needed to decide whether a shooter can fire.
 pub type ShooterFireData<'a> = (
     &'a LifeState,
     &'a Tu,
@@ -20,6 +23,7 @@ pub type ShooterFireData<'a> = (
     Option<&'a InflictedInjuries>,
 );
 
+/// Magazine and handedness on a wielded weapon entity.
 pub type WeaponMagazine<'a> = (&'a Magazine, &'a Handedness);
 
 #[expect(

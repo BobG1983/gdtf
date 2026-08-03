@@ -1,10 +1,14 @@
+//! Text field wrappers for terrain HP and armor values.
+
 use bevy::prelude::Deref;
 
+/// HP value entered in the terrain form.
 #[derive(Deref, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct HpInput(u32);
 
 impl HpInput {
-        #[must_use]
+    /// Build from a raw HP value.
+    #[must_use]
     pub const fn new(hp: u32) -> Self {
         Self(hp)
     }
@@ -24,11 +28,13 @@ impl core::str::FromStr for HpInput {
     }
 }
 
+/// Armor value entered in the terrain form.
 #[derive(Deref, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct ArmorInput(i32);
 
 impl ArmorInput {
-        #[must_use]
+    /// Build from a raw armor value.
+    #[must_use]
     pub const fn new(armor: i32) -> Self {
         Self(armor)
     }

@@ -1,4 +1,5 @@
-//! the preview camera + EVERY preview tile sit on [`PREVIEW_LAYER`] (`RenderLayers::layer(1)`),
+//! Offscreen preview render target and camera.
+
 use bevy::{
     camera::{
         Camera, ClearColorConfig, Projection, RenderTarget, ScalingMode, visibility::RenderLayers,
@@ -12,20 +13,21 @@ use crate::{
     preview::{coords::PREVIEW_VIEW_SPAN, view::PreviewPan},
 };
 
-/// [`PREVIEW_TEXTURE_EDGE`]²-px image (a legible fixed resolution; the view SPAN, not this pixel
+/// Fixed edge length of the preview render texture in pixels.
 pub(crate) const PREVIEW_TEXTURE_EDGE: u32 = 512;
 
 const PREVIEW_LAYER: usize = 1;
 
 const PREVIEW_CLEAR: Color = Color::srgb(0.09, 0.10, 0.12);
 
+/// Handle to the offscreen image the preview camera renders into.
 #[derive(Resource, Debug, Clone)]
 pub struct PreviewTarget {
-        image: Handle<Image>,
+    image: Handle<Image>,
 }
 
 impl PreviewTarget {
-        #[must_use]
+    #[must_use]
     pub(crate) fn image_handle(&self) -> Handle<Image> {
         self.image.clone()
     }
@@ -34,7 +36,6 @@ impl PreviewTarget {
 #[derive(Component, Debug, Clone, Copy)]
 pub(crate) struct PreviewCamera;
 
-/// system despawns + respawns each change, all on [`PREVIEW_LAYER`]. A no-bare-types unit marker.
 #[derive(Component, Debug, Clone, Copy)]
 pub(crate) struct PreviewTile;
 
@@ -43,7 +44,6 @@ pub(crate) const fn preview_layer() -> RenderLayers {
     RenderLayers::layer(PREVIEW_LAYER)
 }
 
-/// spawn the dedicated preview [`Camera2d`] rendering into it on the isolated [`PREVIEW_LAYER`]
 pub(crate) fn spawn_preview_target(
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
@@ -64,10 +64,9 @@ pub(crate) fn spawn_preview_target(
         image: handle.clone(),
     });
 
-    // A Fixed-span orthographic projection so the visible world area is PREVIEW_VIEW_SPAN² world
     let mut projection = OrthographicProjection::default_2d();
     projection.scaling_mode = ScalingMode::Fixed {
-        width:  PREVIEW_VIEW_SPAN,
+        width: PREVIEW_VIEW_SPAN,
         height: PREVIEW_VIEW_SPAN,
     };
 
