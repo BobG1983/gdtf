@@ -1,3 +1,5 @@
+//! Compose stability and cone angle for a given shooter and weapon.
+
 use crate::{
     aim::shooter::Shooter,
     cone::{ConeAngle, PriorShots, aim_cone_mult, cone_angle},
@@ -9,6 +11,7 @@ use crate::{
     weapon::{FireModeSpec, WeaponStats},
 };
 
+/// Stability multipliers for this shooter given stance, cover, and suppression.
 #[must_use]
 pub fn stability_for(
     shooter: &Shooter,
@@ -31,6 +34,7 @@ pub fn stability_for(
     )
 }
 
+/// Full cone angle for this shot, including fire mode, prior shots, and aim state.
 #[must_use]
 pub fn cone_for(
     shooter: &Shooter,

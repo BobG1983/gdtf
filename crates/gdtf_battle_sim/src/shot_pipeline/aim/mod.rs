@@ -1,3 +1,5 @@
+//! Build the aim cone and stability multipliers for a shooter.
+
 mod compose;
 mod shooter;
 

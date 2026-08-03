@@ -1,3 +1,5 @@
+//! Final cone angle computation.
+
 use bevy::prelude::Deref;
 
 use crate::{
@@ -7,16 +9,19 @@ use crate::{
     weapon::{BaseSpread, Kickback, ModeConeMult},
 };
 
+/// Half-angle of the shot cone in radians.
 #[derive(Deref, Debug, Clone, Copy, PartialEq)]
 pub struct ConeAngle(f32);
 
 impl ConeAngle {
-        #[must_use]
+    /// Build from a raw radian value.
+    #[must_use]
     pub const fn new(radians: f32) -> Self {
         Self(radians)
     }
 }
 
+/// Compute the cone angle from base spread, mode, recoil, stability, and aim.
 #[must_use]
 pub fn cone_angle(
     base_spread: BaseSpread,
