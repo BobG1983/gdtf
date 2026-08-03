@@ -20,11 +20,7 @@ use crate::TopDownAtlases;
 
 #[expect(
     clippy::too_many_arguments,
-    reason = "each is a distinct Bevy system param: the spawn Commands, the per-frame Time, the \
-              two data tables (effect roles / atlases), the FxTuning read, the GTW-328 \
-              ShotImpactResolved writer, the GTW-794 FctSlotAllocator (the impact pops' stacking \
-              base), and the two disjoint seed / playing queries — none can merge without \
-              obscuring the wiring; the System fn IS the bundle"
+    reason = "Commands, tables, writer, allocator, and seed/playing queries are separate params"
 )]
 /// Turn pending impacts into animated flashes and emit [`ShotImpactResolved`].
 pub fn animate_impact(

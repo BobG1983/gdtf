@@ -30,11 +30,7 @@ use crate::{
 
 #[expect(
     clippy::too_many_arguments,
-    reason = "each is a distinct Bevy system param: the spawn Commands, the three data tables \
-              (atlases / effect roles / fx tuning), the two aim lookups (ganger sprite map + \
-              its transforms), the GTW-327 anchor Query<&Position>, the GTW-794 FctSlotAllocator \
-              (the fallback pops' stacking base), and the ShotFired reader — none can be merged \
-              without obscuring the wiring; the System fn IS the bundle"
+    reason = "atlases, roles, aim lookups, anchor query, allocator, and ShotFired reader are separate params"
 )]
 /// Spawn a directional projectile (or immediate pops if the sheet is missing).
 pub fn spawn_shot_projectiles(
