@@ -1,3 +1,5 @@
+//! Spawn bundle and damage/handling profiles for a ranged weapon.
+
 use bevy::prelude::Bundle;
 
 use super::{
@@ -6,52 +8,86 @@ use super::{
 };
 use crate::{effects::attachments::WeaponBraceBonus, magazine::Magazine};
 
+/// Borrowed view of live weapon stats (including optional brace/DOT).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct WeaponStats<'a> {
-        pub base_spread: &'a BaseSpread,
-        pub accuracy:    &'a Accuracy,
-        pub kickback:    &'a Kickback,
-        pub fatal_bias:  &'a FatalBias,
-        pub damage:      &'a WeaponDamage,
-        pub punch:       &'a WeaponPunch,
-        pub shred:       &'a WeaponShred,
-        pub damage_type: &'a DamageType,
-                pub stable:      &'a Stable,
-                                    pub brace_bonus: Option<&'a WeaponBraceBonus>,
-                            pub dot:         Option<&'a DotProfile>,
+    /// Base spread.
+    pub base_spread: &'a BaseSpread,
+    /// Accuracy.
+    pub accuracy: &'a Accuracy,
+    /// Kickback.
+    pub kickback: &'a Kickback,
+    /// Fatal bias.
+    pub fatal_bias: &'a FatalBias,
+    /// Damage.
+    pub damage: &'a WeaponDamage,
+    /// Punch.
+    pub punch: &'a WeaponPunch,
+    /// Shred.
+    pub shred: &'a WeaponShred,
+    /// Damage type.
+    pub damage_type: &'a DamageType,
+    /// Stability.
+    pub stable: &'a Stable,
+    /// Optional brace bonus from attachments.
+    pub brace_bonus: Option<&'a WeaponBraceBonus>,
+    /// Optional DOT profile.
+    pub dot: Option<&'a DotProfile>,
 }
 
+/// Full component set for a spawned ranged weapon.
 #[derive(Bundle, Debug, Clone, PartialEq)]
 pub struct WeaponBundle {
-        pub marker:      Weapon,
-        pub name:        WeaponName,
-        pub base_spread: BaseSpread,
-        pub accuracy:    Accuracy,
-        pub kickback:    Kickback,
-        pub fatal_bias:  FatalBias,
-        pub damage:      WeaponDamage,
-        pub punch:       WeaponPunch,
-        pub shred:       WeaponShred,
-        pub damage_type: DamageType,
-            pub magazine:    Magazine,
-        pub fire_mode:   FireMode,
-        pub stable:      Stable,
-                pub shove:       Shove,
-            pub handedness:  Handedness,
-                /// [`march_arc`](crate::march::march_arc). Spawned from the spec's `#[serde(default)]`
-        pub trajectory:  TrajectoryStyle,
+    /// Marker.
+    pub marker: Weapon,
+    /// Name.
+    pub name: WeaponName,
+    /// Base spread.
+    pub base_spread: BaseSpread,
+    /// Accuracy.
+    pub accuracy: Accuracy,
+    /// Kickback.
+    pub kickback: Kickback,
+    /// Fatal bias.
+    pub fatal_bias: FatalBias,
+    /// Damage.
+    pub damage: WeaponDamage,
+    /// Punch.
+    pub punch: WeaponPunch,
+    /// Shred.
+    pub shred: WeaponShred,
+    /// Damage type.
+    pub damage_type: DamageType,
+    /// Magazine.
+    pub magazine: Magazine,
+    /// Fire modes.
+    pub fire_mode: FireMode,
+    /// Stability.
+    pub stable: Stable,
+    /// Shove tag.
+    pub shove: Shove,
+    /// Handedness.
+    pub handedness: Handedness,
+    /// Trajectory style.
+    pub trajectory: TrajectoryStyle,
 }
 
+/// Damage numbers group used when building a bundle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DamageProfile {
-        pub damage:      WeaponDamage,
-        pub punch:       WeaponPunch,
-        pub shred:       WeaponShred,
-        pub damage_type: DamageType,
+    /// Damage.
+    pub damage: WeaponDamage,
+    /// Punch.
+    pub punch: WeaponPunch,
+    /// Shred.
+    pub shred: WeaponShred,
+    /// Damage type.
+    pub damage_type: DamageType,
 }
 
 impl DamageProfile {
-            #[must_use]
+    /// Build a damage profile.
+    #[must_use]
     pub const fn new(
         damage: WeaponDamage,
         punch: WeaponPunch,
@@ -67,18 +103,26 @@ impl DamageProfile {
     }
 }
 
+/// Magazine / modes / handling group used when building a bundle.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HandlingProfile {
-            pub magazine:   Magazine,
-        pub fire_mode:  FireMode,
-        pub stable:     Stable,
-            pub shove:      Shove,
-        pub handedness: Handedness,
-            pub trajectory: TrajectoryStyle,
+    /// Magazine.
+    pub magazine: Magazine,
+    /// Fire modes.
+    pub fire_mode: FireMode,
+    /// Stability.
+    pub stable: Stable,
+    /// Shove.
+    pub shove: Shove,
+    /// Handedness.
+    pub handedness: Handedness,
+    /// Trajectory.
+    pub trajectory: TrajectoryStyle,
 }
 
 impl HandlingProfile {
-                                #[must_use]
+    /// Build with straight trajectory.
+    #[must_use]
     pub const fn new(
         magazine: Magazine,
         fire_mode: FireMode,
@@ -96,7 +140,8 @@ impl HandlingProfile {
         }
     }
 
-                    #[must_use]
+    /// Override trajectory.
+    #[must_use]
     pub const fn with_trajectory(mut self, trajectory: TrajectoryStyle) -> Self {
         self.trajectory = trajectory;
         self
@@ -104,7 +149,8 @@ impl HandlingProfile {
 }
 
 impl WeaponBundle {
-                                        #[must_use]
+    /// Assemble from name, ballistics, damage, and handling.
+    #[must_use]
     pub fn new(
         name: WeaponName,
         base_spread: BaseSpread,
@@ -134,20 +180,21 @@ impl WeaponBundle {
         }
     }
 
-                    #[must_use]
+    /// Borrowed stats without brace/DOT (filled by systems later).
+    #[must_use]
     pub const fn stats(&self) -> WeaponStats<'_> {
         WeaponStats {
             base_spread: &self.base_spread,
-            accuracy:    &self.accuracy,
-            kickback:    &self.kickback,
-            fatal_bias:  &self.fatal_bias,
-            damage:      &self.damage,
-            punch:       &self.punch,
-            shred:       &self.shred,
+            accuracy: &self.accuracy,
+            kickback: &self.kickback,
+            fatal_bias: &self.fatal_bias,
+            damage: &self.damage,
+            punch: &self.punch,
+            shred: &self.shred,
             damage_type: &self.damage_type,
-            stable:      &self.stable,
+            stable: &self.stable,
             brace_bonus: None,
-            dot:         None,
+            dot: None,
         }
     }
 }
