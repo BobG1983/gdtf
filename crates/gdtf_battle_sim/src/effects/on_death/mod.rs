@@ -1,5 +1,5 @@
-//! [`OnDeath`](crate::effects::on_death::OnDeath) / [`CoverOnDeathRegistry`](crate::effects::on_death::CoverOnDeathRegistry) authoring carriers, the [`resolve_on_death`](crate::effects::on_death::resolve_on_death)
-//!   `impl ApplyOnDeathEffect` + a `#[cfg(test)]` unit test.
+//! On-death effects: explode, leave field, and resolution fan-out.
+
 mod apply_effect;
 mod component;
 mod effect;
