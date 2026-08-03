@@ -1,47 +1,48 @@
+//! Spread, accuracy, kickback, stability.
+
 use bevy::prelude::{Component, Deref};
 use serde::{Deserialize, Serialize};
 
-/// [`Deref`]; `#[serde(transparent)]` parses a bare RON scalar. A
-/// `#[derive(Component)]` so it lives as a sibling component on the armed entity
+/// Base cone spread in radians.
 #[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 pub struct BaseSpread(f32);
 
 impl BaseSpread {
-        #[must_use]
+    /// Wrap a spread value.
+    #[must_use]
     pub const fn new(radians: f32) -> Self {
         Self(radians)
     }
 }
 
-/// §1b). Private inner + derived [`Deref`]; `#[serde(transparent)]`. A
-/// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
+/// Accuracy contribution to hit chance.
 #[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 pub struct Accuracy(f32);
 
 impl Accuracy {
-        #[must_use]
+    /// Wrap an accuracy value.
+    #[must_use]
     pub const fn new(accuracy: f32) -> Self {
         Self(accuracy)
     }
 }
 
-/// A weapon NUMBER. Private inner + derived [`Deref`]; `#[serde(transparent)]`. A
-/// `#[derive(Component)]` (GTW-200) — a sibling component on the armed entity.
+/// Recoil / kick magnitude.
 #[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 pub struct Kickback(f32);
 
 impl Kickback {
-        #[must_use]
+    /// Wrap a kickback value.
+    #[must_use]
     pub const fn new(kickback: f32) -> Self {
         Self(kickback)
     }
 }
 
-/// inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare RON `true` /
-/// `false`. A `#[derive(Component)]` (GTW-200) — a sibling component on the armed
+/// Whether the weapon is inherently stable.
 #[derive(
     Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default,
 )]
@@ -49,7 +50,8 @@ impl Kickback {
 pub struct Stable(bool);
 
 impl Stable {
-            #[must_use]
+    /// Wrap a boolean.
+    #[must_use]
     pub const fn new(stable: bool) -> Self {
         Self(stable)
     }

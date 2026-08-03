@@ -1,21 +1,22 @@
-//! shape (a closed, serde-authored enum) but a SEPARATE concept: ammo class is
+//! Ammo class for magazine compatibility.
+
 use bevy::prelude::Component;
 use serde::{Deserialize, Serialize};
 
-/// set of serde-authored variants, a `#[derive(Component)]` newtype), but a
-/// the editor round-trips it. A `#[derive(Component)]` matching the
+/// Magazine ammo class.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default)]
 pub enum AmmoType {
-                #[default]
+    #[default]
     Slug,
-            Cell,
-            Flask,
-            Canister,
-                Grenade,
+    Cell,
+    Flask,
+    Canister,
+    Grenade,
 }
 
 impl AmmoType {
-                pub const ALL: [Self; 5] = [
+    /// All variants.
+    pub const ALL: [Self; 5] = [
         Self::Slug,
         Self::Cell,
         Self::Flask,
