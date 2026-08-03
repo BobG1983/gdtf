@@ -1,31 +1,39 @@
+//! Open/closed state and blocking band for openable terrain.
+
 use bevy::prelude::{Component, Deref};
 
 use crate::cover::HeightBand;
 
+/// Whether an openable is closed or open.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum OpenState {
-            #[default]
+    /// Blocks path and vision.
+    #[default]
     Closed,
-            Open,
+    /// Does not block.
+    Open,
 }
 
+/// Whether the door is currently open.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DoorOpen(bool);
 
 impl DoorOpen {
-        #[must_use]
+    #[must_use]
     pub const fn new(open: bool) -> Self {
         Self(open)
     }
 }
 
 impl OpenState {
-        #[must_use]
+    /// True when Open.
+    #[must_use]
     pub const fn is_open(self) -> DoorOpen {
         DoorOpen::new(matches!(self, Self::Open))
     }
 
-            #[must_use]
+    /// Flip between Closed and Open.
+    #[must_use]
     pub const fn toggled(self) -> Self {
         match self {
             Self::Closed => Self::Open,
@@ -34,11 +42,12 @@ impl OpenState {
     }
 }
 
+/// Height band used for vision blocking when the openable is closed.
 #[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct OpenableBlocking(HeightBand);
 
 impl OpenableBlocking {
-                #[must_use]
+    #[must_use]
     pub const fn new(band: HeightBand) -> Self {
         Self(band)
     }
