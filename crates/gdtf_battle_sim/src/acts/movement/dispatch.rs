@@ -1,3 +1,5 @@
+//! Pathfind move requests and start [`WalkInProgress`].
+
 use bevy::prelude::{Commands, Entity, MessageReader, MessageWriter, Query, Res};
 
 use super::{
@@ -42,6 +44,7 @@ fn relation_to(
               dispatch_fire BattleGridsParam precedent applies only when a bundle is reused \
               across systems)"
 )]
+/// Pathfind and either reject or insert a walk component.
 pub fn dispatch_move(
     mut requests: MessageReader<MoveRequested>,
     actors: Query<(

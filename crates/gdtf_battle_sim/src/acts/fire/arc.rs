@@ -1,3 +1,5 @@
+//! Firing-arc gate: fire in arc, turn then fire, or reject.
+
 use bevy::prelude::Deref;
 
 use crate::{
@@ -7,26 +9,35 @@ use crate::{
     tuning::CombatTuning,
 };
 
+/// Whether the shooter can engage the target this turn (with optional turn cost).
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CanEngage(bool);
 
 impl CanEngage {
-        #[must_use]
+    /// Wrap a boolean.
+    #[must_use]
     pub const fn new(engageable: bool) -> Self {
         Self(engageable)
     }
 }
 
+/// How to handle a fire request relative to facing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FireArcDecision {
-                FireInArc,
-        TurnThenFire {
-                facing:    Direction,
-                turn_cost: Tu,
+    /// Already facing into arc.
+    FireInArc,
+    /// Must spend turn TU then fire.
+    TurnThenFire {
+        /// Facing to adopt.
+        facing: Direction,
+        /// Turn cost.
+        turn_cost: Tu,
     },
-            Reject,
+    /// Not enough TU to turn and fire.
+    Reject,
 }
 
+/// Decide whether the shot is in arc or needs a facing change.
 #[must_use]
 pub fn decide_fire_arc(
     facing: Direction,
@@ -58,6 +69,7 @@ pub fn decide_fire_arc(
     }
 }
 
+/// True unless the arc decision is [`FireArcDecision::Reject`].
 #[must_use]
 pub fn can_engage(
     facing: Direction,
