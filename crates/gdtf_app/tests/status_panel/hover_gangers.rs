@@ -140,7 +140,7 @@ fn fog_hidden_enemy_is_not_inspected_but_a_seen_one_is() {
     assert_eq!(
         root.and_then(|root| app.world().get::<Visibility>(root)),
         Some(&Visibility::Hidden),
-        "hovering a FOG-HIDDEN enemy must NOT populate the inspect panel (GTW-378 info-leak)",
+        "hovering a FOG-HIDDEN enemy must NOT populate the inspect panel",
     );
 
     make_cells_visible(&mut app, &[cell]);
@@ -149,13 +149,13 @@ fn fog_hidden_enemy_is_not_inspected_but_a_seen_one_is() {
         assert_ne!(
             app.world().get::<Visibility>(root),
             Some(&Visibility::Hidden),
-            "hovering a SEEN enemy still shows the inspect panel (GTW-378 positive control)",
+            "hovering a SEEN enemy still shows the inspect panel",
         );
     }
     assert_eq!(
         display_of::<InspectStatBlockHost>(&mut app),
         Some(Display::Flex),
-        "a squad-VISIBLE enemy lays out the ganger stat block (GTW-378 positive control)",
+        "a squad-VISIBLE enemy lays out the ganger stat block",
     );
 }
 

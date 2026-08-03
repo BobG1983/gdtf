@@ -1,4 +1,4 @@
-//! GTW-657: an authored ALL-ZERO `body_part_weights` table is INVALID DATA,
+//! An authored ALL-ZERO `body_part_weights` table is INVALID DATA and must fall back.
 use std::path::PathBuf;
 
 use gdtf_app::test_support::{AppState, app_state, load_released};
