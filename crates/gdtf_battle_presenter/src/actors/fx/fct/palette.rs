@@ -1,3 +1,5 @@
+//! Colors for floating combat text by valence and severity.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::severity::Severity;
 
@@ -15,17 +17,26 @@ const DOT_TOXIC_GREEN: Color = Color::srgb(0.35, 0.82, 0.20);
 
 const FIELD_HAZARD_ORANGE: Color = Color::srgb(0.95, 0.50, 0.10);
 
+/// Semantic color family for a floating combat pop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FctValence {
-        Damage,
-                Status,
-        Neutral,
-                Lethal,
-                Suppressed,
-                Dot,
-                    Field,
+    /// Hit / damage numbers.
+    Damage,
+    /// Status wound labels.
+    Status,
+    /// Neutral informational text.
+    Neutral,
+    /// Lethal outcomes.
+    Lethal,
+    /// Suppression applied.
+    Suppressed,
+    /// Dot affliction.
+    Dot,
+    /// Field affliction.
+    Field,
 }
 
+/// Tint for a valence family.
 #[must_use]
 pub const fn valence_color(valence: FctValence) -> Color {
     match valence {
@@ -38,14 +49,15 @@ pub const fn valence_color(valence: FctValence) -> Color {
     }
 }
 
+/// Tint ramped by wound severity rank.
 #[must_use]
 pub fn severity_color(severity: Severity) -> Color {
     match severity {
         Severity::None => NEUTRAL_GREY,
         Severity::Fatal => DAMAGE_RED,
         wound => {
-                        const MIN_WOUND_RANK: f32 = 1.0;
-                                    const WOUND_RANK_SPAN: f32 = 2.0;
+            const MIN_WOUND_RANK: f32 = 1.0;
+            const WOUND_RANK_SPAN: f32 = 2.0;
             let t = ((f32::from(*wound.rank()) - MIN_WOUND_RANK) / WOUND_RANK_SPAN).clamp(0.0, 1.0);
             WOUND_AMBER.mix(&WOUND_AMBER_DEEP, t)
         }

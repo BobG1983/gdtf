@@ -1,24 +1,31 @@
+//! Classified consequence pop and the `ConsequenceFct` trait.
+
 use bevy::prelude::{Color, Message};
 use gdtf_battle_sim::prelude::CellLevel;
 
 use super::text::{CombatText, FctEmphasis};
 
+/// Where a pop should appear in the world.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PopAnchor {
-        Carried(CellLevel),
-                        GangerPosition(bevy::prelude::Entity),
+    /// Fixed cell carried on the signal.
+    Carried(CellLevel),
+    /// Follow a ganger entity's current position.
+    GangerPosition(bevy::prelude::Entity),
 }
 
+/// Text, color, weight, and anchor for one consequence pop.
 #[derive(Debug, Clone)]
 pub struct ConsequencePop {
-        text:     CombatText,
-        color:    Color,
-        emphasis: FctEmphasis,
-        anchor:   PopAnchor,
+    text: CombatText,
+    color: Color,
+    emphasis: FctEmphasis,
+    anchor: PopAnchor,
 }
 
 impl ConsequencePop {
-        #[must_use]
+    /// Normal-weight pop.
+    #[must_use]
     pub const fn new(text: CombatText, color: Color, anchor: PopAnchor) -> Self {
         Self {
             text,
@@ -28,7 +35,8 @@ impl ConsequencePop {
         }
     }
 
-            #[must_use]
+    /// Bold-weight pop.
+    #[must_use]
     pub const fn new_bold(text: CombatText, color: Color, anchor: PopAnchor) -> Self {
         Self {
             text,
@@ -38,29 +46,36 @@ impl ConsequencePop {
         }
     }
 
-        #[must_use]
+    /// Display text.
+    #[must_use]
     pub const fn text(&self) -> &CombatText {
         &self.text
     }
 
-            #[must_use]
+    /// Tint color.
+    #[must_use]
     pub const fn color(&self) -> Color {
         self.color
     }
 
-        #[must_use]
+    /// Font emphasis.
+    #[must_use]
     pub const fn emphasis(&self) -> FctEmphasis {
         self.emphasis
     }
 
-        #[must_use]
+    /// World anchor.
+    #[must_use]
     pub const fn anchor(&self) -> PopAnchor {
         self.anchor
     }
 }
 
+/// Maps a played consequence signal to a floating combat pop.
 pub trait ConsequenceFct: Send + Sync + 'static {
-                        type Signal: Message + Clone;
+    /// Message type this family reads.
+    type Signal: Message + Clone;
 
-                fn classify(signal: &Self::Signal) -> ConsequencePop;
+    /// Classify a signal into a pop.
+    fn classify(signal: &Self::Signal) -> ConsequencePop;
 }
