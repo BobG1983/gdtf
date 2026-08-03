@@ -3,7 +3,7 @@ use super::support::*;
 #[test]
 fn weapon_is_a_unit_marker() {
     let marker = Weapon;
-    let copied = marker; 
+    let copied = marker;
     assert_eq!(marker, copied, "the Weapon marker is a Copy unit type");
     let another = Weapon;
     assert_eq!(marker, another, "the marker is a fieldless unit type");
@@ -135,7 +135,7 @@ fn weapon_carries_stable_tag_round_trip() {
     assert_eq!(plain_bundle.stable, Stable::new(false));
 }
 
-/// (`#[serde(transparent)]`): a `true` fragment parses to a stable tag, a
+/// Stable parses from a bare RON bool via `#[serde(transparent)]`.
 #[test]
 fn stable_parses_from_bare_ron_bool() {
     let yes = ron::from_str::<Stable>("true");
@@ -155,7 +155,7 @@ fn stable_parses_from_bare_ron_bool() {
     assert!(!*no);
 }
 
-/// (`#[serde(transparent)]`) even now it is a `Component`: parse a bare fragment
+/// Weapon leaf newtypes parse from bare RON scalars via `#[serde(transparent)]`.
 #[test]
 fn weapon_leaves_parse_from_bare_ron_scalars() {
     assert!(ron::from_str::<BaseSpread>("0.2").is_ok(), "base_spread");
@@ -189,8 +189,8 @@ fn damage_type_has_seven_variants() {
     );
 }
 
-/// AC1 — a [`WeaponName`] is a documented `#[derive(Component, Deref,
-/// (`#[serde(transparent)]`).
+/// AC1 — a [`WeaponName`] is a documented `Component` + `Deref` newtype with
+/// `#[serde(transparent)]`.
 #[test]
 fn weapon_name_is_a_bundle_field_and_parses_from_ron() {
     let bundle = WeaponBundle::new(
