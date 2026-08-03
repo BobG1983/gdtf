@@ -32,6 +32,7 @@ pub(super) const SLOT_COUNT: usize = GRID_WIDTH * GRID_HEIGHT * (MAX_LEVELS as u
 pub struct DestroyedCover(HashSet<CellLevel>);
 
 impl DestroyedCover {
+    /// Empty set.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -48,6 +49,7 @@ impl DestroyedCover {
 pub struct Blocked(bool);
 
 impl Blocked {
+    /// Wrap a blocked flag.
     #[must_use]
     pub const fn new(blocked: bool) -> Self {
         Self(blocked)
@@ -59,6 +61,7 @@ impl Blocked {
 pub struct PathBlocked(bool);
 
 impl PathBlocked {
+    /// Wrap a path-blocked flag.
     #[must_use]
     pub const fn new(blocked: bool) -> Self {
         Self(blocked)
@@ -70,6 +73,7 @@ impl PathBlocked {
 pub struct OccludesVision(bool);
 
 impl OccludesVision {
+    /// Wrap an occludes flag.
     #[must_use]
     pub const fn new(occludes: bool) -> Self {
         Self(occludes)
@@ -81,6 +85,7 @@ impl OccludesVision {
 pub struct CoverDestroyed(bool);
 
 impl CoverDestroyed {
+    /// Wrap a destroyed flag.
     #[must_use]
     pub const fn new(destroyed: bool) -> Self {
         Self(destroyed)

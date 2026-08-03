@@ -19,6 +19,7 @@ pub enum EmplacementState {
 pub struct EmplacementManned(bool);
 
 impl EmplacementManned {
+    /// Wrap a manned flag.
     #[must_use]
     pub const fn new(manned: bool) -> Self {
         Self(manned)
@@ -38,6 +39,7 @@ impl EmplacementState {
 pub struct EmplacementOccupant(Entity);
 
 impl EmplacementOccupant {
+    /// Wrap the occupant entity.
     #[must_use]
     pub const fn new(entity: Entity) -> Self {
         Self(entity)
@@ -49,6 +51,7 @@ impl EmplacementOccupant {
 pub struct MountedWeaponKey(WeaponName);
 
 impl MountedWeaponKey {
+    /// Wrap a weapon name.
     #[must_use]
     pub const fn new(key: WeaponName) -> Self {
         Self(key)
@@ -60,6 +63,7 @@ impl MountedWeaponKey {
 pub struct MountedWeaponEntity(Entity);
 
 impl MountedWeaponEntity {
+    /// Wrap the mounted weapon entity.
     #[must_use]
     pub const fn new(entity: Entity) -> Self {
         Self(entity)
