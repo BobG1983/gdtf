@@ -1,3 +1,5 @@
+//! Planar pathable neighbours with diagonal corner-cutting and move-cost scaling.
+
 use std::f32::consts::SQRT_2;
 
 use bevy::prelude::Deref;
@@ -15,7 +17,7 @@ use crate::{
 struct Diagonal(bool);
 
 impl Diagonal {
-        const fn new(diagonal: bool) -> Self {
+    const fn new(diagonal: bool) -> Self {
         Self(diagonal)
     }
 }
@@ -24,7 +26,7 @@ impl Diagonal {
 struct CornerCut(bool);
 
 impl CornerCut {
-        const fn new(cut: bool) -> Self {
+    const fn new(cut: bool) -> Self {
         Self(cut)
     }
 }
@@ -33,22 +35,23 @@ impl CornerCut {
 struct CellDelta(i32);
 
 impl CellDelta {
-        const fn new(step: i32) -> Self {
+    const fn new(step: i32) -> Self {
         Self(step)
     }
 }
 
 const PLANAR_OFFSETS: [(i32, i32); 8] = [
-    (-1, -1), 
+    (-1, -1),
     (0, -1),
     (1, -1),
-    (-1, 0), 
+    (-1, 0),
     (1, 0),
-    (-1, 1), 
+    (-1, 1),
     (0, 1),
     (1, 1),
 ];
 
+/// Eight-way neighbours that are in bounds, not path-blocked, and do not cut corners.
 pub fn pathable_neighbors<'a>(
     origin: CellLevel,
     grid: &'a OccupancyGrid,

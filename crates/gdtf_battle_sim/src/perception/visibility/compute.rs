@@ -1,3 +1,5 @@
+//! FOV union across observers and accrue into squad fog.
+
 use bevy::{platform::collections::HashSet, prelude::Deref};
 
 use crate::{
@@ -11,16 +13,24 @@ use crate::{
     visibility::SquadVisibility,
 };
 
+/// One observer feeding the FOV union.
 #[derive(Debug, Clone, Copy)]
 pub struct FovObserver<'a> {
-        pub position:         &'a Position,
-            pub stance:           &'a Stance,
-            pub facing:           &'a Facing,
-            pub life:             LifeState,
-                    pub stair_eye_offset: StairEyeOffset,
+    /// Observer position.
+    pub position: &'a Position,
+    /// Observer stance.
+    pub stance: &'a Stance,
+    /// Observer facing.
+    pub facing: &'a Facing,
+    /// Life state (dead observers contribute nothing).
+    pub life: LifeState,
+    /// Stair eye height offset.
+    pub stair_eye_offset: StairEyeOffset,
 }
 
-/// MUST stay disc-bounded. NOTE: a shadowcasting FOV (an `O(perimeter)` sweep instead of
+/// Union of all cells visible to any active observer within view range.
+///
+/// Bounded to a disc of radius `view_range` (not full shadowcasting).
 #[must_use]
 pub fn union_fov(
     observers: &[FovObserver],
@@ -37,11 +47,11 @@ pub fn union_fov(
             continue;
         }
         let observer = Observer {
-            position:         fov.position,
-            stance:           fov.stance,
-            facing:           fov.facing,
+            position: fov.position,
+            stance: fov.stance,
+            facing: fov.facing,
             stair_eye_offset: fov.stair_eye_offset,
-            peek_offset:      PeekOffset::default(),
+            peek_offset: PeekOffset::default(),
         };
         for (level, cell) in disc_cells(fov.position, tuning.view_range, authored) {
             let candidate = CellLevel::new(cell, level);
@@ -49,7 +59,7 @@ pub fn union_fov(
             let stance = Stance::new(StanceKind::Standing);
             let target = Target {
                 position: &position,
-                stance:   &stance,
+                stance: &stance,
             };
             if *can_see(
                 &observer,
@@ -95,7 +105,7 @@ fn disc_cells(
 struct GridExtent(usize);
 
 impl GridExtent {
-        #[must_use]
+    #[must_use]
     const fn new(extent: usize) -> Self {
         Self(extent)
     }
@@ -105,6 +115,7 @@ fn i32_extent(dimension: GridExtent) -> CellUnit {
     CellUnit::new(i32::try_from(*dimension).unwrap_or(i32::MAX))
 }
 
+/// Fold newly visible cells into the squad's explored set; replace current FOV.
 #[must_use]
 pub fn accrue(previous: &SquadVisibility, visible_next: HashSet<CellLevel>) -> SquadVisibility {
     let mut explored: HashSet<CellLevel> = previous.explored_cells().copied().collect();

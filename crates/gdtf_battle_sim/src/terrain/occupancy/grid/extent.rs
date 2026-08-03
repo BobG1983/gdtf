@@ -1,5 +1,5 @@
-//! Sparse/dense extent iteration over the grid — the authored/occupied key walk,
-//! the authored storey range, the dense all-cells walk, and the index-to-key
+//! Iterate authored, occupied, or all cells in the occupancy grid.
+
 use super::{
     storage::{OccupancyGrid, SlotIndex},
     types::{GRID_HEIGHT, GRID_WIDTH, SLOT_COUNT},
@@ -10,7 +10,8 @@ use crate::{
 };
 
 impl OccupancyGrid {
-                                        pub fn authored_or_occupied_cells(&self) -> impl Iterator<Item = CellLevel> + '_ {
+    /// Cells with non-Open terrain or an occupant.
+    pub fn authored_or_occupied_cells(&self) -> impl Iterator<Item = CellLevel> + '_ {
         self.slots
             .iter()
             .enumerate()
@@ -18,7 +19,8 @@ impl OccupancyGrid {
             .map(|(index, _)| Self::cell_level_of_index(SlotIndex::new(index)))
     }
 
-                                                        #[must_use]
+    /// Lowest and highest authored storey, if any cells exist.
+    #[must_use]
     pub fn authored_level_range(&self) -> Option<(Level, Level)> {
         self.authored_or_occupied_cells().fold(None, |range, key| {
             let level = key.level();
@@ -29,11 +31,12 @@ impl OccupancyGrid {
         })
     }
 
-                                                    pub fn all_cells(&self) -> impl Iterator<Item = CellLevel> {
+    /// Every cell in the dense grid.
+    pub fn all_cells(&self) -> impl Iterator<Item = CellLevel> {
         (0..SLOT_COUNT).map(|index| Self::cell_level_of_index(SlotIndex::new(index)))
     }
 
-                                fn cell_level_of_index(index: SlotIndex) -> CellLevel {
+    fn cell_level_of_index(index: SlotIndex) -> CellLevel {
         let level = *index / (GRID_WIDTH * GRID_HEIGHT);
         let plane = *index % (GRID_WIDTH * GRID_HEIGHT);
         let y = plane / GRID_WIDTH;
