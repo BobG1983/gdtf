@@ -1,4 +1,4 @@
-//! The LIVE half of authoring-time validation (GTW-630): re-arm the pass when
+//! Re-arm authoring-time validation when watched content registries change.
 use bevy::{
     ecs::system::SystemParam,
     prelude::{Commands, DetectChanges, Res},
@@ -15,22 +15,22 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_families::sprites::SpriteDefRegistry;
 
-/// `#[derive(SystemParam)]` (the load gate's `GateResources` pattern) so the
+/// Watched content registries for change detection.
 #[derive(SystemParam)]
 pub(super) struct WatchedRegistries<'w> {
-        weapons:       Option<Res<'w, WeaponRegistry>>,
-        melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
-        armor:         Option<Res<'w, ArmorRegistry>>,
-        gangs:         Option<Res<'w, GangRegistry>>,
-        terrain:       Option<Res<'w, TerrainDefRegistry>>,
-        themes:        Option<Res<'w, UuidThemeRegistry>>,
-                        injuries:      Option<Res<'w, InjuryRegistry>>,
-                sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
-                    attachments:   Option<Res<'w, AttachmentRegistry>>,
+    weapons: Option<Res<'w, WeaponRegistry>>,
+    melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
+    armor: Option<Res<'w, ArmorRegistry>>,
+    gangs: Option<Res<'w, GangRegistry>>,
+    terrain: Option<Res<'w, TerrainDefRegistry>>,
+    themes: Option<Res<'w, UuidThemeRegistry>>,
+    injuries: Option<Res<'w, InjuryRegistry>>,
+    sprite_defs: Option<Res<'w, SpriteDefRegistry>>,
+    attachments: Option<Res<'w, AttachmentRegistry>>,
 }
 
 impl WatchedRegistries<'_> {
-                fn any_changed(&self) -> bool {
+    fn any_changed(&self) -> bool {
         self.weapons.as_ref().is_some_and(DetectChanges::is_changed)
             || self
                 .melee_weapons

@@ -2,8 +2,7 @@ use bevy::prelude::*;
 use gdtf_battle_presenter::{FireTargetHighlight, PathPreview};
 #[cfg(debug_assertions)]
 use gdtf_battle_presenter::{ReachableCells, ReachableOverlayEnabled};
-// GTW-450 — FloorCostGrid is consumed ONLY by the DEBUG-gated reachable-overlay populate fn
-// (`register_reachable_overlay_population`), so import it only under `#[cfg(debug_assertions)]`
+// FloorCostGrid is only used by the debug-gated reachable overlay populate.
 #[cfg(debug_assertions)]
 use gdtf_battle_sim::floor::FloorCostGrid;
 use gdtf_battle_sim::{
@@ -14,8 +13,6 @@ use gdtf_battle_sim::{
     visibility::SquadVisibility,
 };
 
-// GTW-450 — the reachable-overlay POPULATE system + its presenter-owned flag are DEBUG-only
-// (C1); imported only under `#[cfg(debug_assertions)]` so the release build never names them.
 #[cfg(debug_assertions)]
 use crate::selection::populate_reachable_overlay;
 use crate::{
@@ -74,10 +71,7 @@ pub(super) fn register_fire_target_population(app: &mut App) {
     );
 }
 
-/// Registers the GTW-387 / GTW-450 reachable-range DEBUG overlay POPULATE system into
-/// DEBUG-ONLY (GTW-450 C1): this fn — and every item it names — compiles only under
-/// `#[cfg(debug_assertions)]`; a release build excludes it. The system additionally
-/// opt-in), so even in a debug build it is INERT unless `GDTF_DEBUG_REACHABLE_OVERLAY` was
+/// Register reachable-range overlay populate. Debug builds only.
 #[cfg(debug_assertions)]
 pub(super) fn register_reachable_overlay_population(app: &mut App) {
     app.add_systems(
@@ -99,8 +93,7 @@ pub(super) fn register_reachable_overlay_population(app: &mut App) {
     );
 }
 
-/// Run-condition: whether the reachable-range DEBUG overlay is enabled this process
-/// DEBUG-only.
+/// Whether the reachable-range debug overlay is enabled.
 #[cfg(debug_assertions)]
 fn reachable_overlay_enabled(flag: Option<Res<ReachableOverlayEnabled>>) -> bool {
     flag.is_some_and(|flag| **flag)
