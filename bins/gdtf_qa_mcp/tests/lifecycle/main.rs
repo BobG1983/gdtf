@@ -1,3 +1,5 @@
+//! Host lifecycle integration tests (launch, stop, output, orphans).
+
 mod child_dir;
 mod child_output;
 mod orphan;

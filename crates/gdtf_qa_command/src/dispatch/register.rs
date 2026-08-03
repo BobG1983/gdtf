@@ -1,3 +1,5 @@
+//! Register command systems and resources on a Bevy app.
+
 use bevy::prelude::*;
 use gdtf_net_qa_transport::{PendingQueue, sweep_pending};
 
@@ -6,6 +8,7 @@ use super::{
 };
 use crate::command::{ErasedCommand, QaCommand};
 
+/// Register inbox, queue, claim, sweep, and the command's own handler for `C`.
 pub fn register_command<C: QaCommand>(app: &mut App) {
     app.configure_sets(
         Update,
@@ -19,6 +22,7 @@ pub fn register_command<C: QaCommand>(app: &mut App) {
     C::register_handler(app);
 }
 
+/// Register every command in a set.
 pub fn register_command_set<F>(app: &mut App, commands: &[&dyn ErasedCommand<F>]) {
     for command in commands {
         command.register(app);

@@ -1,3 +1,5 @@
+//! Fake command that queues calls and never drains them.
+
 use bevy::prelude::*;
 use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary, CommandTiming};
 use schemars::JsonSchema;
@@ -6,28 +8,35 @@ use serde::{Deserialize, Serialize};
 use super::facts::FakeFacts;
 use crate::command::QaCommand;
 
+/// Arguments for `fake.stall`.
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct FakeStallArgs {
-        pub label: FakeStallLabel,
+    /// Label carried with the stalled call.
+    pub label: FakeStallLabel,
 }
 
+/// Label string for a stalled call.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(transparent)]
 pub struct FakeStallLabel(String);
 
 impl FakeStallLabel {
-        #[must_use]
+    /// Wrap a label.
+    #[must_use]
     pub const fn new(label: String) -> Self {
         Self(label)
     }
 }
 
+/// Reply type for `fake.stall` (never produced in normal use).
 #[derive(Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct FakeStallReply {
-        pub label: FakeStallLabel,
+    /// Echoed label.
+    pub label: FakeStallLabel,
 }
 
+/// Command whose queue is intentionally never drained.
 pub struct FakeStall;
 
 impl QaCommand for FakeStall {
@@ -45,5 +54,5 @@ impl QaCommand for FakeStall {
         CommandAvailability::Available
     }
 
-        fn register_handler(_app: &mut App) {}
+    fn register_handler(_app: &mut App) {}
 }

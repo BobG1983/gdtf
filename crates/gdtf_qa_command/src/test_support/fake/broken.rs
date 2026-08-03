@@ -1,3 +1,5 @@
+//! Command that publishes an unparseable argument schema.
+
 use bevy::prelude::App;
 use gdtf_qa_protocol::command::{
     ArgSchemaJson, CommandAvailability, CommandName, CommandSummary, CommandTiming, ReplySchemaJson,
@@ -8,6 +10,7 @@ use crate::command::ErasedCommand;
 
 const BROKEN_ARG_SCHEMA: &str = "{ this was written by hand and is not json";
 
+/// Test command whose argument schema is not JSON.
 pub struct FakeBrokenSchema;
 
 impl ErasedCommand<FakeFacts> for FakeBrokenSchema {
@@ -35,5 +38,5 @@ impl ErasedCommand<FakeFacts> for FakeBrokenSchema {
         CommandAvailability::Available
     }
 
-        fn register(&self, _app: &mut App) {}
+    fn register(&self, _app: &mut App) {}
 }

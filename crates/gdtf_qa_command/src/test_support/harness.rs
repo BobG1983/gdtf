@@ -1,3 +1,5 @@
+//! Mini Bevy host for running fake commands in tests.
+
 use std::sync::mpsc::Receiver;
 
 use bevy::prelude::*;
@@ -15,6 +17,7 @@ use crate::{
     },
 };
 
+/// Build an app with the given command set and facts resource.
 pub fn fake_app(commands: &[&dyn ErasedCommand<FakeFacts>], facts: FakeFacts) -> App {
     let mut app = App::new();
     app.insert_resource(facts);
@@ -22,6 +25,7 @@ pub fn fake_app(commands: &[&dyn ErasedCommand<FakeFacts>], facts: FakeFacts) ->
     app
 }
 
+/// Admit a command call into the app inbox and return the reply channel.
 #[must_use]
 pub fn run_fake_command(
     app: &mut App,

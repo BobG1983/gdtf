@@ -1,12 +1,22 @@
-//! "adding a command moves no version" is a real test), one whose queue nobody drains (so
+//! Fake commands and host facts for unit tests.
+
+/// Command that publishes an unparseable schema.
 pub mod broken;
+/// Cell echo command.
 pub mod cell;
+/// Text echo command.
 pub mod echo;
+/// Host facts used by the fake command set.
 pub mod facts;
+/// Phase/status command.
 pub mod phase;
+/// Prebuilt command-set constants.
 pub mod set;
+/// Multi-frame settle command.
 pub mod settle;
+/// Command whose queue is never drained.
 pub mod stall;
+/// Duplicate of phase for name-collision tests.
 pub mod twin;
 
 pub use broken::FakeBrokenSchema;

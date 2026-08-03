@@ -1,37 +1,45 @@
+//! Admit or refuse a command by name against the host command set.
+
 use gdtf_qa_protocol::command::{
     CommandAvailability, CommandName, RefusalNote, RunOptions, UnavailableCode,
 };
 
 use crate::command::ErasedCommand;
 
+/// Why a known command was refused.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CommandRefusal {
-        code: UnavailableCode,
-        note: RefusalNote,
+    code: UnavailableCode,
+    note: RefusalNote,
 }
 
 impl CommandRefusal {
-        #[must_use]
+    /// Build a refusal from a code and note.
+    #[must_use]
     pub const fn new(code: UnavailableCode, note: RefusalNote) -> Self {
         Self { code, note }
     }
 
-        #[must_use]
+    /// Refusal code.
+    #[must_use]
     pub const fn code(&self) -> UnavailableCode {
         self.code
     }
 
-        #[must_use]
+    /// Human note.
+    #[must_use]
     pub const fn note(&self) -> &RefusalNote {
         &self.note
     }
 
-        #[must_use]
+    /// Split into code and note.
+    #[must_use]
     pub fn into_parts(self) -> (UnavailableCode, RefusalNote) {
         (self.code, self.note)
     }
 
-                #[must_use]
+    /// Convert to a protocol availability value.
+    #[must_use]
     pub fn to_availability(&self) -> CommandAvailability {
         CommandAvailability::Unavailable {
             code: self.code,
@@ -40,10 +48,14 @@ impl CommandRefusal {
     }
 }
 
+/// Result of looking up a command by name.
 pub enum Admission<'a, F> {
-        Admit(&'a dyn ErasedCommand<F>),
-        Unavailable(CommandRefusal),
-            Unknown(Vec<CommandName>),
+    /// Command is known and available.
+    Admit(&'a dyn ErasedCommand<F>),
+    /// Command is known but not available.
+    Unavailable(CommandRefusal),
+    /// Name is not in the set; payload is the known names.
+    Unknown(Vec<CommandName>),
 }
 
 impl<F> core::fmt::Debug for Admission<'_, F> {
@@ -71,6 +83,7 @@ const fn rider_refusal(options: &RunOptions) -> Option<CommandRefusal> {
     ))
 }
 
+/// Look up `name` in `commands` and check availability and riders.
 #[must_use]
 pub fn admit<'a, F>(
     commands: &'a [&'a dyn ErasedCommand<F>],

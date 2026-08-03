@@ -1,3 +1,5 @@
+//! Fake command that echoes text when the host level is above zero.
+
 use bevy::prelude::*;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::command::{
@@ -12,33 +14,41 @@ use crate::{
     dispatch::{CommandCall, QaCommandSystems, take_calls},
 };
 
+/// Text payload for the echo command.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(transparent)]
 pub struct FakeEchoText(String);
 
 impl FakeEchoText {
-        #[must_use]
+    /// Wrap a text string.
+    #[must_use]
     pub const fn new(text: String) -> Self {
         Self(text)
     }
 
-        #[must_use]
+    /// Borrow the text.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
 }
 
+/// Arguments for `fake.echo`.
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct FakeEchoArgs {
-        pub text: FakeEchoText,
+    /// Text to echo.
+    pub text: FakeEchoText,
 }
 
+/// Reply for `fake.echo`.
 #[derive(Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct FakeEchoReply {
-        pub text: FakeEchoText,
+    /// Echoed text.
+    pub text: FakeEchoText,
 }
 
+/// Echo text; requires level above zero.
 pub struct FakeEcho;
 
 impl QaCommand for FakeEcho {
