@@ -24,7 +24,7 @@ impl DeferredBudget {
 /// Default two-second budget for deferred replies.
 pub const DEFERRED_BUDGET: DeferredBudget = DeferredBudget::new(Duration::from_secs(2));
 
-/// How many deferred replies were delivered in one answer_all.
+/// How many deferred replies were delivered in one `answer_all`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DeliveredCount(usize);
 

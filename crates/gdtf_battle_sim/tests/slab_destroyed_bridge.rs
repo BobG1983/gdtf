@@ -1,3 +1,5 @@
+//! Destroyed-slab bridge: fire depletes slab HP, opens LOS, keeps walkability closed.
+
 use bevy::{
     app::App,
     prelude::{Entity, World},
@@ -191,7 +193,7 @@ fn fired_rounds_deplete_then_destroy_slab_and_open_los_without_walkability() {
          persists above zero)",
     );
 
-    let mut strikes_to_destroy = 1_u32; 
+    let mut strikes_to_destroy = 1_u32;
     for _ in 0..64 {
         if app
             .world()
