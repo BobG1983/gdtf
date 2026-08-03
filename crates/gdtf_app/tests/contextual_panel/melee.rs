@@ -46,7 +46,7 @@ fn adjacent_alive_enemy_in_los_offers_melee() {
 
     assert!(
         melee_visible(&mut app),
-        "an 8-adjacent alive enemy in LOS must reveal the Melee button (GTW-507)",
+        "an 8-adjacent alive enemy in LOS must reveal the Melee button",
     );
     assert!(
         root_visible(&mut app),
