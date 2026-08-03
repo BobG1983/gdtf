@@ -1,22 +1,28 @@
+//! Path result types.
+
 use crate::{ganger::Tu, metric::CellLevel};
 
+/// Total path cost in TU units (u32 accumulator).
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct PathCost(u32);
 
 impl PathCost {
-        pub const ZERO: Self = Self(0);
+    /// Zero cost.
+    pub const ZERO: Self = Self(0);
 
-                    #[must_use]
+    #[must_use]
     pub const fn new(cost: u32) -> Self {
         Self(cost)
     }
 
-                            #[must_use]
+    /// Add one step's TU cost.
+    #[must_use]
     pub fn add_step(self, step: Tu) -> Self {
         Self(self.0 + u32::from(*step))
     }
 
-                                    #[must_use]
+    /// Narrow to a Tu value, saturating at u8::MAX.
+    #[must_use]
     pub const fn to_tu(self) -> Tu {
         #[expect(
             clippy::cast_possible_truncation,
@@ -31,15 +37,17 @@ impl PathCost {
     }
 }
 
+/// A found path: cells, per-step costs, and total cost.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Path {
-        cells: Vec<CellLevel>,
-                steps: Vec<Tu>,
-        total: Tu,
+    cells: Vec<CellLevel>,
+    steps: Vec<Tu>,
+    total: Tu,
 }
 
 impl Path {
-                                    #[must_use]
+    /// Build a path from cells, step costs, and total.
+    #[must_use]
     pub const fn new(cells: Vec<CellLevel>, steps: Vec<Tu>, total: Tu) -> Self {
         Self {
             cells,
@@ -48,41 +56,49 @@ impl Path {
         }
     }
 
-        #[must_use]
+    /// Cells along the path including start and goal.
+    #[must_use]
     pub fn cells(&self) -> &[CellLevel] {
         &self.cells
     }
 
-                                    #[must_use]
+    /// Per-step TU costs.
+    #[must_use]
     pub fn steps(&self) -> &[Tu] {
         &self.steps
     }
 
-            #[must_use]
+    /// Total TU cost.
+    #[must_use]
     pub const fn total(&self) -> Tu {
         self.total
     }
 
-            #[must_use]
+    /// First cell, if any.
+    #[must_use]
     pub fn start(&self) -> Option<CellLevel> {
         self.cells.first().copied()
     }
 
-        #[must_use]
+    /// Last cell, if any.
+    #[must_use]
     pub fn goal(&self) -> Option<CellLevel> {
         self.cells.last().copied()
     }
 
-            #[must_use]
+    /// Number of cells.
+    #[must_use]
     pub const fn len(&self) -> usize {
         self.cells.len()
     }
 
-                #[must_use]
+    /// Whether the path is empty.
+    #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.cells.is_empty()
     }
 }
 
+/// Sentinel returned when no path exists.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PathBlocked;

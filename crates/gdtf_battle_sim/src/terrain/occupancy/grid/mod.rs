@@ -1,3 +1,5 @@
+//! Occupancy grid storage, blocking, stairs, and vision helpers.
+
 mod blocking;
 mod extent;
 mod stairs;
