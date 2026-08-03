@@ -1,16 +1,18 @@
-//! Ganger stat derivation weights. Scalars use `#[serde(transparent)]` so RON is bare numbers.
+//! Weights for deriving ganger combat stats from attributes.
+
 use bevy::{
     prelude::{Deref, Resource},
     reflect::TypePath,
 };
 use serde::Deserialize;
 
-/// `#[serde(transparent)]` lets an authored weight parse as a bare scalar.
+/// One attribute weight in a derived-stat formula.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct StatWeight(f32);
 
 impl StatWeight {
+    /// Wrap a weight.
     #[must_use]
     pub const fn new(weight: f32) -> Self {
         Self(weight)
@@ -23,12 +25,13 @@ impl Default for StatWeight {
     }
 }
 
-/// Wounds-per-HP divisor (design ≈10). Bare scalar in RON.
+/// Wounds-per-HP divisor (design ≈10).
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct WoundsPerHp(f32);
 
 impl WoundsPerHp {
+    /// Wrap a divisor.
     #[must_use]
     pub const fn new(divisor: f32) -> Self {
         Self(divisor)
@@ -41,12 +44,13 @@ impl Default for WoundsPerHp {
     }
 }
 
-/// Bottle-per-morale divisor (design ≈10). Bare scalar in RON.
+/// Bottle-per-morale divisor (design ≈10).
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct BottlePerMorale(f32);
 
 impl BottlePerMorale {
+    /// Wrap a divisor.
     #[must_use]
     pub const fn new(divisor: f32) -> Self {
         Self(divisor)
@@ -59,12 +63,13 @@ impl Default for BottlePerMorale {
     }
 }
 
-/// Base TU before speed slope (default 30). Bare scalar in RON.
+/// Base TU before the speed slope (default 30).
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct TuBase(f32);
 
 impl TuBase {
+    /// Wrap a base value.
     #[must_use]
     pub const fn new(base: f32) -> Self {
         Self(base)
@@ -77,12 +82,13 @@ impl Default for TuBase {
     }
 }
 
-/// TU added per point of speed. Bare scalar in RON.
+/// TU added per point of speed.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct TuPerSpeed(f32);
 
 impl TuPerSpeed {
+    /// Wrap a slope.
     #[must_use]
     pub const fn new(slope: f32) -> Self {
         Self(slope)
@@ -95,61 +101,90 @@ impl Default for TuPerSpeed {
     }
 }
 
+/// Weights for the shooting derived stat.
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, Default)]
 pub struct ShootingWeights {
-    pub aim:      StatWeight,
+    /// Aim contribution.
+    pub aim: StatWeight,
+    /// Reflexes contribution.
     pub reflexes: StatWeight,
-    pub cool:     StatWeight,
+    /// Cool contribution.
+    pub cool: StatWeight,
 }
 
+/// Weights for the fight derived stat.
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, Default)]
 pub struct FightWeights {
-    pub speed:    StatWeight,
+    /// Speed contribution.
+    pub speed: StatWeight,
+    /// Strength contribution.
     pub strength: StatWeight,
-    pub grit:     StatWeight,
-    pub cool:     StatWeight,
+    /// Grit contribution.
+    pub grit: StatWeight,
+    /// Cool contribution.
+    pub cool: StatWeight,
 }
 
+/// Weights for the reactions derived stat.
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, Default)]
 pub struct ReactionsWeights {
-    pub speed:    StatWeight,
+    /// Speed contribution.
+    pub speed: StatWeight,
+    /// Reflexes contribution.
     pub reflexes: StatWeight,
-    pub cool:     StatWeight,
+    /// Cool contribution.
+    pub cool: StatWeight,
 }
 
-/// HP weights. Cool defaults to 0.5 (not field Default), so this stays manual.
+/// Weights for HP (cool defaults to 0.5).
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
 pub struct HpWeights {
-    pub grit:      StatWeight,
+    /// Grit contribution.
+    pub grit: StatWeight,
+    /// Toughness contribution.
     pub toughness: StatWeight,
-    pub cool:      StatWeight,
+    /// Cool contribution.
+    pub cool: StatWeight,
 }
 
 impl Default for HpWeights {
     fn default() -> Self {
         Self {
-            grit:      StatWeight::default(),
+            grit: StatWeight::default(),
             toughness: StatWeight::default(),
-            cool:      StatWeight::new(0.5),
+            cool: StatWeight::new(0.5),
         }
     }
 }
 
+/// Weights for morale.
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, Default)]
 pub struct MoraleWeights {
+    /// Grit contribution.
     pub grit: StatWeight,
+    /// Cool contribution.
     pub cool: StatWeight,
 }
 
+/// Full ganger stat derivation resource.
 #[derive(Debug, Clone, PartialEq, Default, Resource, Deserialize, TypePath)]
 pub struct GangerStatTuning {
-    pub shooting:          ShootingWeights,
-    pub fight:             FightWeights,
-    pub reactions:         ReactionsWeights,
-    pub hp:                HpWeights,
-    pub morale:            MoraleWeights,
-    pub wounds_per_hp:     WoundsPerHp,
+    /// Shooting weights.
+    pub shooting: ShootingWeights,
+    /// Fight weights.
+    pub fight: FightWeights,
+    /// Reactions weights.
+    pub reactions: ReactionsWeights,
+    /// HP weights.
+    pub hp: HpWeights,
+    /// Morale weights.
+    pub morale: MoraleWeights,
+    /// Wounds per HP.
+    pub wounds_per_hp: WoundsPerHp,
+    /// Bottle per morale.
     pub bottle_per_morale: BottlePerMorale,
-    pub tu_base:           TuBase,
-    pub tu_per_speed:      TuPerSpeed,
+    /// TU base.
+    pub tu_base: TuBase,
+    /// TU per speed.
+    pub tu_per_speed: TuPerSpeed,
 }

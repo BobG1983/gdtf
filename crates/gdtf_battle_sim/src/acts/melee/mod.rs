@@ -1,3 +1,5 @@
+//! Melee attacks on gangers and structure cells.
+
 mod dispatch;
 mod emit;
 mod ganger;

@@ -1,3 +1,5 @@
+//! Turn volley reports into shot, injury, terrain, and death messages.
+
 use bevy::prelude::Entity;
 
 use super::signals::FireSignals;
@@ -8,6 +10,7 @@ use crate::{
     weapon::DamageType,
 };
 
+/// Emit per-round shot messages and side effects from a resolved volley.
 pub(super) fn emit_round_signals(
     shooter: Entity,
     damage: DamageType,
@@ -30,6 +33,7 @@ pub(super) fn emit_round_signals(
     }
 }
 
+/// Emit injury, DOT, armor break, death, or structure destruction from one hit report.
 pub(super) fn emit_report_signals(
     report: &crate::resolve_and_apply::HitReport,
     signals: &mut FireSignals,
