@@ -1,3 +1,5 @@
+//! Vertical-link graph built from situation-authored links.
+
 use bevy::{
     platform::collections::{HashMap, HashSet},
     prelude::Resource,
@@ -9,26 +11,35 @@ use crate::{
     vertical::links::VerticalLink,
 };
 
+/// Why a vertical link failed validation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InvalidVerticalLink {
+    /// Either end is outside the valid level range.
     LevelOutOfRange {
+        /// The bad link.
         link: VerticalLink,
     },
+    /// Either end is not an authored cell.
     DanglingCell {
+        /// The bad link.
         link: VerticalLink,
     },
+    /// Both ends share the same Z.
     SameLevel {
+        /// The bad link.
         link: VerticalLink,
     },
 }
 
+/// Indexed graph of vertical links for pathfinding.
 #[derive(Resource, Debug, Clone, Default)]
 pub struct VerticalLinkGraph {
-    links:     Vec<VerticalLink>,
+    links: Vec<VerticalLink>,
     by_origin: HashMap<CellLevel, Vec<usize>>,
 }
 
 impl VerticalLinkGraph {
+    /// Links reachable from this origin (including reverse for bidirectional).
     pub fn links_from(&self, origin: &CellLevel) -> impl Iterator<Item = &VerticalLink> {
         self.by_origin
             .get(origin)
@@ -37,6 +48,7 @@ impl VerticalLinkGraph {
             .filter_map(|&i| self.links.get(i))
     }
 
+    /// All links in the graph.
     pub fn links(&self) -> impl Iterator<Item = &VerticalLink> {
         self.links.iter()
     }

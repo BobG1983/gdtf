@@ -1,5 +1,8 @@
+//! List cells reachable via vertical links from an origin.
+
 use crate::{ganger::Tu, metric::CellLevel, tuning::LinkTu, vertical::VerticalLinkGraph};
 
+/// Destination cells and TU cost for each vertical link leaving `origin`.
 pub fn traversable_links(
     origin: CellLevel,
     graph: &VerticalLinkGraph,
