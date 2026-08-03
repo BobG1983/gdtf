@@ -10,6 +10,7 @@ impl PathCost {
     /// Zero cost.
     pub const ZERO: Self = Self(0);
 
+    /// Wrap a raw cost value.
     #[must_use]
     pub const fn new(cost: u32) -> Self {
         Self(cost)
@@ -21,7 +22,7 @@ impl PathCost {
         Self(self.0 + u32::from(*step))
     }
 
-    /// Narrow to a Tu value, saturating at u8::MAX.
+    /// Narrow to a `Tu` value, saturating at `u8::MAX`.
     #[must_use]
     pub const fn to_tu(self) -> Tu {
         #[expect(

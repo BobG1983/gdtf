@@ -1,4 +1,4 @@
-//! Bevy app harness for battle_sim unit tests.
+//! Bevy app harness for `battle_sim` unit tests.
 
 use bevy::{
     app::App, asset::AssetPlugin, platform::collections::HashSet, prelude::MinimalPlugins,
@@ -162,7 +162,6 @@ impl SimAppBuilder {
     }
 
     /// Build the app.
-    #[must_use]
     pub fn build(self) -> App {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);

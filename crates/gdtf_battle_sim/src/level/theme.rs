@@ -58,8 +58,11 @@ impl GridLevels {
 pub enum GridSizeError {
     /// Any axis was zero.
     Empty {
+        /// Requested width.
         width: GridWidth,
+        /// Requested height.
         height: GridHeight,
+        /// Requested levels.
         levels: GridLevels,
     },
     /// Width above [`MAX_GRID_SPAN`].
@@ -182,8 +185,11 @@ impl Default for GridSize {
 /// Serde intermediate for [`GridSize`].
 #[derive(Deserialize, Serialize)]
 pub struct GridSizeDef {
+    /// Width in cells.
     width: GridWidth,
+    /// Height in cells.
     height: GridHeight,
+    /// Level count.
     levels: GridLevels,
 }
 

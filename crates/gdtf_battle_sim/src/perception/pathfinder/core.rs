@@ -1,4 +1,4 @@
-//! Internal A* / flood distance field used by find_path and reachable_within.
+//! Internal A* / flood distance field used by `find_path` and `reachable_within`.
 
 use std::{
     cmp::{Ordering, Reverse},

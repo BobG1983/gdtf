@@ -13,6 +13,7 @@ use crate::{
 pub struct Routable(bool);
 
 impl Routable {
+    /// Wrap a routable flag.
     #[must_use]
     pub const fn new(routable: bool) -> Self {
         Self(routable)
@@ -47,7 +48,7 @@ where
         self.is_open(cell, grid)
     }
 
-    /// Same as is_routable but skips the explored check (for vertical links).
+    /// Same as `is_routable` but skips the explored check (for vertical links).
     #[must_use]
     pub fn is_routable_link(&self, cell: CellLevel, grid: &OccupancyGrid) -> Routable {
         self.is_open(cell, grid)
