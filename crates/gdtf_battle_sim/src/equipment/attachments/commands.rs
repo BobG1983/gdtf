@@ -1,9 +1,13 @@
+//! Commands helper to queue attachment effect application.
+
 use bevy::prelude::{Commands, Entity, EntityWorldMut};
 
 use crate::effects::attachments::ApplyAttachmentEffect;
 
+/// Extend [`Commands`] with attach-to-weapon.
 pub trait AttachToWeaponExt {
-                                                fn attach_to_weapon(
+    /// Queue applying `effect` onto `weapon`.
+    fn attach_to_weapon(
         &mut self,
         weapon: Entity,
         effect: impl ApplyAttachmentEffect + Send + 'static,
