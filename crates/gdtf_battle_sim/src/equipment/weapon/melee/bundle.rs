@@ -1,3 +1,5 @@
+//! Spawn bundle for a melee weapon.
+
 use bevy::prelude::Bundle;
 
 use super::{FightMode, MeleeWeapon, Reach};
@@ -5,31 +7,49 @@ use crate::weapon::{
     DamageType, FatalBias, Handedness, Shove, WeaponDamage, WeaponName, WeaponPunch, WeaponShred,
 };
 
+/// Full component set for a spawned melee weapon.
 #[derive(Bundle, Debug, Clone, PartialEq)]
 pub struct MeleeWeaponBundle {
-            pub marker:      MeleeWeapon,
-        pub name:        WeaponName,
-        pub damage:      WeaponDamage,
-        pub punch:       WeaponPunch,
-        pub shred:       WeaponShred,
-        pub damage_type: DamageType,
-        pub fatal_bias:  FatalBias,
-        pub handedness:  Handedness,
-        pub reach:       Reach,
-        pub fight_mode:  FightMode,
-                    pub shove:       Shove,
+    /// Marker.
+    pub marker: MeleeWeapon,
+    /// Name.
+    pub name: WeaponName,
+    /// Damage.
+    pub damage: WeaponDamage,
+    /// Punch.
+    pub punch: WeaponPunch,
+    /// Shred.
+    pub shred: WeaponShred,
+    /// Damage type.
+    pub damage_type: DamageType,
+    /// Fatal bias.
+    pub fatal_bias: FatalBias,
+    /// Handedness.
+    pub handedness: Handedness,
+    /// Reach.
+    pub reach: Reach,
+    /// Fight modes.
+    pub fight_mode: FightMode,
+    /// Shove.
+    pub shove: Shove,
 }
 
+/// Damage numbers group for melee.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MeleeDamageProfile {
-        pub damage:      WeaponDamage,
-        pub punch:       WeaponPunch,
-        pub shred:       WeaponShred,
-        pub damage_type: DamageType,
+    /// Damage.
+    pub damage: WeaponDamage,
+    /// Punch.
+    pub punch: WeaponPunch,
+    /// Shred.
+    pub shred: WeaponShred,
+    /// Damage type.
+    pub damage_type: DamageType,
 }
 
 impl MeleeDamageProfile {
-            #[must_use]
+    /// Build a profile.
+    #[must_use]
     pub const fn new(
         damage: WeaponDamage,
         punch: WeaponPunch,
@@ -46,7 +66,8 @@ impl MeleeDamageProfile {
 }
 
 impl MeleeWeaponBundle {
-                                        #[must_use]
+    /// Assemble from name, damage, and handling fields.
+    #[must_use]
     pub const fn new(
         name: WeaponName,
         damage: MeleeDamageProfile,
