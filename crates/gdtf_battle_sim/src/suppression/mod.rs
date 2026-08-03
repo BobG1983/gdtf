@@ -1,3 +1,5 @@
+//! Suppression from nearby fire: mark, auto-stance, and turn reset.
+
 mod apply;
 mod reset;
 mod stance;
