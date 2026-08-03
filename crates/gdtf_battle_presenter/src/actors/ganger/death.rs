@@ -1,3 +1,5 @@
+//! Despawn ganger sprites on death and entity removal.
+
 use bevy::{ecs::lifecycle::RemovedComponents, prelude::*};
 use gdtf_battle_sim::{
     prelude::{LifeState, Position},
@@ -11,6 +13,7 @@ use crate::{
     playback::{DrawnLife, Played},
 };
 
+/// Despawn sprites when drawn life becomes dead (unless a shot impact will own the despawn).
 pub fn update_ganger_life_state(
     mut commands: Commands,
     mut sprites: ResMut<GangerSprites>,
@@ -47,6 +50,7 @@ fn report_kill_victim(report: Option<&HitReport>) -> Option<Entity> {
     (verdict.applied.life_after == LifeState::Dead).then_some(verdict.target)
 }
 
+/// Despawn the victim sprite when a lethal shot impact resolves.
 pub fn despawn_killed_ganger_on_impact(
     mut commands: Commands,
     mut sprites: ResMut<GangerSprites>,
@@ -62,6 +66,7 @@ pub fn despawn_killed_ganger_on_impact(
     }
 }
 
+/// Despawn sprites when the sim entity loses its position component.
 pub fn despawn_removed_ganger_sprites(
     mut commands: Commands,
     mut sprites: ResMut<GangerSprites>,
