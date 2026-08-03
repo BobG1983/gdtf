@@ -1,10 +1,14 @@
+//! Content families that load authored RON into battle-sim registries.
+
 mod armor;
 mod attachments;
 mod fields;
 mod gangs;
+/// Injury def and weighting load path.
 pub mod injuries;
 mod melee_weapons;
 pub mod prefabs;
+/// Sprite def load path and registry.
 pub mod sprites;
 mod terrain_defs;
 mod theme_defs;

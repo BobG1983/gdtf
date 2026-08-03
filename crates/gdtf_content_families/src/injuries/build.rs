@@ -1,3 +1,5 @@
+//! Build injury registry and tables from a loaded content folder.
+
 use bevy::{
     asset::{AssetServer, Assets, LoadedFolder},
     prelude::warn,
@@ -13,6 +15,7 @@ use gdtf_battle_sim::{
 
 use super::keying::{injury_key_from_stem, warn_on_subfolder_mismatch};
 
+/// Scan a loaded injuries folder and produce the registry plus weighting tables.
 #[must_use]
 pub fn build_injury_data(
     asset_server: &AssetServer,

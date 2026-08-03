@@ -1,3 +1,5 @@
+//! Cross-check weapon attachment keys against the attachment registry.
+
 use bevy::prelude::{Res, ResMut};
 use gdtf_assets::{
     ContentFinding, ContentIntegrityReport, FindingFamily, FindingReferrer, FindingTarget,
@@ -8,6 +10,7 @@ use gdtf_battle_sim::{
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
 
+/// Record dangling weapon/melee attachment references.
 pub fn check_weapon_attachment_refs(
     weapons: Res<WeaponRegistry>,
     melee_weapons: Res<MeleeWeaponRegistry>,
@@ -25,9 +28,9 @@ pub fn check_weapon_attachment_refs(
             if attachments.spec(key).is_none() {
                 report.record(ContentFinding::DanglingRef {
                     referrer: FindingReferrer::new(format!("{kind} `{}` attachments", **name)),
-                    target:   FindingTarget::new((**key).clone()),
-                    family:   FindingFamily::new("AttachmentRegistry".to_owned()),
-                    scheme:   ReferenceKeyScheme::FileStem,
+                    target: FindingTarget::new((**key).clone()),
+                    family: FindingFamily::new("AttachmentRegistry".to_owned()),
+                    scheme: ReferenceKeyScheme::FileStem,
                 });
             }
         }

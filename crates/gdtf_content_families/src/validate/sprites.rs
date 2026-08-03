@@ -1,4 +1,5 @@
-//! authoring time. Both families load in both hosts, so both register this
+//! Cross-check terrain graphic names against the sprite registry.
+
 use bevy::prelude::{Res, ResMut};
 use gdtf_assets::{
     ContentFinding, ContentIntegrityReport, FindingFamily, FindingReferrer, FindingTarget,
@@ -8,6 +9,7 @@ use gdtf_battle_sim::terrain::def::{TerrainDefRegistry, TerrainPresenterKind};
 
 use crate::sprites::{SpriteDefRegistry, SpriteName};
 
+/// Record dangling terrain graphic_name → sprite references.
 pub fn check_terrain_graphic_refs(
     terrain: Res<TerrainDefRegistry>,
     sprites: Res<SpriteDefRegistry>,
@@ -26,9 +28,9 @@ pub fn check_terrain_graphic_refs(
                     "terrain def `{}` ({}) graphic_name",
                     *def.display_name, **key,
                 )),
-                target:   FindingTarget::new((**graphic_name).clone()),
-                family:   FindingFamily::new("SpriteDefRegistry".to_owned()),
-                scheme:   ReferenceKeyScheme::FileStem,
+                target: FindingTarget::new((**graphic_name).clone()),
+                family: FindingFamily::new("SpriteDefRegistry".to_owned()),
+                scheme: ReferenceKeyScheme::FileStem,
             });
         }
     }

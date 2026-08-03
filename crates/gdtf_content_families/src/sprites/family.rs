@@ -1,3 +1,5 @@
+//! Sprite definition content family.
+
 use gdtf_assets::{ContentFamily, ContentFileStem};
 
 use super::{
@@ -5,6 +7,7 @@ use super::{
     registry::{SpriteDefRegistry, SpriteName},
 };
 
+/// Loads `*.spritedef.ron` files into [`SpriteDefRegistry`].
 pub struct SpriteDefsFamily;
 
 impl ContentFamily for SpriteDefsFamily {

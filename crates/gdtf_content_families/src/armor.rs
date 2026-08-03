@@ -1,6 +1,9 @@
+//! Armor content family.
+
 use gdtf_assets::{ContentFamily, ContentFileStem};
 use gdtf_battle_sim::armor::{ArmorName, ArmorRegistry, ArmorSpec};
 
+/// Loads `*.armor.ron` files into [`ArmorRegistry`].
 pub struct ArmorFamily;
 
 impl ContentFamily for ArmorFamily {
