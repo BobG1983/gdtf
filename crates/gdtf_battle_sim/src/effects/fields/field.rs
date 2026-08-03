@@ -1,5 +1,6 @@
-//! catalog-authoring [`FieldDef`] a field type carries.
-//! - [`FieldDef`] is the **catalog authoring** side — the `{ damage, DamageType,
+//! Catalog authoring for battlefield fields.
+//!
+//! [`FieldDef`] is the catalog side: damage, damage type, immune armor types, duration.
 use bevy::reflect::TypePath;
 use serde::Deserialize;
 
@@ -8,16 +9,17 @@ use crate::{
     weapon::DamageType,
 };
 
+/// Authored definition of a placeable field type.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, TypePath)]
 pub struct FieldDef {
-        pub damage:             FieldDamage,
-        pub damage_type:        DamageType,
-            pub immune_armor_types: ImmuneArmorTypes,
-        pub duration:           FieldDuration,
+    pub damage:             FieldDamage,
+    pub damage_type:        DamageType,
+    pub immune_armor_types: ImmuneArmorTypes,
+    pub duration:           FieldDuration,
 }
 
 impl FieldDef {
-            #[must_use]
+    #[must_use]
     pub const fn new(
         damage: FieldDamage,
         damage_type: DamageType,
