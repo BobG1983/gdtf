@@ -43,8 +43,7 @@ pub fn draw_static_battlefield(
     isolate: Res<IsolateView>,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut quad: Local<Option<Handle<Mesh>>>
-    ,
+    mut quad: Local<Option<Handle<Mesh>>>,
     mut ready: MessageReader<BattleReady>,
     existing: Query<Entity, With<TerrainSprite>>,
 ) {
