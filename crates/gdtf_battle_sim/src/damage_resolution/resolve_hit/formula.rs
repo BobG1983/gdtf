@@ -1,3 +1,5 @@
+//! Core hit-resolution math.
+
 use crate::{
     armor::ArmorPiece,
     matchup::{Matchup, MatchupMultiplier, matchup_multiplier},
@@ -8,7 +10,7 @@ use crate::{
     weapon::{WeaponDamage, WeaponPunch, WeaponShred},
 };
 
-/// localized `#[expect]` is the crate's guarded-cast idiom (see
+/// Round a float damage value back to an integer magnitude.
 const fn round_to_i32(value: DamageReal) -> DamageMagnitude {
     let rounded = value.get().round();
     #[expect(
@@ -19,6 +21,7 @@ const fn round_to_i32(value: DamageReal) -> DamageMagnitude {
     DamageMagnitude::new(clamped)
 }
 
+/// Scale a damage magnitude by a matchup multiplier.
 #[expect(
     clippy::cast_precision_loss,
     reason = "i32 stat → f32 for the matchup multiply; weapon punch/shred magnitudes are far inside f32's exact-integer range"
@@ -27,6 +30,10 @@ pub(super) fn scale_by_matchup(stat: DamageMagnitude, mult: MatchupMultiplier) -
     round_to_i32(DamageReal::new(*stat as f32 * *mult))
 }
 
+/// Resolve a weapon hit against one armor piece.
+///
+/// Applies matchup scaling to punch and shred, then computes penetrating damage,
+/// HP damage (respecting armor floor), and integrity wear.
 #[must_use]
 pub fn resolve_hit(
     weapon_damage: WeaponDamage,
