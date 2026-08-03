@@ -1,3 +1,5 @@
+//! Armor-broken floating combat text.
+
 use gdtf_battle_sim::armor_wear::ArmorBroken;
 
 use super::super::{
@@ -6,6 +8,7 @@ use super::super::{
     text::CombatText,
 };
 
+/// Consequence family for [`ArmorBroken`].
 #[derive(Debug, Clone, Copy)]
 pub struct ArmorBrokenFct;
 
@@ -30,7 +33,7 @@ mod test {
         super::super::pop::ConsequenceFct, ArmorBrokenFct, FctValence, PopAnchor, valence_color,
     };
 
-                #[test]
+    #[test]
     fn an_armor_broken_classifies_to_a_red_armor_broken_tag() {
         let ganger = Entity::PLACEHOLDER;
         let pop = ArmorBrokenFct::classify(&ArmorBroken::new(ganger, BodyPart::Torso));

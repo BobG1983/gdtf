@@ -1,3 +1,5 @@
+//! Bleeding floating combat text.
+
 use gdtf_battle_sim::effects::bleed::Bleeding;
 
 use super::super::{
@@ -6,6 +8,7 @@ use super::super::{
     text::CombatText,
 };
 
+/// Consequence family for [`Bleeding`].
 #[derive(Debug, Clone, Copy)]
 pub struct BleedingFct;
 
@@ -30,7 +33,7 @@ mod test {
         super::super::pop::ConsequenceFct, BleedingFct, FctValence, PopAnchor, valence_color,
     };
 
-                #[test]
+    #[test]
     fn a_bleeding_classifies_to_an_amber_bleeding_tag_on_the_ganger() {
         let ganger = Entity::PLACEHOLDER;
         let pop = BleedingFct::classify(&Bleeding::new(ganger));

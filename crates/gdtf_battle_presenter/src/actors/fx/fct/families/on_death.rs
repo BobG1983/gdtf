@@ -1,3 +1,5 @@
+//! On-death blast marker floating combat text.
+
 use gdtf_battle_sim::effects::on_death::OnDeathOccurred;
 
 use super::super::{
@@ -8,6 +10,7 @@ use super::super::{
 
 const ON_DEATH_MARKER: &str = "BOOM";
 
+/// Consequence family for [`OnDeathOccurred`].
 #[derive(Debug, Clone, Copy)]
 pub struct OnDeathFct;
 
@@ -36,7 +39,7 @@ mod test {
         FctValence, ON_DEATH_MARKER, OnDeathFct, PopAnchor, valence_color,
     };
 
-                #[test]
+    #[test]
     fn an_on_death_classifies_to_a_bold_lethal_blast_marker() {
         let at = CellLevel::new(Cell::new(11, 4), Level::new(0));
         let pop = OnDeathFct::classify(&OnDeathOccurred::new(Entity::PLACEHOLDER, at));
@@ -62,7 +65,7 @@ mod test {
         );
     }
 
-            #[test]
+    #[test]
     fn a_cover_on_death_still_anchors_at_the_cover_cell() {
         let at = CellLevel::new(Cell::new(3, 12), Level::new(0));
         let pop = OnDeathFct::classify(&OnDeathOccurred::cover(at));

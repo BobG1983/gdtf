@@ -1,3 +1,5 @@
+//! App extension to register FX readers gated on battle and assets.
+
 use bevy::{
     ecs::{
         message::{Message, Messages},
@@ -11,8 +13,10 @@ use gdtf_battle_sim::prelude::BattleInProgress;
 use super::roles::EffectRoles;
 use crate::{PresenterSystems, TopDownAtlases};
 
+/// Register an FX reader system under the Overlay set with common run conditions.
 pub trait FxReaderAppExt {
-                                                                                            fn add_fx_reader<M: Message, Marker>(
+    /// Add a reader for message type `M`.
+    fn add_fx_reader<M: Message, Marker>(
         &mut self,
         reader: impl IntoScheduleConfigs<ScheduleSystem, Marker>,
     ) -> &mut Self;
