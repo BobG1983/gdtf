@@ -33,6 +33,11 @@ fn chebyshev_heuristic(from: CellLevel, goal: CellLevel) -> PathCost {
               needs, and bundling them into an opaque struct would hide the real inputs (the \
               SearchGrids bundle is the internal form; the public entry point lists its reads)"
 )]
+/// A* path from `start` to `goal` on the occupancy + vertical-link graph.
+///
+/// # Errors
+///
+/// Returns [`PathBlocked`] when no route reaches `goal` under the mover's costs and planning rules.
 pub fn find_path<R>(
     start: CellLevel,
     goal: CellLevel,

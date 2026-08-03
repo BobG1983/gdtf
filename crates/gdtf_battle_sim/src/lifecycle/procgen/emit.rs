@@ -19,6 +19,11 @@ use crate::{
     },
 };
 
+/// Run the full procgen pipeline to an [`EmittedLevel`].
+///
+/// # Errors
+///
+/// Returns [`PackingError`] from any stage (assemble, fill, or later packing failure).
 pub fn generate_level(
     prefabs: &PrefabRegistry,
     themes: &UuidThemeRegistry,
@@ -124,9 +129,9 @@ fn pour_prefab(
 }
 
 enum PlacedKind {
-        Cover,
-        Slab,
-            Unresolved,
+    Cover,
+    Slab,
+    Unresolved,
 }
 
 fn classify(piece: TerrainUuid, terrain_defs: &TerrainDefRegistry) -> PlacedKind {

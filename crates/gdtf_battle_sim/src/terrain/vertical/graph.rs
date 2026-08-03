@@ -11,25 +11,25 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InvalidVerticalLink {
-            LevelOutOfRange {
-                link: VerticalLink,
+    LevelOutOfRange {
+        link: VerticalLink,
     },
-                DanglingCell {
-                link: VerticalLink,
+    DanglingCell {
+        link: VerticalLink,
     },
-            SameLevel {
-                link: VerticalLink,
+    SameLevel {
+        link: VerticalLink,
     },
 }
 
 #[derive(Resource, Debug, Clone, Default)]
 pub struct VerticalLinkGraph {
-        links:     Vec<VerticalLink>,
-                by_origin: HashMap<CellLevel, Vec<usize>>,
+    links:     Vec<VerticalLink>,
+    by_origin: HashMap<CellLevel, Vec<usize>>,
 }
 
 impl VerticalLinkGraph {
-                                    pub fn links_from(&self, origin: &CellLevel) -> impl Iterator<Item = &VerticalLink> {
+    pub fn links_from(&self, origin: &CellLevel) -> impl Iterator<Item = &VerticalLink> {
         self.by_origin
             .get(origin)
             .into_iter()
@@ -37,21 +37,28 @@ impl VerticalLinkGraph {
             .filter_map(|&i| self.links.get(i))
     }
 
-                                        pub fn links(&self) -> impl Iterator<Item = &VerticalLink> {
+    pub fn links(&self) -> impl Iterator<Item = &VerticalLink> {
         self.links.iter()
     }
 
-            #[must_use]
+    #[must_use]
     pub const fn len(&self) -> usize {
         self.links.len()
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.links.is_empty()
     }
 }
 
+/// Build the vertical-link graph from situation-authored links.
+///
+/// # Errors
+///
+/// Returns [`InvalidVerticalLink::LevelOutOfRange`] if either end is outside valid levels,
+/// [`InvalidVerticalLink::DanglingCell`] if an end is not an authored cell,
+/// or [`InvalidVerticalLink::SameLevel`] if both ends share a Z.
 pub fn build_vertical_link_graph(
     situation: &Situation,
 ) -> Result<VerticalLinkGraph, InvalidVerticalLink> {
