@@ -1,7 +1,12 @@
+//! Weighted random body-part selection.
+
 use rand::{Rng, RngExt};
 
 use crate::{armor::BodyPart, tuning::BodyPartWeights};
 
+/// Pick a body part using the configured weights.
+///
+/// Falls back to torso if all weights are zero.
 #[must_use]
 pub fn roll_body_part(weights: &BodyPartWeights, rng: &mut impl Rng) -> BodyPart {
     let per_part: [(BodyPart, u32); 6] = [

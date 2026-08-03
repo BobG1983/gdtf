@@ -1,3 +1,5 @@
+//! Severity score calculation and the public roll entry point.
+
 use bevy::prelude::Deref;
 
 use super::kind::{PartSeverityMod, Severity, SeverityScore, bucket};
@@ -9,28 +11,37 @@ use crate::{
     weapon::FatalBias,
 };
 
+/// Random term added to the severity score.
 #[derive(Deref, Debug, Clone, Copy, PartialEq)]
 pub(super) struct RollTerm(f32);
 
 impl RollTerm {
-        #[must_use]
+    #[must_use]
     const fn new(term: f32) -> Self {
         Self(term)
     }
 }
 
+/// Inputs that feed the severity formula.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SeverityInputs {
-        pub pen_damage:    PenetratingDamage,
-        pub toughness:     Toughness,
-        pub part_mod:      PartSeverityMod,
-        pub fatal_bias:    FatalBias,
-        pub luck_shooter:  Luck,
-        pub luck_defender: Luck,
+    /// Damage that got through armor.
+    pub pen_damage: PenetratingDamage,
+    /// Defender toughness.
+    pub toughness: Toughness,
+    /// Body-part bias.
+    pub part_mod: PartSeverityMod,
+    /// Weapon fatal bias.
+    pub fatal_bias: FatalBias,
+    /// Shooter luck.
+    pub luck_shooter: Luck,
+    /// Defender luck.
+    pub luck_defender: Luck,
 }
 
 impl SeverityInputs {
-                            #[must_use]
+    /// Build the full input set.
+    #[must_use]
     pub const fn new(
         pen_damage: PenetratingDamage,
         toughness: Toughness,
@@ -50,7 +61,7 @@ impl SeverityInputs {
     }
 }
 
-/// `#[expect]` is the crate's guarded-cast idiom (`metric::floor_to_i32` /
+/// Convert penetrating damage to a float for the score formula.
 #[expect(
     clippy::cast_precision_loss,
     reason = "penetrating damage is a small non-negative count, far inside f32's exact-integer range"
@@ -59,6 +70,7 @@ fn pen_to_f32(pen: PenetratingDamage) -> DamageReal {
     DamageReal::new(*pen as f32)
 }
 
+/// Draw the random term that includes defender luck.
 pub(super) fn roll_term(
     scaling: &SeverityScaling,
     luck_defender: Luck,
@@ -69,6 +81,7 @@ pub(super) fn roll_term(
     RollTerm::new(rng.random_range_or_midpoint(lo..hi))
 }
 
+/// Compute the raw severity score from inputs and a random draw.
 pub(super) fn severity_score(
     inputs: &SeverityInputs,
     scaling: &SeverityScaling,
@@ -84,6 +97,7 @@ pub(super) fn severity_score(
     )
 }
 
+/// Roll a severity rank from the given inputs and scaling.
 #[must_use]
 pub fn roll_severity(
     inputs: &SeverityInputs,

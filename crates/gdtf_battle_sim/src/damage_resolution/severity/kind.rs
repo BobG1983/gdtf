@@ -1,18 +1,27 @@
+//! Severity ranks and body-part modifiers.
+
 use serde::{Deserialize, Serialize};
 
 use crate::{armor::BodyPart, tuning::SeverityScaling};
 
+/// How bad a wound is, from nothing through fatal.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum Severity {
-            None,
-        Minor,
-        Major,
-        Critical,
-        Fatal,
+    /// No meaningful wound.
+    None,
+    /// Light injury.
+    Minor,
+    /// Serious injury.
+    Major,
+    /// Life-threatening injury.
+    Critical,
+    /// Instantly or near-instantly lethal.
+    Fatal,
 }
 
 impl Severity {
-                pub const ALL: [Self; 5] = [
+    /// All ranks in ascending order.
+    pub const ALL: [Self; 5] = [
         Self::None,
         Self::Minor,
         Self::Major,
@@ -20,7 +29,8 @@ impl Severity {
         Self::Fatal,
     ];
 
-                #[must_use]
+    /// Numeric rank used for comparisons and costs.
+    #[must_use]
     pub const fn rank(self) -> SeverityRank {
         match self {
             Self::None => SeverityRank::new(0),
@@ -32,26 +42,31 @@ impl Severity {
     }
 }
 
+/// Numeric rank of a [`Severity`] (0 = none … 4 = fatal).
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SeverityRank(u8);
 
 impl SeverityRank {
-        #[must_use]
+    /// Build from a raw rank value.
+    #[must_use]
     pub const fn new(rank: u8) -> Self {
         Self(rank)
     }
 }
 
+/// Additive modifier applied to the severity score for a body part.
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq)]
 pub struct PartSeverityMod(f32);
 
 impl PartSeverityMod {
-            #[must_use]
+    /// Build from a raw modifier.
+    #[must_use]
     pub const fn new(part_mod: f32) -> Self {
         Self(part_mod)
     }
 }
 
+/// Severity score bias for a given body part (head is harsh, arms are forgiving).
 #[must_use]
 pub const fn part_severity_mod(part: BodyPart) -> PartSeverityMod {
     match part {
@@ -62,16 +77,19 @@ pub const fn part_severity_mod(part: BodyPart) -> PartSeverityMod {
     }
 }
 
+/// Raw numeric score before it is bucketed into a [`Severity`].
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq)]
 pub struct SeverityScore(f32);
 
 impl SeverityScore {
-        #[must_use]
+    /// Build from a raw score.
+    #[must_use]
     pub const fn new(score: f32) -> Self {
         Self(score)
     }
 }
 
+/// Map a score onto a severity rank using the configured edges.
 pub(super) fn bucket(score: SeverityScore, scaling: &SeverityScaling) -> Severity {
     let edges = &scaling.edges;
     if *score < *edges.e0 {

@@ -1,3 +1,5 @@
+//! Damage-type vs armor-type matchup wheel.
+
 #[cfg(test)]
 mod test;
 mod wheel;
