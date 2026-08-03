@@ -1,3 +1,5 @@
+//! Apply theme colors to entities marked with [`Themed`].
+
 use bevy::{
     prelude::*,
     text::{FontSize, TextColor as UiTextColor, TextFont},
@@ -11,6 +13,7 @@ type ThemedData<'a> = (Entity, &'a Themed, Option<&'a Node>);
 
 type AddedOrChangedThemed = Or<(Added<Themed>, Changed<Themed>)>;
 
+/// Paint themed entities when the theme changes or new themed nodes appear.
 pub fn apply_theme(
     mut commands: Commands,
     theme: Res<GdtfTheme>,
@@ -105,14 +108,15 @@ fn box_node(node: Option<&Node>, border_vw: f32, radius_vw: f32, margin: Content
     themed_node.border = UiRect::all(Val::Vw(border_vw));
     themed_node.border_radius = BorderRadius::all(Val::Vw(radius_vw));
     themed_node.padding = UiRect {
-        left:   Val::Vw(*margin.l),
-        right:  Val::Vw(*margin.r),
-        top:    Val::Vh(*margin.t),
+        left: Val::Vw(*margin.l),
+        right: Val::Vw(*margin.r),
+        top: Val::Vh(*margin.t),
         bottom: Val::Vh(*margin.b),
     };
     themed_node
 }
 
+/// True when any entity gained a [`Themed`] component this frame.
 #[must_use]
 pub fn any_themed_added(added: Query<(), Added<Themed>>) -> bool {
     !added.is_empty()
