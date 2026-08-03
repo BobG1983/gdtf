@@ -1,3 +1,5 @@
+//! Deterministic battle RNG: root seed and labeled streams.
+
 mod derivation;
 mod safe_draw;
 mod seeded;
