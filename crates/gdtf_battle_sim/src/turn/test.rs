@@ -51,8 +51,7 @@ fn player_end_turn_hands_off_to_enemy_and_stops() {
     assert_eq!(
         **app.world().resource::<ActiveFaction>(),
         ENEMY,
-        "a player End Turn hands off to the enemy and stops there (GTW-70 removed the \
-         auto-pass); control returns to the player only once the enemy turn ends",
+        "a player End Turn hands off to the enemy and stops there; control returns to the player only once the enemy turn ends",
     );
 }
 
@@ -113,7 +112,7 @@ fn enemy_turn_returns_to_player_when_the_enemy_is_done() {
     assert_eq!(
         **app.world().resource::<ActiveFaction>(),
         PLAYER,
-        "the empty enemy turn ends via the GTW-70 brain, returning control to the player",
+        "the empty enemy turn ends, returning control to the player",
     );
     assert_eq!(
         *tu_of(app.world(), player),
