@@ -1,3 +1,5 @@
+//! Bevy asset loader for RON payloads into [`RonAsset`](crate::RonAsset).
+
 use core::marker::PhantomData;
 
 use bevy::{
@@ -11,20 +13,22 @@ use crate::{
     error::{ReadError, RonDeError, RonLoadError},
 };
 
+/// Loads files into [`RonAsset<T>`] via `ron` deserialize.
 #[derive(TypePath)]
 pub struct RonAssetLoader<T>
 where
     T: TypePath,
 {
-            extensions: Vec<&'static str>,
-        _payload:   PhantomData<fn() -> T>,
+    extensions: Vec<&'static str>,
+    _payload: PhantomData<fn() -> T>,
 }
 
 impl<T> RonAssetLoader<T>
 where
     T: TypePath,
 {
-            #[must_use]
+    /// Build a loader that accepts the given extensions.
+    #[must_use]
     pub fn with_extensions(extensions: Vec<&'static str>) -> Self {
         Self {
             extensions,
@@ -40,7 +44,7 @@ where
     fn default() -> Self {
         Self {
             extensions: vec!["ron"],
-            _payload:   PhantomData,
+            _payload: PhantomData,
         }
     }
 }
