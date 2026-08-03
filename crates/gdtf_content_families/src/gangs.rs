@@ -1,6 +1,9 @@
+//! Gangs content family.
+
 use gdtf_assets::{ContentFamily, ContentFileStem};
 use gdtf_battle_sim::ganger::{GangName, GangRegistry, GangRoster};
 
+/// Loads `*.gang.ron` files into [`GangRegistry`].
 pub struct GangsFamily;
 
 impl ContentFamily for GangsFamily {

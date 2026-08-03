@@ -1,8 +1,11 @@
+//! Theme definition content family.
+
 use gdtf_assets::{ContentFamily, ContentFileStem};
 use gdtf_battle_sim::level::{UuidThemeDef, UuidThemeRegistry};
 
 use crate::TerrainDefsFamily;
 
+/// Loads `*.terrain_theme.ron` files into [`UuidThemeRegistry`].
 pub struct ThemeDefsFamily;
 
 impl ContentFamily for ThemeDefsFamily {
