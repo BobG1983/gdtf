@@ -1,4 +1,5 @@
-//! 1. **`cfg(all(debug_assertions, feature = "net_qa"))`.** The wiring site (`crate::app`)
+//! Net QA listener plugin for the content editor.
+
 use std::{
     io,
     net::TcpListener,
@@ -26,28 +27,29 @@ use super::{
 use crate::EditorState;
 
 enum Wiring {
-        Disabled,
-        Listener {
-                port:       NetQaPort,
-                io_timeout: NetIoTimeout,
+    Disabled,
+    Listener {
+        port: NetQaPort,
+        io_timeout: NetIoTimeout,
     },
-                Bound {
-                listener:   Mutex<Option<TcpListener>>,
-                io_timeout: NetIoTimeout,
+    Bound {
+        listener: Mutex<Option<TcpListener>>,
+        io_timeout: NetIoTimeout,
     },
 }
 
+/// Plugin that optionally opens the editor net QA control channel.
 pub struct NetQaEditorPlugin {
-        wiring: Wiring,
+    wiring: Wiring,
 }
 
 impl NetQaEditorPlugin {
-                            /// `cfg(all(debug_assertions, feature = "net_qa"))` — the ONLY one the editor binary ever
-        #[must_use]
+    /// Build from environment: enabled only when the net_qa flag is set.
+    #[must_use]
     pub fn from_env() -> Self {
         let wiring = if editor_net_qa_enabled() {
             Wiring::Listener {
-                port:       editor_port_from_env(),
+                port: editor_port_from_env(),
                 io_timeout: DEFAULT_IO_TIMEOUT,
             }
         } else {
@@ -56,12 +58,16 @@ impl NetQaEditorPlugin {
         Self { wiring }
     }
 
-                                        /// module it compiles only under `cfg(all(debug_assertions, feature = "net_qa"))`, and the
-                        pub fn listening(port: NetQaPort) -> io::Result<(Self, NetQaPort)> {
+    /// Bind a loopback listener on `port` for tests.
+    ///
+    /// # Errors
+    ///
+    /// Returns an IO error if the listener cannot bind.
+    pub fn listening(port: NetQaPort) -> io::Result<(Self, NetQaPort)> {
         let (listener, bound) = bind_listener(port)?;
         let plugin = Self {
             wiring: Wiring::Bound {
-                listener:   Mutex::new(Some(listener)),
+                listener: Mutex::new(Some(listener)),
                 io_timeout: DEFAULT_IO_TIMEOUT,
             },
         };
@@ -70,7 +76,7 @@ impl NetQaEditorPlugin {
 }
 
 impl Default for NetQaEditorPlugin {
-        fn default() -> Self {
+    fn default() -> Self {
         Self::from_env()
     }
 }

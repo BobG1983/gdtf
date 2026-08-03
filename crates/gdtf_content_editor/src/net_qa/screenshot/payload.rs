@@ -1,15 +1,19 @@
+//! Screenshot request payload for the editor QA channel.
+
 use gdtf_qa_protocol::ids::ShotName;
 
+/// Optional shot name attached to an editor screenshot request.
 #[derive(Debug)]
 pub struct EditorScreenshotPayload(Option<ShotName>);
 
 impl EditorScreenshotPayload {
-        #[must_use]
+    /// Build from an optional shot name.
+    #[must_use]
     pub const fn new(name: Option<ShotName>) -> Self {
         Self(name)
     }
 
-        pub(in crate::net_qa) const fn name(&self) -> Option<&ShotName> {
+    pub(in crate::net_qa) const fn name(&self) -> Option<&ShotName> {
         self.0.as_ref()
     }
 }
