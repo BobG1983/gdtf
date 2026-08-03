@@ -1,3 +1,5 @@
+//! Melee weapon form draft resource.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     equipment::attachments::WeaponSlots,
@@ -10,20 +12,21 @@ use gdtf_battle_sim::{
 
 fn seed_spec() -> MeleeWeaponSpec {
     MeleeWeaponSpec {
-        damage:      WeaponDamage::new(0),
-        punch:       WeaponPunch::new(0),
-        shred:       WeaponShred::new(0),
+        damage: WeaponDamage::new(0),
+        punch: WeaponPunch::new(0),
+        shred: WeaponShred::new(0),
         damage_type: DamageType::Kinetic,
-        fatal_bias:  FatalBias::new(0.0),
-        handedness:  Handedness::OneHanded,
-        reach:       Reach::DEFAULT,
-        fight_mode:  FightMode::new(vec![structural_swing_mode()]),
-        shove:       Shove::new(false),
-        slots:       WeaponSlots::default(),
+        fatal_bias: FatalBias::new(0.0),
+        handedness: Handedness::OneHanded,
+        reach: Reach::DEFAULT,
+        fight_mode: FightMode::new(vec![structural_swing_mode()]),
+        shove: Shove::new(false),
+        slots: WeaponSlots::default(),
         attachments: Vec::new(),
     }
 }
 
+/// Default swing fight mode used by a new draft.
 #[must_use]
 pub(crate) const fn structural_swing_mode() -> FightModeSpec {
     FightModeSpec::new(FightModeKind::Swing, TuCost::new(0), Strikes::new(1))
@@ -31,66 +34,75 @@ pub(crate) const fn structural_swing_mode() -> FightModeSpec {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum AutoloadState {
-        Pending,
-        Done,
+    Pending,
+    Done,
 }
 
+/// In-progress melee weapon being authored.
 #[derive(Resource, Clone, PartialEq, Debug)]
 pub struct MeleeWeaponDraft {
-        name:     String,
-        spec:     MeleeWeaponSpec,
-        autoload: AutoloadState,
+    name: String,
+    spec: MeleeWeaponSpec,
+    autoload: AutoloadState,
 }
 
 impl MeleeWeaponDraft {
-                    #[must_use]
+    /// Empty draft ready for a new melee weapon.
+    #[must_use]
     pub fn new_melee_weapon() -> Self {
         Self {
-            name:     String::new(),
-            spec:     seed_spec(),
+            name: String::new(),
+            spec: seed_spec(),
             autoload: AutoloadState::Done,
         }
     }
 
-                #[must_use]
+    /// Whether the form should still try to autoload from the registry.
+    #[must_use]
     pub const fn autoload_pending(&self) -> bool {
         matches!(self.autoload, AutoloadState::Pending)
     }
 
-            pub const fn mark_autoloaded(&mut self) {
+    /// Mark autoload complete.
+    pub const fn mark_autoloaded(&mut self) {
         self.autoload = AutoloadState::Done;
     }
 
-                    pub fn load_melee_weapon(&mut self, name: &WeaponName, spec: &MeleeWeaponSpec) {
+    /// Load an existing melee weapon into the draft.
+    pub fn load_melee_weapon(&mut self, name: &WeaponName, spec: &MeleeWeaponSpec) {
         name.as_str().clone_into(&mut self.name);
         self.spec = spec.clone();
         self.autoload = AutoloadState::Done;
     }
 
-        #[must_use]
+    /// Display name.
+    #[must_use]
     pub fn name(&self) -> &str {
         &self.name
     }
 
-        pub fn set_name(&mut self, name: String) {
+    /// Set the display name.
+    pub fn set_name(&mut self, name: String) {
         self.name = name;
     }
 
-            #[must_use]
+    /// Full melee weapon spec.
+    #[must_use]
     pub const fn spec(&self) -> &MeleeWeaponSpec {
         &self.spec
     }
 
-                pub const fn spec_mut(&mut self) -> &mut MeleeWeaponSpec {
+    /// Mutable access to the melee weapon spec.
+    pub const fn spec_mut(&mut self) -> &mut MeleeWeaponSpec {
         &mut self.spec
     }
 }
 
 impl Default for MeleeWeaponDraft {
-                        fn default() -> Self {
+    fn default() -> Self {
         Self {
-            name:     String::new(),
-            spec:     seed_spec(),
+            name: String::new(),
+            spec: seed_spec(),
             autoload: AutoloadState::Pending,
         }
     }

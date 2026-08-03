@@ -1,12 +1,18 @@
+//! Terrain save errors.
+
+/// Errors from terrain validation or save.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SaveTerrainError {
-            EmptyName,
-                    MissingMountedWeapon,
-            Save(gdtf_assets::RonSaveError),
+    /// Display name is empty.
+    EmptyName,
+    /// Emplacement kind without a mounted weapon.
+    MissingMountedWeapon,
+    /// Underlying RON write failed.
+    Save(gdtf_assets::RonSaveError),
 }
 
 impl From<gdtf_assets::RonSaveError> for SaveTerrainError {
-            fn from(err: gdtf_assets::RonSaveError) -> Self {
+    fn from(err: gdtf_assets::RonSaveError) -> Self {
         Self::Save(err)
     }
 }

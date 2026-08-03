@@ -1,5 +1,5 @@
-//! The editor's **in-memory paintable map model** — the authoritative store of painted
-//! grid the author has not yet touched — costs nothing, and it scales to the full `60 × 60 × 8`
+//! In-memory painted map model for the content editor.
+
 use bevy::{platform::collections::HashMap, prelude::*};
 use gdtf_battle_sim::{
     level::GridSize,
@@ -10,24 +10,28 @@ use gdtf_battle_sim::{
 
 pub(crate) const GROUND_LEVEL: Level = Level::new(0);
 
+/// Sparse store of painted terrain tiles by cell-level.
 #[derive(Resource, Debug, Clone, Default, PartialEq, Eq)]
 pub struct EditorMap {
-            painted: HashMap<CellLevel, TerrainUuid>,
+    painted: HashMap<CellLevel, TerrainUuid>,
 }
 
 impl EditorMap {
-            #[must_use]
+    /// Empty map with nothing painted.
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             painted: HashMap::new(),
         }
     }
 
-                        pub fn paint(&mut self, cell: Cell, tile: TerrainUuid, size: GridSize) -> bool {
+    /// Paint `tile` at ground level for `cell` if in bounds.
+    pub fn paint(&mut self, cell: Cell, tile: TerrainUuid, size: GridSize) -> bool {
         self.paint_at(CellLevel::new(cell, GROUND_LEVEL), tile, size)
     }
 
-                                pub fn paint_at(&mut self, slot: CellLevel, tile: TerrainUuid, size: GridSize) -> bool {
+    /// Paint `tile` at `slot` if in bounds.
+    pub fn paint_at(&mut self, slot: CellLevel, tile: TerrainUuid, size: GridSize) -> bool {
         if !slot_in_bounds(slot, size) {
             return false;
         }
@@ -35,25 +39,30 @@ impl EditorMap {
         true
     }
 
-                pub fn clear(&mut self, slot: CellLevel) -> Option<TerrainUuid> {
+    /// Remove the tile at `slot`, returning the previous value.
+    pub fn clear(&mut self, slot: CellLevel) -> Option<TerrainUuid> {
         self.painted.remove(&slot)
     }
 
-                    #[must_use]
+    /// Tile at ground level for `cell`, if any.
+    #[must_use]
     pub fn tile_at(&self, cell: Cell) -> Option<TerrainUuid> {
         self.tile_at_level(CellLevel::new(cell, GROUND_LEVEL))
     }
 
-                #[must_use]
+    /// Tile at `slot`, if any.
+    #[must_use]
     pub fn tile_at_level(&self, slot: CellLevel) -> Option<TerrainUuid> {
         self.painted.get(&slot).copied()
     }
 
-                pub fn painted(&self) -> impl Iterator<Item = (&CellLevel, &TerrainUuid)> {
+    /// Iterate all painted slots.
+    pub fn painted(&self) -> impl Iterator<Item = (&CellLevel, &TerrainUuid)> {
         self.painted.iter()
     }
 
-            #[must_use]
+    /// Number of painted slots.
+    #[must_use]
     pub fn painted_count(&self) -> usize {
         self.painted.len()
     }
@@ -82,16 +91,16 @@ mod tests {
 
     use super::EditorMap;
 
-            fn small_size() -> GridSize {
+    fn small_size() -> GridSize {
         GridSize::new(GridWidth::new(4), GridHeight::new(4), GridLevels::new(2))
             .unwrap_or_else(|_| GridSize::default())
     }
 
-        const fn key(n: u128) -> TerrainUuid {
+    const fn key(n: u128) -> TerrainUuid {
         TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(n))
     }
 
-        #[test]
+    #[test]
     fn in_bounds_paint_is_recorded_and_read_back() {
         let mut map = EditorMap::new();
         assert_eq!(
@@ -114,7 +123,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn repaint_overwrites_the_same_cell() {
         let mut map = EditorMap::new();
         let cell = Cell::new(0, 0);
@@ -132,7 +141,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn out_of_bounds_paint_is_clamped_out() {
         let mut map = EditorMap::new();
         let size = small_size();
@@ -157,10 +166,10 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn level_aware_paint_is_storey_scoped_and_clamped() {
         let mut map = EditorMap::new();
-        let size = small_size(); 
+        let size = small_size();
         let ground = CellLevel::new(Cell::new(1, 1), Level::new(0));
         let above = CellLevel::new(Cell::new(1, 1), Level::new(1));
 

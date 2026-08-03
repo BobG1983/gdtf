@@ -1,3 +1,5 @@
+//! Drain pending intents into sim messages and selection updates.
+
 use bevy::prelude::*;
 use gdtf_battle_presenter::{ActiveLevel, PlaybackGate, ViewMode};
 use gdtf_battle_sim::{
@@ -24,6 +26,7 @@ use crate::{
               `SelectionCycleReads`). Bundling the gate into one of those would attach it to \
               an unrelated concern"
 )]
+/// Dispatch each pending intent when the playback gate allows it.
 pub fn dispatch_act_intents(
     gate: PlaybackGate,
     mut pending: ResMut<PendingActIntent>,

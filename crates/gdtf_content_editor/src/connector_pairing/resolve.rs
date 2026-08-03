@@ -1,6 +1,9 @@
+//! Resolve up-connector tiles and their down counterparts.
+
 use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::terrain::def::{TerrainDefRegistry, TerrainUuid};
 
+/// Whether `tile` is an up-connector by graphic role.
 #[must_use]
 pub fn is_up_connector(registry: &TerrainDefRegistry, tile: &TerrainUuid) -> bool {
     graphic_name(registry, tile)
@@ -8,6 +11,7 @@ pub fn is_up_connector(registry: &TerrainDefRegistry, tile: &TerrainUuid) -> boo
         .is_some_and(TileRole::is_up_connector)
 }
 
+/// Find the down-connector terrain key for an up-connector tile, if any.
 #[must_use]
 pub fn resolve_down_counterpart(
     registry: &TerrainDefRegistry,

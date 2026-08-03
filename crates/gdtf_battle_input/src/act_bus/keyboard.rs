@@ -1,3 +1,5 @@
+//! Keyboard systems that push act intents.
+
 use bevy::{input_focus::InputFocus, prelude::*};
 
 use crate::{
@@ -5,6 +7,7 @@ use crate::{
     focus_bridge::{PanelNavOrder, focused_panel_button},
 };
 
+/// Push level-up / level-down intents from bound keys.
 pub fn level_keys(
     keys: Res<ButtonInput<KeyCode>>,
     binds: Res<Keybinds>,
@@ -18,6 +21,7 @@ pub fn level_keys(
     }
 }
 
+/// Push toggle-full-view intent from the bound key.
 pub fn full_view_key(
     keys: Res<ButtonInput<KeyCode>>,
     binds: Res<Keybinds>,
@@ -28,6 +32,7 @@ pub fn full_view_key(
     }
 }
 
+/// Clear selection when Escape is pressed and no panel button has focus.
 pub fn select_clear_key(
     keys: Res<ButtonInput<KeyCode>>,
     binds: Res<Keybinds>,
@@ -43,6 +48,7 @@ pub fn select_clear_key(
     }
 }
 
+/// Stance cycle, aim toggle, and facing cycle for the selected shooter.
 pub fn posture_keys(
     keys: Res<ButtonInput<KeyCode>>,
     binds: Res<Keybinds>,
@@ -63,6 +69,7 @@ pub fn posture_keys(
     }
 }
 
+/// Cycle selection next/prev; Shift+Tab reverses direction.
 pub fn cycle_selection_keys(
     keys: Res<ButtonInput<KeyCode>>,
     binds: Res<Keybinds>,

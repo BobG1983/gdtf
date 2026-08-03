@@ -1,27 +1,36 @@
+//! Contextual act seam: pending targets and drain into sim requests.
+
 use bevy::{ecs::message::Message, prelude::*};
 use gdtf_battle_presenter::PlaybackGate;
 use gdtf_battle_sim::prelude::BattleInProgress;
 
 use crate::{InputSystems, SelectedShooter, intent::dispatch_act_intents};
 
+/// UI slot rank for ordering contextual act buttons.
 #[derive(Deref, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct SlotRank(u8);
 
 impl SlotRank {
-        #[must_use]
+    /// Build from a zero-based rank.
+    #[must_use]
     pub const fn new(rank: u8) -> Self {
         Self(rank)
     }
 }
 
+/// Trait implemented by each contextual act family.
 pub trait ContextualAct: Send + Sync + 'static {
-                        type Target: Copy + PartialEq + core::fmt::Debug + Send + Sync + 'static;
+    /// Target type (entity, cell, etc.).
+    type Target: Copy + PartialEq + core::fmt::Debug + Send + Sync + 'static;
 
-            type Requested: Message;
+    /// Sim request message written when the act fires.
+    type Requested: Message;
 
-                        fn request(actor: Entity, target: Self::Target) -> Self::Requested;
+    /// Build the sim request for `actor` and `target`.
+    fn request(actor: Entity, target: Self::Target) -> Self::Requested;
 }
 
+/// Pending targets queued for contextual act `A`.
 #[derive(Resource, Debug)]
 pub struct PendingContextualIntents<A: ContextualAct>(Vec<A::Target>);
 
@@ -32,25 +41,30 @@ impl<A: ContextualAct> Default for PendingContextualIntents<A> {
 }
 
 impl<A: ContextualAct> PendingContextualIntents<A> {
-                            pub fn push(&mut self, target: A::Target) {
+    /// Queue a target for later drain.
+    pub fn push(&mut self, target: A::Target) {
         self.0.push(target);
     }
 
-                        pub(crate) fn drain(&mut self) -> Vec<A::Target> {
+    pub(crate) fn drain(&mut self) -> Vec<A::Target> {
         core::mem::take(&mut self.0)
     }
 
-        #[must_use]
+    /// Whether no targets are pending.
+    #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 }
 
+/// System set for draining contextual act queues.
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ContextualActSystems {
-        Drain,
+    /// Drain pending targets into sim requests.
+    Drain,
 }
 
+/// Write sim requests for each pending target when the playback gate is open.
 pub fn drain_contextual_intents<A: ContextualAct>(
     gate: PlaybackGate,
     mut pending: ResMut<PendingContextualIntents<A>>,
@@ -67,8 +81,10 @@ pub fn drain_contextual_intents<A: ContextualAct>(
     }
 }
 
+/// App extension to register a contextual act family.
 pub trait ContextualActAppExt {
-                                fn add_contextual_act<A: ContextualAct>(&mut self) -> &mut Self;
+    /// Init pending resource, message, and drain system for `A`.
+    fn add_contextual_act<A: ContextualAct>(&mut self) -> &mut Self;
 }
 
 impl ContextualActAppExt for App {
@@ -84,6 +100,7 @@ impl ContextualActAppExt for App {
     }
 }
 
+/// Place contextual act drains in the Gather set before intent dispatch.
 pub fn configure_contextual_act_drains(app: &mut App) {
     app.configure_sets(
         Update,

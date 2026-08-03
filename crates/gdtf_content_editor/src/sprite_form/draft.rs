@@ -1,4 +1,5 @@
-//! the loader type means every authored field round-trips by construction). Every edit
+//! Sprite form draft resource.
+
 use bevy::prelude::*;
 use gdtf_content_families::sprites::{
     SpriteAnchor, SpriteAnimation, SpriteDef, SpriteFacing, SpriteFacings, SpriteFps,
@@ -9,69 +10,78 @@ const SEED_FPS: SpriteFps = SpriteFps::new(1.0);
 
 const fn seed_def() -> SpriteDef {
     SpriteDef {
-        source:    SpriteSource::File(SpriteImagePath::new(String::new())),
-        anchor:    SpriteAnchor {
+        source: SpriteSource::File(SpriteImagePath::new(String::new())),
+        anchor: SpriteAnchor {
             x: SpritePx::new(0),
             y: SpritePx::new(0),
         },
-        facings:   None,
+        facings: None,
         animation: None,
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum AutoloadState {
-        Pending,
-        Done,
+    Pending,
+    Done,
 }
 
+/// In-progress sprite being authored.
 #[derive(Resource, Clone, PartialEq, Debug)]
 pub struct SpriteDraft {
-        name:     String,
-        def:      SpriteDef,
-        autoload: AutoloadState,
+    name: String,
+    def: SpriteDef,
+    autoload: AutoloadState,
 }
 
 impl SpriteDraft {
-                    #[must_use]
+    /// Empty draft ready for a new sprite.
+    #[must_use]
     pub const fn new_sprite() -> Self {
         Self {
-            name:     String::new(),
-            def:      seed_def(),
+            name: String::new(),
+            def: seed_def(),
             autoload: AutoloadState::Done,
         }
     }
 
-                #[must_use]
+    /// Whether the form should still try to autoload from the registry.
+    #[must_use]
     pub const fn autoload_pending(&self) -> bool {
         matches!(self.autoload, AutoloadState::Pending)
     }
 
-            pub const fn mark_autoloaded(&mut self) {
+    /// Mark autoload complete.
+    pub const fn mark_autoloaded(&mut self) {
         self.autoload = AutoloadState::Done;
     }
 
-                            pub fn load_sprite(&mut self, name: &SpriteName, def: &SpriteDef) {
+    /// Load an existing sprite into the draft.
+    pub fn load_sprite(&mut self, name: &SpriteName, def: &SpriteDef) {
         name.as_str().clone_into(&mut self.name);
         self.def = def.clone();
         self.autoload = AutoloadState::Done;
     }
 
-        #[must_use]
+    /// Display name.
+    #[must_use]
     pub fn name(&self) -> &str {
         &self.name
     }
 
-        pub fn set_name(&mut self, name: String) {
+    /// Set the display name.
+    pub fn set_name(&mut self, name: String) {
         self.name = name;
     }
 
-            #[must_use]
+    /// Full sprite def.
+    #[must_use]
     pub const fn def(&self) -> &SpriteDef {
         &self.def
     }
 
-                                #[must_use]
+    /// Sheet rect size used to clamp the anchor, if any.
+    #[must_use]
     pub const fn anchor_bounds(&self) -> Option<(SpritePx, SpritePx)> {
         match &self.def.source {
             SpriteSource::File(_) => None,
@@ -79,7 +89,8 @@ impl SpriteDraft {
         }
     }
 
-                    pub fn set_anchor(&mut self, x: SpritePx, y: SpritePx) {
+    /// Set the anchor, clamped to sheet bounds when present.
+    pub fn set_anchor(&mut self, x: SpritePx, y: SpritePx) {
         self.def.anchor = match self.anchor_bounds() {
             Some((w, h)) => SpriteAnchor {
                 x: SpritePx::new((*x).min(*w)),
@@ -89,18 +100,21 @@ impl SpriteDraft {
         };
     }
 
-                pub fn set_base_source(&mut self, source: SpriteSource) {
+    /// Replace the base source and re-clamp the anchor.
+    pub fn set_base_source(&mut self, source: SpriteSource) {
         self.def.source = source;
         let SpriteAnchor { x, y } = self.def.anchor;
         self.set_anchor(x, y);
     }
 
-            #[must_use]
+    /// Facing override source, if any.
+    #[must_use]
     pub fn facing_override(&self, facing: SpriteFacing) -> Option<&SpriteSource> {
         self.def.facings.as_ref().and_then(|map| map.get(&facing))
     }
 
-                pub fn set_facing_override(&mut self, facing: SpriteFacing, source: Option<SpriteSource>) {
+    /// Set or clear a facing override.
+    pub fn set_facing_override(&mut self, facing: SpriteFacing, source: Option<SpriteSource>) {
         let mut entries: Vec<(SpriteFacing, SpriteSource)> = self
             .def
             .facings
@@ -114,26 +128,30 @@ impl SpriteDraft {
         self.def.facings = (!entries.is_empty()).then(|| SpriteFacings::new(entries));
     }
 
-                    pub fn enable_animation(&mut self) {
+    /// Enable animation with one frame copied from the base source.
+    pub fn enable_animation(&mut self) {
         if self.def.animation.is_none() {
             self.def.animation = Some(SpriteAnimation {
-                fps:    SEED_FPS,
+                fps: SEED_FPS,
                 frames: vec![self.def.source.clone()],
             });
         }
     }
 
-        pub fn disable_animation(&mut self) {
+    /// Disable animation.
+    pub fn disable_animation(&mut self) {
         self.def.animation = None;
     }
 
-        pub const fn set_fps(&mut self, fps: SpriteFps) {
+    /// Set animation FPS when animation is enabled.
+    pub const fn set_fps(&mut self, fps: SpriteFps) {
         if let Some(animation) = &mut self.def.animation {
             animation.fps = fps;
         }
     }
 
-                pub fn add_frame(&mut self) {
+    /// Append a frame (copy of last or base source).
+    pub fn add_frame(&mut self) {
         let base = self.def.source.clone();
         if let Some(animation) = &mut self.def.animation {
             let next = animation.frames.last().cloned().unwrap_or(base);
@@ -141,7 +159,8 @@ impl SpriteDraft {
         }
     }
 
-                pub fn remove_frame(&mut self, index: usize) {
+    /// Remove a frame when more than one remains.
+    pub fn remove_frame(&mut self, index: usize) {
         if let Some(animation) = &mut self.def.animation
             && animation.frames.len() > 1
             && index < animation.frames.len()
@@ -150,7 +169,8 @@ impl SpriteDraft {
         }
     }
 
-            pub fn move_frame_up(&mut self, index: usize) {
+    /// Move a frame one slot toward the start.
+    pub fn move_frame_up(&mut self, index: usize) {
         if let Some(animation) = &mut self.def.animation
             && index > 0
             && index < animation.frames.len()
@@ -159,7 +179,8 @@ impl SpriteDraft {
         }
     }
 
-            pub fn move_frame_down(&mut self, index: usize) {
+    /// Move a frame one slot toward the end.
+    pub fn move_frame_down(&mut self, index: usize) {
         if let Some(animation) = &mut self.def.animation
             && index + 1 < animation.frames.len()
         {
@@ -167,7 +188,8 @@ impl SpriteDraft {
         }
     }
 
-            pub fn set_frame(&mut self, index: usize, source: SpriteSource) {
+    /// Replace one animation frame source.
+    pub fn set_frame(&mut self, index: usize, source: SpriteSource) {
         if let Some(animation) = &mut self.def.animation
             && let Some(frame) = animation.frames.get_mut(index)
         {
@@ -177,10 +199,10 @@ impl SpriteDraft {
 }
 
 impl Default for SpriteDraft {
-                    fn default() -> Self {
+    fn default() -> Self {
         Self {
-            name:     String::new(),
-            def:      seed_def(),
+            name: String::new(),
+            def: seed_def(),
             autoload: AutoloadState::Pending,
         }
     }
