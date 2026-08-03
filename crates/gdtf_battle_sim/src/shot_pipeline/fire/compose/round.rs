@@ -1,3 +1,5 @@
+//! Resolve one round inside a volley: cone, march, primary hit, splash.
+
 use bevy::prelude::Entity;
 
 use super::{
@@ -23,15 +25,17 @@ use crate::{
     weapon::FireModeSpec,
 };
 
+/// Target position, stance, and cover band for aim.
 #[derive(Debug, Clone, Copy)]
 pub(in crate::shot_pipeline::fire) struct TargetGeometry {
-    position:   Position,
-    stance:     Stance,
+    position: Position,
+    stance: Stance,
     cover_band: Option<crate::cover::HeightBand>,
 }
 
 impl TargetGeometry {
-                                            pub(in crate::shot_pipeline::fire) fn compose(
+    /// Build geometry from the ordered target cell and current cover/occupancy.
+    pub(in crate::shot_pipeline::fire) fn compose(
         target_cell: Cell,
         target_level: Level,
         cover: &CoverLedger,
@@ -43,20 +47,22 @@ impl TargetGeometry {
             .map(|entry| entry.height_band)
             .or_else(|| occupancy.occupant_band(&at));
         Self {
-            position:   Position::new(at),
-            stance:     Stance::new(StanceKind::Standing),
+            position: Position::new(at),
+            stance: Stance::new(StanceKind::Standing),
             cover_band: aim_band,
         }
     }
 }
 
+/// Inputs fixed for every round in the volley.
 #[derive(Clone, Copy)]
 pub(in crate::shot_pipeline::fire) struct RoundSetup<'a> {
     pub(in crate::shot_pipeline::fire) snapshot: &'a ShooterSnapshot,
     pub(in crate::shot_pipeline::fire) geometry: TargetGeometry,
-    pub(in crate::shot_pipeline::fire) mode:     &'a FireModeSpec,
+    pub(in crate::shot_pipeline::fire) mode: &'a FireModeSpec,
 }
 
+/// Resolve one round: build cone, march, fold primary hit, apply AOE splash.
 #[expect(
     clippy::too_many_arguments,
     reason = "the GTW-323 armor-relationship adds the disjoint wears/pieces queries to \
