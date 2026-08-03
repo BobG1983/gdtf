@@ -6,16 +6,23 @@ use super::{
     limits::{FrameLen, MAX_FRAME_LEN, PREFIX_BYTES},
 };
 
+/// One decoded payload (bytes after the length prefix).
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Frame(Vec<u8>);
 
 impl Frame {
-        #[must_use]
+    /// Borrow the payload bytes.
+    #[must_use]
     pub fn payload(&self) -> &[u8] {
         &self.0
     }
 
-                            pub fn decode<T: DeserializeOwned>(&self) -> Result<T, WireError> {
+    /// Deserialize the payload as compact RON into `T`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WireError::Malformed`] if the bytes are not UTF-8 or not valid RON for `T`.
+    pub fn decode<T: DeserializeOwned>(&self) -> Result<T, WireError> {
         let Ok(text) = core::str::from_utf8(&self.0) else {
             return Err(WireError::Malformed);
         };
@@ -23,14 +30,16 @@ impl Frame {
     }
 }
 
+/// Streaming length-prefix frame decoder.
 #[derive(Debug, Default)]
 pub struct FrameDecoder {
-        buffer: Vec<u8>,
-            poison: Option<WireError>,
+    buffer: Vec<u8>,
+    poison: Option<WireError>,
 }
 
 impl FrameDecoder {
-        #[must_use]
+    /// Empty decoder.
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             buffer: Vec::new(),
@@ -38,11 +47,18 @@ impl FrameDecoder {
         }
     }
 
-                pub fn push(&mut self, bytes: &[u8]) {
+    /// Append bytes from the socket.
+    pub fn push(&mut self, bytes: &[u8]) {
         self.buffer.extend_from_slice(bytes);
     }
 
-                                        pub fn next_frame(&mut self) -> Result<Option<Frame>, WireError> {
+    /// Pull the next complete frame, if any.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WireError::Oversize`] when a declared length exceeds the max frame size;
+    /// the decoder stays poisoned and keeps returning that error on later calls.
+    pub fn next_frame(&mut self) -> Result<Option<Frame>, WireError> {
         if let Some(err) = self.poison {
             return Err(err);
         }
