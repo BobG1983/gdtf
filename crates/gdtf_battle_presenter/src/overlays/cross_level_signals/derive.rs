@@ -1,3 +1,5 @@
+//! Derive cross-level badges from live sim facts.
+
 use bevy::{ecs::system::SystemParam, platform::collections::HashSet, prelude::*};
 use gdtf_battle_sim::{
     battle::PlayerFaction,
@@ -13,18 +15,20 @@ use super::{
 };
 use crate::{ActiveLevel, TerrainSprite};
 
+/// Bundled sim queries used to derive cross-level signals.
 #[derive(SystemParam)]
 pub struct CrossLevelSimFacts<'w, 's> {
-        active:    Res<'w, ActiveLevel>,
-            squad:     Option<Res<'w, SquadVisibility>>,
-            player:    Option<Res<'w, PlayerFaction>>,
-        gangers:   Query<'w, 's, (&'static Position, &'static Faction, &'static LifeState)>,
-        surface:   Option<Res<'w, SurfaceGrid>>,
-        occupancy: Option<Res<'w, OccupancyGrid>>,
-        graph:     Option<Res<'w, VerticalLinkGraph>>,
-            terrain:   Query<'w, 's, &'static TerrainSprite>,
+    active: Res<'w, ActiveLevel>,
+    squad: Option<Res<'w, SquadVisibility>>,
+    player: Option<Res<'w, PlayerFaction>>,
+    gangers: Query<'w, 's, (&'static Position, &'static Faction, &'static LifeState)>,
+    surface: Option<Res<'w, SurfaceGrid>>,
+    occupancy: Option<Res<'w, OccupancyGrid>>,
+    graph: Option<Res<'w, VerticalLinkGraph>>,
+    terrain: Query<'w, 's, &'static TerrainSprite>,
 }
 
+/// Rebuild [`CrossLevelSignals`] from threats, drop depths, and connectors.
 pub fn derive_cross_level_signals(
     mut signals: ResMut<CrossLevelSignals>,
     facts: CrossLevelSimFacts,

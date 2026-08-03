@@ -1,3 +1,5 @@
+//! Full-map static terrain tile spawn on battle ready / view change.
+
 use bevy::{
     camera::visibility::RenderLayers,
     ecs::template::template,
@@ -20,9 +22,11 @@ use super::{
 };
 use crate::{TerrainFogMaterial, cell_to_world};
 
+/// Marker on a static terrain tile, holding its cell.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TerrainSprite {
-        pub at: CellLevel,
+    /// Cell and storey this tile represents.
+    pub at: CellLevel,
 }
 
 #[expect(
@@ -32,6 +36,7 @@ pub struct TerrainSprite {
               further grouping into SystemParam bundles would not reduce the count and \
               would obscure the per-arg docs"
 )]
+/// Despawn and respawn all terrain tiles for the visible storey band.
 pub fn draw_static_battlefield(
     mut commands: Commands,
     map: StaticMap,
