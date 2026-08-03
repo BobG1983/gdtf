@@ -1,3 +1,5 @@
+//! Hot-reload a Bevy resource from a RON asset path.
+
 mod chain;
 mod ext;
 mod handle;
