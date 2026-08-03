@@ -1,51 +1,55 @@
+//! String newtypes used by injury content.
+
 use bevy::prelude::Deref;
 use serde::{Deserialize, Serialize};
 
-// INJURY authoring mode writes an edited `InjuryDef` / `InjuryWeighting` back to
-
-/// value): private inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare
+/// Stable injury name key.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct InjuryName(String);
 
 impl InjuryName {
-        #[must_use]
+    /// Build from a string.
+    #[must_use]
     pub const fn new(name: String) -> Self {
         Self(name)
     }
 }
 
-/// [`Deref`]; `#[serde(transparent)]` parses a bare RON string. The presenter
+/// Short text shown in a UI popup when the injury is inflicted.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct PopupText(String);
 
 impl PopupText {
-        #[must_use]
+    /// Build from a string.
+    #[must_use]
     pub const fn new(text: String) -> Self {
         Self(text)
     }
 }
 
-/// `#[serde(transparent)]` parses a bare RON string.
+/// Text written to the act log.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct LogText(String);
 
 impl LogText {
-        #[must_use]
+    /// Build from a string.
+    #[must_use]
     pub const fn new(text: String) -> Self {
         Self(text)
     }
 }
 
-/// `#[serde(transparent)]` parses a bare RON string.
+/// Longer description shown when inspecting the injury.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct InspectText(String);
 
 impl InspectText {
-        #[must_use]
+    /// Build from a string.
+    #[must_use]
     pub const fn new(text: String) -> Self {
         Self(text)
     }
