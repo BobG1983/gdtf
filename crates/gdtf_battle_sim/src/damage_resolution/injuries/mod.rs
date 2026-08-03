@@ -1,3 +1,5 @@
+//! Injury definitions, weighted tables, rolls, and the ledger of active injuries.
+
 pub mod context;
 pub mod def;
 pub mod hands;

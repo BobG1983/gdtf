@@ -1,33 +1,45 @@
-//! The authored per-injury record [`InjuryDef`] and its parsed-but-unread
+//! Authored injury definition loaded from content.
+
 use bevy::reflect::TypePath;
 use serde::{Deserialize, Serialize};
 
 use super::{InjuryEffect, InjuryName, InspectText, LogText, PopupText};
 use crate::{armor::InjuryCategory, severity::Severity};
 
+/// What happens after this injury is healed.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Deserialize, Serialize)]
 pub enum PostHeal {
-            #[default]
+    /// Effects stay until something else clears them.
+    #[default]
     Deferred,
 }
 
 impl PostHeal {
-        /// `#[serde(default = "PostHeal::deferred")]` source so an authored injury may
-        #[must_use]
+    /// Default used by serde when the field is omitted.
+    #[must_use]
     pub const fn deferred() -> Self {
         Self::Deferred
     }
 }
 
+/// One authored injury record.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, TypePath)]
 pub struct InjuryDef {
-            pub name:         InjuryName,
-            pub category:     InjuryCategory,
-        pub severity:     Severity,
-        pub popup_text:   PopupText,
-        pub log_text:     LogText,
-        pub inspect_text: InspectText,
-        pub effects:      Vec<InjuryEffect>,
-                #[serde(default = "PostHeal::deferred")]
-    pub post_heal:    PostHeal,
+    /// Stable name key.
+    pub name: InjuryName,
+    /// Body-part category this injury belongs to.
+    pub category: InjuryCategory,
+    /// Severity tier.
+    pub severity: Severity,
+    /// Short text for UI popups.
+    pub popup_text: PopupText,
+    /// Text for the act log.
+    pub log_text: LogText,
+    /// Longer inspect text.
+    pub inspect_text: InspectText,
+    /// Effects applied when the injury is gained.
+    pub effects: Vec<InjuryEffect>,
+    /// Behavior after healing.
+    #[serde(default = "PostHeal::deferred")]
+    pub post_heal: PostHeal,
 }
