@@ -1,4 +1,4 @@
-//! Query and SystemParam bundles for melee dispatch.
+//! Query and `SystemParam` bundles for melee dispatch.
 
 use bevy::{
     ecs::system::SystemParam,
