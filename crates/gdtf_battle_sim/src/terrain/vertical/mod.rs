@@ -1,6 +1,5 @@
-//! Vertical-link graph: the model's authored **stair / ladder** links between
-//! (`docs/combat/combat.md`: "gangers change storeys **only over authored
-//! into the movement graph)"). The authored situation carries these stair/ladder
+//! Vertical links: authored stairs and ladders between storeys.
+
 mod graph;
 mod links;
 mod traverse;
