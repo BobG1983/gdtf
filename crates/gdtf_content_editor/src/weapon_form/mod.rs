@@ -1,4 +1,4 @@
-//! The RANGED-WEAPON authoring mode's MODEL half (GTW-670) — the Workbench form that
+//! Ranged weapon authoring mode — draft and save.
 mod draft;
 mod save;
 
