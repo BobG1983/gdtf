@@ -1,4 +1,5 @@
-//! The [`SlabLedger`] resource — the sim's single authoritative store of slab
+//! Slab ledger resource: insert, peek, and deplete slab HP.
+
 use bevy::{platform::collections::HashMap, prelude::Resource};
 
 use crate::{
@@ -7,24 +8,28 @@ use crate::{
     tuning::SlabDefaults,
 };
 
+/// Authoritative store of slab structural HP by cell.
 #[derive(Resource, Debug, Clone, Default)]
 pub struct SlabLedger {
-                    entries: HashMap<CellLevel, SlabEntry>,
+    entries: HashMap<CellLevel, SlabEntry>,
 }
 
 impl SlabLedger {
-            #[must_use]
+    /// Empty ledger.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             entries: HashMap::default(),
         }
     }
 
-                                        pub fn insert(&mut self, key: CellLevel, entry: SlabEntry) {
+    /// Insert or replace a slab entry.
+    pub fn insert(&mut self, key: CellLevel, entry: SlabEntry) {
         self.entries.insert(key, entry);
     }
 
-                                    pub fn entry_seeded(&mut self, key: CellLevel, prototype: SlabEntry) -> SlabEntry {
+    /// Get the entry, seeding from a prototype if missing.
+    pub fn entry_seeded(&mut self, key: CellLevel, prototype: SlabEntry) -> SlabEntry {
         *self.entries.entry(key).or_insert(SlabEntry::seeded(
             prototype.max_hp,
             prototype.armor_protection,
@@ -32,16 +37,19 @@ impl SlabLedger {
         ))
     }
 
-                        pub fn current_for(&mut self, key: CellLevel, prototype: SlabEntry) -> super::SlabHp {
+    /// Current HP, seeding if needed.
+    pub fn current_for(&mut self, key: CellLevel, prototype: SlabEntry) -> super::SlabHp {
         self.entry_seeded(key, prototype).current_hp
     }
 
-                        #[must_use]
+    /// Read-only view of an existing entry.
+    #[must_use]
     pub fn peek(&self, key: &CellLevel) -> Option<&SlabEntry> {
         self.entries.get(key)
     }
 
-                                            #[must_use]
+    /// Default prototype from tuning defaults.
+    #[must_use]
     pub fn prototype_for(_key: CellLevel, defaults: &SlabDefaults) -> SlabEntry {
         SlabEntry::seeded(
             defaults.hp(),
@@ -50,7 +58,8 @@ impl SlabLedger {
         )
     }
 
-                                                                            pub fn deplete_slab(
+    /// Apply damage; returns Damaged or Destroyed.
+    pub fn deplete_slab(
         &mut self,
         cell_level: CellLevel,
         damage: SlabDamage,

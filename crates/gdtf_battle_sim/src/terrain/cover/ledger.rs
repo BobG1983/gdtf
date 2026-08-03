@@ -1,4 +1,5 @@
-//! The [`CoverLedger`] resource — the sim's single authoritative store of cover
+//! Cover ledger resource: insert, peek, and deplete cover HP.
+
 use bevy::{platform::collections::HashMap, prelude::Resource};
 
 use crate::{
@@ -10,24 +11,28 @@ use crate::{
     tuning::CombatTuning,
 };
 
+/// Authoritative store of cover structural HP by cell.
 #[derive(Resource, Debug, Clone, Default)]
 pub struct CoverLedger {
-                entries: HashMap<CellLevel, CoverEntry>,
+    entries: HashMap<CellLevel, CoverEntry>,
 }
 
 impl CoverLedger {
-            #[must_use]
+    /// Empty ledger.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             entries: HashMap::default(),
         }
     }
 
-                                    pub fn insert(&mut self, key: CellLevel, entry: CoverEntry) {
+    /// Insert or replace a cover entry.
+    pub fn insert(&mut self, key: CellLevel, entry: CoverEntry) {
         self.entries.insert(key, entry);
     }
 
-                                    pub fn entry_seeded(&mut self, key: CellLevel, prototype: CoverEntry) -> CoverEntry {
+    /// Get the entry, seeding from a prototype if missing.
+    pub fn entry_seeded(&mut self, key: CellLevel, prototype: CoverEntry) -> CoverEntry {
         *self.entries.entry(key).or_insert(CoverEntry::seeded(
             prototype.max_hp,
             prototype.height_band,
@@ -36,16 +41,19 @@ impl CoverLedger {
         ))
     }
 
-                            pub fn current_for(&mut self, key: CellLevel, prototype: CoverEntry) -> CoverHp {
+    /// Current HP, seeding if needed.
+    pub fn current_for(&mut self, key: CellLevel, prototype: CoverEntry) -> CoverHp {
         self.entry_seeded(key, prototype).current_hp
     }
 
-                        #[must_use]
+    /// Read-only view of an existing entry.
+    #[must_use]
     pub fn peek(&self, key: &CellLevel) -> Option<&CoverEntry> {
         self.entries.get(key)
     }
 
-                                                                                                pub fn deplete_cover(
+    /// Apply damage; returns Damaged or Destroyed.
+    pub fn deplete_cover(
         &mut self,
         cell_level: CellLevel,
         damage: CoverDamage,
