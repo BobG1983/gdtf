@@ -1,22 +1,29 @@
-//! `initialize_renderer` → `request_adapter().expect("Unable to find a GPU!")` — PANICS
+//! Probe whether a GPU adapter is available for real-GPU tests.
+
 use bevy::tasks::block_on;
 use wgpu::{Instance, RequestAdapterOptions};
 
+/// Env var that forces the probe to report absent (skip path).
 pub const FORCE_NO_GPU_ENV: &str = "GDTF_TEST_FORCE_NO_GPU";
 
+/// Result of a GPU adapter probe.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum GpuAdapterProbe {
-            Present,
-                Absent,
+    /// An adapter was found.
+    Present,
+    /// No adapter (or forced absent).
+    Absent,
 }
 
 impl GpuAdapterProbe {
-        #[must_use]
+    /// Whether an adapter is present.
+    #[must_use]
     pub const fn is_present(self) -> bool {
         matches!(self, Self::Present)
     }
 
-            #[must_use]
+    /// Whether the caller should skip real-GPU tests.
+    #[must_use]
     pub const fn should_skip(self) -> bool {
         matches!(self, Self::Absent)
     }
@@ -36,12 +43,13 @@ fn force_no_gpu() -> bool {
     force_value_is_on(std::env::var(FORCE_NO_GPU_ENV).ok().as_deref())
 }
 
+/// Probe for a GPU adapter, honoring [`FORCE_NO_GPU_ENV`].
 #[must_use]
 pub fn gpu_adapter_probe() -> GpuAdapterProbe {
     gpu_adapter_probe_forced(force_no_gpu())
 }
 
-/// `.expect("Unable to find a GPU!")`. The request returns a `Result`;
+/// Probe for a GPU adapter; when `force_absent` is true, always returns [`GpuAdapterProbe::Absent`].
 #[must_use]
 pub fn gpu_adapter_probe_forced(force_absent: bool) -> GpuAdapterProbe {
     if force_absent {
@@ -63,7 +71,7 @@ pub fn gpu_adapter_probe_forced(force_absent: bool) -> GpuAdapterProbe {
 mod tests {
     use super::{GpuAdapterProbe, force_value_is_on, gpu_adapter_probe_forced};
 
-                                #[test]
+    #[test]
     fn force_no_gpu_hook_reports_absent_without_panicking() {
         let verdict = gpu_adapter_probe_forced(true);
         assert_eq!(
@@ -83,7 +91,7 @@ mod tests {
         let _real = gpu_adapter_probe_forced(false);
     }
 
-            #[test]
+    #[test]
     fn force_value_maps_env_string_to_on_off() {
         for on in ["1", "true", "TRUE", "yes", " on "] {
             assert!(force_value_is_on(Some(on)), "{on:?} must read as ON");
