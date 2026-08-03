@@ -1,3 +1,5 @@
+//! Pending TU / facing / magazine overlays within one reaction pass.
+
 use bevy::{platform::collections::HashMap, prelude::Entity};
 
 use crate::{
@@ -7,16 +9,18 @@ use crate::{
     weapon::ModeShots,
 };
 
+/// Predicted state after a successful interrupt (before ECS writeback).
 pub(super) struct InterruptCommit {
-        reactor:        Entity,
-        weapon:         Entity,
-        tu_after:       Tu,
-        facing_after:   Facing,
-        magazine_after: Magazine,
+    reactor: Entity,
+    weapon: Entity,
+    tu_after: Tu,
+    facing_after: Facing,
+    magazine_after: Magazine,
 }
 
 impl InterruptCommit {
-                            #[must_use]
+    /// Project post-interrupt TU, facing, and magazine.
+    #[must_use]
     pub(super) fn predict(
         reactor: Entity,
         weapon: Entity,
@@ -43,43 +47,44 @@ impl InterruptCommit {
 }
 
 struct ReactorOverlay {
-        tu:     Tu,
-        facing: Facing,
+    tu: Tu,
+    facing: Facing,
 }
 
+/// Tracks spends so multiple interrupts in one pass see updated state.
 #[derive(Default)]
 pub(super) struct PendingSpendLedger {
-        overlays:  HashMap<Entity, ReactorOverlay>,
-            magazines: HashMap<Entity, Magazine>,
+    overlays: HashMap<Entity, ReactorOverlay>,
+    magazines: HashMap<Entity, Magazine>,
 }
 
 impl PendingSpendLedger {
-            #[must_use]
+    #[must_use]
     pub(super) fn tu_of(&self, reactor: Entity, settled: Tu) -> Tu {
         self.overlays
             .get(&reactor)
             .map_or(settled, |overlay| overlay.tu)
     }
 
-            #[must_use]
+    #[must_use]
     pub(super) fn facing_of(&self, reactor: Entity, settled: Facing) -> Facing {
         self.overlays
             .get(&reactor)
             .map_or(settled, |overlay| overlay.facing)
     }
 
-                #[must_use]
+    #[must_use]
     pub(super) fn magazine_of(&self, weapon: Entity, live: Magazine) -> Magazine {
         self.magazines
             .get(&weapon)
             .map_or(live, |magazine| *magazine)
     }
 
-            pub(super) fn commit(&mut self, commit: InterruptCommit) {
+    pub(super) fn commit(&mut self, commit: InterruptCommit) {
         self.overlays.insert(
             commit.reactor,
             ReactorOverlay {
-                tu:     commit.tu_after,
+                tu: commit.tu_after,
                 facing: commit.facing_after,
             },
         );
