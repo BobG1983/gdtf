@@ -1,3 +1,5 @@
+//! Apply one act-log entry to drawn state and emit played signals.
+
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_sim::{
     act_log::{ActDeed, ActEntry},
@@ -25,13 +27,14 @@ use super::{
     emit::{Played, PlayedSignals},
 };
 
+/// Mutable access to all drawn components the cursor writes.
 #[derive(SystemParam)]
 pub struct DrawnWriters<'w, 's> {
-        pub(super) positions: Query<'w, 's, &'static mut DrawnPosition>,
-        pub(super) poses:     Query<'w, 's, &'static mut DrawnPose>,
-        pub(super) lives:     Query<'w, 's, &'static mut DrawnLife>,
-        pub(super) vitals:    Query<'w, 's, &'static mut DrawnVitals>,
-        pub(super) magazines: Query<'w, 's, &'static mut DrawnMagazine>,
+    pub(super) positions: Query<'w, 's, &'static mut DrawnPosition>,
+    pub(super) poses: Query<'w, 's, &'static mut DrawnPose>,
+    pub(super) lives: Query<'w, 's, &'static mut DrawnLife>,
+    pub(super) vitals: Query<'w, 's, &'static mut DrawnVitals>,
+    pub(super) magazines: Query<'w, 's, &'static mut DrawnMagazine>,
 }
 
 #[expect(
