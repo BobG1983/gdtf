@@ -1,4 +1,5 @@
-//! crate populates), this overlay reads the AUTHORITATIVE sim
+//! Field-coverage tint tiles from the sim field registry.
+
 use bevy::{camera::visibility::RenderLayers, prelude::*};
 use gdtf_battle_sim::{
     effects::fields::FieldRegistry,
@@ -11,13 +12,14 @@ use crate::{
     overlays::pool::draw_pool,
 };
 
+/// Marker on a field-coverage cell sprite.
 #[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct FieldCellSprite;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct FieldDraw {
-        cell:        CellLevel,
-        damage_type: DamageType,
+    cell: CellLevel,
+    damage_type: DamageType,
 }
 
 const FIELD_TINT_ALPHA: f32 = 0.42;
@@ -50,7 +52,7 @@ fn field_draws(fields: &FieldRegistry, active_level: Level) -> Vec<FieldDraw> {
         .iter()
         .filter(|(cell, _placed)| cell.z == active_z)
         .map(|(cell, placed)| FieldDraw {
-            cell:        *cell,
+            cell: *cell,
             damage_type: placed.def().damage_type,
         })
         .collect();
@@ -58,6 +60,7 @@ fn field_draws(fields: &FieldRegistry, active_level: Level) -> Vec<FieldDraw> {
     draws
 }
 
+/// Draw field tints for cells on the active storey.
 pub fn draw_field_overlay(
     mut commands: Commands,
     fields: Res<FieldRegistry>,
@@ -110,7 +113,7 @@ mod test {
 
     use super::{FIELD_TINT_ALPHA, field_draws, field_tint};
 
-            fn field_def(damage_type: DamageType) -> FieldDef {
+    fn field_def(damage_type: DamageType) -> FieldDef {
         FieldDef::new(
             FieldDamage::new(3),
             damage_type,
@@ -119,7 +122,7 @@ mod test {
         )
     }
 
-            fn two_storey_registry() -> FieldRegistry {
+    fn two_storey_registry() -> FieldRegistry {
         let mut registry = FieldRegistry::new();
         registry.spawn(
             CellLevel::new(Cell::new(3, 4), Level::new(0)),
@@ -132,7 +135,7 @@ mod test {
         registry
     }
 
-            #[test]
+    #[test]
     fn field_draws_hard_cuts_to_the_active_storey() {
         let registry = two_storey_registry();
 
@@ -169,7 +172,7 @@ mod test {
         );
     }
 
-            #[test]
+    #[test]
     fn field_tint_discriminates_hazard_families_at_the_overlay_alpha() {
         let chem = field_tint(DamageType::Chem).to_srgba();
         let shock = field_tint(DamageType::Shock).to_srgba();
