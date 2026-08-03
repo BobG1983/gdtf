@@ -1,4 +1,5 @@
-//! authoring/resolution/application machinery that RESOLVES a weapon's authored attachment
+//! Weapon attachments: slots, registry, fit rules, and apply systems.
+
 mod apply;
 mod commands;
 mod fit;
