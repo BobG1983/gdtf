@@ -1,3 +1,5 @@
+//! Contextual panel integration: acts, doors, layout, melee, shove, throw.
+
 mod actors;
 mod door;
 mod downed_acts;
