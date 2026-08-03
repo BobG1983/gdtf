@@ -19,10 +19,7 @@ use crate::states::{
 
 #[expect(
     clippy::too_many_arguments,
-    reason = "the params are the authored situation + seed override + the three UUID-keyed \
-              procgen registries + the live tuning + the GTW-582 integrity report + the \
-              setup writer — each a distinct Bevy SystemParam (Option<Res<_>> for the \
-              Load-state resources); the sim's setup_battle_on_request precedent"
+    reason = "authored situation, seed, procgen registries, integrity report, and setup writer are separate params"
 )]
 pub(in crate::states::running::game::battlescape::generation::battle_sim) fn request_battle_setup(
     loaded: Option<Res<LoadedSituation>>,

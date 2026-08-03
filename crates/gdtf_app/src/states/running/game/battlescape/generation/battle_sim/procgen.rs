@@ -1,6 +1,6 @@
-//! terrain with the authored situation's gangers / spawn data.
-//! This is the LIVE trigger that makes procgen drive real battles. The authored
-//! GTW-744: `skirmish.ron` authors NO inline terrain AND NO placement cells); the terrain is
+//! Merge generated terrain with the authored situation's gangers and spawn data.
+//! Live path that makes procgen drive real battles. Shipped skirmish authors no
+//! inline terrain and no placement cells; terrain comes from procgen.
 use bevy::prelude::warn;
 use gdtf_assets::{ContentFinding, FindingDetail, FindingReferrer};
 use gdtf_battle_sim::{

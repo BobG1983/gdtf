@@ -1,4 +1,4 @@
-//! The screen is authored `bsn!`-first (the GTW-322 macro path) with first-party
+//! Options screen spawn via `bsn!` with first-party widgets.
 use bevy::{
     input_focus::directional_navigation::DirectionalNavigationMap,
     math::CompassOctant,
