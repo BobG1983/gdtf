@@ -1,3 +1,5 @@
+//! Apply placement with automatic up/down connector pairing.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     level::{GridSize, ThemeUuid},
@@ -11,24 +13,33 @@ use crate::{
     placement::{ProposedPlacement, apply_placement},
 };
 
+/// Result of placing a tile that may auto-pair a connector.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PairingOutcome {
-            Rejected,
-            PlacedNoPair,
-                    PlacedPairSkipped,
-            PairPlaced {
-                down: TerrainUuid,
-                at:   CellLevel,
+    /// Placement rejected by rules.
+    Rejected,
+    /// Placed; tile is not an up connector.
+    PlacedNoPair,
+    /// Up connector placed; paired down was skipped.
+    PlacedPairSkipped,
+    /// Up connector placed and paired down placed above.
+    PairPlaced {
+        /// Down connector tile key.
+        down: TerrainUuid,
+        /// Slot where the down connector was placed.
+        at: CellLevel,
     },
 }
 
 impl PairingOutcome {
-            #[must_use]
+    /// Whether the map was modified.
+    #[must_use]
     pub const fn changed_map(&self) -> bool {
         !matches!(self, Self::Rejected)
     }
 }
 
+/// Place a tile and, if it is an up connector, try to place its down pair above.
 pub fn apply_placement_with_pairing(
     map: &mut EditorMap,
     registry: &TerrainDefRegistry,
