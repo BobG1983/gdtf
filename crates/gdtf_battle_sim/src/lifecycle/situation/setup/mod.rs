@@ -1,3 +1,5 @@
+//! Turn a situation into live battle world state.
+
 mod armor_scenes;
 mod ganger_scene;
 mod orchestrate;
