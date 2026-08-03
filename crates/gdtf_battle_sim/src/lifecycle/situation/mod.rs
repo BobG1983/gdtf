@@ -1,5 +1,5 @@
-//! The canonical authored **situation** and the setup that pours it into the
-//! [`Situation`] is the **one canonical** authored battlefield value — it
+//! Authored situation value and the setup that spawns it into a live battle.
+
 mod error;
 mod setup;
 mod spawn;
