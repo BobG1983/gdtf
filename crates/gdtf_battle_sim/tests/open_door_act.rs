@@ -1,3 +1,5 @@
+//! Open-door act: adjacency, TU cost, occupancy, and rejection paths.
+
 use bevy::{
     app::App,
     prelude::{Entity, World},
@@ -92,7 +94,6 @@ fn open_and_settle(app: &mut App, actor: Entity, door: Entity) {
     app.update();
 }
 
-
 #[test]
 fn valid_request_toggles_closed_door_open_and_charges_exactly_open_door_tu() {
     let mut app = open_door_app();
@@ -140,7 +141,6 @@ fn diagonally_adjacent_actor_opens_the_door() {
         "(a): a diagonally-8-adjacent actor opens the door (Chebyshev-1 includes diagonals)",
     );
 }
-
 
 #[test]
 fn non_adjacent_actor_is_rejected_no_toggle_no_charge() {
@@ -214,7 +214,6 @@ fn already_open_door_is_a_noop_no_charge() {
         "(b): opening an already-open door spends NO further TU",
     );
 }
-
 
 #[test]
 fn opening_the_door_clears_path_and_vision_via_openable_toggle_downstream() {

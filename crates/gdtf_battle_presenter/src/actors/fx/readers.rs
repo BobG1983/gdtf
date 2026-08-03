@@ -1,3 +1,5 @@
+//! Flash readers for bleed, armor break, and cover destroyed.
+
 use bevy::{
     camera::visibility::RenderLayers,
     ecs::template::template,
@@ -36,7 +38,7 @@ pub(super) fn fx_sprite_scaled(
         effects.image.clone(),
         TextureAtlas {
             layout: effects.layout.clone(),
-            index:  *index,
+            index: *index,
         },
     );
     sprite.custom_size = Some(Vec2::splat(CELL_PX * scale));
@@ -57,6 +59,7 @@ pub(super) fn spawn_flash(commands: &mut Commands, sprite: Sprite, world: Vec3) 
         .insert(FxFlash);
 }
 
+/// Bleed flash at the wounded ganger's cell.
 pub fn read_bleeding(
     mut commands: Commands,
     atlases: Res<TopDownAtlases>,
@@ -77,6 +80,7 @@ pub fn read_bleeding(
     }
 }
 
+/// Armor-break flash at the ganger's cell.
 pub fn read_armor_broken(
     mut commands: Commands,
     atlases: Res<TopDownAtlases>,
@@ -96,6 +100,7 @@ pub fn read_armor_broken(
     }
 }
 
+/// Cover-destroyed flash at the smashed cell.
 pub fn read_cover_destroyed(
     mut commands: Commands,
     atlases: Res<TopDownAtlases>,

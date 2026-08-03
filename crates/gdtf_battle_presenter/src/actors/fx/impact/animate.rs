@@ -1,3 +1,5 @@
+//! Seed impact animations from pending impacts and advance their frames.
+
 use bevy::{
     camera::visibility::RenderLayers,
     ecs::{message::MessageWriter, template::template},
@@ -24,6 +26,7 @@ use crate::TopDownAtlases;
               base), and the two disjoint seed / playing queries — none can merge without \
               obscuring the wiring; the System fn IS the bundle"
 )]
+/// Turn pending impacts into animated flashes and emit [`ShotImpactResolved`].
 pub fn animate_impact(
     mut commands: Commands,
     time: Res<Time>,
@@ -61,7 +64,7 @@ pub fn animate_impact(
         );
         impact_resolved.write(ShotImpactResolved {
             shooter: impact.shooter,
-            report:  impact.report.clone(),
+            report: impact.report.clone(),
         });
         commands.entity(seed_entity).despawn();
     }

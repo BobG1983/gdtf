@@ -1,3 +1,5 @@
+//! Throw-resolved blast impact seeds.
+
 use bevy::{
     ecs::{message::MessageReader, template::template},
     prelude::*,
@@ -8,6 +10,7 @@ use gdtf_battle_sim::acts::ThrowResolved;
 use super::projectile::PendingImpact;
 use crate::{cell_to_world, playback::Played};
 
+/// Spawn a pending blast impact when a throw resolves.
 pub fn read_throw_resolved(
     mut commands: Commands,
     mut resolved: MessageReader<Played<ThrowResolved>>,
