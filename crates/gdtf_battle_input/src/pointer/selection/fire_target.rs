@@ -1,4 +1,5 @@
-//! fire-mode / hover out of the authoritative sim model (the `input → presenter → sim`
+//! Fire-target highlight for a fireable hover cell.
+
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_presenter::{FireTargetHighlight, cell_squad_visible};
 use gdtf_battle_sim::{
@@ -12,17 +13,19 @@ use gdtf_battle_sim::{
 
 use crate::{InspectTarget, SelectedFireMode, selection::resources::SelectedShooter};
 
+/// Resources read when resolving the fire-target highlight.
 #[derive(SystemParam)]
 pub struct FireTargetReads<'w> {
-        selected:  Res<'w, SelectedShooter>,
-        fire_mode: Res<'w, SelectedFireMode>,
-        inspect:   Res<'w, InspectTarget>,
-        occupancy: Res<'w, OccupancyGrid>,
-        player:    Res<'w, PlayerFaction>,
-        tuning:    Res<'w, CombatTuning>,
-                squad:     Option<Res<'w, SquadVisibility>>,
+    selected: Res<'w, SelectedShooter>,
+    fire_mode: Res<'w, SelectedFireMode>,
+    inspect: Res<'w, InspectTarget>,
+    occupancy: Res<'w, OccupancyGrid>,
+    player: Res<'w, PlayerFaction>,
+    tuning: Res<'w, CombatTuning>,
+    squad: Option<Res<'w, SquadVisibility>>,
 }
 
+/// Update the fire-target highlight from hover and selection.
 pub fn populate_fire_target(
     reads: FireTargetReads,
     factions: Query<&Faction>,

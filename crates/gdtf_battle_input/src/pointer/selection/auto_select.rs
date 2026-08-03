@@ -1,3 +1,5 @@
+//! Auto-select first player ganger and clear downed selection.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     battle::PlayerFaction,
@@ -10,6 +12,7 @@ use crate::selection::{
     resources::{SelectedShooter, set_selection},
 };
 
+/// If nothing is selected, pick the first living player ganger by cell order.
 pub fn auto_select_first_player_ganger(
     gangers: Query<(Entity, &Faction, &Position, Option<&LifeState>)>,
     player: Res<PlayerFaction>,
@@ -31,9 +34,10 @@ pub fn auto_select_first_player_ganger(
     }
 }
 
+/// Clear selection when the selected ganger is no longer active.
 pub fn clear_downed_selection(lifes: Query<&LifeState>, mut selected: ResMut<SelectedShooter>) {
     let Some(actor) = **selected else {
-        return; 
+        return;
     };
     if let Ok(life) = lifes.get(actor)
         && !*life.is_active()

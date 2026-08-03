@@ -1,23 +1,36 @@
-//! The editor is a multi-mode "Workbench": exactly one authoring workflow (one
+//! Editor workbench mode tabs.
+
 use bevy::prelude::*;
 
+/// Active authoring workflow in the content editor.
 #[derive(Resource, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum EditorMode {
-        Terrain,
-            Theme,
-        #[default]
+    /// Terrain def form.
+    Terrain,
+    /// Theme def form.
+    Theme,
+    /// Prefab / map canvas.
+    #[default]
     Prefab,
-                Gang,
-                Armor,
-                    Injury,
-                    Sprite,
-                    Attachment,
-                        Weapon,
-                        MeleeWeapon,
+    /// Gang roster form.
+    Gang,
+    /// Armor form.
+    Armor,
+    /// Injury form.
+    Injury,
+    /// Sprite form.
+    Sprite,
+    /// Attachment form.
+    Attachment,
+    /// Ranged weapon form.
+    Weapon,
+    /// Melee weapon form.
+    MeleeWeapon,
 }
 
 impl EditorMode {
-                            pub const TAB_ORDER: [Self; 10] = [
+    /// Tab bar order left-to-right.
+    pub const TAB_ORDER: [Self; 10] = [
         Self::Terrain,
         Self::Theme,
         Self::Prefab,
@@ -30,12 +43,14 @@ impl EditorMode {
         Self::MeleeWeapon,
     ];
 
-            #[must_use]
+    /// Mode for a tab index, if in range.
+    #[must_use]
     pub fn from_tab_index(index: usize) -> Option<Self> {
         Self::TAB_ORDER.get(index).copied()
     }
 
-        #[must_use]
+    /// Index of this mode in [`TAB_ORDER`].
+    #[must_use]
     pub fn tab_index(self) -> usize {
         Self::TAB_ORDER
             .iter()
@@ -43,7 +58,8 @@ impl EditorMode {
             .unwrap_or(0)
     }
 
-        #[must_use]
+    /// Short label for the tab button.
+    #[must_use]
     pub const fn tab_label(self) -> &'static str {
         match self {
             Self::Terrain => "TERRAIN",
