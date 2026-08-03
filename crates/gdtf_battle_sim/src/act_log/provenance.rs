@@ -1,17 +1,26 @@
+//! Who caused an act (command, AI, reaction, or clock).
+
 use bevy::prelude::Entity;
 
+/// Origin of a logged act.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ActProvenance {
-        Commanded,
-            AiTurn,
-            Reaction {
-                                interrupted: Entity,
+    /// Player or external command.
+    Commanded,
+    /// AI turn decision.
+    AiTurn,
+    /// Reaction that interrupted another actor.
+    Reaction {
+        /// Actor who was interrupted.
+        interrupted: Entity,
     },
-            Clock,
+    /// Periodic / clock-driven effect.
+    Clock,
 }
 
 impl ActProvenance {
-        #[must_use]
+    /// True when this is a reaction.
+    #[must_use]
     pub const fn is_reaction(self) -> bool {
         matches!(self, Self::Reaction { .. })
     }
