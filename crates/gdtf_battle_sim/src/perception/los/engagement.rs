@@ -16,6 +16,7 @@ use crate::{
 pub struct CanSee(bool);
 
 impl CanSee {
+    /// Wrap a can-see flag.
     #[must_use]
     pub const fn new(can_see: bool) -> Self {
         Self(can_see)

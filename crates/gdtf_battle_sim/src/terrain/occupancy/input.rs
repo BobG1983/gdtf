@@ -14,6 +14,7 @@ pub struct TerrainPlacement {
 }
 
 impl TerrainPlacement {
+    /// Build a terrain placement.
     #[must_use]
     pub const fn new(at: CellLevel, terrain: TerrainKind) -> Self {
         Self { at, terrain }
@@ -32,6 +33,7 @@ pub struct OccupantPlacement {
 }
 
 impl OccupantPlacement {
+    /// Build an occupant placement.
     #[must_use]
     pub const fn new(at: CellLevel, occupant: Entity, band: HeightBand) -> Self {
         Self { at, occupant, band }
@@ -48,6 +50,7 @@ pub struct OccupancyInput {
 }
 
 impl OccupancyInput {
+    /// Empty input.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
