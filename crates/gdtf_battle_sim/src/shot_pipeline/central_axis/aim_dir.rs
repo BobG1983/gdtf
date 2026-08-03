@@ -1,17 +1,22 @@
+//! Aim direction with optional recoil climb.
+
 use bevy::math::Vec3;
 
 use crate::{cone::PriorShots, metric::SimPos, stability::RecoilGrowth, tuning::RecoilClimb};
 
+/// Normalized direction from muzzle toward the aim point (after climb).
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq)]
 pub struct AimDir(Vec3);
 
 impl AimDir {
-                        #[must_use]
+    /// Inner direction vector.
+    #[must_use]
     pub const fn vec(self) -> Vec3 {
         self.0
     }
 }
 
+/// Direction from muzzle to aim point, tilted upward by prior-shot recoil.
 #[must_use]
 pub fn climb_aim_dir(
     muzzle: SimPos,

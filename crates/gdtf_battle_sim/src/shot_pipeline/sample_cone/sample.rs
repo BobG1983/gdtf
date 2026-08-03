@@ -1,23 +1,31 @@
+//! Draw one random direction inside the cone.
+
 use bevy::math::Vec3;
 use rand::{Rng, RngExt};
 
 use crate::{central_axis::AimDir, cone::ConeAngle, sample_cone::ConcentrationP};
 
+/// Normalized direction of a sampled shot.
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq)]
 pub struct ShotDir(Vec3);
 
 impl ShotDir {
-                                            #[must_use]
+    /// Build from any non-zero direction (normalized).
+    #[must_use]
     pub fn from_direction(direction: Vec3) -> Self {
         Self(direction.normalize_or_zero())
     }
 
-                        #[must_use]
+    /// Inner direction vector.
+    #[must_use]
     pub const fn vec(self) -> Vec3 {
         self.0
     }
 }
 
+/// Sample a direction around the aim axis inside the cone.
+///
+/// Higher concentration pulls samples closer to the axis.
 #[must_use]
 pub fn sample_cone_vector(
     aim_dir: AimDir,
