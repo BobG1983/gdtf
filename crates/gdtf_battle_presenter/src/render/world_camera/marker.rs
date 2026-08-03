@@ -1,9 +1,12 @@
+//! World camera entity marker and spawn/despawn.
+
 use bevy::{
     camera::{ClearColorConfig, visibility::RenderLayers},
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
 };
 
+/// Render layer index for world-space battle content.
 pub const WORLD_RENDER_LAYER: usize = 1;
 
 const WORLD_CAMERA_ORDER: isize = -1;
@@ -12,10 +15,12 @@ const MARGIN_BG: Color = Color::srgb(0.06, 0.06, 0.08);
 
 const WORLD_CAMERA_SCALE: f32 = 0.5;
 
+/// Marker on the orthographic battle camera.
 #[derive(Component, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
 pub struct WorldCamera;
 
-/// `#[require]`.
+/// Spawn the world camera with layer, clear color, and zoom.
+/// Uses Bevy scene templates with `#[require]`.
 pub fn spawn_world_camera(mut commands: Commands) {
     let camera = Camera {
         order: WORLD_CAMERA_ORDER,
@@ -36,6 +41,7 @@ pub fn spawn_world_camera(mut commands: Commands) {
     ));
 }
 
+/// Despawn every entity marked [`WorldCamera`].
 pub fn despawn_world_camera(mut commands: Commands, cameras: Query<Entity, With<WorldCamera>>) {
     for camera in &cameras {
         commands.entity(camera).despawn();
