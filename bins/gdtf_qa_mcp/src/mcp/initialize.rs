@@ -1,5 +1,5 @@
-//! MCP opens with an `initialize` call; the server answers with the protocol version it
-//! capability — `tools` — and echoes the client's requested protocol version when the
+//! MCP `initialize` response.
+
 use serde_json::{Value, json};
 
 /// The MCP protocol version advertised when the client does not request one.
@@ -9,6 +9,7 @@ const SERVER_NAME: &str = "gdtf-qa-mcp";
 
 const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// Build the initialize result, echoing the client's protocol version when present.
 #[must_use]
 pub fn initialize_result(params: Option<&Value>) -> Value {
     let protocol = params
@@ -28,14 +29,14 @@ mod tests {
 
     use super::{DEFAULT_MCP_PROTOCOL_VERSION, initialize_result};
 
-        #[test]
+    #[test]
     fn echoes_requested_protocol_version() {
         let params = json!({"protocolVersion": "2025-06-18"});
         let result = initialize_result(Some(&params));
         assert_eq!(result["protocolVersion"], json!("2025-06-18"));
     }
 
-            #[test]
+    #[test]
     fn falls_back_to_default_and_advertises_tools() {
         let result = initialize_result(None);
         assert_eq!(
