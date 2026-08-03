@@ -1,4 +1,4 @@
-//! Test app with DefaultPlugins and scene registration for load tests.
+//! Test app with `DefaultPlugins` and scene registration for load tests.
 
 use std::path::PathBuf;
 
@@ -22,7 +22,7 @@ fn workspace_assets_root() -> PathBuf {
         .join("assets")
 }
 
-/// Builds a headless DefaultPlugins app with scenes registered.
+/// Builds a headless `DefaultPlugins` app with scenes registered.
 pub struct GdtfLoadTestAppBuilder {
     app: App,
 }
