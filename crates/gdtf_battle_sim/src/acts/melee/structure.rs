@@ -1,3 +1,5 @@
+//! Melee against cover / structure cells.
+
 use bevy::prelude::{MessageWriter, Query};
 
 use super::{MeleeWorld, snapshot::AttackerSnapshot};
@@ -11,6 +13,7 @@ use crate::{
     tu::spend_tu,
 };
 
+/// Spend TU and smash adjacent cover/structure.
 pub(super) fn resolve_structure_melee(
     attacker: &AttackerSnapshot<'_>,
     at: CellLevel,

@@ -1,3 +1,5 @@
+//! Reaction-fire scores, probability, cap, and suppression numbers.
+
 mod core;
 mod leaves;
 mod suppression;
