@@ -18,10 +18,10 @@ use bevy::{
 /// Builder phase: no camera spawned yet.
 pub struct NoCamera;
 
-/// Builder phase: a Camera2d has been spawned.
+/// Builder phase: a `Camera2d` has been spawned.
 pub struct WithCamera;
 
-/// Headless DefaultPlugins app for UI tests.
+/// Headless `DefaultPlugins` app for UI tests.
 pub struct GdtfUiTestAppBuilder<Phase> {
     app: App,
     _phase: PhantomData<fn() -> Phase>,
@@ -35,7 +35,7 @@ fn workspace_assets_root() -> PathBuf {
 }
 
 impl GdtfUiTestAppBuilder<NoCamera> {
-    /// Start a headless DefaultPlugins app (no camera).
+    /// Start a headless `DefaultPlugins` app (no camera).
     #[must_use]
     pub fn new() -> Self {
         let mut app = App::new();
@@ -71,7 +71,7 @@ impl GdtfUiTestAppBuilder<NoCamera> {
         }
     }
 
-    /// Spawn a Camera2d and move to the WithCamera phase.
+    /// Spawn a `Camera2d` and move to the `WithCamera` phase.
     #[must_use]
     pub fn with_ui_camera(mut self) -> GdtfUiTestAppBuilder<WithCamera> {
         self.app.world_mut().spawn(Camera2d);
