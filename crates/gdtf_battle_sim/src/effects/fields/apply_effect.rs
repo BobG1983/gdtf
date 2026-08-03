@@ -1,3 +1,5 @@
+//! Trait and helpers for applying field effects to occupants.
+
 use bevy::prelude::{Deref, Entity, MessageWriter, Mut, Query, With};
 
 use super::FieldTurns;
@@ -8,24 +10,35 @@ use crate::{
     metric::CellLevel,
 };
 
+/// Armor worn by an occupant, for immunity checks.
 pub struct OccupantArmor<'a, 'w, 's> {
-        pub wears: &'a Wears,
-        pub worn:  &'a Query<'w, 's, &'static ArmorType, With<WornBy>>,
+    /// Wears relationship on the ganger.
+    pub wears: &'a Wears,
+    /// Armor type components on worn pieces.
+    pub worn: &'a Query<'w, 's, &'static ArmorType, With<WornBy>>,
 }
 
+/// Mutable handles used when draining an occupant.
 pub struct OccupantDrain<'a, 'hp, 'life, 'wt, 'wd> {
-        pub hp:     &'a mut Mut<'hp, Hp>,
-        pub life:   &'a mut Mut<'life, LifeState>,
-        pub ticks:  &'a mut MessageWriter<'wt, FieldTicked>,
-                pub deaths: &'a mut MessageWriter<'wd, OnDeathOccurred>,
+    /// Hit points.
+    pub hp: &'a mut Mut<'hp, Hp>,
+    /// Life state.
+    pub life: &'a mut Mut<'life, LifeState>,
+    /// Field tick messages.
+    pub ticks: &'a mut MessageWriter<'wt, FieldTicked>,
+    /// Death messages.
+    pub deaths: &'a mut MessageWriter<'wd, OnDeathOccurred>,
 }
 
+/// Behaviour a field consequence can apply.
 pub trait ApplyFieldEffect {
-                        fn exempts_occupant(&self, _armor: &OccupantArmor<'_, '_, '_>) -> DrainExempt {
+    /// Whether this occupant is exempt from drain.
+    fn exempts_occupant(&self, _armor: &OccupantArmor<'_, '_, '_>) -> DrainExempt {
         DrainExempt(false)
     }
 
-                                        fn drain_occupant(
+    /// Drain the occupant if not exempt.
+    fn drain_occupant(
         &self,
         _at: CellLevel,
         _occupant: Entity,
@@ -33,30 +46,36 @@ pub trait ApplyFieldEffect {
     ) {
     }
 
-                                fn initial_countdown(&self) -> Option<FieldTurns> {
+    /// Initial countdown when the field is placed.
+    fn initial_countdown(&self) -> Option<FieldTurns> {
         None
     }
 
-                                        fn count_down_one_turn(&self, _remaining: &mut Option<FieldTurns>) -> FieldExpired {
+    /// Count down one turn; return whether the field expired.
+    fn count_down_one_turn(&self, _remaining: &mut Option<FieldTurns>) -> FieldExpired {
         FieldExpired(false)
     }
 }
 
+/// Whether an occupant is exempt from field drain.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DrainExempt(bool);
 
 impl DrainExempt {
-                #[must_use]
+    /// Wrap the flag.
+    #[must_use]
     pub const fn new(exempt: bool) -> Self {
         Self(exempt)
     }
 }
 
+/// Whether a field placement has expired.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FieldExpired(bool);
 
 impl FieldExpired {
-                #[must_use]
+    /// Wrap the flag.
+    #[must_use]
     pub const fn new(expired: bool) -> Self {
         Self(expired)
     }
