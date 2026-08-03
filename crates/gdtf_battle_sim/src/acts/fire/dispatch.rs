@@ -1,3 +1,5 @@
+//! System: process fire requests through arc, volley, and outcome messages.
+
 use bevy::{
     ecs::system::ParamSet,
     prelude::{MessageReader, Res, ResMut},
@@ -32,6 +34,7 @@ use crate::{
               distinct, independently-borrowed Bevy SystemParam that cannot be bundled \
               without a custom SystemParam struct that would only obscure the access set"
 )]
+/// Read fire requests, turn if needed, run the shot pipeline, emit signals.
 pub fn dispatch_fire(
     mut requests: MessageReader<FireRequested>,
     mut shooter_set: ParamSet<(ShooterQuery, TurnQuery)>,
@@ -90,7 +93,7 @@ pub fn dispatch_fire(
             fire_cost,
             &tuning,
         ) {
-            FireArcDecision::Reject => continue, 
+            FireArcDecision::Reject => continue,
             FireArcDecision::TurnThenFire {
                 facing: target_facing,
                 turn_cost,
@@ -102,15 +105,15 @@ pub fn dispatch_fire(
                 *actor_facing = Facing::new(target_facing);
                 spend_tu(&mut actor_tu, turn_cost);
             }
-            FireArcDecision::FireInArc => {} 
+            FireArcDecision::FireInArc => {}
         }
 
         let aim_cell_level = CellLevel::new(request.target_cell, request.target_level);
         let target = grids.occupant_at(aim_cell_level);
 
         let order = FireOrder {
-            mode:         &request.mode,
-            target_cell:  request.target_cell,
+            mode: &request.mode,
+            target_cell: request.target_cell,
             target_level: request.target_level,
         };
         let mut shooters = shooter_set.p0();
