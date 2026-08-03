@@ -1,3 +1,5 @@
+//! Wire act-log recording into the sim schedule.
+
 use bevy::prelude::*;
 
 use super::{log::ActLog, record::record_acts};
@@ -21,6 +23,7 @@ use crate::{
     turn::TurnStarted,
 };
 
+/// Register messages and the [`record_acts`] system when [`ActLog`] is present.
 pub fn wire_act_log(app: &mut App) {
     app.add_message::<InterruptDeclared>()
         .add_message::<TurnStarted>()

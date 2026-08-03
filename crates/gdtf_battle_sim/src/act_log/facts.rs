@@ -1,3 +1,5 @@
+//! Snapshots of pose, vitals, magazine, and position for change detection.
+
 use bevy::prelude::Deref;
 
 use crate::{
@@ -7,31 +9,40 @@ use crate::{
     magazine::Magazine,
 };
 
+/// Whether the actor is suppressed right now.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct SuppressedNow(bool);
 
 impl SuppressedNow {
-            #[must_use]
+    /// Wrap a boolean.
+    #[must_use]
     pub const fn new(suppressed: bool) -> Self {
         Self(suppressed)
     }
 
-            #[must_use]
+    /// True if suppressed.
+    #[must_use]
     pub const fn is_suppressed(self) -> bool {
         self.0
     }
 }
 
+/// Facing, stance, aiming, and suppression snapshot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PoseFacts {
-        pub facing:     Facing,
-        pub stance:     Stance,
-        pub aiming:     Aiming,
-        pub suppressed: SuppressedNow,
+    /// Facing direction.
+    pub facing: Facing,
+    /// Stance.
+    pub stance: Stance,
+    /// Aim state.
+    pub aiming: Aiming,
+    /// Suppression flag.
+    pub suppressed: SuppressedNow,
 }
 
 impl PoseFacts {
-        #[must_use]
+    /// Build pose facts.
+    #[must_use]
     pub const fn new(
         facing: Facing,
         stance: Stance,
@@ -47,17 +58,24 @@ impl PoseFacts {
     }
 }
 
+/// TU, HP, wounds, and injury lists.
 #[derive(Debug, Clone, PartialEq)]
 pub struct VitalsFacts {
-        pub tu:        Tu,
-        pub hp:        Hp,
-        pub wounds:    Wounds,
-        pub inflicted: InflictedWounds,
-        pub injuries:  InflictedInjuries,
+    /// Time units remaining.
+    pub tu: Tu,
+    /// Hit points.
+    pub hp: Hp,
+    /// Wound capacity / track.
+    pub wounds: Wounds,
+    /// Inflicted wound list.
+    pub inflicted: InflictedWounds,
+    /// Inflicted injuries.
+    pub injuries: InflictedInjuries,
 }
 
 impl VitalsFacts {
-        #[must_use]
+    /// Build vitals facts.
+    #[must_use]
     pub const fn new(
         tu: Tu,
         hp: Hp,
@@ -75,31 +93,37 @@ impl VitalsFacts {
     }
 }
 
+/// Magazine snapshot.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MagazineFacts(Magazine);
 
 impl MagazineFacts {
-        #[must_use]
+    /// Wrap a magazine.
+    #[must_use]
     pub const fn new(magazine: Magazine) -> Self {
         Self(magazine)
     }
 
-        #[must_use]
+    /// Inner magazine.
+    #[must_use]
     pub const fn inner(self) -> Magazine {
         self.0
     }
 }
 
+/// Position snapshot.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PositionFacts(Position);
 
 impl PositionFacts {
-        #[must_use]
+    /// Wrap a position.
+    #[must_use]
     pub const fn new(position: Position) -> Self {
         Self(position)
     }
 
-        #[must_use]
+    /// Inner position.
+    #[must_use]
     pub const fn inner(self) -> Position {
         self.0
     }
