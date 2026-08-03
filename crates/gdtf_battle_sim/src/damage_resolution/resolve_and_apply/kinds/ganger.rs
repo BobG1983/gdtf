@@ -1,3 +1,5 @@
+//! Apply a shot that struck a living combatant.
+
 use bevy::prelude::Entity;
 
 use crate::{
@@ -28,22 +30,34 @@ const BARE_FLESH: ArmorPiece = ArmorPiece::new(
     ArmorType::DEFAULT,
 );
 
+/// Damage that was applied to the combatant.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AppliedDamage {
-        pub matchup:    Matchup,
-        pub hit:        HitResult,
-        pub severity:   Severity,
-        pub life_after: LifeState,
-                        pub wear:       ArmorWearOutcome,
+    /// Matchup used for the hit.
+    pub matchup: Matchup,
+    /// Hit resolution result.
+    pub hit: HitResult,
+    /// Wound severity.
+    pub severity: Severity,
+    /// Life state after the hit.
+    pub life_after: LifeState,
+    /// Armor wear outcome.
+    pub wear: ArmorWearOutcome,
 }
 
+/// Full verdict for a ganger hit.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GangerVerdict {
-                pub target:      Entity,
-        pub part:        BodyPart,
-        pub applied:     AppliedDamage,
-                                pub injury:      Option<RolledInjury>,
-                                    pub dot_applied: Option<Dot>,
+    /// Target entity.
+    pub target: Entity,
+    /// Body part that was hit.
+    pub part: BodyPart,
+    /// Applied damage details.
+    pub applied: AppliedDamage,
+    /// Injury that was rolled, if any.
+    pub injury: Option<RolledInjury>,
+    /// DOT that was applied, if any.
+    pub dot_applied: Option<Dot>,
 }
 
 fn struck_piece(piece: Option<&StruckPiece<'_>>, weapon: WeaponStats<'_>) -> (ArmorPiece, Matchup) {
@@ -63,6 +77,7 @@ fn struck_piece(piece: Option<&StruckPiece<'_>>, weapon: WeaponStats<'_>) -> (Ar
     }
 }
 
+/// Resolve and apply a ganger hit, or return NoEffect when the target is missing/dead.
 #[expect(
     clippy::too_many_arguments,
     reason = "GTW-438 threads the injury-roll inputs (the InjuryTables + InjuryRegistry \
@@ -127,11 +142,11 @@ pub(in crate::damage_resolution::resolve_and_apply) fn fold(
         target: target_entity,
         part,
         applied: AppliedDamage {
-            matchup:    synthesis.matchup,
-            hit:        synthesis.hit,
-            severity:   synthesis.severity,
+            matchup: synthesis.matchup,
+            hit: synthesis.hit,
+            severity: synthesis.severity,
             life_after: synthesis.life_after,
-            wear:       synthesis.wear,
+            wear: synthesis.wear,
         },
         injury: synthesis.injury,
         dot_applied,

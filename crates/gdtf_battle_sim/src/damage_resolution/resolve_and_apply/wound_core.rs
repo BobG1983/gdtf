@@ -1,3 +1,5 @@
+//! Shared wound synthesis used by ranged and melee paths.
+
 use bevy::prelude::Entity;
 
 use crate::{
@@ -16,39 +18,69 @@ use crate::{
     weapon::{FatalBias, WeaponDamage, WeaponPunch, WeaponShred},
 };
 
+/// Weapon-side inputs for one wound.
 pub(crate) struct WoundBlow {
-        pub part:         BodyPart,
-        pub damage:       WeaponDamage,
-        pub punch:        WeaponPunch,
-        pub shred:        WeaponShred,
-        pub piece:        ArmorPiece,
-            pub matchup:      Matchup,
-        pub fatal_bias:   FatalBias,
-        pub shooter_luck: Luck,
-                    pub context:      DamageContext,
-                                    pub damage_mult:  Option<MeleeDamageMult>,
+    /// Body part hit.
+    pub part: BodyPart,
+    /// Weapon damage.
+    pub damage: WeaponDamage,
+    /// Weapon punch.
+    pub punch: WeaponPunch,
+    /// Weapon shred.
+    pub shred: WeaponShred,
+    /// Armor piece at the location (or bare flesh).
+    pub piece: ArmorPiece,
+    /// Damage-type vs armor matchup.
+    pub matchup: Matchup,
+    /// Weapon fatal bias.
+    pub fatal_bias: FatalBias,
+    /// Shooter luck.
+    pub shooter_luck: Luck,
+    /// How the damage was caused.
+    pub context: DamageContext,
+    /// Optional melee damage multiplier.
+    pub damage_mult: Option<MeleeDamageMult>,
 }
 
+/// Full inputs for synthesizing one wound.
 pub(crate) struct WoundCoreInputs<'a> {
-        pub blow:          WoundBlow,
-        pub target:        TargetGanger<'a>,
-        pub target_entity: Entity,
-        pub tuning:        &'a CombatTuning,
-        pub severity_rng:  &'a mut SeverityRng,
-        pub tables:        &'a InjuryTables,
-        pub registry:      &'a InjuryRegistry,
-            pub injury_rng:    &'a mut InjuryRng,
+    /// Weapon-side blow data.
+    pub blow: WoundBlow,
+    /// Target combatant view.
+    pub target: TargetGanger<'a>,
+    /// Target entity id.
+    pub target_entity: Entity,
+    /// Combat tuning.
+    pub tuning: &'a CombatTuning,
+    /// Severity RNG.
+    pub severity_rng: &'a mut SeverityRng,
+    /// Injury tables.
+    pub tables: &'a InjuryTables,
+    /// Injury registry.
+    pub registry: &'a InjuryRegistry,
+    /// Injury RNG.
+    pub injury_rng: &'a mut InjuryRng,
 }
 
+/// Result of synthesizing one wound.
 pub(crate) struct WoundSynthesis {
-            pub matchup:    Matchup,
-        pub hit:        HitResult,
-        pub severity:   Severity,
-        pub wear:       ArmorWearOutcome,
-        pub life_after: LifeState,
-                pub injury:     Option<RolledInjury>,
+    /// Matchup used.
+    pub matchup: Matchup,
+    /// Hit resolution result.
+    pub hit: HitResult,
+    /// Rolled severity.
+    pub severity: Severity,
+    /// Armor wear outcome.
+    pub wear: ArmorWearOutcome,
+    /// Life state after apply.
+    pub life_after: LifeState,
+    /// Injury rolled, if any.
+    pub injury: Option<RolledInjury>,
 }
 
+/// Resolve hit, roll severity, apply damage, and optionally roll an injury.
+///
+/// Returns `None` when the target is already dead.
 #[must_use]
 pub(crate) fn synthesize_wound(inputs: WoundCoreInputs<'_>) -> Option<WoundSynthesis> {
     let WoundCoreInputs {
@@ -95,9 +127,9 @@ pub(crate) fn synthesize_wound(inputs: WoundCoreInputs<'_>) -> Option<WoundSynth
 
     let wear = apply_hit(
         GangerHitTarget {
-            hp:        target.hp,
-            wounds:    target.wounds,
-            life:      target.life,
+            hp: target.hp,
+            wounds: target.wounds,
+            life: target.life,
             integrity: target.piece.map(|p| p.integrity),
             inflicted: target.inflicted,
         },

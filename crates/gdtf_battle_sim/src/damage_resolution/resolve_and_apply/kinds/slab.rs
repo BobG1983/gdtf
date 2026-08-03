@@ -1,3 +1,5 @@
+//! Apply a shot that struck a floor slab.
+
 use crate::{
     armor::{ArmorFloor, ArmorIntegrity, ArmorPiece, ArmorType},
     matchup::Matchup,
@@ -9,9 +11,11 @@ use crate::{
     weapon::WeaponStats,
 };
 
+/// Result of damaging a slab.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SlabVerdict {
-            pub destroyed: Option<CellLevel>,
+    /// Cell whose slab was destroyed, if any.
+    pub destroyed: Option<CellLevel>,
 }
 
 const fn slab_armor_piece(entry: &SlabEntry) -> ArmorPiece {
@@ -24,13 +28,14 @@ const fn slab_armor_piece(entry: &SlabEntry) -> ArmorPiece {
     )
 }
 
+/// Resolve and apply damage to a slab at a cell.
 pub(in crate::damage_resolution::resolve_and_apply) fn fold(
     at: CellLevel,
     weapon: WeaponStats<'_>,
     slab: &mut SlabLedger,
     tuning: &CombatTuning,
 ) -> HitVerdict {
-            const SLAB_FALLBACK_DEFAULTS: crate::tuning::SlabDefaults =
+    const SLAB_FALLBACK_DEFAULTS: crate::tuning::SlabDefaults =
         crate::tuning::SlabDefaults::FALLBACK;
     let prototype = SlabLedger::prototype_for(at, &SLAB_FALLBACK_DEFAULTS);
 
