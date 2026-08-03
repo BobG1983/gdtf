@@ -1,13 +1,21 @@
+//! Top-level application state machine.
+
 use bevy::prelude::*;
 
 crate::support_item! {
-        #[derive(States, Default, Debug, Clone, Eq, PartialEq, Hash)]
+    /// Top-level application lifecycle.
+    #[derive(States, Default, Debug, Clone, Eq, PartialEq, Hash)]
     enum AppState {
-                #[default]
+        /// Startup bootstrap.
+        #[default]
         Init,
-                Load,
-                Intro,
-                Running,
-                Teardown,
+        /// Loading assets and tables.
+        Load,
+        /// Intro / splash.
+        Intro,
+        /// Main interactive loop.
+        Running,
+        /// Shutdown cleanup.
+        Teardown,
     }
 }
