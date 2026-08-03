@@ -1,3 +1,5 @@
+//! Height-band clearance tests for rounds vs occupants and cover.
+
 mod band;
 #[cfg(test)]
 mod test;

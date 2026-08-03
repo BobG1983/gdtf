@@ -1,3 +1,5 @@
+//! Fire orders: volleys, blasts, and the ECS queries that feed them.
+
 mod blast;
 mod compose;
 mod query;
