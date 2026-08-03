@@ -1,3 +1,5 @@
+//! Build the stability score and read cone / recoil multipliers from it.
+
 use crate::{
     cover::CoverEntry,
     ganger::Stance,
@@ -9,6 +11,7 @@ use crate::{
     tuning::ConeStabilityTuning,
 };
 
+/// Compute cone and recoil multipliers from stance, cover, suppression, and terms.
 #[must_use]
 pub fn stability(
     terms: StabilityTerms,
