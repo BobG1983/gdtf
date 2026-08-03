@@ -1,3 +1,5 @@
+//! Body-part hit location rolls.
+
 mod roll;
 #[cfg(test)]
 mod test;

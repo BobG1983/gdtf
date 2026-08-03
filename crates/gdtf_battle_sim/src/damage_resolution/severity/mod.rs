@@ -1,3 +1,5 @@
+//! Wound severity ranks and the roll that picks one.
+
 mod kind;
 mod roll;
 
