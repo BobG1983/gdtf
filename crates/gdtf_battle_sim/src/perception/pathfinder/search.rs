@@ -35,11 +35,7 @@ fn chebyshev_heuristic(from: CellLevel, goal: CellLevel) -> PathCost {
 /// Returns [`PathBlocked`] when no route reaches `goal` under the mover's costs and planning rules.
 #[expect(
     clippy::too_many_arguments,
-    reason = "the route search reads five borrowed grids (occupancy / links / tuning / floor \
-              costs / the visibility planning view) plus its start + goal endpoints and the \
-              GTW-444 per-mover MovementCostFactor; each is a distinct read the search genuinely \
-              needs, and bundling them into an opaque struct would hide the real inputs (the \
-              SearchGrids bundle is the internal form; the public entry point lists its reads)"
+    reason = "grids, endpoints, and MovementCostFactor are separate inputs; SearchGrids is internal only"
 )]
 pub fn find_path<R>(
     start: CellLevel,
@@ -87,10 +83,7 @@ where
 #[must_use]
 #[expect(
     clippy::too_many_arguments,
-    reason = "the bounded flood reads five borrowed grids (occupancy / links / tuning / floor \
-              costs / the visibility planning view) plus its start cell + TU budget and the \
-              GTW-444 per-mover MovementCostFactor; each is a distinct read it genuinely needs, \
-              mirroring find_path's own carve-out (one SearchGrids bundle is the internal form)"
+    reason = "grids, start, budget, and MovementCostFactor are separate inputs"
 )]
 pub fn reachable_within<R>(
     start: CellLevel,

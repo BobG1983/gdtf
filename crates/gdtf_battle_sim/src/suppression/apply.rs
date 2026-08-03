@@ -57,12 +57,7 @@ fn within_radius(
 /// On [`FireRequested`], suppress enemies near the impact (unless the weapon is silenced).
 #[expect(
     clippy::too_many_arguments,
-    reason = "the producer reads the FireRequested buffer, the shooter position/faction \
-              query, the candidate-ganger query, the GTW-542/674 silenced-weapon resolution (the \
-              wield + mounted-probe + melee-probe + Silenced-marker queries), the \
-              Option<CombatTuning>, and the Commands + SuppressionApplied writer; each is a \
-              distinct Bevy SystemParam (mirroring dispatch_fire's own carve-out) — bundling \
-              would only hide the reads"
+    reason = "fire buffer, shooter query, silence probes, and Commands are separate params"
 )]
 pub fn apply_suppression(
     mut fires: MessageReader<FireRequested>,

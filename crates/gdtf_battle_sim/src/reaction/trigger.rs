@@ -27,16 +27,7 @@ use crate::{
 /// On position change or loud fire declaration, try enemy opportunity shots.
 #[expect(
     clippy::too_many_arguments,
-    reason = "the trigger reads the two act-in-LOS surfaces (Changed<Position> movers + the \
-              FireDeclaration buffer), the full ganger snapshot, the wielded-weapon + \
-              weapon-entity queries (to resolve the reactor's single-shot spec exactly as \
-              dispatch_fire does), the shared weapon-marker probe bundle (melee + mounted, \
-              GTW-660) + the GTW-526 suppressed-marker probe, the mutable ReactionsUsed \
-              counter, the four read grids + tuning the can_see/can_fire/can_engage gates \
-              need, the seeded ReactionRng, the GTW-542 silenced-weapon probe, and the two \
-              act MessageWriters; each is a distinct Bevy SystemParam, mirroring \
-              dispatch_fire's own argument-count carve-out — bundling would only hide the \
-              reads"
+    reason = "movers, declarations, weapon probes, grids, and writers are separate SystemParams"
 )]
 pub fn reaction_trigger(
     moved: Query<Entity, Changed<Position>>,
