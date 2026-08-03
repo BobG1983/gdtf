@@ -1,27 +1,31 @@
-//! editor-minted (auto-generated for a new theme, or loaded from the registry when editing —
+//! Theme draft resource and save errors.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::{level::ThemeUuid, terrain::def::TerrainUuid};
 
+/// In-progress theme being authored.
 #[derive(Resource, Clone, Debug, PartialEq, Eq)]
 pub struct ThemeDraft {
-            display_name:  String,
-            terrain:       Vec<TerrainUuid>,
-            default_floor: Option<TerrainUuid>,
-            key:           ThemeUuid,
+    display_name: String,
+    terrain: Vec<TerrainUuid>,
+    default_floor: Option<TerrainUuid>,
+    key: ThemeUuid,
 }
 
 impl ThemeDraft {
-            #[must_use]
+    /// Empty draft with a fresh key.
+    #[must_use]
     pub fn new_theme() -> Self {
         Self {
-            display_name:  String::new(),
-            terrain:       Vec::new(),
+            display_name: String::new(),
+            terrain: Vec::new(),
             default_floor: None,
-            key:           ThemeUuid::generate(),
+            key: ThemeUuid::generate(),
         }
     }
 
-            #[must_use]
+    /// Build from existing parts (e.g. loaded from registry).
+    #[must_use]
     pub const fn from_parts(
         key: ThemeUuid,
         display_name: String,
@@ -36,26 +40,31 @@ impl ThemeDraft {
         }
     }
 
-        #[must_use]
+    /// Display name.
+    #[must_use]
     pub fn display_name(&self) -> &str {
         &self.display_name
     }
 
-        pub fn set_display_name(&mut self, name: String) {
+    /// Set the display name.
+    pub fn set_display_name(&mut self, name: String) {
         self.display_name = name;
     }
 
-        #[must_use]
+    /// Selected terrain keys.
+    #[must_use]
     pub fn terrain(&self) -> &[TerrainUuid] {
         &self.terrain
     }
 
-        #[must_use]
+    /// Whether `terrain` is in the theme's list.
+    #[must_use]
     pub fn has_terrain(&self, terrain: TerrainUuid) -> bool {
         self.terrain.contains(&terrain)
     }
 
-                pub fn toggle_terrain(&mut self, terrain: TerrainUuid) {
+    /// Add or remove a terrain key; clears default floor if removed.
+    pub fn toggle_terrain(&mut self, terrain: TerrainUuid) {
         if let Some(pos) = self.terrain.iter().position(|t| *t == terrain) {
             self.terrain.remove(pos);
             if self.default_floor == Some(terrain) {
@@ -66,40 +75,47 @@ impl ThemeDraft {
         }
     }
 
-        #[must_use]
+    /// Default floor, if set.
+    #[must_use]
     pub const fn default_floor(&self) -> Option<TerrainUuid> {
         self.default_floor
     }
 
-                pub fn set_default_floor(&mut self, terrain: TerrainUuid) {
+    /// Set default floor when it is already in the terrain list.
+    pub fn set_default_floor(&mut self, terrain: TerrainUuid) {
         if self.terrain.contains(&terrain) {
             self.default_floor = Some(terrain);
         }
     }
 
-        #[must_use]
+    /// Theme key.
+    #[must_use]
     pub const fn key(&self) -> ThemeUuid {
         self.key
     }
 }
 
 impl Default for ThemeDraft {
-            fn default() -> Self {
+    fn default() -> Self {
         Self::new_theme()
     }
 }
 
-
+/// Errors from theme validation or save.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SaveThemeError {
-            EmptyName,
-            NoTerrain,
-            DefaultFloorNotInTerrain,
-            Save(gdtf_assets::RonSaveError),
+    /// Display name is empty.
+    EmptyName,
+    /// No terrain selected.
+    NoTerrain,
+    /// Default floor is not in the terrain list.
+    DefaultFloorNotInTerrain,
+    /// Underlying RON write failed.
+    Save(gdtf_assets::RonSaveError),
 }
 
 impl From<gdtf_assets::RonSaveError> for SaveThemeError {
-            fn from(err: gdtf_assets::RonSaveError) -> Self {
+    fn from(err: gdtf_assets::RonSaveError) -> Self {
         Self::Save(err)
     }
 }

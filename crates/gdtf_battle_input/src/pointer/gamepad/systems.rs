@@ -1,3 +1,5 @@
+//! Gamepad cursor movement and click/turn systems.
+
 use bevy::{input::gamepad::Gamepad, prelude::*, window::PrimaryWindow};
 use gdtf_battle_presenter::GamepadCursorMoved;
 use gdtf_battle_sim::{
@@ -19,6 +21,7 @@ use crate::{
     },
 };
 
+/// Move the gamepad cursor from left stick and claim pointer ownership.
 pub fn move_gamepad_cursor(
     gamepads: Query<&Gamepad>,
     windows: Query<&Window, With<PrimaryWindow>>,
@@ -48,6 +51,7 @@ pub fn move_gamepad_cursor(
     }
 }
 
+/// Return pointer ownership to the mouse when it moves.
 pub fn mouse_reclaims_pointer(
     mut moves: MessageReader<bevy::window::CursorMoved>,
     mut active: ResMut<ActivePointer>,
@@ -64,6 +68,7 @@ pub fn mouse_reclaims_pointer(
               queries on top of the gamepad + reads/writes; GTW-356 adds the PathPreviewTarget write; \
               GTW-505 C5 adds the MeleeWeapon marker probe for ranged-weapon resolution"
 )]
+/// South button: same left-click decision path as mouse.
 pub fn gamepad_click_act(
     gamepads: Query<&Gamepad>,
     reads: LeftClickReads,
@@ -93,6 +98,7 @@ pub fn gamepad_click_act(
     apply_pin(pin, &mut inspect);
 }
 
+/// East button: turn-to-face like right-click.
 pub fn gamepad_turn(
     gamepads: Query<&Gamepad>,
     reads: TurnReads,
@@ -117,6 +123,7 @@ pub fn gamepad_turn(
     }
 }
 
+/// Emit cursor-moved messages while the gamepad owns the pointer.
 pub fn emit_gamepad_cursor_move(
     active: Res<ActivePointer>,
     cursor: Res<GamepadCursor>,

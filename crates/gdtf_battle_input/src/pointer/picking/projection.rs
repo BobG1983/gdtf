@@ -1,3 +1,5 @@
+//! World-to-cell projection for pointer picking.
+
 use bevy::prelude::*;
 use gdtf_battle_presenter::CELL_PX;
 use gdtf_battle_sim::{
@@ -5,6 +7,7 @@ use gdtf_battle_sim::{
     prelude::{Cell, CellLevel, Level},
 };
 
+/// Map a world XY position to a cell on `level`, if in grid bounds.
 #[must_use]
 pub fn world_to_cell(world: Vec2, level: Level) -> Option<CellLevel> {
     let cx = floor_to_cell_coord(world.x / CELL_PX);
