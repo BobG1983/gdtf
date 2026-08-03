@@ -1,5 +1,4 @@
-//! `#[derive(Component)]` newtype (GTW-200), the [`DamageType`] vocabulary, the
-//! `#[serde(transparent)]` so it round-trips as a bare RON scalar.
+//! Weapon component newtypes (stats, markers, tags).
 
 mod ammo;
 mod ballistics;

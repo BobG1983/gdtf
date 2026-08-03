@@ -1,5 +1,5 @@
-//! value, a derived [`Deref`](bevy::prelude::Deref), and `#[serde(transparent)]` so
-//! sub-value is its own `#[derive(Component)]` newtype that lives as a sibling
+//! Ranged and melee weapons: components, fire modes, specs, registry.
+
 mod bundle;
 mod components;
 mod dot;
