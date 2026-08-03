@@ -1,3 +1,5 @@
+//! Destroyed-cover bridge: fire frees the cell and opens LOS.
+
 use bevy::{
     app::App,
     prelude::{Entity, World},

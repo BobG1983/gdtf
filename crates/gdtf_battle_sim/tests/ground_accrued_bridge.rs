@@ -1,3 +1,5 @@
+//! Ground-damage accrual bridge: fired rounds sum into the surface accumulator.
+
 use bevy::{
     app::App,
     math::Vec3,
