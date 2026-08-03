@@ -1,3 +1,5 @@
+//! Ganger components: attributes, vitals, pose, life, gang roster.
+
 mod attributes;
 mod derive_stats;
 mod direction;
