@@ -9,6 +9,7 @@ use crate::{ganger::Faction, visibility::SquadVisibility};
 pub struct OmniscientFog(SquadVisibility);
 
 impl OmniscientFog {
+    /// Wrap a squad visibility set.
     #[must_use]
     pub const fn new(fog: SquadVisibility) -> Self {
         Self(fog)

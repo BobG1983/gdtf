@@ -1,3 +1,5 @@
+//! Top-level battle sim plugin: systems, messages, and schedule sets.
+
 use bevy::prelude::{App, IntoScheduleConfigs, Plugin, Update, resource_exists};
 
 use crate::{
@@ -24,6 +26,7 @@ use crate::{
     visibility::{SquadVisibility, recompute_visibility, should_recompute_visibility},
 };
 
+/// Registers battle lifecycle, act systems, and occupancy maintenance.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct BattleSimPlugin;
 
@@ -32,8 +35,7 @@ impl Plugin for BattleSimPlugin {
         app.add_plugins(OccupancyMaintenancePlugin)
             .add_plugins(SimActsPlugin);
         wire_act_log(app);
-        app
-            .add_plugins(OpenableTogglePlugin)
+        app.add_plugins(OpenableTogglePlugin)
             .add_plugins(EmplacementTogglePlugin)
             .add_plugins(FallsPlugin)
             .add_message::<SetupBattleRequested>()
