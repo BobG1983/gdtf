@@ -1,5 +1,7 @@
-//! This module is compiled under `#[cfg(any(test, feature = "test-support"))]`
-//! (see [`crate`]'s `lib.rs`): the sim's OWN `#[cfg(test)]` unit tests see it for
+//! Shared builders, harness, and registries for unit and integration tests.
+//!
+//! Compiled under `#[cfg(any(test, feature = "test-support"))]` (see crate root).
+
 mod actor;
 mod ganger;
 mod harness;
