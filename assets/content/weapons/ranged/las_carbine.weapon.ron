@@ -5,11 +5,11 @@
     accuracy:      1.0,
     kickback:      0.05,
     fatal_bias:    0.0,
-    damage:        6,   // GTW-374: halved from 12 (combat re-balance, slower lethality)
-    punch:         2,   // GTW-374: halved from 5 (floor of 5/2)
-    shred:         1,   // GTW-374: halved from 2
+    damage:        6,   // halved from 12 (combat re-balance, slower lethality)
+    punch:         2,   // halved from 5 (floor of 5/2)
+    shred:         1,   // halved from 2
     damage_type:   Las,
-    accepts:       Cell,  // GTW-775: fed by a rechargeable las charge cell (the munition it accepts)
+    accepts:       Cell,  // fed by a rechargeable las charge cell (the munition it accepts)
     magazine: (
         size:      12,
         reload_tu: 12,
@@ -19,17 +19,17 @@
         (kind: Burst,  cone_mult: 1.3, tu_percent: 0.50, shots: 3),
     ],
     stable: false,
-    handedness:    TwoHanded,  // GTW-443: a two-handed long-arm - refused below two working hands
-    // GTW-554: the attachment SLOTS this carbine offers — an item fits only a declared slot
+    handedness:    TwoHanded,  // a two-handed long-arm - refused below two working hands
+    // Attachment SLOTS this carbine offers — an item fits only a declared slot
     // with free capacity (a Counterweight/Pommel melee fitting finds no slot here).
     slots: [
         (Muzzle, 1),  // one muzzle thread (a suppressor / choke / bore device)
         (Sight,  1),  // one sight dovetail (an optic)
         (Rail,   2),  // a MULTI-capacity utility rail — hosts two rail mods at once
     ],
-    // GTW-549: a fitted precision optic — references the `scoped_sight` attachment ITEM BY KEY.
+    // Fitted precision optic — references the `scoped_sight` attachment ITEM BY KEY.
     // Its effect (raise the weapon's Accuracy — a sight boosts AIM, not stability) is applied
-    // to the spawned weapon post-spawn (GTW-554: it occupies the Sight slot declared above).
+    // to the spawned weapon post-spawn (it occupies the Sight slot declared above).
     // Authored once in assets/content/attachments/scoped_sight.attachment.ron, referenced here.
     attachments:   ["scoped_sight"],
 )
