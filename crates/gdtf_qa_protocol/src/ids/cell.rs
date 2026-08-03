@@ -1,65 +1,81 @@
+//! Grid cell and level coordinates on the wire.
+
 use bevy_derive::Deref;
 use serde::{Deserialize, Serialize};
 
+/// X coordinate of a cell.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct CellXNet(i32);
 
 impl CellXNet {
-        #[must_use]
+    /// Wrap an x value.
+    #[must_use]
     pub const fn new(x: i32) -> Self {
         Self(x)
     }
 }
 
+/// Y coordinate of a cell.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct CellYNet(i32);
 
 impl CellYNet {
-        #[must_use]
+    /// Wrap a y value.
+    #[must_use]
     pub const fn new(y: i32) -> Self {
         Self(y)
     }
 }
 
+/// Vertical storey / level index.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct LevelNet(u8);
 
 impl LevelNet {
-        #[must_use]
+    /// Wrap a storey index.
+    #[must_use]
     pub const fn new(storey: u8) -> Self {
         Self(storey)
     }
 }
 
+/// 2D cell on the wire.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CellNet {
-        pub x: CellXNet,
-        pub y: CellYNet,
+    /// X coordinate.
+    pub x: CellXNet,
+    /// Y coordinate.
+    pub y: CellYNet,
 }
 
 impl CellNet {
-        #[must_use]
+    /// Build a cell from x and y.
+    #[must_use]
     pub const fn new(x: CellXNet, y: CellYNet) -> Self {
         Self { x, y }
     }
 }
 
+/// Cell plus vertical level.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CellLevelNet {
-        pub cell:  CellNet,
-        pub level: LevelNet,
+    /// Floor cell.
+    pub cell: CellNet,
+    /// Storey index.
+    pub level: LevelNet,
 }
 
 impl CellLevelNet {
-        #[must_use]
+    /// Build a cell-level from parts.
+    #[must_use]
     pub const fn new(cell: CellNet, level: LevelNet) -> Self {
         Self { cell, level }
     }
