@@ -1,3 +1,5 @@
+//! Emit melee connect messages: resolved, struck, injury, shove, death.
+
 use bevy::prelude::{Entity, MessageWriter};
 
 use super::{MeleeFacts, queries::MeleeTargetQuery, snapshot::AttackerSnapshot};
@@ -13,13 +15,15 @@ use crate::{
     metric::CellLevel,
 };
 
+/// Writers used after a successful melee connect.
 pub(super) struct MeleeConnectSignals<'a, 'r, 'f, 's, 'd> {
-        pub(super) resolved: &'a mut MessageWriter<'r, MeleeResolved>,
-        pub(super) facts:    &'a mut MeleeFacts<'f>,
-        pub(super) shoves:   &'a mut MessageWriter<'s, ShoveRequested>,
-        pub(super) deaths:   &'a mut MessageWriter<'d, OnDeathOccurred>,
+    pub(super) resolved: &'a mut MessageWriter<'r, MeleeResolved>,
+    pub(super) facts: &'a mut MeleeFacts<'f>,
+    pub(super) shoves: &'a mut MessageWriter<'s, ShoveRequested>,
+    pub(super) deaths: &'a mut MessageWriter<'d, OnDeathOccurred>,
 }
 
+/// Write outcome messages for a connected melee strike.
 pub(super) fn emit_connect_signals(
     attacker: &AttackerSnapshot<'_>,
     target_entity: Entity,

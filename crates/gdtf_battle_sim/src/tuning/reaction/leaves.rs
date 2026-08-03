@@ -1,3 +1,5 @@
+//! Reaction cap, probability clamps, and tuning bundle.
+
 use bevy::prelude::Deref;
 use serde::Deserialize;
 
@@ -7,24 +9,26 @@ use super::{
 };
 use crate::ganger::Reactions;
 
+/// Maximum reaction shots available this turn.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ReactionCap(u32);
 
 impl ReactionCap {
-        #[must_use]
+    /// Wrap a cap.
+    #[must_use]
     pub const fn new(cap: u32) -> Self {
         Self(cap)
     }
 }
 
-
-/// `#[serde(transparent)]` lets it parse a bare RON scalar; private inner +
+/// Base term in the reaction-cap formula.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct ReactionCapBase(f32);
 
 impl ReactionCapBase {
-                                #[must_use]
+    /// Wrap a base value.
+    #[must_use]
     pub const fn new(base: f32) -> Self {
         Self(base)
     }
@@ -36,13 +40,14 @@ impl Default for ReactionCapBase {
     }
 }
 
-/// magnitude. `#[serde(transparent)]` lets it parse a bare RON scalar; private
+/// Cap increase per reactions stat point.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct ReactionCapPerReactions(f32);
 
 impl ReactionCapPerReactions {
-                                #[must_use]
+    /// Wrap a slope.
+    #[must_use]
     pub const fn new(per_reactions: f32) -> Self {
         Self(per_reactions)
     }
@@ -54,13 +59,14 @@ impl Default for ReactionCapPerReactions {
     }
 }
 
-/// value). `#[serde(transparent)]` lets it parse a bare RON scalar; private
+/// Minimum interrupt probability after clamp.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct ReactionPMin(f32);
 
 impl ReactionPMin {
-                            #[must_use]
+    /// Wrap a minimum p.
+    #[must_use]
     pub const fn new(p_min: f32) -> Self {
         Self(p_min)
     }
@@ -72,13 +78,14 @@ impl Default for ReactionPMin {
     }
 }
 
-/// example value). `#[serde(transparent)]` lets it parse a bare RON scalar;
+/// Maximum interrupt probability after clamp.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct ReactionPMax(f32);
 
 impl ReactionPMax {
-                            #[must_use]
+    /// Wrap a maximum p.
+    #[must_use]
     pub const fn new(p_max: f32) -> Self {
         Self(p_max)
     }
@@ -90,23 +97,28 @@ impl Default for ReactionPMax {
     }
 }
 
-
+/// Full reaction tuning resource section.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Deserialize)]
 pub struct ReactionTuning {
-            pub cap_base:            ReactionCapBase,
-            pub cap_per_reactions:   ReactionCapPerReactions,
-            pub p_min:               ReactionPMin,
-            pub p_max:               ReactionPMax,
-                pub suppression_radius:  SuppressionRadius,
-                        pub suppression_penalty: SuppressionStabilityPenalty,
+    /// Cap base.
+    pub cap_base: ReactionCapBase,
+    /// Cap per reactions.
+    pub cap_per_reactions: ReactionCapPerReactions,
+    /// Probability floor.
+    pub p_min: ReactionPMin,
+    /// Probability ceiling.
+    pub p_max: ReactionPMax,
+    /// Suppression radius in cells.
+    pub suppression_radius: SuppressionRadius,
+    /// Stability penalty while suppressed.
+    pub suppression_penalty: SuppressionStabilityPenalty,
 }
-
 
 #[derive(Deref, Debug, Clone, Copy, PartialEq)]
 struct ReactionCapReal(f32);
 
 impl ReactionCapReal {
-        #[must_use]
+    #[must_use]
     const fn new(cap: f32) -> Self {
         Self(cap)
     }
@@ -122,6 +134,7 @@ const fn floor_to_u32(val: ReactionCapReal) -> ReactionCap {
     ReactionCap::new(val.0 as u32)
 }
 
+/// Floor of `cap_base + reactions * cap_per_reactions`.
 #[must_use]
 pub fn reaction_cap(reactions: Reactions, tuning: &ReactionTuning) -> ReactionCap {
     let raw = (*tuning.cap_per_reactions).mul_add(*reactions, *tuning.cap_base);
@@ -132,6 +145,7 @@ pub fn reaction_cap(reactions: Reactions, tuning: &ReactionTuning) -> ReactionCa
     }
 }
 
+/// Clamp probability into `[p_min, p_max]`.
 #[must_use]
 pub fn clamp_probability(p: ReactionProbability, tuning: &ReactionTuning) -> ReactionProbability {
     ReactionProbability::new((*p).clamp(*tuning.p_min, *tuning.p_max))

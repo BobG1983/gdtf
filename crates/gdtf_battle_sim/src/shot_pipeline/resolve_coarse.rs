@@ -1,3 +1,5 @@
+//! Coarse shot: aim, sample cone, march, classify impact.
+
 use bevy::prelude::Entity;
 
 use crate::{
@@ -17,41 +19,68 @@ use crate::{
     tuning::{CombatTuning, RecoilClimb},
 };
 
+/// What a coarse march hit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShotKind {
-                Ganger(Entity),
-            Cover(CoverEntry),
-            Slab(CellLevel),
-            Ground(CellLevel),
-                Miss,
+    /// Living combatant.
+    Ganger(Entity),
+    /// Cover entry.
+    Cover(CoverEntry),
+    /// Floor slab.
+    Slab(CellLevel),
+    /// Open ground accrual.
+    Ground(CellLevel),
+    /// No solid impact.
+    Miss,
 }
 
+/// Result of one coarse shot resolution.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ShotOutcome {
-            pub kind:       ShotKind,
-        pub cell:       Cell,
-            pub level:      Level,
-            pub body_part:  Option<BodyPart>,
-            pub band:       HeightBand,
-            pub muzzle:     SimPos,
-            pub trajectory: ShotDir,
+    /// Impact kind.
+    pub kind: ShotKind,
+    /// Impact cell.
+    pub cell: Cell,
+    /// Impact level.
+    pub level: Level,
+    /// Rolled body part when hitting a ganger.
+    pub body_part: Option<BodyPart>,
+    /// Height band at impact.
+    pub band: HeightBand,
+    /// Muzzle position.
+    pub muzzle: SimPos,
+    /// Sampled trajectory.
+    pub trajectory: ShotDir,
 }
 
+/// Inputs needed to resolve one coarse shot.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ShotInputs {
-        pub shooter_position: Position,
-        pub shooter_facing:   Facing,
-        pub shooter_stance:   Stance,
-        pub target_position:  Position,
-        pub target_stance:    Stance,
-                pub cover_band:       Option<HeightBand>,
-                    pub cone:             ConeAngle,
-            pub p:                ConcentrationP,
-            pub prior_shots:      PriorShots,
-        pub recoil_climb:     RecoilClimb,
-            pub recoil_growth:    RecoilGrowth,
+    /// Shooter position.
+    pub shooter_position: Position,
+    /// Shooter facing.
+    pub shooter_facing: Facing,
+    /// Shooter stance.
+    pub shooter_stance: Stance,
+    /// Target position.
+    pub target_position: Position,
+    /// Target stance.
+    pub target_stance: Stance,
+    /// Optional cover band at target.
+    pub cover_band: Option<HeightBand>,
+    /// Cone angle.
+    pub cone: ConeAngle,
+    /// Concentration probability.
+    pub p: ConcentrationP,
+    /// Shots already fired in this burst.
+    pub prior_shots: PriorShots,
+    /// Recoil climb tuning.
+    pub recoil_climb: RecoilClimb,
+    /// Recoil growth state.
+    pub recoil_growth: RecoilGrowth,
 }
 
+/// Aim, sample the cone, march the ray, classify the impact.
 #[must_use]
 pub fn resolve_coarse(
     shot: &ShotInputs,
