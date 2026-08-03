@@ -1,4 +1,4 @@
-//! SurfaceGrid resource and related surface state types.
+//! `SurfaceGrid` resource and related surface state types.
 
 use bevy::{
     platform::collections::HashMap,
@@ -34,6 +34,7 @@ impl SlabState {
 pub struct GroundDamage(u32);
 
 impl GroundDamage {
+    /// Wrap a damage amount.
     #[must_use]
     pub const fn new(damage: u32) -> Self {
         Self(damage)
@@ -51,6 +52,7 @@ impl GroundDamage {
 pub struct DamageApplied(bool);
 
 impl DamageApplied {
+    /// Wrap an applied flag.
     #[must_use]
     pub const fn new(applied: bool) -> Self {
         Self(applied)
