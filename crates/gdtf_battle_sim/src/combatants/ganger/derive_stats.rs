@@ -1,7 +1,5 @@
-//! [`derive_stats`] — the SINGLE SOURCE OF TRUTH that turns a ganger's eight authored
-//! re-derivation share ONE implementation. The computed stats are NEVER authored: the
-//! situation authors attributes only, this derives the rest.
-//! localized `#[expect]` stating why the cast cannot wrap). [`Shooting`] / [`Fight`] /
+//! Derive combat stats from authored attributes and tuning weights.
+
 use bevy::prelude::Deref;
 
 use crate::{
@@ -16,7 +14,7 @@ use crate::{
 pub(crate) struct StatMagnitude(f32);
 
 impl StatMagnitude {
-        #[must_use]
+    #[must_use]
     pub(crate) const fn new(magnitude: f32) -> Self {
         Self(magnitude)
     }
@@ -26,25 +24,37 @@ impl StatMagnitude {
 pub(crate) struct PoolValue(u8);
 
 impl PoolValue {
-        #[must_use]
+    #[must_use]
     pub(crate) const fn new(value: u8) -> Self {
         Self(value)
     }
 }
 
+/// All stats computed from attributes (never authored directly).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DerivedStats {
-            pub shooting:   Shooting,
-            pub fight:      Fight,
-            pub reactions:  Reactions,
-        pub morale:     Morale,
-        pub tu:         Tu,
-        pub tu_max:     TuMax,
-            pub hp:         Hp,
-        pub hp_max:     HpMax,
-        pub wounds:     Wounds,
-        pub wounds_max: WoundsMax,
-            pub bottle:     Bottle,
+    /// Shooting skill.
+    pub shooting: Shooting,
+    /// Fight skill.
+    pub fight: Fight,
+    /// Reactions skill.
+    pub reactions: Reactions,
+    /// Morale.
+    pub morale: Morale,
+    /// Starting TU.
+    pub tu: Tu,
+    /// Max TU.
+    pub tu_max: TuMax,
+    /// Starting HP.
+    pub hp: Hp,
+    /// Max HP.
+    pub hp_max: HpMax,
+    /// Starting wounds.
+    pub wounds: Wounds,
+    /// Max wounds.
+    pub wounds_max: WoundsMax,
+    /// Bottle threshold.
+    pub bottle: Bottle,
 }
 
 const fn round_to_u16(value: StatMagnitude) -> Hp {
@@ -78,6 +88,7 @@ const fn round_to_u8(value: StatMagnitude) -> PoolValue {
     PoolValue::new(clamped)
 }
 
+/// Compute derived stats from attributes and tuning weights.
 #[must_use]
 pub fn derive_stats(attributes: &GangerAttributes, tuning: &GangerStatTuning) -> DerivedStats {
     let speed = *attributes.speed;

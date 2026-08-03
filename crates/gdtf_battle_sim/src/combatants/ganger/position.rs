@@ -1,12 +1,16 @@
+//! Grid position component.
+
 use bevy::prelude::{Component, Deref};
 
 use crate::metric::{Cell, CellLevel, Level};
 
+/// Where the ganger stands (cell + level).
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Position(CellLevel);
 
 impl Position {
-                            #[must_use]
+    /// Wrap a cell/level.
+    #[must_use]
     pub const fn new(at: CellLevel) -> Self {
         Self(at)
     }
