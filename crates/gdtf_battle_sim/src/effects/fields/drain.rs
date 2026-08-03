@@ -1,3 +1,5 @@
+//! Field drain: flat HP damage to occupants.
+
 use bevy::prelude::{Deref, Entity};
 use serde::Deserialize;
 
@@ -8,31 +10,34 @@ use crate::{
     metric::CellLevel,
 };
 
-/// `#[serde(transparent)]` so a field's authored [`FieldDef`](crate::effects::fields::FieldDef)
+/// Flat HP damage dealt by a field tick.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
 pub struct FieldDamage(u16);
 
 impl FieldDamage {
-        #[must_use]
+    /// Wrap a damage amount.
+    #[must_use]
     pub const fn new(damage: u16) -> Self {
         Self(damage)
     }
 }
 
+/// Applies flat drain damage to an occupant.
 pub struct ApplyDrain {
-        damage: FieldDamage,
+    damage: FieldDamage,
 }
 
 impl ApplyDrain {
-        #[must_use]
+    /// Build the applicator.
+    #[must_use]
     pub const fn new(damage: FieldDamage) -> Self {
         Self { damage }
     }
 }
 
 impl ApplyFieldEffect for ApplyDrain {
-                                    fn drain_occupant(
+    fn drain_occupant(
         &self,
         at: CellLevel,
         occupant: Entity,
@@ -66,17 +71,17 @@ mod tests {
         metric::{Cell, CellLevel, Level},
     };
 
-        fn ground(x: i32, y: i32) -> CellLevel {
+    fn ground(x: i32, y: i32) -> CellLevel {
         CellLevel::new(Cell::new(x, y), Level::new(0))
     }
 
-            type DrainParams = SystemState<(
+    type DrainParams = SystemState<(
         Query<'static, 'static, (&'static mut Hp, &'static mut LifeState)>,
         MessageWriter<'static, FieldTicked>,
         MessageWriter<'static, OnDeathOccurred>,
     )>;
 
-                        fn drained(damage: u16, start_hp: u16) -> (u16, LifeState, usize, usize) {
+    fn drained(damage: u16, start_hp: u16) -> (u16, LifeState, usize, usize) {
         let mut world = World::new();
         world.init_resource::<Messages<FieldTicked>>();
         world.init_resource::<Messages<OnDeathOccurred>>();
@@ -93,7 +98,7 @@ mod tests {
         (hp, life, ticks, deaths)
     }
 
-        fn run_drain(state: &mut DrainParams, world: &mut World, occupant: Entity, damage: u16) {
+    fn run_drain(state: &mut DrainParams, world: &mut World, occupant: Entity, damage: u16) {
         let Ok((mut occupants, mut ticks, mut deaths)) = state.get_mut(world) else {
             unreachable!("the params validate: both message buffers are initialized");
         };
@@ -101,9 +106,9 @@ mod tests {
             unreachable!("the occupant was just spawned with Hp + LifeState");
         };
         let mut drain = OccupantDrain {
-            hp:     &mut hp,
-            life:   &mut life,
-            ticks:  &mut ticks,
+            hp: &mut hp,
+            life: &mut life,
+            ticks: &mut ticks,
             deaths: &mut deaths,
         };
         ApplyDrain::new(FieldDamage::new(damage)).drain_occupant(
@@ -113,7 +118,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn a_non_lethal_drain_eats_the_flat_amount_and_signals_one_tick() {
         let (hp, life, ticks, deaths) = drained(3, 10);
         assert_eq!(hp, 7, "the drain is a flat direct subtraction");
@@ -122,7 +127,7 @@ mod tests {
         assert_eq!(deaths, 0, "a non-lethal drain emits no death signal");
     }
 
-            #[test]
+    #[test]
     fn a_lethal_drain_floors_at_zero_kills_and_signals_the_death() {
         let (hp, life, ticks, deaths) = drained(10, 8);
         assert_eq!(hp, 0, "the drain saturates — no underflow");
