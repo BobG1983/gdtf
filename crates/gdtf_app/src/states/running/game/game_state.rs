@@ -1,14 +1,20 @@
+//! Sub-states while the app is in [`RunningState::Game`].
+
 use bevy::prelude::*;
 
 use crate::states::RunningState;
 
 crate::support_item! {
-        #[derive(SubStates, Default, Debug, Clone, Copy, Eq, PartialEq, Hash)]
+    /// Modes available under Game.
+    #[derive(SubStates, Default, Debug, Clone, Copy, Eq, PartialEq, Hash)]
     #[source(RunningState = RunningState::Game)]
     enum GameState {
-                #[default]
+        /// Pre-mission setup.
+        #[default]
         Setup,
-                HiveScape,
-                BattleScape,
+        /// Campaign / hive map layer.
+        HiveScape,
+        /// Tactical battle.
+        BattleScape,
     }
 }
