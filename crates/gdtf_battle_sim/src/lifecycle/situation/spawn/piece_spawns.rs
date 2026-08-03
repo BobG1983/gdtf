@@ -1,58 +1,72 @@
-//! The authored `(cell, key)` placement records: [`CoverSpawn`], [`SlabSpawn`],
-//! [`FloorSpawn`], and the GTW-545 [`FieldSpawn`] — each an authored `(cell, level)`
+//! Authored (cell, key) placement records for terrain and fields.
+
 use serde::{Deserialize, Serialize};
 
 use crate::{effects::fields::FieldKey, metric::CellLevel, terrain::def::TerrainUuid};
 
-/// One authored piece of cover — a wall *or* a scatter prop.
+/// One wall or scatter cover piece.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct CoverSpawn {
-        pub at:    CellLevel,
-                                pub piece: TerrainUuid,
+    /// Cell.
+    pub at: CellLevel,
+    /// Terrain piece key.
+    pub piece: TerrainUuid,
 }
 
 impl CoverSpawn {
-        #[must_use]
+    /// Build a cover spawn.
+    #[must_use]
     pub const fn new(at: CellLevel, piece: TerrainUuid) -> Self {
         Self { at, piece }
     }
 }
 
+/// One slab placement.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct SlabSpawn {
-        pub at:    CellLevel,
-                                                pub piece: TerrainUuid,
+    /// Cell.
+    pub at: CellLevel,
+    /// Terrain piece key.
+    pub piece: TerrainUuid,
 }
 
 impl SlabSpawn {
-        #[must_use]
+    /// Build a slab spawn.
+    #[must_use]
     pub const fn new(at: CellLevel, piece: TerrainUuid) -> Self {
         Self { at, piece }
     }
 }
 
-/// case — a uniform floor) is the cheapest authored state and the `#[serde(default)]`
+/// One per-cell floor override.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct FloorSpawn {
-        pub at:    CellLevel,
-        pub piece: TerrainUuid,
+    /// Cell.
+    pub at: CellLevel,
+    /// Terrain piece key.
+    pub piece: TerrainUuid,
 }
 
 impl FloorSpawn {
-        #[must_use]
+    /// Build a floor spawn.
+    #[must_use]
     pub const fn new(at: CellLevel, piece: TerrainUuid) -> Self {
         Self { at, piece }
     }
 }
 
+/// One area-damage field placement.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct FieldSpawn {
-        pub at:    CellLevel,
-                                pub field: FieldKey,
+    /// Cell.
+    pub at: CellLevel,
+    /// Field key.
+    pub field: FieldKey,
 }
 
 impl FieldSpawn {
-        #[must_use]
+    /// Build a field spawn.
+    #[must_use]
     pub const fn new(at: CellLevel, field: FieldKey) -> Self {
         Self { at, field }
     }

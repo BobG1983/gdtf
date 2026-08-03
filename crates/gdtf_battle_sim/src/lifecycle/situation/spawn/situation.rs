@@ -1,5 +1,4 @@
-//! [`Situation`] — the canonical authored battlefield aggregate plus its
-//! authored-cells iterator.
+//! Authored battlefield aggregate.
 
 use bevy::reflect::TypePath;
 use serde::Deserialize;
@@ -17,40 +16,45 @@ use crate::{
     vertical::VerticalLink,
 };
 
-/// derives. `#[serde(default)]` on each list lets an authored file omit a section it
+/// Complete authored situation for one battle.
 #[derive(Debug, Clone, Default, Deserialize, TypePath)]
 #[serde(default)]
 pub struct Situation {
-                                                pub gangers:        Vec<PlacedGanger>,
-                                        /// cells). The struct-level `#[serde(default)]` gives an empty list, so every
-            pub rosters:        Vec<RosterMember>,
-                            /// `theme_uuid` field — the canonical sim theme is now this one `theme`). `#[serde(default)]`
-        /// field. An authored `theme: "<uuid>"` parses the `#[serde(transparent)]` [`ThemeUuid`]
-        pub theme:          ThemeUuid,
-                    /// `#[serde(default)]` supplies [`GridSize::default`] = the FULL documented `60×60×8`
-                        pub grid_size:      GridSize,
-        pub walls:          Vec<CoverSpawn>,
-        pub scatter:        Vec<CoverSpawn>,
-                    pub slabs:          Vec<SlabSpawn>,
-                pub vertical_links: Vec<VerticalLink>,
-                /// `#[serde(default)]` supplies [`Faction::default`] = `Faction(0)` for any
-                /// ([`Faction`] is `#[serde(transparent)]`).
+    /// Explicitly placed gangers.
+    pub gangers: Vec<PlacedGanger>,
+    /// Roster members without fixed cells (procgen places them).
+    pub rosters: Vec<RosterMember>,
+    /// Theme key.
+    pub theme: ThemeUuid,
+    /// Board size.
+    pub grid_size: GridSize,
+    /// Wall cover placements.
+    pub walls: Vec<CoverSpawn>,
+    /// Scatter cover placements.
+    pub scatter: Vec<CoverSpawn>,
+    /// Slab placements.
+    pub slabs: Vec<SlabSpawn>,
+    /// Vertical links between levels.
+    pub vertical_links: Vec<VerticalLink>,
+    /// Player's faction index.
     pub player_faction: Faction,
-                            /// `#[serde(default)]` supplies the NIL sentinel ([`TerrainUuid::default`] —
-                        pub default_floor:  TerrainUuid,
-            /// `#[serde(default)]` gives an empty list (the common case: uniform floor).
-    pub floors:         Vec<FloorSpawn>,
-                        /// terrain). `#[serde(default)]` gives an empty list, so every EXISTING situation `.ron`
-        pub fields:         Vec<FieldSpawn>,
+    /// Default floor terrain when no per-cell floor is authored.
+    pub default_floor: TerrainUuid,
+    /// Per-cell floor overrides.
+    pub floors: Vec<FloorSpawn>,
+    /// Area-damage field placements.
+    pub fields: Vec<FieldSpawn>,
 }
 
 impl Situation {
-        #[must_use]
+    /// Empty situation with defaults.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
-                                        pub fn authored_cells(&self) -> impl Iterator<Item = CellLevel> + '_ {
+    /// Cells that have authored cover or slabs.
+    pub fn authored_cells(&self) -> impl Iterator<Item = CellLevel> + '_ {
         self.walls
             .iter()
             .map(|c| c.at)
