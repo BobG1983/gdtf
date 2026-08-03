@@ -1,3 +1,5 @@
+//! TU costs for acts, movement, and posture changes.
+
 mod acts;
 mod movement;
 mod posture;

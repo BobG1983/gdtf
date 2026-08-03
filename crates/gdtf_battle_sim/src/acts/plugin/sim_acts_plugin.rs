@@ -1,7 +1,11 @@
+//! Bevy plugin for the acts layer.
+
 use bevy::prelude::{App, Plugin};
 
+/// Installs act messages, dispatch, turn clocks, and reaction/suppression wiring.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SimActsPlugin;
+
 impl Plugin for SimActsPlugin {
     fn build(&self, app: &mut App) {
         super::messages::register_messages(app);

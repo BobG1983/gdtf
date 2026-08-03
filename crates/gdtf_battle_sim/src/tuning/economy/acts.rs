@@ -1,13 +1,16 @@
+//! TU costs for shove, doors, emplacements, throws.
+
 use bevy::prelude::Deref;
 use serde::Deserialize;
 
-/// value (the drop equals it), never the magnitude. `#[serde(transparent)]` lets it parse a
+/// TU for a deliberate shove.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
 pub struct ShoveTu(u8);
 
 impl ShoveTu {
-                                #[must_use]
+    /// Wrap a cost.
+    #[must_use]
     pub const fn new(tu: u8) -> Self {
         Self(tu)
     }
@@ -19,13 +22,14 @@ impl Default for ShoveTu {
     }
 }
 
-/// never the magnitude. `#[serde(transparent)]` lets it parse a bare RON scalar; private inner
+/// TU to open a door.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
 pub struct OpenDoorTu(u8);
 
 impl OpenDoorTu {
-                            #[must_use]
+    /// Wrap a cost.
+    #[must_use]
     pub const fn new(tu: u8) -> Self {
         Self(tu)
     }
@@ -37,13 +41,14 @@ impl Default for OpenDoorTu {
     }
 }
 
-/// this value (the drop equals it), never the magnitude. `#[serde(transparent)]` lets it parse
+/// TU to enter an emplacement.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
 pub struct EnterEmplacementTu(u8);
 
 impl EnterEmplacementTu {
-                            #[must_use]
+    /// Wrap a cost.
+    #[must_use]
     pub const fn new(tu: u8) -> Self {
         Self(tu)
     }
@@ -55,13 +60,14 @@ impl Default for EnterEmplacementTu {
     }
 }
 
-/// `#[serde(transparent)]` lets it parse a bare RON scalar; private inner + derived [`Deref`].
+/// TU to exit an emplacement.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
 pub struct ExitEmplacementTu(u8);
 
 impl ExitEmplacementTu {
-                            #[must_use]
+    /// Wrap a cost.
+    #[must_use]
     pub const fn new(tu: u8) -> Self {
         Self(tu)
     }
@@ -73,13 +79,14 @@ impl Default for ExitEmplacementTu {
     }
 }
 
-/// (the drop equals it), never the magnitude. `#[serde(transparent)]` lets it parse a bare RON
+/// TU to throw a grenade.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
 pub struct ThrowTu(u8);
 
 impl ThrowTu {
-                            #[must_use]
+    /// Wrap a cost.
+    #[must_use]
     pub const fn new(tu: u8) -> Self {
         Self(tu)
     }

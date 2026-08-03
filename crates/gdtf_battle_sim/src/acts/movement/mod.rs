@@ -1,3 +1,5 @@
+//! Move requests, walk state, and movement signals.
+
 mod dispatch;
 mod signals;
 mod suppression_gate;
