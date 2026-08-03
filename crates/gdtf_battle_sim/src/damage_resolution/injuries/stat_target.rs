@@ -1,33 +1,40 @@
+//! Which combatant stat an injury effect can modify.
+
 use serde::{Deserialize, Serialize};
 
+/// Stats that injury effects can touch.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Deserialize, Serialize)]
 pub enum StatTarget {
-        Speed,
-        Aim,
-        Strength,
-        Toughness,
-        Reflexes,
-        Cool,
-        Grit,
-        Luck,
-        Shooting,
-        Fight,
-        Reactions,
-        Morale,
-        Tu,
-        Hp,
-        Wounds,
-        Bottle,
+    Speed,
+    Aim,
+    Strength,
+    Toughness,
+    Reflexes,
+    Cool,
+    Grit,
+    Luck,
+    Shooting,
+    Fight,
+    Reactions,
+    Morale,
+    Tu,
+    Hp,
+    Wounds,
+    Bottle,
 }
 
+/// Whether a stat is a base attribute or a derived value.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum StatKind {
-        Attribute,
-        Derived,
+    /// Primary attribute.
+    Attribute,
+    /// Derived from attributes or other state.
+    Derived,
 }
 
 impl StatTarget {
-                    pub const ALL: [Self; 16] = [
+    /// All targets in index order.
+    pub const ALL: [Self; 16] = [
         Self::Speed,
         Self::Aim,
         Self::Strength,
@@ -46,9 +53,11 @@ impl StatTarget {
         Self::Bottle,
     ];
 
-        pub const COUNT: usize = Self::ALL.len();
+    /// Number of targets.
+    pub const COUNT: usize = Self::ALL.len();
 
-            #[must_use]
+    /// Attribute vs derived.
+    #[must_use]
     pub const fn kind(self) -> StatKind {
         match self {
             Self::Speed
@@ -70,7 +79,8 @@ impl StatTarget {
         }
     }
 
-                #[must_use]
+    /// Dense index used by the delta ledger.
+    #[must_use]
     pub const fn index(self) -> usize {
         match self {
             Self::Speed => 0,
