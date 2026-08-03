@@ -1,27 +1,32 @@
+//! Aim delta attachment effect.
+
 use bevy::prelude::{Deref, EntityWorldMut};
 use serde::{Deserialize, Serialize};
 
 use super::ApplyAttachmentEffect;
 use crate::weapon::Accuracy;
 
-/// `#[serde(transparent)]` so it authors as a bare RON scalar — `Aim(0.4)`; [`Serialize`]
+/// Additive accuracy change from an attachment.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct AimDelta(f32);
 
 impl AimDelta {
-            #[must_use]
+    /// Wrap a delta.
+    #[must_use]
     pub const fn new(delta: f32) -> Self {
         Self(delta)
     }
 }
 
+/// Applies an aim delta to a weapon's accuracy.
 pub struct ApplyAim {
-        delta: AimDelta,
+    delta: AimDelta,
 }
 
 impl ApplyAim {
-        #[must_use]
+    /// Build the applicator.
+    #[must_use]
     pub const fn new(delta: AimDelta) -> Self {
         Self { delta }
     }
@@ -44,7 +49,7 @@ mod tests {
     use super::{AimDelta, ApplyAim, ApplyAttachmentEffect};
     use crate::weapon::Accuracy;
 
-                #[test]
+    #[test]
     fn aim_raises_accuracy() {
         let mut world = World::new();
         let weapon = world.spawn(Accuracy::new(1.0)).id();
@@ -60,7 +65,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn absent_accuracy_is_a_noop() {
         let mut world = World::new();
         let weapon = world.spawn_empty().id();

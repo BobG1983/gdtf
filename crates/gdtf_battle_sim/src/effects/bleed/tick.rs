@@ -1,3 +1,5 @@
+//! Bleed tick: drain HP from injury bleed and wounds while bleeding out.
+
 use bevy::prelude::{Commands, Component, Entity, Message, MessageWriter, Query, Res};
 
 use crate::{
@@ -18,37 +20,45 @@ type BleedRow = (
     Option<&'static BleedOngoing>,
 );
 
+/// Marker: this ganger is currently taking bleed damage.
 #[derive(Component, Debug, Clone, Copy, Default)]
 pub struct BleedOngoing;
 
+/// Marker: downed and bleeding out (wound drain).
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct BleedingOut;
 
+/// Bleed just started on this ganger.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BleedStarted {
-        pub ganger: Entity,
+    /// Ganger entity.
+    pub ganger: Entity,
 }
 
 impl BleedStarted {
-        #[must_use]
+    /// Build the message.
+    #[must_use]
     pub const fn new(ganger: Entity) -> Self {
         Self { ganger }
     }
 }
 
-/// A buffered Bevy **message** (`#[derive(Message)]`), mirroring
+/// One tick of bleed damage occurred.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Bleeding {
-        pub ganger: Entity,
+    /// Ganger entity.
+    pub ganger: Entity,
 }
 
 impl Bleeding {
-            #[must_use]
+    /// Build the message.
+    #[must_use]
     pub const fn new(ganger: Entity) -> Self {
         Self { ganger }
     }
 }
 
+/// Drain injury bleed and bleeding-out wounds; emit messages and life-state changes.
 pub fn tick_bleed(
     mut q: Query<BleedRow>,
     tuning: Res<CombatTuning>,
