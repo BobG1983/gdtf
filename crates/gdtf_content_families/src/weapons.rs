@@ -1,6 +1,9 @@
+//! Ranged weapons content family.
+
 use gdtf_assets::{ContentFamily, ContentFileStem};
 use gdtf_battle_sim::weapon::{WeaponName, WeaponRegistry, WeaponSpec};
 
+/// Loads `*.weapon.ron` files into [`WeaponRegistry`].
 pub struct WeaponsFamily;
 
 impl ContentFamily for WeaponsFamily {

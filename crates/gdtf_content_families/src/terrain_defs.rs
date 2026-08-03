@@ -1,6 +1,9 @@
+//! Terrain definition content family.
+
 use gdtf_assets::{ContentFamily, ContentFileStem};
 use gdtf_battle_sim::terrain::def::{TerrainDef, TerrainDefRegistry};
 
+/// Loads `*.terrain_def.ron` files into [`TerrainDefRegistry`].
 pub struct TerrainDefsFamily;
 
 impl ContentFamily for TerrainDefsFamily {
