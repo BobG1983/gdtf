@@ -20,11 +20,7 @@ use crate::{
 
 #[expect(
     clippy::too_many_arguments,
-    reason = "GTW-727 adds the playback gate to a signature that was already at the ceiling; \
-              every param is a distinct, independently-borrowed access the drain genuinely \
-              needs, and the two multi-read groups are ALREADY bundled (`ActWriters` / \
-              `SelectionCycleReads`). Bundling the gate into one of those would attach it to \
-              an unrelated concern"
+    reason = "each param is a distinct access; ActWriters and SelectionCycleReads already bundle the multi-reads"
 )]
 /// Dispatch each pending intent when the playback gate allows it.
 pub fn dispatch_act_intents(
