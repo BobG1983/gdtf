@@ -1,3 +1,5 @@
+//! Theme form terrain summary and floor-candidate helpers.
+
 use gdtf_battle_sim::terrain::{
     def::{TerrainDef, TerrainDefRegistry, TerrainSimKind, TerrainUuid},
     entity::TerrainPieceKind,
@@ -7,6 +9,7 @@ use super::types::ThemeDraft;
 
 const HP_BAR_CEILING: f32 = 1000.0;
 
+/// Human-readable terrain summary and HP-bar fraction for a def.
 #[must_use]
 pub fn resolved_stats(def: &TerrainDef) -> (String, f32) {
     #[expect(
@@ -72,6 +75,7 @@ pub fn resolved_stats(def: &TerrainDef) -> (String, f32) {
     (summary, hp / HP_BAR_CEILING)
 }
 
+/// Default-floor candidates: slabs first, then other terrain in the draft.
 #[must_use]
 pub fn floor_candidates(
     draft: &ThemeDraft,
@@ -94,6 +98,7 @@ pub fn floor_candidates(
     slabs
 }
 
+/// Default-floor candidates restricted to slab terrain.
 #[must_use]
 pub fn slab_floor_candidates(
     draft: &ThemeDraft,

@@ -1,9 +1,11 @@
-//! The editor's own POLICY half of the activation gate: the protocol version it negotiates,
+//! Editor net QA identity and hello facts.
+
 use gdtf_net_qa_transport::NetQaPort;
 use gdtf_qa_protocol::message::{HelloFacts, ProtocolVersion, ServerNameNet};
 
 pub(super) const EDITOR_QA_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::CURRENT;
 
+/// Server name advertised on the editor QA hello.
 pub const EDITOR_QA_SERVER_NAME: &str = "gdtf-editor-net-qa";
 
 pub(super) const DEFAULT_EDITOR_PORT: NetQaPort = NetQaPort::new(7617);
