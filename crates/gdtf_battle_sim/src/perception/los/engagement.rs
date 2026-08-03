@@ -1,3 +1,5 @@
+//! Engagement visibility: alive, in range, and clear LOS.
+
 use bevy::prelude::{Deref, Entity};
 
 use super::probe::{Observer, Sighted, Target, has_los};
@@ -9,16 +11,18 @@ use crate::{
     tuning::{CombatTuning, ViewRange},
 };
 
+/// Whether the observer can currently see the target for engagement.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CanSee(bool);
 
 impl CanSee {
-                #[must_use]
+    #[must_use]
     pub const fn new(can_see: bool) -> Self {
         Self(can_see)
     }
 }
 
+/// True when the observer is alive, the target is within view range, and LOS is clear.
 #[must_use]
 #[expect(
     clippy::too_many_arguments,
@@ -61,7 +65,7 @@ fn chebyshev(a: &Position, b: &Position) -> TargetRange {
 struct TargetRange(u16);
 
 impl TargetRange {
-        const fn new(range: u16) -> Self {
+    const fn new(range: u16) -> Self {
         Self(range)
     }
 }
