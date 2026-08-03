@@ -1,4 +1,4 @@
-//! The WHOLE module is `#[cfg(debug_assertions)]`-gated at its `mod` site (the GTW-429 gang-save
+//! Prefab save helpers. The whole module is `#[cfg(debug_assertions)]`-gated at its `mod` site.
 mod project;
 mod types;
 

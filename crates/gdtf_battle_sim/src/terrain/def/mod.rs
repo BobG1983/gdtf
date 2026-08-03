@@ -1,4 +1,4 @@
-//! model after GTW-496 retired the legacy per-file terrain authoring types.
+//! Terrain definitions after the legacy per-file authoring types were retired.
 mod blocking;
 mod definition;
 mod kind;
