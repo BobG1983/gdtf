@@ -1,16 +1,25 @@
+//! Errors from the MCP ↔ net QA bridge.
+
 use core::fmt::{self, Display};
 use std::io;
 
 use gdtf_qa_protocol::{framing::WireError, message::QaError};
 
+/// Failure talking to a host over net QA.
 #[derive(Debug)]
 pub enum McpError {
-            Connect(io::Error),
-        Io(io::Error),
-        Wire(WireError),
-        Disconnected,
-                                    Handshake(QaError),
-            UnexpectedResponse,
+    /// Could not open a TCP connection.
+    Connect(io::Error),
+    /// Read/write on an open connection failed.
+    Io(io::Error),
+    /// Frame encode/decode failed.
+    Wire(WireError),
+    /// Peer closed the connection.
+    Disconnected,
+    /// Hello handshake was refused.
+    Handshake(QaError),
+    /// Response kind did not match the request.
+    UnexpectedResponse,
 }
 
 impl Display for McpError {

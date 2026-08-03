@@ -1,5 +1,8 @@
+//! Minimal standard base64 encoder (no external crate).
+
 const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
+/// Encode bytes as standard base64 (with `=` padding).
 #[must_use]
 pub fn encode_standard(bytes: &[u8]) -> String {
     let mut out: Vec<u8> = Vec::with_capacity(bytes.len().div_ceil(3) * 4);
@@ -31,7 +34,7 @@ pub fn encode_standard(bytes: &[u8]) -> String {
 mod tests {
     use super::encode_standard;
 
-        #[test]
+    #[test]
     fn encodes_the_rfc4648_vectors() {
         assert_eq!(encode_standard(b""), "");
         assert_eq!(encode_standard(b"f"), "Zg==");
@@ -42,7 +45,7 @@ mod tests {
         assert_eq!(encode_standard(b"foobar"), "Zm9vYmFy");
     }
 
-        #[test]
+    #[test]
     fn uses_the_plus_and_slash_alphabet() {
         assert_eq!(encode_standard(&[0xFB]), "+w==");
         assert_eq!(encode_standard(&[0xFF, 0xFF]), "//8=");
