@@ -8,6 +8,11 @@ use crate::{
     rng::ProcgenRng,
 };
 
+/// Fill dead space between player/enemy placements (default packer split).
+///
+/// # Errors
+///
+/// Returns [`PackingError`] if the fill cursor cannot be built or a later packing step fails.
 pub fn fill_placement(
     placement: Placement,
     registry: &PrefabRegistry,
@@ -27,6 +32,11 @@ pub fn fill_placement(
     )
 }
 
+/// Fill dead space with an explicit packer split mode.
+///
+/// # Errors
+///
+/// Same failure modes as [`fill_placement`].
 pub fn fill_placement_with(
     placement: Placement,
     registry: &PrefabRegistry,

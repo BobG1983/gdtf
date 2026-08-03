@@ -5,7 +5,7 @@ use crate::metric::MAX_LEVELS;
 
 pub const MAX_GRID_SPAN: u8 = 60;
 
-/// inside a [`GridSize`] is always in `1..=MAX_GRID_SPAN`. `#[serde(transparent)]`
+/// Grid width in cells (validated inside [`GridSize::new`]).
 #[derive(
     Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Deserialize, Serialize,
 )]
@@ -13,13 +13,13 @@ pub const MAX_GRID_SPAN: u8 = 60;
 pub struct GridWidth(u8);
 
 impl GridWidth {
-            #[must_use]
+    #[must_use]
     pub const fn new(cells: u8) -> Self {
         Self(cells)
     }
 }
 
-/// `#[serde(transparent)]` parses a bare RON scalar.
+/// Grid height in cells.
 #[derive(
     Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Deserialize, Serialize,
 )]
@@ -27,13 +27,13 @@ impl GridWidth {
 pub struct GridHeight(u8);
 
 impl GridHeight {
-            #[must_use]
+    #[must_use]
     pub const fn new(cells: u8) -> Self {
         Self(cells)
     }
 }
 
-/// [`MAX_LEVELS`](crate::metric::MAX_LEVELS) in [`GridSize::new`]. `#[serde(transparent)]`
+/// Number of vertical levels in a grid.
 #[derive(
     Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Deserialize, Serialize,
 )]
@@ -41,7 +41,7 @@ impl GridHeight {
 pub struct GridLevels(u8);
 
 impl GridLevels {
-                #[must_use]
+    #[must_use]
     pub const fn new(levels: u8) -> Self {
         Self(levels)
     }
@@ -49,14 +49,14 @@ impl GridLevels {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GridSizeError {
-        Empty {
-                width:  GridWidth,
-                height: GridHeight,
-                levels: GridLevels,
+    Empty {
+        width:  GridWidth,
+        height: GridHeight,
+        levels: GridLevels,
     },
-        WidthOverMax(GridWidth),
-        HeightOverMax(GridHeight),
-        LevelsOverMax(GridLevels),
+    WidthOverMax(GridWidth),
+    HeightOverMax(GridHeight),
+    LevelsOverMax(GridLevels),
 }
 
 impl std::fmt::Display for GridSizeError {
@@ -94,17 +94,24 @@ impl std::fmt::Display for GridSizeError {
 
 impl std::error::Error for GridSizeError {}
 
-/// `GridSizeDef` shape, `#[serde(into = "GridSizeDef")]`) so the editor prefab saver
+/// Validated battle grid dimensions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(try_from = "GridSizeDef", into = "GridSizeDef")]
 pub struct GridSize {
-        width:  GridWidth,
-        height: GridHeight,
-        levels: GridLevels,
+    width:  GridWidth,
+    height: GridHeight,
+    levels: GridLevels,
 }
 
 impl GridSize {
-                                                    pub fn new(
+    /// Build a grid size after range checks.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`GridSizeError::Empty`] if any axis is zero,
+    /// [`GridSizeError::WidthOverMax`] / [`HeightOverMax`] if width or height exceeds [`MAX_GRID_SPAN`],
+    /// or [`GridSizeError::LevelsOverMax`] if levels exceed [`MAX_LEVELS`].
+    pub fn new(
         width: GridWidth,
         height: GridHeight,
         levels: GridLevels,
@@ -132,25 +139,24 @@ impl GridSize {
         })
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn width(&self) -> GridWidth {
         self.width
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn height(&self) -> GridHeight {
         self.height
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn levels(&self) -> GridLevels {
         self.levels
     }
 }
 
 impl Default for GridSize {
-                    /// field is `#[serde(default)]`, so a situation `.ron` that omits `grid_size` (every
-                                fn default() -> Self {
+    fn default() -> Self {
         Self {
             width:  GridWidth::new(MAX_GRID_SPAN),
             height: GridHeight::new(MAX_GRID_SPAN),
@@ -159,12 +165,12 @@ impl Default for GridSize {
     }
 }
 
-/// A serde intermediate (`#[serde(try_from = "GridSizeDef", into = "GridSizeDef")]` on
+/// Serde intermediate for [`GridSize`].
 #[derive(Deserialize, Serialize)]
 pub struct GridSizeDef {
-        width:  GridWidth,
-        height: GridHeight,
-        levels: GridLevels,
+    width:  GridWidth,
+    height: GridHeight,
+    levels: GridLevels,
 }
 
 impl TryFrom<GridSizeDef> for GridSize {

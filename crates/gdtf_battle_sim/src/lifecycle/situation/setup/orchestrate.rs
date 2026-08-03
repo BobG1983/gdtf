@@ -12,6 +12,12 @@ use crate::{
     vertical::build_vertical_link_graph,
 };
 
+/// Resolve situation data and spawn the battle world resources.
+///
+/// # Errors
+///
+/// Returns [`BattleSetupError`] when vertical links are invalid, roster/weapon/armor
+/// resolution fails, gangers share a cell, or field/cover setup cannot complete.
 pub fn setup_battle(
     situation: &Situation,
     registries: BattleRegistries<'_>,
