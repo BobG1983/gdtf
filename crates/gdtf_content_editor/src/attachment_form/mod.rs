@@ -1,5 +1,4 @@
-//! The ATTACHMENT authoring mode's MODEL half (GTW-669) — the Workbench form that edits
-//! closed 13-effect list — the GTW-549/554 authoring schema) and saves it where the
+//! Attachment authoring mode — draft and save for the fixed effect list.
 mod draft;
 mod save;
 

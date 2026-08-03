@@ -1,4 +1,4 @@
-//! The egui PREFAB-mode authoring form (GTW-515 C4) — the real prefab painter that replaces the
+//! Prefab mode egui form — painter, palette, and viewport.
 pub(crate) mod controls_ui;
 pub(crate) mod level_rail;
 pub(crate) mod nav;

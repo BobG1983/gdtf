@@ -1,5 +1,4 @@
-//! The DATA-DRIVEN cyclic-act order (GTW-225 / GTW-48 S8 AC8): the fixed authored
-//! ladder), not tuning magnitudes — so they live as authored `const` arrays read
+//! Fixed authored order for cyclic acts (facing and stance ladders).
 mod orders;
 
 #[cfg(test)]

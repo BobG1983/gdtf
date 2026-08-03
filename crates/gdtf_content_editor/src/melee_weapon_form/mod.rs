@@ -1,4 +1,4 @@
-//! The MELEE-WEAPON authoring mode's MODEL half (GTW-671) — the Workbench form that
+//! Melee weapon authoring mode — draft and save.
 mod draft;
 mod save;
 

@@ -1,4 +1,4 @@
-//! The INJURY authoring mode's MODEL half (GTW-654) — the Workbench forms that edit
+//! Injury authoring mode — draft, weighting, and save.
 mod draft;
 mod save;
 mod weighting;
