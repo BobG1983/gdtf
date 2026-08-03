@@ -1,3 +1,5 @@
+//! Build shooter snapshots and resolve individual rounds inside a volley.
+
 mod fold;
 mod round;
 mod snapshot;
