@@ -1,3 +1,5 @@
+//! Enemy turn AI: snapshot, target pick, advance, engage.
+
 mod advance;
 mod brain;
 mod decide;
