@@ -1,3 +1,5 @@
+//! Reduce integrity; emit damaged or broken outcomes.
+
 use bevy::prelude::{Entity, Message};
 
 use crate::{
@@ -5,16 +7,20 @@ use crate::{
     resolve_hit::IntegrityWear,
 };
 
-/// A buffered Bevy **message** (`#[derive(Message)]`), mirroring [`ArmorBroken`] /
+/// Armor took integrity damage but is still protecting.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ArmorDamaged {
-        pub ganger: Entity,
-        pub part:   BodyPart,
-        pub delta:  IntegrityWear,
+    /// Wearer.
+    pub ganger: Entity,
+    /// Body part.
+    pub part: BodyPart,
+    /// Integrity removed.
+    pub delta: IntegrityWear,
 }
 
 impl ArmorDamaged {
-            #[must_use]
+    /// Build a damage message.
+    #[must_use]
     pub const fn new(ganger: Entity, part: BodyPart, delta: IntegrityWear) -> Self {
         Self {
             ganger,
@@ -24,27 +30,35 @@ impl ArmorDamaged {
     }
 }
 
+/// Result of applying wear to a piece.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ArmorWearOutcome {
-        Unaffected,
-        Damaged(ArmorDamaged),
-        Broke(ArmorBroken),
+    /// No change (already broken or zero wear).
+    Unaffected,
+    /// Still protecting after damage.
+    Damaged(ArmorDamaged),
+    /// Crossed from protecting to broken.
+    Broke(ArmorBroken),
 }
 
-/// A buffered Bevy **message** (`#[derive(Message)]`), mirroring
+/// Armor piece integrity hit zero.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ArmorBroken {
-        pub ganger: Entity,
-        pub part:   BodyPart,
+    /// Wearer.
+    pub ganger: Entity,
+    /// Body part.
+    pub part: BodyPart,
 }
 
 impl ArmorBroken {
-            #[must_use]
+    /// Build a break message.
+    #[must_use]
     pub const fn new(ganger: Entity, part: BodyPart) -> Self {
         Self { ganger, part }
     }
 }
 
+/// Subtract wear from integrity; return the outcome for messaging.
 #[must_use]
 pub fn wear_armor(
     integrity: &mut ArmorIntegrity,

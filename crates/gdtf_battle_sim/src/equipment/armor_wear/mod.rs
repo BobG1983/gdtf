@@ -1,4 +1,5 @@
-//! **message** (`#[derive(Message)]` — Bevy 0.18 renamed buffered
+//! Apply integrity wear to armor pieces.
+
 #[cfg(test)]
 mod test;
 mod wear;
