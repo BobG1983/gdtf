@@ -1,3 +1,5 @@
+//! Fire a multi-round volley from one shooter.
+
 use bevy::prelude::Entity;
 
 use super::{
@@ -17,24 +19,32 @@ use crate::{
     tuning::CombatTuning,
 };
 
+/// Result of firing one volley: per-round reports, outcomes, and splash.
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct Volley {
-            pub reports: Vec<HitReport>,
-            pub shots:   Vec<ShotOutcome>,
-                                        pub splash:  Vec<Vec<HitReport>>,
+    /// Hit reports for each primary round.
+    pub reports: Vec<HitReport>,
+    /// Coarse shot outcomes for each round.
+    pub shots: Vec<ShotOutcome>,
+    /// AOE splash reports nested per primary round.
+    pub splash: Vec<Vec<HitReport>>,
 }
 
 impl Volley {
-                pub(crate) const fn empty() -> Self {
+    /// Empty volley (failed preconditions).
+    pub(crate) const fn empty() -> Self {
         Self {
             reports: Vec::new(),
-            shots:   Vec::new(),
-            splash:  Vec::new(),
+            shots: Vec::new(),
+            splash: Vec::new(),
         }
     }
 }
 
+/// Fire a volley: spend TU, clamp burst to magazine, resolve each round.
+///
+/// Returns an empty volley when the shooter cannot fire.
 #[expect(
     clippy::too_many_arguments,
     reason = "the GTW-323 armor + weapon relationships add the disjoint wears/pieces + \
@@ -82,12 +92,12 @@ pub fn fire(
     let shooter_life = *shooter_life;
 
     let actor = FireActor {
-        life:            &shooter_life,
-        tu:              &shooter_tu,
-        tu_max:          &shooter_tu_max,
-        aiming:          &shooter_aiming,
-        magazine:        &magazine_now,
-        handedness:      shooter_handedness,
+        life: &shooter_life,
+        tu: &shooter_tu,
+        tu_max: &shooter_tu_max,
+        aiming: &shooter_aiming,
+        magazine: &magazine_now,
+        handedness: shooter_handedness,
         hands_available: shooter_hands,
     };
     if !*can_fire(

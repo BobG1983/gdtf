@@ -1,3 +1,5 @@
+//! Resolve an area blast (grenade / splash) against all affected cells.
+
 use bevy::prelude::Entity;
 
 use super::query::{BattleGrids, PieceQuery, TargetQuery, WearsQuery};
@@ -25,6 +27,7 @@ fn struck_piece_entity(
         .find(|&piece| pieces.get(piece).is_ok_and(|p| *p.part == part))
 }
 
+/// Apply blast damage to every living occupant in the AOE footprint.
 #[expect(
     clippy::too_many_arguments,
     reason = "the blast fan needs the landing / thrower cells + the weapon stats + hit type + \
@@ -129,11 +132,11 @@ fn fold_blast_ganger(
         .and_then(|part| struck_piece_entity(struck, part, wears, pieces))
         .and_then(|piece_entity| {
             pieces.get_mut(piece_entity).ok().map(|piece| StruckPiece {
-                floor:      *piece.floor,
+                floor: *piece.floor,
                 protection: *piece.protection,
-                hardness:   *piece.hardness,
+                hardness: *piece.hardness,
                 armor_type: *piece.armor_type,
-                integrity:  piece.integrity.into_inner(),
+                integrity: piece.integrity.into_inner(),
             })
         });
 
@@ -151,18 +154,18 @@ fn fold_blast_ganger(
                 weapon,
                 shooter_luck,
                 Some(TargetGanger {
-                    hp:        &mut hp,
-                    wounds:    &mut wounds,
-                    life:      &mut life,
-                    piece:     struck_piece_view,
+                    hp: &mut hp,
+                    wounds: &mut wounds,
+                    life: &mut life,
+                    piece: struck_piece_view,
                     inflicted: &mut inflicted,
                     toughness: effective_toughness,
-                    luck:      effective_luck,
+                    luck: effective_luck,
                 }),
                 struck,
                 StruckSurfaces {
                     cover: grids.cover,
-                    slab:  grids.slab,
+                    slab: grids.slab,
                 },
                 tuning,
                 severity_rng,
