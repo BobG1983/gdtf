@@ -6,11 +6,16 @@ use serde::{Deserialize, Serialize};
 /// Magazine ammo class.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, Default)]
 pub enum AmmoType {
+    /// Solid slug (default).
     #[default]
     Slug,
+    /// Energy cell.
     Cell,
+    /// Flask.
     Flask,
+    /// Canister.
     Canister,
+    /// Thrown grenade.
     Grenade,
 }
 

@@ -1,4 +1,5 @@
-//! GTW-405): base attributes stay AUTHORITATIVE and are never mutated by an injury;
+//! Project injury deltas onto attributes and derived stats without mutating bases.
+
 use bevy::prelude::Deref;
 
 use crate::{
@@ -16,7 +17,7 @@ use crate::{
 struct AttributeValue(f32);
 
 impl AttributeValue {
-        #[must_use]
+    #[must_use]
     const fn new(value: f32) -> Self {
         Self(value)
     }
@@ -26,6 +27,7 @@ fn effective_attr_value(base: AttributeValue, sum: StatDeltaSum) -> AttributeVal
     AttributeValue::new(*base + f32::from(*sum))
 }
 
+/// Toughness after injury deltas.
 #[must_use]
 pub fn effective_toughness(base: Toughness, ledger: &InflictedInjuries) -> Toughness {
     Toughness::new(*effective_attr_value(
@@ -34,6 +36,7 @@ pub fn effective_toughness(base: Toughness, ledger: &InflictedInjuries) -> Tough
     ))
 }
 
+/// Luck after injury deltas.
 #[must_use]
 pub fn effective_luck(base: Luck, ledger: &InflictedInjuries) -> Luck {
     Luck::new(*effective_attr_value(
@@ -44,32 +47,32 @@ pub fn effective_luck(base: Luck, ledger: &InflictedInjuries) -> Luck {
 
 fn effective_attributes(base: &GangerAttributes, ledger: &InflictedInjuries) -> GangerAttributes {
     GangerAttributes {
-        speed:     Speed::new(*effective_attr_value(
+        speed: Speed::new(*effective_attr_value(
             AttributeValue::new(*base.speed),
             ledger.delta_for(StatTarget::Speed),
         )),
-        aim:       Aim::new(*effective_attr_value(
+        aim: Aim::new(*effective_attr_value(
             AttributeValue::new(*base.aim),
             ledger.delta_for(StatTarget::Aim),
         )),
-        strength:  Strength::new(*effective_attr_value(
+        strength: Strength::new(*effective_attr_value(
             AttributeValue::new(*base.strength),
             ledger.delta_for(StatTarget::Strength),
         )),
         toughness: effective_toughness(base.toughness, ledger),
-        reflexes:  Reflexes::new(*effective_attr_value(
+        reflexes: Reflexes::new(*effective_attr_value(
             AttributeValue::new(*base.reflexes),
             ledger.delta_for(StatTarget::Reflexes),
         )),
-        cool:      Cool::new(*effective_attr_value(
+        cool: Cool::new(*effective_attr_value(
             AttributeValue::new(*base.cool),
             ledger.delta_for(StatTarget::Cool),
         )),
-        grit:      Grit::new(*effective_attr_value(
+        grit: Grit::new(*effective_attr_value(
             AttributeValue::new(*base.grit),
             ledger.delta_for(StatTarget::Grit),
         )),
-        luck:      effective_luck(base.luck, ledger),
+        luck: effective_luck(base.luck, ledger),
     }
 }
 
@@ -103,6 +106,7 @@ fn pool_max_u16_with_delta(derived_max: Hp, sum: StatDeltaSum) -> Hp {
     Hp::new(floored)
 }
 
+/// Derive skills and pools from attributes, then apply injury deltas.
 #[must_use]
 pub fn derive_stats_with_injuries(
     base: &GangerAttributes,
