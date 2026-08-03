@@ -1,3 +1,5 @@
+//! Typed-builder phases for a headless UI test app.
+
 use core::marker::PhantomData;
 use std::path::PathBuf;
 
@@ -13,13 +15,16 @@ use bevy::{
     winit::WinitPlugin,
 };
 
+/// Builder phase: no camera spawned yet.
 pub struct NoCamera;
 
+/// Builder phase: a Camera2d has been spawned.
 pub struct WithCamera;
 
+/// Headless DefaultPlugins app for UI tests.
 pub struct GdtfUiTestAppBuilder<Phase> {
-        app:    App,
-        _phase: PhantomData<fn() -> Phase>,
+    app: App,
+    _phase: PhantomData<fn() -> Phase>,
 }
 
 fn workspace_assets_root() -> PathBuf {
@@ -30,7 +35,8 @@ fn workspace_assets_root() -> PathBuf {
 }
 
 impl GdtfUiTestAppBuilder<NoCamera> {
-                                                                    #[must_use]
+    /// Start a headless DefaultPlugins app (no camera).
+    #[must_use]
     pub fn new() -> Self {
         let mut app = App::new();
         app.add_plugins(
@@ -65,11 +71,12 @@ impl GdtfUiTestAppBuilder<NoCamera> {
         }
     }
 
-                                #[must_use]
+    /// Spawn a Camera2d and move to the WithCamera phase.
+    #[must_use]
     pub fn with_ui_camera(mut self) -> GdtfUiTestAppBuilder<WithCamera> {
         self.app.world_mut().spawn(Camera2d);
         GdtfUiTestAppBuilder {
-            app:    self.app,
+            app: self.app,
             _phase: PhantomData,
         }
     }
@@ -82,7 +89,8 @@ impl Default for GdtfUiTestAppBuilder<NoCamera> {
 }
 
 impl GdtfUiTestAppBuilder<WithCamera> {
-                        pub fn build(self) -> App {
+    /// Finish building and return the app.
+    pub fn build(self) -> App {
         self.app
     }
 }

@@ -1,9 +1,18 @@
+//! Shared test helpers for GDTF crates: harness builders, input, probes, and GPU checks.
+
+/// Frame advance helpers.
 pub mod advance;
+/// Headless apps with a full DefaultPlugins stack.
 pub mod default_plugins_harness;
+/// GPU adapter presence probe for skip-or-run decisions.
 pub mod gpu_probe;
+/// Synthetic keyboard, mouse, and UI input.
 pub mod input;
+/// MinimalPlugins harness builders and battle scenarios.
 pub mod minimal_harness;
+/// Message capture probes.
 pub mod probe;
+/// Bevy state inspection.
 pub mod state;
 
 pub use advance::{advance_until, advance_until_load_state, advance_until_resource_exists};
