@@ -57,15 +57,13 @@ fn player_ganger_on_lower_storey_stays_visible_at_own_z_after_fog() {
     assert_eq!(
         visibility_of_sim(&mut app, l0_sim),
         Some(Visibility::Inherited),
-        "a player ganger on a LOWER drawn storey (0) is shown at active level 1 — the drawn-band \
-         widening, asserted through the LIVE resolver (resolve_ganger_visibility)",
+        "a player ganger on a LOWER drawn storey (0) is shown at active level 1",
     );
     let expected_z = cell_to_world_layered(l0_cell, l0, Layer::Actor).z;
     let drawn_z = translation_of_sim(&mut app, l0_sim).map(|t| t.z);
     assert!(
         drawn_z.is_some_and(|z| (z - expected_z).abs() < 1.0e-3),
-        "the lower-storey ganger draws at its OWN storey-0 Z ({expected_z}), got {drawn_z:?} — \
-         positioned via cell_to_world_layered(cell, its-own-level, Actor)",
+        "the lower-storey ganger draws at its OWN storey-0 Z ({expected_z}), got {drawn_z:?}",
     );
 }
 
@@ -101,8 +99,7 @@ fn ganger_above_active_is_hidden_after_fog() {
     assert_eq!(
         visibility_of_sim(&mut app, l2_sim),
         Some(Visibility::Hidden),
-        "a ganger on storey 2 (strictly above active level 1) is hidden — culled above the drawn \
-         band, asserted through the LIVE fog writer",
+        "a ganger on storey 2 (strictly above active level 1) is hidden",
     );
 }
 
@@ -141,14 +138,12 @@ fn unseen_enemy_on_lower_storey_stays_hidden_fog_preserved() {
     assert_eq!(
         visibility_of_sim(&mut app, enemy_sim),
         Some(Visibility::Hidden),
-        "an UNSEEN enemy on a LOWER drawn storey (in-band) stays Hidden — the fog hard-cut is \
-         PRESERVED; GTW-520 widened only the storey axis, never the visibility predicate",
+        "an UNSEEN enemy on a LOWER drawn storey stays Hidden — fog cut, not storey band",
     );
     assert_eq!(
         visibility_of_sim(&mut app, player_sim),
         Some(Visibility::Inherited),
-        "a player ganger on the same LOWER drawn storey is shown — the storey axis widened, so \
-         the enemy's Hidden above is the fog cut, not the band cut",
+        "a player ganger on the same LOWER drawn storey is shown",
     );
 }
 
@@ -184,7 +179,7 @@ fn hover_over_lower_storey_ganger_does_not_select_it_active_level_pick() {
     assert_eq!(
         visibility_of_sim(&mut app, l0_sim),
         Some(Visibility::Inherited),
-        "precondition: the lower-storey ganger is drawn (visible) at active level 1",
+        "precondition: the lower-storey ganger is drawn at active level 1",
     );
 
     let hovered_at_active = CellLevel::new(ganger_cell, active);
@@ -192,14 +187,11 @@ fn hover_over_lower_storey_ganger_does_not_select_it_active_level_pick() {
     assert_eq!(
         ganger_pos,
         Some(l0_at),
-        "the drawn lower-storey ganger's sim Position stays on storey 0 (the presenter never \
-         re-homes it onto the active storey)",
+        "the drawn lower-storey ganger's sim Position stays on storey 0",
     );
     assert_ne!(
         Some(hovered_at_active),
         ganger_pos,
-        "the active-level pick resolves the hovered cell to storey 1 (the active level), which \
-         does NOT match the drawn ganger's storey-0 cell — so hover/selection cannot select the \
-         drawn lower-storey ganger (cross-storey TARGETING is the GTW-522 follow-on, not built)",
+        "active-level pick resolves to storey 1, which does not match the drawn storey-0 cell",
     );
 }

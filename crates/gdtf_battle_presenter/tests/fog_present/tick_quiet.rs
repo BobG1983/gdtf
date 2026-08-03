@@ -86,24 +86,18 @@ fn steady_frame_leaves_fog_visibility_and_material_ticks_untouched() {
     let probe = app.world().resource::<QuietProbe>();
     assert_eq!(
         *probe.terrain_redirtied, 0,
-        "a steady frame with unchanged fog must leave every terrain tile's Visibility \
-         change ticks untouched (the pre-GTW-627 unconditional `*visibility` write \
-         re-dirtied every tile every frame)",
+        "a steady frame with unchanged fog must leave every terrain tile's Visibility change ticks untouched",
     );
     assert_eq!(
         *probe.actors_redirtied, 0,
-        "a steady frame with unchanged fog must leave every ganger sprite's Visibility \
-         change ticks untouched (the resolver writes via set_if_neq)",
+        "a steady frame with unchanged fog must leave every ganger sprite's Visibility change ticks untouched",
     );
     assert!(
         !*probe.store_poked,
-        "a steady frame with unchanged fog must not poke the Assets<TerrainFogMaterial> \
-         resource tick (knobs are compared via Assets::get before any get_mut)",
+        "a steady frame with unchanged fog must not poke the Assets<TerrainFogMaterial> resource tick",
     );
     assert_eq!(
         *probe.modified_events, 0,
-        "a steady frame with unchanged fog must emit zero AssetEvent::Modified — no \
-         per-frame uniform re-upload (the pre-GTW-627 writer took get_mut per shown tile \
-         per frame)",
+        "a steady frame with unchanged fog must emit zero AssetEvent::Modified",
     );
 }

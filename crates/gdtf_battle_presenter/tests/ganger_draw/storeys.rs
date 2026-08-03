@@ -73,8 +73,7 @@ fn active_level_change_shows_drawn_band_hides_above() {
     assert_eq!(
         visibility_of_sim(&mut app, l0_sim),
         Some(Visibility::Inherited),
-        "after the change, the level-0 ganger sprite is now SHOWN — it is a LOWER drawn storey \
-         within the band 0..=1 (GTW-520 drawn-band widening, not the old hard cut)",
+        "after the change, the level-0 ganger sprite is shown — lower storey within band 0..=1",
     );
 }
 
@@ -105,12 +104,11 @@ fn ganger_draws_above_its_own_floor_at_spawn_and_after_move() {
 
     assert!(
         ganger_z > floor_z,
-        "the ganger sprite z ({ganger_z}) must be strictly greater than its own floor z \
-         ({floor_z}) — it draws on top of, not behind, its floor",
+        "the ganger sprite z ({ganger_z}) must be strictly greater than its own floor z ({floor_z})",
     );
     assert!(
         ganger_z > 0.0 && ganger_z < 1.0,
-        "the level-0 ganger z ({ganger_z}) must satisfy 0.0 < z < 1.0 (within its own storey)",
+        "the level-0 ganger z ({ganger_z}) must satisfy 0.0 < z < 1.0",
     );
 
     let sim = sim_entity_at(&mut app, start);
@@ -140,7 +138,6 @@ fn ganger_draws_above_its_own_floor_at_spawn_and_after_move() {
     };
     assert!(
         moved_z > dest_floor_z,
-        "after the move the ganger z ({moved_z}) must STILL be strictly greater than the floor \
-         z at its new cell ({dest_floor_z}) — the bias holds across moves",
+        "after the move the ganger z ({moved_z}) must still be strictly greater than the floor z at its new cell ({dest_floor_z})",
     );
 }
