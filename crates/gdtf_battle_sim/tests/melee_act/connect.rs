@@ -151,7 +151,7 @@ fn connect_applies_damage_and_emits_resolved() {
             && fact.target == target
             && *fact.hp_damage >= observed_loss
             && *fact.hp_damage > 0),
-        "GTW-572: a connecting strike emits one MeleeStruck {{ attacker, target, hp_damage }} \
+        "a connecting strike emits one MeleeStruck {{ attacker, target, hp_damage }} \
          whose resolved amount is positive and at least the observed HP delta \
          ({observed_loss}), got {facts:?}",
     );
@@ -160,11 +160,11 @@ fn connect_applies_damage_and_emits_resolved() {
     assert_eq!(
         breaks.len(),
         1,
-        "GTW-572: a connecting strike that crosses a near-broken worn piece emits exactly \
+        "a connecting strike that crosses a near-broken worn piece emits exactly \
          one ArmorBroken, got {breaks:?}",
     );
     assert!(
         breaks.first().is_some_and(|broke| broke.ganger == target),
-        "GTW-572: the ArmorBroken names the struck melee target, got {breaks:?}",
+        "the ArmorBroken names the struck melee target, got {breaks:?}",
     );
 }
