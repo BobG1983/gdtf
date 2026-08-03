@@ -1,3 +1,5 @@
+//! Procedural level generation: packing, fill, deploy zones, and emit.
+
 mod anchor;
 mod assembler;
 mod deploy;
