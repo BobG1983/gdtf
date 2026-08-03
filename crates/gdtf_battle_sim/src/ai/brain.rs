@@ -25,6 +25,7 @@ use crate::{
     weapon::Handedness,
 };
 
+/// One enemy acts: shoot an engageable target, move closer, or end the turn.
 #[expect(
     clippy::too_many_arguments,
     reason = "the enemy brain reads the active/player factions, the combat tuning, the five \
@@ -42,7 +43,6 @@ use crate::{
               (is_dead / relation_of) through helpers, obscuring the access set more than the \
               length costs (the setup_battle too_many_lines precedent)"
 )]
-/// One enemy acts: shoot an engageable target, move closer, or end the turn.
 pub fn enemy_ai_turn(
     active: Res<ActiveFaction>,
     player: Option<Res<PlayerFaction>>,
@@ -119,9 +119,7 @@ pub fn enemy_ai_turn(
         .collect();
     let all_targets: Vec<AiTarget> = targets
         .iter()
-        .map(|row| {
-            AiTarget::new(row.entity, row.position.cell(), row.position.level())
-        })
+        .map(|row| AiTarget::new(row.entity, row.position.cell(), row.position.level()))
         .collect();
 
     let is_dead_fn = |entity: Entity| {
