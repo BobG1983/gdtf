@@ -1,3 +1,5 @@
+//! Request to fire a weapon mode at a cell.
+
 use bevy::prelude::{Entity, Message};
 
 use crate::{
@@ -5,16 +7,22 @@ use crate::{
     weapon::FireModeSpec,
 };
 
+/// Fire request from UI/AI.
 #[derive(Message, Debug, Clone, PartialEq)]
 pub struct FireRequested {
-        pub shooter:      Entity,
-            pub mode:         FireModeSpec,
-        pub target_cell:  Cell,
-        pub target_level: Level,
+    /// Shooter entity.
+    pub shooter: Entity,
+    /// Fire mode to use.
+    pub mode: FireModeSpec,
+    /// Target cell.
+    pub target_cell: Cell,
+    /// Target level.
+    pub target_level: Level,
 }
 
 impl FireRequested {
-        #[must_use]
+    /// Build a fire request.
+    #[must_use]
     pub const fn new(
         shooter: Entity,
         mode: FireModeSpec,
