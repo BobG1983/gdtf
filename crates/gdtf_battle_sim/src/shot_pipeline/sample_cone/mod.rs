@@ -1,3 +1,5 @@
+//! Sample a direction inside the shot cone.
+
 mod concentration;
 mod sample;
 

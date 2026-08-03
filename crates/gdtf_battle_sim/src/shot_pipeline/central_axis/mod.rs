@@ -1,3 +1,5 @@
+//! Muzzle position, aim point, and aim direction for a shot.
+
 mod aim_dir;
 mod aim_point;
 mod muzzle;

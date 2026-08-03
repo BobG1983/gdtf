@@ -1,9 +1,12 @@
+//! Where the shot leaves the weapon.
+
 use crate::{
     ganger::{Facing, Position, Stance, StanceKind},
     metric::{SimPos, SimUnit, cell_center},
     tuning::{CombatTuning, MuzzleHeight},
 };
 
+/// Muzzle height above the floor for the current stance.
 pub(crate) const fn muzzle_height(stance: StanceKind, tuning: &CombatTuning) -> MuzzleHeight {
     let heights = &tuning.cone_stability.muzzle_heights;
     match stance {
@@ -13,11 +16,13 @@ pub(crate) const fn muzzle_height(stance: StanceKind, tuning: &CombatTuning) -> 
     }
 }
 
+/// Keep a coordinate inside the cell it belongs to.
 pub(crate) fn clamp_within_cell(coord: SimUnit, corner: SimUnit) -> SimUnit {
     let upper = (*corner + 1.0).next_down();
     SimUnit::new((*coord).clamp(*corner, upper))
 }
 
+/// World position of the muzzle for a shooter.
 #[must_use]
 pub fn muzzle_position(
     position: Position,
