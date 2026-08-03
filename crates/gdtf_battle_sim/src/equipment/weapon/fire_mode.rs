@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 pub struct ModeConeMult(f32);
 
 impl ModeConeMult {
-        #[must_use]
+    #[must_use]
     pub const fn new(mult: f32) -> Self {
         Self(mult)
     }
@@ -21,7 +21,7 @@ impl ModeConeMult {
 pub struct ModeTuPercent(f32);
 
 impl ModeTuPercent {
-            #[must_use]
+    #[must_use]
     pub const fn new(percent: f32) -> Self {
         Self(percent)
     }
@@ -33,22 +33,22 @@ impl ModeTuPercent {
 pub struct ModeShots(u16);
 
 impl ModeShots {
-        #[must_use]
+    #[must_use]
     pub const fn new(shots: u16) -> Self {
         Self(shots)
     }
 }
 
-/// `#[derive(Component)]` — the [`FireMode`] selector that holds the specs is the
+/// Fire-mode selector kind held on a [`FireMode`] entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ModeKind {
-        Single,
-        Burst,
-        Full,
+    Single,
+    Burst,
+    Full,
 }
 
 impl Display for ModeKind {
-                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let label = match self {
             Self::Single => "single",
             Self::Burst => "burst",
@@ -58,79 +58,75 @@ impl Display for ModeKind {
     }
 }
 
-/// count. Private inner + derived [`Deref`]; `#[serde(transparent)]` so a weapon's
+/// Blast radius in cells. Private inner + [`Deref`]; `#[serde(transparent)]`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct BlastRadius(u8);
 
 impl BlastRadius {
-        #[must_use]
+    #[must_use]
     pub const fn new(radius: u8) -> Self {
         Self(radius)
     }
 }
 
-/// `#[serde(transparent)]`.
+/// AOE range in cells. `#[serde(transparent)]`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct AoeRange(u8);
 
 impl AoeRange {
-        #[must_use]
+    #[must_use]
     pub const fn new(range: u8) -> Self {
         Self(range)
     }
 }
 
-/// [`Deref`]; `#[serde(transparent)]` so a weapon's RON writes the bare float
+/// Cone half-angle in degrees. [`Deref`]; `#[serde(transparent)]`.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ConeHalfAngle(f32);
 
 impl ConeHalfAngle {
-        #[must_use]
+    #[must_use]
     pub const fn new(degrees: f32) -> Self {
         Self(degrees)
     }
 }
 
-/// a FIELD value on a [`FireModeSpec`] (NOT a `#[derive(Component)]` — the [`FireMode`]
-/// [`Single`](Self::Single) is the DEFAULT (`#[serde(default)]` on the
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+/// Hit geometry for a fire mode. [`Single`](Self::Single) is the default.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub enum HitType {
-            Single,
-            Blast {
-                radius: BlastRadius,
+    #[default]
+    Single,
+    Blast {
+        radius: BlastRadius,
     },
-            Cone {
-                range: AoeRange,
-                angle: ConeHalfAngle,
+    Cone {
+        range: AoeRange,
+        angle: ConeHalfAngle,
     },
-            Line {
-                range: AoeRange,
+    Line {
+        range: AoeRange,
     },
 }
 
-impl Default for HitType {
-            fn default() -> Self {
-        Self::Single
-    }
-}
-
-/// `#[serde(default)]` = [`HitType::Single`], so every existing weapon `.ron` (which
+/// Spec for one entry in a weapon's fire-mode list.
+///
+/// `hit_type` defaults to [`HitType::Single`] so existing weapon RON stays valid.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct FireModeSpec {
-            pub kind:       ModeKind,
-        pub cone_mult:  ModeConeMult,
-        pub tu_percent: ModeTuPercent,
-        pub shots:      ModeShots,
-        /// `#[serde(default)]` = [`HitType::Single`], so an omitted `hit_type:` field keeps
-        #[serde(default)]
-    pub hit_type:   HitType,
+    pub kind:       ModeKind,
+    pub cone_mult:  ModeConeMult,
+    pub tu_percent: ModeTuPercent,
+    pub shots:      ModeShots,
+    /// Defaults to [`HitType::Single`] when omitted in RON.
+    #[serde(default)]
+    pub hit_type: HitType,
 }
 
 impl FireModeSpec {
-            #[must_use]
+    #[must_use]
     pub const fn new(
         kind: ModeKind,
         cone_mult: ModeConeMult,
@@ -146,7 +142,7 @@ impl FireModeSpec {
         }
     }
 
-                #[must_use]
+    #[must_use]
     pub const fn with_hit_type(
         kind: ModeKind,
         cone_mult: ModeConeMult,
@@ -164,19 +160,18 @@ impl FireModeSpec {
     }
 }
 
-/// `.get()`); `#[serde(transparent)]` so it deserializes from a **bare RON list** of
-/// holds a `Vec`). A `#[derive(Component)]` (GTW-200) — the selector lives as a
+/// Weapon fire-mode list (component). Deserializes from a bare RON list of specs.
 #[derive(Component, Deref, Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 pub struct FireMode(Vec<FireModeSpec>);
 
 impl FireMode {
-        #[must_use]
+    #[must_use]
     pub const fn new(modes: Vec<FireModeSpec>) -> Self {
         Self(modes)
     }
 
-                        #[must_use]
+    #[must_use]
     pub fn single(&self) -> FireModeSpec {
         if let Some(single) = self.0.iter().find(|spec| spec.kind == ModeKind::Single) {
             *single

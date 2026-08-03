@@ -1,3 +1,6 @@
+//! Hivescape presenter crate (placeholder).
+
+/// Placeholder until hivescape presenter work starts.
 #[must_use]
 pub const fn add(left: u64, right: u64) -> u64 {
     left + right
