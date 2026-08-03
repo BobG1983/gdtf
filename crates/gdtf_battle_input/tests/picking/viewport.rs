@@ -94,7 +94,7 @@ fn two_click_inside_the_viewport_resolves_a_cell_and_moves() {
     app.update();
     assert!(
         move_requests(&app).is_empty(),
-        "click-1 on an in-viewport empty cell SETS the target — no MoveRequested yet (GTW-356)",
+        "click-1 on an in-viewport empty cell SETS the target — no MoveRequested yet",
     );
 
     clear_mouse(&mut app);
@@ -103,7 +103,7 @@ fn two_click_inside_the_viewport_resolves_a_cell_and_moves() {
     assert_eq!(
         move_requests(&app).len(),
         1,
-        "click-2 on the same in-viewport cell must commit exactly one MoveRequested (GTW-356)",
+        "click-2 on the same in-viewport cell must commit exactly one MoveRequested",
     );
 }
 
@@ -132,7 +132,7 @@ fn click_in_the_bottom_margin_resolves_none_and_does_not_move() {
         hovered(&app),
         None,
         "a cursor in the bottom margin (outside the viewport rect) must resolve InspectTarget to \
-         None — even though its extrapolated cell is in-grid (GTW-286 gate)",
+         None — even though its extrapolated cell is in-grid",
     );
 
     press_left(&mut app);
@@ -188,7 +188,7 @@ fn two_click_over_a_panel_is_absorbed_and_does_not_move() {
         hovered(&app),
         None,
         "a cursor over a HUD panel must resolve InspectTarget to None — the UI absorbs the \
-         click (GTW-380), even though the cell underneath is in-grid + in-viewport",
+         click, even though the cell underneath is in-grid + in-viewport",
     );
 
     press_left(&mut app);
@@ -199,6 +199,6 @@ fn two_click_over_a_panel_is_absorbed_and_does_not_move() {
     assert!(
         move_requests(&app).is_empty(),
         "a left-click over a HUD panel must emit NO MoveRequested — the click must not fall \
-         through to the board (GTW-380)",
+         through to the board",
     );
 }

@@ -35,14 +35,7 @@ fn relation_to(
 
 #[expect(
     clippy::too_many_arguments,
-    reason = "the constrained move dispatch genuinely needs the actor query + the disjoint \
-              faction query + the disjoint suppression query (GTW-537 pinned-movement gate) + \
-              the route-gate resources (grid / links / squad fog / tuning / floor costs / \
-              cover ledger) + the GTW-70 faction-aware fog selection inputs (player faction + \
-              omniscient fog) + the reject writer + Commands (to start the walk); bundling \
-              them into an opaque SystemParam struct would hide the system's real reads (the \
-              dispatch_fire BattleGridsParam precedent applies only when a bundle is reused \
-              across systems)"
+    reason = "actor, faction, suppression, and route-gate resources are separate reads"
 )]
 /// Pathfind and either reject or insert a walk component.
 pub fn dispatch_move(

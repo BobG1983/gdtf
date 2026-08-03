@@ -3,7 +3,7 @@
 How a mouse press is arbitrated between the UI and the battle world: which pointer
 pipelines run, which one owns a press, and the wiring that keeps exactly one act producer.
 
-Standing finding, first written under GTW-811. Verified against Bevy **0.19.0** source
+Standing finding, first written when picking was investigated. Verified against Bevy **0.19.0** source
 (crates.io registry copies of `bevy`, `bevy_internal`, `bevy_ui`, `bevy_picking`,
 `bevy_input_focus`, `bevy_ui_widgets`) and against the live tree on 2026-07-24. Every claim
 below is re-runnable through two headless probe suites,
@@ -11,7 +11,7 @@ below is re-runnable through two headless probe suites,
 `crates/gdtf_battle_input/tests/picking/ui_widget_pointer_activation.rs`.
 
 The wiring spec in [§4](#4-recommended-path-and-exact-wiring) is the input to the follow-up
-picking / widget rollout work (GTW-869, GTW-870).
+picking / widget rollout work.
 
 ---
 
@@ -90,7 +90,7 @@ fn cursor_over_ui(ui_nodes: &Query<UiNodeHit>, cursor: Vec2) -> bool {
 `UiNodeHit` is `(&ComputedNode, &UiGlobalTransform, &InheritedVisibility)`. **It reads no
 picking state whatsoever.** It re-does the same `ComputedNode::contains_point` test
 `ui_focus_system` does, over every UI node — including bare `Node` panels that carry no
-`Interaction`, which is exactly why GTW-380 wrote it this way.
+`Interaction`, which is exactly why it was written this way.
 
 ### 2b. What `bevy_picking` runs, in parallel, today
 
@@ -154,13 +154,13 @@ resources:
   This is what makes the first test non-vacuous and rules out both suppression and
   duplication.
 
-The pre-existing GTW-380 suite (`crates/gdtf_battle_input/tests/picking/viewport.rs`) still
+The pre-existing viewport picking suite (`crates/gdtf_battle_input/tests/picking/viewport.rs`) still
 passes unchanged, so the gate is not regressed under either harness.
 
 ## 4. Recommended path and exact wiring
 
 **Recommendation: keep `UiPickingPlugin` global (it already is), with the arbitration rule of
-§5 made explicit.** Keeping the GTW-637-style pointer bridge instead is rejected: it was built
+§5 made explicit.** Keeping a hand-rolled pointer bridge instead is rejected: it was built
 on a false premise and costs a translation layer the engine already provides. A "scoped
 hybrid" is rejected too: scoping requires turning the backend *off* somewhere, and it cannot
 be turned off without dropping the whole `ui` feature.
@@ -169,7 +169,7 @@ Supporting evidence for retiring the bridge —
 `crates/gdtf_battle_input/tests/picking/ui_widget_pointer_activation.rs`,
 `a_first_party_button_activates_from_a_real_pointer_click`: a bare
 `bevy_ui_widgets::Button` with **no project code at all** produces an `Activate` from a real
-pointer press/release, via Bevy's own `button_on_pointer_click`. The GTW-637 bridge's mouse
+pointer press/release, via Bevy's own `button_on_pointer_click`. The bridge's mouse
 half is redundant today.
 
 ### Wiring spec for the rollout
@@ -234,7 +234,7 @@ Three properties make it sufficient, and each is checkable:
 3. **Single act producer.** Only `left_click_act` turns a pointer press into a world act.
    Any second producer breaks the rule; §4 item 4 forbids it.
 
-An equivalent formulation, if a later ticket prefers to ask the picking pipeline instead of
+An equivalent formulation, if a later change prefers to ask the picking pipeline instead of
 re-hit-testing: replace the `cursor_over_ui` body with a `Res<HoverMap>` lookup —
 `hover_map.get(&PointerId::Mouse).is_some_and(|hits| !hits.is_empty())`. That is
 strictly *less* general today, because the gamepad software cursor is not a registered
@@ -250,8 +250,8 @@ says which parts exist.
 | Item | State today | Achievable | Headless-assertable? |
 | --- | --- | --- | --- |
 | Tab order | **Absent on meta screens.** `gdtf_ui`'s `FocusNavPlugin` binds Arrow/W/S and D-pad up/down only (`crates/gdtf_ui/src/focus_nav.rs`), and Tab in battle means "cycle ganger" (`crates/gdtf_battle_input/src/act_bus/keyboard.rs`). | **Yes, small.** `bevy_input_focus::tab_navigation::TabNavigationPlugin` + `TabGroup` / `TabIndex` components. Not in `DefaultPlugins` — must be added. Its `handle_tab_navigation` observer is registered on the primary window at `Startup`, so it needs a window. | **Yes** — assert `InputFocus` moves, driving a synthesized `KeyboardInput` dispatched to the focused entity. |
-| Visible focus indicator | **Battle only.** `paint_focus_outline` draws an amber `Outline` on the focused panel button (`crates/gdtf_app/src/states/running/game/battlescape/focus_nav/outline.rs`). **No focus indicator exists on the menu or Options screens** — grep finds no `Outline` under those modules. | **Yes, small** — the same system generalized, driven by `InputFocus` (and optionally `InputFocusVisible`, which Bevy's tab nav sets). | **Partly.** The *component* is assertable headlessly (`Outline` present on exactly the focused entity). That it is *visible on screen* is a pinned-screen-coordinate screenshot claim. Note GTW-782's ring was found uncapturable over `net_qa`'s offscreen capture path. |
-| Enter activates | **Yes.** `bridge_keyboard_navigation` raises `FocusActivated` on `Enter`; on Options the GTW-637 bridge turns it into `Activate`. Bevy's own `button_on_key_event` also fires on Enter/Space for a `bevy_ui_widgets::Button` that holds `InputFocus`, with no project code. | Already there. | **Yes.** Caveat: `FocusedInput` has a private `window` field, so a test cannot construct one — drive `ButtonInput<KeyCode>` plus `InputDispatchPlugin`, or trigger `Activate` directly. |
+| Visible focus indicator | **Battle only.** `paint_focus_outline` draws an amber `Outline` on the focused panel button (`crates/gdtf_app/src/states/running/game/battlescape/focus_nav/outline.rs`). **No focus indicator exists on the menu or Options screens** — grep finds no `Outline` under those modules. | **Yes, small** — the same system generalized, driven by `InputFocus` (and optionally `InputFocusVisible`, which Bevy's tab nav sets). | **Partly.** The *component* is assertable headlessly (`Outline` present on exactly the focused entity). That it is *visible on screen* is a pinned-screen-coordinate screenshot claim. Note the focus ring was found uncapturable over `net_qa`'s offscreen capture path. |
+| Enter activates | **Yes.** `bridge_keyboard_navigation` raises `FocusActivated` on `Enter`; on Options the bridge turns it into `Activate`. Bevy's own `button_on_key_event` also fires on Enter/Space for a `bevy_ui_widgets::Button` that holds `InputFocus`, with no project code. | Already there. | **Yes.** Caveat: `FocusedInput` has a private `window` field, so a test cannot construct one — drive `ButtonInput<KeyCode>` plus `InputDispatchPlugin`, or trigger `Activate` directly. |
 | Escape cancels | **Battle only, and partial.** `gdtf_ui` registers a `FocusCancelled` message but binds **no key to it**; the battlescape wires Escape context-gated (`crates/gdtf_battle_input/src/act_bus/focus_bridge.rs`). Nothing on the menu/Options screens. | **Yes, small** — bind Escape to `FocusCancelled` per screen and give each screen a cancel consumer. | **Yes** — assert the state transition / focus clear. |
 | Gamepad D-pad | **Yes.** `bridge_gamepad_navigation` maps D-pad up/down to `NavigateRequest` (`crates/gdtf_ui/src/focus_nav.rs`). Left/right are unbound (`NavDirection::WEST` / `EAST` exist but no device input raises them). | Binding left/right is trivial. | **Yes** — spawn a `Gamepad` component and assert `InputFocus` moves. |
 | Gamepad South | **Yes.** `bridge_gamepad_navigation` raises `FocusActivated` on `GamepadButton::South`. Bevy's own widgets do **not** cover this: `button_on_key_event` observes `FocusedInput<KeyboardInput>` only, so the project bridge is load-bearing — which is why §4 item 2 keeps the `FocusActivated` half. `InputDispatchPlugin` does dispatch `FocusedInput<GamepadButtonChangedEvent>` (the `gamepad` feature is on), so a project observer could consume it directly instead. | Already there. | **Yes.** |
@@ -263,7 +263,7 @@ a non-menu button over the QA channel. Click evidence must be either a headless 
 
 ## 7. What this finding did **not** determine
 
-Stated explicitly so later tickets do not read inference as fact.
+Stated explicitly so later work does not read inference as fact.
 
 - **In-engine confirmation.** Every claim here is from source reading plus headless probes.
   Nothing was verified by running the real windowed game and clicking. The probes use a

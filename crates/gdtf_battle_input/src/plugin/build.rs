@@ -54,11 +54,7 @@ pub(super) fn battle_act_gate() -> impl SystemCondition<()> {
 impl Plugin for GdtfBattleInputPlugin {
     #[expect(
         clippy::too_many_lines,
-        reason = "GTW-727 split the keyboard registration in two (the VIEW keys stay live \
-                  while the presenter catches up; the ACT keys are blocked at the push \
-                  site), which pushed this over the line gate. It is one flat registration \
-                  list whose per-entry comments ARE the wiring documentation; the \
-                  independent surfaces are already extracted into `register_*` helpers"
+        reason = "one registration list; VIEW vs ACT key splits and register_* helpers already extract the surfaces"
     )]
     fn build(&self, app: &mut App) {
         app.configure_sets(

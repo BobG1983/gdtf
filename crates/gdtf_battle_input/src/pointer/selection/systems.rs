@@ -25,11 +25,7 @@ use crate::{
 
 #[expect(
     clippy::too_many_arguments,
-    reason = "GTW-323 slice 3: the fire guard's magazine moved to the related weapon entity, so the \
-              shared decision needs the extra Wields + weapon-magazine queries on top of the existing \
-              reads/writes; GTW-356 adds the PathPreviewTarget write for the two-click move target; \
-              GTW-505 C5 adds the MeleeWeapon marker probe so the ranged weapon resolves excluding \
-              the melee one; LeftClickReads already bundles the Res-only reads"
+    reason = "needs Wields, magazine, melee probe, and PathPreviewTarget; LeftClickReads already bundles Res reads"
 )]
 /// Handle left-click: decide act, apply selection, and update inspect pin.
 pub fn left_click_act(

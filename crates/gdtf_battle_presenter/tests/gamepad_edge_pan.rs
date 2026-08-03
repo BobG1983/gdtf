@@ -114,8 +114,7 @@ fn gamepad_edge_cursor_does_not_pan_without_a_viewport() {
     assert_eq!(
         camera_xy(&mut app),
         baseline,
-        "with no map-viewport rect (headless), an edge-band gamepad cursor must NOT pan — the \
-         GTW-271 viewport-inside gate fail-closes",
+        "with no map-viewport rect (headless), an edge-band gamepad cursor must NOT pan",
     );
 }
 

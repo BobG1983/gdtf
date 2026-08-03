@@ -28,7 +28,7 @@ pub fn spawn_world_camera(mut commands: Commands) {
         ..default()
     };
     let layers = RenderLayers::layer(WORLD_RENDER_LAYER);
-    // GTW-263 — zoom the battle in 2x. `Camera2d` `#[require]`s a default-2d
+    // Zoom the battle in 2x. `Camera2d` `#[require]`s a default-2d projection.
     let projection = Projection::Orthographic(OrthographicProjection {
         scale: WORLD_CAMERA_SCALE,
         ..OrthographicProjection::default_2d()

@@ -91,7 +91,6 @@ fn throw_resolved_blast_impact_carries_no_shot_verdict() {
     );
     assert!(
         impact.report.is_none(),
-        "a blast's numbers ride the per-ganger wound/injury signals — the impact report is None \
-         (no verdict; the combat log renders no outcome line for it, GTW-559)",
+        "a blast's numbers ride the per-ganger wound/injury signals — the impact report is None",
     );
 }

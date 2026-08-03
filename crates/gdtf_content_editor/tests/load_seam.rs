@@ -121,42 +121,37 @@ fn load_pass_resolves_all_ten_resources_through_the_real_seams() {
         world
             .get_resource::<GangRegistry>()
             .is_some_and(|r| !r.is_empty()),
-        "the GangRegistry must resolve NON-empty through the shared GangsFamily (GTW-636)",
+        "the GangRegistry must resolve NON-empty through the shared GangsFamily",
     );
     assert!(
         world
             .get_resource::<MeleeWeaponRegistry>()
             .is_some_and(|r| !r.is_empty()),
-        "the MeleeWeaponRegistry must resolve NON-empty through the shared MeleeWeaponsFamily \
-         (GTW-636)",
+        "the MeleeWeaponRegistry must resolve NON-empty through the shared MeleeWeaponsFamily",
     );
     assert!(
         world
             .get_resource::<InjuryRegistry>()
             .is_some_and(|r| !r.is_empty()),
-        "the InjuryRegistry must resolve NON-empty through the editor's bespoke injuries pass \
-         (GTW-654)",
+        "the InjuryRegistry must resolve NON-empty through the editor's bespoke injuries pass",
     );
     assert!(
         world
             .get_resource::<InjuryTables>()
             .is_some_and(|t| !t.is_empty()),
-        "the InjuryTables must resolve NON-empty through the editor's bespoke injuries pass \
-         (GTW-654)",
+        "the InjuryTables must resolve NON-empty through the editor's bespoke injuries pass",
     );
     assert!(
         world
             .get_resource::<SpriteDefRegistry>()
             .is_some_and(|r| !r.is_empty()),
-        "the SpriteDefRegistry must resolve NON-empty through the shared SpriteDefsFamily \
-         (GTW-663)",
+        "the SpriteDefRegistry must resolve NON-empty through the shared SpriteDefsFamily",
     );
     assert!(
         world
             .get_resource::<AttachmentRegistry>()
             .is_some_and(|r| !r.is_empty()),
-        "the AttachmentRegistry must resolve NON-empty through the shared AttachmentsFamily \
-         (GTW-669)",
+        "the AttachmentRegistry must resolve NON-empty through the shared AttachmentsFamily",
     );
 
     assert_seam_handles_persist(world);
@@ -191,25 +186,25 @@ fn assert_seam_handles_persist(world: &World) {
         world
             .get_resource::<ContentFolderHandle<GangsFamily>>()
             .is_some(),
-        "the gangs ContentFolderHandle must persist past Load (GTW-636)",
+        "the gangs ContentFolderHandle must persist past Load",
     );
     assert!(
         world
             .get_resource::<ContentFolderHandle<MeleeWeaponsFamily>>()
             .is_some(),
-        "the melee-weapons ContentFolderHandle must persist past Load (GTW-636)",
+        "the melee-weapons ContentFolderHandle must persist past Load",
     );
     assert!(
         world
             .get_resource::<ContentFolderHandle<SpriteDefsFamily>>()
             .is_some(),
-        "the sprite-defs ContentFolderHandle must persist past Load (GTW-663)",
+        "the sprite-defs ContentFolderHandle must persist past Load",
     );
     assert!(
         world
             .get_resource::<ContentFolderHandle<AttachmentsFamily>>()
             .is_some(),
-        "the attachments ContentFolderHandle must persist past Load (GTW-669)",
+        "the attachments ContentFolderHandle must persist past Load",
     );
 }
 
@@ -256,41 +251,41 @@ fn failed_asset_root_falls_back_and_still_reaches_editing() {
             .get_resource::<GangRegistry>()
             .map(GangRegistry::is_empty),
         Some(true),
-        "a Failed gangs folder must fail closed to the EMPTY GangRegistry (GTW-636)",
+        "a Failed gangs folder must fail closed to the EMPTY GangRegistry",
     );
     assert_eq!(
         world
             .get_resource::<MeleeWeaponRegistry>()
             .map(MeleeWeaponRegistry::is_empty),
         Some(true),
-        "a Failed melee folder must fail closed to the EMPTY MeleeWeaponRegistry (GTW-636)",
+        "a Failed melee folder must fail closed to the EMPTY MeleeWeaponRegistry",
     );
     assert_eq!(
         world
             .get_resource::<SpriteDefRegistry>()
             .map(SpriteDefRegistry::is_empty),
         Some(true),
-        "a Failed sprites folder must fail closed to the EMPTY SpriteDefRegistry (GTW-663)",
+        "a Failed sprites folder must fail closed to the EMPTY SpriteDefRegistry",
     );
     assert_eq!(
         world
             .get_resource::<AttachmentRegistry>()
             .map(AttachmentRegistry::is_empty),
         Some(true),
-        "a Failed attachments folder must fail closed to the EMPTY AttachmentRegistry (GTW-669)",
+        "a Failed attachments folder must fail closed to the EMPTY AttachmentRegistry",
     );
     assert_eq!(
         world
             .get_resource::<InjuryRegistry>()
             .map(InjuryRegistry::is_empty),
         Some(true),
-        "a Failed injuries folder must fail closed to the EMPTY InjuryRegistry (GTW-654)",
+        "a Failed injuries folder must fail closed to the EMPTY InjuryRegistry",
     );
     assert_eq!(
         world
             .get_resource::<InjuryTables>()
             .map(InjuryTables::is_empty),
         Some(true),
-        "a Failed injuries folder must fail closed to the EMPTY InjuryTables (GTW-654)",
+        "a Failed injuries folder must fail closed to the EMPTY InjuryTables",
     );
 }

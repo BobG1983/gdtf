@@ -35,8 +35,7 @@ fn exactly_one_storey_classifies_active_per_frame() {
             assert_eq!(
                 active_storeys,
                 vec![active_ix],
-                "exactly the active storey ({active_ix}) must classify Active under \
-                 {mode:?} (A1: exactly-one-Active)",
+                "exactly the active storey ({active_ix}) must classify Active under {mode:?}",
             );
         }
     }
@@ -59,8 +58,7 @@ fn isolate_wins_over_the_two_state_view_mode() {
                 active,
                 StoreyViewMode::new(ViewMode::FullView, isolate)
             ),
-            "with Isolate ON, DownToActive and FullView must classify storey {storey} \
-             identically (Isolate WINS — GTW-594 C3)",
+            "with Isolate ON, DownToActive and FullView must classify storey {storey} identically",
         );
     }
     let above = Level::new(5);
@@ -97,7 +95,7 @@ fn isolate_band_is_the_active_storey_plus_its_onion() {
         assert_eq!(
             expect(hidden),
             StoreyTreatment::Hidden,
-            "storey {hidden} is outside the isolate band (floor = active - onion)",
+            "storey {hidden} is outside the isolate band",
         );
     }
     let ground = ActiveLevel::new(Level::new(0));
@@ -122,24 +120,23 @@ fn two_state_modes_are_unchanged_with_isolate_off() {
     assert_eq!(
         storey_treatment(Level::new(0), active, down),
         StoreyTreatment::ContextBelow(ContextDepth::new(2)),
-        "DownToActive: two below the active is context at depth 2 (the true distance)",
+        "DownToActive: two below the active is context at depth 2",
     );
     assert_eq!(
         storey_treatment(Level::new(3), active, down),
         StoreyTreatment::Hidden,
-        "DownToActive: above the active is the canon hard cut",
+        "DownToActive: above the active is the hard cut",
     );
     for storey in 0..MAX_LEVELS {
         assert_ne!(
             storey_treatment(Level::new(storey), active, full),
             StoreyTreatment::Hidden,
-            "FullView draws every storey (the GTW-521 whole stack) — storey {storey}",
+            "FullView draws every storey — storey {storey}",
         );
     }
     assert_eq!(
         storey_treatment(Level::new(4), active, full),
         StoreyTreatment::ContextBelow(ContextDepth::new(2)),
-        "FullView: an above-active storey classifies as context at its distance (the \
-         documented legacy exception — GTW-594 C4 defers any distinct treatment)",
+        "FullView: an above-active storey classifies as context at its distance",
     );
 }

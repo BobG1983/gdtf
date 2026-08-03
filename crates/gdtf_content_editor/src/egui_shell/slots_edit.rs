@@ -1,4 +1,4 @@
-//! GTW-670 weapon-form widgets, lifted to a shared `egui_shell` sibling): one authoring
+//! Shared weapon-form slot and attachment list widgets for egui_shell.
 use bevy_egui::egui;
 use gdtf_battle_sim::equipment::attachments::{
     AttachmentName, AttachmentRegistry, AttachmentSlot, SlotCapacity, WeaponSlots,

@@ -46,12 +46,11 @@ fn skirmish_ron_authors_no_terrain() {
     );
     assert!(
         !situation.rosters.is_empty(),
-        "skirmish.ron must author its roster members (GTW-744 gang-name refs, no cells)",
+        "skirmish.ron must author its roster members (gang-name refs, no cells)",
     );
     assert!(
         situation.gangers.is_empty(),
-        "skirmish.ron must author NO placed gangers (GTW-744: zero authored cells; the deploy \
-         step derives them)",
+        "skirmish.ron must author NO placed gangers (zero authored cells; the deploy step derives them)",
     );
 
     assert!(

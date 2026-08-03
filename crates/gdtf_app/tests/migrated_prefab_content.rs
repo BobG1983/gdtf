@@ -31,7 +31,7 @@ fn shipped_migrated_prefabs_resolve_with_placements_and_role_default() {
         assert!(
             !registry.is_empty(),
             "the resolved PrefabRegistry must carry the migrated shipped prefabs — an empty \
-             registry means resolve_prefabs fell back to the empty default (C3)",
+             registry means resolve_prefabs fell back to the empty default",
         );
 
         let Some(size_3) = footprint(3, 3) else {
@@ -52,14 +52,13 @@ fn shipped_migrated_prefabs_resolve_with_placements_and_role_default() {
             let bucket = registry.prefabs_for(&key);
             assert!(
                 !bucket.is_empty(),
-                "the migrated {label} bucket (IndustrialHive ThemeUuid, role {role:?}) must hold \
-                 its prefab(s) — shipped role distribution (C3 / GTW-492)",
+                "the migrated {label} bucket (IndustrialHive ThemeUuid, role {role:?}) must hold its prefab(s)",
             );
             for prefab in bucket {
                 assert!(
                     !prefab.spec().placements.is_empty(),
                     "the migrated {label} prefab must carry >= 1 placement (the old walls/scatter \
-                     refs mapped to migrated TerrainUuids) (C3)",
+                     refs mapped to migrated TerrainUuids)",
                 );
                 assert_eq!(
                     prefab.spec().role,

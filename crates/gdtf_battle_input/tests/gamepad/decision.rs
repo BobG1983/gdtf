@@ -90,14 +90,14 @@ fn decide_left_click_matches_the_contract_precedence() {
         assert_eq!(
             decide(&mut app),
             LeftClickOutcome::SetMoveTarget(dest),
-            "click-1 over an empty cell with a selection must SET the move target (GTW-356)",
+            "click-1 over an empty cell with a selection must SET the move target",
         );
         app.world_mut()
             .insert_resource(PathPreviewTarget::new(dest));
         assert_eq!(
             decide(&mut app),
             LeftClickOutcome::Move(MoveRequested::new(ganger, dest)),
-            "a click on the SAME cell as the current target must COMMIT the move (GTW-356)",
+            "a click on the SAME cell as the current target must COMMIT the move",
         );
     }
 
@@ -109,7 +109,7 @@ fn decide_left_click_matches_the_contract_precedence() {
         assert_eq!(
             decide(&mut app),
             LeftClickOutcome::NoOp,
-            "nothing hovered must be a NO-OP, not CLEAR (GTW-288, the GTW-286 over-UI case)",
+            "nothing hovered must be a NO-OP, not CLEAR",
         );
     }
 
@@ -125,7 +125,7 @@ fn decide_left_click_matches_the_contract_precedence() {
             decide(&mut app),
             LeftClickOutcome::Clear,
             "an in-grid Some cell with a non-player/stale selection (no FIRE/SELECT/MOVE/NO-OP) \
-             must still CLEAR (GTW-288 preserves the genuine clear case)",
+             must still CLEAR",
         );
     }
 }
@@ -166,7 +166,7 @@ fn decide_left_click_on_a_link_tile_is_a_no_op() {
     assert_eq!(
         decide(&mut app),
         LeftClickOutcome::NoOp,
-        "a click on a vertical-link tile is a NO-OP (OQ-4: not a move target)",
+        "a click on a vertical-link tile is a NO-OP (not a move target)",
     );
 }
 

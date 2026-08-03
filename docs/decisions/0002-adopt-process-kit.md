@@ -1,6 +1,6 @@
 ---
 name: "ADR 0002: Adopt the .claude process kit"
-description: Adopt the .claude process kit — the next-task→gate→land loop, gate-pass hook, design-gate audit, GTW-* Linear discipline, and Workflows-not-teams.
+description: Adopt the .claude process kit — the next-task→gate→land loop, gate-pass hook, design-gate audit, Linear ticket discipline, and Workflows-not-teams.
 ---
 
 # 0002. Adopt the `.claude` process kit
@@ -29,7 +29,7 @@ We will adopt the **`.claude` process kit** as the standing development process
 for GDTF:
 
 - **The dev loop is `/next-task` → build → `/gate` → `/land`.** Pick a ticket
-  onto its own `feature/gtw-N-slug` branch, build it, gate it, then land it onto
+  onto its own feature branch, build it, gate it, then land it onto
   `develop` and close the ticket.
 - **`/gate` runs the one definition of green plus a `design-gate` audit.** Green
   = the five-command suite of
@@ -42,8 +42,8 @@ for GDTF:
   (paths via `$CLAUDE_PROJECT_DIR`) blocks a commit on `develop`/`main`, with a
   red suite, or without a fresh `.gate-pass` matching the current branch and
   HEAD.
-- **GTW-* Linear discipline.** The work queue is Linear (project **GDTF**,
-  tickets prefixed **GTW-**, owning team discovered via the Linear MCP). Every
+- **Linear ticket discipline.** The work queue is Linear (project **GDTF**,
+  tickets owned by the team discovered via the Linear MCP). Every
   change has a ticket; statuses move with the work; bugs are filed *before*
   fixing.
 - **Workflows, not teams.** Orchestration is Claude Code Workflows /

@@ -1,4 +1,4 @@
-//! Version negotiation is not here (GTW-940). The listener thread answers every
+//! Route net-QA requests. Version negotiation is handled by the listener thread.
 use bevy::prelude::*;
 use gdtf_net_qa_transport::NetInbox;
 use gdtf_qa_protocol::{

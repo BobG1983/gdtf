@@ -40,8 +40,7 @@ pub use actors::{
         update_ganger_life_state,
     },
 };
-// GTW-450 — the reachable-range overlay is the DEBUG-only overlay: every public item
-// (the read-side resource, the flag, the draw system) compiles only under `#[cfg(debug_assertions)]`
+// Reachable-range overlay is debug-only.
 #[cfg(debug_assertions)]
 pub use overlays::reachable::{
     REACHABLE_OVERLAY_ENV, ReachableCellSprite, ReachableCells, ReachableOverlayEnabled,

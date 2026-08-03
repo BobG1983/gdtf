@@ -1,4 +1,4 @@
-//! The egui THEME-mode authoring form (GTW-514 C3) — the real theme form that replaces the
+//! Theme mode egui form.
 mod autoload;
 mod fields;
 mod library;

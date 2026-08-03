@@ -7,11 +7,11 @@ description: The 1H aim penalty from a hand-disabling injury is a standing Modif
 
 ## Status
 
-`Accepted` — 2026-06-26, GTW-443 (weapon `Handedness` + a hand-disabling arm injury).
+`Accepted` — 2026-06-26 (weapon `Handedness` + a hand-disabling arm injury).
 
 ## Context
 
-GTW-443 adds weapon **handedness** (`OneHanded` / `TwoHanded`) and a hand-disabling
+Weapon **handedness** (`OneHanded` / `TwoHanded`) and a hand-disabling
 arm injury. Two consequences fall out of losing a hand:
 
 1. **Firing eligibility** — a two-handed weapon needs both hands. This is a clean
@@ -22,7 +22,7 @@ arm injury. Two consequences fall out of losing a hand:
    weapon braced against a wrecked hand) shoots *worse*. The question this ADR settles is
    **where** that aim penalty lives.
 
-The landed GTW-405/436 injury layer already gives every injury a `Modify(stat, amount)`
+The injury layer already gives every injury a `Modify(stat, amount)`
 effect that the projector re-sums onto the derived stats each projection (the
 `InflictedInjuries` ledger → `rederive_stats_on_injury_change` → cached `Shooting` →
 `concentration_p` chain). The §1b cone reads `concentration_p(Shooting, weapon.accuracy)`.

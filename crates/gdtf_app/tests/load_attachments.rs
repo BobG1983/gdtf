@@ -12,7 +12,7 @@ use gdtf_battle_sim::{
 use gdtf_content_families::AttachmentsFamily;
 use load_suite::suite::{self, FamilyLoadContract};
 
-const REDRIVE_SENTINEL: &str = "GTW-619 Redrive Sentinel";
+const REDRIVE_SENTINEL: &str = "Redrive Sentinel";
 
 impl FamilyLoadContract for AttachmentsFamily {
                 const EXPECTED_MEMBERS: &'static [&'static str] = &["scoped_sight", "suppressor"];

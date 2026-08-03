@@ -63,10 +63,7 @@ pub fn mouse_reclaims_pointer(
 
 #[expect(
     clippy::too_many_arguments,
-    reason = "GTW-323 slice 3: mirrors left_click_act — the fire guard's magazine moved to the \
-              related weapon entity, so the shared decision needs the extra Wields + weapon-magazine \
-              queries on top of the gamepad + reads/writes; GTW-356 adds the PathPreviewTarget write; \
-              GTW-505 C5 adds the MeleeWeapon marker probe for ranged-weapon resolution"
+    reason = "mirrors left_click_act: needs Wields, magazine, melee probe, and PathPreviewTarget"
 )]
 /// South button: same left-click decision path as mouse.
 pub fn gamepad_click_act(

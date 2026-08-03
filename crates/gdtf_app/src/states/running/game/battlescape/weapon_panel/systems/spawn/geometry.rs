@@ -1,4 +1,4 @@
-//! GTW-298 authoritative layout in one place (one change-reason: the layout tune).
+//! Weapon-panel layout constants in one place.
 use crate::states::running::game::battlescape::bottom_bar::{BOTTOM_BAR_H_VH, BOTTOM_BAR_PAD_Y_VH};
 
 pub(super) const PANEL_W_VW: f32 = 22.0;

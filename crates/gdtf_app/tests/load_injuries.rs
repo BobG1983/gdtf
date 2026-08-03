@@ -129,19 +129,18 @@ fn real_asset_resolves_injury_registry_and_tables() {
                 .any(|sev| tables.table(part, DamageContext::Ranged, sev).is_some());
             assert!(
                 any_bucket,
-                "the {part:?} category pool must have at least one rollable bucket (GTW-440 \
-                 content floor — every category non-empty)",
+                "the {part:?} category pool must have at least one rollable bucket (every category non-empty)",
             );
         }
         assert_eq!(
             tables.table(BodyPart::LeftArm, DamageContext::Ranged, Severity::Major),
             tables.table(BodyPart::RightArm, DamageContext::Ranged, Severity::Major),
-            "both arms must resolve the IDENTICAL shared Arm (Major) bucket (GTW-440 C1)",
+            "both arms must resolve the IDENTICAL shared Arm (Major) bucket",
         );
         assert_eq!(
             tables.table(BodyPart::LeftLeg, DamageContext::Ranged, Severity::Major),
             tables.table(BodyPart::RightLeg, DamageContext::Ranged, Severity::Major),
-            "both legs must resolve the IDENTICAL shared Leg (Major) bucket (GTW-440 C1)",
+            "both legs must resolve the IDENTICAL shared Leg (Major) bucket",
         );
     }
 

@@ -17,12 +17,7 @@ use crate::{
 /// Spawn a battle from the requested situation once registries are loaded.
 #[expect(
     clippy::too_many_arguments,
-    reason = "the params are the message reader + writer, the gang / weapon / MELEE-weapon \
-              (GTW-505) / armor / terrain / area-damage-field (GTW-545) / attachment \
-              (GTW-549) registries, and the stat + combat tuning — each a distinct Bevy \
-              SystemParam (Option<Res<_>> for the Load-state registries); the injection model \
-              cannot be refactored to fewer without a wrapper resource that changes the API \
-              surface"
+    reason = "each registry and tuning resource is a distinct optional Res"
 )]
 pub fn setup_battle_on_request(
     mut requests: MessageReader<SetupBattleRequested>,

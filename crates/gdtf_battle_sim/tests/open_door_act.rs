@@ -109,7 +109,7 @@ fn valid_request_toggles_closed_door_open_and_charges_exactly_open_door_tu() {
     assert_eq!(
         door_state(&app, door),
         Some(OpenState::Closed),
-        "the door starts Closed (GTW-470 / GTW-503 default)",
+        "the door starts Closed",
     );
 
     open_and_settle(&mut app, actor, door);
@@ -117,7 +117,7 @@ fn valid_request_toggles_closed_door_open_and_charges_exactly_open_door_tu() {
     assert_eq!(
         door_state(&app, door),
         Some(OpenState::Open),
-        "(a): the open-door act toggled the CLOSED door to Open (via the GTW-503 mechanism)",
+        "(a): the open-door act toggled the CLOSED door to Open",
     );
     assert_eq!(
         tu_of(&app, actor),
@@ -244,12 +244,12 @@ fn opening_the_door_clears_path_and_vision_via_openable_toggle_downstream() {
     assert_eq!(
         path_blocked(&app, at),
         Some(false),
-        "(c): an OPEN door no longer blocks the path (the GTW-503 downstream cleared it)",
+        "(c): an OPEN door no longer blocks the path",
     );
     assert_eq!(
         occluder_band(&app, at),
         None,
-        "(c): an OPEN door no longer occludes vision (the GTW-503 downstream cleared it)",
+        "(c): an OPEN door no longer occludes vision",
     );
 }
 

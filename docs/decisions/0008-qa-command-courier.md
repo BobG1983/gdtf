@@ -7,19 +7,17 @@ description: A host publishes its own list of typed QA commands; two frozen enve
 
 ## Status
 
-`Accepted` — 2026-08-01 (GTW-943). Proposed 2026-07-31, driven by the user's design ruling on
-GTW-934 and the GTW-938 epic that carries it. Built in phase A by GTW-939 (the wire vocabulary),
-GTW-940 (the handshake gate), GTW-941 (`crates/gdtf_qa_command`) and GTW-942 (the game host
-scaffold, `app.phase`, and the courier's two tools).
+`Accepted` — 2026-08-01. Proposed 2026-07-31, driven by the user's design ruling
+and the epic that carries it. Built in phase A by the wire vocabulary, the handshake gate,
+the `crates/gdtf_qa_command` crate, and the game host scaffold (`app.phase` and the courier's two tools).
 
-GTW-943 is what moved it here: it deleted the surface
-[ADR 0007](0007-net-qa-command-discoverability.md) describes — the per-family query pair, the
+That work deleted the surface [ADR 0007](0007-net-qa-command-discoverability.md) describes — the per-family query pair, the
 ten other request variants, and the twelve per-request MCP tools — leaving the command layer as
 the only QA surface. The two designs no longer exist side by side.
 
 ## Context
 
-Every QA affordance the game and the content editor have gained since GTW-736 cost the same
+Every QA affordance the game and the content editor had gained cost the same
 four edits: a `QaRequest` variant, a `QaResponse` variant, a router arm, and an MCP tool with
 a hand-written JSON Schema. The protocol version moved for most of them — it reached 13 —
 and each addition had to be made twice if both hosts wanted it.
@@ -27,14 +25,13 @@ and each addition had to be made twice if both hosts wanted it.
 Two consequences drove the reversal recorded on ADR 0007. First, the cost of an affordance
 was high enough that affordances were not added: the game serviced `StartBattle`,
 `StepperControl`, `FocusControl` and the editor's whole query pair for weeks before any
-client tool sent them, because the client half was a separate edit that kept being deferred
-(GTW-760, GTW-766, GTW-802, GTW-808 each closed one of those gaps after the fact). Second,
-the hand-written tool schema and the host's actual accepted shape are two accounts of one
+client tool sent them, because the client half was a separate edit that kept being deferred.
+Second, the hand-written tool schema and the host's actual accepted shape are two accounts of one
 thing, and nothing kept them in step.
 
 ADR 0007 chose per-family query ENUMS over a runtime command registry, on the reasoning that
 one live state family did not justify the registry's machinery. The editor family arrived,
-and the user's GTW-934 ruling reversed that choice.
+and a later design ruling reversed that choice.
 
 ## Decision
 
@@ -88,8 +85,8 @@ list, and a test.
 - The riders on a call (`await_ready`, `capture`) are declared but not built. A call carrying
   one is answered `Unavailable { code: NotBuilt }` rather than run with the rider dropped —
   an honest refusal, not a silent narrowing of what was asked.
-- GTW-942 added two `#[serde(default)]` fields to already-shipped payloads — `RunCommand.options`
-  and `CommandEntry.timing` — and moved `ProtocolVersion::CURRENT` from 13 to 14 for them. The
+- Two `#[serde(default)]` fields were added to already-shipped payloads — `RunCommand.options`
+  and `CommandEntry.timing` — and `ProtocolVersion::CURRENT` moved from 13 to 14 for them. The
   defaults only make a NEW decoder read an OLD frame correctly (pinned by
   `a_run_encoded_without_options_decodes_as_a_plain_call` and
   `a_row_encoded_without_a_timing_decodes_as_immediate`); the other direction loses data, because
@@ -100,17 +97,17 @@ list, and a test.
   number covers the shapes of the `command` vocabulary, and a field added to one of them moves it.
   What still never moves it is a COMMAND — a name, its arguments, its reply.
 - ADR 0007's per-family query pair becomes redundant: a topic query is a command with a
-  narrower reply. GTW-943 deletes it.
+  narrower reply. That pair is deleted.
 
 ## Alternatives considered
 
-- **Keep the per-family query enums (ADR 0007's decision).** Rejected by the user's GTW-934
+- **Keep the per-family query enums (ADR 0007's decision).** Rejected by a later design
   ruling. The pattern held for one family and strained at two: every new affordance still
   cost a wire variant on both hosts, and discoverability stopped at "which topics will you
   answer" rather than "what can I call and what does it take".
 - **One MCP tool per command.** Rejected: it reintroduces the exact coupling this removes —
-  a host command with no client tool is unreachable, which is the failure GTW-760, GTW-766,
-  GTW-802 and GTW-808 each had to repair after the fact.
+  a host command with no client tool is unreachable, which is the failure that kept needing
+  after-the-fact repairs.
 - **A second router for the command arms.** Rejected on a mechanical ground: `NetInbox::drain()`
   is `rx.try_iter().collect()`, so two routers reading the inbox in one frame means whichever
   runs first swallows the other's requests. Pinned by

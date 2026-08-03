@@ -21,8 +21,7 @@ fn battle_running_persists_without_an_end_signal() {
         assert_eq!(
             battlescape_state(&app),
             Some(BattleScapeState::BattleRunning),
-            "BattleRunning must PERSIST with no BattleRunningComplete inserted (GTW-236) — it must \
-             not auto-advance to AnimateOut; failed on update {iteration} of {PERSIST_UPDATES}",
+            "BattleRunning must PERSIST with no BattleRunningComplete inserted — it must not auto-advance to AnimateOut; failed on update {iteration} of {PERSIST_UPDATES}",
         );
     }
 }

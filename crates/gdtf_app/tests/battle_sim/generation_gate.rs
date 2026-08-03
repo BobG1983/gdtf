@@ -32,7 +32,7 @@ fn entering_generation_seeds_rng_streams() {
 
     assert!(
         app.world().get_resource::<ShotRng>().is_some(),
-        "entering Generation must insert the ShotRng stream (GTW-14 five-stream setup)",
+        "entering Generation must insert the ShotRng stream",
     );
 
     let mut seed_zero = ShotRng::from_root(BattleSeed::new(0));

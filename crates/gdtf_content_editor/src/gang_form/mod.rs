@@ -1,5 +1,4 @@
-//! The GANG authoring mode's MODEL half (GTW-636) — the Workbench form that edits a
-//! authored OUTSIDE the game binary — this mode replaces the retired in-game gang
+//! Gang authoring mode — form draft and save for a roster edited outside the game binary.
 mod draft;
 mod save;
 

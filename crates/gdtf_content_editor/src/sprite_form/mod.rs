@@ -1,4 +1,4 @@
-//! The SPRITE authoring mode's MODEL half (GTW-664) — the Workbench form that edits a
+//! Sprite authoring mode — draft and save.
 mod draft;
 mod save;
 

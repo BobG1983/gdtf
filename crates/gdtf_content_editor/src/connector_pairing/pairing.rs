@@ -57,7 +57,7 @@ pub fn apply_placement_with_pairing(
 
     let Some(above) = level_above(placement.slot(), size) else {
         info!(
-            "GTW-531: up connector placed on the top storey — paired DOWN connector skipped \
+            "up connector placed on the top storey — paired DOWN connector skipped \
              (fail-closed, no storey above)"
         );
         return PairingOutcome::PlacedPairSkipped;
@@ -68,7 +68,7 @@ pub fn apply_placement_with_pairing(
         PairingOutcome::PairPlaced { down, at: above }
     } else {
         info!(
-            "GTW-531: up connector placed, but the paired DOWN connector at the storey above was \
+            "up connector placed, but the paired DOWN connector at the storey above was \
              rejected by the shared placement predicate (conflict) — pair skipped"
         );
         PairingOutcome::PlacedPairSkipped
