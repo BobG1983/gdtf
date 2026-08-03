@@ -1,4 +1,5 @@
-//! The **fall mechanic** (GTW-523, child of GTW-39, parent GTW-17) — the authoritative
+//! Fall damage when a ganger loses floor support under them.
+
 mod damage;
 mod message;
 mod plugin;

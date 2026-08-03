@@ -1,3 +1,5 @@
+//! Convert fall height into wound synthesis inputs.
+
 use bevy::prelude::Entity;
 
 use crate::{
@@ -25,23 +27,25 @@ fn fall_damage_magnitude(per_storey: PerStoreyDamage, storeys: StoreysFallen) ->
     WeaponDamage::new(magnitude)
 }
 
+/// Inputs describing the fall impact on a target.
 pub(crate) struct FallImpact<'a> {
-        pub per_storey:    PerStoreyDamage,
-        pub storeys:       StoreysFallen,
-            pub part:          crate::armor::BodyPart,
-        pub target:        TargetGanger<'a>,
-        pub target_entity: Entity,
+    pub per_storey: PerStoreyDamage,
+    pub storeys: StoreysFallen,
+    pub part: crate::armor::BodyPart,
+    pub target: TargetGanger<'a>,
+    pub target_entity: Entity,
 }
 
+/// Shared tables and RNGs for fall wound resolution.
 pub(crate) struct FallWoundEnv<'a> {
-        pub tuning:       &'a CombatTuning,
-        pub tables:       &'a InjuryTables,
-        pub registry:     &'a InjuryRegistry,
-        pub severity_rng: &'a mut SeverityRng,
-        pub injury_rng:   &'a mut InjuryRng,
+    pub tuning: &'a CombatTuning,
+    pub tables: &'a InjuryTables,
+    pub registry: &'a InjuryRegistry,
+    pub severity_rng: &'a mut SeverityRng,
+    pub injury_rng: &'a mut InjuryRng,
 }
 
-/// so the signature passes clippy's argument-count gate with NO `#[expect]` suppression
+/// Resolve fall damage into an optional rolled injury.
 pub(crate) fn resolve_fall_hit(
     impact: FallImpact<'_>,
     env: FallWoundEnv<'_>,
