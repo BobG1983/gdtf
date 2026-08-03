@@ -1,3 +1,5 @@
+//! Directional focus navigation from keyboard and gamepad.
+
 use bevy::{
     input::gamepad::{Gamepad, GamepadButton},
     input_focus::{
@@ -8,54 +10,70 @@ use bevy::{
     prelude::*,
 };
 
+/// Direction for a focus move.
 #[derive(Deref, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct NavDirection(CompassOctant);
 
 impl NavDirection {
-        pub const UP: Self = Self(CompassOctant::North);
-        pub const DOWN: Self = Self(CompassOctant::South);
-        pub const WEST: Self = Self(CompassOctant::West);
-        pub const EAST: Self = Self(CompassOctant::East);
+    /// Up / north.
+    pub const UP: Self = Self(CompassOctant::North);
+    /// Down / south.
+    pub const DOWN: Self = Self(CompassOctant::South);
+    /// Left / west.
+    pub const WEST: Self = Self(CompassOctant::West);
+    /// Right / east.
+    pub const EAST: Self = Self(CompassOctant::East);
 
-        #[must_use]
+    /// Wrap a compass octant.
+    #[must_use]
     pub const fn new(octant: CompassOctant) -> Self {
         Self(octant)
     }
 }
 
+/// Request to move focus in a direction.
 #[derive(Message, Deref, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct NavigateRequest(NavDirection);
 
 impl NavigateRequest {
-        #[must_use]
+    /// Build a navigate request.
+    #[must_use]
     pub const fn new(direction: NavDirection) -> Self {
         Self(direction)
     }
 }
 
+/// The focused entity was activated (e.g. Enter / South).
 #[derive(Message, Deref, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct FocusActivated(Entity);
 
 impl FocusActivated {
-        #[must_use]
+    /// Build from the activated entity.
+    #[must_use]
     pub const fn new(entity: Entity) -> Self {
         Self(entity)
     }
 }
 
+/// Focus navigation was cancelled.
 #[derive(Message, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct FocusCancelled;
 
+/// System sets for focus navigation ordering.
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FocusNavSystems {
-            Bridge,
-        Apply,
+    /// Input bridging into navigate/activate messages.
+    Bridge,
+    /// Apply navigate requests to directional navigation.
+    Apply,
 }
 
+/// Set initial keyboard/gamepad focus to `entity`.
 pub fn set_initial_focus(commands: &mut Commands, entity: Entity) {
     commands.insert_resource(InputFocus::from_entity(entity));
 }
 
+/// Plugin wiring directional navigation and input bridges.
 pub struct FocusNavPlugin;
 
 impl Plugin for FocusNavPlugin {
@@ -80,6 +98,7 @@ impl Plugin for FocusNavPlugin {
     }
 }
 
+/// Map arrow/WASD keys to navigate and Enter to activate.
 pub fn bridge_keyboard_navigation(
     keys: Option<Res<ButtonInput<KeyCode>>>,
     focus: Res<InputFocus>,
@@ -103,6 +122,7 @@ pub fn bridge_keyboard_navigation(
     }
 }
 
+/// Map d-pad and South button to navigate/activate.
 pub fn bridge_gamepad_navigation(
     gamepads: Query<&Gamepad>,
     focus: Res<InputFocus>,
@@ -124,6 +144,7 @@ pub fn bridge_gamepad_navigation(
     }
 }
 
+/// Apply queued navigate requests to Bevy directional navigation.
 pub fn apply_navigation(
     mut requests: MessageReader<NavigateRequest>,
     mut navigation: DirectionalNavigation,
