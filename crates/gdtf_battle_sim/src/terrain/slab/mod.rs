@@ -1,4 +1,5 @@
-//! Slab-HP ledger: the model's single authoritative store of floor/roof **slab**
+//! Slab HP ledger: structural hit points for floor and roof slabs.
+
 mod brace_stair_cells;
 mod ledger;
 mod types;
