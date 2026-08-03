@@ -69,4 +69,4 @@ fn topdown_renderer_builds_the_sheet_atlases_including_32px_portraits() {
     );
 }
 
-// NOTE (GTW-295): the PORTRAITS nearest-sampler decision is pinned by a unit test in
+// Portraits nearest-sampler is pinned by a unit test in the image load path.

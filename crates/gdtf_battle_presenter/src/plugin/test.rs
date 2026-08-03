@@ -88,6 +88,6 @@ fn draw_stages_run_scene_then_compose_then_overlay() {
     assert_eq!(
         app.world().resource::<RunOrder>().0,
         vec![StageTag::Scene, StageTag::Compose, StageTag::Overlay],
-        "the Draw stages must run chained Scene → Compose → Overlay (GTW-623 C1)",
+        "the Draw stages must run chained Scene → Compose → Overlay",
     );
 }

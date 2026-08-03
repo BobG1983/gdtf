@@ -55,7 +55,7 @@ fn def_authorable_excludes_exactly_the_runtime_and_link_roles() {
         assert_eq!(
             role.def_authorable(),
             !excluded.contains(&role),
-            "{role:?} authorability must match the GTW-566 C5 flag table",
+            "{role:?} authorability must match the flag table",
         );
     }
 }
