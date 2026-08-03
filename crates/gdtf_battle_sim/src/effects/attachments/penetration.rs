@@ -1,14 +1,18 @@
+//! Penetration (punch) attachment effect.
+
 use bevy::prelude::EntityWorldMut;
 
 use super::ApplyAttachmentEffect;
 use crate::weapon::WeaponPunch;
 
+/// Raises the weapon's punch value.
 pub struct ApplyPenetration {
-        punch_bonus: WeaponPunch,
+    punch_bonus: WeaponPunch,
 }
 
 impl ApplyPenetration {
-            #[must_use]
+    /// Build the applicator.
+    #[must_use]
     pub const fn new(punch_bonus: WeaponPunch) -> Self {
         Self { punch_bonus }
     }
@@ -31,7 +35,7 @@ mod tests {
     use super::{ApplyAttachmentEffect, ApplyPenetration};
     use crate::weapon::WeaponPunch;
 
-        #[test]
+    #[test]
     fn penetration_raises_punch() {
         let mut world = World::new();
         let weapon = world.spawn(WeaponPunch::new(4)).id();

@@ -1,32 +1,37 @@
+//! Stability / brace bonus attachment effect.
+
 use bevy::prelude::{Component, Deref, EntityWorldMut};
 use serde::{Deserialize, Serialize};
 
 use super::ApplyAttachmentEffect;
 
-/// A `#[derive(Component)]` (no-bare-types: private inner + derived [`Deref`];
-/// `#[serde(transparent)]` so it authors as a bare RON scalar — `Stability(12.0)`). The
+/// Brace bonus points granted by an attachment.
 #[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 pub struct WeaponBraceBonus(f32);
 
 impl WeaponBraceBonus {
-            #[must_use]
+    /// Wrap a bonus.
+    #[must_use]
     pub const fn new(bonus: f32) -> Self {
         Self(bonus)
     }
 
-                #[must_use]
+    /// Zero bonus.
+    #[must_use]
     pub const fn none() -> Self {
         Self(0.0)
     }
 }
 
+/// Inserts a brace bonus onto the weapon.
 pub struct ApplyStability {
-        bonus: WeaponBraceBonus,
+    bonus: WeaponBraceBonus,
 }
 
 impl ApplyStability {
-        #[must_use]
+    /// Build the applicator.
+    #[must_use]
     pub const fn new(bonus: WeaponBraceBonus) -> Self {
         Self { bonus }
     }
@@ -44,7 +49,7 @@ mod tests {
 
     use super::{ApplyAttachmentEffect, ApplyStability, WeaponBraceBonus};
 
-            #[test]
+    #[test]
     fn stability_inserts_weapon_brace_bonus() {
         let mut world = World::new();
         let weapon = world.spawn_empty().id();

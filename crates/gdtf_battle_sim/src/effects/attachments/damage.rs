@@ -1,16 +1,18 @@
-//! The **Damage** attachment effect (GTW-549 USER-REVIEW extra; GTW-558 one-file-per-effect)
+//! Extra damage attachment effect.
+
 use bevy::prelude::EntityWorldMut;
 
 use super::ApplyAttachmentEffect;
 use crate::weapon::WeaponDamage;
 
-/// USER-REVIEW extra (defensible default).
+/// Raises the weapon's base damage.
 pub struct ApplyDamage {
-        damage_bonus: WeaponDamage,
+    damage_bonus: WeaponDamage,
 }
 
 impl ApplyDamage {
-        #[must_use]
+    /// Build the applicator.
+    #[must_use]
     pub const fn new(damage_bonus: WeaponDamage) -> Self {
         Self { damage_bonus }
     }
@@ -33,7 +35,7 @@ mod tests {
     use super::{ApplyAttachmentEffect, ApplyDamage};
     use crate::weapon::WeaponDamage;
 
-        #[test]
+    #[test]
     fn damage_raises_base_damage() {
         let mut world = World::new();
         let weapon = world.spawn(WeaponDamage::new(10)).id();

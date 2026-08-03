@@ -1,14 +1,18 @@
+//! Gain-fire-mode attachment effect.
+
 use bevy::prelude::EntityWorldMut;
 
 use super::ApplyAttachmentEffect;
 use crate::weapon::{FireMode, FireModeSpec};
 
+/// Appends a fire mode to the weapon.
 pub struct ApplyGainFireMode {
-        mode: FireModeSpec,
+    mode: FireModeSpec,
 }
 
 impl ApplyGainFireMode {
-            #[must_use]
+    /// Build the applicator.
+    #[must_use]
     pub const fn new(mode: FireModeSpec) -> Self {
         Self { mode }
     }
@@ -32,7 +36,7 @@ mod tests {
     use super::{ApplyAttachmentEffect, ApplyGainFireMode};
     use crate::weapon::{FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent};
 
-        #[test]
+    #[test]
     fn gain_fire_mode_appends_a_mode() {
         let mut world = World::new();
         let weapon = world
