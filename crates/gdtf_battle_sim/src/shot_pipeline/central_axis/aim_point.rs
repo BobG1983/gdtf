@@ -1,3 +1,5 @@
+//! Where the shooter is aiming on the target.
+
 use crate::{
     cover::{BandFraction, HeightBand},
     ganger::{Position, Stance, StanceKind},
@@ -36,6 +38,7 @@ pub(super) fn band_midpoint_fraction(band: HeightBand, edges: ProjectileBandEdge
     BandFraction::new(f32::midpoint(*bottom, *top))
 }
 
+/// Aim point on the target, accounting for stance and optional cover band.
 #[must_use]
 pub fn target_aim_point(
     position: Position,
