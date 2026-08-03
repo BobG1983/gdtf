@@ -1,4 +1,5 @@
-//! Cover-HP ledger: the model's single authoritative store of cover structural
+//! Cover HP ledger: structural hit points and height bands for cover cells.
+
 mod band;
 mod ledger;
 mod types;
