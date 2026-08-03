@@ -1,4 +1,4 @@
-//! authored field round-trips by construction).
+//! Armor form draft resource.
 
 use bevy::prelude::*;
 use gdtf_battle_sim::armor::{
@@ -16,57 +16,66 @@ const SEED_PIECE: ArmorPiece = ArmorPiece::new(
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum AutoloadState {
-        Pending,
-        Done,
+    Pending,
+    Done,
 }
 
+/// In-progress armor being authored.
 #[derive(Resource, Clone, PartialEq, Eq, Debug)]
 pub struct ArmorDraft {
-        name:     String,
-        spec:     ArmorSpec,
-        autoload: AutoloadState,
+    name: String,
+    spec: ArmorSpec,
+    autoload: AutoloadState,
 }
 
 impl ArmorDraft {
-                    #[must_use]
+    /// Empty draft ready for new armor.
+    #[must_use]
     pub const fn new_armor() -> Self {
         Self {
-            name:     String::new(),
-            spec:     ArmorSpec::uniform(SEED_PIECE),
+            name: String::new(),
+            spec: ArmorSpec::uniform(SEED_PIECE),
             autoload: AutoloadState::Done,
         }
     }
 
-                #[must_use]
+    /// Whether the form should still try to autoload from the registry.
+    #[must_use]
     pub const fn autoload_pending(&self) -> bool {
         matches!(self.autoload, AutoloadState::Pending)
     }
 
-            pub const fn mark_autoloaded(&mut self) {
+    /// Mark autoload complete.
+    pub const fn mark_autoloaded(&mut self) {
         self.autoload = AutoloadState::Done;
     }
 
-                pub fn load_armor(&mut self, name: &ArmorName, spec: &ArmorSpec) {
+    /// Load an existing armor into the draft.
+    pub fn load_armor(&mut self, name: &ArmorName, spec: &ArmorSpec) {
         name.as_str().clone_into(&mut self.name);
         self.spec = *spec;
         self.autoload = AutoloadState::Done;
     }
 
-        #[must_use]
+    /// Display name.
+    #[must_use]
     pub fn name(&self) -> &str {
         &self.name
     }
 
-        pub fn set_name(&mut self, name: String) {
+    /// Set the display name.
+    pub fn set_name(&mut self, name: String) {
         self.name = name;
     }
 
-        #[must_use]
+    /// Full armor spec.
+    #[must_use]
     pub const fn spec(&self) -> &ArmorSpec {
         &self.spec
     }
 
-                        #[must_use]
+    /// Mutable access to one body-part piece.
+    #[must_use]
     pub const fn piece_mut(&mut self, part: BodyPart) -> &mut ArmorPiece {
         match part {
             BodyPart::Head => &mut self.spec.head,
@@ -80,10 +89,10 @@ impl ArmorDraft {
 }
 
 impl Default for ArmorDraft {
-                    fn default() -> Self {
+    fn default() -> Self {
         Self {
-            name:     String::new(),
-            spec:     ArmorSpec::uniform(SEED_PIECE),
+            name: String::new(),
+            spec: ArmorSpec::uniform(SEED_PIECE),
             autoload: AutoloadState::Pending,
         }
     }

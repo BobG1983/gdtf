@@ -1,4 +1,5 @@
-//! `write_terrain_in` precedent, so tests aim it at a `tempfile::TempDir`) and its thin
+//! Theme draft validation and RON save helpers.
+
 #[cfg(debug_assertions)]
 use std::path::{Path, PathBuf};
 
@@ -10,7 +11,6 @@ use gdtf_battle_sim::level::{ThemeDisplayName, ThemeUuid, UuidThemeDef};
 use gdtf_content_families::ThemeDefsFamily;
 
 use super::types::{SaveThemeError, ThemeDraft};
-
 
 #[cfg(debug_assertions)]
 #[must_use]
@@ -26,7 +26,7 @@ pub(crate) fn theme_save_path_in(root: &Path, slug: &str) -> PathBuf {
         .join(format!("{slug}.{}", ThemeDefsFamily::EXTENSION))
 }
 
-/// palette rule) so the live RON PREVIEW can render an in-progress draft; the C6 validation is
+/// Build a theme def from a draft and key.
 #[must_use]
 pub fn draft_to_theme_def(draft: &ThemeDraft, key: ThemeUuid) -> UuidThemeDef {
     UuidThemeDef {
@@ -39,10 +39,21 @@ pub fn draft_to_theme_def(draft: &ThemeDraft, key: ThemeUuid) -> UuidThemeDef {
     }
 }
 
+/// Serialize a theme def to pretty RON.
+///
+/// # Errors
+///
+/// Returns [`SaveThemeError::Save`] if serialization fails.
 pub fn serialize_theme_def(def: &UuidThemeDef) -> Result<String, SaveThemeError> {
     serialize_ron_pretty(def).map_err(SaveThemeError::Save)
 }
 
+/// Validate a draft before save.
+///
+/// # Errors
+///
+/// Returns [`SaveThemeError`] when the name is empty, terrain is empty, or the
+/// default floor is not in the terrain list.
 pub fn validate_for_save(draft: &ThemeDraft) -> Result<(), SaveThemeError> {
     if draft.display_name().trim().is_empty() {
         return Err(SaveThemeError::EmptyName);
@@ -56,6 +67,11 @@ pub fn validate_for_save(draft: &ThemeDraft) -> Result<(), SaveThemeError> {
     }
 }
 
+/// Write theme RON under `assets_root`.
+///
+/// # Errors
+///
+/// Returns [`SaveThemeError`] on validation or write failure.
 #[cfg(debug_assertions)]
 pub fn write_theme_in(
     assets_root: &Path,
@@ -73,6 +89,11 @@ pub fn write_theme_in(
     Ok(path)
 }
 
+/// Write theme RON under the workspace assets root.
+///
+/// # Errors
+///
+/// Returns [`SaveThemeError`] on validation or write failure.
 #[cfg(debug_assertions)]
 pub fn write_theme(draft: &ThemeDraft, key: ThemeUuid) -> Result<PathBuf, SaveThemeError> {
     write_theme_in(Path::new(WORKSPACE_ASSETS_ROOT), draft, key)

@@ -1,3 +1,5 @@
+//! Left-click and right-click selection systems.
+
 use bevy::prelude::*;
 use gdtf_battle_presenter::PlaybackGate;
 use gdtf_battle_sim::{
@@ -29,6 +31,7 @@ use crate::{
               GTW-505 C5 adds the MeleeWeapon marker probe so the ranged weapon resolves excluding \
               the melee one; LeftClickReads already bundles the Res-only reads"
 )]
+/// Handle left-click: decide act, apply selection, and update inspect pin.
 pub fn left_click_act(
     gate: PlaybackGate,
     reads: LeftClickReads,
@@ -60,6 +63,7 @@ pub fn left_click_act(
     apply_pin(pin, &mut inspect);
 }
 
+/// Handle right-click: queue a turn-to-face intent when a player ganger is selected.
 pub fn right_click_turn_to_face(
     mouse: Res<ButtonInput<MouseButton>>,
     reads: TurnReads,

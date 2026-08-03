@@ -1,4 +1,5 @@
-//! The draft holds the sim's own authored [`InjuryWeighting`] record (category +
+//! Injury weighting draft resource.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     armor::InjuryCategory,
@@ -8,23 +9,27 @@ use gdtf_battle_sim::{
 
 use super::draft::AutoloadState;
 
+/// In-progress injury weighting table being authored.
 #[derive(Resource, Clone, PartialEq, Eq, Debug)]
 pub struct WeightingDraft {
-        weighting: InjuryWeighting,
-        autoload:  AutoloadState,
+    weighting: InjuryWeighting,
+    autoload: AutoloadState,
 }
 
 impl WeightingDraft {
-                #[must_use]
+    /// Whether the form should still try to autoload from the tables.
+    #[must_use]
     pub const fn autoload_pending(&self) -> bool {
         matches!(self.autoload, AutoloadState::Pending)
     }
 
-            pub const fn mark_autoloaded(&mut self) {
+    /// Mark autoload complete.
+    pub const fn mark_autoloaded(&mut self) {
         self.autoload = AutoloadState::Done;
     }
 
-                                            pub fn load_table(
+    /// Load weighting buckets for a category and context from the tables.
+    pub fn load_table(
         &mut self,
         category: InjuryCategory,
         context: DamageContext,
@@ -46,38 +51,42 @@ impl WeightingDraft {
         self.autoload = AutoloadState::Done;
     }
 
-        #[must_use]
+    /// Injury category.
+    #[must_use]
     pub const fn category(&self) -> InjuryCategory {
         self.weighting.category
     }
 
-            #[must_use]
+    /// Damage context.
+    #[must_use]
     pub const fn context(&self) -> DamageContext {
         self.weighting.context
     }
 
-            #[must_use]
+    /// Full weighting record.
+    #[must_use]
     pub const fn weighting(&self) -> &InjuryWeighting {
         &self.weighting
     }
 
-                #[must_use]
+    /// Mutable access to the weighting record.
+    #[must_use]
     pub const fn weighting_mut(&mut self) -> &mut InjuryWeighting {
         &mut self.weighting
     }
 }
 
 impl Default for WeightingDraft {
-                    fn default() -> Self {
+    fn default() -> Self {
         Self {
             weighting: InjuryWeighting {
                 category: InjuryCategory::Head,
-                context:  DamageContext::Ranged,
-                minor:    Vec::new(),
-                major:    Vec::new(),
+                context: DamageContext::Ranged,
+                minor: Vec::new(),
+                major: Vec::new(),
                 critical: Vec::new(),
             },
-            autoload:  AutoloadState::Pending,
+            autoload: AutoloadState::Pending,
         }
     }
 }

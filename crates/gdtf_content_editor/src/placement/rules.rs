@@ -1,3 +1,5 @@
+//! Placement legality rules and apply helper.
+
 use gdtf_battle_sim::{
     level::{GridSize, ThemeUuid},
     metric::{CellLevel, Level},
@@ -38,6 +40,7 @@ fn level_above(slot: CellLevel) -> Option<CellLevel> {
     Some(CellLevel::new(slot.cell(), Level::new(next)))
 }
 
+/// Evaluate whether a placement is legal (and any auto-clear).
 #[must_use]
 pub fn evaluate_placement(
     map: &EditorMap,
@@ -90,6 +93,7 @@ fn slot_in_bounds(slot: CellLevel, size: GridSize) -> bool {
         && slot.z < levels
 }
 
+/// Apply a legal placement (and optional auto-clear). Returns whether the map changed.
 pub fn apply_placement(
     map: &mut EditorMap,
     registry: &TerrainDefRegistry,

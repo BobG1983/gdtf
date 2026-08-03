@@ -1,3 +1,5 @@
+//! Prefab conversion and RON save helpers.
+
 use std::path::{Path, PathBuf};
 
 use gdtf_assets::{FileStem, WORKSPACE_ASSETS_ROOT, sanitize_file_stem, serialize_ron_pretty};
@@ -15,11 +17,13 @@ use crate::{
     theme_dir::theme_dir,
 };
 
+/// Sanitize a user-entered prefab name into a file stem.
 #[must_use]
 pub fn sanitize_name(raw: &str) -> FileStem {
     sanitize_file_stem(raw)
 }
 
+/// Full path for a prefab under `root`.
 #[must_use]
 pub fn prefab_save_path_in(
     root: &Path,
@@ -33,11 +37,17 @@ pub fn prefab_save_path_in(
         .join(format!("{stem}.{PREFAB_EXTENSION}"))
 }
 
+/// Full path for a prefab under the workspace assets root.
 #[must_use]
 pub fn prefab_save_path(theme_display: &str, size: GridSize, stem: &str) -> PathBuf {
     prefab_save_path_in(Path::new(WORKSPACE_ASSETS_ROOT), theme_display, size, stem)
 }
 
+/// Build a prefab spec from the painted map and session.
+///
+/// # Errors
+///
+/// Returns [`SavePrefabError::IllegalCell`] when a painted cell fails placement rules.
 pub fn editor_map_to_prefab(
     map: &EditorMap,
     registry: &TerrainDefRegistry,
@@ -64,11 +74,20 @@ pub fn editor_map_to_prefab(
     Ok(PrefabSpec::new(theme, size, SAVED_SPAWN_ROLE, placements))
 }
 
+/// Serialize a prefab spec to pretty RON.
+///
+/// # Errors
+///
+/// Returns [`SavePrefabError::Save`] if serialization fails.
 pub fn serialize_prefab(spec: &PrefabSpec) -> Result<String, SavePrefabError> {
     serialize_ron_pretty(spec).map_err(SavePrefabError::Save)
 }
 
-/// `#[cfg(debug_assertions)]` (the GTW-429 gang-save precedent), so it never compiles into a
+/// Write prefab RON under `assets_root`.
+///
+/// # Errors
+///
+/// Returns [`SavePrefabError`] on empty name, illegal cells, or write failure.
 #[cfg(debug_assertions)]
 pub fn write_prefab_in(
     assets_root: &Path,
@@ -88,6 +107,11 @@ pub fn write_prefab_in(
     Ok(path)
 }
 
+/// Write prefab RON under the workspace assets root.
+///
+/// # Errors
+///
+/// Returns [`SavePrefabError`] on empty name, illegal cells, or write failure.
 #[cfg(debug_assertions)]
 pub fn write_prefab(
     map: &EditorMap,

@@ -1,3 +1,5 @@
+//! Selection highlight sprite under the selected ganger.
+
 use bevy::{
     camera::visibility::RenderLayers,
     ecs::template::template,
@@ -11,6 +13,7 @@ use crate::selection::resources::{
     SELECTION_TINT, SelectedShooter, SelectionHighlight, grid_extent_i32,
 };
 
+/// Spawn or move the selection highlight to the selected ganger's cell.
 pub fn update_selection_highlight(
     mut commands: Commands,
     selected: Res<SelectedShooter>,

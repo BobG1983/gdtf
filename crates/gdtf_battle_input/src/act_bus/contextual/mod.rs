@@ -1,3 +1,5 @@
+//! Contextual act families and the shared drain seam.
+
 mod seam;
 
 pub use seam::{

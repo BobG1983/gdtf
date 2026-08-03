@@ -1,25 +1,35 @@
+//! Terrain kind and footfall UI choices.
+
 use bevy::prelude::Component;
 use gdtf_battle_presenter::TileRole;
 use gdtf_battle_sim::terrain::{entity::TerrainPieceKind, piece::FootfallSound};
 
+/// Terrain kind selected in the form.
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum TerrainKindChoice {
-        #[default]
+    /// Wall.
+    #[default]
     Wall,
-        Cover,
-        Slab,
-                Emplacement,
+    /// Cover.
+    Cover,
+    /// Floor slab.
+    Slab,
+    /// Emplacement with optional mounted weapon.
+    Emplacement,
 }
 
 impl TerrainKindChoice {
-        pub const SEGMENT_ORDER: [Self; 4] = [Self::Wall, Self::Cover, Self::Slab, Self::Emplacement];
+    /// Segment control order left-to-right.
+    pub const SEGMENT_ORDER: [Self; 4] = [Self::Wall, Self::Cover, Self::Slab, Self::Emplacement];
 
-            #[must_use]
+    /// Kind for a segment index, if in range.
+    #[must_use]
     pub fn from_segment(index: usize) -> Option<Self> {
         Self::SEGMENT_ORDER.get(index).copied()
     }
 
-        #[must_use]
+    /// Index of this kind in [`SEGMENT_ORDER`].
+    #[must_use]
     pub fn segment_index(self) -> usize {
         Self::SEGMENT_ORDER
             .iter()
@@ -27,7 +37,8 @@ impl TerrainKindChoice {
             .unwrap_or(0)
     }
 
-        #[must_use]
+    /// Short UI label.
+    #[must_use]
     pub const fn label(self) -> &'static str {
         match self {
             Self::Wall => "Wall",
@@ -37,19 +48,21 @@ impl TerrainKindChoice {
         }
     }
 
-                #[must_use]
+    /// Whether height band applies.
+    #[must_use]
     pub const fn has_height_band(self) -> bool {
         matches!(self, Self::Wall | Self::Cover | Self::Emplacement)
     }
 
-            #[must_use]
+    /// Whether footfall choice applies.
+    #[must_use]
     pub const fn offers_footfall(self) -> bool {
         matches!(self, Self::Slab)
     }
 }
 
 impl From<TerrainPieceKind> for TerrainKindChoice {
-                    fn from(kind: TerrainPieceKind) -> Self {
+    fn from(kind: TerrainPieceKind) -> Self {
         match kind {
             TerrainPieceKind::Wall => Self::Wall,
             TerrainPieceKind::Cover => Self::Cover,
@@ -59,6 +72,7 @@ impl From<TerrainPieceKind> for TerrainKindChoice {
     }
 }
 
+/// Graphic roles authors may pick for a terrain def.
 #[must_use]
 pub fn offered_graphic_roles() -> Vec<TileRole> {
     TileRole::ALL
@@ -67,18 +81,24 @@ pub fn offered_graphic_roles() -> Vec<TileRole> {
         .collect()
 }
 
+/// Footfall sound choice for slabs.
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum FootfallChoice {
-            #[default]
+    /// No footfall sound.
+    #[default]
     None,
-        Metal,
-        Grate,
+    /// Metal footfall.
+    Metal,
+    /// Grate footfall.
+    Grate,
 }
 
 impl FootfallChoice {
-        pub const ALL: [Self; 3] = [Self::None, Self::Metal, Self::Grate];
+    /// All choices in UI order.
+    pub const ALL: [Self; 3] = [Self::None, Self::Metal, Self::Grate];
 
-        #[must_use]
+    /// Short UI label.
+    #[must_use]
     pub const fn label(self) -> &'static str {
         match self {
             Self::None => "None",
@@ -87,7 +107,8 @@ impl FootfallChoice {
         }
     }
 
-        #[must_use]
+    /// Map to a sim footfall sound, if any.
+    #[must_use]
     pub fn footfall(self) -> Option<FootfallSound> {
         match self {
             Self::None => Option::None,

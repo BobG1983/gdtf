@@ -1,3 +1,5 @@
+//! Classify terrain tiles for placement rules.
+
 use gdtf_battle_sim::{
     level::ThemeUuid,
     terrain::{
@@ -6,18 +8,24 @@ use gdtf_battle_sim::{
     },
 };
 
+/// Coarse class used by placement rules.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EditorTileClass {
-        Slab,
-            Ladder,
-        Other,
+    /// Floor slab.
+    Slab,
+    /// Ladder (by display name).
+    Ladder,
+    /// Everything else.
+    Other,
 }
 
+/// Whether a display name looks like a ladder.
 #[must_use]
 pub fn names_a_ladder(text: &str) -> bool {
     text.to_ascii_lowercase().contains("ladder")
 }
 
+/// Classify a terrain key from the registry.
 #[must_use]
 pub fn classify(
     registry: &TerrainDefRegistry,

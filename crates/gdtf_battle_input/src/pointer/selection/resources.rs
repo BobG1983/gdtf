@@ -1,20 +1,26 @@
+//! Selected shooter resource and selection highlight marker.
+
 use bevy::prelude::*;
 
+/// Currently selected player ganger, if any.
 #[derive(Resource, Deref, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct SelectedShooter(Option<Entity>);
 
 impl SelectedShooter {
-        #[must_use]
+    /// Select this entity.
+    #[must_use]
     pub const fn new(entity: Entity) -> Self {
         Self(Some(entity))
     }
 
-                #[must_use]
+    /// No selection.
+    #[must_use]
     pub const fn cleared() -> Self {
         Self(None)
     }
 }
 
+/// Marker on the selection highlight overlay entity.
 #[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct SelectionHighlight;
 

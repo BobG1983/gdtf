@@ -1,18 +1,26 @@
+//! Cell sort key and player selection cycle.
+
 use gdtf_battle_sim::prelude::Position;
 
+/// Sort key for gangers: level, then y, then x.
 pub type CellOrderKey = (i32, i32, i32);
 
+/// Build a cell order key from a position.
 #[must_use]
 pub fn cell_order_key(position: &Position) -> CellOrderKey {
     (position.z, position.y, position.x)
 }
 
+/// Direction to walk the ordered player ganger list.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CycleDirection {
-            Next,
-            Prev,
+    /// Next in list (wraps).
+    Next,
+    /// Previous in list (wraps).
+    Prev,
 }
 
+/// Cycle to the next or previous player ganger in `ordered`.
 #[must_use]
 pub fn cycle_player_selection(
     ordered: &[bevy::prelude::Entity],
@@ -39,17 +47,17 @@ mod test {
 
     use super::{CycleDirection, cycle_player_selection};
 
-                            fn distinct_entities(n: usize) -> Vec<Entity> {
+    fn distinct_entities(n: usize) -> Vec<Entity> {
         let mut world = World::new();
         (0..n).map(|_| world.spawn_empty().id()).collect()
     }
 
-            fn ordered() -> [Entity; 3] {
+    fn ordered() -> [Entity; 3] {
         let ids = distinct_entities(3);
         [ids[0], ids[1], ids[2]]
     }
 
-        #[test]
+    #[test]
     fn next_advances_and_wraps() {
         let gang = ordered();
         assert_eq!(
@@ -67,7 +75,7 @@ mod test {
         );
     }
 
-        #[test]
+    #[test]
     fn prev_advances_and_wraps() {
         let gang = ordered();
         assert_eq!(
@@ -85,7 +93,7 @@ mod test {
         );
     }
 
-        #[test]
+    #[test]
     fn from_none_picks_first_or_last() {
         let gang = ordered();
         assert_eq!(
@@ -100,7 +108,7 @@ mod test {
         );
     }
 
-            #[test]
+    #[test]
     fn non_member_current_falls_back_to_end() {
         let ids = distinct_entities(4);
         let gang = [ids[0], ids[1], ids[2]];
@@ -115,7 +123,7 @@ mod test {
         );
     }
 
-        #[test]
+    #[test]
     fn empty_gang_is_none() {
         assert_eq!(
             cycle_player_selection(&[], None, CycleDirection::Next),
