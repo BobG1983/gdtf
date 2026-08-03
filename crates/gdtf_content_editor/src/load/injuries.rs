@@ -1,4 +1,4 @@
-//! runs (the GTW-630 "one source, two hosts" shape), so an authored injury /
+//! Injury def and weighting load/redrive for the editor (same sources as the game host).
 use bevy::{
     asset::{AssetEvent, AssetServer, Assets, LoadedFolder, RecursiveDependencyLoadState},
     ecs::system::SystemParam,
@@ -14,7 +14,7 @@ use gdtf_content_families::injuries::{
 #[derive(Resource, Deref)]
 pub(crate) struct InjuriesFolderHandle(Handle<LoadedFolder>);
 
-/// redrive walk, bundled into one `#[derive(SystemParam)]` (the load gate's
+/// Injury asset handles and optional salvage state for load/redrive.
 #[derive(SystemParam)]
 pub(crate) struct InjuryAssets<'w> {
         server:            Res<'w, AssetServer>,
