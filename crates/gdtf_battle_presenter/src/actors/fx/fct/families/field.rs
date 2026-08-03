@@ -1,3 +1,5 @@
+//! Field-tick floating combat text.
+
 use gdtf_battle_sim::effects::fields::FieldTicked;
 
 use super::super::{
@@ -6,6 +8,7 @@ use super::super::{
     text::CombatText,
 };
 
+/// Consequence family for [`FieldTicked`].
 #[derive(Debug, Clone, Copy)]
 pub struct FieldFct;
 
@@ -33,7 +36,7 @@ mod test {
         super::super::pop::ConsequenceFct, FctValence, FieldFct, PopAnchor, valence_color,
     };
 
-            #[test]
+    #[test]
     fn a_field_tick_classifies_to_a_hazard_minus_amount_tag() {
         let at = CellLevel::new(Cell::new(8, 5), Level::new(0));
         let pop = FieldFct::classify(&FieldTicked::new(
