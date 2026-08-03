@@ -1,3 +1,5 @@
+//! Repaint buttons after ActiveButton is removed or the theme changes.
+
 use bevy::{
     prelude::*,
     ui::{BackgroundColor, BorderColor as UiBorderColor, Interaction, widget::Button},
@@ -22,6 +24,7 @@ type DeactivationVisuals = (
     &'static mut UiBorderColor,
 );
 
+/// Restore interaction colors when `ActiveButton` is removed.
 pub fn repaint_deactivated_buttons(
     theme: Option<Res<GdtfTheme>>,
     mut deactivated: RemovedComponents<ActiveButton>,
@@ -48,6 +51,7 @@ type EnabledInteractiveButton = (
     Without<Switch>,
 );
 
+/// Repaint all interactive buttons when the theme resource changes.
 pub fn repaint_theme_change(
     theme: Res<GdtfTheme>,
     mut buttons: Query<DeactivationVisuals, EnabledInteractiveButton>,

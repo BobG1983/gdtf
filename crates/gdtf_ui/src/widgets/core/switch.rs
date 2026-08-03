@@ -1,3 +1,5 @@
+//! Toggle switch widget.
+
 use bevy::{
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
@@ -9,15 +11,19 @@ use bevy::{
 
 use super::orientation::Orientation;
 
+/// On/off state of a switch.
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum SwitchState {
-        #[default]
+    /// Off.
+    #[default]
     Off,
-        On,
+    /// On.
+    On,
 }
 
 impl SwitchState {
-        #[must_use]
+    /// Toggle to the other state.
+    #[must_use]
     pub const fn flipped(self) -> Self {
         match self {
             Self::Off => Self::On,
@@ -25,21 +31,27 @@ impl SwitchState {
         }
     }
 
-        #[must_use]
+    /// Whether the switch is on.
+    #[must_use]
     pub const fn is_on(self) -> bool {
         matches!(self, Self::On)
     }
 }
 
+/// Colors for track and knob.
 #[derive(Component, Clone, Copy, PartialEq, Debug, Default)]
 pub struct SwitchColors {
-        pub off:  Color,
-        pub on:   Color,
-        pub knob: Color,
+    /// Track when off.
+    pub off: Color,
+    /// Track when on.
+    pub on: Color,
+    /// Knob color.
+    pub knob: Color,
 }
 
 impl SwitchColors {
-        #[must_use]
+    /// Track color for `state`.
+    #[must_use]
     pub const fn track(&self, state: SwitchState) -> Color {
         match state {
             SwitchState::Off => self.off,
@@ -48,21 +60,28 @@ impl SwitchColors {
     }
 }
 
+/// Marks the switch root.
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct Switch;
 
+/// Marks the knob child.
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct SwitchKnob;
 
+/// Axis the switch is laid out on.
 #[derive(Component, Deref, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct SwitchOrientation(Orientation);
 
+/// Emitted when a switch is toggled by the user.
 #[derive(Message, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ToggleFlipped {
-        pub switch: Entity,
-        pub state:  SwitchState,
+    /// Switch entity.
+    pub switch: Entity,
+    /// New state after the flip.
+    pub state: SwitchState,
 }
 
+/// Spawn a switch with the given state, colors, and orientation.
 pub fn spawn_switch(
     commands: &mut Commands,
     state: SwitchState,
@@ -125,6 +144,7 @@ type SwitchData = (
     &'static mut Node,
 );
 
+/// Flip switches on press and emit [`ToggleFlipped`].
 pub fn drive_switches(
     mut switches: Query<SwitchData, (Changed<Interaction>, With<Switch>)>,
     mut backgrounds: Query<&mut BackgroundColor, With<Switch>>,
@@ -143,7 +163,7 @@ pub fn drive_switches(
         }
         flipped.write(ToggleFlipped {
             switch: entity,
-            state:  next,
+            state: next,
         });
     }
 }
