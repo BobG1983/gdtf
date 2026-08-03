@@ -1,26 +1,39 @@
+//! Edge and corner anchors for deployment zones.
+
 use crate::rng::ProcgenRng;
 
+/// Board edge or corner used to place a deployment zone.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Anchor {
-        TopRight,
-        TopLeft,
-        BottomRight,
-        BottomLeft,
-        RightMiddle,
-        LeftMiddle,
-        TopMiddle,
-        BottomMiddle,
+    /// Top-right corner.
+    TopRight,
+    /// Top-left corner.
+    TopLeft,
+    /// Bottom-right corner.
+    BottomRight,
+    /// Bottom-left corner.
+    BottomLeft,
+    /// Right edge, vertically centred.
+    RightMiddle,
+    /// Left edge, vertically centred.
+    LeftMiddle,
+    /// Top edge, horizontally centred.
+    TopMiddle,
+    /// Bottom edge, horizontally centred.
+    BottomMiddle,
 }
 
 impl Anchor {
-                                pub const PLAYER_ANCHORS: [Self; 4] = [
+    /// Anchors valid for the player side.
+    pub const PLAYER_ANCHORS: [Self; 4] = [
         Self::TopRight,
         Self::BottomRight,
         Self::RightMiddle,
         Self::BottomMiddle,
     ];
 
-                                        #[must_use]
+    /// Opposite side of the board.
+    #[must_use]
     pub const fn opposite(self) -> Self {
         match self {
             Self::TopRight => Self::BottomLeft,
@@ -34,7 +47,8 @@ impl Anchor {
         }
     }
 
-                                #[must_use]
+    /// Pick a random player anchor.
+    #[must_use]
     pub fn choose(rng: &mut ProcgenRng) -> Self {
         let index: usize = rng.random_range(0..Self::PLAYER_ANCHORS.len());
         Self::PLAYER_ANCHORS
