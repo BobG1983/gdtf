@@ -77,7 +77,7 @@ fn struck_piece(piece: Option<&StruckPiece<'_>>, weapon: WeaponStats<'_>) -> (Ar
     }
 }
 
-/// Resolve and apply a ganger hit, or return NoEffect when the target is missing/dead.
+/// Resolve and apply a ganger hit, or return `NoEffect` when the target is missing/dead.
 #[expect(
     clippy::too_many_arguments,
     reason = "GTW-438 threads the injury-roll inputs (the InjuryTables + InjuryRegistry \

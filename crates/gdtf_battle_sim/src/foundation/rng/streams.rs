@@ -1,4 +1,4 @@
-//! Labeled ChaCha12 streams derived from [`BattleSeed`](super::BattleSeed).
+//! Labeled `ChaCha12` streams derived from [`BattleSeed`](super::BattleSeed).
 
 use rand::{SeedableRng, distr::uniform::SampleRange};
 use rand_chacha::ChaCha12Rng;
