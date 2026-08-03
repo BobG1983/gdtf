@@ -1,12 +1,18 @@
+//! Whether a command finishes immediately or is deferred.
+
 use serde::{Deserialize, Serialize};
 
+/// Timing class for a catalogue entry.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CommandTiming {
-        #[default]
+    /// Completes in the same request/response.
+    #[default]
     Immediate,
-        Deferred,
+    /// Completes later (client may poll or wait).
+    Deferred,
 }
 
 impl CommandTiming {
-                    pub const ALL: [Self; 2] = [Self::Immediate, Self::Deferred];
+    /// All known timing classes.
+    pub const ALL: [Self; 2] = [Self::Immediate, Self::Deferred];
 }
