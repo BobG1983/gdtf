@@ -1,25 +1,32 @@
+//! Row of filled / empty pips (e.g. ammo or charges).
+
 use bevy::{
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
     ui::{BackgroundColor, BorderRadius, Node, Val},
 };
 
+/// How many leading pips are filled.
 #[derive(Deref, Clone, Copy, PartialEq, Eq, Debug)]
 pub struct FilledPips(usize);
 
 impl FilledPips {
-        #[must_use]
+    /// Wrap a filled count.
+    #[must_use]
     pub const fn new(filled: usize) -> Self {
         Self(filled)
     }
 }
 
+/// Marker for the pips row root.
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct PipsRow;
 
+/// Marker for one pip node.
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct Pip;
 
+/// Spawn a row of `total` pips with `filled` colored as remaining.
 pub fn spawn_pips(
     commands: &mut Commands,
     total: usize,
@@ -61,6 +68,7 @@ pub fn spawn_pips(
         .id()
 }
 
+/// Recolor pips under `row` for a new filled count. Returns how many were updated.
 pub fn set_pips(
     row: Entity,
     filled: FilledPips,

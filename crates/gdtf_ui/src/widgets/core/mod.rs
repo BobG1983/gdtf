@@ -1,3 +1,5 @@
+//! Core widget types and spawn helpers.
+
 mod builders;
 mod markers;
 mod orientation;
