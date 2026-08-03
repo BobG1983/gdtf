@@ -1,3 +1,5 @@
+//! Which targets can this enemy currently fire at?
+
 use bevy::{
     ecs::system::SystemParam,
     prelude::{Entity, Query},
@@ -20,16 +22,18 @@ use crate::{
     weapon::{FireMode, FireModeSpec, Handedness},
 };
 
+/// Lookup for the weapon an enemy is currently firing.
 #[derive(SystemParam)]
 pub struct WeaponLookup<'w, 's> {
-        wields:  WieldsQuery<'w, 's>,
-        weapons: Query<'w, 's, (&'static Magazine, &'static FireMode, &'static Handedness)>,
-            melee:   MeleeQuery<'w, 's>,
-            mounted: MountedQuery<'w, 's>,
+    wields: WieldsQuery<'w, 's>,
+    weapons: Query<'w, 's, (&'static Magazine, &'static FireMode, &'static Handedness)>,
+    melee: MeleeQuery<'w, 's>,
+    mounted: MountedQuery<'w, 's>,
 }
 
 impl WeaponLookup<'_, '_> {
-                                        pub(super) fn firing(&self, enemy: Entity) -> Option<(&Magazine, &FireMode, &Handedness)> {
+    /// Magazine, fire mode, and handedness for the enemy's firing weapon.
+    pub(super) fn firing(&self, enemy: Entity) -> Option<(&Magazine, &FireMode, &Handedness)> {
         let weapon = self.wields.get(enemy).ok()?.firing_weapon(
             |entity| self.mounted.get(entity).is_ok(),
             |entity| self.melee.get(entity).is_ok(),
@@ -38,6 +42,7 @@ impl WeaponLookup<'_, '_> {
     }
 }
 
+/// Targets the enemy can see, afford to fire at, and engage right now.
 #[expect(
     clippy::too_many_arguments,
     reason = "the gate borrows the brain's own reads (the enemy + target snapshot rows, \
@@ -61,11 +66,11 @@ pub(super) fn engageable_targets(
     let enemy_cell = enemy.position.cell();
     let enemy_cell_level = row_cell_level(&enemy.position);
     let observer = Observer {
-        position:         &enemy.position,
-        stance:           &enemy.stance,
-        facing:           &enemy.facing,
+        position: &enemy.position,
+        stance: &enemy.stance,
+        facing: &enemy.facing,
         stair_eye_offset: occupancy.stair_eye_offset_at(&enemy_cell_level),
-        peek_offset:      PeekOffset::default(),
+        peek_offset: PeekOffset::default(),
     };
     let mut engageable: Vec<AiTarget> = Vec::new();
     for target_row in targets {
@@ -73,7 +78,7 @@ pub(super) fn engageable_targets(
         let target_level = target_row.position.level();
         let target = Target {
             position: &target_row.position,
-            stance:   &target_row.stance,
+            stance: &target_row.stance,
         };
         if !*can_see(
             &observer,
