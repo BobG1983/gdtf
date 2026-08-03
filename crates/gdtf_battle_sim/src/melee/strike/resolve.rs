@@ -1,3 +1,5 @@
+//! Resolve opposed fight then wound synthesis for a melee hit.
+
 use crate::{
     armor::{ArmorFloor, ArmorHardness, ArmorIntegrity, ArmorPiece, ArmorProtection, ArmorType},
     hit_location::roll_body_part,
@@ -38,6 +40,7 @@ fn melee_struck_piece(
     }
 }
 
+/// Opposed fight → on connect, synthesize wound against the target.
 #[must_use]
 pub fn resolve_melee_strike(
     combatants: Combatants,
@@ -97,10 +100,10 @@ pub fn resolve_melee_strike(
     };
 
     MeleeStrike {
-        connect:   Connected::new(true),
-        severity:  synthesis.severity,
+        connect: Connected::new(true),
+        severity: synthesis.severity,
         hp_damage: synthesis.hit.hp_damage,
-        wear:      synthesis.wear,
-        injury:    synthesis.injury,
+        wear: synthesis.wear,
+        injury: synthesis.injury,
     }
 }

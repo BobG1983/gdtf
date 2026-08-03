@@ -1,3 +1,5 @@
+//! Full melee strike against a living target.
+
 mod inputs;
 mod resolve;
 mod verdict;
