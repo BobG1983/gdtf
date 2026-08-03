@@ -1,13 +1,3 @@
-//! The SUPPRESSION consequence family (GTW-526 C8, palette-ised in GTW-572): the transient
-//! `"SUPPRESSED"` pop for a ganger freshly pinned down, off the sim's
-//! [`SuppressionApplied`](gdtf_battle_sim::suppression::SuppressionApplied) message.
-//!
-//! Drawn the cowed [`FctValence::Suppressed`](super::super::palette::FctValence::Suppressed)
-//! blue-grey — the same colour-drained family the suppressed sprite tint uses, so the
-//! transient pop and the persistent desaturation read as ONE signal. The message carries the
-//! pinned cell, so the anchor is [`PopAnchor::Carried`] (no `Position` lookup). The pop is a
-//! MOMENT signal; the persistent state is the sprite tint (`resolve_ganger_appearance`).
-
 use gdtf_battle_sim::suppression::SuppressionApplied;
 
 use super::super::{
@@ -16,7 +6,6 @@ use super::super::{
     text::CombatText,
 };
 
-/// The suppression family marker — `SuppressionApplied` → a cowed `"SUPPRESSED"` tag.
 #[derive(Debug, Clone, Copy)]
 pub struct SuppressionFct;
 
@@ -44,9 +33,7 @@ mod test {
         super::super::pop::ConsequenceFct, FctValence, PopAnchor, SuppressionFct, valence_color,
     };
 
-    /// A suppression event classifies to the cowed `"SUPPRESSED"` blue-grey pop, anchored
-    /// at the message's carried pinned cell (C8: the moment-pop signal).
-    #[test]
+            #[test]
     fn a_suppression_classifies_to_a_cowed_suppressed_tag_at_the_cell() {
         let at = CellLevel::new(Cell::new(11, 4), Level::new(0));
         let pop = SuppressionFct::classify(&SuppressionApplied::new(Entity::PLACEHOLDER, at));

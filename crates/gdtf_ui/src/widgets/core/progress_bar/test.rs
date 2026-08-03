@@ -1,10 +1,3 @@
-//! Tests for the `ProgressBar` widget behavior (the `progress_bar.rs` surface).
-//!
-//! Runs on the shared in-crate harness (see
-//! [`test_support`](crate::widgets::core::test_support)). Each test is
-//! pin-discriminating: it asserts MUTATE-in-place (stable entity ids across an
-//! update) and the fraction → percent width mapping.
-
 use bevy::{
     ecs::system::SystemState,
     prelude::*,
@@ -14,14 +7,11 @@ use bevy::{
 use super::{FillFraction, ProgressBarFill, set_progress_bar, spawn_progress_bar};
 use crate::widgets::core::test_support::{LOST, REMAINING, harness};
 
-/// The two-query [`SystemState`] driving [`set_progress_bar`] in tests (clippy
-/// `type_complexity`).
 type ProgressBarSet = (
     Query<'static, 'static, &'static Children>,
     Query<'static, 'static, &'static mut Node, With<ProgressBarFill>>,
 );
 
-/// The fill child of the bar rooted at `track`, if any.
 fn fill_of(app: &mut App, track: Entity) -> Option<Entity> {
     let mut state: SystemState<Query<&Children>> = SystemState::new(app.world_mut());
     let Ok(children) = state.get(app.world()) else {
@@ -34,7 +24,6 @@ fn fill_of(app: &mut App, track: Entity) -> Option<Entity> {
         .find(|&child| app.world().get::<ProgressBarFill>(child).is_some())
 }
 
-/// Drives [`set_progress_bar`] once against the live world's queries.
 fn drive_set_progress_bar(app: &mut App, track: Entity, fraction: FillFraction) -> bool {
     let mut state: SystemState<ProgressBarSet> = SystemState::new(app.world_mut());
     let Ok((children, mut fills)) = state.get_mut(app.world_mut()) else {
@@ -45,11 +34,6 @@ fn drive_set_progress_bar(app: &mut App, track: Entity, fraction: FillFraction) 
     ok
 }
 
-/// AC — a `ProgressBar` renders its fill at the requested fraction width, and the
-/// `lost` color is on the track while `remaining` is on the fill.
-///
-/// Pin-discriminating: a wrong fraction → percent mapping, or a swapped track/fill
-/// color, fails an assert (the two colors are distinct).
 #[test]
 fn progress_bar_renders_at_fraction() {
     let mut app = harness();
@@ -85,11 +69,6 @@ fn progress_bar_renders_at_fraction() {
     );
 }
 
-/// AC — updating the value MUTATES the SAME fill entity to the new width (a respawn
-/// would change the fill entity id).
-///
-/// Pin-discriminating: capture the fill id, update, re-find the fill, assert the id
-/// is unchanged AND the width changed.
 #[test]
 fn progress_bar_update_mutates_same_fill_entity() {
     let mut app = harness();

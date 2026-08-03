@@ -1,6 +1,3 @@
-//! Shared test fixtures for the composer tests — the [`ShooterState`] borrow
-//! source, arbitrary cover / weapon builders, and the faced-cover ledger helper.
-
 use crate::{
     aim::Shooter,
     armor::{ArmorHardness, ArmorProtection},
@@ -18,24 +15,16 @@ use crate::{
     },
 };
 
-/// Build a shooter read-state from owned components the test holds — the
-/// borrows the [`Shooter`] bundle wants are taken from these locals.
 pub(super) struct ShooterState {
     pub(super) stance:     Stance,
     pub(super) aiming:     Aiming,
     pub(super) position:   Position,
     pub(super) facing:     Facing,
-    /// The GTW-526 optional suppression state; `None` (un-suppressed) by default so the
-    /// existing composer tests keep their pre-GTW-526 identity. Set via
-    /// [`ShooterState::suppressed_from`].
-    pub(super) suppressed: Option<Suppressed>,
+                pub(super) suppressed: Option<Suppressed>,
 }
 
 impl ShooterState {
-    /// An arbitrary shooter at `(x, y, storey)` with the given posture / aim /
-    /// facing — NOT shipped magnitudes; only its components matter. Un-suppressed by
-    /// default (GTW-526 identity).
-    pub(super) fn new(
+                pub(super) fn new(
         x: i32,
         y: i32,
         storey: u8,
@@ -52,17 +41,13 @@ impl ShooterState {
         }
     }
 
-    /// Mark this shooter [`Suppressed`] by fire from `(sx, sy, storey)` (GTW-526) — the
-    /// builder the suppression composer test uses to compare a pinned shooter against an
-    /// otherwise-identical un-suppressed one.
-    pub(super) fn suppressed_from(mut self, sx: i32, sy: i32, storey: u8) -> Self {
+                pub(super) fn suppressed_from(mut self, sx: i32, sy: i32, storey: u8) -> Self {
         let origin = CellLevel::new(Cell::new(sx, sy), Level::new(storey));
         self.suppressed = Some(Suppressed::new(SuppressorCell::new(origin)));
         self
     }
 
-    /// Borrow the owned components as a [`Shooter`] bundle.
-    pub(super) fn as_shooter(&self) -> Shooter<'_> {
+        pub(super) fn as_shooter(&self) -> Shooter<'_> {
         Shooter {
             stance:     &self.stance,
             aiming:     &self.aiming,
@@ -73,8 +58,6 @@ impl ShooterState {
     }
 }
 
-/// An arbitrary faced-cover entry at `band` — NOT shipped magnitudes; the
-/// stability layer only reads `height_band`, so the HP / armor are filler.
 pub(super) fn cover_entry(band: HeightBand) -> CoverEntry {
     CoverEntry::seeded(
         CoverHp::new(10),
@@ -84,11 +67,6 @@ pub(super) fn cover_entry(band: HeightBand) -> CoverEntry {
     )
 }
 
-/// An arbitrary single-mode armed-entity bundle with the given `stable` tag —
-/// NOT shipped magnitudes (there are no shipped weapons yet); only its
-/// `base_spread` / `kickback` / `fire_mode` / `stable` flow through the
-/// composers. Returns the owned [`WeaponBundle`]; the call site assembles the
-/// [`crate::weapon::WeaponStats`] read-view via [`WeaponBundle::stats`].
 pub(super) fn weapon_tagged(base: f32, kick: f32, stable: bool) -> WeaponBundle {
     WeaponBundle::new(
         WeaponName::new("test-weapon".to_owned()),
@@ -117,15 +95,10 @@ pub(super) fn weapon_tagged(base: f32, kick: f32, stable: bool) -> WeaponBundle 
     )
 }
 
-/// An arbitrary NON-stable single-mode bundle — the default for tests that do
-/// not exercise the `stable` tag.
 pub(super) fn weapon(base: f32, kick: f32) -> WeaponBundle {
     weapon_tagged(base, kick, false)
 }
 
-/// The [`StabilityTerms`] a caller sources off `wpn` with NO terrain brace and NO
-/// emplacement — the weapon-side half of the bundle (the fire path's own recipe:
-/// the `stable` tag off the weapon, everything else at its zero identity). GTW-573 C7.
 pub(super) fn weapon_terms(wpn: &WeaponBundle) -> StabilityTerms {
     StabilityTerms {
         stable: wpn.stable,
@@ -133,8 +106,6 @@ pub(super) fn weapon_terms(wpn: &WeaponBundle) -> StabilityTerms {
     }
 }
 
-/// Insert `entry` into a fresh ledger at the cell `shooter` faces, so the
-/// composer's `peek` finds it as the faced cover.
 pub(super) fn ledger_with_faced_cover(shooter: &Shooter, entry: CoverEntry) -> CoverLedger {
     let (cell, level) = faced_cell(shooter.position, shooter.facing);
     let mut ledger = CoverLedger::new();

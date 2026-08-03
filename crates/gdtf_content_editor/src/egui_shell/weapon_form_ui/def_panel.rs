@@ -1,17 +1,5 @@
-//! The WEAPON tab's CENTRAL spec editor SKELETON (GTW-670 C2) — the full 18-field
-//! [`WeaponSpec`](gdtf_battle_sim::weapon::WeaponSpec) form, grouped into collapsible
-//! sections (the panel is long — the injuries / attachment scroll-stack shape, with
 //! [`CollapsingHeader`](egui::CollapsingHeader)s so the author folds finished groups
-//! away; every section defaults OPEN so a fresh look — and the A3 capture — shows the
 //! whole authored record).
-//!
-//! The section BODIES live in the sibling per-concern files ([`stats`](super::stats) /
-//! [`lists`](super::lists) / [`optionals`](super::optionals)) and — since GTW-671 — the
-//! SHARED `egui_shell` widgets ([`damage_edit`](crate::egui_shell::damage_edit) for the
-//! six fields the melee spec shares verbatim,
-//! [`slots_edit`](crate::egui_shell::slots_edit) for the slot / attachment lists both
-//! forms draw); this file owns only the grouping skeleton.
-
 use bevy_egui::egui;
 use gdtf_battle_sim::equipment::attachments::AttachmentRegistry;
 
@@ -24,13 +12,6 @@ use crate::{
     weapon_form::WeaponDraft,
 };
 
-/// Draw the WEAPON-mode CENTRAL spec editor (GTW-670 C2): the nine collapsible groups
-/// — stats (the ranged ballistics scalars), the SHARED damage group (GTW-671 — one
-/// authoring surface with the melee form), handling (the trajectory combo + boolean
-/// tags), magazine, fire modes, slots, attachments (registry-sourced key combos), and
-/// the optional dot / on-death sub-forms. Each change folds through the matching sim
-/// newtype's constructor — the model stays typed end to end (the attachment def-panel
-/// pattern).
 pub(crate) fn def_panel(
     ui: &mut egui::Ui,
     draft: &mut WeaponDraft,

@@ -1,21 +1,5 @@
-//! The terrain-resolution cluster — the pure helpers
 //! [`setup_battle`](super::setup_battle) calls to turn each authored terrain DEFINITION
-//! KEY (cover / slab) into a resolved spec BEFORE any entity is spawned (abort-first),
-//! kept out of `setup.rs` so the spawn orchestration stays single-responsibility.
-//!
 //! GTW-491 migration (child T07a of the GTW-476 data-model refactor): each authored
-//! [`TerrainUuid`] is resolved against the
-//! [`TerrainDefRegistry`](crate::terrain::def::TerrainDefRegistry). The resolved
-//! definition's [`TerrainSimKind`] supplies the structural stats + entity
-//! [`TerrainPieceKind`], and its [`TerrainPresenterKind`] supplies the presentation hooks
-//! ([`TerrainGraphicKey`] for ALL kinds incl. `Wall`, an optional [`FootfallSound`] for
-//! `Slab` only).
-//!
-//! Every helper here is registry-read + validation only — no `Commands`, no spawn, no
-//! world mutation. They return the resolved [`ResolvedCoverPiece`] / [`ResolvedSlabPiece`]
-//! value types (or a typed [`BattleSetupError`]) that the setup spawn loop then pours into
-//! the ledgers / terrain entities.
-
 use crate::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
@@ -34,124 +18,30 @@ use crate::{
     weapon::WeaponName,
 };
 
-/// A pre-resolved cover piece — the structural stats and presentation hooks extracted
-/// from a [`TerrainDef`] for a cover (wall / cover) piece.
-///
-/// Produced by [`resolve_cover_def`] from a [`TerrainSimKind`] `Wall`/`Cover` variant plus
-/// the presenter graphic key. Passed directly into the cover-ledger seeding and
-/// terrain-entity spawn, so the resolution is done once and the values passed forward (no
-/// repeated registry reads).
 pub(super) struct ResolvedCoverPiece {
-    /// The cover's full (max) structural HP.
-    pub(super) max_hp:           CoverHp,
-    /// The clearance band this cover occupies (LOW / MID / HIGH).
-    pub(super) height_band:      HeightBand,
-    /// The cover's damage-reduction stat (same armor model as a ganger).
-    pub(super) armor_protection: ArmorProtection,
-    /// The penetration this cover shrugs off (same armor model as a ganger).
-    pub(super) armor_hardness:   ArmorHardness,
-    /// The entity piece kind (Wall or Cover) derived from the def's [`TerrainSimKind`]
-    /// variant — carried on the spawned entity so the presenter can distinguish wall vs.
-    /// cover by ECS query AND so the occupancy [`TerrainKind`](crate::occupancy::TerrainKind)
-    /// is derived from the DEF VARIANT, never from authoring-list membership (the GTW-483 /
-    /// T01 invariant the GTW-491 rewrite preserves).
-    pub(super) piece_kind:       TerrainPieceKind,
-    /// The presentation graphic role key — carried on the spawned entity (NET-NEW for `Wall`
-    /// in the GTW-491 model: a wall entity now carries a graphic, which it did not on the old
-    /// model; GTW-493 reads it).
-    pub(super) graphic:          TerrainGraphicKey,
-    /// Whether this piece derives the
-    /// [`BlocksPathfinding`](crate::terrain::entity::BlocksPathfinding) marker (GTW-501 C1)
-    /// — `true` per [`derives_path_blocking`]: an explicit `BlocksPathfinding` tag OR a
-    /// `Wall`/`Cover` sim-kind default. Carried forward so the spawn loop attaches the marker
-    /// without re-reading the registry.
-    pub(super) blocks_path:      PathBlocked,
-    /// The [`HeightBand`] this piece occludes vision at, or `None` if it derives no
-    /// [`BlocksVision`](crate::terrain::entity::BlocksVision) component (GTW-502 C1, refined
-    /// GTW-587) — per [`derives_vision_occlusion`]: a `Wall` occludes FULLY (the whole storey
-    /// → `High`) by default while a `Cover`/`Emplacement` occludes only up to its own band; an
-    /// explicit `BlocksVision` tag or a `blocks_los` override can retune it, and a `Slab`
-    /// derives none unless tagged. Every SHIPPED wall authors `height_band: High`, so its
-    /// derived band is identical to the pre-587 own-band rule (zero regression). Carried
-    /// forward so the spawn loop attaches the component (at this band) without re-reading the
-    /// registry.
-    pub(super) occludes_vision:  Option<HeightBand>,
-    /// `Some(band)` if this piece is **openable** (a door / hatch — the def carries the
-    /// [`Openable`](crate::terrain::def::TerrainTag::Openable) tag), where `band` is the vision
-    /// [`HeightBand`] it occludes WHEN CLOSED (GTW-503 C1 / C2); `None` if it is not openable.
-    /// When openable, the spawn loop attaches an
-    /// [`OpenState::Closed`](crate::terrain::openable::OpenState) plus an
-    /// [`OpenableBlocking`](crate::terrain::openable::OpenableBlocking)`(band)` and FORCES the
-    /// closed blocking pair (both `BlocksPathfinding` and `BlocksVision(band)`), so GTW-503 owns
-    /// the openable's blocking lifecycle (C2). This closed band is the `sim_kind`'s OWN
-    /// `height_band` (a `Wall`/`Cover`/`Emplacement` has one; a band-less slab hatch falls back to
-    /// `High`) — the band its `OpenableBlocking` re-imposes on close, independent of the
-    /// kind-default `LoS` the piece would otherwise derive (e.g. an untagged non-`High` wall
-    /// defaults to `Full`/`High`, yet its closed door re-blocks at its own authored band).
-    pub(super) openable:         Option<HeightBand>,
-    /// `Some(key)` if this piece is a **weapon emplacement** (GTW-543) — the def's
-    /// [`TerrainSimKind::Emplacement`](crate::terrain::def::TerrainSimKind::Emplacement)
-    /// variant, where `key` is the mounted-weapon [`WeaponName`] registry key bolted to it;
-    /// `None` for a plain `Wall`/`Cover`. When `Some`, the spawn loop tags the entity
-    /// [`TerrainPieceKind::Emplacement`], attaches an
-    /// [`EmplacementState::Vacant`](crate::terrain::emplacement::EmplacementState) +
-    /// [`MountedWeaponKey`](crate::terrain::emplacement::MountedWeaponKey)`(key)`, and seeds
-    /// its [`CoverLedger`](crate::cover::CoverLedger) entry (a smashable structure) — the
-    /// emplacement blocks path + occludes vision at its `height_band` exactly like a
-    /// `Wall`/`Cover`.
-    pub(super) emplacement:      Option<WeaponName>,
+        pub(super) max_hp:           CoverHp,
+        pub(super) height_band:      HeightBand,
+        pub(super) armor_protection: ArmorProtection,
+        pub(super) armor_hardness:   ArmorHardness,
+                        pub(super) piece_kind:       TerrainPieceKind,
+                pub(super) graphic:          TerrainGraphicKey,
+                        pub(super) blocks_path:      PathBlocked,
+                                        pub(super) occludes_vision:  Option<HeightBand>,
+                                                    pub(super) openable:         Option<HeightBand>,
+                                            pub(super) emplacement:      Option<WeaponName>,
 }
 
-/// A pre-resolved slab piece — the structural stats and presentation hooks extracted
-/// from a [`TerrainDef`] for a slab piece.
-///
-/// Produced by [`resolve_slab_def`] from a [`TerrainSimKind::Slab`] variant + the presenter
-/// graphic key + the OPTIONAL slab footfall. Passed directly into the slab-ledger seeding
-/// and terrain-entity spawn.
 pub(super) struct ResolvedSlabPiece {
-    /// The slab's full (max) structural HP.
-    pub(super) max_hp:           SlabHp,
-    /// The slab's damage-reduction stat (same armor model as a ganger and cover).
-    pub(super) armor_protection: ArmorProtection,
-    /// The penetration the slab shrugs off (same armor model).
-    pub(super) armor_hardness:   ArmorHardness,
-    /// The presentation graphic role key — carried on the spawned entity.
-    pub(super) graphic:          TerrainGraphicKey,
-    /// The OPTIONAL footfall sound key — carried on the spawned entity when the def names one
-    /// (slab-only in the GTW-491 model; `None` when the slab def authors no footfall).
-    pub(super) footfall:         Option<FootfallSound>,
-    /// Whether this slab derives the
-    /// [`BlocksPathfinding`](crate::terrain::entity::BlocksPathfinding) marker (GTW-501 C1)
-    /// — a slab does NOT block path by default, so this is `true` ONLY when the def carries
-    /// an explicit `BlocksPathfinding` tag (the C1 opt-in, e.g. a barricade slab). Carried
-    /// forward so the spawn loop attaches the marker without re-reading the registry.
-    pub(super) blocks_path:      PathBlocked,
-    /// The [`HeightBand`] this slab occludes vision at, or `None` (GTW-502 C1) — per
-    /// [`derives_vision_occlusion`]: a `Slab` does NOT occlude vision by default (the SLAB
-    /// march already stops sight at a z-boundary), so this is `Some(HeightBand::High)` ONLY
-    /// when the def carries an explicit `BlocksVision` tag (the C1 opt-in for an opaque
-    /// screen/blast-wall slab — banded HIGH because a slab spans the storey). Carried forward
-    /// so the spawn loop attaches the component without re-reading the registry.
-    pub(super) occludes_vision:  Option<HeightBand>,
-    /// `Some(band)` if this slab is **openable** (a hatch — the def carries the
-    /// [`Openable`](crate::terrain::def::TerrainTag::Openable) tag), where `band` is the vision
-    /// [`HeightBand`] it occludes WHEN CLOSED (GTW-503 C1 / C2); `None` otherwise. A slab does
-    /// NOT block path or occlude vision by default, but a CLOSED openable slab hatch blocks
-    /// BOTH (C2) — so when `Some`, the spawn loop attaches
-    /// [`OpenState::Closed`](crate::terrain::openable::OpenState) +
-    /// [`OpenableBlocking`](crate::terrain::openable::OpenableBlocking)`(band)` and FORCES both
-    /// `BlocksPathfinding` + `BlocksVision(band)` (the band is
-    /// [`HeightBand::High`](crate::cover::HeightBand::High) for a slab — it spans the storey).
-    pub(super) openable:         Option<HeightBand>,
+        pub(super) max_hp:           SlabHp,
+        pub(super) armor_protection: ArmorProtection,
+        pub(super) armor_hardness:   ArmorHardness,
+        pub(super) graphic:          TerrainGraphicKey,
+            pub(super) footfall:         Option<FootfallSound>,
+                        pub(super) blocks_path:      PathBlocked,
+                            pub(super) occludes_vision:  Option<HeightBand>,
+                                        pub(super) openable:         Option<HeightBand>,
 }
 
-/// Resolve a [`TerrainDef`] as a **cover** piece (wall / cover / emplacement) — extract the
-/// [`TerrainSimKind`] `Wall`/`Cover`/`Emplacement` structural stats + the [`TerrainPieceKind`]
-/// + the presenter graphic (and, for an emplacement, the mounted-weapon key — GTW-543).
-///
-/// Returns `None` if the def is not a `Wall`/`Cover`/`Emplacement` sim-kind (e.g. a slab def
-/// was authored in a cover list), which is treated as an authoring error at the call site (the
-/// piece is re-validated as the correct kind there).
 pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<ResolvedCoverPiece> {
     let (max_hp, armor_protection, armor_hardness, height_band, mounted_weapon) =
         match &def.sim_kind {
@@ -167,10 +57,6 @@ pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<R
                 armor_hardness,
                 height_band,
             } => (*hp, *armor_protection, *armor_hardness, *height_band, None),
-            // GTW-543: an emplacement is a cover-like smashable structure resolved through this
-            // same cover path — same CoverHp pool, same armor model, same band-carrying
-            // occluder. It differs only in carrying the mounted-weapon key + the enter/exit
-            // lifecycle the spawn loop attaches (via TerrainPieceKind::Emplacement).
             TerrainSimKind::Emplacement {
                 hp,
                 armor_protection,
@@ -185,7 +71,6 @@ pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<R
                 Some(mounted_weapon.clone()),
             ),
             TerrainSimKind::Slab { .. } => {
-                // A slab def was named in a cover list — wrong kind.
                 bevy::log::error!(
                     "terrain def {:?} is not a Wall/Cover/Emplacement sim-kind (found {:?}); \
                      it cannot be used in walls/scatter — check the situation authoring",
@@ -200,39 +85,15 @@ pub(super) fn resolve_cover_def(key: &TerrainUuid, def: &TerrainDef) -> Option<R
         height_band,
         armor_protection,
         armor_hardness,
-        // The entity's kind tag is a kind-IDENTITY value (no payload), so it comes from
-        // the canonical `TerrainPieceKind` projection (GTW-574 C2) — the Slab arm above
-        // has already bailed, so this is always Wall / Cover / Emplacement here.
         piece_kind: def.sim_kind.kind(),
         emplacement: mounted_weapon,
-        // NET-NEW (GTW-491): the graphic comes from the def's presenter_kind for ALL kinds,
-        // INCLUDING Wall — a wall entity now carries a TerrainGraphicKey (the fact GTW-493
-        // reads). A presenter-kind variant that disagrees with the sim-kind is an authoring
-        // error; fall through to the def's own graphic regardless of which presenter variant
-        // it is (every variant carries `graphic_name`).
         graphic: presenter_graphic(&def.presenter_kind),
-        // GTW-501 C1/D2: derive path-blocking from the def — for a Wall/Cover the kind
-        // default makes this `true` (existing walls/cover keep blocking, zero regression);
-        // an explicit BlocksPathfinding tag can only add to that.
         blocks_path: derives_path_blocking(def),
-        // GTW-502 C1 / GTW-587: derive the vision-occlusion band from the def — for a Wall the
-        // kind default is Full (the whole storey → High), for a Cover/Emplacement it is the
-        // def's own height_band. Every shipped wall authors height_band: High, where its derived
-        // High band equals its CoverLedger entry's band, so existing walls/cover keep occluding
-        // sight at that same band (zero regression / idempotent). An explicit BlocksVision tag,
-        // or a blocks_los override, can add/retune it.
         occludes_vision: derives_vision_occlusion(def),
-        // GTW-503 C1/C2: an Openable Wall/Cover (a door) carries OpenState + forces the closed
-        // blocking pair; the closed-vision band is the sim_kind's own band (Wall/Cover have
-        // one). None when the def is not Openable.
         openable: is_openable(def).then(|| closed_openable_vision_band(def)),
     })
 }
 
-/// Resolve a [`TerrainDef`] as a **slab** piece — extract the [`TerrainSimKind::Slab`]
-/// structural stats + the presenter graphic + the OPTIONAL footfall.
-///
-/// Returns `None` if the def is not a `Slab` sim-kind, treated as an authoring error.
 pub(super) fn resolve_slab_def(key: &TerrainUuid, def: &TerrainDef) -> Option<ResolvedSlabPiece> {
     let TerrainSimKind::Slab {
         hp,
@@ -253,33 +114,18 @@ pub(super) fn resolve_slab_def(key: &TerrainUuid, def: &TerrainDef) -> Option<Re
         armor_protection: *armor_protection,
         armor_hardness:   *armor_hardness,
         graphic:          presenter_graphic(&def.presenter_kind),
-        // Footfall is Slab-only in the GTW-491 model — the def's presenter Slab variant carries
-        // an Option; a non-Slab presenter variant authored on a Slab sim-kind is an authoring
-        // mismatch and yields None (no footfall).
         footfall:         match &def.presenter_kind {
             TerrainPresenterKind::Slab { footfall, .. } => footfall.clone(),
             TerrainPresenterKind::Wall { .. }
             | TerrainPresenterKind::Cover { .. }
             | TerrainPresenterKind::Emplacement { .. } => None,
         },
-        // GTW-501 C1/D2: a slab does NOT block path by default, so this is `true` only when
-        // the def carries an explicit BlocksPathfinding tag (a barricade/lip slab).
         blocks_path:      derives_path_blocking(def),
-        // GTW-502 C1: a slab does NOT occlude vision by default (the slab march already
-        // stops sight at the z-boundary), so this is Some(HeightBand::High) only when the def
-        // carries an explicit BlocksVision tag (an opaque screen/blast-wall slab).
         occludes_vision:  derives_vision_occlusion(def),
-        // GTW-503 C1/C2: an Openable Slab (a hatch) carries OpenState + forces the closed
-        // blocking pair EVEN THOUGH a slab does not block by default — a closed hatch bars
-        // footfall + sight (C2). The closed-vision band is HeightBand::High (a slab spans the
-        // storey). None when the def is not Openable.
         openable:         is_openable(def).then(|| closed_openable_vision_band(def)),
     })
 }
 
-/// The graphic role key off a [`TerrainPresenterKind`] — every variant carries one
-/// (`graphic_name`), so the GTW-491 net-new "graphic for ALL kinds including Wall" fact holds
-/// by construction.
 fn presenter_graphic(presenter_kind: &TerrainPresenterKind) -> TerrainGraphicKey {
     match presenter_kind {
         TerrainPresenterKind::Wall { graphic_name }
@@ -289,8 +135,6 @@ fn presenter_graphic(presenter_kind: &TerrainPresenterKind) -> TerrainGraphicKey
     }
 }
 
-/// Look up a terrain definition KEY in the registry, returning `Err(TerrainNotFound)` if
-/// absent or if `terrain` is `None`. Used for cover and slab pre-resolution.
 pub(super) fn resolve_terrain_or_err<'a>(
     terrain: Option<&'a TerrainDefRegistry>,
     key: &TerrainUuid,

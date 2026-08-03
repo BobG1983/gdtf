@@ -1,7 +1,3 @@
-//! The roster ASSERT helpers of the `state_scoped_resources` suite — one absence /
-//! seeded block per `Editing`-scoped model resource (these grow with every Workbench
-//! mode, which is why they live apart from the harness — the GTW-670 dir-form split).
-
 use bevy::prelude::*;
 use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_content_editor::{
@@ -10,7 +6,6 @@ use gdtf_content_editor::{
     TerrainDraft, ThemeDraft, WeaponDraft, WeightingDraft,
 };
 
-/// Asserts every one of the nineteen `Editing`-scoped model resources is absent.
 pub(crate) fn assert_all_scoped_resources_absent(app: &App, when: &str) {
     let world = app.world();
     assert!(
@@ -91,9 +86,6 @@ pub(crate) fn assert_all_scoped_resources_absent(app: &App, when: &str) {
     );
 }
 
-/// Asserts every scoped resource is present with the seed its
-/// `init_state_scoped_resource` registration captured — the IDENTICAL
-/// constructors the hand-stamped `editor_resources.rs` inserts used.
 pub(crate) fn assert_all_scoped_resources_seeded(app: &App) {
     let world = app.world();
     assert_eq!(
@@ -185,19 +177,7 @@ pub(crate) fn assert_all_scoped_resources_seeded(app: &App) {
     assert_minted_seeds(world);
 }
 
-/// The two seeds whole-value equality cannot pin, asserted field by field —
-/// split out of [`assert_all_scoped_resources_seeded`] purely for the
-/// `too_many_lines` band as the fifteenth resource joined (GTW-654; the
-/// sixteenth through nineteenth — GTW-664's `SpriteDraft`, GTW-669's
-/// `AttachmentDraft`, GTW-670's `WeaponDraft`, and GTW-671's
-/// `MeleeWeaponDraft` — pin by whole-value equality above).
 fn assert_minted_seeds(world: &World) {
-    // ThemeDraft's seed (`ThemeDraft::default` -> `new_theme`) MINTS a fresh
-    // `ThemeUuid` per entry by design (GTW-475 C4), so whole-value equality
-    // against another fresh default would fail on the key; assert the seeded
-    // form state field by field instead.
-    // `let … else` keeps the test panic-free per the workspace lints (the
-    // preceding assert is what fails the test on absence).
     let theme_draft = world.get_resource::<ThemeDraft>();
     assert!(
         theme_draft.is_some(),
@@ -220,12 +200,6 @@ fn assert_minted_seeds(world: &World) {
         None,
         "ThemeDraft seeds with no default floor chosen",
     );
-    // MapEditorSession seeds to `MapEditorSession::default()` (nil theme, no
-    // floor, the full 60×60×8 grid, no paint tile). The pre-existing
-    // `seed_default_theme` drive (GTW-421) may already have re-seeded the
-    // theme/floor PAIR from the resolved registry by the time we read — that
-    // is unchanged production behavior, so assert the drive-untouched seed
-    // fields exactly.
     let session = world.get_resource::<MapEditorSession>();
     assert!(
         session.is_some(),

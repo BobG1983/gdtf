@@ -1,9 +1,3 @@
-//! The LOAD-BEARING step-equivalence tests: driving the staged pipeline one `Next` press at a
-//! time to completion (bypassing egui entirely — the closure never runs headlessly, bevy-traps
-//! #8) must produce the IDENTICAL result the normal to-completion path produces, and the
-//! schematic's per-placement data (`placed_footprints`) must grow one placement per step over
-//! the real shipped content (GTW-732).
-
 use gdtf_app::test_support::{BattleScapeState, LoadedSituation};
 use gdtf_battle_sim::{
     level::{PrefabRegistry, UuidThemeRegistry},
@@ -18,10 +12,6 @@ use super::harness::{
     deployed_ganger_count, drive_into_battle_running, drive_stepper_to_done, terrain_fingerprint,
 };
 
-/// The load-bearing step-equivalence test (clause 4): engaging the stepper and driving it ONE
-/// PREFAB AT A TIME to completion (via the SAME latch the egui panel writes to) for the SAME
-/// seed reaches `BattleRunning` with the IDENTICAL terrain fingerprint the normal path produces
-/// — a VARIABLE step count now that Fill places one prefab per `Next`.
 #[test]
 fn stepper_engaged_path_matches_the_normal_fingerprint() {
     let expected = {
@@ -31,8 +21,6 @@ fn stepper_engaged_path_matches_the_normal_fingerprint() {
     };
 
     let mut app = app_engaged_in_generation(FIXED_SEED);
-    // Drive every placement (assemble x2, then each fill prefab, then finalize + emit) one Next
-    // press at a time until the drive completes — bypassing egui entirely.
     drive_stepper_to_done(&mut app);
 
     let reached_running = advance_until(
@@ -55,12 +43,6 @@ fn stepper_engaged_path_matches_the_normal_fingerprint() {
     );
 }
 
-/// GTW-765 regression (must not regress under GTW-732): the stepper-engaged finish must DEPLOY
-/// the authored roster onto the generated map, not just its terrain. Driving the staged pipeline
-/// to `BattleRunning` (the SAME per-prefab latch the egui panel writes) must leave the SAME
-/// non-zero count of deployed ganger entities the normal to-completion path deploys for the same
-/// seed — the pre-fix terrain-only `finish_stepper_drive` left ZERO gangers, which
-/// `terrain_fingerprint` (terrain entities only) could not catch.
 #[test]
 fn stepper_engaged_path_deploys_the_same_roster() {
     let expected = {
@@ -97,18 +79,6 @@ fn stepper_engaged_path_deploys_the_same_roster() {
     );
 }
 
-/// The schematic's per-placement data (GTW-732): driving a FRESH [`StagedProcgen`] one step at a
-/// time over the REAL shipped content grows [`placed_footprints`](StagedProcgen::placed_footprints)
-/// by AT MOST one per step (exactly one per placement; zero on the finalize + emit steps), and
-/// [`emitted`](StagedProcgen::emitted) becomes `Some` once done. This is the data the egui
-/// schematic reads to draw the map assembling piece by piece.
-///
-/// Drives a FRESH `StagedProcgen` directly in the test body (bevy-traps #7 carve-out) rather
-/// than through `PendingStepCommand` + `app.update()`: `finish_stepper_drive` removes the
-/// `StagedProcgen` resource in the SAME `Update` pass the emit step completes in, too narrow a
-/// window to read the growing footprint list back out of the world afterward. Reads the SAME
-/// registries + authored theme/grid-size `engage_stepper` would, off the real `Load`-populated
-/// world, so this is the real pipeline over shipped content, not a synthetic fixture.
 #[test]
 fn placed_footprints_grow_one_per_step_over_real_content() {
     let app = app_ready_for_battle(FIXED_SEED);

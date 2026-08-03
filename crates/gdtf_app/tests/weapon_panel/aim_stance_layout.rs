@@ -1,5 +1,3 @@
-//! Aim caption + stance-panel placement/theming/height within the cluster.
-
 use bevy::prelude::*;
 use gdtf_app::test_support::{
     AimLabel, AimPanel, AimToggleButton, BottomBarRoot, StancePanelRoot, WeaponPanelRoot,
@@ -12,11 +10,6 @@ use gdtf_ui::themed::{ThemeRole, Themed};
 
 use super::harness::*;
 
-/// The Aim control reads "Aim [switch]" — the GTW-277 widget migration dropped the caption,
-/// leaving the bare `Switch`; this restores an [`AimLabel`] "Aim" Text caption laid out in the
-/// SAME cell as the switch (a ROW, label on the LEFT). Pin-discriminating: with the bare switch
-/// (no label restored) the `AimLabel` marker is absent and the cell is not a Row, so both the
-/// label assert and the row-layout assert fail.
 #[test]
 fn aim_panel_has_aim_caption_beside_the_switch() {
     let mut app = battle_running_app();
@@ -28,10 +21,8 @@ fn aim_panel_has_aim_caption_beside_the_switch() {
         ),
     );
     app.update();
-    // Settle the post-ApplyTheme fit pass (the label font is held at the control size there).
     app.update();
 
-    // The "Aim" caption exists and reads "Aim".
     assert!(
         single_with::<AimLabel>(&mut app).is_some(),
         "the Aim Panel carries the restored \"Aim\" caption (GTW-277 had dropped it)",
@@ -42,7 +33,6 @@ fn aim_panel_has_aim_caption_beside_the_switch() {
         "the Aim caption reads \"Aim\"",
     );
 
-    // The caption + the switch live in the SAME cell — both descend from the one Aim Panel.
     let cell_entity = single_with::<AimPanel>(&mut app);
     let label = single_with::<AimLabel>(&mut app);
     let switch = single_with::<AimToggleButton>(&mut app);
@@ -62,7 +52,6 @@ fn aim_panel_has_aim_caption_beside_the_switch() {
         "the Aim switch is laid out inside the Aim Panel cell (same cell as the caption)",
     );
 
-    // The cell lays the caption + switch out as a ROW ("Aim [switch]", the mockup reading).
     let cell = node_of::<AimPanel>(&mut app);
     assert!(cell.is_some(), "the Aim Panel cell has a Node");
     let Some(cell) = cell else { return };
@@ -73,11 +62,6 @@ fn aim_panel_has_aim_caption_beside_the_switch() {
     );
 }
 
-/// D4 (2026-06-18 screenshot review) — the Stance Panel is laid out INSIDE the bottom bar: its
-/// [`StancePanelRoot`] is a DESCENDANT of the [`BottomBarRoot`] container, not a free-floating
-/// sibling overlay sitting on top of the bottom panel's edge. Pin-discriminating: a revert to
-/// parenting the stance under the weapon root (or anywhere outside the bar) fails the ancestry
-/// assert.
 #[test]
 fn stance_panel_is_child_of_the_bottom_bar() {
     let mut app = battle_running_app();
@@ -106,10 +90,6 @@ fn stance_panel_is_child_of_the_bottom_bar() {
     );
 }
 
-/// D-B (2026-06-18 screenshot review) — the Stance Panel is its OWN bordered sub-panel: its
-/// [`StancePanelRoot`] carries `Themed(ThemeRole::Panel)` (the same themed-box role the weapon
-/// cluster's panels use), NOT a plain transparent `Node`. Pin-discriminating: the prior D4
-/// plain-`Node` Stance column carried NO `Themed`, so this assert fails on a revert.
 #[test]
 fn stance_panel_is_a_themed_panel_box() {
     let mut app = battle_running_app();
@@ -132,12 +112,6 @@ fn stance_panel_is_a_themed_panel_box() {
     );
 }
 
-/// D-B — the Stance Panel is sized to the SAME HEIGHT as the Overall Weapon Panel (NOT the full
-/// bottom-bar height) and a fixed relative width: both height fields are the SAME responsive
-/// `Val::Vh` value (so the two bordered panels are the same height), and the width is a fixed
-/// window fraction (`Val::Vw`), never a fixed `Val::Px`. Pin-discriminating: sizing the stance to
-/// the full bar height (a different `Vh`) or to a px width fails the equal-height / unit-kind
-/// asserts.
 #[test]
 fn stance_panel_matches_overall_weapon_panel_height_relative_units() {
     let mut app = battle_running_app();
@@ -149,14 +123,11 @@ fn stance_panel_matches_overall_weapon_panel_height_relative_units() {
         return;
     };
 
-    // Width is a fixed window fraction (Vw), never Px.
     assert!(
         matches!(stance.width, Val::Vw(_)),
         "the Stance Panel width is a fixed window fraction (Vw), not Px — got {:?}",
         stance.width,
     );
-    // Height is responsive (Vh) and EXACTLY the Overall Weapon Panel's height — the same height,
-    // not the full bottom-bar height.
     assert!(
         matches!(stance.height, Val::Vh(_)),
         "the Stance Panel height is responsive (Vh), not Px — got {:?}",
@@ -167,11 +138,6 @@ fn stance_panel_matches_overall_weapon_panel_height_relative_units() {
         "the Stance Panel height EQUALS the Overall Weapon Panel height (same height, not the full \
          bottom-bar height) — D-B",
     );
-    // B FAIL (2026-06-18 screenshot review) — the Stance Panel is anchored the SAME relative
-    // `bottom` as the Overall Weapon Panel: a non-zero `Val::Vh` inset above the window bottom (NOT
-    // flush at `bottom: 0`, which ran its framed box to the window's bottom edge so it read as
-    // loose buttons on the bar fill). A revert to `bottom: Px(0.0)` (or a mismatch with the Overall
-    // panel) fails this.
     assert_eq!(
         stance.bottom, overall.bottom,
         "the Stance Panel is anchored the SAME relative bottom as the Overall Weapon Panel (so the \

@@ -1,6 +1,3 @@
-//! Systems for the battlescape bottom bar (GTW-275 layout overhaul) — spawn / despawn the
-//! opaque strip on the `BattleScapeState::BattleRunning` boundary.
-
 mod opacify;
 mod spawn;
 

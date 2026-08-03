@@ -1,14 +1,3 @@
-//! The ARMOR-BROKEN consequence family (GTW-302 slice 4, palette-ised in GTW-572): the RED
-//! `"Armor Broken"` tag for a worn piece that crossed from protecting to useless, off the
-//! sim's [`ArmorBroken`](gdtf_battle_sim::armor_wear::ArmorBroken) crossing message.
-//!
-//! The destroy CROSSING reads heavier than ordinary wear, so it pops the damage RED (the
-//! contract's "AMBER/RED", drawn the redder of the two), alongside the `read_armor_broken`
-//! spark flash. It anchors at the cell the ganger is DRAWN at ([`PopAnchor::GangerPosition`],
-//! which the reader resolves from the [`DrawnPosition`](crate::DrawnPosition) mirror,
-//! GTW-889; fail-closed). The numeric `"Armor -N"` variant stays DEFERRED: [`ArmorBroken`] carries no
-//! integrity-delta amount (only the `{ ganger, part }` crossing).
-
 use gdtf_battle_sim::armor_wear::ArmorBroken;
 
 use super::super::{
@@ -17,7 +6,6 @@ use super::super::{
     text::CombatText,
 };
 
-/// The armor-broken family marker — `ArmorBroken` → a RED `"Armor Broken"` tag.
 #[derive(Debug, Clone, Copy)]
 pub struct ArmorBrokenFct;
 
@@ -42,12 +30,8 @@ mod test {
         super::super::pop::ConsequenceFct, ArmorBrokenFct, FctValence, PopAnchor, valence_color,
     };
 
-    /// An `ArmorBroken` consequence classifies to the RED `"Armor Broken"` pop — the destroy
-    /// crossing reads heavier than ordinary wear, distinct from the AMBER wound family — and
-    /// anchors on the ganger (the reader resolves that to its DRAWN cell).
-    #[test]
+                #[test]
     fn an_armor_broken_classifies_to_a_red_armor_broken_tag() {
-        // The classify never dereferences the entity — a placeholder handle drives the path.
         let ganger = Entity::PLACEHOLDER;
         let pop = ArmorBrokenFct::classify(&ArmorBroken::new(ganger, BodyPart::Torso));
         assert_eq!(

@@ -1,5 +1,3 @@
-//! The pure-math dispersion + travel pipeline, muzzle to impact-cell, and its fire/aim capstones.
-
 pub mod aim;
 pub mod aoe;
 pub mod central_axis;

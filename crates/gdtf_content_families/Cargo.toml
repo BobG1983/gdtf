@@ -3,31 +3,13 @@ name = "gdtf_content_families"
 version = "0.1.0"
 edition = "2024"
 
-# The GTW-570 GLUE crate: the per-family `ContentFamily` marker impls binding
-# gdtf_assets' generic folder->registry seam to the sim-owned registry types.
-# It exists so BOTH hosts (the game `gdtf_app` and the editor
-# `gdtf_content_editor`) register the same families without the editor ever
-# depending on gdtf_app — and so `gdtf_assets` stays a deliberate leaf
-# (bevy/ron/serde only, no sim dependency).
 [dependencies]
-# ECS system types (Res/ResMut) for the host-agnostic per-edge reference checks
-# in `validate/` (GTW-630). Already in this crate's transitive closure via BOTH
-# deps below (same workspace version + features), so the workspace layering is
-# unchanged — this only makes the existing edge direct.
 bevy = { workspace = true }
-# The generic seam: ContentFamily / ContentFileStem live here.
 gdtf_assets = { path = "../gdtf_assets" }
-# The authoritative sim owns every family's Spec + Registry domain types.
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
-# The sprite-defs family (GTW-663) is the one family whose Spec + Registry live
-# IN this crate (presentation data — the render-free sim cannot own it, and the
-# presenter must not be a dependency of this glue crate), so its spec types
-# derive serde here. Already in the transitive closure via both deps above.
 serde = { workspace = true }
 
 [dev-dependencies]
-# The in-crate sprite-def schema pins (`sprites/test/parse.rs`) parse/emit RON
-# directly (`ron::de::from_str` / `ron::ser::to_string`) — test-only.
 ron = { workspace = true }
 
 [lints]

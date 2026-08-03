@@ -9,27 +9,19 @@ use crate::{
     weapon::{WeaponDamage, WeaponPunch, WeaponShred},
 };
 
-/// Build a single [`ArmorPiece`] from arbitrary (NOT shipped-tuning)
-/// magnitudes. The numbers are chosen per-test to put the formula in the regime
-/// the test exercises; they are mechanism inputs, never asserted as values.
 fn armor_piece(floor: i32, protection: i32, hardness: i32) -> ArmorPiece {
     ArmorPiece::new(
         ArmorFloor::new(floor),
         ArmorProtection::new(protection),
-        // Integrity is irrelevant to the formula output; an arbitrary positive.
         ArmorIntegrity::new(100),
         ArmorHardness::new(hardness),
         ArmorType::DEFAULT,
     )
 }
 
-/// AC1 — the HP-loss damage never drops below the armor `floor`. With high
-/// protection and low damage, `inner` is driven below `floor`; assert the
-/// clamp holds (relation, not magnitude).
 #[test]
 fn hp_damage_clamps_up_to_floor() {
     let tuning = CombatTuning::default();
-    // protection (20) ≫ damage (3): inner = 3 − 20 < 0 < floor (4).
     let armor = armor_piece(4, 20, 0);
     let result = resolve_hit(
         WeaponDamage::new(3),
@@ -48,22 +40,15 @@ fn hp_damage_clamps_up_to_floor() {
         *result.hp_damage >= *armor.floor,
         "HP-loss damage must never drop below the floor",
     );
-    // And the fully-soaked hit penetrates nothing (pre-floor inner ≤ 0) — the
-    // graze case: HP loss (the floor bruise) but no wound.
     assert_eq!(
         *result.penetrating, 0,
         "a fully-soaked hit must penetrate 0 (the graze: HP loss, no wound)",
     );
 }
 
-/// AC2 — effective penetration floors at zero. With `hardness ≥ punch·mult`,
-/// `effPen == 0`, so the soak is undiminished: the outcome equals the
-/// no-penetration baseline `dmg = max(floor, damage − protection)`. Asserting
-/// that equality surfaces `effPen == 0`.
 #[test]
 fn eff_pen_floors_at_zero_when_hardness_dominates() {
     let tuning = CombatTuning::default();
-    // hardness (50) ≫ punch·mult (≈5·1=5): effPen = max(0, 5 − 50) = 0.
     let armor = armor_piece(1, 6, 50);
     let damage = 10;
     let protection = *armor.protection;
@@ -77,7 +62,6 @@ fn eff_pen_floors_at_zero_when_hardness_dominates() {
         &tuning,
     );
 
-    // effPen == 0 ⇒ soak undiminished ⇒ inner = damage − protection.
     let baseline_hp = floor.max(damage - protection);
     let baseline_pen = (damage - protection).max(0);
     assert_eq!(
@@ -90,8 +74,6 @@ fn eff_pen_floors_at_zero_when_hardness_dominates() {
     );
 }
 
-/// AC3 — penetrating damage rises monotonically with punch (all else fixed):
-/// a higher punch yields `>=` penetrating damage (ordering relation).
 #[test]
 fn penetrating_damage_monotonic_in_punch() {
     let tuning = CombatTuning::default();
@@ -117,15 +99,9 @@ fn penetrating_damage_monotonic_in_punch() {
     );
 }
 
-/// AC4 — a Favorable matchup yields `>=` penetrating damage AND `>=` integrity
-/// wear than a Resisted one on the same weapon/armor — the hook is felt through
-/// punch & shred. The same test asserts the HP-loss difference traces to PUNCH
-/// (penetration eating soak), never to `damage`/`floor`/`protection` changing.
 #[test]
 fn favorable_beats_resisted_through_punch_and_shred() {
     let tuning = CombatTuning::default();
-    // Soak is in play (protection > damage − full-pen) so punch scaling is felt
-    // on the HP-loss side; shred > 0 so the wear difference is felt too.
     let armor = armor_piece(1, 12, 1);
     let resolve = |matchup: Matchup| {
         resolve_hit(
@@ -150,9 +126,6 @@ fn favorable_beats_resisted_through_punch_and_shred() {
         "Favorable must yield >= integrity wear than Resisted",
     );
 
-    // The HP-loss difference traces to PUNCH only: recompute the expected
-    // HP-loss from the SAME damage/floor/protection but the per-matchup scaled
-    // punch — if it matches, nothing but punch moved.
     let mult_fav = matchup_multiplier(Matchup::Favorable, &tuning);
     let mult_res = matchup_multiplier(Matchup::Resisted, &tuning);
     let expected_hp = |mult: MatchupMultiplier| {
@@ -173,11 +146,6 @@ fn favorable_beats_resisted_through_punch_and_shred() {
     );
 }
 
-/// AC5 — integrity wear mechanism: shred adds to wear ON TOP of the soak/pen
-/// term. Compare `shred = 0` vs `shred > 0`, all else equal, and assert the
-/// higher-shred wear is greater by exactly the scaled shred. Also assert the
-/// matchup multiplier leaves `damage`/`floor` untouched: in a fully-soaked
-/// regime the HP-loss stays pinned to `floor` across Neutral vs Favorable.
 #[test]
 fn shred_adds_to_wear_and_matchup_leaves_damage_floor() {
     let tuning = CombatTuning::default();
@@ -193,8 +161,6 @@ fn shred_adds_to_wear_and_matchup_leaves_damage_floor() {
         )
     };
 
-    // shred adds ON TOP of the soak/pen term: the only difference is the scaled
-    // shred (mult == 1.0 at Neutral, so the difference is exactly the shred).
     let no_shred = resolve(0, Matchup::Neutral);
     let with_shred = resolve(5, Matchup::Neutral);
     let neutral_mult = matchup_multiplier(Matchup::Neutral, &tuning);
@@ -209,10 +175,7 @@ fn shred_adds_to_wear_and_matchup_leaves_damage_floor() {
         "shred > 0 must raise integrity wear above the shred = 0 baseline",
     );
 
-    // The matchup multiplier scales PUNCH & SHRED only — never damage/floor.
-    // Fully-soaked regime (high protection, low punch): inner < floor, so the
-    // HP-loss is pinned to `floor` and is UNCHANGED across Neutral vs Favorable.
-    let soaked = armor_piece(3, 30, 40); // hardness 40 ⇒ effPen 0 even favorable
+    let soaked = armor_piece(3, 30, 40); 
     let soak_resolve = |matchup: Matchup| {
         resolve_hit(
             WeaponDamage::new(2),
@@ -235,9 +198,6 @@ fn shred_adds_to_wear_and_matchup_leaves_damage_floor() {
     );
 }
 
-/// AC6 (mechanism) — the three [`HitResult`] fields `Deref` to their inner
-/// `i32` (all named newtypes, no bare primitive escapes). A round-trip pin on
-/// the newtype Deref, built from arbitrary literals (mechanism, not magnitude).
 #[test]
 fn hit_result_fields_are_named_newtypes() {
     let result = HitResult {
@@ -250,14 +210,9 @@ fn hit_result_fields_are_named_newtypes() {
     assert_eq!(*result.wear, 9i32);
 }
 
-/// The HP-loss field is post-floor while the penetrating field is pre-floor —
-/// the doc-grounded **two-field split** (`weapons-and-armor.md` §"Per-hit
-/// resolution" `dmg` vs resolution.md §6 `pen_damage`). In a soaked-but-bruising
-/// regime they MUST differ: HP-loss == floor (> 0), penetrating == 0.
 #[test]
 fn pen_and_hp_damage_split_pre_and_post_floor() {
     let tuning = CombatTuning::default();
-    // Fully soaked: inner < 0 < floor. HP-loss clamps to floor; pen clamps to 0.
     let armor = armor_piece(5, 25, 0);
     let result = resolve_hit(
         WeaponDamage::new(4),
@@ -281,9 +236,6 @@ fn pen_and_hp_damage_split_pre_and_post_floor() {
     );
 }
 
-/// A full uniform-suit round-trip through [`SourceArmor`] — the struck piece is
-/// read off an `ArmorPiece` exactly as a real call site would supply it
-/// (mechanism: the formula reads floor/protection/hardness off the piece).
 #[test]
 fn resolves_against_a_piece_from_a_source_suit() {
     let tuning = CombatTuning::default();
@@ -300,9 +252,6 @@ fn resolves_against_a_piece_from_a_source_suit() {
         &tuning,
     );
 
-    // Hand-computed at Neutral (mult 1.0): effPen = max(0, 6 − 2) = 4;
-    // inner = 10 − max(0, 5 − 4) = 10 − 1 = 9; hp = max(1, 9) = 9; pen = 9;
-    // wear = min(5, 10) + 4 + 3 = 12.
     assert_eq!(*result.hp_damage, 9, "HP-loss from the soak/pen formula");
     assert_eq!(
         *result.penetrating, 9,

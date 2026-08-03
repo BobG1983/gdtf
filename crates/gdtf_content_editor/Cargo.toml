@@ -4,111 +4,27 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# UI-stack boundary (user decision 2026-07-25, recorded in the ADR 0003 amendment; GTW-863):
-# gdtf keeps TWO UI stacks and neither crosses into the other. This crate's UI is egui
-# (`bevy_egui`, below); the hand-rolled bevy_ui crate `gdtf_ui` belongs to the player-facing
-# game. So this crate MAY NOT depend on `gdtf_ui` — and today it does not. (The dev-only
-# `gdtf_test_utils` harness under [dev-dependencies] does pull `gdtf_ui` into the test target;
-# that is the harness's own dependency, not editor UI code.) This is a written-down convention,
-# not a build-enforced rule: no test or CI job fails if someone adds the dependency.
 bevy = { workspace = true }
-# GTW-512 (C1 of the GTW-511 egui migration): the editor's UI is now bevy_egui (an immediate-mode
-# egui layer wired into Bevy), a CLEAN SWAP off the hand-rolled bevy_ui shell. bevy_egui 0.41
-# bundles + re-exports egui 0.35 and depends on bevy ^0.19. Its UI systems run in the
-# `EguiPrimaryContextPass` schedule (NOT `Update`) — a `Update` system calling `ctx_mut()` fights
-# the begin/end-pass plumbing.
-# (GTW-625: the game's hand-rolled UI crate is no longer a dependency at all — the egui shell
-# styles itself and reads NO `GdtfTheme` field, so the editor registers no theme chain.)
 bevy_egui = "0.41"
-# The generic asset seams (GTW-564 hot-RON chains + GTW-570 content families). The editor's
-# Load pass registers its four folder families and its single-asset tile-role chain through
-# the SAME generic kick-off / resolve / redrive machinery gdtf_app's game Load does (GTW-579 —
-# no editor-local mirror of the load pass survives).
 gdtf_assets = { path = "../gdtf_assets" }
-# GTW-579: the SHARED content-family marker impls (WeaponsFamily / ArmorFamily /
-# TerrainDefsFamily / ThemeDefsFamily) the game registers — the editor registers the SAME
-# glue-crate definitions, so each family's registry-build logic has exactly ONE definition
-# workspace-wide.
 gdtf_content_families = { path = "../gdtf_content_families" }
-# The authoritative sim owns the registry domain types the editor loads + holds:
-# WeaponRegistry / ArmorRegistry / TerrainDefRegistry / UuidThemeRegistry (+ their
-# defs). The editor depends on the sim ONLY for these data types — it wires NONE of the
-# sim's runtime.
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
-# GTW-495: the editor resolves a TerrainDef's presenter_kind.graphic_name to a terrain
-# atlas index THE WAY THE PRESENTER DOES — through the presenter's data-driven `TileRoles`
-# table (TileRoles::index_for_key) — rather than duplicating the role vocabulary. It uses
-# ONLY the presenter's TileRoles / TileIndex data types + its load/resolve seam; it wires
-# NONE of the presenter's render runtime (no BattlePresenterPlugin).
 gdtf_battle_presenter = { path = "../gdtf_battle_presenter" }
-# GTW-432: the (debug-only) save-prefab path serializes a PrefabSpec to RON and writes it
-# to assets/content/maps/. The serialize is non-test code, so ron is a normal dependency
-# (the GTW-429 gang-save precedent moved ron from a dev-dependency to a normal one).
 ron = { workspace = true }
-# GTW-510: the reusable in-engine self-capture crate. The editor's QA screenshot hook
-# (`capture.rs`) delegates its settle-frame counter + `Screenshot`-spawn + PNG-path gate + poll-exit
-# boilerplate to this crate's primitives (its editor-specific DRIVE logic stays local), and the
-# binary adds the crate's F10 debug keybind under `cfg!(debug_assertions)`. Dev / debug
-# infrastructure — the whole affordance is inert until `GDTF_EDITOR_SHOT` is set / F10 pressed, and
-# the keybind is compiled out of release by its cfg gate.
 gdtf_screenshot = { path = "../gdtf_screenshot" }
-# GTW-575: the shared state-scoped-RESOURCE seam (bevy-traps #1 — Bevy scopes only
-# entities to a state). The `Editing` scene's ten model resources register their
-# OnEnter-insert + OnExit-remove pairs through its ONE `init_state_scoped_resource`
-# call each, replacing the hand-stamped `editor_resources.rs` insert/remove pairs.
-# Shared with `gdtf_app`'s scene scaffolds (the editor does not depend on `gdtf_app`,
-# so the seam lives in this tiny crate below both).
 gdtf_state_scoped = { path = "../gdtf_state_scoped" }
-# GTW-804 (child 1b of GTW-786): the DEV-ONLY QA control channel for the EDITOR. Both crates are
-# OPTIONAL and pulled in ONLY by the `net_qa` feature below — a default editor build compiles
-# neither. `gdtf_qa_protocol` is the bevy-free typed wire contract (the request/response messages
-# plus the framing codec); `gdtf_net_qa_transport` is the shared loopback listener + accept loop +
-# one-client-at-a-time gate + inbox lifted in GTW-803, so the editor and the game move bytes
-# through ONE codepath instead of two copies of a socket server.
 gdtf_qa_protocol = { path = "../gdtf_qa_protocol", optional = true }
 gdtf_net_qa_transport = { path = "../gdtf_net_qa_transport", optional = true }
-# GTW-880: the QA capture pump decodes the written file before it reports the screenshot
-# saved, so a truncated / half-flushed PNG is never mistaken for a finished one. This is the
-# minimal-format `image` decoder (PNG only), already compiled transitively via `bevy_image`.
-# OPTIONAL — pulled in ONLY by the `net_qa` feature below, exactly as `gdtf_app` does for the
-# game's own capture pump.
 image = { version = "0.25", default-features = false, features = ["png"], optional = true }
 
 [dev-dependencies]
-# The headless integration test drives the REAL editor plugin on a no-renderer
-# DefaultPlugins app with a live AssetServer (the gdtf_test_utils UI-harness config),
-# so the test exercises the editor's actual Load pass + region spawn, not a copy.
 gdtf_test_utils = { path = "../gdtf_test_utils" }
-# GTW-555: the terrain save round-trip test writes into a unique TempDir (NOT into
-# the version-controlled assets/ tree) so concurrent `cargo test --workspace` runs
-# don't race with tests that glob-scan assets/content/terrain/**. TempDir auto-cleans on drop.
 tempfile = "3"
 
 [features]
-# Enable Bevy dynamic linking for fast dev builds. Opt-in only — never enabled for
-# release artifacts. Propagated from the `gdtf_content_editor` binary crate (binary ->
-# gdtf_content_editor -> bevy/dynamic_linking), mirroring the grimdark_turfwar -> gdtf_app
-# chain. Keeps the dev/QA build+link loop fast.
 dynamic_linking = ["bevy/dynamic_linking"]
-# GTW-533: DEV / LOCAL-only asset hot-reload for the EDITOR — the editor half of the
-# "hot-reload in-app (game AND editor) with NO restart" contract. Enables Bevy's asset file
-# watcher (bevy -> bevy_internal -> bevy_asset/file_watcher -> bevy_asset/watch), exactly as
-# gdtf_app's `file_watcher` does for the game. Effect: saving a loose asset the editor hosts
-# (a theme / tile-role / weapon / armor / terrain-def / theme-def `.ron`) makes the
-# AssetServer reload it and emit AssetEvent::Modified, which the editor's `redrive_*` handlers
-# turn into a live registry rebuild — NO source change to the AssetPlugin is needed. NOT in
-# the default feature set and NEVER forced into CI / test / release builds (it pulls in
-# notify-debouncer-full + an OS filesystem-watch thread; the OS watcher is non-deterministic,
-# so the deterministic re-derive path is covered by injected-AssetEvent tests instead).
-# Propagated from the binary crate (binary -> gdtf_content_editor -> bevy/file_watcher),
-# mirroring the grimdark_turfwar -> gdtf_app chain.
 file_watcher = ["bevy/file_watcher"]
-# GTW-804: the DEV-ONLY QA network control channel for the EDITOR (the GTW-786 editor half of the
-# GTW-694 agent QA harness). Opt-in ONLY — it opens a loopback TCP listener, so it is never in the
 # default feature set and never in a release build: the module is ALSO `cfg(debug_assertions)`-gated
-# at its wiring site (the double gate the game uses), and even then it stays inert until
-# `GDTF_EDITOR_NET_QA` is set truthy. Turning the feature on pulls in the three optional deps above.
-# Mirrors gdtf_app's `net_qa` feature exactly, with the editor's own env vars + its own port.
 net_qa = ["dep:gdtf_qa_protocol", "dep:gdtf_net_qa_transport", "dep:image"]
 
 [lints]

@@ -1,5 +1,3 @@
-//! The inbox takes only its own command's calls, and the decode step's two outcomes.
-
 use gdtf_net_qa_transport::Responder;
 use gdtf_qa_protocol::{
     command::{CommandArgsJson, CommandName, CommandOutcome},
@@ -12,7 +10,6 @@ use crate::{
     test_support::{FakeCell, FakePhase},
 };
 
-/// `take_for` takes every call for one name and leaves the others in order.
 #[test]
 fn the_inbox_takes_only_the_named_command_s_calls() {
     let mut inbox = CommandInbox::default();
@@ -32,7 +29,6 @@ fn the_inbox_takes_only_the_named_command_s_calls() {
     assert!(inbox.is_empty());
 }
 
-/// A name nothing was admitted under takes nothing and leaves the inbox untouched.
 #[test]
 fn the_inbox_takes_nothing_for_an_unused_name() {
     let mut inbox = CommandInbox::default();
@@ -48,7 +44,6 @@ fn the_inbox_takes_nothing_for_an_unused_name() {
     assert_eq!(inbox.len(), 1);
 }
 
-/// `bad_arguments::<C>` attaches C's OWN derived argument schema, not a generic one.
 #[test]
 fn bad_arguments_attaches_the_command_s_own_schema() {
     let Err(fault) = serde_json::from_str::<<FakeCell as QaCommand>::Args>("{\"nope\":1}") else {

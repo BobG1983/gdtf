@@ -1,21 +1,4 @@
 //! GTW-671 C4: the MELEE mode's REAL round-trips — author a MAXIMAL spec (multi fight
-//! modes, a multi-slot declaration list, attachment keys, and every scalar non-default)
-//! AND a MINIMAL spec (the serde-default identities exercised) in the form model, save
-//! both through the REAL root-parameterized write (`write_melee_weapon_in`) into a
-//! `TempDir` assets root (the GTW-555 pattern), then boot the REAL editor app rooted at
-//! that directory and assert the actual `MeleeWeaponsFamily` folder walk loads both
-//! saved weapons back structurally identical.
-//!
-//! Also pins the GTW-671 lifecycle riders: the editor reaches `Editing` with the
-//! `MeleeWeaponRegistry` gate resource present and the state-scoped `MeleeWeaponDraft`
-//! seeded (salvage / fallback behavior itself is the shared registration's parameterized family
-//! contract — `register_content_family::<MeleeWeaponsFamily>` inherits it, no
-//! per-family re-pin here). RE-VALIDATION on a melee save is FREE and already pinned:
-//! the `MeleeWeaponRegistry` is in the editor's re-arm watch set (`validate/rearm.rs`
-//! `WatchedRegistries::melee_weapons`, GTW-651) and the weapon→attachment edge chains
-//! the melee registry (`gdtf_content_families/validate/attachments.rs`, GTW-669 — its
-//! suite lives in `tests/authoring_validation/attachments.rs`) — no new machinery here.
-
 use gdtf_battle_sim::{
     equipment::attachments::{AttachmentName, AttachmentSlot, SlotCapacity, WeaponSlots},
     weapon::{
@@ -28,12 +11,6 @@ use gdtf_content_editor::{MeleeWeaponDraft, draft_to_melee_weapon_spec, write_me
 
 use crate::harness::{advance_to_editing, editor_app_with_asset_root};
 
-/// The MAXIMAL edited melee weapon, authored through the REAL form-model mutators:
-/// every one of the spec's 11 authored fields carries a NON-default value — two fight
-/// modes (one `Swing`, one `Thrust`), a `(Counterweight, 1)` + `(Pommel, 2)` slot list,
-/// two attachment keys, a reach above the default, and the shove tag ON — so a single
-/// dropped or drifted field cannot round-trip (the gate's field-for-field spot-check
-/// target).
 fn maximal_draft() -> MeleeWeaponDraft {
     let mut draft = MeleeWeaponDraft::new_melee_weapon();
     draft.set_name("tempdir_pit_cleaver".to_owned());
@@ -61,10 +38,6 @@ fn maximal_draft() -> MeleeWeaponDraft {
     draft
 }
 
-/// The MINIMAL edited melee weapon: only the REQUIRED fields carry non-seed values;
-/// every opt-in field stays at its serde-default identity (reach 1, shove off, no
-/// slots, no attachments) — so the round-trip exercises the defaults through the real
-/// serialize → parse chain.
 fn minimal_draft() -> MeleeWeaponDraft {
     let mut draft = MeleeWeaponDraft::new_melee_weapon();
     draft.set_name("tempdir_shiv".to_owned());
@@ -79,18 +52,12 @@ fn minimal_draft() -> MeleeWeaponDraft {
     draft
 }
 
-/// GTW-671 C4 — create → save BOTH specs (the REAL write into a `TempDir` assets root)
-/// → load through the REAL `MeleeWeaponsFamily` folder walk → the registry holds the
-/// SAME specs (structural equality across all 11 authored fields: the maximal record
-/// and the defaults-exercising minimal record), with the `Editing` gate + the scoped
-/// `MeleeWeaponDraft` seed along for the ride.
 #[test]
 fn saved_melee_weapons_round_trip_through_the_real_melee_loader() {
     let dir = tempfile::tempdir();
     assert!(dir.is_ok(), "creating the TempDir assets root must succeed");
     let Ok(dir) = dir else { return };
 
-    // SAVE both drafts through the real root-parameterized write.
     let (max_name, max_spec) = draft_to_melee_weapon_spec(&maximal_draft());
     let written = write_melee_weapon_in(dir.path(), &max_name, &max_spec);
     assert!(
@@ -106,21 +73,15 @@ fn saved_melee_weapons_round_trip_through_the_real_melee_loader() {
         written.as_ref().err(),
     );
 
-    // RELOAD through the real editor Load pass rooted at the TempDir.
     let mut app = editor_app_with_asset_root(dir.path());
     advance_to_editing(&mut app);
 
     let world = app.world();
-    // The state-scoped MELEE draft seeded on entering Editing (bevy-traps #1 via the
-    // GTW-575 shared registration) — the A2 state-scoped pin's in-state half; the full
-    // absent→seeded→removed lifecycle rides the `state_scoped_resources` suite.
     assert!(
         world.get_resource::<MeleeWeaponDraft>().is_some(),
         "the MeleeWeaponDraft must be seeded OnEnter(Editing)",
     );
 
-    // The REAL folder walk keyed both saved files by their stems and loaded the SAME
-    // specs.
     let registry = world.get_resource::<MeleeWeaponRegistry>();
     assert!(registry.is_some(), "the MeleeWeaponRegistry must resolve");
     let Some(registry) = registry else { return };

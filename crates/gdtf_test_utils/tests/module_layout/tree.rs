@@ -1,6 +1,3 @@
-//! Workspace-tree enumeration and the exemption registry — `git ls-files`
-//! with a std fs-walk fallback, plus the plain-text registry parser.
-
 use std::{
     collections::BTreeSet,
     fs,
@@ -8,8 +5,6 @@ use std::{
     process::Command,
 };
 
-/// The workspace root — `GDTF_MODULE_LAYOUT_ROOT` override, else
-/// `CARGO_MANIFEST_DIR/../..`.
 pub(crate) fn workspace_root() -> PathBuf {
     std::env::var_os("GDTF_MODULE_LAYOUT_ROOT").map_or_else(
         || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
@@ -17,8 +12,6 @@ pub(crate) fn workspace_root() -> PathBuf {
     )
 }
 
-/// Tracked files under `crates/`+`bins/` via `git ls-files`; `None` if git is
-/// unavailable or errors (not a repo).
 fn git_tracked(root: &Path) -> Option<Vec<String>> {
     let out = Command::new("git")
         .arg("-C")
@@ -33,8 +26,6 @@ fn git_tracked(root: &Path) -> Option<Vec<String>> {
     Some(text.lines().map(str::to_owned).collect())
 }
 
-/// fs-walk fallback: every file under `dir`, skipping `target/` and dot-dirs,
-/// pushed as a forward-slash path relative to `root`.
 fn walk_files(dir: &Path, root: &Path, acc: &mut Vec<String>) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
@@ -58,7 +49,6 @@ fn walk_files(dir: &Path, root: &Path, acc: &mut Vec<String>) {
     }
 }
 
-/// All tracked `.rs` files, sorted — git enumeration first, fs-walk fallback.
 pub(crate) fn tracked_rs(root: &Path) -> Vec<String> {
     let mut files = git_tracked(root).unwrap_or_else(|| {
         let mut acc = Vec::new();
@@ -71,8 +61,6 @@ pub(crate) fn tracked_rs(root: &Path) -> Vec<String> {
     files
 }
 
-/// The registered exemption paths (first whitespace-separated token per
-/// non-comment line of `.claude/rules/module-layout-exemptions.txt`).
 pub(crate) fn registry_paths(root: &Path) -> BTreeSet<String> {
     fs::read_to_string(root.join(".claude/rules/module-layout-exemptions.txt"))
         .map(|text| {

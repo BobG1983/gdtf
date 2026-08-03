@@ -1,8 +1,4 @@
-//! Tests for the battle resources + lifecycle message payloads: the
-//! [`PlayerFaction`](crate::battle::PlayerFaction) newtype (construct + Deref,
 //! authored-override seed) and the owned-payload contract of the lifecycle
-//! messages.
-
 use super::support::*;
 
 // === GTW-226 AC1 — PlayerFaction is a public newtype Resource over Faction with
@@ -18,8 +14,6 @@ fn player_faction_constructs_and_derefs_to_its_inner_faction() {
     );
 }
 
-// === GTW-226 AC3 — an authored player_faction:1 overrides the Faction(0) default,
-// proving the seed reads situation.player_faction, not a hardcoded 0. ===
 
 #[test]
 fn authored_player_faction_overrides_the_default_seed() {
@@ -38,10 +32,6 @@ fn authored_player_faction_overrides_the_default_seed() {
     );
 }
 
-/// The lifecycle messages are constructible and carry their payload (the no-bare
-/// payload contract): `SetupBattleRequested` owns a `Situation` + `BattleSeed`
-/// with no lifetime parameter (that this names `SetupBattleRequested` without
-/// `<'_>` is the proof).
 #[test]
 fn lifecycle_messages_carry_their_payload() {
     let seed = BattleSeed::new(SEED);
@@ -52,9 +42,6 @@ fn lifecycle_messages_carry_their_payload() {
         2,
         "SetupBattleRequested carries the owned Situation",
     );
-    // The two signals are unit payloads (their identity IS the message — nothing to
-    // carry); constructing them and comparing against a fresh value proves they are
-    // the zero-field markers the app sends / reads.
     let teardown = TeardownBattleRequested;
     assert_eq!(
         Some(teardown),

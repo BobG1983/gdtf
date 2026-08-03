@@ -1,6 +1,3 @@
-//! [`seed_drawn_state`] — insert the `Drawn*` mirrors ONCE per entity, seeded from the
-//! state that entity spawned with (GTW-727 C17).
-
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     act_log::{MagazineFacts, PoseFacts, SuppressedNow, VitalsFacts},
@@ -13,10 +10,6 @@ use gdtf_battle_sim::{
 
 use super::drawn::{DrawnLife, DrawnMagazine, DrawnPose, DrawnPosition, DrawnVitals};
 
-/// The ganger state the mirrors are seeded from — factored into a [`QueryData`] tuple so
-/// the system's query stays under clippy's `type_complexity` gate.
-///
-/// [`QueryData`]: bevy::ecs::query::QueryData
 type SeedData = (
     Entity,
     &'static Position,
@@ -32,33 +25,10 @@ type SeedData = (
     Option<&'static InflictedInjuries>,
 );
 
-/// The weapon columns the magazine mirror is seeded from — factored into a [`QueryData`]
-/// tuple so the system's query stays under clippy's `type_complexity` gate.
-///
-/// [`QueryData`]: bevy::ecs::query::QueryData
 type WeaponSeedData = (Entity, &'static Magazine);
 
-/// The filter selecting a wielded weapon that has NOT been given its drawn mirror yet — so
-/// each weapon leaves this query the moment it is seeded, and pays one archetype move
-/// rather than one per frame.
 type UnseededWeapon = (With<WieldedBy>, Without<DrawnMagazine>);
 
-/// `Update` ([`Replay`](crate::PresenterSystems::Replay), before
-/// [`advance_playback`](super::advance_playback)): give every ganger that has none yet its
-/// four drawn mirrors, and every wielded weapon its drawn magazine — seeded from the state
-/// the entity currently holds.
-///
-/// **Insertion happens exactly once per entity, never per frame.** The `Without<Drawn…>`
-/// filters mean an entity leaves this query the moment it is seeded, so each entity pays
-/// one archetype move at spawn and none afterwards.
-///
-/// Seeding from live state (rather than from a log entry) is correct and necessary: the act
-/// log records only TRANSITIONS, and a first observation deliberately records nothing — so
-/// a freshly spawned roster produces no entries at all, and there is nothing for the cursor
-/// to apply. The mirrors therefore start EQUAL to the sim, which is exactly right: at spawn
-/// the drawn world and the sim world agree, and they only diverge once the sim acts.
-///
-/// Param-only (`bevy-traps.md` #7): [`Commands`] plus the two read-only seed queries.
 pub fn seed_drawn_state(
     mut commands: Commands,
     gangers: Query<SeedData, Without<DrawnPosition>>,

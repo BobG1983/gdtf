@@ -1,37 +1,3 @@
-//! The editor's single egui UI system + its panel layout (GTW-512 C1).
-//!
-//! [`editor_egui_ui`] runs in the [`EguiPrimaryContextPass`](bevy_egui::EguiPrimaryContextPass)
-//! schedule (NOT `Update` — bevy-traps: a `Update` system calling `ctx_mut()` fights the egui
-//! begin/end-pass plumbing), gated `run_if(in_state(EditorState::Editing))`. It declares the egui
-//! panels in the LOAD-BEARING order egui requires — outermost-first, the
-//! [`CentralPanel`](bevy_egui::egui::CentralPanel) LAST (egui panels cannot overlap; a wrong order
-//! steals the central region's space). egui 0.35 unified the side / top / bottom panels into one
-//! [`Panel`](bevy_egui::egui::Panel) shown into a root `Ui` (`Panel::top` / `::bottom` / `::left` /
-//! `::right`):
-//!
-//! 1. top `Panel::top` — mode tabs + global theme `ComboBox`,
-//! 2. bottom `Panel::bottom` — the status line,
-//! 3. left `Panel::left` — the palette / stats (TERRAIN's DEMOTED `.terrain_def.ron` preview —
-//!    GTW-534 C2, THEME floor stats, PREFAB tile palette),
-//! 4. right `Panel::right` — the active mode's form
-//!    ([`mode_panels::right_panel`] — the per-mode dispatch),
-//! 5. [`CentralPanel`](bevy_egui::egui::CentralPanel) — the primary region
-//!    ([`mode_panels::central_panel`] — the per-mode dispatch).
-//!
-//! The two PER-MODE dispatches (panels 4 + 5) live in the
-//! [`mode_panels`](super::mode_panels) sibling since GTW-670 (module-layout bands: they
-//! grow one arm per Workbench mode; the shell only changes when the panel LAYOUT does —
-//! continuing the `autoload.rs` / `textures.rs` split). The mode tabs are egui
-//! [`selectable_value`](bevy_egui::egui::Ui::selectable_value)s over the kept
-//! [`EditorMode`](crate::mode::EditorMode) resource; the `1`–`9` + `0` hotkeys are still handled by
-//! [`mode_hotkeys`](crate::mode::mode_hotkeys) in `Update` (UI-agnostic, kept). The theme
-//! `ComboBox` folds a selection into the [`MapEditorSession`] exactly as the old
-//! `apply_theme_selection` did.
-//!
-//! Since GTW-664 the per-mode MODEL borrows stay inside their `params` bundles (direct field
-//! access, no unpack block) — the bundles grow when a mode's model surface does, the shell only
-//! when the PANEL layout does.
-
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
 
@@ -56,21 +22,6 @@ use crate::{
     theme_form::ThemeDraft,
 };
 
-/// `EguiPrimaryContextPass` (in `Editing`): the WHOLE editor shell — mode tabs + global theme
-/// `ComboBox` (top), the status line (bottom), the per-mode palette/stats (left), the active mode's
-/// form (right — the [`mode_panels`](super::mode_panels) dispatch), and the per-mode viewport
-/// (central — same dispatch, declared LAST per C1.3, the load-bearing egui panel order).
-///
-/// Every editor resource is state-scoped (inserted `OnEnter(Editing)`, removed `OnExit(Editing)` —
-/// bevy-traps #1), so the mode + session + the TERRAIN draft are taken as `Option<ResMut<…>>` and
-/// the system no-ops until they exist; the mode-agnostic read-only registries (the theme /
-/// terrain-def / weapon registries — the [`SharedRegistries`] bundle since GTW-671) are likewise
-/// `Option<Res<…>>` (the empty-registry `ComboBox` then offers nothing). The sprite thumbnails
-/// resolve through the GTW-663 `SpriteDefRegistry` the SPRITE bundle already carries (GTW-665 —
-/// the ONE def-driven resolution the battle renderer uses; an unresolved registry leaves every
-/// thumb on its fallback). Returns a `Result` so a missing primary
-/// egui context (`ctx_mut()?`) is handled, never unwrapped (the workspace lints deny
-/// `unwrap`/`expect`).
 #[expect(
     clippy::too_many_arguments,
     reason = "the whole-editor egui system draws ALL panels in one pass (the EguiPrimaryContextPass \
@@ -103,12 +54,6 @@ pub(crate) fn editor_egui_ui(
         return Ok(());
     };
 
-    // The PRE-PANEL per-mode model-sync / autoload FAN-OUT (split into
-    // `egui_shell::autoload` at the GTW-479-flagged split point — GTW-654; the whole roster
-    // call moved there in GTW-669): each runner self-gates on its mode + borrows and
-    // is multipass-idempotent (bevy-traps #8). Runs BEFORE the texture-id resolution
-    // below so the sprite autoload's seeded source is what the preview resolver loads
-    // this same frame (GTW-664).
     run_form_syncs(
         *mode,
         &session,
@@ -125,15 +70,9 @@ pub(crate) fn editor_egui_ui(
         },
     );
 
-    // Resolve the egui texture ids the panels draw (the palette sprite sheet, the prefab
-    // preview render target, and the GTW-664 sprite-source preview) BEFORE borrowing
-    // `ctx_mut()` — split into `egui_shell::textures` at the GTW-664 natural boundary.
     let textures = resolve_panel_textures(&mut contexts, *mode, &prefab, &mut sprite_mode);
 
     let ctx = contexts.ctx_mut()?;
-    // egui 0.35 / bevy_egui 0.41 show panels INTO a root `Ui` (the panel `show` takes `&mut Ui`,
-    // NOT a `&Context` — bevy-traps #8). Build the background-layer viewport `Ui` over the whole
-    // context rect (the bevy_egui `ui.rs` example idiom), then declare the panels into it.
     let mut viewport_ui = egui::Ui::new(
         ctx.clone(),
         "editor_viewport".into(),
@@ -143,8 +82,6 @@ pub(crate) fn editor_egui_ui(
     );
     let options = theme_options(shared.themes.as_deref());
 
-    // 1. TOP — mode tabs (left) + the global theme `ComboBox` (right). Full-width bars are declared
-    //    FIRST so they span edge-to-edge; the side panels then fit between them.
     egui::Panel::top("editor_top_bar").show(&mut viewport_ui, |ui| {
         ui.horizontal(|ui| {
             mode_tabs(ui, &mut mode);
@@ -153,16 +90,10 @@ pub(crate) fn editor_egui_ui(
         });
     });
 
-    // 2. BOTTOM — the status line.
     egui::Panel::bottom("editor_status_bar").show(&mut viewport_ui, |ui| {
         ui.label(status_line(*mode, &session, shared.themes.as_deref()));
     });
 
-    // 3. LEFT — the palette / stats region. In TERRAIN mode (GTW-534 C2) it now hosts the DEMOTED
-    //    `.terrain_def.ron` live preview — relocated OFF the central region to this secondary side
-    //    strip: still present + live-updating, but no longer dominating (the stat fields + sprite
-    //    picker take the central primary space instead). In THEME mode (C3) it shows the resolved
-    //    floor-terrain stats readout; PREFAB keeps the tile palette.
     egui::Panel::left("editor_palette").show(&mut viewport_ui, |ui| match *mode {
         EditorMode::Terrain => {
             terrain_form_ui::ron_preview(ui, &terrain_draft);
@@ -180,11 +111,6 @@ pub(crate) fn editor_egui_ui(
                 &textures.sprites,
             );
         }
-        // GANG / ARMOR / INJURY / SPRITE / ATTACHMENT / WEAPON / MELEE modes keep this
-        // secondary strip intentionally idle (GTW-636 / GTW-479 / GTW-654 / GTW-664 /
-        // GTW-669 / GTW-670 / GTW-671): the member list / piece grid / def editors are
-        // the central primary focus and the form controls live in the right panel, so
-        // nothing competes here (the TERRAIN right-panel precedent).
         EditorMode::Gang
         | EditorMode::Armor
         | EditorMode::Injury
@@ -194,10 +120,6 @@ pub(crate) fn editor_egui_ui(
         | EditorMode::MeleeWeapon => {}
     });
 
-    // 4 + 5. RIGHT (the active mode's form) then CENTRAL (the primary region, LAST —
-    // egui fills the residual space with it): the per-mode dispatches, moved to
-    // `egui_shell::mode_panels` at the GTW-670 band boundary. One borrow context threads
-    // every per-mode model into both.
     let mut panel_ctx = ModePanelsCtx {
         session:          &mut session,
         terrain_draft:    &mut terrain_draft,

@@ -1,6 +1,3 @@
-//! The [`InflictedInjuries::gain`] stat-delta/bleed ledger folding (C3) + the
-//! [`StatTarget`] kind split.
-
 use super::{
     super::{
         BleedAfflicted, BleedAmount, InflictedInjuries, InjuryEffect, StatDelta, StatDeltaSum,
@@ -11,7 +8,6 @@ use super::{
 
 #[test]
 fn stat_target_kind_splits_first_eight_attribute_rest_derived() {
-    // The first eight ALL entries are attributes, the last eight are derived.
     for (i, stat) in StatTarget::ALL.into_iter().enumerate() {
         let expected = if i < 8 {
             StatKind::Attribute
@@ -37,7 +33,6 @@ fn gain_folds_a_modify_on_a_direct_attribute() {
     }]));
 
     assert_eq!(ledger.delta_for(StatTarget::Aim), StatDeltaSum::new(-2));
-    // Unmentioned stats stay zero.
     assert_eq!(ledger.delta_for(StatTarget::Cool), StatDeltaSum::default());
     assert_eq!(ledger.gained().len(), 1);
 }
@@ -65,7 +60,6 @@ fn gain_folds_a_bleeding_effect_into_the_bleed_accrual() {
     }]));
 
     assert_eq!(ledger.bleed(), BleedAfflicted::new(3));
-    // A Bleeding effect contributes no stat delta.
     assert_eq!(ledger.delta_for(StatTarget::Hp), StatDeltaSum::default());
 }
 
@@ -73,8 +67,6 @@ fn gain_folds_a_bleeding_effect_into_the_bleed_accrual() {
 fn gain_folds_a_multi_effect_injury_and_stacks_across_injuries() {
     let mut ledger = InflictedInjuries::default();
 
-    // A single multi-effect injury: two Modifies (one attribute, one derived) plus a
-    // Bleeding — all fold from ONE gain().
     ledger.gain(gained_with(vec![
         InjuryEffect::Modify {
             stat:   StatTarget::Aim,
@@ -97,7 +89,6 @@ fn gain_folds_a_multi_effect_injury_and_stacks_across_injuries() {
     assert_eq!(ledger.bleed(), BleedAfflicted::new(2));
     assert_eq!(ledger.gained().len(), 1);
 
-    // A second injury stacking on the SAME stat ADDS, and a second bleed ACCRUES.
     ledger.gain(gained_with(vec![
         InjuryEffect::Modify {
             stat:   StatTarget::Aim,
@@ -108,13 +99,13 @@ fn gain_folds_a_multi_effect_injury_and_stacks_across_injuries() {
         },
     ]));
 
-    assert_eq!(ledger.delta_for(StatTarget::Aim), StatDeltaSum::new(-5)); // -2 + -3
+    assert_eq!(ledger.delta_for(StatTarget::Aim), StatDeltaSum::new(-5)); 
     assert_eq!(
         ledger.delta_for(StatTarget::Shooting),
         StatDeltaSum::new(-1)
-    ); // untouched
-    assert_eq!(ledger.bleed(), BleedAfflicted::new(3)); // 2 + 1
-    assert_eq!(ledger.gained().len(), 2); // ordered ledger grows
+    ); 
+    assert_eq!(ledger.bleed(), BleedAfflicted::new(3)); 
+    assert_eq!(ledger.gained().len(), 2); 
 }
 
 #[test]

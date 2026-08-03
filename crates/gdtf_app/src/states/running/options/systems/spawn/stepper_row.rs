@@ -1,12 +1,3 @@
-//! The DEV-ONLY procgen-stepper setting row (GTW-868) — compiled only under `dev_tools`.
-//!
-//! It is deliberately NOT a special control: it is the same [`spawn_setting_row`] every
-//! other setting uses, so it gets the same themed pill toggle, the same value readout, and
-//! (through the caller's one navigation chain) the same
-//! [`DirectionalNavigationMap`](bevy::input_focus::directional_navigation::DirectionalNavigationMap)
-//! edges and focusability the sound toggle and the Continue button have. The generic
-//! "activate the focused control" path therefore drives it with no extra work.
-
 use bevy::prelude::*;
 use gdtf_ui::theme::GdtfTheme;
 
@@ -16,11 +7,6 @@ use crate::states::running::options::{
     settings::{GameSettings, stepper_value_text},
 };
 
-/// Spawns the dev-only "Procgen Stepper" row and returns its entities.
-///
-/// Seeded from [`GameSettings::procgen_stepper`], which defaults OFF — so the row shows
-/// "Off" the first time the screen is entered and the stepper stays disengaged until a
-/// developer flips it.
 pub(super) fn spawn_stepper_row(
     commands: &mut Commands,
     theme: &GdtfTheme,

@@ -1,6 +1,3 @@
-//! Systems for the Prev/Next selection-cycle cluster (GTW-458): the spawn/despawn lifecycle
-//! and the press → intent router.
-
 mod actions;
 mod spawn;
 

@@ -1,35 +1,13 @@
-//! GTW-364 — the cover-hit path through the REAL fold
-//! ([`resolve_and_apply`](super::super::resolve_and_apply)): a `ShotKind::Cover`
-//! outcome reuses the ganger damage formula against the cover's own armor, spends the
-//! [`CoverLedger`]'s HP via `deplete_cover`, and records a destroyed `(cell, level)` on
-//! the report ONLY when the hit depletes the HP to zero.
-//!
-//! These assert the MECHANISM, not magnitudes (C7 / C8): the relations "HP fell to
-//! destruction + a destroyed cell was recorded" (a SUFFICIENT hit) and "HP fell but
-//! the piece still stands + no cell recorded" (an INSUFFICIENT hit) — never a pinned
-//! HP number. Every fixture armor/weapon magnitude is chosen only to land the hit in
-//! the regime under test, never as a balance claim.
-
 use super::support::*;
 
-/// C8(a) — a SUFFICIENT hit depletes cover HP to destruction AND records the
-/// destroyed `(cell, level)` on the report.
-///
-/// The weapon's damage far exceeds the cover's (low) protection + (small) HP, so the
-/// reused `resolve_hit` damage spends the ledger's HP to zero: `deplete_cover` returns
-/// `Destroyed`, the ledger's entry reads destroyed at zero HP, and the report carries
-/// `cover_destroyed == Some(the struck cell)`. Magnitudes are NOT pinned — only the
-/// destruction relation is.
 #[test]
 fn sufficient_hit_destroys_cover_and_records_the_cell() {
     let tuning = CombatTuning::default();
-    // High damage, low cover armor + small HP → the hit breaches and empties the pool.
     let weapon = a_weapon(60, 40, 20, DamageType::Kinetic);
     let entry = cover_entry(20, 2, 1);
     let at = cover_cell_level();
 
     let mut cover = ledger();
-    // Seed the ledger's entry at the struck cell so we can read its HP after the hit.
     cover.insert(at, entry);
 
     let mut rng_used = rng();
@@ -37,7 +15,6 @@ fn sufficient_hit_destroys_cover_and_records_the_cell() {
         &cover_outcome(entry),
         weapon.stats(),
         Luck::new(0.0),
-        // No struck ganger on a cover hit.
         None,
         an_entity(),
         surfaces(&mut cover, &mut slab_ledger()),
@@ -48,9 +25,6 @@ fn sufficient_hit_destroys_cover_and_records_the_cell() {
         &mut injury_rng(),
     );
 
-    // The verdict IS the cover kind's record (a ganger wound / any other payload is
-    // structurally impossible on it — GTW-573), carrying the destroyed cell the bridge
-    // dispatch_fire turns into a CoverDestroyed message.
     assert_eq!(
         report.verdict,
         HitVerdict::Cover(CoverVerdict {
@@ -59,8 +33,6 @@ fn sufficient_hit_destroys_cover_and_records_the_cell() {
         "a sufficient cover hit must record the destroyed (cell, level) on the verdict",
     );
 
-    // The ledger spent the HP to destruction (the EXISTING deplete_cover did the
-    // bookkeeping — we only read its result, never re-pin a magnitude).
     let after = cover.peek(&at).copied();
     assert!(
         after.is_some(),
@@ -76,7 +48,6 @@ fn sufficient_hit_destroys_cover_and_records_the_cell() {
         "destruction empties the HP pool to zero"
     );
 
-    // The cover path takes NO RNG draw (deterministic / replay-safe, C9).
     let mut rng_fresh = rng();
     assert_eq!(
         rng_used.next_u64(),
@@ -85,18 +56,9 @@ fn sufficient_hit_destroys_cover_and_records_the_cell() {
     );
 }
 
-/// C8(b) — an INSUFFICIENT hit reduces cover HP WITHOUT destroying it and records NO
-/// destroyed cell.
-///
-/// The cover's HP pool is large relative to the weapon's per-hit damage (which still
-/// breaches the low protection), so one hit reduces HP but leaves the piece standing:
-/// `deplete_cover` returns `Damaged`, the entry reads not-destroyed with HP strictly
-/// between zero and its max, and the report carries `cover_destroyed == None`. Only the
-/// reduction relation is asserted — no pinned magnitude.
 #[test]
 fn insufficient_hit_reduces_hp_without_destroying() {
     let tuning = CombatTuning::default();
-    // Modest damage; a LARGE HP pool so one hit cannot empty it.
     let weapon = a_weapon(12, 6, 2, DamageType::Kinetic);
     let max_hp = 200_u32;
     let entry = cover_entry(max_hp, 2, 1);
@@ -120,8 +82,6 @@ fn insufficient_hit_reduces_hp_without_destroying() {
         &mut injury_rng(),
     );
 
-    // A REAL cover verdict with no destroyed cell — the piece still stands (and a
-    // ganger wound is structurally impossible on a cover verdict).
     assert_eq!(
         report.verdict,
         HitVerdict::Cover(CoverVerdict { destroyed: None }),
@@ -138,8 +98,6 @@ fn insufficient_hit_reduces_hp_without_destroying() {
         !*after.destroyed,
         "an insufficient hit must leave the piece NOT destroyed",
     );
-    // HP fell (the hit breached the low protection) but the pool is not empty — the
-    // reduction relation, never a pinned magnitude.
     assert!(
         *after.current_hp < max_hp,
         "an insufficient hit must REDUCE the cover HP below its max",
@@ -149,7 +107,6 @@ fn insufficient_hit_reduces_hp_without_destroying() {
         "an insufficient hit must leave the cover HP above zero (not destroyed)",
     );
 
-    // No RNG draw on the cover path (C9).
     let mut rng_fresh = rng();
     assert_eq!(
         rng_used.next_u64(),
@@ -158,9 +115,6 @@ fn insufficient_hit_reduces_hp_without_destroying() {
     );
 }
 
-/// C9 — the cover-hit fold is DETERMINISTIC under a seeded RNG: the same inputs
-/// reproduce the same report AND the same depleted ledger state (and never perturb the
-/// RNG stream, since the cover path takes no draw).
 #[test]
 fn cover_hit_is_deterministic_under_seeded_rng() {
     let run = || {

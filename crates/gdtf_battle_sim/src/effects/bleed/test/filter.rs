@@ -1,15 +1,7 @@
-//! AC3/AC4 — who bleeds and who is skipped: only a Downed ganger carrying the
-//! [`BleedingOut`] condition bleeds (Alive/Dead untouched), and a Downed ganger WITHOUT
-//! the condition (stabilized) is skipped (GTW-695).
-
 use super::support::{
     BleedingOut, LifeState, Wounds, bleed_app, bleed_rate, bleeding_count_for, life_of, wounds_of,
 };
 
-/// AC3 — only bleeding-out Downed gangers bleed: an Alive ganger and a Dead ganger are
-/// untouched across a tick (Wounds unchanged, no `Bleeding`). Spawns one of each
-/// alongside a bleeding-out Downed control, ticks once, and asserts the non-Downed pools
-/// are unchanged while the Downed one drained.
 #[test]
 fn alive_and_dead_gangers_are_untouched() {
     let rate = bleed_rate();
@@ -31,7 +23,6 @@ fn alive_and_dead_gangers_are_untouched() {
 
     app.update();
 
-    // The Alive ganger is up and fighting — no drain, no Bleeding.
     assert_eq!(
         wounds_of(&app, alive),
         start,
@@ -48,7 +39,6 @@ fn alive_and_dead_gangers_are_untouched() {
         "an Alive ganger stays Alive"
     );
 
-    // The Dead ganger is a corpse — the once-only property skips it.
     assert_eq!(
         wounds_of(&app, dead),
         start,
@@ -65,8 +55,6 @@ fn alive_and_dead_gangers_are_untouched() {
         "a Dead ganger stays Dead"
     );
 
-    // The bleeding-out Downed control DID bleed — proving the tick ran and only a
-    // BleedingOut Downed ganger drains.
     assert_eq!(
         wounds_of(&app, downed),
         start - rate,
@@ -79,19 +67,12 @@ fn alive_and_dead_gangers_are_untouched() {
     );
 }
 
-/// AC4 — a Downed ganger WITHOUT the [`BleedingOut`] condition (stabilized) is SKIPPED: a
-/// tick drains nothing AND any previously-lost Wounds stay lost. Spawns a Downed ganger at
-/// a partial pool (modelling earlier bleeding) with the condition already removed, ticks,
-/// and asserts no further drop and no `Bleeding`.
 #[test]
 fn a_downed_ganger_without_the_bleeding_out_condition_is_skipped() {
     let rate = bleed_rate();
-    // A partial pool — Wounds already lost before stabilizing (e.g. some bled),
-    // chosen above the rate so a drain (if it wrongly ran) would be measurable.
     let partial = rate.saturating_add(2);
 
     let mut app = bleed_app();
-    // No BleedingOut condition — a stabilized Downed ganger.
     let ganger = app
         .world_mut()
         .spawn((Wounds::new(partial), LifeState::Downed))
@@ -116,9 +97,6 @@ fn a_downed_ganger_without_the_bleeding_out_condition_is_skipped() {
     );
 }
 
-/// AC4 (the positive gate) — a Downed ganger carrying the [`BleedingOut`] condition DOES
-/// bleed: the gate is presence of the condition, so a marked Downed ganger drains by
-/// exactly `bleed_rate` and emits one `Bleeding`.
 #[test]
 fn a_bleeding_out_downed_ganger_bleeds() {
     let rate = bleed_rate();

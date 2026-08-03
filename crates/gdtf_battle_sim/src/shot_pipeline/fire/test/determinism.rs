@@ -1,9 +1,5 @@
-//! AC7 — seeded determinism: two same-seed `fire()` runs produce byte-equal volleys.
-
 use super::support::*;
 
-/// AC7 — seeded determinism: two same-seed `fire()` runs over identical worlds
-/// produce byte-equal volley reports.
 #[test]
 fn same_seed_reproduces_byte_equal_volley() {
     let tuning = CombatTuning::default();
@@ -24,9 +20,6 @@ fn same_seed_reproduces_byte_equal_volley() {
             },
         );
         let target = world.spawn(target_bundle(60, 12)).id();
-        // GTW-323: equip the target's worn-armor PIECE entities (the combat read+wear
-        // path) — the same uniform stats both seeded runs share, so the byte-equal-
-        // volley determinism property holds through the keyed piece lookup.
         equip_uniform_armor(&mut world, target, 1, 4, 20, 1);
         let target_at = CellLevel::new(Cell::new(8, 5), Level::new(0));
         let mut occupancy = OccupancyGrid::new();
@@ -38,7 +31,6 @@ fn same_seed_reproduces_byte_equal_volley() {
         let mut shot_r = rng();
         let mut sev_r = severity_rng();
         let mut state: SystemState<FireQueries> = SystemState::new(&mut world);
-        // `get_mut` now returns a `Result` (Bevy 0.19); these params always validate.
         match state.get_mut(&mut world) {
             Ok((
                 mut shooters,

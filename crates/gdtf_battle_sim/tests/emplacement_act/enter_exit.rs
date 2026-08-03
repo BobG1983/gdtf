@@ -1,6 +1,3 @@
-//! ENTER / EXIT lifecycle — manning spawns + wields the mount; exiting reverts the state,
-//! band, and TU, and despawns the mount edge.
-
 use gdtf_battle_sim::{
     acts::{EnterEmplacementRequested, ExitEmplacementRequested},
     cover::HeightBand,
@@ -11,15 +8,10 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-// ── ENTER → (mount wielded) → EXIT (mount despawned) ────────────────────────────
 
-/// The full enter/exit lifecycle: entering mans the emplacement (Occupied, TU spent, band HIGH,
-/// mount spawned + recorded + wielded); exiting reverts everything (Vacant, band restored, mount
-/// despawned + record cleared, TU spent).
 #[test]
 fn enter_mans_and_spawns_mount_exit_reverts_and_despawns_mount() {
     let (mut app, seed) = battle_app(0x5543_0A0A);
-    // Player at (5,5); the emplacement is directly east at (6,5), 8-adjacent.
     let situation = SituationBuilder::new()
         .with_gangers([player_at(ground(5, 5), Direction::East)])
         .build_with_gangs();
@@ -41,7 +33,6 @@ fn enter_mans_and_spawns_mount_exit_reverts_and_despawns_mount() {
         "the emplacement starts Vacant",
     );
 
-    // ENTER.
     app.world_mut()
         .write_message(EnterEmplacementRequested::new(actor, emplacement));
     step(&mut app, 3);
@@ -79,7 +70,6 @@ fn enter_mans_and_spawns_mount_exit_reverts_and_despawns_mount() {
     let exit_cost = exit_tu(&app);
     assert!(exit_cost > 0, "the exit leaf is a real positive cost");
 
-    // EXIT.
     app.world_mut()
         .write_message(ExitEmplacementRequested::new(actor, emplacement));
     step(&mut app, 3);

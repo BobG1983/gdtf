@@ -1,20 +1,3 @@
-//! Regression (gate finding, GTW-596): [`draw_cross_level_signals`] must redraw
-//! when [`ActiveLevel`] changes even on the frame where the newly-derived
-//! [`CrossLevelSignals`] happens to be identical to the old storey's set —
-//! a badge's drawn Z-band is hard-cut to the active storey
-//! ([`cell_to_world_layered`]), so gating the redraw on
-//! `CrossLevelSignals::is_changed()` ALONE would leave a stale badge drawn at
-//! the OLD storey's Z-band once the view has actually moved.
-//!
-//! Two INDEPENDENT stair links are stacked at the SAME `(x, y) = (5, 5)`
-//! column — link A spans storeys 2 <-> 5, link B spans storeys 3 <-> 6 — so
-//! each contributes the IDENTICAL `ConnectorDelta(+3)` badge at the SAME cell
-//! from its OWN lower endpoint: viewing storey 2 surfaces link A's lower
-//! endpoint; viewing storey 3 surfaces link B's lower endpoint. `CrossLevelSignals`
-//! therefore never ticks `Changed` across that level switch (the derived map is
-//! equal both times), proving the redraw trigger genuinely needs the
-//! `ActiveLevel` input, not just `CrossLevelSignals`.
-
 use bevy::{
     platform::collections::HashSet,
     prelude::{App, Transform, With},
@@ -36,9 +19,6 @@ fn key(x: i32, y: i32, z: u8) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(z))
 }
 
-/// Every currently-drawn [`CrossLevelBadgeTile`]'s world Z — this fixture only
-/// ever surfaces ONE badge cell at a time, so a correct draw always yields
-/// exactly one.
 fn drawn_tile_zs(app: &mut App) -> Vec<f32> {
     let mut query = app
         .world_mut()
@@ -54,13 +34,8 @@ fn active_level_change_alone_redraws_the_badge_at_the_new_storeys_z_band() {
     let mut app = signals_app();
 
     let cell = Cell::new(5, 5);
-    // Link A: the lower endpoint sits on storey 2; viewed from storey 2 it
-    // contributes ConnectorDelta(+3) at `cell`.
     let a_lower = key(5, 5, 2);
     let a_upper = key(5, 5, 5);
-    // Link B: an entirely independent link whose lower endpoint sits on storey
-    // 3, at the SAME `(x, y)`; viewed from storey 3 it contributes the SAME
-    // ConnectorDelta(+3) at `cell`.
     let b_lower = key(5, 5, 3);
     let b_upper = key(5, 5, 6);
 
@@ -83,7 +58,6 @@ fn active_level_change_alone_redraws_the_badge_at_the_new_storeys_z_band() {
     app.world_mut()
         .insert_resource(SquadVisibility::new(explored.clone(), explored));
 
-    // Phase 1 — active storey 2: link A's lower endpoint is on-storey.
     app.world_mut()
         .insert_resource(ActiveLevel::new(Level::new(2)));
     settle(&mut app);
@@ -115,10 +89,6 @@ fn active_level_change_alone_redraws_the_badge_at_the_new_storeys_z_band() {
         "the badge must draw at storey 2's Z-band",
     );
 
-    // Phase 2 — switch the active storey to 3: link B's lower endpoint is now
-    // on-storey, deriving the SAME `ConnectorDelta(+3)` badge at the SAME cell —
-    // `CrossLevelSignals` must be identical to phase 1's (never ticks
-    // `Changed`), yet the drawn Z-band must follow the new active storey.
     *app.world_mut().resource_mut::<ActiveLevel>() = ActiveLevel::new(Level::new(3));
     settle(&mut app);
 

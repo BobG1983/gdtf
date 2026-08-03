@@ -1,6 +1,3 @@
-//! Registry / tables build structure + the canonical-sort determinism — the happy path
-//! over the real `build_injury_data`.
-
 use gdtf_battle_sim::{
     armor::{BodyPart, InjuryCategory},
     injuries::{DamageContext, InjuryName},
@@ -10,11 +7,6 @@ use gdtf_battle_sim::{
 
 use super::support::{add_def, add_folder, add_weighting, app, build, injury_def, weighting};
 
-/// C2/C4: the sample-shaped RON parses, the injury keys resolve from their file stems,
-/// and the weighting folds into a `(part, severity)` table — the happy path.
-///
-/// Pin-discriminating: a broken stem-key strip drops the `lost_eye` entry; a broken
-/// extension partition mis-files the weighting as an injury (or vice-versa).
 #[test]
 fn builds_registry_and_tables_keyed_by_stem() {
     let mut app = app();
@@ -37,38 +29,25 @@ fn builds_registry_and_tables_keyed_by_stem() {
         return;
     };
 
-    // Key resolves from the `.injury.ron` stem.
     let key = InjuryName::new("lost_eye".to_owned());
     assert!(registry.contains(&key), "lost_eye must resolve by stem");
     assert_eq!(registry.len(), 1, "exactly one injury registered");
-    // The weighting folded into the Critical/Head bucket (only tabled buckets exist).
     let bucket = tables.table(BodyPart::Head, DamageContext::Ranged, Severity::Critical);
     assert!(
         bucket.is_some_and(|t| t.iter().any(|r| r.injury == key)),
         "the Critical/Head bucket must hold lost_eye",
     );
-    // No empty bucket is published (the empty Minor/Major lists table nothing).
     assert_eq!(tables.len(), 1, "only the non-empty bucket is tabled");
 }
 
-/// C4/determinism: the built bucket is CANONICALLY SORTED by injury key, so the same
-/// rows authored in EITHER order produce the IDENTICAL table — and a seeded
-/// cumulative-weight pick over that table is therefore enumeration-order-independent
-/// (same seed → same pick). The roll itself is GTW-438; this exercises the table build
-/// + a LOCAL seeded pick over the canonical-sorted rows.
-///
-/// Pin-discriminating: dropping the canonical sort makes the two tables differ and the
-/// two picks diverge for an order-sensitive seed.
 #[test]
 fn canonical_sort_makes_the_seeded_pick_order_independent() {
     let pick = |entries_first: bool| -> Option<InjuryName> {
         let mut app = app();
-        // Two injuries in the same bucket, authored in OPPOSITE orders across the runs.
         let a = injury_def("Alpha", InjuryCategory::Torso, Severity::Major)?;
         let b = injury_def("Bravo", InjuryCategory::Torso, Severity::Major)?;
         let a_h = add_def(&mut app, "content/injuries/torso/alpha.injury.ron", a);
         let b_h = add_def(&mut app, "content/injuries/torso/bravo.injury.ron", b);
-        // The weighting lists the rows in opposite orders depending on the flag.
         let rows: &[(&str, u32)] = if entries_first {
             &[("alpha", 3), ("bravo", 7)]
         } else {
@@ -84,8 +63,6 @@ fn canonical_sort_makes_the_seeded_pick_order_independent() {
         let (_registry, tables) = build(&app, &folder)?;
         let table = tables.table(BodyPart::Torso, DamageContext::Ranged, Severity::Major)?;
 
-        // A LOCAL seeded cumulative-weight pick over the canonical-sorted rows (the
-        // GTW-438 roll's shape, kept local so this test owns no production pick).
         let total: u32 = table.iter().map(|r| *r.weight).sum();
         let mut rng = InjuryRng::from_root(BattleSeed::new(0xDEAD_BEEF));
         let draw: u32 = rng.random_range(0..total);

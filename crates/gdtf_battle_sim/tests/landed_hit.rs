@@ -1,28 +1,3 @@
-//! GTW-304 LANDED-HIT regression test: a ganger shot can actually LAND.
-//!
-//! The bug: `march/dda.rs::impact_at` strikes a ganger only when BOTH the cell's
-//! `occupant` AND its `occupant_band` are `Some`. The change-driven maintenance
-//! (`occupancy_sync::sync_moved_gangers`) published the OCCUPANT but never the BAND,
-//! so every real ganger's `occupant_band` stayed `None`, rounds passed straight
-//! through, and 0 / N shots landed. (The GTW-289 end-to-end test masked this by
-//! calling `set_occupant_band` BY HAND.)
-//!
-//! This test exercises the REAL band-publishing path — it never calls
-//! `set_occupant_band`. It spawns a player shooter and an enemy ganger (each with a
-//! real `Position` + `Stance`) into the live `OccupancyMaintenancePlugin` chain,
-//! runs one `update()` so the production `sync_moved_gangers` publishes each
-//! occupant's stance-derived silhouette band off the grid, then runs the real
-//! `fire()` volley across several seeds and asserts a shot LANDS on the enemy on at
-//! least one seed: the enemy's `Hp` drops OR an `InflictedWound` is recorded.
-//!
-//! On the PRE-FIX code the enemy's band is never published, so `impact_at` returns
-//! `None` for the ganger on every round of every seed → 0 hits → this test FAILS.
-//! After the fix the band is published by `sync_moved_gangers` and hits land.
-//!
-//! Seed-robust: it asserts "hits occur on >= 1 of N seeds", never a pinned damage
-//! magnitude. Every `app.world_mut()` mutation is in a TEST BODY (`bevy-traps.md`
-//! #7 carve-out (a)); no function here takes `&mut World` / `&World`.
-
 use bevy::{
     app::App,
     ecs::system::SystemState,
@@ -57,21 +32,14 @@ use gdtf_battle_sim::{
     },
 };
 
-/// The faithful skirmish-style geometry the contract names: a shooter near (5,6).
 fn shooter_cell() -> CellLevel {
     CellLevel::new(Cell::new(5, 6), Level::new(0))
 }
 
-/// The enemy's cell near (12,9).
 fn enemy_cell() -> CellLevel {
     CellLevel::new(Cell::new(12, 9), Level::new(0))
 }
 
-/// Equip a ganger's six worn-armor-piece entities (one per [`BodyPart`]) at the thin
-/// uniform stats, related via `WornBy` (GTW-323 / ADR-0004). `fire()` resolves the
-/// struck location through `ganger → Wears → the BodyPart-tagged piece`, so a target
-/// must carry its pieces; the relationship hook populates `Wears` synchronously in a
-/// bare `World` spawn.
 fn equip_thin_armor(app: &mut App, ganger: Entity) {
     for part in BodyPart::ALL {
         app.world_mut().spawn((
@@ -86,9 +54,6 @@ fn equip_thin_armor(app: &mut App, ganger: Entity) {
     }
 }
 
-/// Build the real-path app: `MinimalPlugins` + `OccupancyMaintenancePlugin` (whose
-/// `sync_moved_gangers` is the production system that publishes the occupant band),
-/// plus the sim resources `fire()` reads. NO `set_occupant_band` call anywhere.
 fn landed_hit_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
@@ -99,11 +64,6 @@ fn landed_hit_app() -> App {
     app
 }
 
-/// Spawn an armed, alive, loaded, aiming PLAYER-faction shooter at the shooter cell
-/// facing the enemy — the full `ShooterQuery` (`With<Weapon>` + weapon stats) AND
-/// `TargetQuery` (its own liveness reads through the target query) set. A tight
-/// `BaseSpread` + high `Accuracy` + aiming so the cone clusters on the enemy and
-/// some seeds land.
 fn spawn_shooter(app: &mut App, facing: Direction) -> Entity {
     let bundle = WeaponBundle::new(
         WeaponName::new("probe-weapon".to_owned()),
@@ -149,16 +109,10 @@ fn spawn_shooter(app: &mut App, facing: Direction) -> Entity {
             ),
         ))
         .id();
-    // GTW-323 slice 2: the weapon rides on a related weapon entity (`Wields`), not the
-    // ganger; the `WieldedBy` insert hook populates the ganger's `Wields` synchronously
-    // in a bare `World` spawn so the very next `fire()` resolves it.
     app.world_mut().spawn((WieldedBy::new(shooter), bundle));
     shooter
 }
 
-/// Spawn a STANDING enemy ganger at the enemy cell with a real `Position` + `Stance`
-/// (so the production `sync_moved_gangers` publishes its silhouette band) carrying
-/// the full `TargetQuery` battle-surface set.
 fn spawn_enemy(app: &mut App) -> Entity {
     app.world_mut()
         .spawn((
@@ -174,14 +128,8 @@ fn spawn_enemy(app: &mut App) -> Entity {
         .id()
 }
 
-/// Run ONE `fire()` volley at the enemy with a fresh seed `seed`, returning whether
-/// the enemy took an effect (Hp dropped from its pre-fire value OR an
-/// `InflictedWound` was recorded). Reads the maintained grids straight off the world.
 fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) -> bool {
-    /// The `fire()` query tuple, aliased so the `SystemState` type stays under clippy's
-    /// `type_complexity` gate (the GTW-543 mounted-weapon `MountedQuery` addition tipped it over).
-    /// Declared FIRST in the fn so it precedes the `let`s (`items_after_statements`).
-    type FireQueries<'w, 's> = (
+                type FireQueries<'w, 's> = (
         ShooterQuery<'w, 's>,
         TargetQuery<'w, 's>,
         WearsQuery<'w, 's>,
@@ -203,8 +151,6 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
     let mut injury_rng = injury_rng(seed);
     let mode = single_mode(0.2, 1);
 
-    // Snapshot the maintained grids (cloned read views) so the fire's two disjoint
-    // queries can borrow the world mutably without aliasing the resources.
     let occupancy = app
         .world()
         .get_resource::<OccupancyGrid>()
@@ -229,9 +175,6 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
     let mut state: SystemState<FireQueries> = SystemState::new(app.world_mut());
     {
         let world = app.world_mut();
-        // `get_mut` returns a `Result` (Bevy 0.19); the params always validate, so
-        // `Err` is structurally impossible — returning `false` would fail the
-        // calling assertion loudly rather than silently skip the fire.
         let Ok((mut shooters, mut targets, wears, mut pieces, wields, mut weapons, melee, mounted)) =
             state.get_mut(world)
         else {
@@ -278,10 +221,6 @@ fn one_volley_lands(app: &mut App, shooter: Entity, enemy: Entity, seed: u64) ->
     hp_after < hp_before || wounds_after > wounds_before
 }
 
-/// GTW-304 — a real ganger shot LANDS: with the occupant band published by the
-/// production `sync_moved_gangers` (NOT by hand), firing at the enemy across several
-/// seeds drops its Hp / records a wound on at least one seed. On the pre-fix code
-/// the band is never published, so NO seed lands and this test fails.
 #[test]
 fn real_path_ganger_shot_lands_on_at_least_one_seed() {
     let mut app = landed_hit_app();
@@ -294,19 +233,11 @@ fn real_path_ganger_shot_lands_on_at_least_one_seed() {
     let shooter = spawn_shooter(&mut app, facing);
     let enemy = spawn_enemy(&mut app);
     assert_ne!(shooter, enemy, "distinct shooter / enemy entities");
-    // GTW-323: equip each ganger's worn-armor PIECE entities (the combat read+wear
-    // path that `fire()` resolves through `Wears`).
     equip_thin_armor(&mut app, shooter);
     equip_thin_armor(&mut app, enemy);
 
-    // ONE update: the production occupancy-maintenance chain runs. `sync_moved_gangers`
-    // sees both freshly-spawned Positions as `Changed` (first-run semantics) and
-    // publishes each occupant's stance-derived silhouette band off the grid — the
-    // band is published by REAL code, never by `set_occupant_band` here.
     app.update();
 
-    // Sanity: the enemy's band IS published (the fix) — a standing ganger presents
-    // the HIGH band. (Pre-fix this reads `None`.)
     let enemy_band = app
         .world()
         .get_resource::<OccupancyGrid>()
@@ -316,7 +247,6 @@ fn real_path_ganger_shot_lands_on_at_least_one_seed() {
         "the production sync must publish the enemy's occupant band (GTW-304); got {enemy_band:?}",
     );
 
-    // Fire across several seeds; a LANDED hit on >= 1 seed proves rounds now register.
     let seeds: [u64; 8] = [
         0x5A1C_AC75,
         0x0BAD_F00D,

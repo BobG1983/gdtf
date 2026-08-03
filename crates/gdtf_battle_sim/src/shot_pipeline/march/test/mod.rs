@@ -1,6 +1,3 @@
-//! Tests for [`march_vector`](crate::march::march_vector), split by acceptance
-//! criterion (AC #1–#7). Shared fixtures live in [`support`].
-
 mod support;
 
 mod cover;

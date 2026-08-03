@@ -1,6 +1,3 @@
-//! Trait-driven effect application at spawn — `GainFireMode`, Aim, `ExtraAmmo`, and the
-//! empty-list identity, each against a distinctive inline baseline.
-
 use gdtf_battle_sim::{
     effects::attachments::{AimDelta, AttachmentEffect},
     magazine::Magazine,
@@ -12,8 +9,6 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-/// A distinctive second mode a `GainFireMode` attachment grants (a full-auto mode absent from
-/// the single-mode fixture) — never a shipped magnitude.
 const fn granted_burst_mode() -> FireModeSpec {
     FireModeSpec::new(
         ModeKind::Full,
@@ -23,17 +18,14 @@ const fn granted_burst_mode() -> FireModeSpec {
     )
 }
 
-// ── GainFireMode adds a mode ─────────────────────────────────────────────────────
 
 #[test]
 fn gain_fire_mode_effect_adds_a_fire_mode() {
-    // Baseline: the fixture authors exactly ONE mode.
     let (base_app, base_weapon) = spawn_lone_player_weapon(Vec::new());
     let base_modes = base_app
         .world()
         .get::<FireMode>(base_weapon)
         .map(|modes| modes.len());
-    // A GainFireMode attachment appends a second mode.
     let (gain_app, gain_weapon) =
         spawn_lone_player_weapon(vec![AttachmentEffect::GainFireMode(granted_burst_mode())]);
     let gain_modes = gain_app
@@ -49,7 +41,6 @@ fn gain_fire_mode_effect_adds_a_fire_mode() {
         "a GainFireMode attachment adds one mode to the weapon's selector \
          (gained {gain_modes} = baseline {base_modes} + 1)",
     );
-    // The appended mode is the granted one (the Full-auto mode the fixture never authored).
     let has_granted = gain_app
         .world()
         .get::<FireMode>(gain_weapon)
@@ -60,7 +51,6 @@ fn gain_fire_mode_effect_adds_a_fire_mode() {
     );
 }
 
-// ── Aim raises Accuracy (the headline lever) ─────────────────────────────────────
 
 #[test]
 fn aim_effect_raises_accuracy() {
@@ -79,7 +69,6 @@ fn aim_effect_raises_accuracy() {
     );
 }
 
-// ── ExtraAmmo raises the magazine ────────────────────────────────────────────────
 
 #[test]
 fn extra_ammo_effect_grows_the_magazine() {
@@ -103,7 +92,6 @@ fn extra_ammo_effect_grows_the_magazine() {
     );
 }
 
-// ── Empty-slots identity ─────────────────────────────────────────────────────────
 
 #[test]
 fn empty_attachments_spawn_with_no_effects() {

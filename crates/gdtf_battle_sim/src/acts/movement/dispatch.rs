@@ -1,6 +1,3 @@
-//! The constrained move commit dispatcher — plan a reachable affordable route on
-//! each buffered commit and (only then) start the committed walk.
-
 use bevy::prelude::{Commands, Entity, MessageReader, MessageWriter, Query, Res};
 
 use super::{
@@ -23,17 +20,6 @@ use crate::{
     visibility::{FactionRelation, OmniscientFog, SquadVisibility, move_fog},
 };
 
-/// The faction relation of `occupant` **relative to** `mover_faction` — same gang is
-/// [`FactionRelation::OwnSquad`], any other (or an occupant with no [`Faction`]) is
-/// [`FactionRelation::Other`] (C1).
-///
-/// This is the [`PlanningView`] occupant→relation resolver, built per-commit from the
-/// mover's faction and the live `&`[`Faction`] query. An occupant entity that is not a
-/// faction ganger (an unexpected non-ganger occupant) maps to [`FactionRelation::Other`]
-/// — the conservative classification: the gate then only blocks it when its cell is
-/// squad-VISIBLE (it never silently blocks an unseen non-ganger). For the PLAYER mover
-/// this is exactly "relative to the player squad", which is the relation
-/// [`is_ganger_visible`](crate::visibility::is_ganger_visible) consumes.
 fn relation_to(
     factions: &Query<&'static Faction>,
     mover_faction: Faction,
@@ -45,58 +31,6 @@ fn relation_to(
     }
 }
 
-/// **Dispatch** buffered [`MoveRequested`] commits — for each, plan a reachable affordable
-/// route and (only then) START the committed step-by-step walk (E7 · GTW-12f / GTW-12g;
-/// GTW-354 added the route+affordability gate, GTW-355 made the accept start a walk
-/// instead of jumping to the destination).
-///
-/// Per drained [`MoveRequested`] (the COMMIT — C2), the SINGLE constrained writer:
-///
-/// 1. fetches the mover's `(&`[`Position`]`, &`[`Tu`]`, &`[`Faction`]`)` (a message for an
-///    actor missing any of these is SKIPPED — fail-closed, no panic, the `dispatch_*`
-///    precedent; no [`MoveRejected`] for a guard skip); it reads, never mutates — the
-///    [`Position`] / [`Tu`] mutation now lives in the walk;
-/// 2. builds the GTW-353 [`PlanningView`] from the LIVE world — the [`SquadVisibility`]
-///    resource plus an occupant→[`FactionRelation`] resolver (`relation_to`) closed over
-///    the mover's faction and the `&`[`Faction`] query (C1) — and runs [`find_path`] from
-///    the mover's cell to `request.dest` over the [`OccupancyGrid`], the
-///    [`VerticalLinkGraph`], and the per-cell [`FloorCostGrid`] (GTW-396: the per-tile
-///    floor move cost, replacing the coarse `move_costs` table; the flat
-///    [`LinkTu`](crate::tuning::LinkTu) from [`CombatTuning`] still prices a link hop);
-/// 3. on [`PathBlocked`](crate::pathfinder::PathBlocked) emits a TYPED
-///    [`MoveRejected`]`(`[`MoveRejection::Unreachable`]`)` and starts NOTHING (this kills the
-///    pre-GTW-354 any-empty-cell teleport — C1);
-/// 4. GTW-537 — if the mover is [`Suppressed`], gates the CHOSEN destination through
-///    `suppressed_move_legal` (strictly farther from the
-///    [`SuppressorCell`](crate::ganger::SuppressorCell) by the Chebyshev metric AND behind
-///    cover relative to the suppressor); an illegal destination is a HARD reject —
-///    [`MoveRejected`]`(`[`MoveRejection::Suppressed`]`)`, NO step, NO clamp. An UNSUPPRESSED
-///    mover skips this gate entirely (the identity path);
-/// 5. performs ONE up-front full-route **affordability** gate
-///    (`docs/combat/visibility.md` §48) — [`can_spend_tu`] against the [`Path::total`](crate::pathfinder::Path::total)
-///    — emitting [`MoveRejected`]`(`[`MoveRejection::Unaffordable`]`)` and starting NOTHING
-///    when the mover cannot afford the whole route (C3, NO walk); and
-/// 6. ONLY on a reachable affordable route STARTS the walk (GTW-355, C6): it attaches a
-///    [`WalkInProgress`](crate::acts::movement::WalkInProgress) holding the route AHEAD
-///    (`path.cells()[1..]`) and its planned per-step entry costs
-///    ([`path.steps()`](crate::pathfinder::Path::steps), the §48 bit-identity source). The
-///    landed [`advance_walk`](crate::acts::movement::advance_walk) system then walks it ONE
-///    discrete cell per tick — bump-stopping, charging per step, halting on reveal /
-///    interrupt. A degenerate `start == goal` route (one cell) attaches NO walk.
-///
-/// The up-front gate is a CHECK, not a charge: the only TU spend is the walk's per-step
-/// charge (`find_path` itself never charges TU — it plans and totals; §48). This system
-/// does NOT write [`Position`] or [`Tu`] (the walk does), so the old single-frame jump is
-/// gone — no teleport-to-destination remains.
-///
-/// Param-only (`Query` / `Res` / `MessageReader` / `MessageWriter` / `Commands`) — no
-/// `&mut World` (`bevy-traps.md` #7). It READS the grids (`Res<OccupancyGrid>` /
-/// `Res<VerticalLinkGraph>`) and the squad fog (`Res<SquadVisibility>`) for the route gate.
-/// This system is ordered `.after(`the `occupancy_sync` maintenance chain`)` in the
-/// [`SimSystems::Simulate`](crate::occupancy_sync::SimSystems::Simulate) set (C5 /
-/// `bevy-traps.md` #3) so [`find_path`] plans over a grid whose occupant slots have already
-/// settled this frame; `advance_walk` is ordered `.after(dispatch_move)` so the first walk
-/// step lands the same frame as the accept.
 #[expect(
     clippy::too_many_arguments,
     reason = "the constrained move dispatch genuinely needs the actor query + the disjoint \
@@ -117,24 +51,13 @@ pub fn dispatch_move(
         Option<&'static InflictedInjuries>,
     )>,
     factions: Query<&'static Faction>,
-    // GTW-537: the mover's suppression state (if any). A DISJOINT read-only query (the actor
-    // query never reads `Suppressed`), used to gate a PINNED mover's destination BEFORE the
-    // walk starts. An UNSUPPRESSED mover has no `Suppressed` component, so `get` errs and the
-    // gate is skipped — the identity path, identical to the pre-GTW-537 dispatch.
     suppressed: Query<&'static Suppressed>,
     grid: Res<OccupancyGrid>,
     links: Res<VerticalLinkGraph>,
     squad: Res<SquadVisibility>,
     tuning: Res<CombatTuning>,
     floor_costs: Res<FloorCostGrid>,
-    // GTW-537: the cover ledger — peeked at the cell one step from the destination toward the
-    // suppressor to decide whether a pinned mover ends BEHIND COVER (read-only).
     cover: Res<CoverLedger>,
-    // GTW-70: the faction-aware move-gate inputs. The player faction (to know if the mover
-    // IS the player) and the AI's omniscient move fog, both battle-lifetime — taken as
-    // `Option<Res<_>>` so a harness without them (no live battle) falls back to the player
-    // fog, keeping player movement identical to the pre-GTW-70 single-fog gate
-    // (`bevy-traps.md` #1).
     player: Option<Res<PlayerFaction>>,
     omniscient: Option<Res<OmniscientFog>>,
     mut rejects: MessageWriter<MoveRejected>,
@@ -142,34 +65,16 @@ pub fn dispatch_move(
 ) {
     for request in requests.read() {
         let Ok((position, tu, &mover_faction, injuries)) = actors.get(request.actor) else {
-            // Fail-closed guard skip (no MoveRejected): a message for an actor missing a
-            // queried component is silently dropped, the `dispatch_*` precedent.
             continue;
         };
 
-        // GTW-444: the mover's per-ganger movement-cost factor (the "Hampered" slowdown),
-        // read from its InflictedInjuries ledger — IDENTITY (1.0, no scaling) when the
-        // ganger has no injury ledger or no MovementCostMul. The SAME factor scales
-        // find_path's per-step costs AND (via the planned Path::steps the walk charges
-        // verbatim) advance_walk's per-step TU charge, so preview == charge (C3).
         let factor = injuries.map_or(
             MovementCostFactor::IDENTITY,
             InflictedInjuries::movement_cost_factor,
         );
 
-        // The mover's current cell — the route's start. (Routing is from where the mover
-        // STANDS, so it keeps the storey.) `Position` derefs to the `CellLevel` `find_path`
-        // expects (one deref — NOT the inner `IVec3`).
         let start: CellLevel = **position;
 
-        // GTW-70: select the planning fog by MOVER FACTION through the shared `move_fog`
-        // selector — the player moves on the squad fog (unchanged from GTW-353), a
-        // non-player mover (the AI) on the omniscient fog so it routes toward the player's
-        // true cell without being gated by the *player's* fog (the reposition-soft-lock
-        // fix). The enemy AI pre-checks against the IDENTICAL `move_fog` selection, so
-        // planner and executor share ONE fog and cannot drift. A harness without the
-        // player faction / omniscient fog (no live battle) falls back to the squad fog,
-        // preserving the pre-GTW-70 gate exactly.
         let player_fog: &SquadVisibility = &squad;
         let planning_fog: &SquadVisibility = match (player.as_deref(), omniscient.as_deref()) {
             (Some(player), Some(omniscient)) => {
@@ -178,17 +83,10 @@ pub fn dispatch_move(
             _ => player_fog,
         };
 
-        // C1: build the GTW-353 visibility-gated planning view from the LIVE world — the
-        // selected fog + the per-commit occupant→relation resolver (closed over the mover's
-        // faction and the disjoint `&Faction` query). UNSEEN cells are non-routable; a
-        // visible enemy / own-squad ganger blocks; EXPLORED stays routable.
         let planning = PlanningView::new(planning_fog, |occupant| {
             relation_to(&factions, mover_faction, occupant)
         });
 
-        // C1: plan the route. No route → typed Unreachable reject, NO step (this kills the
-        // pre-GTW-354 any-empty-cell teleport). GTW-396: floor_costs replaces the coarse
-        // move_costs table as the per-step cost source inside find_path.
         let Ok(path) = find_path(
             start,
             request.dest,
@@ -203,28 +101,13 @@ pub fn dispatch_move(
             continue;
         };
 
-        // GTW-537: the SUPPRESSED-movement strictness gate (F-movement, HARD reject). A pinned
-        // mover may step ONLY to a destination that is BOTH strictly farther from the
-        // SuppressorCell (the sim's Chebyshev metric) AND ends behind cover relative to the
-        // suppressor. An illegal destination is a HARD reject — no clamp, no partial step. An
-        // UNSUPPRESSED mover has no `Suppressed` component (the `get` errs), so this gate is
-        // skipped entirely: the identity path (identical to the pre-GTW-537 dispatch). The
-        // check is against `request.dest` (the CHOSEN destination), applied BEFORE the walk is
-        // started, so a rejected suppressed mover never takes a step.
         if let Ok(suppressed) = suppressed.get(request.actor) {
-            // `suppressed.from` is a `SuppressorCell`; deref through the newtype to the
-            // `&CellLevel` the gate helpers take (the crate's `Deref`-newtype read path).
             if !*suppressed_move_legal(&start, &request.dest, &suppressed.from, &cover) {
                 rejects.write(MoveRejected::new(request.actor, MoveRejection::Suppressed));
                 continue;
             }
         }
 
-        // C3: ONE up-front full-route affordability gate (§48; GTW-354) — the planned
-        // total vs the mover's Tu. Unaffordable → typed reject, NO walk started (the mover
-        // stays put). This is a CHECK, not a charge — the per-step charges land in the walk
-        // and always succeed (the up-front gate guarantees the whole route is payable, and
-        // strictly turn-based play means nothing spends the mover's TU mid-walk).
         if !*can_spend_tu(tu, path.total()) {
             rejects.write(MoveRejected::new(
                 request.actor,
@@ -233,17 +116,6 @@ pub fn dispatch_move(
             continue;
         }
 
-        // Reachable AND affordable → START the committed step-by-step walk (GTW-355, C6).
-        // The accept no longer JUMPS the mover to the destination (the old single-frame
-        // move_ganger teleport): it attaches a WalkInProgress holding the route AHEAD
-        // (`cells[1..]`) and the planned per-step entry costs (`Path::steps()`, the §48
-        // bit-identity source), which `advance_walk` then walks ONE discrete cell per tick
-        // — bump-stopping on live obstacles, charging each step atomically with its
-        // Position write, and halting on a reveal or a reaction interrupt. The per-step
-        // Position writes are the discrete steps the presenter will tween (the visual tween
-        // itself is a presenter follow-up, OUT OF SCOPE — GTW-355 C4). A degenerate
-        // `start == goal` route (one cell, no steps) attaches no walk — there is nothing to
-        // walk, and MovementOccurred is emitted only on a real step.
         let cells = path.cells();
         if cells.len() > 1 {
             commands

@@ -1,7 +1,3 @@
-//! Tests for [`has_los`](crate::los::has_los), split by acceptance criterion. Shared
-//! fixtures live in [`support`]. No `App`, no RNG — hand-built grids (the sim-unit
-//! idiom).
-
 mod support;
 
 mod asymmetry;

@@ -1,6 +1,3 @@
-//! What a launch call reads — the port, the recipe, the host's defaults — and what it
-//! hands the lifecycle.
-
 use serde_json::json;
 
 use super::support::{RecordingLink, StubLifecycle, a_directory_that_is_not_the_hosts};
@@ -17,7 +14,6 @@ use crate::{
     },
 };
 
-/// An explicit `port` argument parses to that port; a too-large one is rejected.
 #[test]
 fn parse_port_reads_explicit_and_rejects_out_of_range() {
     let Ok(port) = parse_port(QaHost::Game, &json!({ "port": 4321 })) else {
@@ -28,8 +24,6 @@ fn parse_port_reads_explicit_and_rejects_out_of_range() {
     assert!(parse_port(QaHost::Game, &json!({ "port": "nope" })).is_err());
 }
 
-/// A successful launch re-points the game link at the launched port and renders a
-/// non-error block.
 #[test]
 fn handle_launch_retargets_link_and_renders_launched() {
     let mut lifecycle = StubLifecycle::launching(LaunchOutcome::Launched {
@@ -51,8 +45,6 @@ fn handle_launch_retargets_link_and_renders_launched() {
     assert!(text.contains("4321"), "rendered: {text}");
 }
 
-/// The recipe arguments reach the lifecycle, and the rendered result reports the package,
-/// features, and directory the launch actually ran with.
 #[test]
 fn handle_launch_passes_the_recipe_through_and_reports_it() {
     let dir = a_directory_that_is_not_the_hosts();
@@ -91,12 +83,9 @@ fn handle_launch_passes_the_recipe_through_and_reports_it() {
     };
     assert!(text.contains("dev_tools"), "rendered: {text}");
     assert!(text.contains("grimdark_turfwar"), "rendered: {text}");
-    // The VALUE, not just the key: a caller reads which checkout is under test off this.
     assert!(text.contains(shown), "rendered: {text}");
 }
 
-/// A recipe argument of the wrong shape is an invalid-params rejection, not a silent
-/// fallback to the default recipe.
 #[test]
 fn a_bad_recipe_argument_is_rejected_before_any_launch() {
     let mut lifecycle = StubLifecycle::launching(LaunchOutcome::Launched {
@@ -118,13 +107,6 @@ fn a_bad_recipe_argument_is_rejected_before_any_launch() {
     );
 }
 
-/// A `launch` naming the EDITOR host hands the lifecycle the EDITOR's recipe, and the reply
-/// names it.
-///
-/// The two hosts' defaults — package, port, and the pair of environment variables the child
-/// reads — differ, and `host` is the only thing that picks between them (GTW-943 collapsed
-/// the two launch tools into this one argument). A swapped lookup would launch the game and
-/// report it as the editor.
 #[test]
 fn handle_launch_for_the_editor_uses_the_editor_recipe() {
     let mut lifecycle = StubLifecycle::launching(LaunchOutcome::Launched {
@@ -150,9 +132,6 @@ fn handle_launch_for_the_editor_uses_the_editor_recipe() {
     assert!(text.contains("7617"), "rendered: {text}");
 }
 
-/// Stopping with nothing running renders a typed non-error `not_running` result — and the
-/// handler hands the lifecycle the host's PORT, so that answer rests on an established
-/// fact rather than on the host owning no handle (GTW-926).
 #[test]
 fn handle_stop_not_running_is_typed_result() {
     let mut lifecycle = StubLifecycle::launching(LaunchOutcome::Failed(LaunchFailure::Spawn(
@@ -177,11 +156,6 @@ fn handle_stop_not_running_is_typed_result() {
     );
 }
 
-/// EACH stop tool is handed ITS OWN host's port (GTW-926 clause 4).
-///
-/// The two hosts listen on different ports, so a handler that probed one fixed port would
-/// leave the other host's orphan invisible — and the reported defect was on the EDITOR's
-/// port, a `stop(host="editor")` answering `not_running` about a live child on 7617.
 #[test]
 fn each_stop_tool_is_handed_its_own_hosts_port() {
     assert_ne!(
@@ -205,8 +179,6 @@ fn each_stop_tool_is_handed_its_own_hosts_port() {
     }
 }
 
-/// A stop that adopted and stopped an ORPHAN reports it as an orphan, with the port and the
-/// process — never as `not_running` (GTW-926).
 #[test]
 fn a_stopped_orphan_is_reported_as_an_orphan() {
     let rendered = render_stop(
@@ -226,8 +198,6 @@ fn a_stopped_orphan_is_reported_as_an_orphan() {
     assert!(!text.contains("not_running"), "rendered: {text}");
 }
 
-/// An orphan that could NOT be stopped is a tool error naming the port and the host —
-/// the caller's next step is not the same as after a clean stop (GTW-926).
 #[test]
 fn an_orphan_that_survives_is_a_tool_error() {
     let rendered = render_stop(
@@ -246,9 +216,6 @@ fn an_orphan_that_survives_is_a_tool_error() {
     assert!(!text.contains("not_running"), "rendered: {text}");
 }
 
-/// A launch into a port an orphan already holds renders the orphan — the port, the process,
-/// and the stop tool to call — instead of a success (GTW-926). Asserted for the EDITOR
-/// host, whose own stop call the message must name.
 #[test]
 fn a_launch_into_a_held_port_reports_the_orphan() {
     let mut lifecycle =

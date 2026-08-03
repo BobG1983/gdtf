@@ -1,8 +1,3 @@
-//! Drives the staged procgen pipeline across frames while the stepper is engaged: engages
-//! it `OnEnter(BattleScapeState::Generation)`, advances it from the latched command / the
-//! Auto timer each `Update`, and finishes it — writing the SAME `SetupBattleRequested` the
-//! normal path writes — once the drive completes.
-
 use bevy::prelude::*;
 use gdtf_assets::ContentIntegrityReport;
 use gdtf_battle_sim::{
@@ -22,27 +17,12 @@ use crate::states::{
     },
 };
 
-/// The authored inputs the staged drive needs to FINISH exactly like `request_battle_setup`
-/// would: the authored [`Situation`] (merged over the generated terrain once the drive
-/// completes) and the [`BattleSeed`] the battle's RNG is seeded from — the SAME one
-/// [`StagedProcgen`]'s RNG was derived from.
-///
-/// `pub(super)`, not private: [`finish_stepper_drive`] is `pub(super)` (called from
-/// `super::plugin`), so its `Option<Res<ProcgenStepperContext>>` parameter must be at least
-/// as visible as the function itself (`private_interfaces`) — even though no OTHER module
-/// ever spells this type's name.
 #[derive(Resource, Debug, Clone)]
 pub(super) struct ProcgenStepperContext {
-    /// The authored battlefield (gangers / spawn / `player_faction` / fields) the generated
-    /// terrain is merged over once the drive completes.
-    authored: Situation,
-    /// The per-battle seed — the SAME one the driver's RNG was derived from.
-    seed:     BattleSeed,
+            authored: Situation,
+        seed:     BattleSeed,
 }
 
-/// `OnEnter(BattleScapeState::Generation)`, registered only while the stepper is enabled:
-/// resolve the SAME authored situation + seed `request_battle_setup` would, start a fresh
-/// [`StagedProcgen`] drive, and reset the command/Auto-run/timer state for this battle.
 pub(super) fn engage_stepper(
     loaded: Option<Res<LoadedSituation>>,
     seed_override: Option<Res<BattleSeed>>,
@@ -57,11 +37,6 @@ pub(super) fn engage_stepper(
     commands.insert_resource(AutoStepTimer::default());
 }
 
-/// `Update`, registered only while the stepper is enabled: apply the latched command (Next /
-/// Skip) if one is pending, else tick the Auto-run timer and advance one stage when it fires.
-///
-/// A pending command WINS over Auto this frame (checked first, and returns before ticking
-/// the timer) so a Next/Skip press never double-advances alongside a same-frame Auto tick.
 #[expect(
     clippy::too_many_arguments,
     reason = "one system drives the whole per-frame advance decision: the driver + the two \
@@ -126,12 +101,6 @@ pub(super) fn advance_stepper_drive(
     }
 }
 
-/// `Update`, registered only while the stepper is enabled, ordered `.after(advance_stepper_drive)`:
-/// once the drive is done, finish it through the SAME deploy / finding-conversion helpers
-/// `request_battle_setup` uses — including DEPLOYING the authored roster onto the generated map
-/// ([`deploy_over_generated`], GTW-765) so a stepper-started battle has gangers, not terrain
-/// alone — write the SAME `SetupBattleRequested`, and clear every stepper resource this
-/// Generation span inserted.
 pub(super) fn finish_stepper_drive(
     driver: Option<Res<StagedProcgen>>,
     context: Option<Res<ProcgenStepperContext>>,
@@ -147,17 +116,10 @@ pub(super) fn finish_stepper_drive(
     }
 
     let outcome = if let Some(emitted) = driver.emitted() {
-        // GTW-765: DEPLOY the roster onto the generated map (the same fail-closed
-        // `deploy_over_generated` the normal path runs), not the terrain-only merge — so a
-        // stepper-started battle has gangers. A deployment failure rides `outcome.deployment_error`
-        // exactly as the normal path handles it (below), never a panic.
         deploy_over_generated(context.authored.clone(), emitted.clone(), context.seed)
     } else if let Some(err) = driver.failure() {
         outcome_from_packing_error(context.authored.clone(), err)
     } else {
-        // `is_done()` guarantees `emitted()` or `failure()` is `Some` (the StagedProcgen
-        // invariant) — this arm is unreachable in practice; return rather than panic/
-        // unreachable! so a future driver change fails closed instead of aborting.
         return;
     };
 
@@ -167,12 +129,6 @@ pub(super) fn finish_stepper_drive(
         }
     }
 
-    // GTW-765 / GTW-744: FAIL CLOSED on a typed roster-deployment failure exactly as the normal
-    // `request_battle_setup` does — write NO `SetupBattleRequested`, so the sim never signals
-    // `BattleReady` and the machine stays in Generation rather than starting a battle with no
-    // deployed gangers. Clear the stepper resources first so this per-`Update` system stops
-    // re-running (unlike the normal one-shot `OnEnter` path, it would otherwise re-record the
-    // finding every frame).
     if let Some(err) = &outcome.deployment_error {
         error!(
             "procgen could not deploy the roster into its deployment zone ({err}); the \
@@ -187,14 +143,10 @@ pub(super) fn finish_stepper_drive(
     remove_stepper_resources(&mut commands);
 }
 
-/// `OnExit(BattleScapeState::Generation)` safety net: clear every stepper resource this
-/// Generation span may still hold, so nothing leaks into a re-entry (bevy-traps #1). A no-op
-/// on the normal completion path (`finish_stepper_drive` already removed them).
 pub(super) fn cleanup_stepper_drive(mut commands: Commands) {
     remove_stepper_resources(&mut commands);
 }
 
-/// The shared remove list [`finish_stepper_drive`] and [`cleanup_stepper_drive`] both apply.
 fn remove_stepper_resources(commands: &mut Commands) {
     commands.remove_resource::<StagedProcgen>();
     commands.remove_resource::<ProcgenStepperContext>();

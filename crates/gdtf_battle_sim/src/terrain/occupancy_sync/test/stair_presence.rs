@@ -1,6 +1,3 @@
-//! GTW-391 — dual-cell stair presence REGISTRATION rules: which occupants write
-//! an upper-cell presence, and which stay lower-only.
-
 use super::support::*;
 use crate::{
     cover::HeightBand,
@@ -9,8 +6,6 @@ use crate::{
     occupancy::OccupancyGrid,
 };
 
-/// GTW-391 Test 1: a Standing ganger on a stair tile registers BOTH the lower cell
-/// (correct stance band) AND the upper cell (Low band) after the first tick.
 #[test]
 fn standing_stair_occupant_registers_upper_low_band() {
     let mut app = headless_app();
@@ -52,10 +47,6 @@ fn standing_stair_occupant_registers_upper_low_band() {
     );
 }
 
-/// GTW-391 C2: a Crouching ganger on a stair tile registers BOTH the lower cell
-/// (Crouching's Mid silhouette band) AND the upper cell (Low band) after the first
-/// tick — the guard is `stance_kind != StanceKind::Prone`, so any non-prone stance
-/// gets the upper presence, not only Standing.
 #[test]
 fn crouching_stair_occupant_registers_upper_low_band() {
     let mut app = headless_app();
@@ -97,13 +88,10 @@ fn crouching_stair_occupant_registers_upper_low_band() {
     );
 }
 
-/// GTW-391 Test 4: a ground shooter's lower-cell path is unchanged — no upper
-/// presence on a non-stair cell.
 #[test]
 fn non_stair_occupant_lower_only() {
     let mut app = headless_app();
     let at = key(5, 5, 0);
-    // NOT marked as a stair — the upper cell must remain empty.
     let upper = key(5, 5, 1);
 
     let ganger = app
@@ -126,7 +114,6 @@ fn non_stair_occupant_lower_only() {
     assert_eq!(grid_band(&app, upper), None);
 }
 
-/// GTW-391 Test 5: a Prone ganger on a stair tile has NO upper-cell presence.
 #[test]
 fn prone_stair_occupant_has_no_upper_presence() {
     let mut app = headless_app();
@@ -155,13 +142,11 @@ fn prone_stair_occupant_has_no_upper_presence() {
     assert_eq!(grid_band(&app, upper), None);
 }
 
-/// GTW-391 Test 10: a stair tile at the top storey (`MAX_LEVELS - 1`) writes no
-/// upper presence — `upper_cell` returns `None` at the ceiling.
 #[test]
 fn top_storey_stair_occupant_lower_only() {
     use crate::metric::MAX_LEVELS;
     let mut app = headless_app();
-    let top = key(2, 2, MAX_LEVELS - 1); // last valid storey
+    let top = key(2, 2, MAX_LEVELS - 1); 
 
     mark_stair(&mut app, top);
 
@@ -177,8 +162,6 @@ fn top_storey_stair_occupant_lower_only() {
     app.update();
 
     assert_eq!(grid_occupant(&app, top), Some(ganger));
-    // No upper cell exists above the top storey — register_stair_presence returns None.
-    // The out-of-range key is graceful (no panic, no write).
     let non_existent_upper = key(2, 2, MAX_LEVELS);
     assert_eq!(
         grid_occupant(&app, non_existent_upper),
@@ -187,8 +170,6 @@ fn top_storey_stair_occupant_lower_only() {
     );
 }
 
-/// GTW-391 Test 12: when the upper cell is already occupied by a DIFFERENT entity,
-/// the stair ganger gets lower-only registration — the occupancy guard (Blocker 3).
 #[test]
 fn stair_occupant_with_occupied_upper_cell_is_lower_only() {
     let mut app = headless_app();
@@ -197,7 +178,6 @@ fn stair_occupant_with_occupied_upper_cell_is_lower_only() {
 
     mark_stair(&mut app, stair);
 
-    // Ganger B occupies the upper cell as its OWN lower cell (it stands on level 2).
     let ganger_b = app
         .world_mut()
         .spawn((
@@ -214,7 +194,6 @@ fn stair_occupant_with_occupied_upper_cell_is_lower_only() {
         "ganger B must occupy the upper cell before A registers",
     );
 
-    // Now spawn ganger A on the stair — its upper cell is blocked by B.
     let ganger_a = app
         .world_mut()
         .spawn((
@@ -237,7 +216,6 @@ fn stair_occupant_with_occupied_upper_cell_is_lower_only() {
         "ganger B's slot must NOT be stomped by A (occupancy guard, GTW-391 Test 12)",
     );
 
-    // Move A off the stair — B's slot must remain intact.
     let dest = key(21, 21, 1);
     if let Some(mut pos) = app.world_mut().get_mut::<Position>(ganger_a) {
         *pos = Position::new(dest);
@@ -251,8 +229,6 @@ fn stair_occupant_with_occupied_upper_cell_is_lower_only() {
     );
 }
 
-/// GTW-391 Test 13: `build_from_occupancy_input` with a stair-cell set registers the
-/// upper presence AT PLACEMENT (frame 0 — Blocker 2 resolved).
 #[test]
 fn initial_placement_on_stair_registers_upper() {
     use bevy::{ecs::world::World, platform::collections::HashSet};
@@ -271,10 +247,8 @@ fn initial_placement_on_stair_registers_upper() {
         occupants: vec![OccupantPlacement::new(lower, entity, HeightBand::High)],
     };
 
-    // Build the grid — this must register the upper presence synchronously.
     let grid = OccupancyGrid::build_from_occupancy_input(&input, &stair_cells);
 
-    // Assert WITHOUT any app.update() — the upper presence is frame-0 (Blocker 2).
     assert_eq!(
         grid.occupant(&lower),
         Some(entity),

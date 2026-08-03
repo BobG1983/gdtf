@@ -1,13 +1,6 @@
-//! AC: the eye is facing-neutral — rotating ONLY the observer's `Facing` (same
-//! `Position` + `Stance`) changes neither the eye anchor nor the `has_los` verdict
-//! (GTW-337 clause 3). FOV is omni-directional: a watcher facing away still SEES.
-
 use super::support::*;
 use crate::{ganger::Direction, los::probe::eye_anchor};
 
-/// Rotating only the observer's facing across all eight directions leaves the eye
-/// anchor BIT-IDENTICAL — the eye reads `cell_center + per-stance muzzle height`, never
-/// the per-facing forward offset.
 #[test]
 fn eye_anchor_is_facing_invariant() {
     let tuning = CombatTuning::default();
@@ -59,9 +52,6 @@ fn eye_anchor_is_facing_invariant() {
     }
 }
 
-/// Rotating only the observer's facing leaves the `has_los` VERDICT unchanged — proven
-/// against a geometry that is genuinely blocked (a HIGH wall strictly between), so the
-/// invariant holds for a non-trivial verdict, not just an open line.
 #[test]
 fn verdict_is_facing_invariant() {
     let tuning = CombatTuning::default();
@@ -109,8 +99,6 @@ fn verdict_is_facing_invariant() {
         verdicts.windows(2).all(|w| w[0] == w[1]),
         "the has_los verdict must be identical across all observer facings, got {verdicts:?}",
     );
-    // And the underlying geometry is non-trivially BLOCKED (the wall stops it), so this
-    // is not a vacuous all-CLEAR.
     assert!(
         !verdicts[0],
         "the control geometry must be BLOCKED (a HIGH wall between)"

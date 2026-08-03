@@ -1,5 +1,3 @@
-//! Per-act contextual intents: enter / exit emplacement (GTW-543 / GTW-571).
-
 use gdtf_battle_input::{
     SelectedShooter,
     contextual::{EnterEmplacementAct, ExitEmplacementAct, PendingContextualIntents},
@@ -12,21 +10,7 @@ use gdtf_test_utils::probed;
 
 use super::harness::*;
 
-// ---------------------------------------------------------------------------------
-// GTW-543 / GTW-571 — pushing an emplacement onto the per-act contextual queues
-// (PendingContextualIntents<EnterEmplacementAct> / <ExitEmplacementAct>) emits exactly
-// one EnterEmplacementRequested / ExitEmplacementRequested for the SelectedShooter as
-// the actor over the carried emplacement; with no selection nothing is written (the
-// drain resolves the actor from the selection).
-// ---------------------------------------------------------------------------------
 
-/// GTW-543 / GTW-571 — pushing `emplacement` onto
-/// `PendingContextualIntents<EnterEmplacementAct>` with a selected player actor emits
-/// EXACTLY one `EnterEmplacementRequested { actor, emplacement }` through the act's generic
-/// `drain_contextual_intents` drain, the actor being the `*SelectedShooter` and the
-/// emplacement the carried terrain entity (the Enter affordance surrogate, over the GTW-571
-/// per-act contextual queue). The sim's `dispatch_enter_emplacement` gate (VACANT +
-/// 8-adjacent + affords `EnterEmplacementTu`) is the authoritative check, not this layer.
 #[test]
 fn enter_emplacement_intent_emits_request_for_selection_over_carried_emplacement() {
     let mut app = acts_app();
@@ -38,8 +22,6 @@ fn enter_emplacement_intent_emits_request_for_selection_over_carried_emplacement
         Direction::North,
     );
     select_ganger(&mut app, actor);
-    // The emplacement target entity — only its identity matters at this point (the sim's
-    // EmplacementState/adjacency/TU gate is the authoritative check, not this layer).
     let emplacement = app.world_mut().spawn_empty().id();
 
     app.world_mut()
@@ -60,14 +42,10 @@ fn enter_emplacement_intent_emits_request_for_selection_over_carried_emplacement
     );
 }
 
-/// GTW-543 — with the selection cleared (`SelectedShooter(None)`), pushing the enter-emplacement
-/// intent writes NOTHING (the drain resolves the actor from the selection and is a no-op without
-/// one — the same fail-closed shape as the `OpenDoor` / `Execute` arms).
 #[test]
 fn enter_emplacement_intent_emits_nothing_without_selection() {
     let mut app = acts_app();
     add_probes(&mut app);
-    // An emplacement target exists but there is NO selected actor.
     let emplacement = app.world_mut().spawn_empty().id();
     app.world_mut().insert_resource(SelectedShooter::cleared());
 
@@ -82,14 +60,6 @@ fn enter_emplacement_intent_emits_nothing_without_selection() {
     );
 }
 
-/// GTW-543 / GTW-571 — pushing `emplacement` onto
-/// `PendingContextualIntents<ExitEmplacementAct>` with a selected player actor emits EXACTLY
-/// one `ExitEmplacementRequested { actor, emplacement }` through the act's generic
-/// `drain_contextual_intents` drain, the actor being the `*SelectedShooter` and the
-/// emplacement the carried terrain entity (the Exit affordance surrogate, over the GTW-571
-/// per-act contextual queue). The sim's `dispatch_exit_emplacement` gate (the recorded
-/// occupant IS the actor + affords `ExitEmplacementTu`) is the authoritative check, not this
-/// layer.
 #[test]
 fn exit_emplacement_intent_emits_request_for_selection_over_carried_emplacement() {
     let mut app = acts_app();
@@ -121,8 +91,6 @@ fn exit_emplacement_intent_emits_request_for_selection_over_carried_emplacement(
     );
 }
 
-/// GTW-543 — with the selection cleared, pushing the exit-emplacement intent writes NOTHING (the
-/// drain resolves the actor from the selection and is a no-op without one).
 #[test]
 fn exit_emplacement_intent_emits_nothing_without_selection() {
     let mut app = acts_app();

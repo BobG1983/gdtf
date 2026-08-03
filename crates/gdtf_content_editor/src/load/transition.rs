@@ -1,6 +1,3 @@
-//! `Update` (during [`EditorState::Load`](crate::EditorState)): leave `Load` for
-//! `Editing` once all registries + the tile-role table are present.
-
 use bevy::prelude::*;
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
@@ -15,58 +12,29 @@ use gdtf_content_families::sprites::SpriteDefRegistry;
 
 use crate::EditorState;
 
-/// Transitions [`EditorState::Load`] → [`EditorState::Editing`] once the legacy
-/// [`WeaponRegistry`] / [`ArmorRegistry`], the (GTW-487) NEW [`TerrainDefRegistry`] /
-/// [`UuidThemeRegistry`], the (GTW-636) GANG mode's [`GangRegistry`] /
-/// [`MeleeWeaponRegistry`], the (GTW-654) INJURY mode's [`InjuryRegistry`] /
-/// [`InjuryTables`] pair, the (GTW-663) [`SpriteDefRegistry`] — since GTW-665 also the
-/// resolution source for every terrain graphic — and the (GTW-669) ATTACHMENT mode's
-/// [`AttachmentRegistry`] are all inserted (each family registration
-/// inserts its resource on success OR on its empty failure fallback —
-/// GTW-579 C4b — so this is reached even on a bad asset folder: the no-strand guarantee).
-/// The game's `GdtfTheme` is NOT gated on — the egui shell styles itself, so the editor
-/// resolves no theme (GTW-625; the GTW-579 AC2 amendment).
-/// Takes them as `Option<Res<…>>` (bundled in [`GateResources`]) and only sets the next state
-/// when all are present, so it never panics on an absent resource (`bevy-traps.md` #1).
 pub(crate) fn transition_to_editing(gate: GateResources, mut next: ResMut<NextState<EditorState>>) {
     if gate.all_present() {
         next.set(EditorState::Editing);
     }
 }
 
-/// The ten resolved-resource borrows the transition gates on, bundled into one
 /// `#[derive(SystemParam)]` (the shell's `PrefabParams` pattern) so the gate system's
-/// signature stays legible as families accrue. Every field is `Option` — each resource
-/// arrives only once its registration (or fallback) fires (bevy-traps #1).
 #[derive(bevy::ecs::system::SystemParam)]
 pub(crate) struct GateResources<'w> {
-    /// The ranged-weapons registry (`WeaponsFamily`).
-    weapons:       Option<Res<'w, WeaponRegistry>>,
-    /// The armor registry (`ArmorFamily`).
-    armor:         Option<Res<'w, ArmorRegistry>>,
-    /// The UUID-keyed terrain defs (`TerrainDefsFamily` — GTW-487).
-    terrain_defs:  Option<Res<'w, TerrainDefRegistry>>,
-    /// The UUID-keyed theme defs (`ThemeDefsFamily` — GTW-487).
-    theme_defs:    Option<Res<'w, UuidThemeRegistry>>,
-    /// The gangs registry (`GangsFamily` — GTW-636).
-    gangs:         Option<Res<'w, GangRegistry>>,
-    /// The melee-weapons registry (`MeleeWeaponsFamily` — GTW-636).
-    melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
-    /// The injury-def registry (the bespoke injuries pass — GTW-654).
-    injuries:      Option<Res<'w, InjuryRegistry>>,
-    /// The built injury weighting tables (the injuries pass's second resource —
-    /// GTW-654; both are published atomically by the shared builder).
-    injury_tables: Option<Res<'w, InjuryTables>>,
-    /// The sprite-def registry (`SpriteDefsFamily` — GTW-663; the terrain-graphic
-    /// resolution source since GTW-665).
-    sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
-    /// The attachments registry (`AttachmentsFamily` — GTW-669).
-    attachments:   Option<Res<'w, AttachmentRegistry>>,
+        weapons:       Option<Res<'w, WeaponRegistry>>,
+        armor:         Option<Res<'w, ArmorRegistry>>,
+        terrain_defs:  Option<Res<'w, TerrainDefRegistry>>,
+        theme_defs:    Option<Res<'w, UuidThemeRegistry>>,
+        gangs:         Option<Res<'w, GangRegistry>>,
+        melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
+        injuries:      Option<Res<'w, InjuryRegistry>>,
+            injury_tables: Option<Res<'w, InjuryTables>>,
+            sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
+        attachments:   Option<Res<'w, AttachmentRegistry>>,
 }
 
 impl GateResources<'_> {
-    /// Whether EVERY gate resource has resolved (or fallen back) — the release condition.
-    const fn all_present(&self) -> bool {
+        const fn all_present(&self) -> bool {
         self.weapons.is_some()
             && self.armor.is_some()
             && self.terrain_defs.is_some()

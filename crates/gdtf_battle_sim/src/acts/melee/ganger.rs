@@ -1,6 +1,3 @@
-//! The contested §7 opposed-Fight melee arm — gate, spend, synthesize onto the
-//! struck ganger, and emit the connect signals (GTW-506/507).
-
 use bevy::prelude::{Entity, MessageWriter, Query, With};
 
 use super::{
@@ -24,14 +21,6 @@ use crate::{
     tu::spend_tu,
 };
 
-/// Resolve ONE ganger-vs-ganger melee request — the contested §7 opposed-Fight path
-/// (GTW-506/507), extracted from [`dispatch_melee`](super::dispatch_melee)'s target branch
-/// (GTW-508 C6 — file size cap). Gates 8-adjacency + opposing faction + alive + LOS, spends the
-/// fight-mode TU, runs the §7 → §5 → §6 → §8 synthesis onto the target, and — on a connect —
-/// hands the frozen verdict to [`emit_connect_signals`].
-///
-/// Fail-closed at every gate (a rejected strike returns early — no spend, no strike, no
-/// signal, never a panic), exactly as the inlined arm did.
 #[expect(
     clippy::too_many_arguments,
     reason = "the ganger arm threads the attacker snapshot, the target entity, the disjoint \
@@ -61,13 +50,10 @@ pub(super) fn resolve_ganger_melee(
         return;
     };
 
-    // Gate — 8-adjacency + opposing faction (the cheap reads first).
     if !*is_8_adjacent(attacker.position, tgt_pos) || attacker.faction == tgt_faction {
         return;
     }
 
-    // The target's liveness — an ALIVE (incl. Downed) opposing ganger only; a corpse is no
-    // target. Read off the target query (the SINGLE LifeState read path), snapshotted.
     let Ok((_, _, &tgt_life, _, &tgt_toughness, &tgt_luck, tgt_injuries)) =
         targets.get(target_entity)
     else {
@@ -76,9 +62,6 @@ pub(super) fn resolve_ganger_melee(
     if !*tgt_life.is_active() {
         return;
     }
-    // Route the defender's Toughness / Luck through the gate-enforced effective accessors over
-    // its injury ledger (an absent ledger = the zero-delta identity), so an injury shifting
-    // either stat shifts the §6 severity roll in step (the `fold_ganger_round` precedent).
     let (effective_toughness, effective_luck) = match tgt_injuries {
         Some(ledger) => (
             effective_toughness(tgt_toughness, ledger),
@@ -87,8 +70,6 @@ pub(super) fn resolve_ganger_melee(
         None => (tgt_toughness, tgt_luck),
     };
 
-    // The LOS gate — a clear sight line attacker → target over the SAME voxel geometry the sim
-    // fires through. Built exactly as `reaction_trigger` builds the observer/target.
     let observer = Observer {
         position:         &attacker.position,
         stance:           &attacker.stance,
@@ -100,12 +81,6 @@ pub(super) fn resolve_ganger_melee(
         position: &tgt_pos,
         stance:   &tgt_stance,
     };
-    // A Dead ganger is a corpse the LOS march flies THROUGH (GTW-317) — the same `is_dead`
-    // pass-through `has_los`/`can_see` take. The predicate borrows `targets` IMMUTABLY only for
-    // this `has_los` call; it is dropped before the `&mut targets` fold below (NLL), so the
-    // immutable + mutable accesses never overlap. An entity absent from `targets` is no corpse
-    // (defaults `false`). The cover ledger is read through `&*world.cover` (a `ResMut` derefs to
-    // `&CoverLedger`).
     let is_dead = |entity: Entity| {
         targets
             .get(entity)
@@ -124,28 +99,16 @@ pub(super) fn resolve_ganger_melee(
         return;
     }
 
-    // Spend the fight-mode TU off the attacker (saturating). The swing costs TU whether or not
-    // it connects (the ranged `fire()` TU-charge precedent). A missing Tu pool fails the strike
-    // (fail-closed).
     let Ok(mut attacker_tu) = tu_q.get_mut(attacker.entity) else {
         return;
     };
     spend_tu(&mut attacker_tu, attacker.tu_cost);
 
-    // GTW-821: the §8 injury content, with EMPTY fallbacks for an asset-less harness (no Load
-    // flow → no InjuryTables / InjuryRegistry) so the roll always has valid content to sample —
-    // it then takes its one draw and rolls nothing (the dispatch_fire / dispatch_shove
-    // fallback precedent), never a panic.
     let empty_tables = InjuryTables::default();
     let empty_registry = InjuryRegistry::default();
     let tables: &InjuryTables = world.tables.as_deref().unwrap_or(&empty_tables);
     let registry: &InjuryRegistry = world.registry.as_deref().unwrap_or(&empty_registry);
 
-    // Run the §7 → §5 → §6 → §8 synthesis onto the target. The verb owns the §4 part roll, so
-    // the struck piece cannot be keyed by part before it runs; `strike_with_target` resolves the
-    // target's worn protection as the verb's armor input (bare flesh if the target wears
-    // nothing) and re-borrows the target's `&mut` surfaces for the fold (the snapshot reads
-    // above are released — `get_mut` takes a fresh exclusive borrow).
     let strike = strike_with_target(
         targets,
         wears,
@@ -170,12 +133,7 @@ pub(super) fn resolve_ganger_melee(
         },
     );
 
-    // On a connect, emit the strike's output signals (the presenter glyph, the GTW-572 facts,
-    // the GTW-821 injury bridge, the GTW-547 death gate, the GTW-525 shove). A miss deals no
-    // damage and emits nothing (the §7 connect gate).
     if *strike.connect {
-        // The target's own (cell, level) key — Position derefs to CellLevel (the
-        // old decompose-then-recompose was the identity on every real key).
         let at: CellLevel = *tgt_pos;
         emit_connect_signals(
             attacker,
@@ -193,16 +151,6 @@ pub(super) fn resolve_ganger_melee(
     }
 }
 
-/// Fold one melee strike onto the target — resolve the struck worn piece, assemble the
-/// [`TargetGanger`] borrow-view, and run [`resolve_melee_strike`] (split out so
-/// [`resolve_ganger_melee`] stays under clippy's line gate).
-///
-/// The §4 part roll lives INSIDE [`resolve_melee_strike`], so the struck piece cannot be keyed
-/// by part before the verb runs. This passes the target's worn-armor resolution as a whole
-/// through the verb's bare-flesh-vs-armor branch by attaching the target's FIRST worn piece (if
-/// any), letting the §5 matchup + §6 wear resolve against it; a target wearing nothing folds to
-/// bare flesh. The defender's effective Toughness / Luck (already projected over its injury
-/// ledger) ride the [`TargetGanger`]. REUSES the verb verbatim — no combat math here.
 #[expect(
     clippy::too_many_arguments,
     reason = "the fold threads the target query + the two armor relationship queries + the \
@@ -222,10 +170,6 @@ fn strike_with_target(
     weapon: MeleeWeaponHit<'_>,
     env: MeleeStrikeEnv<'_>,
 ) -> MeleeStrike {
-    // Resolve the target's struck worn piece view — the FIRST worn piece (if any), read off
-    // `target → Wears → the piece entity`. The §6 fold wears its `&mut ArmorIntegrity` in
-    // place; a target wearing nothing folds to bare flesh. (The §4 part roll inside the verb
-    // owns the location; this resolves the target's worn protection as the verb's armor input.)
     let piece_view = wears
         .get(target_entity)
         .ok()

@@ -1,27 +1,14 @@
-//! The **Penetration** attachment effect (GTW-549; GTW-558 one-file-per-effect) — the
-//! isolated [`ApplyPenetration`] behaviour and the `impl` that raises the weapon's
-//! penetration. No per-item magnitude newtype — its payload is the reused weapon
-//! [`WeaponPunch`](crate::weapon::WeaponPunch).
-
 use bevy::prelude::EntityWorldMut;
 
 use super::ApplyAttachmentEffect;
 use crate::weapon::WeaponPunch;
 
-/// **Penetration** — ADDS its [`WeaponPunch`](crate::weapon::WeaponPunch) to the weapon's
-/// penetration (armour-piercing rounds, ignores more armour).
-///
-/// Additive (saturating on the `i32` inner via the public ctor). A weapon with no punch is
-/// left unchanged.
 pub struct ApplyPenetration {
-    /// The extra penetration these rounds add.
-    punch_bonus: WeaponPunch,
+        punch_bonus: WeaponPunch,
 }
 
 impl ApplyPenetration {
-    /// Build the penetration effect from the [`WeaponPunch`](crate::weapon::WeaponPunch) it
-    /// adds.
-    #[must_use]
+            #[must_use]
     pub const fn new(punch_bonus: WeaponPunch) -> Self {
         Self { punch_bonus }
     }
@@ -44,8 +31,7 @@ mod tests {
     use super::{ApplyAttachmentEffect, ApplyPenetration};
     use crate::weapon::WeaponPunch;
 
-    /// `ApplyPenetration` RAISES the weapon's `WeaponPunch` (additive).
-    #[test]
+        #[test]
     fn penetration_raises_punch() {
         let mut world = World::new();
         let weapon = world.spawn(WeaponPunch::new(4)).id();

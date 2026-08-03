@@ -1,11 +1,3 @@
-//! GTW-502 (C1, refined GTW-587) — the vision-occlusion DERIVATION rule
-//! ([`derives_vision_occlusion`](super::super::derives_vision_occlusion)): a `Wall` sim-kind
-//! occludes vision FULLY (the whole storey → [`HeightBand::High`]) by default while a
-//! `Cover`/`Emplacement` occludes only UP TO its OWN [`HeightBand`] (the SAME band its
-//! `CoverLedger` entry occludes at); a `Slab` does NOT occlude, and an explicit
-//! [`BlocksVision`](super::super::TerrainTag) tag ADDS occlusion (banded at the def's own
-//! band, or HIGH for a tagged Slab, which has no band of its own).
-
 use super::super::{
     TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind, TerrainTag, TerrainUuid,
     derives_vision_occlusion, sim_kind_occludes_vision,
@@ -18,7 +10,6 @@ use crate::{
     weapon::WeaponName,
 };
 
-/// A `Wall` def at `band` with the given tags — the high-cover blocking kind.
 fn wall_def(band: HeightBand, tags: Vec<TerrainTag>) -> TerrainDef {
     TerrainDef {
         key: TerrainUuid::generate(),
@@ -40,7 +31,6 @@ fn wall_def(band: HeightBand, tags: Vec<TerrainTag>) -> TerrainDef {
     }
 }
 
-/// A `Cover` def at `band` with the given tags — the chest-high / scatter kind.
 fn cover_def(band: HeightBand, tags: Vec<TerrainTag>) -> TerrainDef {
     TerrainDef {
         key: TerrainUuid::generate(),
@@ -62,9 +52,6 @@ fn cover_def(band: HeightBand, tags: Vec<TerrainTag>) -> TerrainDef {
     }
 }
 
-/// An `Emplacement` def at `band` with the given tags — the cover-like mounted-gun kind
-/// (GTW-543; occludes vision UP TO its own band by default, like a `Cover` — not fully like a
-/// `Wall`).
 fn emplacement_def(band: HeightBand, tags: Vec<TerrainTag>) -> TerrainDef {
     TerrainDef {
         key: TerrainUuid::generate(),
@@ -87,7 +74,6 @@ fn emplacement_def(band: HeightBand, tags: Vec<TerrainTag>) -> TerrainDef {
     }
 }
 
-/// A `Slab` def with the given tags — the floor/roof kind (NOT vision-occluding by default).
 fn slab_def(tags: Vec<TerrainTag>) -> TerrainDef {
     TerrainDef {
         key: TerrainUuid::generate(),
@@ -109,13 +95,6 @@ fn slab_def(tags: Vec<TerrainTag>) -> TerrainDef {
     }
 }
 
-/// C1 (refined GTW-587) — a `Wall` with NO tags occludes vision FULLY by kind default
-/// (`LosBlocking::Full` → [`HeightBand::High`], the whole storey) REGARDLESS of its authored
-/// band: an untagged Low/Mid wall STILL occludes at High, because "walls occlude fully" is the
-/// GTW-587 model (in place of the pre-587 own-band derivation). Every SHIPPED wall authors
-/// `height_band: High`, so the High result is identical for all shipped content (AC1); the
-/// Mid/Low arms pin the NEW rule — a non-`High` untagged wall nonetheless derives `High`, which
-/// no shipped-content fixture would otherwise exercise.
 #[test]
 fn wall_occludes_fully_by_kind_default() {
     for band in [HeightBand::High, HeightBand::Mid, HeightBand::Low] {
@@ -128,8 +107,6 @@ fn wall_occludes_fully_by_kind_default() {
     }
 }
 
-/// C1 — a `Cover` with NO tags occludes vision at its OWN band (the kind default), and the
-/// band is read from the def, not hardcoded (a Mid-band cover occludes at Mid).
 #[test]
 fn cover_occludes_at_its_band_by_default() {
     assert_eq!(
@@ -144,9 +121,6 @@ fn cover_occludes_at_its_band_by_default() {
     );
 }
 
-/// GTW-543 — an `Emplacement` with NO tags occludes vision at its OWN band (the kind default,
-/// like a `Cover` — up to its band, not fully like a `Wall`), and the band is read from the
-/// def, not hardcoded.
 #[test]
 fn emplacement_occludes_at_its_band_by_default() {
     assert_eq!(
@@ -161,8 +135,6 @@ fn emplacement_occludes_at_its_band_by_default() {
     );
 }
 
-/// C1 — a `Slab` with NO tags does NOT occlude vision (a slab is a z-boundary the slab march
-/// already stops sight at, not a same-storey occluder).
 #[test]
 fn slab_does_not_occlude_by_default() {
     assert_eq!(
@@ -172,8 +144,6 @@ fn slab_does_not_occlude_by_default() {
     );
 }
 
-/// C1 — an EXPLICIT `BlocksVision` tag ADDS occlusion to an otherwise-transparent `Slab`,
-/// banded HIGH (a slab has no band of its own; an opaque slab fills the storey).
 #[test]
 fn explicit_tag_adds_high_occlusion_to_slab() {
     assert_eq!(
@@ -183,8 +153,6 @@ fn explicit_tag_adds_high_occlusion_to_slab() {
     );
 }
 
-/// C1 — an unrelated tag does NOT make a `Slab` occlude vision: only the `BlocksVision` tag
-/// (or a Wall/Cover kind default) does. Pins that the rule reads the SPECIFIC tag.
 #[test]
 fn unrelated_tag_does_not_occlude_slab() {
     assert_eq!(
@@ -197,10 +165,6 @@ fn unrelated_tag_does_not_occlude_slab() {
     );
 }
 
-/// C1 — an explicit `BlocksVision` tag on a `Wall` keeps it occluding at its OWN band (the
-/// tag bands a `Wall`/`Cover` at the `sim_kind` band, NOT a forced HIGH — so a Mid wall tagged
-/// `BlocksVision` still occludes at Mid). The union is monotone (a tag never removes
-/// occlusion).
 #[test]
 fn explicit_tag_on_wall_keeps_its_band() {
     assert_eq!(
@@ -210,8 +174,6 @@ fn explicit_tag_on_wall_keeps_its_band() {
     );
 }
 
-/// C1 — the per-kind default predicate directly: `Wall`/`Cover` occlude, `Slab` does not (the
-/// `sim_kind_blocks_path` mirror).
 #[test]
 fn sim_kind_default_occludes_wall_and_cover_only() {
     let wall = TerrainSimKind::Wall {

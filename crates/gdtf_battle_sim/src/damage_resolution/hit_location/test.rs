@@ -1,4 +1,3 @@
-//! Relocated unit tests for the weighted hit-location roll (GTW-201 wave 22 — moved
 //! verbatim from the former inline `#[cfg(test)] mod tests`).
 
 use crate::{
@@ -8,10 +7,6 @@ use crate::{
     tuning::{BodyPartWeight, BodyPartWeights},
 };
 
-/// Build a [`BodyPartWeights`] from six raw per-part weights, in
-/// [`BodyPart::ALL`] order. Helper so tests state ARBITRARY weights inline
-/// (never the shipped tuning magnitudes) — pinning the roll MECHANISM, not a
-/// balance number.
 fn weights(
     head: u16,
     torso: u16,
@@ -30,10 +25,6 @@ fn weights(
     }
 }
 
-/// AC #1: a seeded RNG yields a deterministic pick on the REAL path. Seeding
-/// the stream and calling the real `roll_body_part` returns one fixed part,
-/// and re-running from the same seed returns the same part — the roll is a
-/// pure function of (weights, RNG state).
 #[test]
 fn seeded_roll_is_a_deterministic_pick_on_the_real_path() {
     let w = weights(6, 40, 15, 15, 12, 12);
@@ -47,9 +38,6 @@ fn seeded_roll_is_a_deterministic_pick_on_the_real_path() {
     );
 }
 
-/// AC #4: same seed → same SEQUENCE of parts (determinism), every draw via the
-/// injected RNG. Two identically-seeded streams produce the same run of picks
-/// across many rolls — value-for-value.
 #[test]
 fn same_seed_same_sequence_of_parts() {
     let w = weights(6, 40, 15, 15, 12, 12);
@@ -60,15 +48,8 @@ fn same_seed_same_sequence_of_parts() {
     assert_eq!(seq_a, seq_b, "same seed must replay the same part sequence");
 }
 
-/// AC #2: over a large seeded sample the empirical frequencies track the
-/// configured weights — asserting ORDERING/proportion, NEVER exact counts.
-/// With the default-shaped weights (torso heaviest, head lightest) the sample
-/// must rank torso markedly above head, torso above each limb, and each limb
-/// above head — a tuning edit that keeps that ordering keeps this green.
 #[test]
 fn distribution_tracks_weight_ordering_not_exact_counts() {
-    // Default-SHAPED weights (head rare, torso the bulk) — used for the
-    // ordering relation only, not pinned as magnitudes.
     let w = weights(6, 40, 15, 15, 12, 12);
     let mut shot = ShotRng::from_root(BattleSeed::new(0x5EED_0166));
 
@@ -85,15 +66,11 @@ fn distribution_tracks_weight_ordering_not_exact_counts() {
     let l_leg = counts[BodyPart::LeftLeg.index()];
     let r_leg = counts[BodyPart::RightLeg.index()];
 
-    // Torso (weight 40) markedly more frequent than head (weight 6): a wide
-    // margin, not a tight count — torso should land several times as often.
     assert!(
         torso > head * 3,
         "torso (heaviest) must be markedly more frequent than head (lightest): \
          torso={torso} head={head}",
     );
-    // Torso outranks every limb; every limb outranks head — the configured
-    // ordering, holding with comfortable slack so it is not count-brittle.
     assert!(
         torso > l_arm && torso > r_arm,
         "torso must outrank the arms"
@@ -106,12 +83,8 @@ fn distribution_tracks_weight_ordering_not_exact_counts() {
     assert!(l_leg > head && r_leg > head, "each leg must outrank head");
 }
 
-/// AC #3 (zero-weight never picked): a zero-weight part is NEVER selected over
-/// a degenerate weights set built from ARBITRARY weights. Head is zeroed; over
-/// a large sample it must never come up, while the non-zero parts all do.
 #[test]
 fn zero_weight_part_is_never_picked() {
-    // Arbitrary weights — head zeroed, the rest non-zero (not shipped values).
     let w = weights(0, 7, 3, 3, 5, 5);
     let mut shot = ShotRng::from_root(BattleSeed::new(0x0FF0));
 
@@ -127,12 +100,8 @@ fn zero_weight_part_is_never_picked() {
     assert!(non_head_seen, "the non-zero parts must still be picked");
 }
 
-/// AC #3 (single non-zero always picked): when exactly one part is non-zero it
-/// is ALWAYS the result, regardless of RNG draw. Arbitrary single-weight set;
-/// every roll over many draws returns that one part.
 #[test]
 fn single_non_zero_part_is_always_picked() {
-    // Only the left leg carries weight — arbitrary magnitude.
     let w = weights(0, 0, 0, 0, 9, 0);
     let mut shot = ShotRng::from_root(BattleSeed::new(0xCAFE));
     for _ in 0..5_000 {
@@ -144,15 +113,10 @@ fn single_non_zero_part_is_always_picked() {
     }
 }
 
-/// AC #5: an all-six-zero weights total is handled gracefully — the documented
-/// [`BodyPart::Torso`] fallback, no panic, and without consuming the RNG. The
-/// fallback never draws, so a subsequent roll over real weights starts from the
-/// RNG's pristine first draw.
 #[test]
 fn all_zero_weights_fall_back_to_torso_without_panic() {
     let zero = weights(0, 0, 0, 0, 0, 0);
     let mut shot = ShotRng::from_root(BattleSeed::new(0x0D15_EA5E));
-    // Many calls all return the deterministic central-mass fallback, no panic.
     for _ in 0..1_000 {
         assert_eq!(
             roll_body_part(&zero, shot.rng()),
@@ -161,8 +125,6 @@ fn all_zero_weights_fall_back_to_torso_without_panic() {
         );
     }
 
-    // The fallback did NOT touch the RNG: a fresh stream and a stream that was
-    // first hammered with all-zero rolls produce the SAME first real pick.
     let real = weights(6, 40, 15, 15, 12, 12);
     let mut untouched = ShotRng::from_root(BattleSeed::new(0x1357));
     let mut after_zeros = ShotRng::from_root(BattleSeed::new(0x1357));

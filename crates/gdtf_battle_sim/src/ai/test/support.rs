@@ -1,7 +1,3 @@
-//! Shared fixtures for the minimal-enemy-AI tests (GTW-70) — a headless live-ish harness
-//! (`MinimalPlugins` + [`SimActsPlugin`], which now bundles the brain) seeded with the
-//! battle-lifetime resources a live battle has, plus combatant + occupant spawn helpers.
-
 pub(super) use bevy::prelude::{App, Entity, Messages, MinimalPlugins, World};
 
 pub(super) use crate::{
@@ -27,39 +23,18 @@ pub(super) use crate::{
     },
 };
 
-/// A fixed seed for the per-test RNG streams (arbitrary, not tuned).
 const SEED: u64 = 0x5A1C_AC75;
 
-/// Gang `0` is the player team; gang `1` is the enemy (the AI acts for this one).
 pub(super) const PLAYER: Faction = Faction::new(0);
-/// The enemy team — the faction the brain drives.
 pub(super) const ENEMY: Faction = Faction::new(1);
 
-/// The single-mode TU% the test weapon carries — moderate (a fraction of the TU pool per
-/// shot) so a combatant can afford a couple of shots before its pool runs dry. Arbitrary
-/// test magnitude, never pinned to shipped tuning.
 const MODE_TU_PERCENT: f32 = 0.2;
 
-/// Build a headless brain harness: [`MinimalPlugins`] + [`SimActsPlugin`] (which now bundles
-/// the [`enemy_ai_turn`](crate::ai::enemy_ai_turn) brain alongside the act dispatchers) +
-/// every sim resource a live battle has — the grids, the five seeded RNG streams, the
-/// [`CombatTuning`], a uniform [`FloorCostGrid`], a full-vision [`SquadVisibility`], the AI
-/// [`OmniscientFog`] move fog, the [`PlayerFaction`], and the [`ActiveFaction`] seeded to the
-/// ENEMY (so the brain acts immediately on the first update). No
-/// [`BattleInProgress`](crate::battle::BattleInProgress) gate is installed (this harness
-/// omits the [`OccupancyMaintenancePlugin`](crate::occupancy_sync::OccupancyMaintenancePlugin)
-/// that owns the `Simulate` `configure_sets`), so the bundled systems run ungated under their
-/// own `run_if`s — the `acts` test precedent.
 pub(super) fn brain_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(SimActsPlugin);
-    // The canonical seeding litany (GTW-576) — grids, ledgers, five RNG streams, empty
-    // injury content, default tuning + uniform floor costs, PlayerFaction(PLAYER).
     insert_sim_resources(&mut app, BattleSeed::new(SEED));
-    // Full-vision player fog + the omniscient AI move fog (both the whole grid extent),
-    // OVERRIDING the litany's empty fog. The brain plans on the OmniscientFog; the
-    // full-vision SquadVisibility keeps dispatch_move's player-fog fallback permissive too.
     let omniscient = SquadVisibility::omniscient(&OccupancyGrid::new());
     app.insert_resource(omniscient.clone());
     app.insert_resource(OmniscientFog::new(omniscient));
@@ -67,19 +42,10 @@ pub(super) fn brain_app() -> App {
     app
 }
 
-/// A `(cell, level)` key on the ground floor.
 pub(super) fn ground(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(0))
 }
 
-/// Spawn a full combatant ganger at `at`, of `faction`, facing `facing`, with a `tu` pool
-/// (full — `tu_max == tu`) and a magazine of `ammo` rounds on a related weapon entity.
-///
-/// Carries the complete shooter + target component set `fire()` reads (the `acts`
-/// `spawn_shooter` set) PLUS the [`Faction`] the brain splits enemies/targets on, and relates
-/// a single weapon entity via [`WieldedBy`] (whose hook populates the ganger's `Wields`
-/// synchronously in a bare-world spawn, so the very next dispatch resolves it). Arbitrary
-/// magnitudes — never shipped tuning.
 pub(super) fn spawn_combatant(
     world: &mut World,
     at: CellLevel,
@@ -140,9 +106,6 @@ pub(super) fn spawn_combatant(
     ganger
 }
 
-/// Spawn a combatant exactly as [`spawn_combatant`], but wielding a weapon of the given
-/// [`Handedness`] (GTW-443 C7) — the only difference is the weapon's handedness, so the
-/// AI's shared `can_fire` hand-count gate can be exercised on the brain path.
 pub(super) fn spawn_combatant_handed(
     world: &mut World,
     at: CellLevel,
@@ -204,9 +167,6 @@ pub(super) fn spawn_combatant_handed(
     ganger
 }
 
-/// Insert an [`InflictedInjuries`](crate::injuries::InflictedInjuries) ledger disabling
-/// one hand (a `DisableHand` keyed to `part`) on `ganger` (GTW-443 C7) — so its derived
-/// hand count drops, and the shared `can_fire` refuses a two-handed weapon.
 pub(super) fn give_disabled_hand(world: &mut World, ganger: Entity, part: crate::armor::BodyPart) {
     use crate::injuries::{GainedInjury, InflictedInjuries, InjuryEffect, InjuryName, InspectText};
     let mut ledger = InflictedInjuries::default();
@@ -220,8 +180,6 @@ pub(super) fn give_disabled_hand(world: &mut World, ganger: Entity, part: crate:
     world.entity_mut(ganger).insert(ledger);
 }
 
-/// Register `entity` as a grid occupant at `at` with a HIGH silhouette band — so the LOS
-/// march can strike it (a placed occupant carries its band from the first frame, GTW-304).
 pub(super) fn place_occupant(app: &mut App, at: CellLevel, entity: Entity) {
     if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
         grid.set_occupant(at, Some(entity));
@@ -229,17 +187,14 @@ pub(super) fn place_occupant(app: &mut App, at: CellLevel, entity: Entity) {
     }
 }
 
-/// The currently-active [`Faction`].
 pub(super) fn active_of(app: &App) -> Faction {
     **app.world().resource::<ActiveFaction>()
 }
 
-/// A ganger's current [`Tu`] (0 if absent — no `unwrap`).
 pub(super) fn tu_of(app: &App, entity: Entity) -> u8 {
     app.world().get::<Tu>(entity).map_or(0, |tu| **tu)
 }
 
-/// Drain the [`FireRequested`] messages emitted this run.
 pub(super) fn drain_fires(app: &mut App) -> Vec<FireRequested> {
     app.world_mut()
         .resource_mut::<Messages<FireRequested>>()
@@ -247,7 +202,6 @@ pub(super) fn drain_fires(app: &mut App) -> Vec<FireRequested> {
         .collect()
 }
 
-/// Drain the [`MoveRequested`] messages emitted this run.
 pub(super) fn drain_moves(app: &mut App) -> Vec<MoveRequested> {
     app.world_mut()
         .resource_mut::<Messages<MoveRequested>>()

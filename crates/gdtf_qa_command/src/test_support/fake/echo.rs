@@ -1,5 +1,3 @@
-//! [`FakeEcho`] — the command the growth test ADDS to the fake set.
-
 use bevy::prelude::*;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::command::{
@@ -14,47 +12,33 @@ use crate::{
     dispatch::{CommandCall, QaCommandSystems, take_calls},
 };
 
-/// The text [`FakeEcho`] carries in and back out.
-///
-/// Private-inner newtype over `String` (no-bare-types).
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 #[serde(transparent)]
 pub struct FakeEchoText(String);
 
 impl FakeEchoText {
-    /// Build echo text.
-    #[must_use]
+        #[must_use]
     pub const fn new(text: String) -> Self {
         Self(text)
     }
 
-    /// This text as a string slice.
-    #[must_use]
+        #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
 }
 
-/// [`FakeEcho`]'s arguments — the text to echo.
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct FakeEchoArgs {
-    /// The text to send back.
-    pub text: FakeEchoText,
+        pub text: FakeEchoText,
 }
 
-/// [`FakeEcho`]'s reply — the same text.
 #[derive(Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct FakeEchoReply {
-    /// The text that came in.
-    pub text: FakeEchoText,
+        pub text: FakeEchoText,
 }
 
-/// The THIRD fake command — the one the growth test adds to prove that adding a command
-/// moves no protocol version.
-///
-/// It keys its availability on a DIFFERENT fact from [`FakeCell`](super::FakeCell) (the
-/// level rather than the model), so a grown set still has two independent predicates in it.
 pub struct FakeEcho;
 
 impl QaCommand for FakeEcho {
@@ -83,7 +67,6 @@ impl QaCommand for FakeEcho {
     }
 }
 
-/// Answer every claimed [`FakeEcho`] call with the text it carried.
 fn handle_fake_echo(mut queue: ResMut<PendingQueue<CommandCall<FakeEcho>>>) {
     if queue.is_empty() {
         return;

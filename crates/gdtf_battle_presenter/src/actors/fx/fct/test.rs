@@ -1,13 +1,3 @@
-//! Unit tests for the GTW-302 (slice 2) floating-combat-text primitive — the
-//! [`spawn_floating_text`] spawn + the [`animate_floating_text`] rise / fade / despawn, plus
-//! the [`palette`](super::palette) valence / severity color mapping.
-//!
-//! These prove the animation LOGIC headless (`MinimalPlugins` — the primitive needs only the
-//! [`Time`] clock + its own query, no asset stack / renderer): a pop rises (its `y`
-//! increases), fades (its [`TextColor`] alpha decreases), and despawns once its
-//! [`FctTtlSeconds`] lifetime elapses; and the color helpers map each valence / severity tier
-//! to the documented swatch. "It visibly pops + fades on screen" is the deferred in-engine QA.
-
 use std::time::Duration;
 
 use bevy::{
@@ -34,17 +24,8 @@ use super::{
     },
 };
 
-/// A short, EXPLICIT pop lifetime for the animation tests — decoupled from the shipped
-/// [`FctTtlSeconds::DEFAULT`] (GTW-327 re-tuned it to a longer readable window) so the
-/// despawn-timing test stays fast and is not a brittle pin on the shipped magnitude.
 const TEST_TTL: FctTtlSeconds = FctTtlSeconds::new(0.6);
 
-/// A headless app with the FCT animator registered. The animator itself needs only the
-/// [`Time`] clock (in `MinimalPlugins`) and its own query, but GTW-322's [`spawn_floating_text`]
-/// now spawns the pop as a `bsn!` scene via
-/// [`Commands::spawn_scene`](bevy::scene::CommandsSceneExt::spawn_scene), which panics without
-/// the [`AssetPlugin`] + [`ScenePlugin`] the deferred `apply_scene` reads — so the harness adds
-/// both (the same requirement the GTW-322 spike found for headless `spawn_scene`).
 fn fct_app() -> App {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin))
@@ -52,28 +33,15 @@ fn fct_app() -> App {
     app
 }
 
-/// Materialize any queued `bsn!` scene WITHOUT advancing [`Time`] or ticking the animator.
-///
-/// GTW-322: `spawn_floating_text` now `spawn_scene`s the pop, whose components materialize on the
-/// `SpawnScene` schedule. Driving that schedule directly (after flushing the spawn command) makes
-/// the pop synchronously present for the tests' assertions while leaving the [`Time`]-driven
-/// rise/fade timeline UNTOUCHED — so the existing per-test `app.update()` accounting (warm-up
-/// zero delta, then each manual step) is preserved exactly, only the spawn SHAPE changed.
 fn materialize_scenes(app: &mut App) {
     app.world_mut().flush();
     app.world_mut().run_schedule(SpawnScene);
 }
 
-/// Spawns one ordinary (body-weight) FCT pop via the real [`spawn_floating_text`] helper, at
-/// `cell` / `level` in `color` at stack slot `stack`.
 fn spawn_pop(app: &mut App, color: Color, cell: Cell, level: Level, stack: FctStackIndex) {
     spawn_pop_with(app, color, FctEmphasis::Normal, cell, level, stack);
 }
 
-/// Spawns one FCT pop via the real [`spawn_floating_text`] helper (driven through a one-shot
-/// `Commands` system so the production spawn path is exercised, not a hand-built entity), at
-/// `cell` / `level` in `color` at `emphasis` weight + stack slot `stack`, then applies the
-/// deferred commands.
 fn spawn_pop_with(
     app: &mut App,
     color: Color,
@@ -101,13 +69,9 @@ fn spawn_pop_with(
         ran.is_ok(),
         "the one-shot spawn system must run successfully"
     );
-    // GTW-322: drive the SpawnScene schedule so the just-queued `bsn!` pop materializes
-    // synchronously (no Time tick), matching the old immediate spawn for the assertions below.
     materialize_scenes(app);
 }
 
-/// The (translation, alpha) of the SINGLE live pop — asserts exactly one exists, returning
-/// `None` otherwise (the caller asserts `Some`).
 fn single_pop(app: &mut App) -> Option<(bevy::math::Vec3, f32)> {
     let mut q = app
         .world_mut()
@@ -122,14 +86,11 @@ fn single_pop(app: &mut App) -> Option<(bevy::math::Vec3, f32)> {
     found
 }
 
-/// The number of live [`FloatingCombatText`] pops in the world.
 fn pop_count(app: &mut App) -> usize {
     let mut q = app.world_mut().query::<&FloatingCombatText>();
     q.iter(app.world()).count()
 }
 
-/// The `(weight, font_size)` of the SINGLE live pop's [`TextFont`] — the styling attributes
-/// the emphasis tier controls. Returns `None` unless exactly one pop exists.
 fn single_pop_font(app: &mut App) -> Option<(FontWeight, f32)> {
     let mut q = app.world_mut().query::<(&FloatingCombatText, &TextFont)>();
     let mut found: Option<(FontWeight, f32)> = None;
@@ -137,8 +98,6 @@ fn single_pop_font(app: &mut App) -> Option<(FontWeight, f32)> {
         if found.is_some() {
             return None;
         }
-        // `FontSize` is now an enum (Bevy 0.19); pull the logical-pixel f32 out of the
-        // `Px` variant (the emphasis tier always sizes in `Px`).
         let FontSize::Px(size) = font.font_size else {
             return None;
         };
@@ -147,13 +106,9 @@ fn single_pop_font(app: &mut App) -> Option<(FontWeight, f32)> {
     found
 }
 
-/// A spawned pop RISES (its `y` increases over consecutive ticks) and FADES (its alpha
-/// decreases), then DESPAWNS once its `FctTtlSeconds` lifetime elapses.
 #[test]
 fn a_pop_rises_then_fades_then_despawns() {
     let mut app = fct_app();
-    // Manual 100ms ticks so the rise / fade are observed mid-lifetime, then enough to clear
-    // the explicit TEST_TTL (0.6s) lifetime.
     app.world_mut()
         .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_millis(
             100,
@@ -170,8 +125,6 @@ fn a_pop_rises_then_fades_then_despawns() {
     );
     assert_eq!(pop_count(&mut app), 1, "exactly one pop must spawn");
 
-    // First tick (the clock has not advanced yet on the very first update — capture the
-    // baseline after one update so Time has a real delta).
     app.update();
     let first = single_pop(&mut app);
     assert!(first.is_some(), "the pop must still be live after one tick");
@@ -179,7 +132,6 @@ fn a_pop_rises_then_fades_then_despawns() {
         return;
     };
 
-    // A second tick: it must have risen (higher y) and faded (lower alpha).
     app.update();
     let second = single_pop(&mut app);
     assert!(
@@ -200,7 +152,6 @@ fn a_pop_rises_then_fades_then_despawns() {
         "the pop must FADE: alpha must decrease ({first_alpha} -> {second_alpha})",
     );
 
-    // Run well past the TEST_TTL (0.6s) lifetime (100ms × these updates) — the pop must despawn.
     for _ in 0..8 {
         app.update();
     }
@@ -211,8 +162,6 @@ fn a_pop_rises_then_fades_then_despawns() {
     );
 }
 
-/// A higher `FctStackIndex` offsets the pop's spawn `y` DOWNWARD so simultaneous pops on one
-/// cell do not overlap (the stack-offset).
 #[test]
 fn a_higher_stack_index_offsets_the_pop_downward() {
     let base_y = {
@@ -254,9 +203,6 @@ fn a_higher_stack_index_offsets_the_pop_downward() {
     );
 }
 
-/// An [`FctEmphasis::Bold`] pop (the lethal DOWN / DEAD tag) is spawned with a HEAVIER
-/// [`TextFont`] than a [`FctEmphasis::Normal`] pop — both a bolder [`FontWeight`] AND a larger
-/// `font_size` — delivering the contract's "DOWN / DEAD (RED bold)" styling, not just all-caps.
 #[test]
 fn a_bold_pop_is_drawn_heavier_than_a_normal_pop() {
     let normal = {
@@ -312,17 +258,13 @@ fn a_bold_pop_is_drawn_heavier_than_a_normal_pop() {
     );
 }
 
-/// The [`valence_color`] helper maps each [`FctValence`] to its documented family: damage +
-/// lethal share the blood red, wound is the amber base, neutral is the grey.
 #[test]
 fn valence_color_maps_each_valence_to_its_family() {
-    // Damage and lethal are the SAME blood-red hue (lethal is drawn heavier by the caller).
     assert_eq!(
         valence_color(FctValence::Damage),
         valence_color(FctValence::Lethal),
         "damage + lethal must share the blood-red family",
     );
-    // The three families are mutually DISTINCT swatches.
     let damage = valence_color(FctValence::Damage);
     let wound = valence_color(FctValence::Status);
     let neutral = valence_color(FctValence::Neutral);
@@ -331,25 +273,18 @@ fn valence_color_maps_each_valence_to_its_family() {
     assert_ne!(damage, neutral, "damage red must differ from neutral grey");
 }
 
-/// The [`severity_color`] ramp maps the [`Severity`] ladder into the documented bands: a
-/// graze reads NEUTRAL (not a wound), the wounding tiers climb within the amber family, and a
-/// Fatal hit jumps to the lethal red.
 #[test]
 fn severity_color_ramps_through_the_wound_family_to_lethal() {
-    // A graze (None) costs no Wound -> it reads neutral, NOT a wound amber.
     assert_eq!(
         severity_color(Severity::None),
         valence_color(FctValence::Neutral),
         "a graze (Severity::None) must read NEUTRAL, not a wound amber",
     );
-    // A Fatal hit is the lethal blood-red (a death, not a wound).
     assert_eq!(
         severity_color(Severity::Fatal),
         valence_color(FctValence::Lethal),
         "a Fatal severity must read the LETHAL red, not a wound amber",
     );
-    // The wounding tiers (Minor -> Major -> Critical) are within the amber family and are
-    // mutually distinct (the ramp climbs), and none collapse onto neutral / lethal.
     let minor = severity_color(Severity::Minor);
     let major = severity_color(Severity::Major);
     let critical = severity_color(Severity::Critical);

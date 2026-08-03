@@ -1,12 +1,3 @@
-//! Loopback integration — the real [`QaClient`] against a bevy-free fake game server
-//! (GTW-741).
-//!
-//! A small test-only TCP listener speaks the protocol crate's REAL framing (reusing
-//! [`encode`] + [`FrameDecoder`], never reimplementing it). The real [`QaClient`],
-//! driven through the real [`dispatch`], connects to it and round-trips one
-//! request/response pair — proving the client + framing path end-to-end with NO Bevy in
-//! the test.
-
 use std::{
     io::{Read, Write},
     net::{Ipv4Addr, TcpListener},
@@ -25,8 +16,6 @@ use gdtf_qa_protocol::{
 };
 use serde_json::Value;
 
-/// A lifecycle the loopback test never invokes — only present so `dispatch` has its
-/// argument.
 struct NoLifecycle;
 
 impl HostLifecycle for NoLifecycle {
@@ -51,8 +40,6 @@ impl HostLifecycle for NoLifecycle {
     }
 }
 
-/// An editor link the loopback test never reaches — the game tool it calls resolves to the
-/// game's pair, so this one only fills the set's other half.
 struct DeadLink;
 
 impl QaLink for DeadLink {
@@ -61,15 +48,10 @@ impl QaLink for DeadLink {
     }
 }
 
-/// Bind a loopback listener on an OS-assigned port and serve one client on a background
-/// thread. Returns the bound port and a receiver reporting every request the fake server
-/// decoded, in arrival order, so a test can assert what the client sent and when.
 fn spawn_fake_game() -> (u16, Receiver<QaRequest>) {
     spawn_fake_game_with(answer)
 }
 
-/// [`spawn_fake_game`] with an explicit answering rule, so a test can stand up a server that
-/// refuses the handshake.
 fn spawn_fake_game_with(answerer: fn(&QaRequest) -> QaResponse) -> (u16, Receiver<QaRequest>) {
     let listener = match TcpListener::bind((Ipv4Addr::LOCALHOST, 0)) {
         Ok(listener) => listener,
@@ -84,13 +66,6 @@ fn spawn_fake_game_with(answerer: fn(&QaRequest) -> QaResponse) -> (u16, Receive
     (port, seen_rx)
 }
 
-/// Accept one client and serve its framed requests until it goes away, reporting each
-/// decoded [`QaRequest`] on `seen`.
-///
-/// It answers a `Hello` whose version matches with `HelloOk` and refuses one that differs,
-/// exactly as the real listener does — the client MUST negotiate before it sends anything
-/// else (GTW-940), so a fake that answered a bare `Catalogue` would prove nothing about the
-/// real path.
 fn serve_one(
     listener: &TcpListener,
     seen: &Sender<QaRequest>,
@@ -127,8 +102,6 @@ fn serve_one(
     }
 }
 
-/// The fake server's reply to one decoded request: the handshake, the one tool request this
-/// suite drives, and a refusal for everything else.
 fn answer(request: &QaRequest) -> QaResponse {
     match request {
         QaRequest::Hello(version) if *version == ProtocolVersion::CURRENT => {
@@ -146,13 +119,6 @@ fn answer(request: &QaRequest) -> QaResponse {
     }
 }
 
-/// The real client + real framing carry a `tools/call commands` to the fake server and
-/// back, and the reply renders as the expected content.
-///
-/// It also pins the ORDER the server saw: the client's very first frame on the connection is
-/// the `Hello`, and the tool's request only follows once the handshake was answered. Against
-/// the real listener a tool request sent first would come back
-/// [`NotNegotiated`](QaError::NotNegotiated) (GTW-940).
 #[test]
 fn a_catalogue_round_trips_through_the_real_client() {
     let (port, seen) = spawn_fake_game();
@@ -187,14 +153,10 @@ fn a_catalogue_round_trips_through_the_real_client() {
     );
 }
 
-/// A server that refuses every handshake — a child built from a different tree.
 const fn refuse_everything(_request: &QaRequest) -> QaResponse {
     QaResponse::Error(QaError::VersionMismatch)
 }
 
-/// A refused handshake fails the request with [`McpError::Handshake`], and the tool's own
-/// request is never put on the wire: a connection the child would answer
-/// [`NotNegotiated`](QaError::NotNegotiated) is not kept.
 #[test]
 fn a_refused_handshake_fails_the_request_and_sends_nothing_else() {
     let (port, seen) = spawn_fake_game_with(refuse_everything);

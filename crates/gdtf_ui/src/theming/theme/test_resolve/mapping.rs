@@ -1,6 +1,3 @@
-//! Spec-to-runtime field-mapping mechanism tests: every sub-theme field of a
-//! distinctive spec resolves to its runtime counterpart (no swaps, no drops).
-
 use bevy::prelude::*;
 
 use super::super::{
@@ -11,10 +8,6 @@ use super::super::{
     },
 };
 
-/// An in-test spec with **distinctive** per-field values (no two share a
-/// quad/scalar) so a swapped or dropped mapping in `resolve` cannot
-/// coincidentally pass — decoupled from the shipped file. Shared by the two
-/// mechanism tests below.
 pub(super) fn distinctive_spec() -> GdtfThemeSpec {
     GdtfThemeSpec {
         default_font: String::from("fonts/default.ttf"),
@@ -65,8 +58,6 @@ pub(super) fn distinctive_spec() -> GdtfThemeSpec {
     }
 }
 
-/// **Mechanism (background / panel):** `resolve()` maps the background and
-/// panel sub-theme fields to their runtime counterparts.
 #[test]
 fn resolve_maps_background_and_panel_fields() {
     let theme = distinctive_spec().resolve(|_| Handle::<Font>::default());
@@ -86,9 +77,6 @@ fn resolve_maps_background_and_panel_fields() {
         Color::srgba(0.20, 0.21, 0.22, 0.23),
         "panel.border_color",
     );
-    // KIND check: the resolved field is a `BorderWidthVw` newtype (a relative-length Vw
-    // value, not a px magnitude); Deref-comparing its inner proves the wire field mapped
-    // through to the right runtime newtype.
     let _border: BorderWidthVw = theme.panel.border_width;
     assert_eq!(
         theme.panel.border_width.to_bits(),
@@ -101,8 +89,6 @@ fn resolve_maps_background_and_panel_fields() {
         2.5_f32.to_bits(),
         "panel.corner_radius (Vw)"
     );
-    // KIND check: horizontal edges resolve to `MarginVw` (window-width fractions),
-    // vertical edges to `MarginVh` (window-height fractions) — not bare px.
     let _ml: MarginVw = theme.panel.margin.l;
     let _mt: MarginVh = theme.panel.margin.t;
     assert_eq!(
@@ -128,8 +114,6 @@ fn resolve_maps_background_and_panel_fields() {
     assert_eq!(&**theme.default_font, "fonts/default.ttf", "default_font");
 }
 
-/// **Mechanism (button / title / text):** `resolve()` maps the button, title,
-/// and text sub-theme fields to their runtime counterparts.
 #[test]
 fn resolve_maps_button_title_and_text_fields() {
     let theme = distinctive_spec().resolve(|_| Handle::<Font>::default());
@@ -174,7 +158,6 @@ fn resolve_maps_button_title_and_text_fields() {
         Color::srgba(0.80, 0.81, 0.82, 0.83),
         "button.border_color",
     );
-    // KIND check: the button box scalars resolve to the Vw/Vh relative-length newtypes.
     let _bw: BorderWidthVw = theme.button.border_width;
     let _cr: CornerRadiusVw = theme.button.corner_radius;
     let _bml: MarginVw = theme.button.margin.l;

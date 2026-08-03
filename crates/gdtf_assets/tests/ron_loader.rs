@@ -1,13 +1,3 @@
-//! Integration tests for the generic RON [`AssetLoader`](gdtf_assets) on a real
-//! `AssetServer`.
-//!
-//! These exercise the actual asset pipeline — not a stub — through the headless
-//! `GdtfUiTestAppBuilder` harness (`DefaultPlugins` with `backends: None`, which
-//! brings up the `AssetPlugin`/`AssetServer` and points the file source at the
-//! workspace-root `assets/` dir). A well-formed loose `.ron` is loaded, driven
-//! to completion, and its deserialized fields asserted; a malformed `.ron` is
-//! loaded and asserted to fail with a typed `LoadState::Failed` (no panic).
-
 use bevy::{
     asset::{AssetServer, Assets, Handle},
     reflect::TypePath,
@@ -16,49 +6,18 @@ use gdtf_assets::{RonAsset, RonAssetAppExt};
 use gdtf_test_utils::GdtfUiTestAppBuilder;
 use serde::Deserialize;
 
-/// A tiny payload type used only by these tests.
-///
-/// It is `serde`-`Deserialize` (so the RON loader can parse it) and is
-/// `TypePath`, `Send`, `Sync`, and `'static` (the bounds `RonAsset<T>` requires
-/// of any payload). The fixture `assets/test/ron_loader_fixture.ron`
-/// deserializes into it.
 #[derive(Deserialize, TypePath, Debug, PartialEq, Eq)]
 struct LoaderFixture {
-    /// A string field, to prove non-numeric fields round-trip.
-    label: String,
-    /// A numeric field, to prove typed fields round-trip — and, in the
-    /// malformed fixture, to force a deserialization failure.
-    count: u32,
+        label: String,
+            count: u32,
 }
 
-/// Loose-file path (relative to the asset source root) of the well-formed
-/// fixture.
 const GOOD_FIXTURE_PATH: &str = "test/ron_loader_fixture.ron";
 
-/// Loose-file path of the deliberately malformed fixture (`count` is a string).
 const MALFORMED_FIXTURE_PATH: &str = "test/ron_loader_malformed.ron";
 
-/// Generous SAFETY-NET cap on `App::update()` iterations while waiting for an
-/// async asset load to settle — NOT a timing budget. The wait is signal-based
-/// (it polls the `AssetServer`'s terminal `LoadState` via
-/// [`advance_until_load_state`](gdtf_test_utils::advance_until_load_state)), so
-/// the load resolves whenever it resolves; this cap only bounds a genuinely
-/// stuck load so the test fails with a diagnostic rather than hanging forever.
-/// An async load polled under parallel `cargo` contention has no fixed frame
-/// count, which is why a tight frame budget (the former 64) was the source of
-/// the flake this value replaces (GTW-319, mirroring GTW-305).
 const GENEROUS_LOAD_UPDATES: u32 = 10_000;
 
-/// The generic RON loader resolves a well-formed loose `.ron` into a typed
-/// `RonAsset<LoaderFixture>` whose fields equal the on-disk values.
-///
-/// Pin-discriminating: this drives the **real** `AssetServer` + the registered
-/// `RonAssetLoader<LoaderFixture>`. If the loader were not registered (the
-/// `init_ron_asset` clause), the asset would never reach `LoadState::Loaded` and
-/// the signal wait would time out with a diagnostic naming the unresolved id. If
-/// the loader deserialized into the wrong shape, the field asserts fail. If the
-/// source root were wrong (the repo-root `assets/` clause), the file would not be
-/// found and the load would fail rather than resolve.
 #[test]
 fn well_formed_ron_resolves_to_typed_asset() {
     let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
@@ -69,11 +28,6 @@ fn well_formed_ron_resolves_to_typed_asset() {
         asset_server.load(GOOD_FIXTURE_PATH)
     };
 
-    // Signal-poll the AssetServer until the load reaches its terminal SUCCESS state
-    // (`LoadState::Loaded`). This is a robust completion signal under parallel-load
-    // contention, where a fixed frame budget is not (GTW-319). A genuine
-    // unresolved load (unregistered loader / wrong source root / panicking loader)
-    // never reaches `Loaded`, so the helper's timeout assert fires with a diagnostic.
     let id = handle.id();
     gdtf_test_utils::advance_until_load_state(
         &mut app,
@@ -90,7 +44,6 @@ fn well_formed_ron_resolves_to_typed_asset() {
     );
 
     if let Some(asset) = asset {
-        // `RonAsset` derefs to the payload — read the fields straight through.
         assert_eq!(
             asset.label, "grimdark",
             "deserialized `label` should equal the on-disk value",
@@ -102,14 +55,6 @@ fn well_formed_ron_resolves_to_typed_asset() {
     }
 }
 
-/// A malformed loose `.ron` fails the load with a typed `LoadState::Failed`,
-/// never a panic.
-///
-/// Pin-discriminating: if the loader `unwrap`ped / panicked on a parse error
-/// (instead of returning the typed `RonLoadError`), this test would abort rather
-/// than observe `Failed`. If a bad file silently resolved to a default value,
-/// the `is_failed()` assert would fail. The fixture's `count: "not-a-number"`
-/// cannot deserialize into the `u32` field, forcing the failure path.
 #[test]
 fn malformed_ron_fails_with_typed_load_state() {
     let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
@@ -121,12 +66,6 @@ fn malformed_ron_fails_with_typed_load_state() {
     };
     let id = handle.id();
 
-    // Signal-poll the AssetServer until the load reaches its terminal FAILURE state
-    // (`LoadState::Failed`) — the robust completion signal for the error path under
-    // parallel-load contention, where a fixed frame budget is not (GTW-319). If the
-    // loader panicked on a parse error instead of returning a typed `RonLoadError`,
-    // this would abort before observing `Failed`; if a bad file silently resolved,
-    // `Failed` would never be reached and the helper's timeout assert would fire.
     gdtf_test_utils::advance_until_load_state(
         &mut app,
         id,
@@ -134,7 +73,6 @@ fn malformed_ron_fails_with_typed_load_state() {
         GENEROUS_LOAD_UPDATES,
     );
 
-    // And the asset must NOT have been inserted into the collection.
     assert!(
         app.world()
             .resource::<Assets<RonAsset<LoaderFixture>>>()

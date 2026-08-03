@@ -1,17 +1,7 @@
-//! The two per-call RIDERS a `run` may carry, through the REAL dispatch (GTW-942).
-//!
-//! Split from [`courier_tools`](crate::courier_tools) because they answer a different
-//! question. Those cases ask what the courier RENDERS for each catalogue and outcome shape;
-//! these ask whether a rider written by a client reaches the host at all, and with the value
-//! it was written with. Nothing else in the suite can see a dropped rider: every rider is
-//! refused `NotBuilt` today, so a courier that never sent one would look identical from the
-//! outside — which is why the canned host reports each rider's VALUE back in its refusal.
-
 use serde_json::{Value, json};
 
 use crate::support::dispatch_json;
 
-/// The parsed JSON body of a rendered tool result's first text block.
 fn body(response: &Value) -> Value {
     let Some(text) = response["result"]["content"][0]["text"].as_str() else {
         unreachable!("a courier reply carries a text content block: {response}");
@@ -22,13 +12,6 @@ fn body(response: &Value) -> Value {
     parsed
 }
 
-/// **Bullet 6.** `run(..., await_ready=5)` returns `Unavailable(NotBuilt)` — the rider stub,
-/// refusing rather than running the command with the rider silently dropped.
-///
-/// It also proves the courier CARRIES the rider: the canned host answers `Ran` for a plain
-/// call with these exact arguments, so this reply can only come from `await_ready` having
-/// reached it (GTW-942 added the `options` field to `RunCommand` for exactly this — the type
-/// existed and the host-side refusal existed, but no wire field carried the value).
 #[test]
 fn an_unbuilt_rider_is_refused_not_silently_dropped() {
     let response = dispatch_json(
@@ -47,12 +30,6 @@ fn an_unbuilt_rider_is_refused_not_silently_dropped() {
     );
 }
 
-/// The `capture` rider travels the same way — and carries its file stem when it names one.
-///
-/// The second half is what a bare "is the rider present" assertion cannot see: `parse_capture`
-/// has three accepting shapes (`true`, a stem string, and `false`/absent meaning no rider), and
-/// dropping the stem — `Value::String` returning `CaptureRider::new(None)` — would silently
-/// turn "capture this as `mid_turn`" into "capture this as whatever you like".
 #[test]
 fn the_capture_rider_travels_with_its_file_stem() {
     for (line, expected) in [
@@ -81,10 +58,6 @@ fn the_capture_rider_travels_with_its_file_stem() {
     }
 }
 
-/// `capture: false` is NOT a rider — it is the plain call said explicitly, so it RUNS.
-///
-/// Without this, `parse_capture` could map every `capture` value to a rider and the two cases
-/// above would still pass, leaving a caller who wrote `false` refused for asking for nothing.
 #[test]
 fn capture_false_is_a_plain_call_and_runs() {
     let response = dispatch_json(
@@ -98,7 +71,6 @@ fn capture_false_is_a_plain_call_and_runs() {
     assert_eq!(body(&response)["outcome"], json!("Ran"));
 }
 
-/// A `capture` that is neither a boolean nor a string is INVALID PARAMS, not a silent no-rider.
 #[test]
 fn a_capture_of_the_wrong_shape_is_invalid_params() {
     let response = dispatch_json(

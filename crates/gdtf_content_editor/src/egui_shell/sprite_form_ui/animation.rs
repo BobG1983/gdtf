@@ -1,19 +1,9 @@
-//! The SPRITE form's **animation section** (GTW-664 C2) — the optional
-//! `animation {fps, frames}`: an on/off checkbox, the fps drag, and the ORDERED frame
-//! list with add / remove / reorder rows.
-
 use bevy_egui::egui;
 use gdtf_content_families::sprites::SpriteFps;
 
 use super::{cache::SpritePreviewCache, source_edit::source_editor};
 use crate::sprite_form::SpriteDraft;
 
-/// Draw the ANIMATION section. Enabling seeds one base-source frame (the model's
-/// idempotent [`enable_animation`](SpriteDraft::enable_animation)); each frame row
-/// offers Up / Down (reorder), Remove (disabled at one frame — turn the OPTIONAL
-/// animation off to author "no animation"), and the shared source editor; Add frame
-/// appends. Every commit routes through a named draft mutator and the checkbox is
-/// set-to-target, so the section is multipass-idempotent (bevy-traps #8).
 pub(super) fn animation_section(
     ui: &mut egui::Ui,
     draft: &mut SpriteDraft,
@@ -28,8 +18,6 @@ pub(super) fn animation_section(
             draft.disable_animation();
         }
     }
-    // Iterate a CLONE of the current animation (immediate-mode read) while the button /
-    // editor commits mutate the draft — at most one commit lands per pass.
     let Some(animation) = draft.def().animation.clone() else {
         return;
     };
@@ -37,9 +25,6 @@ pub(super) fn animation_section(
     ui.horizontal(|ui| {
         ui.label("FPS");
         let mut fps = *animation.fps;
-        // A playback RATE is non-negative by definition (frames PER SECOND); no tighter
-        // documented bound exists, so the ceiling stays the type's (the injury
-        // payload-drag precedent).
         if ui
             .add(
                 egui::DragValue::new(&mut fps)

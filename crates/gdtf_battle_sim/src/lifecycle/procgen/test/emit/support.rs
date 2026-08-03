@@ -1,13 +1,3 @@
-//! Shared emit-pipeline fixtures — the canonical test theme / prefab / registry /
-//! tuning builders and the staged-pipeline driver each concern file reaches via
-//! `use super::support::*;`.
-//!
-//! Visibility is `pub(in crate::lifecycle::procgen::test)` (not `pub(super)`): the GTW-655
-//! `../staged.rs` unit test is a SECOND consumer of these same builders (a fixed test theme +
-//! registry + tuning + terrain defs), one level up from `emit`'s own siblings — module-layout
-//! rule 6 ("helpers with 2+ consuming modules live in the shared support/harness module")
-//! over duplicating them.
-
 use bevy::asset::uuid::Uuid;
 
 use crate::{
@@ -27,38 +17,26 @@ use crate::{
     terrain::def::{TerrainDefRegistry, TerrainUuid},
 };
 
-/// A `(cell, level)` on level 0 (a tiny helper).
 pub(in crate::lifecycle::procgen::test) fn at(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(0))
 }
 
-/// A footprint / board `GridSize` (clamped; `None` returns early — never panics).
 pub(in crate::lifecycle::procgen::test) fn size(w: u8, h: u8) -> Option<GridSize> {
     GridSize::new(GridWidth::new(w), GridHeight::new(h), GridLevels::new(1)).ok()
 }
 
-/// The canonical test theme key — a fixed `from_u128` [`ThemeUuid`] every prefab + the
-/// `UuidThemeRegistry` author, so the generated level's theme resolves to its default floor.
 pub(in crate::lifecycle::procgen::test) fn theme() -> ThemeUuid {
     ThemeUuid::new(Uuid::from_u128(0x0149_2431_0000_0001))
 }
 
-/// The test WALL terrain def UUID a prefab places (the canonical sim test-support `WALL`
-/// piece, a `Wall` sim-kind — so the emit classifies it into the `walls` list).
 pub(in crate::lifecycle::procgen::test) fn wall_piece() -> TerrainUuid {
     crate::test_support::test_pieces::WALL
 }
 
-/// The test FLOOR terrain def UUID the theme nominates as its default floor (the
-/// canonical sim test-support `FLOOR` piece).
 pub(in crate::lifecycle::procgen::test) fn floor_piece() -> TerrainUuid {
     crate::test_support::test_pieces::FLOOR
 }
 
-/// A v2 prefab of `role` at footprint `fp` that AUTHORS a wall placement at the
-/// footprint-local cell `(1, 1)` — so the emit has real terrain to translate (and so
-/// different anchors, i.e. different placed origins, produce different translated cells: the
-/// determinism pin is then discriminating).
 pub(in crate::lifecycle::procgen::test) fn prefab(
     theme: ThemeUuid,
     fp: GridSize,
@@ -76,8 +54,6 @@ pub(in crate::lifecycle::procgen::test) fn prefab(
     )
 }
 
-/// A registry with a player + enemy deployment prefab and the given `Fill` prefabs (each
-/// `(stem, w, h)`), every prefab authoring a wall so the emit produces real terrain.
 pub(in crate::lifecycle::procgen::test) fn registry_with_fill(
     theme: ThemeUuid,
     player_fp: GridSize,
@@ -94,8 +70,6 @@ pub(in crate::lifecycle::procgen::test) fn registry_with_fill(
     Some(r)
 }
 
-/// A theme registry naming `theme()` with the test FLOOR piece as its default floor — so the
-/// emitted level's `default_floor` resolves to a real (non-nil) terrain UUID (GTW-492).
 pub(in crate::lifecycle::procgen::test) fn theme_registry(theme: ThemeUuid) -> UuidThemeRegistry {
     UuidThemeRegistry::new([(
         theme,
@@ -108,13 +82,10 @@ pub(in crate::lifecycle::procgen::test) fn theme_registry(theme: ThemeUuid) -> U
     )])
 }
 
-/// The canonical test terrain-def registry (WALL / SLAB / COVER / FLOOR) the emit classifies
-/// placed pieces against (`wall_piece()` resolves to a `Wall` sim-kind → the walls list).
 pub(in crate::lifecycle::procgen::test) fn terrain_defs() -> TerrainDefRegistry {
     crate::test_support::test_terrain_registry()
 }
 
-/// A tuning with explicit knob values (the unit tests drive the knobs directly).
 pub(in crate::lifecycle::procgen::test) fn tuning(
     density: f32,
     large_area: u32,
@@ -122,17 +93,12 @@ pub(in crate::lifecycle::procgen::test) fn tuning(
 ) -> ProcgenTuning {
     ProcgenTuning {
         min_density_floor:           MinDensityFloor::new(density),
-        // A non-binding cap (1.0 never fires): these emit / staged step-equivalence tests want
-        // the fill's floor/exhaustion termination unchanged from before GTW-767.
         max_coverage_cap:            MaxCoverageCap::new(1.0),
         large_prefab_area_threshold: LargePrefabAreaThreshold::new(large_area),
         dead_rect_scatter_count_k:   DeadRectScatterCount::new(scatter_k),
     }
 }
 
-/// Whether two emitted situations have STRUCTURALLY EQUAL terrain entries — the C2
-/// equality measure (the terrain leaves all derive `Eq`; `Situation` itself does not, so we
-/// compare the terrain-entry fields directly).
 pub(in crate::lifecycle::procgen::test) fn terrain_eq(a: &Situation, b: &Situation) -> bool {
     a.theme == b.theme
         && a.grid_size == b.grid_size
@@ -144,11 +110,6 @@ pub(in crate::lifecycle::procgen::test) fn terrain_eq(a: &Situation, b: &Situati
         && a.vertical_links == b.vertical_links
 }
 
-/// Drive the REAL staged pipeline (`assemble_placement_with` then `fill_placement_with` — the
-/// exact functions [`generate_level`] composes) under a fixed seed and return the
-/// [`FilledPlacement`]. Uses the RULED defaults ([`SplitMode::default`],
-/// [`MinPlayerSide::DEFAULT`]) so the placement matches `generate_level`'s. Returns `None` on
-/// any packing error (the caller returns early — no panic).
 pub(in crate::lifecycle::procgen::test) fn run_pipeline(
     prefabs: &PrefabRegistry,
     theme: ThemeUuid,

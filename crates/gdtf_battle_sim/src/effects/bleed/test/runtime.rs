@@ -1,20 +1,3 @@
-//! GTW-336 — the bleed-out clock wired into the LIVE runtime turn cycle.
-//!
-//! Where the AC1/AC2 tests drive the pure `tick_bleed` system in isolation (the
-//! `bleed_app` harness adds it unconditionally), these tests exercise the REAL
-//! production path: [`SimActsPlugin`](crate::acts::SimActsPlugin) registers the
-//! bleed-out clock so an [`EndTurnRequested`](crate::acts::EndTurnRequested) flows
-//! through the turn-cycle engine ([`dispatch_end_turn`](crate::turn::dispatch_end_turn))
-//! and — at the enemy-phase start, gated on
-//! [`enemy_phase_started`](crate::effects::bleed::enemy_phase_started) — fires `tick_bleed` once
-//! per full round (`docs/combat/resolution.md` §9). The buffer
-//! [`Bleeding`](crate::effects::bleed::Bleeding) the drain emits is the same one the presenter's
-//! consequence FCT reads; these tests prove it is actually produced in a live battle.
-//!
-//! The shared live-harness fixtures (`live_app` / `seed_battle_resources` /
-//! `bleeding_ganger` / `end_turn` / `drain_bleeding`) live in [`super::support`]
-//! (GTW-641 lifted them there for the entry-gate / turn-start siblings).
-
 use bevy::prelude::{App, MinimalPlugins};
 
 use super::support::{
@@ -23,15 +6,9 @@ use super::support::{
 };
 use crate::battle::BattleSimPlugin;
 
-/// GTW-336 core — a player End Turn (one full round) drains a live Downed ganger's Wounds
-/// by exactly `bleed_rate` AND emits a `Bleeding` carrying it. This is the wiring under
-/// test: the drain only runs because `dispatch_end_turn` crossed the enemy-phase boundary
-/// and `enemy_phase_started` gated `tick_bleed` on. Before this slice nothing registered
-/// the system, so this assertion would fail (Wounds unchanged, no `Bleeding`).
 #[test]
 fn a_full_round_bleeds_a_live_downed_ganger() {
     let rate = bleed_rate();
-    // A pool well above the rate so the round is non-lethal (measuring the per-round drop).
     let start = rate.saturating_add(10);
 
     let mut app = live_app();
@@ -60,20 +37,15 @@ fn a_full_round_bleeds_a_live_downed_ganger() {
     );
 }
 
-/// GTW-336 once-per-round — the clock ticks ONCE per full round (the enemy-phase start),
-/// not once per `TurnStarted`. A player End Turn crosses TWO turn boundaries (enemy start +
-/// player auto-pass), but only the enemy one is the bleed tick: two full rounds drain
-/// exactly 2×`bleed_rate` (not 4×), proving the gate fires on the enemy phase alone.
 #[test]
 fn the_clock_ticks_once_per_full_round_not_per_turn_boundary() {
     let rate = bleed_rate();
-    // Two rounds of headroom plus a cushion so neither round is lethal.
     let start = rate.saturating_mul(2).saturating_add(10);
 
     let mut app = live_app();
     let downed = bleeding_ganger(&mut app, PLAYER, LifeState::Downed, start);
 
-    end_turn(&mut app); // round 1
+    end_turn(&mut app); 
     assert_eq!(
         wounds_of(&app, downed),
         start - rate,
@@ -81,7 +53,7 @@ fn the_clock_ticks_once_per_full_round_not_per_turn_boundary() {
          ticks once — NOT once per TurnStarted, which would double it)",
     );
 
-    end_turn(&mut app); // round 2
+    end_turn(&mut app); 
     assert_eq!(
         wounds_of(&app, downed),
         start - rate * 2,
@@ -89,13 +61,9 @@ fn the_clock_ticks_once_per_full_round_not_per_turn_boundary() {
     );
 }
 
-/// GTW-336 terminal gate — the live clock kills. A Downed ganger with a Wounds pool that
-/// empties in exactly two rounds is Dead after the second full round (Wounds floored at 0),
-/// through the same once-only terminal gate as the fire path.
 #[test]
 fn the_live_clock_depletes_a_downed_ganger_to_dead() {
     let rate = bleed_rate();
-    // Exactly two rounds' worth so the second round lands the pool on 0.
     let start = rate.saturating_mul(2);
 
     let mut app = live_app();
@@ -121,11 +89,6 @@ fn the_live_clock_depletes_a_downed_ganger_to_dead() {
     );
 }
 
-/// GTW-336 filter — the live clock skips the gangers `tick_bleed` must skip. In one full
-/// round: an Alive ganger and a Dead ganger are untouched and emit no `Bleeding`, and a
-/// STABILIZED Downed ganger's clock is halted (no drain, no `Bleeding`) — only the
-/// un-stabilized Downed ganger bleeds. This proves the whole `tick_bleed` filter runs over
-/// the LIVE world, not just an isolated harness.
 #[test]
 fn the_live_clock_skips_alive_dead_and_stabilized_gangers() {
     let rate = bleed_rate();
@@ -135,8 +98,6 @@ fn the_live_clock_skips_alive_dead_and_stabilized_gangers() {
     let alive = bleeding_ganger(&mut app, PLAYER, LifeState::Alive, start);
     let dead = bleeding_ganger(&mut app, PLAYER, LifeState::Dead, start);
     let downed = bleeding_ganger(&mut app, ENEMY, LifeState::Downed, start);
-    // A stabilized Downed ganger — an ally dressed the wound; REMOVE the BleedingOut
-    // condition so the §9 clock is halted (bleeding_ganger spawns it bleeding-out).
     let stabilized = bleeding_ganger(&mut app, PLAYER, LifeState::Downed, start);
     app.world_mut()
         .entity_mut(stabilized)
@@ -144,7 +105,6 @@ fn the_live_clock_skips_alive_dead_and_stabilized_gangers() {
 
     end_turn(&mut app);
 
-    // The un-stabilized Downed ganger bled by exactly one rate; everyone else is untouched.
     assert_eq!(
         wounds_of(&app, downed),
         start - rate,
@@ -185,18 +145,11 @@ fn the_live_clock_skips_alive_dead_and_stabilized_gangers() {
     );
 }
 
-/// GTW-336 inert outside a live battle — with NO `BattleInProgress` the Simulate band is
-/// gated off, so even an `EndTurnRequested` neither cycles the turn nor bleeds a Downed
-/// ganger. This pins the panic-free, no-op behavior the band gate guarantees
-/// (`bevy-traps.md` #1) — the bleed wiring adds no unconditional work.
 #[test]
 fn no_battle_in_progress_means_no_bleed() {
     let rate = bleed_rate();
     let start = rate.saturating_add(10);
 
-    // The live harness MINUS the BattleInProgress gate witness — the SAME BattleSimPlugin
-    // registration (so the real Simulate-band gate IS configured), only the witness that
-    // satisfies it is absent. The gate's run_if is false, so the whole band is skipped.
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.add_plugins(BattleSimPlugin);

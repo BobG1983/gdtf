@@ -1,6 +1,3 @@
-//! The ENGAGE evaluation — the brain's weapon-resolution [`SystemParam`] bundle and
-//! the per-target `can_see` ∧ `can_fire` ∧ `can_engage` gate over the opposing rows.
-
 use bevy::{
     ecs::system::SystemParam,
     prelude::{Entity, Query},
@@ -23,40 +20,16 @@ use crate::{
     weapon::{FireMode, FireModeSpec, Handedness},
 };
 
-/// The brain's **weapon-resolution** [`SystemParam`] bundle — the queries the engage path
-/// keys `enemy → Wields → the weapon dispatch would FIRE` through, grouped into one param so
-/// [`enemy_ai_turn`] stays under Bevy's 16-param `SystemParam`-tuple arity (GTW-505 added the
-/// `melee` probe, which pushed the flat list past the ceiling — the `FireSignals` bundling
-/// precedent).
-///
-/// Each is the existing query type ([`WieldsQuery`] / the weapon-stat query / the GTW-505
-/// [`MeleeQuery`] marker probe / the GTW-543 [`MountedQuery`] marker probe); the bundle is a
-/// transparent grouping of existing world-state queries, not a wrapped domain scalar.
 #[derive(SystemParam)]
 pub struct WeaponLookup<'w, 's> {
-    /// The wielded-weapon relationship — `&Wields` on the enemy ganger.
-    wields:  WieldsQuery<'w, 's>,
-    /// The weapon-stat columns read off the resolved weapon entity.
-    weapons: Query<'w, 's, (&'static Magazine, &'static FireMode, &'static Handedness)>,
-    /// GTW-505 C5: the melee-weapon marker probe — the firing resolution EXCLUDES a match so
-    /// the enemy's melee weapon is never engaged as its gun.
-    melee:   MeleeQuery<'w, 's>,
-    /// GTW-543 / GTW-673: the mounted-weapon marker probe — the firing resolution PREFERS a
-    /// match so a manning enemy engage-gates on the mount it would actually fire.
-    mounted: MountedQuery<'w, 's>,
+        wields:  WieldsQuery<'w, 's>,
+        weapons: Query<'w, 's, (&'static Magazine, &'static FireMode, &'static Handedness)>,
+            melee:   MeleeQuery<'w, 's>,
+            mounted: MountedQuery<'w, 's>,
 }
 
 impl WeaponLookup<'_, '_> {
-    /// Resolve `enemy → Wields → the weapon dispatch would FIRE` and read its `(Magazine,
-    /// FireMode, Handedness)` — routed through the ONE shared fire-weapon preference rule
-    /// [`Wields::firing_weapon`](crate::weapon::Wields::firing_weapon) (GTW-660): PREFER the
-    /// mounted weapon (the emplacement's bolted-down gun a manning enemy fires, GTW-543),
-    /// else the carried ranged weapon (excluding the melee weapon, GTW-505 C5). This is the
-    /// SAME resolution `dispatch_fire` / `fire()` run, so the AI engage gate can never
-    /// diverge from the weapon its own `FireRequested` will fire (GTW-673 — a mounted enemy
-    /// gates on the mount, not its carried gun). `None` when the enemy wields no ranged/
-    /// mounted weapon or its weapon entity is missing.
-    pub(super) fn firing(&self, enemy: Entity) -> Option<(&Magazine, &FireMode, &Handedness)> {
+                                        pub(super) fn firing(&self, enemy: Entity) -> Option<(&Magazine, &FireMode, &Handedness)> {
         let weapon = self.wields.get(enemy).ok()?.firing_weapon(
             |entity| self.mounted.get(entity).is_ok(),
             |entity| self.melee.get(entity).is_ok(),
@@ -65,12 +38,6 @@ impl WeaponLookup<'_, '_> {
     }
 }
 
-/// The per-target ENGAGE gate — collect every opposing row `enemy` can engage with its
-/// resolved `weapon` (a target is engageable iff [`can_see`] (real per-pair LOS) ∧
-/// [`can_fire`] (the shared fire guard, incl. the GTW-443 hand-count clause) ∧
-/// [`can_engage`] (the SHARED `¬Reject` arc verdict)) — extracted verbatim from
-/// [`enemy_ai_turn`](super::brain::enemy_ai_turn)'s per-enemy loop so that system stays
-/// under the line cap. Pure over the snapshot rows: no emission, no mutation.
 #[expect(
     clippy::too_many_arguments,
     reason = "the gate borrows the brain's own reads (the enemy + target snapshot rows, \
@@ -108,7 +75,6 @@ pub(super) fn engageable_targets(
             position: &target_row.position,
             stance:   &target_row.stance,
         };
-        // can_see (the ONE LOS truth) — conscious observer, in range, clear LOS.
         if !*can_see(
             &observer,
             &target,
@@ -122,7 +88,6 @@ pub(super) fn engageable_targets(
         ) {
             continue;
         }
-        // can_fire (the shared fire guard) — alive, affordable, loaded, in-bounds.
         let actor = FireActor {
             life: &enemy.life,
             tu: &enemy.tu,
@@ -135,8 +100,6 @@ pub(super) fn engageable_targets(
         if !*can_fire(&actor, &mode, target_cell, target_level, tuning) {
             continue;
         }
-        // can_engage (the SHARED ¬Reject arc verdict) — load-bearing for termination:
-        // it guarantees the dispatcher will spend TU rather than silently reject.
         if !*can_engage(
             *enemy.facing,
             enemy_cell,

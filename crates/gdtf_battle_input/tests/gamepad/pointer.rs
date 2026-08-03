@@ -1,6 +1,3 @@
-//! Software-cursor pointer arbitration: the picker honors `ActivePointer`, the
-//! highlight follows the gamepad cursor, and the mouse reclaims (AC3/AC4).
-
 use bevy::{
     camera::{
         Camera, ComputedCameraValues, OrthographicProjection, Projection, RenderTargetInfo,
@@ -23,12 +20,7 @@ use gdtf_test_utils::{MessageProbe, MessageProbePlugin, probed};
 
 use super::harness::*;
 
-// =================================================================================
-// AC3 — the picker honors `ActivePointer` (gamepad cursor vs OS cursor).
-// =================================================================================
 
-/// Builds a deterministic [`Camera`] whose `viewport_to_world_2d` succeeds headlessly (the
-/// `picking.rs` recipe): render-target info + a computed clip-from-view matrix.
 fn synthetic_camera() -> Camera {
     let mut projection = Projection::Orthographic(OrthographicProjection::default_2d());
     projection.update(TARGET_SIZE.x, TARGET_SIZE.y);
@@ -45,16 +37,11 @@ fn synthetic_camera() -> Camera {
     }
 }
 
-/// Builds a focused headless picking app (the `picking.rs` recipe): `MinimalPlugins` + the
-/// input plugin, `ActiveLevel`, the `BattleInProgress` gate, a synthetic `WorldCamera` and
-/// `Window`/`PrimaryWindow`. The OS cursor is left unset (off-window) so the gamepad path is
-/// the only cursor source unless a test sets the OS cursor.
 fn picking_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
         .add_plugins(GdtfBattleInputPlugin);
     app.world_mut().insert_resource(ActiveLevel::new(LEVEL));
-    // GTW-521 — `dispatch_act_intents` also mutates the presenter-owned `ViewMode`.
     app.world_mut().insert_resource(ViewMode::default());
     app.world_mut().insert_resource(BattleInProgress);
     app.world_mut().spawn((
@@ -75,7 +62,6 @@ fn picking_app() -> App {
     app
 }
 
-/// Sets the primary window's OS cursor position in logical px (or clears it).
 fn set_os_cursor(app: &mut App, position: Option<Vec2>) {
     let mut windows = app.world_mut().query::<&mut Window>();
     for mut window in windows.iter_mut(app.world_mut()) {
@@ -83,15 +69,12 @@ fn set_os_cursor(app: &mut App, position: Option<Vec2>) {
     }
 }
 
-/// Reads the current `InspectTarget` live hovered cell.
 fn hovered(app: &App) -> Option<CellLevel> {
     app.world()
         .get_resource::<InspectTarget>()
         .and_then(InspectTarget::hovered)
 }
 
-/// The camera's world unprojection of a screen `cursor` (so the test derives the expected
-/// cell from the documented inverse instead of hardcoding the world math).
 fn unproject(app: &mut App, cursor: Vec2) -> Option<Vec2> {
     let mut q = app
         .world_mut()
@@ -100,27 +83,19 @@ fn unproject(app: &mut App, cursor: Vec2) -> Option<Vec2> {
     camera.viewport_to_world_2d(transform, cursor).ok()
 }
 
-/// AC3 — with `ActivePointer::Gamepad` and a `GamepadCursor` over a known cell (resources set
-/// directly), `pick_hovered_cell` writes THAT cell to `InspectTarget` (the gamepad cursor's,
-/// NOT the OS cursor's); flipping back to `Mouse` reverts to the OS-cursor path.
 #[test]
 fn picker_honors_active_pointer() {
     let mut app = picking_app();
 
-    // A gamepad-cursor screen point that lands on a non-origin in-grid cell (shifted right +
-    // down from the centre — the `picking.rs` screen→world sign reasoning).
     let gamepad_screen = TARGET_SIZE * 0.5 + Vec2::new(40.0, 32.0);
-    // A DIFFERENT OS-cursor screen point (shifted further) so the two cursors disagree.
     let os_screen = TARGET_SIZE * 0.5 + Vec2::new(80.0, 64.0);
     set_os_cursor(&mut app, Some(os_screen));
 
-    // Force the gamepad to be the active pointer + park its cursor over the known point.
     app.world_mut().insert_resource(ActivePointer::Gamepad);
     app.world_mut()
         .insert_resource(GamepadCursor::new(gamepad_screen));
     app.update();
 
-    // The expected cell is the documented inverse of the GAMEPAD cursor's unprojection.
     let gamepad_world = unproject(&mut app, gamepad_screen);
     let os_world = unproject(&mut app, os_screen);
     assert!(
@@ -144,7 +119,6 @@ fn picker_honors_active_pointer() {
         "in Gamepad mode the picker must project the GAMEPAD cursor, not the OS cursor",
     );
 
-    // Flip back to Mouse -> the picker reverts to the OS-cursor path.
     app.world_mut().insert_resource(ActivePointer::Mouse);
     app.update();
     assert_eq!(
@@ -154,20 +128,12 @@ fn picker_honors_active_pointer() {
     );
 }
 
-/// AC3 — the landed GTW-251 `emit_highlight_request` makes the highlight follow the gamepad
-/// cursor for free: in Gamepad mode the emitted `HighlightRequest` equals `Some(the gamepad
-/// cell)` — so the cell-highlight IS the cursor (no separate reticle).
 #[test]
 fn highlight_follows_the_gamepad_cursor() {
     let mut app = picking_app();
-    // GTW-268 — the emit now gates on the `OccupancyGrid`; `picking_app` does not seed one,
-    // so insert an empty grid here and (below) mark the resolved cell blocking.
     app.world_mut().insert_resource(OccupancyGrid::default());
-    // The generic GTW-576 message probe — its `Last`-schedule drain observes the same
-    // update's `emit_highlight_request` write with its own reader cursor.
     app.add_plugins(MessageProbePlugin::<HighlightRequest>::default());
 
-    // OS cursor off-window; gamepad is the active pointer over a known cell.
     set_os_cursor(&mut app, None);
     let gamepad_screen = TARGET_SIZE * 0.5 + Vec2::new(40.0, 32.0);
     app.world_mut().insert_resource(ActivePointer::Gamepad);
@@ -182,9 +148,6 @@ fn highlight_follows_the_gamepad_cursor() {
     );
     let Some(resolved) = cell else { return };
 
-    // GTW-268 — the emit now highlights ONLY occupied / blocking cells. Make the gamepad's
-    // resolved cell blocking (an object) so the highlight follows it; then drop the
-    // bare-floor probe reads and re-run so the probe captures the post-gate emit.
     if let Some(mut grid) = app.world_mut().get_resource_mut::<OccupancyGrid>() {
         grid.set_terrain(resolved, TerrainKind::Cover);
     }
@@ -203,27 +166,16 @@ fn highlight_follows_the_gamepad_cursor() {
         "the highlight request must follow the gamepad cursor's resolved cell (GTW-11: \
          NotSquadVisible — no fog seeded, fail-closed)",
     );
-    // Sanity: that cell really is `cell_to_world`-projectable (the highlight will draw there).
     if let Some(cell) = cell {
         let _ = cell_to_world(cell.cell(), LEVEL);
     }
 }
 
-// =================================================================================
-// AC4 — the mouse reclaims the pointer on a CursorMoved message.
-// =================================================================================
 
-/// AC4 — with `ActivePointer::Gamepad`, emitting a `CursorMoved` message flips the active
-/// pointer back to `Mouse` (last-moved-wins) via the REAL registered `mouse_reclaims_pointer`.
 #[test]
 fn mouse_reclaims_the_pointer() {
     let mut app = picking_app();
-    // `MinimalPlugins` has no `InputPlugin`, so the `Messages<CursorMoved>` buffer is absent
-    // (and `mouse_reclaims_pointer` is gated on it). Register it so the system runs and the
-    // test can write the OS-cursor-moved message (under `DefaultPlugins` `InputPlugin`
-    // provides this buffer).
     app.add_message::<CursorMoved>();
-    // Start in Gamepad mode.
     app.world_mut().insert_resource(ActivePointer::Gamepad);
     app.update();
     assert_eq!(
@@ -232,7 +184,6 @@ fn mouse_reclaims_the_pointer() {
         "precondition: the pointer starts on Gamepad",
     );
 
-    // Find the primary window entity to address the CursorMoved message at it.
     let window = {
         let mut q = app
             .world_mut()
@@ -247,7 +198,6 @@ fn mouse_reclaims_the_pointer() {
         return;
     };
 
-    // Emit a CursorMoved (the OS mouse moved) and update — the mouse reclaims the pointer.
     app.world_mut()
         .resource_mut::<bevy::ecs::message::Messages<CursorMoved>>()
         .write(CursorMoved {

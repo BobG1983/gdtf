@@ -1,8 +1,3 @@
-//! Tests for the GTW-279 inflicted-wound record — the empty-by-default seed and the
-//! accumulation of recorded wounds through the REAL resolution path
-//! ([`resolve_and_apply`]), asserted against the resolution's OWN rolled tier +
-//! struck part (a seeded RNG, never a hand-set fixture).
-
 use bevy::prelude::World;
 
 use super::{InflictedWound, InflictedWounds};
@@ -31,21 +26,16 @@ use crate::{
     },
 };
 
-/// A fixed seed so the rolled tier/location are deterministic to assert against.
 const SEED: u64 = 0x1FF1_1C7E;
 
-/// A fresh [`SeverityRng`] from the shared seed — the stream `resolve_and_apply` draws from.
 fn rng() -> SeverityRng {
     SeverityRng::from_root(BattleSeed::new(SEED))
 }
 
-/// A valid `Entity` id from a throwaway world (no hand-crafted raw id, no `unwrap`).
 fn an_entity() -> bevy::prelude::Entity {
     World::new().spawn_empty().id()
 }
 
-/// A bare-flesh-bypassing weapon with enough damage to actually wound — arbitrary
-/// (non-shipped) magnitudes; the §1 cone numbers are irrelevant to E3.9.
 fn a_weapon() -> WeaponBundle {
     WeaponBundle::new(
         WeaponName::new("test-weapon".to_owned()),
@@ -74,8 +64,6 @@ fn a_weapon() -> WeaponBundle {
     )
 }
 
-/// A `ShotKind::Ganger` outcome on `entity` struck at `part` — minted through the
-/// real cone pipeline for its trajectory (E3.9 reads only `kind` + `body_part`).
 fn ganger_outcome(entity: bevy::prelude::Entity, part: BodyPart) -> ShotOutcome {
     let aim = climb_aim_dir(
         SimPos::new(0.0, 0.0, 0.5),
@@ -101,8 +89,6 @@ fn ganger_outcome(entity: bevy::prelude::Entity, part: BodyPart) -> ShotOutcome 
     }
 }
 
-/// AC2 — a freshly spawned `InflictedWounds` (the [`Default`] seeded onto every
-/// ganger in `setup_battle`) is empty: no recorded wound until one is inflicted.
 #[test]
 fn fresh_inflicted_wounds_is_empty() {
     let fresh = InflictedWounds::default();
@@ -113,17 +99,11 @@ fn fresh_inflicted_wounds_is_empty() {
     assert_eq!(fresh.len(), 0, "an empty record has length 0");
 }
 
-/// AC3 — through the REAL resolution path ([`resolve_and_apply`]), a sequence of
-/// damaging hits on one target ACCUMULATES into its `InflictedWounds` in order, and
-/// each recorded entry carries the tier the resolution ACTUALLY rolled + the part it
-/// struck (asserted against the report's OWN values, not a hand-set fixture). A
-/// non-graze hit appends exactly one entry; a graze appends none.
 #[test]
 fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
     let tuning = CombatTuning::default();
     let entity = an_entity();
     let weapon = a_weapon();
-    // A sequence of struck parts; the seeded RNG fixes the tier rolled for each.
     let parts = [
         BodyPart::Torso,
         BodyPart::LeftArm,
@@ -131,26 +111,17 @@ fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
         BodyPart::RightLeg,
     ];
 
-    // A tough enough target (large pools, low Toughness) that the burst keeps
-    // wounding without going Dead mid-sequence (a corpse-skip would halt recording).
     let mut hp = Hp::new(255);
     let mut wounds = Wounds::new(255);
     let mut life = LifeState::Alive;
     let mut inflicted = InflictedWounds::default();
     let mut r = rng();
-    // Fresh ledgers threaded only to satisfy the GTW-364 / GTW-365 StruckSurfaces
-    // signature — these ganger outcomes never strike cover or a slab, so neither ledger
-    // is read or written.
     let mut cover = CoverLedger::new();
     let mut slab = SlabLedger::new();
 
-    // The tiers the resolution rolls — collected from each report so the assertion
-    // pins the record against the resolution's OWN output, never a fixture.
     let mut expected: Vec<InflictedWound> = Vec::new();
 
     for &part in &parts {
-        // Snapshot the record length before this hit so we can assert it grew (or
-        // not, on a graze) by exactly the right amount.
         let before = inflicted.len();
 
         let report = resolve_and_apply(
@@ -161,8 +132,6 @@ fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
                 hp:        &mut hp,
                 wounds:    &mut wounds,
                 life:      &mut life,
-                // Bare flesh (no protecting piece) — the wound recording under test is
-                // independent of armor; a None piece resolves full damage (GTW-323).
                 piece:     None,
                 inflicted: &mut inflicted,
                 toughness: Toughness::new(0.0),
@@ -181,20 +150,15 @@ fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
         );
 
         let HitVerdict::Ganger(verdict) = &report.verdict else {
-            // A ganger hit on a live target always carries the wound verdict; if it
-            // somehow did not, there is nothing to assert for this round.
             continue;
         };
         if verdict.applied.severity == Severity::None {
-            // A graze records nothing — the list must not have grown this round.
             assert_eq!(
                 inflicted.len(),
                 before,
                 "a graze (Severity::None) must NOT grow the InflictedWounds list",
             );
         } else {
-            // A real wound appends exactly one entry carrying the verdict's OWN
-            // rolled tier + the part it names.
             assert_eq!(
                 inflicted.len(),
                 before + 1,
@@ -204,8 +168,6 @@ fn damaging_hits_accumulate_in_order_with_the_rolled_tier_and_part() {
         }
     }
 
-    // The full recorded list equals the resolution's own (tier, part) sequence, in
-    // infliction order — accumulation + order preserved (GTW-279 AC3).
     assert_eq!(
         inflicted.as_slice(),
         expected.as_slice(),

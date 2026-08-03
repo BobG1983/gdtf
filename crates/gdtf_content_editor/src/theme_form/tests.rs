@@ -1,11 +1,3 @@
-//! In-crate tests for the THEME form's pure projection, the C7 RON round-trip, the C6
-//! default-floor rule (Slab-preference + must-be-own-terrain), and the C3 resolved-stats
-//! resolution against a `TerrainDefRegistry` fixture (GTW-475).
-//!
-//! The C7c 3-way toggle + the in-engine evidence live in the crate's integration test
-//! (`tests/theme_mode.rs`); these unit-test the pure halves. Panic / expect-free per the
-//! workspace lints (`assert!` + `let … else`).
-
 use gdtf_battle_sim::{
     armor::{ArmorHardness, ArmorProtection},
     cover::{CoverHp, HeightBand},
@@ -26,17 +18,14 @@ use super::{
     types::{SaveThemeError, ThemeDraft},
 };
 
-/// A terrain UUID from a small constant (a deterministic test key).
 fn terrain_key(n: u128) -> TerrainUuid {
     TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0bcd_0000 + n))
 }
 
-/// A theme UUID from a small constant.
 fn theme_key() -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0bcd_9000))
 }
 
-/// Build a Slab terrain def (the floor candidate) with a given display name.
 fn slab_def(key: TerrainUuid, name: &str) -> TerrainDef {
     TerrainDef {
         key,
@@ -58,7 +47,6 @@ fn slab_def(key: TerrainUuid, name: &str) -> TerrainDef {
     }
 }
 
-/// Build a Wall terrain def with a given display name.
 fn wall_def(key: TerrainUuid, name: &str) -> TerrainDef {
     TerrainDef {
         key,
@@ -80,8 +68,6 @@ fn wall_def(key: TerrainUuid, name: &str) -> TerrainDef {
     }
 }
 
-/// Build a Cover terrain def with a given display name — the third structural kind, used by the
-/// GTW-530 C3 mixed-kind fixture to prove the Slab-only default-floor filter drops Cover too.
 fn cover_def(key: TerrainUuid, name: &str) -> TerrainDef {
     TerrainDef {
         key,
@@ -103,7 +89,6 @@ fn cover_def(key: TerrainUuid, name: &str) -> TerrainDef {
     }
 }
 
-/// A two-terrain registry fixture: a Wall + a Slab.
 fn fixture() -> (TerrainDefRegistry, TerrainUuid, TerrainUuid) {
     let wall = terrain_key(1);
     let slab = terrain_key(2);
@@ -114,9 +99,6 @@ fn fixture() -> (TerrainDefRegistry, TerrainUuid, TerrainUuid) {
     (registry, wall, slab)
 }
 
-/// C2/C5 — `draft_to_theme_def` projects the draft by REFERENCE: the theme carries the selected
-/// terrain UUIDs + the chosen default floor, NO inlined stats (C3). Pin-discriminating on every
-/// projected field.
 #[test]
 fn draft_projects_to_theme_def_by_reference() {
     let (_, wall, slab) = fixture();
@@ -148,10 +130,6 @@ fn draft_projects_to_theme_def_by_reference() {
     );
 }
 
-/// C7b — the projected def RON round-trips through the SAME parser the GTW-487 theme loader
-/// (`resolve_theme_defs`) uses (`ron::de::from_str::<UuidThemeDef>`): the reloaded def EQUALS the
-/// saved one. Pin-discriminating — any dropped field flips the `assert_eq!`. Tunable magnitudes
-/// are NOT pinned (the theme references UUIDs only — no stats in the file).
 #[test]
 fn theme_def_round_trips_through_the_loader_parser() {
     let (_, wall, slab) = fixture();
@@ -184,14 +162,10 @@ fn theme_def_round_trips_through_the_loader_parser() {
     );
 }
 
-/// C6 — `validate_for_save` enforces the default-floor rule: a saved theme's default floor must be
-/// one of its OWN terrain. A valid draft passes; a missing floor, a floor not in the palette, an
-/// empty palette, and an empty name each fail with the matching typed error.
 #[test]
 fn validate_enforces_default_floor_in_terrain() {
     let (_, wall, slab) = fixture();
 
-    // A complete, valid draft passes.
     let mut draft = ThemeDraft::new_theme();
     draft.set_display_name("Industrial Hive".to_owned());
     draft.toggle_terrain(slab);
@@ -202,7 +176,6 @@ fn validate_enforces_default_floor_in_terrain() {
         "a complete draft validates (C6)"
     );
 
-    // No default floor → rejected.
     let mut no_floor = ThemeDraft::new_theme();
     no_floor.set_display_name("Hive".to_owned());
     no_floor.toggle_terrain(slab);
@@ -212,12 +185,10 @@ fn validate_enforces_default_floor_in_terrain() {
         "a theme with no default floor is rejected (C6)",
     );
 
-    // A default floor that is NOT in the palette → rejected (the setter ignored it, so the floor
-    // stays unset — proving the C6 fail-closed guard).
     let mut stray = ThemeDraft::new_theme();
     stray.set_display_name("Hive".to_owned());
     stray.toggle_terrain(slab);
-    stray.set_default_floor(wall); // wall is NOT in the palette — ignored by the setter
+    stray.set_default_floor(wall); 
     assert_eq!(
         stray.default_floor(),
         None,
@@ -229,7 +200,6 @@ fn validate_enforces_default_floor_in_terrain() {
         "a theme whose default floor is not in its terrain is rejected (C6)",
     );
 
-    // An empty palette → rejected.
     let mut empty = ThemeDraft::new_theme();
     empty.set_display_name("Hive".to_owned());
     assert_eq!(
@@ -238,7 +208,6 @@ fn validate_enforces_default_floor_in_terrain() {
         "a theme with no terrain is rejected (C6)",
     );
 
-    // An empty name → rejected.
     let mut nameless = ThemeDraft::new_theme();
     nameless.toggle_terrain(slab);
     nameless.set_default_floor(slab);
@@ -249,14 +218,10 @@ fn validate_enforces_default_floor_in_terrain() {
     );
 }
 
-/// C6 — `floor_candidates` offers the theme's own terrain with the SLAB kind FIRST (Slab = the
-/// walkable floor; `Floor` was retired in GTW-476). With a Wall selected before a Slab, the Slab
-/// still leads the list.
 #[test]
 fn floor_candidates_prefer_slab() {
     let (registry, wall, slab) = fixture();
     let mut draft = ThemeDraft::new_theme();
-    // Select the WALL first, then the SLAB — insertion order is wall-then-slab.
     draft.toggle_terrain(wall);
     draft.toggle_terrain(slab);
 
@@ -275,15 +240,8 @@ fn floor_candidates_prefer_slab() {
     );
 }
 
-/// GTW-530 C3 — `slab_floor_candidates` offers ONLY Slab-kind terrain for the default-floor
-/// picker: given a draft selecting a mix of Slab / Wall / Cover terrain, EVERY returned candidate
-/// resolves to a Slab and NO Wall / Cover appears. The single-source-of-truth proof that the
-/// picker can never offer a non-floor kind as the default floor. Pin-discriminating: it asserts
-/// both the exact surviving key set (the two slabs, neither the wall nor the cover) and that each
-/// survivor is Slab-kind in the registry.
 #[test]
 fn slab_floor_candidates_are_slab_only() {
-    // A four-terrain registry mixing all three kinds: two Slabs, one Wall, one Cover.
     let slab_a = terrain_key(10);
     let slab_b = terrain_key(11);
     let wall = terrain_key(12);
@@ -295,7 +253,6 @@ fn slab_floor_candidates_are_slab_only() {
         (cover, cover_def(cover, "Ammo Crate")),
     ]);
 
-    // Select ALL four into the draft (interleaved so ordering can't accidentally exclude a kind).
     let mut draft = ThemeDraft::new_theme();
     draft.toggle_terrain(wall);
     draft.toggle_terrain(slab_a);
@@ -322,8 +279,6 @@ fn slab_floor_candidates_are_slab_only() {
         !keys.contains(&cover),
         "the Cover terrain is NOT offered as a default-floor candidate (C3 — Slab only): {keys:?}",
     );
-    // Every survivor is genuinely Slab-kind in the registry (the filter dropped by KIND, not by
-    // accident of key ordering).
     for key in &keys {
         let Some(def) = registry.def(key) else {
             unreachable!("a candidate key must resolve in the fixture registry")
@@ -336,9 +291,6 @@ fn slab_floor_candidates_are_slab_only() {
     }
 }
 
-/// C3 — `resolved_stats` resolves a terrain UUID against the `TerrainDefRegistry` (the
-/// single-source-of-truth proof): it returns the resolved def's kind + HP + armor and a non-empty
-/// HP fraction. Pin-discriminating on the resolved KIND + a non-zero fill.
 #[test]
 fn resolved_stats_resolves_against_registry() {
     let (registry, _wall, slab) = fixture();

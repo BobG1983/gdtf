@@ -1,8 +1,5 @@
 use super::support::*;
 
-/// AC2 — corpse-skip: a `Ganger` outcome on an already-`Dead` target yields a
-/// no-effect report and mutates nothing; AND it draws nothing — proven by the
-/// `SeverityRng` stream being unchanged vs a fresh one after the call.
 #[test]
 fn corpse_skip_is_inert_and_draws_nothing() {
     let tuning = CombatTuning::default();
@@ -13,8 +10,8 @@ fn corpse_skip_is_inert_and_draws_nothing() {
 
     let mut hp = Hp::new(15);
     let mut wounds = Wounds::new(3);
-    let mut life = LifeState::Dead; // already a corpse
-    let mut integrity = piece_integrity(1); // a live hit WOULD break it
+    let mut life = LifeState::Dead; 
+    let mut integrity = piece_integrity(1); 
     let mut inflicted = InflictedWounds::default();
 
     let hp_before = hp;
@@ -45,7 +42,6 @@ fn corpse_skip_is_inert_and_draws_nothing() {
         &mut injury_rng(),
     );
 
-    // No-effect verdict — the fold did NOTHING (no applied damage, no part, no injury).
     assert_eq!(
         report.verdict,
         HitVerdict::NoEffect,
@@ -57,7 +53,6 @@ fn corpse_skip_is_inert_and_draws_nothing() {
         "the report still names what the shot struck",
     );
 
-    // Nothing mutated.
     assert_eq!(hp, hp_before, "a corpse's Hp must not change");
     assert_eq!(wounds, wounds_before, "a corpse's Wounds must not change");
     assert_eq!(life, life_before, "a corpse's LifeState must stay Dead");
@@ -70,8 +65,6 @@ fn corpse_skip_is_inert_and_draws_nothing() {
         "a corpse-skip must record NO InflictedWound (GTW-279)",
     );
 
-    // No draw was taken: the used RNG's next draw matches a fresh stream's
-    // first draw (the cursor never advanced).
     let mut rng_fresh = rng();
     assert_eq!(
         rng_used.next_u64(),

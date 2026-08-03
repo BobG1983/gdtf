@@ -1,12 +1,3 @@
-//! GTW-868: the Options screen's DEV-ONLY procgen-stepper toggle drives engagement at
-//! runtime.
-//!
-//! These drive the REAL screen — reach `RunningState::Options`, fire the toggle checkbox's
-//! own native [`ValueChange<bool>`](bevy::ui_widgets::ValueChange) (exactly what a focused
-//! `Enter` / `Space` makes `bevy_ui_widgets`' `checkbox_on_key_input` emit), and then start
-//! a battle — so they cover the whole path the ticket specifies: toggle → typed intent →
-//! `GameSettings` → `ProcgenStepperActive` → the stepped / normal generation path.
-
 use bevy::{
     app::App,
     ecs::{entity::Entity, prelude::With, system::RunSystemOnce},
@@ -26,12 +17,10 @@ use super::harness::{
     drive_stepper_to_done, running_state, terrain_fingerprint,
 };
 
-/// Whether the engagement marker is currently in the world.
 fn stepper_engaged(app: &App) -> bool {
     app.world().get_resource::<ProcgenStepperActive>().is_some()
 }
 
-/// The single entity carrying marker `M`, if exactly one exists.
 fn single_with<M: bevy::ecs::component::Component>(app: &mut App) -> Option<Entity> {
     let mut query = app.world_mut().query_filtered::<Entity, With<M>>();
     let found: Vec<Entity> = query.iter(app.world()).collect();
@@ -41,7 +30,6 @@ fn single_with<M: bevy::ecs::component::Component>(app: &mut App) -> Option<Enti
     }
 }
 
-/// The procgen-stepper readout's current text, if the screen is up.
 fn stepper_value_text(app: &mut App) -> Option<String> {
     let entity = single_with::<ProcgenStepperValueLabel>(app)?;
     app.world()
@@ -49,8 +37,6 @@ fn stepper_value_text(app: &mut App) -> Option<String> {
         .map(|text| text.as_str().to_owned())
 }
 
-/// Build the REAL Load flow with the stepper plugin added DISENGAGED — exactly how the
-/// shipped `DevAffordancesPlugin` adds it — and drive it to the Options screen.
 fn app_on_options_screen() -> App {
     let mut app = app_ready_for_battle(FIXED_SEED);
     app.add_plugins(ProcgenStepperPlugin::with_enabled(false));
@@ -71,8 +57,6 @@ fn app_on_options_screen() -> App {
     app
 }
 
-/// Fire the procgen-stepper checkbox's OWN native `ValueChange<bool>` with `value` — the
-/// event `bevy_ui_widgets`' `checkbox_on_key_input` emits for a focused `Enter` / `Space`.
 fn set_stepper_toggle(app: &mut App, value: bool) {
     let checkbox = single_with::<ProcgenStepperToggle>(app);
     assert!(
@@ -98,8 +82,6 @@ fn set_stepper_toggle(app: &mut App, value: bool) {
     app.update();
 }
 
-/// The toggle reads OFF on first entry, and flipping it ON inserts the engagement marker —
-/// the setting is the ONE thing that decides engagement now (no environment involved).
 #[test]
 fn toggling_the_setting_on_engages_the_stepper() {
     let mut app = app_on_options_screen();
@@ -125,7 +107,6 @@ fn toggling_the_setting_on_engages_the_stepper() {
     );
 }
 
-/// Flipping the toggle back OFF removes the engagement marker again.
 #[test]
 fn toggling_the_setting_off_disengages_the_stepper() {
     let mut app = app_on_options_screen();
@@ -147,10 +128,6 @@ fn toggling_the_setting_off_disengages_the_stepper() {
     );
 }
 
-/// The load-bearing pin: with the setting flipped ON through the real screen, the NEXT
-/// battle generation takes the STEPPED path — `request_battle_setup` is gated off, a
-/// `StagedProcgen` drive is in flight, and the battle only completes once the drive is
-/// driven to done.
 #[test]
 fn a_flipped_on_setting_steps_the_next_generation() {
     let mut app = app_on_options_screen();
@@ -171,8 +148,6 @@ fn a_flipped_on_setting_steps_the_next_generation() {
         battlescape_state(&app),
     );
 
-    // Driving the engaged drive to done reaches a real battle with populated terrain — the
-    // same result the normal path produces, just one step at a time.
     drive_stepper_to_done(&mut app);
     let reached_running = advance_until(
         &mut app,
@@ -194,9 +169,6 @@ fn a_flipped_on_setting_steps_the_next_generation() {
     );
 }
 
-/// The complement, and the acceptance clause a plain `cargo drun` / `cargo dtest` depends
-/// on: with the setting left at its OFF default, the battle reaches `BattleRunning` by the
-/// NORMAL to-completion path with no drive ever engaged and no pause.
 #[test]
 fn the_default_off_setting_leaves_the_normal_path_alone() {
     let mut app = app_on_options_screen();
@@ -205,7 +177,6 @@ fn the_default_off_setting_leaves_the_normal_path_alone() {
         "precondition: the setting defaults OFF, so nothing is engaged",
     );
 
-    // `drive_into_battle_running` queues Options -> Game itself and asserts BattleRunning.
     drive_into_battle_running(&mut app);
     assert!(
         app.world().get_resource::<StagedProcgen>().is_none(),

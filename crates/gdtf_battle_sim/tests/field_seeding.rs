@@ -1,25 +1,6 @@
-//! GTW-545 (area-damage fields, child GTW-41f of GTW-41) — the SEEDING path: a situation's
 //! authored `fields:` list is resolved against the [`FieldDefRegistry`] catalog and seeded into
 //! the live [`FieldRegistry`] resource by the REAL `setup_battle` (the authoritative pour), and
-//! the [`Situation`] `.ron` deserializes each field placement + stays unchanged when the
-//! list is omitted.
-//!
-//! The clause contract this covers:
-//!
 //! - **fields seedable from situation RON**: an authored `fields:` list parses into
-//!   [`FieldSpawn`]s and, through `setup_battle`, populates the [`FieldRegistry`] resource with
-//!   one placed field per authored cell (PIN-DISCRIMINATING — fails if the seed loop is unwired).
-//! - **serde-default byte-identity**: a situation `.ron` that omits `fields:` deserializes to an
-//!   empty list (every EXISTING situation stays parse-valid).
-//! - **abort-first on a bad key**: an authored field whose KEY is absent from the catalog aborts
-//!   `setup_battle` with [`BattleSetupError::FieldNotFound`] and inserts NO [`FieldRegistry`]
-//!   (no partial world).
-//!
-//! The per-round `tick_fields` drain (HP-decrement / immunity skip / expiry / the field-kills
-//! gate) is covered END-TO-END by the in-crate unit tests (`effects::fields::test`), which
-//! exercise the REAL `tick_fields` against a REAL `OccupancyGrid` + a worn-armor relationship;
-//! this file owns the RON-seed path. NO pinned tunable magnitudes.
-
 use bevy::{
     app::App,
     asset::AssetPlugin,
@@ -44,16 +25,12 @@ use gdtf_battle_sim::{
     weapon::DamageType,
 };
 
-/// The catalog field-type KEY the fixtures seed.
 const TOXIC_KEY: &str = "toxic_waste_pool";
 
-/// A ground-floor `(cell, level)` key.
 fn ground(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(0))
 }
 
-/// A single-def [`FieldDefRegistry`] holding a Permanent toxic-pool field under [`TOXIC_KEY`]
-/// (magnitudes are ARBITRARY mechanism, never pinned).
 fn catalog() -> FieldDefRegistry {
     FieldDefRegistry::new([(
         FieldKey::new(TOXIC_KEY.to_owned()),
@@ -66,9 +43,6 @@ fn catalog() -> FieldDefRegistry {
     )])
 }
 
-/// Run `setup_battle` on a fresh `MinimalPlugins` + `AssetPlugin` + `ScenePlugin` app against
-/// the given situation + registries (with the field catalog attached), returning the app +
-/// the setup `Result` so a test can assert on both the outcome and the seeded resources.
 fn run_setup(
     situation: Situation,
     gangs: GangRegistry,
@@ -102,23 +76,17 @@ fn run_setup(
             )
             .map(|_setup| ())
         });
-    // `run_system_once` returns Result<SystemOutput, RunSystemError>; unwrap the inner setup
-    // Result without a denied `unwrap` on the outer.
     let setup = outcome.unwrap_or(Err(BattleSetupError::FieldNotFound {
         field: FieldKey::new("<run-failed>".to_owned()),
     }));
     (app, setup)
 }
 
-/// A minimal two-ganger situation with one authored toxic-pool field, built via the
-/// `SituationBuilder` (which synthesizes the gang registry the placements resolve against).
 fn situation_with_field(field_cell: CellLevel) -> (Situation, GangRegistry) {
     let (mut situation, gangs) = SituationBuilder::new()
         .with_ganger(ganger_at(ground(1, 1), 0))
         .with_ganger(ganger_at(ground(2, 1), 1))
         .build_with_gangs();
-    // Author one field placement (the builder has no field method — set the pub list directly,
-    // exactly what a deserialized `.ron` would produce).
     situation.fields = vec![FieldSpawn::new(
         field_cell,
         FieldKey::new(TOXIC_KEY.to_owned()),
@@ -126,7 +94,6 @@ fn situation_with_field(field_cell: CellLevel) -> (Situation, GangRegistry) {
     (situation, gangs)
 }
 
-// === fields seedable from situation RON: setup_battle populates the FieldRegistry. ===
 
 #[test]
 fn authored_field_seeds_the_field_registry() {
@@ -156,11 +123,9 @@ fn authored_field_seeds_the_field_registry() {
     }
 }
 
-// === serde-default byte-identity: a situation omitting `fields:` deserializes to an empty list. ===
 
 #[test]
 fn situation_without_fields_deserializes_to_an_empty_list() {
-    // A minimal situation `.ron` that omits `fields:` entirely — every field is
     // `#[serde(default)]`, so this must parse and carry NO fields.
     let ron = "(gangers: [], grid_size: (width: 10, height: 10, levels: 1))";
     let parsed = ron::de::from_str::<Situation>(ron);
@@ -177,11 +142,9 @@ fn situation_without_fields_deserializes_to_an_empty_list() {
     }
 }
 
-// === fields seedable from situation RON: an authored `fields:` list parses. ===
 
 #[test]
 fn authored_fields_ron_parses_into_field_spawns() {
-    // A situation `.ron` authoring a single toxic-pool field at (4, 4, 0).
     let ron = "(gangers: [], grid_size: (width: 10, height: 10, levels: 1), \
                 fields: [(at: (cell: (x: 4, y: 4), level: 0), field: \"toxic_waste_pool\")])";
     let parsed = ron::de::from_str::<Situation>(ron);
@@ -209,7 +172,6 @@ fn authored_fields_ron_parses_into_field_spawns() {
     }
 }
 
-// === abort-first on a bad key: an unknown field key fails FieldNotFound, inserts no registry. ===
 
 #[test]
 fn unknown_field_key_aborts_with_field_not_found() {
@@ -217,7 +179,6 @@ fn unknown_field_key_aborts_with_field_not_found() {
         .with_ganger(ganger_at(ground(1, 1), 0))
         .with_ganger(ganger_at(ground(2, 1), 1))
         .build_with_gangs();
-    // Author a field whose KEY is NOT in the catalog.
     situation.fields = vec![FieldSpawn::new(
         ground(4, 4),
         FieldKey::new("no_such_field".to_owned()),
@@ -234,11 +195,9 @@ fn unknown_field_key_aborts_with_field_not_found() {
     );
 }
 
-// === a Turns field seeds with its authored countdown (the duration RON round-trips). ===
 
 #[test]
 fn turns_field_def_round_trips_through_ron() {
-    // A field def RON authoring a 3-turn electrified floor immune to Plated.
     let ron = "(damage: 4, damage_type: Shock, immune_armor_types: [Plated], \
                 duration: Turns(3))";
     let parsed = ron::de::from_str::<FieldDef>(ron);

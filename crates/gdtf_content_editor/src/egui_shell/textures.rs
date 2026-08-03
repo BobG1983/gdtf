@@ -1,22 +1,3 @@
-//! The shell's PRE-PANEL **egui texture-id resolution** — split out of `shell.rs` at
-//! the GTW-664 natural boundary (module-layout bands): this block changes when a MODE's
-//! texture surface changes (a new preview, a new registered sheet), the shell when the
-//! PANEL layout does.
-//!
-//! Every id here must resolve BEFORE the exclusive `ctx_mut()` borrow the shell takes
-//! (`image_id`/`add_image` borrow the contexts — `bevy_egui` 0.41), which is why the shell
-//! calls [`resolve_panel_textures`] once, first, and threads the returned bundle into
-//! the panel closures.
-//!
-//! GTW-665: the single palette `sheet_id` became the path-keyed [`SpriteTextures`] map —
-//! one egui id + pixel dims per DISTINCT source-image path in the GTW-663
-//! [`SpriteDefRegistry`], so every thumbnail consumer (prefab palette, theme library,
-//! terrain picker) draws from the SAME def-driven resolution the battle renderer uses
-//! (one resolution, two consumers). Loading + registration ride the SPRITE mode's
-//! path-keyed [`SpritePreviewCache`](super::sprite_form_ui::SpritePreviewCache) (strong
-//! handles) + `EguiContexts::add_image` (idempotent — the entry API returns the existing
-//! id on a multipass re-run).
-
 use bevy::{asset::AssetServer, image::Image, math::UVec2, platform::collections::HashMap};
 use bevy_egui::{EguiContexts, EguiTextureHandle, egui};
 use gdtf_battle_presenter::source_parts;
@@ -29,42 +10,23 @@ use super::{
 };
 use crate::mode::EditorMode;
 
-/// The path-keyed sprite source textures the thumbnail draws sample (GTW-665): each
-/// DISTINCT base-source image path in the [`SpriteDefRegistry`] resolves to its egui
-/// texture id + LOADED pixel dims. A path still decoding is simply absent — the thumb
-/// draws its fallback until the next frame resolves it.
 #[derive(Default)]
 pub(super) struct SpriteTextures {
-    /// One resolved `(egui id, pixel dims)` per registered source path.
-    map: HashMap<SpriteImagePath, (egui::TextureId, UVec2)>,
+        map: HashMap<SpriteImagePath, (egui::TextureId, UVec2)>,
 }
 
 impl SpriteTextures {
-    /// The resolved egui texture id + pixel dims for `path`, if its image has decoded
-    /// and registered.
-    pub(super) fn get(&self, path: &SpriteImagePath) -> Option<(egui::TextureId, UVec2)> {
+            pub(super) fn get(&self, path: &SpriteImagePath) -> Option<(egui::TextureId, UVec2)> {
         self.map.get(path).copied()
     }
 }
 
-/// The egui texture ids the panels draw, resolved pre-`ctx_mut`. Each is [`None`] /
-/// empty until its asset registers/decodes — the consuming panel then draws its fallback.
 pub(super) struct ResolvedTextures {
-    /// The per-path sprite source textures (GTW-665 — the PREFAB palette rows + the
-    /// TERRAIN/THEME pickers' thumbnails draw def-resolved UV sub-rects over them).
-    pub(super) sprites:        SpriteTextures,
-    /// The offscreen prefab-preview render target (the PREFAB viewport's image).
-    pub(super) preview_id:     Option<egui::TextureId>,
-    /// The GTW-664 SPRITE-mode preview of the draft's base source image (the anchor
-    /// section's crosshair canvas).
-    pub(super) sprite_preview: Option<PreviewTexture>,
+            pub(super) sprites:        SpriteTextures,
+        pub(super) preview_id:     Option<egui::TextureId>,
+            pub(super) sprite_preview: Option<PreviewTexture>,
 }
 
-/// Resolve every egui texture id the panels need — the per-path sprite source map
-/// (GTW-665), the prefab render target (an `image_id` lookup over the already-registered
-/// handle), and the SPRITE-mode source preview (an idempotent load + `add_image` +
-/// measure through the path-keyed cache — see
-/// [`resolve_preview_texture`](sprite_form_ui::resolve_preview_texture)).
 pub(super) fn resolve_panel_textures(
     contexts: &mut EguiContexts,
     mode: EditorMode,
@@ -97,11 +59,6 @@ pub(super) fn resolve_panel_textures(
     }
 }
 
-/// Build the per-path [`SpriteTextures`] map from the registry's DISTINCT base-source
-/// paths: load each through the path-keyed cache (one strong handle per path — a repeat
-/// call reuses it), measure the decoded dims from [`Assets<Image>`](bevy::asset::Assets),
-/// and register with egui via `add_image` (idempotent). A path still decoding is skipped
-/// this frame. Registry absent / no asset stack → the empty map (every thumb falls back).
 fn resolve_sprite_textures(
     contexts: &mut EguiContexts,
     registry: Option<&SpriteDefRegistry>,

@@ -1,39 +1,4 @@
-//! The PREFAB-mode **controls** (GTW-515 C4.5 / C4.6 / C4.9) — the RIGHT panel: the grid SIZE
-//! fields, the per-storey LEVEL RAIL (GTW-595; the `]`/`[`/PageUp/PageDown hotkeys live
-//! in a `Update` system), and the debug-only Save-prefab control.
-//!
-//! ## Size fields (C4.6 / GTW-464)
-//!
-//! The W / H / levels size fields moved to the sibling [`size_fields`](super::size_fields) module
-//! (GTW-464), which models the displayed spans explicitly
-//! ([`SizeFieldSpans`](super::size_fields::SizeFieldSpans)): derived FRESH from the session every
-//! pass (the session → fields reverse sync) and committed back through the kept clamp on a real
-//! edit. This panel just draws them ([`size_fields::size_fields`](super::size_fields::size_fields)).
-//!
-//! ## Level rail (GTW-595, replacing the C4.5 `Level n / m` paging)
-//!
-//! The blind readout + `[▲]` / `[▼]` buttons are GONE: the sibling
-//! [`level_rail`](super::level_rail) module draws one row per storey (top first) with an
-//! occupancy thumbnail + painted count, click-to-jump / scroll / drag-to-scrub — all through the
-//! SAME kept clamp ([`CurrentEditLevel::jumped`] / [`CurrentEditLevel::stepped`]) the hotkeys use.
-//!
-//! ## View toggle (GTW-532) + Isolate (GTW-594)
-//!
-//! A `[Down-to-active | Full view]` toggle button that flips the prefab viewport's [`ViewMode`]
-//! (REUSED from the presenter — the SAME type the GTW-521 battlescape toggle drives). In
-//! [`ViewMode::DownToActive`] the viewport draws `0..=CurrentEditLevel`; in [`ViewMode::FullView`]
-//! it draws the whole prefab storey stack at once. The `F` hotkey ([`view_mode_hotkey`](super::nav::view_mode_hotkey)) flips the
-//! same resource, so button + key agree (mirroring the mode-tab / hotkey dual controls).
-//! Beneath it, the GTW-594 ISOLATE checkbox flips the orthogonal [`IsolateView`] (the
-//! editor default: ON, one onion storey below) — while on it WINS over the two-state
-//! toggle (the C3 precedence).
-//!
-//! ## Save (C4.9)
-//!
 //! A `#[cfg(debug_assertions)]` "Save prefab" button + name field → [`write_prefab`] (reused). In a
-//! release build the save controls do not compile in (the whole save path is debug-only), and the
-//! function signature is uniform across profiles (the release arm consumes the save-only bindings).
-
 use bevy_egui::egui;
 use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_battle_sim::level::UuidThemeRegistry;
@@ -47,19 +12,6 @@ use crate::{
     session::MapEditorSession,
 };
 
-/// Draw the PREFAB-mode controls into the RIGHT panel (GTW-515 C4.5 / C4.6 / C4.9; GTW-532 the
-/// view toggle).
-///
-/// The size fields display + commit through the [`size_fields`] view model (session → fields
-/// reverse sync + the kept clamp commit — GTW-464) and re-clamp the edit level on a size change;
-/// the GTW-595 level rail draws the per-storey thumbnails + counts and jumps/scrubs the
-/// [`CurrentEditLevel`]; the view toggle
-/// flips the [`ViewMode`]; the GTW-594 Isolate checkbox flips the orthogonal
-/// [`IsolateView`] (ON by default — it wins over the view toggle while on); the debug Save
-/// control writes the prefab. `save_name` is the in-UI
-/// prefab-name buffer the shell owns across frames (an [`egui::TextEdit`] needs a persistent
-/// `&mut String`); `rail_state` is the rail's shell-owned view state (thumbnail cache + scrub
-/// remainder); `themes` resolves the active theme's display name for the save path.
 #[expect(
     clippy::too_many_arguments,
     reason = "the controls panel drives every prefab RIGHT-panel control from the borrows the shell \
@@ -89,7 +41,6 @@ pub(crate) fn controls_panel(
 
     size_fields::size_fields(ui, session, edit_level);
     ui.separator();
-    // GTW-595: the per-storey level rail, replacing the blind `Level n / m` paging.
     level_rail::level_rail(
         ui,
         &mut RailCtx {
@@ -115,17 +66,9 @@ pub(crate) fn controls_panel(
     }
 }
 
-/// The prefab-viewport VIEW toggle (GTW-532 C3) — a labelled button that flips the [`ViewMode`]
-/// between [`DownToActive`](ViewMode::DownToActive) (draw `0..=CurrentEditLevel`) and
-/// [`FullView`](ViewMode::FullView) (draw the whole storey stack) via the presenter-owned
-/// [`ViewMode::toggled`] (GTW-577 C8 — the ONE flip, no local copy). Set-to-target (an explicit
-/// assignment to the toggled mode), so it is idempotent under the egui multipass re-run
-/// (bevy-traps #8 (b)). The `F` hotkey ([`view_mode_hotkey`](super::nav::view_mode_hotkey)) flips the SAME resource.
 fn view_toggle(ui: &mut egui::Ui, view: &mut ViewMode) {
     ui.label("Storey view");
     ui.horizontal(|ui| {
-        // The button LABEL names the current mode; clicking it flips to the other (the standard
-        // two-state toggle affordance).
         let label = match *view {
             ViewMode::DownToActive => "Down-to-active ▸ Full view",
             ViewMode::FullView => "Full view ▸ Down-to-active",
@@ -140,13 +83,6 @@ fn view_toggle(ui: &mut egui::Ui, view: &mut ViewMode) {
     });
 }
 
-/// The ISOLATE toggle (GTW-594 C2/C3) — a checkbox flipping the orthogonal
-/// [`IsolateView`] between ON (the editor default: band floor = active, ONE onion storey
-/// below as the categorical ghost) and OFF (the two-state [`ViewMode`] above chooses the
-/// band). While ON it WINS over the two-state mode (the C3 precedence — the classifier
-/// decides it, this control just flips the resource). Set-to-target (an explicit
-/// assignment from the checkbox's post-click state), so it is idempotent under the egui
-/// multipass re-run (bevy-traps #8 (b)).
 fn isolate_toggle(ui: &mut egui::Ui, isolate: &mut IsolateView) {
     let mut on = matches!(*isolate, IsolateView::On(_));
     if ui.checkbox(&mut on, "Isolate (active + 1 below)").changed() {
@@ -161,9 +97,6 @@ fn isolate_toggle(ui: &mut egui::Ui, isolate: &mut IsolateView) {
     }
 }
 
-/// The debug-only Save-prefab control (C4.9) — a name field + a "Save prefab" button; on press it
-/// resolves the active theme's display name and calls the reused
-/// [`write_prefab`](crate::save::write_prefab). On a typed error it logs and writes nothing (never a
 /// panic). Debug-only — the whole prefab save path is `#[cfg(debug_assertions)]`.
 #[cfg(debug_assertions)]
 fn save_control(

@@ -1,10 +1,5 @@
-//! AC: degenerate inputs never panic and return a defined verdict — a co-located
-//! `from == to`, and off-grid positions.
-
 use super::support::*;
 
-/// A co-located observer/target (`from == to`, the same `(cell, level)`) is degenerate
-/// — the watcher trivially sees its own cell, so the verdict is CLEAR, no panic.
 #[test]
 fn co_located_from_eq_to_is_sighted() {
     let tuning = CombatTuning::default();
@@ -44,9 +39,6 @@ fn co_located_from_eq_to_is_sighted() {
     );
 }
 
-/// Off-grid endpoints never panic and return a defined verdict — the wrapped march's
-/// own graceful out-of-grid paths carry through. Both an off-grid observer and an
-/// off-grid target are exercised; the only contract is "no panic, defined verdict".
 #[test]
 fn off_grid_never_panics() {
     let tuning = CombatTuning::default();
@@ -59,7 +51,6 @@ fn off_grid_never_panics() {
     let st = stance(StanceKind::Standing);
     let look = facing(Direction::East);
 
-    // Off-grid observer → on-grid target.
     let off_observer = Observer {
         position:         &off_grid,
         stance:           &st,
@@ -90,7 +81,6 @@ fn off_grid_never_panics() {
         no_dead(),
     );
 
-    // On-grid observer → off-grid target.
     let on_observer = Observer {
         position:         &on_grid,
         stance:           &st,
@@ -121,9 +111,6 @@ fn off_grid_never_panics() {
         no_dead(),
     );
 
-    // The defined-verdict contract: reaching here proves no panic, and the verdict is
-    // stable (deterministic) across repeated calls. Pin no SPECIFIC verdict (the
-    // brittle-test rule — off-grid geometry is not a magnitude to lock).
     assert_eq!(
         a1, a2,
         "an off-grid observer must return a defined, stable verdict"

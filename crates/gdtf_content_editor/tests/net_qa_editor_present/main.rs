@@ -1,22 +1,4 @@
-//! GTW-918: the RUNNING editor captures offscreen — asserted on the app the binary builds.
-//!
 //! The `#![cfg(all(debug_assertions, feature = "net_qa"))]` gate (below, after this crate doc so
-//! the doc survives a feature-off build — the GTW-804 `net_qa_hello` precedent) compiles the
-//! whole dir-form suite to an empty crate without the feature. Run it with the feature on:
-//! `cargo test -p gdtf_content_editor --features net_qa --test net_qa_editor_present`.
-//!
-//! The in-src tests (`src/net_qa/present/test/`) pin each piece of the wiring on small apps that
-//! carry the present plugin alone. This suite answers the question those cannot: does the EDITOR
-//! — its own `MapEditorPlugin`, its own `EguiPlugin`, its own `NetQaEditorPlugin`, its own
-//! `OnEnter(Editing)` camera spawn, reaching `Editing` through its real `Load` pass — end up
-//! capturing offscreen, with nothing in the test inserting the source or the target?
-//!
-//! ## Members (one concern per file)
-//!
-//! - [`support`] — the shared error aliases.
-//! - [`harness`] — the real editor app with a real primary window, and the drive-to-`Editing`
-//!   driver.
-
 #![cfg(all(debug_assertions, feature = "net_qa"))]
 
 mod harness;
@@ -31,21 +13,6 @@ use crate::{
     support::TestResult,
 };
 
-/// Clause 1 — the running editor captures OFFSCREEN by default, and clauses 4/5/7 hold on the
-/// real editor camera.
-///
-/// Nothing here inserts an [`EditorShotSource`] or a capture image: the editor's own listener-arm
-/// wiring creates the target and names it. The assertions, in order:
-///
-/// 1. The capture source is `Offscreen(..)` — never `PrimaryWindow`.
-/// 2. The editor's egui camera — the entity carrying [`PrimaryEguiContext`], spawned
-///    window-targeted by `OnEnter(Editing)` — now carries `RenderTarget::Image`.
-/// 3. That image is the very one the capture source names, so the pump reads the pixels this
-///    camera writes.
-/// 4. The image render target carries the WINDOW's scale factor, not `ImageRenderTarget`'s
-///    `From`-impl `1.0` — which for egui governs both the rendered size and where clicks land.
-/// 5. Exactly one entity holds the primary egui context, and it is that camera: the present
-///    camera never stole it.
 #[test]
 fn the_running_editor_captures_the_offscreen_image_its_egui_camera_renders_into() -> TestResult {
     let (mut app, _port) = windowed_editor_app()?;

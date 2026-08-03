@@ -1,6 +1,3 @@
-//! The left-click SELECT rung + the two-click MOVE targeting / retarget
-//! (AC1/AC2).
-
 use bevy::prelude::*;
 use gdtf_battle_sim::prelude::{Cell, CellLevel};
 use gdtf_test_utils::{clear_mouse, press_mouse};
@@ -8,14 +5,9 @@ use gdtf_test_utils::{clear_mouse, press_mouse};
 use super::harness::*;
 
 // ---------------------------------------------------------------------------------
-// AC1 — left-click SELECTS only a player ganger.
-// ---------------------------------------------------------------------------------
 
-/// AC1 — a Left press over a PLAYER-faction occupant selects it; a Left press over a
-/// NON-player occupant (or an empty cell) does NOT become a player-own selection.
 #[test]
 fn left_click_selects_only_a_player_ganger() {
-    // Player occupant -> selected.
     {
         let mut app = control_app();
         let cell = CellLevel::new(Cell::new(5, 5), LEVEL);
@@ -29,8 +21,6 @@ fn left_click_selects_only_a_player_ganger() {
             "a Left press over a player-faction occupant must select it",
         );
     }
-    // Enemy occupant -> NOT selected-as-own (no fire mode forces fire; no prior selection
-    // -> CLEAR).
     {
         let mut app = control_app();
         let cell = CellLevel::new(Cell::new(7, 7), LEVEL);
@@ -44,7 +34,6 @@ fn left_click_selects_only_a_player_ganger() {
             "an enemy occupant must never become a player-own selection",
         );
     }
-    // Empty cell -> not a selection.
     {
         let mut app = control_app();
         set_hovered(&mut app, Some(CellLevel::new(Cell::new(9, 9), LEVEL)));
@@ -58,16 +47,7 @@ fn left_click_selects_only_a_player_ganger() {
     }
 }
 
-// ---------------------------------------------------------------------------------
-// AC2 (GTW-356) — left-click empty + player selection is TWO-CLICK: click-1 SETS the
-// move target (no dispatch); click-2 on the SAME cell COMMITS the move.
-// ---------------------------------------------------------------------------------
 
-/// AC2 — with a player-faction `SelectedShooter`, the FIRST Left press on an empty,
-/// in-bounds, unblocked cell SETS `PathPreviewTarget` to that cell and emits NO
-/// `MoveRequested`; the SECOND Left press on the SAME cell emits exactly one `MoveRequested
-/// { actor = selection, dest = hovered }`, clears the target, and emits zero `FireRequested`
-/// (GTW-356 two-click flow — the single-click immediate-move was REPLACED, not weakened).
 #[test]
 fn two_click_empty_with_selection_targets_then_moves() {
     let mut app = control_app();
@@ -78,7 +58,6 @@ fn two_click_empty_with_selection_targets_then_moves() {
     let dest = CellLevel::new(Cell::new(4, 3), LEVEL);
     set_hovered(&mut app, Some(dest));
 
-    // Click-1: SET the target, dispatch NOTHING.
     press_mouse(&mut app, MouseButton::Left);
     app.update();
     assert!(
@@ -91,7 +70,6 @@ fn two_click_empty_with_selection_targets_then_moves() {
         "click-1 must SET PathPreviewTarget to the clicked cell",
     );
 
-    // Click-2 on the SAME cell: COMMIT.
     clear_mouse(&mut app);
     set_hovered(&mut app, Some(dest));
     press_mouse(&mut app, MouseButton::Left);
@@ -116,9 +94,6 @@ fn two_click_empty_with_selection_targets_then_moves() {
     );
 }
 
-/// AC2 (GTW-356 re-target) — with a target already pending, a click on a DIFFERENT valid
-/// cell RE-TARGETS the preview (does NOT commit): no `MoveRequested`, and the target follows
-/// the new cell. (The same-cell-commit / different-cell-retarget interpretation, FLAGGED.)
 #[test]
 fn click_on_a_different_cell_retargets_without_committing() {
     let mut app = control_app();
@@ -136,7 +111,6 @@ fn click_on_a_different_cell_retargets_without_committing() {
         "click-1 sets the first target"
     );
 
-    // A click on a DIFFERENT valid cell re-targets, never commits.
     clear_mouse(&mut app);
     let second = CellLevel::new(Cell::new(5, 3), LEVEL);
     set_hovered(&mut app, Some(second));

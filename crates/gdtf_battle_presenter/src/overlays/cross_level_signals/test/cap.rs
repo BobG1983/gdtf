@@ -1,8 +1,3 @@
-//! GTW-596 aggregation + cap regression tests (the RESOLVED SPEC, user ruling
-//! 2026-07-10, acceptance clause 3): the count-pip dedup case and the
-//! priority-drop cap case, over the real `aggregate_threats` / `cap_badges` /
-//! `build_signals` pipeline `derive_cross_level_signals` itself calls.
-
 use gdtf_battle_sim::{falls::StoreysFallen, prelude::Cell};
 
 use crate::overlays::cross_level_signals::{
@@ -10,10 +5,6 @@ use crate::overlays::cross_level_signals::{
     types::{CrossLevelBadgeKind, LevelDelta, ThreatCount},
 };
 
-/// RESOLVED SPEC: two enemies sharing the SAME level-delta on one cell collapse
-/// into ONE badge with an `x2` count pip; a THIRD enemy at a DIFFERENT delta on
-/// the same cell stays a SEPARATE badge — and the result is ordered
-/// nearest-delta-first.
 #[test]
 fn same_delta_enemies_collapse_a_different_delta_stays_separate() {
     let same = LevelDelta::new(2);
@@ -38,9 +29,6 @@ fn same_delta_enemies_collapse_a_different_delta_stays_separate() {
     );
 }
 
-/// RESOLVED SPEC cap: MORE than 3 candidate badges on one cell — Threat(s) first
-/// (nearest delta first), then `DropDepth`, then `ConnectorDelta` — keeps exactly
-/// the top 3, silently dropping the rest.
 #[test]
 fn more_than_three_candidates_keep_exactly_three_in_priority_order() {
     let near = CrossLevelBadgeKind::Threat {
@@ -58,7 +46,6 @@ fn more_than_three_candidates_keep_exactly_three_in_priority_order() {
         delta: LevelDelta::new(1),
     };
 
-    // Authored out of priority order on purpose — cap_badges must re-sort AND cap.
     let capped = cap_badges(vec![connector, drop, far, near]);
 
     assert_eq!(
@@ -69,8 +56,6 @@ fn more_than_three_candidates_keep_exactly_three_in_priority_order() {
     );
 }
 
-/// `build_signals` caps PER CELL — a cell under the cap keeps every badge; a
-/// different cell's overflow does not affect it.
 #[test]
 fn build_signals_caps_independently_per_cell() {
     let busy = Cell::new(1, 1);

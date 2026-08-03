@@ -1,11 +1,3 @@
-//! The shell's PRE-PANEL per-mode model-sync / autoload block — split out of
-//! `shell.rs` at the GTW-479-flagged natural boundary (GTW-654; module-layout warn
-//! band): these runners change when a MODE's open-with-content behavior does, the
-//! shell when the PANEL layout does. Each runner self-gates on its mode and on its
-//! model borrows being present, and each is idempotent under the egui multipass
-//! re-run (bevy-traps #8) — the underlying one-shot seeds end their own pending
-//! state on the first pass.
-
 use gdtf_battle_sim::{
     armor::ArmorRegistry,
     equipment::attachments::AttachmentRegistry,
@@ -37,35 +29,17 @@ use crate::{
     weapon_form::WeaponDraft,
 };
 
-/// The per-mode model bundles the sync fan-out below reads — borrowed from the shell's
-/// `SystemParam` bundles for the duration of [`run_form_syncs`] (GTW-669; the
-/// continuing the module-layout split: the sync ROSTER grows with every new mode, so the
-/// whole fan-out lives HERE with the sync runners, and the shell only changes when the
-/// PANEL layout does). Each bundle keeps its OWN world lifetime — a `&mut` is invariant
-/// over its type parameter, so one shared `'w` would force the shell's independently
-/// elided param lifetimes to unify (a compile error).
 pub(super) struct ModeSyncBundles<'a, 'gang, 'armor, 'injury, 'sprite, 'attach, 'weapon, 'melee, 's>
 {
-    /// The GANG-mode model borrows (GTW-636).
-    pub(super) gang:         &'a mut GangParams<'gang>,
-    /// The ARMOR-mode model borrows (GTW-479).
-    pub(super) armor:        &'a mut ArmorParams<'armor>,
-    /// The INJURY-mode model borrows (GTW-654).
-    pub(super) injury:       &'a mut InjuryParams<'injury>,
-    /// The SPRITE-mode model borrows (GTW-664).
-    pub(super) sprite:       &'a mut SpriteParams<'sprite, 's>,
-    /// The ATTACHMENT-mode model borrows (GTW-669).
-    pub(super) attachment:   &'a mut AttachmentParams<'attach>,
-    /// The WEAPON-mode model borrows (GTW-670).
-    pub(super) weapon:       &'a mut WeaponParams<'weapon>,
-    /// The MELEE-WEAPON-mode model borrows (GTW-671).
-    pub(super) melee_weapon: &'a mut MeleeWeaponParams<'melee>,
+        pub(super) gang:         &'a mut GangParams<'gang>,
+        pub(super) armor:        &'a mut ArmorParams<'armor>,
+        pub(super) injury:       &'a mut InjuryParams<'injury>,
+        pub(super) sprite:       &'a mut SpriteParams<'sprite, 's>,
+        pub(super) attachment:   &'a mut AttachmentParams<'attach>,
+        pub(super) weapon:       &'a mut WeaponParams<'weapon>,
+        pub(super) melee_weapon: &'a mut MeleeWeaponParams<'melee>,
 }
 
-/// Run EVERY per-mode pre-panel sync/autoload runner — the ONE fan-out the shell calls
-/// before resolving textures / declaring panels (GTW-669). Each runner self-gates on
-/// its mode and its borrows being present, and each is idempotent under the egui
-/// multipass re-run (bevy-traps #8), so running the whole roster every frame is safe.
 pub(super) fn run_form_syncs(
     mode: EditorMode,
     session: &MapEditorSession,
@@ -113,13 +87,6 @@ pub(super) fn run_form_syncs(
     );
 }
 
-/// C3.2 (GTW-514): when in THEME mode with a theme already selected in the session,
-/// auto-load that theme's def into the form so the author edits the live
-/// definition. Checked every frame; `resolve_autoload` returns `None` for a nil
-/// theme / absent registry, so it no-ops until a real theme resolves. The key
-/// comparison avoids redundant reinitialisation across frames — it only loads when
-/// the form's current key differs from the session theme (a new selection or a
-/// first-enter with a pre-selected theme).
 fn theme_form_sync(
     mode: EditorMode,
     session: &MapEditorSession,
@@ -135,9 +102,6 @@ fn theme_form_sync(
     }
 }
 
-/// GTW-636: the GANG mode's one-shot open-with-a-gang seed — a still-pristine
-/// draft loads the FIRST gang (sorted) from the resolved registry, the retired
-/// in-game editor's exact open behavior.
 fn gang_form_sync(mode: EditorMode, draft: Option<&mut GangDraft>, gangs: Option<&GangRegistry>) {
     if mode == EditorMode::Gang
         && let (Some(draft), Some(registry)) = (draft, gangs)
@@ -146,8 +110,6 @@ fn gang_form_sync(mode: EditorMode, draft: Option<&mut GangDraft>, gangs: Option
     }
 }
 
-/// GTW-479: the ARMOR mode's one-shot open-with-an-armor seed — the Gang
-/// autoload's exact parity twin.
 fn armor_form_sync(
     mode: EditorMode,
     draft: Option<&mut ArmorDraft>,
@@ -160,9 +122,6 @@ fn armor_form_sync(
     }
 }
 
-/// GTW-654: the INJURY mode's TWO one-shot seeds — the def form opens on the first
-/// sorted injury (the Gang/Armor parity) and the weighting section on the first
-/// canonical category's current built table.
 fn injury_form_sync(
     mode: EditorMode,
     draft: Option<&mut InjuryDraft>,
@@ -181,8 +140,6 @@ fn injury_form_sync(
     }
 }
 
-/// GTW-664: the SPRITE mode's one-shot open-with-a-sprite seed — the Gang / Armor
-/// autoloads' exact parity twin over the GTW-663 [`SpriteDefRegistry`].
 fn sprite_form_sync(
     mode: EditorMode,
     draft: Option<&mut SpriteDraft>,
@@ -195,8 +152,6 @@ fn sprite_form_sync(
     }
 }
 
-/// GTW-669: the ATTACHMENT mode's one-shot open-with-an-item seed — the Gang / Armor /
-/// Sprite autoloads' exact parity twin over the GTW-619 [`AttachmentRegistry`].
 fn attachment_form_sync(
     mode: EditorMode,
     draft: Option<&mut AttachmentDraft>,
@@ -209,8 +164,6 @@ fn attachment_form_sync(
     }
 }
 
-/// GTW-670: the WEAPON mode's one-shot open-with-a-weapon seed — the Gang / Armor /
-/// Attachment autoloads' exact parity twin over the GTW-257 [`WeaponRegistry`].
 fn weapon_form_sync(
     mode: EditorMode,
     draft: Option<&mut WeaponDraft>,
@@ -223,8 +176,6 @@ fn weapon_form_sync(
     }
 }
 
-/// GTW-671: the MELEE-WEAPON mode's one-shot open-with-a-weapon seed — the Weapon
-/// autoload's exact parity twin over the GTW-505 [`MeleeWeaponRegistry`].
 fn melee_weapon_form_sync(
     mode: EditorMode,
     draft: Option<&mut MeleeWeaponDraft>,

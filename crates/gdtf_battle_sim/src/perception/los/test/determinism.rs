@@ -1,11 +1,5 @@
-//! AC: the probe is deterministic — it draws no RNG, so a repeated call on the same
-//! inputs returns the same verdict (asserted by repeat-call equality).
-
 use super::support::*;
 
-/// Repeated `has_los` calls on identical inputs return an identical verdict — across a
-/// CLEAR geometry and a BLOCKED one (so determinism holds for both verdicts), proving
-/// the probe draws no RNG.
 #[test]
 fn repeat_calls_are_identical() {
     let tuning = CombatTuning::default();
@@ -27,7 +21,6 @@ fn repeat_calls_are_identical() {
         stance:   &to_stance,
     };
 
-    // CLEAR (open) geometry.
     let open = OccupancyGrid::new();
     let open_cover = CoverLedger::new();
     let clear_a = has_los(
@@ -54,7 +47,6 @@ fn repeat_calls_are_identical() {
     );
     assert!(*clear_a, "the open geometry is CLEAR");
 
-    // BLOCKED geometry (a HIGH wall between).
     let mut blocked_cover = CoverLedger::new();
     blocked_cover.insert(key(5, 5, 0), cover_entry(HeightBand::High));
     let blocked_a = has_los(

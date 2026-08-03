@@ -1,7 +1,4 @@
 //! GTW-630 A2: the theme→terrain edge's authoring-time pins — a dangling
-//! terrain UUID surfaces in the EDITOR's report at launch, and a hot-edit of
-//! the loaded theme re-arms the pass (reset, re-check, re-publish).
-
 use bevy::asset::{AssetEvent, AssetServer, Assets, uuid::Uuid};
 use gdtf_assets::{ContentFamily, ContentFolderHandle, ContentIntegrityReport, RonAsset};
 use gdtf_battle_sim::{level::UuidThemeDef, terrain::def::TerrainUuid};
@@ -13,20 +10,12 @@ use crate::harness::{
     editor_app_on_fixture_root, has_dangling_ref,
 };
 
-/// The DISTINCT dangling terrain UUID the re-arm test hot-edits the theme's
-/// `default_floor` to (in-memory only — the fixture file is never written).
 const EDITED_DEFAULT_FLOOR: u128 = 0x0000_0000_0000_0000_0000_0630_0000_0003;
 
-/// Whether `report` holds a `DanglingRef` finding for the given terrain UUID
-/// against the `TerrainDefRegistry` family — the theme→terrain edge's shape.
 fn has_dangling_terrain_ref(report: &ContentIntegrityReport, uuid: &str) -> bool {
     has_dangling_ref(report, "TerrainDefRegistry", uuid)
 }
 
-/// A2: loading a theme whose `default_floor` + palette entry reference missing
-/// terrain UUIDs surfaces BOTH as `DanglingRef` findings on the
-/// [`ContentIntegrityReport`] in the EDITOR app — the same report shape the
-/// game publishes at the end of `Load`.
 #[test]
 fn dangling_theme_terrain_refs_surface_in_the_editor_at_authoring_time() {
     let mut app = editor_app_on_fixture_root();
@@ -51,23 +40,15 @@ fn dangling_theme_terrain_refs_surface_in_the_editor_at_authoring_time() {
     );
 }
 
-/// The LIVE authoring half: hot-editing the loaded theme (the hot-reload redrive
-/// path) re-arms the pass — the report is RESET, re-checked against the edited
-/// content, and re-published. The superseded `default_floor` finding is gone,
-/// the edited (still-dangling) one is present, and the untouched palette
-/// finding is re-reported.
 #[test]
 fn theme_hot_edit_rearms_validation_and_republishes_current_findings() {
     let mut app = editor_app_on_fixture_root();
     advance_to_published(&mut app);
 
-    // Hot-edit the loaded theme IN MEMORY (the load_redrive.rs recipe), then
-    // fire the same `Modified` message the file watcher emits.
     let handle = app
         .world()
         .resource::<AssetServer>()
         .load::<RonAsset<UuidThemeDef>>(format!(
-            // GTW-634 A1: the folder segment is DERIVED from the family's owning const.
             "{}/fixture_theme/fixture_theme.terrain_theme.ron",
             ThemeDefsFamily::FOLDER
         ));

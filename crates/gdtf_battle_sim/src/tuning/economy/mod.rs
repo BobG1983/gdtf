@@ -1,6 +1,3 @@
-//! The E4 TU economy cost leaves: the stance-change / turn TU costs and the
-//! per-terrain move-cost table.
-
 mod acts;
 mod movement;
 mod posture;

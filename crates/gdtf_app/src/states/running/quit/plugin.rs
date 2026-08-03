@@ -28,8 +28,6 @@ fn add_systems(app: &mut App) {
         )
         .add_systems(
             FixedUpdate,
-            // Quit is the last RunningState: its move-on climbs OUT of the
-            // sub-machine, advancing the PARENT AppState to Teardown.
             advance_state_to(AppState::Teardown)
                 .run_if(in_state(RunningState::Quit).and_then(resource_exists::<QuitComplete>)),
         )

@@ -1,11 +1,3 @@
-//! INJURY-mode form-model unit tests (GTW-654 A2): the two drafts' mutators, the
-//! one-shot autoload lifecycles, the loader-schema projections, and the PURE
-//! halves of the save paths (file name / path resolution / serialize round-trip)
-//! for BOTH artifact kinds. The REAL folder-walk round-trip (write into a
-//! `TempDir` assets root → the actual bespoke injuries loader) lives in
-//! `tests/injury_mode.rs`. Magnitudes are arbitrary fixture data (never shipped
-//! pins): the tests assert values SURVIVE, never that they equal a shipped number.
-
 use gdtf_assets::serialize_ron_pretty;
 use gdtf_battle_sim::{
     armor::InjuryCategory,
@@ -28,9 +20,6 @@ use super::{
     weighting::WeightingDraft,
 };
 
-/// A def fixture exercising EVERY closed-palette effect variant (so a dropped or
-/// re-shaped variant cannot round-trip) — parsed through the REAL deserializer,
-/// the loader's own entry point.
 fn fixture_def() -> InjuryDef {
     let ron = "(name: \"Test Wound\", category: Arm, severity: Major, \
                popup_text: \"WOUNDED\", log_text: \"is wounded\", \
@@ -45,9 +34,6 @@ fn fixture_def() -> InjuryDef {
     def
 }
 
-/// The `OnEnter(Editing)` seed is pristine: empty key, autoload PENDING, one seed
-/// effect row (the `effects ≥ 1` schema convention); loading an injury fills the
-/// form AND marks the autoload done; "New injury" mints a done-autoload form.
 #[test]
 fn default_is_pristine_and_load_injury_fills_the_form() {
     let mut draft = InjuryDraft::default();
@@ -86,15 +72,10 @@ fn default_is_pristine_and_load_injury_fills_the_form() {
     );
 }
 
-/// The identity round-trip through the def projection: an edited draft →
-/// [`draft_to_def`] → serialize (the shared pretty-RON writer) → deserialize the way
-/// the loader does → reload into a fresh draft → structural equality across every
-/// field INCLUDING all four effect variants. No pinned magnitudes.
 #[test]
 fn edited_def_round_trips_through_the_loader_schema() {
     let mut edited = InjuryDraft::new_injury();
     edited.load_injury(&InjuryName::new("test_wound".to_owned()), &fixture_def());
-    // Push a fresh effect through the mutator too (the Add-effect path).
     edited.def_mut().effects.push(InjuryEffect::Modify {
         stat:   StatTarget::Grit,
         amount: StatDelta::new(3),
@@ -128,13 +109,10 @@ fn edited_def_round_trips_through_the_loader_schema() {
     );
 }
 
-/// A built-tables fixture with distinct per-bucket rows for two categories, so a
-/// cross-category or cross-severity leak cannot pass the load pins.
 fn fixture_tables() -> InjuryTables {
     let row = |key: &str, weight: u32| {
         WeightedInjuryEntry::new(InjuryName::new(key.to_owned()), InjuryWeight::new(weight))
     };
-    // The editor edits the RANGED per-source tables (GTW-452), so key the fixtures under it.
     InjuryTables::new([
         (
             (InjuryCategory::Arm, DamageContext::Ranged, Severity::Minor),
@@ -155,9 +133,6 @@ fn fixture_tables() -> InjuryTables {
     ])
 }
 
-/// [`WeightingDraft::load_table`] loads exactly the picked `(category, context)`'s three
-/// buckets (an unauthored bucket loads empty) and ends the autoload; the row
-/// mutator adds/removes rows on the addressed bucket only.
 #[test]
 fn load_table_fills_exactly_the_picked_category_and_context() {
     let tables = fixture_tables();
@@ -189,7 +164,6 @@ fn load_table_fills_exactly_the_picked_category_and_context() {
         "another category's rows must not leak in",
     );
 
-    // Row edits through the mutator land on the addressed bucket only.
     draft.weighting_mut().major.push(WeightedInjuryEntry::new(
         InjuryName::new("bruise".to_owned()),
         InjuryWeight::new(5),
@@ -202,9 +176,6 @@ fn load_table_fills_exactly_the_picked_category_and_context() {
     );
 }
 
-/// The identity round-trip through the weighting projection: an edited draft →
-/// [`draft_to_weighting`] → serialize → deserialize the way the loader does →
-/// structural equality. No pinned magnitudes.
 #[test]
 fn edited_weighting_round_trips_through_the_loader_schema() {
     let mut edited = WeightingDraft::default();
@@ -245,12 +216,6 @@ fn edited_weighting_round_trips_through_the_loader_schema() {
     );
 }
 
-/// The save file names / paths derive every segment from the one-owner spellings
-/// (GTW-634): the def's compound suffix from `INJURY_DEF_EXTENSION` with the
-/// category subfolder from `category_dir`, the weighting's from
-/// `INJURY_WEIGHTING_EXTENSION` under `WEIGHTING_SUBFOLDER`; a path-hostile key
-/// sanitizes through the shared helper and an unnameable one falls back to the
-/// documented `unnamed_injury` stem.
 #[test]
 fn save_file_names_and_paths_derive_from_the_one_owner_spellings() {
     let key = InjuryName::new("twisted_ankle".to_owned());
@@ -299,8 +264,6 @@ fn save_file_names_and_paths_derive_from_the_one_owner_spellings() {
         "the weighting table lands under the weighting subfolder: {weighting_path:?}",
     );
 
-    // A default-effect sanity pin: the seed row IS a closed-palette variant (the
-    // "Add effect" template the def form pushes).
     assert!(matches!(
         super::draft::DEFAULT_EFFECT,
         InjuryEffect::Modify { .. }

@@ -1,9 +1,4 @@
-//! GTW-671 C5: the FISTS guard — `fists.melee_weapon.ron` is the `FISTS_KEY` default
 //! EVERY ganger without an authored melee weapon falls back to, so the form must load
-//! and re-save it without semantic drift. The test round-trips the SHIPPED file's
-//! SHAPE from a `TempDir` copy (never editing the shipped tree, never pinning shipped
-//! magnitudes — every assert compares loaded-vs-resaved, no literals).
-
 use std::path::Path;
 
 use gdtf_assets::{ContentFamily, WORKSPACE_ASSETS_ROOT};
@@ -13,20 +8,12 @@ use gdtf_content_families::MeleeWeaponsFamily;
 
 use crate::harness::{advance_to_editing, editor_app_with_asset_root};
 
-/// The shipped fists file's on-disk NAME — `fists.melee_weapon.ron`, derived from the
-/// family consts + the sim's [`FISTS_KEY`] (never re-spelled — GTW-621).
 fn fists_file_name() -> String {
     format!("{FISTS_KEY}.{}", MeleeWeaponsFamily::EXTENSION)
 }
 
-/// GTW-671 C5 — the SHIPPED file's bytes are copied into a `TempDir` root, loaded
-/// through the REAL loader, passed through the REAL form model (load → project),
-/// re-saved through the REAL write into a SECOND `TempDir` root, and reloaded — the
-/// final spec must equal the originally loaded one, still keyed [`FISTS_KEY`] (every
-/// ganger's unarmed fallback stays intact through an editor load + re-save).
 #[test]
 fn shipped_fists_shape_round_trips_through_the_form_without_drift() {
-    // Copy the SHIPPED fists file into a TempDir assets root.
     let shipped = Path::new(WORKSPACE_ASSETS_ROOT)
         .join(MeleeWeaponsFamily::FOLDER)
         .join(fists_file_name());
@@ -45,7 +32,6 @@ fn shipped_fists_shape_round_trips_through_the_form_without_drift() {
     assert!(std::fs::create_dir_all(&copy_dir).is_ok());
     assert!(std::fs::write(copy_dir.join(fists_file_name()), bytes).is_ok());
 
-    // LOAD the shipped shape through the REAL loader.
     let mut app = editor_app_with_asset_root(dir_a.path());
     advance_to_editing(&mut app);
     let registry = app.world().get_resource::<MeleeWeaponRegistry>();
@@ -58,15 +44,12 @@ fn shipped_fists_shape_round_trips_through_the_form_without_drift() {
     );
     let Some(loaded) = loaded else { return };
 
-    // FORM pass: load into the draft, project back out — the form must not drift the
-    // record (the projection is a copy of the loader schema by construction).
     let mut draft = MeleeWeaponDraft::default();
     draft.load_melee_weapon(&WeaponName::new(FISTS_KEY.to_owned()), &loaded);
     let (name, resaved) = draft_to_melee_weapon_spec(&draft);
     assert_eq!(name.as_str(), FISTS_KEY, "the fists KEY survives the form");
     assert_eq!(resaved, loaded, "the form projection must not drift fists");
 
-    // RE-SAVE through the real write into a SECOND root, reload, compare.
     let dir_b = tempfile::tempdir();
     assert!(dir_b.is_ok(), "creating TempDir root B must succeed");
     let Ok(dir_b) = dir_b else { return };

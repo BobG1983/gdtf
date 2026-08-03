@@ -1,12 +1,5 @@
-//! AC: a corpse on the sight line does NOT block; a living (or Downed) ganger DOES —
-//! the dead-occupant predicate is reused verbatim from the wrapped march (GTW-317).
-
 use super::support::*;
 
-/// A ganger occupant strictly between the eye and the target, banded to the sight
-/// line's band, BLOCKS sight while living — but with the same occupant marked a corpse
-/// (the `is_dead` predicate returns `true` for it) sight passes THROUGH it and the
-/// living target is CLEAR. Only the predicate changes between the two probes.
 #[test]
 fn corpse_passes_through_living_blocks() {
     let tuning = CombatTuning::default();
@@ -15,9 +8,6 @@ fn corpse_passes_through_living_blocks() {
 
     let (mid_occupant, target_occupant) = spawn_two_entities();
 
-    // A HIGH-banded occupant midway on a standing↔standing (HIGH) sight line, plus the
-    // banded target occupant so the standing target's aim resolves via its
-    // occupant_band (the shot-pipeline band derivation, not the bare-stance branch).
     let mut occupancy = OccupancyGrid::new();
     place_occupant(&mut occupancy, key(5, 5, 0), mid_occupant, HeightBand::High);
     place_occupant(
@@ -44,7 +34,6 @@ fn corpse_passes_through_living_blocks() {
         stance:   &to_stance,
     };
 
-    // Living mid occupant (no corpses) → it blocks the line of sight.
     let living = has_los(
         &observer,
         &target,
@@ -59,8 +48,6 @@ fn corpse_passes_through_living_blocks() {
         "a living ganger strictly between must BLOCK sight"
     );
 
-    // The SAME mid occupant marked a corpse → sight passes through it; the target is
-    // alive, so the line is CLEAR. Only the mid occupant is dead, never the target.
     let corpse_predicate = move |e: bevy::prelude::Entity| e == mid_occupant;
     let through = has_los(
         &observer,

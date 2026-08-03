@@ -1,7 +1,3 @@
-//! The CI-workflow feature test — walks every tracked workflow file, collects
-//! the workspace-wide `cargo` commands, and carries the whole violation list in
-//! one final assert (see the suite doc in `main.rs`).
-
 use std::{collections::BTreeSet, fs};
 
 use crate::{
@@ -9,27 +5,12 @@ use crate::{
     tree::{repo_root, workflow_files},
 };
 
-/// The GAME's QA control channel feature, as a workflow command must name it.
 const GAME_FEATURE: &str = "grimdark_turfwar/net_qa";
 
-/// The EDITOR's QA control channel feature, as a workflow command must name it.
-///
-/// `gdtf_content_editor` here is the LIBRARY package
-/// (`crates/gdtf_content_editor`), not the binary package
-/// (`gdtf_content_editor_bin`) — a package-qualified feature turns on only that
-/// package's, and the library is where `src/net_qa/` and the two gated test
-/// binaries live.
 const EDITOR_FEATURE: &str = "gdtf_content_editor/net_qa";
 
-/// Dev-only fast-linking that must never reach a CI command — CI green is the
-/// static subset per `CLAUDE.md`.
 const STATIC_ONLY_BAN: &str = "dynamic_linking";
 
-/// The workspace-wide CI commands the derived walk MUST have reached.
-///
-/// The walk is the general rule; this is its liveness check. Without it a line
-/// reader that stopped recognising `run:` commands would turn the guard green
-/// by checking nothing at all.
 const REQUIRED_COMMANDS: [(&str, &str); 2] = [
     (
         ".github/workflows/test.yml",
@@ -42,9 +23,6 @@ const REQUIRED_COMMANDS: [(&str, &str); 2] = [
     ),
 ];
 
-/// Every `cargo … --workspace …` command a workflow step RUNS, in both the
-/// single-line and block `run:` forms (see `run_steps.rs`), cut at the `cargo `
-/// word so a shell prefix does not read as part of the command.
 fn workspace_cargo_commands(text: &str) -> Vec<String> {
     run_commands(text)
         .into_iter()
@@ -57,7 +35,6 @@ fn workspace_cargo_commands(text: &str) -> Vec<String> {
         .collect()
 }
 
-/// The GTW-883 CI-workflow feature guard (see the suite doc in `main.rs`).
 #[test]
 fn every_ci_workspace_command_names_both_net_qa_features() {
     let root = repo_root();
@@ -71,7 +48,7 @@ fn every_ci_workspace_command_names_both_net_qa_features() {
     );
     for file in &files {
         let Ok(text) = fs::read_to_string(root.join(file)) else {
-            continue; // tracked but deleted from the working tree — nothing to read
+            continue; 
         };
         for command in workspace_cargo_commands(&text) {
             for feature in [GAME_FEATURE, EDITOR_FEATURE] {

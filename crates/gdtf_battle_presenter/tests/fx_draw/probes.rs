@@ -1,6 +1,3 @@
-//! Cross-surface world-readback probes + ganger/report fixtures shared by the
-//! `fx_draw` concern modules.
-
 use bevy::{
     app::App, prelude::Text2d, sprite::Sprite, text::TextColor, transform::components::Transform,
 };
@@ -19,8 +16,6 @@ use gdtf_battle_sim::{
     test_support::GangerEntityBuilder,
 };
 
-/// Spawns a ganger entity carrying a `Position` at `cell`/`level` plus `Wounds(wounds)`, and
-/// returns its `Entity` (the readers look it up by that entity).
 pub(crate) fn wounded_ganger(
     app: &mut App,
     cell: Cell,
@@ -33,20 +28,16 @@ pub(crate) fn wounded_ganger(
         .spawn(app.world_mut())
 }
 
-/// Counts the `FxFlash` entities currently in the world.
 pub(crate) fn fx_count(app: &mut App) -> usize {
     let mut q = app.world_mut().query::<&FxFlash>();
     q.iter(app.world()).count()
 }
 
-/// The (translation, atlas index) of the SINGLE `FxFlash` sprite — asserts exactly one exists.
-/// Returns `None` if zero or more than one flash exists (the caller asserts `Some`).
 pub(crate) fn single_flash(app: &mut App) -> Option<(bevy::math::Vec3, Option<usize>)> {
     let mut q = app.world_mut().query::<(&FxFlash, &Sprite, &Transform)>();
     let mut found: Option<(bevy::math::Vec3, Option<usize>)> = None;
     for (_, sprite, transform) in q.iter(app.world()) {
         if found.is_some() {
-            // More than one flash — the caller wants exactly one.
             return None;
         }
         found = Some((
@@ -57,12 +48,6 @@ pub(crate) fn single_flash(app: &mut App) -> Option<(bevy::math::Vec3, Option<us
     found
 }
 
-/// Spawns a REAL sim ganger (the components `spawn_ganger_sprites` queries — `Position`,
-/// `Faction`, `Facing`, `Stance`, `Aiming`, `LifeState`, the GTW-631 appearance-classifier
-/// input set) at `cell`/`level` and drives one `update()` so the
-/// presenter's real spawn system builds its sprite and registers the `sim Entity -> sprite
-/// Entity` link in `GangerSprites`. Returns the sim `Entity` (the `ShotKind::Ganger`
-/// payload). `BattleInProgress` must already be resident (the spawn gate).
 pub(crate) fn spawn_sim_ganger_with_sprite(
     app: &mut App,
     cell: Cell,
@@ -80,15 +65,10 @@ pub(crate) fn spawn_sim_ganger_with_sprite(
             LifeState::Alive,
         ))
         .id();
-    // Drive the real spawn_ganger_sprites system (gated on CharacterRoles + TopDownAtlases +
-    // BattleInProgress, all resident after settle) so the presenter sprite + GangerSprites
-    // mapping exist before the shot is fired.
     app.update();
     sim
 }
 
-/// The `(text, alpha-1 color)` of every live `FloatingCombatText` pop — the rendered string and
-/// its `TextColor` (full-alpha at spawn, before the first fade tick). Unordered.
 pub(crate) fn fct_pops(app: &mut App) -> Vec<(String, bevy::prelude::Color)> {
     let mut q = app
         .world_mut()
@@ -98,8 +78,6 @@ pub(crate) fn fct_pops(app: &mut App) -> Vec<(String, bevy::prelude::Color)> {
         .collect()
 }
 
-/// Whether the live pops contain a pop with exactly `text` whose color's RGB matches `color`'s
-/// (alpha-agnostic, since the pop fades — but at spawn, pre-tick, it is still full alpha).
 pub(crate) fn has_fct_pop(
     pops: &[(String, bevy::prelude::Color)],
     text: &str,
@@ -115,9 +93,6 @@ pub(crate) fn has_fct_pop(
     })
 }
 
-/// A ganger-hit `HitReport` for `part` with `hp` HP loss / `pen` penetration / `severity` tier
-/// / `life_after` state, struck on `struck` — the report the FCT reader classifies.
-/// (Not `const`: the GTW-573 ganger verdict is boxed, and `Box::new` is not const.)
 pub(crate) fn ganger_hit_report(
     struck: bevy::ecs::entity::Entity,
     part: BodyPart,
@@ -150,16 +125,11 @@ pub(crate) fn ganger_hit_report(
     }
 }
 
-/// The number of live `FloatingCombatText` pops currently in the world.
 pub(crate) fn fct_pop_count(app: &mut App) -> usize {
     let mut q = app.world_mut().query::<&FloatingCombatText>();
     q.iter(app.world()).count()
 }
 
-/// The `(text, world y)` of every live `FloatingCombatText` pop — the rendered string and its
-/// `Transform`'s world `y`. A pop's spawn `y` is `cell_to_world(cell, level).y` shifted DOWN by
-/// `stack_slot × STACK_STEP_PX`, so the `y` is a direct readout of the pop's stacking slot when
-/// read on its spawn frame (before `animate_floating_text` has risen it). Unordered.
 pub(crate) fn fct_pops_with_y(app: &mut App) -> Vec<(String, f32)> {
     let mut q = app
         .world_mut()
@@ -169,13 +139,10 @@ pub(crate) fn fct_pops_with_y(app: &mut App) -> Vec<(String, f32)> {
         .collect()
 }
 
-/// The world `y` of the (first) live pop whose rendered string equals `text`, or `None`.
 pub(crate) fn pop_y_for(pops: &[(String, f32)], text: &str) -> Option<f32> {
     pops.iter().find(|(t, _)| t == text).map(|(_, y)| *y)
 }
 
-/// The number of live FCT pops whose rendered string equals `text` (any color) — distinguishes
-/// "exactly one pop was spawned" from "none / many".
 pub(crate) fn pop_count_for(pops: &[(String, bevy::prelude::Color)], text: &str) -> usize {
     pops.iter().filter(|(t, _)| t == text).count()
 }

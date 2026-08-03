@@ -1,7 +1,3 @@
-//! C2 — the by-construction connectivity invariant on the real packer output, its
-//! shared flood machinery, and the margin-removal control that proves the pin
-//! discriminating.
-
 use super::support::*;
 use crate::{
     metric::{Cell, CellLevel},
@@ -9,22 +5,6 @@ use crate::{
     rng::{BattleSeed, ProcgenRng},
 };
 
-/// C2 (the by-construction connectivity INVARIANT): a generated level under a FIXED
-/// [`ProcgenRng`] seed is connected BY CONSTRUCTION — every board cell that is NOT inside a
-/// placed region is reachable, in 4-connectivity, from any single open cell. The open
-/// (non-region) cells form ONE connected component because the 1-cell `default_floor` margin
-/// every placement reserves leaves a continuous walkable corridor lattice between every pair
-/// of placed regions. This is asserted WITHOUT the removed connectivity flood: it floods the
-/// open cells of the REAL packer output (the [`FilledPlacement`]'s placed + filled region
-/// rectangles — the very rectangles the margin is reserved around), then additionally runs the
-/// full [`generate_level`] entry point and verifies the emitted `Situation`.
-///
-/// Pin-discriminating: the discrimination is proved by [`margin_separated_regions_stay_connected`],
-/// which feeds the SAME flood helper a control layout where two regions ABUT (the layout the
-/// packer would produce if [`Margin::DEFAULT`] were dropped to a zero margin) and asserts that
-/// control's open cells split into TWO components. So a packer with the margin removed would
-/// make this invariant FAIL. (The in-bounds + non-empty-walls checks below additionally pin
-/// that the emit translated the footprint-local cells onto the board.)
 #[test]
 fn emitted_level_is_in_bounds_and_fully_connected() {
     let theme = theme();
@@ -44,9 +24,6 @@ fn emitted_level_is_in_bounds_and_fully_connected() {
     let terrain_defs = terrain_defs();
     let knobs = tuning(0.8, 49, 2);
 
-    // Drive the REAL staged pipeline (the exact functions `generate_level` calls) under a
-    // fixed seed to recover the FilledPlacement — its placed + filled region rectangles ARE
-    // the packer's margin-reserved output (the margin is the 1-cell gap BETWEEN these regions).
     let seed = BattleSeed::new(0xB0_1234);
     let Some(filled) = run_pipeline(&prefabs, theme, board, seed, &knobs) else {
         return;
@@ -56,11 +33,6 @@ fn emitted_level_is_in_bounds_and_fully_connected() {
     let board_w = board_rect.footprint().width();
     let board_h = board_rect.footprint().height();
 
-    // The by-construction connectivity INVARIANT (C2): every cell NOT inside a placed region
-    // is reachable. The placed/filled regions are the only ground-plane blockers; the 1-cell
-    // margin reserved around each leaves a walkable lattice, so the open cells are ONE
-    // connected component. (Proved discriminating by `margin_separated_regions_stay_connected`:
-    // remove the margin and the control layout below fails this same helper.)
     let occupied = occupied_regions(&filled);
     assert!(
         open_cells_form_one_component(&occupied, board_w, board_h),
@@ -69,8 +41,6 @@ fn emitted_level_is_in_bounds_and_fully_connected() {
          placement could wall off part of the board, this would fail.",
     );
 
-    // Run the FULL entry point and verify the emitted Situation (the real output of the real
-    // pipeline) — the emit translated the footprint-local cells onto the board.
     let mut rng = ProcgenRng::from_root(seed);
     let result = generate_level(
         &prefabs,
@@ -91,22 +61,17 @@ fn emitted_level_is_in_bounds_and_fully_connected() {
     };
     let situation = emitted.situation;
 
-    // GTW-492: the theme is the UUID-keyed key directly (no shim), and the default_floor
-    // resolved from the theme registry (the test FLOOR piece).
     assert_eq!(
         situation.theme, theme,
         "the emitted level's theme must be the requested ThemeUuid (no shim)",
     );
 
-    // The emitted level carries the translated prefab walls (the single v2 placements list
-    // poured into `walls` by the Wall def classification).
     assert!(
         !situation.walls.is_empty(),
         "the emitted level must carry the translated prefab walls (C1 — the v2 placements \
          list was poured into the situation, classified into the walls list)",
     );
 
-    // Every authored terrain cell must be in-bounds: 0 <= x < board_w, 0 <= y < board_h.
     let in_bounds = |c: CellLevel| c.x >= 0 && c.x < board_w && c.y >= 0 && c.y < board_h;
     for w in &situation.walls {
         assert!(
@@ -130,8 +95,6 @@ fn emitted_level_is_in_bounds_and_fully_connected() {
         );
     }
 
-    // The dead space was floored (C3): with a partial density floor there is leftover free
-    // space, so the emit must have produced explicit `default_floor` overrides for it.
     assert!(
         !situation.floors.is_empty(),
         "the leftover dead space must be FLOORED with explicit default_floor entries (C3)",
@@ -147,34 +110,12 @@ fn emitted_level_is_in_bounds_and_fully_connected() {
     );
 }
 
-/// C2 (pin-discrimination): PROVE the by-construction connectivity invariant is sensitive to
-/// the 1-cell `default_floor` margin — that it would FAIL if the packer's [`Margin::DEFAULT`]
-/// margin reservation were removed.
-///
-/// Two regions that each span a full board axis with the OTHER axis abutting form a
-/// board-spanning barrier UNLESS a walkable gap separates them. This is exactly what the
-/// packer's margin guarantees: with the 1-cell margin reserved between them, a walkable corridor
-/// remains and the open cells stay ONE component; with NO margin (the zero-margin layout a
-/// margin-less packer would emit) the two regions touch into a solid wall that splits the
-/// board, and the open cells become TWO components.
-///
-/// The same [`open_cells_form_one_component`] helper that backs the real-pipeline assertion
-/// is exercised here on both layouts: it returns `true` for the margin-separated layout and
-/// `false` for the abutting one. So the real-pipeline assertion is NOT vacuous — remove the
-/// margin from the packer and the abutting layout (which a margin-less packer would produce)
-/// fails this helper.
 #[test]
 fn margin_separated_regions_stay_connected() {
     let board_w = 20;
     let board_h = 20;
     let margin = *Margin::DEFAULT.cells();
 
-    // Two region blocks side by side across a mid band (rows 5..15), leaving open rows above
-    // (0..5) and below (15..20). A LEFT block on columns `0..10`, and a RIGHT block that, with
-    // the 1-cell margin, starts at column `10 + margin` (leaving column 10 as a walkable corridor
-    // through the barrier — the open rows above and below stay joined). With the margin REMOVED
-    // the right block starts at column 10, abutting the left block into a FULL-WIDTH wall on
-    // rows 5..15 that splits the board's open cells into two components (above vs below).
     let left = RegionRect::new(Cell::new(0, 5), Footprint::new(10, 10));
     let right_with_margin = RegionRect::new(
         Cell::new(10 + margin, 5),
@@ -197,9 +138,6 @@ fn margin_separated_regions_stay_connected() {
     );
 }
 
-/// Every ground-plane region a [`FilledPlacement`] occupies — the player + enemy spawn
-/// regions and every fill prefab's region (the rectangles the packer reserved the margin
-/// around). The dead-space regions are walkable `default_floor`, so they are NOT occupied.
 fn occupied_regions(filled: &FilledPlacement) -> Vec<RegionRect> {
     let mut out = vec![
         filled.placement().player().region(),
@@ -209,15 +147,6 @@ fn occupied_regions(filled: &FilledPlacement) -> Vec<RegionRect> {
     out
 }
 
-/// Whether the OPEN (non-`occupied`-region) ground-plane cells of a `board_w` x `board_h`
-/// board form ONE 4-connected component — the by-construction connectivity invariant (C2).
-///
-/// A cell inside any `occupied` region blocks the flood; every other cell is open (the
-/// `default_floor` margin lattice + the floored dead space). Floods the open cells from the
-/// first open cell found and returns `true` iff the flood reaches every open cell. A board
-/// with no open cell trivially returns `true` (the caller's other assertions pin a non-empty
-/// level). This is the SHARED helper both the real-pipeline assertion and the
-/// pin-discrimination control ([`margin_separated_regions_stay_connected`]) exercise.
 fn open_cells_form_one_component(occupied: &[RegionRect], board_w: i32, board_h: i32) -> bool {
     let width = usize::try_from(board_w.max(0)).unwrap_or(0);
     let height = usize::try_from(board_h.max(0)).unwrap_or(0);
@@ -227,7 +156,6 @@ fn open_cells_form_one_component(occupied: &[RegionRect], board_w: i32, board_h:
     }
     let index = |col: usize, row: usize| -> usize { row * width + col };
 
-    // Ground-plane occupancy mask: a cell inside any placed region blocks the flood.
     let mut blocked = vec![false; total];
     for region in occupied {
         let origin = region.origin();
@@ -250,11 +178,9 @@ fn open_cells_form_one_component(occupied: &[RegionRect], board_w: i32, board_h:
 
     let open_total = blocked.iter().filter(|b| !**b).count();
     let Some(start) = blocked.iter().position(|b| !*b) else {
-        return true; // no open cell — trivially one (empty) component
+        return true; 
     };
 
-    // Flood the open cells in 4-connectivity from the first open cell, collecting the
-    // in-bounds 4-neighbours of each popped cell.
     let mut seen = vec![false; total];
     seen[start] = true;
     let mut stack = vec![start];

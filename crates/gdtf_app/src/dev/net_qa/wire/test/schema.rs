@@ -1,12 +1,3 @@
-//! The derived `JsonSchema` of every wire type is real, usable JSON (GTW-944).
-//!
-//! A command publishes its argument and reply schemas DERIVED from these types, so a type
-//! whose derive is missing or produces something a client cannot parse breaks the
-//! catalogue rather than this module. These tests pin two facts: every type here derives a
-//! schema that serializes to parseable JSON, and every named-field struct publishes
-//! `additionalProperties: false` — the machine-readable half of `deny_unknown_fields`, so a
-//! generated client is told which keys exist and that nothing else is accepted.
-
 use schemars::{JsonSchema, schema_for};
 use serde_json::{Map, Value};
 
@@ -27,11 +18,6 @@ use crate::dev::net_qa::wire::{
     token::{DoorToken, EmplacementToken, FocusTargetNet, GangerToken},
 };
 
-/// `T`'s derived schema as the JSON object a catalogue row would publish.
-///
-/// Fails loudly (the house `let Ok(..) else { unreachable!() }` idiom) if the schema does
-/// not serialize, does not parse back, or is not a JSON object — each of which would break
-/// a client generating against it.
 fn schema_object<T: JsonSchema>(named: &str) -> Map<String, Value> {
     let Ok(text) = serde_json::to_string(&schema_for!(T)) else {
         unreachable!("`{named}`'s derived schema serializes to JSON text");
@@ -45,8 +31,6 @@ fn schema_object<T: JsonSchema>(named: &str) -> Map<String, Value> {
     object
 }
 
-/// Assert `T`'s derived schema is parseable JSON that actually SAYS something — a bare
-/// `{}` parses fine and describes nothing, so it is not evidence of a working derive.
 fn assert_schema_is_usable<T: JsonSchema>(named: &str) {
     let object = schema_object::<T>(named);
     assert!(
@@ -58,7 +42,6 @@ fn assert_schema_is_usable<T: JsonSchema>(named: &str) {
     );
 }
 
-/// Assert `T`'s derived schema is an object schema that refuses unknown keys.
 fn assert_denies_unknown_fields<T: JsonSchema>(named: &str) {
     let object = schema_object::<T>(named);
     assert_eq!(
@@ -73,10 +56,6 @@ fn assert_denies_unknown_fields<T: JsonSchema>(named: &str) {
     );
 }
 
-/// Every wire type derives a `JsonSchema` that is parseable JSON describing a shape.
-///
-/// One call per type rather than one representative: a derive is per-type, so a
-/// representative proves nothing about its neighbours.
 #[test]
 fn every_wire_type_derives_a_usable_schema() {
     assert_schema_is_usable::<CellXNet>("CellXNet");
@@ -127,10 +106,6 @@ fn every_wire_type_derives_a_usable_schema() {
     assert_schema_is_usable::<AppPhaseNet>("AppPhaseNet");
 }
 
-/// Every named-field struct in `wire/` publishes `additionalProperties: false`.
-///
-/// The transparent newtypes are deliberately absent: their schema is their inner scalar's
-/// (`{"type":"integer"}`), which has no properties to deny.
 #[test]
 fn every_named_field_struct_refuses_unknown_properties() {
     assert_denies_unknown_fields::<CellNet>("CellNet");

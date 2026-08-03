@@ -1,9 +1,3 @@
-//! The full round trip: admit → claim → decode → handle → typed reply.
-//!
-//! The handler in this path receives `C::Args` and answers through a `CommandResponder<C>`.
-//! It never sees JSON and never sees a raw `Responder` — that is enforced by the types, and
-//! observed here end to end.
-
 use gdtf_qa_command::{
     command::QaCommand,
     test_support::{
@@ -15,7 +9,6 @@ use gdtf_qa_protocol::ids::{CellNet, CellXNet, CellYNet};
 
 use crate::support::{args, plain, ran};
 
-/// A no-argument command runs and answers its own declared reply type.
 #[test]
 fn an_admitted_call_reaches_the_handler_and_answers_the_declared_reply() {
     let mut app = fake_app(FAKE_COMMANDS, fake_facts_loaded());
@@ -39,7 +32,6 @@ fn an_admitted_call_reaches_the_handler_and_answers_the_declared_reply() {
     );
 }
 
-/// A command with a structured argument type decodes it and answers with it.
 #[test]
 fn arguments_decode_into_the_command_s_own_type() {
     let mut app = fake_app(FAKE_COMMANDS, fake_facts_loaded());
@@ -63,10 +55,6 @@ fn arguments_decode_into_the_command_s_own_type() {
     );
 }
 
-/// Two calls to two different commands in one frame each reach their own handler.
-///
-/// The inbox is shared, so this is the case that proves `take_for` hands each decode step
-/// only its own work.
 #[test]
 fn two_commands_in_one_frame_each_get_their_own_calls() {
     let mut app = fake_app(FAKE_COMMANDS, fake_facts_loaded());

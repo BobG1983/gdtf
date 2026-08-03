@@ -1,6 +1,3 @@
-//! Tests of the traveling-projectile flight: constant velocity, the arrival handoff,
-//! and the GTW-308 burst stagger (mirrors the `projectile` module).
-
 use std::time::Duration;
 
 use bevy::{
@@ -22,61 +19,32 @@ use super::super::{
     tuning::{InterShotSeconds, ProjectileVelocity},
 };
 
-/// The constant flight speed (px/sec) the projectile unit tests drive `advance` with — the
-/// shipped hot-reloadable default (what the resident `FxTuning` carries with no `.ron`
-/// override), so the tests pin the same speed the system uses.
 const TEST_VELOCITY: f32 = ProjectileVelocity::DEFAULT;
 
-/// The burst stagger step (seconds) the stagger unit test drives a round's launch delay with —
-/// the shipped hot-reloadable default.
 const TEST_INTER_SHOT: f32 = InterShotSeconds::DEFAULT;
 
-/// A throw-away anchor `(cell, level)` for the projectile-FLIGHT unit tests, which exercise the
-/// muzzle→target travel + arrival handoff, not the GTW-327 FCT pops (those rides empty in these
-/// tests; the pop-staggering is proven on the real registered-system path in `fx_draw.rs`).
 fn test_anchor() -> (Cell, Level) {
     (Cell::new(0, 0), Level::new(0))
 }
 
-/// A throw-away firing entity for the projectile-FLIGHT unit tests — the GTW-328 shooter the bolt
-/// threads to its `PendingImpact`; these flight-only tests exercise the travel + arrival handoff, not
-/// the shot-impact signal (its staggering is proven on the real path in `fx_draw.rs`).
 fn test_shooter() -> bevy::ecs::entity::Entity {
     bevy::ecs::entity::Entity::PLACEHOLDER
 }
 
-/// The `PendingImpact`s currently in the world (FX-B's impact-animation seeds).
-///
-/// Cloned (not `.copied()`): `PendingImpact` carries the GTW-327 owned pop `Vec`, so it is no
-/// longer `Copy`.
 fn pending_impacts(app: &mut App) -> Vec<PendingImpact> {
     let mut q = app.world_mut().query::<&PendingImpact>();
     q.iter(app.world()).cloned().collect()
 }
 
-/// How many `PendingImpact`s are in the world.
 fn pending_impact_count(app: &mut App) -> usize {
     let mut q = app.world_mut().query::<&PendingImpact>();
     q.iter(app.world()).count()
 }
 
-/// A traveling projectile flies muzzle→target at a CONSTANT VELOCITY under
-/// `advance_projectiles`: it starts at the muzzle, moves toward the target as time advances,
-/// and despawns + leaves a `PendingImpact` at the arrival point once it has flown the whole
-/// distance. A zero launch delay (a single shot) launches at once.
 #[test]
 fn projectile_travels_then_despawns_leaving_a_pending_impact() {
     let mut app = App::new();
-    // GTW-322: `advance_projectiles`' arrival hands off the `PendingImpact` via
-    // `commands.spawn_scene(bsn! { .. })`, which panics without the `AssetPlugin` + `ScenePlugin`
-    // the deferred `apply_scene` reads — so the harness adds both. The `PendingImpact` then
-    // materializes on the `SpawnScene` schedule (run inside each `app.update()` below), so the
-    // post-arrival update loop already drives it before the count assertion.
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
-    // A small controlled per-update delta — a fraction of the flight, so the FIRST measured
-    // update lands the projectile MID-flight (the virtual clock reports 0 on the warm-up
-    // update, then this fixed step each subsequent one). The 100px flight at TEST_VELOCITY
-    // takes ~100/TEST_VELOCITY s; a quarter-of-flight step lands one update mid-air.
     let from = Vec3::new(0.0, 0.0, 0.0);
     let to = Vec3::new(100.0, 0.0, 0.0);
     let flight_seconds = from.distance(to) / TEST_VELOCITY;
@@ -88,13 +56,7 @@ fn projectile_travels_then_despawns_leaving_a_pending_impact() {
         .world_mut()
         .spawn((
             Transform::from_translation(from),
-            // Production spawns every round Hidden-until-launch (the GTW-308 stagger reveal),
-            // so `advance_projectiles`' query takes `&mut Visibility`; the spawned projectile
-            // must carry it to match the real query (a zero launch delay reveals it at once).
             Visibility::Hidden,
-            // A single shot — zero launch delay launches at once, flying at the default velocity.
-            // No FCT pops in this flight-only test (the GTW-327 pop staggering is proven on the
-            // real path in fx_draw.rs).
             ProjectileTravel::new(
                 from,
                 to,
@@ -110,9 +72,7 @@ fn projectile_travels_then_despawns_leaving_a_pending_impact() {
         ))
         .id();
 
-    // Warm-up update (the virtual clock's first-step zero delta) — no progress yet.
     app.update();
-    // One real step: the projectile must sit BETWEEN muzzle and target, still alive.
     app.update();
     let mid_x = app
         .world()
@@ -133,7 +93,6 @@ fn projectile_travels_then_despawns_leaving_a_pending_impact() {
         "no impact may be handed off before arrival",
     );
 
-    // Drive the rest of the flight to completion (each step a quarter; a few more finishes it).
     for _ in 0..6 {
         app.update();
     }
@@ -160,13 +119,8 @@ fn projectile_travels_then_despawns_leaving_a_pending_impact() {
     }
 }
 
-/// Every shot flies at the SAME constant px/sec (GTW-306 velocity, not a fixed-seconds
-/// window): a flight TWICE as long takes TWICE as many velocity steps to arrive. Driven off
-/// the same `advance` stepper `advance_projectiles` runs, so it pins the velocity contract: a
-/// near and a far shot share one visual speed.
 #[test]
 fn projectile_flies_at_a_constant_velocity_regardless_of_distance() {
-    // A 1/10th-second step at the shipped velocity covers a known px/step.
     let step = Duration::from_secs_f32(0.1);
     let per_step_px = TEST_VELOCITY * step.as_secs_f32();
     assert!(
@@ -174,8 +128,6 @@ fn projectile_flies_at_a_constant_velocity_regardless_of_distance() {
         "the velocity must move the bolt a positive distance per step",
     );
 
-    // A short flight (one step's worth of distance) and a long flight (three steps' worth),
-    // both from a zero launch delay (launched at once), flying at the default velocity.
     let origin = Vec3::ZERO;
     let near = Vec3::new(per_step_px, 0.0, 0.0);
     let far = Vec3::new(per_step_px * 3.0, 0.0, 0.0);
@@ -203,12 +155,10 @@ fn projectile_flies_at_a_constant_velocity_regardless_of_distance() {
         None,
     );
 
-    // The near shot arrives in ONE velocity step.
     assert!(
         short.advance(step),
         "a one-step-distance shot must arrive after one velocity step",
     );
-    // The far shot is 3x the distance, so it needs THREE steps — the SAME px/sec speed.
     assert!(
         !long.advance(step),
         "a 3x-distance shot must still be mid-flight after one step (same speed)",
@@ -223,15 +173,10 @@ fn projectile_flies_at_a_constant_velocity_regardless_of_distance() {
     );
 }
 
-/// The stagger (GTW-308): a round's launch delay HOLDS it at the muzzle until the delay
-/// elapses, then it flies. A round-1 bolt (one `INTER_SHOT_SECONDS` late) does not launch (stays
-/// un`launched`, no travel) until its delay passes — so a burst reads shot-by-shot. Driven off
-/// the `advance`/`launched` pair `advance_projectiles` reads.
 #[test]
 fn staggered_round_holds_at_the_muzzle_until_its_launch_delay_elapses() {
     let from = Vec3::ZERO;
     let to = Vec3::new(100.0, 0.0, 0.0);
-    // Round 1 of a burst: a one-step launch delay.
     let launch_delay = Duration::from_secs_f32(TEST_INTER_SHOT);
     let mut bolt = ProjectileTravel::new(
         from,
@@ -245,12 +190,10 @@ fn staggered_round_holds_at_the_muzzle_until_its_launch_delay_elapses() {
         None,
     );
 
-    // Before the launch delay elapses the bolt is parked at the muzzle — not launched, fraction 0.
     assert!(
         !bolt.launched(),
         "a staggered round must not be launched before its delay elapses",
     );
-    // A tick SHORTER than the launch delay keeps it parked (still not launched, no arrival).
     let part = Duration::from_secs_f32(TEST_INTER_SHOT / 2.0);
     assert!(
         !bolt.advance(part),
@@ -265,7 +208,6 @@ fn staggered_round_holds_at_the_muzzle_until_its_launch_delay_elapses() {
         "a parked round must not have advanced its travel fraction",
     );
 
-    // Once the launch delay has fully elapsed it launches and starts flying.
     bolt.advance(Duration::from_secs_f32(TEST_INTER_SHOT));
     assert!(
         bolt.launched(),

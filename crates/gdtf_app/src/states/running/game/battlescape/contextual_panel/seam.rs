@@ -1,140 +1,57 @@
-//! The panel-side contextual-act descriptor types (GTW-571): the [`ContextualPanelAct`]
-//! trait, the per-act [`ContextualOffer`] resource the offer scans write, the
-//! value-carrying [`ContextualActButton`] component every act button wears, and the
-//! [`PanelSlot`] ordering key.
-//!
-//! Together with the generic button systems
-//! ([`buttons`](super::systems::spawn_contextual_button)) and the
-//! [`registrar`](super::registrar), this dissolves the old per-marker lattice: no
-//! per-act `*VisFilter` aliases, no `PanelVisibility` bundle, no per-marker press
-//! queries, no per-marker spawn stanzas — adding a contextual act adds ONE module under
-//! [`acts`](super::acts) plus ONE registration line in the plugin (see
-//! `docs/authoring/contextual-act-recipe.md`).
-
 use bevy::prelude::*;
 use gdtf_battle_input::contextual::{ContextualAct, SlotRank};
 use gdtf_ui::ButtonLabel;
 
-/// A CONTEXTUAL act's panel-layer descriptor (GTW-571) — what the eight acts vary in on
-/// the button side: the marker component, the button label, and the button's stable
-/// slot in the panel column. One impl per act, on the act's input-layer
-/// [`ContextualAct`] token (the vertical act module for this crate layer lives under
-/// [`acts`](super::acts)).
-///
-/// The generic spawn / visibility / press systems are stamped over this trait by
-/// [`add_contextual_act_button`](super::registrar::ContextualPanelActAppExt::add_contextual_act_button)
-/// — compile-time generic registration, never a runtime descriptor table (P4). The
-/// descriptor carries NO per-act keybind field, but the act is no longer button-only: since
-/// GTW-563 a keyboard DIGIT slot-key also activates it (digit N fires the Nth
-/// currently-visible button). That binding is per-SLOT, not per-action — the ranking pass
-/// numbers the visible buttons and each per-act press router resolves its digit from THIS
-/// button's [`VisibleSlotRank`] — so it needs no descriptor field (this reverses the
-/// GTW-571 Q8 "button-only" ruling).
 pub(in crate::states::running::game::battlescape) trait ContextualPanelAct:
     ContextualAct
 {
-    /// The act button's unit MARKER component (declared through `crate::support_item!`
-    /// in the act's module so the external AC tests can name it). `Default` so the
-    /// generic spawn system can attach it.
-    type Marker: Component + Default;
+                type Marker: Component + Default;
 
-    /// The act button's stable top-to-bottom slot in the panel column — slots must be
-    /// UNIQUE across the registered acts (the recipe's pick-an-unused-slot station).
-    const SLOT: PanelSlot;
+            const SLOT: PanelSlot;
 
-    /// The act button's themed label.
-    fn label() -> ButtonLabel;
+        fn label() -> ButtonLabel;
 }
 
-/// A contextual-act button's stable position in the panel's top-to-bottom column
-/// (GTW-571).
-///
-/// A named newtype over the raw ordinal (no-bare-types) with a private inner: per-act
-/// spawn systems run in nondeterministic order, so child order alone would shuffle the
-/// buttons between runs — the `order_contextual_buttons` pass sorts the spawned buttons
-/// by this key instead, making the column deterministic. `Ord` so it IS the sort key.
 #[derive(Deref, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub(in crate::states::running::game::battlescape) struct PanelSlot(u8);
 
 impl PanelSlot {
-    /// Wrap a raw column ordinal (0 = topmost button).
-    #[must_use]
+        #[must_use]
     pub(in crate::states::running::game::battlescape) const fn new(slot: u8) -> Self {
         Self(slot)
     }
 }
 
-/// The value-carrying component EVERY contextual-act button wears (GTW-571 C2) —
-/// carries the act's [`PanelSlot`] and tags the entity as a contextual-act button.
-///
-/// The act-agnostic pieces read it: `order_contextual_buttons` sorts the panel's
-/// children by the carried slot, and `sync_panel_root_visibility` shows the root iff
-/// ANY entity wearing this is visible — both act-count-independent (no per-act
-/// disjointness filters anywhere). A named domain component, never a bare `u8`.
 #[derive(Component, Deref, Clone, Copy, PartialEq, Eq, Debug)]
 pub(in crate::states::running::game::battlescape) struct ContextualActButton(PanelSlot);
 
 impl ContextualActButton {
-    /// Tag a button with its act's [`PanelSlot`].
-    #[must_use]
+        #[must_use]
     pub(in crate::states::running::game::battlescape) const fn new(slot: PanelSlot) -> Self {
         Self(slot)
     }
 }
 
-/// A contextual-act button's 1-based rank among the CURRENTLY-VISIBLE buttons (GTW-563),
-/// or [`None`] when the button is not visible this frame (unranked).
-///
-/// The keyboard slot-binding's per-button state: the act-agnostic
-/// [`rank_visible_contextual_buttons`](super::systems::rank_visible_contextual_buttons)
-/// pass writes each visible button its 1-based position in [`PanelSlot`] order (mutate in
-/// place, write-on-change), and the per-act
-/// [`press_contextual_button_via_key`](super::systems::press_contextual_button_via_key)
-/// reads it to resolve which digit key activates THIS button (digit N = the Nth visible
-/// button). A named newtype over the optional [`SlotRank`] (no-bare-types; the inner is
-/// private, read through [`rank`](Self::rank)). Unranked while hidden, so a digit press
-/// against a not-visible button matches nothing and dispatches nothing.
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub(in crate::states::running::game::battlescape) struct VisibleSlotRank(Option<SlotRank>);
 
 impl VisibleSlotRank {
-    /// The unranked state — the button is not currently visible (the spawn default).
-    #[must_use]
+        #[must_use]
     pub(in crate::states::running::game::battlescape) const fn unranked() -> Self {
         Self(None)
     }
 
-    /// Wrap a possibly-unranked visible-slot rank.
-    #[must_use]
+        #[must_use]
     pub(in crate::states::running::game::battlescape) const fn new(rank: Option<SlotRank>) -> Self {
         Self(rank)
     }
 
-    /// This button's current 1-based visible rank, or [`None`] when it is unranked
-    /// (hidden). The read-point the per-act digit-press system resolves its key from.
-    /// By value — the newtype is a two-byte `Copy` (`trivially_copy_pass_by_ref`).
-    #[must_use]
+                #[must_use]
     pub(in crate::states::running::game::battlescape) const fn rank(self) -> Option<SlotRank> {
         self.0
     }
 }
 
-/// Act `A`'s current OFFER — the target its button press would act on, or [`None`] when
-/// the act is not offered (GTW-571; the per-act replacement for the old nine-field
-/// `ContextualTargets` struct).
-///
-/// Written each update by the act's bespoke offer scan (the system passed to
-/// [`add_contextual_act_button`](super::registrar::ContextualPanelActAppExt::add_contextual_act_button))
-/// via `set_if_neq` (change-detection hygiene — an unchanged offer never spuriously
-/// trips `Changed<ContextualOffer<A>>`), read by the act's generic visibility toggle +
-/// press system. A named newtype over the optional target (no-bare-types; the inner
-/// stays private — [`new`](Self::new) / [`target`](Self::target) are the only
-/// touch-points). `PartialEq` is hand-written over the inner target (a derive would
-/// wrongly bound the act TOKEN `A: PartialEq` — the GTW-567 generic-derive lesson).
-///
-/// GTW-737 widened this to `pub(crate)` so the `net_qa` act-injection pump, which lived
-/// outside the `battlescape` subtree, could offer-gate an injected act. GTW-943 deleted that
-/// pump, so every reader is back inside `battlescape` and the visibility is narrowed to match.
 #[derive(Resource, Debug)]
 pub(in crate::states::running::game::battlescape) struct ContextualOffer<A: ContextualAct>(
     Option<A::Target>,
@@ -153,23 +70,19 @@ impl<A: ContextualAct> PartialEq for ContextualOffer<A> {
 }
 
 impl<A: ContextualAct> ContextualOffer<A> {
-    /// Wrap an offer — the value an offer scan hands to `set_if_neq`.
-    #[must_use]
+        #[must_use]
     pub(in crate::states::running::game::battlescape) const fn new(
         target: Option<A::Target>,
     ) -> Self {
         Self(target)
     }
 
-    /// The offered target, or [`None`] when the act is not offered — what the button press
-    /// and the slot-key press act on.
-    #[must_use]
+            #[must_use]
     pub(in crate::states::running::game::battlescape) const fn target(&self) -> Option<A::Target> {
         self.0
     }
 
-    /// Whether the act is currently offered (the button-visibility predicate).
-    #[must_use]
+        #[must_use]
     pub(in crate::states::running::game::battlescape) const fn is_offered(&self) -> bool {
         self.0.is_some()
     }

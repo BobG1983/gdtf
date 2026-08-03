@@ -1,23 +1,13 @@
-//! Tests for the `Pips` widget behavior (the `pips.rs` surface).
-//!
-//! Runs on the shared in-crate harness (see
-//! [`test_support`](crate::widgets::core::test_support)). Each test is
-//! pin-discriminating: it asserts MUTATE-in-place (stable pip entity ids across
-//! an update) and the M-of-N remaining/lost color split.
-
 use bevy::{ecs::system::SystemState, prelude::*, ui::BackgroundColor};
 
 use super::{FilledPips, Pip, set_pips, spawn_pips};
 use crate::widgets::core::test_support::{LOST, REMAINING, harness};
 
-/// The two-query [`SystemState`] driving [`set_pips`] in tests (clippy
-/// `type_complexity`).
 type PipsSet = (
     Query<'static, 'static, &'static Children>,
     Query<'static, 'static, &'static mut BackgroundColor, With<Pip>>,
 );
 
-/// All pip entities of the row rooted at `row`, in child order.
 fn pips_of(app: &mut App, row: Entity) -> Vec<Entity> {
     let mut state: SystemState<Query<&Children>> = SystemState::new(app.world_mut());
     let Ok(children) = state.get(app.world()) else {
@@ -31,7 +21,6 @@ fn pips_of(app: &mut App, row: Entity) -> Vec<Entity> {
         .collect()
 }
 
-/// Drives [`set_pips`] once against the live world's queries.
 fn drive_set_pips(
     app: &mut App,
     row: Entity,
@@ -48,7 +37,6 @@ fn drive_set_pips(
     n
 }
 
-/// AC — M-of-N pips carry the remaining vs lost color split.
 #[test]
 fn pips_render_m_of_n_split() {
     let mut app = harness();
@@ -71,7 +59,6 @@ fn pips_render_m_of_n_split() {
     );
 }
 
-/// AC — updating M mutates the pip colors IN PLACE (stable pip entity ids).
 #[test]
 fn pips_update_mutates_same_entities() {
     let mut app = harness();

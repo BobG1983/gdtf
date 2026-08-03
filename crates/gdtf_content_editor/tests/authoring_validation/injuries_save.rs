@@ -1,21 +1,4 @@
 //! GTW-654 C4: the INJURY mode's weighting SAVE path feeds the authoring-validation
-//! loop — a save writes the file where the bespoke injuries loader reads, the
-//! resulting redrive rebuilds the [`InjuryRegistry`] (the watched registry), and
-//! the re-armed pass re-publishes the CURRENT weighting-row findings through the
-//! editor-registered `check_injury_weighting_refs` (the GTW-630/651 edge set,
-//! extended by GTW-654).
-//!
-//! THE RELOAD TRIGGER, noted per the convention: the file-watcher is NOT active in this
-//! headless harness (`file_watcher` is a binary-propagated feature, never in test
-//! builds), so the ONE watcher-owned step — "a changed file on disk triggers its
-//! reload" — is driven directly via [`AssetServer::reload`]; everything else is
-//! the REAL production loop: the real root-parameterized save write
-//! ([`write_weighting_in`]), the real bespoke folder loader reading the saved
-//! bytes back off disk, the real redrive rebuild of BOTH injuries resources, and
-//! the real re-arm → re-check → re-publish.
-//!
-//! [`InjuryRegistry`]: gdtf_battle_sim::injuries::InjuryRegistry
-
 use bevy::asset::AssetServer;
 use gdtf_assets::ContentIntegrityReport;
 use gdtf_battle_sim::{
@@ -32,16 +15,10 @@ use crate::harness::{
     MAX_UPDATES, advance_to_published, editor_app_with_asset_root, has_dangling_ref,
 };
 
-/// The first save's DANGLING injury key (the `TempDir` root materializes no
-/// injury defs, so every weighting row's key dangles).
 const SAVED_DANGLING_INJURY: &str = "saved_missing_injury";
 
-/// The re-save's DISTINCT dangling injury key — the finding the re-armed pass
-/// must re-publish in place of the first one.
 const RESAVED_DANGLING_INJURY: &str = "resaved_missing_injury";
 
-/// Push one Minor row naming `key` onto a fresh Head-context draft through the
-/// REAL model mutators (the model API the weighting panel edits through).
 fn weighting_draft_with_row(key: &str) -> WeightingDraft {
     let mut draft = WeightingDraft::default();
     draft.load_table(
@@ -56,22 +33,12 @@ fn weighting_draft_with_row(key: &str) -> WeightingDraft {
     draft
 }
 
-/// C4: author a weighting table through the REAL form model, SAVE it through the
-/// real root-parameterized write into a `TempDir` assets root, and boot the editor
-/// on that root — the saved dangling injury key surfaces at launch (the editor now
-/// registers the injuries edge). Then EDIT + RE-SAVE through the same write (same
-/// category → same file) and reload the saved path (the watcher stand-in — see the
-/// module doc): the redrive rebuilds the injuries pair from the re-read file and
-/// the re-armed pass re-publishes the RE-SAVED key's finding, dropping the
-/// superseded one — the watch set covers the injury registry end to end.
 #[test]
 fn weighting_save_reload_rearms_validation_with_the_saved_keys() {
     let dir = tempfile::tempdir();
     assert!(dir.is_ok(), "creating the TempDir assets root must succeed");
     let Ok(dir) = dir else { return };
 
-    // Author + SAVE (the real Save-button write) a weighting whose injury key
-    // dangles (no defs are materialized in this root).
     let weighting = draft_to_weighting(&weighting_draft_with_row(SAVED_DANGLING_INJURY));
     let written = write_weighting_in(dir.path(), &weighting);
     assert!(
@@ -80,8 +47,6 @@ fn weighting_save_reload_rearms_validation_with_the_saved_keys() {
         written.as_ref().err(),
     );
 
-    // BOOT the editor on the TempDir root: the saved weighting loads through the
-    // real bespoke folder walk and its dangling injury key surfaces at launch.
     let mut app = editor_app_with_asset_root(dir.path());
     advance_to_published(&mut app);
     {
@@ -94,8 +59,6 @@ fn weighting_save_reload_rearms_validation_with_the_saved_keys() {
         );
     }
 
-    // EDIT + RE-SAVE through the SAME real write (same category → same file →
-    // overwrites the table the loader loaded).
     let weighting = draft_to_weighting(&weighting_draft_with_row(RESAVED_DANGLING_INJURY));
     let rewritten = write_weighting_in(dir.path(), &weighting);
     assert!(
@@ -104,17 +67,12 @@ fn weighting_save_reload_rearms_validation_with_the_saved_keys() {
         rewritten.as_ref().err(),
     );
 
-    // The watcher stand-in (module doc): reload the saved path from disk. Every
-    // segment derives from the one-owner spellings (GTW-634).
     let saved_path = format!(
         "{INJURIES_FOLDER}/{WEIGHTING_SUBFOLDER}/{}",
         weighting_file_name(InjuryCategory::Head, DamageContext::Ranged),
     );
     app.world().resource::<AssetServer>().reload(saved_path);
 
-    // The reload re-reads the saved bytes → the redrive rebuilds the injuries pair
-    // (marking the watched InjuryRegistry changed) → the re-armed pass re-publishes
-    // the CURRENT (re-saved) finding.
     let republished = advance_until(
         &mut app,
         |app| {

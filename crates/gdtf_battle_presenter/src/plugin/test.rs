@@ -1,13 +1,8 @@
-//! Unit tests for the presenter plugin entry point (mode selection + the renderer-active marker)
-//! and the GTW-623 chained draw-stage contract.
-
 use bevy::prelude::*;
 
 use super::{BattlePresenterMode, BattlePresenterPlugin, TopDownRendererActive};
 use crate::PresenterSystems;
 
-/// AC1 — the default presenter selects `TopDown`, builds without panic under
-/// `MinimalPlugins`, and its top-down renderer inserts the marker resource.
 #[test]
 fn default_presenter_selects_topdown_and_inserts_the_marker() {
     let mut app = App::new();
@@ -28,9 +23,6 @@ fn default_presenter_selects_topdown_and_inserts_the_marker() {
     );
 }
 
-/// AC1 — the TopDown-mode app carries the marker; the Iso-mode app does not
-/// (proving the mode switch actually selects the iso branch and the top-down
-/// renderer did not run). Neither app panics on `update()`.
 #[test]
 fn mode_switch_selects_the_named_renderer_branch() {
     let mut topdown_app = App::new();
@@ -61,25 +53,15 @@ fn mode_switch_selects_the_named_renderer_branch() {
     );
 }
 
-/// GTW-623 (C1 / C2 / A1) — the three draw stages are chained `Scene` → `Compose` →
-/// `Overlay` by the ONE `configure_sets` in `TopDownRendererPlugin::build`: ordering
-/// between draw systems is STAGE MEMBERSHIP, not pairwise `.after` edges.
-///
-/// One probe system per stage records its run order into a shared log; the probes are
-/// deliberately REGISTERED in reverse (Overlay, Scene, Compose) so insertion order
-/// cannot fake the pass — only the chained set config can produce
-/// `[Scene, Compose, Overlay]`.
 #[test]
 fn draw_stages_run_scene_then_compose_then_overlay() {
-    /// A probe's stage tag, in the order the chain must produce.
-    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+        #[derive(Debug, PartialEq, Eq, Clone, Copy)]
     enum StageTag {
         Scene,
         Compose,
         Overlay,
     }
-    /// The observed run order the three probes append to.
-    #[derive(Resource, Default)]
+        #[derive(Resource, Default)]
     struct RunOrder(Vec<StageTag>);
 
     let mut app = App::new();

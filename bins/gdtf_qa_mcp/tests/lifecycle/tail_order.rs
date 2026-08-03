@@ -1,19 +1,3 @@
-//! WHEN a failed launch reads the child's captured output tail — after the child is reaped,
-//! never before (GTW-756).
-//!
-//! The real [`ProcessChild`](gdtf_qa_mcp::ProcessChild) drains both of the child's output
-//! streams on reader threads that [`reap`](ManagedChild::reap) joins, so a tail read before
-//! that join can catch a reader mid-drain and hand back a truncated tail — losing the
-//! diagnosis a failed launch exists to carry. Against a real process that ordering only shows up when
-//! the scheduler happens to be slow, which is exactly the timing this suite must not
-//! depend on.
-//!
-//! [`ReapGatedChild`] makes it a rule instead: no process, no clock, a tail that reads
-//! empty until [`reap`](ManagedChild::reap) has been called, and a record of every lifecycle
-//! call the manager made. Both failure paths — the boot timeout and the early exit — are
-//! pinned to an exact call sequence, so a manager that reads the tail one step too early
-//! fails every run on every machine.
-
 use std::{
     io,
     sync::{Arc, Mutex},
@@ -27,71 +11,40 @@ use gdtf_qa_mcp::{
 
 use crate::support::{fast_config, free_port};
 
-/// The stderr text the fake child hands back once it has been reaped.
 const GATED_LINE: &str = "boot-oops: the child never came up";
 
-/// The fake child's process id — reported, never signalled (there is no process).
 const GATED_PID: ChildPid = ChildPid::new(424_242);
 
-/// A boot timeout of zero: the very first readiness miss is already past the deadline, so
-/// the timeout path runs in exactly one loop pass with no waiting and no clock skew.
 const NO_WAIT_BOOT_MS: u64 = 0;
 
-/// A boot timeout the early-exit test can never reach — proving that path is taken on the
-/// child's own exit, not because the deadline expired.
 const UNREACHED_BOOT_MS: u64 = 2000;
 
-/// The shared, ordered record of the lifecycle calls the manager made on the fake child.
-///
-/// Shared because the manager owns and drops the child on both failure paths; the test
-/// reads the record afterwards.
 type CallLog = Arc<Mutex<Vec<ChildCall>>>;
 
-/// One lifecycle call the manager made on the fake child.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ChildCall {
-    /// `poll` — has the child exited on its own?
-    Poll,
-    /// `terminate` — the graceful SIGTERM request.
-    Terminate,
-    /// `wait_until_exit` — the bounded wait for the child to go after SIGTERM.
-    WaitUntilExit,
-    /// `kill` — the SIGKILL escalation for a child that ignored SIGTERM.
-    Kill,
-    /// `reap` — the wait that joins a real child's two output reader threads.
-    Reap,
-    /// `failure_tail` — the read whose order against [`Reap`](ChildCall::Reap) these tests
-    /// pin.
-    ReadFailureTail,
+        Poll,
+        Terminate,
+        WaitUntilExit,
+        Kill,
+        Reap,
+            ReadFailureTail,
 }
 
-/// A [`ManagedChild`] with no process behind it, whose output tail is gated on being reaped.
-///
-/// It answers [`failure_tail`](ManagedChild::failure_tail) with an empty tail until
-/// [`reap`](ManagedChild::reap) has been called and with [`GATED_LINE`] afterwards — the same
-/// before/after the real child's reader thread has, made absolute — and records every call
-/// in order. It is also a stubborn child: it never reports an exit, so a stop must
-/// escalate SIGTERM to SIGKILL, putting the whole orphan-kill path in the recorded
-/// sequence.
 struct ReapGatedChild {
-    /// The captured text, readable only once the child has been reaped.
-    tail:   FailureTail,
-    /// What the child reports when polled — whether it exited on its own.
-    status: ChildStatus,
-    /// The shared record of calls, in the order they were made.
-    calls:  CallLog,
+        tail:   FailureTail,
+        status: ChildStatus,
+        calls:  CallLog,
 }
 
 impl ReapGatedChild {
-    /// Append one call to the shared record.
-    fn record(&self, call: ChildCall) {
+        fn record(&self, call: ChildCall) {
         if let Ok(mut calls) = self.calls.lock() {
             calls.push(call);
         }
     }
 
-    /// Whether [`reap`](ManagedChild::reap) has already been called — what gates the tail.
-    fn reaped(&self) -> bool {
+        fn reaped(&self) -> bool {
         self.calls
             .lock()
             .is_ok_and(|calls| calls.contains(&ChildCall::Reap))
@@ -139,12 +92,9 @@ impl ManagedChild for ReapGatedChild {
     }
 }
 
-/// Hands the manager one [`ReapGatedChild`] — no process is launched at all.
 struct ReapGatedSpawner {
-    /// What the child reports when polled.
-    status: ChildStatus,
-    /// The record the spawned child writes its calls into.
-    calls:  CallLog,
+        status: ChildStatus,
+        calls:  CallLog,
 }
 
 impl ChildSpawner for ReapGatedSpawner {
@@ -157,8 +107,6 @@ impl ChildSpawner for ReapGatedSpawner {
     }
 }
 
-/// Build a manager over a fake child that reports `status` when polled, together with the
-/// call record that child writes into.
 fn manager_over_gated_child(status: ChildStatus, boot_ms: u64) -> (HostManager, CallLog) {
     let calls: CallLog = Arc::new(Mutex::new(Vec::new()));
     let spawner = ReapGatedSpawner {
@@ -169,7 +117,6 @@ fn manager_over_gated_child(status: ChildStatus, boot_ms: u64) -> (HostManager, 
     (manager, calls)
 }
 
-/// Read the call record back after the manager has dropped the child.
 fn recorded(calls: &CallLog) -> Vec<ChildCall> {
     let Ok(log) = calls.lock() else {
         unreachable!("the fake child's call record is not poisoned");
@@ -177,8 +124,6 @@ fn recorded(calls: &CallLog) -> Vec<ChildCall> {
     log.clone()
 }
 
-/// A launch that times out kills and reaps the orphan BEFORE it reads the output tail, so
-/// the failure carries the child's last words rather than whatever had been drained so far.
 #[test]
 fn timeout_reads_the_output_tail_after_reaping_the_orphan() {
     let (mut manager, calls) = manager_over_gated_child(ChildStatus::Running, NO_WAIT_BOOT_MS);
@@ -210,8 +155,6 @@ fn timeout_reads_the_output_tail_after_reaping_the_orphan() {
     );
 }
 
-/// A child that exits on its own is reaped BEFORE its output tail is read, for the same
-/// reason — reaping is what finishes draining the closed pipes.
 #[test]
 fn early_exit_reads_the_output_tail_after_reaping_the_child() {
     let (mut manager, calls) = manager_over_gated_child(ChildStatus::Exited, UNREACHED_BOOT_MS);

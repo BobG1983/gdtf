@@ -1,24 +1,11 @@
-//! Reference extraction — root-anchored path runs and inline markdown link
-//! targets, scanned byte-wise over raw file text (std-only, no regex crate).
-
-/// The repo-root anchor prefixes a path reference can start with.
 const ANCHORS: [&str; 7] = [
     "docs/", "crates/", "bins/", "assets/", "content/", ".claude/", ".cargo/",
 ];
 
-/// Bytes legal inside a path run (`[A-Za-z0-9_./-]`).
 const fn is_path_byte(b: u8) -> bool {
     b.is_ascii_alphanumeric() || matches!(b, b'_' | b'.' | b'/' | b'-')
 }
 
-/// Every root-anchored path run in `text`, in scan order.
-///
-/// A run starts at an [`ANCHORS`] prefix whose preceding byte is not itself a
-/// path byte (so `assets/content/…` yields ONE run, not a nested `content/…`
-/// one, and `foo.claude/` never matches). It extends over path bytes and is
-/// dropped when it continues into `*` or `<` — a glob (`content/maps/**`) or a
-/// placeholder (`crates/<crate>/tests/`) is not a literal path claim. Trailing
-/// `.` bytes (sentence periods) are trimmed.
 pub(crate) fn root_anchored(text: &str) -> Vec<String> {
     let bytes = text.as_bytes();
     let mut found = Vec::new();
@@ -54,10 +41,6 @@ pub(crate) fn root_anchored(text: &str) -> Vec<String> {
     found
 }
 
-/// Every inline markdown link target (`[text](target)`) in `text`, with any
-/// `#fragment` / `"title"` / `<…>` wrapping stripped. External schemes
-/// (`://`, `mailto:`), pure-fragment links, and glob/placeholder targets are
-/// skipped — the caller resolves what remains relative to the containing file.
 pub(crate) fn link_targets(text: &str) -> Vec<String> {
     let mut found = Vec::new();
     for (idx, _) in text.match_indices("](") {

@@ -5,8 +5,6 @@ mod kick_off;
 pub(in crate::states::load) use kick_off::kick_off_loads;
 
 mod resolve;
-// GTW-582: surface the shared tracing-capture scaffold to the whole crate's lib
-// test binary (the C5 procgen warn-capture test lives under `states::running`).
 #[cfg(test)]
 pub(crate) use resolve::hot_reload_test_support;
 pub(in crate::states::load) use resolve::{

@@ -1,16 +1,3 @@
-//! GTW-782: headless behavioral tests for the battlescape focus-navigation wiring — the
-//! app-side bridge, the inter-panel topology rebuild, the Escape cancel, and the focus
-//! outline — driven over the REAL system fns on a `MinimalPlugins` + `FocusNavPlugin` app.
-//!
-//! These exercise the actual wired path: the bridge writes `gdtf_ui`'s `NavigateRequest` /
-//! `FocusCancelled`, the topology rebuild lays the Tab chain, and `gdtf_ui`'s
-//! `apply_navigation` (installed by `FocusNavPlugin`) moves `InputFocus` — so a Tab that
-//! moves focus proves the whole chain end-to-end. Buttons at the three panel nav-order
-//! bands stand in for the action bar / weapon panel / contextual panel, so a walk across
-//! them is the per-panel coverage.
-//!
-//! Every `app.world_mut()` mutation is in a TEST BODY (`bevy-traps.md` #7 carve-out (a)).
-
 use bevy::{input::ButtonInput, input_focus::InputFocus, prelude::*};
 use gdtf_battle_input::{BoundKey, Keybinds, PanelNavOrder};
 use gdtf_test_utils::{clear_keys, press_key};
@@ -27,8 +14,6 @@ use super::{
     },
 };
 
-/// A test `Keybinds` — Tab = `select_next`/`select_prev`, Escape = `select_clear` (the
-/// shipped chord).
 const fn test_keybinds() -> Keybinds {
     Keybinds {
         select_clear:     BoundKey::KeyEscape,
@@ -43,11 +28,6 @@ const fn test_keybinds() -> Keybinds {
     }
 }
 
-/// The base focus-nav app: `MinimalPlugins` + `FocusNavPlugin` (which installs
-/// `InputFocus`, the `DirectionalNavigationMap`, the nav messages, and `apply_navigation`),
-/// plus the GTW-782 systems wired exactly as the scene-plugin wires them (rebuild + bridge
-/// before `Apply`; cancel after the bridge; the outline). A seeded `ButtonInput` + a bound
-/// `Keybinds`.
 fn focus_nav_app() -> App {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins).add_plugins(FocusNavPlugin);
@@ -65,40 +45,27 @@ fn focus_nav_app() -> App {
     app
 }
 
-/// Spawns a SHOWN (non-`Hidden`) focus-navigable panel button at nav-order `order`.
 fn shown_button(app: &mut App, order: u16) -> Entity {
     app.world_mut()
         .spawn((PanelNavOrder::new(order), Visibility::Inherited))
         .id()
 }
 
-/// Points `InputFocus` at `entity` (the panel-focus context).
 fn focus_on(app: &mut App, entity: Entity) {
     app.world_mut()
         .insert_resource(InputFocus::from_entity(entity));
 }
 
-/// The currently-focused entity, if any.
 fn focused(app: &App) -> Option<Entity> {
     app.world().resource::<InputFocus>().get()
 }
 
-/// Presses `key`, runs one update, then clears the just-pressed edge (so the next press is
-/// a fresh `just_pressed` — `MinimalPlugins` has no `keyboard_input_system` to auto-clear).
 fn tap(app: &mut App, key: KeyCode) {
     press_key(app, key);
     app.update();
     clear_keys(app);
 }
 
-/// Tab walks focus forward (East) across all three panel bands, and Shift+Tab walks it
-/// back (West) — the per-panel "focus-nav works via Tab" pin.
-///
-/// Buttons at the action-bar / weapon / contextual bands form the chain
-/// `bar → weapon → ctx`. From the bar button, Tab must step to the weapon button, then the
-/// contextual button; Shift+Tab must walk back. If the bridge stopped writing the navigate
-/// request (or the topology stopped chaining the buttons), focus would not move and these
-/// assertions fail.
 #[test]
 fn tab_walks_focus_across_the_three_panels() {
     let mut app = focus_nav_app();
@@ -117,7 +84,6 @@ fn tab_walks_focus_across_the_three_panels() {
         "Tab steps weapon → contextual (East)",
     );
 
-    // Shift+Tab steps back West.
     press_key(&mut app, KeyCode::ShiftLeft);
     tap(&mut app, KeyCode::Tab);
     assert_eq!(
@@ -127,7 +93,6 @@ fn tab_walks_focus_across_the_three_panels() {
     );
 }
 
-/// The right / left arrows navigate like Tab / Shift+Tab (the horizontal arrow mirror).
 #[test]
 fn arrows_navigate_like_tab() {
     let mut app = focus_nav_app();
@@ -146,9 +111,6 @@ fn arrows_navigate_like_tab() {
     );
 }
 
-/// Escape backs out of panel focus: the bridge raises `FocusCancelled` and
-/// `apply_focus_cancel` clears `InputFocus`, so focus returns to nothing (the
-/// map/selection context resumes).
 #[test]
 fn escape_cancels_panel_focus() {
     let mut app = focus_nav_app();
@@ -164,17 +126,8 @@ fn escape_cancels_panel_focus() {
     );
 }
 
-/// A hidden or disabled button drops out of the Tab chain — the dynamic-visibility the
-/// battlescape topology must handle (unlike the menu's static column).
-///
-/// Chain fixtures: a shown bar button, a HIDDEN weapon button (mid-band), and a shown
-/// contextual button. Tab from the bar button must SKIP the hidden one straight to the
-/// contextual button. A second run makes the middle button DISABLED instead, with the same
-/// skip. If the rebuild stopped filtering `Hidden` / `DisabledButton`, focus would land on
-/// the excluded button and the assertion fails.
 #[test]
 fn hidden_and_disabled_buttons_drop_out_of_the_chain() {
-    // Hidden middle button.
     let mut app = focus_nav_app();
     let bar = shown_button(&mut app, ACTION_BAR_NAV_BASE);
     let hidden = app
@@ -196,7 +149,6 @@ fn hidden_and_disabled_buttons_drop_out_of_the_chain() {
         "focus never lands on a hidden button"
     );
 
-    // Disabled middle button.
     let mut app = focus_nav_app();
     let bar = shown_button(&mut app, ACTION_BAR_NAV_BASE);
     let disabled = app
@@ -223,7 +175,6 @@ fn hidden_and_disabled_buttons_drop_out_of_the_chain() {
     );
 }
 
-/// The focus outline marks exactly the focused button — the visual the QA screenshot reads.
 #[test]
 fn focus_outline_marks_only_the_focused_button() {
     let mut app = focus_nav_app();
@@ -241,7 +192,6 @@ fn focus_outline_marks_only_the_focused_button() {
         "an unfocused button has no focus ring",
     );
 
-    // Move focus (Tab East) → the ring follows.
     tap(&mut app, KeyCode::Tab);
     app.update();
     assert!(
@@ -254,14 +204,11 @@ fn focus_outline_marks_only_the_focused_button() {
     );
 }
 
-/// The bridge is INERT when no panel holds focus: with focus on a NON-panel entity, Tab
-/// raises no navigate request, so focus stays put (the map/selection context owns Tab).
 #[test]
 fn bridge_is_inert_without_panel_focus() {
     let mut app = focus_nav_app();
     let _a = shown_button(&mut app, ACTION_BAR_NAV_BASE);
     let _b = shown_button(&mut app, WEAPON_NAV_BASE);
-    // Focus a stray, non-PanelNavOrder entity.
     let stray = app.world_mut().spawn_empty().id();
     focus_on(&mut app, stray);
 

@@ -1,12 +1,3 @@
-//! Headless pins for the present pass that blits the offscreen image back onto the window
-//! (GTW-922 clauses 5 and 6).
-//!
-//! GTW-918 asserted none of this: no test read `PRESENT_LAYER`, `PRESENT_ORDER` or the blit
-//! `Sprite`, so the pass could have rendered on the editor's own layer, under the editor camera,
-//! or with no sprite at all and the suite stayed green. The pass is also now GATED on the
-//! retarget having happened, which is the clause-5 resolution, and that gate is asserted in both
-//! directions here.
-
 use bevy::{
     camera::{RenderTarget, visibility::RenderLayers},
     prelude::*,
@@ -21,9 +12,6 @@ use crate::net_qa::present::{
     blit::{EditorQaPresentCamera, EditorQaPresentSprite, PRESENT_LAYER, PRESENT_ORDER},
 };
 
-/// Build the present path in the state where the retarget HAS fired: an editor-shaped camera with
-/// its `bevy_egui` input mapping already recorded, so the offscreen target is created and the
-/// camera is aimed at it.
 fn app_with_retargeted_camera() -> App {
     let mut app = headless_windowed_app();
     app.add_plugins(EditorCapturePresentPlugin);
@@ -33,8 +21,6 @@ fn app_with_retargeted_camera() -> App {
     app
 }
 
-/// A present camera targeting the WINDOW exists once the retarget has fired, so a focused editor
-/// still shows its UI — and what the window shows equals what the pump captures.
 #[test]
 fn a_present_camera_targets_the_window() {
     let mut app = app_with_retargeted_camera();
@@ -49,12 +35,6 @@ fn a_present_camera_targets_the_window() {
     );
 }
 
-/// The present camera composites LAST, on a layer of its own (clause 6).
-///
-/// [`PRESENT_ORDER`] must be above the editor camera's `0` and the prefab preview camera's `-1`,
-/// so the blit runs after the egui pass has written the offscreen image this frame; and
-/// [`PRESENT_LAYER`] must be the camera's ONLY layer, disjoint from the editor's default `0` and
-/// the preview's `1`, so the present camera renders the blit sprite and nothing else.
 #[test]
 fn the_present_camera_composites_last_on_its_own_layer() {
     let mut app = app_with_retargeted_camera();
@@ -81,11 +61,6 @@ fn the_present_camera_composites_last_on_its_own_layer() {
     );
 }
 
-/// The blit SPRITE exists, shows the capture image, and lives on the present camera's layer
-/// (clause 6).
-///
-/// Without it the present camera renders an empty pass and the window goes blank while the
-/// capture still works — a state no GTW-918 assertion could see.
 #[test]
 fn the_blit_sprite_shows_the_capture_image_on_the_present_layer() {
     let mut app = app_with_retargeted_camera();
@@ -124,19 +99,10 @@ fn the_blit_sprite_shows_the_capture_image_on_the_present_layer() {
     );
 }
 
-/// The present pass is NOT spawned while the editor's egui camera is still window-targeted
-/// (clause 5, resolved: the pass IS gated on the retarget).
-///
-/// Today's failure mode without this gate: the retarget waits for `bevy_egui`'s input mapping and
-/// may never fire, while an `order: 100` camera composites the untouched offscreen image over the
-/// editor's own window — a permanently blank editor. Gated, the window keeps showing the egui
-/// camera's own output and the editor stays usable; the capture's own problem is reported by the
-/// pump's typed refusal instead.
 #[test]
 fn no_present_pass_appears_until_the_camera_is_retargeted() {
     let mut app = headless_windowed_app();
     app.add_plugins(EditorCapturePresentPlugin);
-    // An editor-shaped camera with NO `bevy_egui` input-map entry, so the retarget never fires.
     let camera = spawn_editor_like_camera(&mut app);
     settle(&mut app);
 

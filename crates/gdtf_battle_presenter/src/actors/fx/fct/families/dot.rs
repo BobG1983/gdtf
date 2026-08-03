@@ -1,13 +1,3 @@
-//! The DAMAGE-OVER-TIME consequence family (GTW-544, palette-ised in GTW-572): the
-//! transient `"-N"` attrition pop for a ganger a burning / caustic DOT drained this round,
-//! off the sim's [`DotTicked`](gdtf_battle_sim::effects::dot::DotTicked) per-round message.
-//!
-//! Drawn the toxic [`FctValence::Dot`](super::super::palette::FctValence::Dot) green — its
-//! OWN recurring-attrition valence, distinct from a fresh weapon hit (RED) or a bleed
-//! status tag (AMBER). The message carries the drained cell, so the anchor is
-//! [`PopAnchor::Carried`]. The persistent DOT state is the sim's
-//! [`Dot`](gdtf_battle_sim::weapon::Dot) affliction, NOT this one-shot pop.
-
 use gdtf_battle_sim::effects::dot::DotTicked;
 
 use super::super::{
@@ -16,7 +6,6 @@ use super::super::{
     text::CombatText,
 };
 
-/// The DOT family marker — `DotTicked` → a toxic-green `"-N"` attrition number.
 #[derive(Debug, Clone, Copy)]
 pub struct DotFct;
 
@@ -43,10 +32,7 @@ mod test {
 
     use super::{super::super::pop::ConsequenceFct, DotFct, FctValence, PopAnchor, valence_color};
 
-    /// A DOT tick classifies to a `"-N"` drained-HP pop drawn in the toxic Dot green,
-    /// anchored at the message's carried cell — the amount is rendered as a familiar
-    /// `-{hp}` number, in the DOT attrition valence.
-    #[test]
+                #[test]
     fn a_dot_tick_classifies_to_a_toxic_minus_amount_tag() {
         let at = CellLevel::new(Cell::new(7, 9), Level::new(0));
         let pop = DotFct::classify(&DotTicked::new(Entity::PLACEHOLDER, at, DotDamage::new(4)));

@@ -1,6 +1,4 @@
 //! The LIVE half of authoring-time validation (GTW-630): re-arm the pass when
-//! a watched registry is rebuilt by the hot-reload redrive.
-
 use bevy::{
     ecs::system::SystemParam,
     prelude::{Commands, DetectChanges, Res},
@@ -17,51 +15,22 @@ use gdtf_battle_sim::{
 };
 use gdtf_content_families::sprites::SpriteDefRegistry;
 
-/// The WATCH SET: every registry the editor's registered checks read (the
-/// [`register`](super::register) window's exact resource set — all nine since
-/// the gang equipment edge joined in GTW-651, the injury-weighting edge in
-/// GTW-654, the terrain `graphic_name` edge in GTW-663, and the
-/// weapon→attachment edge in GTW-669), bundled into one
 /// `#[derive(SystemParam)]` (the load gate's `GateResources` pattern) so the
-/// re-arm system's signature stays legible as families accrue. Every field is
-/// `Option` — a registry arrives only once its loader resolve (or fallback)
-/// fires (`bevy-traps.md` #1).
 #[derive(SystemParam)]
 pub(super) struct WatchedRegistries<'w> {
-    /// The ranged-weapons registry — read by the emplacement AND gang edges.
-    weapons:       Option<Res<'w, WeaponRegistry>>,
-    /// The melee-weapons registry — read by the gang edge (GTW-651).
-    melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
-    /// The armor registry — read by the gang edge (GTW-651).
-    armor:         Option<Res<'w, ArmorRegistry>>,
-    /// The gangs registry — the gang edge's referrer side (GTW-651).
-    gangs:         Option<Res<'w, GangRegistry>>,
-    /// The UUID-keyed terrain defs — read by the theme + emplacement edges.
-    terrain:       Option<Res<'w, TerrainDefRegistry>>,
-    /// The UUID-keyed theme defs — the theme edge's referrer side.
-    themes:        Option<Res<'w, UuidThemeRegistry>>,
-    /// The injury-def registry — read by the weighting edge (GTW-654). The
-    /// injuries redrive overwrites the registry AND the tables together on ANY
-    /// member edit (def OR weighting), so watching the registry alone re-arms
-    /// on both artifact kinds; the built `InjuryTables` is read by no check,
-    /// so per the watch-set invariant it is not watched.
-    injuries:      Option<Res<'w, InjuryRegistry>>,
-    /// The sprite-def registry — read by the terrain `graphic_name` edge
-    /// (GTW-663), so authoring or deleting a `.spritedef.ron` member re-runs
-    /// the foreign-key check live.
-    sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
-    /// The attachment registry — read by the weapon→attachment edge (GTW-669),
-    /// so authoring or deleting an `.attachment.ron` member re-runs the
-    /// weapon-side key check live (a save that fixes a dangling scope clears
-    /// its finding at the edit).
-    attachments:   Option<Res<'w, AttachmentRegistry>>,
+        weapons:       Option<Res<'w, WeaponRegistry>>,
+        melee_weapons: Option<Res<'w, MeleeWeaponRegistry>>,
+        armor:         Option<Res<'w, ArmorRegistry>>,
+        gangs:         Option<Res<'w, GangRegistry>>,
+        terrain:       Option<Res<'w, TerrainDefRegistry>>,
+        themes:        Option<Res<'w, UuidThemeRegistry>>,
+                        injuries:      Option<Res<'w, InjuryRegistry>>,
+                sprite_defs:   Option<Res<'w, SpriteDefRegistry>>,
+                    attachments:   Option<Res<'w, AttachmentRegistry>>,
 }
 
 impl WatchedRegistries<'_> {
-    /// Whether ANY watched registry was rebuilt since the re-arm system last
-    /// ran — the hot-reload redrive overwrites a registry through `ResMut`,
-    /// which marks it changed.
-    fn any_changed(&self) -> bool {
+                fn any_changed(&self) -> bool {
         self.weapons.as_ref().is_some_and(DetectChanges::is_changed)
             || self
                 .melee_weapons
@@ -86,30 +55,6 @@ impl WatchedRegistries<'_> {
     }
 }
 
-/// `Update` (unconditional): once the pass has published
-/// ([`ContentValidationDone`] present), a change to ANY registry the editor's
-/// registered checks read ([`WatchedRegistries`]) re-arms it — the report is
-/// replaced with a fresh empty one and both monotonic markers are removed, so
-/// the validation pass's `Check` → `Publish` chain runs again over the CURRENT content
-/// and re-publishes one consolidated report (the game's report shape,
-/// re-emitted at the edit). One watch set, one report: an edit to EITHER side
-/// of an edge — the gang file OR the weapons/armor/melee folder it references
-/// — re-runs EVERY registered check (GTW-651 A2).
-///
-/// The reset-don't-accumulate choice: re-checking into the old report would
-/// duplicate every still-dangling finding on each edit; replacing it keeps the
-/// published report a truthful snapshot of the current registries. (Load-time
-/// `MalformedFile` salvage findings are dropped by the reset too — a member
-/// that is STILL malformed keeps its stale registry entry or stays absent, and
-/// any reference to it dangles, so the mistake stays visible.)
-///
-/// Deliberately UNGATED (no `run_if`): the system runs every frame, so its
-/// change-detection window never stalls — a condition-gated version would not
-/// evaluate while [`ContentValidationDone`] is absent, and its first
-/// evaluation after the publish would still see the registries' INITIAL
-/// insertion ticks as "changed", spuriously re-arming a freshly published
-/// pass (`bevy-traps.md` #3, the tick-staleness family). The early return
-/// below still consumes the ticks.
 pub(super) fn rearm_validation_on_content_change(
     done: Option<Res<ContentValidationDone>>,
     watched: WatchedRegistries,

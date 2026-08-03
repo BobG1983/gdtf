@@ -1,6 +1,3 @@
-//! Draw-side unit tests: the facing map, the atlas-index sum, the role table, and the
-//! per-ganger tints.
-
 use gdtf_battle_sim::{
     ganger::Facing,
     prelude::{Direction, Faction, LifeState},
@@ -13,9 +10,6 @@ use super::super::{
 };
 use crate::TileIndex;
 
-/// AC2 — the 8->4 facing map maps each of the 8 directions to the documented frame,
-/// exhaustively. `North/NorthEast/NorthWest -> UP`, `East -> RIGHT`,
-/// `SouthEast/South/SouthWest -> DOWN`, `West -> LEFT`.
 #[test]
 fn facing_frame_maps_all_eight_directions() {
     assert_eq!(facing_frame(Direction::North), FacingFrame::UP, "N -> UP");
@@ -56,9 +50,6 @@ fn facing_frame_maps_all_eight_directions() {
     );
 }
 
-/// The four frame offsets are the documented column offsets `0..=3` in the sheet's
-/// per-actor order (LEFT/DOWN/UP/RIGHT) — the structural pins the atlas-index sum
-/// relies on.
 #[test]
 fn facing_frame_offsets_are_zero_to_three() {
     assert_eq!(*FacingFrame::LEFT, 0, "LEFT is col+0");
@@ -67,22 +58,17 @@ fn facing_frame_offsets_are_zero_to_three() {
     assert_eq!(*FacingFrame::RIGHT, 3, "RIGHT is col+3");
 }
 
-/// The atlas index is `faction_base + facing_frame`, read structurally from the
-/// table + the map — never a literal. Built from an arbitrary in-test table so it
-/// pins the SUM mechanism, not the shipped data.
 #[test]
 fn atlas_index_is_base_plus_frame() {
     let roles = CharacterRoles {
         faction_0: TileIndex::new(10),
         faction_1: TileIndex::new(20),
     };
-    // Faction 0 facing East -> base 10 + RIGHT (3) = 13.
     assert_eq!(
         atlas_index(&roles, Faction::new(0), Facing::new(Direction::East)),
         13,
         "faction 0 + East = faction_0 base + RIGHT offset",
     );
-    // Faction 1 facing North -> base 20 + UP (2) = 22.
     assert_eq!(
         atlas_index(&roles, Faction::new(1), Facing::new(Direction::North)),
         22,
@@ -90,8 +76,6 @@ fn atlas_index_is_base_plus_frame() {
     );
 }
 
-/// `base_for` resolves each faction to its authored base, and an out-of-table
-/// faction falls back to faction 0 (no panic).
 #[test]
 fn base_for_resolves_factions_and_falls_back() {
     let roles = CharacterRoles {
@@ -100,12 +84,9 @@ fn base_for_resolves_factions_and_falls_back() {
     };
     assert_eq!(roles.base_for(Faction::new(0)), TileIndex::new(0));
     assert_eq!(roles.base_for(Faction::new(1)), TileIndex::new(4));
-    // An out-of-table gang index (none exist in the two-gang design) -> faction 0.
     assert_eq!(roles.base_for(Faction::new(7)), TileIndex::new(0));
 }
 
-/// The two factions resolve to two DISTINCT base indices in the shipped table — the
-/// visibly-distinct-actors guarantee, asserted structurally (not a magnitude pin).
 #[test]
 fn shipped_character_roles_ron_parses_with_distinct_factions() {
     const SHIPPED: &str =
@@ -125,8 +106,6 @@ fn shipped_character_roles_ron_parses_with_distinct_factions() {
     );
 }
 
-/// The Downed tint differs from both factions' live tints — the documented Downed
-/// delta is a visible re-tint.
 #[test]
 fn downed_tint_differs_from_live_faction_tints() {
     assert_ne!(
@@ -141,7 +120,6 @@ fn downed_tint_differs_from_live_faction_tints() {
     );
 }
 
-/// The two factions draw two distinct live tints — the "faction-coloured" signal.
 #[test]
 fn faction_tints_are_distinct() {
     assert_ne!(
@@ -151,5 +129,3 @@ fn faction_tints_are_distinct() {
     );
 }
 
-// The CharacterRoles hot-reload restamp is the appearance resolver's roles-change driver
-// since GTW-631 — pinned in [`super::resolve`], not here.

@@ -1,12 +1,5 @@
-//! AC: a standing cover band that blocks the line vs one the line sails over —
-//! decided by the round's band vs the cover's band, the §2 clearance semantics
-//! reused through the wrapped march.
-
 use super::support::*;
 
-/// In the SAME world (a MID cover strictly between), a HIGH sight line sails over the
-/// cover (CLEAR) while a LOW sight line impacts it (BLOCKED) — the blocks-vs-sails
-/// pair, switched only by the endpoints' stance bands.
 #[test]
 fn mid_cover_sails_for_high_line_blocks_low_line() {
     let tuning = CombatTuning::default();
@@ -19,8 +12,6 @@ fn mid_cover_sails_for_high_line_blocks_low_line() {
     let to_pos = position(8, 5, 0);
     let look = facing(Direction::East);
 
-    // Standing eye → standing target: a HIGH line is strictly higher than the MID
-    // cover, so it sails over → CLEAR.
     let stand = stance(StanceKind::Standing);
     let high_observer = Observer {
         position:         &from_pos,
@@ -47,8 +38,6 @@ fn mid_cover_sails_for_high_line_blocks_low_line() {
         "a HIGH sight line must SAIL OVER a MID cover → CLEAR"
     );
 
-    // Prone eye → prone target: a LOW line is NOT strictly higher than the MID cover,
-    // so it impacts it before the target → BLOCKED.
     let prone = stance(StanceKind::Prone);
     let low_observer = Observer {
         position:         &from_pos,

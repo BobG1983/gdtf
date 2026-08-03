@@ -1,7 +1,3 @@
-//! The GTW-572 C6 state-change classify pins — the Q2 ruling's gain lines (fall / melee
-//! damage / death / suppression / armor-broken) and the once-at-start affliction lines
-//! (DOT / field / bleed). Each pins the EXACT phrasing + swatch POSITIVELY.
-
 use gdtf_battle_sim::{falls::StoreysFallen, resolve_hit::HpDamage, weapon::DotDamage};
 
 use super::super::{
@@ -13,8 +9,6 @@ use super::super::{
     event::{CombatLogEvent, LogName},
 };
 
-/// A fall logs ONE line `"<actor> fell <N> storeys"` in the wound AMBER — and the storey
-/// noun is singular for a one-storey drop.
 #[test]
 fn a_fall_logs_the_storey_count_in_wound_amber() {
     let two = CombatLogEvent::FallOccurred {
@@ -41,8 +35,6 @@ fn a_fall_logs_the_storey_count_in_wound_amber() {
     );
 }
 
-/// A connecting melee strike logs ONE line `"<attacker> struck <target> (-N)"` in the
-/// damage RED — the number-bearing melee-damage line the `MeleeStruck` fact enables.
 #[test]
 fn a_melee_strike_logs_both_names_and_the_amount_in_damage_red() {
     let event = CombatLogEvent::MeleeStruck {
@@ -61,9 +53,6 @@ fn a_melee_strike_logs_both_names_and_the_amount_in_damage_red() {
     assert_eq!(lines[0].emphasis(), FctEmphasis::Normal);
 }
 
-/// A terminal death logs ONE NAMED line `"<actor> dies"` in the lethal RED, BOLD — the
-/// line mirror of the nameless DOWN / DEAD tag, covering the formerly log-invisible
-/// DOT / field / bleed-out / melee / explode-cascade kills.
 #[test]
 fn a_death_logs_the_named_dies_line_bold_lethal() {
     let event = CombatLogEvent::OnDeathOccurred {
@@ -84,8 +73,6 @@ fn a_death_logs_the_named_dies_line_bold_lethal() {
     );
 }
 
-/// A fresh suppression logs ONE line `"<actor> is suppressed"` in the cowed suppression
-/// blue-grey (the FCT tag's family).
 #[test]
 fn a_suppression_logs_the_named_suppressed_line() {
     let event = CombatLogEvent::SuppressionApplied {
@@ -101,8 +88,6 @@ fn a_suppression_logs_the_named_suppressed_line() {
     );
 }
 
-/// An armor break logs ONE line `"<actor>: armor broken"` in the damage RED (the destroy
-/// crossing reads heavier than wear, matching the FCT tag).
 #[test]
 fn an_armor_break_logs_the_named_armor_broken_line() {
     let event = CombatLogEvent::ArmorBroken {
@@ -118,9 +103,6 @@ fn an_armor_break_logs_the_named_armor_broken_line() {
     );
 }
 
-/// A DOT affliction START logs ONE line `"<actor> is afflicted (-N/turn)"` in the toxic
-/// DOT green — the once-per-span line (the per-tick `DotTicked` has NO classify arm at all,
-/// so a mid-affliction tick can never log).
 #[test]
 fn a_dot_affliction_start_logs_the_per_turn_line_in_dot_green() {
     let event = CombatLogEvent::DotAfflicted {
@@ -137,9 +119,6 @@ fn a_dot_affliction_start_logs_the_per_turn_line_in_dot_green() {
     );
 }
 
-/// A field exposure START logs ONE line `"<actor> is caught in a hazard field"` in the
-/// hazard field orange — the once-per-span line (the per-round `FieldTicked` has NO classify
-/// arm at all).
 #[test]
 fn a_field_exposure_start_logs_the_hazard_line_in_field_orange() {
     let event = CombatLogEvent::FieldAfflicted {
@@ -155,8 +134,6 @@ fn a_field_exposure_start_logs_the_hazard_line_in_field_orange() {
     );
 }
 
-/// A bleed span START logs ONE line `"<actor> is bleeding"` in the wound AMBER — the
-/// once-per-span line (the per-tick Bleeding has NO classify arm at all).
 #[test]
 fn a_bleed_span_start_logs_the_bleeding_line_in_wound_amber() {
     let event = CombatLogEvent::BleedStarted {

@@ -1,8 +1,3 @@
-//! [`corner_lean`] geometry unit tests (GTW-406 §A) — one open end each of N/E/S/W
-//! yields the expected single-axis lean toward the gap; an L inside-corner leans past
-//! its open end (never toward the other wall); a flat wall, a lone pillar, a surrounded
-//! cell, and open ground all yield no peek.
-
 use bevy::math::Vec2;
 
 use super::super::corner::{PEEK_LEAN, corner_lean};
@@ -12,13 +7,10 @@ use crate::{
     occupancy::{OccupancyGrid, TerrainKind},
 };
 
-/// A ground-floor `(cell, level)` key.
 fn key(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(0))
 }
 
-/// A grid with each listed `(x, y)` set to a blocking [`TerrainKind::Wall`] on the
-/// ground floor; every other cell is open.
 fn grid_with_walls(walls: &[(i32, i32)]) -> OccupancyGrid {
     let mut grid = OccupancyGrid::new();
     for &(x, y) in walls {
@@ -27,15 +19,12 @@ fn grid_with_walls(walls: &[(i32, i32)]) -> OccupancyGrid {
     grid
 }
 
-/// The ganger cell every fixture probes from.
 fn ganger() -> CellLevel {
     key(3, 3)
 }
 
 #[test]
 fn wall_east_open_south_leans_south() {
-    // Wall to the East (4,3); its NORTH end (4,4) is blocked, its SOUTH end (4,2) open
-    // → lean South toward the gap. (This is the E2E fixture's geometry.)
     let grid = grid_with_walls(&[(4, 3), (4, 4)]);
     assert_eq!(
         corner_lean(ganger(), &grid),
@@ -46,8 +35,6 @@ fn wall_east_open_south_leans_south() {
 
 #[test]
 fn wall_north_open_east_leans_east() {
-    // Wall to the North (3,4); its WEST end (2,4) blocked, its EAST end (4,4) open
-    // → lean East.
     let grid = grid_with_walls(&[(3, 4), (2, 4)]);
     assert_eq!(
         corner_lean(ganger(), &grid),
@@ -58,8 +45,6 @@ fn wall_north_open_east_leans_east() {
 
 #[test]
 fn wall_south_open_west_leans_west() {
-    // Wall to the South (3,2); its EAST end (4,2) blocked, its WEST end (2,2) open
-    // → lean West.
     let grid = grid_with_walls(&[(3, 2), (4, 2)]);
     assert_eq!(
         corner_lean(ganger(), &grid),
@@ -70,8 +55,6 @@ fn wall_south_open_west_leans_west() {
 
 #[test]
 fn wall_west_open_north_leans_north() {
-    // Wall to the West (2,3); its SOUTH end (2,2) blocked, its NORTH end (2,4) open
-    // → lean North.
     let grid = grid_with_walls(&[(2, 3), (2, 2)]);
     assert_eq!(
         corner_lean(ganger(), &grid),
@@ -82,10 +65,6 @@ fn wall_west_open_north_leans_north() {
 
 #[test]
 fn l_inside_corner_leans_past_open_end() {
-    // An L: walls to the North (3,4) and East (4,3) meeting at (4,4). The North wall's
-    // WEST end (2,4) is open, its EAST end (4,4) blocked. Priority picks North first and
-    // leans West — past the North wall's open end, AWAY from the East wall (never toward
-    // the other wall — the structural peek-through-wall defence).
     let grid = grid_with_walls(&[(3, 4), (4, 4), (4, 3)]);
     assert_eq!(
         corner_lean(ganger(), &grid),
@@ -97,8 +76,6 @@ fn l_inside_corner_leans_past_open_end() {
 
 #[test]
 fn long_flat_wall_no_peek() {
-    // Wall to the East (4,3) with BOTH ends blocked (4,2) + (4,4) → a mid-flat-wall,
-    // no edge to peek around → ZERO.
     let grid = grid_with_walls(&[(4, 2), (4, 3), (4, 4)]);
     assert_eq!(
         corner_lean(ganger(), &grid),
@@ -109,8 +86,6 @@ fn long_flat_wall_no_peek() {
 
 #[test]
 fn lone_pillar_no_peek() {
-    // A single wall to the East (4,3) with BOTH ends open (4,2) + (4,4) → a lone pillar
-    // (target-dependent, deferred) → ZERO.
     let grid = grid_with_walls(&[(4, 3)]);
     assert_eq!(
         corner_lean(ganger(), &grid),
@@ -121,7 +96,6 @@ fn lone_pillar_no_peek() {
 
 #[test]
 fn surrounded_no_peek() {
-    // All eight neighbours blocked → every candidate wall has both ends blocked → ZERO.
     let grid = grid_with_walls(&[
         (3, 4),
         (4, 4),
@@ -141,7 +115,6 @@ fn surrounded_no_peek() {
 
 #[test]
 fn open_ground_no_peek() {
-    // No walls anywhere → no blocked cardinal → ZERO.
     let grid = grid_with_walls(&[]);
     assert_eq!(
         corner_lean(ganger(), &grid),

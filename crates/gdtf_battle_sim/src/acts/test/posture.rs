@@ -1,5 +1,3 @@
-//! AC4 — posture dispatch runs the verbs with their TU semantics.
-
 use super::support::*;
 
 #[test]
@@ -26,8 +24,6 @@ fn set_stance_dispatch_changes_stance_and_spends_the_tuning_leaf() {
         Some(StanceKind::Prone),
         "set-stance dispatch must change the stance to the requested value",
     );
-    // The TU drop equals exactly the consulted stance_change_tu leaf (a relation to
-    // the tuning value, never a pinned magnitude).
     assert!(
         matches!((tu_before, tu_after), (Some(b), Some(a)) if a < b),
         "a real stance change must strictly decrease Tu",
@@ -68,8 +64,6 @@ fn set_facing_dispatch_changes_facing_and_spends_the_tuning_leaf() {
         .world_mut()
         .spawn((Facing::new(Direction::North), Tu::new(50)))
         .id();
-    // The per-step turn cost off the shipped tuning, scaled by the short-way step
-    // count (North -> East is a 2-step turn) — the expected fully-affordable charge.
     let per_step = app
         .world()
         .get_resource::<CombatTuning>()
@@ -130,7 +124,6 @@ fn set_aiming_dispatch_flips_the_flag_and_leaves_tu_unchanged() {
         Some(true),
         "set-aiming dispatch must flip the aim flag to the requested value",
     );
-    // Toggling aim is free — set_aiming spends no TU (posture.rs).
     assert_eq!(
         app.world().get::<Tu>(actor).map(|t| **t),
         Some(40),

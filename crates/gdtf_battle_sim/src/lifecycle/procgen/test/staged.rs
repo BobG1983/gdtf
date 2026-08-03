@@ -1,10 +1,3 @@
-//! Unit tests for the GTW-655 / GTW-732 [`StagedProcgen`](crate::procgen::StagedProcgen)
-//! driver — stepping to completion matches a one-shot
-//! [`generate_level`](crate::procgen::generate_level) call for the same seed (the load-bearing
-//! step-equivalence pin, now holding BY CONSTRUCTION since one primitive has two drivers), each
-//! `advance` lands at most one placement (the per-PREFAB granularity), a finished drive is
-//! idempotent under a repeat `advance`, and a failed-closed drive re-returns the SAME error.
-
 use super::emit::support::{
     registry_with_fill, size, terrain_defs, terrain_eq, theme, theme_registry, tuning,
 };
@@ -17,15 +10,8 @@ use crate::{
     terrain::def::TerrainDefRegistry,
 };
 
-/// An upper bound on the step count any drive in this file takes — a 24x24 board fills in at
-/// most a few dozen prefab placements, so this is a generous guard against a non-terminating
-/// drive (never a magic tuning number).
 const STEP_BUDGET: usize = 512;
 
-/// A small board + registry that assembles, fills, and emits successfully — the common
-/// fixture every test in this file builds against. The tuning here has NO fill floor
-/// (`density 0.0`), so the fill places nothing; the per-placement tests override the tuning
-/// with a real floor so several fill prefabs land.
 fn fixture() -> Option<(
     ThemeUuid,
     GridSize,
@@ -49,9 +35,6 @@ fn fixture() -> Option<(
     ))
 }
 
-/// A stepped-to-completion drive produces an IDENTICAL result to a one-shot `generate_level`
-/// call for the same seed — the driver is an alternate schedule over the SAME pipeline, never
-/// a second implementation of it (clause 4: step-equivalence, now holding by construction).
 #[test]
 fn stepped_to_completion_matches_generate_level_for_the_same_seed() {
     let fixture = fixture();
@@ -95,11 +78,6 @@ fn stepped_to_completion_matches_generate_level_for_the_same_seed() {
     assert_eq!(one_shot.findings, staged_result.findings);
 }
 
-/// Each `advance` call lands AT MOST one placement (the GTW-732 per-prefab granularity): the
-/// drive is assemble (exactly two placement steps — player then enemy), then several fill
-/// steps (each growing the placement count by one), then the fill-finalize step and the emit
-/// step (each adding no placement). Drives until done (a variable step count, since the fill's
-/// placement count varies by seed).
 #[test]
 fn step_advances_exactly_one_placement_per_call() {
     let fixture = fixture();
@@ -107,7 +85,6 @@ fn step_advances_exactly_one_placement_per_call() {
     let Some((theme, board, registry, themes, defs, _)) = fixture else {
         return;
     };
-    // A real density floor so several fill prefabs place (unlike the fixture's 0.0 floor).
     let knobs = tuning(0.5, 64, 0);
     let seed = BattleSeed::new(7);
     let mut staged = StagedProcgen::new(seed, theme, board);
@@ -181,10 +158,6 @@ fn step_advances_exactly_one_placement_per_call() {
     assert!(staged.emitted().is_some());
 }
 
-/// Driving `advance` one placement at a time to done produces the IDENTICAL emitted level a
-/// one-shot `generate_level` call produces for the same seed — exercising the INTERACTIVE
-/// per-placement path specifically against the batch loop (clause 4), over a fill-bearing
-/// fixture so the fill cursor's per-prefab stepping is under test, not just the empty fill.
 #[test]
 fn advance_per_placement_matches_generate_level_for_the_same_seed() {
     let fixture = fixture();
@@ -236,9 +209,6 @@ fn advance_per_placement_matches_generate_level_for_the_same_seed() {
     assert_eq!(one_shot.findings, staged_result.findings);
 }
 
-/// Calling `advance` again after the drive is `Done` is a no-op: it returns `Ok(Done)` again
-/// and neither the RNG nor the stored result changes (asserted via the emitted result staying
-/// the same across the repeat call).
 #[test]
 fn advance_after_done_is_idempotent() {
     let fixture = fixture();
@@ -266,16 +236,12 @@ fn advance_after_done_is_idempotent() {
     );
 }
 
-/// A failed-closed step (no prefab registered) leaves the drive `Done` (nothing left to
-/// retry) and re-returns the SAME error on a repeat `advance`, rather than re-attempting the
-/// step (which would re-draw the RNG and desync from the one-shot pipeline).
 #[test]
 fn advance_on_failure_is_terminal_and_repeats_the_same_error() {
     let test_theme = theme();
     let Some(board) = size(24, 24) else {
         return;
     };
-    // A registry with NO prefabs at all — the first (player-placement) step fails closed.
     let registry = PrefabRegistry::default();
     let themes = theme_registry(test_theme);
     let defs = terrain_defs();

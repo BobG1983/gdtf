@@ -1,5 +1,3 @@
-//! Posture keys vs direct-intent parity + the reload intent (AC5, GTW-275).
-
 use bevy::prelude::*;
 use gdtf_battle_input::{ActIntent, PendingActIntent, next_facing, next_stance};
 use gdtf_battle_sim::{
@@ -12,25 +10,13 @@ use gdtf_test_utils::{press_key, probed};
 
 use super::harness::*;
 
-// ---------------------------------------------------------------------------------
-// AC5 — posture keys emit the matching *Requested for *SelectedShooter with the
-// next-of-cycle value, byte-for-byte equal to the same intent pushed directly.
-// ---------------------------------------------------------------------------------
 
-/// The two ways to drive one posture act — a synthesized KEY press, or a direct
-/// `ActIntent` push (the 222c-button surrogate over the SAME queue). Not `Copy`:
-/// [`Drive::Intent`] holds an `ActIntent`, which is no longer `Copy`.
 #[derive(Clone)]
 enum Drive {
-    /// Synthesize a just-pressed of `key`.
-    Key(KeyCode),
-    /// Push `intent` directly onto the shared queue (the 222c-button surrogate).
-    Intent(ActIntent),
+        Key(KeyCode),
+        Intent(ActIntent),
 }
 
-/// Builds a fresh acts app, selects an armed ganger (at the standing/north start), and
-/// applies `drive` (a key press OR a direct intent push), then `update()`s once.
-/// Returns `(app, ganger)` for the caller to read the relevant probe.
 fn drive_one_act(drive: Drive) -> (App, Entity) {
     let mut app = acts_app();
     add_probes(&mut app);
@@ -52,10 +38,6 @@ fn drive_one_act(drive: Drive) -> (App, Entity) {
     (app, ganger)
 }
 
-/// AC5 — the stance-cycle KEY emits one `SetStanceRequested` for `*SelectedShooter` with
-/// the next-of-cycle stance, byte-for-byte EQUAL to the message the direct `StanceCycle`
-/// intent produces over the SAME queue. (The keyboard keeps the blind cycle; the GTW-267
-/// action-bar replaced its BLIND-cycle button with direct-set `SetStance` toggles.)
 #[test]
 fn stance_key_emits_next_of_cycle_and_matches_direct_intent() {
     let key = test_keybinds().stance_cycle();
@@ -82,8 +64,6 @@ fn stance_key_emits_next_of_cycle_and_matches_direct_intent() {
     );
 }
 
-/// AC5 — the aim key emits one `SetAimingRequested` toggling the actor's aim, byte-for-
-/// byte EQUAL to the direct `AimToggle` intent's message.
 #[test]
 fn aim_key_toggles_and_matches_direct_intent() {
     let key = test_keybinds().aim_toggle();
@@ -106,8 +86,6 @@ fn aim_key_toggles_and_matches_direct_intent() {
     );
 }
 
-/// AC5 — the facing key emits one `SetFacingRequested` for the next-of-cycle facing,
-/// byte-for-byte EQUAL to the direct `FacingCycle` intent's message.
 #[test]
 fn facing_key_emits_next_of_cycle_and_matches_direct_intent() {
     let key = test_keybinds().facing_cycle();
@@ -134,9 +112,6 @@ fn facing_key_emits_next_of_cycle_and_matches_direct_intent() {
     );
 }
 
-/// GTW-275 AC4 — pushing `ActIntent::Reload` emits exactly one `ReloadRequested` for
-/// the `*SelectedShooter` through the `gdtf_battle_input` queue (the weapon panel's Reload
-/// button surrogate, over the SAME `dispatch_act_intents` drain the other intents use).
 #[test]
 fn reload_intent_emits_one_reload_requested_for_the_selection() {
     let (app, ganger) = drive_one_act(Drive::Intent(ActIntent::Reload));

@@ -1,10 +1,3 @@
-//! Unit tests for the prefab schema (GTW-486) — they exercise the REAL
-//! [`PrefabSpec`] / [`TerrainPlacementEntry`] types through `ron` parse + round-trip.
-//!
-//! No magnitude assertions — the UUID / grid fixtures are mechanism, not balance; the
-//! tests assert the RON SHAPE parses and routes into the right fields, and that a spec
-//! survives a serialize → deserialize round-trip identically (the brittle-test rule).
-
 use super::{Prefab, PrefabKey, PrefabRegistry, PrefabSpec, SpawnRole, TerrainPlacementEntry};
 use crate::{
     level::{GridHeight, GridLevels, GridSize, GridWidth, PrefabName, ThemeUuid},
@@ -12,19 +5,14 @@ use crate::{
     terrain::def::TerrainUuid,
 };
 
-/// A stable [`ThemeUuid`] fixture (a fixed v4 UUID) — mechanism, not balance.
 fn theme_uuid() -> ThemeUuid {
     ThemeUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_00a1))
 }
 
-/// A 3x3x1 footprint (a valid small prefab size).
 fn small_size() -> Option<GridSize> {
     GridSize::new(GridWidth::new(3), GridHeight::new(3), GridLevels::new(1)).ok()
 }
 
-/// C1 — a prefab RON literal OMITTING `role` parses with `role == SpawnRole::Fill`,
-/// proving the serde-default-`Fill` behaviour (an unauthored role is a generic fill
-/// fragment). The literal authors a theme UUID, a size, and one placement, but NO `role`.
 #[test]
 fn omitted_role_defaults_to_fill() {
     let ron = r#"(
@@ -47,10 +35,6 @@ fn omitted_role_defaults_to_fill() {
     );
 }
 
-/// C2 — a prefab RON literal with a SINGLE `placements` list of piece-uuid @ cell-level
-/// entries parses into a [`PrefabSpec`], proving the one placed-UUID list replaces the
-/// legacy schema's four split lists (walls / scatter / slabs / floors). The literal names
-/// an explicit `role` and two placements.
 #[test]
 fn single_placements_list_parses() {
     let ron = r#"(
@@ -80,9 +64,6 @@ fn single_placements_list_parses() {
     );
 }
 
-/// C3 — round-trip identity: `deserialize(serialize(spec)) == spec` for a spec carrying
-/// `>= 1` placement. Identity only (no magnitude pins) — the spec is built in code, written
-/// to RON via the [`Serialize`] derive, and re-parsed, then compared whole.
 #[test]
 fn round_trips_through_ron() {
     let Some(size) = small_size() else { return };
@@ -100,7 +81,6 @@ fn round_trips_through_ron() {
     let spec = PrefabSpec::new(theme, size, SpawnRole::Enemy, placements);
 
     let Ok(text) = ron::ser::to_string(&spec) else {
-        // A construction-derived spec always serializes; bail (not fail) if the encoder errs.
         return;
     };
     let reparsed = ron::de::from_str::<PrefabSpec>(&text);
@@ -111,9 +91,6 @@ fn round_trips_through_ron() {
     );
 }
 
-/// GTW-488 C1 — the [`PrefabRegistry`] inserts a [`Prefab`] under a [`PrefabKey`], then
-/// [`prefabs_for`](PrefabRegistry::prefabs_for) returns it. Exercises the REAL registry
-/// (insert -> lookup -> name match), not dead code, and confirms a non-matching key is empty.
 #[test]
 fn registry_inserts_and_retrieves_by_key() {
     let Some(size) = small_size() else { return };
@@ -151,21 +128,15 @@ fn registry_inserts_and_retrieves_by_key() {
     assert_eq!(registry.len(), 1, "one prefab total across keys");
 }
 
-/// GTW-488 C2 — [`Prefab::new`] constructs from a [`PrefabSpec`] carrying ZERO
-/// placements (an openingless fragment) and SUCCEEDS infallibly. Pin-discriminating: the
-/// constructor returns a plain `Prefab` (no `Result`), so there is NO opening-validation
-/// path on the prefab — an openingless prefab is valid.
 #[test]
 fn prefab_new_accepts_zero_placement_spec_infallibly() {
     let Some(size) = small_size() else { return };
-    // Openingless: zero placements (the schema has no authored openings at all).
     let spec = PrefabSpec::new(theme_uuid(), size, SpawnRole::Fill, Vec::new());
     assert!(
         spec.placements.is_empty(),
         "the fixture spec is openingless (zero placements)",
     );
 
-    // `Prefab::new` is infallible (no Result, no validation) — it constructs directly.
     let prefab = Prefab::new(PrefabName::new("sealed_box".to_owned()), spec);
     assert!(
         prefab.spec().placements.is_empty(),
@@ -178,9 +149,6 @@ fn prefab_new_accepts_zero_placement_spec_infallibly() {
     );
 }
 
-/// C4 — a prefab with ZERO placements still deserializes (the empty-list case is valid;
-/// there is no validation / connectivity path that rejects it). Authors an empty
-/// `placements` list and an omitted role (which defaults to `Fill`).
 #[test]
 fn zero_placements_still_deserializes() {
     let ron = r#"(

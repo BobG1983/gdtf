@@ -1,15 +1,10 @@
 use super::support::*;
 
-/// AC5 — seeded determinism: two `resolve_and_apply` runs from the same
-/// `BattleSeed`, over the same outcome SEQUENCE on identical fresh targets,
-/// produce identical report sequences (replay equality). Walks a sequence so the
-/// stream — not just a single draw — is reproduced.
 #[test]
 fn same_seed_reproduces_the_report_sequence() {
     let tuning = CombatTuning::default();
     let entity = an_entity();
     let weapon = a_weapon(16, 9, 4, DamageType::Blast);
-    // A sequence of struck parts so the stream is genuinely walked across calls.
     let parts = [
         BodyPart::Head,
         BodyPart::Torso,
@@ -20,10 +15,6 @@ fn same_seed_reproduces_the_report_sequence() {
 
     let run = || {
         let mut r = rng();
-        // A fresh target per call so wear/state don't drift the comparison. Each part
-        // has its own piece-entity integrity (keyed access — GTW-323 / ADR-0004), so the
-        // repeated Torso hit wears the SAME piece across the sequence (the same
-        // per-location wear the old shared uniform suit modelled).
         let mut hp = Hp::new(60);
         let mut wounds = Wounds::new(12);
         let mut life = LifeState::Alive;
@@ -36,8 +27,6 @@ fn same_seed_reproduces_the_report_sequence() {
         parts
             .iter()
             .map(|&part| {
-                // Key the struck part's piece integrity (`ganger → Wears → the
-                // BodyPart-tagged piece` in the full ECS path; a per-part map here).
                 let piece = integrity
                     .get_mut(&part)
                     .map(|integ| struck_piece(1, 6, 2, ArmorType::Flak, integ));

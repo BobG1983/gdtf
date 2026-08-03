@@ -1,6 +1,3 @@
-//! RON parse pins for the GTW-663 ruled sprite-def schema — shape only, no
-//! shipped magnitudes (the loader-tests-never-pin-content rule).
-
 use super::super::{
     SpriteAnchor, SpriteAnimation, SpriteDef, SpriteFacing, SpriteFacings, SpriteFps,
     SpriteImagePath, SpritePx, SpriteRect, SpriteSource,
@@ -15,7 +12,6 @@ const SHEET_DEF: &str = r#"(
     anchor: (x: 8, y: 8),
 )"#;
 
-/// The base sheet-rect shape parses, and the omitted optionals default to
 /// [`None`] (`#[serde(default)]` — the seeds author neither).
 #[test]
 fn sheet_rect_def_parses_with_optionals_defaulting_to_none() {
@@ -51,8 +47,6 @@ fn sheet_rect_def_parses_with_optionals_defaulting_to_none() {
     );
 }
 
-/// The FULL ruled schema parses: a standalone-file source, a facings map over
-/// the closed 4-facing enum, and an `{fps, frames}` animation.
 #[test]
 fn full_schema_with_file_source_facings_and_animation_parses() {
     let def = ron::de::from_str::<SpriteDef>(
@@ -106,8 +100,6 @@ fn full_schema_with_file_source_facings_and_animation_parses() {
         "the authored animation must parse to Some",
     );
     let Some(animation) = animation else { return };
-    // `.to_bits()` identity — an exact authored-value round-trip check that
-    // dodges `float_cmp` without an epsilon (the GTW-464 editor precedent).
     assert_eq!(
         (*animation.fps).to_bits(),
         4.0_f32.to_bits(),
@@ -116,9 +108,6 @@ fn full_schema_with_file_source_facings_and_animation_parses() {
     assert_eq!(animation.frames.len(), 2, "both frames must parse");
 }
 
-/// A def missing the required `anchor` field FAILS loudly (serde's missing
-/// field error — the per-file salvage then records it, never a silent
-/// default).
 #[test]
 fn missing_anchor_fails_to_parse() {
     let def = ron::de::from_str::<SpriteDef>(r#"(source: File("sprites/x.png"))"#);
@@ -128,8 +117,6 @@ fn missing_anchor_fails_to_parse() {
     );
 }
 
-/// `deserialize(serialize(def)) == def` — the schema round-trips through
-/// serde, so the GTW-664 editor save can re-emit what the loader read.
 #[test]
 fn sprite_def_round_trips_through_serde() {
     let def = SpriteDef {

@@ -1,9 +1,3 @@
-//! In-crate unit tests for the stat block's pure helpers (GTW-278): the deterministic
-//! portrait derivation and the name / faction / stance / wound-name format helpers.
-//!
-//! The widget-wiring (spawn + mutate on the real flow) is covered by the headless
-//! integration tests in `crates/gdtf_app/tests/stat_panels.rs`.
-
 use gdtf_battle_sim::{
     armor::BodyPart,
     ganger::GangerName,
@@ -17,9 +11,6 @@ use super::{
     portrait::PortraitIndex,
 };
 
-/// The portrait index is DETERMINISTIC: the SAME name maps to the SAME face across two
-/// independent computations (the fixed-seed-hash contract — a `RandomState` hasher would
-/// fail this, since its seed differs per call).
 #[test]
 fn portrait_index_is_deterministic_for_a_name() {
     let name = GangerName::new("Vex Harker".to_owned());
@@ -28,8 +19,6 @@ fn portrait_index_is_deterministic_for_a_name() {
     assert_eq!(*a, *b, "the same name must map to the same portrait face");
 }
 
-/// Different names generally map to different faces (discriminating: a derivation that
-/// ignored the name would collide here). Two names with distinct hashes are chosen.
 #[test]
 fn portrait_index_varies_by_name() {
     let alex = GangerName::new("Alex Mercer".to_owned());
@@ -41,8 +30,6 @@ fn portrait_index_varies_by_name() {
     );
 }
 
-/// The portrait index is always in range (`0..100`) — the `% PORTRAIT_COUNT` guarantee,
-/// so a constructed index can always address the 10×10 atlas.
 #[test]
 fn portrait_index_is_in_range() {
     for name in [
@@ -59,14 +46,11 @@ fn portrait_index_is_in_range() {
     }
 }
 
-/// A nameless ganger falls back to face 0 (the contract's no-name rule).
 #[test]
 fn portrait_index_falls_back_to_zero_when_nameless() {
     assert_eq!(*PortraitIndex::for_name(None), 0, "no name -> face 0");
 }
 
-/// The name title shows the ganger's name; a nameless ganger shows the `NAMELESS`
-/// fallback.
 #[test]
 fn name_label_shows_name_or_fallback() {
     let name = GangerName::new("Alex Mercer".to_owned());
@@ -74,13 +58,11 @@ fn name_label_shows_name_or_fallback() {
     assert_eq!(name_label(None), NAMELESS);
 }
 
-/// The faction line shows the gang index.
 #[test]
 fn faction_label_shows_the_gang_index() {
     assert!(faction_label(Faction::new(1)).contains("Gang 1"));
 }
 
-/// Each stance posture renders its own distinct word.
 #[test]
 fn stance_label_renders_each_posture() {
     assert!(stance_label(Stance::new(StanceKind::Standing)).contains("Standing"));
@@ -88,9 +70,6 @@ fn stance_label_renders_each_posture() {
     assert!(stance_label(Stance::new(StanceKind::Prone)).contains("Prone"));
 }
 
-/// A wound renders as `"{tier} — {location}"` with the named vocabulary
-/// (e.g. "Minor — Left Arm") — discriminating: a mis-mapped tier or part would surface
-/// the wrong word.
 #[test]
 fn wound_label_renders_tier_and_location() {
     let wound = InflictedWound::new(Severity::Minor, BodyPart::LeftArm);
@@ -103,15 +82,10 @@ fn wound_label_renders_tier_and_location() {
     assert!(critical.contains("Head"), "location word: {critical}");
 }
 
-// ── GTW-727 T18: the block shows CURSOR TIME ────────────────────────────────────
 
-/// The widget ids one probe run writes into — a [`Resource`] so the test system can reach
-/// them (a system cannot take a plain argument).
 #[derive(bevy::prelude::Resource)]
 struct ProbeRefs(super::components::StatBlockRefs);
 
-/// Run the REAL [`update_stat_block`](super::update::update_stat_block) over every ganger
-/// in the world, writing into the fixture's widget ids.
 fn probe_stat_block(
     query: bevy::prelude::Query<super::update::StatBlockData>,
     refs: bevy::prelude::Res<ProbeRefs>,
@@ -122,14 +96,6 @@ fn probe_stat_block(
     }
 }
 
-/// **T18 — CLAUSE (b) THROUGH THE REAL PANEL.** The stat block must show the HP the
-/// presenter has SHOWN, not the HP the sim has already reached.
-///
-/// This is the reported symptom stated as an assertion: in the filed repro the HUD already
-/// read the reduced HP while the bolt that caused it was still mid-flight. The drawn mirror
-/// is what fixes it, and the fallback keeps every pre-existing behaviour intact — with no
-/// mirror present the block reads live state exactly as it always did, which is why no
-/// existing stat-block test had to change.
 #[test]
 fn the_stat_block_shows_drawn_hp_while_a_wound_is_unshown() {
     use bevy::{ecs::system::RunSystemOnce, prelude::*};
@@ -142,8 +108,6 @@ fn the_stat_block_shows_drawn_hp_while_a_wound_is_unshown() {
     };
 
     let mut app = App::new();
-    // One real Text widget for the HP label; every other ref points at a spare entity, so
-    // the other writes are harmless no-ops and this test pins exactly one readout.
     let hp_label = app.world_mut().spawn(Text::default()).id();
     let spare = app.world_mut().spawn_empty().id();
     let refs = super::components::StatBlockRefs {
@@ -161,8 +125,6 @@ fn the_stat_block_shows_drawn_hp_while_a_wound_is_unshown() {
     };
     app.insert_resource(ProbeRefs(refs));
 
-    // A ganger the SIM has already wounded to 2 HP, while the presenter is still SHOWING
-    // the 9 HP it had before the round played.
     let ganger = app
         .world_mut()
         .spawn((
@@ -197,8 +159,6 @@ fn the_stat_block_shows_drawn_hp_while_a_wound_is_unshown() {
          that caused it has landed",
     );
 
-    // Remove the mirror: with no presenter the block falls back to live state, unchanged
-    // from every build before this one.
     app.world_mut().entity_mut(ganger).remove::<DrawnVitals>();
     let ran = app.world_mut().run_system_once(probe_stat_block);
     assert!(ran.is_ok(), "the probe must run again");

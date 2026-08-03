@@ -1,29 +1,14 @@
-//! The **`GainFireMode`** attachment effect (GTW-549; GTW-558 one-file-per-effect) — the
-//! isolated [`ApplyGainFireMode`] behaviour and the `impl` that appends a
-//! [`FireModeSpec`](crate::weapon::FireModeSpec) to the weapon's fire-mode selector. No
-//! per-item magnitude newtype — its payload is the reused weapon
-//! [`FireModeSpec`](crate::weapon::FireModeSpec).
-
 use bevy::prelude::EntityWorldMut;
 
 use super::ApplyAttachmentEffect;
 use crate::weapon::{FireMode, FireModeSpec};
 
-/// **`GainFireMode`** — ADDS one [`FireModeSpec`](crate::weapon::FireModeSpec) to the
-/// weapon's [`FireMode`](crate::weapon::FireMode) selector (a conversion kit granting a new
-/// firing mode).
-///
-/// Reads the existing selector, appends the new mode, and re-inserts the rebuilt
-/// [`FireMode`](crate::weapon::FireMode). A weapon with no selector is left unchanged.
 pub struct ApplyGainFireMode {
-    /// The fire mode this conversion kit adds to the selector.
-    mode: FireModeSpec,
+        mode: FireModeSpec,
 }
 
 impl ApplyGainFireMode {
-    /// Build the gain-fire-mode effect from the [`FireModeSpec`](crate::weapon::FireModeSpec)
-    /// it grants.
-    #[must_use]
+            #[must_use]
     pub const fn new(mode: FireModeSpec) -> Self {
         Self { mode }
     }
@@ -47,8 +32,7 @@ mod tests {
     use super::{ApplyAttachmentEffect, ApplyGainFireMode};
     use crate::weapon::{FireMode, FireModeSpec, ModeConeMult, ModeKind, ModeShots, ModeTuPercent};
 
-    /// `ApplyGainFireMode` ADDS exactly one mode to the selector — the count grows by one.
-    #[test]
+        #[test]
     fn gain_fire_mode_appends_a_mode() {
         let mut world = World::new();
         let weapon = world

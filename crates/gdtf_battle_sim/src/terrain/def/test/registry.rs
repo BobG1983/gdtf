@@ -1,7 +1,3 @@
-//! C7 — the [`TerrainDefRegistry`] holds at least one [`TerrainDef`] inserted
-//! by-key and looks it up by [`TerrainUuid`] (exercised through the real registry,
-//! not unreachable dead code).
-
 use super::super::{
     TerrainDef, TerrainDefRegistry, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind,
     TerrainUuid,
@@ -12,10 +8,6 @@ use crate::{
     terrain::piece::{FootfallSound, TerrainGraphicKey},
 };
 
-/// C7 — insert one definition under its [`TerrainUuid`] key and resolve it back by
-/// that key; an absent key resolves to [`None`]. Built directly from
-/// [`TerrainDefRegistry::insert`] (the sim-unit shape — no `AssetServer`). No
-/// magnitude assertions — key routing only.
 #[test]
 fn registry_inserts_and_looks_up_by_uuid() {
     let key = TerrainUuid::generate();
@@ -67,8 +59,6 @@ fn registry_inserts_and_looks_up_by_uuid() {
     );
 }
 
-/// C7 — the `(key, def)` constructor builds a registry keyed by [`TerrainUuid`]
-/// (the loader shape).
 #[test]
 fn registry_new_keys_by_uuid() {
     let key = TerrainUuid::generate();

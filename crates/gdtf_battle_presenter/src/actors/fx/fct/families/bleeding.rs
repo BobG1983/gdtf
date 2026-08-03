@@ -1,14 +1,3 @@
-//! The BLEEDING consequence family (GTW-302 slice 4, palette-ised in GTW-572): the AMBER
-//! `"Bleeding"` status tag for a ganger the bleed-out clock drained this round, off the
-//! sim's per-tick [`Bleeding`](gdtf_battle_sim::effects::bleed::Bleeding) message.
-//!
-//! The pop sits ALONGSIDE the `read_bleeding` blood flash (the flash is the splash, this is
-//! the labelled tag) and anchors at the cell the ganger is DRAWN at — the message carries no
-//! cell, so the anchor is [`PopAnchor::GangerPosition`], which the reader resolves from the
-//! [`DrawnPosition`](crate::DrawnPosition) mirror (GTW-889; fail-closed: a `Position`-less
-//! ganger pops nothing). The flat wound AMBER (not the severity ramp) because the message
-//! carries no severity to ramp by.
-
 use gdtf_battle_sim::effects::bleed::Bleeding;
 
 use super::super::{
@@ -17,7 +6,6 @@ use super::super::{
     text::CombatText,
 };
 
-/// The bleeding family marker — `Bleeding` → an AMBER `"Bleeding"` tag over the ganger.
 #[derive(Debug, Clone, Copy)]
 pub struct BleedingFct;
 
@@ -42,12 +30,8 @@ mod test {
         super::super::pop::ConsequenceFct, BleedingFct, FctValence, PopAnchor, valence_color,
     };
 
-    /// A `Bleeding` consequence classifies to the AMBER `"Bleeding"` status pop (the flat
-    /// wound/status swatch — no severity to ramp by), anchored on the ganger (the reader
-    /// resolves that to its DRAWN cell, fail-closed when the ganger has no position).
-    #[test]
+                #[test]
     fn a_bleeding_classifies_to_an_amber_bleeding_tag_on_the_ganger() {
-        // The classify never dereferences the entity — a placeholder handle drives the path.
         let ganger = Entity::PLACEHOLDER;
         let pop = BleedingFct::classify(&Bleeding::new(ganger));
         assert_eq!(

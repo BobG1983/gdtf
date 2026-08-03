@@ -1,27 +1,3 @@
-//! GTW-579 headless pins for the editor's content-family-registered `Load` pass.
-//!
-//! AC-2 (as AMENDED by GTW-625; extended by GTW-636 with the gangs + melee
-//! families the GANG mode edits, by GTW-654 with the bespoke injuries pair the
-//! INJURY mode edits, by GTW-663 with the sprite-defs family a terrain
-//! def's `graphic_name` foreign key resolves against — GTW-665 retired the
-//! tile-role hot-RON chain from the gate set: terrain graphics resolve
-//! through the sprite-defs family — and by GTW-669 with the attachments
-//! family the ATTACHMENT mode edits): driving the REAL
-//! [`MapEditorPlugin`] on the no-renderer `DefaultPlugins` harness (live
-//! workspace `assets/` root) reaches [`EditorState::Editing`] with ALL TEN
-//! resolved resources present — through
-//! the actual GTW-570 content-family / bespoke-injuries
-//! registrations, not an editor-local mirror — and the shared registrations' persistent handles
-//! survive past `Load` (the GTW-533 whole-session persistence the live
-//! hot-reload rides). The game's `GdtfTheme` is NOT among the gate resources:
-//! the egui shell styles itself, so the editor neither registers the theme
-//! chain nor depends on the game's hand-rolled UI crate at all (this test crate
-//! cannot even name the type).
-//!
-//! AC-4 (ADR-0003): pointing the SAME app at an EMPTY asset root fails every
-//! load, and the editor STILL transitions to `Editing` — the folder families
-//! (incl. the bespoke injuries pair) fail closed to EMPTY registries.
-
 use std::path::Path;
 
 use bevy::{
@@ -51,24 +27,14 @@ use gdtf_content_families::{
 };
 use gdtf_test_utils::{GdtfUiTestAppBuilder, advance_until};
 
-/// A generous frame cap: the async asset loads under parallel `cargo` contention
-/// take a non-deterministic number of frames, so this is a SAFETY NET (not a
-/// timing budget) — the tests poll the `EditorState::Editing` SIGNAL.
 const MAX_UPDATES: u32 = 10_000;
 
-/// The real editor app on the no-renderer `DefaultPlugins` UI harness (live
-/// `AssetServer` rooted at the workspace `assets/`) — the `state_scoped_resources`
-/// recipe.
 fn editor_app() -> App {
     let mut app = GdtfUiTestAppBuilder::new().with_ui_camera().build();
     app.add_plugins(MapEditorPlugin);
     app
 }
 
-/// The real editor app rooted at an ARBITRARY assets directory — the AC-4
-/// failure-path harness (an empty root fails every load). Mirrors the
-/// `no_renderer.rs` plugin recipe the shared harness uses; local to this test
-/// because the shared builder deliberately pins the workspace root.
 fn editor_app_with_asset_root(root: &Path) -> App {
     let mut app = App::new();
     app.add_plugins(
@@ -82,10 +48,6 @@ fn editor_app_with_asset_root(root: &Path) -> App {
                 ..default()
             })
             .disable::<WinitPlugin>()
-            // Headless-test noise suppression (GTW-139): no global tracing
-            // subscriber, so the DELIBERATE failure-path asset errors this test
-            // exercises do not print; the other three plugins probe a missing
-            // window / RenderApp / audio device unused here.
             .disable::<bevy::log::LogPlugin>()
             .disable::<bevy::app::TerminalCtrlCHandlerPlugin>()
             .disable::<bevy::gizmos::GizmoPlugin>()
@@ -100,17 +62,11 @@ fn editor_app_with_asset_root(root: &Path) -> App {
                 ..default()
             }),
     );
-    // Bevy 0.19 routes a FAILED system-param validation to the global error
-    // handler (default panics); with no render backend some render-provided
-    // params cannot validate. `warn` restores the skip-with-a-log behavior
-    // (the shared harness precedent).
     app.set_error_handler(warn);
     app.add_plugins(MapEditorPlugin);
     app
 }
 
-/// Drives the app until [`EditorState::Editing`], then a few settle frames so
-/// the `OnEnter(Editing)` command flushes apply before the assertions read.
 fn advance_to_editing(app: &mut App) {
     let reached = advance_until(
         app,
@@ -131,17 +87,6 @@ fn advance_to_editing(app: &mut App) {
     }
 }
 
-/// AC-2 (as amended by GTW-625; extended by GTW-636 + GTW-654 + GTW-663 +
-/// GTW-669; the GTW-665 chain retirement shrank the set from ten to nine and
-/// the GTW-669 attachments family grew it back to ten): the
-/// real content-family path resolves the editor's whole gate set — the app reaches
-/// `Editing` with the eight folder registries plus the bespoke injuries pair
-/// (each NON-empty, so the shipped content genuinely resolved — no count pins)
-/// all present, plus the eight PERSISTENT
-/// content-family handles (GTW-533 C4a: no `OnExit(Load)` cleanup exists, so the live
-/// hot-reload substrate survives). No game-theme resource exists to gate on —
-/// the editor no longer depends on the game's hand-rolled UI crate, so reaching
-/// `Editing` here IS the boots-without-the-theme proof.
 #[test]
 fn load_pass_resolves_all_ten_resources_through_the_real_seams() {
     let mut app = editor_app();
@@ -217,13 +162,6 @@ fn load_pass_resolves_all_ten_resources_through_the_real_seams() {
     assert_seam_handles_persist(world);
 }
 
-/// C4a: the content-family registrations' persistent handles survive past `Load` — whole-session handle
-/// persistence (GTW-533; no `OnExit(Load)` cleanup exists), the substrate the
-/// live redrives rebuild from: the eight folder families' [`ContentFolderHandle`]s
-/// (the tile-roles hot-RON handle retired with its chain — GTW-665). Read-only
-/// `&World` assertions off the
-/// same post-`Editing` world the resolve proof reads (the accepted
-/// `app.world()`-in-a-test idiom, not a `&mut World` system — `bevy-traps.md` #7).
 fn assert_seam_handles_persist(world: &World) {
     assert!(
         world
@@ -275,10 +213,6 @@ fn assert_seam_handles_persist(world: &World) {
     );
 }
 
-/// AC-4 (the ADR-0003 pin): with an EMPTY asset root every load reaches
-/// `Failed`, the fallbacks fire, and `Load` STILL transitions — the editor never
-/// hangs. The eight folder families fail closed to EMPTY registries (the
-/// tile-role chain and its editor-owned zero-table fallback retired — GTW-665).
 #[test]
 fn failed_asset_root_falls_back_and_still_reaches_editing() {
     let dir = tempfile::tempdir();
@@ -286,7 +220,6 @@ fn failed_asset_root_falls_back_and_still_reaches_editing() {
     let Ok(dir) = dir else { return };
 
     let mut app = editor_app_with_asset_root(dir.path());
-    // Reaching Editing on an all-failed root IS the no-strand guarantee.
     advance_to_editing(&mut app);
 
     let world = app.world();

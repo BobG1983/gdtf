@@ -1,7 +1,3 @@
-//! GTW-596 Threat gathering: the fog-gating invariant (BOTH directions, on the
-//! real `is_ganger_visible` path — acceptance clause 1) + the per-producer
-//! positive assertions for `ThreatAbove` / `ThreatBelow` (acceptance clause 2).
-
 use bevy::platform::collections::HashSet;
 use gdtf_battle_sim::{
     battle::PlayerFaction,
@@ -19,14 +15,10 @@ fn player() -> PlayerFaction {
     PlayerFaction::new(Faction::new(0))
 }
 
-/// A one-cell squad set — the common single-`CellLevel` fixture every test below builds.
 fn singleton(cell: CellLevel) -> HashSet<CellLevel> {
     std::iter::once(cell).collect()
 }
 
-/// Acceptance clause 2 (`ThreatAbove`): a LIVE enemy whose actual `(cell, level)`
-/// is squad-VISIBLE, on a storey ABOVE the active one, emits a Threat entry with
-/// a POSITIVE delta — clause 1's positive direction too.
 #[test]
 fn visible_enemy_above_emits_threat_above() {
     let enemy_key = key(10, 10, 3);
@@ -46,8 +38,6 @@ fn visible_enemy_above_emits_threat_above() {
     );
 }
 
-/// Acceptance clause 2 (`ThreatBelow`): the mirror case — an enemy BELOW the
-/// active storey emits a NEGATIVE delta.
 #[test]
 fn visible_enemy_below_emits_threat_below() {
     let enemy_key = key(4, 4, 0);
@@ -67,13 +57,10 @@ fn visible_enemy_below_emits_threat_below() {
     );
 }
 
-/// Acceptance clause 1 (negative, UNSEEN): an enemy whose cell is in NEITHER the
-/// VISIBLE nor the EXPLORED set emits NOTHING — the load-bearing fog-gating
-/// invariant (never leak an UNSEEN enemy).
 #[test]
 fn unseen_enemy_emits_no_threat() {
     let enemy_key = key(10, 10, 3);
-    let squad = SquadVisibility::default(); // neither set holds the enemy's cell
+    let squad = SquadVisibility::default(); 
     let pos = Position::new(enemy_key);
     let faction = Faction::new(1);
     let life = LifeState::Alive;
@@ -87,9 +74,6 @@ fn unseen_enemy_emits_no_threat() {
     );
 }
 
-/// Acceptance clause 1 (negative, EXPLORED-only): an enemy whose cell is
-/// EXPLORED but NOT currently VISIBLE ALSO emits nothing — `is_ganger_visible`
-/// gates on VISIBLE, not EXPLORED (the contract's exact wording).
 #[test]
 fn explored_only_enemy_emits_no_threat() {
     let enemy_key = key(10, 10, 3);
@@ -109,7 +93,6 @@ fn explored_only_enemy_emits_no_threat() {
     );
 }
 
-/// A Downed enemy poses no "threat" even when squad-VISIBLE above.
 #[test]
 fn incapacitated_enemy_emits_no_threat() {
     let enemy_key = key(10, 10, 3);
@@ -125,8 +108,6 @@ fn incapacitated_enemy_emits_no_threat() {
     assert!(threats.is_empty(), "a Downed enemy is not a 'threat'");
 }
 
-/// An own-squad ganger on another storey never surfaces as a "threat" (Threat is
-/// enemy-only).
 #[test]
 fn own_squad_member_emits_no_threat() {
     let ally_key = key(10, 10, 3);
@@ -142,8 +123,6 @@ fn own_squad_member_emits_no_threat() {
     assert!(threats.is_empty(), "an own-squad member is never a threat");
 }
 
-/// A same-storey enemy (no cross-level relationship) emits nothing — it is drawn
-/// as an ordinary sprite, not a badge.
 #[test]
 fn same_storey_enemy_emits_no_threat() {
     let enemy_key = key(10, 10, 0);

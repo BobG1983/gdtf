@@ -1,9 +1,4 @@
 //! GTW-582: the authored **situation's** outbound reference edges — gang/member
-//! refs (the TWO gang-path key schemes), the theme UUID, the terrain UUIDs, and
-//! the field keys. Each is ALSO still guarded abort-first at battle-request
-//! time (`setup_battle`'s typed errors, C3(a) — the runtime guard stays); these
-//! checks surface the same mistakes at `Load`, when they are cheap to fix.
-
 use bevy::prelude::{Res, ResMut};
 use gdtf_assets::{
     ContentFinding, ContentIntegrityReport, FindingFamily, FindingReferrer, FindingTarget,
@@ -16,25 +11,11 @@ use gdtf_battle_sim::{
 
 use crate::states::load::{plugin::SITUATION_RON_PATH, resources::LoadedSituation};
 
-/// `Check`: every situation combatant's `gang` ref resolves in the [`GangRegistry`]
-/// (by file STEM) and its `member` ref resolves in that gang's roster (by
-/// roster DISPLAY-NAME) — the two coexisting key schemes on the gang path, each
-/// finding naming WHICH scheme failed (GTW-582 C2).
-///
-/// GTW-744: this checks BOTH the back-compat placed `gangers` AND the reduced `rosters` — the
-/// shipped file authors its combatants as `rosters` (gang + member refs, no cells), so their
-/// gang/member refs must surface here too, not only at setup.
-///
-/// Plain `Res` params are safe here: the `Check` set's window condition
-/// (`reference_graph_ready`) verified every one of them present (bevy-traps #1,
-/// guarded once at the set).
 pub(super) fn check_situation_gang_refs(
     situation: Res<LoadedSituation>,
     gangs: Res<GangRegistry>,
     mut report: ResMut<ContentIntegrityReport>,
 ) {
-    // Both ref carriers yield `(&GangName, &GangerName)` — the placed `gangers` (back-compat)
-    // and the reduced `rosters` (the shipped shape).
     let combatant_refs = situation
         .gangers
         .iter()
@@ -72,10 +53,7 @@ pub(super) fn check_situation_gang_refs(
     }
 }
 
-/// `Check`: the situation's authored `theme` UUID resolves in the
-/// [`UuidThemeRegistry`]. The NIL sentinel means "no theme authored" (the
 /// documented `#[serde(default)]`), so it is skipped — a nil theme is an
-/// authoring CHOICE, not a dangling reference.
 pub(super) fn check_situation_theme_ref(
     situation: Res<LoadedSituation>,
     themes: Res<UuidThemeRegistry>,
@@ -94,10 +72,6 @@ pub(super) fn check_situation_theme_ref(
     }
 }
 
-/// `Check`: every terrain UUID the situation authors (walls / scatter / slabs /
-/// floor overrides / the non-nil `default_floor`) resolves in the
-/// [`TerrainDefRegistry`]. Deduplicated per UUID (a wall piece repeats per
-/// cell; one dangling def is ONE finding).
 pub(super) fn check_situation_terrain_refs(
     situation: Res<LoadedSituation>,
     terrain: Res<TerrainDefRegistry>,
@@ -130,7 +104,6 @@ pub(super) fn check_situation_terrain_refs(
             });
         }
     }
-    // The level-wide default floor (nil = "not authored", the documented default).
     if !*situation.default_floor.is_nil() && terrain.def(&situation.default_floor).is_none() {
         report.record(ContentFinding::DanglingRef {
             referrer: FindingReferrer::new(format!("{SITUATION_RON_PATH}: default_floor")),
@@ -141,8 +114,6 @@ pub(super) fn check_situation_terrain_refs(
     }
 }
 
-/// `Check`: every authored field placement's key resolves in the
-/// [`FieldDefRegistry`] catalog.
 pub(super) fn check_situation_field_refs(
     situation: Res<LoadedSituation>,
     fields: Res<FieldDefRegistry>,

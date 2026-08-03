@@ -1,6 +1,3 @@
-//! A1 — the change-keying: the content signature moves exactly when rendered content
-//! moves, and the thumbnail cache rebuilds exactly when the signature moves.
-
 use bevy_egui::egui;
 use gdtf_battle_sim::{
     level::{GridHeight, GridLevels, GridSize, GridWidth},
@@ -14,8 +11,6 @@ use crate::{
     egui_shell::prefab::level_rail::{cache::RailThumbCache, occupancy::storey_key},
 };
 
-/// The signature keys CONTENT: identical content hashes identically, a paint / a role
-/// change / a resize each move it (the cache's rebuild triggers).
 #[test]
 fn signature_keys_content_not_ticks() {
     let size = size();
@@ -47,9 +42,6 @@ fn signature_keys_content_not_ticks() {
     );
 }
 
-/// The cache rebuilds a storey's texture ONLY when its signature moved: a matching probe
-/// reuses without invoking the builder; pruning drops storeys past the current level
-/// count.
 #[test]
 fn cache_rebuilds_only_on_signature_change() {
     let size = size();
@@ -98,7 +90,6 @@ fn cache_rebuilds_only_on_signature_change() {
         "the rebuild stores the fresh count"
     );
 
-    // Prune: cache storeys 1 and 2 too, then shrink to a single level.
     for storey in [1_u8, 2] {
         let build = || {
             builds.set(builds.get() + 1);

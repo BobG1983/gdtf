@@ -1,6 +1,3 @@
-//! C4 — round-trip IDENTITY: `deserialize(serialize(def)) == def` for one Wall, one
-//! Cover, and one Slab definition. NO magnitude pins — identity only.
-
 use super::super::{
     BlocksPathingOverride, TerrainDef, TerrainDisplayName, TerrainPresenterKind, TerrainSimKind,
     TerrainTag, TerrainUuid,
@@ -13,9 +10,6 @@ use crate::{
     weapon::WeaponName,
 };
 
-/// Serialize `def` to RON and parse it back, asserting the round-trip is the
-/// identity. Returns silently (no panic) if either serde step fails, after asserting
-/// it succeeded — the no-`unwrap`/`expect` house style.
 fn assert_round_trips(def: &TerrainDef) {
     let serialized = ron::ser::to_string(def);
     assert!(
@@ -37,8 +31,6 @@ fn assert_round_trips(def: &TerrainDef) {
     );
 }
 
-/// C4 — a Wall definition round-trips to itself (identity). Carries a couple of
-/// sim-owned tags to exercise the tag vec through the round-trip too.
 #[test]
 fn wall_def_round_trips() {
     let def = TerrainDef {
@@ -62,8 +54,6 @@ fn wall_def_round_trips() {
     assert_round_trips(&def);
 }
 
-/// C4 — a Cover definition round-trips to itself (identity). Empty tags exercise the
-/// default-empty path through the round-trip.
 #[test]
 fn cover_def_round_trips() {
     let def = TerrainDef {
@@ -87,8 +77,6 @@ fn cover_def_round_trips() {
     assert_round_trips(&def);
 }
 
-/// C4 — a Slab definition round-trips to itself (identity), including the optional
-/// footfall on the presenter side.
 #[test]
 fn slab_def_round_trips() {
     let def = TerrainDef {
@@ -112,8 +100,6 @@ fn slab_def_round_trips() {
     assert_round_trips(&def);
 }
 
-/// A minimal `Slab` def carrying an authored `blocks_pathing` override — the vehicle for the
-/// GTW-705 serde-transparency proof below.
 fn slab_with_path_override(over: Option<BlocksPathingOverride>) -> TerrainDef {
     TerrainDef {
         key:            TerrainUuid::new(bevy::asset::uuid::Uuid::from_u128(0x0184_0a3e_0587)),
@@ -136,9 +122,6 @@ fn slab_with_path_override(over: Option<BlocksPathingOverride>) -> TerrainDef {
 }
 
 /// GTW-705 (special item) — the [`BlocksPathingOverride`] wrap is `#[serde(transparent)]`, so an
-/// authored `blocks_pathing: Some(true)` / `Some(false)` serializes to the SAME bare-bool wire
-/// form as the pre-wrap `Option<bool>` (the newtype name never appears in RON) and round-trips
-/// to itself. Proves the wrap is RON-invisible for authored overrides — no shipped `.ron` changes.
 #[test]
 fn blocks_pathing_override_serializes_transparently() {
     for over in [
@@ -175,8 +158,6 @@ fn blocks_pathing_override_serializes_transparently() {
     }
 }
 
-/// GTW-543 — an `Emplacement` definition round-trips to itself (identity), including the
-/// mounted-weapon key on the sim side.
 #[test]
 fn emplacement_def_round_trips() {
     let def = TerrainDef {

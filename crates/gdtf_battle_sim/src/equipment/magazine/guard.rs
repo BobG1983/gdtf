@@ -1,7 +1,3 @@
-//! The shared firing GUARD set: the [`mode_tu_cost`] per-shot TU charge, the
-//! [`in_bounds`] grid predicate, the [`FireActor`] read-bundle, and the
-//! [`can_fire`] guard the HUD button and the `fire()` act both reason over.
-
 use bevy::prelude::Deref;
 
 use super::ammo::Magazine;
@@ -15,17 +11,7 @@ use crate::{
     weapon::{FireModeSpec, Handedness},
 };
 
-/// Round a non-negative `f32` TU charge into the unsigned [`Tu`] inner type
-/// (`u8`), clamping into the `u8` range so a wild product can never wrap or lose
-/// its sign.
-///
-/// The mode TU charge is a tuning `f32` product (`TuMax` × `ModeTuPercent` × the
-/// aim premium); the TU pool is a `u8`. Rounding is **not** pinned by the design (it
-/// is unspecified tuning detail) — this uses round-half-away-from-zero
-/// ([`f32::round`]). A value below `0` clamps to `0` and above `u8::MAX` to
 /// `u8::MAX`. The clamp + localized `#[expect]` is the crate's guarded-cast idiom
-/// (see [`crate::resolve_hit`]'s `round_to_i32` / [`crate::apply_hit`]'s
-/// `hp_damage_to_u16`), so no `unwrap`/`expect` is needed.
 fn charge_to_u8(charge: TuCharge) -> Tu {
     let rounded = charge.round();
     #[expect(
@@ -37,33 +23,16 @@ fn charge_to_u8(charge: TuCharge) -> Tu {
     Tu::new(clamped)
 }
 
-/// A single shot's **TU charge in real form** — the `TuMax × ModeTuPercent × aim
-/// premium` product (resolution.md §1 / §1a), before it is rounded into the [`Tu`]
-/// pool by [`charge_to_u8`].
-///
-/// Names the pre-rounding real so [`charge_to_u8`] does not take a bare `f32`
-/// (no-bare-types). Private inner + derived [`Deref`].
 #[derive(Deref, Debug, Clone, Copy, PartialEq)]
 struct TuCharge(f32);
 
 impl TuCharge {
-    /// Build a TU charge from its computed real product.
-    #[must_use]
+        #[must_use]
     const fn new(charge: f32) -> Self {
         Self(charge)
     }
 }
 
-/// The TU charge a single shot in `mode` costs the shooter — the **shared source**
-/// both [`can_fire`]'s affordability check and the E4.5 `fire()` debit read.
-///
-/// The per-shot charge (resolution.md §1: per-`FireMode` TU%; §1a: the aim ×1.5
-/// premium): `round(TuMax × ModeTuPercent × aim_premium)`, where `aim_premium` is
-/// the tuning [`AimTuPremium`](crate::tuning::AimTuPremium) **only when aiming**
-/// (`1.0` hip-fired). Defining it once here keeps the affordability test and the
-/// actual debit from ever diverging. Returns a [`Tu`] (the guarded `f32→u8` cast
-/// via `charge_to_u8` — saturating, no `unwrap`); aiming costs strictly more than
-/// hip-fire by the `AimTuPremium` factor (resolution.md §1a, default ×1.5).
 #[must_use]
 pub fn mode_tu_cost(
     mode: &FireModeSpec,
@@ -80,23 +49,8 @@ pub fn mode_tu_cost(
     charge_to_u8(TuCharge::new(charge))
 }
 
-/// Whether a target `(cell, level)` is **inside** the coarse grid extent — the
-/// `can_fire` in-bounds predicate.
-///
-/// The x/y bound is sourced from [`GRID_WIDTH`](crate::occupancy::GRID_WIDTH) /
-/// [`GRID_HEIGHT`](crate::occupancy::GRID_HEIGHT) (the 60-cell ground extent's real
-/// home in `occupancy.rs`, a STRUCTURAL grid constant — not a metric constant), and
-/// the z bound from [`MAX_LEVELS`](crate::metric::MAX_LEVELS) (the 8-storey home in
-/// `metric.rs`): `cell.x ∈ 0..GRID_WIDTH`, `cell.y ∈ 0..GRID_HEIGHT`,
-/// `level ∈ 0..MAX_LEVELS`. Negative x/y fail (a [`Cell`] wraps a signed `IVec2`)
-/// because the `usize::try_from` of a negative coordinate is `Err` — mirroring
-/// [`OccupancyGrid`](crate::occupancy::OccupancyGrid)'s own bounds-check choke
-/// point, so the firing guard and the occupancy buffer agree on the grid edge.
 #[must_use]
 pub fn in_bounds(cell: Cell, level: Level) -> InBounds {
-    // Cell coordinates are signed (IVec2); a negative axis is out of bounds and
-    // `usize::try_from` rejects it, so no `usize as i32` cast (which would trip
-    // `cast_possible_wrap`) is ever needed.
     let Ok(x) = usize::try_from(cell.x) else {
         return InBounds(false);
     };
@@ -106,71 +60,20 @@ pub fn in_bounds(cell: Cell, level: Level) -> InBounds {
     InBounds(x < GRID_WIDTH && y < GRID_HEIGHT && (*level as usize) < MAX_LEVELS as usize)
 }
 
-/// Whether a target `(cell, level)` lies **inside** the coarse grid extent — the answer
-/// [`in_bounds`] returns and the `can_fire` in-bounds clause reads.
-///
-/// A named predicate newtype (no-bare-types: "the target is in bounds" is a domain
-/// answer, not a bare `bool`). Private inner, read through the derived [`Deref`].
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InBounds(bool);
 
-/// The shooter read-state [`can_fire`] reasons over — the ganger components a
-/// firing decision depends on, bundled into one named record.
-///
-/// Grouping these borrowed components keeps [`can_fire`] under clippy's
-/// argument-count gate (the [`crate::aim::Shooter`] /
-/// [`crate::resolve_coarse::ShotInputs`] bundle precedent), and states the
-/// shooter's contribution to the firing guard as one value rather than many loose
-/// params. The borrowed fields are named domain newtypes (no bare primitive); the two
-/// GTW-443 hand fields are small `Copy` value newtypes carried BY VALUE (so the bundle
-/// keeps its `Copy`/`Hash`/`Eq` derives). The bundle is a transparent borrow record,
-/// not itself a wrapped domain scalar.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FireActor<'a> {
-    /// The shooter's [`LifeState`] — `can_fire` requires
-    /// [`Alive`](crate::ganger::LifeState::Alive) (a Downed/Dead ganger cannot
-    /// fire).
-    pub life:            &'a LifeState,
-    /// The shooter's current [`Tu`] pool — must afford the mode's TU charge.
-    pub tu:              &'a Tu,
-    /// The shooter's [`TuMax`] — the round-start ceiling the per-shot charge is a
-    /// percentage of.
-    pub tu_max:          &'a TuMax,
-    /// The shooter's [`Aiming`] flag — selects whether the aim TU premium applies
-    /// to the charge.
-    pub aiming:          &'a Aiming,
-    /// The shooter's [`Magazine`] — must hold at least one round.
-    pub magazine:        &'a Magazine,
-    /// The wielded weapon's [`Handedness`] (GTW-443) — a
-    /// [`TwoHanded`](crate::weapon::Handedness::TwoHanded) weapon is refused below two
-    /// available hands. Read off the weapon entity; carried by value.
-    pub handedness:      Handedness,
-    /// The shooter's [`HandsAvailable`] (GTW-443) — folded from the shooter's injury
-    /// ledger (an absent ledger = the uninjured two-hands default). Carried by value.
-    pub hands_available: HandsAvailable,
+                pub life:            &'a LifeState,
+        pub tu:              &'a Tu,
+            pub tu_max:          &'a TuMax,
+            pub aiming:          &'a Aiming,
+        pub magazine:        &'a Magazine,
+                pub handedness:      Handedness,
+            pub hands_available: HandsAvailable,
 }
 
-/// Whether a shooter **can fire** the selected mode at a target — the guard set the
-/// HUD fire button and the E4.5 `fire()` act SHARE (resolution.md §9
-/// `can_stabilize` precedent: "button and act share one guard set").
-///
-/// Returns `true` iff ALL hold (AC3): the shooter is
-/// [`Alive`](crate::ganger::LifeState::Alive) (AC4 — Downed/Dead fails); affords
-/// the mode's TU charge ([`mode_tu_cost`], via E4.0
-/// [`can_spend_tu`](crate::tu::can_spend_tu) — AC5, and the aiming case costs
-/// strictly more by the [`AimTuPremium`](crate::tuning::AimTuPremium)); has at
-/// least one round loaded (AC6 — an empty [`Magazine`] fails); the target
-/// `(target_cell, target_level)` is [`in_bounds`] (AC7); and the weapon's
-/// [`Handedness`] is satisfiable by the shooter's
-/// [`HandsAvailable`](crate::injuries::HandsAvailable) (GTW-443 — a
-/// [`TwoHanded`](Handedness::TwoHanded) weapon needs two hands; a
-/// [`OneHanded`](Handedness::OneHanded) weapon needs one).
-///
-/// **It takes NO `has_los`/visibility input** (AC8): LOS/fog is PLAYER POLICY in
-/// the presenter (resolution.md §"What's pure math vs sim": fog "never enters the
-/// shared act"), so an alive, affordable, loaded, in-bounds, two-handed-capable shooter
-/// passes here regardless of any LOS state — the presenter applies its own fog gate on
-/// top.
 #[must_use]
 pub fn can_fire(
     actor: &FireActor,
@@ -191,21 +94,9 @@ pub fn can_fire(
     )
 }
 
-/// Whether a shooter **can fire** the selected mode at a target — the answer
-/// [`can_fire`] returns, shared by the HUD fire button and the `fire()` act.
-///
-/// A named predicate newtype (no-bare-types: "the shooter can fire" is a domain answer,
-/// not a bare `bool`). Private inner, read through the derived [`Deref`].
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CanFire(bool);
 
-/// Whether the shooter has enough working hands for the weapon's [`Handedness`]
-/// (GTW-443) — the hand-count clause of [`can_fire`].
-///
-/// A [`OneHanded`](Handedness::OneHanded) weapon needs `≥ 1` hand; a
-/// [`TwoHanded`](Handedness::TwoHanded) weapon needs both (`= 2`). So a one-armed
-/// shooter keeps a pistol but loses a long-arm (the GTW-443 hand-disabling injury
-/// model).
 fn has_enough_hands(handedness: Handedness, hands: HandsAvailable) -> HandsSufficient {
     let needed = match handedness {
         Handedness::OneHanded => 1,
@@ -214,11 +105,5 @@ fn has_enough_hands(handedness: Handedness, hands: HandsAvailable) -> HandsSuffi
     HandsSufficient(*hands >= needed)
 }
 
-/// Whether a shooter has **enough working hands** for the wielded weapon's
-/// [`Handedness`] — the answer [`has_enough_hands`] returns for the `can_fire` hand-count
-/// clause (GTW-443).
-///
-/// A named predicate newtype (no-bare-types: "the shooter has enough hands" is a domain
-/// answer, not a bare `bool`). Private inner, read through the derived [`Deref`].
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 struct HandsSufficient(bool);

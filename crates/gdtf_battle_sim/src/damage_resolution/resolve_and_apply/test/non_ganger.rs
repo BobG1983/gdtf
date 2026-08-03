@@ -1,20 +1,10 @@
 use super::support::*;
 
-/// AC4 — the truly-inert non-ganger SURFACE outcomes leave a ganger untouched: each of
-/// Ground / Miss yields a no-damage report and leaves the ganger's pools and state
-/// untouched (and takes no draw). (`ShotKind::Cover` is NO LONGER inert as of GTW-364,
-/// nor is `ShotKind::Slab` as of GTW-365 — both deplete their own structural HP through
-/// the same fold; their behavior is asserted in [`super::cover`] / [`super::slab`], so
-/// they are deliberately excluded from this inert sweep.)
 #[test]
 fn non_ganger_outcomes_are_inert() {
     let tuning = CombatTuning::default();
     let weapon = a_weapon(50, 50, 50, DamageType::Rend);
 
-    // The truly-inert non-ganger kinds: a Ground carries a struck cell, a Miss carries
-    // nothing. `resolve_and_apply`'s kind dispatch folds each of these to a no-effect
-    // report (no draw, no mutation) — they strike neither a ganger nor a structural
-    // surface with its own HP (Cover / Slab DO, so they are excluded above).
     let kinds = [
         ShotKind::Miss,
         ShotKind::Ground(CellLevel::new(Cell::new(2, 2), Level::new(0))),
@@ -78,7 +68,6 @@ fn non_ganger_outcomes_are_inert() {
             "{kind:?} (non-ganger) must record NO InflictedWound (GTW-279)",
         );
 
-        // No draw taken on a non-ganger outcome.
         let mut rng_fresh = rng();
         assert_eq!(
             rng_used.next_u64(),

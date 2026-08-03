@@ -1,9 +1,3 @@
-//! GANG-mode form-model unit tests (GTW-636 C5): the draft's mutators, the one-shot
-//! autoload lifecycle, the loader-schema projection, and the PURE halves of the save
-//! path (file name / path resolution / serialize round-trip). The REAL folder-walk
-//! round-trip (write into a `TempDir` assets root → the actual [`GangsFamily`] loader)
-//! lives in `tests/gang_mode.rs`.
-
 use gdtf_assets::{ContentFamily, serialize_ron_pretty};
 use gdtf_battle_sim::{
     armor::ArmorName,
@@ -20,10 +14,6 @@ use super::{
     save::{draft_to_roster, gang_file_name, gang_save_path_in},
 };
 
-/// A two-member roster fixture. Magnitudes are arbitrary fixture data (NOT pinned
-/// shipped tuning): the tests assert values SURVIVE, never that they equal a shipped
-/// number. The first member authors a `melee_weapon` — the field the retired in-game
-/// editor's mirror model DROPPED on save — so the round-trip pins that it now survives.
 fn fixture_roster() -> GangRoster {
     GangRoster::new([
         GangMember {
@@ -57,9 +47,6 @@ fn fixture_roster() -> GangRoster {
     ])
 }
 
-/// The `OnEnter(Editing)` seed is pristine: empty, with the one-shot autoload PENDING;
-/// loading a gang fills the form AND marks the autoload done (so a later frame never
-/// re-seeds over the author's work).
 #[test]
 fn default_is_pristine_and_load_gang_fills_the_form() {
     let mut draft = GangDraft::default();
@@ -77,9 +64,6 @@ fn default_is_pristine_and_load_gang_fills_the_form() {
     assert_eq!(draft.members(), roster.members.as_slice());
 }
 
-/// "New gang" mints an empty form whose autoload is DONE — a deliberate new gang must
-/// never be clobbered by the one-shot registry seed; `mark_autoloaded` covers the
-/// empty-registry branch the same way.
 #[test]
 fn new_gang_and_mark_autoloaded_end_the_one_shot_seed() {
     let draft = GangDraft::new_gang();
@@ -92,9 +76,6 @@ fn new_gang_and_mark_autoloaded_end_the_one_shot_seed() {
     assert!(!pristine.autoload_pending());
 }
 
-/// "Add member" appends the default placeholder record (parity with the retired
-/// editor's default member: placeholder name, zero attributes, empty keys, no authored
-/// melee); "Remove" deletes exactly that slot and reports out-of-range as `false`.
 #[test]
 fn add_and_remove_member_own_the_list_structure() {
     let mut draft = GangDraft::new_gang();
@@ -113,12 +94,6 @@ fn add_and_remove_member_own_the_list_structure() {
     assert!(draft.members().is_empty());
 }
 
-/// The GTW-429 identity round-trip through the GANG mode's projection: an edited draft
-/// → [`draft_to_roster`] → serialize (the shared pretty-RON writer) → deserialize the way
-/// `RonAsset<GangRoster>` does → key by the saved file's stem (the loader's `.gang`
-/// strip) → reload into a fresh draft → structural equality, INCLUDING the authored
-/// `melee_weapon` key the retired editor dropped. No pinned magnitudes — identity, not
-/// a number lock.
 #[test]
 fn edited_gang_round_trips_through_the_loader_schema() {
     let mut edited = GangDraft::new_gang();
@@ -143,7 +118,6 @@ fn edited_gang_round_trips_through_the_loader_schema() {
         return;
     };
 
-    // Key by the file STEM minus the `.gang` infix — the family loader's stem keying.
     let file_name = gang_file_name(&name);
     let stem = file_name.strip_suffix(".ron").unwrap_or(&file_name);
     let key = stem.strip_suffix(".gang").unwrap_or(stem).to_owned();
@@ -161,10 +135,6 @@ fn edited_gang_round_trips_through_the_loader_schema() {
     );
 }
 
-/// The save file name derives its compound suffix from [`GangsFamily::EXTENSION`] (the
-/// one-owner extension discriminant — GTW-621), a path-hostile name sanitizes through
-/// the shared helper, and an unnameable gang falls back to the documented `unnamed_gang`
-/// stem; the resolved path lands under [`GangsFamily::FOLDER`].
 #[test]
 fn save_file_name_and_path_derive_from_the_one_owner_spellings() {
     let name = GangName::new("goliaths".to_owned());

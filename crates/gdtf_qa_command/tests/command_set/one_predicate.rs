@@ -1,10 +1,3 @@
-//! `admit()` refuses EXACTLY what `catalogue()` marks unavailable.
-//!
-//! Advertised and admitted are computed from the same call — the command's own
-//! availability predicate — so this walks the catalogue a host would publish and, for every
-//! row, asks `admit` the same question. Across two distinct facts values, the two answers
-//! agree row for row.
-
 use gdtf_qa_command::{
     catalogue::catalogue,
     dispatch::{Admission, admit},
@@ -17,7 +10,6 @@ use gdtf_qa_protocol::command::CommandAvailability;
 
 use crate::support::plain;
 
-/// Every catalogue row's availability is exactly what `admit` decides for that name.
 fn advertised_and_admitted_agree(facts: FakeFacts) {
     let published = catalogue(fake_host_name(), FAKE_COMMANDS, &facts);
     assert_eq!(
@@ -49,22 +41,16 @@ fn advertised_and_admitted_agree(facts: FakeFacts) {
     }
 }
 
-/// With nothing loaded, advertised and admitted agree — including on the refusals.
 #[test]
 fn they_agree_with_nothing_loaded() {
     advertised_and_admitted_agree(fake_facts_unloaded());
 }
 
-/// With the model loaded, advertised and admitted agree again.
 #[test]
 fn they_agree_with_the_model_loaded() {
     advertised_and_admitted_agree(fake_facts_loaded());
 }
 
-/// The two facts values really do produce DIFFERENT catalogues.
-///
-/// Without this the two agreement tests above would be satisfied by a predicate that always
-/// says `Available` — they would pass while proving nothing.
 #[test]
 fn the_two_facts_values_produce_different_availability() {
     let unloaded = catalogue(
@@ -90,7 +76,6 @@ fn the_two_facts_values_produce_different_availability() {
     assert_eq!(refused(&loaded), 0, "everything is available once loaded");
 }
 
-/// The refusal a client is shown is the command's own words, not a generic one.
 #[test]
 fn the_advertised_refusal_carries_the_command_s_own_note() {
     let published = catalogue(fake_host_name(), FAKE_COMMANDS, &fake_facts_unloaded());

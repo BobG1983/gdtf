@@ -1,29 +1,13 @@
-//! T8 — every deed is a CONSCIOUS decision, forced at compile time.
-
 use gdtf_battle_sim::act_log::{ActDeed, ActLog, ActProvenance, ActSeq, RecordedAct};
 
 use super::harness::deed_name;
 
-/// Whether a deed is meant to reach a downstream consumer as a shown fact, or is
-/// deliberately silent there.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Disposition {
-    /// The deed re-emits a sim fact when it is shown (a combat-log line, an FX flash, a
-    /// bolt).
-    Replayed,
-    /// The deed writes DRAWN state only — there is no message to re-emit, because the sim
-    /// never had one.
-    DrawnOnly,
+            Replayed,
+            DrawnOnly,
 }
 
-/// The wildcard-free disposition map.
-///
-/// This is the compile-time forcing function C4's completeness bar rests on: there is no
-/// compile error for a MISSING deed, but there IS one for an UNCLASSIFIED deed. A new
-/// variant added to [`ActDeed`] fails to compile here until somebody states, in one place,
-/// whether it is something the player is shown or purely drawn state — which is exactly
-/// the decision that is easy to forget and expensive to get wrong (a deed with no
-/// disposition would silently show live state instead of cursor-time state).
 const fn disposition(deed: &ActDeed) -> Disposition {
     match *deed {
         ActDeed::TurnBegan { .. }
@@ -47,8 +31,6 @@ const fn disposition(deed: &ActDeed) -> Disposition {
         | ActDeed::CoverSmashed { .. }
         | ActDeed::MeleeLanded { .. }
         | ActDeed::ThrowLanded { .. } => Disposition::Replayed,
-        // The four query-sourced state snapshots: the sim has no message for any of them,
-        // so showing one means writing the drawn mirror, not re-emitting a fact.
         ActDeed::PostureChanged { .. }
         | ActDeed::MovedTo { .. }
         | ActDeed::MagazineChanged { .. }
@@ -57,12 +39,6 @@ const fn disposition(deed: &ActDeed) -> Disposition {
     }
 }
 
-/// **T8 — a new deed forces a conscious decision.** Every deed the log can hold is
-/// classified, and the classification is exhaustive over the enum.
-///
-/// The real guarantee here is the `match` above, which the compiler checks. This test
-/// additionally proves the classifier is total over live values and that both dispositions
-/// are actually populated — a map that had collapsed to one arm would still compile.
 #[test]
 fn every_deed_maps_or_is_deliberately_unmapped() {
     let samples = sample_deeds();
@@ -84,8 +60,6 @@ fn every_deed_maps_or_is_deliberately_unmapped() {
         "both dispositions must be populated — {replayed} replayed, {drawn_only} drawn-only",
     );
 
-    // Names are unique, so an assertion that filters by name cannot silently match two
-    // different variants.
     let mut names: Vec<&'static str> = samples.iter().map(deed_name).collect();
     names.sort_unstable();
     let total = names.len();
@@ -97,8 +71,6 @@ fn every_deed_maps_or_is_deliberately_unmapped() {
     );
 }
 
-/// Appending every sampled deed round-trips through the log unchanged, so the log itself
-/// is agnostic to the vocabulary it carries.
 #[test]
 fn every_sampled_deed_round_trips_through_the_log() {
     let mut log = ActLog::default();
@@ -119,9 +91,6 @@ fn every_sampled_deed_round_trips_through_the_log() {
     );
 }
 
-/// The vocabulary [`sample_deeds`] builds its samples from. It sits at module scope rather
-/// than inside that function because the two deeds GTW-889 added push the function's body
-/// past clippy's `too_many_lines` limit with the import block in it.
 use gdtf_battle_sim::{
     act_log::{MagazineFacts, PoseFacts, PositionFacts, SuppressedNow, VitalsFacts},
     acts::{MoveRejection, ReloadOutcome, RoundCount},
@@ -137,7 +106,6 @@ use gdtf_battle_sim::{
     weapon::{DamageType, DotDamage, ModeKind},
 };
 
-/// One sample of each deed variant, built from cheap defaults.
 fn sample_deeds() -> Vec<ActDeed> {
     let cell = Cell::new(1, 1);
     let level = Level::new(0);

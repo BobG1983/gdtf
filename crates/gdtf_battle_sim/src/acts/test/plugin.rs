@@ -1,25 +1,14 @@
-//! AC2 — [`SimActsPlugin`] registers each `*Requested` buffer (a `MessageReader` passes
-//! param-validation after update); the test reaches a post-update assert with no
-//! validation panic.
-
 use super::support::*;
 
 #[test]
 fn plugin_registers_every_message_buffer() {
     use bevy::prelude::{MessageReader, ResMut, Resource};
 
-    /// A probe counter each reader-probe system bumps to prove it RAN (so its
-    /// `MessageReader` param was validated by the scheduler, not skipped). One
-    /// counter, not eight bools, so all eight probes increment the same resource.
-    #[derive(Resource, Default)]
+                #[derive(Resource, Default)]
     struct Probed(u8);
 
     let mut app = headless_app();
     app.insert_resource(Probed::default());
-    // One probe system per message type — each takes a `MessageReader<T>`, which the
-    // scheduler param-validates against the registered buffer. An UNregistered buffer
-    // would fail that validation; reaching the post-update assert (all eight probes ran)
-    // proves all eight are registered by `SimActsPlugin`.
     app.add_systems(
         Update,
         (

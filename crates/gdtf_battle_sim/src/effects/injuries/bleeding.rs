@@ -1,56 +1,31 @@
-//! The **Bleeding** injury effect (GTW-405/GTW-438; GTW-550 one-file-per-effect) — its
-//! [`BleedAmount`] payload, the isolated [`ApplyBleeding`] behaviour that ACCRUES the
-//! per-turn drain onto the ledger's bleed total, and its exact inverse heal.
-
 use bevy::prelude::Deref;
 use serde::{Deserialize, Serialize};
 
 use super::{ApplyInjuryEffect, HealError, LedgerAccumulators};
 
-/// The per-turn HP a [`Bleeding`](super::InjuryEffect::Bleeding) injury drains, through
-/// the existing bleed runtime (`docs/combat/resolution.md` §9).
-///
-/// An unsigned `u8` (a bleed only ever drains; the per-turn amount is small). A
-/// no-bare-types newtype (a bleed rate is a domain value): private inner + derived
 /// [`Deref`]; `#[serde(transparent)]` parses a bare RON number (`amount: 1`). The
-/// accrued total widens to `u16` so stacked bleeds can never overflow — see
-/// [`BleedAfflicted`](crate::injuries::BleedAfflicted). Distinct from the Downed Wounds
-/// bleed-out: this drains HP and can down but never kill. `Serialize` is added
-/// (GTW-654) so the content editor's INJURY authoring mode can write an edited
-/// effects list back to disk (behavior-inert for the sim).
 #[derive(Deref, Clone, Copy, PartialEq, Eq, Debug, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct BleedAmount(u8);
 
 impl BleedAmount {
-    /// Build a per-turn bleed amount from its magnitude (HP drained each turn).
-    #[must_use]
+        #[must_use]
     pub const fn new(amount: u8) -> Self {
         Self(amount)
     }
 
-    /// The magnitude as a bare `u8` — a `const` accessor the bleed accrual needs
-    /// (the derived [`Deref`] is not usable in a `const fn`).
-    #[must_use]
+            #[must_use]
     pub const fn raw(self) -> u8 {
         self.0
     }
 }
 
-/// **Bleeding** — accrues a per-turn [`BleedAmount`] onto the ledger's summed bleed
-/// total, which the [`apply_injury`](crate::acts::apply_injury) boundary mirrors onto
-/// the standalone [`BleedAfflicted`](crate::injuries::BleedAfflicted) component the
-/// bleed runtime ([`tick_bleed`](crate::effects::bleed::tick_bleed)) drains each round. NOT a
-/// [`Modify`](super::InjuryEffect::Modify): it drains the current HP pool, distinct
-/// from any stat ceiling.
 pub struct ApplyBleeding {
-    /// The per-turn HP drained while the injury persists.
-    amount: BleedAmount,
+        amount: BleedAmount,
 }
 
 impl ApplyBleeding {
-    /// Build the bleeding effect from its per-turn drain amount.
-    #[must_use]
+        #[must_use]
     pub const fn new(amount: BleedAmount) -> Self {
         Self { amount }
     }
@@ -61,9 +36,7 @@ impl ApplyInjuryEffect for ApplyBleeding {
         *accumulators.bleed = accumulators.bleed.accumulate(self.amount);
     }
 
-    /// The EXACT inverse of the gain fold: relieve the same amount from the accrued
-    /// bleed total (saturating — exact unless the `u16` accrual ever saturated).
-    fn heal(&self, accumulators: &mut LedgerAccumulators<'_>) -> Result<(), HealError> {
+            fn heal(&self, accumulators: &mut LedgerAccumulators<'_>) -> Result<(), HealError> {
         *accumulators.bleed = accumulators.bleed.relieve(self.amount);
         Ok(())
     }
@@ -77,9 +50,7 @@ mod tests {
         injuries::{BleedAfflicted, MovementCostFactor, StatDeltaLedger},
     };
 
-    /// `ApplyBleeding` ACCRUES onto the summed bleed total — two folds stack by
-    /// summing (2 + 3 = 5), and the stat store is untouched.
-    #[test]
+            #[test]
     fn bleeding_accrues_by_summing() {
         let mut deltas = StatDeltaLedger::default();
         let mut bleed = BleedAfflicted::default();
@@ -94,9 +65,7 @@ mod tests {
         assert_eq!(*bleed, 5, "stacked bleeds sum (2 + 3 = 5)");
     }
 
-    /// `heal` is the EXACT inverse of the gain fold: gain then heal restores the
-    /// accrued bleed to its pre-gain value.
-    #[test]
+            #[test]
     fn heal_relieves_the_accrued_bleed() {
         let mut deltas = StatDeltaLedger::default();
         let mut bleed = BleedAfflicted::default();

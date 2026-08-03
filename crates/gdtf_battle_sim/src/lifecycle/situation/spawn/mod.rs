@@ -1,7 +1,4 @@
 //! The authored value graph: [`PlacedGanger`], [`RosterMember`], [`GangerSpawn`],
-//! [`CoverSpawn`], [`SlabSpawn`], [`FloorSpawn`], and the canonical [`Situation`] — the
-//! serde-deserializable battlefield the setup is built from.
-
 mod ganger_spawn;
 mod piece_spawns;
 mod placed_ganger;

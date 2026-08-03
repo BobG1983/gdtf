@@ -1,6 +1,3 @@
-//! The three rustdoc-gate tests — the group deny, its reach into every member,
-//! and the content-editor doc exclusion (see the suite doc in `main.rs`).
-
 use std::{collections::BTreeSet, fs, path::Path};
 
 use crate::{
@@ -8,31 +5,18 @@ use crate::{
     tree::{MEMBER_DIRS, member_manifests, repo_root},
 };
 
-/// The group deny that makes every rustdoc lint fatal on both doc runs.
-///
-/// `priority = -1` is load-bearing, not decoration: without it an individual
-/// lint listed below the group in the same table cannot override the group
-/// level. The clippy table above it uses the same shape.
 const GROUP_DENY: &str = r#"all = { level = "deny", priority = -1 }"#;
 
-/// The section holding it.
 const RUSTDOC_LINTS: &str = "workspace.lints.rustdoc";
 
-/// The opt-in every member needs for `[workspace.lints]` to reach it at all.
 const LINTS_OPT_IN: &str = "workspace = true";
 
-/// The binary package whose bin target collided with the library crate's docs.
 const EDITOR_BIN_MANIFEST: &str = "bins/gdtf_content_editor/Cargo.toml";
 
-/// The exclusion that ends that collision.
 const DOC_EXCLUSION: &str = "doc = false";
 
-/// The section holding it — spelled with the inner brackets, so the reader
-/// matches the array-of-tables header `[[bin]]` rather than a `[bin]` table.
 const EDITOR_BIN_SECTION: &str = "[bin]";
 
-/// Read a manifest under `root`, or fail the test naming the path — a manifest
-/// this guard cannot read is a broken guard, not a pass.
 fn read(root: &Path, path: &str) -> String {
     let full = root.join(path);
     let text = fs::read_to_string(&full);
@@ -44,10 +28,6 @@ fn read(root: &Path, path: &str) -> String {
     text.unwrap_or_default()
 }
 
-/// The quoted entries of the `[workspace]` `members` array.
-///
-/// Handles the one-line and multi-line spellings alike by cutting the section
-/// text at `members = [` and reading quoted entries up to the closing bracket.
 fn member_globs(manifest: &str) -> Vec<String> {
     let section = section_lines(manifest, "workspace").join(" ");
     let Some((_, after)) = section.split_once("members = [") else {
@@ -62,8 +42,6 @@ fn member_globs(manifest: &str) -> Vec<String> {
         .collect()
 }
 
-/// The whole rustdoc lint group is denied, with the priority that keeps
-/// individual overrides working.
 #[test]
 fn workspace_denies_the_whole_rustdoc_lint_group() {
     let root = repo_root();
@@ -78,8 +56,6 @@ fn workspace_denies_the_whole_rustdoc_lint_group() {
     );
 }
 
-/// The deny reaches every member: a `[workspace.lints]` table applies only to a
-/// crate that opts in, and the walk itself is pinned to the declared globs.
 #[test]
 fn every_workspace_member_opts_in_to_the_workspace_lints() {
     let root = repo_root();
@@ -121,8 +97,6 @@ fn every_workspace_member_opts_in_to_the_workspace_lints() {
     );
 }
 
-/// The content-editor bin stays out of `cargo doc`, so its doc output cannot
-/// collide with the library crate's again.
 #[test]
 fn the_content_editor_bin_is_excluded_from_the_doc_runs() {
     let root = repo_root();

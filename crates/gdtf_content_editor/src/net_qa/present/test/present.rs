@@ -1,13 +1,3 @@
-//! Headless pins for the GTW-918 [`EditorCapturePresentPlugin`] wiring: the `WinitSettings`
-//! override, the offscreen target's size / format / `COPY_SRC` usage, the capture source that
-//! names it, and the schedule the systems live in. The present pass itself is pinned in
-//! [`super::blit`].
-//!
-//! No unwrap / expect / panic even in tests (the `net_qa` suite convention) — shape checks use
-//! `assert!(matches!(…))` / `assert!(….is_some_and(…))`. No non-black-pixel assertion: with
-//! `backends: None` there is no GPU, so the pixel proof lives in the GPU-guarded
-//! `tests/net_qa_editor_screenshot` suite.
-
 use bevy::{
     app::App,
     prelude::*,
@@ -23,12 +13,8 @@ use crate::net_qa::{
     screenshot::EditorShotSource,
 };
 
-/// The present plugin overrides `WinitSettings` to continuous-in-both-focus-states (clause 3),
-/// so a fresh offscreen frame renders every tick regardless of window focus and a capture never
-/// races a reactive-low-power throttle.
 #[test]
 fn winit_settings_are_continuous_on_both_modes() {
-    // A bare app is enough — `build` inserts the resource without any system running.
     let mut app = App::new();
     app.add_plugins(EditorCapturePresentPlugin);
     let settings = app.world().get_resource::<WinitSettings>();
@@ -40,12 +26,6 @@ fn winit_settings_are_continuous_on_both_modes() {
     );
 }
 
-/// The offscreen [`EditorQaCaptureTarget`] image is created at the primary window's PHYSICAL
-/// size, as `Rgba8UnormSrgb`, and carries `COPY_SRC` — the single silent-failure gotcha
-/// (clause 3): without `COPY_SRC`, a `Screenshot` of the image never lands a file.
-///
-/// MUTATION PROOF: deleting the `image.texture_descriptor.usage |= TextureUsages::COPY_SRC;`
-/// line in `present/target.rs` fails THIS assertion (demonstrated during GTW-918).
 #[test]
 fn the_capture_target_is_window_sized_rgba_with_copy_src() {
     let mut app = headless_windowed_app();
@@ -80,15 +60,6 @@ fn the_capture_target_is_window_sized_rgba_with_copy_src() {
     );
 }
 
-/// The present path points [`EditorShotSource`] at the WHOLE target it created (clause 1's
-/// mechanism, tightened by GTW-922): the running editor captures the render target its camera
-/// renders into — same image, same scale factor — not the placeholder the plugin's
-/// `init_resource` default carries and not the window swapchain.
-///
-/// Whole-value equality is the point. While the source carried only a handle, this assertion
-/// passed with the pump reading `ImageRenderTarget { handle, scale_factor: 1.0 }` and the camera
-/// rendering into `{ handle, scale_factor: 2.0 }` — two different render targets, and a black
-/// PNG.
 #[test]
 fn the_capture_source_names_the_created_target() {
     let mut app = headless_windowed_app();
@@ -112,15 +83,10 @@ fn the_capture_source_names_the_created_target() {
     );
 }
 
-/// All three present systems live in [`Update`], and the plugin adds NOTHING to
-/// [`EguiPrimaryContextPass`] (clause 6 / bevy-traps #8 — that schedule can run twice per frame
-/// under multipass, and creating a render target or spawning a camera twice a frame is not the
-/// kind of thing that survives it).
 #[test]
 fn the_present_systems_run_in_update_never_in_the_egui_pass() {
     let mut app = headless_windowed_app();
     app.add_plugins(EditorCapturePresentPlugin);
-    // `Schedule::systems` needs an initialized executor, which one run provides.
     app.update();
 
     let names: Vec<String> = app.get_schedule(Update).map_or_else(Vec::new, |schedule| {

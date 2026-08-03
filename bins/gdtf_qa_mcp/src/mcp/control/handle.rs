@@ -1,6 +1,3 @@
-//! The three host-local entry points — [`handle_launch`], [`handle_stop`] and
-//! [`handle_logs`] — and the arguments they read.
-
 use serde_json::Value;
 
 use super::render::{render_launch, render_logs, render_stop};
@@ -11,13 +8,6 @@ use crate::{
     mcp::{ToolCallOutcome, launch_args::parse_launch_spec},
 };
 
-/// Handle a `launch` call: read the launch recipe, ensure `host`'s
-/// child is running on the chosen port, re-point that host's link at it, and render the
-/// outcome.
-///
-/// `host` decides only the DEFAULTS — the port, the package, the features, and the two QA
-/// variables the child reads. Everything else is the call's own arguments, so a caller can
-/// point either tool at another package or another checkout (GTW-808).
 #[must_use]
 pub fn handle_launch(
     host: QaHost,
@@ -34,8 +24,6 @@ pub fn handle_launch(
         Err(message) => return ToolCallOutcome::Invalid(message),
     };
     let outcome = lifecycle.launch(port, &spec);
-    // Point the forwarding link at whichever port the child is actually on, so subsequent
-    // tool calls for this host reach the child this launch ensured.
     match &outcome {
         LaunchOutcome::Launched { port, .. } | LaunchOutcome::AlreadyRunning { port, .. } => {
             link.retarget(*port);
@@ -45,28 +33,12 @@ pub fn handle_launch(
     ToolCallOutcome::Result(render_launch(host, &outcome, &spec))
 }
 
-/// Handle a `stop` call: stop whatever this host has on its port and
-/// render the outcome. The two hosts' managers are separate, so stopping one never
-/// touches the other.
-///
-/// The host's own port is handed to the stop because "no child is owned here" and "nothing
-/// is running" are different facts. A stop that owns nothing checks the port and answers
-/// about the orphan it finds — the child an earlier MCP host process left listening — so a
-/// `/mcp` reconnect no longer strands a live editor or game behind a `not_running` denial
-/// (GTW-926).
 #[must_use]
 pub fn handle_stop(host: QaHost, lifecycle: &mut dyn HostLifecycle) -> ToolCallOutcome {
     let outcome = lifecycle.stop(host.port_from_env());
     ToolCallOutcome::Result(render_stop(host, &outcome))
 }
 
-/// Handle a `logs` call: read the tail of what `host`'s running child printed, and render
-/// it.
-///
-/// The tail is BOTH output streams in the order they were written, captured at spawn — the
-/// host discards neither, because its own stdout is the JSON-RPC channel and the child's had
-/// nowhere else to go. A host owning no child answers `not_running` rather than an empty
-/// log, which would read as a silent process.
 #[must_use]
 pub fn handle_logs(
     host: QaHost,
@@ -80,7 +52,6 @@ pub fn handle_logs(
     ToolCallOutcome::Result(render_logs(host, max, lifecycle.child_output(max).as_ref()))
 }
 
-/// Parse the optional `max_lines` argument, defaulting to [`TailLines::DEFAULT`].
 fn parse_max_lines(args: &Value) -> Result<TailLines, String> {
     match args.get("max_lines") {
         None | Some(Value::Null) => Ok(TailLines::default()),
@@ -96,8 +67,6 @@ fn parse_max_lines(args: &Value) -> Result<TailLines, String> {
     }
 }
 
-/// Parse the optional `port` argument, defaulting to the port `host` reads from its own
-/// environment variable.
 pub(super) fn parse_port(host: QaHost, args: &Value) -> Result<QaPort, String> {
     match args.get("port") {
         None | Some(Value::Null) => Ok(host.port_from_env()),

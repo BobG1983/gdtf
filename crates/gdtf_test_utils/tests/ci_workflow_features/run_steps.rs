@@ -1,38 +1,15 @@
-//! Reads the commands a workflow step RUNS out of the YAML text — both the
-//! single-line `run: <command>` form and the block form (`run: |` / `run: >`
-//! with the command on the following, more-indented lines).
-//!
-//! Both forms are read because this repo already uses both: `test.yml`'s apt
-//! step is `run: |` with a backslash-continued command, and a future workflow
-//! could put a `cargo … --workspace` command in that form. Reading only the
-//! single-line form would let such a command past the guard unchecked.
-//!
-//! Only `run:` lines count — a YAML comment mentioning a cargo command is prose
-//! about the build, not a step CI executes.
-
-/// Leading-space count, the block-scalar body's containment test.
 fn indent_of(line: &str) -> usize {
     line.len() - line.trim_start().len()
 }
 
-/// Whether what follows `run:` opens a block scalar (`|`, `>`, with any
-/// chomping/indent indicator) rather than holding the command inline. An empty
-/// remainder is treated the same way — the command is on the next lines.
 fn opens_block(rest: &str) -> bool {
     rest.is_empty() || rest.starts_with('|') || rest.starts_with('>')
 }
 
-/// Collapses runs of whitespace to single spaces so a line-wrap or indentation
-/// change does not read as a different command.
 fn normalise(command: &str) -> String {
     command.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// The logical commands inside a block scalar's body, plus the index of the
-/// first line past it.
-///
-/// A body line ending in `\` continues onto the next line (the shell's own
-/// continuation), so the two are joined into one logical command.
 fn block_commands(lines: &[&str], start: usize, header_indent: usize) -> (Vec<String>, usize) {
     let mut commands = Vec::new();
     let mut pending = String::new();
@@ -61,7 +38,6 @@ fn block_commands(lines: &[&str], start: usize, header_indent: usize) -> (Vec<St
     (commands, index)
 }
 
-/// Every command any `run:` step in the file executes, whitespace-normalised.
 pub(crate) fn run_commands(text: &str) -> Vec<String> {
     let lines: Vec<&str> = text.lines().collect();
     let mut commands = Vec::new();
@@ -86,8 +62,6 @@ pub(crate) fn run_commands(text: &str) -> Vec<String> {
     commands
 }
 
-/// Both `run:` forms are read, and a backslash-continued block line is one
-/// command — the block form is the one a single-line-only reader missed.
 #[test]
 fn reads_inline_and_block_run_steps() {
     let yaml = "\

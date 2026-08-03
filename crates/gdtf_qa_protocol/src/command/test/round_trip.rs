@@ -1,10 +1,3 @@
-//! Exhaustive per-variant round-trip pins for the command vocabulary (GTW-939).
-//!
-//! The one property the whole protocol crate guarantees, applied to the command layer:
-//! every value survives `ron::ser::to_string` → `ron::de::from_str` unchanged. The
-//! wildcard-free witnesses beside each table force a newly-added variant into the table
-//! rather than letting it ride the wire untested.
-
 use crate::{
     command::{
         ArgSchemaJson, ArgumentFault, ArtifactPath, AttachmentKind, AwaitBudget, CaptureRider,
@@ -17,26 +10,10 @@ use crate::{
     test_support::assert_ron_round_trip,
 };
 
-/// A REAL derived JSON Schema document: the text `schemars::schema_for!` produced for
-/// [`ShotName`](crate::ids::ShotName) under the `schema` feature, copied verbatim.
-///
-/// Kept as a literal so the JSON-inside-RON case is pinned in the DEFAULT feature
-/// configuration, where `schemars` is not linked at all; the `schema`-feature suite
-/// (`ids/test/schema.rs`) re-proves the same property against a schema it derives at run
-/// time. This text is exactly what a catalogue row has to survive carrying: nested quotes,
-/// braces, `$`-prefixed keys, escaped newlines and non-ASCII characters.
-///
-/// It used to be `GangerToken`'s schema; GTW-943 moved that type to the game host, so the
-/// literal was regenerated from a type this crate still owns rather than left as text
-/// nothing here can produce.
 const DERIVED_ARG_SCHEMA: &str = r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"ShotName","description":"A requested capture's **file stem** — the caller-chosen name a\n[`CaptureRider`](crate::command::CaptureRider) writes under.\n\nThe host constrains the actual path under its own capture directory (GTW-694); this is\nonly the stem the client asks for. A name newtype over `String` (no-bare-types),\nserde-transparent. `Clone`-not-`Copy` (holds a `String`).","type":"string"}"#;
 
-/// A derived REPLY schema document, produced the same way for
-/// [`LevelNet`](crate::ids::LevelNet).
 const DERIVED_REPLY_SCHEMA: &str = r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"LevelNet","description":"A 0-based **storey** index — which floor of the coarse grid, valid `0..MAX_LEVELS`\n— the wire mirror of the sim `Level`.\n\nA private-inner newtype (no-bare-types), serde-transparent so it rides the wire as\nits bare `u8`. The contract does not re-encode the `MAX_LEVELS` bound here; the game\nside validates against the live grid extent.","type":"integer","format":"uint8","maximum":255,"minimum":0}"#;
 
-/// The name / summary newtypes round-trip from BOTH constructors — the borrowed form a
-/// host's `const NAME` uses and the owned form a decoding client produces.
 #[test]
 fn names_and_summaries_round_trip() {
     assert_ron_round_trip(&CommandName::from_static("app.phase"));
@@ -45,9 +22,6 @@ fn names_and_summaries_round_trip() {
     assert_ron_round_trip(&CommandSummary::from_owned("Fire the weapon.".to_owned()));
 }
 
-/// A borrowed and an owned [`CommandName`] carrying the same text are EQUAL and encode
-/// identically — the property that lets a host declare its names as `const`s while a
-/// client decodes owned ones.
 #[test]
 fn a_static_and_an_owned_name_are_interchangeable() {
     let from_const = CommandName::from_static("app.phase");
@@ -63,7 +37,6 @@ fn a_static_and_an_owned_name_are_interchangeable() {
     assert_eq!(left, "\"app.phase\"");
 }
 
-/// The JSON payload and schema newtypes round-trip, including schema text.
 #[test]
 fn json_payload_newtypes_round_trip() {
     assert_ron_round_trip(&CommandArgsJson::new(r#"{"mode":1}"#.to_owned()));
@@ -77,7 +50,6 @@ fn json_payload_newtypes_round_trip() {
     assert_ron_round_trip(&ReplySchemaJson::new(DERIVED_REPLY_SCHEMA.to_owned()));
 }
 
-/// Every [`UnavailableCode`] round-trips; the witness forces new variants in.
 #[test]
 fn unavailable_code_round_trips_every_variant() {
     assert_eq!(
@@ -96,8 +68,6 @@ fn unavailable_code_round_trips_every_variant() {
     }
 }
 
-/// Every [`CommandAvailability`] variant round-trips — `Available` plus one `Unavailable`
-/// per refusal class; the witness forces new variants in.
 #[test]
 fn availability_round_trips_every_variant() {
     let mut cases = vec![CommandAvailability::Available];
@@ -119,8 +89,6 @@ fn availability_round_trips_every_variant() {
     }
 }
 
-/// Every [`AttachmentKind`] round-trips, and so does the attachment carrying it; the
-/// witness forces new variants in.
 #[test]
 fn attachments_round_trip_every_kind() {
     assert_eq!(
@@ -140,9 +108,6 @@ fn attachments_round_trip_every_kind() {
     }
 }
 
-/// Every [`CommandOutcome`] variant round-trips, including a `Ran` carrying an attachment
-/// and a `BadArguments` carrying real derived-schema text; the witness forces new variants
-/// in.
 #[test]
 fn command_outcome_round_trips_every_variant() {
     let cases = vec![
@@ -185,7 +150,6 @@ fn command_outcome_round_trips_every_variant() {
     }
 }
 
-/// The per-call riders round-trip, default and populated alike.
 #[test]
 fn run_options_round_trip() {
     let plain = RunOptions::default();
@@ -201,9 +165,6 @@ fn run_options_round_trip() {
     assert!(!loaded.is_plain(), "a populated rider set is not plain");
     assert_ron_round_trip(&loaded);
 
-    // Each rider ALONE also makes the set non-plain: if `is_plain` tested only one of the
-    // two fields, a call carrying just the other would be reported plain and run with the
-    // rider dropped.
     let await_only = RunOptions::new(Some(AwaitBudget::new(0)), None);
     assert!(
         !await_only.is_plain(),
@@ -219,16 +180,11 @@ fn run_options_round_trip() {
     assert_ron_round_trip(&capture_only);
 }
 
-/// A populated catalogue — two rows, one available and one refused, both carrying real
-/// derived-schema text — round-trips unchanged.
 #[test]
 fn a_populated_catalogue_round_trips() {
     assert_ron_round_trip(&populated_catalogue());
 }
 
-/// A [`CommandEntry`] whose schema fields hold real derived-schema TEXT survives the RON
-/// round trip with that text unchanged — the JSON-inside-RON encoding this design chose
-/// over converting a schema through RON's data model.
 #[test]
 fn derived_schema_text_survives_the_round_trip_unchanged() {
     let catalogue = populated_catalogue();
@@ -254,8 +210,6 @@ fn derived_schema_text_survives_the_round_trip_unchanged() {
     assert_eq!(decoded, catalogue);
 }
 
-/// A catalogue with two rows: one available command and one refused, both publishing real
-/// derived-schema documents.
 fn populated_catalogue() -> CommandCatalogue {
     CommandCatalogue::new(
         ServerNameNet::new("gdtf-net-qa".to_owned()),

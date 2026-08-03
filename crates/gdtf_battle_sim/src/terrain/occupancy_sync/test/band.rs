@@ -1,5 +1,3 @@
-//! GTW-304 — silhouette-band publication tracking the occupant's stance.
-
 use super::support::*;
 use crate::{
     clearance::silhouette_band,
@@ -7,15 +5,11 @@ use crate::{
     ganger::{LifeState, Position, Stance, StanceKind},
 };
 
-/// GTW-304 — the published occupant band tracks the ganger's STANCE: a kneeling
-/// ganger presents the MID band, a prone ganger the LOW band, and re-posing in
-/// place re-publishes the band at the (unchanged) current slot.
 #[test]
 fn occupant_band_tracks_stance() {
     let mut app = headless_app();
     let at = key(11, 4, 0);
 
-    // Spawn KNEELING — the band must be MID.
     let ganger = app
         .world_mut()
         .spawn((
@@ -32,7 +26,6 @@ fn occupant_band_tracks_stance() {
     );
     assert_eq!(grid_band(&app, at), Some(HeightBand::Mid));
 
-    // Re-pose to PRONE in place (no move) — the band must re-publish as LOW.
     if let Some(mut stance) = app.world_mut().get_mut::<Stance>(ganger) {
         *stance = Stance::new(StanceKind::Prone);
     }
@@ -49,8 +42,6 @@ fn occupant_band_tracks_stance() {
     );
 }
 
-/// GTW-304 — a ganger going DOWN clears its band along with its occupant marker
-/// (occupant and band stay consistent — no slot left banded but un-occupied).
 #[test]
 fn dead_ganger_clears_its_band() {
     let mut app = headless_app();

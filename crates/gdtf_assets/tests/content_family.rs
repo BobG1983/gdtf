@@ -1,17 +1,3 @@
-//! Integration tests for the GTW-570 content-family machinery — the ext-registered
-//! kick-off / resolve / redrive chain on a REAL `AssetServer` + the on-disk
-//! fixture folder (`assets/test/content_family/`).
-//!
-//! The `Swatch` / `Badge` families below ARE the contract's add-one-family
-//! demonstration: one payload type, one [`ContentFamily`] marker impl, and one
-//! [`register_content_family`](ContentFamilyAppExt::register_content_family)
-//! call is ALL a new folder family needs — no per-site resolve module, no poll
-//! branch, no handle newtypes, no redrive clone. The fixture folder is MIXED
-//! (two swatch members + one badge member) so the unconditional `TypeId`
-//! member filter and BOTH keying shapes (stem vs payload) are exercised on the
-//! real code path. The reload / fallback LOG lines are asserted separately in
-//! `content_family_logs.rs` (the thread-routed capture needs its own binary).
-
 use std::collections::HashMap;
 
 use bevy::{asset::Assets, prelude::*, reflect::TypePath};
@@ -21,19 +7,14 @@ use gdtf_assets::{
 use gdtf_test_utils::GdtfUiTestAppBuilder;
 use serde::Deserialize;
 
-/// The STEM-KEYED test payload (`*.swatch.ron`).
 #[derive(Deserialize, TypePath, Debug, Clone, PartialEq, Eq)]
 struct Swatch {
-    /// A distinguishable magnitude the tests assert verbatim.
-    tone: u32,
+        tone: u32,
 }
 
-/// The stem-keyed registry the swatch folder resolves into.
 #[derive(Resource, Default, Debug, PartialEq, Eq)]
 struct SwatchRegistry(HashMap<String, u32>);
 
-/// The stem-keyed test family: `test/content_family/*.swatch.ron` →
-/// [`SwatchRegistry`], keyed by the infix-stripped file stem.
 struct SwatchFamily;
 
 impl ContentFamily for SwatchFamily {
@@ -49,22 +30,15 @@ impl ContentFamily for SwatchFamily {
     }
 }
 
-/// The PAYLOAD-KEYED test payload (`*.badge.ron`) — its registry key lives
-/// INSIDE the file (the terrain/theme-def shape).
 #[derive(Deserialize, TypePath, Debug, Clone, PartialEq, Eq)]
 struct Badge {
-    /// The payload-owned registry key (the filename stem is irrelevant).
-    key:   String,
-    /// A payload field the tests read back.
-    glyph: String,
+        key:   String,
+        glyph: String,
 }
 
-/// The payload-keyed registry the badge members resolve into.
 #[derive(Resource, Default, Debug, PartialEq, Eq)]
 struct BadgeRegistry(HashMap<String, String>);
 
-/// The payload-keyed test family sharing the SAME mixed folder as
-/// [`SwatchFamily`].
 struct BadgeFamily;
 
 impl ContentFamily for BadgeFamily {
@@ -79,23 +53,18 @@ impl ContentFamily for BadgeFamily {
     }
 }
 
-/// A payload for the FAILED-folder family (its folder does not exist, so no
-/// member ever parses — the type only anchors the loader registration).
 #[derive(Deserialize, TypePath, Debug, Clone)]
 struct Relic {
-    /// Unread — no relic file exists.
-    #[allow(
+        #[allow(
         dead_code,
         reason = "no member file exists; the field anchors the schema"
     )]
     age: u32,
 }
 
-/// The registry the missing relic folder fails closed into (EMPTY).
 #[derive(Resource, Default, Debug, PartialEq, Eq)]
 struct RelicRegistry(HashMap<String, u32>);
 
-/// A family whose folder is deliberately MISSING — drives the fail-closed path.
 struct RelicFamily;
 
 impl ContentFamily for RelicFamily {
@@ -111,26 +80,12 @@ impl ContentFamily for RelicFamily {
     }
 }
 
-/// Generous SAFETY-NET cap on `App::update()` iterations while signal-polling
-/// an async load — NOT a timing budget (the GTW-319 flake lesson).
 const GENEROUS_LOAD_UPDATES: u32 = 10_000;
 
-/// A real-`AssetServer` app (`DefaultPlugins`, backends: None, asset source
-/// rooted at the workspace `assets/`) — the same harness the hot-RON tests
-/// drive.
 fn real_asset_app() -> App {
     GdtfUiTestAppBuilder::new().with_ui_camera().build()
 }
 
-/// C1 / C2(c-d) / C7: BOTH keying shapes resolve from the ONE mixed folder
-/// through the real ext-registered chain, each skipping the other family's
-/// members via the UNCONDITIONAL `TypeId` filter.
-///
-/// Pin-discriminating: without the `TypeId` filter the walk debug-panics typing
-/// `theta.badge.ron` as a `RonAsset<Swatch>` (or never resolves); a mis-keyed
-/// stem walk drops the `alpha`/`beta` keys (the un-stripped stem would be
-/// `alpha.swatch`); a stem-keyed badge walk would key `theta`, not the
-/// payload's `brand_theta`.
 #[test]
 fn mixed_folder_resolves_both_keying_shapes_and_skips_wrong_typed_members() {
     let mut app = real_asset_app();
@@ -163,9 +118,6 @@ fn mixed_folder_resolves_both_keying_shapes_and_skips_wrong_typed_members() {
         "the payload-keyed family must key by the id INSIDE the payload and SKIP the swatches",
     );
 
-    // C2(d): the persistent generic folder handle sits beside each registry
-    // (never removed), feeding the redrive + keeping members alive for the
-    // file-watcher.
     assert!(
         app.world()
             .get_resource::<ContentFolderHandle<SwatchFamily>>()
@@ -180,10 +132,6 @@ fn mixed_folder_resolves_both_keying_shapes_and_skips_wrong_typed_members() {
     );
 }
 
-/// C2(b) / C7: a folder that reaches a genuine `Failed` (the directory does
-/// not exist) fails CLOSED — the chain publishes the EMPTY registry so a
-/// presence-gated Load flow is never stranded (ADR-0003). The matching `warn!`
-/// is asserted in `content_family_logs.rs`.
 #[test]
 fn failed_folder_inserts_the_empty_registry() {
     let mut app = real_asset_app();
@@ -199,8 +147,6 @@ fn failed_folder_inserts_the_empty_registry() {
         Some(&RelicRegistry(HashMap::new())),
         "a Failed folder must fail closed into the EMPTY registry, never hang the gate",
     );
-    // The persistent handle exists even on the failure path (the kick-off
-    // inserted it), so a later file-watcher recovery can re-enumerate.
     assert!(
         app.world()
             .get_resource::<ContentFolderHandle<RelicFamily>>()
@@ -209,20 +155,9 @@ fn failed_folder_inserts_the_empty_registry() {
     );
 }
 
-/// C2(c) / C7: while ANY matching-type member is absent from its `Assets`
-/// collection the resolve publishes NOTHING and retries — a partial registry
-/// is never observable; once the member returns, the retry publishes the full
-/// registry.
-///
-/// Driven through the REAL ext-registered resolve: after a genuine resolve,
-/// the registry is removed (re-arming the absence-gated system) and one member
-/// asset is pulled out of the collection — the folder's load state stays
-/// `Loaded`, so only the never-publish-partial walk can hold the registry back.
 #[test]
 fn missing_member_publishes_nothing_until_it_returns() {
     let mut app = real_asset_app();
-    // BOTH families register (the folder is mixed — every member extension
-    // needs a loader for the recursive folder load to reach `Loaded`).
     app.register_content_family::<SwatchFamily>();
     app.register_content_family::<BadgeFamily>();
     gdtf_test_utils::advance_until_resource_exists::<SwatchRegistry>(
@@ -230,8 +165,6 @@ fn missing_member_publishes_nothing_until_it_returns() {
         GENEROUS_LOAD_UPDATES,
     );
 
-    // Re-arm the resolve (absence-gated) and knock ONE member out of the
-    // collection (the folder handle + load state are untouched).
     app.world_mut().remove_resource::<SwatchRegistry>();
     let beta = app
         .world()
@@ -254,8 +187,6 @@ fn missing_member_publishes_nothing_until_it_returns() {
         "with a member missing from its collection, NOTHING may be published (no partial registry)",
     );
 
-    // The member returns — the still-alive resolve retries and publishes the
-    // FULL registry.
     let reinserted = app
         .world_mut()
         .resource_mut::<Assets<RonAsset<Swatch>>>()
@@ -276,17 +207,9 @@ fn missing_member_publishes_nothing_until_it_returns() {
     );
 }
 
-/// C2(e): a member `Modified` event rebuilds the resident registry IN PLACE
-/// from the latest in-memory specs — the live hot-reload, through the real
-/// ext-registered redrive. (The Part C `info!` line is asserted in
-/// `content_family_logs.rs`.)
-///
-/// Pin-discriminating: dropping the rebuild leaves the OLD tone.
 #[test]
 fn modified_member_rebuilds_the_registry_live() {
     let mut app = real_asset_app();
-    // BOTH families register (the folder is mixed — every member extension
-    // needs a loader for the recursive folder load to reach `Loaded`).
     app.register_content_family::<SwatchFamily>();
     app.register_content_family::<BadgeFamily>();
     gdtf_test_utils::advance_until_resource_exists::<SwatchRegistry>(
@@ -294,8 +217,6 @@ fn modified_member_rebuilds_the_registry_live() {
         GENEROUS_LOAD_UPDATES,
     );
 
-    // Hot-edit alpha's payload in place; `get_mut` queues the Modified event
-    // the ungated redrive reacts to (the file-watcher stand-in).
     let alpha = app
         .world()
         .resource::<AssetServer>()
@@ -324,12 +245,6 @@ fn modified_member_rebuilds_the_registry_live() {
     );
 }
 
-/// C2(a) / C7 + the GTW-629 headless-fallback rider: a no-`AssetServer`
-/// `MinimalPlugins` app updates without panic — registration self-gates, so
-/// the ext call registers NO chain (no loader, no systems, no handle) but
-/// seeds the family's DEFAULT registry as the headless fallback, so a
-/// presence-gated host flow (the game's Load gate) stays satisfiable from the
-/// ONE registration line, with zero per-family seed arms anywhere else.
 #[test]
 fn headless_minimal_app_seeds_the_default_registry_and_skips_the_chain() {
     let mut app = App::new();

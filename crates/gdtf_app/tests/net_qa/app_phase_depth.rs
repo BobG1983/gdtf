@@ -1,16 +1,3 @@
-//! GTW-942: `app.phase` reports the DEEP levels of the state machine, from a real battle.
-//!
-//! The bullet-3 case in [`commands`](super::commands) answers from the menu, where only the
-//! top two levels are live and the other three are legitimately `null`. That leaves the
-//! reason `app.phase` was chosen as the first command — "it closes the gap where the four
-//! sub-states are entirely absent today" — unproven for three of the four: `GameFactsParam`
-//! could hand back `None` for every nested level and the menu case would still pass.
-//!
-//! So this suite carries the app all the way into a battle through the REAL menu → battle
-//! descent ([`battle_fixture`](super::battle_fixture)'s app and the menu's own
-//! `StartBattleRequested`), then asks over the REAL router and asserts all five levels by
-//! VALUE against the live `State<…>` resources the same app holds.
-
 use std::sync::mpsc;
 
 use bevy::{app::App, state::state::State};
@@ -28,7 +15,6 @@ use super::{
     command_exchange::APP_PHASE,
 };
 
-/// Push a request onto the router's inbox and return the channel its reply arrives on.
 fn send(tx: &mpsc::Sender<IncomingRequest>, request: QaRequest) -> mpsc::Receiver<QaResponse> {
     let (responder, reply_rx) = Responder::channel();
     let sent = tx.send(IncomingRequest::new(request, responder));
@@ -36,7 +22,6 @@ fn send(tx: &mpsc::Sender<IncomingRequest>, request: QaRequest) -> mpsc::Receive
     reply_rx
 }
 
-/// Run `app.phase` over the real router and hand back its reply body as JSON.
 fn read_phase(app: &mut App, tx: &mpsc::Sender<IncomingRequest>) -> Value {
     let reply = send(
         tx,
@@ -46,7 +31,6 @@ fn read_phase(app: &mut App, tx: &mpsc::Sender<IncomingRequest>) -> Value {
             RunOptions::default(),
         )),
     );
-    // One frame for the router to admit and park the call, one for the handler to answer it.
     app.update();
     app.update();
     let Ok(QaResponse::Outcome(CommandOutcome::Ran { reply, .. })) = reply.try_recv() else {
@@ -61,19 +45,12 @@ fn read_phase(app: &mut App, tx: &mpsc::Sender<IncomingRequest>) -> Value {
     body
 }
 
-/// Read a state resource's `Debug` name, or `None` when that level is not live.
 fn live_name<S: bevy::state::state::States + core::fmt::Debug>(app: &App) -> Option<String> {
     app.world()
         .get_resource::<State<S>>()
         .map(|state| format!("{:?}", state.get()))
 }
 
-/// In a live battle, all four nested levels are reported, and each matches the app's own
-/// `State<…>` resource.
-///
-/// Comparing against the LIVE resources rather than literals is what makes this fail if
-/// `GameFactsParam` drops a level (it would report `null` where the resource exists) or if a
-/// wire mirror renames one (the two names would disagree). The menu case cannot see either.
 #[test]
 fn app_phase_reports_every_live_level_from_inside_a_battle() {
     let (mut app, tx) = menu_app_with_net_qa();
@@ -95,7 +72,6 @@ fn app_phase_reports_every_live_level_from_inside_a_battle() {
     let body = read_phase(&mut app, &tx);
     let phase = &body["phase"];
 
-    // The three levels that are live inside a battle, each against the app's own resource.
     for (level, live) in [
         ("app", live_name::<AppState>(&app)),
         ("running", live_name::<RunningState>(&app)),
@@ -112,8 +88,6 @@ fn app_phase_reports_every_live_level_from_inside_a_battle() {
         );
     }
 
-    // The battle is running, not in its aftermath, so that one level really is absent — and
-    // absent is an explicit null, never a missing key.
     assert_eq!(
         phase["battlescape"], "BattleRunning",
         "the fixture rests the battle in BattleRunning: {body}",

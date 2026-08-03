@@ -1,6 +1,3 @@
-//! Full-app grenade throws: room damage through roof holes, the intact-roof
-//! block, and the blind throw without a facing / LOS gate.
-
 use bevy::{
     app::App,
     asset::AssetPlugin,
@@ -33,11 +30,7 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-// === Full-app throw dispatch: the blast damages room occupants (or is roof-blocked). ===
 
-/// An ARC grenade spec: `trajectory: Arc`, one blast fire mode, high damage/punch so a
-/// connect wounds through the (armorless) test armor. The FIRST `Single` mode carries the
-/// blast the throw reads.
 fn grenade_spec(radius: u8) -> WeaponSpec {
     WeaponSpec {
         base_spread: BaseSpread::new(0.2),
@@ -62,8 +55,6 @@ fn grenade_spec(radius: u8) -> WeaponSpec {
     }
 }
 
-/// A [`WeaponRegistry`] whose `test-weapon` key (every setup-spawned ganger resolves it)
-/// carries an Arc grenade with the chosen blast radius.
 fn grenade_registry(radius: u8) -> WeaponRegistry {
     WeaponRegistry::new([(
         WeaponName::new(TEST_WEAPON_KEY.to_owned()),
@@ -71,7 +62,6 @@ fn grenade_registry(radius: u8) -> WeaponRegistry {
     )])
 }
 
-/// Build the full live-runtime harness with `seed` + an Arc grenade of the given radius.
 fn battle_app(seed: u64, radius: u8) -> (App, u64) {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default(), ScenePlugin));
@@ -86,7 +76,6 @@ fn battle_app(seed: u64, radius: u8) -> (App, u64) {
     (app, seed)
 }
 
-/// Drive a setup through the REAL `setup_battle_on_request` Ok path with `seed` and settle it.
 fn drive_setup(app: &mut App, seed: u64, situation_and_gangs: (Situation, GangRegistry)) {
     let (situation, gangs) = situation_and_gangs;
     app.world_mut().insert_resource(gangs);
@@ -97,7 +86,6 @@ fn drive_setup(app: &mut App, seed: u64, situation_and_gangs: (Situation, GangRe
     }
 }
 
-/// A thrower at `at` FACING `facing` — a fielded player ganger with a full TU pool.
 fn thrower(at: CellLevel, facing: Direction) -> GangerSpawn {
     GangerSpawnBuilder::new()
         .at(at)
@@ -113,7 +101,6 @@ fn thrower(at: CellLevel, facing: Direction) -> GangerSpawn {
         .build()
 }
 
-/// A standing target at `at` with a deep HP pool — a blast victim.
 fn target(at: CellLevel) -> GangerSpawn {
     GangerSpawnBuilder::new()
         .at(at)
@@ -127,7 +114,6 @@ fn target(at: CellLevel) -> GangerSpawn {
         .build()
 }
 
-/// The ganger occupying `at` (the setup-published position), or `None`.
 fn ganger_at(app: &mut App, at: CellLevel) -> Option<Entity> {
     let world = app.world_mut();
     let mut query = world.query::<(Entity, &Position)>();
@@ -137,7 +123,6 @@ fn ganger_at(app: &mut App, at: CellLevel) -> Option<Entity> {
         .map(|(entity, _)| entity)
 }
 
-/// The current `(Hp, Wounds)` of `entity`.
 fn vitals(app: &App, entity: Entity) -> (Option<u16>, Option<u8>) {
     (
         app.world().get::<Hp>(entity).map(|h| **h),
@@ -145,14 +130,11 @@ fn vitals(app: &App, entity: Entity) -> (Option<u16>, Option<u8>) {
     )
 }
 
-/// Whether `after` shows LESS Hp or LESS Wounds than `before` (both pools deplete under damage).
 const fn took_damage(before: (Option<u16>, Option<u8>), after: (Option<u16>, Option<u8>)) -> bool {
     matches!((before.0, after.0), (Some(b), Some(a)) if a < b)
         || matches!((before.1, after.1), (Some(b), Some(a)) if a < b)
 }
 
-/// Author an intact roof (a `SlabState::Present` slab) at level 1 over the given cells (their
-/// column's roof), mutating the setup-published `SurfaceGrid` in the test body.
 fn set_roof(app: &mut App, cells: &[(i32, i32)], state: SlabState) {
     let mut surface = app.world_mut().resource_mut::<SurfaceGrid>();
     for &(x, y) in cells {
@@ -160,7 +142,6 @@ fn set_roof(app: &mut App, cells: &[(i32, i32)], state: SlabState) {
     }
 }
 
-/// Step `app` a fixed number of ticks so a written `ThrowGrenadeRequested` dispatches + resolves.
 fn step(app: &mut App, ticks: u32) {
     for _ in 0..ticks {
         app.update();
@@ -170,8 +151,6 @@ fn step(app: &mut App, ticks: u32) {
 #[test]
 fn a_grenade_lobbed_through_a_roof_hole_damages_the_room_occupants() {
     let (mut app, seed) = battle_app(0x5546_0A0A, 1);
-    // Thrower on level 1 (a rooftop / upper storey) at (5,5); a cluster of targets on level 0
-    // inside the room below, around the target cell (5,7).
     let situation = SituationBuilder::new()
         .with_gangers([
             thrower(at_level(5, 5, 1), Direction::East),
@@ -181,7 +160,6 @@ fn a_grenade_lobbed_through_a_roof_hole_damages_the_room_occupants() {
         .build_with_gangs();
     drive_setup(&mut app, seed, situation);
 
-    // A HOLE in the roof over the whole descent path onto the room — the lob drops through.
     set_roof(
         &mut app,
         &[(5, 5), (5, 6), (5, 7), (6, 6), (6, 7)],
@@ -197,7 +175,6 @@ fn a_grenade_lobbed_through_a_roof_hole_damages_the_room_occupants() {
     };
     let (a0, b0) = (vitals(&app, occ_a), vitals(&app, occ_b));
 
-    // Lob the grenade at the room's target cell (5,7) on level 0.
     app.world_mut()
         .write_message(ThrowGrenadeRequested::new(thrower_e, ground(5, 7)));
     step(&mut app, 3);
@@ -217,7 +194,6 @@ fn a_grenade_lobbed_through_a_roof_hole_damages_the_room_occupants() {
 #[test]
 fn a_grenade_lobbed_at_an_intact_roof_is_blocked_and_spares_the_room() {
     let (mut app, seed) = battle_app(0x5546_0B0B, 1);
-    // The SAME geometry as the hole case, but the roof is INTACT.
     let situation = SituationBuilder::new()
         .with_gangers([
             thrower(at_level(5, 5, 1), Direction::East),
@@ -227,8 +203,6 @@ fn a_grenade_lobbed_at_an_intact_roof_is_blocked_and_spares_the_room() {
         .build_with_gangs();
     drive_setup(&mut app, seed, situation);
 
-    // An INTACT roof over the whole descent path — the lob is stopped on the roof (level 1),
-    // sparing the level-0 room occupants.
     set_roof(
         &mut app,
         &[(5, 5), (5, 6), (5, 7), (6, 6), (6, 7)],
@@ -248,9 +222,6 @@ fn a_grenade_lobbed_at_an_intact_roof_is_blocked_and_spares_the_room() {
         .write_message(ThrowGrenadeRequested::new(thrower_e, ground(5, 7)));
     step(&mut app, 3);
 
-    // The intact roof blocked the lob at level 1 — the level-0 room occupants are UNTOUCHED
-    // (the blast fanned at the roof cell, a different storey). PIN-DISCRIMINATING: with the
-    // roof block unwired the grenade would drop through and damage them.
     assert_eq!(
         vitals(&app, occ_a),
         a0,
@@ -266,8 +237,6 @@ fn a_grenade_lobbed_at_an_intact_roof_is_blocked_and_spares_the_room() {
 #[test]
 fn a_blind_throw_resolves_without_a_facing_or_los_gate() {
     let (mut app, seed) = battle_app(0x5546_0C0C, 1);
-    // The thrower FACES away (North) from the target to its East — a straight shot's facing-arc
-    // gate would refuse it, but a blind lob has NO such gate.
     let situation = SituationBuilder::new()
         .with_gangers([
             thrower(ground(5, 5), Direction::North),
@@ -284,7 +253,6 @@ fn a_blind_throw_resolves_without_a_facing_or_los_gate() {
     };
     let v0 = vitals(&app, victim);
 
-    // Lob at the target cell despite the thrower facing away — no roof, so it lands on target.
     app.world_mut()
         .write_message(ThrowGrenadeRequested::new(thrower_e, ground(9, 5)));
     step(&mut app, 3);

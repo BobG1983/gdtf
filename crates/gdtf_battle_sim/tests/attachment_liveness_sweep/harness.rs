@@ -1,6 +1,3 @@
-//! Shared GTW-549 attachment fixture: the keys, the attachment-bearing registries, the live
-//! battle-app driver, and the lone-weapon spawner.
-
 use bevy::{
     app::App,
     asset::AssetPlugin,
@@ -31,15 +28,11 @@ use gdtf_battle_sim::{
     },
 };
 
-/// An arbitrary seed (determinism is asserted elsewhere).
 pub(crate) const SEED: u64 = 0x0549_A77A;
 pub(crate) const PLAYER: u8 = 0;
 pub(crate) const ENEMY: u8 = 1;
-/// A view range covering the point-blank fixtures.
 pub(crate) const TEST_VIEW_RANGE: u16 = 12;
-/// The weapon key every fixture ganger resolves.
 pub(crate) const WEAPON_KEY: &str = "test-weapon";
-/// The attachment item key the fixture weapon references.
 pub(crate) const ATTACHMENT_KEY: &str = "test-attachment";
 
 pub(crate) const fn level0() -> gdtf_battle_sim::metric::Level {
@@ -50,7 +43,6 @@ pub(crate) fn ground(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), level0())
 }
 
-/// A single-shot mode (the fixture weapon's authored mode).
 pub(crate) const fn single_shot_mode() -> FireModeSpec {
     FireModeSpec::new(
         ModeKind::Single,
@@ -60,8 +52,6 @@ pub(crate) const fn single_shot_mode() -> FireModeSpec {
     )
 }
 
-/// A ranged weapon spec referencing the chosen attachment KEYS — arbitrary (not shipped)
-/// magnitudes; ONE single-shot mode so a `GainFireMode` addition is unambiguously the second.
 pub(crate) fn ranged_spec(attachment_keys: Vec<AttachmentName>) -> WeaponSpec {
     WeaponSpec {
         base_spread: BaseSpread::new(0.05),
@@ -71,15 +61,12 @@ pub(crate) fn ranged_spec(attachment_keys: Vec<AttachmentName>) -> WeaponSpec {
         punch: WeaponPunch::new(10),
         magazine: Magazine::loaded(MagazineSize::new(20), ReloadTu::new(20)),
         fire_mode: FireMode::new(vec![single_shot_mode()]),
-        // GTW-554: declare the Rail slot the shared fixture item occupies, so the
-        // referenced key still FITS under the slot gate (capacity 1 — one fixture item).
         slots: WeaponSlots::new(vec![(AttachmentSlot::Rail, SlotCapacity::new(1))]),
         attachments: attachment_keys,
         ..test_weapon_spec()
     }
 }
 
-/// A weapon registry whose shared `test-weapon` key references the chosen attachment keys.
 pub(crate) fn ranged_registry(attachment_keys: Vec<AttachmentName>) -> WeaponRegistry {
     WeaponRegistry::new([(
         WeaponName::new(WEAPON_KEY.to_owned()),
@@ -87,21 +74,17 @@ pub(crate) fn ranged_registry(attachment_keys: Vec<AttachmentName>) -> WeaponReg
     )])
 }
 
-/// An attachment registry with the shared `test-attachment` key carrying `effects`.
 pub(crate) fn attachment_registry(effects: Vec<AttachmentEffect>) -> AttachmentRegistry {
     AttachmentRegistry::new([(
         AttachmentName::new(ATTACHMENT_KEY.to_owned()),
         AttachmentSpec {
             display_name: WeaponName::new("Test Attachment".to_owned()),
-            // GTW-554: the fixture item occupies the Rail slot the fixture weapon declares.
             slot: AttachmentSlot::Rail,
             effects,
         },
     )])
 }
 
-/// Build the live-runtime harness. The shared weapon references the `test-attachment` key iff
-/// `effects` is non-empty; the attachment registry carries `effects` under that key.
 pub(crate) fn battle_app(effects: Vec<AttachmentEffect>) -> App {
     let keys = if effects.is_empty() {
         Vec::new()
@@ -123,8 +106,6 @@ pub(crate) fn battle_app(effects: Vec<AttachmentEffect>) -> App {
     app
 }
 
-/// Drive a setup through the REAL Ok path and settle it — enough updates for the weapon scene
-/// to materialize AND the post-spawn `apply_pending_attachments` system to apply its effects.
 pub(crate) fn drive_setup(app: &mut App, situation_and_gangs: (Situation, GangRegistry)) {
     let (situation, gangs) = situation_and_gangs;
     app.world_mut().insert_resource(gangs);
@@ -135,7 +116,6 @@ pub(crate) fn drive_setup(app: &mut App, situation_and_gangs: (Situation, GangRe
     }
 }
 
-/// The entity of the (sole) ganger of `faction`.
 pub(crate) fn ganger_of(app: &mut App, faction: u8) -> Option<Entity> {
     let world = app.world_mut();
     let mut query = world.query::<(Entity, &Faction)>();
@@ -145,8 +125,6 @@ pub(crate) fn ganger_of(app: &mut App, faction: u8) -> Option<Entity> {
         .map(|(entity, _)| entity)
 }
 
-/// The (single) wielded RANGED weapon entity of `ganger` — the wielded entity carrying an
-/// `Accuracy` stat (the melee weapon / fists does not).
 pub(crate) fn weapon_entity_of(app: &mut App, ganger: Entity) -> Option<Entity> {
     use bevy::ecs::relationship::Relationship;
     let world = app.world_mut();
@@ -157,7 +135,6 @@ pub(crate) fn weapon_entity_of(app: &mut App, ganger: Entity) -> Option<Entity> 
         .map(|(entity, ..)| entity)
 }
 
-/// A standing player ganger at `at` facing `dir` (the shooter).
 pub(crate) fn player_at(at: CellLevel, dir: Direction) -> GangerSpawn {
     GangerSpawnBuilder::new()
         .at(at)
@@ -171,7 +148,6 @@ pub(crate) fn player_at(at: CellLevel, dir: Direction) -> GangerSpawn {
         .build()
 }
 
-/// A standing enemy ganger at `at` (the target / reactor).
 pub(crate) fn enemy_at(at: CellLevel) -> GangerSpawn {
     GangerSpawnBuilder::new()
         .at(at)
@@ -186,8 +162,6 @@ pub(crate) fn enemy_at(at: CellLevel) -> GangerSpawn {
         .build()
 }
 
-/// Spawn a lone player wielding the attachment-bearing weapon; return its weapon entity (after
-/// the post-spawn application has settled).
 pub(crate) fn spawn_lone_player_weapon(effects: Vec<AttachmentEffect>) -> (App, Entity) {
     let mut app = battle_app(effects);
     let situation = SituationBuilder::new()

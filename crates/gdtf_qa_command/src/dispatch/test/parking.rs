@@ -1,10 +1,3 @@
-//! Parking and answering, one call at a time.
-//!
-//! `answer_all` is what the fake settle handler uses, so the suite covers it end to end.
-//! `answer_next` is the other half of the parking surface — a command that settles its
-//! oldest waiter without releasing the rest — and nothing else in the crate calls it, so it
-//! is exercised here.
-
 use gdtf_net_qa_transport::Responder;
 use gdtf_qa_protocol::{command::CommandOutcome, message::QaResponse};
 
@@ -13,15 +6,12 @@ use crate::{
     test_support::{FakeSettle, FakeSettleCount, FakeSettleReply},
 };
 
-/// The reply a settled call carries.
 fn a_reply(waited: u32) -> FakeSettleReply {
     FakeSettleReply {
         waited: FakeSettleCount::new(waited),
     }
 }
 
-/// `answer_next` releases the OLDEST waiter and leaves the rest parked with their own
-/// deadlines intact.
 #[test]
 fn answer_next_releases_the_oldest_waiter_only() {
     let mut parked = DeferredReplies::<FakeSettle>::default();
@@ -51,7 +41,6 @@ fn answer_next_releases_the_oldest_waiter_only() {
     );
 }
 
-/// `answer_next` on nothing reports `Empty` rather than pretending it delivered.
 #[test]
 fn answer_next_on_an_empty_parking_reports_empty() {
     let mut parked = DeferredReplies::<FakeSettle>::default();

@@ -1,46 +1,6 @@
-//! GTW-393 acceptance tests — wall-peek eye offset for LOS around corners.
-//!
-//! Five acceptance criteria:
-//!
-//! * **(1) `peek_clears_corner_wall_center_blocks`** — an observer whose eye is nudged
-//!   toward the open side of a corner wall via [`PeekOffset`] SEES a target that the
-//!   same observer with the centred eye CANNOT (asymmetry: peeker sees, non-peeker
-//!   blocked).
-//!
-//! * **(2) `non_peeker_same_cell_blocked`** — the control: the identical observer cell
-//!   with `PeekOffset::default()` (centred eye) is BLOCKED by the same wall,
-//!   confirming the peek effect is measurable.
-//!
-//! * **(3) `clearing_peek_restores_non_peek`** — [`eye_anchor`] with `PeekOffset::default()`
-//!   produces the same x/y/z result (bit-identical) as one built without a peek offset,
-//!   proving that `Default` is an identity / no-op.
-//!
-//! * **(4) `peek_facing_invariant`** — rotating `facing` across all eight directions with
-//!   a fixed non-zero `PeekOffset` leaves [`eye_anchor`] bit-identical (the peek eye is
-//!   FACING-NEUTRAL, matching the base anchor and the stair lift).
-//!
-//! * **(5) `clamp_keeps_eye_in_cell`** — an absurdly large `PeekOffset` (e.g. ±5.0 sim
-//!   units) still yields a peeked eye that `pos_to_cell` maps to the observer's own cell
-//!   (the clamp-within-cell invariant, AC #2).
-
 use super::support::*;
 use crate::{los::probe::eye_anchor, metric::pos_to_cell};
 
-/// **(1 + 2)** A peeking observer sees around a HIGH-band cover column that the
-/// centred-eye observer in the SAME cell CANNOT see past (asymmetry: peeker sees,
-/// non-peeker blocked).
-///
-/// Geometry (all at level 0):
-/// * Observer at `(3, 3, 0)` — centred eye at x=3.5, y=3.5.
-/// * Cover at `(3, 5, 0)` — HIGH band; occupies `x=[3,4)`, `y=[5,6)`.
-/// * Target at `(4, 8, 0)` — aim center ~x=4.5, y=8.5+z.
-///
-/// Centred-eye ray from (3.5, 3.5) → (4.5, 8.5+z): at y=5 (cover row),
-/// x ≈ 3.5 + (1.5/5.0) = 3.8 — INSIDE cover cell [3, 4). BLOCKED.
-///
-/// Peeked-eye ray: nudge +0.4 east → eye=(3.9, 3.5). Ray toward (4.5, 8.5+z):
-/// direction ≈ (0.6, 5.0). At y=5: x ≈ 3.9 + (1.5/5.0)×0.6 = 3.9 + 0.18 = 4.08
-/// — in cell [4, 5), NOT in the cover cell [3, 4). CLEAR.
 #[test]
 fn peek_clears_corner_wall_center_blocks() {
     use bevy::math::Vec2;
@@ -49,12 +9,9 @@ fn peek_clears_corner_wall_center_blocks() {
     let surface = SurfaceGrid::new();
     let mut occupancy = OccupancyGrid::new();
 
-    // A HIGH-band cover column at (3, 5, 0) — directly in the centred ray path.
     let mut cover = CoverLedger::new();
     cover.insert(key(3, 5, 0), cover_entry(HeightBand::High));
 
-    // Place a target occupant at (4, 8, 0) — offset east so the peeked ray clears
-    // the cover column while the centred ray still hits it.
     let target_entity = spawn_entity();
     place_occupant(
         &mut occupancy,
@@ -73,7 +30,6 @@ fn peek_clears_corner_wall_center_blocks() {
         stance:   &tgt_stance,
     };
 
-    // --- (2) Control: centred eye is BLOCKED by the HIGH cover column.
     let centred = Observer {
         position:         &obs_pos,
         stance:           &obs_stance,
@@ -96,9 +52,6 @@ fn peek_clears_corner_wall_center_blocks() {
          (the control that makes the peek effect measurable)"
     );
 
-    // --- (1) Peeker: nudge the eye +0.4 east — the ray clears the cover column.
-    // Peeked eye at x=3.9, aimed at x=4.5: the ray crosses y=5 at x≈4.08,
-    // which is in cell (4, 5, 0), NOT the cover cell (3, 5, 0). CLEAR.
     let peek_sighted = has_los_peeking(
         &centred,
         &target,
@@ -115,19 +68,12 @@ fn peek_clears_corner_wall_center_blocks() {
          HIGH cover column — peeked ray crosses cover row at x≈4.08 (GTW-393 C5)"
     );
 
-    // The two verdicts must be asymmetric — the test proves BOTH arms.
     assert_ne!(
         *centred_sighted, *peek_sighted,
         "peek and no-peek verdicts must DIFFER in the same world (asymmetry)"
     );
 }
 
-/// **(3)** Clearing the peek (`PeekOffset::default()`) restores the non-peek verdict and
-/// produces a bit-identical eye anchor to an observer built with no peek offset.
-///
-/// This is the C5 "clearing-restores" criterion and the `Default`-is-identity invariant:
-/// `eye_anchor(observer_with_default_peek)` must be bit-identical to
-/// `eye_anchor(observer_with_explicit_zero_peek)`.
 #[test]
 fn clearing_peek_restores_non_peek() {
     let tuning = CombatTuning::default();
@@ -135,7 +81,6 @@ fn clearing_peek_restores_non_peek() {
     let st = stance(StanceKind::Standing);
     let f = facing(Direction::East);
 
-    // The "no peek" baseline: explicit PeekOffset::default().
     let no_peek = eye_anchor(
         &Observer {
             position:         &pos,
@@ -146,8 +91,6 @@ fn clearing_peek_restores_non_peek() {
         },
         &tuning,
     );
-    // The "cleared peek" version: constructed from a non-zero PeekOffset then cleared
-    // — the Default should yield the same result.
     let cleared = eye_anchor(
         &Observer {
             position:         &pos,
@@ -174,9 +117,6 @@ fn clearing_peek_restores_non_peek() {
     );
 }
 
-/// **(4)** Rotating `facing` across all eight directions with a fixed non-zero
-/// `PeekOffset` leaves [`eye_anchor`] bit-identical — the peek eye is FACING-NEUTRAL,
-/// matching the base anchor and the stair-lift invariant (GTW-393 C5 facing-invariant).
 #[test]
 fn peek_facing_invariant() {
     let tuning = CombatTuning::default();
@@ -230,9 +170,6 @@ fn peek_facing_invariant() {
     }
 }
 
-/// **(5)** An absurdly large `PeekOffset` (±5.0 sim units) still places the peeked eye
-/// in the observer's own cell — `pos_to_cell(peeked_eye).cell == observer_cell` for every
-/// displacement including extreme/negative values (the `clamp_within_cell` AC #2).
 #[test]
 fn clamp_keeps_eye_in_cell() {
     use bevy::math::Vec2;

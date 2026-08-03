@@ -1,6 +1,3 @@
-//! GTW-664 C4: form-model headless tests over the SPRITE draft's pure mutators, the
-//! path derivation, and the anchor-bounds clamp (the armor / injury form-test parity).
-
 use std::path::Path;
 
 use gdtf_content_families::sprites::{
@@ -12,8 +9,6 @@ use super::{
     save::{draft_to_sprite_def, sprite_file_name, sprite_save_path_in},
 };
 
-/// A 16×16 sheet-cut source at sheet position `(32, 16)` — the shape every seeded def
-/// authors.
 fn sheet_source() -> SpriteSource {
     SpriteSource::Sheet {
         sheet: SpriteImagePath::new("sprites/alt_tileset_terrain.png".to_owned()),
@@ -26,9 +21,6 @@ fn sheet_source() -> SpriteSource {
     }
 }
 
-/// A Sheet-sourced draft's anchor clamps into the authored rect's `(w, h)` — the
-/// CHEAPLY-KNOWABLE bounds (the rect IS the sprite's pixel extent) — while an in-bounds
-/// write lands verbatim.
 #[test]
 fn anchor_clamps_to_the_sheet_rect_bounds() {
     let mut draft = SpriteDraft::new_sprite();
@@ -48,10 +40,6 @@ fn anchor_clamps_to_the_sheet_rect_bounds() {
     assert_eq!(*draft.def().anchor.y, 12, "an in-bounds y lands verbatim");
 }
 
-/// A File-sourced draft has NO model-side anchor clamp: the image's dims live in an
-/// async-decoded asset the pure model cannot reach headlessly, so no bound is INVENTED
-/// (GTW-664 C4 — the UI layer ranges the drag by the loaded dims once the preview
-/// texture resolves).
 #[test]
 fn file_source_anchor_has_no_invented_clamp() {
     let mut draft = SpriteDraft::new_sprite();
@@ -77,8 +65,6 @@ fn file_source_anchor_has_no_invented_clamp() {
     );
 }
 
-/// Replacing the base source RE-CLAMPS the anchor into the new bounds — shrinking a
-/// sheet rect can never strand the authored anchor outside the sprite.
 #[test]
 fn shrinking_the_rect_reclamps_the_anchor() {
     let mut draft = SpriteDraft::new_sprite();
@@ -106,8 +92,6 @@ fn shrinking_the_rect_reclamps_the_anchor() {
     );
 }
 
-/// Facing overrides insert / replace / clear per facing, and an emptied map folds back
-/// to `facings: None` (an absent map and an empty map author the same fallback).
 #[test]
 fn facing_overrides_fold_to_none_when_emptied() {
     let mut draft = SpriteDraft::new_sprite();
@@ -131,9 +115,6 @@ fn facing_overrides_fold_to_none_when_emptied() {
     );
 }
 
-/// The animation lifecycle: enable seeds ONE base-source frame; add / reorder / retarget
-/// / remove edit the ordered list; remove is a no-op at one frame; disable folds back to
-/// `None`.
 #[test]
 fn animation_rows_add_reorder_retarget_and_remove() {
     let mut draft = SpriteDraft::new_sprite();
@@ -153,7 +134,6 @@ fn animation_rows_add_reorder_retarget_and_remove() {
         "enabling seeds the base source as the single starting frame",
     );
 
-    // Enable is idempotent (the egui checkbox re-fires under multipass — bevy-traps #8).
     draft.add_frame();
     draft.enable_animation();
     assert_eq!(frames(&draft).len(), 2, "a re-enable never re-seeds");
@@ -185,10 +165,6 @@ fn animation_rows_add_reorder_retarget_and_remove() {
     assert_eq!(draft.def().animation, None);
 }
 
-/// The path derivation runs through the family consts + the shared sanitize helper: the
-/// literal `content/sprites/<stem>.spritedef.ron` shape the GTW-663 loader dispatches on
-/// (pinning the LITERALS is the drift alarm — GTW-621), with the `unnamed_sprite`
-/// fallback for a name that sanitizes to nothing.
 #[test]
 fn save_path_derives_from_the_family_consts() {
     let name = SpriteName::new("Blast Door (open)".to_owned());
@@ -204,9 +180,6 @@ fn save_path_derives_from_the_family_consts() {
     );
 }
 
-/// The save projection trims the name buffer into the registry-key [`SpriteName`] and
-/// copies the def verbatim; a loaded def round-trips untouched (load is verbatim — even
-/// an anchor outside the CURRENT bounds is the author's file truth).
 #[test]
 fn projection_trims_the_name_and_load_is_verbatim() {
     let mut draft = SpriteDraft::new_sprite();
@@ -224,8 +197,6 @@ fn projection_trims_the_name_and_load_is_verbatim() {
         "the projection is a copy of the working def"
     );
 
-    // An authored file with an anchor outside its rect loads VERBATIM (the author's
-    // truth) — only interactive writes clamp.
     let authored = SpriteDef {
         anchor: gdtf_content_families::sprites::SpriteAnchor {
             x: SpritePx::new(40),

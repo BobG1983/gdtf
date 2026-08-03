@@ -1,6 +1,3 @@
-//! C7(b) — TU accounting: an uninterrupted committed walk charges exactly the `find_path`
-//! total, bit-for-bit (the §48 identity).
-
 use gdtf_battle_sim::acts::MoveRequested;
 
 use super::harness::*;
@@ -20,8 +17,6 @@ fn uninterrupted_walk_charges_exactly_the_find_path_total() {
         unreachable!("the player has a Position and Tu");
     };
 
-    // A multi-cell destination a few tiles east, within view range (so routable) and
-    // affordable with the spawn TU.
     let dest = ground(8, 5);
     let Some(expected_total) = plan_total(&app, start, dest) else {
         unreachable!("an open in-sight multi-step route exists");

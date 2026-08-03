@@ -32,9 +32,6 @@ pub(in crate::states::running::game::battlescape::action_bar) use mode_panel::{
 };
 
 mod stance_panel;
-// Re-exported so the action-bar `mod.rs` can carry the relocated-control spawn constructors one
-// hop wider to the sibling weapon-panel module (GTW-298). The press → intent + active-mark + the
-// segment-tagging systems stay in this module; only the spawn constructors are shared.
 pub(in crate::states::running::game::battlescape) use aim_active::spawn_aim_button;
 pub(in crate::states::running::game::battlescape) use mode_panel::spawn_mode_panel;
 pub(in crate::states::running::game::battlescape) use stance_panel::spawn_stance_panel;

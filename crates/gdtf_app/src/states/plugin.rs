@@ -3,8 +3,7 @@ use bevy::prelude::*;
 use crate::states::*;
 
 crate::support_item! {
-    /// Plugin for registering scenes in the GDTF app.
-    struct ScenesPlugin;
+        struct ScenesPlugin;
 }
 
 impl Plugin for ScenesPlugin {

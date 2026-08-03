@@ -1,12 +1,3 @@
-//! Pure-logic unit tests for the path-preview read-side resource + the `preview_draws` resolution.
-//!
-//! The DRAW-system behaviour (the step sprites actually rendered at the right cells,
-//! hard-cut to the active storey, §53-dimmed on EXPLORED) is the headless integration proof
-//! in `tests/path_preview.rs` (the `fog_present.rs` pattern) and the pixel proof in
-//! `tests/path_preview_readback.rs` (the `fog_shader_readback.rs` pattern) — those wire the
-//! REAL `PathPreview` → draw system. These cover the read-side resource + the `preview_draws` pure
-//! decision (§53 + hard-cut + C5 link marker) that do not need an app.
-
 use bevy::{platform::collections::HashSet, prelude::Alpha};
 use gdtf_battle_sim::{
     prelude::{Cell, CellLevel, Level, Tu},
@@ -19,7 +10,6 @@ use super::{
     seam::PathPreview,
 };
 
-/// A `SquadVisibility` with `visible` cells VISIBLE and `explored` cells EXPLORED-only.
 fn fog(visible: &[CellLevel], explored_only: &[CellLevel]) -> SquadVisibility {
     let vis: HashSet<CellLevel> = visible.iter().copied().collect();
     let mut exp = vis.clone();
@@ -27,17 +17,14 @@ fn fog(visible: &[CellLevel], explored_only: &[CellLevel]) -> SquadVisibility {
     SquadVisibility::new(vis, exp)
 }
 
-/// A level-0 cell at `(x, y)`.
 fn c0(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(0))
 }
 
-/// A level-1 cell at `(x, y)`.
 fn c1(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(1))
 }
 
-/// The cleared preview is empty — no target / no route → nothing drawn.
 #[test]
 fn cleared_preview_is_empty() {
     let preview = PathPreview::cleared();
@@ -48,8 +35,6 @@ fn cleared_preview_is_empty() {
     assert_eq!(*preview.cost(), 0, "the cleared preview has zero cost");
 }
 
-/// `PathPreview::new` round-trips the route cells + the §48 total cost, readable through the
-/// accessors.
 #[test]
 fn new_preview_holds_route_and_cost() {
     let cells = vec![c0(3, 4), c0(4, 4), c0(5, 4)];
@@ -66,8 +51,6 @@ fn new_preview_holds_route_and_cost() {
     );
 }
 
-/// C1 / C3 — every active-storey route cell draws, and a squad-VISIBLE step is FULL alpha
-/// while an EXPLORED-but-not-VISIBLE step is REDUCED alpha (the §53 remembered treatment).
 #[test]
 fn visible_steps_full_alpha_explored_steps_dimmer() {
     let visible_cell = c0(5, 5);
@@ -87,7 +70,6 @@ fn visible_steps_full_alpha_explored_steps_dimmer() {
         .find(|d| d.cell == explored_cell)
         .map(|d| d.tint.alpha());
 
-    // Both steps must be present (no `unwrap`/`panic` in tests — the denied-lints house rule).
     assert!(
         vis_alpha.is_some() && exp_alpha.is_some(),
         "both the VISIBLE and the EXPLORED step must be drawn",
@@ -99,10 +81,6 @@ fn visible_steps_full_alpha_explored_steps_dimmer() {
     );
 }
 
-/// GTW-371 C1 (pin-discriminating) — the VISIBLE route TILE draws at EXACTLY 0.5 alpha (the
-/// transparency the user asked for on the path tiles) while the cost-LABEL colour stays FULLY
-/// OPAQUE (alpha 1.0, unchanged). The two are distinct: transparency on the route TILES only,
-/// never on the cost TEXT.
 #[test]
 fn route_tile_is_half_alpha_but_cost_label_stays_opaque() {
     let visible_cell = c0(5, 5);
@@ -120,7 +98,6 @@ fn route_tile_is_half_alpha_but_cost_label_stays_opaque() {
          ~half transparent; got {tile_alpha:?}",
     );
 
-    // The cost LABEL colour is FULLY OPAQUE — transparency applies to the TILE, never the TEXT.
     assert!(
         (LABEL_COLOR.alpha() - 1.0).abs() < 0.001,
         "the cost LABEL colour stays FULLY OPAQUE (alpha 1.0) — transparency is on the route \
@@ -129,33 +106,24 @@ fn route_tile_is_half_alpha_but_cost_label_stays_opaque() {
     );
 }
 
-/// C5 — an off-storey route cell is NOT drawn (the hard cut), and the route leaving the
-/// active storey through a vertical link draws ONE extra MINIMAL marker at the last
-/// active-storey cell (the GTW-359 soft-dep placeholder).
 #[test]
 fn off_storey_steps_hard_cut_with_link_marker() {
-    // A route that runs across storey 0 then climbs to storey 1.
     let last_active = c0(8, 8);
     let preview = PathPreview::new(vec![c0(7, 8), last_active, c1(8, 8), c1(9, 8)], Tu::new(20));
-    // Whole grid visible so §53 is not the variable under test here.
     let all_vis: Vec<CellLevel> = vec![c0(7, 8), last_active, c1(8, 8), c1(9, 8)];
     let squad = fog(&all_vis, &[]);
 
     let draws = preview_draws(&preview, Level::new(0), &squad);
 
-    // The two storey-0 cells are drawn as steps; the two storey-1 cells are hard-cut; ONE
-    // link marker is appended at the LAST active-storey cell (so 2 steps + 1 marker = 3).
     assert_eq!(
         draws.len(),
         3,
         "two active-storey steps + one off-storey link marker (storey-1 cells hard-cut)",
     );
-    // No drawn cell is off-storey.
     assert!(
         draws.iter().all(|d| d.cell.z == 0),
         "no off-storey cell is drawn (the hard cut, C5)",
     );
-    // The link marker sits at the last active-storey cell before the route departs.
     assert!(
         draws.iter().filter(|d| d.cell == last_active).count() == 2,
         "the link marker is drawn at the last active-storey cell ({last_active:?}) — its step \
@@ -163,7 +131,6 @@ fn off_storey_steps_hard_cut_with_link_marker() {
     );
 }
 
-/// C5 — a route that stays entirely on the active storey draws NO link marker.
 #[test]
 fn flat_route_draws_no_link_marker() {
     let preview = PathPreview::new(vec![c0(1, 1), c0(2, 1), c0(3, 1)], Tu::new(12));
@@ -177,7 +144,6 @@ fn flat_route_draws_no_link_marker() {
     );
 }
 
-/// An empty preview resolves to no draws (cleared / unreachable → nothing).
 #[test]
 fn empty_preview_resolves_to_no_draws() {
     let preview = PathPreview::cleared();
@@ -186,8 +152,6 @@ fn empty_preview_resolves_to_no_draws() {
     assert!(draws.is_empty(), "an empty preview draws nothing");
 }
 
-/// GTW-368 (C2) — the target-cell cost label reads the bare TU count followed by `" TU"` (the
-/// firemode / status-panel TU convention), so the label shows the EXACT previewed `cost()`.
 #[test]
 fn target_label_text_shows_the_tu_cost() {
     assert_eq!(
@@ -202,8 +166,6 @@ fn target_label_text_shows_the_tu_cost() {
     );
 }
 
-/// GTW-368 (C2) — the previewed TARGET cell is the LAST cell of the route, so the cost label is
-/// keyed to the route destination, and the previewed cost is exposed verbatim for the label.
 #[test]
 fn target_cell_is_the_route_destination() {
     let start = c0(3, 4);

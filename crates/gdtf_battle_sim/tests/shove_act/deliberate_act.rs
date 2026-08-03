@@ -1,6 +1,3 @@
-//! The deliberate shove ACT — TU-costed and wound-free, gated on adjacency + faction, and
-//! seed-deterministic in its shove/fall outcome.
-
 use gdtf_battle_sim::{
     prelude::{CellLevel, OccupancyGrid},
     surface::{SlabState, SurfaceGrid},
@@ -8,10 +5,7 @@ use gdtf_battle_sim::{
 
 use super::harness::*;
 
-// ── QA(5) — deliberate act: any ganger, adjacency-gated, TU spent, NO wound ─────
 
-/// QA(5a): a deliberate shove spends the shover's TU (the shove act is TU-costed) and deals NO
-/// wound (a supported shove leaves the target's Hp/Wounds untouched — pure displacement).
 #[test]
 fn deliberate_shove_spends_tu_and_deals_no_wound() {
     let mut app = shove_app();
@@ -41,11 +35,8 @@ fn deliberate_shove_spends_tu_and_deals_no_wound() {
     );
 }
 
-/// QA(5b): the deliberate shove is GATED — a NON-ADJACENT target (Chebyshev > 1) is a no-op
-/// (no move, no TU spent); a SAME-FACTION (ally) target is a no-op.
 #[test]
 fn deliberate_shove_gates_adjacency_and_faction() {
-    // Non-adjacent: target three cells away.
     let mut app = shove_app();
     app.insert_resource(SurfaceGrid::new());
     app.insert_resource(OccupancyGrid::new());
@@ -65,7 +56,6 @@ fn deliberate_shove_gates_adjacency_and_faction() {
         "a rejected (non-adjacent) shove spends NO TU"
     );
 
-    // Same-faction: an adjacent ALLY.
     let mut app = shove_app();
     app.insert_resource(SurfaceGrid::new());
     app.insert_resource(OccupancyGrid::new());
@@ -86,18 +76,14 @@ fn deliberate_shove_gates_adjacency_and_faction() {
     );
 }
 
-// ── QA(9) — determinism ────────────────────────────────────────────────────────
 
-/// QA(9): the same seed + same message order yields the IDENTICAL shove-off-a-ledge outcome
-/// (landing storey + Hp loss) across two independent runs (the shove is RNG-free; the fall
-/// draws deterministically from the seed).
 #[test]
 fn shove_outcomes_are_deterministic_under_same_seed() {
     let run = || -> (Option<CellLevel>, u16) {
         let mut app = shove_app();
         let mut surface = SurfaceGrid::new();
         surface.set_slab(upper(6, 5, 3), SlabState::Present);
-        surface.set_slab(upper(7, 5, 1), SlabState::Present); // the fall lands on level 1
+        surface.set_slab(upper(7, 5, 1), SlabState::Present); 
         app.insert_resource(surface);
         app.insert_resource(OccupancyGrid::new());
         let shover = shove_ganger(app.world_mut(), upper(5, 5, 3), 0);

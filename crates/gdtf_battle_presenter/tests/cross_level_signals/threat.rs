@@ -1,7 +1,3 @@
-//! Threat badges: the fog-gating invariant + the positive Threat-above case,
-//! proven through the REAL registered derive + draw systems (the sibling in-crate
-//! `test/threat.rs` pins the pure `gather_threats` helper directly).
-
 use bevy::{
     platform::collections::HashSet,
     prelude::{App, Visibility, With},
@@ -21,17 +17,10 @@ fn key(x: i32, y: i32, z: u8) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(z))
 }
 
-/// Spawn a bare ganger — just the three components the derive system's Query
-/// reads — standing in for a full sim ganger spawn (which the derive system does
-/// not need).
 fn spawn_ganger(app: &mut App, at: CellLevel, faction: Faction, life: LifeState) {
     app.world_mut().spawn((Position::new(at), faction, life));
 }
 
-/// Acceptance clause 1 (both directions) + clause 2 (`ThreatAbove`): a
-/// squad-VISIBLE enemy 2 storeys above the active level emits a Threat badge —
-/// asserted on the REAL `CrossLevelSignals` resource AND the REAL drawn tile — an
-/// UNSEEN enemy on a different cell emits nothing.
 #[test]
 fn visible_enemy_above_emits_threat_and_the_draw_renders_it_unseen_does_not() {
     let mut app = signals_app();
@@ -71,7 +60,6 @@ fn visible_enemy_above_emits_threat_and_the_draw_renders_it_unseen_does_not() {
         "the UNSEEN enemy must NEVER leak a threat badge",
     );
 
-    // The draw system actually rendered at least one Visible badge tile.
     let visible_tiles = app
         .world_mut()
         .query_filtered::<&Visibility, With<CrossLevelBadgeTile>>()

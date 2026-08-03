@@ -5,49 +5,18 @@ edition = "2024"
 
 [dependencies]
 bevy = { workspace = true }
-# The presenter -> sim edge: the presenter is a pure VIEW that mirrors the
 # authoritative render-free sim (one-way: presenter reads the sim, never the
-# reverse). Opened here so later GTW-48 slices (S4/S5/S6) can name sim
-# resource/component types by name; unused by name in S1 by design — this slice
-# only lands the edge, mirroring the GTW-203 `gdtf_app -> gdtf_battle_sim`
-# "land the edge now, consume later" precedent.
 gdtf_battle_sim = { path = "../gdtf_battle_sim" }
-# GTW-218 (S4): the remaining DATA-DRIVEN role tables (`assets/sprites/
-# character_roles.spritedef.ron` / `effect_roles.spritedef.ron`) load through the
-# generic `RonAsset<T>` loader, the same mechanism the theme / situation / tuning use.
 gdtf_assets = { path = "../gdtf_assets" }
-# GTW-665: the presenter→families READ edge (the one-way direction the GTW-663
-# crate placement anticipated) — terrain sprites resolve `graphic_name` through
-# the glue crate's `SpriteDefRegistry` (`content/sprites/*.spritedef.ron`).
 gdtf_content_families = { path = "../gdtf_content_families" }
-# GTW-218 (S4): `TileIndex` / the role tables derive `Deserialize` so the authored
-# role RONs parse through the loader.
 serde = { workspace = true }
 
 [dev-dependencies]
-# The AC4 atlas-load test needs a live `AssetServer` rooted at the workspace
-# `assets/` dir — `GdtfLoadTestAppBuilder` (DefaultPlugins/`no_renderer`). The plain
-# `MinimalPlugins` harness has no `AssetServer`. Dev-only edge: this pulls
-# `gdtf_test_utils -> gdtf_app -> gdtf_battle_presenter`, a cycle Cargo permits
-# because dev-dependencies are outside the normal build graph (the same dev cycle
-# `gdtf_app` already uses).
 gdtf_test_utils = { path = "../gdtf_test_utils" }
-# The canonical shared sim test builders (GTW-324). This crate already deps the sim
-# in the NORMAL graph; the dev-dep adds the `test-support` feature for the TEST target
-# so tests name `gdtf_battle_sim::test_support`. Test/dev only — the binary enables it
-# nowhere.
 gdtf_battle_sim = { path = "../gdtf_battle_sim", features = ["test-support"] }
-# The AC4 test names `gdtf_app::test_support::AppState` to drive the load harness;
-# `test-support` exposes that module. Dev-only edge (same permitted dev cycle as
-# above: `gdtf_app` depends on this crate in the normal graph).
 gdtf_app = { path = "../gdtf_app", features = ["test-support"] }
-# Naming `Assets<TextureAtlasLayout>` and driving `App::update()` in the test body.
 bevy = { workspace = true }
-# The role-table-era round-trip pins deserialized shipped RON bytes via
-# `ron::de::from_str`; the remaining role tables (characters / effects) still do.
 ron = { workspace = true }
-# GTW-665 C2: the off-center-anchor draw test authors a sprite def into an isolated
-# TempDir asset root (the contract's red-first anchor evidence) — test-only.
 tempfile = "3"
 
 [lints]

@@ -1,28 +1,3 @@
-//! GTW-216 (GTW-48 S2): the SHARED world-camera lifecycle.
-//!
-//! A single [`WorldCamera`]-marked `Camera2d` is spawned on entry to
-//! `GameState::BattleScape` (by the presenter's `spawn_world_camera`, registered by the
-//! app on `OnEnter(GameState::BattleScape)`) and despawned on its exit. It is configured
-//! to render beneath the persistent GTW-120 UI camera (`Camera.order == -1`) on its own
-//! non-zero render layer (so its `RenderLayers` does not intersect the UI camera's
-//! default layer 0).
-//!
-//! These are headless `MinimalPlugins` ([`GdtfTestAppBuilder`]) tests: `Camera2d`,
-//! `Camera`, and `RenderLayers` are plain components, queryable without a renderer —
-//! exactly as `ui_camera_persists.rs` queries the UI camera. They are
-//! *pin-discriminating*: each assertion re-encodes one acceptance criterion so a
-//! regression turns the test red.
-//!
-//! Setup mirrors `battle_running_driver.rs`: the walk app injects the persistent `Load`
-//! resources (`GdtfTheme` + `CombatTuning`) so the deep walk can traverse `Load` under
-//! `MinimalPlugins` (no `AssetServer`); the walk then drives the state machine into and
-//! out of `GameState::BattleScape`. `app.world_mut()` / `app.world()` in the TEST BODY is
-//! the accepted headless idiom (`bevy-traps.md` #7 carve-out).
-//!
-//! The production `UiCamera` marker is module-private (`ui_camera.rs`), so AC3 asserts the
-//! world camera's `RenderLayers` does not intersect `RenderLayers::layer(0)` DIRECTLY
-//! rather than querying the UI camera entity.
-
 use bevy::{
     camera::{Camera, visibility::RenderLayers},
     ecs::{entity::Entity, prelude::With},
@@ -38,12 +13,8 @@ use gdtf_battle_sim::{
 use gdtf_test_utils::{GdtfTestAppBuilder, advance_until};
 use gdtf_ui::theme::default_theme;
 
-/// A budget large enough to drive the deep walk into/out of the battlescape (each leaf
-/// scene spends a couple of `FixedUpdate` ticks plus its transition propagation), but
-/// bounded so a machine that never reaches the predicate fails instead of hanging.
 const BUDGET: u32 = 96;
 
-/// Collects every entity that currently carries the [`WorldCamera`] marker.
 fn world_cameras(app: &mut bevy::app::App) -> Vec<Entity> {
     app.world_mut()
         .query_filtered::<Entity, With<WorldCamera>>()
@@ -51,74 +22,51 @@ fn world_cameras(app: &mut bevy::app::App) -> Vec<Entity> {
         .collect()
 }
 
-/// Reads the current [`GameState`] if it is active.
 fn game_state(app: &bevy::app::App) -> Option<GameState> {
     app.world()
         .get_resource::<State<GameState>>()
         .map(|state| *state.get())
 }
 
-/// Reads the current [`BattleScapeState`] if it is active.
 fn battlescape_state(app: &bevy::app::App) -> Option<BattleScapeState> {
     app.world()
         .get_resource::<State<BattleScapeState>>()
         .map(|state| *state.get())
 }
 
-/// Reads the current [`RunningState`] if it is active.
 fn running_state(app: &bevy::app::App) -> Option<RunningState> {
     app.world()
         .get_resource::<State<RunningState>>()
         .map(|state| *state.get())
 }
 
-/// Builds the headless walk app, injecting the persistent `Load` resources the machine
-/// needs to traverse `Load` (no `AssetServer` under `MinimalPlugins`). The
-/// `LoadedSituation` seeded here is the empty default — the camera lifecycle reads no
-/// sim state, so an empty battle suffices. Mirrors `battle_running_driver.rs::walk_app`.
 fn walk_app() -> bevy::app::App {
     let mut app = GdtfTestAppBuilder::new_with_scene_support()
         .default_start()
         .build();
     app.world_mut().insert_resource(default_theme());
     app.world_mut().insert_resource(CombatTuning::default());
-    // GTW-257: the Load->Intro gate also requires a WeaponRegistry (empty-default
-    // situation here, so an empty registry clears the gate).
     app.world_mut().insert_resource(WeaponRegistry::default());
-    // GTW-505: the Load->Intro gate also requires a MeleeWeaponRegistry (empty-default
-    // seed stands in for the asset-less resolve, mirroring the WeaponRegistry seed above).
     app.world_mut()
         .insert_resource(gdtf_battle_sim::weapon::MeleeWeaponRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::equipment::attachments::AttachmentRegistry::default());
-    // GTW-269: the Load->Intro gate also requires an ArmorRegistry; empty clears it (the
-    // registry is dormant this slice — the setup does not read it yet).
     app.world_mut()
         .insert_resource(gdtf_battle_sim::armor::ArmorRegistry::default());
     app.world_mut().insert_resource(InjuryRegistry::default());
-    // GTW-415: the Load->Intro gate also requires a GangRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::ganger::GangRegistry::default());
-    // GTW-489: the NEW gate-blocking PrefabRegistry; empty clears it.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::PrefabRegistry::default());
-    // GTW-487: the NEW gate-blocking TerrainDefRegistry + UuidThemeRegistry.
     app.world_mut()
         .insert_resource(gdtf_battle_sim::terrain::def::TerrainDefRegistry::default());
     app.world_mut()
         .insert_resource(gdtf_battle_sim::level::UuidThemeRegistry::default());
-    // GTW-261: the Load->Intro gate now also requires a LoadedSituation (the
-    // empty-battle-race fix); seed the empty default beside the other three.
     app.world_mut()
         .insert_resource(LoadedSituation::new(Situation::default()));
     app
 }
 
-/// Drives the app from the default start until [`GameState::BattleScape`] is active
-/// (it rests in `BattleScapeState::Generation`). Stands in for the player at the menu
-/// (which no longer auto-advances, GTW-121) by queuing `Menu → Options` once `Menu` rests,
-/// then — since the Options screen is a real interactive stop that no longer auto-advances
-/// (GTW-637) — standing in for the Continue button by queuing `Options → Game`.
 fn drive_into_battlescape(app: &mut bevy::app::App) -> bool {
     let reached_menu = advance_until(
         app,
@@ -149,11 +97,6 @@ fn drive_into_battlescape(app: &mut bevy::app::App) -> bool {
     )
 }
 
-/// AC1 — exactly one `WorldCamera`-marked `Camera2d` exists while
-/// `GameState::BattleScape` is active, and it is despawned on exit.
-///
-/// Drives into `BattleScape`, asserts exactly one `WorldCamera`, then drives out of
-/// `GameState::BattleScape` and asserts the query is empty.
 #[test]
 fn world_camera_spawns_in_battlescape_and_despawns_on_exit() {
     let mut app = walk_app();
@@ -170,12 +113,6 @@ fn world_camera_spawns_in_battlescape_and_despawns_on_exit() {
         "exactly one WorldCamera-marked Camera2d must exist while GameState::BattleScape is active",
     );
 
-    // Drive out of GameState::BattleScape: the battlescape now PERSISTS in BattleRunning
-    // (GTW-236, the placeholder budget auto-exit is gone), so insert the explicit
-    // `BattleRunningComplete` end-signal marker (standing in for the not-yet-wired
-    // victory/flee). Once the machine reaches BattleRunning the marker trips `move_on`,
-    // and the chain advances out of the scape, firing OnExit(GameState::BattleScape) and
-    // the despawn.
     app.world_mut().insert_resource(BattleRunningComplete);
     let left_battlescape = advance_until(
         &mut app,
@@ -196,14 +133,6 @@ fn world_camera_spawns_in_battlescape_and_despawns_on_exit() {
     );
 }
 
-/// AC2 — the `WorldCamera` spans the `BattleScapeState` sub-states: it is NOT despawned
-/// on any `BattleScapeState` `OnExit`.
-///
-/// Captures the single `WorldCamera` entity while resting in `Generation`, advances
-/// through the `BattleScapeState` walk toward `BattleRunning`, and asserts the SAME entity
-/// is still alive and the count is still exactly one. The
-/// `ui_camera_persists.rs::ui_camera_survives_running_substate_exit` pattern retargeted to
-/// the `BattleScapeState` span.
 #[test]
 fn world_camera_survives_battlescape_substate_transitions() -> Result<(), &'static str> {
     let mut app = walk_app();
@@ -228,8 +157,6 @@ fn world_camera_survives_battlescape_substate_transitions() -> Result<(), &'stat
         .copied()
         .ok_or("precondition: a WorldCamera entity must exist in GameState::BattleScape")?;
 
-    // Advance through the BattleScapeState walk toward BattleRunning, firing the
-    // intermediate sub-state OnExits (Generation, AnimateIn).
     let reached_running = advance_until(
         &mut app,
         |app| battlescape_state(app) == Some(BattleScapeState::BattleRunning),
@@ -242,8 +169,6 @@ fn world_camera_survives_battlescape_substate_transitions() -> Result<(), &'stat
         battlescape_state(&app),
     );
 
-    // The SAME camera must still be alive across the sub-state walk: count unchanged AND
-    // the captured entity still present (not despawned by a sub-state OnExit).
     let cameras_after = world_cameras(&mut app);
     assert_eq!(
         cameras_after.len(),
@@ -261,13 +186,6 @@ fn world_camera_survives_battlescape_substate_transitions() -> Result<(), &'stat
     Ok(())
 }
 
-/// AC3 — the `WorldCamera`'s `Camera.order == -1` and its `RenderLayers` does NOT
-/// intersect layer 0 (the default layer the GTW-120 UI camera uses).
-///
-/// Queries `(&Camera, &RenderLayers)` `With<WorldCamera>` in `BattleScape` and asserts
-/// `camera.order == -1` and `!render_layers.intersects(&RenderLayers::layer(0))`. Asserts
-/// against the default layer-0 set DIRECTLY — the production `UiCamera` marker is
-/// module-private and unqueryable.
 #[test]
 fn world_camera_renders_below_ui_and_off_layer_zero() {
     let mut app = walk_app();

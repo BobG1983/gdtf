@@ -1,6 +1,3 @@
-//! GTW-470 — door + stair tile classification through the real `generate_level`
-//! loader/emit path (doors are Walls carrying `Openable`; stairs are Slabs).
-
 use bevy::asset::uuid::Uuid;
 
 use super::support::*;
@@ -22,24 +19,14 @@ use crate::{
     },
 };
 
-/// The GTW-470 orientation/direction terrain UUIDs the fixture places in a prefab: 2 doors
-/// (`sim_kind = Wall` + `Openable`) and 4 stairs (`sim_kind = Slab`).
 const DOOR_NS: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_0470_0000_0001));
-/// The EW door companion (`sim_kind = Wall` + `Openable`).
 const DOOR_EW: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_0470_0000_0002));
-/// The NS ascending stair (`sim_kind = Slab`).
 const STAIR_NS_UP: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_0470_0000_0003));
-/// The NS descending stair (`sim_kind = Slab`).
 const STAIR_NS_DOWN: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_0470_0000_0004));
-/// The EW ascending stair (`sim_kind = Slab`).
 const STAIR_EW_UP: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_0470_0000_0005));
-/// The EW descending stair (`sim_kind = Slab`).
 const STAIR_EW_DOWN: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_0470_0000_0006));
-/// The walkable default-floor test piece the GTW-470 door/stair fixture nominates.
 const DOOR_STAIR_FLOOR: TerrainUuid = TerrainUuid::new(Uuid::from_u128(0x0149_0470_0000_0007));
 
-/// A DOOR terrain def: `sim_kind = Wall` carrying the sim-owned `Openable` tag (C5 — a closed
-/// door blocks like a wall; opening is GTW-315). `graphic` is its orientation graphic key.
 fn door_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
     TerrainDef {
         key,
@@ -61,7 +48,6 @@ fn door_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
     }
 }
 
-/// A STAIR terrain def: `sim_kind = Slab` (a walkable surface; vertical traversal is GTW-388).
 fn stair_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
     TerrainDef {
         key,
@@ -83,7 +69,6 @@ fn stair_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
     }
 }
 
-/// The GTW-470 fixture terrain registry: the 2 doors, the 4 stairs, and a walkable floor.
 fn door_stair_terrain_defs() -> TerrainDefRegistry {
     let floor = TerrainDef {
         key:            DOOR_STAIR_FLOOR,
@@ -114,9 +99,6 @@ fn door_stair_terrain_defs() -> TerrainDefRegistry {
     ])
 }
 
-/// A `PrefabRegistry` whose player + enemy prefabs (footprint `fp`) each place all 6 GTW-470
-/// orientation/direction tiles at distinct footprint-local cells, so the emit must translate +
-/// classify each.
 fn door_stair_prefabs(theme: ThemeUuid, fp: GridSize) -> PrefabRegistry {
     let all_six = |role: SpawnRole, stem: &str| {
         Prefab::new(
@@ -142,23 +124,10 @@ fn door_stair_prefabs(theme: ThemeUuid, fp: GridSize) -> PrefabRegistry {
     prefabs
 }
 
-/// GTW-470 C4 / C5 — all 6 orientation/direction door + stair `TerrainUuid`s placed in a
-/// [`PrefabSpec`] resolve through the REAL `generate_level` loader/emit path: the 2 doors
-/// (`sim_kind = Wall`) classify into the [`walls`](Situation::walls) list and the 4 stairs
-/// (`sim_kind = Slab`) into the [`slabs`](Situation::slabs) list.
-///
-/// C4: every one of the 6 placed `TerrainUuid`s surfaces in the emitted level (they are placeable
-/// in a prefab + resolve through the loader). C5: a door carries the sim-owned `Openable` tag and
-/// is classified as a Wall (no functional open/close added) while a stair is classified as a Slab
-/// (no vertical-traversal logic added). Pin-discriminating: re-keying a door to `Slab` would route
-/// it into `slabs` (failing the door asserts), and re-keying a stair to `Wall` would route it into
-/// `walls` (failing the stair asserts).
 #[test]
 fn door_and_stair_tiles_emit_through_the_loader_classified_by_kind() {
     let terrain_defs = door_stair_terrain_defs();
 
-    // C5 precondition: the 2 doors are sim_kind = Wall carrying the Openable tag; the 4 stairs are
-    // sim_kind = Slab. No new TerrainSimKind variant — kinds reused.
     for door in [DOOR_NS, DOOR_EW] {
         let Some(def) = terrain_defs.def(&door) else {
             return;
@@ -227,7 +196,6 @@ fn door_and_stair_tiles_emit_through_the_loader_classified_by_kind() {
     };
     let situation = emitted.situation;
 
-    // C4 / C5: the 2 doors (Wall) resolved through the loader/emit path into the WALLS list.
     for door in [DOOR_NS, DOOR_EW] {
         assert!(
             situation.walls.iter().any(|w| w.piece == door),
@@ -238,7 +206,6 @@ fn door_and_stair_tiles_emit_through_the_loader_classified_by_kind() {
             "a door (Wall) must never classify as a Slab (C5)",
         );
     }
-    // C4 / C5: the 4 stairs (Slab) resolved into the SLABS list.
     for stair in [STAIR_NS_UP, STAIR_NS_DOWN, STAIR_EW_UP, STAIR_EW_DOWN] {
         assert!(
             situation.slabs.iter().any(|s| s.piece == stair),

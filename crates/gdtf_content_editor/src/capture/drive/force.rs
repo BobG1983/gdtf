@@ -1,7 +1,3 @@
-//! The env-FORCED overrides (`force_capture_*`) — each applies one `GDTF_EDITOR_*`
-//! selection (mode / terrain kind / zoom / storey view) to the live model before the
-//! settle + shot.
-
 use bevy::prelude::*;
 use gdtf_battle_presenter::{ContextDepth, IsolateView, ViewMode};
 use gdtf_battle_sim::{
@@ -23,13 +19,6 @@ use crate::{
     weapon_form::WeaponDraft,
 };
 
-/// `Update` (in `Editing`, capture-only): FORCE the [`EditorMode`] to the C2.4 [`ForcedMode`]
-/// before the settle / screenshot — so the Screenshot-QA can capture a specific Workbench mode
-/// (`GDTF_EDITOR_MODE=terrain|theme|prefab|gang|armor|injury|sprite|attachment|weapon|melee_weapon`).
-/// No-ops when no mode was forced (the resource is
-/// absent) or the editor's mode already matches. Both borrows are `Option` (state-scoped —
-/// bevy-traps #1); [`set_if_neq`](DetectChangesMut::set_if_neq) keeps an already-matching mode a
-/// no-op (idempotent under the egui multipass re-run).
 pub(in crate::capture) fn force_capture_mode(
     forced: Option<Res<ForcedMode>>,
     mode: Option<ResMut<EditorMode>>,
@@ -40,17 +29,6 @@ pub(in crate::capture) fn force_capture_mode(
     mode.set_if_neq(**forced);
 }
 
-/// `Update` (in `Editing`, capture-only): pre-select the TERRAIN form's kind segment to the
-/// GTW-574 [`ForcedTerrainKind`] before the settle / screenshot — driving the live
-/// [`TerrainDraft`] through the SAME [`set_kind`](TerrainDraft::set_kind) setter the egui
-/// segmented row commits. For the Emplacement kind it ALSO pre-selects the FIRST (sorted)
-/// [`WeaponRegistry`] key when no mounted weapon is selected yet, so the registry-backed
-/// dropdown captures POPULATED with a real weapon name (the AC-7 positive content — egui
-/// closures never run headless, so the screenshot is the in-engine evidence).
-///
-/// No-ops when no kind was forced / the draft is absent (state-scoped — bevy-traps #1);
-/// idempotent — the kind write is skipped once matching, and the weapon pre-select only fills
-/// an EMPTY selection (a real selection is never overwritten).
 pub(in crate::capture) fn force_capture_terrain_kind(
     forced: Option<Res<ForcedTerrainKind>>,
     draft: Option<ResMut<TerrainDraft>>,
@@ -62,8 +40,6 @@ pub(in crate::capture) fn force_capture_terrain_kind(
     if draft.kind() != **forced {
         draft.set_kind(**forced);
     }
-    // Emplacement: fill an empty mounted-weapon selection from the live registry (sorted first
-    // key — the same stable order the dropdown offers), so the combo shows a real weapon.
     if draft.kind() == crate::terrain_form::TerrainKindChoice::Emplacement
         && draft.mounted_weapon().is_none()
         && let Some(registry) = weapons
@@ -76,17 +52,6 @@ pub(in crate::capture) fn force_capture_terrain_kind(
     }
 }
 
-/// `Update` (in `Editing`, capture-only): load the GTW-669 [`ForcedAttachment`]'s named item
-/// into the live [`AttachmentDraft`] from the resolved [`AttachmentRegistry`] — through the SAME
-/// [`load_attachment`](AttachmentDraft::load_attachment) path the ATTACHMENT mode's load
-/// `ComboBox` commits, so the Screenshot-QA can capture a SPECIFIC item's slot + effect rows
-/// (`GDTF_EDITOR_ATTACHMENT=<key>`; the GTW-574 terrain-kind precedent — egui combo closures
-/// never run headless, so the shot is the in-engine evidence).
-///
-/// No-ops when nothing was forced / the draft or registry is absent (state-scoped —
-/// bevy-traps #1) / the key resolves nothing (the sorted-first autoload stands); idempotent —
-/// the load is skipped once the draft already carries the forced key, so it never fights later
-/// edits or the one-shot autoload (which the first forced load ends).
 pub(in crate::capture) fn force_capture_attachment(
     forced: Option<Res<ForcedAttachment>>,
     draft: Option<ResMut<AttachmentDraft>>,
@@ -104,17 +69,6 @@ pub(in crate::capture) fn force_capture_attachment(
     }
 }
 
-/// `Update` (in `Editing`, capture-only): load the GTW-670 [`ForcedWeapon`]'s named weapon
-/// into the live [`WeaponDraft`] from the resolved [`WeaponRegistry`] — through the SAME
-/// [`load_weapon`](WeaponDraft::load_weapon) path the WEAPON mode's load `ComboBox` commits,
-/// so the Screenshot-QA can capture a SPECIFIC weapon's full spec form
-/// (`GDTF_EDITOR_WEAPON=<key>`; the GTW-669 `ForcedAttachment` precedent — egui combo
-/// closures never run headless, so the shot is the in-engine evidence).
-///
-/// No-ops when nothing was forced / the draft or registry is absent (state-scoped —
-/// bevy-traps #1) / the key resolves nothing (the sorted-first autoload stands); idempotent —
-/// the load is skipped once the draft already carries the forced key, so it never fights later
-/// edits or the one-shot autoload (which the first forced load ends).
 pub(in crate::capture) fn force_capture_weapon(
     forced: Option<Res<ForcedWeapon>>,
     draft: Option<ResMut<WeaponDraft>>,
@@ -132,18 +86,6 @@ pub(in crate::capture) fn force_capture_weapon(
     }
 }
 
-/// `Update` (in `Editing`, capture-only): load the GTW-671 [`ForcedMeleeWeapon`]'s named
-/// melee weapon into the live [`MeleeWeaponDraft`] from the resolved [`MeleeWeaponRegistry`]
-/// — through the SAME [`load_melee_weapon`](MeleeWeaponDraft::load_melee_weapon) path the
-/// MELEE mode's load `ComboBox` commits, so the Screenshot-QA can capture a SPECIFIC melee
-/// weapon's full spec form (`GDTF_EDITOR_MELEE_WEAPON=<key>`; the GTW-670 `ForcedWeapon`
-/// precedent — egui combo closures never run headless, so the shot is the in-engine
-/// evidence).
-///
-/// No-ops when nothing was forced / the draft or registry is absent (state-scoped —
-/// bevy-traps #1) / the key resolves nothing (the sorted-first autoload stands); idempotent —
-/// the load is skipped once the draft already carries the forced key, so it never fights later
-/// edits or the one-shot autoload (which the first forced load ends).
 pub(in crate::capture) fn force_capture_melee_weapon(
     forced: Option<Res<ForcedMeleeWeapon>>,
     draft: Option<ResMut<MeleeWeaponDraft>>,
@@ -161,13 +103,6 @@ pub(in crate::capture) fn force_capture_melee_weapon(
     }
 }
 
-/// `Update` (in `Editing`, capture-only): FORCE the preview [`CanvasZoom`] to the C4.11
-/// [`ForcedZoom`] before the settle / screenshot — so a SECOND capture proves the projection-scale
-/// path renders at a non-identity zoom (catches an empty/black viewport at a scaled projection).
-/// No-ops when no zoom was forced (the resource is absent) or the zoom already matches. Both
-/// borrows are `Option` (state-scoped — bevy-traps #1); [`set_if_neq`](DetectChangesMut::set_if_neq)
-/// keeps an already-matching zoom a no-op (idempotent — set-to-target). The
-/// `apply_preview_view` system then drives the camera's `OrthographicProjection::scale` from it.
 pub(in crate::capture) fn force_capture_zoom(
     forced: Option<Res<ForcedZoom>>,
     zoom: Option<ResMut<CanvasZoom>>,
@@ -178,20 +113,6 @@ pub(in crate::capture) fn force_capture_zoom(
     zoom.set_if_neq(**forced);
 }
 
-/// `Update` (in `Editing`, capture-only): FORCE the prefab storey view to the GTW-532 /
-/// GTW-594 [`ForcedView`] variant before the settle / screenshot. No-ops when no view was
-/// forced (the resource is absent); every borrow is `Option` (state-scoped — bevy-traps
-/// #1) and every write is [`set_if_neq`](DetectChangesMut::set_if_neq) (idempotent under
-/// the egui multipass re-run). The `redraw_preview_tiles` system then redraws the storey
-/// stack from the changed resources.
-///
-/// - [`ForcedView::Full`] — the GTW-521 whole-stack capture: [`ViewMode::FullView`] AND
-///   [`IsolateView::Off`] (Isolate WINS over the two-state mode — GTW-594 C3 — so the
-///   full-view capture must lift the editor's Isolate default to show the stack).
-/// - [`ForcedView::Isolate`] — the GTW-594 three-class capture: assert the editor default
-///   (Isolate ON, one onion below) and LIFT the edit storey to the painted UPPER storey
-///   (clamped through the kept level-nav step), so the shot shows authored-here /
-///   exists-below / empty at once.
 pub(in crate::capture) fn force_capture_view(
     forced: Option<Res<ForcedView>>,
     view: Option<ResMut<ViewMode>>,
@@ -216,9 +137,6 @@ pub(in crate::capture) fn force_capture_view(
                 isolate.set_if_neq(IsolateView::On(ContextDepth::new(1)));
             }
             if let (Some(mut edit_level), Some(session)) = (edit_level, session) {
-                // Step (not teleport) to the upper storey through the kept clamp — once the
-                // 2-storey capture grid applies (`drive_capture_grid_size`, chained after
-                // this) the step lands on storey 1; set_if_neq keeps later frames no-ops.
                 let upper =
                     CurrentEditLevel::ground().stepped(LevelStep::up(), session.grid_size());
                 edit_level.set_if_neq(upper);

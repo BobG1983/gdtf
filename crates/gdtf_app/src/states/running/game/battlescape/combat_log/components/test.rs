@@ -1,6 +1,3 @@
-//! Unit tests for the combat-log anim components: the `LogLineFade` three-phase curve,
-//! the `LineSlide` reflow ease, and the `PanelHeightAnim` height ease (GTW-328 slice B).
-
 use std::time::Duration;
 
 use super::{LineSlide, LogLineFade, PanelHeightAnim};
@@ -8,14 +5,10 @@ use crate::states::running::game::battlescape::combat_log::tuning::{
     FadeInSeconds, FadeOutSeconds, LineTtlSeconds,
 };
 
-/// A line that is `f32::EPSILON`-close to `expected` (the float-cmp idiom; clippy `float_cmp`
-/// denies `==` on `f32`). A small slack so the `clamp`/`mul_add` rounding does not flake.
 fn approx(actual: f32, expected: f32) -> bool {
     (actual - expected).abs() < 1e-4
 }
 
-/// Build the three-phase fade for a `ttl`-second line with the given fade-in / fade-out
-/// windows, scaling from full opacity (`1.0`).
 fn fade(ttl: f32, fade_in: f32, fade_out: f32) -> LogLineFade {
     LogLineFade::new(
         LineTtlSeconds::from_secs(ttl),
@@ -25,10 +18,7 @@ fn fade(ttl: f32, fade_in: f32, fade_out: f32) -> LogLineFade {
     )
 }
 
-// ---- LogLineFade — the three-phase fade-in / hold / fade-out curve (GTW-328 slice B). ----
 
-/// On spawn (zero elapsed) a line's alpha is `0` — it FADES IN rather than snapping to full
-/// opacity.
 #[test]
 fn a_fresh_line_starts_transparent_and_fades_in() {
     let f = fade(5.0, 0.2, 1.0);
@@ -39,12 +29,10 @@ fn a_fresh_line_starts_transparent_and_fades_in() {
     );
 }
 
-/// Partway through the fade-IN window the alpha is a partial ramp toward full (here halfway
-/// through a `0.2`s fade-in => ~`0.5`).
 #[test]
 fn mid_fade_in_the_alpha_is_a_partial_ramp_up() {
     let mut f = fade(5.0, 0.2, 1.0);
-    f.advance(Duration::from_millis(100)); // halfway through the 0.2s fade-in
+    f.advance(Duration::from_millis(100)); 
     assert!(
         approx(f.alpha(), 0.5),
         "halfway through fade-in alpha is ~0.5, got {}",
@@ -52,11 +40,10 @@ fn mid_fade_in_the_alpha_is_a_partial_ramp_up() {
     );
 }
 
-/// After the fade-in window and before the fade-out window the line HOLDS at full opacity.
 #[test]
 fn the_hold_phase_is_full_opacity() {
     let mut f = fade(5.0, 0.2, 1.0);
-    f.advance(Duration::from_secs_f32(2.0)); // well past fade-in (0.2), well before fade-out
+    f.advance(Duration::from_secs_f32(2.0)); 
     assert!(
         approx(f.alpha(), 1.0),
         "in the hold phase alpha is full, got {}",
@@ -64,12 +51,9 @@ fn the_hold_phase_is_full_opacity() {
     );
 }
 
-/// Inside the fade-OUT window (the final `fade_out` seconds) the alpha ramps from full toward
-/// `0` (here halfway through the `1.0`s fade-out => ~`0.5`).
 #[test]
 fn mid_fade_out_the_alpha_is_a_partial_ramp_down() {
     let mut f = fade(5.0, 0.2, 1.0);
-    // Fade-out starts at life - fade_out = 4.0s; advance to 4.5s (halfway through the 1.0s tail).
     f.advance(Duration::from_secs_f32(4.5));
     assert!(
         approx(f.alpha(), 0.5),
@@ -78,13 +62,10 @@ fn mid_fade_out_the_alpha_is_a_partial_ramp_down() {
     );
 }
 
-/// Overlapping fade windows (fade-in + fade-out exceed the life) are scaled to FIT — neither
-/// is dropped, and the curve still completes (the fade-out reaches ~0 by end of life).
 #[test]
 fn overlapping_fade_windows_are_scaled_to_fit_the_life() {
-    // 1s life, but 0.8 + 0.8 = 1.6s of fades requested -> scaled to 0.5 + 0.5.
     let mut f = fade(1.0, 0.8, 0.8);
-    f.advance(Duration::from_secs_f32(0.999)); // essentially end of life
+    f.advance(Duration::from_secs_f32(0.999)); 
     assert!(
         f.alpha() < 0.1,
         "with windows scaled to fit, the alpha still fades to ~0 by end of life, got {}",
@@ -92,7 +73,6 @@ fn overlapping_fade_windows_are_scaled_to_fit_the_life() {
     );
 }
 
-/// The clock finishes (signals despawn) the frame its TTL elapses.
 #[test]
 fn the_clock_finishes_at_end_of_life() {
     let mut f = fade(0.5, 0.1, 0.1);
@@ -106,10 +86,7 @@ fn the_clock_finishes_at_end_of_life() {
     );
 }
 
-// ---- LineSlide — the per-line position ease toward the target slot (GTW-328 slice B). ----
 
-/// A fresh slide carries its seeded appear-offset, and easing toward the target (`0`) STRICTLY
-/// SHRINKS it (never snaps) until it settles at exactly `0`.
 #[test]
 fn a_slide_eases_toward_zero_without_snapping() {
     let mut slide = LineSlide::new(20.0);
@@ -127,7 +104,6 @@ fn a_slide_eases_toward_zero_without_snapping() {
         "one ease step shrinks the offset toward 0 without snapping, got {after_one}",
     );
 
-    // Many steps settle it to exactly 0 (the sub-pixel snap).
     for _ in 0..200 {
         slide.ease_toward_target(0.3);
     }
@@ -138,12 +114,10 @@ fn a_slide_eases_toward_zero_without_snapping() {
     );
 }
 
-/// A reflow DISPLACES the offset by the freed height — the survivor holds its old screen
-/// position (a bigger offset) before easing back into the gap.
 #[test]
 fn a_reflow_displaces_the_slide_by_the_freed_height() {
-    let mut slide = LineSlide::new(0.0); // already settled
-    slide.displace(15.0); // a line above was removed; bump by its height
+    let mut slide = LineSlide::new(0.0); 
+    slide.displace(15.0); 
     assert!(
         approx(slide.current(), 15.0),
         "the freed height is added to the offset, got {}",
@@ -151,10 +125,7 @@ fn a_reflow_displaces_the_slide_by_the_freed_height() {
     );
 }
 
-// ---- PanelHeightAnim — the root height ease toward the content height (GTW-328 slice B). ----
 
-/// The panel height GROWS toward a taller target as lines are added (eased, not snapped) and
-/// settles at exactly the target.
 #[test]
 fn the_panel_height_grows_toward_a_taller_target() {
     let mut anim = PanelHeightAnim::new(0.0);
@@ -174,7 +145,6 @@ fn the_panel_height_grows_toward_a_taller_target() {
     );
 }
 
-/// The panel height SHRINKS toward a shorter target as lines are removed (eased, not snapped).
 #[test]
 fn the_panel_height_shrinks_toward_a_shorter_target() {
     let mut anim = PanelHeightAnim::new(100.0);

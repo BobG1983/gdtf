@@ -1,14 +1,3 @@
-//! GTW-582: the unified end-of-`Load` **reference-integrity pass** — one
-//! dangling key per content-graph edge class in a fixture root must each land
-//! as a specific finding in the [`ContentIntegrityReport`] (POSITIVE content
-//! assertions), `Load` must still exit (validation is loud, never fatal), and
-//! the SHIPPED `assets/` graph must validate with ZERO findings (graph
-//! integrity, never magnitudes).
-//!
-//! Both tests drive the REAL `Load` chain over a real `AssetServer`
-//! ([`GdtfLoadTestAppBuilder`]) — no shadow walker, no stubbed registries: the
-//! findings come from the same per-edge check systems the production app runs.
-
 use std::path::PathBuf;
 
 use gdtf_app::test_support::{AppState, app_state};
@@ -17,8 +6,6 @@ use gdtf_assets::{
 };
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until, advance_until_resource_exists};
 
-/// Snapshot the report's findings out of the world (empty when the resource is
-/// absent — the following asserts then fail with an informative empty list).
 fn findings_snapshot(app: &bevy::app::App) -> Vec<ContentFinding> {
     app.world()
         .get_resource::<ContentIntegrityReport>()
@@ -26,15 +13,8 @@ fn findings_snapshot(app: &bevy::app::App) -> Vec<ContentFinding> {
         .unwrap_or_default()
 }
 
-/// Generous SAFETY-NET cap for the real-asset `advance_until` waits gated on an
-/// async asset load resolving — a signal-poll cap, never a timing budget
-/// (GTW-305).
 const LOAD_SAFETY_NET: u32 = 10_000;
 
-/// The fixture root whose authored content dangles ONE reference per edge
-/// class (`tests/fixtures/ref_integrity_root`), materializing only the
-/// overridden content subdirs (the GTW-580 fixture convention; the
-/// un-materialized folders fail closed to empty registries).
 fn ref_integrity_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
@@ -42,9 +22,6 @@ fn ref_integrity_root() -> PathBuf {
         .join("ref_integrity_root")
 }
 
-/// Whether the report carries a [`ContentFinding::DanglingRef`] whose target /
-/// family / scheme match, with `referrer_hint` somewhere in its referrer — the
-/// POSITIVE per-edge assertion shape.
 fn has_dangling(
     findings: &[ContentFinding],
     referrer_hint: &str,
@@ -65,11 +42,6 @@ fn has_dangling(
     })
 }
 
-/// AC-1: over the dangling fixture root, the end-of-`Load` pass reports EVERY
-/// edge class's specific finding — each assertion names the referencing
-/// context, the dangling target, the target family, and (on the gang path)
-/// which key SCHEME failed — and `Load` still exits to Intro-or-beyond (the
-/// GTW-589 transient-Intro lesson; validation never strands the machine).
 #[test]
 #[expect(
     clippy::too_many_lines,
@@ -81,7 +53,6 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
         .starting_in(AppState::Load)
         .build();
 
-    // Signal-poll the pass itself: the publish stamps ContentValidationDone.
     advance_until_resource_exists::<ContentValidationDone>(&mut app, LOAD_SAFETY_NET);
     assert!(
         app.world()
@@ -94,7 +65,6 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
 
     let report = findings_snapshot(&app);
 
-    // (1) situation → gang, by FILE STEM (the gang scheme).
     assert!(
         has_dangling(
             &report,
@@ -105,7 +75,6 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
         ),
         "the missing gang ref must be reported under the FILE-STEM scheme; findings: {report:?}",
     );
-    // (2) situation → member, by roster DISPLAY-NAME (the member scheme).
     assert!(
         has_dangling(
             &report,
@@ -116,7 +85,6 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
         ),
         "the missing member ref must be reported under the DISPLAY-NAME scheme; findings: {report:?}",
     );
-    // (3) gang member → weapon / armor / melee keys.
     for (target, family) in [
         ("ghost_gun", "WeaponRegistry"),
         ("ghost_vest", "ArmorRegistry"),
@@ -134,7 +102,6 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
              findings: {report:?}",
         );
     }
-    // (4) weapon → attachment key (the formerly-silent drop, C3(b)).
     assert!(
         has_dangling(
             &report,
@@ -145,7 +112,6 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
         ),
         "the weapon's dangling attachment key must be reported; findings: {report:?}",
     );
-    // (5) injury weighting → injury key (the warn-skip, now also reported, C3(c)).
     assert!(
         has_dangling(
             &report,
@@ -156,7 +122,6 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
         ),
         "the weighting row's dangling injury key must be reported; findings: {report:?}",
     );
-    // (6) situation → theme UUID.
     assert!(
         has_dangling(
             &report,
@@ -167,7 +132,6 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
         ),
         "the situation's dangling theme UUID must be reported; findings: {report:?}",
     );
-    // (7) situation → terrain UUID (walls).
     assert!(
         has_dangling(
             &report,
@@ -178,7 +142,6 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
         ),
         "the situation's dangling wall terrain UUID must be reported; findings: {report:?}",
     );
-    // (8) situation → field key.
     assert!(
         has_dangling(
             &report,
@@ -189,7 +152,6 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
         ),
         "the situation's dangling field key must be reported; findings: {report:?}",
     );
-    // (9) theme → terrain-def UUIDs (default_floor + palette).
     for target in [
         "00000000-0000-0000-0000-058200000005",
         "00000000-0000-0000-0000-058200000006",
@@ -205,7 +167,6 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
             "the theme's dangling terrain UUID `{target}` must be reported; findings: {report:?}",
         );
     }
-    // (10) prefab → theme UUID agreement + prefab → terrain-def UUID.
     assert!(
         has_dangling(
             &report,
@@ -226,7 +187,6 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
         ),
         "the prefab's dangling placed terrain UUID must be reported; findings: {report:?}",
     );
-    // (11) emplacement terrain def → mounted weapon key (the C1-walk edge).
     assert!(
         has_dangling(
             &report,
@@ -237,9 +197,6 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
         ),
         "the emplacement's dangling mounted-weapon key must be reported; findings: {report:?}",
     );
-    // (12) terrain def → sprite def by graphic_name (the GTW-663 foreign-key
-    // edge; the fixture root materializes no content/sprites, so the authored
-    // `ghost_graphic` key resolves nothing in the fail-closed EMPTY registry).
     assert!(
         has_dangling(
             &report,
@@ -250,8 +207,6 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
         ),
         "the terrain def's dangling graphic_name must be reported; findings: {report:?}",
     );
-    // The CLEAN placement ("Real Member" of fixture_gang) must NOT be reported —
-    // the pass is discriminating, not noisy.
     assert!(
         !has_dangling(
             &report,
@@ -263,8 +218,6 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
         "a resolvable member ref must not be reported; findings: {report:?}",
     );
 
-    // Validation NEVER strands Load: the machine still exits to Intro-or-beyond
-    // (Intro is TRANSIENT under this harness — GTW-589).
     let load_released = advance_until(
         &mut app,
         |app| matches!(app_state(app), AppState::Intro | AppState::Running),
@@ -278,10 +231,6 @@ fn dangling_reference_per_edge_class_is_each_reported_and_load_still_exits() {
     );
 }
 
-/// AC-4: the SHIPPED `assets/` content graph validates with ZERO findings —
-/// pure graph integrity (every authored reference resolves), never a magnitude
-/// pin, so authoring MORE content can never redden it (only a genuinely
-/// dangling reference can).
 #[test]
 fn shipped_content_graph_validates_with_zero_findings() {
     let mut app = GdtfLoadTestAppBuilder::new()

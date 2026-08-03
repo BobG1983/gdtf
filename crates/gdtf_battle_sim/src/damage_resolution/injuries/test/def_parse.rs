@@ -1,13 +1,8 @@
-//! The `.injury.ron` [`InjuryDef`] schema deserialize (C4) — structure-only
-//! assertions per the loader-tests rule.
-
 use super::super::{InjuryDef, InjuryEffect, PostHeal, StatTarget};
 use crate::{armor::InjuryCategory, severity::Severity};
 
 #[test]
 fn injury_def_deserializes_from_the_schema_ron() {
-    // The design-doc schema sample. Structure-only assertions (loader-tests rule:
-    // no pinned tunable magnitudes — assert the SHAPE, not specific weights/amounts).
     let ron = r#"(
         name:         "Lost Eye",
         category:     Head,
@@ -35,7 +30,6 @@ fn injury_def_deserializes_from_the_schema_ron() {
     assert_eq!(def.severity, Severity::Critical);
     assert_eq!(def.post_heal, PostHeal::Deferred);
     assert_eq!(def.effects.len(), 2);
-    // Both effects parsed as Modify on the named stats (structure, not magnitude).
     assert!(matches!(
         def.effects[0],
         InjuryEffect::Modify {
@@ -54,7 +48,6 @@ fn injury_def_deserializes_from_the_schema_ron() {
 
 #[test]
 fn injury_def_post_heal_defaults_to_deferred_when_omitted() {
-    // post_heal is parsed-but-unread (C4): a floor file may omit it entirely.
     let ron = r#"(
         name:         "Scalp Graze",
         category:     Head,

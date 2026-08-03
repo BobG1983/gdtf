@@ -1,16 +1,4 @@
-//! The MELEE tab's CENTRAL spec editor SKELETON (GTW-671 C2) — the full
-//! [`MeleeWeaponSpec`](gdtf_battle_sim::weapon::MeleeWeaponSpec) form, grouped into
-//! collapsible sections (the GTW-670 weapon def-panel shape, with
-//! [`CollapsingHeader`](egui::CollapsingHeader)s defaulting OPEN so a fresh look — and
 //! the A3 capture — shows the whole authored record).
-//!
-//! The section BODIES are the SHARED `egui_shell` widgets
-//! ([`damage_edit`](crate::egui_shell::damage_edit) for the six fields the ranged spec
-//! shares verbatim, [`slots_edit`](crate::egui_shell::slots_edit) for the slot /
-//! attachment lists) plus the melee-only [`fight_modes`](super::fight_modes) rows and
-//! the handling group below; this file owns the grouping skeleton and the two
-//! melee-only handling controls.
-
 use bevy_egui::egui;
 use gdtf_battle_sim::{
     equipment::attachments::AttachmentRegistry,
@@ -26,15 +14,6 @@ use crate::{
     melee_weapon_form::MeleeWeaponDraft,
 };
 
-/// Draw the MELEE-WEAPON-mode CENTRAL spec editor (GTW-671 C2): the five collapsible
-/// groups — the SHARED damage group (one authoring surface with the ranged form),
-/// handling (the melee-only reach drag + the shared shove tag), fight modes (the melee
-/// sibling of the fire-mode rows), slots, and attachments (registry-sourced key combos
-/// — the same shared widgets the ranged form draws). Each change folds through the
-/// matching sim newtype's constructor — the model stays typed end to end (the
-/// attachment / weapon def-panel pattern). NO ranged-only field appears: the melee spec
-/// has no spread / magazine / trajectory / dot / on-death, so the form draws none (the
-/// GTW-671 zero-bleed-through fidelity clause).
 pub(crate) fn def_panel(
     ui: &mut egui::Ui,
     draft: &mut MeleeWeaponDraft,
@@ -78,12 +57,6 @@ pub(crate) fn def_panel(
         });
 }
 
-/// The melee HANDLING group — the `reach` drag and the `shove` tag (GTW-671 C2). The
-/// reach drag clamps to `1..=u16::MAX`: the contract's "min 1 per the default's
-/// semantics" — [`Reach::DEFAULT`] documents `1` (the adjacent-cell strike) as BOTH the
-/// serde-default and the defensible melee minimum, so a zero-reach weapon (which could
-/// strike nothing) is unauthorable via the form. The upper bound is the `u16` type's
-/// own range (no documented tighter bound — the GTW-479 ruling).
 fn handling_group(ui: &mut egui::Ui, spec: &mut MeleeWeaponSpec) {
     ui.horizontal(|ui| {
         ui.label("reach");

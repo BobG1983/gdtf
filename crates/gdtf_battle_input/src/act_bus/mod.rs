@@ -1,5 +1,3 @@
-//! The act-intent data bus and the key/binding surfaces that feed it.
-
 pub mod contextual;
 pub mod cycle;
 pub mod focus_bridge;

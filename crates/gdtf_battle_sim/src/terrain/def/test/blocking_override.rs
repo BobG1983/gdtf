@@ -1,19 +1,4 @@
 //! GTW-587 — the authored per-def blocking OVERRIDES (`blocks_pathing` / `blocks_los`) and
-//! their effect on the REAL pathfinder (`pathable_neighbors`) + REAL shot march
-//! (`march_vector`).
-//!
-//! Each test DERIVES the blocking from a def exactly as battle setup does
-//! ([`derives_path_blocking`] → the `BlocksPathfinding` marker →
-//! [`OccupancyGrid::set_path_blocking`]; [`derives_vision_occlusion`] → the `BlocksVision`
-//! band → [`OccupancyGrid::set_vision_blocking`]) and then drives the SAME query surfaces the
-//! live pathfinder + march read — so the override is proven on the real code paths, not a
-//! stand-in. The three AC2 cases: (a) a pathing-only blocker that is LoS-transparent, (b) a
-//! LoS-only blocker that is walkable, (c) band-limited line-of-sight on a non-cover (`Wall`) kind.
-//!
-//! The kind-default byte-identity (an omitted override derives EXACTLY as pre-GTW-587) is
-//! pinned by the untouched [`derive_blocking`](super::derive_blocking) /
-//! [`derive_vision`](super::derive_vision) suites; this file adds the override-specific cases.
-
 use bevy::math::Vec3;
 
 use super::super::{
@@ -33,14 +18,10 @@ use crate::{
     tuning::{CombatTuning, MoveCosts},
 };
 
-/// A `(cell, level)` key on storey 0.
 fn key(x: i32, y: i32) -> CellLevel {
     CellLevel::new(Cell::new(x, y), Level::new(0))
 }
 
-/// A `Slab` def carrying the given blocking overrides (no tags) — the floor/roof kind, which by
-/// KIND default neither blocks the path nor occludes vision, so the overrides are the sole
-/// driver.
 fn slab_def(blocks_pathing: Option<bool>, blocks_los: Option<LosBlocking>) -> TerrainDef {
     TerrainDef {
         key: TerrainUuid::generate(),
@@ -61,8 +42,6 @@ fn slab_def(blocks_pathing: Option<bool>, blocks_los: Option<LosBlocking>) -> Te
     }
 }
 
-/// A `Wall` def at `band` carrying the given overrides + tags — a non-cover kind that DOES carry
-/// a height band, so `UpToHeightBand` reads the def's own band.
 fn wall_def(
     band: HeightBand,
     tags: Vec<TerrainTag>,
@@ -88,8 +67,6 @@ fn wall_def(
     }
 }
 
-/// Apply a def's DERIVED blocking to `grid` at `at` — the exact pair of writes the setup spawn
-/// loop makes (path marker → path surface; vision band → occluder surface).
 fn apply_derived(grid: &mut OccupancyGrid, def: &TerrainDef, at: CellLevel) {
     if *derives_path_blocking(def) {
         grid.set_path_blocking(at);
@@ -99,20 +76,14 @@ fn apply_derived(grid: &mut OccupancyGrid, def: &TerrainDef, at: CellLevel) {
     }
 }
 
-/// An above-floor z fraction that classifies as a LOW-band round under `tuning`.
 fn low_above(tuning: &CombatTuning) -> f32 {
     *tuning.projectile_band_edges.low_mid * 0.5
 }
 
-/// An above-floor z fraction that classifies as a HIGH-band round under `tuning`.
 fn high_above(tuning: &CombatTuning) -> f32 {
     f32::midpoint(*tuning.projectile_band_edges.mid_high, 1.0)
 }
 
-/// March a flat East ray along row y = 10 at height `above`, from the shooter cell (2, 10)
-/// (skipped as the shooter's own cell) toward the occluder cell (6, 10). Empty cover ledger +
-/// flat surface, so the ONLY thing that can stop the round is the grid's vision-occluder
-/// surface — the clause `blocks_los` drives.
 fn march_row(grid: &OccupancyGrid, tuning: &CombatTuning, above: f32) -> MarchResult {
     let surface = SurfaceGrid::new();
     let cover = CoverLedger::new();
@@ -129,15 +100,11 @@ fn march_row(grid: &OccupancyGrid, tuning: &CombatTuning, above: f32) -> MarchRe
     )
 }
 
-/// Whether the REAL pathfinder edge model yields `target` as a walkable neighbour of `origin`.
 fn walkable(grid: &OccupancyGrid, origin: CellLevel, target: CellLevel) -> bool {
     let floor = FloorCostGrid::new(MoveCosts::default().open, []);
     pathable_neighbors(origin, grid, &floor, MovementCostFactor::IDENTITY).any(|(c, _)| c == target)
 }
 
-/// AC2(a) — a **pathing-only** blocker (a `Slab` with `blocks_pathing: Some(true)`, no
-/// line-of-sight override): the REAL pathfinder refuses to step onto it, yet the REAL march
-/// flies straight through it (LoS-transparent).
 #[test]
 fn pathing_only_blocker_is_los_transparent() {
     let def = slab_def(Some(true), None);
@@ -169,9 +136,6 @@ fn pathing_only_blocker_is_los_transparent() {
     );
 }
 
-/// AC2(b) — a **LoS-only** blocker (a `Slab` with `blocks_los: Some(Full)` + `blocks_pathing:
-/// Some(false)`): the REAL march is occluded by it at every band, yet the REAL pathfinder walks
-/// straight onto it.
 #[test]
 fn los_only_blocker_is_walkable() {
     let def = slab_def(Some(false), Some(LosBlocking::Full));
@@ -204,16 +168,11 @@ fn los_only_blocker_is_walkable() {
     assert_eq!(result.at, occluder, "occluded exactly at the blocker cell");
 }
 
-/// AC2(c) — **band-limited** line-of-sight on a non-cover (`Wall`) kind: `blocks_los:
-/// Some(UpToHeightBand)` on a LOW-band wall occludes a LOW round but lets a HIGH round sail over
-/// — and the override genuinely CHANGES the march, since the same wall WITHOUT the override
-/// (`Wall` kind default → `Full`) would occlude the HIGH round too.
 #[test]
 fn band_limited_los_on_wall_lets_high_round_over() {
     let tuning = CombatTuning::default();
     let occluder = key(6, 10);
 
-    // WITH the override: a Low-band wall occludes only up to Low.
     let limited = wall_def(
         HeightBand::Low,
         Vec::new(),
@@ -238,8 +197,6 @@ fn band_limited_los_on_wall_lets_high_round_over() {
         "AC2(c): a HIGH round sails OVER the band-limited LoS blocker",
     );
 
-    // WITHOUT the override: the same wall's kind default (Full) occludes the HIGH round — proving
-    // the override is what lowered the occlusion, not the kind.
     let default_wall = wall_def(HeightBand::Low, Vec::new(), None, None);
     assert_eq!(
         derives_vision_occlusion(&default_wall),
@@ -255,13 +212,9 @@ fn band_limited_los_on_wall_lets_high_round_over() {
     );
 }
 
-/// The override WINS outright over the additive tags (GTW-587): `blocks_pathing: Some(false)`
-/// beats a `BlocksPathfinding` tag, and `blocks_los: Some(None)` beats a `BlocksVision` tag —
-/// the only way to REMOVE a blocking a tag/kind would otherwise force.
 #[test]
 fn override_beats_tags() {
     let path_off = slab_def(Some(false), None);
-    // Re-author with the tag present but the override forcing walkable.
     let mut tagged_path = path_off;
     tagged_path.tags = vec![TerrainTag::BlocksPathfinding];
     assert!(

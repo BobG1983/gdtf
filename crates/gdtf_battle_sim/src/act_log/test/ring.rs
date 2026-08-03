@@ -1,6 +1,3 @@
-//! The ring's own mechanics: sequence assignment, the non-destructive cursor read, and
-//! capacity overflow (GTW-727 C2 / C7 / C8).
-
 use bevy::prelude::Entity;
 
 use crate::{
@@ -8,7 +5,6 @@ use crate::{
     ganger::Faction,
 };
 
-/// A cheap distinguishable deed — the turn boundary, whose payload is one `Faction`.
 fn beat(gang: u8) -> RecordedAct {
     RecordedAct::new(
         Entity::PLACEHOLDER,
@@ -19,8 +15,6 @@ fn beat(gang: u8) -> RecordedAct {
     )
 }
 
-/// Sequence numbers start at zero and increase by exactly one per append, so a consumer's
-/// cursor arithmetic (gap size, catch-up distance) is plain subtraction.
 #[test]
 fn appending_assigns_consecutive_sequence_numbers_from_zero() {
     let mut log = ActLog::default();
@@ -42,8 +36,6 @@ fn appending_assigns_consecutive_sequence_numbers_from_zero() {
     );
 }
 
-/// Reading from a cursor does NOT consume: two independent cursors must be able to walk
-/// the same buffer without either starving the other (C8).
 #[test]
 fn since_is_non_destructive_so_two_cursors_coexist() {
     let mut log = ActLog::default();
@@ -76,8 +68,6 @@ fn since_is_non_destructive_so_two_cursors_coexist() {
     );
 }
 
-/// Overflow DROPS the oldest entry and counts it — it never stalls the writer, never
-/// coalesces, and never blocks (C7). This is what keeps the sim free of back-pressure.
 #[test]
 fn capacity_drops_oldest_and_counts() {
     let mut log = ActLog::new(ActLogCapacity::new(3));
@@ -110,8 +100,6 @@ fn capacity_drops_oldest_and_counts() {
     );
 }
 
-/// An empty log reports its head as its oldest sequence, so "caught up" and "nothing
-/// retained" agree rather than disagreeing by one.
 #[test]
 fn an_empty_log_reports_head_as_its_oldest_sequence() {
     let log = ActLog::default();

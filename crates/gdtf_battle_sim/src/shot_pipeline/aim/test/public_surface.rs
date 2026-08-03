@@ -1,8 +1,3 @@
-//! Public-surface composer tests — both composers are reachable through the
-//! crate's public re-exports with zero-pixel outputs (AC6), and the `stable` tag
-//! makes a weapon steadier facing an empty cell yet equal under suitable cover
-//! (AC5 / GTW-199).
-
 use crate::{
     aim::{cone_for, stability_for, test::support::*},
     cone::PriorShots,
@@ -13,16 +8,8 @@ use crate::{
     weapon::Stable,
 };
 
-/// AC6 — both composers are the public model methods (the HUD-shared callable
-/// surface) and carry zero pixels: exercise them through the public crate API
-/// as a library caller would, asserting finite angular / dimensionless outputs
-/// (a `ConeAngle` is radians, a `ConeMult` dimensionless — never a pixel).
 #[test]
 fn composers_are_the_public_library_surface_with_zero_pixels() {
-    // Reach them via the crate's public concern-pathed surface (`crate::aim`,
-    // the root-lifted module — GTW-628 deleted the flat crate-root names),
-    // exactly as the HUD / fire() caller would (proving they are the shared
-    // public surface).
     use crate::aim::{Shooter as PubShooter, cone_for as pub_cone_for, stability_for as pub_stab};
 
     let tuning = CombatTuning::default();
@@ -36,14 +23,12 @@ fn composers_are_the_public_library_surface_with_zero_pixels() {
         aiming:     &aiming,
         position:   &position,
         facing:     &facing,
-        // The public-surface probe uses an un-suppressed shooter (GTW-526 identity).
         suppressed: None,
     };
     let wpn = weapon(0.2, 0.1);
     let mode = wpn.fire_mode.single();
     let ledger = CoverLedger::new();
 
-    // The GTW-573 StabilityTerms bundle, reached through the public re-export too.
     let (cone_mult, recoil_growth) = pub_stab(&shooter, weapon_terms(&wpn), &ledger, &tuning);
     let theta = pub_cone_for(
         &shooter,
@@ -55,7 +40,6 @@ fn composers_are_the_public_library_surface_with_zero_pixels() {
         &tuning,
     );
 
-    // Angular / dimensionless outputs, all finite — no pixel anywhere.
     assert!(
         (*cone_mult).is_finite(),
         "cone_mult is dimensionless, finite"
@@ -67,25 +51,15 @@ fn composers_are_the_public_library_surface_with_zero_pixels() {
     assert!((*theta).is_finite(), "θ_cone is an angle (radians), finite");
 }
 
-/// AC5 (GTW-199) — a STABLE weapon yields a strictly steadier `stability_for`
-/// (lower `ConeMult`) and a strictly narrower `cone_for` than a non-stable one
-/// when BOTH face an EMPTY cell (the stable tag engages the brace
-/// unconditionally; the non-stable weapon gets no brace) — and the two are EQUAL
-/// when both face cover that suits the stance (the brace already engaged for
-/// both). Two weapons differ ONLY in the `stable` tag. Relations only.
 #[test]
 fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
     let tuning = CombatTuning::default();
-    // Standing's brace gate is HIGH (resolution.md §1a).
     let state = ShooterState::new(7, 7, 0, StanceKind::Standing, false, Direction::East);
     let shooter = state.as_shooter();
     let stable_wpn = weapon_tagged(0.2, 0.1, true);
     let plain_wpn = weapon_tagged(0.2, 0.1, false);
     let mode = stable_wpn.fire_mode.single();
     let prior = PriorShots::first();
-    // The un-terrain-braced stability read this test repeats four times — a local
-    // closure keeps the call sites terse (every non-`stable` term stays at its
-    // GTW-573 zero-identity default, since no fixture weapon carries one).
     let stab = |stable: Stable, cover: &CoverLedger| {
         stability_for(
             &shooter,
@@ -98,7 +72,6 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
         )
     };
 
-    // ---- Facing an EMPTY cell: stable braces, non-stable does not. ----
     let empty = CoverLedger::new();
 
     let (stable_cone_mult, _) = stab(stable_wpn.stable, &empty);
@@ -137,7 +110,6 @@ fn stable_weapon_is_steadier_than_non_stable_facing_empty_equal_under_cover() {
         *plain_theta,
     );
 
-    // ---- Facing cover that SUITS the stance (HIGH wall): both brace, EQUAL. ----
     let under_cover = ledger_with_faced_cover(&shooter, cover_entry(HeightBand::High));
 
     let (stable_braced_mult, _) = stab(stable_wpn.stable, &under_cover);

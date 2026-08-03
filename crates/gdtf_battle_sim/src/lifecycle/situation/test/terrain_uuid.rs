@@ -1,20 +1,8 @@
-//! GTW-491 (T07a) — `setup_battle` resolves a [`CoverSpawn`] / [`SlabSpawn`] whose `piece`
-//! is a [`TerrainUuid`] against a [`TerrainDefRegistry`], seeding the correct
-//! [`CoverEntry`](crate::cover::CoverEntry) stats + occupancy [`TerrainKind`] (C1), and the
-//! NET-NEW presenter-fact spawns — a WALL entity now carries a [`TerrainGraphicKey`] and a
-//! SLAB entity carries the optional [`FootfallSound`] (C4).
-//!
-//! Every test drives the REAL [`setup_battle`] path end-to-end (no reimplementation) and is
 //! pin-discriminating, asserting the def's authored kind / presence — never a balance
-//! magnitude (the brittle-test rule).
-
 use bevy::asset::uuid::Uuid;
 
 use super::support::*;
 
-/// A wall [`TerrainDef`] under the given UUID, carrying a Wall sim-kind + a Wall presenter
-/// graphic (the NET-NEW wall-graphic fact). Arbitrary stats — the tests assert KIND /
-/// presence, never magnitudes.
 fn wall_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
     TerrainDef {
         key,
@@ -36,8 +24,6 @@ fn wall_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
     }
 }
 
-/// A slab [`TerrainDef`] under the given UUID, carrying a Slab sim-kind + a Slab presenter
-/// graphic and an OPTIONAL footfall.
 fn slab_def(key: TerrainUuid, graphic: &str, footfall: Option<&str>) -> TerrainDef {
     TerrainDef {
         key,
@@ -59,17 +45,6 @@ fn slab_def(key: TerrainUuid, graphic: &str, footfall: Option<&str>) -> TerrainD
     }
 }
 
-/// C1 (positive, pin-discriminating) — `setup_battle` resolves a `CoverSpawn` whose `piece`
-/// is a [`TerrainUuid`] against a [`TerrainDefRegistry`], seeding the correct
-/// [`CoverEntry`](crate::cover::CoverEntry) (the def's HP/band/armor) into the
-/// [`CoverLedger`](crate::cover::CoverLedger) AND the def-variant-derived occupancy
-/// [`TerrainKind::Wall`] into the [`OccupancyGrid`].
-///
-/// Pin-discriminating: the def is a `Wall` sim-kind, so its occupancy kind reads `Wall`
-/// (re-deriving from list membership would also read `Wall` here — the cross-list C2 pin in
-/// `occupancy_kind.rs` discriminates that). The `CoverEntry` HP/band are read back from the
-/// ledger and compared to the def's OWN authored values (resolved through the real path), so
-/// a wrong-UUID resolution (different def, or none) would mismatch.
 #[test]
 fn cover_uuid_resolves_against_def_registry_seeding_entry_and_kind() {
     let wall_at = key(2, 3, 0);
@@ -92,8 +67,6 @@ fn cover_uuid_resolves_against_def_registry_seeding_entry_and_kind() {
     };
     let world: &mut World = app.world_mut();
 
-    // The CoverLedger holds the wall cell, seeded with the DEF's HP ceiling + band (resolved
-    // through the real path) — proving the UUID resolved to THIS def, not a default/empty.
     let ledger = world.get_resource::<CoverLedger>();
     assert!(ledger.is_some(), "setup must insert the CoverLedger");
     let Some(ledger) = ledger else {
@@ -118,7 +91,6 @@ fn cover_uuid_resolves_against_def_registry_seeding_entry_and_kind() {
         "the seeded CoverEntry band must equal the resolved def's authored Wall band",
     );
 
-    // The occupancy grid reads the def-variant-derived TerrainKind::Wall for the wall cell.
     let grid = world.get_resource::<OccupancyGrid>();
     let Some(grid) = grid else {
         return;
@@ -130,15 +102,6 @@ fn cover_uuid_resolves_against_def_registry_seeding_entry_and_kind() {
     );
 }
 
-/// C4 (NET-NEW presenter fact, pin-discriminating) — a spawned WALL terrain entity now
-/// carries a [`TerrainGraphicKey`] derived from the def's `presenter_kind.graphic_name` (on
-/// the OLD model a Wall entity carried NO graphic), and a spawned SLAB entity carries the
-/// optional [`FootfallSound`] when the def names one.
-///
-/// Pin-discriminating: the assertion is on the wall entity carrying SOME graphic equal to the
-/// def's authored graphic name — a regression that stopped attaching a graphic to walls (the
-/// old behaviour) reds the first assertion; a regression that dropped the slab footfall reds
-/// the second.
 #[test]
 fn wall_entity_carries_graphic_and_slab_carries_footfall() {
     let wall_at = key(4, 5, 0);
@@ -171,8 +134,6 @@ fn wall_entity_carries_graphic_and_slab_carries_footfall() {
     };
     let world: &mut World = app.world_mut();
 
-    // Find the WALL terrain entity (by cell + Wall piece kind) and assert it carries the
-    // def's graphic — the GTW-491 NET-NEW fact (a wall had no graphic on the old model).
     let mut wall_query =
         world.query::<(&TerrainCell, &TerrainPieceKind, Option<&TerrainGraphicKey>)>();
     let wall_graphic = wall_query
@@ -186,8 +147,6 @@ fn wall_entity_carries_graphic_and_slab_carries_footfall() {
          wall carried NO graphic on the old model)",
     );
 
-    // Find the SLAB terrain entity (by cell + Slab piece kind) and assert it carries the
-    // def's optional footfall.
     let mut slab_query = world.query::<(&TerrainCell, &TerrainPieceKind, Option<&FootfallSound>)>();
     let slab_footfall = slab_query
         .iter(world)
@@ -200,19 +159,12 @@ fn wall_entity_carries_graphic_and_slab_carries_footfall() {
     );
 }
 
-/// A slab [`TerrainDef`] carrying an EXPLICIT [`BlocksPathfinding`](TerrainTag) tag — the
-/// GTW-501 C1 opt-in that adds path-blocking to an otherwise-open slab (a barricade slab).
 fn blocking_slab_def(key: TerrainUuid, graphic: &str) -> TerrainDef {
     let mut def = slab_def(key, graphic, None);
     def.tags = vec![TerrainTag::BlocksPathfinding];
     def
 }
 
-/// GTW-501 C1/D2 (positive + discriminating) — `setup_battle` attaches the
-/// [`BlocksPathfinding`] marker derived from each piece's def: a `Wall` gets it (kind
-/// default → zero regression), a plain `Slab` does NOT, and a `Slab` whose def carries an
-/// explicit `BlocksPathfinding` tag DOES (the C1 opt-in). Drives the REAL spawn path
-/// end-to-end (`run_setup_with`); asserts marker PRESENCE/ABSENCE on the spawned entities.
 #[test]
 fn spawned_entities_carry_blocks_pathfinding_per_def() {
     let wall_at = key(4, 5, 0);
@@ -253,8 +205,6 @@ fn spawned_entities_carry_blocks_pathfinding_per_def() {
     };
     let world: &mut World = app.world_mut();
 
-    // Whether the terrain entity at `at` carries the BlocksPathfinding marker — a fresh
-    // query per call so the closure does not hold a borrow across `world` uses.
     let has_marker = |world: &mut World, at: CellLevel| -> Option<bool> {
         let mut q = world.query::<(&TerrainCell, Option<&BlocksPathfinding>)>();
         q.iter(world)
