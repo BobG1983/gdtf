@@ -1,10 +1,10 @@
-//! Markers and kinds for terrain entities.
+//! Live terrain entity components.
 
 use bevy::prelude::{Component, Deref};
 
 use crate::{cover::HeightBand, metric::CellLevel};
 
-/// Cell occupied by this terrain piece.
+/// Cell occupied by this terrain entity.
 #[derive(Deref, Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TerrainCell(CellLevel);
 
@@ -16,34 +16,34 @@ impl TerrainCell {
     }
 }
 
-/// Marker: this piece can be braced against.
+/// Marker: this slab braces a stair below.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct TerrainBrace;
 
-/// Marker: this piece blocks pathfinding.
+/// Marker: blocks pathfinding while present.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct BlocksPathfinding;
 
-/// Vision is blocked up to this height band.
+/// Blocks vision up to a height band.
 #[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BlocksVision(HeightBand);
 
 impl BlocksVision {
-    /// Wrap a band.
+    /// Wrap a height band.
     #[must_use]
     pub const fn new(band: HeightBand) -> Self {
         Self(band)
     }
 }
 
-/// Kind of authored terrain piece.
+/// Runtime kind of a terrain piece entity.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TerrainPieceKind {
-    /// Solid wall.
+    /// Full wall.
     Wall,
-    /// Destructible cover.
+    /// Partial cover.
     Cover,
-    /// Walkable slab / floor.
+    /// Floor slab.
     Slab,
     /// Weapon emplacement.
     Emplacement,

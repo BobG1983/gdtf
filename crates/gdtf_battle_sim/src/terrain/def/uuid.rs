@@ -1,4 +1,4 @@
-//! Stable UUID keys for terrain pieces.
+//! Terrain piece content key.
 
 use bevy::{asset::uuid::Uuid, prelude::Deref, reflect::TypePath};
 use serde::{Deserialize, Serialize};
@@ -37,7 +37,7 @@ impl TerrainUuid {
         Self(Uuid::new_v4())
     }
 
-    /// Deterministic key from a legacy string name.
+    /// Deterministic key from a legacy name string.
     #[must_use]
     pub fn from_legacy_name(name: &TerrainName) -> Self {
         Self(Uuid::from_u128(*fnv1a64_u128(name.as_bytes())))
