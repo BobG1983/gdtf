@@ -1,3 +1,5 @@
+//! RON asset loading, hot-reload resources, content families, and save helpers.
+
 mod asset;
 mod error;
 mod ext;
