@@ -1,3 +1,5 @@
+//! Raw line-of-sight probes between an observer and a target.
+
 use bevy::{
     math::Vec2,
     prelude::{Component, Deref, Entity},
@@ -14,41 +16,53 @@ use crate::{
     tuning::CombatTuning,
 };
 
+/// Lateral eye shift used when peeking around cover.
 #[derive(Component, Deref, Debug, Clone, Copy, PartialEq, Default)]
 pub struct PeekOffset(Vec2);
 
 impl PeekOffset {
-            #[must_use]
+    #[must_use]
     pub const fn new(displacement: Vec2) -> Self {
         Self(displacement)
     }
 }
 
+/// Observer view for an LOS probe.
 #[derive(Debug, Clone, Copy)]
 pub struct Observer<'a> {
-        pub position:         &'a Position,
-            pub stance:           &'a Stance,
-            pub facing:           &'a Facing,
-                        pub stair_eye_offset: StairEyeOffset,
-                pub peek_offset:      PeekOffset,
+    /// Observer position.
+    pub position: &'a Position,
+    /// Observer stance.
+    pub stance: &'a Stance,
+    /// Observer facing.
+    pub facing: &'a Facing,
+    /// Extra eye height when standing on stairs.
+    pub stair_eye_offset: StairEyeOffset,
+    /// Optional peek displacement.
+    pub peek_offset: PeekOffset,
 }
 
+/// Target view for an LOS probe.
 #[derive(Debug, Clone, Copy)]
 pub struct Target<'a> {
-        pub position: &'a Position,
-                pub stance:   &'a Stance,
+    /// Target position.
+    pub position: &'a Position,
+    /// Target stance.
+    pub stance: &'a Stance,
 }
 
+/// Whether the probe found a clear line of sight.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Sighted(bool);
 
 impl Sighted {
-        #[must_use]
+    #[must_use]
     pub const fn new(sighted: bool) -> Self {
         Self(sighted)
     }
 }
 
+/// True when a ray from the observer's eye to the target aim point is unblocked.
 #[must_use]
 pub fn has_los(
     from: &Observer,
@@ -85,6 +99,7 @@ pub fn has_los(
     is_clear(&result, target_cell, eye, aim)
 }
 
+/// Same as [`has_los`] with an explicit peek offset applied to the observer.
 #[must_use]
 #[expect(
     clippy::too_many_arguments,
@@ -109,6 +124,7 @@ pub fn has_los_peeking(
     has_los(&peeking, to, occupancy, surface, cover, tuning, is_dead)
 }
 
+/// World position of the observer's eye.
 pub(super) fn eye_anchor(observer: &Observer, tuning: &CombatTuning) -> SimPos {
     let (cell, level) = observer.position.split();
     let center = cell_center(cell, level);
@@ -133,6 +149,7 @@ pub(super) fn eye_anchor(observer: &Observer, tuning: &CombatTuning) -> SimPos {
     SimPos::new(eye_x, eye_y, base_z + stair_z)
 }
 
+/// World position of the aim point on the target.
 pub(super) fn aim_anchor(
     target: &Target,
     occupancy: &OccupancyGrid,
