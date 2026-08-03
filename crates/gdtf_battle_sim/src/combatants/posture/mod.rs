@@ -1,3 +1,5 @@
+//! Change stance, facing, and aiming (with TU cost).
+
 #[cfg(test)]
 mod test;
 mod verbs;
