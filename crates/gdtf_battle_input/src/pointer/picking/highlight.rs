@@ -1,3 +1,5 @@
+//! Emit cell highlight requests from the inspect target.
+
 use bevy::prelude::*;
 use gdtf_battle_presenter::{CellVisibility, HighlightRequest, cell_squad_visible};
 use gdtf_battle_sim::{
@@ -8,6 +10,7 @@ use gdtf_battle_sim::{
 
 use crate::picking::hovered::InspectTarget;
 
+/// Write a highlight request for the hovered cell when it is blocked or a visible occupant.
 pub fn emit_highlight_request(
     target: Res<InspectTarget>,
     grid: Option<Res<OccupancyGrid>>,

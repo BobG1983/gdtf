@@ -1,10 +1,13 @@
-//! [`Editing`](EditorState::Editing) where the authoring scene lives.
+//! High-level editor app states.
 
 use bevy::prelude::*;
 
+/// Load vs editing lifecycle for the map editor.
 #[derive(States, Default, Debug, Clone, Eq, PartialEq, Hash)]
 pub enum EditorState {
-                #[default]
+    /// Asset / registry load in progress.
+    #[default]
     Load,
-        Editing,
+    /// Authoring scene is live.
+    Editing,
 }

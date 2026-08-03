@@ -1,13 +1,17 @@
+//! Map editor application entry wrapper.
+
 use bevy::{asset::AssetPlugin, prelude::*};
 use bevy_egui::EguiPlugin;
 use gdtf_assets::WORKSPACE_ASSETS_ROOT;
 
 use crate::{capture::EditorCapturePlugin, plugin::MapEditorPlugin};
 
+/// Owned Bevy app configured for the content editor.
 pub struct MapEditorApp(App);
 
 impl MapEditorApp {
-        #[must_use]
+    /// Build a new editor app with default plugins and assets root.
+    #[must_use]
     pub fn new() -> Self {
         let mut app = App::new();
         app.add_plugins(DefaultPlugins.set(AssetPlugin {
@@ -23,7 +27,8 @@ impl MapEditorApp {
         Self(app)
     }
 
-        pub fn run(mut self) {
+    /// Run the app until exit.
+    pub fn run(mut self) {
         self.0.run();
     }
 }
