@@ -7,26 +7,26 @@ resolver = "3"
 
 # Single dependency home for shared, pinned third-party crates. Crates consume
 # these with `pkg = { workspace = true }` so versions stay aligned across the
-# workspace. `ron` + `serde` arrive here for the data-driven theme (GTW-117);
-# later asset/config tickets (e.g. GTW-136) reuse these — they do NOT re-add.
+# workspace. `ron` + `serde` arrive here for the data-driven theme; later
+# asset/config work reuses these — it does NOT re-add them.
 [workspace.dependencies]
 ron = "0.12.1"
 serde = { version = "1.0.228", features = ["derive"] }
 # `default-features = false, features = ["alloc"]` keeps WeightedIndex + the uniform
 # distributions the sim draws through, while DISABLING `std_rng`/`sys_rng`/`thread_rng`
 # (and their `getrandom`/OsRng entropy) — so `rand::rng()` / `OsRng` are unnameable in
-# sim source by construction, hardening the GTW-14 entropy boundary (the scan is the
+# sim source by construction, hardening the entropy boundary (the scan is the
 # backstop; bevy_math still pulls rand's entropy features transitively, which is fine).
 rand = { version = "0.10", default-features = false, features = ["alloc"] }
-# Portable, IETF-test-vector-pinned ChaCha12 RNG used as the per-subsystem RNG type
-# (GTW-14). This is the rand-family ChaCha (rand_core 0.10 impls) — the portable
+# Portable, IETF-test-vector-pinned ChaCha12 RNG used as the per-subsystem RNG type.
+# This is the rand-family ChaCha (rand_core 0.10 impls) — the portable
 # replacement for `StdRng` (documented non-portable across rand releases). Named in
 # gdtf_battle_sim source so each stream wraps a private `rand_chacha::ChaCha12Rng`.
 rand_chacha = "0.10"
-# Top-down 2D project: drop Bevy's `3d` default profile (GTW-398).
+# Top-down 2D project: drop Bevy's `3d` default profile.
 bevy = { version = "0.19.0", default-features = false, features = ["2d", "ui", "audio"] }
 # Bevy's derive-macro crate ALONE (the `Deref`/`DerefMut` derives) — no engine, no
-# ECS. `gdtf_qa_protocol` (GTW-734) is the bevy-FREE wire-contract crate: it needs the
+# ECS. `gdtf_qa_protocol` is the bevy-FREE wire-contract crate: it needs the
 # house-style derived `Deref` for its newtypes but must NOT pull the Bevy engine, so it
 # takes this proc-macro crate directly (already in `Cargo.lock` as a transitive of
 # `bevy`; this makes it a direct edge for that one crate). Pinned to the workspace Bevy
@@ -114,7 +114,7 @@ cast_possible_truncation  = "allow" # Piercing charges, HP — small non-negativ
 implicit_hasher           = "allow" # Bevy system fns take Local<HashSet<_>> — can't be generic over BuildHasher (trait can't infer S at registration)
 
 [workspace.lints.rustdoc]
-# GTW-929: the WHOLE rustdoc group is fatal, not just the two link lints below.
+# The WHOLE rustdoc group is fatal, not just the two link lints below.
 # Before this, those two were the only rustdoc lints that could fail a doc run, so
 # `cargo doc --workspace --no-deps` and `cargo doc-full` exited 0 no matter how many
 # other rustdoc warnings piled up — and they piled up unobserved (24 → 32 → 37
@@ -125,8 +125,8 @@ implicit_hasher           = "allow" # Bevy system fns take Local<HashSet<_>> —
 # `missing_crate_level_docs`, `unescaped_backticks`); a census with the whole group
 # on measured ZERO firings from those three, so the promotion costs no cleanup.
 # Setting the level here rather than via RUSTDOCFLAGS covers BOTH doc runs by
-# construction, so the two cannot drift apart the way the alias flags did (GTW-790,
-# GTW-877). Note this reaches rustdoc LINTS only — cargo's own
+# construction, so the two cannot drift apart the way the alias flags did.
+# Note this reaches rustdoc LINTS only — cargo's own
 # "output filename collision" warning is not a lint and no level touches it; that
 # one is fixed at its source by `doc = false` on the content-editor bin target.
 all = { level = "deny", priority = -1 }
