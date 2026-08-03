@@ -1,3 +1,5 @@
+//! Public pathfinding entry points: find a path and list reachable cells.
+
 use bevy::prelude::Entity;
 
 use super::{
@@ -16,6 +18,7 @@ use crate::{
     visibility::FactionRelation,
 };
 
+/// Minimum per-step move cost used by the heuristic.
 pub const MIN_MOVE_COST: MoveCost = MoveCost::new(4);
 
 fn chebyshev_heuristic(from: CellLevel, goal: CellLevel) -> PathCost {
@@ -25,6 +28,11 @@ fn chebyshev_heuristic(from: CellLevel, goal: CellLevel) -> PathCost {
     PathCost::new(steps * u32::from(*MIN_MOVE_COST))
 }
 
+/// A* path from `start` to `goal` on the occupancy + vertical-link graph.
+///
+/// # Errors
+///
+/// Returns [`PathBlocked`] when no route reaches `goal` under the mover's costs and planning rules.
 #[expect(
     clippy::too_many_arguments,
     reason = "the route search reads five borrowed grids (occupancy / links / tuning / floor \
@@ -33,11 +41,6 @@ fn chebyshev_heuristic(from: CellLevel, goal: CellLevel) -> PathCost {
               needs, and bundling them into an opaque struct would hide the real inputs (the \
               SearchGrids bundle is the internal form; the public entry point lists its reads)"
 )]
-/// A* path from `start` to `goal` on the occupancy + vertical-link graph.
-///
-/// # Errors
-///
-/// Returns [`PathBlocked`] when no route reaches `goal` under the mover's costs and planning rules.
 pub fn find_path<R>(
     start: CellLevel,
     goal: CellLevel,
@@ -80,6 +83,7 @@ where
     Ok(Path::new(cells, steps, total))
 }
 
+/// All cells reachable from `start` within the TU budget.
 #[must_use]
 #[expect(
     clippy::too_many_arguments,
