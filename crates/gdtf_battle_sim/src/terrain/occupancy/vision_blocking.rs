@@ -1,3 +1,5 @@
+//! Project entity BlocksVision components onto the occupancy grid.
+
 use bevy::{
     ecs::{entity::Entity, system::SystemParam},
     platform::collections::HashMap,
@@ -11,33 +13,39 @@ use crate::{
     terrain::entity::{BlocksVision, TerrainCell},
 };
 
+/// Filter for vision-blocking entities that were added or changed.
 pub type VisionOccluderChanged = Or<(Added<BlocksVision>, Changed<BlocksVision>)>;
 
+/// Map of cells that occlude vision, with their height band.
 #[derive(Deref, Debug, Clone, Default, PartialEq, Eq)]
 pub struct VisionBlocking(HashMap<CellLevel, HeightBand>);
 
 impl VisionBlocking {
-        #[must_use]
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
-                    pub fn insert(&mut self, cell_level: CellLevel, band: HeightBand) {
+    /// Set the occluder band for a cell.
+    pub fn insert(&mut self, cell_level: CellLevel, band: HeightBand) {
         self.0.insert(cell_level, band);
     }
 
-                pub fn remove(&mut self, cell_level: &CellLevel) {
+    /// Remove the occluder at a cell.
+    pub fn remove(&mut self, cell_level: &CellLevel) {
         self.0.remove(cell_level);
     }
 }
 
+/// System param for changed/removed vision-blocking entities.
 #[derive(SystemParam)]
 pub struct VisionBlockingChanges<'w, 's> {
-                changed:
+    changed:
         Query<'w, 's, (Entity, &'static TerrainCell, &'static BlocksVision), VisionOccluderChanged>,
-            removed: RemovedComponents<'w, 's, BlocksVision>,
+    removed: RemovedComponents<'w, 's, BlocksVision>,
 }
 
+/// Keep the occupancy grid's vision-blocking map in sync with entity components.
 pub fn project_vision_blocking(
     mut grid: ResMut<OccupancyGrid>,
     mut changes: VisionBlockingChanges,
