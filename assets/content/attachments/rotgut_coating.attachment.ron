@@ -1,9 +1,9 @@
 // Rotgut coating — a toxic coating that OVERRIDES the weapon's emitted damage type to Chem
-// (a matchup-wheel re-key). GTW-549 data-driven attachment ITEM (the grimdark "RotgutCoating"
+// (a matchup-wheel re-key). Data-driven attachment ITEM (the grimdark "RotgutCoating"
 // tag). Referenced by a weapon BY KEY in its `attachments:` list; applied post-spawn.
 (
     display_name: "Rotgut Coating",
-    slot: Muzzle,  // GTW-554: a bore-applied coating (doses each round as it leaves) — the Muzzle slot
+    slot: Muzzle,  // a bore-applied coating (doses each round as it leaves) — the Muzzle slot
     effects: [
         DamageTypeOverride(Chem),  // re-key the weapon's emitted damage type to Chem
     ],
