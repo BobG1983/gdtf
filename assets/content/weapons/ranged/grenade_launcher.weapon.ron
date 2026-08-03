@@ -1,11 +1,11 @@
-// Grenade launcher — a shoulder-slung, magazine-fed launcher that LOBS its charge in an arc
-// (GTW-546, child GTW-41d). Unlike the flat-firing frag_launcher, `trajectory: Arc` sends the
+// Grenade launcher — a shoulder-slung, magazine-fed launcher that LOBS its charge in an arc.
+// Unlike the flat-firing frag_launcher, `trajectory: Arc` sends the
 // round over a parabola: over walls / cover onto a target cell, blocked only by an intact roof
 // (a hole / window lets it drop through). On landing it fans a radius-1 Blast — everyone in the
 // ring is torn (true friendly fire — resolution.md §2). A 6-round magazine feeds repeated lobs.
 //
 // The single `Single` fire mode carries the AoE template (`hit_type: Blast(radius: 1)`) the
-// throw dispatch reads at the arc's landing (GTW-541 resolver). `trajectory: Arc` makes it a
+// throw dispatch reads at the arc's landing. `trajectory: Arc` makes it a
 // blind lob — no line-of-sight gate. Its cone/accuracy fields satisfy serde but are UNUSED by
 // the deterministic arc throw (no cone sample).
 (
@@ -17,25 +17,23 @@
     punch:         3,
     shred:         1,
     damage_type:   Blast, // explosives / concussion — the matchup-wheel node (a DAMAGE flavour)
-    accepts:       Grenade, // GTW-775: magazine-fed grenade rounds (the munition it accepts)
+    accepts:       Grenade, // magazine-fed grenade rounds (the munition it accepts)
     magazine: (
         size:      6,
         reload_tu: 16,
     ),
-    trajectory: Arc, // GTW-546: the launcher LOBS its charge — parabola blocked by roofs, passes holes/windows
+    trajectory: Arc, // the launcher LOBS its charge — parabola blocked by roofs, passes holes/windows
     fire_mode: [
         // The lobbed detonation — a radius-1 Blast at the arc's landing cell.
         (kind: Single, cone_mult: 1.0, tu_percent: 0.40, shots: 1, hit_type: Blast(radius: 1)),
     ],
     stable: false,
-    handedness:    TwoHanded, // GTW-443: a two-handed launcher — refused below two working hands
-    // GTW-554: a lobbing tube has no muzzle thread (nothing to suppress on a launched charge).
+    handedness:    TwoHanded, // a two-handed launcher — refused below two working hands
+    // A lobbing tube has no muzzle thread (nothing to suppress on a launched charge).
     slots: [
         (Sight, 1),  // one sight dovetail (a lobbing optic)
         (Rail,  1),  // one utility rail mod
-        // GTW-584: a magazine-fed launcher — the fiction is explicit ("a shoulder-slung,
-        // magazine-fed launcher", "a 6-round magazine feeds repeated lobs"). One magazine
-        // well (capacity 1 — the launcher takes one magazine at a time).
+        // Magazine-fed launcher — one magazine well (capacity 1).
         (Magazine, 1),
     ],
 )

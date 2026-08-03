@@ -2,8 +2,8 @@
 // coherent-light lance that bores clean through plate and everything lined up behind it.
 // Slow to charge and slow to cycle, but where it points, it PENETRATES.
 //
-// GTW-771 (child GTW-41): a Line / beam weapon. Its one charged shot carries the AoE template
-// `hit_type: Line(range)` the GTW-541 resolver reads — the lance strikes every cell along the
+// A Line / beam weapon. Its one charged shot carries the AoE template
+// `hit_type: Line(range)` the resolver reads — the lance strikes every cell along the
 // shot line out from the impact, `range` cells deep, not just the first body (true friendly
 // fire — resolution.md §2).
 (
@@ -15,19 +15,19 @@
     punch:         9,      // deep penetration — the lance bores through plate
     shred:         2,
     damage_type:   Las,    // the matchup-wheel node (a coherent-BEAM flavour)
-    accepts:       Cell,   // GTW-775: fed by a rechargeable capacitor cell (the munition it accepts)
+    accepts:       Cell,   // fed by a rechargeable capacitor cell (the munition it accepts)
     magazine: (
         size:      4,      // a bulky power cell — few full-charge lances
         reload_tu: 20,     // slow to swap a spent cell
     ),
     fire_mode: [
-        // One charged lance. GTW-771: a Line 10 cells deep — long, penetrating, and expensive
+        // One charged lance. Line 10 cells deep — long, penetrating, and expensive
         // (0.60 of the TU pool: a heavy, committed shot that fires only once a turn for most).
         (kind: Single, cone_mult: 1.0, tu_percent: 0.60, shots: 1, hit_type: Line(range: 10)),
     ],
     stable: true,          // a braced lance — fired from a bipod / mount (the §1a brace bonus)
-    handedness:    TwoHanded, // GTW-443: a two-handed heavy long-arm — refused below two working hands
-    // GTW-554: the attachment slots the lance offers — a muzzle device, a sight, and one rail.
+    handedness:    TwoHanded, // a two-handed heavy long-arm — refused below two working hands
+    // Attachment slots the lance offers — a muzzle device, a sight, and one rail.
     slots: [
         (Muzzle, 1),  // one muzzle thread (a focusing device)
         (Sight,  1),  // one sight dovetail (a precision optic)
