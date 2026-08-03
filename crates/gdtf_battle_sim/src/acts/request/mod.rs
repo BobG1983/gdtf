@@ -1,4 +1,5 @@
-//! Eight [`#[derive(Message)]`](bevy::prelude::Message) buffered messages — mirroring
+//! Buffered `*Requested` messages that drive act dispatchers.
+
 mod downed;
 mod emplacement;
 mod fire;

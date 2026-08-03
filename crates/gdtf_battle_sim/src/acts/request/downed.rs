@@ -1,26 +1,36 @@
+//! Stabilize or execute a downed target.
+
 use bevy::prelude::{Entity, Message};
 
+/// Stabilize a downed ally.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StabilizeDownedRequested {
-        pub actor:  Entity,
-        pub target: Entity,
+    /// Actor performing the action.
+    pub actor: Entity,
+    /// Downed target.
+    pub target: Entity,
 }
 
 impl StabilizeDownedRequested {
-        #[must_use]
+    /// Build a stabilize request.
+    #[must_use]
     pub const fn new(actor: Entity, target: Entity) -> Self {
         Self { actor, target }
     }
 }
 
+/// Execute a downed enemy.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ExecuteDownedRequested {
-        pub actor:  Entity,
-        pub target: Entity,
+    /// Actor performing the action.
+    pub actor: Entity,
+    /// Downed target.
+    pub target: Entity,
 }
 
 impl ExecuteDownedRequested {
-        #[must_use]
+    /// Build an execute request.
+    #[must_use]
     pub const fn new(actor: Entity, target: Entity) -> Self {
         Self { actor, target }
     }

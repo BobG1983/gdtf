@@ -1,3 +1,5 @@
+//! Dispatch open-door requests for adjacent closed doors.
+
 use bevy::prelude::{MessageReader, MessageWriter, Query, Res};
 
 use crate::{
@@ -11,6 +13,7 @@ use crate::{
     tuning::CombatTuning,
 };
 
+/// System: open adjacent closed doors when TU allows.
 pub fn dispatch_open_door(
     mut requests: MessageReader<OpenDoorRequested>,
     doors: Query<(&OpenState, &TerrainCell)>,

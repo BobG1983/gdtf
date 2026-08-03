@@ -1,12 +1,17 @@
+//! Request to reload the actor's ranged weapon.
+
 use bevy::prelude::{Entity, Message};
 
+/// Reload request.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ReloadRequested {
-        pub actor: Entity,
+    /// Actor.
+    pub actor: Entity,
 }
 
 impl ReloadRequested {
-        #[must_use]
+    /// Build a reload request.
+    #[must_use]
     pub const fn new(actor: Entity) -> Self {
         Self { actor }
     }

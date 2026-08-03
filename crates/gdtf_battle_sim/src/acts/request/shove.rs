@@ -1,20 +1,30 @@
+//! Deliberate or weapon-triggered shove.
+
 use bevy::prelude::{Entity, Message};
 
+/// Shove request.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ShoveRequested {
-        pub shover: Entity,
-        pub target: Entity,
-            pub source: ShoveSource,
+    /// Who is shoving.
+    pub shover: Entity,
+    /// Who is shoved.
+    pub target: Entity,
+    /// How the shove was initiated.
+    pub source: ShoveSource,
 }
 
+/// Origin of a shove.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ShoveSource {
-                Deliberate,
-            Weapon,
+    /// Player/AI deliberate shove act.
+    Deliberate,
+    /// Secondary effect of a weapon hit.
+    Weapon,
 }
 
 impl ShoveRequested {
-            #[must_use]
+    /// Deliberate shove.
+    #[must_use]
     pub const fn new(shover: Entity, target: Entity) -> Self {
         Self {
             shover,
@@ -23,7 +33,8 @@ impl ShoveRequested {
         }
     }
 
-                #[must_use]
+    /// Weapon-triggered shove.
+    #[must_use]
     pub const fn new_weapon(shover: Entity, target: Entity) -> Self {
         Self {
             shover,
