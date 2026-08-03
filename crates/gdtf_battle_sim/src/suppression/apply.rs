@@ -1,3 +1,5 @@
+//! Mark enemies in the fire impact radius as suppressed.
+
 use bevy::prelude::{
     Commands, Deref, Entity, Message, MessageReader, MessageWriter, Query, Res, With,
 };
@@ -15,19 +17,23 @@ use crate::{
 struct WithinSuppressionRadius(bool);
 
 impl WithinSuppressionRadius {
-        const fn new(within: bool) -> Self {
+    const fn new(within: bool) -> Self {
         Self(within)
     }
 }
 
+/// First-time suppression of a ganger this tick.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SuppressionApplied {
-                pub ganger: Entity,
-            pub at:     CellLevel,
+    /// Who was suppressed.
+    pub ganger: Entity,
+    /// Where they stood.
+    pub at: CellLevel,
 }
 
 impl SuppressionApplied {
-        #[must_use]
+    /// Build a suppression-applied message.
+    #[must_use]
     pub const fn new(ganger: Entity, at: CellLevel) -> Self {
         Self { ganger, at }
     }
@@ -48,6 +54,7 @@ fn within_radius(
     WithinSuppressionRadius::new(dx.max(dy) <= u32::from(*radius))
 }
 
+/// On [`FireRequested`], suppress enemies near the impact (unless the weapon is silenced).
 #[expect(
     clippy::too_many_arguments,
     reason = "the producer reads the FireRequested buffer, the shooter position/faction \
