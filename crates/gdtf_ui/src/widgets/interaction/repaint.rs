@@ -1,4 +1,4 @@
-//! Repaint buttons after ActiveButton is removed or the theme changes.
+//! Repaint buttons after `ActiveButton` is removed or the theme changes.
 
 use bevy::{
     prelude::*,

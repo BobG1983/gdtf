@@ -1,3 +1,5 @@
+//! Integration checks that this crate stays free of the Bevy engine and Tokio.
+
 fn manifest() -> String {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml");
     let Ok(text) = std::fs::read_to_string(path) else {
