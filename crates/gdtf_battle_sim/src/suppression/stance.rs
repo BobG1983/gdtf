@@ -1,3 +1,5 @@
+//! Auto-drop stance toward cover when newly suppressed.
+
 use bevy::prelude::{Added, Query, Res};
 
 use crate::{
@@ -6,6 +8,7 @@ use crate::{
     metric::{Cell, CellLevel},
 };
 
+/// Stance kind implied by cover height toward the suppressor.
 #[must_use]
 pub const fn stance_for_cover_band(band: HeightBand) -> StanceKind {
     match band {
@@ -22,6 +25,7 @@ fn cover_cell_toward(unit: &Position, suppressor: &CellLevel) -> Option<CellLeve
     Some(CellLevel::new(toward, unit.level()))
 }
 
+/// When [`Suppressed`] is added, set stance from cover between unit and suppressor.
 pub fn suppression_auto_stance(
     mut newly: Query<(&Position, &Suppressed, &mut Stance), Added<Suppressed>>,
     cover: Res<CoverLedger>,

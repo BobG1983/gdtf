@@ -1,3 +1,5 @@
+//! Clear suppression when a faction's turn begins.
+
 use bevy::prelude::{Commands, Entity, MessageReader, Query};
 
 use crate::{
@@ -5,6 +7,7 @@ use crate::{
     turn::TurnStarted,
 };
 
+/// On [`TurnStarted`], remove [`Suppressed`] from the now-active faction.
 pub fn reset_suppression(
     mut turns: MessageReader<TurnStarted>,
     suppressed: Query<(Entity, &Faction), bevy::prelude::With<Suppressed>>,
