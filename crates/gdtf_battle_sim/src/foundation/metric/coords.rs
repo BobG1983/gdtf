@@ -1,30 +1,32 @@
-//! The cubic-voxel coordinate types + conversions — [`Cell`] / [`Level`] /
-//! [`CellLevel`] / [`SimPos`] and their RON authoring shapes, plus [`cell_center`] /
+//! Cubic-voxel coordinates: [`Cell`], [`Level`], [`CellLevel`], [`SimPos`].
+
 use bevy::{
     math::{IVec2, IVec3, Vec3},
     prelude::Deref,
 };
 use serde::{Deserialize, Serialize};
 
+/// Maximum vertical levels in a battle grid.
 pub const MAX_LEVELS: u8 = 8;
 
-/// Serializes through the SAME [`CellDef`] shape (`#[serde(into = "CellDef")]`), so a
+/// Integer floor cell (x, y).
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(from = "CellDef", into = "CellDef")]
 pub struct Cell(IVec2);
 
 impl Cell {
-        #[must_use]
+    /// Build a cell from x and y.
+    #[must_use]
     pub const fn new(x: i32, y: i32) -> Self {
         Self(IVec2::new(x, y))
     }
 }
 
-/// A serde intermediate (`#[serde(from = "CellDef", into = "CellDef")]` on [`Cell`]) so
+/// Serde shape for [`Cell`].
 #[derive(Deserialize, Serialize)]
 pub struct CellDef {
-        x: i32,
-        y: i32,
+    x: i32,
+    y: i32,
 }
 
 impl From<CellDef> for Cell {
@@ -42,7 +44,7 @@ impl From<Cell> for CellDef {
     }
 }
 
-/// coordinate. `#[serde(transparent)]` lets an authored RON storey index parse as
+/// Vertical storey index.
 #[derive(
     Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Deserialize, Serialize,
 )]
@@ -50,30 +52,33 @@ impl From<Cell> for CellDef {
 pub struct Level(u8);
 
 impl Level {
-        #[must_use]
+    /// Wrap a storey index.
+    #[must_use]
     pub const fn new(storey: u8) -> Self {
         Self(storey)
     }
 }
 
-/// invariant `#[serde(from = "CellLevelDef")]` protects (unlike [`SimPos`], which
-/// Serializes through the SAME [`CellLevelDef`] shape (`#[serde(into = "CellLevelDef")]`)
+/// Cell plus level as a single key.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(from = "CellLevelDef", into = "CellLevelDef")]
 pub struct CellLevel(IVec3);
 
 impl CellLevel {
-                                #[must_use]
+    /// Combine cell and level.
+    #[must_use]
     pub fn new(cell: Cell, level: Level) -> Self {
         Self(IVec3::new(cell.x, cell.y, i32::from(*level)))
     }
 
-                                #[must_use]
+    /// Floor cell only.
+    #[must_use]
     pub const fn cell(&self) -> Cell {
         Cell::new(self.0.x, self.0.y)
     }
 
-                                                #[must_use]
+    /// Storey index.
+    #[must_use]
     pub fn level(&self) -> Level {
         #[expect(
             clippy::cast_possible_truncation,
@@ -85,17 +90,18 @@ impl CellLevel {
         Level::new(storey)
     }
 
-                            #[must_use]
+    /// Split into cell and level.
+    #[must_use]
     pub fn split(&self) -> (Cell, Level) {
         (self.cell(), self.level())
     }
 }
 
-/// A serde intermediate (`#[serde(from = "CellLevelDef", into = "CellLevelDef")]` on
+/// Serde shape for [`CellLevel`].
 #[derive(Deserialize, Serialize)]
 pub struct CellLevelDef {
-        cell:  Cell,
-        level: Level,
+    cell: Cell,
+    level: Level,
 }
 
 impl From<CellLevelDef> for CellLevel {
@@ -111,16 +117,19 @@ impl From<CellLevel> for CellLevelDef {
     }
 }
 
+/// Continuous world position in sim space.
 #[derive(Deref, Debug, Clone, Copy, PartialEq)]
 pub struct SimPos(Vec3);
 
 impl SimPos {
-            #[must_use]
+    /// Build from x, y, z.
+    #[must_use]
     pub const fn new(x: f32, y: f32, z: f32) -> Self {
         Self(Vec3::new(x, y, z))
     }
 }
 
+/// World-space center of a cell on a level.
 #[must_use]
 pub fn cell_center(cell: Cell, level: Level) -> SimPos {
     #[expect(
@@ -130,6 +139,7 @@ pub fn cell_center(cell: Cell, level: Level) -> SimPos {
     SimPos::new(cell.x as f32 + 0.5, cell.y as f32 + 0.5, f32::from(*level))
 }
 
+/// Floor continuous position into cell and level.
 #[must_use]
 pub fn pos_to_cell(pos: SimPos) -> (Cell, Level) {
     let cell = Cell::new(
@@ -156,31 +166,37 @@ fn floor_axis(coord: SimUnit) -> CellUnit {
     CellUnit::new(clamped)
 }
 
+/// One continuous axis unit.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct SimUnit(f32);
 
 impl SimUnit {
-        #[must_use]
+    /// Wrap an f32 value.
+    #[must_use]
     pub const fn new(value: f32) -> Self {
         Self(value)
     }
 }
 
+/// One discrete cell axis unit.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CellUnit(i32);
 
 impl CellUnit {
-        #[must_use]
+    /// Wrap an i32 value.
+    #[must_use]
     pub const fn new(value: i32) -> Self {
         Self(value)
     }
 }
 
+/// Distance measured in cells.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CellDistance(u32);
 
 impl CellDistance {
-        #[must_use]
+    /// Wrap a distance in cells.
+    #[must_use]
     pub const fn new(distance: u32) -> Self {
         Self(distance)
     }
