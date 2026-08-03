@@ -1,8 +1,11 @@
+//! Validated battle grid dimensions.
+
 use bevy::prelude::Deref;
 use serde::{Deserialize, Serialize};
 
 use crate::metric::MAX_LEVELS;
 
+/// Maximum width or height in cells.
 pub const MAX_GRID_SPAN: u8 = 60;
 
 /// Grid width in cells (validated inside [`GridSize::new`]).
@@ -13,6 +16,7 @@ pub const MAX_GRID_SPAN: u8 = 60;
 pub struct GridWidth(u8);
 
 impl GridWidth {
+    /// Wrap a width (unchecked; validated by [`GridSize::new`]).
     #[must_use]
     pub const fn new(cells: u8) -> Self {
         Self(cells)
@@ -27,6 +31,7 @@ impl GridWidth {
 pub struct GridHeight(u8);
 
 impl GridHeight {
+    /// Wrap a height (unchecked).
     #[must_use]
     pub const fn new(cells: u8) -> Self {
         Self(cells)
@@ -41,21 +46,27 @@ impl GridHeight {
 pub struct GridLevels(u8);
 
 impl GridLevels {
+    /// Wrap a level count (unchecked).
     #[must_use]
     pub const fn new(levels: u8) -> Self {
         Self(levels)
     }
 }
 
+/// Why a grid size failed validation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GridSizeError {
+    /// Any axis was zero.
     Empty {
-        width:  GridWidth,
+        width: GridWidth,
         height: GridHeight,
         levels: GridLevels,
     },
+    /// Width above [`MAX_GRID_SPAN`].
     WidthOverMax(GridWidth),
+    /// Height above [`MAX_GRID_SPAN`].
     HeightOverMax(GridHeight),
+    /// Levels above [`MAX_LEVELS`].
     LevelsOverMax(GridLevels),
 }
 
@@ -98,7 +109,7 @@ impl std::error::Error for GridSizeError {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(try_from = "GridSizeDef", into = "GridSizeDef")]
 pub struct GridSize {
-    width:  GridWidth,
+    width: GridWidth,
     height: GridHeight,
     levels: GridLevels,
 }
@@ -139,16 +150,19 @@ impl GridSize {
         })
     }
 
+    /// Width in cells.
     #[must_use]
     pub const fn width(&self) -> GridWidth {
         self.width
     }
 
+    /// Height in cells.
     #[must_use]
     pub const fn height(&self) -> GridHeight {
         self.height
     }
 
+    /// Level count.
     #[must_use]
     pub const fn levels(&self) -> GridLevels {
         self.levels
@@ -158,7 +172,7 @@ impl GridSize {
 impl Default for GridSize {
     fn default() -> Self {
         Self {
-            width:  GridWidth::new(MAX_GRID_SPAN),
+            width: GridWidth::new(MAX_GRID_SPAN),
             height: GridHeight::new(MAX_GRID_SPAN),
             levels: GridLevels::new(MAX_LEVELS),
         }
@@ -168,7 +182,7 @@ impl Default for GridSize {
 /// Serde intermediate for [`GridSize`].
 #[derive(Deserialize, Serialize)]
 pub struct GridSizeDef {
-    width:  GridWidth,
+    width: GridWidth,
     height: GridHeight,
     levels: GridLevels,
 }
@@ -184,7 +198,7 @@ impl TryFrom<GridSizeDef> for GridSize {
 impl From<GridSize> for GridSizeDef {
     fn from(size: GridSize) -> Self {
         Self {
-            width:  size.width,
+            width: size.width,
             height: size.height,
             levels: size.levels,
         }
