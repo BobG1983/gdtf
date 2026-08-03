@@ -1,16 +1,19 @@
+//! One rendered combat log line.
+
 use bevy::prelude::Color;
 
 use super::super::text::{CombatText, FctEmphasis};
 
+/// Text, color, and emphasis for a combat log line.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LogLine {
-        text:     CombatText,
-        color:    Color,
-        emphasis: FctEmphasis,
+    text: CombatText,
+    color: Color,
+    emphasis: FctEmphasis,
 }
 
 impl LogLine {
-        #[must_use]
+    #[must_use]
     pub(super) const fn new(text: CombatText, color: Color) -> Self {
         Self {
             text,
@@ -19,7 +22,7 @@ impl LogLine {
         }
     }
 
-            #[must_use]
+    #[must_use]
     pub(super) const fn new_bold(text: CombatText, color: Color) -> Self {
         Self {
             text,
@@ -28,17 +31,20 @@ impl LogLine {
         }
     }
 
-        #[must_use]
+    /// Line text.
+    #[must_use]
     pub const fn text(&self) -> &CombatText {
         &self.text
     }
 
-        #[must_use]
+    /// Line color.
+    #[must_use]
     pub const fn color(&self) -> Color {
         self.color
     }
 
-            #[must_use]
+    /// Font emphasis.
+    #[must_use]
     pub const fn emphasis(&self) -> FctEmphasis {
         self.emphasis
     }

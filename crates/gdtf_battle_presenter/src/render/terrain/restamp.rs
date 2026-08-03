@@ -1,3 +1,5 @@
+//! Quiet material restamp when sprite defs hot-reload.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::prelude::CellLevel;
 use gdtf_content_families::sprites::SpriteName;
@@ -5,16 +7,18 @@ use gdtf_content_families::sprites::SpriteName;
 use super::{static_draw::TerrainSprite, static_map::SpriteResolveCtx};
 use crate::{TerrainFogMaterial, cell_to_world};
 
+/// Graphic name currently stamped on a terrain tile.
 #[derive(Component, Debug, Clone, PartialEq, Eq, Deref)]
 pub struct StampedGraphic(SpriteName);
 
 impl StampedGraphic {
-        #[must_use]
+    /// Build from an authored graphic key.
+    #[must_use]
     pub fn from_key(name: &str) -> Self {
         Self(SpriteName::new(name.to_owned()))
     }
 
-        pub(super) fn as_key(&self) -> &str {
+    pub(super) fn as_key(&self) -> &str {
         self.0.as_str()
     }
 }
@@ -44,6 +48,7 @@ pub(super) fn stamp_tile_quiet(
     }
 }
 
+/// Restamp every terrain tile when sprite defs change.
 pub fn restamp_tiles_on_def_change(
     resolve: SpriteResolveCtx,
     mut materials: ResMut<Assets<TerrainFogMaterial>>,

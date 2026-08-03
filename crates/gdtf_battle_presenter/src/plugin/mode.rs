@@ -1,31 +1,39 @@
+//! Presenter mode selection and entry plugins.
+
 use bevy::prelude::*;
 
 use super::topdown::TopDownRendererPlugin;
 
+/// Which renderer the battle presenter runs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BattlePresenterMode {
-        TopDown,
-            Iso,
+    /// Orthographic top-down tiles.
+    TopDown,
+    /// Isometric placeholder (no systems yet).
+    Iso,
 }
 
+/// App plugin that installs the chosen renderer.
 pub struct BattlePresenterPlugin {
-        mode: BattlePresenterMode,
+    mode: BattlePresenterMode,
 }
 
 impl BattlePresenterPlugin {
-        #[must_use]
+    /// Build a presenter plugin for `mode`.
+    #[must_use]
     pub const fn new(mode: BattlePresenterMode) -> Self {
         Self { mode }
     }
 
-        #[must_use]
+    /// The mode this plugin was constructed with.
+    #[must_use]
     pub const fn mode(&self) -> BattlePresenterMode {
         self.mode
     }
 }
 
 impl Default for BattlePresenterPlugin {
-        fn default() -> Self {
+    fn default() -> Self {
         Self::new(BattlePresenterMode::TopDown)
     }
 }
@@ -43,6 +51,7 @@ impl Plugin for BattlePresenterPlugin {
     }
 }
 
+/// Placeholder iso renderer; no systems yet.
 pub struct IsoRendererPlugin;
 
 impl Plugin for IsoRendererPlugin {

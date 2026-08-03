@@ -1,3 +1,5 @@
+//! Combat log event enum and name helpers.
+
 use bevy::prelude::{Deref, Message};
 use gdtf_battle_sim::{
     acts::{MoveRejection, ReloadOutcome},
@@ -11,90 +13,140 @@ use gdtf_battle_sim::{
     weapon::{DotDamage, ModeKind},
 };
 
+/// Display name for a combat log line.
 #[derive(Debug, Clone, PartialEq, Eq, Deref)]
 pub struct LogName(String);
 
 impl LogName {
-            #[must_use]
+    /// Build from any string-like value.
+    #[must_use]
     pub fn new(name: impl Into<String>) -> Self {
         Self(name.into())
     }
 
-            #[must_use]
+    /// Build from a ganger name component.
+    #[must_use]
     pub fn from_ganger(name: &GangerName) -> Self {
         Self((**name).clone())
     }
 }
 
+/// Injury description text for the log.
 #[derive(Debug, Clone, PartialEq, Eq, Deref)]
 pub struct InjuryLogText(String);
 
 impl InjuryLogText {
-                #[must_use]
+    /// Build from any string-like value.
+    #[must_use]
     pub fn new(text: impl Into<String>) -> Self {
         Self(text.into())
     }
 }
 
+/// View-side combat log events derived from played acts.
 #[derive(Message, Debug, Clone, PartialEq)]
 pub enum CombatLogEvent {
-                FireDeclaration {
-                actor:  LogName,
-                        target: Option<LogName>,
-                        mode:   ModeKind,
+    /// Someone declared fire.
+    FireDeclaration {
+        /// Shooter name.
+        actor: LogName,
+        /// Optional target name.
+        target: Option<LogName>,
+        /// Fire mode used.
+        mode: ModeKind,
     },
-            MovementOccurred {
-                actor: LogName,
-                from:  Cell,
-                to:    Cell,
+    /// Someone walked between cells.
+    MovementOccurred {
+        /// Walker name.
+        actor: LogName,
+        /// Start cell.
+        from: Cell,
+        /// End cell.
+        to: Cell,
     },
-                    ShotOutcome {
-                        actor:  LogName,
-                                        report: Option<Box<HitReport>>,
+    /// A round resolved with an optional hit report.
+    ShotOutcome {
+        /// Shooter name.
+        actor: LogName,
+        /// Hit report if any.
+        report: Option<Box<HitReport>>,
     },
-            ReloadResult {
-                actor:   LogName,
-                outcome: ReloadOutcome,
+    /// Reload finished.
+    ReloadResult {
+        /// Reloader name.
+        actor: LogName,
+        /// Reload outcome.
+        outcome: ReloadOutcome,
     },
-            TurnStarted {
-                now_active: Faction,
-                        player:     PlayerFaction,
+    /// Turn boundary.
+    TurnStarted {
+        /// Faction now active.
+        now_active: Faction,
+        /// Player faction.
+        player: PlayerFaction,
     },
-                        MoveRejected {
-                actor:  LogName,
-                reason: MoveRejection,
+    /// Move was refused.
+    MoveRejected {
+        /// Actor name.
+        actor: LogName,
+        /// Refusal reason.
+        reason: MoveRejection,
     },
-                InjuryInflicted {
-                actor:    LogName,
-                log_text: InjuryLogText,
-                severity: Severity,
+    /// Injury inflicted.
+    InjuryInflicted {
+        /// Victim name.
+        actor: LogName,
+        /// Injury log text.
+        log_text: InjuryLogText,
+        /// Injury severity.
+        severity: Severity,
     },
-            FallOccurred {
-                actor:   LogName,
-                storeys: StoreysFallen,
+    /// Fall occurred.
+    FallOccurred {
+        /// Fallen ganger name.
+        actor: LogName,
+        /// Storeys fallen.
+        storeys: StoreysFallen,
     },
-                    MeleeStruck {
-                attacker: LogName,
-                target:   LogName,
-                amount:   HpDamage,
+    /// Melee hit landed.
+    MeleeStruck {
+        /// Attacker name.
+        attacker: LogName,
+        /// Target name.
+        target: LogName,
+        /// HP damage.
+        amount: HpDamage,
     },
-                        OnDeathOccurred {
-                actor: LogName,
+    /// On-death trigger fired.
+    OnDeathOccurred {
+        /// Dead ganger name.
+        actor: LogName,
     },
-                    SuppressionApplied {
-                actor: LogName,
+    /// Suppression applied.
+    SuppressionApplied {
+        /// Suppressed ganger name.
+        actor: LogName,
     },
-                ArmorBroken {
-                actor: LogName,
+    /// Armor plate broke.
+    ArmorBroken {
+        /// Wearer name.
+        actor: LogName,
     },
-                    DotAfflicted {
-                actor:    LogName,
-                per_turn: DotDamage,
+    /// Dot affliction started.
+    DotAfflicted {
+        /// Victim name.
+        actor: LogName,
+        /// Damage per turn.
+        per_turn: DotDamage,
     },
-                    FieldAfflicted {
-                actor: LogName,
+    /// Field affliction started.
+    FieldAfflicted {
+        /// Victim name.
+        actor: LogName,
     },
-                    BleedStarted {
-                actor: LogName,
+    /// Bleed started.
+    BleedStarted {
+        /// Victim name.
+        actor: LogName,
     },
 }

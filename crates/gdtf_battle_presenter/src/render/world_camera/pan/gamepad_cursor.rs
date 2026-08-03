@@ -1,3 +1,5 @@
+//! Gamepad virtual-cursor edge pan.
+
 use bevy::prelude::*;
 
 use super::{
@@ -10,16 +12,19 @@ use super::{
     tunables::{EdgeBandPx, PanSpeed},
 };
 
+/// Message carrying the gamepad virtual cursor position in window space.
 #[derive(Message, Deref, Debug, Clone, Copy, PartialEq)]
 pub struct GamepadCursorMoved(Vec2);
 
 impl GamepadCursorMoved {
-        #[must_use]
+    /// Build from a cursor position.
+    #[must_use]
     pub const fn new(cursor: Vec2) -> Self {
         Self(cursor)
     }
 }
 
+/// Pan the world camera when the gamepad cursor dwells on a viewport edge.
 pub fn pan_camera_on_gamepad_cursor_edge(
     mut cursor_moves: MessageReader<GamepadCursorMoved>,
     time: Res<Time>,

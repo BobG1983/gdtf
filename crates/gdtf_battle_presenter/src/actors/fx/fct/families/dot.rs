@@ -1,3 +1,5 @@
+//! Dot-tick floating combat text.
+
 use gdtf_battle_sim::effects::dot::DotTicked;
 
 use super::super::{
@@ -6,6 +8,7 @@ use super::super::{
     text::CombatText,
 };
 
+/// Consequence family for [`DotTicked`].
 #[derive(Debug, Clone, Copy)]
 pub struct DotFct;
 
@@ -32,7 +35,7 @@ mod test {
 
     use super::{super::super::pop::ConsequenceFct, DotFct, FctValence, PopAnchor, valence_color};
 
-                #[test]
+    #[test]
     fn a_dot_tick_classifies_to_a_toxic_minus_amount_tag() {
         let at = CellLevel::new(Cell::new(7, 9), Level::new(0));
         let pop = DotFct::classify(&DotTicked::new(Entity::PLACEHOLDER, at, DotDamage::new(4)));

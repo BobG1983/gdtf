@@ -1,3 +1,5 @@
+//! Ganger sprite visibility from storey band and squad fog.
+
 use bevy::{ecs::system::SystemParam, prelude::*};
 use gdtf_battle_sim::{
     battle::PlayerFaction,
@@ -12,12 +14,12 @@ use crate::{
 };
 
 pub(super) struct GangerFogFacts<'a> {
-        squad:  &'a SquadVisibility,
-        player: Option<PlayerFaction>,
+    squad: &'a SquadVisibility,
+    player: Option<PlayerFaction>,
 }
 
 impl<'a> GangerFogFacts<'a> {
-        pub(super) const fn new(squad: &'a SquadVisibility, player: Option<PlayerFaction>) -> Self {
+    pub(super) const fn new(squad: &'a SquadVisibility, player: Option<PlayerFaction>) -> Self {
         Self { squad, player }
     }
 }
@@ -59,17 +61,18 @@ pub(super) fn classify_ganger_visibility(
     }
 }
 
+/// Bundled storey and fog facts for classifying ganger visibility.
 #[derive(SystemParam)]
 pub struct GangerVisibilityFacts<'w> {
-        active:  Res<'w, ActiveLevel>,
-        view:    Res<'w, ViewMode>,
-            isolate: Res<'w, IsolateView>,
-            squad:   Option<Res<'w, SquadVisibility>>,
-            player:  Option<Res<'w, PlayerFaction>>,
+    active: Res<'w, ActiveLevel>,
+    view: Res<'w, ViewMode>,
+    isolate: Res<'w, IsolateView>,
+    squad: Option<Res<'w, SquadVisibility>>,
+    player: Option<Res<'w, PlayerFaction>>,
 }
 
 impl GangerVisibilityFacts<'_> {
-        pub(super) fn classify(&self, pos: &Position, faction: Faction, life: LifeState) -> Visibility {
+    pub(super) fn classify(&self, pos: &Position, faction: Faction, life: LifeState) -> Visibility {
         let fog = self
             .squad
             .as_deref()
@@ -85,6 +88,7 @@ impl GangerVisibilityFacts<'_> {
     }
 }
 
+/// Update every ganger sprite's visibility from storey band and fog.
 pub fn resolve_ganger_visibility(
     sprites: Res<GangerSprites>,
     facts: GangerVisibilityFacts,

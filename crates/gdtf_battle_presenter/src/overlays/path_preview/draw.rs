@@ -1,3 +1,5 @@
+//! Path step tiles and destination TU label.
+
 use bevy::{camera::visibility::RenderLayers, prelude::*, text::TextColor};
 use gdtf_battle_sim::{
     prelude::{CellLevel, Level, Tu},
@@ -10,6 +12,7 @@ use crate::{
     overlays::pool::draw_pool,
 };
 
+/// Marker on a path-step tint sprite.
 #[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct PathStepSprite;
 
@@ -35,6 +38,7 @@ type LabelQuery<'w, 's> = Query<
     (With<PathTargetLabel>, Without<PathStepSprite>),
 >;
 
+/// Marker on the path destination cost label.
 #[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct PathTargetLabel;
 
@@ -44,7 +48,7 @@ const LABEL_FONT_PX: f32 = 9.0;
 
 const LABEL_LIFT_PX: f32 = CELL_PX * 0.55;
 
-///   `PREVIEW_TINT` (full alpha when squad-VISIBLE,
+/// Draw path steps (visibility-tinted) and the destination cost label.
 pub fn draw_path_preview(
     mut commands: Commands,
     preview: Res<PathPreview>,

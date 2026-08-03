@@ -1,5 +1,5 @@
-//! stair- or ladder-tile sprite per authored vertical-link endpoint cell on the
-//! — the authored stair / ladder links, each carrying its two `(cell, level)` endpoints
+//! Stair and ladder endpoint sprites on the active storey.
+
 use bevy::{camera::visibility::RenderLayers, prelude::*};
 use gdtf_battle_sim::{
     prelude::{CellLevel, Level},
@@ -9,6 +9,7 @@ use gdtf_battle_sim::{
 use super::{active_level::ActiveLevel, roles::TileRole, static_map::SpriteResolveCtx};
 use crate::{Layer, WORLD_RENDER_LAYER, cell_to_world_layered, overlays::pool::draw_pool};
 
+/// Marker on a vertical-link endpoint sprite.
 #[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct VerticalLinkSprite;
 
@@ -20,6 +21,7 @@ const fn link_tile_role(kind: LinkKind, active_z: i32, other_z: i32) -> TileRole
     }
 }
 
+/// Draw stair/ladder markers for every link endpoint on the active storey.
 pub fn draw_vertical_links(
     mut commands: Commands,
     graph: Res<VerticalLinkGraph>,
@@ -74,7 +76,7 @@ mod tests {
 
     use super::{TileRole, link_tile_role};
 
-                        #[test]
+    #[test]
     fn stair_endpoint_picks_up_when_lower_down_when_upper() {
         let stair = LinkKind::stair();
 
@@ -90,7 +92,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn ladder_endpoint_draws_ladder_either_direction() {
         let ladder = LinkKind::ladder();
         assert_eq!(

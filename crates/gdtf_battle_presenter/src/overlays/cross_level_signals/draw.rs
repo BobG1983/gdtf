@@ -1,3 +1,5 @@
+//! Draw cross-level threat, drop-depth, and connector badges.
+
 use bevy::{camera::visibility::RenderLayers, prelude::*, sprite::Anchor, text::FontSize};
 use gdtf_battle_sim::prelude::{Cell, Level};
 
@@ -6,9 +8,11 @@ use crate::{
     ActiveLevel, Layer, WORLD_RENDER_LAYER, cell_to_world_layered, overlays::pool::draw_pool,
 };
 
+/// Marker on a cross-level badge tile sprite.
 #[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct CrossLevelBadgeTile;
 
+/// Marker on a cross-level badge label.
 #[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct CrossLevelBadgeLabel;
 
@@ -53,9 +57,9 @@ const BADGE_LABEL_COLOR: Color = Color::srgb(0.95, 0.97, 0.95);
 
 #[derive(Debug, Clone, PartialEq)]
 struct BadgeDraw {
-            world: Vec3,
-        tint:  Color,
-        label: String,
+    world: Vec3,
+    tint: Color,
+    label: String,
 }
 
 const fn badge_tint(kind: CrossLevelBadgeKind) -> Color {
@@ -107,6 +111,7 @@ fn label_world(tile_world: Vec3) -> Vec3 {
     Vec3::new(tile_world.x, tile_world.y, tile_world.z + LABEL_Z_LIFT)
 }
 
+/// Draw or refresh cross-level badges when signals or active level change.
 pub fn draw_cross_level_signals(
     mut commands: Commands,
     signals: Res<CrossLevelSignals>,

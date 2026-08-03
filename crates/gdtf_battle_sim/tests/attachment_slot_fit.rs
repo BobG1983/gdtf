@@ -1,3 +1,5 @@
+//! Attachment slot fit: sight, rail capacity, and melee counterweight on spawn.
+
 use bevy::{
     app::App,
     asset::AssetPlugin,
@@ -203,7 +205,6 @@ fn one_slot(slot: AttachmentSlot, capacity: u8) -> WeaponSlots {
     WeaponSlots::new(vec![(slot, SlotCapacity::new(capacity))])
 }
 
-
 #[test]
 fn compatible_sight_item_applies_on_the_spawned_weapon() {
     let mut app = spawn_battle(
@@ -221,7 +222,6 @@ fn compatible_sight_item_applies_on_the_spawned_weapon() {
     );
 }
 
-
 #[test]
 fn counterweight_is_cleanly_rejected_by_a_ranged_weapon() {
     let mut app = spawn_battle(
@@ -238,7 +238,6 @@ fn counterweight_is_cleanly_rejected_by_a_ranged_weapon() {
          damage stays at its authored baseline (class gating emerges from slots)",
     );
 }
-
 
 #[test]
 fn rail_capacity_gates_the_third_item() {
@@ -269,7 +268,6 @@ fn rail_capacity_gates_the_third_item() {
          magazine stays at its {BASE_MAG} baseline (no eviction of a fitted item)",
     );
 }
-
 
 #[test]
 fn counterweight_applies_on_the_spawned_melee_weapon() {

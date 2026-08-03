@@ -1,4 +1,5 @@
-//! The pop renders the authored `popup_text` verbatim in a VALENCE BY SEVERITY — the
+//! Injury floating combat text from authored popup text.
+
 use gdtf_battle_sim::acts::InjuryInflicted;
 
 use super::super::{
@@ -7,6 +8,7 @@ use super::super::{
     text::CombatText,
 };
 
+/// Consequence family for [`InjuryInflicted`].
 #[derive(Debug, Clone, Copy)]
 pub struct InjuryFct;
 
@@ -34,7 +36,7 @@ mod test {
 
     use super::{super::super::pop::ConsequenceFct, InjuryFct, PopAnchor, severity_color};
 
-                fn injury(popup: &str, severity: Severity) -> InjuryInflicted {
+    fn injury(popup: &str, severity: Severity) -> InjuryInflicted {
         let name = InjuryName::new("Lost Eye".to_owned());
         InjuryInflicted {
             target: Entity::PLACEHOLDER,
@@ -54,7 +56,7 @@ mod test {
         }
     }
 
-                #[test]
+    #[test]
     fn an_injury_pop_renders_the_popup_text_in_the_severity_color() {
         let pop = InjuryFct::classify(&injury("LOST EYE", Severity::Critical));
         assert_eq!(
@@ -74,7 +76,7 @@ mod test {
         );
     }
 
-                #[test]
+    #[test]
     fn the_injury_valence_scales_with_severity() {
         let minor = InjuryFct::classify(&injury("BRUISE", Severity::Minor));
         let critical = InjuryFct::classify(&injury("LOST EYE", Severity::Critical));

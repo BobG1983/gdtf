@@ -1,3 +1,5 @@
+//! Hot-reload sheet images into fog materials.
+
 use bevy::{
     asset::{AssetEvent, AssetId, Assets},
     image::Image,
@@ -7,6 +9,7 @@ use bevy::{
 use super::atlases::{SheetRole, TopDownAtlases};
 use crate::TerrainFogMaterial;
 
+/// When a sheet image is modified on disk, refresh fog materials that sample it.
 pub fn redrive_sheet_images_on_asset_event(
     events: Option<MessageReader<AssetEvent<Image>>>,
     atlases: Option<Res<TopDownAtlases>>,
