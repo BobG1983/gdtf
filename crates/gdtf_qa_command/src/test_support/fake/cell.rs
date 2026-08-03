@@ -1,3 +1,5 @@
+//! Fake command that echoes a cell and the host level.
+
 use bevy::prelude::*;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::{
@@ -16,18 +18,24 @@ use crate::{
     dispatch::{CommandCall, QaCommandSystems, take_calls},
 };
 
+/// Arguments for `fake.cell`.
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct FakeCellArgs {
-        pub cell: CellNet,
+    /// Cell to read.
+    pub cell: CellNet,
 }
 
+/// Reply for `fake.cell`.
 #[derive(Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct FakeCellReply {
-        pub cell:  CellNet,
-        pub level: FakeLevel,
+    /// Echoed cell.
+    pub cell: CellNet,
+    /// Host level at the time of the call.
+    pub level: FakeLevel,
 }
 
+/// Read one cell; requires the fake model to be loaded.
 pub struct FakeCell;
 
 impl QaCommand for FakeCell {
@@ -62,7 +70,7 @@ fn handle_fake_cell(facts: Res<FakeFacts>, mut queue: ResMut<PendingQueue<Comman
     }
     for (args, responder) in take_calls::<FakeCell>(&mut queue) {
         responder.answer(&FakeCellReply {
-            cell:  args.cell,
+            cell: args.cell,
             level: facts.level(),
         });
     }

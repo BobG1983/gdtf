@@ -1,3 +1,5 @@
+//! Deferred fake command that answers after a signal is raised.
+
 use bevy::prelude::*;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::command::{CommandAvailability, CommandName, CommandSummary, CommandTiming};
@@ -10,59 +12,70 @@ use crate::{
     dispatch::{CommandCall, DeferredReplies, QaCommandSystems, take_calls},
 };
 
+/// Empty arguments for `fake.settle`.
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct FakeSettleArgs {}
 
+/// Frames waited before the reply was delivered.
 #[derive(
     Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize, JsonSchema,
 )]
 pub struct FakeSettleCount(u32);
 
 impl FakeSettleCount {
-        #[must_use]
+    /// Wrap a frame count.
+    #[must_use]
     pub const fn new(frames: u32) -> Self {
         Self(frames)
     }
 }
 
+/// Reply for `fake.settle`.
 #[derive(Debug, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 pub struct FakeSettleReply {
-        pub waited: FakeSettleCount,
+    /// Frames waited.
+    pub waited: FakeSettleCount,
 }
 
+/// Whether the settle signal has been raised.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct FakeSettleRaised(bool);
 
 impl FakeSettleRaised {
-        #[must_use]
+    /// Wrap a raised flag.
+    #[must_use]
     pub const fn new(raised: bool) -> Self {
         Self(raised)
     }
 }
 
+/// Bevy resource that tests raise to unblock deferred settle replies.
 #[derive(Resource, Debug, Default)]
 pub struct FakeSettleSignal {
-        raised: FakeSettleRaised,
-        frames: FakeSettleCount,
+    raised: FakeSettleRaised,
+    frames: FakeSettleCount,
 }
 
 impl FakeSettleSignal {
-        #[must_use]
+    /// Whether the signal is raised.
+    #[must_use]
     pub const fn is_raised(&self) -> FakeSettleRaised {
         self.raised
     }
 
-        pub const fn raise(&mut self) {
+    /// Raise the signal so parked replies can settle.
+    pub const fn raise(&mut self) {
         self.raised = FakeSettleRaised::new(true);
     }
 
-        fn count_frame(&mut self) -> FakeSettleCount {
+    fn count_frame(&mut self) -> FakeSettleCount {
         self.frames = FakeSettleCount::new(self.frames.saturating_add(1));
         self.frames
     }
 }
 
+/// Deferred command that parks until [`FakeSettleSignal`] is raised.
 pub struct FakeSettle;
 
 impl QaCommand for FakeSettle {
@@ -74,7 +87,7 @@ impl QaCommand for FakeSettle {
     const SUMMARY: CommandSummary =
         CommandSummary::from_static("Answer on a later frame, once the fake signal is raised.");
 
-            const TIMING: CommandTiming = CommandTiming::Deferred;
+    const TIMING: CommandTiming = CommandTiming::Deferred;
 
     fn availability(_facts: &FakeFacts) -> CommandAvailability {
         CommandAvailability::Available
