@@ -1,4 +1,4 @@
-// GDTF grimdark UI theme — data-driven (ADR 0003), nested per-widget sub-themes (GTW-149).
+// GDTF grimdark UI theme — data-driven (ADR 0003), nested per-widget sub-themes.
 // Colors are RGBA with each channel 0.0–1.0; the 4th channel is ALPHA (1.0 = opaque,
 // 0.0 = fully transparent). Lengths are RELATIVE (Vw for border/radius/horizontal margin,
 // Vh for vertical margin), calibrated to the 1280x720 reference window; font sizes are pt.
