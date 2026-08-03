@@ -1,3 +1,5 @@
+//! Melee: opposed fight, strike resolution, and hits on cover.
+
 mod fight;
 mod strike;
 mod structure;
