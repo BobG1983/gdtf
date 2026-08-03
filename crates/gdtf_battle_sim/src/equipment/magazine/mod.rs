@@ -1,3 +1,5 @@
+//! Magazine state and fire readiness checks.
+
 mod ammo;
 mod guard;
 

@@ -1,51 +1,62 @@
+//! Magazine capacity, loaded rounds, and ammo type.
+
 use bevy::prelude::{Component, Deref};
 use serde::{Deserialize, Serialize};
 
 use crate::weapon::{AmmoType, MagazineSize, ModeShots};
 
-/// [`Deref`]; `#[serde(transparent)]` parses a bare RON scalar ([`Serialize`] so the
+/// TU cost to reload.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ReloadTu(u8);
 
 impl ReloadTu {
-            #[must_use]
+    /// Wrap a reload cost.
+    #[must_use]
     pub const fn new(tu: u8) -> Self {
         Self(tu)
     }
 }
 
-/// value): private inner + derived [`Deref`]; `#[serde(transparent)]` lets it default
+/// Rounds currently in the magazine.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Deserialize)]
 #[serde(transparent)]
 pub struct LoadedRounds(u16);
 
 impl LoadedRounds {
-            #[must_use]
+    /// Wrap a round count.
+    #[must_use]
     pub const fn new(rounds: u16) -> Self {
         Self(rounds)
     }
 }
 
+/// Whether the magazine has zero rounds.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MagazineEmpty(bool);
 
+/// Whether the magazine is at capacity.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MagazineFull(bool);
 
-/// the same schema it loads — with `rounds` `#[serde(skip_serializing)]`: the live
+/// Live magazine on a weapon entity.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct Magazine {
-            pub size:        MagazineSize,
-            pub reload_tu:   ReloadTu,
-                    #[serde(default, skip_serializing)]
-    pub rounds:      LoadedRounds,
-                                #[serde(default, skip_serializing)]
+    /// Capacity.
+    pub size: MagazineSize,
+    /// Reload TU cost.
+    pub reload_tu: ReloadTu,
+    /// Current rounds (not serialized to content).
+    #[serde(default, skip_serializing)]
+    pub rounds: LoadedRounds,
+    /// Loaded ammo type (not serialized to content).
+    #[serde(default, skip_serializing)]
     pub loaded_ammo: AmmoType,
 }
 
 impl Magazine {
-                                #[must_use]
+    /// Build with clamped rounds.
+    #[must_use]
     pub const fn new(rounds: LoadedRounds, size: MagazineSize, reload_tu: ReloadTu) -> Self {
         Self {
             size,
@@ -59,12 +70,14 @@ impl Magazine {
         }
     }
 
-                                        #[must_use]
+    /// Full magazine of slug ammo.
+    #[must_use]
     pub const fn loaded(size: MagazineSize, reload_tu: ReloadTu) -> Self {
         Self::loaded_with(size, reload_tu, AmmoType::Slug)
     }
 
-                                    #[must_use]
+    /// Full magazine of a given ammo type.
+    #[must_use]
     pub const fn loaded_with(size: MagazineSize, reload_tu: ReloadTu, ammo: AmmoType) -> Self {
         Self {
             size,
@@ -74,45 +87,54 @@ impl Magazine {
         }
     }
 
-        #[must_use]
+    /// Current rounds.
+    #[must_use]
     pub const fn rounds(&self) -> LoadedRounds {
         self.rounds
     }
 
-            #[must_use]
+    /// Capacity.
+    #[must_use]
     pub const fn size(&self) -> MagazineSize {
         self.size
     }
 
-            #[must_use]
+    /// Reload cost.
+    #[must_use]
     pub const fn reload_tu(&self) -> ReloadTu {
         self.reload_tu
     }
 
-            #[must_use]
+    /// Loaded ammo type.
+    #[must_use]
     pub const fn loaded_ammo(&self) -> AmmoType {
         self.loaded_ammo
     }
 
-        #[must_use]
+    /// True if empty.
+    #[must_use]
     pub const fn is_empty(&self) -> MagazineEmpty {
         MagazineEmpty(self.rounds.0 == 0)
     }
 
-            #[must_use]
+    /// True if full.
+    #[must_use]
     pub const fn is_full(&self) -> MagazineFull {
         MagazineFull(self.rounds.0 >= self.size.get())
     }
 
-                            pub const fn spend_round(&mut self) {
+    /// Spend one round (saturating).
+    pub const fn spend_round(&mut self) {
         self.rounds.0 = self.rounds.0.saturating_sub(1);
     }
 
-                                pub const fn refill(&mut self) {
+    /// Fill to capacity.
+    pub const fn refill(&mut self) {
         self.rounds.0 = self.size.get();
     }
 
-                                                                    #[must_use]
+    /// Load `candidate` if compatible with `accepted`; refill on success.
+    #[must_use]
     pub fn load(&mut self, candidate: AmmoType, accepted: AmmoType) -> AmmoCompatible {
         let compatible = ammo_compatible(accepted, candidate);
         if *compatible {
@@ -123,14 +145,17 @@ impl Magazine {
     }
 }
 
+/// True when candidate matches accepted ammo type.
 #[must_use]
 pub fn ammo_compatible(accepted: AmmoType, candidate: AmmoType) -> AmmoCompatible {
     AmmoCompatible(accepted == candidate)
 }
 
+/// Compatibility flag for a load attempt.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AmmoCompatible(bool);
 
+/// Cap burst size to remaining rounds.
 #[must_use]
 pub fn clamp_burst(shots: ModeShots, mag: &Magazine) -> ModeShots {
     ModeShots::new((*shots).min(*mag.rounds()))
