@@ -1,4 +1,5 @@
-//! authored in the weapon `.ron`, USER DIRECTIVE 2026-06-17 — NOT a global tuning
+//! Dispatch reload requests against the actor's ranged magazine.
+
 use bevy::{
     ecs::query::With,
     prelude::{Entity, Message, MessageReader, MessageWriter, Query},
@@ -13,27 +14,35 @@ use crate::{
     weapon::{WieldedBy, Wields},
 };
 
+/// Result of a reload attempt.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReloadOutcome {
-            Reloaded,
-                AlreadyFull,
-                NoTu,
+    /// Magazine refilled.
+    Reloaded,
+    /// Already full.
+    AlreadyFull,
+    /// Not enough TU.
+    NoTu,
 }
 
-/// A buffered Bevy **message** (`#[derive(Message)]`), NOT the observer `Event`
+/// Outcome message for a reload attempt.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ReloadResult {
-        pub actor:   Entity,
-        pub outcome: ReloadOutcome,
+    /// Actor who tried to reload.
+    pub actor: Entity,
+    /// Outcome.
+    pub outcome: ReloadOutcome,
 }
 
 impl ReloadResult {
-            #[must_use]
+    /// Build a result message.
+    #[must_use]
     pub const fn new(actor: Entity, outcome: ReloadOutcome) -> Self {
         Self { actor, outcome }
     }
 }
 
+/// System: process [`ReloadRequested`] messages.
 pub fn dispatch_reload(
     mut requests: MessageReader<ReloadRequested>,
     mut actors: Query<(&'static mut Tu, &'static LifeState, &'static Wields)>,

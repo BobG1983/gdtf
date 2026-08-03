@@ -1,3 +1,5 @@
+//! Dispatch aiming, stance, and facing change requests.
+
 use bevy::prelude::{MessageReader, Query, Res};
 
 use crate::{
@@ -7,6 +9,7 @@ use crate::{
     tuning::CombatTuning,
 };
 
+/// System: apply aiming changes.
 pub fn dispatch_set_aiming(
     mut requests: MessageReader<SetAimingRequested>,
     mut actors: Query<&'static mut Aiming>,
@@ -19,6 +22,7 @@ pub fn dispatch_set_aiming(
     }
 }
 
+/// System: apply stance changes (spends TU).
 pub fn dispatch_set_stance(
     mut requests: MessageReader<SetStanceRequested>,
     mut actors: Query<(&'static mut Stance, &'static mut Tu)>,
@@ -37,6 +41,7 @@ pub fn dispatch_set_stance(
     }
 }
 
+/// System: apply facing changes (spends turn TU).
 pub fn dispatch_set_facing(
     mut requests: MessageReader<SetFacingRequested>,
     mut actors: Query<(&'static mut Facing, &'static mut Tu)>,

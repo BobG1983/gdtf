@@ -1,3 +1,5 @@
+//! Pick nearest target and advance cell toward a goal.
+
 use bevy::prelude::Entity;
 
 use crate::{
@@ -5,15 +7,20 @@ use crate::{
     metric::{Cell, CellDistance, CellLevel, Level},
 };
 
+/// Candidate enemy for AI targeting.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AiTarget {
-            pub entity: Entity,
-        pub cell:   Cell,
-        pub level:  Level,
+    /// Enemy entity.
+    pub entity: Entity,
+    /// Enemy cell.
+    pub cell: Cell,
+    /// Enemy level.
+    pub level: Level,
 }
 
 impl AiTarget {
-        #[must_use]
+    /// Build a target.
+    #[must_use]
     pub const fn new(entity: Entity, cell: Cell, level: Level) -> Self {
         Self {
             entity,
@@ -43,6 +50,7 @@ fn order_key(from_cell: Cell, from_level: Level, target: AiTarget) -> (u32, u32,
     )
 }
 
+/// Nearest candidate by Chebyshev distance, then level gap, then cell order.
 #[must_use]
 pub fn pick_nearest(
     from_cell: Cell,
@@ -55,6 +63,7 @@ pub fn pick_nearest(
         .min_by_key(|target| order_key(from_cell, from_level, *target))
 }
 
+/// Best reachable cell that gets closer to `goal` than `start`.
 #[must_use]
 pub fn plan_advance(
     start: CellLevel,
