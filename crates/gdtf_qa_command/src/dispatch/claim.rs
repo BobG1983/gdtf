@@ -1,3 +1,5 @@
+//! Move inbox entries for one command into its typed pending queue.
+
 use bevy::prelude::*;
 use gdtf_net_qa_transport::PendingQueue;
 use gdtf_qa_protocol::{
@@ -8,6 +10,7 @@ use gdtf_qa_protocol::{
 use super::{CommandCall, CommandInbox};
 use crate::command::{QaCommand, schema::schema_text};
 
+/// Build a bad-arguments outcome that includes the expected schema.
 #[must_use]
 pub fn bad_arguments<C: QaCommand>(fault: &serde_json::Error) -> QaResponse {
     QaResponse::Outcome(CommandOutcome::BadArguments {
@@ -16,9 +19,10 @@ pub fn bad_arguments<C: QaCommand>(fault: &serde_json::Error) -> QaResponse {
     })
 }
 
+/// Claim inbox rows for `C`, deserialize args, or reply with a schema error.
 pub fn claim_calls<C: QaCommand>(
     mut inbox: ResMut<CommandInbox>,
-    mut queue: ResMut<PendingQueue<CommandCall<C>>>,
+    mut queue: ResMut<PendingQueue<CommandCall<C>>>
 ) {
     if inbox.is_empty() {
         return;

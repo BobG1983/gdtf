@@ -1,11 +1,22 @@
+//! Admit, claim, reply, and schedule command calls on a Bevy app.
+
+/// Decide whether a named command may run.
 pub mod admit;
+/// Typed pending call payload.
 pub mod call;
+/// Move inbox entries into typed pending queues.
 pub mod claim;
+/// Parked replies that settle across frames.
 pub mod deferred;
+/// Shared inbox of admitted but unclaimed calls.
 pub mod inbox;
+/// Register command systems on a Bevy app.
 pub mod register;
+/// Protocol replies for unknown or unavailable commands.
 pub mod reply;
+/// Typed wrapper around a transport responder.
 pub mod responder;
+/// System sets for routing and claiming.
 pub mod schedule;
 
 pub use admit::{Admission, CommandRefusal, admit};
