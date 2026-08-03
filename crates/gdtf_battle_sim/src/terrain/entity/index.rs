@@ -1,3 +1,5 @@
+//! Lookup from cell to terrain entity.
+
 use bevy::{
     platform::collections::HashMap,
     prelude::{Entity, Resource},
@@ -5,14 +7,18 @@ use bevy::{
 
 use crate::metric::CellLevel;
 
+/// Key into the terrain index.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TerrainIndexKey {
-        Cover(CellLevel),
-        Slab(CellLevel),
+    /// Cover at a cell.
+    Cover(CellLevel),
+    /// Slab at a cell.
+    Slab(CellLevel),
 }
 
 impl TerrainIndexKey {
-        #[must_use]
+    /// Cell for this key.
+    #[must_use]
     pub const fn cell_level(self) -> CellLevel {
         match self {
             Self::Cover(cl) | Self::Slab(cl) => cl,
@@ -20,30 +26,35 @@ impl TerrainIndexKey {
     }
 }
 
+/// Map from index key to terrain entity.
 #[derive(Resource, Debug, Clone, Default)]
 pub struct TerrainIndex {
-        entries: HashMap<TerrainIndexKey, Entity>,
+    entries: HashMap<TerrainIndexKey, Entity>,
 }
 
 impl TerrainIndex {
-                    #[must_use]
+    /// From key/entity pairs.
+    #[must_use]
     pub fn new(pairs: impl IntoIterator<Item = (TerrainIndexKey, Entity)>) -> Self {
         Self {
             entries: pairs.into_iter().collect(),
         }
     }
 
-                        #[must_use]
+    /// Look up an entity.
+    #[must_use]
     pub fn get(&self, key: &TerrainIndexKey) -> Option<Entity> {
         self.entries.get(key).copied()
     }
 
-            #[must_use]
+    /// Number of entries.
+    #[must_use]
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
-        #[must_use]
+    /// Whether empty.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
