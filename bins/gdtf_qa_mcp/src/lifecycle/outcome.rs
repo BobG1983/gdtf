@@ -1,3 +1,5 @@
+//! Results of launch and stop operations.
+
 use crate::{
     lifecycle::{
         launch::LaunchSpec,
@@ -7,47 +9,76 @@ use crate::{
     link::QaPort,
 };
 
+/// Result of trying to launch a host.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LaunchOutcome {
-        Launched {
-                port: QaPort,
-                pid:  ChildPid,
+    /// Child started and became ready.
+    Launched {
+        /// Port it is listening on.
+        port: QaPort,
+        /// Process id.
+        pid: ChildPid,
     },
-            AlreadyRunning {
-                port:   QaPort,
-                pid:    ChildPid,
-                        recipe: Box<LaunchSpec>,
+    /// Already running with a matching recipe.
+    AlreadyRunning {
+        /// Port in use.
+        port: QaPort,
+        /// Process id.
+        pid: ChildPid,
+        /// Recipe that was already launched.
+        recipe: Box<LaunchSpec>,
     },
-        Failed(LaunchFailure),
+    /// Launch failed.
+    Failed(LaunchFailure),
 }
 
+/// Why a launch failed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LaunchFailure {
-        Spawn(SpawnError),
-                            Timeout {
-                tail:   FailureTail,
-                waited: BootTimeout,
+    /// OS spawn failed.
+    Spawn(SpawnError),
+    /// Boot timeout without readiness.
+    Timeout {
+        /// Captured output tail.
+        tail: FailureTail,
+        /// How long we waited.
+        waited: BootTimeout,
     },
-        ExitedEarly(FailureTail),
-                RecipeMismatch(Box<LaunchSpec>),
-                    PortHeldByOrphan {
-                port: QaPort,
-                pid:  OrphanPid,
+    /// Child exited before becoming ready.
+    ExitedEarly(FailureTail),
+    /// Running child used a different recipe.
+    RecipeMismatch(Box<LaunchSpec>),
+    /// Port is held by a process we did not launch.
+    PortHeldByOrphan {
+        /// Port in use.
+        port: QaPort,
+        /// Best-effort pid of the holder.
+        pid: OrphanPid,
     },
 }
 
+/// Result of trying to stop a host.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StopOutcome {
-        Stopped {
-                pid: ChildPid,
+    /// Our managed child was stopped.
+    Stopped {
+        /// Process id that was stopped.
+        pid: ChildPid,
     },
-            OrphanStopped {
-                port: QaPort,
-                pid:  OrphanPid,
+    /// An orphan on the port was stopped.
+    OrphanStopped {
+        /// Port that was freed.
+        port: QaPort,
+        /// Orphan pid.
+        pid: OrphanPid,
     },
-            OrphanHeld {
-                port: QaPort,
-                pid:  OrphanPid,
+    /// An orphan is still holding the port.
+    OrphanHeld {
+        /// Port still held.
+        port: QaPort,
+        /// Orphan pid.
+        pid: OrphanPid,
     },
-        NotRunning,
+    /// Nothing was running on that port.
+    NotRunning,
 }

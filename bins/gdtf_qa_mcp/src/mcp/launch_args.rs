@@ -1,3 +1,5 @@
+//! Parse MCP launch tool arguments into a [`LaunchSpec`].
+
 use serde_json::Value;
 
 use crate::lifecycle::{
@@ -5,6 +7,11 @@ use crate::lifecycle::{
     LaunchSpec, WorkingDir,
 };
 
+/// Merge tool args onto `defaults` to produce a launch recipe.
+///
+/// # Errors
+///
+/// Returns a human-readable message when an argument has the wrong shape.
 pub fn parse_launch_spec(defaults: &LaunchSpec, args: &Value) -> Result<LaunchSpec, String> {
     let package = parse_package(args)?.unwrap_or_else(|| defaults.package().clone());
     let features = parse_features(args)?.unwrap_or_else(|| defaults.features().clone());
@@ -101,11 +108,11 @@ mod tests {
     use super::parse_launch_spec;
     use crate::lifecycle::LaunchSpec;
 
-        fn parse_game(args: &serde_json::Value) -> Result<LaunchSpec, String> {
+    fn parse_game(args: &serde_json::Value) -> Result<LaunchSpec, String> {
         parse_launch_spec(&LaunchSpec::game_default(), args)
     }
 
-            #[test]
+    #[test]
     fn empty_arguments_are_the_default_game_recipe() {
         let Ok(spec) = parse_game(&json!({})) else {
             unreachable!("an empty argument object parses");
@@ -119,7 +126,7 @@ mod tests {
         assert!(spec.env().is_empty());
     }
 
-                        #[test]
+    #[test]
     fn full_recipe_parses_every_argument() {
         let temp = std::env::temp_dir();
         let Ok(here) = std::env::current_dir() else {
@@ -151,7 +158,7 @@ mod tests {
         assert_eq!(first.name().as_str(), "GDTF_BATTLE_SEED");
     }
 
-        #[test]
+    #[test]
     fn features_accept_a_comma_separated_string() {
         let Ok(spec) = parse_game(&json!({ "features": "net_qa, dev_tools" })) else {
             unreachable!("a comma-separated feature string parses");
@@ -162,7 +169,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn a_missing_working_dir_is_rejected() {
         let result = parse_game(&json!({ "working_dir": "/no/such/tree/here" }));
         let Err(message) = result else {
@@ -171,7 +178,7 @@ mod tests {
         assert!(message.contains("working_dir"), "message: {message}");
     }
 
-            #[test]
+    #[test]
     fn empty_arguments_against_the_editor_defaults_are_the_editor_recipe() {
         let Ok(spec) = parse_launch_spec(&LaunchSpec::editor_default(), &json!({})) else {
             unreachable!("an empty argument object parses");
@@ -180,7 +187,7 @@ mod tests {
         assert_eq!(spec.channel().enable().as_str(), "GDTF_EDITOR_NET_QA");
     }
 
-            #[test]
+    #[test]
     fn the_qa_channel_names_are_not_a_caller_argument() {
         let Ok(spec) = parse_launch_spec(
             &LaunchSpec::editor_default(),
@@ -192,7 +199,7 @@ mod tests {
         assert_eq!(spec.channel().port().as_str(), "GDTF_EDITOR_NET_QA_PORT");
     }
 
-        #[test]
+    #[test]
     fn wrongly_shaped_arguments_are_rejected() {
         assert!(parse_game(&json!({ "package": 7 })).is_err());
         assert!(parse_game(&json!({ "features": [7] })).is_err());

@@ -1,4 +1,5 @@
-//! is an `Option<String>` with `#[serde(default)]`, so an absent field means
+//! Theme value types, RON specs, and runtime resources.
+
 mod fallback;
 mod newtypes;
 mod runtime;

@@ -1,4 +1,5 @@
-//! colors are **not** authoritative: the central
+//! Spawn themed panel and button entities.
+
 use bevy::{
     ecs::template::template,
     prelude::*,
@@ -13,6 +14,7 @@ use crate::{
     themed::{ThemeRole, Themed},
 };
 
+/// Spawn a themed panel root.
 pub fn spawn_panel(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
     let node = box_node(
         *theme.panel.border_width,
@@ -32,6 +34,7 @@ pub fn spawn_panel(commands: &mut Commands, theme: &GdtfTheme) -> Entity {
         .id()
 }
 
+/// Spawn a themed button with caption `label` and extra `marker` components.
 pub fn spawn_button(
     commands: &mut Commands,
     theme: &GdtfTheme,
@@ -80,8 +83,8 @@ pub fn spawn_button(
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum BoxKind {
-        Panel,
-        Button,
+    Panel,
+    Button,
 }
 
 fn box_node(border_vw: f32, radius_vw: f32, theme: &GdtfTheme, kind: BoxKind) -> Node {
@@ -93,9 +96,9 @@ fn box_node(border_vw: f32, radius_vw: f32, theme: &GdtfTheme, kind: BoxKind) ->
         border: UiRect::all(Val::Vw(border_vw)),
         border_radius: BorderRadius::all(Val::Vw(radius_vw)),
         padding: UiRect {
-            left:   Val::Vw(*margin.l),
-            right:  Val::Vw(*margin.r),
-            top:    Val::Vh(*margin.t),
+            left: Val::Vw(*margin.l),
+            right: Val::Vw(*margin.r),
+            top: Val::Vh(*margin.t),
             bottom: Val::Vh(*margin.b),
         },
         ..default()

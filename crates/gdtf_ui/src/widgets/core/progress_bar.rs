@@ -1,19 +1,24 @@
+//! Horizontal fill progress bar.
+
 use bevy::{
     prelude::*,
     scene::{CommandsSceneExt, bsn, template_value},
     ui::{BackgroundColor, Node, Val},
 };
 
+/// Fill amount in 0..=1.
 #[derive(Deref, Clone, Copy, PartialEq, Debug)]
 pub struct FillFraction(f32);
 
 impl FillFraction {
-                            #[must_use]
+    /// Clamp into 0..=1.
+    #[must_use]
     pub const fn new(fraction: f32) -> Self {
         Self(fraction.clamp(0.0, 1.0))
     }
 
-                    #[must_use]
+    /// Ratio of `current` to `max` (zero when max is non-positive).
+    #[must_use]
     pub fn from_ratio(current: f32, max: f32) -> Self {
         if max <= 0.0 {
             Self(0.0)
@@ -22,17 +27,20 @@ impl FillFraction {
         }
     }
 
-        fn as_percent(self) -> Val {
+    fn as_percent(self) -> Val {
         Val::Percent(self.0 * 100.0)
     }
 }
 
+/// Track (background) of a progress bar.
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct ProgressBarTrack;
 
+/// Fill child of a progress bar.
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct ProgressBarFill;
 
+/// Spawn a progress bar with the given fill and colors.
 pub fn spawn_progress_bar(
     commands: &mut Commands,
     fraction: FillFraction,
@@ -69,6 +77,7 @@ pub fn spawn_progress_bar(
         .id()
 }
 
+/// Update the fill width under `track`. Returns whether a fill node was found.
 pub fn set_progress_bar(
     track: Entity,
     fraction: FillFraction,

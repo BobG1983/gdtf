@@ -1,10 +1,18 @@
+//! Wire names for MCP tools.
+
+/// Tools this bridge exposes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToolName {
-        Launch,
-        Stop,
-        Logs,
-        Commands,
-        Run,
+    /// Launch a host process.
+    Launch,
+    /// Stop a host process.
+    Stop,
+    /// Fetch child log tail.
+    Logs,
+    /// List QA commands from the host.
+    Commands,
+    /// Run a QA command on the host.
+    Run,
 }
 
 pub(super) const ALL: &[ToolName] = &[
@@ -16,7 +24,8 @@ pub(super) const ALL: &[ToolName] = &[
 ];
 
 impl ToolName {
-        #[must_use]
+    /// Name as it appears on the wire.
+    #[must_use]
     pub const fn wire_name(self) -> &'static str {
         match self {
             Self::Launch => "launch",
@@ -27,7 +36,8 @@ impl ToolName {
         }
     }
 
-        #[must_use]
+    /// Parse a wire name.
+    #[must_use]
     pub fn from_wire(name: &str) -> Option<Self> {
         ALL.iter().copied().find(|tool| tool.wire_name() == name)
     }

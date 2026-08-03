@@ -1,3 +1,5 @@
+//! Paint button backgrounds from interaction state and theme.
+
 use bevy::{
     prelude::*,
     ui::{BackgroundColor, BorderColor as UiBorderColor, Interaction, widget::Button},
@@ -31,6 +33,7 @@ pub(crate) fn interaction_fill(theme: &GdtfTheme, interaction: Interaction) -> C
     }
 }
 
+/// Update button fill/border when interaction changes.
 pub fn theme_interaction(
     theme: Option<Res<GdtfTheme>>,
     mut buttons: Query<InteractionVisuals, InteractedButton>,

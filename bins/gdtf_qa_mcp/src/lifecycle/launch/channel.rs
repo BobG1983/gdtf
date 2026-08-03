@@ -1,3 +1,5 @@
+//! Env var names that enable and configure a host's net QA channel.
+
 use super::values::EnvVarName;
 
 const GAME_ENABLE_VAR: &str = "GDTF_NET_QA";
@@ -8,29 +10,34 @@ const EDITOR_ENABLE_VAR: &str = "GDTF_EDITOR_NET_QA";
 
 const EDITOR_PORT_VAR: &str = "GDTF_EDITOR_NET_QA_PORT";
 
+/// Enable flag and port env var names for a host.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct QaChannel {
-        enable: EnvVarName,
-        port:   EnvVarName,
+    enable: EnvVarName,
+    port: EnvVarName,
 }
 
 impl QaChannel {
-        #[must_use]
+    /// From explicit env names.
+    #[must_use]
     pub const fn new(enable: EnvVarName, port: EnvVarName) -> Self {
         Self { enable, port }
     }
 
-        #[must_use]
+    /// Env var that enables the channel when set to `1`.
+    #[must_use]
     pub const fn enable(&self) -> &EnvVarName {
         &self.enable
     }
 
-        #[must_use]
+    /// Env var that carries the listen port.
+    #[must_use]
     pub const fn port(&self) -> &EnvVarName {
         &self.port
     }
 
-        #[must_use]
+    /// Game channel names.
+    #[must_use]
     pub fn game() -> Self {
         Self::new(
             EnvVarName::new(GAME_ENABLE_VAR.to_owned()),
@@ -38,7 +45,8 @@ impl QaChannel {
         )
     }
 
-        #[must_use]
+    /// Editor channel names.
+    #[must_use]
     pub fn editor() -> Self {
         Self::new(
             EnvVarName::new(EDITOR_ENABLE_VAR.to_owned()),
@@ -51,7 +59,7 @@ impl QaChannel {
 mod test {
     use super::QaChannel;
 
-            #[test]
+    #[test]
     fn the_two_channels_share_no_variable_name() {
         let game = QaChannel::game();
         let editor = QaChannel::editor();

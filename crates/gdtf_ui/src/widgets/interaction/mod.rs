@@ -1,3 +1,5 @@
+//! Hover, focus, and theme interaction systems for buttons.
+
 mod focus;
 mod repaint;
 #[cfg(test)]

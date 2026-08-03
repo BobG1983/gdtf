@@ -1,3 +1,5 @@
+//! Host process manager: launch, wait for readiness, stop.
+
 use std::time::Instant;
 
 use super::{
@@ -12,43 +14,53 @@ use super::{
 };
 use crate::link::QaPort;
 
+/// Launch and stop a single host process.
 pub trait HostLifecycle {
-                                                fn launch(&mut self, port: QaPort, spec: &LaunchSpec) -> LaunchOutcome;
+    /// Spawn (or reuse) a host on `port` with `spec`.
+    fn launch(&mut self, port: QaPort, spec: &LaunchSpec) -> LaunchOutcome;
 
-                                    fn stop(&mut self, port: QaPort) -> StopOutcome;
+    /// Stop the managed child or any orphan on `port`.
+    fn stop(&mut self, port: QaPort) -> StopOutcome;
 
-                            fn stop_owned(&mut self) -> StopOutcome;
+    /// Stop only the child this manager owns.
+    fn stop_owned(&mut self) -> StopOutcome;
 
-                                    fn child_working_dir(&self) -> Option<WorkingDir>;
+    /// Working directory of the running child, if any.
+    fn child_working_dir(&self) -> Option<WorkingDir>;
 
-                                fn child_output(&self, max: TailLines) -> Option<OutputTail>;
+    /// Recent output of the running child, if any.
+    fn child_output(&self, max: TailLines) -> Option<OutputTail>;
 }
 
 struct RunningChild {
-        child:  Box<dyn ManagedChild>,
-        port:   QaPort,
-        recipe: LaunchSpec,
+    child: Box<dyn ManagedChild>,
+    port: QaPort,
+    recipe: LaunchSpec,
 }
 
+/// Default host lifecycle implementation.
 pub struct HostManager {
-        spawner: Box<dyn ChildSpawner>,
-        config:  LifecycleConfig,
-        running: Option<RunningChild>,
-        orphans: Box<dyn OrphanWatch>,
+    spawner: Box<dyn ChildSpawner>,
+    config: LifecycleConfig,
+    running: Option<RunningChild>,
+    orphans: Box<dyn OrphanWatch>,
 }
 
 impl HostManager {
-        #[must_use]
+    /// Manager with default config and system orphan watch.
+    #[must_use]
     pub fn new(spawner: Box<dyn ChildSpawner>) -> Self {
         Self::with_config(spawner, LifecycleConfig::default())
     }
 
-        #[must_use]
+    /// Manager with explicit config.
+    #[must_use]
     pub fn with_config(spawner: Box<dyn ChildSpawner>, config: LifecycleConfig) -> Self {
         Self::with_orphan_watch(spawner, config, Box::new(SystemOrphanWatch::new()))
     }
 
-                            #[must_use]
+    /// Manager with explicit config and orphan watch.
+    #[must_use]
     pub fn with_orphan_watch(
         spawner: Box<dyn ChildSpawner>,
         config: LifecycleConfig,
@@ -62,11 +74,11 @@ impl HostManager {
         }
     }
 
-        fn hold_on(&self, port: QaPort) -> PortHold {
+    fn hold_on(&self, port: QaPort) -> PortHold {
         self.orphans.inspect(port, self.config.probe_timeout())
     }
 
-                    fn stop_orphan(&self, port: QaPort, pid: OrphanPid) -> StopOutcome {
+    fn stop_orphan(&self, port: QaPort, pid: OrphanPid) -> StopOutcome {
         let OrphanPid::Known(known) = pid else {
             return StopOutcome::OrphanHeld { port, pid };
         };
@@ -77,7 +89,7 @@ impl HostManager {
         }
     }
 
-                    fn await_readiness(
+    fn await_readiness(
         &mut self,
         mut child: Box<dyn ManagedChild>,
         port: QaPort,
@@ -124,8 +136,8 @@ impl HostLifecycle for HostManager {
                 )));
             }
             return LaunchOutcome::AlreadyRunning {
-                port:   running.port,
-                pid:    running.child.pid(),
+                port: running.port,
+                pid: running.child.pid(),
                 recipe: Box::new(running.recipe.clone()),
             };
         }

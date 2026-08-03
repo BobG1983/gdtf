@@ -1,3 +1,5 @@
+//! Control tool handlers (launch, stop, logs).
+
 use serde_json::Value;
 
 use super::render::{render_launch, render_logs, render_stop};
@@ -8,6 +10,7 @@ use crate::{
     mcp::{ToolCallOutcome, launch_args::parse_launch_spec},
 };
 
+/// Launch (or attach to) a host with optional recipe overrides.
 #[must_use]
 pub fn handle_launch(
     host: QaHost,
@@ -33,12 +36,14 @@ pub fn handle_launch(
     ToolCallOutcome::Result(render_launch(host, &outcome, &spec))
 }
 
+/// Stop a host (managed child or orphan on its port).
 #[must_use]
 pub fn handle_stop(host: QaHost, lifecycle: &mut dyn HostLifecycle) -> ToolCallOutcome {
     let outcome = lifecycle.stop(host.port_from_env());
     ToolCallOutcome::Result(render_stop(host, &outcome))
 }
 
+/// Return recent child output for a host.
 #[must_use]
 pub fn handle_logs(
     host: QaHost,

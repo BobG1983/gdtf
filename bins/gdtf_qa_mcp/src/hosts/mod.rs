@@ -1,3 +1,5 @@
+//! Game and editor host selection and handles.
+
 pub mod host;
 pub mod set;
 

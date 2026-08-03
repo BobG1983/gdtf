@@ -1,3 +1,5 @@
+//! Stdio serve loop for the MCP bridge.
+
 use std::io::{self, BufRead, Write};
 
 use crate::{
@@ -7,6 +9,7 @@ use crate::{
     rpc::dispatch,
 };
 
+/// Run the MCP server on stdin/stdout until EOF.
 pub fn run_stdio() {
     let mut game_link = QaClient::for_host(QaHost::Game);
     let mut editor_link = QaClient::for_host(QaHost::Editor);
@@ -33,6 +36,7 @@ pub fn run_stdio() {
     let _ = editor_lifecycle.stop_owned();
 }
 
+/// Read newline-delimited JSON-RPC requests and write responses.
 pub fn run_loop<R: BufRead, W: Write>(mut reader: R, writer: &mut W, hosts: &mut HostSet<'_>) {
     let mut line = String::new();
     loop {
@@ -68,7 +72,7 @@ mod tests {
         link::{QaLink, QaPort},
     };
 
-            struct DeadLink;
+    struct DeadLink;
 
     impl QaLink for DeadLink {
         fn request(&mut self, _request: QaRequest) -> Result<QaResponse, McpError> {
@@ -76,7 +80,7 @@ mod tests {
         }
     }
 
-            struct DeadLifecycle;
+    struct DeadLifecycle;
 
     impl HostLifecycle for DeadLifecycle {
         fn launch(&mut self, _port: QaPort, _spec: &LaunchSpec) -> LaunchOutcome {
@@ -100,7 +104,7 @@ mod tests {
         }
     }
 
-            #[test]
+    #[test]
     fn loops_over_newline_delimited_requests() {
         let input = concat!(
             r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#,

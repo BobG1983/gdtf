@@ -1,3 +1,5 @@
+//! Route `tools/call` to the right handler.
+
 use gdtf_qa_protocol::message::{QaRequest, QaResponse};
 use serde_json::{Value, json};
 
@@ -26,12 +28,16 @@ fn resolve_host(args: &Value) -> Result<QaHost, String> {
     }
 }
 
+/// Outcome of a tool call: JSON result or invalid-params message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ToolCallOutcome {
-        Result(Value),
-        Invalid(String),
+    /// Successful tool result payload.
+    Result(Value),
+    /// Argument validation failure.
+    Invalid(String),
 }
 
+/// Dispatch one MCP `tools/call` request.
 #[must_use]
 pub fn handle_tool_call(params: Option<&Value>, hosts: &mut HostSet<'_>) -> ToolCallOutcome {
     let Some(params) = params else {
@@ -105,7 +111,7 @@ mod test {
 
     use super::{QaHost, resolve_host};
 
-        #[test]
+    #[test]
     fn a_call_is_aimed_by_its_host_argument() {
         assert_eq!(resolve_host(&json!({})), Ok(QaHost::Game));
         assert_eq!(resolve_host(&json!({ "host": "game" })), Ok(QaHost::Game));
@@ -115,7 +121,7 @@ mod test {
         );
     }
 
-            #[test]
+    #[test]
     fn an_unknown_host_word_is_rejected() {
         assert!(resolve_host(&json!({ "host": "edtior" })).is_err());
         assert!(resolve_host(&json!({ "host": 7 })).is_err());
