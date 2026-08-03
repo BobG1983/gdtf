@@ -1,3 +1,5 @@
+//! Place roster members into deployment zones.
+
 use bevy::{platform::collections::HashSet, prelude::Deref};
 
 use super::zone::{DeploymentZone, DeploymentZones};
@@ -11,10 +13,12 @@ use crate::{
     situation::{PlacedGanger, Placement, RosterMember, Situation},
 };
 
+/// Whether a cell can stand a ganger.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Standable(bool);
 
 impl Standable {
+    /// Wrap the flag.
     #[must_use]
     pub const fn new(standable: bool) -> Self {
         Self(standable)
@@ -97,8 +101,8 @@ fn deploy_side(
 
     if standable.len() < members.len() {
         return Err(PackingError::DeploymentZoneTooSmall {
-            anchor:   zone.anchor(),
-            demand:   RosterDemand::new(members.len()),
+            anchor: zone.anchor(),
+            demand: RosterDemand::new(members.len()),
             capacity: ZoneCapacity::new(standable.len()),
         });
     }
@@ -148,7 +152,7 @@ fn blocking_grid(terrain: &Situation) -> OccupancyGrid {
         .map(|cover| TerrainPlacement::new(cover.at, TerrainKind::Wall))
         .collect();
     let input = OccupancyInput {
-        terrain:   terrain_placements,
+        terrain: terrain_placements,
         occupants: Vec::new(),
     };
     OccupancyGrid::build_from_occupancy_input(&input, &HashSet::default())
