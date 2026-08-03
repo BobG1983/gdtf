@@ -1,3 +1,5 @@
+//! Startup load, first resolve, and hot-reload redrive systems.
+
 use bevy::{
     asset::{AssetEvent, AssetServer, Assets},
     ecs::component::Mutable,
@@ -10,6 +12,7 @@ use crate::{
     hot::{chain::HotRonChain, handle::HotRonHandle},
 };
 
+/// Load the RON asset and store its handle on startup.
 pub fn kick_off_hot_ron_resource<Spec, T>(
     mut commands: Commands,
     asset_server: Option<Res<AssetServer>>,
@@ -25,6 +28,7 @@ pub fn kick_off_hot_ron_resource<Spec, T>(
     commands.insert_resource(HotRonHandle::<Spec>::new(handle));
 }
 
+/// Insert the mapped resource once the asset is ready (or run fallback on failure).
 pub fn resolve_hot_ron_resource<Spec, T>(
     mut commands: Commands,
     asset_server: Option<Res<AssetServer>>,
@@ -59,6 +63,7 @@ pub fn resolve_hot_ron_resource<Spec, T>(
     }
 }
 
+/// Re-map the resource when the underlying RON asset is modified.
 pub fn redrive_hot_ron_resource<Spec, T>(
     mut events: MessageReader<AssetEvent<RonAsset<Spec>>>,
     asset_server: Option<Res<AssetServer>>,
@@ -96,6 +101,7 @@ pub fn redrive_hot_ron_resource<Spec, T>(
     );
 }
 
+/// Short type name for logs.
 pub(crate) fn short_type_name<T>() -> &'static str {
     let full = core::any::type_name::<T>();
     full.rsplit("::").next().unwrap_or(full)
