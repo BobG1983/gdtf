@@ -1,3 +1,5 @@
+//! Wire-safe identifiers (cells, levels, shot names).
+
 pub mod cell;
 pub mod shot;
 
