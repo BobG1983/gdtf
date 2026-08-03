@@ -1,4 +1,5 @@
-//! GTW-495): the [`SavePrefabError`] failure enum, the authored spawn-role default, and the
+//! Prefab save error type and path helpers.
+
 use gdtf_assets::RonSaveError;
 use gdtf_battle_sim::{
     level::{GridSize, SpawnRole},
@@ -7,16 +8,19 @@ use gdtf_battle_sim::{
 
 pub(super) const SAVED_SPAWN_ROLE: SpawnRole = SpawnRole::Fill;
 
-
+/// Errors from prefab validation or save.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SavePrefabError {
-            EmptyName,
-                IllegalCell(CellLevel),
-            Save(RonSaveError),
+    /// Prefab name is empty after sanitization.
+    EmptyName,
+    /// A painted cell fails placement rules.
+    IllegalCell(CellLevel),
+    /// Underlying RON write failed.
+    Save(RonSaveError),
 }
 
 impl From<RonSaveError> for SavePrefabError {
-                    fn from(err: RonSaveError) -> Self {
+    fn from(err: RonSaveError) -> Self {
         Self::Save(err)
     }
 }
