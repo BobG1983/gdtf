@@ -1,3 +1,5 @@
+//! Initial camera focus and bounds clamp.
+
 use bevy::{prelude::*, window::PrimaryWindow};
 use gdtf_battle_sim::{
     battle::PlayerFaction,
@@ -11,6 +13,7 @@ use super::{
 };
 use crate::cell_to_world;
 
+/// Average of world-space centers, or `None` when empty.
 #[must_use]
 pub fn camera_focus(centers: impl IntoIterator<Item = Vec2>) -> Option<Vec2> {
     let mut count: u32 = 0;
@@ -30,6 +33,7 @@ pub fn camera_focus(centers: impl IntoIterator<Item = Vec2>) -> Option<Vec2> {
     Some(sum / divisor)
 }
 
+/// Clamp a camera translation so the viewport stays over the world rect.
 #[must_use]
 pub fn clamp_camera(
     translation: Vec2,
@@ -93,6 +97,7 @@ fn viewport_half_extent(
     Some(logical_size * 0.5 * ortho.scale)
 }
 
+/// Once per battle, center the camera on the player's gangers.
 pub fn frame_camera_on_units(
     mut already_framed: Local<bool>,
     player: Res<PlayerFaction>,
@@ -120,6 +125,7 @@ pub fn frame_camera_on_units(
     *already_framed = true;
 }
 
+/// Keep the world camera inside the battlefield plus configured margin.
 pub fn clamp_camera_to_bounds(
     tuning: Option<Res<PanTuning>>,
     mut cameras: Query<(&Camera, &mut Transform, &Projection), With<WorldCamera>>,

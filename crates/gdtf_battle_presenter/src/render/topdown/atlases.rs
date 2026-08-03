@@ -1,3 +1,5 @@
+//! Top-down sheet atlases loaded at startup.
+
 use bevy::{
     image::{ImageLoaderSettings, ImageSampler, TextureAtlasLayout},
     platform::collections::HashMap,
@@ -5,35 +7,44 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
-/// `#[serde(transparent)]` so an authored role-table field parses as a bare integer
+/// Index into a sheet grid.
+///
+/// `#[serde(transparent)]` so an authored role-table field parses as a bare integer.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct TileIndex(usize);
 
 impl TileIndex {
-                        #[must_use]
+    /// Build from a zero-based tile index.
+    #[must_use]
     pub const fn new(index: usize) -> Self {
         Self(index)
     }
 }
 
+/// Which PNG sheet a tile comes from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SheetRole {
-        Terrain,
-        Characters,
-        Effects,
-                        Portraits,
+    /// Terrain tileset.
+    Terrain,
+    /// Character / ganger tileset.
+    Characters,
+    /// Effects tileset.
+    Effects,
+    /// Portrait tileset.
+    Portraits,
 }
 
 impl SheetRole {
-                    const ALL: [Self; 4] = [
+    const ALL: [Self; 4] = [
         Self::Terrain,
         Self::Characters,
         Self::Effects,
         Self::Portraits,
     ];
 
-                                #[must_use]
+    /// Asset path for this sheet.
+    #[must_use]
     pub const fn asset_path(self) -> &'static str {
         match self {
             Self::Terrain => "sprites/alt_tileset_terrain.png",
@@ -43,7 +54,8 @@ impl SheetRole {
         }
     }
 
-                                        #[must_use]
+    /// Grid columns and rows for this sheet.
+    #[must_use]
     pub const fn grid(self) -> (u32, u32) {
         match self {
             Self::Terrain => (16, 22),
@@ -53,7 +65,8 @@ impl SheetRole {
         }
     }
 
-                                                        #[must_use]
+    /// Pixel size of one tile on this sheet.
+    #[must_use]
     pub const fn tile_px(self) -> u32 {
         match self {
             Self::Terrain | Self::Characters | Self::Effects => 16,
@@ -61,7 +74,7 @@ impl SheetRole {
         }
     }
 
-                                                                pub(super) fn sampler_override(self) -> Option<ImageSampler> {
+    pub(super) fn sampler_override(self) -> Option<ImageSampler> {
         match self {
             Self::Portraits => Some(ImageSampler::nearest()),
             Self::Terrain | Self::Characters | Self::Effects => None,
@@ -69,24 +82,30 @@ impl SheetRole {
     }
 }
 
+/// Image handle plus atlas layout for one sheet.
 #[derive(Debug, Clone)]
 pub struct SheetAtlas {
-        pub image:  Handle<Image>,
-            pub layout: Handle<TextureAtlasLayout>,
+    /// Loaded sheet image.
+    pub image: Handle<Image>,
+    /// Grid layout for the sheet.
+    pub layout: Handle<TextureAtlasLayout>,
 }
 
+/// All loaded top-down sheets.
 #[derive(Resource, Debug, Clone)]
 pub struct TopDownAtlases {
-                    pub(super) sheets: HashMap<SheetRole, SheetAtlas>,
+    pub(super) sheets: HashMap<SheetRole, SheetAtlas>,
 }
 
 impl TopDownAtlases {
-                    #[must_use]
+    /// Atlas for a sheet role, if loaded.
+    #[must_use]
     pub fn role(&self, role: SheetRole) -> Option<&SheetAtlas> {
         self.sheets.get(&role)
     }
 
-                                        #[must_use]
+    /// Which sheet role owns this image asset id.
+    #[must_use]
     pub fn sheet_role_for_image(&self, id: AssetId<Image>) -> Option<SheetRole> {
         self.sheets
             .iter()
@@ -94,6 +113,7 @@ impl TopDownAtlases {
     }
 }
 
+/// Startup system: load every sheet and insert [`TopDownAtlases`].
 pub fn load_topdown_atlases(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -107,7 +127,7 @@ pub fn load_topdown_atlases(
         sheets.insert(
             role,
             SheetAtlas {
-                image:  load_sheet_image(&asset_server, role),
+                image: load_sheet_image(&asset_server, role),
                 layout: layouts.add(layout),
             },
         );

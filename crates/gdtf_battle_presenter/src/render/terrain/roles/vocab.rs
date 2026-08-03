@@ -1,30 +1,55 @@
-/// authored key and [`from_key`](TileRole::from_key) its inverse — the draw's
+//! Terrain tile role vocabulary and authored-key mapping.
+
+/// Role of a terrain tile graphic.
+///
+/// [`as_key`](TileRole::as_key) is the authored key and [`from_key`](TileRole::from_key) its inverse.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TileRole {
-        Floor,
-        FloorAltPanel,
-        Wall,
-        WallEw,
-        Cover,
-        Emplacement,
-            EmplacementOccupied,
-        Slab,
-        Rubble,
-            SlabDestroyed,
-            Door,
-            StairUp,
-            StairDown,
-        Ladder,
-        DoorNs,
-        DoorEw,
-        StairNsUp,
-        StairNsDown,
-        StairEwUp,
-        StairEwDown,
+    /// Default floor tile.
+    Floor,
+    /// Alternate floor panel.
+    FloorAltPanel,
+    /// North-south wall.
+    Wall,
+    /// East-west wall.
+    WallEw,
+    /// Destructible cover.
+    Cover,
+    /// Empty emplacement.
+    Emplacement,
+    /// Emplacement with an occupant.
+    EmplacementOccupied,
+    /// Intact ceiling slab.
+    Slab,
+    /// Rubble after destruction.
+    Rubble,
+    /// Destroyed slab graphic.
+    SlabDestroyed,
+    /// Generic door (legacy).
+    Door,
+    /// Stair leading up (legacy).
+    StairUp,
+    /// Stair leading down (legacy).
+    StairDown,
+    /// Ladder connector.
+    Ladder,
+    /// North-south door.
+    DoorNs,
+    /// East-west door.
+    DoorEw,
+    /// North-south stair up.
+    StairNsUp,
+    /// North-south stair down.
+    StairNsDown,
+    /// East-west stair up.
+    StairEwUp,
+    /// East-west stair down.
+    StairEwDown,
 }
 
 impl TileRole {
-            pub const ALL: [Self; 20] = [
+    /// Every role, in a stable order.
+    pub const ALL: [Self; 20] = [
         Self::Floor,
         Self::FloorAltPanel,
         Self::Wall,
@@ -47,7 +72,8 @@ impl TileRole {
         Self::StairEwDown,
     ];
 
-                            #[must_use]
+    /// Authored string key for this role.
+    #[must_use]
     pub const fn as_key(self) -> &'static str {
         match self {
             Self::Floor => "floor",
@@ -73,12 +99,14 @@ impl TileRole {
         }
     }
 
-                #[must_use]
+    /// Parse a role from its authored key.
+    #[must_use]
     pub fn from_key(key: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|role| role.as_key() == key)
     }
 
-                                                                    #[must_use]
+    /// Whether theme authors may assign a graphic for this role.
+    #[must_use]
     pub const fn def_authorable(self) -> bool {
         match self {
             Self::Floor
@@ -104,7 +132,8 @@ impl TileRole {
         }
     }
 
-                                    #[must_use]
+    /// Opposite direction for stair pairs, if any.
+    #[must_use]
     pub const fn counterpart(self) -> Option<Self> {
         match self {
             Self::StairUp => Some(Self::StairDown),
@@ -117,7 +146,8 @@ impl TileRole {
         }
     }
 
-                #[must_use]
+    /// Whether this role is an upward stair connector.
+    #[must_use]
     pub const fn is_up_connector(self) -> bool {
         matches!(self, Self::StairUp | Self::StairNsUp | Self::StairEwUp)
     }
