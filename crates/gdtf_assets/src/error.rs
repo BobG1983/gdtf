@@ -1,16 +1,23 @@
+//! Errors while reading or deserializing RON assets.
+
 use std::fmt;
 
+/// Failure loading a RON asset from disk bytes.
 #[derive(Debug)]
 pub enum RonLoadError {
-        Read(ReadError),
-        Deserialize(RonDeError),
+    /// Could not read the file bytes.
+    Read(ReadError),
+    /// Bytes were not valid RON for the expected type.
+    Deserialize(RonDeError),
 }
 
+/// I/O failure while reading asset bytes.
 #[derive(Debug)]
 pub struct ReadError(std::io::Error);
 
 impl ReadError {
-                            #[must_use]
+    /// Wrap an I/O error.
+    #[must_use]
     pub const fn new(cause: std::io::Error) -> Self {
         Self(cause)
     }
@@ -24,11 +31,13 @@ impl core::ops::Deref for ReadError {
     }
 }
 
+/// RON deserialize failure with span info.
 #[derive(Debug)]
 pub struct RonDeError(ron::error::SpannedError);
 
 impl RonDeError {
-                                #[must_use]
+    /// Wrap a spanned RON error.
+    #[must_use]
     pub const fn new(cause: ron::error::SpannedError) -> Self {
         Self(cause)
     }
