@@ -1,42 +1,51 @@
-//! The handshake types — [`ProtocolVersion`], [`ServerNameNet`], [`HelloFacts`]
+//! Handshake types: protocol version, server name, hello facts.
+
 use bevy_derive::Deref;
 use serde::{Deserialize, Serialize};
 
-/// The wire **protocol version** — bumped on any breaking change to the message shapes.
-/// A [`Hello`](crate::message::QaRequest::Hello) carries the client's version; the
+/// Wire protocol version. Bump on breaking message shape changes.
+///
+/// A [`Hello`](crate::message::QaRequest::Hello) carries the client's version.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ProtocolVersion(u32);
 
 impl ProtocolVersion {
-                                            /// Both are `#[serde(default)]`, so a NEW decoder reads an OLD frame with its previous
-                                                                        pub const CURRENT: Self = Self::new(14);
+    /// Current protocol version implemented by this crate.
+    pub const CURRENT: Self = Self::new(14);
 
-        #[must_use]
+    /// Wrap a version number.
+    #[must_use]
     pub const fn new(version: u32) -> Self {
         Self(version)
     }
 }
 
+/// Server display name on the wire.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ServerNameNet(String);
 
 impl ServerNameNet {
-        #[must_use]
+    /// Wrap an owned server name.
+    #[must_use]
     pub const fn new(name: String) -> Self {
         Self(name)
     }
 }
 
+/// Facts returned in a successful hello response.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct HelloFacts {
-        pub protocol: ProtocolVersion,
-        pub server:   ServerNameNet,
+    /// Server protocol version.
+    pub protocol: ProtocolVersion,
+    /// Server name.
+    pub server: ServerNameNet,
 }
 
 impl HelloFacts {
-        #[must_use]
+    /// Build hello facts from version and name.
+    #[must_use]
     pub const fn new(protocol: ProtocolVersion, server: ServerNameNet) -> Self {
         Self { protocol, server }
     }
