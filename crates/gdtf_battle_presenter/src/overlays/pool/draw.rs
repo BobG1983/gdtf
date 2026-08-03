@@ -1,5 +1,8 @@
+//! Shared grow/show/hide pool for overlay sprites.
+
 use bevy::prelude::{DetectChangesMut, Mut, Visibility};
 
+/// Reuse pooled items for each draw, grow when short, hide the rest.
 pub fn draw_pool<'v, Item, Draw>(
     mut pooled: impl Iterator<Item = Item>,
     draws: impl IntoIterator<Item = Draw>,
