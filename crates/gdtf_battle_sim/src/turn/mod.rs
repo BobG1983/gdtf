@@ -1,3 +1,5 @@
+//! Turn flow: active faction, end-turn dispatch, team TU regen.
+
 mod active_faction;
 mod dispatch;
 mod regen;

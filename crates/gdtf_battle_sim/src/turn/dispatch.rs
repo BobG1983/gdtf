@@ -1,3 +1,5 @@
+//! Handle end-turn requests: advance faction, regen TU, emit [`TurnStarted`].
+
 use bevy::prelude::{Message, MessageReader, MessageWriter, Query, ResMut};
 
 use crate::{
@@ -6,18 +8,22 @@ use crate::{
     turn::{ActiveFaction, regen::regen_team_tu},
 };
 
+/// A new faction's turn has begun.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TurnStarted {
-            pub now_active: Faction,
+    /// Faction that is now active.
+    pub now_active: Faction,
 }
 
 impl TurnStarted {
-        #[must_use]
+    /// Build a turn-started message.
+    #[must_use]
     pub const fn new(now_active: Faction) -> Self {
         Self { now_active }
     }
 }
 
+/// On [`EndTurnRequested`], advance active faction, regen their TU, emit [`TurnStarted`].
 pub fn dispatch_end_turn(
     mut requests: MessageReader<EndTurnRequested>,
     mut active: ResMut<ActiveFaction>,
