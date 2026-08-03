@@ -1,39 +1,50 @@
+//! Optional flags on a run request (await budget, capture rider).
+
 use bevy_derive::Deref;
 use serde::{Deserialize, Serialize};
 
 use crate::ids::ShotName;
 
+/// Seconds the client is willing to wait for readiness.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct AwaitBudget(u64);
 
 impl AwaitBudget {
-        #[must_use]
+    /// Wrap a second count.
+    #[must_use]
     pub const fn new(seconds: u64) -> Self {
         Self(seconds)
     }
 }
 
+/// Optional screenshot capture after the command.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CaptureRider {
-        pub name: Option<ShotName>,
+    /// Optional shot name override.
+    pub name: Option<ShotName>,
 }
 
 impl CaptureRider {
-        #[must_use]
+    /// Build a capture rider.
+    #[must_use]
     pub const fn new(name: Option<ShotName>) -> Self {
         Self { name }
     }
 }
 
+/// Extra options on [`crate::message::RunCommand`].
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RunOptions {
-        pub await_ready: Option<AwaitBudget>,
-        pub capture:     Option<CaptureRider>,
+    /// Wait for readiness up to this many seconds.
+    pub await_ready: Option<AwaitBudget>,
+    /// Take a screenshot after the command.
+    pub capture: Option<CaptureRider>,
 }
 
 impl RunOptions {
-        #[must_use]
+    /// Build options from parts.
+    #[must_use]
     pub const fn new(await_ready: Option<AwaitBudget>, capture: Option<CaptureRider>) -> Self {
         Self {
             await_ready,
@@ -41,7 +52,8 @@ impl RunOptions {
         }
     }
 
-                        #[must_use]
+    /// True when no optional fields are set.
+    #[must_use]
     pub const fn is_plain(&self) -> bool {
         self.await_ready.is_none() && self.capture.is_none()
     }
