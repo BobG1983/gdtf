@@ -61,8 +61,7 @@ fn classifier_without_fog_facts_is_band_only() {
             None,
         ),
         Visibility::Inherited,
-        "band-only mode shows ANY in-band ganger (no fog fact when the fog resources are \
-         absent)",
+        "band-only mode shows ANY in-band ganger (no fog fact when the fog resources are absent)",
     );
     assert_eq!(
         classify_ganger_visibility(
@@ -86,7 +85,7 @@ fn classifier_without_fog_facts_is_band_only() {
             None,
         ),
         Visibility::Inherited,
-        "FullView draws every storey (the GTW-521 ceiling), band-only mode included",
+        "FullView draws every storey, band-only mode included",
     );
 }
 

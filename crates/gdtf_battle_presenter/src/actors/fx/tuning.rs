@@ -199,7 +199,7 @@ mod test {
         );
         assert!(
             (*tuning.fct_ttl_seconds - FctTtlSeconds::DEFAULT).abs() < f32::EPSILON,
-            "the default FCT lifetime must be the GTW-327 re-tuned readable window",
+            "the default FCT lifetime must be the readable window",
         );
         assert!(
             (*tuning.fct_rise_rate - FctRiseRate::DEFAULT).abs() < f32::EPSILON,
