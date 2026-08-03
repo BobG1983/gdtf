@@ -1,3 +1,5 @@
+//! Type-erased command trait used by catalogues and registration.
+
 use bevy::prelude::App;
 use gdtf_qa_protocol::command::{
     ArgSchemaJson, CommandAvailability, CommandName, CommandSummary, CommandTiming, ReplySchemaJson,
@@ -5,16 +7,26 @@ use gdtf_qa_protocol::command::{
 
 use super::{QaCommand, schema::schema_text};
 
-/// #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-/// #[derive(serde::Serialize, schemars::JsonSchema)]
+/// Object-safe view of a command for catalogues and host registration.
+///
+/// Concrete types implement this automatically via [`QaCommand`].
+/// Args should derive `Debug`, `serde::Deserialize`, and `schemars::JsonSchema`.
+/// Replies should derive `serde::Serialize` and `schemars::JsonSchema`.
 pub trait ErasedCommand<F>: Send + Sync {
-        fn name(&self) -> CommandName;
-        fn summary(&self) -> CommandSummary;
-        fn timing(&self) -> CommandTiming;
-        fn arg_schema(&self) -> ArgSchemaJson;
-        fn reply_schema(&self) -> ReplySchemaJson;
-        fn availability(&self, facts: &F) -> CommandAvailability;
-                            fn register(&self, app: &mut App);
+    /// Stable command name.
+    fn name(&self) -> CommandName;
+    /// Short human summary.
+    fn summary(&self) -> CommandSummary;
+    /// When the command may run relative to the frame.
+    fn timing(&self) -> CommandTiming;
+    /// JSON Schema for the argument payload.
+    fn arg_schema(&self) -> ArgSchemaJson;
+    /// JSON Schema for the reply payload.
+    fn reply_schema(&self) -> ReplySchemaJson;
+    /// Whether the command is available given host facts.
+    fn availability(&self, facts: &F) -> CommandAvailability;
+    /// Register Bevy systems for this command on `app`.
+    fn register(&self, app: &mut App);
 }
 
 impl<C: QaCommand> ErasedCommand<C::Facts> for C {

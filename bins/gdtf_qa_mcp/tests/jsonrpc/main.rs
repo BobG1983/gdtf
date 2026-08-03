@@ -1,3 +1,5 @@
+//! JSON-RPC integration tests for the QA MCP courier.
+
 mod courier_attach;
 mod courier_riders;
 mod courier_tools;
