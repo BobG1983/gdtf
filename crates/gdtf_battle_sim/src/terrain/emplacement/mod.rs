@@ -1,3 +1,5 @@
+//! Weapon emplacements: vacant/occupied state and mount/dismount.
+
 pub mod state;
 pub mod toggle;
 
