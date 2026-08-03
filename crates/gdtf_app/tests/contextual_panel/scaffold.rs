@@ -27,7 +27,7 @@ fn contextual_panel_spawns_hidden_in_battle() {
     );
     assert!(
         single_with::<MeleeButton>(&mut app).is_some(),
-        "the Melee button exists exactly once in BattleRunning (GTW-507)",
+        "the Melee button exists exactly once in BattleRunning",
     );
     assert!(
         single_with::<OpenDoorButton>(&mut app).is_some(),
@@ -45,8 +45,7 @@ fn contextual_panel_spawns_hidden_in_battle() {
     assert_eq!(
         parent_of(&app, root),
         bar,
-        "the contextual panel root must be a CHILD of the bottom bar (GTW-726), not a \
-         free-floating top-level overlay",
+        "the contextual panel root must be a CHILD of the bottom bar, not a free-floating top-level overlay",
     );
 
     assert_eq!(
@@ -67,7 +66,7 @@ fn contextual_panel_spawns_hidden_in_battle() {
     assert_eq!(
         visibility::<MeleeButton>(&mut app),
         Some(Visibility::Hidden),
-        "the Melee button spawns Visibility::Hidden (scaffold: no detection yet — GTW-507)",
+        "the Melee button spawns Visibility::Hidden (scaffold: no detection yet)",
     );
     assert_eq!(
         visibility::<OpenDoorButton>(&mut app),
@@ -111,7 +110,7 @@ fn contextual_panel_despawns_outside_battle() {
     );
     assert!(
         single_with::<MeleeButton>(&mut app).is_none(),
-        "the Melee button must be despawned with the panel (GTW-507)",
+        "the Melee button must be despawned with the panel",
     );
     assert!(
         single_with::<OpenDoorButton>(&mut app).is_none(),
