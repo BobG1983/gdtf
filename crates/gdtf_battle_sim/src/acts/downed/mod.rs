@@ -1,3 +1,5 @@
+//! Stabilize and execute downed gangers.
+
 mod dispatch;
 mod execute;
 mod reach;

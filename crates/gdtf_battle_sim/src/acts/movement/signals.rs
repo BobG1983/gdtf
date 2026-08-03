@@ -1,36 +1,51 @@
+//! Movement outcome messages.
+
 use bevy::prelude::{Entity, Message};
 
 use crate::metric::Cell;
 
+/// Why a move was rejected.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MoveRejection {
-                        Unreachable,
-                        Unaffordable,
-                                            Suppressed,
+    /// No path to destination.
+    Unreachable,
+    /// Not enough TU.
+    Unaffordable,
+    /// Suppression blocked the move.
+    Suppressed,
 }
 
+/// Move request was rejected.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MoveRejected {
-        pub actor:  Entity,
-        pub reason: MoveRejection,
+    /// Actor.
+    pub actor: Entity,
+    /// Reason.
+    pub reason: MoveRejection,
 }
 
 impl MoveRejected {
-        #[must_use]
+    /// Build a rejection message.
+    #[must_use]
     pub const fn new(actor: Entity, reason: MoveRejection) -> Self {
         Self { actor, reason }
     }
 }
 
+/// Actor stepped from one cell to another.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MovementOccurred {
-            pub actor: Entity,
-        pub from:  Cell,
-        pub to:    Cell,
+    /// Actor.
+    pub actor: Entity,
+    /// Previous cell.
+    pub from: Cell,
+    /// New cell.
+    pub to: Cell,
 }
 
 impl MovementOccurred {
-        #[must_use]
+    /// Build a movement message.
+    #[must_use]
     pub const fn new(actor: Entity, from: Cell, to: Cell) -> Self {
         Self { actor, from, to }
     }

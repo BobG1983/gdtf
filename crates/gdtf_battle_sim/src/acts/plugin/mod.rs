@@ -1,3 +1,5 @@
+//! Registers act messages and wires dispatch systems.
+
 mod acts;
 mod messages;
 mod reaction_suppression;

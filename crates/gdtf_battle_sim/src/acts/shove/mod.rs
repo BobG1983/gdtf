@@ -1,3 +1,5 @@
+//! Deliberate and weapon shove resolution.
+
 mod apply;
 mod dispatch;
 mod verb;
