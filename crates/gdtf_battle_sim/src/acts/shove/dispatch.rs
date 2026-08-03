@@ -1,3 +1,5 @@
+//! Resolve and apply shove requests.
+
 use bevy::{
     ecs::system::SystemParam,
     prelude::{MessageReader, MessageWriter, Query, Res, ResMut, With},
@@ -40,21 +42,24 @@ type ShoveGangerQuery<'world, 'state> = Query<
     ),
 >;
 
+/// Grid and table resources for shove resolution.
 #[derive(SystemParam)]
 pub struct ShoveGrids<'w> {
-        surface:   Option<Res<'w, SurfaceGrid>>,
-        occupancy: Option<Res<'w, OccupancyGrid>>,
-            tuning:    Option<Res<'w, CombatTuning>>,
-        tables:    Option<Res<'w, InjuryTables>>,
-        registry:  Option<Res<'w, InjuryRegistry>>,
+    surface: Option<Res<'w, SurfaceGrid>>,
+    occupancy: Option<Res<'w, OccupancyGrid>>,
+    tuning: Option<Res<'w, CombatTuning>>,
+    tables: Option<Res<'w, InjuryTables>>,
+    registry: Option<Res<'w, InjuryRegistry>>,
 }
 
+/// RNG streams used when a shove causes a fall or injury.
 #[derive(SystemParam)]
 pub struct ShoveRngs<'w> {
-        severity: Option<ResMut<'w, SeverityRng>>,
-        injury:   Option<ResMut<'w, InjuryRng>>,
+    severity: Option<ResMut<'w, SeverityRng>>,
+    injury: Option<ResMut<'w, InjuryRng>>,
 }
 
+/// Spend TU, resolve shove destination, and apply falls/injuries.
 #[expect(
     clippy::too_many_arguments,
     reason = "the shove dispatch threads the request reader, the single ganger query (read + \

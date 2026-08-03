@@ -1,3 +1,5 @@
+//! Emit [`BattleWon`] / [`BattleLost`] when one side is wiped out.
+
 use bevy::prelude::{Local, MessageWriter, Query, Res};
 
 use crate::{
@@ -8,6 +10,7 @@ use crate::{
     ganger::{Faction, LifeState},
 };
 
+/// Check win/loss conditions once per side and emit the matching message.
 pub fn check_outcome(
     mut won: MessageWriter<BattleWon>,
     mut lost: MessageWriter<BattleLost>,
