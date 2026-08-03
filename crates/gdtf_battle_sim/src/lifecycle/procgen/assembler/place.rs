@@ -14,13 +14,13 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlacedPrefab {
-        prefab: Prefab,
-        anchor: Anchor,
-        region: RegionRect,
+    prefab: Prefab,
+    anchor: Anchor,
+    region: RegionRect,
 }
 
 impl PlacedPrefab {
-        #[must_use]
+    #[must_use]
     pub const fn new(prefab: Prefab, anchor: Anchor, region: RegionRect) -> Self {
         Self {
             prefab,
@@ -29,17 +29,17 @@ impl PlacedPrefab {
         }
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn prefab(&self) -> &Prefab {
         &self.prefab
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn anchor(&self) -> Anchor {
         self.anchor
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn region(&self) -> RegionRect {
         self.region
     }
@@ -47,12 +47,12 @@ impl PlacedPrefab {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Placement {
-        player: PlacedPrefab,
-        enemy:  PlacedPrefab,
+    player: PlacedPrefab,
+    enemy:  PlacedPrefab,
 }
 
 impl Placement {
-            #[must_use]
+    #[must_use]
     pub(in crate::lifecycle::procgen) const fn new(
         player: PlacedPrefab,
         enemy: PlacedPrefab,
@@ -60,12 +60,12 @@ impl Placement {
         Self { player, enemy }
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn player(&self) -> &PlacedPrefab {
         &self.player
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn enemy(&self) -> &PlacedPrefab {
         &self.enemy
     }
@@ -136,6 +136,12 @@ pub(in crate::lifecycle::procgen) fn place_enemy(
     Ok(PlacedPrefab::new(enemy_prefab, enemy_anchor, enemy_region))
 }
 
+/// Place player and enemy spawn prefabs on the board (default packer settings).
+///
+/// # Errors
+///
+/// Returns [`PackingError`] when no fitting prefab exists for a role, a footprint
+/// does not fit its anchor region, or the player footprint is below the minimum side.
 pub fn assemble_placement(
     registry: &PrefabRegistry,
     theme: ThemeUuid,
@@ -152,6 +158,11 @@ pub fn assemble_placement(
     )
 }
 
+/// Place player and enemy spawn prefabs with explicit packer split and min player side.
+///
+/// # Errors
+///
+/// Same failure modes as [`assemble_placement`].
 pub fn assemble_placement_with(
     registry: &PrefabRegistry,
     theme: ThemeUuid,

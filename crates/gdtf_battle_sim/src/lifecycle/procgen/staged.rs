@@ -12,12 +12,12 @@ use crate::{
 
 #[derive(Resource)]
 pub struct StagedProcgen {
-            rng:    ProcgenRng,
-        cursor: ProcgenCursor,
+    rng:    ProcgenRng,
+    cursor: ProcgenCursor,
 }
 
 impl StagedProcgen {
-                #[must_use]
+    #[must_use]
     pub fn new(seed: BattleSeed, theme: ThemeUuid, grid_size: GridSize) -> Self {
         Self {
             rng:    ProcgenRng::from_root(seed),
@@ -25,44 +25,54 @@ impl StagedProcgen {
         }
     }
 
-            #[must_use]
+    #[must_use]
     pub const fn stage(&self) -> ProcgenStage {
         self.cursor.stage()
     }
 
-            #[must_use]
+    #[must_use]
     pub const fn is_done(&self) -> bool {
         self.cursor.is_done()
     }
 
-            #[must_use]
+    #[must_use]
     pub const fn emitted(&self) -> Option<&EmittedLevel> {
         self.cursor.emitted()
     }
 
-            #[must_use]
+    #[must_use]
     pub const fn failure(&self) -> Option<&PackingError> {
         self.cursor.failure()
     }
 
-        #[must_use]
+    #[must_use]
     pub const fn grid_size(&self) -> GridSize {
         self.cursor.grid_size()
     }
 
-            #[must_use]
+    #[must_use]
     pub fn placed_footprints(&self) -> Vec<PlacedFootprint> {
         self.cursor.placed_footprints()
     }
 
-                                                pub fn advance(
+    /// Run one procgen stage.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PackingError`] when the current stage cannot place or fill.
+    pub fn advance(
         &mut self,
         registries: StagedProcgenRegistries<'_>,
     ) -> Result<ProcgenStage, PackingError> {
         self.cursor.step(registries, &mut self.rng)
     }
 
-                                    pub fn run_to_completion(
+    /// Advance until the cursor is done.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first [`PackingError`] from [`Self::advance`].
+    pub fn run_to_completion(
         &mut self,
         registries: StagedProcgenRegistries<'_>,
     ) -> Result<(), PackingError> {
