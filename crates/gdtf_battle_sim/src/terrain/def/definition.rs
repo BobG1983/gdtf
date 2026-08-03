@@ -1,51 +1,57 @@
+//! Authored terrain piece definition.
+
 use bevy::{prelude::Deref, reflect::TypePath};
 use serde::{Deserialize, Serialize};
 
 use super::{LosBlocking, TerrainPresenterKind, TerrainSimKind, TerrainTag, TerrainUuid};
 
-/// terrain piece in tooling / authoring.
-/// value). Private inner + derived [`Deref`]; `#[serde(transparent)]` parses a bare
+/// Display name for tooling and authoring.
 #[derive(Deref, Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, TypePath)]
 #[serde(transparent)]
 pub struct TerrainDisplayName(String);
 
 impl TerrainDisplayName {
-        #[must_use]
+    /// Wrap a name.
+    #[must_use]
     pub const fn new(name: String) -> Self {
         Self(name)
     }
 }
 
-/// `#[serde(transparent)]` round-trips it as the bare boolean wire form, so an authored
+/// Optional override for path blocking.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct BlocksPathingOverride(bool);
 
 impl BlocksPathingOverride {
-            #[must_use]
+    /// Wrap the flag.
+    #[must_use]
     pub const fn new(over: bool) -> Self {
         Self(over)
     }
 }
 
-///   `#[serde(default)]` makes an omitted `tags` field parse as the EMPTY vec.
+/// One terrain piece in the catalog.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, TypePath)]
 pub struct TerrainDef {
-        pub key:            TerrainUuid,
-        pub display_name:   TerrainDisplayName,
-        pub sim_kind:       TerrainSimKind,
-            pub presenter_kind: TerrainPresenterKind,
-            /// (`#[serde(default)]`). Consumption is GTW-482, not this slice.
+    /// Content key.
+    pub key: TerrainUuid,
+    /// Display name.
+    pub display_name: TerrainDisplayName,
+    /// Simulation behaviour.
+    pub sim_kind: TerrainSimKind,
+    /// Presenter behaviour.
+    pub presenter_kind: TerrainPresenterKind,
+    /// Optional tags.
     #[serde(default)]
-    pub tags:           Vec<TerrainTag>,
-                /// `#[serde(default)]` (defaulting to `None`) so an omitted field is a piece with no death
-    /// effect: the field is OPT-IN (the `tags` `#[serde(default)]` precedent), so EVERY existing
-                            #[serde(default)]
-    pub on_death:       Option<crate::effects::on_death::OnDeathEffect>,
-                                            /// terrain-authoring "Step 3" code excursion this ticket kills). `#[serde(default)]` keeps
-                                #[serde(default)]
+    pub tags: Vec<TerrainTag>,
+    /// Optional on-death effect.
+    #[serde(default)]
+    pub on_death: Option<crate::effects::on_death::OnDeathEffect>,
+    /// Optional path-blocking override.
+    #[serde(default)]
     pub blocks_pathing: Option<BlocksPathingOverride>,
-                                                /// `#[serde(default)]` keeps shipped `.ron` unchanged. Resolved by
-                #[serde(default)]
-    pub blocks_los:     Option<LosBlocking>,
+    /// Optional LOS-blocking override.
+    #[serde(default)]
+    pub blocks_los: Option<LosBlocking>,
 }
