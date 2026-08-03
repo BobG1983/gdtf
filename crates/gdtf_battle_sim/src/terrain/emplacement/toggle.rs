@@ -25,6 +25,7 @@ pub struct SetEmplacement {
 }
 
 impl SetEmplacement {
+    /// Build a request for `emplacement` and `ganger` to become `state`.
     #[must_use]
     pub const fn new(emplacement: Entity, ganger: Entity, state: EmplacementState) -> Self {
         Self {
@@ -46,16 +47,19 @@ impl SetEmplacement {
         Self::new(emplacement, ganger, EmplacementState::Vacant)
     }
 
+    /// Emplacement entity.
     #[must_use]
     pub const fn emplacement(self) -> Entity {
         self.emplacement
     }
 
+    /// Ganger entity.
     #[must_use]
     pub const fn ganger(self) -> Entity {
         self.ganger
     }
 
+    /// Requested state.
     #[must_use]
     pub const fn state(self) -> EmplacementState {
         self.state

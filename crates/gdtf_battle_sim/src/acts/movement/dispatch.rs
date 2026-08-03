@@ -104,11 +104,11 @@ pub fn dispatch_move(
             continue;
         };
 
-        if let Ok(suppressed) = suppressed.get(request.actor) {
-            if !*suppressed_move_legal(&start, &request.dest, &suppressed.from, &cover) {
-                rejects.write(MoveRejected::new(request.actor, MoveRejection::Suppressed));
-                continue;
-            }
+        if let Ok(suppressed) = suppressed.get(request.actor)
+            && !*suppressed_move_legal(&start, &request.dest, &suppressed.from, &cover)
+        {
+            rejects.write(MoveRejected::new(request.actor, MoveRejection::Suppressed));
+            continue;
         }
 
         if !*can_spend_tu(tu, path.total()) {

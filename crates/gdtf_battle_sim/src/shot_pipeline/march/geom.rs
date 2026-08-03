@@ -68,6 +68,7 @@ impl MarchDir {
 pub struct InGrid(bool);
 
 impl InGrid {
+    /// Wrap an inside-grid flag.
     #[must_use]
     pub const fn new(inside: bool) -> Self {
         Self(inside)
@@ -90,7 +91,7 @@ pub(super) fn z_in_grid(z: VoxelIndex) -> InGrid {
     InGrid::new(*z >= 0 && *z < i32::from(MAX_LEVELS))
 }
 
-/// CellLevel from voxel indices (caller must ensure bounds).
+/// `CellLevel` from voxel indices (caller must ensure bounds).
 pub(super) fn key_of(x: VoxelIndex, y: VoxelIndex, z: VoxelIndex) -> CellLevel {
     #[expect(
         clippy::cast_possible_truncation,
@@ -101,7 +102,7 @@ pub(super) fn key_of(x: VoxelIndex, y: VoxelIndex, z: VoxelIndex) -> CellLevel {
     CellLevel::new(Cell::new(*x, *y), level)
 }
 
-/// CellLevel with z clamped into valid range.
+/// `CellLevel` with z clamped into valid range.
 pub(super) fn key_of_clamped(x: VoxelIndex, y: VoxelIndex, z: VoxelIndex) -> CellLevel {
     let clamped = (*z).clamp(0, i32::from(MAX_LEVELS) - 1);
     key_of(x, y, VoxelIndex::new(clamped))

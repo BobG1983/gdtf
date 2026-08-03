@@ -19,6 +19,7 @@ pub struct SetOpenable {
 }
 
 impl SetOpenable {
+    /// Build a request for `entity` to become `state`.
     #[must_use]
     pub const fn new(entity: Entity, state: OpenState) -> Self {
         Self { entity, state }
@@ -42,11 +43,13 @@ impl SetOpenable {
         Self::new(entity, current.toggled())
     }
 
+    /// Target entity.
     #[must_use]
     pub const fn entity(self) -> Entity {
         self.entity
     }
 
+    /// Requested open state.
     #[must_use]
     pub const fn state(self) -> OpenState {
         self.state

@@ -1,4 +1,4 @@
-//! Fold a coarse outcome into a primary HitReport.
+//! Fold a coarse outcome into a primary `HitReport`.
 
 use bevy::prelude::Entity;
 
@@ -26,7 +26,7 @@ fn struck_piece_entity(
         .find(|&piece| pieces.get(piece).is_ok_and(|p| *p.part == part))
 }
 
-/// Resolve the primary impact of a round into a HitReport.
+/// Resolve the primary impact of a round into a `HitReport`.
 #[expect(
     clippy::too_many_arguments,
     reason = "this is the exact irreducible fold set resolve_round passed inline before \
