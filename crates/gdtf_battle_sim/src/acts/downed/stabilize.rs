@@ -1,3 +1,5 @@
+//! Stabilize a downed ally (stop bleed).
+
 use bevy::prelude::{Commands, Deref, Entity};
 
 use super::reach::{Actor, DownedTarget, is_8_adjacent};
@@ -7,16 +9,19 @@ use crate::{
     tuning::{CombatTuning, StabilizeTu},
 };
 
+/// Whether stabilize is allowed for this pair.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CanStabilize(bool);
 
 impl CanStabilize {
-        #[must_use]
+    /// Wrap a boolean.
+    #[must_use]
     pub const fn new(allowed: bool) -> Self {
         Self(allowed)
     }
 }
 
+/// Alive actor, adjacent, same faction, target downed and bleeding.
 #[must_use]
 pub fn can_stabilize(actor: &Actor, target: &DownedTarget) -> CanStabilize {
     CanStabilize::new(
@@ -28,6 +33,7 @@ pub fn can_stabilize(actor: &Actor, target: &DownedTarget) -> CanStabilize {
     )
 }
 
+/// Remove bleed if allowed; returns the TU cost when applied.
 pub fn stabilize_downed(
     actor: &Actor,
     target: &DownedTarget,
