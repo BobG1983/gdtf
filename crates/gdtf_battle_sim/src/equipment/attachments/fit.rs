@@ -1,10 +1,14 @@
+//! Slot capacity checks and pending-effect resolution.
+
 use super::{AttachmentName, AttachmentRegistry, AttachmentSlot, WeaponSlots};
 use crate::{effects::attachments::AttachmentEffect, weapon::PendingAttachments};
 
 /// Why an attachment cannot occupy a weapon slot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FitRejection {
+    /// Weapon does not offer this slot.
     UndeclaredSlot(AttachmentSlot),
+    /// Slot is already full.
     SlotAtCapacity(AttachmentSlot),
 }
 
