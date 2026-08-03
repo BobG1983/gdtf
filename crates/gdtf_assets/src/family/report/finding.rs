@@ -1,51 +1,64 @@
+//! Individual integrity findings (dangling refs, malformed files, degraded fallback).
+
 use bevy::prelude::Deref;
 
-/// WHERE a dangling reference was authored — the referencing file / key context a
+/// Where a bad reference was authored (file / key context).
 #[derive(Deref, Debug, Clone, PartialEq, Eq)]
 pub struct FindingReferrer(String);
 
 impl FindingReferrer {
-        #[must_use]
+    /// Wrap a referrer string.
+    #[must_use]
     pub const fn new(referrer: String) -> Self {
         Self(referrer)
     }
 }
 
+/// Target key that failed to resolve.
 #[derive(Deref, Debug, Clone, PartialEq, Eq)]
 pub struct FindingTarget(String);
 
 impl FindingTarget {
-        #[must_use]
+    /// Wrap a target string.
+    #[must_use]
     pub const fn new(target: String) -> Self {
         Self(target)
     }
 }
 
+/// Registry / family name in a finding.
 #[derive(Deref, Debug, Clone, PartialEq, Eq)]
 pub struct FindingFamily(String);
 
 impl FindingFamily {
-        #[must_use]
+    /// Wrap a family label.
+    #[must_use]
     pub const fn new(family: String) -> Self {
         Self(family)
     }
 }
 
+/// Free-form detail text.
 #[derive(Deref, Debug, Clone, PartialEq, Eq)]
 pub struct FindingDetail(String);
 
 impl FindingDetail {
-        #[must_use]
+    /// Wrap detail text.
+    #[must_use]
     pub const fn new(detail: String) -> Self {
         Self(detail)
     }
 }
 
+/// How a reference key is interpreted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReferenceKeyScheme {
-            FileStem,
-            DisplayName,
-            Uuid,
+    /// Key is a file stem.
+    FileStem,
+    /// Key is a display name.
+    DisplayName,
+    /// Key is a UUID.
+    Uuid,
 }
 
 impl core::fmt::Display for ReferenceKeyScheme {
@@ -59,22 +72,35 @@ impl core::fmt::Display for ReferenceKeyScheme {
     }
 }
 
+/// One content integrity finding.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ContentFinding {
-        DanglingRef {
-                referrer: FindingReferrer,
-                target:   FindingTarget,
-                family:   FindingFamily,
-                scheme:   ReferenceKeyScheme,
+    /// Reference points at a missing member.
+    DanglingRef {
+        /// Authoring context.
+        referrer: FindingReferrer,
+        /// Missing key.
+        target: FindingTarget,
+        /// Registry family.
+        family: FindingFamily,
+        /// Key scheme used.
+        scheme: ReferenceKeyScheme,
     },
-            MalformedFile {
-                path:   FindingReferrer,
-                family: FindingFamily,
-                detail: FindingDetail,
+    /// A single file failed to load; siblings may still be ok.
+    MalformedFile {
+        /// Path of the bad file.
+        path: FindingReferrer,
+        /// Registry family.
+        family: FindingFamily,
+        /// Load error detail.
+        detail: FindingDetail,
     },
-        DegradedFallback {
-                context: FindingReferrer,
-                detail:  FindingDetail,
+    /// Host fell back to a degraded default.
+    DegradedFallback {
+        /// Context of the fallback.
+        context: FindingReferrer,
+        /// Why fallback was used.
+        detail: FindingDetail,
     },
 }
 
