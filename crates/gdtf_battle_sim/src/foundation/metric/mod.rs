@@ -1,3 +1,5 @@
+//! Grid coordinates and continuous sim positions.
+
 mod coords;
 #[cfg(test)]
 mod test;
