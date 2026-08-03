@@ -127,13 +127,13 @@ fn a_presenter_only_app_with_no_family_buffers_stays_inert() {
         app.world()
             .get_resource::<Messages<gdtf_battle_sim::effects::fields::FieldTicked>>()
             .is_none(),
-        "the presenter must no longer register Messages<FieldTicked> itself (GTW-572 C4)",
+        "the presenter must not register Messages<FieldTicked> itself",
     );
     assert!(
         app.world()
             .get_resource::<Messages<OnDeathOccurred>>()
             .is_none(),
-        "the presenter must no longer register Messages<OnDeathOccurred> itself (GTW-572 C4)",
+        "the presenter must not register Messages<OnDeathOccurred> itself",
     );
     for absent in [
         app.world()
@@ -205,8 +205,6 @@ fn the_presenter_registers_exactly_the_one_documented_sim_buffer_exception() {
 
     assert!(
         app.world().get_resource::<Messages<ShotFired>>().is_some(),
-        "the presenter must register Messages<ShotFired> itself — THE one documented \
-         sim-owned add_message exception (GTW-623 C4): update_ganger_life_state must keep \
-         running in fire-less harnesses",
+        "the presenter must register Messages<ShotFired> itself — the one documented sim-owned add_message exception so update_ganger_life_state keeps running in fire-less harnesses",
     );
 }

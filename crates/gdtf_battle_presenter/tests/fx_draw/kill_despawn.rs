@@ -31,7 +31,7 @@ fn draw_dead(app: &mut App, sim: bevy::ecs::entity::Entity) {
         .insert(DrawnLife::new(LifeState::Dead));
 }
 
-/// GTW-331 — the BUG FIX, deterministic + headless: a SHOT that KILLS a ganger must keep the
+/// A shot that kills a ganger must keep the sprite until the killing impact lands.
 #[test]
 fn a_shot_kill_keeps_the_sprite_until_the_killing_impact_lands() {
     let mut app = headless_renderer_app();
@@ -70,11 +70,10 @@ fn a_shot_kill_keeps_the_sprite_until_the_killing_impact_lands() {
     set_life_state(&mut app, victim, LifeState::Dead);
     fire_with_zero_delta(&mut app);
 
-    // (1) THE BUG: at the drain frame the sprite must STILL be alive — its killing tracer has
+    // At the drain frame the sprite must still be alive — its killing tracer has not landed yet.
     assert!(
         ganger_sprite_alive(&app, victim),
-        "a shot-killed ganger's sprite must STILL exist at the sim-drain frame (the bug despawned \
-         it here, before the killing tracer arrives)",
+        "a shot-killed ganger's sprite must STILL exist at the sim-drain frame",
     );
 
     step_app(&mut app, std::time::Duration::from_millis(10), 1);
