@@ -1,8 +1,11 @@
+//! Stabilize-downed contextual act.
+
 use bevy::prelude::Entity;
 use gdtf_battle_sim::acts::StabilizeDownedRequested;
 
 use super::seam::ContextualAct;
 
+/// Marker for the stabilize-downed act family.
 #[derive(Debug, Clone, Copy)]
 pub struct StabilizeAct;
 

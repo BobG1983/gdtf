@@ -1,8 +1,11 @@
+//! Execute-downed contextual act.
+
 use bevy::prelude::Entity;
 use gdtf_battle_sim::acts::ExecuteDownedRequested;
 
 use super::seam::ContextualAct;
 
+/// Marker for the execute-downed act family.
 #[derive(Debug, Clone, Copy)]
 pub struct ExecuteAct;
 
