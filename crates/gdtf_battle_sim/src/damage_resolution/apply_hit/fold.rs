@@ -1,3 +1,5 @@
+//! Fold HP, wounds, life state, and armor wear after a hit.
+
 use bevy::prelude::Entity;
 
 use crate::{
@@ -10,14 +12,21 @@ use crate::{
     tuning::{CombatTuning, WoundCost, WoundCosts},
 };
 
+/// Mutable view of the combatant fields that a hit can change.
 pub struct GangerHitTarget<'a> {
-        pub hp:        &'a mut Hp,
-        pub wounds:    &'a mut Wounds,
-        pub life:      &'a mut LifeState,
-                    pub integrity: Option<&'a mut ArmorIntegrity>,
-                pub inflicted: &'a mut InflictedWounds,
+    /// Current hit points.
+    pub hp: &'a mut Hp,
+    /// Remaining wound capacity.
+    pub wounds: &'a mut Wounds,
+    /// Alive / downed / dead.
+    pub life: &'a mut LifeState,
+    /// Armor integrity for the hit location, if any.
+    pub integrity: Option<&'a mut ArmorIntegrity>,
+    /// Wound history.
+    pub inflicted: &'a mut InflictedWounds,
 }
 
+/// Wound capacity cost for a given severity.
 #[must_use]
 pub(super) const fn wound_cost(severity: Severity, costs: WoundCosts) -> WoundCost {
     match severity {
@@ -28,7 +37,7 @@ pub(super) const fn wound_cost(severity: Severity, costs: WoundCosts) -> WoundCo
     }
 }
 
-/// localized `#[expect]` is the crate's guarded-cast idiom (see
+/// Convert signed HP damage into an unsigned amount that can be subtracted.
 fn hp_damage_to_u16(damage: HpDamage) -> Hp {
     #[expect(
         clippy::cast_sign_loss,
@@ -39,6 +48,15 @@ fn hp_damage_to_u16(damage: HpDamage) -> Hp {
     Hp::new(clamped)
 }
 
+/// Apply a resolved hit to a combatant.
+///
+/// - Dead targets are left alone.
+/// - HP and wound capacity are reduced.
+/// - A non-None severity is recorded.
+/// - Armor integrity is worn when present.
+/// - Life state is updated to Downed or Dead when thresholds are crossed.
+///
+/// Returns the armor-wear outcome.
 #[must_use]
 pub fn apply_hit(
     target: GangerHitTarget<'_>,
