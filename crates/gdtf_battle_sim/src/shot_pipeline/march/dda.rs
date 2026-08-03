@@ -1,3 +1,5 @@
+//! 3D DDA stepper and per-cell impact tests.
+
 use bevy::prelude::Entity;
 
 use crate::{
@@ -16,18 +18,19 @@ use crate::{
     tuning::CombatTuning,
 };
 
+/// Safety cap on march steps.
 pub(super) const MAX_STEPS: u32 = (GRID_WIDTH + GRID_HEIGHT + MAX_LEVELS as usize) as u32 * 4;
 
 #[derive(Debug, Clone, Copy)]
 struct AxisDda {
-        index:   VoxelIndex,
-        step:    AxisStep,
-            t_max:   RayParam,
-            t_delta: RayParam,
+    index: VoxelIndex,
+    step: AxisStep,
+    t_max: RayParam,
+    t_delta: RayParam,
 }
 
 impl AxisDda {
-                fn new(origin: SimUnit, dir: AxisDir, index: VoxelIndex) -> Self {
+    fn new(origin: SimUnit, dir: AxisDir, index: VoxelIndex) -> Self {
         if *dir == 0.0 {
             return Self {
                 index,
@@ -59,11 +62,12 @@ impl AxisDda {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SteppedAxis {
-        X,
-        Y,
-        Z,
+    X,
+    Y,
+    Z,
 }
 
+/// Test whether the current cell contains an impact (ganger, cover, or occluder).
 pub(super) fn impact_at(
     here: CellLevel,
     here_point: SimPos,
@@ -78,9 +82,9 @@ pub(super) fn impact_at(
         && !is_dead(entity)
     {
         return Some(MarchResult {
-            kind:   MarchKind::Ganger(entity),
-            at:     here,
-            band:   test_band,
+            kind: MarchKind::Ganger(entity),
+            at: here,
+            band: test_band,
             impact: here_point,
         });
     }
@@ -90,9 +94,9 @@ pub(super) fn impact_at(
         && round_clears_occupant(test_band, entry.height_band) == Clearance::Impacts
     {
         return Some(MarchResult {
-            kind:   MarchKind::Cover(*entry),
-            at:     here,
-            band:   test_band,
+            kind: MarchKind::Cover(*entry),
+            at: here,
+            band: test_band,
             impact: here_point,
         });
     }
@@ -100,32 +104,36 @@ pub(super) fn impact_at(
         && round_clears_occupant(test_band, occluder_band) == Clearance::Impacts
     {
         return Some(MarchResult {
-            kind:   MarchKind::Slab,
-            at:     here,
-            band:   test_band,
+            kind: MarchKind::Slab,
+            at: here,
+            band: test_band,
             impact: here_point,
         });
     }
     None
 }
 
+/// Result of one DDA step.
 pub(super) enum Step {
-        Continue,
-        Stopped(MarchResult),
+    /// Keep marching.
+    Continue,
+    /// Hit something or left the map.
+    Stopped(MarchResult),
 }
 
+/// Mutable DDA state while marching.
 pub(super) struct MarchState {
-        pub(super) vx:      VoxelIndex,
-        pub(super) vy:      VoxelIndex,
-        pub(super) vz:      VoxelIndex,
-        ax:                 AxisDda,
-        ay:                 AxisDda,
-        az:                 AxisDda,
-            pub(super) entry_t: RayParam,
+    pub(super) vx: VoxelIndex,
+    pub(super) vy: VoxelIndex,
+    pub(super) vz: VoxelIndex,
+    ax: AxisDda,
+    ay: AxisDda,
+    az: AxisDda,
+    pub(super) entry_t: RayParam,
 }
 
 impl MarchState {
-        pub(super) fn new(
+    pub(super) fn new(
         vx: VoxelIndex,
         vy: VoxelIndex,
         vz: VoxelIndex,
@@ -143,12 +151,14 @@ impl MarchState {
         }
     }
 
-                                            pub(super) fn exit_point(&self, muzzle: SimPos, dir: MarchDir) -> SimPos {
+    /// World point where the ray exits the current voxel.
+    pub(super) fn exit_point(&self, muzzle: SimPos, dir: MarchDir) -> SimPos {
         let t_exit = RayParam::new((*self.ax.t_max).min(*self.ay.t_max).min(*self.az.t_max));
         point_at(muzzle, dir, t_exit)
     }
 
-                    pub(super) fn advance(
+    /// Advance one voxel and return Continue or Stopped.
+    pub(super) fn advance(
         &mut self,
         muzzle: SimPos,
         dir: MarchDir,
@@ -194,7 +204,7 @@ impl MarchState {
         }
     }
 
-            fn advance_z(
+    fn advance_z(
         &mut self,
         crossing: SimPos,
         surface: &SurfaceGrid,
@@ -205,9 +215,9 @@ impl MarchState {
             let slab_key = key_of(self.vx, self.vy, upper_level);
             if surface.slab_state(&slab_key) == SlabState::Present {
                 return Step::Stopped(MarchResult {
-                    kind:   MarchKind::Slab,
-                    at:     slab_key,
-                    band:   round_band_for_cell(crossing, tuning),
+                    kind: MarchKind::Slab,
+                    at: slab_key,
+                    band: round_band_for_cell(crossing, tuning),
                     impact: crossing,
                 });
             }
@@ -217,16 +227,16 @@ impl MarchState {
         self.az.t_max = RayParam::new(*self.az.t_max + *self.az.t_delta);
         if *self.vz >= i32::from(MAX_LEVELS) {
             Step::Stopped(MarchResult {
-                kind:   MarchKind::Miss,
-                at:     key_of_clamped(self.vx, self.vy, self.vz),
-                band:   round_band_for_cell(crossing, tuning),
+                kind: MarchKind::Miss,
+                at: key_of_clamped(self.vx, self.vy, self.vz),
+                band: round_band_for_cell(crossing, tuning),
                 impact: crossing,
             })
         } else if *self.vz < 0 {
             Step::Stopped(MarchResult {
-                kind:   MarchKind::Ground,
-                at:     key_of_clamped(self.vx, self.vy, VoxelIndex::new(0)),
-                band:   HeightBand::Low,
+                kind: MarchKind::Ground,
+                at: key_of_clamped(self.vx, self.vy, VoxelIndex::new(0)),
+                band: HeightBand::Low,
                 impact: crossing,
             })
         } else {

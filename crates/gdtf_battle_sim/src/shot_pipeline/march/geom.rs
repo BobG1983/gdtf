@@ -1,3 +1,5 @@
+//! Grid geometry helpers for ray marching.
+
 use bevy::{math::Vec3, prelude::Deref};
 
 use crate::{
@@ -5,66 +7,74 @@ use crate::{
     occupancy::{GRID_HEIGHT, GRID_WIDTH},
 };
 
+/// Integer voxel index on one axis.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) struct VoxelIndex(i32);
 
 impl VoxelIndex {
-        #[must_use]
+    #[must_use]
     pub(super) const fn new(index: i32) -> Self {
         Self(index)
     }
 }
 
+/// Step direction along one axis (+1, -1, or 0).
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct AxisStep(i32);
 
 impl AxisStep {
-        #[must_use]
+    #[must_use]
     pub(super) const fn new(step: i32) -> Self {
         Self(step)
     }
 }
 
+/// Parameter t along the ray.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub(super) struct RayParam(f32);
 
 impl RayParam {
-        #[must_use]
+    #[must_use]
     pub(super) const fn new(t: f32) -> Self {
         Self(t)
     }
 }
 
+/// Direction component on one axis.
 #[derive(Deref, Debug, Clone, Copy, PartialEq)]
 pub(super) struct AxisDir(f32);
 
 impl AxisDir {
-        #[must_use]
+    #[must_use]
     pub(super) const fn new(component: f32) -> Self {
         Self(component)
     }
 }
 
+/// Normalized march direction.
 #[derive(Deref, Debug, Clone, Copy, PartialEq)]
 pub struct MarchDir(Vec3);
 
 impl MarchDir {
-            #[must_use]
+    /// Build from a direction vector.
+    #[must_use]
     pub const fn new(dir: Vec3) -> Self {
         Self(dir)
     }
 }
 
+/// Whether a voxel coordinate is inside the playable grid.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InGrid(bool);
 
 impl InGrid {
-        #[must_use]
+    #[must_use]
     pub const fn new(inside: bool) -> Self {
         Self(inside)
     }
 }
 
+/// XY inside the occupancy grid.
 pub(super) fn xy_in_grid(x: VoxelIndex, y: VoxelIndex) -> InGrid {
     let Ok(ux) = usize::try_from(*x) else {
         return InGrid::new(false);
@@ -75,10 +85,12 @@ pub(super) fn xy_in_grid(x: VoxelIndex, y: VoxelIndex) -> InGrid {
     InGrid::new(ux < GRID_WIDTH && uy < GRID_HEIGHT)
 }
 
+/// Z inside the level range.
 pub(super) fn z_in_grid(z: VoxelIndex) -> InGrid {
     InGrid::new(*z >= 0 && *z < i32::from(MAX_LEVELS))
 }
 
+/// CellLevel from voxel indices (caller must ensure bounds).
 pub(super) fn key_of(x: VoxelIndex, y: VoxelIndex, z: VoxelIndex) -> CellLevel {
     #[expect(
         clippy::cast_possible_truncation,
@@ -89,11 +101,13 @@ pub(super) fn key_of(x: VoxelIndex, y: VoxelIndex, z: VoxelIndex) -> CellLevel {
     CellLevel::new(Cell::new(*x, *y), level)
 }
 
+/// CellLevel with z clamped into valid range.
 pub(super) fn key_of_clamped(x: VoxelIndex, y: VoxelIndex, z: VoxelIndex) -> CellLevel {
     let clamped = (*z).clamp(0, i32::from(MAX_LEVELS) - 1);
     key_of(x, y, VoxelIndex::new(clamped))
 }
 
+/// World point at parameter t along the ray.
 pub(super) fn point_at(muzzle: SimPos, dir: MarchDir, t: RayParam) -> SimPos {
     let p = *muzzle + *dir * *t;
     SimPos::new(p.x, p.y, p.z)
