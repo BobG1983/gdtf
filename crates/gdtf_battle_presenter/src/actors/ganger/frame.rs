@@ -1,3 +1,5 @@
+//! Facing-to-atlas-frame mapping for character sheets.
+
 use gdtf_battle_sim::{
     ganger::Facing,
     prelude::{Direction, Faction},
@@ -5,16 +7,22 @@ use gdtf_battle_sim::{
 
 use super::roles::CharacterRoles;
 
+/// Column index within a faction's four-facing block on the characters sheet.
 #[derive(bevy::prelude::Deref, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FacingFrame(usize);
 
 impl FacingFrame {
-        pub const LEFT: Self = Self(0);
-        pub const DOWN: Self = Self(1);
-        pub const UP: Self = Self(2);
-        pub const RIGHT: Self = Self(3);
+    /// Facing left (west).
+    pub const LEFT: Self = Self(0);
+    /// Facing down (south).
+    pub const DOWN: Self = Self(1);
+    /// Facing up (north).
+    pub const UP: Self = Self(2);
+    /// Facing right (east).
+    pub const RIGHT: Self = Self(3);
 }
 
+/// Map a compass direction onto a four-frame facing column.
 #[must_use]
 pub const fn facing_frame(direction: Direction) -> FacingFrame {
     match direction {

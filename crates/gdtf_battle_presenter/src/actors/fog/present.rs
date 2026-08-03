@@ -1,3 +1,5 @@
+//! Apply fog saturation, brightness, and visibility to terrain tiles.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::{prelude::CellLevel, visibility::SquadVisibility};
 
@@ -13,19 +15,18 @@ const VISIBLE_SATURATION: Saturation = Saturation::new(1.0);
 
 const EXPLORED_SATURATION: Saturation = Saturation::new(0.0);
 
-/// composing in the shader (grey-mix, then scale). It is deliberately NOT the DEPRECATED
 const CONTEXT_TIER_ONE: Brightness = Brightness::new(0.55);
 
 const CONTEXT_TIER_TWO: Brightness = Brightness::new(0.55);
 
 pub(super) enum CellFog {
-        Visible,
-            Explored,
-        Unseen,
+    Visible,
+    Explored,
+    Unseen,
 }
 
 impl CellFog {
-            pub(super) fn resolve(squad: &SquadVisibility, key: &CellLevel) -> Self {
+    pub(super) fn resolve(squad: &SquadVisibility, key: &CellLevel) -> Self {
         if *squad.is_cell_visible(key) {
             Self::Visible
         } else if *squad.is_cell_explored(key) {
@@ -44,6 +45,7 @@ pub(super) fn context_below_brightness(depth: ContextDepth) -> Brightness {
     }
 }
 
+/// Drive terrain fog materials and visibility from the shown squad map.
 pub fn present_fog(
     squad: Res<ShownSquadVisibility>,
     active: Res<crate::ActiveLevel>,
@@ -99,7 +101,7 @@ mod tests {
     use super::{CONTEXT_TIER_ONE, CONTEXT_TIER_TWO, context_below_brightness};
     use crate::{Brightness, ContextDepth};
 
-                            #[test]
+    #[test]
     fn only_the_active_treatment_is_full_bright() {
         for depth in 1..=MAX_LEVELS {
             let brightness = context_below_brightness(ContextDepth::new(depth));
@@ -112,7 +114,7 @@ mod tests {
         }
     }
 
-                #[test]
+    #[test]
     fn context_ramp_clamps_at_two_tiers() {
         let tier_two = context_below_brightness(ContextDepth::new(2));
         for depth in 2..=MAX_LEVELS {
