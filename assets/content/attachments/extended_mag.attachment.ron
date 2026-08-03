@@ -1,13 +1,11 @@
 // Extended magazine — a longer box magazine paired with a stripper-clip guide: adds capacity
 // (more rounds before a reload) AND speeds the reload (the clip guide makes the swap quicker).
-// GTW-549 data-driven attachment ITEM demonstrating a MULTI-effect item; both magnitudes live
+// Data-driven attachment ITEM demonstrating a MULTI-effect item; both magnitudes live
 // HERE on the item, never in global tuning. Referenced by a weapon BY KEY (`extended_mag`) in
 // its `attachments:` list; both effects are applied to the spawned weapon post-spawn.
 (
     display_name: "Extended Magazine",
-    // GTW-584: re-slotted Rail -> Magazine. It IS a box magazine, so it belongs in the
-    // magazine well now that one exists (GTW-554 homed it on the Rail only because there was
-    // no Magazine slot yet). Fits only a magazine-fed gun declaring a Magazine slot.
+    // Box magazine — belongs in the magazine well. Fits only a magazine-fed gun declaring a Magazine slot.
     slot: Magazine,
     effects: [
         ExtraAmmo(8),      // +8 magazine capacity — tunable
