@@ -1,3 +1,5 @@
+//! Handle [`TeardownBattleRequested`]: despawn terrain and clear battle resources.
+
 use bevy::prelude::{Commands, MessageReader};
 
 use crate::{
@@ -27,6 +29,7 @@ fn remove_rng_streams(commands: &mut bevy::prelude::Commands) {
     commands.remove_resource::<FightRng>();
 }
 
+/// Tear down an active battle when requested.
 pub fn teardown_battle_on_request(
     mut requests: MessageReader<TeardownBattleRequested>,
     terrain_entities: bevy::prelude::Query<

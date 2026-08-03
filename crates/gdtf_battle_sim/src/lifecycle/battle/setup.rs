@@ -1,3 +1,5 @@
+//! Handle [`SetupBattleRequested`] and signal [`BattleReady`].
+
 use bevy::prelude::{Commands, MessageReader, MessageWriter, Res, error};
 
 use super::runtime_seed::insert_battle_runtime;
@@ -12,6 +14,7 @@ use crate::{
     weapon::{MeleeWeaponRegistry, WeaponRegistry},
 };
 
+/// Spawn a battle from the requested situation once registries are loaded.
 #[expect(
     clippy::too_many_arguments,
     reason = "the params are the message reader + writer, the gang / weapon / MELEE-weapon \
