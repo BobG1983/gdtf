@@ -1,3 +1,5 @@
+//! Multi-step walk: remaining route, reveal stop, reaction interrupt.
+
 use bevy::{
     platform::collections::HashSet,
     prelude::{Commands, Deref, Entity, Message, MessageReader, MessageWriter, Query, Res},
@@ -12,11 +14,13 @@ use crate::{
     visibility::{FactionRelation, SquadVisibility, is_ganger_visible},
 };
 
+/// Whether the walk route has no steps left.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RouteComplete(bool);
 
 impl RouteComplete {
-        #[must_use]
+    /// Wrap a boolean.
+    #[must_use]
     pub const fn new(complete: bool) -> Self {
         Self(complete)
     }
@@ -26,32 +30,37 @@ impl RouteComplete {
 struct NewEnemyRevealed(bool);
 
 impl NewEnemyRevealed {
-        const fn new(revealed: bool) -> Self {
+    const fn new(revealed: bool) -> Self {
         Self(revealed)
     }
 }
 
+/// Reaction fire interrupted this mover's walk.
 #[derive(Message, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ReactionShotFired {
-        pub mover: Entity,
+    /// Entity that was walking.
+    pub mover: Entity,
 }
 
 impl ReactionShotFired {
-        #[must_use]
+    /// Build an interrupt message.
+    #[must_use]
     pub const fn new(mover: Entity) -> Self {
         Self { mover }
     }
 }
 
+/// In-progress multi-cell walk with remaining costs and enemy-reveal baseline.
 #[derive(bevy::prelude::Component, Debug, Clone, PartialEq, Eq)]
 pub struct WalkInProgress {
-            remaining_cells: Vec<CellLevel>,
-                    remaining_costs: Vec<Tu>,
-                                        seen_enemies:    Option<HashSet<CellLevel>>,
+    remaining_cells: Vec<CellLevel>,
+    remaining_costs: Vec<Tu>,
+    seen_enemies: Option<HashSet<CellLevel>>,
 }
 
 impl WalkInProgress {
-                                    #[must_use]
+    /// Build from path cells and per-step costs (stored reversed for pop).
+    #[must_use]
     pub fn new(remaining_cells: &[CellLevel], remaining_costs: &[Tu]) -> Self {
         let mut cells: Vec<CellLevel> = remaining_cells.to_vec();
         let mut costs: Vec<Tu> = remaining_costs.to_vec();
@@ -60,28 +69,29 @@ impl WalkInProgress {
         Self {
             remaining_cells: cells,
             remaining_costs: costs,
-            seen_enemies:    None,
+            seen_enemies: None,
         }
     }
 
-        #[must_use]
+    /// True when no steps remain.
+    #[must_use]
     pub const fn is_complete(&self) -> RouteComplete {
         RouteComplete::new(self.remaining_cells.is_empty())
     }
 
-            #[must_use]
+    #[must_use]
     fn peek_next(&self) -> Option<(CellLevel, Tu)> {
         let cell = self.remaining_cells.last().copied()?;
         let cost = self.remaining_costs.last().copied()?;
         Some((cell, cost))
     }
 
-        fn pop_next(&mut self) {
+    fn pop_next(&mut self) {
         self.remaining_cells.pop();
         self.remaining_costs.pop();
     }
 
-                                    fn reveals_new_enemy(&mut self, current: &HashSet<CellLevel>) -> NewEnemyRevealed {
+    fn reveals_new_enemy(&mut self, current: &HashSet<CellLevel>) -> NewEnemyRevealed {
         match &self.seen_enemies {
             None => {
                 self.seen_enemies = Some(current.clone());
@@ -127,6 +137,7 @@ fn visible_enemy_cells(
               the dispatch_fire precedent); Bevy's IntoSystem inference rejects a \
               lifetime-generic type alias for the ParamSet, so it stays inline"
 )]
+/// Advance one step per frame for each walking ganger; stop on block, reveal, or interrupt.
 pub fn advance_walk(
     mut world: bevy::ecs::system::ParamSet<(
         Query<(

@@ -1,3 +1,5 @@
+//! Ranged fire: arc checks, dispatch, and outcome signals.
+
 mod arc;
 mod dispatch;
 mod emit;
