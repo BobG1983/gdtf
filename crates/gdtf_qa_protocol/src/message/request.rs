@@ -1,31 +1,42 @@
+//! Client → server requests.
+
 use serde::{Deserialize, Serialize};
 
 use super::hello::ProtocolVersion;
 use crate::command::{CommandArgsJson, CommandName, RunOptions};
 
+/// Top-level request from a QA client.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum QaRequest {
-                                Hello(ProtocolVersion),
-                                Catalogue,
-                            Run(RunCommand),
+    /// Negotiate protocol version.
+    Hello(ProtocolVersion),
+    /// Ask for the command catalogue.
+    Catalogue,
+    /// Run a named command.
+    Run(RunCommand),
 }
 
+/// Payload for [`QaRequest::Run`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RunCommand {
-        pub command:   CommandName,
-        pub arguments: CommandArgsJson,
-            /// `#[serde(default)]` so a frame encoded before this field existed still decodes, as
-        #[serde(default)]
-    pub options:   RunOptions,
+    /// Command to run.
+    pub command: CommandName,
+    /// JSON argument blob for the command.
+    pub arguments: CommandArgsJson,
+    /// Optional run flags (`#[serde(default)]` for older frames).
+    #[serde(default)]
+    pub options: RunOptions,
 }
 
 impl RunCommand {
-        #[must_use]
+    /// Build a run request with default options.
+    #[must_use]
     pub fn new(command: CommandName, arguments: CommandArgsJson) -> Self {
         Self::with_options(command, arguments, RunOptions::default())
     }
 
-        #[must_use]
+    /// Build a run request with explicit options.
+    #[must_use]
     pub const fn with_options(
         command: CommandName,
         arguments: CommandArgsJson,
