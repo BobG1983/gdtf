@@ -1,25 +1,29 @@
+//! Wound costs, bleed rate, stabilize/execute TU.
+
 use bevy::prelude::Deref;
 use serde::Deserialize;
 
-/// Minor < Major < Critical). `#[serde(transparent)]` lets it parse a bare RON
+/// Wound pool cost for one severity tier.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
 pub struct WoundCost(u8);
 
 impl WoundCost {
-                            #[must_use]
+    /// Wrap a cost.
+    #[must_use]
     pub const fn new(cost: u8) -> Self {
         Self(cost)
     }
 }
 
-/// `#[serde(transparent)]` lets it parse a bare RON scalar; private inner +
+/// Bleed damage per tick.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
 pub struct BleedRate(u8);
 
 impl BleedRate {
-                                #[must_use]
+    /// Wrap a rate.
+    #[must_use]
     pub const fn new(rate: u8) -> Self {
         Self(rate)
     }
@@ -31,13 +35,14 @@ impl Default for BleedRate {
     }
 }
 
-/// value-agnostic. `#[serde(transparent)]` lets it parse a bare RON scalar; private
+/// TU to stabilize a downed ganger.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
 pub struct StabilizeTu(u8);
 
 impl StabilizeTu {
-                                #[must_use]
+    /// Wrap a TU cost.
+    #[must_use]
     pub const fn new(tu: u8) -> Self {
         Self(tu)
     }
@@ -49,13 +54,14 @@ impl Default for StabilizeTu {
     }
 }
 
-/// value-agnostic. `#[serde(transparent)]` lets it parse a bare RON scalar; private
+/// TU to execute a downed ganger.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(transparent)]
 pub struct ExecuteTu(u8);
 
 impl ExecuteTu {
-                                #[must_use]
+    /// Wrap a TU cost.
+    #[must_use]
     pub const fn new(tu: u8) -> Self {
         Self(tu)
     }
@@ -67,18 +73,22 @@ impl Default for ExecuteTu {
     }
 }
 
+/// Costs for minor / major / critical wounds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub struct WoundCosts {
-        pub minor:    WoundCost,
-        pub major:    WoundCost,
-        pub critical: WoundCost,
+    /// Minor.
+    pub minor: WoundCost,
+    /// Major.
+    pub major: WoundCost,
+    /// Critical.
+    pub critical: WoundCost,
 }
 
 impl Default for WoundCosts {
     fn default() -> Self {
         Self {
-            minor:    WoundCost(1),
-            major:    WoundCost(2),
+            minor: WoundCost(1),
+            major: WoundCost(2),
             critical: WoundCost(3),
         }
     }
