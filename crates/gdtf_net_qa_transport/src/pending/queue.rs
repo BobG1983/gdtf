@@ -1,3 +1,5 @@
+//! Frame-budgeted queue of unclaimed QA requests.
+
 use std::collections::VecDeque;
 
 use bevy::prelude::*;
@@ -7,13 +9,13 @@ use super::deadline::{DEADLINE_BUDGET, DeadlineTick, FrameDeadline};
 use crate::channel::Responder;
 
 struct Pending<P> {
-        payload:   P,
-        responder: Responder,
-        deadline:  FrameDeadline,
+    payload: P,
+    responder: Responder,
+    deadline: FrameDeadline,
 }
 
 impl<P> Pending<P> {
-        const fn new(payload: P, responder: Responder) -> Self {
+    const fn new(payload: P, responder: Responder) -> Self {
         Self {
             payload,
             responder,
@@ -22,6 +24,7 @@ impl<P> Pending<P> {
     }
 }
 
+/// Pending requests waiting to be claimed by a system.
 #[derive(Resource)]
 pub struct PendingQueue<P: Send + Sync + 'static>(VecDeque<Pending<P>>);
 
@@ -32,16 +35,19 @@ impl<P: Send + Sync + 'static> Default for PendingQueue<P> {
 }
 
 impl<P: Send + Sync + 'static> PendingQueue<P> {
-            #[must_use]
+    /// Whether the queue is empty.
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-        pub fn push_new(&mut self, payload: P, responder: Responder) {
+    /// Enqueue a new request with a fresh deadline.
+    pub fn push_new(&mut self, payload: P, responder: Responder) {
         self.0.push_back(Pending::new(payload, responder));
     }
 
-                            #[must_use]
+    /// Drain every entry as ready work (does not check deadlines).
+    #[must_use]
     pub fn drain_ready(&mut self) -> Vec<(P, Responder)> {
         self.0
             .drain(..)
@@ -49,7 +55,7 @@ impl<P: Send + Sync + 'static> PendingQueue<P> {
             .collect()
     }
 
-            pub(super) fn sweep_expired(&mut self)
+    pub(super) fn sweep_expired(&mut self)
     where
         P: core::fmt::Debug,
     {
