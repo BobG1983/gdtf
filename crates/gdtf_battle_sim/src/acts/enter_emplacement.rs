@@ -1,3 +1,5 @@
+//! Enter and exit weapon emplacements.
+
 use bevy::prelude::{MessageReader, MessageWriter, Query, Res};
 
 use crate::{
@@ -14,6 +16,7 @@ use crate::{
     tuning::CombatTuning,
 };
 
+/// System: occupy an adjacent empty emplacement.
 pub fn dispatch_enter_emplacement(
     mut requests: MessageReader<EnterEmplacementRequested>,
     emplacements: Query<(&EmplacementState, &TerrainCell)>,
@@ -43,6 +46,7 @@ pub fn dispatch_enter_emplacement(
     }
 }
 
+/// System: vacate an emplacement the actor currently occupies.
 pub fn dispatch_exit_emplacement(
     mut requests: MessageReader<ExitEmplacementRequested>,
     emplacements: Query<(&EmplacementState, &EmplacementOccupant)>,
