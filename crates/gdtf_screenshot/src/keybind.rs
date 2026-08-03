@@ -1,3 +1,5 @@
+//! Keyboard-triggered screenshot capture (F10).
+
 use bevy::{
     prelude::*,
     render::view::window::screenshot::{Screenshot, save_to_disk},
@@ -7,27 +9,32 @@ use crate::path::timestamped_path;
 
 const CAPTURE_KEY: KeyCode = KeyCode::F10;
 
+/// Scene label baked into the timestamped filename.
 #[derive(Clone, Debug)]
 pub struct CaptureTag(String);
 
 impl CaptureTag {
-        #[must_use]
+    /// Build a tag from any string-like value.
+    #[must_use]
     pub fn new(tag: impl Into<String>) -> Self {
         Self(tag.into())
     }
 
-        #[must_use]
+    /// Borrow the tag text.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
 }
 
+/// Plugin: press F10 to write a timestamped PNG under `target/screenshots`.
 pub struct KeyboardCapturePlugin {
-        tag: CaptureTag,
+    tag: CaptureTag,
 }
 
 impl KeyboardCapturePlugin {
-            #[must_use]
+    /// Create the plugin with a filename tag (e.g. `"editor"`).
+    #[must_use]
     pub fn new(tag: impl Into<String>) -> Self {
         Self {
             tag: CaptureTag::new(tag),
