@@ -1,3 +1,5 @@
+//! Shooter stability score and the cone / recoil multipliers it produces.
+
 mod curve;
 mod gate;
 mod score;
