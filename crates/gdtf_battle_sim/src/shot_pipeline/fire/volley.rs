@@ -47,11 +47,7 @@ impl Volley {
 /// Returns an empty volley when the shooter cannot fire.
 #[expect(
     clippy::too_many_arguments,
-    reason = "the GTW-323 armor + weapon relationships add the disjoint wears/pieces + \
-              wields/weapons queries to the fire() signature, and GTW-438 adds the \
-              injury-roll inputs (InjuryTables + InjuryRegistry reads + the &mut InjuryRng \
-              draw stream); bundling them would obscure the query-disjointness + the \
-              distinct RNG streams the signature documents"
+    reason = "wears/pieces and wields/weapons stay disjoint; injury tables and InjuryRng are separate streams"
 )]
 pub fn fire(
     shooter: Entity,
