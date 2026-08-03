@@ -1,12 +1,19 @@
 use super::{AttachmentName, AttachmentRegistry, AttachmentSlot, WeaponSlots};
 use crate::{effects::attachments::AttachmentEffect, weapon::PendingAttachments};
 
+/// Why an attachment cannot occupy a weapon slot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FitRejection {
-                UndeclaredSlot(AttachmentSlot),
-            SlotAtCapacity(AttachmentSlot),
+    UndeclaredSlot(AttachmentSlot),
+    SlotAtCapacity(AttachmentSlot),
 }
 
+/// Whether `slot` still has free capacity on this weapon.
+///
+/// # Errors
+///
+/// Returns [`FitRejection::UndeclaredSlot`] if the weapon never lists that slot,
+/// or [`FitRejection::SlotAtCapacity`] if every slot of that kind is already used.
 pub fn attachment_fits(
     slots: &WeaponSlots,
     fitted: &[AttachmentSlot],
@@ -22,6 +29,7 @@ pub fn attachment_fits(
     Ok(())
 }
 
+/// Resolve authored attachment keys into effects that fit the weapon's slots.
 #[must_use]
 pub fn resolve_pending_attachments(
     slots: &WeaponSlots,
@@ -58,7 +66,7 @@ mod tests {
         weapon::{MagazineSize, WeaponName},
     };
 
-            fn item(name: &str, slot: AttachmentSlot, effect: AttachmentEffect) -> AttachmentSpec {
+    fn item(name: &str, slot: AttachmentSlot, effect: AttachmentEffect) -> AttachmentSpec {
         AttachmentSpec {
             display_name: WeaponName::new(name.to_owned()),
             slot,
@@ -70,7 +78,7 @@ mod tests {
         AttachmentName::new(name.to_owned())
     }
 
-            fn fixture_registry() -> AttachmentRegistry {
+    fn fixture_registry() -> AttachmentRegistry {
         AttachmentRegistry::new([
             (
                 key("sight-a"),
@@ -131,7 +139,7 @@ mod tests {
         WeaponSlots::new(vec![(AttachmentSlot::Rail, SlotCapacity::new(capacity))])
     }
 
-        #[test]
+    #[test]
     fn compatible_item_is_accepted() {
         let pending = resolve_pending_attachments(
             &sight_only(),
@@ -145,7 +153,7 @@ mod tests {
         );
     }
 
-                #[test]
+    #[test]
     fn wrong_slot_item_is_rejected() {
         let pending = resolve_pending_attachments(
             &sight_only(),
@@ -163,7 +171,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn cap_one_slot_at_capacity_rejects() {
         let pending = resolve_pending_attachments(
             &sight_only(),
@@ -186,7 +194,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn multi_cap_rail_accepts_up_to_capacity() {
         let pending = resolve_pending_attachments(
             &rail(3),
@@ -200,7 +208,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn rail_over_capacity_rejects_the_overflow() {
         let pending = resolve_pending_attachments(
             &rail(2),
@@ -217,7 +225,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn missing_registry_and_missing_key_fail_safe() {
         let none = resolve_pending_attachments(&sight_only(), &[key("sight-a")], None);
         assert!(

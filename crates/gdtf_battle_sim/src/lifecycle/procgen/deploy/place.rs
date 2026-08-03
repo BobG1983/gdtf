@@ -15,12 +15,18 @@ use crate::{
 pub struct Standable(bool);
 
 impl Standable {
-        #[must_use]
+    #[must_use]
     pub const fn new(standable: bool) -> Self {
         Self(standable)
     }
 }
 
+/// Place roster members into player and enemy deployment zones.
+///
+/// # Errors
+///
+/// Returns [`PackingError::DeploymentZoneTooSmall`] when a zone has fewer standable
+/// cells than roster members for that side.
 pub fn deploy_rosters(
     zones: &DeploymentZones,
     terrain: &Situation,

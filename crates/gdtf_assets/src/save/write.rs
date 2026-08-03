@@ -1,12 +1,13 @@
-//! The error lives WITH the write chain (GTW-577 P10), not in a central types file: the
+//! RON pretty-print save helpers and their errors.
 use std::path::Path;
 
 use serde::Serialize;
 
+/// Failure while serializing or writing a RON file.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RonSaveError {
-        Serialize(String),
-            Write(String),
+    Serialize(String),
+    Write(String),
 }
 
 impl std::fmt::Display for RonSaveError {
@@ -20,12 +21,24 @@ impl std::fmt::Display for RonSaveError {
 
 impl std::error::Error for RonSaveError {}
 
+/// Pretty-print `value` as RON text.
+///
+/// # Errors
+///
+/// Returns [`RonSaveError::Serialize`] when serde/ron cannot encode `value`.
 pub fn serialize_ron_pretty<T: Serialize>(value: &T) -> Result<String, RonSaveError> {
     ron::ser::to_string_pretty(value, ron::ser::PrettyConfig::default())
         .map_err(|err| RonSaveError::Serialize(err.to_string()))
 }
 
-/// `#[cfg(debug_assertions)]`-gated (the gang-save module-gate precedent): the fs-write
+/// Serialize `value` and write it to `path` (debug builds only).
+///
+/// Creates parent directories when needed.
+///
+/// # Errors
+///
+/// Returns [`RonSaveError::Serialize`] on encode failure, or [`RonSaveError::Write`]
+/// if creating directories or writing the file fails.
 #[cfg(debug_assertions)]
 pub fn write_ron_pretty<T: Serialize>(path: &Path, value: &T) -> Result<(), RonSaveError> {
     let serialized = serialize_ron_pretty(value)?;
@@ -41,7 +54,7 @@ mod tests {
 
     use super::{RonSaveError, serialize_ron_pretty, write_ron_pretty};
 
-        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+    #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
     struct Payload {
         name:  String,
         count: u32,
@@ -54,7 +67,7 @@ mod tests {
         }
     }
 
-                #[test]
+    #[test]
     fn write_ron_pretty_round_trips_through_a_temp_dir() {
         let Ok(root) = tempfile::tempdir() else {
             unreachable!("a TempDir is creatable on the test host");
@@ -75,7 +88,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn write_failure_is_the_typed_write_error() {
         let Ok(root) = tempfile::tempdir() else {
             unreachable!("a TempDir is creatable on the test host");
@@ -91,7 +104,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn serialize_half_is_pretty_printed() {
         let Ok(text) = serialize_ron_pretty(&payload()) else {
             unreachable!("a plain struct serializes");
