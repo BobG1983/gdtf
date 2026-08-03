@@ -1,10 +1,10 @@
-// GDTF ganger stat-derivation tuning (GTW-384) — how the EIGHT direct attributes
+// GDTF ganger stat-derivation tuning — how the EIGHT direct attributes
 // (Speed/Aim/Strength/Toughness/Reflexes/Cool/Grit/Luck) combine into the COMPUTED combat
 // stats (Shooting/Fight/Reactions/Morale/TU/HP/Wounds/Bottle). This is a SEPARATE file from
 // core_tuning/combat.tuning.ron (the user-directed split): combat.tuning.ron holds the resolution coefficients,
 // this holds the character-sheet derivation. The derivation FORMS live in code
 // (`derive_stats`, docs/combat/stats.md §"Computed combat stats"); these numbers are tuning
-// DATA — hot-swappable (it reloads live, GTW-374 pattern) and never hardcoded. Each leaf is a
+// DATA — hot-swappable (it reloads live) and never hardcoded. Each leaf is a
 // `#[serde(transparent)]` newtype, written as a bare scalar. The defaults are stats.md's flat
 // ~1.0 weights (Cool ~0.5 into HP) + ~10 divisors; the values below are authored so the
 // derived stats land in a reasonable, playable range. Each line says what it tunes.
@@ -15,14 +15,14 @@
         reflexes: 0.5,   // j — Reflexes' weight (steadiness, half-weighted)
         cool:     0.3,   // k — Cool's weight (nerves under fire, lightest)
     ),
-    // Fight = speed·Speed + strength·Strength + grit·Grit + cool·Cool  (melee skill — DORMANT, GTW-51).
+    // Fight = speed·Speed + strength·Strength + grit·Grit + cool·Cool  (melee skill — DORMANT).
     fight: (
         speed:    0.5,   // Speed's weight (closing distance)
         strength: 1.0,   // Strength's weight (the dominant melee-force term)
         grit:     0.5,   // Grit's weight (keeping swinging)
         cool:     0.3,   // Cool's weight (composure in the brawl)
     ),
-    // Reactions = speed·Speed + reflexes·Reflexes + cool·Cool  (enemy-turn responses — DORMANT, GTW-38).
+    // Reactions = speed·Speed + reflexes·Reflexes + cool·Cool  (enemy-turn responses — DORMANT).
     reactions: (
         speed:    0.5,   // Speed's weight (quick to respond)
         reflexes: 1.0,   // Reflexes' weight (the dominant twitch term)
@@ -34,7 +34,7 @@
         toughness: 1.0,  // Toughness's weight (raw damage resistance)
         cool:      0.5,  // Cool's "a little" weight (stats.md: Cool ~0.5 into HP)
     ),
-    // Morale = grit·Grit + cool·Cool  (the psychological damage pool — DORMANT, GTW-13).
+    // Morale = grit·Grit + cool·Cool  (the psychological damage pool — DORMANT).
     morale: (
         grit: 1.0,       // Grit's weight (the dominant resilience term)
         cool: 1.0,       // Cool's weight (composure under pressure)

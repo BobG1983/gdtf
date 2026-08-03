@@ -1,33 +1,33 @@
-// GDTF battle keybind table — the FIRST keybind file in the repo (GTW-48 S8 /
-// GTW-225). Maps each bound battle ACT to a named key (a `BoundKey` variant that
+// GDTF battle keybind table — the first keybind file in the repo.
+// Maps each bound battle ACT to a named key (a `BoundKey` variant that
 // resolves to a Bevy KeyCode). Edit freely — every binding is data, hot-swappable
 // through the same RonAsset<T> loader the theme / tiles / tuning use; nothing about
 // the key choices is hardcoded in Rust. The keyboard systems read the resolved
 // KeyCode off the loaded Keybinds resource, never a literal.
 //
-// `select_clear` / `level_up` / `level_down` are consumed THIS slice (GTW-225);
-// `stance_cycle` / `aim_toggle` / `facing_cycle` are declared here and consumed by
-// the keyboard act surface (GTW-222b) over the shared intent seam — so the act keys
-// live in ONE authoritative table from the start. (The `fire_mode_cycle` binding was
-// REMOVED in GTW-254 — the blind cycle was replaced by the popup fire-mode picker.)
+// `select_clear` / `level_up` / `level_down` are consumed by the keyboard surface;
+// `stance_cycle` / `aim_toggle` / `facing_cycle` are declared here and consumed over
+// the shared intent seam — so the act keys live in ONE authoritative table from the
+// start. (The `fire_mode_cycle` binding was removed — the blind cycle was replaced by
+// the popup fire-mode picker.)
 //
-// `select_next` / `select_prev` (GTW-458) cycle the SelectedShooter through the player
+// `select_next` / `select_prev` cycle the SelectedShooter through the player
 // gang in (z,y,x) order. They bind to the SAME key (Tab): the keyboard surface reads
 // `select_next` and pushes SelectPrev when Shift is held, else SelectNext — so Tab = Next,
 // Shift+Tab = Prev are ONE physical chord. The on-bar Prev/Next buttons push the same two
 // intents through the same seam (ADR-0001 — keys + buttons share one dispatch).
 //
-// `toggle_full_view` (GTW-521) flips the presenter ViewMode between DownToActive (draw
+// `toggle_full_view` flips the presenter ViewMode between DownToActive (draw
 // 0..=active, the default) and FullView (draw ALL storeys — the UFO full-stack view). It
 // does NOT change the active storey; it only widens/narrows the drawn band ceiling.
 (
     select_clear: KeyEscape,    // clear the current ganger selection
     level_up:     KeyPageUp,    // raise the active storey by one level (clamped to the top)
     level_down:   KeyPageDown,  // lower the active storey by one level (floored at 0)
-    toggle_full_view: KeyV,     // toggle FullView (draw ALL storeys) vs DownToActive (0..=active) [521]
-    stance_cycle: KeyC,         // step the selected ganger's stance (Standing->Crouching->Prone->wrap) [222b]
-    aim_toggle:   KeyF,         // toggle the selected ganger's aim mode [222b]
-    facing_cycle: KeyR,         // step the selected ganger's facing (N->NE->...->NW->wrap) [222b]
-    select_next:  KeyTab,       // cycle selection to the NEXT player ganger in (z,y,x) order [458]
-    select_prev:  KeyTab,       // cycle to PREVIOUS — same key as select_next under Shift (Shift+Tab) [458]
+    toggle_full_view: KeyV,     // toggle FullView (draw ALL storeys) vs DownToActive (0..=active)
+    stance_cycle: KeyC,         // step the selected ganger's stance (Standing->Crouching->Prone->wrap)
+    aim_toggle:   KeyF,         // toggle the selected ganger's aim mode
+    facing_cycle: KeyR,         // step the selected ganger's facing (N->NE->...->NW->wrap)
+    select_next:  KeyTab,       // cycle selection to the NEXT player ganger in (z,y,x) order
+    select_prev:  KeyTab,       // cycle to PREVIOUS — same key as select_next under Shift (Shift+Tab)
 )

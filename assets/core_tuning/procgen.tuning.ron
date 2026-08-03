@@ -1,4 +1,4 @@
-// GDTF procgen FILL tuning — the HOT-RELOADABLE knobs that drive the GTW-427 random
+// GDTF procgen FILL tuning — the HOT-RELOADABLE knobs that drive the random
 // same-theme fill pass of the space-packing assembler (OQ-6). Migrated out of Rust consts
 // so the fill density / large-prefab threshold / dead-rect scatter cap tune WITHOUT a
 // rebuild: edit a value, save, and the running game re-derives it live through the same

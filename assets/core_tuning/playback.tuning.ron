@@ -1,4 +1,4 @@
-// PLAYBACK dwells (GTW-727) — how long the presenter's playback cursor holds on each kind
+// PLAYBACK dwells — how long the presenter's playback cursor holds on each kind
 // of act before showing the next one.
 //
 // The sim resolves an exchange in one tick; these numbers decide how long that exchange

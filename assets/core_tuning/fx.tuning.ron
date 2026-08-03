@@ -1,4 +1,4 @@
-// GDTF firing-FX tuning — the four HOT-RELOADABLE numbers that drive the GTW-306
+// GDTF firing-FX tuning — the four HOT-RELOADABLE numbers that drive the
 // traveling-projectile + impact FX. Migrated out of Rust consts (the TRAVEL slice)
 // so size / velocity / stagger / impact-timing tune WITHOUT a rebuild: edit a value,
 // save, and the running game re-derives it live through the same RonAsset<T> loader
@@ -26,8 +26,8 @@
     impact_frame_seconds:  0.08,
     // How long each floating-combat-text pop (the "-7" / "Torso Major" / "DEAD" tags)
     // stays on screen before it despawns, in SECONDS — the pop rises + fades across this
-    // whole window. Bigger = more time to read; smaller = less screen clutter. GTW-327
-    // bumped this from 0.6 (faded too fast to read) to a readable window. Default 1.5.
+    // whole window. Bigger = more time to read; smaller = less screen clutter.
+    // Default 1.5.
     fct_ttl_seconds:       1.5,
     // How fast a floating-combat-text pop ASCENDS, in WORLD PIXELS PER SECOND — its y
     // grows by this * elapsed-life each frame, a slow drift up off the cell it reports on.
