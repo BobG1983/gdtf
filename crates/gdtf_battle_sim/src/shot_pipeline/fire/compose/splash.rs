@@ -1,3 +1,5 @@
+//! Apply AOE splash damage around a primary impact.
+
 use super::{
     super::query::{BattleGrids, PieceQuery, TargetQuery, WearsQuery},
     fold::fold_ganger_round,
@@ -13,6 +15,7 @@ use crate::{
     tuning::CombatTuning,
 };
 
+/// Damage every living occupant in the AOE footprint except the primary target.
 #[expect(
     clippy::too_many_arguments,
     reason = "the splash pass needs the primary outcome / hit-type / shooter origin / the \
@@ -55,20 +58,20 @@ pub(super) fn apply_aoe_splash(
     let mut reports = Vec::new();
     for cell in affected {
         let Some(occupant) = grids.occupancy.occupant(&cell) else {
-            continue; 
+            continue;
         };
         if Some(occupant) == primary_struck {
-            continue; 
+            continue;
         }
         let part = crate::hit_location::roll_body_part(&tuning.body_part_weights, shot_rng.rng());
         let (splash_cell, splash_level) = (cell.cell(), outcome.level);
         let splash_outcome = crate::resolve_coarse::ShotOutcome {
-            kind:       ShotKind::Ganger(occupant),
-            cell:       splash_cell,
-            level:      splash_level,
-            body_part:  Some(part),
-            band:       outcome.band,
-            muzzle:     outcome.muzzle,
+            kind: ShotKind::Ganger(occupant),
+            cell: splash_cell,
+            level: splash_level,
+            body_part: Some(part),
+            band: outcome.band,
+            muzzle: outcome.muzzle,
             trajectory: outcome.trajectory,
         };
         let report = fold_ganger_round(
