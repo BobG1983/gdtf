@@ -1,11 +1,34 @@
-//! `#[cfg(feature = "test-support")] pub(crate) mod test_support` submodule in its
+//! Visibility helpers for test-support vs normal builds.
+
+/// Expands to `pub` under `test-support`, otherwise `pub(crate)`.
+/// Marker UI/state items are not individually documented.
 #[cfg(feature = "test-support")]
 macro_rules! support_item {
-    ($(#[$meta:meta])* enum $($rest:tt)*) => { $(#[$meta])* pub enum $($rest)* };
-    ($(#[$meta:meta])* struct $($rest:tt)*) => { $(#[$meta])* pub struct $($rest)* };
-    ($(#[$meta:meta])* const fn $($rest:tt)*) => { $(#[$meta])* pub const fn $($rest)* };
-    ($(#[$meta:meta])* const $($rest:tt)*) => { $(#[$meta])* pub const $($rest)* };
-    ($(#[$meta:meta])* fn $($rest:tt)*) => { $(#[$meta])* pub fn $($rest)* };
+    ($(#[$meta:meta])* enum $($rest:tt)*) => {
+        $(#[$meta])*
+        #[allow(missing_docs)]
+        pub enum $($rest)*
+    };
+    ($(#[$meta:meta])* struct $($rest:tt)*) => {
+        $(#[$meta])*
+        #[allow(missing_docs)]
+        pub struct $($rest)*
+    };
+    ($(#[$meta:meta])* const fn $($rest:tt)*) => {
+        $(#[$meta])*
+        #[allow(missing_docs)]
+        pub const fn $($rest)*
+    };
+    ($(#[$meta:meta])* const $($rest:tt)*) => {
+        $(#[$meta])*
+        #[allow(missing_docs)]
+        pub const $($rest)*
+    };
+    ($(#[$meta:meta])* fn $($rest:tt)*) => {
+        $(#[$meta])*
+        #[allow(missing_docs)]
+        pub fn $($rest)*
+    };
 }
 
 #[cfg(not(feature = "test-support"))]
