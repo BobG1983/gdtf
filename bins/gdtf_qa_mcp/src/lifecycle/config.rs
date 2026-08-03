@@ -1,3 +1,5 @@
+//! Boot and kill timing for a host.
+
 use core::time::Duration;
 
 use super::values::{BootTimeout, KillGrace, PollInterval, ProbeTimeout};
@@ -12,16 +14,18 @@ const DEFAULT_KILL_GRACE: KillGrace = KillGrace::new(Duration::from_secs(5));
 
 const DEFAULT_PROBE_TIMEOUT: ProbeTimeout = ProbeTimeout::new(Duration::from_millis(500));
 
+/// Timing knobs for launch readiness and stop.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LifecycleConfig {
-        boot_timeout:  BootTimeout,
-        poll_interval: PollInterval,
-        kill_grace:    KillGrace,
-        probe_timeout: ProbeTimeout,
+    boot_timeout: BootTimeout,
+    poll_interval: PollInterval,
+    kill_grace: KillGrace,
+    probe_timeout: ProbeTimeout,
 }
 
 impl LifecycleConfig {
-        #[must_use]
+    /// Build from explicit timings.
+    #[must_use]
     pub const fn new(
         boot_timeout: BootTimeout,
         poll_interval: PollInterval,
@@ -36,27 +40,32 @@ impl LifecycleConfig {
         }
     }
 
-        #[must_use]
+    /// How long to wait for readiness after spawn.
+    #[must_use]
     pub const fn boot_timeout(&self) -> BootTimeout {
         self.boot_timeout
     }
 
-        #[must_use]
+    /// Poll interval during boot/kill waits.
+    #[must_use]
     pub const fn poll_interval(&self) -> PollInterval {
         self.poll_interval
     }
 
-        #[must_use]
+    /// Grace after terminate before kill.
+    #[must_use]
     pub const fn kill_grace(&self) -> KillGrace {
         self.kill_grace
     }
 
-        #[must_use]
+    /// Timeout for one readiness probe.
+    #[must_use]
     pub const fn probe_timeout(&self) -> ProbeTimeout {
         self.probe_timeout
     }
 
-        #[must_use]
+    /// Defaults for the game host.
+    #[must_use]
     pub const fn game() -> Self {
         Self::new(
             GAME_BOOT_TIMEOUT,
@@ -66,7 +75,8 @@ impl LifecycleConfig {
         )
     }
 
-            #[must_use]
+    /// Defaults for the editor host (longer boot wait).
+    #[must_use]
     pub const fn editor() -> Self {
         Self::new(
             EDITOR_BOOT_TIMEOUT,
@@ -87,7 +97,7 @@ impl Default for LifecycleConfig {
 mod test {
     use super::LifecycleConfig;
 
-            #[test]
+    #[test]
     fn the_editor_waits_longer_for_readiness_than_the_game() {
         assert!(
             *LifecycleConfig::editor().boot_timeout() > *LifecycleConfig::game().boot_timeout()

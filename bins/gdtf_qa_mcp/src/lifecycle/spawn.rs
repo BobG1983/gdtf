@@ -1,3 +1,5 @@
+//! Spawn host processes via `cargo run`.
+
 use std::{
     io,
     process::{Command, Stdio},
@@ -9,20 +11,29 @@ use super::{
 };
 use crate::link::QaPort;
 
+/// How to spawn a managed child for a launch recipe.
 pub trait ChildSpawner {
-                        fn spawn(&self, port: QaPort, spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>>;
+    /// Spawn a child for `port` using `spec`.
+    ///
+    /// # Errors
+    ///
+    /// Returns I/O errors from the underlying process spawn.
+    fn spawn(&self, port: QaPort, spec: &LaunchSpec) -> io::Result<Box<dyn ManagedChild>>;
 }
 
+/// Spawner that runs `cargo run -p …`.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct CargoSpawner;
 
 impl CargoSpawner {
-        #[must_use]
+    /// Create a cargo spawner.
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }
 }
 
+/// Build the `cargo run` command for a recipe and port.
 #[must_use]
 pub fn build_command(port: QaPort, spec: &LaunchSpec) -> Command {
     let mut command = Command::new("cargo");
@@ -59,14 +70,14 @@ mod tests {
         QaChannel, WorkingDir,
     };
 
-        fn args_of(command: &std::process::Command) -> Vec<String> {
+    fn args_of(command: &std::process::Command) -> Vec<String> {
         command
             .get_args()
             .map(|arg| arg.to_string_lossy().into_owned())
             .collect()
     }
 
-        fn env_of(command: &std::process::Command, name: &str) -> Option<String> {
+    fn env_of(command: &std::process::Command, name: &str) -> Option<String> {
         command
             .get_envs()
             .find(|(key, _)| *key == OsStr::new(name))
@@ -74,7 +85,7 @@ mod tests {
             .map(|value| value.to_string_lossy().into_owned())
     }
 
-        #[test]
+    #[test]
     fn default_recipe_matches_the_previous_hardcoded_launch() {
         let command = build_command(QaPort::new(7616), &LaunchSpec::game_default());
         assert_eq!(
@@ -95,7 +106,7 @@ mod tests {
         assert!(command.get_current_dir().is_none());
     }
 
-            #[test]
+    #[test]
     fn recipe_drives_package_features_directory_and_env() {
         let spec = LaunchSpec::new(
             crate::lifecycle::launch::CargoPackage::new("gdtf_content_editor".to_owned()),
@@ -133,7 +144,7 @@ mod tests {
         );
     }
 
-            #[test]
+    #[test]
     fn qa_environment_wins_over_an_override_of_the_same_name() {
         let spec = LaunchSpec::new(
             LaunchSpec::game_default().package().clone(),
@@ -160,7 +171,7 @@ mod tests {
         );
     }
 
-                #[test]
+    #[test]
     fn editor_recipe_runs_the_editor_binary_with_the_editor_channel() {
         let command = build_command(QaPort::new(7617), &LaunchSpec::editor_default());
         assert_eq!(
