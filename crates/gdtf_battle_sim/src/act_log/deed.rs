@@ -1,3 +1,5 @@
+//! What happened in a single logged act.
+
 use bevy::prelude::Entity;
 
 use super::facts::{MagazineFacts, PoseFacts, PositionFacts, VitalsFacts};
@@ -13,118 +15,182 @@ use crate::{
     weapon::{DamageType, DotDamage, ModeKind},
 };
 
+/// Concrete event recorded in the act log.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ActDeed {
-            TurnBegan {
-                now_active: Faction,
+    /// A faction's turn began.
+    TurnBegan {
+        /// Faction that is now active.
+        now_active: Faction,
     },
 
-            PostureChanged {
-                pose: PoseFacts,
+    /// Facing / stance / aim / suppression changed.
+    PostureChanged {
+        /// New pose snapshot.
+        pose: PoseFacts,
     },
 
-            Stepped {
-                from:     Cell,
-                to:       Cell,
-                        position: PositionFacts,
+    /// Single-cell step.
+    Stepped {
+        /// Cell left.
+        from: Cell,
+        /// Cell entered.
+        to: Cell,
+        /// Position after the step.
+        position: PositionFacts,
     },
 
-                    MovedTo {
-                position: PositionFacts,
+    /// Multi-cell move completed.
+    MovedTo {
+        /// Final position.
+        position: PositionFacts,
     },
 
-            MoveRefused {
-                reason: MoveRejection,
+    /// Move was refused.
+    MoveRefused {
+        /// Why.
+        reason: MoveRejection,
     },
 
-                Fired {
-                target: Option<Entity>,
-                mode:   ModeKind,
-                        rounds: RoundCount,
+    /// Fire was declared.
+    Fired {
+        /// Optional target entity.
+        target: Option<Entity>,
+        /// Fire mode.
+        mode: ModeKind,
+        /// Rounds spent.
+        rounds: RoundCount,
     },
 
-            RoundResolved {
-                shot: Box<ShotFired>,
+    /// A single round resolved.
+    RoundResolved {
+        /// Shot outcome.
+        shot: Box<ShotFired>,
     },
 
-            Reloaded {
-                outcome: ReloadOutcome,
+    /// Reload finished.
+    Reloaded {
+        /// Reload result.
+        outcome: ReloadOutcome,
     },
 
-                MagazineChanged {
-                magazine: MagazineFacts,
+    /// Magazine contents changed.
+    MagazineChanged {
+        /// New magazine snapshot.
+        magazine: MagazineFacts,
     },
 
-                            Injured {
-                injury: Box<InjuryInflicted>,
+    /// Injury applied.
+    Injured {
+        /// Injury message payload.
+        injury: Box<InjuryInflicted>,
     },
 
-                    VitalsChanged {
-                vitals: VitalsFacts,
+    /// Vitals snapshot changed.
+    VitalsChanged {
+        /// New vitals.
+        vitals: VitalsFacts,
     },
 
-            Fell {
-                from_level: Level,
-                to_level:   Level,
-                storeys:    StoreysFallen,
+    /// Fall completed.
+    Fell {
+        /// Level before the fall.
+        from_level: Level,
+        /// Landing level.
+        to_level: Level,
+        /// Storeys fallen.
+        storeys: StoreysFallen,
     },
 
-            Struck {
-                target:    Entity,
-                hp_damage: HpDamage,
+    /// HP damage applied to a target.
+    Struck {
+        /// Target entity.
+        target: Entity,
+        /// HP removed.
+        hp_damage: HpDamage,
     },
 
-                DiedAt {
-                at: CellLevel,
+    /// Actor died.
+    DiedAt {
+        /// Death cell/level.
+        at: CellLevel,
     },
 
-            Suppressed {
-                at: CellLevel,
+    /// Suppression applied.
+    Suppressed {
+        /// Where the unit stood.
+        at: CellLevel,
     },
 
-            ArmorBroke {
-                part: BodyPart,
+    /// Armor piece broke.
+    ArmorBroke {
+        /// Body part.
+        part: BodyPart,
     },
 
-            DotStarted {
-                per_turn: DotDamage,
+    /// Damage-over-time started.
+    DotStarted {
+        /// Damage per turn.
+        per_turn: DotDamage,
     },
 
-            FieldStarted {
-                at: CellLevel,
+    /// Field effect started on a cell.
+    FieldStarted {
+        /// Cell of the field.
+        at: CellLevel,
     },
 
-            BleedStarted,
+    /// Bleed effect started.
+    BleedStarted,
 
-                Bled,
+    /// Bleed tick occurred.
+    Bled,
 
-                    DotTicked {
-                at:     CellLevel,
-                amount: DotDamage,
+    /// DOT tick.
+    DotTicked {
+        /// Location.
+        at: CellLevel,
+        /// Amount applied.
+        amount: DotDamage,
     },
 
-                    FieldTicked {
-                at:     CellLevel,
-                amount: FieldDamage,
+    /// Field tick.
+    FieldTicked {
+        /// Location.
+        at: CellLevel,
+        /// Amount applied.
+        amount: FieldDamage,
     },
 
-                CoverSmashed {
-                at: CellLevel,
+    /// Cover was destroyed.
+    CoverSmashed {
+        /// Cover cell.
+        at: CellLevel,
     },
 
-                MeleeLanded {
-                at:     CellLevel,
-                damage: DamageType,
+    /// Melee hit landed.
+    MeleeLanded {
+        /// Hit location.
+        at: CellLevel,
+        /// Damage type.
+        damage: DamageType,
     },
 
-            ThrowLanded {
-                at:     CellLevel,
-                damage: DamageType,
+    /// Thrown weapon/item landed.
+    ThrowLanded {
+        /// Impact location.
+        at: CellLevel,
+        /// Damage type.
+        damage: DamageType,
     },
 
-                                        LifeChanged {
-                from: LifeState,
-                to:   LifeState,
-                at:   PositionFacts,
+    /// Life state transition.
+    LifeChanged {
+        /// Previous life state.
+        from: LifeState,
+        /// New life state.
+        to: LifeState,
+        /// Position at change.
+        at: PositionFacts,
     },
 }
