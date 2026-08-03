@@ -1,25 +1,31 @@
+//! Shared inbox of admitted but not-yet-claimed calls.
+
 use bevy::prelude::*;
 use gdtf_net_qa_transport::Responder;
 use gdtf_qa_protocol::command::{CommandArgsJson, CommandName};
 
+/// One admitted call waiting to be claimed by its command system.
 pub struct AdmittedCall {
-        name:      CommandName,
-        arguments: CommandArgsJson,
-        responder: Responder,
+    name: CommandName,
+    arguments: CommandArgsJson,
+    responder: Responder,
 }
 
 impl AdmittedCall {
-        #[must_use]
+    /// Command name this call targets.
+    #[must_use]
     pub const fn name(&self) -> &CommandName {
         &self.name
     }
 }
 
+/// Bevy resource holding admitted calls until claim systems drain them.
 #[derive(Resource, Default)]
 pub struct CommandInbox(Vec<AdmittedCall>);
 
 impl CommandInbox {
-        pub fn admit(&mut self, name: CommandName, arguments: CommandArgsJson, responder: Responder) {
+    /// Push a new admitted call.
+    pub fn admit(&mut self, name: CommandName, arguments: CommandArgsJson, responder: Responder) {
         self.0.push(AdmittedCall {
             name,
             arguments,
@@ -27,17 +33,20 @@ impl CommandInbox {
         });
     }
 
-                        #[must_use]
+    /// Whether the inbox is empty.
+    #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-        #[must_use]
+    /// Number of pending calls.
+    #[must_use]
     pub const fn len(&self) -> usize {
         self.0.len()
     }
 
-        #[must_use]
+    /// Take all calls matching `name` and leave the rest.
+    #[must_use]
     pub fn take_for(&mut self, name: &CommandName) -> Vec<(CommandArgsJson, Responder)> {
         let mut taken = Vec::new();
         let mut kept = Vec::with_capacity(self.0.len());

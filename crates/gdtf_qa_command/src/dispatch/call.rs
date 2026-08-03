@@ -1,24 +1,30 @@
+//! Typed pending call sitting in a Bevy queue.
+
 use gdtf_net_qa_transport::PendingQueue;
 
 use super::CommandResponder;
 use crate::command::QaCommand;
 
+/// One admitted call with deserialized args for command `C`.
 pub struct CommandCall<C: QaCommand> {
-        args: C::Args,
+    args: C::Args,
 }
 
 impl<C: QaCommand> CommandCall<C> {
-        #[must_use]
+    /// Build a call from args.
+    #[must_use]
     pub const fn new(args: C::Args) -> Self {
         Self { args }
     }
 
-        #[must_use]
+    /// Borrow the args.
+    #[must_use]
     pub const fn args(&self) -> &C::Args {
         &self.args
     }
 
-        #[must_use]
+    /// Take the args.
+    #[must_use]
     pub fn into_args(self) -> C::Args {
         self.args
     }
@@ -30,6 +36,7 @@ impl<C: QaCommand> core::fmt::Debug for CommandCall<C> {
     }
 }
 
+/// Drain ready calls and pair each with a typed responder.
 #[must_use]
 pub fn take_calls<C: QaCommand>(
     queue: &mut PendingQueue<CommandCall<C>>,
