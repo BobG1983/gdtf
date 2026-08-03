@@ -1,3 +1,5 @@
+//! Melee strike flash on resolved hits.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::{acts::MeleeResolved, weapon::DamageType};
 
@@ -13,6 +15,7 @@ const fn strike_tint(damage: DamageType) -> Color {
     }
 }
 
+/// Spawn a melee strike flash at the hit cell.
 pub fn read_melee_resolved(
     mut commands: Commands,
     atlases: Res<TopDownAtlases>,

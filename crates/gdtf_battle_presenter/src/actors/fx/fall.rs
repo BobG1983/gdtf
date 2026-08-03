@@ -1,3 +1,5 @@
+//! Fall impact flash and floating combat text.
+
 use bevy::prelude::*;
 use gdtf_battle_sim::{falls::FallOccurred, prelude::Position};
 
@@ -16,6 +18,7 @@ fn fall_tint(storeys: u8) -> Color {
     Color::srgba(0.95, 0.55, 0.10, alpha)
 }
 
+/// Flash and "Fell" pop when a ganger falls.
 pub fn read_fall_occurred(
     mut commands: Commands,
     atlases: Res<TopDownAtlases>,
@@ -33,7 +36,7 @@ pub fn read_fall_occurred(
         let (cell, level) = at.split();
         let world = cell_to_world(cell, level);
 
-        let storeys_raw = *msg.storeys; 
+        let storeys_raw = *msg.storeys;
         let tint = fall_tint(storeys_raw);
         if let Some(sprite) = fx_sprite(roles.fall_impact, tint, &atlases) {
             spawn_flash(&mut commands, sprite, world);
