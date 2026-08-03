@@ -1,3 +1,5 @@
+//! Grid pathfinding with cost, blocking, and reachable sets.
+
 mod core;
 mod path;
 mod planning;
