@@ -1,4 +1,5 @@
-//! ganger can melee (the GTW-37 D3 ruling — an authored melee weapon OR the
+//! Melee weapons: components, fight modes, specs, registry.
+
 mod bundle;
 mod components;
 mod fight_mode;

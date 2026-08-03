@@ -1,3 +1,5 @@
+//! Damage-over-time profile and live DOT component.
+
 use std::num::NonZeroU8;
 
 use bevy::prelude::{Component, Deref};
@@ -5,30 +7,33 @@ use serde::{Deserialize, Serialize};
 
 use super::DamageType;
 
-/// `#[serde(transparent)]` so a weapon's authored [`DotProfile`] `.ron` names it as a bare
+/// Damage applied each DOT tick.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DotDamage(u16);
 
 impl DotDamage {
-        #[must_use]
+    /// Wrap a damage value.
+    #[must_use]
     pub const fn new(damage: u16) -> Self {
         Self(damage)
     }
 }
 
-/// private inner + derived [`Deref`]; `#[serde(transparent)]` so a weapon's authored
+/// Remaining turns of DOT (never zero).
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct DotTurns(NonZeroU8);
 
 impl DotTurns {
-        #[must_use]
+    /// Wrap a positive turn count.
+    #[must_use]
     pub const fn new(turns: NonZeroU8) -> Self {
         Self(turns)
     }
 
-                    #[must_use]
+    /// One less turn, or `None` when expired.
+    #[must_use]
     pub const fn decremented(self) -> Option<Self> {
         match NonZeroU8::new(self.0.get() - 1) {
             Some(next) => Some(Self(next)),
@@ -37,16 +42,20 @@ impl DotTurns {
     }
 }
 
-/// the armed entity (the `dot:` field on [`WeaponSpec`](super::WeaponSpec), `#[serde(default)]`
+/// Authored DOT on a weapon (optional).
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct DotProfile {
-        pub damage:      DotDamage,
-        pub damage_type: DamageType,
-        pub turns:       DotTurns,
+    /// Per-turn damage.
+    pub damage: DotDamage,
+    /// Damage channel.
+    pub damage_type: DamageType,
+    /// Duration in turns.
+    pub turns: DotTurns,
 }
 
 impl DotProfile {
-        #[must_use]
+    /// Build a profile.
+    #[must_use]
     pub const fn new(damage: DotDamage, damage_type: DamageType, turns: DotTurns) -> Self {
         Self {
             damage,
@@ -57,40 +66,45 @@ impl DotProfile {
 }
 
 impl Default for DotProfile {
-                        fn default() -> Self {
+    fn default() -> Self {
         Self {
-            damage:      DotDamage::default(),
+            damage: DotDamage::default(),
             damage_type: DamageType::default(),
-            turns:       DotTurns::new(NonZeroU8::MIN),
+            turns: DotTurns::new(NonZeroU8::MIN),
         }
     }
 }
 
-/// The battle-state side of the DOT model: a `#[derive(Component)]` the fire path attaches
+/// Live DOT on a target entity.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Dot {
-            pub remaining_turns: DotTurns,
-        pub per_turn_damage: DotDamage,
-        pub damage_type:     DamageType,
+    /// Turns left.
+    pub remaining_turns: DotTurns,
+    /// Damage per turn.
+    pub per_turn_damage: DotDamage,
+    /// Damage channel.
+    pub damage_type: DamageType,
 }
 
 impl Dot {
-            #[must_use]
+    /// Start from an authored profile.
+    #[must_use]
     pub const fn from_profile(profile: DotProfile) -> Self {
         Self {
             remaining_turns: profile.turns,
             per_turn_damage: profile.damage,
-            damage_type:     profile.damage_type,
+            damage_type: profile.damage_type,
         }
     }
 
-                    pub const fn refresh_from(&mut self, profile: DotProfile) {
+    /// Replace with a fresh profile.
+    pub const fn refresh_from(&mut self, profile: DotProfile) {
         *self = Self::from_profile(profile);
     }
 }
 
 impl Default for Dot {
-                    fn default() -> Self {
+    fn default() -> Self {
         Self::from_profile(DotProfile::default())
     }
 }
@@ -101,7 +115,7 @@ mod test {
 
     use super::{DotProfile, DotTurns};
 
-                    #[test]
+    #[test]
     fn an_authored_zero_turn_count_fails_deserialization() {
         let parsed = ron::from_str::<DotProfile>("(damage: 4, damage_type: Plasma, turns: 0)");
         assert!(
@@ -110,7 +124,7 @@ mod test {
         );
     }
 
-            #[test]
+    #[test]
     fn an_authored_positive_turn_count_parses_unchanged() {
         let parsed = ron::from_str::<DotProfile>("(damage: 4, damage_type: Plasma, turns: 3)");
         assert_eq!(
@@ -120,7 +134,7 @@ mod test {
         );
     }
 
-                #[test]
+    #[test]
     fn decremented_counts_down_to_removal_never_zero() {
         let three = NonZeroU8::new(3).map(DotTurns::new);
         let two = three.and_then(DotTurns::decremented);
