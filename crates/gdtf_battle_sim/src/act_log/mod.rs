@@ -1,3 +1,5 @@
+//! Ordered log of sim acts for replay, QA, and UI.
+
 mod deed;
 mod entry;
 pub mod facts;
