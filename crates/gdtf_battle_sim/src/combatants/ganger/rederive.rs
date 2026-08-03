@@ -1,4 +1,5 @@
-//! Both systems re-derive a spawned ganger's computed stats from its eight authored
+//! Re-derive a spawned ganger's computed stats from authored attributes and injuries.
+
 use bevy::{
     ecs::change_detection::DetectChanges,
     prelude::{Changed, Mut, Query, Res},
@@ -70,17 +71,18 @@ fn rederive_one(
 const fn attributes_of(read: &AttributeRead) -> GangerAttributes {
     let (speed, aim, strength, toughness, reflexes, cool, grit, luck) = *read;
     GangerAttributes {
-        speed:     *speed,
-        aim:       *aim,
-        strength:  *strength,
+        speed: *speed,
+        aim: *aim,
+        strength: *strength,
         toughness: *toughness,
-        reflexes:  *reflexes,
-        cool:      *cool,
-        grit:      *grit,
-        luck:      *luck,
+        reflexes: *reflexes,
+        cool: *cool,
+        grit: *grit,
+        luck: *luck,
     }
 }
 
+/// When ganger stat tuning changes, re-derive skills and pools for every ganger.
 pub fn rederive_stats_on_tuning_change(
     tuning: Option<Res<GangerStatTuning>>,
     mut gangers: Query<(
@@ -104,6 +106,7 @@ pub fn rederive_stats_on_tuning_change(
     }
 }
 
+/// When a ganger's injuries change, re-derive that ganger's skills and pools.
 pub fn rederive_stats_on_injury_change(
     tuning: Option<Res<GangerStatTuning>>,
     mut gangers: Query<

@@ -1,3 +1,5 @@
+//! Main act-log recording pass over all act families.
+
 use bevy::prelude::ResMut;
 
 use super::{
@@ -14,6 +16,7 @@ use super::{
 };
 use crate::act_log::ActLog;
 
+/// Append new act-log entries from this frame's messages and state changes.
 #[expect(
     clippy::too_many_arguments,
     reason = "the parameter list IS the recorder's source inventory: one SystemParam bundle \
