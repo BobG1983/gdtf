@@ -1,4 +1,5 @@
-//! A kneeling occupant on the LOWER endpoint of an authored stair cell earns the
+//! Terrain brace: kneeling on the lower end of an authored stair cell with a slab above.
+
 mod gate;
 
 #[cfg(test)]
