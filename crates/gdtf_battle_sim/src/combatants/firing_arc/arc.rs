@@ -1,17 +1,22 @@
+//! Angle test between facing and target cell.
+
 use bevy::{math::Vec2, prelude::Deref};
 
 use crate::{ganger::Direction, metric::Cell, tuning::FiringArc};
 
+/// Whether the target is inside the half-arc of the facing cone.
 #[derive(Deref, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TargetInArc(bool);
 
 impl TargetInArc {
-        #[must_use]
+    /// Wrap a boolean.
+    #[must_use]
     pub const fn new(in_arc: bool) -> Self {
         Self(in_arc)
     }
 }
 
+/// True if `target_cell` is within half of `arc` degrees of `facing` from `actor_cell`.
 #[must_use]
 pub fn target_in_arc(
     facing: Direction,
