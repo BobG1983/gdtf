@@ -19,17 +19,21 @@ git cleanly and report what you did.
 
 - **`main`** = releases. **`develop`** = integration. Never commit features straight to either.
 - New work:
+
   ```bash
   git checkout develop && git pull origin develop
   git checkout -b feature/<name>
   ```
+
 - Finish work (from main repo):
+
   ```bash
   git checkout develop && git pull origin develop
   git merge --no-ff feature/<name>
   git push origin develop
   git branch -d feature/<name>
   ```
+
 - Branches carry the Linear ticket: `feature/gtw-<N>-<slug>`. Commit subjects: `Area: summary (GTW-<N>)`.
 - No interactive rebase/add (`-i`). No `git flow` commands.
 

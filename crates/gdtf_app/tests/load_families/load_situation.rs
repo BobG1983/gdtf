@@ -1,7 +1,4 @@
 //! `AppState::Load` loads the authored `Situation` `.ron`.
-#[path = "load_suite/gate.rs"]
-mod gate;
-
 use std::path::PathBuf;
 
 use gdtf_app::test_support::{AppState, LoadedSituation, app_state, load_released};
@@ -9,6 +6,8 @@ use gdtf_test_utils::{
     GdtfLoadTestAppBuilder, GdtfTestAppBuilder, advance_until, advance_until_resource_exists,
 };
 use gdtf_ui::theme::GdtfTheme;
+
+use crate::load_suite::gate;
 
 const TRANSITION_BUDGET: u32 = 32;
 

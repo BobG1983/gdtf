@@ -8,13 +8,13 @@ use gdtf_qa_mcp::{
 
 use crate::support::{fast_config, free_port};
 
-const PROBE_PACKAGE: &str = "gtw875_probe";
+const PROBE_PACKAGE: &str = "recipe_probe";
 
 fn temp_dir_outside_a_workspace(tag: &str) -> PathBuf {
     let nanos = SystemTime::UNIX_EPOCH
         .elapsed()
         .map_or(0, |since| since.as_nanos());
-    let path = std::env::temp_dir().join(format!("gtw875-{tag}-{}-{nanos}", process::id()));
+    let path = std::env::temp_dir().join(format!("recipe-{tag}-{}-{nanos}", process::id()));
     let Ok(()) = fs::create_dir_all(&path) else {
         unreachable!("the test can create a temp directory");
     };
@@ -53,7 +53,7 @@ fn the_recipe_features_reach_the_real_cargo_command() {
     let dir = probe_package_outside_a_workspace("features");
     let spec = LaunchSpec::new(
         CargoPackage::new(PROBE_PACKAGE.to_owned()),
-        FeatureList::new(vec![FeatureName::new("gtw875_no_such_feature".to_owned())]),
+        FeatureList::new(vec![FeatureName::new("recipe_no_such_feature".to_owned())]),
         Some(WorkingDir::new(dir.clone())),
         EnvOverrides::default(),
         QaChannel::game(),
@@ -61,7 +61,7 @@ fn the_recipe_features_reach_the_real_cargo_command() {
 
     let tail = stderr_of_a_failed_launch(&spec);
     assert!(
-        tail.contains("gtw875_no_such_feature"),
+        tail.contains("recipe_no_such_feature"),
         "cargo saw the recipe's features: {tail}"
     );
     drop(fs::remove_dir_all(&dir));
@@ -76,14 +76,14 @@ fn the_recipe_environment_reaches_the_real_child() {
         Some(WorkingDir::new(dir.clone())),
         EnvOverrides::new(vec![EnvVar::new(
             EnvVarName::new("CARGO_BUILD_TARGET".to_owned()),
-            EnvVarValue::new("gtw875-not-a-real-target".to_owned()),
+            EnvVarValue::new("recipe-not-a-real-target".to_owned()),
         )]),
         QaChannel::game(),
     );
 
     let tail = stderr_of_a_failed_launch(&spec);
     assert!(
-        tail.contains("gtw875-not-a-real-target"),
+        tail.contains("recipe-not-a-real-target"),
         "the child ran with the recipe's environment: {tail}"
     );
     drop(fs::remove_dir_all(&dir));

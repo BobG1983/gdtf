@@ -1,8 +1,9 @@
 //! Load sprite defs into [`SpriteDefsFamily`].
 //! Value-agnostic: registry presence only (no pinned stems).
-use super::load_suite;
 use gdtf_content_families::{SpriteDefsFamily, sprites::SpriteDefRegistry};
 use load_suite::suite::{self, FamilyLoadContract};
+
+use super::load_suite;
 
 impl FamilyLoadContract for SpriteDefsFamily {
     fn is_empty(registry: &SpriteDefRegistry) -> bool {

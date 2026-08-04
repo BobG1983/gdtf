@@ -40,9 +40,9 @@ crate::support_item! {
 
 impl NetQaPlugin {
     crate::support_item! {
-        /// Build from environment under `cfg(debug_assertions)`.
+        /// Build the default wiring: debug builds listen on the shared QA port.
         #[must_use]
-        fn from_env() -> Self {
+        const fn from_env() -> Self {
             let wiring = if net_qa_enabled() {
                 Wiring::Listener {
                     port: port_from_env(),

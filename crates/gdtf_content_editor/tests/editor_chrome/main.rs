@@ -1,4 +1,4 @@
-//! Packed integration suite (GTW-797). Flat files merged; tests unchanged.
+//! Editor chrome: egui shell, hotkey focus, size field sync.
 
 mod egui_shell;
 mod hotkey_focus;

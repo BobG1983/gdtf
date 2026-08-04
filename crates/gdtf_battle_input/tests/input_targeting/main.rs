@@ -1,4 +1,4 @@
-//! Packed integration suite (GTW-797). Flat files merged; tests unchanged.
+//! Battle targeting input: selection, reachability, path preview, fire.
 
 mod fire_at_cover_bridge;
 mod path_preview;

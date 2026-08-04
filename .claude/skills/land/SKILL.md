@@ -38,6 +38,7 @@ Resolve `GTW-N` from argument or branch. Must match the `TICKET=` set in `.claud
 2. Commit: subject `Area: summary (GTW-N)`, body what changed and why. Match `git log --oneline -15` voice. Pre-commit hook re-checks gate-pass; do not use `--no-verify`.
 3. `OLD=$(git rev-parse origin/develop)`.
 4. Plain git finish (from the **main** repo if this is a worktree):
+
    ```bash
    git checkout develop
    git pull origin develop
@@ -45,6 +46,7 @@ Resolve `GTW-N` from argument or branch. Must match the `TICKET=` set in `.claud
    git push origin develop
    git branch -d feature/gtw-N-slug
    ```
+
    Stop on conflicts. No `git flow`.
 5. Move ticket(s) to **Done** via Linear MCP with evidence: merge SHA, suite result, pushed range.
 6. Report `git log --oneline OLD..develop`, then delete `.claude/.gate-pass`.

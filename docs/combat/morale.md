@@ -1,8 +1,8 @@
 # Morale, Bottle, and nerve effects
 
-Psychological combat track. Parent ticket: **GTW-40**.
+Psychological combat track.
 
-**Status: Accepted** (2026-08-04, GTW-40). Implementation may proceed against this doc; split build tickets from §8.
+**Status: Accepted** (2026-08-04). Implementation may proceed against this doc; split build tickets from §8.
 
 Inspired by UFO / Xenonauts *feel* (named break states, fire and casualties rattle people, suppression ≠ panic). **Not** a copy of their tables, psi, or officer math.
 
@@ -11,7 +11,7 @@ Related:
 - Pools and derivation: [stats.md](stats.md) (Morale / Bottle already derived from Grit + Cool; not consumed yet).
 - Physical mirror: [wounds-and-roster.md](wounds-and-roster.md).
 - Suppression (live, separate): fire-radius pin in the sim — see resolution / suppression tests.
-- Lasting campaign nerve scars: later (GTW-407), not this battlescape slice.
+- Lasting campaign nerve scars: later, not this battlescape slice.
 - Training hooks when live: [post-action.md](../mvp/post-action.md) (morale stress / held their nerve).
 
 ---
@@ -23,7 +23,7 @@ Related:
 | **Suppression** | Tactical pin: heads down, reaction fire gated, stance/stability hit | Clears on the ganger’s turn start (as today) |
 | **Morale / nerve** | Psychological break: named **nerve effects**, then **Bottled** | Effect duration (below); Bottled until battle end |
 
-Suppression may **deal a small Morale tick** (GTW-538) but never *is* a nerve effect. A Cool ganger can be suppressed all fight and never panic.
+Suppression may **deal a small Morale tick** but never *is* a nerve effect. A Cool ganger can be suppressed all fight and never panic.
 
 ---
 
@@ -164,7 +164,7 @@ Cool can shift severity band down one step (tunable), not delete the roll.
 - Copying UFO panic % tables or Xenonauts bravery formulas wholesale  
 - Psi / mind control  
 - Gang rout as automatic loss condition  
-- Lasting nerve injuries across battles (GTW-407 later)  
+- Lasting nerve injuries across battles (later)  
 - Replacing suppression with panic  
 
 ---
@@ -182,13 +182,13 @@ Cool can shift severity band down one step (tunable), not delete the roll.
 
 All core logic in `gdtf_battle_sim`, headless tests, seeded RNG.
 
-File single-responsibility build tickets from this list under GTW-17 (battlescape) / GTW-40 as parent as appropriate.
+File single-responsibility build tickets from this list under the battlescape and morale parents.
 
 ---
 
 ## 9. Acceptance record
 
-**Accepted 2026-08-04** on GTW-40 as written, including §5 defaults:
+**Accepted 2026-08-04** as written, including §5 defaults:
 
 1. Suppression stays separate; may deal Morale damage  
 2. Morale + Bottle as psych HP / Wounds  

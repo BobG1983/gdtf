@@ -15,13 +15,13 @@ use gdtf_qa_protocol::{
 };
 use serde_json::{Value, json};
 
-const GAME_RELATIVE_SHOT: &str = "target/qa_screenshots/gtw923_game.png";
+const GAME_RELATIVE_SHOT: &str = "target/qa_screenshots/shotcwd_game.png";
 
-const EDITOR_RELATIVE_SHOT: &str = "target/editor_qa_screenshots/gtw923_editor.png";
+const EDITOR_RELATIVE_SHOT: &str = "target/editor_qa_screenshots/shotcwd_editor.png";
 
-const GAME_SHOT_BYTES: &[u8] = b"gtw923-game-png-bytes";
+const GAME_SHOT_BYTES: &[u8] = b"shotcwd-game-png-bytes";
 
-const EDITOR_SHOT_BYTES: &[u8] = b"gtw923-editor-png-bytes";
+const EDITOR_SHOT_BYTES: &[u8] = b"shotcwd-editor-png-bytes";
 
 const CAPTURE_REPLY: &str = "null";
 
@@ -73,7 +73,7 @@ fn a_child_tree_holding_both_captures() -> PathBuf {
     let nanos = SystemTime::UNIX_EPOCH
         .elapsed()
         .map_or(0, |since| since.as_nanos());
-    let root = std::env::temp_dir().join(format!("gtw923-{}-{nanos}", process::id()));
+    let root = std::env::temp_dir().join(format!("shotcwd-{}-{nanos}", process::id()));
     for (relative, bytes) in [
         (GAME_RELATIVE_SHOT, GAME_SHOT_BYTES),
         (EDITOR_RELATIVE_SHOT, EDITOR_SHOT_BYTES),
