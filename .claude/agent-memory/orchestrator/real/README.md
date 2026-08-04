@@ -1,5 +1,5 @@
 # Orchestrator real memory
 
-Durable facts only. Written by `/dream` after re-checking claims against the tree.
+Durable facts only. Hand-maintained; re-check every claim against the tree before trusting it.
 
 Ephemeral run notes go in `../ephemeral/` (gitignored).
