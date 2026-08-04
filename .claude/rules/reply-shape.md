@@ -1,3 +1,7 @@
+---
+paths: ["**/*"]
+---
+
 # Shape of a reply to the user
 
 Why this rule exists: on 2026-07-31 the user corrected reply shape three times —

@@ -325,7 +325,7 @@ The loader:
 4. Inserts every `(WeaponName, WeaponSpec)` into the `WeaponRegistry`.
 
 On failure (bad folder) it inserts an EMPTY `WeaponRegistry` so `Load` always
-exits with one present (ADR-0003 safety-net); a battle then fails closed with
+exits with one present (safety net); a battle then fails closed with
 `WeaponNotFound` rather than crashing.
 
 Key Rust types (all in `crates/gdtf_battle_sim/src/equipment/weapon/`):

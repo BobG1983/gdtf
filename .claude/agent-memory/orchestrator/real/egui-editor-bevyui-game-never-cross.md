@@ -9,7 +9,7 @@ metadata:
 widgets, no migrating one toward the other, no comparison programme — that programme was opened and
 then canceled without producing a single measurement.
 
-**Why:** `docs/decisions/0003-hand-rolled-data-driven-ui.md`, "Amendment — 2026-07-25" (line 133),
+**Why:** `docs/architecture.md`, "Amendment — 2026-07-25" (line 133),
 settles it by user ruling. Clause 1 assigns the stacks, clause 2 says the boundary runs in BOTH
 directions (no `gdtf_ui` in the editor, no egui in the player-facing game), clause 3 keeps
 `dev_tools`-gated egui inside the game binary, and clause 5 locks `bsn!` authoring for every new
@@ -24,7 +24,7 @@ conformance test — the user declined the test on purpose.
    `crates/gdtf_app/src/dev/plugin.rs:12` adds it only `if app.is_plugin_added::<RenderPlugin>()`.
    Adding it to a `MinimalPlugins` test app dies on the first frame.
 3. **Gamepad focus navigation and activation are required on the game UI**; gamepad pointer
-   emulation is permanently out (ADR 0003 amendment clause 6, line 186). The editor is exempt. The
+   emulation is permanently out (the design canon amendment clause 6, line 186). The editor is exempt. The
    game side lives in `crates/gdtf_ui/src/focus_nav.rs`.
 4. **UI updates MUTATE in place** — never despawn and respawn a subtree to refresh it. The
    battlescape stat block is the pattern: `stat_block/update.rs` and `writers.rs` rewrite text,

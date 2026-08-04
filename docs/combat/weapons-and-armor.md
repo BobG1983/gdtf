@@ -4,7 +4,7 @@ How a hit resolves: weapon stats vs armor stats, the per-hit formula, and how th
 
 > The *structure* is settled. All magnitudes (weapon and armor numbers, the matchup swing) are **TBD (tuning)**.
 
-> **Where equipment lives (the ECS shape).** The stat components below live on the related **weapon** and **armor-piece entities**, not on the ganger: a ganger `Wields` a weapon entity (carrying the weapon stats) and `Wears` six armor-piece entities (each carrying its piece stats), via Bevy ECS relationships. This page defines the stat *vocabulary*; for *where* those stats are stored — and why — see [ADR 0004](../decisions/0004-equipment-as-entities-relationships.md).
+> **Where equipment lives (the ECS shape).** The stat components below live on the related **weapon** and **armor-piece entities**, not on the ganger: a ganger `Wields` a weapon entity (carrying the weapon stats) and `Wears` six armor-piece entities (each carrying its piece stats), via Bevy ECS relationships. This page defines the stat *vocabulary*; for *where* those stats are stored — and why — see [Equipment lives on its own entities](#equipment-lives-on-its-own-entities) below.
 
 ## The 7 types
 
@@ -33,7 +33,7 @@ Weapon (`damage`, `punch`, `shred`) vs armor (`floor`, `protection`, `integrity`
    — protection soaks, but penetration eats into protection, and the result never drops below `floor`.
 3. **Armor integrity wears:** `integrity −= min(protection, damage) + effPen + shred` — the soak/penetration wear **plus the weapon's shred** (extra integrity damage). At `integrity ≤ 0` the armor is **useless** (stops protecting). **Hardness does not degrade** — shred attacks durability, not hardness.
 
-Mid-battle wear is **live**: each hit's integrity result persists on the battle-local **armor-piece entity** the ganger `Wears` for that body location (its `integrity` component, keyed by `BodyPart`; see [ADR 0004](../decisions/0004-equipment-as-entities-relationships.md)), so armor worn to ≤ 0 stops protecting for the rest of the battle — later hits on that location resolve as bare flesh. The roster sheet itself never wears mid-battle; whether wear carries between missions is the open maintenance question below. (These battle-local piece entities live in the render-free sim — `gdtf_battle_sim` — never in the presenter.)
+Mid-battle wear is **live**: each hit's integrity result persists on the battle-local **armor-piece entity** the ganger `Wears` for that body location (its `integrity` component, keyed by `BodyPart`), so armor worn to ≤ 0 stops protecting for the rest of the battle — later hits on that location resolve as bare flesh. The roster sheet itself never wears mid-battle; whether wear carries between missions is the open maintenance question below. (These battle-local piece entities live in the render-free sim — `gdtf_battle_sim` — never in the presenter.)
 
 `dmg` then feeds the HP / Wound model: it reduces **HP**, and **every hit** rolls **wound severity** (the sim's `roll_severity`) — a penetration-gated bucket roll: penetrating damage drives the score, **Toughness** mitigates, the struck part and the weapon's **Fatal-bias** push it up, both gangers' **Luck** bend the one-sided random tail; bucketed Minor→Fatal, and a low roll is a graze (no Wound). See [stats.md](stats.md) and [wounds-and-roster.md](wounds-and-roster.md).
 
@@ -49,7 +49,7 @@ The swing is **asymmetric** — the resisted penalty (−66%) is double the favo
 
 ## Weapons — identity, fire modes, and authoring
 
-A weapon is **not** one packed struct — it is an ECS **component bundle** (a `Weapon` marker plus a `WeaponName` and one stat component per number) spawned onto its own related **weapon entity** (`Wields`, ADR 0004). Every weapon is **authored data**: a loose per-file `assets/content/weapons/ranged/<key>.weapon.ron` deserialised into a `WeaponSpec`. At battle setup the whole `assets/content/weapons/ranged/` folder loads into a name-keyed `WeaponRegistry`; each roster member references a weapon **by key**, and `setup_battle` resolves the key → spawns-and-relates the `WeaponBundle` via `Wields` — a missing key is a handled error, never a panic. The dedicated `.weapon.ron` extension keeps the folder load unambiguous among GDTF's other `.ron` asset types. Nothing about a weapon is hardcoded.
+A weapon is **not** one packed struct — it is an ECS **component bundle** (a `Weapon` marker plus a `WeaponName` and one stat component per number) spawned onto its own related **weapon entity** (`Wields`). Every weapon is **authored data**: a loose per-file `assets/content/weapons/ranged/<key>.weapon.ron` deserialised into a `WeaponSpec`. At battle setup the whole `assets/content/weapons/ranged/` folder loads into a name-keyed `WeaponRegistry`; each roster member references a weapon **by key**, and `setup_battle` resolves the key → spawns-and-relates the `WeaponBundle` via `Wields` — a missing key is a handled error, never a panic. The dedicated `.weapon.ron` extension keeps the folder load unambiguous among GDTF's other `.ron` asset types. Nothing about a weapon is hardcoded.
 
 > **Ranged / melee asset split.** Ranged weapons live under `assets/content/weapons/ranged/` (the `.weapon.ron` extension above); melee weapons live in the sibling `assets/content/weapons/melee/` (the `.melee_weapon.ron` extension — see the **Melee weapons** section below). Each loader points at its own leaf folder, so the two never cross-contaminate.
 
@@ -86,7 +86,7 @@ fire_mode: [
 
 ## Melee weapons
 
-A melee weapon is the **sibling** of the ranged model above (child of the melee epic): another ECS component bundle on its OWN related weapon entity (`Wields`, ADR 0004), but tagged with a **`MeleeWeapon`** marker instead of the ranged `Weapon` marker. It **shares the ranged damage model verbatim** and **drops** the ranged-only handling, **adding** melee-only mechanics.
+A melee weapon is the **sibling** of the ranged model above (child of the melee epic): another ECS component bundle on its OWN related weapon entity (`Wields`), but tagged with a **`MeleeWeapon`** marker instead of the ranged `Weapon` marker. It **shares the ranged damage model verbatim** and **drops** the ranged-only handling, **adding** melee-only mechanics.
 
 - **Shared with ranged** (the SAME newtypes): `WeaponName`, the damage group (`damage` / `punch` / `shred` / `damage_type`), `fatal_bias`, and `handedness`. A melee strike resolves through the **same per-hit formula** above (`damage`/`punch`/`shred` vs armor) and the **same matchup wheel**. The weapon **multiplies damage only** — no Fight-roll bonus (the first-slice ruling).
 - **Dropped** (no melee analog): `base_spread`, `accuracy`, `kickback`, the `Magazine`, and the `stable` tag — a melee strike has no dispersion cone, no ammo, no brace.
@@ -104,3 +104,36 @@ The two markers keep the paths apart: the ranged-firing path (`fire()` / `can_fi
 - Weapon archetypes / profiles (autogun, lasgun, **plasma cannon** = high damage + high punch + **Fatal-bias**, chainsword = high shred, …).
 - **Fatal-bias:** how specific weapons push the severity roll toward **Fatal** (a plasma cannon to an unarmored chest).
 - Whether `integrity` / `hardness` repair between missions (armor maintenance) or degrade for good — cross-battle carry of mid-battle wear is open.
+
+## Equipment lives on its own entities
+
+**Equipment is its own entities, related to the ganger by Bevy ECS relationships — not
+components stored on the ganger.**
+
+- `ganger --Wears--> {head, torso, left_arm, right_arm, left_leg, right_leg}` — one
+  armor-piece entity per worn piece, each tagged with its `BodyPart`. The piece's stat
+  components (`ArmorFloor`, `ArmorProtection`, `ArmorIntegrity`, `ArmorHardness`,
+  `ArmorType`) live **on the piece entity**.
+- `ganger --Wields--> weapon` — the weapon's stat components live on the weapon entity,
+  not the ganger.
+
+The relationship component pairs are `WornBy`/`Wears` for armor and `WieldedBy`/`Wields`
+for the weapon, defined against Bevy's `#[relationship]` /
+`#[relationship_target(linked_spawn)]` API.
+
+`setup_battle` spawns an armor-piece entity per `ArmorSpec` piece and a weapon entity from
+the `WeaponSpec`, then relates them to the ganger. Registry lookups are unchanged — only
+the terminal step differs: spawn an equipment entity and relate it, rather than inserting
+a bundle onto the ganger.
+
+**Why it is load-bearing:** per-piece armor wear needs somewhere to live that survives a
+hit and is queryable on its own. Stat components on the ganger cannot express six
+independently-damaged pieces, and they leave no room for weapon mods
+(`weapon --HasMod--> mod`) or for multiple wielded, stowed and thrown weapons as further
+related entities.
+
+**What this forbids:** reading a weapon or armor stat directly off the ganger entity, and
+any code path that assumes one ganger has exactly one weapon.
+
+**Code site:** `crates/gdtf_battle_sim/src/equipment/`; the battle-local piece entities
+live in the render-free sim, never in the presenter.

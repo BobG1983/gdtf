@@ -5,7 +5,7 @@ description: >-
   against its clause-numbered ticket contract before landing. Re-reads the code,
   re-runs the green suite, trusts nothing the implementer reported. Returns
   COMPLIANT / NON-COMPLIANT with per-clause evidence.
-tools: mcp__gdtf-qa__*, Read, Grep, Glob, Bash
+tools: mcp__gdtf-qa__*, Read, Grep, Glob, Bash, LSP
 model: opus
 memory: project
 ---
@@ -22,6 +22,10 @@ A clause-numbered contract (GTW-N) plus the implementer's summary. Number clause
 
 1. See the actual change: `git status`, `git diff develop...HEAD`, untracked files.
 2. Per clause: open the files, trace the code path. Cite `file:line`. "The summary says so" is never evidence.
+   Use the LSP for symbol questions — `findReferences` to check a signature change reached
+   every caller, `goToDefinition` to confirm a cited path. A `grep` count is not a caller
+   count; see [`code-navigation.md`](../rules/code-navigation.md). `LSP` is deferred — load
+   it with `ToolSearch` first.
 3. **Run the green suite yourself** from [`.claude/rules/verification.md`](../rules/verification.md). All eight must exit 0. Use the aliases. Any failure = NON-COMPLIANT.
 
 ## Historical failure modes (check every review)

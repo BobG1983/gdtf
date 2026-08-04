@@ -260,8 +260,7 @@ params rather than quietly defaulting, so a typo cannot drive the wrong process.
 from the host itself — `commands` returns its live catalogue, `run` calls one
 entry by name — so adding a command to a host adds nothing here, needs no courier
 rebuild, and needs no MCP reconnect. That is the whole point of the design; see
-[ADR 0008](../decisions/0008-qa-command-courier.md) and
-[the command guide](qa-commands.md).
+[the command guide](qa-commands.md), which records why the shape is what it is.
 
 | Tool | Kind | Maps to | Arguments |
 | --- | --- | --- | --- |

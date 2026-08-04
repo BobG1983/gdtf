@@ -1,3 +1,7 @@
+---
+paths: ["**/*"]
+---
+
 # Write Like an Engineer, Not a Consultant
 
 Writing exists to communicate, not to sound sophisticated.

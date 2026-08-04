@@ -254,6 +254,6 @@ fn same_seed_reproduces_a_byte_equal_volley_through_the_relationship() {
     assert_eq!(
         first, second,
         "the same battle seed must reproduce a byte-equal Volley through the \
-         armor-relationship lookup (determinism held — ADR-0004)",
+         armor-relationship lookup (determinism held)",
     );
 }

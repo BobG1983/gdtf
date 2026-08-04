@@ -20,7 +20,7 @@ examples, not the boundary — the failure mode is inventing a name instead of n
 - Before writing a cute name, ask: would a teammate know what this is without having read my earlier
   messages?
 - Landed code and docs that already carry a coined name are NOT retro-edited for it —
-  `bins/gdtf_qa_mcp/src/mcp/courier/` and `docs/decisions/0008-qa-command-courier.md` keep theirs.
+  `bins/gdtf_qa_mcp/src/mcp/courier/` and `docs/tooling/qa-commands.md` keep theirs.
   New text does not spread it.
 
 Related: [[dont-retune-what-the-user-tuned]].

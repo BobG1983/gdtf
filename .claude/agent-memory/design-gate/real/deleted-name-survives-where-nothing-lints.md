@@ -53,7 +53,7 @@ review rounds.
 **How to apply:** for every deleted module, type, tool, and request-variant name, grep the
 four trees and walk the categories one at a time. Two greps find what a tool-name grep does
 not: grep the deleted names against `--include=Cargo.toml`, and grep the deleted
-REQUEST-VARIANT names across all of `docs/` and `.claude/` (exclude only immutable ADR
+REQUEST-VARIANT names across all of `docs/` and `.claude/` (exclude only immutable the design canon
 bodies). Also check the doc sentence the change's own code edit falsifies — a doc comment
 updated inside the diff while a `docs/` page repeating the same sentence is not.
 
