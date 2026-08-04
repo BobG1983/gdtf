@@ -36,6 +36,7 @@ Short files under `.claude/rules/` — read and follow them:
 - [`plain-language.md`](.claude/rules/plain-language.md) — plain wording and length; name the real mechanism.
 - [`reply-shape.md`](.claude/rules/reply-shape.md) — chat reply structure: answer first, no process narration.
 - [`comment-hygiene.md`](.claude/rules/comment-hygiene.md) — short docs; no ticket ids in comments.
+- [`bevy-systems.md`](.claude/rules/bevy-systems.md) — SystemParam / QueryData / split; no too_many_arguments expects on systems.
 
 Bevy ECS gotchas (system ordering, change detection, schedules, state transitions, query conflicts) live in the `bevy-expert` agent and supporting notes — treat them as binding when writing systems.
 
