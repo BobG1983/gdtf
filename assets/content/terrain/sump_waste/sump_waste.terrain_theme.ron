@@ -1,20 +1,13 @@
-// GTW-490 migration of assets/content/themes/sump_waste.theme.ron to the NEW UUID-keyed
-// UuidThemeDef model (GTW-485/487). The sump_waste theme has no flat counterpart, so its 4
-// catalog tiles migrate to per-theme TerrainDefs (see the sibling *.terrain_def.ron files).
-// The old per-tile atlas_index is INTENTIONALLY DROPPED (the presenter resolves the index via
-// TileRoles by each def's presenter_kind.graphic_name).
+// Sump Waste theme.
 (
-    // Stable authored key — the SumpWaste ThemeUuid.
     key: "00000000-0000-0000-0000-01840a900003",
     display_name: "Sump Waste",
-    // The default floor terrain (sludge_floor).
     default_floor: "00000000-0000-0000-0000-01840a930001",
-    // This theme's terrain palette, by migrated UUID.
     terrain: [
-        "00000000-0000-0000-0000-01840a930001",  // sludge_floor (default floor)
+        "00000000-0000-0000-0000-01840a930001",  // sludge_floor
         "00000000-0000-0000-0000-01840a930002",  // corroded_bulkhead
         "00000000-0000-0000-0000-01840a930003",  // gantry_slab
         "00000000-0000-0000-0000-01840a930004",  // waste_drum
-        "00000000-0000-0000-0000-01840a930005",  // corroded_bulkhead_ew (GTW-469 EW orientation)
+        "00000000-0000-0000-0000-01840a930005",  // corroded_bulkhead_ew
     ],
 )
