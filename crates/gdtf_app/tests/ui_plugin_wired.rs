@@ -1,4 +1,4 @@
-//! Headless test wiring must register UiPlugin like the real app.
+//! Headless test wiring must register `UiPlugin` like the real app.
 use gdtf_app::test_support::UiPlugin;
 use gdtf_test_utils::GdtfTestAppBuilder;
 

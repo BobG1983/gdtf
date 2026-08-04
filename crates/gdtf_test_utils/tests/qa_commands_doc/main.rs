@@ -1,3 +1,4 @@
+//! QA commands guide: cited paths exist and shown shapes match the worked example.
 use std::{
     fs,
     path::{Path, PathBuf},
