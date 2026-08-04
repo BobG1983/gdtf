@@ -158,10 +158,6 @@ fn mean_deviation(aim: AimDir, cone: ConeAngle, p: ConcentrationP, seed: u64) ->
     let total: f32 = (0..SAMPLES)
         .map(|_| deviation(axis, sample_cone_vector(aim, cone, p, rng.rng()).vec()))
         .sum();
-    #[expect(
-        clippy::cast_precision_loss,
-        reason = "SAMPLES is 2_000 — exactly representable as f32; this mean is a test statistic"
-    )]
     let count = SAMPLES as f32;
     total / count
 }

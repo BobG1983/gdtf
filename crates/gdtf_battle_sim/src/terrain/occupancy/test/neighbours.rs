@@ -163,12 +163,6 @@ fn step_cost_orthogonal_is_terrain_diagonal_is_octile() {
         Some(Tu::new(open_cost)),
         "an orthogonal step costs the entered cell's terrain move_cost",
     );
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "open_cost is a small u8; open_cost * √2 rounds to a value that fits a u8 and is \
-                  non-negative, so the cast cannot truncate or sign-flip"
-    )]
     let expected_octile = (f32::from(open_cost) * SQRT_2).round() as u8;
     assert_eq!(
         diag_cost,

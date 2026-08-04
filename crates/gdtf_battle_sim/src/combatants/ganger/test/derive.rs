@@ -62,23 +62,11 @@ fn sample_attributes() -> GangerAttributes {
 }
 
 fn round_pool_u16(value: f32) -> u16 {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "the test's sample magnitudes round well inside u16 range; mirrors the \
-                  derivation's round-to-nearest pool rule"
-    )]
     let rounded = value.round().clamp(0.0, f32::from(u16::MAX)) as u16;
     rounded
 }
 
 fn round_pool_u8(value: f32) -> u8 {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "the test's sample magnitudes round well inside u8 range; mirrors the \
-                  derivation's round-to-nearest pool rule"
-    )]
     let rounded = value.round().clamp(0.0, f32::from(u8::MAX)) as u8;
     rounded
 }

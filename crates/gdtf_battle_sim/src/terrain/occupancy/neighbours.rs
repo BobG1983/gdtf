@@ -93,13 +93,6 @@ fn step_cost(floor_cost: MoveCost, diagonal: Diagonal) -> Tu {
     if !*diagonal {
         return Tu::new(orthogonal);
     }
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "orthogonal is a u8 move cost (<= 255), so move_cost * √2 < 361 and its rounded \
-                  value fits a u8; the product is non-negative so the u8 cast cannot sign-flip \
-                  (and `.round()` has already discarded the fractional part)"
-    )]
     let octile = (f32::from(orthogonal) * SQRT_2).round() as u8;
     Tu::new(octile)
 }
@@ -108,14 +101,6 @@ fn scale_by_factor(base: Tu, factor: MovementCostFactor) -> Tu {
     if factor == MovementCostFactor::IDENTITY {
         return base;
     }
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "base is a u8 Tu (<= 255) and an authored MovementCostFactor is >= 1.0; the \
-                  product is clamped to u8::MAX before the cast (so it cannot truncate or \
-                  wrap) and is non-negative (so the u8 cast cannot sign-flip); `.ceil()` has \
-                  already discarded the fractional part"
-    )]
     let scaled = {
         let raw = (f32::from(*base) * factor.raw()).ceil();
         if raw > f32::from(u8::MAX) {

@@ -6,7 +6,7 @@
 macro_rules! support_item {
     ($(#[$meta:meta])* enum $($rest:tt)*) => {
         $(#[$meta])*
-        #[allow(
+        #[expect(
             missing_docs,
             reason = "test-support re-exports UI/state markers; docs live on the real public API"
         )]
@@ -14,7 +14,7 @@ macro_rules! support_item {
     };
     ($(#[$meta:meta])* struct $($rest:tt)*) => {
         $(#[$meta])*
-        #[allow(
+        #[expect(
             missing_docs,
             reason = "test-support re-exports UI/state markers; docs live on the real public API"
         )]
@@ -22,7 +22,7 @@ macro_rules! support_item {
     };
     ($(#[$meta:meta])* const fn $($rest:tt)*) => {
         $(#[$meta])*
-        #[allow(
+        #[expect(
             missing_docs,
             reason = "test-support re-exports UI/state markers; docs live on the real public API"
         )]
@@ -30,7 +30,7 @@ macro_rules! support_item {
     };
     ($(#[$meta:meta])* const $($rest:tt)*) => {
         $(#[$meta])*
-        #[allow(
+        #[expect(
             missing_docs,
             reason = "test-support re-exports UI/state markers; docs live on the real public API"
         )]
@@ -38,7 +38,7 @@ macro_rules! support_item {
     };
     ($(#[$meta:meta])* fn $($rest:tt)*) => {
         $(#[$meta])*
-        #[allow(
+        #[expect(
             missing_docs,
             reason = "test-support re-exports UI/state markers; docs live on the real public API"
         )]

@@ -16,11 +16,6 @@ fn schematic_scale(grid: GridSize, box_rect: egui::Rect) -> f32 {
     box_rect.width() / f32::from(span)
 }
 
-#[expect(
-    clippy::cast_precision_loss,
-    reason = "cell coordinates are tiny (<= 60); the f32 casts are exact within f32's 24-bit \
-              integer range (the sprite_thumb sheet_uv precedent)"
-)]
 pub(crate) fn footprint_rect(
     region: RegionRect,
     grid: GridSize,

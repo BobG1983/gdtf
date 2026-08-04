@@ -81,10 +81,6 @@ pub fn march_arc(
 
     let mut prev = muzzle;
     for i in 1..=*steps {
-        #[expect(
-            clippy::cast_precision_loss,
-            reason = "steps is a small sample count bounded by MAX_STEPS; the f32 fraction is exact for this range"
-        )]
         let u = ArcFraction::new((i as f32) / (*steps as f32));
         let point = SimPos::new(
             dx.mul_add(*u, muzzle.x),
@@ -112,11 +108,6 @@ pub fn march_arc(
 
 fn arc_sample_count(horizontal: SimUnit) -> SampleCount {
     let raw = (*horizontal / SAMPLE_STEP).ceil();
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "raw is a non-negative ceil'd count clamped to 1.0..=MAX_STEPS below, so the u32 cast cannot wrap"
-    )]
     let n = raw.clamp(1.0, f32::from(u16::MAX)) as u32;
     SampleCount::new(n.clamp(1, MAX_STEPS))
 }
@@ -186,10 +177,6 @@ fn roof_block_at(
 
 fn floor_level(z: SimUnit) -> VoxelIndex {
     let floored = (*z).floor();
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "clamped to the i32 range below, so the cast cannot wrap; the fractional part is gone after floor"
-    )]
     let clamped = floored.clamp(i32::MIN as f32, i32::MAX as f32) as i32;
     VoxelIndex::new(clamped.clamp(0, i32::from(MAX_LEVELS)))
 }
