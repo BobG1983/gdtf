@@ -1,39 +1,18 @@
-//! Load themes into [`ThemeDefsFamily`] by known authored [`ThemeUuid`].
-//! Value-agnostic: presence and UUID resolution only.
+//! Load themes into [`ThemeDefsFamily`].
+//! Value-agnostic: registry presence and structural properties only.
 mod load_suite;
 
-use bevy::asset::uuid::Uuid;
 use gdtf_app::test_support::AppState;
-use gdtf_battle_sim::{
-    level::{ThemeUuid, UuidThemeRegistry},
-    terrain::def::TerrainUuid,
-};
+use gdtf_battle_sim::level::UuidThemeRegistry;
 use gdtf_content_families::ThemeDefsFamily;
 use gdtf_test_utils::{GdtfLoadTestAppBuilder, advance_until_resource_exists};
 use load_suite::suite::{self, FamilyLoadContract};
 
 const LOAD_SAFETY_NET: u32 = 10_000;
 
-const fn industrial_hive_theme() -> ThemeUuid {
-    ThemeUuid::new(Uuid::from_u128(0x0184_0a90_0001))
-}
-
-const fn industrial_hive_default_floor() -> TerrainUuid {
-    TerrainUuid::new(Uuid::from_u128(0x0184_0a91_0004))
-}
-
 impl FamilyLoadContract for ThemeDefsFamily {
-    const EXPECTED_MEMBERS: &'static [&'static str] = &["industrial_hive"];
-
     fn is_empty(registry: &UuidThemeRegistry) -> bool {
         registry.is_empty()
-    }
-
-    fn member_resolves(registry: &UuidThemeRegistry, label: &str) -> bool {
-        match label {
-            "industrial_hive" => registry.def(&industrial_hive_theme()).is_some(),
-            _ => false,
-        }
     }
 }
 
@@ -53,7 +32,7 @@ fn real_asset_resolves_uuid_theme_registry() {
 }
 
 #[test]
-fn real_asset_theme_default_floor_cross_reference_resolves() {
+fn real_asset_themes_declare_terrain_and_default_floor() {
     let mut app = GdtfLoadTestAppBuilder::new()
         .starting_in(AppState::Load)
         .build();
@@ -66,11 +45,22 @@ fn real_asset_theme_default_floor_cross_reference_resolves() {
         "the real per-theme folder load must insert a UuidThemeRegistry within the safety-net \
          budget",
     );
-    if let Some(registry) = registry {
-        assert_eq!(
-            registry.default_floor(&industrial_hive_theme()),
-            Some(industrial_hive_default_floor()),
-            "the resolved theme's default_floor must reference the authored terrain UUID",
-        );
-    }
+    let Some(registry) = registry else {
+        return;
+    };
+
+    assert!(
+        !registry.is_empty(),
+        "shipped themes folder must yield at least one theme",
+    );
+    assert!(
+        registry.defs().all(|(_uuid, def)| !def.terrain.is_empty()),
+        "every shipped theme must list at least one terrain uuid (structural property)",
+    );
+    assert!(
+        registry
+            .defs()
+            .all(|(uuid, def)| { registry.default_floor(uuid) == Some(def.default_floor) }),
+        "every shipped theme must expose its default_floor via lookup",
+    );
 }

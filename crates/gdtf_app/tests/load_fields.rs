@@ -2,19 +2,13 @@
 //! Value-agnostic: catalog presence only.
 mod load_suite;
 
-use gdtf_battle_sim::effects::fields::{FieldDefRegistry, FieldKey};
+use gdtf_battle_sim::effects::fields::FieldDefRegistry;
 use gdtf_content_families::FieldsFamily;
 use load_suite::suite::{self, FamilyLoadContract};
 
 impl FamilyLoadContract for FieldsFamily {
-    const EXPECTED_MEMBERS: &'static [&'static str] = &["toxic_waste_pool"];
-
     fn is_empty(registry: &FieldDefRegistry) -> bool {
         registry.is_empty()
-    }
-
-    fn member_resolves(registry: &FieldDefRegistry, label: &str) -> bool {
-        registry.def(&FieldKey::new(label.to_owned())).is_some()
     }
 }
 

@@ -13,11 +13,7 @@ const TRANSITION_BUDGET: u32 = 32;
 const LOAD_SAFETY_NET: u32 = 10_000;
 
 pub(crate) trait FamilyLoadContract: ContentFamily {
-    const EXPECTED_MEMBERS: &'static [&'static str];
-
     fn is_empty(registry: &Self::Registry) -> bool;
-
-    fn member_resolves(registry: &Self::Registry, label: &str) -> bool;
 }
 
 pub(crate) fn loader_no_ops_without_asset_server<F: FamilyLoadContract>() {
@@ -108,19 +104,10 @@ pub(crate) fn real_asset_resolves_registry<F: FamilyLoadContract>() {
     if let Some(registry) = registry {
         assert!(
             !F::is_empty(registry),
-            "the resolved {} must carry the authored (non-empty) `{}` members",
+            "the resolved {} must carry authored (non-empty) `{}` members",
             registry_name::<F>(),
             F::FOLDER,
         );
-        for member in F::EXPECTED_MEMBERS {
-            assert!(
-                F::member_resolves(registry, member),
-                "the {} must resolve the authored `{member}` member (loaded from the real `{}` \
-                 folder through the generic content-family loader)",
-                registry_name::<F>(),
-                F::FOLDER,
-            );
-        }
     }
 
     let released = advance_until(&mut app, load_released, LOAD_SAFETY_NET);

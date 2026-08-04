@@ -4,7 +4,7 @@
 // STRUCTURALLY it is cover-like — a destructible, smashable structure that blocks the path and
 // occludes vision at its band (it seeds a CoverLedger entry, exactly like a wall/cover, so a shot
 // can chew it down). While OCCUPIED the occupant reads as HIGH cover (its silhouette band is
-// forced to High) and the mounted gun is steadied via the EmplacementStability seam.
+// forced to High) and the mounted gun is steadied via EmplacementStability.
 (
     // Stable authored key — the industrial_hive `heavy_bolter_emplacement` TerrainUuid.
     key: "00000000-0000-0000-0000-01840a910011",
