@@ -18,7 +18,7 @@ fn attachment_spec_parses_effects_from_ron() {
     assert_eq!(
         spec.slot,
         AttachmentSlot::Sight,
-        "the GTW-554 slot the item occupies parses from RON",
+        "the slot the item occupies parses from RON",
     );
     assert_eq!(
         spec.effects.len(),
@@ -59,7 +59,7 @@ fn weapon_attachments_and_omitted_field_parse_from_ron() {
     assert_eq!(
         spec.slots.capacity(AttachmentSlot::Sight),
         Some(SlotCapacity::new(1)),
-        "the GTW-554 slots pair-list parses from the weapon RON",
+        "the slots pair-list parses from the weapon RON",
     );
     assert_eq!(
         spec.attachments[0],
