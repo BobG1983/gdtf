@@ -1,6 +1,4 @@
-// Test-only fixture for the gdtf_assets HOT-RON seam tests (GTW-564) — the
-// DELIBERATELY malformed file that must reach LoadState::Failed (`count` is a
-// string, which cannot deserialize into the u32 field). Not shipped content.
+// Deliberately malformed fixture for HOT-RON tests. count is a string so deserialize fails.
 (
     label: "broken",
     count: "not-a-number",
